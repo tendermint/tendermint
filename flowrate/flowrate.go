@@ -2,9 +2,9 @@
 // Written by Maxim Khitrov (November 2012)
 //
 
-// Package flowcontrol provides the tools for monitoring and limiting the
-// transfer rate of an arbitrary data stream.
-package flowcontrol
+// Package flowrate provides the tools for monitoring and limiting the flow rate
+// of an arbitrary data stream.
+package flowrate
 
 import (
 	"math"

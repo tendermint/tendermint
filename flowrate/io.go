@@ -2,7 +2,7 @@
 // Written by Maxim Khitrov (November 2012)
 //
 
-package flowcontrol
+package flowrate
 
 import (
 	"errors"
@@ -11,7 +11,7 @@ import (
 
 // ErrLimit is returned by the Writer when a non-blocking write is short due to
 // the transfer rate limit.
-var ErrLimit = errors.New("flowcontrol: transfer rate limit exceeded")
+var ErrLimit = errors.New("flowrate: flow rate limit exceeded")
 
 // Limiter is implemented by the Reader and Writer to provide a consistent
 // interface for monitoring and controlling data transfer.

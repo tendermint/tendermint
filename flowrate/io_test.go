@@ -2,7 +2,7 @@
 // Written by Maxim Khitrov (November 2012)
 //
 
-package flowcontrol
+package flowrate
 
 import (
 	"bytes"
