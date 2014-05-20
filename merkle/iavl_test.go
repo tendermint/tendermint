@@ -3,6 +3,7 @@ package merkle
 import "testing"
 
 import (
+    "fmt"
     "os"
     "bytes"
     "math/rand"
@@ -150,14 +151,6 @@ func TestTraversals(t *testing.T) {
     var order []int = []int{
         6, 1, 8, 2, 4 , 9 , 5 , 7 , 0 , 3 ,
     }
-    /*
-    var preorder []int = []int {
-        17, 7, 5, 1, 12, 9, 13, 19, 18, 20,
-    }
-    var postorder []int = []int {
-        1, 5, 9, 13, 12, 7, 18, 20, 19, 17,
-    }
-    */
 
     test := func(T Tree) {
         t.Logf("%T", T)
@@ -177,24 +170,106 @@ func TestTraversals(t *testing.T) {
             }
             j += 1
         }
-
-        /*
-        j = 0
-        for tn, next := tree.TraverseTreePreOrder(T.Root())(); next != nil; tn, next = next () {
-            if int(tn.Key().(Int)) != preorder[j] {
-                t.Error("key in wrong spot pre-order")
-            }
-            j += 1
-        }
-
-        j = 0
-        for tn, next := tree.TraverseTreePostOrder(T.Root())(); next != nil; tn, next = next () {
-            if int(tn.Key().(Int)) != postorder[j] {
-                t.Error("key in wrong spot post-order")
-            }
-            j += 1
-        }
-        */
     }
     test(NewIAVLTree())
+}
+
+func BenchmarkSha256(b *testing.B) {
+    b.StopTimer()
+
+    str := []byte(randstr(32))
+
+    ransha256 := func() []byte {
+        return CalcSha256(str)
+    }
+
+    b.StartTimer()
+    for i := 0; i < b.N; i++ {
+        ransha256()
+    }
+}
+
+// from http://stackoverflow.com/questions/3955680/how-to-check-if-my-avl-tree-implementation-is-correct
+func TestGriffin(t *testing.T) {
+    N := func(l *IAVLNode, i int, r *IAVLNode) *IAVLNode {
+        n := &IAVLNode{Int32(i), nil, -1, nil, l, r}
+        n.calc_height()
+        return n
+    }
+    var P func(*IAVLNode) string
+    P = func(n *IAVLNode) string {
+        if n.left == nil && n.right == nil {
+            return fmt.Sprintf("%v", n.key)
+        } else if n.left == nil {
+            return fmt.Sprintf("(- %v %v)", n.key, P(n.right))
+        } else if n.right == nil {
+            return fmt.Sprintf("(%v %v -)", P(n.left), n.key)
+        } else {
+            return fmt.Sprintf("(%v %v %v)", P(n.left), n.key, P(n.right))
+        }
+    }
+
+    expectPut := func(n *IAVLNode, i int, repr string) {
+        n2, updated := n.Put(Int32(i), nil)
+        if updated == true || P(n2) != repr {
+            t.Fatalf("Adding %v to %v:\nExpected         %v\nUnexpectedly got %v updated:%v",
+                i, P(n), repr, P(n2), updated)
+        }
+    }
+
+    expectRemove := func(n *IAVLNode, i int, repr string) {
+        n2, value, err := n.Remove(Int32(i))
+        if value != nil || err != nil || P(n2) != repr {
+            t.Fatalf("Removing %v from %v:\nExpected         %v\nUnexpectedly got %v value:%v err:%v",
+                i, P(n), repr, P(n2), value, err)
+        }
+    }
+
+    //////// Test Put cases:
+
+    // Case 1:
+    n1 := N(N(nil, 4, nil), 20, nil)
+    if P(n1) != "(4 20 -)" { t.Fatalf("Got %v", P(n1)) }
+
+    expectPut(n1, 15, "(4 15 20)")
+    expectPut(n1, 8, "(4 8 20)")
+
+    // Case 2:
+    n2 := N(N(N(nil, 3, nil), 4, N(nil, 9, nil)), 20, N(nil, 26, nil))
+    if P(n2) != "((3 4 9) 20 26)" { t.Fatalf("Got %v", P(n2)) }
+
+    expectPut(n2, 15, "((3 4 -) 9 (15 20 26))")
+    expectPut(n2, 8, "((3 4 8) 9 (- 20 26))")
+
+    // Case 2:
+    n3 := N(N(N(N(nil, 2, nil), 3, nil), 4, N(N(nil, 7, nil), 9, N(nil, 11, nil))),
+        20, N(N(nil, 21, nil), 26, N(nil, 30, nil)))
+    if P(n3) != "(((2 3 -) 4 (7 9 11)) 20 (21 26 30))" { t.Fatalf("Got %v", P(n3)) }
+
+    expectPut(n3, 15, "(((2 3 -) 4 7) 9 ((- 11 15) 20 (21 26 30)))")
+    expectPut(n3, 8, "(((2 3 -) 4 (- 7 8)) 9 (11 20 (21 26 30)))")
+
+
+    //////// Test Remove cases:
+
+    // Case 4:
+    n4 := N(N(nil, 1, nil), 2, N(N(nil, 3, nil), 4, N(nil, 5, nil)))
+    if P(n4) != "(1 2 (3 4 5))" { t.Fatalf("Got %v", P(n4)) }
+
+    expectRemove(n4, 1, "((- 2 3) 4 5)")
+
+    // Case 5:
+    n5 := N(N(N(nil, 1, nil), 2, N(N(nil, 3, nil), 4, N(nil, 5, nil))), 6,
+            N(N(N(nil, 7, nil), 8, nil), 9, N(N(nil, 10, nil), 11, N(nil, 12, N(nil, 13, nil)))))
+    if P(n5) != "((1 2 (3 4 5)) 6 ((7 8 -) 9 (10 11 (- 12 13))))" { t.Fatalf("Got %v", P(n5)) }
+
+    expectRemove(n5, 1, "(((- 2 3) 4 5) 6 ((7 8 -) 9 (10 11 (- 12 13))))")
+
+    // Case 6:
+    n6 := N(N(N(nil, 1, nil), 2, N(nil, 3, N(nil, 4, nil))), 5,
+            N(N(N(nil, 6, nil), 7, nil), 8, N(N(nil, 9, nil), 10, N(nil, 11, N(nil, 12, nil)))))
+    if P(n6) != "((1 2 (- 3 4)) 5 ((6 7 -) 8 (9 10 (- 11 12))))" { t.Fatalf("Got %v", P(n6)) }
+
+    expectRemove(n6, 1, "(((2 3 4) 5 (6 7 -)) 8 (9 10 (- 11 12)))")
+
 }

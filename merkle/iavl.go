@@ -1,6 +1,7 @@
 package merkle
 
 import (
+    //"fmt"
     "hash"
     "crypto/sha256"
 )
@@ -100,18 +101,19 @@ func (self *IAVLNode) Get(key Sortable) (value interface{}, err error) {
     }
 }
 
-// Copies and pops node from the tree.
-// Returns a new tree (unless node is the root) & new (popped) node.
+// Returns a new tree (unless node is the root) & a copy of the popped node.
+// Can only pop nodes that have one or no children.
 func (self *IAVLNode) pop_node(node *IAVLNode) (new_self, new_node *IAVLNode) {
-    if node == nil {
+    if self == nil {
+        panic("self can't be nil")
+    } else if node == nil {
         panic("node can't be nil")
     } else if node.left != nil && node.right != nil {
         panic("node must not have both left and right")
     }
 
-    if self == nil {
-        return nil, node.Copy(true)
-    } else if self == node {
+    if self == node {
+
         var n *IAVLNode
         if node.left != nil {
             n = node.left
@@ -124,18 +126,19 @@ func (self *IAVLNode) pop_node(node *IAVLNode) (new_self, new_node *IAVLNode) {
         node.left = nil
         node.right = nil
         return n, node
-    }
 
-    self = self.Copy(false)
-
-    if node.key.Less(self.key) {
-        self.left, node = self.left.pop_node(node)
     } else {
-        self.right, node = self.right.pop_node(node)
-    }
 
-    self.height = max(self.left.Height(), self.right.Height()) + 1
-    return self, node
+        self = self.Copy(false)
+        if node.key.Less(self.key) {
+            self.left, node = self.left.pop_node(node)
+        } else {
+            self.right, node = self.right.pop_node(node)
+        }
+        self.calc_height()
+        return self, node
+
+    }
 }
 
 // Pushes the node to the tree, returns a new tree
@@ -156,51 +159,74 @@ func (self *IAVLNode) push_node(node *IAVLNode) *IAVLNode {
     } else {
         self.right = self.right.push_node(node)
     }
-    self.height = max(self.left.Height(), self.right.Height()) + 1
+    self.calc_height()
     return self
 }
 
 func (self *IAVLNode) rotate_right() *IAVLNode {
-    if self == nil {
-        return self
-    }
-    if self.left == nil {
-        return self
-    }
-    return self.rotate(self.left.rmd)
+    self = self.Copy(false)
+    sl :=  self.left.Copy(false)
+    slr := sl.right
+
+    sl.right = self
+    self.left = slr
+
+    self.calc_height()
+    sl.calc_height()
+
+    return sl
 }
 
 func (self *IAVLNode) rotate_left() *IAVLNode {
-    if self == nil {
-        return self
-    }
-    if self.right == nil {
-        return self
-    }
-    return self.rotate(self.right.lmd)
+    self = self.Copy(false)
+    sr :=  self.right.Copy(false)
+    srl := sr.left
+
+    sr.left = self
+    self.right = srl
+
+    self.calc_height()
+    sr.calc_height()
+
+    return sr
 }
 
-func (self *IAVLNode) rotate(get_new_root func() *IAVLNode) *IAVLNode {
-    self, new_root := self.pop_node(get_new_root())
-    new_root.left = self.left
-    new_root.right = self.right
-    self.hash = nil
-    self.left = nil
-    self.right = nil
-    return new_root.push_node(self)
+func (self *IAVLNode) calc_height() {
+    self.height = max(self.left.Height(), self.right.Height()) + 1
 }
 
-func (self *IAVLNode) balance() *IAVLNode {
+func (self *IAVLNode) calc_balance() int {
     if self == nil {
-        return self
+        return 0
     }
-    for abs(self.left.Height() - self.right.Height()) > 2 {
-        if self.left.Height() > self.right.Height() {
-            self = self.rotate_right()
+    return self.left.Height() - self.right.Height()
+}
+
+func (self *IAVLNode) balance() (new_self *IAVLNode) {
+    balance := self.calc_balance()
+    if (balance > 1) {
+        if (self.left.calc_balance() >= 0) {
+            // Left Left Case
+            return self.rotate_right()
         } else {
-            self = self.rotate_left()
+            // Left Right Case
+            self = self.Copy(false)
+            self.left = self.left.rotate_left()
+            return self.rotate_right()
         }
     }
+    if (balance < -1) {
+        if (self.right.calc_balance() <= 0) {
+            // Right Right Case
+            return self.rotate_left()
+        } else {
+            // Right Left Case
+            self = self.Copy(false)
+            self.right = self.right.rotate_right()
+            return self.rotate_left()
+        }
+    }
+    // Nothing changed
     return self
 }
 
@@ -222,31 +248,29 @@ func (self *IAVLNode) Put(key Sortable, value interface{}) (_ *IAVLNode, updated
     } else {
         self.right, updated = self.right.Put(key, value)
     }
-    self.height = max(self.left.Height(), self.right.Height()) + 1
-
-    if !updated {
-        self.height += 1
+    if updated {
+        return self, updated
+    } else {
+        self.calc_height()
         return self.balance(), updated
     }
-    return self, updated
 }
 
-func (self *IAVLNode) Remove(key Sortable) (_ *IAVLNode, value interface{}, err error) {
+func (self *IAVLNode) Remove(key Sortable) (new_self *IAVLNode, value interface{}, err error) {
     if self == nil {
         return nil, nil, NotFound(key)
     }
 
     if self.key.Equals(key) {
         if self.left != nil && self.right != nil {
-            var new_root *IAVLNode
             if self.left.Size() < self.right.Size() {
-                self, new_root = self.pop_node(self.right.lmd())
+                self, new_self = self.pop_node(self.right.lmd())
             } else {
-                self, new_root = self.pop_node(self.left.rmd())
+                self, new_self = self.pop_node(self.left.rmd())
             }
-            new_root.left = self.left
-            new_root.right = self.right
-            return new_root, self.value, nil
+            new_self.left = self.left
+            new_self.right = self.right
+            return new_self, self.value, nil
         } else if self.left == nil {
             return self.right, self.value, nil
         } else if self.right == nil {
@@ -256,20 +280,35 @@ func (self *IAVLNode) Remove(key Sortable) (_ *IAVLNode, value interface{}, err 
         }
     }
 
-    self = self.Copy(true)
-
     if key.Less(self.key) {
-        self.left, value, err = self.left.Remove(key)
+        if self.left == nil {
+            return self, nil, NotFound(key)
+        }
+        var new_left *IAVLNode
+        new_left, value, err = self.left.Remove(key)
+        if new_left == self.left { // not found
+            return self, nil, err
+        } else if err != nil { // some other error
+            return self, value, err
+        }
+        self = self.Copy(false)
+        self.left = new_left
     } else {
-        self.right, value, err = self.right.Remove(key)
+        if self.right == nil {
+            return self, nil, NotFound(key)
+        }
+        var new_right *IAVLNode
+        new_right, value, err = self.right.Remove(key)
+        if new_right == self.right { // not found
+            return self, nil, err
+        } else if err != nil { // some other error
+            return self, value, err
+        }
+        self = self.Copy(false)
+        self.right = new_right
     }
-    if err == nil {
-        self.hash = nil
-        self.height = max(self.left.Height(), self.right.Height()) + 1
-        return self.balance(), value, err
-    } else {
-        return self, value, err
-    }
+    self.calc_height()
+    return self.balance(), value, err
 }
 
 func (self *IAVLNode) Height() int {
@@ -296,16 +335,12 @@ func (self *IAVLNode) Value() interface{} {
 }
 
 func (self *IAVLNode) Left() Node {
-    if self.left == nil {
-        return nil
-    }
+    if self.left == nil { return nil }
     return self.left
 }
 
 func (self *IAVLNode) Right() Node {
-    if self.right == nil {
-        return nil
-    }
+    if self.right == nil { return nil }
     return self.right
 }
 

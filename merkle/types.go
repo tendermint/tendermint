@@ -29,6 +29,9 @@ type Node interface {
     Size() int
     Has(key Sortable) bool
     Get(key Sortable) (value interface{}, err error)
+
+    Put(key Sortable, value interface{}) (_ *IAVLNode, updated bool)
+    Remove(key Sortable) (_ *IAVLNode, value interface{}, err error)
 }
 
 type NodeIterator func() (node Node, next NodeIterator)
