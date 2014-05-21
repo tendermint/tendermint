@@ -2,7 +2,8 @@ package merkle
 
 import (
     //"fmt"
-    "hash"
+    "math"
+    //"hash"
     "crypto/sha256"
 )
 
@@ -24,20 +25,24 @@ func (self *IAVLTree) Size() int {
     return self.root.Size()
 }
 
-func (self *IAVLTree) Has(key Sortable) bool {
+func (self *IAVLTree) Has(key Key) bool {
     return self.root.Has(key)
 }
 
-func (self *IAVLTree) Put(key Sortable, value interface{}) (err error) {
+func (self *IAVLTree) Put(key Key, value Value) (err error) {
     self.root, _ = self.root.Put(key, value)
     return nil
 }
 
-func (self *IAVLTree) Get(key Sortable) (value interface{}, err error) {
+func (self *IAVLTree) Hash() []byte {
+    return self.root.Hash()
+}
+
+func (self *IAVLTree) Get(key Key) (value Value, err error) {
     return self.root.Get(key)
 }
 
-func (self *IAVLTree) Remove(key Sortable) (value interface{}, err error) {
+func (self *IAVLTree) Remove(key Key) (value Value, err error) {
     new_root, value, err := self.root.Remove(key)
     if err != nil {
         return nil, err
@@ -49,8 +54,8 @@ func (self *IAVLTree) Remove(key Sortable) (value interface{}, err error) {
 // Node
 
 type IAVLNode struct {
-    key     Sortable
-    value   interface{}
+    key     Key
+    value   Value
     height  int
     hash    []byte
     left    *IAVLNode
@@ -75,7 +80,32 @@ func (self *IAVLNode) Copy(copyHash bool) *IAVLNode {
     }
 }
 
-func (self *IAVLNode) Has(key Sortable) (has bool) {
+func (self *IAVLNode) Key() Key {
+    return self.key
+}
+
+func (self *IAVLNode) Value() Value {
+    return self.value
+}
+
+func (self *IAVLNode) Left() Node {
+    if self.left == nil { return nil }
+    return self.left
+}
+
+func (self *IAVLNode) Right() Node {
+    if self.right == nil { return nil }
+    return self.right
+}
+
+func (self *IAVLNode) Size() int {
+    if self == nil {
+        return 0
+    }
+    return 1 + self.left.Size() + self.right.Size()
+}
+
+func (self *IAVLNode) Has(key Key) (has bool) {
     if self == nil {
         return false
     }
@@ -88,7 +118,7 @@ func (self *IAVLNode) Has(key Sortable) (has bool) {
     }
 }
 
-func (self *IAVLNode) Get(key Sortable) (value interface{}, err error) {
+func (self *IAVLNode) Get(key Key) (value Value, err error) {
     if self == nil {
         return nil, NotFound(key)
     }
@@ -99,6 +129,47 @@ func (self *IAVLNode) Get(key Sortable) (value interface{}, err error) {
     } else {
         return self.right.Get(key)
     }
+}
+
+func (self *IAVLNode) Hash() []byte {
+    if self == nil {
+        return nil
+    }
+    if self.hash != nil { return self.hash }
+    hasher := sha256.New()
+
+    // node descriptor
+    nodeDesc := byte(0)
+    if self.value != nil { nodeDesc |= 0x01 }
+    if self.left != nil  { nodeDesc |= 0x02 }
+    if self.right != nil { nodeDesc |= 0x04 }
+    hasher.Write([]byte{nodeDesc})
+
+    // node key
+    keyBytes := self.key.Bytes()
+    if len(keyBytes) > 255 { panic("key is too long") }
+    hasher.Write([]byte{byte(len(keyBytes))})
+    hasher.Write(keyBytes)
+
+    // node value
+    if self.value != nil {
+        valueBytes := self.value.Bytes()
+        if len(valueBytes) > math.MaxUint32 { panic("value is too long") }
+        hasher.Write([]byte{byte(len(valueBytes))})
+        hasher.Write(valueBytes)
+    }
+
+    // left child
+    if self.left != nil {
+        hasher.Write(self.left.Hash())
+    }
+
+    // right child
+    if self.right != nil {
+        hasher.Write(self.right.Hash())
+    }
+
+    return hasher.Sum(nil)
 }
 
 // Returns a new tree (unless node is the root) & a copy of the popped node.
@@ -231,7 +302,7 @@ func (self *IAVLNode) balance() (new_self *IAVLNode) {
 }
 
 // TODO: don't clear the hash if the value hasn't changed.
-func (self *IAVLNode) Put(key Sortable, value interface{}) (_ *IAVLNode, updated bool) {
+func (self *IAVLNode) Put(key Key, value Value) (_ *IAVLNode, updated bool) {
     if self == nil {
         return &IAVLNode{key: key, value: value, height: 1, hash: nil}, false
     }
@@ -256,7 +327,7 @@ func (self *IAVLNode) Put(key Sortable, value interface{}) (_ *IAVLNode, updated
     }
 }
 
-func (self *IAVLNode) Remove(key Sortable) (new_self *IAVLNode, value interface{}, err error) {
+func (self *IAVLNode) Remove(key Key) (new_self *IAVLNode, value Value, err error) {
     if self == nil {
         return nil, nil, NotFound(key)
     }
@@ -318,32 +389,6 @@ func (self *IAVLNode) Height() int {
     return self.height
 }
 
-func (self *IAVLNode) Size() int {
-    if self == nil {
-        return 0
-    }
-    return 1 + self.left.Size() + self.right.Size()
-}
-
-
-func (self *IAVLNode) Key() Sortable {
-    return self.key
-}
-
-func (self *IAVLNode) Value() interface{} {
-    return self.value
-}
-
-func (self *IAVLNode) Left() Node {
-    if self.left == nil { return nil }
-    return self.left
-}
-
-func (self *IAVLNode) Right() Node {
-    if self.right == nil { return nil }
-    return self.right
-}
-
 // ...
 
 func (self *IAVLNode) _md(side func(*IAVLNode)*IAVLNode) (*IAVLNode) {
@@ -376,15 +421,4 @@ func max(a, b int) int {
         return a
     }
     return b
-}
-
-// Calculate the hash of hasher over buf.
-func CalcHash(buf []byte, hasher hash.Hash) []byte {
-    hasher.Write(buf)
-    return hasher.Sum(nil)
-}
-
-// calculate hash256 which is sha256(sha256(data))
-func CalcSha256(buf []byte) []byte {
-    return CalcHash(buf, sha256.New())
 }

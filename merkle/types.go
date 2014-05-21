@@ -4,38 +4,45 @@ import (
     "fmt"
 )
 
-type Sortable interface {
-    Equals(b Sortable) bool
-    Less(b Sortable) bool
+type Value interface {
+    Bytes() []byte
+}
+
+type Key interface {
+    Equals(b Key) bool
+    Less(b Key) bool
+    Bytes() []byte
 }
 
 type Tree interface {
     Root() Node
 
     Size() int
-    Has(key Sortable) bool
-    Get(key Sortable) (value interface{}, err error)
+    Has(key Key) bool
+    Get(key Key) (value Value, err error)
+    Hash() []byte
 
-    Put(key Sortable, value interface{}) (err error)
-    Remove(key Sortable) (value interface{}, err error)
+    Put(key Key, value Value) (err error)
+    Remove(key Key) (value Value, err error)
 }
 
 type Node interface {
-    Key() Sortable
-    Value() interface{}
-    Left() Node
+    Key()   Key
+    Value() Value
+    Left()  Node
     Right() Node
 
     Size() int
-    Has(key Sortable) bool
-    Get(key Sortable) (value interface{}, err error)
+    Has(key Key) bool
+    Get(key Key) (value Value, err error)
+    Hash() []byte
 
-    Put(key Sortable, value interface{}) (_ *IAVLNode, updated bool)
-    Remove(key Sortable) (_ *IAVLNode, value interface{}, err error)
+    Put(key Key, value Value) (_ *IAVLNode, updated bool)
+    Remove(key Key) (_ *IAVLNode, value Value, err error)
 }
 
 type NodeIterator func() (node Node, next NodeIterator)
 
-func NotFound(key Sortable) error {
+func NotFound(key Key) error {
     return fmt.Errorf("Key was not found.")
 }

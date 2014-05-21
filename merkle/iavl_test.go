@@ -50,7 +50,7 @@ func TestImmutableAvlPutHasGetRemove(t *testing.T) {
     records := make([]*record, 400)
     var tree *IAVLNode
     var err error
-    var val interface{}
+    var val Value
     var updated bool
 
     ranrec := func() *record {
@@ -155,7 +155,7 @@ func TestTraversals(t *testing.T) {
     test := func(T Tree) {
         t.Logf("%T", T)
         for j := range order {
-            if err := T.Put(Int(data[order[j]]), order[j]); err != nil {
+            if err := T.Put(Int(data[order[j]]), Int(order[j])); err != nil {
                 t.Error(err)
             }
         }
@@ -174,28 +174,17 @@ func TestTraversals(t *testing.T) {
     test(NewIAVLTree())
 }
 
-func BenchmarkSha256(b *testing.B) {
-    b.StopTimer()
-
-    str := []byte(randstr(32))
-
-    ransha256 := func() []byte {
-        return CalcSha256(str)
-    }
-
-    b.StartTimer()
-    for i := 0; i < b.N; i++ {
-        ransha256()
-    }
-}
-
 // from http://stackoverflow.com/questions/3955680/how-to-check-if-my-avl-tree-implementation-is-correct
 func TestGriffin(t *testing.T) {
+
+    // Convenience for a new node
     N := func(l *IAVLNode, i int, r *IAVLNode) *IAVLNode {
         n := &IAVLNode{Int32(i), nil, -1, nil, l, r}
         n.calc_height()
         return n
     }
+
+    // Convenience for simple printing of keys & tree structure
     var P func(*IAVLNode) string
     P = func(n *IAVLNode) string {
         if n.left == nil && n.right == nil {
@@ -272,4 +261,18 @@ func TestGriffin(t *testing.T) {
 
     expectRemove(n6, 1, "(((2 3 4) 5 (6 7 -)) 8 (9 10 (- 11 12)))")
 
+}
+
+func TestHash(t *testing.T) {
+
+    // Maybe, construct some tree & determine the number of new hashes calculated.
+    // Make sure the number of new hashings is expected, as well as the hash value.
+    // Then, nuke the hash values and reconstruct, ensure that the resulting hash is the same.
+
+    tree := NewIAVLTree()
+    tree.Put(String("foo"), String("bar"))
+    fmt.Println(tree.Hash())
+
+    tree.Put(String("foo2"), String("bar"))
+    fmt.Println(tree.Hash())
 }
