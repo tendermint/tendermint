@@ -20,7 +20,7 @@ type Tree interface {
     Size() int
     Has(key Key) bool
     Get(key Key) (value Value, err error)
-    Hash() []byte
+    Hash() ([]byte, int)
 
     Put(key Key, value Value) (err error)
     Remove(key Key) (value Value, err error)
@@ -35,7 +35,7 @@ type Node interface {
     Size() int
     Has(key Key) bool
     Get(key Key) (value Value, err error)
-    Hash() []byte
+    Hash() ([]byte, int)
 
     Put(key Key, value Value) (_ *IAVLNode, updated bool)
     Remove(key Key) (_ *IAVLNode, value Value, err error)

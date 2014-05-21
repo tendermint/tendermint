@@ -181,6 +181,7 @@ func TestGriffin(t *testing.T) {
     N := func(l *IAVLNode, i int, r *IAVLNode) *IAVLNode {
         n := &IAVLNode{Int32(i), nil, -1, nil, l, r}
         n.calc_height()
+        n.Hash()
         return n
     }
 
@@ -198,20 +199,47 @@ func TestGriffin(t *testing.T) {
         }
     }
 
-    expectPut := func(n *IAVLNode, i int, repr string) {
+    expectHash := func(n2 *IAVLNode, hashCount int) {
+        // ensure number of new hash calculations is as expected.
+        hash, count := n2.Hash()
+        if count != hashCount {
+            t.Fatalf("Expected %v new hashes, got %v", hashCount, count)
+        }
+        // nuke hashes and reconstruct hash, ensure it's the same.
+        var node Node
+        for itr:=Iterator(n2); itr!=nil; {
+            node, itr = itr()
+            if node != nil {
+                node.(*IAVLNode).hash = nil
+            }
+        }
+        // ensure that the new hash after nuking is the same as the old.
+        newHash, _ := n2.Hash()
+        if bytes.Compare(hash, newHash) != 0 {
+            t.Fatalf("Expected hash %v but got %v after nuking", hash, newHash)
+        }
+    }
+
+    expectPut := func(n *IAVLNode, i int, repr string, hashCount int) {
         n2, updated := n.Put(Int32(i), nil)
+        // ensure node was added & structure is as expected.
         if updated == true || P(n2) != repr {
             t.Fatalf("Adding %v to %v:\nExpected         %v\nUnexpectedly got %v updated:%v",
                 i, P(n), repr, P(n2), updated)
         }
+        // ensure hash calculation requirements
+        expectHash(n2, hashCount)
     }
 
-    expectRemove := func(n *IAVLNode, i int, repr string) {
+    expectRemove := func(n *IAVLNode, i int, repr string, hashCount int) {
         n2, value, err := n.Remove(Int32(i))
+        // ensure node was added & structure is as expected.
         if value != nil || err != nil || P(n2) != repr {
             t.Fatalf("Removing %v from %v:\nExpected         %v\nUnexpectedly got %v value:%v err:%v",
                 i, P(n), repr, P(n2), value, err)
         }
+        // ensure hash calculation requirements
+        expectHash(n2, hashCount)
     }
 
     //////// Test Put cases:
@@ -220,23 +248,23 @@ func TestGriffin(t *testing.T) {
     n1 := N(N(nil, 4, nil), 20, nil)
     if P(n1) != "(4 20 -)" { t.Fatalf("Got %v", P(n1)) }
 
-    expectPut(n1, 15, "(4 15 20)")
-    expectPut(n1, 8, "(4 8 20)")
+    expectPut(n1, 15, "(4 15 20)", 3)
+    expectPut(n1, 8, "(4 8 20)", 3)
 
     // Case 2:
     n2 := N(N(N(nil, 3, nil), 4, N(nil, 9, nil)), 20, N(nil, 26, nil))
     if P(n2) != "((3 4 9) 20 26)" { t.Fatalf("Got %v", P(n2)) }
 
-    expectPut(n2, 15, "((3 4 -) 9 (15 20 26))")
-    expectPut(n2, 8, "((3 4 8) 9 (- 20 26))")
+    expectPut(n2, 15, "((3 4 -) 9 (15 20 26))", 4)
+    expectPut(n2, 8, "((3 4 8) 9 (- 20 26))", 4)
 
     // Case 2:
     n3 := N(N(N(N(nil, 2, nil), 3, nil), 4, N(N(nil, 7, nil), 9, N(nil, 11, nil))),
         20, N(N(nil, 21, nil), 26, N(nil, 30, nil)))
     if P(n3) != "(((2 3 -) 4 (7 9 11)) 20 (21 26 30))" { t.Fatalf("Got %v", P(n3)) }
 
-    expectPut(n3, 15, "(((2 3 -) 4 7) 9 ((- 11 15) 20 (21 26 30)))")
-    expectPut(n3, 8, "(((2 3 -) 4 (- 7 8)) 9 (11 20 (21 26 30)))")
+    expectPut(n3, 15, "(((2 3 -) 4 7) 9 ((- 11 15) 20 (21 26 30)))", 5)
+    expectPut(n3, 8, "(((2 3 -) 4 (- 7 8)) 9 (11 20 (21 26 30)))", 5)
 
 
     //////// Test Remove cases:
@@ -245,34 +273,20 @@ func TestGriffin(t *testing.T) {
     n4 := N(N(nil, 1, nil), 2, N(N(nil, 3, nil), 4, N(nil, 5, nil)))
     if P(n4) != "(1 2 (3 4 5))" { t.Fatalf("Got %v", P(n4)) }
 
-    expectRemove(n4, 1, "((- 2 3) 4 5)")
+    expectRemove(n4, 1, "((- 2 3) 4 5)", 2)
 
     // Case 5:
     n5 := N(N(N(nil, 1, nil), 2, N(N(nil, 3, nil), 4, N(nil, 5, nil))), 6,
             N(N(N(nil, 7, nil), 8, nil), 9, N(N(nil, 10, nil), 11, N(nil, 12, N(nil, 13, nil)))))
     if P(n5) != "((1 2 (3 4 5)) 6 ((7 8 -) 9 (10 11 (- 12 13))))" { t.Fatalf("Got %v", P(n5)) }
 
-    expectRemove(n5, 1, "(((- 2 3) 4 5) 6 ((7 8 -) 9 (10 11 (- 12 13))))")
+    expectRemove(n5, 1, "(((- 2 3) 4 5) 6 ((7 8 -) 9 (10 11 (- 12 13))))", 3)
 
     // Case 6:
     n6 := N(N(N(nil, 1, nil), 2, N(nil, 3, N(nil, 4, nil))), 5,
             N(N(N(nil, 6, nil), 7, nil), 8, N(N(nil, 9, nil), 10, N(nil, 11, N(nil, 12, nil)))))
     if P(n6) != "((1 2 (- 3 4)) 5 ((6 7 -) 8 (9 10 (- 11 12))))" { t.Fatalf("Got %v", P(n6)) }
 
-    expectRemove(n6, 1, "(((2 3 4) 5 (6 7 -)) 8 (9 10 (- 11 12)))")
+    expectRemove(n6, 1, "(((2 3 4) 5 (6 7 -)) 8 (9 10 (- 11 12)))", 4)
 
-}
-
-func TestHash(t *testing.T) {
-
-    // Maybe, construct some tree & determine the number of new hashes calculated.
-    // Make sure the number of new hashings is expected, as well as the hash value.
-    // Then, nuke the hash values and reconstruct, ensure that the resulting hash is the same.
-
-    tree := NewIAVLTree()
-    tree.Put(String("foo"), String("bar"))
-    fmt.Println(tree.Hash())
-
-    tree.Put(String("foo2"), String("bar"))
-    fmt.Println(tree.Hash())
 }

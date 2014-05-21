@@ -34,7 +34,7 @@ func (self *IAVLTree) Put(key Key, value Value) (err error) {
     return nil
 }
 
-func (self *IAVLTree) Hash() []byte {
+func (self *IAVLTree) Hash() ([]byte, int) {
     return self.root.Hash()
 }
 
@@ -131,12 +131,15 @@ func (self *IAVLNode) Get(key Key) (value Value, err error) {
     }
 }
 
-func (self *IAVLNode) Hash() []byte {
+func (self *IAVLNode) Hash() ([]byte, int) {
     if self == nil {
-        return nil
+        return nil, 0
     }
-    if self.hash != nil { return self.hash }
+    if self.hash != nil {
+        return self.hash, 0
+    }
     hasher := sha256.New()
+    hashCount := 1
 
     // node descriptor
     nodeDesc := byte(0)
@@ -161,15 +164,21 @@ func (self *IAVLNode) Hash() []byte {
 
     // left child
     if self.left != nil {
-        hasher.Write(self.left.Hash())
+        leftHash, leftCount := self.left.Hash()
+        hashCount += leftCount
+        hasher.Write(leftHash)
     }
 
     // right child
     if self.right != nil {
-        hasher.Write(self.right.Hash())
+        rightHash, rightCount := self.right.Hash()
+        hashCount += rightCount
+        hasher.Write(rightHash)
     }
 
-    return hasher.Sum(nil)
+    self.hash = hasher.Sum(nil)
+
+    return self.hash, hashCount
 }
 
 // Returns a new tree (unless node is the root) & a copy of the popped node.
