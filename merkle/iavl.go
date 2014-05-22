@@ -1,9 +1,9 @@
 package merkle
 
 import (
-    //"fmt"
+    "bytes"
     "math"
-    //"hash"
+    "io"
     "crypto/sha256"
 )
 
@@ -18,11 +18,15 @@ func NewIAVLTree() *IAVLTree {
 }
 
 func (self *IAVLTree) Root() Node {
-    return self.root.Copy(true)
+    return self.root
 }
 
-func (self *IAVLTree) Size() int {
+func (self *IAVLTree) Size() uint64 {
     return self.root.Size()
+}
+
+func (self *IAVLTree) Height() uint8 {
+    return self.root.Height()
 }
 
 func (self *IAVLTree) Has(key Key) bool {
@@ -34,7 +38,7 @@ func (self *IAVLTree) Put(key Key, value Value) (err error) {
     return nil
 }
 
-func (self *IAVLTree) Hash() ([]byte, int) {
+func (self *IAVLTree) Hash() ([]byte, uint64) {
     return self.root.Hash()
 }
 
@@ -56,27 +60,29 @@ func (self *IAVLTree) Remove(key Key) (value Value, err error) {
 type IAVLNode struct {
     key     Key
     value   Value
-    height  int
+    size    uint64
+    height  uint8
     hash    []byte
     left    *IAVLNode
     right   *IAVLNode
+
+    // volatile
+    flags   byte
 }
 
-func (self *IAVLNode) Copy(copyHash bool) *IAVLNode {
+func (self *IAVLNode) Copy() *IAVLNode {
     if self == nil {
         return nil
-    }
-    var hash []byte
-    if copyHash {
-        hash = self.hash
     }
     return &IAVLNode{
         key:    self.key,
         value:  self.value,
+        size:   self.size,
         height: self.height,
-        hash:   hash,
         left:   self.left,
         right:  self.right,
+        hash:   nil,
+        flags:  byte(0),
     }
 }
 
@@ -98,11 +104,11 @@ func (self *IAVLNode) Right() Node {
     return self.right
 }
 
-func (self *IAVLNode) Size() int {
+func (self *IAVLNode) Size() uint64 {
     if self == nil {
         return 0
     }
-    return 1 + self.left.Size() + self.right.Size()
+    return self.size
 }
 
 func (self *IAVLNode) Has(key Key) (has bool) {
@@ -131,54 +137,74 @@ func (self *IAVLNode) Get(key Key) (value Value, err error) {
     }
 }
 
-func (self *IAVLNode) Hash() ([]byte, int) {
+func (self *IAVLNode) Bytes() []byte {
+    b := new(bytes.Buffer)
+    self.WriteTo(b)
+    return b.Bytes()
+}
+
+func (self *IAVLNode) Hash() ([]byte, uint64) {
     if self == nil {
         return nil, 0
     }
     if self.hash != nil {
         return self.hash, 0
     }
+
     hasher := sha256.New()
-    hashCount := 1
+    _, hashCount, err := self.WriteTo(hasher)
+    if err != nil { panic(err) }
+    self.hash = hasher.Sum(nil)
+
+    return self.hash, hashCount
+}
+
+func (self *IAVLNode) WriteTo(writer io.Writer) (written int64, hashCount uint64, err error) {
+
+    write := func(bytes []byte) {
+        if err == nil {
+            var n int
+            n, err = writer.Write(bytes)
+            written += int64(n)
+        }
+    }
 
     // node descriptor
     nodeDesc := byte(0)
     if self.value != nil { nodeDesc |= 0x01 }
     if self.left != nil  { nodeDesc |= 0x02 }
     if self.right != nil { nodeDesc |= 0x04 }
-    hasher.Write([]byte{nodeDesc})
+    write([]byte{nodeDesc})
 
     // node key
     keyBytes := self.key.Bytes()
     if len(keyBytes) > 255 { panic("key is too long") }
-    hasher.Write([]byte{byte(len(keyBytes))})
-    hasher.Write(keyBytes)
+    write([]byte{byte(len(keyBytes))})
+    write(keyBytes)
 
     // node value
     if self.value != nil {
         valueBytes := self.value.Bytes()
         if len(valueBytes) > math.MaxUint32 { panic("value is too long") }
-        hasher.Write([]byte{byte(len(valueBytes))})
-        hasher.Write(valueBytes)
+        write([]byte{byte(len(valueBytes))})
+        write(valueBytes)
     }
 
     // left child
     if self.left != nil {
         leftHash, leftCount := self.left.Hash()
         hashCount += leftCount
-        hasher.Write(leftHash)
+        write(leftHash)
     }
 
     // right child
     if self.right != nil {
         rightHash, rightCount := self.right.Hash()
         hashCount += rightCount
-        hasher.Write(rightHash)
+        write(rightHash)
     }
 
-    self.hash = hasher.Sum(nil)
-
-    return self.hash, hashCount
+    return written, hashCount+1, err
 }
 
 // Returns a new tree (unless node is the root) & a copy of the popped node.
@@ -202,84 +228,64 @@ func (self *IAVLNode) pop_node(node *IAVLNode) (new_self, new_node *IAVLNode) {
         } else {
             n = nil
         }
-        node = node.Copy(false)
+        node = node.Copy()
         node.left = nil
         node.right = nil
+        node.calc_height_and_size()
         return n, node
 
     } else {
 
-        self = self.Copy(false)
+        self = self.Copy()
         if node.key.Less(self.key) {
             self.left, node = self.left.pop_node(node)
         } else {
             self.right, node = self.right.pop_node(node)
         }
-        self.calc_height()
+        self.calc_height_and_size()
         return self, node
 
     }
 }
 
-// Pushes the node to the tree, returns a new tree
-func (self *IAVLNode) push_node(node *IAVLNode) *IAVLNode {
-    if node == nil {
-        panic("node can't be nil")
-    } else if node.left != nil || node.right != nil {
-        panic("node must now be a leaf")
-    }
-
-    self = self.Copy(false)
-
-    if self == nil {
-        node.height = 1
-        return node
-    } else if node.key.Less(self.key) {
-        self.left = self.left.push_node(node)
-    } else {
-        self.right = self.right.push_node(node)
-    }
-    self.calc_height()
-    return self
-}
-
 func (self *IAVLNode) rotate_right() *IAVLNode {
-    self = self.Copy(false)
-    sl :=  self.left.Copy(false)
+    self = self.Copy()
+    sl :=  self.left.Copy()
     slr := sl.right
 
     sl.right = self
     self.left = slr
 
-    self.calc_height()
-    sl.calc_height()
+    self.calc_height_and_size()
+    sl.calc_height_and_size()
 
     return sl
 }
 
 func (self *IAVLNode) rotate_left() *IAVLNode {
-    self = self.Copy(false)
-    sr :=  self.right.Copy(false)
+    self = self.Copy()
+    sr :=  self.right.Copy()
     srl := sr.left
 
     sr.left = self
     self.right = srl
 
-    self.calc_height()
-    sr.calc_height()
+    self.calc_height_and_size()
+    sr.calc_height_and_size()
 
     return sr
 }
 
-func (self *IAVLNode) calc_height() {
-    self.height = max(self.left.Height(), self.right.Height()) + 1
+func (self *IAVLNode) calc_height_and_size() {
+    self.height = maxUint8(self.left.Height(), self.right.Height()) + 1
+    self.size = self.left.Size() + self.right.Size() + 1
 }
 
 func (self *IAVLNode) calc_balance() int {
     if self == nil {
         return 0
     }
-    return self.left.Height() - self.right.Height()
+    return int(self.left.Height()) - int(self.right.Height())
 }
 
 func (self *IAVLNode) balance() (new_self *IAVLNode) {
@@ -290,8 +296,9 @@ func (self *IAVLNode) balance() (new_self *IAVLNode) {
             return self.rotate_right()
         } else {
             // Left Right Case
-            self = self.Copy(false)
+            self = self.Copy()
             self.left = self.left.rotate_left()
+            //self.calc_height_and_size()
             return self.rotate_right()
         }
     }
@@ -301,8 +308,9 @@ func (self *IAVLNode) balance() (new_self *IAVLNode) {
             return self.rotate_left()
         } else {
             // Right Left Case
-            self = self.Copy(false)
+            self = self.Copy()
             self.right = self.right.rotate_right()
+            //self.calc_height_and_size()
             return self.rotate_left()
         }
     }
@@ -313,10 +321,10 @@ func (self *IAVLNode) balance() (new_self *IAVLNode) {
 // TODO: don't clear the hash if the value hasn't changed.
 func (self *IAVLNode) Put(key Key, value Value) (_ *IAVLNode, updated bool) {
     if self == nil {
-        return &IAVLNode{key: key, value: value, height: 1, hash: nil}, false
+        return &IAVLNode{key: key, value: value, height: 1, size: 1, hash: nil}, false
     }
 
-    self = self.Copy(false)
+    self = self.Copy()
 
     if self.key.Equals(key) {
         self.value = value
@@ -331,7 +339,7 @@ func (self *IAVLNode) Put(key Key, value Value) (_ *IAVLNode, updated bool) {
     if updated {
         return self, updated
     } else {
-        self.calc_height()
+        self.calc_height_and_size()
         return self.balance(), updated
     }
 }
@@ -350,6 +358,7 @@ func (self *IAVLNode) Remove(key Key) (new_self *IAVLNode, value Value, err erro
             }
             new_self.left = self.left
             new_self.right = self.right
+            new_self.calc_height_and_size()
             return new_self, self.value, nil
         } else if self.left == nil {
             return self.right, self.value, nil
@@ -371,7 +380,7 @@ func (self *IAVLNode) Remove(key Key) (new_self *IAVLNode, value Value, err erro
         } else if err != nil { // some other error
             return self, value, err
         }
-        self = self.Copy(false)
+        self = self.Copy()
         self.left = new_left
     } else {
         if self.right == nil {
@@ -384,14 +393,14 @@ func (self *IAVLNode) Remove(key Key) (new_self *IAVLNode, value Value, err erro
         } else if err != nil { // some other error
             return self, value, err
         }
-        self = self.Copy(false)
+        self = self.Copy()
         self.right = new_right
     }
-    self.calc_height()
+    self.calc_height_and_size()
     return self.balance(), value, err
 }
 
-func (self *IAVLNode) Height() int {
+func (self *IAVLNode) Height() uint8 {
     if self == nil {
         return 0
     }
@@ -418,14 +427,7 @@ func (self *IAVLNode) rmd() (*IAVLNode) {
     return self._md(func(node *IAVLNode)*IAVLNode { return node.right })
 }
 
-func abs(i int) int {
-    if i < 0 {
-        return -i
-    }
-    return i
-}
-
-func max(a, b int) int {
+func maxUint8(a, b uint8) uint8 {
     if a > b {
         return a
     }

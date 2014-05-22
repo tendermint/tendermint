@@ -68,7 +68,7 @@ func TestImmutableAvlPutHasGetRemove(t *testing.T) {
         if !updated {
             t.Error("should have been updated")
         }
-        if tree.Size() != (i+1) {
+        if tree.Size() != uint64(i+1) {
             t.Error("size was wrong", tree.Size(), i+1)
         }
     }
@@ -106,7 +106,7 @@ func TestImmutableAvlPutHasGetRemove(t *testing.T) {
                 t.Error("wrong value")
             }
         }
-        if tree.Size() != (len(records) - (i+1)) {
+        if tree.Size() != uint64(len(records) - (i+1)) {
             t.Error("size was wrong", tree.Size(), (len(records) - (i+1)))
         }
     }
@@ -173,8 +173,12 @@ func TestGriffin(t *testing.T) {
 
     // Convenience for a new node
     N := func(l *IAVLNode, i int, r *IAVLNode) *IAVLNode {
-        n := &IAVLNode{Int32(i), nil, -1, nil, l, r}
-        n.calc_height()
+        n := &IAVLNode{
+            key: Int32(i),
+            left: l,
+            right: r,
+        }
+        n.calc_height_and_size()
         n.Hash()
         return n
     }
@@ -193,7 +197,7 @@ func TestGriffin(t *testing.T) {
         }
     }
 
-    expectHash := func(n2 *IAVLNode, hashCount int) {
+    expectHash := func(n2 *IAVLNode, hashCount uint64) {
         // ensure number of new hash calculations is as expected.
         hash, count := n2.Hash()
         if count != hashCount {
@@ -213,7 +217,7 @@ func TestGriffin(t *testing.T) {
         }
     }
 
-    expectPut := func(n *IAVLNode, i int, repr string, hashCount int) {
+    expectPut := func(n *IAVLNode, i int, repr string, hashCount uint64) {
         n2, updated := n.Put(Int32(i), nil)
         // ensure node was added & structure is as expected.
         if updated == true || P(n2) != repr {
@@ -224,7 +228,7 @@ func TestGriffin(t *testing.T) {
         expectHash(n2, hashCount)
     }
 
-    expectRemove := func(n *IAVLNode, i int, repr string, hashCount int) {
+    expectRemove := func(n *IAVLNode, i int, repr string, hashCount uint64) {
         n2, value, err := n.Remove(Int32(i))
         // ensure node was added & structure is as expected.
         if value != nil || err != nil || P(n2) != repr {
