@@ -12,11 +12,11 @@ func Iterator(node Node) NodeIterator {
         if len(stack) > 0 || cur != nil {
             for cur != nil {
                 stack = append(stack, cur)
-                cur = cur.Left()
+                cur = cur.Left(nil)
             }
             stack, cur = pop(stack)
             tn = cur
-            cur = cur.Right()
+            cur = cur.Right(nil)
             return tn
         } else {
             return nil
@@ -47,8 +47,8 @@ func printIAVLNode(node *IAVLNode, indent int) {
     if node == nil {
         fmt.Printf("%s--\n", indentPrefix)
     } else {
-        printIAVLNode(node.left, indent+1)
+        printIAVLNode(node.left_filled(nil), indent+1)
         fmt.Printf("%s%v:%v\n", indentPrefix, node.key, node.height)
-        printIAVLNode(node.right, indent+1)
+        printIAVLNode(node.right_filled(nil), indent+1)
     }
 }

@@ -60,11 +60,11 @@ func TestImmutableAvlPutHasGetRemove(t *testing.T) {
     for i := range records {
         r := randomRecord()
         records[i] = r
-        tree, updated = tree.Put(r.key, String(""))
+        tree, updated = tree.Put(nil, r.key, String(""))
         if updated {
             t.Error("should have not been updated")
         }
-        tree, updated = tree.Put(r.key, r.value)
+        tree, updated = tree.Put(nil, r.key, r.value)
         if !updated {
             t.Error("should have been updated")
         }
@@ -74,13 +74,13 @@ func TestImmutableAvlPutHasGetRemove(t *testing.T) {
     }
 
     for _, r := range records {
-        if has := tree.Has(r.key); !has {
+        if has := tree.Has(nil, r.key); !has {
             t.Error("Missing key")
         }
-        if has := tree.Has(randstr(12)); has {
+        if has := tree.Has(nil, randstr(12)); has {
             t.Error("Table has extra key")
         }
-        if val, err := tree.Get(r.key); err != nil {
+        if val, err := tree.Get(nil, r.key); err != nil {
             t.Error(err, val.(String), r.value)
         } else if !(val.(String)).Equals(r.value) {
             t.Error("wrong value")
@@ -88,19 +88,19 @@ func TestImmutableAvlPutHasGetRemove(t *testing.T) {
     }
 
     for i, x := range records {
-        if tree, val, err = tree.Remove(x.key); err != nil {
+        if tree, val, err = tree.Remove(nil, x.key); err != nil {
             t.Error(err)
         } else if !(val.(String)).Equals(x.value) {
             t.Error("wrong value")
         }
         for _, r := range records[i+1:] {
-            if has := tree.Has(r.key); !has {
+            if has := tree.Has(nil, r.key); !has {
                 t.Error("Missing key")
             }
-            if has := tree.Has(randstr(12)); has {
+            if has := tree.Has(nil, randstr(12)); has {
                 t.Error("Table has extra key")
             }
-            if val, err := tree.Get(r.key); err != nil {
+            if val, err := tree.Get(nil, r.key); err != nil {
                 t.Error(err)
             } else if !(val.(String)).Equals(r.value) {
                 t.Error("wrong value")
@@ -178,7 +178,7 @@ func TestGriffin(t *testing.T) {
             left: l,
             right: r,
         }
-        n.calc_height_and_size()
+        n.calc_height_and_size(nil)
         n.Hash()
         return n
     }
@@ -189,11 +189,11 @@ func TestGriffin(t *testing.T) {
         if n.left == nil && n.right == nil {
             return fmt.Sprintf("%v", n.key)
         } else if n.left == nil {
-            return fmt.Sprintf("(- %v %v)", n.key, P(n.right))
+            return fmt.Sprintf("(- %v %v)", n.key, P(n.right_filled(nil)))
         } else if n.right == nil {
-            return fmt.Sprintf("(%v %v -)", P(n.left), n.key)
+            return fmt.Sprintf("(%v %v -)", P(n.left_filled(nil)), n.key)
         } else {
-            return fmt.Sprintf("(%v %v %v)", P(n.left), n.key, P(n.right))
+            return fmt.Sprintf("(%v %v %v)", P(n.left_filled(nil)), n.key, P(n.right_filled(nil)))
         }
     }
 
@@ -218,7 +218,7 @@ func TestGriffin(t *testing.T) {
     }
 
     expectPut := func(n *IAVLNode, i int, repr string, hashCount uint64) {
-        n2, updated := n.Put(Int32(i), nil)
+        n2, updated := n.Put(nil, Int32(i), nil)
         // ensure node was added & structure is as expected.
         if updated == true || P(n2) != repr {
             t.Fatalf("Adding %v to %v:\nExpected         %v\nUnexpectedly got %v updated:%v",
@@ -229,7 +229,7 @@ func TestGriffin(t *testing.T) {
     }
 
     expectRemove := func(n *IAVLNode, i int, repr string, hashCount uint64) {
-        n2, value, err := n.Remove(Int32(i))
+        n2, value, err := n.Remove(nil, Int32(i))
         // ensure node was added & structure is as expected.
         if value != nil || err != nil || P(n2) != repr {
             t.Fatalf("Removing %v from %v:\nExpected         %v\nUnexpectedly got %v value:%v err:%v",

@@ -27,21 +27,26 @@ type Tree interface {
     Remove(Key)     (Value, error)
 }
 
+type Db interface {
+    Get([]byte) ([]byte, error)
+    Put([]byte, []byte) error
+}
+
 type Node interface {
     Key()           Key
     Value()         Value
-    Left()          Node
-    Right()         Node
+    Left(Db)        Node
+    Right(Db)       Node
 
     Size()          uint64
     Height()        uint8
-    Has(Key)        bool
-    Get(Key)        (Value, error)
+    Has(Db, Key)    bool
+    Get(Db, Key)    (Value, error)
     Hash()          ([]byte, uint64)
     Bytes()         []byte
 
-    Put(Key, Value) (*IAVLNode, bool)
-    Remove(Key)     (*IAVLNode, Value, error)
+    Put(Db, Key, Value) (*IAVLNode, bool)
+    Remove(Db, Key) (*IAVLNode, Value, error)
 }
 
 type NodeIterator func() Node
