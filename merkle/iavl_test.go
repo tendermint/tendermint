@@ -53,12 +53,12 @@ func TestImmutableAvlPutHasGetRemove(t *testing.T) {
     var val Value
     var updated bool
 
-    ranrec := func() *record {
+    randomRecord := func() *record {
         return &record{ randstr(20), randstr(20) }
     }
 
     for i := range records {
-        r := ranrec()
+        r := randomRecord()
         records[i] = r
         tree, updated = tree.Put(r.key, String(""))
         if updated {
@@ -121,25 +121,21 @@ func BenchmarkImmutableAvlTree(b *testing.B) {
         value String
     }
 
-    records := make([]*record, 100)
-
-    ranrec := func() *record {
-        return &record{ randstr(20), randstr(20) }
+    randomRecord := func() *record {
+        return &record{ randstr(32), randstr(32) }
     }
 
-    for i := range records {
-        records[i] = ranrec()
+    t := NewIAVLTree()
+    for i:=0; i<1000000; i++ {
+        r := randomRecord()
+        t.Put(r.key, r.value)
     }
 
     b.StartTimer()
     for i := 0; i < b.N; i++ {
-        t := NewIAVLTree()
-        for _, r := range records {
-            t.Put(r.key, r.value)
-        }
-        for _, r := range records {
-            t.Remove(r.key)
-        }
+        r := randomRecord()
+        t.Put(r.key, r.value)
+        t.Remove(r.key)
     }
 }
 
@@ -161,11 +157,9 @@ func TestTraversals(t *testing.T) {
         }
 
         j := 0
-        for
-          tn, next := Iterator(T.Root())();
-          next != nil;
-          tn, next = next () {
-            if int(tn.Key().(Int)) != data[j] {
+        itr := Iterator(T.Root());
+        for node := itr(); node != nil; node = itr() {
+            if int(node.Key().(Int)) != data[j] {
                 t.Error("key in wrong spot in-order")
             }
             j += 1
@@ -206,9 +200,8 @@ func TestGriffin(t *testing.T) {
             t.Fatalf("Expected %v new hashes, got %v", hashCount, count)
         }
         // nuke hashes and reconstruct hash, ensure it's the same.
-        var node Node
-        for itr:=Iterator(n2); itr!=nil; {
-            node, itr = itr()
+        itr := Iterator(n2)
+        for node:=itr(); node!=nil; node = itr() {
             if node != nil {
                 node.(*IAVLNode).hash = nil
             }

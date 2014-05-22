@@ -41,7 +41,7 @@ type Node interface {
     Remove(key Key) (_ *IAVLNode, value Value, err error)
 }
 
-type NodeIterator func() (node Node, next NodeIterator)
+type NodeIterator func() (node Node)
 
 func NotFound(key Key) error {
     return fmt.Errorf("Key was not found.")
