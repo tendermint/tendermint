@@ -80,9 +80,7 @@ func TestImmutableAvlPutHasGetRemove(t *testing.T) {
         if has := tree.Has(nil, randstr(12)); has {
             t.Error("Table has extra key")
         }
-        if val, err := tree.Get(nil, r.key); err != nil {
-            t.Error(err, val.(String), r.value)
-        } else if !(val.(String)).Equals(r.value) {
+        if val := tree.Get(nil, r.key); !(val.(String)).Equals(r.value) {
             t.Error("wrong value")
         }
     }
@@ -100,9 +98,7 @@ func TestImmutableAvlPutHasGetRemove(t *testing.T) {
             if has := tree.Has(nil, randstr(12)); has {
                 t.Error("Table has extra key")
             }
-            if val, err := tree.Get(nil, r.key); err != nil {
-                t.Error(err)
-            } else if !(val.(String)).Equals(r.value) {
+            if val := tree.Get(nil, r.key); !(val.(String)).Equals(r.value) {
                 t.Error("wrong value")
             }
         }
@@ -151,9 +147,7 @@ func TestTraversals(t *testing.T) {
     test := func(T Tree) {
         t.Logf("%T", T)
         for j := range order {
-            if err := T.Put(Int(data[order[j]]), Int(order[j])); err != nil {
-                t.Error(err)
-            }
+            T.Put(Int(data[order[j]]), Int(order[j]))
         }
 
         j := 0

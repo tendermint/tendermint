@@ -1,11 +1,10 @@
 package merkle
 
 import (
-    "bytes"
-    "math"
-    "io"
     "crypto/sha256"
 )
+
+const HASH_BYTE_SIZE int = 4+32
 
 // Immutable AVL Tree (wraps the Node root)
 
@@ -33,16 +32,15 @@ func (self *IAVLTree) Has(key Key) bool {
     return self.root.Has(nil, key)
 }
 
-func (self *IAVLTree) Put(key Key, value Value) (err error) {
+func (self *IAVLTree) Put(key Key, value Value) {
     self.root, _ = self.root.Put(nil, key, value)
-    return nil
 }
 
-func (self *IAVLTree) Hash() ([]byte, uint64) {
+func (self *IAVLTree) Hash() (ByteSlice, uint64) {
     return self.root.Hash()
 }
 
-func (self *IAVLTree) Get(key Key) (value Value, err error) {
+func (self *IAVLTree) Get(key Key) (value Value) {
     return self.root.Get(nil, key)
 }
 
@@ -104,27 +102,18 @@ func (self *IAVLNode) Right(db Db) Node {
     return self.right_filled(db)
 }
 
-func (self *IAVLNode) left_filled(db Db) *IAVLNode {
-    // XXX
-    return self.left
-}
-
-func (self *IAVLNode) right_filled(db Db) *IAVLNode {
-    // XXX
-    return self.right
-}
-
 func (self *IAVLNode) Size() uint64 {
-    if self == nil {
-        return 0
-    }
+    if self == nil { return 0 }
     return self.size
 }
 
+func (self *IAVLNode) Height() uint8 {
+    if self == nil { return 0 }
+    return self.height
+}
+
 func (self *IAVLNode) Has(db Db, key Key) (has bool) {
-    if self == nil {
-        return false
-    }
+    if self == nil { return false }
     if self.key.Equals(key) {
         return true
     } else if key.Less(self.key) {
@@ -134,12 +123,10 @@ func (self *IAVLNode) Has(db Db, key Key) (has bool) {
     }
 }
 
-func (self *IAVLNode) Get(db Db, key Key) (value Value, err error) {
-    if self == nil {
-        return nil, NotFound(key)
-    }
+func (self *IAVLNode) Get(db Db, key Key) (value Value) {
+    if self == nil { return nil }
     if self.key.Equals(key) {
-        return self.value, nil
+        return self.value
     } else if key.Less(self.key) {
         return self.left_filled(db).Get(db, key)
     } else {
@@ -147,78 +134,177 @@ func (self *IAVLNode) Get(db Db, key Key) (value Value, err error) {
     }
 }
 
-func (self *IAVLNode) Bytes() []byte {
-    b := new(bytes.Buffer)
-    self.WriteTo(b)
-    return b.Bytes()
-}
-
-func (self *IAVLNode) Hash() ([]byte, uint64) {
-    if self == nil {
-        return nil, 0
-    }
+func (self *IAVLNode) Hash() (ByteSlice, uint64) {
+    if self == nil { return nil, 0 }
     if self.hash != nil {
         return self.hash, 0
     }
 
+    size := self.ByteSize()
+    buf := make([]byte, size, size)
     hasher := sha256.New()
-    _, hashCount, err := self.WriteTo(hasher)
-    if err != nil { panic(err) }
+    _, hashCount := self.saveToCountHashes(buf)
+    hasher.Write(buf)
     self.hash = hasher.Sum(nil)
 
-    return self.hash, hashCount
+    return self.hash, hashCount+1
 }
 
-func (self *IAVLNode) WriteTo(writer io.Writer) (written int64, hashCount uint64, err error) {
+// TODO: don't clear the hash if the value hasn't changed.
+func (self *IAVLNode) Put(db Db, key Key, value Value) (_ *IAVLNode, updated bool) {
+    if self == nil {
+        return &IAVLNode{key: key, value: value, height: 1, size: 1, hash: nil}, false
+    }
 
-    write := func(bytes []byte) {
-        if err == nil {
-            var n int
-            n, err = writer.Write(bytes)
-            written += int64(n)
+    self = self.Copy()
+
+    if self.key.Equals(key) {
+        self.value = value
+        return self, true
+    }
+
+    if key.Less(self.key) {
+        self.left, updated = self.left_filled(db).Put(db, key, value)
+    } else {
+        self.right, updated = self.right_filled(db).Put(db, key, value)
+    }
+    if updated {
+        return self, updated
+    } else {
+        self.calc_height_and_size(db)
+        return self.balance(db), updated
+    }
+}
+
+func (self *IAVLNode) Remove(db Db, key Key) (new_self *IAVLNode, value Value, err error) {
+    if self == nil { return nil, nil, NotFound(key) }
+
+    if self.key.Equals(key) {
+        if self.left != nil && self.right != nil {
+            if self.left_filled(db).Size() < self.right_filled(db).Size() {
+                self, new_self = self.pop_node(db, self.right_filled(db).lmd(db))
+            } else {
+                self, new_self = self.pop_node(db, self.left_filled(db).rmd(db))
+            }
+            new_self.left = self.left
+            new_self.right = self.right
+            new_self.calc_height_and_size(db)
+            return new_self, self.value, nil
+        } else if self.left == nil {
+            return self.right_filled(db), self.value, nil
+        } else if self.right == nil {
+            return self.left_filled(db), self.value, nil
+        } else {
+            return nil, self.value, nil
         }
     }
+
+    if key.Less(self.key) {
+        if self.left == nil {
+            return self, nil, NotFound(key)
+        }
+        var new_left *IAVLNode
+        new_left, value, err = self.left_filled(db).Remove(db, key)
+        if new_left == self.left_filled(db) { // not found
+            return self, nil, err
+        } else if err != nil { // some other error
+            return self, value, err
+        }
+        self = self.Copy()
+        self.left = new_left
+    } else {
+        if self.right == nil {
+            return self, nil, NotFound(key)
+        }
+        var new_right *IAVLNode
+        new_right, value, err = self.right_filled(db).Remove(db, key)
+        if new_right == self.right_filled(db) { // not found
+            return self, nil, err
+        } else if err != nil { // some other error
+            return self, value, err
+        }
+        self = self.Copy()
+        self.right = new_right
+    }
+    self.calc_height_and_size(db)
+    return self.balance(db), value, err
+}
+
+func (self *IAVLNode) ByteSize() int {
+    // 1 byte node descriptor
+    // 1 byte node neight
+    // 8 bytes node size
+    size := 10
+    size += self.key.ByteSize()
+    if self.value != nil {
+        size += self.value.ByteSize()
+    } else {
+        size += 1
+    }
+    if self.left != nil {
+        size += HASH_BYTE_SIZE
+    }
+    if self.right != nil {
+        size += HASH_BYTE_SIZE
+    }
+    return size
+}
+
+func (self *IAVLNode) SaveTo(buf []byte) int {
+    written, _ := self.saveToCountHashes(buf)
+    return written
+}
+
+func (self *IAVLNode) saveToCountHashes(buf []byte) (int, uint64) {
+    cur := 0
+    hashCount := uint64(0)
 
     // node descriptor
     nodeDesc := byte(0)
     if self.value != nil { nodeDesc |= 0x01 }
     if self.left != nil  { nodeDesc |= 0x02 }
     if self.right != nil { nodeDesc |= 0x04 }
-    write([]byte{nodeDesc})
+    cur += UInt8(nodeDesc).SaveTo(buf[cur:])
 
     // node height & size
-    write(UInt8(self.height).Bytes())
-    write(UInt64(self.size).Bytes())
+    cur += UInt8(self.height).SaveTo(buf[cur:])
+    cur += UInt64(self.size).SaveTo(buf[cur:])
 
     // node key
-    keyBytes := self.key.Bytes()
-    if len(keyBytes) > 255 { panic("key is too long") }
-    write([]byte{byte(len(keyBytes))})
-    write(keyBytes)
+    cur += self.key.SaveTo(buf[cur:])
 
     // node value
     if self.value != nil {
-        valueBytes := self.value.Bytes()
-        if len(valueBytes) > math.MaxUint32 { panic("value is too long") }
-        write([]byte{byte(len(valueBytes))})
-        write(valueBytes)
+        cur += self.value.SaveTo(buf[cur:])
+    } else {
+        cur += UInt8(0).SaveTo(buf[cur:])
     }
 
     // left child
     if self.left != nil {
         leftHash, leftCount := self.left.Hash()
         hashCount += leftCount
-        write(leftHash)
+        cur += leftHash.SaveTo(buf[cur:])
     }
 
     // right child
     if self.right != nil {
         rightHash, rightCount := self.right.Hash()
         hashCount += rightCount
-        write(rightHash)
+        cur += rightHash.SaveTo(buf[cur:])
     }
 
-    return written, hashCount+1, err
+    return cur, hashCount
+}
+
+func (self *IAVLNode) left_filled(db Db) *IAVLNode {
+    // XXX
+    return self.left
+}
+
+func (self *IAVLNode) right_filled(db Db) *IAVLNode {
+    // XXX
+    return self.right
 }
 
 // Returns a new tree (unless node is the root) & a copy of the popped node.
@@ -331,97 +417,6 @@ func (self *IAVLNode) balance(db Db) (new_self *IAVLNode) {
     // Nothing changed
     return self
 }
-
-// TODO: don't clear the hash if the value hasn't changed.
-func (self *IAVLNode) Put(db Db, key Key, value Value) (_ *IAVLNode, updated bool) {
-    if self == nil {
-        return &IAVLNode{key: key, value: value, height: 1, size: 1, hash: nil}, false
-    }
-
-    self = self.Copy()
-
-    if self.key.Equals(key) {
-        self.value = value
-        return self, true
-    }
-
-    if key.Less(self.key) {
-        self.left, updated = self.left_filled(db).Put(db, key, value)
-    } else {
-        self.right, updated = self.right_filled(db).Put(db, key, value)
-    }
-    if updated {
-        return self, updated
-    } else {
-        self.calc_height_and_size(db)
-        return self.balance(db), updated
-    }
-}
-
-func (self *IAVLNode) Remove(db Db, key Key) (new_self *IAVLNode, value Value, err error) {
-    if self == nil {
-        return nil, nil, NotFound(key)
-    }
-
-    if self.key.Equals(key) {
-        if self.left != nil && self.right != nil {
-            if self.left_filled(db).Size() < self.right_filled(db).Size() {
-                self, new_self = self.pop_node(db, self.right_filled(db).lmd(db))
-            } else {
-                self, new_self = self.pop_node(db, self.left_filled(db).rmd(db))
-            }
-            new_self.left = self.left
-            new_self.right = self.right
-            new_self.calc_height_and_size(db)
-            return new_self, self.value, nil
-        } else if self.left == nil {
-            return self.right_filled(db), self.value, nil
-        } else if self.right == nil {
-            return self.left_filled(db), self.value, nil
-        } else {
-            return nil, self.value, nil
-        }
-    }
-
-    if key.Less(self.key) {
-        if self.left == nil {
-            return self, nil, NotFound(key)
-        }
-        var new_left *IAVLNode
-        new_left, value, err = self.left_filled(db).Remove(db, key)
-        if new_left == self.left_filled(db) { // not found
-            return self, nil, err
-        } else if err != nil { // some other error
-            return self, value, err
-        }
-        self = self.Copy()
-        self.left = new_left
-    } else {
-        if self.right == nil {
-            return self, nil, NotFound(key)
-        }
-        var new_right *IAVLNode
-        new_right, value, err = self.right_filled(db).Remove(db, key)
-        if new_right == self.right_filled(db) { // not found
-            return self, nil, err
-        } else if err != nil { // some other error
-            return self, value, err
-        }
-        self = self.Copy()
-        self.right = new_right
-    }
-    self.calc_height_and_size(db)
-    return self.balance(db), value, err
-}
-
-func (self *IAVLNode) Height() uint8 {
-    if self == nil {
-        return 0
-    }
-    return self.height
-}
-
-// ...
 
 func (self *IAVLNode) _md(side func(*IAVLNode)*IAVLNode) (*IAVLNode) {
     if self == nil {

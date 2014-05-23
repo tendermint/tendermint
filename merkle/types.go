@@ -4,14 +4,20 @@ import (
     "fmt"
 )
 
+type Binary interface {
+    ByteSize()      int
+    SaveTo([]byte)  int
+}
+
 type Value interface {
-    Bytes()         []byte
+    Binary
 }
 
 type Key interface {
+    Binary
+
     Equals(b Key)   bool
     Less(b Key)     bool
-    Bytes()         []byte
 }
 
 type Tree interface {
@@ -20,19 +26,21 @@ type Tree interface {
     Size()          uint64
     Height()        uint8
     Has(key Key)    bool
-    Get(key Key)    (Value, error)
-    Hash()          ([]byte, uint64)
+    Get(key Key)    Value
+    Hash()          (ByteSlice, uint64)
 
-    Put(Key, Value) (err error)
+    Put(Key, Value)
     Remove(Key)     (Value, error)
 }
 
 type Db interface {
-    Get([]byte) ([]byte, error)
-    Put([]byte, []byte) error
+    Get([]byte) []byte
+    Put([]byte, []byte)
 }
 
 type Node interface {
+    Binary
+
     Key()           Key
     Value()         Value
     Left(Db)        Node
@@ -41,9 +49,8 @@ type Node interface {
     Size()          uint64
     Height()        uint8
     Has(Db, Key)    bool
-    Get(Db, Key)    (Value, error)
-    Hash()          ([]byte, uint64)
-    Bytes()         []byte
+    Get(Db, Key)    Value
+    Hash()          (ByteSlice, uint64)
 
     Put(Db, Key, Value) (*IAVLNode, bool)
     Remove(Db, Key) (*IAVLNode, Value, error)

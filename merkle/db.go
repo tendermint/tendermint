@@ -22,13 +22,13 @@ func NewLDBDatabase(name string) (*LDBDatabase, error) {
 
 func (db *LDBDatabase) Put(key []byte, value []byte) {
 	err := db.db.Put(key, value, nil)
-	if err != nil {
-		fmt.Println("Error put", err)
-	}
+	if err != nil { panic(err) }
 }
 
-func (db *LDBDatabase) Get(key []byte) ([]byte, error) {
-	return db.db.Get(key, nil)
+func (db *LDBDatabase) Get(key []byte) ([]byte) {
+	res, err := db.db.Get(key, nil)
+    if err != nil { panic(err) }
+    return res
 }
 
 func (db *LDBDatabase) Delete(key []byte) error {
