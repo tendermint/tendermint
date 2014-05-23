@@ -172,7 +172,7 @@ func TestGriffin(t *testing.T) {
             left: l,
             right: r,
         }
-        n.calc_height_and_size(nil)
+        n.calcHeightAndSize(nil)
         n.Hash()
         return n
     }
@@ -183,11 +183,11 @@ func TestGriffin(t *testing.T) {
         if n.left == nil && n.right == nil {
             return fmt.Sprintf("%v", n.key)
         } else if n.left == nil {
-            return fmt.Sprintf("(- %v %v)", n.key, P(n.right_filled(nil)))
+            return fmt.Sprintf("(- %v %v)", n.key, P(n.rightFilled(nil)))
         } else if n.right == nil {
-            return fmt.Sprintf("(%v %v -)", P(n.left_filled(nil)), n.key)
+            return fmt.Sprintf("(%v %v -)", P(n.leftFilled(nil)), n.key)
         } else {
-            return fmt.Sprintf("(%v %v %v)", P(n.left_filled(nil)), n.key, P(n.right_filled(nil)))
+            return fmt.Sprintf("(%v %v %v)", P(n.leftFilled(nil)), n.key, P(n.rightFilled(nil)))
         }
     }
 

@@ -7,8 +7,8 @@ import (
 func Iterator(node Node) NodeIterator {
     stack := make([]Node, 0, 10)
     var cur Node = node
-    var tn_iterator NodeIterator
-    tn_iterator = func()(tn Node) {
+    var itr NodeIterator
+    itr = func()(tn Node) {
         if len(stack) > 0 || cur != nil {
             for cur != nil {
                 stack = append(stack, cur)
@@ -22,7 +22,7 @@ func Iterator(node Node) NodeIterator {
             return nil
         }
     }
-    return tn_iterator
+    return itr
 }
 
 func pop(stack []Node) ([]Node, Node) {
@@ -47,8 +47,8 @@ func printIAVLNode(node *IAVLNode, indent int) {
     if node == nil {
         fmt.Printf("%s--\n", indentPrefix)
     } else {
-        printIAVLNode(node.left_filled(nil), indent+1)
+        printIAVLNode(node.leftFilled(nil), indent+1)
         fmt.Printf("%s%v:%v\n", indentPrefix, node.key, node.height)
-        printIAVLNode(node.right_filled(nil), indent+1)
+        printIAVLNode(node.rightFilled(nil), indent+1)
     }
 }
