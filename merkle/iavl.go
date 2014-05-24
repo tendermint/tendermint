@@ -42,8 +42,9 @@ func (self *IAVLTree) Has(key Key) bool {
     return self.root.Has(self.db, key)
 }
 
-func (self *IAVLTree) Put(key Key, value Value) {
-    self.root, _ = self.root.Put(self.db, key, value)
+func (self *IAVLTree) Put(key Key, value Value) (updated bool) {
+    self.root, updated = self.root.put(self.db, key, value)
+    return updated
 }
 
 func (self *IAVLTree) Hash() (ByteSlice, uint64) {
@@ -62,11 +63,11 @@ func (self *IAVLTree) Get(key Key) (value Value) {
 }
 
 func (self *IAVLTree) Remove(key Key) (value Value, err error) {
-    new_root, value, err := self.root.Remove(self.db, key)
+    newRoot, value, err := self.root.remove(self.db, key)
     if err != nil {
         return nil, err
     }
-    self.root = new_root
+    self.root = newRoot
     return value, nil
 }
 
@@ -210,7 +211,13 @@ func (self *IAVLNode) Save(db Db) {
 }
 
 // TODO: don't clear the hash if the value hasn't changed.
-func (self *IAVLNode) Put(db Db, key Key, value Value) (_ *IAVLNode, updated bool) {
+func (self *IAVLNode) Put(db Db, key Key, value Value) (_ Node, updated bool) {
+    node, updated := self.put(db, key, value)
+    if node == nil { panic("unexpected nil node in put") }
+    return node, updated
+}
+
+func (self *IAVLNode) put(db Db, key Key, value Value) (_ *IAVLNode, updated bool) {
     if self == nil {
         return &IAVLNode{key: key, value: value, height: 1, size: 1, hash: nil}, false
     }
@@ -223,9 +230,9 @@ func (self *IAVLNode) Put(db Db, key Key, value Value) (_ *IAVLNode, updated boo
     }
 
     if key.Less(self.key) {
-        self.left, updated = self.leftFilled(db).Put(db, key, value)
+        self.left, updated = self.leftFilled(db).put(db, key, value)
     } else {
-        self.right, updated = self.rightFilled(db).Put(db, key, value)
+        self.right, updated = self.rightFilled(db).put(db, key, value)
     }
     if updated {
         return self, updated
@@ -235,7 +242,15 @@ func (self *IAVLNode) Put(db Db, key Key, value Value) (_ *IAVLNode, updated boo
     }
 }
 
-func (self *IAVLNode) Remove(db Db, key Key) (newSelf *IAVLNode, value Value, err error) {
+func (self *IAVLNode) Remove(db Db, key Key) (newSelf Node, value Value, err error) {
+    newIAVLSelf, value, err := self.remove(db, key)
+    if newIAVLSelf != nil {
+        newSelf = newIAVLSelf
+    }
+    return
+}
+
+func (self *IAVLNode) remove(db Db, key Key) (newSelf *IAVLNode, value Value, err error) {
     if self == nil { return nil, nil, NotFound(key) }
 
     if self.key.Equals(key) {
@@ -263,7 +278,7 @@ func (self *IAVLNode) Remove(db Db, key Key) (newSelf *IAVLNode, value Value, er
             return self, nil, NotFound(key)
         }
         var newLeft *IAVLNode
-        newLeft, value, err = self.leftFilled(db).Remove(db, key)
+        newLeft, value, err = self.leftFilled(db).remove(db, key)
         if newLeft == self.leftFilled(db) { // not found
             return self, nil, err
         } else if err != nil { // some other error
@@ -276,7 +291,7 @@ func (self *IAVLNode) Remove(db Db, key Key) (newSelf *IAVLNode, value Value, er
             return self, nil, NotFound(key)
         }
         var newRight *IAVLNode
-        newRight, value, err = self.rightFilled(db).Remove(db, key)
+        newRight, value, err = self.rightFilled(db).remove(db, key)
         if newRight == self.rightFilled(db) { // not found
             return self, nil, err
         } else if err != nil { // some other error

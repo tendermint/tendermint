@@ -47,11 +47,11 @@ func TestImmutableAvlPutHasGetRemove(t *testing.T) {
     for i := range records {
         r := randomRecord()
         records[i] = r
-        tree, updated = tree.Put(nil, r.key, String(""))
+        tree, updated = tree.put(nil, r.key, String(""))
         if updated {
             t.Error("should have not been updated")
         }
-        tree, updated = tree.Put(nil, r.key, r.value)
+        tree, updated = tree.put(nil, r.key, r.value)
         if !updated {
             t.Error("should have been updated")
         }
@@ -73,7 +73,7 @@ func TestImmutableAvlPutHasGetRemove(t *testing.T) {
     }
 
     for i, x := range records {
-        if tree, val, err = tree.Remove(nil, x.key); err != nil {
+        if tree, val, err = tree.remove(nil, x.key); err != nil {
             t.Error(err)
         } else if !(val.(String)).Equals(x.value) {
             t.Error("wrong value")
@@ -199,7 +199,7 @@ func TestGriffin(t *testing.T) {
     }
 
     expectPut := func(n *IAVLNode, i int, repr string, hashCount uint64) {
-        n2, updated := n.Put(nil, Int32(i), nil)
+        n2, updated := n.put(nil, Int32(i), nil)
         // ensure node was added & structure is as expected.
         if updated == true || P(n2) != repr {
             t.Fatalf("Adding %v to %v:\nExpected         %v\nUnexpectedly got %v updated:%v",
@@ -210,7 +210,7 @@ func TestGriffin(t *testing.T) {
     }
 
     expectRemove := func(n *IAVLNode, i int, repr string, hashCount uint64) {
-        n2, value, err := n.Remove(nil, Int32(i))
+        n2, value, err := n.remove(nil, Int32(i))
         // ensure node was added & structure is as expected.
         if value != nil || err != nil || P(n2) != repr {
             t.Fatalf("Removing %v from %v:\nExpected         %v\nUnexpectedly got %v value:%v err:%v",

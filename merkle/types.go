@@ -36,7 +36,7 @@ type Tree interface {
     Hash()          (ByteSlice, uint64)
     Save()
 
-    Put(Key, Value)
+    Put(Key, Value) bool
     Remove(Key)     (Value, error)
 }
 
@@ -56,8 +56,8 @@ type Node interface {
     Hash()          (ByteSlice, uint64)
     Save(Db)
 
-    Put(Db, Key, Value) (*IAVLNode, bool)
-    Remove(Db, Key) (*IAVLNode, Value, error)
+    Put(Db, Key, Value) (Node, bool)
+    Remove(Db, Key) (Node, Value, error)
 }
 
 type NodeIterator func() Node
