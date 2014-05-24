@@ -4,6 +4,8 @@ import (
     "fmt"
 )
 
+const HASH_BYTE_SIZE int = 4+32
+
 type Binary interface {
     ByteSize()      int
     SaveTo([]byte)  int
@@ -25,6 +27,21 @@ type Db interface {
     Put([]byte, []byte)
 }
 
+type Node interface {
+    Binary
+
+    Key()           Key
+    Value()         Value
+
+    Size()          uint64
+    Height()        uint8
+
+    Hash()          (ByteSlice, uint64)
+    Save(Db)
+}
+
+type NodeIterator func() Node
+
 type Tree interface {
     Root()          Node
 
@@ -38,29 +55,9 @@ type Tree interface {
 
     Put(Key, Value) bool
     Remove(Key)     (Value, error)
+
+    Iterator()      NodeIterator
 }
-
-type Node interface {
-    Binary
-
-    Key()           Key
-    Value()         Value
-    Left(Db)        Node
-    Right(Db)       Node
-
-    Size()          uint64
-    Height()        uint8
-    Has(Db, Key)    bool
-    Get(Db, Key)    Value
-
-    Hash()          (ByteSlice, uint64)
-    Save(Db)
-
-    Put(Db, Key, Value) (Node, bool)
-    Remove(Db, Key) (Node, Value, error)
-}
-
-type NodeIterator func() Node
 
 func NotFound(key Key) error {
     return fmt.Errorf("Key was not found.")

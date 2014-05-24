@@ -4,63 +4,63 @@ import (
     "crypto/sha256"
 )
 
-// Immutable AVL Tree (wraps the Node root)
+// Immutable B+ Tree (wraps the Node root)
 
-type IAVLTree struct {
+type IBPTree struct {
     db      Db
-    root    *IAVLNode
+    root    *IBPNode
 }
 
-func NewIAVLTree(db Db) *IAVLTree {
-    return &IAVLTree{db:db, root:nil}
+func NewIBPTree(db Db) *IBPTree {
+    return &IBPTree{db:db, root:nil}
 }
 
-func NewIAVLTreeFromHash(db Db, hash ByteSlice) *IAVLTree {
-    root := &IAVLNode{
+func NewIBPTreeFromHash(db Db, hash ByteSlice) *IBPTree {
+    root := &IBPNode{
         hash:   hash,
-        flags:  IAVLNODE_FLAG_PERSISTED | IAVLNODE_FLAG_PLACEHOLDER,
+        flags:  IBPNODE_FLAG_PERSISTED | IBPNODE_FLAG_PLACEHOLDER,
     }
     root.fill(db)
-    return &IAVLTree{db:db, root:root}
+    return &IBPTree{db:db, root:root}
 }
 
-func (self *IAVLTree) Root() Node {
+func (self *IBPTree) Root() Node {
     return self.root
 }
 
-func (self *IAVLTree) Size() uint64 {
+func (self *IBPTree) Size() uint64 {
     return self.root.Size()
 }
 
-func (self *IAVLTree) Height() uint8 {
+func (self *IBPTree) Height() uint8 {
     return self.root.Height()
 }
 
-func (self *IAVLTree) Has(key Key) bool {
+func (self *IBPTree) Has(key Key) bool {
     return self.root.has(self.db, key)
 }
 
-func (self *IAVLTree) Put(key Key, value Value) (updated bool) {
+func (self *IBPTree) Put(key Key, value Value) (updated bool) {
     self.root, updated = self.root.put(self.db, key, value)
     return updated
 }
 
-func (self *IAVLTree) Hash() (ByteSlice, uint64) {
+func (self *IBPTree) Hash() (ByteSlice, uint64) {
     return self.root.Hash()
 }
 
-func (self *IAVLTree) Save() {
+func (self *IBPTree) Save() {
     if self.root.hash == nil {
         self.root.Hash()
     }
     self.root.Save(self.db)
 }
 
-func (self *IAVLTree) Get(key Key) (value Value) {
+func (self *IBPTree) Get(key Key) (value Value) {
     return self.root.get(self.db, key)
 }
 
-func (self *IAVLTree) Remove(key Key) (value Value, err error) {
+func (self *IBPTree) Remove(key Key) (value Value, err error) {
     newRoot, value, err := self.root.remove(self.db, key)
     if err != nil {
         return nil, err
@@ -69,8 +69,9 @@ func (self *IAVLTree) Remove(key Key) (value Value, err error) {
     return value, nil
 }
 
-func (self *IAVLTree) Iterator() NodeIterator {
-    pop := func (stack []*IAVLNode) ([]*IAVLNode, *IAVLNode) {
+func (self *IBPTree) Iterator() NodeIterator {
+    /*
+    pop := func(stack []*IBPNode) ([]*IBPNode, *IBPNode) {
         if len(stack) <= 0 {
             return stack, nil
         } else {
@@ -78,8 +79,8 @@ func (self *IAVLTree) Iterator() NodeIterator {
         }
     }
 
-    stack := make([]*IAVLNode, 0, 10)
-    var cur *IAVLNode = self.root
+    stack := make([]*IBPNode, 0, 10)
+    var cur *IBPNode = self.root
     var itr NodeIterator
     itr = func()(tn Node) {
         if len(stack) > 0 || cur != nil {
@@ -96,38 +97,40 @@ func (self *IAVLTree) Iterator() NodeIterator {
         }
     }
     return itr
+    */
+    return nil
 }
 
 
 // Node
 
-type IAVLNode struct {
+type IBPNode struct {
     key     Key
     value   Value
     size    uint64
     height  uint8
     hash    ByteSlice
-    left    *IAVLNode
-    right   *IAVLNode
+    left    *IBPNode
+    right   *IBPNode
 
     // volatile
     flags   byte
 }
 
 const (
-    IAVLNODE_FLAG_PERSISTED =   byte(0x01)
-    IAVLNODE_FLAG_PLACEHOLDER = byte(0x02)
+    IBPNODE_FLAG_PERSISTED =   byte(0x01)
+    IBPNODE_FLAG_PLACEHOLDER = byte(0x02)
 
-    IAVLNODE_DESC_HAS_VALUE =   byte(0x01)
-    IAVLNODE_DESC_HAS_LEFT =    byte(0x02)
-    IAVLNODE_DESC_HAS_RIGHT =   byte(0x04)
+    IBPNODE_DESC_HAS_VALUE =   byte(0x01)
+    IBPNODE_DESC_HAS_LEFT =    byte(0x02)
+    IBPNODE_DESC_HAS_RIGHT =   byte(0x04)
 )
 
-func (self *IAVLNode) Copy() *IAVLNode {
+func (self *IBPNode) Copy() *IBPNode {
     if self == nil {
         return nil
     }
-    return &IAVLNode{
+    return &IBPNode{
         key:    self.key,
         value:  self.value,
         size:   self.size,
@@ -139,33 +142,33 @@ func (self *IAVLNode) Copy() *IAVLNode {
     }
 }
 
-func (self *IAVLNode) Equals(other Binary) bool {
-    if o, ok := other.(*IAVLNode); ok {
+func (self *IBPNode) Equals(other Binary) bool {
+    if o, ok := other.(*IBPNode); ok {
         return self.hash.Equals(o.hash)
     } else {
         return false
     }
 }
 
-func (self *IAVLNode) Key() Key {
+func (self *IBPNode) Key() Key {
     return self.key
 }
 
-func (self *IAVLNode) Value() Value {
+func (self *IBPNode) Value() Value {
     return self.value
 }
 
-func (self *IAVLNode) Size() uint64 {
+func (self *IBPNode) Size() uint64 {
     if self == nil { return 0 }
     return self.size
 }
 
-func (self *IAVLNode) Height() uint8 {
+func (self *IBPNode) Height() uint8 {
     if self == nil { return 0 }
     return self.height
 }
 
-func (self *IAVLNode) has(db Db, key Key) (has bool) {
+func (self *IBPNode) has(db Db, key Key) (has bool) {
     if self == nil { return false }
     if self.key.Equals(key) {
         return true
@@ -176,7 +179,7 @@ func (self *IAVLNode) has(db Db, key Key) (has bool) {
     }
 }
 
-func (self *IAVLNode) get(db Db, key Key) (value Value) {
+func (self *IBPNode) get(db Db, key Key) (value Value) {
     if self == nil { return nil }
     if self.key.Equals(key) {
         return self.value
@@ -187,7 +190,7 @@ func (self *IAVLNode) get(db Db, key Key) (value Value) {
     }
 }
 
-func (self *IAVLNode) Hash() (ByteSlice, uint64) {
+func (self *IBPNode) Hash() (ByteSlice, uint64) {
     if self == nil { return nil, 0 }
     if self.hash != nil {
         return self.hash, 0
@@ -203,14 +206,14 @@ func (self *IAVLNode) Hash() (ByteSlice, uint64) {
     return self.hash, hashCount+1
 }
 
-func (self *IAVLNode) Save(db Db) {
+func (self *IBPNode) Save(db Db) {
     if self == nil {
         return
     } else if self.hash == nil {
         panic("savee.hash can't be nil")
     }
-    if self.flags & IAVLNODE_FLAG_PERSISTED > 0 ||
-       self.flags & IAVLNODE_FLAG_PLACEHOLDER > 0 {
+    if self.flags & IBPNODE_FLAG_PERSISTED > 0 ||
+       self.flags & IBPNODE_FLAG_PLACEHOLDER > 0 {
         return
     }
 
@@ -225,12 +228,12 @@ func (self *IAVLNode) Save(db Db) {
     // save right
     self.right.Save(db)
 
-    self.flags |= IAVLNODE_FLAG_PERSISTED
+    self.flags |= IBPNODE_FLAG_PERSISTED
 }
 
-func (self *IAVLNode) put(db Db, key Key, value Value) (_ *IAVLNode, updated bool) {
+func (self *IBPNode) put(db Db, key Key, value Value) (_ *IBPNode, updated bool) {
     if self == nil {
-        return &IAVLNode{key: key, value: value, height: 1, size: 1, hash: nil}, false
+        return &IBPNode{key: key, value: value, height: 1, size: 1, hash: nil}, false
     }
 
     self = self.Copy()
@@ -253,7 +256,7 @@ func (self *IAVLNode) put(db Db, key Key, value Value) (_ *IAVLNode, updated boo
     }
 }
 
-func (self *IAVLNode) remove(db Db, key Key) (newSelf *IAVLNode, value Value, err error) {
+func (self *IBPNode) remove(db Db, key Key) (newSelf *IBPNode, value Value, err error) {
     if self == nil { return nil, nil, NotFound(key) }
 
     if self.key.Equals(key) {
@@ -280,7 +283,7 @@ func (self *IAVLNode) remove(db Db, key Key) (newSelf *IAVLNode, value Value, er
         if self.left == nil {
             return self, nil, NotFound(key)
         }
-        var newLeft *IAVLNode
+        var newLeft *IBPNode
         newLeft, value, err = self.leftFilled(db).remove(db, key)
         if newLeft == self.leftFilled(db) { // not found
             return self, nil, err
@@ -293,7 +296,7 @@ func (self *IAVLNode) remove(db Db, key Key) (newSelf *IAVLNode, value Value, er
         if self.right == nil {
             return self, nil, NotFound(key)
         }
-        var newRight *IAVLNode
+        var newRight *IBPNode
         newRight, value, err = self.rightFilled(db).remove(db, key)
         if newRight == self.rightFilled(db) { // not found
             return self, nil, err
@@ -307,7 +310,7 @@ func (self *IAVLNode) remove(db Db, key Key) (newSelf *IAVLNode, value Value, er
     return self.balance(db), value, err
 }
 
-func (self *IAVLNode) ByteSize() int {
+func (self *IBPNode) ByteSize() int {
     // 1 byte node descriptor
     // 1 byte node neight
     // 8 bytes node size
@@ -332,20 +335,20 @@ func (self *IAVLNode) ByteSize() int {
     return size
 }
 
-func (self *IAVLNode) SaveTo(buf []byte) int {
+func (self *IBPNode) SaveTo(buf []byte) int {
     written, _ := self.saveToCountHashes(buf)
     return written
 }
 
-func (self *IAVLNode) saveToCountHashes(buf []byte) (int, uint64) {
+func (self *IBPNode) saveToCountHashes(buf []byte) (int, uint64) {
     cur := 0
     hashCount := uint64(0)
 
     // node descriptor
     nodeDesc := byte(0)
-    if self.value != nil { nodeDesc |= IAVLNODE_DESC_HAS_VALUE }
-    if self.left != nil  { nodeDesc |= IAVLNODE_DESC_HAS_LEFT }
-    if self.right != nil { nodeDesc |= IAVLNODE_DESC_HAS_RIGHT }
+    if self.value != nil { nodeDesc |= IBPNODE_DESC_HAS_VALUE }
+    if self.left != nil  { nodeDesc |= IBPNODE_DESC_HAS_LEFT }
+    if self.right != nil { nodeDesc |= IBPNODE_DESC_HAS_RIGHT }
     cur += UInt8(nodeDesc).SaveTo(buf[cur:])
 
     // node height & size
@@ -384,7 +387,7 @@ func (self *IAVLNode) saveToCountHashes(buf []byte) (int, uint64) {
 // Given a placeholder node which has only the hash set,
 // load the rest of the data from db.
 // Not threadsafe.
-func (self *IAVLNode) fill(db Db) {
+func (self *IBPNode) fill(db Db) {
     if self == nil {
         panic("placeholder can't be nil")
     } else if self.hash == nil {
@@ -400,47 +403,47 @@ func (self *IAVLNode) fill(db Db) {
     key, cur := LoadBinary(buf, 10)
     self.key = key.(Key)
     // value
-    if nodeDesc & IAVLNODE_DESC_HAS_VALUE > 0 {
+    if nodeDesc & IBPNODE_DESC_HAS_VALUE > 0 {
         self.value, cur = LoadBinary(buf, cur)
     }
     // children
-    if nodeDesc & IAVLNODE_DESC_HAS_LEFT > 0 {
+    if nodeDesc & IBPNODE_DESC_HAS_LEFT > 0 {
         var leftHash ByteSlice
         leftHash, cur = LoadByteSlice(buf, cur)
-        self.left = &IAVLNode{
+        self.left = &IBPNode{
             hash:   leftHash,
-            flags:  IAVLNODE_FLAG_PERSISTED | IAVLNODE_FLAG_PLACEHOLDER,
+            flags:  IBPNODE_FLAG_PERSISTED | IBPNODE_FLAG_PLACEHOLDER,
         }
     }
-    if nodeDesc & IAVLNODE_DESC_HAS_RIGHT > 0 {
+    if nodeDesc & IBPNODE_DESC_HAS_RIGHT > 0 {
         var rightHash ByteSlice
         rightHash, cur = LoadByteSlice(buf, cur)
-        self.right = &IAVLNode{
+        self.right = &IBPNode{
             hash:   rightHash,
-            flags:  IAVLNODE_FLAG_PERSISTED | IAVLNODE_FLAG_PLACEHOLDER,
+            flags:  IBPNODE_FLAG_PERSISTED | IBPNODE_FLAG_PLACEHOLDER,
         }
     }
     if cur != len(buf) {
         panic("buf not all consumed")
     }
-    self.flags &= ^IAVLNODE_FLAG_PLACEHOLDER
+    self.flags &= ^IBPNODE_FLAG_PLACEHOLDER
 }
 
-func (self *IAVLNode) leftFilled(db Db) *IAVLNode {
+func (self *IBPNode) leftFilled(db Db) *IBPNode {
     if self.left == nil {
         return nil
     }
-    if self.left.flags & IAVLNODE_FLAG_PLACEHOLDER > 0 {
+    if self.left.flags & IBPNODE_FLAG_PLACEHOLDER > 0 {
         self.left.fill(db)
     }
     return self.left
 }
 
-func (self *IAVLNode) rightFilled(db Db) *IAVLNode {
+func (self *IBPNode) rightFilled(db Db) *IBPNode {
     if self.right == nil {
         return nil
     }
-    if self.right.flags & IAVLNODE_FLAG_PLACEHOLDER > 0 {
+    if self.right.flags & IBPNODE_FLAG_PLACEHOLDER > 0 {
         self.right.fill(db)
     }
     return self.right
@@ -448,7 +451,7 @@ func (self *IAVLNode) rightFilled(db Db) *IAVLNode {
 
 // Returns a new tree (unless node is the root) & a copy of the popped node.
 // Can only pop nodes that have one or no children.
-func (self *IAVLNode) popNode(db Db, node *IAVLNode) (newSelf, new_node *IAVLNode) {
+func (self *IBPNode) popNode(db Db, node *IBPNode) (newSelf, new_node *IBPNode) {
     if self == nil {
         panic("self can't be nil")
     } else if node == nil {
@@ -459,7 +462,7 @@ func (self *IAVLNode) popNode(db Db, node *IAVLNode) (newSelf, new_node *IAVLNod
 
     if self == node {
 
-        var n *IAVLNode
+        var n *IBPNode
         if node.left != nil {
             n = node.leftFilled(db)
         } else if node.right != nil {
@@ -487,7 +490,7 @@ func (self *IAVLNode) popNode(db Db, node *IAVLNode) (newSelf, new_node *IAVLNod
     }
 }
 
-func (self *IAVLNode) rotateRight(db Db) *IAVLNode {
+func (self *IBPNode) rotateRight(db Db) *IBPNode {
     self = self.Copy()
     sl :=  self.leftFilled(db).Copy()
     slr := sl.right
@@ -501,7 +504,7 @@ func (self *IAVLNode) rotateRight(db Db) *IAVLNode {
     return sl
 }
 
-func (self *IAVLNode) rotateLeft(db Db) *IAVLNode {
+func (self *IBPNode) rotateLeft(db Db) *IBPNode {
     self = self.Copy()
     sr :=  self.rightFilled(db).Copy()
     srl := sr.left
@@ -515,19 +518,19 @@ func (self *IAVLNode) rotateLeft(db Db) *IAVLNode {
     return sr
 }
 
-func (self *IAVLNode) calcHeightAndSize(db Db) {
+func (self *IBPNode) calcHeightAndSize(db Db) {
     self.height = maxUint8(self.leftFilled(db).Height(), self.rightFilled(db).Height()) + 1
     self.size = self.leftFilled(db).Size() + self.rightFilled(db).Size() + 1
 }
 
-func (self *IAVLNode) calcBalance(db Db) int {
+func (self *IBPNode) calcBalance(db Db) int {
     if self == nil {
         return 0
     }
     return int(self.leftFilled(db).Height()) - int(self.rightFilled(db).Height())
 }
 
-func (self *IAVLNode) balance(db Db) (newSelf *IAVLNode) {
+func (self *IBPNode) balance(db Db) (newSelf *IBPNode) {
     balance := self.calcBalance(db)
     if (balance > 1) {
         if (self.leftFilled(db).calcBalance(db) >= 0) {
@@ -557,7 +560,7 @@ func (self *IAVLNode) balance(db Db) (newSelf *IAVLNode) {
     return self
 }
 
-func (self *IAVLNode) _md(side func(*IAVLNode)*IAVLNode) (*IAVLNode) {
+func (self *IBPNode) _md(side func(*IBPNode)*IBPNode) (*IBPNode) {
     if self == nil {
         return nil
     } else if side(self) != nil {
@@ -567,10 +570,10 @@ func (self *IAVLNode) _md(side func(*IAVLNode)*IAVLNode) (*IAVLNode) {
     }
 }
 
-func (self *IAVLNode) lmd(db Db) (*IAVLNode) {
-    return self._md(func(node *IAVLNode)*IAVLNode { return node.leftFilled(db) })
+func (self *IBPNode) lmd(db Db) (*IBPNode) {
+    return self._md(func(node *IBPNode)*IBPNode { return node.leftFilled(db) })
 }
 
-func (self *IAVLNode) rmd(db Db) (*IAVLNode) {
-    return self._md(func(node *IAVLNode)*IAVLNode { return node.rightFilled(db) })
+func (self *IBPNode) rmd(db Db) (*IBPNode) {
+    return self._md(func(node *IBPNode)*IBPNode { return node.rightFilled(db) })
 }

@@ -35,7 +35,7 @@ func TestImmutableAvlPutHasGetRemove(t *testing.T) {
     }
 
     records := make([]*record, 400)
-    var tree *IAVLNode
+    var node *IAVLNode
     var err error
     var val Value
     var updated bool
@@ -47,50 +47,50 @@ func TestImmutableAvlPutHasGetRemove(t *testing.T) {
     for i := range records {
         r := randomRecord()
         records[i] = r
-        tree, updated = tree.put(nil, r.key, String(""))
+        node, updated = node.put(nil, r.key, String(""))
         if updated {
             t.Error("should have not been updated")
         }
-        tree, updated = tree.put(nil, r.key, r.value)
+        node, updated = node.put(nil, r.key, r.value)
         if !updated {
             t.Error("should have been updated")
         }
-        if tree.Size() != uint64(i+1) {
-            t.Error("size was wrong", tree.Size(), i+1)
+        if node.Size() != uint64(i+1) {
+            t.Error("size was wrong", node.Size(), i+1)
         }
     }
 
     for _, r := range records {
-        if has := tree.Has(nil, r.key); !has {
+        if has := node.has(nil, r.key); !has {
             t.Error("Missing key")
         }
-        if has := tree.Has(nil, randstr(12)); has {
+        if has := node.has(nil, randstr(12)); has {
             t.Error("Table has extra key")
         }
-        if val := tree.Get(nil, r.key); !(val.(String)).Equals(r.value) {
+        if val := node.get(nil, r.key); !(val.(String)).Equals(r.value) {
             t.Error("wrong value")
         }
     }
 
     for i, x := range records {
-        if tree, val, err = tree.remove(nil, x.key); err != nil {
+        if node, val, err = node.remove(nil, x.key); err != nil {
             t.Error(err)
         } else if !(val.(String)).Equals(x.value) {
             t.Error("wrong value")
         }
         for _, r := range records[i+1:] {
-            if has := tree.Has(nil, r.key); !has {
+            if has := node.has(nil, r.key); !has {
                 t.Error("Missing key")
             }
-            if has := tree.Has(nil, randstr(12)); has {
+            if has := node.has(nil, randstr(12)); has {
                 t.Error("Table has extra key")
             }
-            if val := tree.Get(nil, r.key); !(val.(String)).Equals(r.value) {
+            if val := node.get(nil, r.key); !(val.(String)).Equals(r.value) {
                 t.Error("wrong value")
             }
         }
-        if tree.Size() != uint64(len(records) - (i+1)) {
-            t.Error("size was wrong", tree.Size(), (len(records) - (i+1)))
+        if node.Size() != uint64(len(records) - (i+1)) {
+            t.Error("size was wrong", node.Size(), (len(records) - (i+1)))
         }
     }
 }
@@ -138,7 +138,7 @@ func TestTraversals(t *testing.T) {
         }
 
         j := 0
-        itr := Iterator(T.Root());
+        itr := T.Iterator()
         for node := itr(); node != nil; node = itr() {
             if int(node.Key().(Int)) != data[j] {
                 t.Error("key in wrong spot in-order")
@@ -185,7 +185,7 @@ func TestGriffin(t *testing.T) {
             t.Fatalf("Expected %v new hashes, got %v", hashCount, count)
         }
         // nuke hashes and reconstruct hash, ensure it's the same.
-        itr := Iterator(n2)
+        itr := (&IAVLTree{root:n2}).Iterator()
         for node:=itr(); node!=nil; node = itr() {
             if node != nil {
                 node.(*IAVLNode).hash = nil
