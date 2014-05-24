@@ -8,6 +8,7 @@ import (
     "bytes"
     "math/rand"
     "encoding/binary"
+    "github.com/tendermint/tendermint/db"
 )
 
 
@@ -24,20 +25,6 @@ func init() {
         }
         urandom.Close()
     }
-}
-
-func randstr(length int) String {
-    if urandom, err := os.Open("/dev/urandom"); err != nil {
-        panic(err)
-    } else {
-        slice := make([]byte, length)
-        if _, err := urandom.Read(slice); err != nil {
-            panic(err)
-        }
-        urandom.Close()
-        return String(slice)
-    }
-    panic("unreachable")
 }
 
 func TestImmutableAvlPutHasGetRemove(t *testing.T) {
@@ -121,7 +108,7 @@ func BenchmarkImmutableAvlTree(b *testing.B) {
         return &record{ randstr(32), randstr(32) }
     }
 
-    t := NewIAVLTree()
+    t := NewIAVLTree(nil)
     for i:=0; i<1000000; i++ {
         r := randomRecord()
         t.Put(r.key, r.value)
@@ -159,7 +146,7 @@ func TestTraversals(t *testing.T) {
             j += 1
         }
     }
-    test(NewIAVLTree())
+    test(NewIAVLTree(nil))
 }
 
 // from http://stackoverflow.com/questions/3955680/how-to-check-if-my-avl-tree-implementation-is-correct
@@ -279,5 +266,33 @@ func TestGriffin(t *testing.T) {
     if P(n6) != "((1 2 (- 3 4)) 5 ((6 7 -) 8 (9 10 (- 11 12))))" { t.Fatalf("Got %v", P(n6)) }
 
     expectRemove(n6, 1, "(((2 3 4) 5 (6 7 -)) 8 (9 10 (- 11 12)))", 4)
+}
+
+func TestPersistence(t *testing.T) {
+    db := db.NewMemDB()
+
+    // Create some random key value pairs
+    records := make(map[String]String)
+    for i:=0; i<10000; i++ {
+        records[String(randstr(20))] = String(randstr(20))
+    }
+
+    // Construct some tree and save it
+    t1 := NewIAVLTree(db)
+    for key, value := range records {
+        t1.Put(key, value)
+    }
+    t1.Save()
+
+    hash, _ := t1.Hash()
+
+    // Load a tree
+    t2 := NewIAVLTreeFromHash(db, hash)
+    for key, value := range records {
+        t2value := t2.Get(key)
+        if !t2value.Equals(value) {
+            t.Fatalf("Invalid value. Expected %v, got %v", value, t2value)
+        }
+    }
 
 }

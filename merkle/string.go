@@ -7,19 +7,15 @@ type ByteSlice []byte
 
 // String
 
-func (self String) Equals(other Key) bool {
-    if o, ok := other.(String); ok {
-        return self == o
-    } else {
-        return false
-    }
+func (self String) Equals(other Binary) bool {
+    return self == other
 }
 
 func (self String) Less(other Key) bool {
     if o, ok := other.(String); ok {
         return self < o
     } else {
-        return false
+        panic("Cannot compare unequal types")
     }
 }
 
@@ -34,15 +30,15 @@ func (self String) SaveTo(buf []byte) int {
     return len(self)+4
 }
 
-func LoadString(bytes []byte) String {
-    length := LoadUInt32(bytes)
-    return String(bytes[4:4+length])
+func LoadString(bytes []byte, start int) (String, int) {
+    length := int(LoadUInt32(bytes[start:]))
+    return String(bytes[start+4:start+4+length]), start+4+length
 }
 
 
 // ByteSlice
 
-func (self ByteSlice) Equals(other Key) bool {
+func (self ByteSlice) Equals(other Binary) bool {
     if o, ok := other.(ByteSlice); ok {
         return bytes.Equal(self, o)
     } else {
@@ -54,7 +50,7 @@ func (self ByteSlice) Less(other Key) bool {
     if o, ok := other.(ByteSlice); ok {
         return bytes.Compare(self, o) < 0 // -1 if a < b
     } else {
-        return false
+        panic("Cannot compare unequal types")
     }
 }
 
@@ -69,7 +65,7 @@ func (self ByteSlice) SaveTo(buf []byte) int {
     return len(self)+4
 }
 
-func LoadByteSlice(bytes []byte) ByteSlice {
-    length := LoadUInt32(bytes)
-    return ByteSlice(bytes[4:4+length])
+func LoadByteSlice(bytes []byte, start int) (ByteSlice, int) {
+    length := int(LoadUInt32(bytes[start:]))
+    return ByteSlice(bytes[start+4:start+4+length]), start+4+length
 }

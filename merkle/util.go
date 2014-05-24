@@ -1,6 +1,7 @@
 package merkle
 
 import (
+    "os"
     "fmt"
 )
 
@@ -52,3 +53,18 @@ func printIAVLNode(node *IAVLNode, indent int) {
         printIAVLNode(node.rightFilled(nil), indent+1)
     }
 }
+
+func randstr(length int) String {
+    if urandom, err := os.Open("/dev/urandom"); err != nil {
+        panic(err)
+    } else {
+        slice := make([]byte, length)
+        if _, err := urandom.Read(slice); err != nil {
+            panic(err)
+        }
+        urandom.Close()
+        return String(slice)
+    }
+    panic("unreachable")
+}
+

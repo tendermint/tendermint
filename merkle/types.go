@@ -7,6 +7,7 @@ import (
 type Binary interface {
     ByteSize()      int
     SaveTo([]byte)  int
+    Equals(Binary)  bool
 }
 
 type Value interface {
@@ -16,8 +17,12 @@ type Value interface {
 type Key interface {
     Binary
 
-    Equals(b Key)   bool
     Less(b Key)     bool
+}
+
+type Db interface {
+    Get([]byte) []byte
+    Put([]byte, []byte)
 }
 
 type Tree interface {
@@ -27,15 +32,12 @@ type Tree interface {
     Height()        uint8
     Has(key Key)    bool
     Get(key Key)    Value
+
     Hash()          (ByteSlice, uint64)
+    Save()
 
     Put(Key, Value)
     Remove(Key)     (Value, error)
-}
-
-type Db interface {
-    Get([]byte) []byte
-    Put([]byte, []byte)
 }
 
 type Node interface {
@@ -50,7 +52,9 @@ type Node interface {
     Height()        uint8
     Has(Db, Key)    bool
     Get(Db, Key)    Value
+
     Hash()          (ByteSlice, uint64)
+    Save(Db)
 
     Put(Db, Key, Value) (*IAVLNode, bool)
     Remove(Db, Key) (*IAVLNode, Value, error)

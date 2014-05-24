@@ -1,4 +1,4 @@
-package merkle
+package db
 
 import (
 	"fmt"
@@ -6,49 +6,49 @@ import (
 	"path"
 )
 
-type LDBDatabase struct {
+type LevelDB struct {
 	db *leveldb.DB
 }
 
-func NewLDBDatabase(name string) (*LDBDatabase, error) {
+func NewLevelDB(name string) (*LevelDB, error) {
 	dbPath := path.Join(name)
 	db, err := leveldb.OpenFile(dbPath, nil)
 	if err != nil {
 		return nil, err
 	}
-	database := &LDBDatabase{db: db}
+	database := &LevelDB{db: db}
 	return database, nil
 }
 
-func (db *LDBDatabase) Put(key []byte, value []byte) {
+func (db *LevelDB) Put(key []byte, value []byte) {
 	err := db.db.Put(key, value, nil)
 	if err != nil { panic(err) }
 }
 
-func (db *LDBDatabase) Get(key []byte) ([]byte) {
+func (db *LevelDB) Get(key []byte) ([]byte) {
 	res, err := db.db.Get(key, nil)
     if err != nil { panic(err) }
     return res
 }
 
-func (db *LDBDatabase) Delete(key []byte) error {
-	return db.db.Delete(key, nil)
+func (db *LevelDB) Delete(key []byte) {
+	err := db.db.Delete(key, nil)
+    if err != nil { panic(err) }
 }
 
-func (db *LDBDatabase) Db() *leveldb.DB {
+func (db *LevelDB) Db() *leveldb.DB {
 	return db.db
 }
 
-func (db *LDBDatabase) Close() {
+func (db *LevelDB) Close() {
 	db.db.Close()
 }
 
-func (db *LDBDatabase) Print() {
+func (db *LevelDB) Print() {
 	iter := db.db.NewIterator(nil, nil)
 	for iter.Next() {
 		key := iter.Key()
 		value := iter.Value()
-		fmt.Printf("%x(%d): %v ", key, len(key), value)
+		fmt.Printf("[%x]:\t[%x]", key, value)
 	}
 }
-

@@ -4,6 +4,7 @@ import (
     "encoding/binary"
 )
 
+type Byte byte
 type Int8 int8
 type UInt8 uint8
 type Int16 int16
@@ -16,21 +17,46 @@ type Int int
 type UInt uint
 
 
+// Byte
+
+func (self Byte) Equals(other Binary) bool {
+    return self == other
+}
+
+func (self Byte) Less(other Key) bool {
+    if o, ok := other.(Byte); ok {
+        return self < o
+    } else {
+        panic("Cannot compare unequal types")
+    }
+}
+
+func (self Byte) ByteSize() int {
+    return 1
+}
+
+func (self Byte) SaveTo(b []byte) int {
+    if cap(b) < 1 { panic("buf too small") }
+    b[0] = byte(self)
+    return 1
+}
+
+func LoadByte(bytes []byte) Byte {
+    return Byte(bytes[0])
+}
+
+
 // Int8
 
-func (self Int8) Equals(other Key) bool {
-    if o, ok := other.(Int8); ok {
-        return self == o
-    } else {
-        return false
-    }
+func (self Int8) Equals(other Binary) bool {
+    return self == other
 }
 
 func (self Int8) Less(other Key) bool {
     if o, ok := other.(Int8); ok {
         return self < o
     } else {
-        return false
+        panic("Cannot compare unequal types")
     }
 }
 
@@ -51,19 +77,15 @@ func LoadInt8(bytes []byte) Int8 {
 
 // UInt8
 
-func (self UInt8) Equals(other Key) bool {
-    if o, ok := other.(UInt8); ok {
-        return self == o
-    } else {
-        return false
-    }
+func (self UInt8) Equals(other Binary) bool {
+    return self == other
 }
 
 func (self UInt8) Less(other Key) bool {
     if o, ok := other.(UInt8); ok {
         return self < o
     } else {
-        return false
+        panic("Cannot compare unequal types")
     }
 }
 
@@ -84,19 +106,15 @@ func LoadUInt8(bytes []byte) UInt8 {
 
 // Int16
 
-func (self Int16) Equals(other Key) bool {
-    if o, ok := other.(Int16); ok {
-        return self == o
-    } else {
-        return false
-    }
+func (self Int16) Equals(other Binary) bool {
+    return self == other
 }
 
 func (self Int16) Less(other Key) bool {
     if o, ok := other.(Int16); ok {
         return self < o
     } else {
-        return false
+        panic("Cannot compare unequal types")
     }
 }
 
@@ -117,19 +135,15 @@ func LoadInt16(bytes []byte) Int16 {
 
 // UInt16
 
-func (self UInt16) Equals(other Key) bool {
-    if o, ok := other.(UInt16); ok {
-        return self == o
-    } else {
-        return false
-    }
+func (self UInt16) Equals(other Binary) bool {
+    return self == other
 }
 
 func (self UInt16) Less(other Key) bool {
     if o, ok := other.(UInt16); ok {
         return self < o
     } else {
-        return false
+        panic("Cannot compare unequal types")
     }
 }
 
@@ -150,19 +164,15 @@ func LoadUInt16(bytes []byte) UInt16 {
 
 // Int32
 
-func (self Int32) Equals(other Key) bool {
-    if o, ok := other.(Int32); ok {
-        return self == o
-    } else {
-        return false
-    }
+func (self Int32) Equals(other Binary) bool {
+    return self == other
 }
 
 func (self Int32) Less(other Key) bool {
     if o, ok := other.(Int32); ok {
         return self < o
     } else {
-        return false
+        panic("Cannot compare unequal types")
     }
 }
 
@@ -183,19 +193,15 @@ func LoadInt32(bytes []byte) Int32 {
 
 // UInt32
 
-func (self UInt32) Equals(other Key) bool {
-    if o, ok := other.(UInt32); ok {
-        return self == o
-    } else {
-        return false
-    }
+func (self UInt32) Equals(other Binary) bool {
+    return self == other
 }
 
 func (self UInt32) Less(other Key) bool {
     if o, ok := other.(UInt32); ok {
         return self < o
     } else {
-        return false
+        panic("Cannot compare unequal types")
     }
 }
 
@@ -216,19 +222,15 @@ func LoadUInt32(bytes []byte) UInt32 {
 
 // Int64
 
-func (self Int64) Equals(other Key) bool {
-    if o, ok := other.(Int64); ok {
-        return self == o
-    } else {
-        return false
-    }
+func (self Int64) Equals(other Binary) bool {
+    return self == other
 }
 
 func (self Int64) Less(other Key) bool {
     if o, ok := other.(Int64); ok {
         return self < o
     } else {
-        return false
+        panic("Cannot compare unequal types")
     }
 }
 
@@ -249,19 +251,15 @@ func LoadInt64(bytes []byte) Int64 {
 
 // UInt64
 
-func (self UInt64) Equals(other Key) bool {
-    if o, ok := other.(UInt64); ok {
-        return self == o
-    } else {
-        return false
-    }
+func (self UInt64) Equals(other Binary) bool {
+    return self == other
 }
 
 func (self UInt64) Less(other Key) bool {
     if o, ok := other.(UInt64); ok {
         return self < o
     } else {
-        return false
+        panic("Cannot compare unequal types")
     }
 }
 
@@ -282,19 +280,15 @@ func LoadUInt64(bytes []byte) UInt64 {
 
 // Int
 
-func (self Int) Equals(other Key) bool {
-    if o, ok := other.(Int); ok {
-        return self == o
-    } else {
-        return false
-    }
+func (self Int) Equals(other Binary) bool {
+    return self == other
 }
 
 func (self Int) Less(other Key) bool {
     if o, ok := other.(Int); ok {
         return self < o
     } else {
-        return false
+        panic("Cannot compare unequal types")
     }
 }
 
@@ -314,19 +308,15 @@ func LoadInt(bytes []byte) Int {
 
 // UInt
 
-func (self UInt) Equals(other Key) bool {
-    if o, ok := other.(UInt); ok {
-        return self == o
-    } else {
-        return false
-    }
+func (self UInt) Equals(other Binary) bool {
+    return self == other
 }
 
 func (self UInt) Less(other Key) bool {
     if o, ok := other.(UInt); ok {
         return self < o
     } else {
-        return false
+        panic("Cannot compare unequal types")
     }
 }
 
