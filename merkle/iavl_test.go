@@ -9,6 +9,7 @@ import (
     "math/rand"
     "encoding/binary"
     "github.com/tendermint/tendermint/db"
+    "crypto/sha256"
 )
 
 
@@ -295,4 +296,17 @@ func TestPersistence(t *testing.T) {
         }
     }
 
+}
+
+func BenchmarkHash(b *testing.B) {
+    b.StopTimer()
+
+    s := randstr(128)
+
+    b.StartTimer()
+    for i := 0; i < b.N; i++ {
+        hasher := sha256.New()
+        hasher.Write([]byte(s))
+        hasher.Sum(nil)
+    }
 }

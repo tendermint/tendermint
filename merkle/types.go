@@ -18,7 +18,6 @@ type Value interface {
 
 type Key interface {
     Binary
-
     Less(b Key)     bool
 }
 
@@ -29,13 +28,10 @@ type Db interface {
 
 type Node interface {
     Binary
-
     Key()           Key
     Value()         Value
-
     Size()          uint64
     Height()        uint8
-
     Hash()          (ByteSlice, uint64)
     Save(Db)
 }
@@ -44,18 +40,14 @@ type NodeIterator func() Node
 
 type Tree interface {
     Root()          Node
-
     Size()          uint64
     Height()        uint8
     Has(key Key)    bool
     Get(key Key)    Value
-
     Hash()          (ByteSlice, uint64)
     Save()
-
     Put(Key, Value) bool
     Remove(Key)     (Value, error)
-
     Iterator()      NodeIterator
 }
 
