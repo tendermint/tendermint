@@ -1,0 +1,14 @@
+package main
+
+/*
+#cgo LDFLAGS: -L. -led25519
+
+#include "ed25519/foo.h"
+*/
+import "C"
+import "fmt"
+
+func main() {
+	C.test()
+	fmt.Println("hello")
+}
