@@ -1,7 +1,8 @@
 package merkle
 
 const (
-    TYPE_BYTE       = byte(0x00)
+    TYPE_NIL        = byte(0x00)
+    TYPE_BYTE       = byte(0x01)
     TYPE_INT8       = byte(0x02)
     TYPE_UINT8      = byte(0x03)
     TYPE_INT16      = byte(0x04)
@@ -16,6 +17,7 @@ const (
 
 func GetBinaryType(o Binary) byte {
     switch o.(type) {
+    case nil:       return TYPE_NIL
     case Byte:      return TYPE_BYTE
     case Int8:      return TYPE_INT8
     case UInt8:     return TYPE_UINT8
@@ -36,6 +38,7 @@ func GetBinaryType(o Binary) byte {
 func LoadBinary(buf []byte, start int) (Binary, int) {
     typeByte := buf[start]
     switch typeByte {
+    case TYPE_NIL:      return nil,                       start+1
     case TYPE_BYTE:     return LoadByte(buf[start+1:]),   start+2
     case TYPE_INT8:     return LoadInt8(buf[start+1:]),   start+2
     case TYPE_UINT8:    return LoadUInt8(buf[start+1:]),  start+2

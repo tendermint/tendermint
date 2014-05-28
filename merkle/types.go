@@ -4,8 +4,6 @@ import (
     "fmt"
 )
 
-const HASH_BYTE_SIZE int = 4+32
-
 type Binary interface {
     ByteSize()      int
     SaveTo([]byte)  int
@@ -36,8 +34,6 @@ type Node interface {
     Save(Db)
 }
 
-type NodeIterator func() Node
-
 type Tree interface {
     Root()          Node
     Size()          uint64
@@ -48,7 +44,7 @@ type Tree interface {
     Save()
     Put(Key, Value) bool
     Remove(Key)     (Value, error)
-    Iterator()      NodeIterator
+    Traverse(func(Node)bool)
 }
 
 func NotFound(key Key) error {
