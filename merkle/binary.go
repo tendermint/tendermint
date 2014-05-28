@@ -11,6 +11,7 @@ const (
     TYPE_UINT32     = byte(0x07)
     TYPE_INT64      = byte(0x08)
     TYPE_UINT64     = byte(0x09)
+
     TYPE_STRING     = byte(0x10)
     TYPE_BYTESLICE  = byte(0x11)
 )
@@ -29,8 +30,10 @@ func GetBinaryType(o Binary) byte {
     case UInt64:    return TYPE_UINT64
     case Int:       panic("Int not supported")
     case UInt:      panic("UInt not supported")
+
     case String:    return TYPE_STRING
     case ByteSlice: return TYPE_BYTESLICE
+
     default:        panic("Unsupported type")
     }
 }
@@ -48,8 +51,10 @@ func LoadBinary(buf []byte, start int) (Binary, int) {
     case TYPE_UINT32:   return LoadUInt32(buf[start+1:]), start+5
     case TYPE_INT64:    return LoadInt64(buf[start+1:]),  start+9
     case TYPE_UINT64:   return LoadUInt64(buf[start+1:]), start+9
+
     case TYPE_STRING:   return LoadString(buf, start+1)
     case TYPE_BYTESLICE:return LoadByteSlice(buf, start+1)
+
     default:            panic("Unsupported type")
     }
 }

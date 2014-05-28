@@ -1,1 +1,1 @@
-Immutable AVL Tree code heavily modified from https://github.com/timtadh/data-structures
+An immutable, persistable, merkle-ized self balancing AVL+ tree.
