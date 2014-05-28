@@ -154,7 +154,7 @@ func TestIntegration(t *testing.T) {
     var updated bool
 
     randomRecord := func() *record {
-        return &record{ RandStr(20), RandStr(20) }
+        return &record{ randstr(20), randstr(20) }
     }
 
     for i := range records {
@@ -179,7 +179,7 @@ func TestIntegration(t *testing.T) {
         if has := tree.Has(r.key); !has {
             t.Error("Missing key", r.key)
         }
-        if has := tree.Has(RandStr(12)); has {
+        if has := tree.Has(randstr(12)); has {
             t.Error("Table has extra key")
         }
         if val := tree.Get(r.key); !(val.(String)).Equals(r.value) {
@@ -197,7 +197,7 @@ func TestIntegration(t *testing.T) {
             if has := tree.Has(r.key); !has {
                 t.Error("Missing key", r.key)
             }
-            if has := tree.Has(RandStr(12)); has {
+            if has := tree.Has(randstr(12)); has {
                 t.Error("Table has extra key")
             }
             if val := tree.Get(r.key); !(val.(String)).Equals(r.value) {
@@ -216,7 +216,7 @@ func TestPersistence(t *testing.T) {
     // Create some random key value pairs
     records := make(map[String]String)
     for i:=0; i<10000; i++ {
-        records[String(RandStr(20))] = String(RandStr(20))
+        records[String(randstr(20))] = String(randstr(20))
     }
 
     // Construct some tree and save it
@@ -241,7 +241,7 @@ func TestPersistence(t *testing.T) {
 func BenchmarkHash(b *testing.B) {
     b.StopTimer()
 
-    s := RandStr(128)
+    s := randstr(128)
 
     b.StartTimer()
     for i := 0; i < b.N; i++ {
@@ -260,7 +260,7 @@ func BenchmarkImmutableAvlTree(b *testing.B) {
     }
 
     randomRecord := func() *record {
-        return &record{ RandStr(32), RandStr(32) }
+        return &record{ randstr(32), randstr(32) }
     }
 
     t := NewIAVLTree(nil)
@@ -268,6 +268,8 @@ func BenchmarkImmutableAvlTree(b *testing.B) {
         r := randomRecord()
         t.Put(r.key, r.value)
     }
+
+    fmt.Println("ok, starting")
 
     b.StartTimer()
     for i := 0; i < b.N; i++ {

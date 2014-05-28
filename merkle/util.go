@@ -1,8 +1,7 @@
 package merkle
 
 import (
-    "math/big"
-    "crypto/rand"
+    "os"
     "fmt"
 )
 
@@ -32,17 +31,18 @@ func printIAVLNode(node *IAVLNode, indent int) {
 
 }
 
-const allRandChars = "0123456789"
-
-func RandStr(numChars int) String {
-    var res string
-    for i:=0; i<numChars; i++ {
-        v, err := rand.Int(rand.Reader, big.NewInt(int64(10)))
-        if err != nil { panic(err) }
-        randIndex := int(v.Int64())
-        res = res + allRandChars[randIndex:randIndex+1]
+func randstr(length int) String {
+    if urandom, err := os.Open("/dev/urandom"); err != nil {
+        panic(err)
+    } else {
+        slice := make([]byte, length)
+        if _, err := urandom.Read(slice); err != nil {
+            panic(err)
+        }
+        urandom.Close()
+        return String(slice)
     }
-    return String(res)
+    panic("unreachable")
 }
 
 func maxUint8(a, b uint8) uint8 {
