@@ -6,7 +6,7 @@ import (
 
 type Binary interface {
     ByteSize()      int
-    SaveTo([]byte)  int
+    WriteTo([]byte)  int
     Equals(Binary)  bool
 }
 

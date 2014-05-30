@@ -38,22 +38,22 @@ func GetBinaryType(o Binary) byte {
     }
 }
 
-func LoadBinary(buf []byte, start int) (Binary, int) {
+func ReadBinary(buf []byte, start int) (Binary, int) {
     typeByte := buf[start]
     switch typeByte {
     case TYPE_NIL:      return nil,                       start+1
-    case TYPE_BYTE:     return LoadByte(buf[start+1:]),   start+2
-    case TYPE_INT8:     return LoadInt8(buf[start+1:]),   start+2
-    case TYPE_UINT8:    return LoadUInt8(buf[start+1:]),  start+2
-    case TYPE_INT16:    return LoadInt16(buf[start+1:]),  start+3
-    case TYPE_UINT16:   return LoadUInt16(buf[start+1:]), start+3
-    case TYPE_INT32:    return LoadInt32(buf[start+1:]),  start+5
-    case TYPE_UINT32:   return LoadUInt32(buf[start+1:]), start+5
-    case TYPE_INT64:    return LoadInt64(buf[start+1:]),  start+9
-    case TYPE_UINT64:   return LoadUInt64(buf[start+1:]), start+9
+    case TYPE_BYTE:     return ReadByte(buf[start+1:]),   start+2
+    case TYPE_INT8:     return ReadInt8(buf[start+1:]),   start+2
+    case TYPE_UINT8:    return ReadUInt8(buf[start+1:]),  start+2
+    case TYPE_INT16:    return ReadInt16(buf[start+1:]),  start+3
+    case TYPE_UINT16:   return ReadUInt16(buf[start+1:]), start+3
+    case TYPE_INT32:    return ReadInt32(buf[start+1:]),  start+5
+    case TYPE_UINT32:   return ReadUInt32(buf[start+1:]), start+5
+    case TYPE_INT64:    return ReadInt64(buf[start+1:]),  start+9
+    case TYPE_UINT64:   return ReadUInt64(buf[start+1:]), start+9
 
-    case TYPE_STRING:   return LoadString(buf, start+1)
-    case TYPE_BYTESLICE:return LoadByteSlice(buf, start+1)
+    case TYPE_STRING:   return ReadString(buf, start+1)
+    case TYPE_BYTESLICE:return ReadByteSlice(buf, start+1)
 
     default:            panic("Unsupported type")
     }

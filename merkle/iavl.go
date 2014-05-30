@@ -218,7 +218,7 @@ func (self *IAVLNode) Save(db Db) {
 
     // save self
     buf := make([]byte, self.ByteSize(), self.ByteSize())
-    self.SaveTo(buf)
+    self.WriteTo(buf)
     db.Put([]byte(self.hash), buf)
 
     self.flags |= IAVLNODE_FLAG_PERSISTED
@@ -321,7 +321,7 @@ func (self *IAVLNode) ByteSize() int {
     return size
 }
 
-func (self *IAVLNode) SaveTo(buf []byte) int {
+func (self *IAVLNode) WriteTo(buf []byte) int {
     written, _ := self.saveToCountHashes(buf)
     return written
 }
@@ -331,30 +331,30 @@ func (self *IAVLNode) saveToCountHashes(buf []byte) (int, uint64) {
     hashCount := uint64(0)
 
     // height & size
-    cur += UInt8(self.height).SaveTo(buf[cur:])
-    cur += UInt64(self.size).SaveTo(buf[cur:])
+    cur += UInt8(self.height).WriteTo(buf[cur:])
+    cur += UInt64(self.size).WriteTo(buf[cur:])
 
     // key
     buf[cur] = GetBinaryType(self.key)
     cur += 1
-    cur += self.key.SaveTo(buf[cur:])
+    cur += self.key.WriteTo(buf[cur:])
 
     if self.height == 0 {
         // value
         buf[cur] = GetBinaryType(self.value)
         cur += 1
         if self.value != nil {
-            cur += self.value.SaveTo(buf[cur:])
+            cur += self.value.WriteTo(buf[cur:])
         }
     } else {
         // left
         leftHash, leftCount := self.left.Hash()
         hashCount += leftCount
-        cur += leftHash.SaveTo(buf[cur:])
+        cur += leftHash.WriteTo(buf[cur:])
         // right
         rightHash, rightCount := self.right.Hash()
         hashCount += rightCount
-        cur += rightHash.SaveTo(buf[cur:])
+        cur += rightHash.WriteTo(buf[cur:])
     }
 
     return cur, hashCount
@@ -370,26 +370,26 @@ func (self *IAVLNode) fill(db Db) {
     buf := db.Get(self.hash)
     cur := 0
     // node header
-    self.height = uint8(LoadUInt8(buf[0:]))
-    self.size = uint64(LoadUInt64(buf[1:]))
+    self.height = uint8(ReadUInt8(buf[0:]))
+    self.size = uint64(ReadUInt64(buf[1:]))
     // key
-    key, cur := LoadBinary(buf, 9)
+    key, cur := ReadBinary(buf, 9)
     self.key = key.(Key)
 
     if self.height == 0 {
         // value
-        self.value, cur = LoadBinary(buf, cur)
+        self.value, cur = ReadBinary(buf, cur)
     } else {
         // left
         var leftHash ByteSlice
-        leftHash, cur = LoadByteSlice(buf, cur)
+        leftHash, cur = ReadByteSlice(buf, cur)
         self.left = &IAVLNode{
             hash:   leftHash,
             flags:  IAVLNODE_FLAG_PERSISTED | IAVLNODE_FLAG_PLACEHOLDER,
         }
         // right
         var rightHash ByteSlice
-        rightHash, cur = LoadByteSlice(buf, cur)
+        rightHash, cur = ReadByteSlice(buf, cur)
         self.right = &IAVLNode{
             hash:   rightHash,
             flags:  IAVLNODE_FLAG_PERSISTED | IAVLNODE_FLAG_PLACEHOLDER,

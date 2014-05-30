@@ -23,15 +23,16 @@ func (self String) ByteSize() int {
     return len(self)+4
 }
 
-func (self String) SaveTo(buf []byte) int {
+func (self String) WriteTo(buf []byte) int {
     if len(buf) < self.ByteSize() { panic("buf too small") }
-    UInt32(len(self)).SaveTo(buf)
+    UInt32(len(self)).WriteTo(buf)
     copy(buf[4:], []byte(self))
     return len(self)+4
 }
 
-func LoadString(bytes []byte, start int) (String, int) {
-    length := int(LoadUInt32(bytes[start:]))
+// NOTE: keeps a reference to the original byte slice
+func ReadString(bytes []byte, start int) (String, int) {
+    length := int(ReadUInt32(bytes[start:]))
     return String(bytes[start+4:start+4+length]), start+4+length
 }
 
@@ -58,14 +59,15 @@ func (self ByteSlice) ByteSize() int {
     return len(self)+4
 }
 
-func (self ByteSlice) SaveTo(buf []byte) int {
+func (self ByteSlice) WriteTo(buf []byte) int {
     if len(buf) < self.ByteSize() { panic("buf too small") }
-    UInt32(len(self)).SaveTo(buf)
+    UInt32(len(self)).WriteTo(buf)
     copy(buf[4:], self)
     return len(self)+4
 }
 
-func LoadByteSlice(bytes []byte, start int) (ByteSlice, int) {
-    length := int(LoadUInt32(bytes[start:]))
+// NOTE: keeps a reference to the original byte slice
+func ReadByteSlice(bytes []byte, start int) (ByteSlice, int) {
+    length := int(ReadUInt32(bytes[start:]))
     return ByteSlice(bytes[start+4:start+4+length]), start+4+length
 }

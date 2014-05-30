@@ -35,13 +35,13 @@ func (self Byte) ByteSize() int {
     return 1
 }
 
-func (self Byte) SaveTo(b []byte) int {
+func (self Byte) WriteTo(b []byte) int {
     if cap(b) < 1 { panic("buf too small") }
     b[0] = byte(self)
     return 1
 }
 
-func LoadByte(bytes []byte) Byte {
+func ReadByte(bytes []byte) Byte {
     return Byte(bytes[0])
 }
 
@@ -64,13 +64,13 @@ func (self Int8) ByteSize() int {
     return 1
 }
 
-func (self Int8) SaveTo(b []byte) int {
+func (self Int8) WriteTo(b []byte) int {
     if cap(b) < 1 { panic("buf too small") }
     b[0] = byte(self)
     return 1
 }
 
-func LoadInt8(bytes []byte) Int8 {
+func ReadInt8(bytes []byte) Int8 {
     return Int8(bytes[0])
 }
 
@@ -93,13 +93,13 @@ func (self UInt8) ByteSize() int {
     return 1
 }
 
-func (self UInt8) SaveTo(b []byte) int {
+func (self UInt8) WriteTo(b []byte) int {
     if cap(b) < 1 { panic("buf too small") }
     b[0] = byte(self)
     return 1
 }
 
-func LoadUInt8(bytes []byte) UInt8 {
+func ReadUInt8(bytes []byte) UInt8 {
     return UInt8(bytes[0])
 }
 
@@ -122,13 +122,13 @@ func (self Int16) ByteSize() int {
     return 2
 }
 
-func (self Int16) SaveTo(b []byte) int {
+func (self Int16) WriteTo(b []byte) int {
     if cap(b) < 2 { panic("buf too small") }
     binary.LittleEndian.PutUint16(b, uint16(self))
     return 2
 }
 
-func LoadInt16(bytes []byte) Int16 {
+func ReadInt16(bytes []byte) Int16 {
     return Int16(binary.LittleEndian.Uint16(bytes))
 }
 
@@ -151,13 +151,13 @@ func (self UInt16) ByteSize() int {
     return 2
 }
 
-func (self UInt16) SaveTo(b []byte) int {
+func (self UInt16) WriteTo(b []byte) int {
     if cap(b) < 2 { panic("buf too small") }
     binary.LittleEndian.PutUint16(b, uint16(self))
     return 2
 }
 
-func LoadUInt16(bytes []byte) UInt16 {
+func ReadUInt16(bytes []byte) UInt16 {
     return UInt16(binary.LittleEndian.Uint16(bytes))
 }
 
@@ -180,13 +180,13 @@ func (self Int32) ByteSize() int {
     return 4
 }
 
-func (self Int32) SaveTo(b []byte) int {
+func (self Int32) WriteTo(b []byte) int {
     if cap(b) < 4 { panic("buf too small") }
     binary.LittleEndian.PutUint32(b, uint32(self))
     return 4
 }
 
-func LoadInt32(bytes []byte) Int32 {
+func ReadInt32(bytes []byte) Int32 {
     return Int32(binary.LittleEndian.Uint32(bytes))
 }
 
@@ -209,13 +209,13 @@ func (self UInt32) ByteSize() int {
     return 4
 }
 
-func (self UInt32) SaveTo(b []byte) int {
+func (self UInt32) WriteTo(b []byte) int {
     if cap(b) < 4 { panic("buf too small") }
     binary.LittleEndian.PutUint32(b, uint32(self))
     return 4
 }
 
-func LoadUInt32(bytes []byte) UInt32 {
+func ReadUInt32(bytes []byte) UInt32 {
     return UInt32(binary.LittleEndian.Uint32(bytes))
 }
 
@@ -238,13 +238,13 @@ func (self Int64) ByteSize() int {
     return 8
 }
 
-func (self Int64) SaveTo(b []byte) int {
+func (self Int64) WriteTo(b []byte) int {
     if cap(b) < 8 { panic("buf too small") }
     binary.LittleEndian.PutUint64(b, uint64(self))
     return 8
 }
 
-func LoadInt64(bytes []byte) Int64 {
+func ReadInt64(bytes []byte) Int64 {
     return Int64(binary.LittleEndian.Uint64(bytes))
 }
 
@@ -267,13 +267,13 @@ func (self UInt64) ByteSize() int {
     return 8
 }
 
-func (self UInt64) SaveTo(b []byte) int {
+func (self UInt64) WriteTo(b []byte) int {
     if cap(b) < 8 { panic("buf too small") }
     binary.LittleEndian.PutUint64(b, uint64(self))
     return 8
 }
 
-func LoadUInt64(bytes []byte) UInt64 {
+func ReadUInt64(bytes []byte) UInt64 {
     return UInt64(binary.LittleEndian.Uint64(bytes))
 }
 
@@ -296,13 +296,13 @@ func (self Int) ByteSize() int {
     return 8
 }
 
-func (self Int) SaveTo(b []byte) int {
+func (self Int) WriteTo(b []byte) int {
     if cap(b) < 8 { panic("buf too small") }
     binary.LittleEndian.PutUint64(b, uint64(self))
     return 8
 }
 
-func LoadInt(bytes []byte) Int {
+func ReadInt(bytes []byte) Int {
     return Int(binary.LittleEndian.Uint64(bytes))
 }
 
@@ -324,12 +324,12 @@ func (self UInt) ByteSize() int {
     return 8
 }
 
-func (self UInt) SaveTo(b []byte) int {
+func (self UInt) WriteTo(b []byte) int {
     if cap(b) < 8 { panic("buf too small") }
     binary.LittleEndian.PutUint64(b, uint64(self))
     return 8
 }
 
-func LoadUInt(bytes []byte) UInt {
+func ReadUInt(bytes []byte) UInt {
     return UInt(binary.LittleEndian.Uint64(bytes))
 }
