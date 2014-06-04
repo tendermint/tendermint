@@ -1,6 +1,7 @@
 package merkle
 
 import (
+    . "github.com/tendermint/tendermint/binary"
     "testing"
     "fmt"
     "os"

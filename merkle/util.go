@@ -1,9 +1,33 @@
 package merkle
 
 import (
+    . "github.com/tendermint/tendermint/binary"
     "os"
     "fmt"
+    "crypto/sha256"
 )
+
+/*
+Compute a deterministic merkle hash from a list of byteslices.
+*/
+func HashFromBinarySlice(items []Binary) ByteSlice {
+    switch len(items) {
+    case 0:
+        panic("Cannot compute hash of empty slice")
+    case 1:
+        hasher := sha256.New()
+        _, err := items[0].WriteTo(hasher)
+        if err != nil { panic(err) }
+        return ByteSlice(hasher.Sum(nil))
+    default:
+        hasher := sha256.New()
+        _, err := HashFromBinarySlice(items[0:len(items)/2]).WriteTo(hasher)
+        if err != nil { panic(err) }
+        _, err = HashFromBinarySlice(items[len(items)/2:]).WriteTo(hasher)
+        if err != nil { panic(err) }
+        return ByteSlice(hasher.Sum(nil))
+    }
+}
 
 func PrintIAVLNode(node *IAVLNode) {
     fmt.Println("==== NODE")

@@ -1,4 +1,4 @@
-package merkle
+package binary
 
 const (
     TYPE_NIL        = byte(0x00)

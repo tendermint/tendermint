@@ -1,4 +1,4 @@
-package merkle
+package binary
 
 import "io"
 import "bytes"
@@ -12,7 +12,7 @@ func (self String) Equals(other Binary) bool {
     return self == other
 }
 
-func (self String) Less(other Key) bool {
+func (self String) Less(other Binary) bool {
     if o, ok := other.(String); ok {
         return self < o
     } else {
@@ -49,7 +49,7 @@ func (self ByteSlice) Equals(other Binary) bool {
     }
 }
 
-func (self ByteSlice) Less(other Key) bool {
+func (self ByteSlice) Less(other Binary) bool {
     if o, ok := other.(ByteSlice); ok {
         return bytes.Compare(self, o) < 0 // -1 if a < b
     } else {

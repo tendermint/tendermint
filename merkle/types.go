@@ -1,15 +1,9 @@
 package merkle
 
 import (
-    "io"
+    . "github.com/tendermint/tendermint/binary"
     "fmt"
 )
-
-type Binary interface {
-    ByteSize()      int
-    WriteTo(io.Writer) (int64, error)
-    Equals(Binary)  bool
-}
 
 type Value interface {
     Binary
@@ -17,7 +11,7 @@ type Value interface {
 
 type Key interface {
     Binary
-    Less(b Key)     bool
+    Less(b Binary)  bool
 }
 
 type Db interface {

@@ -1,7 +1,7 @@
 package merkle
 
 import (
-    //"fmt"
+    . "github.com/tendermint/tendermint/binary"
     "bytes"
     "io"
     "crypto/sha256"
@@ -195,7 +195,7 @@ func (self *IAVLNode) Hash() (ByteSlice, uint64) {
     }
 
     hasher := sha256.New()
-    _, hashCount, err := self.saveToCountHashes(hasher)
+    _, hashCount, err := self.saveToCountHashes(hasher, false)
     if err != nil { panic(err) }
     self.hash = hasher.Sum(nil)
 
@@ -325,24 +325,26 @@ func (self *IAVLNode) ByteSize() int {
 }
 
 func (self *IAVLNode) WriteTo(w io.Writer) (n int64, err error) {
-    n, _, err = self.saveToCountHashes(w)
+    n, _, err = self.saveToCountHashes(w, true)
     return
 }
 
-func (self *IAVLNode) saveToCountHashes(w io.Writer) (n int64, hashCount uint64, err error) {
+func (self *IAVLNode) saveToCountHashes(w io.Writer, meta bool) (n int64, hashCount uint64, err error) {
     var _n int64
 
-    // height & size
-    _n, err = UInt8(self.height).WriteTo(w)
-    if err != nil { return } else { n += _n }
-    _n, err = UInt64(self.size).WriteTo(w)
-    if err != nil { return } else { n += _n }
+    if meta {
+        // height & size
+        _n, err = UInt8(self.height).WriteTo(w)
+        if err != nil { return } else { n += _n }
+        _n, err = UInt64(self.size).WriteTo(w)
+        if err != nil { return } else { n += _n }
 
-    // key
-    _n, err = Byte(GetBinaryType(self.key)).WriteTo(w)
-    if err != nil { return } else { n += _n }
-    _n, err = self.key.WriteTo(w)
-    if err != nil { return } else { n += _n }
+        // key
+        _n, err = Byte(GetBinaryType(self.key)).WriteTo(w)
+        if err != nil { return } else { n += _n }
+        _n, err = self.key.WriteTo(w)
+        if err != nil { return } else { n += _n }
+    }
 
     if self.height == 0 {
         // value

@@ -1,4 +1,4 @@
-package merkle
+package binary
 
 import (
     "io"
@@ -24,7 +24,7 @@ func (self Byte) Equals(other Binary) bool {
     return self == other
 }
 
-func (self Byte) Less(other Key) bool {
+func (self Byte) Less(other Binary) bool {
     if o, ok := other.(Byte); ok {
         return self < o
     } else {
@@ -52,7 +52,7 @@ func (self Int8) Equals(other Binary) bool {
     return self == other
 }
 
-func (self Int8) Less(other Key) bool {
+func (self Int8) Less(other Binary) bool {
     if o, ok := other.(Int8); ok {
         return self < o
     } else {
@@ -80,7 +80,7 @@ func (self UInt8) Equals(other Binary) bool {
     return self == other
 }
 
-func (self UInt8) Less(other Key) bool {
+func (self UInt8) Less(other Binary) bool {
     if o, ok := other.(UInt8); ok {
         return self < o
     } else {
@@ -108,7 +108,7 @@ func (self Int16) Equals(other Binary) bool {
     return self == other
 }
 
-func (self Int16) Less(other Key) bool {
+func (self Int16) Less(other Binary) bool {
     if o, ok := other.(Int16); ok {
         return self < o
     } else {
@@ -136,7 +136,7 @@ func (self UInt16) Equals(other Binary) bool {
     return self == other
 }
 
-func (self UInt16) Less(other Key) bool {
+func (self UInt16) Less(other Binary) bool {
     if o, ok := other.(UInt16); ok {
         return self < o
     } else {
@@ -164,7 +164,7 @@ func (self Int32) Equals(other Binary) bool {
     return self == other
 }
 
-func (self Int32) Less(other Key) bool {
+func (self Int32) Less(other Binary) bool {
     if o, ok := other.(Int32); ok {
         return self < o
     } else {
@@ -192,7 +192,7 @@ func (self UInt32) Equals(other Binary) bool {
     return self == other
 }
 
-func (self UInt32) Less(other Key) bool {
+func (self UInt32) Less(other Binary) bool {
     if o, ok := other.(UInt32); ok {
         return self < o
     } else {
@@ -220,7 +220,7 @@ func (self Int64) Equals(other Binary) bool {
     return self == other
 }
 
-func (self Int64) Less(other Key) bool {
+func (self Int64) Less(other Binary) bool {
     if o, ok := other.(Int64); ok {
         return self < o
     } else {
@@ -248,7 +248,7 @@ func (self UInt64) Equals(other Binary) bool {
     return self == other
 }
 
-func (self UInt64) Less(other Key) bool {
+func (self UInt64) Less(other Binary) bool {
     if o, ok := other.(UInt64); ok {
         return self < o
     } else {
@@ -276,7 +276,7 @@ func (self Int) Equals(other Binary) bool {
     return self == other
 }
 
-func (self Int) Less(other Key) bool {
+func (self Int) Less(other Binary) bool {
     if o, ok := other.(Int); ok {
         return self < o
     } else {
@@ -303,7 +303,7 @@ func (self UInt) Equals(other Binary) bool {
     return self == other
 }
 
-func (self UInt) Less(other Key) bool {
+func (self UInt) Less(other Binary) bool {
     if o, ok := other.(UInt); ok {
         return self < o
     } else {
