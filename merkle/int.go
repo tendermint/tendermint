@@ -1,6 +1,7 @@
 package merkle
 
 import (
+    "io"
     "encoding/binary"
 )
 
@@ -35,10 +36,9 @@ func (self Byte) ByteSize() int {
     return 1
 }
 
-func (self Byte) WriteTo(b []byte) int {
-    if cap(b) < 1 { panic("buf too small") }
-    b[0] = byte(self)
-    return 1
+func (self Byte) WriteTo(w io.Writer) (int64, error) {
+    n, err := w.Write([]byte{byte(self)})
+    return int64(n), err
 }
 
 func ReadByte(bytes []byte) Byte {
@@ -64,10 +64,9 @@ func (self Int8) ByteSize() int {
     return 1
 }
 
-func (self Int8) WriteTo(b []byte) int {
-    if cap(b) < 1 { panic("buf too small") }
-    b[0] = byte(self)
-    return 1
+func (self Int8) WriteTo(w io.Writer) (int64, error) {
+    n, err := w.Write([]byte{byte(self)})
+    return int64(n), err
 }
 
 func ReadInt8(bytes []byte) Int8 {
@@ -93,10 +92,9 @@ func (self UInt8) ByteSize() int {
     return 1
 }
 
-func (self UInt8) WriteTo(b []byte) int {
-    if cap(b) < 1 { panic("buf too small") }
-    b[0] = byte(self)
-    return 1
+func (self UInt8) WriteTo(w io.Writer) (int64, error) {
+    n, err := w.Write([]byte{byte(self)})
+    return int64(n), err
 }
 
 func ReadUInt8(bytes []byte) UInt8 {
@@ -122,10 +120,9 @@ func (self Int16) ByteSize() int {
     return 2
 }
 
-func (self Int16) WriteTo(b []byte) int {
-    if cap(b) < 2 { panic("buf too small") }
-    binary.LittleEndian.PutUint16(b, uint16(self))
-    return 2
+func (self Int16) WriteTo(w io.Writer) (int64, error) {
+    err := binary.Write(w, binary.LittleEndian, int16(self))
+    return 2, err
 }
 
 func ReadInt16(bytes []byte) Int16 {
@@ -151,10 +148,9 @@ func (self UInt16) ByteSize() int {
     return 2
 }
 
-func (self UInt16) WriteTo(b []byte) int {
-    if cap(b) < 2 { panic("buf too small") }
-    binary.LittleEndian.PutUint16(b, uint16(self))
-    return 2
+func (self UInt16) WriteTo(w io.Writer) (int64, error) {
+    err := binary.Write(w, binary.LittleEndian, uint16(self))
+    return 2, err
 }
 
 func ReadUInt16(bytes []byte) UInt16 {
@@ -180,10 +176,9 @@ func (self Int32) ByteSize() int {
     return 4
 }
 
-func (self Int32) WriteTo(b []byte) int {
-    if cap(b) < 4 { panic("buf too small") }
-    binary.LittleEndian.PutUint32(b, uint32(self))
-    return 4
+func (self Int32) WriteTo(w io.Writer) (int64, error) {
+    err := binary.Write(w, binary.LittleEndian, int32(self))
+    return 4, err
 }
 
 func ReadInt32(bytes []byte) Int32 {
@@ -209,10 +204,9 @@ func (self UInt32) ByteSize() int {
     return 4
 }
 
-func (self UInt32) WriteTo(b []byte) int {
-    if cap(b) < 4 { panic("buf too small") }
-    binary.LittleEndian.PutUint32(b, uint32(self))
-    return 4
+func (self UInt32) WriteTo(w io.Writer) (int64, error) {
+    err := binary.Write(w, binary.LittleEndian, uint32(self))
+    return 4, err
 }
 
 func ReadUInt32(bytes []byte) UInt32 {
@@ -238,10 +232,9 @@ func (self Int64) ByteSize() int {
     return 8
 }
 
-func (self Int64) WriteTo(b []byte) int {
-    if cap(b) < 8 { panic("buf too small") }
-    binary.LittleEndian.PutUint64(b, uint64(self))
-    return 8
+func (self Int64) WriteTo(w io.Writer) (int64, error) {
+    err := binary.Write(w, binary.LittleEndian, int64(self))
+    return 8, err
 }
 
 func ReadInt64(bytes []byte) Int64 {
@@ -267,10 +260,9 @@ func (self UInt64) ByteSize() int {
     return 8
 }
 
-func (self UInt64) WriteTo(b []byte) int {
-    if cap(b) < 8 { panic("buf too small") }
-    binary.LittleEndian.PutUint64(b, uint64(self))
-    return 8
+func (self UInt64) WriteTo(w io.Writer) (int64, error) {
+    err := binary.Write(w, binary.LittleEndian, uint64(self))
+    return 8, err
 }
 
 func ReadUInt64(bytes []byte) UInt64 {
@@ -296,10 +288,9 @@ func (self Int) ByteSize() int {
     return 8
 }
 
-func (self Int) WriteTo(b []byte) int {
-    if cap(b) < 8 { panic("buf too small") }
-    binary.LittleEndian.PutUint64(b, uint64(self))
-    return 8
+func (self Int) WriteTo(w io.Writer) (int64, error) {
+    err := binary.Write(w, binary.LittleEndian, int64(self))
+    return 8, err
 }
 
 func ReadInt(bytes []byte) Int {
@@ -324,10 +315,9 @@ func (self UInt) ByteSize() int {
     return 8
 }
 
-func (self UInt) WriteTo(b []byte) int {
-    if cap(b) < 8 { panic("buf too small") }
-    binary.LittleEndian.PutUint64(b, uint64(self))
-    return 8
+func (self UInt) WriteTo(w io.Writer) (int64, error) {
+    err := binary.Write(w, binary.LittleEndian, uint64(self))
+    return 8, err
 }
 
 func ReadUInt(bytes []byte) UInt {

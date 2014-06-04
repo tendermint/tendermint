@@ -1,8 +1,7 @@
 package merkle
 
-import "testing"
-
 import (
+    "testing"
     "fmt"
     "os"
     "bytes"
@@ -10,6 +9,7 @@ import (
     "encoding/binary"
     "github.com/tendermint/tendermint/db"
     "crypto/sha256"
+    "runtime"
 )
 
 func init() {
@@ -270,6 +270,8 @@ func BenchmarkImmutableAvlTree(b *testing.B) {
     }
 
     fmt.Println("ok, starting")
+
+    runtime.GC()
 
     b.StartTimer()
     for i := 0; i < b.N; i++ {

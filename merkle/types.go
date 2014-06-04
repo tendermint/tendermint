@@ -1,12 +1,13 @@
 package merkle
 
 import (
+    "io"
     "fmt"
 )
 
 type Binary interface {
     ByteSize()      int
-    WriteTo([]byte)  int
+    WriteTo(io.Writer) (int64, error)
     Equals(Binary)  bool
 }
 

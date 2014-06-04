@@ -1,5 +1,6 @@
 package merkle
 
+import "io"
 import "bytes"
 
 type String string
@@ -23,11 +24,12 @@ func (self String) ByteSize() int {
     return len(self)+4
 }
 
-func (self String) WriteTo(buf []byte) int {
-    if len(buf) < self.ByteSize() { panic("buf too small") }
-    UInt32(len(self)).WriteTo(buf)
-    copy(buf[4:], []byte(self))
-    return len(self)+4
+func (self String) WriteTo(w io.Writer) (n int64, err error) {
+    var n_ int
+    _, err = UInt32(len(self)).WriteTo(w)
+    if err != nil { return n, err }
+    n_, err = w.Write([]byte(self))
+    return int64(n_+4), err
 }
 
 // NOTE: keeps a reference to the original byte slice
@@ -59,11 +61,12 @@ func (self ByteSlice) ByteSize() int {
     return len(self)+4
 }
 
-func (self ByteSlice) WriteTo(buf []byte) int {
-    if len(buf) < self.ByteSize() { panic("buf too small") }
-    UInt32(len(self)).WriteTo(buf)
-    copy(buf[4:], self)
-    return len(self)+4
+func (self ByteSlice) WriteTo(w io.Writer) (n int64, err error) {
+    var n_ int
+    _, err = UInt32(len(self)).WriteTo(w)
+    if err != nil { return n, err }
+    n_, err = w.Write([]byte(self))
+    return int64(n_+4), err
 }
 
 // NOTE: keeps a reference to the original byte slice

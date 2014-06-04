@@ -1,6 +1,9 @@
 package merkle
 
 import (
+    //"fmt"
+    "bytes"
+    "io"
     "crypto/sha256"
 )
 
@@ -191,11 +194,9 @@ func (self *IAVLNode) Hash() (ByteSlice, uint64) {
         return self.hash, 0
     }
 
-    size := self.ByteSize()
-    buf := make([]byte, size, size)
     hasher := sha256.New()
-    _, hashCount := self.saveToCountHashes(buf)
-    hasher.Write(buf)
+    _, hashCount, err := self.saveToCountHashes(hasher)
+    if err != nil { panic(err) }
     self.hash = hasher.Sum(nil)
 
     return self.hash, hashCount+1
@@ -217,9 +218,11 @@ func (self *IAVLNode) Save(db Db) {
     }
 
     // save self
-    buf := make([]byte, self.ByteSize(), self.ByteSize())
-    self.WriteTo(buf)
-    db.Put([]byte(self.hash), buf)
+    buf := make([]byte, 0, self.ByteSize())
+    n, err := self.WriteTo(bytes.NewBuffer(buf))
+    if err != nil { panic(err) }
+    if n != int64(cap(buf)) { panic("unexpected write length") }
+    db.Put([]byte(self.hash), buf[0:cap(buf)])
 
     self.flags |= IAVLNODE_FLAG_PERSISTED
 }
@@ -321,43 +324,48 @@ func (self *IAVLNode) ByteSize() int {
     return size
 }
 
-func (self *IAVLNode) WriteTo(buf []byte) int {
-    written, _ := self.saveToCountHashes(buf)
-    return written
+func (self *IAVLNode) WriteTo(w io.Writer) (n int64, err error) {
+    n, _, err = self.saveToCountHashes(w)
+    return
 }
 
-func (self *IAVLNode) saveToCountHashes(buf []byte) (int, uint64) {
-    cur := 0
-    hashCount := uint64(0)
+func (self *IAVLNode) saveToCountHashes(w io.Writer) (n int64, hashCount uint64, err error) {
+    var _n int64
 
     // height & size
-    cur += UInt8(self.height).WriteTo(buf[cur:])
-    cur += UInt64(self.size).WriteTo(buf[cur:])
+    _n, err = UInt8(self.height).WriteTo(w)
+    if err != nil { return } else { n += _n }
+    _n, err = UInt64(self.size).WriteTo(w)
+    if err != nil { return } else { n += _n }
 
     // key
-    buf[cur] = GetBinaryType(self.key)
-    cur += 1
-    cur += self.key.WriteTo(buf[cur:])
+    _n, err = Byte(GetBinaryType(self.key)).WriteTo(w)
+    if err != nil { return } else { n += _n }
+    _n, err = self.key.WriteTo(w)
+    if err != nil { return } else { n += _n }
 
     if self.height == 0 {
         // value
-        buf[cur] = GetBinaryType(self.value)
-        cur += 1
+        _n, err = Byte(GetBinaryType(self.value)).WriteTo(w)
+        if err != nil { return } else { n += _n }
         if self.value != nil {
-            cur += self.value.WriteTo(buf[cur:])
+            _n, err = self.value.WriteTo(w)
+            if err != nil { return } else { n += _n }
         }
     } else {
         // left
         leftHash, leftCount := self.left.Hash()
         hashCount += leftCount
-        cur += leftHash.WriteTo(buf[cur:])
+        _n, err = leftHash.WriteTo(w)
+        if err != nil { return } else { n += _n }
         // right
         rightHash, rightCount := self.right.Hash()
         hashCount += rightCount
-        cur += rightHash.WriteTo(buf[cur:])
+        _n, err = rightHash.WriteTo(w)
+        if err != nil { return } else { n += _n }
     }
 
-    return cur, hashCount
+    return
 }
 
 // Given a placeholder node which has only the hash set,
