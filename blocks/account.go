@@ -31,19 +31,13 @@ func ReadAccountId(r io.Reader) AccountId {
     }
 }
 
-func (self *AccountId) WriteTo(w io.Writer) (n int64, err error) {
-    var n_ int64
-    n_, err = self.Type.WriteTo(w)
-    n += n_; if err != nil { return n, err }
-    if self.Type == ACCOUNT_TYPE_NUMBER ||
-       self.Type == ACCOUNT_TYPE_BOTH {
-        n_, err = self.Number.WriteTo(w)
-        n += n_; if err != nil { return n, err }
+func (self AccountId) WriteTo(w io.Writer) (n int64, err error) {
+    n, err = WriteOnto(self.Type, w, n, err)
+    if self.Type == ACCOUNT_TYPE_NUMBER || self.Type == ACCOUNT_TYPE_BOTH {
+        n, err = WriteOnto(self.Number, w, n, err)
     }
-    if self.Type == ACCOUNT_TYPE_PUBKEY ||
-       self.Type == ACCOUNT_TYPE_BOTH {
-        n_, err = self.PubKey.WriteTo(w)
-        n += n_; if err != nil { return n, err }
+    if self.Type == ACCOUNT_TYPE_PUBKEY || self.Type == ACCOUNT_TYPE_BOTH {
+        n, err = WriteOnto(self.PubKey, w, n, err)
     }
     return
 }

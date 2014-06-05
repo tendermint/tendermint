@@ -54,21 +54,14 @@ func ReadHeader(r io.Reader) Header {
 }
 
 func (self *Header) WriteTo(w io.Writer) (n int64, err error) {
-    var n_ int64
-    n_, err = self.Name.WriteTo(w)
-    n += n_; if err != nil { return n, err }
-    n_, err = self.Height.WriteTo(w)
-    n += n_; if err != nil { return n, err }
-    n_, err = self.Fees.WriteTo(w)
-    n += n_; if err != nil { return n, err }
-    n_, err = self.Time.WriteTo(w)
-    n += n_; if err != nil { return n, err }
-    n_, err = self.PrevHash.WriteTo(w)
-    n += n_; if err != nil { return n, err }
-    n_, err = self.ValidationHash.WriteTo(w)
-    n += n_; if err != nil { return n, err }
-    n_, err = self.DataHash.WriteTo(w)
-    n += n_; return
+    n, err = WriteOnto(self.Name,           w, n, err)
+    n, err = WriteOnto(self.Height,         w, n, err)
+    n, err = WriteOnto(self.Fees,           w, n, err)
+    n, err = WriteOnto(self.Time,           w, n, err)
+    n, err = WriteOnto(self.PrevHash,       w, n, err)
+    n, err = WriteOnto(self.ValidationHash, w, n, err)
+    n, err = WriteOnto(self.DataHash,       w, n, err)
+    return
 }
 
 
@@ -97,18 +90,13 @@ func ReadValidation(r io.Reader) Validation {
 }
 
 func (self *Validation) WriteTo(w io.Writer) (n int64, err error) {
-    var n_ int64
-    n_, err = UInt64(len(self.Signatures)).WriteTo(w)
-    n += n_; if err != nil { return n, err }
-    n_, err = UInt64(len(self.Adjustments)).WriteTo(w)
-    n += n_; if err != nil { return n, err }
+    n, err = WriteOnto(UInt64(len(self.Signatures)),    w, n, err)
+    n, err = WriteOnto(UInt64(len(self.Adjustments)),   w, n, err)
     for _, sig := range self.Signatures {
-        n_, err = sig.WriteTo(w)
-        n += n_; if err != nil { return n, err }
+        n, err = WriteOnto(sig, w, n, err)
     }
     for _, adj := range self.Adjustments {
-        n_, err = adj.WriteTo(w)
-        n += n_; if err != nil { return n, err }
+        n, err = WriteOnto(adj, w, n, err)
     }
     return
 }
@@ -129,12 +117,9 @@ func ReadData(r io.Reader) Data {
 }
 
 func (self *Data) WriteTo(w io.Writer) (n int64, err error) {
-    var n_ int64
-    n_, err = UInt64(len(self.Txs)).WriteTo(w)
-    n += n_; if err != nil { return n, err }
+    n, err = WriteOnto(UInt64(len(self.Txs)), w, n, err)
     for _, tx := range self.Txs {
-        n_, err = tx.WriteTo(w)
-        n += n_; if err != nil { return }
+        n, err = WriteOnto(tx, w, n, err)
     }
     return
 }

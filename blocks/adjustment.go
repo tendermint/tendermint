@@ -73,17 +73,12 @@ func (self *Bond) Type() Byte {
 }
 
 func (self *Bond) WriteTo(w io.Writer) (n int64, err error) {
-    var n_ int64
-    n_, err = self.Type().WriteTo(w)
-    n += n_; if err != nil { return n, err }
-    n_, err = self.Fee.WriteTo(w)
-    n += n_; if err != nil { return n, err }
-    n_, err = self.UnbondTo.WriteTo(w)
-    n += n_; if err != nil { return n, err }
-    n_, err = self.Amount.WriteTo(w)
-    n += n_; if err != nil { return n, err }
-    n_, err = self.Signature.WriteTo(w)
-    n += n_; return
+    n, err = WriteOnto(self.Type(),     w, n, err)
+    n, err = WriteOnto(self.Fee,        w, n, err)
+    n, err = WriteOnto(self.UnbondTo,   w, n, err)
+    n, err = WriteOnto(self.Amount,     w, n, err)
+    n, err = WriteOnto(self.Signature,  w, n, err)
+    return
 }
 
 
@@ -100,15 +95,11 @@ func (self *Unbond) Type() Byte {
 }
 
 func (self *Unbond) WriteTo(w io.Writer) (n int64, err error) {
-    var n_ int64
-    n_, err = self.Type().WriteTo(w)
-    n += n_; if err != nil { return n, err }
-    n_, err = self.Fee.WriteTo(w)
-    n += n_; if err != nil { return n, err }
-    n_, err = self.Amount.WriteTo(w)
-    n += n_; if err != nil { return n, err }
-    n_, err = self.Signature.WriteTo(w)
-    n += n_; return
+    n, err = WriteOnto(self.Type(),     w, n, err)
+    n, err = WriteOnto(self.Fee,        w, n, err)
+    n, err = WriteOnto(self.Amount,     w, n, err)
+    n, err = WriteOnto(self.Signature,  w, n, err)
+    return
 }
 
 
@@ -124,13 +115,10 @@ func (self *Timeout) Type() Byte {
 }
 
 func (self *Timeout) WriteTo(w io.Writer) (n int64, err error) {
-    var n_ int64
-    n_, err = self.Type().WriteTo(w)
-    n += n_; if err != nil { return n, err }
-    n_, err = self.Account.WriteTo(w)
-    n += n_; if err != nil { return n, err }
-    n_, err = self.Penalty.WriteTo(w)
-    n += n_; return
+    n, err = WriteOnto(self.Type(),     w, n, err)
+    n, err = WriteOnto(self.Account,    w, n, err)
+    n, err = WriteOnto(self.Penalty,    w, n, err)
+    return
 }
 
 
@@ -146,9 +134,7 @@ func (self *Dupeout) Type() Byte {
 }
 
 func (self *Dupeout) WriteTo(w io.Writer) (n int64, err error) {
-    var n_ int64
-    n_, err = self.VoteA.WriteTo(w)
-    n += n_; if err != nil { return n, err }
-    n_, err = self.VoteB.WriteTo(w)
-    n += n_; return
+    n, err = WriteOnto(self.VoteA,  w, n, err)
+    n, err = WriteOnto(self.VoteB,  w, n, err)
+    return
 }

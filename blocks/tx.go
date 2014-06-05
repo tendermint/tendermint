@@ -66,17 +66,12 @@ func (self *SendTx) Type() Byte {
 }
 
 func (self *SendTx) WriteTo(w io.Writer) (n int64, err error) {
-    var n_ int64
-    n_, err = self.Type().WriteTo(w)
-    n += n_; if err != nil { return n, err }
-    n_, err = self.Fee.WriteTo(w)
-    n += n_; if err != nil { return n, err }
-    n_, err = self.To.WriteTo(w)
-    n += n_; if err != nil { return n, err }
-    n_, err = self.Amount.WriteTo(w)
-    n += n_; if err != nil { return n, err }
-    n_, err = self.Signature.WriteTo(w)
-    n += n_; return
+    n, err = WriteOnto(self.Type(),     w, n, err)
+    n, err = WriteOnto(self.Fee,        w, n, err)
+    n, err = WriteOnto(self.To,         w, n, err)
+    n, err = WriteOnto(self.Amount,     w, n, err)
+    n, err = WriteOnto(self.Signature,  w, n, err)
+    return
 }
 
 
@@ -94,15 +89,10 @@ func (self *NameTx) Type() Byte {
 }
 
 func (self *NameTx) WriteTo(w io.Writer) (n int64, err error) {
-    var n_ int64
-    n_, err = self.Type().WriteTo(w)
-    n += n_; if err != nil { return n, err }
-    n_, err = self.Fee.WriteTo(w)
-    n += n_; if err != nil { return n, err }
-    n_, err = self.Name.WriteTo(w)
-    n += n_; if err != nil { return n, err }
-    n_, err = self.PubKey.WriteTo(w)
-    n += n_; if err != nil { return n, err }
-    n_, err = self.Signature.WriteTo(w)
-    n += n_; return
+    n, err = WriteOnto(self.Type(),     w, n, err)
+    n, err = WriteOnto(self.Fee,        w, n, err)
+    n, err = WriteOnto(self.Name,       w, n, err)
+    n, err = WriteOnto(self.PubKey,     w, n, err)
+    n, err = WriteOnto(self.Signature,  w, n, err)
+    return
 }

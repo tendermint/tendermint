@@ -30,12 +30,10 @@ func ReadSignature(r io.Reader) Signature {
     }
 }
 
-func (self *Signature) WriteTo(w io.Writer) (n int64, err error) {
-    var n_ int64
-    n_, err = self.Signer.WriteTo(w)
-    n += n_; if err != nil { return n, err }
-    n_, err = self.SigBytes.WriteTo(w)
-    n += n_; return
+func (self Signature) WriteTo(w io.Writer) (n int64, err error) {
+    n, err = WriteOnto(self.Signer,     w, n, err)
+    n, err = WriteOnto(self.SigBytes,   w, n, err)
+    return
 }
 
 func (self *Signature) Verify(msg ByteSlice) bool {

@@ -24,7 +24,7 @@ func ReadVote(r io.Reader) Vote {
     }
 }
 
-func (self *Vote) WriteTo(w io.Writer) (n int64, err error) {
+func (self Vote) WriteTo(w io.Writer) (n int64, err error) {
     var n_ int64
     n_, err = self.Height.WriteTo(w)
     n += n_; if err != nil { return n, err }
