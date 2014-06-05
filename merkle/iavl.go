@@ -134,14 +134,6 @@ func (self *IAVLNode) Copy() *IAVLNode {
     }
 }
 
-func (self *IAVLNode) Equals(other Binary) bool {
-    if o, ok := other.(*IAVLNode); ok {
-        return self.hash.Equals(o.hash)
-    } else {
-        return false
-    }
-}
-
 func (self *IAVLNode) Key() Key {
     return self.key
 }
@@ -218,11 +210,10 @@ func (self *IAVLNode) Save(db Db) {
     }
 
     // save self
-    buf := make([]byte, 0, self.ByteSize())
-    n, err := self.WriteTo(bytes.NewBuffer(buf))
+    buf := bytes.NewBuffer(nil)
+    _, err := self.WriteTo(buf)
     if err != nil { panic(err) }
-    if n != int64(cap(buf)) { panic("unexpected write length") }
-    db.Put([]byte(self.hash), buf[0:cap(buf)])
+    db.Put([]byte(self.hash), buf.Bytes())
 
     self.flags |= IAVLNODE_FLAG_PERSISTED
 }
@@ -303,27 +294,6 @@ func (self *IAVLNode) remove(db Db, key Key) (newSelf *IAVLNode, newKey Key, val
     }
 }
 
-func (self *IAVLNode) ByteSize() int {
-    // 1 byte node height
-    // 8 bytes node size
-    size := 9
-    // key
-    size += 1 // type info
-    size += self.key.ByteSize()
-    if self.height == 0 {
-        // value
-        size += 1 // type info
-        if self.value != nil {
-            size += self.value.ByteSize()
-        }
-    } else {
-        // children
-        size += HASH_BYTE_SIZE
-        size += HASH_BYTE_SIZE
-    }
-    return size
-}
-
 func (self *IAVLNode) WriteTo(w io.Writer) (n int64, err error) {
     n, _, err = self.saveToCountHashes(w, true)
     return
@@ -378,33 +348,33 @@ func (self *IAVLNode) fill(db Db) {
         panic("placeholder.hash can't be nil")
     }
     buf := db.Get(self.hash)
-    cur := 0
+    r := bytes.NewReader(buf)
     // node header
-    self.height = uint8(ReadUInt8(buf[0:]))
-    self.size = uint64(ReadUInt64(buf[1:]))
+    self.height = uint8(ReadUInt8(r))
+    self.size = uint64(ReadUInt64(r))
     // key
-    key, cur := ReadBinary(buf, 9)
+    key := ReadBinary(r)
     self.key = key.(Key)
 
     if self.height == 0 {
         // value
-        self.value, cur = ReadBinary(buf, cur)
+        self.value = ReadBinary(r)
     } else {
         // left
         var leftHash ByteSlice
-        leftHash, cur = ReadByteSlice(buf, cur)
+        leftHash = ReadByteSlice(r)
         self.left = &IAVLNode{
             hash:   leftHash,
             flags:  IAVLNODE_FLAG_PERSISTED | IAVLNODE_FLAG_PLACEHOLDER,
         }
         // right
         var rightHash ByteSlice
-        rightHash, cur = ReadByteSlice(buf, cur)
+        rightHash = ReadByteSlice(r)
         self.right = &IAVLNode{
             hash:   rightHash,
             flags:  IAVLNODE_FLAG_PERSISTED | IAVLNODE_FLAG_PLACEHOLDER,
         }
-        if cur != len(buf) {
+        if r.Len() != 0 {
             panic("buf not all consumed")
         }
     }

@@ -32,10 +32,12 @@ func (self String) WriteTo(w io.Writer) (n int64, err error) {
     return int64(n_+4), err
 }
 
-// NOTE: keeps a reference to the original byte slice
-func ReadString(bytes []byte, start int) (String, int) {
-    length := int(ReadUInt32(bytes[start:]))
-    return String(bytes[start+4:start+4+length]), start+4+length
+func ReadString(r io.Reader) String {
+    length := int(ReadUInt32(r))
+    bytes := make([]byte, length)
+    _, err := io.ReadFull(r, bytes)
+    if err != nil { panic(err) }
+    return String(bytes)
 }
 
 
@@ -69,8 +71,10 @@ func (self ByteSlice) WriteTo(w io.Writer) (n int64, err error) {
     return int64(n_+4), err
 }
 
-// NOTE: keeps a reference to the original byte slice
-func ReadByteSlice(bytes []byte, start int) (ByteSlice, int) {
-    length := int(ReadUInt32(bytes[start:]))
-    return ByteSlice(bytes[start+4:start+4+length]), start+4+length
+func ReadByteSlice(r io.Reader) ByteSlice {
+    length := int(ReadUInt32(r))
+    bytes := make([]byte, length)
+    _, err := io.ReadFull(r, bytes)
+    if err != nil { panic(err) }
+    return ByteSlice(bytes)
 }

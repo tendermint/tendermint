@@ -11,6 +11,7 @@ type Value interface {
 
 type Key interface {
     Binary
+    Equals(Binary)  bool
     Less(b Binary)  bool
 }
 

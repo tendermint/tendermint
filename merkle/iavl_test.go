@@ -233,7 +233,7 @@ func TestPersistence(t *testing.T) {
     t2 := NewIAVLTreeFromHash(db, hash)
     for key, value := range records {
         t2value := t2.Get(key)
-        if !t2value.Equals(value) {
+        if !BinaryEqual(t2value, value) {
             t.Fatalf("Invalid value. Expected %v, got %v", value, t2value)
         }
     }
