@@ -24,21 +24,48 @@ const (
     ADJ_TYPE_BOND =      Byte(0x01)
     ADJ_TYPE_UNBOND =    Byte(0x02)
     ADJ_TYPE_TIMEOUT =   Byte(0x03)
-    ADJ_TYPE_GUILTOUT =  Byte(0x04)
+    ADJ_TYPE_DUPEOUT =   Byte(0x04)
 )
 
 func ReadAdjustment(r io.Reader) Adjustment {
-    return nil
+    switch t := ReadByte(r); t {
+    case ADJ_TYPE_BOND:
+        return &Bond{
+            Fee:        ReadUInt64(r),
+            UnbondTo:   ReadAccountId(r),
+            Amount:     ReadUInt64(r),
+            Signature:  ReadSignature(r),
+        }
+    case ADJ_TYPE_UNBOND:
+        return &Unbond{
+            Fee:        ReadUInt64(r),
+            Amount:     ReadUInt64(r),
+            Signature:  ReadSignature(r),
+        }
+    case ADJ_TYPE_TIMEOUT:
+        return &Timeout{
+            Account:    ReadAccountId(r),
+            Penalty:    ReadUInt64(r),
+        }
+    case ADJ_TYPE_DUPEOUT:
+        return &Dupeout{
+            VoteA:      ReadVote(r),
+            VoteB:      ReadVote(r),
+        }
+    default:
+        panicf("Unknown Adjustment type %x", t)
+        return nil
+    }
 }
 
 
 /* Bond < Adjustment */
 
 type Bond struct {
-    Signature
     Fee             UInt64
     UnbondTo        AccountId
     Amount          UInt64
+    Signature
 }
 
 func (self *Bond) Type() Byte {
@@ -49,13 +76,13 @@ func (self *Bond) WriteTo(w io.Writer) (n int64, err error) {
     var n_ int64
     n_, err = self.Type().WriteTo(w)
     n += n_; if err != nil { return n, err }
-    n_, err = self.Signature.WriteTo(w)
-    n += n_; if err != nil { return n, err }
     n_, err = self.Fee.WriteTo(w)
     n += n_; if err != nil { return n, err }
     n_, err = self.UnbondTo.WriteTo(w)
     n += n_; if err != nil { return n, err }
     n_, err = self.Amount.WriteTo(w)
+    n += n_; if err != nil { return n, err }
+    n_, err = self.Signature.WriteTo(w)
     n += n_; return
 }
 
@@ -63,9 +90,9 @@ func (self *Bond) WriteTo(w io.Writer) (n int64, err error) {
 /* Unbond < Adjustment */
 
 type Unbond struct {
-    Signature
     Fee             UInt64
     Amount          UInt64
+    Signature
 }
 
 func (self *Unbond) Type() Byte {
@@ -76,11 +103,11 @@ func (self *Unbond) WriteTo(w io.Writer) (n int64, err error) {
     var n_ int64
     n_, err = self.Type().WriteTo(w)
     n += n_; if err != nil { return n, err }
-    n_, err = self.Signature.WriteTo(w)
-    n += n_; if err != nil { return n, err }
     n_, err = self.Fee.WriteTo(w)
     n += n_; if err != nil { return n, err }
     n_, err = self.Amount.WriteTo(w)
+    n += n_; if err != nil { return n, err }
+    n_, err = self.Signature.WriteTo(w)
     n += n_; return
 }
 
@@ -120,10 +147,8 @@ func (self *Dupeout) Type() Byte {
 
 func (self *Dupeout) WriteTo(w io.Writer) (n int64, err error) {
     var n_ int64
-    n_, err = self.Type().WriteTo(w)
+    n_, err = self.VoteA.WriteTo(w)
     n += n_; if err != nil { return n, err }
-    n_, err = self.Account.WriteTo(w)
-    n += n_; if err != nil { return n, err }
-    n_, err = self.Penalty.WriteTo(w)
+    n_, err = self.VoteB.WriteTo(w)
     n += n_; return
 }

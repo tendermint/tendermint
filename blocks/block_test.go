@@ -3,7 +3,6 @@ package blocks
 import (
     . "github.com/tendermint/tendermint/binary"
     "testing"
-    "bytes"
     "fmt"
     "math/rand"
 )
@@ -26,7 +25,6 @@ func randBytes(n int) ByteSlice {
 }
 
 func TestBlock(t *testing.T) {
-    var block = NewBlock()
 
     sendTx := &SendTx{
         Signature:  Signature{AccountNumber(randVar()), randBytes(32)},
@@ -35,6 +33,7 @@ func TestBlock(t *testing.T) {
         Amount:     randVar(),
     }
 
+    /*
     bondTx := &BondTx{
         Signature:  Signature{AccountNumber(randVar()), randBytes(32)},
         Fee:        randVar(),
@@ -47,6 +46,7 @@ func TestBlock(t *testing.T) {
         Fee:        randVar(),
         Amount:     randVar(),
     }
+    */
 
     nameTx := &NameTx{
         Signature:  Signature{AccountNumber(randVar()), randBytes(32)},
@@ -55,13 +55,9 @@ func TestBlock(t *testing.T) {
         PubKey:     randBytes(32),
     }
 
-    block.AddTx(sendTx)
-    block.AddTx(bondTx)
-    block.AddTx(unbondTx)
-    block.AddTx(nameTx)
+    txs := []Tx{}
+    txs = append(txs, sendTx)
+    txs = append(txs, nameTx)
 
-    blockBytes := block.Bytes()
-
-    fmt.Println(buf.Bytes(), len(buf.Bytes()))
-
+    fmt.Println(txs)
 }

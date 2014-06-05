@@ -23,16 +23,10 @@ type Signature struct {
     SigBytes        ByteSlice
 }
 
-func ReadSignature(r io.Reader) *Signature {
-    return nil
-}
-
-func (self *Signature) Equals(other Binary) bool {
-    if o, ok := other.(*Signature); ok {
-        return self.Signer.Equals(o.Signer) &&
-               self.SigBytes.Equals(o.SigBytes)
-    } else {
-        return false
+func ReadSignature(r io.Reader) Signature {
+    return Signature{
+        Signer:     ReadAccountId(r),
+        SigBytes:   ReadByteSlice(r),
     }
 }
 
