@@ -28,6 +28,13 @@ func (self *Block) Validate() bool {
     return false
 }
 
+func (self *Block) WriteTo(w io.Writer) (n int64, err error) {
+    n, err = WriteOnto(&self.Header,        w, n, err)
+    n, err = WriteOnto(&self.Validation,    w, n, err)
+    n, err = WriteOnto(&self.Data,          w, n, err)
+    return
+}
+
 
 /* Block > Header */
 
