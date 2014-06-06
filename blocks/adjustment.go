@@ -134,6 +134,7 @@ func (self *Dupeout) Type() Byte {
 }
 
 func (self *Dupeout) WriteTo(w io.Writer) (n int64, err error) {
+    n, err = WriteOnto(self.Type(), w, n, err)
     n, err = WriteOnto(self.VoteA,  w, n, err)
     n, err = WriteOnto(self.VoteB,  w, n, err)
     return

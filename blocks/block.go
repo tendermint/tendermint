@@ -87,7 +87,7 @@ func ReadValidation(r io.Reader) Validation {
         sigs = append(sigs, ReadSignature(r))
     }
     adjs := make([]Adjustment, 0, numAdjs)
-    for i:=0; i<numSigs; i++ {
+    for i:=0; i<numAdjs; i++ {
         adjs = append(adjs, ReadAdjustment(r))
     }
     return Validation{

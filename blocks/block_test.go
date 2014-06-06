@@ -24,25 +24,62 @@ func randBytes(n int) ByteSlice {
     return bs
 }
 
+func randSig() Signature {
+    return Signature{AccountNumber(randVar()), randBytes(32)}
+}
+
 func TestBlock(t *testing.T) {
 
+    // Txs
+
     sendTx := &SendTx{
-        Signature:  Signature{AccountNumber(randVar()), randBytes(32)},
+        Signature:  randSig(),
         Fee:        randVar(),
         To:         AccountNumber(randVar()),
         Amount:     randVar(),
     }
 
     nameTx := &NameTx{
-        Signature:  Signature{AccountNumber(randVar()), randBytes(32)},
+        Signature:  randSig(),
         Fee:        randVar(),
         Name:       String(randBytes(12)),
         PubKey:     randBytes(32),
     }
 
-    txs := []Tx{}
-    txs = append(txs, sendTx)
-    txs = append(txs, nameTx)
+    // Adjs
+
+    bond := &Bond{
+        Signature:  randSig(),
+        Fee:        randVar(),
+        UnbondTo:   AccountNumber(randVar()),
+        Amount:     randVar(),
+    }
+
+    unbond := &Unbond{
+        Signature:  randSig(),
+        Fee:        randVar(),
+        Amount:     randVar(),
+    }
+
+    timeout := &Timeout{
+        Account:    AccountNumber(randVar()),
+        Penalty:    randVar(),
+    }
+
+    dupeout := &Dupeout{
+        VoteA:  Vote{
+                    Height:     randVar(),
+                    BlockHash:  randBytes(32),
+                    Signature:  randSig(),
+                },
+        VoteB:  Vote{
+                    Height:     randVar(),
+                    BlockHash:  randBytes(32),
+                    Signature:  randSig(),
+                },
+    }
+
+    // Block
 
     block := &Block{
         Header{
@@ -55,11 +92,16 @@ func TestBlock(t *testing.T) {
             DataHash:   randBytes(32),
         },
         Validation{
-            Signatures:nil,
-            Adjustments:nil,
+            Signatures: []Signature{randSig(),randSig()},
+            Adjustments:[]Adjustment{bond,unbond,timeout,dupeout},
         },
-        Data{txs},
+        Data{
+            Txs:        []Tx{sendTx, nameTx},
+        },
     }
+
+    // Write the block, read it in again, write it again.
+    // Then, compare.
 
     blockBytes := BinaryBytes(block)
     block2 := ReadBlock(bytes.NewReader(blockBytes))
@@ -69,19 +111,3 @@ func TestBlock(t *testing.T) {
         t.Fatal("Write->Read of block failed.")
     }
 }
-
-    /*
-    bondTx := &BondTx{
-        Signature:  Signature{AccountNumber(randVar()), randBytes(32)},
-        Fee:        randVar(),
-        UnbondTo:   AccountNumber(randVar()),
-        Amount:     randVar(),
-    }
-
-    unbondTx := &UnbondTx{
-        Signature:  Signature{AccountNumber(randVar()), randBytes(32)},
-        Fee:        randVar(),
-        Amount:     randVar(),
-    }
-    */
-

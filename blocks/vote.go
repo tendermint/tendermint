@@ -25,11 +25,8 @@ func ReadVote(r io.Reader) Vote {
 }
 
 func (self Vote) WriteTo(w io.Writer) (n int64, err error) {
-    var n_ int64
-    n_, err = self.Height.WriteTo(w)
-    n += n_; if err != nil { return n, err }
-    n_, err = self.BlockHash.WriteTo(w)
-    n += n_; if err != nil { return n, err }
-    n_, err = self.Signature.WriteTo(w)
-    n += n_; return
+    n, err = WriteOnto(self.Height,     w, n, err)
+    n, err = WriteOnto(self.BlockHash,  w, n, err)
+    n, err = WriteOnto(self.Signature,  w, n, err)
+    return
 }
