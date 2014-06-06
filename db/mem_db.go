@@ -1,7 +1,7 @@
 package db
 
 import (
-	"fmt"
+    "fmt"
 )
 
 type MemDB struct {
@@ -9,8 +9,8 @@ type MemDB struct {
 }
 
 func NewMemDB() (*MemDB) {
-	database := &MemDB{db:make(map[string][]byte)}
-	return database
+    database := &MemDB{db:make(map[string][]byte)}
+    return database
 }
 
 func (db *MemDB) Put(key []byte, value []byte) {
@@ -22,11 +22,11 @@ func (db *MemDB) Get(key []byte) ([]byte) {
 }
 
 func (db *MemDB) Delete(key []byte) {
-	delete(db.db, string(key))
+    delete(db.db, string(key))
 }
 
 func (db *MemDB) Print() {
-	for key, value := range db.db {
-		fmt.Printf("[%x]:\t[%x]", []byte(key), value)
-	}
+    for key, value := range db.db {
+        fmt.Printf("[%x]:\t[%x]", []byte(key), value)
+    }
 }
