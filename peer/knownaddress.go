@@ -3,6 +3,7 @@ package peer
 import (
     . "github.com/tendermint/tendermint/binary"
     "time"
+    "io"
 )
 
 /*
@@ -29,6 +30,29 @@ func NewKnownAddress(addr *NetAddress, src *NetAddress) *KnownAddress {
         LastAttempt:    UInt64(time.Now().Unix()),
         Attempts:       0,
     }
+}
+
+func ReadKnownAddress(r io.Reader) *KnownAddress {
+    return &KnownAddress{
+        Addr:           ReadNetAddress(r),
+        Src:            ReadNetAddress(r),
+        Attempts:       ReadUInt32(r),
+        LastAttempt:    ReadUInt64(r),
+        LastSuccess:    ReadUInt64(r),
+        NewRefs:        ReadUInt16(r),
+        OldBucket:      ReadInt16(r),
+    }
+}
+
+func (ka *KnownAddress) WriteTo(w io.Writer) (n int64, err error) {
+    n, err = WriteOnto(ka.Addr,             w, n, err)
+    n, err = WriteOnto(ka.Src,              w, n, err)
+    n, err = WriteOnto(ka.Attempts,         w, n, err)
+    n, err = WriteOnto(ka.LastAttempt,      w, n, err)
+    n, err = WriteOnto(ka.LastSuccess,      w, n, err)
+    n, err = WriteOnto(ka.NewRefs,          w, n, err)
+    n, err = WriteOnto(ka.OldBucket,        w, n, err)
+    return
 }
 
 func (ka *KnownAddress) MarkAttempt(success bool) {
