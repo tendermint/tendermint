@@ -40,7 +40,9 @@ type Tree interface {
     Save()
     Put(Key, Value) bool
     Remove(Key)     (Value, error)
+    Copy()          Tree
     Traverse(func(Node)bool)
+    Values()        <-chan Value
 }
 
 func NotFound(key Key) error {

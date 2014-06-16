@@ -1,3 +1,9 @@
+/*
+This tree is not concurrency safe.
+If you want to use it from multiple goroutines, you need to wrap all calls to *IAVLTree
+with a mutex.
+*/
+
 package merkle
 
 import (
@@ -29,65 +35,81 @@ func NewIAVLTreeFromHash(db Db, hash ByteSlice) *IAVLTree {
     return &IAVLTree{db:db, root:root}
 }
 
-func (self *IAVLTree) Root() Node {
-    return self.root
+func (t *IAVLTree) Root() Node {
+    return t.root
 }
 
-func (self *IAVLTree) Size() uint64 {
-    if self.root == nil { return 0 }
-    return self.root.Size()
+func (t *IAVLTree) Size() uint64 {
+    if t.root == nil { return 0 }
+    return t.root.Size()
 }
 
-func (self *IAVLTree) Height() uint8 {
-    if self.root == nil { return 0 }
-    return self.root.Height()
+func (t *IAVLTree) Height() uint8 {
+    if t.root == nil { return 0 }
+    return t.root.Height()
 }
 
-func (self *IAVLTree) Has(key Key) bool {
-    if self.root == nil { return false }
-    return self.root.has(self.db, key)
+func (t *IAVLTree) Has(key Key) bool {
+    if t.root == nil { return false }
+    return t.root.has(t.db, key)
 }
 
-func (self *IAVLTree) Put(key Key, value Value) (updated bool) {
-    if self.root == nil {
-        self.root = NewIAVLNode(key, value)
+func (t *IAVLTree) Put(key Key, value Value) (updated bool) {
+    if t.root == nil {
+        t.root = NewIAVLNode(key, value)
         return false
     }
-    self.root, updated = self.root.put(self.db, key, value)
+    t.root, updated = t.root.put(t.db, key, value)
     return updated
 }
 
-func (self *IAVLTree) Hash() (ByteSlice, uint64) {
-    if self.root == nil { return nil, 0 }
-    return self.root.Hash()
+func (t *IAVLTree) Hash() (ByteSlice, uint64) {
+    if t.root == nil { return nil, 0 }
+    return t.root.Hash()
 }
 
-func (self *IAVLTree) Save() {
-    if self.root == nil { return }
-    if self.root.hash == nil {
-        self.root.Hash()
+func (t *IAVLTree) Save() {
+    if t.root == nil { return }
+    if t.root.hash == nil {
+        t.root.Hash()
     }
-    self.root.Save(self.db)
+    t.root.Save(t.db)
 }
 
-func (self *IAVLTree) Get(key Key) (value Value) {
-    if self.root == nil { return nil }
-    return self.root.get(self.db, key)
+func (t *IAVLTree) Get(key Key) (value Value) {
+    if t.root == nil { return nil }
+    return t.root.get(t.db, key)
 }
 
-func (self *IAVLTree) Remove(key Key) (value Value, err error) {
-    if self.root == nil { return nil, NotFound(key) }
-    newRoot, _, value, err := self.root.remove(self.db, key)
+func (t *IAVLTree) Remove(key Key) (value Value, err error) {
+    if t.root == nil { return nil, NotFound(key) }
+    newRoot, _, value, err := t.root.remove(t.db, key)
     if err != nil {
         return nil, err
     }
-    self.root = newRoot
+    t.root = newRoot
     return value, nil
 }
 
-func (self *IAVLTree) Traverse(cb func(Node) bool) {
-    if self.root == nil { return }
-    self.root.traverse(self.db, cb)
+func (t *IAVLTree) Copy() Tree {
+    return &IAVLTree{db:t.db, root:t.root}
+}
+
+func (t *IAVLTree) Traverse(cb func(Node) bool) {
+    if t.root == nil { return }
+    t.root.traverse(t.db, cb)
+}
+
+func (t *IAVLTree) Values() <-chan Value {
+    root := t.root
+    ch := make(chan Value)
+    go func() {
+        root.traverse(func(n Node) {
+            if n.Height() == 0 { ch <- n.Value() }
+        })
+        close(ch)
+    }
+    return ch
 }
 
 
