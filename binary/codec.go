@@ -18,6 +18,8 @@ const (
 
     TYPE_STRING     = Byte(0x10)
     TYPE_BYTESLICE  = Byte(0x11)
+
+    TYPE_TIME       = Byte(0x20)
 )
 
 func GetBinaryType(o Binary) Byte {
@@ -37,6 +39,8 @@ func GetBinaryType(o Binary) Byte {
 
     case String:    return TYPE_STRING
     case ByteSlice: return TYPE_BYTESLICE
+
+    case Time:      return TYPE_TIME
 
     default:        panic("Unsupported type")
     }
@@ -58,6 +62,8 @@ func ReadBinary(r io.Reader) Binary {
 
     case TYPE_STRING:   return ReadString(r)
     case TYPE_BYTESLICE:return ReadByteSlice(r)
+
+    case TYPE_TIME:     return ReadTime(r)
 
     default:            panic("Unsupported type")
     }
