@@ -1,6 +1,7 @@
 package blocks
 
 import (
+    . "github.com/tendermint/tendermint/common"
     . "github.com/tendermint/tendermint/binary"
     "io"
 )

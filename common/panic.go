@@ -1,4 +1,4 @@
-package blocks
+package common
 
 import (
     "fmt"
