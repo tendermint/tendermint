@@ -4,4 +4,4 @@ import (
 	"github.com/tendermint/btclog"
 )
 
-var amgrLog    = btclog.Disabled
+var log = btclog.Disabled

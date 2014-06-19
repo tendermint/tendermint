@@ -20,8 +20,10 @@ import (
     "fmt"
 )
 
-/* AddrManager - concurrency safe peer address manager */
-type AddrManager struct {
+/* AddrBook - concurrency safe peer address manager */
+type AddrBook struct {
+    filePath        string
+
     mtx             sync.Mutex
     rand            *rand.Rand
     key             [32]byte
@@ -34,8 +36,9 @@ type AddrManager struct {
     quit            chan struct{}
     nOld            int
     nNew            int
+
+    lamtx           sync.Mutex
     localAddresses  map[string]*localAddress
-    filePath        string
 }
 
 const (
@@ -91,8 +94,8 @@ const (
 )
 
 // Use Start to begin processing asynchronous address updates.
-func NewAddrManager(filePath string) *AddrManager {
-    am := AddrManager{
+func NewAddrBook(filePath string) *AddrBook {
+    am := AddrBook{
         rand:           rand.New(rand.NewSource(time.Now().UnixNano())),
         quit:           make(chan struct{}),
         localAddresses: make(map[string]*localAddress),
@@ -103,7 +106,7 @@ func NewAddrManager(filePath string) *AddrManager {
 }
 
 // When modifying this, don't forget to update loadFromFile()
-func (a *AddrManager) init() {
+func (a *AddrBook) init() {
     a.addrIndex = make(map[string]*KnownAddress)
     io.ReadFull(crand.Reader, a.key[:])
     for i := range a.addrNew {
@@ -114,37 +117,37 @@ func (a *AddrManager) init() {
     }
 }
 
-func (a *AddrManager) Start() {
+func (a *AddrBook) Start() {
     if atomic.AddInt32(&a.started, 1) != 1 { return }
-    amgrLog.Trace("Starting address manager")
+    log.Trace("Starting address manager")
     a.loadFromFile(a.filePath)
     a.wg.Add(1)
     go a.addressHandler()
 }
 
-func (a *AddrManager) Stop() {
+func (a *AddrBook) Stop() {
     if atomic.AddInt32(&a.shutdown, 1) != 1 { return }
-    amgrLog.Infof("Address manager shutting down")
+    log.Infof("Address manager shutting down")
     close(a.quit)
     a.wg.Wait()
 }
 
-func (a *AddrManager) AddAddress(addr *NetAddress, src *NetAddress) {
+func (a *AddrBook) AddAddress(addr *NetAddress, src *NetAddress) {
 	a.mtx.Lock(); defer a.mtx.Unlock()
     a.addAddress(addr, src)
 }
 
-func (a *AddrManager) NeedMoreAddresses() bool {
+func (a *AddrBook) NeedMoreAddresses() bool {
     return a.NumAddresses() < needAddressThreshold
 }
 
-func (a *AddrManager) NumAddresses() int {
+func (a *AddrBook) NumAddresses() int {
 	a.mtx.Lock(); defer a.mtx.Unlock()
     return a.nOld + a.nNew
 }
 
 // Pick a new address to connect to.
-func (a *AddrManager) PickAddress(class string, newBias int) *KnownAddress {
+func (a *AddrBook) PickAddress(class string, newBias int) *KnownAddress {
 	a.mtx.Lock(); defer a.mtx.Unlock()
 
     if a.nOld == 0 && a.nNew == 0 { return nil }
@@ -182,20 +185,26 @@ func (a *AddrManager) PickAddress(class string, newBias int) *KnownAddress {
     return nil
 }
 
-func (a *AddrManager) MarkGood(ka *KnownAddress) {
+func (a *AddrBook) MarkGood(addr *NetAddress) {
 	a.mtx.Lock(); defer a.mtx.Unlock()
+    ka := a.addrIndex[addr.String()]
+    if ka == nil { return }
     ka.MarkAttempt(true)
-    a.moveToOld(ka)
+    if ka.OldBucket == -1 {
+        a.moveToOld(ka)
+    }
 }
 
-func (a *AddrManager) MarkBad(ka *KnownAddress) {
+func (a *AddrBook) MarkAttempt(addr *NetAddress) {
 	a.mtx.Lock(); defer a.mtx.Unlock()
+    ka := a.addrIndex[addr.String()]
+    if ka == nil { return }
     ka.MarkAttempt(false)
 }
 
 /* Loading & Saving */
 
-type addrManagerJSON struct {
+type addrBookJSON struct {
     Key             [32]byte
     AddrNew         [newBucketCount]map[string]*KnownAddress
     AddrOld         [oldBucketCount][]*KnownAddress
@@ -203,8 +212,8 @@ type addrManagerJSON struct {
     NNew            int
 }
 
-func (a *AddrManager) saveToFile(filePath string) {
-    aJSON := &addrManagerJSON{
+func (a *AddrBook) saveToFile(filePath string) {
+    aJSON := &addrBookJSON{
         Key:        a.key,
         AddrNew:    a.addrNew,
         AddrOld:    a.addrOld,
@@ -214,7 +223,7 @@ func (a *AddrManager) saveToFile(filePath string) {
 
 	w, err := os.Create(filePath)
 	if err != nil {
-		amgrLog.Error("Error opening file: ", filePath, err)
+		log.Error("Error opening file: ", filePath, err)
 		return
 	}
 	enc := json.NewEncoder(w)
@@ -223,10 +232,12 @@ func (a *AddrManager) saveToFile(filePath string) {
     if err != nil { panic(err) }
 }
 
-func (a *AddrManager) loadFromFile(filePath string) {
+func (a *AddrBook) loadFromFile(filePath string) {
     // If doesn't exist, do nothing.
 	_, err := os.Stat(filePath)
 	if os.IsNotExist(err) { return }
+
+    // Load addrBookJSON{}
 
 	r, err := os.Open(filePath)
 	if err != nil {
@@ -234,14 +245,14 @@ func (a *AddrManager) loadFromFile(filePath string) {
 	}
 	defer r.Close()
 
-    aJSON := &addrManagerJSON{}
+    aJSON := &addrBookJSON{}
 	dec := json.NewDecoder(r)
 	err = dec.Decode(aJSON)
 	if err != nil {
 		panic(fmt.Errorf("error reading %s: %v", filePath, err))
 	}
 
-    // Now we need to initialize 'a'.
+    // Now we need to initialize self.
 
     copy(a.key[:], aJSON.Key[:])
     a.addrNew = aJSON.AddrNew
@@ -262,7 +273,7 @@ func (a *AddrManager) loadFromFile(filePath string) {
 
 /* Private methods */
 
-func (a *AddrManager) addressHandler() {
+func (a *AddrBook) addressHandler() {
     dumpAddressTicker := time.NewTicker(dumpAddressInterval)
 out:
     for {
@@ -276,10 +287,10 @@ out:
     dumpAddressTicker.Stop()
     a.saveToFile(a.filePath)
     a.wg.Done()
-    amgrLog.Trace("Address handler done")
+    log.Trace("Address handler done")
 }
 
-func (a *AddrManager) addAddress(addr, src *NetAddress) {
+func (a *AddrBook) addAddress(addr, src *NetAddress) {
     if !addr.Routable() { return }
 
     key := addr.String()
@@ -310,7 +321,7 @@ func (a *AddrManager) addAddress(addr, src *NetAddress) {
 
     // Enforce max addresses.
     if len(a.addrNew[bucket]) > newBucketSize {
-        amgrLog.Tracef("new bucket is full, expiring old ")
+        log.Tracef("new bucket is full, expiring old ")
         a.expireNew(bucket)
     }
 
@@ -318,17 +329,17 @@ func (a *AddrManager) addAddress(addr, src *NetAddress) {
     ka.NewRefs++
     a.addrNew[bucket][key] = ka
 
-    amgrLog.Tracef("Added new address %s for a total of %d addresses", addr, a.nOld+a.nNew)
+    log.Tracef("Added new address %s for a total of %d addresses", addr, a.nOld+a.nNew)
 }
 
 // Make space in the new buckets by expiring the really bad entries.
 // If no bad entries are available we look at a few and remove the oldest.
-func (a *AddrManager) expireNew(bucket int) {
+func (a *AddrBook) expireNew(bucket int) {
     var oldest *KnownAddress
     for k, v := range a.addrNew[bucket] {
         // If an entry is bad, throw it away
         if v.Bad() {
-            amgrLog.Tracef("expiring bad address %v", k)
+            log.Tracef("expiring bad address %v", k)
             delete(a.addrNew[bucket], k)
             v.NewRefs--
             if v.NewRefs == 0 {
@@ -340,7 +351,7 @@ func (a *AddrManager) expireNew(bucket int) {
         // or, keep track of the oldest entry
         if oldest == nil {
             oldest = v
-        } else if v.LastAttempt < oldest.LastAttempt {
+        } else if v.LastAttempt.Before(oldest.LastAttempt.Time) {
             oldest = v
         }
     }
@@ -348,7 +359,7 @@ func (a *AddrManager) expireNew(bucket int) {
     // If we haven't thrown out a bad entry, throw out the oldest entry
     if oldest != nil {
         key := oldest.Addr.String()
-        amgrLog.Tracef("expiring oldest address %v", key)
+        log.Tracef("expiring oldest address %v", key)
         delete(a.addrNew[bucket], key)
         oldest.NewRefs--
         if oldest.NewRefs == 0 {
@@ -358,7 +369,7 @@ func (a *AddrManager) expireNew(bucket int) {
     }
 }
 
-func (a *AddrManager) moveToOld(ka *KnownAddress) {
+func (a *AddrBook) moveToOld(ka *KnownAddress) {
     // Remove from all new buckets.
     // Remember one of those new buckets.
     addrKey := ka.Addr.String()
@@ -403,18 +414,18 @@ func (a *AddrManager) moveToOld(ka *KnownAddress) {
 
     // put rmka into new bucket
     rmkey := rmka.Addr.String()
-    amgrLog.Tracef("Replacing %s with %s in old", rmkey, addrKey)
+    log.Tracef("Replacing %s with %s in old", rmkey, addrKey)
     a.addrNew[newBucket][rmkey] = rmka
     rmka.NewRefs++
     a.nNew++
 }
 
 // Returns the index in old bucket of oldest entry.
-func (a *AddrManager) pickOld(bucket int) int {
+func (a *AddrBook) pickOld(bucket int) int {
     var oldest *KnownAddress
     var oldestIndex int
     for i, ka := range a.addrOld[bucket] {
-        if oldest == nil || ka.LastAttempt < oldest.LastAttempt {
+        if oldest == nil || ka.LastAttempt.Before(oldest.LastAttempt.Time) {
             oldest = ka
             oldestIndex = i
         }
@@ -424,7 +435,7 @@ func (a *AddrManager) pickOld(bucket int) int {
 
 // doublesha256(key + sourcegroup +
 //              int64(doublesha256(key + group + sourcegroup))%bucket_per_source_group) % num_new_buckes
-func (a *AddrManager) getNewBucket(addr, src *NetAddress) int {
+func (a *AddrBook) getNewBucket(addr, src *NetAddress) int {
     data1 := []byte{}
     data1 = append(data1, a.key[:]...)
     data1 = append(data1, []byte(GroupKey(addr))...)
@@ -444,7 +455,7 @@ func (a *AddrManager) getNewBucket(addr, src *NetAddress) int {
 }
 
 // doublesha256(key + group + truncate_to_64bits(doublesha256(key + addr))%buckets_per_group) % num_buckets
-func (a *AddrManager) getOldBucket(addr *NetAddress) int {
+func (a *AddrBook) getOldBucket(addr *NetAddress) int {
     data1 := []byte{}
     data1 = append(data1, a.key[:]...)
     data1 = append(data1, []byte(addr.String())...)
@@ -463,7 +474,7 @@ func (a *AddrManager) getOldBucket(addr *NetAddress) int {
 }
 
 
-///// LOCAL ADDRESS
+/* Local Address */
 
 // addressPrio is an enum type used to describe the heirarchy of local address
 // discovery methods.
@@ -482,15 +493,15 @@ type localAddress struct {
     Score   addressPrio
 }
 
-// addLocalAddress adds addr to the list of known local addresses to advertise
-// with the given priority.
-func (a *AddrManager) addLocalAddress(addr *NetAddress, priority addressPrio) {
+func (a *AddrBook) AddLocalAddress(addr *NetAddress, priority addressPrio) {
+	a.mtx.Lock(); defer a.mtx.Unlock()
+
     // sanity check.
     if !addr.Routable() {
-        amgrLog.Debugf("rejecting address %s:%d due to routability", addr.IP, addr.Port)
+        log.Debugf("rejecting address %s:%d due to routability", addr.IP, addr.Port)
         return
     }
-    amgrLog.Debugf("adding address %s:%d", addr.IP, addr.Port)
+    log.Debugf("adding address %s:%d", addr.IP, addr.Port)
 
     key := addr.String()
     la, ok := a.localAddresses[key]
@@ -506,9 +517,11 @@ func (a *AddrManager) addLocalAddress(addr *NetAddress, priority addressPrio) {
     }
 }
 
-// getBestLocalAddress returns the most appropriate local address that we know
+// Returns the most appropriate local address that we know
 // of to be contacted by rna (remote net address)
-func (a *AddrManager) getBestLocalAddress(rna *NetAddress) *NetAddress {
+func (a *AddrBook) GetBestLocalAddress(rna *NetAddress) *NetAddress {
+	a.mtx.Lock(); defer a.mtx.Unlock()
+
     bestReach := 0
     var bestScore addressPrio
     var bestAddr *NetAddress
@@ -522,10 +535,10 @@ func (a *AddrManager) getBestLocalAddress(rna *NetAddress) *NetAddress {
         }
     }
     if bestAddr != nil {
-        amgrLog.Debugf("Suggesting address %s:%d for %s:%d",
+        log.Debugf("Suggesting address %s:%d for %s:%d",
             bestAddr.IP, bestAddr.Port, rna.IP, rna.Port)
     } else {
-        amgrLog.Debugf("No worthy address for %s:%d",
+        log.Debugf("No worthy address for %s:%d",
             rna.IP, rna.Port)
         // Send something unroutable if nothing suitable.
         bestAddr = &NetAddress{

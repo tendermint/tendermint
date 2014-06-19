@@ -16,8 +16,8 @@ type KnownAddress struct {
     Addr            *NetAddress
     Src             *NetAddress
     Attempts        UInt32
-    LastAttempt     UInt64
-    LastSuccess     UInt64
+    LastAttempt     Time
+    LastSuccess     Time
     NewRefs         UInt16
     OldBucket       Int16  // TODO init to -1
 }
@@ -27,7 +27,7 @@ func NewKnownAddress(addr *NetAddress, src *NetAddress) *KnownAddress {
         Addr:           addr,
         Src:            src,
         OldBucket:      -1,
-        LastAttempt:    UInt64(time.Now().Unix()),
+        LastAttempt:    Time{time.Now()},
         Attempts:       0,
     }
 }
@@ -37,8 +37,8 @@ func ReadKnownAddress(r io.Reader) *KnownAddress {
         Addr:           ReadNetAddress(r),
         Src:            ReadNetAddress(r),
         Attempts:       ReadUInt32(r),
-        LastAttempt:    ReadUInt64(r),
-        LastSuccess:    ReadUInt64(r),
+        LastAttempt:    ReadTime(r),
+        LastSuccess:    ReadTime(r),
         NewRefs:        ReadUInt16(r),
         OldBucket:      ReadInt16(r),
     }
@@ -56,7 +56,7 @@ func (ka *KnownAddress) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (ka *KnownAddress) MarkAttempt(success bool) {
-    now := UInt64(time.Now().Unix())
+    now := Time{time.Now()}
     ka.LastAttempt = now
     if success {
         ka.LastSuccess = now
@@ -80,22 +80,22 @@ func (ka *KnownAddress) MarkAttempt(success bool) {
 */
 func (ka *KnownAddress) Bad() bool {
     // Has been attempted in the last minute --> good
-    if ka.LastAttempt < UInt64(time.Now().Add(-1 * time.Minute).Unix()) {
+    if ka.LastAttempt.Before(time.Now().Add(-1 * time.Minute)) {
         return false
     }
 
     // Over a month old?
-    if ka.LastAttempt > UInt64(time.Now().Add(-1 * numMissingDays * time.Hour * 24).Unix()) {
+    if ka.LastAttempt.After(time.Now().Add(-1 * numMissingDays * time.Hour * 24)) {
         return true
     }
 
     // Never succeeded?
-    if ka.LastSuccess == 0 && ka.Attempts >= numRetries {
+    if ka.LastSuccess.IsZero() && ka.Attempts >= numRetries {
         return true
     }
 
     // Hasn't succeeded in too long?
-    if ka.LastSuccess < UInt64(time.Now().Add(-1*minBadDays*time.Hour*24).Unix()) &&
+    if ka.LastSuccess.Before(time.Now().Add(-1*minBadDays*time.Hour*24)) &&
         ka.Attempts >= maxFailures {
         return true
     }

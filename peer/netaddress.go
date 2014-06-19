@@ -18,20 +18,31 @@ type NetAddress struct {
     Port        UInt16
 }
 
+// TODO: socks proxies?
+func NewNetAddress(addr net.Addr) *NetAddress {
+    tcpAddr, ok := addr.(*net.TCPAddr)
+    if !ok { panic("Only TCPAddrs are supported") }
+    ip := tcpAddr.IP
+    port := UInt16(tcpAddr.Port)
+    return NewNetAddressIPPort(ip, port)
+}
+
+func NewNetAddressString(addr string) *NetAddress {
+    host, portStr, err := net.SplitHostPort(addr)
+    if err != nil { panic(err) }
+    ip := net.ParseIP(host)
+    port, err := strconv.ParseUint(portStr, 10, 16)
+    if err != nil { panic(err) }
+    na := NewNetAddressIPPort(ip, UInt16(port))
+    return na
+}
+
 func NewNetAddressIPPort(ip net.IP, port UInt16) *NetAddress {
     na := NetAddress{
         IP:        ip,
         Port:      port,
     }
     return &na
-}
-
-func NewNetAddress(addr net.Addr) *NetAddress {
-    tcpAddr, ok := addr.(*net.TCPAddr)
-    if !ok { panic("addr is not a net.TCPAddr") }
-
-    na := NewNetAddressIPPort(tcpAddr.IP, UInt16(tcpAddr.Port))
-    return na
 }
 
 func ReadNetAddress(r io.Reader) *NetAddress {
@@ -47,10 +58,32 @@ func (na *NetAddress) WriteTo(w io.Writer) (n int64, err error) {
     return
 }
 
+func (na *NetAddress) Equals(other Binary) bool {
+    if o, ok := other.(*NetAddress); ok {
+        return na.String() == o.String()
+    } else {
+        return false
+    }
+}
+
+func (na *NetAddress) Less(other Binary) bool {
+    if o, ok := other.(*NetAddress); ok {
+        return na.String() < o.String()
+    } else {
+        panic("Cannot compare unequal types")
+    }
+}
+
 func (na *NetAddress) String() string {
     port := strconv.FormatUint(uint64(na.Port), 10)
     addr := net.JoinHostPort(na.IP.String(), port)
     return addr
+}
+
+func (na *NetAddress) Dial() (*Connection, error) {
+    conn, err := net.Dial("tcp", na.String())
+    if err != nil { return nil, err }
+    return NewConnection(conn), nil
 }
 
 func (na *NetAddress) Routable() bool {
