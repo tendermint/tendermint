@@ -95,6 +95,9 @@ func (t *IAVLTree) Copy() Tree {
     return &IAVLTree{db:t.db, root:t.root}
 }
 
+// Traverses all the nodes of the tree in prefix order.
+// return true from cb to halt iteration.
+// node.Height() == 0 if you just want a value node.
 func (t *IAVLTree) Traverse(cb func(Node) bool) {
     if t.root == nil { return }
     t.root.traverse(t.db, cb)
@@ -104,11 +107,12 @@ func (t *IAVLTree) Values() <-chan Value {
     root := t.root
     ch := make(chan Value)
     go func() {
-        root.traverse(func(n Node) {
+        root.traverse(t.db, func(n Node) bool {
             if n.Height() == 0 { ch <- n.Value() }
+            return true
         })
         close(ch)
-    }
+    }()
     return ch
 }
 

@@ -47,7 +47,7 @@ func ReadTx(r io.Reader) Tx {
             Signature:  ReadSignature(r),
         }
     default:
-        panicf("Unknown Tx type %x", t)
+        Panicf("Unknown Tx type %x", t)
         return nil
     }
 }

@@ -27,7 +27,7 @@ func ReadAccountId(r io.Reader) AccountId {
     case ACCOUNT_TYPE_BOTH:
         return AccountId{t, ReadUInt64(r), ReadByteSlice(r)}
     default:
-        panicf("Unknown AccountId type %x", t)
+        Panicf("Unknown AccountId type %x", t)
         return AccountId{}
     }
 }

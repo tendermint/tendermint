@@ -78,7 +78,7 @@ func (pq *priorityQueue) Pop() interface{} {
     return item
 }
 
-func (pq *priorityQueue) Update(item *pqItem, value ByteSlice, priority int) {
+func (pq *priorityQueue) Update(item *pqItem, value interface{}, priority int) {
     heap.Remove(pq, item.index)
     item.value = value
     item.priority = priority

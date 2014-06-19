@@ -54,7 +54,7 @@ func ReadAdjustment(r io.Reader) Adjustment {
             VoteB:      ReadVote(r),
         }
     default:
-        panicf("Unknown Adjustment type %x", t)
+        Panicf("Unknown Adjustment type %x", t)
         return nil
     }
 }
