@@ -1,0 +1,35 @@
+////////////////////////////
+// All client impl internal messages
+// No filter
+** Channel ""
+
+* NewFilterMsg
+* ...?
+
+
+////////////////////////////
+// All blocks
+// Requires a custom simple filter
+** Channel "block"
+
+* BlockMsg
+* HeaderMsg
+
+
+////////////////////////////
+// New transactions that haven't been committed
+// e.g. the mempool
+// n:10k, p:0.02 -> k:6, m:10KB
+** Channel "newtx"
+
+* NewTxMsg
+
+
+////////////////////////////
+// All about the consensus
+// No filter
+** Channel "consensus"
+
+* ProposalMsg
+* VoteMsg
+* NewBlockMsg
