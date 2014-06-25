@@ -3,153 +3,169 @@ package peer
 import (
     . "github.com/tendermint/tendermint/binary"
     "github.com/tendermint/tendermint/merkle"
+    "atomic"
     "sync"
     "io"
+    "errors"
 )
 
-/* Client */
+/*  Client
+
+    A client is half of a p2p system.
+    It can reach out to the network and establish connections with servers.
+    A client doesn't listen for incoming connections -- that's done by the server.
+
+    newPeerCb is a factory method for generating new peers from new *Connections.
+    newPeerCb(nil) must return a prototypical peer that represents the self "peer".
+
+    XXX what about peer disconnects?
+*/
 type Client struct {
-    listener        *Listener
     addrBook        AddrBook
-    strategies      map[String]*FilterStrategy
     targetNumPeers  int
+    newPeerCb       func(*Connection) *Peer
+    self            *Peer
+    inQueues        map[String]chan *InboundMsg
 
-    peersMtx        sync.Mutex
+    mtx             sync.Mutex
     peers           merkle.Tree // addr -> *Peer
-
-    filtersMtx      sync.Mutex
-    filters         merkle.Tree // channelName -> Filter (objects that I know of)
+    quit            chan struct{}
+    stopped         uint32
 }
 
-func NewClient(protocol string, laddr string) *Client {
-    // XXX set the handler
-    listener := NewListener(protocol, laddr, nil)
+var (
+    CLIENT_STOPPED_ERROR =          errors.New("Client already stopped")
+    CLIENT_DUPLICATE_PEER_ERROR =   errors.New("Duplicate peer")
+)
+
+func NewClient(newPeerCb func(*Connect) *Peer) *Client {
+    self := newPeerCb(nil)
+    if self == nil {
+        Panicf("newPeerCb(nil) must return a prototypical peer for self")
+    }
+
+    inQueues := make(map[String]chan *InboundMsg)
+    for chName, channel := peer.channels {
+        inQueues[chName] = make(chan *InboundMsg)
+    }
+
     c := &Client{
-        listener:   listener,
+        newPeerCb:  newPeerCb,
         peers:      merkle.NewIAVLTree(nil),
-        filters:    merkle.NewIAVLTree(nil),
+        self:       self,
+        inQueues:   inQueues,
     }
     return c
 }
 
-func (c *Client) Start() (<-chan *IncomingMsg) {
-    return nil
-}
-
 func (c *Client) Stop() {
-    c.listener.Close()
-}
-
-func (c *Client) LocalAddress() *NetAddress {
-    return c.listener.LocalAddress()
-}
-
-func (c *Client) ConnectTo(addr *NetAddress) (*Peer, error) {
-
-    conn, err := addr.Dial()
-    if err != nil { return nil, err }
-    peer := NewPeer(conn)
-
     // lock
-    c.peersMtx.Lock()
-    c.peers.Put(addr, peer)
-    c.peersMtx.Unlock()
+    c.mtx.Lock()
+    if atomic.CompareAndSwapUint32(&c.stopped, 0, 1) {
+        close(c.quit)
+        // stop each peer.
+        for peerValue := range c.peers.Values() {
+            peer := peerValue.(*Peer)
+            peer.Stop()
+        }
+        // empty tree.
+        c.peers = merkle.NewIAVLTree(nil)
+    }
+    c.mtx.Unlock()
     // unlock
+}
+
+func (c *Client) AddPeerWithConnection(conn *Connection, outgoing bool) (*Peer, error) {
+    if atomic.LoadUint32(&c.stopped) == 1 { return nil, CLIENT_STOPPED_ERROR }
+
+    peer := c.newPeerCb(conn)
+    peer.outgoing = outgoing
+    err := c.addPeer(peer)
+    if err != nil { return nil, err }
+
+    go peer.Start(c.inQueues)
 
     return peer, nil
 }
 
-func (c *Client) Broadcast(channel String, msg Binary) {
+func (c *Client) Broadcast(chName String, msg Msg) {
+    if atomic.LoadUint32(&c.stopped) == 1 { return }
+
     for v := range c.peersCopy().Values() {
-        peer, ok := v.(*Peer)
-        if !ok { panic("Expected peer but got something else") }
-        peer.Queue(channel, msg)
+        peer := v.(*Peer)
+        success := peer.TryQueueOut(chName , msg)
+        if !success {
+            // TODO: notify the peer
+        }
     }
 }
 
-// Updates the client's filter for a channel & broadcasts it.
-func (c *Client) UpdateFilter(channel String, filter Filter) {
-    c.filtersMtx.Lock()
-    c.filters.Put(channel, filter)
-    c.filtersMtx.Unlock()
+func (c *Client) PopMessage(chName String) *InboundMsg {
+    if atomic.LoadUint32(&c.stopped) == 1 { return nil }
+
+    channel := c.Channel(chName)
+    q := c.inQueues[chName]
+    if q == nil { Panicf("Expected inQueues[%f], found none", chName) }
+
+    for {
+        select {
+        case <-quit:
+            return nil
+        case msg := <-q:
+            // skip if known.
+            if channel.Filter().Has(msg) {
+                continue
+            }
+            return msg
+        }
+    }
+}
+
+// Updates self's filter for a channel & broadcasts it.
+// TODO: maybe don't expose this
+func (c *Client) UpdateFilter(chName String, filter Filter) {
+    if atomic.LoadUint32(&c.stopped) == 1 { return }
+
+    c.self.Channel(chName).UpdateFilter(filter)
 
     c.Broadcast("", &NewFilterMsg{
-        Channel:    channel,
+        Channel:    chName,
         Filter:     filter,
     })
 }
 
-func (c *Client) peersCopy() merkle.Tree {
-    c.peersMtx.Lock(); defer c.peersMtx.Unlock()
-    return c.peers.Copy()
-}
+func (c *Client) StopPeer(peer *Peer) {
+    // lock
+    c.mtx.Lock()
+    p, _ := c.peers.Remove(peer.RemoteAddress())
+    c.mtx.Unlock()
+    // unlock
 
-
-/* Channel */
-type Channel struct {
-    Name            String
-    Filter          Filter
-    //Stats           Stats
-}
-
-
-/* Peer */
-type Peer struct {
-    Conn            *Connection
-    Channels        map[String]*Channel
-}
-
-func NewPeer(conn *Connection) *Peer {
-    return &Peer{
-        Conn:       conn,
-        Channels:   nil,
+    if p != nil {
+        p.Stop()
     }
 }
 
-// Must be quick and nonblocking.
-func (p *Peer) Queue(channel String, msg Binary) {}
+func (c *Client) addPeer(peer *Peer) error {
+    addr := peer.RemoteAddress()
 
-func (p *Peer) WriteTo(w io.Writer) (n int64, err error) {
-    return 0, nil // TODO
+    // lock & defer
+    c.mtx.Lock(); defer c.mtx.Unlock()
+    if c.stopped == 1 { return CLIENT_STOPPED_ERROR }
+    if !c.peers.Has(addr) {
+        c.peers.Put(addr, peer)
+        return nil
+    } else {
+        // ignore duplicate peer for addr.
+        log.Infof("Ignoring duplicate peer for addr %v", addr)
+        return CLIENT_DUPLICATE_PEER_ERROR
+    }
+    // unlock deferred
 }
 
-
-/* IncomingMsg */
-type IncomingMsg struct {
-    SPeer           *Peer
-    SChan           *Channel
-
-    Time            Time
-
-    Msg             Binary
-}
-
-
-/*  Filter
-
-    A Filter could be a bloom filter for lossy filtering, or could be a lossless filter.
-    Either way, it's used to keep track of what a peer knows of.
-*/
-type Filter interface {
-    Binary
-    Add(ByteSlice)
-    Has(ByteSlice) bool
-}
-
-/* FilterStrategy
-
-    Defines how filters are generated per peer, and whether they need to get refreshed occasionally.
-*/
-type FilterStrategy interface {
-    LoadFilter(ByteSlice) Filter
-}
-
-/* NewFilterMsg */
-type NewFilterMsg struct {
-    Channel         String
-    Filter          Filter
-}
-
-func (m *NewFilterMsg) WriteTo(w io.Writer) (int64, error) {
-    return 0, nil // TODO
+func (c *Client) peersCopy() merkle.Tree {
+    // lock & defer
+    c.mtx.Lock(); defer c.mtx.Unlock()
+    return c.peers.Copy()
+    // unlock deferred
 }

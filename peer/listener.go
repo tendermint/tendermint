@@ -1,60 +1,76 @@
 package peer
 
 import (
-    "sync"
+    "atomic"
     "net"
 )
 
 /* Listener */
 
-type Listener struct {
-    listener        net.Listener
-    handler         func(net.Conn)
-    mtx             sync.Mutex
-    closed          bool
+type Listener interface {
+    Connections()   <-chan *Connection
+    LocalAddress()  *NetAddress
+    Stop()
 }
 
-func NewListener(protocol string, laddr string, handler func(net.Conn)) *Listener {
+
+/* DefaultListener */
+
+type DefaultListener struct {
+    listener        net.Listener
+    connections     chan *Connection
+    stopped         uint32
+}
+
+const (
+    DEFAULT_BUFFERED_CONNECTIONS = 10
+)
+
+func NewListener(protocol string, laddr string) *Listener {
     ln, err := net.Listen(protocol, laddr)
     if err != nil { panic(err) }
 
     s := &Listener{
-        listener:   ln,
-        handler:    handler,
+        listener:       ln,
+        connections:    make(chan *Connection, DEFAULT_BUFFERED_CONNECTIONS),
     }
 
-    go s.listen()
+    go l.listenHandler()
 
     return s
 }
 
-func (s *Listener) listen() {
+func (l *Listener) listenHandler() {
     for {
-        conn, err := s.listener.Accept()
-        if err != nil {
-            // lock & defer
-            s.mtx.Lock(); defer s.mtx.Unlock()
-            if s.closed {
-                return
-            } else {
-                panic(err)
-            }
-            // unlock (deferred)
-        }
+        conn, err := l.listener.Accept()
 
-        go s.handler(conn)
+        if atomic.LoadUint32(&l.stopped) == 1 { return }
+
+        // listener wasn't stopped,
+        // yet we encountered an error.
+        if err != nil { panic(err) }
+
+        c := NewConnection(con)
+        l.connections <- c
+    }
+
+    // cleanup
+    close(l.connections)
+    for _ = range l.connections {
+        // drain
     }
 }
 
-func (s *Listener) LocalAddress() *NetAddress {
-    return NewNetAddress(s.listener.Addr())
+func (l *Listener) Connections() <-chan *Connection {
+    return l.connections
 }
 
-func (s *Listener) Close() {
-    // lock
-    s.mtx.Lock()
-    s.closed = true
-    s.mtx.Unlock()
-    // unlock
-    s.listener.Close()
+func (l *Listener) LocalAddress() *NetAddress {
+    return NewNetAddress(l.listener.Addr())
+}
+
+func (l *Listener) Stop() {
+    if atomic.CompareAndSwapUint32(&l.stopped, 0, 1) {
+        l.listener.Close()
+    }
 }

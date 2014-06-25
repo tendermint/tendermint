@@ -36,9 +36,6 @@ type AddrBook struct {
     quit            chan struct{}
     nOld            int
     nNew            int
-
-    lamtx           sync.Mutex
-    localAddresses  map[string]*localAddress
 }
 
 const (
@@ -471,83 +468,6 @@ func (a *AddrBook) getOldBucket(addr *NetAddress) int {
 
     hash2 := DoubleSha256(data2)
     return int(binary.LittleEndian.Uint64(hash2) % oldBucketCount)
-}
-
-
-/* Local Address */
-
-// addressPrio is an enum type used to describe the heirarchy of local address
-// discovery methods.
-type addressPrio int
-
-const (
-    InterfacePrio addressPrio = iota // address of local interface.
-    BoundPrio                        // Address explicitly bound to.
-    UpnpPrio                         // External IP discovered from UPnP
-    HttpPrio                         // Obtained from internet service.
-    ManualPrio                       // provided by --externalip.
-)
-
-type localAddress struct {
-    Addr    *NetAddress
-    Score   addressPrio
-}
-
-func (a *AddrBook) AddLocalAddress(addr *NetAddress, priority addressPrio) {
-	a.mtx.Lock(); defer a.mtx.Unlock()
-
-    // sanity check.
-    if !addr.Routable() {
-        log.Debugf("rejecting address %s:%d due to routability", addr.IP, addr.Port)
-        return
-    }
-    log.Debugf("adding address %s:%d", addr.IP, addr.Port)
-
-    key := addr.String()
-    la, ok := a.localAddresses[key]
-    if !ok || la.Score < priority {
-        if ok {
-            la.Score = priority + 1
-        } else {
-            a.localAddresses[key] = &localAddress{
-                Addr:   addr,
-                Score:  priority,
-            }
-        }
-    }
-}
-
-// Returns the most appropriate local address that we know
-// of to be contacted by rna (remote net address)
-func (a *AddrBook) GetBestLocalAddress(rna *NetAddress) *NetAddress {
-	a.mtx.Lock(); defer a.mtx.Unlock()
-
-    bestReach := 0
-    var bestScore addressPrio
-    var bestAddr *NetAddress
-    for _, la := range a.localAddresses {
-        reach := rna.ReachabilityTo(la.Addr)
-        if reach > bestReach ||
-            (reach == bestReach && la.Score > bestScore) {
-            bestReach = reach
-            bestScore = la.Score
-            bestAddr = la.Addr
-        }
-    }
-    if bestAddr != nil {
-        log.Debugf("Suggesting address %s:%d for %s:%d",
-            bestAddr.IP, bestAddr.Port, rna.IP, rna.Port)
-    } else {
-        log.Debugf("No worthy address for %s:%d",
-            rna.IP, rna.Port)
-        // Send something unroutable if nothing suitable.
-        bestAddr = &NetAddress{
-            IP:        net.IP([]byte{0, 0, 0, 0}),
-            Port:      0,
-        }
-    }
-
-    return bestAddr
 }
 
 

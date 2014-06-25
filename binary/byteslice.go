@@ -40,3 +40,11 @@ func ReadByteSlice(r io.Reader) ByteSlice {
     if err != nil { panic(err) }
     return ByteSlice(bytes)
 }
+
+func ReadByteSliceSafe(r io.Reader) (ByteSlice, error) {
+    length := int(ReadUInt32(r))
+    bytes := make([]byte, length)
+    _, err := io.ReadFull(r, bytes)
+    if err != nil { return nil, err }
+    return ByteSlice(bytes), nil
+}

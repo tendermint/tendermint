@@ -48,6 +48,13 @@ func ReadByte(r io.Reader) Byte {
     return Byte(buf[0])
 }
 
+func ReadByteSafe(r io.Reader) (Byte, error) {
+    buf := [1]byte{0}
+    _, err := io.ReadFull(r, buf[:])
+    if err != nil { return Byte(0), err }
+    return Byte(buf[0]), nil
+}
+
 
 // Int8
 
