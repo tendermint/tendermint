@@ -2,11 +2,11 @@
 
 <table>
   <tr>
-    <th>Filter</th>
+    <td><b>Filter</b></td>
     <td>None</td>
   </tr>
   <tr>
-    <th>Messages</th>
+    <td><b>Message</b></td>
     <td>
       <ul>
         <li>RefreshFilterMsg</li>
@@ -21,11 +21,14 @@
 
 <table>
   <tr>
-    <th>Filter</th>
-    <td>Custom</td>
+    <td><b>Filter</b></td>
+    <td>
+      Custom<br/>
+      Nodes should only advertise having a header or block at height 'h' if it also has all the headers or blocks less than 'h'.  Thus this filter need only keep track of two integers -- one for the most recent header height 'h_h' and one for the most recent block height 'h_b', where 'h_b' &lt;= 'h_h'.
+    </td>
   </tr>
   <tr>
-    <th>Messages</th>
+    <td><b>Messages</b></td>
     <td>
       <ul>
         <li>RequestMsg</li>
@@ -41,14 +44,14 @@
 
 <table>
   <tr>
-    <th>Filter</th>
+    <td><b>Filter</b></td>
     <td>
       Bloom filter (n:10k, p:0.02 -> k:6, m:10KB)<br/>
       Refreshes every new block
     </td>
   </tr>
   <tr>
-    <th>Messages</th>
+    <td><b>Messages</b></td>
     <td>
       <ul>
         <li>MempoolTxMsg</li>
@@ -61,14 +64,14 @@
 ## Channel "consensus"                                                                                                                                                                                                                        
 <table>
   <tr>
-    <th>Filter</th>
+    <td><b>Filter</b></td>
     <td>
       Bitarray filter<br/>
       Refreshes every new consensus round
     </td>
   </tr>
   <tr>
-    <th>Messages</th>
+    <td><b>Messages</b></td>
     <td>
       <ul>
         <li>ProposalMsg</li>
