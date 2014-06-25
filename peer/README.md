@@ -1,38 +1,84 @@
 ## Channel ""
 
-Filter: None
-
-Messages:
-* RefreshFilterMsg
-* PeerExchangeMsg
+<table>
+  <tr>
+    <th>Filter</th>
+    <td>None</td>
+  </tr>
+  <tr>
+    <th>Messages</th>
+    <td>
+      <ul>
+        <li>RefreshFilterMsg</li>
+        <li>PeerExchangeMsg</li>
+      </ul>
+    </td>
+  </tr>
+</table>
 
 
 ## Channel "block"
 
-Filter: Custom filter.
-
-Messages:
-* BlockMsg
-* HeaderMsg
+<table>
+  <tr>
+    <th>Filter</th>
+    <td>Custom</td>
+  </tr>
+  <tr>
+    <th>Messages</th>
+    <td>
+      <ul>
+        <li>RequestMsg</li>
+        <li>BlockMsg</li>
+        <li>HeaderMsg</li>
+      </ul>
+    </td>
+  </tr>
+</table>
 
 
 ## Channel "mempool"
 
-Filter: Bloom filter (n:10k, p:0.02 -> k:6, m:10KB)
+<table>
+  <tr>
+    <th>Filter</th>
+    <td>
+      Bloom filter (n:10k, p:0.02 -> k:6, m:10KB)<br/>
+      Refreshes every new block
+    </td>
+  </tr>
+  <tr>
+    <th>Messages</th>
+    <td>
+      <ul>
+        <li>MempoolTxMsg</li>
+      </ul>
+    </td>
+  </tr>
+</table>
 
-FilterRefresh: Every new block.
 
-Messages:
-* MempoolTxMsg
+## Channel "consensus"                                                                                                                                                                                                                        
+<table>
+  <tr>
+    <th>Filter</th>
+    <td>
+      Bitarray filter<br/>
+      Refreshes every new consensus round
+    </td>
+  </tr>
+  <tr>
+    <th>Messages</th>
+    <td>
+      <ul>
+        <li>ProposalMsg</li>
+        <li>VoteMsg</li>
+        <li>NewBlockMsg</li>
+      </ul>
+    </td>
+  </tr>
+</table>
 
 
-## Channel "consensus"                                                                                                                                                                                                                                                                                                                                                    
 
-Filter: Bitarray filter
 
-FilterRefresh: Every new block.
-
-Messages:
-* ProposalMsg
-* VoteMsg
-* NewBlockMsg
