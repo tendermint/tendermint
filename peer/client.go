@@ -1,11 +1,11 @@
 package peer
 
 import (
+    . "github.com/tendermint/tendermint/common"
     . "github.com/tendermint/tendermint/binary"
     "github.com/tendermint/tendermint/merkle"
-    "atomic"
+    "sync/atomic"
     "sync"
-    "io"
     "errors"
 )
 
@@ -38,14 +38,14 @@ var (
     CLIENT_DUPLICATE_PEER_ERROR =   errors.New("Duplicate peer")
 )
 
-func NewClient(newPeerCb func(*Connect) *Peer) *Client {
+func NewClient(newPeerCb func(*Connection) *Peer) *Client {
     self := newPeerCb(nil)
     if self == nil {
         Panicf("newPeerCb(nil) must return a prototypical peer for self")
     }
 
     inQueues := make(map[String]chan *InboundMsg)
-    for chName, channel := peer.channels {
+    for chName, channel := range self.channels {
         inQueues[chName] = make(chan *InboundMsg)
     }
 
@@ -103,33 +103,33 @@ func (c *Client) Broadcast(chName String, msg Msg) {
 func (c *Client) PopMessage(chName String) *InboundMsg {
     if atomic.LoadUint32(&c.stopped) == 1 { return nil }
 
-    channel := c.Channel(chName)
+    channel := c.self.Channel(chName)
     q := c.inQueues[chName]
     if q == nil { Panicf("Expected inQueues[%f], found none", chName) }
 
     for {
         select {
-        case <-quit:
+        case <-c.quit:
             return nil
-        case msg := <-q:
+        case inMsg := <-q:
             // skip if known.
-            if channel.Filter().Has(msg) {
+            if channel.Filter().Has(inMsg.Msg) {
                 continue
             }
-            return msg
+            return inMsg
         }
     }
 }
 
 // Updates self's filter for a channel & broadcasts it.
-// TODO: maybe don't expose this
+// TODO: rename, same name is confusing.
 func (c *Client) UpdateFilter(chName String, filter Filter) {
     if atomic.LoadUint32(&c.stopped) == 1 { return }
 
     c.self.Channel(chName).UpdateFilter(filter)
 
     c.Broadcast("", &NewFilterMsg{
-        Channel:    chName,
+        ChName:     chName,
         Filter:     filter,
     })
 }
@@ -137,12 +137,13 @@ func (c *Client) UpdateFilter(chName String, filter Filter) {
 func (c *Client) StopPeer(peer *Peer) {
     // lock
     c.mtx.Lock()
-    p, _ := c.peers.Remove(peer.RemoteAddress())
+    peerValue, _ := c.peers.Remove(peer.RemoteAddress())
     c.mtx.Unlock()
     // unlock
 
-    if p != nil {
-        p.Stop()
+    peer_ := peerValue.(*Peer)
+    if peer_ != nil {
+        peer_.Stop()
     }
 }
 

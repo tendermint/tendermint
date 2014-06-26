@@ -1,5 +1,9 @@
 package merkle
 
+import (
+    . "github.com/tendermint/tendermint/binary"
+)
+
 const HASH_BYTE_SIZE int = 4+32
 
 /*

@@ -1,5 +1,9 @@
 package peer
 
+import (
+    . "github.com/tendermint/tendermint/binary"
+)
+
 /*  Filter
 
     A Filter could be a bloom filter for lossy filtering, or could be a lossless filter.

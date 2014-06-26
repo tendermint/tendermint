@@ -1,8 +1,11 @@
 package peer
 
 import (
-    "atomic"
+    . "github.com/tendermint/tendermint/binary"
+    "sync/atomic"
     "sync"
+    "io"
+    "time"
 )
 
 /* Peer */
@@ -82,7 +85,7 @@ func (p *Peer) inHandler(chName String, inboundMsgQueue chan<- *InboundMsg) {
     FOR_LOOP:
     for {
         select {
-        case <-quit:
+        case <-p.quit:
             break FOR_LOOP
         case msg := <-inQueue:
             // add to channel filter
@@ -91,11 +94,11 @@ func (p *Peer) inHandler(chName String, inboundMsgQueue chan<- *InboundMsg) {
             inboundMsg := &InboundMsg{
                 Peer:       p,
                 Channel:    channel,
-                Time:       Time(time.Now()),
+                Time:       Time{time.Now()},
                 Msg:        msg,
             }
             select {
-            case <-quit:
+            case <-p.quit:
                 break FOR_LOOP
             case inboundMsgQueue <- inboundMsg:
                 continue
@@ -108,11 +111,11 @@ func (p *Peer) inHandler(chName String, inboundMsgQueue chan<- *InboundMsg) {
 }
 
 func (p *Peer) outHandler(chName String) {
-    outQueue := p.channels[chName].OutQueue()
+    outQueue := p.channels[chName].outQueue
     FOR_LOOP:
     for {
         select {
-        case <-quit:
+        case <-p.quit:
             break FOR_LOOP
         case msg := <-outQueue:
             // blocks until the connection is Stop'd,
@@ -148,6 +151,10 @@ func NewChannel(name String, filter Filter, in, out chan Msg) *Channel {
     }
 }
 
+func (c *Channel) Name() String {
+    return c.name
+}
+
 func (c *Channel) InQueue() <-chan Msg {
     return c.inQueue
 }
@@ -164,7 +171,6 @@ func (c *Channel) Has(msg Msg) bool {
     return c.Filter().Has(msg)
 }
 
-// TODO: maybe don't expose this
 func (c *Channel) Filter() Filter {
     // lock & defer
     c.mtx.Lock(); defer c.mtx.Unlock()
@@ -172,7 +178,6 @@ func (c *Channel) Filter() Filter {
     // unlock deferred
 }
 
-// TODO: maybe don't expose this
 func (c *Channel) UpdateFilter(filter Filter) {
     // lock
     c.mtx.Lock()

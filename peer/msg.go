@@ -1,5 +1,10 @@
 package peer
 
+import (
+    . "github.com/tendermint/tendermint/binary"
+    "io"
+)
+
 /* Msg */
 
 type Msg struct {

@@ -3,11 +3,8 @@ package peer
 import (
     . "github.com/tendermint/tendermint/common"
     . "github.com/tendermint/tendermint/binary"
-    "atomic"
-    "sync"
+    "sync/atomic"
     "net"
-    "runtime"
-    "fmt"
     "time"
 )
 
@@ -24,7 +21,7 @@ type Connection struct {
     outQueue        chan ByteSlice // never closes.
     conn            net.Conn
     quit            chan struct{}
-    stopped         int32
+    stopped         uint32
     pingDebouncer   *Debouncer
     pong            chan struct{}
 }
@@ -63,7 +60,7 @@ func (c *Connection) Start() {
 }
 
 func (c *Connection) Stop() {
-    if atomic.SwapAndCompare(&c.stopped, 0, 1) {
+    if atomic.CompareAndSwapUint32(&c.stopped, 0, 1) {
         close(c.quit)
         c.conn.Close()
         c.pingDebouncer.Stop()

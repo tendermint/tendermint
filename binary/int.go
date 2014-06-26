@@ -117,6 +117,13 @@ func ReadUInt8(r io.Reader) UInt8 {
     return UInt8(buf[0])
 }
 
+func ReadUInt8Safe(r io.Reader) (UInt8, error) {
+    buf := [1]byte{0}
+    _, err := io.ReadFull(r, buf[:])
+    if err != nil { return UInt8(0), err }
+    return UInt8(buf[0]), nil
+}
+
 
 // Int16
 

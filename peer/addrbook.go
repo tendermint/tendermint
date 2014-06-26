@@ -95,7 +95,6 @@ func NewAddrBook(filePath string) *AddrBook {
     am := AddrBook{
         rand:           rand.New(rand.NewSource(time.Now().UnixNano())),
         quit:           make(chan struct{}),
-        localAddresses: make(map[string]*localAddress),
         filePath:       filePath,
     }
     am.init()

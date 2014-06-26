@@ -1,6 +1,7 @@
 package peer
 
 import (
+    . "github.com/tendermint/tendermint/binary"
     "testing"
     "time"
 )
@@ -13,19 +14,19 @@ func TestLocalConnection(t *testing.T) {
         ch1 := NewChannel(String("ch1"),
                 nil,
                 // XXX these channels should be buffered.
-                make(chan ByteSlice),
-                make(chan ByteSlice),
+                make(chan Msg),
+                make(chan Msg),
         )
 
         ch2 := NewChannel(String("ch2"),
                 nil,
-                make(chan ByteSlice),
-                make(chan ByteSlice),
+                make(chan Msg),
+                make(chan Msg),
         )
 
         channels := make(map[String]*Channel)
-        channels[ch1.Name] = ch1
-        channels[ch2.Name] = ch2
+        channels[ch1.Name()] = ch1
+        channels[ch2.Name()] = ch2
         p.channels = channels
 
         return p
@@ -44,7 +45,7 @@ func TestLocalConnection(t *testing.T) {
     c1.Broadcast(String(""), String("message"))
     time.Sleep(500 * time.Millisecond)
 
-    inMsg := c2.PopMessage()
+    inMsg := c2.PopMessage(String(""))
 
     c1.Stop()
     c2.Stop()

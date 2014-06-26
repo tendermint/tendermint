@@ -1,7 +1,7 @@
 package peer
 
 import (
-    "atomic"
+    "sync/atomic"
     "net"
 )
 
@@ -26,21 +26,21 @@ const (
     DEFAULT_BUFFERED_CONNECTIONS = 10
 )
 
-func NewListener(protocol string, laddr string) *Listener {
+func NewListener(protocol string, laddr string) Listener {
     ln, err := net.Listen(protocol, laddr)
     if err != nil { panic(err) }
 
-    s := &Listener{
+    dl := &DefaultListener{
         listener:       ln,
         connections:    make(chan *Connection, DEFAULT_BUFFERED_CONNECTIONS),
     }
 
-    go l.listenHandler()
+    go dl.listenHandler()
 
-    return s
+    return dl
 }
 
-func (l *Listener) listenHandler() {
+func (l *DefaultListener) listenHandler() {
     for {
         conn, err := l.listener.Accept()
 
@@ -50,7 +50,7 @@ func (l *Listener) listenHandler() {
         // yet we encountered an error.
         if err != nil { panic(err) }
 
-        c := NewConnection(con)
+        c := NewConnection(conn)
         l.connections <- c
     }
 
@@ -61,15 +61,15 @@ func (l *Listener) listenHandler() {
     }
 }
 
-func (l *Listener) Connections() <-chan *Connection {
+func (l *DefaultListener) Connections() <-chan *Connection {
     return l.connections
 }
 
-func (l *Listener) LocalAddress() *NetAddress {
+func (l *DefaultListener) LocalAddress() *NetAddress {
     return NewNetAddress(l.listener.Addr())
 }
 
-func (l *Listener) Stop() {
+func (l *DefaultListener) Stop() {
     if atomic.CompareAndSwapUint32(&l.stopped, 0, 1) {
         l.listener.Close()
     }
