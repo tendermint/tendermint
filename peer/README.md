@@ -1,6 +1,6 @@
 ## Channels
 
-Each peer connection is multiplexed into channels.  Each channel can optionally have an associated filter which determines whether the peer already knows of the message.  The system is designed to be easily extensible for various applications.
+Each peer connection is multiplexed into channels.
 <hr />
 
 ### Default channel
@@ -11,10 +11,6 @@ The default channel is used to communicate state changes, pings, peer exchange, 
   <tr>
     <td><b>Channel</b></td>
     <td>""</td>
-  </tr>
-  <tr>
-    <td><b>Filter</b></td>
-    <td>None<br/>Messages in this channel is not filtered.</td>
   </tr>
   <tr>
     <td><b>Messages</b></td>
@@ -39,13 +35,6 @@ The block channel is used to propagate block or header information to new peers 
     <td>"block"</td>
   </tr>
   <tr>
-    <td><b>Filter</b></td>
-    <td>
-      Custom<br/>
-      Nodes should only advertise having a header or block at height 'h' if it also has all the headers or blocks less than 'h'.  Thus this filter need only keep track of two integers -- one for the most recent header height 'h_h' and one for the most recent block height 'h_b', where 'h_b' &lt;= 'h_h'.
-    </td>
-  </tr>
-  <tr>
     <td><b>Messages</b></td>
     <td>
       <ul>
@@ -53,6 +42,12 @@ The block channel is used to propagate block or header information to new peers 
         <li>BlockMsg</li>
         <li>HeaderMsg</li>
       </ul>
+    </td>
+  </tr>
+  <tr>
+    <td><b>Notes</b></td>
+    <td>
+      Nodes should only advertise having a header or block at height 'h' if it also has all the headers or blocks less than 'h'.  Thus for each peer we need only keep track of two integers -- one for the most recent header height 'h_h' and one for the most recent block height 'h_b', where 'h_b' &lt;= 'h_h'.
     </td>
   </tr>
 </table>
@@ -68,19 +63,20 @@ The mempool channel is used for broadcasting new transactions that haven't yet e
     <td>"mempool"</td>
   </tr>
   <tr>
-    <td><b>Filter</b></td>
-    <td>
-      Bloom filter (n:10k, p:0.02 -> k:6, m:10KB)<br/>
-      Each peer's filter has a random nonce that scrambles the message hashes<br/>
-      The filter & nonce refreshes every new block<br/>
-    </td>
-  </tr>
-  <tr>
     <td><b>Messages</b></td>
     <td>
       <ul>
         <li>MempoolTxMsg</li>
       </ul>
+    </td>
+  </tr>
+  <tr>
+    <td><b>Notes</b></td>
+    <td>
+      Instead of keeping a perfect inventory of what peers have, we use a lossy filter.<br/>
+      Bloom filter (n:10k, p:0.02 -> k:6, m:10KB)<br/>
+      Each peer's filter has a random nonce that scrambles the message hashes.<br/>
+      The filter & nonce refreshes every new block.<br/>
     </td>
   </tr>
 </table>
@@ -96,14 +92,6 @@ The consensus channel broadcasts all information used in the rounds of the Tende
     <td>"consensus"</td>
   </tr>
   <tr>
-    <td><b>Filter</b></td>
-    <td>
-      Bitarray filter<br/>
-      Each validator has a predetermined index in teh bitarray<br/>
-      Refreshes every new consensus round
-    </td>
-  </tr>
-  <tr>
     <td><b>Messages</b></td>
     <td>
       <ul>
@@ -111,6 +99,12 @@ The consensus channel broadcasts all information used in the rounds of the Tende
         <li>VoteMsg</li>
         <li>NewBlockMsg</li>
       </ul>
+    </td>
+  </tr>
+  <tr>
+    <td><b>Notes</b></td>
+    <td>
+      How do optimize/balance propagation speed & bandwidth utilization?
     </td>
   </tr>
 </table>
