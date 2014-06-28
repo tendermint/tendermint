@@ -1,6 +1,8 @@
 package peer
 
 import (
+    "sync/atomic"
+    "net"
 )
 
 /* Server */
@@ -10,13 +12,18 @@ type Server struct {
     client          *Client
 }
 
-func NewServer(l Listener, c *Client) *Server {
+func NewServer(protocol string, laddr string, c *Client) *Server {
+    l := NewListener(protocol, laddr)
     s := &Server{
         listener:   l,
         client:     c,
     }
     go s.IncomingConnectionHandler()
     return s
+}
+
+func (s *Server) LocalAddress() *NetAddress {
+    return s.listener.LocalAddress()
 }
 
 // meant to run in a goroutine

@@ -50,17 +50,11 @@ func (p *Peer) Channel(chName String) *Channel {
     return p.channels[chName]
 }
 
-// If msg isn't already in the peer's filter, then
-// queue the msg for output.
+// Queue the msg for output.
 // If the queue is full, just return false.
 func (p *Peer) TryQueueOut(chName String, msg Msg) bool {
     channel := p.Channel(chName)
     outQueue := channel.OutQueue()
-
-    // just return if already in filter
-    if channel.Filter().Has(msg) {
-        return true
-    }
 
     // lock & defer
     p.mtx.Lock(); defer p.mtx.Unlock()
@@ -88,8 +82,6 @@ func (p *Peer) inHandler(chName String, inboundMsgQueue chan<- *InboundMsg) {
         case <-p.quit:
             break FOR_LOOP
         case msg := <-inQueue:
-            // add to channel filter
-            channel.Filter().Add(msg)
             // send to inboundMsgQueue
             inboundMsg := &InboundMsg{
                 Peer:       p,
@@ -133,21 +125,16 @@ func (p *Peer) outHandler(chName String) {
 
 type Channel struct {
     name            String
-
-    mtx             sync.Mutex
-    filter          Filter
-
     inQueue         chan Msg
     outQueue        chan Msg
     //stats           Stats
 }
 
-func NewChannel(name String, filter Filter, in, out chan Msg) *Channel {
+func NewChannel(name string, bufferSize int) *Channel {
     return &Channel{
-        name:       name,
-        filter:     filter,
-        inQueue:    in,
-        outQueue:   out,
+        name:       String(name),
+        inQueue:    make(chan Msg, bufferSize),
+        outQueue:   make(chan Msg, buffersize),
     }
 }
 
@@ -161,27 +148,4 @@ func (c *Channel) InQueue() <-chan Msg {
 
 func (c *Channel) OutQueue() chan<- Msg {
     return c.outQueue
-}
-
-func (c *Channel) Add(msg Msg) {
-    c.Filter().Add(msg)
-}
-
-func (c *Channel) Has(msg Msg) bool {
-    return c.Filter().Has(msg)
-}
-
-func (c *Channel) Filter() Filter {
-    // lock & defer
-    c.mtx.Lock(); defer c.mtx.Unlock()
-    return c.filter
-    // unlock deferred
-}
-
-func (c *Channel) UpdateFilter(filter Filter) {
-    // lock
-    c.mtx.Lock()
-    c.filter = filter
-    c.mtx.Unlock()
-    // unlock
 }

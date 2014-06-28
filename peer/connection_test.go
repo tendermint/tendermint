@@ -8,40 +8,24 @@ import (
 
 func TestLocalConnection(t *testing.T) {
 
-    c1 := NewClient(func(conn *Connection) *Peer {
+    makePeer := func(conn *Connection) *Peer {
+        bufferSize := 10
         p := &Peer{conn: conn}
-
-        ch1 := NewChannel(String("ch1"),
-                nil,
-                // XXX these channels should be buffered.
-                make(chan Msg),
-                make(chan Msg),
-        )
-
-        ch2 := NewChannel(String("ch2"),
-                nil,
-                make(chan Msg),
-                make(chan Msg),
-        )
-
-        channels := make(map[String]*Channel)
-        channels[ch1.Name()] = ch1
-        channels[ch2.Name()] = ch2
-        p.channels = channels
-
+        p.channels := map[String]*Channel{}
+        p.channels["ch1"] = NewChannel("ch1", bufferSize)
+        p.channels["ch2"] = NewChannel("ch2", bufferSize)
         return p
-    })
+    }
 
-    // XXX make c2 like c1.
+    c1 := NewClient(makePeer)
+    c2 := NewClient(makePeer)
 
-    c2 := NewClient(func(conn *Connection) *Peer {
-        return nil
-    })
+    s1 := NewServer("tcp", "127.0.0.1:8001", c1)
 
-    // XXX clients don't have "local addresses"
-    c1.ConnectTo(c2.LocalAddress())
+    c2.ConnectTo(c1.LocalAddress())
 
     // lets send a message from c1 to c2.
+    // XXX do we even want a broadcast function?
     c1.Broadcast(String(""), String("message"))
     time.Sleep(500 * time.Millisecond)
 

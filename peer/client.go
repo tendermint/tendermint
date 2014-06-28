@@ -113,25 +113,12 @@ func (c *Client) PopMessage(chName String) *InboundMsg {
             return nil
         case inMsg := <-q:
             // skip if known.
-            if channel.Filter().Has(inMsg.Msg) {
+            if channel.Has(inMsg.Msg) {
                 continue
             }
             return inMsg
         }
     }
-}
-
-// Updates self's filter for a channel & broadcasts it.
-// TODO: rename, same name is confusing.
-func (c *Client) UpdateFilter(chName String, filter Filter) {
-    if atomic.LoadUint32(&c.stopped) == 1 { return }
-
-    c.self.Channel(chName).UpdateFilter(filter)
-
-    c.Broadcast("", &NewFilterMsg{
-        ChName:     chName,
-        Filter:     filter,
-    })
 }
 
 func (c *Client) StopPeer(peer *Peer) {

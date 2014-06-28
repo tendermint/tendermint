@@ -1,4 +1,5 @@
 // from taipei-torrent
+// TODO: use syscalls to get actual ourIP. http://pastebin.com/9exZG4rh
 
 package peer
 

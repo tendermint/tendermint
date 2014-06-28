@@ -99,7 +99,7 @@ The consensus channel broadcasts all information used in the rounds of the Tende
     <td><b>Filter</b></td>
     <td>
       Bitarray filter<br/>
-      Each validator has a predetermined index in teh bitarray<br/>
+      Each validator has a predetermined index in the bitarray<br/>
       Refreshes every new consensus round
     </td>
   </tr>
@@ -114,3 +114,7 @@ The consensus channel broadcasts all information used in the rounds of the Tende
     </td>
   </tr>
 </table>
+
+## Resources
+
+* http://www.upnp-hacks.org/upnp.html

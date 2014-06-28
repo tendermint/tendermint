@@ -141,6 +141,7 @@ func (c *Connection) inHandler() {
             }
             // What to do?
             // TODO
+            log.Tracef("%v", msg)
             
         default:
             Panicf("Unknown message type %v", msgType)
