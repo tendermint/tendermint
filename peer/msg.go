@@ -27,7 +27,7 @@ type InboundMsg struct {
 
 type NewFilterMsg struct {
     ChName          String
-    Filter          Filter
+    Filter          interface{} // todo
 }
 
 func (m *NewFilterMsg) WriteTo(w io.Writer) (int64, error) {

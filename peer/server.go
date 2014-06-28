@@ -1,8 +1,6 @@
 package peer
 
 import (
-    "sync/atomic"
-    "net"
 )
 
 /* Server */
@@ -13,7 +11,7 @@ type Server struct {
 }
 
 func NewServer(protocol string, laddr string, c *Client) *Server {
-    l := NewListener(protocol, laddr)
+    l := NewDefaultListener(protocol, laddr)
     s := &Server{
         listener:   l,
         client:     c,

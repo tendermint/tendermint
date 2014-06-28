@@ -15,15 +15,15 @@ import (
     It can reach out to the network and establish connections with servers.
     A client doesn't listen for incoming connections -- that's done by the server.
 
-    newPeerCb is a factory method for generating new peers from new *Connections.
-    newPeerCb(nil) must return a prototypical peer that represents the self "peer".
+    peerMaker is a factory method for generating new peers from new *Connections.
+    peerMaker(nil) must return a prototypical peer that represents the self "peer".
 
     XXX what about peer disconnects?
 */
 type Client struct {
-    addrBook        AddrBook
+    addrBook        *AddrBook
     targetNumPeers  int
-    newPeerCb       func(*Connection) *Peer
+    peerMaker       func(*Connection) *Peer
     self            *Peer
     inQueues        map[String]chan *InboundMsg
 
@@ -38,22 +38,27 @@ var (
     CLIENT_DUPLICATE_PEER_ERROR =   errors.New("Duplicate peer")
 )
 
-func NewClient(newPeerCb func(*Connection) *Peer) *Client {
-    self := newPeerCb(nil)
+func NewClient(peerMaker func(*Connection) *Peer) *Client {
+    self := peerMaker(nil)
     if self == nil {
-        Panicf("newPeerCb(nil) must return a prototypical peer for self")
+        Panicf("peerMaker(nil) must return a prototypical peer for self")
     }
 
     inQueues := make(map[String]chan *InboundMsg)
-    for chName, channel := range self.channels {
+    for chName, _ := range self.channels {
         inQueues[chName] = make(chan *InboundMsg)
     }
 
     c := &Client{
-        newPeerCb:  newPeerCb,
-        peers:      merkle.NewIAVLTree(nil),
-        self:       self,
-        inQueues:   inQueues,
+        addrBook:       nil, // TODO
+        targetNumPeers: 0, // TODO
+        peerMaker:      peerMaker,
+        self:           self,
+        inQueues:       inQueues,
+
+        peers:          merkle.NewIAVLTree(nil),
+        quit:           make(chan struct{}),
+        stopped:        0,
     }
     return c
 }
@@ -78,7 +83,7 @@ func (c *Client) Stop() {
 func (c *Client) AddPeerWithConnection(conn *Connection, outgoing bool) (*Peer, error) {
     if atomic.LoadUint32(&c.stopped) == 1 { return nil, CLIENT_STOPPED_ERROR }
 
-    peer := c.newPeerCb(conn)
+    peer := c.peerMaker(conn)
     peer.outgoing = outgoing
     err := c.addPeer(peer)
     if err != nil { return nil, err }
@@ -103,7 +108,6 @@ func (c *Client) Broadcast(chName String, msg Msg) {
 func (c *Client) PopMessage(chName String) *InboundMsg {
     if atomic.LoadUint32(&c.stopped) == 1 { return nil }
 
-    channel := c.self.Channel(chName)
     q := c.inQueues[chName]
     if q == nil { Panicf("Expected inQueues[%f], found none", chName) }
 
@@ -112,10 +116,6 @@ func (c *Client) PopMessage(chName String) *InboundMsg {
         case <-c.quit:
             return nil
         case inMsg := <-q:
-            // skip if known.
-            if channel.Has(inMsg.Msg) {
-                continue
-            }
             return inMsg
         }
     }

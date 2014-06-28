@@ -101,7 +101,7 @@ func GetUPNPLocalAddress() *NetAddress {
     ext, err := nat.GetExternalAddress()
     if err != nil { return nil }
 
-    _, err := nat.AddPortMapping("tcp", DEFAULT_PORT, DEFAULT_PORT, "tendermint", 0)
+    _, err = nat.AddPortMapping("tcp", DEFAULT_PORT, DEFAULT_PORT, "tendermint", 0)
     if err != nil { return nil }
 
     return NewNetAddressIPPort(ext, DEFAULT_PORT)

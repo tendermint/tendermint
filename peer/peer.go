@@ -20,6 +20,14 @@ type Peer struct {
     stopped         uint32
 }
 
+func NewPeer(conn *Connection) *Peer {
+    return &Peer{
+        conn:       conn,
+        quit:       make(chan struct{}),
+        stopped:    0,
+    }
+}
+
 func (p *Peer) Start(peerInQueues map[String]chan *InboundMsg ) {
     for chName, _ := range p.channels {
         go p.inHandler(chName, peerInQueues[chName])
@@ -134,7 +142,7 @@ func NewChannel(name string, bufferSize int) *Channel {
     return &Channel{
         name:       String(name),
         inQueue:    make(chan Msg, bufferSize),
-        outQueue:   make(chan Msg, buffersize),
+        outQueue:   make(chan Msg, bufferSize),
     }
 }
 
