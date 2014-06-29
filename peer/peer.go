@@ -6,6 +6,7 @@ import (
     "sync"
     "io"
     "time"
+    "fmt"
 )
 
 /* Peer */
@@ -78,6 +79,10 @@ func (p *Peer) TryQueueOut(chName String, msg Msg) bool {
 
 func (p *Peer) WriteTo(w io.Writer) (n int64, err error) {
     return p.RemoteAddress().WriteTo(w)
+}
+
+func (p *Peer) String() string {
+    return fmt.Sprintf("Peer{%v-%v,o:%v}", p.LocalAddress(), p.RemoteAddress(), p.outgoing)
 }
 
 func (p *Peer) inHandler(chName String, inboundMsgQueue chan<- *InboundMsg) {

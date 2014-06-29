@@ -15,15 +15,15 @@ import (
     It can reach out to the network and establish connections with servers.
     A client doesn't listen for incoming connections -- that's done by the server.
 
-    peerMaker is a factory method for generating new peers from new *Connections.
-    peerMaker(nil) must return a prototypical peer that represents the self "peer".
+    makePeerFn is a factory method for generating new peers from new *Connections.
+    makePeerFn(nil) must return a prototypical peer that represents the self "peer".
 
     XXX what about peer disconnects?
 */
 type Client struct {
     addrBook        *AddrBook
     targetNumPeers  int
-    peerMaker       func(*Connection) *Peer
+    makePeerFn      func(*Connection) *Peer
     self            *Peer
     inQueues        map[String]chan *InboundMsg
 
@@ -38,10 +38,10 @@ var (
     CLIENT_DUPLICATE_PEER_ERROR =   errors.New("Duplicate peer")
 )
 
-func NewClient(peerMaker func(*Connection) *Peer) *Client {
-    self := peerMaker(nil)
+func NewClient(makePeerFn func(*Connection) *Peer) *Client {
+    self := makePeerFn(nil)
     if self == nil {
-        Panicf("peerMaker(nil) must return a prototypical peer for self")
+        Panicf("makePeerFn(nil) must return a prototypical peer for self")
     }
 
     inQueues := make(map[String]chan *InboundMsg)
@@ -52,7 +52,7 @@ func NewClient(peerMaker func(*Connection) *Peer) *Client {
     c := &Client{
         addrBook:       nil, // TODO
         targetNumPeers: 0, // TODO
-        peerMaker:      peerMaker,
+        makePeerFn:     makePeerFn,
         self:           self,
         inQueues:       inQueues,
 
@@ -64,6 +64,7 @@ func NewClient(peerMaker func(*Connection) *Peer) *Client {
 }
 
 func (c *Client) Stop() {
+    log.Infof("Stopping client")
     // lock
     c.mtx.Lock()
     if atomic.CompareAndSwapUint32(&c.stopped, 0, 1) {
@@ -83,7 +84,8 @@ func (c *Client) Stop() {
 func (c *Client) AddPeerWithConnection(conn *Connection, outgoing bool) (*Peer, error) {
     if atomic.LoadUint32(&c.stopped) == 1 { return nil, CLIENT_STOPPED_ERROR }
 
-    peer := c.peerMaker(conn)
+    log.Infof("Adding peer with connection: %v, outgoing: %v", conn, outgoing)
+    peer := c.makePeerFn(conn)
     peer.outgoing = outgoing
     err := c.addPeer(peer)
     if err != nil { return nil, err }
@@ -96,7 +98,7 @@ func (c *Client) AddPeerWithConnection(conn *Connection, outgoing bool) (*Peer, 
 func (c *Client) Broadcast(chName String, msg Msg) {
     if atomic.LoadUint32(&c.stopped) == 1 { return }
 
-    for v := range c.peersCopy().Values() {
+    for v := range c.Peers().Values() {
         peer := v.(*Peer)
         success := peer.TryQueueOut(chName , msg)
         if !success {
@@ -121,6 +123,13 @@ func (c *Client) PopMessage(chName String) *InboundMsg {
     }
 }
 
+func (c *Client) Peers() merkle.Tree {
+    // lock & defer
+    c.mtx.Lock(); defer c.mtx.Unlock()
+    return c.peers.Copy()
+    // unlock deferred
+}
+
 func (c *Client) StopPeer(peer *Peer) {
     // lock
     c.mtx.Lock()
@@ -141,6 +150,7 @@ func (c *Client) addPeer(peer *Peer) error {
     c.mtx.Lock(); defer c.mtx.Unlock()
     if c.stopped == 1 { return CLIENT_STOPPED_ERROR }
     if !c.peers.Has(addr) {
+        log.Tracef("Actually putting addr: %v, peer: %v", addr, peer)
         c.peers.Put(addr, peer)
         return nil
     } else {
@@ -148,12 +158,5 @@ func (c *Client) addPeer(peer *Peer) error {
         log.Infof("Ignoring duplicate peer for addr %v", addr)
         return CLIENT_DUPLICATE_PEER_ERROR
     }
-    // unlock deferred
-}
-
-func (c *Client) peersCopy() merkle.Tree {
-    // lock & defer
-    c.mtx.Lock(); defer c.mtx.Unlock()
-    return c.peers.Copy()
     // unlock deferred
 }

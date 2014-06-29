@@ -27,11 +27,13 @@ func (s *Server) LocalAddress() *NetAddress {
 // meant to run in a goroutine
 func (s *Server) IncomingConnectionHandler() {
     for conn := range s.listener.Connections() {
+        log.Infof("New connection found: %v", conn)
         s.client.AddPeerWithConnection(conn, false)
     }
 }
 
 func (s *Server) Stop() {
+    log.Infof("Stopping server")
     s.listener.Stop()
     s.client.Stop()
 }

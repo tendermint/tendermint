@@ -5,6 +5,7 @@
 package peer
 
 import (
+    . "github.com/tendermint/tendermint/common"
     . "github.com/tendermint/tendermint/binary"
     "io"
     "net"
@@ -21,7 +22,7 @@ type NetAddress struct {
 // TODO: socks proxies?
 func NewNetAddress(addr net.Addr) *NetAddress {
     tcpAddr, ok := addr.(*net.TCPAddr)
-    if !ok { panic("Only TCPAddrs are supported") }
+    if !ok { Panicf("Only TCPAddrs are supported. Got: %v", addr) }
     ip := tcpAddr.IP
     port := UInt16(tcpAddr.Port)
     return NewNetAddressIPPort(ip, port)

@@ -1,6 +1,7 @@
 package peer
 
 import (
+    . "github.com/tendermint/tendermint/common"
     "sync/atomic"
     "net"
 )
@@ -111,13 +112,14 @@ func GetUPNPLocalAddress() *NetAddress {
 // TODO: use syscalls to get actual ourIP. http://pastebin.com/9exZG4rh
 func GetDefaultLocalAddress() *NetAddress {
     addrs, err := net.InterfaceAddrs()
-    if err != nil { panic("Wtf") }
+    if err != nil { Panicf("Unexpected error fetching interface addresses: %v", err) }
+
     for _, a := range addrs {
         ipnet, ok := a.(*net.IPNet)
         if !ok { continue }
         v4 := ipnet.IP.To4()
         if v4 == nil || v4[0] == 127 { continue } // loopback
-        return NewNetAddress(a)
+        return NewNetAddressIPPort(ipnet.IP, DEFAULT_PORT)
     }
     return nil
 }

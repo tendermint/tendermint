@@ -21,19 +21,30 @@ func TestConnection(t *testing.T) {
     c2 := NewClient(peerMaker)
 
     s1 := NewServer("tcp", ":8001", c1)
+    s1laddr := s1.LocalAddress()
 
-    conn, err := s1.LocalAddress().Dial()
+    conn, err := s1laddr.Dial()
     if err != nil {
-        t.Fatalf("Could not connect to server address %v", s1.LocalAddress())
+        t.Fatalf("Could not connect to server address %v", s1laddr)
+    } else {
+        t.Logf("Created a connection to local server address %v", s1laddr)
     }
 
     c2.AddPeerWithConnection(conn, true)
 
-    // lets send a message from c1 to c2.
-    // XXX do we even want a broadcast function?
-    //c1.Broadcast(String(""), String("message"))
-    time.Sleep(500 * time.Millisecond)
+    // Wait for things to happen, peers to get added...
+    time.Sleep(100 * time.Millisecond)
 
+    // lets send a message from c1 to c2.
+    if c1.Peers().Size() != 1 {
+        t.Errorf("Expected exactly 1 peer in c1, got %v", c1.Peers().Size())
+    }
+    if c2.Peers().Size() != 1 {
+        t.Errorf("Expected exactly 1 peer in c2, got %v", c2.Peers().Size())
+    }
+
+    // TODO: test the transmission of information on channels.
+    time.Sleep(500 * time.Millisecond)
     //inMsg := c2.PopMessage(String(""))
 
     s1.Stop()

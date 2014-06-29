@@ -6,6 +6,7 @@ import (
     "sync/atomic"
     "net"
     "time"
+    "fmt"
 )
 
 const (
@@ -78,6 +79,10 @@ func (c *Connection) LocalAddress() *NetAddress {
 
 func (c *Connection) RemoteAddress() *NetAddress {
     return NewNetAddress(c.conn.RemoteAddr())
+}
+
+func (c *Connection) String() string {
+    return fmt.Sprintf("Connection{%v}", c.conn.RemoteAddr())
 }
 
 func (c *Connection) flush() {
@@ -156,7 +161,6 @@ func (c *Connection) inHandler() {
         // drain
     }
 }
-
 
 
 /* IOStats */
