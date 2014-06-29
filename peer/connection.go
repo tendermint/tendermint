@@ -56,12 +56,14 @@ func (c *Connection) QueueOut(msg ByteSlice) bool {
 }
 
 func (c *Connection) Start() {
+    log.Debugf("Starting %v", c)
     go c.outHandler()
     go c.inHandler()
 }
 
 func (c *Connection) Stop() {
     if atomic.CompareAndSwapUint32(&c.stopped, 0, 1) {
+        log.Debugf("Stopping %v", c)
         close(c.quit)
         c.conn.Close()
         c.pingDebouncer.Stop()
@@ -90,6 +92,7 @@ func (c *Connection) flush() {
 }
 
 func (c *Connection) outHandler() {
+    log.Tracef("Connection %v outHandler", c)
 
     FOR_LOOP:
     for {
@@ -98,6 +101,9 @@ func (c *Connection) outHandler() {
         case <-c.pingDebouncer.Ch:
             _, err = PACKET_TYPE_PING.WriteTo(c.conn)
         case outMsg := <-c.outQueue:
+            log.Tracef("Found msg from outQueue. Writing msg to underlying connection")
+            _, err = PACKET_TYPE_MSG.WriteTo(c.conn)
+            if err != nil { break }
             _, err = outMsg.WriteTo(c.conn)
         case <-c.pong:
             _, err = PACKET_TYPE_PONG.WriteTo(c.conn)
@@ -114,20 +120,24 @@ func (c *Connection) outHandler() {
         c.flush()
     }
 
+    log.Tracef("Connection %v outHandler done", c)
+    // cleanup
 }
 
 func (c *Connection) inHandler() {
+    log.Tracef("Connection %v inHandler", c)
 
     FOR_LOOP:
     for {
         msgType, err := ReadUInt8Safe(c.conn)
-
         if err != nil {
             if atomic.LoadUint32(&c.stopped) != 1 {
                 log.Infof("Connection %v failed @ inHandler", c)
                 c.Stop()
             }
             break FOR_LOOP
+        } else {
+            log.Tracef("Found msgType %v", msgType)
         }
 
         switch msgType {
@@ -145,9 +155,10 @@ func (c *Connection) inHandler() {
                 break FOR_LOOP
             }
             // What to do?
-            // TODO
+            // XXX
+            XXX well, we need to push it into the channel or something.
+            or at least provide an inQueue.
             log.Tracef("%v", msg)
-            
         default:
             Panicf("Unknown message type %v", msgType)
         }
@@ -155,6 +166,7 @@ func (c *Connection) inHandler() {
         c.pingDebouncer.Reset()
     }
 
+    log.Tracef("Connection %v inHandler done", c)
     // cleanup
     close(c.pong)
     for _ = range c.pong {
