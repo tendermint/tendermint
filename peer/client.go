@@ -2,6 +2,7 @@ package peer
 
 import (
     . "github.com/tendermint/tendermint/common"
+    . "github.com/tendermint/tendermint/binary"
     "github.com/tendermint/tendermint/merkle"
     "sync/atomic"
     "sync"
@@ -24,7 +25,7 @@ type Client struct {
     targetNumPeers  int
     makePeerFn      func(*Connection) *Peer
     self            *Peer
-    inQueues        map[string]chan *InboundMsg
+    recvQueues      map[String]chan *InboundPacket
 
     mtx             sync.Mutex
     peers           merkle.Tree // addr -> *Peer
@@ -43,9 +44,9 @@ func NewClient(makePeerFn func(*Connection) *Peer) *Client {
         Panicf("makePeerFn(nil) must return a prototypical peer for self")
     }
 
-    inQueues := make(map[string]chan *InboundMsg)
+    recvQueues := make(map[String]chan *InboundPacket)
     for chName, _ := range self.channels {
-        inQueues[chName] = make(chan *InboundMsg)
+        recvQueues[chName] = make(chan *InboundPacket)
     }
 
     c := &Client{
@@ -53,7 +54,7 @@ func NewClient(makePeerFn func(*Connection) *Peer) *Client {
         targetNumPeers: 0, // TODO
         makePeerFn:     makePeerFn,
         self:           self,
-        inQueues:       inQueues,
+        recvQueues:     recvQueues,
 
         peers:          merkle.NewIAVLTree(nil),
         quit:           make(chan struct{}),
@@ -89,18 +90,18 @@ func (c *Client) AddPeerWithConnection(conn *Connection, outgoing bool) (*Peer, 
     err := c.addPeer(peer)
     if err != nil { return nil, err }
 
-    go peer.Start(c.inQueues)
+    go peer.Start(c.recvQueues)
 
     return peer, nil
 }
 
-func (c *Client) Broadcast(chName string, msg Msg) {
+func (c *Client) Broadcast(pkt Packet) {
     if atomic.LoadUint32(&c.stopped) == 1 { return }
 
-    log.Tracef("Broadcast on [%v] msg: %v", chName, msg)
+    log.Tracef("Broadcast on [%v] len: %v", pkt.Channel, len(pkt.Bytes))
     for v := range c.Peers().Values() {
         peer := v.(*Peer)
-        success := peer.TryQueueOut(chName , msg)
+        success := peer.TrySend(pkt)
         log.Tracef("Broadcast for peer %v success: %v", peer, success)
         if !success {
             // TODO: notify the peer
@@ -110,19 +111,19 @@ func (c *Client) Broadcast(chName string, msg Msg) {
 }
 
 // blocks until a message is popped.
-func (c *Client) PopMessage(chName string) *InboundMsg {
+func (c *Client) Receive(chName String) *InboundPacket {
     if atomic.LoadUint32(&c.stopped) == 1 { return nil }
 
-    log.Tracef("PopMessage on [%v]", chName)
-    q := c.inQueues[chName]
-    if q == nil { Panicf("Expected inQueues[%f], found none", chName) }
+    log.Tracef("Receive on [%v]", chName)
+    q := c.recvQueues[chName]
+    if q == nil { Panicf("Expected recvQueues[%f], found none", chName) }
 
     for {
         select {
         case <-c.quit:
             return nil
-        case inMsg := <-q:
-            return inMsg
+        case inPacket := <-q:
+            return inPacket
         }
     }
 }

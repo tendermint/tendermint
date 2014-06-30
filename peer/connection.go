@@ -19,7 +19,7 @@ const (
 type Connection struct {
     ioStats         IOStats
 
-    outQueue        chan ByteSlice // never closes.
+    sendQueue       chan Packet // never closes
     conn            net.Conn
     quit            chan struct{}
     stopped         uint32
@@ -35,7 +35,7 @@ var (
 
 func NewConnection(conn net.Conn) *Connection {
     return &Connection{
-        outQueue:       make(chan ByteSlice, OUT_QUEUE_SIZE),
+        sendQueue:      make(chan Packet, OUT_QUEUE_SIZE),
         conn:           conn,
         quit:           make(chan struct{}),
         pingDebouncer:  NewDebouncer(PING_TIMEOUT_MINUTES * time.Minute),
@@ -46,19 +46,19 @@ func NewConnection(conn net.Conn) *Connection {
 // returns true if successfully queued,
 // returns false if connection was closed.
 // blocks.
-func (c *Connection) QueueOut(msg ByteSlice) bool {
+func (c *Connection) Send(pkt Packet) bool {
     select {
-    case c.outQueue <- msg:
+    case c.sendQueue <- pkt:
         return true
     case <-c.quit:
         return false
     }
 }
 
-func (c *Connection) Start() {
+func (c *Connection) Start(channels map[String]*Channel) {
     log.Debugf("Starting %v", c)
-    go c.outHandler()
-    go c.inHandler()
+    go c.sendHandler()
+    go c.recvHandler(channels)
 }
 
 func (c *Connection) Stop() {
@@ -68,9 +68,9 @@ func (c *Connection) Stop() {
         c.conn.Close()
         c.pingDebouncer.Stop()
         // We can't close pong safely here because
-        // inHandler may write to it after we've stopped.
+        // recvHandler may write to it after we've stopped.
         // Though it doesn't need to get closed at all,
-        // we close it @ inHandler.
+        // we close it @ recvHandler.
         // close(c.pong)
     }
 }
@@ -91,8 +91,10 @@ func (c *Connection) flush() {
     // TODO flush? (turn off nagel, turn back on, etc)
 }
 
-func (c *Connection) outHandler() {
-    log.Tracef("Connection %v outHandler", c)
+func (c *Connection) sendHandler() {
+    log.Tracef("Connection %v sendHandler", c)
+
+    // TODO: catch panics & stop connection.
 
     FOR_LOOP:
     for {
@@ -100,11 +102,11 @@ func (c *Connection) outHandler() {
         select {
         case <-c.pingDebouncer.Ch:
             _, err = PACKET_TYPE_PING.WriteTo(c.conn)
-        case outMsg := <-c.outQueue:
-            log.Tracef("Found msg from outQueue. Writing msg to underlying connection")
+        case sendPkt := <-c.sendQueue:
+            log.Tracef("Found pkt from sendQueue. Writing pkt to underlying connection")
             _, err = PACKET_TYPE_MSG.WriteTo(c.conn)
             if err != nil { break }
-            _, err = outMsg.WriteTo(c.conn)
+            _, err = sendPkt.WriteTo(c.conn)
         case <-c.pong:
             _, err = PACKET_TYPE_PONG.WriteTo(c.conn)
         case <-c.quit:
@@ -112,7 +114,7 @@ func (c *Connection) outHandler() {
         }
 
         if err != nil {
-            log.Infof("Connection %v failed @ outHandler:\n%v", c, err)
+            log.Infof("Connection %v failed @ sendHandler:\n%v", c, err)
             c.Stop()
             break FOR_LOOP
         }
@@ -120,53 +122,55 @@ func (c *Connection) outHandler() {
         c.flush()
     }
 
-    log.Tracef("Connection %v outHandler done", c)
+    log.Tracef("Connection %v sendHandler done", c)
     // cleanup
 }
 
-func (c *Connection) inHandler() {
-    log.Tracef("Connection %v inHandler", c)
+func (c *Connection) recvHandler(channels map[String]*Channel) {
+    log.Tracef("Connection %v recvHandler with %v channels", c, len(channels))
+
+    // TODO: catch panics & stop connection.
 
     FOR_LOOP:
     for {
-        msgType, err := ReadUInt8Safe(c.conn)
+        pktType, err := ReadUInt8Safe(c.conn)
         if err != nil {
             if atomic.LoadUint32(&c.stopped) != 1 {
-                log.Infof("Connection %v failed @ inHandler", c)
+                log.Infof("Connection %v failed @ recvHandler", c)
                 c.Stop()
             }
             break FOR_LOOP
         } else {
-            log.Tracef("Found msgType %v", msgType)
+            log.Tracef("Found pktType %v", pktType)
         }
 
-        switch msgType {
+        switch pktType {
         case PACKET_TYPE_PING:
             c.pong <- struct{}{}
         case PACKET_TYPE_PONG:
             // do nothing
         case PACKET_TYPE_MSG:
-            msg, err := ReadByteSliceSafe(c.conn)
+            pkt, err := ReadPacketSafe(c.conn)
             if err != nil {
                 if atomic.LoadUint32(&c.stopped) != 1 {
-                    log.Infof("Connection %v failed @ inHandler", c)
+                    log.Infof("Connection %v failed @ recvHandler", c)
                     c.Stop()
                 }
                 break FOR_LOOP
             }
-            // What to do?
-            // XXX
-            XXX well, we need to push it into the channel or something.
-            or at least provide an inQueue.
-            log.Tracef("%v", msg)
+            channel := channels[pkt.Channel]
+            if channel == nil {
+                Panicf("Unknown channel %v", pkt.Channel)
+            }
+            channel.recvQueue <- pkt
         default:
-            Panicf("Unknown message type %v", msgType)
+            Panicf("Unknown message type %v", pktType)
         }
 
         c.pingDebouncer.Reset()
     }
 
-    log.Tracef("Connection %v inHandler done", c)
+    log.Tracef("Connection %v recvHandler done", c)
     // cleanup
     close(c.pong)
     for _ = range c.pong {
@@ -182,6 +186,6 @@ type IOStats struct {
     LastRecv        Time
     BytesRecv       UInt64
     BytesSent       UInt64
-    MsgsRecv        UInt64
-    MsgsSent        UInt64
+    PktsRecv        UInt64
+    PktsSent        UInt64
 }

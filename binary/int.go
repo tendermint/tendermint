@@ -41,18 +41,17 @@ func (self Byte) WriteTo(w io.Writer) (int64, error) {
     return int64(n), err
 }
 
-func ReadByte(r io.Reader) Byte {
-    buf := [1]byte{0}
-    _, err := io.ReadFull(r, buf[:])
-    if err != nil { panic(err) }
-    return Byte(buf[0])
-}
-
 func ReadByteSafe(r io.Reader) (Byte, error) {
     buf := [1]byte{0}
     _, err := io.ReadFull(r, buf[:])
-    if err != nil { return Byte(0), err }
+    if err != nil { return 0, err }
     return Byte(buf[0]), nil
+}
+
+func ReadByte(r io.Reader) (Byte) {
+    b, err := ReadByteSafe(r)
+    if err != nil { panic(err) }
+    return b
 }
 
 
@@ -79,11 +78,17 @@ func (self Int8) WriteTo(w io.Writer) (int64, error) {
     return int64(n), err
 }
 
-func ReadInt8(r io.Reader) Int8 {
+func ReadInt8Safe(r io.Reader) (Int8, error) {
     buf := [1]byte{0}
     _, err := io.ReadFull(r, buf[:])
+    if err != nil { return Int8(0), err }
+    return Int8(buf[0]), nil
+}
+
+func ReadInt8(r io.Reader) (Int8) {
+    b, err := ReadInt8Safe(r)
     if err != nil { panic(err) }
-    return Int8(buf[0])
+    return b
 }
 
 
@@ -110,18 +115,17 @@ func (self UInt8) WriteTo(w io.Writer) (int64, error) {
     return int64(n), err
 }
 
-func ReadUInt8(r io.Reader) UInt8 {
-    buf := [1]byte{0}
-    _, err := io.ReadFull(r, buf[:])
-    if err != nil { panic(err) }
-    return UInt8(buf[0])
-}
-
 func ReadUInt8Safe(r io.Reader) (UInt8, error) {
     buf := [1]byte{0}
     _, err := io.ReadFull(r, buf[:])
     if err != nil { return UInt8(0), err }
     return UInt8(buf[0]), nil
+}
+
+func ReadUInt8(r io.Reader) (UInt8) {
+    b, err := ReadUInt8Safe(r)
+    if err != nil { panic(err) }
+    return b
 }
 
 
@@ -148,11 +152,17 @@ func (self Int16) WriteTo(w io.Writer) (int64, error) {
     return 2, err
 }
 
-func ReadInt16(r io.Reader) Int16 {
+func ReadInt16Safe(r io.Reader) (Int16, error) {
     buf := [2]byte{0}
     _, err := io.ReadFull(r, buf[:])
+    if err != nil { return Int16(0), err }
+    return Int16(binary.LittleEndian.Uint16(buf[:])), nil
+}
+
+func ReadInt16(r io.Reader) (Int16) {
+    b, err := ReadInt16Safe(r)
     if err != nil { panic(err) }
-    return Int16(binary.LittleEndian.Uint16(buf[:]))
+    return b
 }
 
 
@@ -179,11 +189,17 @@ func (self UInt16) WriteTo(w io.Writer) (int64, error) {
     return 2, err
 }
 
-func ReadUInt16(r io.Reader) UInt16 {
+func ReadUInt16Safe(r io.Reader) (UInt16, error) {
     buf := [2]byte{0}
     _, err := io.ReadFull(r, buf[:])
+    if err != nil { return UInt16(0), err }
+    return UInt16(binary.LittleEndian.Uint16(buf[:])), nil
+}
+
+func ReadUInt16(r io.Reader) (UInt16) {
+    b, err := ReadUInt16Safe(r)
     if err != nil { panic(err) }
-    return UInt16(binary.LittleEndian.Uint16(buf[:]))
+    return b
 }
 
 
@@ -210,11 +226,17 @@ func (self Int32) WriteTo(w io.Writer) (int64, error) {
     return 4, err
 }
 
-func ReadInt32(r io.Reader) Int32 {
+func ReadInt32Safe(r io.Reader) (Int32, error) {
     buf := [4]byte{0}
     _, err := io.ReadFull(r, buf[:])
+    if err != nil { return Int32(0), err }
+    return Int32(binary.LittleEndian.Uint32(buf[:])), nil
+}
+
+func ReadInt32(r io.Reader) (Int32) {
+    b, err := ReadInt32Safe(r)
     if err != nil { panic(err) }
-    return Int32(binary.LittleEndian.Uint32(buf[:]))
+    return b
 }
 
 
@@ -241,11 +263,17 @@ func (self UInt32) WriteTo(w io.Writer) (int64, error) {
     return 4, err
 }
 
-func ReadUInt32(r io.Reader) UInt32 {
+func ReadUInt32Safe(r io.Reader) (UInt32, error) {
     buf := [4]byte{0}
     _, err := io.ReadFull(r, buf[:])
+    if err != nil { return UInt32(0), err }
+    return UInt32(binary.LittleEndian.Uint32(buf[:])), nil
+}
+
+func ReadUInt32(r io.Reader) (UInt32) {
+    b, err := ReadUInt32Safe(r)
     if err != nil { panic(err) }
-    return UInt32(binary.LittleEndian.Uint32(buf[:]))
+    return b
 }
 
 
@@ -272,11 +300,17 @@ func (self Int64) WriteTo(w io.Writer) (int64, error) {
     return 8, err
 }
 
-func ReadInt64(r io.Reader) Int64 {
+func ReadInt64Safe(r io.Reader) (Int64, error) {
     buf := [8]byte{0}
     _, err := io.ReadFull(r, buf[:])
+    if err != nil { return Int64(0), err }
+    return Int64(binary.LittleEndian.Uint64(buf[:])), nil
+}
+
+func ReadInt64(r io.Reader) (Int64) {
+    b, err := ReadInt64Safe(r)
     if err != nil { panic(err) }
-    return Int64(binary.LittleEndian.Uint64(buf[:]))
+    return b
 }
 
 
@@ -303,11 +337,17 @@ func (self UInt64) WriteTo(w io.Writer) (int64, error) {
     return 8, err
 }
 
-func ReadUInt64(r io.Reader) UInt64 {
+func ReadUInt64Safe(r io.Reader) (UInt64, error) {
     buf := [8]byte{0}
     _, err := io.ReadFull(r, buf[:])
+    if err != nil { return UInt64(0), err }
+    return UInt64(binary.LittleEndian.Uint64(buf[:])), nil
+}
+
+func ReadUInt64(r io.Reader) (UInt64) {
+    b, err := ReadUInt64Safe(r)
     if err != nil { panic(err) }
-    return UInt64(binary.LittleEndian.Uint64(buf[:]))
+    return b
 }
 
 

@@ -11,7 +11,7 @@ func TestConnection(t *testing.T) {
     peerMaker := func(conn *Connection) *Peer {
         bufferSize := 10
         p := NewPeer(conn)
-        p.channels = map[string]*Channel{}
+        p.channels = map[String]*Channel{}
         p.channels["ch1"] = NewChannel("ch1", bufferSize)
         p.channels["ch2"] = NewChannel("ch2", bufferSize)
         return p
@@ -44,9 +44,9 @@ func TestConnection(t *testing.T) {
     }
 
     // TODO: test the transmission of information on channels.
-    c1.Broadcast("ch1", Msg{Bytes:ByteSlice("test data")})
+    c1.Broadcast(NewPacket("ch1", ByteSlice("test data")))
     time.Sleep(100 * time.Millisecond)
-    inMsg := c2.PopMessage("ch1")
+    inMsg := c2.Receive("ch1")
 
     t.Logf("c2 popped message: %v", inMsg)
 

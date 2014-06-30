@@ -14,7 +14,7 @@ import (
 type Peer struct {
     outgoing        bool
     conn            *Connection
-    channels        map[string]*Channel
+    channels        map[String]*Channel
 
     mtx             sync.Mutex
     quit            chan struct{}
@@ -29,12 +29,12 @@ func NewPeer(conn *Connection) *Peer {
     }
 }
 
-func (p *Peer) Start(peerInQueues map[string]chan *InboundMsg ) {
+func (p *Peer) Start(peerRecvQueues map[String]chan *InboundPacket ) {
     log.Debugf("Starting %v", p)
-    p.conn.Start()
+    p.conn.Start(p.channels)
     for chName, _ := range p.channels {
-        go p.inHandler(chName, peerInQueues[chName])
-        go p.outHandler(chName)
+        go p.recvHandler(chName, peerRecvQueues[chName])
+        go p.sendHandler(chName)
     }
 }
 
@@ -58,21 +58,21 @@ func (p *Peer) RemoteAddress() *NetAddress {
     return p.conn.RemoteAddress()
 }
 
-func (p *Peer) Channel(chName string) *Channel {
+func (p *Peer) Channel(chName String) *Channel {
     return p.channels[chName]
 }
 
-// Queue the msg for output.
-// If the queue is full, just return false.
-func (p *Peer) TryQueueOut(chName string, msg Msg) bool {
-    channel := p.Channel(chName)
-    outQueue := channel.OutQueue()
+// If the channel's queue is full, just return false.
+// Later the sendHandler will send the pkt to the underlying connection.
+func (p *Peer) TrySend(pkt Packet) bool {
+    channel := p.Channel(pkt.Channel)
+    sendQueue := channel.SendQueue()
 
     // lock & defer
     p.mtx.Lock(); defer p.mtx.Unlock()
     if p.stopped == 1 { return false }
     select {
-    case outQueue <- msg:
+    case sendQueue <- pkt:
         return true
     default: // buffer full
         return false
@@ -88,55 +88,55 @@ func (p *Peer) String() string {
     return fmt.Sprintf("Peer{%v-%v,o:%v}", p.LocalAddress(), p.RemoteAddress(), p.outgoing)
 }
 
-func (p *Peer) inHandler(chName string, inboundMsgQueue chan<- *InboundMsg) {
-    log.Tracef("Peer %v inHandler [%v]", p, chName)
+func (p *Peer) recvHandler(chName String, inboundPacketQueue chan<- *InboundPacket) {
+    log.Tracef("Peer %v recvHandler [%v]", p, chName)
     channel := p.channels[chName]
-    inQueue := channel.InQueue()
+    recvQueue := channel.RecvQueue()
 
     FOR_LOOP:
     for {
         select {
         case <-p.quit:
             break FOR_LOOP
-        case msg := <-inQueue:
-            // send to inboundMsgQueue
-            inboundMsg := &InboundMsg{
+        case pkt := <-recvQueue:
+            // send to inboundPacketQueue
+            inboundPacket := &InboundPacket{
                 Peer:       p,
                 Channel:    channel,
                 Time:       Time{time.Now()},
-                Msg:        msg,
+                Packet:     pkt,
             }
             select {
             case <-p.quit:
                 break FOR_LOOP
-            case inboundMsgQueue <- inboundMsg:
+            case inboundPacketQueue <- inboundPacket:
                 continue
             }
         }
     }
 
-    log.Tracef("Peer %v inHandler [%v] closed", p, chName)
+    log.Tracef("Peer %v recvHandler [%v] closed", p, chName)
     // cleanup
     // (none)
 }
 
-func (p *Peer) outHandler(chName string) {
-    log.Tracef("Peer %v outHandler [%v]", p, chName)
-    outQueue := p.channels[chName].outQueue
+func (p *Peer) sendHandler(chName String) {
+    log.Tracef("Peer %v sendHandler [%v]", p, chName)
+    chSendQueue := p.channels[chName].sendQueue
     FOR_LOOP:
     for {
         select {
         case <-p.quit:
             break FOR_LOOP
-        case msg := <-outQueue:
-            log.Tracef("Sending msg to peer outQueue")
+        case pkt := <-chSendQueue:
+            log.Tracef("Sending packet to peer chSendQueue")
             // blocks until the connection is Stop'd,
             // which happens when this peer is Stop'd.
-            p.conn.QueueOut(msg.Bytes)
+            p.conn.Send(pkt)
         }
     }
 
-    log.Tracef("Peer %v outHandler [%v] closed", p, chName)
+    log.Tracef("Peer %v sendHandler [%v] closed", p, chName)
     // cleanup
     // (none)
 }
@@ -145,28 +145,28 @@ func (p *Peer) outHandler(chName string) {
 /*  Channel */
 
 type Channel struct {
-    name            string
-    inQueue         chan Msg
-    outQueue        chan Msg
+    name            String
+    recvQueue       chan Packet
+    sendQueue       chan Packet
     //stats           Stats
 }
 
-func NewChannel(name string, bufferSize int) *Channel {
+func NewChannel(name String, bufferSize int) *Channel {
     return &Channel{
         name:       name,
-        inQueue:    make(chan Msg, bufferSize),
-        outQueue:   make(chan Msg, bufferSize),
+        recvQueue:  make(chan Packet, bufferSize),
+        sendQueue:  make(chan Packet, bufferSize),
     }
 }
 
-func (c *Channel) Name() string {
+func (c *Channel) Name() String {
     return c.name
 }
 
-func (c *Channel) InQueue() <-chan Msg {
-    return c.inQueue
+func (c *Channel) RecvQueue() <-chan Packet {
+    return c.recvQueue
 }
 
-func (c *Channel) OutQueue() chan<- Msg {
-    return c.outQueue
+func (c *Channel) SendQueue() chan<- Packet {
+    return c.sendQueue
 }

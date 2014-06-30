@@ -30,10 +30,17 @@ func (self String) WriteTo(w io.Writer) (n int64, err error) {
     return int64(n_+4), err
 }
 
+func ReadStringSafe(r io.Reader) (String, error) {
+    length, err := ReadUInt32Safe(r)
+    if err != nil { return "", err }
+    bytes := make([]byte, int(length))
+    _, err = io.ReadFull(r, bytes)
+    if err != nil { return "", err }
+    return String(bytes), nil
+}
+
 func ReadString(r io.Reader) String {
-    length := int(ReadUInt32(r))
-    bytes := make([]byte, length)
-    _, err := io.ReadFull(r, bytes)
-    if err != nil { panic(err) }
-    return String(bytes)
+    str, err := ReadStringSafe(r)
+    if r != nil { panic(err) }
+    return str
 }
