@@ -89,7 +89,7 @@ func (p *Peer) String() string {
 }
 
 func (p *Peer) recvHandler(chName String, inboundPacketQueue chan<- *InboundPacket) {
-    log.Tracef("Peer %v recvHandler [%v]", p, chName)
+    log.Tracef("%v recvHandler [%v]", p, chName)
     channel := p.channels[chName]
     recvQueue := channel.RecvQueue()
 
@@ -115,13 +115,13 @@ func (p *Peer) recvHandler(chName String, inboundPacketQueue chan<- *InboundPack
         }
     }
 
-    log.Tracef("Peer %v recvHandler [%v] closed", p, chName)
+    log.Tracef("%v recvHandler [%v] closed", p, chName)
     // cleanup
     // (none)
 }
 
 func (p *Peer) sendHandler(chName String) {
-    log.Tracef("Peer %v sendHandler [%v]", p, chName)
+    log.Tracef("%v sendHandler [%v]", p, chName)
     chSendQueue := p.channels[chName].sendQueue
     FOR_LOOP:
     for {
@@ -136,7 +136,7 @@ func (p *Peer) sendHandler(chName String) {
         }
     }
 
-    log.Tracef("Peer %v sendHandler [%v] closed", p, chName)
+    log.Tracef("%v sendHandler [%v] closed", p, chName)
     // cleanup
     // (none)
 }

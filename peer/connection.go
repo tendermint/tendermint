@@ -92,7 +92,7 @@ func (c *Connection) flush() {
 }
 
 func (c *Connection) sendHandler() {
-    log.Tracef("Connection %v sendHandler", c)
+    log.Tracef("%v sendHandler", c)
 
     // TODO: catch panics & stop connection.
 
@@ -114,7 +114,7 @@ func (c *Connection) sendHandler() {
         }
 
         if err != nil {
-            log.Infof("Connection %v failed @ sendHandler:\n%v", c, err)
+            log.Infof("%v failed @ sendHandler:\n%v", c, err)
             c.Stop()
             break FOR_LOOP
         }
@@ -122,12 +122,12 @@ func (c *Connection) sendHandler() {
         c.flush()
     }
 
-    log.Tracef("Connection %v sendHandler done", c)
+    log.Tracef("%v sendHandler done", c)
     // cleanup
 }
 
 func (c *Connection) recvHandler(channels map[String]*Channel) {
-    log.Tracef("Connection %v recvHandler with %v channels", c, len(channels))
+    log.Tracef("%v recvHandler with %v channels", c, len(channels))
 
     // TODO: catch panics & stop connection.
 
@@ -136,7 +136,7 @@ func (c *Connection) recvHandler(channels map[String]*Channel) {
         pktType, err := ReadUInt8Safe(c.conn)
         if err != nil {
             if atomic.LoadUint32(&c.stopped) != 1 {
-                log.Infof("Connection %v failed @ recvHandler", c)
+                log.Infof("%v failed @ recvHandler", c)
                 c.Stop()
             }
             break FOR_LOOP
@@ -153,7 +153,7 @@ func (c *Connection) recvHandler(channels map[String]*Channel) {
             pkt, err := ReadPacketSafe(c.conn)
             if err != nil {
                 if atomic.LoadUint32(&c.stopped) != 1 {
-                    log.Infof("Connection %v failed @ recvHandler", c)
+                    log.Infof("%v failed @ recvHandler", c)
                     c.Stop()
                 }
                 break FOR_LOOP
@@ -170,7 +170,7 @@ func (c *Connection) recvHandler(channels map[String]*Channel) {
         c.pingDebouncer.Reset()
     }
 
-    log.Tracef("Connection %v recvHandler done", c)
+    log.Tracef("%v recvHandler done", c)
     // cleanup
     close(c.pong)
     for _ = range c.pong {
