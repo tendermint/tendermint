@@ -1,38 +1,38 @@
 package binary
 
 import (
-    "io"
-    "time"
+	"io"
+	"time"
 )
 
 type Time struct {
-    time.Time
+	time.Time
 }
 
 func (self Time) Equals(other Binary) bool {
-    if o, ok := other.(Time); ok {
-        return self.Equal(o.Time)
-    } else {
-        return false
-    }
+	if o, ok := other.(Time); ok {
+		return self.Equal(o.Time)
+	} else {
+		return false
+	}
 }
 
 func (self Time) Less(other Binary) bool {
-    if o, ok := other.(Time); ok {
-        return self.Before(o.Time)
-    } else {
-        panic("Cannot compare unequal types")
-    }
+	if o, ok := other.(Time); ok {
+		return self.Before(o.Time)
+	} else {
+		panic("Cannot compare unequal types")
+	}
 }
 
 func (self Time) ByteSize() int {
-    return 8
+	return 8
 }
 
 func (self Time) WriteTo(w io.Writer) (int64, error) {
-    return Int64(self.Unix()).WriteTo(w)
+	return Int64(self.Unix()).WriteTo(w)
 }
 
 func ReadTime(r io.Reader) Time {
-    return Time{time.Unix(int64(ReadInt64(r)), 0)}
+	return Time{time.Unix(int64(ReadInt64(r)), 0)}
 }

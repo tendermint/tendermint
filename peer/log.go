@@ -1,14 +1,14 @@
 package peer
 
 import (
-    "github.com/cihub/seelog"
+	"github.com/cihub/seelog"
 )
 
 var log seelog.LoggerInterface
 
 func init() {
-    // TODO: replace with configuration file in the ~/.tendermint directory.
-    config := `
+	// TODO: replace with configuration file in the ~/.tendermint directory.
+	config := `
 <seelog type="sync">
     <outputs formatid="colored">
         <console/>
@@ -19,7 +19,9 @@ func init() {
     </formats>
 </seelog>`
 
-    var err error
-    log, err = seelog.LoggerFromConfigAsBytes([]byte(config))
-    if err != nil { panic(err) }
+	var err error
+	log, err = seelog.LoggerFromConfigAsBytes([]byte(config))
+	if err != nil {
+		panic(err)
+	}
 }

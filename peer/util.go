@@ -1,7 +1,7 @@
 package peer
 
 import (
-    "crypto/sha256"
+	"crypto/sha256"
 )
 
 // DoubleSha256 calculates sha256(sha256(b)) and returns the resulting bytes.

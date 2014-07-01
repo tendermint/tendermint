@@ -1,8 +1,8 @@
 package blocks
 
 import (
-    . "github.com/tendermint/tendermint/binary"
-    "io"
+	. "github.com/tendermint/tendermint/binary"
+	"io"
 )
 
 /*
@@ -19,23 +19,23 @@ It usually follows the message to be signed.
 */
 
 type Signature struct {
-    Signer          AccountId
-    SigBytes        ByteSlice
+	Signer   AccountId
+	SigBytes ByteSlice
 }
 
 func ReadSignature(r io.Reader) Signature {
-    return Signature{
-        Signer:     ReadAccountId(r),
-        SigBytes:   ReadByteSlice(r),
-    }
+	return Signature{
+		Signer:   ReadAccountId(r),
+		SigBytes: ReadByteSlice(r),
+	}
 }
 
 func (self Signature) WriteTo(w io.Writer) (n int64, err error) {
-    n, err = WriteOnto(self.Signer,     w, n, err)
-    n, err = WriteOnto(self.SigBytes,   w, n, err)
-    return
+	n, err = WriteOnto(self.Signer, w, n, err)
+	n, err = WriteOnto(self.SigBytes, w, n, err)
+	return
 }
 
 func (self *Signature) Verify(msg ByteSlice) bool {
-    return false
+	return false
 }

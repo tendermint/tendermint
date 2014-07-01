@@ -1,191 +1,192 @@
 package peer
 
 import (
-    . "github.com/tendermint/tendermint/common"
-    . "github.com/tendermint/tendermint/binary"
-    "sync/atomic"
-    "net"
-    "time"
-    "fmt"
+	"fmt"
+	. "github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
+	"net"
+	"sync/atomic"
+	"time"
 )
 
 const (
-    OUT_QUEUE_SIZE = 50
-    IDLE_TIMEOUT_MINUTES = 5
-    PING_TIMEOUT_MINUTES = 2
+	OUT_QUEUE_SIZE       = 50
+	IDLE_TIMEOUT_MINUTES = 5
+	PING_TIMEOUT_MINUTES = 2
 )
 
 /* Connnection */
 type Connection struct {
-    ioStats         IOStats
+	ioStats IOStats
 
-    sendQueue       chan Packet // never closes
-    conn            net.Conn
-    quit            chan struct{}
-    stopped         uint32
-    pingDebouncer   *Debouncer
-    pong            chan struct{}
+	sendQueue     chan Packet // never closes
+	conn          net.Conn
+	quit          chan struct{}
+	stopped       uint32
+	pingDebouncer *Debouncer
+	pong          chan struct{}
 }
 
 var (
-    PACKET_TYPE_PING = UInt8(0x00)
-    PACKET_TYPE_PONG = UInt8(0x01)
-    PACKET_TYPE_MSG =  UInt8(0x10)
+	PACKET_TYPE_PING = UInt8(0x00)
+	PACKET_TYPE_PONG = UInt8(0x01)
+	PACKET_TYPE_MSG  = UInt8(0x10)
 )
 
 func NewConnection(conn net.Conn) *Connection {
-    return &Connection{
-        sendQueue:      make(chan Packet, OUT_QUEUE_SIZE),
-        conn:           conn,
-        quit:           make(chan struct{}),
-        pingDebouncer:  NewDebouncer(PING_TIMEOUT_MINUTES * time.Minute),
-        pong:           make(chan struct{}),
-    }
+	return &Connection{
+		sendQueue:     make(chan Packet, OUT_QUEUE_SIZE),
+		conn:          conn,
+		quit:          make(chan struct{}),
+		pingDebouncer: NewDebouncer(PING_TIMEOUT_MINUTES * time.Minute),
+		pong:          make(chan struct{}),
+	}
 }
 
 // returns true if successfully queued,
 // returns false if connection was closed.
 // blocks.
 func (c *Connection) Send(pkt Packet) bool {
-    select {
-    case c.sendQueue <- pkt:
-        return true
-    case <-c.quit:
-        return false
-    }
+	select {
+	case c.sendQueue <- pkt:
+		return true
+	case <-c.quit:
+		return false
+	}
 }
 
 func (c *Connection) Start(channels map[String]*Channel) {
-    log.Debugf("Starting %v", c)
-    go c.sendHandler()
-    go c.recvHandler(channels)
+	log.Debugf("Starting %v", c)
+	go c.sendHandler()
+	go c.recvHandler(channels)
 }
 
 func (c *Connection) Stop() {
-    if atomic.CompareAndSwapUint32(&c.stopped, 0, 1) {
-        log.Debugf("Stopping %v", c)
-        close(c.quit)
-        c.conn.Close()
-        c.pingDebouncer.Stop()
-        // We can't close pong safely here because
-        // recvHandler may write to it after we've stopped.
-        // Though it doesn't need to get closed at all,
-        // we close it @ recvHandler.
-        // close(c.pong)
-    }
+	if atomic.CompareAndSwapUint32(&c.stopped, 0, 1) {
+		log.Debugf("Stopping %v", c)
+		close(c.quit)
+		c.conn.Close()
+		c.pingDebouncer.Stop()
+		// We can't close pong safely here because
+		// recvHandler may write to it after we've stopped.
+		// Though it doesn't need to get closed at all,
+		// we close it @ recvHandler.
+		// close(c.pong)
+	}
 }
 
 func (c *Connection) LocalAddress() *NetAddress {
-    return NewNetAddress(c.conn.LocalAddr())
+	return NewNetAddress(c.conn.LocalAddr())
 }
 
 func (c *Connection) RemoteAddress() *NetAddress {
-    return NewNetAddress(c.conn.RemoteAddr())
+	return NewNetAddress(c.conn.RemoteAddr())
 }
 
 func (c *Connection) String() string {
-    return fmt.Sprintf("Connection{%v}", c.conn.RemoteAddr())
+	return fmt.Sprintf("Connection{%v}", c.conn.RemoteAddr())
 }
 
 func (c *Connection) flush() {
-    // TODO flush? (turn off nagel, turn back on, etc)
+	// TODO flush? (turn off nagel, turn back on, etc)
 }
 
 func (c *Connection) sendHandler() {
-    log.Tracef("%v sendHandler", c)
+	log.Tracef("%v sendHandler", c)
 
-    // TODO: catch panics & stop connection.
+	// TODO: catch panics & stop connection.
 
-    FOR_LOOP:
-    for {
-        var err error
-        select {
-        case <-c.pingDebouncer.Ch:
-            _, err = PACKET_TYPE_PING.WriteTo(c.conn)
-        case sendPkt := <-c.sendQueue:
-            log.Tracef("Found pkt from sendQueue. Writing pkt to underlying connection")
-            _, err = PACKET_TYPE_MSG.WriteTo(c.conn)
-            if err != nil { break }
-            _, err = sendPkt.WriteTo(c.conn)
-        case <-c.pong:
-            _, err = PACKET_TYPE_PONG.WriteTo(c.conn)
-        case <-c.quit:
-            break FOR_LOOP
-        }
+FOR_LOOP:
+	for {
+		var err error
+		select {
+		case <-c.pingDebouncer.Ch:
+			_, err = PACKET_TYPE_PING.WriteTo(c.conn)
+		case sendPkt := <-c.sendQueue:
+			log.Tracef("Found pkt from sendQueue. Writing pkt to underlying connection")
+			_, err = PACKET_TYPE_MSG.WriteTo(c.conn)
+			if err != nil {
+				break
+			}
+			_, err = sendPkt.WriteTo(c.conn)
+		case <-c.pong:
+			_, err = PACKET_TYPE_PONG.WriteTo(c.conn)
+		case <-c.quit:
+			break FOR_LOOP
+		}
 
-        if err != nil {
-            log.Infof("%v failed @ sendHandler:\n%v", c, err)
-            c.Stop()
-            break FOR_LOOP
-        }
+		if err != nil {
+			log.Infof("%v failed @ sendHandler:\n%v", c, err)
+			c.Stop()
+			break FOR_LOOP
+		}
 
-        c.flush()
-    }
+		c.flush()
+	}
 
-    log.Tracef("%v sendHandler done", c)
-    // cleanup
+	log.Tracef("%v sendHandler done", c)
+	// cleanup
 }
 
 func (c *Connection) recvHandler(channels map[String]*Channel) {
-    log.Tracef("%v recvHandler with %v channels", c, len(channels))
+	log.Tracef("%v recvHandler with %v channels", c, len(channels))
 
-    // TODO: catch panics & stop connection.
+	// TODO: catch panics & stop connection.
 
-    FOR_LOOP:
-    for {
-        pktType, err := ReadUInt8Safe(c.conn)
-        if err != nil {
-            if atomic.LoadUint32(&c.stopped) != 1 {
-                log.Infof("%v failed @ recvHandler", c)
-                c.Stop()
-            }
-            break FOR_LOOP
-        } else {
-            log.Tracef("Found pktType %v", pktType)
-        }
+FOR_LOOP:
+	for {
+		pktType, err := ReadUInt8Safe(c.conn)
+		if err != nil {
+			if atomic.LoadUint32(&c.stopped) != 1 {
+				log.Infof("%v failed @ recvHandler", c)
+				c.Stop()
+			}
+			break FOR_LOOP
+		} else {
+			log.Tracef("Found pktType %v", pktType)
+		}
 
-        switch pktType {
-        case PACKET_TYPE_PING:
-            c.pong <- struct{}{}
-        case PACKET_TYPE_PONG:
-            // do nothing
-        case PACKET_TYPE_MSG:
-            pkt, err := ReadPacketSafe(c.conn)
-            if err != nil {
-                if atomic.LoadUint32(&c.stopped) != 1 {
-                    log.Infof("%v failed @ recvHandler", c)
-                    c.Stop()
-                }
-                break FOR_LOOP
-            }
-            channel := channels[pkt.Channel]
-            if channel == nil {
-                Panicf("Unknown channel %v", pkt.Channel)
-            }
-            channel.recvQueue <- pkt
-        default:
-            Panicf("Unknown message type %v", pktType)
-        }
+		switch pktType {
+		case PACKET_TYPE_PING:
+			c.pong <- struct{}{}
+		case PACKET_TYPE_PONG:
+			// do nothing
+		case PACKET_TYPE_MSG:
+			pkt, err := ReadPacketSafe(c.conn)
+			if err != nil {
+				if atomic.LoadUint32(&c.stopped) != 1 {
+					log.Infof("%v failed @ recvHandler", c)
+					c.Stop()
+				}
+				break FOR_LOOP
+			}
+			channel := channels[pkt.Channel]
+			if channel == nil {
+				Panicf("Unknown channel %v", pkt.Channel)
+			}
+			channel.recvQueue <- pkt
+		default:
+			Panicf("Unknown message type %v", pktType)
+		}
 
-        c.pingDebouncer.Reset()
-    }
+		c.pingDebouncer.Reset()
+	}
 
-    log.Tracef("%v recvHandler done", c)
-    // cleanup
-    close(c.pong)
-    for _ = range c.pong {
-        // drain
-    }
+	log.Tracef("%v recvHandler done", c)
+	// cleanup
+	close(c.pong)
+	for _ = range c.pong {
+		// drain
+	}
 }
-
 
 /* IOStats */
 type IOStats struct {
-    TimeConnected   Time
-    LastSent        Time
-    LastRecv        Time
-    BytesRecv       UInt64
-    BytesSent       UInt64
-    PktsRecv        UInt64
-    PktsSent        UInt64
+	TimeConnected Time
+	LastSent      Time
+	LastRecv      Time
+	BytesRecv     UInt64
+	BytesSent     UInt64
+	PktsRecv      UInt64
+	PktsSent      UInt64
 }
