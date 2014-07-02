@@ -117,6 +117,10 @@ func (t *IAVLTree) Traverse(cb func(Node) bool) {
 func (t *IAVLTree) Values() <-chan Value {
 	root := t.root
 	ch := make(chan Value)
+	if root == nil {
+		close(ch)
+		return ch
+	}
 	go func() {
 		root.traverse(t.db, func(n Node) bool {
 			if n.Height() == 0 {

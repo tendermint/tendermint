@@ -2,11 +2,12 @@ package peer
 
 import (
 	"fmt"
-	. "github.com/tendermint/tendermint/binary"
 	"io"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	. "github.com/tendermint/tendermint/binary"
 )
 
 /* Peer */

@@ -1,7 +1,5 @@
 package peer
 
-import ()
-
 /* Server */
 
 type Server struct {
@@ -31,8 +29,8 @@ func (s *Server) IncomingConnectionHandler() {
 	}
 }
 
+// stops the server, not the client.
 func (s *Server) Stop() {
 	log.Infof("Stopping server")
 	s.listener.Stop()
-	s.client.Stop()
 }

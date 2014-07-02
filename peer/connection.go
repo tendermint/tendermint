@@ -2,11 +2,12 @@ package peer
 
 import (
 	"fmt"
-	. "github.com/tendermint/tendermint/binary"
-	. "github.com/tendermint/tendermint/common"
 	"net"
 	"sync/atomic"
 	"time"
+
+	. "github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
 )
 
 const (
@@ -115,12 +116,14 @@ FOR_LOOP:
 			break FOR_LOOP
 		}
 
+		if atomic.LoadUint32(&c.stopped) == 1 {
+			break FOR_LOOP
+		}
 		if err != nil {
 			log.Infof("%v failed @ sendHandler:\n%v", c, err)
 			c.Stop()
 			break FOR_LOOP
 		}
-
 		c.flush()
 	}
 

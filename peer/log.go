@@ -9,7 +9,7 @@ var log seelog.LoggerInterface
 func init() {
 	// TODO: replace with configuration file in the ~/.tendermint directory.
 	config := `
-<seelog type="sync">
+<seelog type="asyncloop" minlevel="debug">
     <outputs formatid="colored">
         <console/>
     </outputs>

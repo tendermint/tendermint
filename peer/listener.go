@@ -1,9 +1,10 @@
 package peer
 
 import (
-	. "github.com/tendermint/tendermint/common"
 	"net"
 	"sync/atomic"
+
+	. "github.com/tendermint/tendermint/common"
 )
 
 const (
@@ -51,7 +52,7 @@ func (l *DefaultListener) listenHandler() {
 		conn, err := l.listener.Accept()
 
 		if atomic.LoadUint32(&l.stopped) == 1 {
-			return
+			break // go to cleanup
 		}
 
 		// listener wasn't stopped,
@@ -104,21 +105,29 @@ func GetLocalAddress() *NetAddress {
 // UPNP external address discovery & port mapping
 // TODO: more flexible internal & external ports
 func GetUPNPLocalAddress() *NetAddress {
+	// XXX remove nil, create option for specifying address.
+	// removed because this takes too long.
+	return nil
+	log.Infof("Getting UPNP local address")
 	nat, err := Discover()
 	if err != nil {
+		log.Infof("Could not get UPNP local address: %v", err)
 		return nil
 	}
 
 	ext, err := nat.GetExternalAddress()
 	if err != nil {
+		log.Infof("Could not get UPNP local address: %v", err)
 		return nil
 	}
 
 	_, err = nat.AddPortMapping("tcp", DEFAULT_PORT, DEFAULT_PORT, "tendermint", 0)
 	if err != nil {
+		log.Infof("Could not get UPNP local address: %v", err)
 		return nil
 	}
 
+	log.Infof("Got UPNP local address: %v", ext)
 	return NewNetAddressIPPort(ext, DEFAULT_PORT)
 }
 

@@ -3,29 +3,22 @@ package merkle
 import (
 	"bytes"
 	"crypto/sha256"
-	"encoding/binary"
 	"fmt"
+
 	. "github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/db"
-	"math/rand"
-	"os"
+
 	"runtime"
 	"testing"
 )
 
 func init() {
-	if urandom, err := os.Open("/dev/urandom"); err != nil {
-		return
-	} else {
-		buf := make([]byte, 8)
-		if _, err := urandom.Read(buf); err == nil {
-			buf_reader := bytes.NewReader(buf)
-			if seed, err := binary.ReadVarint(buf_reader); err == nil {
-				rand.Seed(seed)
-			}
-		}
-		urandom.Close()
-	}
+	// TODO: seed rand?
+}
+
+func randstr(length int) String {
+	return String(RandStr(length))
 }
 
 func TestUnit(t *testing.T) {

@@ -2,11 +2,12 @@ package peer
 
 import (
 	"errors"
+	"sync"
+	"sync/atomic"
+
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/merkle"
-	"sync"
-	"sync/atomic"
 )
 
 /*  Client
@@ -99,20 +100,23 @@ func (c *Client) AddPeerWithConnection(conn *Connection, outgoing bool) (*Peer, 
 	return peer, nil
 }
 
-func (c *Client) Broadcast(pkt Packet) {
+func (c *Client) Broadcast(pkt Packet) (numSuccess, numFailure int) {
 	if atomic.LoadUint32(&c.stopped) == 1 {
 		return
 	}
 
 	log.Tracef("Broadcast on [%v] len: %v", pkt.Channel, len(pkt.Bytes))
-	for v := range c.Peers().Values() {
+	for v := range c.peers.Values() {
 		peer := v.(*Peer)
 		success := peer.TrySend(pkt)
 		log.Tracef("Broadcast for peer %v success: %v", peer, success)
-		if !success {
-			// TODO: notify the peer
+		if success {
+			numSuccess += 1
+		} else {
+			numFailure += 1
 		}
 	}
+	return
 
 }
 
@@ -128,13 +132,11 @@ func (c *Client) Receive(chName String) *InboundPacket {
 		Panicf("Expected recvQueues[%f], found none", chName)
 	}
 
-	for {
-		select {
-		case <-c.quit:
-			return nil
-		case inPacket := <-q:
-			return inPacket
-		}
+	select {
+	case <-c.quit:
+		return nil
+	case inPacket := <-q:
+		return inPacket
 	}
 }
 
