@@ -8,6 +8,7 @@ import (
 )
 
 const (
+	// TODO REMOVE
 	DEFAULT_PORT = 8001
 )
 

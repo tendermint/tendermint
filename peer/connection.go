@@ -1,6 +1,7 @@
 package peer
 
 import (
+	"bufio"
 	"fmt"
 	"net"
 	"sync/atomic"
@@ -22,6 +23,8 @@ type Connection struct {
 
 	sendQueue     chan Packet // never closes
 	conn          net.Conn
+	bufWriter     *bufio.Writer
+	bufReader     *bufio.Reader
 	quit          chan struct{}
 	stopped       uint32
 	pingDebouncer *Debouncer
@@ -38,6 +41,8 @@ func NewConnection(conn net.Conn) *Connection {
 	return &Connection{
 		sendQueue:     make(chan Packet, OUT_QUEUE_SIZE),
 		conn:          conn,
+		bufWriter:     bufio.NewWriterSize(conn, 1024),
+		bufReader:     bufio.NewReaderSize(conn, 1024),
 		quit:          make(chan struct{}),
 		pingDebouncer: NewDebouncer(PING_TIMEOUT_MINUTES * time.Minute),
 		pong:          make(chan struct{}),
@@ -102,16 +107,16 @@ FOR_LOOP:
 		var err error
 		select {
 		case <-c.pingDebouncer.Ch:
-			_, err = PACKET_TYPE_PING.WriteTo(c.conn)
+			_, err = PACKET_TYPE_PING.WriteTo(c.bufWriter)
 		case sendPkt := <-c.sendQueue:
 			log.Tracef("Found pkt from sendQueue. Writing pkt to underlying connection")
-			_, err = PACKET_TYPE_MSG.WriteTo(c.conn)
+			_, err = PACKET_TYPE_MSG.WriteTo(c.bufWriter)
 			if err != nil {
 				break
 			}
-			_, err = sendPkt.WriteTo(c.conn)
+			_, err = sendPkt.WriteTo(c.bufWriter)
 		case <-c.pong:
-			_, err = PACKET_TYPE_PONG.WriteTo(c.conn)
+			_, err = PACKET_TYPE_PONG.WriteTo(c.bufWriter)
 		case <-c.quit:
 			break FOR_LOOP
 		}
@@ -138,7 +143,7 @@ func (c *Connection) recvHandler(channels map[String]*Channel) {
 
 FOR_LOOP:
 	for {
-		pktType, err := ReadUInt8Safe(c.conn)
+		pktType, err := ReadUInt8Safe(c.bufReader)
 		if err != nil {
 			if atomic.LoadUint32(&c.stopped) != 1 {
 				log.Infof("%v failed @ recvHandler", c)
@@ -155,7 +160,7 @@ FOR_LOOP:
 		case PACKET_TYPE_PONG:
 			// do nothing
 		case PACKET_TYPE_MSG:
-			pkt, err := ReadPacketSafe(c.conn)
+			pkt, err := ReadPacketSafe(c.bufReader)
 			if err != nil {
 				if atomic.LoadUint32(&c.stopped) != 1 {
 					log.Infof("%v failed @ recvHandler", c)

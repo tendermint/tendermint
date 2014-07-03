@@ -156,8 +156,10 @@ func (self Int16) ByteSize() int {
 }
 
 func (self Int16) WriteTo(w io.Writer) (int64, error) {
-	err := binary.Write(w, binary.LittleEndian, int16(self))
-	return 2, err
+	buf := []byte{0, 0}
+	binary.LittleEndian.PutUint16(buf, uint16(self))
+	n, err := w.Write(buf)
+	return int64(n), err
 }
 
 func ReadInt16Safe(r io.Reader) (Int16, error) {
@@ -196,8 +198,10 @@ func (self UInt16) ByteSize() int {
 }
 
 func (self UInt16) WriteTo(w io.Writer) (int64, error) {
-	err := binary.Write(w, binary.LittleEndian, uint16(self))
-	return 2, err
+	buf := []byte{0, 0}
+	binary.LittleEndian.PutUint16(buf, uint16(self))
+	n, err := w.Write(buf)
+	return int64(n), err
 }
 
 func ReadUInt16Safe(r io.Reader) (UInt16, error) {
@@ -236,8 +240,10 @@ func (self Int32) ByteSize() int {
 }
 
 func (self Int32) WriteTo(w io.Writer) (int64, error) {
-	err := binary.Write(w, binary.LittleEndian, int32(self))
-	return 4, err
+	buf := []byte{0, 0, 0, 0}
+	binary.LittleEndian.PutUint32(buf, uint32(self))
+	n, err := w.Write(buf)
+	return int64(n), err
 }
 
 func ReadInt32Safe(r io.Reader) (Int32, error) {
@@ -276,8 +282,10 @@ func (self UInt32) ByteSize() int {
 }
 
 func (self UInt32) WriteTo(w io.Writer) (int64, error) {
-	err := binary.Write(w, binary.LittleEndian, uint32(self))
-	return 4, err
+	buf := []byte{0, 0, 0, 0}
+	binary.LittleEndian.PutUint32(buf, uint32(self))
+	n, err := w.Write(buf)
+	return int64(n), err
 }
 
 func ReadUInt32Safe(r io.Reader) (UInt32, error) {
@@ -316,8 +324,10 @@ func (self Int64) ByteSize() int {
 }
 
 func (self Int64) WriteTo(w io.Writer) (int64, error) {
-	err := binary.Write(w, binary.LittleEndian, int64(self))
-	return 8, err
+	buf := []byte{0, 0, 0, 0, 0, 0, 0, 0}
+	binary.LittleEndian.PutUint64(buf, uint64(self))
+	n, err := w.Write(buf)
+	return int64(n), err
 }
 
 func ReadInt64Safe(r io.Reader) (Int64, error) {
@@ -356,8 +366,10 @@ func (self UInt64) ByteSize() int {
 }
 
 func (self UInt64) WriteTo(w io.Writer) (int64, error) {
-	err := binary.Write(w, binary.LittleEndian, uint64(self))
-	return 8, err
+	buf := []byte{0, 0, 0, 0, 0, 0, 0, 0}
+	binary.LittleEndian.PutUint64(buf, uint64(self))
+	n, err := w.Write(buf)
+	return int64(n), err
 }
 
 func ReadUInt64Safe(r io.Reader) (UInt64, error) {
@@ -396,8 +408,10 @@ func (self Int) ByteSize() int {
 }
 
 func (self Int) WriteTo(w io.Writer) (int64, error) {
-	err := binary.Write(w, binary.LittleEndian, int64(self))
-	return 8, err
+	buf := []byte{0, 0, 0, 0, 0, 0, 0, 0}
+	binary.LittleEndian.PutUint64(buf, uint64(self))
+	n, err := w.Write(buf)
+	return int64(n), err
 }
 
 func ReadInt(r io.Reader) Int {
@@ -428,8 +442,10 @@ func (self UInt) ByteSize() int {
 }
 
 func (self UInt) WriteTo(w io.Writer) (int64, error) {
-	err := binary.Write(w, binary.LittleEndian, uint64(self))
-	return 8, err
+	buf := []byte{0, 0, 0, 0, 0, 0, 0, 0}
+	binary.LittleEndian.PutUint64(buf, uint64(self))
+	n, err := w.Write(buf)
+	return int64(n), err
 }
 
 func ReadUInt(r io.Reader) UInt {
