@@ -12,23 +12,27 @@ import (
 )
 
 const (
-	OUT_QUEUE_SIZE       = 50
-	IDLE_TIMEOUT_MINUTES = 5
-	PING_TIMEOUT_MINUTES = 2
+	READ_BUFFER_MIN_SIZE  = 1024
+	WRITE_BUFFER_MIN_SIZE = 1024
+	FLUSH_THROTTLE_MS     = 50
+	OUT_QUEUE_SIZE        = 50
+	IDLE_TIMEOUT_MINUTES  = 5
+	PING_TIMEOUT_MINUTES  = 2
 )
 
 /* Connnection */
 type Connection struct {
 	ioStats IOStats
 
-	sendQueue     chan Packet // never closes
-	conn          net.Conn
-	bufWriter     *bufio.Writer
-	bufReader     *bufio.Reader
-	quit          chan struct{}
-	stopped       uint32
-	pingDebouncer *Debouncer
-	pong          chan struct{}
+	sendQueue       chan Packet // never closes
+	conn            net.Conn
+	bufReader       *bufio.Reader
+	bufWriter       *bufio.Writer
+	flushThrottler  *Throttler
+	quit            chan struct{}
+	stopped         uint32
+	pingRepeatTimer *RepeatTimer
+	pong            chan struct{}
 }
 
 var (
@@ -39,13 +43,14 @@ var (
 
 func NewConnection(conn net.Conn) *Connection {
 	return &Connection{
-		sendQueue:     make(chan Packet, OUT_QUEUE_SIZE),
-		conn:          conn,
-		bufWriter:     bufio.NewWriterSize(conn, 1024),
-		bufReader:     bufio.NewReaderSize(conn, 1024),
-		quit:          make(chan struct{}),
-		pingDebouncer: NewDebouncer(PING_TIMEOUT_MINUTES * time.Minute),
-		pong:          make(chan struct{}),
+		sendQueue:       make(chan Packet, OUT_QUEUE_SIZE),
+		conn:            conn,
+		bufReader:       bufio.NewReaderSize(conn, READ_BUFFER_MIN_SIZE),
+		bufWriter:       bufio.NewWriterSize(conn, WRITE_BUFFER_MIN_SIZE),
+		flushThrottler:  NewThrottler(FLUSH_THROTTLE_MS * time.Millisecond),
+		quit:            make(chan struct{}),
+		pingRepeatTimer: NewRepeatTimer(PING_TIMEOUT_MINUTES * time.Minute),
+		pong:            make(chan struct{}),
 	}
 }
 
@@ -72,7 +77,8 @@ func (c *Connection) Stop() {
 		log.Debugf("Stopping %v", c)
 		close(c.quit)
 		c.conn.Close()
-		c.pingDebouncer.Stop()
+		c.flushThrottler.Stop()
+		c.pingRepeatTimer.Stop()
 		// We can't close pong safely here because
 		// recvHandler may write to it after we've stopped.
 		// Though it doesn't need to get closed at all,
@@ -94,7 +100,15 @@ func (c *Connection) String() string {
 }
 
 func (c *Connection) flush() {
-	// TODO flush? (turn off nagel, turn back on, etc)
+	// TODO: this is pretty naive.
+	// We end up flushing when we don't have to (yet).
+	// A better solution might require us implementing our own buffered writer.
+	err := c.bufWriter.Flush()
+	if err != nil {
+		if atomic.LoadUint32(&c.stopped) != 1 {
+			log.Warnf("Connection flush failed: %v", err)
+		}
+	}
 }
 
 func (c *Connection) sendHandler() {
@@ -106,8 +120,6 @@ FOR_LOOP:
 	for {
 		var err error
 		select {
-		case <-c.pingDebouncer.Ch:
-			_, err = PACKET_TYPE_PING.WriteTo(c.bufWriter)
 		case sendPkt := <-c.sendQueue:
 			log.Tracef("Found pkt from sendQueue. Writing pkt to underlying connection")
 			_, err = PACKET_TYPE_MSG.WriteTo(c.bufWriter)
@@ -115,8 +127,15 @@ FOR_LOOP:
 				break
 			}
 			_, err = sendPkt.WriteTo(c.bufWriter)
+			c.flushThrottler.Set()
+		case <-c.flushThrottler.Ch:
+			c.flush()
+		case <-c.pingRepeatTimer.Ch:
+			_, err = PACKET_TYPE_PING.WriteTo(c.bufWriter)
+			c.flush()
 		case <-c.pong:
 			_, err = PACKET_TYPE_PONG.WriteTo(c.bufWriter)
+			c.flush()
 		case <-c.quit:
 			break FOR_LOOP
 		}
@@ -129,7 +148,6 @@ FOR_LOOP:
 			c.Stop()
 			break FOR_LOOP
 		}
-		c.flush()
 	}
 
 	log.Tracef("%v sendHandler done", c)
@@ -156,6 +174,8 @@ FOR_LOOP:
 
 		switch pktType {
 		case PACKET_TYPE_PING:
+			// TODO: keep track of these, make sure it isn't abused
+			// as they cause flush()'s in the send buffer.
 			c.pong <- struct{}{}
 		case PACKET_TYPE_PONG:
 			// do nothing
@@ -177,7 +197,7 @@ FOR_LOOP:
 			Panicf("Unknown message type %v", pktType)
 		}
 
-		c.pingDebouncer.Reset()
+		c.pingRepeatTimer.Reset()
 	}
 
 	log.Tracef("%v recvHandler done", c)
