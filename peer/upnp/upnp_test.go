@@ -1,6 +1,7 @@
-package peer
+package upnp
 
 import (
+	"net"
 	"testing"
 	"time"
 )
@@ -9,7 +10,6 @@ import (
 This is a manual test.
 TODO: set up or find a service to probe open ports.
 */
-
 func TestUPNP(t *testing.T) {
 	t.Log("hello!")
 
@@ -33,7 +33,10 @@ func TestUPNP(t *testing.T) {
 	t.Logf("Port mapping mapped: %v", port)
 
 	// also run the listener, open for all remote addresses.
-	listener := NewDefaultListener("tcp", "0.0.0.0:8001")
+	listener, err := net.Listen("tcp", ":8001")
+	if err != nil {
+		panic(err)
+	}
 
 	// now sleep for 10 seconds
 	time.Sleep(10 * time.Second)
@@ -44,5 +47,5 @@ func TestUPNP(t *testing.T) {
 	}
 	t.Logf("Port mapping deleted")
 
-	listener.Stop()
+	listener.Close()
 }

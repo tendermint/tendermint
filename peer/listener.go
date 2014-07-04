@@ -5,23 +5,26 @@ import (
 	"sync/atomic"
 
 	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/peer/upnp"
 )
 
 const (
-	// TODO REMOVE
+	// BUG(jae) Remove DEFAULT_PORT
 	DEFAULT_PORT = 8001
 )
 
-/* Listener */
-
+/*
+Listener is part of a Server.
+*/
 type Listener interface {
 	Connections() <-chan *Connection
 	LocalAddress() *NetAddress
 	Stop()
 }
 
-/* DefaultListener */
-
+/*
+DefaultListener is an implementation that works on the golang network stack.
+*/
 type DefaultListener struct {
 	listener    net.Listener
 	connections chan *Connection
@@ -110,7 +113,7 @@ func GetUPNPLocalAddress() *NetAddress {
 	// removed because this takes too long.
 	return nil
 	log.Infof("Getting UPNP local address")
-	nat, err := Discover()
+	nat, err := upnp.Discover()
 	if err != nil {
 		log.Infof("Could not get UPNP local address: %v", err)
 		return nil

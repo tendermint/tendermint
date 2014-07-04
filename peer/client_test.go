@@ -8,15 +8,14 @@ import (
 )
 
 // convenience method for creating two clients connected to each other.
-func makeClientPair(t testing.TB, bufferSize int, channels []String) (*Client, *Client) {
+func makeClientPair(t testing.TB, bufferSize int, chNames []String) (*Client, *Client) {
 
 	peerMaker := func(conn *Connection) *Peer {
-		p := NewPeer(conn)
-		p.channels = map[String]*Channel{}
-		for _, chName := range channels {
-			p.channels[chName] = NewChannel(chName, bufferSize)
+		channels := map[String]*Channel{}
+		for _, chName := range chNames {
+			channels[chName] = NewChannel(chName, bufferSize)
 		}
-		return p
+		return NewPeer(conn, channels)
 	}
 
 	// Create two clients that will be interconnected.

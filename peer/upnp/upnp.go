@@ -1,10 +1,11 @@
-// from taipei-torrent
-// TODO: use syscalls to get actual ourIP. http://pastebin.com/9exZG4rh
+/*
+Taken from taipei-torrent
 
-package peer
+Just enough UPnP to be able to forward ports
+*/
+package upnp
 
-// Just enough UPnP to be able to forward ports
-//
+// BUG(jae): TODO: use syscalls to get actual ourIP. http://pastebin.com/9exZG4rh
 
 import (
 	"bytes"

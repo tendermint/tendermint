@@ -3,7 +3,6 @@ package peer
 import (
 	"fmt"
 	"io"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -16,39 +15,44 @@ type Peer struct {
 	outgoing bool
 	conn     *Connection
 	channels map[String]*Channel
-
-	mtx     sync.Mutex
-	quit    chan struct{}
-	stopped uint32
+	quit     chan struct{}
+	started  uint32
+	stopped  uint32
 }
 
-func NewPeer(conn *Connection) *Peer {
+func NewPeer(conn *Connection, channels map[String]*Channel) *Peer {
 	return &Peer{
-		conn:    conn,
-		quit:    make(chan struct{}),
-		stopped: 0,
+		conn:     conn,
+		channels: channels,
+		quit:     make(chan struct{}),
+		stopped:  0,
 	}
 }
 
-func (p *Peer) Start(peerRecvQueues map[String]chan *InboundPacket) {
+func (p *Peer) start(pktRecvQueues map[String]chan *InboundPacket, erroredPeers chan peerError) {
 	log.Debugf("Starting %v", p)
-	p.conn.Start(p.channels)
-	for chName, _ := range p.channels {
-		go p.recvHandler(chName, peerRecvQueues[chName])
-		go p.sendHandler(chName)
+
+	if atomic.CompareAndSwapUint32(&p.started, 0, 1) {
+		// on connection error
+		onError := func(r interface{}) {
+			p.stop()
+			erroredPeers <- peerError{p, r}
+		}
+		p.conn.Start(p.channels, onError)
+		for chName, _ := range p.channels {
+			chInQueue := pktRecvQueues[chName]
+			go p.recvHandler(chName, chInQueue)
+			go p.sendHandler(chName)
+		}
 	}
 }
 
-func (p *Peer) Stop() {
-	// lock
-	p.mtx.Lock()
+func (p *Peer) stop() {
 	if atomic.CompareAndSwapUint32(&p.stopped, 0, 1) {
 		log.Debugf("Stopping %v", p)
 		close(p.quit)
 		p.conn.Stop()
 	}
-	p.mtx.Unlock()
-	// unlock
 }
 
 func (p *Peer) LocalAddress() *NetAddress {
@@ -63,25 +67,22 @@ func (p *Peer) Channel(chName String) *Channel {
 	return p.channels[chName]
 }
 
-// If the channel's queue is full, just return false.
-// Later the sendHandler will send the pkt to the underlying connection.
+// TrySend returns true if the packet was successfully queued.
+// Returning true does not imply that the packet will be sent.
 func (p *Peer) TrySend(pkt Packet) bool {
 	channel := p.Channel(pkt.Channel)
-	sendQueue := channel.SendQueue()
+	sendQueue := channel.sendQueue
 
-	// lock & defer
-	p.mtx.Lock()
-	defer p.mtx.Unlock()
-	if p.stopped == 1 {
+	if atomic.LoadUint32(&p.stopped) == 1 {
 		return false
 	}
+
 	select {
 	case sendQueue <- pkt:
 		return true
 	default: // buffer full
 		return false
 	}
-	// unlock deferred
 }
 
 func (p *Peer) WriteTo(w io.Writer) (n int64, err error) {
@@ -92,48 +93,20 @@ func (p *Peer) String() string {
 	return fmt.Sprintf("Peer{%v-%v,o:%v}", p.LocalAddress(), p.RemoteAddress(), p.outgoing)
 }
 
-func (p *Peer) recvHandler(chName String, inboundPacketQueue chan<- *InboundPacket) {
-	log.Tracef("%v recvHandler [%v]", p, chName)
-	channel := p.channels[chName]
-	recvQueue := channel.RecvQueue()
-
-FOR_LOOP:
-	for {
-		select {
-		case <-p.quit:
-			break FOR_LOOP
-		case pkt := <-recvQueue:
-			// send to inboundPacketQueue
-			inboundPacket := &InboundPacket{
-				Peer:    p,
-				Channel: channel,
-				Time:    Time{time.Now()},
-				Packet:  pkt,
-			}
-			select {
-			case <-p.quit:
-				break FOR_LOOP
-			case inboundPacketQueue <- inboundPacket:
-				continue
-			}
-		}
-	}
-
-	log.Tracef("%v recvHandler [%v] closed", p, chName)
-	// cleanup
-	// (none)
-}
-
+// sendHandler pulls from a channel and pushes to the connection.
+// Each channel gets its own sendHandler goroutine;
+// Golang's channel implementation handles the scheduling.
 func (p *Peer) sendHandler(chName String) {
 	log.Tracef("%v sendHandler [%v]", p, chName)
-	chSendQueue := p.channels[chName].sendQueue
+	channel := p.channels[chName]
+	sendQueue := channel.sendQueue
 FOR_LOOP:
 	for {
 		select {
 		case <-p.quit:
 			break FOR_LOOP
-		case pkt := <-chSendQueue:
-			log.Tracef("Sending packet to peer chSendQueue")
+		case pkt := <-sendQueue:
+			log.Tracef("Sending packet to peer sendQueue")
 			// blocks until the connection is Stop'd,
 			// which happens when this peer is Stop'd.
 			p.conn.Send(pkt)
@@ -141,6 +114,41 @@ FOR_LOOP:
 	}
 
 	log.Tracef("%v sendHandler [%v] closed", p, chName)
+	// cleanup
+	// (none)
+}
+
+// recvHandler pulls from a channel and pushes to the given pktRecvQueue.
+// Each channel gets its own recvHandler goroutine.
+// Many peers have goroutines that push to the same pktRecvQueue.
+// Golang's channel implementation handles the scheduling.
+func (p *Peer) recvHandler(chName String, pktRecvQueue chan<- *InboundPacket) {
+	log.Tracef("%v recvHandler [%v]", p, chName)
+	channel := p.channels[chName]
+	recvQueue := channel.recvQueue
+
+FOR_LOOP:
+	for {
+		select {
+		case <-p.quit:
+			break FOR_LOOP
+		case pkt := <-recvQueue:
+			// send to pktRecvQueue
+			inboundPacket := &InboundPacket{
+				Peer:   p,
+				Time:   Time{time.Now()},
+				Packet: pkt,
+			}
+			select {
+			case <-p.quit:
+				break FOR_LOOP
+			case pktRecvQueue <- inboundPacket:
+				continue
+			}
+		}
+	}
+
+	log.Tracef("%v recvHandler [%v] closed", p, chName)
 	// cleanup
 	// (none)
 }
@@ -172,4 +180,11 @@ func (c *Channel) RecvQueue() <-chan Packet {
 
 func (c *Channel) SendQueue() chan<- Packet {
 	return c.sendQueue
+}
+
+/* Misc */
+
+type peerError struct {
+	peer *Peer
+	err  interface{}
 }

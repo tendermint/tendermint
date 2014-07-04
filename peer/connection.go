@@ -20,7 +20,13 @@ const (
 	PING_TIMEOUT_MINUTES  = 2
 )
 
-/* Connnection */
+// BUG(jae): Handle disconnects.
+
+/*
+A Connection wraps a network connection and handles buffering and multiplexing.
+"Packets" are sent with ".Send(Packet)".
+Packets received are sent to channels as commanded by the ".Start(...)" method.
+*/
 type Connection struct {
 	ioStats IOStats
 
@@ -30,9 +36,13 @@ type Connection struct {
 	bufWriter       *bufio.Writer
 	flushThrottler  *Throttler
 	quit            chan struct{}
-	stopped         uint32
 	pingRepeatTimer *RepeatTimer
 	pong            chan struct{}
+	channels        map[String]*Channel
+	onError         func(interface{})
+	started         uint32
+	stopped         uint32
+	errored         uint32
 }
 
 var (
@@ -54,22 +64,16 @@ func NewConnection(conn net.Conn) *Connection {
 	}
 }
 
-// returns true if successfully queued,
-// returns false if connection was closed.
-// blocks.
-func (c *Connection) Send(pkt Packet) bool {
-	select {
-	case c.sendQueue <- pkt:
-		return true
-	case <-c.quit:
-		return false
-	}
-}
-
-func (c *Connection) Start(channels map[String]*Channel) {
+// .Start() begins multiplexing packets to and from "channels".
+// If an error occurs, the recovered reason is passed to "onError".
+func (c *Connection) Start(channels map[String]*Channel, onError func(interface{})) {
 	log.Debugf("Starting %v", c)
-	go c.sendHandler()
-	go c.recvHandler(channels)
+	if atomic.CompareAndSwapUint32(&c.started, 0, 1) {
+		c.channels = channels
+		c.onError = onError
+		go c.sendHandler()
+		go c.recvHandler()
+	}
 }
 
 func (c *Connection) Stop() {
@@ -95,6 +99,18 @@ func (c *Connection) RemoteAddress() *NetAddress {
 	return NewNetAddress(c.conn.RemoteAddr())
 }
 
+// Returns true if successfully queued,
+// Returns false if connection was closed.
+// Blocks.
+func (c *Connection) Send(pkt Packet) bool {
+	select {
+	case c.sendQueue <- pkt:
+		return true
+	case <-c.quit:
+		return false
+	}
+}
+
 func (c *Connection) String() string {
 	return fmt.Sprintf("Connection{%v}", c.conn.RemoteAddr())
 }
@@ -111,10 +127,22 @@ func (c *Connection) flush() {
 	}
 }
 
+// Catch panics, usually caused by remote disconnects.
+func (c *Connection) _recover() {
+	if r := recover(); r != nil {
+		c.Stop()
+		if atomic.CompareAndSwapUint32(&c.errored, 0, 1) {
+			if c.onError != nil {
+				c.onError(r)
+			}
+		}
+	}
+}
+
+// sendHandler pulls from .sendQueue and writes to .bufWriter
 func (c *Connection) sendHandler() {
 	log.Tracef("%v sendHandler", c)
-
-	// TODO: catch panics & stop connection.
+	defer c._recover()
 
 FOR_LOOP:
 	for {
@@ -154,10 +182,11 @@ FOR_LOOP:
 	// cleanup
 }
 
-func (c *Connection) recvHandler(channels map[String]*Channel) {
-	log.Tracef("%v recvHandler with %v channels", c, len(channels))
-
-	// TODO: catch panics & stop connection.
+// recvHandler reads from .bufReader and pushes to the appropriate
+// channel's recvQueue.
+func (c *Connection) recvHandler() {
+	log.Tracef("%v recvHandler", c)
+	defer c._recover()
 
 FOR_LOOP:
 	for {
@@ -188,7 +217,7 @@ FOR_LOOP:
 				}
 				break FOR_LOOP
 			}
-			channel := channels[pkt.Channel]
+			channel := c.channels[pkt.Channel]
 			if channel == nil {
 				Panicf("Unknown channel %v", pkt.Channel)
 			}

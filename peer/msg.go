@@ -1,12 +1,14 @@
 package peer
 
 import (
-	. "github.com/tendermint/tendermint/binary"
 	"io"
+
+	. "github.com/tendermint/tendermint/binary"
 )
 
-/* Packet */
-
+/*
+Packet encapsulates a ByteSlice on a Channel.
+*/
 type Packet struct {
 	Channel String
 	Bytes   ByteSlice
@@ -39,17 +41,18 @@ func ReadPacketSafe(r io.Reader) (pkt Packet, err error) {
 	return NewPacket(chName, bytes), nil
 }
 
-/* InboundPacket */
-
+/*
+InboundPacket extends Packet with fields relevant to incoming packets.
+*/
 type InboundPacket struct {
-	Peer    *Peer
-	Channel *Channel
-	Time    Time
+	Peer *Peer
+	Time Time
 	Packet
 }
 
-/* NewFilterMsg */
-
+/*
+NewFilterMsg is not implemented. TODO
+*/
 type NewFilterMsg struct {
 	ChName String
 	Filter interface{} // todo
