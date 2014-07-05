@@ -1,9 +1,10 @@
 package peer
 
 import (
-	. "github.com/tendermint/tendermint/binary"
 	"io"
 	"time"
+
+	. "github.com/tendermint/tendermint/binary"
 )
 
 /*
@@ -19,7 +20,7 @@ type KnownAddress struct {
 	LastAttempt Time
 	LastSuccess Time
 	NewRefs     UInt16
-	OldBucket   Int16 // TODO init to -1
+	OldBucket   Int16
 }
 
 func NewKnownAddress(addr *NetAddress, src *NetAddress) *KnownAddress {

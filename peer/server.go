@@ -17,8 +17,8 @@ func NewServer(protocol string, laddr string, c *Client) *Server {
 	return s
 }
 
-func (s *Server) LocalAddress() *NetAddress {
-	return s.listener.LocalAddress()
+func (s *Server) ExternalAddress() *NetAddress {
+	return s.listener.ExternalAddress()
 }
 
 // meant to run in a goroutine

@@ -26,7 +26,7 @@ func makeClientPair(t testing.TB, bufferSize int, chNames []String) (*Client, *C
 	s1 := NewServer("tcp", ":8001", c1)
 
 	// Dial the server & add the connection to c2.
-	s1laddr := s1.LocalAddress()
+	s1laddr := s1.ExternalAddress()
 	conn, err := s1laddr.Dial()
 	if err != nil {
 		t.Fatalf("Could not connect to server address %v", s1laddr)

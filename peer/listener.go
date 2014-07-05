@@ -2,15 +2,12 @@ package peer
 
 import (
 	"net"
+	"strconv"
 	"sync/atomic"
 
+	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/peer/upnp"
-)
-
-const (
-	// BUG(jae) Remove DEFAULT_PORT
-	DEFAULT_PORT = 8001
 )
 
 /*
@@ -18,7 +15,7 @@ Listener is part of a Server.
 */
 type Listener interface {
 	Connections() <-chan *Connection
-	LocalAddress() *NetAddress
+	ExternalAddress() *NetAddress
 	Stop()
 }
 
@@ -27,6 +24,7 @@ DefaultListener is an implementation that works on the golang network stack.
 */
 type DefaultListener struct {
 	listener    net.Listener
+	extAddr     *NetAddress
 	connections chan *Connection
 	stopped     uint32
 }
@@ -36,6 +34,30 @@ const (
 )
 
 func NewDefaultListener(protocol string, listenAddr string) Listener {
+	listenHost, listenPortStr, err := net.SplitHostPort(listenAddr)
+	if err != nil {
+		panic(err)
+	}
+	listenPort, err := strconv.Atoi(listenPortStr)
+	if err != nil {
+		panic(err)
+	}
+
+	// Determine external address...
+	var extAddr *NetAddress
+	// If the listenHost is INADDR_ANY, try UPnP
+	if listenHost == "" || listenHost == "0.0.0.0" {
+		extAddr = getUPNPExternalAddress(listenPort, listenPort)
+	}
+	// Otherwise just use the local address...
+	if extAddr == nil {
+		extAddr = getNaiveExternalAddress(listenPort)
+	}
+	if extAddr == nil {
+		panic("Could not determine external address!")
+	}
+
+	// Create listener
 	listener, err := net.Listen(protocol, listenAddr)
 	if err != nil {
 		panic(err)
@@ -43,6 +65,7 @@ func NewDefaultListener(protocol string, listenAddr string) Listener {
 
 	dl := &DefaultListener{
 		listener:    listener,
+		extAddr:     extAddr,
 		connections: make(chan *Connection, DEFAULT_BUFFERED_CONNECTIONS),
 	}
 
@@ -80,8 +103,8 @@ func (l *DefaultListener) Connections() <-chan *Connection {
 	return l.connections
 }
 
-func (l *DefaultListener) LocalAddress() *NetAddress {
-	return GetLocalAddress()
+func (l *DefaultListener) ExternalAddress() *NetAddress {
+	return l.extAddr
 }
 
 func (l *DefaultListener) Stop() {
@@ -90,54 +113,35 @@ func (l *DefaultListener) Stop() {
 	}
 }
 
-/* local address helpers */
-
-func GetLocalAddress() *NetAddress {
-	laddr := GetUPNPLocalAddress()
-	if laddr != nil {
-		return laddr
-	}
-
-	laddr = GetDefaultLocalAddress()
-	if laddr != nil {
-		return laddr
-	}
-
-	panic("Could not determine local address")
-}
+/* external address helpers */
 
 // UPNP external address discovery & port mapping
-// TODO: more flexible internal & external ports
-func GetUPNPLocalAddress() *NetAddress {
-	// XXX remove nil, create option for specifying address.
-	// removed because this takes too long.
-	return nil
-	log.Infof("Getting UPNP local address")
+func getUPNPExternalAddress(externalPort, internalPort int) *NetAddress {
+	log.Infof("Getting UPNP external address")
 	nat, err := upnp.Discover()
 	if err != nil {
-		log.Infof("Could not get UPNP local address: %v", err)
+		log.Infof("Could not get UPNP extrernal address: %v", err)
 		return nil
 	}
 
 	ext, err := nat.GetExternalAddress()
 	if err != nil {
-		log.Infof("Could not get UPNP local address: %v", err)
+		log.Infof("Could not get UPNP external address: %v", err)
 		return nil
 	}
 
-	_, err = nat.AddPortMapping("tcp", DEFAULT_PORT, DEFAULT_PORT, "tendermint", 0)
+	externalPort, err = nat.AddPortMapping("tcp", externalPort, internalPort, "tendermint", 0)
 	if err != nil {
-		log.Infof("Could not get UPNP local address: %v", err)
+		log.Infof("Could not get UPNP external address: %v", err)
 		return nil
 	}
 
-	log.Infof("Got UPNP local address: %v", ext)
-	return NewNetAddressIPPort(ext, DEFAULT_PORT)
+	log.Infof("Got UPNP external address: %v", ext)
+	return NewNetAddressIPPort(ext, UInt16(externalPort))
 }
 
-// Naive local IPv4 interface address detection
-// TODO: use syscalls to get actual ourIP. http://pastebin.com/9exZG4rh
-func GetDefaultLocalAddress() *NetAddress {
+// TODO: use syscalls: http://pastebin.com/9exZG4rh
+func getNaiveExternalAddress(port int) *NetAddress {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
 		Panicf("Unexpected error fetching interface addresses: %v", err)
@@ -152,7 +156,7 @@ func GetDefaultLocalAddress() *NetAddress {
 		if v4 == nil || v4[0] == 127 {
 			continue
 		} // loopback
-		return NewNetAddressIPPort(ipnet.IP, DEFAULT_PORT)
+		return NewNetAddressIPPort(ipnet.IP, UInt16(port))
 	}
 	return nil
 }

@@ -207,7 +207,7 @@ func (c *Client) peerErrorHandler() {
 		case <-c.quit:
 			return
 		case errPeer := <-c.erroredPeers:
-			// TODO do something
+			log.Infof("%v errored: %v", errPeer.peer, errPeer.err)
 			c.StopPeer(errPeer.peer)
 			return
 		}
