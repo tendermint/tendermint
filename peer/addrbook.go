@@ -9,7 +9,6 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	. "github.com/tendermint/tendermint/binary"
 	"io"
 	"math"
 	"math/rand"
@@ -18,24 +17,26 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	. "github.com/tendermint/tendermint/binary"
 )
 
 /* AddrBook - concurrency safe peer address manager */
 type AddrBook struct {
 	filePath string
 
-	mtx       sync.Mutex
-	rand      *rand.Rand
-	key       [32]byte
-	addrIndex map[string]*KnownAddress // addr.String() -> KnownAddress
-	addrNew   [newBucketCount]map[string]*KnownAddress
-	addrOld   [oldBucketCount][]*KnownAddress
-	started   int32
-	shutdown  int32
-	wg        sync.WaitGroup
-	quit      chan struct{}
-	nOld      int
-	nNew      int
+	mtx          sync.Mutex
+	rand         *rand.Rand
+	key          [32]byte
+	addrNewIndex map[string]*knownAddress // addr.String() -> knownAddress
+	addrNew      [newBucketCount]map[string]*knownAddress
+	addrOld      [oldBucketCount][]*knownAddress
+	started      int32
+	shutdown     int32
+	wg           sync.WaitGroup
+	quit         chan struct{}
+	nOld         int
+	nNew         int
 }
 
 const (
@@ -87,7 +88,7 @@ const (
 	getAddrPercent = 23
 
 	// current version of the on-disk format.
-	serialisationVersion = 1
+	serializationVersion = 1
 )
 
 // Use Start to begin processing asynchronous address updates.
@@ -103,13 +104,13 @@ func NewAddrBook(filePath string) *AddrBook {
 
 // When modifying this, don't forget to update loadFromFile()
 func (a *AddrBook) init() {
-	a.addrIndex = make(map[string]*KnownAddress)
+	a.addrNewIndex = make(map[string]*knownAddress)
 	io.ReadFull(crand.Reader, a.key[:])
 	for i := range a.addrNew {
-		a.addrNew[i] = make(map[string]*KnownAddress)
+		a.addrNew[i] = make(map[string]*knownAddress)
 	}
 	for i := range a.addrOld {
-		a.addrOld[i] = make([]*KnownAddress, 0, oldBucketSize)
+		a.addrOld[i] = make([]*knownAddress, 0, oldBucketSize)
 	}
 }
 
@@ -139,17 +140,17 @@ func (a *AddrBook) AddAddress(addr *NetAddress, src *NetAddress) {
 }
 
 func (a *AddrBook) NeedMoreAddresses() bool {
-	return a.NumAddresses() < needAddressThreshold
+	return a.Size() < needAddressThreshold
 }
 
-func (a *AddrBook) NumAddresses() int {
+func (a *AddrBook) Size() int {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 	return a.nOld + a.nNew
 }
 
 // Pick a new address to connect to.
-func (a *AddrBook) PickAddress(class string, newBias int) *KnownAddress {
+func (a *AddrBook) PickAddress(class string, newBias int) *knownAddress {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
@@ -169,7 +170,7 @@ func (a *AddrBook) PickAddress(class string, newBias int) *KnownAddress {
 
 	if (newCorrelation+oldCorrelation)*a.rand.Float64() < oldCorrelation {
 		// pick random Old bucket.
-		var bucket []*KnownAddress = nil
+		var bucket []*knownAddress = nil
 		for len(bucket) == 0 {
 			bucket = a.addrOld[a.rand.Intn(len(a.addrOld))]
 		}
@@ -177,7 +178,7 @@ func (a *AddrBook) PickAddress(class string, newBias int) *KnownAddress {
 		return bucket[a.rand.Intn(len(bucket))]
 	} else {
 		// pick random New bucket.
-		var bucket map[string]*KnownAddress = nil
+		var bucket map[string]*knownAddress = nil
 		for len(bucket) == 0 {
 			bucket = a.addrNew[a.rand.Intn(len(a.addrNew))]
 		}
@@ -197,11 +198,11 @@ func (a *AddrBook) PickAddress(class string, newBias int) *KnownAddress {
 func (a *AddrBook) MarkGood(addr *NetAddress) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
-	ka := a.addrIndex[addr.String()]
+	ka := a.addrNewIndex[addr.String()]
 	if ka == nil {
 		return
 	}
-	ka.MarkAttempt(true)
+	ka.MarkGood()
 	if ka.OldBucket == -1 {
 		a.moveToOld(ka)
 	}
@@ -210,30 +211,40 @@ func (a *AddrBook) MarkGood(addr *NetAddress) {
 func (a *AddrBook) MarkAttempt(addr *NetAddress) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
-	ka := a.addrIndex[addr.String()]
+	ka := a.addrNewIndex[addr.String()]
 	if ka == nil {
 		return
 	}
-	ka.MarkAttempt(false)
+	ka.MarkAttempt()
 }
 
 /* Loading & Saving */
 
 type addrBookJSON struct {
 	Key     [32]byte
-	AddrNew [newBucketCount]map[string]*KnownAddress
-	AddrOld [oldBucketCount][]*KnownAddress
-	NOld    int
-	NNew    int
+	AddrNew [newBucketCount][]*knownAddress
+	AddrOld [oldBucketCount][]*knownAddress
+	NumOld  int
+	NumNew  int
 }
 
 func (a *AddrBook) saveToFile(filePath string) {
+	// turn a.addrNew into an array like a.addrOld
+	__addrNew := [newBucketCount][]*knownAddress{}
+	for i, newBucket := range a.addrNew {
+		var array []*knownAddress = make([]*knownAddress, 0)
+		for _, ka := range newBucket {
+			array = append(array, ka)
+		}
+		__addrNew[i] = array
+	}
+
 	aJSON := &addrBookJSON{
 		Key:     a.key,
-		AddrNew: a.addrNew,
+		AddrNew: __addrNew,
 		AddrOld: a.addrOld,
-		NOld:    a.nOld,
-		NNew:    a.nNew,
+		NumOld:  a.nOld,
+		NumNew:  a.nNew,
 	}
 
 	w, err := os.Create(filePath)
@@ -271,20 +282,28 @@ func (a *AddrBook) loadFromFile(filePath string) {
 		panic(fmt.Errorf("error reading %s: %v", filePath, err))
 	}
 
-	// Now we need to initialize self.
+	// Now we need to restore the fields
 
+	// Restore the key
 	copy(a.key[:], aJSON.Key[:])
-	a.addrNew = aJSON.AddrNew
+	// Restore .addrNew
+	for i, newBucket := range aJSON.AddrNew {
+		for _, ka := range newBucket {
+			a.addrNew[i][ka.Addr.String()] = ka
+		}
+	}
+	// Restore .addrOld
 	for i, oldBucket := range aJSON.AddrOld {
 		copy(a.addrOld[i], oldBucket)
 	}
-	a.nNew = aJSON.NNew
-	a.nOld = aJSON.NOld
-
-	a.addrIndex = make(map[string]*KnownAddress)
+	// Restore simple fields
+	a.nNew = aJSON.NumNew
+	a.nOld = aJSON.NumOld
+	// Restore addrNewIndex
+	a.addrNewIndex = make(map[string]*knownAddress)
 	for _, newBucket := range a.addrNew {
 		for key, ka := range newBucket {
-			a.addrIndex[key] = ka
+			a.addrNewIndex[key] = ka
 		}
 	}
 }
@@ -314,7 +333,7 @@ func (a *AddrBook) addAddress(addr, src *NetAddress) {
 	}
 
 	key := addr.String()
-	ka := a.addrIndex[key]
+	ka := a.addrNewIndex[key]
 
 	if ka != nil {
 		// Already added
@@ -331,8 +350,8 @@ func (a *AddrBook) addAddress(addr, src *NetAddress) {
 			return
 		}
 	} else {
-		ka = NewKnownAddress(addr, src)
-		a.addrIndex[key] = ka
+		ka = NewknownAddress(addr, src)
+		a.addrNewIndex[key] = ka
 		a.nNew++
 	}
 
@@ -359,16 +378,16 @@ func (a *AddrBook) addAddress(addr, src *NetAddress) {
 // Make space in the new buckets by expiring the really bad entries.
 // If no bad entries are available we look at a few and remove the oldest.
 func (a *AddrBook) expireNew(bucket int) {
-	var oldest *KnownAddress
+	var oldest *knownAddress
 	for k, v := range a.addrNew[bucket] {
 		// If an entry is bad, throw it away
-		if v.Bad() {
+		if v.IsBad() {
 			log.Tracef("expiring bad address %v", k)
 			delete(a.addrNew[bucket], k)
 			v.NewRefs--
 			if v.NewRefs == 0 {
 				a.nNew--
-				delete(a.addrIndex, k)
+				delete(a.addrNewIndex, k)
 			}
 			return
 		}
@@ -388,12 +407,12 @@ func (a *AddrBook) expireNew(bucket int) {
 		oldest.NewRefs--
 		if oldest.NewRefs == 0 {
 			a.nNew--
-			delete(a.addrIndex, key)
+			delete(a.addrNewIndex, key)
 		}
 	}
 }
 
-func (a *AddrBook) moveToOld(ka *KnownAddress) {
+func (a *AddrBook) moveToOld(ka *knownAddress) {
 	// Remove from all new buckets.
 	// Remember one of those new buckets.
 	addrKey := ka.Addr.String()
@@ -448,7 +467,7 @@ func (a *AddrBook) moveToOld(ka *KnownAddress) {
 
 // Returns the index in old bucket of oldest entry.
 func (a *AddrBook) pickOld(bucket int) int {
-	var oldest *KnownAddress
+	var oldest *knownAddress
 	var oldestIndex int
 	for i, ka := range a.addrOld[bucket] {
 		if oldest == nil || ka.LastAttempt.Before(oldest.LastAttempt.Time) {
@@ -546,4 +565,103 @@ func GroupKey(na *NetAddress) string {
 	}
 
 	return (&net.IPNet{IP: na.IP, Mask: net.CIDRMask(bits, 128)}).String()
+}
+
+/*
+   knownAddress
+
+   tracks information about a known network address that is used
+   to determine how viable an address is.
+*/
+type knownAddress struct {
+	Addr        *NetAddress
+	Src         *NetAddress
+	Attempts    UInt32
+	LastAttempt Time
+	LastSuccess Time
+	NewRefs     UInt16
+	OldBucket   Int16
+}
+
+func NewknownAddress(addr *NetAddress, src *NetAddress) *knownAddress {
+	return &knownAddress{
+		Addr:        addr,
+		Src:         src,
+		OldBucket:   -1,
+		LastAttempt: Time{time.Now()},
+		Attempts:    0,
+	}
+}
+
+func ReadknownAddress(r io.Reader) *knownAddress {
+	return &knownAddress{
+		Addr:        ReadNetAddress(r),
+		Src:         ReadNetAddress(r),
+		Attempts:    ReadUInt32(r),
+		LastAttempt: ReadTime(r),
+		LastSuccess: ReadTime(r),
+		NewRefs:     ReadUInt16(r),
+		OldBucket:   ReadInt16(r),
+	}
+}
+
+func (ka *knownAddress) WriteTo(w io.Writer) (n int64, err error) {
+	n, err = WriteOnto(ka.Addr, w, n, err)
+	n, err = WriteOnto(ka.Src, w, n, err)
+	n, err = WriteOnto(ka.Attempts, w, n, err)
+	n, err = WriteOnto(ka.LastAttempt, w, n, err)
+	n, err = WriteOnto(ka.LastSuccess, w, n, err)
+	n, err = WriteOnto(ka.NewRefs, w, n, err)
+	n, err = WriteOnto(ka.OldBucket, w, n, err)
+	return
+}
+
+func (ka *knownAddress) MarkAttempt() {
+	now := Time{time.Now()}
+	ka.LastAttempt = now
+	ka.Attempts += 1
+}
+
+func (ka *knownAddress) MarkGood() {
+	now := Time{time.Now()}
+	ka.LastAttempt = now
+	ka.Attempts = 0
+	ka.LastSuccess = now
+}
+
+/*
+   An address is bad if the address in question has not been tried in the last
+   minute and meets one of the following criteria:
+
+   1) It claims to be from the future
+   2) It hasn't been seen in over a month
+   3) It has failed at least three times and never succeeded
+   4) It has failed ten times in the last week
+
+   All addresses that meet these criteria are assumed to be worthless and not
+   worth keeping hold of.
+*/
+func (ka *knownAddress) IsBad() bool {
+	// Has been attempted in the last minute --> good
+	if ka.LastAttempt.Before(time.Now().Add(-1 * time.Minute)) {
+		return false
+	}
+
+	// Over a month old?
+	if ka.LastAttempt.After(time.Now().Add(-1 * numMissingDays * time.Hour * 24)) {
+		return true
+	}
+
+	// Never succeeded?
+	if ka.LastSuccess.IsZero() && ka.Attempts >= numRetries {
+		return true
+	}
+
+	// Hasn't succeeded in too long?
+	if ka.LastSuccess.Before(time.Now().Add(-1*minBadDays*time.Hour*24)) &&
+		ka.Attempts >= maxFailures {
+		return true
+	}
+
+	return false
 }
