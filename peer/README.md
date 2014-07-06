@@ -3,22 +3,21 @@
 Each peer connection is multiplexed into channels.
 <hr />
 
-### Default channel
+### PEX channel
 
-The default channel is used to communicate state changes, pings, peer exchange, and other automatic internal messages that all P2P protocols would want implemented.
+The PEX channel is used to exchange peer addresses.
 
 <table>
   <tr>
     <td><b>Channel</b></td>
-    <td>""</td>
+    <td>"PEX"</td>
   </tr>
   <tr>
     <td><b>Messages</b></td>
     <td>
       <ul>
-        <li>PingMsg/PongMsg</li>
-        <li>PeerExchangeMsg</li>
-        <li>RefreshFilterMsg</li>
+        <li>pexRequestMsg</li>
+        <li>pexResponseMsg</li>
       </ul>
     </td>
   </tr>
