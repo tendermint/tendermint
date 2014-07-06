@@ -201,8 +201,8 @@ func NewPacket(chName String, bytes ByteSlice) Packet {
 }
 
 func (p Packet) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteOnto(&p.Channel, w, n, err)
-	n, err = WriteOnto(&p.Bytes, w, n, err)
+	n, err = WriteOnto(p.Channel, w, n, err)
+	n, err = WriteOnto(p.Bytes, w, n, err)
 	return
 }
 
