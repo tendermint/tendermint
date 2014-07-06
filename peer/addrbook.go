@@ -25,18 +25,18 @@ import (
 type AddrBook struct {
 	filePath string
 
-	mtx          sync.Mutex
-	rand         *rand.Rand
-	key          [32]byte
-	addrNewIndex map[string]*knownAddress // addr.String() -> knownAddress
-	addrNew      [newBucketCount]map[string]*knownAddress
-	addrOld      [oldBucketCount][]*knownAddress
-	started      int32
-	shutdown     int32
-	wg           sync.WaitGroup
-	quit         chan struct{}
-	nOld         int
-	nNew         int
+	mtx       sync.Mutex
+	rand      *rand.Rand
+	key       [32]byte
+	addrIndex map[string]*knownAddress // new & old
+	addrNew   [newBucketCount]map[string]*knownAddress
+	addrOld   [oldBucketCount][]*knownAddress
+	started   int32
+	shutdown  int32
+	wg        sync.WaitGroup
+	quit      chan struct{}
+	nOld      int
+	nNew      int
 }
 
 const (
@@ -80,12 +80,11 @@ const (
 	// days since the last success before we will consider evicting an address.
 	minBadDays = 7
 
-	// max addresses that we will send in response to a getAddr
-	// (in practise the most addresses we will return from a call to AddressCache()).
-	getAddrMax = 2500
+	// max addresses that we will send in response to a GetSelection
+	getSelectionMax = 2500
 
-	// % of total addresses known that we will share with a call to AddressCache.
-	getAddrPercent = 23
+	// % of total addresses known that we will share with a call to GetSelection
+	getSelectionPercent = 23
 
 	// current version of the on-disk format.
 	serializationVersion = 1
@@ -104,7 +103,7 @@ func NewAddrBook(filePath string) *AddrBook {
 
 // When modifying this, don't forget to update loadFromFile()
 func (a *AddrBook) init() {
-	a.addrNewIndex = make(map[string]*knownAddress)
+	a.addrIndex = make(map[string]*knownAddress)
 	io.ReadFull(crand.Reader, a.key[:])
 	for i := range a.addrNew {
 		a.addrNew[i] = make(map[string]*knownAddress)
@@ -146,11 +145,15 @@ func (a *AddrBook) NeedMoreAddresses() bool {
 func (a *AddrBook) Size() int {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
-	return a.nOld + a.nNew
+	return a.size()
 }
 
-// Pick a new address to connect to.
-func (a *AddrBook) PickAddress(class string, newBias int) *knownAddress {
+func (a *AddrBook) size() int {
+	return a.nNew + a.nOld
+}
+
+// Pick an address to connect to with new/old bias.
+func (a *AddrBook) PickAddress(newBias int) *knownAddress {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
@@ -198,7 +201,7 @@ func (a *AddrBook) PickAddress(class string, newBias int) *knownAddress {
 func (a *AddrBook) MarkGood(addr *NetAddress) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
-	ka := a.addrNewIndex[addr.String()]
+	ka := a.addrIndex[addr.String()]
 	if ka == nil {
 		return
 	}
@@ -211,11 +214,45 @@ func (a *AddrBook) MarkGood(addr *NetAddress) {
 func (a *AddrBook) MarkAttempt(addr *NetAddress) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
-	ka := a.addrNewIndex[addr.String()]
+	ka := a.addrIndex[addr.String()]
 	if ka == nil {
 		return
 	}
 	ka.MarkAttempt()
+}
+
+/* Peer exchange */
+
+// GetSelection randomly selects some addresses (old & new). Suitable for peer-exchange protocols.
+func (a *AddrBook) GetSelection() []*NetAddress {
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
+	if a.size() == 0 {
+		return nil
+	}
+
+	allAddr := make([]*NetAddress, a.size())
+	i := 0
+	for _, v := range a.addrIndex {
+		allAddr[i] = v.Addr
+		i++
+	}
+
+	numAddresses := len(allAddr) * getSelectionPercent / 100
+	if numAddresses > getSelectionMax {
+		numAddresses = getSelectionMax
+	}
+
+	// Fisher-Yates shuffle the array. We only need to do the first
+	// `numAddresses' since we are throwing the rest.
+	for i := 0; i < numAddresses; i++ {
+		// pick a number between current index and the end
+		j := rand.Intn(len(allAddr)-i) + i
+		allAddr[i], allAddr[j] = allAddr[j], allAddr[i]
+	}
+
+	// slice off the limit we are willing to share.
+	return allAddr[:numAddresses]
 }
 
 /* Loading & Saving */
@@ -290,22 +327,19 @@ func (a *AddrBook) loadFromFile(filePath string) {
 	for i, newBucket := range aJSON.AddrNew {
 		for _, ka := range newBucket {
 			a.addrNew[i][ka.Addr.String()] = ka
+			a.addrIndex[ka.Addr.String()] = ka
 		}
 	}
 	// Restore .addrOld
 	for i, oldBucket := range aJSON.AddrOld {
 		copy(a.addrOld[i], oldBucket)
+		for _, ka := range oldBucket {
+			a.addrIndex[ka.Addr.String()] = ka
+		}
 	}
 	// Restore simple fields
 	a.nNew = aJSON.NumNew
 	a.nOld = aJSON.NumOld
-	// Restore addrNewIndex
-	a.addrNewIndex = make(map[string]*knownAddress)
-	for _, newBucket := range a.addrNew {
-		for key, ka := range newBucket {
-			a.addrNewIndex[key] = ka
-		}
-	}
 }
 
 /* Private methods */
@@ -333,7 +367,7 @@ func (a *AddrBook) addAddress(addr, src *NetAddress) {
 	}
 
 	key := addr.String()
-	ka := a.addrNewIndex[key]
+	ka := a.addrIndex[key]
 
 	if ka != nil {
 		// Already added
@@ -351,7 +385,7 @@ func (a *AddrBook) addAddress(addr, src *NetAddress) {
 		}
 	} else {
 		ka = NewknownAddress(addr, src)
-		a.addrNewIndex[key] = ka
+		a.addrIndex[key] = ka
 		a.nNew++
 	}
 
@@ -387,7 +421,7 @@ func (a *AddrBook) expireNew(bucket int) {
 			v.NewRefs--
 			if v.NewRefs == 0 {
 				a.nNew--
-				delete(a.addrNewIndex, k)
+				delete(a.addrIndex, k)
 			}
 			return
 		}
@@ -407,7 +441,7 @@ func (a *AddrBook) expireNew(bucket int) {
 		oldest.NewRefs--
 		if oldest.NewRefs == 0 {
 			a.nNew--
-			delete(a.addrNewIndex, key)
+			delete(a.addrIndex, key)
 		}
 	}
 }
@@ -452,12 +486,12 @@ func (a *AddrBook) moveToOld(ka *knownAddress) {
 		newBucket = freedBucket
 	}
 
-	// replace with ka in list.
+	// Replace with ka in list.
 	ka.OldBucket = Int16(oldBucket)
 	a.addrOld[oldBucket][rmkaIndex] = ka
 	rmka.OldBucket = -1
 
-	// put rmka into new bucket
+	// Put rmka into new bucket
 	rmkey := rmka.Addr.String()
 	log.Tracef("Replacing %s with %s in old", rmkey, addrKey)
 	a.addrNew[newBucket][rmkey] = rmka

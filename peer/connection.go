@@ -12,15 +12,13 @@ import (
 )
 
 const (
-	READ_BUFFER_MIN_SIZE  = 1024
-	WRITE_BUFFER_MIN_SIZE = 1024
-	FLUSH_THROTTLE_MS     = 50
-	OUT_QUEUE_SIZE        = 50
-	IDLE_TIMEOUT_MINUTES  = 5
-	PING_TIMEOUT_MINUTES  = 2
+	MinReadBufferSize  = 1024
+	MinWriteBufferSize = 1024
+	FlushThrottleMS    = 50
+	OutQueueSize       = 50
+	IdleTimeoutMinutes = 5
+	PingTimeoutMinutes = 2
 )
-
-// BUG(jae): Handle disconnects.
 
 /*
 A Connection wraps a network connection and handles buffering and multiplexing.
@@ -46,20 +44,20 @@ type Connection struct {
 }
 
 var (
-	PACKET_TYPE_PING = UInt8(0x00)
-	PACKET_TYPE_PONG = UInt8(0x01)
-	PACKET_TYPE_MSG  = UInt8(0x10)
+	PacketTypePing    = UInt8(0x00)
+	PacketTypePong    = UInt8(0x01)
+	PacketTypeMessage = UInt8(0x10)
 )
 
 func NewConnection(conn net.Conn) *Connection {
 	return &Connection{
-		sendQueue:       make(chan Packet, OUT_QUEUE_SIZE),
+		sendQueue:       make(chan Packet, OutQueueSize),
 		conn:            conn,
-		bufReader:       bufio.NewReaderSize(conn, READ_BUFFER_MIN_SIZE),
-		bufWriter:       bufio.NewWriterSize(conn, WRITE_BUFFER_MIN_SIZE),
-		flushThrottler:  NewThrottler(FLUSH_THROTTLE_MS * time.Millisecond),
+		bufReader:       bufio.NewReaderSize(conn, MinReadBufferSize),
+		bufWriter:       bufio.NewWriterSize(conn, MinWriteBufferSize),
+		flushThrottler:  NewThrottler(FlushThrottleMS * time.Millisecond),
 		quit:            make(chan struct{}),
-		pingRepeatTimer: NewRepeatTimer(PING_TIMEOUT_MINUTES * time.Minute),
+		pingRepeatTimer: NewRepeatTimer(PingTimeoutMinutes * time.Minute),
 		pong:            make(chan struct{}),
 	}
 }
@@ -150,7 +148,7 @@ FOR_LOOP:
 		select {
 		case sendPkt := <-c.sendQueue:
 			log.Tracef("Found pkt from sendQueue. Writing pkt to underlying connection")
-			_, err = PACKET_TYPE_MSG.WriteTo(c.bufWriter)
+			_, err = PacketTypeMessage.WriteTo(c.bufWriter)
 			if err != nil {
 				break
 			}
@@ -159,10 +157,10 @@ FOR_LOOP:
 		case <-c.flushThrottler.Ch:
 			c.flush()
 		case <-c.pingRepeatTimer.Ch:
-			_, err = PACKET_TYPE_PING.WriteTo(c.bufWriter)
+			_, err = PacketTypePing.WriteTo(c.bufWriter)
 			c.flush()
 		case <-c.pong:
-			_, err = PACKET_TYPE_PONG.WriteTo(c.bufWriter)
+			_, err = PacketTypePong.WriteTo(c.bufWriter)
 			c.flush()
 		case <-c.quit:
 			break FOR_LOOP
@@ -202,13 +200,13 @@ FOR_LOOP:
 		}
 
 		switch pktType {
-		case PACKET_TYPE_PING:
+		case PacketTypePing:
 			// TODO: keep track of these, make sure it isn't abused
 			// as they cause flush()'s in the send buffer.
 			c.pong <- struct{}{}
-		case PACKET_TYPE_PONG:
+		case PacketTypePong:
 			// do nothing
-		case PACKET_TYPE_MSG:
+		case PacketTypeMessage:
 			pkt, err := ReadPacketSafe(c.bufReader)
 			if err != nil {
 				if atomic.LoadUint32(&c.stopped) != 1 {

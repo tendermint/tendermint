@@ -153,7 +153,7 @@ FOR_LOOP:
 	// (none)
 }
 
-/*  Channel */
+/* Channel */
 
 type Channel struct {
 	name      String
@@ -180,6 +180,52 @@ func (c *Channel) RecvQueue() <-chan Packet {
 
 func (c *Channel) SendQueue() chan<- Packet {
 	return c.sendQueue
+}
+
+/* Packet */
+
+/*
+Packet encapsulates a ByteSlice on a Channel.
+*/
+type Packet struct {
+	Channel String
+	Bytes   ByteSlice
+	// Hash
+}
+
+func NewPacket(chName String, bytes ByteSlice) Packet {
+	return Packet{
+		Channel: chName,
+		Bytes:   bytes,
+	}
+}
+
+func (p Packet) WriteTo(w io.Writer) (n int64, err error) {
+	n, err = WriteOnto(&p.Channel, w, n, err)
+	n, err = WriteOnto(&p.Bytes, w, n, err)
+	return
+}
+
+func ReadPacketSafe(r io.Reader) (pkt Packet, err error) {
+	chName, err := ReadStringSafe(r)
+	if err != nil {
+		return
+	}
+	// TODO: packet length sanity check.
+	bytes, err := ReadByteSliceSafe(r)
+	if err != nil {
+		return
+	}
+	return NewPacket(chName, bytes), nil
+}
+
+/*
+InboundPacket extends Packet with fields relevant to incoming packets.
+*/
+type InboundPacket struct {
+	Peer *Peer
+	Time Time
+	Packet
 }
 
 /* Misc */

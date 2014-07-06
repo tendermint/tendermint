@@ -10,8 +10,6 @@ import (
 	"github.com/tendermint/tendermint/merkle"
 )
 
-// BUG(jae) handle peer disconnects
-
 /*
 A client is half of a p2p system.
 It can reach out to the network and establish connections with other peers.
@@ -41,8 +39,8 @@ type Client struct {
 }
 
 var (
-	CLIENT_STOPPED_ERROR        = errors.New("Client already stopped")
-	CLIENT_DUPLICATE_PEER_ERROR = errors.New("Duplicate peer")
+	ErrClientStopped       = errors.New("Client already stopped")
+	ErrClientDuplicatePeer = errors.New("Duplicate peer")
 )
 
 // "makePeerFn" is a factory method for generating new peers from new *Connections.
@@ -101,7 +99,7 @@ func (c *Client) Stop() {
 
 func (c *Client) AddPeerWithConnection(conn *Connection, outgoing bool) (*Peer, error) {
 	if atomic.LoadUint32(&c.stopped) == 1 {
-		return nil, CLIENT_STOPPED_ERROR
+		return nil, ErrClientStopped
 	}
 
 	log.Infof("Adding peer with connection: %v, outgoing: %v", conn, outgoing)
@@ -187,7 +185,7 @@ func (c *Client) addPeer(peer *Peer) error {
 	c.peersMtx.Lock()
 	defer c.peersMtx.Unlock()
 	if c.stopped == 1 {
-		return CLIENT_STOPPED_ERROR
+		return ErrClientStopped
 	}
 	if !c.peers.Has(addr) {
 		log.Tracef("Actually putting addr: %v, peer: %v", addr, peer)
@@ -196,7 +194,7 @@ func (c *Client) addPeer(peer *Peer) error {
 	} else {
 		// ignore duplicate peer for addr.
 		log.Infof("Ignoring duplicate peer for addr %v", addr)
-		return CLIENT_DUPLICATE_PEER_ERROR
+		return ErrClientDuplicatePeer
 	}
 	// unlock deferred
 }
@@ -208,6 +206,7 @@ func (c *Client) peerErrorHandler() {
 			return
 		case errPeer := <-c.erroredPeers:
 			log.Infof("%v errored: %v", errPeer.peer, errPeer.err)
+			// TODO: do more
 			c.StopPeer(errPeer.peer)
 			return
 		}

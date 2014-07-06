@@ -96,7 +96,7 @@ func TestSaveAddresses(t *testing.T) {
 	for _, addrSrc := range randAddrs {
 		addr := addrSrc.addr
 		src := addrSrc.src
-		ka := book.addrNewIndex[addr.String()]
+		ka := book.addrIndex[addr.String()]
 		if ka == nil {
 			t.Fatalf("Expected to find KnownAddress %v but wasn't there.", addr)
 		}
@@ -156,4 +156,6 @@ func TestPromoteToOld(t *testing.T) {
 
 	// TODO: do more testing :)
 
+	selection := book.GetSelection()
+	t.Logf("selection: %v", selection)
 }
