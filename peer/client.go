@@ -34,7 +34,6 @@ type Client struct {
 	peersMtx       sync.Mutex
 	peers          merkle.Tree // addr -> *Peer
 	quit           chan struct{}
-	erroredPeers   chan peerError
 	stopped        uint32
 }
 
@@ -64,7 +63,6 @@ func NewClient(makePeerFn func(*Connection) *Peer) *Client {
 		pktRecvQueues:  pktRecvQueues,
 		peers:          merkle.NewIAVLTree(nil),
 		quit:           make(chan struct{}),
-		erroredPeers:   make(chan peerError),
 		stopped:        0,
 	}
 
@@ -75,8 +73,9 @@ func NewClient(makePeerFn func(*Connection) *Peer) *Client {
 }
 
 func (c *Client) start() {
-	// Handle peer disconnects & errors
-	go c.peerErrorHandler()
+	// Handle PEX messages
+	// TODO: hmm
+	// go peerExchangeHandler(c)
 }
 
 func (c *Client) Stop() {
@@ -110,7 +109,7 @@ func (c *Client) AddPeerWithConnection(conn *Connection, outgoing bool) (*Peer, 
 		return nil, err
 	}
 
-	go peer.start(c.pktRecvQueues, c.erroredPeers)
+	go peer.start(c.pktRecvQueues, c.StopPeerForError)
 
 	return peer, nil
 }
@@ -123,7 +122,7 @@ func (c *Client) Broadcast(pkt Packet) (numSuccess, numFailure int) {
 	log.Tracef("Broadcast on [%v] len: %v", pkt.Channel, len(pkt.Bytes))
 	for v := range c.peers.Values() {
 		peer := v.(*Peer)
-		success := peer.TrySend(pkt)
+		success := peer.TryQueue(pkt)
 		log.Tracef("Broadcast for peer %v success: %v", peer, success)
 		if success {
 			numSuccess += 1
@@ -165,7 +164,17 @@ func (c *Client) Peers() merkle.Tree {
 	// unlock deferred
 }
 
-func (c *Client) StopPeer(peer *Peer) {
+// Disconnect from a peer due to external error.
+// TODO: make record depending on reason.
+func (c *Client) StopPeerForError(peer *Peer, reason interface{}) {
+	log.Infof("%v errored: %v", peer, reason)
+	c.StopPeer(peer, false)
+}
+
+// Disconnect from a peer.
+// If graceful is true, last message sent is a disconnect message.
+// TODO: handle graceful disconnects.
+func (c *Client) StopPeer(peer *Peer, graceful bool) {
 	// lock
 	c.peersMtx.Lock()
 	peerValue, _ := c.peers.Remove(peer.RemoteAddress())
@@ -197,18 +206,4 @@ func (c *Client) addPeer(peer *Peer) error {
 		return ErrClientDuplicatePeer
 	}
 	// unlock deferred
-}
-
-func (c *Client) peerErrorHandler() {
-	for {
-		select {
-		case <-c.quit:
-			return
-		case errPeer := <-c.erroredPeers:
-			log.Infof("%v errored: %v", errPeer.peer, errPeer.err)
-			// TODO: do more
-			c.StopPeer(errPeer.peer)
-			return
-		}
-	}
 }

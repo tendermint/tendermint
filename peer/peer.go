@@ -29,14 +29,14 @@ func NewPeer(conn *Connection, channels map[String]*Channel) *Peer {
 	}
 }
 
-func (p *Peer) start(pktRecvQueues map[String]chan *InboundPacket, erroredPeers chan peerError) {
+func (p *Peer) start(pktRecvQueues map[String]chan *InboundPacket, onPeerError func(*Peer, interface{})) {
 	log.Debugf("Starting %v", p)
 
 	if atomic.CompareAndSwapUint32(&p.started, 0, 1) {
 		// on connection error
 		onError := func(r interface{}) {
 			p.stop()
-			erroredPeers <- peerError{p, r}
+			onPeerError(p, r)
 		}
 		p.conn.Start(p.channels, onError)
 		for chName, _ := range p.channels {
@@ -67,9 +67,9 @@ func (p *Peer) Channel(chName String) *Channel {
 	return p.channels[chName]
 }
 
-// TrySend returns true if the packet was successfully queued.
+// TryQueue returns true if the packet was successfully queued.
 // Returning true does not imply that the packet will be sent.
-func (p *Peer) TrySend(pkt Packet) bool {
+func (p *Peer) TryQueue(pkt Packet) bool {
 	channel := p.Channel(pkt.Channel)
 	sendQueue := channel.sendQueue
 
@@ -226,11 +226,4 @@ type InboundPacket struct {
 	Peer *Peer
 	Time Time
 	Packet
-}
-
-/* Misc */
-
-type peerError struct {
-	peer *Peer
-	err  interface{}
 }
