@@ -1,4 +1,4 @@
-package peer
+package p2p
 
 import (
 	"errors"
@@ -49,16 +49,7 @@ func NewSwitch(channels []ChannelDescriptor) *Switch {
 		stopped:       0,
 	}
 
-	// automatically start
-	s.start()
-
 	return s
-}
-
-func (s *Switch) start() {
-	// Handle PEX messages
-	// TODO: hmm
-	// go peerExchangeHandler(c)
 }
 
 func (s *Switch) Stop() {

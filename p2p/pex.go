@@ -1,4 +1,4 @@
-package peer
+package p2p
 
 import (
 	"bytes"
@@ -12,7 +12,12 @@ var pexErrInvalidMessage = errors.New("Invalid PEX message")
 
 const pexCh = "PEX"
 
-func peerExchangeHandler(s *Switch, addrBook *AddrBook) {
+/*
+The PexHandler routine should be started separately from the Switch.
+It handles basic PEX communciation.
+The application is responsible for sending out a PexRequestMessage.
+*/
+func PexHandler(s *Switch, addrBook *AddrBook) {
 
 	for {
 		inPkt := s.Receive(pexCh) // {Peer, Time, Packet}
@@ -25,7 +30,7 @@ func peerExchangeHandler(s *Switch, addrBook *AddrBook) {
 		msg := decodeMessage(inPkt.Bytes)
 
 		switch msg.(type) {
-		case *pexRequestMessage:
+		case *PexRequestMessage:
 			// inPkt.Peer requested some peers.
 			// TODO: prevent abuse.
 			addrs := addrBook.GetSelection()
@@ -65,7 +70,7 @@ const (
 func decodeMessage(bz ByteSlice) (msg Message) {
 	switch Byte(bz[0]) {
 	case pexTypeRequest:
-		return &pexRequestMessage{}
+		return &PexRequestMessage{}
 	case pexTypeResponse:
 		return readPexResponseMessage(bytes.NewReader(bz[1:]))
 	default:
@@ -76,10 +81,10 @@ func decodeMessage(bz ByteSlice) (msg Message) {
 /*
 A response with peer addresses
 */
-type pexRequestMessage struct {
+type PexRequestMessage struct {
 }
 
-func (m *pexRequestMessage) WriteTo(w io.Writer) (n int64, err error) {
+func (m *PexRequestMessage) WriteTo(w io.Writer) (n int64, err error) {
 	n, err = WriteOnto(pexTypeRequest, w, n, err)
 	return
 }

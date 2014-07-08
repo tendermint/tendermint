@@ -1,4 +1,4 @@
-package peer
+package p2p
 
 import (
 	"github.com/cihub/seelog"
