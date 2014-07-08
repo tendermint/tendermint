@@ -36,7 +36,7 @@ type Connection struct {
 	quit            chan struct{}
 	pingRepeatTimer *RepeatTimer
 	pong            chan struct{}
-	channels        map[String]*Channel
+	channels        map[string]*Channel
 	onError         func(interface{})
 	started         uint32
 	stopped         uint32
@@ -64,7 +64,7 @@ func NewConnection(conn net.Conn) *Connection {
 
 // .Start() begins multiplexing packets to and from "channels".
 // If an error occurs, the recovered reason is passed to "onError".
-func (c *Connection) Start(channels map[String]*Channel, onError func(interface{})) {
+func (c *Connection) Start(channels map[string]*Channel, onError func(interface{})) {
 	log.Debugf("Starting %v", c)
 	if atomic.CompareAndSwapUint32(&c.started, 0, 1) {
 		c.channels = channels
@@ -215,7 +215,7 @@ FOR_LOOP:
 				}
 				break FOR_LOOP
 			}
-			channel := c.channels[pkt.Channel]
+			channel := c.channels[string(pkt.Channel)]
 			if channel == nil {
 				Panicf("Unknown channel %v", pkt.Channel)
 			}

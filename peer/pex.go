@@ -12,10 +12,10 @@ var pexErrInvalidMessage = errors.New("Invalid PEX message")
 
 const pexCh = "PEX"
 
-func peerExchangeHandler(c *Client) {
+func peerExchangeHandler(s *Switch, addrBook *AddrBook) {
 
 	for {
-		inPkt := c.Receive(pexCh) // {Peer, Time, Packet}
+		inPkt := s.Receive(pexCh) // {Peer, Time, Packet}
 		if inPkt == nil {
 			// Client has stopped
 			break
@@ -28,7 +28,7 @@ func peerExchangeHandler(c *Client) {
 		case *pexRequestMessage:
 			// inPkt.Peer requested some peers.
 			// TODO: prevent abuse.
-			addrs := c.addrBook.GetSelection()
+			addrs := addrBook.GetSelection()
 			response := &pexResponseMessage{Addrs: addrs}
 			pkt := NewPacket(pexCh, BinaryBytes(response))
 			queued := inPkt.Peer.TryQueue(pkt)
@@ -41,11 +41,11 @@ func peerExchangeHandler(c *Client) {
 			// (We don't want to get spammed with bad peers)
 			srcAddr := inPkt.Peer.RemoteAddress()
 			for _, addr := range msg.(*pexResponseMessage).Addrs {
-				c.addrBook.AddAddress(addr, srcAddr)
+				addrBook.AddAddress(addr, srcAddr)
 			}
 		default:
 			// Bad peer.
-			c.StopPeerForError(inPkt.Peer, pexErrInvalidMessage)
+			s.StopPeerForError(inPkt.Peer, pexErrInvalidMessage)
 		}
 	}
 

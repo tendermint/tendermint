@@ -14,13 +14,13 @@ import (
 type Peer struct {
 	outgoing bool
 	conn     *Connection
-	channels map[String]*Channel
+	channels map[string]*Channel
 	quit     chan struct{}
 	started  uint32
 	stopped  uint32
 }
 
-func NewPeer(conn *Connection, channels map[String]*Channel) *Peer {
+func newPeer(conn *Connection, channels map[string]*Channel) *Peer {
 	return &Peer{
 		conn:     conn,
 		channels: channels,
@@ -29,7 +29,7 @@ func NewPeer(conn *Connection, channels map[String]*Channel) *Peer {
 	}
 }
 
-func (p *Peer) start(pktRecvQueues map[String]chan *InboundPacket, onPeerError func(*Peer, interface{})) {
+func (p *Peer) start(pktRecvQueues map[string]chan *InboundPacket, onPeerError func(*Peer, interface{})) {
 	log.Debugf("Starting %v", p)
 
 	if atomic.CompareAndSwapUint32(&p.started, 0, 1) {
@@ -63,14 +63,14 @@ func (p *Peer) RemoteAddress() *NetAddress {
 	return p.conn.RemoteAddress()
 }
 
-func (p *Peer) Channel(chName String) *Channel {
+func (p *Peer) Channel(chName string) *Channel {
 	return p.channels[chName]
 }
 
 // TryQueue returns true if the packet was successfully queued.
 // Returning true does not imply that the packet will be sent.
 func (p *Peer) TryQueue(pkt Packet) bool {
-	channel := p.Channel(pkt.Channel)
+	channel := p.Channel(string(pkt.Channel))
 	sendQueue := channel.sendQueue
 
 	if atomic.LoadUint32(&p.stopped) == 1 {
@@ -96,7 +96,7 @@ func (p *Peer) String() string {
 // sendHandler pulls from a channel and pushes to the connection.
 // Each channel gets its own sendHandler goroutine;
 // Golang's channel implementation handles the scheduling.
-func (p *Peer) sendHandler(chName String) {
+func (p *Peer) sendHandler(chName string) {
 	log.Tracef("%v sendHandler [%v]", p, chName)
 	channel := p.channels[chName]
 	sendQueue := channel.sendQueue
@@ -122,7 +122,7 @@ FOR_LOOP:
 // Each channel gets its own recvHandler goroutine.
 // Many peers have goroutines that push to the same pktRecvQueue.
 // Golang's channel implementation handles the scheduling.
-func (p *Peer) recvHandler(chName String, pktRecvQueue chan<- *InboundPacket) {
+func (p *Peer) recvHandler(chName string, pktRecvQueue chan<- *InboundPacket) {
 	log.Tracef("%v recvHandler [%v]", p, chName)
 	channel := p.channels[chName]
 	recvQueue := channel.recvQueue
@@ -153,24 +153,32 @@ FOR_LOOP:
 	// (none)
 }
 
+/* ChannelDescriptor */
+
+type ChannelDescriptor struct {
+	Name           string
+	SendBufferSize int
+	RecvBufferSize int
+}
+
 /* Channel */
 
 type Channel struct {
-	name      String
+	name      string
 	recvQueue chan Packet
 	sendQueue chan Packet
 	//stats           Stats
 }
 
-func NewChannel(name String, bufferSize int) *Channel {
+func newChannel(desc ChannelDescriptor) *Channel {
 	return &Channel{
-		name:      name,
-		recvQueue: make(chan Packet, bufferSize),
-		sendQueue: make(chan Packet, bufferSize),
+		name:      desc.Name,
+		recvQueue: make(chan Packet, desc.RecvBufferSize),
+		sendQueue: make(chan Packet, desc.SendBufferSize),
 	}
 }
 
-func (c *Channel) Name() String {
+func (c *Channel) Name() string {
 	return c.name
 }
 
