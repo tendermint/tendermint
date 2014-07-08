@@ -13,15 +13,14 @@ import (
 	//"encoding/hex"
 )
 
-var APP_DIR = os.Getenv("HOME") + "/.tendermint"
-
 /* Global & initialization */
 
+var AppDir = os.Getenv("HOME") + "/.tendermint"
 var Config Config_
 
 func init() {
 
-	configFile := APP_DIR + "/config.json"
+	configFile := AppDir + "/config.json"
 
 	// try to read configuration. if missing, write default
 	configBytes, err := ioutil.ReadFile(configFile)
@@ -51,7 +50,7 @@ var defaultConfig = Config_{
 	Port: 8770,
 	Db: DbConfig{
 		Type: "level",
-		Dir:  APP_DIR + "/data",
+		Dir:  AppDir + "/data",
 	},
 	Twilio: TwilioConfig{},
 }
@@ -92,7 +91,7 @@ func (cfg *Config_) validate() error {
 }
 
 func (cfg *Config_) bytes() []byte {
-	configBytes, err := json.Marshal(cfg)
+	configBytes, err := json.MarshalIndent(cfg, "", "\t")
 	if err != nil {
 		panic(err)
 	}

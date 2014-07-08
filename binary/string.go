@@ -47,7 +47,7 @@ func ReadStringSafe(r io.Reader) (String, error) {
 
 func ReadString(r io.Reader) String {
 	str, err := ReadStringSafe(r)
-	if r != nil {
+	if err != nil {
 		panic(err)
 	}
 	return str

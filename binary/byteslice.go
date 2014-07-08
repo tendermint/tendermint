@@ -50,7 +50,7 @@ func ReadByteSliceSafe(r io.Reader) (ByteSlice, error) {
 
 func ReadByteSlice(r io.Reader) ByteSlice {
 	bytes, err := ReadByteSliceSafe(r)
-	if r != nil {
+	if err != nil {
 		panic(err)
 	}
 	return bytes
