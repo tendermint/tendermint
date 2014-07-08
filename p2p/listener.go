@@ -7,7 +7,7 @@ import (
 
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/peer/upnp"
+	"github.com/tendermint/tendermint/p2p/upnp"
 )
 
 /*

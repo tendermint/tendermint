@@ -77,6 +77,8 @@ func (p *Peer) TryQueue(pkt Packet) bool {
 		return false
 	}
 
+	sendQueue <- pkt
+	return true
 	select {
 	case sendQueue <- pkt:
 		return true

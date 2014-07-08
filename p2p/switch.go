@@ -2,11 +2,9 @@ package p2p
 
 import (
 	"errors"
-	"sync"
 	"sync/atomic"
 
 	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/merkle"
 )
 
 /*
@@ -23,8 +21,7 @@ Incoming messages are received by calling ".Receive()".
 type Switch struct {
 	channels      []ChannelDescriptor
 	pktRecvQueues map[string]chan *InboundPacket
-	peersMtx      sync.Mutex
-	peers         merkle.Tree // addr -> *Peer
+	peers         *PeerSet
 	quit          chan struct{}
 	stopped       uint32
 }
@@ -44,7 +41,7 @@ func NewSwitch(channels []ChannelDescriptor) *Switch {
 	s := &Switch{
 		channels:      channels,
 		pktRecvQueues: pktRecvQueues,
-		peers:         merkle.NewIAVLTree(nil),
+		peers:         NewPeerSet(),
 		quit:          make(chan struct{}),
 		stopped:       0,
 	}
@@ -54,20 +51,15 @@ func NewSwitch(channels []ChannelDescriptor) *Switch {
 
 func (s *Switch) Stop() {
 	log.Infof("Stopping switch")
-	// lock
-	s.peersMtx.Lock()
 	if atomic.CompareAndSwapUint32(&s.stopped, 0, 1) {
 		close(s.quit)
 		// stop each peer.
-		for peerValue := range s.peers.Values() {
-			peer := peerValue.(*Peer)
+		for _, peer := range s.peers.List() {
 			peer.stop()
 		}
 		// empty tree.
-		s.peers = merkle.NewIAVLTree(nil)
+		s.peers = NewPeerSet()
 	}
-	s.peersMtx.Unlock()
-	// unlock
 }
 
 func (s *Switch) AddPeerWithConnection(conn *Connection, outgoing bool) (*Peer, error) {
@@ -99,8 +91,7 @@ func (s *Switch) Broadcast(pkt Packet) (numSuccess, numFailure int) {
 	}
 
 	log.Tracef("Broadcast on [%v] len: %v", pkt.Channel, len(pkt.Bytes))
-	for v := range s.peers.Values() {
-		peer := v.(*Peer)
+	for _, peer := range s.peers.List() {
 		success := peer.TryQueue(pkt)
 		log.Tracef("Broadcast for peer %v success: %v", peer, success)
 		if success {
@@ -135,12 +126,8 @@ func (s *Switch) Receive(chName string) *InboundPacket {
 	}
 }
 
-func (s *Switch) Peers() merkle.Tree {
-	// lock & defer
-	s.peersMtx.Lock()
-	defer s.peersMtx.Unlock()
-	return s.peers.Copy()
-	// unlock deferred
+func (s *Switch) Peers() []*Peer {
+	return s.peers.List()
 }
 
 // Disconnect from a peer due to external error.
@@ -154,35 +141,20 @@ func (s *Switch) StopPeerForError(peer *Peer, reason interface{}) {
 // If graceful is true, last message sent is a disconnect message.
 // TODO: handle graceful disconnects.
 func (s *Switch) StopPeer(peer *Peer, graceful bool) {
-	// lock
-	s.peersMtx.Lock()
-	peerValue, _ := s.peers.Remove(peer.RemoteAddress())
-	s.peersMtx.Unlock()
-	// unlock
-
-	peer_ := peerValue.(*Peer)
-	if peer_ != nil {
-		peer_.stop()
-	}
+	s.peers.Remove(peer)
+	peer.stop()
 }
 
 func (s *Switch) addPeer(peer *Peer) error {
-	addr := peer.RemoteAddress()
-
-	// lock & defer
-	s.peersMtx.Lock()
-	defer s.peersMtx.Unlock()
 	if s.stopped == 1 {
 		return ErrSwitchStopped
 	}
-	if !s.peers.Has(addr) {
-		log.Tracef("Actually putting addr: %v, peer: %v", addr, peer)
-		s.peers.Put(addr, peer)
+	if s.peers.Add(peer) {
+		log.Tracef("Adding: %v", peer)
 		return nil
 	} else {
-		// ignore duplicate peer for addr.
-		log.Infof("Ignoring duplicate peer for addr %v", addr)
+		// ignore duplicate peer
+		log.Infof("Ignoring duplicate: %v", peer)
 		return ErrSwitchDuplicatePeer
 	}
-	// unlock deferred
 }
