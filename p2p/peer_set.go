@@ -50,14 +50,15 @@ func (ps *PeerSet) Remove(peer *Peer) {
 		return
 	}
 	index := item.index
-	// If it's the last peer, that's an easy special case.
-	if index == len(ps.list)-1 {
-		ps.list = ps.list[:len(ps.list)-1]
-		return
-	}
 	// Copy the list but without the last element.
+	// (we must copy because we're mutating the list)
 	newList := make([]*Peer, len(ps.list)-1)
 	copy(newList, ps.list)
+	// If it's the last peer, that's an easy special case.
+	if index == len(ps.list)-1 {
+		ps.list = newList
+		return
+	}
 	// Move the last item from ps.list to "index" in list.
 	lastPeer := ps.list[len(ps.list)-1]
 	lastPeerAddr := lastPeer.RemoteAddress().String()
