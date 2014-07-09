@@ -30,7 +30,7 @@ type DefaultListener struct {
 }
 
 const (
-	NumBufferedConnections = 10
+	numBufferedConnections = 10
 )
 
 func NewDefaultListener(protocol string, listenAddr string) Listener {
@@ -66,7 +66,7 @@ func NewDefaultListener(protocol string, listenAddr string) Listener {
 	dl := &DefaultListener{
 		listener:    listener,
 		extAddr:     extAddr,
-		connections: make(chan *Connection, NumBufferedConnections),
+		connections: make(chan *Connection, numBufferedConnections),
 	}
 
 	go dl.listenHandler()
