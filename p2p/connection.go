@@ -43,7 +43,7 @@ type Connection struct {
 	errored         uint32
 }
 
-var (
+const (
 	PacketTypePing    = UInt8(0x00)
 	PacketTypePong    = UInt8(0x01)
 	PacketTypeMessage = UInt8(0x10)
@@ -158,9 +158,11 @@ FOR_LOOP:
 			c.flush()
 		case <-c.pingRepeatTimer.Ch:
 			_, err = PacketTypePing.WriteTo(c.bufWriter)
+			log.Debugf("[%v] Sending Ping", c)
 			c.flush()
 		case <-c.pong:
 			_, err = PacketTypePong.WriteTo(c.bufWriter)
+			log.Debugf("[%v] Sending Pong", c)
 			c.flush()
 		case <-c.quit:
 			break FOR_LOOP
@@ -206,6 +208,7 @@ FOR_LOOP:
 			c.pong <- struct{}{}
 		case PacketTypePong:
 			// do nothing
+			log.Debugf("[%v] Received Pong", c)
 		case PacketTypeMessage:
 			pkt, err := ReadPacketSafe(c.bufReader)
 			if err != nil {

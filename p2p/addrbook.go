@@ -120,7 +120,7 @@ func (a *AddrBook) Start() {
 	log.Trace("Starting address manager")
 	a.loadFromFile(a.filePath)
 	a.wg.Add(1)
-	go a.addressHandler()
+	go a.saveHandler()
 }
 
 func (a *AddrBook) Stop() {
@@ -344,7 +344,7 @@ func (a *AddrBook) loadFromFile(filePath string) {
 
 /* Private methods */
 
-func (a *AddrBook) addressHandler() {
+func (a *AddrBook) saveHandler() {
 	dumpAddressTicker := time.NewTicker(dumpAddressInterval)
 out:
 	for {
@@ -384,7 +384,7 @@ func (a *AddrBook) addAddress(addr, src *NetAddress) {
 			return
 		}
 	} else {
-		ka = NewknownAddress(addr, src)
+		ka = newKnownAddress(addr, src)
 		a.addrIndex[key] = ka
 		a.nNew++
 	}
@@ -517,19 +517,19 @@ func (a *AddrBook) pickOld(bucket int) int {
 func (a *AddrBook) getNewBucket(addr, src *NetAddress) int {
 	data1 := []byte{}
 	data1 = append(data1, a.key[:]...)
-	data1 = append(data1, []byte(GroupKey(addr))...)
-	data1 = append(data1, []byte(GroupKey(src))...)
-	hash1 := DoubleSha256(data1)
+	data1 = append(data1, []byte(groupKey(addr))...)
+	data1 = append(data1, []byte(groupKey(src))...)
+	hash1 := doubleSha256(data1)
 	hash64 := binary.LittleEndian.Uint64(hash1)
 	hash64 %= newBucketsPerGroup
 	var hashbuf [8]byte
 	binary.LittleEndian.PutUint64(hashbuf[:], hash64)
 	data2 := []byte{}
 	data2 = append(data2, a.key[:]...)
-	data2 = append(data2, GroupKey(src)...)
+	data2 = append(data2, groupKey(src)...)
 	data2 = append(data2, hashbuf[:]...)
 
-	hash2 := DoubleSha256(data2)
+	hash2 := doubleSha256(data2)
 	return int(binary.LittleEndian.Uint64(hash2) % newBucketCount)
 }
 
@@ -538,17 +538,17 @@ func (a *AddrBook) getOldBucket(addr *NetAddress) int {
 	data1 := []byte{}
 	data1 = append(data1, a.key[:]...)
 	data1 = append(data1, []byte(addr.String())...)
-	hash1 := DoubleSha256(data1)
+	hash1 := doubleSha256(data1)
 	hash64 := binary.LittleEndian.Uint64(hash1)
 	hash64 %= oldBucketsPerGroup
 	var hashbuf [8]byte
 	binary.LittleEndian.PutUint64(hashbuf[:], hash64)
 	data2 := []byte{}
 	data2 = append(data2, a.key[:]...)
-	data2 = append(data2, GroupKey(addr)...)
+	data2 = append(data2, groupKey(addr)...)
 	data2 = append(data2, hashbuf[:]...)
 
-	hash2 := DoubleSha256(data2)
+	hash2 := doubleSha256(data2)
 	return int(binary.LittleEndian.Uint64(hash2) % oldBucketCount)
 }
 
@@ -556,7 +556,7 @@ func (a *AddrBook) getOldBucket(addr *NetAddress) int {
 // This is the /16 for IPv6, the /32 (/36 for he.net) for IPv6, the string
 // "local" for a local address and the string "unroutable for an unroutable
 // address.
-func GroupKey(na *NetAddress) string {
+func groupKey(na *NetAddress) string {
 	if na.Local() {
 		return "local"
 	}
@@ -617,7 +617,7 @@ type knownAddress struct {
 	OldBucket   Int16
 }
 
-func NewknownAddress(addr *NetAddress, src *NetAddress) *knownAddress {
+func newKnownAddress(addr *NetAddress, src *NetAddress) *knownAddress {
 	return &knownAddress{
 		Addr:        addr,
 		Src:         src,
@@ -627,7 +627,7 @@ func NewknownAddress(addr *NetAddress, src *NetAddress) *knownAddress {
 	}
 }
 
-func ReadknownAddress(r io.Reader) *knownAddress {
+func readKnownAddress(r io.Reader) *knownAddress {
 	return &knownAddress{
 		Addr:        ReadNetAddress(r),
 		Src:         ReadNetAddress(r),
