@@ -108,9 +108,6 @@ func BenchmarkTestGob(b *testing.B) {
 func BenchmarkTestMsgPack(b *testing.B) {
 	b.StopTimer()
 
-	var mh codec.MsgpackHandle
-	handle := &mh
-
 	h := &Header{
 		Name:           "Header",
 		Height:         123,
@@ -123,8 +120,8 @@ func BenchmarkTestMsgPack(b *testing.B) {
 	h2 := &Header{}
 
 	buf := bytes.NewBuffer(nil)
-	enc := codec.NewEncoder(buf, handle)
-	dec := codec.NewDecoder(buf, handle)
+	enc := msgpack.NewEncoder(buf)
+	dec := msgpack.NewDecoder(buf)
 
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
@@ -150,10 +147,12 @@ func BenchmarkTestMsgPack2(b *testing.B) {
 		DataHash:       []byte("datahash"),
 	}
 	h2 := &Header{}
+	var mh codec.MsgpackHandle
+	handle := &mh
 
 	buf := bytes.NewBuffer(nil)
-	enc := msgpack.NewEncoder(buf)
-	dec := msgpack.NewDecoder(buf)
+	enc := codec.NewEncoder(buf, handle)
+	dec := codec.NewDecoder(buf, handle)
 
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {

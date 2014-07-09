@@ -1,10 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"os/signal"
-	"syscall"
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
@@ -64,7 +62,7 @@ func main() {
 	go p2p.PexHandler(sw, book)
 
 	// Sleep forever
-	go _trapSignal()
+	trapSignal()
 	select {}
 }
 
@@ -73,26 +71,12 @@ func initPeer(peer *p2p.Peer) {
 }
 
 func trapSignal() {
-	ch := make(chan os.Signal)
-	signal.Notify(ch, syscall.SIGINT)
-	sig := <-ch
-	fmt.Println("???", sig)
-	os.Exit(0)
-}
-
-func _trapSignal() {
-	// capture ctrl+c and stop CPU profiler
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
-	//signal.Notify(c, syscall.SIGINT)
 	go func() {
-		fmt.Println("inside")
 		for sig := range c {
-			fmt.Println("signal!>>", sig)
-			log.Infof("captured %v, stopping profiler and exiting..", sig)
+			log.Infof("captured %v, exiting..", sig)
 			os.Exit(1)
 		}
-		fmt.Println("inside done")
 	}()
-	fmt.Println("ok")
 }
