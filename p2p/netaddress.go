@@ -5,11 +5,13 @@
 package p2p
 
 import (
-	. "github.com/tendermint/tendermint/binary"
-	. "github.com/tendermint/tendermint/common"
 	"io"
 	"net"
 	"strconv"
+	"time"
+
+	. "github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
 )
 
 /* NetAddress */

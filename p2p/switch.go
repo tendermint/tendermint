@@ -23,6 +23,7 @@ type Switch struct {
 	pktRecvQueues map[string]chan *InboundPacket
 	peers         *PeerSet
 	quit          chan struct{}
+	started       uint32
 	stopped       uint32
 }
 
@@ -50,11 +51,14 @@ func NewSwitch(channels []ChannelDescriptor) *Switch {
 }
 
 func (s *Switch) Start() {
+	if atomic.CompareAndSwapUint32(&s.started, 0, 1) {
+		log.Infof("Starting switch")
+	}
 }
 
 func (s *Switch) Stop() {
-	log.Infof("Stopping switch")
 	if atomic.CompareAndSwapUint32(&s.stopped, 0, 1) {
+		log.Infof("Stopping switch")
 		close(s.quit)
 		// stop each peer.
 		for _, peer := range s.peers.List() {

@@ -17,9 +17,10 @@ const (
 )
 
 type Node struct {
-	sw   *p2p.Switch
-	book *p2p.AddressBook
-	quit chan struct{}
+	sw      *p2p.Switch
+	book    *p2p.AddressBook
+	quit    chan struct{}
+	dialing *CMap
 }
 
 func NewNode() *Node {
@@ -50,8 +51,10 @@ func NewNode() *Node {
 	book := p2p.NewAddrBook(config.AppDir + "/addrbook.json")
 
 	return &New{
-		sw:   sw,
-		book: book,
+		sw:      sw,
+		book:    book,
+		quit:    make(chan struct{}, 0),
+		dialing: NewCMap(),
 	}
 }
 
@@ -90,7 +93,12 @@ func (n *Node) AddListener(l Listener) {
 // Ensures that sufficient peers are connected.
 func (n *Node) ensurePeers() {
 	numPeers := len(n.sw.Peers())
-	if numPeers < minNumPeers {
+	numDialing := n.dialing.Size()
+	numToDial = minNumPeers - (numPeers + numDialing)
+	if numToDial <= 0 {
+		return
+	}
+	for i := 0; i < numToDial; i++ {
 		// XXX
 	}
 }

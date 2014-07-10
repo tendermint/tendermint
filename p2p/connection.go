@@ -65,8 +65,8 @@ func NewConnection(conn net.Conn) *Connection {
 // .Start() begins multiplexing packets to and from "channels".
 // If an error occurs, the recovered reason is passed to "onError".
 func (c *Connection) Start(channels map[string]*Channel, onError func(interface{})) {
-	log.Debugf("Starting %v", c)
 	if atomic.CompareAndSwapUint32(&c.started, 0, 1) {
+		log.Debugf("Starting %v", c)
 		c.channels = channels
 		c.onError = onError
 		go c.sendHandler()

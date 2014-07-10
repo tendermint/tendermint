@@ -96,7 +96,7 @@ func TestSaveAddresses(t *testing.T) {
 	for _, addrSrc := range randAddrs {
 		addr := addrSrc.addr
 		src := addrSrc.src
-		ka := book.addrIndex[addr.String()]
+		ka := book.addrLookup[addr.String()]
 		if ka == nil {
 			t.Fatalf("Expected to find KnownAddress %v but wasn't there.", addr)
 		}
