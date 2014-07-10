@@ -49,6 +49,9 @@ func NewSwitch(channels []ChannelDescriptor) *Switch {
 	return s
 }
 
+func (s *Switch) Start() {
+}
+
 func (s *Switch) Stop() {
 	log.Infof("Stopping switch")
 	if atomic.CompareAndSwapUint32(&s.stopped, 0, 1) {

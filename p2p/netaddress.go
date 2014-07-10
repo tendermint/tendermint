@@ -95,6 +95,14 @@ func (na *NetAddress) Dial() (*Connection, error) {
 	return NewConnection(conn), nil
 }
 
+func (na *NetAddress) DialTimeout(timeout time.Duration) (*Connection, error) {
+	conn, err := net.DialTimeout("tcp", na.String(), timeout)
+	if err != nil {
+		return nil, err
+	}
+	return NewConnection(conn), nil
+}
+
 func (na *NetAddress) Routable() bool {
 	// TODO(oga) bitcoind doesn't include RFC3849 here, but should we?
 	return na.Valid() && !(na.RFC1918() || na.RFC3927() || na.RFC4862() ||

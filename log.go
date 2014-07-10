@@ -16,7 +16,7 @@ func init() {
     </outputs>
     <formats>
         <format id="main"       format="%Date/%Time [%LEV] %Msg%n"/>
-        <format id="colored"    format="%EscM(46)%Level%EscM(49) %EscM(36)%File%EscM(39) %Msg%n%EscM(0)"/>
+        <format id="colored"    format="%Time %EscM(46)%Level%EscM(49) %EscM(36)%File%EscM(39) %Msg%n%EscM(0)"/>
     </formats>
 </seelog>`
 

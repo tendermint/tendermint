@@ -55,6 +55,10 @@ func (p *Peer) stop() {
 	}
 }
 
+func (p *Peer) IsOutgoing() bool {
+	return p.outgoing
+}
+
 func (p *Peer) LocalAddress() *NetAddress {
 	return p.conn.LocalAddress()
 }

@@ -2,7 +2,10 @@ package common
 
 import "time"
 
-/* RepeatTimer */
+/*
+RepeatTimer repeatedly sends a struct{}{} to .Ch after each "dur" period.
+It's good for keeping connections alive.
+*/
 type RepeatTimer struct {
 	Ch    chan struct{}
 	quit  chan struct{}
@@ -26,6 +29,7 @@ func (t *RepeatTimer) fireHandler() {
 	}
 }
 
+// Wait the duration again before firing.
 func (t *RepeatTimer) Reset() {
 	t.timer.Reset(t.dur)
 }

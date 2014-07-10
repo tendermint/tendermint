@@ -5,7 +5,10 @@ import (
 	"time"
 )
 
-/* Throttler */
+/*
+Throttler sends a struct{}{} to .Ch "dur" after the last .Set().
+It's good for ensuring that something happens last after a burst of events.
+*/
 type Throttler struct {
 	Ch    chan struct{}
 	quit  chan struct{}
@@ -19,6 +22,7 @@ func NewThrottler(dur time.Duration) *Throttler {
 	var quit = make(chan struct{})
 	var t = &Throttler{Ch: ch, dur: dur, quit: quit}
 	t.timer = time.AfterFunc(dur, t.fireHandler)
+	t.timer.Stop()
 	return t
 }
 
