@@ -76,6 +76,7 @@ func (n *Node) initPeer(peer *p2p.Peer) {
 
 // Add a Listener to accept incoming peer connections.
 func (n *Node) AddListener(l p2p.Listener) {
+	log.Infof("Adding listener %v", l)
 	go func() {
 		for {
 			inConn, ok := <-l.Connections()
@@ -109,7 +110,7 @@ func (n *Node) ensurePeers() {
 		for j := 0; i < 3; j++ {
 			picked = n.book.PickAddress(newBias)
 			if picked == nil {
-				log.Infof("Empty addrbook.")
+				log.Debug("Empty addrbook.")
 				return
 			}
 			if n.sw.Peers().Has(picked) {

@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"fmt"
 	"net"
 	"strconv"
 	"sync/atomic"
@@ -111,6 +112,10 @@ func (l *DefaultListener) Stop() {
 	if atomic.CompareAndSwapUint32(&l.stopped, 0, 1) {
 		l.listener.Close()
 	}
+}
+
+func (l *DefaultListener) String() string {
+	return fmt.Sprintf("Listener(@%v)", l.extAddr)
 }
 
 /* external address helpers */
