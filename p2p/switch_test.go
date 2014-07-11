@@ -59,11 +59,11 @@ func TestSwitches(t *testing.T) {
 	defer s2.Stop()
 
 	// Lets send a message from s1 to s2.
-	if len(s1.Peers()) != 1 {
-		t.Errorf("Expected exactly 1 peer in s1, got %v", len(s1.Peers()))
+	if s1.Peers().Size() != 1 {
+		t.Errorf("Expected exactly 1 peer in s1, got %v", s1.Peers().Size())
 	}
-	if len(s2.Peers()) != 1 {
-		t.Errorf("Expected exactly 1 peer in s2, got %v", len(s2.Peers()))
+	if s2.Peers().Size() != 1 {
+		t.Errorf("Expected exactly 1 peer in s2, got %v", s2.Peers().Size())
 	}
 
 	// Broadcast a message on ch1

@@ -5,6 +5,16 @@ import (
 )
 
 /*
+ReadOnlyPeerSet has a subset of the methods of PeerSet.
+*/
+type ReadOnlyPeerSet interface {
+	Has(addr *NetAddress) bool
+	List() []*Peer
+}
+
+//-----------------------------------------------------------------------------
+
+/*
 PeerSet is a special structure for keeping a table of peers.
 Iteration over the peers is super fast and thread-safe.
 */
@@ -41,6 +51,13 @@ func (ps *PeerSet) Add(peer *Peer) bool {
 	return true
 }
 
+func (ps *PeerSet) Has(addr *NetAddress) bool {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+	_, ok := ps.lookup[addr.String()]
+	return ok
+}
+
 func (ps *PeerSet) Remove(peer *Peer) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
@@ -67,6 +84,12 @@ func (ps *PeerSet) Remove(peer *Peer) {
 	lastPeerItem.index = index
 	ps.list = newList
 	delete(ps.lookup, addr)
+}
+
+func (ps *PeerSet) Size() int {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+	return len(ps.list)
 }
 
 // threadsafe list of peers.

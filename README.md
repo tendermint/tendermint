@@ -6,7 +6,8 @@ TenderMint - proof of concept
 
 ### Status
 
-* Implement basic peer exchange
-* Implemented the basics of peer/*
+* Node & testnet *now*
+* PEX peer exchange *complete*
+* p2p/* *complete*
 * Ed25519 bindings *complete*
 * merkle/* *complete*

@@ -12,7 +12,7 @@ All communication amongst peers are multiplexed by "channels".
 (Not the same as Go "channels")
 
 To send a message, encapsulate it into a "Packet" and send it to each peer.
-You can find all connected and active peers by iterating over ".Peers()".
+You can find all connected and active peers by iterating over ".Peers().List()".
 ".Broadcast()" is provided for convenience, but by iterating over
 the peers manually the caller can decide which subset receives a message.
 
@@ -69,19 +69,19 @@ func (s *Switch) Stop() {
 	}
 }
 
-func (s *Switch) AddPeerWithConnection(conn *Connection, outgoing bool) (*Peer, error) {
+func (s *Switch) AddPeerWithConnection(conn *Connection, outbound bool) (*Peer, error) {
 	if atomic.LoadUint32(&s.stopped) == 1 {
 		return nil, ErrSwitchStopped
 	}
 
-	log.Infof("Adding peer with connection: %v, outgoing: %v", conn, outgoing)
+	log.Infof("Adding peer with connection: %v, outbound: %v", conn, outbound)
 	// Create channels for peer
 	channels := map[string]*Channel{}
 	for _, chDesc := range s.channels {
 		channels[chDesc.Name] = newChannel(chDesc)
 	}
 	peer := newPeer(conn, channels)
-	peer.outgoing = outgoing
+	peer.outbound = outbound
 	err := s.addPeer(peer)
 	if err != nil {
 		return nil, err
@@ -133,8 +133,18 @@ func (s *Switch) Receive(chName string) *InboundPacket {
 	}
 }
 
-func (s *Switch) Peers() []*Peer {
-	return s.peers.List()
+func (s *Switch) NumOutboundPeers() (count int) {
+	peers := s.peers.List()
+	for _, peer := range peers {
+		if peer.outbound {
+			count++
+		}
+	}
+	return
+}
+
+func (s *Switch) Peers() ReadOnlyPeerSet {
+	return s.peers
 }
 
 // Disconnect from a peer due to external error.

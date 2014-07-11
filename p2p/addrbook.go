@@ -123,7 +123,7 @@ func (a *AddrBook) init() {
 
 func (a *AddrBook) Start() {
 	if atomic.CompareAndSwapUint32(&a.started, 0, 1) {
-		log.Trace("Starting address manager")
+		log.Infof("Starting address manager")
 		a.loadFromFile(a.filePath)
 		a.wg.Add(1)
 		go a.saveHandler()
@@ -367,7 +367,7 @@ out:
 	dumpAddressTicker.Stop()
 	a.saveToFile(a.filePath)
 	a.wg.Done()
-	log.Trace("Address handler done")
+	log.Info("Address handler done")
 }
 
 func (a *AddrBook) getBucket(bucketType byte, bucketIdx int) map[string]*knownAddress {
@@ -399,7 +399,7 @@ func (a *AddrBook) addToNewBucket(ka *knownAddress, bucketIdx int) bool {
 
 	// Enforce max addresses.
 	if len(bucket) > newBucketSize {
-		log.Tracef("new bucket is full, expiring old ")
+		log.Infof("new bucket is full, expiring old ")
 		a.expireNew(bucketIdx)
 	}
 
@@ -519,7 +519,7 @@ func (a *AddrBook) addAddress(addr, src *NetAddress) {
 	bucket := a.calcNewBucket(addr, src)
 	a.addToNewBucket(ka, bucket)
 
-	log.Tracef("Added new address %s for a total of %d addresses", addr, a.size())
+	log.Infof("Added new address %s for a total of %d addresses", addr, a.size())
 }
 
 // Make space in the new buckets by expiring the really bad entries.
@@ -527,8 +527,8 @@ func (a *AddrBook) addAddress(addr, src *NetAddress) {
 func (a *AddrBook) expireNew(bucketIdx int) {
 	for key, ka := range a.addrNew[bucketIdx] {
 		// If an entry is bad, throw it away
-		if ka.IsBad() {
-			log.Tracef("expiring bad address %v", key)
+		if ka.isBad() {
+			log.Infof("expiring bad address %v", key)
 			a.removeFromBucket(ka, bucketTypeNew, bucketIdx)
 			return
 		}
@@ -756,7 +756,7 @@ func (ka *knownAddress) removeBucketRef(bucketIdx int) int {
    All addresses that meet these criteria are assumed to be worthless and not
    worth keeping hold of.
 */
-func (ka *knownAddress) IsBad() bool {
+func (ka *knownAddress) isBad() bool {
 	// Has been attempted in the last minute --> good
 	if ka.LastAttempt.Before(time.Now().Add(-1 * time.Minute)) {
 		return false

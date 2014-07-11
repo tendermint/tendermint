@@ -12,7 +12,7 @@ import (
 /* Peer */
 
 type Peer struct {
-	outgoing bool
+	outbound bool
 	conn     *Connection
 	channels map[string]*Channel
 	quit     chan struct{}
@@ -55,8 +55,8 @@ func (p *Peer) stop() {
 	}
 }
 
-func (p *Peer) IsOutgoing() bool {
-	return p.outgoing
+func (p *Peer) IsOutbound() bool {
+	return p.outbound
 }
 
 func (p *Peer) LocalAddress() *NetAddress {
@@ -96,7 +96,7 @@ func (p *Peer) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (p *Peer) String() string {
-	return fmt.Sprintf("Peer{%v-%v,o:%v}", p.LocalAddress(), p.RemoteAddress(), p.outgoing)
+	return fmt.Sprintf("Peer{%v-%v,o:%v}", p.LocalAddress(), p.RemoteAddress(), p.outbound)
 }
 
 // sendHandler pulls from a channel and pushes to the connection.
