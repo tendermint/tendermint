@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -18,8 +19,14 @@ import (
 var AppDir = os.Getenv("HOME") + "/.tendermint"
 var Config Config_
 
-func init() {
+func initFlags(printHelp *bool) {
+	flag.BoolVar(printHelp, "help", false, "Print this help message.")
+	flag.StringVar(&Config.IP, "ip", Config.IP, "Listen IP. (0.0.0.0 means any)")
+	flag.IntVar(&Config.Port, "port", Config.Port, "Listen port. (0 means any)")
+	flag.StringVar(&Config.Seed, "seed", Config.Seed, "Address of seed node")
+}
 
+func init() {
 	configFile := AppDir + "/config.json"
 
 	// try to read configuration. if missing, write default
@@ -41,13 +48,25 @@ func init() {
 	if err != nil {
 		log.Panicf("Invalid configuration file %s: %v", configFile, err)
 	}
+
+	// try to parse arg flags, which can override file configuration.
+	var printHelp bool
+	initFlags(&printHelp)
+	flag.Parse()
+	if printHelp {
+		fmt.Println("----------------------------------")
+		flag.PrintDefaults()
+		fmt.Println("----------------------------------")
+		os.Exit(0)
+	}
 }
 
 /* Default configuration */
 
 var defaultConfig = Config_{
-	Host: "127.0.0.1",
+	IP:   "0.0.0.0",
 	Port: 8770,
+	Seed: "",
 	Db: DbConfig{
 		Type: "level",
 		Dir:  AppDir + "/data",
@@ -58,8 +77,9 @@ var defaultConfig = Config_{
 /* Configuration types */
 
 type Config_ struct {
-	Host   string
+	IP     string
 	Port   int
+	Seed   string
 	Db     DbConfig
 	Twilio TwilioConfig
 }
@@ -78,8 +98,8 @@ type DbConfig struct {
 }
 
 func (cfg *Config_) validate() error {
-	if cfg.Host == "" {
-		return errors.New("Host must be set")
+	if cfg.IP == "" {
+		return errors.New("IP must be set")
 	}
 	if cfg.Port == 0 {
 		return errors.New("Port must be set")

@@ -540,6 +540,8 @@ func (a *AddrBook) expireNew(bucketIdx int) {
 }
 
 // Promotes an address from new to old.
+// TODO: Move to old probabilistically.
+// The better a node is, the less likely it should be evicted from an old bucket.
 func (a *AddrBook) moveToOld(ka *knownAddress) {
 	// Sanity check
 	if ka.isOld() {

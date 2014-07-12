@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"time"
@@ -94,6 +95,24 @@ func (n *Node) AddListener(l p2p.Listener) {
 	}()
 }
 
+// threadsafe
+func (n *Node) DialPeerWithAddress(addr *p2p.NetAddress) (*p2p.Peer, error) {
+	log.Infof("Dialing peer @ %v", addr)
+	n.dialing.Set(addr.String(), addr)
+	n.book.MarkAttempt(addr)
+	conn, err := addr.DialTimeout(peerDialTimeoutSeconds * time.Second)
+	n.dialing.Delete(addr.String())
+	if err != nil {
+		return nil, err
+	}
+	peer, err := n.sw.AddPeerWithConnection(conn, true)
+	if err != nil {
+		return nil, err
+	}
+	n.initPeer(peer)
+	return peer, nil
+}
+
 // Ensures that sufficient peers are connected.
 func (n *Node) ensurePeers() {
 	numPeers := n.sw.NumOutboundPeers()
@@ -122,23 +141,7 @@ func (n *Node) ensurePeers() {
 		if picked == nil {
 			continue
 		}
-		n.dialing.Set(picked.String(), picked)
-		n.book.MarkAttempt(picked)
-		go func() {
-			log.Infof("Dialing addr: %v", picked)
-			conn, err := picked.DialTimeout(peerDialTimeoutSeconds * time.Second)
-			n.dialing.Delete(picked.String())
-			if err != nil {
-				// ignore error.
-				return
-			}
-			peer, err := n.sw.AddPeerWithConnection(conn, true)
-			if err != nil {
-				log.Warnf("Error trying to add new outbound peer connection:%v", err)
-				return
-			}
-			n.initPeer(peer)
-		}()
+		go n.DialPeerWithAddress(picked)
 	}
 }
 
@@ -171,30 +174,23 @@ func (n *Node) Stop() {
 
 func main() {
 
+	// Create & start node
 	n := NewNode()
-	l := p2p.NewDefaultListener("tcp", ":8001")
+	l := p2p.NewDefaultListener("tcp", fmt.Sprintf("%v:%v", config.Config.IP, config.Config.Port))
 	n.AddListener(l)
 	n.Start()
 
-	if false {
-		// TODO: replace with a global list of addresses.
-		// TODO remove
-		// let's connect to 66.175.218.199
-		conn, err := p2p.NewNetAddressString("66.175.218.199:8001").Dial()
+	// Seed?
+	if config.Config.Seed != "" {
+		peer, err := n.DialPeerWithAddress(p2p.NewNetAddressString(config.Config.Seed))
 		if err != nil {
-			log.Infof("Error connecting to it: %v", err)
+			log.Errorf("Error dialing seed: %v", err)
 			return
 		}
-		peer, err := n.sw.AddPeerWithConnection(conn, true)
-		if err != nil {
-			log.Infof("Error adding peer with connection: %v", err)
-			return
-		}
-		log.Infof("Connected to peer: %v", peer)
-		// TODO remove
+		log.Infof("Connected to seed: %v", peer)
 	}
 
-	// Sleep forever
+	// Sleep
 	trapSignal()
 	select {}
 }
