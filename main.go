@@ -177,6 +177,7 @@ func main() {
 	n.Start()
 
 	if false {
+		// TODO: replace with a global list of addresses.
 		// TODO remove
 		// let's connect to 66.175.218.199
 		conn, err := p2p.NewNetAddressString("66.175.218.199:8001").Dial()
