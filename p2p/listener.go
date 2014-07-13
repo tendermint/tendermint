@@ -32,36 +32,46 @@ type DefaultListener struct {
 
 const (
 	numBufferedConnections = 10
+	defaultExternalPort    = 8770
 )
 
-func NewDefaultListener(protocol string, listenAddr string) Listener {
-	listenHost, listenPortStr, err := net.SplitHostPort(listenAddr)
+func splitHostPort(addr string) (host string, port int) {
+	host, portStr, err := net.SplitHostPort(addr)
 	if err != nil {
 		panic(err)
 	}
-	listenPort, err := strconv.Atoi(listenPortStr)
+	port, err = strconv.Atoi(portStr)
 	if err != nil {
 		panic(err)
 	}
+	return host, port
+}
+
+func NewDefaultListener(protocol string, lAddr string) Listener {
+	// Local listen IP & port
+	lAddrIP, lAddrPort := splitHostPort(lAddr)
+
+	// Create listener
+	listener, err := net.Listen(protocol, lAddr)
+	if err != nil {
+		panic(err)
+	}
+	// Actual listener local IP & port
+	listenerIP, listenerPort := splitHostPort(listener.Addr().String())
+	log.Infof("Local listener: %v:%v", listenerIP, listenerPort)
 
 	// Determine external address...
 	var extAddr *NetAddress
-	// If the listenHost is INADDR_ANY, try UPnP
-	if listenHost == "" || listenHost == "0.0.0.0" {
-		extAddr = getUPNPExternalAddress(listenPort, listenPort)
+	// If the lAddrIP is INADDR_ANY, try UPnP
+	if lAddrIP == "" || lAddrIP == "0.0.0.0" {
+		extAddr = getUPNPExternalAddress(lAddrPort, listenerPort)
 	}
 	// Otherwise just use the local address...
 	if extAddr == nil {
-		extAddr = getNaiveExternalAddress(listenPort)
+		extAddr = getNaiveExternalAddress(listenerPort)
 	}
 	if extAddr == nil {
 		panic("Could not determine external address!")
-	}
-
-	// Create listener
-	listener, err := net.Listen(protocol, listenAddr)
-	if err != nil {
-		panic(err)
 	}
 
 	dl := &DefaultListener{
@@ -133,6 +143,11 @@ func getUPNPExternalAddress(externalPort, internalPort int) *NetAddress {
 	if err != nil {
 		log.Infof("Could not get UPNP external address: %v", err)
 		return nil
+	}
+
+	// UPnP can't seem to get the external port, so let's just be explicit.
+	if externalPort == 0 {
+		externalPort = defaultExternalPort
 	}
 
 	externalPort, err = nat.AddPortMapping("tcp", externalPort, internalPort, "tendermint", 0)

@@ -21,8 +21,7 @@ var Config Config_
 
 func initFlags(printHelp *bool) {
 	flag.BoolVar(printHelp, "help", false, "Print this help message.")
-	flag.StringVar(&Config.IP, "ip", Config.IP, "Listen IP. (0.0.0.0 means any)")
-	flag.IntVar(&Config.Port, "port", Config.Port, "Listen port. (0 means any)")
+	flag.StringVar(&Config.LAddr, "laddr", Config.LAddr, "Listen address. (0.0.0.0:0 means any interface, any port)")
 	flag.StringVar(&Config.Seed, "seed", Config.Seed, "Address of seed node")
 }
 
@@ -64,9 +63,8 @@ func init() {
 /* Default configuration */
 
 var defaultConfig = Config_{
-	IP:   "0.0.0.0",
-	Port: 8770,
-	Seed: "",
+	LAddr: "0.0.0.0:0",
+	Seed:  "",
 	Db: DbConfig{
 		Type: "level",
 		Dir:  AppDir + "/data",
@@ -77,8 +75,7 @@ var defaultConfig = Config_{
 /* Configuration types */
 
 type Config_ struct {
-	IP     string
-	Port   int
+	LAddr  string
 	Seed   string
 	Db     DbConfig
 	Twilio TwilioConfig
@@ -98,11 +95,11 @@ type DbConfig struct {
 }
 
 func (cfg *Config_) validate() error {
-	if cfg.IP == "" {
-		return errors.New("IP must be set")
+	if cfg.LAddr == "" {
+		cfg.LAddr = defaultConfig.LAddr
 	}
-	if cfg.Port == 0 {
-		return errors.New("Port must be set")
+	if cfg.Seed == "" {
+		cfg.Seed = defaultConfig.Seed
 	}
 	if cfg.Db.Type == "" {
 		return errors.New("Db.Type must be set")

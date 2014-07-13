@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"os/signal"
 	"time"
@@ -176,7 +175,8 @@ func main() {
 
 	// Create & start node
 	n := NewNode()
-	l := p2p.NewDefaultListener("tcp", fmt.Sprintf("%v:%v", config.Config.IP, config.Config.Port))
+	log.Warnf(">> %v", config.Config.LAddr)
+	l := p2p.NewDefaultListener("tcp", config.Config.LAddr)
 	n.AddListener(l)
 	n.Start()
 
