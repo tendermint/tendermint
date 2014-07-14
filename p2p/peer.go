@@ -260,7 +260,7 @@ func ReadPacketSafe(r io.Reader) (pkt Packet, err error) {
 }
 
 /*
-InboundPacket extends Packet with fields relevant to incoming packets.
+InboundPacket extends Packet with fields relevant to inbound packets.
 */
 type InboundPacket struct {
 	Peer *Peer

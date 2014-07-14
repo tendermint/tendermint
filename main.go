@@ -63,7 +63,7 @@ func (n *Node) Start() {
 	n.pmgr.Start()
 }
 
-// Add a Listener to accept incoming peer connections.
+// Add a Listener to accept inbound peer connections.
 func (n *Node) AddListener(l p2p.Listener) {
 	n.lz = append(n.lz, l)
 }
@@ -74,10 +74,10 @@ func (n *Node) inboundConnectionHandler(l p2p.Listener) {
 		if !ok {
 			break
 		}
-		// New incoming connection!
+		// New inbound connection!
 		peer, err := n.sw.AddPeerWithConnection(inConn, false)
 		if err != nil {
-			log.Infof("Ignoring error from incoming connection: %v\n%v",
+			log.Infof("Ignoring error from inbound connection: %v\n%v",
 				peer, err)
 			continue
 		}
@@ -110,7 +110,7 @@ func (n *Node) newPeersHandler() {
 		if !ok {
 			break
 		}
-		// New outgoing peer!
+		// New outbound peer!
 		n.SendOurExternalAddrs(peer)
 	}
 }

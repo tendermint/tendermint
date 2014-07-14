@@ -36,7 +36,7 @@ func makeSwitchPair(t testing.TB, bufferSize int, chNames []string) (*Switch, *S
 	}
 	connIn, ok := <-l.Connections()
 	if !ok {
-		t.Fatalf("Could not get incoming connection from listener")
+		t.Fatalf("Could not get inbound connection from listener")
 	}
 
 	s1.AddPeerWithConnection(connIn, false)

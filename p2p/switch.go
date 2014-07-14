@@ -17,7 +17,7 @@ You can find all connected and active peers by iterating over ".Peers().List()".
 ".Broadcast()" is provided for convenience, but by iterating over
 the peers manually the caller can decide which subset receives a message.
 
-Incoming messages are received by calling ".Receive()".
+Inbound messages are received by calling ".Receive()".
 */
 type Switch struct {
 	channels      []ChannelDescriptor
