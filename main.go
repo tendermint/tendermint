@@ -65,6 +65,7 @@ func (n *Node) Start() {
 
 // Add a Listener to accept inbound peer connections.
 func (n *Node) AddListener(l p2p.Listener) {
+	log.Infof("Added %v", l)
 	n.lz = append(n.lz, l)
 }
 
