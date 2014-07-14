@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"sync/atomic"
@@ -71,9 +72,27 @@ func (p *Peer) Channel(chName string) *Channel {
 	return p.channels[chName]
 }
 
-// TryQueue returns true if the packet was successfully queued.
+// TrySend returns true if the packet was successfully queued.
 // Returning true does not imply that the packet will be sent.
-func (p *Peer) TryQueue(pkt Packet) bool {
+func (p *Peer) TrySend(pkt Packet) bool {
+	log.Debugf("TrySend [%v] -> %v", pkt, p)
+	channel := p.Channel(string(pkt.Channel))
+	sendQueue := channel.sendQueue
+
+	if atomic.LoadUint32(&p.stopped) == 1 {
+		return false
+	}
+
+	select {
+	case sendQueue <- pkt:
+		return true
+	default: // buffer full
+		return false
+	}
+}
+
+func (p *Peer) Send(pkt Packet) bool {
+	log.Debugf("Send [%v] -> %v", pkt, p)
 	channel := p.Channel(string(pkt.Channel))
 	sendQueue := channel.sendQueue
 
@@ -83,12 +102,6 @@ func (p *Peer) TryQueue(pkt Packet) bool {
 
 	sendQueue <- pkt
 	return true
-	select {
-	case sendQueue <- pkt:
-		return true
-	default: // buffer full
-		return false
-	}
 }
 
 func (p *Peer) WriteTo(w io.Writer) (n int64, err error) {
@@ -159,6 +172,8 @@ FOR_LOOP:
 	// (none)
 }
 
+//-----------------------------------------------------------------------------
+
 /* ChannelDescriptor */
 
 type ChannelDescriptor struct {
@@ -196,7 +211,7 @@ func (c *Channel) SendQueue() chan<- Packet {
 	return c.sendQueue
 }
 
-/* Packet */
+//-----------------------------------------------------------------------------
 
 /*
 Packet encapsulates a ByteSlice on a Channel.
@@ -207,10 +222,12 @@ type Packet struct {
 	// Hash
 }
 
-func NewPacket(chName String, bytes ByteSlice) Packet {
+func NewPacket(chName String, msg Binary) Packet {
+	msgBytes := BinaryBytes(msg)
+	log.Tracef("NewPacket msg bytes: %X", msgBytes)
 	return Packet{
 		Channel: chName,
-		Bytes:   bytes,
+		Bytes:   msgBytes,
 	}
 }
 
@@ -218,6 +235,14 @@ func (p Packet) WriteTo(w io.Writer) (n int64, err error) {
 	n, err = WriteOnto(p.Channel, w, n, err)
 	n, err = WriteOnto(p.Bytes, w, n, err)
 	return
+}
+
+func (p Packet) Reader() io.Reader {
+	return bytes.NewReader(p.Bytes)
+}
+
+func (p Packet) String() string {
+	return fmt.Sprintf("%v:%X", p.Channel, p.Bytes)
 }
 
 func ReadPacketSafe(r io.Reader) (pkt Packet, err error) {
@@ -230,7 +255,8 @@ func ReadPacketSafe(r io.Reader) (pkt Packet, err error) {
 	if err != nil {
 		return
 	}
-	return NewPacket(chName, bytes), nil
+	log.Tracef("ReadPacket* msg bytes: %X", bytes)
+	return Packet{Channel: chName, Bytes: bytes}, nil
 }
 
 /*

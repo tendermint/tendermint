@@ -5,11 +5,12 @@ import (
 )
 
 /*
-ReadOnlyPeerSet has a subset of the methods of PeerSet.
+IPeerSet has a (immutable) subset of the methods of PeerSet.
 */
-type ReadOnlyPeerSet interface {
+type IPeerSet interface {
 	Has(addr *NetAddress) bool
 	List() []*Peer
+	Size() int
 }
 
 //-----------------------------------------------------------------------------

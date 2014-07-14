@@ -1,28 +1,21 @@
 package main
 
+// TODO: ensure Mark* gets called.
+
 import (
 	"os"
 	"os/signal"
-	"time"
 
-	. "github.com/tendermint/tendermint/common"
+	. "github.com/tendermint/tendermint/binary"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
 )
 
-const (
-	minNumPeers = 10
-	maxNumPeers = 20
-
-	ensurePeersPeriodSeconds = 30
-	peerDialTimeoutSeconds   = 30
-)
-
 type Node struct {
-	sw      *p2p.Switch
-	book    *p2p.AddrBook
-	quit    chan struct{}
-	dialing *CMap
+	lz   []p2p.Listener
+	sw   *p2p.Switch
+	book *p2p.AddrBook
+	pmgr *p2p.PeerManager
 }
 
 func NewNode() *Node {
@@ -51,122 +44,83 @@ func NewNode() *Node {
 	}
 	sw := p2p.NewSwitch(chDescs)
 	book := p2p.NewAddrBook(config.AppDir + "/addrbook.json")
+	pmgr := p2p.NewPeerManager(sw, book)
 
 	return &Node{
-		sw:      sw,
-		book:    book,
-		quit:    make(chan struct{}, 0),
-		dialing: NewCMap(),
+		sw:   sw,
+		book: book,
+		pmgr: pmgr,
 	}
 }
 
 func (n *Node) Start() {
 	log.Infof("Starting node")
+	for _, l := range n.lz {
+		go n.inboundConnectionHandler(l)
+	}
 	n.sw.Start()
 	n.book.Start()
-	go p2p.PexHandler(n.sw, n.book)
-	go n.ensurePeersHandler()
-}
-
-func (n *Node) initPeer(peer *p2p.Peer) {
-	if peer.IsOutbound() {
-		// TODO: initiate PEX
-	}
+	n.pmgr.Start()
 }
 
 // Add a Listener to accept incoming peer connections.
 func (n *Node) AddListener(l p2p.Listener) {
-	log.Infof("Adding listener %v", l)
-	go func() {
-		for {
-			inConn, ok := <-l.Connections()
-			if !ok {
-				break
-			}
-			peer, err := n.sw.AddPeerWithConnection(inConn, false)
-			if err != nil {
-				log.Infof("Ignoring error from incoming connection: %v\n%v",
-					peer, err)
-				continue
-			}
-			n.initPeer(peer)
-		}
-	}()
+	n.lz = append(n.lz, l)
 }
 
-// threadsafe
-func (n *Node) DialPeerWithAddress(addr *p2p.NetAddress) (*p2p.Peer, error) {
-	log.Infof("Dialing peer @ %v", addr)
-	n.dialing.Set(addr.String(), addr)
-	n.book.MarkAttempt(addr)
-	conn, err := addr.DialTimeout(peerDialTimeoutSeconds * time.Second)
-	n.dialing.Delete(addr.String())
-	if err != nil {
-		return nil, err
-	}
-	peer, err := n.sw.AddPeerWithConnection(conn, true)
-	if err != nil {
-		return nil, err
-	}
-	n.initPeer(peer)
-	return peer, nil
-}
-
-// Ensures that sufficient peers are connected.
-func (n *Node) ensurePeers() {
-	numPeers := n.sw.NumOutboundPeers()
-	numDialing := n.dialing.Size()
-	numToDial := minNumPeers - (numPeers + numDialing)
-	if numToDial <= 0 {
-		return
-	}
-	for i := 0; i < numToDial; i++ {
-		newBias := MinInt(numPeers, 8)*10 + 10
-		var picked *p2p.NetAddress
-		// Try to fetch a new peer 3 times.
-		// This caps the maximum number of tries to 3 * numToDial.
-		for j := 0; i < 3; j++ {
-			picked = n.book.PickAddress(newBias)
-			if picked == nil {
-				log.Debug("Empty addrbook.")
-				return
-			}
-			if n.sw.Peers().Has(picked) {
-				continue
-			} else {
-				break
-			}
+func (n *Node) inboundConnectionHandler(l p2p.Listener) {
+	for {
+		inConn, ok := <-l.Connections()
+		if !ok {
+			break
 		}
-		if picked == nil {
+		// New incoming connection!
+		peer, err := n.sw.AddPeerWithConnection(inConn, false)
+		if err != nil {
+			log.Infof("Ignoring error from incoming connection: %v\n%v",
+				peer, err)
 			continue
 		}
-		go n.DialPeerWithAddress(picked)
-	}
-}
-
-func (n *Node) ensurePeersHandler() {
-	// fire once immediately.
-	n.ensurePeers()
-	// fire periodically
-	timer := NewRepeatTimer(ensurePeersPeriodSeconds * time.Second)
-FOR_LOOP:
-	for {
-		select {
-		case <-timer.Ch:
-			n.ensurePeers()
-		case <-n.quit:
-			break FOR_LOOP
-		}
+		// NOTE: We don't yet have the external address of the
+		// remote (if they have a listener at all).
+		// PeerManager's pexHandler will handle that.
 	}
 
 	// cleanup
-	timer.Stop()
+}
+
+func (n *Node) SendOurExternalAddrs(peer *p2p.Peer) {
+	// Send listener our external address(es)
+	addrs := []*p2p.NetAddress{}
+	for _, l := range n.lz {
+		addrs = append(addrs, l.ExternalAddress())
+	}
+	pexAddrsMsg := &p2p.PexAddrsMessage{Addrs: addrs}
+	peer.Send(p2p.NewPacket(
+		p2p.PexCh,
+		BinaryBytes(pexAddrsMsg),
+	))
+	// On the remote end, the pexHandler may choose
+	// to add these to its book.
+}
+
+func (n *Node) newPeersHandler() {
+	for {
+		peer, ok := <-n.pmgr.NewPeers()
+		if !ok {
+			break
+		}
+		// New outgoing peer!
+		n.SendOurExternalAddrs(peer)
+	}
 }
 
 func (n *Node) Stop() {
+	log.Infof("Stopping node")
 	// TODO: gracefully disconnect from peers.
 	n.sw.Stop()
 	n.book.Stop()
+	n.pmgr.Stop()
 }
 
 //-----------------------------------------------------------------------------
@@ -175,33 +129,38 @@ func main() {
 
 	// Create & start node
 	n := NewNode()
-	log.Warnf(">> %v", config.Config.LAddr)
 	l := p2p.NewDefaultListener("tcp", config.Config.LAddr)
 	n.AddListener(l)
 	n.Start()
 
 	// Seed?
 	if config.Config.Seed != "" {
-		peer, err := n.DialPeerWithAddress(p2p.NewNetAddressString(config.Config.Seed))
+		peer, err := n.sw.DialPeerWithAddress(p2p.NewNetAddressString(config.Config.Seed))
 		if err != nil {
 			log.Errorf("Error dialing seed: %v", err)
+			//n.book.MarkAttempt(addr)
 			return
+		} else {
+			log.Infof("Connected to seed: %v", peer)
+			n.SendOurExternalAddrs(peer)
 		}
-		log.Infof("Connected to seed: %v", peer)
 	}
 
-	// Sleep
-	trapSignal()
-	select {}
+	// Sleep forever and then...
+	trapSignal(func() {
+		n.Stop()
+	})
 }
 
-func trapSignal() {
+func trapSignal(cb func()) {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	go func() {
 		for sig := range c {
 			log.Infof("captured %v, exiting..", sig)
+			cb()
 			os.Exit(1)
 		}
 	}()
+	select {}
 }

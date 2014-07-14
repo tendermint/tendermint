@@ -110,6 +110,8 @@ func (l *DefaultListener) listenHandler() {
 	}
 }
 
+// A channel of inbound connections.
+// It gets closed when the listener closes.
 func (l *DefaultListener) Connections() <-chan *Connection {
 	return l.connections
 }

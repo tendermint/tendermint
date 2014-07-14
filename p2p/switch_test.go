@@ -67,25 +67,25 @@ func TestSwitches(t *testing.T) {
 	}
 
 	// Broadcast a message on ch1
-	s1.Broadcast(NewPacket("ch1", ByteSlice("channel one")))
+	s1.Broadcast(NewPacket("ch1", String("channel one")))
 	// Broadcast a message on ch2
-	s1.Broadcast(NewPacket("ch2", ByteSlice("channel two")))
+	s1.Broadcast(NewPacket("ch2", String("channel two")))
 	// Broadcast a message on ch3
-	s1.Broadcast(NewPacket("ch3", ByteSlice("channel three")))
+	s1.Broadcast(NewPacket("ch3", String("channel three")))
 
 	// Wait for things to settle...
 	time.Sleep(100 * time.Millisecond)
 
 	// Receive message from channel 2 and check
 	inMsg := s2.Receive("ch2")
-	if string(inMsg.Bytes) != "channel two" {
-		t.Errorf("Unexpected received message bytes: %v", string(inMsg.Bytes))
+	if ReadString(inMsg.Reader()) != "channel two" {
+		t.Errorf("Unexpected received message bytes: %X = [%v]", inMsg.Bytes, ReadString(inMsg.Reader()))
 	}
 
 	// Receive message from channel 1 and check
 	inMsg = s2.Receive("ch1")
-	if string(inMsg.Bytes) != "channel one" {
-		t.Errorf("Unexpected received message bytes: %v", string(inMsg.Bytes))
+	if ReadString(inMsg.Reader()) != "channel one" {
+		t.Errorf("Unexpected received message bytes: %X = [%v]", inMsg.Bytes, ReadString(inMsg.Reader()))
 	}
 }
 

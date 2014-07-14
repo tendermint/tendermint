@@ -3,6 +3,7 @@ package p2p
 import (
 	"errors"
 	"sync/atomic"
+	"time"
 
 	. "github.com/tendermint/tendermint/common"
 )
@@ -22,6 +23,7 @@ type Switch struct {
 	channels      []ChannelDescriptor
 	pktRecvQueues map[string]chan *InboundPacket
 	peers         *PeerSet
+	dialing       *CMap
 	quit          chan struct{}
 	started       uint32
 	stopped       uint32
@@ -30,6 +32,10 @@ type Switch struct {
 var (
 	ErrSwitchStopped       = errors.New("Switch already stopped")
 	ErrSwitchDuplicatePeer = errors.New("Duplicate peer")
+)
+
+const (
+	peerDialTimeoutSeconds = 30
 )
 
 func NewSwitch(channels []ChannelDescriptor) *Switch {
@@ -43,6 +49,7 @@ func NewSwitch(channels []ChannelDescriptor) *Switch {
 		channels:      channels,
 		pktRecvQueues: pktRecvQueues,
 		peers:         NewPeerSet(),
+		dialing:       NewCMap(),
 		quit:          make(chan struct{}),
 		stopped:       0,
 	}
@@ -92,6 +99,25 @@ func (s *Switch) AddPeerWithConnection(conn *Connection, outbound bool) (*Peer, 
 	return peer, nil
 }
 
+func (s *Switch) DialPeerWithAddress(addr *NetAddress) (*Peer, error) {
+	if atomic.LoadUint32(&s.stopped) == 1 {
+		return nil, ErrSwitchStopped
+	}
+
+	log.Infof("Dialing peer @ %v", addr)
+	s.dialing.Set(addr.String(), addr)
+	conn, err := addr.DialTimeout(peerDialTimeoutSeconds * time.Second)
+	s.dialing.Delete(addr.String())
+	if err != nil {
+		return nil, err
+	}
+	peer, err := s.AddPeerWithConnection(conn, true)
+	if err != nil {
+		return nil, err
+	}
+	return peer, nil
+}
+
 func (s *Switch) Broadcast(pkt Packet) (numSuccess, numFailure int) {
 	if atomic.LoadUint32(&s.stopped) == 1 {
 		return
@@ -99,7 +125,7 @@ func (s *Switch) Broadcast(pkt Packet) (numSuccess, numFailure int) {
 
 	log.Tracef("Broadcast on [%v] len: %v", pkt.Channel, len(pkt.Bytes))
 	for _, peer := range s.peers.List() {
-		success := peer.TryQueue(pkt)
+		success := peer.TrySend(pkt)
 		log.Tracef("Broadcast for peer %v success: %v", peer, success)
 		if success {
 			numSuccess += 1
@@ -143,7 +169,7 @@ func (s *Switch) NumOutboundPeers() (count int) {
 	return
 }
 
-func (s *Switch) Peers() ReadOnlyPeerSet {
+func (s *Switch) Peers() IPeerSet {
 	return s.peers
 }
 

@@ -158,11 +158,11 @@ FOR_LOOP:
 			c.flush()
 		case <-c.pingRepeatTimer.Ch:
 			_, err = packetTypePing.WriteTo(c.bufWriter)
-			log.Debugf("[%v] Sending Ping", c)
+			log.Debugf("Send [Ping] -> %v", c)
 			c.flush()
 		case <-c.pong:
 			_, err = packetTypePong.WriteTo(c.bufWriter)
-			log.Debugf("[%v] Sending Pong", c)
+			log.Debugf("Send [Pong] -> %v", c)
 			c.flush()
 		case <-c.quit:
 			break FOR_LOOP
