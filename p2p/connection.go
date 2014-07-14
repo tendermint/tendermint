@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/op/go-logging"
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 )
@@ -190,7 +191,7 @@ func (c *Connection) recvHandler() {
 
 FOR_LOOP:
 	for {
-		if true {
+		if log.IsEnabledFor(logging.DEBUG) {
 			// peeking into bufReader
 			numBytes := c.bufReader.Buffered()
 			bytes, err := c.bufReader.Peek(MinInt(numBytes, 100))
