@@ -1,30 +1,15 @@
 package p2p
 
 import (
-	"github.com/cihub/seelog"
+	"github.com/op/go-logging"
 )
 
-var log seelog.LoggerInterface
+var log = logging.MustGetLogger("p2p")
 
 func init() {
-	config := `
-<seelog type="asyncloop" minlevel="debug">
-    <outputs formatid="colored">
-        <console/>
-    </outputs>
-    <formats>
-        <format id="main"       format="%Date/%Time [%LEV] %Msg%n"/>
-        <format id="colored"    format="%Time %EscM(46)%Level%EscM(49) %EscM(36)%File%EscM(39) %Msg%n%EscM(0)"/>
-    </formats>
-</seelog>`
-
-	var err error
-	log, err = seelog.LoggerFromConfigAsBytes([]byte(config))
-	if err != nil {
-		panic(err)
-	}
+	logging.SetFormatter(logging.MustStringFormatter("[%{level:.1s}] %{message}"))
 }
 
-func SetLogger(l seelog.LoggerInterface) {
+func SetLogger(l *logging.Logger) {
 	log = l
 }

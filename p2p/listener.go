@@ -58,7 +58,7 @@ func NewDefaultListener(protocol string, lAddr string) Listener {
 	}
 	// Actual listener local IP & port
 	listenerIP, listenerPort := splitHostPort(listener.Addr().String())
-	log.Debugf("Local listener: %v:%v", listenerIP, listenerPort)
+	log.Debug("Local listener: %v:%v", listenerIP, listenerPort)
 
 	// Determine external address...
 	var extAddr *NetAddress
@@ -134,16 +134,16 @@ func (l *DefaultListener) String() string {
 
 // UPNP external address discovery & port mapping
 func getUPNPExternalAddress(externalPort, internalPort int) *NetAddress {
-	log.Debugf("Getting UPNP external address")
+	log.Debug("Getting UPNP external address")
 	nat, err := upnp.Discover()
 	if err != nil {
-		log.Debugf("Could not get UPNP extrernal address: %v", err)
+		log.Debug("Could not get UPNP extrernal address: %v", err)
 		return nil
 	}
 
 	ext, err := nat.GetExternalAddress()
 	if err != nil {
-		log.Debugf("Could not get UPNP external address: %v", err)
+		log.Debug("Could not get UPNP external address: %v", err)
 		return nil
 	}
 
@@ -154,11 +154,11 @@ func getUPNPExternalAddress(externalPort, internalPort int) *NetAddress {
 
 	externalPort, err = nat.AddPortMapping("tcp", externalPort, internalPort, "tendermint", 0)
 	if err != nil {
-		log.Debugf("Could not get UPNP external address: %v", err)
+		log.Debug("Could not get UPNP external address: %v", err)
 		return nil
 	}
 
-	log.Debugf("Got UPNP external address: %v", ext)
+	log.Debug("Got UPNP external address: %v", ext)
 	return NewNetAddressIPPort(ext, UInt16(externalPort))
 }
 

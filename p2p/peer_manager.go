@@ -46,7 +46,7 @@ func NewPeerManager(sw *Switch, book *AddrBook) *PeerManager {
 
 func (pm *PeerManager) Start() {
 	if atomic.CompareAndSwapUint32(&pm.started, 0, 1) {
-		log.Infof("Starting peerManager")
+		log.Info("Starting peerManager")
 		go pm.ensurePeersHandler()
 		go pm.pexHandler()
 	}
@@ -54,7 +54,7 @@ func (pm *PeerManager) Start() {
 
 func (pm *PeerManager) Stop() {
 	if atomic.CompareAndSwapUint32(&pm.stopped, 0, 1) {
-		log.Infof("Stopping peerManager")
+		log.Info("Stopping peerManager")
 		close(pm.newPeers)
 		close(pm.quit)
 	}
@@ -135,7 +135,7 @@ func (pm *PeerManager) pexHandler() {
 
 		// decode message
 		msg := decodeMessage(inPkt.Bytes)
-		log.Infof("pexHandler received %v", msg)
+		log.Info("pexHandler received %v", msg)
 
 		switch msg.(type) {
 		case *PexRequestMessage:
@@ -143,7 +143,7 @@ func (pm *PeerManager) pexHandler() {
 			// TODO: prevent abuse.
 			addrs := pm.book.GetSelection()
 			response := &PexAddrsMessage{Addrs: addrs}
-			pkt := NewPacket(PexCh, BinaryBytes(response))
+			pkt := NewPacket(PexCh, response)
 			queued := inPkt.Peer.TrySend(pkt)
 			if !queued {
 				// ignore
@@ -178,6 +178,7 @@ const (
 
 // TODO: check for unnecessary extra bytes at the end.
 func decodeMessage(bz ByteSlice) (msg Message) {
+	log.Debug("decoding msg bytes: %X", bz)
 	switch Byte(bz[0]) {
 	case pexTypeRequest:
 		return &PexRequestMessage{}

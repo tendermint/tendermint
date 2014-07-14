@@ -59,13 +59,13 @@ func NewSwitch(channels []ChannelDescriptor) *Switch {
 
 func (s *Switch) Start() {
 	if atomic.CompareAndSwapUint32(&s.started, 0, 1) {
-		log.Infof("Starting switch")
+		log.Info("Starting switch")
 	}
 }
 
 func (s *Switch) Stop() {
 	if atomic.CompareAndSwapUint32(&s.stopped, 0, 1) {
-		log.Infof("Stopping switch")
+		log.Info("Stopping switch")
 		close(s.quit)
 		// stop each peer.
 		for _, peer := range s.peers.List() {
@@ -81,7 +81,7 @@ func (s *Switch) AddPeerWithConnection(conn *Connection, outbound bool) (*Peer, 
 		return nil, ErrSwitchStopped
 	}
 
-	log.Infof("Adding peer with connection: %v, outbound: %v", conn, outbound)
+	log.Info("Adding peer with connection: %v, outbound: %v", conn, outbound)
 	// Create channels for peer
 	channels := map[string]*Channel{}
 	for _, chDesc := range s.channels {
@@ -104,7 +104,7 @@ func (s *Switch) DialPeerWithAddress(addr *NetAddress) (*Peer, error) {
 		return nil, ErrSwitchStopped
 	}
 
-	log.Infof("Dialing peer @ %v", addr)
+	log.Info("Dialing peer @ %v", addr)
 	s.dialing.Set(addr.String(), addr)
 	conn, err := addr.DialTimeout(peerDialTimeoutSeconds * time.Second)
 	s.dialing.Delete(addr.String())
@@ -123,10 +123,10 @@ func (s *Switch) Broadcast(pkt Packet) (numSuccess, numFailure int) {
 		return
 	}
 
-	log.Tracef("Broadcast on [%v] len: %v", pkt.Channel, len(pkt.Bytes))
+	log.Debug("Broadcast on [%v] len: %v", pkt.Channel, len(pkt.Bytes))
 	for _, peer := range s.peers.List() {
 		success := peer.TrySend(pkt)
-		log.Tracef("Broadcast for peer %v success: %v", peer, success)
+		log.Debug("Broadcast for peer %v success: %v", peer, success)
 		if success {
 			numSuccess += 1
 		} else {
@@ -145,7 +145,7 @@ func (s *Switch) Receive(chName string) *InboundPacket {
 		return nil
 	}
 
-	log.Tracef("Receive on [%v]", chName)
+	log.Debug("Receive on [%v]", chName)
 	q := s.pktRecvQueues[chName]
 	if q == nil {
 		Panicf("Expected pktRecvQueues[%f], found none", chName)
@@ -176,7 +176,7 @@ func (s *Switch) Peers() IPeerSet {
 // Disconnect from a peer due to external error.
 // TODO: make record depending on reason.
 func (s *Switch) StopPeerForError(peer *Peer, reason interface{}) {
-	log.Infof("%v errored: %v", peer, reason)
+	log.Info("%v errored: %v", peer, reason)
 	s.StopPeer(peer, false)
 }
 
@@ -193,11 +193,11 @@ func (s *Switch) addPeer(peer *Peer) error {
 		return ErrSwitchStopped
 	}
 	if s.peers.Add(peer) {
-		log.Tracef("Adding: %v", peer)
+		log.Debug("Adding: %v", peer)
 		return nil
 	} else {
 		// ignore duplicate peer
-		log.Infof("Ignoring duplicate: %v", peer)
+		log.Info("Ignoring duplicate: %v", peer)
 		return ErrSwitchDuplicatePeer
 	}
 }

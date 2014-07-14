@@ -66,7 +66,7 @@ func NewConnection(conn net.Conn) *Connection {
 // If an error occurs, the recovered reason is passed to "onError".
 func (c *Connection) Start(channels map[string]*Channel, onError func(interface{})) {
 	if atomic.CompareAndSwapUint32(&c.started, 0, 1) {
-		log.Debugf("Starting %v", c)
+		log.Debug("Starting %v", c)
 		c.channels = channels
 		c.onError = onError
 		go c.sendHandler()
@@ -76,7 +76,7 @@ func (c *Connection) Start(channels map[string]*Channel, onError func(interface{
 
 func (c *Connection) Stop() {
 	if atomic.CompareAndSwapUint32(&c.stopped, 0, 1) {
-		log.Debugf("Stopping %v", c)
+		log.Debug("Stopping %v", c)
 		close(c.quit)
 		c.conn.Close()
 		c.flushThrottler.Stop()
@@ -120,7 +120,7 @@ func (c *Connection) flush() {
 	err := c.bufWriter.Flush()
 	if err != nil {
 		if atomic.LoadUint32(&c.stopped) != 1 {
-			log.Warnf("Connection flush failed: %v", err)
+			log.Warning("Connection flush failed: %v", err)
 		}
 	}
 }
@@ -139,7 +139,7 @@ func (c *Connection) _recover() {
 
 // sendHandler pulls from .sendQueue and writes to .bufWriter
 func (c *Connection) sendHandler() {
-	log.Tracef("%v sendHandler", c)
+	log.Debug("%v sendHandler", c)
 	defer c._recover()
 
 FOR_LOOP:
@@ -147,7 +147,7 @@ FOR_LOOP:
 		var err error
 		select {
 		case sendPkt := <-c.sendQueue:
-			log.Tracef("Found pkt from sendQueue. Writing pkt to underlying connection")
+			log.Debug("Found pkt from sendQueue. Writing pkt to underlying connection")
 			_, err = packetTypeMessage.WriteTo(c.bufWriter)
 			if err != nil {
 				break
@@ -158,11 +158,11 @@ FOR_LOOP:
 			c.flush()
 		case <-c.pingRepeatTimer.Ch:
 			_, err = packetTypePing.WriteTo(c.bufWriter)
-			log.Debugf("Send [Ping] -> %v", c)
+			log.Debug("Send [Ping] -> %v", c)
 			c.flush()
 		case <-c.pong:
 			_, err = packetTypePong.WriteTo(c.bufWriter)
-			log.Debugf("Send [Pong] -> %v", c)
+			log.Debug("Send [Pong] -> %v", c)
 			c.flush()
 		case <-c.quit:
 			break FOR_LOOP
@@ -172,33 +172,39 @@ FOR_LOOP:
 			break FOR_LOOP
 		}
 		if err != nil {
-			log.Infof("%v failed @ sendHandler:\n%v", c, err)
+			log.Info("%v failed @ sendHandler:\n%v", c, err)
 			c.Stop()
 			break FOR_LOOP
 		}
 	}
 
-	log.Tracef("%v sendHandler done", c)
+	log.Debug("%v sendHandler done", c)
 	// cleanup
 }
 
 // recvHandler reads from .bufReader and pushes to the appropriate
 // channel's recvQueue.
 func (c *Connection) recvHandler() {
-	log.Tracef("%v recvHandler", c)
+	log.Debug("%v recvHandler", c)
 	defer c._recover()
 
 FOR_LOOP:
 	for {
+		if true {
+			// peeking into bufReader
+			numBytes := c.bufReader.Buffered()
+			bytes, err := c.bufReader.Peek(MinInt(numBytes, 100))
+			log.Debug("recvHandler peeked: %X\nerr:%v", bytes, err)
+		}
 		pktType, err := ReadUInt8Safe(c.bufReader)
 		if err != nil {
 			if atomic.LoadUint32(&c.stopped) != 1 {
-				log.Infof("%v failed @ recvHandler", c)
+				log.Info("%v failed @ recvHandler", c)
 				c.Stop()
 			}
 			break FOR_LOOP
 		} else {
-			log.Tracef("Found pktType %v", pktType)
+			log.Debug("Found pktType %v", pktType)
 		}
 
 		switch pktType {
@@ -208,12 +214,12 @@ FOR_LOOP:
 			c.pong <- struct{}{}
 		case packetTypePong:
 			// do nothing
-			log.Debugf("[%v] Received Pong", c)
+			log.Debug("[%v] Received Pong", c)
 		case packetTypeMessage:
 			pkt, err := ReadPacketSafe(c.bufReader)
 			if err != nil {
 				if atomic.LoadUint32(&c.stopped) != 1 {
-					log.Infof("%v failed @ recvHandler", c)
+					log.Info("%v failed @ recvHandler", c)
 					c.Stop()
 				}
 				break FOR_LOOP
@@ -230,7 +236,7 @@ FOR_LOOP:
 		c.pingRepeatTimer.Reset()
 	}
 
-	log.Tracef("%v recvHandler done", c)
+	log.Debug("%v recvHandler done", c)
 	// cleanup
 	close(c.pong)
 	for _ = range c.pong {

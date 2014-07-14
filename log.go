@@ -1,30 +1,30 @@
 package main
 
 import (
-	"github.com/cihub/seelog"
+	"os"
+
+	"github.com/op/go-logging"
 	"github.com/tendermint/tendermint/p2p"
 )
 
-var log seelog.LoggerInterface
+var log = logging.MustGetLogger("main")
 
 func init() {
-	// TODO: replace with configuration file in the ~/.tendermint directory.
-	config := `
-<seelog type="sync" minlevel="debug">
-    <outputs formatid="colored">
-        <console/>
-    </outputs>
-    <formats>
-        <format id="main"       format="%Date/%Time [%LEV] %Msg%n"/>
-        <format id="colored"    format="%Time %EscM(46)%Level%EscM(49) %EscM(36)%File%EscM(39) %Msg%n%EscM(0)"/>
-    </formats>
-</seelog>`
+	// Customize the output format
+	logging.SetFormatter(logging.MustStringFormatter("[%{level:.4s}] %{time:2006-01-02T15:04:05} %{shortfile:-20s} %{message}"))
 
-	var err error
-	log, err = seelog.LoggerFromConfigAsBytes([]byte(config))
-	if err != nil {
-		panic(err)
-	}
+	logBackend := logging.NewLogBackend(os.Stderr, "", 0)
+	logBackend.Color = true
+	logging.SetBackend(logBackend)
+
+	// Test
+	/*
+	   Log.Debug("debug")
+	   Log.Info("info")
+	   Log.Notice("notice")
+	   Log.Warning("warning")
+	   Log.Error("error")
+	*/
 
 	p2p.SetLogger(log)
 }

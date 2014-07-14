@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/signal"
 
-	. "github.com/tendermint/tendermint/binary"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
 )
@@ -54,7 +53,7 @@ func NewNode() *Node {
 }
 
 func (n *Node) Start() {
-	log.Infof("Starting node")
+	log.Info("Starting node")
 	for _, l := range n.lz {
 		go n.inboundConnectionHandler(l)
 	}
@@ -65,7 +64,7 @@ func (n *Node) Start() {
 
 // Add a Listener to accept inbound peer connections.
 func (n *Node) AddListener(l p2p.Listener) {
-	log.Infof("Added %v", l)
+	log.Info("Added %v", l)
 	n.lz = append(n.lz, l)
 }
 
@@ -78,7 +77,7 @@ func (n *Node) inboundConnectionHandler(l p2p.Listener) {
 		// New inbound connection!
 		peer, err := n.sw.AddPeerWithConnection(inConn, false)
 		if err != nil {
-			log.Infof("Ignoring error from inbound connection: %v\n%v",
+			log.Info("Ignoring error from inbound connection: %v\n%v",
 				peer, err)
 			continue
 		}
@@ -96,11 +95,8 @@ func (n *Node) SendOurExternalAddrs(peer *p2p.Peer) {
 	for _, l := range n.lz {
 		addrs = append(addrs, l.ExternalAddress())
 	}
-	pexAddrsMsg := &p2p.PexAddrsMessage{Addrs: addrs}
-	peer.Send(p2p.NewPacket(
-		p2p.PexCh,
-		BinaryBytes(pexAddrsMsg),
-	))
+	msg := &p2p.PexAddrsMessage{Addrs: addrs}
+	peer.Send(p2p.NewPacket(p2p.PexCh, msg))
 	// On the remote end, the pexHandler may choose
 	// to add these to its book.
 }
@@ -117,7 +113,7 @@ func (n *Node) newPeersHandler() {
 }
 
 func (n *Node) Stop() {
-	log.Infof("Stopping node")
+	log.Info("Stopping node")
 	// TODO: gracefully disconnect from peers.
 	n.sw.Stop()
 	n.book.Stop()
@@ -138,11 +134,11 @@ func main() {
 	if config.Config.Seed != "" {
 		peer, err := n.sw.DialPeerWithAddress(p2p.NewNetAddressString(config.Config.Seed))
 		if err != nil {
-			log.Errorf("Error dialing seed: %v", err)
+			log.Error("Error dialing seed: %v", err)
 			//n.book.MarkAttempt(addr)
 			return
 		} else {
-			log.Infof("Connected to seed: %v", peer)
+			log.Info("Connected to seed: %v", peer)
 			n.SendOurExternalAddrs(peer)
 		}
 	}
@@ -158,7 +154,7 @@ func trapSignal(cb func()) {
 	signal.Notify(c, os.Interrupt)
 	go func() {
 		for sig := range c {
-			log.Infof("captured %v, exiting..", sig)
+			log.Info("captured %v, exiting..", sig)
 			cb()
 			os.Exit(1)
 		}

@@ -128,7 +128,7 @@ func BenchmarkSwitches(b *testing.B) {
 		numFailure += nF
 	}
 
-	log.Warnf("success: %v, failure: %v", numSuccess, numFailure)
+	log.Warning("success: %v, failure: %v", numSuccess, numFailure)
 
 	// Allow everything to flush before stopping switches & closing connections.
 	b.StopTimer()

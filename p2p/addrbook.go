@@ -123,7 +123,7 @@ func (a *AddrBook) init() {
 
 func (a *AddrBook) Start() {
 	if atomic.CompareAndSwapUint32(&a.started, 0, 1) {
-		log.Infof("Starting address manager")
+		log.Info("Starting address manager")
 		a.loadFromFile(a.filePath)
 		a.wg.Add(1)
 		go a.saveHandler()
@@ -132,7 +132,7 @@ func (a *AddrBook) Start() {
 
 func (a *AddrBook) Stop() {
 	if atomic.CompareAndSwapUint32(&a.stopped, 0, 1) {
-		log.Infof("Stopping address manager")
+		log.Info("Stopping address manager")
 		close(a.quit)
 		a.wg.Wait()
 	}
@@ -399,7 +399,7 @@ func (a *AddrBook) addToNewBucket(ka *knownAddress, bucketIdx int) bool {
 
 	// Enforce max addresses.
 	if len(bucket) > newBucketSize {
-		log.Infof("new bucket is full, expiring old ")
+		log.Info("new bucket is full, expiring old ")
 		a.expireNew(bucketIdx)
 	}
 
@@ -519,7 +519,7 @@ func (a *AddrBook) addAddress(addr, src *NetAddress) {
 	bucket := a.calcNewBucket(addr, src)
 	a.addToNewBucket(ka, bucket)
 
-	log.Infof("Added new address %s for a total of %d addresses", addr, a.size())
+	log.Info("Added new address %s for a total of %d addresses", addr, a.size())
 }
 
 // Make space in the new buckets by expiring the really bad entries.
@@ -528,7 +528,7 @@ func (a *AddrBook) expireNew(bucketIdx int) {
 	for key, ka := range a.addrNew[bucketIdx] {
 		// If an entry is bad, throw it away
 		if ka.isBad() {
-			log.Infof("expiring bad address %v", key)
+			log.Info("expiring bad address %v", key)
 			a.removeFromBucket(ka, bucketTypeNew, bucketIdx)
 			return
 		}
@@ -572,13 +572,13 @@ func (a *AddrBook) moveToOld(ka *knownAddress) {
 		if !added {
 			added := a.addToNewBucket(oldest, freedBucket)
 			if !added {
-				log.Warnf("Could not migrate oldest %v to freedBucket %v", oldest, freedBucket)
+				log.Warning("Could not migrate oldest %v to freedBucket %v", oldest, freedBucket)
 			}
 		}
 		// Finally, add to bucket again.
 		added = a.addToOldBucket(ka, oldBucketIdx)
 		if !added {
-			log.Warnf("Could not re-add ka %v to oldBucketIdx %v", ka, oldBucketIdx)
+			log.Warning("Could not re-add ka %v to oldBucketIdx %v", ka, oldBucketIdx)
 		}
 	}
 }
