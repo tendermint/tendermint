@@ -37,6 +37,7 @@ func NewPeerSet() *PeerSet {
 	}
 }
 
+// Returns false if peer with address is already in set.
 func (ps *PeerSet) Add(peer *Peer) bool {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()

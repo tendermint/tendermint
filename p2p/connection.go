@@ -191,16 +191,18 @@ func (c *Connection) recvHandler() {
 
 FOR_LOOP:
 	for {
+		pktType, err := ReadUInt8Safe(c.bufReader)
 		if log.IsEnabledFor(logging.DEBUG) {
 			// peeking into bufReader
 			numBytes := c.bufReader.Buffered()
 			bytes, err := c.bufReader.Peek(MinInt(numBytes, 100))
-			log.Debug("recvHandler peeked: %X\nerr:%v", bytes, err)
+			if err != nil {
+				log.Debug("recvHandler packet type %X, peeked: %X", pktType, bytes)
+			}
 		}
-		pktType, err := ReadUInt8Safe(c.bufReader)
 		if err != nil {
 			if atomic.LoadUint32(&c.stopped) != 1 {
-				log.Info("%v failed @ recvHandler", c)
+				log.Info("%v failed @ recvHandler with err: %v", c, err)
 				c.Stop()
 			}
 			break FOR_LOOP

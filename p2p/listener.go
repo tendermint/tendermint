@@ -85,6 +85,7 @@ func NewDefaultListener(protocol string, lAddr string) Listener {
 	return dl
 }
 
+// TODO: prevent abuse, esp a bunch of connections coming from the same IP range.
 func (l *DefaultListener) listenHandler() {
 	for {
 		conn, err := l.listener.Accept()

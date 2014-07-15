@@ -86,14 +86,17 @@ FOR_LOOP:
 
 // Ensures that sufficient peers are connected.
 func (pm *PeerManager) ensurePeers() {
-	numPeers := pm.sw.NumOutboundPeers()
-	numDialing := pm.sw.dialing.Size()
-	numToDial := minNumPeers - (numPeers + numDialing)
+	numOutPeers, _, numDialing := pm.sw.NumPeers()
+	numToDial := minNumPeers - (numOutPeers + numDialing)
 	if numToDial <= 0 {
 		return
 	}
+	toDial := NewCMap()
+
+	// Try to pick numToDial addresses to dial.
+	// TODO: improve logic.
 	for i := 0; i < numToDial; i++ {
-		newBias := MinInt(numPeers, 8)*10 + 10
+		newBias := MinInt(numOutPeers, 8)*10 + 10
 		var picked *NetAddress
 		// Try to fetch a new peer 3 times.
 		// This caps the maximum number of tries to 3 * numToDial.
@@ -103,7 +106,9 @@ func (pm *PeerManager) ensurePeers() {
 				log.Debug("Empty addrbook.")
 				return
 			}
-			if pm.sw.Peers().Has(picked) {
+			if toDial.Has(picked.String()) ||
+				pm.sw.IsDialing(picked) ||
+				pm.sw.Peers().Has(picked) {
 				continue
 			} else {
 				break
@@ -112,7 +117,12 @@ func (pm *PeerManager) ensurePeers() {
 		if picked == nil {
 			continue
 		}
-		// Dial picked address
+		toDial.Set(picked.String(), picked)
+	}
+
+	// Dial picked addresses
+	for _, item := range toDial.Values() {
+		picked := item.(*NetAddress)
 		go func() {
 			peer, err := pm.sw.DialPeerWithAddress(picked)
 			if err != nil {

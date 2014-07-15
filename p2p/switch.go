@@ -118,6 +118,10 @@ func (s *Switch) DialPeerWithAddress(addr *NetAddress) (*Peer, error) {
 	return peer, nil
 }
 
+func (s *Switch) IsDialing(addr *NetAddress) bool {
+	return s.dialing.Has(addr.String())
+}
+
 func (s *Switch) Broadcast(pkt Packet) (numSuccess, numFailure int) {
 	if atomic.LoadUint32(&s.stopped) == 1 {
 		return
@@ -145,7 +149,7 @@ func (s *Switch) Receive(chName string) *InboundPacket {
 		return nil
 	}
 
-	log.Debug("Receive on [%v]", chName)
+	log.Debug("Waiting for [%v]", chName)
 	q := s.pktRecvQueues[chName]
 	if q == nil {
 		Panicf("Expected pktRecvQueues[%f], found none", chName)
@@ -155,17 +159,22 @@ func (s *Switch) Receive(chName string) *InboundPacket {
 	case <-s.quit:
 		return nil
 	case inPacket := <-q:
+		log.Debug("Received packet on [%v]", chName)
 		return inPacket
 	}
 }
 
-func (s *Switch) NumOutboundPeers() (count int) {
+// Returns the count of outbound/inbound and outbound-dialing peers.
+func (s *Switch) NumPeers() (outbound, inbound, dialing int) {
 	peers := s.peers.List()
 	for _, peer := range peers {
 		if peer.outbound {
-			count++
+			outbound++
+		} else {
+			inbound++
 		}
 	}
+	dialing = s.dialing.Size()
 	return
 }
 
