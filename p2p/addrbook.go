@@ -186,10 +186,10 @@ func (a *AddrBook) PickAddress(newBias int) *NetAddress {
 		// pick a random ka from bucket.
 		randIndex := a.rand.Intn(len(bucket))
 		for _, ka := range bucket {
-			randIndex--
 			if randIndex == 0 {
 				return ka.Addr
 			}
+			randIndex--
 		}
 		panic("Should not happen")
 	} else {
@@ -201,10 +201,10 @@ func (a *AddrBook) PickAddress(newBias int) *NetAddress {
 		// pick a random ka from bucket.
 		randIndex := a.rand.Intn(len(bucket))
 		for _, ka := range bucket {
-			randIndex--
 			if randIndex == 0 {
 				return ka.Addr
 			}
+			randIndex--
 		}
 		panic("Should not happen")
 	}
