@@ -305,11 +305,11 @@ func (a *AddrBook) saveToFile(filePath string) {
 		log.Error("Error opening file: ", filePath, err)
 		return
 	}
-	enc := json.NewEncoder(w)
 	defer w.Close()
-	err = enc.Encode(&aJSON)
+	jsonBytes, err := json.MarshalIndent(aJSON, "", "\t")
+	_, err = w.Write(jsonBytes)
 	if err != nil {
-		panic(err)
+		log.Error("Failed to save AddrBook to file %v: %v", filePath, err)
 	}
 }
 
