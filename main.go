@@ -42,7 +42,7 @@ func NewNode() *Node {
 		},
 	}
 	sw := p2p.NewSwitch(chDescs)
-	book := p2p.NewAddrBook(config.AppDir + "/addrbook.json")
+	book := p2p.NewAddrBook(config.RootDir + "/addrbook.json")
 	pmgr := p2p.NewPeerManager(sw, book)
 
 	return &Node{

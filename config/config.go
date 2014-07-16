@@ -16,7 +16,7 @@ import (
 
 /* Global & initialization */
 
-var AppDir = os.Getenv("HOME") + "/.tendermint"
+var RootDir string
 var Config Config_
 
 func initFlags(printHelp *bool) {
@@ -26,7 +26,11 @@ func initFlags(printHelp *bool) {
 }
 
 func init() {
-	configFile := AppDir + "/config.json"
+	RootDir = os.Getenv("TMROOT")
+	if RootDir == "" {
+		RootDir = os.Getenv("HOME") + "/.tendermint"
+	}
+	configFile := RootDir + "/config.json"
 
 	// try to read configuration. if missing, write default
 	configBytes, err := ioutil.ReadFile(configFile)
@@ -67,7 +71,7 @@ var defaultConfig = Config_{
 	Seed:  "",
 	Db: DbConfig{
 		Type: "level",
-		Dir:  AppDir + "/data",
+		Dir:  RootDir + "/data",
 	},
 	Twilio: TwilioConfig{},
 }
