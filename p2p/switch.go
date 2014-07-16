@@ -149,7 +149,6 @@ func (s *Switch) Receive(chName string) *InboundPacket {
 		return nil
 	}
 
-	log.Debug("Waiting for [%v]", chName)
 	q := s.pktRecvQueues[chName]
 	if q == nil {
 		Panicf("Expected pktRecvQueues[%f], found none", chName)

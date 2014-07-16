@@ -5,11 +5,9 @@
 package p2p
 
 import (
-	crand "crypto/rand" // for seeding
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"io"
 	"math"
 	"math/rand"
 	"net"
@@ -17,6 +15,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	. "github.com/tendermint/tendermint/common"
 )
 
 /* AddrBook - concurrency safe peer address manager */
@@ -25,7 +25,7 @@ type AddrBook struct {
 
 	mtx        sync.Mutex
 	rand       *rand.Rand
-	key        [32]byte
+	key        string
 	addrLookup map[string]*knownAddress // new & old
 	addrNew    []map[string]*knownAddress
 	addrOld    []map[string]*knownAddress
@@ -106,7 +106,7 @@ func NewAddrBook(filePath string) *AddrBook {
 
 // When modifying this, don't forget to update loadFromFile()
 func (a *AddrBook) init() {
-	io.ReadFull(crand.Reader, a.key[:])
+	a.key = RandStr(12)
 	// addr -> ka index
 	a.addrLookup = make(map[string]*knownAddress)
 	// New addr buckets
@@ -284,7 +284,7 @@ func (a *AddrBook) GetSelection() []*NetAddress {
 /* Loading & Saving */
 
 type addrBookJSON struct {
-	Key   [32]byte
+	Key   string
 	Addrs []*knownAddress
 }
 
@@ -323,19 +323,19 @@ func (a *AddrBook) loadFromFile(filePath string) {
 	// Load addrBookJSON{}
 	r, err := os.Open(filePath)
 	if err != nil {
-		panic(fmt.Errorf("%s error opening file: %v", filePath, err))
+		panic(fmt.Errorf("Error opening file %s: %v", filePath, err))
 	}
 	defer r.Close()
 	aJSON := &addrBookJSON{}
 	dec := json.NewDecoder(r)
 	err = dec.Decode(aJSON)
 	if err != nil {
-		panic(fmt.Errorf("error reading %s: %v", filePath, err))
+		panic(fmt.Errorf("Error reading file %s: %v", filePath, err))
 	}
 
 	// Restore all the fields...
 	// Restore the key
-	copy(a.key[:], aJSON.Key[:])
+	a.key = aJSON.Key
 	// Restore .addrNew & .addrOld
 	for _, ka := range aJSON.Addrs {
 		for _, bucketIndex := range ka.Buckets {
@@ -389,11 +389,11 @@ func (a *AddrBook) addToNewBucket(ka *knownAddress, bucketIdx int) bool {
 		panic("Cannot add address already in old bucket to a new bucket")
 	}
 
-	key := ka.Addr.String()
+	addrStr := ka.Addr.String()
 	bucket := a.getBucket(bucketTypeNew, bucketIdx)
 
 	// Already exists?
-	if _, ok := bucket[key]; ok {
+	if _, ok := bucket[addrStr]; ok {
 		return true
 	}
 
@@ -404,13 +404,13 @@ func (a *AddrBook) addToNewBucket(ka *knownAddress, bucketIdx int) bool {
 	}
 
 	// Add to bucket.
-	bucket[key] = ka
+	bucket[addrStr] = ka
 	if ka.addBucketRef(bucketIdx) == 1 {
 		a.nNew++
 	}
 
 	// Ensure in addrLookup
-	a.addrLookup[key] = ka
+	a.addrLookup[addrStr] = ka
 
 	return true
 }
@@ -425,11 +425,11 @@ func (a *AddrBook) addToOldBucket(ka *knownAddress, bucketIdx int) bool {
 		panic("Cannot add already old address to another old bucket")
 	}
 
-	key := ka.Addr.String()
+	addrStr := ka.Addr.String()
 	bucket := a.getBucket(bucketTypeNew, bucketIdx)
 
 	// Already exists?
-	if _, ok := bucket[key]; ok {
+	if _, ok := bucket[addrStr]; ok {
 		return true
 	}
 
@@ -439,13 +439,13 @@ func (a *AddrBook) addToOldBucket(ka *knownAddress, bucketIdx int) bool {
 	}
 
 	// Add to bucket.
-	bucket[key] = ka
+	bucket[addrStr] = ka
 	if ka.addBucketRef(bucketIdx) == 1 {
 		a.nOld++
 	}
 
 	// Ensure in addrLookup
-	a.addrLookup[key] = ka
+	a.addrLookup[addrStr] = ka
 
 	return true
 }
@@ -525,10 +525,10 @@ func (a *AddrBook) addAddress(addr, src *NetAddress) {
 // Make space in the new buckets by expiring the really bad entries.
 // If no bad entries are available we remove the oldest.
 func (a *AddrBook) expireNew(bucketIdx int) {
-	for key, ka := range a.addrNew[bucketIdx] {
+	for addrStr, ka := range a.addrNew[bucketIdx] {
 		// If an entry is bad, throw it away
 		if ka.isBad() {
-			log.Info("expiring bad address %v", key)
+			log.Info("expiring bad address %v", addrStr)
 			a.removeFromBucket(ka, bucketTypeNew, bucketIdx)
 			return
 		}
@@ -587,7 +587,7 @@ func (a *AddrBook) moveToOld(ka *knownAddress) {
 //              int64(doublesha256(key + group + sourcegroup))%bucket_per_source_group) % num_new_buckes
 func (a *AddrBook) calcNewBucket(addr, src *NetAddress) int {
 	data1 := []byte{}
-	data1 = append(data1, a.key[:]...)
+	data1 = append(data1, []byte(a.key)...)
 	data1 = append(data1, []byte(groupKey(addr))...)
 	data1 = append(data1, []byte(groupKey(src))...)
 	hash1 := doubleSha256(data1)
@@ -596,7 +596,7 @@ func (a *AddrBook) calcNewBucket(addr, src *NetAddress) int {
 	var hashbuf [8]byte
 	binary.LittleEndian.PutUint64(hashbuf[:], hash64)
 	data2 := []byte{}
-	data2 = append(data2, a.key[:]...)
+	data2 = append(data2, []byte(a.key)...)
 	data2 = append(data2, groupKey(src)...)
 	data2 = append(data2, hashbuf[:]...)
 
@@ -607,7 +607,7 @@ func (a *AddrBook) calcNewBucket(addr, src *NetAddress) int {
 // doublesha256(key + group + truncate_to_64bits(doublesha256(key + addr))%buckets_per_group) % num_buckets
 func (a *AddrBook) calcOldBucket(addr *NetAddress) int {
 	data1 := []byte{}
-	data1 = append(data1, a.key[:]...)
+	data1 = append(data1, []byte(a.key)...)
 	data1 = append(data1, []byte(addr.String())...)
 	hash1 := doubleSha256(data1)
 	hash64 := binary.LittleEndian.Uint64(hash1)
@@ -615,7 +615,7 @@ func (a *AddrBook) calcOldBucket(addr *NetAddress) int {
 	var hashbuf [8]byte
 	binary.LittleEndian.PutUint64(hashbuf[:], hash64)
 	data2 := []byte{}
-	data2 = append(data2, a.key[:]...)
+	data2 = append(data2, []byte(a.key)...)
 	data2 = append(data2, groupKey(addr)...)
 	data2 = append(data2, hashbuf[:]...)
 
