@@ -80,6 +80,7 @@ func (n *Node) Stop() {
 func (n *Node) AddListener(l p2p.Listener) {
 	log.Info("Added %v", l)
 	n.lz = append(n.lz, l)
+	n.book.AddOurAddress(l.ExternalAddress())
 }
 
 func (n *Node) inboundConnectionHandler(l p2p.Listener) {

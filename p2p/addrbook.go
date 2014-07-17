@@ -19,29 +19,6 @@ import (
 	. "github.com/tendermint/tendermint/common"
 )
 
-/* AddrBook - concurrency safe peer address manager */
-type AddrBook struct {
-	filePath string
-
-	mtx        sync.Mutex
-	rand       *rand.Rand
-	key        string
-	addrLookup map[string]*knownAddress // new & old
-	addrNew    []map[string]*knownAddress
-	addrOld    []map[string]*knownAddress
-	started    uint32
-	stopped    uint32
-	wg         sync.WaitGroup
-	quit       chan struct{}
-	nOld       int
-	nNew       int
-}
-
-const (
-	bucketTypeNew = 0x01
-	bucketTypeOld = 0x02
-)
-
 const (
 	// addresses under which the address manager will claim to need more addresses.
 	needAddressThreshold = 1000
@@ -96,12 +73,38 @@ const (
 	serializationVersion = 1
 )
 
+/* AddrBook - concurrency safe peer address manager */
+type AddrBook struct {
+	filePath string
+
+	mtx        sync.Mutex
+	rand       *rand.Rand
+	key        string
+	ourAddrs   map[string]struct{}
+	addrLookup map[string]*knownAddress // new & old
+	addrNew    []map[string]*knownAddress
+	addrOld    []map[string]*knownAddress
+	started    uint32
+	stopped    uint32
+	wg         sync.WaitGroup
+	quit       chan struct{}
+	nOld       int
+	nNew       int
+}
+
+const (
+	bucketTypeNew = 0x01
+	bucketTypeOld = 0x02
+)
+
 // Use Start to begin processing asynchronous address updates.
 func NewAddrBook(filePath string) *AddrBook {
 	am := AddrBook{
-		rand:     rand.New(rand.NewSource(time.Now().UnixNano())),
-		quit:     make(chan struct{}),
-		filePath: filePath,
+		rand:       rand.New(rand.NewSource(time.Now().UnixNano())),
+		ourAddrs:   make(map[string]struct{}),
+		addrLookup: make(map[string]*knownAddress),
+		quit:       make(chan struct{}),
+		filePath:   filePath,
 	}
 	am.init()
 	return &am
@@ -110,8 +113,6 @@ func NewAddrBook(filePath string) *AddrBook {
 // When modifying this, don't forget to update loadFromFile()
 func (a *AddrBook) init() {
 	a.key = RandHex(24) // 24/2 * 8 = 96 bits
-	// addr -> ka index
-	a.addrLookup = make(map[string]*knownAddress)
 	// New addr buckets
 	a.addrNew = make([]map[string]*knownAddress, newBucketCount)
 	for i := range a.addrNew {
@@ -139,6 +140,12 @@ func (a *AddrBook) Stop() {
 		close(a.quit)
 		a.wg.Wait()
 	}
+}
+
+func (a *AddrBook) AddOurAddress(addr *NetAddress) {
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
+	a.ourAddrs[addr.String()] = struct{}{}
 }
 
 func (a *AddrBook) AddAddress(addr *NetAddress, src *NetAddress) {
@@ -267,10 +274,9 @@ func (a *AddrBook) GetSelection() []*NetAddress {
 		i++
 	}
 
-
 	numAddresses := MaxInt(
 		MinInt(minGetSelection, len(allAddr)),
-		len(allAddr) * getSelectionPercent / 100)
+		len(allAddr)*getSelectionPercent/100)
 	numAddresses = MinInt(maxGetSelection, numAddresses)
 
 	// Fisher-Yates shuffle the array. We only need to do the first
@@ -503,6 +509,10 @@ func (a *AddrBook) pickOldest(bucketType byte, bucketIdx int) *knownAddress {
 func (a *AddrBook) addAddress(addr, src *NetAddress) {
 	if !addr.Routable() {
 		log.Warning("Cannot add non-routable address %v", addr)
+		return
+	}
+	if _, ok := a.ourAddrs[addr.String()]; ok {
+		// Ignore our own listener address.
 		return
 	}
 
