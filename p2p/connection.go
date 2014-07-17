@@ -111,7 +111,7 @@ func (c *Connection) Send(pkt Packet) bool {
 }
 
 func (c *Connection) String() string {
-	return fmt.Sprintf("Connection{%v}", c.conn.RemoteAddr())
+	return fmt.Sprintf("/%v/", c.conn.RemoteAddr())
 }
 
 func (c *Connection) flush() {
@@ -140,7 +140,6 @@ func (c *Connection) _recover() {
 
 // sendHandler pulls from .sendQueue and writes to .bufWriter
 func (c *Connection) sendHandler() {
-	log.Debug("%v sendHandler", c)
 	defer c._recover()
 
 FOR_LOOP:
@@ -148,7 +147,6 @@ FOR_LOOP:
 		var err error
 		select {
 		case sendPkt := <-c.sendQueue:
-			log.Debug("Found pkt from sendQueue. Writing pkt to underlying connection")
 			_, err = packetTypeMessage.WriteTo(c.bufWriter)
 			if err != nil {
 				break
@@ -159,11 +157,11 @@ FOR_LOOP:
 			c.flush()
 		case <-c.pingRepeatTimer.Ch:
 			_, err = packetTypePing.WriteTo(c.bufWriter)
-			log.Debug("Send [Ping] -> %v", c)
+			// log.Debug("PING %v", c)
 			c.flush()
 		case <-c.pong:
 			_, err = packetTypePong.WriteTo(c.bufWriter)
-			log.Debug("Send [Pong] -> %v", c)
+			// log.Debug("PONG %v", c)
 			c.flush()
 		case <-c.quit:
 			break FOR_LOOP
@@ -179,14 +177,12 @@ FOR_LOOP:
 		}
 	}
 
-	log.Debug("%v sendHandler done", c)
 	// Cleanup
 }
 
 // recvHandler reads from .bufReader and pushes to the appropriate
 // channel's recvQueue.
 func (c *Connection) recvHandler() {
-	log.Debug("%v recvHandler", c)
 	defer c._recover()
 
 FOR_LOOP:
@@ -206,8 +202,6 @@ FOR_LOOP:
 				c.Stop()
 			}
 			break FOR_LOOP
-		} else {
-			log.Debug("Found pktType %v", pktType)
 		}
 
 		switch pktType {
@@ -217,7 +211,6 @@ FOR_LOOP:
 			c.pong <- struct{}{}
 		case packetTypePong:
 			// do nothing
-			log.Debug("[%v] Received Pong", c)
 		case packetTypeMessage:
 			pkt, err := ReadPacketSafe(c.bufReader)
 			if err != nil {
@@ -239,7 +232,6 @@ FOR_LOOP:
 		c.pingRepeatTimer.Reset()
 	}
 
-	log.Debug("%v recvHandler done", c)
 	// Cleanup
 	close(c.pong)
 	for _ = range c.pong {

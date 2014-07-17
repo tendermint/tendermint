@@ -112,10 +112,12 @@ func (n *Node) switchEventsHandler() {
 		switch swEvent.(type) {
 		case p2p.SwitchEventNewPeer:
 			event := swEvent.(p2p.SwitchEventNewPeer)
-			n.sendOurExternalAddrs(event.Peer)
-			if n.book.NeedMoreAddrs() {
-				pkt := p2p.NewPacket(p2p.PexCh, p2p.NewPexRequestMessage())
-				event.Peer.TrySend(pkt)
+			if event.Peer.IsOutbound() {
+				n.sendOurExternalAddrs(event.Peer)
+				if n.book.NeedMoreAddrs() {
+					pkt := p2p.NewPacket(p2p.PexCh, p2p.NewPexRequestMessage())
+					event.Peer.TrySend(pkt)
+				}
 			}
 		case p2p.SwitchEventDonePeer:
 			// TODO

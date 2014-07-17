@@ -3,6 +3,7 @@ package p2p
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"sync/atomic"
 	"time"
@@ -95,7 +96,6 @@ func (pm *PeerManager) ensurePeers() {
 		for j := 0; i < 3; j++ {
 			picked = pm.book.PickAddress(newBias)
 			if picked == nil {
-				log.Debug("Empty addrbook.")
 				return
 			}
 			if toDial.Has(picked.String()) ||
@@ -179,7 +179,7 @@ const (
 
 // TODO: check for unnecessary extra bytes at the end.
 func decodeMessage(bz ByteSlice) (msg Message) {
-	log.Debug("decoding msg bytes: %X", bz)
+	// log.Debug("decoding msg bytes: %X", bz)
 	switch Byte(bz[0]) {
 	case pexTypeRequest:
 		return &PexRequestMessage{}
@@ -205,6 +205,10 @@ func NewPexRequestMessage() *PexRequestMessage {
 func (m *PexRequestMessage) WriteTo(w io.Writer) (n int64, err error) {
 	n, err = WriteOnto(pexTypeRequest, w, n, err)
 	return
+}
+
+func (m *PexRequestMessage) String() string {
+	return "[PexRequest]"
 }
 
 /*
@@ -233,4 +237,8 @@ func (m *PexAddrsMessage) WriteTo(w io.Writer) (n int64, err error) {
 		n, err = WriteOnto(addr, w, n, err)
 	}
 	return
+}
+
+func (m *PexAddrsMessage) String() string {
+	return fmt.Sprintf("[PexAddrs %v]", m.Addrs)
 }

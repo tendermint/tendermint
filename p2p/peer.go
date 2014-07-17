@@ -75,7 +75,6 @@ func (p *Peer) Channel(chName string) *Channel {
 // TrySend returns true if the packet was successfully queued.
 // Returning true does not imply that the packet will be sent.
 func (p *Peer) TrySend(pkt Packet) bool {
-	log.Debug("TrySend [%v] -> %v", pkt, p)
 	channel := p.Channel(string(pkt.Channel))
 	sendQueue := channel.sendQueue
 
@@ -85,14 +84,15 @@ func (p *Peer) TrySend(pkt Packet) bool {
 
 	select {
 	case sendQueue <- pkt:
+		log.Debug("SEND %v: %v", p, pkt)
 		return true
 	default: // buffer full
+		log.Debug("FAIL SEND %v: %v", p, pkt)
 		return false
 	}
 }
 
 func (p *Peer) Send(pkt Packet) bool {
-	log.Debug("Send [%v] -> %v", pkt, p)
 	channel := p.Channel(string(pkt.Channel))
 	sendQueue := channel.sendQueue
 
@@ -101,6 +101,7 @@ func (p *Peer) Send(pkt Packet) bool {
 	}
 
 	sendQueue <- pkt
+	log.Debug("SEND %v: %v", p, pkt)
 	return true
 }
 
@@ -109,14 +110,18 @@ func (p *Peer) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (p *Peer) String() string {
-	return fmt.Sprintf("Peer{%v-%v,o:%v}", p.LocalAddress(), p.RemoteAddress(), p.outbound)
+	if p.outbound {
+		return fmt.Sprintf("P(->%v)", p.conn)
+	} else {
+		return fmt.Sprintf("P(%v->)", p.conn)
+	}
 }
 
 // sendHandler pulls from a channel and pushes to the connection.
 // Each channel gets its own sendHandler goroutine;
 // Golang's channel implementation handles the scheduling.
 func (p *Peer) sendHandler(chName string) {
-	log.Debug("%v sendHandler [%v]", p, chName)
+	// log.Debug("%v sendHandler [%v]", p, chName)
 	channel := p.channels[chName]
 	sendQueue := channel.sendQueue
 FOR_LOOP:
@@ -125,14 +130,13 @@ FOR_LOOP:
 		case <-p.quit:
 			break FOR_LOOP
 		case pkt := <-sendQueue:
-			log.Debug("Sending packet to peer sendQueue")
 			// blocks until the connection is Stop'd,
 			// which happens when this peer is Stop'd.
 			p.conn.Send(pkt)
 		}
 	}
 
-	log.Debug("%v sendHandler [%v] closed", p, chName)
+	// log.Debug("%v sendHandler [%v] closed", p, chName)
 	// Cleanup
 }
 
@@ -141,7 +145,7 @@ FOR_LOOP:
 // Many peers have goroutines that push to the same pktRecvQueue.
 // Golang's channel implementation handles the scheduling.
 func (p *Peer) recvHandler(chName string, pktRecvQueue chan<- *InboundPacket) {
-	log.Debug("%v recvHandler [%v]", p, chName)
+	// log.Debug("%v recvHandler [%v]", p, chName)
 	channel := p.channels[chName]
 	recvQueue := channel.recvQueue
 
@@ -166,7 +170,7 @@ FOR_LOOP:
 		}
 	}
 
-	log.Debug("%v recvHandler [%v] closed", p, chName)
+	// log.Debug("%v recvHandler [%v] closed", p, chName)
 	// Cleanup
 }
 
@@ -222,7 +226,6 @@ type Packet struct {
 
 func NewPacket(chName String, msg Binary) Packet {
 	msgBytes := BinaryBytes(msg)
-	log.Debug("NewPacket msg bytes: %X", msgBytes)
 	return Packet{
 		Channel: chName,
 		Bytes:   msgBytes,
@@ -253,7 +256,6 @@ func ReadPacketSafe(r io.Reader) (pkt Packet, err error) {
 	if err != nil {
 		return
 	}
-	log.Debug("ReadPacket* msg bytes: %X", bytes)
 	return Packet{Channel: chName, Bytes: bytes}, nil
 }
 

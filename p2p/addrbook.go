@@ -83,11 +83,14 @@ const (
 	// days since the last success before we will consider evicting an address.
 	minBadDays = 7
 
-	// max addresses that we will send in response to a GetSelection
-	getSelectionMax = 2500
-
-	// % of total addresses known that we will share with a call to GetSelection
+	// % of total addresses known returned by GetSelection.
 	getSelectionPercent = 23
+
+	// min addresses that must be returned by GetSelection. Useful for bootstrapping.
+	minGetSelection = 32
+
+	// max addresses returned by GetSelection
+	maxGetSelection = 2500
 
 	// current version of the on-disk format.
 	serializationVersion = 1
@@ -264,10 +267,11 @@ func (a *AddrBook) GetSelection() []*NetAddress {
 		i++
 	}
 
-	numAddresses := len(allAddr) * getSelectionPercent / 100
-	if numAddresses > getSelectionMax {
-		numAddresses = getSelectionMax
-	}
+
+	numAddresses := MaxInt(
+		MinInt(minGetSelection, len(allAddr)),
+		len(allAddr) * getSelectionPercent / 100)
+	numAddresses = MinInt(maxGetSelection, numAddresses)
 
 	// Fisher-Yates shuffle the array. We only need to do the first
 	// `numAddresses' since we are throwing the rest.

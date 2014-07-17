@@ -83,7 +83,6 @@ func (s *Switch) AddPeerWithConnection(conn *Connection, outbound bool) (*Peer, 
 		return nil, ErrSwitchStopped
 	}
 
-	log.Info("Adding peer with connection: %v, outbound: %v", conn, outbound)
 	// Create channels for peer
 	channels := map[string]*Channel{}
 	for _, chDesc := range s.channels {
@@ -94,7 +93,7 @@ func (s *Switch) AddPeerWithConnection(conn *Connection, outbound bool) (*Peer, 
 
 	// Add the peer to .peers
 	if s.peers.Add(peer) {
-		log.Debug("Adding: %v", peer)
+		log.Info("+ %v", peer)
 	} else {
 		log.Info("Ignoring duplicate: %v", peer)
 		return nil, ErrSwitchDuplicatePeer
@@ -178,7 +177,7 @@ func (s *Switch) Receive(chName string) *InboundPacket {
 	case <-s.quit:
 		return nil
 	case inPacket := <-q:
-		log.Debug("Received packet on [%v]", chName)
+		log.Debug("RECV %v", inPacket)
 		return inPacket
 	}
 }
@@ -204,7 +203,7 @@ func (s *Switch) Peers() IPeerSet {
 // Disconnect from a peer due to external error.
 // TODO: make record depending on reason.
 func (s *Switch) StopPeerForError(peer *Peer, reason interface{}) {
-	log.Info("%v errored: %v", peer, reason)
+	log.Info("- %v !! reason: %v", peer, reason)
 	s.peers.Remove(peer)
 	peer.stop()
 
@@ -215,6 +214,7 @@ func (s *Switch) StopPeerForError(peer *Peer, reason interface{}) {
 // Disconnect from a peer gracefully.
 // TODO: handle graceful disconnects.
 func (s *Switch) StopPeerGracefully(peer *Peer) {
+	log.Info("- %v", peer)
 	s.peers.Remove(peer)
 	peer.stop()
 
