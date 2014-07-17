@@ -144,7 +144,7 @@ func (a *AddrBook) AddAddress(addr *NetAddress, src *NetAddress) {
 	a.addAddress(addr, src)
 }
 
-func (a *AddrBook) NeedMoreAddresses() bool {
+func (a *AddrBook) NeedMoreAddrs() bool {
 	return a.Size() < needAddressThreshold
 }
 
@@ -359,6 +359,7 @@ out:
 	for {
 		select {
 		case <-dumpAddressTicker.C:
+			log.Debug("Saving book to file (%v)", a.Size())
 			a.saveToFile(a.filePath)
 		case <-a.quit:
 			break out

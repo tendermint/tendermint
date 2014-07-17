@@ -133,8 +133,7 @@ FOR_LOOP:
 	}
 
 	log.Debug("%v sendHandler [%v] closed", p, chName)
-	// cleanup
-	// (none)
+	// Cleanup
 }
 
 // recvHandler pulls from a channel and pushes to the given pktRecvQueue.
@@ -168,8 +167,7 @@ FOR_LOOP:
 	}
 
 	log.Debug("%v recvHandler [%v] closed", p, chName)
-	// cleanup
-	// (none)
+	// Cleanup
 }
 
 //-----------------------------------------------------------------------------

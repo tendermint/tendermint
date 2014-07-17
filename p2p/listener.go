@@ -91,7 +91,7 @@ func (l *DefaultListener) listenHandler() {
 		conn, err := l.listener.Accept()
 
 		if atomic.LoadUint32(&l.stopped) == 1 {
-			break // go to cleanup
+			break // Go to cleanup
 		}
 
 		// listener wasn't stopped,
@@ -104,10 +104,10 @@ func (l *DefaultListener) listenHandler() {
 		l.connections <- c
 	}
 
-	// cleanup
+	// Cleanup
 	close(l.connections)
 	for _ = range l.connections {
-		// drain
+		// Drain
 	}
 }
 

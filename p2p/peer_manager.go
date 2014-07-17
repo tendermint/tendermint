@@ -16,30 +16,27 @@ var pexErrInvalidMessage = errors.New("Invalid PEX message")
 const (
 	PexCh                    = "PEX"
 	ensurePeersPeriodSeconds = 30
-	minNumPeers              = 10
-	maxNumPeers              = 20
+	minNumOutboundPeers      = 10
+	maxNumPeers              = 50
 )
 
 /*
 PeerManager handles PEX (peer exchange) and ensures that an
 adequate number of peers are connected to the switch.
-User must pull from the .NewPeers() channel.
 */
 type PeerManager struct {
-	sw       *Switch
-	book     *AddrBook
-	quit     chan struct{}
-	newPeers chan *Peer
-	started  uint32
-	stopped  uint32
+	sw      *Switch
+	book    *AddrBook
+	quit    chan struct{}
+	started uint32
+	stopped uint32
 }
 
 func NewPeerManager(sw *Switch, book *AddrBook) *PeerManager {
 	pm := &PeerManager{
-		sw:       sw,
-		book:     book,
-		quit:     make(chan struct{}),
-		newPeers: make(chan *Peer),
+		sw:   sw,
+		book: book,
+		quit: make(chan struct{}),
 	}
 	return pm
 }
@@ -55,16 +52,11 @@ func (pm *PeerManager) Start() {
 func (pm *PeerManager) Stop() {
 	if atomic.CompareAndSwapUint32(&pm.stopped, 0, 1) {
 		log.Info("Stopping peerManager")
-		close(pm.newPeers)
 		close(pm.quit)
 	}
 }
 
-// Closes when PeerManager closes.
-func (pm *PeerManager) NewPeers() <-chan *Peer {
-	return pm.newPeers
-}
-
+// Ensures that sufficient peers are connected. (continuous)
 func (pm *PeerManager) ensurePeersHandler() {
 	// fire once immediately.
 	pm.ensurePeers()
@@ -80,14 +72,14 @@ FOR_LOOP:
 		}
 	}
 
-	// cleanup
+	// Cleanup
 	timer.Stop()
 }
 
-// Ensures that sufficient peers are connected.
+// Ensures that sufficient peers are connected. (once)
 func (pm *PeerManager) ensurePeers() {
 	numOutPeers, _, numDialing := pm.sw.NumPeers()
-	numToDial := minNumPeers - (numOutPeers + numDialing)
+	numToDial := minNumOutboundPeers - (numOutPeers + numDialing)
 	if numToDial <= 0 {
 		return
 	}
@@ -124,16 +116,15 @@ func (pm *PeerManager) ensurePeers() {
 	for _, item := range toDial.Values() {
 		picked := item.(*NetAddress)
 		go func() {
-			peer, err := pm.sw.DialPeerWithAddress(picked)
+			_, err := pm.sw.DialPeerWithAddress(picked)
 			if err != nil {
 				pm.book.MarkAttempt(picked)
 			}
-			// Connection established.
-			pm.newPeers <- peer
 		}()
 	}
 }
 
+// Handles incoming Pex messages.
 func (pm *PeerManager) pexHandler() {
 
 	for {
@@ -172,7 +163,7 @@ func (pm *PeerManager) pexHandler() {
 		}
 	}
 
-	// cleanup
+	// Cleanup
 
 }
 
@@ -203,6 +194,12 @@ func decodeMessage(bz ByteSlice) (msg Message) {
 A PexRequestMessage requests additional peer addresses.
 */
 type PexRequestMessage struct {
+}
+
+// TODO: define NewPexRequestPacket instead?
+
+func NewPexRequestMessage() *PexRequestMessage {
+	return &PexRequestMessage{}
 }
 
 func (m *PexRequestMessage) WriteTo(w io.Writer) (n int64, err error) {

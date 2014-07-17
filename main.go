@@ -11,10 +11,11 @@ import (
 )
 
 type Node struct {
-	lz   []p2p.Listener
-	sw   *p2p.Switch
-	book *p2p.AddrBook
-	pmgr *p2p.PeerManager
+	lz       []p2p.Listener
+	sw       *p2p.Switch
+	swEvents chan interface{}
+	book     *p2p.AddrBook
+	pmgr     *p2p.PeerManager
 }
 
 func NewNode() *Node {
@@ -42,13 +43,16 @@ func NewNode() *Node {
 		},
 	}
 	sw := p2p.NewSwitch(chDescs)
+	swEvents := make(chan interface{})
+	sw.AddEventListener("Node.swEvents", swEvents)
 	book := p2p.NewAddrBook(config.RootDir + "/addrbook.json")
 	pmgr := p2p.NewPeerManager(sw, book)
 
 	return &Node{
-		sw:   sw,
-		book: book,
-		pmgr: pmgr,
+		sw:       sw,
+		swEvents: swEvents,
+		book:     book,
+		pmgr:     pmgr,
 	}
 }
 
@@ -57,9 +61,19 @@ func (n *Node) Start() {
 	for _, l := range n.lz {
 		go n.inboundConnectionHandler(l)
 	}
+	go n.switchEventsHandler()
 	n.sw.Start()
 	n.book.Start()
 	n.pmgr.Start()
+}
+
+func (n *Node) Stop() {
+	log.Info("Stopping node")
+	// TODO: gracefully disconnect from peers.
+	n.sw.Stop()
+	close(n.swEvents)
+	n.book.Stop()
+	n.pmgr.Stop()
 }
 
 // Add a Listener to accept inbound peer connections.
@@ -89,7 +103,27 @@ func (n *Node) inboundConnectionHandler(l p2p.Listener) {
 	// cleanup
 }
 
-func (n *Node) SendOurExternalAddrs(peer *p2p.Peer) {
+func (n *Node) switchEventsHandler() {
+	for {
+		swEvent, ok := <-n.swEvents
+		if !ok {
+			break
+		}
+		switch swEvent.(type) {
+		case p2p.SwitchEventNewPeer:
+			event := swEvent.(p2p.SwitchEventNewPeer)
+			n.sendOurExternalAddrs(event.Peer)
+			if n.book.NeedMoreAddrs() {
+				pkt := p2p.NewPacket(p2p.PexCh, p2p.NewPexRequestMessage())
+				event.Peer.TrySend(pkt)
+			}
+		case p2p.SwitchEventDonePeer:
+			// TODO
+		}
+	}
+}
+
+func (n *Node) sendOurExternalAddrs(peer *p2p.Peer) {
 	// Send listener our external address(es)
 	addrs := []*p2p.NetAddress{}
 	for _, l := range n.lz {
@@ -99,25 +133,6 @@ func (n *Node) SendOurExternalAddrs(peer *p2p.Peer) {
 	peer.Send(p2p.NewPacket(p2p.PexCh, msg))
 	// On the remote end, the pexHandler may choose
 	// to add these to its book.
-}
-
-func (n *Node) newPeersHandler() {
-	for {
-		peer, ok := <-n.pmgr.NewPeers()
-		if !ok {
-			break
-		}
-		// New outbound peer!
-		n.SendOurExternalAddrs(peer)
-	}
-}
-
-func (n *Node) Stop() {
-	log.Info("Stopping node")
-	// TODO: gracefully disconnect from peers.
-	n.sw.Stop()
-	n.book.Stop()
-	n.pmgr.Stop()
 }
 
 //-----------------------------------------------------------------------------
@@ -139,7 +154,6 @@ func main() {
 			return
 		} else {
 			log.Info("Connected to seed: %v", peer)
-			n.SendOurExternalAddrs(peer)
 		}
 	}
 

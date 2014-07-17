@@ -180,7 +180,7 @@ FOR_LOOP:
 	}
 
 	log.Debug("%v sendHandler done", c)
-	// cleanup
+	// Cleanup
 }
 
 // recvHandler reads from .bufReader and pushes to the appropriate
@@ -240,10 +240,10 @@ FOR_LOOP:
 	}
 
 	log.Debug("%v recvHandler done", c)
-	// cleanup
+	// Cleanup
 	close(c.pong)
 	for _ = range c.pong {
-		// drain
+		// Drain
 	}
 }
 

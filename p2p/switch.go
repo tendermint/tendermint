@@ -24,6 +24,7 @@ type Switch struct {
 	pktRecvQueues map[string]chan *InboundPacket
 	peers         *PeerSet
 	dialing       *CMap
+	listeners     *CMap // name -> chan interface{}
 	quit          chan struct{}
 	started       uint32
 	stopped       uint32
@@ -50,6 +51,7 @@ func NewSwitch(channels []ChannelDescriptor) *Switch {
 		pktRecvQueues: pktRecvQueues,
 		peers:         NewPeerSet(),
 		dialing:       NewCMap(),
+		listeners:     NewCMap(),
 		quit:          make(chan struct{}),
 		stopped:       0,
 	}
@@ -89,12 +91,20 @@ func (s *Switch) AddPeerWithConnection(conn *Connection, outbound bool) (*Peer, 
 	}
 	peer := newPeer(conn, channels)
 	peer.outbound = outbound
-	err := s.addPeer(peer)
-	if err != nil {
-		return nil, err
+
+	// Add the peer to .peers
+	if s.peers.Add(peer) {
+		log.Debug("Adding: %v", peer)
+	} else {
+		log.Info("Ignoring duplicate: %v", peer)
+		return nil, ErrSwitchDuplicatePeer
 	}
 
+	// Start the peer
 	go peer.start(s.pktRecvQueues, s.StopPeerForError)
+
+	// Notify listeners.
+	s.emit(SwitchEventNewPeer{Peer: peer})
 
 	return peer, nil
 }
@@ -141,6 +151,16 @@ func (s *Switch) Broadcast(pkt Packet) (numSuccess, numFailure int) {
 
 }
 
+// The events are of type SwitchEvent* defined below.
+// Switch does not close these listeners.
+func (s *Switch) AddEventListener(name string, listener chan<- interface{}) {
+	s.listeners.Set(name, listener)
+}
+
+func (s *Switch) RemoveEventListener(name string) {
+	s.listeners.Delete(name)
+}
+
 /*
 Receive blocks on a channel until a message is found.
 */
@@ -185,27 +205,37 @@ func (s *Switch) Peers() IPeerSet {
 // TODO: make record depending on reason.
 func (s *Switch) StopPeerForError(peer *Peer, reason interface{}) {
 	log.Info("%v errored: %v", peer, reason)
-	s.StopPeer(peer, false)
-}
-
-// Disconnect from a peer.
-// If graceful is true, last message sent is a disconnect message.
-// TODO: handle graceful disconnects.
-func (s *Switch) StopPeer(peer *Peer, graceful bool) {
 	s.peers.Remove(peer)
 	peer.stop()
+
+	// Notify listeners
+	s.emit(SwitchEventDonePeer{Peer: peer, Error: reason})
 }
 
-func (s *Switch) addPeer(peer *Peer) error {
-	if s.stopped == 1 {
-		return ErrSwitchStopped
+// Disconnect from a peer gracefully.
+// TODO: handle graceful disconnects.
+func (s *Switch) StopPeerGracefully(peer *Peer) {
+	s.peers.Remove(peer)
+	peer.stop()
+
+	// Notify listeners
+	s.emit(SwitchEventDonePeer{Peer: peer})
+}
+
+func (s *Switch) emit(event interface{}) {
+	for _, ch_i := range s.listeners.Values() {
+		ch := ch_i.(chan<- interface{})
+		ch <- event
 	}
-	if s.peers.Add(peer) {
-		log.Debug("Adding: %v", peer)
-		return nil
-	} else {
-		// ignore duplicate peer
-		log.Info("Ignoring duplicate: %v", peer)
-		return ErrSwitchDuplicatePeer
-	}
+}
+
+//-----------------------------------------------------------------------------
+
+type SwitchEventNewPeer struct {
+	Peer *Peer
+}
+
+type SwitchEventDonePeer struct {
+	Peer  *Peer
+	Error interface{}
 }
