@@ -106,7 +106,7 @@ func NewAddrBook(filePath string) *AddrBook {
 
 // When modifying this, don't forget to update loadFromFile()
 func (a *AddrBook) init() {
-	a.key = RandStr(12)
+	a.key = RandHex(24) // 24/2 * 8 = 96 bits
 	// addr -> ka index
 	a.addrLookup = make(map[string]*knownAddress)
 	// New addr buckets
