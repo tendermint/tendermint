@@ -26,18 +26,22 @@ PeerManager handles PEX (peer exchange) and ensures that an
 adequate number of peers are connected to the switch.
 */
 type PeerManager struct {
-	sw      *Switch
-	book    *AddrBook
-	quit    chan struct{}
-	started uint32
-	stopped uint32
+	sw       *Switch
+	swEvents chan interface{}
+	book     *AddrBook
+	quit     chan struct{}
+	started  uint32
+	stopped  uint32
 }
 
 func NewPeerManager(sw *Switch, book *AddrBook) *PeerManager {
+	swEvents := make(chan interface{})
+	sw.AddEventListener("PeerManager.swEvents", swEvents)
 	pm := &PeerManager{
-		sw:   sw,
-		book: book,
-		quit: make(chan struct{}),
+		sw:       sw,
+		swEvents: swEvents,
+		book:     book,
+		quit:     make(chan struct{}),
 	}
 	return pm
 }
@@ -45,6 +49,7 @@ func NewPeerManager(sw *Switch, book *AddrBook) *PeerManager {
 func (pm *PeerManager) Start() {
 	if atomic.CompareAndSwapUint32(&pm.started, 0, 1) {
 		log.Info("Starting PeerManager")
+		go pm.switchEventsHandler()
 		go pm.ensurePeersHandler()
 		go pm.pexHandler()
 	}
@@ -54,6 +59,7 @@ func (pm *PeerManager) Stop() {
 	if atomic.CompareAndSwapUint32(&pm.stopped, 0, 1) {
 		log.Info("Stopping PeerManager")
 		close(pm.quit)
+		close(pm.swEvents)
 	}
 }
 
@@ -68,6 +74,29 @@ func (pm *PeerManager) SendAddrs(peer *Peer, addrs []*NetAddress) {
 	msg := &pexAddrsMessage{Addrs: addrs}
 	tm := TypedMessage{msgTypeAddrs, msg}
 	peer.Send(NewPacket(pexCh, tm))
+}
+
+// For new outbound peers, announce our listener addresses if any,
+// and if .book needs more addresses, ask for them.
+func (pm *PeerManager) switchEventsHandler() {
+	for {
+		swEvent, ok := <-pm.swEvents
+		if !ok {
+			break
+		}
+		switch swEvent.(type) {
+		case SwitchEventNewPeer:
+			event := swEvent.(SwitchEventNewPeer)
+			if event.Peer.IsOutbound() {
+				pm.SendAddrs(event.Peer, pm.book.OurAddresses())
+				if pm.book.NeedMoreAddrs() {
+					pm.RequestPEX(event.Peer)
+				}
+			}
+		case SwitchEventDonePeer:
+			// TODO
+		}
+	}
 }
 
 // Ensures that sufficient peers are connected. (continuous)

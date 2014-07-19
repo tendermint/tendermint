@@ -9,11 +9,10 @@ import (
 )
 
 type Node struct {
-	lz       []p2p.Listener
-	sw       *p2p.Switch
-	swEvents chan interface{}
-	book     *p2p.AddrBook
-	pmgr     *p2p.PeerManager
+	lz   []p2p.Listener
+	sw   *p2p.Switch
+	book *p2p.AddrBook
+	pmgr *p2p.PeerManager
 }
 
 func NewNode() *Node {
@@ -41,16 +40,13 @@ func NewNode() *Node {
 		},
 	}
 	sw := p2p.NewSwitch(chDescs)
-	swEvents := make(chan interface{})
-	sw.AddEventListener("Node.swEvents", swEvents)
 	book := p2p.NewAddrBook(config.RootDir + "/addrbook.json")
 	pmgr := p2p.NewPeerManager(sw, book)
 
 	return &Node{
-		sw:       sw,
-		swEvents: swEvents,
-		book:     book,
-		pmgr:     pmgr,
+		sw:   sw,
+		book: book,
+		pmgr: pmgr,
 	}
 }
 
@@ -59,7 +55,6 @@ func (n *Node) Start() {
 	for _, l := range n.lz {
 		go n.inboundConnectionHandler(l)
 	}
-	go n.switchEventsHandler()
 	n.sw.Start()
 	n.book.Start()
 	n.pmgr.Start()
@@ -69,7 +64,6 @@ func (n *Node) Stop() {
 	log.Info("Stopping node")
 	// TODO: gracefully disconnect from peers.
 	n.sw.Stop()
-	close(n.swEvents)
 	n.book.Stop()
 	n.pmgr.Stop()
 }
@@ -100,38 +94,6 @@ func (n *Node) inboundConnectionHandler(l p2p.Listener) {
 	}
 
 	// cleanup
-}
-
-func (n *Node) switchEventsHandler() {
-	for {
-		swEvent, ok := <-n.swEvents
-		if !ok {
-			break
-		}
-		switch swEvent.(type) {
-		case p2p.SwitchEventNewPeer:
-			event := swEvent.(p2p.SwitchEventNewPeer)
-			if event.Peer.IsOutbound() {
-				n.sendOurExternalAddrs(event.Peer)
-				if n.book.NeedMoreAddrs() {
-					n.pmgr.RequestPEX(event.Peer)
-				}
-			}
-		case p2p.SwitchEventDonePeer:
-			// TODO
-		}
-	}
-}
-
-func (n *Node) sendOurExternalAddrs(peer *p2p.Peer) {
-	// Send listener our external address(es)
-	addrs := []*p2p.NetAddress{}
-	for _, l := range n.lz {
-		addrs = append(addrs, l.ExternalAddress())
-	}
-	n.pmgr.SendAddrs(peer, addrs)
-	// On the remote end, the pexHandler may choose
-	// to add these to its book.
 }
 
 //-----------------------------------------------------------------------------

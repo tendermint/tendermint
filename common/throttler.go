@@ -6,8 +6,10 @@ import (
 )
 
 /*
-Throttler sends a struct{}{} to .Ch "dur" after the last .Set().
-It's good for ensuring that something happens last after a burst of events.
+Throttler fires an event at most "dur" after each .Set() call.
+If a short burst of .Set() calls happens, Throttler fires once.
+If a long continuous burst of .Set() calls happens, Throttler fires
+at most once every "dur".
 */
 type Throttler struct {
 	Ch    chan struct{}

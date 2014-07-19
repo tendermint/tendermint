@@ -80,7 +80,7 @@ type AddrBook struct {
 	mtx        sync.Mutex
 	rand       *rand.Rand
 	key        string
-	ourAddrs   map[string]struct{}
+	ourAddrs   map[string]*NetAddress
 	addrLookup map[string]*knownAddress // new & old
 	addrNew    []map[string]*knownAddress
 	addrOld    []map[string]*knownAddress
@@ -101,7 +101,7 @@ const (
 func NewAddrBook(filePath string) *AddrBook {
 	am := AddrBook{
 		rand:       rand.New(rand.NewSource(time.Now().UnixNano())),
-		ourAddrs:   make(map[string]struct{}),
+		ourAddrs:   make(map[string]*NetAddress),
 		addrLookup: make(map[string]*knownAddress),
 		quit:       make(chan struct{}),
 		filePath:   filePath,
@@ -145,7 +145,15 @@ func (a *AddrBook) Stop() {
 func (a *AddrBook) AddOurAddress(addr *NetAddress) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
-	a.ourAddrs[addr.String()] = struct{}{}
+	a.ourAddrs[addr.String()] = addr
+}
+
+func (a *AddrBook) OurAddresses() []*NetAddress {
+	addrs := []*NetAddress{}
+	for _, addr := range a.ourAddrs {
+		addrs = append(addrs, addr)
+	}
+	return addrs
 }
 
 func (a *AddrBook) AddAddress(addr *NetAddress, src *NetAddress) {
