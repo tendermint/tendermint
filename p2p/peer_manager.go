@@ -15,7 +15,7 @@ import (
 var pexErrInvalidMessage = errors.New("Invalid PEX message")
 
 const (
-	PexCh                    = "PEX"
+	pexCh                    = "PEX"
 	ensurePeersPeriodSeconds = 30
 	minNumOutboundPeers      = 10
 	maxNumPeers              = 50
@@ -44,7 +44,7 @@ func NewPeerManager(sw *Switch, book *AddrBook) *PeerManager {
 
 func (pm *PeerManager) Start() {
 	if atomic.CompareAndSwapUint32(&pm.started, 0, 1) {
-		log.Info("Starting peerManager")
+		log.Info("Starting PeerManager")
 		go pm.ensurePeersHandler()
 		go pm.pexHandler()
 	}
@@ -52,9 +52,22 @@ func (pm *PeerManager) Start() {
 
 func (pm *PeerManager) Stop() {
 	if atomic.CompareAndSwapUint32(&pm.stopped, 0, 1) {
-		log.Info("Stopping peerManager")
+		log.Info("Stopping PeerManager")
 		close(pm.quit)
 	}
+}
+
+// Asks peer for more addresses.
+func (pm *PeerManager) RequestPEX(peer *Peer) {
+	msg := &pexRequestMessage{}
+	tm := TypedMessage{msgTypeRequest, msg}
+	peer.TrySend(NewPacket(pexCh, tm))
+}
+
+func (pm *PeerManager) SendAddrs(peer *Peer, addrs []*NetAddress) {
+	msg := &pexAddrsMessage{Addrs: addrs}
+	tm := TypedMessage{msgTypeAddrs, msg}
+	peer.Send(NewPacket(pexCh, tm))
 }
 
 // Ensures that sufficient peers are connected. (continuous)
@@ -124,11 +137,11 @@ func (pm *PeerManager) ensurePeers() {
 	}
 }
 
-// Handles incoming Pex messages.
+// Handles incoming PEX messages.
 func (pm *PeerManager) pexHandler() {
 
 	for {
-		inPkt := pm.sw.Receive(PexCh) // {Peer, Time, Packet}
+		inPkt := pm.sw.Receive(pexCh) // {Peer, Time, Packet}
 		if inPkt == nil {
 			// Client has stopped
 			break
@@ -139,22 +152,22 @@ func (pm *PeerManager) pexHandler() {
 		log.Info("pexHandler received %v", msg)
 
 		switch msg.(type) {
-		case *PexRequestMessage:
+		case *pexRequestMessage:
 			// inPkt.Peer requested some peers.
 			// TODO: prevent abuse.
 			addrs := pm.book.GetSelection()
-			response := &PexAddrsMessage{Addrs: addrs}
-			pkt := NewPacket(PexCh, response)
-			queued := inPkt.Peer.TrySend(pkt)
+			msg := &pexAddrsMessage{Addrs: addrs}
+			tm := TypedMessage{msgTypeRequest, msg}
+			queued := inPkt.Peer.TrySend(NewPacket(pexCh, tm))
 			if !queued {
 				// ignore
 			}
-		case *PexAddrsMessage:
+		case *pexAddrsMessage:
 			// We received some peer addresses from inPkt.Peer.
 			// TODO: prevent abuse.
 			// (We don't want to get spammed with bad peers)
 			srcAddr := inPkt.Peer.RemoteAddress()
-			for _, addr := range msg.(*PexAddrsMessage).Addrs {
+			for _, addr := range msg.(*pexAddrsMessage).Addrs {
 				pm.book.AddAddress(addr, srcAddr)
 			}
 		default:
@@ -172,18 +185,18 @@ func (pm *PeerManager) pexHandler() {
 /* Messages */
 
 const (
-	pexTypeUnknown = Byte(0x00)
-	pexTypeRequest = Byte(0x01)
-	pexTypeAddrs   = Byte(0x02)
+	msgTypeUnknown = Byte(0x00)
+	msgTypeRequest = Byte(0x01)
+	msgTypeAddrs   = Byte(0x02)
 )
 
 // TODO: check for unnecessary extra bytes at the end.
 func decodeMessage(bz ByteSlice) (msg Message) {
 	// log.Debug("decoding msg bytes: %X", bz)
 	switch Byte(bz[0]) {
-	case pexTypeRequest:
-		return &PexRequestMessage{}
-	case pexTypeAddrs:
+	case msgTypeRequest:
+		return &pexRequestMessage{}
+	case msgTypeAddrs:
 		return readPexAddrsMessage(bytes.NewReader(bz[1:]))
 	default:
 		return nil
@@ -191,54 +204,46 @@ func decodeMessage(bz ByteSlice) (msg Message) {
 }
 
 /*
-A PexRequestMessage requests additional peer addresses.
+A pexRequestMessage requests additional peer addresses.
 */
-type PexRequestMessage struct {
+type pexRequestMessage struct {
 }
 
-// TODO: define NewPexRequestPacket instead?
-
-func NewPexRequestMessage() *PexRequestMessage {
-	return &PexRequestMessage{}
+func (m *pexRequestMessage) WriteTo(w io.Writer) (n int64, err error) {
+	return // nothing to write.
 }
 
-func (m *PexRequestMessage) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteOnto(pexTypeRequest, w, n, err)
-	return
-}
-
-func (m *PexRequestMessage) String() string {
-	return "[PexRequest]"
+func (m *pexRequestMessage) String() string {
+	return "[pexRequest]"
 }
 
 /*
 A message with announced peer addresses.
 */
-type PexAddrsMessage struct {
+type pexAddrsMessage struct {
 	Addrs []*NetAddress
 }
 
-func readPexAddrsMessage(r io.Reader) *PexAddrsMessage {
+func readPexAddrsMessage(r io.Reader) *pexAddrsMessage {
 	numAddrs := int(ReadUInt32(r))
 	addrs := []*NetAddress{}
 	for i := 0; i < numAddrs; i++ {
 		addr := ReadNetAddress(r)
 		addrs = append(addrs, addr)
 	}
-	return &PexAddrsMessage{
+	return &pexAddrsMessage{
 		Addrs: addrs,
 	}
 }
 
-func (m *PexAddrsMessage) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteOnto(pexTypeAddrs, w, n, err)
-	n, err = WriteOnto(UInt32(len(m.Addrs)), w, n, err)
+func (m *pexAddrsMessage) WriteTo(w io.Writer) (n int64, err error) {
+	n, err = WriteTo(UInt32(len(m.Addrs)), w, n, err)
 	for _, addr := range m.Addrs {
-		n, err = WriteOnto(addr, w, n, err)
+		n, err = WriteTo(addr, w, n, err)
 	}
 	return
 }
 
-func (m *PexAddrsMessage) String() string {
-	return fmt.Sprintf("[PexAddrs %v]", m.Addrs)
+func (m *pexAddrsMessage) String() string {
+	return fmt.Sprintf("[pexAddrs %v]", m.Addrs)
 }

@@ -21,7 +21,7 @@ func BenchmarkTestCustom(b *testing.B) {
 		Time:           123,
 		PrevHash:       ByteSlice("prevhash"),
 		ValidationHash: ByteSlice("validationhash"),
-		DataHash:       ByteSlice("datahash"),
+		TxsHash:        ByteSlice("txshash"),
 	}
 
 	buf := bytes.NewBuffer(nil)
@@ -44,7 +44,7 @@ type HHeader struct {
 	Time           uint64 `json:"T"`
 	PrevHash       []byte `json:"PH"`
 	ValidationHash []byte `json:"VH"`
-	DataHash       []byte `json:"DH"`
+	TxsHash        []byte `json:"DH"`
 }
 
 func BenchmarkTestJSON(b *testing.B) {
@@ -57,7 +57,7 @@ func BenchmarkTestJSON(b *testing.B) {
 		Time:           123,
 		PrevHash:       []byte("prevhash"),
 		ValidationHash: []byte("validationhash"),
-		DataHash:       []byte("datahash"),
+		TxsHash:        []byte("txshash"),
 	}
 	h2 := &HHeader{}
 
@@ -86,7 +86,7 @@ func BenchmarkTestGob(b *testing.B) {
 		Time:           123,
 		PrevHash:       []byte("prevhash"),
 		ValidationHash: []byte("validationhash"),
-		DataHash:       []byte("datahash"),
+		TxsHash:        []byte("txshash"),
 	}
 	h2 := &Header{}
 
@@ -115,7 +115,7 @@ func BenchmarkTestMsgPack(b *testing.B) {
 		Time:           123,
 		PrevHash:       []byte("prevhash"),
 		ValidationHash: []byte("validationhash"),
-		DataHash:       []byte("datahash"),
+		TxsHash:        []byte("txshash"),
 	}
 	h2 := &Header{}
 
@@ -144,7 +144,7 @@ func BenchmarkTestMsgPack2(b *testing.B) {
 		Time:           123,
 		PrevHash:       []byte("prevhash"),
 		ValidationHash: []byte("validationhash"),
-		DataHash:       []byte("datahash"),
+		TxsHash:        []byte("txshash"),
 	}
 	h2 := &Header{}
 	var mh codec.MsgpackHandle

@@ -62,8 +62,8 @@ func ReadNetAddress(r io.Reader) *NetAddress {
 }
 
 func (na *NetAddress) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteOnto(ByteSlice(na.IP.To16()), w, n, err)
-	n, err = WriteOnto(na.Port, w, n, err)
+	n, err = WriteTo(ByteSlice(na.IP.To16()), w, n, err)
+	n, err = WriteTo(na.Port, w, n, err)
 	return
 }
 

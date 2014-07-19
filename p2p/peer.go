@@ -1,7 +1,6 @@
 package p2p
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"sync/atomic"
@@ -211,59 +210,4 @@ func (c *Channel) RecvQueue() <-chan Packet {
 
 func (c *Channel) SendQueue() chan<- Packet {
 	return c.sendQueue
-}
-
-//-----------------------------------------------------------------------------
-
-/*
-Packet encapsulates a ByteSlice on a Channel.
-*/
-type Packet struct {
-	Channel String
-	Bytes   ByteSlice
-	// Hash
-}
-
-func NewPacket(chName String, msg Binary) Packet {
-	msgBytes := BinaryBytes(msg)
-	return Packet{
-		Channel: chName,
-		Bytes:   msgBytes,
-	}
-}
-
-func (p Packet) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteOnto(p.Channel, w, n, err)
-	n, err = WriteOnto(p.Bytes, w, n, err)
-	return
-}
-
-func (p Packet) Reader() io.Reader {
-	return bytes.NewReader(p.Bytes)
-}
-
-func (p Packet) String() string {
-	return fmt.Sprintf("%v:%X", p.Channel, p.Bytes)
-}
-
-func ReadPacketSafe(r io.Reader) (pkt Packet, err error) {
-	chName, err := ReadStringSafe(r)
-	if err != nil {
-		return
-	}
-	// TODO: packet length sanity check.
-	bytes, err := ReadByteSliceSafe(r)
-	if err != nil {
-		return
-	}
-	return Packet{Channel: chName, Bytes: bytes}, nil
-}
-
-/*
-InboundPacket extends Packet with fields relevant to inbound packets.
-*/
-type InboundPacket struct {
-	Peer *Peer
-	Time Time
-	Packet
 }

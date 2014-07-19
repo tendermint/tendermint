@@ -73,11 +73,11 @@ func (self *Bond) Type() Byte {
 }
 
 func (self *Bond) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteOnto(self.Type(), w, n, err)
-	n, err = WriteOnto(self.Fee, w, n, err)
-	n, err = WriteOnto(self.UnbondTo, w, n, err)
-	n, err = WriteOnto(self.Amount, w, n, err)
-	n, err = WriteOnto(self.Signature, w, n, err)
+	n, err = WriteTo(self.Type(), w, n, err)
+	n, err = WriteTo(self.Fee, w, n, err)
+	n, err = WriteTo(self.UnbondTo, w, n, err)
+	n, err = WriteTo(self.Amount, w, n, err)
+	n, err = WriteTo(self.Signature, w, n, err)
 	return
 }
 
@@ -94,10 +94,10 @@ func (self *Unbond) Type() Byte {
 }
 
 func (self *Unbond) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteOnto(self.Type(), w, n, err)
-	n, err = WriteOnto(self.Fee, w, n, err)
-	n, err = WriteOnto(self.Amount, w, n, err)
-	n, err = WriteOnto(self.Signature, w, n, err)
+	n, err = WriteTo(self.Type(), w, n, err)
+	n, err = WriteTo(self.Fee, w, n, err)
+	n, err = WriteTo(self.Amount, w, n, err)
+	n, err = WriteTo(self.Signature, w, n, err)
 	return
 }
 
@@ -113,9 +113,9 @@ func (self *Timeout) Type() Byte {
 }
 
 func (self *Timeout) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteOnto(self.Type(), w, n, err)
-	n, err = WriteOnto(self.Account, w, n, err)
-	n, err = WriteOnto(self.Penalty, w, n, err)
+	n, err = WriteTo(self.Type(), w, n, err)
+	n, err = WriteTo(self.Account, w, n, err)
+	n, err = WriteTo(self.Penalty, w, n, err)
 	return
 }
 
@@ -131,8 +131,8 @@ func (self *Dupeout) Type() Byte {
 }
 
 func (self *Dupeout) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteOnto(self.Type(), w, n, err)
-	n, err = WriteOnto(self.VoteA, w, n, err)
-	n, err = WriteOnto(self.VoteB, w, n, err)
+	n, err = WriteTo(self.Type(), w, n, err)
+	n, err = WriteTo(self.VoteA, w, n, err)
+	n, err = WriteTo(self.VoteB, w, n, err)
 	return
 }

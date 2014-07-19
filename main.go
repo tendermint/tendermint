@@ -1,7 +1,5 @@
 package main
 
-// TODO: ensure Mark* gets called.
-
 import (
 	"os"
 	"os/signal"
@@ -116,8 +114,7 @@ func (n *Node) switchEventsHandler() {
 			if event.Peer.IsOutbound() {
 				n.sendOurExternalAddrs(event.Peer)
 				if n.book.NeedMoreAddrs() {
-					pkt := p2p.NewPacket(p2p.PexCh, p2p.NewPexRequestMessage())
-					event.Peer.TrySend(pkt)
+					n.pmgr.RequestPEX(event.Peer)
 				}
 			}
 		case p2p.SwitchEventDonePeer:
@@ -132,8 +129,7 @@ func (n *Node) sendOurExternalAddrs(peer *p2p.Peer) {
 	for _, l := range n.lz {
 		addrs = append(addrs, l.ExternalAddress())
 	}
-	msg := &p2p.PexAddrsMessage{Addrs: addrs}
-	peer.Send(p2p.NewPacket(p2p.PexCh, msg))
+	n.pmgr.SendAddrs(peer, addrs)
 	// On the remote end, the pexHandler may choose
 	// to add these to its book.
 }

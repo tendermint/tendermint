@@ -11,7 +11,7 @@ import (
 type Block struct {
 	Header
 	Validation
-	Data
+	Txs
 	// Checkpoint
 }
 
@@ -19,7 +19,7 @@ func ReadBlock(r io.Reader) *Block {
 	return &Block{
 		Header:     ReadHeader(r),
 		Validation: ReadValidation(r),
-		Data:       ReadData(r),
+		Txs:        ReadTxs(r),
 	}
 }
 
@@ -28,9 +28,9 @@ func (self *Block) Validate() bool {
 }
 
 func (self *Block) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteOnto(&self.Header, w, n, err)
-	n, err = WriteOnto(&self.Validation, w, n, err)
-	n, err = WriteOnto(&self.Data, w, n, err)
+	n, err = WriteTo(&self.Header, w, n, err)
+	n, err = WriteTo(&self.Validation, w, n, err)
+	n, err = WriteTo(&self.Txs, w, n, err)
 	return
 }
 
@@ -43,7 +43,7 @@ type Header struct {
 	Time           UInt64
 	PrevHash       ByteSlice
 	ValidationHash ByteSlice
-	DataHash       ByteSlice
+	TxsHash        ByteSlice
 }
 
 func ReadHeader(r io.Reader) Header {
@@ -54,18 +54,18 @@ func ReadHeader(r io.Reader) Header {
 		Time:           ReadUInt64(r),
 		PrevHash:       ReadByteSlice(r),
 		ValidationHash: ReadByteSlice(r),
-		DataHash:       ReadByteSlice(r),
+		TxsHash:        ReadByteSlice(r),
 	}
 }
 
 func (self *Header) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteOnto(self.Name, w, n, err)
-	n, err = WriteOnto(self.Height, w, n, err)
-	n, err = WriteOnto(self.Fees, w, n, err)
-	n, err = WriteOnto(self.Time, w, n, err)
-	n, err = WriteOnto(self.PrevHash, w, n, err)
-	n, err = WriteOnto(self.ValidationHash, w, n, err)
-	n, err = WriteOnto(self.DataHash, w, n, err)
+	n, err = WriteTo(self.Name, w, n, err)
+	n, err = WriteTo(self.Height, w, n, err)
+	n, err = WriteTo(self.Fees, w, n, err)
+	n, err = WriteTo(self.Time, w, n, err)
+	n, err = WriteTo(self.PrevHash, w, n, err)
+	n, err = WriteTo(self.ValidationHash, w, n, err)
+	n, err = WriteTo(self.TxsHash, w, n, err)
 	return
 }
 
@@ -94,41 +94,41 @@ func ReadValidation(r io.Reader) Validation {
 }
 
 func (self *Validation) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteOnto(UInt64(len(self.Signatures)), w, n, err)
-	n, err = WriteOnto(UInt64(len(self.Adjustments)), w, n, err)
+	n, err = WriteTo(UInt64(len(self.Signatures)), w, n, err)
+	n, err = WriteTo(UInt64(len(self.Adjustments)), w, n, err)
 	for _, sig := range self.Signatures {
-		n, err = WriteOnto(sig, w, n, err)
+		n, err = WriteTo(sig, w, n, err)
 	}
 	for _, adj := range self.Adjustments {
-		n, err = WriteOnto(adj, w, n, err)
+		n, err = WriteTo(adj, w, n, err)
 	}
 	return
 }
 
-/* Block > Data */
+/* Block > Txs */
 
-type Data struct {
+type Txs struct {
 	Txs []Tx
 }
 
-func ReadData(r io.Reader) Data {
+func ReadTxs(r io.Reader) Txs {
 	numTxs := int(ReadUInt64(r))
 	txs := make([]Tx, 0, numTxs)
 	for i := 0; i < numTxs; i++ {
 		txs = append(txs, ReadTx(r))
 	}
-	return Data{txs}
+	return Txs{txs}
 }
 
-func (self *Data) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteOnto(UInt64(len(self.Txs)), w, n, err)
+func (self *Txs) WriteTo(w io.Writer) (n int64, err error) {
+	n, err = WriteTo(UInt64(len(self.Txs)), w, n, err)
 	for _, tx := range self.Txs {
-		n, err = WriteOnto(tx, w, n, err)
+		n, err = WriteTo(tx, w, n, err)
 	}
 	return
 }
 
-func (self *Data) MerkleHash() ByteSlice {
+func (self *Txs) MerkleHash() ByteSlice {
 	bs := make([]Binary, 0, len(self.Txs))
 	for i, tx := range self.Txs {
 		bs[i] = Binary(tx)
