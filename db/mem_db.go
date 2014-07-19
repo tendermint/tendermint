@@ -13,7 +13,7 @@ func NewMemDB() *MemDB {
 	return database
 }
 
-func (db *MemDB) Put(key []byte, value []byte) {
+func (db *MemDB) Set(key []byte, value []byte) {
 	db.db[string(key)] = value
 }
 

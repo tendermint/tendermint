@@ -20,7 +20,7 @@ func NewLevelDB(name string) (*LevelDB, error) {
 	return database, nil
 }
 
-func (db *LevelDB) Put(key []byte, value []byte) {
+func (db *LevelDB) Set(key []byte, value []byte) {
 	err := db.db.Put(key, value, nil)
 	if err != nil {
 		panic(err)

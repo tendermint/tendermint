@@ -17,7 +17,7 @@ type Key interface {
 
 type Db interface {
 	Get([]byte) []byte
-	Put([]byte, []byte)
+	Set([]byte, []byte)
 }
 
 type Node interface {
@@ -38,7 +38,7 @@ type Tree interface {
 	Get(key Key) Value
 	Hash() (ByteSlice, uint64)
 	Save()
-	Put(Key, Value) bool
+	Set(Key, Value) bool
 	Remove(Key) (Value, error)
 	Copy() Tree
 	Traverse(func(Node) bool)

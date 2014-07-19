@@ -133,12 +133,12 @@ func (self *IAVLNode) Save(db Db) {
 	if err != nil {
 		panic(err)
 	}
-	db.Put([]byte(self.hash), buf.Bytes())
+	db.Set([]byte(self.hash), buf.Bytes())
 
 	self.flags |= IAVLNODE_FLAG_PERSISTED
 }
 
-func (self *IAVLNode) put(db Db, key Key, value Value) (_ *IAVLNode, updated bool) {
+func (self *IAVLNode) set(db Db, key Key, value Value) (_ *IAVLNode, updated bool) {
 	if self.height == 0 {
 		if key.Less(self.key) {
 			return &IAVLNode{
@@ -162,9 +162,9 @@ func (self *IAVLNode) put(db Db, key Key, value Value) (_ *IAVLNode, updated boo
 	} else {
 		self = self.Copy()
 		if key.Less(self.key) {
-			self.left, updated = self.leftFilled(db).put(db, key, value)
+			self.left, updated = self.leftFilled(db).set(db, key, value)
 		} else {
-			self.right, updated = self.rightFilled(db).put(db, key, value)
+			self.right, updated = self.rightFilled(db).set(db, key, value)
 		}
 		if updated {
 			return self, updated

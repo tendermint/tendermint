@@ -75,8 +75,8 @@ func TestUnit(t *testing.T) {
 		}
 	}
 
-	expectPut := func(n *IAVLNode, i int, repr string, hashCount uint64) {
-		n2, updated := n.put(nil, Int32(i), nil)
+	expectSet := func(n *IAVLNode, i int, repr string, hashCount uint64) {
+		n2, updated := n.set(nil, Int32(i), nil)
 		// ensure node was added & structure is as expected.
 		if updated == true || P(n2) != repr {
 			t.Fatalf("Adding %v to %v:\nExpected         %v\nUnexpectedly got %v updated:%v",
@@ -97,28 +97,28 @@ func TestUnit(t *testing.T) {
 		expectHash(n2, hashCount)
 	}
 
-	//////// Test Put cases:
+	//////// Test Set cases:
 
 	// Case 1:
 	n1 := N(4, 20)
 
-	expectPut(n1, 8, "((4 8) 20)", 3)
-	expectPut(n1, 25, "(4 (20 25))", 3)
+	expectSet(n1, 8, "((4 8) 20)", 3)
+	expectSet(n1, 25, "(4 (20 25))", 3)
 
 	n2 := N(4, N(20, 25))
 
-	expectPut(n2, 8, "((4 8) (20 25))", 3)
-	expectPut(n2, 30, "((4 20) (25 30))", 4)
+	expectSet(n2, 8, "((4 8) (20 25))", 3)
+	expectSet(n2, 30, "((4 20) (25 30))", 4)
 
 	n3 := N(N(1, 2), 6)
 
-	expectPut(n3, 4, "((1 2) (4 6))", 4)
-	expectPut(n3, 8, "((1 2) (6 8))", 3)
+	expectSet(n3, 4, "((1 2) (4 6))", 4)
+	expectSet(n3, 8, "((1 2) (6 8))", 3)
 
 	n4 := N(N(1, 2), N(N(5, 6), N(7, 9)))
 
-	expectPut(n4, 8, "(((1 2) (5 6)) ((7 8) 9))", 5)
-	expectPut(n4, 10, "(((1 2) (5 6)) (7 (9 10)))", 5)
+	expectSet(n4, 8, "(((1 2) (5 6)) ((7 8) 9))", 5)
+	expectSet(n4, 10, "(((1 2) (5 6)) (7 (9 10)))", 5)
 
 	//////// Test Remove cases:
 
@@ -156,11 +156,11 @@ func TestIntegration(t *testing.T) {
 		records[i] = r
 		//t.Log("New record", r)
 		//PrintIAVLNode(tree.root)
-		updated = tree.Put(r.key, String(""))
+		updated = tree.Set(r.key, String(""))
 		if updated {
 			t.Error("should have not been updated")
 		}
-		updated = tree.Put(r.key, r.value)
+		updated = tree.Set(r.key, r.value)
 		if !updated {
 			t.Error("should have been updated")
 		}
@@ -216,7 +216,7 @@ func TestPersistence(t *testing.T) {
 	// Construct some tree and save it
 	t1 := NewIAVLTree(db)
 	for key, value := range records {
-		t1.Put(key, value)
+		t1.Set(key, value)
 	}
 	t1.Save()
 
@@ -260,7 +260,7 @@ func BenchmarkImmutableAvlTree(b *testing.B) {
 	t := NewIAVLTree(nil)
 	for i := 0; i < 1000000; i++ {
 		r := randomRecord()
-		t.Put(r.key, r.value)
+		t.Set(r.key, r.value)
 	}
 
 	fmt.Println("ok, starting")
@@ -270,7 +270,7 @@ func BenchmarkImmutableAvlTree(b *testing.B) {
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		r := randomRecord()
-		t.Put(r.key, r.value)
+		t.Set(r.key, r.value)
 		t.Remove(r.key)
 	}
 }

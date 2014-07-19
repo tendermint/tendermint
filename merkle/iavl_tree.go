@@ -55,12 +55,12 @@ func (t *IAVLTree) Has(key Key) bool {
 	return t.root.has(t.db, key)
 }
 
-func (t *IAVLTree) Put(key Key, value Value) (updated bool) {
+func (t *IAVLTree) Set(key Key, value Value) (updated bool) {
 	if t.root == nil {
 		t.root = NewIAVLNode(key, value)
 		return false
 	}
-	t.root, updated = t.root.put(t.db, key, value)
+	t.root, updated = t.root.set(t.db, key, value)
 	return updated
 }
 
