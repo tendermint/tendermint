@@ -59,10 +59,6 @@ func (p *Peer) IsOutbound() bool {
 	return p.outbound
 }
 
-func (p *Peer) LocalAddress() *NetAddress {
-	return p.conn.LocalAddress()
-}
-
 func (p *Peer) RemoteAddress() *NetAddress {
 	return p.conn.RemoteAddress()
 }

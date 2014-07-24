@@ -43,6 +43,7 @@ func NewSwitch(channels []ChannelDescriptor) *Switch {
 	// make pktRecvQueues...
 	pktRecvQueues := make(map[string]chan *InboundPacket)
 	for _, chDesc := range channels {
+		// XXX: buffer this
 		pktRecvQueues[chDesc.Name] = make(chan *InboundPacket)
 	}
 

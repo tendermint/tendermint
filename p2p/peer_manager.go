@@ -50,8 +50,8 @@ func (pm *PeerManager) Start() {
 	if atomic.CompareAndSwapUint32(&pm.started, 0, 1) {
 		log.Info("Starting PeerManager")
 		go pm.switchEventsHandler()
+		go pm.requestHandler()
 		go pm.ensurePeersHandler()
-		go pm.pexHandler()
 	}
 }
 
@@ -167,7 +167,7 @@ func (pm *PeerManager) ensurePeers() {
 }
 
 // Handles incoming PEX messages.
-func (pm *PeerManager) pexHandler() {
+func (pm *PeerManager) requestHandler() {
 
 	for {
 		inPkt := pm.sw.Receive(pexCh) // {Peer, Time, Packet}
@@ -178,7 +178,7 @@ func (pm *PeerManager) pexHandler() {
 
 		// decode message
 		msg := decodeMessage(inPkt.Bytes)
-		log.Info("pexHandler received %v", msg)
+		log.Info("requestHandler received %v", msg)
 
 		switch msg.(type) {
 		case *pexRequestMessage:
@@ -200,8 +200,8 @@ func (pm *PeerManager) pexHandler() {
 				pm.book.AddAddress(addr, srcAddr)
 			}
 		default:
-			// Bad peer.
-			pm.sw.StopPeerForError(inPkt.Peer, pexErrInvalidMessage)
+			// Ignore unknown message.
+			// pm.sw.StopPeerForError(inPkt.Peer, pexErrInvalidMessage)
 		}
 	}
 

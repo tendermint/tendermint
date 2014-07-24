@@ -7,12 +7,10 @@ import (
 )
 
 /* Block */
-
 type Block struct {
 	Header
 	Validation
 	Txs
-	// Checkpoint
 }
 
 func ReadBlock(r io.Reader) *Block {
@@ -35,7 +33,6 @@ func (self *Block) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 /* Block > Header */
-
 type Header struct {
 	Name           String
 	Height         UInt64
@@ -70,7 +67,6 @@ func (self *Header) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 /* Block > Validation */
-
 type Validation struct {
 	Signatures  []Signature
 	Adjustments []Adjustment
@@ -106,7 +102,6 @@ func (self *Validation) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 /* Block > Txs */
-
 type Txs struct {
 	Txs []Tx
 }
