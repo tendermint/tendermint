@@ -55,9 +55,11 @@ func NewNetAddressIPPort(ip net.IP, port UInt16) *NetAddress {
 }
 
 func ReadNetAddress(r io.Reader) *NetAddress {
+	ipBytes := ReadByteSlice(r)
+	port := ReadUInt16(r)
 	return &NetAddress{
-		IP:   net.IP(ReadByteSlice(r)),
-		Port: ReadUInt16(r),
+		IP:   net.IP(ipBytes),
+		Port: port,
 	}
 }
 
@@ -89,20 +91,20 @@ func (na *NetAddress) String() string {
 	return addr
 }
 
-func (na *NetAddress) Dial() (*Connection, error) {
+func (na *NetAddress) Dial() (net.Conn, error) {
 	conn, err := net.Dial("tcp", na.String())
 	if err != nil {
 		return nil, err
 	}
-	return NewConnection(conn), nil
+	return conn, nil
 }
 
-func (na *NetAddress) DialTimeout(timeout time.Duration) (*Connection, error) {
+func (na *NetAddress) DialTimeout(timeout time.Duration) (net.Conn, error) {
 	conn, err := net.DialTimeout("tcp", na.String(), timeout)
 	if err != nil {
 		return nil, err
 	}
-	return NewConnection(conn), nil
+	return conn, nil
 }
 
 func (na *NetAddress) Routable() bool {

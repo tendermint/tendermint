@@ -1,6 +1,16 @@
 package blocks
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"sync"
+	"sync/atomic"
+	"time"
+
+	. "github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
 	db_ "github.com/tendermint/tendermint/db"
 	"github.com/tendermint/tendermint/p2p"
 )
@@ -26,7 +36,7 @@ const (
 	dataTypeTxs        = byte(0x03)
 )
 
-func _dataKey(dataType byte, height int) {
+func _dataKey(dataType byte, height int) string {
 	switch dataType {
 	case dataTypeHeader:
 		return fmt.Sprintf("H%v", height)
@@ -35,11 +45,12 @@ func _dataKey(dataType byte, height int) {
 	case dataTypeTxs:
 		return fmt.Sprintf("T%v", height)
 	default:
-		panic("Unknown datatype %X", dataType)
+		Panicf("Unknown datatype %X", dataType)
+		return "" // should not happen
 	}
 }
 
-func dataTypeFromObj(data interface{}) {
+func dataTypeFromObj(data interface{}) byte {
 	switch data.(type) {
 	case *Header:
 		return dataTypeHeader
@@ -48,7 +59,8 @@ func dataTypeFromObj(data interface{}) {
 	case *Txs:
 		return dataTypeTxs
 	default:
-		panic("Unexpected datatype: %v", data)
+		Panicf("Unexpected datatype: %v", data)
+		return byte(0x00) // should not happen
 	}
 }
 
@@ -99,8 +111,8 @@ func (bm *BlockManager) Stop() {
 
 // NOTE: assumes that data is already validated.
 func (bm *BlockManager) StoreData(dataObj interface{}) {
-	bm.mtx.Lock()
-	defer bm.mtx.Unlock()
+	//bm.mtx.Lock()
+	//defer bm.mtx.Unlock()
 	dataType := dataTypeForObj(dataObj)
 	dataKey := _dataKey(dataType, dataObj)
 	// Update state

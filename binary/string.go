@@ -32,21 +32,31 @@ func (self String) WriteTo(w io.Writer) (n int64, err error) {
 	return int64(n_ + 4), err
 }
 
-func ReadStringSafe(r io.Reader) (String, error) {
-	length, err := ReadUInt32Safe(r)
+func ReadStringSafe(r io.Reader) (str String, n int64, err error) {
+	length, n_, err := ReadUInt32Safe(r)
+	n += n_
 	if err != nil {
-		return "", err
+		return "", n, err
 	}
 	bytes := make([]byte, int(length))
-	_, err = io.ReadFull(r, bytes)
+	n__, err := io.ReadFull(r, bytes)
+	n += int64(n__)
 	if err != nil {
-		return "", err
+		return "", n, err
 	}
-	return String(bytes), nil
+	return String(bytes), n, nil
 }
 
-func ReadString(r io.Reader) String {
-	str, err := ReadStringSafe(r)
+func ReadStringN(r io.Reader) (str String, n int64) {
+	str, n, err := ReadStringSafe(r)
+	if err != nil {
+		panic(err)
+	}
+	return str, n
+}
+
+func ReadString(r io.Reader) (str String) {
+	str, _, err := ReadStringSafe(r)
 	if err != nil {
 		panic(err)
 	}

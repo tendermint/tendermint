@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/op/go-logging"
+	"github.com/tendermint/tendermint/block"
 	"github.com/tendermint/tendermint/p2p"
 )
 
@@ -27,4 +28,5 @@ func init() {
 	*/
 
 	p2p.SetLogger(log)
+	block.SetLogger(log)
 }

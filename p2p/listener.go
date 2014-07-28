@@ -15,18 +15,18 @@ import (
 Listener is part of a Server.
 */
 type Listener interface {
-	Connections() <-chan *Connection
+	Connections() <-chan net.Conn
 	ExternalAddress() *NetAddress
 	Stop()
 }
 
 /*
-DefaultListener is an implementation that works on the golang network stack.
+DefaultListener is an implementation of Listener.
 */
 type DefaultListener struct {
 	listener    net.Listener
 	extAddr     *NetAddress
-	connections chan *Connection
+	connections chan net.Conn
 	stopped     uint32
 }
 
@@ -77,7 +77,7 @@ func NewDefaultListener(protocol string, lAddr string) Listener {
 	dl := &DefaultListener{
 		listener:    listener,
 		extAddr:     extAddr,
-		connections: make(chan *Connection, numBufferedConnections),
+		connections: make(chan net.Conn, numBufferedConnections),
 	}
 
 	go dl.listenHandler()
@@ -100,8 +100,7 @@ func (l *DefaultListener) listenHandler() {
 			panic(err)
 		}
 
-		c := NewConnection(conn)
-		l.connections <- c
+		l.connections <- conn
 	}
 
 	// Cleanup
@@ -113,7 +112,7 @@ func (l *DefaultListener) listenHandler() {
 
 // A channel of inbound connections.
 // It gets closed when the listener closes.
-func (l *DefaultListener) Connections() <-chan *Connection {
+func (l *DefaultListener) Connections() <-chan net.Conn {
 	return l.connections
 }
 

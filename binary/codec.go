@@ -5,21 +5,19 @@ import (
 )
 
 const (
-	TYPE_NIL    = Byte(0x00)
-	TYPE_BYTE   = Byte(0x01)
-	TYPE_INT8   = Byte(0x02)
-	TYPE_UINT8  = Byte(0x03)
-	TYPE_INT16  = Byte(0x04)
-	TYPE_UINT16 = Byte(0x05)
-	TYPE_INT32  = Byte(0x06)
-	TYPE_UINT32 = Byte(0x07)
-	TYPE_INT64  = Byte(0x08)
-	TYPE_UINT64 = Byte(0x09)
-
+	TYPE_NIL       = Byte(0x00)
+	TYPE_BYTE      = Byte(0x01)
+	TYPE_INT8      = Byte(0x02)
+	TYPE_UINT8     = Byte(0x03)
+	TYPE_INT16     = Byte(0x04)
+	TYPE_UINT16    = Byte(0x05)
+	TYPE_INT32     = Byte(0x06)
+	TYPE_UINT32    = Byte(0x07)
+	TYPE_INT64     = Byte(0x08)
+	TYPE_UINT64    = Byte(0x09)
 	TYPE_STRING    = Byte(0x10)
 	TYPE_BYTESLICE = Byte(0x11)
-
-	TYPE_TIME = Byte(0x20)
+	TYPE_TIME      = Byte(0x20)
 )
 
 func GetBinaryType(o Binary) Byte {
@@ -44,57 +42,50 @@ func GetBinaryType(o Binary) Byte {
 		return TYPE_INT64
 	case UInt64:
 		return TYPE_UINT64
-	case Int:
-		panic("Int not supported")
-	case UInt:
-		panic("UInt not supported")
-
 	case String:
 		return TYPE_STRING
 	case ByteSlice:
 		return TYPE_BYTESLICE
-
 	case Time:
 		return TYPE_TIME
-
 	default:
 		panic("Unsupported type")
 	}
 }
 
-func ReadBinary(r io.Reader) Binary {
-	type_ := ReadByte(r)
+func ReadBinaryN(r io.Reader) (o Binary, n int64) {
+	type_, n_ := ReadByteN(r)
+	n += n_
 	switch type_ {
 	case TYPE_NIL:
-		return nil
+		o, n_ = nil, 0
 	case TYPE_BYTE:
-		return ReadByte(r)
+		o, n_ = ReadByteN(r)
 	case TYPE_INT8:
-		return ReadInt8(r)
+		o, n_ = ReadInt8N(r)
 	case TYPE_UINT8:
-		return ReadUInt8(r)
+		o, n_ = ReadUInt8N(r)
 	case TYPE_INT16:
-		return ReadInt16(r)
+		o, n_ = ReadInt16N(r)
 	case TYPE_UINT16:
-		return ReadUInt16(r)
+		o, n_ = ReadUInt16N(r)
 	case TYPE_INT32:
-		return ReadInt32(r)
+		o, n_ = ReadInt32N(r)
 	case TYPE_UINT32:
-		return ReadUInt32(r)
+		o, n_ = ReadUInt32N(r)
 	case TYPE_INT64:
-		return ReadInt64(r)
+		o, n_ = ReadInt64N(r)
 	case TYPE_UINT64:
-		return ReadUInt64(r)
-
+		o, n_ = ReadUInt64N(r)
 	case TYPE_STRING:
-		return ReadString(r)
+		o, n_ = ReadStringN(r)
 	case TYPE_BYTESLICE:
-		return ReadByteSlice(r)
-
+		o, n_ = ReadByteSliceN(r)
 	case TYPE_TIME:
-		return ReadTime(r)
-
+		o, n_ = ReadTimeN(r)
 	default:
 		panic("Unsupported type")
 	}
+	n += n_
+	return o, n
 }

@@ -305,23 +305,21 @@ func (self *IAVLNode) fill(db Db) {
 	self.height = uint8(ReadUInt8(r))
 	self.size = uint64(ReadUInt64(r))
 	// key
-	key := ReadBinary(r)
+	key, _ := ReadBinaryN(r)
 	self.key = key.(Key)
 
 	if self.height == 0 {
 		// value
-		self.value = ReadBinary(r)
+		self.value, _ = ReadBinaryN(r)
 	} else {
 		// left
-		var leftHash ByteSlice
-		leftHash = ReadByteSlice(r)
+		leftHash := ReadByteSlice(r)
 		self.left = &IAVLNode{
 			hash:  leftHash,
 			flags: IAVLNODE_FLAG_PERSISTED | IAVLNODE_FLAG_PLACEHOLDER,
 		}
 		// right
-		var rightHash ByteSlice
-		rightHash = ReadByteSlice(r)
+		rightHash := ReadByteSlice(r)
 		self.right = &IAVLNode{
 			hash:  rightHash,
 			flags: IAVLNODE_FLAG_PERSISTED | IAVLNODE_FLAG_PLACEHOLDER,

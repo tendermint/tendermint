@@ -6,12 +6,12 @@ import (
 )
 
 /*
-Throttler fires an event at most "dur" after each .Set() call.
-If a short burst of .Set() calls happens, Throttler fires once.
-If a long continuous burst of .Set() calls happens, Throttler fires
+ThrottleTimer fires an event at most "dur" after each .Set() call.
+If a short burst of .Set() calls happens, ThrottleTimer fires once.
+If a long continuous burst of .Set() calls happens, ThrottleTimer fires
 at most once every "dur".
 */
-type Throttler struct {
+type ThrottleTimer struct {
 	Ch    chan struct{}
 	quit  chan struct{}
 	dur   time.Duration
@@ -19,16 +19,16 @@ type Throttler struct {
 	isSet uint32
 }
 
-func NewThrottler(dur time.Duration) *Throttler {
+func NewThrottleTimer(dur time.Duration) *ThrottleTimer {
 	var ch = make(chan struct{})
 	var quit = make(chan struct{})
-	var t = &Throttler{Ch: ch, dur: dur, quit: quit}
+	var t = &ThrottleTimer{Ch: ch, dur: dur, quit: quit}
 	t.timer = time.AfterFunc(dur, t.fireHandler)
 	t.timer.Stop()
 	return t
 }
 
-func (t *Throttler) fireHandler() {
+func (t *ThrottleTimer) fireHandler() {
 	select {
 	case t.Ch <- struct{}{}:
 		atomic.StoreUint32(&t.isSet, 0)
@@ -36,13 +36,13 @@ func (t *Throttler) fireHandler() {
 	}
 }
 
-func (t *Throttler) Set() {
+func (t *ThrottleTimer) Set() {
 	if atomic.CompareAndSwapUint32(&t.isSet, 0, 1) {
 		t.timer.Reset(t.dur)
 	}
 }
 
-func (t *Throttler) Stop() bool {
+func (t *ThrottleTimer) Stop() bool {
 	close(t.quit)
 	return t.timer.Stop()
 }

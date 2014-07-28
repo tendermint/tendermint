@@ -33,6 +33,26 @@ func (self Time) WriteTo(w io.Writer) (int64, error) {
 	return Int64(self.Unix()).WriteTo(w)
 }
 
+func ReadTimeSafe(r io.Reader) (Time, int64, error) {
+	t, n, err := ReadInt64Safe(r)
+	if err != nil {
+		return Time{}, n, err
+	}
+	return Time{time.Unix(int64(t), 0)}, n, nil
+}
+
+func ReadTimeN(r io.Reader) (Time, int64) {
+	t, n, err := ReadTimeSafe(r)
+	if err != nil {
+		panic(err)
+	}
+	return t, n
+}
+
 func ReadTime(r io.Reader) Time {
-	return Time{time.Unix(int64(ReadInt64(r)), 0)}
+	t, _, err := ReadTimeSafe(r)
+	if err != nil {
+		panic(err)
+	}
+	return t
 }

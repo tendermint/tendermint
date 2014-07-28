@@ -91,13 +91,13 @@ func TestBlock(t *testing.T) {
 			Time:           randVar(),
 			PrevHash:       randBytes(32),
 			ValidationHash: randBytes(32),
-			DataHash:       randBytes(32),
+			TxsHash:        randBytes(32),
 		},
 		Validation{
 			Signatures:  []Signature{randSig(), randSig()},
 			Adjustments: []Adjustment{bond, unbond, timeout, dupeout},
 		},
-		Data{
+		Txs{
 			Txs: []Tx{sendTx, nameTx},
 		},
 	}

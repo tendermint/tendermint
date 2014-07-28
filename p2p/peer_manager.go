@@ -15,7 +15,7 @@ import (
 var pexErrInvalidMessage = errors.New("Invalid PEX message")
 
 const (
-	pexCh                    = "PEX"
+	pexCh                    = byte(0x00)
 	ensurePeersPeriodSeconds = 30
 	minNumOutboundPeers      = 10
 	maxNumPeers              = 50
@@ -67,13 +67,13 @@ func (pm *PeerManager) Stop() {
 func (pm *PeerManager) RequestPEX(peer *Peer) {
 	msg := &pexRequestMessage{}
 	tm := TypedMessage{msgTypeRequest, msg}
-	peer.TrySend(NewPacket(pexCh, tm))
+	peer.TrySend(pexCh, tm.Bytes())
 }
 
 func (pm *PeerManager) SendAddrs(peer *Peer, addrs []*NetAddress) {
 	msg := &pexAddrsMessage{Addrs: addrs}
 	tm := TypedMessage{msgTypeAddrs, msg}
-	peer.Send(NewPacket(pexCh, tm))
+	peer.Send(pexCh, tm.Bytes())
 }
 
 // For new outbound peers, announce our listener addresses if any,
@@ -170,38 +170,38 @@ func (pm *PeerManager) ensurePeers() {
 func (pm *PeerManager) requestHandler() {
 
 	for {
-		inPkt := pm.sw.Receive(pexCh) // {Peer, Time, Packet}
-		if inPkt == nil {
+		inBytes, ok := pm.sw.Receive(pexCh) // {Peer, Time, Packet}
+		if !ok {
 			// Client has stopped
 			break
 		}
 
 		// decode message
-		msg := decodeMessage(inPkt.Bytes)
+		msg := decodeMessage(inBytes.Bytes)
 		log.Info("requestHandler received %v", msg)
 
 		switch msg.(type) {
 		case *pexRequestMessage:
-			// inPkt.Peer requested some peers.
+			// inBytes.MConn._peer requested some peers.
 			// TODO: prevent abuse.
 			addrs := pm.book.GetSelection()
 			msg := &pexAddrsMessage{Addrs: addrs}
 			tm := TypedMessage{msgTypeRequest, msg}
-			queued := inPkt.Peer.TrySend(NewPacket(pexCh, tm))
+			queued := inBytes.MConn._peer.TrySend(pexCh, tm.Bytes())
 			if !queued {
 				// ignore
 			}
 		case *pexAddrsMessage:
-			// We received some peer addresses from inPkt.Peer.
+			// We received some peer addresses from inBytes.MConn._peer.
 			// TODO: prevent abuse.
 			// (We don't want to get spammed with bad peers)
-			srcAddr := inPkt.Peer.RemoteAddress()
+			srcAddr := inBytes.MConn._peer.RemoteAddress()
 			for _, addr := range msg.(*pexAddrsMessage).Addrs {
 				pm.book.AddAddress(addr, srcAddr)
 			}
 		default:
 			// Ignore unknown message.
-			// pm.sw.StopPeerForError(inPkt.Peer, pexErrInvalidMessage)
+			// pm.sw.StopPeerForError(inBytes.MConn._peer, pexErrInvalidMessage)
 		}
 	}
 
@@ -220,7 +220,7 @@ const (
 )
 
 // TODO: check for unnecessary extra bytes at the end.
-func decodeMessage(bz ByteSlice) (msg Message) {
+func decodeMessage(bz ByteSlice) (msg interface{}) {
 	// log.Debug("decoding msg bytes: %X", bz)
 	switch Byte(bz[0]) {
 	case msgTypeRequest:
