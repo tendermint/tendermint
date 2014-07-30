@@ -8,7 +8,7 @@ import (
 IPeerSet has a (immutable) subset of the methods of PeerSet.
 */
 type IPeerSet interface {
-	Has(addr *NetAddress) bool
+	Has(key string) bool
 	List() []*Peer
 	Size() int
 }
@@ -37,34 +37,32 @@ func NewPeerSet() *PeerSet {
 	}
 }
 
-// Returns false if peer with address is already in set.
+// Returns false if peer with key (address) is already in set.
 func (ps *PeerSet) Add(peer *Peer) bool {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
-	addr := peer.RemoteAddress().String()
-	if ps.lookup[addr] != nil {
+	if ps.lookup[peer.Key] != nil {
 		return false
 	}
 	index := len(ps.list)
 	// Appending is safe even with other goroutines
 	// iterating over the ps.list slice.
 	ps.list = append(ps.list, peer)
-	ps.lookup[addr] = &peerSetItem{peer, index}
+	ps.lookup[peer.Key] = &peerSetItem{peer, index}
 	return true
 }
 
-func (ps *PeerSet) Has(addr *NetAddress) bool {
+func (ps *PeerSet) Has(peerKey string) bool {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
-	_, ok := ps.lookup[addr.String()]
+	_, ok := ps.lookup[peerKey]
 	return ok
 }
 
 func (ps *PeerSet) Remove(peer *Peer) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
-	addr := peer.RemoteAddress().String()
-	item := ps.lookup[addr]
+	item := ps.lookup[peer.Key]
 	if item == nil {
 		return
 	}
@@ -80,12 +78,12 @@ func (ps *PeerSet) Remove(peer *Peer) {
 	}
 	// Move the last item from ps.list to "index" in list.
 	lastPeer := ps.list[len(ps.list)-1]
-	lastPeerAddr := lastPeer.RemoteAddress().String()
+	lastPeerAddr := lastPeer.mconn.RemoteAddress.String()
 	lastPeerItem := ps.lookup[lastPeerAddr]
 	newList[index] = lastPeer
 	lastPeerItem.index = index
 	ps.list = newList
-	delete(ps.lookup, addr)
+	delete(ps.lookup, peer.Key)
 }
 
 func (ps *PeerSet) Size() int {

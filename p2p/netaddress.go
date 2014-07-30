@@ -19,6 +19,7 @@ import (
 type NetAddress struct {
 	IP   net.IP
 	Port UInt16
+	str  string
 }
 
 // TODO: socks proxies?
@@ -46,21 +47,22 @@ func NewNetAddressString(addr string) *NetAddress {
 	return na
 }
 
-func NewNetAddressIPPort(ip net.IP, port UInt16) *NetAddress {
-	na := NetAddress{
-		IP:   ip,
-		Port: port,
-	}
-	return &na
-}
-
 func ReadNetAddress(r io.Reader) *NetAddress {
 	ipBytes := ReadByteSlice(r)
 	port := ReadUInt16(r)
-	return &NetAddress{
-		IP:   net.IP(ipBytes),
+	return NewNetAddressIPPort(net.IP(ipBytes), port)
+}
+
+func NewNetAddressIPPort(ip net.IP, port UInt16) *NetAddress {
+	na := &NetAddress{
+		IP:   ip,
 		Port: port,
+		str: net.JoinHostPort(
+			ip.String(),
+			strconv.FormatUint(uint64(port), 10),
+		),
 	}
+	return na
 }
 
 func (na *NetAddress) WriteTo(w io.Writer) (n int64, err error) {
@@ -86,9 +88,7 @@ func (na *NetAddress) Less(other Binary) bool {
 }
 
 func (na *NetAddress) String() string {
-	port := strconv.FormatUint(uint64(na.Port), 10)
-	addr := net.JoinHostPort(na.IP.String(), port)
-	return addr
+	return na.str
 }
 
 func (na *NetAddress) Dial() (net.Conn, error) {

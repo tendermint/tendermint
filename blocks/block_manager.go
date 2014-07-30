@@ -15,58 +15,45 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 )
 
+var dbKeyState = []byte("state")
+
 const (
-	blocksCh = "block"
+	blocksInfoCh = byte(0x10) // For requests & cancellations
+	blocksDataCh = byte(0x11) // For data
 
 	msgTypeUnknown = Byte(0x00)
 	msgTypeState   = Byte(0x01)
 	msgTypeRequest = Byte(0x02)
 	msgTypeData    = Byte(0x03)
-
-	dbKeyState = "state"
 )
+
+/*
+TODO: keep tabs on current active requests onPeerState.
+TODO: keep a heap of dataRequests * their corresponding timeouts.
+timeout dataRequests and update the peerState,
+TODO: when a data item has bene received successfully, update the peerState.
+ensure goroutine safety.
+*/
 
 //-----------------------------------------------------------------------------
 
-// We request each item separately.
-
 const (
-	dataTypeHeader     = byte(0x01)
-	dataTypeValidation = byte(0x02)
-	dataTypeTxs        = byte(0x03)
+	dataTypeBlock = byte(0x00)
+	// TODO: allow for more types, such as specific transactions
 )
 
-func _dataKey(dataType byte, height int) string {
+func computeDataKey(dataType byte, height uint64) string {
 	switch dataType {
-	case dataTypeHeader:
-		return fmt.Sprintf("H%v", height)
-	case dataTypeValidation:
-		return fmt.Sprintf("V%v", height)
-	case dataTypeTxs:
-		return fmt.Sprintf("T%v", height)
+	case dataTypeBlock:
+		return fmt.Sprintf("B%v", height)
 	default:
 		Panicf("Unknown datatype %X", dataType)
 		return "" // should not happen
 	}
 }
 
-func dataTypeFromObj(data interface{}) byte {
-	switch data.(type) {
-	case *Header:
-		return dataTypeHeader
-	case *Validation:
-		return dataTypeValidation
-	case *Txs:
-		return dataTypeTxs
-	default:
-		Panicf("Unexpected datatype: %v", data)
-		return byte(0x00) // should not happen
-	}
-}
-
 //-----------------------------------------------------------------------------
 
-// TODO: document
 type BlockManager struct {
 	db         *db_.LevelDB
 	sw         *p2p.Switch
@@ -110,27 +97,40 @@ func (bm *BlockManager) Stop() {
 }
 
 // NOTE: assumes that data is already validated.
-func (bm *BlockManager) StoreData(dataObj interface{}) {
-	//bm.mtx.Lock()
-	//defer bm.mtx.Unlock()
-	dataType := dataTypeForObj(dataObj)
-	dataKey := _dataKey(dataType, dataObj)
-	// Update state
-	// TODO
+// "request" is optional, it's the request response that supplied
+// the data.
+func (bm *BlockManager) StoreBlock(block *Block, origin *dataRequest) {
+	dataKey := computeDataKey(dataTypeBlock, uint64(block.Header.Height))
 	// Remove dataState entry, we'll no longer request this.
 	_dataState := bm.dataStates[dataKey]
-	removedRequests := _dataState.removeRequestsForDataType(dataType)
+	removedRequests := _dataState.removeRequestsForDataType(dataTypeBlock)
 	for _, request := range removedRequests {
-		// TODO in future, notify peer that the request has been canceled.
-		// No point doing this yet, requests in blocksCh are handled singlethreaded.
+		// Notify peer that the request has been canceled.
+		if request.peer.Equals(origin.peer) {
+			continue
+		} else {
+			// Send cancellation on blocksInfoCh channel
+			msg := &requestMessage{
+				dataType: Byte(dataTypeBlock),
+				height:   block.Header.Height,
+				canceled: Byte(0x01),
+			}
+			tm := p2p.TypedMessage{msgTypeRequest, msg}
+			request.peer.TrySend(blocksInfoCh, tm.Bytes())
+		}
+		// Remove dataRequest from request.peer's peerState.
+		peerState := bm.peerStates[request.peer.Key]
+		peerState.remoteDataRequest(request)
 	}
-	// What are we doing here?
-	_peerState := bm.peerstates[dataKey]
-
+	// Update state
+	newContiguousHeight := bm.state.addData(dataTypeBlock, uint64(block.Header.Height))
 	// If we have new data that extends our contiguous range, then announce it.
+	if newContiguousHeight {
+		bm.sw.Broadcast(blocksInfoCh, bm.state.stateMessage())
+	}
 }
 
-func (bm *BlockManager) LoadData(dataType byte, height int) interface{} {
+func (bm *BlockManager) LoadData(dataType byte, height uint64) interface{} {
 	panic("not yet implemented")
 }
 
@@ -142,7 +142,7 @@ func (bm *BlockManager) loadState() {
 	} else {
 		err := json.Unmarshal(stateBytes, &bm.state)
 		if err != nil {
-			panic("Could not unmarshal state bytes: %X", stateBytes)
+			Panicf("Could not unmarshal state bytes: %X", stateBytes)
 		}
 	}
 }
@@ -166,18 +166,17 @@ func (bm *BlockManager) switchEventsHandler() {
 		case p2p.SwitchEventNewPeer:
 			event := swEvent.(p2p.SwitchEventNewPeer)
 			// Create entry in .peerStates
-			bm.peerStates[event.Peer.RemoteAddress().String()] = &peerState{}
+			bm.peerStates[event.Peer.Key] = &peerState{}
 			// Share our state with event.Peer
 			msg := &stateMessage{
-				lastHeaderHeight:     bm.state.lastHeaderHeight,
-				lastValidationHeight: bm.state.lastValidationHeight,
-				lastTxsHeight:        bm.state.lastTxsHeight,
+				lastBlockHeight: UInt64(bm.state.lastBlockHeight),
 			}
 			tm := p2p.TypedMessage{msgTypeRequest, msg}
-			event.Peer.TrySend(NewPacket(blocksCh, tm))
+			event.Peer.TrySend(blocksInfoCh, tm.Bytes())
 		case p2p.SwitchEventDonePeer:
+			event := swEvent.(p2p.SwitchEventDonePeer)
 			// Remove entry from .peerStates
-			delete(bm.peerStates, event.Peer.RemoteAddress().String())
+			delete(bm.peerStates, event.Peer.Key)
 		default:
 			log.Warning("Unhandled switch event type")
 		}
@@ -187,20 +186,20 @@ func (bm *BlockManager) switchEventsHandler() {
 // Handle requests from the blocks channel
 func (bm *BlockManager) requestsHandler() {
 	for {
-		inPkt := bm.sw.Receive(blocksCh) // {Peer, Time, Packet}
-		if inPkt == nil {
+		inMsg, ok := bm.sw.Receive(blocksInfoCh)
+		if !ok {
 			// Client has stopped
 			break
 		}
 
 		// decode message
-		msg := decodeMessage(inPkt.Bytes)
+		msg := decodeMessage(inMsg.Bytes)
 		log.Info("requestHandler received %v", msg)
 
 		switch msg.(type) {
 		case *stateMessage:
 			m := msg.(*stateMessage)
-			peerState := bm.peerStates[inPkt.Peer.RemoteAddress.String()]
+			peerState := bm.peerStates[inMsg.MConn.Peer.Key]
 			if peerState == nil {
 				continue // peer has since been disconnected.
 			}
@@ -216,13 +215,14 @@ func (bm *BlockManager) requestsHandler() {
 		case *requestMessage:
 			// TODO: prevent abuse.
 		case *dataMessage:
+			// XXX move this to another channe
 			// See if we want the data.
 			// Validate data.
 			// Add to db.
 			// Update state & broadcast as necessary.
 		default:
 			// Ignore unknown message
-			// bm.sw.StopPeerForError(inPkt.Peer, errInvalidMessage)
+			// bm.sw.StopPeerForError(inMsg.MConn.Peer, errInvalidMessage)
 		}
 	}
 
@@ -234,12 +234,36 @@ func (bm *BlockManager) requestsHandler() {
 // blockManagerState keeps track of which block parts are stored locally.
 // It's also persisted via JSON in the db.
 type blockManagerState struct {
-	lastHeaderHeight       uint64 // Last contiguous header height
-	lastValidationHeight   uint64 // Last contiguous validation height
-	lastTxsHeight          uint64 // Last contiguous txs height
-	otherHeaderHeights     []uint64
-	otherValidationHeights []uint64
-	otherTxsHeights        []uint64
+	mtx               sync.Mutex
+	lastBlockHeight   uint64 // Last contiguous header height
+	otherBlockHeights map[uint64]struct{}
+}
+
+func (bms blockManagerState) stateMessage() *stateMessage {
+	bms.mtx.Lock()
+	defer bms.mtx.Unlock()
+	return &stateMessage{
+		lastBlockHeight: UInt64(bms.lastBlockHeight),
+	}
+}
+
+func (bms blockManagerState) addData(dataType byte, height uint64) bool {
+	bms.mtx.Lock()
+	defer bms.mtx.Unlock()
+	if dataType != dataTypeBlock {
+		Panicf("Unknown datatype %X", dataType)
+	}
+	if bms.lastBlockHeight == height-1 {
+		bms.lastBlockHeight = height
+		height++
+		for _, ok := bms.otherBlockHeights[height]; ok; {
+			delete(bms.otherBlockHeights, height)
+			bms.lastBlockHeight = height
+			height++
+		}
+		return true
+	}
+	return false
 }
 
 //-----------------------------------------------------------------------------
@@ -249,7 +273,7 @@ type dataRequest struct {
 	peer     *p2p.Peer
 	dataType byte
 	height   uint64
-	time     time.Time
+	time     time.Time // XXX keep track of timeouts.
 }
 
 //-----------------------------------------------------------------------------
@@ -278,57 +302,23 @@ func (ds *dataState) removeRequestsForDataType(dataType byte) []*dataRequest {
 
 //-----------------------------------------------------------------------------
 
-// XXX
 type peerState struct {
-	mtx                  sync.Mutex
-	lastHeaderHeight     uint64 // Last contiguous header height
-	lastValidationHeight uint64 // Last contiguous validation height
-	lastTxsHeight        uint64 // Last contiguous txs height
-	dataBytesSent        uint64 // Data bytes sent to peer
-	dataBytesReceived    uint64 // Data bytes received from peer
-	numItemsReceived     uint64 // Number of data items received
-	numItemsUnreceived   uint64 // Number of data items requested but not received
-	numItemsSent         uint64 // Number of data items sent
-	requests             map[string]*dataRequest
+	mtx             sync.Mutex
+	lastBlockHeight uint64 // Last contiguous header height
 }
 
 func (ps *peerState) applyStateMessage(msg *stateMessage) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
-	ps.lastHeaderHeight = msg.lastHeaderHeight
-	ps.lastValidationHeight = msg.lastValidationHeight
-	ps.lastTxsHeight = msg.lastTxsHeight
+	ps.lastBlockHeight = uint64(msg.lastBlockHeight)
 }
 
-// Call this function for each data item received from peer, if the item was requested.
-// If the request timed out, dataBytesReceived is set to 0 to denote failure.
-func (ps *peerState) didReceiveData(dataKey string, dataBytesReceived uint64) {
-	ps.mtx.Lock()
-	defer ps.mtx.Lock()
-	request := ps.requests[dataKey]
-	if request == nil {
-		log.Warning("Could not find peerState request with dataKey %v", dataKey)
-		return
-	}
-	if dataBytesReceived == 0 {
-		ps.numItemsUnreceived += 1
-	} else {
-		ps.dataBytesReceived += dataBytesReceived
-		ps.numItemsReceived += 1
-	}
-	delete(ps.requests, dataKey)
+func (ps *peerState) addDataRequest(request *dataRequest) {
+	// TODO: keep track of dataRequests
 }
 
-// Call this function for each data item sent to peer, if the item was requested.
-func (ps *peerState) didSendData(dataKey string, dataBytesSent uint64) {
-	ps.mtx.Lock()
-	defer ps.mtx.Lock()
-	if dataBytesSent == 0 {
-		log.Warning("didSendData expects dataBytesSent > 0")
-		return
-	}
-	ps.dataBytesSent += dataBytesSent
-	ps.numItemsSent += 1
+func (ps *peerState) remoteDataRequest(request *dataRequest) {
+	// TODO: keep track of dataRequests, and remove them here.
 }
 
 //-----------------------------------------------------------------------------
@@ -336,7 +326,7 @@ func (ps *peerState) didSendData(dataKey string, dataBytesSent uint64) {
 /* Messages */
 
 // TODO: check for unnecessary extra bytes at the end.
-func decodeMessage(bz ByteSlice) (msg Message) {
+func decodeMessage(bz ByteSlice) (msg interface{}) {
 	// log.Debug("decoding msg bytes: %X", bz)
 	switch Byte(bz[0]) {
 	case msgTypeState:
@@ -354,33 +344,23 @@ func decodeMessage(bz ByteSlice) (msg Message) {
 A stateMessage declares what (contiguous) blocks & headers are known.
 */
 type stateMessage struct {
-	lastHeaderHeight     uint64 // Last contiguous header height
-	lastValidationHeight uint64 // Last contiguous validation height
-	lastTxsHeight        uint64 // Last contiguous txs height
+	lastBlockHeight UInt64 // Last contiguous block height
 }
 
 func readStateMessage(r io.Reader) *stateMessage {
-	lastHeaderHeight := ReadUInt64(r)
-	lastValidationHeight := ReadUInt64(r)
-	lastTxsHeight := ReadUInt64(r)
 	return &stateMessage{
-		lastHeaderHeight:     lastHeaderHeight,
-		lastValidationHeight: lastValidationHeight,
-		lastTxsHeight:        lastTxsHeight,
+		lastBlockHeight: ReadUInt64(r),
 	}
 }
 
 func (m *stateMessage) WriteTo(w io.Writer) (n int64, err error) {
 	n, err = WriteTo(msgTypeState, w, n, err)
-	n, err = WriteTo(m.lastHeaderHeight, w, n, err)
-	n, err = WriteTo(m.lastValidationHeight, w, n, err)
-	n, err = WriteTo(m.lastTxsHeight, w, n, err)
+	n, err = WriteTo(m.lastBlockHeight, w, n, err)
 	return
 }
 
 func (m *stateMessage) String() string {
-	return fmt.Sprintf("[State %v/%v/%v]",
-		m.lastHeaderHeight, m.lastValidationHeight, m.lastTxsHeight)
+	return fmt.Sprintf("[State B:%v]", m.lastBlockHeight)
 }
 
 /*
@@ -389,14 +369,14 @@ A requestMessage requests a block and/or header at a given height.
 type requestMessage struct {
 	dataType Byte
 	height   UInt64
+	canceled Byte // 0x00 if request, 0x01 if cancellation
 }
 
 func readRequestMessage(r io.Reader) *requestMessage {
-	requestType := ReadByte(r)
-	height := ReadUInt64(r)
 	return &requestMessage{
-		dataType: requestType,
-		height:   height,
+		dataType: ReadByte(r),
+		height:   ReadUInt64(r),
+		canceled: ReadByte(r),
 	}
 }
 
@@ -404,11 +384,16 @@ func (m *requestMessage) WriteTo(w io.Writer) (n int64, err error) {
 	n, err = WriteTo(msgTypeRequest, w, n, err)
 	n, err = WriteTo(m.dataType, w, n, err)
 	n, err = WriteTo(m.height, w, n, err)
+	n, err = WriteTo(m.canceled, w, n, err)
 	return
 }
 
 func (m *requestMessage) String() string {
-	return fmt.Sprintf("[Request %X@%v]", m.dataType, m.height)
+	if m.canceled == Byte(0x01) {
+		return fmt.Sprintf("[Cancellation %X@%v]", m.dataType, m.height)
+	} else {
+		return fmt.Sprintf("[Request %X@%v]", m.dataType, m.height)
+	}
 }
 
 /*

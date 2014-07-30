@@ -142,7 +142,7 @@ func (pm *PeerManager) ensurePeers() {
 			}
 			if toDial.Has(picked.String()) ||
 				pm.sw.IsDialing(picked) ||
-				pm.sw.Peers().Has(picked) {
+				pm.sw.Peers().Has(picked.String()) {
 				continue
 			} else {
 				break
@@ -170,38 +170,38 @@ func (pm *PeerManager) ensurePeers() {
 func (pm *PeerManager) requestHandler() {
 
 	for {
-		inBytes, ok := pm.sw.Receive(pexCh) // {Peer, Time, Packet}
+		inMsg, ok := pm.sw.Receive(pexCh) // {Peer, Time, Packet}
 		if !ok {
 			// Client has stopped
 			break
 		}
 
 		// decode message
-		msg := decodeMessage(inBytes.Bytes)
+		msg := decodeMessage(inMsg.Bytes)
 		log.Info("requestHandler received %v", msg)
 
 		switch msg.(type) {
 		case *pexRequestMessage:
-			// inBytes.MConn._peer requested some peers.
+			// inMsg.MConn.Peer requested some peers.
 			// TODO: prevent abuse.
 			addrs := pm.book.GetSelection()
 			msg := &pexAddrsMessage{Addrs: addrs}
 			tm := TypedMessage{msgTypeRequest, msg}
-			queued := inBytes.MConn._peer.TrySend(pexCh, tm.Bytes())
+			queued := inMsg.MConn.Peer.TrySend(pexCh, tm.Bytes())
 			if !queued {
 				// ignore
 			}
 		case *pexAddrsMessage:
-			// We received some peer addresses from inBytes.MConn._peer.
+			// We received some peer addresses from inMsg.MConn.Peer.
 			// TODO: prevent abuse.
 			// (We don't want to get spammed with bad peers)
-			srcAddr := inBytes.MConn._peer.RemoteAddress()
+			srcAddr := inMsg.MConn.RemoteAddress
 			for _, addr := range msg.(*pexAddrsMessage).Addrs {
 				pm.book.AddAddress(addr, srcAddr)
 			}
 		default:
 			// Ignore unknown message.
-			// pm.sw.StopPeerForError(inBytes.MConn._peer, pexErrInvalidMessage)
+			// pm.sw.StopPeerForError(inMsg.MConn.Peer, pexErrInvalidMessage)
 		}
 	}
 

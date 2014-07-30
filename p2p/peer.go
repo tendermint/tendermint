@@ -16,6 +16,8 @@ type Peer struct {
 	mconn    *MConnection
 	started  uint32
 	stopped  uint32
+
+	Key string
 }
 
 func newPeer(conn net.Conn, outbound bool, chDescs []*ChannelDescriptor, onPeerError func(*Peer, interface{})) *Peer {
@@ -29,8 +31,9 @@ func newPeer(conn net.Conn, outbound bool, chDescs []*ChannelDescriptor, onPeerE
 		outbound: outbound,
 		mconn:    mconn,
 		stopped:  0,
+		Key:      mconn.RemoteAddress.String(),
 	}
-	mconn._peer = p // hacky optimization
+	mconn.Peer = p // hacky optimization
 	return p
 }
 
@@ -52,10 +55,6 @@ func (p *Peer) IsOutbound() bool {
 	return p.outbound
 }
 
-func (p *Peer) RemoteAddress() *NetAddress {
-	return p.mconn.RemoteAddress()
-}
-
 func (p *Peer) TrySend(chId byte, bytes ByteSlice) bool {
 	if atomic.LoadUint32(&p.stopped) == 1 {
 		return false
@@ -71,7 +70,7 @@ func (p *Peer) Send(chId byte, bytes ByteSlice) bool {
 }
 
 func (p *Peer) WriteTo(w io.Writer) (n int64, err error) {
-	return p.RemoteAddress().WriteTo(w)
+	return p.mconn.RemoteAddress.WriteTo(w)
 }
 
 func (p *Peer) String() string {
@@ -80,4 +79,8 @@ func (p *Peer) String() string {
 	} else {
 		return fmt.Sprintf("P(%v->)", p.mconn)
 	}
+}
+
+func (p *Peer) Equals(other *Peer) bool {
+	return p.mconn.RemoteAddress.Equals(other.mconn.RemoteAddress)
 }

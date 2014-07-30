@@ -53,26 +53,30 @@ type MConnection struct {
 	stopped      uint32
 	errored      uint32
 
-	_peer *Peer // hacky optimization
+	Peer          *Peer // hacky optimization, gets set by Peer
+	LocalAddress  *NetAddress
+	RemoteAddress *NetAddress
 }
 
 func NewMConnection(conn net.Conn, chDescs []*ChannelDescriptor, onError func(interface{})) *MConnection {
 
 	mconn := &MConnection{
-		conn:         conn,
-		bufReader:    bufio.NewReaderSize(conn, minReadBufferSize),
-		bufWriter:    bufio.NewWriterSize(conn, minWriteBufferSize),
-		sendMonitor:  flow.New(0, 0),
-		recvMonitor:  flow.New(0, 0),
-		sendRate:     defaultSendRate,
-		recvRate:     defaultRecvRate,
-		flushTimer:   NewThrottleTimer(flushThrottleMS * time.Millisecond),
-		canSend:      make(chan struct{}, 1),
-		quit:         make(chan struct{}),
-		pingTimer:    NewRepeatTimer(pingTimeoutMinutes * time.Minute),
-		pong:         make(chan struct{}),
-		chStatsTimer: NewRepeatTimer(updateStatsSeconds * time.Second),
-		onError:      onError,
+		conn:          conn,
+		bufReader:     bufio.NewReaderSize(conn, minReadBufferSize),
+		bufWriter:     bufio.NewWriterSize(conn, minWriteBufferSize),
+		sendMonitor:   flow.New(0, 0),
+		recvMonitor:   flow.New(0, 0),
+		sendRate:      defaultSendRate,
+		recvRate:      defaultRecvRate,
+		flushTimer:    NewThrottleTimer(flushThrottleMS * time.Millisecond),
+		canSend:       make(chan struct{}, 1),
+		quit:          make(chan struct{}),
+		pingTimer:     NewRepeatTimer(pingTimeoutMinutes * time.Minute),
+		pong:          make(chan struct{}),
+		chStatsTimer:  NewRepeatTimer(updateStatsSeconds * time.Second),
+		onError:       onError,
+		LocalAddress:  NewNetAddress(conn.LocalAddr()),
+		RemoteAddress: NewNetAddress(conn.RemoteAddr()),
 	}
 
 	// Create channels
@@ -113,14 +117,6 @@ func (c *MConnection) Stop() {
 		// we close it @ recvHandler.
 		// close(c.pong)
 	}
-}
-
-func (c *MConnection) LocalAddress() *NetAddress {
-	return NewNetAddress(c.conn.LocalAddr())
-}
-
-func (c *MConnection) RemoteAddress() *NetAddress {
-	return NewNetAddress(c.conn.RemoteAddr())
 }
 
 func (c *MConnection) String() string {
