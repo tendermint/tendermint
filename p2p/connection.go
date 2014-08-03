@@ -41,7 +41,7 @@ type MConnection struct {
 	sendRate     int64
 	recvRate     int64
 	flushTimer   *ThrottleTimer // flush writes as necessary but throttled.
-	canSend      chan struct{}
+	send         chan struct{}
 	quit         chan struct{}
 	pingTimer    *RepeatTimer // send pings periodically
 	pong         chan struct{}
@@ -69,7 +69,7 @@ func NewMConnection(conn net.Conn, chDescs []*ChannelDescriptor, onError func(in
 		sendRate:      defaultSendRate,
 		recvRate:      defaultRecvRate,
 		flushTimer:    NewThrottleTimer(flushThrottleMS * time.Millisecond),
-		canSend:       make(chan struct{}, 1),
+		send:          make(chan struct{}, 1),
 		quit:          make(chan struct{}),
 		pingTimer:     NewRepeatTimer(pingTimeoutMinutes * time.Minute),
 		pong:          make(chan struct{}),
@@ -150,6 +150,10 @@ func (c *MConnection) stopForError(r interface{}) {
 
 // Queues a message to be sent to channel.
 func (c *MConnection) Send(chId byte, bytes ByteSlice) bool {
+	if atomic.LoadUint32(&c.stopped) == 1 {
+		return false
+	}
+
 	// Send message to channel.
 	channel, ok := c.channelsIdx[chId]
 	if !ok {
@@ -161,7 +165,7 @@ func (c *MConnection) Send(chId byte, bytes ByteSlice) bool {
 
 	// Wake up sendHandler if necessary
 	select {
-	case c.canSend <- struct{}{}:
+	case c.send <- struct{}{}:
 	default:
 	}
 
@@ -171,6 +175,10 @@ func (c *MConnection) Send(chId byte, bytes ByteSlice) bool {
 // Queues a message to be sent to channel.
 // Nonblocking, returns true if successful.
 func (c *MConnection) TrySend(chId byte, bytes ByteSlice) bool {
+	if atomic.LoadUint32(&c.stopped) == 1 {
+		return false
+	}
+
 	// Send message to channel.
 	channel, ok := c.channelsIdx[chId]
 	if !ok {
@@ -182,12 +190,25 @@ func (c *MConnection) TrySend(chId byte, bytes ByteSlice) bool {
 	if ok {
 		// Wake up sendHandler if necessary
 		select {
-		case c.canSend <- struct{}{}:
+		case c.send <- struct{}{}:
 		default:
 		}
 	}
 
 	return ok
+}
+
+func (c *MConnection) CanSend(chId byte) bool {
+	if atomic.LoadUint32(&c.stopped) == 1 {
+		return false
+	}
+
+	channel, ok := c.channelsIdx[chId]
+	if !ok {
+		log.Error("Unknown channel %X", chId)
+		return 0
+	}
+	return channel.canSend()
 }
 
 // sendHandler polls for packets to send from channels.
@@ -218,13 +239,13 @@ FOR_LOOP:
 			c.flush()
 		case <-c.quit:
 			break FOR_LOOP
-		case <-c.canSend:
+		case <-c.send:
 			// Send some packets
 			eof := c.sendSomePackets()
 			if !eof {
 				// Keep sendHandler awake.
 				select {
-				case c.canSend <- struct{}{}:
+				case c.send <- struct{}{}:
 				default:
 				}
 			}
@@ -384,15 +405,16 @@ type ChannelDescriptor struct {
 // TODO: lowercase.
 // NOTE: not goroutine-safe.
 type Channel struct {
-	conn         *MConnection
-	desc         *ChannelDescriptor
-	id           byte
-	recvQueue    chan InboundBytes
-	sendQueue    chan ByteSlice
-	recving      ByteSlice
-	sending      ByteSlice
-	priority     uint
-	recentlySent int64 // exponential moving average
+	conn          *MConnection
+	desc          *ChannelDescriptor
+	id            byte
+	recvQueue     chan InboundBytes
+	sendQueue     chan ByteSlice
+	sendQueueSize uint32
+	recving       ByteSlice
+	sending       ByteSlice
+	priority      uint
+	recentlySent  int64 // exponential moving average
 }
 
 func newChannel(conn *MConnection, desc *ChannelDescriptor) *Channel {
@@ -411,22 +433,39 @@ func newChannel(conn *MConnection, desc *ChannelDescriptor) *Channel {
 }
 
 // Queues message to send to this channel.
+// Goroutine-safe
 func (ch *Channel) sendBytes(bytes ByteSlice) {
 	ch.sendQueue <- bytes
+	atomic.AddUint32(&ch.sendQueueSize, 1)
 }
 
 // Queues message to send to this channel.
 // Nonblocking, returns true if successful.
+// Goroutine-safe
 func (ch *Channel) trySendBytes(bytes ByteSlice) bool {
 	select {
 	case ch.sendQueue <- bytes:
+		atomic.AddUint32(&ch.sendQueueSize, 1)
 		return true
 	default:
 		return false
 	}
 }
 
+// Goroutine-safe
+func (ch *Channel) sendQueueSize() (size int) {
+	return int(atomic.LoadUint32(&ch.sendQueueSize))
+}
+
+// Goroutine-safe
+// Use only as a heuristic.
+func (ch *Channel) canSend() bool {
+	return ch.sendQueueSize() < ch.desc.SendQueueCapacity
+}
+
 // Returns true if any packets are pending to be sent.
+// Call before calling nextPacket()
+// Goroutine-safe
 func (ch *Channel) sendPending() bool {
 	if len(ch.sending) == 0 {
 		if len(ch.sendQueue) == 0 {
@@ -438,6 +477,7 @@ func (ch *Channel) sendPending() bool {
 }
 
 // Creates a new packet to send.
+// Not goroutine-safe
 func (ch *Channel) nextPacket() packet {
 	packet := packet{}
 	packet.ChannelId = Byte(ch.id)
@@ -445,6 +485,7 @@ func (ch *Channel) nextPacket() packet {
 	if len(ch.sending) <= maxPacketSize {
 		packet.EOF = Byte(0x01)
 		ch.sending = nil
+		atomic.AddUint32(&ch.sendQueueSize, ^uint32(0)) // decrement sendQueueSize
 	} else {
 		packet.EOF = Byte(0x00)
 		ch.sending = ch.sending[MinInt(maxPacketSize, len(ch.sending)):]
@@ -453,6 +494,7 @@ func (ch *Channel) nextPacket() packet {
 }
 
 // Writes next packet to w.
+// Not goroutine-safe
 func (ch *Channel) writePacketTo(w io.Writer) (n int64, err error) {
 	packet := ch.nextPacket()
 	n, err = WriteTo(packetTypeMessage, w, n, err)
@@ -464,6 +506,7 @@ func (ch *Channel) writePacketTo(w io.Writer) (n int64, err error) {
 }
 
 // Handles incoming packets.
+// Not goroutine-safe
 func (ch *Channel) recvPacket(pkt packet) {
 	ch.recving = append(ch.recving, pkt.Bytes...)
 	if pkt.EOF == Byte(0x01) {
@@ -473,6 +516,7 @@ func (ch *Channel) recvPacket(pkt packet) {
 }
 
 // Call this periodically to update stats for throttling purposes.
+// Not goroutine-safe
 func (ch *Channel) updateStats() {
 	// Exponential decay of stats.
 	// TODO: optimize.

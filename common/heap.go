@@ -12,11 +12,11 @@ func NewHeap() *Heap {
 	return &Heap{pq: make([]*pqItem, 0)}
 }
 
-func (h *Heap) Len() int {
+func (h *Heap) Len() int64 {
 	return len(h.pq)
 }
 
-func (h *Heap) Push(value interface{}, priority int) {
+func (h *Heap) Push(value interface{}, priority int64) {
 	heap.Push(&h.pq, &pqItem{value: value, priority: priority})
 }
 
@@ -44,7 +44,7 @@ func main() {
 
 type pqItem struct {
 	value    interface{}
-	priority int
+	priority int64
 	index    int
 }
 
@@ -78,7 +78,7 @@ func (pq *priorityQueue) Pop() interface{} {
 	return item
 }
 
-func (pq *priorityQueue) Update(item *pqItem, value interface{}, priority int) {
+func (pq *priorityQueue) Update(item *pqItem, value interface{}, priority int64) {
 	heap.Remove(pq, item.index)
 	item.value = value
 	item.priority = priority

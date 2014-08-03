@@ -55,13 +55,6 @@ func (p *Peer) IsOutbound() bool {
 	return p.outbound
 }
 
-func (p *Peer) TrySend(chId byte, bytes ByteSlice) bool {
-	if atomic.LoadUint32(&p.stopped) == 1 {
-		return false
-	}
-	return p.mconn.TrySend(chId, bytes)
-}
-
 func (p *Peer) Send(chId byte, bytes ByteSlice) bool {
 	if atomic.LoadUint32(&p.stopped) == 1 {
 		return false
@@ -69,8 +62,22 @@ func (p *Peer) Send(chId byte, bytes ByteSlice) bool {
 	return p.mconn.Send(chId, bytes)
 }
 
+func (p *Peer) TrySend(chId byte, bytes ByteSlice) bool {
+	if atomic.LoadUint32(&p.stopped) == 1 {
+		return false
+	}
+	return p.mconn.TrySend(chId, bytes)
+}
+
+func (o *Peer) CanSend(chId byte) int {
+	if atomic.LoadUint32(&p.stopped) == 1 {
+		return 0
+	}
+	return p.mconn.CanSend(chId)
+}
+
 func (p *Peer) WriteTo(w io.Writer) (n int64, err error) {
-	return p.mconn.RemoteAddress.WriteTo(w)
+	return String(p.Key).WriteTo(w)
 }
 
 func (p *Peer) String() string {
@@ -82,5 +89,5 @@ func (p *Peer) String() string {
 }
 
 func (p *Peer) Equals(other *Peer) bool {
-	return p.mconn.RemoteAddress.Equals(other.mconn.RemoteAddress)
+	return p.Key == other.Key
 }
