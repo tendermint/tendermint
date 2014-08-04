@@ -4,15 +4,15 @@ import (
 	"container/heap"
 	"fmt"
 	"math/rand"
-    "strings"
+	"strings"
 )
 
 const seed = 0
-const numNodes = 30000        // Total number of nodes to simulate
-const minNumPeers = 7         // Each node should be connected to at least this many peers
-const maxNumPeers = 10        // ... and at most this many
-const latencyMS = int32(500)  // One way packet latency
-const partTxMS = int32(100)   // Transmission time per peer of 4KB of data.
+const numNodes = 30000       // Total number of nodes to simulate
+const minNumPeers = 7        // Each node should be connected to at least this many peers
+const maxNumPeers = 10       // ... and at most this many
+const latencyMS = int32(500) // One way packet latency
+const partTxMS = int32(100)  // Transmission time per peer of 4KB of data.
 const sendQueueCapacity = 5  // Amount of messages to queue between peers.
 
 func init() {
@@ -52,7 +52,7 @@ func (p *Peer) sendEventData(event EventData) bool {
 
 // Returns true if the sendQueue is not "full"
 func (p *Peer) canSendData(now int32) bool {
-    return (p.sent - now) < sendQueueCapacity
+	return (p.sent - now) < sendQueueCapacity
 }
 
 // Since EventPart events are much smaller, we don't consider the transmit time,
@@ -117,41 +117,41 @@ func (n *Node) isFull() bool {
 }
 
 func (n *Node) pickRandomForPeer(peer *Peer) (part uint8, ok bool) {
-    peerParts := peer.parts
-    nodeParts := n.parts
-    randStart := rand.Intn(32)
-    for i:=0; i<32; i++ {
-        bytei := uint8((i+randStart) % 32)
-        nByte := nodeParts[bytei]
-        pByte := peerParts[bytei]
-        iHas  := nByte & ^pByte
-        if iHas > 0 {
-            randBitStart := rand.Intn(8)
-            //fmt.Println("//--")
-            for j:=0; j<8; j++ {
-                biti := uint8((j+randBitStart) % 8)
-                //fmt.Printf("%X %v %v %v\n", iHas, j, biti, randBitStart)
-                if (iHas & (1<<biti)) > 0 {
-                    return 8*bytei + biti, true
-                }
-            }
-            panic("should not happen")
-        }
-    }
-    return 0, false
+	peerParts := peer.parts
+	nodeParts := n.parts
+	randStart := rand.Intn(32)
+	for i := 0; i < 32; i++ {
+		bytei := uint8((i + randStart) % 32)
+		nByte := nodeParts[bytei]
+		pByte := peerParts[bytei]
+		iHas := nByte & ^pByte
+		if iHas > 0 {
+			randBitStart := rand.Intn(8)
+			//fmt.Println("//--")
+			for j := 0; j < 8; j++ {
+				biti := uint8((j + randBitStart) % 8)
+				//fmt.Printf("%X %v %v %v\n", iHas, j, biti, randBitStart)
+				if (iHas & (1 << biti)) > 0 {
+					return 8*bytei + biti, true
+				}
+			}
+			panic("should not happen")
+		}
+	}
+	return 0, false
 }
 
 func (n *Node) debug() {
-    lines := []string{}
-    lines = append(lines, n.String())
-    lines = append(lines, fmt.Sprintf("events: %v, parts: %X", n.events.Len(), n.parts))
-    for _, p := range n.peers {
-        part, ok := n.pickRandomForPeer(p)
-        lines = append(lines, fmt.Sprintf("peer sent: %v, parts: %X, (%v/%v)", p.sent, p.parts, part, ok))
-    }
-    fmt.Println("//---------------")
-    fmt.Println(strings.Join(lines, "\n"))
-    fmt.Println("//---------------")
+	lines := []string{}
+	lines = append(lines, n.String())
+	lines = append(lines, fmt.Sprintf("events: %v, parts: %X", n.events.Len(), n.parts))
+	for _, p := range n.peers {
+		part, ok := n.pickRandomForPeer(p)
+		lines = append(lines, fmt.Sprintf("peer sent: %v, parts: %X, (%v/%v)", p.sent, p.parts, part, ok))
+	}
+	fmt.Println("//---------------")
+	fmt.Println(strings.Join(lines, "\n"))
+	fmt.Println("//---------------")
 }
 
 func (n *Node) String() string {
@@ -167,7 +167,7 @@ type Event interface {
 
 type EventData struct {
 	time int32 // time of receipt.
-    src  int   // src node's peer index on destination node
+	src  int   // src node's peer index on destination node
 	part uint8
 }
 
@@ -271,11 +271,11 @@ func main() {
 		peer := proposer.peers[i]
 		for j := 0; j < 256; j++ {
 			// Send each part to a peer, but each peer starts at a different offset.
-			part := uint8((j + i*25) % 256)
+			part := uint8((j + i*(256/len(proposer.peers))) % 256)
 			recvTime := timeMS + latencyMS + partTxMS
 			event := EventData{
 				time: recvTime,
-                src:  peer.remote,
+				src:  peer.remote,
 				part: part,
 			}
 			peer.sendEventData(event)
@@ -322,45 +322,45 @@ func main() {
 					// Let's iterate over peers & see which needs this piece.
 					for _, peer := range node.peers {
 						if !peer.knownToHave(event.part) {
-                            peer.sendEventData(EventData{
-                                time: event.time + latencyMS + partTxMS,
-                                src:  peer.remote,
-                                part: event.part,
-                            })
-                        } else {
-                            continue
-                        }
+							peer.sendEventData(EventData{
+								time: event.time + latencyMS + partTxMS,
+								src:  peer.remote,
+								part: event.part,
+							})
+						} else {
+							continue
+						}
 					}
 
 				case EventParts:
 					event := _event.(EventParts)
 					node.peers[event.src].parts = event.parts
-                    peer := node.peers[event.src]
+					peer := node.peers[event.src]
 
-                    // Lets blast the peer with random parts.
-                    randomSent := 0
-                    randomSentErr := 0
-                    for peer.canSendData(event.time) {
-                        part, ok := node.pickRandomForPeer(peer)
-                        if ok {
-                            randomSent += 1
-                            sent := peer.sendEventData(EventData{
-                                time: event.time + latencyMS + partTxMS,
-                                src:  peer.remote,
-                                part: part,
-                            })
-                            if !sent {
-                                randomSentErr += 1
-                            }
-                        } else {
-                            break
-                        }
-                    }
-                    /*
-                    if randomSent > 0 {
-                        fmt.Printf("radom sent: %v %v", randomSent, randomSentErr)
-                    }
-                    */
+					// Lets blast the peer with random parts.
+					randomSent := 0
+					randomSentErr := 0
+					for peer.canSendData(event.time) {
+						part, ok := node.pickRandomForPeer(peer)
+						if ok {
+							randomSent += 1
+							sent := peer.sendEventData(EventData{
+								time: event.time + latencyMS + partTxMS,
+								src:  peer.remote,
+								part: part,
+							})
+							if !sent {
+								randomSentErr += 1
+							}
+						} else {
+							break
+						}
+					}
+					/*
+					   if randomSent > 0 {
+					       fmt.Printf("radom sent: %v %v", randomSent, randomSentErr)
+					   }
+					*/
 				}
 
 			}
@@ -375,14 +375,14 @@ func main() {
 		// Lets increment the timeMS now
 		timeMS += latencyMS / 2
 
-        // Debug
-        if timeMS >= 25000 {
-            nodes[1].debug()
-            for e := nodes[1].events.Pop(); e != nil; e = nodes[1].events.Pop() {
-                fmt.Println(e)
-            }
-            return
-        }
+		// Debug
+		if timeMS >= 25000 {
+			nodes[1].debug()
+			for e := nodes[1].events.Pop(); e != nil; e = nodes[1].events.Pop() {
+				fmt.Println(e)
+			}
+			return
+		}
 
 		// Send EventParts rather frequently. It's cheap.
 		for _, node := range nodes {
