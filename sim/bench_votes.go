@@ -79,7 +79,7 @@ func (p *Peer) sendEventData(event EventData) bool {
 		if (minRecvTime-desiredRecvTime)/partTxMS > sendQueueCapacity {
 			return false
 		} else {
-			event.SetRecvTime(minRecvTime) // Adjust recvTime
+			event.time = minRecvTime // Adjust recvTime
 			p.node.sendEvent(event)
 			p.sent += partTxMS
 			return true
@@ -210,7 +210,6 @@ func (n *Node) String() string {
 
 type Event interface {
 	RecvTime() int32
-	SetRecvTime(int32)
 }
 
 type EventData struct {
@@ -221,10 +220,6 @@ type EventData struct {
 
 func (e EventData) RecvTime() int32 {
 	return e.time
-}
-
-func (e EventData) SetRecvTime(time int32) {
-	e.time = time
 }
 
 func (e EventData) String() string {
@@ -240,10 +235,6 @@ type EventDataResponse struct {
 
 func (e EventDataResponse) RecvTime() int32 {
 	return e.time
-}
-
-func (e EventDataResponse) SetRecvTime(time int32) {
-	e.time = time
 }
 
 func (e EventDataResponse) String() string {
@@ -285,16 +276,6 @@ func createNetwork() []*Node {
 	return nodes
 }
 
-func printNodes(nodes []*Node) {
-	for _, node := range nodes {
-		peerStr := ""
-		for _, peer := range node.peers {
-			peerStr += fmt.Sprintf(" %v", peer.node.index)
-		}
-		fmt.Printf("[%v] peers: %v\n", node.index, peerStr)
-	}
-}
-
 func countFull(nodes []*Node) (fullCount int) {
 	for _, node := range nodes {
 		if node.isFull() {
@@ -320,7 +301,6 @@ func main() {
 	// Global vars
 	nodes := createNetwork()
 	runStats := []runStat{}
-	//printNodes(nodes[:])
 
 	// Keep iterating and improving .wanted
 	for {
@@ -401,7 +381,7 @@ func main() {
 							rank: rank,
 						})
 
-						logWrite(fmt.Sprintf("[%v] t:%v s:%v -> n:%v p:%v r:%v\n", len(runStats), event.time, srcPeer.node.index, node.index, event.part, rank))
+						//logWrite(fmt.Sprintf("[%v] t:%v s:%v -> n:%v p:%v r:%v\n", len(runStats), event.time, srcPeer.node.index, node.index, event.part, rank))
 
 						if rank > 1 {
 							// Already has this part, ignore this event.
@@ -423,11 +403,11 @@ func main() {
 									part: event.part,
 								})
 								if sent {
-									logWrite(fmt.Sprintf("p:%v WS\n", peer.node.index))
+									//logWrite(fmt.Sprintf("[%v] t:%v S:%v n:%v -> p:%v %v WS\n", len(runStats), event.time, srcPeer.node.index, node.index, peer.node.index, event.part))
 									peer.setGiven(event.part)
 									numSendSuccess++
 								} else {
-									logWrite(fmt.Sprintf("p:%v WF\n", peer.node.index))
+									//logWrite(fmt.Sprintf("[%v] t:%v S:%v n:%v -> p:%v %v WF\n", len(runStats), event.time, srcPeer.node.index, node.index, peer.node.index, event.part))
 									numSendFailure++
 								}
 							} else {
@@ -440,11 +420,11 @@ func main() {
 										part: event.part,
 									})
 									if sent {
-										logWrite(fmt.Sprintf("p:%v TS\n", peer.node.index))
+										//logWrite(fmt.Sprintf("[%v] t:%v S:%v n:%v -> p:%v %v TS\n", len(runStats), event.time, srcPeer.node.index, node.index, peer.node.index, event.part))
 										peer.setGiven(event.part)
 										// numSendSuccess++
 									} else {
-										logWrite(fmt.Sprintf("p:%v TF\n", peer.node.index))
+										//logWrite(fmt.Sprintf("[%v] t:%v S:%v n:%v -> p:%v %v TF\n", len(runStats), event.time, srcPeer.node.index, node.index, peer.node.index, event.part))
 										// numSendFailure++
 									}
 								}

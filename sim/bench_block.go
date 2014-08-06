@@ -42,7 +42,7 @@ func (p *Peer) sendEventData(event EventData) bool {
 		if (minRecvTime-desiredRecvTime)/partTxMS > sendQueueCapacity {
 			return false
 		} else {
-			event.SetRecvTime(minRecvTime) // Adjust recvTime
+			event.time = minRecvTime // Adjust recvTime
 			p.node.sendEvent(event)
 			p.sent += partTxMS
 			return true
@@ -162,7 +162,6 @@ func (n *Node) String() string {
 
 type Event interface {
 	RecvTime() int32
-	SetRecvTime(int32)
 }
 
 type EventData struct {
@@ -173,10 +172,6 @@ type EventData struct {
 
 func (e EventData) RecvTime() int32 {
 	return e.time
-}
-
-func (e EventData) SetRecvTime(time int32) {
-	e.time = time
 }
 
 func (e EventData) String() string {
@@ -191,10 +186,6 @@ type EventParts struct {
 
 func (e EventParts) RecvTime() int32 {
 	return e.time
-}
-
-func (e EventParts) SetRecvTime(time int32) {
-	e.time = time
 }
 
 func (e EventParts) String() string {
