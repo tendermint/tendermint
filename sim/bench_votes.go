@@ -4,7 +4,6 @@ import (
 	"container/heap"
 	"fmt"
 	"math/rand"
-	"strings"
 )
 
 const seed = 0
@@ -91,12 +90,7 @@ func (p *Peer) setWants(part uint16, want bool) {
 	}
 }
 
-// Did we give peer a part
-func (p *Peer) gave(part uint16) bool {
-	return p.given[part/8]&(1<<(part%8)) > 0
-}
-
-func (p *Peer) setGave(part uint16) {
+func (p *Peer) setGiven(part uint16) {
 	p.given[part/8] |= (1 << (part % 8))
 }
 
@@ -185,46 +179,6 @@ func (n *Node) isFull() bool {
 		}
 	}
 	return true
-}
-
-func (n *Node) pickRandomForPeer(peer *Peer) (part uint16, ok bool) {
-	// Pick a random piece that node has and give it to peer.
-	// Do not pick a piece that has already been given.
-	peerGiven := peer.given
-	nodeParts := n.parts
-	randStart := rand.Intn(numNodes8)
-	for i := 0; i < numNodes8; i++ {
-		bytei := uint16((i + randStart) % numNodes8)
-		pByte := peerGiven[bytei]
-		nByte := nodeParts[bytei]
-		iHas := nByte & ^pByte // iHas something to give :)
-		if iHas > 0 {
-			randBitStart := rand.Intn(8)
-			//fmt.Println("//--")
-			for j := 0; j < 8; j++ {
-				biti := uint16((j + randBitStart) % 8)
-				//fmt.Printf("%X %v %v %v\n", iHas, j, biti, randBitStart)
-				if (iHas & (1 << biti)) > 0 {
-					return 8*bytei + biti, true
-				}
-			}
-			panic("should not happen")
-		}
-	}
-	return 0, false
-}
-
-func (n *Node) debug() {
-	lines := []string{}
-	lines = append(lines, n.String())
-	lines = append(lines, fmt.Sprintf("events: %v, parts: %X", n.events.Len(), n.parts))
-	for _, p := range n.peers {
-		part, ok := n.pickRandomForPeer(p)
-		lines = append(lines, fmt.Sprintf("peer sent: %v, given: %X, (%v/%v)", p.sent, p.given, part, ok))
-	}
-	fmt.Println("//---------------")
-	fmt.Println(strings.Join(lines, "\n"))
-	fmt.Println("//---------------")
 }
 
 func (n *Node) String() string {
@@ -332,11 +286,12 @@ func countFull(nodes []*Node) (fullCount int) {
 type runStat struct {
 	time int32   // time for all events to propagate
 	fill float64 // avg % of pieces gotten
-	full float64 // % of times the sendQueue was full
+	dups float64 // % of times that a received data was duplicate
+	succ float64 // % of times the sendQueue was not full
 }
 
 func (s runStat) String() string {
-	return fmt.Sprintf("{t:%v/fi:%.5f/fu:%.5f}", s.time, s.fill, s.full)
+	return fmt.Sprintf("{t:%v/fi:%.5f/su:%.5f/du:%.5f}", s.time, s.fill, s.succ, s.dups)
 }
 
 func main() {
@@ -375,6 +330,8 @@ func main() {
 		numEventsZero := 0  // times no events have occured
 		numSendSuccess := 0 // times data send was successful
 		numSendFailure := 0 // times data send failed due to queue being full
+		numReceives := 0    // number of data items received
+		numDups := 0        // number of data items that were duplicate
 
 		// Run simulation
 		for {
@@ -408,27 +365,32 @@ func main() {
 					switch _event.(type) {
 					case EventData:
 						event := _event.(EventData)
+						numEvents++
 
 						// Process this event
 						rank := node.receive(event.part)
 						// Send rank back to peer
 						// NOTE: in reality, maybe this doesn't always happen.
 						srcPeer := node.peers[event.src]
-						srcPeer.setGave(event.part) // HACK
+						srcPeer.setGiven(event.part) // HACK
 						srcPeer.sendEventDataResponse(EventDataResponse{
 							time: event.time + latencyMS, // TODO: responseTxMS ?
 							src:  srcPeer.remote,
 							part: event.part,
 							rank: rank,
 						})
-						numEvents++
 
 						if rank > 1 {
 							// Already has this part, ignore this event.
+							numReceives++
+							numDups++
 							continue
+						} else {
+							numReceives++
 						}
 
 						// Let's iterate over peers & see which wants this piece.
+						// We don't need to check peer.given because duplicate parts are ignored.
 						for _, peer := range node.peers {
 							if peer.wants(event.part) {
 								//fmt.Print("w")
@@ -438,7 +400,7 @@ func main() {
 									part: event.part,
 								})
 								if sent {
-									peer.setGave(event.part)
+									peer.setGiven(event.part)
 									numSendSuccess++
 								} else {
 									numSendFailure++
@@ -446,18 +408,17 @@ func main() {
 							} else {
 								//fmt.Print("!")
 								// Peer doesn't want it, but sporadically we'll try sending it anyways.
-								if peer.canSendData(event.time) &&
-									rand.Float32() < tryUnsolicited {
+								if rand.Float32() < tryUnsolicited {
 									sent := peer.sendEventData(EventData{
 										time: event.time + latencyMS + partTxMS,
 										src:  peer.remote,
 										part: event.part,
 									})
 									if sent {
-										peer.setGave(event.part)
-										numSendSuccess++
+										peer.setGiven(event.part)
+										// numSendSuccess++
 									} else {
-										numSendFailure++
+										// numSendFailure++
 									}
 								}
 							}
@@ -490,8 +451,12 @@ func main() {
 				for _, node := range nodes {
 					fillSum += node.fill()
 				}
-				runStats = append(runStats, runStat{timeMS, fillSum / float64(numNodes), float64(numSendSuccess) / float64(numSendSuccess+numSendFailure)})
+				runStats = append(runStats, runStat{timeMS, fillSum / float64(numNodes), float64(numSendSuccess) / float64(numSendSuccess+numSendFailure), float64(numDups) / float64(numReceives)})
 				for i := 0; i < 20; i++ {
+					node := nodes[i]
+					fmt.Printf("[%v] parts: %X (%f)\n", node.index, node.parts[:80], node.fill())
+				}
+				for i := 20; i < 2000; i += 200 {
 					node := nodes[i]
 					fmt.Printf("[%v] parts: %X (%f)\n", node.index, node.parts[:80], node.fill())
 				}
@@ -512,15 +477,6 @@ func main() {
 			// Lets increment the timeMS now
 			timeMS += latencyMS / 2
 
-			/*
-				// Debug
-				if timeMS >= 25000 {
-					nodes[1].debug()
-					for e := nodes[1].events.Pop(); e != nil; e = nodes[1].events.Pop() {
-						fmt.Println(e)
-					}
-					return
-				} */
 		} // end simulation
 	} // forever loop
 }
