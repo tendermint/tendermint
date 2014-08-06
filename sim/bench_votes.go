@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"container/heap"
 	"fmt"
 	"math/rand"
+	"os"
 )
 
 const seed = 0
@@ -17,8 +19,27 @@ const sendQueueCapacity = 40 // Amount of messages to queue between peers.
 const maxAllowableRank = 2   // After this, the data is considered waste.
 const tryUnsolicited = 0.1   // Chance of sending an unsolicited piece of data.
 
+var log *bufio.Writer
+
 func init() {
 	rand.Seed(seed)
+	openFile()
+}
+
+//-----------------------------------------------------------------------------
+
+func openFile() {
+	// open output file
+	fo, err := os.Create("output.txt")
+	if err != nil {
+		panic(err)
+	}
+	// make a write buffer
+	log = bufio.NewWriter(fo)
+}
+
+func logWrite(s string) {
+	log.Write([]byte(s))
 }
 
 //-----------------------------------------------------------------------------
@@ -286,8 +307,8 @@ func countFull(nodes []*Node) (fullCount int) {
 type runStat struct {
 	time int32   // time for all events to propagate
 	fill float64 // avg % of pieces gotten
-	dups float64 // % of times that a received data was duplicate
 	succ float64 // % of times the sendQueue was not full
+	dups float64 // % of times that a received data was duplicate
 }
 
 func (s runStat) String() string {
@@ -380,6 +401,8 @@ func main() {
 							rank: rank,
 						})
 
+						logWrite(fmt.Sprintf("[%v] t:%v s:%v -> n:%v p:%v r:%v\n", len(runStats), event.time, srcPeer.node.index, node.index, event.part, rank))
+
 						if rank > 1 {
 							// Already has this part, ignore this event.
 							numReceives++
@@ -400,9 +423,11 @@ func main() {
 									part: event.part,
 								})
 								if sent {
+									logWrite(fmt.Sprintf("p:%v WS\n", peer.node.index))
 									peer.setGiven(event.part)
 									numSendSuccess++
 								} else {
+									logWrite(fmt.Sprintf("p:%v WF\n", peer.node.index))
 									numSendFailure++
 								}
 							} else {
@@ -415,9 +440,11 @@ func main() {
 										part: event.part,
 									})
 									if sent {
+										logWrite(fmt.Sprintf("p:%v TS\n", peer.node.index))
 										peer.setGiven(event.part)
 										// numSendSuccess++
 									} else {
+										logWrite(fmt.Sprintf("p:%v TF\n", peer.node.index))
 										// numSendFailure++
 									}
 								}
