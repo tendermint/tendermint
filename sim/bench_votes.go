@@ -11,13 +11,13 @@ import (
 const seed = 0
 const numNodes = 6400 // Total number of nodes to simulate
 const numNodes8 = (numNodes + 7) / 8
-const minNumPeers = 7        // Each node should be connected to at least this many peers
-const maxNumPeers = 10       // ... and at most this many
+const minNumPeers = 8        // Each node should be connected to at least this many peers
+const maxNumPeers = 12       // ... and at most this many
 const latencyMS = int32(500) // One way packet latency
 const partTxMS = int32(3)    // Transmission time per peer of 100B of data.
-const sendQueueCapacity = 40 // Amount of messages to queue between peers.
+const sendQueueCapacity = 3200 // Amount of messages to queue between peers.
 const maxAllowableRank = 2   // After this, the data is considered waste.
-const tryUnsolicited = 0.1   // Chance of sending an unsolicited piece of data.
+const tryUnsolicited = 0.02   // Chance of sending an unsolicited piece of data.
 
 var log *bufio.Writer
 
@@ -73,7 +73,10 @@ func (p *Peer) sendEventData(event EventData) bool {
 	minRecvTime := p.sent + partTxMS + latencyMS
 	if desiredRecvTime >= minRecvTime {
 		p.node.sendEvent(event)
-		p.sent += partTxMS
+		// p.sent + latencyMS == desiredRecvTime
+		// when desiredRecvTime == minRecvTime,
+		// p.sent += partTxMS
+		p.sent = desiredRecvTime - latencyMS
 		return true
 	} else {
 		if (minRecvTime-desiredRecvTime)/partTxMS > sendQueueCapacity {
@@ -413,6 +416,7 @@ func main() {
 							} else {
 								//fmt.Print("!")
 								// Peer doesn't want it, but sporadically we'll try sending it anyways.
+								/*
 								if rand.Float32() < tryUnsolicited {
 									sent := peer.sendEventData(EventData{
 										time: event.time + latencyMS + partTxMS,
@@ -427,7 +431,7 @@ func main() {
 										//logWrite(fmt.Sprintf("[%v] t:%v S:%v n:%v -> p:%v %v TF\n", len(runStats), event.time, srcPeer.node.index, node.index, peer.node.index, event.part))
 										// numSendFailure++
 									}
-								}
+								}*/
 							}
 						}
 

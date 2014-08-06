@@ -36,7 +36,10 @@ func (p *Peer) sendEventData(event EventData) bool {
 	minRecvTime := p.sent + partTxMS + latencyMS
 	if desiredRecvTime >= minRecvTime {
 		p.node.sendEvent(event)
-		p.sent += partTxMS
+		// p.sent + latencyMS == desiredRecvTime
+		// when desiredRecvTime == minRecvTime,
+		// p.sent += partTxMS
+		p.sent = desiredRecvTime - latencyMS
 		return true
 	} else {
 		if (minRecvTime-desiredRecvTime)/partTxMS > sendQueueCapacity {
