@@ -9,12 +9,12 @@ import (
 )
 
 const seed = 0
-const numNodes = 6400 // Total number of nodes to simulate
+const numNodes = 50000 // Total number of nodes to simulate
 const numNodes8 = (numNodes + 7) / 8
 const minNumPeers = 8        // Each node should be connected to at least this many peers
 const maxNumPeers = 12       // ... and at most this many
-const latencyMS = int32(500) // One way packet latency
-const partTxMS = int32(3)    // Transmission time per peer of 100B of data.
+const latencyMS = uint16(500) // One way packet latency
+const partTxMS = uint16(3)    // Transmission time per peer of 100B of data.
 const sendQueueCapacity = 3200 // Amount of messages to queue between peers.
 const maxAllowableRank = 2   // After this, the data is considered waste.
 const tryUnsolicited = 0.02   // Chance of sending an unsolicited piece of data.
@@ -46,13 +46,13 @@ func logWrite(s string) {
 
 type Peer struct {
 	node   *Node  // Pointer to node
-	sent   int32  // Time of last packet send, including transmit time.
-	remote int    // SomeNode.peers[x].node.peers[remote].node is SomeNode for all x.
+	sent   uint16 // Time of last packet send, including transmit time.
+	remote uint8    // SomeNode.peers[x].node.peers[remote].node is SomeNode for all x.
 	wanted []byte // Bitarray of wanted pieces.
 	given  []byte // Bitarray of given pieces.
 }
 
-func newPeer(pNode *Node, remote int) *Peer {
+func newPeer(pNode *Node, remote uint8) *Peer {
 	peer := &Peer{
 		node:   pNode,
 		remote: remote,
@@ -91,7 +91,7 @@ func (p *Peer) sendEventData(event EventData) bool {
 }
 
 // Returns true if the sendQueue is not "full"
-func (p *Peer) canSendData(now int32) bool {
+func (p *Peer) canSendData(now uint16) bool {
 	return (p.sent - now) < sendQueueCapacity
 }
 
@@ -212,16 +212,16 @@ func (n *Node) String() string {
 //-----------------------------------------------------------------------------
 
 type Event interface {
-	RecvTime() int32
+	RecvTime() uint16
 }
 
 type EventData struct {
-	time int32 // time of receipt.
-	src  int   // src node's peer index on destination node
+	time uint16 // time of receipt.
+	src  uint8   // src node's peer index on destination node
 	part uint16
 }
 
-func (e EventData) RecvTime() int32 {
+func (e EventData) RecvTime() uint16 {
 	return e.time
 }
 
@@ -230,13 +230,13 @@ func (e EventData) String() string {
 }
 
 type EventDataResponse struct {
-	time int32  // time of receipt.
-	src  int    // src node's peer index on destination node.
+	time uint16 // time of receipt.
+	src  uint8    // src node's peer index on destination node.
 	part uint16 // in response to given part
 	rank uint8  // if this is 1, node was first to give peer part.
 }
 
-func (e EventDataResponse) RecvTime() int32 {
+func (e EventDataResponse) RecvTime() uint16 {
 	return e.time
 }
 
@@ -272,8 +272,8 @@ func createNetwork() []*Node {
 			// connect to nodes[pidx]
 			remote := nodes[pidx]
 			remote_j := len(remote.peers)
-			n.peers = append(n.peers, newPeer(remote, remote_j))
-			remote.peers = append(remote.peers, newPeer(n, j))
+			n.peers = append(n.peers, newPeer(remote, uint8(remote_j)))
+			remote.peers = append(remote.peers, newPeer(n, uint8(j)))
 		}
 	}
 	return nodes
@@ -289,7 +289,7 @@ func countFull(nodes []*Node) (fullCount int) {
 }
 
 type runStat struct {
-	time int32   // time for all events to propagate
+	time uint16 // time for all events to propagate
 	fill float64 // avg % of pieces gotten
 	succ float64 // % of times the sendQueue was not full
 	dups float64 // % of times that a received data was duplicate
@@ -307,7 +307,7 @@ func main() {
 
 	// Keep iterating and improving .wanted
 	for {
-		timeMS := int32(0)
+		timeMS := uint16(0)
 
 		// Each node sends a part to its peers.
 		for _, node := range nodes {
@@ -318,7 +318,7 @@ func main() {
 		// Each node sends a part to its peers.
 		for i, node := range nodes {
 			// TODO: make it staggered.
-			timeMS := int32(0) // scoped
+			timeMS := uint16(0) // scoped
 			for _, peer := range node.peers {
 				recvTime := timeMS + latencyMS + partTxMS
 				event := EventData{
@@ -513,7 +513,7 @@ func (h *Heap) Peek() interface{} {
 	return h.pq[0].value
 }
 
-func (h *Heap) Push(value interface{}, priority int32) {
+func (h *Heap) Push(value interface{}, priority uint16) {
 	heap.Push(&h.pq, &pqItem{value: value, priority: priority})
 }
 
@@ -544,7 +544,7 @@ func main() {
 
 type pqItem struct {
 	value    interface{}
-	priority int32
+	priority uint16
 	index    int
 }
 
@@ -578,7 +578,7 @@ func (pq *priorityQueue) Pop() interface{} {
 	return item
 }
 
-func (pq *priorityQueue) Update(item *pqItem, value interface{}, priority int32) {
+func (pq *priorityQueue) Update(item *pqItem, value interface{}, priority uint16) {
 	heap.Remove(pq, item.index)
 	item.value = value
 	item.priority = priority
