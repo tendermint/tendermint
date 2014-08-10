@@ -17,11 +17,11 @@ func NewRepeatTimer(dur time.Duration) *RepeatTimer {
 	var ch = make(chan struct{})
 	var quit = make(chan struct{})
 	var t = &RepeatTimer{Ch: ch, dur: dur, quit: quit}
-	t.timer = time.AfterFunc(dur, t.fireHandler)
+	t.timer = time.AfterFunc(dur, t.fireRoutine)
 	return t
 }
 
-func (t *RepeatTimer) fireHandler() {
+func (t *RepeatTimer) fireRoutine() {
 	select {
 	case t.Ch <- struct{}{}:
 		t.timer.Reset(t.dur)

@@ -28,21 +28,11 @@ func (db *LevelDB) Set(key []byte, value []byte) {
 }
 
 func (db *LevelDB) Get(key []byte) []byte {
-
-	batch := new(leveldb.Batch)
-	batch.Put([]byte("foo"), []byte("value"))
-	batch.Put([]byte("bar"), []byte("another value"))
-	batch.Delete([]byte("baz"))
-	err = db.Write(batch, nil)
-
 	res, err := db.db.Get(key, nil)
 	if err != nil {
 		panic(err)
 	}
 	return res
-}
-
-func (db *LevelDB) GetRange(key []byte, start, end int) []byte {
 }
 
 func (db *LevelDB) Delete(key []byte) {

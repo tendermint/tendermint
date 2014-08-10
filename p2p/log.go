@@ -10,6 +10,6 @@ func init() {
 	logging.SetFormatter(logging.MustStringFormatter("[%{level:.1s}] %{message}"))
 }
 
-func SetLogger(l *logging.Logger) {
+func SetP2PLogger(l *logging.Logger) {
 	log = l
 }

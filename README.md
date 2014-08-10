@@ -6,7 +6,8 @@ TenderMint - proof of concept
 
 ### Status
 
-* Block manager *now*
+* Consensus *now*
+* Block propagation *sidelined*
 * Node & testnet *complete*
 * PEX peer exchange *complete*
 * p2p/* *complete*

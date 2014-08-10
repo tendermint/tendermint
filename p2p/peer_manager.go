@@ -15,7 +15,7 @@ import (
 var pexErrInvalidMessage = errors.New("Invalid PEX message")
 
 const (
-	pexCh                    = byte(0x00)
+	PexCh                    = byte(0x00)
 	ensurePeersPeriodSeconds = 30
 	minNumOutboundPeers      = 10
 	maxNumPeers              = 50
@@ -28,10 +28,11 @@ adequate number of peers are connected to the switch.
 type PeerManager struct {
 	sw       *Switch
 	swEvents chan interface{}
-	book     *AddrBook
 	quit     chan struct{}
 	started  uint32
 	stopped  uint32
+
+	book *AddrBook
 }
 
 func NewPeerManager(sw *Switch, book *AddrBook) *PeerManager {
@@ -40,8 +41,8 @@ func NewPeerManager(sw *Switch, book *AddrBook) *PeerManager {
 	pm := &PeerManager{
 		sw:       sw,
 		swEvents: swEvents,
-		book:     book,
 		quit:     make(chan struct{}),
+		book:     book,
 	}
 	return pm
 }
@@ -49,9 +50,9 @@ func NewPeerManager(sw *Switch, book *AddrBook) *PeerManager {
 func (pm *PeerManager) Start() {
 	if atomic.CompareAndSwapUint32(&pm.started, 0, 1) {
 		log.Info("Starting PeerManager")
-		go pm.switchEventsHandler()
-		go pm.requestHandler()
-		go pm.ensurePeersHandler()
+		go pm.switchEventsRoutine()
+		go pm.requestRoutine()
+		go pm.ensurePeersRoutine()
 	}
 }
 
@@ -65,20 +66,16 @@ func (pm *PeerManager) Stop() {
 
 // Asks peer for more addresses.
 func (pm *PeerManager) RequestPEX(peer *Peer) {
-	msg := &pexRequestMessage{}
-	tm := TypedMessage{msgTypeRequest, msg}
-	peer.TrySend(pexCh, tm.Bytes())
+	peer.TrySend(PexCh, &pexRequestMessage{})
 }
 
 func (pm *PeerManager) SendAddrs(peer *Peer, addrs []*NetAddress) {
-	msg := &pexAddrsMessage{Addrs: addrs}
-	tm := TypedMessage{msgTypeAddrs, msg}
-	peer.Send(pexCh, tm.Bytes())
+	peer.Send(PexCh, &pexAddrsMessage{Addrs: addrs})
 }
 
 // For new outbound peers, announce our listener addresses if any,
 // and if .book needs more addresses, ask for them.
-func (pm *PeerManager) switchEventsHandler() {
+func (pm *PeerManager) switchEventsRoutine() {
 	for {
 		swEvent, ok := <-pm.swEvents
 		if !ok {
@@ -100,7 +97,7 @@ func (pm *PeerManager) switchEventsHandler() {
 }
 
 // Ensures that sufficient peers are connected. (continuous)
-func (pm *PeerManager) ensurePeersHandler() {
+func (pm *PeerManager) ensurePeersRoutine() {
 	// fire once immediately.
 	pm.ensurePeers()
 	// fire periodically
@@ -167,10 +164,10 @@ func (pm *PeerManager) ensurePeers() {
 }
 
 // Handles incoming PEX messages.
-func (pm *PeerManager) requestHandler() {
+func (pm *PeerManager) requestRoutine() {
 
 	for {
-		inMsg, ok := pm.sw.Receive(pexCh) // {Peer, Time, Packet}
+		inMsg, ok := pm.sw.Receive(PexCh) // {Peer, Time, Packet}
 		if !ok {
 			// Client has stopped
 			break
@@ -178,7 +175,7 @@ func (pm *PeerManager) requestHandler() {
 
 		// decode message
 		msg := decodeMessage(inMsg.Bytes)
-		log.Info("requestHandler received %v", msg)
+		log.Info("requestRoutine received %v", msg)
 
 		switch msg.(type) {
 		case *pexRequestMessage:
@@ -186,8 +183,7 @@ func (pm *PeerManager) requestHandler() {
 			// TODO: prevent abuse.
 			addrs := pm.book.GetSelection()
 			msg := &pexAddrsMessage{Addrs: addrs}
-			tm := TypedMessage{msgTypeRequest, msg}
-			queued := inMsg.MConn.Peer.TrySend(pexCh, tm.Bytes())
+			queued := inMsg.MConn.Peer.TrySend(PexCh, msg)
 			if !queued {
 				// ignore
 			}
@@ -239,7 +235,8 @@ type pexRequestMessage struct {
 }
 
 func (m *pexRequestMessage) WriteTo(w io.Writer) (n int64, err error) {
-	return // nothing to write.
+	n, err = WriteTo(msgTypeRequest, w, n, err)
+	return
 }
 
 func (m *pexRequestMessage) String() string {
@@ -266,6 +263,7 @@ func readPexAddrsMessage(r io.Reader) *pexAddrsMessage {
 }
 
 func (m *pexAddrsMessage) WriteTo(w io.Writer) (n int64, err error) {
+	n, err = WriteTo(msgTypeAddrs, w, n, err)
 	n, err = WriteTo(UInt32(len(m.Addrs)), w, n, err)
 	for _, addr := range m.Addrs {
 		n, err = WriteTo(addr, w, n, err)

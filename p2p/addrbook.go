@@ -130,7 +130,7 @@ func (a *AddrBook) Start() {
 		log.Info("Starting address manager")
 		a.loadFromFile(a.filePath)
 		a.wg.Add(1)
-		go a.saveHandler()
+		go a.saveRoutine()
 	}
 }
 
@@ -371,7 +371,7 @@ func (a *AddrBook) loadFromFile(filePath string) {
 
 /* Private methods */
 
-func (a *AddrBook) saveHandler() {
+func (a *AddrBook) saveRoutine() {
 	dumpAddressTicker := time.NewTicker(dumpAddressInterval)
 out:
 	for {

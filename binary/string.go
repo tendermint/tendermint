@@ -6,11 +6,11 @@ type String string
 
 // String
 
-func (self String) Equals(other Binary) bool {
+func (self String) Equals(other interface{}) bool {
 	return self == other
 }
 
-func (self String) Less(other Binary) bool {
+func (self String) Less(other interface{}) bool {
 	if o, ok := other.(String); ok {
 		return self < o
 	} else {

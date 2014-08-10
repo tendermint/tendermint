@@ -80,13 +80,13 @@ func NewDefaultListener(protocol string, lAddr string) Listener {
 		connections: make(chan net.Conn, numBufferedConnections),
 	}
 
-	go dl.listenHandler()
+	go dl.listenRoutine()
 
 	return dl
 }
 
 // TODO: prevent abuse, esp a bunch of connections coming from the same IP range.
-func (l *DefaultListener) listenHandler() {
+func (l *DefaultListener) listenRoutine() {
 	for {
 		conn, err := l.listener.Accept()
 

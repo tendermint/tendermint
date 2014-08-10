@@ -5,6 +5,7 @@ import (
 	"os/signal"
 
 	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/p2p"
 )
 
@@ -17,27 +18,38 @@ type Node struct {
 
 func NewNode() *Node {
 	// Define channels for our app
-	chDescs := []p2p.ChannelDescriptor{
-		p2p.ChannelDescriptor{
-			Name:           "PEX",
-			SendBufferSize: 2,
-			RecvBufferSize: 2,
+	chDescs := []*p2p.ChannelDescriptor{
+		// PEX
+		&p2p.ChannelDescriptor{
+			Id:                p2p.PexCh,
+			SendQueueCapacity: 2,
+			RecvQueueCapacity: 2,
+			RecvBufferSize:    1024,
+			DefaultPriority:   1,
 		},
-		p2p.ChannelDescriptor{
-			Name:           "block",
-			SendBufferSize: 10,
-			RecvBufferSize: 10,
+		// CONSENSUS
+		&p2p.ChannelDescriptor{
+			Id:                consensus.ProposalCh,
+			SendQueueCapacity: 2,
+			RecvQueueCapacity: 10,
+			RecvBufferSize:    10240,
+			DefaultPriority:   5,
 		},
-		p2p.ChannelDescriptor{
-			Name:           "mempool",
-			SendBufferSize: 100,
-			RecvBufferSize: 100,
+		&p2p.ChannelDescriptor{
+			Id:                consensus.KnownPartsCh,
+			SendQueueCapacity: 2,
+			RecvQueueCapacity: 10,
+			RecvBufferSize:    1024,
+			DefaultPriority:   5,
 		},
-		p2p.ChannelDescriptor{
-			Name:           "consensus",
-			SendBufferSize: 1000,
-			RecvBufferSize: 1000,
+		&p2p.ChannelDescriptor{
+			Id:                consensus.VoteCh,
+			SendQueueCapacity: 100,
+			RecvQueueCapacity: 1000,
+			RecvBufferSize:    10240,
+			DefaultPriority:   5,
 		},
+		// TODO: MEMPOOL
 	}
 	sw := p2p.NewSwitch(chDescs)
 	book := p2p.NewAddrBook(config.RootDir + "/addrbook.json")
@@ -53,7 +65,7 @@ func NewNode() *Node {
 func (n *Node) Start() {
 	log.Info("Starting node")
 	for _, l := range n.lz {
-		go n.inboundConnectionHandler(l)
+		go n.inboundConnectionRoutine(l)
 	}
 	n.sw.Start()
 	n.book.Start()
@@ -75,7 +87,7 @@ func (n *Node) AddListener(l p2p.Listener) {
 	n.book.AddOurAddress(l.ExternalAddress())
 }
 
-func (n *Node) inboundConnectionHandler(l p2p.Listener) {
+func (n *Node) inboundConnectionRoutine(l p2p.Listener) {
 	for {
 		inConn, ok := <-l.Connections()
 		if !ok {
@@ -90,7 +102,7 @@ func (n *Node) inboundConnectionHandler(l p2p.Listener) {
 		}
 		// NOTE: We don't yet have the external address of the
 		// remote (if they have a listener at all).
-		// PeerManager's pexHandler will handle that.
+		// PeerManager's pexRoutine will handle that.
 	}
 
 	// cleanup

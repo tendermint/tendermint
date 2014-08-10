@@ -11,8 +11,8 @@ type Value interface {
 
 type Key interface {
 	Binary
-	Equals(Binary) bool
-	Less(b Binary) bool
+	Equals(interface{}) bool
+	Less(b interface{}) bool
 }
 
 type Db interface {
@@ -38,6 +38,7 @@ type Tree interface {
 	Get(key Key) Value
 	Hash() (ByteSlice, uint64)
 	Save()
+	SaveKey(string)
 	Set(Key, Value) bool
 	Remove(Key) (Value, error)
 	Copy() Tree

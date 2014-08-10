@@ -1,16 +1,35 @@
 package blocks
 
 import (
-	. "github.com/tendermint/tendermint/binary"
-	"github.com/tendermint/tendermint/merkle"
+	"crypto/sha256"
+	"fmt"
 	"io"
+
+	. "github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/merkle"
 )
 
-/* Block */
+const (
+	defaultBlockPartSizeBytes = 4096
+)
+
+func CalcBlockURI(height uint32, hash []byte) string {
+	return fmt.Sprintf("%v://block/%v#%X",
+		config.Config.Network,
+		height,
+		hash,
+	)
+}
+
 type Block struct {
 	Header
 	Validation
 	Txs
+
+	// Volatile
+	hash []byte
 }
 
 func ReadBlock(r io.Reader) *Block {
@@ -21,60 +40,200 @@ func ReadBlock(r io.Reader) *Block {
 	}
 }
 
-func (self *Block) Validate() bool {
-	return false
-}
-
-func (self *Block) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteTo(&self.Header, w, n, err)
-	n, err = WriteTo(&self.Validation, w, n, err)
-	n, err = WriteTo(&self.Txs, w, n, err)
+func (b *Block) WriteTo(w io.Writer) (n int64, err error) {
+	n, err = WriteTo(&b.Header, w, n, err)
+	n, err = WriteTo(&b.Validation, w, n, err)
+	n, err = WriteTo(&b.Txs, w, n, err)
 	return
 }
 
-/* Block > Header */
+func (b *Block) ValidateBasic() error {
+	// Basic validation that doesn't involve context.
+	// XXX
+	return nil
+}
+
+func (b *Block) URI() string {
+	return CalcBlockURI(uint32(b.Height), b.Hash())
+}
+
+func (b *Block) Hash() []byte {
+	if b.hash != nil {
+		return b.hash
+	} else {
+		hashes := []Binary{
+			ByteSlice(b.Header.Hash()),
+			ByteSlice(b.Validation.Hash()),
+			ByteSlice(b.Txs.Hash()),
+		}
+		// Merkle hash from sub-hashes.
+		return merkle.HashFromBinarySlice(hashes)
+	}
+}
+
+// The returns parts must be signed afterwards.
+func (b *Block) ToBlockParts() (parts []*BlockPart) {
+	blockBytes := BinaryBytes(b)
+	total := (len(blockBytes) + defaultBlockPartSizeBytes - 1) / defaultBlockPartSizeBytes
+	for i := 0; i < total; i++ {
+		start := defaultBlockPartSizeBytes * i
+		end := MinInt(start+defaultBlockPartSizeBytes, len(blockBytes))
+		partBytes := make([]byte, end-start)
+		copy(partBytes, blockBytes[start:end]) // Do not ref the original byteslice.
+		part := &BlockPart{
+			Height:    b.Height,
+			Index:     UInt16(i),
+			Total:     UInt16(total),
+			Bytes:     partBytes,
+			Signature: Signature{}, // No signature.
+		}
+		parts = append(parts, part)
+	}
+	return parts
+}
+
+//-----------------------------------------------------------------------------
+
+/*
+BlockPart represents a chunk of the bytes of a block.
+Each block is divided into fixed length chunks (e.g. 4Kb)
+for faster propagation across the gossip network.
+*/
+type BlockPart struct {
+	Height UInt32
+	Round  UInt16 // Add Round? Well I need to know...
+	Index  UInt16
+	Total  UInt16
+	Bytes  ByteSlice
+	Signature
+
+	// Volatile
+	hash []byte
+}
+
+func ReadBlockPart(r io.Reader) *BlockPart {
+	return &BlockPart{
+		Height:    ReadUInt32(r),
+		Round:     ReadUInt16(r),
+		Index:     ReadUInt16(r),
+		Total:     ReadUInt16(r),
+		Bytes:     ReadByteSlice(r),
+		Signature: ReadSignature(r),
+	}
+}
+
+func (bp *BlockPart) WriteTo(w io.Writer) (n int64, err error) {
+	n, err = WriteTo(&bp.Height, w, n, err)
+	n, err = WriteTo(&bp.Round, w, n, err)
+	n, err = WriteTo(&bp.Index, w, n, err)
+	n, err = WriteTo(&bp.Total, w, n, err)
+	n, err = WriteTo(&bp.Bytes, w, n, err)
+	n, err = WriteTo(&bp.Signature, w, n, err)
+	return
+}
+
+func (bp *BlockPart) URI() string {
+	return fmt.Sprintf("%v://block/%v/%v[%v/%v]#%X\n",
+		config.Config.Network,
+		bp.Height,
+		bp.Round,
+		bp.Index,
+		bp.Total,
+		bp.BlockPartHash(),
+	)
+}
+
+func (bp *BlockPart) BlockPartHash() []byte {
+	if bp.hash != nil {
+		return bp.hash
+	} else {
+		hasher := sha256.New()
+		hasher.Write(bp.Bytes)
+		bp.hash = hasher.Sum(nil)
+		return bp.hash
+	}
+}
+
+// Signs the URI, which includes all data and metadata.
+// XXX implement or change
+func (bp *BlockPart) Sign(acc *PrivAccount) {
+	// TODO: populate Signature
+}
+
+// XXX maybe change.
+func (bp *BlockPart) ValidateWithSigner(signer *Account) error {
+	// TODO: Sanity check height, index, total, bytes, etc.
+	if !signer.Verify([]byte(bp.URI()), bp.Signature.Bytes) {
+		return ErrInvalidBlockPartSignature
+	}
+	return nil
+}
+
+//-----------------------------------------------------------------------------
+
+/* Header is part of a Block */
 type Header struct {
 	Name           String
-	Height         UInt64
+	Height         UInt32
 	Fees           UInt64
-	Time           UInt64
+	Time           Time
 	PrevHash       ByteSlice
 	ValidationHash ByteSlice
 	TxsHash        ByteSlice
+
+	// Volatile
+	hash []byte
 }
 
 func ReadHeader(r io.Reader) Header {
 	return Header{
 		Name:           ReadString(r),
-		Height:         ReadUInt64(r),
+		Height:         ReadUInt32(r),
 		Fees:           ReadUInt64(r),
-		Time:           ReadUInt64(r),
+		Time:           ReadTime(r),
 		PrevHash:       ReadByteSlice(r),
 		ValidationHash: ReadByteSlice(r),
 		TxsHash:        ReadByteSlice(r),
 	}
 }
 
-func (self *Header) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteTo(self.Name, w, n, err)
-	n, err = WriteTo(self.Height, w, n, err)
-	n, err = WriteTo(self.Fees, w, n, err)
-	n, err = WriteTo(self.Time, w, n, err)
-	n, err = WriteTo(self.PrevHash, w, n, err)
-	n, err = WriteTo(self.ValidationHash, w, n, err)
-	n, err = WriteTo(self.TxsHash, w, n, err)
+func (h *Header) WriteTo(w io.Writer) (n int64, err error) {
+	n, err = WriteTo(h.Name, w, n, err)
+	n, err = WriteTo(h.Height, w, n, err)
+	n, err = WriteTo(h.Fees, w, n, err)
+	n, err = WriteTo(h.Time, w, n, err)
+	n, err = WriteTo(h.PrevHash, w, n, err)
+	n, err = WriteTo(h.ValidationHash, w, n, err)
+	n, err = WriteTo(h.TxsHash, w, n, err)
 	return
 }
 
-/* Block > Validation */
+func (h *Header) Hash() []byte {
+	if h.hash != nil {
+		return h.hash
+	} else {
+		hasher := sha256.New()
+		_, err := h.WriteTo(hasher)
+		if err != nil {
+			panic(err)
+		}
+		h.hash = hasher.Sum(nil)
+		return h.hash
+	}
+}
+
+/* Validation is part of a block */
 type Validation struct {
 	Signatures  []Signature
 	Adjustments []Adjustment
+
+	// Volatile
+	hash []byte
 }
 
 func ReadValidation(r io.Reader) Validation {
-	numSigs := int(ReadUInt64(r))
-	numAdjs := int(ReadUInt64(r))
+	numSigs := int(ReadUInt32(r))
+	numAdjs := int(ReadUInt32(r))
 	sigs := make([]Signature, 0, numSigs)
 	for i := 0; i < numSigs; i++ {
 		sigs = append(sigs, ReadSignature(r))
@@ -89,44 +248,66 @@ func ReadValidation(r io.Reader) Validation {
 	}
 }
 
-func (self *Validation) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteTo(UInt64(len(self.Signatures)), w, n, err)
-	n, err = WriteTo(UInt64(len(self.Adjustments)), w, n, err)
-	for _, sig := range self.Signatures {
+func (v *Validation) WriteTo(w io.Writer) (n int64, err error) {
+	n, err = WriteTo(UInt32(len(v.Signatures)), w, n, err)
+	n, err = WriteTo(UInt32(len(v.Adjustments)), w, n, err)
+	for _, sig := range v.Signatures {
 		n, err = WriteTo(sig, w, n, err)
 	}
-	for _, adj := range self.Adjustments {
+	for _, adj := range v.Adjustments {
 		n, err = WriteTo(adj, w, n, err)
 	}
 	return
 }
 
-/* Block > Txs */
+func (v *Validation) Hash() []byte {
+	if v.hash != nil {
+		return v.hash
+	} else {
+		hasher := sha256.New()
+		_, err := v.WriteTo(hasher)
+		if err != nil {
+			panic(err)
+		}
+		v.hash = hasher.Sum(nil)
+		return v.hash
+	}
+}
+
+/* Txs is part of a block */
 type Txs struct {
 	Txs []Tx
+
+	// Volatile
+	hash []byte
 }
 
 func ReadTxs(r io.Reader) Txs {
-	numTxs := int(ReadUInt64(r))
+	numTxs := int(ReadUInt32(r))
 	txs := make([]Tx, 0, numTxs)
 	for i := 0; i < numTxs; i++ {
 		txs = append(txs, ReadTx(r))
 	}
-	return Txs{txs}
+	return Txs{Txs: txs}
 }
 
-func (self *Txs) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteTo(UInt64(len(self.Txs)), w, n, err)
-	for _, tx := range self.Txs {
+func (txs *Txs) WriteTo(w io.Writer) (n int64, err error) {
+	n, err = WriteTo(UInt32(len(txs.Txs)), w, n, err)
+	for _, tx := range txs.Txs {
 		n, err = WriteTo(tx, w, n, err)
 	}
 	return
 }
 
-func (self *Txs) MerkleHash() ByteSlice {
-	bs := make([]Binary, 0, len(self.Txs))
-	for i, tx := range self.Txs {
-		bs[i] = Binary(tx)
+func (txs *Txs) Hash() []byte {
+	if txs.hash != nil {
+		return txs.hash
+	} else {
+		bs := make([]Binary, 0, len(txs.Txs))
+		for i, tx := range txs.Txs {
+			bs[i] = Binary(tx)
+		}
+		txs.hash = merkle.HashFromBinarySlice(bs)
+		return txs.hash
 	}
-	return merkle.HashFromBinarySlice(bs)
 }

@@ -30,6 +30,19 @@ func NewIAVLTreeFromHash(db Db, hash ByteSlice) *IAVLTree {
 	return &IAVLTree{db: db, root: root}
 }
 
+func NewIAVLTreeFromKey(db Db, key string) *IAVLTree {
+	hash := db.Get([]byte(key))
+	if hash == nil {
+		return nil
+	}
+	root := &IAVLNode{
+		hash:  hash,
+		flags: IAVLNODE_FLAG_PERSISTED | IAVLNODE_FLAG_PLACEHOLDER,
+	}
+	root.fill(db)
+	return &IAVLTree{db: db, root: root}
+}
+
 func (t *IAVLTree) Root() Node {
 	return t.root
 }
@@ -75,10 +88,17 @@ func (t *IAVLTree) Save() {
 	if t.root == nil {
 		return
 	}
-	if t.root.hash == nil {
-		t.root.Hash()
-	}
+	t.root.Hash()
 	t.root.Save(t.db)
+}
+
+func (t *IAVLTree) SaveKey(key string) {
+	if t.root == nil {
+		return
+	}
+	hash, _ := t.root.Hash()
+	t.root.Save(t.db)
+	t.db.Set([]byte(key), hash)
 }
 
 func (t *IAVLTree) Get(key Key) (value Value) {

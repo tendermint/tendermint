@@ -5,7 +5,7 @@ import "bytes"
 
 type ByteSlice []byte
 
-func (self ByteSlice) Equals(other Binary) bool {
+func (self ByteSlice) Equals(other interface{}) bool {
 	if o, ok := other.(ByteSlice); ok {
 		return bytes.Equal(self, o)
 	} else {
@@ -13,7 +13,7 @@ func (self ByteSlice) Equals(other Binary) bool {
 	}
 }
 
-func (self ByteSlice) Less(other Binary) bool {
+func (self ByteSlice) Less(other interface{}) bool {
 	if o, ok := other.(ByteSlice); ok {
 		return bytes.Compare(self, o) < 0 // -1 if a < b
 	} else {

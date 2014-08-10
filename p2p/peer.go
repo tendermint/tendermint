@@ -55,23 +55,23 @@ func (p *Peer) IsOutbound() bool {
 	return p.outbound
 }
 
-func (p *Peer) Send(chId byte, bytes ByteSlice) bool {
+func (p *Peer) Send(chId byte, msg Binary) bool {
 	if atomic.LoadUint32(&p.stopped) == 1 {
 		return false
 	}
-	return p.mconn.Send(chId, bytes)
+	return p.mconn.Send(chId, BinaryBytes(msg))
 }
 
-func (p *Peer) TrySend(chId byte, bytes ByteSlice) bool {
+func (p *Peer) TrySend(chId byte, msg Binary) bool {
 	if atomic.LoadUint32(&p.stopped) == 1 {
 		return false
 	}
-	return p.mconn.TrySend(chId, bytes)
+	return p.mconn.TrySend(chId, BinaryBytes(msg))
 }
 
-func (o *Peer) CanSend(chId byte) int {
+func (p *Peer) CanSend(chId byte) bool {
 	if atomic.LoadUint32(&p.stopped) == 1 {
-		return 0
+		return false
 	}
 	return p.mconn.CanSend(chId)
 }

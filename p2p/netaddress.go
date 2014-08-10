@@ -71,7 +71,7 @@ func (na *NetAddress) WriteTo(w io.Writer) (n int64, err error) {
 	return
 }
 
-func (na *NetAddress) Equals(other Binary) bool {
+func (na *NetAddress) Equals(other interface{}) bool {
 	if o, ok := other.(*NetAddress); ok {
 		return na.String() == o.String()
 	} else {
@@ -79,7 +79,7 @@ func (na *NetAddress) Equals(other Binary) bool {
 	}
 }
 
-func (na *NetAddress) Less(other Binary) bool {
+func (na *NetAddress) Less(other interface{}) bool {
 	if o, ok := other.(*NetAddress); ok {
 		return na.String() < o.String()
 	} else {

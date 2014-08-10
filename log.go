@@ -4,7 +4,8 @@ import (
 	"os"
 
 	"github.com/op/go-logging"
-	"github.com/tendermint/tendermint/block"
+	"github.com/tendermint/tendermint/blocks"
+	"github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/p2p"
 )
 
@@ -27,6 +28,7 @@ func init() {
 	   Log.Error("error")
 	*/
 
-	p2p.SetLogger(log)
-	block.SetLogger(log)
+	p2p.SetP2PLogger(log)
+	blocks.SetBlocksLogger(log)
+	consensus.SetConsensusLogger(log)
 }

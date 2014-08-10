@@ -1,15 +1,15 @@
-package blocks
+package consensus
 
 import (
 	"github.com/op/go-logging"
 )
 
-var log = logging.MustGetLogger("block")
+var log = logging.MustGetLogger("consensus")
 
 func init() {
 	logging.SetFormatter(logging.MustStringFormatter("[%{level:.1s}] %{message}"))
 }
 
-func SetBlocksLogger(l *logging.Logger) {
+func SetConsensusLogger(l *logging.Logger) {
 	log = l
 }

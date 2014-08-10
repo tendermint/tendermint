@@ -67,8 +67,9 @@ func init() {
 /* Default configuration */
 
 var defaultConfig = Config_{
-	LAddr: "0.0.0.0:0",
-	Seed:  "",
+	Network: "tendermint_testnet0",
+	LAddr:   "0.0.0.0:0",
+	Seed:    "",
 	Db: DbConfig{
 		Type: "level",
 		Dir:  RootDir + "/data",
@@ -79,10 +80,11 @@ var defaultConfig = Config_{
 /* Configuration types */
 
 type Config_ struct {
-	LAddr  string
-	Seed   string
-	Db     DbConfig
-	Twilio TwilioConfig
+	Network string
+	LAddr   string
+	Seed    string
+	Db      DbConfig
+	Twilio  TwilioConfig
 }
 
 type TwilioConfig struct {
@@ -99,6 +101,9 @@ type DbConfig struct {
 }
 
 func (cfg *Config_) validate() error {
+	if cfg.Network == "" {
+		cfg.Network = defaultConfig.Network
+	}
 	if cfg.LAddr == "" {
 		cfg.LAddr = defaultConfig.LAddr
 	}

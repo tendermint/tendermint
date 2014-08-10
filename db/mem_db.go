@@ -21,9 +21,6 @@ func (db *MemDB) Get(key []byte) []byte {
 	return db.db[string(key)]
 }
 
-func (db *MemDB) GetRange(key []byte, start, end int) []byte {
-}
-
 func (db *MemDB) Delete(key []byte) {
 	delete(db.db, string(key))
 }

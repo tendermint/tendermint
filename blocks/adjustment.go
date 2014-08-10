@@ -15,7 +15,6 @@ import (
 
 TODO: signing a bad checkpoint (block)
 */
-
 type Adjustment interface {
 	Type() Byte
 	Binary
@@ -33,7 +32,7 @@ func ReadAdjustment(r io.Reader) Adjustment {
 	case ADJ_TYPE_BOND:
 		return &Bond{
 			Fee:       ReadUInt64(r),
-			UnbondTo:  ReadAccountId(r),
+			UnbondTo:  ReadUInt64(r),
 			Amount:    ReadUInt64(r),
 			Signature: ReadSignature(r),
 		}
@@ -45,13 +44,13 @@ func ReadAdjustment(r io.Reader) Adjustment {
 		}
 	case ADJ_TYPE_TIMEOUT:
 		return &Timeout{
-			Account: ReadAccountId(r),
+			Account: ReadUInt64(r),
 			Penalty: ReadUInt64(r),
 		}
 	case ADJ_TYPE_DUPEOUT:
 		return &Dupeout{
-			VoteA: ReadVote(r),
-			VoteB: ReadVote(r),
+			VoteA: ReadBlockVote(r),
+			VoteB: ReadBlockVote(r),
 		}
 	default:
 		Panicf("Unknown Adjustment type %x", t)
@@ -59,11 +58,12 @@ func ReadAdjustment(r io.Reader) Adjustment {
 	}
 }
 
-/* Bond < Adjustment */
+//-----------------------------------------------------------------------------
 
+/* Bond < Adjustment */
 type Bond struct {
 	Fee      UInt64
-	UnbondTo AccountId
+	UnbondTo UInt64
 	Amount   UInt64
 	Signature
 }
@@ -81,8 +81,9 @@ func (self *Bond) WriteTo(w io.Writer) (n int64, err error) {
 	return
 }
 
-/* Unbond < Adjustment */
+//-----------------------------------------------------------------------------
 
+/* Unbond < Adjustment */
 type Unbond struct {
 	Fee    UInt64
 	Amount UInt64
@@ -101,10 +102,11 @@ func (self *Unbond) WriteTo(w io.Writer) (n int64, err error) {
 	return
 }
 
-/* Timeout < Adjustment */
+//-----------------------------------------------------------------------------
 
+/* Timeout < Adjustment */
 type Timeout struct {
-	Account AccountId
+	Account UInt64
 	Penalty UInt64
 }
 
@@ -119,11 +121,37 @@ func (self *Timeout) WriteTo(w io.Writer) (n int64, err error) {
 	return
 }
 
-/* Dupeout < Adjustment */
+//-----------------------------------------------------------------------------
 
+/*
+The full vote structure is only needed when presented as evidence.
+Typically only the signature is passed around, as the hash & height are implied.
+*/
+type BlockVote struct {
+	Height    UInt64
+	BlockHash ByteSlice
+	Signature
+}
+
+func ReadBlockVote(r io.Reader) BlockVote {
+	return BlockVote{
+		Height:    ReadUInt64(r),
+		BlockHash: ReadByteSlice(r),
+		Signature: ReadSignature(r),
+	}
+}
+
+func (self BlockVote) WriteTo(w io.Writer) (n int64, err error) {
+	n, err = WriteTo(self.Height, w, n, err)
+	n, err = WriteTo(self.BlockHash, w, n, err)
+	n, err = WriteTo(self.Signature, w, n, err)
+	return
+}
+
+/* Dupeout < Adjustment */
 type Dupeout struct {
-	VoteA Vote
-	VoteB Vote
+	VoteA BlockVote
+	VoteB BlockVote
 }
 
 func (self *Dupeout) Type() Byte {

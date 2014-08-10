@@ -2,30 +2,12 @@ package common
 
 import (
 	"container/heap"
+	"sync"
 )
 
-type Heap struct {
-	pq priorityQueue
-}
-
-func NewHeap() *Heap {
-	return &Heap{pq: make([]*pqItem, 0)}
-}
-
-func (h *Heap) Len() int64 {
-	return len(h.pq)
-}
-
-func (h *Heap) Push(value interface{}, priority int64) {
-	heap.Push(&h.pq, &pqItem{value: value, priority: priority})
-}
-
-func (h *Heap) Pop() interface{} {
-	item := heap.Pop(&h.pq).(*pqItem)
-	return item.value
-}
-
 /*
+Example usage:
+
 func main() {
     h := NewHeap()
 
@@ -39,12 +21,87 @@ func main() {
 }
 */
 
+type Comparable interface {
+	Less(o interface{}) bool
+}
+
+//-----------------------------------------------------------------------------
+
+type Heap struct {
+	pq priorityQueue
+}
+
+func NewHeap() *Heap {
+	return &Heap{pq: make([]*pqItem, 0)}
+}
+
+func (h *Heap) Len() int64 {
+	return int64(len(h.pq))
+}
+
+func (h *Heap) Push(value interface{}, priority Comparable) {
+	heap.Push(&h.pq, &pqItem{value: value, priority: priority})
+}
+
+func (h *Heap) Peek() interface{} {
+	if len(h.pq) == 0 {
+		return nil
+	}
+	return h.pq[0].value
+}
+
+func (h *Heap) Pop() interface{} {
+	item := heap.Pop(&h.pq).(*pqItem)
+	return item.value
+}
+
+//-----------------------------------------------------------------------------
+
+type CHeap struct {
+	mtx sync.Mutex
+	pq  priorityQueue
+}
+
+func NewCHeap() *CHeap {
+	return &CHeap{pq: make([]*pqItem, 0)}
+}
+
+func (h *CHeap) Len() int64 {
+	h.mtx.Lock()
+	defer h.mtx.Unlock()
+	return int64(len(h.pq))
+}
+
+func (h *CHeap) Push(value interface{}, priority Comparable) {
+	h.mtx.Lock()
+	defer h.mtx.Unlock()
+	heap.Push(&h.pq, &pqItem{value: value, priority: priority})
+}
+
+func (h *CHeap) Peek() interface{} {
+	h.mtx.Lock()
+	defer h.mtx.Unlock()
+	if len(h.pq) == 0 {
+		return nil
+	}
+	return h.pq[0].value
+}
+
+func (h *CHeap) Pop() interface{} {
+	h.mtx.Lock()
+	defer h.mtx.Unlock()
+	item := heap.Pop(&h.pq).(*pqItem)
+	return item.value
+}
+
+//-----------------------------------------------------------------------------
+
 ///////////////////////
 // From: http://golang.org/pkg/container/heap/#example__priorityQueue
 
 type pqItem struct {
 	value    interface{}
-	priority int64
+	priority Comparable
 	index    int
 }
 
@@ -53,7 +110,7 @@ type priorityQueue []*pqItem
 func (pq priorityQueue) Len() int { return len(pq) }
 
 func (pq priorityQueue) Less(i, j int) bool {
-	return pq[i].priority < pq[j].priority
+	return pq[i].priority.Less(pq[j].priority)
 }
 
 func (pq priorityQueue) Swap(i, j int) {
@@ -78,7 +135,7 @@ func (pq *priorityQueue) Pop() interface{} {
 	return item
 }
 
-func (pq *priorityQueue) Update(item *pqItem, value interface{}, priority int64) {
+func (pq *priorityQueue) Update(item *pqItem, value interface{}, priority Comparable) {
 	heap.Remove(pq, item.index)
 	item.value = value
 	item.priority = priority

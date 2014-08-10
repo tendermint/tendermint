@@ -29,7 +29,7 @@ const (
 
 /*
 A MConnection wraps a network connection and handles buffering and multiplexing.
-ByteSlices are sent with ".Send(channelId, bytes)".
+Binary messages are sent with ".Send(channelId, msg)".
 Inbound ByteSlices are pushed to the designated chan<- InboundBytes.
 */
 type MConnection struct {
@@ -98,8 +98,8 @@ func NewMConnection(conn net.Conn, chDescs []*ChannelDescriptor, onError func(in
 func (c *MConnection) Start() {
 	if atomic.CompareAndSwapUint32(&c.started, 0, 1) {
 		log.Debug("Starting %v", c)
-		go c.sendHandler()
-		go c.recvHandler()
+		go c.sendRoutine()
+		go c.recvRoutine()
 	}
 }
 
@@ -112,9 +112,9 @@ func (c *MConnection) Stop() {
 		c.chStatsTimer.Stop()
 		c.pingTimer.Stop()
 		// We can't close pong safely here because
-		// recvHandler may write to it after we've stopped.
+		// recvRoutine may write to it after we've stopped.
 		// Though it doesn't need to get closed at all,
-		// we close it @ recvHandler.
+		// we close it @ recvRoutine.
 		// close(c.pong)
 	}
 }
@@ -149,7 +149,7 @@ func (c *MConnection) stopForError(r interface{}) {
 }
 
 // Queues a message to be sent to channel.
-func (c *MConnection) Send(chId byte, bytes ByteSlice) bool {
+func (c *MConnection) Send(chId byte, msg Binary) bool {
 	if atomic.LoadUint32(&c.stopped) == 1 {
 		return false
 	}
@@ -161,9 +161,9 @@ func (c *MConnection) Send(chId byte, bytes ByteSlice) bool {
 		return false
 	}
 
-	channel.sendBytes(bytes)
+	channel.sendBytes(BinaryBytes(msg))
 
-	// Wake up sendHandler if necessary
+	// Wake up sendRoutine if necessary
 	select {
 	case c.send <- struct{}{}:
 	default:
@@ -174,7 +174,7 @@ func (c *MConnection) Send(chId byte, bytes ByteSlice) bool {
 
 // Queues a message to be sent to channel.
 // Nonblocking, returns true if successful.
-func (c *MConnection) TrySend(chId byte, bytes ByteSlice) bool {
+func (c *MConnection) TrySend(chId byte, msg Binary) bool {
 	if atomic.LoadUint32(&c.stopped) == 1 {
 		return false
 	}
@@ -186,9 +186,9 @@ func (c *MConnection) TrySend(chId byte, bytes ByteSlice) bool {
 		return false
 	}
 
-	ok = channel.trySendBytes(bytes)
+	ok = channel.trySendBytes(BinaryBytes(msg))
 	if ok {
-		// Wake up sendHandler if necessary
+		// Wake up sendRoutine if necessary
 		select {
 		case c.send <- struct{}{}:
 		default:
@@ -206,13 +206,13 @@ func (c *MConnection) CanSend(chId byte) bool {
 	channel, ok := c.channelsIdx[chId]
 	if !ok {
 		log.Error("Unknown channel %X", chId)
-		return 0
+		return false
 	}
 	return channel.canSend()
 }
 
-// sendHandler polls for packets to send from channels.
-func (c *MConnection) sendHandler() {
+// sendRoutine polls for packets to send from channels.
+func (c *MConnection) sendRoutine() {
 	defer c._recover()
 
 FOR_LOOP:
@@ -243,7 +243,7 @@ FOR_LOOP:
 			// Send some packets
 			eof := c.sendSomePackets()
 			if !eof {
-				// Keep sendHandler awake.
+				// Keep sendRoutine awake.
 				select {
 				case c.send <- struct{}{}:
 				default:
@@ -255,7 +255,7 @@ FOR_LOOP:
 			break FOR_LOOP
 		}
 		if err != nil {
-			log.Info("%v failed @ sendHandler:\n%v", c, err)
+			log.Info("%v failed @ sendRoutine:\n%v", c, err)
 			c.Stop()
 			break FOR_LOOP
 		}
@@ -319,10 +319,10 @@ func (c *MConnection) sendPacket() bool {
 	return false
 }
 
-// recvHandler reads packets and reconstructs the message using the channels' "recving" buffer.
+// recvRoutine reads packets and reconstructs the message using the channels' "recving" buffer.
 // After a whole message has been assembled, it's pushed to the Channel's recvQueue.
 // Blocks depending on how the connection is throttled.
-func (c *MConnection) recvHandler() {
+func (c *MConnection) recvRoutine() {
 	defer c._recover()
 
 FOR_LOOP:
@@ -335,7 +335,7 @@ FOR_LOOP:
 		c.recvMonitor.Update(int(n))
 		if err != nil {
 			if atomic.LoadUint32(&c.stopped) != 1 {
-				log.Info("%v failed @ recvHandler with err: %v", c, err)
+				log.Info("%v failed @ recvRoutine with err: %v", c, err)
 				c.Stop()
 			}
 			break FOR_LOOP
@@ -346,7 +346,7 @@ FOR_LOOP:
 			numBytes := c.bufReader.Buffered()
 			bytes, err := c.bufReader.Peek(MinInt(numBytes, 100))
 			if err != nil {
-				log.Debug("recvHandler packet type %X, peeked: %X", pktType, bytes)
+				log.Debug("recvRoutine packet type %X, peeked: %X", pktType, bytes)
 			}
 		}
 
@@ -362,7 +362,7 @@ FOR_LOOP:
 			c.recvMonitor.Update(int(n))
 			if err != nil {
 				if atomic.LoadUint32(&c.stopped) != 1 {
-					log.Info("%v failed @ recvHandler", c)
+					log.Info("%v failed @ recvRoutine", c)
 					c.Stop()
 				}
 				break FOR_LOOP
@@ -376,7 +376,7 @@ FOR_LOOP:
 			Panicf("Unknown message type %v", pktType)
 		}
 
-		// TODO: shouldn't this go in the sendHandler?
+		// TODO: shouldn't this go in the sendRoutine?
 		// Better to send a packet when *we* haven't sent anything for a while.
 		c.pingTimer.Reset()
 	}
@@ -453,14 +453,14 @@ func (ch *Channel) trySendBytes(bytes ByteSlice) bool {
 }
 
 // Goroutine-safe
-func (ch *Channel) sendQueueSize() (size int) {
+func (ch *Channel) loadSendQueueSize() (size int) {
 	return int(atomic.LoadUint32(&ch.sendQueueSize))
 }
 
 // Goroutine-safe
 // Use only as a heuristic.
 func (ch *Channel) canSend() bool {
-	return ch.sendQueueSize() < ch.desc.SendQueueCapacity
+	return ch.loadSendQueueSize() < ch.desc.SendQueueCapacity
 }
 
 // Returns true if any packets are pending to be sent.

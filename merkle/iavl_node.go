@@ -103,7 +103,7 @@ func (self *IAVLNode) Hash() (ByteSlice, uint64) {
 	}
 
 	hasher := sha256.New()
-	_, hashCount, err := self.saveToCountHashes(hasher, false)
+	_, hashCount, err := self.saveToCountHashes(hasher)
 	if err != nil {
 		panic(err)
 	}
@@ -215,43 +215,42 @@ func (self *IAVLNode) remove(db Db, key Key) (newSelf *IAVLNode, newKey Key, val
 }
 
 func (self *IAVLNode) WriteTo(w io.Writer) (n int64, err error) {
-	n, _, err = self.saveToCountHashes(w, true)
+	n, _, err = self.saveToCountHashes(w)
 	return
 }
 
-func (self *IAVLNode) saveToCountHashes(w io.Writer, meta bool) (n int64, hashCount uint64, err error) {
+func (self *IAVLNode) saveToCountHashes(w io.Writer) (n int64, hashCount uint64, err error) {
 	var _n int64
 
-	if meta {
-		// height & size
-		_n, err = UInt8(self.height).WriteTo(w)
-		if err != nil {
-			return
-		} else {
-			n += _n
-		}
-		_n, err = UInt64(self.size).WriteTo(w)
-		if err != nil {
-			return
-		} else {
-			n += _n
-		}
-
-		// key
-		_n, err = Byte(GetBinaryType(self.key)).WriteTo(w)
-		if err != nil {
-			return
-		} else {
-			n += _n
-		}
-		_n, err = self.key.WriteTo(w)
-		if err != nil {
-			return
-		} else {
-			n += _n
-		}
+	// height & size
+	_n, err = UInt8(self.height).WriteTo(w)
+	if err != nil {
+		return
+	} else {
+		n += _n
+	}
+	_n, err = UInt64(self.size).WriteTo(w)
+	if err != nil {
+		return
+	} else {
+		n += _n
 	}
 
+	// key
+	_n, err = Byte(GetBinaryType(self.key)).WriteTo(w)
+	if err != nil {
+		return
+	} else {
+		n += _n
+	}
+	_n, err = self.key.WriteTo(w)
+	if err != nil {
+		return
+	} else {
+		n += _n
+	}
+
+	// value or children
 	if self.height == 0 {
 		// value
 		_n, err = Byte(GetBinaryType(self.value)).WriteTo(w)

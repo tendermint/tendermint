@@ -23,12 +23,12 @@ func NewThrottleTimer(dur time.Duration) *ThrottleTimer {
 	var ch = make(chan struct{})
 	var quit = make(chan struct{})
 	var t = &ThrottleTimer{Ch: ch, dur: dur, quit: quit}
-	t.timer = time.AfterFunc(dur, t.fireHandler)
+	t.timer = time.AfterFunc(dur, t.fireRoutine)
 	t.timer.Stop()
 	return t
 }
 
-func (t *ThrottleTimer) fireHandler() {
+func (t *ThrottleTimer) fireRoutine() {
 	select {
 	case t.Ch <- struct{}{}:
 		atomic.StoreUint32(&t.isSet, 0)

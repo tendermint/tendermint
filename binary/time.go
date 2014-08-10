@@ -9,7 +9,7 @@ type Time struct {
 	time.Time
 }
 
-func (self Time) Equals(other Binary) bool {
+func (self Time) Equals(other interface{}) bool {
 	if o, ok := other.(Time); ok {
 		return self.Equal(o.Time)
 	} else {
@@ -17,7 +17,7 @@ func (self Time) Equals(other Binary) bool {
 	}
 }
 
-func (self Time) Less(other Binary) bool {
+func (self Time) Less(other interface{}) bool {
 	if o, ok := other.(Time); ok {
 		return self.Before(o.Time)
 	} else {

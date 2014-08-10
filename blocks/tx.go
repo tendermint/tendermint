@@ -35,7 +35,7 @@ func ReadTx(r io.Reader) Tx {
 	case TX_TYPE_SEND:
 		return &SendTx{
 			Fee:       ReadUInt64(r),
-			To:        ReadAccountId(r),
+			To:        ReadUInt64(r),
 			Amount:    ReadUInt64(r),
 			Signature: ReadSignature(r),
 		}
@@ -56,7 +56,7 @@ func ReadTx(r io.Reader) Tx {
 
 type SendTx struct {
 	Fee    UInt64
-	To     AccountId
+	To     UInt64
 	Amount UInt64
 	Signature
 }

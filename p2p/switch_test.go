@@ -111,7 +111,7 @@ func BenchmarkSwitches(b *testing.B) {
 	defer s2.Stop()
 
 	// Create a sink on either channel to just pop off messages.
-	recvHandler := func(c *Switch, chId byte) {
+	recvRoutine := func(c *Switch, chId byte) {
 		for {
 			_, ok := c.Receive(chId)
 			if !ok {
@@ -122,8 +122,8 @@ func BenchmarkSwitches(b *testing.B) {
 
 	// Create routines to consume from recvQueues.
 	for _, chDesc := range chDescs {
-		go recvHandler(s1, chDesc.Id)
-		go recvHandler(s2, chDesc.Id)
+		go recvRoutine(s1, chDesc.Id)
+		go recvRoutine(s2, chDesc.Id)
 	}
 
 	// Allow time for goroutines to boot up

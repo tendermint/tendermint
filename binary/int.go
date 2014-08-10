@@ -19,11 +19,11 @@ type UInt uint
 
 // Byte
 
-func (self Byte) Equals(other Binary) bool {
+func (self Byte) Equals(other interface{}) bool {
 	return self == other
 }
 
-func (self Byte) Less(other Binary) bool {
+func (self Byte) Less(other interface{}) bool {
 	if o, ok := other.(Byte); ok {
 		return self < o
 	} else {
@@ -67,11 +67,11 @@ func ReadByte(r io.Reader) Byte {
 
 // Int8
 
-func (self Int8) Equals(other Binary) bool {
+func (self Int8) Equals(other interface{}) bool {
 	return self == other
 }
 
-func (self Int8) Less(other Binary) bool {
+func (self Int8) Less(other interface{}) bool {
 	if o, ok := other.(Int8); ok {
 		return self < o
 	} else {
@@ -115,11 +115,11 @@ func ReadInt8(r io.Reader) Int8 {
 
 // UInt8
 
-func (self UInt8) Equals(other Binary) bool {
+func (self UInt8) Equals(other interface{}) bool {
 	return self == other
 }
 
-func (self UInt8) Less(other Binary) bool {
+func (self UInt8) Less(other interface{}) bool {
 	if o, ok := other.(UInt8); ok {
 		return self < o
 	} else {
@@ -163,11 +163,11 @@ func ReadUInt8(r io.Reader) UInt8 {
 
 // Int16
 
-func (self Int16) Equals(other Binary) bool {
+func (self Int16) Equals(other interface{}) bool {
 	return self == other
 }
 
-func (self Int16) Less(other Binary) bool {
+func (self Int16) Less(other interface{}) bool {
 	if o, ok := other.(Int16); ok {
 		return self < o
 	} else {
@@ -213,11 +213,11 @@ func ReadInt16(r io.Reader) Int16 {
 
 // UInt16
 
-func (self UInt16) Equals(other Binary) bool {
+func (self UInt16) Equals(other interface{}) bool {
 	return self == other
 }
 
-func (self UInt16) Less(other Binary) bool {
+func (self UInt16) Less(other interface{}) bool {
 	if o, ok := other.(UInt16); ok {
 		return self < o
 	} else {
@@ -263,11 +263,11 @@ func ReadUInt16(r io.Reader) UInt16 {
 
 // Int32
 
-func (self Int32) Equals(other Binary) bool {
+func (self Int32) Equals(other interface{}) bool {
 	return self == other
 }
 
-func (self Int32) Less(other Binary) bool {
+func (self Int32) Less(other interface{}) bool {
 	if o, ok := other.(Int32); ok {
 		return self < o
 	} else {
@@ -313,11 +313,11 @@ func ReadInt32(r io.Reader) Int32 {
 
 // UInt32
 
-func (self UInt32) Equals(other Binary) bool {
+func (self UInt32) Equals(other interface{}) bool {
 	return self == other
 }
 
-func (self UInt32) Less(other Binary) bool {
+func (self UInt32) Less(other interface{}) bool {
 	if o, ok := other.(UInt32); ok {
 		return self < o
 	} else {
@@ -363,11 +363,11 @@ func ReadUInt32(r io.Reader) UInt32 {
 
 // Int64
 
-func (self Int64) Equals(other Binary) bool {
+func (self Int64) Equals(other interface{}) bool {
 	return self == other
 }
 
-func (self Int64) Less(other Binary) bool {
+func (self Int64) Less(other interface{}) bool {
 	if o, ok := other.(Int64); ok {
 		return self < o
 	} else {
@@ -413,11 +413,11 @@ func ReadInt64(r io.Reader) Int64 {
 
 // UInt64
 
-func (self UInt64) Equals(other Binary) bool {
+func (self UInt64) Equals(other interface{}) bool {
 	return self == other
 }
 
-func (self UInt64) Less(other Binary) bool {
+func (self UInt64) Less(other interface{}) bool {
 	if o, ok := other.(UInt64); ok {
 		return self < o
 	} else {
