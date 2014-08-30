@@ -82,8 +82,8 @@ func (b *Block) ToBlockParts() (parts []*BlockPart) {
 		copy(partBytes, blockBytes[start:end]) // Do not ref the original byteslice.
 		part := &BlockPart{
 			Height:    b.Height,
-			Index:     UInt16(i),
-			Total:     UInt16(total),
+			Index:     uint16(i),
+			Total:     uint16(total),
 			Bytes:     partBytes,
 			Signature: Signature{}, // No signature.
 		}
@@ -100,10 +100,10 @@ Each block is divided into fixed length chunks (e.g. 4Kb)
 for faster propagation across the gossip network.
 */
 type BlockPart struct {
-	Height UInt32
-	Round  UInt16 // Add Round? Well I need to know...
-	Index  UInt16
-	Total  UInt16
+	Height uint32
+	Round  uint16 // Add Round? Well I need to know...
+	Index  uint16
+	Total  uint16
 	Bytes  ByteSlice
 	Signature
 
@@ -113,22 +113,22 @@ type BlockPart struct {
 
 func ReadBlockPart(r io.Reader) *BlockPart {
 	return &BlockPart{
-		Height:    ReadUInt32(r),
-		Round:     ReadUInt16(r),
-		Index:     ReadUInt16(r),
-		Total:     ReadUInt16(r),
+		Height:    Readuint32(r),
+		Round:     Readuint16(r),
+		Index:     Readuint16(r),
+		Total:     Readuint16(r),
 		Bytes:     ReadByteSlice(r),
 		Signature: ReadSignature(r),
 	}
 }
 
 func (bp *BlockPart) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteTo(&bp.Height, w, n, err)
-	n, err = WriteTo(&bp.Round, w, n, err)
-	n, err = WriteTo(&bp.Index, w, n, err)
-	n, err = WriteTo(&bp.Total, w, n, err)
-	n, err = WriteTo(&bp.Bytes, w, n, err)
-	n, err = WriteTo(&bp.Signature, w, n, err)
+	n, err = WriteTo(UInt32(bp.Height), w, n, err)
+	n, err = WriteTo(UInt16(bp.Round), w, n, err)
+	n, err = WriteTo(UInt16(bp.Index), w, n, err)
+	n, err = WriteTo(UInt16(bp.Total), w, n, err)
+	n, err = WriteTo(bp.Bytes, w, n, err)
+	n, err = WriteTo(bp.Signature, w, n, err)
 	return
 }
 
@@ -174,8 +174,8 @@ func (bp *BlockPart) ValidateWithSigner(signer *Account) error {
 /* Header is part of a Block */
 type Header struct {
 	Name           String
-	Height         UInt32
-	Fees           UInt64
+	Height         uint32
+	Fees           uint64
 	Time           Time
 	PrevHash       ByteSlice
 	ValidationHash ByteSlice
@@ -188,8 +188,8 @@ type Header struct {
 func ReadHeader(r io.Reader) Header {
 	return Header{
 		Name:           ReadString(r),
-		Height:         ReadUInt32(r),
-		Fees:           ReadUInt64(r),
+		Height:         Readuint32(r),
+		Fees:           Readuint64(r),
 		Time:           ReadTime(r),
 		PrevHash:       ReadByteSlice(r),
 		ValidationHash: ReadByteSlice(r),
@@ -199,8 +199,8 @@ func ReadHeader(r io.Reader) Header {
 
 func (h *Header) WriteTo(w io.Writer) (n int64, err error) {
 	n, err = WriteTo(h.Name, w, n, err)
-	n, err = WriteTo(h.Height, w, n, err)
-	n, err = WriteTo(h.Fees, w, n, err)
+	n, err = WriteTo(UInt32(h.Height), w, n, err)
+	n, err = WriteTo(UInt64(h.Fees), w, n, err)
 	n, err = WriteTo(h.Time, w, n, err)
 	n, err = WriteTo(h.PrevHash, w, n, err)
 	n, err = WriteTo(h.ValidationHash, w, n, err)
@@ -232,14 +232,14 @@ type Validation struct {
 }
 
 func ReadValidation(r io.Reader) Validation {
-	numSigs := int(ReadUInt32(r))
-	numAdjs := int(ReadUInt32(r))
+	numSigs := Readuint32(r)
+	numAdjs := Readuint32(r)
 	sigs := make([]Signature, 0, numSigs)
-	for i := 0; i < numSigs; i++ {
+	for i := uint32(0); i < numSigs; i++ {
 		sigs = append(sigs, ReadSignature(r))
 	}
 	adjs := make([]Adjustment, 0, numAdjs)
-	for i := 0; i < numAdjs; i++ {
+	for i := uint32(0); i < numAdjs; i++ {
 		adjs = append(adjs, ReadAdjustment(r))
 	}
 	return Validation{
@@ -283,9 +283,9 @@ type Txs struct {
 }
 
 func ReadTxs(r io.Reader) Txs {
-	numTxs := int(ReadUInt32(r))
+	numTxs := Readuint32(r)
 	txs := make([]Tx, 0, numTxs)
-	for i := 0; i < numTxs; i++ {
+	for i := uint32(0); i < numTxs; i++ {
 		txs = append(txs, ReadTx(r))
 	}
 	return Txs{Txs: txs}

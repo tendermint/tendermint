@@ -62,3 +62,7 @@ func ReadString(r io.Reader) (str String) {
 	}
 	return str
 }
+
+func Readstring(r io.Reader) (str string) {
+	return string(ReadString(r))
+}

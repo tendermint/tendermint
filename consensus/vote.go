@@ -37,9 +37,9 @@ type Vote struct {
 
 func ReadVote(r io.Reader) *Vote {
 	return &Vote{
-		Height:    uint32(ReadUInt32(r)),
-		Round:     uint16(ReadUInt16(r)),
-		Type:      byte(ReadByte(r)),
+		Height:    Readuint32(r),
+		Round:     Readuint16(r),
+		Type:      Readbyte(r),
 		Hash:      ReadByteSlice(r),
 		Signature: ReadSignature(r),
 	}
@@ -115,7 +115,7 @@ type VoteSet struct {
 func NewVoteSet(height uint32, round uint16, type_ byte, validators map[uint64]*Validator) *VoteSet {
 	totalVotingPower := uint64(0)
 	for _, val := range validators {
-		totalVotingPower += uint64(val.VotingPower)
+		totalVotingPower += val.VotingPower
 	}
 	return &VoteSet{
 		height:           height,
@@ -140,7 +140,7 @@ func (vs *VoteSet) AddVote(vote *Vote) (bool, error) {
 		return false, ErrVoteUnexpectedPhase
 	}
 
-	val := vs.validators[uint64(vote.SignerId)]
+	val := vs.validators[vote.SignerId]
 	// Ensure that signer is a validator.
 	if val == nil {
 		return false, ErrVoteInvalidAccount
@@ -151,16 +151,16 @@ func (vs *VoteSet) AddVote(vote *Vote) (bool, error) {
 		return false, ErrVoteInvalidSignature
 	}
 	// If vote already exists, return false.
-	if existingVote, ok := vs.votes[uint64(vote.SignerId)]; ok {
+	if existingVote, ok := vs.votes[vote.SignerId]; ok {
 		if bytes.Equal(existingVote.Hash, vote.Hash) {
 			return false, nil
 		} else {
 			return false, ErrVoteConflictingSignature
 		}
 	}
-	vs.votes[uint64(vote.SignerId)] = vote
-	vs.votesByHash[string(vote.Hash)] += uint64(val.VotingPower)
-	vs.totalVotes += uint64(val.VotingPower)
+	vs.votes[vote.SignerId] = vote
+	vs.votesByHash[string(vote.Hash)] += val.VotingPower
+	vs.totalVotes += val.VotingPower
 	return true, nil
 }
 
@@ -169,7 +169,7 @@ func (vs *VoteSet) AddVote(vote *Vote) (bool, error) {
 func (vs *VoteSet) TwoThirdsMajority() (hash []byte, ok bool) {
 	vs.mtx.Lock()
 	defer vs.mtx.Unlock()
-	twoThirdsMajority := (vs.totalVotingPower*uint64(2) + uint64(2)) / uint64(3)
+	twoThirdsMajority := (vs.totalVotingPower*2 + 2) / 3
 	if vs.totalVotes < twoThirdsMajority {
 		return nil, false
 	}
@@ -190,7 +190,7 @@ func (vs *VoteSet) TwoThirdsMajority() (hash []byte, ok bool) {
 func (vs *VoteSet) OneThirdMajority() (hashes []interface{}) {
 	vs.mtx.Lock()
 	defer vs.mtx.Unlock()
-	oneThirdMajority := (vs.totalVotingPower + uint64(2)) / uint64(3)
+	oneThirdMajority := (vs.totalVotingPower + 2) / 3
 	if vs.totalVotes < oneThirdMajority {
 		return nil
 	}

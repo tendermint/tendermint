@@ -65,6 +65,10 @@ func ReadByte(r io.Reader) Byte {
 	return b
 }
 
+func Readbyte(r io.Reader) byte {
+	return byte(ReadByte(r))
+}
+
 // Int8
 
 func (self Int8) Equals(other interface{}) bool {
@@ -113,6 +117,10 @@ func ReadInt8(r io.Reader) Int8 {
 	return b
 }
 
+func Readint8(r io.Reader) int8 {
+	return int8(ReadInt8(r))
+}
+
 // UInt8
 
 func (self UInt8) Equals(other interface{}) bool {
@@ -159,6 +167,10 @@ func ReadUInt8(r io.Reader) UInt8 {
 		panic(err)
 	}
 	return b
+}
+
+func Readuint8(r io.Reader) uint8 {
+	return uint8(ReadUInt8(r))
 }
 
 // Int16
@@ -211,6 +223,10 @@ func ReadInt16(r io.Reader) Int16 {
 	return b
 }
 
+func Readint16(r io.Reader) int16 {
+	return int16(ReadInt16(r))
+}
+
 // UInt16
 
 func (self UInt16) Equals(other interface{}) bool {
@@ -259,6 +275,10 @@ func ReadUInt16(r io.Reader) UInt16 {
 		panic(err)
 	}
 	return b
+}
+
+func Readuint16(r io.Reader) uint16 {
+	return uint16(ReadUInt16(r))
 }
 
 // Int32
@@ -311,6 +331,10 @@ func ReadInt32(r io.Reader) Int32 {
 	return b
 }
 
+func Readint32(r io.Reader) int32 {
+	return int32(ReadInt32(r))
+}
+
 // UInt32
 
 func (self UInt32) Equals(other interface{}) bool {
@@ -359,6 +383,10 @@ func ReadUInt32(r io.Reader) UInt32 {
 		panic(err)
 	}
 	return b
+}
+
+func Readuint32(r io.Reader) uint32 {
+	return uint32(ReadUInt32(r))
 }
 
 // Int64
@@ -411,6 +439,10 @@ func ReadInt64(r io.Reader) Int64 {
 	return b
 }
 
+func Readint64(r io.Reader) int64 {
+	return int64(ReadInt64(r))
+}
+
 // UInt64
 
 func (self UInt64) Equals(other interface{}) bool {
@@ -459,4 +491,8 @@ func ReadUInt64(r io.Reader) UInt64 {
 		panic(err)
 	}
 	return b
+}
+
+func Readuint64(r io.Reader) uint64 {
+	return uint64(ReadUInt64(r))
 }

@@ -13,21 +13,21 @@ import (
 // Meant to be discarded every round of the consensus protocol.
 type Validator struct {
 	Account
-	BondHeight  UInt32
-	VotingPower UInt64
-	Accum       Int64
+	BondHeight  uint32
+	VotingPower uint64
+	Accum       int64
 }
 
 // Used to persist the state of ConsensusStateControl.
 func ReadValidator(r io.Reader) *Validator {
 	return &Validator{
 		Account: Account{
-			Id:     ReadUInt64(r),
+			Id:     Readuint64(r),
 			PubKey: ReadByteSlice(r),
 		},
-		BondHeight:  ReadUInt32(r),
-		VotingPower: ReadUInt64(r),
-		Accum:       ReadInt64(r),
+		BondHeight:  Readuint32(r),
+		VotingPower: Readuint64(r),
+		Accum:       Readint64(r),
 	}
 }
 
@@ -43,11 +43,11 @@ func (v *Validator) Copy() *Validator {
 
 // Used to persist the state of ConsensusStateControl.
 func (v *Validator) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteTo(&v.Id, w, n, err)
-	n, err = WriteTo(&v.PubKey, w, n, err)
-	n, err = WriteTo(&v.BondHeight, w, n, err)
-	n, err = WriteTo(&v.VotingPower, w, n, err)
-	n, err = WriteTo(&v.Accum, w, n, err)
+	n, err = WriteTo(UInt64(v.Id), w, n, err)
+	n, err = WriteTo(v.PubKey, w, n, err)
+	n, err = WriteTo(UInt32(v.BondHeight), w, n, err)
+	n, err = WriteTo(UInt64(v.VotingPower), w, n, err)
+	n, err = WriteTo(Int64(v.Accum), w, n, err)
 	return
 }
 

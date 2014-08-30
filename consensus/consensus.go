@@ -168,8 +168,8 @@ func (cm *ConsensusManager) switchEventsRoutine() {
 func (cm *ConsensusManager) makeKnownBlockPartsMessage() *KnownBlockPartsMessage {
 	rs := cm.csc.RoundState()
 	return &KnownBlockPartsMessage{
-		Height:                UInt32(rs.Height),
-		SecondsSinceStartTime: UInt32(time.Now().Sub(rs.StartTime).Seconds()),
+		Height:                rs.Height,
+		SecondsSinceStartTime: uint32(time.Now().Sub(rs.StartTime).Seconds()),
 		BlockPartsBitArray:    rs.BlockPartSet.BitArray(),
 	}
 }
@@ -203,8 +203,8 @@ OUTER_LOOP:
 			msg := msg_.(*BlockPartMessage)
 
 			// Add the block part if the height matches.
-			if uint32(msg.BlockPart.Height) == rs.Height &&
-				uint16(msg.BlockPart.Round) == rs.Round {
+			if msg.BlockPart.Height == rs.Height &&
+				msg.BlockPart.Round == rs.Round {
 
 				// TODO Continue if we've already voted, then no point processing the part.
 
@@ -471,7 +471,7 @@ func (cm *ConsensusManager) commitBlock(blockPartSet *BlockPartSet, commitTime t
 
 	block, blockParts := blockPartSet.Block(), blockPartSet.BlockParts()
 
-	err := cm.blockStore.SaveBlockParts(uint32(block.Height), blockParts)
+	err := cm.blockStore.SaveBlockParts(block.Height, blockParts)
 	if err != nil {
 		return err
 	}
@@ -684,9 +684,9 @@ func (ps *PeerState) WantsBlockPart(part *BlockPart) bool {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 	// Only wants the part if peer's current height and round matches.
-	if ps.height == uint32(part.Height) {
+	if ps.height == part.Height {
 		round, _, _, _, elapsedRatio := calcRoundInfo(ps.startTime)
-		if round == uint16(part.Round) && elapsedRatio < roundDeadlineBare {
+		if round == part.Round && elapsedRatio < roundDeadlineBare {
 			// Only wants the part if it doesn't already have it.
 			if ps.blockPartsBitArray[part.Index/8]&byte(1<<(part.Index%8)) == 0 {
 				return true
@@ -700,7 +700,7 @@ func (ps *PeerState) WantsVote(vote *Vote) bool {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 	// Only wants the vote if votesWanted says so
-	if ps.votesWanted[uint64(vote.SignerId)] <= 0 {
+	if ps.votesWanted[vote.SignerId] <= 0 {
 		// TODO: sometimes, send unsolicited votes to see if peer wants it.
 		return false
 	}
@@ -724,10 +724,10 @@ func (ps *PeerState) ApplyKnownBlockPartsMessage(msg *KnownBlockPartsMessage) er
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 	// TODO: Sanity check len(BlockParts)
-	if uint32(msg.Height) < ps.height {
+	if msg.Height < ps.height {
 		return ErrPeerStateHeightRegression
 	}
-	if uint32(msg.Height) == ps.height {
+	if msg.Height == ps.height {
 		if len(ps.blockPartsBitArray) == 0 {
 			ps.blockPartsBitArray = msg.BlockPartsBitArray
 		} else if len(msg.BlockPartsBitArray) > 0 {
@@ -756,7 +756,7 @@ func (ps *PeerState) ApplyKnownBlockPartsMessage(msg *KnownBlockPartsMessage) er
 			return ErrPeerStateInvalidStartTime
 		}
 		ps.startTime = newStartTime
-		ps.height = uint32(msg.Height)
+		ps.height = msg.Height
 		ps.blockPartsBitArray = msg.BlockPartsBitArray
 	}
 	return nil
@@ -822,23 +822,23 @@ func (m *BlockPartMessage) String() string {
 //-------------------------------------
 
 type KnownBlockPartsMessage struct {
-	Height                UInt32
-	SecondsSinceStartTime UInt32
+	Height                uint32
+	SecondsSinceStartTime uint32
 	BlockPartsBitArray    ByteSlice
 }
 
 func readKnownBlockPartsMessage(r io.Reader) *KnownBlockPartsMessage {
 	return &KnownBlockPartsMessage{
-		Height:                ReadUInt32(r),
-		SecondsSinceStartTime: ReadUInt32(r),
+		Height:                Readuint32(r),
+		SecondsSinceStartTime: Readuint32(r),
 		BlockPartsBitArray:    ReadByteSlice(r),
 	}
 }
 
 func (m *KnownBlockPartsMessage) WriteTo(w io.Writer) (n int64, err error) {
 	n, err = WriteTo(msgTypeKnownBlockParts, w, n, err)
-	n, err = WriteTo(m.Height, w, n, err)
-	n, err = WriteTo(m.SecondsSinceStartTime, w, n, err)
+	n, err = WriteTo(UInt32(m.Height), w, n, err)
+	n, err = WriteTo(UInt32(m.SecondsSinceStartTime), w, n, err)
 	n, err = WriteTo(m.BlockPartsBitArray, w, n, err)
 	return
 }
@@ -852,21 +852,21 @@ func (m *KnownBlockPartsMessage) String() string {
 
 // XXX use this.
 type VoteRankMessage struct {
-	ValidatorId UInt64
-	Rank        UInt8
+	ValidatorId uint64
+	Rank        uint8
 }
 
 func readVoteRankMessage(r io.Reader) *VoteRankMessage {
 	return &VoteRankMessage{
-		ValidatorId: ReadUInt64(r),
-		Rank:        ReadUInt8(r),
+		ValidatorId: Readuint64(r),
+		Rank:        Readuint8(r),
 	}
 }
 
 func (m *VoteRankMessage) WriteTo(w io.Writer) (n int64, err error) {
 	n, err = WriteTo(msgTypeVoteRank, w, n, err)
-	n, err = WriteTo(m.ValidatorId, w, n, err)
-	n, err = WriteTo(m.Rank, w, n, err)
+	n, err = WriteTo(UInt64(m.ValidatorId), w, n, err)
+	n, err = WriteTo(UInt8(m.Rank), w, n, err)
 	return
 }
 

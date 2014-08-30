@@ -50,7 +50,7 @@ We omit details of dealing with membership changes.
 */
 
 func getProposer(validators map[uint64]*Validator) (proposer *Validator) {
-	highestAccum := Int64(0)
+	highestAccum := int64(0)
 	for _, validator := range validators {
 		if validator.Accum > highestAccum {
 			highestAccum = validator.Accum
@@ -65,18 +65,18 @@ func getProposer(validators map[uint64]*Validator) (proposer *Validator) {
 }
 
 func incrementAccum(validators map[uint64]*Validator) {
-	totalDelta := UInt64(0)
+	totalDelta := int64(0)
 	for _, validator := range validators {
-		validator.Accum += Int64(validator.VotingPower)
-		totalDelta += validator.VotingPower
+		validator.Accum += int64(validator.VotingPower)
+		totalDelta += int64(validator.VotingPower)
 	}
 	proposer := getProposer(validators)
-	proposer.Accum -= Int64(totalDelta)
+	proposer.Accum -= totalDelta
 	// NOTE: sum(validators) here should be zero.
 	if true {
 		totalAccum := int64(0)
 		for _, validator := range validators {
-			totalAccum += int64(validator.Accum)
+			totalAccum += validator.Accum
 		}
 		if totalAccum != 0 {
 			Panicf("Total Accum of validators did not equal 0. Got: ", totalAccum)
@@ -90,7 +90,7 @@ func incrementAccum(validators map[uint64]*Validator) {
 func copyValidators(validators map[uint64]*Validator) map[uint64]*Validator {
 	mapCopy := map[uint64]*Validator{}
 	for _, val := range validators {
-		mapCopy[uint64(val.Id)] = val.Copy()
+		mapCopy[val.Id] = val.Copy()
 	}
 	return mapCopy
 }
@@ -133,14 +133,14 @@ func (csc *ConsensusStateControl) Load() {
 		csc.setupHeight(height, validators, startTime)
 	} else {
 		reader := bytes.NewReader(buf)
-		height := ReadUInt32(reader)
+		height := Readuint32(reader)
 		validators := make(map[uint64]*Validator)
 		startTime := ReadTime(reader)
 		for reader.Len() > 0 {
 			validator := ReadValidator(reader)
-			validators[uint64(validator.Id)] = validator
+			validators[validator.Id] = validator
 		}
-		csc.setupHeight(uint32(height), validators, startTime.Time)
+		csc.setupHeight(height, validators, startTime.Time)
 	}
 }
 
@@ -212,7 +212,7 @@ func (csc *ConsensusStateControl) CommitBlock(block *Block, commitTime time.Time
 	csc.mtx.Lock()
 	defer csc.mtx.Unlock()
 	// Ensure that block is the next block needed.
-	if uint32(block.Height) != csc.height {
+	if block.Height != csc.height {
 		return Errorf("Cannot commit block %v to csc. Expected height %v", block, csc.height+1)
 	}
 	// Update validator.
@@ -221,7 +221,7 @@ func (csc *ConsensusStateControl) CommitBlock(block *Block, commitTime time.Time
 	// TODO if there are new validators in the block, add them.
 
 	// XXX: it's not commitTime we want...
-	csc.setupHeight(uint32(block.Height)+1, validators, commitTime)
+	csc.setupHeight(block.Height+1, validators, commitTime)
 
 	// Save the state.
 	csc.Save()
