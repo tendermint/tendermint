@@ -88,6 +88,12 @@ func (na *NetAddress) Less(other interface{}) bool {
 }
 
 func (na *NetAddress) String() string {
+	if na.str == "" {
+		na.str = net.JoinHostPort(
+			na.IP.String(),
+			strconv.FormatUint(uint64(na.Port), 10),
+		)
+	}
 	return na.str
 }
 

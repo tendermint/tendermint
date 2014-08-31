@@ -9,6 +9,10 @@ type Time struct {
 	time.Time
 }
 
+func TimeFromUnix(secSinceEpoch int64) Time {
+	return Time{time.Unix(secSinceEpoch, 0)}
+}
+
 func (self Time) Equals(other interface{}) bool {
 	if o, ok := other.(Time); ok {
 		return self.Equal(o.Time)

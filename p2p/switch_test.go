@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"encoding/hex"
 	"testing"
 	"time"
 
@@ -89,7 +90,7 @@ func TestSwitches(t *testing.T) {
 		t.Errorf("Failed to receive from channel one")
 	}
 	if ReadString(inMsg.Bytes.Reader()) != "channel one" {
-		t.Errorf("Unexpected received message bytes: %X = [%v]", inMsg.Bytes, ReadString(inMsg.Bytes.Reader()))
+		t.Errorf("Unexpected received message bytes:\n%v", hex.Dump(inMsg.Bytes))
 	}
 
 	// Receive message from channel 0 and check
@@ -98,7 +99,7 @@ func TestSwitches(t *testing.T) {
 		t.Errorf("Failed to receive from channel zero")
 	}
 	if ReadString(inMsg.Bytes.Reader()) != "channel zero" {
-		t.Errorf("Unexpected received message bytes: %X = [%v]", inMsg.Bytes, ReadString(inMsg.Bytes.Reader()))
+		t.Errorf("Unexpected received message bytes:\n%v", hex.Dump(inMsg.Bytes))
 	}
 }
 

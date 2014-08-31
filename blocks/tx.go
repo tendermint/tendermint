@@ -34,14 +34,14 @@ func ReadTx(r io.Reader) Tx {
 	switch t := ReadByte(r); t {
 	case TX_TYPE_SEND:
 		return &SendTx{
-			Fee:       ReadUInt64(r),
-			To:        ReadUInt64(r),
-			Amount:    ReadUInt64(r),
+			Fee:       Readuint64(r),
+			To:        Readuint64(r),
+			Amount:    Readuint64(r),
 			Signature: ReadSignature(r),
 		}
 	case TX_TYPE_NAME:
 		return &NameTx{
-			Fee:       ReadUInt64(r),
+			Fee:       Readuint64(r),
 			Name:      ReadString(r),
 			PubKey:    ReadByteSlice(r),
 			Signature: ReadSignature(r),
@@ -55,9 +55,9 @@ func ReadTx(r io.Reader) Tx {
 /* SendTx < Tx */
 
 type SendTx struct {
-	Fee    UInt64
-	To     UInt64
-	Amount UInt64
+	Fee    uint64
+	To     uint64
+	Amount uint64
 	Signature
 }
 
@@ -67,9 +67,9 @@ func (self *SendTx) Type() Byte {
 
 func (self *SendTx) WriteTo(w io.Writer) (n int64, err error) {
 	n, err = WriteTo(self.Type(), w, n, err)
-	n, err = WriteTo(self.Fee, w, n, err)
-	n, err = WriteTo(self.To, w, n, err)
-	n, err = WriteTo(self.Amount, w, n, err)
+	n, err = WriteTo(UInt64(self.Fee), w, n, err)
+	n, err = WriteTo(UInt64(self.To), w, n, err)
+	n, err = WriteTo(UInt64(self.Amount), w, n, err)
 	n, err = WriteTo(self.Signature, w, n, err)
 	return
 }
@@ -77,7 +77,7 @@ func (self *SendTx) WriteTo(w io.Writer) (n int64, err error) {
 /* NameTx < Tx */
 
 type NameTx struct {
-	Fee    UInt64
+	Fee    uint64
 	Name   String
 	PubKey ByteSlice
 	Signature
@@ -89,7 +89,7 @@ func (self *NameTx) Type() Byte {
 
 func (self *NameTx) WriteTo(w io.Writer) (n int64, err error) {
 	n, err = WriteTo(self.Type(), w, n, err)
-	n, err = WriteTo(self.Fee, w, n, err)
+	n, err = WriteTo(UInt64(self.Fee), w, n, err)
 	n, err = WriteTo(self.Name, w, n, err)
 	n, err = WriteTo(self.PubKey, w, n, err)
 	n, err = WriteTo(self.Signature, w, n, err)

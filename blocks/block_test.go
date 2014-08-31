@@ -5,17 +5,39 @@ import (
 	. "github.com/tendermint/tendermint/binary"
 	"math/rand"
 	"testing"
+	"time"
 )
 
 // Distributed pseudo-exponentially to test for various cases
-func randVar() UInt64 {
+func randuint64() uint64 {
 	bits := rand.Uint32() % 64
 	if bits == 0 {
 		return 0
 	}
 	n := uint64(1 << (bits - 1))
 	n += uint64(rand.Int63()) & ((1 << (bits - 1)) - 1)
-	return UInt64(n)
+	return n
+}
+
+func randuint32() uint32 {
+	bits := rand.Uint32() % 32
+	if bits == 0 {
+		return 0
+	}
+	n := uint32(1 << (bits - 1))
+	n += uint32(rand.Int31()) & ((1 << (bits - 1)) - 1)
+	return n
+}
+
+func randTime() Time {
+	return Time{time.Unix(int64(randuint64()), 0)}
+}
+
+func randAccount() Account {
+	return Account{
+		Id:     randuint64(),
+		PubKey: randBytes(32),
+	}
 }
 
 func randBytes(n int) ByteSlice {
@@ -27,7 +49,7 @@ func randBytes(n int) ByteSlice {
 }
 
 func randSig() Signature {
-	return Signature{AccountNumber(randVar()), randBytes(32)}
+	return Signature{randuint64(), randBytes(32)}
 }
 
 func TestBlock(t *testing.T) {
@@ -36,14 +58,14 @@ func TestBlock(t *testing.T) {
 
 	sendTx := &SendTx{
 		Signature: randSig(),
-		Fee:       randVar(),
-		To:        AccountNumber(randVar()),
-		Amount:    randVar(),
+		Fee:       randuint64(),
+		To:        randuint64(),
+		Amount:    randuint64(),
 	}
 
 	nameTx := &NameTx{
 		Signature: randSig(),
-		Fee:       randVar(),
+		Fee:       randuint64(),
 		Name:      String(randBytes(12)),
 		PubKey:    randBytes(32),
 	}
@@ -52,30 +74,30 @@ func TestBlock(t *testing.T) {
 
 	bond := &Bond{
 		Signature: randSig(),
-		Fee:       randVar(),
-		UnbondTo:  AccountNumber(randVar()),
-		Amount:    randVar(),
+		Fee:       randuint64(),
+		UnbondTo:  randuint64(),
+		Amount:    randuint64(),
 	}
 
 	unbond := &Unbond{
 		Signature: randSig(),
-		Fee:       randVar(),
-		Amount:    randVar(),
+		Fee:       randuint64(),
+		Amount:    randuint64(),
 	}
 
 	timeout := &Timeout{
-		Account: AccountNumber(randVar()),
-		Penalty: randVar(),
+		AccountId: randuint64(),
+		Penalty:   randuint64(),
 	}
 
 	dupeout := &Dupeout{
-		VoteA: Vote{
-			Height:    randVar(),
+		VoteA: BlockVote{
+			Height:    randuint64(),
 			BlockHash: randBytes(32),
 			Signature: randSig(),
 		},
-		VoteB: Vote{
-			Height:    randVar(),
+		VoteB: BlockVote{
+			Height:    randuint64(),
 			BlockHash: randBytes(32),
 			Signature: randSig(),
 		},
@@ -84,21 +106,22 @@ func TestBlock(t *testing.T) {
 	// Block
 
 	block := &Block{
-		Header{
+		Header: Header{
 			Name:           "Tendermint",
-			Height:         randVar(),
-			Fees:           randVar(),
-			Time:           randVar(),
+			Height:         randuint32(),
+			Fees:           randuint64(),
+			Time:           randTime(),
 			PrevHash:       randBytes(32),
 			ValidationHash: randBytes(32),
 			TxsHash:        randBytes(32),
 		},
-		Validation{
+		Validation: Validation{
 			Signatures:  []Signature{randSig(), randSig()},
 			Adjustments: []Adjustment{bond, unbond, timeout, dupeout},
 		},
-		Txs{
-			Txs: []Tx{sendTx, nameTx},
+		Txs: Txs{
+			Txs:  []Tx{sendTx, nameTx},
+			hash: nil,
 		},
 	}
 

@@ -59,14 +59,14 @@ func (p *Peer) Send(chId byte, msg Binary) bool {
 	if atomic.LoadUint32(&p.stopped) == 1 {
 		return false
 	}
-	return p.mconn.Send(chId, BinaryBytes(msg))
+	return p.mconn.Send(chId, msg)
 }
 
 func (p *Peer) TrySend(chId byte, msg Binary) bool {
 	if atomic.LoadUint32(&p.stopped) == 1 {
 		return false
 	}
-	return p.mconn.TrySend(chId, BinaryBytes(msg))
+	return p.mconn.TrySend(chId, msg)
 }
 
 func (p *Peer) CanSend(chId byte) bool {

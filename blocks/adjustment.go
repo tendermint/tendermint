@@ -31,21 +31,21 @@ func ReadAdjustment(r io.Reader) Adjustment {
 	switch t := ReadByte(r); t {
 	case ADJ_TYPE_BOND:
 		return &Bond{
-			Fee:       ReadUInt64(r),
-			UnbondTo:  ReadUInt64(r),
-			Amount:    ReadUInt64(r),
+			Fee:       Readuint64(r),
+			UnbondTo:  Readuint64(r),
+			Amount:    Readuint64(r),
 			Signature: ReadSignature(r),
 		}
 	case ADJ_TYPE_UNBOND:
 		return &Unbond{
-			Fee:       ReadUInt64(r),
-			Amount:    ReadUInt64(r),
+			Fee:       Readuint64(r),
+			Amount:    Readuint64(r),
 			Signature: ReadSignature(r),
 		}
 	case ADJ_TYPE_TIMEOUT:
 		return &Timeout{
-			Account: ReadUInt64(r),
-			Penalty: ReadUInt64(r),
+			AccountId: Readuint64(r),
+			Penalty:   Readuint64(r),
 		}
 	case ADJ_TYPE_DUPEOUT:
 		return &Dupeout{
@@ -62,9 +62,9 @@ func ReadAdjustment(r io.Reader) Adjustment {
 
 /* Bond < Adjustment */
 type Bond struct {
-	Fee      UInt64
-	UnbondTo UInt64
-	Amount   UInt64
+	Fee      uint64
+	UnbondTo uint64
+	Amount   uint64
 	Signature
 }
 
@@ -74,9 +74,9 @@ func (self *Bond) Type() Byte {
 
 func (self *Bond) WriteTo(w io.Writer) (n int64, err error) {
 	n, err = WriteTo(self.Type(), w, n, err)
-	n, err = WriteTo(self.Fee, w, n, err)
-	n, err = WriteTo(self.UnbondTo, w, n, err)
-	n, err = WriteTo(self.Amount, w, n, err)
+	n, err = WriteTo(UInt64(self.Fee), w, n, err)
+	n, err = WriteTo(UInt64(self.UnbondTo), w, n, err)
+	n, err = WriteTo(UInt64(self.Amount), w, n, err)
 	n, err = WriteTo(self.Signature, w, n, err)
 	return
 }
@@ -85,8 +85,8 @@ func (self *Bond) WriteTo(w io.Writer) (n int64, err error) {
 
 /* Unbond < Adjustment */
 type Unbond struct {
-	Fee    UInt64
-	Amount UInt64
+	Fee    uint64
+	Amount uint64
 	Signature
 }
 
@@ -96,8 +96,8 @@ func (self *Unbond) Type() Byte {
 
 func (self *Unbond) WriteTo(w io.Writer) (n int64, err error) {
 	n, err = WriteTo(self.Type(), w, n, err)
-	n, err = WriteTo(self.Fee, w, n, err)
-	n, err = WriteTo(self.Amount, w, n, err)
+	n, err = WriteTo(UInt64(self.Fee), w, n, err)
+	n, err = WriteTo(UInt64(self.Amount), w, n, err)
 	n, err = WriteTo(self.Signature, w, n, err)
 	return
 }
@@ -106,8 +106,8 @@ func (self *Unbond) WriteTo(w io.Writer) (n int64, err error) {
 
 /* Timeout < Adjustment */
 type Timeout struct {
-	Account UInt64
-	Penalty UInt64
+	AccountId uint64
+	Penalty   uint64
 }
 
 func (self *Timeout) Type() Byte {
@@ -116,8 +116,8 @@ func (self *Timeout) Type() Byte {
 
 func (self *Timeout) WriteTo(w io.Writer) (n int64, err error) {
 	n, err = WriteTo(self.Type(), w, n, err)
-	n, err = WriteTo(self.Account, w, n, err)
-	n, err = WriteTo(self.Penalty, w, n, err)
+	n, err = WriteTo(UInt64(self.AccountId), w, n, err)
+	n, err = WriteTo(UInt64(self.Penalty), w, n, err)
 	return
 }
 
@@ -128,21 +128,21 @@ The full vote structure is only needed when presented as evidence.
 Typically only the signature is passed around, as the hash & height are implied.
 */
 type BlockVote struct {
-	Height    UInt64
+	Height    uint64
 	BlockHash ByteSlice
 	Signature
 }
 
 func ReadBlockVote(r io.Reader) BlockVote {
 	return BlockVote{
-		Height:    ReadUInt64(r),
+		Height:    Readuint64(r),
 		BlockHash: ReadByteSlice(r),
 		Signature: ReadSignature(r),
 	}
 }
 
 func (self BlockVote) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteTo(self.Height, w, n, err)
+	n, err = WriteTo(UInt64(self.Height), w, n, err)
 	n, err = WriteTo(self.BlockHash, w, n, err)
 	n, err = WriteTo(self.Signature, w, n, err)
 	return
