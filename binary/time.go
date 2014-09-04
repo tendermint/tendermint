@@ -5,58 +5,13 @@ import (
 	"time"
 )
 
-type Time struct {
-	time.Time
+// Time
+
+func WriteTime(w io.Writer, t time.Time, n *int64, err *error) {
+	WriteInt64(w, t.Unix(), n, err)
 }
 
-func TimeFromUnix(secSinceEpoch int64) Time {
-	return Time{time.Unix(secSinceEpoch, 0)}
-}
-
-func (self Time) Equals(other interface{}) bool {
-	if o, ok := other.(Time); ok {
-		return self.Equal(o.Time)
-	} else {
-		return false
-	}
-}
-
-func (self Time) Less(other interface{}) bool {
-	if o, ok := other.(Time); ok {
-		return self.Before(o.Time)
-	} else {
-		panic("Cannot compare unequal types")
-	}
-}
-
-func (self Time) ByteSize() int {
-	return 8
-}
-
-func (self Time) WriteTo(w io.Writer) (int64, error) {
-	return Int64(self.Unix()).WriteTo(w)
-}
-
-func ReadTimeSafe(r io.Reader) (Time, int64, error) {
-	t, n, err := ReadInt64Safe(r)
-	if err != nil {
-		return Time{}, n, err
-	}
-	return Time{time.Unix(int64(t), 0)}, n, nil
-}
-
-func ReadTimeN(r io.Reader) (Time, int64) {
-	t, n, err := ReadTimeSafe(r)
-	if err != nil {
-		panic(err)
-	}
-	return t, n
-}
-
-func ReadTime(r io.Reader) Time {
-	t, _, err := ReadTimeSafe(r)
-	if err != nil {
-		panic(err)
-	}
-	return t
+func ReadTime(r io.Reader, n *int64, err *error) time.Time {
+	t := ReadInt64(r, n, err)
+	return time.Unix(t, 0)
 }

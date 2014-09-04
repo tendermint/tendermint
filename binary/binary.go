@@ -6,11 +6,20 @@ type Binary interface {
 	WriteTo(w io.Writer) (int64, error)
 }
 
-func WriteTo(b Binary, w io.Writer, n int64, err error) (int64, error) {
-	if err != nil {
-		return n, err
+func WriteTo(w io.Writer, bz []byte, n *int64, err *error) {
+	if *err != nil {
+		return
 	}
-	var n_ int64
-	n_, err = b.WriteTo(w)
-	return n + n_, err
+	n_, err_ := w.Write(bz)
+	*n += int64(n_)
+	*err = err_
+}
+
+func ReadFull(r io.Reader, buf []byte, n *int64, err *error) {
+	if *err != nil {
+		return
+	}
+	n_, err_ := io.ReadFull(r, buf)
+	*n += int64(n_)
+	*err = err_
 }

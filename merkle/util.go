@@ -7,10 +7,15 @@ import (
 	. "github.com/tendermint/tendermint/binary"
 )
 
+func HashFromByteSlices(items [][]byte) []byte {
+	panic("Implement me")
+	return nil
+}
+
 /*
 Compute a deterministic merkle hash from a list of byteslices.
 */
-func HashFromBinarySlice(items []Binary) ByteSlice {
+func HashFromBinarySlice(items []Binary) []byte {
 	switch len(items) {
 	case 0:
 		panic("Cannot compute hash of empty slice")
@@ -20,18 +25,22 @@ func HashFromBinarySlice(items []Binary) ByteSlice {
 		if err != nil {
 			panic(err)
 		}
-		return ByteSlice(hasher.Sum(nil))
+		return hasher.Sum(nil)
 	default:
-		hasher := sha256.New()
-		_, err := HashFromBinarySlice(items[0 : len(items)/2]).WriteTo(hasher)
+		var n int64
+		var err error
+		var hasher = sha256.New()
+		hash := HashFromBinarySlice(items[0 : len(items)/2])
+		WriteByteSlice(hasher, hash, &n, &err)
 		if err != nil {
 			panic(err)
 		}
-		_, err = HashFromBinarySlice(items[len(items)/2:]).WriteTo(hasher)
+		hash = HashFromBinarySlice(items[len(items)/2:])
+		WriteByteSlice(hasher, hash, &n, &err)
 		if err != nil {
 			panic(err)
 		}
-		return ByteSlice(hasher.Sum(nil))
+		return hasher.Sum(nil)
 	}
 }
 

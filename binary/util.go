@@ -5,10 +5,10 @@ import (
 	"crypto/sha256"
 )
 
-func BinaryBytes(b Binary) ByteSlice {
+func BinaryBytes(b Binary) []byte {
 	buf := bytes.NewBuffer(nil)
 	b.WriteTo(buf)
-	return ByteSlice(buf.Bytes())
+	return buf.Bytes()
 }
 
 // NOTE: does not care about the type, only the binary representation.
@@ -25,11 +25,11 @@ func BinaryCompare(a, b Binary) int {
 	return bytes.Compare(aBytes, bBytes)
 }
 
-func BinaryHash(b Binary) ByteSlice {
+func BinaryHash(b Binary) []byte {
 	hasher := sha256.New()
 	_, err := b.WriteTo(hasher)
 	if err != nil {
 		panic(err)
 	}
-	return ByteSlice(hasher.Sum(nil))
+	return hasher.Sum(nil)
 }

@@ -2,50 +2,27 @@ package merkle
 
 import (
 	"fmt"
-	. "github.com/tendermint/tendermint/binary"
 )
-
-type Value interface {
-	Binary
-}
-
-type Key interface {
-	Binary
-	Equals(interface{}) bool
-	Less(b interface{}) bool
-}
 
 type Db interface {
 	Get([]byte) []byte
 	Set([]byte, []byte)
 }
 
-type Node interface {
-	Binary
-	Key() Key
-	Value() Value
-	Size() uint64
-	Height() uint8
-	Hash() (ByteSlice, uint64)
-	Save(Db)
-}
-
 type Tree interface {
-	Root() Node
 	Size() uint64
 	Height() uint8
-	Has(key Key) bool
-	Get(key Key) Value
-	Hash() (ByteSlice, uint64)
+	Has(key []byte) bool
+	Get(key []byte) []byte
+	HashWithCount() ([]byte, uint64)
+	Hash() []byte
 	Save()
 	SaveKey(string)
-	Set(Key, Value) bool
-	Remove(Key) (Value, error)
+	Set(key []byte, vlaue []byte) bool
+	Remove(key []byte) ([]byte, error)
 	Copy() Tree
-	Traverse(func(Node) bool)
-	Values() <-chan Value
 }
 
-func NotFound(key Key) error {
+func NotFound(key []byte) error {
 	return fmt.Errorf("Key was not found.")
 }

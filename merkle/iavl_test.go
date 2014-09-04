@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"fmt"
 
-	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/db"
 
@@ -17,8 +16,8 @@ func init() {
 	// TODO: seed rand?
 }
 
-func randstr(length int) String {
-	return String(RandStr(length))
+func randstr(length int) string {
+	return RandStr(length)
 }
 
 func TestUnit(t *testing.T) {
@@ -29,12 +28,12 @@ func TestUnit(t *testing.T) {
 		if _, ok := l.(*IAVLNode); ok {
 			left = l.(*IAVLNode)
 		} else {
-			left = NewIAVLNode(Int32(l.(int)), nil)
+			left = NewIAVLNode([]byte{byte(l.(int))}, nil)
 		}
 		if _, ok := r.(*IAVLNode); ok {
 			right = r.(*IAVLNode)
 		} else {
-			right = NewIAVLNode(Int32(r.(int)), nil)
+			right = NewIAVLNode([]byte{byte(r.(int))}, nil)
 		}
 
 		n := &IAVLNode{
@@ -43,7 +42,7 @@ func TestUnit(t *testing.T) {
 			right: right,
 		}
 		n.calcHeightAndSize(nil)
-		n.Hash()
+		n.HashWithCount()
 		return n
 	}
 
@@ -51,7 +50,7 @@ func TestUnit(t *testing.T) {
 	var P func(*IAVLNode) string
 	P = func(n *IAVLNode) string {
 		if n.height == 0 {
-			return fmt.Sprintf("%v", n.key)
+			return fmt.Sprintf("%v", n.key[0])
 		} else {
 			return fmt.Sprintf("(%v %v)", P(n.left), P(n.right))
 		}
@@ -59,24 +58,24 @@ func TestUnit(t *testing.T) {
 
 	expectHash := func(n2 *IAVLNode, hashCount uint64) {
 		// ensure number of new hash calculations is as expected.
-		hash, count := n2.Hash()
+		hash, count := n2.HashWithCount()
 		if count != hashCount {
 			t.Fatalf("Expected %v new hashes, got %v", hashCount, count)
 		}
 		// nuke hashes and reconstruct hash, ensure it's the same.
-		(&IAVLTree{root: n2}).Traverse(func(node Node) bool {
-			node.(*IAVLNode).hash = nil
+		n2.traverse(nil, func(node *IAVLNode) bool {
+			node.hash = nil
 			return false
 		})
 		// ensure that the new hash after nuking is the same as the old.
-		newHash, _ := n2.Hash()
+		newHash, _ := n2.HashWithCount()
 		if bytes.Compare(hash, newHash) != 0 {
 			t.Fatalf("Expected hash %v but got %v after nuking", hash, newHash)
 		}
 	}
 
 	expectSet := func(n *IAVLNode, i int, repr string, hashCount uint64) {
-		n2, updated := n.set(nil, Int32(i), nil)
+		n2, updated := n.set(nil, []byte{byte(i)}, nil)
 		// ensure node was added & structure is as expected.
 		if updated == true || P(n2) != repr {
 			t.Fatalf("Adding %v to %v:\nExpected         %v\nUnexpectedly got %v updated:%v",
@@ -87,7 +86,7 @@ func TestUnit(t *testing.T) {
 	}
 
 	expectRemove := func(n *IAVLNode, i int, repr string, hashCount uint64) {
-		n2, _, value, err := n.remove(nil, Int32(i))
+		n2, _, value, err := n.remove(nil, []byte{byte(i)})
 		// ensure node was added & structure is as expected.
 		if value != nil || err != nil || P(n2) != repr {
 			t.Fatalf("Removing %v from %v:\nExpected         %v\nUnexpectedly got %v value:%v err:%v",
@@ -137,14 +136,14 @@ func TestUnit(t *testing.T) {
 func TestIntegration(t *testing.T) {
 
 	type record struct {
-		key   String
-		value String
+		key   string
+		value string
 	}
 
 	records := make([]*record, 400)
 	var tree *IAVLTree = NewIAVLTree(nil)
 	var err error
-	var val Value
+	var val []byte
 	var updated bool
 
 	randomRecord := func() *record {
@@ -156,11 +155,11 @@ func TestIntegration(t *testing.T) {
 		records[i] = r
 		//t.Log("New record", r)
 		//PrintIAVLNode(tree.root)
-		updated = tree.Set(r.key, String(""))
+		updated = tree.Set([]byte(r.key), []byte(""))
 		if updated {
 			t.Error("should have not been updated")
 		}
-		updated = tree.Set(r.key, r.value)
+		updated = tree.Set([]byte(r.key), []byte(r.value))
 		if !updated {
 			t.Error("should have been updated")
 		}
@@ -170,31 +169,32 @@ func TestIntegration(t *testing.T) {
 	}
 
 	for _, r := range records {
-		if has := tree.Has(r.key); !has {
+		if has := tree.Has([]byte(r.key)); !has {
 			t.Error("Missing key", r.key)
 		}
-		if has := tree.Has(randstr(12)); has {
+		if has := tree.Has([]byte(randstr(12))); has {
 			t.Error("Table has extra key")
 		}
-		if val := tree.Get(r.key); !(val.(String)).Equals(r.value) {
+		if val := tree.Get([]byte(r.key)); string(val) != r.value {
 			t.Error("wrong value")
 		}
 	}
 
 	for i, x := range records {
-		if val, err = tree.Remove(x.key); err != nil {
+		if val, err = tree.Remove([]byte(x.key)); err != nil {
 			t.Error(err)
-		} else if !(val.(String)).Equals(x.value) {
+		} else if string(val) != x.value {
 			t.Error("wrong value")
 		}
 		for _, r := range records[i+1:] {
-			if has := tree.Has(r.key); !has {
+			if has := tree.Has([]byte(r.key)); !has {
 				t.Error("Missing key", r.key)
 			}
-			if has := tree.Has(randstr(12)); has {
+			if has := tree.Has([]byte(randstr(12))); has {
 				t.Error("Table has extra key")
 			}
-			if val := tree.Get(r.key); !(val.(String)).Equals(r.value) {
+			val := tree.Get([]byte(r.key))
+			if string(val) != r.value {
 				t.Error("wrong value")
 			}
 		}
@@ -208,25 +208,25 @@ func TestPersistence(t *testing.T) {
 	db := db.NewMemDB()
 
 	// Create some random key value pairs
-	records := make(map[String]String)
+	records := make(map[string]string)
 	for i := 0; i < 10000; i++ {
-		records[String(randstr(20))] = String(randstr(20))
+		records[randstr(20)] = randstr(20)
 	}
 
 	// Construct some tree and save it
 	t1 := NewIAVLTree(db)
 	for key, value := range records {
-		t1.Set(key, value)
+		t1.Set([]byte(key), []byte(value))
 	}
 	t1.Save()
 
-	hash, _ := t1.Hash()
+	hash, _ := t1.HashWithCount()
 
 	// Load a tree
 	t2 := NewIAVLTreeFromHash(db, hash)
 	for key, value := range records {
-		t2value := t2.Get(key)
-		if !BinaryEqual(t2value, value) {
+		t2value := t2.Get([]byte(key))
+		if string(t2value) != value {
 			t.Fatalf("Invalid value. Expected %v, got %v", value, t2value)
 		}
 	}
@@ -249,8 +249,8 @@ func BenchmarkImmutableAvlTree(b *testing.B) {
 	b.StopTimer()
 
 	type record struct {
-		key   String
-		value String
+		key   string
+		value string
 	}
 
 	randomRecord := func() *record {
@@ -260,7 +260,7 @@ func BenchmarkImmutableAvlTree(b *testing.B) {
 	t := NewIAVLTree(nil)
 	for i := 0; i < 1000000; i++ {
 		r := randomRecord()
-		t.Set(r.key, r.value)
+		t.Set([]byte(r.key), []byte(r.value))
 	}
 
 	fmt.Println("ok, starting")
@@ -270,7 +270,7 @@ func BenchmarkImmutableAvlTree(b *testing.B) {
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		r := randomRecord()
-		t.Set(r.key, r.value)
-		t.Remove(r.key)
+		t.Set([]byte(r.key), []byte(r.value))
+		t.Remove([]byte(r.key))
 	}
 }

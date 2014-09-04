@@ -1,9 +1,5 @@
 package merkle
 
-import (
-	. "github.com/tendermint/tendermint/binary"
-)
-
 const HASH_BYTE_SIZE int = 4 + 32
 
 /*
@@ -18,10 +14,14 @@ type IAVLTree struct {
 }
 
 func NewIAVLTree(db Db) *IAVLTree {
-	return &IAVLTree{db: db, root: nil}
+	return &IAVLTree{
+		db:   db,
+		root: nil,
+	}
 }
 
-func NewIAVLTreeFromHash(db Db, hash ByteSlice) *IAVLTree {
+// TODO rename to Load.
+func NewIAVLTreeFromHash(db Db, hash []byte) *IAVLTree {
 	root := &IAVLNode{
 		hash:  hash,
 		flags: IAVLNODE_FLAG_PERSISTED | IAVLNODE_FLAG_PLACEHOLDER,
@@ -43,10 +43,6 @@ func NewIAVLTreeFromKey(db Db, key string) *IAVLTree {
 	return &IAVLTree{db: db, root: root}
 }
 
-func (t *IAVLTree) Root() Node {
-	return t.root
-}
-
 func (t *IAVLTree) Size() uint64 {
 	if t.root == nil {
 		return 0
@@ -61,14 +57,14 @@ func (t *IAVLTree) Height() uint8 {
 	return t.root.Height()
 }
 
-func (t *IAVLTree) Has(key Key) bool {
+func (t *IAVLTree) Has(key []byte) bool {
 	if t.root == nil {
 		return false
 	}
 	return t.root.has(t.db, key)
 }
 
-func (t *IAVLTree) Set(key Key, value Value) (updated bool) {
+func (t *IAVLTree) Set(key []byte, value []byte) (updated bool) {
 	if t.root == nil {
 		t.root = NewIAVLNode(key, value)
 		return false
@@ -77,18 +73,26 @@ func (t *IAVLTree) Set(key Key, value Value) (updated bool) {
 	return updated
 }
 
-func (t *IAVLTree) Hash() (ByteSlice, uint64) {
+func (t *IAVLTree) Hash() []byte {
+	if t.root == nil {
+		return nil
+	}
+	hash, _ := t.root.HashWithCount()
+	return hash
+}
+
+func (t *IAVLTree) HashWithCount() ([]byte, uint64) {
 	if t.root == nil {
 		return nil, 0
 	}
-	return t.root.Hash()
+	return t.root.HashWithCount()
 }
 
 func (t *IAVLTree) Save() {
 	if t.root == nil {
 		return
 	}
-	t.root.Hash()
+	t.root.HashWithCount()
 	t.root.Save(t.db)
 }
 
@@ -96,19 +100,19 @@ func (t *IAVLTree) SaveKey(key string) {
 	if t.root == nil {
 		return
 	}
-	hash, _ := t.root.Hash()
+	hash, _ := t.root.HashWithCount()
 	t.root.Save(t.db)
 	t.db.Set([]byte(key), hash)
 }
 
-func (t *IAVLTree) Get(key Key) (value Value) {
+func (t *IAVLTree) Get(key []byte) (value []byte) {
 	if t.root == nil {
 		return nil
 	}
 	return t.root.get(t.db, key)
 }
 
-func (t *IAVLTree) Remove(key Key) (value Value, err error) {
+func (t *IAVLTree) Remove(key []byte) (value []byte, err error) {
 	if t.root == nil {
 		return nil, NotFound(key)
 	}
@@ -122,33 +126,4 @@ func (t *IAVLTree) Remove(key Key) (value Value, err error) {
 
 func (t *IAVLTree) Copy() Tree {
 	return &IAVLTree{db: t.db, root: t.root}
-}
-
-// Traverses all the nodes of the tree in prefix order.
-// return true from cb to halt iteration.
-// node.Height() == 0 if you just want a value node.
-func (t *IAVLTree) Traverse(cb func(Node) bool) {
-	if t.root == nil {
-		return
-	}
-	t.root.traverse(t.db, cb)
-}
-
-func (t *IAVLTree) Values() <-chan Value {
-	root := t.root
-	ch := make(chan Value)
-	if root == nil {
-		close(ch)
-		return ch
-	}
-	go func() {
-		root.traverse(t.db, func(n Node) bool {
-			if n.Height() == 0 {
-				ch <- n.Value()
-			}
-			return true
-		})
-		close(ch)
-	}()
-	return ch
 }
