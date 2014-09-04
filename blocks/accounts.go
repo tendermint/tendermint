@@ -8,10 +8,10 @@ import (
 // NOTE: consensus/Validator embeds this, so..
 type Account struct {
 	Id     uint64 // Numeric id of account, incrementing.
-	PubKey ByteSlice
+	PubKey []byte
 }
 
-func (self *Account) Verify(msg ByteSlice, sig ByteSlice) bool {
+func (self *Account) Verify(msg []byte, sig []byte) bool {
 	return false
 }
 
@@ -19,10 +19,10 @@ func (self *Account) Verify(msg ByteSlice, sig ByteSlice) bool {
 
 type PrivAccount struct {
 	Account
-	PrivKey ByteSlice
+	PrivKey []byte
 }
 
-func (self *PrivAccount) Sign(msg ByteSlice) Signature {
+func (self *PrivAccount) Sign(msg []byte) Signature {
 	return Signature{}
 }
 
@@ -42,13 +42,13 @@ It usually follows the message to be signed.
 
 type Signature struct {
 	SignerId uint64
-	Bytes    ByteSlice
+	Bytes    []byte
 }
 
-func ReadSignature(r io.Reader) Signature {
+func ReadSignature(r io.Reader, n *int64, err *error) Signature {
 	return Signature{
-		SignerId: Readuint64(r),
-		Bytes:    ReadByteSlice(r),
+		SignerId: ReadUInt64(r, n, err),
+		Bytes:    ReadByteSlice(r, n, err),
 	}
 }
 
@@ -57,7 +57,7 @@ func (sig Signature) IsZero() bool {
 }
 
 func (sig Signature) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteTo(UInt64(sig.SignerId), w, n, err)
-	n, err = WriteTo(sig.Bytes, w, n, err)
+	WriteUInt64(w, sig.SignerId, &n, &err)
+	WriteByteSlice(w, sig.Bytes, &n, &err)
 	return
 }

@@ -21,30 +21,30 @@ Tx wire format:
 */
 
 type Tx interface {
-	Type() Byte
+	Type() byte
 	Binary
 }
 
 const (
-	TX_TYPE_SEND = Byte(0x01)
-	TX_TYPE_NAME = Byte(0x02)
+	TX_TYPE_SEND = byte(0x01)
+	TX_TYPE_NAME = byte(0x02)
 )
 
-func ReadTx(r io.Reader) Tx {
-	switch t := ReadByte(r); t {
+func ReadTx(r io.Reader, n *int64, err *error) Tx {
+	switch t := ReadByte(r, n, err); t {
 	case TX_TYPE_SEND:
 		return &SendTx{
-			Fee:       Readuint64(r),
-			To:        Readuint64(r),
-			Amount:    Readuint64(r),
-			Signature: ReadSignature(r),
+			Fee:       ReadUInt64(r, n, err),
+			To:        ReadUInt64(r, n, err),
+			Amount:    ReadUInt64(r, n, err),
+			Signature: ReadSignature(r, n, err),
 		}
 	case TX_TYPE_NAME:
 		return &NameTx{
-			Fee:       Readuint64(r),
-			Name:      ReadString(r),
-			PubKey:    ReadByteSlice(r),
-			Signature: ReadSignature(r),
+			Fee:       ReadUInt64(r, n, err),
+			Name:      ReadString(r, n, err),
+			PubKey:    ReadByteSlice(r, n, err),
+			Signature: ReadSignature(r, n, err),
 		}
 	default:
 		Panicf("Unknown Tx type %x", t)
@@ -61,16 +61,16 @@ type SendTx struct {
 	Signature
 }
 
-func (self *SendTx) Type() Byte {
+func (self *SendTx) Type() byte {
 	return TX_TYPE_SEND
 }
 
 func (self *SendTx) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteTo(self.Type(), w, n, err)
-	n, err = WriteTo(UInt64(self.Fee), w, n, err)
-	n, err = WriteTo(UInt64(self.To), w, n, err)
-	n, err = WriteTo(UInt64(self.Amount), w, n, err)
-	n, err = WriteTo(self.Signature, w, n, err)
+	WriteByte(w, self.Type(), &n, &err)
+	WriteUInt64(w, self.Fee, &n, &err)
+	WriteUInt64(w, self.To, &n, &err)
+	WriteUInt64(w, self.Amount, &n, &err)
+	WriteBinary(w, self.Signature, &n, &err)
 	return
 }
 
@@ -78,20 +78,20 @@ func (self *SendTx) WriteTo(w io.Writer) (n int64, err error) {
 
 type NameTx struct {
 	Fee    uint64
-	Name   String
-	PubKey ByteSlice
+	Name   string
+	PubKey []byte
 	Signature
 }
 
-func (self *NameTx) Type() Byte {
+func (self *NameTx) Type() byte {
 	return TX_TYPE_NAME
 }
 
 func (self *NameTx) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteTo(self.Type(), w, n, err)
-	n, err = WriteTo(UInt64(self.Fee), w, n, err)
-	n, err = WriteTo(self.Name, w, n, err)
-	n, err = WriteTo(self.PubKey, w, n, err)
-	n, err = WriteTo(self.Signature, w, n, err)
+	WriteByte(w, self.Type(), &n, &err)
+	WriteUInt64(w, self.Fee, &n, &err)
+	WriteString(w, self.Name, &n, &err)
+	WriteByteSlice(w, self.PubKey, &n, &err)
+	WriteBinary(w, self.Signature, &n, &err)
 	return
 }

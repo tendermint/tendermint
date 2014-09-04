@@ -77,7 +77,8 @@ func (p *Peer) CanSend(chId byte) bool {
 }
 
 func (p *Peer) WriteTo(w io.Writer) (n int64, err error) {
-	return String(p.Key).WriteTo(w)
+	WriteString(w, p.Key, &n, &err)
+	return
 }
 
 func (p *Peer) String() string {

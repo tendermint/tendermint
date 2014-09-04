@@ -10,11 +10,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	. "github.com/tendermint/tendermint/accounts"
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/blocks"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/p2p"
+	. "github.com/tendermint/tendermint/state"
 )
 
 const (
@@ -89,29 +89,42 @@ type ConsensusManager struct {
 	started  uint32
 	stopped  uint32
 
-	csc          *ConsensusStateControl
-	blockStore   *BlockStore
-	accountStore *AccountStore
-	mtx          sync.Mutex
-	peerStates   map[string]*PeerState
-	doActionCh   chan RoundAction
+	cs         *ConsensusState
+	blockStore *BlockStore
+	doActionCh chan RoundAction
+
+	mtx            sync.Mutex
+	state          *State
+	privValidator  *PrivValidator
+	peerStates     map[string]*PeerState
+	stagedProposal *BlockPartSet
+	stagedState    *State
 }
 
-func NewConsensusManager(sw *p2p.Switch, csc *ConsensusStateControl, blockStore *BlockStore, accountStore *AccountStore) *ConsensusManager {
+func NewConsensusManager(sw *p2p.Switch, state *State, blockStore *BlockStore) *ConsensusManager {
 	swEvents := make(chan interface{})
 	sw.AddEventListener("ConsensusManager.swEvents", swEvents)
-	csc.Update(blockStore) // Update csc with new blocks.
+	cs := NewConsensusState(state)
 	cm := &ConsensusManager{
-		sw:           sw,
-		swEvents:     swEvents,
-		quit:         make(chan struct{}),
-		csc:          csc,
-		blockStore:   blockStore,
-		accountStore: accountStore,
-		peerStates:   make(map[string]*PeerState),
-		doActionCh:   make(chan RoundAction, 1),
+		sw:       sw,
+		swEvents: swEvents,
+		quit:     make(chan struct{}),
+
+		cs:         cs,
+		blockStore: blockStore,
+		doActionCh: make(chan RoundAction, 1),
+
+		state:      state,
+		peerStates: make(map[string]*PeerState),
 	}
 	return cm
+}
+
+// Sets our private validator account for signing votes.
+func (cm *ConsensusManager) SetPrivValidator(priv *PrivValidator) {
+	cm.mtx.Lock()
+	defer cm.mtx.Unlock()
+	cm.privValidator = priv
 }
 
 func (cm *ConsensusManager) Start() {
@@ -166,7 +179,7 @@ func (cm *ConsensusManager) switchEventsRoutine() {
 
 // Like, how large is it and how often can we send it?
 func (cm *ConsensusManager) makeKnownBlockPartsMessage() *KnownBlockPartsMessage {
-	rs := cm.csc.RoundState()
+	rs := cm.cs.RoundState()
 	return &KnownBlockPartsMessage{
 		Height:                rs.Height,
 		SecondsSinceStartTime: uint32(time.Now().Sub(rs.StartTime).Seconds()),
@@ -188,7 +201,7 @@ func (cm *ConsensusManager) gossipProposalRoutine() {
 OUTER_LOOP:
 	for {
 		// Get round state
-		rs := cm.csc.RoundState()
+		rs := cm.cs.RoundState()
 
 		// Receive incoming message on ProposalCh
 		inMsg, ok := cm.sw.Receive(ProposalCh)
@@ -282,9 +295,8 @@ OUTER_LOOP:
 // Signs a vote document and broadcasts it.
 // hash can be nil to vote "nil"
 func (cm *ConsensusManager) signAndVote(vote *Vote) error {
-	privValidator := cm.csc.PrivValidator()
-	if privValidator != nil {
-		err := privValidator.SignVote(vote)
+	if cm.privValidator != nil {
+		err := cm.privValidator.SignVote(vote)
 		if err != nil {
 			return err
 		}
@@ -294,15 +306,43 @@ func (cm *ConsensusManager) signAndVote(vote *Vote) error {
 	return nil
 }
 
-func (cm *ConsensusManager) isProposalValid(rs *RoundState) bool {
-	if !rs.BlockPartSet.IsComplete() {
-		return false
+func (cm *ConsensusManager) stageProposal(proposal *BlockPartSet) error {
+	// Already staged?
+	cm.mtx.Lock()
+	if cm.stagedProposal == proposal {
+		cm.mtx.Unlock()
+		return nil
+	} else {
+		cm.mtx.Unlock()
 	}
-	err := cm.stageBlock(rs.BlockPartSet)
+
+	// Basic validation
+	if !proposal.IsComplete() {
+		return errors.New("Incomplete proposal BlockPartSet")
+	}
+	block, blockParts := blockPartSet.Block(), blockPartSet.BlockParts()
+	err := block.ValidateBasic()
 	if err != nil {
-		return false
+		return err
 	}
-	return true
+
+	// Create a copy of the state for staging
+	cm.mtx.Lock()
+	stateCopy := cm.state.Copy() // Deep copy the state before staging.
+	cm.mtx.Unlock()
+
+	// Commit block onto the copied state.
+	err := stateCopy.CommitBlock(block, block.Header.Time) // NOTE: fake commit time.
+	if err != nil {
+		return err
+	}
+
+	// Looks good!
+	cm.mtx.Lock()
+	cm.stagedProposal = proposal
+	cm.stagedState = state
+	cm.mtx.Unlock()
+	return nil
 }
 
 func (cm *ConsensusManager) constructProposal(rs *RoundState) (*Block, error) {
@@ -315,7 +355,7 @@ func (cm *ConsensusManager) constructProposal(rs *RoundState) (*Block, error) {
 // We may not have received a full proposal.
 func (cm *ConsensusManager) voteProposal(rs *RoundState) error {
 	// If we're locked, must vote that.
-	locked := cm.csc.LockedProposal()
+	locked := cm.cs.LockedProposal()
 	if locked != nil {
 		block := locked.Block()
 		err := cm.signAndVote(&Vote{
@@ -326,9 +366,10 @@ func (cm *ConsensusManager) voteProposal(rs *RoundState) error {
 		})
 		return err
 	}
-	// If proposal is invalid
-	if !cm.isProposalValid(rs) {
-		// Vote for nil.
+	// Stage proposal
+	err := cm.stageProposal(rs.BlockPartSet)
+	if err != nil {
+		// Vote for nil, whatever the error.
 		err := cm.signAndVote(&Vote{
 			Height: rs.Height,
 			Round:  rs.Round,
@@ -361,13 +402,13 @@ func (cm *ConsensusManager) precommitProposal(rs *RoundState) error {
 
 			// If proposal is invalid or unknown, do nothing.
 			// See note on ZombieValidators to see why.
-			if !cm.isProposalValid(rs) {
+			if cm.stageProposal(rs.BlockPartSet) != nil {
 				return nil
 			}
 
 			// Lock this proposal.
 			// NOTE: we're unlocking any prior locks.
-			cm.csc.LockProposal(rs.BlockPartSet)
+			cm.cs.LockProposal(rs.BlockPartSet)
 
 			// Send precommit vote.
 			err := cm.signAndVote(&Vote{
@@ -395,11 +436,11 @@ func (cm *ConsensusManager) commitOrUnlockProposal(rs *RoundState) error {
 		// do not commit.
 		// TODO If we were just late to receive the block, when
 		// do we actually get it? Document it.
-		if !cm.isProposalValid(rs) {
+		if cm.stageProposal(rs.BlockPartSet) != nil {
 			return nil
 		}
 		// TODO: Remove?
-		cm.csc.LockProposal(rs.BlockPartSet)
+		cm.cs.LockProposal(rs.BlockPartSet)
 		// Vote commit.
 		err := cm.signAndVote(&Vote{
 			Height: rs.Height,
@@ -416,11 +457,11 @@ func (cm *ConsensusManager) commitOrUnlockProposal(rs *RoundState) error {
 		// time differences between nodes, so nodes end up drifting
 		// in time.
 		commitTime := time.Now()
-		cm.commitBlock(rs.BlockPartSet, commitTime)
+		cm.commitProposal(rs.BlockPartSet, commitTime)
 		return nil
 	} else {
 		// Otherwise, if a 1/3 majority if a block that isn't our locked one exists, unlock.
-		locked := cm.csc.LockedProposal()
+		locked := cm.cs.LockedProposal()
 		if locked != nil {
 			for _, hashOrNil := range rs.RoundPrecommits.OneThirdMajority() {
 				if hashOrNil == nil {
@@ -429,7 +470,7 @@ func (cm *ConsensusManager) commitOrUnlockProposal(rs *RoundState) error {
 				hash := hashOrNil.([]byte)
 				if !bytes.Equal(hash, locked.Block().Hash()) {
 					// Unlock our lock.
-					cm.csc.LockProposal(nil)
+					cm.cs.LockProposal(nil)
 				}
 			}
 		}
@@ -437,52 +478,27 @@ func (cm *ConsensusManager) commitOrUnlockProposal(rs *RoundState) error {
 	}
 }
 
-// After stageBlock(), a call to commitBlock() with the same arguments must succeed.
-func (cm *ConsensusManager) stageBlock(blockPartSet *BlockPartSet) error {
+func (cm *ConsensusManager) commitProposal(blockPartSet *BlockPartSet, commitTime time.Time) error {
 	cm.mtx.Lock()
 	defer cm.mtx.Unlock()
 
+	if cm.stagedProposal != blockPartSet {
+		panic("Unexpected stagedProposal.") // Shouldn't happen.
+	}
+
+	// Save to blockStore
 	block, blockParts := blockPartSet.Block(), blockPartSet.BlockParts()
-
-	err := block.ValidateBasic()
-	if err != nil {
-		return err
-	}
-	err = cm.blockStore.StageBlockAndParts(block, blockParts)
-	if err != nil {
-		return err
-	}
-	err = cm.csc.StageBlock(block)
-	if err != nil {
-		return err
-	}
-	err = cm.accountStore.StageBlock(block)
-	if err != nil {
-		return err
-	}
-	// NOTE: more stores may be added here for validation.
-	return nil
-}
-
-// after stageBlock(), a call to commitBlock() with the same arguments must succeed.
-func (cm *ConsensusManager) commitBlock(blockPartSet *BlockPartSet, commitTime time.Time) error {
-	cm.mtx.Lock()
-	defer cm.mtx.Unlock()
-
-	block, blockParts := blockPartSet.Block(), blockPartSet.BlockParts()
-
 	err := cm.blockStore.SaveBlockParts(block.Height, blockParts)
 	if err != nil {
 		return err
 	}
-	err = cm.csc.CommitBlock(block, commitTime)
-	if err != nil {
-		return err
-	}
-	err = cm.accountStore.CommitBlock(block)
-	if err != nil {
-		return err
-	}
+
+	// What was staged becomes committed.
+	cm.state = cm.stagedState
+	cm.cs.Update(cm.state)
+	cm.stagedProposal = nil
+	cm.stagedState = nil
+
 	return nil
 }
 
@@ -490,7 +506,7 @@ func (cm *ConsensusManager) gossipVoteRoutine() {
 OUTER_LOOP:
 	for {
 		// Get round state
-		rs := cm.csc.RoundState()
+		rs := cm.cs.RoundState()
 
 		// Receive incoming message on VoteCh
 		inMsg, ok := cm.sw.Receive(VoteCh)
@@ -569,7 +585,7 @@ func (cm *ConsensusManager) proposeAndVoteRoutine() {
 
 		// Figure out which height/round/step we're at,
 		// then schedule an action for when it is due.
-		rs := cm.csc.RoundState()
+		rs := cm.cs.RoundState()
 		_, _, roundDuration, _, elapsedRatio := calcRoundInfo(rs.StartTime)
 		switch rs.Step() {
 		case RoundStepStart:
@@ -607,15 +623,14 @@ func (cm *ConsensusManager) proposeAndVoteRoutine() {
 			// We only consider transitioning to given step.
 			step := roundAction.XnToStep
 			// This is the current state.
-			rs := cm.csc.RoundState()
+			rs := cm.cs.RoundState()
 			if height != rs.Height || round != rs.Round {
 				return // Not relevant.
 			}
 
 			if step == RoundStepProposal && rs.Step() == RoundStepStart {
 				// Propose a block if I am the proposer.
-				privValidator := cm.csc.PrivValidator()
-				if privValidator != nil && rs.Proposer.Account.Id == privValidator.Id {
+				if cm.privValidator != nil && rs.Proposer.Account.Id == cm.privValidator.Id {
 					block, err := cm.constructProposal(rs)
 					if err != nil {
 						log.Error("Error attempting to construct a proposal: %v", err)
@@ -644,7 +659,7 @@ func (cm *ConsensusManager) proposeAndVoteRoutine() {
 				}
 				// Round is over. This is a special case.
 				// Prepare a new RoundState for the next state.
-				cm.csc.SetupRound(rs.Round + 1)
+				cm.cs.SetupRound(rs.Round + 1)
 				return // setAlarm() takes care of the rest.
 			} else {
 				return // Action is not relevant.

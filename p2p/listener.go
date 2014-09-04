@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"sync/atomic"
 
-	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/p2p/upnp"
 )
@@ -159,7 +158,7 @@ func getUPNPExternalAddress(externalPort, internalPort int) *NetAddress {
 	}
 
 	log.Debug("Got UPNP external address: %v", ext)
-	return NewNetAddressIPPort(ext, UInt16(externalPort))
+	return NewNetAddressIPPort(ext, uint16(externalPort))
 }
 
 // TODO: use syscalls: http://pastebin.com/9exZG4rh
@@ -178,7 +177,7 @@ func getNaiveExternalAddress(port int) *NetAddress {
 		if v4 == nil || v4[0] == 127 {
 			continue
 		} // loopback
-		return NewNetAddressIPPort(ipnet.IP, UInt16(port))
+		return NewNetAddressIPPort(ipnet.IP, uint16(port))
 	}
 	return nil
 }

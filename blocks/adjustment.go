@@ -16,41 +16,41 @@ import (
 TODO: signing a bad checkpoint (block)
 */
 type Adjustment interface {
-	Type() Byte
+	Type() byte
 	Binary
 }
 
 const (
-	ADJ_TYPE_BOND    = Byte(0x01)
-	ADJ_TYPE_UNBOND  = Byte(0x02)
-	ADJ_TYPE_TIMEOUT = Byte(0x03)
-	ADJ_TYPE_DUPEOUT = Byte(0x04)
+	ADJ_TYPE_BOND    = byte(0x01)
+	ADJ_TYPE_UNBOND  = byte(0x02)
+	ADJ_TYPE_TIMEOUT = byte(0x03)
+	ADJ_TYPE_DUPEOUT = byte(0x04)
 )
 
-func ReadAdjustment(r io.Reader) Adjustment {
-	switch t := ReadByte(r); t {
+func ReadAdjustment(r io.Reader, n *int64, err *error) Adjustment {
+	switch t := ReadByte(r, n, err); t {
 	case ADJ_TYPE_BOND:
 		return &Bond{
-			Fee:       Readuint64(r),
-			UnbondTo:  Readuint64(r),
-			Amount:    Readuint64(r),
-			Signature: ReadSignature(r),
+			Fee:       ReadUInt64(r, n, err),
+			UnbondTo:  ReadUInt64(r, n, err),
+			Amount:    ReadUInt64(r, n, err),
+			Signature: ReadSignature(r, n, err),
 		}
 	case ADJ_TYPE_UNBOND:
 		return &Unbond{
-			Fee:       Readuint64(r),
-			Amount:    Readuint64(r),
-			Signature: ReadSignature(r),
+			Fee:       ReadUInt64(r, n, err),
+			Amount:    ReadUInt64(r, n, err),
+			Signature: ReadSignature(r, n, err),
 		}
 	case ADJ_TYPE_TIMEOUT:
 		return &Timeout{
-			AccountId: Readuint64(r),
-			Penalty:   Readuint64(r),
+			AccountId: ReadUInt64(r, n, err),
+			Penalty:   ReadUInt64(r, n, err),
 		}
 	case ADJ_TYPE_DUPEOUT:
 		return &Dupeout{
-			VoteA: ReadBlockVote(r),
-			VoteB: ReadBlockVote(r),
+			VoteA: ReadBlockVote(r, n, err),
+			VoteB: ReadBlockVote(r, n, err),
 		}
 	default:
 		Panicf("Unknown Adjustment type %x", t)
@@ -68,16 +68,16 @@ type Bond struct {
 	Signature
 }
 
-func (self *Bond) Type() Byte {
+func (self *Bond) Type() byte {
 	return ADJ_TYPE_BOND
 }
 
 func (self *Bond) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteTo(self.Type(), w, n, err)
-	n, err = WriteTo(UInt64(self.Fee), w, n, err)
-	n, err = WriteTo(UInt64(self.UnbondTo), w, n, err)
-	n, err = WriteTo(UInt64(self.Amount), w, n, err)
-	n, err = WriteTo(self.Signature, w, n, err)
+	WriteByte(w, self.Type(), &n, &err)
+	WriteUInt64(w, self.Fee, &n, &err)
+	WriteUInt64(w, self.UnbondTo, &n, &err)
+	WriteUInt64(w, self.Amount, &n, &err)
+	WriteBinary(w, self.Signature, &n, &err)
 	return
 }
 
@@ -90,15 +90,15 @@ type Unbond struct {
 	Signature
 }
 
-func (self *Unbond) Type() Byte {
+func (self *Unbond) Type() byte {
 	return ADJ_TYPE_UNBOND
 }
 
 func (self *Unbond) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteTo(self.Type(), w, n, err)
-	n, err = WriteTo(UInt64(self.Fee), w, n, err)
-	n, err = WriteTo(UInt64(self.Amount), w, n, err)
-	n, err = WriteTo(self.Signature, w, n, err)
+	WriteByte(w, self.Type(), &n, &err)
+	WriteUInt64(w, self.Fee, &n, &err)
+	WriteUInt64(w, self.Amount, &n, &err)
+	WriteBinary(w, self.Signature, &n, &err)
 	return
 }
 
@@ -110,14 +110,14 @@ type Timeout struct {
 	Penalty   uint64
 }
 
-func (self *Timeout) Type() Byte {
+func (self *Timeout) Type() byte {
 	return ADJ_TYPE_TIMEOUT
 }
 
 func (self *Timeout) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteTo(self.Type(), w, n, err)
-	n, err = WriteTo(UInt64(self.AccountId), w, n, err)
-	n, err = WriteTo(UInt64(self.Penalty), w, n, err)
+	WriteByte(w, self.Type(), &n, &err)
+	WriteUInt64(w, self.AccountId, &n, &err)
+	WriteUInt64(w, self.Penalty, &n, &err)
 	return
 }
 
@@ -129,22 +129,22 @@ Typically only the signature is passed around, as the hash & height are implied.
 */
 type BlockVote struct {
 	Height    uint64
-	BlockHash ByteSlice
+	BlockHash []byte
 	Signature
 }
 
-func ReadBlockVote(r io.Reader) BlockVote {
+func ReadBlockVote(r io.Reader, n *int64, err *error) BlockVote {
 	return BlockVote{
-		Height:    Readuint64(r),
-		BlockHash: ReadByteSlice(r),
-		Signature: ReadSignature(r),
+		Height:    ReadUInt64(r, n, err),
+		BlockHash: ReadByteSlice(r, n, err),
+		Signature: ReadSignature(r, n, err),
 	}
 }
 
 func (self BlockVote) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteTo(UInt64(self.Height), w, n, err)
-	n, err = WriteTo(self.BlockHash, w, n, err)
-	n, err = WriteTo(self.Signature, w, n, err)
+	WriteUInt64(w, self.Height, &n, &err)
+	WriteByteSlice(w, self.BlockHash, &n, &err)
+	WriteBinary(w, self.Signature, &n, &err)
 	return
 }
 
@@ -154,13 +154,13 @@ type Dupeout struct {
 	VoteB BlockVote
 }
 
-func (self *Dupeout) Type() Byte {
+func (self *Dupeout) Type() byte {
 	return ADJ_TYPE_DUPEOUT
 }
 
 func (self *Dupeout) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteTo(self.Type(), w, n, err)
-	n, err = WriteTo(self.VoteA, w, n, err)
-	n, err = WriteTo(self.VoteB, w, n, err)
+	WriteByte(w, self.Type(), &n, &err)
+	WriteBinary(w, self.VoteA, &n, &err)
+	WriteBinary(w, self.VoteB, &n, &err)
 	return
 }

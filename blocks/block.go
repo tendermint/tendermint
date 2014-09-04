@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"io"
+	"time"
 
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
@@ -32,18 +33,18 @@ type Block struct {
 	hash []byte
 }
 
-func ReadBlock(r io.Reader) *Block {
+func ReadBlock(r io.Reader, n *int64, err *error) *Block {
 	return &Block{
-		Header:     ReadHeader(r),
-		Validation: ReadValidation(r),
-		Txs:        ReadTxs(r),
+		Header:     ReadHeader(r, n, err),
+		Validation: ReadValidation(r, n, err),
+		Txs:        ReadTxs(r, n, err),
 	}
 }
 
 func (b *Block) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteTo(&b.Header, w, n, err)
-	n, err = WriteTo(&b.Validation, w, n, err)
-	n, err = WriteTo(&b.Txs, w, n, err)
+	WriteBinary(w, &b.Header, &n, &err)
+	WriteBinary(w, &b.Validation, &n, &err)
+	WriteBinary(w, &b.Txs, &n, &err)
 	return
 }
 
@@ -54,20 +55,20 @@ func (b *Block) ValidateBasic() error {
 }
 
 func (b *Block) URI() string {
-	return CalcBlockURI(uint32(b.Height), b.Hash())
+	return CalcBlockURI(b.Height, b.Hash())
 }
 
 func (b *Block) Hash() []byte {
 	if b.hash != nil {
 		return b.hash
 	} else {
-		hashes := []Binary{
-			ByteSlice(b.Header.Hash()),
-			ByteSlice(b.Validation.Hash()),
-			ByteSlice(b.Txs.Hash()),
+		hashes := [][]byte{
+			b.Header.Hash(),
+			b.Validation.Hash(),
+			b.Txs.Hash(),
 		}
 		// Merkle hash from sub-hashes.
-		return merkle.HashFromBinarySlice(hashes)
+		return merkle.HashFromByteSlices(hashes)
 	}
 }
 
@@ -104,31 +105,31 @@ type BlockPart struct {
 	Round  uint16 // Add Round? Well I need to know...
 	Index  uint16
 	Total  uint16
-	Bytes  ByteSlice
+	Bytes  []byte
 	Signature
 
 	// Volatile
 	hash []byte
 }
 
-func ReadBlockPart(r io.Reader) *BlockPart {
+func ReadBlockPart(r io.Reader, n *int64, err *error) *BlockPart {
 	return &BlockPart{
-		Height:    Readuint32(r),
-		Round:     Readuint16(r),
-		Index:     Readuint16(r),
-		Total:     Readuint16(r),
-		Bytes:     ReadByteSlice(r),
-		Signature: ReadSignature(r),
+		Height:    ReadUInt32(r, n, err),
+		Round:     ReadUInt16(r, n, err),
+		Index:     ReadUInt16(r, n, err),
+		Total:     ReadUInt16(r, n, err),
+		Bytes:     ReadByteSlice(r, n, err),
+		Signature: ReadSignature(r, n, err),
 	}
 }
 
 func (bp *BlockPart) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteTo(UInt32(bp.Height), w, n, err)
-	n, err = WriteTo(UInt16(bp.Round), w, n, err)
-	n, err = WriteTo(UInt16(bp.Index), w, n, err)
-	n, err = WriteTo(UInt16(bp.Total), w, n, err)
-	n, err = WriteTo(bp.Bytes, w, n, err)
-	n, err = WriteTo(bp.Signature, w, n, err)
+	WriteUInt32(w, bp.Height, &n, &err)
+	WriteUInt16(w, bp.Round, &n, &err)
+	WriteUInt16(w, bp.Index, &n, &err)
+	WriteUInt16(w, bp.Total, &n, &err)
+	WriteByteSlice(w, bp.Bytes, &n, &err)
+	WriteBinary(w, bp.Signature, &n, &err)
 	return
 }
 
@@ -173,38 +174,41 @@ func (bp *BlockPart) ValidateWithSigner(signer *Account) error {
 
 /* Header is part of a Block */
 type Header struct {
-	Name           String
+	Name           string
 	Height         uint32
 	Fees           uint64
-	Time           Time
-	PrevHash       ByteSlice
-	ValidationHash ByteSlice
-	TxsHash        ByteSlice
+	Time           time.Time
+	PrevHash       []byte
+	ValidationHash []byte
+	TxsHash        []byte
 
 	// Volatile
 	hash []byte
 }
 
-func ReadHeader(r io.Reader) Header {
+func ReadHeader(r io.Reader, n *int64, err *error) (h Header) {
+	if *err != nil {
+		return Header{}
+	}
 	return Header{
-		Name:           ReadString(r),
-		Height:         Readuint32(r),
-		Fees:           Readuint64(r),
-		Time:           ReadTime(r),
-		PrevHash:       ReadByteSlice(r),
-		ValidationHash: ReadByteSlice(r),
-		TxsHash:        ReadByteSlice(r),
+		Name:           ReadString(r, n, err),
+		Height:         ReadUInt32(r, n, err),
+		Fees:           ReadUInt64(r, n, err),
+		Time:           ReadTime(r, n, err),
+		PrevHash:       ReadByteSlice(r, n, err),
+		ValidationHash: ReadByteSlice(r, n, err),
+		TxsHash:        ReadByteSlice(r, n, err),
 	}
 }
 
 func (h *Header) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteTo(h.Name, w, n, err)
-	n, err = WriteTo(UInt32(h.Height), w, n, err)
-	n, err = WriteTo(UInt64(h.Fees), w, n, err)
-	n, err = WriteTo(h.Time, w, n, err)
-	n, err = WriteTo(h.PrevHash, w, n, err)
-	n, err = WriteTo(h.ValidationHash, w, n, err)
-	n, err = WriteTo(h.TxsHash, w, n, err)
+	WriteString(w, h.Name, &n, &err)
+	WriteUInt32(w, h.Height, &n, &err)
+	WriteUInt64(w, h.Fees, &n, &err)
+	WriteTime(w, h.Time, &n, &err)
+	WriteByteSlice(w, h.PrevHash, &n, &err)
+	WriteByteSlice(w, h.ValidationHash, &n, &err)
+	WriteByteSlice(w, h.TxsHash, &n, &err)
 	return
 }
 
@@ -231,16 +235,16 @@ type Validation struct {
 	hash []byte
 }
 
-func ReadValidation(r io.Reader) Validation {
-	numSigs := Readuint32(r)
-	numAdjs := Readuint32(r)
+func ReadValidation(r io.Reader, n *int64, err *error) Validation {
+	numSigs := ReadUInt32(r, n, err)
+	numAdjs := ReadUInt32(r, n, err)
 	sigs := make([]Signature, 0, numSigs)
 	for i := uint32(0); i < numSigs; i++ {
-		sigs = append(sigs, ReadSignature(r))
+		sigs = append(sigs, ReadSignature(r, n, err))
 	}
 	adjs := make([]Adjustment, 0, numAdjs)
 	for i := uint32(0); i < numAdjs; i++ {
-		adjs = append(adjs, ReadAdjustment(r))
+		adjs = append(adjs, ReadAdjustment(r, n, err))
 	}
 	return Validation{
 		Signatures:  sigs,
@@ -249,13 +253,13 @@ func ReadValidation(r io.Reader) Validation {
 }
 
 func (v *Validation) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteTo(UInt32(len(v.Signatures)), w, n, err)
-	n, err = WriteTo(UInt32(len(v.Adjustments)), w, n, err)
+	WriteUInt32(w, uint32(len(v.Signatures)), &n, &err)
+	WriteUInt32(w, uint32(len(v.Adjustments)), &n, &err)
 	for _, sig := range v.Signatures {
-		n, err = WriteTo(sig, w, n, err)
+		WriteBinary(w, sig, &n, &err)
 	}
 	for _, adj := range v.Adjustments {
-		n, err = WriteTo(adj, w, n, err)
+		WriteBinary(w, adj, &n, &err)
 	}
 	return
 }
@@ -282,19 +286,19 @@ type Txs struct {
 	hash []byte
 }
 
-func ReadTxs(r io.Reader) Txs {
-	numTxs := Readuint32(r)
+func ReadTxs(r io.Reader, n *int64, err *error) Txs {
+	numTxs := ReadUInt32(r, n, err)
 	txs := make([]Tx, 0, numTxs)
 	for i := uint32(0); i < numTxs; i++ {
-		txs = append(txs, ReadTx(r))
+		txs = append(txs, ReadTx(r, n, err))
 	}
 	return Txs{Txs: txs}
 }
 
 func (txs *Txs) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteTo(UInt32(len(txs.Txs)), w, n, err)
+	WriteUInt32(w, uint32(len(txs.Txs)), &n, &err)
 	for _, tx := range txs.Txs {
-		n, err = WriteTo(tx, w, n, err)
+		WriteBinary(w, tx, &n, &err)
 	}
 	return
 }

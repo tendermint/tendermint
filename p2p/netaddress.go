@@ -18,7 +18,7 @@ import (
 
 type NetAddress struct {
 	IP   net.IP
-	Port UInt16
+	Port uint16
 	str  string
 }
 
@@ -29,7 +29,7 @@ func NewNetAddress(addr net.Addr) *NetAddress {
 		Panicf("Only TCPAddrs are supported. Got: %v", addr)
 	}
 	ip := tcpAddr.IP
-	port := UInt16(tcpAddr.Port)
+	port := uint16(tcpAddr.Port)
 	return NewNetAddressIPPort(ip, port)
 }
 
@@ -43,17 +43,17 @@ func NewNetAddressString(addr string) *NetAddress {
 	if err != nil {
 		panic(err)
 	}
-	na := NewNetAddressIPPort(ip, UInt16(port))
+	na := NewNetAddressIPPort(ip, uint16(port))
 	return na
 }
 
-func ReadNetAddress(r io.Reader) *NetAddress {
-	ipBytes := ReadByteSlice(r)
-	port := ReadUInt16(r)
+func ReadNetAddress(r io.Reader, n *int64, err *error) *NetAddress {
+	ipBytes := ReadByteSlice(r, n, err)
+	port := ReadUInt16(r, n, err)
 	return NewNetAddressIPPort(net.IP(ipBytes), port)
 }
 
-func NewNetAddressIPPort(ip net.IP, port UInt16) *NetAddress {
+func NewNetAddressIPPort(ip net.IP, port uint16) *NetAddress {
 	na := &NetAddress{
 		IP:   ip,
 		Port: port,
@@ -66,8 +66,8 @@ func NewNetAddressIPPort(ip net.IP, port UInt16) *NetAddress {
 }
 
 func (na *NetAddress) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteTo(ByteSlice(na.IP.To16()), w, n, err)
-	n, err = WriteTo(na.Port, w, n, err)
+	WriteByteSlice(w, na.IP.To16(), &n, &err)
+	WriteUInt16(w, na.Port, &n, &err)
 	return
 }
 

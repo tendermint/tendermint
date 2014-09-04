@@ -5,7 +5,7 @@ import (
 
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/blocks"
-	//. "github.com/tendermint/tendermint/common"
+	. "github.com/tendermint/tendermint/common"
 	db_ "github.com/tendermint/tendermint/db"
 )
 
@@ -20,15 +20,15 @@ type Validator struct {
 }
 
 // Used to persist the state of ConsensusStateControl.
-func ReadValidator(r io.Reader) *Validator {
+func ReadValidator(r io.Reader, n *int64, err *error) *Validator {
 	return &Validator{
 		Account: Account{
-			Id:     Readuint64(r),
-			PubKey: ReadByteSlice(r),
+			Id:     ReadUInt64(r, n, err),
+			PubKey: ReadByteSlice(r, n, err),
 		},
-		BondHeight:  Readuint32(r),
-		VotingPower: Readuint64(r),
-		Accum:       Readint64(r),
+		BondHeight:  ReadUInt32(r, n, err),
+		VotingPower: ReadUInt64(r, n, err),
+		Accum:       ReadInt64(r, n, err),
 	}
 }
 
@@ -44,11 +44,11 @@ func (v *Validator) Copy() *Validator {
 
 // Used to persist the state of ConsensusStateControl.
 func (v *Validator) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteTo(UInt64(v.Id), w, n, err)
-	n, err = WriteTo(v.PubKey, w, n, err)
-	n, err = WriteTo(UInt32(v.BondHeight), w, n, err)
-	n, err = WriteTo(UInt64(v.VotingPower), w, n, err)
-	n, err = WriteTo(Int64(v.Accum), w, n, err)
+	WriteUInt64(w, v.Id, &n, &err)
+	WriteByteSlice(w, v.PubKey, &n, &err)
+	WriteUInt32(w, v.BondHeight, &n, &err)
+	WriteUInt64(w, v.VotingPower, &n, &err)
+	WriteInt64(w, v.Accum, &n, &err)
 	return
 }
 
@@ -78,7 +78,7 @@ func NewValidatorSet(validators map[uint64]*Validator) *ValidatorSet {
 		validators = make(map[uint64]*Validator)
 	}
 	return &ValidatorSet{
-		valdiators: validators,
+		validators: validators,
 	}
 }
 
@@ -104,7 +104,7 @@ func (v *ValidatorSet) IncrementAccum() {
 
 func (v *ValidatorSet) Copy() *ValidatorSet {
 	mapCopy := map[uint64]*Validator{}
-	for _, val := range validators {
+	for _, val := range v.validators {
 		mapCopy[val.Id] = val.Copy()
 	}
 	return &ValidatorSet{
@@ -112,12 +112,12 @@ func (v *ValidatorSet) Copy() *ValidatorSet {
 	}
 }
 
-func (v *ValidatorSet) Add(validator *Valdaitor) {
+func (v *ValidatorSet) Add(validator *Validator) {
 	v.validators[validator.Id] = validator
 }
 
 func (v *ValidatorSet) Get(id uint64) *Validator {
-	return v.validators[validator.Id]
+	return v.validators[id]
 }
 
 func (v *ValidatorSet) Map() map[uint64]*Validator {

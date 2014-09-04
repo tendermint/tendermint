@@ -9,7 +9,7 @@ import (
 )
 
 // Distributed pseudo-exponentially to test for various cases
-func randuint64() uint64 {
+func randUInt64() uint64 {
 	bits := rand.Uint32() % 64
 	if bits == 0 {
 		return 0
@@ -19,7 +19,7 @@ func randuint64() uint64 {
 	return n
 }
 
-func randuint32() uint32 {
+func randUInt32() uint32 {
 	bits := rand.Uint32() % 32
 	if bits == 0 {
 		return 0
@@ -29,18 +29,18 @@ func randuint32() uint32 {
 	return n
 }
 
-func randTime() Time {
-	return Time{time.Unix(int64(randuint64()), 0)}
+func randTime() time.Time {
+	return time.Unix(int64(randUInt64()), 0)
 }
 
 func randAccount() Account {
 	return Account{
-		Id:     randuint64(),
+		Id:     randUInt64(),
 		PubKey: randBytes(32),
 	}
 }
 
-func randBytes(n int) ByteSlice {
+func randBytes(n int) []byte {
 	bs := make([]byte, n)
 	for i := 0; i < n; i++ {
 		bs[i] = byte(rand.Intn(256))
@@ -49,7 +49,7 @@ func randBytes(n int) ByteSlice {
 }
 
 func randSig() Signature {
-	return Signature{randuint64(), randBytes(32)}
+	return Signature{randUInt64(), randBytes(32)}
 }
 
 func TestBlock(t *testing.T) {
@@ -58,15 +58,15 @@ func TestBlock(t *testing.T) {
 
 	sendTx := &SendTx{
 		Signature: randSig(),
-		Fee:       randuint64(),
-		To:        randuint64(),
-		Amount:    randuint64(),
+		Fee:       randUInt64(),
+		To:        randUInt64(),
+		Amount:    randUInt64(),
 	}
 
 	nameTx := &NameTx{
 		Signature: randSig(),
-		Fee:       randuint64(),
-		Name:      String(randBytes(12)),
+		Fee:       randUInt64(),
+		Name:      string(randBytes(12)),
 		PubKey:    randBytes(32),
 	}
 
@@ -74,30 +74,30 @@ func TestBlock(t *testing.T) {
 
 	bond := &Bond{
 		Signature: randSig(),
-		Fee:       randuint64(),
-		UnbondTo:  randuint64(),
-		Amount:    randuint64(),
+		Fee:       randUInt64(),
+		UnbondTo:  randUInt64(),
+		Amount:    randUInt64(),
 	}
 
 	unbond := &Unbond{
 		Signature: randSig(),
-		Fee:       randuint64(),
-		Amount:    randuint64(),
+		Fee:       randUInt64(),
+		Amount:    randUInt64(),
 	}
 
 	timeout := &Timeout{
-		AccountId: randuint64(),
-		Penalty:   randuint64(),
+		AccountId: randUInt64(),
+		Penalty:   randUInt64(),
 	}
 
 	dupeout := &Dupeout{
 		VoteA: BlockVote{
-			Height:    randuint64(),
+			Height:    randUInt64(),
 			BlockHash: randBytes(32),
 			Signature: randSig(),
 		},
 		VoteB: BlockVote{
-			Height:    randuint64(),
+			Height:    randUInt64(),
 			BlockHash: randBytes(32),
 			Signature: randSig(),
 		},
@@ -108,8 +108,8 @@ func TestBlock(t *testing.T) {
 	block := &Block{
 		Header: Header{
 			Name:           "Tendermint",
-			Height:         randuint32(),
-			Fees:           randuint64(),
+			Height:         randUInt32(),
+			Fees:           randUInt64(),
 			Time:           randTime(),
 			PrevHash:       randBytes(32),
 			ValidationHash: randBytes(32),
@@ -129,10 +129,12 @@ func TestBlock(t *testing.T) {
 	// Then, compare.
 
 	blockBytes := BinaryBytes(block)
-	block2 := ReadBlock(bytes.NewReader(blockBytes))
+	var n int64
+	var err error
+	block2 := ReadBlock(bytes.NewReader(blockBytes), &n, &err)
 	blockBytes2 := BinaryBytes(block2)
 
-	if !BinaryEqual(blockBytes, blockBytes2) {
+	if !bytes.Equal(blockBytes, blockBytes2) {
 		t.Fatal("Write->Read of block failed.")
 	}
 }

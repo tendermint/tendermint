@@ -6,6 +6,15 @@ type Binary interface {
 	WriteTo(w io.Writer) (int64, error)
 }
 
+func WriteBinary(w io.Writer, b Binary, n *int64, err *error) {
+	if *err != nil {
+		return
+	}
+	n_, err_ := b.WriteTo(w)
+	*n += int64(n_)
+	*err = err_
+}
+
 func WriteTo(w io.Writer, bz []byte, n *int64, err *error) {
 	if *err != nil {
 		return

@@ -5,8 +5,8 @@ import (
 	"encoding/gob"
 	"encoding/json"
 	"testing"
+	"time"
 
-	. "github.com/tendermint/tendermint/binary"
 	"github.com/ugorji/go/codec"
 	"github.com/vmihailenco/msgpack"
 )
@@ -18,10 +18,10 @@ func BenchmarkTestCustom(b *testing.B) {
 		Name:           "Header",
 		Height:         123,
 		Fees:           123,
-		Time:           TimeFromUnix(123),
-		PrevHash:       ByteSlice("prevhash"),
-		ValidationHash: ByteSlice("validationhash"),
-		TxsHash:        ByteSlice("txshash"),
+		Time:           time.Unix(123, 0),
+		PrevHash:       []byte("prevhash"),
+		ValidationHash: []byte("validationhash"),
+		TxsHash:        []byte("txshash"),
 	}
 
 	buf := bytes.NewBuffer(nil)
@@ -30,7 +30,9 @@ func BenchmarkTestCustom(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		buf.Reset()
 		h.WriteTo(buf)
-		h2 := ReadHeader(buf)
+		var n int64
+		var err error
+		h2 := ReadHeader(buf, &n, &err)
 		if h2.Name != "Header" {
 			b.Fatalf("wrong name")
 		}
@@ -83,7 +85,7 @@ func BenchmarkTestGob(b *testing.B) {
 		Name:           "Header",
 		Height:         123,
 		Fees:           123,
-		Time:           TimeFromUnix(123),
+		Time:           time.Unix(123, 0),
 		PrevHash:       []byte("prevhash"),
 		ValidationHash: []byte("validationhash"),
 		TxsHash:        []byte("txshash"),
@@ -112,7 +114,7 @@ func BenchmarkTestMsgPack(b *testing.B) {
 		Name:           "Header",
 		Height:         123,
 		Fees:           123,
-		Time:           TimeFromUnix(123),
+		Time:           time.Unix(123, 0),
 		PrevHash:       []byte("prevhash"),
 		ValidationHash: []byte("validationhash"),
 		TxsHash:        []byte("txshash"),
@@ -141,7 +143,7 @@ func BenchmarkTestMsgPack2(b *testing.B) {
 		Name:           "Header",
 		Height:         123,
 		Fees:           123,
-		Time:           TimeFromUnix(123),
+		Time:           time.Unix(123, 0),
 		PrevHash:       []byte("prevhash"),
 		ValidationHash: []byte("validationhash"),
 		TxsHash:        []byte("txshash"),

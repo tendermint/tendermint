@@ -79,7 +79,8 @@ func (bs *BlockStore) LoadBlockPart(height uint32, index uint16) *BlockPart {
 	if partBytes == nil {
 		return nil
 	}
-	return ReadBlockPart(bytes.NewReader(partBytes))
+	var n int64
+	return ReadBlockPart(bytes.NewReader(partBytes), &n, &err)
 }
 
 // Convenience method for loading block parts and merging to a block.
@@ -91,11 +92,6 @@ func (bs *BlockStore) LoadBlock(height uint32) *Block {
 	}
 	// XXX implement
 	panic("TODO: Not implemented")
-}
-
-func (bs *BlockStore) StageBlockAndParts(block *Block, parts []*BlockPart) error {
-	// XXX validate
-	return nil
 }
 
 // NOTE: Assumes that parts as well as the block are valid. See StageBlockParts().

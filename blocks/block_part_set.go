@@ -95,7 +95,7 @@ func (bps *BlockPartSet) AddBlockPart(part *BlockPart) (added bool, err error) {
 		// Check for existing parts.
 		existing := bps.parts[part.Index]
 		if existing != nil {
-			if existing.Bytes.Equals(part.Bytes) {
+			if bytes.Equal(existing.Bytes, part.Bytes) {
 				// Ignore duplicate
 				return false, nil
 			} else {
@@ -127,7 +127,9 @@ func (bps *BlockPartSet) Block() *Block {
 		for _, part := range bps.parts {
 			blockBytes = append(blockBytes, part.Bytes...)
 		}
-		block := ReadBlock(bytes.NewReader(blockBytes))
+		var n int64
+		var err error
+		block := ReadBlock(bytes.NewReader(blockBytes), &n, &err)
 		bps._block = block
 	}
 	return bps._block

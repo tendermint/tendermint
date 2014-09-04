@@ -30,7 +30,7 @@ const (
 /*
 A MConnection wraps a network connection and handles buffering and multiplexing.
 Binary messages are sent with ".Send(channelId, msg)".
-Inbound ByteSlices are pushed to the designated chan<- InboundBytes.
+Inbound byteslices are pushed to the designated chan<- InboundBytes.
 */
 type MConnection struct {
 	conn         net.Conn
@@ -217,6 +217,7 @@ func (c *MConnection) sendRoutine() {
 
 FOR_LOOP:
 	for {
+		var n int64
 		var err error
 		select {
 		case <-c.flushTimer.Ch:
@@ -228,13 +229,11 @@ FOR_LOOP:
 				channel.updateStats()
 			}
 		case <-c.pingTimer.Ch:
-			var n int64
-			n, err = packetTypePing.WriteTo(c.bufWriter)
+			WriteByte(c.bufWriter, packetTypePing, &n, &err)
 			c.sendMonitor.Update(int(n))
 			c.flush()
 		case <-c.pong:
-			var n int64
-			n, err = packetTypePong.WriteTo(c.bufWriter)
+			WriteByte(c.bufWriter, packetTypePong, &n, &err)
 			c.sendMonitor.Update(int(n))
 			c.flush()
 		case <-c.quit:
@@ -331,7 +330,9 @@ FOR_LOOP:
 		c.recvMonitor.Limit(maxPacketSize, atomic.LoadInt64(&c.recvRate), true)
 
 		// Read packet type
-		pktType, n, err := ReadUInt8Safe(c.bufReader)
+		var n int64
+		var err error
+		pktType := ReadByte(c.bufReader, &n, &err)
 		c.recvMonitor.Update(int(n))
 		if err != nil {
 			if atomic.LoadUint32(&c.stopped) != 1 {
@@ -409,10 +410,10 @@ type Channel struct {
 	desc          *ChannelDescriptor
 	id            byte
 	recvQueue     chan InboundBytes
-	sendQueue     chan ByteSlice
+	sendQueue     chan []byte
 	sendQueueSize uint32
-	recving       ByteSlice
-	sending       ByteSlice
+	recving       []byte
+	sending       []byte
 	priority      uint
 	recentlySent  int64 // exponential moving average
 }
@@ -426,7 +427,7 @@ func newChannel(conn *MConnection, desc *ChannelDescriptor) *Channel {
 		desc:      desc,
 		id:        desc.Id,
 		recvQueue: desc.recvQueue,
-		sendQueue: make(chan ByteSlice, desc.SendQueueCapacity),
+		sendQueue: make(chan []byte, desc.SendQueueCapacity),
 		recving:   make([]byte, 0, desc.RecvBufferSize),
 		priority:  desc.DefaultPriority,
 	}
@@ -434,7 +435,7 @@ func newChannel(conn *MConnection, desc *ChannelDescriptor) *Channel {
 
 // Queues message to send to this channel.
 // Goroutine-safe
-func (ch *Channel) sendBytes(bytes ByteSlice) {
+func (ch *Channel) sendBytes(bytes []byte) {
 	ch.sendQueue <- bytes
 	atomic.AddUint32(&ch.sendQueueSize, 1)
 }
@@ -442,7 +443,7 @@ func (ch *Channel) sendBytes(bytes ByteSlice) {
 // Queues message to send to this channel.
 // Nonblocking, returns true if successful.
 // Goroutine-safe
-func (ch *Channel) trySendBytes(bytes ByteSlice) bool {
+func (ch *Channel) trySendBytes(bytes []byte) bool {
 	select {
 	case ch.sendQueue <- bytes:
 		atomic.AddUint32(&ch.sendQueueSize, 1)
@@ -480,14 +481,14 @@ func (ch *Channel) sendPending() bool {
 // Not goroutine-safe
 func (ch *Channel) nextPacket() packet {
 	packet := packet{}
-	packet.ChannelId = Byte(ch.id)
+	packet.ChannelId = byte(ch.id)
 	packet.Bytes = ch.sending[:MinInt(maxPacketSize, len(ch.sending))]
 	if len(ch.sending) <= maxPacketSize {
-		packet.EOF = Byte(0x01)
+		packet.EOF = byte(0x01)
 		ch.sending = nil
 		atomic.AddUint32(&ch.sendQueueSize, ^uint32(0)) // decrement sendQueueSize
 	} else {
-		packet.EOF = Byte(0x00)
+		packet.EOF = byte(0x00)
 		ch.sending = ch.sending[MinInt(maxPacketSize, len(ch.sending)):]
 	}
 	return packet
@@ -497,8 +498,8 @@ func (ch *Channel) nextPacket() packet {
 // Not goroutine-safe
 func (ch *Channel) writePacketTo(w io.Writer) (n int64, err error) {
 	packet := ch.nextPacket()
-	n, err = WriteTo(packetTypeMessage, w, n, err)
-	n, err = WriteTo(packet, w, n, err)
+	WriteByte(w, packetTypeMessage, &n, &err)
+	WriteBinary(w, packet, &n, &err)
 	if err != nil {
 		ch.recentlySent += n
 	}
@@ -509,7 +510,7 @@ func (ch *Channel) writePacketTo(w io.Writer) (n int64, err error) {
 // Not goroutine-safe
 func (ch *Channel) recvPacket(pkt packet) {
 	ch.recving = append(ch.recving, pkt.Bytes...)
-	if pkt.EOF == Byte(0x01) {
+	if pkt.EOF == byte(0x01) {
 		ch.recvQueue <- InboundBytes{ch.conn, ch.recving}
 		ch.recving = make([]byte, 0, ch.desc.RecvBufferSize)
 	}
@@ -527,22 +528,22 @@ func (ch *Channel) updateStats() {
 
 const (
 	maxPacketSize     = 1024
-	packetTypePing    = UInt8(0x00)
-	packetTypePong    = UInt8(0x01)
-	packetTypeMessage = UInt8(0x10)
+	packetTypePing    = byte(0x00)
+	packetTypePong    = byte(0x01)
+	packetTypeMessage = byte(0x10)
 )
 
 // Messages in channels are chopped into smaller packets for multiplexing.
 type packet struct {
-	ChannelId Byte
-	EOF       Byte // 1 means message ends here.
-	Bytes     ByteSlice
+	ChannelId byte
+	EOF       byte // 1 means message ends here.
+	Bytes     []byte
 }
 
 func (p packet) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteTo(p.ChannelId, w, n, err)
-	n, err = WriteTo(p.EOF, w, n, err)
-	n, err = WriteTo(p.Bytes, w, n, err)
+	WriteByte(w, p.ChannelId, &n, &err)
+	WriteByte(w, p.EOF, &n, &err)
+	WriteByteSlice(w, p.Bytes, &n, &err)
 	return
 }
 
@@ -551,44 +552,32 @@ func (p packet) String() string {
 }
 
 func readPacketSafe(r io.Reader) (pkt packet, n int64, err error) {
-	chId, n_, err := ReadByteSafe(r)
-	n += n_
-	if err != nil {
-		return
-	}
-	eof, n_, err := ReadByteSafe(r)
-	n += n_
-	if err != nil {
-		return
-	}
-	// TODO: packet length sanity check.
-	bytes, n_, err := ReadByteSliceSafe(r)
-	n += n_
-	if err != nil {
-		return
-	}
-	return packet{chId, eof, bytes}, n, nil
+	chId := ReadByte(r, &n, &err)
+	eof := ReadByte(r, &n, &err)
+	bytes := ReadByteSlice(r, &n, &err)
+	pkt = packet{chId, eof, bytes}
+	return
 }
 
 //-----------------------------------------------------------------------------
 
 type InboundBytes struct {
 	MConn *MConnection
-	Bytes ByteSlice
+	Bytes []byte
 }
 
 //-----------------------------------------------------------------------------
 
 // Convenience struct for writing typed messages.
-// Reading requires a custom decoder that switches on the first type byte of a ByteSlice.
+// Reading requires a custom decoder that switches on the first type byte of a byteslice.
 type TypedMessage struct {
-	Type Byte
+	Type byte
 	Msg  Binary
 }
 
 func (tm TypedMessage) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteTo(tm.Type, w, n, err)
-	n, err = WriteTo(tm.Msg, w, n, err)
+	WriteByte(w, tm.Type, &n, &err)
+	WriteBinary(w, tm.Msg, &n, &err)
 	return
 }
 
@@ -596,6 +585,6 @@ func (tm TypedMessage) String() string {
 	return fmt.Sprintf("<%X:%v>", tm.Type, tm.Msg)
 }
 
-func (tm TypedMessage) Bytes() ByteSlice {
+func (tm TypedMessage) Bytes() []byte {
 	return BinaryBytes(tm)
 }

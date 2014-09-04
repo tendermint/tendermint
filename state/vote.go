@@ -1,4 +1,4 @@
-package consensus
+package state
 
 import (
 	"bytes"
@@ -35,22 +35,22 @@ type Vote struct {
 	Signature
 }
 
-func ReadVote(r io.Reader) *Vote {
+func ReadVote(r io.Reader, n *int64, err *error) *Vote {
 	return &Vote{
-		Height:    Readuint32(r),
-		Round:     Readuint16(r),
-		Type:      Readbyte(r),
-		Hash:      ReadByteSlice(r),
-		Signature: ReadSignature(r),
+		Height:    ReadUInt32(r, n, err),
+		Round:     ReadUInt16(r, n, err),
+		Type:      ReadByte(r, n, err),
+		Hash:      ReadByteSlice(r, n, err),
+		Signature: ReadSignature(r, n, err),
 	}
 }
 
 func (v *Vote) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteTo(UInt32(v.Height), w, n, err)
-	n, err = WriteTo(UInt16(v.Round), w, n, err)
-	n, err = WriteTo(Byte(v.Type), w, n, err)
-	n, err = WriteTo(ByteSlice(v.Hash), w, n, err)
-	n, err = WriteTo(v.Signature, w, n, err)
+	WriteUInt32(w, v.Height, &n, &err)
+	WriteUInt16(w, v.Round, &n, &err)
+	WriteByte(w, v.Type, &n, &err)
+	WriteByteSlice(w, v.Hash, &n, &err)
+	WriteBinary(w, v.Signature, &n, &err)
 	return
 }
 

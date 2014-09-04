@@ -1,12 +1,21 @@
 package p2p
 
 import (
+	"bytes"
 	"encoding/hex"
+	"io"
 	"testing"
 	"time"
 
 	. "github.com/tendermint/tendermint/binary"
 )
+
+type String string
+
+func (s String) WriteTo(w io.Writer) (n int64, err error) {
+	WriteString(w, string(s), &n, &err)
+	return
+}
 
 // convenience method for creating two switches connected to each other.
 func makeSwitchPair(t testing.TB, numChannels int, sendQueueCapacity int, recvBufferSize int, recvQueueCapacity int) (*Switch, *Switch, []*ChannelDescriptor) {
@@ -86,10 +95,12 @@ func TestSwitches(t *testing.T) {
 
 	// Receive message from channel 1 and check
 	inMsg, ok := s2.Receive(byte(0x01))
+	var n int64
+	var err error
 	if !ok {
 		t.Errorf("Failed to receive from channel one")
 	}
-	if ReadString(inMsg.Bytes.Reader()) != "channel one" {
+	if ReadString(bytes.NewBuffer(inMsg.Bytes), &n, &err) != "channel one" {
 		t.Errorf("Unexpected received message bytes:\n%v", hex.Dump(inMsg.Bytes))
 	}
 
@@ -98,7 +109,7 @@ func TestSwitches(t *testing.T) {
 	if !ok {
 		t.Errorf("Failed to receive from channel zero")
 	}
-	if ReadString(inMsg.Bytes.Reader()) != "channel zero" {
+	if ReadString(bytes.NewBuffer(inMsg.Bytes), &n, &err) != "channel zero" {
 		t.Errorf("Unexpected received message bytes:\n%v", hex.Dump(inMsg.Bytes))
 	}
 }

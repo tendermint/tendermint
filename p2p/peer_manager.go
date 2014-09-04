@@ -210,19 +210,21 @@ func (pm *PeerManager) requestRoutine() {
 /* Messages */
 
 const (
-	msgTypeUnknown = Byte(0x00)
-	msgTypeRequest = Byte(0x01)
-	msgTypeAddrs   = Byte(0x02)
+	msgTypeUnknown = byte(0x00)
+	msgTypeRequest = byte(0x01)
+	msgTypeAddrs   = byte(0x02)
 )
 
 // TODO: check for unnecessary extra bytes at the end.
-func decodeMessage(bz ByteSlice) (msg interface{}) {
+func decodeMessage(bz []byte) (msg interface{}) {
+	var n int64
+	var err error
 	// log.Debug("decoding msg bytes: %X", bz)
-	switch Byte(bz[0]) {
+	switch bz[0] {
 	case msgTypeRequest:
 		return &pexRequestMessage{}
 	case msgTypeAddrs:
-		return readPexAddrsMessage(bytes.NewReader(bz[1:]))
+		return readPexAddrsMessage(bytes.NewReader(bz[1:]), &n, &err)
 	default:
 		return nil
 	}
@@ -235,7 +237,7 @@ type pexRequestMessage struct {
 }
 
 func (m *pexRequestMessage) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteTo(msgTypeRequest, w, n, err)
+	WriteByte(w, msgTypeRequest, &n, &err)
 	return
 }
 
@@ -250,11 +252,11 @@ type pexAddrsMessage struct {
 	Addrs []*NetAddress
 }
 
-func readPexAddrsMessage(r io.Reader) *pexAddrsMessage {
-	numAddrs := int(ReadUInt32(r))
+func readPexAddrsMessage(r io.Reader, n *int64, err *error) *pexAddrsMessage {
+	numAddrs := int(ReadUInt32(r, n, err))
 	addrs := []*NetAddress{}
 	for i := 0; i < numAddrs; i++ {
-		addr := ReadNetAddress(r)
+		addr := ReadNetAddress(r, n, err)
 		addrs = append(addrs, addr)
 	}
 	return &pexAddrsMessage{
@@ -263,10 +265,10 @@ func readPexAddrsMessage(r io.Reader) *pexAddrsMessage {
 }
 
 func (m *pexAddrsMessage) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteTo(msgTypeAddrs, w, n, err)
-	n, err = WriteTo(UInt32(len(m.Addrs)), w, n, err)
+	WriteByte(w, msgTypeAddrs, &n, &err)
+	WriteUInt32(w, uint32(len(m.Addrs)), &n, &err)
 	for _, addr := range m.Addrs {
-		n, err = WriteTo(addr, w, n, err)
+		WriteBinary(w, addr, &n, &err)
 	}
 	return
 }
