@@ -1,4 +1,4 @@
-package state
+package consensus
 
 import (
 	"bytes"
@@ -10,6 +10,7 @@ import (
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/blocks"
 	"github.com/tendermint/tendermint/config"
+	. "github.com/tendermint/tendermint/state"
 )
 
 const (
@@ -104,7 +105,7 @@ type VoteSet struct {
 	height           uint32
 	round            uint16
 	type_            byte
-	validators       map[uint64]*Validator
+	validators       *ValidatorSet
 	votes            map[uint64]*Vote
 	votesByHash      map[string]uint64
 	totalVotes       uint64
@@ -112,9 +113,9 @@ type VoteSet struct {
 }
 
 // Constructs a new VoteSet struct used to accumulate votes for each round.
-func NewVoteSet(height uint32, round uint16, type_ byte, validators map[uint64]*Validator) *VoteSet {
+func NewVoteSet(height uint32, round uint16, type_ byte, validators *ValidatorSet) *VoteSet {
 	totalVotingPower := uint64(0)
-	for _, val := range validators {
+	for _, val := range validators.Map() {
 		totalVotingPower += val.VotingPower
 	}
 	return &VoteSet{
@@ -122,7 +123,7 @@ func NewVoteSet(height uint32, round uint16, type_ byte, validators map[uint64]*
 		round:            round,
 		type_:            type_,
 		validators:       validators,
-		votes:            make(map[uint64]*Vote, len(validators)),
+		votes:            make(map[uint64]*Vote, validators.Size()),
 		votesByHash:      make(map[string]uint64),
 		totalVotes:       0,
 		totalVotingPower: totalVotingPower,
@@ -140,7 +141,7 @@ func (vs *VoteSet) AddVote(vote *Vote) (bool, error) {
 		return false, ErrVoteUnexpectedPhase
 	}
 
-	val := vs.validators[vote.SignerId]
+	val := vs.validators.Get(vote.SignerId)
 	// Ensure that signer is a validator.
 	if val == nil {
 		return false, ErrVoteInvalidAccount

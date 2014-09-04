@@ -119,9 +119,18 @@ func (s *State) Validators() *ValidatorSet {
 	return s.validators
 }
 
-func (s *State) Account(accountId uint64) *Account {
+func (s *State) Account(accountId uint64) (*Account, error) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
-	// XXX: figure out a way to load an Account Binary type.
-	return s.accounts.Get(accountId)
+	idBytes, err := BasicCodec.Write(accountId)
+	if err != nil {
+		return nil, err
+	}
+	accountBytes := s.accounts.Get(idBytes)
+	if accountBytes == nil {
+		return nil, nil
+	}
+	n, err := int64(0), error(nil)
+	account := ReadAccount(bytes.NewBuffer(accountBytes), &n, &err)
+	return account, err
 }

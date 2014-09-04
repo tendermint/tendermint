@@ -1,17 +1,14 @@
 package binary
 
 import (
-	"errors"
-	"io"
+	"bytes"
 	"time"
 )
 
 type Codec interface {
-	WriteTo(io.Writer, interface{}, *int64, *error)
-	ReadFrom(io.Reader, *int64, *error) interface{}
+	Write(interface{}) ([]byte, error)
+	Read([]byte) (interface{}, error)
 }
-
-//-----------------------------------------------------------------------------
 
 const (
 	typeNil  = byte(0x00)
@@ -33,7 +30,8 @@ var BasicCodec = basicCodec{}
 
 type basicCodec struct{}
 
-func (bc basicCodec) WriteTo(w io.Writer, o interface{}, n *int64, err *error) {
+func (bc basicCodec) Write(o interface{}) ([]byte, error) {
+	n, err, w := new(int64), new(error), new(bytes.Buffer)
 	switch o.(type) {
 	case nil:
 		WriteByte(w, typeNil, n, err)
@@ -76,63 +74,41 @@ func (bc basicCodec) WriteTo(w io.Writer, o interface{}, n *int64, err *error) {
 	default:
 		panic("Unsupported type")
 	}
-	return
+	return w.Bytes(), *err
 }
 
-func (bc basicCodec) ReadFrom(r io.Reader, n *int64, err *error) interface{} {
+func (bc basicCodec) Read(bz []byte) (interface{}, error) {
+	n, err, r, o := new(int64), new(error), bytes.NewBuffer(bz), interface{}(nil)
 	type_ := ReadByte(r, n, err)
 	switch type_ {
 	case typeNil:
-		return nil
+		o = nil
 	case typeByte:
-		return ReadByte(r, n, err)
+		o = ReadByte(r, n, err)
 	case typeInt8:
-		return ReadInt8(r, n, err)
+		o = ReadInt8(r, n, err)
 	//case typeUInt8:
-	//	return ReadUInt8(r, n, err)
+	//	o = ReadUInt8(r, n, err)
 	case typeInt16:
-		return ReadInt16(r, n, err)
+		o = ReadInt16(r, n, err)
 	case typeUInt16:
-		return ReadUInt16(r, n, err)
+		o = ReadUInt16(r, n, err)
 	case typeInt32:
-		return ReadInt32(r, n, err)
+		o = ReadInt32(r, n, err)
 	case typeUInt32:
-		return ReadUInt32(r, n, err)
+		o = ReadUInt32(r, n, err)
 	case typeInt64:
-		return ReadInt64(r, n, err)
+		o = ReadInt64(r, n, err)
 	case typeUInt64:
-		return ReadUInt64(r, n, err)
+		o = ReadUInt64(r, n, err)
 	case typeString:
-		return ReadString(r, n, err)
+		o = ReadString(r, n, err)
 	case typeByteSlice:
-		return ReadByteSlice(r, n, err)
+		o = ReadByteSlice(r, n, err)
 	case typeTime:
-		return ReadTime(r, n, err)
+		o = ReadTime(r, n, err)
 	default:
 		panic("Unsupported type")
 	}
-}
-
-//-----------------------------------------------------------------------------
-
-// Creates an adapter codec for Binary things.
-// Resulting Codec can be used with merkle/*.
-type BinaryCodec struct {
-	decoder func(io.Reader, *int64, *error) interface{}
-}
-
-func NewBinaryCodec(decoder func(io.Reader, *int64, *error) interface{}) *BinaryCodec {
-	return &BinaryCodec{decoder}
-}
-
-func (ca *BinaryCodec) WriteTo(w io.Writer, o interface{}, n *int64, err *error) {
-	if bo, ok := o.(Binary); ok {
-		WriteTo(w, BinaryBytes(bo), n, err)
-	} else {
-		*err = errors.New("BinaryCodec expected Binary object")
-	}
-}
-
-func (ca *BinaryCodec) ReadFrom(r io.Reader, n *int64, err *error) interface{} {
-	return ca.decoder(r, n, err)
+	return o, *err
 }

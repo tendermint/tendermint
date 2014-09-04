@@ -4,9 +4,7 @@ import (
 	"io"
 
 	. "github.com/tendermint/tendermint/binary"
-	. "github.com/tendermint/tendermint/blocks"
 	. "github.com/tendermint/tendermint/common"
-	db_ "github.com/tendermint/tendermint/db"
 )
 
 // Holds state for a Validator at a given height+round.
@@ -50,20 +48,6 @@ func (v *Validator) WriteTo(w io.Writer) (n int64, err error) {
 	WriteUInt64(w, v.VotingPower, &n, &err)
 	WriteInt64(w, v.Accum, &n, &err)
 	return
-}
-
-//-----------------------------------------------------------------------------
-
-// TODO: Ensure that double signing never happens via an external persistent check.
-type PrivValidator struct {
-	PrivAccount
-	db *db_.LevelDB
-}
-
-// Modifies the vote object in memory.
-// Double signing results in an error.
-func (pv *PrivValidator) SignVote(vote *Vote) error {
-	return nil
 }
 
 //-----------------------------------------------------------------------------
@@ -122,6 +106,10 @@ func (v *ValidatorSet) Get(id uint64) *Validator {
 
 func (v *ValidatorSet) Map() map[uint64]*Validator {
 	return v.validators
+}
+
+func (v *ValidatorSet) Size() int {
+	return len(v.validators)
 }
 
 // TODO: cache proposer. invalidate upon increment.

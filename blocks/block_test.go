@@ -33,13 +33,6 @@ func randTime() time.Time {
 	return time.Unix(int64(randUInt64()), 0)
 }
 
-func randAccount() Account {
-	return Account{
-		Id:     randUInt64(),
-		PubKey: randBytes(32),
-	}
-}
-
 func randBytes(n int) []byte {
 	bs := make([]byte, n)
 	for i := 0; i < n; i++ {

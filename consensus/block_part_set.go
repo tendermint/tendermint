@@ -1,9 +1,12 @@
-package blocks
+package consensus
 
 import (
 	"bytes"
 	"errors"
 	"sync"
+
+	. "github.com/tendermint/tendermint/blocks"
+	. "github.com/tendermint/tendermint/state"
 )
 
 // Helper for keeping track of block parts.
@@ -72,10 +75,12 @@ func (bps *BlockPartSet) AddBlockPart(part *BlockPart) (added bool, err error) {
 	defer bps.mtx.Unlock()
 
 	// If part is invalid, return an error.
+	/* XXX
 	err = part.ValidateWithSigner(bps.signer)
 	if err != nil {
 		return false, err
 	}
+	*/
 
 	if bps.parts == nil {
 		// First received part for this round.

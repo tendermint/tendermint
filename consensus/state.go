@@ -1,12 +1,9 @@
 package consensus
 
 import (
-	"bytes"
 	"sync"
 	"time"
 
-	. "github.com/tendermint/tendermint/binary"
-	. "github.com/tendermint/tendermint/blocks"
 	. "github.com/tendermint/tendermint/common"
 	. "github.com/tendermint/tendermint/state"
 )
@@ -18,12 +15,12 @@ var (
 // Tracks consensus state across block heights and rounds.
 type ConsensusState struct {
 	mtx            sync.Mutex
-	height         uint32                // Height we are working on.
-	validatorsR0   map[uint64]*Validator // A copy of the validators at round 0
-	lockedProposal *BlockPartSet         // A BlockPartSet of the locked proposal.
-	startTime      time.Time             // Start of round 0 for this height.
-	commits        *VoteSet              // Commits for this height.
-	roundState     *RoundState           // The RoundState object for the current round.
+	height         uint32        // Height we are working on.
+	validatorsR0   *ValidatorSet // A copy of the validators at round 0
+	lockedProposal *BlockPartSet // A BlockPartSet of the locked proposal.
+	startTime      time.Time     // Start of round 0 for this height.
+	commits        *VoteSet      // Commits for this height.
+	roundState     *RoundState   // The RoundState object for the current round.
 }
 
 func NewConsensusState(state *State) *ConsensusState {
@@ -70,7 +67,7 @@ func (cs *ConsensusState) Update(state *State) {
 	cs.height = stateHeight
 	cs.validatorsR0 = state.Validators().Copy() // NOTE: immutable.
 	cs.lockedProposal = nil
-	cs.startTime = state.commitTime // XXX is this what we want?
+	cs.startTime = state.CommitTime() // XXX is this what we want?
 	cs.commits = NewVoteSet(stateHeight, 0, VoteTypeCommit, cs.validatorsR0)
 
 	// Setup the roundState
@@ -94,20 +91,20 @@ func (cs *ConsensusState) SetupRound(round uint16) {
 func (cs *ConsensusState) setupRound(round uint16) {
 	// Increment validator accums as necessary.
 	// We need to start with cs.validatorsR0 or cs.roundState.Validators
-	var validators map[uint64]*Validator = nil
+	var validators *ValidatorSet
 	var validatorsRound uint16
 	if cs.roundState == nil {
 		// We have no roundState so we start from validatorsR0 at round 0.
-		validators = copyValidators(cs.validatorsR0)
+		validators = cs.validatorsR0.Copy()
 		validatorsRound = 0
 	} else {
 		// We have a previous roundState so we start from that.
-		validators = copyValidators(cs.roundState.Validators)
+		validators = cs.roundState.Validators.Copy()
 		validatorsRound = cs.roundState.Round
 	}
 	// Increment all the way to round.
 	for r := validatorsRound; r < round; r++ {
-		incrementAccum(validators)
+		validators.IncrementAccum()
 	}
 
 	roundState := NewRoundState(cs.height, round, cs.startTime, validators, cs.commits)
@@ -128,25 +125,25 @@ const (
 
 // RoundState encapsulates all the state needed to engage in the consensus protocol.
 type RoundState struct {
-	Height          uint32                // Immutable
-	Round           uint16                // Immutable
-	StartTime       time.Time             // Time in which consensus started for this height.
-	Expires         time.Time             // Time after which this round is expired.
-	Proposer        *Validator            // The proposer to propose a block for this round.
-	Validators      map[uint64]*Validator // All validators with modified accumPower for this round.
-	BlockPartSet    *BlockPartSet         // All block parts received for this round.
-	RoundBareVotes  *VoteSet              // All votes received for this round.
-	RoundPrecommits *VoteSet              // All precommits received for this round.
-	Commits         *VoteSet              // A shared object for all commit votes of this height.
+	Height          uint32        // Immutable
+	Round           uint16        // Immutable
+	StartTime       time.Time     // Time in which consensus started for this height.
+	Expires         time.Time     // Time after which this round is expired.
+	Proposer        *Validator    // The proposer to propose a block for this round.
+	Validators      *ValidatorSet // All validators with modified accumPower for this round.
+	BlockPartSet    *BlockPartSet // All block parts received for this round.
+	RoundBareVotes  *VoteSet      // All votes received for this round.
+	RoundPrecommits *VoteSet      // All precommits received for this round.
+	Commits         *VoteSet      // A shared object for all commit votes of this height.
 
 	mtx  sync.Mutex
 	step uint8 // mutable
 }
 
 func NewRoundState(height uint32, round uint16, startTime time.Time,
-	validators map[uint64]*Validator, commits *VoteSet) *RoundState {
+	validators *ValidatorSet, commits *VoteSet) *RoundState {
 
-	proposer := getProposer(validators)
+	proposer := validators.GetProposer()
 	blockPartSet := NewBlockPartSet(height, round, &(proposer.Account))
 	roundBareVotes := NewVoteSet(height, round, VoteTypeBare, validators)
 	roundPrecommits := NewVoteSet(height, round, VoteTypePrecommit, validators)

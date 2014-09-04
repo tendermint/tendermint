@@ -320,7 +320,7 @@ func (cm *ConsensusManager) stageProposal(proposal *BlockPartSet) error {
 	if !proposal.IsComplete() {
 		return errors.New("Incomplete proposal BlockPartSet")
 	}
-	block, blockParts := blockPartSet.Block(), blockPartSet.BlockParts()
+	block := proposal.Block()
 	err := block.ValidateBasic()
 	if err != nil {
 		return err
@@ -332,7 +332,7 @@ func (cm *ConsensusManager) stageProposal(proposal *BlockPartSet) error {
 	cm.mtx.Unlock()
 
 	// Commit block onto the copied state.
-	err := stateCopy.CommitBlock(block, block.Header.Time) // NOTE: fake commit time.
+	err = stateCopy.CommitBlock(block, block.Header.Time) // NOTE: fake commit time.
 	if err != nil {
 		return err
 	}
@@ -340,7 +340,7 @@ func (cm *ConsensusManager) stageProposal(proposal *BlockPartSet) error {
 	// Looks good!
 	cm.mtx.Lock()
 	cm.stagedProposal = proposal
-	cm.stagedState = state
+	cm.stagedState = stateCopy
 	cm.mtx.Unlock()
 	return nil
 }
@@ -379,7 +379,7 @@ func (cm *ConsensusManager) voteProposal(rs *RoundState) error {
 		return err
 	}
 	// Vote for block.
-	err := cm.signAndVote(&Vote{
+	err = cm.signAndVote(&Vote{
 		Height: rs.Height,
 		Round:  rs.Round,
 		Type:   VoteTypeBare,
@@ -788,25 +788,26 @@ func (ps *PeerState) ApplyVoteRankMessage(msg *VoteRankMessage) error {
 // Messages
 
 const (
-	msgTypeUnknown         = Byte(0x00)
-	msgTypeBlockPart       = Byte(0x10)
-	msgTypeKnownBlockParts = Byte(0x11)
-	msgTypeVote            = Byte(0x20)
-	msgTypeVoteRank        = Byte(0x21)
+	msgTypeUnknown         = byte(0x00)
+	msgTypeBlockPart       = byte(0x10)
+	msgTypeKnownBlockParts = byte(0x11)
+	msgTypeVote            = byte(0x20)
+	msgTypeVoteRank        = byte(0x21)
 )
 
 // TODO: check for unnecessary extra bytes at the end.
-func decodeMessage(bz ByteSlice) (msg interface{}) {
+func decodeMessage(bz []byte) (msg interface{}) {
+	n, err := new(int64), new(error)
 	// log.Debug("decoding msg bytes: %X", bz)
-	switch Byte(bz[0]) {
+	switch bz[0] {
 	case msgTypeBlockPart:
-		return readBlockPartMessage(bytes.NewReader(bz[1:]))
+		return readBlockPartMessage(bytes.NewReader(bz[1:]), n, err)
 	case msgTypeKnownBlockParts:
-		return readKnownBlockPartsMessage(bytes.NewReader(bz[1:]))
+		return readKnownBlockPartsMessage(bytes.NewReader(bz[1:]), n, err)
 	case msgTypeVote:
-		return ReadVote(bytes.NewReader(bz[1:]))
+		return ReadVote(bytes.NewReader(bz[1:]), n, err)
 	case msgTypeVoteRank:
-		return readVoteRankMessage(bytes.NewReader(bz[1:]))
+		return readVoteRankMessage(bytes.NewReader(bz[1:]), n, err)
 	default:
 		return nil
 	}
@@ -818,15 +819,15 @@ type BlockPartMessage struct {
 	BlockPart *BlockPart
 }
 
-func readBlockPartMessage(r io.Reader) *BlockPartMessage {
+func readBlockPartMessage(r io.Reader, n *int64, err *error) *BlockPartMessage {
 	return &BlockPartMessage{
-		BlockPart: ReadBlockPart(r),
+		BlockPart: ReadBlockPart(r, n, err),
 	}
 }
 
 func (m *BlockPartMessage) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteTo(msgTypeBlockPart, w, n, err)
-	n, err = WriteTo(m.BlockPart, w, n, err)
+	WriteByte(w, msgTypeBlockPart, &n, &err)
+	WriteBinary(w, m.BlockPart, &n, &err)
 	return
 }
 
@@ -839,22 +840,22 @@ func (m *BlockPartMessage) String() string {
 type KnownBlockPartsMessage struct {
 	Height                uint32
 	SecondsSinceStartTime uint32
-	BlockPartsBitArray    ByteSlice
+	BlockPartsBitArray    []byte
 }
 
-func readKnownBlockPartsMessage(r io.Reader) *KnownBlockPartsMessage {
+func readKnownBlockPartsMessage(r io.Reader, n *int64, err *error) *KnownBlockPartsMessage {
 	return &KnownBlockPartsMessage{
-		Height:                Readuint32(r),
-		SecondsSinceStartTime: Readuint32(r),
-		BlockPartsBitArray:    ReadByteSlice(r),
+		Height:                ReadUInt32(r, n, err),
+		SecondsSinceStartTime: ReadUInt32(r, n, err),
+		BlockPartsBitArray:    ReadByteSlice(r, n, err),
 	}
 }
 
 func (m *KnownBlockPartsMessage) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteTo(msgTypeKnownBlockParts, w, n, err)
-	n, err = WriteTo(UInt32(m.Height), w, n, err)
-	n, err = WriteTo(UInt32(m.SecondsSinceStartTime), w, n, err)
-	n, err = WriteTo(m.BlockPartsBitArray, w, n, err)
+	WriteByte(w, msgTypeKnownBlockParts, &n, &err)
+	WriteUInt32(w, m.Height, &n, &err)
+	WriteUInt32(w, m.SecondsSinceStartTime, &n, &err)
+	WriteByteSlice(w, m.BlockPartsBitArray, &n, &err)
 	return
 }
 
@@ -871,17 +872,17 @@ type VoteRankMessage struct {
 	Rank        uint8
 }
 
-func readVoteRankMessage(r io.Reader) *VoteRankMessage {
+func readVoteRankMessage(r io.Reader, n *int64, err *error) *VoteRankMessage {
 	return &VoteRankMessage{
-		ValidatorId: Readuint64(r),
-		Rank:        Readuint8(r),
+		ValidatorId: ReadUInt64(r, n, err),
+		Rank:        ReadUInt8(r, n, err),
 	}
 }
 
 func (m *VoteRankMessage) WriteTo(w io.Writer) (n int64, err error) {
-	n, err = WriteTo(msgTypeVoteRank, w, n, err)
-	n, err = WriteTo(UInt64(m.ValidatorId), w, n, err)
-	n, err = WriteTo(UInt8(m.Rank), w, n, err)
+	WriteByte(w, msgTypeVoteRank, &n, &err)
+	WriteUInt64(w, m.ValidatorId, &n, &err)
+	WriteUInt8(w, m.Rank, &n, &err)
 	return
 }
 
