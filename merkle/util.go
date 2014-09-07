@@ -8,12 +8,31 @@ import (
 )
 
 func HashFromByteSlices(items [][]byte) []byte {
-	panic("Implement me")
-	return nil
+	switch len(items) {
+	case 0:
+		panic("Cannot compute hash of empty slice")
+	case 1:
+		return items[0]
+	default:
+		var n int64
+		var err error
+		var hasher = sha256.New()
+		hash := HashFromByteSlices(items[0 : len(items)/2])
+		WriteByteSlice(hasher, hash, &n, &err)
+		if err != nil {
+			panic(err)
+		}
+		hash = HashFromByteSlices(items[len(items)/2:])
+		WriteByteSlice(hasher, hash, &n, &err)
+		if err != nil {
+			panic(err)
+		}
+		return hasher.Sum(nil)
+	}
 }
 
 /*
-Compute a deterministic merkle hash from a list of byteslices.
+Compute a deterministic merkle hash from a list of Binary objects.
 */
 func HashFromBinarySlice(items []Binary) []byte {
 	switch len(items) {

@@ -4,6 +4,7 @@ import (
 	"sync"
 	"time"
 
+	. "github.com/tendermint/tendermint/blocks"
 	. "github.com/tendermint/tendermint/common"
 	. "github.com/tendermint/tendermint/state"
 )
@@ -131,7 +132,7 @@ type RoundState struct {
 	Expires         time.Time     // Time after which this round is expired.
 	Proposer        *Validator    // The proposer to propose a block for this round.
 	Validators      *ValidatorSet // All validators with modified accumPower for this round.
-	BlockPartSet    *BlockPartSet // All block parts received for this round.
+	Proposal        *BlockPartSet // All block parts received for this round.
 	RoundBareVotes  *VoteSet      // All votes received for this round.
 	RoundPrecommits *VoteSet      // All precommits received for this round.
 	Commits         *VoteSet      // A shared object for all commit votes of this height.
@@ -144,7 +145,7 @@ func NewRoundState(height uint32, round uint16, startTime time.Time,
 	validators *ValidatorSet, commits *VoteSet) *RoundState {
 
 	proposer := validators.GetProposer()
-	blockPartSet := NewBlockPartSet(height, round, &(proposer.Account))
+	blockPartSet := NewBlockPartSet(height, nil)
 	roundBareVotes := NewVoteSet(height, round, VoteTypeBare, validators)
 	roundPrecommits := NewVoteSet(height, round, VoteTypePrecommit, validators)
 
@@ -155,7 +156,7 @@ func NewRoundState(height uint32, round uint16, startTime time.Time,
 		Expires:         calcRoundStartTime(round+1, startTime),
 		Proposer:        proposer,
 		Validators:      validators,
-		BlockPartSet:    blockPartSet,
+		Proposal:        blockPartSet,
 		RoundBareVotes:  roundBareVotes,
 		RoundPrecommits: roundPrecommits,
 		Commits:         commits,

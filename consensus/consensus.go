@@ -33,16 +33,6 @@ const (
 
 //-----------------------------------------------------------------------------
 
-// convenience
-func calcRoundInfo(startTime time.Time) (round uint16, roundStartTime time.Time, roundDuration time.Duration, roundElapsed time.Duration, elapsedRatio float64) {
-	round = calcRound(startTime)
-	roundStartTime = calcRoundStartTime(round, startTime)
-	roundDuration = calcRoundDuration(round)
-	roundElapsed = time.Now().Sub(roundStartTime)
-	elapsedRatio = float64(roundElapsed) / float64(roundDuration)
-	return
-}
-
 // total duration of given round
 func calcRoundDuration(round uint16) time.Duration {
 	return roundDuration0 + roundDurationDelta*time.Duration(round)
@@ -78,6 +68,17 @@ func calcRound(startTime time.Time) uint16 {
 		return 0
 	}
 	return uint16(R)
+}
+
+// convenience
+func calcRoundInfo(startTime time.Time) (round uint16, roundStartTime time.Time, roundDuration time.Duration,
+	roundElapsed time.Duration, elapsedRatio float64) {
+	round = calcRound(startTime)
+	roundStartTime = calcRoundStartTime(round, startTime)
+	roundDuration = calcRoundDuration(round)
+	roundElapsed = time.Now().Sub(roundStartTime)
+	elapsedRatio = float64(roundElapsed) / float64(roundDuration)
+	return
 }
 
 //-----------------------------------------------------------------------------
@@ -127,6 +128,12 @@ func (cm *ConsensusManager) SetPrivValidator(priv *PrivValidator) {
 	cm.privValidator = priv
 }
 
+func (cm *ConsensusManager) PrivValidator() *PrivValidator {
+	cm.mtx.Lock()
+	defer cm.mtx.Unlock()
+	return cm.privValidator
+}
+
 func (cm *ConsensusManager) Start() {
 	if atomic.CompareAndSwapUint32(&cm.started, 0, 1) {
 		log.Info("Starting ConsensusManager")
@@ -164,12 +171,16 @@ func (cm *ConsensusManager) switchEventsRoutine() {
 			// By sending KnownBlockPartsMessage,
 			// we send our height/round + startTime, and known block parts,
 			// which is sufficient for the peer to begin interacting with us.
-			event.Peer.TrySend(ProposalCh, cm.makeKnownBlockPartsMessage())
+			event.Peer.TrySend(ProposalCh, cm.makeKnownBlockPartsMessage(cm.cs.RoundState()))
 		case p2p.SwitchEventDonePeer:
 			event := swEvent.(p2p.SwitchEventDonePeer)
 			// Delete peerState for event.Peer
 			cm.mtx.Lock()
-			delete(cm.peerStates, event.Peer.Key)
+			peerState := cm.peerStates[event.Peer.Key]
+			if peerState != nil {
+				peerState.Disconnect()
+				delete(cm.peerStates, event.Peer.Key)
+			}
 			cm.mtx.Unlock()
 		default:
 			log.Warning("Unhandled switch event type")
@@ -178,23 +189,19 @@ func (cm *ConsensusManager) switchEventsRoutine() {
 }
 
 // Like, how large is it and how often can we send it?
-func (cm *ConsensusManager) makeKnownBlockPartsMessage() *KnownBlockPartsMessage {
-	rs := cm.cs.RoundState()
+func (cm *ConsensusManager) makeKnownBlockPartsMessage(rs *RoundState) *KnownBlockPartsMessage {
 	return &KnownBlockPartsMessage{
 		Height:                rs.Height,
 		SecondsSinceStartTime: uint32(time.Now().Sub(rs.StartTime).Seconds()),
-		BlockPartsBitArray:    rs.BlockPartSet.BitArray(),
+		BlockPartsBitArray:    rs.Proposal.BitArray(),
 	}
 }
 
+// NOTE: may return nil, but (nil).Wants*() returns false.
 func (cm *ConsensusManager) getPeerState(peer *p2p.Peer) *PeerState {
 	cm.mtx.Lock()
 	defer cm.mtx.Unlock()
-	peerState := cm.peerStates[peer.Key]
-	if peerState == nil {
-		log.Warning("Wanted peerState for %v but none exists", peer)
-	}
-	return peerState
+	return cm.peerStates[peer.Key]
 }
 
 func (cm *ConsensusManager) gossipProposalRoutine() {
@@ -221,27 +228,33 @@ OUTER_LOOP:
 
 				// TODO Continue if we've already voted, then no point processing the part.
 
+				// Check that the signature is valid and from proposer.
+				if rs.Proposer.Verify(msg.BlockPart.Hash(), msg.BlockPart.Signature) {
+					// TODO handle bad peer.
+					continue OUTER_LOOP
+				}
+
+				// If we are the proposer, then don't do anything else.
+				// We're already sending peers our proposal on another routine.
+				privValidator := cm.PrivValidator()
+				if privValidator != nil && rs.Proposer.Account.Id == privValidator.Id {
+					continue OUTER_LOOP
+				}
+
 				// Add and process the block part
-				added, err := rs.BlockPartSet.AddBlockPart(msg.BlockPart)
+				added, err := rs.Proposal.AddBlockPart(msg.BlockPart)
 				if err == ErrInvalidBlockPartConflict {
 					// TODO: Bad validator
-				} else if err == ErrInvalidBlockPartSignature {
-					// TODO: Bad peer
 				} else if err != nil {
 					Panicf("Unexpected blockPartsSet error %v", err)
 				}
 				if added {
 					// If peer wants this part, send peer the part
 					// and our new blockParts state.
-					kbpMsg := cm.makeKnownBlockPartsMessage()
+					kbpMsg := cm.makeKnownBlockPartsMessage(rs)
 					partMsg := &BlockPartMessage{BlockPart: msg.BlockPart}
-				PEERS_LOOP:
 					for _, peer := range cm.sw.Peers().List() {
 						peerState := cm.getPeerState(peer)
-						if peerState == nil {
-							// Peer disconnected before we were able to process.
-							continue PEERS_LOOP
-						}
 						if peerState.WantsBlockPart(msg.BlockPart) {
 							peer.TrySend(KnownPartsCh, kbpMsg)
 							peer.TrySend(ProposalCh, partMsg)
@@ -282,7 +295,7 @@ OUTER_LOOP:
 			continue OUTER_LOOP
 		}
 		peerState := cm.getPeerState(inMsg.MConn.Peer)
-		if peerState == nil {
+		if !peerState.IsConnected() {
 			// Peer disconnected before we were able to process.
 			continue OUTER_LOOP
 		}
@@ -295,8 +308,9 @@ OUTER_LOOP:
 // Signs a vote document and broadcasts it.
 // hash can be nil to vote "nil"
 func (cm *ConsensusManager) signAndVote(vote *Vote) error {
-	if cm.privValidator != nil {
-		err := cm.privValidator.SignVote(vote)
+	privValidator := cm.PrivValidator()
+	if privValidator != nil {
+		err := privValidator.SignVote(vote)
 		if err != nil {
 			return err
 		}
@@ -345,8 +359,10 @@ func (cm *ConsensusManager) stageProposal(proposal *BlockPartSet) error {
 	return nil
 }
 
-func (cm *ConsensusManager) constructProposal(rs *RoundState) (*Block, error) {
-	// XXX implement
+// Constructs an unsigned proposal
+func (cm *ConsensusManager) constructProposal(rs *RoundState) (*BlockPartSet, error) {
+	// XXX implement, first implement mempool
+	// proposal := block.ToBlockPartSet()
 	return nil, nil
 }
 
@@ -367,7 +383,7 @@ func (cm *ConsensusManager) voteProposal(rs *RoundState) error {
 		return err
 	}
 	// Stage proposal
-	err := cm.stageProposal(rs.BlockPartSet)
+	err := cm.stageProposal(rs.Proposal)
 	if err != nil {
 		// Vote for nil, whatever the error.
 		err := cm.signAndVote(&Vote{
@@ -383,7 +399,7 @@ func (cm *ConsensusManager) voteProposal(rs *RoundState) error {
 		Height: rs.Height,
 		Round:  rs.Round,
 		Type:   VoteTypeBare,
-		Hash:   rs.BlockPartSet.Block().Hash(),
+		Hash:   rs.Proposal.Block().Hash(),
 	})
 	return err
 }
@@ -402,13 +418,13 @@ func (cm *ConsensusManager) precommitProposal(rs *RoundState) error {
 
 			// If proposal is invalid or unknown, do nothing.
 			// See note on ZombieValidators to see why.
-			if cm.stageProposal(rs.BlockPartSet) != nil {
+			if cm.stageProposal(rs.Proposal) != nil {
 				return nil
 			}
 
 			// Lock this proposal.
 			// NOTE: we're unlocking any prior locks.
-			cm.cs.LockProposal(rs.BlockPartSet)
+			cm.cs.LockProposal(rs.Proposal)
 
 			// Send precommit vote.
 			err := cm.signAndVote(&Vote{
@@ -428,19 +444,19 @@ func (cm *ConsensusManager) precommitProposal(rs *RoundState) error {
 // Commit or unlock.
 // Call after RoundStepPrecommit, after round has expired.
 func (cm *ConsensusManager) commitOrUnlockProposal(rs *RoundState) error {
+	// If there exists a 2/3 majority of precommits.
+	// Validate the block and commit.
 	if hash, ok := rs.RoundPrecommits.TwoThirdsMajority(); ok {
-		// If there exists a 2/3 majority of precommits.
-		// Validate the block and commit.
 
 		// If the proposal is invalid or we don't have it,
 		// do not commit.
 		// TODO If we were just late to receive the block, when
 		// do we actually get it? Document it.
-		if cm.stageProposal(rs.BlockPartSet) != nil {
+		if cm.stageProposal(rs.Proposal) != nil {
 			return nil
 		}
 		// TODO: Remove?
-		cm.cs.LockProposal(rs.BlockPartSet)
+		cm.cs.LockProposal(rs.Proposal)
 		// Vote commit.
 		err := cm.signAndVote(&Vote{
 			Height: rs.Height,
@@ -457,7 +473,7 @@ func (cm *ConsensusManager) commitOrUnlockProposal(rs *RoundState) error {
 		// time differences between nodes, so nodes end up drifting
 		// in time.
 		commitTime := time.Now()
-		cm.commitProposal(rs.BlockPartSet, commitTime)
+		cm.commitProposal(rs.Proposal, commitTime)
 		return nil
 	} else {
 		// Otherwise, if a 1/3 majority if a block that isn't our locked one exists, unlock.
@@ -478,16 +494,16 @@ func (cm *ConsensusManager) commitOrUnlockProposal(rs *RoundState) error {
 	}
 }
 
-func (cm *ConsensusManager) commitProposal(blockPartSet *BlockPartSet, commitTime time.Time) error {
+func (cm *ConsensusManager) commitProposal(proposal *BlockPartSet, commitTime time.Time) error {
 	cm.mtx.Lock()
 	defer cm.mtx.Unlock()
 
-	if cm.stagedProposal != blockPartSet {
+	if cm.stagedProposal != proposal {
 		panic("Unexpected stagedProposal.") // Shouldn't happen.
 	}
 
 	// Save to blockStore
-	block, blockParts := blockPartSet.Block(), blockPartSet.BlockParts()
+	block, blockParts := proposal.Block(), proposal.BlockParts()
 	err := cm.blockStore.SaveBlockParts(block.Height, blockParts)
 	if err != nil {
 		return err
@@ -500,6 +516,56 @@ func (cm *ConsensusManager) commitProposal(blockPartSet *BlockPartSet, commitTim
 	cm.stagedState = nil
 
 	return nil
+}
+
+// Given a RoundState where we are the proposer,
+// broadcast rs.proposal to all the peers.
+func (cm *ConsensusManager) shareProposal(rs *RoundState) {
+	privValidator := cm.PrivValidator()
+	proposal := rs.Proposal
+	if privValidator == nil || proposal == nil {
+		return
+	}
+	privValidator.SignProposal(rs.Round, proposal)
+	blockParts := proposal.BlockParts()
+	peers := cm.sw.Peers().List()
+	if len(peers) == 0 {
+		log.Warning("Could not propose: no peers")
+		return
+	}
+	numBlockParts := uint16(len(blockParts))
+	kbpMsg := cm.makeKnownBlockPartsMessage(rs)
+	for i, peer := range peers {
+		peerState := cm.getPeerState(peer)
+		if !peerState.IsConnected() {
+			continue // Peer was disconnected.
+		}
+		startIndex := uint16((i * len(blockParts)) / len(peers))
+		// Create a function that when called,
+		// starts sending block parts to peer.
+		cb := func(peer *p2p.Peer, startIndex uint16) func() {
+			return func() {
+				// TODO: if the clocks are off a bit,
+				// peer may receive this before the round flips.
+				peer.Send(KnownPartsCh, kbpMsg)
+				for i := uint16(0); i < numBlockParts; i++ {
+					part := blockParts[(startIndex+i)%numBlockParts]
+					// Ensure round hasn't expired on our end.
+					currentRS := cm.cs.RoundState()
+					if currentRS != rs {
+						return
+					}
+					// If peer wants the block:
+					if peerState.WantsBlockPart(part) {
+						partMsg := &BlockPartMessage{BlockPart: part}
+						peer.Send(ProposalCh, partMsg)
+					}
+				}
+			}
+		}(peer, startIndex)
+		// Call immediately or schedule cb for when peer is ready.
+		peerState.SetRoundCallback(rs.Height, rs.Round, cb)
+	}
 }
 
 func (cm *ConsensusManager) gossipVoteRoutine() {
@@ -544,13 +610,8 @@ OUTER_LOOP:
 			}
 
 			// Gossip vote.
-		PEERS_LOOP:
 			for _, peer := range cm.sw.Peers().List() {
 				peerState := cm.getPeerState(peer)
-				if peerState == nil {
-					// Peer disconnected before we were able to process.
-					continue PEERS_LOOP
-				}
 				if peerState.WantsVote(vote) {
 					msg := p2p.TypedMessage{msgTypeVote, vote}
 					peer.TrySend(VoteCh, msg)
@@ -630,17 +691,25 @@ func (cm *ConsensusManager) proposeAndVoteRoutine() {
 
 			if step == RoundStepProposal && rs.Step() == RoundStepStart {
 				// Propose a block if I am the proposer.
-				if cm.privValidator != nil && rs.Proposer.Account.Id == cm.privValidator.Id {
-					block, err := cm.constructProposal(rs)
-					if err != nil {
-						log.Error("Error attempting to construct a proposal: %v", err)
+				privValidator := cm.PrivValidator()
+				if privValidator != nil && rs.Proposer.Account.Id == privValidator.Id {
+					// If we're already locked on a proposal, use that.
+					proposal := cm.cs.LockedProposal()
+					if proposal != nil {
+						// Otherwise, construct a new proposal.
+						var err error
+						proposal, err = cm.constructProposal(rs)
+						if err != nil {
+							log.Error("Error attempting to construct a proposal: %v", err)
+							return // Pretend like we weren't the proposer. Shrug.
+						}
 					}
-					// XXX propose the block.
-					log.Error("XXX use ", block)
-					// XXX divide block into parts
-					// XXX communicate parts.
-					// XXX put this in another function.
-					panic("Implement block proposal!")
+					// Set proposal for roundState, so we vote correctly subsequently.
+					rs.Proposal = proposal
+					// Share the parts.
+					// We send all parts to all of our peers, but everyone receives parts
+					// starting at a different index, wrapping around back to 0.
+					cm.shareProposal(rs)
 				}
 			} else if step == RoundStepBareVotes && rs.Step() <= RoundStepProposal {
 				err := cm.voteProposal(rs)
@@ -680,28 +749,57 @@ var (
 
 type PeerState struct {
 	mtx                sync.Mutex
+	connected          bool
 	peer               *p2p.Peer
 	height             uint32
 	startTime          time.Time // Derived from offset seconds.
 	blockPartsBitArray []byte
 	votesWanted        map[uint64]float32
+	cbHeight           uint32
+	cbRound            uint16
+	cbFunc             func()
 }
 
 func NewPeerState(peer *p2p.Peer) *PeerState {
 	return &PeerState{
+		connected:   true,
 		peer:        peer,
 		height:      0,
 		votesWanted: make(map[uint64]float32),
 	}
 }
 
-func (ps *PeerState) WantsBlockPart(part *BlockPart) bool {
+func (ps *PeerState) IsConnected() bool {
+	if ps == nil {
+		return false
+	}
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
+	return ps.connected
+}
+
+func (ps *PeerState) Disconnect() {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+	ps.connected = false
+}
+
+func (ps *PeerState) WantsBlockPart(part *BlockPart) bool {
+	if ps == nil {
+		return false
+	}
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+	if !ps.connected {
+		return false
+	}
 	// Only wants the part if peer's current height and round matches.
 	if ps.height == part.Height {
-		round, _, _, _, elapsedRatio := calcRoundInfo(ps.startTime)
-		if round == part.Round && elapsedRatio < roundDeadlineBare {
+		round := calcRound(ps.startTime)
+		// NOTE: validators want to receive remaining block parts
+		// even after it had voted bare or precommit.
+		// Ergo, we do not check for which step the peer is in.
+		if round == part.Round {
 			// Only wants the part if it doesn't already have it.
 			if ps.blockPartsBitArray[part.Index/8]&byte(1<<(part.Index%8)) == 0 {
 				return true
@@ -712,8 +810,14 @@ func (ps *PeerState) WantsBlockPart(part *BlockPart) bool {
 }
 
 func (ps *PeerState) WantsVote(vote *Vote) bool {
+	if ps == nil {
+		return false
+	}
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
+	if !ps.connected {
+		return false
+	}
 	// Only wants the vote if votesWanted says so
 	if ps.votesWanted[vote.SignerId] <= 0 {
 		// TODO: sometimes, send unsolicited votes to see if peer wants it.
@@ -773,6 +877,12 @@ func (ps *PeerState) ApplyKnownBlockPartsMessage(msg *KnownBlockPartsMessage) er
 		ps.startTime = newStartTime
 		ps.height = msg.Height
 		ps.blockPartsBitArray = msg.BlockPartsBitArray
+		// Call callback if height+round matches.
+		peerRound := calcRound(ps.startTime)
+		if ps.cbFunc != nil && ps.cbHeight == ps.height && ps.cbRound == peerRound {
+			go ps.cbFunc()
+			ps.cbFunc = nil
+		}
 	}
 	return nil
 }
@@ -782,6 +892,44 @@ func (ps *PeerState) ApplyVoteRankMessage(msg *VoteRankMessage) error {
 	defer ps.mtx.Unlock()
 	// XXX IMPLEMENT
 	return nil
+}
+
+// Sets a single round callback, to be called when the height+round comes around.
+// If the height+round is current, calls "go f()" immediately.
+// Otherwise, does nothing.
+func (ps *PeerState) SetRoundCallback(height uint32, round uint16, f func()) {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+	if ps.height < height {
+		ps.cbHeight = height
+		ps.cbRound = round
+		ps.cbFunc = f
+		// Wait until the height of the peerState changes.
+		// We'll call cbFunc then.
+		return
+	} else if ps.height == height {
+		peerRound := calcRound(ps.startTime)
+		if peerRound < round {
+			// Set a timer to call the cbFunc when the time comes.
+			go func() {
+				roundStart := calcRoundStartTime(round, ps.startTime)
+				time.Sleep(roundStart.Sub(time.Now()))
+				// If peer height is still good
+				ps.mtx.Lock()
+				peerHeight := ps.height
+				ps.mtx.Unlock()
+				if peerHeight == height {
+					f()
+				}
+			}()
+		} else if peerRound == round {
+			go f()
+		} else {
+			return
+		}
+	} else {
+		return
+	}
 }
 
 //-----------------------------------------------------------------------------

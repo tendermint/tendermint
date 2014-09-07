@@ -3,13 +3,11 @@ package consensus
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"sync"
 
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/blocks"
-	"github.com/tendermint/tendermint/config"
 	. "github.com/tendermint/tendermint/state"
 )
 
@@ -30,7 +28,7 @@ var (
 // Represents a bare, precommit, or commit vote for proposals.
 type Vote struct {
 	Height uint32
-	Round  uint16
+	Round  uint16 // zero if commit vote.
 	Type   byte
 	Hash   []byte // empty if vote is nil.
 	Signature
@@ -55,45 +53,8 @@ func (v *Vote) WriteTo(w io.Writer) (n int64, err error) {
 	return
 }
 
-// This is the byteslice that validators should sign to signify a vote
-// for the given proposal at given height & round.
-// If hash is nil, the vote is a nil vote.
-func (v *Vote) GetDocument() []byte {
-	switch v.Type {
-	case VoteTypeBare:
-		if len(v.Hash) == 0 {
-			doc := fmt.Sprintf("%v://consensus/%v/%v/b\nnil",
-				config.Config.Network, v.Height, v.Round)
-			return []byte(doc)
-		} else {
-			doc := fmt.Sprintf("%v://consensus/%v/%v/b\n%v",
-				config.Config.Network, v.Height, v.Round,
-				CalcBlockURI(v.Height, v.Hash))
-			return []byte(doc)
-		}
-	case VoteTypePrecommit:
-		if len(v.Hash) == 0 {
-			doc := fmt.Sprintf("%v://consensus/%v/%v/p\nnil",
-				config.Config.Network, v.Height, v.Round)
-			return []byte(doc)
-		} else {
-			doc := fmt.Sprintf("%v://consensus/%v/%v/p\n%v",
-				config.Config.Network, v.Height, v.Round,
-				CalcBlockURI(v.Height, v.Hash))
-			return []byte(doc)
-		}
-	case VoteTypeCommit:
-		if len(v.Hash) == 0 {
-			panic("Commit hash cannot be nil")
-		} else {
-			doc := fmt.Sprintf("%v://consensus/%v/c\n%v",
-				config.Config.Network, v.Height, // omit round info
-				CalcBlockURI(v.Height, v.Hash))
-			return []byte(doc)
-		}
-	default:
-		panic("Unknown vote type")
-	}
+func (v *Vote) GetDocument() string {
+	return GenVoteDocument(v.Type, v.Height, v.Round, v.Hash)
 }
 
 //-----------------------------------------------------------------------------
@@ -114,6 +75,9 @@ type VoteSet struct {
 
 // Constructs a new VoteSet struct used to accumulate votes for each round.
 func NewVoteSet(height uint32, round uint16, type_ byte, validators *ValidatorSet) *VoteSet {
+	if type_ == VoteTypeCommit && round != 0 {
+		panic("Expected round 0 for commit vote set")
+	}
 	totalVotingPower := uint64(0)
 	for _, val := range validators.Map() {
 		totalVotingPower += val.VotingPower
@@ -137,7 +101,9 @@ func (vs *VoteSet) AddVote(vote *Vote) (bool, error) {
 	defer vs.mtx.Unlock()
 
 	// Make sure the phase matches.
-	if vote.Height != vs.height || vote.Round != vs.round || vote.Type != vs.type_ {
+	if vote.Height != vs.height ||
+		(vote.Type != VoteTypeCommit && vote.Round != vs.round) ||
+		vote.Type != vs.type_ {
 		return false, ErrVoteUnexpectedPhase
 	}
 
@@ -147,7 +113,7 @@ func (vs *VoteSet) AddVote(vote *Vote) (bool, error) {
 		return false, ErrVoteInvalidAccount
 	}
 	// Check signature.
-	if !val.Verify(vote.GetDocument(), vote.Signature.Bytes) {
+	if !val.Verify([]byte(vote.GetDocument()), vote.Signature) {
 		// Bad signature.
 		return false, ErrVoteInvalidSignature
 	}

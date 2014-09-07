@@ -19,7 +19,10 @@ func ReadAccount(r io.Reader, n *int64, err *error) *Account {
 	}
 }
 
-func (self *Account) Verify(msg []byte, sig []byte) bool {
+func (self *Account) Verify(msg []byte, sig Signature) bool {
+	if sig.SignerId != self.Id {
+		return false
+	}
 	return false
 }
 
@@ -33,21 +36,3 @@ type PrivAccount struct {
 func (self *PrivAccount) Sign(msg []byte) Signature {
 	return Signature{}
 }
-
-/*
-// Signs the URI, which includes all data and metadata.
-// XXX implement or change
-func (bp *BlockPart) Sign(acc *PrivAccount) {
-	// TODO: populate Signature
-}
-
-// XXX maybe change.
-func (bp *BlockPart) ValidateWithSigner(signer *Account) error {
-	// TODO: Sanity check height, index, total, bytes, etc.
-	if !signer.Verify([]byte(bp.URI()), bp.Signature.Bytes) {
-		return ErrInvalidBlockPartSignature
-	}
-	return nil
-}
-
-*/

@@ -90,8 +90,19 @@ func (bs *BlockStore) LoadBlock(height uint32) *Block {
 	if part0 == nil {
 		return nil
 	}
-	// XXX implement
-	panic("TODO: Not implemented")
+	parts := []*BlockPart{part0}
+	for i := uint16(1); i < part0.Total; i++ {
+		part := bs.LoadBlockPart(height, i)
+		if part == nil {
+			Panicf("Failed to retrieve block part %v at height %v", i, height)
+		}
+		parts = append(parts, part)
+	}
+	block, err := BlockPartsToBlock(parts)
+	if err != nil {
+		panic(err)
+	}
+	return block
 }
 
 // NOTE: Assumes that parts as well as the block are valid. See StageBlockParts().

@@ -2,27 +2,17 @@ package blocks
 
 import (
 	"crypto/sha256"
-	"fmt"
 	"io"
 	"time"
 
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/merkle"
 )
 
 const (
 	defaultBlockPartSizeBytes = 4096
 )
-
-func CalcBlockURI(height uint32, hash []byte) string {
-	return fmt.Sprintf("%v://block/%v#%X",
-		config.Config.Network,
-		height,
-		hash,
-	)
-}
 
 type Block struct {
 	Header
@@ -49,13 +39,8 @@ func (b *Block) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (b *Block) ValidateBasic() error {
-	// Basic validation that doesn't involve context.
-	// XXX
+	// TODO Basic validation that doesn't involve context.
 	return nil
-}
-
-func (b *Block) URI() string {
-	return CalcBlockURI(b.Height, b.Hash())
 }
 
 func (b *Block) Hash() []byte {
@@ -73,7 +58,8 @@ func (b *Block) Hash() []byte {
 }
 
 // The returns parts must be signed afterwards.
-func (b *Block) ToBlockParts() (parts []*BlockPart) {
+func (b *Block) ToBlockPartSet() *BlockPartSet {
+	var parts []*BlockPart
 	blockBytes := BinaryBytes(b)
 	total := (len(blockBytes) + defaultBlockPartSizeBytes - 1) / defaultBlockPartSizeBytes
 	for i := 0; i < total; i++ {
@@ -90,7 +76,7 @@ func (b *Block) ToBlockParts() (parts []*BlockPart) {
 		}
 		parts = append(parts, part)
 	}
-	return parts
+	return NewBlockPartSet(b.Height, parts)
 }
 
 //-----------------------------------------------------------------------------
@@ -133,18 +119,8 @@ func (bp *BlockPart) WriteTo(w io.Writer) (n int64, err error) {
 	return
 }
 
-func (bp *BlockPart) URI() string {
-	return fmt.Sprintf("%v://block/%v/%v[%v/%v]#%X\n",
-		config.Config.Network,
-		bp.Height,
-		bp.Round,
-		bp.Index,
-		bp.Total,
-		bp.BlockPartHash(),
-	)
-}
-
-func (bp *BlockPart) BlockPartHash() []byte {
+// Hash returns the hash of the block part data bytes.
+func (bp *BlockPart) Hash() []byte {
 	if bp.hash != nil {
 		return bp.hash
 	} else {

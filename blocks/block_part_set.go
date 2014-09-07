@@ -1,50 +1,44 @@
-package consensus
+package blocks
 
 import (
 	"bytes"
 	"errors"
 	"sync"
 
-	. "github.com/tendermint/tendermint/blocks"
-	. "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/merkle"
 )
 
-// Helper for keeping track of block parts.
+// A collection of block parts.
+// Doesn't do any validation.
 type BlockPartSet struct {
 	mtx      sync.Mutex
-	signer   *Account
 	height   uint32
-	round    uint16 // Not used
-	total    uint16
-	numParts uint16
+	total    uint16 // total number of parts
+	numParts uint16 // number of parts in this set
 	parts    []*BlockPart
 
 	_block *Block // cache
 }
 
 var (
-	ErrInvalidBlockPartSignature = errors.New("Invalid block part signature") // Peer gave us a fake part
-	ErrInvalidBlockPartConflict  = errors.New("Invalid block part conflict")  // Signer signed conflicting parts
+	ErrInvalidBlockPartConflict = errors.New("Invalid block part conflict") // Signer signed conflicting parts
 )
 
-// Signer may be nil if signer is unknown beforehand.
-func NewBlockPartSet(height uint32, round uint16, signer *Account) *BlockPartSet {
-	return &BlockPartSet{
-		signer: signer,
-		height: height,
-		round:  round,
+// parts may be nil if the parts aren't in hand.
+func NewBlockPartSet(height uint32, parts []*BlockPart) *BlockPartSet {
+	bps := &BlockPartSet{
+		height:   height,
+		parts:    parts,
+		numParts: uint16(len(parts)),
 	}
+	if len(parts) > 0 {
+		bps.total = parts[0].Total
+	}
+	return bps
 }
 
-// In the case where the signer wasn't known prior to NewBlockPartSet(),
-// user should call SetSigner() prior to AddBlockPart().
-func (bps *BlockPartSet) SetSigner(signer *Account) {
-	bps.mtx.Lock()
-	defer bps.mtx.Unlock()
-	if bps.signer != nil {
-		panic("BlockPartSet signer already set.")
-	}
-	bps.signer = signer
+func (bps *BlockPartSet) Height() uint32 {
+	return bps.height
 }
 
 func (bps *BlockPartSet) BlockParts() []*BlockPart {
@@ -69,18 +63,11 @@ func (bps *BlockPartSet) BitArray() []byte {
 }
 
 // If the part isn't valid, returns an error.
-// err can be ErrInvalidBlockPart[Conflict|Signature]
+// err can be ErrInvalidBlockPartConflict
+// NOTE: Caller must check the signature before adding.
 func (bps *BlockPartSet) AddBlockPart(part *BlockPart) (added bool, err error) {
 	bps.mtx.Lock()
 	defer bps.mtx.Unlock()
-
-	// If part is invalid, return an error.
-	/* XXX
-	err = part.ValidateWithSigner(bps.signer)
-	if err != nil {
-		return false, err
-	}
-	*/
 
 	if bps.parts == nil {
 		// First received part for this round.
@@ -128,14 +115,44 @@ func (bps *BlockPartSet) Block() *Block {
 	bps.mtx.Lock()
 	defer bps.mtx.Unlock()
 	if bps._block == nil {
-		blockBytes := []byte{}
-		for _, part := range bps.parts {
-			blockBytes = append(blockBytes, part.Bytes...)
+		block, err := BlockPartsToBlock(bps.parts)
+		if err != nil {
+			panic(err)
 		}
-		var n int64
-		var err error
-		block := ReadBlock(bytes.NewReader(blockBytes), &n, &err)
 		bps._block = block
 	}
 	return bps._block
+}
+
+func (bps *BlockPartSet) Hash() []byte {
+	if !bps.IsComplete() {
+		panic("Cannot get hash of an incomplete BlockPartSet")
+	}
+	hashes := [][]byte{}
+	for _, part := range bps.parts {
+		partHash := part.Hash()
+		hashes = append(hashes, partHash)
+	}
+	return merkle.HashFromByteSlices(hashes)
+}
+
+// The proposal hash includes both the block hash
+// as well as the BlockPartSet merkle hash.
+func (bps *BlockPartSet) ProposalHash() []byte {
+	bpsHash := bps.Hash()
+	blockHash := bps.Block().Hash()
+	return merkle.HashFromByteSlices([][]byte{bpsHash, blockHash})
+}
+
+//-----------------------------------------------------------------------------
+
+func BlockPartsToBlock(parts []*BlockPart) (*Block, error) {
+	blockBytes := []byte{}
+	for _, part := range parts {
+		blockBytes = append(blockBytes, part.Bytes...)
+	}
+	var n int64
+	var err error
+	block := ReadBlock(bytes.NewReader(blockBytes), &n, &err)
+	return block, err
 }
