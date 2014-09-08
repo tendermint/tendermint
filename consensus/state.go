@@ -22,6 +22,7 @@ type ConsensusState struct {
 	startTime      time.Time     // Start of round 0 for this height.
 	commits        *VoteSet      // Commits for this height.
 	roundState     *RoundState   // The RoundState object for the current round.
+	commitTime     time.Time     // Time at which a block was found to be committed by +2/3.
 }
 
 func NewConsensusState(state *State) *ConsensusState {
@@ -54,6 +55,7 @@ func (cs *ConsensusState) RoundState() *RoundState {
 	return cs.roundState
 }
 
+// Primarily gets called upon block commit by ConsensusManager.
 func (cs *ConsensusState) Update(state *State) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
@@ -68,7 +70,7 @@ func (cs *ConsensusState) Update(state *State) {
 	cs.height = stateHeight
 	cs.validatorsR0 = state.Validators().Copy() // NOTE: immutable.
 	cs.lockedProposal = nil
-	cs.startTime = state.CommitTime() // XXX is this what we want?
+	cs.startTime = state.CommitTime().Add(newBlockWaitDuration) // NOTE: likely future time.
 	cs.commits = NewVoteSet(stateHeight, 0, VoteTypeCommit, cs.validatorsR0)
 
 	// Setup the roundState
@@ -77,7 +79,7 @@ func (cs *ConsensusState) Update(state *State) {
 
 }
 
-// If cs.roundSTate isn't at round, set up new roundState at round.
+// If cs.roundState isn't at round, set up new roundState at round.
 func (cs *ConsensusState) SetupRound(round uint16) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()

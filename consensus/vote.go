@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"sync"
+	"time"
 
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/blocks"
@@ -61,16 +62,19 @@ func (v *Vote) GetDocument() string {
 
 // VoteSet helps collect signatures from validators at each height+round
 // for a predefined vote type.
+// TODO: test majority calculations etc.
 type VoteSet struct {
-	mtx              sync.Mutex
-	height           uint32
-	round            uint16
-	type_            byte
-	validators       *ValidatorSet
-	votes            map[uint64]*Vote
-	votesByHash      map[string]uint64
-	totalVotes       uint64
-	totalVotingPower uint64
+	mtx                 sync.Mutex
+	height              uint32
+	round               uint16
+	type_               byte
+	validators          *ValidatorSet
+	votes               map[uint64]*Vote
+	votesByHash         map[string]uint64
+	totalVotes          uint64
+	totalVotingPower    uint64
+	oneThirdMajority    [][]byte
+	twoThirdsCommitTime time.Time
 }
 
 // Constructs a new VoteSet struct used to accumulate votes for each round.
@@ -126,49 +130,38 @@ func (vs *VoteSet) AddVote(vote *Vote) (bool, error) {
 		}
 	}
 	vs.votes[vote.SignerId] = vote
-	vs.votesByHash[string(vote.Hash)] += val.VotingPower
+	totalHashVotes := vs.votesByHash[string(vote.Hash)] + val.VotingPower
+	vs.votesByHash[string(vote.Hash)] = totalHashVotes
 	vs.totalVotes += val.VotingPower
+	// If we just nudged it up to one thirds majority, add it.
+	if totalHashVotes > vs.totalVotingPower/3 &&
+		(totalHashVotes-val.VotingPower) <= vs.totalVotingPower/3 {
+		vs.oneThirdMajority = append(vs.oneThirdMajority, vote.Hash)
+	} else if totalHashVotes > vs.totalVotingPower*2/3 &&
+		(totalHashVotes-val.VotingPower) <= vs.totalVotingPower*2/3 {
+		vs.twoThirdsCommitTime = time.Now()
+	}
 	return true, nil
 }
 
 // Returns either a blockhash (or nil) that received +2/3 majority.
 // If there exists no such majority, returns (nil, false).
-func (vs *VoteSet) TwoThirdsMajority() (hash []byte, ok bool) {
+func (vs *VoteSet) TwoThirdsMajority() (hash []byte, commitTime time.Time, ok bool) {
 	vs.mtx.Lock()
 	defer vs.mtx.Unlock()
-	twoThirdsMajority := (vs.totalVotingPower*2 + 2) / 3
-	if vs.totalVotes < twoThirdsMajority {
-		return nil, false
-	}
-	for hash, votes := range vs.votesByHash {
-		if votes >= twoThirdsMajority {
-			if hash == "" {
-				return nil, true
-			} else {
-				return []byte(hash), true
-			}
+	// There's only one or two in the array.
+	for _, hash := range vs.oneThirdMajority {
+		if vs.votesByHash[string(hash)] > vs.totalVotingPower*2/3 {
+			return hash, vs.twoThirdsCommitTime, true
 		}
 	}
-	return nil, false
+	return nil, time.Time{}, false
 }
 
 // Returns blockhashes (or nil) that received a +1/3 majority.
 // If there exists no such majority, returns nil.
-func (vs *VoteSet) OneThirdMajority() (hashes []interface{}) {
+func (vs *VoteSet) OneThirdMajority() (hashes [][]byte) {
 	vs.mtx.Lock()
 	defer vs.mtx.Unlock()
-	oneThirdMajority := (vs.totalVotingPower + 2) / 3
-	if vs.totalVotes < oneThirdMajority {
-		return nil
-	}
-	for hash, votes := range vs.votesByHash {
-		if votes >= oneThirdMajority {
-			if hash == "" {
-				hashes = append(hashes, nil)
-			} else {
-				hashes = append(hashes, []byte(hash))
-			}
-		}
-	}
-	return hashes
+	return vs.oneThirdMajority
 }

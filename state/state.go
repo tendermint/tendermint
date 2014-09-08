@@ -52,15 +52,19 @@ func LoadState(db db_.Db) *State {
 	return s
 }
 
-func (s *State) Save() {
+// Save this state into the db.
+// For convenience, the commitTime (required by ConsensusManager)
+// is saved here.
+func (s *State) Save(commitTime time.Time) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
+	s.commitTime = commitTime
 	s.accounts.Save()
 	var buf bytes.Buffer
 	var n int64
 	var err error
 	WriteUInt32(&buf, s.height, &n, &err)
-	WriteTime(&buf, s.commitTime, &n, &err)
+	WriteTime(&buf, commitTime, &n, &err)
 	WriteByteSlice(&buf, s.accounts.Hash(), &n, &err)
 	for _, validator := range s.validators.Map() {
 		WriteBinary(&buf, validator, &n, &err)
@@ -91,7 +95,9 @@ func (s *State) CommitTx(tx *Tx) error {
 	return nil
 }
 
-func (s *State) CommitBlock(b *Block, commitTime time.Time) error {
+// This is called during staging.
+// The resulting state is cached until it is actually committed.
+func (s *State) CommitBlock(b *Block) error {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 	// TODO commit the txs
