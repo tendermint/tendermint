@@ -100,9 +100,10 @@ func (s *State) CommitTx(tx *Tx) error {
 func (s *State) CommitBlock(b *Block) error {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
-	// TODO commit the txs
-	// XXX also increment validator accum.
+	// XXX commit block by mutating state.
 	panic("Implement CommitBlock()")
+	// After all state has been mutated, finally increment validators.
+	s.validators.IncrementAccum()
 	return nil
 }
 
