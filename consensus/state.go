@@ -168,14 +168,15 @@ func NewRoundState(height uint32, round uint16, startTime time.Time,
 	return rs
 }
 
-func (rs *RoundState) AddVote(vote *Vote) (bool, error) {
+// "source" is typically the Peer.Key of the peer that gave us this vote.
+func (rs *RoundState) AddVote(vote *Vote, source string) (added bool, rank uint8, err error) {
 	switch vote.Type {
 	case VoteTypeBare:
-		return rs.RoundBareVotes.AddVote(vote)
+		return rs.RoundBareVotes.AddVote(vote, source)
 	case VoteTypePrecommit:
-		return rs.RoundPrecommits.AddVote(vote)
+		return rs.RoundPrecommits.AddVote(vote, source)
 	case VoteTypeCommit:
-		return rs.Commits.AddVote(vote)
+		return rs.Commits.AddVote(vote, source)
 	default:
 		panic("Unknown vote type")
 	}

@@ -222,7 +222,7 @@ OUTER_LOOP:
 		if !ok {
 			break OUTER_LOOP // Client has stopped
 		}
-		msg_ := decodeMessage(inMsg.Bytes)
+		_, msg_ := decodeMessage(inMsg.Bytes)
 		log.Info("gossipProposalRoutine received %v", msg_)
 
 		switch msg_.(type) {
@@ -292,7 +292,7 @@ OUTER_LOOP:
 		if !ok {
 			break OUTER_LOOP // Client has stopped
 		}
-		msg_ := decodeMessage(inMsg.Bytes)
+		_, msg_ := decodeMessage(inMsg.Bytes)
 		log.Info("knownPartsRoutine received %v", msg_)
 
 		msg, ok := msg_.(*KnownBlockPartsMessage)
@@ -582,7 +582,7 @@ OUTER_LOOP:
 		if !ok {
 			break // Client has stopped
 		}
-		msg_ := decodeMessage(inMsg.Bytes)
+		type_, msg_ := decodeMessage(inMsg.Bytes)
 		log.Info("gossipVoteRoutine received %v", msg_)
 
 		switch msg_.(type) {
@@ -593,7 +593,16 @@ OUTER_LOOP:
 				continue OUTER_LOOP
 			}
 
-			added, err := rs.AddVote(vote)
+			added, rank, err := rs.AddVote(vote, inMsg.MConn.Peer.Key)
+			// Send peer VoteRankMessage if needed
+			if type_ == msgTypeVoteAskRank {
+				msg := &VoteRankMessage{
+					ValidatorId: vote.SignerId,
+					Rank:        rank,
+				}
+				inMsg.MConn.Peer.TrySend(VoteCh, msg)
+			}
+			// Process vote
 			if !added {
 				log.Info("Error adding vote %v", err)
 			}
@@ -615,11 +624,29 @@ OUTER_LOOP:
 			// Gossip vote.
 			for _, peer := range cm.sw.Peers().List() {
 				peerState := cm.getPeerState(peer)
-				if peerState.WantsVote(vote) {
-					msg := p2p.TypedMessage{msgTypeVote, vote}
-					peer.TrySend(VoteCh, msg)
+				wantsVote, unsolicited := peerState.WantsVote(vote)
+				if wantsVote {
+					if unsolicited {
+						// If we're sending an unsolicited vote,
+						// ask for the rank so we know whether it's good.
+						msg := p2p.TypedMessage{msgTypeVoteAskRank, vote}
+						peer.TrySend(VoteCh, msg)
+					} else {
+						msg := p2p.TypedMessage{msgTypeVote, vote}
+						peer.TrySend(VoteCh, msg)
+					}
 				}
 			}
+
+		case *VoteRankMessage:
+			msg := msg_.(*VoteRankMessage)
+
+			peerState := cm.getPeerState(inMsg.MConn.Peer)
+			if !peerState.IsConnected() {
+				// Peer disconnected before we were able to process.
+				continue OUTER_LOOP
+			}
+			peerState.ApplyVoteRankMessage(msg)
 
 		default:
 			// Ignore unknown message
@@ -737,7 +764,6 @@ func (cm *ConsensusManager) proposeAndVoteRoutine() {
 				if !commitTime.IsZero() {
 					// We already set up ConsensusState for the next height
 					// (it happens in the call to cm.commitProposal).
-					// XXX: call cm.cs.SetupHeight()
 				} else {
 					// Round is over. This is a special case.
 					// Prepare a new RoundState for the next state.
@@ -824,39 +850,44 @@ func (ps *PeerState) WantsBlockPart(part *BlockPart) bool {
 	return false
 }
 
-func (ps *PeerState) WantsVote(vote *Vote) bool {
+func (ps *PeerState) WantsVote(vote *Vote) (wants bool, unsolicited bool) {
 	if ps == nil {
-		return false
+		return false, false
 	}
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 	if !ps.connected {
-		return false
-	}
-	// Only wants the vote if voteRank is low.
-	if ps.voteRanks[vote.SignerId] > voteRankCutoff {
-		// Sometimes, send unsolicited votes to see if peer wants it.
-		if rand.Float32() < unsolicitedVoteRate {
-			// Continue on...
-		} else {
-			// Rank too high. Do not send vote.
-			return false
-		}
+		return false, false
 	}
 	// Only wants the vote if peer's current height and round matches.
 	if ps.height == vote.Height {
 		round, _, _, _, elapsedRatio := calcRoundInfo(ps.startTime)
 		if round == vote.Round {
 			if vote.Type == VoteTypeBare && elapsedRatio > roundDeadlineBare {
-				return false
+				return false, false
 			}
 			if vote.Type == VoteTypePrecommit && elapsedRatio > roundDeadlinePrecommit {
-				return false
+				return false, false
+			} else {
+				// continue on ...
 			}
-			return true
+		} else {
+			return false, false
+		}
+	} else {
+		return false, false
+	}
+	// Only wants the vote if voteRank is low.
+	if ps.voteRanks[vote.SignerId] > voteRankCutoff {
+		// Sometimes, send unsolicited votes to see if peer wants it.
+		if rand.Float32() < unsolicitedVoteRate {
+			return true, true
+		} else {
+			// Rank too high. Do not send vote.
+			return false, false
 		}
 	}
-	return false
+	return true, false
 }
 
 func (ps *PeerState) ApplyKnownBlockPartsMessage(msg *KnownBlockPartsMessage) error {
@@ -960,25 +991,30 @@ const (
 	msgTypeBlockPart       = byte(0x10)
 	msgTypeKnownBlockParts = byte(0x11)
 	msgTypeVote            = byte(0x20)
-	msgTypeVoteRank        = byte(0x21)
+	msgTypeVoteAskRank     = byte(0x21)
+	msgTypeVoteRank        = byte(0x22)
 )
 
 // TODO: check for unnecessary extra bytes at the end.
-func decodeMessage(bz []byte) (msg interface{}) {
+func decodeMessage(bz []byte) (msgType byte, msg interface{}) {
 	n, err := new(int64), new(error)
 	// log.Debug("decoding msg bytes: %X", bz)
-	switch bz[0] {
+	msgType = bz[0]
+	switch msgType {
 	case msgTypeBlockPart:
-		return readBlockPartMessage(bytes.NewReader(bz[1:]), n, err)
+		msg = readBlockPartMessage(bytes.NewReader(bz[1:]), n, err)
 	case msgTypeKnownBlockParts:
-		return readKnownBlockPartsMessage(bytes.NewReader(bz[1:]), n, err)
+		msg = readKnownBlockPartsMessage(bytes.NewReader(bz[1:]), n, err)
 	case msgTypeVote:
-		return ReadVote(bytes.NewReader(bz[1:]), n, err)
+		msg = ReadVote(bytes.NewReader(bz[1:]), n, err)
+	case msgTypeVoteAskRank:
+		msg = ReadVote(bytes.NewReader(bz[1:]), n, err)
 	case msgTypeVoteRank:
-		return readVoteRankMessage(bytes.NewReader(bz[1:]), n, err)
+		msg = readVoteRankMessage(bytes.NewReader(bz[1:]), n, err)
 	default:
-		return nil
+		msg = nil
 	}
+	return
 }
 
 //-------------------------------------
@@ -1034,7 +1070,6 @@ func (m *KnownBlockPartsMessage) String() string {
 
 //-------------------------------------
 
-// XXX use this.
 type VoteRankMessage struct {
 	ValidatorId uint64
 	Rank        uint8

@@ -70,6 +70,7 @@ type VoteSet struct {
 	type_               byte
 	validators          *ValidatorSet
 	votes               map[uint64]*Vote
+	votesSources        map[uint64][]string
 	votesByHash         map[string]uint64
 	totalVotes          uint64
 	totalVotingPower    uint64
@@ -92,6 +93,7 @@ func NewVoteSet(height uint32, round uint16, type_ byte, validators *ValidatorSe
 		type_:            type_,
 		validators:       validators,
 		votes:            make(map[uint64]*Vote, validators.Size()),
+		votesSources:     make(map[uint64][]string, validators.Size()),
 		votesByHash:      make(map[string]uint64),
 		totalVotes:       0,
 		totalVotingPower: totalVotingPower,
@@ -100,7 +102,7 @@ func NewVoteSet(height uint32, round uint16, type_ byte, validators *ValidatorSe
 
 // True if added, false if not.
 // Returns ErrVote[UnexpectedPhase|InvalidAccount|InvalidSignature|InvalidHash|ConflictingSignature]
-func (vs *VoteSet) AddVote(vote *Vote) (bool, error) {
+func (vs *VoteSet) AddVote(vote *Vote, source string) (bool, uint8, error) {
 	vs.mtx.Lock()
 	defer vs.mtx.Unlock()
 
@@ -108,25 +110,40 @@ func (vs *VoteSet) AddVote(vote *Vote) (bool, error) {
 	if vote.Height != vs.height ||
 		(vote.Type != VoteTypeCommit && vote.Round != vs.round) ||
 		vote.Type != vs.type_ {
-		return false, ErrVoteUnexpectedPhase
+		return false, 0, ErrVoteUnexpectedPhase
 	}
 
 	val := vs.validators.Get(vote.SignerId)
 	// Ensure that signer is a validator.
 	if val == nil {
-		return false, ErrVoteInvalidAccount
+		return false, 0, ErrVoteInvalidAccount
 	}
 	// Check signature.
 	if !val.Verify([]byte(vote.GetDocument()), vote.Signature) {
 		// Bad signature.
-		return false, ErrVoteInvalidSignature
+		return false, 0, ErrVoteInvalidSignature
+	}
+	// Get rank of vote & append provider key
+	var priorSources = vs.votesSources[vote.SignerId]
+	var rank = uint8(len(priorSources) + 1)
+	var alreadyProvidedByPeer = false
+	for i, otherPeer := range priorSources {
+		if otherPeer == source {
+			alreadyProvidedByPeer = true
+			rank = uint8(i + 1)
+		}
+	}
+	if !alreadyProvidedByPeer {
+		if len(priorSources) < voteRankCutoff {
+			vs.votesSources[vote.SignerId] = append(priorSources, source)
+		}
 	}
 	// If vote already exists, return false.
 	if existingVote, ok := vs.votes[vote.SignerId]; ok {
 		if bytes.Equal(existingVote.Hash, vote.Hash) {
-			return false, nil
+			return false, rank, nil
 		} else {
-			return false, ErrVoteConflictingSignature
+			return false, rank, ErrVoteConflictingSignature
 		}
 	}
 	vs.votes[vote.SignerId] = vote
@@ -141,7 +158,7 @@ func (vs *VoteSet) AddVote(vote *Vote) (bool, error) {
 		(totalHashVotes-val.VotingPower) <= vs.totalVotingPower*2/3 {
 		vs.twoThirdsCommitTime = time.Now()
 	}
-	return true, nil
+	return true, rank, nil
 }
 
 // Returns either a blockhash (or nil) that received +2/3 majority.
