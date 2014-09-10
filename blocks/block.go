@@ -189,8 +189,8 @@ func (h *Header) Hash() []byte {
 
 /* Validation is part of a block */
 type Validation struct {
-	Signatures  []Signature
-	Adjustments []Adjustment
+	Signatures []Signature
+	Txs        []Tx
 
 	// Volatile
 	hash []byte
@@ -203,24 +203,24 @@ func ReadValidation(r io.Reader, n *int64, err *error) Validation {
 	for i := uint32(0); i < numSigs; i++ {
 		sigs = append(sigs, ReadSignature(r, n, err))
 	}
-	adjs := make([]Adjustment, 0, numAdjs)
+	tx := make([]Tx, 0, numAdjs)
 	for i := uint32(0); i < numAdjs; i++ {
-		adjs = append(adjs, ReadAdjustment(r, n, err))
+		tx = append(tx, ReadTx(r, n, err))
 	}
 	return Validation{
-		Signatures:  sigs,
-		Adjustments: adjs,
+		Signatures: sigs,
+		Txs:        tx,
 	}
 }
 
 func (v *Validation) WriteTo(w io.Writer) (n int64, err error) {
 	WriteUInt32(w, uint32(len(v.Signatures)), &n, &err)
-	WriteUInt32(w, uint32(len(v.Adjustments)), &n, &err)
+	WriteUInt32(w, uint32(len(v.Txs)), &n, &err)
 	for _, sig := range v.Signatures {
 		WriteBinary(w, sig, &n, &err)
 	}
-	for _, adj := range v.Adjustments {
-		WriteBinary(w, adj, &n, &err)
+	for _, tx := range v.Txs {
+		WriteBinary(w, tx, &n, &err)
 	}
 	return
 }

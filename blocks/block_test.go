@@ -47,7 +47,7 @@ func randSig() Signature {
 
 func TestBlock(t *testing.T) {
 
-	// Txs
+	// Account Txs
 
 	sendTx := &SendTx{
 		Signature: randSig(),
@@ -63,7 +63,7 @@ func TestBlock(t *testing.T) {
 		PubKey:    randBytes(32),
 	}
 
-	// Adjs
+	// Consensus Txs
 
 	bond := &Bond{
 		Signature: randSig(),
@@ -109,8 +109,8 @@ func TestBlock(t *testing.T) {
 			TxsHash:        randBytes(32),
 		},
 		Validation: Validation{
-			Signatures:  []Signature{randSig(), randSig()},
-			Adjustments: []Adjustment{bond, unbond, timeout, dupeout},
+			Signatures: []Signature{randSig(), randSig()},
+			Txs:        []Txs{bond, unbond, timeout, dupeout},
 		},
 		Txs: Txs{
 			Txs:  []Tx{sendTx, nameTx},
