@@ -13,7 +13,6 @@ TenderMint - proof of concept
 * Mempool *now*
 * Consensus *complete*
 * Block propagation *sidelined*
-* Node & testnet *complete*
 * PEX peer exchange *complete*
 * p2p/* *complete*
 * Ed25519 bindings *complete*
