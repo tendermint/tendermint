@@ -15,6 +15,8 @@ func WriteBinary(w io.Writer, b Binary, n *int64, err *error) {
 	*err = err_
 }
 
+// Write all of bz to w
+// Increment n and set err accordingly.
 func WriteTo(w io.Writer, bz []byte, n *int64, err *error) {
 	if *err != nil {
 		return
@@ -24,6 +26,8 @@ func WriteTo(w io.Writer, bz []byte, n *int64, err *error) {
 	*err = err_
 }
 
+// Read len(buf) from r
+// Increment n and set err accordingly.
 func ReadFull(r io.Reader, buf []byte, n *int64, err *error) {
 	if *err != nil {
 		return

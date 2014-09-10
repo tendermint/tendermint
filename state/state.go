@@ -2,6 +2,7 @@ package state
 
 import (
 	"bytes"
+	"errors"
 	"sync"
 	"time"
 
@@ -12,6 +13,8 @@ import (
 )
 
 var (
+	ErrStateInvalidSequenceNumber = errors.New("Error State invalid sequence number")
+
 	stateKey = []byte("stateKey")
 )
 
@@ -87,9 +90,17 @@ func (s *State) Copy() *State {
 	}
 }
 
-func (s *State) CommitTx(tx *Tx) error {
+// May return ErrStateInvalidSequenceNumber
+func (s *State) CommitTx(tx Tx) error {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
+	/*
+		// Get the signer's incr
+		signerId := tx.Signature().SignerId
+		if mem.state.AccountSequence(signerId) != tx.Sequence() {
+			return ErrStateInvalidSequenceNumber
+		}
+	*/
 	// TODO commit the tx
 	panic("Implement CommitTx()")
 	return nil

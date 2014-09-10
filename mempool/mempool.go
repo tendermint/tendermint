@@ -18,13 +18,6 @@ tx fingerprint, the receiver may query the source for the full tx bytes.
 
 When this node happens to be the next proposer, it simply takes the recently
 modified state (and the associated transactions) and use that as the proposal.
-
-There are two types of transactions -- consensus txs (e.g. bonding / unbonding /
-timeout / dupeout txs) and everything else. They are stored separately to allow
-nodes to only request the kind they need.
-TODO: make use of this potential feature when the time comes.
-
-For simplicity we evaluate the consensus transactions after everything else.
 */
 
 //-----------------------------------------------------------------------------
@@ -32,8 +25,7 @@ For simplicity we evaluate the consensus transactions after everything else.
 type Mempool struct {
 	mtx   sync.Mutex
 	state *State
-	txs   []Tx // Regular transactions
-	ctxs  []Tx // Validator related transactions
+	txs   []Tx
 }
 
 func NewMempool(state *State) *Mempool {
@@ -42,18 +34,15 @@ func NewMempool(state *State) *Mempool {
 	}
 }
 
-func (mem *Mempool) AddTx(tx Tx) bool {
+func (mem *Mempool) AddTx(tx Tx) (err error) {
 	mem.mtx.Lock()
 	defer mem.mtx.Unlock()
-	if tx.IsConsensus() {
-		// Remember consensus tx for later staging.
-		// We only keep 1 tx for each validator. TODO what? what about bonding?
-		// TODO talk about prioritization.
-		mem.ctxs = append(mem.ctxs, tx)
+	// Add the tx to the state.
+	err = mem.state.CommitTx(tx)
+	if err != nil {
+		return err
 	} else {
 		mem.txs = append(mem.txs, tx)
+		return nil
 	}
-}
-
-func (mem *Mempool) CollectForState() {
 }
