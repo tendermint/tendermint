@@ -63,7 +63,7 @@ func TestBlock(t *testing.T) {
 		PubKey:    randBytes(32),
 	}
 
-	// Consensus Txs
+	// Validation Txs
 
 	bond := &Bond{
 		Signature: randSig(),
@@ -106,15 +106,14 @@ func TestBlock(t *testing.T) {
 			Time:           randTime(),
 			PrevHash:       randBytes(32),
 			ValidationHash: randBytes(32),
-			TxsHash:        randBytes(32),
+			DataHash:       randBytes(32),
 		},
 		Validation: Validation{
 			Signatures: []Signature{randSig(), randSig()},
 			Txs:        []Txs{bond, unbond, timeout, dupeout},
 		},
-		Txs: Txs{
-			Txs:  []Tx{sendTx, nameTx},
-			hash: nil,
+		Data: Data{
+			Txs: []Tx{sendTx, nameTx},
 		},
 	}
 

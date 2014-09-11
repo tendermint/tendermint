@@ -17,7 +17,7 @@ const (
 type Block struct {
 	Header
 	Validation
-	Txs
+	Data
 
 	// Volatile
 	hash []byte
@@ -27,14 +27,14 @@ func ReadBlock(r io.Reader, n *int64, err *error) *Block {
 	return &Block{
 		Header:     ReadHeader(r, n, err),
 		Validation: ReadValidation(r, n, err),
-		Txs:        ReadTxs(r, n, err),
+		Data:       ReadData(r, n, err),
 	}
 }
 
 func (b *Block) WriteTo(w io.Writer) (n int64, err error) {
 	WriteBinary(w, &b.Header, &n, &err)
 	WriteBinary(w, &b.Validation, &n, &err)
-	WriteBinary(w, &b.Txs, &n, &err)
+	WriteBinary(w, &b.Data, &n, &err)
 	return
 }
 
@@ -50,7 +50,7 @@ func (b *Block) Hash() []byte {
 		hashes := [][]byte{
 			b.Header.Hash(),
 			b.Validation.Hash(),
-			b.Txs.Hash(),
+			b.Data.Hash(),
 		}
 		// Merkle hash from sub-hashes.
 		return merkle.HashFromByteSlices(hashes)
@@ -77,6 +77,21 @@ func (b *Block) ToBlockPartSet() *BlockPartSet {
 		parts = append(parts, part)
 	}
 	return NewBlockPartSet(b.Height, parts)
+}
+
+// Makes an empty next block.
+func (b *Block) MakeNextBlock() *Block {
+	return &Block{
+		Header: Header{
+			Name:   b.Header.Name,
+			Height: b.Header.Height + 1,
+			//Fees:                uint64(0),
+			Time:     time.Now(),
+			PrevHash: b.Hash(),
+			//ValidationStateHash: nil,
+			//AccountStateHash:    nil,
+		},
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -133,15 +148,14 @@ func (bp *BlockPart) Hash() []byte {
 
 //-----------------------------------------------------------------------------
 
-/* Header is part of a Block */
 type Header struct {
-	Name           string
-	Height         uint32
-	Fees           uint64
-	Time           time.Time
-	PrevHash       []byte
-	ValidationHash []byte
-	TxsHash        []byte
+	Name                string
+	Height              uint32
+	Fees                uint64
+	Time                time.Time
+	PrevHash            []byte
+	ValidationStateHash []byte
+	AccountStateHash    []byte
 
 	// Volatile
 	hash []byte
@@ -152,13 +166,13 @@ func ReadHeader(r io.Reader, n *int64, err *error) (h Header) {
 		return Header{}
 	}
 	return Header{
-		Name:           ReadString(r, n, err),
-		Height:         ReadUInt32(r, n, err),
-		Fees:           ReadUInt64(r, n, err),
-		Time:           ReadTime(r, n, err),
-		PrevHash:       ReadByteSlice(r, n, err),
-		ValidationHash: ReadByteSlice(r, n, err),
-		TxsHash:        ReadByteSlice(r, n, err),
+		Name:                ReadString(r, n, err),
+		Height:              ReadUInt32(r, n, err),
+		Fees:                ReadUInt64(r, n, err),
+		Time:                ReadTime(r, n, err),
+		PrevHash:            ReadByteSlice(r, n, err),
+		ValidationStateHash: ReadByteSlice(r, n, err),
+		AccountStateHash:    ReadByteSlice(r, n, err),
 	}
 }
 
@@ -168,8 +182,8 @@ func (h *Header) WriteTo(w io.Writer) (n int64, err error) {
 	WriteUInt64(w, h.Fees, &n, &err)
 	WriteTime(w, h.Time, &n, &err)
 	WriteByteSlice(w, h.PrevHash, &n, &err)
-	WriteByteSlice(w, h.ValidationHash, &n, &err)
-	WriteByteSlice(w, h.TxsHash, &n, &err)
+	WriteByteSlice(w, h.ValidationStateHash, &n, &err)
+	WriteByteSlice(w, h.AccountStateHash, &n, &err)
 	return
 }
 
@@ -187,10 +201,10 @@ func (h *Header) Hash() []byte {
 	}
 }
 
-/* Validation is part of a block */
+//-----------------------------------------------------------------------------
+
 type Validation struct {
 	Signatures []Signature
-	Txs        []Tx
 
 	// Volatile
 	hash []byte
@@ -198,29 +212,19 @@ type Validation struct {
 
 func ReadValidation(r io.Reader, n *int64, err *error) Validation {
 	numSigs := ReadUInt32(r, n, err)
-	numAdjs := ReadUInt32(r, n, err)
 	sigs := make([]Signature, 0, numSigs)
 	for i := uint32(0); i < numSigs; i++ {
 		sigs = append(sigs, ReadSignature(r, n, err))
 	}
-	tx := make([]Tx, 0, numAdjs)
-	for i := uint32(0); i < numAdjs; i++ {
-		tx = append(tx, ReadTx(r, n, err))
-	}
 	return Validation{
 		Signatures: sigs,
-		Txs:        tx,
 	}
 }
 
 func (v *Validation) WriteTo(w io.Writer) (n int64, err error) {
 	WriteUInt32(w, uint32(len(v.Signatures)), &n, &err)
-	WriteUInt32(w, uint32(len(v.Txs)), &n, &err)
 	for _, sig := range v.Signatures {
 		WriteBinary(w, sig, &n, &err)
-	}
-	for _, tx := range v.Txs {
-		WriteBinary(w, tx, &n, &err)
 	}
 	return
 }
@@ -239,40 +243,41 @@ func (v *Validation) Hash() []byte {
 	}
 }
 
-/* Txs is part of a block */
-type Txs struct {
+//-----------------------------------------------------------------------------
+
+type Data struct {
 	Txs []Tx
 
 	// Volatile
 	hash []byte
 }
 
-func ReadTxs(r io.Reader, n *int64, err *error) Txs {
+func ReadData(r io.Reader, n *int64, err *error) Data {
 	numTxs := ReadUInt32(r, n, err)
 	txs := make([]Tx, 0, numTxs)
 	for i := uint32(0); i < numTxs; i++ {
 		txs = append(txs, ReadTx(r, n, err))
 	}
-	return Txs{Txs: txs}
+	return Data{Txs: txs}
 }
 
-func (txs *Txs) WriteTo(w io.Writer) (n int64, err error) {
-	WriteUInt32(w, uint32(len(txs.Txs)), &n, &err)
-	for _, tx := range txs.Txs {
+func (data *Data) WriteTo(w io.Writer) (n int64, err error) {
+	WriteUInt32(w, uint32(len(data.Txs)), &n, &err)
+	for _, tx := range data.Txs {
 		WriteBinary(w, tx, &n, &err)
 	}
 	return
 }
 
-func (txs *Txs) Hash() []byte {
-	if txs.hash != nil {
-		return txs.hash
+func (data *Data) Hash() []byte {
+	if data.hash != nil {
+		return data.hash
 	} else {
-		bs := make([]Binary, 0, len(txs.Txs))
-		for i, tx := range txs.Txs {
+		bs := make([]Binary, 0, len(data.Txs))
+		for i, tx := range data.Txs {
 			bs[i] = Binary(tx)
 		}
-		txs.hash = merkle.HashFromBinarySlice(bs)
-		return txs.hash
+		data.hash = merkle.HashFromBinarySlice(bs)
+		return data.hash
 	}
 }

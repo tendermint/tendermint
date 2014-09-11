@@ -22,7 +22,7 @@ Account Txs:
 1. Send			Send coins to account
 2. Name			Associate account with a name
 
-Consensus Txs:
+Validation Txs:
 3. Bond         New validator posts a bond
 4. Unbond       Validator leaves
 5. Timeout      Validator times out
@@ -35,7 +35,7 @@ type Tx interface {
 	Type() byte
 	GetSequence() uint64
 	GetSignature() *Signature
-	//IsConsensus() bool
+	//IsValidation() bool
 	Binary
 }
 
@@ -44,7 +44,7 @@ const (
 	TX_TYPE_SEND = byte(0x01)
 	TX_TYPE_NAME = byte(0x02)
 
-	// Consensus transactions
+	// Validation transactions
 	TX_TYPE_BOND    = byte(0x11)
 	TX_TYPE_UNBOND  = byte(0x12)
 	TX_TYPE_TIMEOUT = byte(0x13)
