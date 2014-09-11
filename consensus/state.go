@@ -55,7 +55,7 @@ func (cs *ConsensusState) RoundState() *RoundState {
 	return cs.roundState
 }
 
-// Primarily gets called upon block commit by ConsensusManager.
+// Primarily gets called upon block commit by ConsensusAgent.
 func (cs *ConsensusState) Update(state *State) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()

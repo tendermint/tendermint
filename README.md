@@ -8,7 +8,7 @@ TenderMint - proof of concept
 * **[mempool](https://github.com/tendermint/tendermint/blob/master/mempool):** Handles the broadcasting of uncommitted transactions.
 * **[crypto](https://github.com/tendermint/tendermint/blob/master/crypto):** Includes cgo bindings of ed25519.
 
-### Status
+### Development Status
 
 * Mempool *now*
 * Consensus *complete*
@@ -17,3 +17,7 @@ TenderMint - proof of concept
 * p2p/* *complete*
 * Ed25519 bindings *complete*
 * merkle/* *complete*
+
+### Issues
+
+* merkle/* does not free old children nodes.  Implement something memory-aware that makes merkle/* act like a weakly referenced map.

@@ -56,7 +56,7 @@ func LoadState(db db_.Db) *State {
 }
 
 // Save this state into the db.
-// For convenience, the commitTime (required by ConsensusManager)
+// For convenience, the commitTime (required by ConsensusAgent)
 // is saved here.
 func (s *State) Save(commitTime time.Time) {
 	s.mtx.Lock()

@@ -22,10 +22,10 @@ const (
 )
 
 /*
-PeerManager handles PEX (peer exchange) and ensures that an
+PEXAgent handles PEX (peer exchange) and ensures that an
 adequate number of peers are connected to the switch.
 */
-type PeerManager struct {
+type PEXAgent struct {
 	sw       *Switch
 	swEvents chan interface{}
 	quit     chan struct{}
@@ -35,49 +35,49 @@ type PeerManager struct {
 	book *AddrBook
 }
 
-func NewPeerManager(sw *Switch, book *AddrBook) *PeerManager {
+func NewPEXAgent(sw *Switch, book *AddrBook) *PEXAgent {
 	swEvents := make(chan interface{})
-	sw.AddEventListener("PeerManager.swEvents", swEvents)
-	pm := &PeerManager{
+	sw.AddEventListener("PEXAgent.swEvents", swEvents)
+	pexA := &PEXAgent{
 		sw:       sw,
 		swEvents: swEvents,
 		quit:     make(chan struct{}),
 		book:     book,
 	}
-	return pm
+	return pexA
 }
 
-func (pm *PeerManager) Start() {
-	if atomic.CompareAndSwapUint32(&pm.started, 0, 1) {
-		log.Info("Starting PeerManager")
-		go pm.switchEventsRoutine()
-		go pm.requestRoutine()
-		go pm.ensurePeersRoutine()
+func (pexA *PEXAgent) Start() {
+	if atomic.CompareAndSwapUint32(&pexA.started, 0, 1) {
+		log.Info("Starting PEXAgent")
+		go pexA.switchEventsRoutine()
+		go pexA.requestRoutine()
+		go pexA.ensurePeersRoutine()
 	}
 }
 
-func (pm *PeerManager) Stop() {
-	if atomic.CompareAndSwapUint32(&pm.stopped, 0, 1) {
-		log.Info("Stopping PeerManager")
-		close(pm.quit)
-		close(pm.swEvents)
+func (pexA *PEXAgent) Stop() {
+	if atomic.CompareAndSwapUint32(&pexA.stopped, 0, 1) {
+		log.Info("Stopping PEXAgent")
+		close(pexA.quit)
+		close(pexA.swEvents)
 	}
 }
 
 // Asks peer for more addresses.
-func (pm *PeerManager) RequestPEX(peer *Peer) {
+func (pexA *PEXAgent) RequestPEX(peer *Peer) {
 	peer.TrySend(PexCh, &pexRequestMessage{})
 }
 
-func (pm *PeerManager) SendAddrs(peer *Peer, addrs []*NetAddress) {
+func (pexA *PEXAgent) SendAddrs(peer *Peer, addrs []*NetAddress) {
 	peer.Send(PexCh, &pexAddrsMessage{Addrs: addrs})
 }
 
 // For new outbound peers, announce our listener addresses if any,
 // and if .book needs more addresses, ask for them.
-func (pm *PeerManager) switchEventsRoutine() {
+func (pexA *PEXAgent) switchEventsRoutine() {
 	for {
-		swEvent, ok := <-pm.swEvents
+		swEvent, ok := <-pexA.swEvents
 		if !ok {
 			break
 		}
@@ -85,9 +85,9 @@ func (pm *PeerManager) switchEventsRoutine() {
 		case SwitchEventNewPeer:
 			event := swEvent.(SwitchEventNewPeer)
 			if event.Peer.IsOutbound() {
-				pm.SendAddrs(event.Peer, pm.book.OurAddresses())
-				if pm.book.NeedMoreAddrs() {
-					pm.RequestPEX(event.Peer)
+				pexA.SendAddrs(event.Peer, pexA.book.OurAddresses())
+				if pexA.book.NeedMoreAddrs() {
+					pexA.RequestPEX(event.Peer)
 				}
 			}
 		case SwitchEventDonePeer:
@@ -97,17 +97,17 @@ func (pm *PeerManager) switchEventsRoutine() {
 }
 
 // Ensures that sufficient peers are connected. (continuous)
-func (pm *PeerManager) ensurePeersRoutine() {
+func (pexA *PEXAgent) ensurePeersRoutine() {
 	// fire once immediately.
-	pm.ensurePeers()
+	pexA.ensurePeers()
 	// fire periodically
 	timer := NewRepeatTimer(ensurePeersPeriodSeconds * time.Second)
 FOR_LOOP:
 	for {
 		select {
 		case <-timer.Ch:
-			pm.ensurePeers()
-		case <-pm.quit:
+			pexA.ensurePeers()
+		case <-pexA.quit:
 			break FOR_LOOP
 		}
 	}
@@ -117,8 +117,8 @@ FOR_LOOP:
 }
 
 // Ensures that sufficient peers are connected. (once)
-func (pm *PeerManager) ensurePeers() {
-	numOutPeers, _, numDialing := pm.sw.NumPeers()
+func (pexA *PEXAgent) ensurePeers() {
+	numOutPeers, _, numDialing := pexA.sw.NumPeers()
 	numToDial := minNumOutboundPeers - (numOutPeers + numDialing)
 	if numToDial <= 0 {
 		return
@@ -133,13 +133,13 @@ func (pm *PeerManager) ensurePeers() {
 		// Try to fetch a new peer 3 times.
 		// This caps the maximum number of tries to 3 * numToDial.
 		for j := 0; i < 3; j++ {
-			picked = pm.book.PickAddress(newBias)
+			picked = pexA.book.PickAddress(newBias)
 			if picked == nil {
 				return
 			}
 			if toDial.Has(picked.String()) ||
-				pm.sw.IsDialing(picked) ||
-				pm.sw.Peers().Has(picked.String()) {
+				pexA.sw.IsDialing(picked) ||
+				pexA.sw.Peers().Has(picked.String()) {
 				continue
 			} else {
 				break
@@ -155,19 +155,19 @@ func (pm *PeerManager) ensurePeers() {
 	for _, item := range toDial.Values() {
 		picked := item.(*NetAddress)
 		go func() {
-			_, err := pm.sw.DialPeerWithAddress(picked)
+			_, err := pexA.sw.DialPeerWithAddress(picked)
 			if err != nil {
-				pm.book.MarkAttempt(picked)
+				pexA.book.MarkAttempt(picked)
 			}
 		}()
 	}
 }
 
 // Handles incoming PEX messages.
-func (pm *PeerManager) requestRoutine() {
+func (pexA *PEXAgent) requestRoutine() {
 
 	for {
-		inMsg, ok := pm.sw.Receive(PexCh) // {Peer, Time, Packet}
+		inMsg, ok := pexA.sw.Receive(PexCh) // {Peer, Time, Packet}
 		if !ok {
 			// Client has stopped
 			break
@@ -181,7 +181,7 @@ func (pm *PeerManager) requestRoutine() {
 		case *pexRequestMessage:
 			// inMsg.MConn.Peer requested some peers.
 			// TODO: prevent abuse.
-			addrs := pm.book.GetSelection()
+			addrs := pexA.book.GetSelection()
 			msg := &pexAddrsMessage{Addrs: addrs}
 			queued := inMsg.MConn.Peer.TrySend(PexCh, msg)
 			if !queued {
@@ -193,11 +193,11 @@ func (pm *PeerManager) requestRoutine() {
 			// (We don't want to get spammed with bad peers)
 			srcAddr := inMsg.MConn.RemoteAddress
 			for _, addr := range msg.(*pexAddrsMessage).Addrs {
-				pm.book.AddAddress(addr, srcAddr)
+				pexA.book.AddAddress(addr, srcAddr)
 			}
 		default:
 			// Ignore unknown message.
-			// pm.sw.StopPeerForError(inMsg.MConn.Peer, pexErrInvalidMessage)
+			// pexA.sw.StopPeerForError(inMsg.MConn.Peer, pexErrInvalidMessage)
 		}
 	}
 

@@ -10,10 +10,10 @@ import (
 )
 
 type Node struct {
-	lz   []p2p.Listener
-	sw   *p2p.Switch
-	book *p2p.AddrBook
-	pmgr *p2p.PeerManager
+	lz       []p2p.Listener
+	sw       *p2p.Switch
+	book     *p2p.AddrBook
+	pexAgent *p2p.PEXAgent
 }
 
 func NewNode() *Node {
@@ -53,12 +53,12 @@ func NewNode() *Node {
 	}
 	sw := p2p.NewSwitch(chDescs)
 	book := p2p.NewAddrBook(config.RootDir + "/addrbook.json")
-	pmgr := p2p.NewPeerManager(sw, book)
+	pexAgent := p2p.NewPEXAgent(sw, book)
 
 	return &Node{
-		sw:   sw,
-		book: book,
-		pmgr: pmgr,
+		sw:       sw,
+		book:     book,
+		pexAgent: pexAgent,
 	}
 }
 
@@ -69,7 +69,7 @@ func (n *Node) Start() {
 	}
 	n.sw.Start()
 	n.book.Start()
-	n.pmgr.Start()
+	n.pexAgent.Start()
 }
 
 func (n *Node) Stop() {
@@ -77,7 +77,7 @@ func (n *Node) Stop() {
 	// TODO: gracefully disconnect from peers.
 	n.sw.Stop()
 	n.book.Stop()
-	n.pmgr.Stop()
+	n.pexAgent.Stop()
 }
 
 // Add a Listener to accept inbound peer connections.
@@ -102,7 +102,7 @@ func (n *Node) inboundConnectionRoutine(l p2p.Listener) {
 		}
 		// NOTE: We don't yet have the external address of the
 		// remote (if they have a listener at all).
-		// PeerManager's pexRoutine will handle that.
+		// PEXAgent's pexRoutine will handle that.
 	}
 
 	// cleanup
