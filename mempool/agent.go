@@ -1,9 +1,21 @@
-package mempol
+package mempool
 
 import (
+	"bytes"
+	"fmt"
+	"io"
+	"sync/atomic"
+
+	. "github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/blocks"
 	"github.com/tendermint/tendermint/p2p"
 )
 
+var (
+	MempoolCh = byte(0x30)
+)
+
+// MempoolAgent handles mempool tx broadcasting amongst peers.
 type MempoolAgent struct {
 	sw       *p2p.Switch
 	swEvents chan interface{}
@@ -60,13 +72,13 @@ func (memA *MempoolAgent) switchEventsRoutine() {
 func (memA *MempoolAgent) gossipTxRoutine() {
 OUTER_LOOP:
 	for {
-		// Receive incoming message on ProposalCh
-		inMsg, ok := memA.sw.Receive(ProposalCh)
+		// Receive incoming message on MempoolCh
+		inMsg, ok := memA.sw.Receive(MempoolCh)
 		if !ok {
 			break OUTER_LOOP // Client has stopped
 		}
 		_, msg_ := decodeMessage(inMsg.Bytes)
-		log.Info("gossipProposalRoutine received %v", msg_)
+		log.Info("gossipMempoolRoutine received %v", msg_)
 
 		switch msg_.(type) {
 		case *TxMessage:
@@ -98,6 +110,7 @@ func decodeMessage(bz []byte) (msgType byte, msg interface{}) {
 	switch msgType {
 	case msgTypeTx:
 		msg = readTxMessage(bytes.NewReader(bz[1:]), n, err)
+	// case ...:
 	default:
 		msg = nil
 	}
