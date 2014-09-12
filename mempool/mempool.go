@@ -1,11 +1,6 @@
 /*
 Mempool receives new transactions and applies them to the latest committed state.
-If the transaction is acceptable, then it broadcasts a fingerprint to peers.
-
-The transaction fingerprint is a short sequence of bytes (shorter than a full hash).
-Each peer connection uses a different algorithm for turning the tx hash into a
-fingerprint in order to prevent transaction blocking attacks. Upon inspecting a
-tx fingerprint, the receiver may query the source for the full tx bytes.
+If the transaction is acceptable, then it broadcasts the tx to peers.
 
 When this node happens to be the next proposer, it simply takes the recently
 modified state (and the associated transactions) and use that as the proposal.
@@ -60,7 +55,7 @@ func (mem *Mempool) MakeProposal() (*Block, *State) {
 
 // Txs that are present in block are discarded from mempool.
 // Txs that have become invalid in the new state are also discarded.
-func (mem *Mempool) ResetForBlockandState(block *Block, state *State) {
+func (mem *Mempool) ResetForBlockAndState(block *Block, state *State) {
 	mem.mtx.Lock()
 	defer mem.mtx.Unlock()
 	mem.lastBlock = block

@@ -100,11 +100,11 @@ func TestBlock(t *testing.T) {
 
 	block := &Block{
 		Header: Header{
-			Name:           "Tendermint",
+			Network:        "Tendermint",
 			Height:         randUInt32(),
 			Fees:           randUInt64(),
 			Time:           randTime(),
-			PrevHash:       randBytes(32),
+			LastBlockHash:  randBytes(32),
 			ValidationHash: randBytes(32),
 			DataHash:       randBytes(32),
 		},

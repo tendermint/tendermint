@@ -22,15 +22,18 @@ type MempoolAgent struct {
 	quit     chan struct{}
 	started  uint32
 	stopped  uint32
+
+	mempool *Mempool
 }
 
-func NewMempoolAgent(sw *p2p.Switch) *MempoolAgent {
+func NewMempoolAgent(sw *p2p.Switch, mempool *Mempool) *MempoolAgent {
 	swEvents := make(chan interface{})
 	sw.AddEventListener("MempoolAgent.swEvents", swEvents)
 	memA := &MempoolAgent{
 		sw:       sw,
 		swEvents: swEvents,
 		quit:     make(chan struct{}),
+		mempool:  mempool,
 	}
 	return memA
 }
@@ -49,6 +52,16 @@ func (memA *MempoolAgent) Stop() {
 		close(memA.quit)
 		close(memA.swEvents)
 	}
+}
+
+func (memA *MempoolAgent) BroadcastTx(tx Tx) error {
+	err := memA.mempool.AddTx(tx)
+	if err != nil {
+		return err
+	}
+	msg := &TxMessage{Tx: tx}
+	memA.sw.Broadcast(MempoolCh, msg)
+	return nil
 }
 
 // Handle peer new/done events
@@ -78,12 +91,28 @@ OUTER_LOOP:
 			break OUTER_LOOP // Client has stopped
 		}
 		_, msg_ := decodeMessage(inMsg.Bytes)
-		log.Info("gossipMempoolRoutine received %v", msg_)
+		log.Info("gossipTxRoutine received %v", msg_)
 
 		switch msg_.(type) {
 		case *TxMessage:
-			// msg := msg_.(*TxMessage)
-			// XXX
+			msg := msg_.(*TxMessage)
+			err := memA.mempool.AddTx(msg.Tx)
+			if err != nil {
+				// Bad, seen, or conflicting tx.
+				log.Debug("Could not add tx %v", msg.Tx)
+				continue OUTER_LOOP
+			} else {
+				log.Debug("Added valid tx %V", msg.Tx)
+			}
+			// Share tx.
+			// We use a simple shotgun approach for now.
+			// TODO: improve efficiency
+			for _, peer := range memA.sw.Peers().List() {
+				if peer.Key == inMsg.MConn.Peer.Key {
+					continue
+				}
+				peer.TrySend(MempoolCh, msg)
+			}
 
 		default:
 			// Ignore unknown message

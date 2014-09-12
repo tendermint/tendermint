@@ -1,17 +1,26 @@
 package blocks
 
 import (
+	"bytes"
 	"crypto/sha256"
+	"errors"
 	"io"
 	"time"
 
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
+	. "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/merkle"
 )
 
 const (
 	defaultBlockPartSizeBytes = 4096
+)
+
+var (
+	ErrBlockInvalidNetwork       = errors.New("Error block invalid network")
+	ErrBlockInvalidBlockHeight   = errors.New("Error block invalid height")
+	ErrBlockInvalidLastBlockHash = errors.New("Error block invalid last blockhash")
 )
 
 type Block struct {
@@ -38,8 +47,18 @@ func (b *Block) WriteTo(w io.Writer) (n int64, err error) {
 	return
 }
 
-func (b *Block) ValidateBasic() error {
-	// TODO Basic validation that doesn't involve context.
+// Basic validation that doesn't involve state data.
+func (b *Block) ValidateBasic(lastBlockHeight uint32, lastBlockHash []byte) error {
+	if b.Header.Network != Config.Network {
+		return ErrBlockInvalidNetwork
+	}
+	if b.Header.Height != lastBlockHeight {
+		return ErrBlockInvalidBlockHeight
+	}
+	if !bytes.Equal(b.Header.LastBlockHash, lastBlockHash) {
+		return ErrBlockInvalidLastBlockHash
+	}
+	// XXX more validation
 	return nil
 }
 
@@ -83,11 +102,11 @@ func (b *Block) ToBlockPartSet() *BlockPartSet {
 func (b *Block) MakeNextBlock() *Block {
 	return &Block{
 		Header: Header{
-			Name:   b.Header.Name,
-			Height: b.Header.Height + 1,
+			Network: b.Header.Network,
+			Height:  b.Header.Height + 1,
 			//Fees:                uint64(0),
-			Time:     time.Now(),
-			PrevHash: b.Hash(),
+			Time:          time.Now(),
+			LastBlockHash: b.Hash(),
 			//ValidationStateHash: nil,
 			//AccountStateHash:    nil,
 		},
@@ -149,11 +168,11 @@ func (bp *BlockPart) Hash() []byte {
 //-----------------------------------------------------------------------------
 
 type Header struct {
-	Name                string
+	Network             string
 	Height              uint32
 	Fees                uint64
 	Time                time.Time
-	PrevHash            []byte
+	LastBlockHash       []byte
 	ValidationStateHash []byte
 	AccountStateHash    []byte
 
@@ -166,22 +185,22 @@ func ReadHeader(r io.Reader, n *int64, err *error) (h Header) {
 		return Header{}
 	}
 	return Header{
-		Name:                ReadString(r, n, err),
+		Network:             ReadString(r, n, err),
 		Height:              ReadUInt32(r, n, err),
 		Fees:                ReadUInt64(r, n, err),
 		Time:                ReadTime(r, n, err),
-		PrevHash:            ReadByteSlice(r, n, err),
+		LastBlockHash:       ReadByteSlice(r, n, err),
 		ValidationStateHash: ReadByteSlice(r, n, err),
 		AccountStateHash:    ReadByteSlice(r, n, err),
 	}
 }
 
 func (h *Header) WriteTo(w io.Writer) (n int64, err error) {
-	WriteString(w, h.Name, &n, &err)
+	WriteString(w, h.Network, &n, &err)
 	WriteUInt32(w, h.Height, &n, &err)
 	WriteUInt64(w, h.Fees, &n, &err)
 	WriteTime(w, h.Time, &n, &err)
-	WriteByteSlice(w, h.PrevHash, &n, &err)
+	WriteByteSlice(w, h.LastBlockHash, &n, &err)
 	WriteByteSlice(w, h.ValidationStateHash, &n, &err)
 	WriteByteSlice(w, h.AccountStateHash, &n, &err)
 	return

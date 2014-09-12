@@ -77,8 +77,10 @@ func (memA *MempoolAgent) switchEventsRoutine() {
 		switch swEvent.(type) {
 		case p2p.SwitchEventNewPeer:
 			// event := swEvent.(p2p.SwitchEventNewPeer)
+			// NOTE: set up peer state
 		case p2p.SwitchEventDonePeer:
 			// event := swEvent.(p2p.SwitchEventDonePeer)
+			// NOTE: tear down peer state
 		default:
 			log.Warning("Unhandled switch event type")
 		}
@@ -99,7 +101,7 @@ OUTER_LOOP:
 		switch msg_.(type) {
 		case *TxMessage:
 			// msg := msg_.(*TxMessage)
-			// XXX
+			// handle msg
 
 		default:
 			// Ignore unknown message

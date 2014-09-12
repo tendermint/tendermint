@@ -14,6 +14,7 @@ import (
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/blocks"
 	. "github.com/tendermint/tendermint/common"
+	. "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	. "github.com/tendermint/tendermint/state"
 )
@@ -99,6 +100,7 @@ type ConsensusAgent struct {
 
 	conS       *ConsensusState
 	blockStore *BlockStore
+	mempool    *Mempool
 	doActionCh chan RoundAction
 
 	mtx            sync.Mutex
@@ -109,7 +111,7 @@ type ConsensusAgent struct {
 	stagedState    *State
 }
 
-func NewConsensusAgent(sw *p2p.Switch, state *State, blockStore *BlockStore) *ConsensusAgent {
+func NewConsensusAgent(sw *p2p.Switch, blockStore *BlockStore, mempool *Mempool, state *State) *ConsensusAgent {
 	swEvents := make(chan interface{})
 	sw.AddEventListener("ConsensusAgent.swEvents", swEvents)
 	conS := NewConsensusState(state)
@@ -120,6 +122,7 @@ func NewConsensusAgent(sw *p2p.Switch, state *State, blockStore *BlockStore) *Co
 
 		conS:       conS,
 		blockStore: blockStore,
+		mempool:    mempool,
 		doActionCh: make(chan RoundAction, 1),
 
 		state:      state,
@@ -337,15 +340,16 @@ func (conA *ConsensusAgent) stageProposal(proposal *BlockPartSet) error {
 		conA.mtx.Unlock()
 	}
 
-	// Basic validation
 	if !proposal.IsComplete() {
 		return errors.New("Incomplete proposal BlockPartSet")
 	}
 	block := proposal.Block()
-	err := block.ValidateBasic()
-	if err != nil {
-		return err
-	}
+
+	// Basic validation is done in state.CommitBlock().
+	//err := block.ValidateBasic()
+	//if err != nil {
+	//	return err
+	//}
 
 	// Create a copy of the state for staging
 	conA.mtx.Lock()
@@ -353,7 +357,7 @@ func (conA *ConsensusAgent) stageProposal(proposal *BlockPartSet) error {
 	conA.mtx.Unlock()
 
 	// Commit block onto the copied state.
-	err = stateCopy.CommitBlock(block)
+	err := stateCopy.CommitBlock(block)
 	if err != nil {
 		return err
 	}
@@ -368,9 +372,10 @@ func (conA *ConsensusAgent) stageProposal(proposal *BlockPartSet) error {
 
 // Constructs an unsigned proposal
 func (conA *ConsensusAgent) constructProposal(rs *RoundState) (*BlockPartSet, error) {
-	// XXX implement, first implement mempool
-	// proposal := block.ToBlockPartSet()
-	return nil, nil
+	// TODO: make use of state returned from MakeProposal()
+	proposalBlock, _ := conA.mempool.MakeProposal()
+	proposal := proposalBlock.ToBlockPartSet()
+	return proposal, nil
 }
 
 // Vote for (or against) the proposal for this round.
@@ -517,6 +522,7 @@ func (conA *ConsensusAgent) commitProposal(proposal *BlockPartSet, commitTime ti
 	conA.conS.Update(conA.state)
 	conA.stagedProposal = nil
 	conA.stagedState = nil
+	conA.mempool.ResetForBlockAndState(block, conA.state)
 
 	return nil
 }

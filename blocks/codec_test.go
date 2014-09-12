@@ -15,11 +15,11 @@ func BenchmarkTestCustom(b *testing.B) {
 	b.StopTimer()
 
 	h := &Header{
-		Name:           "Header",
+		Network:        "Header",
 		Height:         123,
 		Fees:           123,
 		Time:           time.Unix(123, 0),
-		PrevHash:       []byte("prevhash"),
+		LastBlockHash:  []byte("prevhash"),
 		ValidationHash: []byte("validationhash"),
 		DataHash:       []byte("datahash"),
 	}
@@ -33,18 +33,18 @@ func BenchmarkTestCustom(b *testing.B) {
 		var n int64
 		var err error
 		h2 := ReadHeader(buf, &n, &err)
-		if h2.Name != "Header" {
+		if h2.Network != "Header" {
 			b.Fatalf("wrong name")
 		}
 	}
 }
 
 type HHeader struct {
-	Name           string `json:"N"`
+	Network        string `json:"N"`
 	Height         uint64 `json:"H"`
 	Fees           uint64 `json:"F"`
 	Time           uint64 `json:"T"`
-	PrevHash       []byte `json:"PH"`
+	LastBlockHash  []byte `json:"PH"`
 	ValidationHash []byte `json:"VH"`
 	DataHash       []byte `json:"DH"`
 }
@@ -53,11 +53,11 @@ func BenchmarkTestJSON(b *testing.B) {
 	b.StopTimer()
 
 	h := &HHeader{
-		Name:           "Header",
+		Network:        "Header",
 		Height:         123,
 		Fees:           123,
 		Time:           123,
-		PrevHash:       []byte("prevhash"),
+		LastBlockHash:  []byte("prevhash"),
 		ValidationHash: []byte("validationhash"),
 		DataHash:       []byte("datahash"),
 	}
@@ -72,7 +72,7 @@ func BenchmarkTestJSON(b *testing.B) {
 		buf.Reset()
 		enc.Encode(h)
 		dec.Decode(h2)
-		if h2.Name != "Header" {
+		if h2.Network != "Header" {
 			b.Fatalf("wrong name")
 		}
 	}
@@ -82,11 +82,11 @@ func BenchmarkTestGob(b *testing.B) {
 	b.StopTimer()
 
 	h := &Header{
-		Name:           "Header",
+		Network:        "Header",
 		Height:         123,
 		Fees:           123,
 		Time:           time.Unix(123, 0),
-		PrevHash:       []byte("prevhash"),
+		LastBlockHash:  []byte("prevhash"),
 		ValidationHash: []byte("validationhash"),
 		DataHash:       []byte("datahash"),
 	}
@@ -101,7 +101,7 @@ func BenchmarkTestGob(b *testing.B) {
 		buf.Reset()
 		enc.Encode(h)
 		dec.Decode(h2)
-		if h2.Name != "Header" {
+		if h2.Network != "Header" {
 			b.Fatalf("wrong name")
 		}
 	}
@@ -111,11 +111,11 @@ func BenchmarkTestMsgPack(b *testing.B) {
 	b.StopTimer()
 
 	h := &Header{
-		Name:           "Header",
+		Network:        "Header",
 		Height:         123,
 		Fees:           123,
 		Time:           time.Unix(123, 0),
-		PrevHash:       []byte("prevhash"),
+		LastBlockHash:  []byte("prevhash"),
 		ValidationHash: []byte("validationhash"),
 		DataHash:       []byte("datahash"),
 	}
@@ -130,7 +130,7 @@ func BenchmarkTestMsgPack(b *testing.B) {
 		buf.Reset()
 		enc.Encode(h)
 		dec.Decode(h2)
-		if h2.Name != "Header" {
+		if h2.Network != "Header" {
 			b.Fatalf("wrong name")
 		}
 	}
@@ -140,11 +140,11 @@ func BenchmarkTestMsgPack2(b *testing.B) {
 	b.StopTimer()
 
 	h := &Header{
-		Name:           "Header",
+		Network:        "Header",
 		Height:         123,
 		Fees:           123,
 		Time:           time.Unix(123, 0),
-		PrevHash:       []byte("prevhash"),
+		LastBlockHash:  []byte("prevhash"),
 		ValidationHash: []byte("validationhash"),
 		DataHash:       []byte("datahash"),
 	}
@@ -161,7 +161,7 @@ func BenchmarkTestMsgPack2(b *testing.B) {
 		buf.Reset()
 		enc.Encode(h)
 		dec.Decode(h2)
-		if h2.Name != "Header" {
+		if h2.Network != "Header" {
 			b.Fatalf("wrong name")
 		}
 	}
