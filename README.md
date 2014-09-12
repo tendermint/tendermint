@@ -10,7 +10,9 @@ TenderMint - proof of concept
 
 ### Development Status
 
-* Mempool *now*
+* Testnet *pending*
+* Bootstrapping *now*
+* Mempool *complete*
 * Consensus *complete*
 * Block propagation *sidelined*
 * PEX peer exchange *complete*
