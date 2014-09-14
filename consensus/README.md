@@ -1,4 +1,4 @@
-## Determining the order of proposers at height h:
+## Determining the order of proposers at height h
 
 ```
 Determining the order of proposers at height h:
@@ -32,7 +32,6 @@ round R   in the consensus rounds at height h (the parent block).
 
 We omit details of dealing with membership changes.
 ```
-
 
 ## Zombie Validators
 

@@ -8,13 +8,8 @@ import (
 	"time"
 
 	. "github.com/tendermint/tendermint/binary"
-	. "github.com/tendermint/tendermint/common"
 	. "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/merkle"
-)
-
-const (
-	defaultBlockPartSizeBytes = 4096
 )
 
 var (
@@ -72,30 +67,21 @@ func (b *Block) Hash() []byte {
 			b.Data.Hash(),
 		}
 		// Merkle hash from sub-hashes.
-		return merkle.HashFromByteSlices(hashes)
+		return merkle.HashFromHashes(hashes)
 	}
 }
 
-// The returns parts must be signed afterwards.
-func (b *Block) ToBlockPartSet() *BlockPartSet {
-	var parts []*BlockPart
-	blockBytes := BinaryBytes(b)
-	total := (len(blockBytes) + defaultBlockPartSizeBytes - 1) / defaultBlockPartSizeBytes
-	for i := 0; i < total; i++ {
-		start := defaultBlockPartSizeBytes * i
-		end := MinInt(start+defaultBlockPartSizeBytes, len(blockBytes))
-		partBytes := make([]byte, end-start)
-		copy(partBytes, blockBytes[start:end]) // Do not ref the original byteslice.
-		part := &BlockPart{
-			Height:    b.Height,
-			Index:     uint16(i),
-			Total:     uint16(total),
-			Bytes:     partBytes,
-			Signature: Signature{}, // No signature.
-		}
-		parts = append(parts, part)
+// Convenience.
+// A nil block never hashes to anything.
+// Nothing hashes to a nil hash.
+func (b *Block) HashesTo(hash []byte) bool {
+	if len(hash) == 0 {
+		return false
 	}
-	return NewBlockPartSet(b.Height, parts)
+	if b == nil {
+		return false
+	}
+	return bytes.Equal(b.Hash(), hash)
 }
 
 // Makes an empty next block.
@@ -110,58 +96,6 @@ func (b *Block) MakeNextBlock() *Block {
 			//ValidationStateHash: nil,
 			//AccountStateHash:    nil,
 		},
-	}
-}
-
-//-----------------------------------------------------------------------------
-
-/*
-BlockPart represents a chunk of the bytes of a block.
-Each block is divided into fixed length chunks (e.g. 4Kb)
-for faster propagation across the gossip network.
-*/
-type BlockPart struct {
-	Height uint32
-	Round  uint16 // Add Round? Well I need to know...
-	Index  uint16
-	Total  uint16
-	Bytes  []byte
-	Signature
-
-	// Volatile
-	hash []byte
-}
-
-func ReadBlockPart(r io.Reader, n *int64, err *error) *BlockPart {
-	return &BlockPart{
-		Height:    ReadUInt32(r, n, err),
-		Round:     ReadUInt16(r, n, err),
-		Index:     ReadUInt16(r, n, err),
-		Total:     ReadUInt16(r, n, err),
-		Bytes:     ReadByteSlice(r, n, err),
-		Signature: ReadSignature(r, n, err),
-	}
-}
-
-func (bp *BlockPart) WriteTo(w io.Writer) (n int64, err error) {
-	WriteUInt32(w, bp.Height, &n, &err)
-	WriteUInt16(w, bp.Round, &n, &err)
-	WriteUInt16(w, bp.Index, &n, &err)
-	WriteUInt16(w, bp.Total, &n, &err)
-	WriteByteSlice(w, bp.Bytes, &n, &err)
-	WriteBinary(w, bp.Signature, &n, &err)
-	return
-}
-
-// Hash returns the hash of the block part data bytes.
-func (bp *BlockPart) Hash() []byte {
-	if bp.hash != nil {
-		return bp.hash
-	} else {
-		hasher := sha256.New()
-		hasher.Write(bp.Bytes)
-		bp.hash = hasher.Sum(nil)
-		return bp.hash
 	}
 }
 
@@ -296,7 +230,7 @@ func (data *Data) Hash() []byte {
 		for i, tx := range data.Txs {
 			bs[i] = Binary(tx)
 		}
-		data.hash = merkle.HashFromBinarySlice(bs)
+		data.hash = merkle.HashFromBinaries(bs)
 		return data.hash
 	}
 }

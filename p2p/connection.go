@@ -27,10 +27,13 @@ const (
 	defaultRecvRate    = 51200 // 5Kb/s
 )
 
+type receiveCbFunc func(chId byte, msgBytes []byte)
+type errorCbFunc func(interface{})
+
 /*
 A MConnection wraps a network connection and handles buffering and multiplexing.
 Binary messages are sent with ".Send(channelId, msg)".
-Inbound byteslices are pushed to the designated chan<- InboundBytes.
+Inbound message bytes are handled with an onReceive callback function.
 */
 type MConnection struct {
 	conn         net.Conn
@@ -48,17 +51,17 @@ type MConnection struct {
 	chStatsTimer *RepeatTimer // update channel stats periodically
 	channels     []*Channel
 	channelsIdx  map[byte]*Channel
-	onError      func(interface{})
+	onReceive    receiveCbFunc
+	onError      errorCbFunc
 	started      uint32
 	stopped      uint32
 	errored      uint32
 
-	Peer          *Peer // hacky optimization, gets set by Peer
 	LocalAddress  *NetAddress
 	RemoteAddress *NetAddress
 }
 
-func NewMConnection(conn net.Conn, chDescs []*ChannelDescriptor, onError func(interface{})) *MConnection {
+func NewMConnection(conn net.Conn, chDescs []*ChannelDescriptor, onReceive receiveCbFunc, onError errorCbFunc) *MConnection {
 
 	mconn := &MConnection{
 		conn:          conn,
@@ -74,6 +77,7 @@ func NewMConnection(conn net.Conn, chDescs []*ChannelDescriptor, onError func(in
 		pingTimer:     NewRepeatTimer(pingTimeoutMinutes * time.Minute),
 		pong:          make(chan struct{}),
 		chStatsTimer:  NewRepeatTimer(updateStatsSeconds * time.Second),
+		onReceive:     onReceive,
 		onError:       onError,
 		LocalAddress:  NewNetAddress(conn.LocalAddr()),
 		RemoteAddress: NewNetAddress(conn.RemoteAddr()),
@@ -288,7 +292,7 @@ func (c *MConnection) sendPacket() bool {
 	var leastChannel *Channel
 	for _, channel := range c.channels {
 		// If nothing to send, skip this channel
-		if !channel.sendPending() {
+		if !channel.isSendPending() {
 			continue
 		}
 		// Get ratio, and keep track of lowest ratio.
@@ -319,7 +323,7 @@ func (c *MConnection) sendPacket() bool {
 }
 
 // recvRoutine reads packets and reconstructs the message using the channels' "recving" buffer.
-// After a whole message has been assembled, it's pushed to the Channel's recvQueue.
+// After a whole message has been assembled, it's pushed to onReceive().
 // Blocks depending on how the connection is throttled.
 func (c *MConnection) recvRoutine() {
 	defer c._recover()
@@ -372,7 +376,10 @@ FOR_LOOP:
 			if channel == nil {
 				Panicf("Unknown channel %v", pkt.ChannelId)
 			}
-			channel.recvPacket(pkt)
+			msgBytes := channel.recvPacket(pkt)
+			if msgBytes != nil {
+				c.onReceive(pkt.ChannelId, msgBytes)
+			}
 		default:
 			Panicf("Unknown message type %v", pktType)
 		}
@@ -397,10 +404,6 @@ type ChannelDescriptor struct {
 	RecvQueueCapacity int // Global for this channel.
 	RecvBufferSize    int
 	DefaultPriority   uint
-
-	// TODO: kinda hacky.
-	// This is created by the switch, one per channel.
-	recvQueue chan InboundBytes
 }
 
 // TODO: lowercase.
@@ -409,7 +412,6 @@ type Channel struct {
 	conn          *MConnection
 	desc          *ChannelDescriptor
 	id            byte
-	recvQueue     chan InboundBytes
 	sendQueue     chan []byte
 	sendQueueSize uint32
 	recving       []byte
@@ -426,7 +428,6 @@ func newChannel(conn *MConnection, desc *ChannelDescriptor) *Channel {
 		conn:      conn,
 		desc:      desc,
 		id:        desc.Id,
-		recvQueue: desc.recvQueue,
 		sendQueue: make(chan []byte, desc.SendQueueCapacity),
 		recving:   make([]byte, 0, desc.RecvBufferSize),
 		priority:  desc.DefaultPriority,
@@ -467,7 +468,7 @@ func (ch *Channel) canSend() bool {
 // Returns true if any packets are pending to be sent.
 // Call before calling nextPacket()
 // Goroutine-safe
-func (ch *Channel) sendPending() bool {
+func (ch *Channel) isSendPending() bool {
 	if len(ch.sending) == 0 {
 		if len(ch.sendQueue) == 0 {
 			return false
@@ -506,14 +507,16 @@ func (ch *Channel) writePacketTo(w io.Writer) (n int64, err error) {
 	return
 }
 
-// Handles incoming packets.
+// Handles incoming packets. Returns a msg bytes if msg is complete.
 // Not goroutine-safe
-func (ch *Channel) recvPacket(pkt packet) {
+func (ch *Channel) recvPacket(pkt packet) []byte {
 	ch.recving = append(ch.recving, pkt.Bytes...)
 	if pkt.EOF == byte(0x01) {
-		ch.recvQueue <- InboundBytes{ch.conn, ch.recving}
+		msgBytes := ch.recving
 		ch.recving = make([]byte, 0, ch.desc.RecvBufferSize)
+		return msgBytes
 	}
+	return nil
 }
 
 // Call this periodically to update stats for throttling purposes.
@@ -557,13 +560,6 @@ func readPacketSafe(r io.Reader) (pkt packet, n int64, err error) {
 	bytes := ReadByteSlice(r, &n, &err)
 	pkt = packet{chId, eof, bytes}
 	return
-}
-
-//-----------------------------------------------------------------------------
-
-type InboundBytes struct {
-	MConn *MConnection
-	Bytes []byte
 }
 
 //-----------------------------------------------------------------------------

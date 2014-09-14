@@ -68,6 +68,34 @@ func ReadUInt16(r io.Reader, n *int64, err *error) uint16 {
 	return uint16(binary.LittleEndian.Uint16(buf))
 }
 
+// []UInt16
+
+func WriteUInt16s(w io.Writer, iz []uint16, n *int64, err *error) {
+	WriteUInt32(w, uint32(len(iz)), n, err)
+	for _, i := range iz {
+		WriteUInt16(w, i, n, err)
+		if *err != nil {
+			return
+		}
+	}
+}
+
+func ReadUInt16s(r io.Reader, n *int64, err *error) []uint16 {
+	length := ReadUInt32(r, n, err)
+	if *err != nil {
+		return nil
+	}
+	iz := make([]uint16, length)
+	for j := uint32(0); j < length; j++ {
+		ii := ReadUInt16(r, n, err)
+		if *err != nil {
+			return nil
+		}
+		iz[j] = ii
+	}
+	return iz
+}
+
 // Int32
 
 func WriteInt32(w io.Writer, i int32, n *int64, err *error) {

@@ -7,17 +7,6 @@ import (
 )
 
 /*
-
-Tx wire format:
-
-    |T|L...|MMM...|A...|SSS...|
-
-    T  type of the tx (1 byte)
-    L  length of M, varint encoded (1+ bytes)
-    M  Tx bytes (L bytes)
-    A  account number, varint encoded (1+ bytes)
-    S  signature of all prior bytes (32 bytes)
-
 Account Txs:
 1. Send			Send coins to account
 2. Name			Associate account with a name
@@ -27,8 +16,6 @@ Validation Txs:
 4. Unbond       Validator leaves
 5. Timeout      Validator times out
 6. Dupeout      Validator dupes out (signs twice)
-
-
 */
 
 type Tx interface {
@@ -89,8 +76,8 @@ func ReadTx(r io.Reader, n *int64, err *error) Tx {
 	case TX_TYPE_DUPEOUT:
 		return &DupeoutTx{
 			BaseTx: ReadBaseTx(r, n, err),
-			VoteA:  *ReadBlockVote(r, n, err),
-			VoteB:  *ReadBlockVote(r, n, err),
+			VoteA:  *ReadVote(r, n, err),
+			VoteB:  *ReadVote(r, n, err),
 		}
 	default:
 		Panicf("Unknown Tx type %x", t)
@@ -234,37 +221,10 @@ func (tx *TimeoutTx) WriteTo(w io.Writer) (n int64, err error) {
 
 //-----------------------------------------------------------------------------
 
-/*
-The full vote structure is only needed when presented as evidence.
-Typically only the signature is passed around, as the hash & height are implied.
-*/
-type BlockVote struct {
-	Height    uint64
-	BlockHash []byte
-	Signature
-}
-
-func ReadBlockVote(r io.Reader, n *int64, err *error) *BlockVote {
-	return &BlockVote{
-		Height:    ReadUInt64(r, n, err),
-		BlockHash: ReadByteSlice(r, n, err),
-		Signature: ReadSignature(r, n, err),
-	}
-}
-
-func (tx BlockVote) WriteTo(w io.Writer) (n int64, err error) {
-	WriteUInt64(w, tx.Height, &n, &err)
-	WriteByteSlice(w, tx.BlockHash, &n, &err)
-	WriteBinary(w, tx.Signature, &n, &err)
-	return
-}
-
-//-----------------------------------------------------------------------------
-
 type DupeoutTx struct {
 	BaseTx
-	VoteA BlockVote
-	VoteB BlockVote
+	VoteA Vote
+	VoteB Vote
 }
 
 func (tx *DupeoutTx) Type() byte {
@@ -274,7 +234,7 @@ func (tx *DupeoutTx) Type() byte {
 func (tx *DupeoutTx) WriteTo(w io.Writer) (n int64, err error) {
 	WriteByte(w, tx.Type(), &n, &err)
 	WriteBinary(w, &tx.BaseTx, &n, &err)
-	WriteBinary(w, tx.VoteA, &n, &err)
-	WriteBinary(w, tx.VoteB, &n, &err)
+	WriteBinary(w, &tx.VoteA, &n, &err)
+	WriteBinary(w, &tx.VoteB, &n, &err)
 	return
 }

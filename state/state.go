@@ -46,11 +46,12 @@ func LoadState(db db_.Db) *State {
 		s.blockHash = ReadByteSlice(reader, &n, &err)
 		accountsMerkleRoot := ReadByteSlice(reader, &n, &err)
 		s.accounts = merkle.NewIAVLTreeFromHash(db, accountsMerkleRoot)
-		s.validators = NewValidatorSet(nil)
+		var validators = map[uint64]*Validator{}
 		for reader.Len() > 0 {
 			validator := ReadValidator(reader, &n, &err)
-			s.validators.Add(validator)
+			validators[validator.Id] = validator
 		}
+		s.validators = NewValidatorSet(validators)
 		if err != nil {
 			panic(err)
 		}

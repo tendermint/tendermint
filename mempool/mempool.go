@@ -45,7 +45,7 @@ func (mem *Mempool) AddTx(tx Tx) (err error) {
 
 // Returns a new block from the current state and associated transactions.
 // The block's Validation is empty, and some parts of the header too.
-func (mem *Mempool) MakeProposal() (*Block, *State) {
+func (mem *Mempool) MakeProposalBlock() (*Block, *State) {
 	mem.mtx.Lock()
 	defer mem.mtx.Unlock()
 	nextBlock := mem.lastBlock.MakeNextBlock()

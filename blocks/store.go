@@ -70,54 +70,27 @@ func (bs *BlockStore) Height() uint32 {
 	return bs.height
 }
 
-// LoadBlockPart loads a part of a block.
-func (bs *BlockStore) LoadBlockPart(height uint32, index uint16) *BlockPart {
-	partBytes, err := bs.db.Get(calcBlockPartKey(height, index), nil)
+func (bs *BlockStore) LoadBlock(height uint32) *Block {
+	blockBytes, err := bs.db.Get(calcBlockKey(height), nil)
 	if err != nil {
-		Panicf("Could not load block part: %v", err)
+		Panicf("Could not load block: %v", err)
 	}
-	if partBytes == nil {
+	if blockBytes == nil {
 		return nil
 	}
 	var n int64
-	return ReadBlockPart(bytes.NewReader(partBytes), &n, &err)
+	return ReadBlock(bytes.NewReader(blockBytes), &n, &err)
 }
 
-// Convenience method for loading block parts and merging to a block.
-func (bs *BlockStore) LoadBlock(height uint32) *Block {
-	// Get the first part.
-	part0 := bs.LoadBlockPart(height, 0)
-	if part0 == nil {
-		return nil
-	}
-	parts := []*BlockPart{part0}
-	for i := uint16(1); i < part0.Total; i++ {
-		part := bs.LoadBlockPart(height, i)
-		if part == nil {
-			Panicf("Failed to retrieve block part %v at height %v", i, height)
-		}
-		parts = append(parts, part)
-	}
-	block, err := BlockPartsToBlock(parts)
-	if err != nil {
-		panic(err)
-	}
-	return block
-}
-
-// NOTE: Assumes that parts as well as the block are valid. See StageBlockParts().
 // Writes are synchronous and atomic.
-func (bs *BlockStore) SaveBlockParts(height uint32, parts []*BlockPart) error {
+func (bs *BlockStore) SaveBlock(block *Block) error {
+	height := block.Height
 	if height != bs.height+1 {
 		return Errorf("BlockStore can only save contiguous blocks. Wanted %v, got %v", bs.height+1, height)
 	}
-	// Save parts
-	batch := new(leveldb.Batch)
-	for _, part := range parts {
-		partBytes := BinaryBytes(part)
-		batch.Put(calcBlockPartKey(uint32(part.Height), uint16(part.Index)), partBytes)
-	}
-	err := bs.db.Write(batch, &opt.WriteOptions{Sync: true})
+	// Save block
+	blockBytes := BinaryBytes(block)
+	err := bs.db.Put(calcBlockKey(height), blockBytes, &opt.WriteOptions{Sync: true})
 	// Save new BlockStoreJSON descriptor
 	BlockStoreJSON{Height: height}.Save(bs.db)
 	return err
@@ -125,9 +98,8 @@ func (bs *BlockStore) SaveBlockParts(height uint32, parts []*BlockPart) error {
 
 //-----------------------------------------------------------------------------
 
-func calcBlockPartKey(height uint32, index uint16) []byte {
-	buf := [11]byte{'B'}
+func calcBlockKey(height uint32) []byte {
+	buf := [9]byte{'B'}
 	binary.BigEndian.PutUint32(buf[1:9], height)
-	binary.BigEndian.PutUint16(buf[9:11], index)
 	return buf[:]
 }

@@ -26,3 +26,7 @@ type Tree interface {
 func NotFound(key []byte) error {
 	return fmt.Errorf("Key was not found.")
 }
+
+type Hashable interface {
+	Hash() []byte
+}

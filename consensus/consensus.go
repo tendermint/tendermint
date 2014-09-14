@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"math/rand"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -20,9 +19,11 @@ import (
 )
 
 const (
-	ProposalCh   = byte(0x20)
-	KnownPartsCh = byte(0x21)
-	VoteCh       = byte(0x22)
+	StateCh = byte(0x20)
+	DataCh  = byte(0x21)
+	VoteCh  = byte(0x22)
+
+	peerStateKey = "ConsensusReactor.peerState"
 
 	voteTypeNil   = byte(0x00)
 	voteTypeBlock = byte(0x01)
@@ -32,9 +33,9 @@ const (
 	roundDeadlineBare      = float64(1.0 / 3.0) // When the bare vote is due.
 	roundDeadlinePrecommit = float64(2.0 / 3.0) // When the precommit vote is due.
 
-	newBlockWaitDuration = roundDuration0 / 3 // The time to wait between commitTime and startTime of next consensus rounds.
-	voteRankCutoff       = 2                  // Higher ranks --> do not send votes.
-	unsolicitedVoteRate  = 0.01               // Probability of sending a high ranked vote.
+	newBlockWaitDuration    = roundDuration0 / 3    // The time to wait between commitTime and startTime of next consensus rounds.
+	peerGossipSleepDuration = 50 * time.Millisecond // Time to sleep if there's nothing to send.
+	hasVotesThreshold       = 50                    // After this many new votes we'll send a HasVotesMessage.
 )
 
 //-----------------------------------------------------------------------------
@@ -91,620 +92,455 @@ func calcRoundInfo(startTime time.Time) (round uint16, roundStartTime time.Time,
 
 //-----------------------------------------------------------------------------
 
-type ConsensusAgent struct {
-	sw       *p2p.Switch
-	swEvents chan interface{}
-	quit     chan struct{}
-	started  uint32
-	stopped  uint32
+type ConsensusReactor struct {
+	sw      *p2p.Switch
+	quit    chan struct{}
+	started uint32
+	stopped uint32
 
 	conS       *ConsensusState
-	blockStore *BlockStore
-	mempool    *Mempool
 	doActionCh chan RoundAction
-
-	mtx            sync.Mutex
-	state          *State
-	privValidator  *PrivValidator
-	peerStates     map[string]*PeerState
-	stagedProposal *BlockPartSet
-	stagedState    *State
 }
 
-func NewConsensusAgent(sw *p2p.Switch, blockStore *BlockStore, mempool *Mempool, state *State) *ConsensusAgent {
-	swEvents := make(chan interface{})
-	sw.AddEventListener("ConsensusAgent.swEvents", swEvents)
-	conS := NewConsensusState(state)
-	conA := &ConsensusAgent{
-		sw:       sw,
-		swEvents: swEvents,
-		quit:     make(chan struct{}),
+func NewConsensusReactor(sw *p2p.Switch, blockStore *BlockStore, mempool *Mempool, state *State) *ConsensusReactor {
+	conS := NewConsensusState(state, blockStore, mempool)
+	conR := &ConsensusReactor{
+		sw:   sw,
+		quit: make(chan struct{}),
 
 		conS:       conS,
-		blockStore: blockStore,
-		mempool:    mempool,
 		doActionCh: make(chan RoundAction, 1),
-
-		state:      state,
-		peerStates: make(map[string]*PeerState),
 	}
-	return conA
+	return conR
 }
 
 // Sets our private validator account for signing votes.
-func (conA *ConsensusAgent) SetPrivValidator(priv *PrivValidator) {
-	conA.mtx.Lock()
-	defer conA.mtx.Unlock()
-	conA.privValidator = priv
+func (conR *ConsensusReactor) SetPrivValidator(priv *PrivValidator) {
+	conR.conS.SetPrivValidator(priv)
 }
 
-func (conA *ConsensusAgent) PrivValidator() *PrivValidator {
-	conA.mtx.Lock()
-	defer conA.mtx.Unlock()
-	return conA.privValidator
-}
-
-func (conA *ConsensusAgent) Start() {
-	if atomic.CompareAndSwapUint32(&conA.started, 0, 1) {
-		log.Info("Starting ConsensusAgent")
-		go conA.switchEventsRoutine()
-		go conA.gossipProposalRoutine()
-		go conA.knownPartsRoutine()
-		go conA.gossipVoteRoutine()
-		go conA.proposeAndVoteRoutine()
+func (conR *ConsensusReactor) Start() {
+	if atomic.CompareAndSwapUint32(&conR.started, 0, 1) {
+		log.Info("Starting ConsensusReactor")
+		go conR.proposeAndVoteRoutine()
 	}
 }
 
-func (conA *ConsensusAgent) Stop() {
-	if atomic.CompareAndSwapUint32(&conA.stopped, 0, 1) {
-		log.Info("Stopping ConsensusAgent")
-		close(conA.quit)
-		close(conA.swEvents)
+func (conR *ConsensusReactor) Stop() {
+	if atomic.CompareAndSwapUint32(&conR.stopped, 0, 1) {
+		log.Info("Stopping ConsensusReactor")
+		close(conR.quit)
 	}
 }
 
-// Handle peer new/done events
-func (conA *ConsensusAgent) switchEventsRoutine() {
-	for {
-		swEvent, ok := <-conA.swEvents
-		if !ok {
-			break
-		}
-		switch swEvent.(type) {
-		case p2p.SwitchEventNewPeer:
-			event := swEvent.(p2p.SwitchEventNewPeer)
-			// Create peerState for event.Peer
-			conA.mtx.Lock()
-			conA.peerStates[event.Peer.Key] = NewPeerState(event.Peer)
-			conA.mtx.Unlock()
-			// Share our state with event.Peer
-			// By sending KnownBlockPartsMessage,
-			// we send our height/round + startTime, and known block parts,
-			// which is sufficient for the peer to begin interacting with us.
-			event.Peer.TrySend(ProposalCh, conA.makeKnownBlockPartsMessage(conA.conS.RoundState()))
-		case p2p.SwitchEventDonePeer:
-			event := swEvent.(p2p.SwitchEventDonePeer)
-			// Delete peerState for event.Peer
-			conA.mtx.Lock()
-			peerState := conA.peerStates[event.Peer.Key]
-			if peerState != nil {
-				peerState.Disconnect()
-				delete(conA.peerStates, event.Peer.Key)
-			}
-			conA.mtx.Unlock()
-		default:
-			log.Warning("Unhandled switch event type")
-		}
+func (conR *ConsensusReactor) IsStopped() bool {
+	return atomic.LoadUint32(&conR.stopped) == 1
+}
+
+// Implements Reactor
+func (conR *ConsensusReactor) GetChannels() []*p2p.ChannelDescriptor {
+	// TODO optimize
+	return []*p2p.ChannelDescriptor{
+		&p2p.ChannelDescriptor{
+			Id:                StateCh,
+			SendQueueCapacity: 1,
+			RecvQueueCapacity: 10,
+			RecvBufferSize:    10240,
+			DefaultPriority:   5,
+		},
+		&p2p.ChannelDescriptor{
+			Id:                DataCh,
+			SendQueueCapacity: 1,
+			RecvQueueCapacity: 10,
+			RecvBufferSize:    10240,
+			DefaultPriority:   5,
+		},
+		&p2p.ChannelDescriptor{
+			Id:                VoteCh,
+			SendQueueCapacity: 1,
+			RecvQueueCapacity: 1000,
+			RecvBufferSize:    10240,
+			DefaultPriority:   5,
+		},
 	}
 }
 
-// Like, how large is it and how often can we send it?
-func (conA *ConsensusAgent) makeKnownBlockPartsMessage(rs *RoundState) *KnownBlockPartsMessage {
-	return &KnownBlockPartsMessage{
-		Height:                rs.Height,
-		SecondsSinceStartTime: uint32(time.Now().Sub(rs.StartTime).Seconds()),
-		BlockPartsBitArray:    rs.Proposal.BitArray(),
-	}
+// Implements Reactor
+func (conR *ConsensusReactor) AddPeer(peer *p2p.Peer) {
+	// Create peerState for peer
+	peerState := NewPeerState(peer)
+	peer.Data.Set(peerStateKey, peerState)
+
+	// Begin gossip routines for this peer.
+	go conR.gossipDataRoutine(peer, peerState)
+	go conR.gossipVotesRoutine(peer, peerState)
 }
 
-// NOTE: may return nil, but (nil).Wants*() returns false.
-func (conA *ConsensusAgent) getPeerState(peer *p2p.Peer) *PeerState {
-	conA.mtx.Lock()
-	defer conA.mtx.Unlock()
-	return conA.peerStates[peer.Key]
+// Implements Reactor
+func (conR *ConsensusReactor) RemovePeer(peer *p2p.Peer, reason interface{}) {
+	//peer.Data.Get(peerStateKey).(*PeerState).Disconnect()
 }
 
-func (conA *ConsensusAgent) gossipProposalRoutine() {
-OUTER_LOOP:
-	for {
-		// Get round state
-		rs := conA.conS.RoundState()
+// Implements Reactor
+func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte) {
 
-		// Receive incoming message on ProposalCh
-		inMsg, ok := conA.sw.Receive(ProposalCh)
-		if !ok {
-			break OUTER_LOOP // Client has stopped
-		}
-		_, msg_ := decodeMessage(inMsg.Bytes)
-		log.Info("gossipProposalRoutine received %v", msg_)
+	// Get round state
+	rs := conR.conS.GetRoundState()
+	ps := peer.Data.Get(peerStateKey).(*PeerState)
+	_, msg_ := decodeMessage(msgBytes)
+	voteAddCounter := 0
+	var err error = nil
 
+	switch chId {
+	case StateCh:
 		switch msg_.(type) {
-		case *BlockPartMessage:
-			msg := msg_.(*BlockPartMessage)
+		case *NewRoundStepMessage:
+			msg := msg_.(*NewRoundStepMessage)
+			err = ps.ApplyNewRoundStepMessage(msg)
 
-			// Add the block part if the height matches.
-			if msg.BlockPart.Height == rs.Height &&
-				msg.BlockPart.Round == rs.Round {
+		case *HasVotesMessage:
+			msg := msg_.(*HasVotesMessage)
+			err = ps.ApplyHasVotesMessage(msg)
 
-				// TODO Continue if we've already voted, then no point processing the part.
+		default:
+			// Ignore unknown message
+		}
 
-				// Check that the signature is valid and from proposer.
-				if rs.Proposer.Verify(msg.BlockPart.Hash(), msg.BlockPart.Signature) {
-					// TODO handle bad peer.
-					continue OUTER_LOOP
-				}
+	case DataCh:
+		switch msg_.(type) {
+		case *Proposal:
+			proposal := msg_.(*Proposal)
+			ps.SetHasProposal(proposal.Height, proposal.Round)
+			err = conR.conS.SetProposal(proposal)
 
-				// If we are the proposer, then don't do anything else.
-				// We're already sending peers our proposal on another routine.
-				privValidator := conA.PrivValidator()
-				if privValidator != nil && rs.Proposer.Account.Id == privValidator.Id {
-					continue OUTER_LOOP
-				}
-
-				// Add and process the block part
-				added, err := rs.Proposal.AddBlockPart(msg.BlockPart)
-				if err == ErrInvalidBlockPartConflict {
-					// TODO: Bad validator
-				} else if err != nil {
-					Panicf("Unexpected blockPartsSet error %v", err)
-				}
-				if added {
-					// If peer wants this part, send peer the part
-					// and our new blockParts state.
-					kbpMsg := conA.makeKnownBlockPartsMessage(rs)
-					partMsg := &BlockPartMessage{BlockPart: msg.BlockPart}
-					for _, peer := range conA.sw.Peers().List() {
-						peerState := conA.getPeerState(peer)
-						if peerState.WantsBlockPart(msg.BlockPart) {
-							peer.TrySend(KnownPartsCh, kbpMsg)
-							peer.TrySend(ProposalCh, partMsg)
-						}
-					}
-
-				} else {
-					// We failed to process the block part.
-					// Either an error, which we handled, or duplicate part.
-					continue OUTER_LOOP
-				}
+		case *PartMessage:
+			msg := msg_.(*PartMessage)
+			if msg.Type == partTypeProposalBlock {
+				ps.SetHasProposalBlockPart(msg.Height, msg.Round, msg.Part.Index)
+				_, err = conR.conS.AddProposalBlockPart(msg.Height, msg.Round, msg.Part)
+			} else if msg.Type == partTypeProposalPOL {
+				ps.SetHasProposalPOLPart(msg.Height, msg.Round, msg.Part.Index)
+				_, err = conR.conS.AddProposalPOLPart(msg.Height, msg.Round, msg.Part)
+			} else {
+				// Ignore unknown part type
 			}
 
 		default:
 			// Ignore unknown message
-			// conA.sw.StopPeerForError(inMsg.MConn.Peer, errInvalidMessage)
 		}
-	}
 
-	// Cleanup
-}
-
-func (conA *ConsensusAgent) knownPartsRoutine() {
-OUTER_LOOP:
-	for {
-		// Receive incoming message on ProposalCh
-		inMsg, ok := conA.sw.Receive(KnownPartsCh)
-		if !ok {
-			break OUTER_LOOP // Client has stopped
-		}
-		_, msg_ := decodeMessage(inMsg.Bytes)
-		log.Info("knownPartsRoutine received %v", msg_)
-
-		msg, ok := msg_.(*KnownBlockPartsMessage)
-		if !ok {
-			// Ignore unknown message type
-			// conA.sw.StopPeerForError(inMsg.MConn.Peer, errInvalidMessage)
-			continue OUTER_LOOP
-		}
-		peerState := conA.getPeerState(inMsg.MConn.Peer)
-		if !peerState.IsConnected() {
-			// Peer disconnected before we were able to process.
-			continue OUTER_LOOP
-		}
-		peerState.ApplyKnownBlockPartsMessage(msg)
-	}
-
-	// Cleanup
-}
-
-// Signs a vote document and broadcasts it.
-// hash can be nil to vote "nil"
-func (conA *ConsensusAgent) signAndVote(vote *Vote) error {
-	privValidator := conA.PrivValidator()
-	if privValidator != nil {
-		err := privValidator.SignVote(vote)
-		if err != nil {
-			return err
-		}
-		msg := p2p.TypedMessage{msgTypeVote, vote}
-		conA.sw.Broadcast(VoteCh, msg)
-	}
-	return nil
-}
-
-func (conA *ConsensusAgent) stageProposal(proposal *BlockPartSet) error {
-	// Already staged?
-	conA.mtx.Lock()
-	if conA.stagedProposal == proposal {
-		conA.mtx.Unlock()
-		return nil
-	} else {
-		conA.mtx.Unlock()
-	}
-
-	if !proposal.IsComplete() {
-		return errors.New("Incomplete proposal BlockPartSet")
-	}
-	block := proposal.Block()
-
-	// Basic validation is done in state.CommitBlock().
-	//err := block.ValidateBasic()
-	//if err != nil {
-	//	return err
-	//}
-
-	// Create a copy of the state for staging
-	conA.mtx.Lock()
-	stateCopy := conA.state.Copy() // Deep copy the state before staging.
-	conA.mtx.Unlock()
-
-	// Commit block onto the copied state.
-	err := stateCopy.CommitBlock(block)
-	if err != nil {
-		return err
-	}
-
-	// Looks good!
-	conA.mtx.Lock()
-	conA.stagedProposal = proposal
-	conA.stagedState = stateCopy
-	conA.mtx.Unlock()
-	return nil
-}
-
-// Constructs an unsigned proposal
-func (conA *ConsensusAgent) constructProposal(rs *RoundState) (*BlockPartSet, error) {
-	// TODO: make use of state returned from MakeProposal()
-	proposalBlock, _ := conA.mempool.MakeProposal()
-	proposal := proposalBlock.ToBlockPartSet()
-	return proposal, nil
-}
-
-// Vote for (or against) the proposal for this round.
-// Call during transition from RoundStepProposal to RoundStepVote.
-// We may not have received a full proposal.
-func (conA *ConsensusAgent) voteProposal(rs *RoundState) error {
-	// If we're locked, must vote that.
-	locked := conA.conS.LockedProposal()
-	if locked != nil {
-		block := locked.Block()
-		err := conA.signAndVote(&Vote{
-			Height: rs.Height,
-			Round:  rs.Round,
-			Type:   VoteTypeBare,
-			Hash:   block.Hash(),
-		})
-		return err
-	}
-	// Stage proposal
-	err := conA.stageProposal(rs.Proposal)
-	if err != nil {
-		// Vote for nil, whatever the error.
-		err := conA.signAndVote(&Vote{
-			Height: rs.Height,
-			Round:  rs.Round,
-			Type:   VoteTypeBare,
-			Hash:   nil,
-		})
-		return err
-	}
-	// Vote for block.
-	err = conA.signAndVote(&Vote{
-		Height: rs.Height,
-		Round:  rs.Round,
-		Type:   VoteTypeBare,
-		Hash:   rs.Proposal.Block().Hash(),
-	})
-	return err
-}
-
-// Precommit proposal if we see enough votes for it.
-// Call during transition from RoundStepVote to RoundStepPrecommit.
-func (conA *ConsensusAgent) precommitProposal(rs *RoundState) error {
-	// If we see a 2/3 majority for votes for a block, precommit.
-
-	// TODO: maybe could use commitTime here and avg it with later commitTime?
-	if hash, _, ok := rs.RoundBareVotes.TwoThirdsMajority(); ok {
-		if len(hash) == 0 {
-			// 2/3 majority voted for nil.
-			return nil
-		} else {
-			// 2/3 majority voted for a block.
-
-			// If proposal is invalid or unknown, do nothing.
-			// See note on ZombieValidators to see why.
-			if conA.stageProposal(rs.Proposal) != nil {
-				return nil
-			}
-
-			// Lock this proposal.
-			// NOTE: we're unlocking any prior locks.
-			conA.conS.LockProposal(rs.Proposal)
-
-			// Send precommit vote.
-			err := conA.signAndVote(&Vote{
-				Height: rs.Height,
-				Round:  rs.Round,
-				Type:   VoteTypePrecommit,
-				Hash:   hash,
-			})
-			return err
-		}
-	} else {
-		// If we haven't seen enough votes, do nothing.
-		return nil
-	}
-}
-
-// Commit or unlock.
-// Call after RoundStepPrecommit, after round has completely expired.
-func (conA *ConsensusAgent) commitOrUnlockProposal(rs *RoundState) (commitTime time.Time, err error) {
-	// If there exists a 2/3 majority of precommits.
-	// Validate the block and commit.
-	if hash, commitTime, ok := rs.RoundPrecommits.TwoThirdsMajority(); ok {
-
-		// If the proposal is invalid or we don't have it,
-		// do not commit.
-		// TODO If we were just late to receive the block, when
-		// do we actually get it? Document it.
-		if conA.stageProposal(rs.Proposal) != nil {
-			return time.Time{}, nil
-		}
-		// TODO: Remove?
-		conA.conS.LockProposal(rs.Proposal)
-		// Vote commit.
-		err := conA.signAndVote(&Vote{
-			Height: rs.Height,
-			Round:  rs.Round,
-			Type:   VoteTypePrecommit,
-			Hash:   hash,
-		})
-		if err != nil {
-			return time.Time{}, err
-		}
-		// Commit block.
-		conA.commitProposal(rs.Proposal, commitTime)
-		return commitTime, nil
-	} else {
-		// Otherwise, if a 1/3 majority if a block that isn't our locked one exists, unlock.
-		locked := conA.conS.LockedProposal()
-		if locked != nil {
-			for _, hashOrNil := range rs.RoundPrecommits.OneThirdMajority() {
-				if hashOrNil == nil {
-					continue
-				}
-				if !bytes.Equal(hashOrNil, locked.Block().Hash()) {
-					// Unlock our lock.
-					conA.conS.LockProposal(nil)
-				}
-			}
-		}
-		return time.Time{}, nil
-	}
-}
-
-func (conA *ConsensusAgent) commitProposal(proposal *BlockPartSet, commitTime time.Time) error {
-	conA.mtx.Lock()
-	defer conA.mtx.Unlock()
-
-	if conA.stagedProposal != proposal {
-		panic("Unexpected stagedProposal.") // Shouldn't happen.
-	}
-
-	// Save to blockStore
-	block, blockParts := proposal.Block(), proposal.BlockParts()
-	err := conA.blockStore.SaveBlockParts(block.Height, blockParts)
-	if err != nil {
-		return err
-	}
-
-	// What was staged becomes committed.
-	conA.state = conA.stagedState
-	conA.state.Save(commitTime)
-	conA.conS.Update(conA.state)
-	conA.stagedProposal = nil
-	conA.stagedState = nil
-	conA.mempool.ResetForBlockAndState(block, conA.state)
-
-	return nil
-}
-
-// Given a RoundState where we are the proposer,
-// broadcast rs.proposal to all the peers.
-func (conA *ConsensusAgent) shareProposal(rs *RoundState) {
-	privValidator := conA.PrivValidator()
-	proposal := rs.Proposal
-	if privValidator == nil || proposal == nil {
-		return
-	}
-	privValidator.SignProposal(rs.Round, proposal)
-	blockParts := proposal.BlockParts()
-	peers := conA.sw.Peers().List()
-	if len(peers) == 0 {
-		log.Warning("Could not propose: no peers")
-		return
-	}
-	numBlockParts := uint16(len(blockParts))
-	kbpMsg := conA.makeKnownBlockPartsMessage(rs)
-	for i, peer := range peers {
-		peerState := conA.getPeerState(peer)
-		if !peerState.IsConnected() {
-			continue // Peer was disconnected.
-		}
-		startIndex := uint16((i * len(blockParts)) / len(peers))
-		// Create a function that when called,
-		// starts sending block parts to peer.
-		cb := func(peer *p2p.Peer, startIndex uint16) func() {
-			return func() {
-				// TODO: if the clocks are off a bit,
-				// peer may receive this before the round flips.
-				peer.Send(KnownPartsCh, kbpMsg)
-				for i := uint16(0); i < numBlockParts; i++ {
-					part := blockParts[(startIndex+i)%numBlockParts]
-					// Ensure round hasn't expired on our end.
-					currentRS := conA.conS.RoundState()
-					if currentRS != rs {
-						return
-					}
-					// If peer wants the block:
-					if peerState.WantsBlockPart(part) {
-						partMsg := &BlockPartMessage{BlockPart: part}
-						peer.Send(ProposalCh, partMsg)
-					}
-				}
-			}
-		}(peer, startIndex)
-		// Call immediately or schedule cb for when peer is ready.
-		peerState.SetRoundCallback(rs.Height, rs.Round, cb)
-	}
-}
-
-func (conA *ConsensusAgent) gossipVoteRoutine() {
-OUTER_LOOP:
-	for {
-		// Get round state
-		rs := conA.conS.RoundState()
-
-		// Receive incoming message on VoteCh
-		inMsg, ok := conA.sw.Receive(VoteCh)
-		if !ok {
-			break // Client has stopped
-		}
-		type_, msg_ := decodeMessage(inMsg.Bytes)
-		log.Info("gossipVoteRoutine received %v", msg_)
-
+	case VoteCh:
 		switch msg_.(type) {
 		case *Vote:
 			vote := msg_.(*Vote)
-
-			if vote.Height != rs.Height || vote.Round != rs.Round {
-				continue OUTER_LOOP
+			// We can't deal with votes from another height,
+			// as they have a different validator set.
+			if vote.Height != rs.Height || vote.Height != ps.Height {
+				return
 			}
-
-			added, rank, err := rs.AddVote(vote, inMsg.MConn.Peer.Key)
-			// Send peer VoteRankMessage if needed
-			if type_ == msgTypeVoteAskRank {
-				msg := &VoteRankMessage{
-					ValidatorId: vote.SignerId,
-					Rank:        rank,
-				}
-				inMsg.MConn.Peer.TrySend(VoteCh, msg)
+			index, ok := rs.Validators.GetIndexById(vote.SignerId)
+			if !ok {
+				log.Warning("Peer gave us an invalid vote.")
+				return
 			}
-			// Process vote
-			if !added {
-				log.Info("Error adding vote %v", err)
+			ps.SetHasVote(rs.Height, rs.Round, vote.Type, uint32(index))
+			added, err := conR.conS.AddVote(vote)
+			if err != nil {
+				log.Warning("Error attempting to add vote: %v", err)
 			}
-			switch err {
-			case ErrVoteInvalidAccount, ErrVoteInvalidSignature:
-				// TODO: Handle bad peer.
-			case ErrVoteConflictingSignature, ErrVoteInvalidHash:
-				// TODO: Handle bad validator.
-			case nil:
-				break
-			//case ErrVoteUnexpectedPhase: Shouldn't happen.
-			default:
-				Panicf("Unexpected error from .AddVote(): %v", err)
-			}
-			if !added {
-				continue
-			}
-
-			// Gossip vote.
-			for _, peer := range conA.sw.Peers().List() {
-				peerState := conA.getPeerState(peer)
-				wantsVote, unsolicited := peerState.WantsVote(vote)
-				if wantsVote {
-					if unsolicited {
-						// If we're sending an unsolicited vote,
-						// ask for the rank so we know whether it's good.
-						msg := p2p.TypedMessage{msgTypeVoteAskRank, vote}
-						peer.TrySend(VoteCh, msg)
-					} else {
-						msg := p2p.TypedMessage{msgTypeVote, vote}
-						peer.TrySend(VoteCh, msg)
+			if added {
+				// Maybe send HasVotesMessage
+				voteAddCounter++
+				if voteAddCounter%hasVotesThreshold == 0 {
+					// TODO optimize.
+					msg := &HasVotesMessage{
+						Height:     rs.Height,
+						Round:      rs.Round,
+						Votes:      rs.Votes.BitArray(),
+						Precommits: rs.Precommits.BitArray(),
+						Commits:    rs.Commits.BitArray(),
 					}
+					conR.sw.Broadcast(StateCh, msg)
 				}
 			}
-
-		case *VoteRankMessage:
-			msg := msg_.(*VoteRankMessage)
-
-			peerState := conA.getPeerState(inMsg.MConn.Peer)
-			if !peerState.IsConnected() {
-				// Peer disconnected before we were able to process.
-				continue OUTER_LOOP
-			}
-			peerState.ApplyVoteRankMessage(msg)
 
 		default:
 			// Ignore unknown message
-			// conA.sw.StopPeerForError(inMsg.MConn.Peer, errInvalidMessage)
 		}
+	default:
+		// Ignore unknown channel
 	}
 
-	// Cleanup
+	if err != nil {
+		log.Warning("Error in Receive(): %v", err)
+	}
 }
 
+func (conR *ConsensusReactor) gossipDataRoutine(peer *p2p.Peer, ps *PeerState) {
+
+OUTER_LOOP:
+	for {
+		// Manage disconnects from self or peer.
+		if peer.IsStopped() || conR.IsStopped() {
+			log.Info("Stopping gossipDataRoutine for %v.", peer)
+			return
+		}
+		rs := conR.conS.GetRoundState()
+		prs := ps.GetRoundState()
+
+		// If height and round doesn't match, sleep.
+		if rs.Height != prs.Height || rs.Round != prs.Round {
+			time.Sleep(peerGossipSleepDuration)
+			continue OUTER_LOOP
+		}
+
+		// Send proposal?
+		if rs.Proposal != nil && !prs.Proposal {
+			msg := p2p.TypedMessage{msgTypeProposal, rs.Proposal}
+			peer.Send(DataCh, msg)
+			ps.SetHasProposal(rs.Height, rs.Round)
+			continue OUTER_LOOP
+		}
+
+		// Send proposal block part?
+		if index, ok := rs.ProposalBlockPartSet.BitArray().Sub(
+			prs.ProposalBlockBitArray).PickRandom(); ok {
+			msg := &PartMessage{
+				Height: rs.Height,
+				Round:  rs.Round,
+				Type:   partTypeProposalBlock,
+				Part:   rs.ProposalBlockPartSet.GetPart(uint16(index)),
+			}
+			peer.Send(DataCh, msg)
+			ps.SetHasProposalBlockPart(rs.Height, rs.Round, uint16(index))
+			continue OUTER_LOOP
+		}
+
+		// Send proposal POL part?
+		if index, ok := rs.ProposalPOLPartSet.BitArray().Sub(
+			prs.ProposalPOLBitArray).PickRandom(); ok {
+			msg := &PartMessage{
+				Height: rs.Height,
+				Round:  rs.Round,
+				Type:   partTypeProposalPOL,
+				Part:   rs.ProposalPOLPartSet.GetPart(uint16(index)),
+			}
+			peer.Send(DataCh, msg)
+			ps.SetHasProposalPOLPart(rs.Height, rs.Round, uint16(index))
+			continue OUTER_LOOP
+		}
+
+		// Nothing to do. Sleep.
+		time.Sleep(peerGossipSleepDuration)
+		continue OUTER_LOOP
+	}
+}
+
+func (conR *ConsensusReactor) gossipVotesRoutine(peer *p2p.Peer, ps *PeerState) {
+OUTER_LOOP:
+	for {
+		// Manage disconnects from self or peer.
+		if peer.IsStopped() || conR.IsStopped() {
+			log.Info("Stopping gossipVotesRoutine for %v.", peer)
+			return
+		}
+		rs := conR.conS.GetRoundState()
+		prs := ps.GetRoundState()
+
+		// If height doens't match, sleep.
+		if rs.Height != prs.Height {
+			time.Sleep(peerGossipSleepDuration)
+			continue OUTER_LOOP
+		}
+
+		// If there are bare votes to send...
+		if prs.Step <= RoundStepVote {
+			index, ok := rs.Votes.BitArray().Sub(prs.Votes).PickRandom()
+			if ok {
+				valId, ok := rs.Validators.GetIdByIndex(uint32(index))
+				if ok {
+					vote := rs.Votes.GetVote(valId)
+					msg := p2p.TypedMessage{msgTypeVote, vote}
+					peer.Send(VoteCh, msg)
+					ps.SetHasVote(rs.Height, rs.Round, VoteTypeBare, uint32(index))
+					continue OUTER_LOOP
+				} else {
+					log.Error("index is not a valid validator index")
+				}
+			}
+		}
+
+		// If there are precommits to send...
+		if prs.Step <= RoundStepPrecommit {
+			index, ok := rs.Precommits.BitArray().Sub(prs.Precommits).PickRandom()
+			if ok {
+				valId, ok := rs.Validators.GetIdByIndex(uint32(index))
+				if ok {
+					vote := rs.Precommits.GetVote(valId)
+					msg := p2p.TypedMessage{msgTypeVote, vote}
+					peer.Send(VoteCh, msg)
+					ps.SetHasVote(rs.Height, rs.Round, VoteTypePrecommit, uint32(index))
+					continue OUTER_LOOP
+				} else {
+					log.Error("index is not a valid validator index")
+				}
+			}
+		}
+
+		// If there are any commits to send...
+		index, ok := rs.Commits.BitArray().Sub(prs.Commits).PickRandom()
+		if ok {
+			valId, ok := rs.Validators.GetIdByIndex(uint32(index))
+			if ok {
+				vote := rs.Commits.GetVote(valId)
+				msg := p2p.TypedMessage{msgTypeVote, vote}
+				peer.Send(VoteCh, msg)
+				ps.SetHasVote(rs.Height, rs.Round, VoteTypeCommit, uint32(index))
+				continue OUTER_LOOP
+			} else {
+				log.Error("index is not a valid validator index")
+			}
+		}
+
+		// We sent nothing. Sleep...
+		time.Sleep(peerGossipSleepDuration)
+		continue OUTER_LOOP
+	}
+}
+
+// Signs a vote document and broadcasts it.
+func (conR *ConsensusReactor) signAndBroadcastVote(rs *RoundState, vote *Vote) {
+	if rs.PrivValidator != nil {
+		rs.PrivValidator.SignVote(vote)
+		conR.conS.AddVote(vote)
+		msg := p2p.TypedMessage{msgTypeVote, vote}
+		conR.sw.Broadcast(VoteCh, msg)
+	}
+}
+
+//-------------------------------------
+
+func (conR *ConsensusReactor) runStepPropose(rs *RoundState) {
+	conR.conS.MakeProposal()
+}
+
+func (conR *ConsensusReactor) runStepVote(rs *RoundState) {
+
+	// If we have a locked block, we must vote for that.
+	// NOTE: a locked block is already valid.
+	if rs.LockedBlock != nil {
+		conR.signAndBroadcastVote(rs, &Vote{
+			Height:    rs.Height,
+			Round:     rs.Round,
+			Type:      VoteTypeBare,
+			BlockHash: rs.LockedBlock.Hash(),
+		})
+	}
+
+	// Try staging proposed block.
+	// If Block is nil, an error is returned.
+	err := conR.conS.stageBlock(rs.ProposalBlock)
+	if err != nil {
+
+		// Vote nil
+		conR.signAndBroadcastVote(rs, &Vote{
+			Height:    rs.Height,
+			Round:     rs.Round,
+			Type:      VoteTypeBare,
+			BlockHash: nil,
+		})
+
+	} else {
+
+		// Vote for block
+		conR.signAndBroadcastVote(rs, &Vote{
+			Height:    rs.Height,
+			Round:     rs.Round,
+			Type:      VoteTypeBare,
+			BlockHash: rs.ProposalBlock.Hash(),
+		})
+	}
+}
+
+func (conR *ConsensusReactor) runStepPrecommit(rs *RoundState) {
+
+	// If we see a 2/3 majority of votes for a block, lock.
+	hash := conR.conS.LockOrUnlock(rs.Height, rs.Round)
+	if len(hash) > 0 {
+
+		// Precommit
+		conR.signAndBroadcastVote(rs, &Vote{
+			Height:    rs.Height,
+			Round:     rs.Round,
+			Type:      VoteTypePrecommit,
+			BlockHash: hash,
+		})
+
+	}
+}
+
+func (conR *ConsensusReactor) runStepCommit(rs *RoundState) bool {
+
+	// If we see a 2/3 majority of precommits for a block, commit.
+	block := conR.conS.Commit(rs.Height, rs.Round)
+	if block == nil {
+		return false
+	} else {
+		conR.signAndBroadcastVote(rs, &Vote{
+			Height:    rs.Height,
+			Round:     rs.Round,
+			Type:      VoteTypePrecommit,
+			BlockHash: block.Hash(),
+		})
+		return true
+	}
+}
+
+//-------------------------------------
+
 type RoundAction struct {
-	Height   uint32 // The block height for which consensus is reaching for.
-	Round    uint16 // The round number at given height.
-	XnToStep uint8  // Transition to this step. Action depends on this value.
+	Height       uint32        // The block height for which consensus is reaching for.
+	Round        uint16        // The round number at given height.
+	XnToStep     uint8         // Transition to this step. Action depends on this value.
+	RoundElapsed time.Duration // Duration since round start.
 }
 
 // Source of all round state transitions and votes.
-// It can be preemptively woken up via  amessage to
+// It can be preemptively woken up via a message to
 // doActionCh.
-func (conA *ConsensusAgent) proposeAndVoteRoutine() {
+func (conR *ConsensusReactor) proposeAndVoteRoutine() {
 
 	// Figure out when to wake up next (in the absence of other events)
 	setAlarm := func() {
-		if len(conA.doActionCh) > 0 {
+		if len(conR.doActionCh) > 0 {
 			return // Already going to wake up later.
 		}
 
 		// Figure out which height/round/step we're at,
 		// then schedule an action for when it is due.
-		rs := conA.conS.RoundState()
-		_, _, roundDuration, _, elapsedRatio := calcRoundInfo(rs.StartTime)
-		switch rs.Step() {
+		rs := conR.conS.GetRoundState()
+		_, _, roundDuration, roundElapsed, elapsedRatio := calcRoundInfo(rs.StartTime)
+		switch rs.Step {
 		case RoundStepStart:
 			// It's a new RoundState.
 			if elapsedRatio < 0 {
 				// startTime is in the future.
 				time.Sleep(time.Duration(-1.0*elapsedRatio) * roundDuration)
 			}
-			conA.doActionCh <- RoundAction{rs.Height, rs.Round, RoundStepProposal}
-		case RoundStepProposal:
+			conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundStepPropose, roundElapsed}
+		case RoundStepPropose:
 			// Wake up when it's time to vote.
 			time.Sleep(time.Duration(roundDeadlineBare-elapsedRatio) * roundDuration)
-			conA.doActionCh <- RoundAction{rs.Height, rs.Round, RoundStepBareVotes}
-		case RoundStepBareVotes:
+			conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundStepVote, roundElapsed}
+		case RoundStepVote:
 			// Wake up when it's time to precommit.
 			time.Sleep(time.Duration(roundDeadlinePrecommit-elapsedRatio) * roundDuration)
-			conA.doActionCh <- RoundAction{rs.Height, rs.Round, RoundStepPrecommits}
-		case RoundStepPrecommits:
+			conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundStepPrecommit, roundElapsed}
+		case RoundStepPrecommit:
 			// Wake up when the round is over.
 			time.Sleep(time.Duration(1.0-elapsedRatio) * roundDuration)
-			conA.doActionCh <- RoundAction{rs.Height, rs.Round, RoundStepCommitOrUnlock}
-		case RoundStepCommitOrUnlock:
+			conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundStepCommit, roundElapsed}
+		case RoundStepCommit:
 			// This shouldn't happen.
 			// Before setAlarm() got called,
 			// logic should have created a new RoundState for the next round.
@@ -714,66 +550,35 @@ func (conA *ConsensusAgent) proposeAndVoteRoutine() {
 
 	for {
 		func() {
-			roundAction := <-conA.doActionCh
+			roundAction := <-conR.doActionCh
 			// Always set the alarm after any processing below.
 			defer setAlarm()
 
-			// We only consider acting on given height and round.
 			height := roundAction.Height
 			round := roundAction.Round
-			// We only consider transitioning to given step.
 			step := roundAction.XnToStep
-			// This is the current state.
-			rs := conA.conS.RoundState()
+			roundElapsed := roundAction.RoundElapsed
+			rs := conR.conS.GetRoundState()
+
 			if height != rs.Height || round != rs.Round {
-				return // Not relevant.
+				return // Action is not relevant
 			}
 
-			if step == RoundStepProposal && rs.Step() == RoundStepStart {
-				// Propose a block if I am the proposer.
-				privValidator := conA.PrivValidator()
-				if privValidator != nil && rs.Proposer.Account.Id == privValidator.Id {
-					// If we're already locked on a proposal, use that.
-					proposal := conA.conS.LockedProposal()
-					if proposal != nil {
-						// Otherwise, construct a new proposal.
-						var err error
-						proposal, err = conA.constructProposal(rs)
-						if err != nil {
-							log.Error("Error attempting to construct a proposal: %v", err)
-							return // Pretend like we weren't the proposer. Shrug.
-						}
-					}
-					// Set proposal for roundState, so we vote correctly subsequently.
-					rs.Proposal = proposal
-					// Share the parts.
-					// We send all parts to all of our peers, but everyone receives parts
-					// starting at a different index, wrapping around back to 0.
-					conA.shareProposal(rs)
-				}
-			} else if step == RoundStepBareVotes && rs.Step() <= RoundStepProposal {
-				err := conA.voteProposal(rs)
-				if err != nil {
-					log.Info("Error attempting to vote for proposal: %v", err)
-				}
-			} else if step == RoundStepPrecommits && rs.Step() <= RoundStepBareVotes {
-				err := conA.precommitProposal(rs)
-				if err != nil {
-					log.Info("Error attempting to precommit for proposal: %v", err)
-				}
-			} else if step == RoundStepCommitOrUnlock && rs.Step() <= RoundStepPrecommits {
-				commitTime, err := conA.commitOrUnlockProposal(rs)
-				if err != nil {
-					log.Info("Error attempting to commit or update for proposal: %v", err)
-				}
-
-				if !commitTime.IsZero() {
+			// Run step
+			if step == RoundStepPropose && rs.Step == RoundStepStart {
+				conR.runStepPropose(rs)
+			} else if step == RoundStepVote && rs.Step <= RoundStepPropose {
+				conR.runStepVote(rs)
+			} else if step == RoundStepPrecommit && rs.Step <= RoundStepVote {
+				conR.runStepPrecommit(rs)
+			} else if step == RoundStepCommit && rs.Step <= RoundStepPrecommit {
+				didCommit := conR.runStepCommit(rs)
+				if didCommit {
 					// We already set up ConsensusState for the next height
-					// (it happens in the call to conA.commitProposal).
+					// (it happens in the call to conR.runStepCommit).
 				} else {
-					// Round is over. This is a special case.
 					// Prepare a new RoundState for the next state.
-					conA.conS.SetupRound(rs.Round + 1)
+					conR.conS.SetupRound(rs.Round + 1)
 					return // setAlarm() takes care of the rest.
 				}
 			} else {
@@ -781,9 +586,36 @@ func (conA *ConsensusAgent) proposeAndVoteRoutine() {
 			}
 
 			// Transition to new step.
-			rs.SetStep(step)
+			conR.conS.SetStep(step)
+
+			// Broadcast NewRoundStepMessage.
+			msg := &NewRoundStepMessage{
+				Height: height,
+				Round:  round,
+				Step:   step,
+				SecondsSinceStartTime: uint32(roundElapsed.Seconds()),
+			}
+			conR.sw.Broadcast(StateCh, msg)
 		}()
 	}
+}
+
+//-----------------------------------------------------------------------------
+
+// Read only when returned by PeerState.GetRoundState().
+type PeerRoundState struct {
+	Height                uint32    // Height peer is at
+	Round                 uint16    // Round peer is at
+	Step                  uint8     // Step peer is at
+	StartTime             time.Time // Estimated start of round 0 at this height
+	Proposal              bool      // True if peer has proposal for this round
+	ProposalBlockHash     []byte    // Block parts merkle root
+	ProposalBlockBitArray BitArray  // Block parts bitarray
+	ProposalPOLHash       []byte    // POL parts merkle root
+	ProposalPOLBitArray   BitArray  // POL parts bitarray
+	Votes                 BitArray  // All votes peer has for this round
+	Precommits            BitArray  // All precommits peer has for this round
+	Commits               BitArray  // All commits peer has for this height
 }
 
 //-----------------------------------------------------------------------------
@@ -793,212 +625,120 @@ var (
 	ErrPeerStateInvalidStartTime = errors.New("Error peer state invalid startTime")
 )
 
-// TODO: voteRanks should purge bygone validators.
 type PeerState struct {
-	mtx                sync.Mutex
-	connected          bool
-	peer               *p2p.Peer
-	height             uint32
-	startTime          time.Time // Derived from offset seconds.
-	blockPartsBitArray []byte
-	voteRanks          map[uint64]uint8
-	cbHeight           uint32
-	cbRound            uint16
-	cbFunc             func()
+	mtx sync.Mutex
+	PeerRoundState
 }
 
 func NewPeerState(peer *p2p.Peer) *PeerState {
-	return &PeerState{
-		connected: true,
-		peer:      peer,
-		height:    0,
-		voteRanks: make(map[uint64]uint8),
+	return &PeerState{}
+}
+
+// Returns an atomic snapshot of the PeerRoundState.
+// There's no point in mutating it since it won't change PeerState.
+func (ps *PeerState) GetRoundState() *PeerRoundState {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+	prs := ps.PeerRoundState // copy
+	return &prs
+}
+
+func (ps *PeerState) SetHasProposal(height uint32, round uint16) {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+
+	if ps.Height == height && ps.Round == round {
+		ps.Proposal = true
 	}
 }
 
-func (ps *PeerState) IsConnected() bool {
-	if ps == nil {
-		return false
-	}
+func (ps *PeerState) SetHasProposalBlockPart(height uint32, round uint16, index uint16) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
-	return ps.connected
+
+	if ps.Height == height && ps.Round == round {
+		ps.ProposalBlockBitArray.SetIndex(uint(index), true)
+	}
 }
 
-func (ps *PeerState) Disconnect() {
+func (ps *PeerState) SetHasProposalPOLPart(height uint32, round uint16, index uint16) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
-	ps.connected = false
+	if ps.Height == height && ps.Round == round {
+		ps.ProposalPOLBitArray.SetIndex(uint(index), true)
+	}
 }
 
-func (ps *PeerState) WantsBlockPart(part *BlockPart) bool {
-	if ps == nil {
-		return false
-	}
+func (ps *PeerState) SetHasVote(height uint32, round uint16, type_ uint8, index uint32) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
-	if !ps.connected {
-		return false
-	}
-	// Only wants the part if peer's current height and round matches.
-	if ps.height == part.Height {
-		round := calcRound(ps.startTime)
-		// NOTE: validators want to receive remaining block parts
-		// even after it had voted bare or precommit.
-		// Ergo, we do not check for which step the peer is in.
-		if round == part.Round {
-			// Only wants the part if it doesn't already have it.
-			if ps.blockPartsBitArray[part.Index/8]&byte(1<<(part.Index%8)) == 0 {
-				return true
-			}
+	if ps.Height == height && (ps.Round == round || type_ == VoteTypeCommit) {
+		switch type_ {
+		case VoteTypeBare:
+			ps.Votes.SetIndex(uint(index), true)
+		case VoteTypePrecommit:
+			ps.Precommits.SetIndex(uint(index), true)
+		case VoteTypeCommit:
+			ps.Commits.SetIndex(uint(index), true)
+		default:
+			panic("Invalid vote type")
 		}
 	}
-	return false
 }
 
-func (ps *PeerState) WantsVote(vote *Vote) (wants bool, unsolicited bool) {
-	if ps == nil {
-		return false, false
-	}
+func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage) error {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
-	if !ps.connected {
-		return false, false
-	}
-	// Only wants the vote if peer's current height and round matches.
-	if ps.height == vote.Height {
-		round, _, _, _, elapsedRatio := calcRoundInfo(ps.startTime)
-		if round == vote.Round {
-			if vote.Type == VoteTypeBare && elapsedRatio > roundDeadlineBare {
-				return false, false
-			}
-			if vote.Type == VoteTypePrecommit && elapsedRatio > roundDeadlinePrecommit {
-				return false, false
-			} else {
-				// continue on ...
-			}
-		} else {
-			return false, false
-		}
-	} else {
-		return false, false
-	}
-	// Only wants the vote if voteRank is low.
-	if ps.voteRanks[vote.SignerId] > voteRankCutoff {
-		// Sometimes, send unsolicited votes to see if peer wants it.
-		if rand.Float32() < unsolicitedVoteRate {
-			return true, true
-		} else {
-			// Rank too high. Do not send vote.
-			return false, false
-		}
-	}
-	return true, false
-}
 
-func (ps *PeerState) ApplyKnownBlockPartsMessage(msg *KnownBlockPartsMessage) error {
-	ps.mtx.Lock()
-	defer ps.mtx.Unlock()
-	// TODO: Sanity check len(BlockParts)
-	if msg.Height < ps.height {
-		return ErrPeerStateHeightRegression
-	}
-	if msg.Height == ps.height {
-		if len(ps.blockPartsBitArray) == 0 {
-			ps.blockPartsBitArray = msg.BlockPartsBitArray
-		} else if len(msg.BlockPartsBitArray) > 0 {
-			if len(ps.blockPartsBitArray) != len(msg.BlockPartsBitArray) {
-				// TODO: If the peer received a part from
-				// a proposer who signed a bad (or conflicting) part,
-				// just about anything can happen with the new blockPartsBitArray.
-				// In those cases it's alright to ignore the peer for the round,
-				// and try to induce nil votes for that round.
-				return nil
-			} else {
-				// TODO: Same as above. If previously known parts disappear,
-				// something is fishy.
-				// For now, just copy over known parts.
-				for i, byt := range msg.BlockPartsBitArray {
-					ps.blockPartsBitArray[i] |= byt
-				}
-			}
-		}
-	} else {
-		// TODO: handle peer connection latency estimation.
-		newStartTime := time.Now().Add(-1 * time.Duration(msg.SecondsSinceStartTime) * time.Second)
-		// Ensure that the new height's start time is sufficiently after the last startTime.
-		// TODO: there should be some time between rounds.
-		if !newStartTime.After(ps.startTime) {
-			return ErrPeerStateInvalidStartTime
-		}
-		ps.startTime = newStartTime
-		ps.height = msg.Height
-		ps.blockPartsBitArray = msg.BlockPartsBitArray
-		// Call callback if height+round matches.
-		peerRound := calcRound(ps.startTime)
-		if ps.cbFunc != nil && ps.cbHeight == ps.height && ps.cbRound == peerRound {
-			go ps.cbFunc()
-			ps.cbFunc = nil
-		}
+	// Set step state
+	startTime := time.Now().Add(-1 * time.Duration(msg.SecondsSinceStartTime) * time.Second)
+	ps.Height = msg.Height
+	ps.Round = msg.Round
+	ps.Step = msg.Step
+	ps.StartTime = startTime
+
+	// Reset the rest
+	ps.Proposal = false
+	ps.ProposalBlockHash = nil
+	ps.ProposalBlockBitArray = nil
+	ps.ProposalPOLHash = nil
+	ps.ProposalPOLBitArray = nil
+	ps.Votes = nil
+	ps.Precommits = nil
+	if ps.Height != msg.Height {
+		ps.Commits = nil
 	}
 	return nil
 }
 
-func (ps *PeerState) ApplyVoteRankMessage(msg *VoteRankMessage) error {
+func (ps *PeerState) ApplyHasVotesMessage(msg *HasVotesMessage) error {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
-	ps.voteRanks[msg.ValidatorId] = msg.Rank
-	return nil
-}
-
-// Sets a single round callback, to be called when the height+round comes around.
-// If the height+round is current, calls "go f()" immediately.
-// Otherwise, does nothing.
-func (ps *PeerState) SetRoundCallback(height uint32, round uint16, f func()) {
-	ps.mtx.Lock()
-	defer ps.mtx.Unlock()
-	if ps.height < height {
-		ps.cbHeight = height
-		ps.cbRound = round
-		ps.cbFunc = f
-		// Wait until the height of the peerState changes.
-		// We'll call cbFunc then.
-		return
-	} else if ps.height == height {
-		peerRound := calcRound(ps.startTime)
-		if peerRound < round {
-			// Set a timer to call the cbFunc when the time comes.
-			go func() {
-				roundStart := calcRoundStartTime(round, ps.startTime)
-				time.Sleep(roundStart.Sub(time.Now()))
-				// If peer height is still good
-				ps.mtx.Lock()
-				peerHeight := ps.height
-				ps.mtx.Unlock()
-				if peerHeight == height {
-					f()
-				}
-			}()
-		} else if peerRound == round {
-			go f()
+	if ps.Height == msg.Height {
+		ps.Commits = ps.Commits.Or(msg.Commits)
+		if ps.Round == msg.Round {
+			ps.Votes = ps.Votes.Or(msg.Votes)
+			ps.Precommits = ps.Precommits.Or(msg.Precommits)
 		} else {
-			return
+			ps.Votes = msg.Votes
+			ps.Precommits = msg.Precommits
 		}
-	} else {
-		return
 	}
+	return nil
 }
 
 //-----------------------------------------------------------------------------
 // Messages
 
 const (
-	msgTypeUnknown         = byte(0x00)
-	msgTypeBlockPart       = byte(0x10)
-	msgTypeKnownBlockParts = byte(0x11)
-	msgTypeVote            = byte(0x20)
-	msgTypeVoteAskRank     = byte(0x21)
-	msgTypeVoteRank        = byte(0x22)
+	msgTypeUnknown = byte(0x00)
+	// Messages for communicating state changes
+	msgTypeNewRoundStep = byte(0x01)
+	msgTypeHasVotes     = byte(0x02)
+	// Messages of data
+	msgTypeProposal = byte(0x11)
+	msgTypePart     = byte(0x12) // both block & POL
+	msgTypeVote     = byte(0x13)
 )
 
 // TODO: check for unnecessary extra bytes at the end.
@@ -1006,17 +746,20 @@ func decodeMessage(bz []byte) (msgType byte, msg interface{}) {
 	n, err := new(int64), new(error)
 	// log.Debug("decoding msg bytes: %X", bz)
 	msgType = bz[0]
+	r := bytes.NewReader(bz[1:])
 	switch msgType {
-	case msgTypeBlockPart:
-		msg = readBlockPartMessage(bytes.NewReader(bz[1:]), n, err)
-	case msgTypeKnownBlockParts:
-		msg = readKnownBlockPartsMessage(bytes.NewReader(bz[1:]), n, err)
+	// Messages for communicating state changes
+	case msgTypeNewRoundStep:
+		msg = readNewRoundStepMessage(r, n, err)
+	case msgTypeHasVotes:
+		msg = readHasVotesMessage(r, n, err)
+	// Messages of data
+	case msgTypeProposal:
+		msg = ReadProposal(r, n, err)
+	case msgTypePart:
+		msg = readPartMessage(r, n, err)
 	case msgTypeVote:
-		msg = ReadVote(bytes.NewReader(bz[1:]), n, err)
-	case msgTypeVoteAskRank:
-		msg = ReadVote(bytes.NewReader(bz[1:]), n, err)
-	case msgTypeVoteRank:
-		msg = readVoteRankMessage(bytes.NewReader(bz[1:]), n, err)
+		msg = ReadVote(r, n, err)
 	default:
 		msg = nil
 	}
@@ -1025,76 +768,101 @@ func decodeMessage(bz []byte) (msgType byte, msg interface{}) {
 
 //-------------------------------------
 
-type BlockPartMessage struct {
-	BlockPart *BlockPart
-}
-
-func readBlockPartMessage(r io.Reader, n *int64, err *error) *BlockPartMessage {
-	return &BlockPartMessage{
-		BlockPart: ReadBlockPart(r, n, err),
-	}
-}
-
-func (m *BlockPartMessage) WriteTo(w io.Writer) (n int64, err error) {
-	WriteByte(w, msgTypeBlockPart, &n, &err)
-	WriteBinary(w, m.BlockPart, &n, &err)
-	return
-}
-
-func (m *BlockPartMessage) String() string {
-	return fmt.Sprintf("[BlockPartMessage %v]", m.BlockPart)
-}
-
-//-------------------------------------
-
-type KnownBlockPartsMessage struct {
+type NewRoundStepMessage struct {
 	Height                uint32
+	Round                 uint16
+	Step                  uint8
 	SecondsSinceStartTime uint32
-	BlockPartsBitArray    []byte
 }
 
-func readKnownBlockPartsMessage(r io.Reader, n *int64, err *error) *KnownBlockPartsMessage {
-	return &KnownBlockPartsMessage{
-		Height:                ReadUInt32(r, n, err),
+func readNewRoundStepMessage(r io.Reader, n *int64, err *error) *NewRoundStepMessage {
+	return &NewRoundStepMessage{
+		Height: ReadUInt32(r, n, err),
+		Round:  ReadUInt16(r, n, err),
+		Step:   ReadUInt8(r, n, err),
 		SecondsSinceStartTime: ReadUInt32(r, n, err),
-		BlockPartsBitArray:    ReadByteSlice(r, n, err),
 	}
 }
 
-func (m *KnownBlockPartsMessage) WriteTo(w io.Writer) (n int64, err error) {
-	WriteByte(w, msgTypeKnownBlockParts, &n, &err)
+func (m *NewRoundStepMessage) WriteTo(w io.Writer) (n int64, err error) {
+	WriteByte(w, msgTypeNewRoundStep, &n, &err)
 	WriteUInt32(w, m.Height, &n, &err)
+	WriteUInt16(w, m.Round, &n, &err)
+	WriteUInt8(w, m.Step, &n, &err)
 	WriteUInt32(w, m.SecondsSinceStartTime, &n, &err)
-	WriteByteSlice(w, m.BlockPartsBitArray, &n, &err)
 	return
 }
 
-func (m *KnownBlockPartsMessage) String() string {
-	return fmt.Sprintf("[KnownBlockPartsMessage H:%v SSST:%v, BPBA:%X]",
-		m.Height, m.SecondsSinceStartTime, m.BlockPartsBitArray)
+func (m *NewRoundStepMessage) String() string {
+	return fmt.Sprintf("[NewRoundStepMessage H:%v R:%v]", m.Height, m.Round)
 }
 
 //-------------------------------------
 
-type VoteRankMessage struct {
-	ValidatorId uint64
-	Rank        uint8
+type HasVotesMessage struct {
+	Height     uint32
+	Round      uint16
+	Votes      BitArray
+	Precommits BitArray
+	Commits    BitArray
 }
 
-func readVoteRankMessage(r io.Reader, n *int64, err *error) *VoteRankMessage {
-	return &VoteRankMessage{
-		ValidatorId: ReadUInt64(r, n, err),
-		Rank:        ReadUInt8(r, n, err),
+func readHasVotesMessage(r io.Reader, n *int64, err *error) *HasVotesMessage {
+	return &HasVotesMessage{
+		Height:     ReadUInt32(r, n, err),
+		Round:      ReadUInt16(r, n, err),
+		Votes:      ReadBitArray(r, n, err),
+		Precommits: ReadBitArray(r, n, err),
+		Commits:    ReadBitArray(r, n, err),
 	}
 }
 
-func (m *VoteRankMessage) WriteTo(w io.Writer) (n int64, err error) {
-	WriteByte(w, msgTypeVoteRank, &n, &err)
-	WriteUInt64(w, m.ValidatorId, &n, &err)
-	WriteUInt8(w, m.Rank, &n, &err)
+func (m *HasVotesMessage) WriteTo(w io.Writer) (n int64, err error) {
+	WriteByte(w, msgTypeHasVotes, &n, &err)
+	WriteUInt32(w, m.Height, &n, &err)
+	WriteUInt16(w, m.Round, &n, &err)
+	WriteBinary(w, m.Votes, &n, &err)
+	WriteBinary(w, m.Precommits, &n, &err)
+	WriteBinary(w, m.Commits, &n, &err)
 	return
 }
 
-func (m *VoteRankMessage) String() string {
-	return fmt.Sprintf("[VoteRankMessage V:%v, R:%v]", m.ValidatorId, m.Rank)
+func (m *HasVotesMessage) String() string {
+	return fmt.Sprintf("[HasVotesMessage H:%v R:%v]", m.Height, m.Round)
+}
+
+//-------------------------------------
+
+const (
+	partTypeProposalBlock = byte(0x01)
+	partTypeProposalPOL   = byte(0x02)
+)
+
+type PartMessage struct {
+	Height uint32
+	Round  uint16
+	Type   byte
+	Part   *Part
+}
+
+func readPartMessage(r io.Reader, n *int64, err *error) *PartMessage {
+	return &PartMessage{
+		Height: ReadUInt32(r, n, err),
+		Round:  ReadUInt16(r, n, err),
+		Type:   ReadByte(r, n, err),
+		Part:   ReadPart(r, n, err),
+	}
+}
+
+func (m *PartMessage) WriteTo(w io.Writer) (n int64, err error) {
+	WriteByte(w, msgTypePart, &n, &err)
+	WriteUInt32(w, m.Height, &n, &err)
+	WriteUInt16(w, m.Round, &n, &err)
+	WriteByte(w, m.Type, &n, &err)
+	WriteBinary(w, m.Part, &n, &err)
+	return
+}
+
+func (m *PartMessage) String() string {
+	return fmt.Sprintf("[PartMessage H:%v R:%v T:%X]", m.Height, m.Round, m.Type)
 }

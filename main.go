@@ -5,60 +5,26 @@ import (
 	"os/signal"
 
 	"github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/consensus"
+	//"github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/p2p"
 )
 
 type Node struct {
-	lz       []p2p.Listener
-	sw       *p2p.Switch
-	book     *p2p.AddrBook
-	pexAgent *p2p.PEXAgent
+	lz         []p2p.Listener
+	sw         *p2p.Switch
+	book       *p2p.AddrBook
+	pexReactor *p2p.PEXReactor
 }
 
 func NewNode() *Node {
-	// Define channels for our app
-	chDescs := []*p2p.ChannelDescriptor{
-		// PEX
-		&p2p.ChannelDescriptor{
-			Id:                p2p.PexCh,
-			SendQueueCapacity: 2,
-			RecvQueueCapacity: 2,
-			RecvBufferSize:    1024,
-			DefaultPriority:   1,
-		},
-		// CONSENSUS
-		&p2p.ChannelDescriptor{
-			Id:                consensus.ProposalCh,
-			SendQueueCapacity: 2,
-			RecvQueueCapacity: 10,
-			RecvBufferSize:    10240,
-			DefaultPriority:   5,
-		},
-		&p2p.ChannelDescriptor{
-			Id:                consensus.KnownPartsCh,
-			SendQueueCapacity: 2,
-			RecvQueueCapacity: 10,
-			RecvBufferSize:    1024,
-			DefaultPriority:   5,
-		},
-		&p2p.ChannelDescriptor{
-			Id:                consensus.VoteCh,
-			SendQueueCapacity: 100,
-			RecvQueueCapacity: 1000,
-			RecvBufferSize:    10240,
-			DefaultPriority:   5,
-		},
-		// TODO: MEMPOOL
-	}
-	sw := p2p.NewSwitch(chDescs)
+	sw := p2p.NewSwitch(nil) // XXX create and pass reactors
 	book := p2p.NewAddrBook(config.RootDir + "/addrbook.json")
-	pexAgent := p2p.NewPEXAgent(sw, book)
+	pexReactor := p2p.NewPEXReactor(sw, book)
 
 	return &Node{
-		sw:       sw,
-		book:     book,
-		pexAgent: pexAgent,
+		sw:         sw,
+		book:       book,
+		pexReactor: pexReactor,
 	}
 }
 
@@ -69,7 +35,7 @@ func (n *Node) Start() {
 	}
 	n.sw.Start()
 	n.book.Start()
-	n.pexAgent.Start()
+	n.pexReactor.Start()
 }
 
 func (n *Node) Stop() {
@@ -77,7 +43,7 @@ func (n *Node) Stop() {
 	// TODO: gracefully disconnect from peers.
 	n.sw.Stop()
 	n.book.Stop()
-	n.pexAgent.Stop()
+	n.pexReactor.Stop()
 }
 
 // Add a Listener to accept inbound peer connections.
@@ -102,7 +68,7 @@ func (n *Node) inboundConnectionRoutine(l p2p.Listener) {
 		}
 		// NOTE: We don't yet have the external address of the
 		// remote (if they have a listener at all).
-		// PEXAgent's pexRoutine will handle that.
+		// PEXReactor's pexRoutine will handle that.
 	}
 
 	// cleanup

@@ -10,6 +10,15 @@ import (
 	. "github.com/tendermint/tendermint/common"
 )
 
+type Reactor interface {
+	GetChannels() []*ChannelDescriptor
+	AddPeer(peer *Peer)
+	RemovePeer(peer *Peer, reason interface{})
+	Receive(chId byte, peer *Peer, msgBytes []byte)
+}
+
+//-----------------------------------------------------------------------------
+
 /*
 All communication amongst peers are multiplexed by "channels".
 (Not the same as Go "channels")
@@ -26,14 +35,15 @@ The receiver is responsible for decoding the message bytes, which may be precede
 by a single type byte if a TypedBytes{} was used.
 */
 type Switch struct {
-	chDescs    []*ChannelDescriptor
-	recvQueues map[byte]chan InboundBytes
-	peers      *PeerSet
-	dialing    *CMap
-	listeners  *CMap // listenerName -> chan interface{}
-	quit       chan struct{}
-	started    uint32
-	stopped    uint32
+	reactors     []Reactor
+	chDescs      []*ChannelDescriptor
+	reactorsByCh map[byte]Reactor
+	peers        *PeerSet
+	dialing      *CMap
+	listeners    *CMap // listenerName -> chan interface{}
+	quit         chan struct{}
+	started      uint32
+	stopped      uint32
 }
 
 var (
@@ -45,22 +55,32 @@ const (
 	peerDialTimeoutSeconds = 30
 )
 
-func NewSwitch(chDescs []*ChannelDescriptor) *Switch {
-	s := &Switch{
-		chDescs:    chDescs,
-		recvQueues: make(map[byte]chan InboundBytes),
-		peers:      NewPeerSet(),
-		dialing:    NewCMap(),
-		listeners:  NewCMap(),
-		quit:       make(chan struct{}),
-		stopped:    0,
+func NewSwitch(reactors []Reactor) *Switch {
+
+	// Validate the reactors. no two reactors can share the same channel.
+	chDescs := []*ChannelDescriptor{}
+	reactorsByCh := make(map[byte]Reactor)
+	for _, reactor := range reactors {
+		reactorChannels := reactor.GetChannels()
+		for _, chDesc := range reactorChannels {
+			chId := chDesc.Id
+			if reactorsByCh[chId] != nil {
+				Panicf("Channel %X has multiple reactors %v & %v", chId, reactorsByCh[chId], reactor)
+			}
+			chDescs = append(chDescs, chDesc)
+			reactorsByCh[chId] = reactor
+		}
 	}
 
-	// Create global recvQueues, one per channel.
-	for _, chDesc := range chDescs {
-		recvQueue := make(chan InboundBytes, chDesc.RecvQueueCapacity)
-		chDesc.recvQueue = recvQueue
-		s.recvQueues[chDesc.Id] = recvQueue
+	s := &Switch{
+		reactors:     reactors,
+		chDescs:      chDescs,
+		reactorsByCh: reactorsByCh,
+		peers:        NewPeerSet(),
+		dialing:      NewCMap(),
+		listeners:    NewCMap(),
+		quit:         make(chan struct{}),
+		stopped:      0,
 	}
 
 	return s
@@ -90,7 +110,7 @@ func (s *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, err
 		return nil, ErrSwitchStopped
 	}
 
-	peer := newPeer(conn, outbound, s.chDescs, s.StopPeerForError)
+	peer := newPeer(conn, outbound, s.reactorsByCh, s.chDescs, s.StopPeerForError)
 
 	// Add the peer to .peers
 	if s.peers.Add(peer) {
@@ -104,7 +124,7 @@ func (s *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, err
 	go peer.start()
 
 	// Notify listeners.
-	s.emit(SwitchEventNewPeer{Peer: peer})
+	s.doAddPeer(peer)
 
 	return peer, nil
 }
@@ -151,38 +171,6 @@ func (s *Switch) Broadcast(chId byte, msg Binary) (numSuccess, numFailure int) {
 
 }
 
-// The events are of type SwitchEvent* defined below.
-// Switch does not close these listeners.
-func (s *Switch) AddEventListener(name string, listener chan<- interface{}) {
-	s.listeners.Set(name, listener)
-}
-
-func (s *Switch) RemoveEventListener(name string) {
-	s.listeners.Delete(name)
-}
-
-/*
-Receive blocks on a channel until a message is found.
-*/
-func (s *Switch) Receive(chId byte) (InboundBytes, bool) {
-	if atomic.LoadUint32(&s.stopped) == 1 {
-		return InboundBytes{}, false
-	}
-
-	q := s.recvQueues[chId]
-	if q == nil {
-		Panicf("Expected recvQueues[%X], found none", chId)
-	}
-
-	select {
-	case <-s.quit:
-		return InboundBytes{}, false
-	case inBytes := <-q:
-		log.Debug("RECV %v", inBytes)
-		return inBytes, true
-	}
-}
-
 // Returns the count of outbound/inbound and outbound-dialing peers.
 func (s *Switch) NumPeers() (outbound, inbound, dialing int) {
 	peers := s.peers.List()
@@ -209,7 +197,7 @@ func (s *Switch) StopPeerForError(peer *Peer, reason interface{}) {
 	peer.stop()
 
 	// Notify listeners
-	s.emit(SwitchEventDonePeer{Peer: peer, Error: reason})
+	s.doRemovePeer(peer, reason)
 }
 
 // Disconnect from a peer gracefully.
@@ -220,13 +208,18 @@ func (s *Switch) StopPeerGracefully(peer *Peer) {
 	peer.stop()
 
 	// Notify listeners
-	s.emit(SwitchEventDonePeer{Peer: peer})
+	s.doRemovePeer(peer, nil)
 }
 
-func (s *Switch) emit(event interface{}) {
-	for _, ch_i := range s.listeners.Values() {
-		ch := ch_i.(chan<- interface{})
-		ch <- event
+func (s *Switch) doAddPeer(peer *Peer) {
+	for _, reactor := range s.reactors {
+		reactor.AddPeer(peer)
+	}
+}
+
+func (s *Switch) doRemovePeer(peer *Peer, reason interface{}) {
+	for _, reactor := range s.reactors {
+		reactor.RemovePeer(peer, reason)
 	}
 }
 

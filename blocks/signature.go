@@ -5,18 +5,6 @@ import (
 	"io"
 )
 
-/*
-Signature message wire format:
-
-    |a...|sss...|
-
-    a  Account number, varint encoded (1+ bytes)
-    s  Signature of all prior bytes (32 bytes)
-
-It usually follows the message to be signed.
-
-*/
-
 type Signature struct {
 	SignerId uint64
 	Bytes    []byte
@@ -37,4 +25,22 @@ func (sig Signature) WriteTo(w io.Writer) (n int64, err error) {
 	WriteUInt64(w, sig.SignerId, &n, &err)
 	WriteByteSlice(w, sig.Bytes, &n, &err)
 	return
+}
+
+func ReadSignatures(r io.Reader, n *int64, err *error) (sigs []Signature) {
+	length := ReadUInt32(r, n, err)
+	for i := uint32(0); i < length; i++ {
+		sigs = append(sigs, ReadSignature(r, n, err))
+	}
+	return
+}
+
+func WriteSignatures(w io.Writer, sigs []Signature, n *int64, err *error) {
+	WriteUInt32(w, uint32(len(sigs)), n, err)
+	for _, sig := range sigs {
+		WriteBinary(w, sig, n, err)
+		if *err != nil {
+			return
+		}
+	}
 }

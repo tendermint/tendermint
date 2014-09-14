@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 
 	. "github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
 )
 
 /* Peer */
@@ -17,23 +18,31 @@ type Peer struct {
 	started  uint32
 	stopped  uint32
 
-	Key string
+	Key  string
+	Data *CMap // User data.
 }
 
-func newPeer(conn net.Conn, outbound bool, chDescs []*ChannelDescriptor, onPeerError func(*Peer, interface{})) *Peer {
+func newPeer(conn net.Conn, outbound bool, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor, onPeerError func(*Peer, interface{})) *Peer {
 	var p *Peer
+	onReceive := func(chId byte, msgBytes []byte) {
+		reactor := reactorsByCh[chId]
+		if reactor == nil {
+			Panicf("Unknown channel %X", chId)
+		}
+		reactor.Receive(chId, p, msgBytes)
+	}
 	onError := func(r interface{}) {
 		p.stop()
 		onPeerError(p, r)
 	}
-	mconn := NewMConnection(conn, chDescs, onError)
+	mconn := NewMConnection(conn, chDescs, onReceive, onError)
 	p = &Peer{
 		outbound: outbound,
 		mconn:    mconn,
 		stopped:  0,
 		Key:      mconn.RemoteAddress.String(),
+		Data:     NewCMap(),
 	}
-	mconn.Peer = p // hacky optimization
 	return p
 }
 
@@ -49,6 +58,14 @@ func (p *Peer) stop() {
 		log.Debug("Stopping %v", p)
 		p.mconn.Stop()
 	}
+}
+
+func (p *Peer) IsStopped() bool {
+	return atomic.LoadUint32(&p.stopped) == 1
+}
+
+func (p *Peer) RemoteAddress() *NetAddress {
+	return p.mconn.RemoteAddress
 }
 
 func (p *Peer) IsOutbound() bool {
