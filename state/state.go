@@ -28,15 +28,14 @@ type State struct {
 	validators *ValidatorSet
 }
 
+func GenesisState(commitTime time.Time, accounts merkle.Tree, validators *ValidatorSet) *State {
+}
+
 func LoadState(db db_.Db) *State {
 	s := &State{}
 	buf := db.Get(stateKey)
 	if len(buf) == 0 {
-		s.height = uint32(0)
-		s.commitTime = time.Unix(0, 0)      // XXX BOOTSTRAP
-		s.blockHash = nil                   // XXX BOOTSTRAP
-		s.accounts = merkle.NewIAVLTree(db) // XXX BOOTSTRAP
-		s.validators = NewValidatorSet(nil) // XXX BOOTSTRAP
+		return nil
 	} else {
 		reader := bytes.NewReader(buf)
 		var n int64
@@ -112,7 +111,7 @@ func (s *State) commitTx(tx Tx) error {
 			return ErrStateInvalidSequenceNumber
 		}
 	*/
-	// TODO commit the tx
+	// XXX commit the tx
 	panic("Implement CommitTx()")
 	return nil
 }
