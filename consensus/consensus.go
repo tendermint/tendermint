@@ -142,25 +142,16 @@ func (conR *ConsensusReactor) GetChannels() []*p2p.ChannelDescriptor {
 	// TODO optimize
 	return []*p2p.ChannelDescriptor{
 		&p2p.ChannelDescriptor{
-			Id:                StateCh,
-			SendQueueCapacity: 1,
-			RecvQueueCapacity: 10,
-			RecvBufferSize:    10240,
-			DefaultPriority:   5,
+			Id:       StateCh,
+			Priority: 5,
 		},
 		&p2p.ChannelDescriptor{
-			Id:                DataCh,
-			SendQueueCapacity: 1,
-			RecvQueueCapacity: 10,
-			RecvBufferSize:    10240,
-			DefaultPriority:   5,
+			Id:       DataCh,
+			Priority: 5,
 		},
 		&p2p.ChannelDescriptor{
-			Id:                VoteCh,
-			SendQueueCapacity: 1,
-			RecvQueueCapacity: 1000,
-			RecvBufferSize:    10240,
-			DefaultPriority:   5,
+			Id:       VoteCh,
+			Priority: 5,
 		},
 	}
 }

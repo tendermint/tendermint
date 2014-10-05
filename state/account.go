@@ -8,19 +8,30 @@ import (
 	"io"
 )
 
+const (
+	AccountBalanceStatusNominal = byte(0x00)
+	AccountBalanceStatusBonded  = byte(0x01)
+)
+
 type Account struct {
 	Id     uint64 // Numeric id of account, incrementing.
 	PubKey []byte
 }
 
-func ReadAccount(r io.Reader, n *int64, err *error) *Account {
-	return &Account{
+func ReadAccount(r io.Reader, n *int64, err *error) Account {
+	return Account{
 		Id:     ReadUInt64(r, n, err),
 		PubKey: ReadByteSlice(r, n, err),
 	}
 }
 
-func (account *Account) Verify(msg []byte, sig Signature) bool {
+func (account Account) WriteTo(w io.Writer) (n int64, err error) {
+	WriteUInt64(w, account.Id, &n, &err)
+	WriteByteSlice(w, account.PubKey, &n, &err)
+	return
+}
+
+func (account Account) Verify(msg []byte, sig Signature) bool {
 	if sig.SignerId != account.Id {
 		panic("Account.Id doesn't match sig.SignerId")
 	}
@@ -38,6 +49,22 @@ func (account *Account) Verify(msg []byte, sig Signature) bool {
 type AccountBalance struct {
 	Account
 	Balance uint64
+	Status  byte
+}
+
+func ReadAccountBalance(r io.Reader, n *int64, err *error) *AccountBalance {
+	return &AccountBalance{
+		Account: ReadAccount(r, n, err),
+		Balance: ReadUInt64(r, n, err),
+		Status:  ReadByte(r, n, err),
+	}
+}
+
+func (accBal AccountBalance) WriteTo(w io.Writer) (n int64, err error) {
+	WriteBinary(w, accBal.Account, &n, &err)
+	WriteUInt64(w, accBal.Balance, &n, &err)
+	WriteByte(w, accBal.Status, &n, &err)
+	return
 }
 
 //-----------------------------------------------------------------------------
@@ -50,7 +77,7 @@ type PrivAccount struct {
 // Generates a new account with private key.
 // The Account.Id is empty since it isn't in the blockchain.
 func GenPrivAccount() *PrivAccount {
-	privKey := RandBytes(32)
+	privKey := CRandBytes(32)
 	pubKey := crypto.MakePubKey(privKey)
 	return &PrivAccount{
 		Account: Account{

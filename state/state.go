@@ -8,7 +8,7 @@ import (
 
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/blocks"
-	db_ "github.com/tendermint/tendermint/db"
+	. "github.com/tendermint/tendermint/db"
 	"github.com/tendermint/tendermint/merkle"
 )
 
@@ -20,7 +20,7 @@ var (
 
 type State struct {
 	mtx        sync.Mutex
-	db         db_.Db
+	db         DB
 	height     uint32 // Last known block height
 	blockHash  []byte // Last known block hash
 	commitTime time.Time
@@ -28,11 +28,35 @@ type State struct {
 	validators *ValidatorSet
 }
 
-func GenesisState(commitTime time.Time, accounts merkle.Tree, validators *ValidatorSet) *State {
+func GenesisState(db DB, genesisTime time.Time, accountBalances []*AccountBalance) *State {
+
+	accounts := merkle.NewIAVLTree(db)
+	validators := map[uint64]*Validator{}
+
+	for _, account := range accountBalances {
+		// XXX make codec merkle tree.
+		//accounts.Set(account.Id, BinaryBytes(account))
+		validators[account.Id] = &Validator{
+			Account:     account.Account,
+			BondHeight:  0,
+			VotingPower: account.Balance,
+			Accum:       0,
+		}
+	}
+	validatorSet := NewValidatorSet(validators)
+
+	return &State{
+		db:         db,
+		height:     0,
+		blockHash:  nil,
+		commitTime: genesisTime,
+		accounts:   accounts,
+		validators: validatorSet,
+	}
 }
 
-func LoadState(db db_.Db) *State {
-	s := &State{}
+func LoadState(db DB) *State {
+	s := &State{db: db}
 	buf := db.Get(stateKey)
 	if len(buf) == 0 {
 		return nil
@@ -160,7 +184,7 @@ func (s *State) Validators() *ValidatorSet {
 	return s.validators
 }
 
-func (s *State) Account(accountId uint64) (*Account, error) {
+func (s *State) AccountBalance(accountId uint64) (*AccountBalance, error) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 	idBytes, err := BasicCodec.Write(accountId)
@@ -172,6 +196,6 @@ func (s *State) Account(accountId uint64) (*Account, error) {
 		return nil, nil
 	}
 	n, err := int64(0), error(nil)
-	account := ReadAccount(bytes.NewBuffer(accountBytes), &n, &err)
-	return account, err
+	accountBalance := ReadAccountBalance(bytes.NewBuffer(accountBytes), &n, &err)
+	return accountBalance, err
 }

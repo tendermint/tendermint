@@ -160,8 +160,9 @@ func ReadUInt64(r io.Reader, n *int64, err *error) uint64 {
 
 func WriteVarInt(w io.Writer, i int64, n *int64, err *error) {
 	buf := make([]byte, 9)
-	*n += int64(binary.PutVarint(buf, int64(i)))
-	WriteTo(w, buf, n, err)
+	n_ := int64(binary.PutVarint(buf, int64(i)))
+	*n += n_
+	WriteTo(w, buf[:n_], n, err)
 }
 
 func ReadVarInt(r io.Reader, n *int64, err *error) int64 {
@@ -175,8 +176,9 @@ func ReadVarInt(r io.Reader, n *int64, err *error) int64 {
 
 func WriteUVarInt(w io.Writer, i uint64, n *int64, err *error) {
 	buf := make([]byte, 9)
-	*n += int64(binary.PutUvarint(buf, uint64(i)))
-	WriteTo(w, buf, n, err)
+	n_ := int64(binary.PutUvarint(buf, uint64(i)))
+	*n += n_
+	WriteTo(w, buf[:n_], n, err)
 }
 
 func ReadUVarInt(r io.Reader, n *int64, err *error) uint64 {

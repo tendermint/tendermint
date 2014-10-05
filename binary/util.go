@@ -7,7 +7,10 @@ import (
 
 func BinaryBytes(b Binary) []byte {
 	buf := bytes.NewBuffer(nil)
-	b.WriteTo(buf)
+	_, err := b.WriteTo(buf)
+	if err != nil {
+		panic(err)
+	}
 	return buf.Bytes()
 }
 

@@ -28,59 +28,59 @@ type Tx interface {
 
 const (
 	// Account transactions
-	TX_TYPE_SEND = byte(0x01)
-	TX_TYPE_NAME = byte(0x02)
+	txTypeSend = byte(0x01)
+	txTypeName = byte(0x02)
 
 	// Validation transactions
-	TX_TYPE_BOND    = byte(0x11)
-	TX_TYPE_UNBOND  = byte(0x12)
-	TX_TYPE_TIMEOUT = byte(0x13)
-	TX_TYPE_DUPEOUT = byte(0x14)
+	txTypeBond    = byte(0x11)
+	txTypeUnbond  = byte(0x12)
+	txTypeTimeout = byte(0x13)
+	txTypeDupeout = byte(0x14)
 )
 
 func ReadTx(r io.Reader, n *int64, err *error) Tx {
 	switch t := ReadByte(r, n, err); t {
-	case TX_TYPE_SEND:
+	case txTypeSend:
 		return &SendTx{
 			BaseTx: ReadBaseTx(r, n, err),
 			Fee:    ReadUInt64(r, n, err),
 			To:     ReadUInt64(r, n, err),
 			Amount: ReadUInt64(r, n, err),
 		}
-	case TX_TYPE_NAME:
+	case txTypeName:
 		return &NameTx{
 			BaseTx: ReadBaseTx(r, n, err),
 			Fee:    ReadUInt64(r, n, err),
 			Name:   ReadString(r, n, err),
 			PubKey: ReadByteSlice(r, n, err),
 		}
-	case TX_TYPE_BOND:
+	case txTypeBond:
 		return &BondTx{
 			BaseTx:   ReadBaseTx(r, n, err),
 			Fee:      ReadUInt64(r, n, err),
 			UnbondTo: ReadUInt64(r, n, err),
 			Amount:   ReadUInt64(r, n, err),
 		}
-	case TX_TYPE_UNBOND:
+	case txTypeUnbond:
 		return &UnbondTx{
 			BaseTx: ReadBaseTx(r, n, err),
 			Fee:    ReadUInt64(r, n, err),
 			Amount: ReadUInt64(r, n, err),
 		}
-	case TX_TYPE_TIMEOUT:
+	case txTypeTimeout:
 		return &TimeoutTx{
 			BaseTx:    ReadBaseTx(r, n, err),
 			AccountId: ReadUInt64(r, n, err),
 			Penalty:   ReadUInt64(r, n, err),
 		}
-	case TX_TYPE_DUPEOUT:
+	case txTypeDupeout:
 		return &DupeoutTx{
 			BaseTx: ReadBaseTx(r, n, err),
 			VoteA:  *ReadVote(r, n, err),
 			VoteB:  *ReadVote(r, n, err),
 		}
 	default:
-		Panicf("Unknown Tx type %x", t)
+		*err = Errorf("Unknown Tx type %X", t)
 		return nil
 	}
 }
@@ -123,7 +123,7 @@ type SendTx struct {
 }
 
 func (tx *SendTx) Type() byte {
-	return TX_TYPE_SEND
+	return txTypeSend
 }
 
 func (tx *SendTx) WriteTo(w io.Writer) (n int64, err error) {
@@ -145,7 +145,7 @@ type NameTx struct {
 }
 
 func (tx *NameTx) Type() byte {
-	return TX_TYPE_NAME
+	return txTypeName
 }
 
 func (tx *NameTx) WriteTo(w io.Writer) (n int64, err error) {
@@ -167,7 +167,7 @@ type BondTx struct {
 }
 
 func (tx *BondTx) Type() byte {
-	return TX_TYPE_BOND
+	return txTypeBond
 }
 
 func (tx *BondTx) WriteTo(w io.Writer) (n int64, err error) {
@@ -188,7 +188,7 @@ type UnbondTx struct {
 }
 
 func (tx *UnbondTx) Type() byte {
-	return TX_TYPE_UNBOND
+	return txTypeUnbond
 }
 
 func (tx *UnbondTx) WriteTo(w io.Writer) (n int64, err error) {
@@ -208,7 +208,7 @@ type TimeoutTx struct {
 }
 
 func (tx *TimeoutTx) Type() byte {
-	return TX_TYPE_TIMEOUT
+	return txTypeTimeout
 }
 
 func (tx *TimeoutTx) WriteTo(w io.Writer) (n int64, err error) {
@@ -228,7 +228,7 @@ type DupeoutTx struct {
 }
 
 func (tx *DupeoutTx) Type() byte {
-	return TX_TYPE_DUPEOUT
+	return txTypeDupeout
 }
 
 func (tx *DupeoutTx) WriteTo(w io.Writer) (n int64, err error) {

@@ -3,46 +3,16 @@ package blocks
 import (
 	"bytes"
 	. "github.com/tendermint/tendermint/binary"
-	"math/rand"
+	. "github.com/tendermint/tendermint/common"
 	"testing"
-	"time"
 )
 
-// Distributed pseudo-exponentially to test for various cases
-func randUInt64() uint64 {
-	bits := rand.Uint32() % 64
-	if bits == 0 {
-		return 0
-	}
-	n := uint64(1 << (bits - 1))
-	n += uint64(rand.Int63()) & ((1 << (bits - 1)) - 1)
-	return n
-}
-
-func randUInt32() uint32 {
-	bits := rand.Uint32() % 32
-	if bits == 0 {
-		return 0
-	}
-	n := uint32(1 << (bits - 1))
-	n += uint32(rand.Int31()) & ((1 << (bits - 1)) - 1)
-	return n
-}
-
-func randTime() time.Time {
-	return time.Unix(int64(randUInt64()), 0)
-}
-
-func randBytes(n int) []byte {
-	bs := make([]byte, n)
-	for i := 0; i < n; i++ {
-		bs[i] = byte(rand.Intn(256))
-	}
-	return bs
-}
-
 func randSig() Signature {
-	return Signature{randUInt64(), randBytes(32)}
+	return Signature{RandUInt64Exp(), RandBytes(32)}
+}
+
+func randBaseTx() BaseTx {
+	return BaseTx{0, randSig()}
 }
 
 func TestBlock(t *testing.T) {
@@ -50,48 +20,52 @@ func TestBlock(t *testing.T) {
 	// Account Txs
 
 	sendTx := &SendTx{
-		Signature: randSig(),
-		Fee:       randUInt64(),
-		To:        randUInt64(),
-		Amount:    randUInt64(),
+		BaseTx: randBaseTx(),
+		Fee:    RandUInt64Exp(),
+		To:     RandUInt64Exp(),
+		Amount: RandUInt64Exp(),
 	}
 
 	nameTx := &NameTx{
-		Signature: randSig(),
-		Fee:       randUInt64(),
-		Name:      string(randBytes(12)),
-		PubKey:    randBytes(32),
+		BaseTx: randBaseTx(),
+		Fee:    RandUInt64Exp(),
+		Name:   string(RandBytes(12)),
+		PubKey: RandBytes(32),
 	}
 
 	// Validation Txs
 
-	bond := &Bond{
-		Signature: randSig(),
-		Fee:       randUInt64(),
-		UnbondTo:  randUInt64(),
-		Amount:    randUInt64(),
+	bondTx := &BondTx{
+		BaseTx:   randBaseTx(),
+		Fee:      RandUInt64Exp(),
+		UnbondTo: RandUInt64Exp(),
+		Amount:   RandUInt64Exp(),
 	}
 
-	unbond := &Unbond{
-		Signature: randSig(),
-		Fee:       randUInt64(),
-		Amount:    randUInt64(),
+	unbondTx := &UnbondTx{
+		BaseTx: randBaseTx(),
+		Fee:    RandUInt64Exp(),
+		Amount: RandUInt64Exp(),
 	}
 
-	timeout := &Timeout{
-		AccountId: randUInt64(),
-		Penalty:   randUInt64(),
+	timeoutTx := &TimeoutTx{
+		AccountId: RandUInt64Exp(),
+		Penalty:   RandUInt64Exp(),
 	}
 
-	dupeout := &Dupeout{
-		VoteA: BlockVote{
-			Height:    randUInt64(),
-			BlockHash: randBytes(32),
+	dupeoutTx := &DupeoutTx{
+		VoteA: Vote{
+			Height:    RandUInt32Exp(),
+			Round:     RandUInt16Exp(),
+			Type:      VoteTypeBare,
+			BlockHash: RandBytes(32),
 			Signature: randSig(),
 		},
-		VoteB: BlockVote{
-			Height:    randUInt64(),
-			BlockHash: randBytes(32),
+		VoteB: Vote{
+			Height:    RandUInt32Exp(),
+			Round:     RandUInt16Exp(),
+			Type:      VoteTypeBare,
+			BlockHash: RandBytes(32),
 			Signature: randSig(),
 		},
 	}
@@ -100,30 +74,34 @@ func TestBlock(t *testing.T) {
 
 	block := &Block{
 		Header: Header{
-			Network:        "Tendermint",
-			Height:         randUInt32(),
-			Fees:           randUInt64(),
-			Time:           randTime(),
-			LastBlockHash:  randBytes(32),
-			ValidationHash: randBytes(32),
-			DataHash:       randBytes(32),
+			Network:             "Tendermint",
+			Height:              RandUInt32Exp(),
+			Fees:                RandUInt64Exp(),
+			Time:                RandTime(),
+			LastBlockHash:       RandBytes(32),
+			ValidationStateHash: RandBytes(32),
+			AccountStateHash:    RandBytes(32),
 		},
 		Validation: Validation{
 			Signatures: []Signature{randSig(), randSig()},
-			Txs:        []Txs{bond, unbond, timeout, dupeout},
 		},
 		Data: Data{
-			Txs: []Tx{sendTx, nameTx},
+			Txs: []Tx{sendTx, nameTx, bondTx, unbondTx, timeoutTx, dupeoutTx},
 		},
 	}
 
 	// Write the block, read it in again, write it again.
 	// Then, compare.
+	// TODO We should compute the hash instead, so Block -> Bytes -> Block and compare hashes.
 
 	blockBytes := BinaryBytes(block)
 	var n int64
 	var err error
 	block2 := ReadBlock(bytes.NewReader(blockBytes), &n, &err)
+	if err != nil {
+		t.Errorf("Reading block failed: %v", err)
+	}
+
 	blockBytes2 := BinaryBytes(block2)
 
 	if !bytes.Equal(blockBytes, blockBytes2) {

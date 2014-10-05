@@ -12,7 +12,7 @@ import (
 // TODO consider moving this to another common types package.
 type Validator struct {
 	Account
-	BondHeight  uint32
+	BondHeight  uint32 // TODO: is this needed?
 	VotingPower uint64
 	Accum       int64
 }
@@ -20,10 +20,7 @@ type Validator struct {
 // Used to persist the state of ConsensusStateControl.
 func ReadValidator(r io.Reader, n *int64, err *error) *Validator {
 	return &Validator{
-		Account: Account{
-			Id:     ReadUInt64(r, n, err),
-			PubKey: ReadByteSlice(r, n, err),
-		},
+		Account:     ReadAccount(r, n, err),
 		BondHeight:  ReadUInt32(r, n, err),
 		VotingPower: ReadUInt64(r, n, err),
 		Accum:       ReadInt64(r, n, err),
@@ -42,8 +39,7 @@ func (v *Validator) Copy() *Validator {
 
 // Used to persist the state of ConsensusStateControl.
 func (v *Validator) WriteTo(w io.Writer) (n int64, err error) {
-	WriteUInt64(w, v.Id, &n, &err)
-	WriteByteSlice(w, v.PubKey, &n, &err)
+	WriteBinary(w, v.Account, &n, &err)
 	WriteUInt32(w, v.BondHeight, &n, &err)
 	WriteUInt64(w, v.VotingPower, &n, &err)
 	WriteInt64(w, v.Accum, &n, &err)

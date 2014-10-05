@@ -16,15 +16,17 @@ import (
 )
 
 const (
-	numBatchPackets    = 10
-	minReadBufferSize  = 1024
-	minWriteBufferSize = 1024
-	flushThrottleMS    = 50
-	idleTimeoutMinutes = 5
-	updateStatsSeconds = 2
-	pingTimeoutMinutes = 2
-	defaultSendRate    = 51200 // 5Kb/s
-	defaultRecvRate    = 51200 // 5Kb/s
+	numBatchPackets           = 10
+	minReadBufferSize         = 1024
+	minWriteBufferSize        = 1024
+	flushThrottleMS           = 50
+	idleTimeoutMinutes        = 5
+	updateStatsSeconds        = 2
+	pingTimeoutMinutes        = 2
+	defaultSendRate           = 51200 // 5Kb/s
+	defaultRecvRate           = 51200 // 5Kb/s
+	defaultSendQueueCapacity  = 1
+	defaultRecvBufferCapacity = 4096
 )
 
 type receiveCbFunc func(chId byte, msgBytes []byte)
@@ -399,11 +401,8 @@ FOR_LOOP:
 //-----------------------------------------------------------------------------
 
 type ChannelDescriptor struct {
-	Id                byte
-	SendQueueCapacity int // One per MConnection.
-	RecvQueueCapacity int // Global for this channel.
-	RecvBufferSize    int
-	DefaultPriority   uint
+	Id       byte
+	Priority uint
 }
 
 // TODO: lowercase.
@@ -421,16 +420,16 @@ type Channel struct {
 }
 
 func newChannel(conn *MConnection, desc *ChannelDescriptor) *Channel {
-	if desc.DefaultPriority <= 0 {
+	if desc.Priority <= 0 {
 		panic("Channel default priority must be a postive integer")
 	}
 	return &Channel{
 		conn:      conn,
 		desc:      desc,
 		id:        desc.Id,
-		sendQueue: make(chan []byte, desc.SendQueueCapacity),
-		recving:   make([]byte, 0, desc.RecvBufferSize),
-		priority:  desc.DefaultPriority,
+		sendQueue: make(chan []byte, defaultSendQueueCapacity),
+		recving:   make([]byte, 0, defaultRecvBufferCapacity),
+		priority:  desc.Priority,
 	}
 }
 
@@ -462,7 +461,7 @@ func (ch *Channel) loadSendQueueSize() (size int) {
 // Goroutine-safe
 // Use only as a heuristic.
 func (ch *Channel) canSend() bool {
-	return ch.loadSendQueueSize() < ch.desc.SendQueueCapacity
+	return ch.loadSendQueueSize() < defaultSendQueueCapacity
 }
 
 // Returns true if any packets are pending to be sent.
@@ -513,7 +512,7 @@ func (ch *Channel) recvPacket(pkt packet) []byte {
 	ch.recving = append(ch.recving, pkt.Bytes...)
 	if pkt.EOF == byte(0x01) {
 		msgBytes := ch.recving
-		ch.recving = make([]byte, 0, ch.desc.RecvBufferSize)
+		ch.recving = make([]byte, 0, defaultRecvBufferCapacity)
 		return msgBytes
 	}
 	return nil

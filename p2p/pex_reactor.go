@@ -68,14 +68,10 @@ func (pexR *PEXReactor) SendAddrs(peer *Peer, addrs []*NetAddress) {
 
 // Implements Reactor
 func (pexR *PEXReactor) GetChannels() []*ChannelDescriptor {
-	// TODO optimize
 	return []*ChannelDescriptor{
 		&ChannelDescriptor{
-			Id:                PexCh,
-			SendQueueCapacity: 1,
-			RecvQueueCapacity: 2,
-			RecvBufferSize:    1024,
-			DefaultPriority:   1,
+			Id:       PexCh,
+			Priority: 1,
 		},
 	}
 }

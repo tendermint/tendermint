@@ -105,6 +105,10 @@ func (s *Switch) Stop() {
 	}
 }
 
+func (s *Switch) Reactors() []Reactor {
+	return s.reactors
+}
+
 func (s *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, error) {
 	if atomic.LoadUint32(&s.stopped) == 1 {
 		return nil, ErrSwitchStopped

@@ -15,13 +15,13 @@ func BenchmarkTestCustom(b *testing.B) {
 	b.StopTimer()
 
 	h := &Header{
-		Network:        "Header",
-		Height:         123,
-		Fees:           123,
-		Time:           time.Unix(123, 0),
-		LastBlockHash:  []byte("prevhash"),
-		ValidationHash: []byte("validationhash"),
-		DataHash:       []byte("datahash"),
+		Network:             "Header",
+		Height:              123,
+		Fees:                123,
+		Time:                time.Unix(123, 0),
+		LastBlockHash:       []byte("prevhash"),
+		ValidationStateHash: []byte("validationhash"),
+		AccountStateHash:    []byte("accounthash"),
 	}
 
 	buf := bytes.NewBuffer(nil)
@@ -40,26 +40,26 @@ func BenchmarkTestCustom(b *testing.B) {
 }
 
 type HHeader struct {
-	Network        string `json:"N"`
-	Height         uint64 `json:"H"`
-	Fees           uint64 `json:"F"`
-	Time           uint64 `json:"T"`
-	LastBlockHash  []byte `json:"PH"`
-	ValidationHash []byte `json:"VH"`
-	DataHash       []byte `json:"DH"`
+	Network             string `json:"N"`
+	Height              uint64 `json:"H"`
+	Fees                uint64 `json:"F"`
+	Time                uint64 `json:"T"`
+	LastBlockHash       []byte `json:"PH"`
+	ValidationStateHash []byte `json:"VH"`
+	AccountStateHash    []byte `json:"DH"`
 }
 
 func BenchmarkTestJSON(b *testing.B) {
 	b.StopTimer()
 
 	h := &HHeader{
-		Network:        "Header",
-		Height:         123,
-		Fees:           123,
-		Time:           123,
-		LastBlockHash:  []byte("prevhash"),
-		ValidationHash: []byte("validationhash"),
-		DataHash:       []byte("datahash"),
+		Network:             "Header",
+		Height:              123,
+		Fees:                123,
+		Time:                123,
+		LastBlockHash:       []byte("prevhash"),
+		ValidationStateHash: []byte("validationhash"),
+		AccountStateHash:    []byte("accounthash"),
 	}
 	h2 := &HHeader{}
 
@@ -82,13 +82,13 @@ func BenchmarkTestGob(b *testing.B) {
 	b.StopTimer()
 
 	h := &Header{
-		Network:        "Header",
-		Height:         123,
-		Fees:           123,
-		Time:           time.Unix(123, 0),
-		LastBlockHash:  []byte("prevhash"),
-		ValidationHash: []byte("validationhash"),
-		DataHash:       []byte("datahash"),
+		Network:             "Header",
+		Height:              123,
+		Fees:                123,
+		Time:                time.Unix(123, 0),
+		LastBlockHash:       []byte("prevhash"),
+		ValidationStateHash: []byte("validationhash"),
+		AccountStateHash:    []byte("datahash"),
 	}
 	h2 := &Header{}
 
@@ -111,13 +111,13 @@ func BenchmarkTestMsgPack(b *testing.B) {
 	b.StopTimer()
 
 	h := &Header{
-		Network:        "Header",
-		Height:         123,
-		Fees:           123,
-		Time:           time.Unix(123, 0),
-		LastBlockHash:  []byte("prevhash"),
-		ValidationHash: []byte("validationhash"),
-		DataHash:       []byte("datahash"),
+		Network:             "Header",
+		Height:              123,
+		Fees:                123,
+		Time:                time.Unix(123, 0),
+		LastBlockHash:       []byte("prevhash"),
+		ValidationStateHash: []byte("validationhash"),
+		AccountStateHash:    []byte("datahash"),
 	}
 	h2 := &Header{}
 
@@ -140,13 +140,13 @@ func BenchmarkTestMsgPack2(b *testing.B) {
 	b.StopTimer()
 
 	h := &Header{
-		Network:        "Header",
-		Height:         123,
-		Fees:           123,
-		Time:           time.Unix(123, 0),
-		LastBlockHash:  []byte("prevhash"),
-		ValidationHash: []byte("validationhash"),
-		DataHash:       []byte("datahash"),
+		Network:             "Header",
+		Height:              123,
+		Fees:                123,
+		Time:                time.Unix(123, 0),
+		LastBlockHash:       []byte("prevhash"),
+		ValidationStateHash: []byte("validationhash"),
+		AccountStateHash:    []byte("accounthash"),
 	}
 	h2 := &Header{}
 	var mh codec.MsgpackHandle

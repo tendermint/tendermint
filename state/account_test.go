@@ -10,7 +10,7 @@ func TestSignAndValidate(t *testing.T) {
 	privAccount := GenPrivAccount()
 	account := &privAccount.Account
 
-	msg := RandBytes(128)
+	msg := CRandBytes(128)
 	sig := privAccount.Sign(msg)
 	t.Logf("msg: %X, sig: %X", msg, sig)
 

@@ -112,7 +112,7 @@ func NewAddrBook(filePath string) *AddrBook {
 
 // When modifying this, don't forget to update loadFromFile()
 func (a *AddrBook) init() {
-	a.key = RandHex(24) // 24/2 * 8 = 96 bits
+	a.key = CRandHex(24) // 24/2 * 8 = 96 bits
 	// New addr buckets
 	a.addrNew = make([]map[string]*knownAddress, newBucketCount)
 	for i := range a.addrNew {
