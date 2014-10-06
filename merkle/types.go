@@ -17,7 +17,6 @@ type Tree interface {
 	HashWithCount() ([]byte, uint64)
 	Hash() []byte
 	Save()
-	SaveKey(string)
 	Set(key []byte, vlaue []byte) bool
 	Remove(key []byte) ([]byte, error)
 	Copy() Tree

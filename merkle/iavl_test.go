@@ -37,9 +37,9 @@ func TestUnit(t *testing.T) {
 		}
 
 		n := &IAVLNode{
-			key:   right.lmd(nil).key,
-			left:  left,
-			right: right,
+			key:         right.lmd(nil).key,
+			leftCached:  left,
+			rightCached: right,
 		}
 		n.calcHeightAndSize(nil)
 		n.HashWithCount()
@@ -52,7 +52,7 @@ func TestUnit(t *testing.T) {
 		if n.height == 0 {
 			return fmt.Sprintf("%v", n.key[0])
 		} else {
-			return fmt.Sprintf("(%v %v)", P(n.left), P(n.right))
+			return fmt.Sprintf("(%v %v)", P(n.leftCached), P(n.rightCached))
 		}
 	}
 
@@ -86,7 +86,7 @@ func TestUnit(t *testing.T) {
 	}
 
 	expectRemove := func(n *IAVLNode, i int, repr string, hashCount uint64) {
-		n2, _, value, err := n.remove(nil, []byte{byte(i)})
+		_, n2, _, value, err := n.remove(nil, []byte{byte(i)})
 		// ensure node was added & structure is as expected.
 		if value != nil || err != nil || P(n2) != repr {
 			t.Fatalf("Removing %v from %v:\nExpected         %v\nUnexpectedly got %v value:%v err:%v",
@@ -223,7 +223,7 @@ func TestPersistence(t *testing.T) {
 	hash, _ := t1.HashWithCount()
 
 	// Load a tree
-	t2 := NewIAVLTreeFromHash(db, hash)
+	t2 := LoadIAVLTreeFromHash(db, hash)
 	for key, value := range records {
 		t2value := t2.Get([]byte(key))
 		if string(t2value) != value {

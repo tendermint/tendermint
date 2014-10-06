@@ -38,25 +38,25 @@ func ReadIAVLNode(r io.Reader, n *int64, err *error) *IAVLNode {
 	node := &IAVLNode{}
 
 	// node header & key
-	node.height = ReadUInt8(r, &n, &err)
-	node.size = ReadUInt64(r, &n, &err)
-	node.key = ReadByteSlice(r, &n, &err)
-	if err != nil {
-		panic(err)
+	node.height = ReadUInt8(r, n, err)
+	node.size = ReadUInt64(r, n, err)
+	node.key = ReadByteSlice(r, n, err)
+	if *err != nil {
+		panic(*err)
 	}
 
 	// node value or children.
 	if node.height == 0 {
 		// value
-		node.value = ReadByteSlice(r, &n, &err)
+		node.value = ReadByteSlice(r, n, err)
 	} else {
 		// left
-		node.leftHash = ReadByteSlice(r, &n, &err)
+		node.leftHash = ReadByteSlice(r, n, err)
 		// right
-		node.rightHash = ReadByteSlice(r, &n, &err)
+		node.rightHash = ReadByteSlice(r, n, err)
 	}
-	if err != nil {
-		panic(err)
+	if *err != nil {
+		panic(*err)
 	}
 	return node
 }
@@ -134,8 +134,7 @@ func (self *IAVLNode) HashWithCount() ([]byte, uint64) {
 
 func (self *IAVLNode) Save(ndb *IAVLNodeDB) []byte {
 	if self.hash == nil {
-		hash, _ := self.HashWithCount()
-		self.hash = hash
+		self.hash, _ = self.HashWithCount()
 	}
 	if self.persisted {
 		return self.hash
@@ -197,7 +196,8 @@ func (self *IAVLNode) set(ndb *IAVLNodeDB, key []byte, value []byte) (_ *IAVLNod
 
 // newKey: new leftmost leaf key for tree after successfully removing 'key' if changed.
 // only one of newSelfHash or newSelf is returned.
-func (self *IAVLNode) remove(ndb *IAVLNodeDB, key []byte) (newSelfHash []byte, newSelf *IAVLNode, newKey []byte, value []byte, err error) {
+func (self *IAVLNode) remove(ndb *IAVLNodeDB, key []byte) (
+	newSelfHash []byte, newSelf *IAVLNode, newKey []byte, value []byte, err error) {
 	if self.height == 0 {
 		if bytes.Equal(self.key, key) {
 			return nil, nil, nil, self.value, nil
@@ -258,14 +258,14 @@ func (self *IAVLNode) saveToCountHashes(w io.Writer) (n int64, hashCount uint64,
 	} else {
 		// left
 		if self.leftCached != nil {
-			leftHash, leftCount := self.left.HashWithCount()
+			leftHash, leftCount := self.leftCached.HashWithCount()
 			self.leftHash = leftHash
 			hashCount += leftCount
 		}
 		WriteByteSlice(w, self.leftHash, &n, &err)
 		// right
 		if self.rightCached != nil {
-			rightHash, rightCount := self.right.HashWithCount()
+			rightHash, rightCount := self.rightCached.HashWithCount()
 			self.rightHash = rightHash
 			hashCount += rightCount
 		}
@@ -278,7 +278,7 @@ func (self *IAVLNode) getLeft(ndb *IAVLNodeDB) *IAVLNode {
 	if self.leftCached != nil {
 		return self.leftCached
 	} else {
-		return ndb.Get(leftHash)
+		return ndb.Get(self.leftHash)
 	}
 }
 
@@ -286,7 +286,7 @@ func (self *IAVLNode) getRight(ndb *IAVLNodeDB) *IAVLNode {
 	if self.rightCached != nil {
 		return self.rightCached
 	} else {
-		return ndb.Get(rightHash)
+		return ndb.Get(self.rightHash)
 	}
 }
 

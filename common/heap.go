@@ -2,30 +2,26 @@ package common
 
 import (
 	"container/heap"
-	"sync"
 )
-
-/*
-Example usage:
-
-func main() {
-    h := NewHeap()
-
-    h.Push(String("msg1"), 1)
-    h.Push(String("msg3"), 3)
-    h.Push(String("msg2"), 2)
-
-    fmt.Println(h.Pop())
-    fmt.Println(h.Pop())
-    fmt.Println(h.Pop())
-}
-*/
 
 type Comparable interface {
 	Less(o interface{}) bool
 }
 
 //-----------------------------------------------------------------------------
+
+/*
+Example usage:
+	h := NewHeap()
+
+	h.Push(String("msg1"), 1)
+	h.Push(String("msg3"), 3)
+	h.Push(String("msg2"), 2)
+
+	fmt.Println(h.Pop())
+	fmt.Println(h.Pop())
+	fmt.Println(h.Pop())
+*/
 
 type Heap struct {
 	pq priorityQueue
@@ -51,45 +47,6 @@ func (h *Heap) Peek() interface{} {
 }
 
 func (h *Heap) Pop() interface{} {
-	item := heap.Pop(&h.pq).(*pqItem)
-	return item.value
-}
-
-//-----------------------------------------------------------------------------
-
-type CHeap struct {
-	mtx sync.Mutex
-	pq  priorityQueue
-}
-
-func NewCHeap() *CHeap {
-	return &CHeap{pq: make([]*pqItem, 0)}
-}
-
-func (h *CHeap) Len() int64 {
-	h.mtx.Lock()
-	defer h.mtx.Unlock()
-	return int64(len(h.pq))
-}
-
-func (h *CHeap) Push(value interface{}, priority Comparable) {
-	h.mtx.Lock()
-	defer h.mtx.Unlock()
-	heap.Push(&h.pq, &pqItem{value: value, priority: priority})
-}
-
-func (h *CHeap) Peek() interface{} {
-	h.mtx.Lock()
-	defer h.mtx.Unlock()
-	if len(h.pq) == 0 {
-		return nil
-	}
-	return h.pq[0].value
-}
-
-func (h *CHeap) Pop() interface{} {
-	h.mtx.Lock()
-	defer h.mtx.Unlock()
 	item := heap.Pop(&h.pq).(*pqItem)
 	return item.value
 }

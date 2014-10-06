@@ -1,6 +1,11 @@
 package merkle
 
-const HASH_BYTE_SIZE int = 4 + 32
+import (
+	"bytes"
+	"container/list"
+)
+
+const defaultCacheCapacity = 1000 // TODO make configurable.
 
 /*
 Immutable AVL Tree (wraps the Node root)
@@ -9,19 +14,19 @@ This tree is not concurrency safe.
 You must wrap your calls with your own mutex.
 */
 type IAVLTree struct {
-	ndb  IAVLNodeDB
+	ndb  *IAVLNodeDB
 	root *IAVLNode
 }
 
 func NewIAVLTree(db DB) *IAVLTree {
 	return &IAVLTree{
-		ndb:  NewIAVLNodeDB(db),
+		ndb:  NewIAVLNodeDB(defaultCacheCapacity, db),
 		root: nil,
 	}
 }
 
 func LoadIAVLTreeFromHash(db DB, hash []byte) *IAVLTree {
-	ndb := NewIAVLNodeDB(db)
+	ndb := NewIAVLNodeDB(defaultCacheCapacity, db)
 	root := ndb.Get(hash)
 	if root == nil {
 		return nil
@@ -82,15 +87,6 @@ func (t *IAVLTree) Save() {
 	t.root.Save(t.ndb)
 }
 
-func (t *IAVLTree) SaveKey(key string) {
-	if t.root == nil {
-		return
-	}
-	hash, _ := t.root.HashWithCount()
-	t.root.Save(t.ndb)
-	t.ndb.Set([]byte(key), hash)
-}
-
 func (t *IAVLTree) Get(key []byte) (value []byte) {
 	if t.root == nil {
 		return nil
@@ -120,37 +116,78 @@ func (t *IAVLTree) Copy() Tree {
 
 //-----------------------------------------------------------------------------
 
+type nodeElement struct {
+	node *IAVLNode
+	elem *list.Element
+}
+
 type IAVLNodeDB struct {
-	db    DB
-	cache map[string]*IAVLNode
-	// XXX expire entries
+	capacity int
+	db       DB
+	cache    map[string]nodeElement
+	queue    *list.List
+}
+
+func NewIAVLNodeDB(capacity int, db DB) *IAVLNodeDB {
+	return &IAVLNodeDB{
+		capacity: capacity,
+		db:       db,
+		cache:    make(map[string]nodeElement),
+		queue:    list.New(),
+	}
 }
 
 func (ndb *IAVLNodeDB) Get(hash []byte) *IAVLNode {
-	buf := ndb.db.Get(hash)
-	r := bytes.NewReader(buf)
-	var n int64
-	var err error
-	node := ReadIAVLNode(r, &n, &err)
-	if err != nil {
-		panic(err)
+	// Check the cache.
+	nodeElem, ok := ndb.cache[string(hash)]
+	if ok {
+		// Already exists. Move to back of queue.
+		ndb.queue.MoveToBack(nodeElem.elem)
+		return nodeElem.node
+	} else {
+		// Doesn't exist, load.
+		buf := ndb.db.Get(hash)
+		r := bytes.NewReader(buf)
+		var n int64
+		var err error
+		node := ReadIAVLNode(r, &n, &err)
+		if err != nil {
+			panic(err)
+		}
+		node.persisted = true
+		ndb.cacheNode(node)
+		return node
 	}
-	node.persisted = true
-	ndb.cache[string(hash)] = node
-	return node
 }
 
 func (ndb *IAVLNodeDB) Save(node *IAVLNode) {
-	hash := node.hash
-	if hash != nil {
+	if node.hash == nil {
 		panic("Expected to find node.hash, but none found.")
 	}
+	if node.persisted {
+		panic("Shouldn't be calling save on an already persisted node.")
+	}
+	if _, ok := ndb.cache[string(node.hash)]; ok {
+		panic("Shouldn't be calling save on an already cached node.")
+	}
+	// Save node bytes to db
 	buf := bytes.NewBuffer(nil)
-	_, err := self.WriteTo(buf)
+	_, err := node.WriteTo(buf)
 	if err != nil {
 		panic(err)
 	}
+	ndb.db.Set(node.hash, buf.Bytes())
 	node.persisted = true
-	ndb.cache[string(hash)] = node
-	ndb.db.Set(hash, buf.Bytes())
+	ndb.cacheNode(node)
+}
+
+func (ndb *IAVLNodeDB) cacheNode(node *IAVLNode) {
+	// Create entry in cache and append to queue.
+	elem := ndb.queue.PushBack(node.hash)
+	ndb.cache[string(node.hash)] = nodeElement{node, elem}
+	// Maybe expire an item.
+	if ndb.queue.Len() > ndb.capacity {
+		hash := ndb.queue.Remove(ndb.queue.Front()).([]byte)
+		delete(ndb.cache, string(hash))
+	}
 }

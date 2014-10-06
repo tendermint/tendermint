@@ -68,7 +68,7 @@ func LoadState(db DB) *State {
 		s.commitTime = ReadTime(reader, &n, &err)
 		s.blockHash = ReadByteSlice(reader, &n, &err)
 		accountsMerkleRoot := ReadByteSlice(reader, &n, &err)
-		s.accounts = merkle.NewIAVLTreeFromHash(db, accountsMerkleRoot)
+		s.accounts = merkle.LoadIAVLTreeFromHash(db, accountsMerkleRoot)
 		var validators = map[uint64]*Validator{}
 		for reader.Len() > 0 {
 			validator := ReadValidator(reader, &n, &err)
