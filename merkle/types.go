@@ -14,11 +14,11 @@ type Tree interface {
 	Height() uint8
 	Has(key []byte) bool
 	Get(key []byte) []byte
+	Set(key []byte, value []byte) bool
+	Remove(key []byte) ([]byte, error)
 	HashWithCount() ([]byte, uint64)
 	Hash() []byte
-	Save()
-	Set(key []byte, vlaue []byte) bool
-	Remove(key []byte) ([]byte, error)
+	Save() []byte
 	Copy() Tree
 }
 

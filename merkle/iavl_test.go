@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"fmt"
+	"time"
 
+	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/db"
 
@@ -229,6 +231,49 @@ func TestPersistence(t *testing.T) {
 		if string(t2value) != value {
 			t.Fatalf("Invalid value. Expected %v, got %v", value, t2value)
 		}
+	}
+}
+
+func TestTypedTree(t *testing.T) {
+	db := db.NewMemDB()
+
+	// Construct some tree and save it
+	t1 := NewTypedTree(NewIAVLTree(db), BasicCodec, BasicCodec)
+	t1.Set(uint8(1), "uint8(1)")
+	t1.Set(uint16(1), "uint16(1)")
+	t1.Set(uint32(1), "uint32(1)")
+	t1.Set(uint64(1), "uint64(1)")
+	t1.Set("byteslice01", []byte{byte(0x00), byte(0x01)})
+	t1.Set("byteslice23", []byte{byte(0x02), byte(0x03)})
+	t1.Set("time", time.Unix(123, 0))
+	t1.Set("nil", nil)
+	t1Hash := t1.Tree.Save()
+
+	// Reconstruct tree
+	t2 := NewTypedTree(LoadIAVLTreeFromHash(db, t1Hash), BasicCodec, BasicCodec)
+	if t2.Get(uint8(1)).(string) != "uint8(1)" {
+		t.Errorf("Expected string uint8(1)")
+	}
+	if t2.Get(uint16(1)).(string) != "uint16(1)" {
+		t.Errorf("Expected string uint16(1)")
+	}
+	if t2.Get(uint32(1)).(string) != "uint32(1)" {
+		t.Errorf("Expected string uint32(1)")
+	}
+	if t2.Get(uint64(1)).(string) != "uint64(1)" {
+		t.Errorf("Expected string uint64(1)")
+	}
+	if !bytes.Equal(t2.Get("byteslice01").([]byte), []byte{byte(0x00), byte(0x01)}) {
+		t.Errorf("Expected byteslice 0x00 0x01")
+	}
+	if !bytes.Equal(t2.Get("byteslice23").([]byte), []byte{byte(0x02), byte(0x03)}) {
+		t.Errorf("Expected byteslice 0x02 0x03")
+	}
+	if t2.Get("time").(time.Time).Unix() != 123 {
+		t.Errorf("Expected time 123")
+	}
+	if t2.Get("nil") != nil {
+		t.Errorf("Expected nil")
 	}
 }
 

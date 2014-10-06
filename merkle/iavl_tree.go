@@ -3,11 +3,11 @@ package merkle
 import (
 	"bytes"
 	"container/list"
+	. "github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
 )
 
 const defaultCacheCapacity = 1000 // TODO make configurable.
-
-// XXX Make Codec tree.
 
 /*
 Immutable AVL Tree (wraps the Node root)
@@ -81,11 +81,11 @@ func (t *IAVLTree) HashWithCount() ([]byte, uint64) {
 	return t.root.HashWithCount()
 }
 
-func (t *IAVLTree) Save() {
+func (t *IAVLTree) Save() []byte {
 	if t.root == nil {
-		return
+		return nil
 	}
-	t.root.Save(t.ndb)
+	return t.root.Save(t.ndb)
 }
 
 func (t *IAVLTree) Get(key []byte) (value []byte) {
@@ -113,6 +113,74 @@ func (t *IAVLTree) Remove(key []byte) (value []byte, err error) {
 
 func (t *IAVLTree) Copy() Tree {
 	return &IAVLTree{ndb: t.ndb, root: t.root}
+}
+
+//-----------------------------------------------------------------------------
+
+type TypedTree struct {
+	Tree       Tree
+	keyCodec   Codec
+	valueCodec Codec
+}
+
+func NewTypedTree(tree Tree, keyCodec, valueCodec Codec) *TypedTree {
+	return &TypedTree{
+		Tree:       tree,
+		keyCodec:   keyCodec,
+		valueCodec: valueCodec,
+	}
+}
+
+func (t *TypedTree) Has(key interface{}) bool {
+	bytes, err := t.keyCodec.Write(key)
+	if err != nil {
+		Panicf("Error from keyCodec: %v", err)
+	}
+	return t.Tree.Has(bytes)
+}
+
+func (t *TypedTree) Get(key interface{}) interface{} {
+	keyBytes, err := t.keyCodec.Write(key)
+	if err != nil {
+		Panicf("Error from keyCodec: %v", err)
+	}
+	valueBytes := t.Tree.Get(keyBytes)
+	if valueBytes == nil {
+		return nil
+	}
+	value, err := t.valueCodec.Read(valueBytes)
+	if err != nil {
+		Panicf("Error from valueCodec: %v", err)
+	}
+	return value
+}
+
+func (t *TypedTree) Set(key interface{}, value interface{}) bool {
+	keyBytes, err := t.keyCodec.Write(key)
+	if err != nil {
+		Panicf("Error from keyCodec: %v", err)
+	}
+	valueBytes, err := t.valueCodec.Write(value)
+	if err != nil {
+		Panicf("Error from valueCodec: %v", err)
+	}
+	return t.Tree.Set(keyBytes, valueBytes)
+}
+
+func (t *TypedTree) Remove(key interface{}) (interface{}, error) {
+	keyBytes, err := t.keyCodec.Write(key)
+	if err != nil {
+		Panicf("Error from keyCodec: %v", err)
+	}
+	valueBytes, err := t.Tree.Remove(keyBytes)
+	if valueBytes == nil {
+		return nil, err
+	}
+	value, err_ := t.valueCodec.Read(valueBytes)
+	if err_ != nil {
+		Panicf("Error from valueCodec: %v", err)
+	}
+	return value, err
 }
 
 //-----------------------------------------------------------------------------
