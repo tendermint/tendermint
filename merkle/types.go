@@ -4,7 +4,7 @@ import (
 	"fmt"
 )
 
-type Db interface {
+type DB interface {
 	Get([]byte) []byte
 	Set([]byte, []byte)
 }
