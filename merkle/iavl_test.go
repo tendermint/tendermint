@@ -37,9 +37,9 @@ func TestUnit(t *testing.T) {
 		}
 
 		n := &IAVLNode{
-			key:         right.lmd(nil).key,
-			leftCached:  left,
-			rightCached: right,
+			key:       right.lmd(nil).key,
+			leftNode:  left,
+			rightNode: right,
 		}
 		n.calcHeightAndSize(nil)
 		n.HashWithCount()
@@ -52,7 +52,7 @@ func TestUnit(t *testing.T) {
 		if n.height == 0 {
 			return fmt.Sprintf("%v", n.key[0])
 		} else {
-			return fmt.Sprintf("(%v %v)", P(n.leftCached), P(n.rightCached))
+			return fmt.Sprintf("(%v %v)", P(n.leftNode), P(n.rightNode))
 		}
 	}
 

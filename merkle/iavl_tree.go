@@ -7,6 +7,8 @@ import (
 
 const defaultCacheCapacity = 1000 // TODO make configurable.
 
+// XXX Make Codec tree.
+
 /*
 Immutable AVL Tree (wraps the Node root)
 
@@ -83,7 +85,6 @@ func (t *IAVLTree) Save() {
 	if t.root == nil {
 		return
 	}
-	t.root.HashWithCount()
 	t.root.Save(t.ndb)
 }
 

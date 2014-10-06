@@ -156,6 +156,7 @@ func (s *Switch) IsDialing(addr *NetAddress) bool {
 	return s.dialing.Has(addr.String())
 }
 
+// XXX: This is wrong, we can't just ignore failures on TrySend.
 func (s *Switch) Broadcast(chId byte, msg Binary) (numSuccess, numFailure int) {
 	if atomic.LoadUint32(&s.stopped) == 1 {
 		return

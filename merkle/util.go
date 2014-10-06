@@ -239,16 +239,16 @@ func printIAVLNode(node *IAVLNode, indent int) {
 		indentPrefix += "    "
 	}
 
-	if node.rightCached != nil {
-		printIAVLNode(node.rightCached, indent+1)
+	if node.rightNode != nil {
+		printIAVLNode(node.rightNode, indent+1)
 	} else if node.rightHash != nil {
 		fmt.Printf("%s    %X\n", indentPrefix, node.rightHash)
 	}
 
 	fmt.Printf("%s%v:%v\n", indentPrefix, node.key, node.height)
 
-	if node.leftCached != nil {
-		printIAVLNode(node.leftCached, indent+1)
+	if node.leftNode != nil {
+		printIAVLNode(node.leftNode, indent+1)
 	} else if node.leftHash != nil {
 		fmt.Printf("%s    %X\n", indentPrefix, node.leftHash)
 	}
