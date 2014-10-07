@@ -3,7 +3,6 @@ package state
 import (
 	"bytes"
 	"errors"
-	"sync"
 	"time"
 
 	. "github.com/tendermint/tendermint/binary"
@@ -35,15 +34,14 @@ func (abc accountBalanceCodec) Read(accBalBytes []byte) (interface{}, error) {
 
 //-----------------------------------------------------------------------------
 
-// TODO: make it unsafe, remove mtx, and export fields?
+// NOTE: not goroutine-safe.
 type State struct {
-	mtx             sync.Mutex
-	db              DB
-	height          uint32 // Last known block height
-	blockHash       []byte // Last known block hash
-	commitTime      time.Time
-	accountBalances *merkle.TypedTree
-	validators      *ValidatorSet
+	DB              DB
+	Height          uint32 // Last known block height
+	BlockHash       []byte // Last known block hash
+	CommitTime      time.Time
+	AccountBalances *merkle.TypedTree
+	Validators      *ValidatorSet
 }
 
 func GenesisState(db DB, genesisTime time.Time, accBals []*AccountBalance) *State {
@@ -64,17 +62,17 @@ func GenesisState(db DB, genesisTime time.Time, accBals []*AccountBalance) *Stat
 	validatorSet := NewValidatorSet(validators)
 
 	return &State{
-		db:              db,
-		height:          0,
-		blockHash:       nil,
-		commitTime:      genesisTime,
-		accountBalances: accountBalances,
-		validators:      validatorSet,
+		DB:              db,
+		Height:          0,
+		BlockHash:       nil,
+		CommitTime:      genesisTime,
+		AccountBalances: accountBalances,
+		Validators:      validatorSet,
 	}
 }
 
 func LoadState(db DB) *State {
-	s := &State{db: db}
+	s := &State{DB: db}
 	buf := db.Get(stateKey)
 	if len(buf) == 0 {
 		return nil
@@ -82,17 +80,17 @@ func LoadState(db DB) *State {
 		reader := bytes.NewReader(buf)
 		var n int64
 		var err error
-		s.height = ReadUInt32(reader, &n, &err)
-		s.commitTime = ReadTime(reader, &n, &err)
-		s.blockHash = ReadByteSlice(reader, &n, &err)
+		s.Height = ReadUInt32(reader, &n, &err)
+		s.CommitTime = ReadTime(reader, &n, &err)
+		s.BlockHash = ReadByteSlice(reader, &n, &err)
 		accountBalancesHash := ReadByteSlice(reader, &n, &err)
-		s.accountBalances = merkle.NewTypedTree(merkle.LoadIAVLTreeFromHash(db, accountBalancesHash), BasicCodec, accountBalanceCodec{})
+		s.AccountBalances = merkle.NewTypedTree(merkle.LoadIAVLTreeFromHash(db, accountBalancesHash), BasicCodec, accountBalanceCodec{})
 		var validators = map[uint64]*Validator{}
 		for reader.Len() > 0 {
 			validator := ReadValidator(reader, &n, &err)
 			validators[validator.Id] = validator
 		}
-		s.validators = NewValidatorSet(validators)
+		s.Validators = NewValidatorSet(validators)
 		if err != nil {
 			panic(err)
 		}
@@ -104,48 +102,38 @@ func LoadState(db DB) *State {
 // For convenience, the commitTime (required by ConsensusAgent)
 // is saved here.
 func (s *State) Save(commitTime time.Time) {
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-	s.commitTime = commitTime
-	s.accountBalances.Tree.Save()
+	s.CommitTime = commitTime
+	s.AccountBalances.Tree.Save()
 	var buf bytes.Buffer
 	var n int64
 	var err error
-	WriteUInt32(&buf, s.height, &n, &err)
+	WriteUInt32(&buf, s.Height, &n, &err)
 	WriteTime(&buf, commitTime, &n, &err)
-	WriteByteSlice(&buf, s.blockHash, &n, &err)
-	WriteByteSlice(&buf, s.accountBalances.Tree.Hash(), &n, &err)
-	for _, validator := range s.validators.Map() {
+	WriteByteSlice(&buf, s.BlockHash, &n, &err)
+	WriteByteSlice(&buf, s.AccountBalances.Tree.Hash(), &n, &err)
+	for _, validator := range s.Validators.Map() {
 		WriteBinary(&buf, validator, &n, &err)
 	}
 	if err != nil {
 		panic(err)
 	}
-	s.db.Set(stateKey, buf.Bytes())
+	s.DB.Set(stateKey, buf.Bytes())
 }
 
 func (s *State) Copy() *State {
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
 	return &State{
-		db:              s.db,
-		height:          s.height,
-		commitTime:      s.commitTime,
-		blockHash:       s.blockHash,
-		accountBalances: s.accountBalances.Copy(),
-		validators:      s.validators.Copy(),
+		DB:              s.DB,
+		Height:          s.Height,
+		CommitTime:      s.CommitTime,
+		BlockHash:       s.BlockHash,
+		AccountBalances: s.AccountBalances.Copy(),
+		Validators:      s.Validators.Copy(),
 	}
 }
 
 // If the tx is invalid, an error will be returned.
 // Unlike AppendBlock(), state will not be altered.
 func (s *State) ExecTx(tx Tx) error {
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-	return s.execTx(tx)
-}
-
-func (s *State) execTx(tx Tx) error {
 	/*
 		// Get the signer's incr
 		signerId := tx.Signature().SignerId
@@ -161,69 +149,38 @@ func (s *State) execTx(tx Tx) error {
 // NOTE: If an error occurs during block execution, state will be left
 // at an invalid state.  Copy the state before calling Commit!
 func (s *State) AppendBlock(b *Block) error {
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-
 	// Basic block validation.
-	err := b.ValidateBasic(s.height, s.blockHash)
+	err := b.ValidateBasic(s.Height, s.BlockHash)
 	if err != nil {
 		return err
 	}
 
 	// Commit each tx
 	for _, tx := range b.Data.Txs {
-		err := s.execTx(tx)
+		err := s.ExecTx(tx)
 		if err != nil {
 			return err
 		}
 	}
 
 	// Increment validator AccumPowers
-	s.validators.IncrementAccum()
+	s.Validators.IncrementAccum()
 
 	// State hashes should match
-	if !bytes.Equal(s.validators.Hash(), b.ValidationStateHash) {
+	if !bytes.Equal(s.Validators.Hash(), b.ValidationStateHash) {
 		return ErrStateInvalidValidationStateHash
 	}
-	if !bytes.Equal(s.accountBalances.Tree.Hash(), b.AccountStateHash) {
+	if !bytes.Equal(s.AccountBalances.Tree.Hash(), b.AccountStateHash) {
 		return ErrStateInvalidAccountStateHash
 	}
 
-	s.height = b.Height
-	s.blockHash = b.Hash()
+	s.Height = b.Height
+	s.BlockHash = b.Hash()
 	return nil
 }
 
-func (s *State) Height() uint32 {
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-	return s.height
-}
-
-func (s *State) CommitTime() time.Time {
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-	return s.commitTime
-}
-
-// The returned ValidatorSet gets mutated upon s.ExecTx() and s.AppendBlock().
-// Caller should copy the returned set before mutating.
-func (s *State) Validators() *ValidatorSet {
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-	return s.validators
-}
-
-func (s *State) BlockHash() []byte {
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-	return s.blockHash
-}
-
 func (s *State) AccountBalance(accountId uint64) *AccountBalance {
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-	accBal := s.accountBalances.Get(accountId)
+	accBal := s.AccountBalances.Get(accountId)
 	if accBal == nil {
 		return nil
 	}

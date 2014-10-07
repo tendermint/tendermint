@@ -51,12 +51,11 @@ type RoundState struct {
 
 // Tracks consensus state across block heights and rounds.
 type ConsensusState struct {
-	mtx sync.Mutex
-	RoundState
-
 	blockStore *BlockStore
 	mempool    *Mempool
 
+	mtx sync.Mutex
+	RoundState
 	state       *State // State until height-1.
 	stagedBlock *Block // Cache last staged block.
 	stagedState *State // Cache result of staged block.
@@ -105,6 +104,7 @@ func (cs *ConsensusState) updateToState(state *State) {
 	cs.Precommits = NewVoteSet(height, 0, VoteTypePrecommit, validators)
 	cs.Commits = NewVoteSet(height, 0, VoteTypeCommit, validators)
 
+	cs.state = state
 	cs.stagedBlock = nil
 	cs.stagedState = nil
 
