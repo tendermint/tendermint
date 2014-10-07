@@ -63,20 +63,27 @@ func TestGenesisSaveLoad(t *testing.T) {
 		t.Error("Error appending initial block:", err)
 	}
 
-	// Save s0, load s1.
+	// Save s0
 	commitTime := time.Now()
 	s0.Save(commitTime)
-	//s0.DB.(*MemDB).Print()
-	s1 := LoadState(s0.DB)
 
-	// Compare CommitTime
-	if commitTime.Unix() != s1.CommitTime.Unix() {
-		t.Error("CommitTime was not the same")
+	// Sanity check s0
+	//s0.DB.(*MemDB).Print()
+	if s0.Validators.TotalVotingPower() == 0 {
+		t.Error("s0 Validators TotalVotingPower should not be 0")
 	}
-	// Compare height & blockHash
 	if s0.Height != 1 {
 		t.Error("s0 Height should be 1, got", s0.Height)
 	}
+
+	// Load s1
+	s1 := LoadState(s0.DB)
+
+	// Compare CommitTime
+	if !s0.CommitTime.Equal(s1.CommitTime) {
+		t.Error("CommitTime was not the same", s0.CommitTime, s1.CommitTime)
+	}
+	// Compare height & blockHash
 	if s0.Height != s1.Height {
 		t.Error("Height mismatch")
 	}
@@ -85,14 +92,12 @@ func TestGenesisSaveLoad(t *testing.T) {
 	}
 	// Compare Validators
 	if s0.Validators.Size() != s1.Validators.Size() {
-		t.Error("Validators Size changed")
-	}
-	if s0.Validators.TotalVotingPower() == 0 {
-		t.Error("s0 Validators TotalVotingPower should not be 0")
+		t.Error("Validators Size mismatch")
 	}
 	if s0.Validators.TotalVotingPower() != s1.Validators.TotalVotingPower() {
-		t.Error("Validators TotalVotingPower changed")
+		t.Error("Validators TotalVotingPower mismatch")
 	}
-	// TODO Compare accountBalances, height, blockHash
-
+	if !bytes.Equal(s0.AccountBalances.Tree.Hash(), s1.AccountBalances.Tree.Hash()) {
+		t.Error("AccountBalance mismatch")
+	}
 }
