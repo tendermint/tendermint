@@ -78,6 +78,9 @@ func (n *Node) inboundConnectionRoutine(l p2p.Listener) {
 
 func main() {
 
+	// Parse config flags
+	config.ParseFlags()
+
 	// Create & start node
 	n := NewNode()
 	l := p2p.NewDefaultListener("tcp", config.Config.LAddr)

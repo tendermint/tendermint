@@ -42,7 +42,7 @@ will be at different levels.
 func HashFromHashes(hashes [][]byte) []byte {
 	switch len(hashes) {
 	case 0:
-		panic("Cannot compute hash of empty slice")
+		return nil
 	case 1:
 		return hashes[0]
 	default:

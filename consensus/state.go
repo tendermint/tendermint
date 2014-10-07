@@ -418,7 +418,7 @@ func (cs *ConsensusState) stageBlock(block *Block) error {
 	stateCopy := cs.state.Copy() // Deep copy the state before staging.
 
 	// Commit block onto the copied state.
-	err := stateCopy.CommitBlock(block)
+	err := stateCopy.AppendBlock(block)
 	if err != nil {
 		return err
 	} else {

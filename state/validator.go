@@ -5,6 +5,7 @@ import (
 
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/merkle"
 )
 
 // Holds state for a Validator at a given height+round.
@@ -154,4 +155,18 @@ func (vset *ValidatorSet) GetProposer() (proposer *Validator) {
 		}
 	}
 	return
+}
+
+// Should uniquely determine the state of the ValidatorSet.
+func (vset *ValidatorSet) Hash() []byte {
+	ids := []uint64{}
+	for id, _ := range vset.validators {
+		ids = append(ids, id)
+	}
+	UInt64Slice(ids).Sort()
+	sortedValidators := make([]Binary, len(ids))
+	for i, id := range ids {
+		sortedValidators[i] = vset.validators[id]
+	}
+	return merkle.HashFromBinaries(sortedValidators)
 }

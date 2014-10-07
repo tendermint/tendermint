@@ -47,7 +47,7 @@ func (b *Block) ValidateBasic(lastBlockHeight uint32, lastBlockHash []byte) erro
 	if b.Header.Network != Config.Network {
 		return ErrBlockInvalidNetwork
 	}
-	if b.Header.Height != lastBlockHeight {
+	if b.Header.Height != lastBlockHeight+1 {
 		return ErrBlockInvalidBlockHeight
 	}
 	if !bytes.Equal(b.Header.LastBlockHash, lastBlockHash) {

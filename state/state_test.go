@@ -1,9 +1,12 @@
 package state
 
 import (
+	. "github.com/tendermint/tendermint/blocks"
 	. "github.com/tendermint/tendermint/common"
+	. "github.com/tendermint/tendermint/config"
 	. "github.com/tendermint/tendermint/db"
 
+	"bytes"
 	"testing"
 	"time"
 )
@@ -38,9 +41,27 @@ func TestGenesisSaveLoad(t *testing.T) {
 
 	// Generate a state, save & load it.
 	s0 := randGenesisState(10, 5)
-	// Mutate the state to append one block.
-	block := &Block{Data: Data{Txs: []Tx{}}}
-	s0.AppendBlock(block)
+	// Figure out what the next state hashes should be.
+	s0ValsCopy := s0.Validators().Copy()
+	s0ValsCopy.IncrementAccum()
+	nextValidationStateHash := s0ValsCopy.Hash()
+	nextAccountStateHash := s0.accountBalances.Tree.Hash()
+	// Mutate the state to append one empty block.
+	block := &Block{
+		Header: Header{
+			Network:             Config.Network,
+			Height:              1,
+			ValidationStateHash: nextValidationStateHash,
+			AccountStateHash:    nextAccountStateHash,
+		},
+		Data: Data{
+			Txs: []Tx{},
+		},
+	}
+	err := s0.AppendBlock(block)
+	if err != nil {
+		t.Error("Error appending initial block:", err)
+	}
 
 	// Save s0, load s1.
 	commitTime := time.Now()
@@ -53,7 +74,15 @@ func TestGenesisSaveLoad(t *testing.T) {
 		t.Error("CommitTime was not the same")
 	}
 	// Compare height & blockHash
-	// XXX
+	if s0.Height() != 1 {
+		t.Error("s0 Height should be 1, got", s0.Height())
+	}
+	if s0.Height() != s1.Height() {
+		t.Error("Height mismatch")
+	}
+	if !bytes.Equal(s0.BlockHash(), s1.BlockHash()) {
+		t.Error("BlockHash mismatch")
+	}
 	// Compare Validators
 	s0Vals := s0.Validators()
 	s1Vals := s1.Validators()

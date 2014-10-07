@@ -13,7 +13,9 @@ import (
 )
 
 var (
-	ErrStateInvalidSequenceNumber = errors.New("Error State invalid sequence number")
+	ErrStateInvalidSequenceNumber      = errors.New("Error State invalid sequence number")
+	ErrStateInvalidValidationStateHash = errors.New("Error State invalid ValidationStateHash")
+	ErrStateInvalidAccountStateHash    = errors.New("Error State invalid AccountStateHash")
 
 	stateKey = []byte("stateKey")
 )
@@ -33,6 +35,7 @@ func (abc accountBalanceCodec) Read(accBalBytes []byte) (interface{}, error) {
 
 //-----------------------------------------------------------------------------
 
+// TODO: make it unsafe, remove mtx, and export fields?
 type State struct {
 	mtx             sync.Mutex
 	db              DB
@@ -175,7 +178,17 @@ func (s *State) AppendBlock(b *Block) error {
 		}
 	}
 
+	// Increment validator AccumPowers
 	s.validators.IncrementAccum()
+
+	// State hashes should match
+	if !bytes.Equal(s.validators.Hash(), b.ValidationStateHash) {
+		return ErrStateInvalidValidationStateHash
+	}
+	if !bytes.Equal(s.accountBalances.Tree.Hash(), b.AccountStateHash) {
+		return ErrStateInvalidAccountStateHash
+	}
+
 	s.height = b.Height
 	s.blockHash = b.Hash()
 	return nil
@@ -193,11 +206,18 @@ func (s *State) CommitTime() time.Time {
 	return s.commitTime
 }
 
-// The returned ValidatorSet gets mutated upon s.Commit*().
+// The returned ValidatorSet gets mutated upon s.ExecTx() and s.AppendBlock().
+// Caller should copy the returned set before mutating.
 func (s *State) Validators() *ValidatorSet {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 	return s.validators
+}
+
+func (s *State) BlockHash() []byte {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+	return s.blockHash
 }
 
 func (s *State) AccountBalance(accountId uint64) *AccountBalance {

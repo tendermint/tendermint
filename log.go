@@ -8,6 +8,7 @@ import (
 	"github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/state"
 )
 
 var log = logging.MustGetLogger("main")
@@ -31,6 +32,7 @@ func init() {
 
 	blocks.SetBlocksLogger(log)
 	consensus.SetConsensusLogger(log)
-	p2p.SetP2PLogger(log)
 	mempool.SetMempoolLogger(log)
+	p2p.SetP2PLogger(log)
+	state.SetStateLogger(log)
 }

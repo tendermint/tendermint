@@ -19,13 +19,13 @@ import (
 var RootDir string
 var Config Config_
 
-func initFlags(printHelp *bool) {
+func setFlags(printHelp *bool) {
 	flag.BoolVar(printHelp, "help", false, "Print this help message.")
 	flag.StringVar(&Config.LAddr, "laddr", Config.LAddr, "Listen address. (0.0.0.0:0 means any interface, any port)")
 	flag.StringVar(&Config.Seed, "seed", Config.Seed, "Address of seed node")
 }
 
-func init() {
+func ParseFlags() {
 	RootDir = os.Getenv("TMROOT")
 	if RootDir == "" {
 		RootDir = os.Getenv("HOME") + "/.tendermint"
@@ -54,7 +54,7 @@ func init() {
 
 	// try to parse arg flags, which can override file configuration.
 	var printHelp bool
-	initFlags(&printHelp)
+	setFlags(&printHelp)
 	flag.Parse()
 	if printHelp {
 		fmt.Println("----------------------------------")
