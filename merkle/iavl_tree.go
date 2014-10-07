@@ -117,6 +117,7 @@ func (t *IAVLTree) Copy() Tree {
 
 //-----------------------------------------------------------------------------
 
+// TODO: make TypedTree work with the underlying tree to cache the decoded value.
 type TypedTree struct {
 	Tree       Tree
 	keyCodec   Codec
@@ -181,6 +182,14 @@ func (t *TypedTree) Remove(key interface{}) (interface{}, error) {
 		Panicf("Error from valueCodec: %v", err)
 	}
 	return value, err
+}
+
+func (t *TypedTree) Copy() *TypedTree {
+	return &TypedTree{
+		Tree:       t.Tree.Copy(),
+		keyCodec:   t.keyCodec,
+		valueCodec: t.valueCodec,
+	}
 }
 
 //-----------------------------------------------------------------------------

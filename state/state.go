@@ -18,40 +18,55 @@ var (
 	stateKey = []byte("stateKey")
 )
 
-type State struct {
-	mtx        sync.Mutex
-	db         DB
-	height     uint32 // Last known block height
-	blockHash  []byte // Last known block hash
-	commitTime time.Time
-	accounts   merkle.Tree
-	validators *ValidatorSet
+type accountBalanceCodec struct{}
+
+func (abc accountBalanceCodec) Write(accBal interface{}) (accBalBytes []byte, err error) {
+	w := new(bytes.Buffer)
+	_, err = accBal.(*AccountBalance).WriteTo(w)
+	return w.Bytes(), err
 }
 
-func GenesisState(db DB, genesisTime time.Time, accountBalances []*AccountBalance) *State {
+func (abc accountBalanceCodec) Read(accBalBytes []byte) (interface{}, error) {
+	n, err, r := new(int64), new(error), bytes.NewBuffer(accBalBytes)
+	return ReadAccountBalance(r, n, err), *err
+}
 
-	accounts := merkle.NewIAVLTree(db)
+//-----------------------------------------------------------------------------
+
+type State struct {
+	mtx             sync.Mutex
+	db              DB
+	height          uint32 // Last known block height
+	blockHash       []byte // Last known block hash
+	commitTime      time.Time
+	accountBalances *merkle.TypedTree
+	validators      *ValidatorSet
+}
+
+func GenesisState(db DB, genesisTime time.Time, accBals []*AccountBalance) *State {
+
+	// TODO: Use "uint64Codec" instead of BasicCodec
+	accountBalances := merkle.NewTypedTree(merkle.NewIAVLTree(db), BasicCodec, accountBalanceCodec{})
 	validators := map[uint64]*Validator{}
 
-	for _, account := range accountBalances {
-		// XXX make codec merkle tree.
-		//accounts.Set(account.Id, BinaryBytes(account))
-		validators[account.Id] = &Validator{
-			Account:     account.Account,
+	for _, accBal := range accBals {
+		accountBalances.Set(accBal.Id, accBal)
+		validators[accBal.Id] = &Validator{
+			Account:     accBal.Account,
 			BondHeight:  0,
-			VotingPower: account.Balance,
+			VotingPower: accBal.Balance,
 			Accum:       0,
 		}
 	}
 	validatorSet := NewValidatorSet(validators)
 
 	return &State{
-		db:         db,
-		height:     0,
-		blockHash:  nil,
-		commitTime: genesisTime,
-		accounts:   accounts,
-		validators: validatorSet,
+		db:              db,
+		height:          0,
+		blockHash:       nil,
+		commitTime:      genesisTime,
+		accountBalances: accountBalances,
+		validators:      validatorSet,
 	}
 }
 
@@ -67,8 +82,8 @@ func LoadState(db DB) *State {
 		s.height = ReadUInt32(reader, &n, &err)
 		s.commitTime = ReadTime(reader, &n, &err)
 		s.blockHash = ReadByteSlice(reader, &n, &err)
-		accountsMerkleRoot := ReadByteSlice(reader, &n, &err)
-		s.accounts = merkle.LoadIAVLTreeFromHash(db, accountsMerkleRoot)
+		accountBalancesHash := ReadByteSlice(reader, &n, &err)
+		s.accountBalances = merkle.NewTypedTree(merkle.LoadIAVLTreeFromHash(db, accountBalancesHash), BasicCodec, accountBalanceCodec{})
 		var validators = map[uint64]*Validator{}
 		for reader.Len() > 0 {
 			validator := ReadValidator(reader, &n, &err)
@@ -89,14 +104,14 @@ func (s *State) Save(commitTime time.Time) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 	s.commitTime = commitTime
-	s.accounts.Save()
+	s.accountBalances.Tree.Save()
 	var buf bytes.Buffer
 	var n int64
 	var err error
 	WriteUInt32(&buf, s.height, &n, &err)
 	WriteTime(&buf, commitTime, &n, &err)
 	WriteByteSlice(&buf, s.blockHash, &n, &err)
-	WriteByteSlice(&buf, s.accounts.Hash(), &n, &err)
+	WriteByteSlice(&buf, s.accountBalances.Tree.Hash(), &n, &err)
 	for _, validator := range s.validators.Map() {
 		WriteBinary(&buf, validator, &n, &err)
 	}
@@ -110,24 +125,24 @@ func (s *State) Copy() *State {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 	return &State{
-		db:         s.db,
-		height:     s.height,
-		commitTime: s.commitTime,
-		blockHash:  s.blockHash,
-		accounts:   s.accounts.Copy(),
-		validators: s.validators.Copy(),
+		db:              s.db,
+		height:          s.height,
+		commitTime:      s.commitTime,
+		blockHash:       s.blockHash,
+		accountBalances: s.accountBalances.Copy(),
+		validators:      s.validators.Copy(),
 	}
 }
 
 // If the tx is invalid, an error will be returned.
-// Unlike CommitBlock(), state will not be altered.
-func (s *State) CommitTx(tx Tx) error {
+// Unlike AppendBlock(), state will not be altered.
+func (s *State) ExecTx(tx Tx) error {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
-	return s.commitTx(tx)
+	return s.execTx(tx)
 }
 
-func (s *State) commitTx(tx Tx) error {
+func (s *State) execTx(tx Tx) error {
 	/*
 		// Get the signer's incr
 		signerId := tx.Signature().SignerId
@@ -136,13 +151,13 @@ func (s *State) commitTx(tx Tx) error {
 		}
 	*/
 	// XXX commit the tx
-	panic("Implement CommitTx()")
+	panic("Implement ExecTx()")
 	return nil
 }
 
 // NOTE: If an error occurs during block execution, state will be left
 // at an invalid state.  Copy the state before calling Commit!
-func (s *State) CommitBlock(b *Block) error {
+func (s *State) AppendBlock(b *Block) error {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 
@@ -154,14 +169,15 @@ func (s *State) CommitBlock(b *Block) error {
 
 	// Commit each tx
 	for _, tx := range b.Data.Txs {
-		err := s.commitTx(tx)
+		err := s.execTx(tx)
 		if err != nil {
 			return err
 		}
 	}
 
-	// After all state has been mutated, finally increment validators.
 	s.validators.IncrementAccum()
+	s.height = b.Height
+	s.blockHash = b.Hash()
 	return nil
 }
 
@@ -184,18 +200,12 @@ func (s *State) Validators() *ValidatorSet {
 	return s.validators
 }
 
-func (s *State) AccountBalance(accountId uint64) (*AccountBalance, error) {
+func (s *State) AccountBalance(accountId uint64) *AccountBalance {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
-	idBytes, err := BasicCodec.Write(accountId)
-	if err != nil {
-		return nil, err
+	accBal := s.accountBalances.Get(accountId)
+	if accBal == nil {
+		return nil
 	}
-	accountBytes := s.accounts.Get(idBytes)
-	if accountBytes == nil {
-		return nil, nil
-	}
-	n, err := int64(0), error(nil)
-	accountBalance := ReadAccountBalance(bytes.NewBuffer(accountBytes), &n, &err)
-	return accountBalance, err
+	return accBal.(*AccountBalance)
 }

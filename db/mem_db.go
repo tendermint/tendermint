@@ -27,6 +27,6 @@ func (db *MemDB) Delete(key []byte) {
 
 func (db *MemDB) Print() {
 	for key, value := range db.db {
-		fmt.Printf("[%x]:\t[%x]", []byte(key), value)
+		fmt.Printf("[%X]:\t[%X]\n", []byte(key), value)
 	}
 }

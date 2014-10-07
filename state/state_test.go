@@ -36,7 +36,36 @@ func randGenesisState(numAccounts int, numValidators int) *State {
 
 func TestGenesisSaveLoad(t *testing.T) {
 
+	// Generate a state, save & load it.
 	s0 := randGenesisState(10, 5)
-	t.Log(s0)
+	// Mutate the state to append one block.
+	block := &Block{Data: Data{Txs: []Tx{}}}
+	s0.AppendBlock(block)
+
+	// Save s0, load s1.
+	commitTime := time.Now()
+	s0.Save(commitTime)
+	// s0.db.(*MemDB).Print()
+	s1 := LoadState(s0.db)
+
+	// Compare CommitTime
+	if commitTime.Unix() != s1.CommitTime().Unix() {
+		t.Error("CommitTime was not the same")
+	}
+	// Compare height & blockHash
+	// XXX
+	// Compare Validators
+	s0Vals := s0.Validators()
+	s1Vals := s1.Validators()
+	if s0Vals.Size() != s1Vals.Size() {
+		t.Error("Validators Size changed")
+	}
+	if s0Vals.TotalVotingPower() == 0 {
+		t.Error("s0 Validators TotalVotingPower should not be 0")
+	}
+	if s0Vals.TotalVotingPower() != s1Vals.TotalVotingPower() {
+		t.Error("Validators TotalVotingPower changed")
+	}
+	// TODO Compare accountBalances, height, blockHash
 
 }

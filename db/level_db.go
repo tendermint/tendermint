@@ -55,6 +55,6 @@ func (db *LevelDB) Print() {
 	for iter.Next() {
 		key := iter.Key()
 		value := iter.Value()
-		fmt.Printf("[%x]:\t[%x]", key, value)
+		fmt.Printf("[%X]:\t[%X]\n", key, value)
 	}
 }
