@@ -10,6 +10,6 @@ func init() {
 	logging.SetFormatter(logging.MustStringFormatter("[%{level:.1s}] %{message}"))
 }
 
-func SetStatesLogger(l *logging.Logger) {
+func SetStateLogger(l *logging.Logger) {
 	log = l
 }

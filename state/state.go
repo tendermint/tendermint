@@ -147,7 +147,7 @@ func (s *State) ExecTx(tx Tx) error {
 }
 
 // NOTE: If an error occurs during block execution, state will be left
-// at an invalid state.  Copy the state before calling Commit!
+// at an invalid state.  Copy the state before calling AppendBlock!
 func (s *State) AppendBlock(b *Block) error {
 	// Basic block validation.
 	err := b.ValidateBasic(s.Height, s.BlockHash)

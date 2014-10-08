@@ -33,7 +33,7 @@ func (account Account) WriteTo(w io.Writer) (n int64, err error) {
 
 func (account Account) Verify(msg []byte, sig Signature) bool {
 	if sig.SignerId != account.Id {
-		panic("Account.Id doesn't match sig.SignerId")
+		panic("account.id doesn't match sig.signerid")
 	}
 	v1 := &crypto.Verify{
 		Message:   msg,
@@ -42,6 +42,12 @@ func (account Account) Verify(msg []byte, sig Signature) bool {
 	}
 	ok := crypto.VerifyBatch([]*crypto.Verify{v1})
 	return ok
+}
+
+func (account Account) VerifySignable(o Signable) bool {
+	msg := o.GenDocument()
+	sig := o.GetSignature()
+	return account.Verify(msg, sig)
 }
 
 //-----------------------------------------------------------------------------
@@ -90,8 +96,15 @@ func GenPrivAccount() *PrivAccount {
 
 func (pa *PrivAccount) Sign(msg []byte) Signature {
 	signature := crypto.SignMessage(msg, pa.PrivKey, pa.PubKey)
-	return Signature{
+	sig := Signature{
 		SignerId: pa.Id,
 		Bytes:    signature,
 	}
+	return sig
+}
+
+func (pa *PrivAccount) SignSignable(o Signable) {
+	msg := o.GenDocument()
+	sig := pa.Sign(msg)
+	o.SetSignature(sig)
 }

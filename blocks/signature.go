@@ -5,6 +5,14 @@ import (
 	"io"
 )
 
+type Signable interface {
+	GenDocument() []byte
+	GetSignature() Signature
+	SetSignature(Signature)
+}
+
+//-----------------------------------------------------------------------------
+
 type Signature struct {
 	SignerId uint64
 	Bytes    []byte

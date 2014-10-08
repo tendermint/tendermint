@@ -79,18 +79,18 @@ func (cs *ConsensusState) GetRoundState() *RoundState {
 
 func (cs *ConsensusState) updateToState(state *State) {
 	// Sanity check state.
-	stateHeight := state.Height()
+	stateHeight := state.Height
 	if stateHeight > 0 && stateHeight != cs.Height+1 {
 		Panicf("updateToState() expected state height of %v but found %v", cs.Height+1, stateHeight)
 	}
 
 	// Reset fields based on state.
-	height := state.Height()
-	validators := state.Validators()
+	height := state.Height
+	validators := state.Validators
 	cs.Height = height
 	cs.Round = 0
 	cs.Step = RoundStepStart
-	cs.StartTime = state.CommitTime().Add(newBlockWaitDuration)
+	cs.StartTime = state.CommitTime.Add(newBlockWaitDuration)
 	cs.Validators = validators
 	cs.Proposer = validators.GetProposer()
 	cs.Proposal = nil

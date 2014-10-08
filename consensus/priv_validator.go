@@ -16,14 +16,11 @@ type PrivValidator struct {
 // Double signing results in an error.
 func (pv *PrivValidator) SignProposal(proposal *Proposal) {
 	//TODO: prevent double signing.
-	doc := GenProposalDocument(proposal.Height, proposal.Round, proposal.BlockPartsTotal,
-		proposal.BlockPartsHash, proposal.POLPartsTotal, proposal.POLPartsHash)
-	proposal.Signature = pv.Sign([]byte(doc))
+	pv.SignSignable(proposal)
 }
 
 // Double signing results in an error.
 func (pv *PrivValidator) SignVote(vote *Vote) {
 	//TODO: prevent double signing.
-	doc := GenVoteDocument(vote.Type, vote.Height, vote.Round, vote.BlockHash)
-	vote.Signature = pv.Sign([]byte(doc))
+	pv.SignSignable(vote)
 }

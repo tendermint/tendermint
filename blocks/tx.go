@@ -20,8 +20,6 @@ Validation Txs:
 
 type Tx interface {
 	Type() byte
-	GetSequence() uint64
-	GetSignature() *Signature
 	//IsValidation() bool
 	Binary
 }
@@ -99,18 +97,18 @@ func ReadBaseTx(r io.Reader, n *int64, err *error) BaseTx {
 	}
 }
 
-func (tx *BaseTx) GetSequence() uint64 {
-	return tx.Sequence
-}
-
-func (tx *BaseTx) GetSignature() *Signature {
-	return &tx.Signature
-}
-
-func (tx *BaseTx) WriteTo(w io.Writer) (n int64, err error) {
+func (tx BaseTx) WriteTo(w io.Writer) (n int64, err error) {
 	WriteUVarInt(w, tx.Sequence, &n, &err)
 	WriteBinary(w, tx.Signature, &n, &err)
 	return
+}
+
+func (tx *BaseTx) GetSignature() Signature {
+	return tx.Signature
+}
+
+func (tx *BaseTx) SetSignature(sig Signature) {
+	tx.Signature = sig
 }
 
 //-----------------------------------------------------------------------------
@@ -128,7 +126,7 @@ func (tx *SendTx) Type() byte {
 
 func (tx *SendTx) WriteTo(w io.Writer) (n int64, err error) {
 	WriteByte(w, tx.Type(), &n, &err)
-	WriteBinary(w, &tx.BaseTx, &n, &err)
+	WriteBinary(w, tx.BaseTx, &n, &err)
 	WriteUInt64(w, tx.Fee, &n, &err)
 	WriteUInt64(w, tx.To, &n, &err)
 	WriteUInt64(w, tx.Amount, &n, &err)
@@ -150,7 +148,7 @@ func (tx *NameTx) Type() byte {
 
 func (tx *NameTx) WriteTo(w io.Writer) (n int64, err error) {
 	WriteByte(w, tx.Type(), &n, &err)
-	WriteBinary(w, &tx.BaseTx, &n, &err)
+	WriteBinary(w, tx.BaseTx, &n, &err)
 	WriteUInt64(w, tx.Fee, &n, &err)
 	WriteString(w, tx.Name, &n, &err)
 	WriteByteSlice(w, tx.PubKey, &n, &err)
@@ -172,7 +170,7 @@ func (tx *BondTx) Type() byte {
 
 func (tx *BondTx) WriteTo(w io.Writer) (n int64, err error) {
 	WriteByte(w, tx.Type(), &n, &err)
-	WriteBinary(w, &tx.BaseTx, &n, &err)
+	WriteBinary(w, tx.BaseTx, &n, &err)
 	WriteUInt64(w, tx.Fee, &n, &err)
 	WriteUInt64(w, tx.UnbondTo, &n, &err)
 	WriteUInt64(w, tx.Amount, &n, &err)
@@ -193,7 +191,7 @@ func (tx *UnbondTx) Type() byte {
 
 func (tx *UnbondTx) WriteTo(w io.Writer) (n int64, err error) {
 	WriteByte(w, tx.Type(), &n, &err)
-	WriteBinary(w, &tx.BaseTx, &n, &err)
+	WriteBinary(w, tx.BaseTx, &n, &err)
 	WriteUInt64(w, tx.Fee, &n, &err)
 	WriteUInt64(w, tx.Amount, &n, &err)
 	return
@@ -213,7 +211,7 @@ func (tx *TimeoutTx) Type() byte {
 
 func (tx *TimeoutTx) WriteTo(w io.Writer) (n int64, err error) {
 	WriteByte(w, tx.Type(), &n, &err)
-	WriteBinary(w, &tx.BaseTx, &n, &err)
+	WriteBinary(w, tx.BaseTx, &n, &err)
 	WriteUInt64(w, tx.AccountId, &n, &err)
 	WriteUInt64(w, tx.Penalty, &n, &err)
 	return
@@ -233,8 +231,16 @@ func (tx *DupeoutTx) Type() byte {
 
 func (tx *DupeoutTx) WriteTo(w io.Writer) (n int64, err error) {
 	WriteByte(w, tx.Type(), &n, &err)
-	WriteBinary(w, &tx.BaseTx, &n, &err)
+	WriteBinary(w, tx.BaseTx, &n, &err)
 	WriteBinary(w, &tx.VoteA, &n, &err)
 	WriteBinary(w, &tx.VoteB, &n, &err)
 	return
+}
+
+func (tx *DupeoutTx) GenDocument() []byte {
+	oldSig := tx.Signature
+	tx.Signature = Signature{}
+	doc := BinaryBytes(tx)
+	tx.Signature = oldSig
+	return doc
 }
