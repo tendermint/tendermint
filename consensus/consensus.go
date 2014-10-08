@@ -402,7 +402,7 @@ OUTER_LOOP:
 // Signs a vote document and broadcasts it.
 func (conR *ConsensusReactor) signAndBroadcastVote(rs *RoundState, vote *Vote) {
 	if rs.PrivValidator != nil {
-		rs.PrivValidator.SignVote(vote)
+		rs.PrivValidator.Sign(vote)
 		conR.conS.AddVote(vote)
 		msg := p2p.TypedMessage{msgTypeVote, vote}
 		conR.sw.Broadcast(VoteCh, msg)

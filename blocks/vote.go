@@ -49,14 +49,6 @@ func (v *Vote) WriteTo(w io.Writer) (n int64, err error) {
 	return
 }
 
-func (v *Vote) GenDocument() []byte {
-	oldSig := v.Signature
-	v.Signature = Signature{}
-	doc := BinaryBytes(v)
-	v.Signature = oldSig
-	return doc
-}
-
 func (v *Vote) GetSignature() Signature {
 	return v.Signature
 }

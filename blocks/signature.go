@@ -6,7 +6,7 @@ import (
 )
 
 type Signable interface {
-	GenDocument() []byte
+	Binary
 	GetSignature() Signature
 	SetSignature(Signature)
 }

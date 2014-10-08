@@ -9,8 +9,9 @@ import (
 )
 
 const (
-	AccountBalanceStatusNominal = byte(0x00)
-	AccountBalanceStatusBonded  = byte(0x01)
+	AccountDetailStatusNominal   = byte(0x00)
+	AccountDetailStatusBonded    = byte(0x01)
+	AccountDetailStatusUnbonding = byte(0x02)
 )
 
 type Account struct {
@@ -31,7 +32,7 @@ func (account Account) WriteTo(w io.Writer) (n int64, err error) {
 	return
 }
 
-func (account Account) Verify(msg []byte, sig Signature) bool {
+func (account Account) VerifyBytes(msg []byte, sig Signature) bool {
 	if sig.SignerId != account.Id {
 		panic("account.id doesn't match sig.signerid")
 	}
@@ -44,32 +45,37 @@ func (account Account) Verify(msg []byte, sig Signature) bool {
 	return ok
 }
 
-func (account Account) VerifySignable(o Signable) bool {
-	msg := o.GenDocument()
+func (account Account) Verify(o Signable) bool {
 	sig := o.GetSignature()
-	return account.Verify(msg, sig)
+	o.SetSignature(Signature{}) // clear
+	msg := BinaryBytes(o)
+	o.SetSignature(sig) // restore
+	return account.VerifyBytes(msg, sig)
 }
 
 //-----------------------------------------------------------------------------
 
-type AccountBalance struct {
+type AccountDetail struct {
 	Account
-	Balance uint64
-	Status  byte
+	Sequence uint64
+	Balance  uint64
+	Status   byte
 }
 
-func ReadAccountBalance(r io.Reader, n *int64, err *error) *AccountBalance {
-	return &AccountBalance{
-		Account: ReadAccount(r, n, err),
-		Balance: ReadUInt64(r, n, err),
-		Status:  ReadByte(r, n, err),
+func ReadAccountDetail(r io.Reader, n *int64, err *error) *AccountDetail {
+	return &AccountDetail{
+		Account:  ReadAccount(r, n, err),
+		Sequence: ReadUInt64(r, n, err),
+		Balance:  ReadUInt64(r, n, err),
+		Status:   ReadByte(r, n, err),
 	}
 }
 
-func (accBal AccountBalance) WriteTo(w io.Writer) (n int64, err error) {
-	WriteBinary(w, accBal.Account, &n, &err)
-	WriteUInt64(w, accBal.Balance, &n, &err)
-	WriteByte(w, accBal.Status, &n, &err)
+func (accDet AccountDetail) WriteTo(w io.Writer) (n int64, err error) {
+	WriteBinary(w, accDet.Account, &n, &err)
+	WriteUInt64(w, accDet.Sequence, &n, &err)
+	WriteUInt64(w, accDet.Balance, &n, &err)
+	WriteByte(w, accDet.Status, &n, &err)
 	return
 }
 
@@ -94,7 +100,7 @@ func GenPrivAccount() *PrivAccount {
 	}
 }
 
-func (pa *PrivAccount) Sign(msg []byte) Signature {
+func (pa *PrivAccount) SignBytes(msg []byte) Signature {
 	signature := crypto.SignMessage(msg, pa.PrivKey, pa.PubKey)
 	sig := Signature{
 		SignerId: pa.Id,
@@ -103,8 +109,9 @@ func (pa *PrivAccount) Sign(msg []byte) Signature {
 	return sig
 }
 
-func (pa *PrivAccount) SignSignable(o Signable) {
-	msg := o.GenDocument()
-	sig := pa.Sign(msg)
+func (pa *PrivAccount) Sign(o Signable) {
+	o.SetSignature(Signature{}) // clear
+	msg := BinaryBytes(o)
+	sig := pa.SignBytes(msg)
 	o.SetSignature(sig)
 }

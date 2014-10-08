@@ -178,7 +178,7 @@ func (cs *ConsensusState) SetProposal(proposal *Proposal) error {
 	}
 
 	// Verify signature
-	if !cs.Proposer.Verify(proposal.GenDocument(), proposal.Signature) {
+	if !cs.Proposer.Verify(proposal) {
 		return ErrInvalidProposalSignature
 	}
 
@@ -220,7 +220,7 @@ func (cs *ConsensusState) MakeProposal() {
 	// Make proposal
 	proposal := NewProposal(cs.Height, cs.Round, blockPartSet.Total(), blockPartSet.RootHash(),
 		polPartSet.Total(), polPartSet.RootHash())
-	cs.PrivValidator.SignProposal(proposal)
+	cs.PrivValidator.Sign(proposal)
 
 	// Set fields
 	cs.Proposal = proposal

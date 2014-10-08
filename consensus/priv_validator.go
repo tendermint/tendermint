@@ -13,14 +13,14 @@ type PrivValidator struct {
 	db *db_.LevelDB
 }
 
-// Double signing results in an error.
-func (pv *PrivValidator) SignProposal(proposal *Proposal) {
-	//TODO: prevent double signing.
-	pv.SignSignable(proposal)
-}
-
-// Double signing results in an error.
-func (pv *PrivValidator) SignVote(vote *Vote) {
-	//TODO: prevent double signing.
-	pv.SignSignable(vote)
+// Double signing results in a panic.
+func (pv *PrivValidator) Sign(o Signable) {
+	switch o.(type) {
+	case *Proposal:
+		//TODO: prevent double signing.
+		pv.PrivAccount.Sign(o.(*Proposal))
+	case *Vote:
+		//TODO: prevent double signing.
+		pv.PrivAccount.Sign(o.(*Vote))
+	}
 }

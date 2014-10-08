@@ -11,7 +11,7 @@ func TestSignAndValidate(t *testing.T) {
 	account := &privAccount.Account
 
 	msg := CRandBytes(128)
-	sig := privAccount.Sign(msg)
+	sig := privAccount.SignBytes(msg)
 	t.Logf("msg: %X, sig: %X", msg, sig)
 
 	// Test the signature

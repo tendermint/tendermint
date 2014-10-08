@@ -45,8 +45,8 @@ func (pol *POL) WriteTo(w io.Writer) (n int64, err error) {
 func (pol *POL) Verify(vset *ValidatorSet) error {
 
 	talliedVotingPower := uint64(0)
-	voteDoc := (&Vote{Height: pol.Height, Round: pol.Round,
-		Type: VoteTypeBare, BlockHash: pol.BlockHash}).GenDocument()
+	voteDoc := BinaryBytes(&Vote{Height: pol.Height, Round: pol.Round,
+		Type: VoteTypeBare, BlockHash: pol.BlockHash})
 	seenValidators := map[uint64]struct{}{}
 
 	for _, sig := range pol.Votes {
@@ -59,7 +59,7 @@ func (pol *POL) Verify(vset *ValidatorSet) error {
 		if validator == nil {
 			return Errorf("Invalid validator for vote %v for POL %v", sig, pol)
 		}
-		if !validator.Verify(voteDoc, sig) {
+		if !validator.VerifyBytes(voteDoc, sig) {
 			return Errorf("Invalid signature for vote %v for POL %v", sig, pol)
 		}
 
@@ -80,9 +80,9 @@ func (pol *POL) Verify(vset *ValidatorSet) error {
 			return Errorf("Invalid validator for commit %v for POL %v", sig, pol)
 		}
 
-		commitDoc := (&Vote{Height: pol.Height, Round: round,
-			Type: VoteTypeCommit, BlockHash: pol.BlockHash}).GenDocument() // TODO cache
-		if !validator.Verify(commitDoc, sig) {
+		commitDoc := BinaryBytes(&Vote{Height: pol.Height, Round: round,
+			Type: VoteTypeCommit, BlockHash: pol.BlockHash}) // TODO cache
+		if !validator.VerifyBytes(commitDoc, sig) {
 			return Errorf("Invalid signature for commit %v for POL %v", sig, pol)
 		}
 

@@ -69,7 +69,7 @@ func (vs *VoteSet) AddVote(vote *Vote) (bool, error) {
 	}
 
 	// Check signature.
-	if !val.Verify(vote.GenDocument(), vote.Signature) {
+	if !val.Verify(vote) {
 		// Bad signature.
 		return false, ErrVoteInvalidSignature
 	}

@@ -58,14 +58,6 @@ func (p *Proposal) WriteTo(w io.Writer) (n int64, err error) {
 	return
 }
 
-func (p *Proposal) GenDocument() []byte {
-	oldSig := p.Signature
-	p.Signature = Signature{}
-	doc := BinaryBytes(p)
-	p.Signature = oldSig
-	return doc
-}
-
 func (p *Proposal) GetSignature() Signature {
 	return p.Signature
 }

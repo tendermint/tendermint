@@ -19,59 +19,56 @@ Validation Txs:
 */
 
 type Tx interface {
-	Type() byte
-	//IsValidation() bool
-	Binary
+	Signable
+	GetSequence() uint64
 }
 
 const (
 	// Account transactions
-	txTypeSend = byte(0x01)
-	txTypeName = byte(0x02)
+	TxTypeSend = byte(0x01)
+	TxTypeName = byte(0x02)
 
 	// Validation transactions
-	txTypeBond    = byte(0x11)
-	txTypeUnbond  = byte(0x12)
-	txTypeTimeout = byte(0x13)
-	txTypeDupeout = byte(0x14)
+	TxTypeBond    = byte(0x11)
+	TxTypeUnbond  = byte(0x12)
+	TxTypeTimeout = byte(0x13)
+	TxTypeDupeout = byte(0x14)
 )
 
 func ReadTx(r io.Reader, n *int64, err *error) Tx {
 	switch t := ReadByte(r, n, err); t {
-	case txTypeSend:
+	case TxTypeSend:
 		return &SendTx{
 			BaseTx: ReadBaseTx(r, n, err),
 			Fee:    ReadUInt64(r, n, err),
 			To:     ReadUInt64(r, n, err),
 			Amount: ReadUInt64(r, n, err),
 		}
-	case txTypeName:
+	case TxTypeName:
 		return &NameTx{
 			BaseTx: ReadBaseTx(r, n, err),
 			Fee:    ReadUInt64(r, n, err),
 			Name:   ReadString(r, n, err),
 			PubKey: ReadByteSlice(r, n, err),
 		}
-	case txTypeBond:
+	case TxTypeBond:
 		return &BondTx{
 			BaseTx:   ReadBaseTx(r, n, err),
 			Fee:      ReadUInt64(r, n, err),
 			UnbondTo: ReadUInt64(r, n, err),
-			Amount:   ReadUInt64(r, n, err),
 		}
-	case txTypeUnbond:
+	case TxTypeUnbond:
 		return &UnbondTx{
 			BaseTx: ReadBaseTx(r, n, err),
 			Fee:    ReadUInt64(r, n, err),
-			Amount: ReadUInt64(r, n, err),
 		}
-	case txTypeTimeout:
+	case TxTypeTimeout:
 		return &TimeoutTx{
 			BaseTx:    ReadBaseTx(r, n, err),
 			AccountId: ReadUInt64(r, n, err),
 			Penalty:   ReadUInt64(r, n, err),
 		}
-	case txTypeDupeout:
+	case TxTypeDupeout:
 		return &DupeoutTx{
 			BaseTx: ReadBaseTx(r, n, err),
 			VoteA:  *ReadVote(r, n, err),
@@ -103,6 +100,10 @@ func (tx BaseTx) WriteTo(w io.Writer) (n int64, err error) {
 	return
 }
 
+func (tx *BaseTx) GetSequence() uint64 {
+	return tx.Sequence
+}
+
 func (tx *BaseTx) GetSignature() Signature {
 	return tx.Signature
 }
@@ -120,12 +121,8 @@ type SendTx struct {
 	Amount uint64
 }
 
-func (tx *SendTx) Type() byte {
-	return txTypeSend
-}
-
 func (tx *SendTx) WriteTo(w io.Writer) (n int64, err error) {
-	WriteByte(w, tx.Type(), &n, &err)
+	WriteByte(w, TxTypeSend, &n, &err)
 	WriteBinary(w, tx.BaseTx, &n, &err)
 	WriteUInt64(w, tx.Fee, &n, &err)
 	WriteUInt64(w, tx.To, &n, &err)
@@ -142,12 +139,8 @@ type NameTx struct {
 	PubKey []byte
 }
 
-func (tx *NameTx) Type() byte {
-	return txTypeName
-}
-
 func (tx *NameTx) WriteTo(w io.Writer) (n int64, err error) {
-	WriteByte(w, tx.Type(), &n, &err)
+	WriteByte(w, TxTypeName, &n, &err)
 	WriteBinary(w, tx.BaseTx, &n, &err)
 	WriteUInt64(w, tx.Fee, &n, &err)
 	WriteString(w, tx.Name, &n, &err)
@@ -161,19 +154,13 @@ type BondTx struct {
 	BaseTx
 	Fee      uint64
 	UnbondTo uint64
-	Amount   uint64
-}
-
-func (tx *BondTx) Type() byte {
-	return txTypeBond
 }
 
 func (tx *BondTx) WriteTo(w io.Writer) (n int64, err error) {
-	WriteByte(w, tx.Type(), &n, &err)
+	WriteByte(w, TxTypeBond, &n, &err)
 	WriteBinary(w, tx.BaseTx, &n, &err)
 	WriteUInt64(w, tx.Fee, &n, &err)
 	WriteUInt64(w, tx.UnbondTo, &n, &err)
-	WriteUInt64(w, tx.Amount, &n, &err)
 	return
 }
 
@@ -181,19 +168,13 @@ func (tx *BondTx) WriteTo(w io.Writer) (n int64, err error) {
 
 type UnbondTx struct {
 	BaseTx
-	Fee    uint64
-	Amount uint64
-}
-
-func (tx *UnbondTx) Type() byte {
-	return txTypeUnbond
+	Fee uint64
 }
 
 func (tx *UnbondTx) WriteTo(w io.Writer) (n int64, err error) {
-	WriteByte(w, tx.Type(), &n, &err)
+	WriteByte(w, TxTypeUnbond, &n, &err)
 	WriteBinary(w, tx.BaseTx, &n, &err)
 	WriteUInt64(w, tx.Fee, &n, &err)
-	WriteUInt64(w, tx.Amount, &n, &err)
 	return
 }
 
@@ -205,12 +186,8 @@ type TimeoutTx struct {
 	Penalty   uint64
 }
 
-func (tx *TimeoutTx) Type() byte {
-	return txTypeTimeout
-}
-
 func (tx *TimeoutTx) WriteTo(w io.Writer) (n int64, err error) {
-	WriteByte(w, tx.Type(), &n, &err)
+	WriteByte(w, TxTypeTimeout, &n, &err)
 	WriteBinary(w, tx.BaseTx, &n, &err)
 	WriteUInt64(w, tx.AccountId, &n, &err)
 	WriteUInt64(w, tx.Penalty, &n, &err)
@@ -225,22 +202,10 @@ type DupeoutTx struct {
 	VoteB Vote
 }
 
-func (tx *DupeoutTx) Type() byte {
-	return txTypeDupeout
-}
-
 func (tx *DupeoutTx) WriteTo(w io.Writer) (n int64, err error) {
-	WriteByte(w, tx.Type(), &n, &err)
+	WriteByte(w, TxTypeDupeout, &n, &err)
 	WriteBinary(w, tx.BaseTx, &n, &err)
 	WriteBinary(w, &tx.VoteA, &n, &err)
 	WriteBinary(w, &tx.VoteB, &n, &err)
 	return
-}
-
-func (tx *DupeoutTx) GenDocument() []byte {
-	oldSig := tx.Signature
-	tx.Signature = Signature{}
-	doc := BinaryBytes(tx)
-	tx.Signature = oldSig
-	return doc
 }
