@@ -2,16 +2,17 @@ package binary
 
 import (
 	"bytes"
+	"io"
 	"time"
 )
 
 type Codec interface {
-	Write(interface{}) ([]byte, error)
-	Read([]byte) (interface{}, error)
+	Encode(o interface{}, w io.Writer, n *int64, err *error)
+	Decode(r io.Reader, n *int64, err *error) interface{}
+	Compare(o1 interface{}, o2 interface{}) int
 }
 
 const (
-	typeNil  = byte(0x00)
 	typeByte = byte(0x01)
 	typeInt8 = byte(0x02)
 	// typeUInt8     = byte(0x03)
@@ -21,6 +22,8 @@ const (
 	typeUInt32    = byte(0x07)
 	typeInt64     = byte(0x08)
 	typeUInt64    = byte(0x09)
+	typeVarInt    = byte(0x0A)
+	typeUVarInt   = byte(0x0B)
 	typeString    = byte(0x10)
 	typeByteSlice = byte(0x11)
 	typeTime      = byte(0x20)
@@ -30,11 +33,10 @@ var BasicCodec = basicCodec{}
 
 type basicCodec struct{}
 
-func (bc basicCodec) Write(o interface{}) ([]byte, error) {
-	n, err, w := new(int64), new(error), new(bytes.Buffer)
+func (bc basicCodec) Encode(o interface{}, w io.Writer, n *int64, err *error) {
 	switch o.(type) {
 	case nil:
-		WriteByte(w, typeNil, n, err)
+		panic("nil type unsupported")
 	case byte:
 		WriteByte(w, typeByte, n, err)
 		WriteByte(w, o.(byte), n, err)
@@ -62,6 +64,12 @@ func (bc basicCodec) Write(o interface{}) ([]byte, error) {
 	case uint64:
 		WriteByte(w, typeUInt64, n, err)
 		WriteUInt64(w, o.(uint64), n, err)
+	case int:
+		WriteByte(w, typeVarInt, n, err)
+		WriteVarInt(w, o.(int), n, err)
+	case uint:
+		WriteByte(w, typeUVarInt, n, err)
+		WriteUVarInt(w, o.(uint), n, err)
 	case string:
 		WriteByte(w, typeString, n, err)
 		WriteString(w, o.(string), n, err)
@@ -74,15 +82,11 @@ func (bc basicCodec) Write(o interface{}) ([]byte, error) {
 	default:
 		panic("Unsupported type")
 	}
-	return w.Bytes(), *err
 }
 
-func (bc basicCodec) Read(bz []byte) (interface{}, error) {
-	n, err, r, o := new(int64), new(error), bytes.NewBuffer(bz), interface{}(nil)
+func (bc basicCodec) Decode(r io.Reader, n *int64, err *error) (o interface{}) {
 	type_ := ReadByte(r, n, err)
 	switch type_ {
-	case typeNil:
-		o = nil
 	case typeByte:
 		o = ReadByte(r, n, err)
 	case typeInt8:
@@ -101,6 +105,10 @@ func (bc basicCodec) Read(bz []byte) (interface{}, error) {
 		o = ReadInt64(r, n, err)
 	case typeUInt64:
 		o = ReadUInt64(r, n, err)
+	case typeVarInt:
+		o = ReadVarInt(r, n, err)
+	case typeUVarInt:
+		o = ReadUVarInt(r, n, err)
 	case typeString:
 		o = ReadString(r, n, err)
 	case typeByteSlice:
@@ -110,5 +118,39 @@ func (bc basicCodec) Read(bz []byte) (interface{}, error) {
 	default:
 		panic("Unsupported type")
 	}
-	return o, *err
+	return o
+}
+
+func (bc basicCodec) Compare(o1 interface{}, o2 interface{}) int {
+	switch o1.(type) {
+	case byte:
+		return int(o1.(byte) - o2.(byte))
+	case int8:
+		return int(o1.(int8) - o2.(int8))
+	//case uint8:
+	case int16:
+		return int(o1.(int16) - o2.(int16))
+	case uint16:
+		return int(o1.(uint16) - o2.(uint16))
+	case int32:
+		return int(o1.(int32) - o2.(int32))
+	case uint32:
+		return int(o1.(uint32) - o2.(uint32))
+	case int64:
+		return int(o1.(int64) - o2.(int64))
+	case uint64:
+		return int(o1.(uint64) - o2.(uint64))
+	case int:
+		return o1.(int) - o2.(int)
+	case uint:
+		return int(o1.(uint)) - int(o2.(uint))
+	case string:
+		return bytes.Compare([]byte(o1.(string)), []byte(o2.(string)))
+	case []byte:
+		return bytes.Compare(o1.([]byte), o2.([]byte))
+	case time.Time:
+		return int(o1.(time.Time).UnixNano() - o2.(time.Time).UnixNano())
+	default:
+		panic("Unsupported type")
+	}
 }

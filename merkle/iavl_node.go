@@ -1,7 +1,6 @@
 package merkle
 
 import (
-	"bytes"
 	"crypto/sha256"
 	. "github.com/tendermint/tendermint/binary"
 	"io"
@@ -10,8 +9,8 @@ import (
 // Node
 
 type IAVLNode struct {
-	key       []byte
-	value     []byte
+	key       interface{}
+	value     interface{}
 	size      uint64
 	height    uint8
 	hash      []byte
@@ -22,7 +21,7 @@ type IAVLNode struct {
 	persisted bool
 }
 
-func NewIAVLNode(key []byte, value []byte) *IAVLNode {
+func NewIAVLNode(key interface{}, value interface{}) *IAVLNode {
 	return &IAVLNode{
 		key:   key,
 		value: value,
@@ -30,20 +29,20 @@ func NewIAVLNode(key []byte, value []byte) *IAVLNode {
 	}
 }
 
-func ReadIAVLNode(r io.Reader, n *int64, err *error) *IAVLNode {
+func ReadIAVLNode(t *IAVLTree, r io.Reader, n *int64, err *error) *IAVLNode {
 	node := &IAVLNode{}
 
 	// node header & key
 	node.height = ReadUInt8(r, n, err)
 	node.size = ReadUInt64(r, n, err)
-	node.key = ReadByteSlice(r, n, err)
+	node.key = t.keyCodec.Decode(r, n, err)
 	if *err != nil {
 		panic(*err)
 	}
 
 	// node value or children.
 	if node.height == 0 {
-		node.value = ReadByteSlice(r, n, err)
+		node.value = t.valueCodec.Decode(r, n, err)
 	} else {
 		node.leftHash = ReadByteSlice(r, n, err)
 		node.rightHash = ReadByteSlice(r, n, err)
@@ -54,319 +53,331 @@ func ReadIAVLNode(r io.Reader, n *int64, err *error) *IAVLNode {
 	return node
 }
 
-func (self *IAVLNode) Copy() *IAVLNode {
-	if self.height == 0 {
+func (node *IAVLNode) _copy() *IAVLNode {
+	if node.height == 0 {
 		panic("Why are you copying a value node?")
 	}
 	return &IAVLNode{
-		key:       self.key,
-		size:      self.size,
-		height:    self.height,
+		key:       node.key,
+		size:      node.size,
+		height:    node.height,
 		hash:      nil, // Going to be mutated anyways.
-		leftHash:  self.leftHash,
-		leftNode:  self.leftNode,
-		rightHash: self.rightHash,
-		rightNode: self.rightNode,
-		persisted: self.persisted,
+		leftHash:  node.leftHash,
+		leftNode:  node.leftNode,
+		rightHash: node.rightHash,
+		rightNode: node.rightNode,
+		persisted: node.persisted,
 	}
 }
 
-func (self *IAVLNode) Size() uint64 {
-	return self.size
-}
-
-func (self *IAVLNode) Height() uint8 {
-	return self.height
-}
-
-func (self *IAVLNode) has(ndb *IAVLNodeDB, key []byte) (has bool) {
-	if bytes.Equal(self.key, key) {
+func (node *IAVLNode) has(t *IAVLTree, key interface{}) (has bool) {
+	if t.keyCodec.Compare(node.key, key) == 0 {
 		return true
 	}
-	if self.height == 0 {
+	if node.height == 0 {
 		return false
 	} else {
-		if bytes.Compare(key, self.key) == -1 {
-			return self.getLeftNode(ndb).has(ndb, key)
+		if t.keyCodec.Compare(key, node.key) < 0 {
+			return node.getLeftNode(t).has(t, key)
 		} else {
-			return self.getRightNode(ndb).has(ndb, key)
+			return node.getRightNode(t).has(t, key)
 		}
 	}
 }
 
-func (self *IAVLNode) get(ndb *IAVLNodeDB, key []byte) (value []byte) {
-	if self.height == 0 {
-		if bytes.Equal(self.key, key) {
-			return self.value
+func (node *IAVLNode) get(t *IAVLTree, key interface{}) (index uint64, value interface{}) {
+	if node.height == 0 {
+		if t.keyCodec.Compare(node.key, key) == 0 {
+			return 0, node.value
 		} else {
-			return nil
+			return 0, nil
 		}
 	} else {
-		if bytes.Compare(key, self.key) == -1 {
-			return self.getLeftNode(ndb).get(ndb, key)
+		if t.keyCodec.Compare(key, node.key) < 0 {
+			return node.getLeftNode(t).get(t, key)
 		} else {
-			return self.getRightNode(ndb).get(ndb, key)
+			rightNode := node.getRightNode(t)
+			index, value = rightNode.get(t, key)
+			index += node.size - rightNode.size
+			return index, value
 		}
 	}
 }
 
-func (self *IAVLNode) HashWithCount() ([]byte, uint64) {
-	if self.hash != nil {
-		return self.hash, 0
+func (node *IAVLNode) getByIndex(t *IAVLTree, index uint64) (key interface{}, value interface{}) {
+	if node.height == 0 {
+		if index == 0 {
+			return node.key, node.value
+		} else {
+			panic("getByIndex asked for invalid index")
+		}
+	} else {
+		// TODO: could improve this by storing the
+		// sizes as well as left/right hash.
+		leftNode := node.getLeftNode(t)
+		if index < leftNode.size {
+			return leftNode.getByIndex(t, index)
+		} else {
+			return node.getRightNode(t).getByIndex(t, index-leftNode.size)
+		}
+	}
+}
+
+func (node *IAVLNode) hashWithCount(t *IAVLTree) ([]byte, uint64) {
+	if node.hash != nil {
+		return node.hash, 0
 	}
 
 	hasher := sha256.New()
-	_, hashCount, err := self.writeToCountHashes(hasher)
+	_, hashCount, err := node.writeToCountHashes(t, hasher)
 	if err != nil {
 		panic(err)
 	}
-	self.hash = hasher.Sum(nil)
+	node.hash = hasher.Sum(nil)
 
-	return self.hash, hashCount + 1
+	return node.hash, hashCount + 1
 }
 
-func (self *IAVLNode) Save(ndb *IAVLNodeDB) []byte {
-	if self.hash == nil {
-		self.hash, _ = self.HashWithCount()
+func (node *IAVLNode) save(t *IAVLTree) []byte {
+	if node.hash == nil {
+		node.hash, _ = node.hashWithCount(t)
 	}
-	if self.persisted {
-		return self.hash
+	if node.persisted {
+		return node.hash
 	}
 
 	// save children
-	if self.leftNode != nil {
-		self.leftHash = self.leftNode.Save(ndb)
-		self.leftNode = nil
+	if node.leftNode != nil {
+		node.leftHash = node.leftNode.save(t)
+		node.leftNode = nil
 	}
-	if self.rightNode != nil {
-		self.rightHash = self.rightNode.Save(ndb)
-		self.rightNode = nil
+	if node.rightNode != nil {
+		node.rightHash = node.rightNode.save(t)
+		node.rightNode = nil
 	}
 
-	// save self
-	ndb.Save(self)
-	return self.hash
+	// save node
+	t.saveNode(node)
+	return node.hash
 }
 
-func (self *IAVLNode) set(ndb *IAVLNodeDB, key []byte, value []byte) (_ *IAVLNode, updated bool) {
-	if self.height == 0 {
-		if bytes.Compare(key, self.key) == -1 {
+func (node *IAVLNode) set(t *IAVLTree, key interface{}, value interface{}) (newSelf *IAVLNode, updated bool) {
+	if node.height == 0 {
+		cmp := t.keyCodec.Compare(key, node.key)
+		if cmp < 0 {
 			return &IAVLNode{
-				key:       self.key,
+				key:       node.key,
 				height:    1,
 				size:      2,
 				leftNode:  NewIAVLNode(key, value),
-				rightNode: self,
+				rightNode: node,
 			}, false
-		} else if bytes.Equal(self.key, key) {
+		} else if cmp == 0 {
 			return NewIAVLNode(key, value), true
 		} else {
 			return &IAVLNode{
 				key:       key,
 				height:    1,
 				size:      2,
-				leftNode:  self,
+				leftNode:  node,
 				rightNode: NewIAVLNode(key, value),
 			}, false
 		}
 	} else {
-		self = self.Copy()
-		if bytes.Compare(key, self.key) == -1 {
-			self.leftNode, updated = self.getLeftNode(ndb).set(ndb, key, value)
-			self.leftHash = nil
+		node = node._copy()
+		if t.keyCodec.Compare(key, node.key) < 0 {
+			node.leftNode, updated = node.getLeftNode(t).set(t, key, value)
+			node.leftHash = nil
 		} else {
-			self.rightNode, updated = self.getRightNode(ndb).set(ndb, key, value)
-			self.rightHash = nil
+			node.rightNode, updated = node.getRightNode(t).set(t, key, value)
+			node.rightHash = nil
 		}
 		if updated {
-			return self, updated
+			return node, updated
 		} else {
-			self.calcHeightAndSize(ndb)
-			return self.balance(ndb), updated
+			node.calcHeightAndSize(t)
+			return node.balance(t), updated
 		}
 	}
 }
 
-// newHash/newNode: The new hash or node to replace self after remove.
+// newHash/newNode: The new hash or node to replace node after remove.
 // newKey: new leftmost leaf key for tree after successfully removing 'key' if changed.
 // value: removed value.
-func (self *IAVLNode) remove(ndb *IAVLNodeDB, key []byte) (
-	newHash []byte, newNode *IAVLNode, newKey []byte, value []byte, err error) {
-	if self.height == 0 {
-		if bytes.Equal(self.key, key) {
-			return nil, nil, nil, self.value, nil
+func (node *IAVLNode) remove(t *IAVLTree, key interface{}) (
+	newHash []byte, newNode *IAVLNode, newKey interface{}, value interface{}, removed bool) {
+	if node.height == 0 {
+		if t.keyCodec.Compare(key, node.key) == 0 {
+			return nil, nil, nil, node.value, true
 		} else {
-			return nil, self, nil, nil, NotFound(key)
+			return nil, node, nil, nil, false
 		}
 	} else {
-		if bytes.Compare(key, self.key) == -1 {
+		if t.keyCodec.Compare(key, node.key) < 0 {
 			var newLeftHash []byte
 			var newLeftNode *IAVLNode
-			newLeftHash, newLeftNode, newKey, value, err = self.getLeftNode(ndb).remove(ndb, key)
-			if err != nil {
-				return nil, self, nil, value, err
+			newLeftHash, newLeftNode, newKey, value, removed = node.getLeftNode(t).remove(t, key)
+			if !removed {
+				return nil, node, nil, value, false
 			} else if newLeftHash == nil && newLeftNode == nil { // left node held value, was removed
-				return self.rightHash, self.rightNode, self.key, value, nil
+				return node.rightHash, node.rightNode, node.key, value, true
 			}
-			self = self.Copy()
-			self.leftHash, self.leftNode = newLeftHash, newLeftNode
+			node = node._copy()
+			node.leftHash, node.leftNode = newLeftHash, newLeftNode
+			node.calcHeightAndSize(t)
+			return nil, node.balance(t), newKey, value, true
 		} else {
 			var newRightHash []byte
 			var newRightNode *IAVLNode
-			newRightHash, newRightNode, newKey, value, err = self.getRightNode(ndb).remove(ndb, key)
-			if err != nil {
-				return nil, self, nil, value, err
+			newRightHash, newRightNode, newKey, value, removed = node.getRightNode(t).remove(t, key)
+			if !removed {
+				return nil, node, nil, value, false
 			} else if newRightHash == nil && newRightNode == nil { // right node held value, was removed
-				return self.leftHash, self.leftNode, nil, value, nil
+				return node.leftHash, node.leftNode, nil, value, true
 			}
-			self = self.Copy()
-			self.rightHash, self.rightNode = newRightHash, newRightNode
+			node = node._copy()
+			node.rightHash, node.rightNode = newRightHash, newRightNode
 			if newKey != nil {
-				self.key = newKey
+				node.key = newKey
 				newKey = nil
 			}
+			node.calcHeightAndSize(t)
+			return nil, node.balance(t), newKey, value, true
 		}
-		self.calcHeightAndSize(ndb)
-		return nil, self.balance(ndb), newKey, value, err
 	}
 }
 
-func (self *IAVLNode) WriteTo(w io.Writer) (n int64, err error) {
-	n, _, err = self.writeToCountHashes(w)
-	return
-}
-
-func (self *IAVLNode) writeToCountHashes(w io.Writer) (n int64, hashCount uint64, err error) {
+func (node *IAVLNode) writeToCountHashes(t *IAVLTree, w io.Writer) (n int64, hashCount uint64, err error) {
 	// height & size & key
-	WriteUInt8(w, self.height, &n, &err)
-	WriteUInt64(w, self.size, &n, &err)
-	WriteByteSlice(w, self.key, &n, &err)
+	WriteUInt8(w, node.height, &n, &err)
+	WriteUInt64(w, node.size, &n, &err)
+	t.keyCodec.Encode(node.key, w, &n, &err)
 	if err != nil {
 		return
 	}
 
-	if self.height == 0 {
+	if node.height == 0 {
 		// value
-		WriteByteSlice(w, self.value, &n, &err)
+		t.valueCodec.Encode(node.value, w, &n, &err)
 	} else {
 		// left
-		if self.leftNode != nil {
-			leftHash, leftCount := self.leftNode.HashWithCount()
-			self.leftHash = leftHash
+		if node.leftNode != nil {
+			leftHash, leftCount := node.leftNode.hashWithCount(t)
+			node.leftHash = leftHash
 			hashCount += leftCount
 		}
-		if self.leftHash == nil {
-			panic("self.leftHash was nil in save")
+		if node.leftHash == nil {
+			panic("node.leftHash was nil in save")
 		}
-		WriteByteSlice(w, self.leftHash, &n, &err)
+		WriteByteSlice(w, node.leftHash, &n, &err)
 		// right
-		if self.rightNode != nil {
-			rightHash, rightCount := self.rightNode.HashWithCount()
-			self.rightHash = rightHash
+		if node.rightNode != nil {
+			rightHash, rightCount := node.rightNode.hashWithCount(t)
+			node.rightHash = rightHash
 			hashCount += rightCount
 		}
-		if self.rightHash == nil {
-			panic("self.rightHash was nil in save")
+		if node.rightHash == nil {
+			panic("node.rightHash was nil in save")
 		}
-		WriteByteSlice(w, self.rightHash, &n, &err)
+		WriteByteSlice(w, node.rightHash, &n, &err)
 	}
 	return
 }
 
-func (self *IAVLNode) getLeftNode(ndb *IAVLNodeDB) *IAVLNode {
-	if self.leftNode != nil {
-		return self.leftNode
+func (node *IAVLNode) getLeftNode(t *IAVLTree) *IAVLNode {
+	if node.leftNode != nil {
+		return node.leftNode
 	} else {
-		return ndb.Get(self.leftHash)
+		return t.getNode(node.leftHash)
 	}
 }
 
-func (self *IAVLNode) getRightNode(ndb *IAVLNodeDB) *IAVLNode {
-	if self.rightNode != nil {
-		return self.rightNode
+func (node *IAVLNode) getRightNode(t *IAVLTree) *IAVLNode {
+	if node.rightNode != nil {
+		return node.rightNode
 	} else {
-		return ndb.Get(self.rightHash)
+		return t.getNode(node.rightHash)
 	}
 }
 
-func (self *IAVLNode) rotateRight(ndb *IAVLNodeDB) *IAVLNode {
-	self = self.Copy()
-	sl := self.getLeftNode(ndb).Copy()
+func (node *IAVLNode) rotateRight(t *IAVLTree) *IAVLNode {
+	node = node._copy()
+	sl := node.getLeftNode(t)._copy()
 
 	slrHash, slrCached := sl.rightHash, sl.rightNode
-	sl.rightHash, sl.rightNode = nil, self
-	self.leftHash, self.leftNode = slrHash, slrCached
+	sl.rightHash, sl.rightNode = nil, node
+	node.leftHash, node.leftNode = slrHash, slrCached
 
-	self.calcHeightAndSize(ndb)
-	sl.calcHeightAndSize(ndb)
+	node.calcHeightAndSize(t)
+	sl.calcHeightAndSize(t)
 
 	return sl
 }
 
-func (self *IAVLNode) rotateLeft(ndb *IAVLNodeDB) *IAVLNode {
-	self = self.Copy()
-	sr := self.getRightNode(ndb).Copy()
+func (node *IAVLNode) rotateLeft(t *IAVLTree) *IAVLNode {
+	node = node._copy()
+	sr := node.getRightNode(t)._copy()
 
 	srlHash, srlCached := sr.leftHash, sr.leftNode
-	sr.leftHash, sr.leftNode = nil, self
-	self.rightHash, self.rightNode = srlHash, srlCached
+	sr.leftHash, sr.leftNode = nil, node
+	node.rightHash, node.rightNode = srlHash, srlCached
 
-	self.calcHeightAndSize(ndb)
-	sr.calcHeightAndSize(ndb)
+	node.calcHeightAndSize(t)
+	sr.calcHeightAndSize(t)
 
 	return sr
 }
 
-func (self *IAVLNode) calcHeightAndSize(ndb *IAVLNodeDB) {
-	self.height = maxUint8(self.getLeftNode(ndb).Height(), self.getRightNode(ndb).Height()) + 1
-	self.size = self.getLeftNode(ndb).Size() + self.getRightNode(ndb).Size()
+func (node *IAVLNode) calcHeightAndSize(t *IAVLTree) {
+	node.height = maxUint8(node.getLeftNode(t).height, node.getRightNode(t).height) + 1
+	node.size = node.getLeftNode(t).size + node.getRightNode(t).size
 }
 
-func (self *IAVLNode) calcBalance(ndb *IAVLNodeDB) int {
-	return int(self.getLeftNode(ndb).Height()) - int(self.getRightNode(ndb).Height())
+func (node *IAVLNode) calcBalance(t *IAVLTree) int {
+	return int(node.getLeftNode(t).height) - int(node.getRightNode(t).height)
 }
 
-func (self *IAVLNode) balance(ndb *IAVLNodeDB) (newSelf *IAVLNode) {
-	balance := self.calcBalance(ndb)
+func (node *IAVLNode) balance(t *IAVLTree) (newSelf *IAVLNode) {
+	balance := node.calcBalance(t)
 	if balance > 1 {
-		if self.getLeftNode(ndb).calcBalance(ndb) >= 0 {
+		if node.getLeftNode(t).calcBalance(t) >= 0 {
 			// Left Left Case
-			return self.rotateRight(ndb)
+			return node.rotateRight(t)
 		} else {
 			// Left Right Case
-			self = self.Copy()
-			self.leftHash, self.leftNode = nil, self.getLeftNode(ndb).rotateLeft(ndb)
-			//self.calcHeightAndSize()
-			return self.rotateRight(ndb)
+			node = node._copy()
+			node.leftHash, node.leftNode = nil, node.getLeftNode(t).rotateLeft(t)
+			//node.calcHeightAndSize()
+			return node.rotateRight(t)
 		}
 	}
 	if balance < -1 {
-		if self.getRightNode(ndb).calcBalance(ndb) <= 0 {
+		if node.getRightNode(t).calcBalance(t) <= 0 {
 			// Right Right Case
-			return self.rotateLeft(ndb)
+			return node.rotateLeft(t)
 		} else {
 			// Right Left Case
-			self = self.Copy()
-			self.rightHash, self.rightNode = nil, self.getRightNode(ndb).rotateRight(ndb)
-			//self.calcHeightAndSize()
-			return self.rotateLeft(ndb)
+			node = node._copy()
+			node.rightHash, node.rightNode = nil, node.getRightNode(t).rotateRight(t)
+			//node.calcHeightAndSize()
+			return node.rotateLeft(t)
 		}
 	}
 	// Nothing changed
-	return self
+	return node
 }
 
-func (self *IAVLNode) traverse(ndb *IAVLNodeDB, cb func(*IAVLNode) bool) bool {
-	stop := cb(self)
+func (node *IAVLNode) traverse(t *IAVLTree, cb func(*IAVLNode) bool) bool {
+	stop := cb(node)
 	if stop {
 		return stop
 	}
-	if self.height > 0 {
-		stop = self.getLeftNode(ndb).traverse(ndb, cb)
+	if node.height > 0 {
+		stop = node.getLeftNode(t).traverse(t, cb)
 		if stop {
 			return stop
 		}
-		stop = self.getRightNode(ndb).traverse(ndb, cb)
+		stop = node.getRightNode(t).traverse(t, cb)
 		if stop {
 			return stop
 		}
@@ -375,17 +386,17 @@ func (self *IAVLNode) traverse(ndb *IAVLNodeDB, cb func(*IAVLNode) bool) bool {
 }
 
 // Only used in testing...
-func (self *IAVLNode) lmd(ndb *IAVLNodeDB) *IAVLNode {
-	if self.height == 0 {
-		return self
+func (node *IAVLNode) lmd(t *IAVLTree) *IAVLNode {
+	if node.height == 0 {
+		return node
 	}
-	return self.getLeftNode(ndb).lmd(ndb)
+	return node.getLeftNode(t).lmd(t)
 }
 
 // Only used in testing...
-func (self *IAVLNode) rmd(ndb *IAVLNodeDB) *IAVLNode {
-	if self.height == 0 {
-		return self
+func (node *IAVLNode) rmd(t *IAVLTree) *IAVLNode {
+	if node.height == 0 {
+		return node
 	}
-	return self.getRightNode(ndb).rmd(ndb)
+	return node.getRightNode(t).rmd(t)
 }
