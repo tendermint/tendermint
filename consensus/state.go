@@ -92,7 +92,7 @@ func (cs *ConsensusState) updateToState(state *State) {
 	cs.Step = RoundStepStart
 	cs.StartTime = state.CommitTime.Add(newBlockWaitDuration)
 	cs.Validators = validators
-	cs.Proposer = validators.GetProposer()
+	cs.Proposer = validators.Proposer()
 	cs.Proposal = nil
 	cs.ProposalBlock = nil
 	cs.ProposalBlockPartSet = nil
@@ -135,7 +135,7 @@ func (cs *ConsensusState) setupRound(round uint16) {
 	cs.Round = round
 	cs.Step = RoundStepStart
 	cs.Validators = validators
-	cs.Proposer = validators.GetProposer()
+	cs.Proposer = validators.Proposer()
 	cs.Proposal = nil
 	cs.ProposalBlock = nil
 	cs.ProposalBlockPartSet = nil

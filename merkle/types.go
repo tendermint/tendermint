@@ -11,8 +11,8 @@ type Tree interface {
 	HashWithCount() (hash []byte, count uint64)
 	Hash() (hash []byte)
 	Save() (hash []byte)
-	Checkpoint() (checkpoint interface{})
-	Restore(checkpoint interface{})
+	Load(hash []byte)
+	Copy() Tree
 	Iterate(func(key interface{}, value interface{}) (stop bool)) (stopped bool)
 }
 

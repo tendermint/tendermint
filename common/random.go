@@ -58,6 +58,10 @@ func RandUInt64() uint64 {
 	return uint64(rand.Uint32())<<32 + uint64(rand.Uint32())
 }
 
+func RandUInt() uint {
+	return uint(rand.Int())
+}
+
 // Distributed pseudo-exponentially to test for various cases
 func RandUInt16Exp() uint16 {
 	bits := rand.Uint32() % 16

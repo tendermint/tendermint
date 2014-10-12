@@ -20,22 +20,10 @@ var (
 	ErrStateInvalidAccountStateHash    = errors.New("Error State invalid AccountStateHash")
 	ErrStateInsufficientFunds          = errors.New("Error State insufficient funds")
 
-	stateKey      = []byte("stateKey")
-	minBondAmount = uint64(1) // TODO adjust
+	stateKey                           = []byte("stateKey")
+	minBondAmount                      = uint64(1) // TODO adjust
+	defaultAccountDetailsCacheCapacity = 1000      // TODO adjust
 )
-
-type accountDetailCodec struct{}
-
-func (abc accountDetailCodec) Write(accDet interface{}) (accDetBytes []byte, err error) {
-	w := new(bytes.Buffer)
-	_, err = accDet.(*AccountDetail).WriteTo(w)
-	return w.Bytes(), err
-}
-
-func (abc accountDetailCodec) Read(accDetBytes []byte) (interface{}, error) {
-	n, err, r := new(int64), new(error), bytes.NewBuffer(accDetBytes)
-	return ReadAccountDetail(r, n, err), *err
-}
 
 //-----------------------------------------------------------------------------
 
@@ -45,24 +33,30 @@ type State struct {
 	Height         uint32 // Last known block height
 	BlockHash      []byte // Last known block hash
 	CommitTime     time.Time
-	AccountDetails *merkle.TypedTree
+	AccountDetails merkle.Tree
 	Validators     *ValidatorSet
 }
 
 func GenesisState(db DB, genesisTime time.Time, accDets []*AccountDetail) *State {
 
 	// TODO: Use "uint64Codec" instead of BasicCodec
-	accountDetails := merkle.NewTypedTree(merkle.NewIAVLTree(db), BasicCodec, accountDetailCodec{})
-	validators := map[uint64]*Validator{}
+	accountDetails := merkle.NewIAVLTree(BasicCodec, AccountDetailCodec, defaultAccountDetailsCacheCapacity, db)
+	validators := []*Validator{}
 
 	for _, accDet := range accDets {
 		accountDetails.Set(accDet.Id, accDet)
-		validators[accDet.Id] = &Validator{
-			Account:     accDet.Account,
-			BondHeight:  0,
-			VotingPower: accDet.Balance,
-			Accum:       0,
+		if accDet.Status == AccountDetailStatusBonded {
+			validators = append(validators, &Validator{
+				Account:     accDet.Account,
+				BondHeight:  0,
+				VotingPower: accDet.Balance,
+				Accum:       0,
+			})
 		}
+	}
+
+	if len(validators) == 0 {
+		panic("Must have some validators")
 	}
 	validatorSet := NewValidatorSet(validators)
 
@@ -89,16 +83,13 @@ func LoadState(db DB) *State {
 		s.CommitTime = ReadTime(reader, &n, &err)
 		s.BlockHash = ReadByteSlice(reader, &n, &err)
 		accountDetailsHash := ReadByteSlice(reader, &n, &err)
-		s.AccountDetails = merkle.NewTypedTree(merkle.LoadIAVLTreeFromHash(db, accountDetailsHash), BasicCodec, accountDetailCodec{})
-		var validators = map[uint64]*Validator{}
-		for reader.Len() > 0 {
-			validator := ReadValidator(reader, &n, &err)
-			validators[validator.Id] = validator
-		}
-		s.Validators = NewValidatorSet(validators)
+		s.AccountDetails = merkle.NewIAVLTree(BasicCodec, AccountDetailCodec, defaultAccountDetailsCacheCapacity, db)
+		s.AccountDetails.Load(accountDetailsHash)
+		s.Validators = ReadValidatorSet(reader, &n, &err)
 		if err != nil {
 			panic(err)
 		}
+		// TODO: ensure that buf is completely read.
 	}
 	return s
 }
@@ -108,17 +99,15 @@ func LoadState(db DB) *State {
 // is saved here.
 func (s *State) Save(commitTime time.Time) {
 	s.CommitTime = commitTime
-	s.AccountDetails.Tree.Save()
+	s.AccountDetails.Save()
 	var buf bytes.Buffer
 	var n int64
 	var err error
 	WriteUInt32(&buf, s.Height, &n, &err)
 	WriteTime(&buf, commitTime, &n, &err)
 	WriteByteSlice(&buf, s.BlockHash, &n, &err)
-	WriteByteSlice(&buf, s.AccountDetails.Tree.Hash(), &n, &err)
-	for _, validator := range s.Validators.Map() {
-		WriteBinary(&buf, validator, &n, &err)
-	}
+	WriteByteSlice(&buf, s.AccountDetails.Hash(), &n, &err)
+	WriteBinary(&buf, s.Validators, &n, &err)
 	if err != nil {
 		panic(err)
 	}
@@ -225,7 +214,7 @@ func (s *State) AppendBlock(b *Block) error {
 	if !bytes.Equal(s.Validators.Hash(), b.ValidationStateHash) {
 		return ErrStateInvalidValidationStateHash
 	}
-	if !bytes.Equal(s.AccountDetails.Tree.Hash(), b.AccountStateHash) {
+	if !bytes.Equal(s.AccountDetails.Hash(), b.AccountStateHash) {
 		return ErrStateInvalidAccountStateHash
 	}
 
@@ -235,7 +224,7 @@ func (s *State) AppendBlock(b *Block) error {
 }
 
 func (s *State) GetAccountDetail(accountId uint64) *AccountDetail {
-	accDet := s.AccountDetails.Get(accountId)
+	_, accDet := s.AccountDetails.Get(accountId)
 	if accDet == nil {
 		return nil
 	}

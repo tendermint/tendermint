@@ -39,7 +39,7 @@ func NewIAVLTree(keyCodec, valueCodec Codec, cacheSize int, db DB) *IAVLTree {
 
 // The returned tree and the original tree are goroutine independent.
 // That is, they can each run in their own goroutine.
-func (t *IAVLTree) Copy() *IAVLTree {
+func (t *IAVLTree) Copy() Tree {
 	if t.ndb != nil && !t.root.persisted {
 		panic("It is unsafe to Copy() an unpersisted tree.")
 		// Saving a tree finalizes all the nodes.

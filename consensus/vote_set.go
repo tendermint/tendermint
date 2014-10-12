@@ -63,7 +63,7 @@ func (vs *VoteSet) AddVote(vote *Vote) (bool, error) {
 	}
 
 	// Ensure that signer is a validator.
-	val := vs.vset.GetById(vote.SignerId)
+	_, val := vs.vset.GetById(vote.SignerId)
 	if val == nil {
 		return false, ErrVoteInvalidAccount
 	}
@@ -89,12 +89,11 @@ func (vs *VoteSet) addVote(vote *Vote) (bool, error) {
 
 	// Add vote.
 	vs.votes[vote.SignerId] = vote
-	voterIndex, ok := vs.vset.GetIndexById(vote.SignerId)
-	if !ok {
+	voterIndex, val := vs.vset.GetById(vote.SignerId)
+	if val == nil {
 		return false, ErrVoteInvalidAccount
 	}
 	vs.votesBitArray.SetIndex(uint(voterIndex), true)
-	val := vs.vset.GetById(vote.SignerId)
 	totalBlockHashVotes := vs.votesByBlockHash[string(vote.BlockHash)] + val.VotingPower
 	vs.votesByBlockHash[string(vote.BlockHash)] = totalBlockHashVotes
 	vs.totalVotes += val.VotingPower

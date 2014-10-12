@@ -55,17 +55,17 @@ func (pol *POL) Verify(vset *ValidatorSet) error {
 		if _, seen := seenValidators[sig.SignerId]; seen {
 			return Errorf("Duplicate validator for vote %v for POL %v", sig, pol)
 		}
-		validator := vset.GetById(sig.SignerId)
-		if validator == nil {
+		_, val := vset.GetById(sig.SignerId)
+		if val == nil {
 			return Errorf("Invalid validator for vote %v for POL %v", sig, pol)
 		}
-		if !validator.VerifyBytes(voteDoc, sig) {
+		if !val.VerifyBytes(voteDoc, sig) {
 			return Errorf("Invalid signature for vote %v for POL %v", sig, pol)
 		}
 
 		// Tally
-		seenValidators[validator.Id] = struct{}{}
-		talliedVotingPower += validator.VotingPower
+		seenValidators[val.Id] = struct{}{}
+		talliedVotingPower += val.VotingPower
 	}
 
 	for i, sig := range pol.Commits {
@@ -75,20 +75,20 @@ func (pol *POL) Verify(vset *ValidatorSet) error {
 		if _, seen := seenValidators[sig.SignerId]; seen {
 			return Errorf("Duplicate validator for commit %v for POL %v", sig, pol)
 		}
-		validator := vset.GetById(sig.SignerId)
-		if validator == nil {
+		_, val := vset.GetById(sig.SignerId)
+		if val == nil {
 			return Errorf("Invalid validator for commit %v for POL %v", sig, pol)
 		}
 
 		commitDoc := BinaryBytes(&Vote{Height: pol.Height, Round: round,
 			Type: VoteTypeCommit, BlockHash: pol.BlockHash}) // TODO cache
-		if !validator.VerifyBytes(commitDoc, sig) {
+		if !val.VerifyBytes(commitDoc, sig) {
 			return Errorf("Invalid signature for commit %v for POL %v", sig, pol)
 		}
 
 		// Tally
-		seenValidators[validator.Id] = struct{}{}
-		talliedVotingPower += validator.VotingPower
+		seenValidators[val.Id] = struct{}{}
+		talliedVotingPower += val.VotingPower
 	}
 
 	if talliedVotingPower > vset.TotalVotingPower()*2/3 {

@@ -20,7 +20,7 @@ Validation Txs:
 
 type Tx interface {
 	Signable
-	GetSequence() uint64
+	GetSequence() uint
 }
 
 const (
@@ -83,7 +83,7 @@ func ReadTx(r io.Reader, n *int64, err *error) Tx {
 //-----------------------------------------------------------------------------
 
 type BaseTx struct {
-	Sequence uint64
+	Sequence uint
 	Signature
 }
 
@@ -100,7 +100,7 @@ func (tx BaseTx) WriteTo(w io.Writer) (n int64, err error) {
 	return
 }
 
-func (tx *BaseTx) GetSequence() uint64 {
+func (tx *BaseTx) GetSequence() uint {
 	return tx.Sequence
 }
 

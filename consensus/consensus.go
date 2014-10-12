@@ -229,8 +229,8 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 			if vote.Height != rs.Height || vote.Height != ps.Height {
 				return
 			}
-			index, ok := rs.Validators.GetIndexById(vote.SignerId)
-			if !ok {
+			index, val := rs.Validators.GetById(vote.SignerId)
+			if val == nil {
 				log.Warning("Peer gave us an invalid vote.")
 				return
 			}
@@ -348,8 +348,8 @@ OUTER_LOOP:
 		if prs.Step <= RoundStepVote {
 			index, ok := rs.Votes.BitArray().Sub(prs.Votes).PickRandom()
 			if ok {
-				valId, ok := rs.Validators.GetIdByIndex(uint32(index))
-				if ok {
+				valId, val := rs.Validators.GetByIndex(uint32(index))
+				if val != nil {
 					vote := rs.Votes.GetVote(valId)
 					msg := p2p.TypedMessage{msgTypeVote, vote}
 					peer.Send(VoteCh, msg)
@@ -365,8 +365,8 @@ OUTER_LOOP:
 		if prs.Step <= RoundStepPrecommit {
 			index, ok := rs.Precommits.BitArray().Sub(prs.Precommits).PickRandom()
 			if ok {
-				valId, ok := rs.Validators.GetIdByIndex(uint32(index))
-				if ok {
+				valId, val := rs.Validators.GetByIndex(uint32(index))
+				if val != nil {
 					vote := rs.Precommits.GetVote(valId)
 					msg := p2p.TypedMessage{msgTypeVote, vote}
 					peer.Send(VoteCh, msg)
@@ -381,8 +381,8 @@ OUTER_LOOP:
 		// If there are any commits to send...
 		index, ok := rs.Commits.BitArray().Sub(prs.Commits).PickRandom()
 		if ok {
-			valId, ok := rs.Validators.GetIdByIndex(uint32(index))
-			if ok {
+			valId, val := rs.Validators.GetByIndex(uint32(index))
+			if val != nil {
 				vote := rs.Commits.GetVote(valId)
 				msg := p2p.TypedMessage{msgTypeVote, vote}
 				peer.Send(VoteCh, msg)

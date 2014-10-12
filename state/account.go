@@ -57,7 +57,7 @@ func (account Account) Verify(o Signable) bool {
 
 type AccountDetail struct {
 	Account
-	Sequence uint64
+	Sequence uint
 	Balance  uint64
 	Status   byte
 }
@@ -65,7 +65,7 @@ type AccountDetail struct {
 func ReadAccountDetail(r io.Reader, n *int64, err *error) *AccountDetail {
 	return &AccountDetail{
 		Account:  ReadAccount(r, n, err),
-		Sequence: ReadUInt64(r, n, err),
+		Sequence: ReadUVarInt(r, n, err),
 		Balance:  ReadUInt64(r, n, err),
 		Status:   ReadByte(r, n, err),
 	}
@@ -73,10 +73,28 @@ func ReadAccountDetail(r io.Reader, n *int64, err *error) *AccountDetail {
 
 func (accDet AccountDetail) WriteTo(w io.Writer) (n int64, err error) {
 	WriteBinary(w, accDet.Account, &n, &err)
-	WriteUInt64(w, accDet.Sequence, &n, &err)
+	WriteUVarInt(w, accDet.Sequence, &n, &err)
 	WriteUInt64(w, accDet.Balance, &n, &err)
 	WriteByte(w, accDet.Status, &n, &err)
 	return
+}
+
+//-------------------------------------
+
+var AccountDetailCodec = accountDetailCodec{}
+
+type accountDetailCodec struct{}
+
+func (abc accountDetailCodec) Encode(accDet interface{}, w io.Writer, n *int64, err *error) {
+	WriteBinary(w, accDet.(*AccountDetail), n, err)
+}
+
+func (abc accountDetailCodec) Decode(r io.Reader, n *int64, err *error) interface{} {
+	return ReadAccountDetail(r, n, err)
+}
+
+func (abc accountDetailCodec) Compare(o1 interface{}, o2 interface{}) int {
+	panic("AccountDetailCodec.Compare not implemented")
 }
 
 //-----------------------------------------------------------------------------

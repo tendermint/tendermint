@@ -39,13 +39,11 @@ func TestBlock(t *testing.T) {
 		BaseTx:   randBaseTx(),
 		Fee:      RandUInt64Exp(),
 		UnbondTo: RandUInt64Exp(),
-		Amount:   RandUInt64Exp(),
 	}
 
 	unbondTx := &UnbondTx{
 		BaseTx: randBaseTx(),
 		Fee:    RandUInt64Exp(),
-		Amount: RandUInt64Exp(),
 	}
 
 	timeoutTx := &TimeoutTx{

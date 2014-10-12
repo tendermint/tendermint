@@ -11,29 +11,30 @@ import (
 	"time"
 )
 
-func randAccountBalance(id uint64, status byte) *AccountBalance {
-	return &AccountBalance{
+func randAccountDetail(id uint64, status byte) *AccountDetail {
+	return &AccountDetail{
 		Account: Account{
 			Id:     id,
 			PubKey: CRandBytes(32),
 		},
-		Balance: RandUInt64(),
-		Status:  status,
+		Sequence: RandUInt(),
+		Balance:  RandUInt64(),
+		Status:   status,
 	}
 }
 
 // The first numValidators accounts are validators.
 func randGenesisState(numAccounts int, numValidators int) *State {
 	db := NewMemDB()
-	accountBalances := make([]*AccountBalance, numAccounts)
+	accountDetails := make([]*AccountDetail, numAccounts)
 	for i := 0; i < numAccounts; i++ {
 		if i < numValidators {
-			accountBalances[i] = randAccountBalance(uint64(i), AccountBalanceStatusNominal)
+			accountDetails[i] = randAccountDetail(uint64(i), AccountDetailStatusNominal)
 		} else {
-			accountBalances[i] = randAccountBalance(uint64(i), AccountBalanceStatusBonded)
+			accountDetails[i] = randAccountDetail(uint64(i), AccountDetailStatusBonded)
 		}
 	}
-	s0 := GenesisState(db, time.Now(), accountBalances)
+	s0 := GenesisState(db, time.Now(), accountDetails)
 	return s0
 }
 
@@ -42,10 +43,11 @@ func TestGenesisSaveLoad(t *testing.T) {
 	// Generate a state, save & load it.
 	s0 := randGenesisState(10, 5)
 	// Figure out what the next state hashes should be.
+	s0.Validators.Hash()
 	s0ValsCopy := s0.Validators.Copy()
 	s0ValsCopy.IncrementAccum()
 	nextValidationStateHash := s0ValsCopy.Hash()
-	nextAccountStateHash := s0.AccountBalances.Tree.Hash()
+	nextAccountStateHash := s0.AccountDetails.Hash()
 	// Mutate the state to append one empty block.
 	block := &Block{
 		Header: Header{
@@ -97,7 +99,7 @@ func TestGenesisSaveLoad(t *testing.T) {
 	if s0.Validators.TotalVotingPower() != s1.Validators.TotalVotingPower() {
 		t.Error("Validators TotalVotingPower mismatch")
 	}
-	if !bytes.Equal(s0.AccountBalances.Tree.Hash(), s1.AccountBalances.Tree.Hash()) {
-		t.Error("AccountBalance mismatch")
+	if !bytes.Equal(s0.AccountDetails.Hash(), s1.AccountDetails.Hash()) {
+		t.Error("AccountDetail mismatch")
 	}
 }
