@@ -123,6 +123,7 @@ func (node *IAVLNode) getByIndex(t *IAVLTree, index uint64) (key interface{}, va
 	}
 }
 
+// NOTE: sets hashes recursively
 func (node *IAVLNode) hashWithCount(t *IAVLTree) ([]byte, uint64) {
 	if node.hash != nil {
 		return node.hash, 0
@@ -138,6 +139,8 @@ func (node *IAVLNode) hashWithCount(t *IAVLTree) ([]byte, uint64) {
 	return node.hash, hashCount + 1
 }
 
+// NOTE: sets hashes recursively
+// NOTE: clears leftNode/rightNode recursively
 func (node *IAVLNode) save(t *IAVLTree) []byte {
 	if node.hash == nil {
 		node.hash, _ = node.hashWithCount(t)
@@ -157,7 +160,7 @@ func (node *IAVLNode) save(t *IAVLTree) []byte {
 	}
 
 	// save node
-	t.saveNode(node)
+	t.ndb.SaveNode(t, node)
 	return node.hash
 }
 
@@ -247,6 +250,7 @@ func (node *IAVLNode) remove(t *IAVLTree, key interface{}) (
 	}
 }
 
+// NOTE: sets hashes recursively
 func (node *IAVLNode) writeToCountHashes(t *IAVLTree, w io.Writer) (n int64, hashCount uint64, err error) {
 	// height & size & key
 	WriteUInt8(w, node.height, &n, &err)
@@ -288,7 +292,7 @@ func (node *IAVLNode) getLeftNode(t *IAVLTree) *IAVLNode {
 	if node.leftNode != nil {
 		return node.leftNode
 	} else {
-		return t.getNode(node.leftHash)
+		return t.ndb.GetNode(t, node.leftHash)
 	}
 }
 
@@ -296,7 +300,7 @@ func (node *IAVLNode) getRightNode(t *IAVLTree) *IAVLNode {
 	if node.rightNode != nil {
 		return node.rightNode
 	} else {
-		return t.getNode(node.rightHash)
+		return t.ndb.GetNode(t, node.rightHash)
 	}
 }
 
@@ -328,6 +332,7 @@ func (node *IAVLNode) rotateLeft(t *IAVLTree) *IAVLNode {
 	return sr
 }
 
+// NOTE: mutates height and size
 func (node *IAVLNode) calcHeightAndSize(t *IAVLTree) {
 	node.height = maxUint8(node.getLeftNode(t).height, node.getRightNode(t).height) + 1
 	node.size = node.getLeftNode(t).size + node.getRightNode(t).size

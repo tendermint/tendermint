@@ -231,7 +231,8 @@ func TestPersistence(t *testing.T) {
 	hash, _ := t1.HashWithCount()
 
 	// Load a tree
-	t2 := LoadIAVLTreeFromHash(BasicCodec, BasicCodec, 0, db, hash)
+	t2 := NewIAVLTree(BasicCodec, BasicCodec, 0, db)
+	t2.Load(hash)
 	for key, value := range records {
 		_, t2value := t2.Get(key)
 		if t2value != value {

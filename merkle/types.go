@@ -13,6 +13,7 @@ type Tree interface {
 	Save() (hash []byte)
 	Checkpoint() (checkpoint interface{})
 	Restore(checkpoint interface{})
+	Iterate(func(key interface{}, value interface{}) (stop bool)) (stopped bool)
 }
 
 type Hashable interface {
