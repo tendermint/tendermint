@@ -29,12 +29,13 @@ var (
 
 // NOTE: not goroutine-safe.
 type State struct {
-	DB             DB
-	Height         uint32 // Last known block height
-	BlockHash      []byte // Last known block hash
-	CommitTime     time.Time
-	AccountDetails merkle.Tree
-	Validators     *ValidatorSet
+	DB                 DB
+	Height             uint32 // Last known block height
+	BlockHash          []byte // Last known block hash
+	CommitTime         time.Time
+	AccountDetails     merkle.Tree
+	BondedValidators   *ValidatorSet
+	UnbondedValidators *ValidatorSet
 }
 
 func GenesisState(db DB, genesisTime time.Time, accDets []*AccountDetail) *State {
@@ -58,15 +59,15 @@ func GenesisState(db DB, genesisTime time.Time, accDets []*AccountDetail) *State
 	if len(validators) == 0 {
 		panic("Must have some validators")
 	}
-	validatorSet := NewValidatorSet(validators)
 
 	return &State{
-		DB:             db,
-		Height:         0,
-		BlockHash:      nil,
-		CommitTime:     genesisTime,
-		AccountDetails: accountDetails,
-		Validators:     validatorSet,
+		DB:                 db,
+		Height:             0,
+		BlockHash:          nil,
+		CommitTime:         genesisTime,
+		AccountDetails:     accountDetails,
+		BondedValidators:   NewValidatorSet(validators),
+		UnbondedValidators: NewValidatorSet(nil),
 	}
 }
 
@@ -85,7 +86,8 @@ func LoadState(db DB) *State {
 		accountDetailsHash := ReadByteSlice(reader, &n, &err)
 		s.AccountDetails = merkle.NewIAVLTree(BasicCodec, AccountDetailCodec, defaultAccountDetailsCacheCapacity, db)
 		s.AccountDetails.Load(accountDetailsHash)
-		s.Validators = ReadValidatorSet(reader, &n, &err)
+		s.BondedValidators = ReadValidatorSet(reader, &n, &err)
+		s.UnbondedValidators = ReadValidatorSet(reader, &n, &err)
 		if err != nil {
 			panic(err)
 		}
@@ -107,7 +109,8 @@ func (s *State) Save(commitTime time.Time) {
 	WriteTime(&buf, commitTime, &n, &err)
 	WriteByteSlice(&buf, s.BlockHash, &n, &err)
 	WriteByteSlice(&buf, s.AccountDetails.Hash(), &n, &err)
-	WriteBinary(&buf, s.Validators, &n, &err)
+	WriteBinary(&buf, s.BondedValidators, &n, &err)
+	WriteBinary(&buf, s.UnbondedValidators, &n, &err)
 	if err != nil {
 		panic(err)
 	}
@@ -116,12 +119,13 @@ func (s *State) Save(commitTime time.Time) {
 
 func (s *State) Copy() *State {
 	return &State{
-		DB:             s.DB,
-		Height:         s.Height,
-		CommitTime:     s.CommitTime,
-		BlockHash:      s.BlockHash,
-		AccountDetails: s.AccountDetails.Copy(),
-		Validators:     s.Validators.Copy(),
+		DB:                 s.DB,
+		Height:             s.Height,
+		CommitTime:         s.CommitTime,
+		BlockHash:          s.BlockHash,
+		AccountDetails:     s.AccountDetails.Copy(),
+		BondedValidators:   s.BondedValidators.Copy(),
+		UnbondedValidators: s.UnbondedValidators.Copy(),
 	}
 }
 
@@ -181,10 +185,35 @@ func (s *State) ExecTx(tx Tx) error {
 		accDet.Balance -= btx.Fee // remaining balance are bonded coins.
 		accDet.Status = AccountDetailStatusBonded
 		s.SetAccountDetail(accDet)
-		// XXX add validator
+		added := s.BondednValidators.Add(&Validator{
+			Account:     accDet.Account,
+			BondHeight:  s.Height,
+			VotingPower: accDet.Balance,
+			Accum:       0,
+		})
+		if !added {
+			panic("Failed to add validator")
+		}
 	case *UnbondTx:
-	case *TimeoutTx:
+		utx := tx.(*UnbondTx)
+		// Account must be bonded.
+		if accDet.Status != AccountDetailStatusBonded {
+			return ErrStateInvalidAccountState
+		}
+		// Good!
+		accDet.Status = AccountDetailStatusUnbonding
+		s.SetAccountDetail(accDet)
+		val, removed := s.BondedValidators.Remove(accDet.Id)
+		if !removed {
+			panic("Failed to remove validator")
+		}
+		val.UnbondHeight = s.Height
+		added := s.UnbondedValidators.Add(val)
+		if !added {
+			panic("Failed to add validator")
+		}
 	case *DupeoutTx:
+		// XXX
 	}
 	panic("Implement ExecTx()")
 	return nil
@@ -207,11 +236,17 @@ func (s *State) AppendBlock(b *Block) error {
 		}
 	}
 
+	// If any unbonding periods are over,
+	// reward account with bonded coins.
+
+	// If any validators haven't signed in a while,
+	// unbond them, they have timed out.
+
 	// Increment validator AccumPowers
-	s.Validators.IncrementAccum()
+	s.BondedValidators.IncrementAccum()
 
 	// State hashes should match
-	if !bytes.Equal(s.Validators.Hash(), b.ValidationStateHash) {
+	if !bytes.Equal(s.BondedValidators.Hash(), b.ValidationStateHash) {
 		return ErrStateInvalidValidationStateHash
 	}
 	if !bytes.Equal(s.AccountDetails.Hash(), b.AccountStateHash) {

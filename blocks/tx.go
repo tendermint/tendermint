@@ -14,8 +14,7 @@ Account Txs:
 Validation Txs:
 3. Bond         New validator posts a bond
 4. Unbond       Validator leaves
-5. Timeout      Validator times out
-6. Dupeout      Validator dupes out (signs twice)
+5. Dupeout      Validator dupes out (signs twice)
 */
 
 type Tx interface {
@@ -31,8 +30,7 @@ const (
 	// Validation transactions
 	TxTypeBond    = byte(0x11)
 	TxTypeUnbond  = byte(0x12)
-	TxTypeTimeout = byte(0x13)
-	TxTypeDupeout = byte(0x14)
+	TxTypeDupeout = byte(0x13)
 )
 
 func ReadTx(r io.Reader, n *int64, err *error) Tx {
@@ -61,12 +59,6 @@ func ReadTx(r io.Reader, n *int64, err *error) Tx {
 		return &UnbondTx{
 			BaseTx: ReadBaseTx(r, n, err),
 			Fee:    ReadUInt64(r, n, err),
-		}
-	case TxTypeTimeout:
-		return &TimeoutTx{
-			BaseTx:    ReadBaseTx(r, n, err),
-			AccountId: ReadUInt64(r, n, err),
-			Penalty:   ReadUInt64(r, n, err),
 		}
 	case TxTypeDupeout:
 		return &DupeoutTx{
@@ -175,22 +167,6 @@ func (tx *UnbondTx) WriteTo(w io.Writer) (n int64, err error) {
 	WriteByte(w, TxTypeUnbond, &n, &err)
 	WriteBinary(w, tx.BaseTx, &n, &err)
 	WriteUInt64(w, tx.Fee, &n, &err)
-	return
-}
-
-//-----------------------------------------------------------------------------
-
-type TimeoutTx struct {
-	BaseTx
-	AccountId uint64
-	Penalty   uint64
-}
-
-func (tx *TimeoutTx) WriteTo(w io.Writer) (n int64, err error) {
-	WriteByte(w, TxTypeTimeout, &n, &err)
-	WriteBinary(w, tx.BaseTx, &n, &err)
-	WriteUInt64(w, tx.AccountId, &n, &err)
-	WriteUInt64(w, tx.Penalty, &n, &err)
 	return
 }
 

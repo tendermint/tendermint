@@ -100,7 +100,7 @@ func (vset *ValidatorSet) Hash() []byte {
 	return vset.validators.Hash()
 }
 
-func (vset *ValidatorSet) AddValidator(val *Validator) (added bool) {
+func (vset *ValidatorSet) Add(val *Validator) (added bool) {
 	if val.Accum != 0 {
 		panic("AddValidator only accepts validators with zero accumpower")
 	}
@@ -111,7 +111,7 @@ func (vset *ValidatorSet) AddValidator(val *Validator) (added bool) {
 	return !updated
 }
 
-func (vset *ValidatorSet) RemoveValidator(validatorId uint64) (removed bool) {
-	_, removed = vset.validators.Remove(validatorId)
-	return removed
+func (vset *ValidatorSet) Remove(validatorId uint64) (val *Validator, removed bool) {
+	val, removed = vset.validators.Remove(validatorId)
+	return val.(*Validator), removed
 }

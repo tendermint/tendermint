@@ -46,11 +46,6 @@ func TestBlock(t *testing.T) {
 		Fee:    RandUInt64Exp(),
 	}
 
-	timeoutTx := &TimeoutTx{
-		AccountId: RandUInt64Exp(),
-		Penalty:   RandUInt64Exp(),
-	}
-
 	dupeoutTx := &DupeoutTx{
 		VoteA: Vote{
 			Height:    RandUInt32Exp(),
