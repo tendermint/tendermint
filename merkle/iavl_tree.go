@@ -148,6 +148,9 @@ func (t *IAVLTree) Remove(key interface{}) (value interface{}, removed bool) {
 }
 
 func (t *IAVLTree) Iterate(fn func(key interface{}, value interface{}) bool) (stopped bool) {
+	if t.root == nil {
+		return false
+	}
 	return t.root.traverse(t, func(node *IAVLNode) bool {
 		if node.height == 0 {
 			return fn(node.key, node.value)

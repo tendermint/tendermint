@@ -101,17 +101,26 @@ func (vset *ValidatorSet) Hash() []byte {
 }
 
 func (vset *ValidatorSet) Add(val *Validator) (added bool) {
-	if val.Accum != 0 {
-		panic("AddValidator only accepts validators with zero accumpower")
-	}
 	if vset.validators.Has(val.Id) {
 		return false
 	}
-	updated := vset.validators.Set(val.Id, val)
-	return !updated
+	return !vset.validators.Set(val.Id, val)
+}
+
+func (vset *ValidatorSet) Update(val *Validator) (updated bool) {
+	if !vset.validators.Has(val.Id) {
+		return false
+	}
+	return vset.validators.Set(val.Id, val)
 }
 
 func (vset *ValidatorSet) Remove(validatorId uint64) (val *Validator, removed bool) {
-	val, removed = vset.validators.Remove(validatorId)
-	return val.(*Validator), removed
+	val_, removed := vset.validators.Remove(validatorId)
+	return val_.(*Validator), removed
+}
+
+func (vset *ValidatorSet) Iterate(fn func(val *Validator) bool) {
+	vset.validators.Iterate(func(key_ interface{}, val_ interface{}) bool {
+		return fn(val_.(*Validator))
+	})
 }

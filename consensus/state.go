@@ -86,7 +86,7 @@ func (cs *ConsensusState) updateToState(state *State) {
 
 	// Reset fields based on state.
 	height := state.Height
-	validators := state.Validators
+	validators := state.BondedValidators
 	cs.Height = height
 	cs.Round = 0
 	cs.Step = RoundStepStart

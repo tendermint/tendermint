@@ -12,7 +12,7 @@ func randSig() Signature {
 }
 
 func randBaseTx() BaseTx {
-	return BaseTx{0, randSig()}
+	return BaseTx{0, RandUInt64Exp(), randSig()}
 }
 
 func TestBlock(t *testing.T) {
@@ -21,14 +21,12 @@ func TestBlock(t *testing.T) {
 
 	sendTx := &SendTx{
 		BaseTx: randBaseTx(),
-		Fee:    RandUInt64Exp(),
 		To:     RandUInt64Exp(),
 		Amount: RandUInt64Exp(),
 	}
 
 	nameTx := &NameTx{
 		BaseTx: randBaseTx(),
-		Fee:    RandUInt64Exp(),
 		Name:   string(RandBytes(12)),
 		PubKey: RandBytes(32),
 	}
@@ -36,14 +34,12 @@ func TestBlock(t *testing.T) {
 	// Validation Txs
 
 	bondTx := &BondTx{
-		BaseTx:   randBaseTx(),
-		Fee:      RandUInt64Exp(),
-		UnbondTo: RandUInt64Exp(),
+		BaseTx: randBaseTx(),
+		//UnbondTo: RandUInt64Exp(),
 	}
 
 	unbondTx := &UnbondTx{
 		BaseTx: randBaseTx(),
-		Fee:    RandUInt64Exp(),
 	}
 
 	dupeoutTx := &DupeoutTx{
@@ -79,7 +75,7 @@ func TestBlock(t *testing.T) {
 			Signatures: []Signature{randSig(), randSig()},
 		},
 		Data: Data{
-			Txs: []Tx{sendTx, nameTx, bondTx, unbondTx, timeoutTx, dupeoutTx},
+			Txs: []Tx{sendTx, nameTx, bondTx, unbondTx, dupeoutTx},
 		},
 	}
 

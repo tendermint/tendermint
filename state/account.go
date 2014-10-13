@@ -9,9 +9,10 @@ import (
 )
 
 const (
-	AccountDetailStatusNominal   = byte(0x00)
-	AccountDetailStatusBonded    = byte(0x01)
-	AccountDetailStatusUnbonding = byte(0x02)
+	AccountStatusNominal   = byte(0x00)
+	AccountStatusBonded    = byte(0x01)
+	AccountStatusUnbonding = byte(0x02)
+	AccountStatusDupedOut  = byte(0x03)
 )
 
 type Account struct {

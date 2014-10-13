@@ -20,6 +20,7 @@ Validation Txs:
 type Tx interface {
 	Signable
 	GetSequence() uint
+	GetFee() uint64
 }
 
 const (
@@ -38,27 +39,23 @@ func ReadTx(r io.Reader, n *int64, err *error) Tx {
 	case TxTypeSend:
 		return &SendTx{
 			BaseTx: ReadBaseTx(r, n, err),
-			Fee:    ReadUInt64(r, n, err),
 			To:     ReadUInt64(r, n, err),
 			Amount: ReadUInt64(r, n, err),
 		}
 	case TxTypeName:
 		return &NameTx{
 			BaseTx: ReadBaseTx(r, n, err),
-			Fee:    ReadUInt64(r, n, err),
 			Name:   ReadString(r, n, err),
 			PubKey: ReadByteSlice(r, n, err),
 		}
 	case TxTypeBond:
 		return &BondTx{
-			BaseTx:   ReadBaseTx(r, n, err),
-			Fee:      ReadUInt64(r, n, err),
-			UnbondTo: ReadUInt64(r, n, err),
+			BaseTx: ReadBaseTx(r, n, err),
+			//UnbondTo: ReadUInt64(r, n, err),
 		}
 	case TxTypeUnbond:
 		return &UnbondTx{
 			BaseTx: ReadBaseTx(r, n, err),
-			Fee:    ReadUInt64(r, n, err),
 		}
 	case TxTypeDupeout:
 		return &DupeoutTx{
@@ -76,18 +73,21 @@ func ReadTx(r io.Reader, n *int64, err *error) Tx {
 
 type BaseTx struct {
 	Sequence uint
+	Fee      uint64
 	Signature
 }
 
 func ReadBaseTx(r io.Reader, n *int64, err *error) BaseTx {
 	return BaseTx{
 		Sequence:  ReadUVarInt(r, n, err),
+		Fee:       ReadUInt64(r, n, err),
 		Signature: ReadSignature(r, n, err),
 	}
 }
 
 func (tx BaseTx) WriteTo(w io.Writer) (n int64, err error) {
 	WriteUVarInt(w, tx.Sequence, &n, &err)
+	WriteUInt64(w, tx.Fee, &n, &err)
 	WriteBinary(w, tx.Signature, &n, &err)
 	return
 }
@@ -100,6 +100,10 @@ func (tx *BaseTx) GetSignature() Signature {
 	return tx.Signature
 }
 
+func (tx *BaseTx) GetFee() uint64 {
+	return tx.Fee
+}
+
 func (tx *BaseTx) SetSignature(sig Signature) {
 	tx.Signature = sig
 }
@@ -108,7 +112,6 @@ func (tx *BaseTx) SetSignature(sig Signature) {
 
 type SendTx struct {
 	BaseTx
-	Fee    uint64
 	To     uint64
 	Amount uint64
 }
@@ -116,7 +119,6 @@ type SendTx struct {
 func (tx *SendTx) WriteTo(w io.Writer) (n int64, err error) {
 	WriteByte(w, TxTypeSend, &n, &err)
 	WriteBinary(w, tx.BaseTx, &n, &err)
-	WriteUInt64(w, tx.Fee, &n, &err)
 	WriteUInt64(w, tx.To, &n, &err)
 	WriteUInt64(w, tx.Amount, &n, &err)
 	return
@@ -126,7 +128,6 @@ func (tx *SendTx) WriteTo(w io.Writer) (n int64, err error) {
 
 type NameTx struct {
 	BaseTx
-	Fee    uint64
 	Name   string
 	PubKey []byte
 }
@@ -134,7 +135,6 @@ type NameTx struct {
 func (tx *NameTx) WriteTo(w io.Writer) (n int64, err error) {
 	WriteByte(w, TxTypeName, &n, &err)
 	WriteBinary(w, tx.BaseTx, &n, &err)
-	WriteUInt64(w, tx.Fee, &n, &err)
 	WriteString(w, tx.Name, &n, &err)
 	WriteByteSlice(w, tx.PubKey, &n, &err)
 	return
@@ -144,15 +144,13 @@ func (tx *NameTx) WriteTo(w io.Writer) (n int64, err error) {
 
 type BondTx struct {
 	BaseTx
-	Fee      uint64
-	UnbondTo uint64
+	//UnbondTo uint64
 }
 
 func (tx *BondTx) WriteTo(w io.Writer) (n int64, err error) {
 	WriteByte(w, TxTypeBond, &n, &err)
 	WriteBinary(w, tx.BaseTx, &n, &err)
-	WriteUInt64(w, tx.Fee, &n, &err)
-	WriteUInt64(w, tx.UnbondTo, &n, &err)
+	//WriteUInt64(w, tx.UnbondTo, &n, &err)
 	return
 }
 
@@ -160,13 +158,11 @@ func (tx *BondTx) WriteTo(w io.Writer) (n int64, err error) {
 
 type UnbondTx struct {
 	BaseTx
-	Fee uint64
 }
 
 func (tx *UnbondTx) WriteTo(w io.Writer) (n int64, err error) {
 	WriteByte(w, TxTypeUnbond, &n, &err)
 	WriteBinary(w, tx.BaseTx, &n, &err)
-	WriteUInt64(w, tx.Fee, &n, &err)
 	return
 }
 

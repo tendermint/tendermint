@@ -29,9 +29,9 @@ func randGenesisState(numAccounts int, numValidators int) *State {
 	accountDetails := make([]*AccountDetail, numAccounts)
 	for i := 0; i < numAccounts; i++ {
 		if i < numValidators {
-			accountDetails[i] = randAccountDetail(uint64(i), AccountDetailStatusNominal)
+			accountDetails[i] = randAccountDetail(uint64(i), AccountStatusNominal)
 		} else {
-			accountDetails[i] = randAccountDetail(uint64(i), AccountDetailStatusBonded)
+			accountDetails[i] = randAccountDetail(uint64(i), AccountStatusBonded)
 		}
 	}
 	s0 := GenesisState(db, time.Now(), accountDetails)
@@ -43,8 +43,8 @@ func TestGenesisSaveLoad(t *testing.T) {
 	// Generate a state, save & load it.
 	s0 := randGenesisState(10, 5)
 	// Figure out what the next state hashes should be.
-	s0.Validators.Hash()
-	s0ValsCopy := s0.Validators.Copy()
+	s0.BondedValidators.Hash()
+	s0ValsCopy := s0.BondedValidators.Copy()
 	s0ValsCopy.IncrementAccum()
 	nextValidationStateHash := s0ValsCopy.Hash()
 	nextAccountStateHash := s0.AccountDetails.Hash()
@@ -71,8 +71,8 @@ func TestGenesisSaveLoad(t *testing.T) {
 
 	// Sanity check s0
 	//s0.DB.(*MemDB).Print()
-	if s0.Validators.TotalVotingPower() == 0 {
-		t.Error("s0 Validators TotalVotingPower should not be 0")
+	if s0.BondedValidators.TotalVotingPower() == 0 {
+		t.Error("s0 BondedValidators TotalVotingPower should not be 0")
 	}
 	if s0.Height != 1 {
 		t.Error("s0 Height should be 1, got", s0.Height)
@@ -92,12 +92,12 @@ func TestGenesisSaveLoad(t *testing.T) {
 	if !bytes.Equal(s0.BlockHash, s1.BlockHash) {
 		t.Error("BlockHash mismatch")
 	}
-	// Compare Validators
-	if s0.Validators.Size() != s1.Validators.Size() {
-		t.Error("Validators Size mismatch")
+	// Compare BondedValidators
+	if s0.BondedValidators.Size() != s1.BondedValidators.Size() {
+		t.Error("BondedValidators Size mismatch")
 	}
-	if s0.Validators.TotalVotingPower() != s1.Validators.TotalVotingPower() {
-		t.Error("Validators TotalVotingPower mismatch")
+	if s0.BondedValidators.TotalVotingPower() != s1.BondedValidators.TotalVotingPower() {
+		t.Error("BondedValidators TotalVotingPower mismatch")
 	}
 	if !bytes.Equal(s0.AccountDetails.Hash(), s1.AccountDetails.Hash()) {
 		t.Error("AccountDetail mismatch")
