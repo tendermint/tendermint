@@ -56,17 +56,23 @@ func TestCopyState(t *testing.T) {
 		t.Error("Expected state copy hash to be the same")
 	}
 
-	// Mutate the original.
-	_, accDet_ := s0.AccountDetails.GetByIndex(0)
-	accDet := accDet_.(*AccountDetail)
-	if accDet == nil {
-		t.Error("Expected state to have an account")
-	}
+	// Mutate the original; hash should change.
+	accDet := s0.GetAccountDetail(0)
 	accDet.Balance += 1
-	s0.AccountDetails.Set(accDet.Id, accDet)
+	// The account balance shouldn't have changed yet.
+	if s0.GetAccountDetail(0).Balance == accDet.Balance {
+		t.Error("Account balance changed unexpectedly")
+	}
+	// Setting, however, should change the balance.
+	s0.SetAccountDetail(accDet)
+	if s0.GetAccountDetail(0).Balance != accDet.Balance {
+		t.Error("Account balance wasn't set")
+	}
+	// How that the state changed, the hash should change too.
 	if bytes.Equal(s0Hash, s0.Hash()) {
 		t.Error("Expected state hash to have changed")
 	}
+	// The s0Copy shouldn't have changed though.
 	if !bytes.Equal(s0Hash, s0Copy.Hash()) {
 		t.Error("Expected state copy hash to have not changed")
 	}
@@ -152,7 +158,7 @@ func TestGenesisSaveLoad(t *testing.T) {
 	if !bytes.Equal(s0.UnbondingValidators.Hash(), s1.UnbondingValidators.Hash()) {
 		t.Error("UnbondingValidators hash mismatch")
 	}
-	if !bytes.Equal(s0.AccountDetails.Hash(), s1.AccountDetails.Hash()) {
+	if !bytes.Equal(s0.accountDetails.Hash(), s1.accountDetails.Hash()) {
 		t.Error("AccountDetail mismatch")
 	}
 }
@@ -207,38 +213,97 @@ func TestTxs(t *testing.T) {
 	state, privAccounts := randGenesisState(3, 1)
 
 	acc0 := state.GetAccountDetail(0) // Validator
-	//_, acc0Val := state.BondedValidators.GetById(0)
-	if acc0.Status != AccountStatusBonded {
-		t.Fatal("Expected acc0 to be bonded validator")
-	}
 	acc1 := state.GetAccountDetail(1) // Non-validator
 	acc2 := state.GetAccountDetail(2) // Non-validator
 
 	// SendTx.
-	stx := &SendTx{
-		BaseTx: BaseTx{
-			Sequence: acc1.Sequence + 1,
-			Fee:      0},
-		To:     2,
-		Amount: 1,
-	}
-	privAccounts[1].Sign(stx)
-	err := state.ExecTx(stx)
-	if err != nil {
-		t.Errorf("Got error in executing send transaction, %v", err)
-	}
-	newAcc1 := state.GetAccountDetail(1)
-	if acc1.Balance-1 != newAcc1.Balance {
-		t.Errorf("Unexpected newAcc1 balance. Expected %v, got %v",
-			acc1.Balance-1, newAcc1.Balance)
-	}
-	newAcc2 := state.GetAccountDetail(2)
-	if acc2.Balance+1 != newAcc2.Balance {
-		t.Errorf("Unexpected newAcc2 balance. Expected %v, got %v",
-			acc2.Balance+1, newAcc2.Balance)
+	{
+		state := state.Copy()
+		stx := &SendTx{
+			BaseTx: BaseTx{
+				Sequence: acc1.Sequence + 1,
+				Fee:      0},
+			To:     2,
+			Amount: 1,
+		}
+		privAccounts[1].Sign(stx)
+		err := state.ExecTx(stx)
+		if err != nil {
+			t.Errorf("Got error in executing send transaction, %v", err)
+		}
+		newAcc1 := state.GetAccountDetail(1)
+		if acc1.Balance-1 != newAcc1.Balance {
+			t.Errorf("Unexpected newAcc1 balance. Expected %v, got %v",
+				acc1.Balance-1, newAcc1.Balance)
+		}
+		newAcc2 := state.GetAccountDetail(2)
+		if acc2.Balance+1 != newAcc2.Balance {
+			t.Errorf("Unexpected newAcc2 balance. Expected %v, got %v",
+				acc2.Balance+1, newAcc2.Balance)
+		}
 	}
 
+	// TODO: test overflows.
+
+	// SendTx should fail for bonded validators.
+	{
+		state := state.Copy()
+		stx := &SendTx{
+			BaseTx: BaseTx{
+				Sequence: acc0.Sequence + 1,
+				Fee:      0},
+			To:     2,
+			Amount: 1,
+		}
+		privAccounts[0].Sign(stx)
+		err := state.ExecTx(stx)
+		if err == nil {
+			t.Errorf("Expected error, SendTx should fail for bonded validators")
+		}
+	}
+
+	// TODO: test for unbonding validators.
+
 	// BondTx.
-	// XXX more tests for other transactions.
+	{
+		state := state.Copy()
+		btx := &BondTx{
+			BaseTx: BaseTx{
+				Sequence: acc1.Sequence + 1,
+				Fee:      0},
+		}
+		privAccounts[1].Sign(btx)
+		err := state.ExecTx(btx)
+		if err != nil {
+			t.Errorf("Got error in executing bond transaction, %v", err)
+		}
+		newAcc1 := state.GetAccountDetail(1)
+		if acc1.Balance != newAcc1.Balance {
+			t.Errorf("Unexpected newAcc1 balance. Expected %v, got %v",
+				acc1.Balance, newAcc1.Balance)
+		}
+		if newAcc1.Status != AccountStatusBonded {
+			t.Errorf("Unexpected newAcc1 status.")
+		}
+		_, acc1Val := state.BondedValidators.GetById(acc1.Id)
+		if acc1Val == nil {
+			t.Errorf("acc1Val not present")
+		}
+		if acc1Val.BondHeight != state.Height {
+			t.Errorf("Unexpected bond height. Expected %v, got %v",
+				state.Height, acc1Val.BondHeight)
+		}
+		if acc1Val.VotingPower != acc1.Balance {
+			t.Errorf("Unexpected voting power. Expected %v, got %v",
+				acc1Val.VotingPower, acc1.Balance)
+		}
+		if acc1Val.Accum != 0 {
+			t.Errorf("Unexpected accum. Expected 0, got %v",
+				acc1Val.Accum)
+		}
+	}
+
+	// TODO UnbondTx.
+	// TODO NameTx.
 
 }

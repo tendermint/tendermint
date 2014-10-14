@@ -46,7 +46,7 @@ type State struct {
 	Height              uint32 // Last known block height
 	BlockHash           []byte // Last known block hash
 	CommitTime          time.Time
-	AccountDetails      merkle.Tree
+	accountDetails      merkle.Tree // Shouldn't be accessed directly.
 	BondedValidators    *ValidatorSet
 	UnbondingValidators *ValidatorSet
 }
@@ -78,7 +78,7 @@ func GenesisState(db DB, genesisTime time.Time, accDets []*AccountDetail) *State
 		Height:              0,
 		BlockHash:           nil,
 		CommitTime:          genesisTime,
-		AccountDetails:      accountDetails,
+		accountDetails:      accountDetails,
 		BondedValidators:    NewValidatorSet(validators),
 		UnbondingValidators: NewValidatorSet(nil),
 	}
@@ -97,8 +97,8 @@ func LoadState(db DB) *State {
 		s.CommitTime = ReadTime(reader, &n, &err)
 		s.BlockHash = ReadByteSlice(reader, &n, &err)
 		accountDetailsHash := ReadByteSlice(reader, &n, &err)
-		s.AccountDetails = merkle.NewIAVLTree(BasicCodec, AccountDetailCodec, defaultAccountDetailsCacheCapacity, db)
-		s.AccountDetails.Load(accountDetailsHash)
+		s.accountDetails = merkle.NewIAVLTree(BasicCodec, AccountDetailCodec, defaultAccountDetailsCacheCapacity, db)
+		s.accountDetails.Load(accountDetailsHash)
 		s.BondedValidators = ReadValidatorSet(reader, &n, &err)
 		s.UnbondingValidators = ReadValidatorSet(reader, &n, &err)
 		if err != nil {
@@ -114,14 +114,14 @@ func LoadState(db DB) *State {
 // is saved here.
 func (s *State) Save(commitTime time.Time) {
 	s.CommitTime = commitTime
-	s.AccountDetails.Save()
+	s.accountDetails.Save()
 	var buf bytes.Buffer
 	var n int64
 	var err error
 	WriteUInt32(&buf, s.Height, &n, &err)
 	WriteTime(&buf, commitTime, &n, &err)
 	WriteByteSlice(&buf, s.BlockHash, &n, &err)
-	WriteByteSlice(&buf, s.AccountDetails.Hash(), &n, &err)
+	WriteByteSlice(&buf, s.accountDetails.Hash(), &n, &err)
 	WriteBinary(&buf, s.BondedValidators, &n, &err)
 	WriteBinary(&buf, s.UnbondingValidators, &n, &err)
 	if err != nil {
@@ -136,7 +136,7 @@ func (s *State) Copy() *State {
 		Height:              s.Height,
 		CommitTime:          s.CommitTime,
 		BlockHash:           s.BlockHash,
-		AccountDetails:      s.AccountDetails.Copy(),
+		accountDetails:      s.accountDetails.Copy(),
 		BondedValidators:    s.BondedValidators.Copy(),
 		UnbondingValidators: s.UnbondingValidators.Copy(),
 	}
@@ -403,7 +403,7 @@ func (s *State) AppendBlock(b *Block, checkStateHash bool) error {
 // The returned AccountDetail is a copy, so mutating it
 // has no side effects.
 func (s *State) GetAccountDetail(accountId uint64) *AccountDetail {
-	_, accDet := s.AccountDetails.Get(accountId)
+	_, accDet := s.accountDetails.Get(accountId)
 	if accDet == nil {
 		return nil
 	}
@@ -414,14 +414,14 @@ func (s *State) GetAccountDetail(accountId uint64) *AccountDetail {
 // The accDet is copied before setting, so mutating it
 // afterwards has no side effects.
 func (s *State) SetAccountDetail(accDet *AccountDetail) (updated bool) {
-	return s.AccountDetails.Set(accDet.Id, accDet.Copy())
+	return s.accountDetails.Set(accDet.Id, accDet.Copy())
 }
 
 // Returns a hash that represents the state data,
 // excluding Height, BlockHash, and CommitTime.
 func (s *State) Hash() []byte {
 	hashables := []merkle.Hashable{
-		s.AccountDetails,
+		s.accountDetails,
 		s.BondedValidators,
 		s.UnbondingValidators,
 	}
