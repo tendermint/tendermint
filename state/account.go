@@ -1,11 +1,13 @@
 package state
 
 import (
+	"fmt"
+	"io"
+
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/blocks"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/crypto"
-	"io"
 )
 
 const (
@@ -54,6 +56,10 @@ func (account Account) Verify(o Signable) bool {
 	return account.VerifyBytes(msg, sig)
 }
 
+func (account Account) String() string {
+	return fmt.Sprintf("Account{%v:%X}", account.Id, account.PubKey)
+}
+
 //-----------------------------------------------------------------------------
 
 type AccountDetail struct {
@@ -72,12 +78,22 @@ func ReadAccountDetail(r io.Reader, n *int64, err *error) *AccountDetail {
 	}
 }
 
-func (accDet AccountDetail) WriteTo(w io.Writer) (n int64, err error) {
+func (accDet *AccountDetail) WriteTo(w io.Writer) (n int64, err error) {
 	WriteBinary(w, accDet.Account, &n, &err)
 	WriteUVarInt(w, accDet.Sequence, &n, &err)
 	WriteUInt64(w, accDet.Balance, &n, &err)
 	WriteByte(w, accDet.Status, &n, &err)
 	return
+}
+
+func (accDet *AccountDetail) String() string {
+	return fmt.Sprintf("AccountDetail{%v:%X Sequence:%v Balance:%v Status:%X}",
+		accDet.Id, accDet.PubKey, accDet.Sequence, accDet.Balance, accDet.Status)
+}
+
+func (accDet *AccountDetail) Copy() *AccountDetail {
+	accDetCopy := *accDet
+	return &accDetCopy
 }
 
 //-------------------------------------

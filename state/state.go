@@ -153,9 +153,12 @@ func (s *State) ExecTx(tx Tx) error {
 	if !accDet.Verify(tx) {
 		return ErrStateInvalidSignature
 	}
-	// Check sequence
+	// Check and update sequence
 	if tx.GetSequence() <= accDet.Sequence {
 		return ErrStateInvalidSequenceNumber
+	} else {
+		// TODO consider prevSequence for tx chaining.
+		accDet.Sequence = tx.GetSequence()
 	}
 	// Subtract fee from balance.
 	if accDet.Balance < tx.GetFee() {
@@ -397,17 +400,21 @@ func (s *State) AppendBlock(b *Block, checkStateHash bool) error {
 	return nil
 }
 
+// The returned AccountDetail is a copy, so mutating it
+// has no side effects.
 func (s *State) GetAccountDetail(accountId uint64) *AccountDetail {
 	_, accDet := s.AccountDetails.Get(accountId)
 	if accDet == nil {
 		return nil
 	}
-	return accDet.(*AccountDetail)
+	return accDet.(*AccountDetail).Copy()
 }
 
 // Returns false if new, true if updated.
+// The accDet is copied before setting, so mutating it
+// afterwards has no side effects.
 func (s *State) SetAccountDetail(accDet *AccountDetail) (updated bool) {
-	return s.AccountDetails.Set(accDet.Id, accDet)
+	return s.AccountDetails.Set(accDet.Id, accDet.Copy())
 }
 
 // Returns a hash that represents the state data,

@@ -11,37 +11,40 @@ import (
 	"time"
 )
 
-func randAccountDetail(id uint64, status byte) *AccountDetail {
+func randAccountDetail(id uint64, status byte) (*AccountDetail, *PrivAccount) {
+	privAccount := GenPrivAccount()
+	privAccount.Id = id
+	account := privAccount.Account
 	return &AccountDetail{
-		Account: Account{
-			Id:     id,
-			PubKey: CRandBytes(32),
-		},
+		Account:  account,
 		Sequence: RandUInt(),
-		Balance:  RandUInt64(),
+		Balance:  RandUInt64() + 1000, // At least 1000.
 		Status:   status,
-	}
+	}, privAccount
 }
 
 // The first numValidators accounts are validators.
-func randGenesisState(numAccounts int, numValidators int) *State {
+func randGenesisState(numAccounts int, numValidators int) (*State, []*PrivAccount) {
 	db := NewMemDB()
 	accountDetails := make([]*AccountDetail, numAccounts)
+	privAccounts := make([]*PrivAccount, numAccounts)
 	for i := 0; i < numAccounts; i++ {
 		if i < numValidators {
-			accountDetails[i] = randAccountDetail(uint64(i), AccountStatusNominal)
+			accountDetails[i], privAccounts[i] =
+				randAccountDetail(uint64(i), AccountStatusBonded)
 		} else {
-			accountDetails[i] = randAccountDetail(uint64(i), AccountStatusBonded)
+			accountDetails[i], privAccounts[i] =
+				randAccountDetail(uint64(i), AccountStatusNominal)
 		}
 	}
 	s0 := GenesisState(db, time.Now(), accountDetails)
 	s0.Save(time.Now())
-	return s0
+	return s0, privAccounts
 }
 
 func TestCopyState(t *testing.T) {
 	// Generate a state
-	s0 := randGenesisState(10, 5)
+	s0, _ := randGenesisState(10, 5)
 	s0Hash := s0.Hash()
 	if len(s0Hash) == 0 {
 		t.Error("Expected state hash")
@@ -72,7 +75,7 @@ func TestCopyState(t *testing.T) {
 func TestGenesisSaveLoad(t *testing.T) {
 
 	// Generate a state, save & load it.
-	s0 := randGenesisState(10, 5)
+	s0, _ := randGenesisState(10, 5)
 	// Mutate the state to append one empty block.
 	block := &Block{
 		Header: Header{
@@ -152,4 +155,90 @@ func TestGenesisSaveLoad(t *testing.T) {
 	if !bytes.Equal(s0.AccountDetails.Hash(), s1.AccountDetails.Hash()) {
 		t.Error("AccountDetail mismatch")
 	}
+}
+
+func TestTxSequence(t *testing.T) {
+
+	state, privAccounts := randGenesisState(3, 1)
+	acc1 := state.GetAccountDetail(1) // Non-validator
+
+	// Try executing a SendTx with various sequence numbers.
+	stx := &SendTx{
+		BaseTx: BaseTx{
+			Sequence: acc1.Sequence + 1,
+			Fee:      0},
+		To:     2,
+		Amount: 1,
+	}
+
+	// Test a variety of sequence numbers for the tx.
+	// The tx should only pass when i == 1.
+	for i := -1; i < 3; i++ {
+		stx.Sequence = uint(int(acc1.Sequence) + i)
+		privAccounts[1].Sign(stx)
+		stateCopy := state.Copy()
+		err := stateCopy.ExecTx(stx)
+		if i >= 1 {
+			// Sequence is good.
+			if err != nil {
+				t.Errorf("Expected good sequence to pass")
+			}
+			// Check accDet.Sequence.
+			newAcc1 := stateCopy.GetAccountDetail(1)
+			if newAcc1.Sequence != stx.Sequence {
+				t.Errorf("Expected account sequence to change")
+			}
+		} else {
+			// Sequence is bad.
+			if err == nil {
+				t.Errorf("Expected bad sequence to fail")
+			}
+			// Check accDet.Sequence. (shouldn't have changed)
+			newAcc1 := stateCopy.GetAccountDetail(1)
+			if newAcc1.Sequence != acc1.Sequence {
+				t.Errorf("Expected account sequence to not change")
+			}
+		}
+	}
+}
+
+func TestTxs(t *testing.T) {
+
+	state, privAccounts := randGenesisState(3, 1)
+
+	acc0 := state.GetAccountDetail(0) // Validator
+	//_, acc0Val := state.BondedValidators.GetById(0)
+	if acc0.Status != AccountStatusBonded {
+		t.Fatal("Expected acc0 to be bonded validator")
+	}
+	acc1 := state.GetAccountDetail(1) // Non-validator
+	acc2 := state.GetAccountDetail(2) // Non-validator
+
+	// SendTx.
+	stx := &SendTx{
+		BaseTx: BaseTx{
+			Sequence: acc1.Sequence + 1,
+			Fee:      0},
+		To:     2,
+		Amount: 1,
+	}
+	privAccounts[1].Sign(stx)
+	err := state.ExecTx(stx)
+	if err != nil {
+		t.Errorf("Got error in executing send transaction, %v", err)
+	}
+	newAcc1 := state.GetAccountDetail(1)
+	if acc1.Balance-1 != newAcc1.Balance {
+		t.Errorf("Unexpected newAcc1 balance. Expected %v, got %v",
+			acc1.Balance-1, newAcc1.Balance)
+	}
+	newAcc2 := state.GetAccountDetail(2)
+	if acc2.Balance+1 != newAcc2.Balance {
+		t.Errorf("Unexpected newAcc2 balance. Expected %v, got %v",
+			acc2.Balance+1, newAcc2.Balance)
+	}
+
+	// BondTx.
+	// XXX more tests for other transactions.
+
 }
