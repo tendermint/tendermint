@@ -408,17 +408,12 @@ func (cs *ConsensusState) stageBlock(block *Block) error {
 		return nil
 	}
 
-	// Basic validation is done in state.CommitBlock().
-	//err := block.ValidateBasic()
-	//if err != nil {
-	//	return err
-	//}
-
 	// Create a copy of the state for staging
-	stateCopy := cs.state.Copy() // Deep copy the state before staging.
+	stateCopy := cs.state.Copy()
 
 	// Commit block onto the copied state.
-	err := stateCopy.AppendBlock(block)
+	// NOTE: Basic validation is done in state.AppendBlock().
+	err := stateCopy.AppendBlock(block, true)
 	if err != nil {
 		return err
 	} else {
