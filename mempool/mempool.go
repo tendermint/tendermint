@@ -53,8 +53,10 @@ func (mem *Mempool) MakeProposalBlock() (*Block, *State) {
 	return nextBlock, mem.state
 }
 
-// Txs that are present in block are discarded from mempool.
-// Txs that have become invalid in the new state are also discarded.
+// "block" is the new block being committed.
+// "state" is the result of state.AppendBlock("block").
+// Txs that are present in "block" are discarded from mempool.
+// Txs that have become invalid in the new "state" are also discarded.
 func (mem *Mempool) ResetForBlockAndState(block *Block, state *State) {
 	mem.mtx.Lock()
 	defer mem.mtx.Unlock()

@@ -15,16 +15,13 @@ func randBaseTx() BaseTx {
 	return BaseTx{0, RandUInt64Exp(), randSig()}
 }
 
-func TestBlock(t *testing.T) {
-
+func randBlock() *Block {
 	// Account Txs
-
 	sendTx := &SendTx{
 		BaseTx: randBaseTx(),
 		To:     RandUInt64Exp(),
 		Amount: RandUInt64Exp(),
 	}
-
 	nameTx := &NameTx{
 		BaseTx: randBaseTx(),
 		Name:   string(RandBytes(12)),
@@ -32,16 +29,13 @@ func TestBlock(t *testing.T) {
 	}
 
 	// Validation Txs
-
 	bondTx := &BondTx{
 		BaseTx: randBaseTx(),
 		//UnbondTo: RandUInt64Exp(),
 	}
-
 	unbondTx := &UnbondTx{
 		BaseTx: randBaseTx(),
 	}
-
 	dupeoutTx := &DupeoutTx{
 		VoteA: Vote{
 			Height:    RandUInt32Exp(),
@@ -60,16 +54,14 @@ func TestBlock(t *testing.T) {
 	}
 
 	// Block
-
 	block := &Block{
 		Header: Header{
-			Network:             "Tendermint",
-			Height:              RandUInt32Exp(),
-			Fees:                RandUInt64Exp(),
-			Time:                RandTime(),
-			LastBlockHash:       RandBytes(32),
-			ValidationStateHash: RandBytes(32),
-			AccountStateHash:    RandBytes(32),
+			Network:       "Tendermint",
+			Height:        RandUInt32Exp(),
+			Fees:          RandUInt64Exp(),
+			Time:          RandTime(),
+			LastBlockHash: RandBytes(32),
+			StateHash:     RandBytes(32),
 		},
 		Validation: Validation{
 			Signatures: []Signature{randSig(), randSig()},
@@ -78,22 +70,52 @@ func TestBlock(t *testing.T) {
 			Txs: []Tx{sendTx, nameTx, bondTx, unbondTx, dupeoutTx},
 		},
 	}
+	return block
+}
 
-	// Write the block, read it in again, write it again.
-	// Then, compare.
-	// TODO We should compute the hash instead, so Block -> Bytes -> Block and compare hashes.
+func TestBlock(t *testing.T) {
 
-	blockBytes := BinaryBytes(block)
+	block := randBlock()
+	// Mutate the block and ensure that the hash changed.
+	lastHash := block.Hash()
+	expectChange := func(mutateFn func(b *Block), message string) {
+		// mutate block
+		mutateFn(block)
+		// nuke hashes
+		block.hash = nil
+		block.Header.hash = nil
+		block.Validation.hash = nil
+		block.Data.hash = nil
+		// compare
+		if bytes.Equal(lastHash, block.Hash()) {
+			t.Error(message)
+		} else {
+			lastHash = block.Hash()
+		}
+	}
+	expectChange(func(b *Block) { b.Header.Network = "blah" }, "Expected hash to depend on Network")
+	expectChange(func(b *Block) { b.Header.Height += 1 }, "Expected hash to depend on Height")
+	expectChange(func(b *Block) { b.Header.Fees += 1 }, "Expected hash to depend on Fees")
+	expectChange(func(b *Block) { b.Header.Time = RandTime() }, "Expected hash to depend on Time")
+	expectChange(func(b *Block) { b.Header.LastBlockHash = RandBytes(32) }, "Expected hash to depend on LastBlockHash")
+	expectChange(func(b *Block) { b.Header.StateHash = RandBytes(32) }, "Expected hash to depend on StateHash")
+	expectChange(func(b *Block) { b.Validation.Signatures[0].SignerId += 1 }, "Expected hash to depend on Validation Signature")
+	expectChange(func(b *Block) { b.Validation.Signatures[0].Bytes = RandBytes(32) }, "Expected hash to depend on Validation Signature")
+	expectChange(func(b *Block) { b.Data.Txs[0].(*SendTx).SignerId += 1 }, "Expected hash to depend on tx Signature")
+	expectChange(func(b *Block) { b.Data.Txs[0].(*SendTx).Amount += 1 }, "Expected hash to depend on send tx Amount")
+
+	// Write the block, read it in again, check hash.
+	block1 := randBlock()
+	block1Bytes := BinaryBytes(block1)
 	var n int64
 	var err error
-	block2 := ReadBlock(bytes.NewReader(blockBytes), &n, &err)
+	block2 := ReadBlock(bytes.NewReader(block1Bytes), &n, &err)
 	if err != nil {
 		t.Errorf("Reading block failed: %v", err)
 	}
-
-	blockBytes2 := BinaryBytes(block2)
-
-	if !bytes.Equal(blockBytes, blockBytes2) {
-		t.Fatal("Write->Read of block failed.")
+	if !bytes.Equal(block1.Hash(), block2.Hash()) {
+		t.Errorf("Expected write/read to preserve original hash")
+		t.Logf("\nBlock1:\n%v", block1)
+		t.Logf("\nBlock2:\n%v", block2)
 	}
 }

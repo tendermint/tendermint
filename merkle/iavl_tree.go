@@ -40,18 +40,24 @@ func NewIAVLTree(keyCodec, valueCodec Codec, cacheSize int, db DB) *IAVLTree {
 // The returned tree and the original tree are goroutine independent.
 // That is, they can each run in their own goroutine.
 func (t *IAVLTree) Copy() Tree {
+	if t.root == nil {
+		return &IAVLTree{
+			keyCodec:   t.keyCodec,
+			valueCodec: t.valueCodec,
+			root:       nil,
+			ndb:        t.ndb,
+		}
+	}
 	if t.ndb != nil && !t.root.persisted {
-		panic("It is unsafe to Copy() an unpersisted tree.")
 		// Saving a tree finalizes all the nodes.
 		// It sets all the hashes recursively,
 		// clears all the leftNode/rightNode values recursively,
 		// and all the .persisted flags get set.
-		// On the other hand, in-memory trees (ndb == nil)
-		// don't mutate
+		panic("It is unsafe to Copy() an unpersisted tree.")
 	} else if t.ndb == nil && t.root.hash == nil {
-		panic("An in-memory IAVLTree must be hashed first")
 		// An in-memory IAVLTree is finalized when the hashes are
 		// calculated.
+		t.root.hashWithCount(t)
 	}
 	return &IAVLTree{
 		keyCodec:   t.keyCodec,

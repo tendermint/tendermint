@@ -1,8 +1,10 @@
 package blocks
 
 import (
-	. "github.com/tendermint/tendermint/binary"
+	"fmt"
 	"io"
+
+	. "github.com/tendermint/tendermint/binary"
 )
 
 type Signable interface {
@@ -34,6 +36,12 @@ func (sig Signature) WriteTo(w io.Writer) (n int64, err error) {
 	WriteByteSlice(w, sig.Bytes, &n, &err)
 	return
 }
+
+func (sig Signature) String() string {
+	return fmt.Sprintf("Signature{%v:%X}", sig.SignerId, sig.Bytes)
+}
+
+//-------------------------------------
 
 func ReadSignatures(r io.Reader, n *int64, err *error) (sigs []Signature) {
 	length := ReadUInt32(r, n, err)

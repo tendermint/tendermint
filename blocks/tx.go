@@ -1,9 +1,11 @@
 package blocks
 
 import (
+	"fmt"
+	"io"
+
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
-	"io"
 )
 
 /*
@@ -21,6 +23,7 @@ type Tx interface {
 	Signable
 	GetSequence() uint
 	GetFee() uint64
+	String() string
 }
 
 const (
@@ -108,6 +111,10 @@ func (tx *BaseTx) SetSignature(sig Signature) {
 	tx.Signature = sig
 }
 
+func (tx *BaseTx) String() string {
+	return fmt.Sprintf("{S:%v F:%v Sig:%X}", tx.Sequence, tx.Fee, tx.Signature)
+}
+
 //-----------------------------------------------------------------------------
 
 type SendTx struct {
@@ -122,6 +129,10 @@ func (tx *SendTx) WriteTo(w io.Writer) (n int64, err error) {
 	WriteUInt64(w, tx.To, &n, &err)
 	WriteUInt64(w, tx.Amount, &n, &err)
 	return
+}
+
+func (tx *SendTx) String() string {
+	return fmt.Sprintf("SendTx{%v To:%v Amount:%v}", tx.BaseTx, tx.To, tx.Amount)
 }
 
 //-----------------------------------------------------------------------------
@@ -140,6 +151,10 @@ func (tx *NameTx) WriteTo(w io.Writer) (n int64, err error) {
 	return
 }
 
+func (tx *NameTx) String() string {
+	return fmt.Sprintf("NameTx{%v Name:%v PubKey:%X}", tx.BaseTx, tx.Name, tx.PubKey)
+}
+
 //-----------------------------------------------------------------------------
 
 type BondTx struct {
@@ -154,6 +169,10 @@ func (tx *BondTx) WriteTo(w io.Writer) (n int64, err error) {
 	return
 }
 
+func (tx *BondTx) String() string {
+	return fmt.Sprintf("BondTx{%v}", tx.BaseTx)
+}
+
 //-----------------------------------------------------------------------------
 
 type UnbondTx struct {
@@ -164,6 +183,10 @@ func (tx *UnbondTx) WriteTo(w io.Writer) (n int64, err error) {
 	WriteByte(w, TxTypeUnbond, &n, &err)
 	WriteBinary(w, tx.BaseTx, &n, &err)
 	return
+}
+
+func (tx *UnbondTx) String() string {
+	return fmt.Sprintf("UnbondTx{%v}", tx.BaseTx)
 }
 
 //-----------------------------------------------------------------------------
@@ -180,4 +203,8 @@ func (tx *DupeoutTx) WriteTo(w io.Writer) (n int64, err error) {
 	WriteBinary(w, &tx.VoteA, &n, &err)
 	WriteBinary(w, &tx.VoteB, &n, &err)
 	return
+}
+
+func (tx *DupeoutTx) String() string {
+	return fmt.Sprintf("DupeoutTx{%v VoteA:%v VoteB:%v}", tx.BaseTx, tx.VoteA, tx.VoteB)
 }

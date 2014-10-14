@@ -314,9 +314,12 @@ func (s *State) releaseValidator(accountId uint64) {
 	}
 }
 
+// "checkStateHash": If false, instead of checking the resulting
+// state.Hash() against block.StateHash, it *sets* the block.StateHash.
+// (used for constructing a new proposal)
 // NOTE: If an error occurs during block execution, state will be left
 // at an invalid state.  Copy the state before calling AppendBlock!
-func (s *State) AppendBlock(b *Block) error {
+func (s *State) AppendBlock(b *Block, checkStateHash bool) error {
 	// Basic block validation.
 	err := b.ValidateBasic(s.Height, s.BlockHash)
 	if err != nil {
@@ -373,15 +376,20 @@ func (s *State) AppendBlock(b *Block) error {
 	// Increment validator AccumPowers
 	s.BondedValidators.IncrementAccum()
 
-	// State hashes should match
-	// XXX include UnbondingValidators.Hash().
-	if !bytes.Equal(s.BondedValidators.Hash(), b.ValidationStateHash) {
-		return Errorf("Invalid ValidationStateHash. Got %X, block says %X",
-			s.BondedValidators.Hash(), b.ValidationStateHash)
-	}
-	if !bytes.Equal(s.AccountDetails.Hash(), b.AccountStateHash) {
-		return Errorf("Invalid AccountStateHash. Got %X, block says %X",
-			s.AccountDetails.Hash(), b.AccountStateHash)
+	// Check or set block.StateHash
+	stateHash := s.Hash()
+	if checkStateHash {
+		// State hash should match
+		if !bytes.Equal(stateHash, b.StateHash) {
+			return Errorf("Invalid state hash. Got %X, block says %X",
+				stateHash, b.StateHash)
+		}
+	} else {
+		// Set the state hash.
+		if b.StateHash != nil {
+			panic("Cannot overwrite block.StateHash")
+		}
+		b.StateHash = stateHash
 	}
 
 	s.Height = b.Height
@@ -400,4 +408,15 @@ func (s *State) GetAccountDetail(accountId uint64) *AccountDetail {
 // Returns false if new, true if updated.
 func (s *State) SetAccountDetail(accDet *AccountDetail) (updated bool) {
 	return s.AccountDetails.Set(accDet.Id, accDet)
+}
+
+// Returns a hash that represents the state data,
+// excluding Height, BlockHash, and CommitTime.
+func (s *State) Hash() []byte {
+	hashables := []merkle.Hashable{
+		s.AccountDetails,
+		s.BondedValidators,
+		s.UnbondingValidators,
+	}
+	return merkle.HashFromHashables(hashables)
 }

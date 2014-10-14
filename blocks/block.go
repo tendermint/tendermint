@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"errors"
+	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	. "github.com/tendermint/tendermint/binary"
@@ -58,17 +60,16 @@ func (b *Block) ValidateBasic(lastBlockHeight uint32, lastBlockHash []byte) erro
 }
 
 func (b *Block) Hash() []byte {
-	if b.hash != nil {
-		return b.hash
-	} else {
+	if b.hash == nil {
 		hashes := [][]byte{
 			b.Header.Hash(),
 			b.Validation.Hash(),
 			b.Data.Hash(),
 		}
 		// Merkle hash from sub-hashes.
-		return merkle.HashFromHashes(hashes)
+		b.hash = merkle.HashFromHashes(hashes)
 	}
+	return b.hash
 }
 
 // Convenience.
@@ -88,27 +89,40 @@ func (b *Block) HashesTo(hash []byte) bool {
 func (b *Block) MakeNextBlock() *Block {
 	return &Block{
 		Header: Header{
-			Network: b.Header.Network,
-			Height:  b.Header.Height + 1,
-			//Fees:                uint64(0),
+			Network:       b.Header.Network,
+			Height:        b.Header.Height + 1,
 			Time:          time.Now(),
 			LastBlockHash: b.Hash(),
-			//ValidationStateHash: nil,
-			//AccountStateHash:    nil,
+			StateHash:     nil,
 		},
 	}
+}
+
+func (b *Block) String() string {
+	return b.StringWithIndent("")
+}
+
+func (b *Block) StringWithIndent(indent string) string {
+	return fmt.Sprintf(`Block{
+%s  %v
+%s  %v
+%s  %v
+%s}#%X`,
+		indent, b.Header.StringWithIndent(indent+"  "),
+		indent, b.Validation.StringWithIndent(indent+"  "),
+		indent, b.Data.StringWithIndent(indent+"  "),
+		indent, b.hash)
 }
 
 //-----------------------------------------------------------------------------
 
 type Header struct {
-	Network             string
-	Height              uint32
-	Fees                uint64
-	Time                time.Time
-	LastBlockHash       []byte
-	ValidationStateHash []byte
-	AccountStateHash    []byte
+	Network       string
+	Height        uint32
+	Time          time.Time
+	Fees          uint64
+	LastBlockHash []byte
+	StateHash     []byte
 
 	// Volatile
 	hash []byte
@@ -119,39 +133,53 @@ func ReadHeader(r io.Reader, n *int64, err *error) (h Header) {
 		return Header{}
 	}
 	return Header{
-		Network:             ReadString(r, n, err),
-		Height:              ReadUInt32(r, n, err),
-		Fees:                ReadUInt64(r, n, err),
-		Time:                ReadTime(r, n, err),
-		LastBlockHash:       ReadByteSlice(r, n, err),
-		ValidationStateHash: ReadByteSlice(r, n, err),
-		AccountStateHash:    ReadByteSlice(r, n, err),
+		Network:       ReadString(r, n, err),
+		Height:        ReadUInt32(r, n, err),
+		Time:          ReadTime(r, n, err),
+		Fees:          ReadUInt64(r, n, err),
+		LastBlockHash: ReadByteSlice(r, n, err),
+		StateHash:     ReadByteSlice(r, n, err),
 	}
 }
 
 func (h *Header) WriteTo(w io.Writer) (n int64, err error) {
 	WriteString(w, h.Network, &n, &err)
 	WriteUInt32(w, h.Height, &n, &err)
-	WriteUInt64(w, h.Fees, &n, &err)
 	WriteTime(w, h.Time, &n, &err)
+	WriteUInt64(w, h.Fees, &n, &err)
 	WriteByteSlice(w, h.LastBlockHash, &n, &err)
-	WriteByteSlice(w, h.ValidationStateHash, &n, &err)
-	WriteByteSlice(w, h.AccountStateHash, &n, &err)
+	WriteByteSlice(w, h.StateHash, &n, &err)
 	return
 }
 
 func (h *Header) Hash() []byte {
-	if h.hash != nil {
-		return h.hash
-	} else {
+	if h.hash == nil {
 		hasher := sha256.New()
 		_, err := h.WriteTo(hasher)
 		if err != nil {
 			panic(err)
 		}
 		h.hash = hasher.Sum(nil)
-		return h.hash
 	}
+	return h.hash
+}
+
+func (h *Header) StringWithIndent(indent string) string {
+	return fmt.Sprintf(`Header{
+%s  Network:       %v
+%s  Height:        %v
+%s  Time:          %v
+%s  Fees:          %v
+%s  LastBlockHash: %X
+%s  StateHash:     %X
+%s}#%X`,
+		indent, h.Network,
+		indent, h.Height,
+		indent, h.Time,
+		indent, h.Fees,
+		indent, h.LastBlockHash,
+		indent, h.StateHash,
+		indent, h.hash)
 }
 
 //-----------------------------------------------------------------------------
@@ -183,17 +211,26 @@ func (v *Validation) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (v *Validation) Hash() []byte {
-	if v.hash != nil {
-		return v.hash
-	} else {
-		hasher := sha256.New()
-		_, err := v.WriteTo(hasher)
-		if err != nil {
-			panic(err)
+	if v.hash == nil {
+		bs := make([]Binary, len(v.Signatures))
+		for i, sig := range v.Signatures {
+			bs[i] = Binary(sig)
 		}
-		v.hash = hasher.Sum(nil)
-		return v.hash
+		v.hash = merkle.HashFromBinaries(bs)
 	}
+	return v.hash
+}
+
+func (v *Validation) StringWithIndent(indent string) string {
+	sigStrings := make([]string, len(v.Signatures))
+	for i, sig := range v.Signatures {
+		sigStrings[i] = sig.String()
+	}
+	return fmt.Sprintf(`Validation{
+%s  %v
+%s}#%X`,
+		indent, strings.Join(sigStrings, "\n"+indent+"  "),
+		indent, v.hash)
 }
 
 //-----------------------------------------------------------------------------
@@ -223,14 +260,24 @@ func (data *Data) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (data *Data) Hash() []byte {
-	if data.hash != nil {
-		return data.hash
-	} else {
-		bs := make([]Binary, 0, len(data.Txs))
+	if data.hash == nil {
+		bs := make([]Binary, len(data.Txs))
 		for i, tx := range data.Txs {
 			bs[i] = Binary(tx)
 		}
 		data.hash = merkle.HashFromBinaries(bs)
-		return data.hash
 	}
+	return data.hash
+}
+
+func (data *Data) StringWithIndent(indent string) string {
+	txStrings := make([]string, len(data.Txs))
+	for i, tx := range data.Txs {
+		txStrings[i] = tx.String()
+	}
+	return fmt.Sprintf(`Data{
+%s  %v
+%s}#%X`,
+		indent, strings.Join(txStrings, "\n"+indent+"  "),
+		indent, data.hash)
 }
