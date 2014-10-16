@@ -13,17 +13,17 @@ import (
 
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/blocks"
-	. "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/state"
 )
 
 type Mempool struct {
 	mtx       sync.Mutex
 	lastBlock *Block
-	state     *State
+	state     *state.State
 	txs       []Tx
 }
 
-func NewMempool(lastBlock *Block, state *State) *Mempool {
+func NewMempool(lastBlock *Block, state *state.State) *Mempool {
 	return &Mempool{
 		lastBlock: lastBlock,
 		state:     state,
@@ -45,7 +45,7 @@ func (mem *Mempool) AddTx(tx Tx) (err error) {
 
 // Returns a new block from the current state and associated transactions.
 // The block's Validation is empty, and some parts of the header too.
-func (mem *Mempool) MakeProposalBlock() (*Block, *State) {
+func (mem *Mempool) MakeProposalBlock() (*Block, *state.State) {
 	mem.mtx.Lock()
 	defer mem.mtx.Unlock()
 	nextBlock := mem.lastBlock.MakeNextBlock()
@@ -57,7 +57,7 @@ func (mem *Mempool) MakeProposalBlock() (*Block, *State) {
 // "state" is the result of state.AppendBlock("block").
 // Txs that are present in "block" are discarded from mempool.
 // Txs that have become invalid in the new "state" are also discarded.
-func (mem *Mempool) ResetForBlockAndState(block *Block, state *State) {
+func (mem *Mempool) ResetForBlockAndState(block *Block, state *state.State) {
 	mem.mtx.Lock()
 	defer mem.mtx.Unlock()
 	mem.lastBlock = block

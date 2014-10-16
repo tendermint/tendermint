@@ -9,7 +9,7 @@ import (
 
 	. "github.com/tendermint/tendermint/blocks"
 	. "github.com/tendermint/tendermint/common"
-	. "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/state"
 )
 
 // VoteSet helps collect signatures from validators at each height+round
@@ -23,7 +23,7 @@ type VoteSet struct {
 	type_  byte
 
 	mtx                 sync.Mutex
-	vset                *ValidatorSet
+	vset                *state.ValidatorSet
 	votes               map[uint64]*Vote
 	votesBitArray       BitArray
 	votesByBlockHash    map[string]uint64
@@ -33,7 +33,7 @@ type VoteSet struct {
 }
 
 // Constructs a new VoteSet struct used to accumulate votes for each round.
-func NewVoteSet(height uint32, round uint16, type_ byte, vset *ValidatorSet) *VoteSet {
+func NewVoteSet(height uint32, round uint16, type_ byte, vset *state.ValidatorSet) *VoteSet {
 	if type_ == VoteTypeCommit && round != 0 {
 		panic("Expected round 0 for commit vote set")
 	}

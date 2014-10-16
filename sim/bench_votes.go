@@ -11,13 +11,13 @@ import (
 const seed = 0
 const numNodes = 50000 // Total number of nodes to simulate
 const numNodes8 = (numNodes + 7) / 8
-const minNumPeers = 8        // Each node should be connected to at least this many peers
-const maxNumPeers = 12       // ... and at most this many
-const latencyMS = uint16(500) // One way packet latency
-const partTxMS = uint16(3)    // Transmission time per peer of 100B of data.
+const minNumPeers = 8          // Each node should be connected to at least this many peers
+const maxNumPeers = 12         // ... and at most this many
+const latencyMS = uint16(500)  // One way packet latency
+const partTxMS = uint16(3)     // Transmission time per peer of 100B of data.
 const sendQueueCapacity = 3200 // Amount of messages to queue between peers.
-const maxAllowableRank = 2   // After this, the data is considered waste.
-const tryUnsolicited = 0.02   // Chance of sending an unsolicited piece of data.
+const maxAllowableRank = 2     // After this, the data is considered waste.
+const tryUnsolicited = 0.02    // Chance of sending an unsolicited piece of data.
 
 var log *bufio.Writer
 
@@ -47,7 +47,7 @@ func logWrite(s string) {
 type Peer struct {
 	node   *Node  // Pointer to node
 	sent   uint16 // Time of last packet send, including transmit time.
-	remote uint8    // SomeNode.peers[x].node.peers[remote].node is SomeNode for all x.
+	remote uint8  // SomeNode.peers[x].node.peers[remote].node is SomeNode for all x.
 	wanted []byte // Bitarray of wanted pieces.
 	given  []byte // Bitarray of given pieces.
 }
@@ -217,7 +217,7 @@ type Event interface {
 
 type EventData struct {
 	time uint16 // time of receipt.
-	src  uint8   // src node's peer index on destination node
+	src  uint8  // src node's peer index on destination node
 	part uint16
 }
 
@@ -231,7 +231,7 @@ func (e EventData) String() string {
 
 type EventDataResponse struct {
 	time uint16 // time of receipt.
-	src  uint8    // src node's peer index on destination node.
+	src  uint8  // src node's peer index on destination node.
 	part uint16 // in response to given part
 	rank uint8  // if this is 1, node was first to give peer part.
 }
@@ -289,7 +289,7 @@ func countFull(nodes []*Node) (fullCount int) {
 }
 
 type runStat struct {
-	time uint16 // time for all events to propagate
+	time uint16  // time for all events to propagate
 	fill float64 // avg % of pieces gotten
 	succ float64 // % of times the sendQueue was not full
 	dups float64 // % of times that a received data was duplicate
@@ -417,21 +417,21 @@ func main() {
 								//fmt.Print("!")
 								// Peer doesn't want it, but sporadically we'll try sending it anyways.
 								/*
-								if rand.Float32() < tryUnsolicited {
-									sent := peer.sendEventData(EventData{
-										time: event.time + latencyMS + partTxMS,
-										src:  peer.remote,
-										part: event.part,
-									})
-									if sent {
-										//logWrite(fmt.Sprintf("[%v] t:%v S:%v n:%v -> p:%v %v TS\n", len(runStats), event.time, srcPeer.node.index, node.index, peer.node.index, event.part))
-										peer.setGiven(event.part)
-										// numSendSuccess++
-									} else {
-										//logWrite(fmt.Sprintf("[%v] t:%v S:%v n:%v -> p:%v %v TF\n", len(runStats), event.time, srcPeer.node.index, node.index, peer.node.index, event.part))
-										// numSendFailure++
-									}
-								}*/
+									if rand.Float32() < tryUnsolicited {
+										sent := peer.sendEventData(EventData{
+											time: event.time + latencyMS + partTxMS,
+											src:  peer.remote,
+											part: event.part,
+										})
+										if sent {
+											//logWrite(fmt.Sprintf("[%v] t:%v S:%v n:%v -> p:%v %v TS\n", len(runStats), event.time, srcPeer.node.index, node.index, peer.node.index, event.part))
+											peer.setGiven(event.part)
+											// numSendSuccess++
+										} else {
+											//logWrite(fmt.Sprintf("[%v] t:%v S:%v n:%v -> p:%v %v TF\n", len(runStats), event.time, srcPeer.node.index, node.index, peer.node.index, event.part))
+											// numSendFailure++
+										}
+									}*/
 							}
 						}
 

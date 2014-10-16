@@ -8,7 +8,7 @@ import (
 
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/blocks"
-	. "github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/p2p"
 )
 
 var (
@@ -17,7 +17,7 @@ var (
 
 // MempoolReactor handles mempool tx broadcasting amongst peers.
 type MempoolReactor struct {
-	sw      *Switch
+	sw      *p2p.Switch
 	quit    chan struct{}
 	started uint32
 	stopped uint32
@@ -25,7 +25,7 @@ type MempoolReactor struct {
 	mempool *Mempool
 }
 
-func NewMempoolReactor(sw *Switch, mempool *Mempool) *MempoolReactor {
+func NewMempoolReactor(sw *p2p.Switch, mempool *Mempool) *MempoolReactor {
 	memR := &MempoolReactor{
 		sw:      sw,
 		quit:    make(chan struct{}),
@@ -58,14 +58,14 @@ func (memR *MempoolReactor) BroadcastTx(tx Tx) error {
 }
 
 // Implements Reactor
-func (pexR *MempoolReactor) AddPeer(peer *Peer) {
+func (pexR *MempoolReactor) AddPeer(peer *p2p.Peer) {
 }
 
 // Implements Reactor
-func (pexR *MempoolReactor) RemovePeer(peer *Peer, err error) {
+func (pexR *MempoolReactor) RemovePeer(peer *p2p.Peer, err error) {
 }
 
-func (memR *MempoolReactor) Receive(chId byte, src *Peer, msgBytes []byte) {
+func (memR *MempoolReactor) Receive(chId byte, src *p2p.Peer, msgBytes []byte) {
 	_, msg_ := decodeMessage(msgBytes)
 	log.Info("MempoolReactor received %v", msg_)
 

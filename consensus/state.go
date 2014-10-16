@@ -8,8 +8,8 @@ import (
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/blocks"
 	. "github.com/tendermint/tendermint/common"
-	. "github.com/tendermint/tendermint/mempool"
-	. "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/mempool"
+	"github.com/tendermint/tendermint/state"
 )
 
 const (
@@ -32,8 +32,8 @@ type RoundState struct {
 	Round                uint16
 	Step                 uint8
 	StartTime            time.Time
-	Validators           *ValidatorSet
-	Proposer             *Validator
+	Validators           *state.ValidatorSet
+	Proposer             *state.Validator
 	Proposal             *Proposal
 	ProposalBlock        *Block
 	ProposalBlockPartSet *PartSet
@@ -52,16 +52,16 @@ type RoundState struct {
 // Tracks consensus state across block heights and rounds.
 type ConsensusState struct {
 	blockStore *BlockStore
-	mempool    *Mempool
+	mempool    *mempool.Mempool
 
 	mtx sync.Mutex
 	RoundState
-	state       *State // State until height-1.
-	stagedBlock *Block // Cache last staged block.
-	stagedState *State // Cache result of staged block.
+	state       *state.State // State until height-1.
+	stagedBlock *Block       // Cache last staged block.
+	stagedState *state.State // Cache result of staged block.
 }
 
-func NewConsensusState(state *State, blockStore *BlockStore, mempool *Mempool) *ConsensusState {
+func NewConsensusState(state *state.State, blockStore *BlockStore, mempool *mempool.Mempool) *ConsensusState {
 	cs := &ConsensusState{
 		blockStore: blockStore,
 		mempool:    mempool,
@@ -77,7 +77,7 @@ func (cs *ConsensusState) GetRoundState() *RoundState {
 	return &rs
 }
 
-func (cs *ConsensusState) updateToState(state *State) {
+func (cs *ConsensusState) updateToState(state *state.State) {
 	// Sanity check state.
 	stateHeight := state.Height
 	if stateHeight > 0 && stateHeight != cs.Height+1 {

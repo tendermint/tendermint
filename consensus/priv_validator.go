@@ -3,13 +3,13 @@ package consensus
 import (
 	. "github.com/tendermint/tendermint/blocks"
 	db_ "github.com/tendermint/tendermint/db"
-	. "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/state"
 )
 
 //-----------------------------------------------------------------------------
 
 type PrivValidator struct {
-	PrivAccount
+	state.PrivAccount
 	db *db_.LevelDB
 }
 

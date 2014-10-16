@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	. "github.com/tendermint/tendermint/binary"
-	. "github.com/tendermint/tendermint/db"
+	db_ "github.com/tendermint/tendermint/db"
 )
 
 /*
@@ -20,7 +20,7 @@ type IAVLTree struct {
 	ndb        *nodeDB
 }
 
-func NewIAVLTree(keyCodec, valueCodec Codec, cacheSize int, db DB) *IAVLTree {
+func NewIAVLTree(keyCodec, valueCodec Codec, cacheSize int, db db_.DB) *IAVLTree {
 	if db == nil {
 		// In-memory IAVLTree
 		return &IAVLTree{
@@ -178,10 +178,10 @@ type nodeDB struct {
 	cache      map[string]nodeElement
 	cacheSize  int
 	cacheQueue *list.List
-	db         DB
+	db         db_.DB
 }
 
-func newNodeDB(cacheSize int, db DB) *nodeDB {
+func newNodeDB(cacheSize int, db db_.DB) *nodeDB {
 	return &nodeDB{
 		cache:      make(map[string]nodeElement),
 		cacheSize:  cacheSize,

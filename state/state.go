@@ -9,7 +9,7 @@ import (
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/blocks"
 	. "github.com/tendermint/tendermint/common"
-	. "github.com/tendermint/tendermint/db"
+	db_ "github.com/tendermint/tendermint/db"
 	"github.com/tendermint/tendermint/merkle"
 )
 
@@ -42,7 +42,7 @@ func (txErr InvalidTxError) Error() string {
 
 // NOTE: not goroutine-safe.
 type State struct {
-	DB                  DB
+	DB                  db_.DB
 	Height              uint32 // Last known block height
 	BlockHash           []byte // Last known block hash
 	CommitTime          time.Time
@@ -51,7 +51,7 @@ type State struct {
 	UnbondingValidators *ValidatorSet
 }
 
-func GenesisState(db DB, genesisTime time.Time, accDets []*AccountDetail) *State {
+func GenesisState(db db_.DB, genesisTime time.Time, accDets []*AccountDetail) *State {
 
 	// TODO: Use "uint64Codec" instead of BasicCodec
 	accountDetails := merkle.NewIAVLTree(BasicCodec, AccountDetailCodec, defaultAccountDetailsCacheCapacity, db)
@@ -84,7 +84,7 @@ func GenesisState(db DB, genesisTime time.Time, accDets []*AccountDetail) *State
 	}
 }
 
-func LoadState(db DB) *State {
+func LoadState(db db_.DB) *State {
 	s := &State{DB: db}
 	buf := db.Get(stateKey)
 	if len(buf) == 0 {

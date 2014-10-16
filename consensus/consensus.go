@@ -13,9 +13,9 @@ import (
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/blocks"
 	. "github.com/tendermint/tendermint/common"
-	. "github.com/tendermint/tendermint/mempool"
+	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
-	. "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/state"
 )
 
 const (
@@ -102,7 +102,7 @@ type ConsensusReactor struct {
 	doActionCh chan RoundAction
 }
 
-func NewConsensusReactor(sw *p2p.Switch, blockStore *BlockStore, mempool *Mempool, state *State) *ConsensusReactor {
+func NewConsensusReactor(sw *p2p.Switch, blockStore *BlockStore, mempool *mempool.Mempool, state *state.State) *ConsensusReactor {
 	conS := NewConsensusState(state, blockStore, mempool)
 	conR := &ConsensusReactor{
 		sw:   sw,

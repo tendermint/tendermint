@@ -6,7 +6,7 @@ import (
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/blocks"
 	. "github.com/tendermint/tendermint/common"
-	. "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/state"
 )
 
 // Proof of lock.
@@ -42,7 +42,7 @@ func (pol *POL) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 // Returns whether +2/3 have voted/committed for BlockHash.
-func (pol *POL) Verify(vset *ValidatorSet) error {
+func (pol *POL) Verify(vset *state.ValidatorSet) error {
 
 	talliedVotingPower := uint64(0)
 	voteDoc := BinaryBytes(&Vote{Height: pol.Height, Round: pol.Round,

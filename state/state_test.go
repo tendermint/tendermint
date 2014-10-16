@@ -4,7 +4,7 @@ import (
 	. "github.com/tendermint/tendermint/blocks"
 	. "github.com/tendermint/tendermint/common"
 	. "github.com/tendermint/tendermint/config"
-	. "github.com/tendermint/tendermint/db"
+	db_ "github.com/tendermint/tendermint/db"
 
 	"bytes"
 	"testing"
@@ -25,7 +25,7 @@ func randAccountDetail(id uint64, status byte) (*AccountDetail, *PrivAccount) {
 
 // The first numValidators accounts are validators.
 func randGenesisState(numAccounts int, numValidators int) (*State, []*PrivAccount) {
-	db := NewMemDB()
+	db := db_.NewMemDB()
 	accountDetails := make([]*AccountDetail, numAccounts)
 	privAccounts := make([]*PrivAccount, numAccounts)
 	for i := 0; i < numAccounts; i++ {
@@ -114,7 +114,7 @@ func TestGenesisSaveLoad(t *testing.T) {
 	s0.Save(commitTime)
 
 	// Sanity check s0
-	//s0.DB.(*MemDB).Print()
+	//s0.DB.(*db_.MemDB).Print()
 	if s0.BondedValidators.TotalVotingPower() == 0 {
 		t.Error("s0 BondedValidators TotalVotingPower should not be 0")
 	}

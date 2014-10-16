@@ -3,29 +3,29 @@ package consensus
 import (
 	. "github.com/tendermint/tendermint/blocks"
 	. "github.com/tendermint/tendermint/common"
-	. "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/state"
 
 	"testing"
 )
 
-func makeValidator(id uint64, votingPower uint64) (*Validator, *PrivAccount) {
-	privAccount := GenPrivAccount()
+func makeValidator(id uint64, votingPower uint64) (*state.Validator, *state.PrivAccount) {
+	privAccount := state.GenPrivAccount()
 	privAccount.Id = id
-	return &Validator{
+	return &state.Validator{
 		Account:     privAccount.Account,
 		VotingPower: votingPower,
 	}, privAccount
 }
 
-func makeVoteSet(height uint32, round uint16, numValidators int, votingPower uint64) (*VoteSet, *ValidatorSet, []*PrivAccount) {
-	vals := make([]*Validator, numValidators)
-	privAccounts := make([]*PrivAccount, numValidators)
+func makeVoteSet(height uint32, round uint16, numValidators int, votingPower uint64) (*VoteSet, *state.ValidatorSet, []*state.PrivAccount) {
+	vals := make([]*state.Validator, numValidators)
+	privAccounts := make([]*state.PrivAccount, numValidators)
 	for i := 0; i < numValidators; i++ {
 		val, privAccount := makeValidator(uint64(i), votingPower)
 		vals[i] = val
 		privAccounts[i] = privAccount
 	}
-	valSet := NewValidatorSet(vals)
+	valSet := state.NewValidatorSet(vals)
 	return NewVoteSet(height, round, VoteTypeBare, valSet), valSet, privAccounts
 }
 
