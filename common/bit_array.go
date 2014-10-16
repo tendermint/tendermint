@@ -4,6 +4,7 @@ import (
 	"io"
 	"math"
 	"math/rand"
+	"strings"
 
 	. "github.com/tendermint/tendermint/binary"
 )
@@ -152,4 +153,34 @@ func (bA BitArray) PickRarest(counts []int) (rarest int, ok bool) {
 		}
 	}
 	return
+}
+
+func (bA BitArray) String() string {
+	return bA.StringWithIndent("")
+}
+
+func (bA BitArray) StringWithIndent(indent string) string {
+	lines := []string{}
+	bits := ""
+	for i := 0; i < len(bA)*64; i++ {
+		if bA.GetIndex(uint(i)) {
+			bits += "X"
+		} else {
+			bits += "_"
+		}
+		if i%100 == 99 {
+			lines = append(lines, bits)
+			bits = ""
+		}
+		if i%10 == 9 {
+			bits += " "
+		}
+		if i%50 == 49 {
+			bits += " "
+		}
+	}
+	if len(bits) > 0 {
+		lines = append(lines, bits)
+	}
+	return strings.Join(lines, indent)
 }

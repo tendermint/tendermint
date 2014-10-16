@@ -2,6 +2,7 @@ package blocks
 
 import (
 	"errors"
+	"fmt"
 	"io"
 
 	. "github.com/tendermint/tendermint/binary"
@@ -55,4 +56,21 @@ func (v *Vote) GetSignature() Signature {
 
 func (v *Vote) SetSignature(sig Signature) {
 	v.Signature = sig
+}
+
+func (v *Vote) String() string {
+	blockHash := v.BlockHash
+	if len(v.BlockHash) == 0 {
+		blockHash = make([]byte, 6) // for printing
+	}
+	switch v.Type {
+	case VoteTypeBare:
+		return fmt.Sprintf("Vote{%v/%v:%X:%v}", v.Height, v.Round, blockHash, v.SignerId)
+	case VoteTypePrecommit:
+		return fmt.Sprintf("Precommit{%v/%v:%X:%v}", v.Height, v.Round, blockHash, v.SignerId)
+	case VoteTypeCommit:
+		return fmt.Sprintf("Commit{%v/%v:%X:%v}", v.Height, v.Round, v.BlockHash[:6], v.SignerId)
+	default:
+		panic("Unknown vote type")
+	}
 }

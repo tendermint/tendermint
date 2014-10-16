@@ -142,9 +142,9 @@ func (cs *ConsensusState) setupRound(round uint16) {
 	cs.ProposalPOL = nil
 	cs.ProposalPOLPartSet = nil
 	cs.Votes = NewVoteSet(cs.Height, round, VoteTypeBare, validators)
-	cs.Votes.AddVotesFromCommits(cs.Commits)
+	cs.Votes.AddFromCommits(cs.Commits)
 	cs.Precommits = NewVoteSet(cs.Height, round, VoteTypePrecommit, validators)
-	cs.Precommits.AddVotesFromCommits(cs.Commits)
+	cs.Precommits.AddFromCommits(cs.Commits)
 }
 
 func (cs *ConsensusState) SetStep(step byte) {
@@ -289,15 +289,15 @@ func (cs *ConsensusState) AddVote(vote *Vote) (added bool, err error) {
 	switch vote.Type {
 	case VoteTypeBare:
 		// Votes checks for height+round match.
-		return cs.Votes.AddVote(vote)
+		return cs.Votes.Add(vote)
 	case VoteTypePrecommit:
 		// Precommits checks for height+round match.
-		return cs.Precommits.AddVote(vote)
+		return cs.Precommits.Add(vote)
 	case VoteTypeCommit:
 		// Commits checks for height match.
-		cs.Votes.AddVote(vote)
-		cs.Precommits.AddVote(vote)
-		return cs.Commits.AddVote(vote)
+		cs.Votes.Add(vote)
+		cs.Precommits.Add(vote)
+		return cs.Commits.Add(vote)
 	default:
 		panic("Unknown vote type")
 	}

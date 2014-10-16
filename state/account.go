@@ -39,6 +39,9 @@ func (account Account) VerifyBytes(msg []byte, sig Signature) bool {
 	if sig.SignerId != account.Id {
 		panic("account.id doesn't match sig.signerid")
 	}
+	if len(sig.Bytes) == 0 {
+		panic("signature is empty")
+	}
 	v1 := &crypto.Verify{
 		Message:   msg,
 		PubKey:    account.PubKey,
@@ -57,7 +60,7 @@ func (account Account) Verify(o Signable) bool {
 }
 
 func (account Account) String() string {
-	return fmt.Sprintf("Account{%v:%X}", account.Id, account.PubKey)
+	return fmt.Sprintf("Account{%v:%X}", account.Id, account.PubKey[:6])
 }
 
 //-----------------------------------------------------------------------------

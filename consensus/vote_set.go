@@ -2,7 +2,8 @@ package consensus
 
 import (
 	"bytes"
-
+	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -50,7 +51,7 @@ func NewVoteSet(height uint32, round uint16, type_ byte, vset *ValidatorSet) *Vo
 
 // True if added, false if not.
 // Returns ErrVote[UnexpectedPhase|InvalidAccount|InvalidSignature|InvalidBlockHash|ConflictingSignature]
-func (vs *VoteSet) AddVote(vote *Vote) (bool, error) {
+func (vs *VoteSet) Add(vote *Vote) (bool, error) {
 	vs.mtx.Lock()
 	defer vs.mtx.Unlock()
 
@@ -109,7 +110,7 @@ func (vs *VoteSet) addVote(vote *Vote) (bool, error) {
 }
 
 // Assumes that commits VoteSet is valid.
-func (vs *VoteSet) AddVotesFromCommits(commits *VoteSet) {
+func (vs *VoteSet) AddFromCommits(commits *VoteSet) {
 	commitVotes := commits.AllVotes()
 	for _, commit := range commitVotes {
 		if commit.Round < vs.round {
@@ -176,4 +177,27 @@ func (vs *VoteSet) MakePOL() *POL {
 		}
 	}
 	return pol
+}
+
+func (vs *VoteSet) String() string {
+	return vs.StringWithIndent("")
+}
+
+func (vs *VoteSet) StringWithIndent(indent string) string {
+	vs.mtx.Lock()
+	defer vs.mtx.Unlock()
+
+	voteStrings := make([]string, len(vs.votes))
+	for _, vote := range vs.votes {
+		voteStrings[vote.SignerId] = vote.String()
+	}
+	return fmt.Sprintf(`VoteSet{
+%s  H:%v R:%v T:%v
+%s  %v
+%s  %v
+%s}`,
+		indent, vs.height, vs.round, vs.type_,
+		indent, strings.Join(voteStrings, "\n"+indent+"  "),
+		indent, vs.votesBitArray,
+		indent)
 }
