@@ -51,6 +51,7 @@ func NewVoteSet(height uint32, round uint16, type_ byte, vset *ValidatorSet) *Vo
 
 // True if added, false if not.
 // Returns ErrVote[UnexpectedPhase|InvalidAccount|InvalidSignature|InvalidBlockHash|ConflictingSignature]
+// NOTE: vote should be mutated after adding.
 func (vs *VoteSet) Add(vote *Vote) (bool, error) {
 	vs.mtx.Lock()
 	defer vs.mtx.Unlock()
