@@ -79,6 +79,9 @@ func (pol *POL) Verify(vset *state.ValidatorSet) error {
 		if val == nil {
 			return Errorf("Invalid validator for commit %v for POL %v", sig, pol)
 		}
+		if round >= pol.Round {
+			return Errorf("Invalid commit round %v for POL %v", round, pol)
+		}
 
 		commitDoc := BinaryBytes(&Vote{Height: pol.Height, Round: round,
 			Type: VoteTypeCommit, BlockHash: pol.BlockHash}) // TODO cache
