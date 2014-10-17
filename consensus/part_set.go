@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"errors"
+	"fmt"
 	"io"
+	"strings"
 	"sync"
 
 	. "github.com/tendermint/tendermint/binary"
@@ -57,6 +59,26 @@ func (pt *Part) Hash() []byte {
 		pt.hash = hasher.Sum(nil)
 		return pt.hash
 	}
+}
+
+func (pt *Part) String() string {
+	return pt.StringWithIndent("")
+}
+
+func (pt *Part) StringWithIndent(indent string) string {
+	trailStrings := make([]string, len(pt.Trail))
+	for i, hash := range pt.Trail {
+		trailStrings[i] = fmt.Sprintf("%X", hash)
+	}
+	return fmt.Sprintf(`Part{
+%s  Index: %v
+%s  Trail:
+%s    %v
+%s}`,
+		indent, pt.Index,
+		indent,
+		indent, strings.Join(trailStrings, "\n"+indent+"    "),
+		indent)
 }
 
 //-------------------------------------

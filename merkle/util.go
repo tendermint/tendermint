@@ -190,7 +190,7 @@ func HashTrailForIndex(hashTree [][]byte, index int) [][]byte {
 		trail = append(trail, hashTree[next])
 
 		index = (index + next) / 2
-		offset += stride
+		offset += stride / 2
 		stride *= 2
 	}
 
@@ -216,7 +216,7 @@ func VerifyHashTrailForIndex(index int, leafHash []byte, trail [][]byte, rootHas
 			tempHash = HashFromTwoHashes(trail[i], tempHash)
 		}
 		index = (index + next) / 2
-		offset += stride
+		offset += stride / 2
 		stride *= 2
 	}
 
