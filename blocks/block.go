@@ -114,6 +114,14 @@ func (b *Block) StringWithIndent(indent string) string {
 		indent, b.hash)
 }
 
+func (b *Block) Description() string {
+	if b == nil {
+		return "nil-Block"
+	} else {
+		return fmt.Sprintf("Block#%X", b.Hash())
+	}
+}
+
 //-----------------------------------------------------------------------------
 
 type Header struct {

@@ -1,6 +1,7 @@
 package state
 
 import (
+	"fmt"
 	"io"
 
 	. "github.com/tendermint/tendermint/binary"
@@ -71,6 +72,10 @@ func (v *Validator) CompareAccum(other *Validator) *Validator {
 			panic("Cannot compare identical validators")
 		}
 	}
+}
+
+func (v *Validator) String() string {
+	return fmt.Sprintf("Validator{%v VP:%v A:%v}", v.Account, v.VotingPower, v.Accum)
 }
 
 //-------------------------------------

@@ -144,6 +144,13 @@ func (ps *PartSet) RootHash() []byte {
 	return ps.rootHash
 }
 
+func (ps *PartSet) Count() uint16 {
+	if ps == nil {
+		return 0
+	}
+	return ps.count
+}
+
 func (ps *PartSet) Total() uint16 {
 	if ps == nil {
 		return 0
@@ -196,4 +203,12 @@ func (ps *PartSet) GetReader() io.Reader {
 		buf = append(buf, part.Bytes...)
 	}
 	return bytes.NewReader(buf)
+}
+
+func (ps *PartSet) Description() string {
+	if ps == nil {
+		return "nil-PartSet"
+	} else {
+		return fmt.Sprintf("(%v of %v)", ps.Count(), ps.Total())
+	}
 }

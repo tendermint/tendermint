@@ -5,6 +5,8 @@ import (
 	"github.com/tendermint/tendermint/state"
 )
 
+// Common test methods
+
 func makeValidator(id uint64, votingPower uint64) (*state.Validator, *state.PrivAccount) {
 	privAccount := state.GenPrivAccount()
 	privAccount.Id = id

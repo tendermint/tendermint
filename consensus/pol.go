@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"fmt"
 	"io"
 
 	. "github.com/tendermint/tendermint/binary"
@@ -101,4 +102,16 @@ func (pol *POL) Verify(vset *state.ValidatorSet) error {
 			talliedVotingPower, (vset.TotalVotingPower()*2/3 + 1))
 	}
 
+}
+
+func (pol *POL) Description() string {
+	if pol == nil {
+		return "nil-POL"
+	} else {
+		blockHash := pol.BlockHash
+		if blockHash != nil {
+			blockHash = blockHash[:6]
+		}
+		return fmt.Sprintf("POL{H:%v R:%v BH:%X}", pol.Height, pol.Round, blockHash)
+	}
 }

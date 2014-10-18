@@ -17,10 +17,10 @@ type PrivValidator struct {
 func (pv *PrivValidator) Sign(o Signable) {
 	switch o.(type) {
 	case *Proposal:
-		//TODO: prevent double signing.
+		//TODO: prevent double signing && test.
 		pv.PrivAccount.Sign(o.(*Proposal))
 	case *Vote:
-		//TODO: prevent double signing.
+		//TODO: prevent double signing && test.
 		pv.PrivAccount.Sign(o.(*Vote))
 	}
 }

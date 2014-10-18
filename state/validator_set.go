@@ -1,7 +1,9 @@
 package state
 
 import (
+	"fmt"
 	"io"
+	"strings"
 
 	. "github.com/tendermint/tendermint/binary"
 	"github.com/tendermint/tendermint/merkle"
@@ -123,4 +125,22 @@ func (vset *ValidatorSet) Iterate(fn func(val *Validator) bool) {
 	vset.validators.Iterate(func(key_ interface{}, val_ interface{}) bool {
 		return fn(val_.(*Validator))
 	})
+}
+
+func (vset *ValidatorSet) StringWithIndent(indent string) string {
+	valStrings := []string{}
+	vset.Iterate(func(val *Validator) bool {
+		valStrings = append(valStrings, val.String())
+		return false
+	})
+	return fmt.Sprintf(`ValidatorSet{
+%s  Proposer: %v
+%s  Validators:
+%s    %v
+%s}`,
+		indent, vset.proposer.String(),
+		indent,
+		indent, strings.Join(valStrings, "\n"+indent+"    "),
+		indent)
+
 }

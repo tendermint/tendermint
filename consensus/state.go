@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -33,7 +34,6 @@ type RoundState struct {
 	Step                 uint8
 	StartTime            time.Time
 	Validators           *state.ValidatorSet
-	Proposer             *state.Validator
 	Proposal             *Proposal
 	ProposalBlock        *Block
 	ProposalBlockPartSet *PartSet
@@ -45,6 +45,38 @@ type RoundState struct {
 	Precommits           *VoteSet
 	Commits              *VoteSet
 	PrivValidator        *PrivValidator
+}
+
+func (rs *RoundState) String() string {
+	return rs.StringWithIndent("")
+}
+
+func (rs *RoundState) StringWithIndent(indent string) string {
+	return fmt.Sprintf(`RoundState{
+%s  H:%v R:%v S:%v
+%s  StartTime:     %v
+%s  Validators:    %v
+%s  Proposal:      %v
+%s  ProposalBlock: %v %v
+%s  ProposalPOL:   %v %v
+%s  LockedBlock:   %v
+%s  LockedPOL:     %v
+%s  Votes:      %v
+%s  Precommits: %v
+%s  Commits:    %v
+%s}`,
+		indent, rs.Height, rs.Round, rs.Step,
+		indent, rs.StartTime,
+		indent, rs.Validators.StringWithIndent(indent+"    "),
+		indent, rs.Proposal,
+		indent, rs.ProposalBlockPartSet.Description(), rs.ProposalBlock.Description(),
+		indent, rs.ProposalPOLPartSet.Description(), rs.ProposalPOL.Description(),
+		indent, rs.LockedBlock.Description(),
+		indent, rs.LockedPOL.Description(),
+		indent, rs.Votes.StringWithIndent(indent+"    "),
+		indent, rs.Precommits.StringWithIndent(indent+"    "),
+		indent, rs.Commits.StringWithIndent(indent+"    "),
+		indent)
 }
 
 //-------------------------------------
@@ -92,7 +124,6 @@ func (cs *ConsensusState) updateToState(state *state.State) {
 	cs.Step = RoundStepStart
 	cs.StartTime = state.CommitTime.Add(newBlockWaitDuration)
 	cs.Validators = validators
-	cs.Proposer = validators.Proposer()
 	cs.Proposal = nil
 	cs.ProposalBlock = nil
 	cs.ProposalBlockPartSet = nil
@@ -135,7 +166,6 @@ func (cs *ConsensusState) setupRound(round uint16) {
 	cs.Round = round
 	cs.Step = RoundStepStart
 	cs.Validators = validators
-	cs.Proposer = validators.Proposer()
 	cs.Proposal = nil
 	cs.ProposalBlock = nil
 	cs.ProposalBlockPartSet = nil
@@ -178,7 +208,7 @@ func (cs *ConsensusState) SetProposal(proposal *Proposal) error {
 	}
 
 	// Verify signature
-	if !cs.Proposer.Verify(proposal) {
+	if !cs.Validators.Proposer().Verify(proposal) {
 		return ErrInvalidProposalSignature
 	}
 
@@ -192,7 +222,7 @@ func (cs *ConsensusState) MakeProposal() {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 
-	if cs.PrivValidator == nil || cs.Proposer.Id != cs.PrivValidator.Id {
+	if cs.PrivValidator == nil || cs.Validators.Proposer().Id != cs.PrivValidator.Id {
 		return
 	}
 
@@ -382,10 +412,7 @@ func (cs *ConsensusState) Commit(height uint32, round uint16) *Block {
 		}
 
 		// Save to blockStore
-		err := cs.blockStore.SaveBlock(block)
-		if err != nil {
-			return nil
-		}
+		cs.blockStore.SaveBlock(block)
 
 		// What was staged becomes committed.
 		state := cs.stagedState
