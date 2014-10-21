@@ -23,8 +23,10 @@ type Proposal struct {
 	Signature
 }
 
-func NewProposal(height uint32, round uint16, blockPartsTotal uint16, blockPartsHash []byte,
+func NewProposal(height uint32, round uint16,
+	blockPartsTotal uint16, blockPartsHash []byte,
 	polPartsTotal uint16, polPartsHash []byte) *Proposal {
+
 	return &Proposal{
 		Height:          height,
 		Round:           round,

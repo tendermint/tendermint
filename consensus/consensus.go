@@ -296,8 +296,8 @@ func (conR *ConsensusReactor) stepTransitionRoutine() {
 		case RoundStepPropose:
 			// Wake up when it's time to vote.
 			time.Sleep(time.Duration(roundDeadlinePrevote-elapsedRatio) * roundDuration)
-			conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundActionVote}
-		case RoundStepVote:
+			conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundActionPrevote}
+		case RoundStepPrevote:
 			// Wake up when it's time to precommit.
 			time.Sleep(time.Duration(roundDeadlinePrecommit-elapsedRatio) * roundDuration)
 			conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundActionPrecommit}
@@ -323,8 +323,7 @@ func (conR *ConsensusReactor) stepTransitionRoutine() {
 		round := roundAction.Round
 		action := roundAction.Action
 		rs := conR.conS.GetRoundState()
-		setStepAndBroadcast := func(step RoundStep) {
-			conR.conS.SetStep(step)
+		broadcastNewRoundStep := func(step RoundStep) {
 			// Broadcast NewRoundStepMessage
 			msg := &NewRoundStepMessage{
 				Height: height,
@@ -344,24 +343,43 @@ func (conR *ConsensusReactor) stepTransitionRoutine() {
 
 		// Run step
 		if action == RoundActionPropose && rs.Step == RoundStepStart {
-			conR.runStepPropose(rs)
-			setStepAndBroadcast(RoundStepPropose)
-		} else if action == RoundActionVote && rs.Step <= RoundStepPropose {
-			conR.runStepPrevote(rs)
-			setStepAndBroadcast(RoundStepVote)
-		} else if action == RoundActionPrecommit && rs.Step <= RoundStepVote {
-			conR.runStepPrecommit(rs)
-			setStepAndBroadcast(RoundStepPrecommit)
+			conR.conS.RunActionPropose(rs.Height, rs.Round)
+			broadcastNewRoundStep(RoundStepPropose)
+		} else if action == RoundActionPrevote && rs.Step <= RoundStepPropose {
+			hash := conR.conS.RunActionPrevote(rs.Height, rs.Round)
+			broadcastNewRoundStep(RoundStepPrevote)
+			conR.signAndBroadcastVote(rs, &Vote{
+				Height:    rs.Height,
+				Round:     rs.Round,
+				Type:      VoteTypePrevote,
+				BlockHash: hash,
+			})
+		} else if action == RoundActionPrecommit && rs.Step <= RoundStepPrevote {
+			hash := conR.conS.RunActionPrecommit(rs.Height, rs.Round)
+			broadcastNewRoundStep(RoundStepPrecommit)
+			if len(hash) > 0 {
+				conR.signAndBroadcastVote(rs, &Vote{
+					Height:    rs.Height,
+					Round:     rs.Round,
+					Type:      VoteTypePrecommit,
+					BlockHash: hash,
+				})
+			}
 		} else if action == RoundActionCommit && rs.Step <= RoundStepPrecommit {
-			committed := conR.runStepCommit(rs)
-			if committed {
-				setStepAndBroadcast(RoundStepCommit)
+			hash := conR.conS.RunActionCommit(rs.Height, rs.Round)
+			if len(hash) > 0 {
+				broadcastNewRoundStep(RoundStepCommit)
+				conR.signAndBroadcastVote(rs, &Vote{
+					Height:    rs.Height,
+					Round:     rs.Round,
+					Type:      VoteTypeCommit,
+					BlockHash: hash,
+				})
 			} else {
-				// runStepCommit() already set the round to the next round,
-				// so the step is already RoundStepStart (same height).
+				conR.conS.SetupRound(rs.Round + 1)
 			}
 		} else if action == RoundActionFinalize && rs.Step == RoundStepCommit {
-			conR.runStepFinalize(rs)
+			conR.conS.RunActionFinalize(rs.Height, rs.Round)
 			// Height has been incremented, step is now RoundStepStart.
 		} else {
 			// This shouldn't happen now, but if an external source pushes
@@ -454,7 +472,7 @@ OUTER_LOOP:
 		}
 
 		// If there are prevotes to send...
-		if prs.Step <= RoundStepVote {
+		if prs.Step <= RoundStepPrevote {
 			index, ok := rs.Prevotes.BitArray().Sub(prs.Prevotes).PickRandom()
 			if ok {
 				valId, val := rs.Validators.GetByIndex(uint32(index))
@@ -516,83 +534,6 @@ func (conR *ConsensusReactor) signAndBroadcastVote(rs *RoundState, vote *Vote) {
 		msg := p2p.TypedMessage{msgTypeVote, vote}
 		conR.sw.Broadcast(VoteCh, msg)
 	}
-}
-
-//-------------------------------------
-
-func (conR *ConsensusReactor) runStepPropose(rs *RoundState) {
-	conR.conS.MakeProposal()
-}
-
-func (conR *ConsensusReactor) runStepPrevote(rs *RoundState) {
-	// If we have a locked block, we must vote for that.
-	// NOTE: a locked block is already valid.
-	if rs.LockedBlock != nil {
-		conR.signAndBroadcastVote(rs, &Vote{
-			Height:    rs.Height,
-			Round:     rs.Round,
-			Type:      VoteTypePrevote,
-			BlockHash: rs.LockedBlock.Hash(),
-		})
-	}
-	// Try staging proposed block.
-	// If Block is nil, an error is returned.
-	err := conR.conS.stageBlock(rs.ProposalBlock)
-	if err != nil {
-		// Prevote nil
-		conR.signAndBroadcastVote(rs, &Vote{
-			Height:    rs.Height,
-			Round:     rs.Round,
-			Type:      VoteTypePrevote,
-			BlockHash: nil,
-		})
-	} else {
-		// Prevote block
-		conR.signAndBroadcastVote(rs, &Vote{
-			Height:    rs.Height,
-			Round:     rs.Round,
-			Type:      VoteTypePrevote,
-			BlockHash: rs.ProposalBlock.Hash(),
-		})
-	}
-}
-
-func (conR *ConsensusReactor) runStepPrecommit(rs *RoundState) {
-	// If we see a 2/3 majority of votes for a block, lock.
-	hash := conR.conS.LockOrUnlock(rs.Height, rs.Round)
-	if len(hash) > 0 {
-		// Precommit block
-		conR.signAndBroadcastVote(rs, &Vote{
-			Height:    rs.Height,
-			Round:     rs.Round,
-			Type:      VoteTypePrecommit,
-			BlockHash: hash,
-		})
-	}
-}
-
-func (conR *ConsensusReactor) runStepCommit(rs *RoundState) bool {
-	// If we see a 2/3 majority of votes for a block, lock.
-	block := conR.conS.TryCommit(rs.Height, rs.Round)
-	if block == nil {
-		// Couldn't commit, try next round.
-		conR.conS.SetupRound(rs.Round + 1)
-		return false
-	} else {
-		// Commit block.
-		conR.signAndBroadcastVote(rs, &Vote{
-			Height:    rs.Height,
-			Round:     rs.Round,
-			Type:      VoteTypePrecommit,
-			BlockHash: block.Hash(),
-		})
-		return true
-	}
-}
-
-func (conR *ConsensusReactor) runStepFinalize(rs *RoundState) {
-	// This actually updates the height and sets up round 0.
-	conR.conS.FinalizeCommit()
 }
 
 //-----------------------------------------------------------------------------

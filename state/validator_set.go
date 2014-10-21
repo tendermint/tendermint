@@ -127,6 +127,10 @@ func (vset *ValidatorSet) Iterate(fn func(val *Validator) bool) {
 	})
 }
 
+func (vset *ValidatorSet) String() string {
+	return vset.StringWithIndent("")
+}
+
 func (vset *ValidatorSet) StringWithIndent(indent string) string {
 	valStrings := []string{}
 	vset.Iterate(func(val *Validator) bool {

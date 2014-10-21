@@ -20,7 +20,7 @@ type RoundActionType uint8
 const (
 	RoundStepStart     = RoundStep(0x00) // Round started.
 	RoundStepPropose   = RoundStep(0x01) // Did propose, gossip proposal.
-	RoundStepVote      = RoundStep(0x02) // Did vote, gossip votes.
+	RoundStepPrevote   = RoundStep(0x02) // Did prevote, gossip prevotes.
 	RoundStepPrecommit = RoundStep(0x03) // Did precommit, gossip precommits.
 	RoundStepCommit    = RoundStep(0x04) // Did commit, gossip commits.
 
@@ -28,11 +28,11 @@ const (
 	// we progress to the next round, skipping RoundStepCommit.
 	//
 	// If a block was committed, we goto RoundStepCommit,
-	// then wait "finalizeDuration" to gather more commit votes,
+	// then wait "finalizeDuration" to gather more commits,
 	// then we progress to the next height at round 0.
 
 	RoundActionPropose   = RoundActionType(0x00) // Goto RoundStepPropose
-	RoundActionVote      = RoundActionType(0x01) // Goto RoundStepVote
+	RoundActionPrevote   = RoundActionType(0x01) // Goto RoundStepPrevote
 	RoundActionPrecommit = RoundActionType(0x02) // Goto RoundStepPrecommit
 	RoundActionCommit    = RoundActionType(0x03) // Goto RoundStepCommit or RoundStepStart next round
 	RoundActionFinalize  = RoundActionType(0x04) // Goto RoundStepStart next height
@@ -135,14 +135,14 @@ func (cs *ConsensusState) GetRoundState() *RoundState {
 
 func (cs *ConsensusState) updateToState(state *state.State) {
 	// Sanity check state.
-	stateHeight := state.Height
-	if stateHeight > 0 && stateHeight != cs.Height+1 {
-		Panicf("updateToState() expected state height of %v but found %v", cs.Height+1, stateHeight)
+	if cs.Height > 0 && cs.Height != state.Height {
+		Panicf("updateToState() expected state height of %v but found %v",
+			cs.Height, state.Height)
 	}
 
 	// Reset fields based on state.
-	height := state.Height
 	validators := state.BondedValidators
+	height := state.Height + 1 // next desired block height
 	cs.Height = height
 	cs.Round = 0
 	cs.Step = RoundStepStart
@@ -202,16 +202,6 @@ func (cs *ConsensusState) setupRound(round uint16) {
 	cs.Precommits.AddFromCommits(cs.Commits)
 }
 
-func (cs *ConsensusState) SetStep(step RoundStep) {
-	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
-	if cs.Step < step {
-		cs.Step = step
-	} else {
-		panic("step regression")
-	}
-}
-
 func (cs *ConsensusState) SetPrivValidator(priv *PrivValidator) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
@@ -243,9 +233,13 @@ func (cs *ConsensusState) SetProposal(proposal *Proposal) error {
 	return nil
 }
 
-func (cs *ConsensusState) MakeProposal() {
+func (cs *ConsensusState) RunActionPropose(height uint32, round uint16) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
+	if cs.Height != height || cs.Round != round {
+		return
+	}
+	cs.Step = RoundStepPropose
 
 	if cs.PrivValidator == nil || cs.Validators.Proposer().Id != cs.PrivValidator.Id {
 		return
@@ -262,11 +256,19 @@ func (cs *ConsensusState) MakeProposal() {
 		block = cs.LockedBlock
 		pol = cs.LockedPOL
 	} else {
-		// We need to create a proposal.
-		// If we don't have enough commits from the last height,
-		// we can't do anything.
-		if !cs.LastCommits.HasTwoThirdsMajority() {
-			return
+		var validation Validation
+		if cs.Height == 1 {
+			// We're creating a proposal for the first block.
+			// The validation is empty.
+		} else {
+			// We need to create a proposal.
+			// If we don't have enough commits from the last height,
+			// we can't do anything.
+			if !cs.LastCommits.HasTwoThirdsMajority() {
+				return
+			} else {
+				validation = cs.LastCommits.MakeValidation()
+			}
 		}
 		txs, state := cs.mempool.GetProposalTxs() // TODO: cache state
 		block = &Block{
@@ -277,7 +279,7 @@ func (cs *ConsensusState) MakeProposal() {
 				LastBlockHash: cs.state.BlockHash,
 				StateHash:     state.Hash(),
 			},
-			Validation: cs.LastCommits.MakeValidation(),
+			Validation: validation,
 			Data: Data{
 				Txs: txs,
 			},
@@ -288,10 +290,13 @@ func (cs *ConsensusState) MakeProposal() {
 	blockPartSet = NewPartSetFromData(BinaryBytes(block))
 	if pol != nil {
 		polPartSet = NewPartSetFromData(BinaryBytes(pol))
+	} else {
+
 	}
 
 	// Make proposal
-	proposal := NewProposal(cs.Height, cs.Round, blockPartSet.Total(), blockPartSet.RootHash(),
+	proposal := NewProposal(cs.Height, cs.Round,
+		blockPartSet.Total(), blockPartSet.RootHash(),
 		polPartSet.Total(), polPartSet.RootHash())
 	cs.PrivValidator.Sign(proposal)
 
@@ -358,6 +363,29 @@ func (cs *ConsensusState) AddProposalPOLPart(height uint32, round uint16, part *
 	return true, nil
 }
 
+func (cs *ConsensusState) RunActionPrevote(height uint32, round uint16) []byte {
+	cs.mtx.Lock()
+	defer cs.mtx.Unlock()
+	if cs.Height != height || cs.Round != round {
+		return nil
+	}
+	cs.Step = RoundStepPrevote
+
+	// If a block is locked, prevote that.
+	if cs.LockedBlock != nil {
+		return cs.LockedBlock.Hash()
+	}
+	// Try staging proposed block.
+	err := cs.stageBlock(cs.ProposalBlock)
+	if err != nil {
+		// Prevote nil.
+		return nil
+	} else {
+		// Prevote block.
+		return cs.ProposalBlock.Hash()
+	}
+}
+
 func (cs *ConsensusState) AddVote(vote *Vote) (added bool, err error) {
 	switch vote.Type {
 	case VoteTypePrevote:
@@ -376,16 +404,16 @@ func (cs *ConsensusState) AddVote(vote *Vote) (added bool, err error) {
 	}
 }
 
-// Lock the ProposalBlock if we have enough votes for it,
-// or unlock an existing lock if +2/3 of votes were nil.
+// Lock the ProposalBlock if we have enough prevotes for it,
+// or unlock an existing lock if +2/3 of prevotes were nil.
 // Returns a blockhash if a block was locked.
-func (cs *ConsensusState) LockOrUnlock(height uint32, round uint16) []byte {
+func (cs *ConsensusState) RunActionPrecommit(height uint32, round uint16) []byte {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
-
 	if cs.Height != height || cs.Round != round {
 		return nil
 	}
+	cs.Step = RoundStepPrecommit
 
 	if hash, _, ok := cs.Prevotes.TwoThirdsMajority(); ok {
 
@@ -393,21 +421,21 @@ func (cs *ConsensusState) LockOrUnlock(height uint32, round uint16) []byte {
 		cs.LockedPOL = cs.Prevotes.MakePOL()
 
 		if len(hash) == 0 {
-			// +2/3 voted nil. Just unlock.
+			// +2/3 prevoted nil. Just unlock.
 			cs.LockedBlock = nil
 			return nil
 		} else if cs.ProposalBlock.HashesTo(hash) {
-			// +2/3 voted for proposal block
+			// +2/3 prevoted for proposal block
 			// Validate the block.
 			// See note on ZombieValidators to see why.
-			if cs.stageBlock(cs.ProposalBlock) != nil {
-				log.Warning("+2/3 voted for an invalid block.")
+			if err := cs.stageBlock(cs.ProposalBlock); err != nil {
+				log.Warning("+2/3 prevoted for an invalid block: %v", err)
 				return nil
 			}
 			cs.LockedBlock = cs.ProposalBlock
 			return hash
 		} else if cs.LockedBlock.HashesTo(hash) {
-			// +2/3 voted for already locked block
+			// +2/3 prevoted for already locked block
 			// cs.LockedBlock = cs.LockedBlock
 			return hash
 		} else {
@@ -425,14 +453,14 @@ func (cs *ConsensusState) LockOrUnlock(height uint32, round uint16) []byte {
 // If successful, saves the block and state and resets mempool,
 // and returns the committed block.
 // Commit is not finalized until FinalizeCommit() is called.
-// This allows us to stay at this height and gather more commit votes.
-func (cs *ConsensusState) TryCommit(height uint32, round uint16) *Block {
+// This allows us to stay at this height and gather more commits.
+func (cs *ConsensusState) RunActionCommit(height uint32, round uint16) []byte {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
-
 	if cs.Height != height || cs.Round != round {
 		return nil
 	}
+	cs.Step = RoundStepCommit
 
 	if hash, commitTime, ok := cs.Precommits.TwoThirdsMajority(); ok {
 
@@ -468,7 +496,7 @@ func (cs *ConsensusState) TryCommit(height uint32, round uint16) *Block {
 		// Update mempool.
 		cs.mempool.ResetForBlockAndState(block, cs.stagedState)
 
-		return block
+		return block.Hash()
 	}
 
 	return nil
@@ -476,7 +504,13 @@ func (cs *ConsensusState) TryCommit(height uint32, round uint16) *Block {
 
 // After TryCommit(), if successful, must call this in order to
 // update the RoundState.
-func (cs *ConsensusState) FinalizeCommit() {
+func (cs *ConsensusState) RunActionFinalize(height uint32, round uint16) {
+	cs.mtx.Lock()
+	defer cs.mtx.Unlock()
+	if cs.Height != height || cs.Round != round {
+		return
+	}
+
 	// What was staged becomes committed.
 	cs.updateToState(cs.stagedState)
 }

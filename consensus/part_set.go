@@ -141,6 +141,9 @@ func (ps *PartSet) BitArray() BitArray {
 }
 
 func (ps *PartSet) RootHash() []byte {
+	if ps == nil {
+		return nil
+	}
 	return ps.rootHash
 }
 
