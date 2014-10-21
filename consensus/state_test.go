@@ -45,16 +45,79 @@ func randGenesisState(numAccounts int, numValidators int) (*state.State, []*stat
 func makeConsensusState() (*ConsensusState, []*state.PrivAccount) {
 	state, privAccounts := randGenesisState(20, 10)
 	blockStore := NewBlockStore(db_.NewMemDB())
-	mempool := mempool.NewMempool(nil, state)
+	mempool := mempool.NewMempool(state)
 	cs := NewConsensusState(state, blockStore, mempool)
 	return cs, privAccounts
 }
 
-func TestUnit(t *testing.T) {
+//-----------------------------------------------------------------------------
+
+func TestSetupRound(t *testing.T) {
 	cs, privAccounts := makeConsensusState()
-	rs := cs.GetRoundState()
-	t.Log(rs)
-	if false {
-		t.Log(privAccounts)
+
+	// Add a vote, precommit, and commit by val0.
+	voteTypes := []byte{VoteTypePrevote, VoteTypePrecommit, VoteTypeCommit}
+	for _, voteType := range voteTypes {
+		vote := &Vote{Height: 0, Round: 0, Type: voteType} // nil vote
+		privAccounts[0].Sign(vote)
+		cs.AddVote(vote)
 	}
+
+	// Ensure that vote appears in RoundState.
+	rs0 := cs.GetRoundState()
+	if vote := rs0.Prevotes.Get(0); vote == nil || vote.Type != VoteTypePrevote {
+		t.Errorf("Expected to find prevote %v, not there", vote)
+	}
+	if vote := rs0.Precommits.Get(0); vote == nil || vote.Type != VoteTypePrecommit {
+		t.Errorf("Expected to find precommit %v, not there", vote)
+	}
+	if vote := rs0.Commits.Get(0); vote == nil || vote.Type != VoteTypeCommit {
+		t.Errorf("Expected to find commit %v, not there", vote)
+	}
+
+	// Setup round 1 (next round)
+	cs.SetupRound(1)
+
+	// Now the commit should be copied over to prevotes and precommits.
+	rs1 := cs.GetRoundState()
+	if vote := rs1.Prevotes.Get(0); vote == nil || vote.Type != VoteTypeCommit {
+		t.Errorf("Expected to find commit %v, not there", vote)
+	}
+	if vote := rs1.Precommits.Get(0); vote == nil || vote.Type != VoteTypeCommit {
+		t.Errorf("Expected to find commit %v, not there", vote)
+	}
+	if vote := rs1.Commits.Get(0); vote == nil || vote.Type != VoteTypeCommit {
+		t.Errorf("Expected to find commit %v, not there", vote)
+	}
+
+	// Setup round 1 (should fail)
+	{
+		defer func() {
+			if e := recover(); e == nil {
+				t.Errorf("Expected to panic, round did not increment")
+			}
+		}()
+		cs.SetupRound(1)
+	}
+
+}
+
+func TestMakeProposalNoPrivValidator(t *testing.T) {
+	cs, _ := makeConsensusState()
+	cs.MakeProposal()
+	rs := cs.GetRoundState()
+	if rs.Proposal != nil {
+		t.Error("Expected to make no proposal, since no privValidator")
+	}
+}
+
+func TestMakeProposalEmptyMempool(t *testing.T) {
+	cs, privAccounts := makeConsensusState()
+	priv := NewPrivValidator(privAccounts[0], db_.NewMemDB())
+	cs.SetPrivValidator(priv)
+
+	cs.MakeProposal()
+	rs := cs.GetRoundState()
+
+	t.Log(rs.Proposal)
 }

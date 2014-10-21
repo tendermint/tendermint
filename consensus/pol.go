@@ -11,7 +11,7 @@ import (
 )
 
 // Proof of lock.
-// +2/3 of validators' (bare) votes for a given blockhash (or nil)
+// +2/3 of validators' prevotes for a given blockhash (or nil)
 type POL struct {
 	Height       uint32
 	Round        uint16
@@ -47,7 +47,7 @@ func (pol *POL) Verify(vset *state.ValidatorSet) error {
 
 	talliedVotingPower := uint64(0)
 	voteDoc := BinaryBytes(&Vote{Height: pol.Height, Round: pol.Round,
-		Type: VoteTypeBare, BlockHash: pol.BlockHash})
+		Type: VoteTypePrevote, BlockHash: pol.BlockHash})
 	seenValidators := map[uint64]struct{}{}
 
 	for _, sig := range pol.Votes {

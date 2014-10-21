@@ -46,9 +46,9 @@ type State struct {
 	Height              uint32 // Last known block height
 	BlockHash           []byte // Last known block hash
 	CommitTime          time.Time
-	accountDetails      merkle.Tree // Shouldn't be accessed directly.
 	BondedValidators    *ValidatorSet
 	UnbondingValidators *ValidatorSet
+	accountDetails      merkle.Tree // Shouldn't be accessed directly.
 }
 
 func GenesisState(db db_.DB, genesisTime time.Time, accDets []*AccountDetail) *State {
@@ -78,9 +78,9 @@ func GenesisState(db db_.DB, genesisTime time.Time, accDets []*AccountDetail) *S
 		Height:              0,
 		BlockHash:           nil,
 		CommitTime:          genesisTime,
-		accountDetails:      accountDetails,
 		BondedValidators:    NewValidatorSet(validators),
 		UnbondingValidators: NewValidatorSet(nil),
+		accountDetails:      accountDetails,
 	}
 }
 
@@ -96,11 +96,11 @@ func LoadState(db db_.DB) *State {
 		s.Height = ReadUInt32(reader, &n, &err)
 		s.CommitTime = ReadTime(reader, &n, &err)
 		s.BlockHash = ReadByteSlice(reader, &n, &err)
+		s.BondedValidators = ReadValidatorSet(reader, &n, &err)
+		s.UnbondingValidators = ReadValidatorSet(reader, &n, &err)
 		accountDetailsHash := ReadByteSlice(reader, &n, &err)
 		s.accountDetails = merkle.NewIAVLTree(BasicCodec, AccountDetailCodec, defaultAccountDetailsCacheCapacity, db)
 		s.accountDetails.Load(accountDetailsHash)
-		s.BondedValidators = ReadValidatorSet(reader, &n, &err)
-		s.UnbondingValidators = ReadValidatorSet(reader, &n, &err)
 		if err != nil {
 			panic(err)
 		}
@@ -121,9 +121,9 @@ func (s *State) Save(commitTime time.Time) {
 	WriteUInt32(&buf, s.Height, &n, &err)
 	WriteTime(&buf, commitTime, &n, &err)
 	WriteByteSlice(&buf, s.BlockHash, &n, &err)
-	WriteByteSlice(&buf, s.accountDetails.Hash(), &n, &err)
 	WriteBinary(&buf, s.BondedValidators, &n, &err)
 	WriteBinary(&buf, s.UnbondingValidators, &n, &err)
+	WriteByteSlice(&buf, s.accountDetails.Hash(), &n, &err)
 	if err != nil {
 		panic(err)
 	}
@@ -136,9 +136,9 @@ func (s *State) Copy() *State {
 		Height:              s.Height,
 		CommitTime:          s.CommitTime,
 		BlockHash:           s.BlockHash,
-		accountDetails:      s.accountDetails.Copy(),
 		BondedValidators:    s.BondedValidators.Copy(),
 		UnbondingValidators: s.UnbondingValidators.Copy(),
+		accountDetails:      s.accountDetails.Copy(),
 	}
 }
 
@@ -421,9 +421,9 @@ func (s *State) SetAccountDetail(accDet *AccountDetail) (updated bool) {
 // excluding Height, BlockHash, and CommitTime.
 func (s *State) Hash() []byte {
 	hashables := []merkle.Hashable{
-		s.accountDetails,
 		s.BondedValidators,
 		s.UnbondingValidators,
+		s.accountDetails,
 	}
 	return merkle.HashFromHashables(hashables)
 }

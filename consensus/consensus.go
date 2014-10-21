@@ -30,10 +30,10 @@ const (
 
 	roundDuration0         = 60 * time.Second   // The first round is 60 seconds long.
 	roundDurationDelta     = 15 * time.Second   // Each successive round lasts 15 seconds longer.
-	roundDeadlineBare      = float64(1.0 / 3.0) // When the bare vote is due.
+	roundDeadlinePrevote   = float64(1.0 / 3.0) // When the prevote is due.
 	roundDeadlinePrecommit = float64(2.0 / 3.0) // When the precommit vote is due.
 
-	newBlockWaitDuration    = roundDuration0 / 3    // The time to wait between commitTime and startTime of next consensus rounds.
+	finalizeDuration        = roundDuration0 / 3    // The time to wait between commitTime and startTime of next consensus rounds.
 	peerGossipSleepDuration = 50 * time.Millisecond // Time to sleep if there's nothing to send.
 	hasVotesThreshold       = 50                    // After this many new votes we'll send a HasVotesMessage.
 )
@@ -122,7 +122,7 @@ func (conR *ConsensusReactor) SetPrivValidator(priv *PrivValidator) {
 func (conR *ConsensusReactor) Start() {
 	if atomic.CompareAndSwapUint32(&conR.started, 0, 1) {
 		log.Info("Starting ConsensusReactor")
-		go conR.proposeAndVoteRoutine()
+		go conR.stepTransitionRoutine()
 	}
 }
 
@@ -247,7 +247,7 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 					msg := &HasVotesMessage{
 						Height:     rs.Height,
 						Round:      rs.Round,
-						Votes:      rs.Votes.BitArray(),
+						Prevotes:   rs.Prevotes.BitArray(),
 						Precommits: rs.Precommits.BitArray(),
 						Commits:    rs.Commits.BitArray(),
 					}
@@ -266,6 +266,113 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 		log.Warning("Error in Receive(): %v", err)
 	}
 }
+
+//-------------------------------------
+
+type RoundAction struct {
+	Height uint32          // The block height for which consensus is reaching for.
+	Round  uint16          // The round number at given height.
+	Action RoundActionType // Action to perform.
+}
+
+// Source of all round state transitions (and votes).
+// It can be preemptively woken up via a message to
+// doActionCh.
+func (conR *ConsensusReactor) stepTransitionRoutine() {
+
+	scheduleNextAction := func() {
+		// Figure out which height/round/step we're at,
+		// then schedule an action for when it is due.
+		rs := conR.conS.GetRoundState()
+		_, _, roundDuration, _, elapsedRatio := calcRoundInfo(rs.StartTime)
+		switch rs.Step {
+		case RoundStepStart:
+			// It's a new RoundState.
+			if elapsedRatio < 0 {
+				// startTime is in the future.
+				time.Sleep(time.Duration(-1.0*elapsedRatio) * roundDuration)
+			}
+			conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundActionPropose}
+		case RoundStepPropose:
+			// Wake up when it's time to vote.
+			time.Sleep(time.Duration(roundDeadlinePrevote-elapsedRatio) * roundDuration)
+			conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundActionVote}
+		case RoundStepVote:
+			// Wake up when it's time to precommit.
+			time.Sleep(time.Duration(roundDeadlinePrecommit-elapsedRatio) * roundDuration)
+			conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundActionPrecommit}
+		case RoundStepPrecommit:
+			// Wake up when the round is over.
+			time.Sleep(time.Duration(1.0-elapsedRatio) * roundDuration)
+			conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundActionCommit}
+		case RoundStepCommit:
+			// Wake up when it's time to finalize commit.
+			time.Sleep(time.Duration(1.0-elapsedRatio)*roundDuration + finalizeDuration)
+			conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundActionFinalize}
+		default:
+			panic("Should not happen")
+		}
+	}
+
+	scheduleNextAction()
+
+	for {
+		roundAction := <-conR.doActionCh
+
+		height := roundAction.Height
+		round := roundAction.Round
+		action := roundAction.Action
+		rs := conR.conS.GetRoundState()
+		setStepAndBroadcast := func(step RoundStep) {
+			conR.conS.SetStep(step)
+			// Broadcast NewRoundStepMessage
+			msg := &NewRoundStepMessage{
+				Height: height,
+				Round:  round,
+				Step:   step,
+				SecondsSinceStartTime: uint32(rs.RoundElapsed().Seconds()),
+			}
+			conR.sw.Broadcast(StateCh, msg)
+		}
+
+		if height != rs.Height || round != rs.Round {
+			// Action is not relevant
+			// This may happen if an external routine
+			// pushes an action to conR.doActionCh.
+			return
+		}
+
+		// Run step
+		if action == RoundActionPropose && rs.Step == RoundStepStart {
+			conR.runStepPropose(rs)
+			setStepAndBroadcast(RoundStepPropose)
+		} else if action == RoundActionVote && rs.Step <= RoundStepPropose {
+			conR.runStepPrevote(rs)
+			setStepAndBroadcast(RoundStepVote)
+		} else if action == RoundActionPrecommit && rs.Step <= RoundStepVote {
+			conR.runStepPrecommit(rs)
+			setStepAndBroadcast(RoundStepPrecommit)
+		} else if action == RoundActionCommit && rs.Step <= RoundStepPrecommit {
+			committed := conR.runStepCommit(rs)
+			if committed {
+				setStepAndBroadcast(RoundStepCommit)
+			} else {
+				// runStepCommit() already set the round to the next round,
+				// so the step is already RoundStepStart (same height).
+			}
+		} else if action == RoundActionFinalize && rs.Step == RoundStepCommit {
+			conR.runStepFinalize(rs)
+			// Height has been incremented, step is now RoundStepStart.
+		} else {
+			// This shouldn't happen now, but if an external source pushes
+			// to conR.doActionCh, we might just want to continue here.
+			panic("Shouldn't happen")
+		}
+		scheduleNextAction()
+	}
+}
+
+//-------------------------------------
 
 func (conR *ConsensusReactor) gossipDataRoutine(peer *p2p.Peer, ps *PeerState) {
 
@@ -327,6 +434,8 @@ OUTER_LOOP:
 	}
 }
 
+//-------------------------------------
+
 func (conR *ConsensusReactor) gossipVotesRoutine(peer *p2p.Peer, ps *PeerState) {
 OUTER_LOOP:
 	for {
@@ -338,22 +447,22 @@ OUTER_LOOP:
 		rs := conR.conS.GetRoundState()
 		prs := ps.GetRoundState()
 
-		// If height doens't match, sleep.
+		// If height doesn't match, sleep.
 		if rs.Height != prs.Height {
 			time.Sleep(peerGossipSleepDuration)
 			continue OUTER_LOOP
 		}
 
-		// If there are bare votes to send...
+		// If there are prevotes to send...
 		if prs.Step <= RoundStepVote {
-			index, ok := rs.Votes.BitArray().Sub(prs.Votes).PickRandom()
+			index, ok := rs.Prevotes.BitArray().Sub(prs.Prevotes).PickRandom()
 			if ok {
 				valId, val := rs.Validators.GetByIndex(uint32(index))
 				if val != nil {
-					vote := rs.Votes.GetVote(valId)
+					vote := rs.Prevotes.Get(valId)
 					msg := p2p.TypedMessage{msgTypeVote, vote}
 					peer.Send(VoteCh, msg)
-					ps.SetHasVote(rs.Height, rs.Round, VoteTypeBare, uint32(index))
+					ps.SetHasVote(rs.Height, rs.Round, VoteTypePrevote, uint32(index))
 					continue OUTER_LOOP
 				} else {
 					log.Error("index is not a valid validator index")
@@ -367,7 +476,7 @@ OUTER_LOOP:
 			if ok {
 				valId, val := rs.Validators.GetByIndex(uint32(index))
 				if val != nil {
-					vote := rs.Precommits.GetVote(valId)
+					vote := rs.Precommits.Get(valId)
 					msg := p2p.TypedMessage{msgTypeVote, vote}
 					peer.Send(VoteCh, msg)
 					ps.SetHasVote(rs.Height, rs.Round, VoteTypePrecommit, uint32(index))
@@ -383,7 +492,7 @@ OUTER_LOOP:
 		if ok {
 			valId, val := rs.Validators.GetByIndex(uint32(index))
 			if val != nil {
-				vote := rs.Commits.GetVote(valId)
+				vote := rs.Commits.Get(valId)
 				msg := p2p.TypedMessage{msgTypeVote, vote}
 				peer.Send(VoteCh, msg)
 				ps.SetHasVote(rs.Height, rs.Round, VoteTypeCommit, uint32(index))
@@ -415,68 +524,62 @@ func (conR *ConsensusReactor) runStepPropose(rs *RoundState) {
 	conR.conS.MakeProposal()
 }
 
-func (conR *ConsensusReactor) runStepVote(rs *RoundState) {
-
+func (conR *ConsensusReactor) runStepPrevote(rs *RoundState) {
 	// If we have a locked block, we must vote for that.
 	// NOTE: a locked block is already valid.
 	if rs.LockedBlock != nil {
 		conR.signAndBroadcastVote(rs, &Vote{
 			Height:    rs.Height,
 			Round:     rs.Round,
-			Type:      VoteTypeBare,
+			Type:      VoteTypePrevote,
 			BlockHash: rs.LockedBlock.Hash(),
 		})
 	}
-
 	// Try staging proposed block.
 	// If Block is nil, an error is returned.
 	err := conR.conS.stageBlock(rs.ProposalBlock)
 	if err != nil {
-
-		// Vote nil
+		// Prevote nil
 		conR.signAndBroadcastVote(rs, &Vote{
 			Height:    rs.Height,
 			Round:     rs.Round,
-			Type:      VoteTypeBare,
+			Type:      VoteTypePrevote,
 			BlockHash: nil,
 		})
-
 	} else {
-
-		// Vote for block
+		// Prevote block
 		conR.signAndBroadcastVote(rs, &Vote{
 			Height:    rs.Height,
 			Round:     rs.Round,
-			Type:      VoteTypeBare,
+			Type:      VoteTypePrevote,
 			BlockHash: rs.ProposalBlock.Hash(),
 		})
 	}
 }
 
 func (conR *ConsensusReactor) runStepPrecommit(rs *RoundState) {
-
 	// If we see a 2/3 majority of votes for a block, lock.
 	hash := conR.conS.LockOrUnlock(rs.Height, rs.Round)
 	if len(hash) > 0 {
-
-		// Precommit
+		// Precommit block
 		conR.signAndBroadcastVote(rs, &Vote{
 			Height:    rs.Height,
 			Round:     rs.Round,
 			Type:      VoteTypePrecommit,
 			BlockHash: hash,
 		})
-
 	}
 }
 
 func (conR *ConsensusReactor) runStepCommit(rs *RoundState) bool {
-
-	// If we see a 2/3 majority of precommits for a block, commit.
-	block := conR.conS.Commit(rs.Height, rs.Round)
+	// If we see a 2/3 majority of votes for a block, lock.
+	block := conR.conS.TryCommit(rs.Height, rs.Round)
 	if block == nil {
+		// Couldn't commit, try next round.
+		conR.conS.SetupRound(rs.Round + 1)
 		return false
 	} else {
+		// Commit block.
 		conR.signAndBroadcastVote(rs, &Vote{
 			Height:    rs.Height,
 			Round:     rs.Round,
@@ -487,108 +590,9 @@ func (conR *ConsensusReactor) runStepCommit(rs *RoundState) bool {
 	}
 }
 
-//-------------------------------------
-
-type RoundAction struct {
-	Height       uint32        // The block height for which consensus is reaching for.
-	Round        uint16        // The round number at given height.
-	XnToStep     uint8         // Transition to this step. Action depends on this value.
-	RoundElapsed time.Duration // Duration since round start.
-}
-
-// Source of all round state transitions and votes.
-// It can be preemptively woken up via a message to
-// doActionCh.
-func (conR *ConsensusReactor) proposeAndVoteRoutine() {
-
-	// Figure out when to wake up next (in the absence of other events)
-	setAlarm := func() {
-		if len(conR.doActionCh) > 0 {
-			return // Already going to wake up later.
-		}
-
-		// Figure out which height/round/step we're at,
-		// then schedule an action for when it is due.
-		rs := conR.conS.GetRoundState()
-		_, _, roundDuration, roundElapsed, elapsedRatio := calcRoundInfo(rs.StartTime)
-		switch rs.Step {
-		case RoundStepStart:
-			// It's a new RoundState.
-			if elapsedRatio < 0 {
-				// startTime is in the future.
-				time.Sleep(time.Duration(-1.0*elapsedRatio) * roundDuration)
-			}
-			conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundStepPropose, roundElapsed}
-		case RoundStepPropose:
-			// Wake up when it's time to vote.
-			time.Sleep(time.Duration(roundDeadlineBare-elapsedRatio) * roundDuration)
-			conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundStepVote, roundElapsed}
-		case RoundStepVote:
-			// Wake up when it's time to precommit.
-			time.Sleep(time.Duration(roundDeadlinePrecommit-elapsedRatio) * roundDuration)
-			conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundStepPrecommit, roundElapsed}
-		case RoundStepPrecommit:
-			// Wake up when the round is over.
-			time.Sleep(time.Duration(1.0-elapsedRatio) * roundDuration)
-			conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundStepCommit, roundElapsed}
-		case RoundStepCommit:
-			// This shouldn't happen.
-			// Before setAlarm() got called,
-			// logic should have created a new RoundState for the next round.
-			panic("Should not happen")
-		}
-	}
-
-	for {
-		func() {
-			roundAction := <-conR.doActionCh
-			// Always set the alarm after any processing below.
-			defer setAlarm()
-
-			height := roundAction.Height
-			round := roundAction.Round
-			step := roundAction.XnToStep
-			roundElapsed := roundAction.RoundElapsed
-			rs := conR.conS.GetRoundState()
-
-			if height != rs.Height || round != rs.Round {
-				return // Action is not relevant
-			}
-
-			// Run step
-			if step == RoundStepPropose && rs.Step == RoundStepStart {
-				conR.runStepPropose(rs)
-			} else if step == RoundStepVote && rs.Step <= RoundStepPropose {
-				conR.runStepVote(rs)
-			} else if step == RoundStepPrecommit && rs.Step <= RoundStepVote {
-				conR.runStepPrecommit(rs)
-			} else if step == RoundStepCommit && rs.Step <= RoundStepPrecommit {
-				didCommit := conR.runStepCommit(rs)
-				if didCommit {
-					// We already set up ConsensusState for the next height
-					// (it happens in the call to conR.runStepCommit).
-				} else {
-					// Prepare a new RoundState for the next state.
-					conR.conS.SetupRound(rs.Round + 1)
-					return // setAlarm() takes care of the rest.
-				}
-			} else {
-				return // Action is not relevant.
-			}
-
-			// Transition to new step.
-			conR.conS.SetStep(step)
-
-			// Broadcast NewRoundStepMessage.
-			msg := &NewRoundStepMessage{
-				Height: height,
-				Round:  round,
-				Step:   step,
-				SecondsSinceStartTime: uint32(roundElapsed.Seconds()),
-			}
-			conR.sw.Broadcast(StateCh, msg)
-		}()
-	}
+func (conR *ConsensusReactor) runStepFinalize(rs *RoundState) {
+	// This actually updates the height and sets up round 0.
+	conR.conS.FinalizeCommit()
 }
 
 //-----------------------------------------------------------------------------
@@ -597,14 +601,14 @@ func (conR *ConsensusReactor) proposeAndVoteRoutine() {
 type PeerRoundState struct {
 	Height                uint32    // Height peer is at
 	Round                 uint16    // Round peer is at
-	Step                  uint8     // Step peer is at
+	Step                  RoundStep // Step peer is at
 	StartTime             time.Time // Estimated start of round 0 at this height
 	Proposal              bool      // True if peer has proposal for this round
 	ProposalBlockHash     []byte    // Block parts merkle root
 	ProposalBlockBitArray BitArray  // Block parts bitarray
 	ProposalPOLHash       []byte    // POL parts merkle root
 	ProposalPOLBitArray   BitArray  // POL parts bitarray
-	Votes                 BitArray  // All votes peer has for this round
+	Prevotes              BitArray  // All votes peer has for this round
 	Precommits            BitArray  // All precommits peer has for this round
 	Commits               BitArray  // All commits peer has for this height
 }
@@ -665,8 +669,8 @@ func (ps *PeerState) SetHasVote(height uint32, round uint16, type_ uint8, index 
 	defer ps.mtx.Unlock()
 	if ps.Height == height && (ps.Round == round || type_ == VoteTypeCommit) {
 		switch type_ {
-		case VoteTypeBare:
-			ps.Votes.SetIndex(uint(index), true)
+		case VoteTypePrevote:
+			ps.Prevotes.SetIndex(uint(index), true)
 		case VoteTypePrecommit:
 			ps.Precommits.SetIndex(uint(index), true)
 		case VoteTypeCommit:
@@ -694,7 +698,7 @@ func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage) error {
 	ps.ProposalBlockBitArray = nil
 	ps.ProposalPOLHash = nil
 	ps.ProposalPOLBitArray = nil
-	ps.Votes = nil
+	ps.Prevotes = nil
 	ps.Precommits = nil
 	if ps.Height != msg.Height {
 		ps.Commits = nil
@@ -708,10 +712,10 @@ func (ps *PeerState) ApplyHasVotesMessage(msg *HasVotesMessage) error {
 	if ps.Height == msg.Height {
 		ps.Commits = ps.Commits.Or(msg.Commits)
 		if ps.Round == msg.Round {
-			ps.Votes = ps.Votes.Or(msg.Votes)
+			ps.Prevotes = ps.Prevotes.Or(msg.Prevotes)
 			ps.Precommits = ps.Precommits.Or(msg.Precommits)
 		} else {
-			ps.Votes = msg.Votes
+			ps.Prevotes = msg.Prevotes
 			ps.Precommits = msg.Precommits
 		}
 	}
@@ -762,7 +766,7 @@ func decodeMessage(bz []byte) (msgType byte, msg interface{}) {
 type NewRoundStepMessage struct {
 	Height                uint32
 	Round                 uint16
-	Step                  uint8
+	Step                  RoundStep
 	SecondsSinceStartTime uint32
 }
 
@@ -770,7 +774,7 @@ func readNewRoundStepMessage(r io.Reader, n *int64, err *error) *NewRoundStepMes
 	return &NewRoundStepMessage{
 		Height: ReadUInt32(r, n, err),
 		Round:  ReadUInt16(r, n, err),
-		Step:   ReadUInt8(r, n, err),
+		Step:   RoundStep(ReadUInt8(r, n, err)),
 		SecondsSinceStartTime: ReadUInt32(r, n, err),
 	}
 }
@@ -779,7 +783,7 @@ func (m *NewRoundStepMessage) WriteTo(w io.Writer) (n int64, err error) {
 	WriteByte(w, msgTypeNewRoundStep, &n, &err)
 	WriteUInt32(w, m.Height, &n, &err)
 	WriteUInt16(w, m.Round, &n, &err)
-	WriteUInt8(w, m.Step, &n, &err)
+	WriteUInt8(w, uint8(m.Step), &n, &err)
 	WriteUInt32(w, m.SecondsSinceStartTime, &n, &err)
 	return
 }
@@ -793,7 +797,7 @@ func (m *NewRoundStepMessage) String() string {
 type HasVotesMessage struct {
 	Height     uint32
 	Round      uint16
-	Votes      BitArray
+	Prevotes   BitArray
 	Precommits BitArray
 	Commits    BitArray
 }
@@ -802,7 +806,7 @@ func readHasVotesMessage(r io.Reader, n *int64, err *error) *HasVotesMessage {
 	return &HasVotesMessage{
 		Height:     ReadUInt32(r, n, err),
 		Round:      ReadUInt16(r, n, err),
-		Votes:      ReadBitArray(r, n, err),
+		Prevotes:   ReadBitArray(r, n, err),
 		Precommits: ReadBitArray(r, n, err),
 		Commits:    ReadBitArray(r, n, err),
 	}
@@ -812,7 +816,7 @@ func (m *HasVotesMessage) WriteTo(w io.Writer) (n int64, err error) {
 	WriteByte(w, msgTypeHasVotes, &n, &err)
 	WriteUInt32(w, m.Height, &n, &err)
 	WriteUInt16(w, m.Round, &n, &err)
-	WriteBinary(w, m.Votes, &n, &err)
+	WriteBinary(w, m.Prevotes, &n, &err)
 	WriteBinary(w, m.Precommits, &n, &err)
 	WriteBinary(w, m.Commits, &n, &err)
 	return

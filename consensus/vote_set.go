@@ -14,7 +14,7 @@ import (
 
 // VoteSet helps collect signatures from validators at each height+round
 // for a predefined vote type.
-// Note that there three kinds of votes: (bare) votes, precommits, and commits.
+// Note that there three kinds of votes: prevotes, precommits, and commits.
 // A commit of prior rounds can be added added in lieu of votes/precommits.
 // TODO: test majority calculations etc.
 type VoteSet struct {
@@ -51,7 +51,7 @@ func NewVoteSet(height uint32, round uint16, type_ byte, vset *state.ValidatorSe
 
 // True if added, false if not.
 // Returns ErrVote[UnexpectedPhase|InvalidAccount|InvalidSignature|InvalidBlockHash|ConflictingSignature]
-// NOTE: vote should be mutated after adding.
+// NOTE: vote should not be mutated after adding.
 func (vs *VoteSet) Add(vote *Vote) (bool, error) {
 	vs.mtx.Lock()
 	defer vs.mtx.Unlock()
@@ -126,7 +126,7 @@ func (vs *VoteSet) BitArray() BitArray {
 	return vs.votesBitArray.Copy()
 }
 
-func (vs *VoteSet) GetVote(id uint64) *Vote {
+func (vs *VoteSet) Get(id uint64) *Vote {
 	vs.mtx.Lock()
 	defer vs.mtx.Unlock()
 	return vs.votes[id]
@@ -142,6 +142,15 @@ func (vs *VoteSet) AllVotes() []*Vote {
 	return votes
 }
 
+func (vs *VoteSet) HasTwoThirdsMajority() bool {
+	if vs == nil {
+		return false
+	}
+	vs.mtx.Lock()
+	defer vs.mtx.Unlock()
+	return !vs.twoThirdsCommitTime.IsZero()
+}
+
 // Returns either a blockhash (or nil) that received +2/3 majority.
 // If there exists no such majority, returns (nil, false).
 func (vs *VoteSet) TwoThirdsMajority() (hash []byte, commitTime time.Time, ok bool) {
@@ -154,6 +163,9 @@ func (vs *VoteSet) TwoThirdsMajority() (hash []byte, commitTime time.Time, ok bo
 }
 
 func (vs *VoteSet) MakePOL() *POL {
+	if vs.type_ != VoteTypePrevote {
+		panic("Cannot MakePOL() unless VoteSet.Type is VoteTypePrevote")
+	}
 	vs.mtx.Lock()
 	defer vs.mtx.Unlock()
 	if vs.twoThirdsCommitTime.IsZero() {
@@ -167,7 +179,7 @@ func (vs *VoteSet) MakePOL() *POL {
 	}
 	for _, vote := range vs.votes {
 		if bytes.Equal(vote.BlockHash, majHash) {
-			if vote.Type == VoteTypeBare {
+			if vote.Type == VoteTypePrevote {
 				pol.Votes = append(pol.Votes, vote.Signature)
 			} else if vote.Type == VoteTypeCommit {
 				pol.Commits = append(pol.Votes, vote.Signature)
@@ -180,6 +192,27 @@ func (vs *VoteSet) MakePOL() *POL {
 	return pol
 }
 
+func (vs *VoteSet) MakeValidation() Validation {
+	if vs.type_ != VoteTypeCommit {
+		panic("Cannot MakeValidation() unless VoteSet.Type is VoteTypePrevote")
+	}
+	vs.mtx.Lock()
+	defer vs.mtx.Unlock()
+	if len(vs.twoThirdsMajority) == 0 {
+		panic("Cannot MakeValidation() unless a blockhash has +2/3")
+	}
+	sigs := []Signature{}
+	for _, vote := range vs.votes {
+		if !bytes.Equal(vote.BlockHash, vs.twoThirdsMajority) {
+			continue
+		}
+		sigs = append(sigs, vote.Signature)
+	}
+	return Validation{
+		Signatures: sigs,
+	}
+}
+
 func (vs *VoteSet) String() string {
 	return vs.StringWithIndent("")
 }
@@ -189,8 +222,10 @@ func (vs *VoteSet) StringWithIndent(indent string) string {
 	defer vs.mtx.Unlock()
 
 	voteStrings := make([]string, len(vs.votes))
+	counter := 0
 	for _, vote := range vs.votes {
-		voteStrings[vote.SignerId] = vote.String()
+		voteStrings[counter] = vote.String()
+		counter++
 	}
 	return fmt.Sprintf(`VoteSet{
 %s  H:%v R:%v T:%v

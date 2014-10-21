@@ -25,5 +25,5 @@ func makeVoteSet(height uint32, round uint16, numValidators int, votingPower uin
 		privAccounts[i] = privAccount
 	}
 	valSet := state.NewValidatorSet(vals)
-	return NewVoteSet(height, round, VoteTypeBare, valSet), valSet, privAccounts
+	return NewVoteSet(height, round, VoteTypePrevote, valSet), valSet, privAccounts
 }

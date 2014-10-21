@@ -85,19 +85,6 @@ func (b *Block) HashesTo(hash []byte) bool {
 	return bytes.Equal(b.Hash(), hash)
 }
 
-// Makes an empty next block.
-func (b *Block) MakeNextBlock() *Block {
-	return &Block{
-		Header: Header{
-			Network:       b.Header.Network,
-			Height:        b.Header.Height + 1,
-			Time:          time.Now(),
-			LastBlockHash: b.Hash(),
-			StateHash:     nil,
-		},
-	}
-}
-
 func (b *Block) String() string {
 	return b.StringWithIndent("")
 }

@@ -19,7 +19,7 @@ func TestVerifyVotes(t *testing.T) {
 		Height: 0, Round: 0, BlockHash: blockHash,
 	}
 	vote := &Vote{
-		Height: 0, Round: 0, Type: VoteTypeBare, BlockHash: blockHash,
+		Height: 0, Round: 0, Type: VoteTypePrevote, BlockHash: blockHash,
 	}
 	for i := 0; i < 6; i++ {
 		privAccounts[i].Sign(vote)
@@ -50,7 +50,7 @@ func TestVerifyInvalidVote(t *testing.T) {
 		Height: 0, Round: 0, BlockHash: blockHash,
 	}
 	vote := &Vote{
-		Height: 0, Round: 0, Type: VoteTypeBare, BlockHash: blockHash,
+		Height: 0, Round: 0, Type: VoteTypePrevote, BlockHash: blockHash,
 	}
 	for i := 0; i < 7; i++ {
 		privAccounts[i].Sign(vote)
@@ -168,7 +168,7 @@ func TestReadWrite(t *testing.T) {
 		Height: 0, Round: 0, BlockHash: blockHash,
 	}
 	vote := &Vote{
-		Height: 0, Round: 0, Type: VoteTypeBare, BlockHash: blockHash,
+		Height: 0, Round: 0, Type: VoteTypePrevote, BlockHash: blockHash,
 	}
 	for i := 0; i < 7; i++ {
 		privAccounts[i].Sign(vote)

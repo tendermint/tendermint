@@ -17,16 +17,14 @@ import (
 )
 
 type Mempool struct {
-	mtx       sync.Mutex
-	lastBlock *Block
-	state     *state.State
-	txs       []Tx
+	mtx   sync.Mutex
+	state *state.State
+	txs   []Tx
 }
 
-func NewMempool(lastBlock *Block, state *state.State) *Mempool {
+func NewMempool(state *state.State) *Mempool {
 	return &Mempool{
-		lastBlock: lastBlock,
-		state:     state,
+		state: state,
 	}
 }
 
@@ -43,14 +41,10 @@ func (mem *Mempool) AddTx(tx Tx) (err error) {
 	}
 }
 
-// Returns a new block from the current state and associated transactions.
-// The block's Validation is empty, and some parts of the header too.
-func (mem *Mempool) MakeProposalBlock() (*Block, *state.State) {
+func (mem *Mempool) GetProposalTxs() ([]Tx, *state.State) {
 	mem.mtx.Lock()
 	defer mem.mtx.Unlock()
-	nextBlock := mem.lastBlock.MakeNextBlock()
-	nextBlock.Data.Txs = mem.txs
-	return nextBlock, mem.state
+	return mem.txs, mem.state
 }
 
 // "block" is the new block being committed.
@@ -60,7 +54,6 @@ func (mem *Mempool) MakeProposalBlock() (*Block, *state.State) {
 func (mem *Mempool) ResetForBlockAndState(block *Block, state *state.State) {
 	mem.mtx.Lock()
 	defer mem.mtx.Unlock()
-	mem.lastBlock = block
 	mem.state = state.Copy()
 
 	// First, create a lookup map of txns in new block.

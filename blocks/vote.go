@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	VoteTypeBare      = byte(0x00)
+	VoteTypePrevote   = byte(0x00)
 	VoteTypePrecommit = byte(0x01)
 	VoteTypeCommit    = byte(0x02)
 )
@@ -22,7 +22,7 @@ var (
 	ErrVoteConflictingSignature = errors.New("Conflicting round vote signature")
 )
 
-// Represents a bare, precommit, or commit vote for proposals.
+// Represents a prevote, precommit, or commit vote for proposals.
 type Vote struct {
 	Height    uint32
 	Round     uint16
@@ -64,12 +64,12 @@ func (v *Vote) String() string {
 		blockHash = make([]byte, 6) // for printing
 	}
 	switch v.Type {
-	case VoteTypeBare:
+	case VoteTypePrevote:
 		return fmt.Sprintf("Vote{%v/%v:%X:%v}", v.Height, v.Round, blockHash, v.SignerId)
 	case VoteTypePrecommit:
 		return fmt.Sprintf("Precommit{%v/%v:%X:%v}", v.Height, v.Round, blockHash, v.SignerId)
 	case VoteTypeCommit:
-		return fmt.Sprintf("Commit{%v/%v:%X:%v}", v.Height, v.Round, v.BlockHash[:6], v.SignerId)
+		return fmt.Sprintf("Commit{%v/%v:%X:%v}", v.Height, v.Round, blockHash, v.SignerId)
 	default:
 		panic("Unknown vote type")
 	}

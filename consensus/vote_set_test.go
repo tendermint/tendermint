@@ -14,8 +14,8 @@ func TestAddVote(t *testing.T) {
 
 	// t.Logf(">> %v", voteSet)
 
-	if voteSet.GetVote(0) != nil {
-		t.Errorf("Expected GetVote(0) to be nil")
+	if voteSet.Get(0) != nil {
+		t.Errorf("Expected Get(0) to be nil")
 	}
 	if voteSet.BitArray().GetIndex(0) {
 		t.Errorf("Expected BitArray.GetIndex(0) to be false")
@@ -25,12 +25,12 @@ func TestAddVote(t *testing.T) {
 		t.Errorf("There should be no 2/3 majority")
 	}
 
-	vote := &Vote{Height: 0, Round: 0, Type: VoteTypeBare, BlockHash: nil}
+	vote := &Vote{Height: 0, Round: 0, Type: VoteTypePrevote, BlockHash: nil}
 	privAccounts[0].Sign(vote)
 	voteSet.Add(vote)
 
-	if voteSet.GetVote(0) == nil {
-		t.Errorf("Expected GetVote(0) to be present")
+	if voteSet.Get(0) == nil {
+		t.Errorf("Expected Get(0) to be present")
 	}
 	if !voteSet.BitArray().GetIndex(0) {
 		t.Errorf("Expected BitArray.GetIndex(0) to be true")
@@ -45,7 +45,7 @@ func Test2_3Majority(t *testing.T) {
 	voteSet, _, privAccounts := makeVoteSet(0, 0, 10, 1)
 
 	// 6 out of 10 voted for nil.
-	vote := &Vote{Height: 0, Round: 0, Type: VoteTypeBare, BlockHash: nil}
+	vote := &Vote{Height: 0, Round: 0, Type: VoteTypePrevote, BlockHash: nil}
 	for i := 0; i < 6; i++ {
 		privAccounts[i].Sign(vote)
 		voteSet.Add(vote)
@@ -79,7 +79,7 @@ func TestBadVotes(t *testing.T) {
 	voteSet, _, privAccounts := makeVoteSet(1, 0, 10, 1)
 
 	// val0 votes for nil.
-	vote := &Vote{Height: 1, Round: 0, Type: VoteTypeBare, BlockHash: nil}
+	vote := &Vote{Height: 1, Round: 0, Type: VoteTypePrevote, BlockHash: nil}
 	privAccounts[0].Sign(vote)
 	added, err := voteSet.Add(vote)
 	if !added || err != nil {
@@ -87,7 +87,7 @@ func TestBadVotes(t *testing.T) {
 	}
 
 	// val0 votes again for some block.
-	vote = &Vote{Height: 1, Round: 0, Type: VoteTypeBare, BlockHash: CRandBytes(32)}
+	vote = &Vote{Height: 1, Round: 0, Type: VoteTypePrevote, BlockHash: CRandBytes(32)}
 	privAccounts[0].Sign(vote)
 	added, err = voteSet.Add(vote)
 	if added || err == nil {
@@ -95,7 +95,7 @@ func TestBadVotes(t *testing.T) {
 	}
 
 	// val1 votes on another height
-	vote = &Vote{Height: 0, Round: 0, Type: VoteTypeBare, BlockHash: nil}
+	vote = &Vote{Height: 0, Round: 0, Type: VoteTypePrevote, BlockHash: nil}
 	privAccounts[1].Sign(vote)
 	added, err = voteSet.Add(vote)
 	if added {
@@ -103,7 +103,7 @@ func TestBadVotes(t *testing.T) {
 	}
 
 	// val2 votes on another round
-	vote = &Vote{Height: 1, Round: 1, Type: VoteTypeBare, BlockHash: nil}
+	vote = &Vote{Height: 1, Round: 1, Type: VoteTypePrevote, BlockHash: nil}
 	privAccounts[2].Sign(vote)
 	added, err = voteSet.Add(vote)
 	if added {
@@ -119,11 +119,11 @@ func TestBadVotes(t *testing.T) {
 	}
 }
 
-func TestAddCommitsToBareVotes(t *testing.T) {
+func TestAddCommitsToPrevoteVotes(t *testing.T) {
 	voteSet, _, privAccounts := makeVoteSet(1, 5, 10, 1)
 
 	// val0, val1, val2, val3, val4, val5 vote for nil.
-	vote := &Vote{Height: 1, Round: 5, Type: VoteTypeBare, BlockHash: nil}
+	vote := &Vote{Height: 1, Round: 5, Type: VoteTypePrevote, BlockHash: nil}
 	for i := 0; i < 6; i++ {
 		privAccounts[i].Sign(vote)
 		voteSet.Add(vote)

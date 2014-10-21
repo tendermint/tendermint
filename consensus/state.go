@@ -9,16 +9,33 @@ import (
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/blocks"
 	. "github.com/tendermint/tendermint/common"
+	. "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/state"
 )
 
+type RoundStep uint8
+type RoundActionType uint8
+
 const (
-	RoundStepStart     = uint8(0x00) // Round started.
-	RoundStepPropose   = uint8(0x01) // Did propose, broadcasting proposal.
-	RoundStepVote      = uint8(0x02) // Did vote, broadcasting votes.
-	RoundStepPrecommit = uint8(0x03) // Did precommit, broadcasting precommits.
-	RoundStepCommit    = uint8(0x04) // We committed at this round -- do not progress to the next round.
+	RoundStepStart     = RoundStep(0x00) // Round started.
+	RoundStepPropose   = RoundStep(0x01) // Did propose, gossip proposal.
+	RoundStepVote      = RoundStep(0x02) // Did vote, gossip votes.
+	RoundStepPrecommit = RoundStep(0x03) // Did precommit, gossip precommits.
+	RoundStepCommit    = RoundStep(0x04) // Did commit, gossip commits.
+
+	// If a block could not be committed at a given round,
+	// we progress to the next round, skipping RoundStepCommit.
+	//
+	// If a block was committed, we goto RoundStepCommit,
+	// then wait "finalizeDuration" to gather more commit votes,
+	// then we progress to the next height at round 0.
+
+	RoundActionPropose   = RoundActionType(0x00) // Goto RoundStepPropose
+	RoundActionVote      = RoundActionType(0x01) // Goto RoundStepVote
+	RoundActionPrecommit = RoundActionType(0x02) // Goto RoundStepPrecommit
+	RoundActionCommit    = RoundActionType(0x03) // Goto RoundStepCommit or RoundStepStart next round
+	RoundActionFinalize  = RoundActionType(0x04) // Goto RoundStepStart next height
 )
 
 var (
@@ -31,7 +48,7 @@ var (
 type RoundState struct {
 	Height               uint32 // Height we are working on
 	Round                uint16
-	Step                 uint8
+	Step                 RoundStep
 	StartTime            time.Time
 	Validators           *state.ValidatorSet
 	Proposal             *Proposal
@@ -41,10 +58,15 @@ type RoundState struct {
 	ProposalPOLPartSet   *PartSet
 	LockedBlock          *Block
 	LockedPOL            *POL
-	Votes                *VoteSet
+	Prevotes             *VoteSet
 	Precommits           *VoteSet
 	Commits              *VoteSet
+	LastCommits          *VoteSet
 	PrivValidator        *PrivValidator
+}
+
+func (rs *RoundState) RoundElapsed() time.Duration {
+	return rs.StartTime.Sub(time.Now())
 }
 
 func (rs *RoundState) String() string {
@@ -61,9 +83,10 @@ func (rs *RoundState) StringWithIndent(indent string) string {
 %s  ProposalPOL:   %v %v
 %s  LockedBlock:   %v
 %s  LockedPOL:     %v
-%s  Votes:      %v
-%s  Precommits: %v
-%s  Commits:    %v
+%s  Prevotes:      %v
+%s  Precommits:    %v
+%s  Commits:       %v
+%s  LastCommits:   %v
 %s}`,
 		indent, rs.Height, rs.Round, rs.Step,
 		indent, rs.StartTime,
@@ -73,9 +96,10 @@ func (rs *RoundState) StringWithIndent(indent string) string {
 		indent, rs.ProposalPOLPartSet.Description(), rs.ProposalPOL.Description(),
 		indent, rs.LockedBlock.Description(),
 		indent, rs.LockedPOL.Description(),
-		indent, rs.Votes.StringWithIndent(indent+"    "),
+		indent, rs.Prevotes.StringWithIndent(indent+"    "),
 		indent, rs.Precommits.StringWithIndent(indent+"    "),
 		indent, rs.Commits.StringWithIndent(indent+"    "),
+		indent, rs.LastCommits.StringWithIndent(indent+"    "),
 		indent)
 }
 
@@ -122,7 +146,7 @@ func (cs *ConsensusState) updateToState(state *state.State) {
 	cs.Height = height
 	cs.Round = 0
 	cs.Step = RoundStepStart
-	cs.StartTime = state.CommitTime.Add(newBlockWaitDuration)
+	cs.StartTime = state.CommitTime.Add(finalizeDuration)
 	cs.Validators = validators
 	cs.Proposal = nil
 	cs.ProposalBlock = nil
@@ -131,8 +155,9 @@ func (cs *ConsensusState) updateToState(state *state.State) {
 	cs.ProposalPOLPartSet = nil
 	cs.LockedBlock = nil
 	cs.LockedPOL = nil
-	cs.Votes = NewVoteSet(height, 0, VoteTypeBare, validators)
+	cs.Prevotes = NewVoteSet(height, 0, VoteTypePrevote, validators)
 	cs.Precommits = NewVoteSet(height, 0, VoteTypePrecommit, validators)
+	cs.LastCommits = cs.Commits
 	cs.Commits = NewVoteSet(height, 0, VoteTypeCommit, validators)
 
 	cs.state = state
@@ -171,13 +196,13 @@ func (cs *ConsensusState) setupRound(round uint16) {
 	cs.ProposalBlockPartSet = nil
 	cs.ProposalPOL = nil
 	cs.ProposalPOLPartSet = nil
-	cs.Votes = NewVoteSet(cs.Height, round, VoteTypeBare, validators)
-	cs.Votes.AddFromCommits(cs.Commits)
+	cs.Prevotes = NewVoteSet(cs.Height, round, VoteTypePrevote, validators)
+	cs.Prevotes.AddFromCommits(cs.Commits)
 	cs.Precommits = NewVoteSet(cs.Height, round, VoteTypePrecommit, validators)
 	cs.Precommits.AddFromCommits(cs.Commits)
 }
 
-func (cs *ConsensusState) SetStep(step byte) {
+func (cs *ConsensusState) SetStep(step RoundStep) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	if cs.Step < step {
@@ -237,8 +262,26 @@ func (cs *ConsensusState) MakeProposal() {
 		block = cs.LockedBlock
 		pol = cs.LockedPOL
 	} else {
-		// TODO: make use of state returned from MakeProposalBlock()
-		block, _ = cs.mempool.MakeProposalBlock()
+		// We need to create a proposal.
+		// If we don't have enough commits from the last height,
+		// we can't do anything.
+		if !cs.LastCommits.HasTwoThirdsMajority() {
+			return
+		}
+		txs, state := cs.mempool.GetProposalTxs() // TODO: cache state
+		block = &Block{
+			Header: Header{
+				Network:       Config.Network,
+				Height:        cs.Height,
+				Time:          time.Now(),
+				LastBlockHash: cs.state.BlockHash,
+				StateHash:     state.Hash(),
+			},
+			Validation: cs.LastCommits.MakeValidation(),
+			Data: Data{
+				Txs: txs,
+			},
+		}
 		pol = cs.LockedPOL // If exists, is a PoUnlock.
 	}
 
@@ -317,15 +360,15 @@ func (cs *ConsensusState) AddProposalPOLPart(height uint32, round uint16, part *
 
 func (cs *ConsensusState) AddVote(vote *Vote) (added bool, err error) {
 	switch vote.Type {
-	case VoteTypeBare:
-		// Votes checks for height+round match.
-		return cs.Votes.Add(vote)
+	case VoteTypePrevote:
+		// Prevotes checks for height+round match.
+		return cs.Prevotes.Add(vote)
 	case VoteTypePrecommit:
 		// Precommits checks for height+round match.
 		return cs.Precommits.Add(vote)
 	case VoteTypeCommit:
 		// Commits checks for height match.
-		cs.Votes.Add(vote)
+		cs.Prevotes.Add(vote)
 		cs.Precommits.Add(vote)
 		return cs.Commits.Add(vote)
 	default:
@@ -344,10 +387,10 @@ func (cs *ConsensusState) LockOrUnlock(height uint32, round uint16) []byte {
 		return nil
 	}
 
-	if hash, _, ok := cs.Votes.TwoThirdsMajority(); ok {
+	if hash, _, ok := cs.Prevotes.TwoThirdsMajority(); ok {
 
 		// Remember this POL. (hash may be nil)
-		cs.LockedPOL = cs.Votes.MakePOL()
+		cs.LockedPOL = cs.Prevotes.MakePOL()
 
 		if len(hash) == 0 {
 			// +2/3 voted nil. Just unlock.
@@ -378,7 +421,12 @@ func (cs *ConsensusState) LockOrUnlock(height uint32, round uint16) []byte {
 	}
 }
 
-func (cs *ConsensusState) Commit(height uint32, round uint16) *Block {
+// Commits a block if we have enough precommits (and we have the block).
+// If successful, saves the block and state and resets mempool,
+// and returns the committed block.
+// Commit is not finalized until FinalizeCommit() is called.
+// This allows us to stay at this height and gather more commit votes.
+func (cs *ConsensusState) TryCommit(height uint32, round uint16) *Block {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 
@@ -414,18 +462,23 @@ func (cs *ConsensusState) Commit(height uint32, round uint16) *Block {
 		// Save to blockStore
 		cs.blockStore.SaveBlock(block)
 
-		// What was staged becomes committed.
-		state := cs.stagedState
-		state.Save(commitTime)
-		cs.updateToState(state)
+		// Save the state
+		cs.stagedState.Save(commitTime)
 
 		// Update mempool.
-		cs.mempool.ResetForBlockAndState(block, state)
+		cs.mempool.ResetForBlockAndState(block, cs.stagedState)
 
 		return block
 	}
 
 	return nil
+}
+
+// After TryCommit(), if successful, must call this in order to
+// update the RoundState.
+func (cs *ConsensusState) FinalizeCommit() {
+	// What was staged becomes committed.
+	cs.updateToState(cs.stagedState)
 }
 
 func (cs *ConsensusState) stageBlock(block *Block) error {

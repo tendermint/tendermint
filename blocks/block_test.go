@@ -40,14 +40,14 @@ func randBlock() *Block {
 		VoteA: Vote{
 			Height:    RandUInt32Exp(),
 			Round:     RandUInt16Exp(),
-			Type:      VoteTypeBare,
+			Type:      VoteTypePrevote,
 			BlockHash: RandBytes(32),
 			Signature: randSig(),
 		},
 		VoteB: Vote{
 			Height:    RandUInt32Exp(),
 			Round:     RandUInt16Exp(),
-			Type:      VoteTypeBare,
+			Type:      VoteTypePrevote,
 			BlockHash: RandBytes(32),
 			Signature: randSig(),
 		},
