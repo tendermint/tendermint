@@ -18,7 +18,7 @@ func randAccountDetail(id uint64, status byte) (*state.AccountDetail, *state.Pri
 	return &state.AccountDetail{
 		Account:  account,
 		Sequence: RandUInt(),
-		Balance:  RandUInt64() + 1000, // At least 1000.
+		Balance:  1000,
 		Status:   status,
 	}, privAccount
 }
@@ -38,7 +38,7 @@ func randGenesisState(numAccounts int, numValidators int) (*state.State, []*stat
 		}
 	}
 	s0 := state.GenesisState(db, time.Now(), accountDetails)
-	s0.Save(time.Now())
+	s0.Save()
 	return s0, privAccounts
 }
 
@@ -145,7 +145,7 @@ func checkRoundState(t *testing.T, cs *ConsensusState,
 	}
 }
 
-func TestRunActionPrecommit(t *testing.T) {
+func TestRunActionPrecommitCommitFinalize(t *testing.T) {
 	cs, privAccounts := makeConsensusState()
 	priv := NewPrivValidator(privAccounts[0], db_.NewMemDB())
 	cs.SetPrivValidator(priv)
@@ -175,7 +175,7 @@ func TestRunActionPrecommit(t *testing.T) {
 	for i := 0; i < 7; i++ {
 		vote := &Vote{
 			Height:    1,
-			Round:     uint16(i),
+			Round:     0,
 			Type:      VoteTypePrevote,
 			BlockHash: cs.ProposalBlock.Hash(),
 		}
@@ -191,15 +191,11 @@ func TestRunActionPrecommit(t *testing.T) {
 	checkRoundState(t, cs, 1, 0, RoundStepPrecommit)
 
 	// Test RunActionCommit failures:
-	blockHash = cs.RunActionCommit(1, 1)
-	if blockHash != nil {
-		t.Errorf("RunActionCommit should fail for wrong round")
-	}
-	blockHash = cs.RunActionCommit(2, 0)
+	blockHash = cs.RunActionCommit(2)
 	if blockHash != nil {
 		t.Errorf("RunActionCommit should fail for wrong height")
 	}
-	blockHash = cs.RunActionCommit(1, 0)
+	blockHash = cs.RunActionCommit(1)
 	if blockHash != nil {
 		t.Errorf("RunActionCommit should fail, not enough commits")
 	}
@@ -208,7 +204,7 @@ func TestRunActionPrecommit(t *testing.T) {
 	for i := 0; i < 7; i++ {
 		vote := &Vote{
 			Height:    1,
-			Round:     uint16(i),
+			Round:     0,
 			Type:      VoteTypePrecommit,
 			BlockHash: cs.ProposalBlock.Hash(),
 		}
@@ -217,10 +213,37 @@ func TestRunActionPrecommit(t *testing.T) {
 	}
 
 	// Test RunActionCommit success:
-	blockHash = cs.RunActionCommit(1, 0)
+	blockHash = cs.RunActionCommit(1)
 	if len(blockHash) == 0 {
 		t.Errorf("RunActionCommit should have succeeded")
 	}
 	checkRoundState(t, cs, 1, 0, RoundStepCommit)
 
+	// cs.CommitTime should still be zero
+	if !cs.CommitTime.IsZero() {
+		t.Errorf("Expected CommitTime to yet be zero")
+	}
+
+	// Add at least +2/3 commits.
+	for i := 0; i < 7; i++ {
+		vote := &Vote{
+			Height:    1,
+			Round:     uint16(i), // Doesn't matter what round
+			Type:      VoteTypeCommit,
+			BlockHash: cs.ProposalBlock.Hash(),
+		}
+		privAccounts[i].Sign(vote)
+		cs.AddVote(vote)
+	}
+
+	// Test RunActionCommitWait:
+	cs.RunActionCommitWait(1)
+	if cs.CommitTime.IsZero() {
+		t.Errorf("Expected CommitTime to have been set")
+	}
+	checkRoundState(t, cs, 1, 0, RoundStepCommitWait)
+
+	// Test RunActionFinalize:
+	cs.RunActionFinalize(1)
+	checkRoundState(t, cs, 2, 0, RoundStepStart)
 }

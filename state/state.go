@@ -43,9 +43,9 @@ func (txErr InvalidTxError) Error() string {
 // NOTE: not goroutine-safe.
 type State struct {
 	DB                  db_.DB
-	Height              uint32 // Last known block height
-	BlockHash           []byte // Last known block hash
-	CommitTime          time.Time
+	Height              uint32    // Last known block height
+	BlockHash           []byte    // Last known block hash
+	BlockTime           time.Time // LastKnown block time
 	BondedValidators    *ValidatorSet
 	UnbondingValidators *ValidatorSet
 	accountDetails      merkle.Tree // Shouldn't be accessed directly.
@@ -77,7 +77,7 @@ func GenesisState(db db_.DB, genesisTime time.Time, accDets []*AccountDetail) *S
 		DB:                  db,
 		Height:              0,
 		BlockHash:           nil,
-		CommitTime:          genesisTime,
+		BlockTime:           genesisTime,
 		BondedValidators:    NewValidatorSet(validators),
 		UnbondingValidators: NewValidatorSet(nil),
 		accountDetails:      accountDetails,
@@ -94,8 +94,8 @@ func LoadState(db db_.DB) *State {
 		var n int64
 		var err error
 		s.Height = ReadUInt32(reader, &n, &err)
-		s.CommitTime = ReadTime(reader, &n, &err)
 		s.BlockHash = ReadByteSlice(reader, &n, &err)
+		s.BlockTime = ReadTime(reader, &n, &err)
 		s.BondedValidators = ReadValidatorSet(reader, &n, &err)
 		s.UnbondingValidators = ReadValidatorSet(reader, &n, &err)
 		accountDetailsHash := ReadByteSlice(reader, &n, &err)
@@ -110,17 +110,14 @@ func LoadState(db db_.DB) *State {
 }
 
 // Save this state into the db.
-// For convenience, the commitTime (required by ConsensusAgent)
-// is saved here.
-func (s *State) Save(commitTime time.Time) {
-	s.CommitTime = commitTime
+func (s *State) Save() {
 	s.accountDetails.Save()
 	var buf bytes.Buffer
 	var n int64
 	var err error
 	WriteUInt32(&buf, s.Height, &n, &err)
-	WriteTime(&buf, commitTime, &n, &err)
 	WriteByteSlice(&buf, s.BlockHash, &n, &err)
+	WriteTime(&buf, s.BlockTime, &n, &err)
 	WriteBinary(&buf, s.BondedValidators, &n, &err)
 	WriteBinary(&buf, s.UnbondingValidators, &n, &err)
 	WriteByteSlice(&buf, s.accountDetails.Hash(), &n, &err)
@@ -134,8 +131,8 @@ func (s *State) Copy() *State {
 	return &State{
 		DB:                  s.DB,
 		Height:              s.Height,
-		CommitTime:          s.CommitTime,
 		BlockHash:           s.BlockHash,
+		BlockTime:           s.BlockTime,
 		BondedValidators:    s.BondedValidators.Copy(),
 		UnbondingValidators: s.UnbondingValidators.Copy(),
 		accountDetails:      s.accountDetails.Copy(),
@@ -397,6 +394,7 @@ func (s *State) AppendBlock(b *Block, checkStateHash bool) error {
 
 	s.Height = b.Height
 	s.BlockHash = b.Hash()
+	s.BlockTime = b.Time
 	return nil
 }
 
@@ -418,7 +416,7 @@ func (s *State) SetAccountDetail(accDet *AccountDetail) (updated bool) {
 }
 
 // Returns a hash that represents the state data,
-// excluding Height, BlockHash, and CommitTime.
+// excluding Height, BlockHash.
 func (s *State) Hash() []byte {
 	hashables := []merkle.Hashable{
 		s.BondedValidators,

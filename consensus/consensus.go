@@ -253,6 +253,13 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 					}
 					conR.sw.Broadcast(StateCh, msg)
 				}
+				// Maybe run RoundActionCommitWait.
+				if vote.Type == VoteTypeCommit &&
+					rs.Commits.HasTwoThirdsMajority() &&
+					rs.Step < RoundStepCommit {
+					// NOTE: Do not call RunAction*() methods here directly.
+					conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundActionCommitWait}
+				}
 			}
 
 		default:
@@ -304,10 +311,15 @@ func (conR *ConsensusReactor) stepTransitionRoutine() {
 		case RoundStepPrecommit:
 			// Wake up when the round is over.
 			time.Sleep(time.Duration(1.0-elapsedRatio) * roundDuration)
-			conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundActionCommit}
+			conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundActionNextRound}
 		case RoundStepCommit:
+			panic("Should not happen: RoundStepCommit waits until +2/3 commits.")
+		case RoundStepCommitWait:
 			// Wake up when it's time to finalize commit.
-			time.Sleep(time.Duration(1.0-elapsedRatio)*roundDuration + finalizeDuration)
+			if rs.CommitTime.IsZero() {
+				panic("RoundStepCommitWait requires rs.CommitTime")
+			}
+			time.Sleep(rs.CommitTime.Sub(time.Now()) + finalizeDuration)
 			conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundActionFinalize}
 		default:
 			panic("Should not happen")
@@ -316,6 +328,11 @@ func (conR *ConsensusReactor) stepTransitionRoutine() {
 
 	scheduleNextAction()
 
+	// NOTE: All ConsensusState.RunAction*() calls must come from here.
+	// Since only one routine calls them, it is safe to assume that
+	// the RoundState Height/Round/Step won't change concurrently.
+	// However, other fields like Proposal could change, due to gossip.
+ACTION_LOOP:
 	for {
 		roundAction := <-conR.doActionCh
 
@@ -334,18 +351,30 @@ func (conR *ConsensusReactor) stepTransitionRoutine() {
 			conR.sw.Broadcast(StateCh, msg)
 		}
 
-		if height != rs.Height || round != rs.Round {
-			// Action is not relevant
-			// This may happen if an external routine
-			// pushes an action to conR.doActionCh.
-			return
+		// Continue if action is not relevant
+		if height != rs.Height {
+			continue
+		}
+		// If action >= RoundActionCommit, the round doesn't matter.
+		if action < RoundActionCommit && round != rs.Round {
+			continue
 		}
 
-		// Run step
-		if action == RoundActionPropose && rs.Step == RoundStepStart {
+		// Run action
+		switch action {
+		case RoundActionPropose:
+			if rs.Step != RoundStepStart {
+				continue ACTION_LOOP
+			}
 			conR.conS.RunActionPropose(rs.Height, rs.Round)
 			broadcastNewRoundStep(RoundStepPropose)
-		} else if action == RoundActionPrevote && rs.Step <= RoundStepPropose {
+			scheduleNextAction()
+			continue ACTION_LOOP
+
+		case RoundActionPrevote:
+			if rs.Step >= RoundStepPrevote {
+				continue ACTION_LOOP
+			}
 			hash := conR.conS.RunActionPrevote(rs.Height, rs.Round)
 			broadcastNewRoundStep(RoundStepPrevote)
 			conR.signAndBroadcastVote(rs, &Vote{
@@ -354,7 +383,13 @@ func (conR *ConsensusReactor) stepTransitionRoutine() {
 				Type:      VoteTypePrevote,
 				BlockHash: hash,
 			})
-		} else if action == RoundActionPrecommit && rs.Step <= RoundStepPrevote {
+			scheduleNextAction()
+			continue ACTION_LOOP
+
+		case RoundActionPrecommit:
+			if rs.Step >= RoundStepPrecommit {
+				continue ACTION_LOOP
+			}
 			hash := conR.conS.RunActionPrecommit(rs.Height, rs.Round)
 			broadcastNewRoundStep(RoundStepPrecommit)
 			if len(hash) > 0 {
@@ -365,8 +400,23 @@ func (conR *ConsensusReactor) stepTransitionRoutine() {
 					BlockHash: hash,
 				})
 			}
-		} else if action == RoundActionCommit && rs.Step <= RoundStepPrecommit {
-			hash := conR.conS.RunActionCommit(rs.Height, rs.Round)
+			scheduleNextAction()
+			continue ACTION_LOOP
+
+		case RoundActionNextRound:
+			if rs.Step >= RoundStepCommit {
+				continue ACTION_LOOP
+			}
+			conR.conS.SetupRound(rs.Round + 1)
+			scheduleNextAction()
+			continue ACTION_LOOP
+
+		case RoundActionCommit:
+			if rs.Step >= RoundStepCommit {
+				continue ACTION_LOOP
+			}
+			// NOTE: Duplicated in RoundActionCommitWait.
+			hash := conR.conS.RunActionCommit(rs.Height)
 			if len(hash) > 0 {
 				broadcastNewRoundStep(RoundStepCommit)
 				conR.signAndBroadcastVote(rs, &Vote{
@@ -376,17 +426,51 @@ func (conR *ConsensusReactor) stepTransitionRoutine() {
 					BlockHash: hash,
 				})
 			} else {
-				conR.conS.SetupRound(rs.Round + 1)
+				panic("This shouldn't happen")
 			}
-		} else if action == RoundActionFinalize && rs.Step == RoundStepCommit {
-			conR.conS.RunActionFinalize(rs.Height, rs.Round)
+			// do not schedule next action.
+			continue ACTION_LOOP
+
+		case RoundActionCommitWait:
+			if rs.Step >= RoundStepCommitWait {
+				continue ACTION_LOOP
+			}
+			// First we must commit.
+			if rs.Step < RoundStepCommit {
+				// NOTE: Duplicated in RoundActionCommit.
+				hash := conR.conS.RunActionCommit(rs.Height)
+				if len(hash) > 0 {
+					broadcastNewRoundStep(RoundStepCommit)
+					conR.signAndBroadcastVote(rs, &Vote{
+						Height:    rs.Height,
+						Round:     rs.Round,
+						Type:      VoteTypeCommit,
+						BlockHash: hash,
+					})
+				} else {
+					panic("This shouldn't happen")
+				}
+			}
+			// Now wait for more commit votes.
+			conR.conS.RunActionCommitWait(rs.Height)
+			scheduleNextAction()
+			continue ACTION_LOOP
+
+		case RoundActionFinalize:
+			if rs.Step != RoundStepCommitWait {
+				panic("This shouldn't happen")
+			}
+			conR.conS.RunActionFinalize(rs.Height)
 			// Height has been incremented, step is now RoundStepStart.
-		} else {
-			// This shouldn't happen now, but if an external source pushes
-			// to conR.doActionCh, we might just want to continue here.
-			panic("Shouldn't happen")
+			scheduleNextAction()
+			continue ACTION_LOOP
+
+		default:
+			panic("Unknown action")
 		}
-		scheduleNextAction()
+
+		// For clarity, ensure that all switch cases call "continue"
+		panic("Should not happen.")
 	}
 }
 
@@ -404,6 +488,24 @@ OUTER_LOOP:
 		rs := conR.conS.GetRoundState()
 		prs := ps.GetRoundState()
 
+		// If ProposalBlockHash matches, send parts?
+		// NOTE: if we or peer is at RoundStepCommit*, the round
+		// won't necessarily match, but that's OK.
+		if rs.ProposalBlock.HashesTo(prs.ProposalBlockHash) {
+			if index, ok := rs.ProposalBlockPartSet.BitArray().Sub(
+				prs.ProposalBlockBitArray).PickRandom(); ok {
+				msg := &PartMessage{
+					Height: rs.Height,
+					Round:  rs.Round,
+					Type:   partTypeProposalBlock,
+					Part:   rs.ProposalBlockPartSet.GetPart(uint16(index)),
+				}
+				peer.Send(DataCh, msg)
+				ps.SetHasProposalBlockPart(rs.Height, rs.Round, uint16(index))
+				continue OUTER_LOOP
+			}
+		}
+
 		// If height and round doesn't match, sleep.
 		if rs.Height != prs.Height || rs.Round != prs.Round {
 			time.Sleep(peerGossipSleepDuration)
@@ -415,20 +517,6 @@ OUTER_LOOP:
 			msg := p2p.TypedMessage{msgTypeProposal, rs.Proposal}
 			peer.Send(DataCh, msg)
 			ps.SetHasProposal(rs.Height, rs.Round)
-			continue OUTER_LOOP
-		}
-
-		// Send proposal block part?
-		if index, ok := rs.ProposalBlockPartSet.BitArray().Sub(
-			prs.ProposalBlockBitArray).PickRandom(); ok {
-			msg := &PartMessage{
-				Height: rs.Height,
-				Round:  rs.Round,
-				Type:   partTypeProposalBlock,
-				Part:   rs.ProposalBlockPartSet.GetPart(uint16(index)),
-			}
-			peer.Send(DataCh, msg)
-			ps.SetHasProposalBlockPart(rs.Height, rs.Round, uint16(index))
 			continue OUTER_LOOP
 		}
 
@@ -481,6 +569,10 @@ OUTER_LOOP:
 					msg := p2p.TypedMessage{msgTypeVote, vote}
 					peer.Send(VoteCh, msg)
 					ps.SetHasVote(rs.Height, rs.Round, VoteTypePrevote, uint32(index))
+					if vote.Type == VoteTypeCommit {
+						ps.SetHasVote(rs.Height, rs.Round, VoteTypePrecommit, uint32(index))
+						ps.SetHasVote(rs.Height, rs.Round, VoteTypeCommit, uint32(index))
+					}
 					continue OUTER_LOOP
 				} else {
 					log.Error("index is not a valid validator index")
@@ -498,6 +590,9 @@ OUTER_LOOP:
 					msg := p2p.TypedMessage{msgTypeVote, vote}
 					peer.Send(VoteCh, msg)
 					ps.SetHasVote(rs.Height, rs.Round, VoteTypePrecommit, uint32(index))
+					if vote.Type == VoteTypeCommit {
+						ps.SetHasVote(rs.Height, rs.Round, VoteTypeCommit, uint32(index))
+					}
 					continue OUTER_LOOP
 				} else {
 					log.Error("index is not a valid validator index")

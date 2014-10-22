@@ -10,6 +10,7 @@ import (
 )
 
 // Not goroutine-safe.
+// TODO: consider validator Accum overflow?
 type ValidatorSet struct {
 	validators       merkle.Tree
 	proposer         *Validator // Whoever has the highest Accum.

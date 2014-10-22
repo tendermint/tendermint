@@ -18,11 +18,12 @@ type RoundStep uint8
 type RoundActionType uint8
 
 const (
-	RoundStepStart     = RoundStep(0x00) // Round started.
-	RoundStepPropose   = RoundStep(0x01) // Did propose, gossip proposal.
-	RoundStepPrevote   = RoundStep(0x02) // Did prevote, gossip prevotes.
-	RoundStepPrecommit = RoundStep(0x03) // Did precommit, gossip precommits.
-	RoundStepCommit    = RoundStep(0x04) // Did commit, gossip commits.
+	RoundStepStart      = RoundStep(0x00) // Round started.
+	RoundStepPropose    = RoundStep(0x01) // Did propose, gossip proposal.
+	RoundStepPrevote    = RoundStep(0x02) // Did prevote, gossip prevotes.
+	RoundStepPrecommit  = RoundStep(0x03) // Did precommit, gossip precommits.
+	RoundStepCommit     = RoundStep(0x04) // Did commit, gossip commits.
+	RoundStepCommitWait = RoundStep(0x05) // Found +2/3 commits, wait more.
 
 	// If a block could not be committed at a given round,
 	// we progress to the next round, skipping RoundStepCommit.
@@ -30,12 +31,15 @@ const (
 	// If a block was committed, we goto RoundStepCommit,
 	// then wait "finalizeDuration" to gather more commits,
 	// then we progress to the next height at round 0.
+	// TODO: document how RoundStepCommit transcends all rounds.
 
-	RoundActionPropose   = RoundActionType(0x00) // Goto RoundStepPropose
-	RoundActionPrevote   = RoundActionType(0x01) // Goto RoundStepPrevote
-	RoundActionPrecommit = RoundActionType(0x02) // Goto RoundStepPrecommit
-	RoundActionCommit    = RoundActionType(0x03) // Goto RoundStepCommit or RoundStepStart next round
-	RoundActionFinalize  = RoundActionType(0x04) // Goto RoundStepStart next height
+	RoundActionPropose    = RoundActionType(0x00) // Goto RoundStepPropose
+	RoundActionPrevote    = RoundActionType(0x01) // Goto RoundStepPrevote
+	RoundActionPrecommit  = RoundActionType(0x02) // Goto RoundStepPrecommit
+	RoundActionNextRound  = RoundActionType(0x04) // Goto next round RoundStepStart
+	RoundActionCommit     = RoundActionType(0x05) // Goto RoundStepCommit or RoundStepStart next round
+	RoundActionCommitWait = RoundActionType(0x06) // Goto RoundStepCommitWait
+	RoundActionFinalize   = RoundActionType(0x07) // Goto RoundStepStart next height
 )
 
 var (
@@ -50,6 +54,7 @@ type RoundState struct {
 	Round                uint16
 	Step                 RoundStep
 	StartTime            time.Time
+	CommitTime           time.Time // Time when +2/3 commits were found
 	Validators           *state.ValidatorSet
 	Proposal             *Proposal
 	ProposalBlock        *Block
@@ -57,7 +62,8 @@ type RoundState struct {
 	ProposalPOL          *POL
 	ProposalPOLPartSet   *PartSet
 	LockedBlock          *Block
-	LockedPOL            *POL
+	LockedBlockPartSet   *PartSet
+	LockedPOL            *POL // Rarely needed, so no LockedPOLPartSet.
 	Prevotes             *VoteSet
 	Precommits           *VoteSet
 	Commits              *VoteSet
@@ -77,11 +83,12 @@ func (rs *RoundState) StringWithIndent(indent string) string {
 	return fmt.Sprintf(`RoundState{
 %s  H:%v R:%v S:%v
 %s  StartTime:     %v
+%s  CommitTime:    %v
 %s  Validators:    %v
 %s  Proposal:      %v
 %s  ProposalBlock: %v %v
 %s  ProposalPOL:   %v %v
-%s  LockedBlock:   %v
+%s  LockedBlock:   %v %v
 %s  LockedPOL:     %v
 %s  Prevotes:      %v
 %s  Precommits:    %v
@@ -90,11 +97,12 @@ func (rs *RoundState) StringWithIndent(indent string) string {
 %s}`,
 		indent, rs.Height, rs.Round, rs.Step,
 		indent, rs.StartTime,
+		indent, rs.CommitTime,
 		indent, rs.Validators.StringWithIndent(indent+"    "),
 		indent, rs.Proposal,
 		indent, rs.ProposalBlockPartSet.Description(), rs.ProposalBlock.Description(),
 		indent, rs.ProposalPOLPartSet.Description(), rs.ProposalPOL.Description(),
-		indent, rs.LockedBlock.Description(),
+		indent, rs.LockedBlockPartSet.Description(), rs.LockedBlock.Description(),
 		indent, rs.LockedPOL.Description(),
 		indent, rs.Prevotes.StringWithIndent(indent+"    "),
 		indent, rs.Precommits.StringWithIndent(indent+"    "),
@@ -146,7 +154,12 @@ func (cs *ConsensusState) updateToState(state *state.State) {
 	cs.Height = height
 	cs.Round = 0
 	cs.Step = RoundStepStart
-	cs.StartTime = state.CommitTime.Add(finalizeDuration)
+	if cs.CommitTime.IsZero() {
+		cs.StartTime = state.BlockTime.Add(finalizeDuration)
+	} else {
+		cs.StartTime = cs.CommitTime.Add(finalizeDuration)
+	}
+	cs.CommitTime = time.Time{}
 	cs.Validators = validators
 	cs.Proposal = nil
 	cs.ProposalBlock = nil
@@ -154,6 +167,7 @@ func (cs *ConsensusState) updateToState(state *state.State) {
 	cs.ProposalPOL = nil
 	cs.ProposalPOLPartSet = nil
 	cs.LockedBlock = nil
+	cs.LockedBlockPartSet = nil
 	cs.LockedPOL = nil
 	cs.Prevotes = NewVoteSet(height, 0, VoteTypePrevote, validators)
 	cs.Precommits = NewVoteSet(height, 0, VoteTypePrecommit, validators)
@@ -254,6 +268,7 @@ func (cs *ConsensusState) RunActionPropose(height uint32, round uint16) {
 	if cs.LockedBlock != nil {
 		// If we're locked onto a block, just choose that.
 		block = cs.LockedBlock
+		blockPartSet = cs.LockedBlockPartSet
 		pol = cs.LockedPOL
 	} else {
 		var validation Validation
@@ -284,14 +299,12 @@ func (cs *ConsensusState) RunActionPropose(height uint32, round uint16) {
 				Txs: txs,
 			},
 		}
+		blockPartSet = NewPartSetFromData(BinaryBytes(block))
 		pol = cs.LockedPOL // If exists, is a PoUnlock.
 	}
 
-	blockPartSet = NewPartSetFromData(BinaryBytes(block))
 	if pol != nil {
 		polPartSet = NewPartSetFromData(BinaryBytes(pol))
-	} else {
-
 	}
 
 	// Make proposal
@@ -423,6 +436,7 @@ func (cs *ConsensusState) RunActionPrecommit(height uint32, round uint16) []byte
 		if len(hash) == 0 {
 			// +2/3 prevoted nil. Just unlock.
 			cs.LockedBlock = nil
+			cs.LockedBlockPartSet = nil
 			return nil
 		} else if cs.ProposalBlock.HashesTo(hash) {
 			// +2/3 prevoted for proposal block
@@ -433,15 +447,16 @@ func (cs *ConsensusState) RunActionPrecommit(height uint32, round uint16) []byte
 				return nil
 			}
 			cs.LockedBlock = cs.ProposalBlock
+			cs.LockedBlockPartSet = cs.ProposalBlockPartSet
 			return hash
 		} else if cs.LockedBlock.HashesTo(hash) {
 			// +2/3 prevoted for already locked block
-			// cs.LockedBlock = cs.LockedBlock
 			return hash
 		} else {
 			// We don't have the block that hashes to hash.
 			// Unlock if we're locked.
 			cs.LockedBlock = nil
+			cs.LockedBlockPartSet = nil
 			return nil
 		}
 	} else {
@@ -454,15 +469,15 @@ func (cs *ConsensusState) RunActionPrecommit(height uint32, round uint16) []byte
 // and returns the committed block.
 // Commit is not finalized until FinalizeCommit() is called.
 // This allows us to stay at this height and gather more commits.
-func (cs *ConsensusState) RunActionCommit(height uint32, round uint16) []byte {
+func (cs *ConsensusState) RunActionCommit(height uint32) []byte {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
-	if cs.Height != height || cs.Round != round {
+	if cs.Height != height {
 		return nil
 	}
 	cs.Step = RoundStepCommit
 
-	if hash, commitTime, ok := cs.Precommits.TwoThirdsMajority(); ok {
+	if hash, _, ok := cs.Precommits.TwoThirdsMajority(); ok {
 
 		// There are some strange cases that shouldn't happen
 		// (unless voters are duplicitous).
@@ -473,10 +488,13 @@ func (cs *ConsensusState) RunActionCommit(height uint32, round uint16) []byte {
 		// TODO: Identify these strange cases.
 
 		var block *Block
+		var blockPartSet *PartSet
 		if cs.LockedBlock.HashesTo(hash) {
 			block = cs.LockedBlock
+			blockPartSet = cs.LockedBlockPartSet
 		} else if cs.ProposalBlock.HashesTo(hash) {
 			block = cs.ProposalBlock
+			blockPartSet = cs.ProposalBlockPartSet
 		} else {
 			return nil
 		}
@@ -487,11 +505,17 @@ func (cs *ConsensusState) RunActionCommit(height uint32, round uint16) []byte {
 			return nil
 		}
 
+		// Keep block in cs.Proposal*
+		if !cs.ProposalBlock.HashesTo(hash) {
+			cs.ProposalBlock = block
+			cs.ProposalBlockPartSet = blockPartSet
+		}
+
 		// Save to blockStore
 		cs.blockStore.SaveBlock(block)
 
 		// Save the state
-		cs.stagedState.Save(commitTime)
+		cs.stagedState.Save()
 
 		// Update mempool.
 		cs.mempool.ResetForBlockAndState(block, cs.stagedState)
@@ -502,12 +526,26 @@ func (cs *ConsensusState) RunActionCommit(height uint32, round uint16) []byte {
 	return nil
 }
 
-// After TryCommit(), if successful, must call this in order to
-// update the RoundState.
-func (cs *ConsensusState) RunActionFinalize(height uint32, round uint16) {
+func (cs *ConsensusState) RunActionCommitWait(height uint32) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
-	if cs.Height != height || cs.Round != round {
+	if cs.Height != height {
+		return
+	}
+	cs.Step = RoundStepCommitWait
+
+	if _, commitTime, ok := cs.Commits.TwoThirdsMajority(); ok {
+		// Remember the commitTime.
+		cs.CommitTime = commitTime
+	} else {
+		panic("RunActionCommitWait() expects +2/3 commits")
+	}
+}
+
+func (cs *ConsensusState) RunActionFinalize(height uint32) {
+	cs.mtx.Lock()
+	defer cs.mtx.Unlock()
+	if cs.Height != height {
 		return
 	}
 

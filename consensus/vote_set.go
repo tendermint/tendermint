@@ -17,6 +17,7 @@ import (
 // Note that there three kinds of votes: prevotes, precommits, and commits.
 // A commit of prior rounds can be added added in lieu of votes/precommits.
 // TODO: test majority calculations etc.
+// NOTE: assumes that the sum total of voting power does not exceed MaxUInt64.
 type VoteSet struct {
 	height uint32
 	round  uint16

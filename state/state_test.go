@@ -38,7 +38,7 @@ func randGenesisState(numAccounts int, numValidators int) (*State, []*PrivAccoun
 		}
 	}
 	s0 := GenesisState(db, time.Now(), accountDetails)
-	s0.Save(time.Now())
+	s0.Save()
 	return s0, privAccounts
 }
 
@@ -110,8 +110,7 @@ func TestGenesisSaveLoad(t *testing.T) {
 	}
 
 	// Save s0
-	commitTime := time.Now()
-	s0.Save(commitTime)
+	s0.Save()
 
 	// Sanity check s0
 	//s0.DB.(*db_.MemDB).Print()
@@ -125,10 +124,6 @@ func TestGenesisSaveLoad(t *testing.T) {
 	// Load s1
 	s1 := LoadState(s0.DB)
 
-	// Compare CommitTime
-	if !s0.CommitTime.Equal(s1.CommitTime) {
-		t.Error("CommitTime was not the same", s0.CommitTime, s1.CommitTime)
-	}
 	// Compare height & blockHash
 	if s0.Height != s1.Height {
 		t.Error("Height mismatch")
