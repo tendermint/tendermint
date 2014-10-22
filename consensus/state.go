@@ -222,30 +222,7 @@ func (cs *ConsensusState) SetPrivValidator(priv *PrivValidator) {
 	cs.PrivValidator = priv
 }
 
-func (cs *ConsensusState) SetProposal(proposal *Proposal) error {
-	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
-
-	// Already have one
-	if cs.Proposal != nil {
-		return nil
-	}
-
-	// Invalid.
-	if proposal.Height != cs.Height || proposal.Round != cs.Round {
-		return nil
-	}
-
-	// Verify signature
-	if !cs.Validators.Proposer().Verify(proposal) {
-		return ErrInvalidProposalSignature
-	}
-
-	cs.Proposal = proposal
-	cs.ProposalBlockPartSet = NewPartSetFromMetadata(proposal.BlockPartsTotal, proposal.BlockPartsHash)
-	cs.ProposalPOLPartSet = NewPartSetFromMetadata(proposal.POLPartsTotal, proposal.POLPartsHash)
-	return nil
-}
+//-----------------------------------------------------------------------------
 
 func (cs *ConsensusState) RunActionPropose(height uint32, round uint16) {
 	cs.mtx.Lock()
@@ -321,61 +298,6 @@ func (cs *ConsensusState) RunActionPropose(height uint32, round uint16) {
 	cs.ProposalPOLPartSet = polPartSet
 }
 
-// NOTE: block is not necessarily valid.
-func (cs *ConsensusState) AddProposalBlockPart(height uint32, round uint16, part *Part) (added bool, err error) {
-	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
-
-	// Blocks might be reused, so round mismatch is OK
-	if cs.Height != height {
-		return false, nil
-	}
-
-	// We're not expecting a block part.
-	if cs.ProposalBlockPartSet != nil {
-		return false, nil // TODO: bad peer? Return error?
-	}
-
-	added, err = cs.ProposalBlockPartSet.AddPart(part)
-	if err != nil {
-		return added, err
-	}
-	if added && cs.ProposalBlockPartSet.IsComplete() {
-		var n int64
-		var err error
-		cs.ProposalBlock = ReadBlock(cs.ProposalBlockPartSet.GetReader(), &n, &err)
-		return true, err
-	}
-	return true, nil
-}
-
-// NOTE: POL is not necessarily valid.
-func (cs *ConsensusState) AddProposalPOLPart(height uint32, round uint16, part *Part) (added bool, err error) {
-	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
-
-	if cs.Height != height || cs.Round != round {
-		return false, nil
-	}
-
-	// We're not expecting a POL part.
-	if cs.ProposalPOLPartSet != nil {
-		return false, nil // TODO: bad peer? Return error?
-	}
-
-	added, err = cs.ProposalPOLPartSet.AddPart(part)
-	if err != nil {
-		return added, err
-	}
-	if added && cs.ProposalPOLPartSet.IsComplete() {
-		var n int64
-		var err error
-		cs.ProposalPOL = ReadPOL(cs.ProposalPOLPartSet.GetReader(), &n, &err)
-		return true, err
-	}
-	return true, nil
-}
-
 func (cs *ConsensusState) RunActionPrevote(height uint32, round uint16) []byte {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
@@ -399,24 +321,6 @@ func (cs *ConsensusState) RunActionPrevote(height uint32, round uint16) []byte {
 	}
 }
 
-func (cs *ConsensusState) AddVote(vote *Vote) (added bool, err error) {
-	switch vote.Type {
-	case VoteTypePrevote:
-		// Prevotes checks for height+round match.
-		return cs.Prevotes.Add(vote)
-	case VoteTypePrecommit:
-		// Precommits checks for height+round match.
-		return cs.Precommits.Add(vote)
-	case VoteTypeCommit:
-		// Commits checks for height match.
-		cs.Prevotes.Add(vote)
-		cs.Precommits.Add(vote)
-		return cs.Commits.Add(vote)
-	default:
-		panic("Unknown vote type")
-	}
-}
-
 // Lock the ProposalBlock if we have enough prevotes for it,
 // or unlock an existing lock if +2/3 of prevotes were nil.
 // Returns a blockhash if a block was locked.
@@ -428,7 +332,7 @@ func (cs *ConsensusState) RunActionPrecommit(height uint32, round uint16) []byte
 	}
 	cs.Step = RoundStepPrecommit
 
-	if hash, _, ok := cs.Prevotes.TwoThirdsMajority(); ok {
+	if hash, ok := cs.Prevotes.TwoThirdsMajority(); ok {
 
 		// Remember this POL. (hash may be nil)
 		cs.LockedPOL = cs.Prevotes.MakePOL()
@@ -477,7 +381,7 @@ func (cs *ConsensusState) RunActionCommit(height uint32) []byte {
 	}
 	cs.Step = RoundStepCommit
 
-	if hash, _, ok := cs.Precommits.TwoThirdsMajority(); ok {
+	if hash, ok := cs.Precommits.TwoThirdsMajority(); ok {
 
 		// There are some strange cases that shouldn't happen
 		// (unless voters are duplicitous).
@@ -534,9 +438,8 @@ func (cs *ConsensusState) RunActionCommitWait(height uint32) {
 	}
 	cs.Step = RoundStepCommitWait
 
-	if _, commitTime, ok := cs.Commits.TwoThirdsMajority(); ok {
-		// Remember the commitTime.
-		cs.CommitTime = commitTime
+	if cs.Commits.HasTwoThirdsMajority() {
+		cs.CommitTime = time.Now()
 	} else {
 		panic("RunActionCommitWait() expects +2/3 commits")
 	}
@@ -551,6 +454,106 @@ func (cs *ConsensusState) RunActionFinalize(height uint32) {
 
 	// What was staged becomes committed.
 	cs.updateToState(cs.stagedState)
+}
+
+//-----------------------------------------------------------------------------
+
+func (cs *ConsensusState) SetProposal(proposal *Proposal) error {
+	cs.mtx.Lock()
+	defer cs.mtx.Unlock()
+
+	// Already have one
+	if cs.Proposal != nil {
+		return nil
+	}
+
+	// Invalid.
+	if proposal.Height != cs.Height || proposal.Round != cs.Round {
+		return nil
+	}
+
+	// Verify signature
+	if !cs.Validators.Proposer().Verify(proposal) {
+		return ErrInvalidProposalSignature
+	}
+
+	cs.Proposal = proposal
+	cs.ProposalBlockPartSet = NewPartSetFromMetadata(proposal.BlockPartsTotal, proposal.BlockPartsHash)
+	cs.ProposalPOLPartSet = NewPartSetFromMetadata(proposal.POLPartsTotal, proposal.POLPartsHash)
+	return nil
+}
+
+// NOTE: block is not necessarily valid.
+func (cs *ConsensusState) AddProposalBlockPart(height uint32, round uint16, part *Part) (added bool, err error) {
+	cs.mtx.Lock()
+	defer cs.mtx.Unlock()
+
+	// Blocks might be reused, so round mismatch is OK
+	if cs.Height != height {
+		return false, nil
+	}
+
+	// We're not expecting a block part.
+	if cs.ProposalBlockPartSet != nil {
+		return false, nil // TODO: bad peer? Return error?
+	}
+
+	added, err = cs.ProposalBlockPartSet.AddPart(part)
+	if err != nil {
+		return added, err
+	}
+	if added && cs.ProposalBlockPartSet.IsComplete() {
+		var n int64
+		var err error
+		cs.ProposalBlock = ReadBlock(cs.ProposalBlockPartSet.GetReader(), &n, &err)
+		return true, err
+	}
+	return true, nil
+}
+
+// NOTE: POL is not necessarily valid.
+func (cs *ConsensusState) AddProposalPOLPart(height uint32, round uint16, part *Part) (added bool, err error) {
+	cs.mtx.Lock()
+	defer cs.mtx.Unlock()
+
+	if cs.Height != height || cs.Round != round {
+		return false, nil
+	}
+
+	// We're not expecting a POL part.
+	if cs.ProposalPOLPartSet != nil {
+		return false, nil // TODO: bad peer? Return error?
+	}
+
+	added, err = cs.ProposalPOLPartSet.AddPart(part)
+	if err != nil {
+		return added, err
+	}
+	if added && cs.ProposalPOLPartSet.IsComplete() {
+		var n int64
+		var err error
+		cs.ProposalPOL = ReadPOL(cs.ProposalPOLPartSet.GetReader(), &n, &err)
+		return true, err
+	}
+	return true, nil
+}
+
+func (cs *ConsensusState) AddVote(vote *Vote) (added bool, err error) {
+	switch vote.Type {
+	case VoteTypePrevote:
+		// Prevotes checks for height+round match.
+		return cs.Prevotes.Add(vote)
+	case VoteTypePrecommit:
+		// Precommits checks for height+round match.
+		return cs.Precommits.Add(vote)
+	case VoteTypeCommit:
+		// Commits checks for height match.
+		cs.Prevotes.Add(vote)
+		cs.Precommits.Add(vote)
+		return cs.Commits.Add(vote)
+	default:
+		panic("Unknown vote type")
+	}
 }
 
 func (cs *ConsensusState) stageBlock(block *Block) error {

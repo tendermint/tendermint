@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 	"sync"
-	"time"
 
 	. "github.com/tendermint/tendermint/blocks"
 	. "github.com/tendermint/tendermint/common"
@@ -23,14 +22,14 @@ type VoteSet struct {
 	round  uint16
 	type_  byte
 
-	mtx                 sync.Mutex
-	vset                *state.ValidatorSet
-	votes               map[uint64]*Vote
-	votesBitArray       BitArray
-	votesByBlockHash    map[string]uint64
-	totalVotes          uint64
-	twoThirdsMajority   []byte
-	twoThirdsCommitTime time.Time
+	mtx               sync.Mutex
+	vset              *state.ValidatorSet
+	votes             map[uint64]*Vote
+	votesBitArray     BitArray
+	votesByBlockHash  map[string]uint64
+	totalVotes        uint64
+	twoThirdsMajority []byte
+	twoThirdsExists   bool
 }
 
 // Constructs a new VoteSet struct used to accumulate votes for each round.
@@ -105,7 +104,7 @@ func (vs *VoteSet) addVote(vote *Vote) (bool, error) {
 	if totalBlockHashVotes > vs.vset.TotalVotingPower()*2/3 &&
 		(totalBlockHashVotes-val.VotingPower) <= vs.vset.TotalVotingPower()*2/3 {
 		vs.twoThirdsMajority = vote.BlockHash
-		vs.twoThirdsCommitTime = time.Now()
+		vs.twoThirdsExists = true
 	}
 
 	return true, nil
@@ -149,18 +148,19 @@ func (vs *VoteSet) HasTwoThirdsMajority() bool {
 	}
 	vs.mtx.Lock()
 	defer vs.mtx.Unlock()
-	return !vs.twoThirdsCommitTime.IsZero()
+	return vs.twoThirdsExists
 }
 
 // Returns either a blockhash (or nil) that received +2/3 majority.
 // If there exists no such majority, returns (nil, false).
-func (vs *VoteSet) TwoThirdsMajority() (hash []byte, commitTime time.Time, ok bool) {
+func (vs *VoteSet) TwoThirdsMajority() (hash []byte, ok bool) {
 	vs.mtx.Lock()
 	defer vs.mtx.Unlock()
-	if vs.twoThirdsCommitTime.IsZero() {
-		return nil, time.Time{}, false
+	if vs.twoThirdsExists {
+		return vs.twoThirdsMajority, true
+	} else {
+		return nil, false
 	}
-	return vs.twoThirdsMajority, vs.twoThirdsCommitTime, true
 }
 
 func (vs *VoteSet) MakePOL() *POL {
@@ -169,7 +169,7 @@ func (vs *VoteSet) MakePOL() *POL {
 	}
 	vs.mtx.Lock()
 	defer vs.mtx.Unlock()
-	if vs.twoThirdsCommitTime.IsZero() {
+	if !vs.twoThirdsExists {
 		return nil
 	}
 	majHash := vs.twoThirdsMajority // hash may be nil.

@@ -20,8 +20,8 @@ func TestAddVote(t *testing.T) {
 	if voteSet.BitArray().GetIndex(0) {
 		t.Errorf("Expected BitArray.GetIndex(0) to be false")
 	}
-	hash, commitTime, ok := voteSet.TwoThirdsMajority()
-	if hash != nil || !commitTime.IsZero() || ok {
+	hash, ok := voteSet.TwoThirdsMajority()
+	if hash != nil || ok {
 		t.Errorf("There should be no 2/3 majority")
 	}
 
@@ -35,8 +35,8 @@ func TestAddVote(t *testing.T) {
 	if !voteSet.BitArray().GetIndex(0) {
 		t.Errorf("Expected BitArray.GetIndex(0) to be true")
 	}
-	hash, commitTime, ok = voteSet.TwoThirdsMajority()
-	if hash != nil || !commitTime.IsZero() || ok {
+	hash, ok = voteSet.TwoThirdsMajority()
+	if hash != nil || ok {
 		t.Errorf("There should be no 2/3 majority")
 	}
 }
@@ -50,8 +50,8 @@ func Test2_3Majority(t *testing.T) {
 		privAccounts[i].Sign(vote)
 		voteSet.Add(vote)
 	}
-	hash, commitTime, ok := voteSet.TwoThirdsMajority()
-	if hash != nil || !commitTime.IsZero() || ok {
+	hash, ok := voteSet.TwoThirdsMajority()
+	if hash != nil || ok {
 		t.Errorf("There should be no 2/3 majority")
 	}
 
@@ -59,8 +59,8 @@ func Test2_3Majority(t *testing.T) {
 	vote.BlockHash = CRandBytes(32)
 	privAccounts[6].Sign(vote)
 	voteSet.Add(vote)
-	hash, commitTime, ok = voteSet.TwoThirdsMajority()
-	if hash != nil || !commitTime.IsZero() || ok {
+	hash, ok = voteSet.TwoThirdsMajority()
+	if hash != nil || ok {
 		t.Errorf("There should be no 2/3 majority")
 	}
 
@@ -68,8 +68,8 @@ func Test2_3Majority(t *testing.T) {
 	vote.BlockHash = nil
 	privAccounts[7].Sign(vote)
 	voteSet.Add(vote)
-	hash, commitTime, ok = voteSet.TwoThirdsMajority()
-	if hash != nil || commitTime.IsZero() || !ok {
+	hash, ok = voteSet.TwoThirdsMajority()
+	if hash != nil || !ok {
 		t.Errorf("There should be 2/3 majority for nil")
 	}
 
@@ -128,8 +128,8 @@ func TestAddCommitsToPrevoteVotes(t *testing.T) {
 		privAccounts[i].Sign(vote)
 		voteSet.Add(vote)
 	}
-	hash, commitTime, ok := voteSet.TwoThirdsMajority()
-	if hash != nil || !commitTime.IsZero() || ok {
+	hash, ok := voteSet.TwoThirdsMajority()
+	if hash != nil || ok {
 		t.Errorf("There should be no 2/3 majority")
 	}
 
@@ -174,8 +174,8 @@ func TestAddCommitsToPrevoteVotes(t *testing.T) {
 	}
 
 	// We should have 2/3 majority
-	hash, commitTime, ok = voteSet.TwoThirdsMajority()
-	if hash != nil || commitTime.IsZero() || !ok {
+	hash, ok = voteSet.TwoThirdsMajority()
+	if hash != nil || !ok {
 		t.Errorf("There should be 2/3 majority for nil")
 	}
 

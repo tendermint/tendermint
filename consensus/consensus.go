@@ -92,6 +92,12 @@ func calcRoundInfo(startTime time.Time) (round uint16, roundStartTime time.Time,
 
 //-----------------------------------------------------------------------------
 
+type RoundAction struct {
+	Height uint32          // The block height for which consensus is reaching for.
+	Round  uint16          // The round number at given height.
+	Action RoundActionType // Action to perform.
+}
+
 type ConsensusReactor struct {
 	sw      *p2p.Switch
 	quit    chan struct{}
@@ -241,9 +247,9 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 			}
 			if added {
 				// Maybe send HasVotesMessage
+				// TODO optimize. It would be better to just acks for each vote!
 				voteAddCounter++
 				if voteAddCounter%hasVotesThreshold == 0 {
-					// TODO optimize.
 					msg := &HasVotesMessage{
 						Height:     rs.Height,
 						Round:      rs.Round,
@@ -274,56 +280,50 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 	}
 }
 
-//-------------------------------------
-
-type RoundAction struct {
-	Height uint32          // The block height for which consensus is reaching for.
-	Round  uint16          // The round number at given height.
-	Action RoundActionType // Action to perform.
-}
+//--------------------------------------
 
 // Source of all round state transitions (and votes).
-// It can be preemptively woken up via a message to
-// doActionCh.
 func (conR *ConsensusReactor) stepTransitionRoutine() {
 
+	// Schedule the next action by pushing a RoundAction{} to conR.doActionCh
+	// when it is due.
 	scheduleNextAction := func() {
-		// Figure out which height/round/step we're at,
-		// then schedule an action for when it is due.
 		rs := conR.conS.GetRoundState()
 		_, _, roundDuration, _, elapsedRatio := calcRoundInfo(rs.StartTime)
-		switch rs.Step {
-		case RoundStepStart:
-			// It's a new RoundState.
-			if elapsedRatio < 0 {
-				// startTime is in the future.
-				time.Sleep(time.Duration(-1.0*elapsedRatio) * roundDuration)
+		go func() {
+			switch rs.Step {
+			case RoundStepStart:
+				// It's a new RoundState.
+				if elapsedRatio < 0 {
+					// startTime is in the future.
+					time.Sleep(time.Duration(-1.0*elapsedRatio) * roundDuration)
+				}
+				conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundActionPropose}
+			case RoundStepPropose:
+				// Wake up when it's time to vote.
+				time.Sleep(time.Duration(roundDeadlinePrevote-elapsedRatio) * roundDuration)
+				conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundActionPrevote}
+			case RoundStepPrevote:
+				// Wake up when it's time to precommit.
+				time.Sleep(time.Duration(roundDeadlinePrecommit-elapsedRatio) * roundDuration)
+				conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundActionPrecommit}
+			case RoundStepPrecommit:
+				// Wake up when the round is over.
+				time.Sleep(time.Duration(1.0-elapsedRatio) * roundDuration)
+				conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundActionNextRound}
+			case RoundStepCommit:
+				panic("Should not happen: RoundStepCommit waits until +2/3 commits.")
+			case RoundStepCommitWait:
+				// Wake up when it's time to finalize commit.
+				if rs.CommitTime.IsZero() {
+					panic("RoundStepCommitWait requires rs.CommitTime")
+				}
+				time.Sleep(rs.CommitTime.Sub(time.Now()) + finalizeDuration)
+				conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundActionFinalize}
+			default:
+				panic("Should not happen")
 			}
-			conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundActionPropose}
-		case RoundStepPropose:
-			// Wake up when it's time to vote.
-			time.Sleep(time.Duration(roundDeadlinePrevote-elapsedRatio) * roundDuration)
-			conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundActionPrevote}
-		case RoundStepPrevote:
-			// Wake up when it's time to precommit.
-			time.Sleep(time.Duration(roundDeadlinePrecommit-elapsedRatio) * roundDuration)
-			conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundActionPrecommit}
-		case RoundStepPrecommit:
-			// Wake up when the round is over.
-			time.Sleep(time.Duration(1.0-elapsedRatio) * roundDuration)
-			conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundActionNextRound}
-		case RoundStepCommit:
-			panic("Should not happen: RoundStepCommit waits until +2/3 commits.")
-		case RoundStepCommitWait:
-			// Wake up when it's time to finalize commit.
-			if rs.CommitTime.IsZero() {
-				panic("RoundStepCommitWait requires rs.CommitTime")
-			}
-			time.Sleep(rs.CommitTime.Sub(time.Now()) + finalizeDuration)
-			conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundActionFinalize}
-		default:
-			panic("Should not happen")
-		}
+		}()
 	}
 
 	scheduleNextAction()
@@ -435,7 +435,7 @@ ACTION_LOOP:
 			if rs.Step >= RoundStepCommitWait {
 				continue ACTION_LOOP
 			}
-			// First we must commit.
+			// Commit first we haven't already.
 			if rs.Step < RoundStepCommit {
 				// NOTE: Duplicated in RoundActionCommit.
 				hash := conR.conS.RunActionCommit(rs.Height)
@@ -451,7 +451,7 @@ ACTION_LOOP:
 					panic("This shouldn't happen")
 				}
 			}
-			// Now wait for more commit votes.
+			// Wait for more commit votes.
 			conR.conS.RunActionCommitWait(rs.Height)
 			scheduleNextAction()
 			continue ACTION_LOOP
@@ -474,7 +474,16 @@ ACTION_LOOP:
 	}
 }
 
-//-------------------------------------
+func (conR *ConsensusReactor) signAndBroadcastVote(rs *RoundState, vote *Vote) {
+	if rs.PrivValidator != nil {
+		rs.PrivValidator.Sign(vote)
+		conR.conS.AddVote(vote)
+		msg := p2p.TypedMessage{msgTypeVote, vote}
+		conR.sw.Broadcast(VoteCh, msg)
+	}
+}
+
+//--------------------------------------
 
 func (conR *ConsensusReactor) gossipDataRoutine(peer *p2p.Peer, ps *PeerState) {
 
@@ -539,8 +548,6 @@ OUTER_LOOP:
 		continue OUTER_LOOP
 	}
 }
-
-//-------------------------------------
 
 func (conR *ConsensusReactor) gossipVotesRoutine(peer *p2p.Peer, ps *PeerState) {
 OUTER_LOOP:
@@ -618,16 +625,6 @@ OUTER_LOOP:
 		// We sent nothing. Sleep...
 		time.Sleep(peerGossipSleepDuration)
 		continue OUTER_LOOP
-	}
-}
-
-// Signs a vote document and broadcasts it.
-func (conR *ConsensusReactor) signAndBroadcastVote(rs *RoundState, vote *Vote) {
-	if rs.PrivValidator != nil {
-		rs.PrivValidator.Sign(vote)
-		conR.conS.AddVote(vote)
-		msg := p2p.TypedMessage{msgTypeVote, vote}
-		conR.sw.Broadcast(VoteCh, msg)
 	}
 }
 
