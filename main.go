@@ -4,27 +4,55 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/tendermint/tendermint/blocks"
 	"github.com/tendermint/tendermint/config"
-	//"github.com/tendermint/tendermint/consensus"
+	"github.com/tendermint/tendermint/consensus"
+	db_ "github.com/tendermint/tendermint/db"
+	mempool_ "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
+	state_ "github.com/tendermint/tendermint/state"
 )
 
 type Node struct {
-	lz         []p2p.Listener
-	sw         *p2p.Switch
-	book       *p2p.AddrBook
-	pexReactor *p2p.PEXReactor
+	lz               []p2p.Listener
+	sw               *p2p.Switch
+	book             *p2p.AddrBook
+	pexReactor       *p2p.PEXReactor
+	mempoolReactor   *mempool_.MempoolReactor
+	consensusReactor *consensus.ConsensusReactor
 }
 
 func NewNode() *Node {
-	sw := p2p.NewSwitch(nil) // XXX create and pass reactors
+	// Get BlockStore
+	blockStoreDB := db_.NewMemDB() // TODO configurable db.
+	blockStore := blocks.NewBlockStore(blockStoreDB)
+
+	// Get State
+	stateDB := db_.NewMemDB() // TODO configurable db.
+	state := state_.LoadState(stateDB)
+	if state == nil {
+		state = state_.GenesisStateFromFile(stateDB, config.RootDir+"/genesis.json")
+	}
+
+	// Get PEXReactor
 	book := p2p.NewAddrBook(config.RootDir + "/addrbook.json")
-	pexReactor := p2p.NewPEXReactor(sw, book)
+	pexReactor := p2p.NewPEXReactor(book)
+
+	// Get MempoolReactor
+	mempool := mempool_.NewMempool(state)
+	mempoolReactor := mempool_.NewMempoolReactor(mempool)
+
+	// Get ConsensusReactor
+	consensusReactor := consensus.NewConsensusReactor(blockStore, mempool, state)
+
+	sw := p2p.NewSwitch([]p2p.Reactor{pexReactor, mempoolReactor, consensusReactor})
 
 	return &Node{
-		sw:         sw,
-		book:       book,
-		pexReactor: pexReactor,
+		sw:               sw,
+		book:             book,
+		pexReactor:       pexReactor,
+		mempoolReactor:   mempoolReactor,
+		consensusReactor: consensusReactor,
 	}
 }
 
@@ -33,9 +61,8 @@ func (n *Node) Start() {
 	for _, l := range n.lz {
 		go n.inboundConnectionRoutine(l)
 	}
-	n.sw.Start()
 	n.book.Start()
-	n.pexReactor.Start()
+	n.sw.Start()
 }
 
 func (n *Node) Stop() {
@@ -43,7 +70,6 @@ func (n *Node) Stop() {
 	// TODO: gracefully disconnect from peers.
 	n.sw.Stop()
 	n.book.Stop()
-	n.pexReactor.Stop()
 }
 
 // Add a Listener to accept inbound peer connections.
@@ -87,9 +113,9 @@ func main() {
 	n.AddListener(l)
 	n.Start()
 
-	// Seed?
-	if config.Config.Seed != "" {
-		peer, err := n.sw.DialPeerWithAddress(p2p.NewNetAddressString(config.Config.Seed))
+	// If seedNode is provided by config, dial out.
+	if config.Config.SeedNode != "" {
+		peer, err := n.sw.DialPeerWithAddress(p2p.NewNetAddressString(config.Config.SeedNode))
 		if err != nil {
 			log.Error("Error dialing seed: %v", err)
 			//n.book.MarkAttempt(addr)

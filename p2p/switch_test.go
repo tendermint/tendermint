@@ -43,6 +43,12 @@ func NewTestReactor(channels []*ChannelDescriptor, logMessages bool) *TestReacto
 	}
 }
 
+func (tr *TestReactor) Start(sw *Switch) {
+}
+
+func (tr *TestReactor) Stop() {
+}
+
 func (tr *TestReactor) GetChannels() []*ChannelDescriptor {
 	return tr.channels
 }

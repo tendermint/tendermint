@@ -98,6 +98,8 @@ type RoundAction struct {
 	Action RoundActionType // Action to perform.
 }
 
+//-----------------------------------------------------------------------------
+
 type ConsensusReactor struct {
 	sw      *p2p.Switch
 	quit    chan struct{}
@@ -108,10 +110,9 @@ type ConsensusReactor struct {
 	doActionCh chan RoundAction
 }
 
-func NewConsensusReactor(sw *p2p.Switch, blockStore *BlockStore, mempool *mempool.Mempool, state *state.State) *ConsensusReactor {
+func NewConsensusReactor(blockStore *BlockStore, mempool *mempool.Mempool, state *state.State) *ConsensusReactor {
 	conS := NewConsensusState(state, blockStore, mempool)
 	conR := &ConsensusReactor{
-		sw:   sw,
 		quit: make(chan struct{}),
 
 		conS:       conS,
@@ -120,27 +121,21 @@ func NewConsensusReactor(sw *p2p.Switch, blockStore *BlockStore, mempool *mempoo
 	return conR
 }
 
-// Sets our private validator account for signing votes.
-func (conR *ConsensusReactor) SetPrivValidator(priv *PrivValidator) {
-	conR.conS.SetPrivValidator(priv)
-}
-
-func (conR *ConsensusReactor) Start() {
+// Implements Reactor
+func (conR *ConsensusReactor) Start(sw *p2p.Switch) {
 	if atomic.CompareAndSwapUint32(&conR.started, 0, 1) {
 		log.Info("Starting ConsensusReactor")
+		conR.sw = sw
 		go conR.stepTransitionRoutine()
 	}
 }
 
+// Implements Reactor
 func (conR *ConsensusReactor) Stop() {
 	if atomic.CompareAndSwapUint32(&conR.stopped, 0, 1) {
 		log.Info("Stopping ConsensusReactor")
 		close(conR.quit)
 	}
-}
-
-func (conR *ConsensusReactor) IsStopped() bool {
-	return atomic.LoadUint32(&conR.stopped) == 1
 }
 
 // Implements Reactor
@@ -278,6 +273,15 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 	if err != nil {
 		log.Warning("Error in Receive(): %v", err)
 	}
+}
+
+// Sets our private validator account for signing votes.
+func (conR *ConsensusReactor) SetPrivValidator(priv *PrivValidator) {
+	conR.conS.SetPrivValidator(priv)
+}
+
+func (conR *ConsensusReactor) IsStopped() bool {
+	return atomic.LoadUint32(&conR.stopped) == 1
 }
 
 //--------------------------------------

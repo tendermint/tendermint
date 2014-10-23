@@ -25,21 +25,23 @@ type MempoolReactor struct {
 	mempool *Mempool
 }
 
-func NewMempoolReactor(sw *p2p.Switch, mempool *Mempool) *MempoolReactor {
+func NewMempoolReactor(mempool *Mempool) *MempoolReactor {
 	memR := &MempoolReactor{
-		sw:      sw,
 		quit:    make(chan struct{}),
 		mempool: mempool,
 	}
 	return memR
 }
 
-func (memR *MempoolReactor) Start() {
+// Implements Reactor
+func (memR *MempoolReactor) Start(sw *p2p.Switch) {
 	if atomic.CompareAndSwapUint32(&memR.started, 0, 1) {
+		memR.sw = sw
 		log.Info("Starting MempoolReactor")
 	}
 }
 
+// Implements Reactor
 func (memR *MempoolReactor) Stop() {
 	if atomic.CompareAndSwapUint32(&memR.stopped, 0, 1) {
 		log.Info("Stopping MempoolReactor")
@@ -47,14 +49,14 @@ func (memR *MempoolReactor) Stop() {
 	}
 }
 
-func (memR *MempoolReactor) BroadcastTx(tx Tx) error {
-	err := memR.mempool.AddTx(tx)
-	if err != nil {
-		return err
+// Implements Reactor
+func (memR *MempoolReactor) GetChannels() []*p2p.ChannelDescriptor {
+	return []*p2p.ChannelDescriptor{
+		&p2p.ChannelDescriptor{
+			Id:       MempoolCh,
+			Priority: 5,
+		},
 	}
-	msg := &TxMessage{Tx: tx}
-	memR.sw.Broadcast(MempoolCh, msg)
-	return nil
 }
 
 // Implements Reactor
@@ -62,9 +64,10 @@ func (pexR *MempoolReactor) AddPeer(peer *p2p.Peer) {
 }
 
 // Implements Reactor
-func (pexR *MempoolReactor) RemovePeer(peer *p2p.Peer, err error) {
+func (pexR *MempoolReactor) RemovePeer(peer *p2p.Peer, reason interface{}) {
 }
 
+// Implements Reactor
 func (memR *MempoolReactor) Receive(chId byte, src *p2p.Peer, msgBytes []byte) {
 	_, msg_ := decodeMessage(msgBytes)
 	log.Info("MempoolReactor received %v", msg_)
@@ -93,6 +96,16 @@ func (memR *MempoolReactor) Receive(chId byte, src *p2p.Peer, msgBytes []byte) {
 	default:
 		// Ignore unknown message
 	}
+}
+
+func (memR *MempoolReactor) BroadcastTx(tx Tx) error {
+	err := memR.mempool.AddTx(tx)
+	if err != nil {
+		return err
+	}
+	msg := &TxMessage{Tx: tx}
+	memR.sw.Broadcast(MempoolCh, msg)
+	return nil
 }
 
 //-----------------------------------------------------------------------------

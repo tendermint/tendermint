@@ -34,36 +34,29 @@ type PEXReactor struct {
 	book *AddrBook
 }
 
-func NewPEXReactor(sw *Switch, book *AddrBook) *PEXReactor {
+func NewPEXReactor(book *AddrBook) *PEXReactor {
 	pexR := &PEXReactor{
-		sw:   sw,
 		quit: make(chan struct{}),
 		book: book,
 	}
 	return pexR
 }
 
-func (pexR *PEXReactor) Start() {
+// Implements Reactor
+func (pexR *PEXReactor) Start(sw *Switch) {
 	if atomic.CompareAndSwapUint32(&pexR.started, 0, 1) {
 		log.Info("Starting PEXReactor")
+		pexR.sw = sw
 		go pexR.ensurePeersRoutine()
 	}
 }
 
+// Implements Reactor
 func (pexR *PEXReactor) Stop() {
 	if atomic.CompareAndSwapUint32(&pexR.stopped, 0, 1) {
 		log.Info("Stopping PEXReactor")
 		close(pexR.quit)
 	}
-}
-
-// Asks peer for more addresses.
-func (pexR *PEXReactor) RequestPEX(peer *Peer) {
-	peer.TrySend(PexCh, &pexRequestMessage{})
-}
-
-func (pexR *PEXReactor) SendAddrs(peer *Peer, addrs []*NetAddress) {
-	peer.Send(PexCh, &pexRddrsMessage{Addrs: addrs})
 }
 
 // Implements Reactor
@@ -87,7 +80,7 @@ func (pexR *PEXReactor) AddPeer(peer *Peer) {
 }
 
 // Implements Reactor
-func (pexR *PEXReactor) RemovePeer(peer *Peer, err error) {
+func (pexR *PEXReactor) RemovePeer(peer *Peer, reason interface{}) {
 	// TODO
 }
 
@@ -121,6 +114,15 @@ func (pexR *PEXReactor) Receive(chId byte, src *Peer, msgBytes []byte) {
 		// Ignore unknown message.
 	}
 
+}
+
+// Asks peer for more addresses.
+func (pexR *PEXReactor) RequestPEX(peer *Peer) {
+	peer.TrySend(PexCh, &pexRequestMessage{})
+}
+
+func (pexR *PEXReactor) SendAddrs(peer *Peer, addrs []*NetAddress) {
+	peer.Send(PexCh, &pexRddrsMessage{Addrs: addrs})
 }
 
 // Ensures that sufficient peers are connected. (continuous)

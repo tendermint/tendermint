@@ -11,6 +11,8 @@ import (
 )
 
 type Reactor interface {
+	Start(sw *Switch)
+	Stop()
 	GetChannels() []*ChannelDescriptor
 	AddPeer(peer *Peer)
 	RemovePeer(peer *Peer, reason interface{})
@@ -72,7 +74,7 @@ func NewSwitch(reactors []Reactor) *Switch {
 		}
 	}
 
-	s := &Switch{
+	sw := &Switch{
 		reactors:     reactors,
 		chDescs:      chDescs,
 		reactorsByCh: reactorsByCh,
@@ -83,41 +85,47 @@ func NewSwitch(reactors []Reactor) *Switch {
 		stopped:      0,
 	}
 
-	return s
+	return sw
 }
 
-func (s *Switch) Start() {
-	if atomic.CompareAndSwapUint32(&s.started, 0, 1) {
+func (sw *Switch) Start() {
+	if atomic.CompareAndSwapUint32(&sw.started, 0, 1) {
 		log.Info("Starting switch")
+		for _, reactor := range sw.reactors {
+			reactor.Start(sw)
+		}
 	}
 }
 
-func (s *Switch) Stop() {
-	if atomic.CompareAndSwapUint32(&s.stopped, 0, 1) {
+func (sw *Switch) Stop() {
+	if atomic.CompareAndSwapUint32(&sw.stopped, 0, 1) {
 		log.Info("Stopping switch")
-		close(s.quit)
-		// stop each peer.
-		for _, peer := range s.peers.List() {
+		close(sw.quit)
+		// Stop each peer.
+		for _, peer := range sw.peers.List() {
 			peer.stop()
 		}
-		// empty tree.
-		s.peers = NewPeerSet()
+		sw.peers = NewPeerSet()
+		// Stop all reactors.
+		for _, reactor := range sw.reactors {
+			reactor.Stop()
+		}
 	}
 }
 
-func (s *Switch) Reactors() []Reactor {
-	return s.reactors
+func (sw *Switch) Reactors() []Reactor {
+	return sw.reactors
 }
 
-func (s *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, error) {
-	if atomic.LoadUint32(&s.stopped) == 1 {
+func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, error) {
+	if atomic.LoadUint32(&sw.stopped) == 1 {
 		return nil, ErrSwitchStopped
 	}
 
-	peer := newPeer(conn, outbound, s.reactorsByCh, s.chDescs, s.StopPeerForError)
+	peer := newPeer(conn, outbound, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError)
 
 	// Add the peer to .peers
-	if s.peers.Add(peer) {
+	if sw.peers.Add(peer) {
 		log.Info("+ %v", peer)
 	} else {
 		log.Info("Ignoring duplicate: %v", peer)
@@ -128,42 +136,42 @@ func (s *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, err
 	go peer.start()
 
 	// Notify listeners.
-	s.doAddPeer(peer)
+	sw.doAddPeer(peer)
 
 	return peer, nil
 }
 
-func (s *Switch) DialPeerWithAddress(addr *NetAddress) (*Peer, error) {
-	if atomic.LoadUint32(&s.stopped) == 1 {
+func (sw *Switch) DialPeerWithAddress(addr *NetAddress) (*Peer, error) {
+	if atomic.LoadUint32(&sw.stopped) == 1 {
 		return nil, ErrSwitchStopped
 	}
 
 	log.Info("Dialing peer @ %v", addr)
-	s.dialing.Set(addr.String(), addr)
+	sw.dialing.Set(addr.String(), addr)
 	conn, err := addr.DialTimeout(peerDialTimeoutSeconds * time.Second)
-	s.dialing.Delete(addr.String())
+	sw.dialing.Delete(addr.String())
 	if err != nil {
 		return nil, err
 	}
-	peer, err := s.AddPeerWithConnection(conn, true)
+	peer, err := sw.AddPeerWithConnection(conn, true)
 	if err != nil {
 		return nil, err
 	}
 	return peer, nil
 }
 
-func (s *Switch) IsDialing(addr *NetAddress) bool {
-	return s.dialing.Has(addr.String())
+func (sw *Switch) IsDialing(addr *NetAddress) bool {
+	return sw.dialing.Has(addr.String())
 }
 
 // XXX: This is wrong, we can't just ignore failures on TrySend.
-func (s *Switch) Broadcast(chId byte, msg Binary) (numSuccess, numFailure int) {
-	if atomic.LoadUint32(&s.stopped) == 1 {
+func (sw *Switch) Broadcast(chId byte, msg Binary) (numSuccess, numFailure int) {
+	if atomic.LoadUint32(&sw.stopped) == 1 {
 		return
 	}
 
 	log.Debug("Broadcast on [%X]", chId, msg)
-	for _, peer := range s.peers.List() {
+	for _, peer := range sw.peers.List() {
 		success := peer.TrySend(chId, msg)
 		log.Debug("Broadcast for peer %v success: %v", peer, success)
 		if success {
@@ -177,8 +185,8 @@ func (s *Switch) Broadcast(chId byte, msg Binary) (numSuccess, numFailure int) {
 }
 
 // Returns the count of outbound/inbound and outbound-dialing peers.
-func (s *Switch) NumPeers() (outbound, inbound, dialing int) {
-	peers := s.peers.List()
+func (sw *Switch) NumPeers() (outbound, inbound, dialing int) {
+	peers := sw.peers.List()
 	for _, peer := range peers {
 		if peer.outbound {
 			outbound++
@@ -186,44 +194,44 @@ func (s *Switch) NumPeers() (outbound, inbound, dialing int) {
 			inbound++
 		}
 	}
-	dialing = s.dialing.Size()
+	dialing = sw.dialing.Size()
 	return
 }
 
-func (s *Switch) Peers() IPeerSet {
-	return s.peers
+func (sw *Switch) Peers() IPeerSet {
+	return sw.peers
 }
 
 // Disconnect from a peer due to external error.
 // TODO: make record depending on reason.
-func (s *Switch) StopPeerForError(peer *Peer, reason interface{}) {
+func (sw *Switch) StopPeerForError(peer *Peer, reason interface{}) {
 	log.Info("- %v !! reason: %v", peer, reason)
-	s.peers.Remove(peer)
+	sw.peers.Remove(peer)
 	peer.stop()
 
 	// Notify listeners
-	s.doRemovePeer(peer, reason)
+	sw.doRemovePeer(peer, reason)
 }
 
 // Disconnect from a peer gracefully.
 // TODO: handle graceful disconnects.
-func (s *Switch) StopPeerGracefully(peer *Peer) {
+func (sw *Switch) StopPeerGracefully(peer *Peer) {
 	log.Info("- %v", peer)
-	s.peers.Remove(peer)
+	sw.peers.Remove(peer)
 	peer.stop()
 
 	// Notify listeners
-	s.doRemovePeer(peer, nil)
+	sw.doRemovePeer(peer, nil)
 }
 
-func (s *Switch) doAddPeer(peer *Peer) {
-	for _, reactor := range s.reactors {
+func (sw *Switch) doAddPeer(peer *Peer) {
+	for _, reactor := range sw.reactors {
 		reactor.AddPeer(peer)
 	}
 }
 
-func (s *Switch) doRemovePeer(peer *Peer, reason interface{}) {
-	for _, reactor := range s.reactors {
+func (sw *Switch) doRemovePeer(peer *Peer, reason interface{}) {
+	for _, reactor := range sw.reactors {
 		reactor.RemovePeer(peer, reason)
 	}
 }

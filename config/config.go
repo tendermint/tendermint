@@ -22,7 +22,7 @@ var Config Config_
 func setFlags(printHelp *bool) {
 	flag.BoolVar(printHelp, "help", false, "Print this help message.")
 	flag.StringVar(&Config.LAddr, "laddr", Config.LAddr, "Listen address. (0.0.0.0:0 means any interface, any port)")
-	flag.StringVar(&Config.Seed, "seed", Config.Seed, "Address of seed node")
+	flag.StringVar(&Config.SeedNode, "seed", Config.SeedNode, "Address of seed node")
 }
 
 func ParseFlags() {
@@ -67,9 +67,9 @@ func ParseFlags() {
 /* Default configuration */
 
 var defaultConfig = Config_{
-	Network: "tendermint_testnet0",
-	LAddr:   "0.0.0.0:0",
-	Seed:    "",
+	Network:  "tendermint_testnet0",
+	LAddr:    "0.0.0.0:0",
+	SeedNode: "",
 	Db: DbConfig{
 		Type: "level",
 		Dir:  RootDir + "/data",
@@ -80,11 +80,11 @@ var defaultConfig = Config_{
 /* Configuration types */
 
 type Config_ struct {
-	Network string
-	LAddr   string
-	Seed    string
-	Db      DbConfig
-	Twilio  TwilioConfig
+	Network  string
+	LAddr    string
+	SeedNode string
+	Db       DbConfig
+	Twilio   TwilioConfig
 }
 
 type TwilioConfig struct {
@@ -107,8 +107,8 @@ func (cfg *Config_) validate() error {
 	if cfg.LAddr == "" {
 		cfg.LAddr = defaultConfig.LAddr
 	}
-	if cfg.Seed == "" {
-		cfg.Seed = defaultConfig.Seed
+	if cfg.SeedNode == "" {
+		cfg.SeedNode = defaultConfig.SeedNode
 	}
 	if cfg.Db.Type == "" {
 		return errors.New("Db.Type must be set")
@@ -136,11 +136,3 @@ func (cfg *Config_) write(configFile string) {
 		panic(err)
 	}
 }
-
-/* TODO: generate priv/pub keys
-func generateKeys() string {
-    bytes := &[30]byte{}
-    rand.Read(bytes[:])
-    return hex.EncodeToString(bytes[:])
-}
-*/

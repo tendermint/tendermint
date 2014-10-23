@@ -51,39 +51,6 @@ type State struct {
 	accountDetails      merkle.Tree // Shouldn't be accessed directly.
 }
 
-func GenesisState(db db_.DB, genesisTime time.Time, accDets []*AccountDetail) *State {
-
-	// TODO: Use "uint64Codec" instead of BasicCodec
-	accountDetails := merkle.NewIAVLTree(BasicCodec, AccountDetailCodec, defaultAccountDetailsCacheCapacity, db)
-	validators := []*Validator{}
-
-	for _, accDet := range accDets {
-		accountDetails.Set(accDet.Id, accDet)
-		if accDet.Status == AccountStatusBonded {
-			validators = append(validators, &Validator{
-				Account:     accDet.Account,
-				BondHeight:  0,
-				VotingPower: accDet.Balance,
-				Accum:       0,
-			})
-		}
-	}
-
-	if len(validators) == 0 {
-		panic("Must have some validators")
-	}
-
-	return &State{
-		DB:                  db,
-		Height:              0,
-		BlockHash:           nil,
-		BlockTime:           genesisTime,
-		BondedValidators:    NewValidatorSet(validators),
-		UnbondingValidators: NewValidatorSet(nil),
-		accountDetails:      accountDetails,
-	}
-}
-
 func LoadState(db db_.DB) *State {
 	s := &State{DB: db}
 	buf := db.Get(stateKey)
