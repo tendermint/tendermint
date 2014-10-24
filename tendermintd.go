@@ -1,3 +1,5 @@
+// +build tendermintd
+
 package main
 
 import (
@@ -20,6 +22,7 @@ type Node struct {
 	pexReactor       *p2p.PEXReactor
 	mempoolReactor   *mempool_.MempoolReactor
 	consensusReactor *consensus.ConsensusReactor
+	privValidator    *consensus.PrivValidator
 }
 
 func NewNode() *Node {
@@ -34,6 +37,14 @@ func NewNode() *Node {
 		state = state_.GenesisStateFromFile(stateDB, config.RootDir+"/genesis.json")
 	}
 
+	// Get PrivAccount
+	var privValidator *consensus.PrivValidator
+	if _, err := os.Stat(config.RootDir + "/private.json"); os.IsExist(err) {
+		privAccount := state_.PrivAccountFromFile(config.RootDir + "/private.json")
+		privValidatorDB := db_.NewMemDB() // TODO configurable db.
+		privValidator = consensus.NewPrivValidator(privValidatorDB, privAccount)
+	}
+
 	// Get PEXReactor
 	book := p2p.NewAddrBook(config.RootDir + "/addrbook.json")
 	pexReactor := p2p.NewPEXReactor(book)
@@ -44,6 +55,9 @@ func NewNode() *Node {
 
 	// Get ConsensusReactor
 	consensusReactor := consensus.NewConsensusReactor(blockStore, mempool, state)
+	if privValidator != nil {
+		consensusReactor.SetPrivValidator(privValidator)
+	}
 
 	sw := p2p.NewSwitch([]p2p.Reactor{pexReactor, mempoolReactor, consensusReactor})
 
@@ -53,6 +67,7 @@ func NewNode() *Node {
 		pexReactor:       pexReactor,
 		mempoolReactor:   mempoolReactor,
 		consensusReactor: consensusReactor,
+		privValidator:    privValidator,
 	}
 }
 

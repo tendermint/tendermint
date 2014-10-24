@@ -1,8 +1,10 @@
 package state
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/blocks"
@@ -136,6 +138,24 @@ func GenPrivAccount() *PrivAccount {
 		},
 		PrivKey: privKey,
 	}
+}
+
+// The Account.Id is empty since it isn't in the blockchain.
+func PrivAccountFromJSON(jsonBlob []byte) (privAccount *PrivAccount) {
+	err := json.Unmarshal(jsonBlob, &privAccount)
+	if err != nil {
+		Panicf("Couldn't read PrivAccount: %v", err)
+	}
+	return
+}
+
+// The Account.Id is empty since it isn't in the blockchain.
+func PrivAccountFromFile(file string) *PrivAccount {
+	jsonBlob, err := ioutil.ReadFile(file)
+	if err != nil {
+		Panicf("Couldn't read PrivAccount from file: %v", err)
+	}
+	return PrivAccountFromJSON(jsonBlob)
 }
 
 func (pa *PrivAccount) SignBytes(msg []byte) Signature {

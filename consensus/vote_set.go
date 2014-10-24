@@ -238,3 +238,13 @@ func (vs *VoteSet) StringWithIndent(indent string) string {
 		indent, vs.votesBitArray,
 		indent)
 }
+
+func (vs *VoteSet) Description() string {
+	if vs == nil {
+		return "nil-VoteSet"
+	}
+	vs.mtx.Lock()
+	defer vs.mtx.Unlock()
+	return fmt.Sprintf(`VoteSet{H:%v R:%v T:%v %v}`,
+		vs.height, vs.round, vs.type_, vs.votesBitArray)
+}

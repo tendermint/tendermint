@@ -16,7 +16,7 @@ type GenesisDoc struct {
 	AccountDetails []*AccountDetail
 }
 
-func ReadGenesisDocJSON(jsonBlob []byte) (genState *GenesisDoc) {
+func GenesisDocFromJSON(jsonBlob []byte) (genState *GenesisDoc) {
 	err := json.Unmarshal(jsonBlob, &genState)
 	if err != nil {
 		Panicf("Couldn't read GenesisDoc: %v", err)
@@ -29,7 +29,7 @@ func GenesisStateFromFile(db db_.DB, genDocFile string) *State {
 	if err != nil {
 		Panicf("Couldn't read GenesisDoc file: %v", err)
 	}
-	genDoc := ReadGenesisDocJSON(jsonBlob)
+	genDoc := GenesisDocFromJSON(jsonBlob)
 	return GenesisStateFromDoc(db, genDoc)
 }
 

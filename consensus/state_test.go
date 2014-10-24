@@ -50,6 +50,15 @@ func makeConsensusState() (*ConsensusState, []*state.PrivAccount) {
 	return cs, privAccounts
 }
 
+func assertPanics(t *testing.T, msg string, f func()) {
+	defer func() {
+		if err := recover(); err == nil {
+			t.Error("Should have panic'd, but didn't. %v", msg)
+		}
+	}()
+	f()
+}
+
 //-----------------------------------------------------------------------------
 
 func TestSetupRound(t *testing.T) {
@@ -91,14 +100,9 @@ func TestSetupRound(t *testing.T) {
 	}
 
 	// Setup round 1 (should fail)
-	{
-		defer func() {
-			if e := recover(); e == nil {
-				t.Errorf("Expected to panic, round did not increment")
-			}
-		}()
+	assertPanics(t, "Round did not increment", func() {
 		cs.SetupRound(1)
-	}
+	})
 
 }
 
@@ -113,7 +117,7 @@ func TestRunActionProposeNoPrivValidator(t *testing.T) {
 
 func TestRunActionPropose(t *testing.T) {
 	cs, privAccounts := makeConsensusState()
-	priv := NewPrivValidator(privAccounts[0], db_.NewMemDB())
+	priv := NewPrivValidator(db_.NewMemDB(), privAccounts[0])
 	cs.SetPrivValidator(priv)
 
 	cs.RunActionPropose(1, 0)
@@ -147,28 +151,22 @@ func checkRoundState(t *testing.T, cs *ConsensusState,
 
 func TestRunActionPrecommitCommitFinalize(t *testing.T) {
 	cs, privAccounts := makeConsensusState()
-	priv := NewPrivValidator(privAccounts[0], db_.NewMemDB())
+	priv := NewPrivValidator(db_.NewMemDB(), privAccounts[0])
 	cs.SetPrivValidator(priv)
 
-	blockHash := cs.RunActionPrecommit(1, 0)
-	if blockHash != nil {
-		t.Errorf("RunActionPrecommit should fail without a proposal")
+	vote := cs.RunActionPrecommit(1, 0)
+	if vote != nil {
+		t.Errorf("RunActionPrecommit should return nil without a proposal")
 	}
 
 	cs.RunActionPropose(1, 0)
 
 	// Test RunActionPrecommit failures:
-	blockHash = cs.RunActionPrecommit(1, 1)
-	if blockHash != nil {
-		t.Errorf("RunActionPrecommit should fail for wrong round")
-	}
-	blockHash = cs.RunActionPrecommit(2, 0)
-	if blockHash != nil {
-		t.Errorf("RunActionPrecommit should fail for wrong height")
-	}
-	blockHash = cs.RunActionPrecommit(1, 0)
-	if blockHash != nil {
-		t.Errorf("RunActionPrecommit should fail, not enough prevotes")
+	assertPanics(t, "Wrong height ", func() { cs.RunActionPrecommit(2, 0) })
+	assertPanics(t, "Wrong round", func() { cs.RunActionPrecommit(1, 1) })
+	vote = cs.RunActionPrecommit(1, 0)
+	if vote != nil {
+		t.Errorf("RunActionPrecommit should return nil, not enough prevotes")
 	}
 
 	// Add at least +2/3 prevotes.
@@ -184,21 +182,15 @@ func TestRunActionPrecommitCommitFinalize(t *testing.T) {
 	}
 
 	// Test RunActionPrecommit success:
-	blockHash = cs.RunActionPrecommit(1, 0)
-	if len(blockHash) == 0 {
+	vote = cs.RunActionPrecommit(1, 0)
+	if vote == nil {
 		t.Errorf("RunActionPrecommit should have succeeded")
 	}
 	checkRoundState(t, cs, 1, 0, RoundStepPrecommit)
 
 	// Test RunActionCommit failures:
-	blockHash = cs.RunActionCommit(2)
-	if blockHash != nil {
-		t.Errorf("RunActionCommit should fail for wrong height")
-	}
-	blockHash = cs.RunActionCommit(1)
-	if blockHash != nil {
-		t.Errorf("RunActionCommit should fail, not enough commits")
-	}
+	assertPanics(t, "Wrong height ", func() { cs.RunActionCommit(2, 0) })
+	assertPanics(t, "Wrong round", func() { cs.RunActionCommit(1, 1) })
 
 	// Add at least +2/3 precommits.
 	for i := 0; i < 7; i++ {
@@ -213,8 +205,8 @@ func TestRunActionPrecommitCommitFinalize(t *testing.T) {
 	}
 
 	// Test RunActionCommit success:
-	blockHash = cs.RunActionCommit(1)
-	if len(blockHash) == 0 {
+	vote = cs.RunActionCommit(1, 0)
+	if vote == nil {
 		t.Errorf("RunActionCommit should have succeeded")
 	}
 	checkRoundState(t, cs, 1, 0, RoundStepCommit)
@@ -237,13 +229,13 @@ func TestRunActionPrecommitCommitFinalize(t *testing.T) {
 	}
 
 	// Test RunActionCommitWait:
-	cs.RunActionCommitWait(1)
+	cs.RunActionCommitWait(1, 0)
 	if cs.CommitTime.IsZero() {
 		t.Errorf("Expected CommitTime to have been set")
 	}
 	checkRoundState(t, cs, 1, 0, RoundStepCommitWait)
 
 	// Test RunActionFinalize:
-	cs.RunActionFinalize(1)
+	cs.RunActionFinalize(1, 0)
 	checkRoundState(t, cs, 2, 0, RoundStepStart)
 }

@@ -9,12 +9,12 @@ import (
 //-----------------------------------------------------------------------------
 
 type PrivValidator struct {
-	state.PrivAccount
 	db db_.DB
+	state.PrivAccount
 }
 
-func NewPrivValidator(priv *state.PrivAccount, db db_.DB) *PrivValidator {
-	return &PrivValidator{*priv, db}
+func NewPrivValidator(db db_.DB, priv *state.PrivAccount) *PrivValidator {
+	return &PrivValidator{db, *priv}
 }
 
 // Double signing results in a panic.

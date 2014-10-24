@@ -58,14 +58,14 @@ func calcRound(startTime time.Time) uint16 {
 	if now.Before(startTime) {
 		return 0
 	}
-	// Start + D_0 * R + D_delta * (R^2 - R)/2 <= Now; find largest integer R.
-	// D_delta * R^2 + (2D_0 - D_delta) * R + 2(Start - Now) <= 0.
+	// Start  +  D_0 * R  +  D_delta * (R^2 - R)/2  <=  Now; find largest integer R.
+	// D_delta * R^2  +  (2D_0 - D_delta) * R  +  2(Start - Now)  <=  0.
 	// AR^2 + BR + C <= 0; A = D_delta, B = (2_D0 - D_delta), C = 2(Start - Now).
 	// R = Floor((-B + Sqrt(B^2 - 4AC))/2A)
 	A := float64(roundDurationDelta)
 	B := 2.0*float64(roundDuration0) - float64(roundDurationDelta)
 	C := 2.0 * float64(startTime.Sub(now))
-	R := math.Floor((-B + math.Sqrt(B*B-4.0*A*C)/(2*A)))
+	R := math.Floor((-B + math.Sqrt(B*B-4.0*A*C)) / (2 * A))
 	if math.IsNaN(R) {
 		panic("Could not calc round, should not happen")
 	}
@@ -300,20 +300,20 @@ func (conR *ConsensusReactor) stepTransitionRoutine() {
 				// It's a new RoundState.
 				if elapsedRatio < 0 {
 					// startTime is in the future.
-					time.Sleep(time.Duration(-1.0*elapsedRatio) * roundDuration)
+					time.Sleep(time.Duration((-1.0 * elapsedRatio) * float64(roundDuration)))
 				}
 				conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundActionPropose}
 			case RoundStepPropose:
 				// Wake up when it's time to vote.
-				time.Sleep(time.Duration(roundDeadlinePrevote-elapsedRatio) * roundDuration)
+				time.Sleep(time.Duration((roundDeadlinePrevote - elapsedRatio) * float64(roundDuration)))
 				conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundActionPrevote}
 			case RoundStepPrevote:
 				// Wake up when it's time to precommit.
-				time.Sleep(time.Duration(roundDeadlinePrecommit-elapsedRatio) * roundDuration)
+				time.Sleep(time.Duration((roundDeadlinePrecommit - elapsedRatio) * float64(roundDuration)))
 				conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundActionPrecommit}
 			case RoundStepPrecommit:
 				// Wake up when the round is over.
-				time.Sleep(time.Duration(1.0-elapsedRatio) * roundDuration)
+				time.Sleep(time.Duration((1.0 - elapsedRatio) * float64(roundDuration)))
 				conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundActionNextRound}
 			case RoundStepCommit:
 				panic("Should not happen: RoundStepCommit waits until +2/3 commits.")
@@ -344,6 +344,8 @@ ACTION_LOOP:
 		round := roundAction.Round
 		action := roundAction.Action
 		rs := conR.conS.GetRoundState()
+		log.Info("Running round action A:%X %v", action, rs.Description())
+
 		broadcastNewRoundStep := func(step RoundStep) {
 			// Broadcast NewRoundStepMessage
 			msg := &NewRoundStepMessage{
@@ -379,14 +381,11 @@ ACTION_LOOP:
 			if rs.Step >= RoundStepPrevote {
 				continue ACTION_LOOP
 			}
-			hash := conR.conS.RunActionPrevote(rs.Height, rs.Round)
+			vote := conR.conS.RunActionPrevote(rs.Height, rs.Round)
 			broadcastNewRoundStep(RoundStepPrevote)
-			conR.signAndBroadcastVote(rs, &Vote{
-				Height:    rs.Height,
-				Round:     rs.Round,
-				Type:      VoteTypePrevote,
-				BlockHash: hash,
-			})
+			if vote != nil {
+				conR.broadcastVote(vote)
+			}
 			scheduleNextAction()
 			continue ACTION_LOOP
 
@@ -394,15 +393,10 @@ ACTION_LOOP:
 			if rs.Step >= RoundStepPrecommit {
 				continue ACTION_LOOP
 			}
-			hash := conR.conS.RunActionPrecommit(rs.Height, rs.Round)
+			vote := conR.conS.RunActionPrecommit(rs.Height, rs.Round)
 			broadcastNewRoundStep(RoundStepPrecommit)
-			if len(hash) > 0 {
-				conR.signAndBroadcastVote(rs, &Vote{
-					Height:    rs.Height,
-					Round:     rs.Round,
-					Type:      VoteTypePrecommit,
-					BlockHash: hash,
-				})
+			if vote != nil {
+				conR.broadcastVote(vote)
 			}
 			scheduleNextAction()
 			continue ACTION_LOOP
@@ -420,17 +414,10 @@ ACTION_LOOP:
 				continue ACTION_LOOP
 			}
 			// NOTE: Duplicated in RoundActionCommitWait.
-			hash := conR.conS.RunActionCommit(rs.Height)
-			if len(hash) > 0 {
-				broadcastNewRoundStep(RoundStepCommit)
-				conR.signAndBroadcastVote(rs, &Vote{
-					Height:    rs.Height,
-					Round:     rs.Round,
-					Type:      VoteTypeCommit,
-					BlockHash: hash,
-				})
-			} else {
-				panic("This shouldn't happen")
+			vote := conR.conS.RunActionCommit(rs.Height, rs.Round)
+			broadcastNewRoundStep(RoundStepCommit)
+			if vote != nil {
+				conR.broadcastVote(vote)
 			}
 			// do not schedule next action.
 			continue ACTION_LOOP
@@ -442,21 +429,14 @@ ACTION_LOOP:
 			// Commit first we haven't already.
 			if rs.Step < RoundStepCommit {
 				// NOTE: Duplicated in RoundActionCommit.
-				hash := conR.conS.RunActionCommit(rs.Height)
-				if len(hash) > 0 {
-					broadcastNewRoundStep(RoundStepCommit)
-					conR.signAndBroadcastVote(rs, &Vote{
-						Height:    rs.Height,
-						Round:     rs.Round,
-						Type:      VoteTypeCommit,
-						BlockHash: hash,
-					})
-				} else {
-					panic("This shouldn't happen")
+				vote := conR.conS.RunActionCommit(rs.Height, rs.Round)
+				broadcastNewRoundStep(RoundStepCommit)
+				if vote != nil {
+					conR.broadcastVote(vote)
 				}
 			}
 			// Wait for more commit votes.
-			conR.conS.RunActionCommitWait(rs.Height)
+			conR.conS.RunActionCommitWait(rs.Height, rs.Round)
 			scheduleNextAction()
 			continue ACTION_LOOP
 
@@ -464,7 +444,7 @@ ACTION_LOOP:
 			if rs.Step != RoundStepCommitWait {
 				panic("This shouldn't happen")
 			}
-			conR.conS.RunActionFinalize(rs.Height)
+			conR.conS.RunActionFinalize(rs.Height, rs.Round)
 			// Height has been incremented, step is now RoundStepStart.
 			scheduleNextAction()
 			continue ACTION_LOOP
@@ -478,13 +458,9 @@ ACTION_LOOP:
 	}
 }
 
-func (conR *ConsensusReactor) signAndBroadcastVote(rs *RoundState, vote *Vote) {
-	if rs.PrivValidator != nil {
-		rs.PrivValidator.Sign(vote)
-		conR.conS.AddVote(vote)
-		msg := p2p.TypedMessage{msgTypeVote, vote}
-		conR.sw.Broadcast(VoteCh, msg)
-	}
+func (conR *ConsensusReactor) broadcastVote(vote *Vote) {
+	msg := p2p.TypedMessage{msgTypeVote, vote}
+	conR.sw.Broadcast(VoteCh, msg)
 }
 
 //--------------------------------------
@@ -826,7 +802,7 @@ func (m *NewRoundStepMessage) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (m *NewRoundStepMessage) String() string {
-	return fmt.Sprintf("[NewRoundStepMessage H:%v R:%v]", m.Height, m.Round)
+	return fmt.Sprintf("[NewRoundStep %v/%v/%X]", m.Height, m.Round, m.Step)
 }
 
 //-------------------------------------

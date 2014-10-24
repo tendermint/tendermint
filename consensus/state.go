@@ -22,8 +22,8 @@ const (
 	RoundStepPropose    = RoundStep(0x01) // Did propose, gossip proposal.
 	RoundStepPrevote    = RoundStep(0x02) // Did prevote, gossip prevotes.
 	RoundStepPrecommit  = RoundStep(0x03) // Did precommit, gossip precommits.
-	RoundStepCommit     = RoundStep(0x04) // Did commit, gossip commits.
-	RoundStepCommitWait = RoundStep(0x05) // Found +2/3 commits, wait more.
+	RoundStepCommit     = RoundStep(0x10) // Did commit, gossip commits.
+	RoundStepCommitWait = RoundStep(0x11) // Found +2/3 commits, wait more.
 
 	// If a block could not be committed at a given round,
 	// we progress to the next round, skipping RoundStepCommit.
@@ -37,9 +37,9 @@ const (
 	RoundActionPrevote    = RoundActionType(0x01) // Goto RoundStepPrevote
 	RoundActionPrecommit  = RoundActionType(0x02) // Goto RoundStepPrecommit
 	RoundActionNextRound  = RoundActionType(0x04) // Goto next round RoundStepStart
-	RoundActionCommit     = RoundActionType(0x05) // Goto RoundStepCommit or RoundStepStart next round
-	RoundActionCommitWait = RoundActionType(0x06) // Goto RoundStepCommitWait
-	RoundActionFinalize   = RoundActionType(0x07) // Goto RoundStepStart next height
+	RoundActionCommit     = RoundActionType(0x10) // Goto RoundStepCommit or RoundStepStart next round
+	RoundActionCommitWait = RoundActionType(0x11) // Goto RoundStepCommitWait
+	RoundActionFinalize   = RoundActionType(0x12) // Goto RoundStepStart next height
 )
 
 var (
@@ -107,8 +107,13 @@ func (rs *RoundState) StringWithIndent(indent string) string {
 		indent, rs.Prevotes.StringWithIndent(indent+"    "),
 		indent, rs.Precommits.StringWithIndent(indent+"    "),
 		indent, rs.Commits.StringWithIndent(indent+"    "),
-		indent, rs.LastCommits.StringWithIndent(indent+"    "),
+		indent, rs.LastCommits.Description(),
 		indent)
+}
+
+func (rs *RoundState) Description() string {
+	return fmt.Sprintf(`RS{%v/%v/%X %v}`,
+		rs.Height, rs.Round, rs.Step, rs.StartTime)
 }
 
 //-------------------------------------
@@ -298,17 +303,21 @@ func (cs *ConsensusState) RunActionPropose(height uint32, round uint16) {
 	cs.ProposalPOLPartSet = polPartSet
 }
 
-func (cs *ConsensusState) RunActionPrevote(height uint32, round uint16) []byte {
+func (cs *ConsensusState) RunActionPrevote(height uint32, round uint16) *Vote {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	if cs.Height != height || cs.Round != round {
-		return nil
+		Panicf("RunActionPrevote(%v/%v), expected %v/%v", height, round, cs.Height, cs.Round)
 	}
 	cs.Step = RoundStepPrevote
 
 	// If a block is locked, prevote that.
 	if cs.LockedBlock != nil {
-		return cs.LockedBlock.Hash()
+		return cs.signAddVote(VoteTypePrevote, cs.LockedBlock.Hash())
+	}
+	// If ProposalBlock is nil, prevote nil.
+	if cs.ProposalBlock == nil {
+		return nil
 	}
 	// Try staging proposed block.
 	err := cs.stageBlock(cs.ProposalBlock)
@@ -317,18 +326,18 @@ func (cs *ConsensusState) RunActionPrevote(height uint32, round uint16) []byte {
 		return nil
 	} else {
 		// Prevote block.
-		return cs.ProposalBlock.Hash()
+		return cs.signAddVote(VoteTypePrevote, cs.ProposalBlock.Hash())
 	}
 }
 
 // Lock the ProposalBlock if we have enough prevotes for it,
 // or unlock an existing lock if +2/3 of prevotes were nil.
 // Returns a blockhash if a block was locked.
-func (cs *ConsensusState) RunActionPrecommit(height uint32, round uint16) []byte {
+func (cs *ConsensusState) RunActionPrecommit(height uint32, round uint16) *Vote {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	if cs.Height != height || cs.Round != round {
-		return nil
+		Panicf("RunActionPrecommit(%v/%v), expected %v/%v", height, round, cs.Height, cs.Round)
 	}
 	cs.Step = RoundStepPrecommit
 
@@ -352,10 +361,10 @@ func (cs *ConsensusState) RunActionPrecommit(height uint32, round uint16) []byte
 			}
 			cs.LockedBlock = cs.ProposalBlock
 			cs.LockedBlockPartSet = cs.ProposalBlockPartSet
-			return hash
+			return cs.signAddVote(VoteTypePrecommit, hash)
 		} else if cs.LockedBlock.HashesTo(hash) {
 			// +2/3 prevoted for already locked block
-			return hash
+			return cs.signAddVote(VoteTypePrecommit, hash)
 		} else {
 			// We don't have the block that hashes to hash.
 			// Unlock if we're locked.
@@ -373,11 +382,11 @@ func (cs *ConsensusState) RunActionPrecommit(height uint32, round uint16) []byte
 // and returns the committed block.
 // Commit is not finalized until FinalizeCommit() is called.
 // This allows us to stay at this height and gather more commits.
-func (cs *ConsensusState) RunActionCommit(height uint32) []byte {
+func (cs *ConsensusState) RunActionCommit(height uint32, round uint16) *Vote {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
-	if cs.Height != height {
-		return nil
+	if cs.Height != height || cs.Round != round {
+		Panicf("RunActionCommit(%v/%v), expected %v/%v", height, round, cs.Height, cs.Round)
 	}
 	cs.Step = RoundStepCommit
 
@@ -424,17 +433,17 @@ func (cs *ConsensusState) RunActionCommit(height uint32) []byte {
 		// Update mempool.
 		cs.mempool.ResetForBlockAndState(block, cs.stagedState)
 
-		return block.Hash()
+		return cs.signAddVote(VoteTypeCommit, block.Hash())
 	}
 
 	return nil
 }
 
-func (cs *ConsensusState) RunActionCommitWait(height uint32) {
+func (cs *ConsensusState) RunActionCommitWait(height uint32, round uint16) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
-	if cs.Height != height {
-		return
+	if cs.Height != height || cs.Round != round {
+		Panicf("RunActionCommitWait(%v/%v), expected %v/%v", height, round, cs.Height, cs.Round)
 	}
 	cs.Step = RoundStepCommitWait
 
@@ -445,11 +454,11 @@ func (cs *ConsensusState) RunActionCommitWait(height uint32) {
 	}
 }
 
-func (cs *ConsensusState) RunActionFinalize(height uint32) {
+func (cs *ConsensusState) RunActionFinalize(height uint32, round uint16) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
-	if cs.Height != height {
-		return
+	if cs.Height != height || cs.Round != round {
+		Panicf("RunActionFinalize(%v/%v), expected %v/%v", height, round, cs.Height, cs.Round)
 	}
 
 	// What was staged becomes committed.
@@ -557,6 +566,9 @@ func (cs *ConsensusState) AddVote(vote *Vote) (added bool, err error) {
 }
 
 func (cs *ConsensusState) stageBlock(block *Block) error {
+	if block == nil {
+		panic("Cannot stage nil block")
+	}
 
 	// Already staged?
 	if cs.stagedBlock == block {
@@ -576,4 +588,19 @@ func (cs *ConsensusState) stageBlock(block *Block) error {
 		cs.stagedState = stateCopy
 		return nil
 	}
+}
+
+func (cs *ConsensusState) signAddVote(type_ byte, hash []byte) *Vote {
+	if cs.PrivValidator == nil || !cs.Validators.HasId(cs.PrivValidator.Id) {
+		return nil
+	}
+	vote := &Vote{
+		Height:    cs.Height,
+		Round:     cs.Round,
+		Type:      type_,
+		BlockHash: hash,
+	}
+	cs.PrivValidator.Sign(vote)
+	cs.AddVote(vote)
+	return vote
 }
