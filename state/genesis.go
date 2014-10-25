@@ -39,6 +39,10 @@ func GenesisStateFromDoc(db db_.DB, genDoc *GenesisDoc) *State {
 
 func GenesisState(db db_.DB, genesisTime time.Time, accDets []*AccountDetail) *State {
 
+	if genesisTime.IsZero() {
+		genesisTime = time.Now()
+	}
+
 	// TODO: Use "uint64Codec" instead of BasicCodec
 	accountDetails := merkle.NewIAVLTree(BasicCodec, AccountDetailCodec, defaultAccountDetailsCacheCapacity, db)
 	validators := []*Validator{}

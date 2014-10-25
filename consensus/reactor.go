@@ -293,7 +293,9 @@ func (conR *ConsensusReactor) stepTransitionRoutine() {
 	// when it is due.
 	scheduleNextAction := func() {
 		rs := conR.conS.GetRoundState()
-		_, _, roundDuration, _, elapsedRatio := calcRoundInfo(rs.StartTime)
+		round, roundStartTime, roundDuration, _, elapsedRatio := calcRoundInfo(rs.StartTime)
+		log.Debug("Called scheduleNextAction. round:%v roundStartTime:%v elapsedRatio:%v",
+			round, roundStartTime, elapsedRatio)
 		go func() {
 			switch rs.Step {
 			case RoundStepStart:
