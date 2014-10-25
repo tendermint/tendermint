@@ -173,7 +173,7 @@ func (sw *Switch) Broadcast(chId byte, msg Binary) (numSuccess, numFailure int) 
 	log.Debug("[%X] Broadcast: %v", chId, msg)
 	for _, peer := range sw.peers.List() {
 		success := peer.TrySend(chId, msg)
-		log.Debug("Broadcast for peer %v success: %v", peer, success)
+		// log.Debug("Broadcast for peer %v success: %v", peer, success)
 		if success {
 			numSuccess += 1
 		} else {

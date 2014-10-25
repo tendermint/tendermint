@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"errors"
+	"fmt"
 	"io"
 
 	. "github.com/tendermint/tendermint/binary"
@@ -20,7 +21,7 @@ type Proposal struct {
 	BlockPartsHash  []byte
 	POLPartsTotal   uint16
 	POLPartsHash    []byte
-	Signature
+	Signature       Signature
 }
 
 func NewProposal(height uint32, round uint16,
@@ -66,4 +67,11 @@ func (p *Proposal) GetSignature() Signature {
 
 func (p *Proposal) SetSignature(sig Signature) {
 	p.Signature = sig
+}
+
+func (p *Proposal) String() string {
+	return fmt.Sprintf("Proposal{%v/%v %X/%v %X/%v %v}", p.Height, p.Round,
+		p.BlockPartsHash, p.BlockPartsTotal,
+		p.POLPartsHash, p.POLPartsTotal,
+		p.Signature)
 }

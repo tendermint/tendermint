@@ -35,11 +35,12 @@ func NewNode() *Node {
 	state := state_.LoadState(stateDB)
 	if state == nil {
 		state = state_.GenesisStateFromFile(stateDB, config.RootDir+"/genesis.json")
+		state.Save()
 	}
 
 	// Get PrivAccount
 	var privValidator *consensus.PrivValidator
-	if _, err := os.Stat(config.RootDir + "/private.json"); os.IsExist(err) {
+	if _, err := os.Stat(config.RootDir + "/private.json"); err == nil {
 		privAccount := state_.PrivAccountFromFile(config.RootDir + "/private.json")
 		privValidatorDB := db_.NewMemDB() // TODO configurable db.
 		privValidator = consensus.NewPrivValidator(privValidatorDB, privAccount)

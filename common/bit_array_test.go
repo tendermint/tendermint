@@ -111,17 +111,17 @@ func TestOr(t *testing.T) {
 	}
 }
 
-func TestSub(t *testing.T) {
+func TestSub1(t *testing.T) {
 
 	bA1, _ := randBitArray(31)
 	bA2, _ := randBitArray(51)
 	bA3 := bA1.Sub(bA2)
 
-	if bA3.bits != 31 {
-		t.Error("Expected min bits")
+	if bA3.bits != bA1.bits {
+		t.Error("Expected bA1 bits")
 	}
 	if len(bA3.elems) != len(bA1.elems) {
-		t.Error("Expected min elems length")
+		t.Error("Expected bA1 elems length")
 	}
 	for i := uint(0); i < bA3.bits; i++ {
 		expected := bA1.GetIndex(i)
@@ -130,6 +130,29 @@ func TestSub(t *testing.T) {
 		}
 		if bA3.GetIndex(i) != expected {
 			t.Error("Wrong bit from bA3", i, bA1.GetIndex(i), bA2.GetIndex(i), bA3.GetIndex(i))
+		}
+	}
+}
+
+func TestSub2(t *testing.T) {
+
+	bA1, _ := randBitArray(51)
+	bA2, _ := randBitArray(31)
+	bA3 := bA1.Sub(bA2)
+
+	if bA3.bits != bA1.bits {
+		t.Error("Expected bA1 bits")
+	}
+	if len(bA3.elems) != len(bA1.elems) {
+		t.Error("Expected bA1 elems length")
+	}
+	for i := uint(0); i < bA3.bits; i++ {
+		expected := bA1.GetIndex(i)
+		if i < bA2.bits && bA2.GetIndex(i) {
+			expected = false
+		}
+		if bA3.GetIndex(i) != expected {
+			t.Error("Wrong bit from bA3")
 		}
 	}
 }

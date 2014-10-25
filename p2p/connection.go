@@ -127,7 +127,7 @@ func (c *MConnection) Stop() {
 }
 
 func (c *MConnection) String() string {
-	return fmt.Sprintf("/%v/", c.conn.RemoteAddr())
+	return fmt.Sprintf("MConn{%v}", c.conn.RemoteAddr())
 }
 
 func (c *MConnection) flush() {
@@ -163,6 +163,8 @@ func (c *MConnection) Send(chId byte, msg Binary) bool {
 		return false
 	}
 
+	log.Debug("[%X][%v] Send: %v", chId, c, msg)
+
 	// Send message to channel.
 	channel, ok := c.channelsIdx[chId]
 	if !ok {
@@ -187,6 +189,8 @@ func (c *MConnection) TrySend(chId byte, msg Binary) bool {
 	if atomic.LoadUint32(&c.stopped) == 1 {
 		return false
 	}
+
+	log.Debug("[%X][%v] TrySend: %v", chId, c, msg)
 
 	// Send message to channel.
 	channel, ok := c.channelsIdx[chId]
@@ -312,7 +316,7 @@ func (c *MConnection) sendPacket() bool {
 	if leastChannel == nil {
 		return true
 	} else {
-		log.Debug("Found a packet to send")
+		// log.Debug("Found a packet to send")
 	}
 
 	// Make & send a packet from this channel
@@ -553,7 +557,7 @@ func (p packet) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (p packet) String() string {
-	return fmt.Sprintf("%X:%X", p.ChannelId, p.Bytes)
+	return fmt.Sprintf("Packet{%X:%X}", p.ChannelId, p.Bytes)
 }
 
 func readPacketSafe(r io.Reader) (pkt packet, n int64, err error) {
@@ -580,7 +584,7 @@ func (tm TypedMessage) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (tm TypedMessage) String() string {
-	return fmt.Sprintf("<%X:%v>", tm.Type, tm.Msg)
+	return fmt.Sprintf("TMsg{%X:%v}", tm.Type, tm.Msg)
 }
 
 func (tm TypedMessage) Bytes() []byte {

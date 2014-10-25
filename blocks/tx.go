@@ -75,9 +75,9 @@ func ReadTx(r io.Reader, n *int64, err *error) Tx {
 //-----------------------------------------------------------------------------
 
 type BaseTx struct {
-	Sequence uint
-	Fee      uint64
-	Signature
+	Sequence  uint
+	Fee       uint64
+	Signature Signature
 }
 
 func ReadBaseTx(r io.Reader, n *int64, err *error) BaseTx {

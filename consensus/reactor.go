@@ -183,6 +183,8 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 	voteAddCounter := 0
 	var err error = nil
 
+	log.Debug("[%X][%v] Receive: %v", chId, peer, msg_)
+
 	switch chId {
 	case StateCh:
 		switch msg_.(type) {
@@ -351,9 +353,10 @@ ACTION_LOOP:
 		broadcastNewRoundStep := func(step RoundStep) {
 			// Broadcast NewRoundStepMessage
 			msg := &NewRoundStepMessage{
-				Height: height,
-				Round:  round,
-				Step:   step,
+				Height:                height,
+				Round:                 round,
+				Step:                  step,
+				NumValidators:         uint32(rs.Validators.Size()),
 				SecondsSinceStartTime: uint32(rs.RoundElapsed().Seconds()),
 			}
 			conR.sw.Broadcast(StateCh, msg)
@@ -512,17 +515,19 @@ OUTER_LOOP:
 		}
 
 		// Send proposal POL part?
-		if index, ok := rs.ProposalPOLPartSet.BitArray().Sub(
-			prs.ProposalPOLBitArray).PickRandom(); ok {
-			msg := &PartMessage{
-				Height: rs.Height,
-				Round:  rs.Round,
-				Type:   partTypeProposalPOL,
-				Part:   rs.ProposalPOLPartSet.GetPart(uint16(index)),
+		if rs.ProposalPOLPartSet != nil {
+			if index, ok := rs.ProposalPOLPartSet.BitArray().Sub(
+				prs.ProposalPOLBitArray).PickRandom(); ok {
+				msg := &PartMessage{
+					Height: rs.Height,
+					Round:  rs.Round,
+					Type:   partTypeProposalPOL,
+					Part:   rs.ProposalPOLPartSet.GetPart(uint16(index)),
+				}
+				peer.Send(DataCh, msg)
+				ps.SetHasProposalPOLPart(rs.Height, rs.Round, uint16(index))
+				continue OUTER_LOOP
 			}
-			peer.Send(DataCh, msg)
-			ps.SetHasProposalPOLPart(rs.Height, rs.Round, uint16(index))
-			continue OUTER_LOOP
 		}
 
 		// Nothing to do. Sleep.
@@ -708,15 +713,17 @@ func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage) error {
 	ps.StartTime = startTime
 
 	// Reset the rest
-	ps.Proposal = false
-	ps.ProposalBlockHash = nil
-	ps.ProposalBlockBitArray = BitArray{}
-	ps.ProposalPOLHash = nil
-	ps.ProposalPOLBitArray = BitArray{}
-	ps.Prevotes = BitArray{}
-	ps.Precommits = BitArray{}
+	if ps.Round != msg.Round {
+		ps.Proposal = false
+		ps.ProposalBlockHash = nil
+		ps.ProposalBlockBitArray = BitArray{}
+		ps.ProposalPOLHash = nil
+		ps.ProposalPOLBitArray = BitArray{}
+		ps.Prevotes = NewBitArray(uint(msg.NumValidators))
+		ps.Precommits = NewBitArray(uint(msg.NumValidators))
+	}
 	if ps.Height != msg.Height {
-		ps.Commits = BitArray{}
+		ps.Commits = NewBitArray(uint(msg.NumValidators))
 	}
 	return nil
 }
@@ -782,14 +789,16 @@ type NewRoundStepMessage struct {
 	Height                uint32
 	Round                 uint16
 	Step                  RoundStep
+	NumValidators         uint32
 	SecondsSinceStartTime uint32
 }
 
 func readNewRoundStepMessage(r io.Reader, n *int64, err *error) *NewRoundStepMessage {
 	return &NewRoundStepMessage{
-		Height: ReadUInt32(r, n, err),
-		Round:  ReadUInt16(r, n, err),
-		Step:   RoundStep(ReadUInt8(r, n, err)),
+		Height:                ReadUInt32(r, n, err),
+		Round:                 ReadUInt16(r, n, err),
+		Step:                  RoundStep(ReadUInt8(r, n, err)),
+		NumValidators:         ReadUInt32(r, n, err),
 		SecondsSinceStartTime: ReadUInt32(r, n, err),
 	}
 }
@@ -799,6 +808,7 @@ func (m *NewRoundStepMessage) WriteTo(w io.Writer) (n int64, err error) {
 	WriteUInt32(w, m.Height, &n, &err)
 	WriteUInt16(w, m.Round, &n, &err)
 	WriteUInt8(w, uint8(m.Step), &n, &err)
+	WriteUInt32(w, m.NumValidators, &n, &err)
 	WriteUInt32(w, m.SecondsSinceStartTime, &n, &err)
 	return
 }

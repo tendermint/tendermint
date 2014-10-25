@@ -56,16 +56,23 @@ func (bA BitArray) WriteTo(w io.Writer) (n int64, err error) {
 
 // NOTE: behavior is undefined if i >= bA.bits
 func (bA BitArray) GetIndex(i uint) bool {
+	if i >= bA.bits {
+		return false
+	}
 	return bA.elems[i/64]&uint64(1<<(i%64)) > 0
 }
 
 // NOTE: behavior is undefined if i >= bA.bits
-func (bA BitArray) SetIndex(i uint, v bool) {
+func (bA BitArray) SetIndex(i uint, v bool) bool {
+	if i >= bA.bits {
+		return false
+	}
 	if v {
 		bA.elems[i/64] |= uint64(1 << (i % 64))
 	} else {
 		bA.elems[i/64] &= ^uint64(1 << (i % 64))
 	}
+	return true
 }
 
 func (bA BitArray) Copy() BitArray {
@@ -107,11 +114,28 @@ func (bA BitArray) Not() BitArray {
 }
 
 func (bA BitArray) Sub(o BitArray) BitArray {
-	return bA.And(o.Not())
+	if bA.bits > o.bits {
+		c := bA.Copy()
+		for i := 0; i < len(o.elems)-1; i++ {
+			c.elems[i] &= ^c.elems[i]
+		}
+		i := uint(len(o.elems) - 1)
+		if i >= 0 {
+			for idx := i * 64; idx < o.bits; idx++ {
+				c.SetIndex(idx, c.GetIndex(idx) && !o.GetIndex(idx))
+			}
+		}
+		return c
+	} else {
+		return bA.And(o.Not())
+	}
 }
 
 func (bA BitArray) PickRandom() (int, bool) {
 	length := len(bA.elems)
+	if length == 0 {
+		return 0, false
+	}
 	randElemStart := rand.Intn(length)
 	for i := 0; i < length; i++ {
 		elemIdx := ((i + randElemStart) % length)
