@@ -710,13 +710,13 @@ func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage) error {
 	// Reset the rest
 	ps.Proposal = false
 	ps.ProposalBlockHash = nil
-	ps.ProposalBlockBitArray = nil
+	ps.ProposalBlockBitArray = BitArray{}
 	ps.ProposalPOLHash = nil
-	ps.ProposalPOLBitArray = nil
-	ps.Prevotes = nil
-	ps.Precommits = nil
+	ps.ProposalPOLBitArray = BitArray{}
+	ps.Prevotes = BitArray{}
+	ps.Precommits = BitArray{}
 	if ps.Height != msg.Height {
-		ps.Commits = nil
+		ps.Commits = BitArray{}
 	}
 	return nil
 }

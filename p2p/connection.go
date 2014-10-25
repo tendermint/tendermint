@@ -6,6 +6,7 @@ import (
 	"io"
 	"math"
 	"net"
+	"runtime/debug"
 	"sync/atomic"
 	"time"
 
@@ -141,7 +142,9 @@ func (c *MConnection) flush() {
 // Catch panics, usually caused by remote disconnects.
 func (c *MConnection) _recover() {
 	if r := recover(); r != nil {
-		c.stopForError(r)
+		stack := debug.Stack()
+		err := StackError{r, stack}
+		c.stopForError(err)
 	}
 }
 
@@ -374,16 +377,16 @@ FOR_LOOP:
 				}
 				break FOR_LOOP
 			}
-			channel := c.channels[pkt.ChannelId]
-			if channel == nil {
-				Panicf("Unknown channel %v", pkt.ChannelId)
+			channel, ok := c.channelsIdx[pkt.ChannelId]
+			if !ok || channel == nil {
+				Panicf("Unknown channel %X", pkt.ChannelId)
 			}
 			msgBytes := channel.recvPacket(pkt)
 			if msgBytes != nil {
 				c.onReceive(pkt.ChannelId, msgBytes)
 			}
 		default:
-			Panicf("Unknown message type %v", pktType)
+			Panicf("Unknown message type %X", pktType)
 		}
 
 		// TODO: shouldn't this go in the sendRoutine?
@@ -550,7 +553,7 @@ func (p packet) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (p packet) String() string {
-	return fmt.Sprintf("%v:%X", p.ChannelId, p.Bytes)
+	return fmt.Sprintf("%X:%X", p.ChannelId, p.Bytes)
 }
 
 func readPacketSafe(r io.Reader) (pkt packet, n int64, err error) {
