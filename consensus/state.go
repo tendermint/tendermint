@@ -49,25 +49,25 @@ var (
 
 // Immutable when returned from ConsensusState.GetRoundState()
 type RoundState struct {
-	Height               uint32 // Height we are working on
-	Round                uint16
-	Step                 RoundStep
-	StartTime            time.Time
-	CommitTime           time.Time // Time when +2/3 commits were found
-	Validators           *state.ValidatorSet
-	Proposal             *Proposal
-	ProposalBlock        *Block
-	ProposalBlockPartSet *PartSet
-	ProposalPOL          *POL
-	ProposalPOLPartSet   *PartSet
-	LockedBlock          *Block
-	LockedBlockPartSet   *PartSet
-	LockedPOL            *POL // Rarely needed, so no LockedPOLPartSet.
-	Prevotes             *VoteSet
-	Precommits           *VoteSet
-	Commits              *VoteSet
-	LastCommits          *VoteSet
-	PrivValidator        *PrivValidator
+	Height             uint32 // Height we are working on
+	Round              uint16
+	Step               RoundStep
+	StartTime          time.Time
+	CommitTime         time.Time // Time when +2/3 commits were found
+	Validators         *state.ValidatorSet
+	Proposal           *Proposal
+	ProposalBlock      *Block
+	ProposalBlockParts *PartSet
+	ProposalPOL        *POL
+	ProposalPOLParts   *PartSet
+	LockedBlock        *Block
+	LockedBlockParts   *PartSet
+	LockedPOL          *POL // Rarely needed, so no LockedPOLParts.
+	Prevotes           *VoteSet
+	Precommits         *VoteSet
+	Commits            *VoteSet
+	LastCommits        *VoteSet
+	PrivValidator      *PrivValidator
 }
 
 func (rs *RoundState) String() string {
@@ -95,9 +95,9 @@ func (rs *RoundState) StringWithIndent(indent string) string {
 		indent, rs.CommitTime,
 		indent, rs.Validators.StringWithIndent(indent+"    "),
 		indent, rs.Proposal,
-		indent, rs.ProposalBlockPartSet.Description(), rs.ProposalBlock.Description(),
-		indent, rs.ProposalPOLPartSet.Description(), rs.ProposalPOL.Description(),
-		indent, rs.LockedBlockPartSet.Description(), rs.LockedBlock.Description(),
+		indent, rs.ProposalBlockParts.Description(), rs.ProposalBlock.Description(),
+		indent, rs.ProposalPOLParts.Description(), rs.ProposalPOL.Description(),
+		indent, rs.LockedBlockParts.Description(), rs.LockedBlock.Description(),
 		indent, rs.LockedPOL.Description(),
 		indent, rs.Prevotes.StringWithIndent(indent+"    "),
 		indent, rs.Precommits.StringWithIndent(indent+"    "),
@@ -163,11 +163,11 @@ func (cs *ConsensusState) updateToState(state *state.State) {
 	cs.Validators = validators
 	cs.Proposal = nil
 	cs.ProposalBlock = nil
-	cs.ProposalBlockPartSet = nil
+	cs.ProposalBlockParts = nil
 	cs.ProposalPOL = nil
-	cs.ProposalPOLPartSet = nil
+	cs.ProposalPOLParts = nil
 	cs.LockedBlock = nil
-	cs.LockedBlockPartSet = nil
+	cs.LockedBlockParts = nil
 	cs.LockedPOL = nil
 	cs.Prevotes = NewVoteSet(height, 0, VoteTypePrevote, validators)
 	cs.Precommits = NewVoteSet(height, 0, VoteTypePrecommit, validators)
@@ -207,9 +207,9 @@ func (cs *ConsensusState) setupRound(round uint16) {
 	cs.Validators = validators
 	cs.Proposal = nil
 	cs.ProposalBlock = nil
-	cs.ProposalBlockPartSet = nil
+	cs.ProposalBlockParts = nil
 	cs.ProposalPOL = nil
-	cs.ProposalPOLPartSet = nil
+	cs.ProposalPOLParts = nil
 	cs.Prevotes = NewVoteSet(cs.Height, round, VoteTypePrevote, validators)
 	cs.Prevotes.AddFromCommits(cs.Commits)
 	cs.Precommits = NewVoteSet(cs.Height, round, VoteTypePrecommit, validators)
@@ -237,15 +237,15 @@ func (cs *ConsensusState) RunActionPropose(height uint32, round uint16) {
 	}
 
 	var block *Block
-	var blockPartSet *PartSet
+	var blockParts *PartSet
 	var pol *POL
-	var polPartSet *PartSet
+	var polParts *PartSet
 
 	// Decide on block and POL
 	if cs.LockedBlock != nil {
 		// If we're locked onto a block, just choose that.
 		block = cs.LockedBlock
-		blockPartSet = cs.LockedBlockPartSet
+		blockParts = cs.LockedBlockParts
 		pol = cs.LockedPOL
 	} else {
 		var validation Validation
@@ -276,26 +276,26 @@ func (cs *ConsensusState) RunActionPropose(height uint32, round uint16) {
 				Txs: txs,
 			},
 		}
-		blockPartSet = NewPartSetFromData(BinaryBytes(block))
+		blockParts = NewPartSetFromData(BinaryBytes(block))
 		pol = cs.LockedPOL // If exists, is a PoUnlock.
 	}
 
 	if pol != nil {
-		polPartSet = NewPartSetFromData(BinaryBytes(pol))
+		polParts = NewPartSetFromData(BinaryBytes(pol))
 	}
 
 	// Make proposal
 	proposal := NewProposal(cs.Height, cs.Round,
-		blockPartSet.Total(), blockPartSet.RootHash(),
-		polPartSet.Total(), polPartSet.RootHash())
+		blockParts.Total(), blockParts.RootHash(),
+		polParts.Total(), polParts.RootHash())
 	cs.PrivValidator.Sign(proposal)
 
 	// Set fields
 	cs.Proposal = proposal
 	cs.ProposalBlock = block
-	cs.ProposalBlockPartSet = blockPartSet
+	cs.ProposalBlockParts = blockParts
 	cs.ProposalPOL = pol
-	cs.ProposalPOLPartSet = polPartSet
+	cs.ProposalPOLParts = polParts
 }
 
 func (cs *ConsensusState) RunActionPrevote(height uint32, round uint16) *Vote {
@@ -344,7 +344,7 @@ func (cs *ConsensusState) RunActionPrecommit(height uint32, round uint16) *Vote 
 		if len(hash) == 0 {
 			// +2/3 prevoted nil. Just unlock.
 			cs.LockedBlock = nil
-			cs.LockedBlockPartSet = nil
+			cs.LockedBlockParts = nil
 			return nil
 		} else if cs.ProposalBlock.HashesTo(hash) {
 			// +2/3 prevoted for proposal block
@@ -355,7 +355,7 @@ func (cs *ConsensusState) RunActionPrecommit(height uint32, round uint16) *Vote 
 				return nil
 			}
 			cs.LockedBlock = cs.ProposalBlock
-			cs.LockedBlockPartSet = cs.ProposalBlockPartSet
+			cs.LockedBlockParts = cs.ProposalBlockParts
 			return cs.signAddVote(VoteTypePrecommit, hash)
 		} else if cs.LockedBlock.HashesTo(hash) {
 			// +2/3 prevoted for already locked block
@@ -364,7 +364,7 @@ func (cs *ConsensusState) RunActionPrecommit(height uint32, round uint16) *Vote 
 			// We don't have the block that hashes to hash.
 			// Unlock if we're locked.
 			cs.LockedBlock = nil
-			cs.LockedBlockPartSet = nil
+			cs.LockedBlockParts = nil
 			return nil
 		}
 	} else {
@@ -396,13 +396,13 @@ func (cs *ConsensusState) RunActionCommit(height uint32, round uint16) *Vote {
 		// TODO: Identify these strange cases.
 
 		var block *Block
-		var blockPartSet *PartSet
+		var blockParts *PartSet
 		if cs.LockedBlock.HashesTo(hash) {
 			block = cs.LockedBlock
-			blockPartSet = cs.LockedBlockPartSet
+			blockParts = cs.LockedBlockParts
 		} else if cs.ProposalBlock.HashesTo(hash) {
 			block = cs.ProposalBlock
-			blockPartSet = cs.ProposalBlockPartSet
+			blockParts = cs.ProposalBlockParts
 		} else {
 			return nil
 		}
@@ -416,7 +416,7 @@ func (cs *ConsensusState) RunActionCommit(height uint32, round uint16) *Vote {
 		// Keep block in cs.Proposal*
 		if !cs.ProposalBlock.HashesTo(hash) {
 			cs.ProposalBlock = block
-			cs.ProposalBlockPartSet = blockPartSet
+			cs.ProposalBlockParts = blockParts
 		}
 
 		// Save to blockStore
@@ -457,6 +457,7 @@ func (cs *ConsensusState) RunActionFinalize(height uint32, round uint16) {
 	}
 
 	// What was staged becomes committed.
+	// XXX it's possible that this node never received the block to stage!!!
 	cs.updateToState(cs.stagedState)
 }
 
@@ -482,8 +483,8 @@ func (cs *ConsensusState) SetProposal(proposal *Proposal) error {
 	}
 
 	cs.Proposal = proposal
-	cs.ProposalBlockPartSet = NewPartSetFromMetadata(proposal.BlockPartsTotal, proposal.BlockPartsHash)
-	cs.ProposalPOLPartSet = NewPartSetFromMetadata(proposal.POLPartsTotal, proposal.POLPartsHash)
+	cs.ProposalBlockParts = NewPartSetFromMetadata(proposal.BlockPartsTotal, proposal.BlockPartsHash)
+	cs.ProposalPOLParts = NewPartSetFromMetadata(proposal.POLPartsTotal, proposal.POLPartsHash)
 	return nil
 }
 
@@ -498,18 +499,18 @@ func (cs *ConsensusState) AddProposalBlockPart(height uint32, round uint16, part
 	}
 
 	// We're not expecting a block part.
-	if cs.ProposalBlockPartSet != nil {
+	if cs.ProposalBlockParts != nil {
 		return false, nil // TODO: bad peer? Return error?
 	}
 
-	added, err = cs.ProposalBlockPartSet.AddPart(part)
+	added, err = cs.ProposalBlockParts.AddPart(part)
 	if err != nil {
 		return added, err
 	}
-	if added && cs.ProposalBlockPartSet.IsComplete() {
+	if added && cs.ProposalBlockParts.IsComplete() {
 		var n int64
 		var err error
-		cs.ProposalBlock = ReadBlock(cs.ProposalBlockPartSet.GetReader(), &n, &err)
+		cs.ProposalBlock = ReadBlock(cs.ProposalBlockParts.GetReader(), &n, &err)
 		return true, err
 	}
 	return true, nil
@@ -525,18 +526,18 @@ func (cs *ConsensusState) AddProposalPOLPart(height uint32, round uint16, part *
 	}
 
 	// We're not expecting a POL part.
-	if cs.ProposalPOLPartSet != nil {
+	if cs.ProposalPOLParts != nil {
 		return false, nil // TODO: bad peer? Return error?
 	}
 
-	added, err = cs.ProposalPOLPartSet.AddPart(part)
+	added, err = cs.ProposalPOLParts.AddPart(part)
 	if err != nil {
 		return added, err
 	}
-	if added && cs.ProposalPOLPartSet.IsComplete() {
+	if added && cs.ProposalPOLParts.IsComplete() {
 		var n int64
 		var err error
-		cs.ProposalPOL = ReadPOL(cs.ProposalPOLPartSet.GetReader(), &n, &err)
+		cs.ProposalPOL = ReadPOL(cs.ProposalPOLParts.GetReader(), &n, &err)
 		return true, err
 	}
 	return true, nil

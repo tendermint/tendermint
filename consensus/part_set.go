@@ -147,6 +147,13 @@ func (ps *PartSet) RootHash() []byte {
 	return ps.rootHash
 }
 
+func (ps *PartSet) HashesTo(rootHash []byte) bool {
+	if ps == nil {
+		return false
+	}
+	return bytes.Equal(ps.rootHash, rootHash)
+}
+
 func (ps *PartSet) Count() uint16 {
 	if ps == nil {
 		return 0

@@ -500,17 +500,17 @@ OUTER_LOOP:
 		rs := conR.conS.GetRoundState()
 		prs := ps.GetRoundState()
 
-		// If ProposalBlockHash matches, send parts?
+		// Send proposal Block parts?
 		// NOTE: if we or peer is at RoundStepCommit*, the round
 		// won't necessarily match, but that's OK.
-		if rs.ProposalBlock.HashesTo(prs.ProposalBlockHash) {
-			if index, ok := rs.ProposalBlockPartSet.BitArray().Sub(
+		if rs.ProposalBlockParts.HashesTo(prs.ProposalBlockPartsHash) {
+			if index, ok := rs.ProposalBlockParts.BitArray().Sub(
 				prs.ProposalBlockBitArray).PickRandom(); ok {
 				msg := &PartMessage{
 					Height: rs.Height,
 					Round:  rs.Round,
 					Type:   partTypeProposalBlock,
-					Part:   rs.ProposalBlockPartSet.GetPart(uint16(index)),
+					Part:   rs.ProposalBlockParts.GetPart(uint16(index)),
 				}
 				peer.Send(DataCh, msg)
 				ps.SetHasProposalBlockPart(rs.Height, rs.Round, uint16(index))
@@ -532,15 +532,15 @@ OUTER_LOOP:
 			continue OUTER_LOOP
 		}
 
-		// Send proposal POL part?
-		if rs.ProposalPOLPartSet != nil {
-			if index, ok := rs.ProposalPOLPartSet.BitArray().Sub(
+		// Send proposal POL parts?
+		if rs.ProposalPOLParts.HashesTo(prs.ProposalPOLPartsHash) {
+			if index, ok := rs.ProposalPOLParts.BitArray().Sub(
 				prs.ProposalPOLBitArray).PickRandom(); ok {
 				msg := &PartMessage{
 					Height: rs.Height,
 					Round:  rs.Round,
 					Type:   partTypeProposalPOL,
-					Part:   rs.ProposalPOLPartSet.GetPart(uint16(index)),
+					Part:   rs.ProposalPOLParts.GetPart(uint16(index)),
 				}
 				peer.Send(DataCh, msg)
 				ps.SetHasProposalPOLPart(rs.Height, rs.Round, uint16(index))
@@ -642,18 +642,18 @@ OUTER_LOOP:
 
 // Read only when returned by PeerState.GetRoundState().
 type PeerRoundState struct {
-	Height                uint32    // Height peer is at
-	Round                 uint16    // Round peer is at
-	Step                  RoundStep // Step peer is at
-	StartTime             time.Time // Estimated start of round 0 at this height
-	Proposal              bool      // True if peer has proposal for this round
-	ProposalBlockHash     []byte    // Block parts merkle root
-	ProposalBlockBitArray BitArray  // Block parts bitarray
-	ProposalPOLHash       []byte    // POL parts merkle root
-	ProposalPOLBitArray   BitArray  // POL parts bitarray
-	Prevotes              BitArray  // All votes peer has for this round
-	Precommits            BitArray  // All precommits peer has for this round
-	Commits               BitArray  // All commits peer has for this height
+	Height                 uint32    // Height peer is at
+	Round                  uint16    // Round peer is at
+	Step                   RoundStep // Step peer is at
+	StartTime              time.Time // Estimated start of round 0 at this height
+	Proposal               bool      // True if peer has proposal for this round
+	ProposalBlockPartsHash []byte    // Block parts merkle root
+	ProposalBlockBitArray  BitArray  // Block parts bitarray
+	ProposalPOLPartsHash   []byte    // POL parts merkle root
+	ProposalPOLBitArray    BitArray  // POL parts bitarray
+	Prevotes               BitArray  // All votes peer has for this round
+	Precommits             BitArray  // All precommits peer has for this round
+	Commits                BitArray  // All commits peer has for this height
 }
 
 //-----------------------------------------------------------------------------
@@ -693,7 +693,9 @@ func (ps *PeerState) SetHasProposal(proposal *Proposal) {
 	}
 
 	ps.Proposal = true
+	ps.ProposalBlockPartsHash = proposal.BlockPartsHash
 	ps.ProposalBlockBitArray = NewBitArray(uint(proposal.BlockPartsTotal))
+	ps.ProposalPOLPartsHash = proposal.POLPartsHash
 	ps.ProposalPOLBitArray = NewBitArray(uint(proposal.POLPartsTotal))
 }
 
@@ -774,9 +776,9 @@ func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage, rs *Roun
 	ps.StartTime = startTime
 	if psHeight != msg.Height || psRound != msg.Round {
 		ps.Proposal = false
-		ps.ProposalBlockHash = nil
+		ps.ProposalBlockPartsHash = nil
 		ps.ProposalBlockBitArray = BitArray{}
-		ps.ProposalPOLHash = nil
+		ps.ProposalPOLPartsHash = nil
 		ps.ProposalPOLBitArray = BitArray{}
 		// We'll update the BitArray capacity later.
 		ps.Prevotes = BitArray{}

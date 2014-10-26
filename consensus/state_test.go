@@ -123,15 +123,15 @@ func TestRunActionPropose(t *testing.T) {
 	cs.RunActionPropose(1, 0)
 	rs := cs.GetRoundState()
 
-	// Check that Proposal, ProposalBlock, ProposalBlockPartSet are set.
+	// Check that Proposal, ProposalBlock, ProposalBlockParts are set.
 	if rs.Proposal == nil {
 		t.Error("rs.Proposal should be set")
 	}
 	if rs.ProposalBlock == nil {
 		t.Error("rs.ProposalBlock should be set")
 	}
-	if rs.ProposalBlockPartSet.Total() == 0 {
-		t.Error("rs.ProposalBlockPartSet should be set")
+	if rs.ProposalBlockParts.Total() == 0 {
+		t.Error("rs.ProposalBlockParts should be set")
 	}
 }
 
