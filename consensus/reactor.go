@@ -319,7 +319,7 @@ func (conR *ConsensusReactor) stepTransitionRoutine() {
 			case RoundStepPrecommit:
 				// Wake up when the round is over.
 				time.Sleep(time.Duration((1.0 - elapsedRatio) * float64(roundDuration)))
-				conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundActionNextRound}
+				conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundActionTryCommit}
 			case RoundStepCommit:
 				panic("Should not happen: RoundStepCommit waits until +2/3 commits.")
 			case RoundStepCommitWait:
@@ -372,8 +372,8 @@ ACTION_LOOP:
 		if height != rs.Height {
 			continue
 		}
-		// If action >= RoundActionCommit, the round doesn't matter.
-		if action < RoundActionCommit && round != rs.Round {
+		// If action >= RoundActionCommitWait, the round doesn't matter.
+		if action < RoundActionCommitWait && round != rs.Round {
 			continue
 		}
 
@@ -412,26 +412,25 @@ ACTION_LOOP:
 			scheduleNextAction()
 			continue ACTION_LOOP
 
-		case RoundActionNextRound:
+		case RoundActionTryCommit:
 			if rs.Step >= RoundStepCommit {
 				continue ACTION_LOOP
 			}
-			conR.conS.SetupRound(rs.Round + 1)
-			scheduleNextAction()
-			continue ACTION_LOOP
-
-		case RoundActionCommit:
-			if rs.Step >= RoundStepCommit {
+			if rs.Precommits.HasTwoThirdsMajority() {
+				// NOTE: Duplicated in RoundActionCommitWait.
+				vote := conR.conS.RunActionCommit(rs.Height, rs.Round)
+				broadcastNewRoundStep(RoundStepCommit)
+				if vote != nil {
+					conR.broadcastVote(rs, vote)
+				}
+				// do not schedule next action.
+				continue ACTION_LOOP
+			} else {
+				// Could not commit, move onto next round.
+				conR.conS.SetupRound(rs.Round + 1)
+				scheduleNextAction()
 				continue ACTION_LOOP
 			}
-			// NOTE: Duplicated in RoundActionCommitWait.
-			vote := conR.conS.RunActionCommit(rs.Height, rs.Round)
-			broadcastNewRoundStep(RoundStepCommit)
-			if vote != nil {
-				conR.broadcastVote(rs, vote)
-			}
-			// do not schedule next action.
-			continue ACTION_LOOP
 
 		case RoundActionCommitWait:
 			if rs.Step >= RoundStepCommitWait {

@@ -36,8 +36,7 @@ const (
 	RoundActionPropose    = RoundActionType(0x00) // Goto RoundStepPropose
 	RoundActionPrevote    = RoundActionType(0x01) // Goto RoundStepPrevote
 	RoundActionPrecommit  = RoundActionType(0x02) // Goto RoundStepPrecommit
-	RoundActionNextRound  = RoundActionType(0x04) // Goto next round RoundStepStart
-	RoundActionCommit     = RoundActionType(0x10) // Goto RoundStepCommit or RoundStepStart next round
+	RoundActionTryCommit  = RoundActionType(0x10) // Goto RoundStepCommit or RoundStepStart next round
 	RoundActionCommitWait = RoundActionType(0x11) // Goto RoundStepCommitWait
 	RoundActionFinalize   = RoundActionType(0x12) // Goto RoundStepStart next height
 )
