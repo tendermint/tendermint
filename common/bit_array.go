@@ -54,6 +54,10 @@ func (bA BitArray) WriteTo(w io.Writer) (n int64, err error) {
 	return
 }
 
+func (bA BitArray) IsZero() bool {
+	return bA.bits == 0
+}
+
 // NOTE: behavior is undefined if i >= bA.bits
 func (bA BitArray) GetIndex(i uint) bool {
 	if i >= bA.bits {

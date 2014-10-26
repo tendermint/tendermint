@@ -71,10 +71,6 @@ type RoundState struct {
 	PrivValidator        *PrivValidator
 }
 
-func (rs *RoundState) RoundElapsed() time.Duration {
-	return rs.StartTime.Sub(time.Now())
-}
-
 func (rs *RoundState) String() string {
 	return rs.StringWithIndent("")
 }
