@@ -101,7 +101,7 @@ func TestBlock(t *testing.T) {
 	expectChange(func(b *Block) { b.Header.StateHash = RandBytes(32) }, "Expected hash to depend on StateHash")
 	expectChange(func(b *Block) { b.Validation.Signatures[0].SignerId += 1 }, "Expected hash to depend on Validation Signature")
 	expectChange(func(b *Block) { b.Validation.Signatures[0].Bytes = RandBytes(32) }, "Expected hash to depend on Validation Signature")
-	expectChange(func(b *Block) { b.Data.Txs[0].(*SendTx).SignerId += 1 }, "Expected hash to depend on tx Signature")
+	expectChange(func(b *Block) { b.Data.Txs[0].(*SendTx).Signature.SignerId += 1 }, "Expected hash to depend on tx Signature")
 	expectChange(func(b *Block) { b.Data.Txs[0].(*SendTx).Amount += 1 }, "Expected hash to depend on send tx Amount")
 
 	// Write the block, read it in again, check hash.

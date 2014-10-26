@@ -204,10 +204,8 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 		switch msg_.(type) {
 		case *Proposal:
 			proposal := msg_.(*Proposal)
+			ps.SetHasProposal(proposal)
 			err = conR.conS.SetProposal(proposal)
-			if err != nil {
-				ps.SetHasProposal(proposal)
-			}
 
 		case *PartMessage:
 			msg := msg_.(*PartMessage)
@@ -240,7 +238,7 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 				return
 			}
 			ps.EnsureVoteBitArrays(rs.Height, rs.Round, rs.Validators.Size())
-			ps.SetHasVote(rs.Height, rs.Round, vote.Type, uint32(index))
+			ps.SetHasVote(rs.Height, rs.Round, vote.Type, index)
 			added, err := conR.conS.AddVote(vote)
 			if err != nil {
 				log.Warning("Error attempting to add vote: %v", err)
@@ -397,7 +395,7 @@ ACTION_LOOP:
 			vote := conR.conS.RunActionPrevote(rs.Height, rs.Round)
 			broadcastNewRoundStep(RoundStepPrevote)
 			if vote != nil {
-				conR.broadcastVote(vote)
+				conR.broadcastVote(rs, vote)
 			}
 			scheduleNextAction()
 			continue ACTION_LOOP
@@ -409,7 +407,7 @@ ACTION_LOOP:
 			vote := conR.conS.RunActionPrecommit(rs.Height, rs.Round)
 			broadcastNewRoundStep(RoundStepPrecommit)
 			if vote != nil {
-				conR.broadcastVote(vote)
+				conR.broadcastVote(rs, vote)
 			}
 			scheduleNextAction()
 			continue ACTION_LOOP
@@ -430,7 +428,7 @@ ACTION_LOOP:
 			vote := conR.conS.RunActionCommit(rs.Height, rs.Round)
 			broadcastNewRoundStep(RoundStepCommit)
 			if vote != nil {
-				conR.broadcastVote(vote)
+				conR.broadcastVote(rs, vote)
 			}
 			// do not schedule next action.
 			continue ACTION_LOOP
@@ -445,7 +443,7 @@ ACTION_LOOP:
 				vote := conR.conS.RunActionCommit(rs.Height, rs.Round)
 				broadcastNewRoundStep(RoundStepCommit)
 				if vote != nil {
-					conR.broadcastVote(vote)
+					conR.broadcastVote(rs, vote)
 				}
 			}
 			// Wait for more commit votes.
@@ -471,9 +469,15 @@ ACTION_LOOP:
 	}
 }
 
-func (conR *ConsensusReactor) broadcastVote(vote *Vote) {
+func (conR *ConsensusReactor) broadcastVote(rs *RoundState, vote *Vote) {
+	// Get our validator index
+	index, _ := rs.Validators.GetById(vote.SignerId)
 	msg := p2p.TypedMessage{msgTypeVote, vote}
-	conR.sw.Broadcast(VoteCh, msg)
+	for _, peer := range conR.sw.Peers().List() {
+		peer.Send(VoteCh, msg)
+		ps := peer.Data.Get(peerStateKey).(*PeerState)
+		ps.SetHasVote(rs.Height, rs.Round, vote.Type, index)
+	}
 }
 
 //--------------------------------------
@@ -565,18 +569,19 @@ OUTER_LOOP:
 		ps.EnsureVoteBitArrays(rs.Height, rs.Round, rs.Validators.Size())
 
 		// If there are prevotes to send...
-		if prs.Step <= RoundStepPrevote {
+		if rs.Round == prs.Round && prs.Step <= RoundStepPrevote {
 			index, ok := rs.Prevotes.BitArray().Sub(prs.Prevotes).PickRandom()
 			if ok {
-				valId, val := rs.Validators.GetByIndex(uint32(index))
+				valId, val := rs.Validators.GetByIndex(index)
 				if val != nil {
 					vote := rs.Prevotes.Get(valId)
+					// NOTE: vote may be a commit
 					msg := p2p.TypedMessage{msgTypeVote, vote}
 					peer.Send(VoteCh, msg)
-					ps.SetHasVote(rs.Height, rs.Round, VoteTypePrevote, uint32(index))
+					ps.SetHasVote(rs.Height, rs.Round, VoteTypePrevote, index)
 					if vote.Type == VoteTypeCommit {
-						ps.SetHasVote(rs.Height, rs.Round, VoteTypePrecommit, uint32(index))
-						ps.SetHasVote(rs.Height, rs.Round, VoteTypeCommit, uint32(index))
+						ps.SetHasVote(rs.Height, rs.Round, VoteTypePrecommit, index)
+						ps.SetHasVote(rs.Height, rs.Round, VoteTypeCommit, index)
 					}
 					continue OUTER_LOOP
 				} else {
@@ -586,17 +591,18 @@ OUTER_LOOP:
 		}
 
 		// If there are precommits to send...
-		if prs.Step <= RoundStepPrecommit {
+		if rs.Round == prs.Round && prs.Step <= RoundStepPrecommit {
 			index, ok := rs.Precommits.BitArray().Sub(prs.Precommits).PickRandom()
 			if ok {
-				valId, val := rs.Validators.GetByIndex(uint32(index))
+				valId, val := rs.Validators.GetByIndex(index)
 				if val != nil {
 					vote := rs.Precommits.Get(valId)
+					// NOTE: vote may be a commit
 					msg := p2p.TypedMessage{msgTypeVote, vote}
 					peer.Send(VoteCh, msg)
-					ps.SetHasVote(rs.Height, rs.Round, VoteTypePrecommit, uint32(index))
+					ps.SetHasVote(rs.Height, rs.Round, VoteTypePrecommit, index)
 					if vote.Type == VoteTypeCommit {
-						ps.SetHasVote(rs.Height, rs.Round, VoteTypeCommit, uint32(index))
+						ps.SetHasVote(rs.Height, rs.Round, VoteTypeCommit, index)
 					}
 					continue OUTER_LOOP
 				} else {
@@ -608,12 +614,12 @@ OUTER_LOOP:
 		// If there are any commits to send...
 		index, ok := rs.Commits.BitArray().Sub(prs.Commits).PickRandom()
 		if ok {
-			valId, val := rs.Validators.GetByIndex(uint32(index))
+			valId, val := rs.Validators.GetByIndex(index)
 			if val != nil {
 				vote := rs.Commits.Get(valId)
 				msg := p2p.TypedMessage{msgTypeVote, vote}
 				peer.Send(VoteCh, msg)
-				ps.SetHasVote(rs.Height, rs.Round, VoteTypeCommit, uint32(index))
+				ps.SetHasVote(rs.Height, rs.Round, VoteTypeCommit, index)
 				continue OUTER_LOOP
 			} else {
 				log.Error("index is not a valid validator index")
@@ -726,7 +732,7 @@ func (ps *PeerState) EnsureVoteBitArrays(height uint32, round uint16, numValidat
 	}
 }
 
-func (ps *PeerState) SetHasVote(height uint32, round uint16, type_ uint8, index uint32) {
+func (ps *PeerState) SetHasVote(height uint32, round uint16, type_ uint8, index uint) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
@@ -736,11 +742,11 @@ func (ps *PeerState) SetHasVote(height uint32, round uint16, type_ uint8, index 
 
 	switch type_ {
 	case VoteTypePrevote:
-		ps.Prevotes.SetIndex(uint(index), true)
+		ps.Prevotes.SetIndex(index, true)
 	case VoteTypePrecommit:
-		ps.Precommits.SetIndex(uint(index), true)
+		ps.Precommits.SetIndex(index, true)
 	case VoteTypeCommit:
-		ps.Commits.SetIndex(uint(index), true)
+		ps.Commits.SetIndex(index, true)
 	default:
 		panic("Invalid vote type")
 	}

@@ -50,18 +50,18 @@ func NewVoteSet(height uint32, round uint16, type_ byte, vset *state.ValidatorSe
 }
 
 // True if added, false if not.
-// Returns ErrVote[UnexpectedPhase|InvalidAccount|InvalidSignature|InvalidBlockHash|ConflictingSignature]
+// Returns ErrVote[UnexpectedStep|InvalidAccount|InvalidSignature|InvalidBlockHash|ConflictingSignature]
 // NOTE: vote should not be mutated after adding.
 func (vs *VoteSet) Add(vote *Vote) (bool, error) {
 	vs.mtx.Lock()
 	defer vs.mtx.Unlock()
 
-	// Make sure the phase matches. (or that vote is commit && round < vs.round)
+	// Make sure the step matches. (or that vote is commit && round < vs.round)
 	if vote.Height != vs.height ||
 		(vote.Type != VoteTypeCommit && vote.Round != vs.round) ||
 		(vote.Type != VoteTypeCommit && vote.Type != vs.type_) ||
 		(vote.Type == VoteTypeCommit && vs.type_ != VoteTypeCommit && vote.Round >= vs.round) {
-		return false, ErrVoteUnexpectedPhase
+		return false, ErrVoteUnexpectedStep
 	}
 
 	// Ensure that signer is a validator.

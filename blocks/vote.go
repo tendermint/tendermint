@@ -15,7 +15,7 @@ const (
 )
 
 var (
-	ErrVoteUnexpectedPhase      = errors.New("Unexpected phase")
+	ErrVoteUnexpectedStep       = errors.New("Unexpected step")
 	ErrVoteInvalidAccount       = errors.New("Invalid round vote account")
 	ErrVoteInvalidSignature     = errors.New("Invalid round vote signature")
 	ErrVoteInvalidBlockHash     = errors.New("Invalid block hash")
@@ -65,7 +65,7 @@ func (v *Vote) String() string {
 	}
 	switch v.Type {
 	case VoteTypePrevote:
-		return fmt.Sprintf("Vote{%v/%v:%X:%v}", v.Height, v.Round, blockHash, v.SignerId)
+		return fmt.Sprintf("Prevote{%v/%v:%X:%v}", v.Height, v.Round, blockHash, v.SignerId)
 	case VoteTypePrecommit:
 		return fmt.Sprintf("Precommit{%v/%v:%X:%v}", v.Height, v.Round, blockHash, v.SignerId)
 	case VoteTypeCommit:

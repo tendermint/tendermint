@@ -75,9 +75,9 @@ func (vset *ValidatorSet) Copy() *ValidatorSet {
 	}
 }
 
-func (vset *ValidatorSet) GetById(id uint64) (index uint32, val *Validator) {
+func (vset *ValidatorSet) GetById(id uint64) (index uint, val *Validator) {
 	index_, val_ := vset.validators.Get(id)
-	index, val = uint32(index_), val_.(*Validator)
+	index, val = uint(index_), val_.(*Validator)
 	return
 }
 
@@ -86,7 +86,7 @@ func (vset *ValidatorSet) HasId(id uint64) bool {
 	return val_ != nil
 }
 
-func (vset *ValidatorSet) GetByIndex(index uint32) (id uint64, val *Validator) {
+func (vset *ValidatorSet) GetByIndex(index uint) (id uint64, val *Validator) {
 	id_, val_ := vset.validators.GetByIndex(uint64(index))
 	id, val = id_.(uint64), val_.(*Validator)
 	return

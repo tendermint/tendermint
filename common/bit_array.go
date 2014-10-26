@@ -135,7 +135,7 @@ func (bA BitArray) Sub(o BitArray) BitArray {
 	}
 }
 
-func (bA BitArray) PickRandom() (int, bool) {
+func (bA BitArray) PickRandom() (uint, bool) {
 	length := len(bA.elems)
 	if length == 0 {
 		return 0, false
@@ -149,7 +149,7 @@ func (bA BitArray) PickRandom() (int, bool) {
 				for j := 0; j < 64; j++ {
 					bitIdx := ((j + randBitStart) % 64)
 					if (bA.elems[elemIdx] & (1 << uint(bitIdx))) > 0 {
-						return 64*int(elemIdx) + int(bitIdx), true
+						return 64*uint(elemIdx) + uint(bitIdx), true
 					}
 				}
 				panic("should not happen")
@@ -164,7 +164,7 @@ func (bA BitArray) PickRandom() (int, bool) {
 			for j := 0; j < elemBits; j++ {
 				bitIdx := ((j + randBitStart) % elemBits)
 				if (bA.elems[elemIdx] & (1 << uint(bitIdx))) > 0 {
-					return 64*int(elemIdx) + int(bitIdx), true
+					return 64*uint(elemIdx) + uint(bitIdx), true
 				}
 			}
 		}
