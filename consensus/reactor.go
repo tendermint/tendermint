@@ -260,7 +260,7 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 				// Maybe run RoundActionCommitWait.
 				if vote.Type == VoteTypeCommit &&
 					rs.Commits.HasTwoThirdsMajority() &&
-					rs.Step < RoundStepCommit {
+					rs.Step < RoundStepCommitWait {
 					// NOTE: Do not call RunAction*() methods here directly.
 					conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundActionCommitWait}
 				}
@@ -422,6 +422,13 @@ ACTION_LOOP:
 				broadcastNewRoundStep(RoundStepCommit)
 				if vote != nil {
 					conR.broadcastVote(rs, vote)
+					// If we have +2/3 commits, queue an action to RoundActionCommitWait.
+					// Likely this is a duplicate action being pushed.
+					// See also Receive() where RoundActionCommitWait can be pushed in
+					// response to a vote from the network.
+					if rs.Commits.HasTwoThirdsMajority() {
+						conR.doActionCh <- RoundAction{rs.Height, rs.Round, RoundActionCommitWait}
+					}
 				}
 				// do not schedule next action.
 				continue ACTION_LOOP
