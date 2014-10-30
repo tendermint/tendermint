@@ -11,6 +11,10 @@ func randSig() Signature {
 	return Signature{RandUInt64Exp(), RandBytes(32)}
 }
 
+func randRoundSig() RoundSignature {
+	return RoundSignature{RandUInt16(), randSig()}
+}
+
 func randBaseTx() BaseTx {
 	return BaseTx{0, RandUInt64Exp(), randSig()}
 }
@@ -64,7 +68,7 @@ func randBlock() *Block {
 			StateHash:     RandBytes(32),
 		},
 		Validation: Validation{
-			Signatures: []Signature{randSig(), randSig()},
+			Commits: []RoundSignature{randRoundSig(), randRoundSig()},
 		},
 		Data: Data{
 			Txs: []Tx{sendTx, nameTx, bondTx, unbondTx, dupeoutTx},
@@ -99,8 +103,9 @@ func TestBlock(t *testing.T) {
 	expectChange(func(b *Block) { b.Header.Time = RandTime() }, "Expected hash to depend on Time")
 	expectChange(func(b *Block) { b.Header.LastBlockHash = RandBytes(32) }, "Expected hash to depend on LastBlockHash")
 	expectChange(func(b *Block) { b.Header.StateHash = RandBytes(32) }, "Expected hash to depend on StateHash")
-	expectChange(func(b *Block) { b.Validation.Signatures[0].SignerId += 1 }, "Expected hash to depend on Validation Signature")
-	expectChange(func(b *Block) { b.Validation.Signatures[0].Bytes = RandBytes(32) }, "Expected hash to depend on Validation Signature")
+	expectChange(func(b *Block) { b.Validation.Commits[0].Round += 1 }, "Expected hash to depend on Validation Commit")
+	expectChange(func(b *Block) { b.Validation.Commits[0].SignerId += 1 }, "Expected hash to depend on Validation Commit")
+	expectChange(func(b *Block) { b.Validation.Commits[0].Bytes = RandBytes(32) }, "Expected hash to depend on Validation Commit")
 	expectChange(func(b *Block) { b.Data.Txs[0].(*SendTx).Signature.SignerId += 1 }, "Expected hash to depend on tx Signature")
 	expectChange(func(b *Block) { b.Data.Txs[0].(*SendTx).Amount += 1 }, "Expected hash to depend on send tx Amount")
 

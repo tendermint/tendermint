@@ -1,4 +1,4 @@
-package consensus
+package blocks
 
 import (
 	"bytes"
@@ -40,34 +40,34 @@ func ReadPart(r io.Reader, n *int64, err *error) *Part {
 	}
 }
 
-func (b *Part) WriteTo(w io.Writer) (n int64, err error) {
-	WriteUInt16(w, b.Index, &n, &err)
-	WriteByteSlices(w, b.Trail, &n, &err)
-	WriteByteSlice(w, b.Bytes, &n, &err)
+func (part *Part) WriteTo(w io.Writer) (n int64, err error) {
+	WriteUInt16(w, part.Index, &n, &err)
+	WriteByteSlices(w, part.Trail, &n, &err)
+	WriteByteSlice(w, part.Bytes, &n, &err)
 	return
 }
 
-func (pt *Part) Hash() []byte {
-	if pt.hash != nil {
-		return pt.hash
+func (part *Part) Hash() []byte {
+	if part.hash != nil {
+		return part.hash
 	} else {
 		hasher := sha256.New()
-		_, err := hasher.Write(pt.Bytes)
+		_, err := hasher.Write(part.Bytes)
 		if err != nil {
 			panic(err)
 		}
-		pt.hash = hasher.Sum(nil)
-		return pt.hash
+		part.hash = hasher.Sum(nil)
+		return part.hash
 	}
 }
 
-func (pt *Part) String() string {
-	return pt.StringWithIndent("")
+func (part *Part) String() string {
+	return part.StringWithIndent("")
 }
 
-func (pt *Part) StringWithIndent(indent string) string {
-	trailStrings := make([]string, len(pt.Trail))
-	for i, hash := range pt.Trail {
+func (part *Part) StringWithIndent(indent string) string {
+	trailStrings := make([]string, len(part.Trail))
+	for i, hash := range part.Trail {
 		trailStrings[i] = fmt.Sprintf("%X", hash)
 	}
 	return fmt.Sprintf(`Part{
@@ -75,7 +75,7 @@ func (pt *Part) StringWithIndent(indent string) string {
 %s  Trail:
 %s    %v
 %s}`,
-		indent, pt.Index,
+		indent, part.Index,
 		indent,
 		indent, strings.Join(trailStrings, "\n"+indent+"    "),
 		indent)
@@ -83,9 +83,42 @@ func (pt *Part) StringWithIndent(indent string) string {
 
 //-------------------------------------
 
+type PartSetHeader struct {
+	Hash  []byte
+	Total uint16
+}
+
+func ReadPartSetHeader(r io.Reader, n *int64, err *error) PartSetHeader {
+	return PartSetHeader{
+		Hash:  ReadByteSlice(r, n, err),
+		Total: ReadUInt16(r, n, err),
+	}
+}
+
+func (psh PartSetHeader) WriteTo(w io.Writer) (n int64, err error) {
+	WriteByteSlice(w, psh.Hash, &n, &err)
+	WriteUInt16(w, psh.Total, &n, &err)
+	return
+}
+
+func (psh PartSetHeader) IsZero() bool {
+	return psh.Total == 0
+}
+
+func (psh PartSetHeader) String() string {
+	return fmt.Sprintf("PartSet{%X/%v}", psh.Hash, psh.Total)
+}
+
+func (psh PartSetHeader) Equals(other PartSetHeader) bool {
+	return bytes.Equal(psh.Hash, other.Hash) &&
+		psh.Total == other.Total
+}
+
+//-------------------------------------
+
 type PartSet struct {
-	rootHash []byte
-	total    uint16
+	hash  []byte
+	total uint16
 
 	mtx           sync.Mutex
 	parts         []*Part
@@ -115,22 +148,33 @@ func NewPartSetFromData(data []byte) *PartSet {
 		parts[i].Trail = merkle.HashTrailForIndex(hashTree, i)
 	}
 	return &PartSet{
+		hash:          hashTree[len(hashTree)/2],
+		total:         uint16(total),
 		parts:         parts,
 		partsBitArray: partsBitArray,
-		rootHash:      hashTree[len(hashTree)/2],
-		total:         uint16(total),
 		count:         uint16(total),
 	}
 }
 
 // Returns an empty PartSet ready to be populated.
-func NewPartSetFromMetadata(total uint16, rootHash []byte) *PartSet {
+func NewPartSetFromHeader(header PartSetHeader) *PartSet {
 	return &PartSet{
-		parts:         make([]*Part, total),
-		partsBitArray: NewBitArray(uint(total)),
-		rootHash:      rootHash,
-		total:         total,
+		hash:          header.Hash,
+		total:         header.Total,
+		parts:         make([]*Part, header.Total),
+		partsBitArray: NewBitArray(uint(header.Total)),
 		count:         0,
+	}
+}
+
+func (ps *PartSet) Header() PartSetHeader {
+	if ps == nil {
+		return PartSetHeader{}
+	} else {
+		return PartSetHeader{
+			Hash:  ps.hash,
+			Total: ps.total,
+		}
 	}
 }
 
@@ -140,18 +184,18 @@ func (ps *PartSet) BitArray() BitArray {
 	return ps.partsBitArray.Copy()
 }
 
-func (ps *PartSet) RootHash() []byte {
+func (ps *PartSet) Hash() []byte {
 	if ps == nil {
 		return nil
 	}
-	return ps.rootHash
+	return ps.hash
 }
 
-func (ps *PartSet) HashesTo(rootHash []byte) bool {
+func (ps *PartSet) HashesTo(hash []byte) bool {
 	if ps == nil {
 		return false
 	}
-	return bytes.Equal(ps.rootHash, rootHash)
+	return bytes.Equal(ps.hash, hash)
 }
 
 func (ps *PartSet) Count() uint16 {
@@ -183,7 +227,7 @@ func (ps *PartSet) AddPart(part *Part) (bool, error) {
 	}
 
 	// Check hash trail
-	if !merkle.VerifyHashTrailForIndex(int(part.Index), part.Hash(), part.Trail, ps.rootHash) {
+	if !merkle.VerifyHashTrailForIndex(int(part.Index), part.Hash(), part.Trail, ps.hash) {
 		return false, ErrPartSetInvalidTrail
 	}
 

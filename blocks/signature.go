@@ -60,3 +60,47 @@ func WriteSignatures(w io.Writer, sigs []Signature, n *int64, err *error) {
 		}
 	}
 }
+
+//-----------------------------------------------------------------------------
+
+type RoundSignature struct {
+	Round uint16
+	Signature
+}
+
+func ReadRoundSignature(r io.Reader, n *int64, err *error) RoundSignature {
+	return RoundSignature{
+		ReadUInt16(r, n, err),
+		ReadSignature(r, n, err),
+	}
+}
+
+func (rsig RoundSignature) WriteTo(w io.Writer) (n int64, err error) {
+	WriteUInt16(w, rsig.Round, &n, &err)
+	WriteBinary(w, rsig.Signature, &n, &err)
+	return
+}
+
+func (rsig RoundSignature) IsZero() bool {
+	return rsig.Round == 0 && rsig.SignerId == 0 && len(rsig.Bytes) == 0
+}
+
+//-------------------------------------
+
+func ReadRoundSignatures(r io.Reader, n *int64, err *error) (rsigs []RoundSignature) {
+	length := ReadUInt32(r, n, err)
+	for i := uint32(0); i < length; i++ {
+		rsigs = append(rsigs, ReadRoundSignature(r, n, err))
+	}
+	return
+}
+
+func WriteRoundSignatures(w io.Writer, rsigs []RoundSignature, n *int64, err *error) {
+	WriteUInt32(w, uint32(len(rsigs)), n, err)
+	for _, rsig := range rsigs {
+		WriteBinary(w, rsig, n, err)
+		if *err != nil {
+			return
+		}
+	}
+}

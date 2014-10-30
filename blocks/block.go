@@ -55,6 +55,7 @@ func (b *Block) ValidateBasic(lastBlockHeight uint32, lastBlockHash []byte) erro
 	if !bytes.Equal(b.Header.LastBlockHash, lastBlockHash) {
 		return ErrBlockInvalidLastBlockHash
 	}
+	// XXX We need to validate LastBlockParts too.
 	// XXX more validation
 	return nil
 }
@@ -112,12 +113,13 @@ func (b *Block) Description() string {
 //-----------------------------------------------------------------------------
 
 type Header struct {
-	Network       string
-	Height        uint32
-	Time          time.Time
-	Fees          uint64
-	LastBlockHash []byte
-	StateHash     []byte
+	Network        string
+	Height         uint32
+	Time           time.Time
+	Fees           uint64
+	LastBlockHash  []byte
+	LastBlockParts PartSetHeader
+	StateHash      []byte
 
 	// Volatile
 	hash []byte
@@ -128,12 +130,13 @@ func ReadHeader(r io.Reader, n *int64, err *error) (h Header) {
 		return Header{}
 	}
 	return Header{
-		Network:       ReadString(r, n, err),
-		Height:        ReadUInt32(r, n, err),
-		Time:          ReadTime(r, n, err),
-		Fees:          ReadUInt64(r, n, err),
-		LastBlockHash: ReadByteSlice(r, n, err),
-		StateHash:     ReadByteSlice(r, n, err),
+		Network:        ReadString(r, n, err),
+		Height:         ReadUInt32(r, n, err),
+		Time:           ReadTime(r, n, err),
+		Fees:           ReadUInt64(r, n, err),
+		LastBlockHash:  ReadByteSlice(r, n, err),
+		LastBlockParts: ReadPartSetHeader(r, n, err),
+		StateHash:      ReadByteSlice(r, n, err),
 	}
 }
 
@@ -143,6 +146,7 @@ func (h *Header) WriteTo(w io.Writer) (n int64, err error) {
 	WriteTime(w, h.Time, &n, &err)
 	WriteUInt64(w, h.Fees, &n, &err)
 	WriteByteSlice(w, h.LastBlockHash, &n, &err)
+	WriteBinary(w, h.LastBlockParts, &n, &err)
 	WriteByteSlice(w, h.StateHash, &n, &err)
 	return
 }
@@ -161,18 +165,20 @@ func (h *Header) Hash() []byte {
 
 func (h *Header) StringWithIndent(indent string) string {
 	return fmt.Sprintf(`Header{
-%s  Network:       %v
-%s  Height:        %v
-%s  Time:          %v
-%s  Fees:          %v
-%s  LastBlockHash: %X
-%s  StateHash:     %X
+%s  Network:        %v
+%s  Height:         %v
+%s  Time:           %v
+%s  Fees:           %v
+%s  LastBlockHash:  %X
+%s  LastBlockParts: %v
+%s  StateHash:      %X
 %s}#%X`,
 		indent, h.Network,
 		indent, h.Height,
 		indent, h.Time,
 		indent, h.Fees,
 		indent, h.LastBlockHash,
+		indent, h.LastBlockParts,
 		indent, h.StateHash,
 		indent, h.hash)
 }
@@ -180,36 +186,28 @@ func (h *Header) StringWithIndent(indent string) string {
 //-----------------------------------------------------------------------------
 
 type Validation struct {
-	Signatures []Signature
+	Commits []RoundSignature
 
 	// Volatile
 	hash []byte
 }
 
 func ReadValidation(r io.Reader, n *int64, err *error) Validation {
-	numSigs := ReadUInt32(r, n, err)
-	sigs := make([]Signature, 0, numSigs)
-	for i := uint32(0); i < numSigs; i++ {
-		sigs = append(sigs, ReadSignature(r, n, err))
-	}
 	return Validation{
-		Signatures: sigs,
+		Commits: ReadRoundSignatures(r, n, err),
 	}
 }
 
 func (v *Validation) WriteTo(w io.Writer) (n int64, err error) {
-	WriteUInt32(w, uint32(len(v.Signatures)), &n, &err)
-	for _, sig := range v.Signatures {
-		WriteBinary(w, sig, &n, &err)
-	}
+	WriteRoundSignatures(w, v.Commits, &n, &err)
 	return
 }
 
 func (v *Validation) Hash() []byte {
 	if v.hash == nil {
-		bs := make([]Binary, len(v.Signatures))
-		for i, sig := range v.Signatures {
-			bs[i] = Binary(sig)
+		bs := make([]Binary, len(v.Commits))
+		for i, commit := range v.Commits {
+			bs[i] = Binary(commit)
 		}
 		v.hash = merkle.HashFromBinaries(bs)
 	}
@@ -217,14 +215,14 @@ func (v *Validation) Hash() []byte {
 }
 
 func (v *Validation) StringWithIndent(indent string) string {
-	sigStrings := make([]string, len(v.Signatures))
-	for i, sig := range v.Signatures {
-		sigStrings[i] = sig.String()
+	commitStrings := make([]string, len(v.Commits))
+	for i, commit := range v.Commits {
+		commitStrings[i] = commit.String()
 	}
 	return fmt.Sprintf(`Validation{
 %s  %v
 %s}#%X`,
-		indent, strings.Join(sigStrings, "\n"+indent+"  "),
+		indent, strings.Join(commitStrings, "\n"+indent+"  "),
 		indent, v.hash)
 }
 

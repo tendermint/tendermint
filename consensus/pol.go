@@ -13,22 +13,22 @@ import (
 // Proof of lock.
 // +2/3 of validators' prevotes for a given blockhash (or nil)
 type POL struct {
-	Height       uint32
-	Round        uint16
-	BlockHash    []byte      // Could be nil, which makes this a proof of unlock.
-	Votes        []Signature // Vote signatures for height/round/hash
-	Commits      []Signature // Commit signatures for height/hash
-	CommitRounds []uint16    // Rounds of the commits, less than POL.Round.
+	Height     uint32
+	Round      uint16
+	BlockHash  []byte           // Could be nil, which makes this a proof of unlock.
+	BlockParts PartSetHeader    // When BlockHash is nil, this is zero.
+	Votes      []Signature      // Vote signatures for height/round/hash
+	Commits    []RoundSignature // Commit signatures for height/hash
 }
 
 func ReadPOL(r io.Reader, n *int64, err *error) *POL {
 	return &POL{
-		Height:       ReadUInt32(r, n, err),
-		Round:        ReadUInt16(r, n, err),
-		BlockHash:    ReadByteSlice(r, n, err),
-		Votes:        ReadSignatures(r, n, err),
-		Commits:      ReadSignatures(r, n, err),
-		CommitRounds: ReadUInt16s(r, n, err),
+		Height:     ReadUInt32(r, n, err),
+		Round:      ReadUInt16(r, n, err),
+		BlockHash:  ReadByteSlice(r, n, err),
+		BlockParts: ReadPartSetHeader(r, n, err),
+		Votes:      ReadSignatures(r, n, err),
+		Commits:    ReadRoundSignatures(r, n, err),
 	}
 }
 
@@ -36,9 +36,9 @@ func (pol *POL) WriteTo(w io.Writer) (n int64, err error) {
 	WriteUInt32(w, pol.Height, &n, &err)
 	WriteUInt16(w, pol.Round, &n, &err)
 	WriteByteSlice(w, pol.BlockHash, &n, &err)
+	WriteBinary(w, pol.BlockParts, &n, &err)
 	WriteSignatures(w, pol.Votes, &n, &err)
-	WriteSignatures(w, pol.Commits, &n, &err)
-	WriteUInt16s(w, pol.CommitRounds, &n, &err)
+	WriteRoundSignatures(w, pol.Commits, &n, &err)
 	return
 }
 
@@ -46,8 +46,11 @@ func (pol *POL) WriteTo(w io.Writer) (n int64, err error) {
 func (pol *POL) Verify(vset *state.ValidatorSet) error {
 
 	talliedVotingPower := uint64(0)
-	voteDoc := BinaryBytes(&Vote{Height: pol.Height, Round: pol.Round,
-		Type: VoteTypePrevote, BlockHash: pol.BlockHash})
+	voteDoc := BinaryBytes(&Vote{
+		Height: pol.Height, Round: pol.Round, Type: VoteTypePrevote,
+		BlockHash:  pol.BlockHash,
+		BlockParts: pol.BlockParts,
+	})
 	seenValidators := map[uint64]struct{}{}
 
 	for _, sig := range pol.Votes {
@@ -69,8 +72,9 @@ func (pol *POL) Verify(vset *state.ValidatorSet) error {
 		talliedVotingPower += val.VotingPower
 	}
 
-	for i, sig := range pol.Commits {
-		round := pol.CommitRounds[i]
+	for _, rsig := range pol.Commits {
+		round := rsig.Round
+		sig := rsig.Signature
 
 		// Validate
 		if _, seen := seenValidators[sig.SignerId]; seen {
@@ -84,8 +88,11 @@ func (pol *POL) Verify(vset *state.ValidatorSet) error {
 			return Errorf("Invalid commit round %v for POL %v", round, pol)
 		}
 
-		commitDoc := BinaryBytes(&Vote{Height: pol.Height, Round: round,
-			Type: VoteTypeCommit, BlockHash: pol.BlockHash}) // TODO cache
+		commitDoc := BinaryBytes(&Vote{
+			Height: pol.Height, Round: round, Type: VoteTypeCommit,
+			BlockHash:  pol.BlockHash,
+			BlockParts: pol.BlockParts,
+		})
 		if !val.VerifyBytes(commitDoc, sig) {
 			return Errorf("Invalid signature for commit %v for POL %v", sig, pol)
 		}
@@ -108,10 +115,7 @@ func (pol *POL) Description() string {
 	if pol == nil {
 		return "nil-POL"
 	} else {
-		blockHash := pol.BlockHash
-		if blockHash != nil {
-			blockHash = blockHash[:6]
-		}
-		return fmt.Sprintf("POL{H:%v R:%v BH:%X}", pol.Height, pol.Round, blockHash)
+		return fmt.Sprintf("POL{H:%v R:%v BH:%X}", pol.Height, pol.Round,
+			Fingerprint(pol.BlockHash), pol.BlockParts)
 	}
 }

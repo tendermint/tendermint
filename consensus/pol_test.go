@@ -78,8 +78,7 @@ func TestVerifyCommits(t *testing.T) {
 	}
 	for i := 0; i < 7; i++ {
 		privAccounts[i].Sign(vote)
-		pol.Commits = append(pol.Commits, vote.Signature)
-		pol.CommitRounds = append(pol.CommitRounds, 1)
+		pol.Commits = append(pol.Commits, RoundSignature{1, vote.Signature})
 	}
 
 	// Check that validation succeeds.
@@ -103,8 +102,7 @@ func TestVerifyInvalidCommits(t *testing.T) {
 		privAccounts[i].Sign(vote)
 		// Mutate the signature.
 		vote.Signature.Bytes[0] += byte(0x01)
-		pol.Commits = append(pol.Commits, vote.Signature)
-		pol.CommitRounds = append(pol.CommitRounds, 1)
+		pol.Commits = append(pol.Commits, RoundSignature{1, vote.Signature})
 	}
 
 	// Check that validation fails.
@@ -126,8 +124,7 @@ func TestVerifyInvalidCommitRounds(t *testing.T) {
 	}
 	for i := 0; i < 7; i++ {
 		privAccounts[i].Sign(vote)
-		pol.Commits = append(pol.Commits, vote.Signature)
-		pol.CommitRounds = append(pol.CommitRounds, 2)
+		pol.Commits = append(pol.Commits, RoundSignature{2, vote.Signature})
 	}
 
 	// Check that validation fails.
@@ -149,8 +146,7 @@ func TestVerifyInvalidCommitRounds2(t *testing.T) {
 	}
 	for i := 0; i < 7; i++ {
 		privAccounts[i].Sign(vote)
-		pol.Commits = append(pol.Commits, vote.Signature)
-		pol.CommitRounds = append(pol.CommitRounds, 3)
+		pol.Commits = append(pol.Commits, RoundSignature{3, vote.Signature})
 	}
 
 	// Check that validation fails.

@@ -6,6 +6,7 @@ import (
 	"io"
 
 	. "github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
 )
 
 const (
@@ -24,20 +25,22 @@ var (
 
 // Represents a prevote, precommit, or commit vote for proposals.
 type Vote struct {
-	Height    uint32
-	Round     uint16
-	Type      byte
-	BlockHash []byte // empty if vote is nil.
+	Height     uint32
+	Round      uint16
+	Type       byte
+	BlockHash  []byte        // empty if vote is nil.
+	BlockParts PartSetHeader // zero if vote is nil.
 	Signature
 }
 
 func ReadVote(r io.Reader, n *int64, err *error) *Vote {
 	return &Vote{
-		Height:    ReadUInt32(r, n, err),
-		Round:     ReadUInt16(r, n, err),
-		Type:      ReadByte(r, n, err),
-		BlockHash: ReadByteSlice(r, n, err),
-		Signature: ReadSignature(r, n, err),
+		Height:     ReadUInt32(r, n, err),
+		Round:      ReadUInt16(r, n, err),
+		Type:       ReadByte(r, n, err),
+		BlockHash:  ReadByteSlice(r, n, err),
+		BlockParts: ReadPartSetHeader(r, n, err),
+		Signature:  ReadSignature(r, n, err),
 	}
 }
 
@@ -46,6 +49,7 @@ func (v *Vote) WriteTo(w io.Writer) (n int64, err error) {
 	WriteUInt16(w, v.Round, &n, &err)
 	WriteByte(w, v.Type, &n, &err)
 	WriteByteSlice(w, v.BlockHash, &n, &err)
+	WriteBinary(w, v.BlockParts, &n, &err)
 	WriteBinary(w, v.Signature, &n, &err)
 	return
 }
@@ -59,18 +63,17 @@ func (v *Vote) SetSignature(sig Signature) {
 }
 
 func (v *Vote) String() string {
-	blockHash := v.BlockHash
-	if len(v.BlockHash) == 0 {
-		blockHash = make([]byte, 6) // for printing
-	}
+	var typeString string
 	switch v.Type {
 	case VoteTypePrevote:
-		return fmt.Sprintf("Prevote{%v/%v:%X:%v}", v.Height, v.Round, blockHash, v.SignerId)
+		typeString = "Prevote"
 	case VoteTypePrecommit:
-		return fmt.Sprintf("Precommit{%v/%v:%X:%v}", v.Height, v.Round, blockHash, v.SignerId)
+		typeString = "Precommit"
 	case VoteTypeCommit:
-		return fmt.Sprintf("Commit{%v/%v:%X:%v}", v.Height, v.Round, blockHash, v.SignerId)
+		typeString = "Commit"
 	default:
 		panic("Unknown vote type")
 	}
+
+	return fmt.Sprintf("%v{%v/%v:%X:%v:%v}", typeString, v.Height, v.Round, Fingerprint(v.BlockHash), v.BlockParts, v.SignerId)
 }

@@ -21,6 +21,9 @@ func NewBitArray(bits uint) BitArray {
 
 func ReadBitArray(r io.Reader, n *int64, err *error) BitArray {
 	bits := ReadUVarInt(r, n, err)
+	if bits == 0 {
+		return BitArray{}
+	}
 	elemsWritten := ReadUVarInt(r, n, err)
 	if *err != nil {
 		return BitArray{}
@@ -36,6 +39,10 @@ func ReadBitArray(r io.Reader, n *int64, err *error) BitArray {
 }
 
 func (bA BitArray) WriteTo(w io.Writer) (n int64, err error) {
+	WriteUVarInt(w, bA.bits, &n, &err)
+	if bA.bits == 0 {
+		return
+	}
 	// Count the last element > 0.
 	elemsToWrite := 0
 	for i, elem := range bA.elems {
@@ -43,7 +50,6 @@ func (bA BitArray) WriteTo(w io.Writer) (n int64, err error) {
 			elemsToWrite = i + 1
 		}
 	}
-	WriteUVarInt(w, bA.bits, &n, &err)
 	WriteUVarInt(w, uint(elemsToWrite), &n, &err)
 	for i, elem := range bA.elems {
 		if i >= elemsToWrite {

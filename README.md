@@ -11,7 +11,8 @@ TenderMint - proof of concept
 ### Development Status
 
 * Testnet *pending*
-* Bootstrapping *now*
+* Blockchain catchup *now*
+* Bootstrapping *complete*
 * Mempool *complete*
 * Consensus *complete*
 * Block propagation *sidelined*

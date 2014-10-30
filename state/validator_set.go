@@ -127,9 +127,12 @@ func (vset *ValidatorSet) Remove(validatorId uint64) (val *Validator, removed bo
 	return val_.(*Validator), removed
 }
 
-func (vset *ValidatorSet) Iterate(fn func(val *Validator) bool) {
+func (vset *ValidatorSet) Iterate(fn func(index uint, val *Validator) bool) {
+	index := uint(0)
 	vset.validators.Iterate(func(key_ interface{}, val_ interface{}) bool {
-		return fn(val_.(*Validator))
+		stop := fn(index, val_.(*Validator))
+		index++
+		return stop
 	})
 }
 
@@ -139,7 +142,7 @@ func (vset *ValidatorSet) String() string {
 
 func (vset *ValidatorSet) StringWithIndent(indent string) string {
 	valStrings := []string{}
-	vset.Iterate(func(val *Validator) bool {
+	vset.Iterate(func(index uint, val *Validator) bool {
 		valStrings = append(valStrings, val.String())
 		return false
 	})

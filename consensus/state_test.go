@@ -53,7 +53,7 @@ func makeConsensusState() (*ConsensusState, []*state.PrivAccount) {
 func assertPanics(t *testing.T, msg string, f func()) {
 	defer func() {
 		if err := recover(); err == nil {
-			t.Error("Should have panic'd, but didn't. %v", msg)
+			t.Errorf("Should have panic'd, but didn't: %v", msg)
 		}
 	}()
 	f()
@@ -74,35 +74,31 @@ func TestSetupRound(t *testing.T) {
 
 	// Ensure that vote appears in RoundState.
 	rs0 := cs.GetRoundState()
-	if vote := rs0.Prevotes.Get(0); vote == nil || vote.Type != VoteTypePrevote {
+	if vote := rs0.Prevotes.GetById(0); vote == nil || vote.Type != VoteTypePrevote {
 		t.Errorf("Expected to find prevote but got %v", vote)
 	}
-	if vote := rs0.Precommits.Get(0); vote == nil || vote.Type != VoteTypePrecommit {
+	if vote := rs0.Precommits.GetById(0); vote == nil || vote.Type != VoteTypePrecommit {
 		t.Errorf("Expected to find precommit but got %v", vote)
 	}
-	if vote := rs0.Commits.Get(0); vote == nil || vote.Type != VoteTypeCommit {
+	if vote := rs0.Commits.GetById(0); vote == nil || vote.Type != VoteTypeCommit {
 		t.Errorf("Expected to find commit but got %v", vote)
 	}
 
 	// Setup round 1 (next round)
-	cs.SetupRound(1)
+	cs.SetupNewRound(1, 1)
+	<-cs.NewStepCh() // TODO: test this value too.
 
 	// Now the commit should be copied over to prevotes and precommits.
 	rs1 := cs.GetRoundState()
-	if vote := rs1.Prevotes.Get(0); vote == nil || vote.Type != VoteTypeCommit {
+	if vote := rs1.Prevotes.GetById(0); vote == nil || vote.Type != VoteTypeCommit {
 		t.Errorf("Expected to find commit but got %v", vote)
 	}
-	if vote := rs1.Precommits.Get(0); vote == nil || vote.Type != VoteTypeCommit {
+	if vote := rs1.Precommits.GetById(0); vote == nil || vote.Type != VoteTypeCommit {
 		t.Errorf("Expected to find commit but got %v", vote)
 	}
-	if vote := rs1.Commits.Get(0); vote == nil || vote.Type != VoteTypeCommit {
+	if vote := rs1.Commits.GetById(0); vote == nil || vote.Type != VoteTypeCommit {
 		t.Errorf("Expected to find commit but got %v", vote)
 	}
-
-	// Setup round 1 (should fail)
-	assertPanics(t, "Round did not increment", func() {
-		cs.SetupRound(1)
-	})
 
 }
 
@@ -154,59 +150,66 @@ func TestRunActionPrecommitCommitFinalize(t *testing.T) {
 	priv := NewPrivValidator(db_.NewMemDB(), privAccounts[0])
 	cs.SetPrivValidator(priv)
 
-	vote := cs.RunActionPrecommit(1, 0)
-	if vote != nil {
+	cs.RunActionPrecommit(1, 0)
+	<-cs.NewStepCh() // TODO: test this value too.
+	if cs.Precommits.GetById(0) != nil {
 		t.Errorf("RunActionPrecommit should return nil without a proposal")
 	}
 
 	cs.RunActionPropose(1, 0)
+	<-cs.NewStepCh() // TODO: test this value too.
 
 	// Test RunActionPrecommit failures:
 	assertPanics(t, "Wrong height ", func() { cs.RunActionPrecommit(2, 0) })
 	assertPanics(t, "Wrong round", func() { cs.RunActionPrecommit(1, 1) })
-	vote = cs.RunActionPrecommit(1, 0)
-	if vote != nil {
+	cs.RunActionPrecommit(1, 0)
+	<-cs.NewStepCh() // TODO: test this value too.
+	if cs.Precommits.GetById(0) != nil {
 		t.Errorf("RunActionPrecommit should return nil, not enough prevotes")
 	}
 
 	// Add at least +2/3 prevotes.
 	for i := 0; i < 7; i++ {
 		vote := &Vote{
-			Height:    1,
-			Round:     0,
-			Type:      VoteTypePrevote,
-			BlockHash: cs.ProposalBlock.Hash(),
+			Height:     1,
+			Round:      0,
+			Type:       VoteTypePrevote,
+			BlockHash:  cs.ProposalBlock.Hash(),
+			BlockParts: cs.ProposalBlockParts.Header(),
 		}
 		privAccounts[i].Sign(vote)
 		cs.AddVote(vote)
 	}
 
 	// Test RunActionPrecommit success:
-	vote = cs.RunActionPrecommit(1, 0)
-	if vote == nil {
+	cs.RunActionPrecommit(1, 0)
+	<-cs.NewStepCh() // TODO: test this value too.
+	if cs.Precommits.GetById(0) == nil {
 		t.Errorf("RunActionPrecommit should have succeeded")
 	}
 	checkRoundState(t, cs, 1, 0, RoundStepPrecommit)
 
 	// Test RunActionCommit failures:
-	assertPanics(t, "Wrong height ", func() { cs.RunActionCommit(2, 0) })
-	assertPanics(t, "Wrong round", func() { cs.RunActionCommit(1, 1) })
+	assertPanics(t, "Wrong height ", func() { cs.RunActionCommit(2) })
+	assertPanics(t, "Wrong round", func() { cs.RunActionCommit(1) })
 
 	// Add at least +2/3 precommits.
 	for i := 0; i < 7; i++ {
 		vote := &Vote{
-			Height:    1,
-			Round:     0,
-			Type:      VoteTypePrecommit,
-			BlockHash: cs.ProposalBlock.Hash(),
+			Height:     1,
+			Round:      0,
+			Type:       VoteTypePrecommit,
+			BlockHash:  cs.ProposalBlock.Hash(),
+			BlockParts: cs.ProposalBlockParts.Header(),
 		}
 		privAccounts[i].Sign(vote)
 		cs.AddVote(vote)
 	}
 
 	// Test RunActionCommit success:
-	vote = cs.RunActionCommit(1, 0)
-	if vote == nil {
+	cs.RunActionCommit(1)
+	<-cs.NewStepCh() // TODO: test this value too.
+	if cs.Commits.GetById(0) == nil {
 		t.Errorf("RunActionCommit should have succeeded")
 	}
 	checkRoundState(t, cs, 1, 0, RoundStepCommit)
@@ -219,23 +222,18 @@ func TestRunActionPrecommitCommitFinalize(t *testing.T) {
 	// Add at least +2/3 commits.
 	for i := 0; i < 7; i++ {
 		vote := &Vote{
-			Height:    1,
-			Round:     uint16(i), // Doesn't matter what round
-			Type:      VoteTypeCommit,
-			BlockHash: cs.ProposalBlock.Hash(),
+			Height:     1,
+			Round:      uint16(i), // Doesn't matter what round
+			Type:       VoteTypeCommit,
+			BlockHash:  cs.ProposalBlock.Hash(),
+			BlockParts: cs.ProposalBlockParts.Header(),
 		}
 		privAccounts[i].Sign(vote)
 		cs.AddVote(vote)
 	}
 
-	// Test RunActionCommitWait:
-	cs.RunActionCommitWait(1, 0)
-	if cs.CommitTime.IsZero() {
-		t.Errorf("Expected CommitTime to have been set")
-	}
-	checkRoundState(t, cs, 1, 0, RoundStepCommitWait)
-
-	// Test RunActionFinalize:
-	cs.RunActionFinalize(1, 0)
-	checkRoundState(t, cs, 2, 0, RoundStepStart)
+	// Test TryFinalizeCommit:
+	cs.TryFinalizeCommit(1)
+	<-cs.NewStepCh() // TODO: test this value too.
+	checkRoundState(t, cs, 2, 0, RoundStepNewHeight)
 }

@@ -1,4 +1,4 @@
-package consensus
+package blocks
 
 import (
 	"bytes"
@@ -14,8 +14,8 @@ func TestBasicPartSet(t *testing.T) {
 	data := RandBytes(partSize * 100)
 
 	partSet := NewPartSetFromData(data)
-	if len(partSet.RootHash()) == 0 {
-		t.Error("Expected to get rootHash")
+	if len(partSet.Hash()) == 0 {
+		t.Error("Expected to get hash")
 	}
 	if partSet.Total() != 100 {
 		t.Errorf("Expected to get 100 parts, but got %v", partSet.Total())
@@ -25,7 +25,7 @@ func TestBasicPartSet(t *testing.T) {
 	}
 
 	// Test adding parts to a new partSet.
-	partSet2 := NewPartSetFromMetadata(partSet.Total(), partSet.RootHash())
+	partSet2 := NewPartSetFromHeader(PartSetHeader{partSet.Hash(), partSet.Total()})
 
 	for i := uint16(0); i < partSet.Total(); i++ {
 		part := partSet.GetPart(i)
@@ -36,8 +36,8 @@ func TestBasicPartSet(t *testing.T) {
 		}
 	}
 
-	if !bytes.Equal(partSet.RootHash(), partSet2.RootHash()) {
-		t.Error("Expected to get same rootHash")
+	if !bytes.Equal(partSet.Hash(), partSet2.Hash()) {
+		t.Error("Expected to get same hash")
 	}
 	if partSet2.Total() != 100 {
 		t.Errorf("Expected to get 100 parts, but got %v", partSet2.Total())
@@ -65,7 +65,7 @@ func TestWrongTrail(t *testing.T) {
 	partSet := NewPartSetFromData(data)
 
 	// Test adding a part with wrong data.
-	partSet2 := NewPartSetFromMetadata(partSet.Total(), partSet.RootHash())
+	partSet2 := NewPartSetFromHeader(PartSetHeader{partSet.Hash(), partSet.Total()})
 
 	// Test adding a part with wrong trail.
 	part := partSet.GetPart(0)

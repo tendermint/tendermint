@@ -89,6 +89,7 @@ func TestGenesisSaveLoad(t *testing.T) {
 			Height:    1,
 			StateHash: nil,
 		},
+		Validation: Validation{},
 		Data: Data{
 			Txs: []Tx{},
 		},

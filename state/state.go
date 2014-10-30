@@ -288,9 +288,54 @@ func (s *State) releaseValidator(accountId uint64) {
 // at an invalid state.  Copy the state before calling AppendBlock!
 func (s *State) AppendBlock(b *Block, checkStateHash bool) error {
 	// Basic block validation.
+	// XXX We need to validate LastBlockParts too.
 	err := b.ValidateBasic(s.Height, s.BlockHash)
 	if err != nil {
 		return err
+	}
+
+	// Validate block Validation.
+	if b.Height == 1 {
+		if len(b.Validation.Commits) != 0 {
+			return errors.New("Block at height 1 (first block) should have no Validation commits")
+		}
+	} else {
+		if uint(len(b.Validation.Commits)) != s.BondedValidators.Size() {
+			return errors.New("Invalid block validation size")
+		}
+		var sumVotingPower uint64
+		s.BondedValidators.Iterate(func(index uint, val *Validator) bool {
+			rsig := b.Validation.Commits[index]
+			if rsig.IsZero() {
+				return false
+			} else {
+				if rsig.SignerId != val.Id {
+					err = errors.New("Invalid validation order")
+					return true
+				}
+				vote := &Vote{
+					Height:     b.Height,
+					Round:      rsig.Round,
+					Type:       VoteTypeCommit,
+					BlockHash:  b.LastBlockHash,
+					BlockParts: b.LastBlockParts,
+					Signature:  rsig.Signature,
+				}
+				if val.Verify(vote) {
+					sumVotingPower += val.VotingPower
+					return false
+				} else {
+					err = errors.New("Invalid validation signature")
+					return true
+				}
+			}
+		})
+		if err != nil {
+			return err
+		}
+		if sumVotingPower <= s.BondedValidators.TotalVotingPower()*2/3 {
+			return errors.New("Insufficient validation voting power")
+		}
 	}
 
 	// Commit each tx
@@ -301,9 +346,9 @@ func (s *State) AppendBlock(b *Block, checkStateHash bool) error {
 		}
 	}
 
-	// Update LastCommitHeight as necessary.
-	for _, sig := range b.Validation.Signatures {
-		_, val := s.BondedValidators.GetById(sig.SignerId)
+	// Update Validator.LastCommitHeight as necessary.
+	for _, rsig := range b.Validation.Commits {
+		_, val := s.BondedValidators.GetById(rsig.SignerId)
 		if val == nil {
 			return ErrStateInvalidSignature
 		}
@@ -317,7 +362,7 @@ func (s *State) AppendBlock(b *Block, checkStateHash bool) error {
 	// If any unbonding periods are over,
 	// reward account with bonded coins.
 	toRelease := []*Validator{}
-	s.UnbondingValidators.Iterate(func(val *Validator) bool {
+	s.UnbondingValidators.Iterate(func(index uint, val *Validator) bool {
 		if val.UnbondHeight+unbondingPeriodBlocks < b.Height {
 			toRelease = append(toRelease, val)
 		}
@@ -330,7 +375,7 @@ func (s *State) AppendBlock(b *Block, checkStateHash bool) error {
 	// If any validators haven't signed in a while,
 	// unbond them, they have timed out.
 	toTimeout := []*Validator{}
-	s.BondedValidators.Iterate(func(val *Validator) bool {
+	s.BondedValidators.Iterate(func(index uint, val *Validator) bool {
 		if val.LastCommitHeight+validatorTimeoutBlocks < b.Height {
 			toTimeout = append(toTimeout, val)
 		}
