@@ -6,6 +6,7 @@ import (
 	"time"
 
 	. "github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/blocks"
 	. "github.com/tendermint/tendermint/common"
 	db_ "github.com/tendermint/tendermint/db"
 	"github.com/tendermint/tendermint/merkle"
@@ -65,9 +66,10 @@ func GenesisState(db db_.DB, genesisTime time.Time, accDets []*AccountDetail) *S
 
 	return &State{
 		DB:                  db,
-		Height:              0,
-		BlockHash:           nil,
-		BlockTime:           genesisTime,
+		LastBlockHeight:     0,
+		LastBlockHash:       nil,
+		LastBlockParts:      PartSetHeader{},
+		LastBlockTime:       genesisTime,
 		BondedValidators:    NewValidatorSet(validators),
 		UnbondingValidators: NewValidatorSet(nil),
 		accountDetails:      accountDetails,

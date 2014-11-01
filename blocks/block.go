@@ -14,12 +14,6 @@ import (
 	"github.com/tendermint/tendermint/merkle"
 )
 
-var (
-	ErrBlockInvalidNetwork       = errors.New("Error block invalid network")
-	ErrBlockInvalidBlockHeight   = errors.New("Error block invalid height")
-	ErrBlockInvalidLastBlockHash = errors.New("Error block invalid last blockhash")
-)
-
 type Block struct {
 	Header
 	Validation
@@ -45,17 +39,23 @@ func (b *Block) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 // Basic validation that doesn't involve state data.
-func (b *Block) ValidateBasic(lastBlockHeight uint32, lastBlockHash []byte) error {
-	if b.Header.Network != Config.Network {
-		return ErrBlockInvalidNetwork
+func (b *Block) ValidateBasic(lastBlockHeight uint32, lastBlockHash []byte,
+	lastBlockParts PartSetHeader, lastBlockTime time.Time) error {
+	if b.Network != Config.Network {
+		return errors.New("Invalid block network")
 	}
-	if b.Header.Height != lastBlockHeight+1 {
-		return ErrBlockInvalidBlockHeight
+	if b.Height != lastBlockHeight+1 {
+		return errors.New("Invalid block height")
 	}
-	if !bytes.Equal(b.Header.LastBlockHash, lastBlockHash) {
-		return ErrBlockInvalidLastBlockHash
+	if !bytes.Equal(b.LastBlockHash, lastBlockHash) {
+		return errors.New("Invalid block hash")
 	}
-	// XXX We need to validate LastBlockParts too.
+	if !b.LastBlockParts.Equals(lastBlockParts) {
+		return errors.New("Invalid block parts header")
+	}
+	if !b.Time.After(lastBlockTime) {
+		return errors.New("Invalid block time")
+	}
 	// XXX more validation
 	return nil
 }

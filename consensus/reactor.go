@@ -305,6 +305,7 @@ OUTER_LOOP:
 	}
 }
 
+// XXX Need to also send commits for LastComits.
 func (conR *ConsensusReactor) gossipVotesRoutine(peer *p2p.Peer, ps *PeerState) {
 OUTER_LOOP:
 	for {

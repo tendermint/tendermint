@@ -1,6 +1,7 @@
 package state
 
 import (
+	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/blocks"
 	. "github.com/tendermint/tendermint/common"
 	. "github.com/tendermint/tendermint/config"
@@ -85,18 +86,23 @@ func TestGenesisSaveLoad(t *testing.T) {
 	// Mutate the state to append one empty block.
 	block := &Block{
 		Header: Header{
-			Network:   Config.Network,
-			Height:    1,
-			StateHash: nil,
+			Network:        Config.Network,
+			Height:         1,
+			Time:           s0.LastBlockTime.Add(time.Minute),
+			Fees:           0,
+			LastBlockHash:  s0.LastBlockHash,
+			LastBlockParts: s0.LastBlockParts,
+			StateHash:      nil,
 		},
 		Validation: Validation{},
 		Data: Data{
 			Txs: []Tx{},
 		},
 	}
+	blockParts := NewPartSetFromData(BinaryBytes(block))
 	// The second argument to AppendBlock() is false,
 	// which sets Block.Header.StateHash.
-	err := s0.Copy().AppendBlock(block, false)
+	err := s0.Copy().AppendBlock(block, blockParts.Header(), false)
 	if err != nil {
 		t.Error("Error appending initial block:", err)
 	}
@@ -105,7 +111,7 @@ func TestGenesisSaveLoad(t *testing.T) {
 	}
 	// Now append the block to s0.
 	// This time we also check the StateHash (as computed above).
-	err = s0.AppendBlock(block, true)
+	err = s0.AppendBlock(block, blockParts.Header(), true)
 	if err != nil {
 		t.Error("Error appending initial block:", err)
 	}
@@ -118,19 +124,19 @@ func TestGenesisSaveLoad(t *testing.T) {
 	if s0.BondedValidators.TotalVotingPower() == 0 {
 		t.Error("s0 BondedValidators TotalVotingPower should not be 0")
 	}
-	if s0.Height != 1 {
-		t.Error("s0 Height should be 1, got", s0.Height)
+	if s0.LastBlockHeight != 1 {
+		t.Error("s0 LastBlockHeight should be 1, got", s0.LastBlockHeight)
 	}
 
 	// Load s1
 	s1 := LoadState(s0.DB)
 
 	// Compare height & blockHash
-	if s0.Height != s1.Height {
-		t.Error("Height mismatch")
+	if s0.LastBlockHeight != s1.LastBlockHeight {
+		t.Error("LastBlockHeight mismatch")
 	}
-	if !bytes.Equal(s0.BlockHash, s1.BlockHash) {
-		t.Error("BlockHash mismatch")
+	if !bytes.Equal(s0.LastBlockHash, s1.LastBlockHash) {
+		t.Error("LastBlockHash mismatch")
 	}
 	// Compare state merkle trees
 	if s0.BondedValidators.Size() != s1.BondedValidators.Size() {
@@ -165,7 +171,7 @@ func TestTxSequence(t *testing.T) {
 	acc1 := state.GetAccountDetail(1) // Non-validator
 
 	// Try executing a SendTx with various sequence numbers.
-	stx := &SendTx{
+	stxProto := SendTx{
 		BaseTx: BaseTx{
 			Sequence: acc1.Sequence + 1,
 			Fee:      0},
@@ -176,6 +182,8 @@ func TestTxSequence(t *testing.T) {
 	// Test a variety of sequence numbers for the tx.
 	// The tx should only pass when i == 1.
 	for i := -1; i < 3; i++ {
+		stxCopy := stxProto
+		stx := &stxCopy
 		stx.Sequence = uint(int(acc1.Sequence) + i)
 		privAccounts[1].Sign(stx)
 		stateCopy := state.Copy()
@@ -285,9 +293,9 @@ func TestTxs(t *testing.T) {
 		if acc1Val == nil {
 			t.Errorf("acc1Val not present")
 		}
-		if acc1Val.BondHeight != state.Height {
+		if acc1Val.BondHeight != state.LastBlockHeight {
 			t.Errorf("Unexpected bond height. Expected %v, got %v",
-				state.Height, acc1Val.BondHeight)
+				state.LastBlockHeight, acc1Val.BondHeight)
 		}
 		if acc1Val.VotingPower != acc1.Balance {
 			t.Errorf("Unexpected voting power. Expected %v, got %v",

@@ -126,6 +126,7 @@ type PartSet struct {
 }
 
 // Returns an immutable, full PartSet.
+// TODO Name is confusing, Data/Header clash with Block.Data/Header
 func NewPartSetFromData(data []byte) *PartSet {
 	// divide data into 4kb parts.
 	total := (len(data) + partSize - 1) / partSize
@@ -156,6 +157,7 @@ func NewPartSetFromData(data []byte) *PartSet {
 }
 
 // Returns an empty PartSet ready to be populated.
+// TODO Name is confusing, Data/Header clash with Block.Data/Header
 func NewPartSetFromHeader(header PartSetHeader) *PartSet {
 	return &PartSet{
 		total:         header.Total,

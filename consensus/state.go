@@ -374,19 +374,19 @@ ACTION_LOOP:
 // Otherwise the round is 0 and cs.Step becomes RoundStepNewHeight.
 func (cs *ConsensusState) updateToState(state *state.State) {
 	// Sanity check state.
-	if cs.Height > 0 && cs.Height != state.Height {
+	if cs.Height > 0 && cs.Height != state.LastBlockHeight {
 		Panicf("updateToState() expected state height of %v but found %v",
-			cs.Height, state.Height)
+			cs.Height, state.LastBlockHeight)
 	}
 
 	// Reset fields based on state.
 	validators := state.BondedValidators
-	height := state.Height + 1 // next desired block height
+	height := state.LastBlockHeight + 1 // next desired block height
 	cs.Height = height
 	cs.Round = 0
 	cs.Step = RoundStepNewHeight
 	if cs.CommitTime.IsZero() {
-		cs.StartTime = state.BlockTime.Add(newHeightDelta)
+		cs.StartTime = state.LastBlockTime.Add(newHeightDelta)
 	} else {
 		cs.StartTime = cs.CommitTime.Add(newHeightDelta)
 	}
@@ -509,11 +509,13 @@ func (cs *ConsensusState) RunActionPropose(height uint32, round uint16) {
 		txs, state := cs.mempool.GetProposalTxs() // TODO: cache state
 		block = &Block{
 			Header: Header{
-				Network:       Config.Network,
-				Height:        cs.Height,
-				Time:          time.Now(),
-				LastBlockHash: cs.state.BlockHash,
-				StateHash:     state.Hash(),
+				Network:        Config.Network,
+				Height:         cs.Height,
+				Time:           time.Now(),
+				Fees:           0, // TODO fees
+				LastBlockHash:  cs.state.LastBlockHash,
+				LastBlockParts: cs.state.LastBlockParts,
+				StateHash:      state.Hash(),
 			},
 			Validation: validation,
 			Data: Data{
@@ -564,7 +566,7 @@ func (cs *ConsensusState) RunActionPrevote(height uint32, round uint16) {
 	}
 
 	// Try staging cs.ProposalBlock
-	err := cs.stageBlock(cs.ProposalBlock)
+	err := cs.stageBlock(cs.ProposalBlock, cs.ProposalBlockParts)
 	if err != nil {
 		// ProposalBlock is invalid, prevote nil.
 		cs.signAddVote(VoteTypePrevote, nil, PartSetHeader{})
@@ -613,7 +615,7 @@ func (cs *ConsensusState) RunActionPrecommit(height uint32, round uint16) {
 	// If +2/3 prevoted for cs.ProposalBlock, lock it and precommit it.
 	if cs.ProposalBlock.HashesTo(hash) {
 		// Validate the block.
-		if err := cs.stageBlock(cs.ProposalBlock); err != nil {
+		if err := cs.stageBlock(cs.ProposalBlock, cs.ProposalBlockParts); err != nil {
 			// Prevent zombies.
 			log.Warning("+2/3 prevoted for an invalid block: %v", err)
 			return
@@ -631,6 +633,7 @@ func (cs *ConsensusState) RunActionPrecommit(height uint32, round uint16) {
 	return
 }
 
+// XXX Need to send new message to peers to get the right parts.
 // Enter commit step. See the diagram for details.
 func (cs *ConsensusState) RunActionCommit(height uint32) {
 	cs.mtx.Lock()
@@ -653,6 +656,7 @@ func (cs *ConsensusState) RunActionCommit(height uint32) {
 
 	// Clear the Locked* fields and use cs.Proposed*
 	if cs.LockedBlock.HashesTo(hash) {
+		// XXX maybe just use CommitBlock* instead. Proposals need to be signed...
 		cs.ProposalBlock = cs.LockedBlock
 		cs.ProposalBlockParts = cs.LockedBlockParts
 		cs.LockedBlock = nil
@@ -707,7 +711,7 @@ func (cs *ConsensusState) TryFinalizeCommit(height uint32) bool {
 			Panicf("Expected ProposalBlockParts header to be commit header")
 		}
 
-		err := cs.stageBlock(cs.ProposalBlock)
+		err := cs.stageBlock(cs.ProposalBlock, cs.ProposalBlockParts)
 		if err == nil {
 			// Increment height.
 			cs.updateToState(cs.stagedState)
@@ -838,7 +842,7 @@ func (cs *ConsensusState) AddVote(vote *Vote) (added bool, err error) {
 
 //-----------------------------------------------------------------------------
 
-func (cs *ConsensusState) stageBlock(block *Block) error {
+func (cs *ConsensusState) stageBlock(block *Block, blockParts *PartSet) error {
 	if block == nil {
 		panic("Cannot stage nil block")
 	}
@@ -853,7 +857,7 @@ func (cs *ConsensusState) stageBlock(block *Block) error {
 
 	// Commit block onto the copied state.
 	// NOTE: Basic validation is done in state.AppendBlock().
-	err := stateCopy.AppendBlock(block, true)
+	err := stateCopy.AppendBlock(block, blockParts.Header(), true)
 	if err != nil {
 		return err
 	} else {
@@ -882,7 +886,7 @@ func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header PartSetHea
 func (cs *ConsensusState) processBlockForCommit(block *Block, blockParts *PartSet) {
 
 	// The proposal must be valid.
-	if err := cs.stageBlock(block); err != nil {
+	if err := cs.stageBlock(block, blockParts); err != nil {
 		// Prevent zombies.
 		log.Warning("+2/3 precommitted an invalid block: %v", err)
 		return

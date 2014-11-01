@@ -43,9 +43,10 @@ func (txErr InvalidTxError) Error() string {
 // NOTE: not goroutine-safe.
 type State struct {
 	DB                  db_.DB
-	Height              uint32    // Last known block height
-	BlockHash           []byte    // Last known block hash
-	BlockTime           time.Time // LastKnown block time
+	LastBlockHeight     uint32
+	LastBlockHash       []byte
+	LastBlockParts      PartSetHeader
+	LastBlockTime       time.Time
 	BondedValidators    *ValidatorSet
 	UnbondingValidators *ValidatorSet
 	accountDetails      merkle.Tree // Shouldn't be accessed directly.
@@ -60,9 +61,10 @@ func LoadState(db db_.DB) *State {
 		reader := bytes.NewReader(buf)
 		var n int64
 		var err error
-		s.Height = ReadUInt32(reader, &n, &err)
-		s.BlockHash = ReadByteSlice(reader, &n, &err)
-		s.BlockTime = ReadTime(reader, &n, &err)
+		s.LastBlockHeight = ReadUInt32(reader, &n, &err)
+		s.LastBlockHash = ReadByteSlice(reader, &n, &err)
+		s.LastBlockParts = ReadPartSetHeader(reader, &n, &err)
+		s.LastBlockTime = ReadTime(reader, &n, &err)
 		s.BondedValidators = ReadValidatorSet(reader, &n, &err)
 		s.UnbondingValidators = ReadValidatorSet(reader, &n, &err)
 		accountDetailsHash := ReadByteSlice(reader, &n, &err)
@@ -82,9 +84,10 @@ func (s *State) Save() {
 	var buf bytes.Buffer
 	var n int64
 	var err error
-	WriteUInt32(&buf, s.Height, &n, &err)
-	WriteByteSlice(&buf, s.BlockHash, &n, &err)
-	WriteTime(&buf, s.BlockTime, &n, &err)
+	WriteUInt32(&buf, s.LastBlockHeight, &n, &err)
+	WriteByteSlice(&buf, s.LastBlockHash, &n, &err)
+	WriteBinary(&buf, s.LastBlockParts, &n, &err)
+	WriteTime(&buf, s.LastBlockTime, &n, &err)
 	WriteBinary(&buf, s.BondedValidators, &n, &err)
 	WriteBinary(&buf, s.UnbondingValidators, &n, &err)
 	WriteByteSlice(&buf, s.accountDetails.Hash(), &n, &err)
@@ -97,9 +100,10 @@ func (s *State) Save() {
 func (s *State) Copy() *State {
 	return &State{
 		DB:                  s.DB,
-		Height:              s.Height,
-		BlockHash:           s.BlockHash,
-		BlockTime:           s.BlockTime,
+		LastBlockHeight:     s.LastBlockHeight,
+		LastBlockHash:       s.LastBlockHash,
+		LastBlockParts:      s.LastBlockParts,
+		LastBlockTime:       s.LastBlockTime,
 		BondedValidators:    s.BondedValidators.Copy(),
 		UnbondingValidators: s.UnbondingValidators.Copy(),
 		accountDetails:      s.accountDetails.Copy(),
@@ -172,7 +176,7 @@ func (s *State) ExecTx(tx Tx) error {
 		s.SetAccountDetail(accDet)
 		added := s.BondedValidators.Add(&Validator{
 			Account:     accDet.Account,
-			BondHeight:  s.Height,
+			BondHeight:  s.LastBlockHeight,
 			VotingPower: accDet.Balance,
 			Accum:       0,
 		})
@@ -260,7 +264,7 @@ func (s *State) unbondValidator(accountId uint64, accDet *AccountDetail) {
 	if !removed {
 		panic("Failed to remove validator")
 	}
-	val.UnbondHeight = s.Height
+	val.UnbondHeight = s.LastBlockHeight
 	added := s.UnbondingValidators.Add(val)
 	if !added {
 		panic("Failed to add validator")
@@ -286,26 +290,25 @@ func (s *State) releaseValidator(accountId uint64) {
 // (used for constructing a new proposal)
 // NOTE: If an error occurs during block execution, state will be left
 // at an invalid state.  Copy the state before calling AppendBlock!
-func (s *State) AppendBlock(b *Block, checkStateHash bool) error {
+func (s *State) AppendBlock(block *Block, blockPartsHeader PartSetHeader, checkStateHash bool) error {
 	// Basic block validation.
-	// XXX We need to validate LastBlockParts too.
-	err := b.ValidateBasic(s.Height, s.BlockHash)
+	err := block.ValidateBasic(s.LastBlockHeight, s.LastBlockHash, s.LastBlockParts, s.LastBlockTime)
 	if err != nil {
 		return err
 	}
 
 	// Validate block Validation.
-	if b.Height == 1 {
-		if len(b.Validation.Commits) != 0 {
+	if block.Height == 1 {
+		if len(block.Validation.Commits) != 0 {
 			return errors.New("Block at height 1 (first block) should have no Validation commits")
 		}
 	} else {
-		if uint(len(b.Validation.Commits)) != s.BondedValidators.Size() {
+		if uint(len(block.Validation.Commits)) != s.BondedValidators.Size() {
 			return errors.New("Invalid block validation size")
 		}
 		var sumVotingPower uint64
 		s.BondedValidators.Iterate(func(index uint, val *Validator) bool {
-			rsig := b.Validation.Commits[index]
+			rsig := block.Validation.Commits[index]
 			if rsig.IsZero() {
 				return false
 			} else {
@@ -314,11 +317,11 @@ func (s *State) AppendBlock(b *Block, checkStateHash bool) error {
 					return true
 				}
 				vote := &Vote{
-					Height:     b.Height,
+					Height:     block.Height,
 					Round:      rsig.Round,
 					Type:       VoteTypeCommit,
-					BlockHash:  b.LastBlockHash,
-					BlockParts: b.LastBlockParts,
+					BlockHash:  block.LastBlockHash,
+					BlockParts: block.LastBlockParts,
 					Signature:  rsig.Signature,
 				}
 				if val.Verify(vote) {
@@ -339,7 +342,7 @@ func (s *State) AppendBlock(b *Block, checkStateHash bool) error {
 	}
 
 	// Commit each tx
-	for _, tx := range b.Data.Txs {
+	for _, tx := range block.Data.Txs {
 		err := s.ExecTx(tx)
 		if err != nil {
 			return InvalidTxError{tx, err}
@@ -347,12 +350,12 @@ func (s *State) AppendBlock(b *Block, checkStateHash bool) error {
 	}
 
 	// Update Validator.LastCommitHeight as necessary.
-	for _, rsig := range b.Validation.Commits {
+	for _, rsig := range block.Validation.Commits {
 		_, val := s.BondedValidators.GetById(rsig.SignerId)
 		if val == nil {
 			return ErrStateInvalidSignature
 		}
-		val.LastCommitHeight = b.Height
+		val.LastCommitHeight = block.Height
 		updated := s.BondedValidators.Update(val)
 		if !updated {
 			panic("Failed to update validator LastCommitHeight")
@@ -363,7 +366,7 @@ func (s *State) AppendBlock(b *Block, checkStateHash bool) error {
 	// reward account with bonded coins.
 	toRelease := []*Validator{}
 	s.UnbondingValidators.Iterate(func(index uint, val *Validator) bool {
-		if val.UnbondHeight+unbondingPeriodBlocks < b.Height {
+		if val.UnbondHeight+unbondingPeriodBlocks < block.Height {
 			toRelease = append(toRelease, val)
 		}
 		return false
@@ -376,7 +379,7 @@ func (s *State) AppendBlock(b *Block, checkStateHash bool) error {
 	// unbond them, they have timed out.
 	toTimeout := []*Validator{}
 	s.BondedValidators.Iterate(func(index uint, val *Validator) bool {
-		if val.LastCommitHeight+validatorTimeoutBlocks < b.Height {
+		if val.LastCommitHeight+validatorTimeoutBlocks < block.Height {
 			toTimeout = append(toTimeout, val)
 		}
 		return false
@@ -392,21 +395,22 @@ func (s *State) AppendBlock(b *Block, checkStateHash bool) error {
 	stateHash := s.Hash()
 	if checkStateHash {
 		// State hash should match
-		if !bytes.Equal(stateHash, b.StateHash) {
+		if !bytes.Equal(stateHash, block.StateHash) {
 			return Errorf("Invalid state hash. Got %X, block says %X",
-				stateHash, b.StateHash)
+				stateHash, block.StateHash)
 		}
 	} else {
 		// Set the state hash.
-		if b.StateHash != nil {
+		if block.StateHash != nil {
 			panic("Cannot overwrite block.StateHash")
 		}
-		b.StateHash = stateHash
+		block.StateHash = stateHash
 	}
 
-	s.Height = b.Height
-	s.BlockHash = b.Hash()
-	s.BlockTime = b.Time
+	s.LastBlockHeight = block.Height
+	s.LastBlockHash = block.Hash()
+	s.LastBlockParts = blockPartsHeader
+	s.LastBlockTime = block.Time
 	return nil
 }
 
@@ -428,7 +432,7 @@ func (s *State) SetAccountDetail(accDet *AccountDetail) (updated bool) {
 }
 
 // Returns a hash that represents the state data,
-// excluding Height, BlockHash.
+// excluding LastBlock*
 func (s *State) Hash() []byte {
 	hashables := []merkle.Hashable{
 		s.BondedValidators,
