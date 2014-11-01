@@ -6,7 +6,6 @@ import (
 
 	. "github.com/tendermint/tendermint/blocks"
 	. "github.com/tendermint/tendermint/common"
-	. "github.com/tendermint/tendermint/common/test"
 	db_ "github.com/tendermint/tendermint/db"
 	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/state"
@@ -78,7 +77,7 @@ func TestSetupRound(t *testing.T) {
 
 	// Setup round 1 (next round)
 	cs.SetupNewRound(1, 1)
-	<-cs.NewStepCh() // TODO: test this value too.
+	<-cs.NewStepCh()
 
 	// Now the commit should be copied over to prevotes and precommits.
 	rs1 := cs.GetRoundState()
@@ -150,9 +149,6 @@ func TestRunActionPrecommitCommitFinalize(t *testing.T) {
 	cs.RunActionPropose(1, 0)
 	<-cs.NewStepCh() // TODO: test this value too.
 
-	// Test RunActionPrecommit failures:
-	AssertPanics(t, "Wrong height ", func() { cs.RunActionPrecommit(2, 0) })
-	AssertPanics(t, "Wrong round", func() { cs.RunActionPrecommit(1, 1) })
 	cs.RunActionPrecommit(1, 0)
 	<-cs.NewStepCh() // TODO: test this value too.
 	if cs.Precommits.GetById(0) != nil {
@@ -179,10 +175,6 @@ func TestRunActionPrecommitCommitFinalize(t *testing.T) {
 		t.Errorf("RunActionPrecommit should have succeeded")
 	}
 	checkRoundState(t, cs.GetRoundState(), 1, 0, RoundStepPrecommit)
-
-	// Test RunActionCommit failures:
-	AssertPanics(t, "Wrong height ", func() { cs.RunActionCommit(2) })
-	AssertPanics(t, "Wrong round", func() { cs.RunActionCommit(1) })
 
 	// Add at least +2/3 precommits.
 	for i := 0; i < 7; i++ {

@@ -125,6 +125,10 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 			msg := msg_.(*NewRoundStepMessage)
 			ps.ApplyNewRoundStepMessage(msg, rs)
 
+		case *CommitMessage:
+			msg := msg_.(*CommitMessage)
+			ps.ApplyCommitMessage(msg)
+
 		case *HasVotesMessage:
 			msg := msg_.(*HasVotesMessage)
 			ps.ApplyHasVotesMessage(msg)
@@ -211,7 +215,6 @@ func (conR *ConsensusReactor) SetPrivValidator(priv *PrivValidator) {
 
 //--------------------------------------
 
-// XXX We need to ensure that Proposal* etc are also set appropriately.
 // Listens for changes to the ConsensusState.Step by pulling
 // on conR.conS.NewStepCh().
 func (conR *ConsensusReactor) broadcastNewRoundStepRoutine() {
@@ -229,13 +232,25 @@ func (conR *ConsensusReactor) broadcastNewRoundStepRoutine() {
 		timeElapsed := rs.StartTime.Sub(time.Now())
 
 		// Broadcast NewRoundStepMessage
-		msg := &NewRoundStepMessage{
-			Height: rs.Height,
-			Round:  rs.Round,
-			Step:   rs.Step,
-			SecondsSinceStartTime: uint32(timeElapsed.Seconds()),
+		{
+			msg := &NewRoundStepMessage{
+				Height: rs.Height,
+				Round:  rs.Round,
+				Step:   rs.Step,
+				SecondsSinceStartTime: uint32(timeElapsed.Seconds()),
+			}
+			conR.sw.Broadcast(StateCh, msg)
 		}
-		conR.sw.Broadcast(StateCh, msg)
+
+		// If the step is commit, then also broadcast a CommitMessage.
+		if rs.Step == RoundStepCommit {
+			msg := &CommitMessage{
+				Height:        rs.Height,
+				BlockParts:    rs.ProposalBlockParts.Header(),
+				BlockBitArray: rs.ProposalBlockParts.BitArray(),
+			}
+			conR.sw.Broadcast(StateCh, msg)
+		}
 	}
 }
 
@@ -521,6 +536,18 @@ func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage, rs *Roun
 	}
 }
 
+func (ps *PeerState) ApplyCommitMessage(msg *CommitMessage) {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+
+	if ps.Height != msg.Height {
+		return
+	}
+
+	ps.ProposalBlockParts = msg.BlockParts
+	ps.ProposalBlockBitArray = msg.BlockBitArray
+}
+
 func (ps *PeerState) ApplyHasVotesMessage(msg *HasVotesMessage) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
@@ -546,7 +573,8 @@ const (
 	msgTypeUnknown = byte(0x00)
 	// Messages for communicating state changes
 	msgTypeNewRoundStep = byte(0x01)
-	msgTypeHasVotes     = byte(0x02)
+	msgTypeCommit       = byte(0x02)
+	msgTypeHasVotes     = byte(0x03)
 	// Messages of data
 	msgTypeProposal = byte(0x11)
 	msgTypePart     = byte(0x12) // both block & POL
@@ -563,6 +591,8 @@ func decodeMessage(bz []byte) (msgType byte, msg interface{}) {
 	// Messages for communicating state changes
 	case msgTypeNewRoundStep:
 		msg = readNewRoundStepMessage(r, n, err)
+	case msgTypeCommit:
+		msg = readCommitMessage(r, n, err)
 	case msgTypeHasVotes:
 		msg = readHasVotesMessage(r, n, err)
 	// Messages of data
@@ -607,6 +637,34 @@ func (m *NewRoundStepMessage) WriteTo(w io.Writer) (n int64, err error) {
 
 func (m *NewRoundStepMessage) String() string {
 	return fmt.Sprintf("[NewRoundStep %v/%v/%X]", m.Height, m.Round, m.Step)
+}
+
+//-------------------------------------
+
+type CommitMessage struct {
+	Height        uint32
+	BlockParts    PartSetHeader
+	BlockBitArray BitArray
+}
+
+func readCommitMessage(r io.Reader, n *int64, err *error) *CommitMessage {
+	return &CommitMessage{
+		Height:        ReadUInt32(r, n, err),
+		BlockParts:    ReadPartSetHeader(r, n, err),
+		BlockBitArray: ReadBitArray(r, n, err),
+	}
+}
+
+func (m *CommitMessage) WriteTo(w io.Writer) (n int64, err error) {
+	WriteByte(w, msgTypeCommit, &n, &err)
+	WriteUInt32(w, m.Height, &n, &err)
+	WriteBinary(w, m.BlockParts, &n, &err)
+	WriteBinary(w, m.BlockBitArray, &n, &err)
+	return
+}
+
+func (m *CommitMessage) String() string {
+	return fmt.Sprintf("[Commit %v/%v/%v]", m.Height, m.BlockParts, m.BlockBitArray)
 }
 
 //-------------------------------------

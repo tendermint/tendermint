@@ -416,6 +416,7 @@ func (cs *ConsensusState) updateToState(state *state.State) {
 	}
 }
 
+// After the call cs.Step becomes RoundStepNewRound.
 func (cs *ConsensusState) setupNewRound(round uint16) {
 	// Sanity check
 	if round == 0 {
@@ -461,6 +462,7 @@ func (cs *ConsensusState) SetupNewRound(height uint32, desiredRound uint16) bool
 		return false
 	}
 	cs.setupNewRound(desiredRound)
+	// c.Step is now RoundStepNewRound
 	cs.newStepCh <- cs.getRoundState()
 	return true
 }
@@ -471,8 +473,10 @@ func (cs *ConsensusState) RunActionPropose(height uint32, round uint16) {
 	if cs.Height != height || cs.Round != round {
 		return
 	}
-	cs.Step = RoundStepPropose
-	cs.newStepCh <- cs.getRoundState()
+	defer func() {
+		cs.Step = RoundStepPropose
+		cs.newStepCh <- cs.getRoundState()
+	}()
 
 	// Nothing to do if it's not our turn.
 	if cs.PrivValidator == nil || cs.Validators.Proposer().Id != cs.PrivValidator.Id {
@@ -550,8 +554,10 @@ func (cs *ConsensusState) RunActionPrevote(height uint32, round uint16) {
 	if cs.Height != height || cs.Round != round {
 		Panicf("RunActionPrevote(%v/%v), expected %v/%v", height, round, cs.Height, cs.Round)
 	}
-	cs.Step = RoundStepPrevote
-	cs.newStepCh <- cs.getRoundState()
+	defer func() {
+		cs.Step = RoundStepPrevote
+		cs.newStepCh <- cs.getRoundState()
+	}()
 
 	// If a block is locked, prevote that.
 	if cs.LockedBlock != nil {
@@ -586,8 +592,10 @@ func (cs *ConsensusState) RunActionPrecommit(height uint32, round uint16) {
 	if cs.Height != height || cs.Round != round {
 		Panicf("RunActionPrecommit(%v/%v), expected %v/%v", height, round, cs.Height, cs.Round)
 	}
-	cs.Step = RoundStepPrecommit
-	cs.newStepCh <- cs.getRoundState()
+	defer func() {
+		cs.Step = RoundStepPrecommit
+		cs.newStepCh <- cs.getRoundState()
+	}()
 
 	hash, partsHeader, ok := cs.Prevotes.TwoThirdsMajority()
 	if !ok {
@@ -633,7 +641,6 @@ func (cs *ConsensusState) RunActionPrecommit(height uint32, round uint16) {
 	return
 }
 
-// XXX Need to send new message to peers to get the right parts.
 // Enter commit step. See the diagram for details.
 func (cs *ConsensusState) RunActionCommit(height uint32) {
 	cs.mtx.Lock()
@@ -641,6 +648,11 @@ func (cs *ConsensusState) RunActionCommit(height uint32) {
 	if cs.Height != height {
 		Panicf("RunActionCommit(%v), expected %v", height, cs.Height)
 	}
+	defer func() {
+		cs.Step = RoundStepCommit
+		cs.newStepCh <- cs.getRoundState()
+	}()
+
 	// There are two ways to enter:
 	// 1. +2/3 precommits at the end of RoundStepPrecommit
 	// 2. +2/3 commits at any time
@@ -651,12 +663,9 @@ func (cs *ConsensusState) RunActionCommit(height uint32) {
 			panic("RunActionCommit() expects +2/3 precommits or commits")
 		}
 	}
-	cs.Step = RoundStepCommit
-	cs.newStepCh <- cs.getRoundState()
 
 	// Clear the Locked* fields and use cs.Proposed*
 	if cs.LockedBlock.HashesTo(hash) {
-		// XXX maybe just use CommitBlock* instead. Proposals need to be signed...
 		cs.ProposalBlock = cs.LockedBlock
 		cs.ProposalBlockParts = cs.LockedBlockParts
 		cs.LockedBlock = nil
@@ -671,11 +680,13 @@ func (cs *ConsensusState) RunActionCommit(height uint32) {
 			// Set up ProposalBlockParts and keep waiting.
 			cs.ProposalBlock = nil
 			cs.ProposalBlockParts = NewPartSetFromHeader(partsHeader)
+
 		} else {
 			// We just need to keep waiting.
 		}
 	} else {
 		// We have the block, so save/stage/sign-commit-vote.
+
 		cs.processBlockForCommit(cs.ProposalBlock, cs.ProposalBlockParts)
 	}
 
@@ -683,6 +694,7 @@ func (cs *ConsensusState) RunActionCommit(height uint32) {
 	if cs.Commits.HasTwoThirdsMajority() {
 		cs.CommitTime = time.Now()
 	}
+
 }
 
 // Returns true if Finalize happened, which increments height && sets
@@ -893,7 +905,7 @@ func (cs *ConsensusState) processBlockForCommit(block *Block, blockParts *PartSe
 	}
 
 	// Save to blockStore
-	cs.blockStore.SaveBlock(block)
+	cs.blockStore.SaveBlock(block, blockParts)
 
 	// Save the state
 	cs.stagedState.Save()
