@@ -62,6 +62,11 @@ func (v *Vote) SetSignature(sig Signature) {
 	v.Signature = sig
 }
 
+func (v *Vote) Copy() *Vote {
+	vCopy := *v
+	return &vCopy
+}
+
 func (v *Vote) String() string {
 	var typeString string
 	switch v.Type {

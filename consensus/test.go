@@ -1,7 +1,6 @@
 package consensus
 
 import (
-	. "github.com/tendermint/tendermint/blocks"
 	"github.com/tendermint/tendermint/state"
 )
 
@@ -16,7 +15,7 @@ func makeValidator(id uint64, votingPower uint64) (*state.Validator, *state.Priv
 	}, privAccount
 }
 
-func makeVoteSet(height uint32, round uint16, numValidators int, votingPower uint64) (*VoteSet, *state.ValidatorSet, []*state.PrivAccount) {
+func makeVoteSet(height uint32, round uint16, type_ byte, numValidators int, votingPower uint64) (*VoteSet, *state.ValidatorSet, []*state.PrivAccount) {
 	vals := make([]*state.Validator, numValidators)
 	privAccounts := make([]*state.PrivAccount, numValidators)
 	for i := 0; i < numValidators; i++ {
@@ -25,5 +24,5 @@ func makeVoteSet(height uint32, round uint16, numValidators int, votingPower uin
 		privAccounts[i] = privAccount
 	}
 	valSet := state.NewValidatorSet(vals)
-	return NewVoteSet(height, round, VoteTypePrevote, valSet), valSet, privAccounts
+	return NewVoteSet(height, round, type_, valSet), valSet, privAccounts
 }

@@ -84,20 +84,20 @@ func (part *Part) StringWithIndent(indent string) string {
 //-------------------------------------
 
 type PartSetHeader struct {
-	Hash  []byte
 	Total uint16
+	Hash  []byte
 }
 
 func ReadPartSetHeader(r io.Reader, n *int64, err *error) PartSetHeader {
 	return PartSetHeader{
-		Hash:  ReadByteSlice(r, n, err),
 		Total: ReadUInt16(r, n, err),
+		Hash:  ReadByteSlice(r, n, err),
 	}
 }
 
 func (psh PartSetHeader) WriteTo(w io.Writer) (n int64, err error) {
-	WriteByteSlice(w, psh.Hash, &n, &err)
 	WriteUInt16(w, psh.Total, &n, &err)
+	WriteByteSlice(w, psh.Hash, &n, &err)
 	return
 }
 
@@ -110,15 +110,14 @@ func (psh PartSetHeader) String() string {
 }
 
 func (psh PartSetHeader) Equals(other PartSetHeader) bool {
-	return bytes.Equal(psh.Hash, other.Hash) &&
-		psh.Total == other.Total
+	return psh.Total == other.Total && bytes.Equal(psh.Hash, other.Hash)
 }
 
 //-------------------------------------
 
 type PartSet struct {
-	hash  []byte
 	total uint16
+	hash  []byte
 
 	mtx           sync.Mutex
 	parts         []*Part
@@ -148,8 +147,8 @@ func NewPartSetFromData(data []byte) *PartSet {
 		parts[i].Trail = merkle.HashTrailForIndex(hashTree, i)
 	}
 	return &PartSet{
-		hash:          hashTree[len(hashTree)/2],
 		total:         uint16(total),
+		hash:          hashTree[len(hashTree)/2],
 		parts:         parts,
 		partsBitArray: partsBitArray,
 		count:         uint16(total),
@@ -159,8 +158,8 @@ func NewPartSetFromData(data []byte) *PartSet {
 // Returns an empty PartSet ready to be populated.
 func NewPartSetFromHeader(header PartSetHeader) *PartSet {
 	return &PartSet{
-		hash:          header.Hash,
 		total:         header.Total,
+		hash:          header.Hash,
 		parts:         make([]*Part, header.Total),
 		partsBitArray: NewBitArray(uint(header.Total)),
 		count:         0,
@@ -172,8 +171,8 @@ func (ps *PartSet) Header() PartSetHeader {
 		return PartSetHeader{}
 	} else {
 		return PartSetHeader{
-			Hash:  ps.hash,
 			Total: ps.total,
+			Hash:  ps.hash,
 		}
 	}
 }

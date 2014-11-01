@@ -36,6 +36,9 @@ type VoteSet struct {
 
 // Constructs a new VoteSet struct used to accumulate votes for each round.
 func NewVoteSet(height uint32, round uint16, type_ byte, vset *state.ValidatorSet) *VoteSet {
+	if height == 0 {
+		panic("Cannot make VoteSet for height == 0, doesn't make sense.")
+	}
 	if type_ == VoteTypeCommit && round != 0 {
 		panic("Expected round 0 for commit vote set")
 	}
@@ -214,7 +217,7 @@ func (vs *VoteSet) MakePOL() *POL {
 
 func (vs *VoteSet) MakeValidation() Validation {
 	if vs.type_ != VoteTypeCommit {
-		panic("Cannot MakeValidation() unless VoteSet.Type is VoteTypePrevote")
+		panic("Cannot MakeValidation() unless VoteSet.Type is VoteTypeCommit")
 	}
 	vs.mtx.Lock()
 	defer vs.mtx.Unlock()
@@ -224,6 +227,7 @@ func (vs *VoteSet) MakeValidation() Validation {
 	rsigs := make([]RoundSignature, vs.vset.Size())
 	vs.vset.Iterate(func(index uint, val *state.Validator) bool {
 		vote := vs.votes[val.Id]
+
 		if vote == nil {
 			return false
 		}

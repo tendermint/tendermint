@@ -6,6 +6,7 @@ import (
 
 	. "github.com/tendermint/tendermint/blocks"
 	. "github.com/tendermint/tendermint/common"
+	. "github.com/tendermint/tendermint/common/test"
 	db_ "github.com/tendermint/tendermint/db"
 	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/state"
@@ -48,15 +49,6 @@ func makeConsensusState() (*ConsensusState, []*state.PrivAccount) {
 	mempool := mempool.NewMempool(state)
 	cs := NewConsensusState(state, blockStore, mempool)
 	return cs, privAccounts
-}
-
-func assertPanics(t *testing.T, msg string, f func()) {
-	defer func() {
-		if err := recover(); err == nil {
-			t.Errorf("Should have panic'd, but didn't: %v", msg)
-		}
-	}()
-	f()
 }
 
 //-----------------------------------------------------------------------------
@@ -131,17 +123,16 @@ func TestRunActionPropose(t *testing.T) {
 	}
 }
 
-func checkRoundState(t *testing.T, cs *ConsensusState,
+func checkRoundState(t *testing.T, rs *RoundState,
 	height uint32, round uint16, step RoundStep) {
-	rs := cs.GetRoundState()
 	if rs.Height != height {
-		t.Errorf("cs.RoundState.Height should be %v, got %v", height, rs.Height)
+		t.Errorf("rs.Height should be %v, got %v", height, rs.Height)
 	}
 	if rs.Round != round {
-		t.Errorf("cs.RoundState.Round should be %v, got %v", round, rs.Round)
+		t.Errorf("rs.Round should be %v, got %v", round, rs.Round)
 	}
 	if rs.Step != step {
-		t.Errorf("cs.RoundState.Step should be %v, got %v", step, rs.Step)
+		t.Errorf("rs.Step should be %v, got %v", step, rs.Step)
 	}
 }
 
@@ -160,8 +151,8 @@ func TestRunActionPrecommitCommitFinalize(t *testing.T) {
 	<-cs.NewStepCh() // TODO: test this value too.
 
 	// Test RunActionPrecommit failures:
-	assertPanics(t, "Wrong height ", func() { cs.RunActionPrecommit(2, 0) })
-	assertPanics(t, "Wrong round", func() { cs.RunActionPrecommit(1, 1) })
+	AssertPanics(t, "Wrong height ", func() { cs.RunActionPrecommit(2, 0) })
+	AssertPanics(t, "Wrong round", func() { cs.RunActionPrecommit(1, 1) })
 	cs.RunActionPrecommit(1, 0)
 	<-cs.NewStepCh() // TODO: test this value too.
 	if cs.Precommits.GetById(0) != nil {
@@ -187,11 +178,11 @@ func TestRunActionPrecommitCommitFinalize(t *testing.T) {
 	if cs.Precommits.GetById(0) == nil {
 		t.Errorf("RunActionPrecommit should have succeeded")
 	}
-	checkRoundState(t, cs, 1, 0, RoundStepPrecommit)
+	checkRoundState(t, cs.GetRoundState(), 1, 0, RoundStepPrecommit)
 
 	// Test RunActionCommit failures:
-	assertPanics(t, "Wrong height ", func() { cs.RunActionCommit(2) })
-	assertPanics(t, "Wrong round", func() { cs.RunActionCommit(1) })
+	AssertPanics(t, "Wrong height ", func() { cs.RunActionCommit(2) })
+	AssertPanics(t, "Wrong round", func() { cs.RunActionCommit(1) })
 
 	// Add at least +2/3 precommits.
 	for i := 0; i < 7; i++ {
@@ -212,7 +203,7 @@ func TestRunActionPrecommitCommitFinalize(t *testing.T) {
 	if cs.Commits.GetById(0) == nil {
 		t.Errorf("RunActionCommit should have succeeded")
 	}
-	checkRoundState(t, cs, 1, 0, RoundStepCommit)
+	checkRoundState(t, cs.GetRoundState(), 1, 0, RoundStepCommit)
 
 	// cs.CommitTime should still be zero
 	if !cs.CommitTime.IsZero() {
@@ -235,5 +226,5 @@ func TestRunActionPrecommitCommitFinalize(t *testing.T) {
 	// Test TryFinalizeCommit:
 	cs.TryFinalizeCommit(1)
 	<-cs.NewStepCh() // TODO: test this value too.
-	checkRoundState(t, cs, 2, 0, RoundStepNewHeight)
+	checkRoundState(t, cs.GetRoundState(), 2, 0, RoundStepNewHeight)
 }

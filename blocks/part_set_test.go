@@ -25,7 +25,7 @@ func TestBasicPartSet(t *testing.T) {
 	}
 
 	// Test adding parts to a new partSet.
-	partSet2 := NewPartSetFromHeader(PartSetHeader{partSet.Hash(), partSet.Total()})
+	partSet2 := NewPartSetFromHeader(partSet.Header())
 
 	for i := uint16(0); i < partSet.Total(); i++ {
 		part := partSet.GetPart(i)
@@ -65,7 +65,7 @@ func TestWrongTrail(t *testing.T) {
 	partSet := NewPartSetFromData(data)
 
 	// Test adding a part with wrong data.
-	partSet2 := NewPartSetFromHeader(PartSetHeader{partSet.Hash(), partSet.Total()})
+	partSet2 := NewPartSetFromHeader(partSet.Header())
 
 	// Test adding a part with wrong trail.
 	part := partSet.GetPart(0)

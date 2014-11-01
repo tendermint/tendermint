@@ -168,7 +168,9 @@ func (pa *PrivAccount) SignBytes(msg []byte) Signature {
 }
 
 func (pa *PrivAccount) Sign(o Signable) {
-	o.SetSignature(Signature{}) // clear
+	if !o.GetSignature().IsZero() {
+		panic("Cannot sign: already signed")
+	}
 	msg := BinaryBytes(o)
 	sig := pa.SignBytes(msg)
 	o.SetSignature(sig)
