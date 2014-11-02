@@ -71,6 +71,16 @@ func (bs *BlockStore) LoadBlockPart(height uint32, index uint16) *Part {
 	return part
 }
 
+func (bs *BlockStore) LoadBlockMeta(height uint32) *BlockMeta {
+	var n int64
+	var err error
+	meta := ReadBlockMeta(bs.GetReader(calcBlockMetaKey(height)), &n, &err)
+	if err != nil {
+		Panicf("Error reading block meta: %v", err)
+	}
+	return meta
+}
+
 func (bs *BlockStore) LoadBlockValidation(height uint32) *Validation {
 	var n int64
 	var err error
@@ -78,7 +88,7 @@ func (bs *BlockStore) LoadBlockValidation(height uint32) *Validation {
 	if err != nil {
 		Panicf("Error reading validation: %v", err)
 	}
-	return &validation
+	return validation
 }
 
 func (bs *BlockStore) SaveBlock(block *Block, blockParts *PartSet) {
@@ -89,7 +99,11 @@ func (bs *BlockStore) SaveBlock(block *Block, blockParts *PartSet) {
 	if !blockParts.IsComplete() {
 		Panicf("BlockStore can only save complete block part sets")
 	}
-	meta := BlockMeta{Hash: block.Hash(), Parts: blockParts.Header()}
+	meta := &BlockMeta{
+		Hash:   block.Hash(),
+		Parts:  blockParts.Header(),
+		Header: block.Header,
+	}
 	// Save block meta
 	metaBytes := BinaryBytes(meta)
 	bs.db.Set(calcBlockMetaKey(height), metaBytes)
@@ -98,7 +112,7 @@ func (bs *BlockStore) SaveBlock(block *Block, blockParts *PartSet) {
 		bs.saveBlockPart(height, i, blockParts.GetPart(i))
 	}
 	// Save block validation (duplicate and separate)
-	validationBytes := BinaryBytes(&block.Validation)
+	validationBytes := BinaryBytes(block.Validation)
 	bs.db.Set(calcBlockValidationKey(height), validationBytes)
 	// Save new BlockStoreJSON descriptor
 	BlockStoreJSON{Height: height}.Save(bs.db)
@@ -115,20 +129,23 @@ func (bs *BlockStore) saveBlockPart(height uint32, index uint16, part *Part) {
 //-----------------------------------------------------------------------------
 
 type BlockMeta struct {
-	Hash  []byte
-	Parts PartSetHeader
+	Hash   []byte        // The BlockHash
+	Parts  PartSetHeader // The PartSetHeader, for transfer
+	Header *Header       // The block's Header
 }
 
-func ReadBlockMeta(r io.Reader, n *int64, err *error) BlockMeta {
-	return BlockMeta{
-		Hash:  ReadByteSlice(r, n, err),
-		Parts: ReadPartSetHeader(r, n, err),
+func ReadBlockMeta(r io.Reader, n *int64, err *error) *BlockMeta {
+	return &BlockMeta{
+		Hash:   ReadByteSlice(r, n, err),
+		Parts:  ReadPartSetHeader(r, n, err),
+		Header: ReadHeader(r, n, err),
 	}
 }
 
-func (bm BlockMeta) WriteTo(w io.Writer) (n int64, err error) {
+func (bm *BlockMeta) WriteTo(w io.Writer) (n int64, err error) {
 	WriteByteSlice(w, bm.Hash, &n, &err)
 	WriteBinary(w, bm.Parts, &n, &err)
+	WriteBinary(w, bm.Header, &n, &err)
 	return
 }
 

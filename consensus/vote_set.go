@@ -54,10 +54,14 @@ func NewVoteSet(height uint32, round uint16, type_ byte, vset *state.ValidatorSe
 	}
 }
 
+func (vs *VoteSet) Size() uint {
+	return vs.vset.Size()
+}
+
 // True if added, false if not.
 // Returns ErrVote[UnexpectedStep|InvalidAccount|InvalidSignature|InvalidBlockHash|ConflictingSignature]
 // NOTE: vote should not be mutated after adding.
-func (vs *VoteSet) Add(vote *Vote) (bool, error) {
+func (vs *VoteSet) Add(vote *Vote) (bool, uint, error) {
 	vs.mtx.Lock()
 	defer vs.mtx.Unlock()
 
@@ -66,31 +70,31 @@ func (vs *VoteSet) Add(vote *Vote) (bool, error) {
 		(vote.Type != VoteTypeCommit && vote.Round != vs.round) ||
 		(vote.Type != VoteTypeCommit && vote.Type != vs.type_) ||
 		(vote.Type == VoteTypeCommit && vs.type_ != VoteTypeCommit && vote.Round >= vs.round) {
-		return false, ErrVoteUnexpectedStep
+		return false, 0, ErrVoteUnexpectedStep
 	}
 
 	// Ensure that signer is a validator.
 	_, val := vs.vset.GetById(vote.SignerId)
 	if val == nil {
-		return false, ErrVoteInvalidAccount
+		return false, 0, ErrVoteInvalidAccount
 	}
 
 	// Check signature.
 	if !val.Verify(vote) {
 		// Bad signature.
-		return false, ErrVoteInvalidSignature
+		return false, 0, ErrVoteInvalidSignature
 	}
 
 	return vs.addVote(vote)
 }
 
-func (vs *VoteSet) addVote(vote *Vote) (bool, error) {
+func (vs *VoteSet) addVote(vote *Vote) (bool, uint, error) {
 	// If vote already exists, return false.
 	if existingVote, ok := vs.votes[vote.SignerId]; ok {
 		if bytes.Equal(existingVote.BlockHash, vote.BlockHash) {
-			return false, nil
+			return false, 0, nil
 		} else {
-			return false, ErrVoteConflictingSignature
+			return false, 0, ErrVoteConflictingSignature
 		}
 	}
 
@@ -98,7 +102,7 @@ func (vs *VoteSet) addVote(vote *Vote) (bool, error) {
 	vs.votes[vote.SignerId] = vote
 	voterIndex, val := vs.vset.GetById(vote.SignerId)
 	if val == nil {
-		return false, ErrVoteInvalidAccount
+		return false, 0, ErrVoteInvalidAccount
 	}
 	vs.votesBitArray.SetIndex(uint(voterIndex), true)
 	blockKey := string(vote.BlockHash) + string(BinaryBytes(vote.BlockParts))
@@ -114,7 +118,7 @@ func (vs *VoteSet) addVote(vote *Vote) (bool, error) {
 		vs.maj23Exists = true
 	}
 
-	return true, nil
+	return true, voterIndex, nil
 }
 
 // Assumes that commits VoteSet is valid.
@@ -215,7 +219,7 @@ func (vs *VoteSet) MakePOL() *POL {
 	return pol
 }
 
-func (vs *VoteSet) MakeValidation() Validation {
+func (vs *VoteSet) MakeValidation() *Validation {
 	if vs.type_ != VoteTypeCommit {
 		panic("Cannot MakeValidation() unless VoteSet.Type is VoteTypeCommit")
 	}
@@ -240,7 +244,7 @@ func (vs *VoteSet) MakeValidation() Validation {
 		rsigs[index] = RoundSignature{vote.Round, vote.Signature}
 		return false
 	})
-	return Validation{
+	return &Validation{
 		Commits: rsigs,
 	}
 }

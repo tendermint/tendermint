@@ -496,10 +496,11 @@ func (cs *ConsensusState) RunActionPropose(height uint32, round uint16) {
 		pol = cs.LockedPOL
 	} else {
 		// Otherwise we should create a new proposal.
-		var validation Validation
+		var validation *Validation
 		if cs.Height == 1 {
 			// We're creating a proposal for the first block.
 			// The validation is empty.
+			validation = &Validation{}
 		} else {
 			// We need to create a proposal.
 			// If we don't have enough commits from the last height,
@@ -512,7 +513,7 @@ func (cs *ConsensusState) RunActionPropose(height uint32, round uint16) {
 		}
 		txs, state := cs.mempool.GetProposalTxs() // TODO: cache state
 		block = &Block{
-			Header: Header{
+			Header: &Header{
 				Network:        Config.Network,
 				Height:         cs.Height,
 				Time:           time.Now(),
@@ -522,7 +523,7 @@ func (cs *ConsensusState) RunActionPropose(height uint32, round uint16) {
 				StateHash:      state.Hash(),
 			},
 			Validation: validation,
-			Data: Data{
+			Data: &Data{
 				Txs: txs,
 			},
 		}
@@ -827,8 +828,26 @@ func (cs *ConsensusState) AddProposalPOLPart(height uint32, round uint16, part *
 	return true, nil
 }
 
-// NOTE: This function may increment the height.
-func (cs *ConsensusState) AddVote(vote *Vote) (added bool, err error) {
+func (cs *ConsensusState) AddVote(vote *Vote) (added bool, index uint, err error) {
+	cs.mtx.Lock()
+	defer cs.mtx.Unlock()
+
+	return cs.addVote(vote)
+}
+
+// TODO: Maybe move this out of here?
+func (cs *ConsensusState) LoadHeaderValidation(height uint32) (*Header, *Validation) {
+	meta := cs.blockStore.LoadBlockMeta(height)
+	if meta == nil {
+		return nil, nil
+	}
+	validation := cs.blockStore.LoadBlockValidation(height)
+	return meta.Header, validation
+}
+
+//-----------------------------------------------------------------------------
+
+func (cs *ConsensusState) addVote(vote *Vote) (added bool, index uint, err error) {
 	switch vote.Type {
 	case VoteTypePrevote:
 		// Prevotes checks for height+round match.
@@ -837,22 +856,25 @@ func (cs *ConsensusState) AddVote(vote *Vote) (added bool, err error) {
 		// Precommits checks for height+round match.
 		return cs.Precommits.Add(vote)
 	case VoteTypeCommit:
-		// Commits checks for height match.
-		// No need to check if vote.Round < cs.Round ...
-		// Prevotes && Precommits already checks that.
-		cs.Prevotes.Add(vote)
-		cs.Precommits.Add(vote)
-		added, err = cs.Commits.Add(vote)
-		if added && cs.Commits.HasTwoThirdsMajority() {
-			cs.runActionCh <- RoundAction{cs.Height, cs.Round, RoundActionTryFinalize}
+		if vote.Height == cs.Height {
+			// No need to check if vote.Round < cs.Round ...
+			// Prevotes && Precommits already checks that.
+			cs.Prevotes.Add(vote)
+			cs.Precommits.Add(vote)
+			added, index, err = cs.Commits.Add(vote)
+			if added && cs.Commits.HasTwoThirdsMajority() {
+				cs.runActionCh <- RoundAction{cs.Height, cs.Round, RoundActionTryFinalize}
+			}
+			return added, index, err
 		}
-		return added, err
+		if vote.Height+1 == cs.Height {
+			return cs.LastCommits.Add(vote)
+		}
+		return false, 0, nil
 	default:
 		panic("Unknown vote type")
 	}
 }
-
-//-----------------------------------------------------------------------------
 
 func (cs *ConsensusState) stageBlock(block *Block, blockParts *PartSet) error {
 	if block == nil {
@@ -891,7 +913,7 @@ func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header PartSetHea
 		BlockParts: header,
 	}
 	cs.PrivValidator.Sign(vote)
-	cs.AddVote(vote)
+	cs.addVote(vote)
 	return vote
 }
 

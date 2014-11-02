@@ -25,7 +25,6 @@ const (
 	peerStateKey = "ConsensusReactor.peerState"
 
 	peerGossipSleepDuration = 50 * time.Millisecond // Time to sleep if there's nothing to send.
-	hasVotesThreshold       = 50                    // After this many new votes we'll send a HasVotesMessage.
 )
 
 //-----------------------------------------------------------------------------
@@ -113,7 +112,6 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 	rs := conR.conS.GetRoundState()
 	ps := peer.Data.Get(peerStateKey).(*PeerState)
 	_, msg_ := decodeMessage(msgBytes)
-	voteAddCounter := 0
 	var err error = nil
 
 	log.Debug("[%X][%v] Receive: %v", chId, peer, msg_)
@@ -129,9 +127,9 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 			msg := msg_.(*CommitMessage)
 			ps.ApplyCommitMessage(msg)
 
-		case *HasVotesMessage:
-			msg := msg_.(*HasVotesMessage)
-			ps.ApplyHasVotesMessage(msg)
+		case *HasVoteMessage:
+			msg := msg_.(*HasVoteMessage)
+			ps.ApplyHasVoteMessage(msg)
 
 		default:
 			// Ignore unknown message
@@ -164,36 +162,21 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 		switch msg_.(type) {
 		case *Vote:
 			vote := msg_.(*Vote)
-			// We can't deal with votes from another height,
-			// as they have a different validator set.
-			if vote.Height != rs.Height || vote.Height != ps.Height {
-				return
-			}
-			index, val := rs.Validators.GetById(vote.SignerId)
-			if val == nil {
-				log.Warning("Peer gave us an invalid vote.")
-				return
-			}
-			ps.EnsureVoteBitArrays(rs.Height, rs.Round, rs.Validators.Size())
-			ps.SetHasVote(rs.Height, rs.Round, index, vote)
-			added, err := conR.conS.AddVote(vote)
+			added, index, err := conR.conS.AddVote(vote)
 			if err != nil {
 				log.Warning("Error attempting to add vote: %v", err)
 			}
+			// Initialize Prevotes/Precommits/Commits if needed
+			ps.EnsureVoteBitArrays(rs.Height, rs.Validators.Size())
+			ps.SetHasVote(vote, index)
 			if added {
-				// Maybe send HasVotesMessage
-				// TODO optimize. It would be better to just acks for each vote!
-				voteAddCounter++
-				if voteAddCounter%hasVotesThreshold == 0 {
-					msg := &HasVotesMessage{
-						Height:     rs.Height,
-						Round:      rs.Round,
-						Prevotes:   rs.Prevotes.BitArray(),
-						Precommits: rs.Precommits.BitArray(),
-						Commits:    rs.Commits.BitArray(),
-					}
-					conR.sw.Broadcast(StateCh, msg)
+				msg := &HasVoteMessage{
+					Height: vote.Height,
+					Round:  vote.Round,
+					Type:   vote.Type,
+					Index:  index,
 				}
+				conR.sw.Broadcast(StateCh, msg)
 			}
 
 		default:
@@ -320,7 +303,6 @@ OUTER_LOOP:
 	}
 }
 
-// XXX Need to also send commits for LastComits.
 func (conR *ConsensusReactor) gossipVotesRoutine(peer *p2p.Peer, ps *PeerState) {
 OUTER_LOOP:
 	for {
@@ -332,15 +314,6 @@ OUTER_LOOP:
 		rs := conR.conS.GetRoundState()
 		prs := ps.GetRoundState()
 
-		// If height doesn't match, sleep.
-		if rs.Height != prs.Height {
-			time.Sleep(peerGossipSleepDuration)
-			continue OUTER_LOOP
-		}
-
-		// Ensure that peer's prevote/precommit/commit bitarrays of of sufficient capacity
-		ps.EnsureVoteBitArrays(rs.Height, rs.Round, rs.Validators.Size())
-
 		trySendVote := func(voteSet *VoteSet, peerVoteSet BitArray) (sent bool) {
 			// TODO: give priority to our vote.
 			index, ok := voteSet.BitArray().Sub(peerVoteSet).PickRandom()
@@ -349,29 +322,88 @@ OUTER_LOOP:
 				// NOTE: vote may be a commit.
 				msg := p2p.TypedMessage{msgTypeVote, vote}
 				peer.Send(VoteCh, msg)
-				ps.SetHasVote(rs.Height, rs.Round, index, vote)
+				ps.SetHasVote(vote, index)
 				return true
 			}
 			return false
 		}
 
-		// If there are prevotes to send...
-		if rs.Round == prs.Round && prs.Step <= RoundStepPrevote {
-			if trySendVote(rs.Prevotes, prs.Prevotes) {
+		// If height matches, then send LastCommits, Prevotes, Precommits, or Commits.
+		if rs.Height == prs.Height {
+
+			// If there are lastcommits to send...
+			if prs.Round == 0 && prs.Step == RoundStepNewHeight {
+				if prs.LastCommits.Size() == rs.LastCommits.Size() {
+					if trySendVote(rs.LastCommits, prs.LastCommits) {
+						continue OUTER_LOOP
+					}
+				}
+			}
+
+			// Initialize Prevotes/Precommits/Commits if needed
+			ps.EnsureVoteBitArrays(rs.Height, rs.Validators.Size())
+
+			// If there are prevotes to send...
+			if rs.Round == prs.Round && prs.Step <= RoundStepPrevote {
+				if trySendVote(rs.Prevotes, prs.Prevotes) {
+					continue OUTER_LOOP
+				}
+			}
+
+			// If there are precommits to send...
+			if rs.Round == prs.Round && prs.Step <= RoundStepPrecommit {
+				if trySendVote(rs.Precommits, prs.Precommits) {
+					continue OUTER_LOOP
+				}
+			}
+
+			// If there are any commits to send...
+			if trySendVote(rs.Commits, prs.Commits) {
 				continue OUTER_LOOP
 			}
 		}
 
-		// If there are precommits to send...
-		if rs.Round == prs.Round && prs.Step <= RoundStepPrecommit {
-			if trySendVote(rs.Precommits, prs.Precommits) {
+		// If peer is lagging by height 1, match our LastCommits to peer's Commits.
+		if rs.Height == prs.Height+1 {
+
+			// Initialize Commits if needed
+			ps.EnsureVoteBitArrays(rs.Height-1, rs.LastCommits.Size())
+
+			// If there are lastcommits to send...
+			if trySendVote(rs.LastCommits, prs.Commits) {
 				continue OUTER_LOOP
 			}
+
 		}
 
-		// If there are any commits to send...
-		if trySendVote(rs.Commits, prs.Commits) {
-			continue OUTER_LOOP
+		// If peer is lagging by more than 1, load and send Validation and send Commits.
+		if rs.Height >= prs.Height+2 {
+
+			// Load the block header and validation for prs.Height+1,
+			// which contains commit signatures for prs.Height.
+			header, validation := conR.conS.LoadHeaderValidation(prs.Height + 1)
+			size := uint(len(validation.Commits))
+
+			// Initialize Commits if needed
+			ps.EnsureVoteBitArrays(prs.Height, size)
+
+			index, ok := validation.BitArray().Sub(prs.Commits).PickRandom()
+			if ok {
+				rsig := validation.Commits[index]
+				// Reconstruct vote.
+				vote := &Vote{
+					Height:     prs.Height,
+					Round:      rsig.Round,
+					Type:       VoteTypeCommit,
+					BlockHash:  header.LastBlockHash,
+					BlockParts: header.LastBlockParts,
+					Signature:  rsig.Signature,
+				}
+				msg := p2p.TypedMessage{msgTypeVote, vote}
+				peer.Send(VoteCh, msg)
+				ps.SetHasVote(vote, index)
+				continue OUTER_LOOP
+			}
 		}
 
 		// We sent nothing. Sleep...
@@ -396,6 +428,7 @@ type PeerRoundState struct {
 	Prevotes              BitArray      // All votes peer has for this round
 	Precommits            BitArray      // All precommits peer has for this round
 	Commits               BitArray      // All commits peer has for this height
+	LastCommits           BitArray      // All commits peer has for last height
 }
 
 //-----------------------------------------------------------------------------
@@ -463,11 +496,11 @@ func (ps *PeerState) SetHasProposalPOLPart(height uint32, round uint16, index ui
 	ps.ProposalPOLBitArray.SetIndex(uint(index), true)
 }
 
-func (ps *PeerState) EnsureVoteBitArrays(height uint32, round uint16, numValidators uint) {
+func (ps *PeerState) EnsureVoteBitArrays(height uint32, numValidators uint) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
-	if ps.Height != height || ps.Round != round {
+	if ps.Height != height {
 		return
 	}
 
@@ -482,21 +515,29 @@ func (ps *PeerState) EnsureVoteBitArrays(height uint32, round uint16, numValidat
 	}
 }
 
-func (ps *PeerState) SetHasVote(height uint32, round uint16, index uint, vote *Vote) {
+func (ps *PeerState) SetHasVote(vote *Vote, index uint) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
+	ps.setHasVote(vote.Height, vote.Round, vote.Type, index)
+}
 
-	if ps.Height != height {
+func (ps *PeerState) setHasVote(height uint32, round uint16, type_ byte, index uint) {
+	if ps.Height == height+1 && type_ == VoteTypeCommit {
+		// Special case for LastCommits.
+		ps.LastCommits.SetIndex(index, true)
+		return
+	} else if ps.Height != height {
+		// Does not apply.
 		return
 	}
 
-	switch vote.Type {
+	switch type_ {
 	case VoteTypePrevote:
 		ps.Prevotes.SetIndex(index, true)
 	case VoteTypePrecommit:
 		ps.Precommits.SetIndex(index, true)
 	case VoteTypeCommit:
-		if vote.Round < round {
+		if round < ps.Round {
 			ps.Prevotes.SetIndex(index, true)
 			ps.Precommits.SetIndex(index, true)
 		}
@@ -531,6 +572,12 @@ func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage, rs *Roun
 		ps.Precommits = BitArray{}
 	}
 	if psHeight != msg.Height {
+		// Shift Commits to LastCommits
+		if psHeight+1 == msg.Height {
+			ps.LastCommits = ps.Commits
+		} else {
+			ps.LastCommits = BitArray{}
+		}
 		// We'll update the BitArray capacity later.
 		ps.Commits = BitArray{}
 	}
@@ -548,22 +595,19 @@ func (ps *PeerState) ApplyCommitMessage(msg *CommitMessage) {
 	ps.ProposalBlockBitArray = msg.BlockBitArray
 }
 
-func (ps *PeerState) ApplyHasVotesMessage(msg *HasVotesMessage) {
+func (ps *PeerState) ApplyHasVoteMessage(msg *HasVoteMessage) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
-	if ps.Height != msg.Height {
+	// Special case for LastCommits
+	if ps.Height == msg.Height+1 && msg.Type == VoteTypeCommit {
+		ps.LastCommits.SetIndex(msg.Index, true)
+		return
+	} else if ps.Height != msg.Height {
 		return
 	}
 
-	ps.Commits = ps.Commits.Or(msg.Commits)
-	if ps.Round == msg.Round {
-		ps.Prevotes = ps.Prevotes.Or(msg.Prevotes)
-		ps.Precommits = ps.Precommits.Or(msg.Precommits)
-	} else {
-		ps.Prevotes = msg.Prevotes
-		ps.Precommits = msg.Precommits
-	}
+	ps.setHasVote(msg.Height, msg.Round, msg.Type, msg.Index)
 }
 
 //-----------------------------------------------------------------------------
@@ -574,11 +618,11 @@ const (
 	// Messages for communicating state changes
 	msgTypeNewRoundStep = byte(0x01)
 	msgTypeCommit       = byte(0x02)
-	msgTypeHasVotes     = byte(0x03)
 	// Messages of data
 	msgTypeProposal = byte(0x11)
 	msgTypePart     = byte(0x12) // both block & POL
 	msgTypeVote     = byte(0x13)
+	msgTypeHasVote  = byte(0x14)
 )
 
 // TODO: check for unnecessary extra bytes at the end.
@@ -593,8 +637,6 @@ func decodeMessage(bz []byte) (msgType byte, msg interface{}) {
 		msg = readNewRoundStepMessage(r, n, err)
 	case msgTypeCommit:
 		msg = readCommitMessage(r, n, err)
-	case msgTypeHasVotes:
-		msg = readHasVotesMessage(r, n, err)
 	// Messages of data
 	case msgTypeProposal:
 		msg = ReadProposal(r, n, err)
@@ -602,6 +644,8 @@ func decodeMessage(bz []byte) (msgType byte, msg interface{}) {
 		msg = readPartMessage(r, n, err)
 	case msgTypeVote:
 		msg = ReadVote(r, n, err)
+	case msgTypeHasVote:
+		msg = readHasVoteMessage(r, n, err)
 	default:
 		msg = nil
 	}
@@ -669,40 +713,6 @@ func (m *CommitMessage) String() string {
 
 //-------------------------------------
 
-type HasVotesMessage struct {
-	Height     uint32
-	Round      uint16
-	Prevotes   BitArray
-	Precommits BitArray
-	Commits    BitArray
-}
-
-func readHasVotesMessage(r io.Reader, n *int64, err *error) *HasVotesMessage {
-	return &HasVotesMessage{
-		Height:     ReadUInt32(r, n, err),
-		Round:      ReadUInt16(r, n, err),
-		Prevotes:   ReadBitArray(r, n, err),
-		Precommits: ReadBitArray(r, n, err),
-		Commits:    ReadBitArray(r, n, err),
-	}
-}
-
-func (m *HasVotesMessage) WriteTo(w io.Writer) (n int64, err error) {
-	WriteByte(w, msgTypeHasVotes, &n, &err)
-	WriteUInt32(w, m.Height, &n, &err)
-	WriteUInt16(w, m.Round, &n, &err)
-	WriteBinary(w, m.Prevotes, &n, &err)
-	WriteBinary(w, m.Precommits, &n, &err)
-	WriteBinary(w, m.Commits, &n, &err)
-	return
-}
-
-func (m *HasVotesMessage) String() string {
-	return fmt.Sprintf("[HasVotesMessage H:%v R:%v]", m.Height, m.Round)
-}
-
-//-------------------------------------
-
 const (
 	partTypeProposalBlock = byte(0x01)
 	partTypeProposalPOL   = byte(0x02)
@@ -735,4 +745,35 @@ func (m *PartMessage) WriteTo(w io.Writer) (n int64, err error) {
 
 func (m *PartMessage) String() string {
 	return fmt.Sprintf("[PartMessage H:%v R:%v T:%X]", m.Height, m.Round, m.Type)
+}
+
+//-------------------------------------
+
+type HasVoteMessage struct {
+	Height uint32
+	Round  uint16
+	Type   byte
+	Index  uint
+}
+
+func readHasVoteMessage(r io.Reader, n *int64, err *error) *HasVoteMessage {
+	return &HasVoteMessage{
+		Height: ReadUInt32(r, n, err),
+		Round:  ReadUInt16(r, n, err),
+		Type:   ReadByte(r, n, err),
+		Index:  ReadUVarInt(r, n, err),
+	}
+}
+
+func (m *HasVoteMessage) WriteTo(w io.Writer) (n int64, err error) {
+	WriteByte(w, msgTypeHasVote, &n, &err)
+	WriteUInt32(w, m.Height, &n, &err)
+	WriteUInt16(w, m.Round, &n, &err)
+	WriteByte(w, m.Type, &n, &err)
+	WriteUVarInt(w, m.Index, &n, &err)
+	return
+}
+
+func (m *HasVoteMessage) String() string {
+	return fmt.Sprintf("[HasVoteMessage H:%v R:%v T:%X]", m.Height, m.Round, m.Type)
 }

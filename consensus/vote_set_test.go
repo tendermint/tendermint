@@ -169,7 +169,7 @@ func TestBadVotes(t *testing.T) {
 	// val0 votes for nil.
 	vote := &Vote{Height: height, Round: round, Type: VoteTypePrevote, BlockHash: nil}
 	privAccounts[0].Sign(vote)
-	added, err := voteSet.Add(vote)
+	added, _, err := voteSet.Add(vote)
 	if !added || err != nil {
 		t.Errorf("Expected Add(vote) to succeed")
 	}
@@ -177,7 +177,7 @@ func TestBadVotes(t *testing.T) {
 	// val0 votes again for some block.
 	vote = &Vote{Height: height, Round: round, Type: VoteTypePrevote, BlockHash: CRandBytes(32)}
 	privAccounts[0].Sign(vote)
-	added, err = voteSet.Add(vote)
+	added, _, err = voteSet.Add(vote)
 	if added || err == nil {
 		t.Errorf("Expected Add(vote) to fail, dupeout.")
 	}
@@ -185,7 +185,7 @@ func TestBadVotes(t *testing.T) {
 	// val1 votes on another height
 	vote = &Vote{Height: height + 1, Round: round, Type: VoteTypePrevote, BlockHash: nil}
 	privAccounts[1].Sign(vote)
-	added, err = voteSet.Add(vote)
+	added, _, err = voteSet.Add(vote)
 	if added {
 		t.Errorf("Expected Add(vote) to fail, wrong height")
 	}
@@ -193,7 +193,7 @@ func TestBadVotes(t *testing.T) {
 	// val2 votes on another round
 	vote = &Vote{Height: height, Round: round + 1, Type: VoteTypePrevote, BlockHash: nil}
 	privAccounts[2].Sign(vote)
-	added, err = voteSet.Add(vote)
+	added, _, err = voteSet.Add(vote)
 	if added {
 		t.Errorf("Expected Add(vote) to fail, wrong round")
 	}
@@ -201,7 +201,7 @@ func TestBadVotes(t *testing.T) {
 	// val3 votes of another type.
 	vote = &Vote{Height: height, Round: round, Type: VoteTypePrecommit, BlockHash: nil}
 	privAccounts[3].Sign(vote)
-	added, err = voteSet.Add(vote)
+	added, _, err = voteSet.Add(vote)
 	if added {
 		t.Errorf("Expected Add(vote) to fail, wrong type")
 	}
@@ -226,7 +226,7 @@ func TestAddCommitsToPrevoteVotes(t *testing.T) {
 	// Attempt to add a commit from val6 at a previous height
 	vote := &Vote{Height: height - 1, Round: round, Type: VoteTypeCommit, BlockHash: nil}
 	privAccounts[6].Sign(vote)
-	added, _ := voteSet.Add(vote)
+	added, _, _ := voteSet.Add(vote)
 	if added {
 		t.Errorf("Expected Add(vote) to fail, wrong height.")
 	}
@@ -234,7 +234,7 @@ func TestAddCommitsToPrevoteVotes(t *testing.T) {
 	// Attempt to add a commit from val6 at a later round
 	vote = &Vote{Height: height, Round: round + 1, Type: VoteTypeCommit, BlockHash: nil}
 	privAccounts[6].Sign(vote)
-	added, _ = voteSet.Add(vote)
+	added, _, _ = voteSet.Add(vote)
 	if added {
 		t.Errorf("Expected Add(vote) to fail, cannot add future round vote.")
 	}
@@ -242,7 +242,7 @@ func TestAddCommitsToPrevoteVotes(t *testing.T) {
 	// Attempt to add a commit from val6 for currrent height/round.
 	vote = &Vote{Height: height, Round: round, Type: VoteTypeCommit, BlockHash: nil}
 	privAccounts[6].Sign(vote)
-	added, err := voteSet.Add(vote)
+	added, _, err := voteSet.Add(vote)
 	if added || err == nil {
 		t.Errorf("Expected Add(vote) to fail, only prior round commits can be added.")
 	}
@@ -250,7 +250,7 @@ func TestAddCommitsToPrevoteVotes(t *testing.T) {
 	// Add commit from val6 at a previous round
 	vote = &Vote{Height: height, Round: round - 1, Type: VoteTypeCommit, BlockHash: nil}
 	privAccounts[6].Sign(vote)
-	added, err = voteSet.Add(vote)
+	added, _, err = voteSet.Add(vote)
 	if !added || err != nil {
 		t.Errorf("Expected Add(vote) to succeed, commit for prior rounds are relevant.")
 	}
@@ -258,7 +258,7 @@ func TestAddCommitsToPrevoteVotes(t *testing.T) {
 	// Also add commit from val7 for previous round.
 	vote = &Vote{Height: height, Round: round - 2, Type: VoteTypeCommit, BlockHash: nil}
 	privAccounts[7].Sign(vote)
-	added, err = voteSet.Add(vote)
+	added, _, err = voteSet.Add(vote)
 	if !added || err != nil {
 		t.Errorf("Expected Add(vote) to succeed. err: %v", err)
 	}

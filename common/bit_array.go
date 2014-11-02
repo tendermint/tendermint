@@ -60,6 +60,10 @@ func (bA BitArray) WriteTo(w io.Writer) (n int64, err error) {
 	return
 }
 
+func (bA BitArray) Size() uint {
+	return bA.bits
+}
+
 func (bA BitArray) IsZero() bool {
 	return bA.bits == 0
 }

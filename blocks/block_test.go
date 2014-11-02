@@ -59,7 +59,7 @@ func randBlock() *Block {
 
 	// Block
 	block := &Block{
-		Header: Header{
+		Header: &Header{
 			Network:       "Tendermint",
 			Height:        RandUInt32Exp(),
 			Fees:          RandUInt64Exp(),
@@ -67,10 +67,10 @@ func randBlock() *Block {
 			LastBlockHash: RandBytes(32),
 			StateHash:     RandBytes(32),
 		},
-		Validation: Validation{
+		Validation: &Validation{
 			Commits: []RoundSignature{randRoundSig(), randRoundSig()},
 		},
-		Data: Data{
+		Data: &Data{
 			Txs: []Tx{sendTx, nameTx, bondTx, unbondTx, dupeoutTx},
 		},
 	}

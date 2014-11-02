@@ -10,14 +10,15 @@ import (
 	"time"
 
 	. "github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
 	. "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/merkle"
 )
 
 type Block struct {
-	Header
-	Validation
-	Data
+	*Header
+	*Validation
+	*Data
 
 	// Volatile
 	hash []byte
@@ -32,9 +33,9 @@ func ReadBlock(r io.Reader, n *int64, err *error) *Block {
 }
 
 func (b *Block) WriteTo(w io.Writer) (n int64, err error) {
-	WriteBinary(w, &b.Header, &n, &err)
-	WriteBinary(w, &b.Validation, &n, &err)
-	WriteBinary(w, &b.Data, &n, &err)
+	WriteBinary(w, b.Header, &n, &err)
+	WriteBinary(w, b.Validation, &n, &err)
+	WriteBinary(w, b.Data, &n, &err)
 	return
 }
 
@@ -125,11 +126,11 @@ type Header struct {
 	hash []byte
 }
 
-func ReadHeader(r io.Reader, n *int64, err *error) (h Header) {
+func ReadHeader(r io.Reader, n *int64, err *error) *Header {
 	if *err != nil {
-		return Header{}
+		return nil
 	}
-	return Header{
+	return &Header{
 		Network:        ReadString(r, n, err),
 		Height:         ReadUInt32(r, n, err),
 		Time:           ReadTime(r, n, err),
@@ -189,11 +190,12 @@ type Validation struct {
 	Commits []RoundSignature
 
 	// Volatile
-	hash []byte
+	hash     []byte
+	bitArray BitArray
 }
 
-func ReadValidation(r io.Reader, n *int64, err *error) Validation {
-	return Validation{
+func ReadValidation(r io.Reader, n *int64, err *error) *Validation {
+	return &Validation{
 		Commits: ReadRoundSignatures(r, n, err),
 	}
 }
@@ -226,6 +228,16 @@ func (v *Validation) StringWithIndent(indent string) string {
 		indent, v.hash)
 }
 
+func (v *Validation) BitArray() BitArray {
+	if v.bitArray.IsZero() {
+		v.bitArray = NewBitArray(uint(len(v.Commits)))
+		for i, rsig := range v.Commits {
+			v.bitArray.SetIndex(uint(i), !rsig.IsZero())
+		}
+	}
+	return v.bitArray
+}
+
 //-----------------------------------------------------------------------------
 
 type Data struct {
@@ -235,13 +247,13 @@ type Data struct {
 	hash []byte
 }
 
-func ReadData(r io.Reader, n *int64, err *error) Data {
+func ReadData(r io.Reader, n *int64, err *error) *Data {
 	numTxs := ReadUInt32(r, n, err)
 	txs := make([]Tx, 0, numTxs)
 	for i := uint32(0); i < numTxs; i++ {
 		txs = append(txs, ReadTx(r, n, err))
 	}
-	return Data{Txs: txs}
+	return &Data{Txs: txs}
 }
 
 func (data *Data) WriteTo(w io.Writer) (n int64, err error) {
