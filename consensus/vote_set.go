@@ -55,7 +55,11 @@ func NewVoteSet(height uint32, round uint16, type_ byte, vset *state.ValidatorSe
 }
 
 func (vs *VoteSet) Size() uint {
-	return vs.vset.Size()
+	if vs == nil {
+		return 0
+	} else {
+		return vs.vset.Size()
+	}
 }
 
 // True if added, false if not.
@@ -132,6 +136,9 @@ func (vs *VoteSet) AddFromCommits(commits *VoteSet) {
 }
 
 func (vs *VoteSet) BitArray() BitArray {
+	if vs == nil {
+		return BitArray{}
+	}
 	vs.mtx.Lock()
 	defer vs.mtx.Unlock()
 	return vs.votesBitArray.Copy()

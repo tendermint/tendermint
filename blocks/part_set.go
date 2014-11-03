@@ -101,12 +101,12 @@ func (psh PartSetHeader) WriteTo(w io.Writer) (n int64, err error) {
 	return
 }
 
-func (psh PartSetHeader) IsZero() bool {
-	return psh.Total == 0
-}
-
 func (psh PartSetHeader) String() string {
 	return fmt.Sprintf("PartSet{%X/%v}", psh.Hash, psh.Total)
+}
+
+func (psh PartSetHeader) IsZero() bool {
+	return psh.Total == 0
 }
 
 func (psh PartSetHeader) Equals(other PartSetHeader) bool {
@@ -176,6 +176,14 @@ func (ps *PartSet) Header() PartSetHeader {
 			Total: ps.total,
 			Hash:  ps.hash,
 		}
+	}
+}
+
+func (ps *PartSet) HasHeader(header PartSetHeader) bool {
+	if ps == nil {
+		return false
+	} else {
+		return ps.Header().Equals(header)
 	}
 }
 

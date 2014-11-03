@@ -85,7 +85,7 @@ func TestGenesisSaveLoad(t *testing.T) {
 	s0, _ := randGenesisState(10, 5)
 	// Mutate the state to append one empty block.
 	block := &Block{
-		Header: Header{
+		Header: &Header{
 			Network:        Config.Network,
 			Height:         1,
 			Time:           s0.LastBlockTime.Add(time.Minute),
@@ -94,8 +94,8 @@ func TestGenesisSaveLoad(t *testing.T) {
 			LastBlockParts: s0.LastBlockParts,
 			StateHash:      nil,
 		},
-		Validation: Validation{},
-		Data: Data{
+		Validation: &Validation{},
+		Data: &Data{
 			Txs: []Tx{},
 		},
 	}

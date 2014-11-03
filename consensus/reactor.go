@@ -252,7 +252,7 @@ OUTER_LOOP:
 		// Send proposal Block parts?
 		// NOTE: if we or peer is at RoundStepCommit*, the round
 		// won't necessarily match, but that's OK.
-		if rs.ProposalBlockParts.Header().Equals(prs.ProposalBlockParts) {
+		if rs.ProposalBlockParts.HasHeader(prs.ProposalBlockParts) {
 			if index, ok := rs.ProposalBlockParts.BitArray().Sub(
 				prs.ProposalBlockBitArray).PickRandom(); ok {
 				msg := &PartMessage{
@@ -282,7 +282,7 @@ OUTER_LOOP:
 		}
 
 		// Send proposal POL parts?
-		if rs.ProposalPOLParts.Header().Equals(prs.ProposalPOLParts) {
+		if rs.ProposalPOLParts.HasHeader(prs.ProposalPOLParts) {
 			if index, ok := rs.ProposalPOLParts.BitArray().Sub(
 				prs.ProposalPOLBitArray).PickRandom(); ok {
 				msg := &PartMessage{

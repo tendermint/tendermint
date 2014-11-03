@@ -676,7 +676,7 @@ func (cs *ConsensusState) RunActionCommit(height uint32) {
 
 	// If we don't have the block being committed, set up to get it.
 	if !cs.ProposalBlock.HashesTo(hash) {
-		if !cs.ProposalBlockParts.Header().Equals(partsHeader) {
+		if !cs.ProposalBlockParts.HasHeader(partsHeader) {
 			// We're getting the wrong block.
 			// Set up ProposalBlockParts and keep waiting.
 			cs.ProposalBlock = nil
@@ -720,7 +720,7 @@ func (cs *ConsensusState) TryFinalizeCommit(height uint32) bool {
 		if !cs.ProposalBlock.HashesTo(hash) {
 			Panicf("Expected ProposalBlock to hash to commit hash")
 		}
-		if !cs.ProposalBlockParts.Header().Equals(header) {
+		if !cs.ProposalBlockParts.HasHeader(header) {
 			Panicf("Expected ProposalBlockParts header to be commit header")
 		}
 
