@@ -233,6 +233,12 @@ func (cs *ConsensusState) IsStopped() bool {
 	return atomic.LoadUint32(&cs.stopped) == 1
 }
 
+func (cs *ConsensusState) queueAction(ra RoundAction) {
+	go func() {
+		cs.runActionCh <- ra
+	}()
+}
+
 // Source of all round state transitions (and votes).
 func (cs *ConsensusState) stepTransitionRoutine() {
 
@@ -240,6 +246,8 @@ func (cs *ConsensusState) stepTransitionRoutine() {
 	// Schedule the next action by pushing a RoundAction{} to cs.runActionCh.
 	scheduleNextAction := func() {
 		go func() {
+			// NOTE: We can push directly to runActionCh because
+			// we're running in a separate goroutine, which avoids deadlocks.
 			rs := cs.getRoundState()
 			round, roundStartTime, roundDuration, _, elapsedRatio := calcRoundInfo(rs.StartTime)
 			log.Debug("Called scheduleNextAction. round:%v roundStartTime:%v elapsedRatio:%v", round, roundStartTime, elapsedRatio)
@@ -339,7 +347,7 @@ ACTION_LOOP:
 			if rs.Precommits.HasTwoThirdsMajority() {
 				// Enter RoundStepCommit and commit.
 				cs.RunActionCommit(rs.Height)
-				cs.runActionCh <- RoundAction{rs.Height, rs.Round, RoundActionTryFinalize}
+				cs.queueAction(RoundAction{rs.Height, rs.Round, RoundActionTryFinalize})
 				continue ACTION_LOOP
 			} else {
 				// Could not commit, move onto next round.
@@ -355,7 +363,7 @@ ACTION_LOOP:
 			}
 			// Enter RoundStepCommit and commit.
 			cs.RunActionCommit(rs.Height)
-			cs.runActionCh <- RoundAction{rs.Height, rs.Round, RoundActionTryFinalize}
+			cs.queueAction(RoundAction{rs.Height, rs.Round, RoundActionTryFinalize})
 			continue ACTION_LOOP
 
 		case RoundActionTryFinalize:
@@ -801,7 +809,7 @@ func (cs *ConsensusState) AddProposalBlockPart(height uint32, round uint16, part
 		var n int64
 		var err error
 		cs.ProposalBlock = ReadBlock(cs.ProposalBlockParts.GetReader(), &n, &err)
-		cs.runActionCh <- RoundAction{cs.Height, cs.Round, RoundActionTryFinalize}
+		cs.queueAction(RoundAction{cs.Height, cs.Round, RoundActionTryFinalize})
 		return true, err
 	}
 	return true, nil
@@ -872,9 +880,9 @@ func (cs *ConsensusState) addVote(vote *Vote) (added bool, index uint, err error
 				cs.CommitTime = time.Now()
 				log.Debug("Set CommitTime to %v", cs.CommitTime)
 				if cs.Step < RoundStepCommit {
-					cs.runActionCh <- RoundAction{cs.Height, cs.Round, RoundActionCommit}
+					cs.queueAction(RoundAction{cs.Height, cs.Round, RoundActionCommit})
 				} else {
-					cs.runActionCh <- RoundAction{cs.Height, cs.Round, RoundActionTryFinalize}
+					cs.queueAction(RoundAction{cs.Height, cs.Round, RoundActionTryFinalize})
 				}
 			}
 			return added, index, err
