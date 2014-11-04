@@ -708,7 +708,7 @@ func (m *CommitMessage) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (m *CommitMessage) String() string {
-	return fmt.Sprintf("[Commit %v/%v/%v]", m.Height, m.BlockParts, m.BlockBitArray)
+	return fmt.Sprintf("[Commit %v %v %v]", m.Height, m.BlockParts, m.BlockBitArray)
 }
 
 //-------------------------------------
@@ -744,7 +744,7 @@ func (m *PartMessage) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (m *PartMessage) String() string {
-	return fmt.Sprintf("[PartMessage H:%v R:%v T:%X]", m.Height, m.Round, m.Type)
+	return fmt.Sprintf("[Part %v/%v T:%X]", m.Height, m.Round, m.Type)
 }
 
 //-------------------------------------
@@ -775,5 +775,5 @@ func (m *HasVoteMessage) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (m *HasVoteMessage) String() string {
-	return fmt.Sprintf("[HasVoteMessage H:%v R:%v T:%X]", m.Height, m.Round, m.Type)
+	return fmt.Sprintf("[HasVote %v/%v T:%X]", m.Height, m.Round, m.Type)
 }

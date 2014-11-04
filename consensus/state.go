@@ -694,6 +694,7 @@ func (cs *ConsensusState) RunActionCommit(height uint32) {
 	// If we have +2/3 commits, set the CommitTime
 	if cs.Commits.HasTwoThirdsMajority() {
 		cs.CommitTime = time.Now()
+		log.Debug("Set CommitTime to %v", cs.CommitTime)
 	}
 
 }
@@ -726,6 +727,7 @@ func (cs *ConsensusState) TryFinalizeCommit(height uint32) bool {
 
 		err := cs.stageBlock(cs.ProposalBlock, cs.ProposalBlockParts)
 		if err == nil {
+			log.Debug("Finalizing commit of block: %v", cs.ProposalBlock)
 			// Increment height.
 			cs.updateToState(cs.stagedState)
 			// cs.Step is now RoundStepNewHeight or RoundStepNewRound
