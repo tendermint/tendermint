@@ -82,7 +82,8 @@ const (
 	RoundActionPrevote     = RoundActionType(0xA1) // Prevote and goto RoundStepPrevote
 	RoundActionPrecommit   = RoundActionType(0xA2) // Precommit and goto RoundStepPrecommit
 	RoundActionTryCommit   = RoundActionType(0xC0) // Goto RoundStepCommit, or RoundStepPropose for next round.
-	RoundActionTryFinalize = RoundActionType(0xC1) // Maybe goto RoundStepPropose for next round.
+	RoundActionCommit      = RoundActionType(0xC1) // Goto RoundStepCommit
+	RoundActionTryFinalize = RoundActionType(0xC2) // Maybe goto RoundStepPropose for next round.
 
 	roundDuration0         = 60 * time.Second   // The first round is 60 seconds long.
 	roundDurationDelta     = 15 * time.Second   // Each successive round lasts 15 seconds longer.
@@ -281,7 +282,8 @@ func (cs *ConsensusState) stepTransitionRoutine() {
 	// NOTE: All ConsensusState.RunAction*() calls come from here.
 	// Since only one routine calls them, it is safe to assume that
 	// the RoundState Height/Round/Step won't change concurrently.
-	// However, other fields like Proposal could change, due to gossip.
+	// However, other fields like Proposal could change concurrent
+	// due to gossip routines.
 ACTION_LOOP:
 	for {
 		var roundAction RoundAction
@@ -337,7 +339,6 @@ ACTION_LOOP:
 			if rs.Precommits.HasTwoThirdsMajority() {
 				// Enter RoundStepCommit and commit.
 				cs.RunActionCommit(rs.Height)
-				// Maybe finalize already
 				cs.runActionCh <- RoundAction{rs.Height, rs.Round, RoundActionTryFinalize}
 				continue ACTION_LOOP
 			} else {
@@ -347,6 +348,15 @@ ACTION_LOOP:
 				scheduleNextAction()
 				continue ACTION_LOOP
 			}
+
+		case RoundActionCommit:
+			if rs.Step >= RoundStepCommit {
+				continue ACTION_LOOP
+			}
+			// Enter RoundStepCommit and commit.
+			cs.RunActionCommit(rs.Height)
+			cs.runActionCh <- RoundAction{rs.Height, rs.Round, RoundActionTryFinalize}
+			continue ACTION_LOOP
 
 		case RoundActionTryFinalize:
 			if cs.TryFinalizeCommit(rs.Height) {
@@ -691,12 +701,6 @@ func (cs *ConsensusState) RunActionCommit(height uint32) {
 		cs.processBlockForCommit(cs.ProposalBlock, cs.ProposalBlockParts)
 	}
 
-	// If we have +2/3 commits, set the CommitTime
-	if cs.Commits.HasTwoThirdsMajority() {
-		cs.CommitTime = time.Now()
-		log.Debug("Set CommitTime to %v", cs.CommitTime)
-	}
-
 }
 
 // Returns true if Finalize happened, which increments height && sets
@@ -864,8 +868,14 @@ func (cs *ConsensusState) addVote(vote *Vote) (added bool, index uint, err error
 			cs.Prevotes.Add(vote)
 			cs.Precommits.Add(vote)
 			added, index, err = cs.Commits.Add(vote)
-			if added && cs.Commits.HasTwoThirdsMajority() {
-				cs.runActionCh <- RoundAction{cs.Height, cs.Round, RoundActionTryFinalize}
+			if added && cs.Commits.HasTwoThirdsMajority() && cs.CommitTime.IsZero() {
+				cs.CommitTime = time.Now()
+				log.Debug("Set CommitTime to %v", cs.CommitTime)
+				if cs.Step < RoundStepCommit {
+					cs.runActionCh <- RoundAction{cs.Height, cs.Round, RoundActionCommit}
+				} else {
+					cs.runActionCh <- RoundAction{cs.Height, cs.Round, RoundActionTryFinalize}
+				}
 			}
 			return added, index, err
 		}
