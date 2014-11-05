@@ -102,7 +102,7 @@ func (psh PartSetHeader) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (psh PartSetHeader) String() string {
-	return fmt.Sprintf("PartSet{%X/%v}", psh.Hash, psh.Total)
+	return fmt.Sprintf("PartSet{T:%v %X}", psh.Total, Fingerprint(psh.Hash))
 }
 
 func (psh PartSetHeader) IsZero() bool {
@@ -143,13 +143,13 @@ func NewPartSetFromData(data []byte) *PartSet {
 		partsBitArray.SetIndex(uint(i), true)
 	}
 	// Compute merkle trails
-	hashTree := merkle.HashTreeFromHashables(parts_)
+	trails, rootTrail := merkle.HashTrailsFromHashables(parts_)
 	for i := 0; i < total; i++ {
-		parts[i].Trail = merkle.HashTrailForIndex(hashTree, i)
+		parts[i].Trail = trails[i].Flatten()
 	}
 	return &PartSet{
 		total:         uint16(total),
-		hash:          hashTree[len(hashTree)/2],
+		hash:          rootTrail.Hash,
 		parts:         parts,
 		partsBitArray: partsBitArray,
 		count:         uint16(total),
@@ -236,7 +236,7 @@ func (ps *PartSet) AddPart(part *Part) (bool, error) {
 	}
 
 	// Check hash trail
-	if !merkle.VerifyHashTrailForIndex(int(part.Index), part.Hash(), part.Trail, ps.hash) {
+	if !merkle.VerifyHashTrail(uint(part.Index), uint(ps.total), part.Hash(), part.Trail, ps.hash) {
 		return false, ErrPartSetInvalidTrail
 	}
 

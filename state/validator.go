@@ -33,14 +33,8 @@ func ReadValidator(r io.Reader, n *int64, err *error) *Validator {
 
 // Creates a new copy of the validator so we can mutate accum.
 func (v *Validator) Copy() *Validator {
-	return &Validator{
-		Account:          v.Account,
-		BondHeight:       v.BondHeight,
-		UnbondHeight:     v.UnbondHeight,
-		LastCommitHeight: v.LastCommitHeight,
-		VotingPower:      v.VotingPower,
-		Accum:            v.Accum,
-	}
+	vCopy := *v
+	return &vCopy
 }
 
 // Used to persist the state of ConsensusStateControl.
@@ -75,7 +69,17 @@ func (v *Validator) CompareAccum(other *Validator) *Validator {
 }
 
 func (v *Validator) String() string {
-	return fmt.Sprintf("Validator{%v VP:%v A:%v}", v.Account, v.VotingPower, v.Accum)
+	return fmt.Sprintf("Validator{%v %v-%v-%v VP:%v A:%v}",
+		v.Account,
+		v.BondHeight,
+		v.LastCommitHeight,
+		v.UnbondHeight,
+		v.VotingPower,
+		v.Accum)
+}
+
+func (v *Validator) Hash() []byte {
+	return BinaryHash(v)
 }
 
 //-------------------------------------

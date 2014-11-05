@@ -116,6 +116,8 @@ func (bs *BlockStore) SaveBlock(block *Block, blockParts *PartSet) {
 	bs.db.Set(calcBlockValidationKey(height), validationBytes)
 	// Save new BlockStoreJSON descriptor
 	BlockStoreJSON{Height: height}.Save(bs.db)
+	// Done!
+	bs.height = height
 }
 
 func (bs *BlockStore) saveBlockPart(height uint32, index uint16, part *Part) {

@@ -317,7 +317,7 @@ func (s *State) AppendBlock(block *Block, blockPartsHeader PartSetHeader, checkS
 					return true
 				}
 				vote := &Vote{
-					Height:     block.Height,
+					Height:     block.Height - 1,
 					Round:      rsig.Round,
 					Type:       VoteTypeCommit,
 					BlockHash:  block.LastBlockHash,
@@ -328,6 +328,7 @@ func (s *State) AppendBlock(block *Block, blockPartsHeader PartSetHeader, checkS
 					sumVotingPower += val.VotingPower
 					return false
 				} else {
+					log.Warning("Invalid validation signature.\nval: %v\nvote: %v", val, vote)
 					err = errors.New("Invalid validation signature")
 					return true
 				}
@@ -355,7 +356,7 @@ func (s *State) AppendBlock(block *Block, blockPartsHeader PartSetHeader, checkS
 		if val == nil {
 			return ErrStateInvalidSignature
 		}
-		val.LastCommitHeight = block.Height
+		val.LastCommitHeight = block.Height - 1
 		updated := s.BondedValidators.Update(val)
 		if !updated {
 			panic("Failed to update validator LastCommitHeight")

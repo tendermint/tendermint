@@ -41,10 +41,10 @@ func (mem *Mempool) AddTx(tx Tx) (err error) {
 	}
 }
 
-func (mem *Mempool) GetProposalTxs() ([]Tx, *state.State) {
+func (mem *Mempool) GetProposalTxs() []Tx {
 	mem.mtx.Lock()
 	defer mem.mtx.Unlock()
-	return mem.txs, mem.state
+	return mem.txs
 }
 
 // "block" is the new block being committed.

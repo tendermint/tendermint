@@ -1,23 +1,24 @@
 /*
 Computes a deterministic minimal height merkle tree hash.
 If the number of items is not a power of two, some leaves
-will be at different levels, leaning left.
+will be at different levels. Tries to keep both sides of
+the tree the same size, but the left may be one greater.
 
-Use this for shorter deterministic trees, such as the validator list.
+Use this for short deterministic trees, such as the validator list.
 For larger datasets, use IAVLTree.
 
-				*
-			   / \
-			 /     \
-		   /         \
-		 /             \
-		*               *
-	   / \             / \
-	  /   \           /   \
-	 /     \         /     \
-	*       *       *       h6
-   / \     / \     / \
-  h0  h1  h2  h3  h4  h5
+						*
+					   / \
+					 /     \
+				   /         \
+				 /             \
+				*               *
+			   / \             / \
+			  /   \           /   \
+			 /     \         /     \
+			*       *       *       h6
+		   / \     / \     / \
+		  h0  h1  h2  h3  h4  h5
 
 */
 
@@ -46,7 +47,7 @@ func HashFromHashes(hashes [][]byte) []byte {
 	// Recursive impl.
 	switch len(hashes) {
 	case 0:
-		panic("Cannot call HashFromHashes() with 0 length arg")
+		return nil
 	case 1:
 		return hashes[0]
 	default:
@@ -110,7 +111,7 @@ func HashTrailsFromHashables(items []Hashable) (trails []*HashTrail, root *HashT
 	// Recursive impl.
 	switch len(items) {
 	case 0:
-		panic("Cannot call HashTrailsFromHashables() with 0 length arg")
+		return nil, nil
 	case 1:
 		trail := &HashTrail{items[0].Hash(), nil, nil, nil}
 		return []*HashTrail{trail}, trail

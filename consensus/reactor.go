@@ -744,7 +744,7 @@ func (m *PartMessage) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (m *PartMessage) String() string {
-	return fmt.Sprintf("[Part %v/%v T:%X]", m.Height, m.Round, m.Type)
+	return fmt.Sprintf("[Part %v/%v T:%X %v]", m.Height, m.Round, m.Type, m.Part)
 }
 
 //-------------------------------------

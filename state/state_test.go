@@ -145,11 +145,8 @@ func TestGenesisSaveLoad(t *testing.T) {
 	if s0.BondedValidators.TotalVotingPower() != s1.BondedValidators.TotalVotingPower() {
 		t.Error("BondedValidators TotalVotingPower mismatch")
 	}
-	if bytes.Equal(s0.BondedValidators.Hash(), s1.BondedValidators.Hash()) {
-		// The BondedValidators hash should have changed because
-		// each AppendBlock() calls IncrementAccum(),
-		// changing each validator's Accum.
-		t.Error("BondedValidators hash should have changed")
+	if !bytes.Equal(s0.BondedValidators.Hash(), s1.BondedValidators.Hash()) {
+		t.Error("BondedValidators hash mismatch")
 	}
 	if s0.UnbondingValidators.Size() != s1.UnbondingValidators.Size() {
 		t.Error("UnbondingValidators Size mismatch")

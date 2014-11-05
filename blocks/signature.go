@@ -5,6 +5,7 @@ import (
 	"io"
 
 	. "github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
 )
 
 type Signable interface {
@@ -38,7 +39,7 @@ func (sig Signature) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (sig Signature) String() string {
-	return fmt.Sprintf("Signature{%v:%X}", sig.SignerId, sig.Bytes)
+	return fmt.Sprintf("Signature{Id:%v %X}", sig.SignerId, Fingerprint(sig.Bytes))
 }
 
 //-------------------------------------
@@ -83,6 +84,10 @@ func (rsig RoundSignature) WriteTo(w io.Writer) (n int64, err error) {
 
 func (rsig RoundSignature) IsZero() bool {
 	return rsig.Round == 0 && rsig.SignerId == 0 && len(rsig.Bytes) == 0
+}
+
+func (rsig RoundSignature) String() string {
+	return fmt.Sprintf("RoundSignature{R:%v Id:%v %X}", rsig.Round, rsig.SignerId, Fingerprint(rsig.Bytes))
 }
 
 //-------------------------------------

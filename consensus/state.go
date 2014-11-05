@@ -529,7 +529,7 @@ func (cs *ConsensusState) RunActionPropose(height uint32, round uint16) {
 				validation = cs.LastCommits.MakeValidation()
 			}
 		}
-		txs, state := cs.mempool.GetProposalTxs() // TODO: cache state
+		txs := cs.mempool.GetProposalTxs()
 		block = &Block{
 			Header: &Header{
 				Network:        Config.Network,
@@ -538,13 +538,18 @@ func (cs *ConsensusState) RunActionPropose(height uint32, round uint16) {
 				Fees:           0, // TODO fees
 				LastBlockHash:  cs.state.LastBlockHash,
 				LastBlockParts: cs.state.LastBlockParts,
-				StateHash:      state.Hash(),
+				StateHash:      nil, // Will set afterwards.
 			},
 			Validation: validation,
 			Data: &Data{
 				Txs: txs,
 			},
 		}
+
+		// Set the block.Header.StateHash.
+		// TODO: we could cache the resulting state to cs.stagedState.
+		cs.state.Copy().AppendBlock(block, PartSetHeader{}, false)
+
 		blockParts = NewPartSetFromData(BinaryBytes(block))
 		pol = cs.LockedPOL // If exists, is a PoUnlock.
 	}
@@ -586,6 +591,7 @@ func (cs *ConsensusState) RunActionPrevote(height uint32, round uint16) {
 
 	// If ProposalBlock is nil, prevote nil.
 	if cs.ProposalBlock == nil {
+		log.Warning("ProposalBlock is nil")
 		cs.signAddVote(VoteTypePrevote, nil, PartSetHeader{})
 		return
 	}
@@ -594,6 +600,7 @@ func (cs *ConsensusState) RunActionPrevote(height uint32, round uint16) {
 	err := cs.stageBlock(cs.ProposalBlock, cs.ProposalBlockParts)
 	if err != nil {
 		// ProposalBlock is invalid, prevote nil.
+		log.Warning("ProposalBlock is invalid: %v", err)
 		cs.signAddVote(VoteTypePrevote, nil, PartSetHeader{})
 		return
 	}
