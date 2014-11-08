@@ -1,5 +1,10 @@
 Tendermint in Golang
 
+[**Website**](http://tendermint.com) **|** 
+[**Blog**](http://tendermint.com/posts/) **|**
+[**Forum**] (http://forum.tendermint.com) **|**
+**IRC:** #tendermint@freenode
+
 Tendermint is a completely decentralized byzantine consensus protocol suitable for use in crypto-currencies.
 
 This project is a reference implementation of the protocol.
@@ -15,11 +20,13 @@ This project is a reference implementation of the protocol.
 
 ## Build
 
-go build -o tendermint github.com/tendermint/tendermint/cmd
+[![Build Status](https://drone.io/github.com/tendermint/tendermint/status.png)](https://drone.io/github.com/tendermint/tendermint/latest)
+
+`go build -o tendermint github.com/tendermint/tendermint/cmd`
 
 ## Run
 
-./tendermint daemon
+`./tendermint daemon`
 
 ## Contribute
 
