@@ -10,7 +10,7 @@ import (
 This is a manual test.
 TODO: set up or find a service to probe open ports.
 */
-func TestUPNP(t *testing.T) {
+func _TestUPNP(t *testing.T) {
 	t.Log("hello!")
 
 	nat, err := Discover()

@@ -6,10 +6,10 @@ import (
 	"io"
 	"io/ioutil"
 
+	"github.com/tendermint/go-ed25519"
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/blocks"
 	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/crypto"
 )
 
 const (
@@ -44,12 +44,12 @@ func (account Account) VerifyBytes(msg []byte, sig Signature) bool {
 	if len(sig.Bytes) == 0 {
 		panic("signature is empty")
 	}
-	v1 := &crypto.Verify{
+	v1 := &ed25519.Verify{
 		Message:   msg,
 		PubKey:    account.PubKey,
 		Signature: sig.Bytes,
 	}
-	ok := crypto.VerifyBatch([]*crypto.Verify{v1})
+	ok := ed25519.VerifyBatch([]*ed25519.Verify{v1})
 	return ok
 }
 
@@ -130,7 +130,7 @@ type PrivAccount struct {
 // The Account.Id is empty since it isn't in the blockchain.
 func GenPrivAccount() *PrivAccount {
 	privKey := CRandBytes(32)
-	pubKey := crypto.MakePubKey(privKey)
+	pubKey := ed25519.MakePubKey(privKey)
 	return &PrivAccount{
 		Account: Account{
 			Id:     uint64(0),
@@ -159,7 +159,7 @@ func PrivAccountFromFile(file string) *PrivAccount {
 }
 
 func (pa *PrivAccount) SignBytes(msg []byte) Signature {
-	signature := crypto.SignMessage(msg, pa.PrivKey, pa.PubKey)
+	signature := ed25519.SignMessage(msg, pa.PrivKey, pa.PubKey)
 	sig := Signature{
 		SignerId: pa.Id,
 		Bytes:    signature,

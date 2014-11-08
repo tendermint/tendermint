@@ -1,19 +1,13 @@
-// +build gen_account
-
 package main
 
 import (
 	"encoding/base64"
 	"fmt"
 
-	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/state"
 )
 
-func main() {
-
-	// Parse config flags
-	config.ParseFlags()
+func gen_account() {
 
 	// Generate private account
 	privAccount := state.GenPrivAccount()

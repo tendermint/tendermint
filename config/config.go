@@ -57,9 +57,7 @@ func ParseFlags() {
 	setFlags(&printHelp)
 	flag.Parse()
 	if printHelp {
-		fmt.Println("----------------------------------")
 		flag.PrintDefaults()
-		fmt.Println("----------------------------------")
 		os.Exit(0)
 	}
 }

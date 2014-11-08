@@ -1,5 +1,3 @@
-// +build tendermintd
-
 package main
 
 import (
@@ -116,12 +114,7 @@ func (n *Node) inboundConnectionRoutine(l p2p.Listener) {
 	// cleanup
 }
 
-//-----------------------------------------------------------------------------
-
-func main() {
-
-	// Parse config flags
-	config.ParseFlags()
+func daemon() {
 
 	// Create & start node
 	n := NewNode()

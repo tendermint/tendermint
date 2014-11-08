@@ -1,26 +1,26 @@
-TenderMint - proof of concept
+Tendermint in Golang
 
-* **[p2p](https://github.com/tendermint/tendermint/blob/master/p2p):**  P2P networking stack.  Designed to be extensible.
-* **[merkle](https://github.com/tendermint/tendermint/blob/master/merkle):** Immutable Persistent Merkle-ized AVL+ Tree, used primarily for keeping track of mutable state like account balances.
-* **[blocks](https://github.com/tendermint/tendermint/blob/master/blocks):** The blockchain, storage of blocks, and all the associated structures.
-* **[state](https://github.com/tendermint/tendermint/blob/master/state):** The application state, which is mutated by blocks in the blockchain.
-* **[consensus](https://github.com/tendermint/tendermint/blob/master/consensus):** The core consensus algorithm logic.
-* **[mempool](https://github.com/tendermint/tendermint/blob/master/mempool):** Handles the broadcasting of uncommitted transactions.
-* **[crypto](https://github.com/tendermint/tendermint/blob/master/crypto):** Includes cgo bindings of ed25519.
+Tendermint is a completely decentralized byzantine consensus protocol suitable for use in crypto-currencies.
 
-### Development Status
+This project is a reference implementation of the protocol.
 
-* Testnet *pending*
-* Blockchain catchup *now*
-* Bootstrapping *complete*
-* Mempool *complete*
-* Consensus *complete*
-* Block propagation *sidelined*
-* PEX peer exchange *complete*
-* p2p/* *complete*
-* Ed25519 bindings *complete*
-* merkle/* *complete*
+## Submodules
 
-### Issues
+* **[consensus](https://github.com/tendermint/tendermint/blob/master/consensus):** core consensus algorithm
+* **[state](https://github.com/tendermint/tendermint/blob/master/state):** application state; mutated by transactions
+* **[blocks](https://github.com/tendermint/tendermint/blob/master/blocks):** structures of the blockchain
+* **[mempool](https://github.com/tendermint/tendermint/blob/master/mempool):** gossip of new transactions
+* **[merkle](https://github.com/tendermint/tendermint/blob/master/merkle):** merkle hash trees
+* **[p2p](https://github.com/tendermint/tendermint/blob/master/p2p):**  extensible P2P networking
 
-* merkle/* does not free old children nodes.  Implement something memory-aware that makes merkle/* act like a weakly referenced map.
+## Build
+
+go build -o tendermint github.com/tendermint/tendermint/cmd
+
+## Run
+
+./tendermint daemon
+
+## Contribute
+
+## Resources
