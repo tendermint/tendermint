@@ -1,11 +1,11 @@
-Tendermint in Golang
-
 [**Website**](http://tendermint.com) **|** 
 [**Blog**](http://tendermint.com/posts/) **|**
 [**Forum**] (http://forum.tendermint.com) **|**
-**IRC:** #tendermint@freenode
+[**IRC**] (http://webchat.freenode.net/?randomnick=1&channels=%23tendermint)
 
-Tendermint is a completely decentralized byzantine consensus protocol suitable for use in crypto-currencies.
+Tendermint in Golang
+
+Tendermint is a completely decentralized byzantine consensus protocol suitable for use in cryptocurrencies.
 
 This project is a reference implementation of the protocol.
 
@@ -18,16 +18,23 @@ This project is a reference implementation of the protocol.
 * **[merkle](https://github.com/tendermint/tendermint/blob/master/merkle):** merkle hash trees
 * **[p2p](https://github.com/tendermint/tendermint/blob/master/p2p):**  extensible P2P networking
 
+## Requirements
+
+[Go](http://golang.org) 1.2 or newer.
+
 ## Build
 
 [![Build Status](https://drone.io/github.com/tendermint/tendermint/status.png)](https://drone.io/github.com/tendermint/tendermint/latest)
 
-`go build -o tendermint github.com/tendermint/tendermint/cmd`
+```
+go get github.com/tendermint/tendermint/...
+go build -o tendermint github.com/tendermint/tendermint/cmd
+```
 
 ## Run
 
 `./tendermint daemon`
 
-## Contribute
-
 ## Resources
+
+IRC Channel: #tendermint on freenode
