@@ -10,6 +10,7 @@ import (
 	db_ "github.com/tendermint/tendermint/db"
 	mempool_ "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/rpc"
 	state_ "github.com/tendermint/tendermint/state"
 )
 
@@ -71,7 +72,7 @@ func NewNode() *Node {
 }
 
 func (n *Node) Start() {
-	log.Info("Starting node")
+	log.Info("Starting Node")
 	for _, l := range n.lz {
 		go n.inboundConnectionRoutine(l)
 	}
@@ -80,7 +81,7 @@ func (n *Node) Start() {
 }
 
 func (n *Node) Stop() {
-	log.Info("Stopping node")
+	log.Info("Stopping Node")
 	// TODO: gracefully disconnect from peers.
 	n.sw.Stop()
 	n.book.Stop()
@@ -132,6 +133,11 @@ func daemon() {
 		} else {
 			log.Info("Connected to seed: %v", peer)
 		}
+	}
+
+	// Run the RPC server.
+	if config.Config.RPC.HTTPPort != 0 {
+		rpc.StartHTTPServer()
 	}
 
 	// Sleep forever and then...

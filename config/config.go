@@ -10,11 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	//"crypto/rand"
-	//"encoding/hex"
 )
-
-/* Global & initialization */
 
 var RootDir string
 var Config Config_
@@ -62,7 +58,8 @@ func ParseFlags() {
 	}
 }
 
-/* Default configuration */
+//-----------------------------------------------------------------------------j
+// Default configuration
 
 var defaultConfig = Config_{
 	Network:  "tendermint_testnet0",
@@ -72,31 +69,54 @@ var defaultConfig = Config_{
 		Type: "level",
 		Dir:  RootDir + "/data",
 	},
-	Twilio: TwilioConfig{},
+	Alert: AlertConfig{},
+	SMTP:  SMTPConfig{},
+	RPC: RPCConfig{
+		HTTPPort: 8888,
+	},
 }
 
-/* Configuration types */
+//-----------------------------------------------------------------------------j
+// Configuration types
 
 type Config_ struct {
 	Network  string
 	LAddr    string
 	SeedNode string
 	Db       DbConfig
-	Twilio   TwilioConfig
-}
-
-type TwilioConfig struct {
-	Sid         string
-	Token       string
-	From        string
-	To          string
-	MinInterval int
+	Alert    AlertConfig
+	SMTP     SMTPConfig
+	RPC      RPCConfig
 }
 
 type DbConfig struct {
 	Type string
 	Dir  string
 }
+
+type AlertConfig struct {
+	MinInterval int
+
+	TwilioSid   string
+	TwilioToken string
+	TwilioFrom  string
+	TwilioTo    string
+
+	EmailRecipients []string
+}
+
+type SMTPConfig struct {
+	User     string
+	Password string
+	Host     string
+	Port     uint
+}
+
+type RPCConfig struct {
+	HTTPPort uint
+}
+
+//-----------------------------------------------------------------------------j
 
 func (cfg *Config_) validate() error {
 	if cfg.Network == "" {

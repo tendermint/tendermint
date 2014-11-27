@@ -127,7 +127,7 @@ func (a *AddrBook) init() {
 
 func (a *AddrBook) Start() {
 	if atomic.CompareAndSwapUint32(&a.started, 0, 1) {
-		log.Info("Starting address manager")
+		log.Info("Starting AddrBook")
 		a.loadFromFile(a.filePath)
 		a.wg.Add(1)
 		go a.saveRoutine()
@@ -136,7 +136,7 @@ func (a *AddrBook) Start() {
 
 func (a *AddrBook) Stop() {
 	if atomic.CompareAndSwapUint32(&a.stopped, 0, 1) {
-		log.Info("Stopping address manager")
+		log.Info("Stopping AddrBook")
 		close(a.quit)
 		a.wg.Wait()
 	}

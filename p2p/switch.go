@@ -90,7 +90,7 @@ func NewSwitch(reactors []Reactor) *Switch {
 
 func (sw *Switch) Start() {
 	if atomic.CompareAndSwapUint32(&sw.started, 0, 1) {
-		log.Info("Starting switch")
+		log.Info("Starting Switch")
 		for _, reactor := range sw.reactors {
 			reactor.Start(sw)
 		}
@@ -99,7 +99,7 @@ func (sw *Switch) Start() {
 
 func (sw *Switch) Stop() {
 	if atomic.CompareAndSwapUint32(&sw.stopped, 0, 1) {
-		log.Info("Stopping switch")
+		log.Info("Stopping Switch")
 		close(sw.quit)
 		// Stop each peer.
 		for _, peer := range sw.peers.List() {
