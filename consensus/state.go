@@ -817,6 +817,7 @@ func (cs *ConsensusState) AddProposalBlockPart(height uint32, round uint16, part
 		var err error
 		cs.ProposalBlock = ReadBlock(cs.ProposalBlockParts.GetReader(), &n, &err)
 		cs.queueAction(RoundAction{cs.Height, cs.Round, RoundActionTryFinalize})
+		// XXX If POL is valid, consider unlocking.
 		return true, err
 	}
 	return true, nil

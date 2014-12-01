@@ -9,8 +9,7 @@ import (
 
 func StartHTTPServer() {
 
-	//http.HandleFunc("/path", handler)
-	//http.HandleFunc("/path", handler)
+	http.HandleFunc("/block", BlockHandler)
 
 	// Serve HTTP on localhost only.
 	// Let something like Nginx handle HTTPS connections.

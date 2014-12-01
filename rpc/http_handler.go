@@ -1,3 +1,4 @@
+// Commons for HTTP handling
 package rpc
 
 import (
