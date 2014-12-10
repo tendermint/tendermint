@@ -1,12 +1,11 @@
 package state
 
 import (
+	"bytes"
 	"fmt"
-	"io"
 	"sort"
 	"strings"
 
-	. "github.com/tendermint/tendermint/binary"
 	"github.com/tendermint/tendermint/merkle"
 )
 
@@ -20,7 +19,7 @@ func (vs ValidatorSlice) Len() int {
 }
 
 func (vs ValidatorSlice) Less(i, j int) bool {
-	return vs[i].Id < vs[j].Id
+	return bytes.Compare(vs[i].Address, vs[j].Address) == -1
 }
 
 func (vs ValidatorSlice) Swap(i, j int) {
@@ -31,10 +30,17 @@ func (vs ValidatorSlice) Swap(i, j int) {
 
 //-------------------------------------
 
-// Not goroutine-safe.
-// TODO: consider validator Accum overflow?
+// ValidatorSet represent a set of *Validator at a given height.
+// The validators can be fetched by address or index.
+// The index is in order of .Address, so the index are the same
+// for all rounds of a given blockchain height.
+// On the other hand, the .AccumPower of each validator and
+// the designated .Proposer() of a set changes every round,
+// upon calling .IncrementAccum().
+// NOTE: Not goroutine-safe.
+// NOTE: All get/set to validators should copy the value for safety.
+// TODO: consider validator Accum overflow
 // TODO: replace validators []*Validator with github.com/jaekwon/go-ibbs?
-// NOTE: all get/set to validators should copy the value for safety.
 type ValidatorSet struct {
 	validators []*Validator
 
@@ -54,169 +60,149 @@ func NewValidatorSet(vals []*Validator) *ValidatorSet {
 	}
 }
 
-func ReadValidatorSet(r io.Reader, n *int64, err *error) *ValidatorSet {
-	size := ReadUVarInt(r, n, err)
-	validators := []*Validator{}
-	for i := uint(0); i < size; i++ {
-		validator := ReadValidator(r, n, err)
-		validators = append(validators, validator)
-	}
-	sort.Sort(ValidatorSlice(validators))
-	return NewValidatorSet(validators)
-}
-
-func (vset *ValidatorSet) WriteTo(w io.Writer) (n int64, err error) {
-	WriteUVarInt(w, uint(len(vset.validators)), &n, &err)
-	vset.Iterate(func(index uint, val *Validator) bool {
-		WriteBinary(w, val, &n, &err)
-		return false
-	})
-	return
-}
-
-func (vset *ValidatorSet) IncrementAccum() {
+func (valSet *ValidatorSet) IncrementAccum() {
 	// Decrement from previous proposer
-	oldProposer := vset.Proposer()
-	oldProposer.Accum -= int64(vset.TotalVotingPower())
-	vset.Update(oldProposer)
+	oldProposer := valSet.Proposer()
+	oldProposer.Accum -= int64(valSet.TotalVotingPower())
+	valSet.Update(oldProposer)
 	var newProposer *Validator
 	// Increment accum and find new proposer
 	// NOTE: updates validators in place.
-	for _, val := range vset.validators {
+	for _, val := range valSet.validators {
 		val.Accum += int64(val.VotingPower)
 		newProposer = newProposer.CompareAccum(val)
 	}
-	vset.proposer = newProposer
+	valSet.proposer = newProposer
 }
 
-func (vset *ValidatorSet) Copy() *ValidatorSet {
-	validators := make([]*Validator, len(vset.validators))
-	for i, val := range vset.validators {
+func (valSet *ValidatorSet) Copy() *ValidatorSet {
+	validators := make([]*Validator, len(valSet.validators))
+	for i, val := range valSet.validators {
 		// NOTE: must copy, since IncrementAccum updates in place.
 		validators[i] = val.Copy()
 	}
 	return &ValidatorSet{
 		validators:       validators,
-		proposer:         vset.proposer,
-		totalVotingPower: vset.totalVotingPower,
+		proposer:         valSet.proposer,
+		totalVotingPower: valSet.totalVotingPower,
 	}
 }
 
-func (vset *ValidatorSet) HasId(id uint64) bool {
-	idx := sort.Search(len(vset.validators), func(i int) bool {
-		return id <= vset.validators[i].Id
+func (valSet *ValidatorSet) HasAddress(address []byte) bool {
+	idx := sort.Search(len(valSet.validators), func(i int) bool {
+		return bytes.Compare(address, valSet.validators[i].Address) <= 0
 	})
-	return idx != len(vset.validators) && vset.validators[idx].Id == id
+	return idx != len(valSet.validators) && bytes.Compare(valSet.validators[idx].Address, address) == 0
 }
 
-func (vset *ValidatorSet) GetById(id uint64) (index uint, val *Validator) {
-	idx := sort.Search(len(vset.validators), func(i int) bool {
-		return id <= vset.validators[i].Id
+func (valSet *ValidatorSet) GetByAddress(address []byte) (index uint, val *Validator) {
+	idx := sort.Search(len(valSet.validators), func(i int) bool {
+		return bytes.Compare(address, valSet.validators[i].Address) <= 0
 	})
-	if idx != len(vset.validators) && vset.validators[idx].Id == id {
-		return uint(idx), vset.validators[idx].Copy()
+	if idx != len(valSet.validators) && bytes.Compare(valSet.validators[idx].Address, address) == 0 {
+		return uint(idx), valSet.validators[idx].Copy()
 	} else {
 		return 0, nil
 	}
 }
 
-func (vset *ValidatorSet) GetByIndex(index uint) (id uint64, val *Validator) {
-	val = vset.validators[index]
-	return val.Id, val.Copy()
+func (valSet *ValidatorSet) GetByIndex(index uint) (address []byte, val *Validator) {
+	val = valSet.validators[index]
+	return val.Address, val.Copy()
 }
 
-func (vset *ValidatorSet) Size() uint {
-	return uint(len(vset.validators))
+func (valSet *ValidatorSet) Size() uint {
+	return uint(len(valSet.validators))
 }
 
-func (vset *ValidatorSet) TotalVotingPower() uint64 {
-	if vset.totalVotingPower == 0 {
-		for _, val := range vset.validators {
-			vset.totalVotingPower += val.VotingPower
+func (valSet *ValidatorSet) TotalVotingPower() uint64 {
+	if valSet.totalVotingPower == 0 {
+		for _, val := range valSet.validators {
+			valSet.totalVotingPower += val.VotingPower
 		}
 	}
-	return vset.totalVotingPower
+	return valSet.totalVotingPower
 }
 
-func (vset *ValidatorSet) Proposer() (proposer *Validator) {
-	if vset.proposer == nil {
-		for _, val := range vset.validators {
-			vset.proposer = vset.proposer.CompareAccum(val)
+func (valSet *ValidatorSet) Proposer() (proposer *Validator) {
+	if valSet.proposer == nil {
+		for _, val := range valSet.validators {
+			valSet.proposer = valSet.proposer.CompareAccum(val)
 		}
 	}
-	return vset.proposer.Copy()
+	return valSet.proposer.Copy()
 }
 
-func (vset *ValidatorSet) Hash() []byte {
-	if len(vset.validators) == 0 {
+func (valSet *ValidatorSet) Hash() []byte {
+	if len(valSet.validators) == 0 {
 		return nil
 	}
-	hashables := make([]merkle.Hashable, len(vset.validators))
-	for i, val := range vset.validators {
+	hashables := make([]merkle.Hashable, len(valSet.validators))
+	for i, val := range valSet.validators {
 		hashables[i] = val
 	}
 	return merkle.HashFromHashables(hashables)
 }
 
-func (vset *ValidatorSet) Add(val *Validator) (added bool) {
+func (valSet *ValidatorSet) Add(val *Validator) (added bool) {
 	val = val.Copy()
-	idx := sort.Search(len(vset.validators), func(i int) bool {
-		return val.Id <= vset.validators[i].Id
+	idx := sort.Search(len(valSet.validators), func(i int) bool {
+		return bytes.Compare(val.Address, valSet.validators[i].Address) <= 0
 	})
-	if idx == len(vset.validators) {
-		vset.validators = append(vset.validators, val)
+	if idx == len(valSet.validators) {
+		valSet.validators = append(valSet.validators, val)
 		// Invalidate cache
-		vset.proposer = nil
-		vset.totalVotingPower = 0
+		valSet.proposer = nil
+		valSet.totalVotingPower = 0
 		return true
-	} else if vset.validators[idx].Id == val.Id {
+	} else if bytes.Compare(valSet.validators[idx].Address, val.Address) == 0 {
 		return false
 	} else {
-		newValidators := append(vset.validators[:idx], val)
-		newValidators = append(newValidators, vset.validators[idx:]...)
-		vset.validators = newValidators
+		newValidators := append(valSet.validators[:idx], val)
+		newValidators = append(newValidators, valSet.validators[idx:]...)
+		valSet.validators = newValidators
 		// Invalidate cache
-		vset.proposer = nil
-		vset.totalVotingPower = 0
+		valSet.proposer = nil
+		valSet.totalVotingPower = 0
 		return true
 	}
 }
 
-func (vset *ValidatorSet) Update(val *Validator) (updated bool) {
-	index, sameVal := vset.GetById(val.Id)
+func (valSet *ValidatorSet) Update(val *Validator) (updated bool) {
+	index, sameVal := valSet.GetByAddress(val.Address)
 	if sameVal == nil {
 		return false
 	} else {
-		vset.validators[index] = val.Copy()
+		valSet.validators[index] = val.Copy()
 		// Invalidate cache
-		vset.proposer = nil
-		vset.totalVotingPower = 0
+		valSet.proposer = nil
+		valSet.totalVotingPower = 0
 		return true
 	}
 }
 
-func (vset *ValidatorSet) Remove(id uint64) (val *Validator, removed bool) {
-	idx := sort.Search(len(vset.validators), func(i int) bool {
-		return id <= vset.validators[i].Id
+func (valSet *ValidatorSet) Remove(address []byte) (val *Validator, removed bool) {
+	idx := sort.Search(len(valSet.validators), func(i int) bool {
+		return bytes.Compare(address, valSet.validators[i].Address) <= 0
 	})
-	if idx == len(vset.validators) || vset.validators[idx].Id != id {
+	if idx == len(valSet.validators) || bytes.Compare(valSet.validators[idx].Address, address) != 0 {
 		return nil, false
 	} else {
-		removedVal := vset.validators[idx]
-		newValidators := vset.validators[:idx]
-		if idx+1 < len(vset.validators) {
-			newValidators = append(newValidators, vset.validators[idx+1:]...)
+		removedVal := valSet.validators[idx]
+		newValidators := valSet.validators[:idx]
+		if idx+1 < len(valSet.validators) {
+			newValidators = append(newValidators, valSet.validators[idx+1:]...)
 		}
-		vset.validators = newValidators
+		valSet.validators = newValidators
 		// Invalidate cache
-		vset.proposer = nil
-		vset.totalVotingPower = 0
+		valSet.proposer = nil
+		valSet.totalVotingPower = 0
 		return removedVal, true
 	}
 }
 
-func (vset *ValidatorSet) Iterate(fn func(index uint, val *Validator) bool) {
-	for i, val := range vset.validators {
+func (valSet *ValidatorSet) Iterate(fn func(index uint, val *Validator) bool) {
+	for i, val := range valSet.validators {
 		stop := fn(uint(i), val.Copy())
 		if stop {
 			break
@@ -224,13 +210,13 @@ func (vset *ValidatorSet) Iterate(fn func(index uint, val *Validator) bool) {
 	}
 }
 
-func (vset *ValidatorSet) String() string {
-	return vset.StringWithIndent("")
+func (valSet *ValidatorSet) String() string {
+	return valSet.StringWithIndent("")
 }
 
-func (vset *ValidatorSet) StringWithIndent(indent string) string {
+func (valSet *ValidatorSet) StringWithIndent(indent string) string {
 	valStrings := []string{}
-	vset.Iterate(func(index uint, val *Validator) bool {
+	valSet.Iterate(func(index uint, val *Validator) bool {
 		valStrings = append(valStrings, val.String())
 		return false
 	})
@@ -239,7 +225,7 @@ func (vset *ValidatorSet) StringWithIndent(indent string) string {
 %s  Validators:
 %s    %v
 %s}`,
-		indent, vset.Proposer().String(),
+		indent, valSet.Proposer().String(),
 		indent,
 		indent, strings.Join(valStrings, "\n"+indent+"    "),
 		indent)

@@ -5,10 +5,10 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
-	"io"
 	"strings"
 	"time"
 
+	. "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 	. "github.com/tendermint/tendermint/config"
@@ -24,23 +24,8 @@ type Block struct {
 	hash []byte
 }
 
-func ReadBlock(r io.Reader, n *int64, err *error) *Block {
-	return &Block{
-		Header:     ReadHeader(r, n, err),
-		Validation: ReadValidation(r, n, err),
-		Data:       ReadData(r, n, err),
-	}
-}
-
-func (b *Block) WriteTo(w io.Writer) (n int64, err error) {
-	WriteBinary(w, b.Header, &n, &err)
-	WriteBinary(w, b.Validation, &n, &err)
-	WriteBinary(w, b.Data, &n, &err)
-	return
-}
-
 // Basic validation that doesn't involve state data.
-func (b *Block) ValidateBasic(lastBlockHeight uint32, lastBlockHash []byte,
+func (b *Block) ValidateBasic(lastBlockHeight uint, lastBlockHash []byte,
 	lastBlockParts PartSetHeader, lastBlockTime time.Time) error {
 	if b.Network != Config.Network {
 		return errors.New("Invalid block network")
@@ -115,7 +100,7 @@ func (b *Block) Description() string {
 
 type Header struct {
 	Network        string
-	Height         uint32
+	Height         uint
 	Time           time.Time
 	Fees           uint64
 	LastBlockHash  []byte
@@ -126,37 +111,11 @@ type Header struct {
 	hash []byte
 }
 
-func ReadHeader(r io.Reader, n *int64, err *error) *Header {
-	if *err != nil {
-		return nil
-	}
-	return &Header{
-		Network:        ReadString(r, n, err),
-		Height:         ReadUInt32(r, n, err),
-		Time:           ReadTime(r, n, err),
-		Fees:           ReadUInt64(r, n, err),
-		LastBlockHash:  ReadByteSlice(r, n, err),
-		LastBlockParts: ReadPartSetHeader(r, n, err),
-		StateHash:      ReadByteSlice(r, n, err),
-	}
-}
-
-func (h *Header) WriteTo(w io.Writer) (n int64, err error) {
-	WriteString(w, h.Network, &n, &err)
-	WriteUInt32(w, h.Height, &n, &err)
-	WriteTime(w, h.Time, &n, &err)
-	WriteUInt64(w, h.Fees, &n, &err)
-	WriteByteSlice(w, h.LastBlockHash, &n, &err)
-	WriteBinary(w, h.LastBlockParts, &n, &err)
-	WriteByteSlice(w, h.StateHash, &n, &err)
-	return
-}
-
 func (h *Header) Hash() []byte {
 	if h.hash == nil {
-		hasher := sha256.New()
-		_, err := h.WriteTo(hasher)
-		if err != nil {
+		hasher, n, err := sha256.New(), new(int64), new(error)
+		WriteBinary(h, hasher, n, err)
+		if *err != nil {
 			panic(err)
 		}
 		h.hash = hasher.Sum(nil)
@@ -186,30 +145,35 @@ func (h *Header) StringWithIndent(indent string) string {
 
 //-----------------------------------------------------------------------------
 
+type Commit struct {
+	// It's not strictly needed here, but consider adding address here for convenience
+	Round     uint
+	Signature SignatureEd25519
+}
+
+func (commit Commit) IsZero() bool {
+	return commit.Round == 0 && commit.Signature.IsZero()
+}
+
+func (commit Commit) String() string {
+	return fmt.Sprintf("Commit{R:%v %X}", commit.Round, Fingerprint(commit.Signature.Bytes))
+}
+
+//-------------------------------------
+
 type Validation struct {
-	Commits []RoundSignature
+	Commits []Commit
 
 	// Volatile
 	hash     []byte
 	bitArray BitArray
 }
 
-func ReadValidation(r io.Reader, n *int64, err *error) *Validation {
-	return &Validation{
-		Commits: ReadRoundSignatures(r, n, err),
-	}
-}
-
-func (v *Validation) WriteTo(w io.Writer) (n int64, err error) {
-	WriteRoundSignatures(w, v.Commits, &n, &err)
-	return
-}
-
 func (v *Validation) Hash() []byte {
 	if v.hash == nil {
-		bs := make([]Binary, len(v.Commits))
+		bs := make([]interface{}, len(v.Commits))
 		for i, commit := range v.Commits {
-			bs[i] = Binary(commit)
+			bs[i] = commit
 		}
 		v.hash = merkle.HashFromBinaries(bs)
 	}
@@ -231,8 +195,8 @@ func (v *Validation) StringWithIndent(indent string) string {
 func (v *Validation) BitArray() BitArray {
 	if v.bitArray.IsZero() {
 		v.bitArray = NewBitArray(uint(len(v.Commits)))
-		for i, rsig := range v.Commits {
-			v.bitArray.SetIndex(uint(i), !rsig.IsZero())
+		for i, commit := range v.Commits {
+			v.bitArray.SetIndex(uint(i), !commit.IsZero())
 		}
 	}
 	return v.bitArray
@@ -247,28 +211,11 @@ type Data struct {
 	hash []byte
 }
 
-func ReadData(r io.Reader, n *int64, err *error) *Data {
-	numTxs := ReadUInt32(r, n, err)
-	txs := make([]Tx, 0, numTxs)
-	for i := uint32(0); i < numTxs; i++ {
-		txs = append(txs, ReadTx(r, n, err))
-	}
-	return &Data{Txs: txs}
-}
-
-func (data *Data) WriteTo(w io.Writer) (n int64, err error) {
-	WriteUInt32(w, uint32(len(data.Txs)), &n, &err)
-	for _, tx := range data.Txs {
-		WriteBinary(w, tx, &n, &err)
-	}
-	return
-}
-
 func (data *Data) Hash() []byte {
 	if data.hash == nil {
-		bs := make([]Binary, len(data.Txs))
+		bs := make([]interface{}, len(data.Txs))
 		for i, tx := range data.Txs {
-			bs[i] = Binary(tx)
+			bs[i] = tx
 		}
 		data.hash = merkle.HashFromBinaries(bs)
 	}
@@ -278,7 +225,7 @@ func (data *Data) Hash() []byte {
 func (data *Data) StringWithIndent(indent string) string {
 	txStrings := make([]string, len(data.Txs))
 	for i, tx := range data.Txs {
-		txStrings[i] = tx.String()
+		txStrings[i] = fmt.Sprintf("Tx:%v", tx)
 	}
 	return fmt.Sprintf(`Data{
 %s  %v

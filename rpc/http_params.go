@@ -1,7 +1,6 @@
 package rpc
 
 import (
-	"fmt"
 	"net/http"
 	"regexp"
 	"strconv"

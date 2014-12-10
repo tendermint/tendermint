@@ -1,30 +1,166 @@
 package consensus
 
+// TODO: This logic is crude. Should be more transactional.
+
 import (
+	"bytes"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+
+	. "github.com/tendermint/tendermint/account"
+	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/blocks"
-	db_ "github.com/tendermint/tendermint/db"
-	"github.com/tendermint/tendermint/state"
+	. "github.com/tendermint/tendermint/common"
+	. "github.com/tendermint/tendermint/config"
+
+	"github.com/tendermint/go-ed25519"
 )
 
-//-----------------------------------------------------------------------------
+const (
+	stepNone      = 0 // Used to distinguish the initial state
+	stepPropose   = 1
+	stepPrevote   = 2
+	stepPrecommit = 3
+	stepCommit    = 4
+)
+
+func voteToStep(vote *Vote) uint8 {
+	switch vote.Type {
+	case VoteTypePrevote:
+		return stepPrevote
+	case VoteTypePrecommit:
+		return stepPrecommit
+	case VoteTypeCommit:
+		return stepCommit
+	default:
+		panic("Unknown vote type")
+	}
+}
 
 type PrivValidator struct {
-	db db_.DB
-	state.PrivAccount
+	Address    []byte
+	PubKey     PubKeyEd25519
+	PrivKey    PrivKeyEd25519
+	LastHeight uint
+	LastRound  uint
+	LastStep   uint8
 }
 
-func NewPrivValidator(db db_.DB, priv *state.PrivAccount) *PrivValidator {
-	return &PrivValidator{db, *priv}
+// Generates a new validator with private key.
+func GenPrivValidator() *PrivValidator {
+	privKeyBytes := CRandBytes(32)
+	pubKeyBytes := ed25519.MakePubKey(privKeyBytes)
+	pubKey := PubKeyEd25519{pubKeyBytes}
+	privKey := PrivKeyEd25519{pubKeyBytes, privKeyBytes}
+	return &PrivValidator{
+		Address:    pubKey.Address(),
+		PubKey:     pubKey,
+		PrivKey:    privKey,
+		LastHeight: 0,
+		LastRound:  0,
+		LastStep:   stepNone,
+	}
 }
 
-// Double signing results in a panic.
-func (pv *PrivValidator) Sign(o Signable) {
-	switch o.(type) {
-	case *Proposal:
-		//TODO: prevent double signing && test.
-		pv.PrivAccount.Sign(o.(*Proposal))
-	case *Vote:
-		//TODO: prevent double signing && test.
-		pv.PrivAccount.Sign(o.(*Vote))
+type PrivValidatorJSON struct {
+	Address    string
+	PubKey     string
+	PrivKey    string
+	LastHeight uint
+	LastRound  uint
+	LastStep   uint8
+}
+
+func LoadPrivValidator() *PrivValidator {
+	privValJSONBytes, err := ioutil.ReadFile(PrivValidatorFile())
+	if err != nil {
+		panic(err)
+	}
+	privValJSON := PrivValidatorJSON{}
+	err = json.Unmarshal(privValJSONBytes, &privValJSON)
+	if err != nil {
+		panic(err)
+	}
+	address, err := base64.StdEncoding.DecodeString(privValJSON.Address)
+	if err != nil {
+		panic(err)
+	}
+	pubKeyBytes, err := base64.StdEncoding.DecodeString(privValJSON.PubKey)
+	if err != nil {
+		panic(err)
+	}
+	privKeyBytes, err := base64.StdEncoding.DecodeString(privValJSON.PrivKey)
+	if err != nil {
+		panic(err)
+	}
+	n := new(int64)
+	privVal := &PrivValidator{
+		Address:    address,
+		PubKey:     ReadBinary(PubKeyEd25519{}, bytes.NewReader(pubKeyBytes), n, &err).(PubKeyEd25519),
+		PrivKey:    ReadBinary(PrivKeyEd25519{}, bytes.NewReader(privKeyBytes), n, &err).(PrivKeyEd25519),
+		LastHeight: privValJSON.LastHeight,
+		LastRound:  privValJSON.LastRound,
+		LastStep:   privValJSON.LastStep,
+	}
+	if err != nil {
+		panic(err)
+	}
+	return privVal
+}
+
+func (privVal *PrivValidator) Save() {
+	privValJSON := PrivValidatorJSON{
+		Address:    base64.StdEncoding.EncodeToString(privVal.Address),
+		PubKey:     base64.StdEncoding.EncodeToString(BinaryBytes(privVal.PubKey)),
+		PrivKey:    base64.StdEncoding.EncodeToString(BinaryBytes(privVal.PrivKey)),
+		LastHeight: privVal.LastHeight,
+		LastRound:  privVal.LastRound,
+		LastStep:   privVal.LastStep,
+	}
+	privValJSONBytes, err := json.Marshal(privValJSON)
+	if err != nil {
+		panic(err)
+	}
+	err = ioutil.WriteFile(PrivValidatorFile(), privValJSONBytes, 0700)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (privVal *PrivValidator) SignVote(vote *Vote) SignatureEd25519 {
+	if privVal.LastHeight < vote.Height ||
+		privVal.LastHeight == vote.Height && privVal.LastRound < vote.Round ||
+		privVal.LastHeight == vote.Height && privVal.LastRound == vote.Round && privVal.LastStep < voteToStep(vote) {
+
+		// Persist height/round/step
+		privVal.LastHeight = vote.Height
+		privVal.LastRound = vote.Round
+		privVal.LastStep = voteToStep(vote)
+		privVal.Save()
+
+		// Sign
+		return privVal.PrivKey.Sign(SignBytes(vote)).(SignatureEd25519)
+	} else {
+		panic(fmt.Sprintf("Attempt of duplicate signing of vote: Height %v, Round %v, Type %v", vote.Height, vote.Round, vote.Type))
+	}
+}
+
+func (privVal *PrivValidator) SignProposal(proposal *Proposal) SignatureEd25519 {
+	if privVal.LastHeight < proposal.Height ||
+		privVal.LastHeight == proposal.Height && privVal.LastRound < proposal.Round ||
+		privVal.LastHeight == 0 && privVal.LastRound == 0 && privVal.LastStep == stepNone {
+
+		// Persist height/round/step
+		privVal.LastHeight = proposal.Height
+		privVal.LastRound = proposal.Round
+		privVal.LastStep = stepPropose
+		privVal.Save()
+
+		// Sign
+		return privVal.PrivKey.Sign(SignBytes(proposal)).(SignatureEd25519)
+	} else {
+		panic(fmt.Sprintf("Attempt of duplicate signing of proposal: Height %v, Round %v, Type %v", proposal.Height, proposal.Round))
 	}
 }

@@ -12,8 +12,22 @@ import (
 	"strings"
 )
 
-var RootDir string
-var Config Config_
+var rootDir string
+
+func init() {
+	rootDir = os.Getenv("TMROOT")
+	if rootDir == "" {
+		rootDir = os.Getenv("HOME") + "/.tendermint"
+	}
+}
+
+func ConfigFile() string        { return rootDir + "/config.json" }
+func GenesisFile() string       { return rootDir + "/genesis.json" }
+func AddrBookFile() string      { return rootDir + "/addrbook.json" }
+func PrivValidatorFile() string { return rootDir + "/priv_validator.json" }
+func DataDir() string           { return rootDir + "/data" }
+
+var Config ConfigType
 
 func setFlags(printHelp *bool) {
 	flag.BoolVar(printHelp, "help", false, "Print this help message.")
@@ -22,11 +36,7 @@ func setFlags(printHelp *bool) {
 }
 
 func ParseFlags() {
-	RootDir = os.Getenv("TMROOT")
-	if RootDir == "" {
-		RootDir = os.Getenv("HOME") + "/.tendermint"
-	}
-	configFile := RootDir + "/config.json"
+	configFile := ConfigFile()
 
 	// try to read configuration. if missing, write default
 	configBytes, err := ioutil.ReadFile(configFile)
@@ -38,7 +48,7 @@ func ParseFlags() {
 	}
 
 	// try to parse configuration. on error, die
-	Config = Config_{}
+	Config = ConfigType{}
 	err = json.Unmarshal(configBytes, &Config)
 	if err != nil {
 		log.Panicf("Invalid configuration file %s: %v", configFile, err)
@@ -61,13 +71,13 @@ func ParseFlags() {
 //-----------------------------------------------------------------------------j
 // Default configuration
 
-var defaultConfig = Config_{
+var defaultConfig = ConfigType{
 	Network:  "tendermint_testnet0",
 	LAddr:    "0.0.0.0:0",
 	SeedNode: "",
 	Db: DbConfig{
 		Type: "level",
-		Dir:  RootDir + "/data",
+		Dir:  DataDir(),
 	},
 	Alert: AlertConfig{},
 	SMTP:  SMTPConfig{},
@@ -79,7 +89,7 @@ var defaultConfig = Config_{
 //-----------------------------------------------------------------------------j
 // Configuration types
 
-type Config_ struct {
+type ConfigType struct {
 	Network  string
 	LAddr    string
 	SeedNode string
@@ -118,7 +128,7 @@ type RPCConfig struct {
 
 //-----------------------------------------------------------------------------j
 
-func (cfg *Config_) validate() error {
+func (cfg *ConfigType) validate() error {
 	if cfg.Network == "" {
 		cfg.Network = defaultConfig.Network
 	}
@@ -134,7 +144,7 @@ func (cfg *Config_) validate() error {
 	return nil
 }
 
-func (cfg *Config_) bytes() []byte {
+func (cfg *ConfigType) bytes() []byte {
 	configBytes, err := json.MarshalIndent(cfg, "", "\t")
 	if err != nil {
 		panic(err)
@@ -142,7 +152,7 @@ func (cfg *Config_) bytes() []byte {
 	return configBytes
 }
 
-func (cfg *Config_) write(configFile string) {
+func (cfg *ConfigType) write(configFile string) {
 	if strings.Index(configFile, "/") != -1 {
 		err := os.MkdirAll(filepath.Dir(configFile), 0700)
 		if err != nil {

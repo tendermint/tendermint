@@ -6,10 +6,14 @@ import (
 	"time"
 )
 
-type Codec interface {
-	Encode(o interface{}, w io.Writer, n *int64, err *error)
-	Decode(r io.Reader, n *int64, err *error) interface{}
-	Compare(o1 interface{}, o2 interface{}) int
+type Encoder func(o interface{}, w io.Writer, n *int64, err *error)
+type Decoder func(r io.Reader, n *int64, err *error) interface{}
+type Comparator func(o1 interface{}, o2 interface{}) int
+
+type Codec struct {
+	Encode  Encoder
+	Decode  Decoder
+	Compare Comparator
 }
 
 const (
@@ -29,62 +33,58 @@ const (
 	typeTime      = byte(0x20)
 )
 
-var BasicCodec = basicCodec{}
-
-type basicCodec struct{}
-
-func (bc basicCodec) Encode(o interface{}, w io.Writer, n *int64, err *error) {
+func BasicCodecEncoder(o interface{}, w io.Writer, n *int64, err *error) {
 	switch o.(type) {
 	case nil:
 		panic("nil type unsupported")
 	case byte:
-		WriteByte(w, typeByte, n, err)
-		WriteByte(w, o.(byte), n, err)
+		WriteByte(typeByte, w, n, err)
+		WriteByte(o.(byte), w, n, err)
 	case int8:
-		WriteByte(w, typeInt8, n, err)
-		WriteInt8(w, o.(int8), n, err)
+		WriteByte(typeInt8, w, n, err)
+		WriteInt8(o.(int8), w, n, err)
 	//case uint8:
-	//	WriteByte(w, typeUInt8, n, err)
-	//	WriteUInt8(w, o.(uint8), n, err)
+	//	WriteByte( typeUInt8, w, n, err)
+	//	WriteUInt8( o.(uint8), w, n, err)
 	case int16:
-		WriteByte(w, typeInt16, n, err)
-		WriteInt16(w, o.(int16), n, err)
+		WriteByte(typeInt16, w, n, err)
+		WriteInt16(o.(int16), w, n, err)
 	case uint16:
-		WriteByte(w, typeUInt16, n, err)
-		WriteUInt16(w, o.(uint16), n, err)
+		WriteByte(typeUInt16, w, n, err)
+		WriteUInt16(o.(uint16), w, n, err)
 	case int32:
-		WriteByte(w, typeInt32, n, err)
-		WriteInt32(w, o.(int32), n, err)
+		WriteByte(typeInt32, w, n, err)
+		WriteInt32(o.(int32), w, n, err)
 	case uint32:
-		WriteByte(w, typeUInt32, n, err)
-		WriteUInt32(w, o.(uint32), n, err)
+		WriteByte(typeUInt32, w, n, err)
+		WriteUInt32(o.(uint32), w, n, err)
 	case int64:
-		WriteByte(w, typeInt64, n, err)
-		WriteInt64(w, o.(int64), n, err)
+		WriteByte(typeInt64, w, n, err)
+		WriteInt64(o.(int64), w, n, err)
 	case uint64:
-		WriteByte(w, typeUInt64, n, err)
-		WriteUInt64(w, o.(uint64), n, err)
+		WriteByte(typeUInt64, w, n, err)
+		WriteUInt64(o.(uint64), w, n, err)
 	case int:
-		WriteByte(w, typeVarInt, n, err)
-		WriteVarInt(w, o.(int), n, err)
+		WriteByte(typeVarInt, w, n, err)
+		WriteVarInt(o.(int), w, n, err)
 	case uint:
-		WriteByte(w, typeUVarInt, n, err)
-		WriteUVarInt(w, o.(uint), n, err)
+		WriteByte(typeUVarInt, w, n, err)
+		WriteUVarInt(o.(uint), w, n, err)
 	case string:
-		WriteByte(w, typeString, n, err)
-		WriteString(w, o.(string), n, err)
+		WriteByte(typeString, w, n, err)
+		WriteString(o.(string), w, n, err)
 	case []byte:
-		WriteByte(w, typeByteSlice, n, err)
-		WriteByteSlice(w, o.([]byte), n, err)
+		WriteByte(typeByteSlice, w, n, err)
+		WriteByteSlice(o.([]byte), w, n, err)
 	case time.Time:
-		WriteByte(w, typeTime, n, err)
-		WriteTime(w, o.(time.Time), n, err)
+		WriteByte(typeTime, w, n, err)
+		WriteTime(o.(time.Time), w, n, err)
 	default:
 		panic("Unsupported type")
 	}
 }
 
-func (bc basicCodec) Decode(r io.Reader, n *int64, err *error) (o interface{}) {
+func BasicCodecDecoder(r io.Reader, n *int64, err *error) (o interface{}) {
 	type_ := ReadByte(r, n, err)
 	switch type_ {
 	case typeByte:
@@ -121,7 +121,7 @@ func (bc basicCodec) Decode(r io.Reader, n *int64, err *error) (o interface{}) {
 	return o
 }
 
-func (bc basicCodec) Compare(o1 interface{}, o2 interface{}) int {
+func BasicCodecComparator(o1 interface{}, o2 interface{}) int {
 	switch o1.(type) {
 	case byte:
 		return int(o1.(byte) - o2.(byte))
@@ -153,4 +153,10 @@ func (bc basicCodec) Compare(o1 interface{}, o2 interface{}) int {
 	default:
 		panic("Unsupported type")
 	}
+}
+
+var BasicCodec = Codec{
+	Encode:  BasicCodecEncoder,
+	Decode:  BasicCodecDecoder,
+	Compare: BasicCodecComparator,
 }

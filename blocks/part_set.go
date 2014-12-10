@@ -9,7 +9,6 @@ import (
 	"strings"
 	"sync"
 
-	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/merkle"
 )
@@ -24,27 +23,12 @@ var (
 )
 
 type Part struct {
-	Index uint16
+	Index uint
 	Trail [][]byte
 	Bytes []byte
 
 	// Cache
 	hash []byte
-}
-
-func ReadPart(r io.Reader, n *int64, err *error) *Part {
-	return &Part{
-		Index: ReadUInt16(r, n, err),
-		Trail: ReadByteSlices(r, n, err),
-		Bytes: ReadByteSlice(r, n, err),
-	}
-}
-
-func (part *Part) WriteTo(w io.Writer) (n int64, err error) {
-	WriteUInt16(w, part.Index, &n, &err)
-	WriteByteSlices(w, part.Trail, &n, &err)
-	WriteByteSlice(w, part.Bytes, &n, &err)
-	return
 }
 
 func (part *Part) Hash() []byte {
@@ -84,21 +68,8 @@ func (part *Part) StringWithIndent(indent string) string {
 //-------------------------------------
 
 type PartSetHeader struct {
-	Total uint16
+	Total uint
 	Hash  []byte
-}
-
-func ReadPartSetHeader(r io.Reader, n *int64, err *error) PartSetHeader {
-	return PartSetHeader{
-		Total: ReadUInt16(r, n, err),
-		Hash:  ReadByteSlice(r, n, err),
-	}
-}
-
-func (psh PartSetHeader) WriteTo(w io.Writer) (n int64, err error) {
-	WriteUInt16(w, psh.Total, &n, &err)
-	WriteByteSlice(w, psh.Hash, &n, &err)
-	return
 }
 
 func (psh PartSetHeader) String() string {
@@ -116,13 +87,13 @@ func (psh PartSetHeader) Equals(other PartSetHeader) bool {
 //-------------------------------------
 
 type PartSet struct {
-	total uint16
+	total uint
 	hash  []byte
 
 	mtx           sync.Mutex
 	parts         []*Part
 	partsBitArray BitArray
-	count         uint16
+	count         uint
 }
 
 // Returns an immutable, full PartSet.
@@ -135,7 +106,7 @@ func NewPartSetFromData(data []byte) *PartSet {
 	partsBitArray := NewBitArray(uint(total))
 	for i := 0; i < total; i++ {
 		part := &Part{
-			Index: uint16(i),
+			Index: uint(i),
 			Bytes: data[i*partSize : MinInt(len(data), (i+1)*partSize)],
 		}
 		parts[i] = part
@@ -148,11 +119,11 @@ func NewPartSetFromData(data []byte) *PartSet {
 		parts[i].Trail = trails[i].Flatten()
 	}
 	return &PartSet{
-		total:         uint16(total),
+		total:         uint(total),
 		hash:          rootTrail.Hash,
 		parts:         parts,
 		partsBitArray: partsBitArray,
-		count:         uint16(total),
+		count:         uint(total),
 	}
 }
 
@@ -207,14 +178,14 @@ func (ps *PartSet) HashesTo(hash []byte) bool {
 	return bytes.Equal(ps.hash, hash)
 }
 
-func (ps *PartSet) Count() uint16 {
+func (ps *PartSet) Count() uint {
 	if ps == nil {
 		return 0
 	}
 	return ps.count
 }
 
-func (ps *PartSet) Total() uint16 {
+func (ps *PartSet) Total() uint {
 	if ps == nil {
 		return 0
 	}
@@ -247,7 +218,7 @@ func (ps *PartSet) AddPart(part *Part) (bool, error) {
 	return true, nil
 }
 
-func (ps *PartSet) GetPart(index uint16) *Part {
+func (ps *PartSet) GetPart(index uint) *Part {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 	return ps.parts[index]

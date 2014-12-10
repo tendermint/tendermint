@@ -2,22 +2,12 @@ package p2p
 
 import (
 	"bytes"
-	"io"
 	"sync"
 	"testing"
 	"time"
 
 	. "github.com/tendermint/tendermint/binary"
 )
-
-type String string
-
-func (s String) WriteTo(w io.Writer) (n int64, err error) {
-	WriteString(w, string(s), &n, &err)
-	return
-}
-
-//-----------------------------------------------------------------------------
 
 type PeerMessage struct {
 	PeerKey string
@@ -137,16 +127,16 @@ func TestSwitches(t *testing.T) {
 		t.Errorf("Expected exactly 1 peer in s2, got %v", s2.Peers().Size())
 	}
 
-	ch0Msg := String("channel zero")
-	ch1Msg := String("channel one")
-	ch2Msg := String("channel two")
+	ch0Msg := "channel zero"
+	ch1Msg := "channel one"
+	ch2Msg := "channel two"
 
 	s1.Broadcast(byte(0x00), ch0Msg)
 	s1.Broadcast(byte(0x01), ch1Msg)
 	s1.Broadcast(byte(0x02), ch2Msg)
 
 	// Wait for things to settle...
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(5000 * time.Millisecond)
 
 	// Check message on ch0
 	ch0Msgs := s2.Reactors()[0].(*TestReactor).msgsReceived[byte(0x00)]
@@ -206,7 +196,7 @@ func BenchmarkSwitches(b *testing.B) {
 	// Send random message from one channel to another
 	for i := 0; i < b.N; i++ {
 		chId := byte(i % 4)
-		nS, nF := s1.Broadcast(chId, String("test data"))
+		nS, nF := s1.Broadcast(chId, "test data")
 		numSuccess += nS
 		numFailure += nF
 	}

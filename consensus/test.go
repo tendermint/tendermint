@@ -6,23 +6,27 @@ import (
 
 // Common test methods
 
-func makeValidator(id uint64, votingPower uint64) (*state.Validator, *state.PrivAccount) {
-	privAccount := state.GenPrivAccount()
-	privAccount.Id = id
+func makeValidator(votingPower uint64) (*state.Validator, *PrivValidator) {
+	privValidator := GenPrivValidator()
 	return &state.Validator{
-		Account:     privAccount.Account,
-		VotingPower: votingPower,
-	}, privAccount
+		Address:          privValidator.Address,
+		PubKey:           privValidator.PubKey,
+		BondHeight:       0,
+		UnbondHeight:     0,
+		LastCommitHeight: 0,
+		VotingPower:      votingPower,
+		Accum:            0,
+	}, privValidator
 }
 
-func makeVoteSet(height uint32, round uint16, type_ byte, numValidators int, votingPower uint64) (*VoteSet, *state.ValidatorSet, []*state.PrivAccount) {
+func makeVoteSet(height uint, round uint, type_ byte, numValidators int, votingPower uint64) (*VoteSet, *state.ValidatorSet, []*PrivValidator) {
 	vals := make([]*state.Validator, numValidators)
-	privAccounts := make([]*state.PrivAccount, numValidators)
+	privValidators := make([]*PrivValidator, numValidators)
 	for i := 0; i < numValidators; i++ {
-		val, privAccount := makeValidator(uint64(i), votingPower)
+		val, privValidator := makeValidator(votingPower)
 		vals[i] = val
-		privAccounts[i] = privAccount
+		privValidators[i] = privValidator
 	}
 	valSet := state.NewValidatorSet(vals)
-	return NewVoteSet(height, round, type_, valSet), valSet, privAccounts
+	return NewVoteSet(height, round, type_, valSet), valSet, privValidators
 }

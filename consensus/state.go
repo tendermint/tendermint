@@ -52,6 +52,7 @@ Consensus State Machine Overview:
 package consensus
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"math"
@@ -59,6 +60,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	. "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/blocks"
 	. "github.com/tendermint/tendermint/common"
@@ -82,7 +84,7 @@ const (
 	RoundActionPrevote     = RoundActionType(0xA1) // Prevote and goto RoundStepPrevote
 	RoundActionPrecommit   = RoundActionType(0xA2) // Precommit and goto RoundStepPrecommit
 	RoundActionTryCommit   = RoundActionType(0xC0) // Goto RoundStepCommit, or RoundStepPropose for next round.
-	RoundActionCommit      = RoundActionType(0xC1) // Goto RoundStepCommit
+	RoundActionCommit      = RoundActionType(0xC1) // Goto RoundStepCommit upon +2/3 commits
 	RoundActionTryFinalize = RoundActionType(0xC2) // Maybe goto RoundStepPropose for next round.
 
 	roundDuration0         = 60 * time.Second   // The first round is 60 seconds long.
@@ -97,8 +99,8 @@ var (
 )
 
 type RoundAction struct {
-	Height uint32          // The block height for which consensus is reaching for.
-	Round  uint16          // The round number at given height.
+	Height uint            // The block height for which consensus is reaching for.
+	Round  uint            // The round number at given height.
 	Action RoundActionType // Action to perform.
 }
 
@@ -106,8 +108,8 @@ type RoundAction struct {
 
 // Immutable when returned from ConsensusState.GetRoundState()
 type RoundState struct {
-	Height             uint32 // Height we are working on
-	Round              uint16
+	Height             uint // Height we are working on
+	Round              uint
 	Step               RoundStep
 	StartTime          time.Time
 	CommitTime         time.Time // Time when +2/3 commits were found
@@ -347,7 +349,6 @@ ACTION_LOOP:
 			if rs.Precommits.HasTwoThirdsMajority() {
 				// Enter RoundStepCommit and commit.
 				cs.RunActionCommit(rs.Height)
-				cs.queueAction(RoundAction{rs.Height, rs.Round, RoundActionTryFinalize})
 				continue ACTION_LOOP
 			} else {
 				// Could not commit, move onto next round.
@@ -363,7 +364,6 @@ ACTION_LOOP:
 			}
 			// Enter RoundStepCommit and commit.
 			cs.RunActionCommit(rs.Height)
-			cs.queueAction(RoundAction{rs.Height, rs.Round, RoundActionTryFinalize})
 			continue ACTION_LOOP
 
 		case RoundActionTryFinalize:
@@ -435,7 +435,7 @@ func (cs *ConsensusState) updateToState(state *state.State) {
 }
 
 // After the call cs.Step becomes RoundStepNewRound.
-func (cs *ConsensusState) setupNewRound(round uint16) {
+func (cs *ConsensusState) setupNewRound(round uint) {
 	// Sanity check
 	if round == 0 {
 		panic("setupNewRound() should never be called for round 0")
@@ -470,7 +470,7 @@ func (cs *ConsensusState) SetPrivValidator(priv *PrivValidator) {
 //-----------------------------------------------------------------------------
 
 // Set up the round to desired round and set step to RoundStepNewRound
-func (cs *ConsensusState) SetupNewRound(height uint32, desiredRound uint16) bool {
+func (cs *ConsensusState) SetupNewRound(height uint, desiredRound uint) bool {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	if cs.Height != height {
@@ -485,7 +485,7 @@ func (cs *ConsensusState) SetupNewRound(height uint32, desiredRound uint16) bool
 	return true
 }
 
-func (cs *ConsensusState) RunActionPropose(height uint32, round uint16) {
+func (cs *ConsensusState) RunActionPropose(height uint, round uint) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	if cs.Height != height || cs.Round != round {
@@ -497,7 +497,7 @@ func (cs *ConsensusState) RunActionPropose(height uint32, round uint16) {
 	}()
 
 	// Nothing to do if it's not our turn.
-	if cs.PrivValidator == nil || cs.Validators.Proposer().Id != cs.PrivValidator.Id {
+	if cs.PrivValidator == nil || !bytes.Equal(cs.Validators.Proposer().Address, cs.PrivValidator.Address) {
 		return
 	}
 
@@ -560,7 +560,7 @@ func (cs *ConsensusState) RunActionPropose(height uint32, round uint16) {
 
 	// Make proposal
 	proposal := NewProposal(cs.Height, cs.Round, blockParts.Header(), polParts.Header())
-	cs.PrivValidator.Sign(proposal)
+	proposal.Signature = cs.PrivValidator.SignProposal(proposal)
 
 	// Set fields
 	cs.Proposal = proposal
@@ -572,7 +572,7 @@ func (cs *ConsensusState) RunActionPropose(height uint32, round uint16) {
 
 // Prevote for LockedBlock if we're locked, or ProposealBlock if valid.
 // Otherwise vote nil.
-func (cs *ConsensusState) RunActionPrevote(height uint32, round uint16) {
+func (cs *ConsensusState) RunActionPrevote(height uint, round uint) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	if cs.Height != height || cs.Round != round {
@@ -612,7 +612,7 @@ func (cs *ConsensusState) RunActionPrevote(height uint32, round uint16) {
 
 // Lock & Precommit the ProposalBlock if we have enough prevotes for it,
 // or unlock an existing lock if +2/3 of prevotes were nil.
-func (cs *ConsensusState) RunActionPrecommit(height uint32, round uint16) {
+func (cs *ConsensusState) RunActionPrecommit(height uint, round uint) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	if cs.Height != height || cs.Round != round {
@@ -668,7 +668,11 @@ func (cs *ConsensusState) RunActionPrecommit(height uint32, round uint16) {
 }
 
 // Enter commit step. See the diagram for details.
-func (cs *ConsensusState) RunActionCommit(height uint32) {
+// There are two ways to enter this step:
+// * After the Precommit step with +2/3 precommits, or,
+// * Upon +2/3 commits regardless of current step
+// Either way this action is run at most once per round.
+func (cs *ConsensusState) RunActionCommit(height uint) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	if cs.Height != height {
@@ -679,6 +683,7 @@ func (cs *ConsensusState) RunActionCommit(height uint32) {
 		cs.newStepCh <- cs.getRoundState()
 	}()
 
+	// Sanity check.
 	// There are two ways to enter:
 	// 1. +2/3 precommits at the end of RoundStepPrecommit
 	// 2. +2/3 commits at any time
@@ -712,15 +717,20 @@ func (cs *ConsensusState) RunActionCommit(height uint32) {
 		}
 	} else {
 		// We have the block, so save/stage/sign-commit-vote.
+		cs.saveCommitVoteBlock(cs.ProposalBlock, cs.ProposalBlockParts)
+	}
 
-		cs.processBlockForCommit(cs.ProposalBlock, cs.ProposalBlockParts)
+	// If we have the block AND +2/3 commits, queue RoundActionTryFinalize.
+	// Round will immediately become finalized.
+	if cs.ProposalBlock.HashesTo(hash) && cs.Commits.HasTwoThirdsMajority() {
+		cs.queueAction(RoundAction{cs.Height, cs.Round, RoundActionTryFinalize})
 	}
 
 }
 
 // Returns true if Finalize happened, which increments height && sets
 // the step to RoundStepNewHeight (or RoundStepNewRound, but probably not).
-func (cs *ConsensusState) TryFinalizeCommit(height uint32) bool {
+func (cs *ConsensusState) TryFinalizeCommit(height uint) bool {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 
@@ -754,6 +764,7 @@ func (cs *ConsensusState) TryFinalizeCommit(height uint32) bool {
 			return true
 		} else {
 			// Prevent zombies.
+			// TODO: Does this ever happen?
 			Panicf("+2/3 committed an invalid block: %v", err)
 		}
 	}
@@ -782,7 +793,7 @@ func (cs *ConsensusState) SetProposal(proposal *Proposal) error {
 	}
 
 	// Verify signature
-	if !cs.Validators.Proposer().Verify(proposal) {
+	if !cs.Validators.Proposer().PubKey.VerifyBytes(SignBytes(proposal), proposal.Signature) {
 		return ErrInvalidProposalSignature
 	}
 
@@ -794,7 +805,7 @@ func (cs *ConsensusState) SetProposal(proposal *Proposal) error {
 
 // NOTE: block is not necessarily valid.
 // NOTE: This function may increment the height.
-func (cs *ConsensusState) AddProposalBlockPart(height uint32, round uint16, part *Part) (added bool, err error) {
+func (cs *ConsensusState) AddProposalBlockPart(height uint, round uint, part *Part) (added bool, err error) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 
@@ -815,8 +826,11 @@ func (cs *ConsensusState) AddProposalBlockPart(height uint32, round uint16, part
 	if added && cs.ProposalBlockParts.IsComplete() {
 		var n int64
 		var err error
-		cs.ProposalBlock = ReadBlock(cs.ProposalBlockParts.GetReader(), &n, &err)
-		cs.queueAction(RoundAction{cs.Height, cs.Round, RoundActionTryFinalize})
+		cs.ProposalBlock = ReadBinary(&Block{}, cs.ProposalBlockParts.GetReader(), &n, &err).(*Block)
+		// If we're already in the commit step, try to finalize round.
+		if cs.Step == RoundStepCommit {
+			cs.queueAction(RoundAction{cs.Height, cs.Round, RoundActionTryFinalize})
+		}
 		// XXX If POL is valid, consider unlocking.
 		return true, err
 	}
@@ -824,7 +838,7 @@ func (cs *ConsensusState) AddProposalBlockPart(height uint32, round uint16, part
 }
 
 // NOTE: POL is not necessarily valid.
-func (cs *ConsensusState) AddProposalPOLPart(height uint32, round uint16, part *Part) (added bool, err error) {
+func (cs *ConsensusState) AddProposalPOLPart(height uint, round uint, part *Part) (added bool, err error) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 
@@ -844,21 +858,21 @@ func (cs *ConsensusState) AddProposalPOLPart(height uint32, round uint16, part *
 	if added && cs.ProposalPOLParts.IsComplete() {
 		var n int64
 		var err error
-		cs.ProposalPOL = ReadPOL(cs.ProposalPOLParts.GetReader(), &n, &err)
+		cs.ProposalPOL = ReadBinary(&POL{}, cs.ProposalPOLParts.GetReader(), &n, &err).(*POL)
 		return true, err
 	}
 	return true, nil
 }
 
-func (cs *ConsensusState) AddVote(vote *Vote) (added bool, index uint, err error) {
+func (cs *ConsensusState) AddVote(address []byte, vote *Vote) (added bool, index uint, err error) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 
-	return cs.addVote(vote)
+	return cs.addVote(address, vote)
 }
 
 // TODO: Maybe move this out of here?
-func (cs *ConsensusState) LoadHeaderValidation(height uint32) (*Header, *Validation) {
+func (cs *ConsensusState) LoadHeaderValidation(height uint) (*Header, *Validation) {
 	meta := cs.blockStore.LoadBlockMeta(height)
 	if meta == nil {
 		return nil, nil
@@ -869,21 +883,21 @@ func (cs *ConsensusState) LoadHeaderValidation(height uint32) (*Header, *Validat
 
 //-----------------------------------------------------------------------------
 
-func (cs *ConsensusState) addVote(vote *Vote) (added bool, index uint, err error) {
+func (cs *ConsensusState) addVote(address []byte, vote *Vote) (added bool, index uint, err error) {
 	switch vote.Type {
 	case VoteTypePrevote:
 		// Prevotes checks for height+round match.
-		return cs.Prevotes.Add(vote)
+		return cs.Prevotes.Add(address, vote)
 	case VoteTypePrecommit:
 		// Precommits checks for height+round match.
-		return cs.Precommits.Add(vote)
+		return cs.Precommits.Add(address, vote)
 	case VoteTypeCommit:
 		if vote.Height == cs.Height {
 			// No need to check if vote.Round < cs.Round ...
 			// Prevotes && Precommits already checks that.
-			cs.Prevotes.Add(vote)
-			cs.Precommits.Add(vote)
-			added, index, err = cs.Commits.Add(vote)
+			cs.Prevotes.Add(address, vote)
+			cs.Precommits.Add(address, vote)
+			added, index, err = cs.Commits.Add(address, vote)
 			if added && cs.Commits.HasTwoThirdsMajority() && cs.CommitTime.IsZero() {
 				cs.CommitTime = time.Now()
 				log.Debug("Set CommitTime to %v", cs.CommitTime)
@@ -896,7 +910,7 @@ func (cs *ConsensusState) addVote(vote *Vote) (added bool, index uint, err error
 			return added, index, err
 		}
 		if vote.Height+1 == cs.Height {
-			return cs.LastCommits.Add(vote)
+			return cs.LastCommits.Add(address, vote)
 		}
 		return false, 0, nil
 	default:
@@ -930,7 +944,7 @@ func (cs *ConsensusState) stageBlock(block *Block, blockParts *PartSet) error {
 }
 
 func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header PartSetHeader) *Vote {
-	if cs.PrivValidator == nil || !cs.Validators.HasId(cs.PrivValidator.Id) {
+	if cs.PrivValidator == nil || !cs.Validators.HasAddress(cs.PrivValidator.Address) {
 		return nil
 	}
 	vote := &Vote{
@@ -940,12 +954,12 @@ func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header PartSetHea
 		BlockHash:  hash,
 		BlockParts: header,
 	}
-	cs.PrivValidator.Sign(vote)
-	cs.addVote(vote)
+	vote.Signature = cs.PrivValidator.SignVote(vote)
+	cs.addVote(cs.PrivValidator.Address, vote)
 	return vote
 }
 
-func (cs *ConsensusState) processBlockForCommit(block *Block, blockParts *PartSet) {
+func (cs *ConsensusState) saveCommitVoteBlock(block *Block, blockParts *PartSet) {
 
 	// The proposal must be valid.
 	if err := cs.stageBlock(block, blockParts); err != nil {
@@ -969,19 +983,19 @@ func (cs *ConsensusState) processBlockForCommit(block *Block, blockParts *PartSe
 //-----------------------------------------------------------------------------
 
 // total duration of given round
-func calcRoundDuration(round uint16) time.Duration {
+func calcRoundDuration(round uint) time.Duration {
 	return roundDuration0 + roundDurationDelta*time.Duration(round)
 }
 
 // startTime is when round zero started.
-func calcRoundStartTime(round uint16, startTime time.Time) time.Time {
+func calcRoundStartTime(round uint, startTime time.Time) time.Time {
 	return startTime.Add(roundDuration0*time.Duration(round) +
 		roundDurationDelta*(time.Duration((int64(round)*int64(round)-int64(round))/2)))
 }
 
 // calculates the current round given startTime of round zero.
 // NOTE: round is zero if startTime is in the future.
-func calcRound(startTime time.Time) uint16 {
+func calcRound(startTime time.Time) uint {
 	now := time.Now()
 	if now.Before(startTime) {
 		return 0
@@ -997,18 +1011,18 @@ func calcRound(startTime time.Time) uint16 {
 	if math.IsNaN(R) {
 		panic("Could not calc round, should not happen")
 	}
-	if R > math.MaxInt16 {
+	if R > math.MaxInt32 {
 		Panicf("Could not calc round, round overflow: %v", R)
 	}
 	if R < 0 {
 		return 0
 	}
-	return uint16(R)
+	return uint(R)
 }
 
 // convenience
 // NOTE: elapsedRatio can be negative if startTime is in the future.
-func calcRoundInfo(startTime time.Time) (round uint16, roundStartTime time.Time, roundDuration time.Duration,
+func calcRoundInfo(startTime time.Time) (round uint, roundStartTime time.Time, roundDuration time.Duration,
 	roundElapsed time.Duration, elapsedRatio float64) {
 	round = calcRound(startTime)
 	roundStartTime = calcRoundStartTime(round, startTime)

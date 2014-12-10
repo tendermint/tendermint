@@ -27,7 +27,7 @@ func TestBasicPartSet(t *testing.T) {
 	// Test adding parts to a new partSet.
 	partSet2 := NewPartSetFromHeader(partSet.Header())
 
-	for i := uint16(0); i < partSet.Total(); i++ {
+	for i := uint(0); i < partSet.Total(); i++ {
 		part := partSet.GetPart(i)
 		//t.Logf("\n%v", part)
 		added, err := partSet2.AddPart(part)

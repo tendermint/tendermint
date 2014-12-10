@@ -7,8 +7,8 @@ import (
 
 // Time
 
-func WriteTime(w io.Writer, t time.Time, n *int64, err *error) {
-	WriteInt64(w, t.UnixNano(), n, err)
+func WriteTime(t time.Time, w io.Writer, n *int64, err *error) {
+	WriteInt64(t.UnixNano(), w, n, err)
 }
 
 func ReadTime(r io.Reader, n *int64, err *error) time.Time {

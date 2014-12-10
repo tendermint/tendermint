@@ -5,13 +5,10 @@
 package p2p
 
 import (
-	"io"
+	"fmt"
 	"net"
 	"strconv"
 	"time"
-
-	. "github.com/tendermint/tendermint/binary"
-	. "github.com/tendermint/tendermint/common"
 )
 
 /* NetAddress */
@@ -26,7 +23,7 @@ type NetAddress struct {
 func NewNetAddress(addr net.Addr) *NetAddress {
 	tcpAddr, ok := addr.(*net.TCPAddr)
 	if !ok {
-		Panicf("Only TCPAddrs are supported. Got: %v", addr)
+		panic(fmt.Sprintf("Only TCPAddrs are supported. Got: %v", addr))
 	}
 	ip := tcpAddr.IP
 	port := uint16(tcpAddr.Port)
@@ -47,12 +44,6 @@ func NewNetAddressString(addr string) *NetAddress {
 	return na
 }
 
-func ReadNetAddress(r io.Reader, n *int64, err *error) *NetAddress {
-	ipBytes := ReadByteSlice(r, n, err)
-	port := ReadUInt16(r, n, err)
-	return NewNetAddressIPPort(net.IP(ipBytes), port)
-}
-
 func NewNetAddressIPPort(ip net.IP, port uint16) *NetAddress {
 	na := &NetAddress{
 		IP:   ip,
@@ -63,12 +54,6 @@ func NewNetAddressIPPort(ip net.IP, port uint16) *NetAddress {
 		),
 	}
 	return na
-}
-
-func (na *NetAddress) WriteTo(w io.Writer) (n int64, err error) {
-	WriteByteSlice(w, na.IP.To16(), &n, &err)
-	WriteUInt16(w, na.Port, &n, &err)
-	return
 }
 
 func (na *NetAddress) Equals(other interface{}) bool {

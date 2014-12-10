@@ -4,9 +4,9 @@ import "io"
 
 // String
 
-func WriteString(w io.Writer, s string, n *int64, err *error) {
-	WriteUInt32(w, uint32(len(s)), n, err)
-	WriteTo(w, []byte(s), n, err)
+func WriteString(s string, w io.Writer, n *int64, err *error) {
+	WriteUInt32(uint32(len(s)), w, n, err)
+	WriteTo([]byte(s), w, n, err)
 }
 
 func ReadString(r io.Reader, n *int64, err *error) string {
@@ -15,6 +15,6 @@ func ReadString(r io.Reader, n *int64, err *error) string {
 		return ""
 	}
 	buf := make([]byte, int(length))
-	ReadFull(r, buf, n, err)
+	ReadFull(buf, r, n, err)
 	return string(buf)
 }

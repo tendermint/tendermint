@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	numBatchPackets           = 10
+	numBatchMsgPackets        = 10
 	minReadBufferSize         = 1024
 	minWriteBufferSize        = 1024
 	flushThrottleMS           = 50
@@ -35,7 +35,7 @@ type errorCbFunc func(interface{})
 
 /*
 A MConnection wraps a network connection and handles buffering and multiplexing.
-Binary messages are sent with ".Send(channelId, msg)".
+<essages are sent with ".Send(channelId, msg)".
 Inbound message bytes are handled with an onReceive callback function.
 */
 type MConnection struct {
@@ -158,7 +158,7 @@ func (c *MConnection) stopForError(r interface{}) {
 }
 
 // Queues a message to be sent to channel.
-func (c *MConnection) Send(chId byte, msg Binary) bool {
+func (c *MConnection) Send(chId byte, msg interface{}) bool {
 	if atomic.LoadUint32(&c.stopped) == 1 {
 		return false
 	}
@@ -185,7 +185,7 @@ func (c *MConnection) Send(chId byte, msg Binary) bool {
 
 // Queues a message to be sent to channel.
 // Nonblocking, returns true if successful.
-func (c *MConnection) TrySend(chId byte, msg Binary) bool {
+func (c *MConnection) TrySend(chId byte, msg interface{}) bool {
 	if atomic.LoadUint32(&c.stopped) == 1 {
 		return false
 	}
@@ -242,18 +242,18 @@ FOR_LOOP:
 				channel.updateStats()
 			}
 		case <-c.pingTimer.Ch:
-			WriteByte(c.bufWriter, packetTypePing, &n, &err)
+			WriteByte(packetTypePing, c.bufWriter, &n, &err)
 			c.sendMonitor.Update(int(n))
 			c.flush()
 		case <-c.pong:
-			WriteByte(c.bufWriter, packetTypePong, &n, &err)
+			WriteByte(packetTypePing, c.bufWriter, &n, &err)
 			c.sendMonitor.Update(int(n))
 			c.flush()
 		case <-c.quit:
 			break FOR_LOOP
 		case <-c.send:
-			// Send some packets
-			eof := c.sendSomePackets()
+			// Send some msgPackets
+			eof := c.sendSomeMsgPackets()
 			if !eof {
 				// Keep sendRoutine awake.
 				select {
@@ -278,15 +278,15 @@ FOR_LOOP:
 
 // Returns true if messages from channels were exhausted.
 // Blocks in accordance to .sendMonitor throttling.
-func (c *MConnection) sendSomePackets() bool {
+func (c *MConnection) sendSomeMsgPackets() bool {
 	// Block until .sendMonitor says we can write.
 	// Once we're ready we send more than we asked for,
 	// but amortized it should even out.
-	c.sendMonitor.Limit(maxPacketSize, atomic.LoadInt64(&c.sendRate), true)
+	c.sendMonitor.Limit(maxMsgPacketSize, atomic.LoadInt64(&c.sendRate), true)
 
-	// Now send some packets.
-	for i := 0; i < numBatchPackets; i++ {
-		if c.sendPacket() {
+	// Now send some msgPackets.
+	for i := 0; i < numBatchMsgPackets; i++ {
+		if c.sendMsgPacket() {
 			return true
 		}
 	}
@@ -294,8 +294,8 @@ func (c *MConnection) sendSomePackets() bool {
 }
 
 // Returns true if messages from channels were exhausted.
-func (c *MConnection) sendPacket() bool {
-	// Choose a channel to create a packet from.
+func (c *MConnection) sendMsgPacket() bool {
+	// Choose a channel to create a msgPacket from.
 	// The chosen channel will be the one whose recentlySent/priority is the least.
 	var leastRatio float32 = math.MaxFloat32
 	var leastChannel *Channel
@@ -316,13 +316,13 @@ func (c *MConnection) sendPacket() bool {
 	if leastChannel == nil {
 		return true
 	} else {
-		// log.Debug("Found a packet to send")
+		// log.Debug("Found a msgPacket to send")
 	}
 
-	// Make & send a packet from this channel
-	n, err := leastChannel.writePacketTo(c.bufWriter)
+	// Make & send a msgPacket from this channel
+	n, err := leastChannel.writeMsgPacketTo(c.bufWriter)
 	if err != nil {
-		log.Warning("Failed to write packet. Error: %v", err)
+		log.Warning("Failed to write msgPacket. Error: %v", err)
 		c.stopForError(err)
 		return true
 	}
@@ -331,7 +331,7 @@ func (c *MConnection) sendPacket() bool {
 	return false
 }
 
-// recvRoutine reads packets and reconstructs the message using the channels' "recving" buffer.
+// recvRoutine reads msgPackets and reconstructs the message using the channels' "recving" buffer.
 // After a whole message has been assembled, it's pushed to onReceive().
 // Blocks depending on how the connection is throttled.
 func (c *MConnection) recvRoutine() {
@@ -340,7 +340,7 @@ func (c *MConnection) recvRoutine() {
 FOR_LOOP:
 	for {
 		// Block until .recvMonitor says we can read.
-		c.recvMonitor.Limit(maxPacketSize, atomic.LoadInt64(&c.recvRate), true)
+		c.recvMonitor.Limit(maxMsgPacketSize, atomic.LoadInt64(&c.recvRate), true)
 
 		// Read packet type
 		var n int64
@@ -359,7 +359,7 @@ FOR_LOOP:
 		if log.IsEnabledFor(logging.DEBUG) {
 			numBytes := c.bufReader.Buffered()
 			bytes, err := c.bufReader.Peek(MinInt(numBytes, 100))
-			if err != nil {
+			if err == nil {
 				log.Debug("recvRoutine packet type %X, peeked: %X", pktType, bytes)
 			}
 		}
@@ -371,10 +371,11 @@ FOR_LOOP:
 			c.pong <- struct{}{}
 		case packetTypePong:
 			// do nothing
-		case packetTypeMessage:
-			pkt, n, err := readPacketSafe(c.bufReader)
-			c.recvMonitor.Update(int(n))
-			if err != nil {
+		case packetTypeMsg:
+			pkt, n, err := msgPacket{}, new(int64), new(error)
+			ReadBinary(&pkt, c.bufReader, n, err)
+			c.recvMonitor.Update(int(*n))
+			if *err != nil {
 				if atomic.LoadUint32(&c.stopped) != 1 {
 					log.Info("%v failed @ recvRoutine", c)
 					c.Stop()
@@ -385,7 +386,7 @@ FOR_LOOP:
 			if !ok || channel == nil {
 				Panicf("Unknown channel %X", pkt.ChannelId)
 			}
-			msgBytes := channel.recvPacket(pkt)
+			msgBytes := channel.recvMsgPacket(pkt)
 			if msgBytes != nil {
 				c.onReceive(pkt.ChannelId, msgBytes)
 			}
@@ -394,7 +395,7 @@ FOR_LOOP:
 		}
 
 		// TODO: shouldn't this go in the sendRoutine?
-		// Better to send a packet when *we* haven't sent anything for a while.
+		// Better to send a ping packet when *we* haven't sent anything for a while.
 		c.pingTimer.Reset()
 	}
 
@@ -471,8 +472,8 @@ func (ch *Channel) canSend() bool {
 	return ch.loadSendQueueSize() < defaultSendQueueCapacity
 }
 
-// Returns true if any packets are pending to be sent.
-// Call before calling nextPacket()
+// Returns true if any msgPackets are pending to be sent.
+// Call before calling nextMsgPacket()
 // Goroutine-safe
 func (ch *Channel) isSendPending() bool {
 	if len(ch.sending) == 0 {
@@ -484,38 +485,37 @@ func (ch *Channel) isSendPending() bool {
 	return true
 }
 
-// Creates a new packet to send.
+// Creates a new msgPacket to send.
 // Not goroutine-safe
-func (ch *Channel) nextPacket() packet {
-	packet := packet{}
+func (ch *Channel) nextMsgPacket() msgPacket {
+	packet := msgPacket{}
 	packet.ChannelId = byte(ch.id)
-	packet.Bytes = ch.sending[:MinInt(maxPacketSize, len(ch.sending))]
-	if len(ch.sending) <= maxPacketSize {
+	packet.Bytes = ch.sending[:MinInt(maxMsgPacketSize, len(ch.sending))]
+	if len(ch.sending) <= maxMsgPacketSize {
 		packet.EOF = byte(0x01)
 		ch.sending = nil
 		atomic.AddUint32(&ch.sendQueueSize, ^uint32(0)) // decrement sendQueueSize
 	} else {
 		packet.EOF = byte(0x00)
-		ch.sending = ch.sending[MinInt(maxPacketSize, len(ch.sending)):]
+		ch.sending = ch.sending[MinInt(maxMsgPacketSize, len(ch.sending)):]
 	}
 	return packet
 }
 
-// Writes next packet to w.
+// Writes next msgPacket to w.
 // Not goroutine-safe
-func (ch *Channel) writePacketTo(w io.Writer) (n int64, err error) {
-	packet := ch.nextPacket()
-	WriteByte(w, packetTypeMessage, &n, &err)
-	WriteBinary(w, packet, &n, &err)
+func (ch *Channel) writeMsgPacketTo(w io.Writer) (n int64, err error) {
+	packet := ch.nextMsgPacket()
+	WriteBinary(packet, w, &n, &err)
 	if err != nil {
 		ch.recentlySent += n
 	}
 	return
 }
 
-// Handles incoming packets. Returns a msg bytes if msg is complete.
+// Handles incoming msgPackets. Returns a msg bytes if msg is complete.
 // Not goroutine-safe
-func (ch *Channel) recvPacket(pkt packet) []byte {
+func (ch *Channel) recvMsgPacket(pkt msgPacket) []byte {
 	ch.recving = append(ch.recving, pkt.Bytes...)
 	if pkt.EOF == byte(0x01) {
 		msgBytes := ch.recving
@@ -536,36 +536,23 @@ func (ch *Channel) updateStats() {
 //-----------------------------------------------------------------------------
 
 const (
-	maxPacketSize     = 1024
-	packetTypePing    = byte(0x00)
-	packetTypePong    = byte(0x01)
-	packetTypeMessage = byte(0x10)
+	maxMsgPacketSize = 1024
+	packetTypePing   = byte(0x00)
+	packetTypePong   = byte(0x01)
+	packetTypeMsg    = byte(0x10)
 )
 
-// Messages in channels are chopped into smaller packets for multiplexing.
-type packet struct {
+// Messages in channels are chopped into smaller msgPackets for multiplexing.
+type msgPacket struct {
 	ChannelId byte
 	EOF       byte // 1 means message ends here.
 	Bytes     []byte
 }
 
-func (p packet) WriteTo(w io.Writer) (n int64, err error) {
-	WriteByte(w, p.ChannelId, &n, &err)
-	WriteByte(w, p.EOF, &n, &err)
-	WriteByteSlice(w, p.Bytes, &n, &err)
-	return
-}
+func (p msgPacket) TypeByte() byte { return packetTypeMsg }
 
-func (p packet) String() string {
-	return fmt.Sprintf("Packet{%X:%X}", p.ChannelId, p.Bytes)
-}
-
-func readPacketSafe(r io.Reader) (pkt packet, n int64, err error) {
-	chId := ReadByte(r, &n, &err)
-	eof := ReadByte(r, &n, &err)
-	bytes := ReadByteSlice(r, &n, &err)
-	pkt = packet{chId, eof, bytes}
-	return
+func (p msgPacket) String() string {
+	return fmt.Sprintf("MsgPacket{%X:%X}", p.ChannelId, p.Bytes)
 }
 
 //-----------------------------------------------------------------------------
@@ -574,19 +561,9 @@ func readPacketSafe(r io.Reader) (pkt packet, n int64, err error) {
 // Reading requires a custom decoder that switches on the first type byte of a byteslice.
 type TypedMessage struct {
 	Type byte
-	Msg  Binary
-}
-
-func (tm TypedMessage) WriteTo(w io.Writer) (n int64, err error) {
-	WriteByte(w, tm.Type, &n, &err)
-	WriteBinary(w, tm.Msg, &n, &err)
-	return
+	Msg  interface{}
 }
 
 func (tm TypedMessage) String() string {
 	return fmt.Sprintf("TMsg{%X:%v}", tm.Type, tm.Msg)
-}
-
-func (tm TypedMessage) Bytes() []byte {
-	return BinaryBytes(tm)
 }

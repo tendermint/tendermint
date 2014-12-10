@@ -2,8 +2,8 @@ package blocks
 
 import (
 	"bytes"
-	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"io"
 
 	. "github.com/tendermint/tendermint/binary"
@@ -17,7 +17,7 @@ import (
 Simple low level store for blocks, which is actually stored as separte parts (wire format).
 */
 type BlockStore struct {
-	height uint32
+	height uint
 	db     db_.DB
 }
 
@@ -30,7 +30,7 @@ func NewBlockStore(db db_.DB) *BlockStore {
 }
 
 // Height() returns the last known contiguous block height.
-func (bs *BlockStore) Height() uint32 {
+func (bs *BlockStore) Height() uint {
 	return bs.height
 }
 
@@ -42,49 +42,49 @@ func (bs *BlockStore) GetReader(key []byte) io.Reader {
 	return bytes.NewReader(bytez)
 }
 
-func (bs *BlockStore) LoadBlock(height uint32) *Block {
+func (bs *BlockStore) LoadBlock(height uint) *Block {
 	var n int64
 	var err error
-	meta := ReadBlockMeta(bs.GetReader(calcBlockMetaKey(height)), &n, &err)
+	meta := ReadBinary(&BlockMeta{}, bs.GetReader(calcBlockMetaKey(height)), &n, &err).(*BlockMeta)
 	if err != nil {
 		Panicf("Error reading block meta: %v", err)
 	}
 	bytez := []byte{}
-	for i := uint16(0); i < meta.Parts.Total; i++ {
+	for i := uint(0); i < meta.Parts.Total; i++ {
 		part := bs.LoadBlockPart(height, i)
 		bytez = append(bytez, part.Bytes...)
 	}
-	block := ReadBlock(bytes.NewReader(bytez), &n, &err)
+	block := ReadBinary(&Block{}, bytes.NewReader(bytez), &n, &err).(*Block)
 	if err != nil {
 		Panicf("Error reading block: %v", err)
 	}
 	return block
 }
 
-func (bs *BlockStore) LoadBlockPart(height uint32, index uint16) *Part {
+func (bs *BlockStore) LoadBlockPart(height uint, index uint) *Part {
 	var n int64
 	var err error
-	part := ReadPart(bs.GetReader(calcBlockPartKey(height, index)), &n, &err)
+	part := ReadBinary(&Part{}, bs.GetReader(calcBlockPartKey(height, index)), &n, &err).(*Part)
 	if err != nil {
 		Panicf("Error reading block part: %v", err)
 	}
 	return part
 }
 
-func (bs *BlockStore) LoadBlockMeta(height uint32) *BlockMeta {
+func (bs *BlockStore) LoadBlockMeta(height uint) *BlockMeta {
 	var n int64
 	var err error
-	meta := ReadBlockMeta(bs.GetReader(calcBlockMetaKey(height)), &n, &err)
+	meta := ReadBinary(&BlockMeta{}, bs.GetReader(calcBlockMetaKey(height)), &n, &err).(*BlockMeta)
 	if err != nil {
 		Panicf("Error reading block meta: %v", err)
 	}
 	return meta
 }
 
-func (bs *BlockStore) LoadBlockValidation(height uint32) *Validation {
+func (bs *BlockStore) LoadBlockValidation(height uint) *Validation {
 	var n int64
 	var err error
-	validation := ReadValidation(bs.GetReader(calcBlockValidationKey(height)), &n, &err)
+	validation := ReadBinary(&Validation{}, bs.GetReader(calcBlockValidationKey(height)), &n, &err).(*Validation)
 	if err != nil {
 		Panicf("Error reading validation: %v", err)
 	}
@@ -108,7 +108,7 @@ func (bs *BlockStore) SaveBlock(block *Block, blockParts *PartSet) {
 	metaBytes := BinaryBytes(meta)
 	bs.db.Set(calcBlockMetaKey(height), metaBytes)
 	// Save block parts
-	for i := uint16(0); i < blockParts.Total(); i++ {
+	for i := uint(0); i < blockParts.Total(); i++ {
 		bs.saveBlockPart(height, i, blockParts.GetPart(i))
 	}
 	// Save block validation (duplicate and separate)
@@ -120,7 +120,7 @@ func (bs *BlockStore) SaveBlock(block *Block, blockParts *PartSet) {
 	bs.height = height
 }
 
-func (bs *BlockStore) saveBlockPart(height uint32, index uint16, part *Part) {
+func (bs *BlockStore) saveBlockPart(height uint, index uint, part *Part) {
 	if height != bs.height+1 {
 		Panicf("BlockStore can only save contiguous blocks. Wanted %v, got %v", bs.height+1, height)
 	}
@@ -136,40 +136,18 @@ type BlockMeta struct {
 	Header *Header       // The block's Header
 }
 
-func ReadBlockMeta(r io.Reader, n *int64, err *error) *BlockMeta {
-	return &BlockMeta{
-		Hash:   ReadByteSlice(r, n, err),
-		Parts:  ReadPartSetHeader(r, n, err),
-		Header: ReadHeader(r, n, err),
-	}
-}
-
-func (bm *BlockMeta) WriteTo(w io.Writer) (n int64, err error) {
-	WriteByteSlice(w, bm.Hash, &n, &err)
-	WriteBinary(w, bm.Parts, &n, &err)
-	WriteBinary(w, bm.Header, &n, &err)
-	return
-}
-
 //-----------------------------------------------------------------------------
 
-func calcBlockMetaKey(height uint32) []byte {
-	buf := [5]byte{'H'}
-	binary.BigEndian.PutUint32(buf[1:5], height)
-	return buf[:]
+func calcBlockMetaKey(height uint) []byte {
+	return []byte(fmt.Sprintf("H:%v", height))
 }
 
-func calcBlockPartKey(height uint32, partIndex uint16) []byte {
-	buf := [7]byte{'P'}
-	binary.BigEndian.PutUint32(buf[1:5], height)
-	binary.BigEndian.PutUint16(buf[5:7], partIndex)
-	return buf[:]
+func calcBlockPartKey(height uint, partIndex uint) []byte {
+	return []byte(fmt.Sprintf("P:%v:%v", height, partIndex))
 }
 
-func calcBlockValidationKey(height uint32) []byte {
-	buf := [5]byte{'V'}
-	binary.BigEndian.PutUint32(buf[1:5], height)
-	return buf[:]
+func calcBlockValidationKey(height uint) []byte {
+	return []byte(fmt.Sprintf("V:%v", height))
 }
 
 //-----------------------------------------------------------------------------
@@ -177,7 +155,7 @@ func calcBlockValidationKey(height uint32) []byte {
 var blockStoreKey = []byte("blockStore")
 
 type BlockStoreJSON struct {
-	Height uint32
+	Height uint
 }
 
 func (bsj BlockStoreJSON) Save(db db_.DB) {

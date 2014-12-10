@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	. "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/blocks"
 	. "github.com/tendermint/tendermint/common"
@@ -14,17 +15,11 @@ import (
 )
 
 var (
-	ErrStateInvalidAccountId      = errors.New("Error State invalid account id")
-	ErrStateInvalidSignature      = errors.New("Error State invalid signature")
-	ErrStateInvalidSequenceNumber = errors.New("Error State invalid sequence number")
-	ErrStateInvalidAccountState   = errors.New("Error State invalid account state")
-	ErrStateInsufficientFunds     = errors.New("Error State insufficient funds")
-
-	stateKey                           = []byte("stateKey")
-	minBondAmount                      = uint64(1)             // TODO adjust
-	defaultAccountDetailsCacheCapacity = 1000                  // TODO adjust
-	unbondingPeriodBlocks              = uint32(60 * 24 * 365) // TODO probably better to make it time based.
-	validatorTimeoutBlocks             = uint32(10)            // TODO adjust
+	stateKey                     = []byte("stateKey")
+	minBondAmount                = uint64(1)           // TODO adjust
+	defaultAccountsCacheCapacity = 1000                // TODO adjust
+	unbondingPeriodBlocks        = uint(60 * 24 * 365) // TODO probably better to make it time based.
+	validatorTimeoutBlocks       = uint(10)            // TODO adjust
 )
 
 //-----------------------------------------------------------------------------
@@ -43,13 +38,14 @@ func (txErr InvalidTxError) Error() string {
 // NOTE: not goroutine-safe.
 type State struct {
 	DB                  db_.DB
-	LastBlockHeight     uint32
+	LastBlockHeight     uint
 	LastBlockHash       []byte
 	LastBlockParts      PartSetHeader
 	LastBlockTime       time.Time
 	BondedValidators    *ValidatorSet
 	UnbondingValidators *ValidatorSet
-	accountDetails      merkle.Tree // Shouldn't be accessed directly.
+	accounts            merkle.Tree // Shouldn't be accessed directly.
+	validatorInfos      merkle.Tree // Shouldn't be accessed directly.
 }
 
 func LoadState(db db_.DB) *State {
@@ -58,20 +54,21 @@ func LoadState(db db_.DB) *State {
 	if len(buf) == 0 {
 		return nil
 	} else {
-		reader := bytes.NewReader(buf)
-		var n int64
-		var err error
-		s.LastBlockHeight = ReadUInt32(reader, &n, &err)
-		s.LastBlockHash = ReadByteSlice(reader, &n, &err)
-		s.LastBlockParts = ReadPartSetHeader(reader, &n, &err)
-		s.LastBlockTime = ReadTime(reader, &n, &err)
-		s.BondedValidators = ReadValidatorSet(reader, &n, &err)
-		s.UnbondingValidators = ReadValidatorSet(reader, &n, &err)
-		accountDetailsHash := ReadByteSlice(reader, &n, &err)
-		s.accountDetails = merkle.NewIAVLTree(BasicCodec, AccountDetailCodec, defaultAccountDetailsCacheCapacity, db)
-		s.accountDetails.Load(accountDetailsHash)
-		if err != nil {
-			panic(err)
+		r, n, err := bytes.NewReader(buf), new(int64), new(error)
+		s.LastBlockHeight = ReadUVarInt(r, n, err)
+		s.LastBlockHash = ReadByteSlice(r, n, err)
+		s.LastBlockParts = ReadBinary(PartSetHeader{}, r, n, err).(PartSetHeader)
+		s.LastBlockTime = ReadTime(r, n, err)
+		s.BondedValidators = ReadBinary(&ValidatorSet{}, r, n, err).(*ValidatorSet)
+		s.UnbondingValidators = ReadBinary(&ValidatorSet{}, r, n, err).(*ValidatorSet)
+		accountsHash := ReadByteSlice(r, n, err)
+		s.accounts = merkle.NewIAVLTree(BasicCodec, AccountCodec, defaultAccountsCacheCapacity, db)
+		s.accounts.Load(accountsHash)
+		validatorInfosHash := ReadByteSlice(r, n, err)
+		s.validatorInfos = merkle.NewIAVLTree(BasicCodec, ValidatorInfoCodec, 0, db)
+		s.validatorInfos.Load(validatorInfosHash)
+		if *err != nil {
+			panic(*err)
 		}
 		// TODO: ensure that buf is completely read.
 	}
@@ -80,19 +77,18 @@ func LoadState(db db_.DB) *State {
 
 // Save this state into the db.
 func (s *State) Save() {
-	s.accountDetails.Save()
-	var buf bytes.Buffer
-	var n int64
-	var err error
-	WriteUInt32(&buf, s.LastBlockHeight, &n, &err)
-	WriteByteSlice(&buf, s.LastBlockHash, &n, &err)
-	WriteBinary(&buf, s.LastBlockParts, &n, &err)
-	WriteTime(&buf, s.LastBlockTime, &n, &err)
-	WriteBinary(&buf, s.BondedValidators, &n, &err)
-	WriteBinary(&buf, s.UnbondingValidators, &n, &err)
-	WriteByteSlice(&buf, s.accountDetails.Hash(), &n, &err)
-	if err != nil {
-		panic(err)
+	s.accounts.Save()
+	buf, n, err := new(bytes.Buffer), new(int64), new(error)
+	WriteUVarInt(s.LastBlockHeight, buf, n, err)
+	WriteByteSlice(s.LastBlockHash, buf, n, err)
+	WriteBinary(s.LastBlockParts, buf, n, err)
+	WriteTime(s.LastBlockTime, buf, n, err)
+	WriteBinary(s.BondedValidators, buf, n, err)
+	WriteBinary(s.UnbondingValidators, buf, n, err)
+	WriteByteSlice(s.accounts.Hash(), buf, n, err)
+	WriteByteSlice(s.validatorInfos.Hash(), buf, n, err)
+	if *err != nil {
+		panic(*err)
 	}
 	s.DB.Set(stateKey, buf.Bytes())
 }
@@ -106,183 +102,310 @@ func (s *State) Copy() *State {
 		LastBlockTime:       s.LastBlockTime,
 		BondedValidators:    s.BondedValidators.Copy(),
 		UnbondingValidators: s.UnbondingValidators.Copy(),
-		accountDetails:      s.accountDetails.Copy(),
+		accounts:            s.accounts.Copy(),
+		validatorInfos:      s.validatorInfos.Copy(),
+	}
+}
+
+func (s *State) GetOrMakeAccounts(ins []*TxInput, outs []*TxOutput) (map[string]*Account, error) {
+	accounts := map[string]*Account{}
+	for _, in := range ins {
+		// Account shouldn't be duplicated
+		if _, ok := accounts[string(in.Address)]; ok {
+			return nil, ErrTxDuplicateAddress
+		}
+		account := s.GetAccount(in.Address)
+		if account == nil {
+			return nil, ErrTxInvalidAddress
+		}
+		accounts[string(in.Address)] = account
+	}
+	for _, out := range outs {
+		// Account shouldn't be duplicated
+		if _, ok := accounts[string(out.Address)]; ok {
+			return nil, ErrTxDuplicateAddress
+		}
+		account := s.GetAccount(out.Address)
+		// output account may be nil (new)
+		if account == nil {
+			account = NewAccount(out.Address, PubKeyUnknown{})
+		}
+		accounts[string(out.Address)] = account
+	}
+	return accounts, nil
+}
+
+func (s *State) ValidateInputs(accounts map[string]*Account, signBytes []byte, ins []*TxInput) (total uint64, err error) {
+	for _, in := range ins {
+		account := accounts[string(in.Address)]
+		if account == nil {
+			panic("ValidateInputs() expects account in accounts")
+		}
+		// Check TxInput basic
+		if err := in.ValidateBasic(); err != nil {
+			return 0, err
+		}
+		// Check amount
+		if account.Balance < in.Amount {
+			return 0, ErrTxInsufficientFunds
+		}
+		// Check signatures
+		if !account.PubKey.VerifyBytes(signBytes, in.Signature) {
+			return 0, ErrTxInvalidSignature
+		}
+		// Check sequences
+		if account.Sequence+1 != in.Sequence {
+			return 0, ErrTxInvalidSequence
+		}
+		// Good. Add amount to total
+		total += in.Amount
+	}
+	return total, nil
+}
+
+func (s *State) ValidateOutputs(outs []*TxOutput) (total uint64, err error) {
+	for _, out := range outs {
+		// Check TxOutput basic
+		if err := out.ValidateBasic(); err != nil {
+			return 0, err
+		}
+		// Good. Add amount to total
+		total += out.Amount
+	}
+	return total, nil
+}
+
+func (s *State) AdjustByInputs(accounts map[string]*Account, ins []*TxInput) {
+	for _, in := range ins {
+		account := accounts[string(in.Address)]
+		if account == nil {
+			panic("AdjustByInputs() expects account in accounts")
+		}
+		if account.Balance < in.Amount {
+			panic("AdjustByInputs() expects sufficient funds")
+		}
+		account.Balance -= in.Amount
+	}
+}
+
+func (s *State) AdjustByOutputs(accounts map[string]*Account, outs []*TxOutput) {
+	for _, out := range outs {
+		account := accounts[string(out.Address)]
+		if account == nil {
+			panic("AdjustByInputs() expects account in accounts")
+		}
+		account.Balance += out.Amount
 	}
 }
 
 // If the tx is invalid, an error will be returned.
 // Unlike AppendBlock(), state will not be altered.
-func (s *State) ExecTx(tx Tx) error {
-	accDet := s.GetAccountDetail(tx.GetSignature().SignerId)
-	if accDet == nil {
-		return ErrStateInvalidAccountId
-	}
-	// Check signature
-	if !accDet.Verify(tx) {
-		return ErrStateInvalidSignature
-	}
-	// Check and update sequence
-	if tx.GetSequence() <= accDet.Sequence {
-		return ErrStateInvalidSequenceNumber
-	} else {
-		// TODO consider prevSequence for tx chaining.
-		accDet.Sequence = tx.GetSequence()
-	}
-	// Subtract fee from balance.
-	if accDet.Balance < tx.GetFee() {
-		return ErrStateInsufficientFunds
-	} else {
-		accDet.Balance -= tx.GetFee()
-	}
+func (s *State) ExecTx(tx_ Tx) error {
+
+	// TODO: do something with fees
+	fees := uint64(0)
+
 	// Exec tx
-	switch tx.(type) {
+	switch tx_.(type) {
 	case *SendTx:
-		stx := tx.(*SendTx)
-		toAccDet := s.GetAccountDetail(stx.To)
-		// Accounts must be nominal
-		if accDet.Status != AccountStatusNominal {
-			return ErrStateInvalidAccountState
+		tx := tx_.(*SendTx)
+		accounts, err := s.GetOrMakeAccounts(tx.Inputs, tx.Outputs)
+		if err != nil {
+			return err
 		}
-		if toAccDet.Status != AccountStatusNominal {
-			return ErrStateInvalidAccountState
+		signBytes := SignBytes(tx)
+		inTotal, err := s.ValidateInputs(accounts, signBytes, tx.Inputs)
+		if err != nil {
+			return err
 		}
-		// Check account balance
-		if accDet.Balance < stx.Amount {
-			return ErrStateInsufficientFunds
+		outTotal, err := s.ValidateOutputs(tx.Outputs)
+		if err != nil {
+			return err
 		}
-		// Check existence of destination account
-		if toAccDet == nil {
-			return ErrStateInvalidAccountId
+		if outTotal > inTotal {
+			return ErrTxInsufficientFunds
 		}
-		// Good!
-		accDet.Balance -= stx.Amount
-		toAccDet.Balance += stx.Amount
-		s.SetAccountDetail(accDet)
-		s.SetAccountDetail(toAccDet)
+		fee := inTotal - outTotal
+		fees += fee
+
+		// Good! Adjust accounts
+		s.AdjustByInputs(accounts, tx.Inputs)
+		s.AdjustByOutputs(accounts, tx.Outputs)
+		s.SetAccounts(accounts)
 		return nil
-	//case *NameTx
+
 	case *BondTx:
-		//btx := tx.(*BondTx)
-		// Account must be nominal
-		if accDet.Status != AccountStatusNominal {
-			return ErrStateInvalidAccountState
+		tx := tx_.(*BondTx)
+		accounts, err := s.GetOrMakeAccounts(tx.Inputs, tx.UnbondTo)
+		if err != nil {
+			return err
 		}
-		// Check account balance
-		if accDet.Balance < minBondAmount {
-			return ErrStateInsufficientFunds
+		signBytes := SignBytes(tx)
+		inTotal, err := s.ValidateInputs(accounts, signBytes, tx.Inputs)
+		if err != nil {
+			return err
 		}
-		// Good!
-		accDet.Status = AccountStatusBonded
-		s.SetAccountDetail(accDet)
+		if err := tx.PubKey.ValidateBasic(); err != nil {
+			return err
+		}
+		outTotal, err := s.ValidateOutputs(tx.UnbondTo)
+		if err != nil {
+			return err
+		}
+		if outTotal > inTotal {
+			return ErrTxInsufficientFunds
+		}
+		fee := inTotal - outTotal
+		fees += fee
+
+		// Good! Adjust accounts
+		s.AdjustByInputs(accounts, tx.Inputs)
+		s.SetAccounts(accounts)
+		// Add ValidatorInfo
+		updated := s.SetValidatorInfo(&ValidatorInfo{
+			Address:         tx.PubKey.Address(),
+			PubKey:          tx.PubKey,
+			UnbondTo:        tx.UnbondTo,
+			FirstBondHeight: s.LastBlockHeight + 1,
+		})
+		if !updated {
+			panic("Failed to add validator info")
+		}
+		// Add Validator
 		added := s.BondedValidators.Add(&Validator{
-			Account:     accDet.Account,
-			BondHeight:  s.LastBlockHeight,
-			VotingPower: accDet.Balance,
+			Address:     tx.PubKey.Address(),
+			PubKey:      tx.PubKey,
+			BondHeight:  s.LastBlockHeight + 1,
+			VotingPower: inTotal,
 			Accum:       0,
 		})
 		if !added {
 			panic("Failed to add validator")
 		}
 		return nil
+
 	case *UnbondTx:
-		//utx := tx.(*UnbondTx)
-		// Account must be bonded.
-		if accDet.Status != AccountStatusBonded {
-			return ErrStateInvalidAccountState
+		tx := tx_.(*UnbondTx)
+
+		// The validator must be active
+		_, val := s.BondedValidators.GetByAddress(tx.Address)
+		if val == nil {
+			return ErrTxInvalidAddress
 		}
+
+		// Verify the signature
+		signBytes := SignBytes(tx)
+		if !val.PubKey.VerifyBytes(signBytes, tx.Signature) {
+			return ErrTxInvalidSignature
+		}
+
+		// tx.Height must be greater than val.LastCommitHeight
+		if tx.Height < val.LastCommitHeight {
+			return errors.New("Invalid bond height")
+		}
+
 		// Good!
-		s.unbondValidator(accDet.Id, accDet)
-		s.SetAccountDetail(accDet)
+		s.unbondValidator(val)
 		return nil
+
 	case *DupeoutTx:
-		{
-			// NOTE: accDet is the one who created this transaction.
-			// Subtract any fees, save, and forget.
-			s.SetAccountDetail(accDet)
-			accDet = nil
-		}
-		dtx := tx.(*DupeoutTx)
+		tx := tx_.(*DupeoutTx)
+
 		// Verify the signatures
-		if dtx.VoteA.SignerId != dtx.VoteB.SignerId {
-			return ErrStateInvalidSignature
+		_, accused := s.BondedValidators.GetByAddress(tx.Address)
+		voteASignBytes := SignBytes(&tx.VoteA)
+		voteBSignBytes := SignBytes(&tx.VoteB)
+		if !accused.PubKey.VerifyBytes(voteASignBytes, tx.VoteA.Signature) ||
+			!accused.PubKey.VerifyBytes(voteBSignBytes, tx.VoteB.Signature) {
+			return ErrTxInvalidSignature
 		}
-		accused := s.GetAccountDetail(dtx.VoteA.SignerId)
-		if !accused.Verify(&dtx.VoteA) || !accused.Verify(&dtx.VoteB) {
-			return ErrStateInvalidSignature
-		}
+
 		// Verify equivocation
-		if dtx.VoteA.Height != dtx.VoteB.Height {
-			return errors.New("DupeoutTx height must be the same.")
+		// TODO: in the future, just require one vote from a previous height that
+		// doesn't exist on this chain.
+		if tx.VoteA.Height != tx.VoteB.Height {
+			return errors.New("DupeoutTx heights don't match")
 		}
-		if dtx.VoteA.Type == VoteTypeCommit && dtx.VoteA.Round < dtx.VoteB.Round {
+		if tx.VoteA.Type == VoteTypeCommit && tx.VoteA.Round < tx.VoteB.Round {
 			// Check special case.
 			// Validators should not sign another vote after committing.
 		} else {
-			if dtx.VoteA.Round != dtx.VoteB.Round {
+			if tx.VoteA.Round != tx.VoteB.Round {
 				return errors.New("DupeoutTx rounds don't match")
 			}
-			if dtx.VoteA.Type != dtx.VoteB.Type {
+			if tx.VoteA.Type != tx.VoteB.Type {
 				return errors.New("DupeoutTx types don't match")
 			}
-			if bytes.Equal(dtx.VoteA.BlockHash, dtx.VoteB.BlockHash) {
-				return errors.New("DupeoutTx blockhash shouldn't match")
+			if bytes.Equal(tx.VoteA.BlockHash, tx.VoteB.BlockHash) {
+				return errors.New("DupeoutTx blockhashes shouldn't match")
 			}
 		}
+
 		// Good! (Bad validator!)
-		if accused.Status == AccountStatusBonded {
-			_, removed := s.BondedValidators.Remove(accused.Id)
-			if !removed {
-				panic("Failed to remove accused validator")
-			}
-		} else if accused.Status == AccountStatusUnbonding {
-			_, removed := s.UnbondingValidators.Remove(accused.Id)
-			if !removed {
-				panic("Failed to remove accused validator")
-			}
-		} else {
-			panic("Couldn't find accused validator")
-		}
-		accused.Status = AccountStatusDupedOut
-		updated := s.SetAccountDetail(accused)
-		if !updated {
-			panic("Failed to update accused validator account")
-		}
+		s.destroyValidator(accused)
 		return nil
+
 	default:
 		panic("Unknown Tx type")
 	}
 }
 
-// accDet optional
-func (s *State) unbondValidator(accountId uint64, accDet *AccountDetail) {
-	if accDet == nil {
-		accDet = s.GetAccountDetail(accountId)
-	}
-	accDet.Status = AccountStatusUnbonding
-	s.SetAccountDetail(accDet)
-	val, removed := s.BondedValidators.Remove(accDet.Id)
+func (s *State) unbondValidator(val *Validator) {
+	// Move validator to UnbondingValidators
+	val, removed := s.BondedValidators.Remove(val.Address)
 	if !removed {
-		panic("Failed to remove validator")
+		panic("Couldn't remove validator for unbonding")
 	}
 	val.UnbondHeight = s.LastBlockHeight
 	added := s.UnbondingValidators.Add(val)
 	if !added {
-		panic("Failed to add validator")
+		panic("Couldn't add validator for unbonding")
 	}
 }
 
-func (s *State) releaseValidator(accountId uint64) {
-	accDet := s.GetAccountDetail(accountId)
-	if accDet.Status != AccountStatusUnbonding {
-		panic("Cannot release validator")
+func (s *State) releaseValidator(val *Validator) {
+	// Update validatorInfo
+	valInfo := s.GetValidatorInfo(val.Address)
+	if valInfo == nil {
+		panic("Couldn't find validatorInfo for release")
 	}
-	accDet.Status = AccountStatusNominal
-	// TODO: move balance to designated address, UnbondTo.
-	s.SetAccountDetail(accDet)
-	_, removed := s.UnbondingValidators.Remove(accountId)
+	valInfo.ReleasedHeight = s.LastBlockHeight + 1
+	s.SetValidatorInfo(valInfo)
+
+	// Send coins back to UnbondTo outputs
+	accounts, err := s.GetOrMakeAccounts(nil, valInfo.UnbondTo)
+	if err != nil {
+		panic("Couldn't get or make unbondTo accounts")
+	}
+	s.AdjustByOutputs(accounts, valInfo.UnbondTo)
+	s.SetAccounts(accounts)
+
+	// Remove validator from UnbondingValidators
+	_, removed := s.UnbondingValidators.Remove(val.Address)
 	if !removed {
-		panic("Couldn't release validator")
+		panic("Couldn't remove validator for release")
 	}
+}
+
+func (s *State) destroyValidator(val *Validator) {
+	// Update validatorInfo
+	valInfo := s.GetValidatorInfo(val.Address)
+	if valInfo == nil {
+		panic("Couldn't find validatorInfo for release")
+	}
+	valInfo.DestroyedHeight = s.LastBlockHeight + 1
+	valInfo.DestroyedAmount = val.VotingPower
+	s.SetValidatorInfo(valInfo)
+
+	// Remove validator
+	_, removed := s.BondedValidators.Remove(val.Address)
+	if !removed {
+		_, removed := s.UnbondingValidators.Remove(val.Address)
+		if !removed {
+			panic("Couldn't remove validator for destruction")
+		}
+	}
+
 }
 
 // "checkStateHash": If false, instead of checking the resulting
@@ -308,23 +431,18 @@ func (s *State) AppendBlock(block *Block, blockPartsHeader PartSetHeader, checkS
 		}
 		var sumVotingPower uint64
 		s.BondedValidators.Iterate(func(index uint, val *Validator) bool {
-			rsig := block.Validation.Commits[index]
-			if rsig.IsZero() {
+			commit := block.Validation.Commits[index]
+			if commit.IsZero() {
 				return false
 			} else {
-				if rsig.SignerId != val.Id {
-					err = errors.New("Invalid validation order")
-					return true
-				}
 				vote := &Vote{
 					Height:     block.Height - 1,
-					Round:      rsig.Round,
+					Round:      commit.Round,
 					Type:       VoteTypeCommit,
 					BlockHash:  block.LastBlockHash,
 					BlockParts: block.LastBlockParts,
-					Signature:  rsig.Signature,
 				}
-				if val.Verify(vote) {
+				if val.PubKey.VerifyBytes(SignBytes(vote), commit.Signature) {
 					sumVotingPower += val.VotingPower
 					return false
 				} else {
@@ -351,10 +469,13 @@ func (s *State) AppendBlock(block *Block, blockPartsHeader PartSetHeader, checkS
 	}
 
 	// Update Validator.LastCommitHeight as necessary.
-	for _, rsig := range block.Validation.Commits {
-		_, val := s.BondedValidators.GetById(rsig.SignerId)
+	for i, commit := range block.Validation.Commits {
+		if commit.IsZero() {
+			continue
+		}
+		_, val := s.BondedValidators.GetByIndex(uint(i))
 		if val == nil {
-			return ErrStateInvalidSignature
+			return ErrTxInvalidSignature
 		}
 		val.LastCommitHeight = block.Height - 1
 		updated := s.BondedValidators.Update(val)
@@ -373,7 +494,7 @@ func (s *State) AppendBlock(block *Block, blockPartsHeader PartSetHeader, checkS
 		return false
 	})
 	for _, val := range toRelease {
-		s.releaseValidator(val.Id)
+		s.releaseValidator(val)
 	}
 
 	// If any validators haven't signed in a while,
@@ -386,7 +507,7 @@ func (s *State) AppendBlock(block *Block, blockPartsHeader PartSetHeader, checkS
 		return false
 	})
 	for _, val := range toTimeout {
-		s.unbondValidator(val.Id, nil)
+		s.unbondValidator(val)
 	}
 
 	// Increment validator AccumPowers
@@ -415,21 +536,39 @@ func (s *State) AppendBlock(block *Block, blockPartsHeader PartSetHeader, checkS
 	return nil
 }
 
-// The returned AccountDetail is a copy, so mutating it
+// The returned Account is a copy, so mutating it
 // has no side effects.
-func (s *State) GetAccountDetail(accountId uint64) *AccountDetail {
-	_, accDet := s.accountDetails.Get(accountId)
-	if accDet == nil {
+func (s *State) GetAccount(address []byte) *Account {
+	_, account := s.accounts.Get(address)
+	if account == nil {
 		return nil
 	}
-	return accDet.(*AccountDetail).Copy()
+	return account.(*Account).Copy()
+}
+
+// The accounts are copied before setting, so mutating it
+// afterwards has no side effects.
+func (s *State) SetAccounts(accounts map[string]*Account) {
+	for _, account := range accounts {
+		s.accounts.Set(account.Address, account.Copy())
+	}
+}
+
+// The returned ValidatorInfo is a copy, so mutating it
+// has no side effects.
+func (s *State) GetValidatorInfo(address []byte) *ValidatorInfo {
+	_, valInfo := s.validatorInfos.Get(address)
+	if valInfo == nil {
+		return nil
+	}
+	return valInfo.(*ValidatorInfo).Copy()
 }
 
 // Returns false if new, true if updated.
-// The accDet is copied before setting, so mutating it
+// The valInfo is copied before setting, so mutating it
 // afterwards has no side effects.
-func (s *State) SetAccountDetail(accDet *AccountDetail) (updated bool) {
-	return s.accountDetails.Set(accDet.Id, accDet.Copy())
+func (s *State) SetValidatorInfo(valInfo *ValidatorInfo) (updated bool) {
+	return s.validatorInfos.Set(valInfo.Address, valInfo.Copy())
 }
 
 // Returns a hash that represents the state data,
@@ -438,7 +577,7 @@ func (s *State) Hash() []byte {
 	hashables := []merkle.Hashable{
 		s.BondedValidators,
 		s.UnbondingValidators,
-		s.accountDetails,
+		s.accounts,
 	}
 	return merkle.HashFromHashables(hashables)
 }

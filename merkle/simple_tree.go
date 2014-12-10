@@ -35,8 +35,8 @@ func HashFromTwoHashes(left []byte, right []byte) []byte {
 	var n int64
 	var err error
 	var hasher = sha256.New()
-	WriteByteSlice(hasher, left, &n, &err)
-	WriteByteSlice(hasher, right, &n, &err)
+	WriteByteSlice(left, hasher, &n, &err)
+	WriteByteSlice(right, hasher, &n, &err)
 	if err != nil {
 		panic(err)
 	}
@@ -58,16 +58,15 @@ func HashFromHashes(hashes [][]byte) []byte {
 }
 
 // Convenience for HashFromHashes.
-func HashFromBinaries(items []Binary) []byte {
+func HashFromBinaries(items []interface{}) []byte {
 	hashes := [][]byte{}
 	for _, item := range items {
-		hasher := sha256.New()
-		_, err := item.WriteTo(hasher)
-		if err != nil {
+		hasher, n, err := sha256.New(), new(int64), new(error)
+		WriteBinary(item, hasher, n, err)
+		if *err != nil {
 			panic(err)
 		}
-		hash := hasher.Sum(nil)
-		hashes = append(hashes, hash)
+		hashes = append(hashes, hasher.Sum(nil))
 	}
 	return HashFromHashes(hashes)
 }

@@ -33,20 +33,18 @@ func NewNode() *Node {
 	stateDB := db_.NewMemDB() // TODO configurable db.
 	state := state_.LoadState(stateDB)
 	if state == nil {
-		state = state_.GenesisStateFromFile(stateDB, config.RootDir+"/genesis.json")
+		state = state_.GenesisStateFromFile(stateDB, config.GenesisFile())
 		state.Save()
 	}
 
-	// Get PrivAccount
+	// Get PrivValidator
 	var privValidator *consensus.PrivValidator
-	if _, err := os.Stat(config.RootDir + "/private.json"); err == nil {
-		privAccount := state_.PrivAccountFromFile(config.RootDir + "/private.json")
-		privValidatorDB := db_.NewMemDB() // TODO configurable db.
-		privValidator = consensus.NewPrivValidator(privValidatorDB, privAccount)
+	if _, err := os.Stat(config.PrivValidatorFile()); err == nil {
+		privValidator = consensus.LoadPrivValidator()
 	}
 
 	// Get PEXReactor
-	book := p2p.NewAddrBook(config.RootDir + "/addrbook.json")
+	book := p2p.NewAddrBook(config.AddrBookFile())
 	pexReactor := p2p.NewPEXReactor(book)
 
 	// Get MempoolReactor

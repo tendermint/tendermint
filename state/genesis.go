@@ -13,8 +13,9 @@ import (
 )
 
 type GenesisDoc struct {
-	GenesisTime    time.Time
-	AccountDetails []*AccountDetail
+	GenesisTime time.Time
+	Accounts    []*Account
+	Validators  []*Validator
 }
 
 func GenesisDocFromJSON(jsonBlob []byte) (genState *GenesisDoc) {
@@ -31,37 +32,22 @@ func GenesisStateFromFile(db db_.DB, genDocFile string) *State {
 		Panicf("Couldn't read GenesisDoc file: %v", err)
 	}
 	genDoc := GenesisDocFromJSON(jsonBlob)
-	return GenesisStateFromDoc(db, genDoc)
+	return GenesisState(db, genDoc)
 }
 
-func GenesisStateFromDoc(db db_.DB, genDoc *GenesisDoc) *State {
-	return GenesisState(db, genDoc.GenesisTime, genDoc.AccountDetails)
-}
-
-func GenesisState(db db_.DB, genesisTime time.Time, accDets []*AccountDetail) *State {
-
-	if genesisTime.IsZero() {
-		genesisTime = time.Now()
-	}
-
-	// TODO: Use "uint64Codec" instead of BasicCodec
-	accountDetails := merkle.NewIAVLTree(BasicCodec, AccountDetailCodec, defaultAccountDetailsCacheCapacity, db)
-	validators := []*Validator{}
-
-	for _, accDet := range accDets {
-		accountDetails.Set(accDet.Id, accDet)
-		if accDet.Status == AccountStatusBonded {
-			validators = append(validators, &Validator{
-				Account:     accDet.Account,
-				BondHeight:  0,
-				VotingPower: accDet.Balance,
-				Accum:       0,
-			})
-		}
-	}
-
-	if len(validators) == 0 {
+func GenesisState(db db_.DB, genDoc *GenesisDoc) *State {
+	if len(genDoc.Validators) == 0 {
 		panic("Must have some validators")
+	}
+
+	if genDoc.GenesisTime.IsZero() {
+		genDoc.GenesisTime = time.Now()
+	}
+
+	// Make accounts state tree
+	accounts := merkle.NewIAVLTree(BasicCodec, AccountCodec, defaultAccountsCacheCapacity, db)
+	for _, acc := range genDoc.Accounts {
+		accounts.Set(acc.Address, acc)
 	}
 
 	return &State{
@@ -69,9 +55,9 @@ func GenesisState(db db_.DB, genesisTime time.Time, accDets []*AccountDetail) *S
 		LastBlockHeight:     0,
 		LastBlockHash:       nil,
 		LastBlockParts:      PartSetHeader{},
-		LastBlockTime:       genesisTime,
-		BondedValidators:    NewValidatorSet(validators),
+		LastBlockTime:       genDoc.GenesisTime,
+		BondedValidators:    NewValidatorSet(genDoc.Validators),
 		UnbondingValidators: NewValidatorSet(nil),
-		accountDetails:      accountDetails,
+		accounts:            accounts,
 	}
 }

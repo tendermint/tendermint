@@ -19,6 +19,7 @@ func main() {
 Commands:
     daemon        Run the tendermint node daemon
     gen_account   Generate new account keypair
+    gen_validator Generate new validator keypair
 	
 tendermint --help for command options`)
 		return
@@ -29,5 +30,7 @@ tendermint --help for command options`)
 		daemon()
 	case "gen_account":
 		gen_account()
+	case "gen_validator":
+		gen_validator()
 	}
 }

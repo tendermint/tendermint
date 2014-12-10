@@ -2,11 +2,8 @@ package common
 
 import (
 	"fmt"
-	"io"
 	"math/rand"
 	"strings"
-
-	. "github.com/tendermint/tendermint/binary"
 )
 
 // Not goroutine safe
@@ -17,47 +14,6 @@ type BitArray struct {
 
 func NewBitArray(bits uint) BitArray {
 	return BitArray{bits, make([]uint64, (bits+63)/64)}
-}
-
-func ReadBitArray(r io.Reader, n *int64, err *error) BitArray {
-	bits := ReadUVarInt(r, n, err)
-	if bits == 0 {
-		return BitArray{}
-	}
-	elemsWritten := ReadUVarInt(r, n, err)
-	if *err != nil {
-		return BitArray{}
-	}
-	bA := NewBitArray(bits)
-	for i := uint(0); i < elemsWritten; i++ {
-		bA.elems[i] = ReadUInt64(r, n, err)
-		if *err != nil {
-			return BitArray{}
-		}
-	}
-	return bA
-}
-
-func (bA BitArray) WriteTo(w io.Writer) (n int64, err error) {
-	WriteUVarInt(w, bA.bits, &n, &err)
-	if bA.bits == 0 {
-		return
-	}
-	// Count the last element > 0.
-	elemsToWrite := 0
-	for i, elem := range bA.elems {
-		if elem > 0 {
-			elemsToWrite = i + 1
-		}
-	}
-	WriteUVarInt(w, uint(elemsToWrite), &n, &err)
-	for i, elem := range bA.elems {
-		if i >= elemsToWrite {
-			break
-		}
-		WriteUInt64(w, elem, &n, &err)
-	}
-	return
 }
 
 func (bA BitArray) Size() uint {

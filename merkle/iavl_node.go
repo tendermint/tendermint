@@ -253,8 +253,8 @@ func (node *IAVLNode) remove(t *IAVLTree, key interface{}) (
 // NOTE: sets hashes recursively
 func (node *IAVLNode) writeToCountHashes(t *IAVLTree, w io.Writer) (n int64, hashCount uint64, err error) {
 	// height & size & key
-	WriteUInt8(w, node.height, &n, &err)
-	WriteUInt64(w, node.size, &n, &err)
+	WriteUInt8(node.height, w, &n, &err)
+	WriteUInt64(node.size, w, &n, &err)
 	t.keyCodec.Encode(node.key, w, &n, &err)
 	if err != nil {
 		return
@@ -273,7 +273,7 @@ func (node *IAVLNode) writeToCountHashes(t *IAVLTree, w io.Writer) (n int64, has
 		if node.leftHash == nil {
 			panic("node.leftHash was nil in save")
 		}
-		WriteByteSlice(w, node.leftHash, &n, &err)
+		WriteByteSlice(node.leftHash, w, &n, &err)
 		// right
 		if node.rightNode != nil {
 			rightHash, rightCount := node.rightNode.hashWithCount(t)
@@ -283,7 +283,7 @@ func (node *IAVLNode) writeToCountHashes(t *IAVLTree, w io.Writer) (n int64, has
 		if node.rightHash == nil {
 			panic("node.rightHash was nil in save")
 		}
-		WriteByteSlice(w, node.rightHash, &n, &err)
+		WriteByteSlice(node.rightHash, w, &n, &err)
 	}
 	return
 }

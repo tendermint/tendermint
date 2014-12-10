@@ -59,14 +59,14 @@ func (mem *Mempool) ResetForBlockAndState(block *Block, state *state.State) {
 	// First, create a lookup map of txns in new block.
 	blockTxsMap := make(map[string]struct{})
 	for _, tx := range block.Data.Txs {
-		txHash := BinaryHash(tx)
+		txHash := BinarySha256(tx)
 		blockTxsMap[string(txHash)] = struct{}{}
 	}
 
 	// Next, filter all txs from mem.txs that are in blockTxsMap
 	txs := []Tx{}
 	for _, tx := range mem.txs {
-		txHash := BinaryHash(tx)
+		txHash := BinarySha256(tx)
 		if _, ok := blockTxsMap[string(txHash)]; ok {
 			continue
 		} else {

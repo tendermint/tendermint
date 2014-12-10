@@ -2,11 +2,11 @@ package p2p
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"sync/atomic"
 	"time"
 
-	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 )
 
@@ -67,7 +67,7 @@ func NewSwitch(reactors []Reactor) *Switch {
 		for _, chDesc := range reactorChannels {
 			chId := chDesc.Id
 			if reactorsByCh[chId] != nil {
-				Panicf("Channel %X has multiple reactors %v & %v", chId, reactorsByCh[chId], reactor)
+				panic(fmt.Sprintf("Channel %X has multiple reactors %v & %v", chId, reactorsByCh[chId], reactor))
 			}
 			chDescs = append(chDescs, chDesc)
 			reactorsByCh[chId] = reactor
@@ -165,7 +165,7 @@ func (sw *Switch) IsDialing(addr *NetAddress) bool {
 }
 
 // XXX: This is wrong, we can't just ignore failures on TrySend.
-func (sw *Switch) Broadcast(chId byte, msg Binary) (numSuccess, numFailure int) {
+func (sw *Switch) Broadcast(chId byte, msg interface{}) (numSuccess, numFailure int) {
 	if atomic.LoadUint32(&sw.stopped) == 1 {
 		return
 	}

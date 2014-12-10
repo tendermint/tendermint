@@ -1,51 +1,67 @@
 package state
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 
+	. "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/blocks"
 )
 
-// Holds state for a Validator at a given height+round.
-// Meant to be discarded every round of the consensus protocol.
-// TODO consider moving this to another common types package.
-type Validator struct {
-	Account
-	BondHeight       uint32
-	UnbondHeight     uint32
-	LastCommitHeight uint32
-	VotingPower      uint64
-	Accum            int64
+// Persistent static data for each Validator
+type ValidatorInfo struct {
+	Address         []byte
+	PubKey          PubKeyEd25519
+	UnbondTo        []*TxOutput
+	FirstBondHeight uint
+
+	// If destroyed:
+	DestroyedHeight uint
+	DestroyedAmount uint64
+
+	// If released:
+	ReleasedHeight uint
 }
 
-// Used to persist the state of ConsensusStateControl.
-func ReadValidator(r io.Reader, n *int64, err *error) *Validator {
-	return &Validator{
-		Account:          ReadAccount(r, n, err),
-		BondHeight:       ReadUInt32(r, n, err),
-		UnbondHeight:     ReadUInt32(r, n, err),
-		LastCommitHeight: ReadUInt32(r, n, err),
-		VotingPower:      ReadUInt64(r, n, err),
-		Accum:            ReadInt64(r, n, err),
-	}
+func (valInfo *ValidatorInfo) Copy() *ValidatorInfo {
+	valInfoCopy := *valInfo
+	return &valInfoCopy
+}
+
+func ValidatorInfoEncoder(o interface{}, w io.Writer, n *int64, err *error) {
+	WriteBinary(o.(*ValidatorInfo), w, n, err)
+}
+
+func ValidatorInfoDecoder(r io.Reader, n *int64, err *error) interface{} {
+	return ReadBinary(&ValidatorInfo{}, r, n, err)
+}
+
+var ValidatorInfoCodec = Codec{
+	Encode: ValidatorInfoEncoder,
+	Decode: ValidatorInfoDecoder,
+}
+
+//-----------------------------------------------------------------------------
+
+// Volatile state for each Validator
+// Also persisted with the state, but fields change
+// every height|round so they don't go in merkle.Tree
+type Validator struct {
+	Address          []byte
+	PubKey           PubKeyEd25519
+	BondHeight       uint
+	UnbondHeight     uint
+	LastCommitHeight uint
+	VotingPower      uint64
+	Accum            int64
 }
 
 // Creates a new copy of the validator so we can mutate accum.
 func (v *Validator) Copy() *Validator {
 	vCopy := *v
 	return &vCopy
-}
-
-// Used to persist the state of ConsensusStateControl.
-func (v *Validator) WriteTo(w io.Writer) (n int64, err error) {
-	WriteBinary(w, v.Account, &n, &err)
-	WriteUInt32(w, v.BondHeight, &n, &err)
-	WriteUInt32(w, v.UnbondHeight, &n, &err)
-	WriteUInt32(w, v.LastCommitHeight, &n, &err)
-	WriteUInt64(w, v.VotingPower, &n, &err)
-	WriteInt64(w, v.Accum, &n, &err)
-	return
 }
 
 // Returns the one with higher Accum.
@@ -58,9 +74,9 @@ func (v *Validator) CompareAccum(other *Validator) *Validator {
 	} else if v.Accum < other.Accum {
 		return other
 	} else {
-		if v.Id < other.Id {
+		if bytes.Compare(v.Address, other.Address) < 0 {
 			return v
-		} else if v.Id > other.Id {
+		} else if bytes.Compare(v.Address, other.Address) > 0 {
 			return other
 		} else {
 			panic("Cannot compare identical validators")
@@ -69,8 +85,9 @@ func (v *Validator) CompareAccum(other *Validator) *Validator {
 }
 
 func (v *Validator) String() string {
-	return fmt.Sprintf("Validator{%v %v-%v-%v VP:%v A:%v}",
-		v.Account,
+	return fmt.Sprintf("Validator{%X %v %v-%v-%v VP:%v A:%v}",
+		v.Address,
+		v.PubKey,
 		v.BondHeight,
 		v.LastCommitHeight,
 		v.UnbondHeight,
@@ -79,7 +96,7 @@ func (v *Validator) String() string {
 }
 
 func (v *Validator) Hash() []byte {
-	return BinaryHash(v)
+	return BinarySha256(v)
 }
 
 //-------------------------------------
@@ -89,11 +106,11 @@ var ValidatorCodec = validatorCodec{}
 type validatorCodec struct{}
 
 func (vc validatorCodec) Encode(o interface{}, w io.Writer, n *int64, err *error) {
-	WriteBinary(w, o.(*Validator), n, err)
+	WriteBinary(o.(*Validator), w, n, err)
 }
 
 func (vc validatorCodec) Decode(r io.Reader, n *int64, err *error) interface{} {
-	return ReadValidator(r, n, err)
+	return ReadBinary(&Validator{}, r, n, err)
 }
 
 func (vc validatorCodec) Compare(o1 interface{}, o2 interface{}) int {

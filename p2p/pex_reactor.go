@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"sync/atomic"
 	"time"
 
@@ -97,17 +96,17 @@ func (pexR *PEXReactor) Receive(chId byte, src *Peer, msgBytes []byte) {
 		// src requested some peers.
 		// TODO: prevent abuse.
 		addrs := pexR.book.GetSelection()
-		msg := &pexRddrsMessage{Addrs: addrs}
+		msg := &pexAddrsMessage{Addrs: addrs}
 		queued := src.TrySend(PexCh, msg)
 		if !queued {
 			// ignore
 		}
-	case *pexRddrsMessage:
+	case *pexAddrsMessage:
 		// We received some peer addresses from src.
 		// TODO: prevent abuse.
 		// (We don't want to get spammed with bad peers)
 		srcAddr := src.RemoteAddress()
-		for _, addr := range msg.(*pexRddrsMessage).Addrs {
+		for _, addr := range msg.(*pexAddrsMessage).Addrs {
 			pexR.book.AddAddress(addr, srcAddr)
 		}
 	default:
@@ -122,7 +121,7 @@ func (pexR *PEXReactor) RequestPEX(peer *Peer) {
 }
 
 func (pexR *PEXReactor) SendAddrs(peer *Peer, addrs []*NetAddress) {
-	peer.Send(PexCh, &pexRddrsMessage{Addrs: addrs})
+	peer.Send(PexCh, &pexAddrsMessage{Addrs: addrs})
 }
 
 // Ensures that sufficient peers are connected. (continuous)
@@ -193,8 +192,7 @@ func (pexR *PEXReactor) ensurePeers() {
 }
 
 //-----------------------------------------------------------------------------
-
-/* Messages */
+// Messages
 
 const (
 	msgTypeUnknown = byte(0x00)
@@ -211,7 +209,7 @@ func decodeMessage(bz []byte) (msg interface{}) {
 	case msgTypeRequest:
 		return &pexRequestMessage{}
 	case msgTypeAddrs:
-		return readPexAddrsMessage(bytes.NewReader(bz[1:]), &n, &err)
+		return ReadBinary(&pexAddrsMessage{}, bytes.NewReader(bz[1:]), &n, &err)
 	default:
 		return nil
 	}
@@ -223,10 +221,7 @@ A pexRequestMessage requests additional peer addresses.
 type pexRequestMessage struct {
 }
 
-func (m *pexRequestMessage) WriteTo(w io.Writer) (n int64, err error) {
-	WriteByte(w, msgTypeRequest, &n, &err)
-	return
-}
+func (m *pexRequestMessage) TypeByte() byte { return msgTypeRequest }
 
 func (m *pexRequestMessage) String() string {
 	return "[pexRequest]"
@@ -235,31 +230,12 @@ func (m *pexRequestMessage) String() string {
 /*
 A message with announced peer addresses.
 */
-type pexRddrsMessage struct {
+type pexAddrsMessage struct {
 	Addrs []*NetAddress
 }
 
-func readPexAddrsMessage(r io.Reader, n *int64, err *error) *pexRddrsMessage {
-	numAddrs := int(ReadUInt32(r, n, err))
-	addrs := []*NetAddress{}
-	for i := 0; i < numAddrs; i++ {
-		addr := ReadNetAddress(r, n, err)
-		addrs = append(addrs, addr)
-	}
-	return &pexRddrsMessage{
-		Addrs: addrs,
-	}
-}
+func (m *pexAddrsMessage) TypeByte() byte { return msgTypeAddrs }
 
-func (m *pexRddrsMessage) WriteTo(w io.Writer) (n int64, err error) {
-	WriteByte(w, msgTypeAddrs, &n, &err)
-	WriteUInt32(w, uint32(len(m.Addrs)), &n, &err)
-	for _, addr := range m.Addrs {
-		WriteBinary(w, addr, &n, &err)
-	}
-	return
-}
-
-func (m *pexRddrsMessage) String() string {
-	return fmt.Sprintf("[pexRddrs %v]", m.Addrs)
+func (m *pexAddrsMessage) String() string {
+	return fmt.Sprintf("[pexAddrs %v]", m.Addrs)
 }

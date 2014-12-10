@@ -1,23 +1,31 @@
 package binary
 
-import "io"
+import (
+	"io"
+	"reflect"
+)
 
-type Binary interface {
-	WriteTo(w io.Writer) (int64, error)
+func ReadBinary(o interface{}, r io.Reader, n *int64, err *error) interface{} {
+	rv, rt := reflect.ValueOf(o), reflect.TypeOf(o)
+	if rv.Kind() == reflect.Ptr {
+		readReflect(rv.Elem(), rt.Elem(), r, n, err)
+		return o
+	} else {
+		ptrRv := reflect.New(rt)
+		readReflect(ptrRv.Elem(), rt, r, n, err)
+		return ptrRv.Elem()
+	}
 }
 
-func WriteBinary(w io.Writer, b Binary, n *int64, err *error) {
-	if *err != nil {
-		return
-	}
-	n_, err_ := b.WriteTo(w)
-	*n += int64(n_)
-	*err = err_
+func WriteBinary(o interface{}, w io.Writer, n *int64, err *error) {
+	rv := reflect.ValueOf(o)
+	rt := reflect.TypeOf(o)
+	writeReflect(rv, rt, w, n, err)
 }
 
 // Write all of bz to w
 // Increment n and set err accordingly.
-func WriteTo(w io.Writer, bz []byte, n *int64, err *error) {
+func WriteTo(bz []byte, w io.Writer, n *int64, err *error) {
 	if *err != nil {
 		return
 	}
@@ -28,7 +36,7 @@ func WriteTo(w io.Writer, bz []byte, n *int64, err *error) {
 
 // Read len(buf) from r
 // Increment n and set err accordingly.
-func ReadFull(r io.Reader, buf []byte, n *int64, err *error) {
+func ReadFull(buf []byte, r io.Reader, n *int64, err *error) {
 	if *err != nil {
 		return
 	}

@@ -72,14 +72,14 @@ func (p *Peer) IsOutbound() bool {
 	return p.outbound
 }
 
-func (p *Peer) Send(chId byte, msg Binary) bool {
+func (p *Peer) Send(chId byte, msg interface{}) bool {
 	if atomic.LoadUint32(&p.stopped) == 1 {
 		return false
 	}
 	return p.mconn.Send(chId, msg)
 }
 
-func (p *Peer) TrySend(chId byte, msg Binary) bool {
+func (p *Peer) TrySend(chId byte, msg interface{}) bool {
 	if atomic.LoadUint32(&p.stopped) == 1 {
 		return false
 	}
@@ -94,7 +94,7 @@ func (p *Peer) CanSend(chId byte) bool {
 }
 
 func (p *Peer) WriteTo(w io.Writer) (n int64, err error) {
-	WriteString(w, p.Key, &n, &err)
+	WriteString(p.Key, w, &n, &err)
 	return
 }
 

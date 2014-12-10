@@ -4,27 +4,27 @@ import (
 	"io"
 )
 
-func WriteByteSlice(w io.Writer, bz []byte, n *int64, err *error) {
-	WriteUInt32(w, uint32(len(bz)), n, err)
-	WriteTo(w, bz, n, err)
+func WriteByteSlice(bz []byte, w io.Writer, n *int64, err *error) {
+	WriteUVarInt(uint(len(bz)), w, n, err)
+	WriteTo(bz, w, n, err)
 }
 
 func ReadByteSlice(r io.Reader, n *int64, err *error) []byte {
-	length := ReadUInt32(r, n, err)
+	length := ReadUVarInt(r, n, err)
 	if *err != nil {
 		return nil
 	}
 	buf := make([]byte, int(length))
-	ReadFull(r, buf, n, err)
+	ReadFull(buf, r, n, err)
 	return buf
 }
 
 //-----------------------------------------------------------------------------
 
-func WriteByteSlices(w io.Writer, bzz [][]byte, n *int64, err *error) {
-	WriteUInt32(w, uint32(len(bzz)), n, err)
+func WriteByteSlices(bzz [][]byte, w io.Writer, n *int64, err *error) {
+	WriteUVarInt(uint(len(bzz)), w, n, err)
 	for _, bz := range bzz {
-		WriteByteSlice(w, bz, n, err)
+		WriteByteSlice(bz, w, n, err)
 		if *err != nil {
 			return
 		}
@@ -32,12 +32,12 @@ func WriteByteSlices(w io.Writer, bzz [][]byte, n *int64, err *error) {
 }
 
 func ReadByteSlices(r io.Reader, n *int64, err *error) [][]byte {
-	length := ReadUInt32(r, n, err)
+	length := ReadUVarInt(r, n, err)
 	if *err != nil {
 		return nil
 	}
 	bzz := make([][]byte, length)
-	for i := uint32(0); i < length; i++ {
+	for i := uint(0); i < length; i++ {
 		bz := ReadByteSlice(r, n, err)
 		if *err != nil {
 			return nil

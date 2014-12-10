@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -123,9 +122,9 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 			msg := msg_.(*NewRoundStepMessage)
 			ps.ApplyNewRoundStepMessage(msg, rs)
 
-		case *CommitMessage:
-			msg := msg_.(*CommitMessage)
-			ps.ApplyCommitMessage(msg)
+		case *CommitStepMessage:
+			msg := msg_.(*CommitStepMessage)
+			ps.ApplyCommitStepMessage(msg)
 
 		case *HasVoteMessage:
 			msg := msg_.(*HasVoteMessage)
@@ -160,10 +159,17 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 
 	case VoteCh:
 		switch msg_.(type) {
-		case *Vote:
-			vote := msg_.(*Vote)
-			added, index, err := conR.conS.AddVote(vote)
+		case *VoteMessage:
+			voteMessage := msg_.(*VoteMessage)
+			vote := voteMessage.Vote
+			if rs.Height != vote.Height {
+				return // Wrong height. Not necessarily a bad peer.
+			}
+			validatorIndex := voteMessage.ValidatorIndex
+			address, _ := rs.Validators.GetByIndex(validatorIndex)
+			added, index, err := conR.conS.AddVote(address, vote)
 			if err != nil {
+				// Probably an invalid signature. Bad peer.
 				log.Warning("Error attempting to add vote: %v", err)
 			}
 			// Initialize Prevotes/Precommits/Commits if needed
@@ -220,14 +226,14 @@ func (conR *ConsensusReactor) broadcastNewRoundStepRoutine() {
 				Height: rs.Height,
 				Round:  rs.Round,
 				Step:   rs.Step,
-				SecondsSinceStartTime: uint32(timeElapsed.Seconds()),
+				SecondsSinceStartTime: uint(timeElapsed.Seconds()),
 			}
 			conR.sw.Broadcast(StateCh, msg)
 		}
 
-		// If the step is commit, then also broadcast a CommitMessage.
+		// If the step is commit, then also broadcast a CommitStepMessage.
 		if rs.Step == RoundStepCommit {
-			msg := &CommitMessage{
+			msg := &CommitStepMessage{
 				Height:        rs.Height,
 				BlockParts:    rs.ProposalBlockParts.Header(),
 				BlockBitArray: rs.ProposalBlockParts.BitArray(),
@@ -259,10 +265,10 @@ OUTER_LOOP:
 					Height: rs.Height,
 					Round:  rs.Round,
 					Type:   partTypeProposalBlock,
-					Part:   rs.ProposalBlockParts.GetPart(uint16(index)),
+					Part:   rs.ProposalBlockParts.GetPart(index),
 				}
 				peer.Send(DataCh, msg)
-				ps.SetHasProposalBlockPart(rs.Height, rs.Round, uint16(index))
+				ps.SetHasProposalBlockPart(rs.Height, rs.Round, index)
 				continue OUTER_LOOP
 			}
 		}
@@ -289,10 +295,10 @@ OUTER_LOOP:
 					Height: rs.Height,
 					Round:  rs.Round,
 					Type:   partTypeProposalPOL,
-					Part:   rs.ProposalPOLParts.GetPart(uint16(index)),
+					Part:   rs.ProposalPOLParts.GetPart(index),
 				}
 				peer.Send(DataCh, msg)
-				ps.SetHasProposalPOLPart(rs.Height, rs.Round, uint16(index))
+				ps.SetHasProposalPOLPart(rs.Height, rs.Round, index)
 				continue OUTER_LOOP
 			}
 		}
@@ -320,7 +326,7 @@ OUTER_LOOP:
 			if ok {
 				vote := voteSet.GetByIndex(index)
 				// NOTE: vote may be a commit.
-				msg := p2p.TypedMessage{msgTypeVote, vote}
+				msg := &VoteMessage{index, vote}
 				peer.Send(VoteCh, msg)
 				ps.SetHasVote(vote, index)
 				return true
@@ -399,7 +405,7 @@ OUTER_LOOP:
 					BlockParts: header.LastBlockParts,
 					Signature:  rsig.Signature,
 				}
-				msg := p2p.TypedMessage{msgTypeVote, vote}
+				msg := &VoteMessage{index, vote}
 				peer.Send(VoteCh, msg)
 				ps.SetHasVote(vote, index)
 				continue OUTER_LOOP
@@ -416,8 +422,8 @@ OUTER_LOOP:
 
 // Read only when returned by PeerState.GetRoundState().
 type PeerRoundState struct {
-	Height                uint32        // Height peer is at
-	Round                 uint16        // Round peer is at
+	Height                uint          // Height peer is at
+	Round                 uint          // Round peer is at
 	Step                  RoundStep     // Step peer is at
 	StartTime             time.Time     // Estimated start of round 0 at this height
 	Proposal              bool          // True if peer has proposal for this round
@@ -474,7 +480,7 @@ func (ps *PeerState) SetHasProposal(proposal *Proposal) {
 	ps.ProposalPOLBitArray = NewBitArray(uint(proposal.POLParts.Total))
 }
 
-func (ps *PeerState) SetHasProposalBlockPart(height uint32, round uint16, index uint16) {
+func (ps *PeerState) SetHasProposalBlockPart(height uint, round uint, index uint) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
@@ -485,7 +491,7 @@ func (ps *PeerState) SetHasProposalBlockPart(height uint32, round uint16, index 
 	ps.ProposalBlockBitArray.SetIndex(uint(index), true)
 }
 
-func (ps *PeerState) SetHasProposalPOLPart(height uint32, round uint16, index uint16) {
+func (ps *PeerState) SetHasProposalPOLPart(height uint, round uint, index uint) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
@@ -496,7 +502,7 @@ func (ps *PeerState) SetHasProposalPOLPart(height uint32, round uint16, index ui
 	ps.ProposalPOLBitArray.SetIndex(uint(index), true)
 }
 
-func (ps *PeerState) EnsureVoteBitArrays(height uint32, numValidators uint) {
+func (ps *PeerState) EnsureVoteBitArrays(height uint, numValidators uint) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
@@ -521,7 +527,7 @@ func (ps *PeerState) SetHasVote(vote *Vote, index uint) {
 	ps.setHasVote(vote.Height, vote.Round, vote.Type, index)
 }
 
-func (ps *PeerState) setHasVote(height uint32, round uint16, type_ byte, index uint) {
+func (ps *PeerState) setHasVote(height uint, round uint, type_ byte, index uint) {
 	if ps.Height == height+1 && type_ == VoteTypeCommit {
 		// Special case for LastCommits.
 		ps.LastCommits.SetIndex(index, true)
@@ -583,7 +589,7 @@ func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage, rs *Roun
 	}
 }
 
-func (ps *PeerState) ApplyCommitMessage(msg *CommitMessage) {
+func (ps *PeerState) ApplyCommitStepMessage(msg *CommitStepMessage) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
@@ -614,15 +620,13 @@ func (ps *PeerState) ApplyHasVoteMessage(msg *HasVoteMessage) {
 // Messages
 
 const (
-	msgTypeUnknown = byte(0x00)
-	// Messages for communicating state changes
+	msgTypeUnknown      = byte(0x00)
 	msgTypeNewRoundStep = byte(0x01)
-	msgTypeCommit       = byte(0x02)
-	// Messages of data
-	msgTypeProposal = byte(0x11)
-	msgTypePart     = byte(0x12) // both block & POL
-	msgTypeVote     = byte(0x13)
-	msgTypeHasVote  = byte(0x14)
+	msgTypeCommitStep   = byte(0x02)
+	msgTypeProposal     = byte(0x11)
+	msgTypePart         = byte(0x12) // both block & POL
+	msgTypeVote         = byte(0x13)
+	msgTypeHasVote      = byte(0x14)
 )
 
 // TODO: check for unnecessary extra bytes at the end.
@@ -634,18 +638,18 @@ func decodeMessage(bz []byte) (msgType byte, msg interface{}) {
 	switch msgType {
 	// Messages for communicating state changes
 	case msgTypeNewRoundStep:
-		msg = readNewRoundStepMessage(r, n, err)
-	case msgTypeCommit:
-		msg = readCommitMessage(r, n, err)
+		msg = ReadBinary(&NewRoundStepMessage{}, r, n, err)
+	case msgTypeCommitStep:
+		msg = ReadBinary(&CommitStepMessage{}, r, n, err)
 	// Messages of data
 	case msgTypeProposal:
-		msg = ReadProposal(r, n, err)
+		msg = ReadBinary(&Proposal{}, r, n, err)
 	case msgTypePart:
-		msg = readPartMessage(r, n, err)
+		msg = ReadBinary(&PartMessage{}, r, n, err)
 	case msgTypeVote:
-		msg = ReadVote(r, n, err)
+		msg = ReadBinary(&VoteMessage{}, r, n, err)
 	case msgTypeHasVote:
-		msg = readHasVoteMessage(r, n, err)
+		msg = ReadBinary(&HasVoteMessage{}, r, n, err)
 	default:
 		msg = nil
 	}
@@ -655,29 +659,13 @@ func decodeMessage(bz []byte) (msgType byte, msg interface{}) {
 //-------------------------------------
 
 type NewRoundStepMessage struct {
-	Height                uint32
-	Round                 uint16
+	Height                uint
+	Round                 uint
 	Step                  RoundStep
-	SecondsSinceStartTime uint32
+	SecondsSinceStartTime uint
 }
 
-func readNewRoundStepMessage(r io.Reader, n *int64, err *error) *NewRoundStepMessage {
-	return &NewRoundStepMessage{
-		Height: ReadUInt32(r, n, err),
-		Round:  ReadUInt16(r, n, err),
-		Step:   RoundStep(ReadUInt8(r, n, err)),
-		SecondsSinceStartTime: ReadUInt32(r, n, err),
-	}
-}
-
-func (m *NewRoundStepMessage) WriteTo(w io.Writer) (n int64, err error) {
-	WriteByte(w, msgTypeNewRoundStep, &n, &err)
-	WriteUInt32(w, m.Height, &n, &err)
-	WriteUInt16(w, m.Round, &n, &err)
-	WriteUInt8(w, uint8(m.Step), &n, &err)
-	WriteUInt32(w, m.SecondsSinceStartTime, &n, &err)
-	return
-}
+func (m *NewRoundStepMessage) TypeByte() byte { return msgTypeNewRoundStep }
 
 func (m *NewRoundStepMessage) String() string {
 	return fmt.Sprintf("[NewRoundStep %v/%v/%X]", m.Height, m.Round, m.Step)
@@ -685,30 +673,16 @@ func (m *NewRoundStepMessage) String() string {
 
 //-------------------------------------
 
-type CommitMessage struct {
-	Height        uint32
+type CommitStepMessage struct {
+	Height        uint
 	BlockParts    PartSetHeader
 	BlockBitArray BitArray
 }
 
-func readCommitMessage(r io.Reader, n *int64, err *error) *CommitMessage {
-	return &CommitMessage{
-		Height:        ReadUInt32(r, n, err),
-		BlockParts:    ReadPartSetHeader(r, n, err),
-		BlockBitArray: ReadBitArray(r, n, err),
-	}
-}
+func (m *CommitStepMessage) TypeByte() byte { return msgTypeCommitStep }
 
-func (m *CommitMessage) WriteTo(w io.Writer) (n int64, err error) {
-	WriteByte(w, msgTypeCommit, &n, &err)
-	WriteUInt32(w, m.Height, &n, &err)
-	WriteBinary(w, m.BlockParts, &n, &err)
-	WriteBinary(w, m.BlockBitArray, &n, &err)
-	return
-}
-
-func (m *CommitMessage) String() string {
-	return fmt.Sprintf("[Commit %v %v %v]", m.Height, m.BlockParts, m.BlockBitArray)
+func (m *CommitStepMessage) String() string {
+	return fmt.Sprintf("[CommitStep %v %v %v]", m.Height, m.BlockParts, m.BlockBitArray)
 }
 
 //-------------------------------------
@@ -719,29 +693,13 @@ const (
 )
 
 type PartMessage struct {
-	Height uint32
-	Round  uint16
+	Height uint
+	Round  uint
 	Type   byte
 	Part   *Part
 }
 
-func readPartMessage(r io.Reader, n *int64, err *error) *PartMessage {
-	return &PartMessage{
-		Height: ReadUInt32(r, n, err),
-		Round:  ReadUInt16(r, n, err),
-		Type:   ReadByte(r, n, err),
-		Part:   ReadPart(r, n, err),
-	}
-}
-
-func (m *PartMessage) WriteTo(w io.Writer) (n int64, err error) {
-	WriteByte(w, msgTypePart, &n, &err)
-	WriteUInt32(w, m.Height, &n, &err)
-	WriteUInt16(w, m.Round, &n, &err)
-	WriteByte(w, m.Type, &n, &err)
-	WriteBinary(w, m.Part, &n, &err)
-	return
-}
+func (m *PartMessage) TypeByte() byte { return msgTypePart }
 
 func (m *PartMessage) String() string {
 	return fmt.Sprintf("[Part %v/%v T:%X %v]", m.Height, m.Round, m.Type, m.Part)
@@ -749,30 +707,27 @@ func (m *PartMessage) String() string {
 
 //-------------------------------------
 
+type VoteMessage struct {
+	ValidatorIndex uint
+	Vote           *Vote
+}
+
+func (m *VoteMessage) TypeByte() byte { return msgTypeVote }
+
+func (m *VoteMessage) String() string {
+	return fmt.Sprintf("[Vote ValidatorIndex:%v Vote:%v]", m.ValidatorIndex, m.Vote)
+}
+
+//-------------------------------------
+
 type HasVoteMessage struct {
-	Height uint32
-	Round  uint16
+	Height uint
+	Round  uint
 	Type   byte
 	Index  uint
 }
 
-func readHasVoteMessage(r io.Reader, n *int64, err *error) *HasVoteMessage {
-	return &HasVoteMessage{
-		Height: ReadUInt32(r, n, err),
-		Round:  ReadUInt16(r, n, err),
-		Type:   ReadByte(r, n, err),
-		Index:  ReadUVarInt(r, n, err),
-	}
-}
-
-func (m *HasVoteMessage) WriteTo(w io.Writer) (n int64, err error) {
-	WriteByte(w, msgTypeHasVote, &n, &err)
-	WriteUInt32(w, m.Height, &n, &err)
-	WriteUInt16(w, m.Round, &n, &err)
-	WriteByte(w, m.Type, &n, &err)
-	WriteUVarInt(w, m.Index, &n, &err)
-	return
-}
+func (m *HasVoteMessage) TypeByte() byte { return msgTypeHasVote }
 
 func (m *HasVoteMessage) String() string {
 	return fmt.Sprintf("[HasVote %v/%v T:%X]", m.Height, m.Round, m.Type)

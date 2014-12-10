@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 
+	. "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/blocks"
 	. "github.com/tendermint/tendermint/common"
@@ -16,17 +17,16 @@ import (
 // for a predefined vote type.
 // Note that there three kinds of votes: prevotes, precommits, and commits.
 // A commit of prior rounds can be added added in lieu of votes/precommits.
-// TODO: test majority calculations etc.
-// NOTE: assumes that the sum total of voting power does not exceed MaxUInt64.
+// NOTE: Assumes that the sum total of voting power does not exceed MaxUInt64.
 type VoteSet struct {
-	height uint32
-	round  uint16
+	height uint
+	round  uint
 	type_  byte
 
 	mtx           sync.Mutex
-	vset          *state.ValidatorSet
-	votes         map[uint64]*Vote
-	votesBitArray BitArray
+	valSet        *state.ValidatorSet
+	votes         []*Vote           // validator index -> vote
+	votesBitArray BitArray          // validator index -> has vote?
 	votesByBlock  map[string]uint64 // string(blockHash)+string(blockParts) -> vote sum.
 	totalVotes    uint64
 	maj23Hash     []byte
@@ -35,7 +35,7 @@ type VoteSet struct {
 }
 
 // Constructs a new VoteSet struct used to accumulate votes for each round.
-func NewVoteSet(height uint32, round uint16, type_ byte, vset *state.ValidatorSet) *VoteSet {
+func NewVoteSet(height uint, round uint, type_ byte, valSet *state.ValidatorSet) *VoteSet {
 	if height == 0 {
 		panic("Cannot make VoteSet for height == 0, doesn't make sense.")
 	}
@@ -46,55 +46,55 @@ func NewVoteSet(height uint32, round uint16, type_ byte, vset *state.ValidatorSe
 		height:        height,
 		round:         round,
 		type_:         type_,
-		vset:          vset,
-		votes:         make(map[uint64]*Vote, vset.Size()),
-		votesBitArray: NewBitArray(vset.Size()),
+		valSet:        valSet,
+		votes:         make([]*Vote, valSet.Size()),
+		votesBitArray: NewBitArray(valSet.Size()),
 		votesByBlock:  make(map[string]uint64),
 		totalVotes:    0,
 	}
 }
 
-func (vs *VoteSet) Size() uint {
-	if vs == nil {
+func (voteSet *VoteSet) Size() uint {
+	if voteSet == nil {
 		return 0
 	} else {
-		return vs.vset.Size()
+		return voteSet.valSet.Size()
 	}
 }
 
 // True if added, false if not.
 // Returns ErrVote[UnexpectedStep|InvalidAccount|InvalidSignature|InvalidBlockHash|ConflictingSignature]
 // NOTE: vote should not be mutated after adding.
-func (vs *VoteSet) Add(vote *Vote) (bool, uint, error) {
-	vs.mtx.Lock()
-	defer vs.mtx.Unlock()
+func (voteSet *VoteSet) Add(address []byte, vote *Vote) (bool, uint, error) {
+	voteSet.mtx.Lock()
+	defer voteSet.mtx.Unlock()
 
-	// Make sure the step matches. (or that vote is commit && round < vs.round)
-	if vote.Height != vs.height ||
-		(vote.Type != VoteTypeCommit && vote.Round != vs.round) ||
-		(vote.Type != VoteTypeCommit && vote.Type != vs.type_) ||
-		(vote.Type == VoteTypeCommit && vs.type_ != VoteTypeCommit && vote.Round >= vs.round) {
+	// Make sure the step matches. (or that vote is commit && round < voteSet.round)
+	if vote.Height != voteSet.height ||
+		(vote.Type != VoteTypeCommit && vote.Round != voteSet.round) ||
+		(vote.Type != VoteTypeCommit && vote.Type != voteSet.type_) ||
+		(vote.Type == VoteTypeCommit && voteSet.type_ != VoteTypeCommit && vote.Round >= voteSet.round) {
 		return false, 0, ErrVoteUnexpectedStep
 	}
 
 	// Ensure that signer is a validator.
-	_, val := vs.vset.GetById(vote.SignerId)
+	valIndex, val := voteSet.valSet.GetByAddress(address)
 	if val == nil {
 		return false, 0, ErrVoteInvalidAccount
 	}
 
 	// Check signature.
-	if !val.Verify(vote) {
+	if !val.PubKey.VerifyBytes(SignBytes(vote), vote.Signature) {
 		// Bad signature.
 		return false, 0, ErrVoteInvalidSignature
 	}
 
-	return vs.addVote(vote)
+	return voteSet.addVote(valIndex, vote)
 }
 
-func (vs *VoteSet) addVote(vote *Vote) (bool, uint, error) {
+func (voteSet *VoteSet) addVote(valIndex uint, vote *Vote) (bool, uint, error) {
 	// If vote already exists, return false.
-	if existingVote, ok := vs.votes[vote.SignerId]; ok {
+	if existingVote := voteSet.votes[valIndex]; existingVote != nil {
 		if bytes.Equal(existingVote.BlockHash, vote.BlockHash) {
 			return false, 0, nil
 		} else {
@@ -103,170 +103,154 @@ func (vs *VoteSet) addVote(vote *Vote) (bool, uint, error) {
 	}
 
 	// Add vote.
-	vs.votes[vote.SignerId] = vote
-	voterIndex, val := vs.vset.GetById(vote.SignerId)
+	_, val := voteSet.valSet.GetByIndex(valIndex)
 	if val == nil {
-		return false, 0, ErrVoteInvalidAccount
+		panic(fmt.Sprintf("Missing validator for index %v", valIndex))
 	}
-	vs.votesBitArray.SetIndex(uint(voterIndex), true)
+	voteSet.votes[valIndex] = vote
+	voteSet.votesBitArray.SetIndex(valIndex, true)
 	blockKey := string(vote.BlockHash) + string(BinaryBytes(vote.BlockParts))
-	totalBlockHashVotes := vs.votesByBlock[blockKey] + val.VotingPower
-	vs.votesByBlock[blockKey] = totalBlockHashVotes
-	vs.totalVotes += val.VotingPower
+	totalBlockHashVotes := voteSet.votesByBlock[blockKey] + val.VotingPower
+	voteSet.votesByBlock[blockKey] = totalBlockHashVotes
+	voteSet.totalVotes += val.VotingPower
 
 	// If we just nudged it up to two thirds majority, add it.
-	if totalBlockHashVotes > vs.vset.TotalVotingPower()*2/3 &&
-		(totalBlockHashVotes-val.VotingPower) <= vs.vset.TotalVotingPower()*2/3 {
-		vs.maj23Hash = vote.BlockHash
-		vs.maj23Parts = vote.BlockParts
-		vs.maj23Exists = true
+	if totalBlockHashVotes > voteSet.valSet.TotalVotingPower()*2/3 &&
+		(totalBlockHashVotes-val.VotingPower) <= voteSet.valSet.TotalVotingPower()*2/3 {
+		voteSet.maj23Hash = vote.BlockHash
+		voteSet.maj23Parts = vote.BlockParts
+		voteSet.maj23Exists = true
 	}
 
-	return true, voterIndex, nil
+	return true, valIndex, nil
 }
 
 // Assumes that commits VoteSet is valid.
-func (vs *VoteSet) AddFromCommits(commits *VoteSet) {
-	commitVotes := commits.AllVotes()
-	for _, commit := range commitVotes {
-		if commit.Round < vs.round {
-			vs.addVote(commit)
+func (voteSet *VoteSet) AddFromCommits(commits *VoteSet) {
+	for valIndex, commit := range commits.votes {
+		if commit.Round < voteSet.round {
+			voteSet.addVote(uint(valIndex), commit)
 		}
 	}
 }
 
-func (vs *VoteSet) BitArray() BitArray {
-	if vs == nil {
+func (voteSet *VoteSet) BitArray() BitArray {
+	if voteSet == nil {
 		return BitArray{}
 	}
-	vs.mtx.Lock()
-	defer vs.mtx.Unlock()
-	return vs.votesBitArray.Copy()
+	voteSet.mtx.Lock()
+	defer voteSet.mtx.Unlock()
+	return voteSet.votesBitArray.Copy()
 }
 
-func (vs *VoteSet) GetByIndex(index uint) *Vote {
-	vs.mtx.Lock()
-	defer vs.mtx.Unlock()
+func (voteSet *VoteSet) GetByIndex(valIndex uint) *Vote {
+	voteSet.mtx.Lock()
+	defer voteSet.mtx.Unlock()
+	return voteSet.votes[valIndex]
+}
 
-	id, val := vs.vset.GetByIndex(index)
+func (voteSet *VoteSet) GetByAddress(address []byte) *Vote {
+	voteSet.mtx.Lock()
+	defer voteSet.mtx.Unlock()
+	valIndex, val := voteSet.valSet.GetByAddress(address)
 	if val == nil {
-		panic("GetByIndex(index) returned nil")
+		panic("GetByAddress(address) returned nil")
 	}
-
-	return vs.votes[id]
+	return voteSet.votes[valIndex]
 }
 
-func (vs *VoteSet) GetById(id uint64) *Vote {
-	vs.mtx.Lock()
-	defer vs.mtx.Unlock()
-	return vs.votes[id]
-}
-
-func (vs *VoteSet) AllVotes() []*Vote {
-	vs.mtx.Lock()
-	defer vs.mtx.Unlock()
-	votes := []*Vote{}
-	for _, vote := range vs.votes {
-		votes = append(votes, vote)
-	}
-	return votes
-}
-
-func (vs *VoteSet) HasTwoThirdsMajority() bool {
-	if vs == nil {
+func (voteSet *VoteSet) HasTwoThirdsMajority() bool {
+	if voteSet == nil {
 		return false
 	}
-	vs.mtx.Lock()
-	defer vs.mtx.Unlock()
-	return vs.maj23Exists
+	voteSet.mtx.Lock()
+	defer voteSet.mtx.Unlock()
+	return voteSet.maj23Exists
 }
 
 // Returns either a blockhash (or nil) that received +2/3 majority.
 // If there exists no such majority, returns (nil, false).
-func (vs *VoteSet) TwoThirdsMajority() (hash []byte, parts PartSetHeader, ok bool) {
-	vs.mtx.Lock()
-	defer vs.mtx.Unlock()
-	if vs.maj23Exists {
-		return vs.maj23Hash, vs.maj23Parts, true
+func (voteSet *VoteSet) TwoThirdsMajority() (hash []byte, parts PartSetHeader, ok bool) {
+	voteSet.mtx.Lock()
+	defer voteSet.mtx.Unlock()
+	if voteSet.maj23Exists {
+		return voteSet.maj23Hash, voteSet.maj23Parts, true
 	} else {
 		return nil, PartSetHeader{}, false
 	}
 }
 
-func (vs *VoteSet) MakePOL() *POL {
-	if vs.type_ != VoteTypePrevote {
+func (voteSet *VoteSet) MakePOL() *POL {
+	if voteSet.type_ != VoteTypePrevote {
 		panic("Cannot MakePOL() unless VoteSet.Type is VoteTypePrevote")
 	}
-	vs.mtx.Lock()
-	defer vs.mtx.Unlock()
-	if !vs.maj23Exists {
+	voteSet.mtx.Lock()
+	defer voteSet.mtx.Unlock()
+	if !voteSet.maj23Exists {
 		return nil
 	}
 	pol := &POL{
-		Height:     vs.height,
-		Round:      vs.round,
-		BlockHash:  vs.maj23Hash,
-		BlockParts: vs.maj23Parts,
+		Height:     voteSet.height,
+		Round:      voteSet.round,
+		BlockHash:  voteSet.maj23Hash,
+		BlockParts: voteSet.maj23Parts,
+		Votes:      make([]POLVoteSignature, voteSet.valSet.Size()),
 	}
-	for _, vote := range vs.votes {
-		if !bytes.Equal(vote.BlockHash, vs.maj23Hash) {
+	for valIndex, vote := range voteSet.votes {
+		if !bytes.Equal(vote.BlockHash, voteSet.maj23Hash) {
 			continue
 		}
-		if !vote.BlockParts.Equals(vs.maj23Parts) {
+		if !vote.BlockParts.Equals(voteSet.maj23Parts) {
 			continue
 		}
-		if vote.Type == VoteTypePrevote {
-			pol.Votes = append(pol.Votes, vote.Signature)
-		} else if vote.Type == VoteTypeCommit {
-			pol.Commits = append(pol.Commits, RoundSignature{vote.Round, vote.Signature})
-		} else {
-			Panicf("Unexpected vote type %X", vote.Type)
+		pol.Votes[valIndex] = POLVoteSignature{
+			Round:     vote.Round,
+			Signature: vote.Signature,
 		}
 	}
 	return pol
 }
 
-func (vs *VoteSet) MakeValidation() *Validation {
-	if vs.type_ != VoteTypeCommit {
+func (voteSet *VoteSet) MakeValidation() *Validation {
+	if voteSet.type_ != VoteTypeCommit {
 		panic("Cannot MakeValidation() unless VoteSet.Type is VoteTypeCommit")
 	}
-	vs.mtx.Lock()
-	defer vs.mtx.Unlock()
-	if len(vs.maj23Hash) == 0 {
+	voteSet.mtx.Lock()
+	defer voteSet.mtx.Unlock()
+	if len(voteSet.maj23Hash) == 0 {
 		panic("Cannot MakeValidation() unless a blockhash has +2/3")
 	}
-	rsigs := make([]RoundSignature, vs.vset.Size())
-	vs.vset.Iterate(func(index uint, val *state.Validator) bool {
-		vote := vs.votes[val.Id]
-
+	commits := make([]Commit, voteSet.valSet.Size())
+	voteSet.valSet.Iterate(func(valIndex uint, val *state.Validator) bool {
+		vote := voteSet.votes[valIndex]
 		if vote == nil {
 			return false
 		}
-		if !bytes.Equal(vote.BlockHash, vs.maj23Hash) {
+		if !bytes.Equal(vote.BlockHash, voteSet.maj23Hash) {
 			return false
 		}
-		if !vote.BlockParts.Equals(vs.maj23Parts) {
+		if !vote.BlockParts.Equals(voteSet.maj23Parts) {
 			return false
 		}
-		rsigs[index] = RoundSignature{vote.Round, vote.Signature}
+		commits[valIndex] = Commit{vote.Round, vote.Signature}
 		return false
 	})
 	return &Validation{
-		Commits: rsigs,
+		Commits: commits,
 	}
 }
 
-func (vs *VoteSet) String() string {
-	return vs.StringWithIndent("")
+func (voteSet *VoteSet) String() string {
+	return voteSet.StringWithIndent("")
 }
 
-func (vs *VoteSet) StringWithIndent(indent string) string {
-	vs.mtx.Lock()
-	defer vs.mtx.Unlock()
+func (voteSet *VoteSet) StringWithIndent(indent string) string {
+	voteSet.mtx.Lock()
+	defer voteSet.mtx.Unlock()
 
-	voteStrings := make([]string, len(vs.votes))
+	voteStrings := make([]string, len(voteSet.votes))
 	counter := 0
-	for _, vote := range vs.votes {
+	for _, vote := range voteSet.votes {
 		voteStrings[counter] = vote.String()
 		counter++
 	}
@@ -275,18 +259,18 @@ func (vs *VoteSet) StringWithIndent(indent string) string {
 %s  %v
 %s  %v
 %s}`,
-		indent, vs.height, vs.round, vs.type_,
+		indent, voteSet.height, voteSet.round, voteSet.type_,
 		indent, strings.Join(voteStrings, "\n"+indent+"  "),
-		indent, vs.votesBitArray,
+		indent, voteSet.votesBitArray,
 		indent)
 }
 
-func (vs *VoteSet) Description() string {
-	if vs == nil {
+func (voteSet *VoteSet) Description() string {
+	if voteSet == nil {
 		return "nil-VoteSet"
 	}
-	vs.mtx.Lock()
-	defer vs.mtx.Unlock()
+	voteSet.mtx.Lock()
+	defer voteSet.mtx.Unlock()
 	return fmt.Sprintf(`VoteSet{H:%v R:%v T:%v %v}`,
-		vs.height, vs.round, vs.type_, vs.votesBitArray)
+		voteSet.height, voteSet.round, voteSet.type_, voteSet.votesBitArray)
 }

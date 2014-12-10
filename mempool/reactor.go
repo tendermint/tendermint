@@ -3,7 +3,6 @@ package mempool
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"sync/atomic"
 
 	. "github.com/tendermint/tendermint/binary"
@@ -119,12 +118,10 @@ const (
 // TODO: check for unnecessary extra bytes at the end.
 func decodeMessage(bz []byte) (msgType byte, msg interface{}) {
 	n, err := new(int64), new(error)
-	// log.Debug("decoding msg bytes: %X", bz)
 	msgType = bz[0]
 	switch msgType {
 	case msgTypeTx:
-		msg = readTxMessage(bytes.NewReader(bz[1:]), n, err)
-	// case ...:
+		msg = ReadBinary(&TxMessage{}, bytes.NewReader(bz[1:]), n, err)
 	default:
 		msg = nil
 	}
@@ -137,17 +134,7 @@ type TxMessage struct {
 	Tx Tx
 }
 
-func readTxMessage(r io.Reader, n *int64, err *error) *TxMessage {
-	return &TxMessage{
-		Tx: ReadTx(r, n, err),
-	}
-}
-
-func (m *TxMessage) WriteTo(w io.Writer) (n int64, err error) {
-	WriteByte(w, msgTypeTx, &n, &err)
-	WriteBinary(w, m.Tx, &n, &err)
-	return
-}
+func (m *TxMessage) TypeByte() byte { return msgTypeTx }
 
 func (m *TxMessage) String() string {
 	return fmt.Sprintf("[TxMessage %v]", m.Tx)

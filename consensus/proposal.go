@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 
+	. "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/blocks"
 )
@@ -15,15 +16,14 @@ var (
 )
 
 type Proposal struct {
-	Height     uint32
-	Round      uint16
+	Height     uint
+	Round      uint
 	BlockParts PartSetHeader
 	POLParts   PartSetHeader
-	Signature  Signature
+	Signature  SignatureEd25519
 }
 
-func NewProposal(height uint32, round uint16, blockParts, polParts PartSetHeader) *Proposal {
-
+func NewProposal(height uint, round uint, blockParts, polParts PartSetHeader) *Proposal {
 	return &Proposal{
 		Height:     height,
 		Round:      round,
@@ -32,34 +32,14 @@ func NewProposal(height uint32, round uint16, blockParts, polParts PartSetHeader
 	}
 }
 
-func ReadProposal(r io.Reader, n *int64, err *error) *Proposal {
-	return &Proposal{
-		Height:     ReadUInt32(r, n, err),
-		Round:      ReadUInt16(r, n, err),
-		BlockParts: ReadPartSetHeader(r, n, err),
-		POLParts:   ReadPartSetHeader(r, n, err),
-		Signature:  ReadSignature(r, n, err),
-	}
-}
-
-func (p *Proposal) WriteTo(w io.Writer) (n int64, err error) {
-	WriteUInt32(w, p.Height, &n, &err)
-	WriteUInt16(w, p.Round, &n, &err)
-	WriteBinary(w, p.BlockParts, &n, &err)
-	WriteBinary(w, p.POLParts, &n, &err)
-	WriteBinary(w, p.Signature, &n, &err)
-	return
-}
-
-func (p *Proposal) GetSignature() Signature {
-	return p.Signature
-}
-
-func (p *Proposal) SetSignature(sig Signature) {
-	p.Signature = sig
-}
-
 func (p *Proposal) String() string {
 	return fmt.Sprintf("Proposal{%v/%v %v %v %v}", p.Height, p.Round,
 		p.BlockParts, p.POLParts, p.Signature)
+}
+
+func (p *Proposal) WriteSignBytes(w io.Writer, n *int64, err *error) {
+	WriteUVarInt(p.Height, w, n, err)
+	WriteUVarInt(p.Round, w, n, err)
+	WriteBinary(p.BlockParts, w, n, err)
+	WriteBinary(p.POLParts, w, n, err)
 }

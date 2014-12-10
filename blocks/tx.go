@@ -1,35 +1,33 @@
 package blocks
 
 import (
-	"fmt"
+	"errors"
 	"io"
+	"reflect"
 
+	. "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 )
 
 /*
+Tx (Transaction) is an atomic operation on the ledger state.
+
 Account Txs:
-1. Send			Send coins to account
-2. Name			Associate account with a name
+1. SendTx			Send coins to address
 
 Validation Txs:
-3. Bond         New validator posts a bond
-4. Unbond       Validator leaves
-5. Dupeout      Validator dupes out (signs twice)
+1. BondTx         New validator posts a bond
+2. UnbondTx       Validator leaves
+3. DupeoutTx      Validator dupes out (equivocates)
 */
-
 type Tx interface {
-	Signable
-	GetSequence() uint
-	GetFee() uint64
-	String() string
+	WriteSignBytes(w io.Writer, n *int64, err *error)
 }
 
 const (
 	// Account transactions
 	TxTypeSend = byte(0x01)
-	TxTypeName = byte(0x02)
 
 	// Validation transactions
 	TxTypeBond    = byte(0x11)
@@ -37,174 +35,150 @@ const (
 	TxTypeDupeout = byte(0x13)
 )
 
-func ReadTx(r io.Reader, n *int64, err *error) Tx {
+var (
+	ErrTxInvalidAddress    = errors.New("Error invalid address")
+	ErrTxDuplicateAddress  = errors.New("Error duplicate address")
+	ErrTxInvalidAmount     = errors.New("Error invalid amount")
+	ErrTxInsufficientFunds = errors.New("Error insufficient funds")
+	ErrTxInvalidSignature  = errors.New("Error invalid signature")
+	ErrTxInvalidSequence   = errors.New("Error invalid sequence")
+)
+
+func TxDecoder(r io.Reader, n *int64, err *error) interface{} {
 	switch t := ReadByte(r, n, err); t {
 	case TxTypeSend:
-		return &SendTx{
-			BaseTx: ReadBaseTx(r, n, err),
-			To:     ReadUInt64(r, n, err),
-			Amount: ReadUInt64(r, n, err),
-		}
-	case TxTypeName:
-		return &NameTx{
-			BaseTx: ReadBaseTx(r, n, err),
-			Name:   ReadString(r, n, err),
-			PubKey: ReadByteSlice(r, n, err),
-		}
+		return ReadBinary(&SendTx{}, r, n, err)
 	case TxTypeBond:
-		return &BondTx{
-			BaseTx: ReadBaseTx(r, n, err),
-			//UnbondTo: ReadUInt64(r, n, err),
-		}
+		return ReadBinary(&BondTx{}, r, n, err)
 	case TxTypeUnbond:
-		return &UnbondTx{
-			BaseTx: ReadBaseTx(r, n, err),
-		}
+		return ReadBinary(&UnbondTx{}, r, n, err)
 	case TxTypeDupeout:
-		return &DupeoutTx{
-			BaseTx: ReadBaseTx(r, n, err),
-			VoteA:  *ReadVote(r, n, err),
-			VoteB:  *ReadVote(r, n, err),
-		}
+		return ReadBinary(&DupeoutTx{}, r, n, err)
 	default:
 		*err = Errorf("Unknown Tx type %X", t)
 		return nil
 	}
 }
 
+var _ = RegisterType(&TypeInfo{
+	Type:    reflect.TypeOf((*Tx)(nil)).Elem(),
+	Decoder: TxDecoder,
+})
+
 //-----------------------------------------------------------------------------
 
-type BaseTx struct {
-	Sequence  uint
-	Fee       uint64
-	Signature Signature
+type TxInput struct {
+	Address   []byte           // Hash of the PubKey
+	Amount    uint64           // Must not exceed account balance
+	Sequence  uint             // Must be 1 greater than the last committed TxInput
+	Signature Signature // Depends on the PubKey type and the whole Tx
 }
 
-func ReadBaseTx(r io.Reader, n *int64, err *error) BaseTx {
-	return BaseTx{
-		Sequence:  ReadUVarInt(r, n, err),
-		Fee:       ReadUInt64(r, n, err),
-		Signature: ReadSignature(r, n, err),
+func (txIn *TxInput) ValidateBasic() error {
+	if len(txIn.Address) != 20 {
+		return ErrTxInvalidAddress
 	}
+	if txIn.Amount == 0 {
+		return ErrTxInvalidAmount
+	}
+	return nil
 }
 
-func (tx BaseTx) WriteTo(w io.Writer) (n int64, err error) {
-	WriteUVarInt(w, tx.Sequence, &n, &err)
-	WriteUInt64(w, tx.Fee, &n, &err)
-	WriteBinary(w, tx.Signature, &n, &err)
-	return
+func (txIn *TxInput) WriteSignBytes(w io.Writer, n *int64, err *error) {
+	WriteByteSlice(txIn.Address, w, n, err)
+	WriteUInt64(txIn.Amount, w, n, err)
+	WriteUVarInt(txIn.Sequence, w, n, err)
 }
 
-func (tx *BaseTx) GetSequence() uint {
-	return tx.Sequence
+//-----------------------------------------------------------------------------
+
+type TxOutput struct {
+	Address []byte // Hash of the PubKey
+	Amount  uint64 // The sum of all outputs must not exceed the inputs.
 }
 
-func (tx *BaseTx) GetSignature() Signature {
-	return tx.Signature
+func (txOut *TxOutput) ValidateBasic() error {
+	if len(txOut.Address) != 20 {
+		return ErrTxInvalidAddress
+	}
+	if txOut.Amount == 0 {
+		return ErrTxInvalidAmount
+	}
+	return nil
 }
 
-func (tx *BaseTx) GetFee() uint64 {
-	return tx.Fee
-}
-
-func (tx *BaseTx) SetSignature(sig Signature) {
-	tx.Signature = sig
-}
-
-func (tx *BaseTx) String() string {
-	return fmt.Sprintf("{S:%v F:%v Sig:%X}", tx.Sequence, tx.Fee, tx.Signature)
+func (txOut *TxOutput) WriteSignBytes(w io.Writer, n *int64, err *error) {
+	WriteByteSlice(txOut.Address, w, n, err)
+	WriteUInt64(txOut.Amount, w, n, err)
 }
 
 //-----------------------------------------------------------------------------
 
 type SendTx struct {
-	BaseTx
-	To     uint64
-	Amount uint64
+	Inputs  []*TxInput
+	Outputs []*TxOutput
 }
 
-func (tx *SendTx) WriteTo(w io.Writer) (n int64, err error) {
-	WriteByte(w, TxTypeSend, &n, &err)
-	WriteBinary(w, tx.BaseTx, &n, &err)
-	WriteUInt64(w, tx.To, &n, &err)
-	WriteUInt64(w, tx.Amount, &n, &err)
-	return
-}
+func (tx *SendTx) TypeByte() byte { return TxTypeSend }
 
-func (tx *SendTx) String() string {
-	return fmt.Sprintf("SendTx{%v To:%v Amount:%v}", tx.BaseTx, tx.To, tx.Amount)
-}
-
-//-----------------------------------------------------------------------------
-
-type NameTx struct {
-	BaseTx
-	Name   string
-	PubKey []byte
-}
-
-func (tx *NameTx) WriteTo(w io.Writer) (n int64, err error) {
-	WriteByte(w, TxTypeName, &n, &err)
-	WriteBinary(w, tx.BaseTx, &n, &err)
-	WriteString(w, tx.Name, &n, &err)
-	WriteByteSlice(w, tx.PubKey, &n, &err)
-	return
-}
-
-func (tx *NameTx) String() string {
-	return fmt.Sprintf("NameTx{%v Name:%v PubKey:%X}", tx.BaseTx, tx.Name, tx.PubKey)
+func (tx *SendTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
+	WriteUVarInt(uint(len(tx.Inputs)), w, n, err)
+	for _, in := range tx.Inputs {
+		in.WriteSignBytes(w, n, err)
+	}
+	WriteUVarInt(uint(len(tx.Outputs)), w, n, err)
+	for _, out := range tx.Outputs {
+		out.WriteSignBytes(w, n, err)
+	}
 }
 
 //-----------------------------------------------------------------------------
 
 type BondTx struct {
-	BaseTx
-	//UnbondTo uint64
+	PubKey   PubKeyEd25519
+	Inputs   []*TxInput
+	UnbondTo []*TxOutput
 }
 
-func (tx *BondTx) WriteTo(w io.Writer) (n int64, err error) {
-	WriteByte(w, TxTypeBond, &n, &err)
-	WriteBinary(w, tx.BaseTx, &n, &err)
-	//WriteUInt64(w, tx.UnbondTo, &n, &err)
-	return
-}
+func (tx *BondTx) TypeByte() byte { return TxTypeBond }
 
-func (tx *BondTx) String() string {
-	return fmt.Sprintf("BondTx{%v}", tx.BaseTx)
+func (tx *BondTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
+	WriteBinary(tx.PubKey, w, n, err)
+	WriteUVarInt(uint(len(tx.Inputs)), w, n, err)
+	for _, in := range tx.Inputs {
+		in.WriteSignBytes(w, n, err)
+	}
+	WriteUVarInt(uint(len(tx.UnbondTo)), w, n, err)
+	for _, out := range tx.UnbondTo {
+		out.WriteSignBytes(w, n, err)
+	}
 }
 
 //-----------------------------------------------------------------------------
 
 type UnbondTx struct {
-	BaseTx
+	Address   []byte
+	Height    uint
+	Signature SignatureEd25519
 }
 
-func (tx *UnbondTx) WriteTo(w io.Writer) (n int64, err error) {
-	WriteByte(w, TxTypeUnbond, &n, &err)
-	WriteBinary(w, tx.BaseTx, &n, &err)
-	return
-}
+func (tx *UnbondTx) TypeByte() byte { return TxTypeUnbond }
 
-func (tx *UnbondTx) String() string {
-	return fmt.Sprintf("UnbondTx{%v}", tx.BaseTx)
+func (tx *UnbondTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
+	WriteByteSlice(tx.Address, w, n, err)
+	WriteUVarInt(tx.Height, w, n, err)
 }
 
 //-----------------------------------------------------------------------------
 
 type DupeoutTx struct {
-	BaseTx
-	VoteA Vote
-	VoteB Vote
+	Address []byte
+	VoteA   Vote
+	VoteB   Vote
 }
 
-func (tx *DupeoutTx) WriteTo(w io.Writer) (n int64, err error) {
-	WriteByte(w, TxTypeDupeout, &n, &err)
-	WriteBinary(w, tx.BaseTx, &n, &err)
-	WriteBinary(w, &tx.VoteA, &n, &err)
-	WriteBinary(w, &tx.VoteB, &n, &err)
-	return
-}
+func (tx *DupeoutTx) TypeByte() byte { return TxTypeDupeout }
 
-func (tx *DupeoutTx) String() string {
-	return fmt.Sprintf("DupeoutTx{%v VoteA:%v VoteB:%v}", tx.BaseTx, tx.VoteA, tx.VoteB)
+func (tx *DupeoutTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
+	panic("DupeoutTx has no sign bytes")
 }
