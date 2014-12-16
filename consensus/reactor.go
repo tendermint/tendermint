@@ -37,8 +37,8 @@ type ConsensusReactor struct {
 	conS *ConsensusState
 }
 
-func NewConsensusReactor(blockStore *BlockStore, mempool *mempool.Mempool, state *state.State) *ConsensusReactor {
-	conS := NewConsensusState(state, blockStore, mempool)
+func NewConsensusReactor(blockStore *BlockStore, mempoolReactor *mempool.MempoolReactor, state *state.State) *ConsensusReactor {
+	conS := NewConsensusState(state, blockStore, mempoolReactor)
 	conR := &ConsensusReactor{
 		quit: make(chan struct{}),
 		conS: conS,

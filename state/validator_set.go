@@ -6,29 +6,9 @@ import (
 	"sort"
 	"strings"
 
+	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/merkle"
 )
-
-//-------------------------------------
-// Implements sort for sorting validators by id.
-
-type ValidatorSlice []*Validator
-
-func (vs ValidatorSlice) Len() int {
-	return len(vs)
-}
-
-func (vs ValidatorSlice) Less(i, j int) bool {
-	return bytes.Compare(vs[i].Address, vs[j].Address) == -1
-}
-
-func (vs ValidatorSlice) Swap(i, j int) {
-	it := vs[i]
-	vs[i] = vs[j]
-	vs[j] = it
-}
-
-//-------------------------------------
 
 // ValidatorSet represent a set of *Validator at a given height.
 // The validators can be fetched by address or index.
@@ -54,25 +34,31 @@ func NewValidatorSet(vals []*Validator) *ValidatorSet {
 	for i, val := range vals {
 		validators[i] = val.Copy()
 	}
-	sort.Sort(ValidatorSlice(validators))
+	sort.Sort(ValidatorsByAddress(validators))
 	return &ValidatorSet{
 		validators: validators,
 	}
 }
 
-func (valSet *ValidatorSet) IncrementAccum() {
-	// Decrement from previous proposer
-	oldProposer := valSet.Proposer()
-	oldProposer.Accum -= int64(valSet.TotalVotingPower())
-	valSet.Update(oldProposer)
-	var newProposer *Validator
-	// Increment accum and find new proposer
-	// NOTE: updates validators in place.
+// TODO: mind the overflow when times and votingPower shares too large.
+func (valSet *ValidatorSet) IncrementAccum(times uint) {
+
+	// Add VotingPower * times to each validator and order into heap.
+	validatorsHeap := NewHeap()
 	for _, val := range valSet.validators {
-		val.Accum += int64(val.VotingPower)
-		newProposer = newProposer.CompareAccum(val)
+		val.Accum += int64(val.VotingPower) * int64(times) // TODO: mind overflow
+		validatorsHeap.Push(val, accumComparable(val.Accum))
 	}
-	valSet.proposer = newProposer
+
+	// Decrement the validator with most accum, times times.
+	for i := uint(0); i < times; i++ {
+		mostest := validatorsHeap.Peek().(*Validator)
+		mostest.Accum -= int64(valSet.TotalVotingPower())
+		validatorsHeap.Update(mostest, accumComparable(mostest.Accum))
+	}
+
+	// The next proposer is the next most accums remaining
+	valSet.proposer = validatorsHeap.Peek().(*Validator)
 }
 
 func (valSet *ValidatorSet) Copy() *ValidatorSet {
@@ -230,4 +216,33 @@ func (valSet *ValidatorSet) StringWithIndent(indent string) string {
 		indent, strings.Join(valStrings, "\n"+indent+"    "),
 		indent)
 
+}
+
+//-------------------------------------
+// Implements sort for sorting validators by address.
+
+type ValidatorsByAddress []*Validator
+
+func (vs ValidatorsByAddress) Len() int {
+	return len(vs)
+}
+
+func (vs ValidatorsByAddress) Less(i, j int) bool {
+	return bytes.Compare(vs[i].Address, vs[j].Address) == -1
+}
+
+func (vs ValidatorsByAddress) Swap(i, j int) {
+	it := vs[i]
+	vs[i] = vs[j]
+	vs[j] = it
+}
+
+//-------------------------------------
+// Use with Heap for sorting validators by accum
+
+type accumComparable uint64
+
+// We want to find the validator with the greatest accum.
+func (ac accumComparable) Less(o interface{}) bool {
+	return uint64(ac) > o.(uint64)
 }

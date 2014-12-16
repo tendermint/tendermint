@@ -1,44 +1,55 @@
 package state
 
 import (
+	. "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/blocks"
 	. "github.com/tendermint/tendermint/common"
 	. "github.com/tendermint/tendermint/config"
 	db_ "github.com/tendermint/tendermint/db"
+	"github.com/tendermint/tendermint/wallet"
 
 	"bytes"
 	"testing"
 	"time"
 )
 
-func randAccountDetail(id uint64, status byte) (*AccountDetail, *PrivAccount) {
-	privAccount := GenPrivAccount()
-	privAccount.Id = id
-	account := privAccount.Account
-	return &AccountDetail{
-		Account:  account,
-		Sequence: RandUInt(),
-		Balance:  RandUInt64() + 1000, // At least 1000.
-		Status:   status,
-	}, privAccount
+func randAccount() (*Account, *PrivAccount) {
+	privAccount := wallet.GenPrivAccount()
+	account := NewAccount(privAccount.PubKey)
+	account.Sequence = RandUInt()
+	account.Balance = RandUInt32() + 1000 // At least 1000.
+	return account, privAccount
+}
+
+func genValidator(account *Account) *Validator, *ValidatorInfo {
+			valInfo := &ValidatorInfo{
+				Address: account.Address,
+				PubKey: account.PubKey,
+				UnbondTo: []*TxOutput{&TxOutput{
+					Address: 
+	Address         []byte
+	PubKey          PubKeyEd25519
+	UnbondTo        []*TxOutput
+	FirstBondHeight uint
+
+			}
 }
 
 // The first numValidators accounts are validators.
 func randGenesisState(numAccounts int, numValidators int) (*State, []*PrivAccount) {
 	db := db_.NewMemDB()
-	accountDetails := make([]*AccountDetail, numAccounts)
+	accounts := make([]*Account, numAccounts)
 	privAccounts := make([]*PrivAccount, numAccounts)
+	validators := make([]*Validator, numValidators)
 	for i := 0; i < numAccounts; i++ {
+		account, privAccount := randAccount()
+		accounts[i], privAccounts[i] = account, privAccount
 		if i < numValidators {
-			accountDetails[i], privAccounts[i] =
-				randAccountDetail(uint64(i), AccountStatusBonded)
-		} else {
-			accountDetails[i], privAccounts[i] =
-				randAccountDetail(uint64(i), AccountStatusNominal)
+			validators[i] = &
 		}
 	}
-	s0 := GenesisState(db, time.Now(), accountDetails)
+	s0 := GenesisState(db, time.Now(), accounts)
 	s0.Save()
 	return s0, privAccounts
 }

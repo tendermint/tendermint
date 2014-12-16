@@ -42,6 +42,9 @@ func (b *Block) ValidateBasic(lastBlockHeight uint, lastBlockHash []byte,
 	if !b.Time.After(lastBlockTime) {
 		return errors.New("Invalid block time")
 	}
+	if err := b.Validation.ValidateBasic(); err != nil {
+		return err
+	}
 	// XXX more validation
 	return nil
 }
@@ -146,7 +149,7 @@ func (h *Header) StringWithIndent(indent string) string {
 //-----------------------------------------------------------------------------
 
 type Commit struct {
-	// It's not strictly needed here, but consider adding address here for convenience
+	Address   []byte
 	Round     uint
 	Signature SignatureEd25519
 }
@@ -156,17 +159,44 @@ func (commit Commit) IsZero() bool {
 }
 
 func (commit Commit) String() string {
-	return fmt.Sprintf("Commit{R:%v %X}", commit.Round, Fingerprint(commit.Signature.Bytes))
+	return fmt.Sprintf("Commit{A:%X R:%v %X}", commit.Address, commit.Round, Fingerprint(commit.Signature.Bytes))
 }
 
 //-------------------------------------
 
+// NOTE: The Commits are in order of address to preserve the active ValidatorSet order.
+// Any peer with a block can gossip commits by index with a peer catching up without recalculating the
+// active ValidatorSet.
 type Validation struct {
-	Commits []Commit
+	Commits []Commit // Commits (or nil) of all active validators in address order.
 
 	// Volatile
 	hash     []byte
 	bitArray BitArray
+}
+
+func (v *Validation) ValidateBasic() error {
+	if len(v.Commits) == 0 {
+		return errors.New("No commits in validation")
+	}
+	lastAddress := []byte{}
+	for i := 0; i < len(v.Commits); i++ {
+		commit := v.Commits[i]
+		if commit.IsZero() {
+			if len(commit.Address) > 0 {
+				return errors.New("Zero commits should not have an address")
+			}
+		} else {
+			if len(commit.Address) == 0 {
+				return errors.New("Nonzero commits should have an address")
+			}
+			if len(lastAddress) > 0 && bytes.Compare(lastAddress, commit.Address) != -1 {
+				return errors.New("Invalid commit order")
+			}
+			lastAddress = commit.Address
+		}
+	}
+	return nil
 }
 
 func (v *Validation) Hash() []byte {

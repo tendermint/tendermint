@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math"
 
 	. "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/binary"
@@ -161,6 +162,22 @@ func (privVal *PrivValidator) SignProposal(proposal *Proposal) SignatureEd25519 
 		// Sign
 		return privVal.PrivKey.Sign(SignBytes(proposal)).(SignatureEd25519)
 	} else {
-		panic(fmt.Sprintf("Attempt of duplicate signing of proposal: Height %v, Round %v, Type %v", proposal.Height, proposal.Round))
+		panic(fmt.Sprintf("Attempt of duplicate signing of proposal: Height %v, Round %v", proposal.Height, proposal.Round))
+	}
+}
+
+func (privVal *PrivValidator) SignRebondTx(rebondTx *RebondTx) SignatureEd25519 {
+	if privVal.LastHeight < rebondTx.Height {
+
+		// Persist height/round/step
+		privVal.LastHeight = rebondTx.Height
+		privVal.LastRound = math.MaxUint64 // We can't do anything else for this rebondTx.Height.
+		privVal.LastStep = math.MaxUint8
+		privVal.Save()
+
+		// Sign
+		return privVal.PrivKey.Sign(SignBytes(rebondTx)).(SignatureEd25519)
+	} else {
+		panic(fmt.Sprintf("Attempt of duplicate signing of rebondTx: Height %v", rebondTx.Height))
 	}
 }

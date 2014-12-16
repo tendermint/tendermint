@@ -46,6 +46,10 @@ func (h *Heap) Peek() interface{} {
 	return h.pq[0].value
 }
 
+func (h *Heap) Update(value interface{}, priority Comparable) {
+	h.pq.Update(h.pq[0], value, priority)
+}
+
 func (h *Heap) Pop() interface{} {
 	item := heap.Pop(&h.pq).(*pqItem)
 	return item.value
@@ -93,8 +97,7 @@ func (pq *priorityQueue) Pop() interface{} {
 }
 
 func (pq *priorityQueue) Update(item *pqItem, value interface{}, priority Comparable) {
-	heap.Remove(pq, item.index)
 	item.value = value
 	item.priority = priority
-	heap.Push(pq, item)
+	heap.Fix(pq, item.index)
 }

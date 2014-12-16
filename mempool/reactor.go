@@ -21,13 +21,13 @@ type MempoolReactor struct {
 	started uint32
 	stopped uint32
 
-	mempool *Mempool
+	Mempool *Mempool
 }
 
 func NewMempoolReactor(mempool *Mempool) *MempoolReactor {
 	memR := &MempoolReactor{
 		quit:    make(chan struct{}),
-		mempool: mempool,
+		Mempool: mempool,
 	}
 	return memR
 }
@@ -74,7 +74,7 @@ func (memR *MempoolReactor) Receive(chId byte, src *p2p.Peer, msgBytes []byte) {
 	switch msg_.(type) {
 	case *TxMessage:
 		msg := msg_.(*TxMessage)
-		err := memR.mempool.AddTx(msg.Tx)
+		err := memR.Mempool.AddTx(msg.Tx)
 		if err != nil {
 			// Bad, seen, or conflicting tx.
 			log.Debug("Could not add tx %v", msg.Tx)
@@ -98,7 +98,7 @@ func (memR *MempoolReactor) Receive(chId byte, src *p2p.Peer, msgBytes []byte) {
 }
 
 func (memR *MempoolReactor) BroadcastTx(tx Tx) error {
-	err := memR.mempool.AddTx(tx)
+	err := memR.Mempool.AddTx(tx)
 	if err != nil {
 		return err
 	}

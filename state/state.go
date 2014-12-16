@@ -128,7 +128,7 @@ func (s *State) GetOrMakeAccounts(ins []*TxInput, outs []*TxOutput) (map[string]
 		account := s.GetAccount(out.Address)
 		// output account may be nil (new)
 		if account == nil {
-			account = NewAccount(out.Address, PubKeyUnknown{})
+			account = NewAccount(NewPubKeyUnknown(out.Address))
 		}
 		accounts[string(out.Address)] = account
 	}
@@ -236,6 +236,12 @@ func (s *State) ExecTx(tx_ Tx) error {
 
 	case *BondTx:
 		tx := tx_.(*BondTx)
+		valInfo := s.GetValidatorInfo(tx.PubKey.Address())
+		if valInfo != nil {
+			// TODO: In the future, check that the validator wasn't destroyed,
+			// add funds, merge UnbondTo outputs, and unbond validator.
+			return errors.New("Adding coins to existing validators not yet supported")
+		}
 		accounts, err := s.GetOrMakeAccounts(tx.Inputs, tx.UnbondTo)
 		if err != nil {
 			return err
@@ -262,15 +268,12 @@ func (s *State) ExecTx(tx_ Tx) error {
 		s.AdjustByInputs(accounts, tx.Inputs)
 		s.SetAccounts(accounts)
 		// Add ValidatorInfo
-		updated := s.SetValidatorInfo(&ValidatorInfo{
+		s.SetValidatorInfo(&ValidatorInfo{
 			Address:         tx.PubKey.Address(),
 			PubKey:          tx.PubKey,
 			UnbondTo:        tx.UnbondTo,
 			FirstBondHeight: s.LastBlockHeight + 1,
 		})
-		if !updated {
-			panic("Failed to add validator info")
-		}
 		// Add Validator
 		added := s.BondedValidators.Add(&Validator{
 			Address:     tx.PubKey.Address(),
@@ -300,12 +303,38 @@ func (s *State) ExecTx(tx_ Tx) error {
 		}
 
 		// tx.Height must be greater than val.LastCommitHeight
-		if tx.Height < val.LastCommitHeight {
-			return errors.New("Invalid bond height")
+		if tx.Height <= val.LastCommitHeight {
+			return errors.New("Invalid unbond height")
 		}
 
 		// Good!
 		s.unbondValidator(val)
+		return nil
+
+	case *RebondTx:
+		tx := tx_.(*RebondTx)
+
+		// The validator must be inactive
+		_, val := s.UnbondingValidators.GetByAddress(tx.Address)
+		if val == nil {
+			return ErrTxInvalidAddress
+		}
+
+		// Verify the signature
+		signBytes := SignBytes(tx)
+		if !val.PubKey.VerifyBytes(signBytes, tx.Signature) {
+			return ErrTxInvalidSignature
+		}
+
+		// tx.Height must be equal to the next height
+		if tx.Height != s.LastBlockHeight+1 {
+			return errors.New("Invalid rebond height")
+		}
+
+		// tx.Height must be
+
+		// Good!
+		s.rebondValidator(val)
 		return nil
 
 	case *DupeoutTx:
@@ -356,10 +385,23 @@ func (s *State) unbondValidator(val *Validator) {
 	if !removed {
 		panic("Couldn't remove validator for unbonding")
 	}
-	val.UnbondHeight = s.LastBlockHeight
+	val.UnbondHeight = s.LastBlockHeight + 1
 	added := s.UnbondingValidators.Add(val)
 	if !added {
 		panic("Couldn't add validator for unbonding")
+	}
+}
+
+func (s *State) rebondValidator(val *Validator) {
+	// Move validator to BondingValidators
+	val, removed := s.UnbondingValidators.Remove(val.Address)
+	if !removed {
+		panic("Couldn't remove validator for rebonding")
+	}
+	val.BondHeight = s.LastBlockHeight + 1
+	added := s.BondedValidators.Add(val)
+	if !added {
+		panic("Couldn't add validator for rebonding")
 	}
 }
 
@@ -475,7 +517,7 @@ func (s *State) AppendBlock(block *Block, blockPartsHeader PartSetHeader, checkS
 		}
 		_, val := s.BondedValidators.GetByIndex(uint(i))
 		if val == nil {
-			return ErrTxInvalidSignature
+			Panicf("Failed to fetch validator at index %v", i)
 		}
 		val.LastCommitHeight = block.Height - 1
 		updated := s.BondedValidators.Update(val)
@@ -511,7 +553,7 @@ func (s *State) AppendBlock(block *Block, blockPartsHeader PartSetHeader, checkS
 	}
 
 	// Increment validator AccumPowers
-	s.BondedValidators.IncrementAccum()
+	s.BondedValidators.IncrementAccum(1)
 
 	// Check or set block.StateHash
 	stateHash := s.Hash()

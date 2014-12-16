@@ -32,7 +32,8 @@ const (
 	// Validation transactions
 	TxTypeBond    = byte(0x11)
 	TxTypeUnbond  = byte(0x12)
-	TxTypeDupeout = byte(0x13)
+	TxTypeRebond  = byte(0x13)
+	TxTypeDupeout = byte(0x14)
 )
 
 var (
@@ -52,6 +53,8 @@ func TxDecoder(r io.Reader, n *int64, err *error) interface{} {
 		return ReadBinary(&BondTx{}, r, n, err)
 	case TxTypeUnbond:
 		return ReadBinary(&UnbondTx{}, r, n, err)
+	case TxTypeRebond:
+		return ReadBinary(&RebondTx{}, r, n, err)
 	case TxTypeDupeout:
 		return ReadBinary(&DupeoutTx{}, r, n, err)
 	default:
@@ -68,9 +71,9 @@ var _ = RegisterType(&TypeInfo{
 //-----------------------------------------------------------------------------
 
 type TxInput struct {
-	Address   []byte           // Hash of the PubKey
-	Amount    uint64           // Must not exceed account balance
-	Sequence  uint             // Must be 1 greater than the last committed TxInput
+	Address   []byte    // Hash of the PubKey
+	Amount    uint64    // Must not exceed account balance
+	Sequence  uint      // Must be 1 greater than the last committed TxInput
 	Signature Signature // Depends on the PubKey type and the whole Tx
 }
 
@@ -165,6 +168,21 @@ type UnbondTx struct {
 func (tx *UnbondTx) TypeByte() byte { return TxTypeUnbond }
 
 func (tx *UnbondTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
+	WriteByteSlice(tx.Address, w, n, err)
+	WriteUVarInt(tx.Height, w, n, err)
+}
+
+//-----------------------------------------------------------------------------
+
+type RebondTx struct {
+	Address   []byte
+	Height    uint
+	Signature SignatureEd25519
+}
+
+func (tx *RebondTx) TypeByte() byte { return TxTypeRebond }
+
+func (tx *RebondTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
 	WriteByteSlice(tx.Address, w, n, err)
 	WriteUVarInt(tx.Height, w, n, err)
 }

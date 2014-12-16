@@ -178,10 +178,10 @@ type ConsensusState struct {
 	stopped uint32
 	quit    chan struct{}
 
-	blockStore  *BlockStore
-	mempool     *mempool.Mempool
-	runActionCh chan RoundAction
-	newStepCh   chan *RoundState
+	blockStore     *BlockStore
+	mempoolReactor *mempool.MempoolReactor
+	runActionCh    chan RoundAction
+	newStepCh      chan *RoundState
 
 	mtx sync.Mutex
 	RoundState
@@ -190,13 +190,13 @@ type ConsensusState struct {
 	stagedState *state.State // Cache result of staged block.
 }
 
-func NewConsensusState(state *state.State, blockStore *BlockStore, mempool *mempool.Mempool) *ConsensusState {
+func NewConsensusState(state *state.State, blockStore *BlockStore, mempoolReactor *mempool.MempoolReactor) *ConsensusState {
 	cs := &ConsensusState{
-		quit:        make(chan struct{}),
-		blockStore:  blockStore,
-		mempool:     mempool,
-		runActionCh: make(chan RoundAction, 1),
-		newStepCh:   make(chan *RoundState, 1),
+		quit:           make(chan struct{}),
+		blockStore:     blockStore,
+		mempoolReactor: mempoolReactor,
+		runActionCh:    make(chan RoundAction, 1),
+		newStepCh:      make(chan *RoundState, 1),
 	}
 	cs.updateToState(state)
 	return cs
@@ -432,6 +432,16 @@ func (cs *ConsensusState) updateToState(state *state.State) {
 	if round > 0 {
 		cs.setupNewRound(round)
 	}
+
+	// If we've timed out, then send rebond tx.
+	if cs.PrivValidator != nil && cs.state.UnbondingValidators.HasAddress(cs.PrivValidator.Address) {
+		rebondTx := &RebondTx{
+			Address: cs.PrivValidator.Address,
+			Height:  cs.Height + 1,
+		}
+		rebondTx.Signature = cs.PrivValidator.SignRebondTx(rebondTx)
+		cs.mempoolReactor.BroadcastTx(rebondTx)
+	}
 }
 
 // After the call cs.Step becomes RoundStepNewRound.
@@ -443,9 +453,7 @@ func (cs *ConsensusState) setupNewRound(round uint) {
 
 	// Increment all the way to round.
 	validators := cs.Validators.Copy()
-	for r := cs.Round; r < round; r++ {
-		validators.IncrementAccum()
-	}
+	validators.IncrementAccum(round - cs.Round)
 
 	cs.Round = round
 	cs.Step = RoundStepNewRound
@@ -529,7 +537,7 @@ func (cs *ConsensusState) RunActionPropose(height uint, round uint) {
 				validation = cs.LastCommits.MakeValidation()
 			}
 		}
-		txs := cs.mempool.GetProposalTxs()
+		txs := cs.mempoolReactor.Mempool.GetProposalTxs()
 		block = &Block{
 			Header: &Header{
 				Network:        Config.Network,
@@ -975,7 +983,7 @@ func (cs *ConsensusState) saveCommitVoteBlock(block *Block, blockParts *PartSet)
 	cs.stagedState.Save()
 
 	// Update mempool.
-	cs.mempool.ResetForBlockAndState(block, cs.stagedState)
+	cs.mempoolReactor.Mempool.ResetForBlockAndState(block, cs.stagedState)
 
 	cs.signAddVote(VoteTypeCommit, block.Hash(), blockParts.Header())
 }

@@ -52,7 +52,7 @@ func NewNode() *Node {
 	mempoolReactor := mempool_.NewMempoolReactor(mempool)
 
 	// Get ConsensusReactor
-	consensusReactor := consensus.NewConsensusReactor(blockStore, mempool, state)
+	consensusReactor := consensus.NewConsensusReactor(blockStore, mempoolReactor, state)
 	if privValidator != nil {
 		consensusReactor.SetPrivValidator(privValidator)
 	}

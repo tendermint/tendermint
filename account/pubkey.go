@@ -44,12 +44,15 @@ var _ = RegisterType(&TypeInfo{
 //-------------------------------------
 
 type PubKeyUnknown struct {
+	address []byte
 }
+
+func NewPubKeyUnknown(address []byte) PubKeyUnknown { return PubKeyUnknown{address} }
 
 func (key PubKeyUnknown) TypeByte() byte { return PubKeyTypeUnknown }
 
 func (key PubKeyUnknown) Address() []byte {
-	panic("PubKeyUnknown has no address")
+	return key.address
 }
 
 func (key PubKeyUnknown) VerifyBytes(msg []byte, sig_ Signature) bool {

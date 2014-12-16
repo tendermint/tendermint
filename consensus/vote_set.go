@@ -232,7 +232,7 @@ func (voteSet *VoteSet) MakeValidation() *Validation {
 		if !vote.BlockParts.Equals(voteSet.maj23Parts) {
 			return false
 		}
-		commits[valIndex] = Commit{vote.Round, vote.Signature}
+		commits[valIndex] = Commit{val.Address, vote.Round, vote.Signature}
 		return false
 	})
 	return &Validation{
