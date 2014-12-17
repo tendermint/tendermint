@@ -4,15 +4,15 @@ import (
 	"encoding/base64"
 	"fmt"
 
+	. "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/binary"
-	"github.com/tendermint/tendermint/wallet"
 )
 
 func gen_account() {
 
 	// TODO: uh, write better logic.
 	// Generate private account
-	privAccount := wallet.GenPrivAccount()
+	privAccount := GenPrivAccount()
 
 	fmt.Printf(`Generated account:
 Account Public Key:  %X

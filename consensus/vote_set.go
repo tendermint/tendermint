@@ -8,7 +8,7 @@ import (
 
 	. "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/binary"
-	. "github.com/tendermint/tendermint/blocks"
+	. "github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/state"
 )
@@ -128,6 +128,9 @@ func (voteSet *VoteSet) addVote(valIndex uint, vote *Vote) (bool, uint, error) {
 // Assumes that commits VoteSet is valid.
 func (voteSet *VoteSet) AddFromCommits(commits *VoteSet) {
 	for valIndex, commit := range commits.votes {
+		if commit == nil {
+			continue
+		}
 		if commit.Round < voteSet.round {
 			voteSet.addVote(uint(valIndex), commit)
 		}
@@ -197,6 +200,9 @@ func (voteSet *VoteSet) MakePOL() *POL {
 		Votes:      make([]POLVoteSignature, voteSet.valSet.Size()),
 	}
 	for valIndex, vote := range voteSet.votes {
+		if vote == nil {
+			continue
+		}
 		if !bytes.Equal(vote.BlockHash, voteSet.maj23Hash) {
 			continue
 		}
@@ -245,14 +251,13 @@ func (voteSet *VoteSet) String() string {
 }
 
 func (voteSet *VoteSet) StringWithIndent(indent string) string {
-	voteSet.mtx.Lock()
-	defer voteSet.mtx.Unlock()
-
 	voteStrings := make([]string, len(voteSet.votes))
-	counter := 0
-	for _, vote := range voteSet.votes {
-		voteStrings[counter] = vote.String()
-		counter++
+	for i, vote := range voteSet.votes {
+		if vote == nil {
+			voteStrings[i] = "nil"
+		} else {
+			voteStrings[i] = vote.String()
+		}
 	}
 	return fmt.Sprintf(`VoteSet{
 %s  H:%v R:%v T:%v

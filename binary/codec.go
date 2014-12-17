@@ -2,7 +2,9 @@ package binary
 
 import (
 	"bytes"
+	"fmt"
 	"io"
+	"reflect"
 	"time"
 )
 
@@ -80,7 +82,7 @@ func BasicCodecEncoder(o interface{}, w io.Writer, n *int64, err *error) {
 		WriteByte(typeTime, w, n, err)
 		WriteTime(o.(time.Time), w, n, err)
 	default:
-		panic("Unsupported type")
+		panic(fmt.Sprintf("Unsupported type: %v", reflect.TypeOf(o)))
 	}
 }
 
@@ -116,7 +118,11 @@ func BasicCodecDecoder(r io.Reader, n *int64, err *error) (o interface{}) {
 	case typeTime:
 		o = ReadTime(r, n, err)
 	default:
-		panic("Unsupported type")
+		if *err != nil {
+			panic(err)
+		} else {
+			panic(fmt.Sprintf("Unsupported type byte: %X", type_))
+		}
 	}
 	return o
 }
@@ -151,7 +157,7 @@ func BasicCodecComparator(o1 interface{}, o2 interface{}) int {
 	case time.Time:
 		return int(o1.(time.Time).UnixNano() - o2.(time.Time).UnixNano())
 	default:
-		panic("Unsupported type")
+		panic(fmt.Sprintf("Unsupported type: %v", reflect.TypeOf(o1)))
 	}
 }
 

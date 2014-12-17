@@ -3,7 +3,7 @@ package rpc
 
 import (
 	"net/http"
-	//. "github.com/tendermint/tendermint/blocks"
+	//. "github.com/tendermint/tendermint/block"
 )
 
 func BlockHandler(w http.ResponseWriter, r *http.Request) {

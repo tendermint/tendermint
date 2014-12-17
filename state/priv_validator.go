@@ -1,4 +1,4 @@
-package consensus
+package state
 
 // TODO: This logic is crude. Should be more transactional.
 
@@ -12,9 +12,10 @@ import (
 
 	. "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/binary"
-	. "github.com/tendermint/tendermint/blocks"
+	. "github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/common"
 	. "github.com/tendermint/tendermint/config"
+	. "github.com/tendermint/tendermint/consensus/types"
 
 	"github.com/tendermint/go-ed25519"
 )
@@ -47,6 +48,10 @@ type PrivValidator struct {
 	LastHeight uint
 	LastRound  uint
 	LastStep   uint8
+
+	// For persistence.
+	// Overloaded for testing.
+	filename string
 }
 
 // Generates a new validator with private key.
@@ -62,6 +67,7 @@ func GenPrivValidator() *PrivValidator {
 		LastHeight: 0,
 		LastRound:  0,
 		LastStep:   stepNone,
+		filename:   PrivValidatorFile(),
 	}
 }
 
@@ -124,28 +130,47 @@ func (privVal *PrivValidator) Save() {
 	if err != nil {
 		panic(err)
 	}
-	err = ioutil.WriteFile(PrivValidatorFile(), privValJSONBytes, 0700)
+	err = ioutil.WriteFile(privVal.filename, privValJSONBytes, 0700)
 	if err != nil {
 		panic(err)
 	}
 }
 
+// TODO: test
 func (privVal *PrivValidator) SignVote(vote *Vote) SignatureEd25519 {
-	if privVal.LastHeight < vote.Height ||
-		privVal.LastHeight == vote.Height && privVal.LastRound < vote.Round ||
-		privVal.LastHeight == vote.Height && privVal.LastRound == vote.Round && privVal.LastStep < voteToStep(vote) {
 
-		// Persist height/round/step
-		privVal.LastHeight = vote.Height
-		privVal.LastRound = vote.Round
-		privVal.LastStep = voteToStep(vote)
-		privVal.Save()
-
-		// Sign
-		return privVal.PrivKey.Sign(SignBytes(vote)).(SignatureEd25519)
-	} else {
-		panic(fmt.Sprintf("Attempt of duplicate signing of vote: Height %v, Round %v, Type %v", vote.Height, vote.Round, vote.Type))
+	// If height regression, panic
+	if privVal.LastHeight > vote.Height {
+		panic("Height regression in SignVote")
 	}
+	// More cases for when the height matches
+	if privVal.LastHeight == vote.Height {
+		// If attempting any sign after commit, panic
+		if privVal.LastStep == stepCommit {
+			panic("SignVote on matching height after a commit")
+		}
+		// If round regression, panic
+		if privVal.LastRound > vote.Round {
+			panic("Round regression in SignVote")
+		}
+		// If step regression, panic
+		if privVal.LastRound == vote.Round && privVal.LastStep > voteToStep(vote) {
+			panic("Step regression in SignVote")
+		}
+	}
+
+	// Persist height/round/step
+	privVal.LastHeight = vote.Height
+	privVal.LastRound = vote.Round
+	privVal.LastStep = voteToStep(vote)
+	privVal.Save()
+
+	// Sign
+	return privVal.SignVoteUnsafe(vote)
+}
+
+func (privVal *PrivValidator) SignVoteUnsafe(vote *Vote) SignatureEd25519 {
+	return privVal.PrivKey.Sign(SignBytes(vote)).(SignatureEd25519)
 }
 
 func (privVal *PrivValidator) SignProposal(proposal *Proposal) SignatureEd25519 {
@@ -180,4 +205,8 @@ func (privVal *PrivValidator) SignRebondTx(rebondTx *RebondTx) SignatureEd25519 
 	} else {
 		panic(fmt.Sprintf("Attempt of duplicate signing of rebondTx: Height %v", rebondTx.Height))
 	}
+}
+
+func (privVal *PrivValidator) String() string {
+	return fmt.Sprintf("PrivValidator{%X LH:%v, LR:%v, LS:%v}", privVal.Address, privVal.LastHeight, privVal.LastRound, privVal.LastStep)
 }

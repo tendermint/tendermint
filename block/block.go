@@ -1,4 +1,4 @@
-package blocks
+package block
 
 import (
 	"bytes"
@@ -42,8 +42,10 @@ func (b *Block) ValidateBasic(lastBlockHeight uint, lastBlockHash []byte,
 	if !b.Time.After(lastBlockTime) {
 		return errors.New("Invalid block time")
 	}
-	if err := b.Validation.ValidateBasic(); err != nil {
-		return err
+	if b.Header.Height != 1 {
+		if err := b.Validation.ValidateBasic(); err != nil {
+			return err
+		}
 	}
 	// XXX more validation
 	return nil

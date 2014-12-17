@@ -1,77 +1,33 @@
 package consensus
 
 import (
+	"bytes"
 	"testing"
-	"time"
 
-	. "github.com/tendermint/tendermint/blocks"
-	. "github.com/tendermint/tendermint/common"
-	db_ "github.com/tendermint/tendermint/db"
-	"github.com/tendermint/tendermint/mempool"
-	"github.com/tendermint/tendermint/state"
+	. "github.com/tendermint/tendermint/block"
 )
 
-func randAccountDetail(id uint64, status byte) (*state.AccountDetail, *state.PrivAccount) {
-	privAccount := state.GenPrivAccount()
-	privAccount.Id = id
-	account := privAccount.Account
-	return &state.AccountDetail{
-		Account:  account,
-		Sequence: RandUInt(),
-		Balance:  1000,
-		Status:   status,
-	}, privAccount
-}
-
-// The first numValidators accounts are validators.
-func randGenesisState(numAccounts int, numValidators int) (*state.State, []*state.PrivAccount) {
-	db := db_.NewMemDB()
-	accountDetails := make([]*state.AccountDetail, numAccounts)
-	privAccounts := make([]*state.PrivAccount, numAccounts)
-	for i := 0; i < numAccounts; i++ {
-		if i < numValidators {
-			accountDetails[i], privAccounts[i] =
-				randAccountDetail(uint64(i), state.AccountStatusBonded)
-		} else {
-			accountDetails[i], privAccounts[i] =
-				randAccountDetail(uint64(i), state.AccountStatusNominal)
-		}
-	}
-	s0 := state.GenesisState(db, time.Now(), accountDetails)
-	s0.Save()
-	return s0, privAccounts
-}
-
-func makeConsensusState() (*ConsensusState, []*state.PrivAccount) {
-	state, privAccounts := randGenesisState(20, 10)
-	blockStore := NewBlockStore(db_.NewMemDB())
-	mempool := mempool.NewMempool(state)
-	cs := NewConsensusState(state, blockStore, mempool)
-	return cs, privAccounts
-}
-
-//-----------------------------------------------------------------------------
-
 func TestSetupRound(t *testing.T) {
-	cs, privAccounts := makeConsensusState()
+	cs, privValidators := makeConsensusState()
+	val0 := privValidators[0]
 
 	// Add a vote, precommit, and commit by val0.
 	voteTypes := []byte{VoteTypePrevote, VoteTypePrecommit, VoteTypeCommit}
 	for _, voteType := range voteTypes {
 		vote := &Vote{Height: 1, Round: 0, Type: voteType} // nil vote
-		privAccounts[0].Sign(vote)
-		cs.AddVote(vote)
+		vote.Signature = val0.SignVote(vote)
+		cs.AddVote(val0.Address, vote)
 	}
 
 	// Ensure that vote appears in RoundState.
 	rs0 := cs.GetRoundState()
-	if vote := rs0.Prevotes.GetById(0); vote == nil || vote.Type != VoteTypePrevote {
+	if vote := rs0.Prevotes.GetByAddress(val0.Address); vote == nil || vote.Type != VoteTypePrevote {
 		t.Errorf("Expected to find prevote but got %v", vote)
 	}
-	if vote := rs0.Precommits.GetById(0); vote == nil || vote.Type != VoteTypePrecommit {
+	if vote := rs0.Precommits.GetByAddress(val0.Address); vote == nil || vote.Type != VoteTypePrecommit {
 		t.Errorf("Expected to find precommit but got %v", vote)
 	}
-	if vote := rs0.Commits.GetById(0); vote == nil || vote.Type != VoteTypeCommit {
+	if vote := rs0.Commits.GetByAddress(val0.Address); vote == nil || vote.Type != VoteTypeCommit {
 		t.Errorf("Expected to find commit but got %v", vote)
 	}
 
@@ -81,13 +37,13 @@ func TestSetupRound(t *testing.T) {
 
 	// Now the commit should be copied over to prevotes and precommits.
 	rs1 := cs.GetRoundState()
-	if vote := rs1.Prevotes.GetById(0); vote == nil || vote.Type != VoteTypeCommit {
+	if vote := rs1.Prevotes.GetByAddress(val0.Address); vote == nil || vote.Type != VoteTypeCommit {
 		t.Errorf("Expected to find commit but got %v", vote)
 	}
-	if vote := rs1.Precommits.GetById(0); vote == nil || vote.Type != VoteTypeCommit {
+	if vote := rs1.Precommits.GetByAddress(val0.Address); vote == nil || vote.Type != VoteTypeCommit {
 		t.Errorf("Expected to find commit but got %v", vote)
 	}
-	if vote := rs1.Commits.GetById(0); vote == nil || vote.Type != VoteTypeCommit {
+	if vote := rs1.Commits.GetByAddress(val0.Address); vote == nil || vote.Type != VoteTypeCommit {
 		t.Errorf("Expected to find commit but got %v", vote)
 	}
 
@@ -103,9 +59,9 @@ func TestRunActionProposeNoPrivValidator(t *testing.T) {
 }
 
 func TestRunActionPropose(t *testing.T) {
-	cs, privAccounts := makeConsensusState()
-	priv := NewPrivValidator(db_.NewMemDB(), privAccounts[0])
-	cs.SetPrivValidator(priv)
+	cs, privValidators := makeConsensusState()
+	val0 := privValidators[0]
+	cs.SetPrivValidator(val0)
 
 	cs.RunActionPropose(1, 0)
 	rs := cs.GetRoundState()
@@ -123,7 +79,7 @@ func TestRunActionPropose(t *testing.T) {
 }
 
 func checkRoundState(t *testing.T, rs *RoundState,
-	height uint32, round uint16, step RoundStep) {
+	height uint, round uint, step RoundStep) {
 	if rs.Height != height {
 		t.Errorf("rs.Height should be %v, got %v", height, rs.Height)
 	}
@@ -136,13 +92,13 @@ func checkRoundState(t *testing.T, rs *RoundState,
 }
 
 func TestRunActionPrecommitCommitFinalize(t *testing.T) {
-	cs, privAccounts := makeConsensusState()
-	priv := NewPrivValidator(db_.NewMemDB(), privAccounts[0])
-	cs.SetPrivValidator(priv)
+	cs, privValidators := makeConsensusState()
+	val0 := privValidators[0]
+	cs.SetPrivValidator(val0)
 
 	cs.RunActionPrecommit(1, 0)
 	<-cs.NewStepCh() // TODO: test this value too.
-	if cs.Precommits.GetById(0) != nil {
+	if cs.Precommits.GetByAddress(val0.Address) != nil {
 		t.Errorf("RunActionPrecommit should return nil without a proposal")
 	}
 
@@ -151,7 +107,7 @@ func TestRunActionPrecommitCommitFinalize(t *testing.T) {
 
 	cs.RunActionPrecommit(1, 0)
 	<-cs.NewStepCh() // TODO: test this value too.
-	if cs.Precommits.GetById(0) != nil {
+	if cs.Precommits.GetByAddress(val0.Address) != nil {
 		t.Errorf("RunActionPrecommit should return nil, not enough prevotes")
 	}
 
@@ -164,20 +120,26 @@ func TestRunActionPrecommitCommitFinalize(t *testing.T) {
 			BlockHash:  cs.ProposalBlock.Hash(),
 			BlockParts: cs.ProposalBlockParts.Header(),
 		}
-		privAccounts[i].Sign(vote)
-		cs.AddVote(vote)
+		vote.Signature = privValidators[i].SignVote(vote)
+		cs.AddVote(privValidators[i].Address, vote)
 	}
 
 	// Test RunActionPrecommit success:
 	cs.RunActionPrecommit(1, 0)
 	<-cs.NewStepCh() // TODO: test this value too.
-	if cs.Precommits.GetById(0) == nil {
+	if cs.Precommits.GetByAddress(val0.Address) == nil {
 		t.Errorf("RunActionPrecommit should have succeeded")
 	}
 	checkRoundState(t, cs.GetRoundState(), 1, 0, RoundStepPrecommit)
 
 	// Add at least +2/3 precommits.
 	for i := 0; i < 7; i++ {
+		if bytes.Equal(privValidators[i].Address, val0.Address) {
+			if cs.Precommits.GetByAddress(val0.Address) == nil {
+				t.Errorf("Proposer should already have signed a precommit vote")
+			}
+			continue
+		}
 		vote := &Vote{
 			Height:     1,
 			Round:      0,
@@ -185,14 +147,17 @@ func TestRunActionPrecommitCommitFinalize(t *testing.T) {
 			BlockHash:  cs.ProposalBlock.Hash(),
 			BlockParts: cs.ProposalBlockParts.Header(),
 		}
-		privAccounts[i].Sign(vote)
-		cs.AddVote(vote)
+		vote.Signature = privValidators[i].SignVote(vote)
+		added, _, err := cs.AddVote(privValidators[i].Address, vote)
+		if !added || err != nil {
+			t.Errorf("Error adding precommit: %v", err)
+		}
 	}
 
 	// Test RunActionCommit success:
 	cs.RunActionCommit(1)
 	<-cs.NewStepCh() // TODO: test this value too.
-	if cs.Commits.GetById(0) == nil {
+	if cs.Commits.GetByAddress(val0.Address) == nil {
 		t.Errorf("RunActionCommit should have succeeded")
 	}
 	checkRoundState(t, cs.GetRoundState(), 1, 0, RoundStepCommit)
@@ -204,15 +169,24 @@ func TestRunActionPrecommitCommitFinalize(t *testing.T) {
 
 	// Add at least +2/3 commits.
 	for i := 0; i < 7; i++ {
+		if bytes.Equal(privValidators[i].Address, val0.Address) {
+			if cs.Commits.GetByAddress(val0.Address) == nil {
+				t.Errorf("Proposer should already have signed a commit vote")
+			}
+			continue
+		}
 		vote := &Vote{
 			Height:     1,
-			Round:      uint16(i), // Doesn't matter what round
+			Round:      uint(i), // Doesn't matter what round
 			Type:       VoteTypeCommit,
 			BlockHash:  cs.ProposalBlock.Hash(),
 			BlockParts: cs.ProposalBlockParts.Header(),
 		}
-		privAccounts[i].Sign(vote)
-		cs.AddVote(vote)
+		vote.Signature = privValidators[i].SignVote(vote)
+		added, _, err := cs.AddVote(privValidators[i].Address, vote)
+		if !added || err != nil {
+			t.Errorf("Error adding commit: %v", err)
+		}
 	}
 
 	// Test TryFinalizeCommit:

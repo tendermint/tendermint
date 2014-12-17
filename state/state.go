@@ -8,7 +8,7 @@ import (
 
 	. "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/binary"
-	. "github.com/tendermint/tendermint/blocks"
+	. "github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/common"
 	db_ "github.com/tendermint/tendermint/db"
 	"github.com/tendermint/tendermint/merkle"
@@ -78,6 +78,7 @@ func LoadState(db db_.DB) *State {
 // Save this state into the db.
 func (s *State) Save() {
 	s.accounts.Save()
+	s.validatorInfos.Save()
 	buf, n, err := new(bytes.Buffer), new(int64), new(error)
 	WriteUVarInt(s.LastBlockHeight, buf, n, err)
 	WriteByteSlice(s.LastBlockHash, buf, n, err)
@@ -185,6 +186,7 @@ func (s *State) AdjustByInputs(accounts map[string]*Account, ins []*TxInput) {
 			panic("AdjustByInputs() expects sufficient funds")
 		}
 		account.Balance -= in.Amount
+		account.Sequence += 1
 	}
 }
 
@@ -192,7 +194,7 @@ func (s *State) AdjustByOutputs(accounts map[string]*Account, outs []*TxOutput) 
 	for _, out := range outs {
 		account := accounts[string(out.Address)]
 		if account == nil {
-			panic("AdjustByInputs() expects account in accounts")
+			panic("AdjustByOutputs() expects account in accounts")
 		}
 		account.Balance += out.Amount
 	}
@@ -242,7 +244,7 @@ func (s *State) ExecTx(tx_ Tx) error {
 			// add funds, merge UnbondTo outputs, and unbond validator.
 			return errors.New("Adding coins to existing validators not yet supported")
 		}
-		accounts, err := s.GetOrMakeAccounts(tx.Inputs, tx.UnbondTo)
+		accounts, err := s.GetOrMakeAccounts(tx.Inputs, nil)
 		if err != nil {
 			return err
 		}
@@ -273,13 +275,14 @@ func (s *State) ExecTx(tx_ Tx) error {
 			PubKey:          tx.PubKey,
 			UnbondTo:        tx.UnbondTo,
 			FirstBondHeight: s.LastBlockHeight + 1,
+			FirstBondAmount: outTotal,
 		})
 		// Add Validator
 		added := s.BondedValidators.Add(&Validator{
 			Address:     tx.PubKey.Address(),
 			PubKey:      tx.PubKey,
 			BondHeight:  s.LastBlockHeight + 1,
-			VotingPower: inTotal,
+			VotingPower: outTotal,
 			Accum:       0,
 		})
 		if !added {
@@ -586,6 +589,12 @@ func (s *State) GetAccount(address []byte) *Account {
 		return nil
 	}
 	return account.(*Account).Copy()
+}
+
+// The account is copied before setting, so mutating it
+// afterwards has no side effects.
+func (s *State) SetAccount(account *Account) {
+	s.accounts.Set(account.Address, account.Copy())
 }
 
 // The accounts are copied before setting, so mutating it

@@ -1,30 +1,27 @@
 package state
 
 import (
+	. "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
 
 	"bytes"
 	"testing"
 )
 
-func randValidator() *Validator {
+func randValidator_() *Validator {
 	return &Validator{
-		Account: Account{
-			Id:     RandUInt64(),
-			PubKey: CRandBytes(32),
-		},
-		BondHeight:       RandUInt32(),
-		UnbondHeight:     RandUInt32(),
-		LastCommitHeight: RandUInt32(),
-		VotingPower:      RandUInt64(),
-		Accum:            int64(RandUInt64()),
+		Address:     RandBytes(20),
+		PubKey:      PubKeyEd25519{RandBytes(64)},
+		BondHeight:  uint(RandUInt32()),
+		VotingPower: RandUInt64(),
+		Accum:       int64(RandUInt64()),
 	}
 }
 
 func randValidatorSet(numValidators int) *ValidatorSet {
 	validators := make([]*Validator, numValidators)
 	for i := 0; i < numValidators; i++ {
-		validators[i] = randValidator()
+		validators[i] = randValidator_()
 	}
 	return NewValidatorSet(validators)
 }

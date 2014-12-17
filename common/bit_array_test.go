@@ -2,7 +2,10 @@ package common
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
+
+	. "github.com/tendermint/tendermint/binary"
 )
 
 func randBitArray(bits uint) (BitArray, []byte) {
@@ -22,19 +25,18 @@ func randBitArray(bits uint) (BitArray, []byte) {
 
 func TestReadWriteEmptyBitarray(t *testing.T) {
 	bA1 := BitArray{}
-	buf := new(bytes.Buffer)
-	_, err := bA1.WriteTo(buf)
-	if err != nil {
+	buf, n, err := new(bytes.Buffer), new(int64), new(error)
+	WriteBinary(bA1, buf, n, err)
+	if *err != nil {
 		t.Error("Failed to write empty bitarray")
 	}
 
-	var n int64
-	bA2 := ReadBitArray(buf, &n, &err)
-	if err != nil {
+	bA2 := ReadBinary(BitArray{}, buf, n, err).(BitArray)
+	if *err != nil {
 		t.Error("Failed to read empty bitarray")
 	}
-	if bA2.bits != 0 {
-		t.Error("Expected to get bA2.bits 0")
+	if bA2.Bits != 0 {
+		t.Error("Expected to get bA2.Bits 0")
 	}
 }
 
@@ -44,16 +46,17 @@ func TestReadWriteBitarray(t *testing.T) {
 	bA1, testData := randBitArray(64*10 + 8) // not divisible by 64
 
 	// Write it
-	buf := new(bytes.Buffer)
-	_, err := bA1.WriteTo(buf)
-	if err != nil {
+	buf, n, err := new(bytes.Buffer), new(int64), new(error)
+	WriteBinary(bA1, buf, n, err)
+	if *err != nil {
 		t.Error("Failed to write bitarray")
 	}
 
+	fmt.Printf("Bytes: %X", buf.Bytes())
+
 	// Read it
-	var n int64
-	bA2 := ReadBitArray(buf, &n, &err)
-	if err != nil {
+	bA2 := ReadBinary(BitArray{}, buf, n, err).(BitArray)
+	if *err != nil {
 		t.Error("Failed to read bitarray")
 	}
 	testData2 := make([]byte, len(testData))
@@ -77,13 +80,13 @@ func TestAnd(t *testing.T) {
 	bA2, _ := randBitArray(31)
 	bA3 := bA1.And(bA2)
 
-	if bA3.bits != 31 {
-		t.Error("Expected min bits", bA3.bits)
+	if bA3.Bits != 31 {
+		t.Error("Expected min bits", bA3.Bits)
 	}
-	if len(bA3.elems) != len(bA2.elems) {
+	if len(bA3.Elems) != len(bA2.Elems) {
 		t.Error("Expected min elems length")
 	}
-	for i := uint(0); i < bA3.bits; i++ {
+	for i := uint(0); i < bA3.Bits; i++ {
 		expected := bA1.GetIndex(i) && bA2.GetIndex(i)
 		if bA3.GetIndex(i) != expected {
 			t.Error("Wrong bit from bA3", i, bA1.GetIndex(i), bA2.GetIndex(i), bA3.GetIndex(i))
@@ -97,13 +100,13 @@ func TestOr(t *testing.T) {
 	bA2, _ := randBitArray(31)
 	bA3 := bA1.Or(bA2)
 
-	if bA3.bits != 51 {
+	if bA3.Bits != 51 {
 		t.Error("Expected max bits")
 	}
-	if len(bA3.elems) != len(bA1.elems) {
+	if len(bA3.Elems) != len(bA1.Elems) {
 		t.Error("Expected max elems length")
 	}
-	for i := uint(0); i < bA3.bits; i++ {
+	for i := uint(0); i < bA3.Bits; i++ {
 		expected := bA1.GetIndex(i) || bA2.GetIndex(i)
 		if bA3.GetIndex(i) != expected {
 			t.Error("Wrong bit from bA3", i, bA1.GetIndex(i), bA2.GetIndex(i), bA3.GetIndex(i))
@@ -117,13 +120,13 @@ func TestSub1(t *testing.T) {
 	bA2, _ := randBitArray(51)
 	bA3 := bA1.Sub(bA2)
 
-	if bA3.bits != bA1.bits {
+	if bA3.Bits != bA1.Bits {
 		t.Error("Expected bA1 bits")
 	}
-	if len(bA3.elems) != len(bA1.elems) {
+	if len(bA3.Elems) != len(bA1.Elems) {
 		t.Error("Expected bA1 elems length")
 	}
-	for i := uint(0); i < bA3.bits; i++ {
+	for i := uint(0); i < bA3.Bits; i++ {
 		expected := bA1.GetIndex(i)
 		if bA2.GetIndex(i) {
 			expected = false
@@ -140,15 +143,15 @@ func TestSub2(t *testing.T) {
 	bA2, _ := randBitArray(31)
 	bA3 := bA1.Sub(bA2)
 
-	if bA3.bits != bA1.bits {
+	if bA3.Bits != bA1.Bits {
 		t.Error("Expected bA1 bits")
 	}
-	if len(bA3.elems) != len(bA1.elems) {
+	if len(bA3.Elems) != len(bA1.Elems) {
 		t.Error("Expected bA1 elems length")
 	}
-	for i := uint(0); i < bA3.bits; i++ {
+	for i := uint(0); i < bA3.Bits; i++ {
 		expected := bA1.GetIndex(i)
-		if i < bA2.bits && bA2.GetIndex(i) {
+		if i < bA2.Bits && bA2.GetIndex(i) {
 			expected = false
 		}
 		if bA3.GetIndex(i) != expected {

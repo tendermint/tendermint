@@ -7,7 +7,7 @@ import (
 
 	. "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/binary"
-	. "github.com/tendermint/tendermint/blocks"
+	. "github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/common"
 	db_ "github.com/tendermint/tendermint/db"
 	"github.com/tendermint/tendermint/merkle"
@@ -16,7 +16,7 @@ import (
 type GenesisDoc struct {
 	GenesisTime time.Time
 	Accounts    []*Account
-	Validators  []*Validator
+	Validators  []*ValidatorInfo
 }
 
 func GenesisDocFromJSON(jsonBlob []byte) (genState *GenesisDoc) {
@@ -51,14 +51,31 @@ func GenesisState(db db_.DB, genDoc *GenesisDoc) *State {
 		accounts.Set(acc.Address, acc)
 	}
 
+	// Make validatorInfos state tree
+	validatorInfos := merkle.NewIAVLTree(BasicCodec, ValidatorInfoCodec, 0, db)
+	for _, valInfo := range genDoc.Validators {
+		validatorInfos.Set(valInfo.Address, valInfo)
+	}
+
+	// Make validators
+	validators := make([]*Validator, len(genDoc.Validators))
+	for i, valInfo := range genDoc.Validators {
+		validators[i] = &Validator{
+			Address:     valInfo.Address,
+			PubKey:      valInfo.PubKey,
+			VotingPower: valInfo.FirstBondAmount,
+		}
+	}
+
 	return &State{
 		DB:                  db,
 		LastBlockHeight:     0,
 		LastBlockHash:       nil,
 		LastBlockParts:      PartSetHeader{},
 		LastBlockTime:       genDoc.GenesisTime,
-		BondedValidators:    NewValidatorSet(genDoc.Validators),
+		BondedValidators:    NewValidatorSet(validators),
 		UnbondingValidators: NewValidatorSet(nil),
 		accounts:            accounts,
+		validatorInfos:      validatorInfos,
 	}
 }

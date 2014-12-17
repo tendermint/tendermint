@@ -8,21 +8,22 @@ import (
 func TestSignAndValidate(t *testing.T) {
 
 	privAccount := GenPrivAccount()
-	account := &privAccount.Account
+	pubKey := privAccount.PubKey
+	privKey := privAccount.PrivKey
 
 	msg := CRandBytes(128)
-	sig := privAccount.SignBytes(msg)
+	sig := privKey.Sign(msg)
 	t.Logf("msg: %X, sig: %X", msg, sig)
 
 	// Test the signature
-	if !account.VerifyBytes(msg, sig) {
+	if !pubKey.VerifyBytes(msg, sig) {
 		t.Errorf("Account message signature verification failed")
 	}
 
 	// Mutate the signature, just one bit.
-	sig.Bytes[0] ^= byte(0x01)
+	sig.(SignatureEd25519).Bytes[0] ^= byte(0x01)
 
-	if account.VerifyBytes(msg, sig) {
+	if pubKey.VerifyBytes(msg, sig) {
 		t.Errorf("Account message signature verification should have failed but passed instead")
 	}
 }

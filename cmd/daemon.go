@@ -4,7 +4,7 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/tendermint/tendermint/blocks"
+	"github.com/tendermint/tendermint/block"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/consensus"
 	db_ "github.com/tendermint/tendermint/db"
@@ -21,13 +21,13 @@ type Node struct {
 	pexReactor       *p2p.PEXReactor
 	mempoolReactor   *mempool_.MempoolReactor
 	consensusReactor *consensus.ConsensusReactor
-	privValidator    *consensus.PrivValidator
+	privValidator    *state_.PrivValidator
 }
 
 func NewNode() *Node {
 	// Get BlockStore
 	blockStoreDB := db_.NewMemDB() // TODO configurable db.
-	blockStore := blocks.NewBlockStore(blockStoreDB)
+	blockStore := block.NewBlockStore(blockStoreDB)
 
 	// Get State
 	stateDB := db_.NewMemDB() // TODO configurable db.
@@ -38,9 +38,9 @@ func NewNode() *Node {
 	}
 
 	// Get PrivValidator
-	var privValidator *consensus.PrivValidator
+	var privValidator *state_.PrivValidator
 	if _, err := os.Stat(config.PrivValidatorFile()); err == nil {
-		privValidator = consensus.LoadPrivValidator()
+		privValidator = state_.LoadPrivValidator()
 	}
 
 	// Get PEXReactor

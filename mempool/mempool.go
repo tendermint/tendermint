@@ -12,7 +12,7 @@ import (
 	"sync"
 
 	. "github.com/tendermint/tendermint/binary"
-	. "github.com/tendermint/tendermint/blocks"
+	. "github.com/tendermint/tendermint/block"
 	"github.com/tendermint/tendermint/state"
 )
 

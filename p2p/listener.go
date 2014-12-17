@@ -62,8 +62,10 @@ func NewDefaultListener(protocol string, lAddr string) Listener {
 	// Determine external address...
 	var extAddr *NetAddress
 	// If the lAddrIP is INADDR_ANY, try UPnP
-	if lAddrIP == "" || lAddrIP == "0.0.0.0" {
-		extAddr = getUPNPExternalAddress(lAddrPort, listenerPort)
+	if false {
+		if lAddrIP == "" || lAddrIP == "0.0.0.0" {
+			extAddr = getUPNPExternalAddress(lAddrPort, listenerPort)
+		}
 	}
 	// Otherwise just use the local address...
 	if extAddr == nil {

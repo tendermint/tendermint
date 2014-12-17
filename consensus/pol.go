@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	. "github.com/tendermint/tendermint/account"
-	. "github.com/tendermint/tendermint/blocks"
+	. "github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/state"
 )
@@ -28,7 +28,7 @@ type POL struct {
 	Votes      []POLVoteSignature // Prevote and commit signatures in ValidatorSet order.
 }
 
-// Returns whether +2/3 have voted/committed for BlockHash.
+// Returns whether +2/3 have prevoted/committed for BlockHash.
 func (pol *POL) Verify(valSet *state.ValidatorSet) error {
 
 	if uint(len(pol.Votes)) != valSet.Size() {
@@ -44,27 +44,32 @@ func (pol *POL) Verify(valSet *state.ValidatorSet) error {
 	})
 	seenValidators := map[string]struct{}{}
 
-	for idx, sig := range pol.Votes {
+	for idx, vote := range pol.Votes {
+		// vote may be zero, in which case skip.
+		if vote.Signature.IsZero() {
+			continue
+		}
 		voteDoc := prevoteDoc
 		_, val := valSet.GetByIndex(uint(idx))
 
-		// Commit signature?
-		if sig.Round < pol.Round {
+		// Commit vote?
+		if vote.Round < pol.Round {
 			voteDoc = SignBytes(&Vote{
-				Height: pol.Height, Round: sig.Round, Type: VoteTypeCommit,
+				Height: pol.Height, Round: vote.Round, Type: VoteTypeCommit,
 				BlockHash:  pol.BlockHash,
 				BlockParts: pol.BlockParts,
 			})
-		} else if sig.Round > pol.Round {
-			return Errorf("Invalid commit round %v for POL %v", sig.Round, pol)
+		} else if vote.Round > pol.Round {
+			return Errorf("Invalid commit round %v for POL %v", vote.Round, pol)
 		}
 
 		// Validate
 		if _, seen := seenValidators[string(val.Address)]; seen {
-			return Errorf("Duplicate validator for vote %v for POL %v", sig, pol)
+			return Errorf("Duplicate validator for vote %v for POL %v", vote, pol)
 		}
-		if !val.PubKey.VerifyBytes(voteDoc, sig.Signature.Bytes) {
-			return Errorf("Invalid signature for vote %v for POL %v", sig, pol)
+
+		if !val.PubKey.VerifyBytes(voteDoc, vote.Signature) {
+			return Errorf("Invalid signature for vote %v for POL %v", vote, pol)
 		}
 
 		// Tally

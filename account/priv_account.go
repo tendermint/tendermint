@@ -1,9 +1,8 @@
-package wallet
+package account
 
 import (
 	"github.com/tendermint/go-ed25519"
 
-	. "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
 )
 
@@ -25,4 +24,8 @@ func GenPrivAccount() *PrivAccount {
 			PrivKey: privKey,
 		},
 	}
+}
+
+func (privAccount *PrivAccount) Sign(o Signable) Signature {
+	return privAccount.PrivKey.Sign(SignBytes(o))
 }

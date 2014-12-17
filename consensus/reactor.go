@@ -9,8 +9,9 @@ import (
 	"time"
 
 	. "github.com/tendermint/tendermint/binary"
-	. "github.com/tendermint/tendermint/blocks"
+	. "github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/common"
+	. "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/state"
@@ -198,7 +199,7 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 }
 
 // Sets our private validator account for signing votes.
-func (conR *ConsensusReactor) SetPrivValidator(priv *PrivValidator) {
+func (conR *ConsensusReactor) SetPrivValidator(priv *state.PrivValidator) {
 	conR.conS.SetPrivValidator(priv)
 }
 

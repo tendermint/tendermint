@@ -267,7 +267,7 @@ FOR_LOOP:
 			break FOR_LOOP
 		}
 		if err != nil {
-			log.Info("%v failed @ sendRoutine:\n%v", c, err)
+			log.Warning("%v failed @ sendRoutine:\n%v", c, err)
 			c.Stop()
 			break FOR_LOOP
 		}
@@ -349,7 +349,7 @@ FOR_LOOP:
 		c.recvMonitor.Update(int(n))
 		if err != nil {
 			if atomic.LoadUint32(&c.stopped) != 1 {
-				log.Info("%v failed @ recvRoutine with err: %v", c, err)
+				log.Warning("%v failed @ recvRoutine with err: %v", c, err)
 				c.Stop()
 			}
 			break FOR_LOOP
@@ -377,7 +377,7 @@ FOR_LOOP:
 			c.recvMonitor.Update(int(*n))
 			if *err != nil {
 				if atomic.LoadUint32(&c.stopped) != 1 {
-					log.Info("%v failed @ recvRoutine", c)
+					log.Warning("%v failed @ recvRoutine", c)
 					c.Stop()
 				}
 				break FOR_LOOP
@@ -506,6 +506,7 @@ func (ch *Channel) nextMsgPacket() msgPacket {
 // Not goroutine-safe
 func (ch *Channel) writeMsgPacketTo(w io.Writer) (n int64, err error) {
 	packet := ch.nextMsgPacket()
+	WriteByte(packetTypeMsg, w, &n, &err)
 	WriteBinary(packet, w, &n, &err)
 	if err != nil {
 		ch.recentlySent += n
@@ -548,8 +549,6 @@ type msgPacket struct {
 	EOF       byte // 1 means message ends here.
 	Bytes     []byte
 }
-
-func (p msgPacket) TypeByte() byte { return packetTypeMsg }
 
 func (p msgPacket) String() string {
 	return fmt.Sprintf("MsgPacket{%X:%X}", p.ChannelId, p.Bytes)

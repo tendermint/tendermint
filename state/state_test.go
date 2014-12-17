@@ -3,60 +3,17 @@ package state
 import (
 	. "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/binary"
-	. "github.com/tendermint/tendermint/blocks"
-	. "github.com/tendermint/tendermint/common"
+	. "github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/config"
-	db_ "github.com/tendermint/tendermint/db"
-	"github.com/tendermint/tendermint/wallet"
 
 	"bytes"
 	"testing"
 	"time"
 )
 
-func randAccount() (*Account, *PrivAccount) {
-	privAccount := wallet.GenPrivAccount()
-	account := NewAccount(privAccount.PubKey)
-	account.Sequence = RandUInt()
-	account.Balance = RandUInt32() + 1000 // At least 1000.
-	return account, privAccount
-}
-
-func genValidator(account *Account) *Validator, *ValidatorInfo {
-			valInfo := &ValidatorInfo{
-				Address: account.Address,
-				PubKey: account.PubKey,
-				UnbondTo: []*TxOutput{&TxOutput{
-					Address: 
-	Address         []byte
-	PubKey          PubKeyEd25519
-	UnbondTo        []*TxOutput
-	FirstBondHeight uint
-
-			}
-}
-
-// The first numValidators accounts are validators.
-func randGenesisState(numAccounts int, numValidators int) (*State, []*PrivAccount) {
-	db := db_.NewMemDB()
-	accounts := make([]*Account, numAccounts)
-	privAccounts := make([]*PrivAccount, numAccounts)
-	validators := make([]*Validator, numValidators)
-	for i := 0; i < numAccounts; i++ {
-		account, privAccount := randAccount()
-		accounts[i], privAccounts[i] = account, privAccount
-		if i < numValidators {
-			validators[i] = &
-		}
-	}
-	s0 := GenesisState(db, time.Now(), accounts)
-	s0.Save()
-	return s0, privAccounts
-}
-
 func TestCopyState(t *testing.T) {
 	// Generate a state
-	s0, _ := randGenesisState(10, 5)
+	s0, privAccounts, _ := RandGenesisState(10, true, 1000, 5, true, 1000)
 	s0Hash := s0.Hash()
 	if len(s0Hash) == 0 {
 		t.Error("Expected state hash")
@@ -69,15 +26,16 @@ func TestCopyState(t *testing.T) {
 	}
 
 	// Mutate the original; hash should change.
-	accDet := s0.GetAccountDetail(0)
-	accDet.Balance += 1
+	acc0Address := privAccounts[0].PubKey.Address()
+	acc := s0.GetAccount(acc0Address)
+	acc.Balance += 1
 	// The account balance shouldn't have changed yet.
-	if s0.GetAccountDetail(0).Balance == accDet.Balance {
+	if s0.GetAccount(acc0Address).Balance == acc.Balance {
 		t.Error("Account balance changed unexpectedly")
 	}
 	// Setting, however, should change the balance.
-	s0.SetAccountDetail(accDet)
-	if s0.GetAccountDetail(0).Balance != accDet.Balance {
+	s0.SetAccount(acc)
+	if s0.GetAccount(acc0Address).Balance != acc.Balance {
 		t.Error("Account balance wasn't set")
 	}
 	// How that the state changed, the hash should change too.
@@ -93,7 +51,7 @@ func TestCopyState(t *testing.T) {
 func TestGenesisSaveLoad(t *testing.T) {
 
 	// Generate a state, save & load it.
-	s0, _ := randGenesisState(10, 5)
+	s0, _, _ := RandGenesisState(10, true, 1000, 5, true, 1000)
 	// Mutate the state to append one empty block.
 	block := &Block{
 		Header: &Header{
@@ -168,150 +126,160 @@ func TestGenesisSaveLoad(t *testing.T) {
 	if !bytes.Equal(s0.UnbondingValidators.Hash(), s1.UnbondingValidators.Hash()) {
 		t.Error("UnbondingValidators hash mismatch")
 	}
-	if !bytes.Equal(s0.accountDetails.Hash(), s1.accountDetails.Hash()) {
-		t.Error("AccountDetail mismatch")
+	if !bytes.Equal(s0.accounts.Hash(), s1.accounts.Hash()) {
+		t.Error("Accounts mismatch")
 	}
 }
 
 func TestTxSequence(t *testing.T) {
 
-	state, privAccounts := randGenesisState(3, 1)
-	acc1 := state.GetAccountDetail(1) // Non-validator
+	state, privAccounts, _ := RandGenesisState(3, true, 1000, 1, true, 1000)
+	acc0 := state.GetAccount(privAccounts[0].PubKey.Address())
+	acc1 := state.GetAccount(privAccounts[1].PubKey.Address())
 
 	// Try executing a SendTx with various sequence numbers.
-	stxProto := SendTx{
-		BaseTx: BaseTx{
-			Sequence: acc1.Sequence + 1,
-			Fee:      0},
-		To:     2,
-		Amount: 1,
+	makeSendTx := func(sequence uint) *SendTx {
+		return &SendTx{
+			Inputs: []*TxInput{
+				&TxInput{
+					Address:  acc0.Address,
+					Amount:   1,
+					Sequence: sequence,
+				},
+			},
+			Outputs: []*TxOutput{
+				&TxOutput{
+					Address: acc1.Address,
+					Amount:  1,
+				},
+			},
+		}
 	}
 
 	// Test a variety of sequence numbers for the tx.
 	// The tx should only pass when i == 1.
 	for i := -1; i < 3; i++ {
-		stxCopy := stxProto
-		stx := &stxCopy
-		stx.Sequence = uint(int(acc1.Sequence) + i)
-		privAccounts[1].Sign(stx)
+		sequence := acc0.Sequence + uint(i)
+		tx := makeSendTx(sequence)
+		tx.Inputs[0].Signature = privAccounts[0].Sign(tx)
 		stateCopy := state.Copy()
-		err := stateCopy.ExecTx(stx)
-		if i >= 1 {
+		err := stateCopy.ExecTx(tx)
+		if i == 1 {
 			// Sequence is good.
 			if err != nil {
-				t.Errorf("Expected good sequence to pass")
+				t.Errorf("Expected good sequence to pass: %v", err)
 			}
-			// Check accDet.Sequence.
-			newAcc1 := stateCopy.GetAccountDetail(1)
-			if newAcc1.Sequence != stx.Sequence {
-				t.Errorf("Expected account sequence to change")
+			// Check acc.Sequence.
+			newAcc0 := stateCopy.GetAccount(acc0.Address)
+			if newAcc0.Sequence != sequence {
+				t.Errorf("Expected account sequence to change to %v, got %v",
+					sequence, newAcc0.Sequence)
 			}
 		} else {
 			// Sequence is bad.
 			if err == nil {
 				t.Errorf("Expected bad sequence to fail")
 			}
-			// Check accDet.Sequence. (shouldn't have changed)
-			newAcc1 := stateCopy.GetAccountDetail(1)
-			if newAcc1.Sequence != acc1.Sequence {
-				t.Errorf("Expected account sequence to not change")
+			// Check acc.Sequence. (shouldn't have changed)
+			newAcc0 := stateCopy.GetAccount(acc0.Address)
+			if newAcc0.Sequence != acc0.Sequence {
+				t.Errorf("Expected account sequence to not change from %v, got %v",
+					acc0.Sequence, newAcc0.Sequence)
 			}
 		}
 	}
 }
 
+// TODO: test overflows.
+// TODO: test for unbonding validators.
 func TestTxs(t *testing.T) {
 
-	state, privAccounts := randGenesisState(3, 1)
+	state, privAccounts, _ := RandGenesisState(3, true, 1000, 1, true, 1000)
 
-	acc0 := state.GetAccountDetail(0) // Validator
-	acc1 := state.GetAccountDetail(1) // Non-validator
-	acc2 := state.GetAccountDetail(2) // Non-validator
+	//val0 := state.GetValidatorInfo(privValidators[0].Address)
+	acc0 := state.GetAccount(privAccounts[0].PubKey.Address())
+	acc1 := state.GetAccount(privAccounts[1].PubKey.Address())
 
 	// SendTx.
 	{
 		state := state.Copy()
-		stx := &SendTx{
-			BaseTx: BaseTx{
-				Sequence: acc1.Sequence + 1,
-				Fee:      0},
-			To:     2,
-			Amount: 1,
+		tx := &SendTx{
+			Inputs: []*TxInput{
+				&TxInput{
+					Address:  acc0.Address,
+					Amount:   1,
+					Sequence: acc0.Sequence + 1,
+				},
+			},
+			Outputs: []*TxOutput{
+				&TxOutput{
+					Address: acc1.Address,
+					Amount:  1,
+				},
+			},
 		}
-		privAccounts[1].Sign(stx)
-		err := state.ExecTx(stx)
+
+		tx.Inputs[0].Signature = privAccounts[0].Sign(tx)
+		err := state.ExecTx(tx)
 		if err != nil {
 			t.Errorf("Got error in executing send transaction, %v", err)
 		}
-		newAcc1 := state.GetAccountDetail(1)
-		if acc1.Balance-1 != newAcc1.Balance {
+		newAcc0 := state.GetAccount(acc0.Address)
+		if acc0.Balance-1 != newAcc0.Balance {
+			t.Errorf("Unexpected newAcc0 balance. Expected %v, got %v",
+				acc0.Balance-1, newAcc0.Balance)
+		}
+		newAcc1 := state.GetAccount(acc1.Address)
+		if acc1.Balance+1 != newAcc1.Balance {
 			t.Errorf("Unexpected newAcc1 balance. Expected %v, got %v",
-				acc1.Balance-1, newAcc1.Balance)
-		}
-		newAcc2 := state.GetAccountDetail(2)
-		if acc2.Balance+1 != newAcc2.Balance {
-			t.Errorf("Unexpected newAcc2 balance. Expected %v, got %v",
-				acc2.Balance+1, newAcc2.Balance)
+				acc1.Balance+1, newAcc1.Balance)
 		}
 	}
-
-	// TODO: test overflows.
-
-	// SendTx should fail for bonded validators.
-	{
-		state := state.Copy()
-		stx := &SendTx{
-			BaseTx: BaseTx{
-				Sequence: acc0.Sequence + 1,
-				Fee:      0},
-			To:     2,
-			Amount: 1,
-		}
-		privAccounts[0].Sign(stx)
-		err := state.ExecTx(stx)
-		if err == nil {
-			t.Errorf("Expected error, SendTx should fail for bonded validators")
-		}
-	}
-
-	// TODO: test for unbonding validators.
 
 	// BondTx.
 	{
 		state := state.Copy()
-		btx := &BondTx{
-			BaseTx: BaseTx{
-				Sequence: acc1.Sequence + 1,
-				Fee:      0},
+		tx := &BondTx{
+			PubKey: acc0.PubKey.(PubKeyEd25519),
+			Inputs: []*TxInput{
+				&TxInput{
+					Address:  acc0.Address,
+					Amount:   1,
+					Sequence: acc0.Sequence + 1,
+				},
+			},
+			UnbondTo: []*TxOutput{
+				&TxOutput{
+					Address: acc0.Address,
+					Amount:  1,
+				},
+			},
 		}
-		privAccounts[1].Sign(btx)
-		err := state.ExecTx(btx)
+		tx.Inputs[0].Signature = privAccounts[0].Sign(tx)
+		err := state.ExecTx(tx)
 		if err != nil {
 			t.Errorf("Got error in executing bond transaction, %v", err)
 		}
-		newAcc1 := state.GetAccountDetail(1)
-		if acc1.Balance != newAcc1.Balance {
-			t.Errorf("Unexpected newAcc1 balance. Expected %v, got %v",
-				acc1.Balance, newAcc1.Balance)
+		newAcc0 := state.GetAccount(acc0.Address)
+		if newAcc0.Balance != acc0.Balance-1 {
+			t.Errorf("Unexpected newAcc0 balance. Expected %v, got %v",
+				acc0.Balance-1, newAcc0.Balance)
 		}
-		if newAcc1.Status != AccountStatusBonded {
-			t.Errorf("Unexpected newAcc1 status.")
+		_, acc0Val := state.BondedValidators.GetByAddress(acc0.Address)
+		if acc0Val == nil {
+			t.Errorf("acc0Val not present")
 		}
-		_, acc1Val := state.BondedValidators.GetById(acc1.Id)
-		if acc1Val == nil {
-			t.Errorf("acc1Val not present")
-		}
-		if acc1Val.BondHeight != state.LastBlockHeight {
+		if acc0Val.BondHeight != state.LastBlockHeight+1 {
 			t.Errorf("Unexpected bond height. Expected %v, got %v",
-				state.LastBlockHeight, acc1Val.BondHeight)
+				state.LastBlockHeight, acc0Val.BondHeight)
 		}
-		if acc1Val.VotingPower != acc1.Balance {
+		if acc0Val.VotingPower != 1 {
 			t.Errorf("Unexpected voting power. Expected %v, got %v",
-				acc1Val.VotingPower, acc1.Balance)
+				acc0Val.VotingPower, acc0.Balance)
 		}
-		if acc1Val.Accum != 0 {
+		if acc0Val.Accum != 0 {
 			t.Errorf("Unexpected accum. Expected 0, got %v",
-				acc1Val.Accum)
+				acc0Val.Accum)
 		}
 	}
 

@@ -22,9 +22,9 @@ import (
 // TODO: consider validator Accum overflow
 // TODO: replace validators []*Validator with github.com/jaekwon/go-ibbs?
 type ValidatorSet struct {
-	validators []*Validator
+	Validators []*Validator // NOTE: persisted via reflect, must be exported.
 
-	// cache
+	// cached (unexported)
 	proposer         *Validator
 	totalVotingPower uint64
 }
@@ -36,7 +36,7 @@ func NewValidatorSet(vals []*Validator) *ValidatorSet {
 	}
 	sort.Sort(ValidatorsByAddress(validators))
 	return &ValidatorSet{
-		validators: validators,
+		Validators: validators,
 	}
 }
 
@@ -45,7 +45,7 @@ func (valSet *ValidatorSet) IncrementAccum(times uint) {
 
 	// Add VotingPower * times to each validator and order into heap.
 	validatorsHeap := NewHeap()
-	for _, val := range valSet.validators {
+	for _, val := range valSet.Validators {
 		val.Accum += int64(val.VotingPower) * int64(times) // TODO: mind overflow
 		validatorsHeap.Push(val, accumComparable(val.Accum))
 	}
@@ -62,48 +62,48 @@ func (valSet *ValidatorSet) IncrementAccum(times uint) {
 }
 
 func (valSet *ValidatorSet) Copy() *ValidatorSet {
-	validators := make([]*Validator, len(valSet.validators))
-	for i, val := range valSet.validators {
+	validators := make([]*Validator, len(valSet.Validators))
+	for i, val := range valSet.Validators {
 		// NOTE: must copy, since IncrementAccum updates in place.
 		validators[i] = val.Copy()
 	}
 	return &ValidatorSet{
-		validators:       validators,
+		Validators:       validators,
 		proposer:         valSet.proposer,
 		totalVotingPower: valSet.totalVotingPower,
 	}
 }
 
 func (valSet *ValidatorSet) HasAddress(address []byte) bool {
-	idx := sort.Search(len(valSet.validators), func(i int) bool {
-		return bytes.Compare(address, valSet.validators[i].Address) <= 0
+	idx := sort.Search(len(valSet.Validators), func(i int) bool {
+		return bytes.Compare(address, valSet.Validators[i].Address) <= 0
 	})
-	return idx != len(valSet.validators) && bytes.Compare(valSet.validators[idx].Address, address) == 0
+	return idx != len(valSet.Validators) && bytes.Compare(valSet.Validators[idx].Address, address) == 0
 }
 
 func (valSet *ValidatorSet) GetByAddress(address []byte) (index uint, val *Validator) {
-	idx := sort.Search(len(valSet.validators), func(i int) bool {
-		return bytes.Compare(address, valSet.validators[i].Address) <= 0
+	idx := sort.Search(len(valSet.Validators), func(i int) bool {
+		return bytes.Compare(address, valSet.Validators[i].Address) <= 0
 	})
-	if idx != len(valSet.validators) && bytes.Compare(valSet.validators[idx].Address, address) == 0 {
-		return uint(idx), valSet.validators[idx].Copy()
+	if idx != len(valSet.Validators) && bytes.Compare(valSet.Validators[idx].Address, address) == 0 {
+		return uint(idx), valSet.Validators[idx].Copy()
 	} else {
 		return 0, nil
 	}
 }
 
 func (valSet *ValidatorSet) GetByIndex(index uint) (address []byte, val *Validator) {
-	val = valSet.validators[index]
+	val = valSet.Validators[index]
 	return val.Address, val.Copy()
 }
 
 func (valSet *ValidatorSet) Size() uint {
-	return uint(len(valSet.validators))
+	return uint(len(valSet.Validators))
 }
 
 func (valSet *ValidatorSet) TotalVotingPower() uint64 {
 	if valSet.totalVotingPower == 0 {
-		for _, val := range valSet.validators {
+		for _, val := range valSet.Validators {
 			valSet.totalVotingPower += val.VotingPower
 		}
 	}
@@ -112,7 +112,7 @@ func (valSet *ValidatorSet) TotalVotingPower() uint64 {
 
 func (valSet *ValidatorSet) Proposer() (proposer *Validator) {
 	if valSet.proposer == nil {
-		for _, val := range valSet.validators {
+		for _, val := range valSet.Validators {
 			valSet.proposer = valSet.proposer.CompareAccum(val)
 		}
 	}
@@ -120,11 +120,11 @@ func (valSet *ValidatorSet) Proposer() (proposer *Validator) {
 }
 
 func (valSet *ValidatorSet) Hash() []byte {
-	if len(valSet.validators) == 0 {
+	if len(valSet.Validators) == 0 {
 		return nil
 	}
-	hashables := make([]merkle.Hashable, len(valSet.validators))
-	for i, val := range valSet.validators {
+	hashables := make([]merkle.Hashable, len(valSet.Validators))
+	for i, val := range valSet.Validators {
 		hashables[i] = val
 	}
 	return merkle.HashFromHashables(hashables)
@@ -132,21 +132,21 @@ func (valSet *ValidatorSet) Hash() []byte {
 
 func (valSet *ValidatorSet) Add(val *Validator) (added bool) {
 	val = val.Copy()
-	idx := sort.Search(len(valSet.validators), func(i int) bool {
-		return bytes.Compare(val.Address, valSet.validators[i].Address) <= 0
+	idx := sort.Search(len(valSet.Validators), func(i int) bool {
+		return bytes.Compare(val.Address, valSet.Validators[i].Address) <= 0
 	})
-	if idx == len(valSet.validators) {
-		valSet.validators = append(valSet.validators, val)
+	if idx == len(valSet.Validators) {
+		valSet.Validators = append(valSet.Validators, val)
 		// Invalidate cache
 		valSet.proposer = nil
 		valSet.totalVotingPower = 0
 		return true
-	} else if bytes.Compare(valSet.validators[idx].Address, val.Address) == 0 {
+	} else if bytes.Compare(valSet.Validators[idx].Address, val.Address) == 0 {
 		return false
 	} else {
-		newValidators := append(valSet.validators[:idx], val)
-		newValidators = append(newValidators, valSet.validators[idx:]...)
-		valSet.validators = newValidators
+		newValidators := append(valSet.Validators[:idx], val)
+		newValidators = append(newValidators, valSet.Validators[idx:]...)
+		valSet.Validators = newValidators
 		// Invalidate cache
 		valSet.proposer = nil
 		valSet.totalVotingPower = 0
@@ -159,7 +159,7 @@ func (valSet *ValidatorSet) Update(val *Validator) (updated bool) {
 	if sameVal == nil {
 		return false
 	} else {
-		valSet.validators[index] = val.Copy()
+		valSet.Validators[index] = val.Copy()
 		// Invalidate cache
 		valSet.proposer = nil
 		valSet.totalVotingPower = 0
@@ -168,18 +168,18 @@ func (valSet *ValidatorSet) Update(val *Validator) (updated bool) {
 }
 
 func (valSet *ValidatorSet) Remove(address []byte) (val *Validator, removed bool) {
-	idx := sort.Search(len(valSet.validators), func(i int) bool {
-		return bytes.Compare(address, valSet.validators[i].Address) <= 0
+	idx := sort.Search(len(valSet.Validators), func(i int) bool {
+		return bytes.Compare(address, valSet.Validators[i].Address) <= 0
 	})
-	if idx == len(valSet.validators) || bytes.Compare(valSet.validators[idx].Address, address) != 0 {
+	if idx == len(valSet.Validators) || bytes.Compare(valSet.Validators[idx].Address, address) != 0 {
 		return nil, false
 	} else {
-		removedVal := valSet.validators[idx]
-		newValidators := valSet.validators[:idx]
-		if idx+1 < len(valSet.validators) {
-			newValidators = append(newValidators, valSet.validators[idx+1:]...)
+		removedVal := valSet.Validators[idx]
+		newValidators := valSet.Validators[:idx]
+		if idx+1 < len(valSet.Validators) {
+			newValidators = append(newValidators, valSet.Validators[idx+1:]...)
 		}
-		valSet.validators = newValidators
+		valSet.Validators = newValidators
 		// Invalidate cache
 		valSet.proposer = nil
 		valSet.totalVotingPower = 0
@@ -188,7 +188,7 @@ func (valSet *ValidatorSet) Remove(address []byte) (val *Validator, removed bool
 }
 
 func (valSet *ValidatorSet) Iterate(fn func(index uint, val *Validator) bool) {
-	for i, val := range valSet.validators {
+	for i, val := range valSet.Validators {
 		stop := fn(uint(i), val.Copy())
 		if stop {
 			break
@@ -244,5 +244,5 @@ type accumComparable uint64
 
 // We want to find the validator with the greatest accum.
 func (ac accumComparable) Less(o interface{}) bool {
-	return uint64(ac) > o.(uint64)
+	return uint64(ac) > uint64(o.(accumComparable))
 }

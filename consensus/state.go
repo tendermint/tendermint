@@ -62,9 +62,10 @@ import (
 
 	. "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/binary"
-	. "github.com/tendermint/tendermint/blocks"
+	. "github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/common"
 	. "github.com/tendermint/tendermint/config"
+	. "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/state"
 )
@@ -126,7 +127,7 @@ type RoundState struct {
 	Precommits         *VoteSet
 	Commits            *VoteSet
 	LastCommits        *VoteSet
-	PrivValidator      *PrivValidator
+	PrivValidator      *state.PrivValidator
 }
 
 func (rs *RoundState) String() string {
@@ -469,7 +470,7 @@ func (cs *ConsensusState) setupNewRound(round uint) {
 	cs.Precommits.AddFromCommits(cs.Commits)
 }
 
-func (cs *ConsensusState) SetPrivValidator(priv *PrivValidator) {
+func (cs *ConsensusState) SetPrivValidator(priv *state.PrivValidator) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	cs.PrivValidator = priv

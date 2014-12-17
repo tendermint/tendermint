@@ -13,7 +13,7 @@ func ReadBinary(o interface{}, r io.Reader, n *int64, err *error) interface{} {
 	} else {
 		ptrRv := reflect.New(rt)
 		readReflect(ptrRv.Elem(), rt, r, n, err)
-		return ptrRv.Elem()
+		return ptrRv.Elem().Interface()
 	}
 }
 

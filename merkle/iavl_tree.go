@@ -120,6 +120,9 @@ func (t *IAVLTree) Save() []byte {
 }
 
 func (t *IAVLTree) Load(hash []byte) {
+	if len(hash) == 0 {
+		panic("IAVLTree.Load() hash was nil")
+	}
 	t.root = t.ndb.GetNode(t, hash)
 }
 

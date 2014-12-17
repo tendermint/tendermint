@@ -7,7 +7,7 @@ import (
 
 	. "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/binary"
-	. "github.com/tendermint/tendermint/blocks"
+	. "github.com/tendermint/tendermint/block"
 )
 
 // Persistent static data for each Validator
@@ -16,6 +16,7 @@ type ValidatorInfo struct {
 	PubKey          PubKeyEd25519
 	UnbondTo        []*TxOutput
 	FirstBondHeight uint
+	FirstBondAmount uint64
 
 	// If destroyed:
 	DestroyedHeight uint

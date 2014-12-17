@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/consensus"
+	"github.com/tendermint/tendermint/state"
 )
 
 func gen_validator() {
@@ -17,7 +17,7 @@ func gen_validator() {
 	}
 
 	// Generate private validator
-	privValidator := consensus.GenPrivValidator()
+	privValidator := state.GenPrivValidator()
 	privValidator.Save()
 	fmt.Printf("Generated a new validator at %v\n", filename)
 }
