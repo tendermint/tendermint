@@ -23,7 +23,7 @@ func signAddPOLVoteSignature(val *state.PrivValidator, valSet *state.ValidatorSe
 
 func TestVerifyVotes(t *testing.T) {
 	height, round := uint(1), uint(0)
-	_, valSet, privValidators := makeVoteSet(height, round, VoteTypePrevote, 10, 1)
+	_, valSet, privValidators := randVoteSet(height, round, VoteTypePrevote, 10, 1)
 
 	// Make a POL with -2/3 votes.
 	blockHash := RandBytes(32)
@@ -54,7 +54,7 @@ func TestVerifyVotes(t *testing.T) {
 
 func TestVerifyInvalidVote(t *testing.T) {
 	height, round := uint(1), uint(0)
-	_, valSet, privValidators := makeVoteSet(height, round, VoteTypePrevote, 10, 1)
+	_, valSet, privValidators := randVoteSet(height, round, VoteTypePrevote, 10, 1)
 
 	// Make a POL with +2/3 votes with the wrong signature.
 	blockHash := RandBytes(32)
@@ -78,7 +78,7 @@ func TestVerifyInvalidVote(t *testing.T) {
 
 func TestVerifyCommits(t *testing.T) {
 	height, round := uint(1), uint(2)
-	_, valSet, privValidators := makeVoteSet(height, round, VoteTypePrevote, 10, 1)
+	_, valSet, privValidators := randVoteSet(height, round, VoteTypePrevote, 10, 1)
 
 	// Make a POL with +2/3 votes.
 	blockHash := RandBytes(32)
@@ -101,7 +101,7 @@ func TestVerifyCommits(t *testing.T) {
 
 func TestVerifyInvalidCommits(t *testing.T) {
 	height, round := uint(1), uint(2)
-	_, valSet, privValidators := makeVoteSet(height, round, VoteTypePrevote, 10, 1)
+	_, valSet, privValidators := randVoteSet(height, round, VoteTypePrevote, 10, 1)
 
 	// Make a POL with +2/3 votes with the wrong signature.
 	blockHash := RandBytes(32)
@@ -125,7 +125,7 @@ func TestVerifyInvalidCommits(t *testing.T) {
 
 func TestVerifyInvalidCommitRounds(t *testing.T) {
 	height, round := uint(1), uint(2)
-	_, valSet, privValidators := makeVoteSet(height, round, VoteTypePrevote, 10, 1)
+	_, valSet, privValidators := randVoteSet(height, round, VoteTypePrevote, 10, 1)
 
 	// Make a POL with +2/3 commits for the current round.
 	blockHash := RandBytes(32)
@@ -148,7 +148,7 @@ func TestVerifyInvalidCommitRounds(t *testing.T) {
 
 func TestVerifyInvalidCommitRounds2(t *testing.T) {
 	height, round := uint(1), uint(2)
-	_, valSet, privValidators := makeVoteSet(height, round, VoteTypePrevote, 10, 1)
+	_, valSet, privValidators := randVoteSet(height, round, VoteTypePrevote, 10, 1)
 
 	// Make a POL with +2/3 commits for future round.
 	blockHash := RandBytes(32)
@@ -172,7 +172,7 @@ func TestVerifyInvalidCommitRounds2(t *testing.T) {
 
 func TestReadWrite(t *testing.T) {
 	height, round := uint(1), uint(2)
-	_, valSet, privValidators := makeVoteSet(height, round, VoteTypePrevote, 10, 1)
+	_, valSet, privValidators := randVoteSet(height, round, VoteTypePrevote, 10, 1)
 
 	// Make a POL with +2/3 votes.
 	blockHash := RandBytes(32)

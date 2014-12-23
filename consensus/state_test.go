@@ -8,7 +8,7 @@ import (
 )
 
 func TestSetupRound(t *testing.T) {
-	cs, privValidators := makeConsensusState()
+	cs, privValidators := randConsensusState()
 	val0 := privValidators[0]
 
 	// Add a vote, precommit, and commit by val0.
@@ -50,7 +50,7 @@ func TestSetupRound(t *testing.T) {
 }
 
 func TestRunActionProposeNoPrivValidator(t *testing.T) {
-	cs, _ := makeConsensusState()
+	cs, _ := randConsensusState()
 	cs.RunActionPropose(1, 0)
 	rs := cs.GetRoundState()
 	if rs.Proposal != nil {
@@ -59,7 +59,7 @@ func TestRunActionProposeNoPrivValidator(t *testing.T) {
 }
 
 func TestRunActionPropose(t *testing.T) {
-	cs, privValidators := makeConsensusState()
+	cs, privValidators := randConsensusState()
 	val0 := privValidators[0]
 	cs.SetPrivValidator(val0)
 
@@ -92,7 +92,7 @@ func checkRoundState(t *testing.T, rs *RoundState,
 }
 
 func TestRunActionPrecommitCommitFinalize(t *testing.T) {
-	cs, privValidators := makeConsensusState()
+	cs, privValidators := randConsensusState()
 	val0 := privValidators[0]
 	cs.SetPrivValidator(val0)
 

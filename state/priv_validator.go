@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math"
+	"sync"
 
 	. "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/binary"
@@ -52,6 +53,7 @@ type PrivValidator struct {
 	// For persistence.
 	// Overloaded for testing.
 	filename string
+	mtx      sync.Mutex
 }
 
 // Generates a new validator with private key.
@@ -118,6 +120,12 @@ func LoadPrivValidator() *PrivValidator {
 }
 
 func (privVal *PrivValidator) Save() {
+	privVal.mtx.Lock()
+	defer privVal.mtx.Unlock()
+	privVal.save()
+}
+
+func (privVal *PrivValidator) save() {
 	privValJSON := PrivValidatorJSON{
 		Address:    base64.StdEncoding.EncodeToString(privVal.Address),
 		PubKey:     base64.StdEncoding.EncodeToString(BinaryBytes(privVal.PubKey)),
@@ -138,6 +146,8 @@ func (privVal *PrivValidator) Save() {
 
 // TODO: test
 func (privVal *PrivValidator) SignVote(vote *Vote) SignatureEd25519 {
+	privVal.mtx.Lock()
+	defer privVal.mtx.Unlock()
 
 	// If height regression, panic
 	if privVal.LastHeight > vote.Height {
@@ -163,7 +173,7 @@ func (privVal *PrivValidator) SignVote(vote *Vote) SignatureEd25519 {
 	privVal.LastHeight = vote.Height
 	privVal.LastRound = vote.Round
 	privVal.LastStep = voteToStep(vote)
-	privVal.Save()
+	privVal.save()
 
 	// Sign
 	return privVal.SignVoteUnsafe(vote)
@@ -174,6 +184,8 @@ func (privVal *PrivValidator) SignVoteUnsafe(vote *Vote) SignatureEd25519 {
 }
 
 func (privVal *PrivValidator) SignProposal(proposal *Proposal) SignatureEd25519 {
+	privVal.mtx.Lock()
+	defer privVal.mtx.Unlock()
 	if privVal.LastHeight < proposal.Height ||
 		privVal.LastHeight == proposal.Height && privVal.LastRound < proposal.Round ||
 		privVal.LastHeight == 0 && privVal.LastRound == 0 && privVal.LastStep == stepNone {
@@ -182,7 +194,7 @@ func (privVal *PrivValidator) SignProposal(proposal *Proposal) SignatureEd25519 
 		privVal.LastHeight = proposal.Height
 		privVal.LastRound = proposal.Round
 		privVal.LastStep = stepPropose
-		privVal.Save()
+		privVal.save()
 
 		// Sign
 		return privVal.PrivKey.Sign(SignBytes(proposal)).(SignatureEd25519)
@@ -192,13 +204,15 @@ func (privVal *PrivValidator) SignProposal(proposal *Proposal) SignatureEd25519 
 }
 
 func (privVal *PrivValidator) SignRebondTx(rebondTx *RebondTx) SignatureEd25519 {
+	privVal.mtx.Lock()
+	defer privVal.mtx.Unlock()
 	if privVal.LastHeight < rebondTx.Height {
 
 		// Persist height/round/step
 		privVal.LastHeight = rebondTx.Height
 		privVal.LastRound = math.MaxUint64 // We can't do anything else for this rebondTx.Height.
 		privVal.LastStep = math.MaxUint8
-		privVal.Save()
+		privVal.save()
 
 		// Sign
 		return privVal.PrivKey.Sign(SignBytes(rebondTx)).(SignatureEd25519)
