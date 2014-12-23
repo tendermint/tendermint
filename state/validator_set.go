@@ -197,10 +197,10 @@ func (valSet *ValidatorSet) Iterate(fn func(index uint, val *Validator) bool) {
 }
 
 func (valSet *ValidatorSet) String() string {
-	return valSet.StringWithIndent("")
+	return valSet.StringIndented("")
 }
 
-func (valSet *ValidatorSet) StringWithIndent(indent string) string {
+func (valSet *ValidatorSet) StringIndented(indent string) string {
 	valStrings := []string{}
 	valSet.Iterate(func(index uint, val *Validator) bool {
 		valStrings = append(valStrings, val.String())

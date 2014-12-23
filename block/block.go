@@ -28,20 +28,25 @@ type Block struct {
 func (b *Block) ValidateBasic(lastBlockHeight uint, lastBlockHash []byte,
 	lastBlockParts PartSetHeader, lastBlockTime time.Time) error {
 	if b.Network != Config.Network {
-		return errors.New("Invalid block network")
+		return errors.New("Wrong Block.Header.Network")
 	}
 	if b.Height != lastBlockHeight+1 {
-		return errors.New("Invalid block height")
+		return errors.New("Wrong Block.Header.Height")
+	}
+	if b.NumTxs != uint(len(b.Data.Txs)) {
+		return errors.New("Wrong Block.Header.NumTxs")
 	}
 	if !bytes.Equal(b.LastBlockHash, lastBlockHash) {
-		return errors.New("Invalid block hash")
+		return errors.New("Wrong Block.Header.LastBlockHash")
 	}
 	if !b.LastBlockParts.Equals(lastBlockParts) {
-		return errors.New("Invalid block parts header")
+		return errors.New("Wrong Block.Header.LastBlockParts")
 	}
-	if !b.Time.After(lastBlockTime) {
-		return errors.New("Invalid block time")
-	}
+	/*	TODO: Determine bounds.
+		if !b.Time.After(lastBlockTime) {
+			return errors.New("Invalid Block.Header.Time")
+		}
+	*/
 	if b.Header.Height != 1 {
 		if err := b.Validation.ValidateBasic(); err != nil {
 			return err
@@ -78,22 +83,22 @@ func (b *Block) HashesTo(hash []byte) bool {
 }
 
 func (b *Block) String() string {
-	return b.StringWithIndent("")
+	return b.StringIndented("")
 }
 
-func (b *Block) StringWithIndent(indent string) string {
+func (b *Block) StringIndented(indent string) string {
 	return fmt.Sprintf(`Block{
 %s  %v
 %s  %v
 %s  %v
 %s}#%X`,
-		indent, b.Header.StringWithIndent(indent+"  "),
-		indent, b.Validation.StringWithIndent(indent+"  "),
-		indent, b.Data.StringWithIndent(indent+"  "),
+		indent, b.Header.StringIndented(indent+"  "),
+		indent, b.Validation.StringIndented(indent+"  "),
+		indent, b.Data.StringIndented(indent+"  "),
 		indent, b.hash)
 }
 
-func (b *Block) Description() string {
+func (b *Block) StringShort() string {
 	if b == nil {
 		return "nil-Block"
 	} else {
@@ -108,6 +113,7 @@ type Header struct {
 	Height         uint
 	Time           time.Time
 	Fees           uint64
+	NumTxs         uint
 	LastBlockHash  []byte
 	LastBlockParts PartSetHeader
 	StateHash      []byte
@@ -128,12 +134,13 @@ func (h *Header) Hash() []byte {
 	return h.hash
 }
 
-func (h *Header) StringWithIndent(indent string) string {
+func (h *Header) StringIndented(indent string) string {
 	return fmt.Sprintf(`Header{
 %s  Network:        %v
 %s  Height:         %v
 %s  Time:           %v
 %s  Fees:           %v
+%s  NumTxs:			%v
 %s  LastBlockHash:  %X
 %s  LastBlockParts: %v
 %s  StateHash:      %X
@@ -142,6 +149,7 @@ func (h *Header) StringWithIndent(indent string) string {
 		indent, h.Height,
 		indent, h.Time,
 		indent, h.Fees,
+		indent, h.NumTxs,
 		indent, h.LastBlockHash,
 		indent, h.LastBlockParts,
 		indent, h.StateHash,
@@ -166,8 +174,8 @@ func (commit Commit) String() string {
 
 //-------------------------------------
 
-// NOTE: The Commits are in order of address to preserve the active ValidatorSet order.
-// Any peer with a block can gossip commits by index with a peer catching up without recalculating the
+// NOTE: The Commits are in order of address to preserve the bonded ValidatorSet order.
+// Any peer with a block can gossip commits by index with a peer without recalculating the
 // active ValidatorSet.
 type Validation struct {
 	Commits []Commit // Commits (or nil) of all active validators in address order.
@@ -212,7 +220,7 @@ func (v *Validation) Hash() []byte {
 	return v.hash
 }
 
-func (v *Validation) StringWithIndent(indent string) string {
+func (v *Validation) StringIndented(indent string) string {
 	commitStrings := make([]string, len(v.Commits))
 	for i, commit := range v.Commits {
 		commitStrings[i] = commit.String()
@@ -254,7 +262,7 @@ func (data *Data) Hash() []byte {
 	return data.hash
 }
 
-func (data *Data) StringWithIndent(indent string) string {
+func (data *Data) StringIndented(indent string) string {
 	txStrings := make([]string, len(data.Txs))
 	for i, tx := range data.Txs {
 		txStrings[i] = fmt.Sprintf("Tx:%v", tx)

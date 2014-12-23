@@ -139,10 +139,10 @@ func (bA BitArray) PickRandom() (uint, bool) {
 }
 
 func (bA BitArray) String() string {
-	return bA.StringWithIndent("")
+	return bA.StringIndented("")
 }
 
-func (bA BitArray) StringWithIndent(indent string) string {
+func (bA BitArray) StringIndented(indent string) string {
 	lines := []string{}
 	bits := ""
 	for i := uint(0); i < bA.Bits; i++ {

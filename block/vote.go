@@ -10,12 +10,6 @@ import (
 	. "github.com/tendermint/tendermint/common"
 )
 
-const (
-	VoteTypePrevote   = byte(0x00)
-	VoteTypePrecommit = byte(0x01)
-	VoteTypeCommit    = byte(0x02)
-)
-
 var (
 	ErrVoteUnexpectedStep       = errors.New("Unexpected step")
 	ErrVoteInvalidAccount       = errors.New("Invalid round vote account")
@@ -24,7 +18,7 @@ var (
 	ErrVoteConflictingSignature = errors.New("Conflicting round vote signature")
 )
 
-// Represents a prevote, precommit, or commit vote for proposals from validators.
+// Represents a prevote, precommit, or commit vote from validators for consensus.
 // Commit votes get aggregated into the next block's Validaiton.
 // See the whitepaper for details.
 type Vote struct {
@@ -35,6 +29,13 @@ type Vote struct {
 	BlockParts PartSetHeader // zero if vote is nil.
 	Signature  SignatureEd25519
 }
+
+// Types of votes
+const (
+	VoteTypePrevote   = byte(0x00)
+	VoteTypePrecommit = byte(0x01)
+	VoteTypeCommit    = byte(0x02)
+)
 
 func (vote *Vote) WriteSignBytes(w io.Writer, n *int64, err *error) {
 	WriteUvarint(vote.Height, w, n, err)

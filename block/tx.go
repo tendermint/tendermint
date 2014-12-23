@@ -10,21 +10,31 @@ import (
 	. "github.com/tendermint/tendermint/common"
 )
 
+var (
+	ErrTxInvalidAddress    = errors.New("Error invalid address")
+	ErrTxDuplicateAddress  = errors.New("Error duplicate address")
+	ErrTxInvalidAmount     = errors.New("Error invalid amount")
+	ErrTxInsufficientFunds = errors.New("Error insufficient funds")
+	ErrTxInvalidSignature  = errors.New("Error invalid signature")
+	ErrTxInvalidSequence   = errors.New("Error invalid sequence")
+)
+
 /*
 Tx (Transaction) is an atomic operation on the ledger state.
 
 Account Txs:
-1. SendTx			Send coins to address
+ - SendTx         Send coins to address
 
 Validation Txs:
-1. BondTx         New validator posts a bond
-2. UnbondTx       Validator leaves
-3. DupeoutTx      Validator dupes out (equivocates)
+ - BondTx         New validator posts a bond
+ - UnbondTx       Validator leaves
+ - DupeoutTx      Validator dupes out (equivocates)
 */
 type Tx interface {
 	WriteSignBytes(w io.Writer, n *int64, err *error)
 }
 
+// Types of Tx implementations
 const (
 	// Account transactions
 	TxTypeSend = byte(0x01)
@@ -36,14 +46,8 @@ const (
 	TxTypeDupeout = byte(0x14)
 )
 
-var (
-	ErrTxInvalidAddress    = errors.New("Error invalid address")
-	ErrTxDuplicateAddress  = errors.New("Error duplicate address")
-	ErrTxInvalidAmount     = errors.New("Error invalid amount")
-	ErrTxInsufficientFunds = errors.New("Error insufficient funds")
-	ErrTxInvalidSignature  = errors.New("Error invalid signature")
-	ErrTxInvalidSequence   = errors.New("Error invalid sequence")
-)
+//-------------------------------------
+// for binary.readReflect
 
 func TxDecoder(r io.Reader, n *int64, err *error) interface{} {
 	switch t := ReadByte(r, n, err); t {

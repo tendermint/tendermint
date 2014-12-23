@@ -46,10 +46,10 @@ func (part *Part) Hash() []byte {
 }
 
 func (part *Part) String() string {
-	return part.StringWithIndent("")
+	return part.StringIndented("")
 }
 
-func (part *Part) StringWithIndent(indent string) string {
+func (part *Part) StringIndented(indent string) string {
 	trailStrings := make([]string, len(part.Trail))
 	for i, hash := range part.Trail {
 		trailStrings[i] = fmt.Sprintf("%X", hash)
@@ -96,8 +96,8 @@ type PartSet struct {
 	count         uint
 }
 
-// Returns an immutable, full PartSet.
-// TODO Name is confusing, Data/Header clash with Block.Data/Header
+// Returns an immutable, full PartSet from the data bytes.
+// The data bytes are split into "partSize" chunks, and merkle tree computed.
 func NewPartSetFromData(data []byte) *PartSet {
 	// divide data into 4kb parts.
 	total := (len(data) + partSize - 1) / partSize
@@ -128,7 +128,6 @@ func NewPartSetFromData(data []byte) *PartSet {
 }
 
 // Returns an empty PartSet ready to be populated.
-// TODO Name is confusing, Data/Header clash with Block.Data/Header
 func NewPartSetFromHeader(header PartSetHeader) *PartSet {
 	return &PartSet{
 		total:         header.Total,
@@ -239,7 +238,7 @@ func (ps *PartSet) GetReader() io.Reader {
 	return bytes.NewReader(buf)
 }
 
-func (ps *PartSet) Description() string {
+func (ps *PartSet) StringShort() string {
 	if ps == nil {
 		return "nil-PartSet"
 	} else {

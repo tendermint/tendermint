@@ -59,6 +59,7 @@ func TestGenesisSaveLoad(t *testing.T) {
 			Height:         1,
 			Time:           s0.LastBlockTime.Add(time.Minute),
 			Fees:           0,
+			NumTxs:         0,
 			LastBlockHash:  s0.LastBlockHash,
 			LastBlockParts: s0.LastBlockParts,
 			StateHash:      nil,

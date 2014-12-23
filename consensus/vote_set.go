@@ -247,14 +247,14 @@ func (voteSet *VoteSet) MakeValidation() *Validation {
 }
 
 func (voteSet *VoteSet) String() string {
-	return voteSet.StringWithIndent("")
+	return voteSet.StringIndented("")
 }
 
-func (voteSet *VoteSet) StringWithIndent(indent string) string {
+func (voteSet *VoteSet) StringIndented(indent string) string {
 	voteStrings := make([]string, len(voteSet.votes))
 	for i, vote := range voteSet.votes {
 		if vote == nil {
-			voteStrings[i] = "nil"
+			voteStrings[i] = "nil-Vote"
 		} else {
 			voteStrings[i] = vote.String()
 		}
@@ -270,7 +270,7 @@ func (voteSet *VoteSet) StringWithIndent(indent string) string {
 		indent)
 }
 
-func (voteSet *VoteSet) Description() string {
+func (voteSet *VoteSet) StringShort() string {
 	if voteSet == nil {
 		return "nil-VoteSet"
 	}

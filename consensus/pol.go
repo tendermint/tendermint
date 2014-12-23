@@ -86,7 +86,7 @@ func (pol *POL) Verify(valSet *state.ValidatorSet) error {
 
 }
 
-func (pol *POL) Description() string {
+func (pol *POL) StringShort() string {
 	if pol == nil {
 		return "nil-POL"
 	} else {

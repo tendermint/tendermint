@@ -131,10 +131,10 @@ type RoundState struct {
 }
 
 func (rs *RoundState) String() string {
-	return rs.StringWithIndent("")
+	return rs.StringIndented("")
 }
 
-func (rs *RoundState) StringWithIndent(indent string) string {
+func (rs *RoundState) StringIndented(indent string) string {
 	return fmt.Sprintf(`RoundState{
 %s  H:%v R:%v S:%v
 %s  StartTime:     %v
@@ -153,20 +153,20 @@ func (rs *RoundState) StringWithIndent(indent string) string {
 		indent, rs.Height, rs.Round, rs.Step,
 		indent, rs.StartTime,
 		indent, rs.CommitTime,
-		indent, rs.Validators.StringWithIndent(indent+"    "),
+		indent, rs.Validators.StringIndented(indent+"    "),
 		indent, rs.Proposal,
-		indent, rs.ProposalBlockParts.Description(), rs.ProposalBlock.Description(),
-		indent, rs.ProposalPOLParts.Description(), rs.ProposalPOL.Description(),
-		indent, rs.LockedBlockParts.Description(), rs.LockedBlock.Description(),
-		indent, rs.LockedPOL.Description(),
-		indent, rs.Prevotes.StringWithIndent(indent+"    "),
-		indent, rs.Precommits.StringWithIndent(indent+"    "),
-		indent, rs.Commits.StringWithIndent(indent+"    "),
-		indent, rs.LastCommits.Description(),
+		indent, rs.ProposalBlockParts.StringShort(), rs.ProposalBlock.StringShort(),
+		indent, rs.ProposalPOLParts.StringShort(), rs.ProposalPOL.StringShort(),
+		indent, rs.LockedBlockParts.StringShort(), rs.LockedBlock.StringShort(),
+		indent, rs.LockedPOL.StringShort(),
+		indent, rs.Prevotes.StringIndented(indent+"    "),
+		indent, rs.Precommits.StringIndented(indent+"    "),
+		indent, rs.Commits.StringIndented(indent+"    "),
+		indent, rs.LastCommits.StringShort(),
 		indent)
 }
 
-func (rs *RoundState) Description() string {
+func (rs *RoundState) StringShort() string {
 	return fmt.Sprintf(`RS{%v/%v/%X %v}`,
 		rs.Height, rs.Round, rs.Step, rs.StartTime)
 }
@@ -306,7 +306,7 @@ ACTION_LOOP:
 
 		height, round, action := roundAction.Height, roundAction.Round, roundAction.Action
 		rs := cs.GetRoundState()
-		log.Info("Running round action A:%X %v", action, rs.Description())
+		log.Info("Running round action A:%X %v", action, rs.StringShort())
 
 		// Continue if action is not relevant
 		if height != rs.Height {
@@ -545,6 +545,7 @@ func (cs *ConsensusState) RunActionPropose(height uint, round uint) {
 				Height:         cs.Height,
 				Time:           time.Now(),
 				Fees:           0, // TODO fees
+				NumTxs:         uint(len(txs)),
 				LastBlockHash:  cs.state.LastBlockHash,
 				LastBlockParts: cs.state.LastBlockParts,
 				StateHash:      nil, // Will set afterwards.
