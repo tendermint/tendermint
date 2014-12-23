@@ -21,15 +21,15 @@ type Codec struct {
 const (
 	typeByte = byte(0x01)
 	typeInt8 = byte(0x02)
-	// typeUInt8     = byte(0x03)
+	// typeUint8     = byte(0x03)
 	typeInt16     = byte(0x04)
-	typeUInt16    = byte(0x05)
+	typeUint16    = byte(0x05)
 	typeInt32     = byte(0x06)
-	typeUInt32    = byte(0x07)
+	typeUint32    = byte(0x07)
 	typeInt64     = byte(0x08)
-	typeUInt64    = byte(0x09)
-	typeVarInt    = byte(0x0A)
-	typeUVarInt   = byte(0x0B)
+	typeUint64    = byte(0x09)
+	typeVarint    = byte(0x0A)
+	typeUvarint   = byte(0x0B)
 	typeString    = byte(0x10)
 	typeByteSlice = byte(0x11)
 	typeTime      = byte(0x20)
@@ -46,32 +46,32 @@ func BasicCodecEncoder(o interface{}, w io.Writer, n *int64, err *error) {
 		WriteByte(typeInt8, w, n, err)
 		WriteInt8(o.(int8), w, n, err)
 	//case uint8:
-	//	WriteByte( typeUInt8, w, n, err)
-	//	WriteUInt8( o.(uint8), w, n, err)
+	//	WriteByte( typeUint8, w, n, err)
+	//	WriteUint8( o.(uint8), w, n, err)
 	case int16:
 		WriteByte(typeInt16, w, n, err)
 		WriteInt16(o.(int16), w, n, err)
 	case uint16:
-		WriteByte(typeUInt16, w, n, err)
-		WriteUInt16(o.(uint16), w, n, err)
+		WriteByte(typeUint16, w, n, err)
+		WriteUint16(o.(uint16), w, n, err)
 	case int32:
 		WriteByte(typeInt32, w, n, err)
 		WriteInt32(o.(int32), w, n, err)
 	case uint32:
-		WriteByte(typeUInt32, w, n, err)
-		WriteUInt32(o.(uint32), w, n, err)
+		WriteByte(typeUint32, w, n, err)
+		WriteUint32(o.(uint32), w, n, err)
 	case int64:
 		WriteByte(typeInt64, w, n, err)
 		WriteInt64(o.(int64), w, n, err)
 	case uint64:
-		WriteByte(typeUInt64, w, n, err)
-		WriteUInt64(o.(uint64), w, n, err)
+		WriteByte(typeUint64, w, n, err)
+		WriteUint64(o.(uint64), w, n, err)
 	case int:
-		WriteByte(typeVarInt, w, n, err)
-		WriteVarInt(o.(int), w, n, err)
+		WriteByte(typeVarint, w, n, err)
+		WriteVarint(o.(int), w, n, err)
 	case uint:
-		WriteByte(typeUVarInt, w, n, err)
-		WriteUVarInt(o.(uint), w, n, err)
+		WriteByte(typeUvarint, w, n, err)
+		WriteUvarint(o.(uint), w, n, err)
 	case string:
 		WriteByte(typeString, w, n, err)
 		WriteString(o.(string), w, n, err)
@@ -93,24 +93,24 @@ func BasicCodecDecoder(r io.Reader, n *int64, err *error) (o interface{}) {
 		o = ReadByte(r, n, err)
 	case typeInt8:
 		o = ReadInt8(r, n, err)
-	//case typeUInt8:
-	//	o = ReadUInt8(r, n, err)
+	//case typeUint8:
+	//	o = ReadUint8(r, n, err)
 	case typeInt16:
 		o = ReadInt16(r, n, err)
-	case typeUInt16:
-		o = ReadUInt16(r, n, err)
+	case typeUint16:
+		o = ReadUint16(r, n, err)
 	case typeInt32:
 		o = ReadInt32(r, n, err)
-	case typeUInt32:
-		o = ReadUInt32(r, n, err)
+	case typeUint32:
+		o = ReadUint32(r, n, err)
 	case typeInt64:
 		o = ReadInt64(r, n, err)
-	case typeUInt64:
-		o = ReadUInt64(r, n, err)
-	case typeVarInt:
-		o = ReadVarInt(r, n, err)
-	case typeUVarInt:
-		o = ReadUVarInt(r, n, err)
+	case typeUint64:
+		o = ReadUint64(r, n, err)
+	case typeVarint:
+		o = ReadVarint(r, n, err)
+	case typeUvarint:
+		o = ReadUvarint(r, n, err)
 	case typeString:
 		o = ReadString(r, n, err)
 	case typeByteSlice:

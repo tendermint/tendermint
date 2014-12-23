@@ -55,7 +55,7 @@ func LoadState(db db_.DB) *State {
 		return nil
 	} else {
 		r, n, err := bytes.NewReader(buf), new(int64), new(error)
-		s.LastBlockHeight = ReadUVarInt(r, n, err)
+		s.LastBlockHeight = ReadUvarint(r, n, err)
 		s.LastBlockHash = ReadByteSlice(r, n, err)
 		s.LastBlockParts = ReadBinary(PartSetHeader{}, r, n, err).(PartSetHeader)
 		s.LastBlockTime = ReadTime(r, n, err)
@@ -80,7 +80,7 @@ func (s *State) Save() {
 	s.accounts.Save()
 	s.validatorInfos.Save()
 	buf, n, err := new(bytes.Buffer), new(int64), new(error)
-	WriteUVarInt(s.LastBlockHeight, buf, n, err)
+	WriteUvarint(s.LastBlockHeight, buf, n, err)
 	WriteByteSlice(s.LastBlockHash, buf, n, err)
 	WriteBinary(s.LastBlockParts, buf, n, err)
 	WriteTime(s.LastBlockTime, buf, n, err)

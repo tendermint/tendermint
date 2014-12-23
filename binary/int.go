@@ -28,13 +28,13 @@ func ReadInt8(r io.Reader, n *int64, err *error) int8 {
 	return int8(ReadByte(r, n, err))
 }
 
-// UInt8
+// Uint8
 
-func WriteUInt8(i uint8, w io.Writer, n *int64, err *error) {
+func WriteUint8(i uint8, w io.Writer, n *int64, err *error) {
 	WriteByte(byte(i), w, n, err)
 }
 
-func ReadUInt8(r io.Reader, n *int64, err *error) uint8 {
+func ReadUint8(r io.Reader, n *int64, err *error) uint8 {
 	return uint8(ReadByte(r, n, err))
 }
 
@@ -53,41 +53,41 @@ func ReadInt16(r io.Reader, n *int64, err *error) int16 {
 	return int16(binary.LittleEndian.Uint16(buf))
 }
 
-// UInt16
+// Uint16
 
-func WriteUInt16(i uint16, w io.Writer, n *int64, err *error) {
+func WriteUint16(i uint16, w io.Writer, n *int64, err *error) {
 	buf := make([]byte, 2)
 	binary.LittleEndian.PutUint16(buf, uint16(i))
 	*n += 2
 	WriteTo(buf, w, n, err)
 }
 
-func ReadUInt16(r io.Reader, n *int64, err *error) uint16 {
+func ReadUint16(r io.Reader, n *int64, err *error) uint16 {
 	buf := make([]byte, 2)
 	ReadFull(buf, r, n, err)
 	return uint16(binary.LittleEndian.Uint16(buf))
 }
 
-// []UInt16
+// []Uint16
 
-func WriteUInt16s(iz []uint16, w io.Writer, n *int64, err *error) {
-	WriteUInt32(uint32(len(iz)), w, n, err)
+func WriteUint16s(iz []uint16, w io.Writer, n *int64, err *error) {
+	WriteUint32(uint32(len(iz)), w, n, err)
 	for _, i := range iz {
-		WriteUInt16(i, w, n, err)
+		WriteUint16(i, w, n, err)
 		if *err != nil {
 			return
 		}
 	}
 }
 
-func ReadUInt16s(r io.Reader, n *int64, err *error) []uint16 {
-	length := ReadUInt32(r, n, err)
+func ReadUint16s(r io.Reader, n *int64, err *error) []uint16 {
+	length := ReadUint32(r, n, err)
 	if *err != nil {
 		return nil
 	}
 	iz := make([]uint16, length)
 	for j := uint32(0); j < length; j++ {
-		ii := ReadUInt16(r, n, err)
+		ii := ReadUint16(r, n, err)
 		if *err != nil {
 			return nil
 		}
@@ -111,16 +111,16 @@ func ReadInt32(r io.Reader, n *int64, err *error) int32 {
 	return int32(binary.LittleEndian.Uint32(buf))
 }
 
-// UInt32
+// Uint32
 
-func WriteUInt32(i uint32, w io.Writer, n *int64, err *error) {
+func WriteUint32(i uint32, w io.Writer, n *int64, err *error) {
 	buf := make([]byte, 4)
 	binary.LittleEndian.PutUint32(buf, uint32(i))
 	*n += 4
 	WriteTo(buf, w, n, err)
 }
 
-func ReadUInt32(r io.Reader, n *int64, err *error) uint32 {
+func ReadUint32(r io.Reader, n *int64, err *error) uint32 {
 	buf := make([]byte, 4)
 	ReadFull(buf, r, n, err)
 	return uint32(binary.LittleEndian.Uint32(buf))
@@ -141,47 +141,47 @@ func ReadInt64(r io.Reader, n *int64, err *error) int64 {
 	return int64(binary.LittleEndian.Uint64(buf))
 }
 
-// UInt64
+// Uint64
 
-func WriteUInt64(i uint64, w io.Writer, n *int64, err *error) {
+func WriteUint64(i uint64, w io.Writer, n *int64, err *error) {
 	buf := make([]byte, 8)
 	binary.LittleEndian.PutUint64(buf, uint64(i))
 	*n += 8
 	WriteTo(buf, w, n, err)
 }
 
-func ReadUInt64(r io.Reader, n *int64, err *error) uint64 {
+func ReadUint64(r io.Reader, n *int64, err *error) uint64 {
 	buf := make([]byte, 8)
 	ReadFull(buf, r, n, err)
 	return uint64(binary.LittleEndian.Uint64(buf))
 }
 
-// VarInt
+// Varint
 
-func WriteVarInt(i int, w io.Writer, n *int64, err *error) {
+func WriteVarint(i int, w io.Writer, n *int64, err *error) {
 	buf := make([]byte, 9)
 	n_ := int64(binary.PutVarint(buf, int64(i)))
 	*n += n_
 	WriteTo(buf[:n_], w, n, err)
 }
 
-func ReadVarInt(r io.Reader, n *int64, err *error) int {
+func ReadVarint(r io.Reader, n *int64, err *error) int {
 	res, n_, err_ := readVarint(r)
 	*n += n_
 	*err = err_
 	return int(res)
 }
 
-// UVarInt
+// Uvarint
 
-func WriteUVarInt(i uint, w io.Writer, n *int64, err *error) {
+func WriteUvarint(i uint, w io.Writer, n *int64, err *error) {
 	buf := make([]byte, 9)
 	n_ := int64(binary.PutUvarint(buf, uint64(i)))
 	*n += n_
 	WriteTo(buf[:n_], w, n, err)
 }
 
-func ReadUVarInt(r io.Reader, n *int64, err *error) uint {
+func ReadUvarint(r io.Reader, n *int64, err *error) uint {
 	res, n_, err_ := readUvarint(r)
 	*n += n_
 	*err = err_

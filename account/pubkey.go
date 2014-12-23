@@ -10,19 +10,20 @@ import (
 	. "github.com/tendermint/tendermint/common"
 )
 
-/*
-Each account has an PubKey which determines access to funds of the account.
-Transaction inputs include Signatures of the account's associated PubKey.
-*/
+// PubKey is part of Account and Validator.
 type PubKey interface {
 	Address() []byte
 	VerifyBytes(msg []byte, sig Signature) bool
 }
 
+// Types of PubKey implementations
 const (
-	PubKeyTypeUnknown = byte(0x00)
+	PubKeyTypeUnknown = byte(0x00) // For pay-to-pubkey-hash txs.
 	PubKeyTypeEd25519 = byte(0x01)
 )
+
+//-------------------------------------
+// for binary.readReflect
 
 func PubKeyDecoder(r io.Reader, n *int64, err *error) interface{} {
 	switch t := ReadByte(r, n, err); t {
@@ -43,6 +44,9 @@ var _ = RegisterType(&TypeInfo{
 
 //-------------------------------------
 
+// Implements PubKey
+// For pay-to-pubkey-hash txs, where the TxOutput PubKey
+// is not known in advance, only its hash (address).
 type PubKeyUnknown struct {
 	address []byte
 }
@@ -61,6 +65,7 @@ func (key PubKeyUnknown) VerifyBytes(msg []byte, sig_ Signature) bool {
 
 //-------------------------------------
 
+// Implements PubKey
 type PubKeyEd25519 struct {
 	PubKey []byte
 }

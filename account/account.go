@@ -8,10 +8,13 @@ import (
 	. "github.com/tendermint/tendermint/binary"
 )
 
+// Signable is an interface for all signable things.
+// It typically removes signatures before serializing.
 type Signable interface {
 	WriteSignBytes(w io.Writer, n *int64, err *error)
 }
 
+// SignBytes is a convenience method for getting the bytes to sign of a Signable.
 func SignBytes(o Signable) []byte {
 	buf, n, err := new(bytes.Buffer), new(int64), new(error)
 	o.WriteSignBytes(buf, n, err)
@@ -23,6 +26,9 @@ func SignBytes(o Signable) []byte {
 
 //-----------------------------------------------------------------------------
 
+// Account resides in the application state, and is mutated by transactions
+// on the blockchain.
+// Serialized by binary.[read|write]Reflect
 type Account struct {
 	Address  []byte
 	PubKey   PubKey

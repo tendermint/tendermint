@@ -8,17 +8,18 @@ import (
 	. "github.com/tendermint/tendermint/config"
 )
 
-var last int64 = 0
-var count int = 0
+var lastAlertUnix int64 = 0
+var alertCountSince int = 0
 
+// Sends a critical alert message to administrators.
 func Alert(message string) {
 	log.Error("<!> ALERT <!>\n" + message)
 	now := time.Now().Unix()
-	if now-last > int64(Config.Alert.MinInterval) {
+	if now-lastAlertUnix > int64(Config.Alert.MinInterval) {
 		message = fmt.Sprintf("%v:%v", Config.Network, message)
-		if count > 0 {
-			message = fmt.Sprintf("%v (+%v more since)", message, count)
-			count = 0
+		if alertCountSince > 0 {
+			message = fmt.Sprintf("%v (+%v more since)", message, alertCountSince)
+			alertCountSince = 0
 		}
 		if len(Config.Alert.TwilioSid) > 0 {
 			go sendTwilio(message)
@@ -27,7 +28,7 @@ func Alert(message string) {
 			go sendEmail(message)
 		}
 	} else {
-		count++
+		alertCountSince++
 	}
 }
 

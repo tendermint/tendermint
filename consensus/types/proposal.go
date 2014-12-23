@@ -38,8 +38,8 @@ func (p *Proposal) String() string {
 }
 
 func (p *Proposal) WriteSignBytes(w io.Writer, n *int64, err *error) {
-	WriteUVarInt(p.Height, w, n, err)
-	WriteUVarInt(p.Round, w, n, err)
+	WriteUvarint(p.Height, w, n, err)
+	WriteUvarint(p.Round, w, n, err)
 	WriteBinary(p.BlockParts, w, n, err)
 	WriteBinary(p.POLParts, w, n, err)
 }

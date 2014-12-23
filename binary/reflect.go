@@ -105,7 +105,7 @@ func readReflect(rv reflect.Value, rt reflect.Type, r io.Reader, n *int64, err *
 			rv.Set(reflect.ValueOf(byteslice))
 		} else {
 			// Read length
-			length := int(ReadUVarInt(r, n, err))
+			length := int(ReadUvarint(r, n, err))
 			sliceRv := reflect.MakeSlice(rt, length, length)
 			// Read elems
 			for i := 0; i < length; i++ {
@@ -131,43 +131,43 @@ func readReflect(rv reflect.Value, rt reflect.Type, r io.Reader, n *int64, err *
 		rv.SetString(str)
 
 	case reflect.Int64:
-		num := ReadUInt64(r, n, err)
+		num := ReadUint64(r, n, err)
 		rv.SetInt(int64(num))
 
 	case reflect.Int32:
-		num := ReadUInt32(r, n, err)
+		num := ReadUint32(r, n, err)
 		rv.SetInt(int64(num))
 
 	case reflect.Int16:
-		num := ReadUInt16(r, n, err)
+		num := ReadUint16(r, n, err)
 		rv.SetInt(int64(num))
 
 	case reflect.Int8:
-		num := ReadUInt8(r, n, err)
+		num := ReadUint8(r, n, err)
 		rv.SetInt(int64(num))
 
 	case reflect.Int:
-		num := ReadUVarInt(r, n, err)
+		num := ReadUvarint(r, n, err)
 		rv.SetInt(int64(num))
 
 	case reflect.Uint64:
-		num := ReadUInt64(r, n, err)
+		num := ReadUint64(r, n, err)
 		rv.SetUint(uint64(num))
 
 	case reflect.Uint32:
-		num := ReadUInt32(r, n, err)
+		num := ReadUint32(r, n, err)
 		rv.SetUint(uint64(num))
 
 	case reflect.Uint16:
-		num := ReadUInt16(r, n, err)
+		num := ReadUint16(r, n, err)
 		rv.SetUint(uint64(num))
 
 	case reflect.Uint8:
-		num := ReadUInt8(r, n, err)
+		num := ReadUint8(r, n, err)
 		rv.SetUint(uint64(num))
 
 	case reflect.Uint:
-		num := ReadUVarInt(r, n, err)
+		num := ReadUvarint(r, n, err)
 		rv.SetUint(uint64(num))
 
 	default:
@@ -220,7 +220,7 @@ func writeReflect(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, err 
 		} else {
 			// Write length
 			length := rv.Len()
-			WriteUVarInt(uint(length), w, n, err)
+			WriteUvarint(uint(length), w, n, err)
 			// Write elems
 			for i := 0; i < length; i++ {
 				elemRv := rv.Index(i)
@@ -255,22 +255,22 @@ func writeReflect(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, err 
 		WriteInt8(int8(rv.Int()), w, n, err)
 
 	case reflect.Int:
-		WriteVarInt(int(rv.Int()), w, n, err)
+		WriteVarint(int(rv.Int()), w, n, err)
 
 	case reflect.Uint64:
-		WriteUInt64(rv.Uint(), w, n, err)
+		WriteUint64(rv.Uint(), w, n, err)
 
 	case reflect.Uint32:
-		WriteUInt32(uint32(rv.Uint()), w, n, err)
+		WriteUint32(uint32(rv.Uint()), w, n, err)
 
 	case reflect.Uint16:
-		WriteUInt16(uint16(rv.Uint()), w, n, err)
+		WriteUint16(uint16(rv.Uint()), w, n, err)
 
 	case reflect.Uint8:
-		WriteUInt8(uint8(rv.Uint()), w, n, err)
+		WriteUint8(uint8(rv.Uint()), w, n, err)
 
 	case reflect.Uint:
-		WriteUVarInt(uint(rv.Uint()), w, n, err)
+		WriteUvarint(uint(rv.Uint()), w, n, err)
 
 	default:
 		panic(fmt.Sprintf("Unknown field type %v", rt.Kind()))

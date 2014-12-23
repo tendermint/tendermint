@@ -33,8 +33,8 @@ func ReadIAVLNode(t *IAVLTree, r io.Reader, n *int64, err *error) *IAVLNode {
 	node := &IAVLNode{}
 
 	// node header & key
-	node.height = ReadUInt8(r, n, err)
-	node.size = ReadUInt64(r, n, err)
+	node.height = ReadUint8(r, n, err)
+	node.size = ReadUint64(r, n, err)
 	node.key = t.keyCodec.Decode(r, n, err)
 	if *err != nil {
 		panic(*err)
@@ -253,8 +253,8 @@ func (node *IAVLNode) remove(t *IAVLTree, key interface{}) (
 // NOTE: sets hashes recursively
 func (node *IAVLNode) writeToCountHashes(t *IAVLTree, w io.Writer) (n int64, hashCount uint64, err error) {
 	// height & size & key
-	WriteUInt8(node.height, w, &n, &err)
-	WriteUInt64(node.size, w, &n, &err)
+	WriteUint8(node.height, w, &n, &err)
+	WriteUint64(node.size, w, &n, &err)
 	t.keyCodec.Encode(node.key, w, &n, &err)
 	if err != nil {
 		return

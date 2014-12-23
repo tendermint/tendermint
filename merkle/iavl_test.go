@@ -246,7 +246,7 @@ func BenchmarkImmutableAvlTree(b *testing.B) {
 
 	t := NewIAVLTree(BasicCodec, BasicCodec, 0, nil)
 	for i := 0; i < 1000000; i++ {
-		t.Set(RandUInt64(), "")
+		t.Set(RandUint64(), "")
 	}
 
 	fmt.Println("ok, starting")
@@ -255,7 +255,7 @@ func BenchmarkImmutableAvlTree(b *testing.B) {
 
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		ri := RandUInt64()
+		ri := RandUint64()
 		t.Set(ri, "")
 		t.Remove(ri)
 	}

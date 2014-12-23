@@ -89,8 +89,8 @@ func (txIn *TxInput) ValidateBasic() error {
 
 func (txIn *TxInput) WriteSignBytes(w io.Writer, n *int64, err *error) {
 	WriteByteSlice(txIn.Address, w, n, err)
-	WriteUInt64(txIn.Amount, w, n, err)
-	WriteUVarInt(txIn.Sequence, w, n, err)
+	WriteUint64(txIn.Amount, w, n, err)
+	WriteUvarint(txIn.Sequence, w, n, err)
 }
 
 //-----------------------------------------------------------------------------
@@ -112,7 +112,7 @@ func (txOut *TxOutput) ValidateBasic() error {
 
 func (txOut *TxOutput) WriteSignBytes(w io.Writer, n *int64, err *error) {
 	WriteByteSlice(txOut.Address, w, n, err)
-	WriteUInt64(txOut.Amount, w, n, err)
+	WriteUint64(txOut.Amount, w, n, err)
 }
 
 //-----------------------------------------------------------------------------
@@ -125,11 +125,11 @@ type SendTx struct {
 func (tx *SendTx) TypeByte() byte { return TxTypeSend }
 
 func (tx *SendTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
-	WriteUVarInt(uint(len(tx.Inputs)), w, n, err)
+	WriteUvarint(uint(len(tx.Inputs)), w, n, err)
 	for _, in := range tx.Inputs {
 		in.WriteSignBytes(w, n, err)
 	}
-	WriteUVarInt(uint(len(tx.Outputs)), w, n, err)
+	WriteUvarint(uint(len(tx.Outputs)), w, n, err)
 	for _, out := range tx.Outputs {
 		out.WriteSignBytes(w, n, err)
 	}
@@ -147,11 +147,11 @@ func (tx *BondTx) TypeByte() byte { return TxTypeBond }
 
 func (tx *BondTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
 	WriteBinary(tx.PubKey, w, n, err)
-	WriteUVarInt(uint(len(tx.Inputs)), w, n, err)
+	WriteUvarint(uint(len(tx.Inputs)), w, n, err)
 	for _, in := range tx.Inputs {
 		in.WriteSignBytes(w, n, err)
 	}
-	WriteUVarInt(uint(len(tx.UnbondTo)), w, n, err)
+	WriteUvarint(uint(len(tx.UnbondTo)), w, n, err)
 	for _, out := range tx.UnbondTo {
 		out.WriteSignBytes(w, n, err)
 	}
@@ -169,7 +169,7 @@ func (tx *UnbondTx) TypeByte() byte { return TxTypeUnbond }
 
 func (tx *UnbondTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
 	WriteByteSlice(tx.Address, w, n, err)
-	WriteUVarInt(tx.Height, w, n, err)
+	WriteUvarint(tx.Height, w, n, err)
 }
 
 //-----------------------------------------------------------------------------
@@ -184,7 +184,7 @@ func (tx *RebondTx) TypeByte() byte { return TxTypeRebond }
 
 func (tx *RebondTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
 	WriteByteSlice(tx.Address, w, n, err)
-	WriteUVarInt(tx.Height, w, n, err)
+	WriteUvarint(tx.Height, w, n, err)
 }
 
 //-----------------------------------------------------------------------------

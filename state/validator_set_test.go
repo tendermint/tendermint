@@ -12,9 +12,9 @@ func randValidator_() *Validator {
 	return &Validator{
 		Address:     RandBytes(20),
 		PubKey:      PubKeyEd25519{RandBytes(64)},
-		BondHeight:  uint(RandUInt32()),
-		VotingPower: RandUInt64(),
-		Accum:       int64(RandUInt64()),
+		BondHeight:  uint(RandUint32()),
+		VotingPower: RandUint64(),
+		Accum:       int64(RandUint64()),
 	}
 }
 

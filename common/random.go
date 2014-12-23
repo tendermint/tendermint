@@ -46,24 +46,24 @@ MAIN_LOOP:
 	return string(chars)
 }
 
-func RandUInt16() uint16 {
+func RandUint16() uint16 {
 	return uint16(rand.Uint32() & (1<<16 - 1))
 }
 
-func RandUInt32() uint32 {
+func RandUint32() uint32 {
 	return rand.Uint32()
 }
 
-func RandUInt64() uint64 {
+func RandUint64() uint64 {
 	return uint64(rand.Uint32())<<32 + uint64(rand.Uint32())
 }
 
-func RandUInt() uint {
+func RandUint() uint {
 	return uint(rand.Int())
 }
 
 // Distributed pseudo-exponentially to test for various cases
-func RandUInt16Exp() uint16 {
+func RandUint16Exp() uint16 {
 	bits := rand.Uint32() % 16
 	if bits == 0 {
 		return 0
@@ -74,7 +74,7 @@ func RandUInt16Exp() uint16 {
 }
 
 // Distributed pseudo-exponentially to test for various cases
-func RandUInt32Exp() uint32 {
+func RandUint32Exp() uint32 {
 	bits := rand.Uint32() % 32
 	if bits == 0 {
 		return 0
@@ -85,7 +85,7 @@ func RandUInt32Exp() uint32 {
 }
 
 // Distributed pseudo-exponentially to test for various cases
-func RandUInt64Exp() uint64 {
+func RandUint64Exp() uint64 {
 	bits := rand.Uint32() % 64
 	if bits == 0 {
 		return 0
@@ -96,7 +96,7 @@ func RandUInt64Exp() uint64 {
 }
 
 func RandTime() time.Time {
-	return time.Unix(int64(RandUInt64Exp()), 0)
+	return time.Unix(int64(RandUint64Exp()), 0)
 }
 
 func RandBytes(n int) []byte {

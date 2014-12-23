@@ -10,12 +10,17 @@ import (
 	. "github.com/tendermint/tendermint/common"
 )
 
+// Signature is a part of Txs and consensus Votes.
 type Signature interface {
 }
 
+// Types of Signature implementations
 const (
 	SignatureTypeEd25519 = byte(0x01)
 )
+
+//-------------------------------------
+// for binary.readReflect
 
 func SignatureDecoder(r io.Reader, n *int64, err *error) interface{} {
 	switch t := ReadByte(r, n, err); t {
@@ -34,6 +39,7 @@ var _ = RegisterType(&TypeInfo{
 
 //-------------------------------------
 
+// Implements Signature
 type SignatureEd25519 struct {
 	Bytes []byte
 }

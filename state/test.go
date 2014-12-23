@@ -25,10 +25,10 @@ func Tempfile(prefix string) (*os.File, string) {
 func RandAccount(randBalance bool, minBalance uint64) (*Account, *PrivAccount) {
 	privAccount := GenPrivAccount()
 	account := NewAccount(privAccount.PubKey)
-	account.Sequence = RandUInt()
+	account.Sequence = RandUint()
 	account.Balance = minBalance
 	if randBalance {
-		account.Balance += uint64(RandUInt32())
+		account.Balance += uint64(RandUint32())
 	}
 	return account, privAccount
 }
@@ -38,7 +38,7 @@ func RandValidator(randBonded bool, minBonded uint64) (*ValidatorInfo, *PrivVali
 	_, privVal.filename = Tempfile("priv_validator_")
 	bonded := minBonded
 	if randBonded {
-		bonded += uint64(RandUInt32())
+		bonded += uint64(RandUint32())
 	}
 	valInfo := &ValidatorInfo{
 		Address: privVal.Address,

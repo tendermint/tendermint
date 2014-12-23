@@ -5,12 +5,12 @@ import "io"
 // String
 
 func WriteString(s string, w io.Writer, n *int64, err *error) {
-	WriteUInt32(uint32(len(s)), w, n, err)
+	WriteUvarint(uint(len(s)), w, n, err)
 	WriteTo([]byte(s), w, n, err)
 }
 
 func ReadString(r io.Reader, n *int64, err *error) string {
-	length := ReadUInt32(r, n, err)
+	length := ReadUvarint(r, n, err)
 	if *err != nil {
 		return ""
 	}

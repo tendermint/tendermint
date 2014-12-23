@@ -10,17 +10,18 @@ import (
 	. "github.com/tendermint/tendermint/common"
 )
 
-/*
-Each account has an PrivKey which determines access to funds of the account.
-Transaction inputs include Signatures of the account's associated PrivKey.
-*/
+// PrivKey is part of PrivAccount and state.PrivValidator.
 type PrivKey interface {
 	Sign(msg []byte) Signature
 }
 
+// Types of PrivKey implementations
 const (
 	PrivKeyTypeEd25519 = byte(0x01)
 )
+
+//-------------------------------------
+// For binary.readReflect
 
 func PrivKeyDecoder(r io.Reader, n *int64, err *error) interface{} {
 	switch t := ReadByte(r, n, err); t {
@@ -39,6 +40,7 @@ var _ = RegisterType(&TypeInfo{
 
 //-------------------------------------
 
+// Implements PrivKey
 type PrivKeyEd25519 struct {
 	PubKey  []byte
 	PrivKey []byte

@@ -37,8 +37,8 @@ type Vote struct {
 }
 
 func (vote *Vote) WriteSignBytes(w io.Writer, n *int64, err *error) {
-	WriteUVarInt(vote.Height, w, n, err)
-	WriteUVarInt(vote.Round, w, n, err)
+	WriteUvarint(vote.Height, w, n, err)
+	WriteUvarint(vote.Round, w, n, err)
 	WriteByte(vote.Type, w, n, err)
 	WriteByteSlice(vote.BlockHash, w, n, err)
 	WriteBinary(vote.BlockParts, w, n, err)
