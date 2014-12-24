@@ -10,18 +10,13 @@ import (
 	"github.com/tendermint/tendermint/p2p/upnp"
 )
 
-/*
-Listener is part of a Server.
-*/
 type Listener interface {
 	Connections() <-chan net.Conn
 	ExternalAddress() *NetAddress
 	Stop()
 }
 
-/*
-DefaultListener is an implementation of Listener.
-*/
+// Implements Listener
 type DefaultListener struct {
 	listener    net.Listener
 	extAddr     *NetAddress

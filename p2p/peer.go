@@ -10,8 +10,6 @@ import (
 	. "github.com/tendermint/tendermint/common"
 )
 
-/* Peer */
-
 type Peer struct {
 	outbound bool
 	mconn    *MConnection

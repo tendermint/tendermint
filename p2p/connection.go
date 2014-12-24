@@ -34,8 +34,27 @@ type receiveCbFunc func(chId byte, msgBytes []byte)
 type errorCbFunc func(interface{})
 
 /*
-A MConnection wraps a network connection and handles buffering and multiplexing.
-<essages are sent with ".Send(channelId, msg)".
+Each peer has one `MConnection` (multiplex connection) instance.
+
+__multiplex__ *noun* a system or signal involving simultaneous transmission of
+several messages along a single channel of communication.
+
+Each `MConnection` handles message transmission on multiple abstract communication
+`Channel`s.  Each channel has a globally unique byte id.
+The byte id and the relative priorities of each `Channel` are configured upon
+initialization of the connection.
+
+There are two methods for sending messages:
+	func (m MConnection) Send(chId byte, msg interface{}) bool {}
+	func (m MConnection) TrySend(chId byte, msg interface{}) bool {}
+
+`Send(chId, msg)` is a blocking call that waits until `msg` is successfully queued
+for the channel with the given id byte `chId`.  The message `msg` is serialized
+using the `tendermint/binary` submodule's `WriteBinary()` reflection routine.
+
+`TrySend(chId, msg)` is a nonblocking call that returns false if the channel's
+queue is full.
+
 Inbound message bytes are handled with an onReceive callback function.
 */
 type MConnection struct {

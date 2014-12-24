@@ -11,8 +11,6 @@ import (
 	"time"
 )
 
-/* NetAddress */
-
 type NetAddress struct {
 	IP   net.IP
 	Port uint16

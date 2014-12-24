@@ -22,19 +22,10 @@ type Reactor interface {
 //-----------------------------------------------------------------------------
 
 /*
-All communication amongst peers are multiplexed by "channels".
-(Not the same as Go "channels")
-
-To send a message, serialize it into a ByteSlice and send it to each peer.
-For best performance, re-use the same immutable ByteSlice to each peer.
-You can also use a TypedBytes{} struct for convenience.
-You can find all connected and active peers by iterating over ".Peers().List()".
-".Broadcast()" is provided for convenience, but by iterating over
-the peers manually the caller can decide which subset receives a message.
-
-Inbound messages are received by calling ".Receive()".
-The receiver is responsible for decoding the message bytes, which may be preceded
-by a single type byte if a TypedBytes{} was used.
+The `Switch` handles peer connections and exposes an API to receive incoming messages
+on `Reactors`.  Each `Reactor` is responsible for handling incoming messages of one
+or more `Channels`.  So while sending outgoing messages is typically performed on the peer,
+incoming messages are received on the reactor.
 */
 type Switch struct {
 	reactors     []Reactor

@@ -4,9 +4,7 @@ import (
 	"sync"
 )
 
-/*
-IPeerSet has a (immutable) subset of the methods of PeerSet.
-*/
+// IPeerSet has a (immutable) subset of the methods of PeerSet.
 type IPeerSet interface {
 	Has(key string) bool
 	List() []*Peer
@@ -15,10 +13,8 @@ type IPeerSet interface {
 
 //-----------------------------------------------------------------------------
 
-/*
-PeerSet is a special structure for keeping a table of peers.
-Iteration over the peers is super fast and thread-safe.
-*/
+// PeerSet is a special structure for keeping a table of peers.
+// Iteration over the peers is super fast and thread-safe.
 type PeerSet struct {
 	mtx    sync.Mutex
 	lookup map[string]*peerSetItem
