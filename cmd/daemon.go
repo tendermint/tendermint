@@ -117,7 +117,7 @@ func daemon() {
 
 	// Create & start node
 	n := NewNode()
-	l := p2p.NewDefaultListener("tcp", config.Config.LAddr)
+	l := p2p.NewDefaultListener("tcp", config.Config.LAddr, false)
 	n.AddListener(l)
 	n.Start()
 

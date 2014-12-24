@@ -24,4 +24,5 @@ Account Private Key: %X
 		base64.StdEncoding.EncodeToString(BinaryBytes(privAccount.PubKey)),
 		privAccount.PrivKey,
 		base64.StdEncoding.EncodeToString(BinaryBytes(privAccount.PrivKey)))
+
 }

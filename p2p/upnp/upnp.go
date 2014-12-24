@@ -349,6 +349,9 @@ func (n *upnpNAT) AddPortMapping(protocol string, externalPort, internalPort int
 
 	// TODO: check response to see if the port was forwarded
 	// log.Println(message, response)
+	// JAE:
+	// body, err := ioutil.ReadAll(response.Body)
+	// fmt.Println(string(body), err)
 	mappedExternalPort = externalPort
 	_ = response
 	return

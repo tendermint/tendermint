@@ -163,7 +163,7 @@ func (c *MConnection) Send(chId byte, msg interface{}) bool {
 		return false
 	}
 
-	log.Debug("[%X][%v] Send: %v", chId, c, msg)
+	log.Debug("[%X] Send to %v: %v", chId, c, msg)
 
 	// Send message to channel.
 	channel, ok := c.channelsIdx[chId]
@@ -190,7 +190,7 @@ func (c *MConnection) TrySend(chId byte, msg interface{}) bool {
 		return false
 	}
 
-	log.Debug("[%X][%v] TrySend: %v", chId, c, msg)
+	log.Debug("[%X] TrySend to %v: %v", chId, c, msg)
 
 	// Send message to channel.
 	channel, ok := c.channelsIdx[chId]

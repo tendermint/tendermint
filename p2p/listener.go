@@ -46,7 +46,7 @@ func splitHostPort(addr string) (host string, port int) {
 	return host, port
 }
 
-func NewDefaultListener(protocol string, lAddr string) Listener {
+func NewDefaultListener(protocol string, lAddr string, requireUPNPHairpin bool) Listener {
 	// Local listen IP & port
 	lAddrIP, lAddrPort := splitHostPort(lAddr)
 
@@ -61,12 +61,23 @@ func NewDefaultListener(protocol string, lAddr string) Listener {
 
 	// Determine external address...
 	var extAddr *NetAddress
+
 	// If the lAddrIP is INADDR_ANY, try UPnP
-	if false {
-		if lAddrIP == "" || lAddrIP == "0.0.0.0" {
-			extAddr = getUPNPExternalAddress(lAddrPort, listenerPort)
+	if lAddrIP == "" || lAddrIP == "0.0.0.0" {
+		if requireUPNPHairpin {
+			upnpCapabilities, err := upnp.Probe()
+			if err != nil {
+				log.Warning("Failed to probe UPNP: %v", err)
+				goto SKIP_UPNP
+			}
+			if !upnpCapabilities.Hairpin {
+				goto SKIP_UPNP
+			}
 		}
+		extAddr = getUPNPExternalAddress(lAddrPort, listenerPort)
 	}
+SKIP_UPNP:
+
 	// Otherwise just use the local address...
 	if extAddr == nil {
 		extAddr = getNaiveExternalAddress(listenerPort)

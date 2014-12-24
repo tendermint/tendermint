@@ -75,7 +75,7 @@ func makeSwitchPair(t testing.TB, reactorsGenerator func() []Reactor) (*Switch, 
 	s2 := NewSwitch(reactorsGenerator())
 
 	// Create a listener for s1
-	l := NewDefaultListener("tcp", ":8001")
+	l := NewDefaultListener("tcp", ":8001", true)
 
 	// Dial the listener & add the connection to s2.
 	lAddr := l.ExternalAddress()

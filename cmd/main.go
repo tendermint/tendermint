@@ -20,6 +20,7 @@ Commands:
     daemon        Run the tendermint node daemon
     gen_account   Generate new account keypair
     gen_validator Generate new validator keypair
+    probe_upnp    Test UPnP functionality
 	
 tendermint --help for command options`)
 		return
@@ -32,5 +33,7 @@ tendermint --help for command options`)
 		gen_account()
 	case "gen_validator":
 		gen_validator()
+	case "probe_upnp":
+		probe_upnp()
 	}
 }

@@ -11,10 +11,10 @@ var Log = logging.MustGetLogger("main")
 
 func init() {
 	// Customize the output format
-	logging.SetFormatter(logging.MustStringFormatter("▶ %{level:.1s} 0x%{id:x} %{message}"))
+	logging.SetFormatter(logging.MustStringFormatter("[%{level:.4s}] %{shortfile:-20s} %{message}"))
 
 	// Setup one stdout and one syslog backend.
-	logBackend := logging.NewLogBackend(os.Stderr, "", stdlog.LstdFlags|stdlog.Lshortfile)
+	logBackend := logging.NewLogBackend(os.Stderr, "", stdlog.LstdFlags)
 	logBackend.Color = true
 
 	syslogBackend, err := logging.NewSyslogBackend("")
