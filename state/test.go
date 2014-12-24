@@ -70,7 +70,7 @@ func RandGenesisState(numAccounts int, randBalance bool, minBalance uint64, numV
 		privValidators[i] = privVal
 	}
 	sort.Sort(PrivValidatorsByAddress(privValidators))
-	s0 := GenesisState(db, &GenesisDoc{
+	s0 := MakeGenesisState(db, &GenesisDoc{
 		GenesisTime: time.Now(),
 		Accounts:    accounts,
 		Validators:  validators,

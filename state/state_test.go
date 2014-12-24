@@ -12,7 +12,7 @@ import (
 )
 
 func TestCopyState(t *testing.T) {
-	// Generate a state
+	// Generate a random state
 	s0, privAccounts, _ := RandGenesisState(10, true, 1000, 5, true, 1000)
 	s0Hash := s0.Hash()
 	if len(s0Hash) == 0 {
@@ -29,19 +29,23 @@ func TestCopyState(t *testing.T) {
 	acc0Address := privAccounts[0].PubKey.Address()
 	acc := s0.GetAccount(acc0Address)
 	acc.Balance += 1
+
 	// The account balance shouldn't have changed yet.
 	if s0.GetAccount(acc0Address).Balance == acc.Balance {
 		t.Error("Account balance changed unexpectedly")
 	}
+
 	// Setting, however, should change the balance.
 	s0.SetAccount(acc)
 	if s0.GetAccount(acc0Address).Balance != acc.Balance {
 		t.Error("Account balance wasn't set")
 	}
-	// How that the state changed, the hash should change too.
+
+	// Now that the state changed, the hash should change too.
 	if bytes.Equal(s0Hash, s0.Hash()) {
 		t.Error("Expected state hash to have changed")
 	}
+
 	// The s0Copy shouldn't have changed though.
 	if !bytes.Equal(s0Hash, s0Copy.Hash()) {
 		t.Error("Expected state copy hash to have not changed")
@@ -52,6 +56,7 @@ func TestGenesisSaveLoad(t *testing.T) {
 
 	// Generate a state, save & load it.
 	s0, _, _ := RandGenesisState(10, true, 1000, 5, true, 1000)
+
 	// Mutate the state to append one empty block.
 	block := &Block{
 		Header: &Header{
@@ -70,7 +75,8 @@ func TestGenesisSaveLoad(t *testing.T) {
 		},
 	}
 	blockParts := NewPartSetFromData(BinaryBytes(block))
-	// The second argument to AppendBlock() is false,
+
+	// The last argument to AppendBlock() is `false`,
 	// which sets Block.Header.StateHash.
 	err := s0.Copy().AppendBlock(block, blockParts.Header(), false)
 	if err != nil {
@@ -79,6 +85,7 @@ func TestGenesisSaveLoad(t *testing.T) {
 	if len(block.Header.StateHash) == 0 {
 		t.Error("Expected StateHash but got nothing.")
 	}
+
 	// Now append the block to s0.
 	// This time we also check the StateHash (as computed above).
 	err = s0.AppendBlock(block, blockParts.Header(), true)
@@ -108,6 +115,7 @@ func TestGenesisSaveLoad(t *testing.T) {
 	if !bytes.Equal(s0.LastBlockHash, s1.LastBlockHash) {
 		t.Error("LastBlockHash mismatch")
 	}
+
 	// Compare state merkle trees
 	if s0.BondedValidators.Size() != s1.BondedValidators.Size() {
 		t.Error("BondedValidators Size mismatch")
@@ -128,6 +136,9 @@ func TestGenesisSaveLoad(t *testing.T) {
 		t.Error("UnbondingValidators hash mismatch")
 	}
 	if !bytes.Equal(s0.accounts.Hash(), s1.accounts.Hash()) {
+		t.Error("Accounts mismatch")
+	}
+	if !bytes.Equal(s0.validatorInfos.Hash(), s1.validatorInfos.Hash()) {
 		t.Error("Accounts mismatch")
 	}
 }
@@ -285,6 +296,5 @@ func TestTxs(t *testing.T) {
 	}
 
 	// TODO UnbondTx.
-	// TODO NameTx.
 
 }

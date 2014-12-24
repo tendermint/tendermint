@@ -629,6 +629,7 @@ func (s *State) Hash() []byte {
 		s.BondedValidators,
 		s.UnbondingValidators,
 		s.accounts,
+		s.validatorInfos,
 	}
 	return merkle.HashFromHashables(hashables)
 }

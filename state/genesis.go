@@ -27,16 +27,16 @@ func GenesisDocFromJSON(jsonBlob []byte) (genState *GenesisDoc) {
 	return
 }
 
-func GenesisStateFromFile(db db_.DB, genDocFile string) *State {
+func MakeGenesisStateFromFile(db db_.DB, genDocFile string) *State {
 	jsonBlob, err := ioutil.ReadFile(genDocFile)
 	if err != nil {
 		Panicf("Couldn't read GenesisDoc file: %v", err)
 	}
 	genDoc := GenesisDocFromJSON(jsonBlob)
-	return GenesisState(db, genDoc)
+	return MakeGenesisState(db, genDoc)
 }
 
-func GenesisState(db db_.DB, genDoc *GenesisDoc) *State {
+func MakeGenesisState(db db_.DB, genDoc *GenesisDoc) *State {
 	if len(genDoc.Validators) == 0 {
 		panic("Must have some validators")
 	}

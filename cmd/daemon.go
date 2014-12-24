@@ -33,7 +33,7 @@ func NewNode() *Node {
 	stateDB := db_.NewMemDB() // TODO configurable db.
 	state := state_.LoadState(stateDB)
 	if state == nil {
-		state = state_.GenesisStateFromFile(stateDB, config.GenesisFile())
+		state = state_.MakeGenesisStateFromFile(stateDB, config.GenesisFile())
 		state.Save()
 	}
 

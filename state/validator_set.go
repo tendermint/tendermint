@@ -12,7 +12,7 @@ import (
 
 // ValidatorSet represent a set of *Validator at a given height.
 // The validators can be fetched by address or index.
-// The index is in order of .Address, so the index are the same
+// The index is in order of .Address, so the indices are fixed
 // for all rounds of a given blockchain height.
 // On the other hand, the .AccumPower of each validator and
 // the designated .Proposer() of a set changes every round,

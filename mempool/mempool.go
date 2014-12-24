@@ -2,8 +2,8 @@
 Mempool receives new transactions and applies them to the latest committed state.
 If the transaction is acceptable, then it broadcasts the tx to peers.
 
-When this node happens to be the next proposer, it simply takes the recently
-modified state (and the associated transactions) and use that as the proposal.
+When this node happens to be the next proposer, it simply uses the recently
+modified state (and the associated transactions) to construct a proposal.
 */
 
 package mempool

@@ -10,7 +10,7 @@ import (
 	. "github.com/tendermint/tendermint/block"
 )
 
-// Persistent static data for each Validator
+// Persistent (mostly) static data for each Validator
 type ValidatorInfo struct {
 	Address         []byte
 	PubKey          PubKeyEd25519
