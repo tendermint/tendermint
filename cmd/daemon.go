@@ -40,7 +40,7 @@ func NewNode() *Node {
 	// Get PrivValidator
 	var privValidator *state_.PrivValidator
 	if _, err := os.Stat(config.PrivValidatorFile()); err == nil {
-		privValidator = state_.LoadPrivValidator()
+		privValidator = state_.LoadPrivValidator(config.PrivValidatorFile())
 	}
 
 	// Get PEXReactor

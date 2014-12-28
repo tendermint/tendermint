@@ -82,7 +82,7 @@ type TxInput struct {
 	Amount    uint64    // Must not exceed account balance
 	Sequence  uint      // Must be 1 greater than the last committed TxInput
 	Signature Signature // Depends on the PubKey type and the whole Tx
-	PubKey    PubKey    // Optional, may be nil
+	PubKey    PubKey    // Must not be nil, may be PubKeyNil.
 }
 
 func (txIn *TxInput) ValidateBasic() error {

@@ -82,8 +82,8 @@ type PrivValidatorJSON struct {
 	LastStep   uint8
 }
 
-func LoadPrivValidator() *PrivValidator {
-	privValJSONBytes, err := ioutil.ReadFile(PrivValidatorFile())
+func LoadPrivValidator(filename string) *PrivValidator {
+	privValJSONBytes, err := ioutil.ReadFile(filename)
 	if err != nil {
 		panic(err)
 	}
@@ -112,6 +112,7 @@ func LoadPrivValidator() *PrivValidator {
 		LastHeight: privValJSON.LastHeight,
 		LastRound:  privValJSON.LastRound,
 		LastStep:   privValJSON.LastStep,
+		filename:   filename,
 	}
 	if err != nil {
 		panic(err)
