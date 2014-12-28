@@ -147,6 +147,7 @@ func TestTxSequence(t *testing.T) {
 
 	state, privAccounts, _ := RandGenesisState(3, true, 1000, 1, true, 1000)
 	acc0 := state.GetAccount(privAccounts[0].PubKey.Address())
+	acc0PubKey := privAccounts[0].PubKey
 	acc1 := state.GetAccount(privAccounts[1].PubKey.Address())
 
 	// Try executing a SendTx with various sequence numbers.
@@ -157,6 +158,7 @@ func TestTxSequence(t *testing.T) {
 					Address:  acc0.Address,
 					Amount:   1,
 					Sequence: sequence,
+					PubKey:   acc0PubKey,
 				},
 			},
 			Outputs: []*TxOutput{
@@ -210,6 +212,7 @@ func TestTxs(t *testing.T) {
 
 	//val0 := state.GetValidatorInfo(privValidators[0].Address)
 	acc0 := state.GetAccount(privAccounts[0].PubKey.Address())
+	acc0PubKey := privAccounts[0].PubKey
 	acc1 := state.GetAccount(privAccounts[1].PubKey.Address())
 
 	// SendTx.
@@ -221,6 +224,7 @@ func TestTxs(t *testing.T) {
 					Address:  acc0.Address,
 					Amount:   1,
 					Sequence: acc0.Sequence + 1,
+					PubKey:   acc0PubKey,
 				},
 			},
 			Outputs: []*TxOutput{
@@ -252,12 +256,13 @@ func TestTxs(t *testing.T) {
 	{
 		state := state.Copy()
 		tx := &BondTx{
-			PubKey: acc0.PubKey.(PubKeyEd25519),
+			PubKey: acc0PubKey.(PubKeyEd25519),
 			Inputs: []*TxInput{
 				&TxInput{
 					Address:  acc0.Address,
 					Amount:   1,
 					Sequence: acc0.Sequence + 1,
+					PubKey:   acc0PubKey,
 				},
 			},
 			UnbondTo: []*TxOutput{
