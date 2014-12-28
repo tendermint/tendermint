@@ -25,7 +25,7 @@ const (
 func SignatureDecoder(r io.Reader, n *int64, err *error) interface{} {
 	switch t := ReadByte(r, n, err); t {
 	case SignatureTypeEd25519:
-		return ReadBinary(&SignatureEd25519{}, r, n, err)
+		return ReadBinary(SignatureEd25519{}, r, n, err)
 	default:
 		*err = Errorf("Unknown Signature type %X", t)
 		return nil

@@ -3,6 +3,7 @@ package db
 import (
 	"fmt"
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/errors"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"path"
 )
@@ -24,7 +25,11 @@ func NewLevelDB(name string) (*LevelDB, error) {
 func (db *LevelDB) Get(key []byte) []byte {
 	res, err := db.db.Get(key, nil)
 	if err != nil {
-		panic(err)
+		if err == errors.ErrNotFound {
+			return nil
+		} else {
+			panic(err)
+		}
 	}
 	return res
 }
@@ -57,7 +62,7 @@ func (db *LevelDB) DeleteSync(key []byte) {
 	}
 }
 
-func (db *LevelDB) Db() *leveldb.DB {
+func (db *LevelDB) DB() *leveldb.DB {
 	return db.db
 }
 

@@ -2,9 +2,11 @@ package state
 
 import (
 	"bytes"
+	"encoding/base64"
 	"sort"
 
 	. "github.com/tendermint/tendermint/account"
+	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/common"
 	db_ "github.com/tendermint/tendermint/db"
@@ -24,9 +26,12 @@ func Tempfile(prefix string) (*os.File, string) {
 
 func RandAccount(randBalance bool, minBalance uint64) (*Account, *PrivAccount) {
 	privAccount := GenPrivAccount()
-	account := NewAccount(privAccount.PubKey)
-	account.Sequence = RandUint()
-	account.Balance = minBalance
+	account := &Account{
+		Address:  privAccount.PubKey.Address(),
+		PubKey:   privAccount.PubKey,
+		Sequence: RandUint(),
+		Balance:  minBalance,
+	}
 	if randBalance {
 		account.Balance += uint64(RandUint32())
 	}
@@ -53,20 +58,32 @@ func RandValidator(randBonded bool, minBonded uint64) (*ValidatorInfo, *PrivVali
 	return valInfo, privVal
 }
 
-// The first numValidators accounts are validators.
 func RandGenesisState(numAccounts int, randBalance bool, minBalance uint64, numValidators int, randBonded bool, minBonded uint64) (*State, []*PrivAccount, []*PrivValidator) {
 	db := db_.NewMemDB()
-	accounts := make([]*Account, numAccounts)
+	accounts := make([]GenesisAccount, numAccounts)
 	privAccounts := make([]*PrivAccount, numAccounts)
 	for i := 0; i < numAccounts; i++ {
 		account, privAccount := RandAccount(randBalance, minBalance)
-		accounts[i], privAccounts[i] = account, privAccount
+		accounts[i] = GenesisAccount{
+			Address: base64.StdEncoding.EncodeToString(account.Address),
+			Amount:  account.Balance,
+		}
+		privAccounts[i] = privAccount
 	}
-	validators := make([]*ValidatorInfo, numValidators)
+	validators := make([]GenesisValidator, numValidators)
 	privValidators := make([]*PrivValidator, numValidators)
 	for i := 0; i < numValidators; i++ {
 		valInfo, privVal := RandValidator(randBonded, minBonded)
-		validators[i] = valInfo
+		validators[i] = GenesisValidator{
+			PubKey: base64.StdEncoding.EncodeToString(BinaryBytes(valInfo.PubKey)),
+			Amount: valInfo.FirstBondAmount,
+			UnbondTo: []GenesisAccount{
+				{
+					Address: base64.StdEncoding.EncodeToString(valInfo.PubKey.Address()),
+					Amount:  valInfo.FirstBondAmount,
+				},
+			},
+		}
 		privValidators[i] = privVal
 	}
 	sort.Sort(PrivValidatorsByAddress(privValidators))

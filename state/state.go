@@ -108,6 +108,9 @@ func (s *State) Copy() *State {
 	}
 }
 
+// The accounts from the TxInputs must either already have
+// account.PubKey.(type) != PubKeyNil, (it must be known),
+// or it must be specified in the TxInput.  But not both.
 func (s *State) GetOrMakeAccounts(ins []*TxInput, outs []*TxOutput) (map[string]*Account, error) {
 	accounts := map[string]*Account{}
 	for _, in := range ins {
@@ -119,6 +122,20 @@ func (s *State) GetOrMakeAccounts(ins []*TxInput, outs []*TxOutput) (map[string]
 		if account == nil {
 			return nil, ErrTxInvalidAddress
 		}
+		// PubKey should be present in either "account" or "in"
+		if _, isNil := account.PubKey.(PubKeyNil); isNil {
+			if _, isNil := in.PubKey.(PubKeyNil); isNil {
+				return nil, ErrTxUnknownPubKey
+			}
+			if !bytes.Equal(in.PubKey.Address(), account.Address) {
+				return nil, ErrTxInvalidPubKey
+			}
+			account.PubKey = in.PubKey
+		} else {
+			if _, isNil := in.PubKey.(PubKeyNil); !isNil {
+				return nil, ErrTxRedeclaredPubKey
+			}
+		}
 		accounts[string(in.Address)] = account
 	}
 	for _, out := range outs {
@@ -129,7 +146,12 @@ func (s *State) GetOrMakeAccounts(ins []*TxInput, outs []*TxOutput) (map[string]
 		account := s.GetAccount(out.Address)
 		// output account may be nil (new)
 		if account == nil {
-			account = NewAccount(NewPubKeyUnknown(out.Address))
+			account = &Account{
+				Address:  out.Address,
+				PubKey:   PubKeyNil{},
+				Sequence: 0,
+				Balance:  0,
+			}
 		}
 		accounts[string(out.Address)] = account
 	}

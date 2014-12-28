@@ -18,8 +18,9 @@ type PubKey interface {
 
 // Types of PubKey implementations
 const (
-	PubKeyTypeUnknown = byte(0x00) // For pay-to-pubkey-hash txs.
-	PubKeyTypeEd25519 = byte(0x01)
+	PubKeyTypeNil     = byte(0x00)
+	PubKeyTypeUnknown = byte(0x01) // For pay-to-pubkey-hash txs.
+	PubKeyTypeEd25519 = byte(0x02)
 )
 
 //-------------------------------------
@@ -27,10 +28,10 @@ const (
 
 func PubKeyDecoder(r io.Reader, n *int64, err *error) interface{} {
 	switch t := ReadByte(r, n, err); t {
-	case PubKeyTypeUnknown:
-		return PubKeyUnknown{}
+	case PubKeyTypeNil:
+		return PubKeyNil{}
 	case PubKeyTypeEd25519:
-		return ReadBinary(&PubKeyEd25519{}, r, n, err)
+		return ReadBinary(PubKeyEd25519{}, r, n, err)
 	default:
 		*err = Errorf("Unknown PubKey type %X", t)
 		return nil
@@ -45,22 +46,16 @@ var _ = RegisterType(&TypeInfo{
 //-------------------------------------
 
 // Implements PubKey
-// For pay-to-pubkey-hash txs, where the TxOutput PubKey
-// is not known in advance, only its hash (address).
-type PubKeyUnknown struct {
-	address []byte
+type PubKeyNil struct{}
+
+func (key PubKeyNil) TypeByte() byte { return PubKeyTypeNil }
+
+func (key PubKeyNil) Address() []byte {
+	panic("PubKeyNil has no address")
 }
 
-func NewPubKeyUnknown(address []byte) PubKeyUnknown { return PubKeyUnknown{address} }
-
-func (key PubKeyUnknown) TypeByte() byte { return PubKeyTypeUnknown }
-
-func (key PubKeyUnknown) Address() []byte {
-	return key.address
-}
-
-func (key PubKeyUnknown) VerifyBytes(msg []byte, sig_ Signature) bool {
-	panic("PubKeyUnknown cannot verify messages")
+func (key PubKeyNil) VerifyBytes(msg []byte, sig_ Signature) bool {
+	panic("PubKeyNil cannot verify messages")
 }
 
 //-------------------------------------

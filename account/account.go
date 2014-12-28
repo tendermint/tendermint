@@ -36,16 +36,6 @@ type Account struct {
 	Balance  uint64
 }
 
-func NewAccount(pubKey PubKey) *Account {
-	address := pubKey.Address()
-	return &Account{
-		Address:  address,
-		PubKey:   pubKey,
-		Sequence: uint(0),
-		Balance:  uint64(0),
-	}
-}
-
 func (account *Account) Copy() *Account {
 	accountCopy := *account
 	return &accountCopy

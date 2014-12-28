@@ -2,9 +2,7 @@ package common
 
 import "sync"
 
-/*
-CMap is a threadsafe map
-*/
+// CMap is a goroutine-safe map
 type CMap struct {
 	m map[string]interface{}
 	l sync.Mutex

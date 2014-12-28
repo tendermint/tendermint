@@ -26,11 +26,11 @@ type Node struct {
 
 func NewNode() *Node {
 	// Get BlockStore
-	blockStoreDB := db_.NewMemDB() // TODO configurable db.
+	blockStoreDB := db_.GetDB("blockstore")
 	blockStore := block.NewBlockStore(blockStoreDB)
 
 	// Get State
-	stateDB := db_.NewMemDB() // TODO configurable db.
+	stateDB := db_.GetDB("state")
 	state := state_.LoadState(stateDB)
 	if state == nil {
 		state = state_.MakeGenesisStateFromFile(stateDB, config.GenesisFile())

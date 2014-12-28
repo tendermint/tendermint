@@ -26,7 +26,7 @@ const (
 func PrivKeyDecoder(r io.Reader, n *int64, err *error) interface{} {
 	switch t := ReadByte(r, n, err); t {
 	case PrivKeyTypeEd25519:
-		return ReadBinary(&PrivKeyEd25519{}, r, n, err)
+		return ReadBinary(PrivKeyEd25519{}, r, n, err)
 	default:
 		*err = Errorf("Unknown PrivKey type %X", t)
 		return nil

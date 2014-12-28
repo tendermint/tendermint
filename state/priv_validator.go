@@ -126,6 +126,14 @@ func (privVal *PrivValidator) Save() {
 }
 
 func (privVal *PrivValidator) save() {
+	jsonBytes := privVal.JSONBytes()
+	err := ioutil.WriteFile(privVal.filename, jsonBytes, 0700)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (privVal *PrivValidator) JSONBytes() []byte {
 	privValJSON := PrivValidatorJSON{
 		Address:    base64.StdEncoding.EncodeToString(privVal.Address),
 		PubKey:     base64.StdEncoding.EncodeToString(BinaryBytes(privVal.PubKey)),
@@ -134,14 +142,11 @@ func (privVal *PrivValidator) save() {
 		LastRound:  privVal.LastRound,
 		LastStep:   privVal.LastStep,
 	}
-	privValJSONBytes, err := json.Marshal(privValJSON)
+	privValJSONBytes, err := json.MarshalIndent(privValJSON, "", "    ")
 	if err != nil {
 		panic(err)
 	}
-	err = ioutil.WriteFile(privVal.filename, privValJSONBytes, 0700)
-	if err != nil {
-		panic(err)
-	}
+	return privValJSONBytes
 }
 
 // TODO: test

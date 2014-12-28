@@ -1,6 +1,8 @@
 package state
 
 import (
+	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"io/ioutil"
 	"time"
@@ -13,10 +15,21 @@ import (
 	"github.com/tendermint/tendermint/merkle"
 )
 
+type GenesisAccount struct {
+	Address string
+	Amount  uint64
+}
+
+type GenesisValidator struct {
+	PubKey   string
+	Amount   uint64
+	UnbondTo []GenesisAccount
+}
+
 type GenesisDoc struct {
 	GenesisTime time.Time
-	Accounts    []*Account
-	Validators  []*ValidatorInfo
+	Accounts    []GenesisAccount
+	Validators  []GenesisValidator
 }
 
 func GenesisDocFromJSON(jsonBlob []byte) (genState *GenesisDoc) {
@@ -38,7 +51,7 @@ func MakeGenesisStateFromFile(db db_.DB, genDocFile string) *State {
 
 func MakeGenesisState(db db_.DB, genDoc *GenesisDoc) *State {
 	if len(genDoc.Validators) == 0 {
-		panic("Must have some validators")
+		Exitf("The genesis file has no validators")
 	}
 
 	if genDoc.GenesisTime.IsZero() {
@@ -48,22 +61,59 @@ func MakeGenesisState(db db_.DB, genDoc *GenesisDoc) *State {
 	// Make accounts state tree
 	accounts := merkle.NewIAVLTree(BasicCodec, AccountCodec, defaultAccountsCacheCapacity, db)
 	for _, acc := range genDoc.Accounts {
-		accounts.Set(acc.Address, acc)
+		address, err := base64.StdEncoding.DecodeString(acc.Address)
+		if err != nil {
+			Exitf("Invalid account address: %v", acc.Address)
+		}
+		account := &Account{
+			Address:  address,
+			PubKey:   PubKeyNil{},
+			Sequence: 0,
+			Balance:  acc.Amount,
+		}
+		accounts.Set(address, account)
 	}
 
-	// Make validatorInfos state tree
+	// Make validatorInfos state tree && validators slice
 	validatorInfos := merkle.NewIAVLTree(BasicCodec, ValidatorInfoCodec, 0, db)
-	for _, valInfo := range genDoc.Validators {
-		validatorInfos.Set(valInfo.Address, valInfo)
-	}
-
-	// Make validators
 	validators := make([]*Validator, len(genDoc.Validators))
-	for i, valInfo := range genDoc.Validators {
+	for i, val := range genDoc.Validators {
+		pubKeyBytes, err := base64.StdEncoding.DecodeString(val.PubKey)
+		if err != nil {
+			Exitf("Invalid validator pubkey: %v", val.PubKey)
+		}
+		pubKey := ReadBinary(PubKeyEd25519{},
+			bytes.NewBuffer(pubKeyBytes), new(int64), &err).(PubKeyEd25519)
+		if err != nil {
+			Exitf("Invalid validator pubkey: %v", val.PubKey)
+		}
+		address := pubKey.Address()
+
+		// Make ValidatorInfo
+		valInfo := &ValidatorInfo{
+			Address:         address,
+			PubKey:          pubKey,
+			UnbondTo:        make([]*TxOutput, len(val.UnbondTo)),
+			FirstBondHeight: 0,
+			FirstBondAmount: val.Amount,
+		}
+		for i, unbondTo := range val.UnbondTo {
+			address, err := base64.StdEncoding.DecodeString(unbondTo.Address)
+			if err != nil {
+				Exitf("Invalid unbond-to address: %v", unbondTo.Address)
+			}
+			valInfo.UnbondTo[i] = &TxOutput{
+				Address: address,
+				Amount:  unbondTo.Amount,
+			}
+		}
+		validatorInfos.Set(address, valInfo)
+
+		// Make validator
 		validators[i] = &Validator{
-			Address:     valInfo.Address,
-			PubKey:      valInfo.PubKey,
-			VotingPower: valInfo.FirstBondAmount,
+			Address:     address,
+			PubKey:      pubKey,
+			VotingPower: val.Amount,
 		}
 	}
 

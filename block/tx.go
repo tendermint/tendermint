@@ -15,6 +15,9 @@ var (
 	ErrTxDuplicateAddress  = errors.New("Error duplicate address")
 	ErrTxInvalidAmount     = errors.New("Error invalid amount")
 	ErrTxInsufficientFunds = errors.New("Error insufficient funds")
+	ErrTxUnknownPubKey     = errors.New("Error unknown pubkey")
+	ErrTxInvalidPubKey     = errors.New("Error invalid pubkey")
+	ErrTxRedeclaredPubKey  = errors.New("Error redeclared pubkey")
 	ErrTxInvalidSignature  = errors.New("Error invalid signature")
 	ErrTxInvalidSequence   = errors.New("Error invalid sequence")
 )
@@ -79,6 +82,7 @@ type TxInput struct {
 	Amount    uint64    // Must not exceed account balance
 	Sequence  uint      // Must be 1 greater than the last committed TxInput
 	Signature Signature // Depends on the PubKey type and the whole Tx
+	PubKey    PubKey    // Optional, may be nil
 }
 
 func (txIn *TxInput) ValidateBasic() error {
