@@ -127,16 +127,18 @@ func DataDir() string           { return rootDir + "/data" }
 
 var Config ConfigType
 
-func setFlags(printHelp *bool) {
-	flag.BoolVar(printHelp, "help", false, "Print this help message.")
-	flag.StringVar(&Config.LAddr, "laddr", Config.LAddr, "Listen address. (0.0.0.0:0 means any interface, any port)")
-	flag.StringVar(&Config.SeedNode, "seed", Config.SeedNode, "Address of seed node")
+func parseFlags(flags *flag.FlagSet, args []string) (printHelp bool) {
+	flags.BoolVar(&printHelp, "help", false, "Print this help message.")
+	flags.StringVar(&Config.LAddr, "laddr", Config.LAddr, "Listen address. (0.0.0.0:0 means any interface, any port)")
+	flags.StringVar(&Config.SeedNode, "seed", Config.SeedNode, "Address of seed node")
+	flags.Parse(args)
+	return
 }
 
-func ParseFlags() {
+func ParseFlags(args []string) {
 	configFile := ConfigFile()
 
-	// try to read configuration. if missing, write default
+	// try to read configuration from file. if missing, write default
 	configBytes, err := ioutil.ReadFile(configFile)
 	if err != nil {
 		defaultConfig.write(configFile)
@@ -157,11 +159,10 @@ func ParseFlags() {
 	}
 
 	// try to parse arg flags, which can override file configuration.
-	var printHelp bool
-	setFlags(&printHelp)
-	flag.Parse()
+	flags := flag.NewFlagSet("main", flag.ExitOnError)
+	printHelp := parseFlags(flags, args)
 	if printHelp {
-		flag.PrintDefaults()
+		flags.PrintDefaults()
 		os.Exit(0)
 	}
 }

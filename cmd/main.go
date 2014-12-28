@@ -1,18 +1,15 @@
 package main
 
 import (
-	"flag"
 	"fmt"
+	"os"
 
 	"github.com/tendermint/tendermint/config"
 )
 
 func main() {
 
-	// Parse config flags
-	config.ParseFlags()
-
-	args := flag.Args()
+	args := os.Args[1:]
 	if len(args) == 0 {
 		fmt.Println(`Tendermint
 
@@ -21,13 +18,13 @@ Commands:
     gen_account   Generate new account keypair
     gen_validator Generate new validator keypair
     probe_upnp    Test UPnP functionality
-	
-tendermint --help for command options`)
+`)
 		return
 	}
 
 	switch args[0] {
 	case "daemon":
+		config.ParseFlags(args[1:])
 		daemon()
 	case "gen_account":
 		gen_account()
@@ -35,5 +32,7 @@ tendermint --help for command options`)
 		gen_validator()
 	case "probe_upnp":
 		probe_upnp()
+	default:
+		fmt.Println("Unknown command %v", args[0])
 	}
 }
