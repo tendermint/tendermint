@@ -2,8 +2,9 @@ package merkle
 
 import (
 	"crypto/sha256"
-	. "github.com/tendermint/tendermint/binary"
 	"io"
+
+	. "github.com/tendermint/tendermint/binary"
 )
 
 // Node
@@ -29,7 +30,7 @@ func NewIAVLNode(key interface{}, value interface{}) *IAVLNode {
 	}
 }
 
-func ReadIAVLNode(t *IAVLTree, r io.Reader, n *int64, err *error) *IAVLNode {
+func ReadIAVLNode(t *IAVLTree, r Unreader, n *int64, err *error) *IAVLNode {
 	node := &IAVLNode{}
 
 	// node header & key

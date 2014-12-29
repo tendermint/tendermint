@@ -2,7 +2,6 @@ package account
 
 import (
 	"errors"
-	"io"
 	"reflect"
 
 	"github.com/tendermint/go-ed25519"
@@ -23,8 +22,8 @@ const (
 //-------------------------------------
 // For binary.readReflect
 
-func PrivKeyDecoder(r io.Reader, n *int64, err *error) interface{} {
-	switch t := ReadByte(r, n, err); t {
+func PrivKeyDecoder(r Unreader, n *int64, err *error) interface{} {
+	switch t := PeekByte(r, n, err); t {
 	case PrivKeyTypeEd25519:
 		return ReadBinary(PrivKeyEd25519{}, r, n, err)
 	default:

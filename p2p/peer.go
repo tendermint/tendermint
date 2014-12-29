@@ -62,8 +62,8 @@ func (p *Peer) IsStopped() bool {
 	return atomic.LoadUint32(&p.stopped) == 1
 }
 
-func (p *Peer) RemoteAddress() *NetAddress {
-	return p.mconn.RemoteAddress
+func (p *Peer) Connection() *MConnection {
+	return p.mconn
 }
 
 func (p *Peer) IsOutbound() bool {

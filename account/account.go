@@ -49,7 +49,7 @@ func AccountEncoder(o interface{}, w io.Writer, n *int64, err *error) {
 	WriteBinary(o.(*Account), w, n, err)
 }
 
-func AccountDecoder(r io.Reader, n *int64, err *error) interface{} {
+func AccountDecoder(r Unreader, n *int64, err *error) interface{} {
 	return ReadBinary(&Account{}, r, n, err)
 }
 

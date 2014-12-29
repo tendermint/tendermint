@@ -111,10 +111,13 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 	// Get round state
 	rs := conR.conS.GetRoundState()
 	ps := peer.Data.Get(peerStateKey).(*PeerState)
-	_, msg_ := decodeMessage(msgBytes)
-	var err error = nil
-
-	log.Debug("[%X][%v] Receive: %v", chId, peer, msg_)
+	_, msg_, err := decodeMessage(msgBytes)
+	if err != nil {
+		log.Warning("[%X] RECEIVE %v: %v ERROR: %v", chId, peer.Connection().RemoteAddress, msg_, err)
+		return
+	}
+	log.Debug("[%X] RECEIVE %v: %v", chId, peer.Connection().RemoteAddress, msg_)
+	log.Debug("[%X] RECEIVE BYTES: %X", chId, msgBytes)
 
 	switch chId {
 	case StateCh:
@@ -219,7 +222,7 @@ func (conR *ConsensusReactor) broadcastNewRoundStepRoutine() {
 
 		// Get seconds since beginning of height.
 		// Due to the condition documented, this is safe.
-		timeElapsed := rs.StartTime.Sub(time.Now())
+		timeElapsed := time.Now().Sub(rs.StartTime)
 
 		// Broadcast NewRoundStepMessage
 		{
@@ -635,26 +638,26 @@ const (
 )
 
 // TODO: check for unnecessary extra bytes at the end.
-func decodeMessage(bz []byte) (msgType byte, msg interface{}) {
-	n, err := new(int64), new(error)
+func decodeMessage(bz []byte) (msgType byte, msg interface{}, err error) {
+	n := new(int64)
 	// log.Debug("decoding msg bytes: %X", bz)
 	msgType = bz[0]
 	r := bytes.NewReader(bz[1:])
 	switch msgType {
 	// Messages for communicating state changes
 	case msgTypeNewRoundStep:
-		msg = ReadBinary(&NewRoundStepMessage{}, r, n, err)
+		msg = ReadBinary(&NewRoundStepMessage{}, r, n, &err)
 	case msgTypeCommitStep:
-		msg = ReadBinary(&CommitStepMessage{}, r, n, err)
+		msg = ReadBinary(&CommitStepMessage{}, r, n, &err)
 	// Messages of data
 	case msgTypeProposal:
-		msg = ReadBinary(&Proposal{}, r, n, err)
+		msg = ReadBinary(&Proposal{}, r, n, &err)
 	case msgTypePart:
-		msg = ReadBinary(&PartMessage{}, r, n, err)
+		msg = ReadBinary(&PartMessage{}, r, n, &err)
 	case msgTypeVote:
-		msg = ReadBinary(&VoteMessage{}, r, n, err)
+		msg = ReadBinary(&VoteMessage{}, r, n, &err)
 	case msgTypeHasVote:
-		msg = ReadBinary(&HasVoteMessage{}, r, n, err)
+		msg = ReadBinary(&HasVoteMessage{}, r, n, &err)
 	default:
 		msg = nil
 	}

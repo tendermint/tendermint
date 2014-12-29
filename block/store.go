@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
@@ -41,7 +40,7 @@ func (bs *BlockStore) Height() uint {
 	return bs.height
 }
 
-func (bs *BlockStore) GetReader(key []byte) io.Reader {
+func (bs *BlockStore) GetReader(key []byte) Unreader {
 	bytez := bs.db.Get(key)
 	if bytez == nil {
 		return nil

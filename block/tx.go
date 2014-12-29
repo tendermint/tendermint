@@ -52,8 +52,8 @@ const (
 //-------------------------------------
 // for binary.readReflect
 
-func TxDecoder(r io.Reader, n *int64, err *error) interface{} {
-	switch t := ReadByte(r, n, err); t {
+func TxDecoder(r Unreader, n *int64, err *error) interface{} {
+	switch t := PeekByte(r, n, err); t {
 	case TxTypeSend:
 		return ReadBinary(&SendTx{}, r, n, err)
 	case TxTypeBond:

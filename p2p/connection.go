@@ -182,7 +182,7 @@ func (c *MConnection) Send(chId byte, msg interface{}) bool {
 		return false
 	}
 
-	log.Debug("[%X] Send to %v: %v", chId, c, msg)
+	log.Debug("[%X] SEND %v: %v", chId, c.RemoteAddress, msg)
 	log.Debug("     Bytes: %X", BinaryBytes(msg))
 
 	// Send message to channel.
@@ -210,7 +210,7 @@ func (c *MConnection) TrySend(chId byte, msg interface{}) bool {
 		return false
 	}
 
-	log.Debug("[%X] TrySend to %v: %v", chId, c, msg)
+	log.Debug("[%X] TRYSEND %v: %v", chId, c.RemoteAddress, msg)
 
 	// Send message to channel.
 	channel, ok := c.channelsIdx[chId]
@@ -407,6 +407,7 @@ FOR_LOOP:
 				Panicf("Unknown channel %X", pkt.ChannelId)
 			}
 			msgBytes := channel.recvMsgPacket(pkt)
+			log.Warning("RECEIVE_MSG_BYTES: %X", msgBytes)
 			if msgBytes != nil {
 				c.onReceive(pkt.ChannelId, msgBytes)
 			}

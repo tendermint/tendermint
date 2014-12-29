@@ -47,34 +47,44 @@ func GetTypeInfo(rt reflect.Type) *TypeInfo {
 // NOTE: not goroutine safe, so only call upon program init.
 func RegisterType(info *TypeInfo) *TypeInfo {
 
-	// Register the type info
-	typeInfos[info.Type] = info
-
 	// Also register the underlying struct's info, if info.Type is a pointer.
 	// Or, if info.Type is not a pointer, register the pointer.
+	var rt, ptrRt reflect.Type
 	if info.Type.Kind() == reflect.Ptr {
-		rt := info.Type.Elem()
-		typeInfos[rt] = info
+		rt, ptrRt = info.Type.Elem(), info.Type
 	} else {
-		ptrRt := reflect.PtrTo(info.Type)
-		typeInfos[ptrRt] = info
+		rt, ptrRt = info.Type, reflect.PtrTo(info.Type)
 	}
 
+	// Register the type info
+	typeInfos[rt] = info
+	typeInfos[ptrRt] = info
+
 	// See if the type implements HasTypeByte
-	if info.Type.Implements(reflect.TypeOf((*HasTypeByte)(nil)).Elem()) {
-		zero := reflect.Zero(info.Type)
+	if rt.Implements(reflect.TypeOf((*HasTypeByte)(nil)).Elem()) {
+		zero := reflect.Zero(rt)
 		typeByte := zero.Interface().(HasTypeByte).TypeByte()
 		if info.HasTypeByte && info.TypeByte != typeByte {
-			panic(fmt.Sprintf("Type %v expected TypeByte of %X", info.Type, typeByte))
+			panic(fmt.Sprintf("Type %v expected TypeByte of %X", rt, typeByte))
+		} else {
+			info.HasTypeByte = true
+			info.TypeByte = typeByte
 		}
-		info.HasTypeByte = true
-		info.TypeByte = typeByte
+	} else if ptrRt.Implements(reflect.TypeOf((*HasTypeByte)(nil)).Elem()) {
+		zero := reflect.Zero(ptrRt)
+		typeByte := zero.Interface().(HasTypeByte).TypeByte()
+		if info.HasTypeByte && info.TypeByte != typeByte {
+			panic(fmt.Sprintf("Type %v expected TypeByte of %X", ptrRt, typeByte))
+		} else {
+			info.HasTypeByte = true
+			info.TypeByte = typeByte
+		}
 	}
 
 	return info
 }
 
-func readReflect(rv reflect.Value, rt reflect.Type, r io.Reader, n *int64, err *error) {
+func readReflect(rv reflect.Value, rt reflect.Type, r Unreader, n *int64, err *error) {
 
 	// First, create a new struct if rv is nil pointer.
 	if rt.Kind() == reflect.Ptr && rv.IsNil() {

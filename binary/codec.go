@@ -9,7 +9,7 @@ import (
 )
 
 type Encoder func(o interface{}, w io.Writer, n *int64, err *error)
-type Decoder func(r io.Reader, n *int64, err *error) interface{}
+type Decoder func(r Unreader, n *int64, err *error) interface{}
 type Comparator func(o1 interface{}, o2 interface{}) int
 
 type Codec struct {
@@ -86,7 +86,7 @@ func BasicCodecEncoder(o interface{}, w io.Writer, n *int64, err *error) {
 	}
 }
 
-func BasicCodecDecoder(r io.Reader, n *int64, err *error) (o interface{}) {
+func BasicCodecDecoder(r Unreader, n *int64, err *error) (o interface{}) {
 	type_ := ReadByte(r, n, err)
 	switch type_ {
 	case typeByte:

@@ -2,7 +2,6 @@ package account
 
 import (
 	"errors"
-	"io"
 	"reflect"
 
 	"github.com/tendermint/go-ed25519"
@@ -26,8 +25,8 @@ const (
 //-------------------------------------
 // for binary.readReflect
 
-func PubKeyDecoder(r io.Reader, n *int64, err *error) interface{} {
-	switch t := ReadByte(r, n, err); t {
+func PubKeyDecoder(r Unreader, n *int64, err *error) interface{} {
+	switch t := PeekByte(r, n, err); t {
 	case PubKeyTypeNil:
 		return PubKeyNil{}
 	case PubKeyTypeEd25519:

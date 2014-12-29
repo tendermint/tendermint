@@ -35,7 +35,7 @@ func ValidatorInfoEncoder(o interface{}, w io.Writer, n *int64, err *error) {
 	WriteBinary(o.(*ValidatorInfo), w, n, err)
 }
 
-func ValidatorInfoDecoder(r io.Reader, n *int64, err *error) interface{} {
+func ValidatorInfoDecoder(r Unreader, n *int64, err *error) interface{} {
 	return ReadBinary(&ValidatorInfo{}, r, n, err)
 }
 
@@ -110,7 +110,7 @@ func (vc validatorCodec) Encode(o interface{}, w io.Writer, n *int64, err *error
 	WriteBinary(o.(*Validator), w, n, err)
 }
 
-func (vc validatorCodec) Decode(r io.Reader, n *int64, err *error) interface{} {
+func (vc validatorCodec) Decode(r Unreader, n *int64, err *error) interface{} {
 	return ReadBinary(&Validator{}, r, n, err)
 }
 

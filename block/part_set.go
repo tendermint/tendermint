@@ -5,10 +5,10 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
-	"io"
 	"strings"
 	"sync"
 
+	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/merkle"
 )
@@ -227,7 +227,7 @@ func (ps *PartSet) IsComplete() bool {
 	return ps.count == ps.total
 }
 
-func (ps *PartSet) GetReader() io.Reader {
+func (ps *PartSet) GetReader() Unreader {
 	if !ps.IsComplete() {
 		panic("Cannot GetReader() on incomplete PartSet")
 	}

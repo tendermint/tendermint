@@ -123,8 +123,9 @@ func GreeterEncoder(o interface{}, w io.Writer, n *int64, err *error) {
 	}
 }
 
-func GreeterDecoder(r io.Reader, n *int64, err *error) interface{} {
-	switch t := ReadByte(r, n, err); t {
+func GreeterDecoder(r *bytes.Reader, n *int64, err *error) interface{} {
+	// We must peek the type byte because ReadBinary() expects it.
+	switch t := PeekByte(r, n, err); t {
 	case GreeterTypeDog:
 		return ReadBinary(Dog{}, r, n, err)
 	case GreeterTypeCat:

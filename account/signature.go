@@ -3,7 +3,6 @@ package account
 import (
 	"errors"
 	"fmt"
-	"io"
 	"reflect"
 
 	"github.com/tendermint/go-ed25519"
@@ -23,8 +22,8 @@ const (
 //-------------------------------------
 // for binary.readReflect
 
-func SignatureDecoder(r io.Reader, n *int64, err *error) interface{} {
-	switch t := ReadByte(r, n, err); t {
+func SignatureDecoder(r Unreader, n *int64, err *error) interface{} {
+	switch t := PeekByte(r, n, err); t {
 	case SignatureTypeEd25519:
 		return ReadBinary(SignatureEd25519{}, r, n, err)
 	default:

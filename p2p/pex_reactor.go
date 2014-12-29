@@ -105,7 +105,7 @@ func (pexR *PEXReactor) Receive(chId byte, src *Peer, msgBytes []byte) {
 		// We received some peer addresses from src.
 		// TODO: prevent abuse.
 		// (We don't want to get spammed with bad peers)
-		srcAddr := src.RemoteAddress()
+		srcAddr := src.Connection().RemoteAddress
 		for _, addr := range msg.(*pexAddrsMessage).Addrs {
 			pexR.book.AddAddress(addr, srcAddr)
 		}
