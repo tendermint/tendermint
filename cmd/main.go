@@ -33,6 +33,6 @@ Commands:
 	case "probe_upnp":
 		probe_upnp()
 	default:
-		fmt.Println("Unknown command %v", args[0])
+		fmt.Printf("Unknown command %v\n", args[0])
 	}
 }

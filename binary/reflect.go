@@ -189,13 +189,8 @@ func writeReflect(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, err 
 		return
 	}
 
-	// Dereference pointer or interface
-	if rt.Kind() == reflect.Ptr {
-		rt = rt.Elem()
-		rv = rv.Elem()
-		// RegisterType registers the ptr type,
-		// so typeInfo is already for the ptr.
-	} else if rt.Kind() == reflect.Interface {
+	// Dereference interface
+	if rt.Kind() == reflect.Interface {
 		rv = rv.Elem()
 		rt = rv.Type()
 		typeInfo = typeInfos[rt]
@@ -203,6 +198,14 @@ func writeReflect(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, err 
 		if typeInfo == nil {
 			typeInfo = RegisterType(&TypeInfo{Type: rt})
 		}
+	}
+
+	// Dereference pointer
+	if rt.Kind() == reflect.Ptr {
+		rt = rt.Elem()
+		rv = rv.Elem()
+		// RegisterType registers the ptr type,
+		// so typeInfo is already for the ptr.
 	}
 
 	// Write TypeByte prefix
@@ -215,7 +218,7 @@ func writeReflect(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, err 
 		elemRt := rt.Elem()
 		if elemRt.Kind() == reflect.Uint8 {
 			// Special case: Byteslices
-			byteslice := rv.Interface().([]byte)
+			byteslice := rv.Bytes()
 			WriteByteSlice(byteslice, w, n, err)
 		} else {
 			// Write length

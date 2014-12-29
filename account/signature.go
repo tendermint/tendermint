@@ -2,6 +2,7 @@ package account
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"reflect"
 
@@ -55,4 +56,8 @@ func (sig SignatureEd25519) ValidateBasic() error {
 
 func (sig SignatureEd25519) IsZero() bool {
 	return len(sig.Bytes) == 0
+}
+
+func (sig SignatureEd25519) String() string {
+	return fmt.Sprintf("%X", Fingerprint(sig.Bytes))
 }
