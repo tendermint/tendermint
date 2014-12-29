@@ -3,6 +3,9 @@ all: build
 build:
 	go build -o tendermint github.com/tendermint/tendermint/cmd
 
+build_race:
+	go build -race -o tendermint github.com/tendermint/tendermint/cmd
+
 test:
 	go test github.com/tendermint/tendermint/...
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"sync"
 )
 
 type TypeInfo struct {
@@ -27,8 +28,23 @@ type HasTypeByte interface {
 	TypeByte() byte
 }
 
+// NOTE: do not access typeInfos directly, but call GetTypeInfo()
+var typeInfosMtx sync.Mutex
 var typeInfos = map[reflect.Type]*TypeInfo{}
 
+func GetTypeInfo(rt reflect.Type) *TypeInfo {
+	typeInfosMtx.Lock()
+	defer typeInfosMtx.Unlock()
+	info := typeInfos[rt]
+	if info == nil {
+		info = &TypeInfo{Type: rt}
+		RegisterType(info)
+	}
+	return info
+}
+
+// Registers and possibly modifies the TypeInfo.
+// NOTE: not goroutine safe, so only call upon program init.
 func RegisterType(info *TypeInfo) *TypeInfo {
 
 	// Register the type info
@@ -74,10 +90,7 @@ func readReflect(rv reflect.Value, rt reflect.Type, r io.Reader, n *int64, err *
 	}
 
 	// Get typeInfo
-	typeInfo := typeInfos[rt]
-	if typeInfo == nil {
-		typeInfo = RegisterType(&TypeInfo{Type: rt})
-	}
+	typeInfo := GetTypeInfo(rt)
 
 	// Custom decoder
 	if typeInfo.Decoder != nil {
@@ -178,10 +191,7 @@ func readReflect(rv reflect.Value, rt reflect.Type, r io.Reader, n *int64, err *
 func writeReflect(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, err *error) {
 
 	// Get typeInfo
-	typeInfo := typeInfos[rt]
-	if typeInfo == nil {
-		typeInfo = RegisterType(&TypeInfo{Type: rt})
-	}
+	typeInfo := GetTypeInfo(rt)
 
 	// Custom encoder, say for an interface type rt.
 	if typeInfo.Encoder != nil {
@@ -193,11 +203,8 @@ func writeReflect(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, err 
 	if rt.Kind() == reflect.Interface {
 		rv = rv.Elem()
 		rt = rv.Type()
-		typeInfo = typeInfos[rt]
 		// If interface type, get typeInfo of underlying type.
-		if typeInfo == nil {
-			typeInfo = RegisterType(&TypeInfo{Type: rt})
-		}
+		typeInfo = GetTypeInfo(rt)
 	}
 
 	// Dereference pointer

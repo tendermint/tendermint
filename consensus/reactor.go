@@ -323,7 +323,11 @@ OUTER_LOOP:
 
 		trySendVote := func(voteSet *VoteSet, peerVoteSet BitArray) (sent bool) {
 			// TODO: give priority to our vote.
+			// peerVoteSet BitArray is being accessed concurrently with
+			// writes from Receive() routines.  We must lock like so here:
+			ps.mtx.Lock()
 			index, ok := voteSet.BitArray().Sub(peerVoteSet).PickRandom()
+			ps.mtx.Unlock()
 			if ok {
 				vote := voteSet.GetByIndex(index)
 				// NOTE: vote may be a commit.
