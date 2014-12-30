@@ -396,26 +396,30 @@ OUTER_LOOP:
 			// which contains commit signatures for prs.Height.
 			header, validation := conR.conS.LoadHeaderValidation(prs.Height + 1)
 			size := uint(len(validation.Commits))
+			log.Debug("Loaded HeaderValidation for catchup", "height", prs.Height+1, "header", header, "validation", validation, "size", size)
 
 			// Initialize Commits if needed
 			ps.EnsureVoteBitArrays(prs.Height, size)
 
 			index, ok := validation.BitArray().Sub(prs.Commits).PickRandom()
 			if ok {
-				rsig := validation.Commits[index]
+				commit := validation.Commits[index]
+				log.Debug("Picked commit to send", "index", index, "commit", commit)
 				// Reconstruct vote.
 				vote := &Vote{
 					Height:     prs.Height,
-					Round:      rsig.Round,
+					Round:      commit.Round,
 					Type:       VoteTypeCommit,
 					BlockHash:  header.LastBlockHash,
 					BlockParts: header.LastBlockParts,
-					Signature:  rsig.Signature,
+					Signature:  commit.Signature,
 				}
 				msg := &VoteMessage{index, vote}
 				peer.Send(VoteCh, msg)
 				ps.SetHasVote(vote, index)
 				continue OUTER_LOOP
+			} else {
+				log.Debug("No commits to send", "ours", validation.BitArray(), "theirs", prs.Commits)
 			}
 		}
 

@@ -362,16 +362,17 @@ FOR_LOOP:
 		c.recvMonitor.Limit(maxMsgPacketSize, atomic.LoadInt64(&c.recvRate), true)
 
 		// Peek into bufReader for debugging
-		log.Debug("Peek connection buffer", "bytes", log15.Lazy{func() []byte {
-			numBytes := c.bufReader.Buffered()
-			bytes, err := c.bufReader.Peek(MinInt(numBytes, 100))
-			if err == nil {
-				return bytes
-			} else {
-				log.Warn("Error peeking connection buffer", "error", err)
-				return nil
-			}
-		}})
+		if numBytes := c.bufReader.Buffered(); numBytes > 0 {
+			log.Debug("Peek connection buffer", "bytes", log15.Lazy{func() []byte {
+				bytes, err := c.bufReader.Peek(MinInt(numBytes, 100))
+				if err == nil {
+					return bytes
+				} else {
+					log.Warn("Error peeking connection buffer", "error", err)
+					return nil
+				}
+			}})
+		}
 
 		// Read packet type
 		var n int64
