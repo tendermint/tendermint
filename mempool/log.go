@@ -1,11 +1,7 @@
 package mempool
 
 import (
-	"github.com/op/go-logging"
+	"gopkg.in/inconshreveable/log15.v2"
 )
 
-var log = logging.MustGetLogger("mempool")
-
-func SetMempoolLogger(l *logging.Logger) {
-	log = l
-}
+var log = log15.New("module", "mempool")

@@ -6,6 +6,7 @@ import (
 
 	"github.com/tendermint/tendermint/block"
 	"github.com/tendermint/tendermint/config"
+	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/consensus"
 	db_ "github.com/tendermint/tendermint/db"
 	mempool_ "github.com/tendermint/tendermint/mempool"
@@ -87,7 +88,7 @@ func (n *Node) Stop() {
 
 // Add a Listener to accept inbound peer connections.
 func (n *Node) AddListener(l p2p.Listener) {
-	log.Info("Added %v", l)
+	log.Info(Fmt("Added %v", l))
 	n.lz = append(n.lz, l)
 	n.book.AddOurAddress(l.ExternalAddress())
 }
@@ -125,11 +126,11 @@ func daemon() {
 	if config.Config.SeedNode != "" {
 		peer, err := n.sw.DialPeerWithAddress(p2p.NewNetAddressString(config.Config.SeedNode))
 		if err != nil {
-			log.Error("Error dialing seed: %v", err)
+			log.Error(Fmt("Error dialing seed: %v", err))
 			//n.book.MarkAttempt(addr)
 			return
 		} else {
-			log.Info("Connected to seed: %v", peer)
+			log.Info(Fmt("Connected to seed: %v", peer))
 		}
 	}
 
@@ -149,7 +150,7 @@ func trapSignal(cb func()) {
 	signal.Notify(c, os.Interrupt)
 	go func() {
 		for sig := range c {
-			log.Info("captured %v, exiting..", sig)
+			log.Info(Fmt("captured %v, exiting..", sig))
 			cb()
 			os.Exit(1)
 		}

@@ -327,7 +327,7 @@ func (a *AddrBook) saveToFile(filePath string) {
 	jsonBytes, err := json.MarshalIndent(aJSON, "", "\t")
 	_, err = w.Write(jsonBytes)
 	if err != nil {
-		log.Error("Failed to save AddrBook to file %v: %v", filePath, err)
+		log.Error(Fmt("Failed to save AddrBook to file %v: %v", filePath, err))
 	}
 }
 
@@ -377,7 +377,7 @@ out:
 	for {
 		select {
 		case <-dumpAddressTicker.C:
-			log.Debug("Saving book to file (%v)", a.Size())
+			log.Debug(Fmt("Saving book to file (%v)", a.Size()))
 			a.saveToFile(a.filePath)
 		case <-a.quit:
 			break out
@@ -405,7 +405,7 @@ func (a *AddrBook) getBucket(bucketType byte, bucketIdx int) map[string]*knownAd
 func (a *AddrBook) addToNewBucket(ka *knownAddress, bucketIdx int) bool {
 	// Sanity check
 	if ka.isOld() {
-		log.Warning("Cannot add address already in old bucket to a new bucket: %v", ka)
+		log.Warn(Fmt("Cannot add address already in old bucket to a new bucket: %v", ka))
 		return false
 	}
 
@@ -439,11 +439,11 @@ func (a *AddrBook) addToNewBucket(ka *knownAddress, bucketIdx int) bool {
 func (a *AddrBook) addToOldBucket(ka *knownAddress, bucketIdx int) bool {
 	// Sanity check
 	if ka.isNew() {
-		log.Warning("Cannot add new address to old bucket: %v", ka)
+		log.Warn(Fmt("Cannot add new address to old bucket: %v", ka))
 		return false
 	}
 	if len(ka.Buckets) != 0 {
-		log.Warning("Cannot add already old address to another old bucket: %v", ka)
+		log.Warn(Fmt("Cannot add already old address to another old bucket: %v", ka))
 		return false
 	}
 
@@ -474,7 +474,7 @@ func (a *AddrBook) addToOldBucket(ka *knownAddress, bucketIdx int) bool {
 
 func (a *AddrBook) removeFromBucket(ka *knownAddress, bucketType byte, bucketIdx int) {
 	if ka.BucketType != bucketType {
-		log.Warning("Bucket type mismatch: %v", ka)
+		log.Warn(Fmt("Bucket type mismatch: %v", ka))
 		return
 	}
 	bucket := a.getBucket(bucketType, bucketIdx)
@@ -516,7 +516,7 @@ func (a *AddrBook) pickOldest(bucketType byte, bucketIdx int) *knownAddress {
 
 func (a *AddrBook) addAddress(addr, src *NetAddress) {
 	if !addr.Routable() {
-		log.Warning("Cannot add non-routable address %v", addr)
+		log.Warn(Fmt("Cannot add non-routable address %v", addr))
 		return
 	}
 	if _, ok := a.ourAddrs[addr.String()]; ok {
@@ -547,7 +547,7 @@ func (a *AddrBook) addAddress(addr, src *NetAddress) {
 	bucket := a.calcNewBucket(addr, src)
 	a.addToNewBucket(ka, bucket)
 
-	log.Info("Added new address %s for a total of %d addresses", addr, a.size())
+	log.Info(Fmt("Added new address %s for a total of %d addresses", addr, a.size()))
 }
 
 // Make space in the new buckets by expiring the really bad entries.
@@ -556,7 +556,7 @@ func (a *AddrBook) expireNew(bucketIdx int) {
 	for addrStr, ka := range a.addrNew[bucketIdx] {
 		// If an entry is bad, throw it away
 		if ka.isBad() {
-			log.Info("expiring bad address %v", addrStr)
+			log.Info(Fmt("expiring bad address %v", addrStr))
 			a.removeFromBucket(ka, bucketTypeNew, bucketIdx)
 			return
 		}
@@ -573,11 +573,11 @@ func (a *AddrBook) expireNew(bucketIdx int) {
 func (a *AddrBook) moveToOld(ka *knownAddress) {
 	// Sanity check
 	if ka.isOld() {
-		log.Warning("Cannot promote address that is already old %v", ka)
+		log.Warn(Fmt("Cannot promote address that is already old %v", ka))
 		return
 	}
 	if len(ka.Buckets) == 0 {
-		log.Warning("Cannot promote address that isn't in any new buckets %v", ka)
+		log.Warn(Fmt("Cannot promote address that isn't in any new buckets %v", ka))
 		return
 	}
 
@@ -602,13 +602,13 @@ func (a *AddrBook) moveToOld(ka *knownAddress) {
 		if !added {
 			added := a.addToNewBucket(oldest, freedBucket)
 			if !added {
-				log.Warning("Could not migrate oldest %v to freedBucket %v", oldest, freedBucket)
+				log.Warn(Fmt("Could not migrate oldest %v to freedBucket %v", oldest, freedBucket))
 			}
 		}
 		// Finally, add to bucket again.
 		added = a.addToOldBucket(ka, oldBucketIdx)
 		if !added {
-			log.Warning("Could not re-add ka %v to oldBucketIdx %v", ka, oldBucketIdx)
+			log.Warn(Fmt("Could not re-add ka %v to oldBucketIdx %v", ka, oldBucketIdx))
 		}
 	}
 }
@@ -755,7 +755,7 @@ func (ka *knownAddress) markGood() {
 func (ka *knownAddress) addBucketRef(bucketIdx int) int {
 	for _, bucket := range ka.Buckets {
 		if bucket == bucketIdx {
-			log.Warning("Bucket already exists in ka.Buckets: %v", ka)
+			log.Warn(Fmt("Bucket already exists in ka.Buckets: %v", ka))
 			return -1
 		}
 	}
@@ -771,7 +771,7 @@ func (ka *knownAddress) removeBucketRef(bucketIdx int) int {
 		}
 	}
 	if len(buckets) != len(ka.Buckets)-1 {
-		log.Warning("bucketIdx not found in ka.Buckets: %v", ka)
+		log.Warn(Fmt("bucketIdx not found in ka.Buckets: %v", ka))
 		return -1
 	}
 	ka.Buckets = buckets

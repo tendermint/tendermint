@@ -90,10 +90,10 @@ func (pexR *PEXReactor) Receive(chId byte, src *Peer, msgBytes []byte) {
 	// decode message
 	msg, err := DecodeMessage(msgBytes)
 	if err != nil {
-		log.Warning("Error decoding message: %v", err)
+		log.Warn(Fmt("Error decoding message: %v", err))
 		return
 	}
-	log.Info("requestRoutine received %v", msg)
+	log.Info(Fmt("requestRoutine received %v", msg))
 
 	switch msg.(type) {
 	case *pexRequestMessage:
@@ -209,7 +209,7 @@ func DecodeMessage(bz []byte) (msg interface{}, err error) {
 	n := new(int64)
 	msgType := bz[0]
 	r := bytes.NewReader(bz)
-	// log.Debug("decoding msg bytes: %X", bz)
+	// log.Debug(Fmt("decoding msg bytes: %X", bz))
 	switch msgType {
 	case msgTypeRequest:
 		msg = &pexRequestMessage{}

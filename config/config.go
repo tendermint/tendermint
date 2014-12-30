@@ -151,11 +151,11 @@ func ParseFlags(args []string) {
 	Config = ConfigType{}
 	err = json.Unmarshal(configBytes, &Config)
 	if err != nil {
-		Exitf("Invalid configuration file %s: %v", configFile, err)
+		Exit(Fmt("Invalid configuration file %s: %v", configFile, err))
 	}
 	err = Config.validate()
 	if err != nil {
-		Exitf("Invalid configuration file %s: %v", configFile, err)
+		Exit(Fmt("Invalid configuration file %s: %v", configFile, err))
 	}
 
 	// try to parse arg flags, which can override file configuration.

@@ -1,9 +1,11 @@
-package common
+package binary
 
 import (
 	"fmt"
 	"math/rand"
 	"strings"
+
+	. "github.com/tendermint/tendermint/common"
 )
 
 // Not goroutine safe

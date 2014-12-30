@@ -1,11 +1,11 @@
-package common
+package binary
 
 import (
 	"bytes"
 	"fmt"
 	"testing"
 
-	. "github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
 )
 
 func randBitArray(bits uint) (BitArray, []byte) {

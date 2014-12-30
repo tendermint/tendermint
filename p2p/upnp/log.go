@@ -1,11 +1,7 @@
 package upnp
 
 import (
-	"github.com/op/go-logging"
+	"gopkg.in/inconshreveable/log15.v2"
 )
 
-var log = logging.MustGetLogger("upnp")
-
-func SetUPNPLogger(l *logging.Logger) {
-	log = l
-}
+var log = log15.New("module", "upnp")

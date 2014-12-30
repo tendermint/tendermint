@@ -7,6 +7,7 @@ import (
 	"time"
 
 	. "github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
 )
 
 type PeerMessage struct {
@@ -201,7 +202,7 @@ func BenchmarkSwitches(b *testing.B) {
 		numFailure += nF
 	}
 
-	log.Warning("success: %v, failure: %v", numSuccess, numFailure)
+	log.Warn(Fmt("success: %v, failure: %v", numSuccess, numFailure))
 
 	// Allow everything to flush before stopping switches & closing connections.
 	b.StopTimer()

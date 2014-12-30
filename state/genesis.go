@@ -35,7 +35,7 @@ type GenesisDoc struct {
 func GenesisDocFromJSON(jsonBlob []byte) (genState *GenesisDoc) {
 	err := json.Unmarshal(jsonBlob, &genState)
 	if err != nil {
-		Panicf("Couldn't read GenesisDoc: %v", err)
+		panic(Fmt("Couldn't read GenesisDoc: %v", err))
 	}
 	return
 }
@@ -43,7 +43,7 @@ func GenesisDocFromJSON(jsonBlob []byte) (genState *GenesisDoc) {
 func MakeGenesisStateFromFile(db db_.DB, genDocFile string) *State {
 	jsonBlob, err := ioutil.ReadFile(genDocFile)
 	if err != nil {
-		Panicf("Couldn't read GenesisDoc file: %v", err)
+		panic(Fmt("Couldn't read GenesisDoc file: %v", err))
 	}
 	genDoc := GenesisDocFromJSON(jsonBlob)
 	return MakeGenesisState(db, genDoc)
@@ -51,7 +51,7 @@ func MakeGenesisStateFromFile(db db_.DB, genDocFile string) *State {
 
 func MakeGenesisState(db db_.DB, genDoc *GenesisDoc) *State {
 	if len(genDoc.Validators) == 0 {
-		Exitf("The genesis file has no validators")
+		Exit(Fmt("The genesis file has no validators"))
 	}
 
 	if genDoc.GenesisTime.IsZero() {
@@ -63,7 +63,7 @@ func MakeGenesisState(db db_.DB, genDoc *GenesisDoc) *State {
 	for _, acc := range genDoc.Accounts {
 		address, err := base64.StdEncoding.DecodeString(acc.Address)
 		if err != nil {
-			Exitf("Invalid account address: %v", acc.Address)
+			Exit(Fmt("Invalid account address: %v", acc.Address))
 		}
 		account := &Account{
 			Address:  address,
@@ -80,12 +80,12 @@ func MakeGenesisState(db db_.DB, genDoc *GenesisDoc) *State {
 	for i, val := range genDoc.Validators {
 		pubKeyBytes, err := base64.StdEncoding.DecodeString(val.PubKey)
 		if err != nil {
-			Exitf("Invalid validator pubkey: %v", val.PubKey)
+			Exit(Fmt("Invalid validator pubkey: %v", val.PubKey))
 		}
 		pubKey := ReadBinary(PubKeyEd25519{},
 			bytes.NewBuffer(pubKeyBytes), new(int64), &err).(PubKeyEd25519)
 		if err != nil {
-			Exitf("Invalid validator pubkey: %v", val.PubKey)
+			Exit(Fmt("Invalid validator pubkey: %v", val.PubKey))
 		}
 		address := pubKey.Address()
 
@@ -100,7 +100,7 @@ func MakeGenesisState(db db_.DB, genDoc *GenesisDoc) *State {
 		for i, unbondTo := range val.UnbondTo {
 			address, err := base64.StdEncoding.DecodeString(unbondTo.Address)
 			if err != nil {
-				Exitf("Invalid unbond-to address: %v", unbondTo.Address)
+				Exit(Fmt("Invalid unbond-to address: %v", unbondTo.Address))
 			}
 			valInfo.UnbondTo[i] = &TxOutput{
 				Address: address,

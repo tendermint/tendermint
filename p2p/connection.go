@@ -11,9 +11,9 @@ import (
 	"time"
 
 	flow "code.google.com/p/mxk/go1/flowcontrol"
-	"github.com/op/go-logging"
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
+	"gopkg.in/inconshreveable/log15.v2"
 )
 
 const (
@@ -123,7 +123,7 @@ func NewMConnection(conn net.Conn, chDescs []*ChannelDescriptor, onReceive recei
 // .Start() begins multiplexing packets to and from "channels".
 func (c *MConnection) Start() {
 	if atomic.CompareAndSwapUint32(&c.started, 0, 1) {
-		log.Debug("Starting %v", c)
+		log.Debug(Fmt("Starting %v", c))
 		go c.sendRoutine()
 		go c.recvRoutine()
 	}
@@ -131,7 +131,7 @@ func (c *MConnection) Start() {
 
 func (c *MConnection) Stop() {
 	if atomic.CompareAndSwapUint32(&c.stopped, 0, 1) {
-		log.Debug("Stopping %v", c)
+		log.Debug(Fmt("Stopping %v", c))
 		close(c.quit)
 		c.conn.Close()
 		c.flushTimer.Stop()
@@ -153,7 +153,7 @@ func (c *MConnection) flush() {
 	err := c.bufWriter.Flush()
 	if err != nil {
 		if atomic.LoadUint32(&c.stopped) != 1 {
-			log.Warning("MConnection flush failed: %v", err)
+			log.Warn(Fmt("MConnection flush failed: %v", err))
 		}
 	}
 }
@@ -182,13 +182,12 @@ func (c *MConnection) Send(chId byte, msg interface{}) bool {
 		return false
 	}
 
-	log.Debug("[%X] SEND %v: %v", chId, c.RemoteAddress, msg)
-	log.Debug("     Bytes: %X", BinaryBytes(msg))
+	log.Debug("Send", "channel", chId, "connection", c, "msg", msg, "bytes", BinaryBytes(msg))
 
 	// Send message to channel.
 	channel, ok := c.channelsIdx[chId]
 	if !ok {
-		log.Error("Cannot send bytes, unknown channel %X", chId)
+		log.Error(Fmt("Cannot send bytes, unknown channel %X", chId))
 		return false
 	}
 
@@ -210,12 +209,12 @@ func (c *MConnection) TrySend(chId byte, msg interface{}) bool {
 		return false
 	}
 
-	log.Debug("[%X] TRYSEND %v: %v", chId, c.RemoteAddress, msg)
+	log.Debug(Fmt("[%X] TRYSEND %v: %v", chId, c.RemoteAddress, msg))
 
 	// Send message to channel.
 	channel, ok := c.channelsIdx[chId]
 	if !ok {
-		log.Error("Cannot send bytes, unknown channel %X", chId)
+		log.Error(Fmt("Cannot send bytes, unknown channel %X", chId))
 		return false
 	}
 
@@ -238,7 +237,7 @@ func (c *MConnection) CanSend(chId byte) bool {
 
 	channel, ok := c.channelsIdx[chId]
 	if !ok {
-		log.Error("Unknown channel %X", chId)
+		log.Error(Fmt("Unknown channel %X", chId))
 		return false
 	}
 	return channel.canSend()
@@ -287,7 +286,7 @@ FOR_LOOP:
 			break FOR_LOOP
 		}
 		if err != nil {
-			log.Warning("%v failed @ sendRoutine:\n%v", c, err)
+			log.Warn(Fmt("%v failed @ sendRoutine:\n%v", c, err))
 			c.Stop()
 			break FOR_LOOP
 		}
@@ -342,7 +341,7 @@ func (c *MConnection) sendMsgPacket() bool {
 	// Make & send a msgPacket from this channel
 	n, err := leastChannel.writeMsgPacketTo(c.bufWriter)
 	if err != nil {
-		log.Warning("Failed to write msgPacket. Error: %v", err)
+		log.Warn(Fmt("Failed to write msgPacket. Error: %v", err))
 		c.stopForError(err)
 		return true
 	}
@@ -369,20 +368,22 @@ FOR_LOOP:
 		c.recvMonitor.Update(int(n))
 		if err != nil {
 			if atomic.LoadUint32(&c.stopped) != 1 {
-				log.Warning("%v failed @ recvRoutine with err: %v", c, err)
+				log.Warn(Fmt("%v failed @ recvRoutine with err: %v", c, err))
 				c.Stop()
 			}
 			break FOR_LOOP
 		}
 
 		// Peek into bufReader for debugging
-		if log.IsEnabledFor(logging.DEBUG) {
+		log.Debug("%v", log15.Lazy{func() string {
 			numBytes := c.bufReader.Buffered()
 			bytes, err := c.bufReader.Peek(MinInt(numBytes, 100))
 			if err == nil {
-				log.Debug("recvRoutine packet type %X, peeked: %X", pktType, bytes)
+				return fmt.Sprintf("recvRoutine packet type %X, peeked: %X", pktType, bytes)
+			} else {
+				return fmt.Sprintf("recvRoutine error: %v", err)
 			}
-		}
+		}})
 
 		// Read more depending on packet type.
 		switch pktType {
@@ -397,22 +398,22 @@ FOR_LOOP:
 			c.recvMonitor.Update(int(*n))
 			if *err != nil {
 				if atomic.LoadUint32(&c.stopped) != 1 {
-					log.Warning("%v failed @ recvRoutine", c)
+					log.Warn(Fmt("%v failed @ recvRoutine", c))
 					c.Stop()
 				}
 				break FOR_LOOP
 			}
 			channel, ok := c.channelsIdx[pkt.ChannelId]
 			if !ok || channel == nil {
-				Panicf("Unknown channel %X", pkt.ChannelId)
+				panic(Fmt("Unknown channel %X", pkt.ChannelId))
 			}
 			msgBytes := channel.recvMsgPacket(pkt)
-			log.Warning("RECEIVE_MSG_BYTES: %X", msgBytes)
+			log.Warn(Fmt("RECEIVE_MSG_BYTES: %X", msgBytes))
 			if msgBytes != nil {
 				c.onReceive(pkt.ChannelId, msgBytes)
 			}
 		default:
-			Panicf("Unknown message type %X", pktType)
+			panic(Fmt("Unknown message type %X", pktType))
 		}
 
 		// TODO: shouldn't this go in the sendRoutine?

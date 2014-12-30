@@ -1,11 +1,7 @@
 package alert
 
 import (
-	"github.com/op/go-logging"
+	"gopkg.in/inconshreveable/log15.v2"
 )
 
-var log = logging.MustGetLogger("alert")
-
-func SetAlertLogger(l *logging.Logger) {
-	log = l
-}
+var log = log15.New("module", "alert")

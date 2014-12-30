@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/op/go-logging"
+	"gopkg.in/inconshreveable/log15.v2"
 )
 
-var log = logging.MustGetLogger("main")
+var log = log15.New("module", "main")

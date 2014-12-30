@@ -7,6 +7,7 @@ import (
 
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/block"
+	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/p2p"
 )
 
@@ -70,10 +71,10 @@ func (pexR *MempoolReactor) RemovePeer(peer *p2p.Peer, reason interface{}) {
 func (memR *MempoolReactor) Receive(chId byte, src *p2p.Peer, msgBytes []byte) {
 	_, msg_, err := DecodeMessage(msgBytes)
 	if err != nil {
-		log.Warning("Error decoding message: %v", err)
+		log.Warn(Fmt("Error decoding message: %v", err))
 		return
 	}
-	log.Info("MempoolReactor received %v", msg_)
+	log.Info(Fmt("MempoolReactor received %v", msg_))
 
 	switch msg_.(type) {
 	case *TxMessage:
@@ -81,10 +82,10 @@ func (memR *MempoolReactor) Receive(chId byte, src *p2p.Peer, msgBytes []byte) {
 		err := memR.Mempool.AddTx(msg.Tx)
 		if err != nil {
 			// Bad, seen, or conflicting tx.
-			log.Debug("Could not add tx %v", msg.Tx)
+			log.Debug(Fmt("Could not add tx %v", msg.Tx))
 			return
 		} else {
-			log.Debug("Added valid tx %V", msg.Tx)
+			log.Debug(Fmt("Added valid tx %V", msg.Tx))
 		}
 		// Share tx.
 		// We use a simple shotgun approach for now.

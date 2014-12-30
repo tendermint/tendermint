@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	. "github.com/tendermint/tendermint/config"
+	. "github.com/tendermint/tendermint/common"
 )
 
 func StartHTTPServer() {
@@ -14,9 +15,9 @@ func StartHTTPServer() {
 	// Serve HTTP on localhost only.
 	// Let something like Nginx handle HTTPS connections.
 	address := fmt.Sprintf("127.0.0.1:%v", Config.RPC.HTTPPort)
-	log.Info("Starting RPC HTTP server on http://%s", address)
+	log.Info(Fmt("Starting RPC HTTP server on http://%s", address))
 
 	go func() {
-		log.Fatal(http.ListenAndServe(address, RecoverAndLogHandler(http.DefaultServeMux)))
+		log.Crit("%v", http.ListenAndServe(address, RecoverAndLogHandler(http.DefaultServeMux)))
 	}()
 }

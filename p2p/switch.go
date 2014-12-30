@@ -117,9 +117,9 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 
 	// Add the peer to .peers
 	if sw.peers.Add(peer) {
-		log.Info("+ %v", peer)
+		log.Info(Fmt("+ %v", peer))
 	} else {
-		log.Info("Ignoring duplicate: %v", peer)
+		log.Info(Fmt("Ignoring duplicate: %v", peer))
 		return nil, ErrSwitchDuplicatePeer
 	}
 
@@ -137,7 +137,7 @@ func (sw *Switch) DialPeerWithAddress(addr *NetAddress) (*Peer, error) {
 		return nil, ErrSwitchStopped
 	}
 
-	log.Info("Dialing peer @ %v", addr)
+	log.Info(Fmt("Dialing peer @ %v", addr))
 	sw.dialing.Set(addr.String(), addr)
 	conn, err := addr.DialTimeout(peerDialTimeoutSeconds * time.Second)
 	sw.dialing.Delete(addr.String())
@@ -161,12 +161,12 @@ func (sw *Switch) Broadcast(chId byte, msg interface{}) (numSuccess, numFailure 
 		return
 	}
 
-	log.Debug("[%X] BROADCAST: %v", chId, msg)
+	log.Debug("Broadcast", "channel", chId, "msg", msg)
 	for _, peer := range sw.peers.List() {
 		// XXX XXX Change.
 		// success := peer.TrySend(chId, msg)
 		success := peer.Send(chId, msg)
-		log.Debug("[%X] for peer %v success: %v", chId, peer, success)
+		log.Debug(Fmt("[%X] for peer %v success: %v", chId, peer, success))
 		if success {
 			numSuccess += 1
 		} else {
@@ -198,7 +198,7 @@ func (sw *Switch) Peers() IPeerSet {
 // Disconnect from a peer due to external error.
 // TODO: make record depending on reason.
 func (sw *Switch) StopPeerForError(peer *Peer, reason interface{}) {
-	log.Info("- %v !! reason: %v", peer, reason)
+	log.Info(Fmt("- %v !! reason: %v", peer, reason))
 	sw.peers.Remove(peer)
 	peer.stop()
 
@@ -209,7 +209,7 @@ func (sw *Switch) StopPeerForError(peer *Peer, reason interface{}) {
 // Disconnect from a peer gracefully.
 // TODO: handle graceful disconnects.
 func (sw *Switch) StopPeerGracefully(peer *Peer) {
-	log.Info("- %v", peer)
+	log.Info(Fmt("- %v", peer))
 	sw.peers.Remove(peer)
 	peer.stop()
 

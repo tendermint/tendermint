@@ -9,7 +9,6 @@ import (
 	. "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/block"
-	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/state"
 )
 

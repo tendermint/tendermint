@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/alert"
+	. "github.com/tendermint/tendermint/common"
 )
 
 type APIStatus string
@@ -95,7 +96,7 @@ func RecoverAndLogHandler(handler http.Handler) http.Handler {
 					// For the rest,
 					rww.WriteHeader(http.StatusInternalServerError)
 					rww.Write([]byte("Internal Server Error"))
-					log.Error("%s: %s", e, debug.Stack())
+					log.Error("Panic in HTTP handler", "error", e, "stack", debug.Stack())
 				}
 			}
 
@@ -104,7 +105,7 @@ func RecoverAndLogHandler(handler http.Handler) http.Handler {
 			if rww.Status == -1 {
 				rww.Status = 200
 			}
-			log.Debug("%s %s %v %v %s", r.RemoteAddr, r.Method, rww.Status, durationMS, r.URL)
+			log.Debug(Fmt("%s %s %v %v %s", r.RemoteAddr, r.Method, rww.Status, durationMS, r.URL))
 		}()
 
 		handler.ServeHTTP(rww, r)

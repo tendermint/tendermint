@@ -53,7 +53,7 @@ func (bs *BlockStore) LoadBlock(height uint) *Block {
 	var err error
 	meta := ReadBinary(&BlockMeta{}, bs.GetReader(calcBlockMetaKey(height)), &n, &err).(*BlockMeta)
 	if err != nil {
-		Panicf("Error reading block meta: %v", err)
+		panic(Fmt("Error reading block meta: %v", err))
 	}
 	bytez := []byte{}
 	for i := uint(0); i < meta.Parts.Total; i++ {
@@ -62,7 +62,7 @@ func (bs *BlockStore) LoadBlock(height uint) *Block {
 	}
 	block := ReadBinary(&Block{}, bytes.NewReader(bytez), &n, &err).(*Block)
 	if err != nil {
-		Panicf("Error reading block: %v", err)
+		panic(Fmt("Error reading block: %v", err))
 	}
 	return block
 }
@@ -72,7 +72,7 @@ func (bs *BlockStore) LoadBlockPart(height uint, index uint) *Part {
 	var err error
 	part := ReadBinary(&Part{}, bs.GetReader(calcBlockPartKey(height, index)), &n, &err).(*Part)
 	if err != nil {
-		Panicf("Error reading block part: %v", err)
+		panic(Fmt("Error reading block part: %v", err))
 	}
 	return part
 }
@@ -82,7 +82,7 @@ func (bs *BlockStore) LoadBlockMeta(height uint) *BlockMeta {
 	var err error
 	meta := ReadBinary(&BlockMeta{}, bs.GetReader(calcBlockMetaKey(height)), &n, &err).(*BlockMeta)
 	if err != nil {
-		Panicf("Error reading block meta: %v", err)
+		panic(Fmt("Error reading block meta: %v", err))
 	}
 	return meta
 }
@@ -92,7 +92,7 @@ func (bs *BlockStore) LoadBlockValidation(height uint) *Validation {
 	var err error
 	validation := ReadBinary(&Validation{}, bs.GetReader(calcBlockValidationKey(height)), &n, &err).(*Validation)
 	if err != nil {
-		Panicf("Error reading validation: %v", err)
+		panic(Fmt("Error reading validation: %v", err))
 	}
 	return validation
 }
@@ -100,10 +100,10 @@ func (bs *BlockStore) LoadBlockValidation(height uint) *Validation {
 func (bs *BlockStore) SaveBlock(block *Block, blockParts *PartSet) {
 	height := block.Height
 	if height != bs.height+1 {
-		Panicf("BlockStore can only save contiguous blocks. Wanted %v, got %v", bs.height+1, height)
+		panic(Fmt("BlockStore can only save contiguous blocks. Wanted %v, got %v", bs.height+1, height))
 	}
 	if !blockParts.IsComplete() {
-		Panicf("BlockStore can only save complete block part sets")
+		panic(Fmt("BlockStore can only save complete block part sets"))
 	}
 
 	// Save block meta
@@ -129,7 +129,7 @@ func (bs *BlockStore) SaveBlock(block *Block, blockParts *PartSet) {
 
 func (bs *BlockStore) saveBlockPart(height uint, index uint, part *Part) {
 	if height != bs.height+1 {
-		Panicf("BlockStore can only save contiguous blocks. Wanted %v, got %v", bs.height+1, height)
+		panic(Fmt("BlockStore can only save contiguous blocks. Wanted %v, got %v", bs.height+1, height))
 	}
 	partBytes := BinaryBytes(part)
 	bs.db.Set(calcBlockPartKey(height, index), partBytes)
@@ -176,7 +176,7 @@ type BlockStoreStateJSON struct {
 func (bsj BlockStoreStateJSON) Save(db db_.DB) {
 	bytes, err := json.Marshal(bsj)
 	if err != nil {
-		Panicf("Could not marshal state bytes: %v", err)
+		panic(Fmt("Could not marshal state bytes: %v", err))
 	}
 	db.Set(blockStoreKey, bytes)
 }
@@ -191,7 +191,7 @@ func LoadBlockStoreStateJSON(db db_.DB) BlockStoreStateJSON {
 	bsj := BlockStoreStateJSON{}
 	err := json.Unmarshal(bytes, &bsj)
 	if err != nil {
-		Panicf("Could not unmarshal bytes: %X", bytes)
+		panic(Fmt("Could not unmarshal bytes: %X", bytes))
 	}
 	return bsj
 }

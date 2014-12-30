@@ -6,6 +6,8 @@ import (
 	"io"
 	"reflect"
 	"sync"
+
+	. "github.com/tendermint/tendermint/common"
 )
 
 type TypeInfo struct {
@@ -113,7 +115,7 @@ func readReflect(rv reflect.Value, rt reflect.Type, r Unreader, n *int64, err *e
 	// Read TypeByte prefix
 	if typeInfo.HasTypeByte {
 		typeByte := ReadByte(r, n, err)
-		log.Debug("Read TypeByte: %X", typeByte)
+		log.Debug("Read typebyte", "typeByte", typeByte)
 		if typeByte != typeInfo.TypeByte {
 			*err = errors.New(fmt.Sprintf("Expected TypeByte of %X but got %X", typeInfo.TypeByte, typeByte))
 			return
@@ -126,12 +128,12 @@ func readReflect(rv reflect.Value, rt reflect.Type, r Unreader, n *int64, err *e
 		if elemRt.Kind() == reflect.Uint8 {
 			// Special case: Byteslices
 			byteslice := ReadByteSlice(r, n, err)
-			log.Debug("Read byteslice: %X", byteslice)
+			log.Debug("Read byteslice", "bytes", byteslice)
 			rv.Set(reflect.ValueOf(byteslice))
 		} else {
 			// Read length
 			length := int(ReadUvarint(r, n, err))
-			log.Debug("Read length: %v", length)
+			log.Debug(Fmt("Read length: %v", length))
 			sliceRv := reflect.MakeSlice(rt, length, length)
 			// Read elems
 			for i := 0; i < length; i++ {
@@ -154,57 +156,57 @@ func readReflect(rv reflect.Value, rt reflect.Type, r Unreader, n *int64, err *e
 
 	case reflect.String:
 		str := ReadString(r, n, err)
-		log.Debug("Read string: %v", str)
+		log.Debug(Fmt("Read string: %v", str))
 		rv.SetString(str)
 
 	case reflect.Int64:
 		num := ReadUint64(r, n, err)
-		log.Debug("Read num: %v", num)
+		log.Debug(Fmt("Read num: %v", num))
 		rv.SetInt(int64(num))
 
 	case reflect.Int32:
 		num := ReadUint32(r, n, err)
-		log.Debug("Read num: %v", num)
+		log.Debug(Fmt("Read num: %v", num))
 		rv.SetInt(int64(num))
 
 	case reflect.Int16:
 		num := ReadUint16(r, n, err)
-		log.Debug("Read num: %v", num)
+		log.Debug(Fmt("Read num: %v", num))
 		rv.SetInt(int64(num))
 
 	case reflect.Int8:
 		num := ReadUint8(r, n, err)
-		log.Debug("Read num: %v", num)
+		log.Debug(Fmt("Read num: %v", num))
 		rv.SetInt(int64(num))
 
 	case reflect.Int:
 		num := ReadUvarint(r, n, err)
-		log.Debug("Read num: %v", num)
+		log.Debug(Fmt("Read num: %v", num))
 		rv.SetInt(int64(num))
 
 	case reflect.Uint64:
 		num := ReadUint64(r, n, err)
-		log.Debug("Read num: %v", num)
+		log.Debug(Fmt("Read num: %v", num))
 		rv.SetUint(uint64(num))
 
 	case reflect.Uint32:
 		num := ReadUint32(r, n, err)
-		log.Debug("Read num: %v", num)
+		log.Debug(Fmt("Read num: %v", num))
 		rv.SetUint(uint64(num))
 
 	case reflect.Uint16:
 		num := ReadUint16(r, n, err)
-		log.Debug("Read num: %v", num)
+		log.Debug(Fmt("Read num: %v", num))
 		rv.SetUint(uint64(num))
 
 	case reflect.Uint8:
 		num := ReadUint8(r, n, err)
-		log.Debug("Read num: %v", num)
+		log.Debug(Fmt("Read num: %v", num))
 		rv.SetUint(uint64(num))
 
 	case reflect.Uint:
 		num := ReadUvarint(r, n, err)
-		log.Debug("Read num: %v", num)
+		log.Debug(Fmt("Read num: %v", num))
 		rv.SetUint(uint64(num))
 
 	default:

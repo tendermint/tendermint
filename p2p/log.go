@@ -1,11 +1,7 @@
 package p2p
 
 import (
-	"github.com/op/go-logging"
+	"gopkg.in/inconshreveable/log15.v2"
 )
 
-var log = logging.MustGetLogger("p2p")
-
-func SetP2PLogger(l *logging.Logger) {
-	log = l
-}
+var log = log15.New("module", "p2p")

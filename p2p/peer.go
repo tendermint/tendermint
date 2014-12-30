@@ -25,7 +25,7 @@ func newPeer(conn net.Conn, outbound bool, reactorsByCh map[byte]Reactor, chDesc
 	onReceive := func(chId byte, msgBytes []byte) {
 		reactor := reactorsByCh[chId]
 		if reactor == nil {
-			Panicf("Unknown channel %X", chId)
+			panic(Fmt("Unknown channel %X", chId))
 		}
 		reactor.Receive(chId, p, msgBytes)
 	}
@@ -46,14 +46,14 @@ func newPeer(conn net.Conn, outbound bool, reactorsByCh map[byte]Reactor, chDesc
 
 func (p *Peer) start() {
 	if atomic.CompareAndSwapUint32(&p.started, 0, 1) {
-		log.Debug("Starting %v", p)
+		log.Debug(Fmt("Starting %v", p))
 		p.mconn.Start()
 	}
 }
 
 func (p *Peer) stop() {
 	if atomic.CompareAndSwapUint32(&p.stopped, 0, 1) {
-		log.Debug("Stopping %v", p)
+		log.Debug(Fmt("Stopping %v", p))
 		p.mconn.Stop()
 	}
 }

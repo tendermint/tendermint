@@ -513,7 +513,7 @@ func (s *State) AppendBlock(block *Block, blockPartsHeader PartSetHeader, checkS
 					sumVotingPower += val.VotingPower
 					return false
 				} else {
-					log.Warning("Invalid validation signature.\nval: %v\nvote: %v", val, vote)
+					log.Warn(Fmt("Invalid validation signature.\nval: %v\nvote: %v", val, vote))
 					err = errors.New("Invalid validation signature")
 					return true
 				}
@@ -542,7 +542,7 @@ func (s *State) AppendBlock(block *Block, blockPartsHeader PartSetHeader, checkS
 		}
 		_, val := s.BondedValidators.GetByIndex(uint(i))
 		if val == nil {
-			Panicf("Failed to fetch validator at index %v", i)
+			panic(Fmt("Failed to fetch validator at index %v", i))
 		}
 		val.LastCommitHeight = block.Height - 1
 		updated := s.BondedValidators.Update(val)

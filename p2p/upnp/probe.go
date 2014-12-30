@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net"
 	"time"
+
+	. "github.com/tendermint/tendermint/common"
 )
 
 type UPNPCapabilities struct {
@@ -17,19 +19,19 @@ func makeUPNPListener(intPort int, extPort int) (NAT, net.Listener, net.IP, erro
 	if err != nil {
 		return nil, nil, nil, errors.New(fmt.Sprintf("NAT upnp could not be discovered: %v", err))
 	}
-	log.Debug("ourIP: %v", nat.(*upnpNAT).ourIP)
+	log.Debug(Fmt("ourIP: %v", nat.(*upnpNAT).ourIP))
 
 	ext, err := nat.GetExternalAddress()
 	if err != nil {
 		return nat, nil, nil, errors.New(fmt.Sprintf("External address error: %v", err))
 	}
-	log.Debug("External address: %v", ext)
+	log.Debug(Fmt("External address: %v", ext))
 
 	port, err := nat.AddPortMapping("tcp", extPort, intPort, "Tendermint UPnP Probe", 0)
 	if err != nil {
 		return nat, nil, ext, errors.New(fmt.Sprintf("Port mapping error: %v", err))
 	}
-	log.Debug("Port mapping mapped: %v", port)
+	log.Debug(Fmt("Port mapping mapped: %v", port))
 
 	// also run the listener, open for all remote addresses.
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%v", intPort))
@@ -44,17 +46,17 @@ func testHairpin(listener net.Listener, extAddr string) (supportsHairpin bool) {
 	go func() {
 		inConn, err := listener.Accept()
 		if err != nil {
-			log.Info("Listener.Accept() error: %v", err)
+			log.Info(Fmt("Listener.Accept() error: %v", err))
 			return
 		}
-		log.Debug("Accepted incoming connection: %v -> %v", inConn.LocalAddr(), inConn.RemoteAddr())
+		log.Debug(Fmt("Accepted incoming connection: %v -> %v", inConn.LocalAddr(), inConn.RemoteAddr()))
 		buf := make([]byte, 1024)
 		n, err := inConn.Read(buf)
 		if err != nil {
-			log.Info("Incoming connection read error: %v", err)
+			log.Info(Fmt("Incoming connection read error: %v", err))
 			return
 		}
-		log.Debug("Incoming connection read %v bytes: %X", n, buf)
+		log.Debug(Fmt("Incoming connection read %v bytes: %X", n, buf))
 		if string(buf) == "test data" {
 			supportsHairpin = true
 			return
@@ -64,16 +66,16 @@ func testHairpin(listener net.Listener, extAddr string) (supportsHairpin bool) {
 	// Establish outgoing
 	outConn, err := net.Dial("tcp", extAddr)
 	if err != nil {
-		log.Info("Outgoing connection dial error: %v", err)
+		log.Info(Fmt("Outgoing connection dial error: %v", err))
 		return
 	}
 
 	n, err := outConn.Write([]byte("test data"))
 	if err != nil {
-		log.Info("Outgoing connection write error: %v", err)
+		log.Info(Fmt("Outgoing connection write error: %v", err))
 		return
 	}
-	log.Debug("Outgoing connection wrote %v bytes", n)
+	log.Debug(Fmt("Outgoing connection wrote %v bytes", n))
 
 	// Wait for data receipt
 	time.Sleep(1 * time.Second)
@@ -95,7 +97,7 @@ func Probe() (caps UPNPCapabilities, err error) {
 	defer func() {
 		err = nat.DeletePortMapping("tcp", intPort, extPort)
 		if err != nil {
-			log.Warning("Port mapping delete error: %v", err)
+			log.Warn(Fmt("Port mapping delete error: %v", err))
 		}
 		listener.Close()
 	}()

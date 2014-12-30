@@ -113,12 +113,10 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 	ps := peer.Data.Get(peerStateKey).(*PeerState)
 	_, msg_, err := DecodeMessage(msgBytes)
 	if err != nil {
-		log.Warning("[%X] RECEIVE %v: %v ERROR: %v", chId, peer.Connection().RemoteAddress, msg_, err)
-		log.Warning("[%X] RECEIVE BYTES: %X", chId, msgBytes)
+		log.Warn("Error decoding message", "channel", chId, "peer", peer, "msg", msg_, "error", err, "bytes", msgBytes)
 		return
 	}
-	log.Debug("[%X] RECEIVE %v: %v", chId, peer.Connection().RemoteAddress, msg_)
-	log.Debug("[%X] RECEIVE BYTES: %X", chId, msgBytes)
+	log.Debug("RECEIVE", "channel", chId, "peer", peer, "msg", msg_, "bytes", msgBytes)
 
 	switch chId {
 	case StateCh:
@@ -175,7 +173,7 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 			added, index, err := conR.conS.AddVote(address, vote)
 			if err != nil {
 				// Probably an invalid signature. Bad peer.
-				log.Warning("Error attempting to add vote: %v", err)
+				log.Warn(Fmt("Error attempting to add vote: %v", err))
 			}
 			// Initialize Prevotes/Precommits/Commits if needed
 			ps.EnsureVoteBitArrays(rs.Height, rs.Validators.Size())
@@ -198,7 +196,7 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 	}
 
 	if err != nil {
-		log.Warning("Error in Receive(): %v", err)
+		log.Warn(Fmt("Error in Receive(): %v", err))
 	}
 }
 
@@ -254,7 +252,7 @@ OUTER_LOOP:
 	for {
 		// Manage disconnects from self or peer.
 		if peer.IsStopped() || conR.IsStopped() {
-			log.Info("Stopping gossipDataRoutine for %v.", peer)
+			log.Info(Fmt("Stopping gossipDataRoutine for %v.", peer))
 			return
 		}
 		rs := conR.conS.GetRoundState()
@@ -319,7 +317,7 @@ OUTER_LOOP:
 	for {
 		// Manage disconnects from self or peer.
 		if peer.IsStopped() || conR.IsStopped() {
-			log.Info("Stopping gossipVotesRoutine for %v.", peer)
+			log.Info(Fmt("Stopping gossipVotesRoutine for %v.", peer))
 			return
 		}
 		rs := conR.conS.GetRoundState()
@@ -641,7 +639,7 @@ const (
 // TODO: check for unnecessary extra bytes at the end.
 func DecodeMessage(bz []byte) (msgType byte, msg interface{}, err error) {
 	n := new(int64)
-	// log.Debug("decoding msg bytes: %X", bz)
+	// log.Debug(Fmt("decoding msg bytes: %X", bz))
 	msgType = bz[0]
 	r := bytes.NewReader(bz)
 	switch msgType {

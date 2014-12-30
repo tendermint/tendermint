@@ -52,7 +52,7 @@ func NewDefaultListener(protocol string, lAddr string, requireUPNPHairpin bool) 
 	}
 	// Actual listener local IP & port
 	listenerIP, listenerPort := splitHostPort(listener.Addr().String())
-	log.Debug("Local listener: %v:%v", listenerIP, listenerPort)
+	log.Debug("Local listener", "ip", listenerIP, "port", listenerPort)
 
 	// Determine external address...
 	var extAddr *NetAddress
@@ -62,7 +62,7 @@ func NewDefaultListener(protocol string, lAddr string, requireUPNPHairpin bool) 
 		if requireUPNPHairpin {
 			upnpCapabilities, err := upnp.Probe()
 			if err != nil {
-				log.Warning("Failed to probe UPNP: %v", err)
+				log.Warn("Failed to probe UPNP", "error", err)
 				goto SKIP_UPNP
 			}
 			if !upnpCapabilities.Hairpin {
@@ -144,13 +144,13 @@ func getUPNPExternalAddress(externalPort, internalPort int) *NetAddress {
 	log.Debug("Getting UPNP external address")
 	nat, err := upnp.Discover()
 	if err != nil {
-		log.Debug("Could not get UPNP extrernal address: %v", err)
+		log.Debug("Could not get UPNP extrernal address", "error", err)
 		return nil
 	}
 
 	ext, err := nat.GetExternalAddress()
 	if err != nil {
-		log.Debug("Could not get UPNP external address: %v", err)
+		log.Debug("Could not get UPNP external address", "error", err)
 		return nil
 	}
 
@@ -161,11 +161,11 @@ func getUPNPExternalAddress(externalPort, internalPort int) *NetAddress {
 
 	externalPort, err = nat.AddPortMapping("tcp", externalPort, internalPort, "tendermint", 0)
 	if err != nil {
-		log.Debug("Could not get UPNP external address: %v", err)
+		log.Debug("Could not get UPNP external address", "error", err)
 		return nil
 	}
 
-	log.Debug("Got UPNP external address: %v", ext)
+	log.Debug("Got UPNP external address", "address", ext)
 	return NewNetAddressIPPort(ext, uint16(externalPort))
 }
 
@@ -173,7 +173,7 @@ func getUPNPExternalAddress(externalPort, internalPort int) *NetAddress {
 func getNaiveExternalAddress(port int) *NetAddress {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
-		Panicf("Unexpected error fetching interface addresses: %v", err)
+		panic(Fmt("Could not fetch interface addresses: %v", err))
 	}
 
 	for _, a := range addrs {

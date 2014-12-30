@@ -253,7 +253,7 @@ func (cs *ConsensusState) stepTransitionRoutine() {
 			// we're running in a separate goroutine, which avoids deadlocks.
 			rs := cs.getRoundState()
 			round, roundStartTime, roundDuration, _, elapsedRatio := calcRoundInfo(rs.StartTime)
-			log.Debug("Called scheduleNextAction. round:%v roundStartTime:%v elapsedRatio:%v", round, roundStartTime, elapsedRatio)
+			log.Debug("Scheduling next action", "round", round, "roundStartTime", roundStartTime, "elapsedRatio", elapsedRatio)
 			switch rs.Step {
 			case RoundStepNewHeight:
 				// We should run RoundActionPropose when rs.StartTime passes.
@@ -306,7 +306,7 @@ ACTION_LOOP:
 
 		height, round, action := roundAction.Height, roundAction.Round, roundAction.Action
 		rs := cs.GetRoundState()
-		log.Info("Running round action A:%X %v", action, rs.StringShort())
+		log.Info("Running round action", "action", action, "height", rs.Height, "round", rs.Round, "step", rs.Step, "startTime", rs.StartTime)
 
 		// Continue if action is not relevant
 		if height != rs.Height {
@@ -394,8 +394,8 @@ ACTION_LOOP:
 func (cs *ConsensusState) updateToState(state *state.State) {
 	// Sanity check state.
 	if cs.Height > 0 && cs.Height != state.LastBlockHeight {
-		Panicf("updateToState() expected state height of %v but found %v",
-			cs.Height, state.LastBlockHeight)
+		panic(Fmt("updateToState() expected state height of %v but found %v",
+			cs.Height, state.LastBlockHeight))
 	}
 
 	// Reset fields based on state.
@@ -586,7 +586,7 @@ func (cs *ConsensusState) RunActionPrevote(height uint, round uint) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	if cs.Height != height || cs.Round != round {
-		Panicf("RunActionPrevote(%v/%v), expected %v/%v", height, round, cs.Height, cs.Round)
+		panic(Fmt("RunActionPrevote(%v/%v), expected %v/%v", height, round, cs.Height, cs.Round))
 	}
 	defer func() {
 		cs.Step = RoundStepPrevote
@@ -601,7 +601,7 @@ func (cs *ConsensusState) RunActionPrevote(height uint, round uint) {
 
 	// If ProposalBlock is nil, prevote nil.
 	if cs.ProposalBlock == nil {
-		log.Warning("ProposalBlock is nil")
+		log.Warn("ProposalBlock is nil")
 		cs.signAddVote(VoteTypePrevote, nil, PartSetHeader{})
 		return
 	}
@@ -610,7 +610,7 @@ func (cs *ConsensusState) RunActionPrevote(height uint, round uint) {
 	err := cs.stageBlock(cs.ProposalBlock, cs.ProposalBlockParts)
 	if err != nil {
 		// ProposalBlock is invalid, prevote nil.
-		log.Warning("ProposalBlock is invalid: %v", err)
+		log.Warn(Fmt("ProposalBlock is invalid: %v", err))
 		cs.signAddVote(VoteTypePrevote, nil, PartSetHeader{})
 		return
 	}
@@ -626,7 +626,7 @@ func (cs *ConsensusState) RunActionPrecommit(height uint, round uint) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	if cs.Height != height || cs.Round != round {
-		Panicf("RunActionPrecommit(%v/%v), expected %v/%v", height, round, cs.Height, cs.Round)
+		panic(Fmt("RunActionPrecommit(%v/%v), expected %v/%v", height, round, cs.Height, cs.Round))
 	}
 	defer func() {
 		cs.Step = RoundStepPrecommit
@@ -661,7 +661,7 @@ func (cs *ConsensusState) RunActionPrecommit(height uint, round uint) {
 		// Validate the block.
 		if err := cs.stageBlock(cs.ProposalBlock, cs.ProposalBlockParts); err != nil {
 			// Prevent zombies.
-			log.Warning("+2/3 prevoted for an invalid block: %v", err)
+			log.Warn(Fmt("+2/3 prevoted for an invalid block: %v", err))
 			return
 		}
 		cs.LockedBlock = cs.ProposalBlock
@@ -686,7 +686,7 @@ func (cs *ConsensusState) RunActionCommit(height uint) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	if cs.Height != height {
-		Panicf("RunActionCommit(%v), expected %v", height, cs.Height)
+		panic(Fmt("RunActionCommit(%v), expected %v", height, cs.Height))
 	}
 	defer func() {
 		cs.Step = RoundStepCommit
@@ -745,7 +745,7 @@ func (cs *ConsensusState) TryFinalizeCommit(height uint) bool {
 	defer cs.mtx.Unlock()
 
 	if cs.Height != height {
-		Panicf("TryFinalizeCommit(%v), expected %v", height, cs.Height)
+		panic(Fmt("TryFinalizeCommit(%v), expected %v", height, cs.Height))
 	}
 
 	if cs.Step == RoundStepCommit &&
@@ -754,19 +754,19 @@ func (cs *ConsensusState) TryFinalizeCommit(height uint) bool {
 
 		// Sanity check
 		if cs.ProposalBlock == nil {
-			Panicf("Expected ProposalBlock to exist")
+			panic(Fmt("Expected ProposalBlock to exist"))
 		}
 		hash, header, _ := cs.Commits.TwoThirdsMajority()
 		if !cs.ProposalBlock.HashesTo(hash) {
-			Panicf("Expected ProposalBlock to hash to commit hash")
+			panic(Fmt("Expected ProposalBlock to hash to commit hash"))
 		}
 		if !cs.ProposalBlockParts.HasHeader(header) {
-			Panicf("Expected ProposalBlockParts header to be commit header")
+			panic(Fmt("Expected ProposalBlockParts header to be commit header"))
 		}
 
 		err := cs.stageBlock(cs.ProposalBlock, cs.ProposalBlockParts)
 		if err == nil {
-			log.Debug("Finalizing commit of block: %v", cs.ProposalBlock)
+			log.Debug(Fmt("Finalizing commit of block: %v", cs.ProposalBlock))
 			// Increment height.
 			cs.updateToState(cs.stagedState)
 			// cs.Step is now RoundStepNewHeight or RoundStepNewRound
@@ -775,7 +775,7 @@ func (cs *ConsensusState) TryFinalizeCommit(height uint) bool {
 		} else {
 			// Prevent zombies.
 			// TODO: Does this ever happen?
-			Panicf("+2/3 committed an invalid block: %v", err)
+			panic(Fmt("+2/3 committed an invalid block: %v", err))
 		}
 	}
 	return false
@@ -910,7 +910,7 @@ func (cs *ConsensusState) addVote(address []byte, vote *Vote) (added bool, index
 			added, index, err = cs.Commits.Add(address, vote)
 			if added && cs.Commits.HasTwoThirdsMajority() && cs.CommitTime.IsZero() {
 				cs.CommitTime = time.Now()
-				log.Debug("Set CommitTime to %v", cs.CommitTime)
+				log.Debug(Fmt("Set CommitTime to %v", cs.CommitTime))
 				if cs.Step < RoundStepCommit {
 					cs.queueAction(RoundAction{cs.Height, cs.Round, RoundActionCommit})
 				} else {
@@ -974,7 +974,7 @@ func (cs *ConsensusState) saveCommitVoteBlock(block *Block, blockParts *PartSet)
 	// The proposal must be valid.
 	if err := cs.stageBlock(block, blockParts); err != nil {
 		// Prevent zombies.
-		log.Warning("+2/3 precommitted an invalid block: %v", err)
+		log.Warn(Fmt("+2/3 precommitted an invalid block: %v", err))
 		return
 	}
 
@@ -1022,7 +1022,7 @@ func calcRound(startTime time.Time) uint {
 		panic("Could not calc round, should not happen")
 	}
 	if R > math.MaxInt32 {
-		Panicf("Could not calc round, round overflow: %v", R)
+		panic(Fmt("Could not calc round, round overflow: %v", R))
 	}
 	if R < 0 {
 		return 0
