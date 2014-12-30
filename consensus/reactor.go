@@ -111,9 +111,10 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 	// Get round state
 	rs := conR.conS.GetRoundState()
 	ps := peer.Data.Get(peerStateKey).(*PeerState)
-	_, msg_, err := decodeMessage(msgBytes)
+	_, msg_, err := DecodeMessage(msgBytes)
 	if err != nil {
 		log.Warning("[%X] RECEIVE %v: %v ERROR: %v", chId, peer.Connection().RemoteAddress, msg_, err)
+		log.Warning("[%X] RECEIVE BYTES: %X", chId, msgBytes)
 		return
 	}
 	log.Debug("[%X] RECEIVE %v: %v", chId, peer.Connection().RemoteAddress, msg_)
@@ -638,11 +639,11 @@ const (
 )
 
 // TODO: check for unnecessary extra bytes at the end.
-func decodeMessage(bz []byte) (msgType byte, msg interface{}, err error) {
+func DecodeMessage(bz []byte) (msgType byte, msg interface{}, err error) {
 	n := new(int64)
 	// log.Debug("decoding msg bytes: %X", bz)
 	msgType = bz[0]
-	r := bytes.NewReader(bz[1:])
+	r := bytes.NewReader(bz)
 	switch msgType {
 	// Messages for communicating state changes
 	case msgTypeNewRoundStep:

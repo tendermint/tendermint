@@ -88,7 +88,11 @@ func (pexR *PEXReactor) RemovePeer(peer *Peer, reason interface{}) {
 func (pexR *PEXReactor) Receive(chId byte, src *Peer, msgBytes []byte) {
 
 	// decode message
-	msg := decodeMessage(msgBytes)
+	msg, err := DecodeMessage(msgBytes)
+	if err != nil {
+		log.Warning("Error decoding message: %v", err)
+		return
+	}
 	log.Info("requestRoutine received %v", msg)
 
 	switch msg.(type) {
@@ -201,18 +205,20 @@ const (
 )
 
 // TODO: check for unnecessary extra bytes at the end.
-func decodeMessage(bz []byte) (msg interface{}) {
-	var n int64
-	var err error
+func DecodeMessage(bz []byte) (msg interface{}, err error) {
+	n := new(int64)
+	msgType := bz[0]
+	r := bytes.NewReader(bz)
 	// log.Debug("decoding msg bytes: %X", bz)
-	switch bz[0] {
+	switch msgType {
 	case msgTypeRequest:
-		return &pexRequestMessage{}
+		msg = &pexRequestMessage{}
 	case msgTypeAddrs:
-		return ReadBinary(&pexAddrsMessage{}, bytes.NewReader(bz[1:]), &n, &err)
+		msg = ReadBinary(&pexAddrsMessage{}, r, n, &err)
 	default:
-		return nil
+		msg = nil
 	}
+	return
 }
 
 /*

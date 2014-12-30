@@ -68,7 +68,11 @@ func (pexR *MempoolReactor) RemovePeer(peer *p2p.Peer, reason interface{}) {
 
 // Implements Reactor
 func (memR *MempoolReactor) Receive(chId byte, src *p2p.Peer, msgBytes []byte) {
-	_, msg_ := decodeMessage(msgBytes)
+	_, msg_, err := DecodeMessage(msgBytes)
+	if err != nil {
+		log.Warning("Error decoding message: %v", err)
+		return
+	}
 	log.Info("MempoolReactor received %v", msg_)
 
 	switch msg_.(type) {
@@ -116,12 +120,13 @@ const (
 )
 
 // TODO: check for unnecessary extra bytes at the end.
-func decodeMessage(bz []byte) (msgType byte, msg interface{}) {
-	n, err := new(int64), new(error)
+func DecodeMessage(bz []byte) (msgType byte, msg interface{}, err error) {
+	n := new(int64)
 	msgType = bz[0]
+	r := bytes.NewReader(bz)
 	switch msgType {
 	case msgTypeTx:
-		msg = ReadBinary(&TxMessage{}, bytes.NewReader(bz[1:]), n, err)
+		msg = ReadBinary(&TxMessage{}, r, n, &err)
 	default:
 		msg = nil
 	}
