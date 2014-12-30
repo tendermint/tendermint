@@ -5,8 +5,6 @@ import (
 	"time"
 
 	"github.com/sfreiberg/gotwilio"
-
-	. "github.com/tendermint/tendermint/common"
 	. "github.com/tendermint/tendermint/config"
 )
 
@@ -37,7 +35,7 @@ func Alert(message string) {
 func sendTwilio(message string) {
 	defer func() {
 		if err := recover(); err != nil {
-			log.Error(Fmt("sendTwilio error: %v", err))
+			log.Error("sendTwilio error", "error", err)
 		}
 	}()
 	if len(message) > 50 {
@@ -46,14 +44,14 @@ func sendTwilio(message string) {
 	twilio := gotwilio.NewTwilioClient(Config.Alert.TwilioSid, Config.Alert.TwilioToken)
 	res, exp, err := twilio.SendSMS(Config.Alert.TwilioFrom, Config.Alert.TwilioTo, message, "", "")
 	if exp != nil || err != nil {
-		log.Error(Fmt("sendTwilio error: %v %v %v", res, exp, err))
+		log.Error("sendTwilio error", "res", res, "exp", exp, "error", err)
 	}
 }
 
 func sendEmail(message string) {
 	defer func() {
 		if err := recover(); err != nil {
-			log.Error(Fmt("sendEmail error: %v", err))
+			log.Error("sendEmail error", "error", err)
 		}
 	}()
 	subject := message
@@ -62,6 +60,6 @@ func sendEmail(message string) {
 	}
 	err := SendEmail(subject, message, Config.Alert.EmailRecipients)
 	if err != nil {
-		log.Error(Fmt("sendEmail error: %v\n%v", err, message))
+		log.Error("sendEmail error", "error", err, "message", message)
 	}
 }

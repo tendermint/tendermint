@@ -116,7 +116,7 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 		log.Warn("Error decoding message", "channel", chId, "peer", peer, "msg", msg_, "error", err, "bytes", msgBytes)
 		return
 	}
-	log.Debug("RECEIVE", "channel", chId, "peer", peer, "msg", msg_, "bytes", msgBytes)
+	log.Debug("Receive", "channel", chId, "peer", peer, "msg", msg_, "bytes", msgBytes)
 
 	switch chId {
 	case StateCh:
@@ -173,7 +173,7 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 			added, index, err := conR.conS.AddVote(address, vote)
 			if err != nil {
 				// Probably an invalid signature. Bad peer.
-				log.Warn(Fmt("Error attempting to add vote: %v", err))
+				log.Warn("Error attempting to add vote", "error", err)
 			}
 			// Initialize Prevotes/Precommits/Commits if needed
 			ps.EnsureVoteBitArrays(rs.Height, rs.Validators.Size())
@@ -196,7 +196,7 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 	}
 
 	if err != nil {
-		log.Warn(Fmt("Error in Receive(): %v", err))
+		log.Warn("Error in Receive()", "error", err)
 	}
 }
 

@@ -117,9 +117,9 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 
 	// Add the peer to .peers
 	if sw.peers.Add(peer) {
-		log.Info(Fmt("+ %v", peer))
+		log.Info("Added peer", "peer", peer)
 	} else {
-		log.Info(Fmt("Ignoring duplicate: %v", peer))
+		log.Info("Ignoring duplicate peer", "peer", peer)
 		return nil, ErrSwitchDuplicatePeer
 	}
 
@@ -137,7 +137,7 @@ func (sw *Switch) DialPeerWithAddress(addr *NetAddress) (*Peer, error) {
 		return nil, ErrSwitchStopped
 	}
 
-	log.Info(Fmt("Dialing peer @ %v", addr))
+	log.Info("Dialing peer", "address", addr)
 	sw.dialing.Set(addr.String(), addr)
 	conn, err := addr.DialTimeout(peerDialTimeoutSeconds * time.Second)
 	sw.dialing.Delete(addr.String())
@@ -166,7 +166,6 @@ func (sw *Switch) Broadcast(chId byte, msg interface{}) (numSuccess, numFailure 
 		// XXX XXX Change.
 		// success := peer.TrySend(chId, msg)
 		success := peer.Send(chId, msg)
-		log.Debug(Fmt("[%X] for peer %v success: %v", chId, peer, success))
 		if success {
 			numSuccess += 1
 		} else {

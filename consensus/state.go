@@ -610,7 +610,7 @@ func (cs *ConsensusState) RunActionPrevote(height uint, round uint) {
 	err := cs.stageBlock(cs.ProposalBlock, cs.ProposalBlockParts)
 	if err != nil {
 		// ProposalBlock is invalid, prevote nil.
-		log.Warn(Fmt("ProposalBlock is invalid: %v", err))
+		log.Warn("ProposalBlock is invalid", "error", err)
 		cs.signAddVote(VoteTypePrevote, nil, PartSetHeader{})
 		return
 	}
@@ -661,7 +661,7 @@ func (cs *ConsensusState) RunActionPrecommit(height uint, round uint) {
 		// Validate the block.
 		if err := cs.stageBlock(cs.ProposalBlock, cs.ProposalBlockParts); err != nil {
 			// Prevent zombies.
-			log.Warn(Fmt("+2/3 prevoted for an invalid block: %v", err))
+			log.Warn("+2/3 prevoted for an invalid block", "error", err)
 			return
 		}
 		cs.LockedBlock = cs.ProposalBlock
@@ -974,7 +974,7 @@ func (cs *ConsensusState) saveCommitVoteBlock(block *Block, blockParts *PartSet)
 	// The proposal must be valid.
 	if err := cs.stageBlock(block, blockParts); err != nil {
 		// Prevent zombies.
-		log.Warn(Fmt("+2/3 precommitted an invalid block: %v", err))
+		log.Warn("+2/3 precommitted an invalid block", "error", err)
 		return
 	}
 

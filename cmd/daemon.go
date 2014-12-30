@@ -5,8 +5,8 @@ import (
 	"os/signal"
 
 	"github.com/tendermint/tendermint/block"
-	"github.com/tendermint/tendermint/config"
 	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/consensus"
 	db_ "github.com/tendermint/tendermint/db"
 	mempool_ "github.com/tendermint/tendermint/mempool"
@@ -126,11 +126,11 @@ func daemon() {
 	if config.Config.SeedNode != "" {
 		peer, err := n.sw.DialPeerWithAddress(p2p.NewNetAddressString(config.Config.SeedNode))
 		if err != nil {
-			log.Error(Fmt("Error dialing seed: %v", err))
+			log.Error("Error dialing seed", "error", err)
 			//n.book.MarkAttempt(addr)
 			return
 		} else {
-			log.Info(Fmt("Connected to seed: %v", peer))
+			log.Info("Connected to seed", "peer", peer)
 		}
 	}
 

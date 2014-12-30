@@ -46,14 +46,14 @@ func newPeer(conn net.Conn, outbound bool, reactorsByCh map[byte]Reactor, chDesc
 
 func (p *Peer) start() {
 	if atomic.CompareAndSwapUint32(&p.started, 0, 1) {
-		log.Debug(Fmt("Starting %v", p))
+		log.Debug("Starting Peer", "peer", p)
 		p.mconn.Start()
 	}
 }
 
 func (p *Peer) stop() {
 	if atomic.CompareAndSwapUint32(&p.stopped, 0, 1) {
-		log.Debug(Fmt("Stopping %v", p))
+		log.Debug("Stopping Peer", "peer", p)
 		p.mconn.Stop()
 	}
 }

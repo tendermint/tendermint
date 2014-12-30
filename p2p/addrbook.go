@@ -7,7 +7,6 @@ package p2p
 import (
 	"encoding/binary"
 	"encoding/json"
-	"fmt"
 	"math"
 	"math/rand"
 	"net"
@@ -320,14 +319,14 @@ func (a *AddrBook) saveToFile(filePath string) {
 
 	w, err := os.Create(filePath)
 	if err != nil {
-		log.Error("Error opening file: ", filePath, err)
+		log.Error("Error opening file", "file", filePath, "error", err)
 		return
 	}
 	defer w.Close()
 	jsonBytes, err := json.MarshalIndent(aJSON, "", "\t")
 	_, err = w.Write(jsonBytes)
 	if err != nil {
-		log.Error(Fmt("Failed to save AddrBook to file %v: %v", filePath, err))
+		log.Error("Failed to save AddrBook to file", "file", filePath, "error", err)
 	}
 }
 
@@ -341,14 +340,14 @@ func (a *AddrBook) loadFromFile(filePath string) {
 	// Load addrBookJSON{}
 	r, err := os.Open(filePath)
 	if err != nil {
-		panic(fmt.Errorf("Error opening file %s: %v", filePath, err))
+		panic(Fmt("Error opening file %s: %v", filePath, err))
 	}
 	defer r.Close()
 	aJSON := &addrBookJSON{}
 	dec := json.NewDecoder(r)
 	err = dec.Decode(aJSON)
 	if err != nil {
-		panic(fmt.Errorf("Error reading file %s: %v", filePath, err))
+		panic(Fmt("Error reading file %s: %v", filePath, err))
 	}
 
 	// Restore all the fields...
@@ -377,7 +376,7 @@ out:
 	for {
 		select {
 		case <-dumpAddressTicker.C:
-			log.Debug(Fmt("Saving book to file (%v)", a.Size()))
+			log.Debug("Saving book to file", "size", a.Size())
 			a.saveToFile(a.filePath)
 		case <-a.quit:
 			break out
