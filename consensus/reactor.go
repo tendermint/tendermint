@@ -390,13 +390,14 @@ OUTER_LOOP:
 		}
 
 		// If peer is lagging by more than 1, load and send Validation and send Commits.
-		if rs.Height >= prs.Height+2 {
+		if prs.Height != 0 && !prs.HasAllValidationCommits &&
+			rs.Height >= prs.Height+2 {
 
 			// Load the block header and validation for prs.Height+1,
 			// which contains commit signatures for prs.Height.
 			header, validation := conR.conS.LoadHeaderValidation(prs.Height + 1)
 			size := uint(len(validation.Commits))
-			log.Debug("Loaded HeaderValidation for catchup", "height", prs.Height+1, "header", header, "validation", validation, "size", size)
+			log.Debug("Loaded HeaderValidation for catch-up", "height", prs.Height+1, "header", header, "validation", validation, "size", size)
 
 			// Initialize Commits if needed
 			ps.EnsureVoteBitArrays(prs.Height, size)
@@ -420,6 +421,7 @@ OUTER_LOOP:
 				continue OUTER_LOOP
 			} else {
 				log.Debug("No commits to send", "ours", validation.BitArray(), "theirs", prs.Commits)
+				ps.SetHasAllValidationCommits()
 			}
 		}
 
@@ -433,19 +435,20 @@ OUTER_LOOP:
 
 // Read only when returned by PeerState.GetRoundState().
 type PeerRoundState struct {
-	Height                uint          // Height peer is at
-	Round                 uint          // Round peer is at
-	Step                  RoundStep     // Step peer is at
-	StartTime             time.Time     // Estimated start of round 0 at this height
-	Proposal              bool          // True if peer has proposal for this round
-	ProposalBlockParts    PartSetHeader //
-	ProposalBlockBitArray BitArray      // True bit -> has part
-	ProposalPOLParts      PartSetHeader //
-	ProposalPOLBitArray   BitArray      // True bit -> has part
-	Prevotes              BitArray      // All votes peer has for this round
-	Precommits            BitArray      // All precommits peer has for this round
-	Commits               BitArray      // All commits peer has for this height
-	LastCommits           BitArray      // All commits peer has for last height
+	Height                  uint          // Height peer is at
+	Round                   uint          // Round peer is at
+	Step                    RoundStep     // Step peer is at
+	StartTime               time.Time     // Estimated start of round 0 at this height
+	Proposal                bool          // True if peer has proposal for this round
+	ProposalBlockParts      PartSetHeader //
+	ProposalBlockBitArray   BitArray      // True bit -> has part
+	ProposalPOLParts        PartSetHeader //
+	ProposalPOLBitArray     BitArray      // True bit -> has part
+	Prevotes                BitArray      // All votes peer has for this round
+	Precommits              BitArray      // All precommits peer has for this round
+	Commits                 BitArray      // All commits peer has for this height
+	HasAllValidationCommits bool          // Used for catch-up
+	LastCommits             BitArray      // All commits peer has for last height
 }
 
 //-----------------------------------------------------------------------------
@@ -564,6 +567,14 @@ func (ps *PeerState) setHasVote(height uint, round uint, type_ byte, index uint)
 	}
 }
 
+// When catching up, this helps keep track of whether
+// we should send more commit votes from the block (validation) store
+func (ps *PeerState) SetHasAllValidationCommits() {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+	ps.HasAllValidationCommits = true
+}
+
 func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage, rs *RoundState) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
@@ -597,6 +608,7 @@ func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage, rs *Roun
 		}
 		// We'll update the BitArray capacity later.
 		ps.Commits = BitArray{}
+		ps.HasAllValidationCommits = false
 	}
 }
 
