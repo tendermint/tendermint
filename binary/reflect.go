@@ -88,6 +88,8 @@ func RegisterType(info *TypeInfo) *TypeInfo {
 
 func readReflect(rv reflect.Value, rt reflect.Type, r Unreader, n *int64, err *error) {
 
+	log.Debug("Read reflect", "type", rt)
+
 	// First, create a new struct if rv is nil pointer.
 	if rt.Kind() == reflect.Ptr && rv.IsNil() {
 		newRv := reflect.New(rt.Elem())

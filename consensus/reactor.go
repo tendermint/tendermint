@@ -650,6 +650,7 @@ func DecodeMessage(bz []byte) (msgType byte, msg interface{}, err error) {
 		msg = ReadBinary(&CommitStepMessage{}, r, n, &err)
 	// Messages of data
 	case msgTypeProposal:
+		r.ReadByte() // Consume the byte
 		msg = ReadBinary(&Proposal{}, r, n, &err)
 	case msgTypePart:
 		msg = ReadBinary(&PartMessage{}, r, n, &err)

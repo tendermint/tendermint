@@ -13,7 +13,7 @@ import (
 	flow "code.google.com/p/mxk/go1/flowcontrol"
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
-	"gopkg.in/inconshreveable/log15.v2"
+	"github.com/tendermint/log15"
 )
 
 const (
