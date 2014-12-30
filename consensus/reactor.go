@@ -421,7 +421,7 @@ OUTER_LOOP:
 				continue OUTER_LOOP
 			} else {
 				log.Debug("No commits to send", "ours", validation.BitArray(), "theirs", prs.Commits)
-				ps.SetHasAllValidationCommits()
+				ps.SetHasAllValidationCommits(prs.Height)
 			}
 		}
 
@@ -569,10 +569,12 @@ func (ps *PeerState) setHasVote(height uint, round uint, type_ byte, index uint)
 
 // When catching up, this helps keep track of whether
 // we should send more commit votes from the block (validation) store
-func (ps *PeerState) SetHasAllValidationCommits() {
+func (ps *PeerState) SetHasAllValidationCommits(height uint) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
-	ps.HasAllValidationCommits = true
+	if ps.Height == height {
+		ps.HasAllValidationCommits = true
+	}
 }
 
 func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage, rs *RoundState) {
