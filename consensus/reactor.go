@@ -24,7 +24,7 @@ const (
 
 	peerStateKey = "ConsensusReactor.peerState"
 
-	peerGossipSleepDuration = 50 * time.Millisecond // Time to sleep if there's nothing to send.
+	peerGossipSleepDuration = 1000 * time.Millisecond // Time to sleep if there's nothing to send.
 )
 
 //-----------------------------------------------------------------------------
@@ -262,6 +262,7 @@ OUTER_LOOP:
 		// NOTE: if we or peer is at RoundStepCommit*, the round
 		// won't necessarily match, but that's OK.
 		if rs.ProposalBlockParts.HasHeader(prs.ProposalBlockParts) {
+			log.Debug("ProposalBlockParts matched", "blockParts", prs.ProposalBlockParts)
 			if index, ok := rs.ProposalBlockParts.BitArray().Sub(
 				prs.ProposalBlockBitArray).PickRandom(); ok {
 				msg := &PartMessage{
@@ -278,6 +279,7 @@ OUTER_LOOP:
 
 		// If height and round doesn't match, sleep.
 		if rs.Height != prs.Height || rs.Round != prs.Round {
+			log.Debug("Height or Round mismatch, sleeping", "peerHeight", prs.Height, "peerRound", prs.Round)
 			time.Sleep(peerGossipSleepDuration)
 			continue OUTER_LOOP
 		}

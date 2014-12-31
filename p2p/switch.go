@@ -197,7 +197,7 @@ func (sw *Switch) Peers() IPeerSet {
 // Disconnect from a peer due to external error.
 // TODO: make record depending on reason.
 func (sw *Switch) StopPeerForError(peer *Peer, reason interface{}) {
-	log.Info(Fmt("- %v !! reason: %v", peer, reason))
+	log.Info("Stopping peer for error", "peer", peer, "error", reason)
 	sw.peers.Remove(peer)
 	peer.stop()
 
@@ -208,7 +208,7 @@ func (sw *Switch) StopPeerForError(peer *Peer, reason interface{}) {
 // Disconnect from a peer gracefully.
 // TODO: handle graceful disconnects.
 func (sw *Switch) StopPeerGracefully(peer *Peer) {
-	log.Info(Fmt("- %v", peer))
+	log.Info("Stopping peer gracefully")
 	sw.peers.Remove(peer)
 	peer.stop()
 

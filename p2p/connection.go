@@ -287,7 +287,7 @@ FOR_LOOP:
 		}
 		if err != nil {
 			log.Warn("Connection failed @ sendRoutine", "connection", c, "error", err)
-			c.Stop()
+			c.stopForError(err)
 			break FOR_LOOP
 		}
 	}
@@ -382,7 +382,7 @@ FOR_LOOP:
 		if err != nil {
 			if atomic.LoadUint32(&c.stopped) != 1 {
 				log.Warn("Connection failed @ recvRoutine", "connection", c, "error", err)
-				c.Stop()
+				c.stopForError(err)
 			}
 			break FOR_LOOP
 		}
@@ -400,8 +400,8 @@ FOR_LOOP:
 			c.recvMonitor.Update(int(*n))
 			if *err != nil {
 				if atomic.LoadUint32(&c.stopped) != 1 {
-					log.Warn(Fmt("%v failed @ recvRoutine", c))
-					c.Stop()
+					log.Warn("Connection failed @ recvRoutine", "connection", c, "error", *err)
+					c.stopForError(*err)
 				}
 				break FOR_LOOP
 			}
