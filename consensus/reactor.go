@@ -279,7 +279,7 @@ OUTER_LOOP:
 
 		// If height and round doesn't match, sleep.
 		if rs.Height != prs.Height || rs.Round != prs.Round {
-			log.Debug("Height or Round mismatch, sleeping", "peerHeight", prs.Height, "peerRound", prs.Round)
+			log.Debug("Height or Round mismatch, sleeping", "peerHeight", prs.Height, "peerRound", prs.Round, "peer", peer)
 			time.Sleep(peerGossipSleepDuration)
 			continue OUTER_LOOP
 		}
@@ -696,7 +696,7 @@ type NewRoundStepMessage struct {
 func (m *NewRoundStepMessage) TypeByte() byte { return msgTypeNewRoundStep }
 
 func (m *NewRoundStepMessage) String() string {
-	return fmt.Sprintf("[NewRoundStep %v/%v/%X]", m.Height, m.Round, m.Step)
+	return fmt.Sprintf("[NewRoundStep H:%v R:%v S:%v]", m.Height, m.Round, m.Step)
 }
 
 //-------------------------------------
@@ -710,7 +710,7 @@ type CommitStepMessage struct {
 func (m *CommitStepMessage) TypeByte() byte { return msgTypeCommitStep }
 
 func (m *CommitStepMessage) String() string {
-	return fmt.Sprintf("[CommitStep %v %v %v]", m.Height, m.BlockParts, m.BlockBitArray)
+	return fmt.Sprintf("[CommitStep H:%v BP:%v BA:%v]", m.Height, m.BlockParts, m.BlockBitArray)
 }
 
 //-------------------------------------
@@ -730,7 +730,7 @@ type PartMessage struct {
 func (m *PartMessage) TypeByte() byte { return msgTypePart }
 
 func (m *PartMessage) String() string {
-	return fmt.Sprintf("[Part %v/%v T:%X %v]", m.Height, m.Round, m.Type, m.Part)
+	return fmt.Sprintf("[Part H:%v R:%v T:%X P:%v]", m.Height, m.Round, m.Type, m.Part)
 }
 
 //-------------------------------------
@@ -743,7 +743,7 @@ type VoteMessage struct {
 func (m *VoteMessage) TypeByte() byte { return msgTypeVote }
 
 func (m *VoteMessage) String() string {
-	return fmt.Sprintf("[Vote ValidatorIndex:%v Vote:%v]", m.ValidatorIndex, m.Vote)
+	return fmt.Sprintf("[Vote VI:%v V:%v]", m.ValidatorIndex, m.Vote)
 }
 
 //-------------------------------------

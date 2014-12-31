@@ -70,24 +70,7 @@ import (
 	"github.com/tendermint/tendermint/state"
 )
 
-type RoundStep uint8
-type RoundActionType uint8
-
 const (
-	RoundStepNewHeight = RoundStep(0x00) // Round0 for new height started, wait til CommitTime + Delta
-	RoundStepNewRound  = RoundStep(0x01) // Pseudostep, immediately goes to RoundStepPropose
-	RoundStepPropose   = RoundStep(0x10) // Did propose, gossip proposal
-	RoundStepPrevote   = RoundStep(0x11) // Did prevote, gossip prevotes
-	RoundStepPrecommit = RoundStep(0x12) // Did precommit, gossip precommits
-	RoundStepCommit    = RoundStep(0x20) // Entered commit state machine
-
-	RoundActionPropose     = RoundActionType(0xA0) // Propose and goto RoundStepPropose
-	RoundActionPrevote     = RoundActionType(0xA1) // Prevote and goto RoundStepPrevote
-	RoundActionPrecommit   = RoundActionType(0xA2) // Precommit and goto RoundStepPrecommit
-	RoundActionTryCommit   = RoundActionType(0xC0) // Goto RoundStepCommit, or RoundStepPropose for next round.
-	RoundActionCommit      = RoundActionType(0xC1) // Goto RoundStepCommit upon +2/3 commits
-	RoundActionTryFinalize = RoundActionType(0xC2) // Maybe goto RoundStepPropose for next round.
-
 	roundDuration0         = 60 * time.Second   // The first round is 60 seconds long.
 	roundDurationDelta     = 15 * time.Second   // Each successive round lasts 15 seconds longer.
 	roundDeadlinePrevote   = float64(1.0 / 3.0) // When the prevote is due.
@@ -98,6 +81,74 @@ const (
 var (
 	ErrInvalidProposalSignature = errors.New("Error invalid proposal signature")
 )
+
+//-----------------------------------------------------------------------------
+// RoundStep enum type
+
+type RoundStep uint8
+
+const (
+	RoundStepNewHeight = RoundStep(0x00) // Round0 for new height started, wait til CommitTime + Delta
+	RoundStepNewRound  = RoundStep(0x01) // Pseudostep, immediately goes to RoundStepPropose
+	RoundStepPropose   = RoundStep(0x10) // Did propose, gossip proposal
+	RoundStepPrevote   = RoundStep(0x11) // Did prevote, gossip prevotes
+	RoundStepPrecommit = RoundStep(0x12) // Did precommit, gossip precommits
+	RoundStepCommit    = RoundStep(0x20) // Entered commit state machine
+)
+
+func (rs RoundStep) String() string {
+	switch rs {
+	case RoundStepNewHeight:
+		return "RoundStepNewHeight"
+	case RoundStepNewRound:
+		return "RoundStepNewRound"
+	case RoundStepPropose:
+		return "RoundStepPropose"
+	case RoundStepPrevote:
+		return "RoundStepPrevote"
+	case RoundStepPrecommit:
+		return "RoundStepPrecommit"
+	case RoundStepCommit:
+		return "RoundStepCommit"
+	default:
+		panic(Fmt("Unknown RoundStep %X", rs))
+	}
+}
+
+//-----------------------------------------------------------------------------
+// RoundAction enum type
+
+type RoundActionType uint8
+
+const (
+	RoundActionPropose     = RoundActionType(0xA0) // Propose and goto RoundStepPropose
+	RoundActionPrevote     = RoundActionType(0xA1) // Prevote and goto RoundStepPrevote
+	RoundActionPrecommit   = RoundActionType(0xA2) // Precommit and goto RoundStepPrecommit
+	RoundActionTryCommit   = RoundActionType(0xC0) // Goto RoundStepCommit, or RoundStepPropose for next round.
+	RoundActionCommit      = RoundActionType(0xC1) // Goto RoundStepCommit upon +2/3 commits
+	RoundActionTryFinalize = RoundActionType(0xC2) // Maybe goto RoundStepPropose for next round.
+)
+
+func (ra RoundActionType) String() string {
+	switch ra {
+	case RoundActionPropose:
+		return "RoundActionPropose"
+	case RoundActionPrevote:
+		return "RoundActionPrevote"
+	case RoundActionPrecommit:
+		return "RoundActionPrecommit"
+	case RoundActionTryCommit:
+		return "RoundActionTryCommit"
+	case RoundActionCommit:
+		return "RoundActionCommit"
+	case RoundActionTryFinalize:
+		return "RoundActionTryFinalize"
+	default:
+		panic(Fmt("Unknown RoundAction %X", ra))
+	}
+}
+
+//-----------------------------------------------------------------------------
 
 type RoundAction struct {
 	Height uint            // The block height for which consensus is reaching for.
@@ -167,7 +218,7 @@ func (rs *RoundState) StringIndented(indent string) string {
 }
 
 func (rs *RoundState) StringShort() string {
-	return fmt.Sprintf(`RS{%v/%v/%X %v}`,
+	return fmt.Sprintf(`RoundState{H:%v R:%v S:%v ST:%v}`,
 		rs.Height, rs.Round, rs.Step, rs.StartTime)
 }
 
