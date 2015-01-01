@@ -237,9 +237,10 @@ type ConsensusState struct {
 
 	mtx sync.Mutex
 	RoundState
-	state       *state.State // State until height-1.
-	stagedBlock *Block       // Cache last staged block.
-	stagedState *state.State // Cache result of staged block.
+	state               *state.State // State until height-1.
+	stagedBlock         *Block       // Cache last staged block.
+	stagedState         *state.State // Cache result of staged block.
+	lastCommittedHeight uint         // Last called saveCommitVoteBlock() on.
 }
 
 func NewConsensusState(state *state.State, blockStore *BlockStore, mempoolReactor *mempool.MempoolReactor) *ConsensusState {
@@ -828,6 +829,8 @@ func (cs *ConsensusState) TryFinalizeCommit(height uint) bool {
 		err := cs.stageBlock(cs.ProposalBlock, cs.ProposalBlockParts)
 		if err == nil {
 			log.Debug(Fmt("Finalizing commit of block: %v", cs.ProposalBlock))
+			// We have the block, so save/stage/sign-commit-vote.
+			cs.saveCommitVoteBlock(cs.ProposalBlock, cs.ProposalBlockParts)
 			// Increment height.
 			cs.updateToState(cs.stagedState)
 			// cs.Step is now RoundStepNewHeight or RoundStepNewRound
@@ -1037,6 +1040,13 @@ func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header PartSetHea
 }
 
 func (cs *ConsensusState) saveCommitVoteBlock(block *Block, blockParts *PartSet) {
+
+	// Only run once per height.
+	if cs.lastCommittedHeight >= block.Height {
+		return
+	} else {
+		cs.lastCommittedHeight = block.Height
+	}
 
 	// The proposal must be valid.
 	if err := cs.stageBlock(block, blockParts); err != nil {
