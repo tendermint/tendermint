@@ -63,7 +63,7 @@ func RegisterType(info *TypeInfo) *TypeInfo {
 	typeInfos[ptrRt] = info
 
 	// See if the type implements HasTypeByte
-	if rt.Implements(reflect.TypeOf((*HasTypeByte)(nil)).Elem()) {
+	if rt.Kind() != reflect.Interface && rt.Implements(reflect.TypeOf((*HasTypeByte)(nil)).Elem()) {
 		zero := reflect.Zero(rt)
 		typeByte := zero.Interface().(HasTypeByte).TypeByte()
 		if info.HasTypeByte && info.TypeByte != typeByte {

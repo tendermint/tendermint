@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 
 	. "github.com/tendermint/tendermint/account"
@@ -15,14 +15,10 @@ func gen_account() {
 	privAccount := GenPrivAccount()
 
 	fmt.Printf(`Generated account:
-Account Public Key:  %X
-            (base64) %v
-Account Private Key: %X
-            (base64) %v
+Account Public Key:  %v
+Account Private Key: %v
 `,
-		privAccount.PubKey,
-		base64.StdEncoding.EncodeToString(BinaryBytes(privAccount.PubKey)),
-		privAccount.PrivKey,
-		base64.StdEncoding.EncodeToString(BinaryBytes(privAccount.PrivKey)))
-
+		hex.EncodeToString(BinaryBytes(privAccount.PubKey)),
+		hex.EncodeToString(BinaryBytes(privAccount.PrivKey)),
+	)
 }

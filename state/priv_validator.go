@@ -4,7 +4,7 @@ package state
 
 import (
 	"bytes"
-	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -93,15 +93,15 @@ func LoadPrivValidator(filename string) *PrivValidator {
 	if err != nil {
 		panic(err)
 	}
-	address, err := base64.StdEncoding.DecodeString(privValJSON.Address)
+	address, err := hex.DecodeString(privValJSON.Address)
 	if err != nil {
 		panic(err)
 	}
-	pubKeyBytes, err := base64.StdEncoding.DecodeString(privValJSON.PubKey)
+	pubKeyBytes, err := hex.DecodeString(privValJSON.PubKey)
 	if err != nil {
 		panic(err)
 	}
-	privKeyBytes, err := base64.StdEncoding.DecodeString(privValJSON.PrivKey)
+	privKeyBytes, err := hex.DecodeString(privValJSON.PrivKey)
 	if err != nil {
 		panic(err)
 	}
@@ -137,9 +137,9 @@ func (privVal *PrivValidator) save() {
 
 func (privVal *PrivValidator) JSONBytes() []byte {
 	privValJSON := PrivValidatorJSON{
-		Address:    base64.StdEncoding.EncodeToString(privVal.Address),
-		PubKey:     base64.StdEncoding.EncodeToString(BinaryBytes(privVal.PubKey)),
-		PrivKey:    base64.StdEncoding.EncodeToString(BinaryBytes(privVal.PrivKey)),
+		Address:    hex.EncodeToString(privVal.Address),
+		PubKey:     hex.EncodeToString(BinaryBytes(privVal.PubKey)),
+		PrivKey:    hex.EncodeToString(BinaryBytes(privVal.PrivKey)),
 		LastHeight: privVal.LastHeight,
 		LastRound:  privVal.LastRound,
 		LastStep:   privVal.LastStep,

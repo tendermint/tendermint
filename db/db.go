@@ -41,6 +41,6 @@ func GetDB(name string) DB {
 		dbs.Set(name, db)
 		return db
 	default:
-		panic("Unknown DB backend")
+		panic(Fmt("Unknown DB backend: %v", Config.DB.Backend))
 	}
 }

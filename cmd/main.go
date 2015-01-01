@@ -17,6 +17,7 @@ Commands:
     daemon        Run the tendermint node daemon
     gen_account   Generate new account keypair
     gen_validator Generate new validator keypair
+    gen_tx        Generate new transaction
     probe_upnp    Test UPnP functionality
 `)
 		return
@@ -30,6 +31,9 @@ Commands:
 		gen_account()
 	case "gen_validator":
 		gen_validator()
+	case "gen_tx":
+		config.ParseFlags(args[1:])
+		gen_tx()
 	case "probe_upnp":
 		probe_upnp()
 	default:

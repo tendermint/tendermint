@@ -125,6 +125,7 @@ func AddrBookFile() string      { return rootDir + "/addrbook.json" }
 func PrivValidatorFile() string { return rootDir + "/priv_validator.json" }
 func DataDir() string           { return rootDir + "/data" }
 
+// The actual global config singleton object.
 var Config ConfigType
 
 func parseFlags(flags *flag.FlagSet, args []string) (printHelp bool) {

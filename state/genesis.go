@@ -2,7 +2,7 @@ package state
 
 import (
 	"bytes"
-	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"io/ioutil"
 	"time"
@@ -61,7 +61,7 @@ func MakeGenesisState(db db_.DB, genDoc *GenesisDoc) *State {
 	// Make accounts state tree
 	accounts := merkle.NewIAVLTree(BasicCodec, AccountCodec, defaultAccountsCacheCapacity, db)
 	for _, acc := range genDoc.Accounts {
-		address, err := base64.StdEncoding.DecodeString(acc.Address)
+		address, err := hex.DecodeString(acc.Address)
 		if err != nil {
 			Exit(Fmt("Invalid account address: %v", acc.Address))
 		}
@@ -78,7 +78,7 @@ func MakeGenesisState(db db_.DB, genDoc *GenesisDoc) *State {
 	validatorInfos := merkle.NewIAVLTree(BasicCodec, ValidatorInfoCodec, 0, db)
 	validators := make([]*Validator, len(genDoc.Validators))
 	for i, val := range genDoc.Validators {
-		pubKeyBytes, err := base64.StdEncoding.DecodeString(val.PubKey)
+		pubKeyBytes, err := hex.DecodeString(val.PubKey)
 		if err != nil {
 			Exit(Fmt("Invalid validator pubkey: %v", val.PubKey))
 		}
@@ -98,7 +98,7 @@ func MakeGenesisState(db db_.DB, genDoc *GenesisDoc) *State {
 			FirstBondAmount: val.Amount,
 		}
 		for i, unbondTo := range val.UnbondTo {
-			address, err := base64.StdEncoding.DecodeString(unbondTo.Address)
+			address, err := hex.DecodeString(unbondTo.Address)
 			if err != nil {
 				Exit(Fmt("Invalid unbond-to address: %v", unbondTo.Address))
 			}

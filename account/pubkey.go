@@ -13,12 +13,12 @@ import (
 type PubKey interface {
 	Address() []byte
 	VerifyBytes(msg []byte, sig Signature) bool
+	TypeByte() byte
 }
 
 // Types of PubKey implementations
 const (
 	PubKeyTypeNil     = byte(0x00)
-	PubKeyTypeUnknown = byte(0x01) // For pay-to-pubkey-hash txs.
 	PubKeyTypeEd25519 = byte(0x02)
 )
 
