@@ -1,4 +1,3 @@
-// Maybe move this to blocks/handler.go
 package rpc
 
 import (

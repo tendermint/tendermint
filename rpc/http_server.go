@@ -11,6 +11,7 @@ import (
 func StartHTTPServer() {
 
 	http.HandleFunc("/block", BlockHandler)
+	http.HandleFunc("/mempool", MempoolHandler)
 
 	// Serve HTTP on localhost only.
 	// Let something like Nginx handle HTTPS connections.

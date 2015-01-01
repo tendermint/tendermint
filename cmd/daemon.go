@@ -22,6 +22,7 @@ type Node struct {
 	pexReactor       *p2p.PEXReactor
 	mempoolReactor   *mempool_.MempoolReactor
 	consensusReactor *consensus.ConsensusReactor
+	state            *state_.State
 	privValidator    *state_.PrivValidator
 }
 
@@ -66,6 +67,7 @@ func NewNode() *Node {
 		pexReactor:       pexReactor,
 		mempoolReactor:   mempoolReactor,
 		consensusReactor: consensusReactor,
+		state:            state,
 		privValidator:    privValidator,
 	}
 }
@@ -136,6 +138,8 @@ func daemon() {
 
 	// Run the RPC server.
 	if config.Config.RPC.HTTPPort != 0 {
+		rpc.SetRPCState(n.state)
+		rpc.SetRPCMempoolReactor(n.mempoolReactor)
 		rpc.StartHTTPServer()
 	}
 
