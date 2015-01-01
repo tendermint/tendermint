@@ -15,7 +15,10 @@ func TestSetupRound(t *testing.T) {
 	voteTypes := []byte{VoteTypePrevote, VoteTypePrecommit, VoteTypeCommit}
 	for _, voteType := range voteTypes {
 		vote := &Vote{Height: 1, Round: 0, Type: voteType} // nil vote
-		vote.Signature = val0.SignVote(vote)
+		err := val0.SignVote(vote)
+		if err != nil {
+			t.Error("Error signing vote: %v", err)
+		}
 		cs.AddVote(val0.Address, vote)
 	}
 
@@ -120,7 +123,10 @@ func TestRunActionPrecommitCommitFinalize(t *testing.T) {
 			BlockHash:  cs.ProposalBlock.Hash(),
 			BlockParts: cs.ProposalBlockParts.Header(),
 		}
-		vote.Signature = privValidators[i].SignVote(vote)
+		err := privValidators[i].SignVote(vote)
+		if err != nil {
+			t.Error("Error signing vote: %v", err)
+		}
 		cs.AddVote(privValidators[i].Address, vote)
 	}
 
@@ -147,7 +153,10 @@ func TestRunActionPrecommitCommitFinalize(t *testing.T) {
 			BlockHash:  cs.ProposalBlock.Hash(),
 			BlockParts: cs.ProposalBlockParts.Header(),
 		}
-		vote.Signature = privValidators[i].SignVote(vote)
+		err := privValidators[i].SignVote(vote)
+		if err != nil {
+			t.Error("Error signing vote: %v", err)
+		}
 		added, _, err := cs.AddVote(privValidators[i].Address, vote)
 		if !added || err != nil {
 			t.Errorf("Error adding precommit: %v", err)
@@ -182,7 +191,10 @@ func TestRunActionPrecommitCommitFinalize(t *testing.T) {
 			BlockHash:  cs.ProposalBlock.Hash(),
 			BlockParts: cs.ProposalBlockParts.Header(),
 		}
-		vote.Signature = privValidators[i].SignVote(vote)
+		err := privValidators[i].SignVote(vote)
+		if err != nil {
+			t.Error("Error signing vote: %v", err)
+		}
 		added, _, err := cs.AddVote(privValidators[i].Address, vote)
 		if !added || err != nil {
 			t.Errorf("Error adding commit: %v", err)

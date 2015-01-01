@@ -49,7 +49,7 @@ func withBlockParts(vote *Vote, blockParts PartSetHeader) *Vote {
 }
 
 func signAddVote(privVal *state.PrivValidator, vote *Vote, voteSet *VoteSet) (bool, error) {
-	vote.Signature = privVal.SignVoteUnsafe(vote)
+	privVal.SignVoteUnsafe(vote)
 	added, _, err := voteSet.Add(privVal.Address, vote)
 	return added, err
 }

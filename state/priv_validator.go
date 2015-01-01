@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"math"
@@ -151,27 +152,27 @@ func (privVal *PrivValidator) JSONBytes() []byte {
 }
 
 // TODO: test
-func (privVal *PrivValidator) SignVote(vote *Vote) SignatureEd25519 {
+func (privVal *PrivValidator) SignVote(vote *Vote) error {
 	privVal.mtx.Lock()
 	defer privVal.mtx.Unlock()
 
 	// If height regression, panic
 	if privVal.LastHeight > vote.Height {
-		panic("Height regression in SignVote")
+		return errors.New("Height regression in SignVote")
 	}
 	// More cases for when the height matches
 	if privVal.LastHeight == vote.Height {
 		// If attempting any sign after commit, panic
 		if privVal.LastStep == stepCommit {
-			panic("SignVote on matching height after a commit")
+			return errors.New("SignVote on matching height after a commit")
 		}
 		// If round regression, panic
 		if privVal.LastRound > vote.Round {
-			panic("Round regression in SignVote")
+			return errors.New("Round regression in SignVote")
 		}
 		// If step regression, panic
 		if privVal.LastRound == vote.Round && privVal.LastStep > voteToStep(vote) {
-			panic("Step regression in SignVote")
+			return errors.New("Step regression in SignVote")
 		}
 	}
 
@@ -182,14 +183,15 @@ func (privVal *PrivValidator) SignVote(vote *Vote) SignatureEd25519 {
 	privVal.save()
 
 	// Sign
-	return privVal.SignVoteUnsafe(vote)
+	privVal.SignVoteUnsafe(vote)
+	return nil
 }
 
-func (privVal *PrivValidator) SignVoteUnsafe(vote *Vote) SignatureEd25519 {
-	return privVal.PrivKey.Sign(SignBytes(vote)).(SignatureEd25519)
+func (privVal *PrivValidator) SignVoteUnsafe(vote *Vote) {
+	vote.Signature = privVal.PrivKey.Sign(SignBytes(vote)).(SignatureEd25519)
 }
 
-func (privVal *PrivValidator) SignProposal(proposal *Proposal) SignatureEd25519 {
+func (privVal *PrivValidator) SignProposal(proposal *Proposal) error {
 	privVal.mtx.Lock()
 	defer privVal.mtx.Unlock()
 	if privVal.LastHeight < proposal.Height ||
@@ -203,13 +205,14 @@ func (privVal *PrivValidator) SignProposal(proposal *Proposal) SignatureEd25519 
 		privVal.save()
 
 		// Sign
-		return privVal.PrivKey.Sign(SignBytes(proposal)).(SignatureEd25519)
+		proposal.Signature = privVal.PrivKey.Sign(SignBytes(proposal)).(SignatureEd25519)
+		return nil
 	} else {
-		panic(fmt.Sprintf("Attempt of duplicate signing of proposal: Height %v, Round %v", proposal.Height, proposal.Round))
+		return errors.New(fmt.Sprintf("Attempt of duplicate signing of proposal: Height %v, Round %v", proposal.Height, proposal.Round))
 	}
 }
 
-func (privVal *PrivValidator) SignRebondTx(rebondTx *RebondTx) SignatureEd25519 {
+func (privVal *PrivValidator) SignRebondTx(rebondTx *RebondTx) error {
 	privVal.mtx.Lock()
 	defer privVal.mtx.Unlock()
 	if privVal.LastHeight < rebondTx.Height {
@@ -221,9 +224,10 @@ func (privVal *PrivValidator) SignRebondTx(rebondTx *RebondTx) SignatureEd25519 
 		privVal.save()
 
 		// Sign
-		return privVal.PrivKey.Sign(SignBytes(rebondTx)).(SignatureEd25519)
+		rebondTx.Signature = privVal.PrivKey.Sign(SignBytes(rebondTx)).(SignatureEd25519)
+		return nil
 	} else {
-		panic(fmt.Sprintf("Attempt of duplicate signing of rebondTx: Height %v", rebondTx.Height))
+		return errors.New(fmt.Sprintf("Attempt of duplicate signing of rebondTx: Height %v", rebondTx.Height))
 	}
 }
 

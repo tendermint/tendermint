@@ -16,8 +16,13 @@ import (
 // Signs the vote and sets the POL's vote at the desired index
 // Returns the POLVoteSignature pointer, so you can modify it afterwards.
 func signAddPOLVoteSignature(val *state.PrivValidator, valSet *state.ValidatorSet, vote *Vote, pol *POL) *POLVoteSignature {
+	vote = vote.Copy()
+	err := val.SignVote(vote)
+	if err != nil {
+		panic(err)
+	}
 	idx, _ := valSet.GetByAddress(val.Address) // now we have the index
-	pol.Votes[idx] = POLVoteSignature{vote.Round, val.SignVote(vote)}
+	pol.Votes[idx] = POLVoteSignature{vote.Round, vote.Signature}
 	return &pol.Votes[idx]
 }
 

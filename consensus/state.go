@@ -491,8 +491,13 @@ func (cs *ConsensusState) updateToState(state *state.State) {
 			Address: cs.PrivValidator.Address,
 			Height:  cs.Height + 1,
 		}
-		rebondTx.Signature = cs.PrivValidator.SignRebondTx(rebondTx)
-		cs.mempoolReactor.BroadcastTx(rebondTx)
+		err := cs.PrivValidator.SignRebondTx(rebondTx)
+		if err == nil {
+			log.Info("Signed and broadcast RebondTx", "height", cs.Height, "round", cs.Round, "tx", rebondTx)
+			cs.mempoolReactor.BroadcastTx(rebondTx)
+		} else {
+			log.Warn("Error signing RebondTx", "height", cs.Height, "round", cs.Round, "tx", rebondTx, "error", err)
+		}
 	}
 }
 
@@ -609,6 +614,7 @@ func (cs *ConsensusState) RunActionPropose(height uint, round uint) {
 
 		// Set the block.Header.StateHash.
 		// TODO: we could cache the resulting state to cs.stagedState.
+		// TODO: This is confusing, not clear that we're mutating block.
 		cs.state.Copy().AppendBlock(block, PartSetHeader{}, false)
 
 		blockParts = NewPartSetFromData(BinaryBytes(block))
@@ -621,14 +627,18 @@ func (cs *ConsensusState) RunActionPropose(height uint, round uint) {
 
 	// Make proposal
 	proposal := NewProposal(cs.Height, cs.Round, blockParts.Header(), polParts.Header())
-	proposal.Signature = cs.PrivValidator.SignProposal(proposal)
-
-	// Set fields
-	cs.Proposal = proposal
-	cs.ProposalBlock = block
-	cs.ProposalBlockParts = blockParts
-	cs.ProposalPOL = pol
-	cs.ProposalPOLParts = polParts
+	err := cs.PrivValidator.SignProposal(proposal)
+	if err == nil {
+		log.Info("Signed and set proposal", "height", cs.Height, "round", cs.Round, "proposal", proposal)
+		// Set fields
+		cs.Proposal = proposal
+		cs.ProposalBlock = block
+		cs.ProposalBlockParts = blockParts
+		cs.ProposalPOL = pol
+		cs.ProposalPOLParts = polParts
+	} else {
+		log.Warn("Error signing proposal", "height", cs.Height, "round", cs.Round, "error", err)
+	}
 }
 
 // Prevote for LockedBlock if we're locked, or ProposealBlock if valid.
@@ -1015,9 +1025,15 @@ func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header PartSetHea
 		BlockHash:  hash,
 		BlockParts: header,
 	}
-	vote.Signature = cs.PrivValidator.SignVote(vote)
-	cs.addVote(cs.PrivValidator.Address, vote)
-	return vote
+	err := cs.PrivValidator.SignVote(vote)
+	if err == nil {
+		log.Info("Signed and added vote", "height", cs.Height, "round", cs.Round, "vote", vote)
+		cs.addVote(cs.PrivValidator.Address, vote)
+		return vote
+	} else {
+		log.Warn("Error signing vote", "height", cs.Height, "round", cs.Round, "vote", vote, "error", err)
+		return nil
+	}
 }
 
 func (cs *ConsensusState) saveCommitVoteBlock(block *Block, blockParts *PartSet) {
