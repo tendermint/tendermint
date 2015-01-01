@@ -123,9 +123,8 @@ func GreeterEncoder(o interface{}, w io.Writer, n *int64, err *error) {
 	}
 }
 
-func GreeterDecoder(r *bytes.Reader, n *int64, err *error) interface{} {
-	// We must peek the type byte because ReadBinary() expects it.
-	switch t := PeekByte(r, n, err); t {
+func GreeterDecoder(r Unreader, n *int64, err *error) interface{} {
+	switch t := ReadByte(r, n, err); t {
 	case GreeterTypeDog:
 		return ReadBinary(Dog{}, r, n, err)
 	case GreeterTypeCat:
@@ -149,7 +148,7 @@ Sometimes you want to always prefix a globally unique type byte while encoding,
 whether or not the declared type is an interface or concrete type.
 In this case, you can declare a "TypeByte() byte" function on the struct (as
 a value receiver, not a pointer receiver!), and you can skip the declaration of
-a custom decoder.
+a custom encoder.  The decoder must "peek" the byte instead of consuming it.
 
 ```go
 
@@ -160,6 +159,19 @@ func (d Dog) Greet() string { return "Woof!" }
 type Cat struct{}
 func (c Cat) TypeByte() byte { return GreeterTypeCat }
 func (c Cat) Greet() string { return "Meow!" }
+
+func GreeterDecoder(r Unreader, n *int64, err *error) interface{} {
+	// We must peek the type byte because ReadBinary() expects it.
+	switch t := PeekByte(r, n, err); t {
+	case GreeterTypeDog:
+		return ReadBinary(Dog{}, r, n, err)
+	case GreeterTypeCat:
+		return ReadBinary(Cat{}, r, n, err)
+	default:
+		*err = errors.New(fmt.Sprintf("Unknown greeter type byte %X", t))
+		return nil
+	}
+}
 
 var _ = RegisterType(&TypeInfo{
 	Type: reflect.TypeOf((*Greeter)(nil)).Elem(),
