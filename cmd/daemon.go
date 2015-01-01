@@ -50,7 +50,7 @@ func NewNode() *Node {
 	pexReactor := p2p.NewPEXReactor(book)
 
 	// Get MempoolReactor
-	mempool := mempool_.NewMempool(state)
+	mempool := mempool_.NewMempool(state.Copy())
 	mempoolReactor := mempool_.NewMempoolReactor(mempool)
 
 	// Get ConsensusReactor

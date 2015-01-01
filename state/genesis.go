@@ -117,6 +117,10 @@ func MakeGenesisState(db db_.DB, genDoc *GenesisDoc) *State {
 		}
 	}
 
+	// IAVLTrees must be persisted before copy operations.
+	accounts.Save()
+	validatorInfos.Save()
+
 	return &State{
 		DB:                  db,
 		LastBlockHeight:     0,

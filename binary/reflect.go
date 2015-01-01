@@ -90,7 +90,19 @@ func readReflect(rv reflect.Value, rt reflect.Type, r Unreader, n *int64, err *e
 
 	log.Debug("Read reflect", "type", rt)
 
-	// First, create a new struct if rv is nil pointer.
+	// Get typeInfo
+	typeInfo := GetTypeInfo(rt)
+
+	// Custom decoder
+	if typeInfo.Decoder != nil {
+		decoded := typeInfo.Decoder(r, n, err)
+		//decodedRv := reflect.Indirect(reflect.ValueOf(decoded))
+		//rv.Set(decodedRv)
+		rv.Set(reflect.ValueOf(decoded))
+		return
+	}
+
+	// Create a new struct if rv is nil pointer.
 	if rt.Kind() == reflect.Ptr && rv.IsNil() {
 		newRv := reflect.New(rt.Elem())
 		rv.Set(newRv)
@@ -101,17 +113,6 @@ func readReflect(rv reflect.Value, rt reflect.Type, r Unreader, n *int64, err *e
 	// Still addressable, thus settable!
 	if rv.Kind() == reflect.Ptr {
 		rv, rt = rv.Elem(), rt.Elem()
-	}
-
-	// Get typeInfo
-	typeInfo := GetTypeInfo(rt)
-
-	// Custom decoder
-	if typeInfo.Decoder != nil {
-		decoded := typeInfo.Decoder(r, n, err)
-		decodedRv := reflect.Indirect(reflect.ValueOf(decoded))
-		rv.Set(decodedRv)
-		return
 	}
 
 	// Read TypeByte prefix

@@ -119,6 +119,6 @@ func gen_tx() {
 	}
 
 	// Sign
-	tx.Inputs[0].Signature = srcPrivKey.Sign(binary.BinaryBytes(tx))
+	tx.Inputs[0].Signature = srcPrivKey.Sign(account_.SignBytes(tx))
 	fmt.Printf("Signed tx: %X\n", binary.BinaryBytes(tx))
 }

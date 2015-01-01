@@ -96,7 +96,7 @@ func RecoverAndLogHandler(handler http.Handler) http.Handler {
 					// For the rest,
 					rww.WriteHeader(http.StatusInternalServerError)
 					rww.Write([]byte("Internal Server Error"))
-					log.Error("Panic in HTTP handler", "error", e, "stack", debug.Stack())
+					log.Error("Panic in HTTP handler", "error", e, "stack", string(debug.Stack()))
 				}
 			}
 
