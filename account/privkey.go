@@ -59,5 +59,5 @@ func (key PrivKeyEd25519) ValidateBasic() error {
 
 func (key PrivKeyEd25519) Sign(msg []byte) Signature {
 	signature := ed25519.SignMessage(msg, key.PrivKey, key.PubKey)
-	return SignatureEd25519{signature}
+	return SignatureEd25519(signature)
 }

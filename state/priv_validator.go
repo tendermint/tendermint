@@ -61,7 +61,7 @@ type PrivValidator struct {
 func GenPrivValidator() *PrivValidator {
 	privKeyBytes := CRandBytes(32)
 	pubKeyBytes := ed25519.MakePubKey(privKeyBytes)
-	pubKey := PubKeyEd25519{pubKeyBytes}
+	pubKey := PubKeyEd25519(pubKeyBytes)
 	privKey := PrivKeyEd25519{pubKeyBytes, privKeyBytes}
 	return &PrivValidator{
 		Address:    pubKey.Address(),

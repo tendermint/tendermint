@@ -16,9 +16,7 @@ func GenPrivAccount() *PrivAccount {
 	privKey := CRandBytes(32)
 	pubKey := ed25519.MakePubKey(privKey)
 	return &PrivAccount{
-		PubKeyEd25519{
-			PubKey: pubKey,
-		},
+		PubKeyEd25519(pubKey),
 		PrivKeyEd25519{
 			PubKey:  pubKey,
 			PrivKey: privKey,

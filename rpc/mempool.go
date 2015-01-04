@@ -2,6 +2,8 @@ package rpc
 
 import (
 	"bytes"
+	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/tendermint/tendermint/block"
@@ -21,7 +23,6 @@ func MempoolHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		ReturnJSON(API_INVALID_PARAM, Fmt("Invalid tx_bytes: %v", err))
 	}
-	// XXX Oops, I need to cast later like this, everywhere.
 	tx := tx_.(block.Tx)
 
 	err = mempoolReactor.BroadcastTx(tx)
@@ -29,9 +30,15 @@ func MempoolHandler(w http.ResponseWriter, r *http.Request) {
 		ReturnJSON(API_ERROR, Fmt("Error broadcasting transaction: %v", err))
 	}
 
+	jsonBytes, err := json.MarshalIndent(tx, "", "  ")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(">>", string(jsonBytes))
+
 	ReturnJSON(API_OK, Fmt("Broadcasted tx: %X", tx))
 }
 
 /*
-curl -H 'content-type: text/plain;' http://127.0.0.1:8888/mempool?tx_bytes=0101146070FF17C39B2B0A64CA2BC431328037FA0F47606400000000000000000140D209A7CD4E2E7C5E4B17815AB93029960AF66D3428DE7B085EBDBACD84A31F58562EFF0AC4EC7151B071DE82417110C94FFEE862A3740624D7A8C1874AFCF50402206BD490C212E701A2136EEEA04F06FA4F287EE47E2B7A9B5D62EDD84CD6AD975301146070FF17C39B2B0A64CA2BC431328037FA0F47FF6400000000000000
+curl -H 'content-type: text/plain;' http://127.0.0.1:8888/mempool?tx_bytes=0101146070FF17C39B2B0A64CA2BC431328037FA0F4760640000000000000001014025BE0AD9344DA24BC12FCB84903F88AB9B82107F414A0B570048CDEF7EDDD5AC96B34F0405B7A75B761447F8E6C899343F1EDB160B4C4FAAE92D5881D0023A0701206BD490C212E701A2136EEEA04F06FA4F287EE47E2B7A9B5D62EDD84CD6AD975301146070FF17C39B2B0A64CA2BC431328037FA0F47FF6400000000000000
 */

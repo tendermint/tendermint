@@ -72,7 +72,7 @@ func TestVerifyInvalidVote(t *testing.T) {
 	}
 	for i := 0; i < 7; i++ {
 		polVoteSig := signAddPOLVoteSignature(privValidators[i], valSet, voteProto, pol)
-		polVoteSig.Signature.Bytes[0] += byte(0x01) // mutated!
+		polVoteSig.Signature[0] += byte(0x01) // mutated!
 	}
 
 	// Check that validation fails.
@@ -119,7 +119,7 @@ func TestVerifyInvalidCommits(t *testing.T) {
 	}
 	for i := 0; i < 7; i++ {
 		polVoteSig := signAddPOLVoteSignature(privValidators[i], valSet, voteProto, pol)
-		polVoteSig.Signature.Bytes[0] += byte(0x01)
+		polVoteSig.Signature[0] += byte(0x01)
 	}
 
 	// Check that validation fails.

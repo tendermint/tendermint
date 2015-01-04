@@ -59,10 +59,11 @@ func gen_tx() {
 	// Get source pubkey
 	srcPubKeyBytes := getByteSliceFromBase64("Enter source pubkey: ")
 	r, n, err := bytes.NewReader(srcPubKeyBytes), new(int64), new(error)
-	srcPubKey := account_.PubKeyDecoder(r, n, err).(account_.PubKey)
+	srcPubKey_ := account_.PubKeyDecoder(r, n, err)
 	if *err != nil {
 		Exit(Fmt("Invalid PubKey. Error: %v", err))
 	}
+	srcPubKey := srcPubKey_.(account_.PubKey)
 
 	// Get the state of the account.
 	var srcAccount *account_.Account
@@ -113,10 +114,11 @@ func gen_tx() {
 	// Get source privkey (for signing)
 	srcPrivKeyBytes := getByteSliceFromBase64("Enter source privkey (for signing): ")
 	r, n, err = bytes.NewReader(srcPrivKeyBytes), new(int64), new(error)
-	srcPrivKey := account_.PrivKeyDecoder(r, n, err).(account_.PrivKey)
+	srcPrivKey_ := account_.PrivKeyDecoder(r, n, err)
 	if *err != nil {
 		Exit(Fmt("Invalid PrivKey. Error: %v", err))
 	}
+	srcPrivKey := srcPrivKey_.(account_.PrivKey)
 
 	// Sign
 	tx.Inputs[0].Signature = srcPrivKey.Sign(account_.SignBytes(tx))

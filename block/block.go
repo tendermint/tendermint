@@ -169,7 +169,7 @@ func (commit Commit) IsZero() bool {
 }
 
 func (commit Commit) String() string {
-	return fmt.Sprintf("Commit{A:%X R:%v %X}", commit.Address, commit.Round, Fingerprint(commit.Signature.Bytes))
+	return fmt.Sprintf("Commit{A:%X R:%v %X}", commit.Address, commit.Round, Fingerprint(commit.Signature))
 }
 
 //-------------------------------------

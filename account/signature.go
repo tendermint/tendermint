@@ -40,23 +40,21 @@ var _ = RegisterType(&TypeInfo{
 //-------------------------------------
 
 // Implements Signature
-type SignatureEd25519 struct {
-	Bytes []byte
-}
+type SignatureEd25519 []byte
 
 func (sig SignatureEd25519) TypeByte() byte { return SignatureTypeEd25519 }
 
 func (sig SignatureEd25519) ValidateBasic() error {
-	if len(sig.Bytes) != ed25519.SignatureSize {
+	if len(sig) != ed25519.SignatureSize {
 		return errors.New("Invalid SignatureEd25519 signature size")
 	}
 	return nil
 }
 
 func (sig SignatureEd25519) IsZero() bool {
-	return len(sig.Bytes) == 0
+	return len(sig) == 0
 }
 
 func (sig SignatureEd25519) String() string {
-	return fmt.Sprintf("%X", Fingerprint(sig.Bytes))
+	return fmt.Sprintf("%X", Fingerprint(sig))
 }
