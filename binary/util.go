@@ -15,6 +15,15 @@ func BinaryBytes(o interface{}) []byte {
 	return w.Bytes()
 }
 
+func JSONBytes(o interface{}) []byte {
+	w, n, err := new(bytes.Buffer), new(int64), new(error)
+	WriteJSON(o, w, n, err)
+	if *err != nil {
+		panic(err)
+	}
+	return w.Bytes()
+}
+
 // NOTE: does not care about the type, only the binary representation.
 func BinaryEqual(a, b interface{}) bool {
 	aBytes := BinaryBytes(a)

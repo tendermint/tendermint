@@ -1,8 +1,9 @@
 package binary
 
 import (
+	"encoding/hex"
+	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"reflect"
 	"sync"
@@ -127,7 +128,7 @@ func RegisterType(info *TypeInfo) *TypeInfo {
 		zero := reflect.Zero(rt)
 		typeByte := zero.Interface().(HasTypeByte).TypeByte()
 		if info.HasTypeByte && info.TypeByte != typeByte {
-			panic(fmt.Sprintf("Type %v expected TypeByte of %X", rt, typeByte))
+			panic(Fmt("Type %v expected TypeByte of %X", rt, typeByte))
 		} else {
 			info.HasTypeByte = true
 			info.TypeByte = typeByte
@@ -136,7 +137,7 @@ func RegisterType(info *TypeInfo) *TypeInfo {
 		zero := reflect.Zero(ptrRt)
 		typeByte := zero.Interface().(HasTypeByte).TypeByte()
 		if info.HasTypeByte && info.TypeByte != typeByte {
-			panic(fmt.Sprintf("Type %v expected TypeByte of %X", ptrRt, typeByte))
+			panic(Fmt("Type %v expected TypeByte of %X", ptrRt, typeByte))
 		} else {
 			info.HasTypeByte = true
 			info.TypeByte = typeByte
@@ -178,7 +179,7 @@ func readReflect(rv reflect.Value, rt reflect.Type, r Unreader, n *int64, err *e
 		typeByte := ReadByte(r, n, err)
 		log.Debug("Read typebyte", "typeByte", typeByte)
 		if typeByte != typeInfo.TypeByte {
-			*err = errors.New(fmt.Sprintf("Expected TypeByte of %X but got %X", typeInfo.TypeByte, typeByte))
+			*err = errors.New(Fmt("Expected TypeByte of %X but got %X", typeInfo.TypeByte, typeByte))
 			return
 		}
 	}
@@ -284,7 +285,7 @@ func readReflect(rv reflect.Value, rt reflect.Type, r Unreader, n *int64, err *e
 		rv.SetUint(uint64(num))
 
 	default:
-		panic(fmt.Sprintf("Unknown field type %v", rt.Kind()))
+		panic(Fmt("Unknown field type %v", rt.Kind()))
 	}
 }
 
@@ -311,8 +312,6 @@ func writeReflect(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, err 
 	if rt.Kind() == reflect.Ptr {
 		rt = rt.Elem()
 		rv = rv.Elem()
-		// RegisterType registers the ptr type,
-		// so typeInfo is already for the ptr.
 	}
 
 	// Write TypeByte prefix
@@ -383,6 +382,256 @@ func writeReflect(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, err 
 		WriteUvarint(uint(rv.Uint()), w, n, err)
 
 	default:
-		panic(fmt.Sprintf("Unknown field type %v", rt.Kind()))
+		panic(Fmt("Unknown field type %v", rt.Kind()))
+	}
+}
+
+//-----------------------------------------------------------------------------
+
+func readTypeByteJSON(o interface{}) (typeByte byte, rest interface{}, err error) {
+	oSlice, ok := o.([]interface{})
+	if !ok {
+		err = errors.New(Fmt("Expected type [TypeByte,?] but got type %v", reflect.TypeOf(o)))
+		return
+	}
+	if len(oSlice) != 2 {
+		err = errors.New(Fmt("Expected [TypeByte,?] len 2 but got len %v", len(oSlice)))
+		return
+	}
+	typeByte_, ok := oSlice[0].(float64)
+	typeByte = byte(typeByte_)
+	rest = oSlice[1]
+	return
+}
+
+func readReflectJSON(rv reflect.Value, rt reflect.Type, o interface{}, err *error) {
+
+	log.Debug("Read reflect json", "type", rt)
+
+	// Get typeInfo
+	typeInfo := GetTypeInfo(rt)
+
+	// Create a new struct if rv is nil pointer.
+	if rt.Kind() == reflect.Ptr && rv.IsNil() {
+		newRv := reflect.New(rt.Elem())
+		rv.Set(newRv)
+		rv = newRv
+	}
+
+	// Dereference pointer
+	// Still addressable, thus settable!
+	if rv.Kind() == reflect.Ptr {
+		rv, rt = rv.Elem(), rt.Elem()
+	}
+
+	// Read TypeByte prefix
+	if typeInfo.HasTypeByte {
+		typeByte, rest, err_ := readTypeByteJSON(o)
+		if err_ != nil {
+			*err = err_
+			return
+		}
+		if typeByte != typeInfo.TypeByte {
+			*err = errors.New(Fmt("Expected TypeByte of %X but got %X", typeInfo.TypeByte, byte(typeByte)))
+			return
+		}
+		o = rest
+	}
+
+	switch rt.Kind() {
+	case reflect.Interface:
+		typeByte, _, err_ := readTypeByteJSON(o)
+		if err_ != nil {
+			*err = err_
+			return
+		}
+		concreteType, ok := typeInfo.ConcreteTypes[typeByte]
+		if !ok {
+			panic(Fmt("TypeByte %X not registered for interface %v", typeByte, rt))
+		}
+		newRv := reflect.New(concreteType)
+		readReflectJSON(newRv.Elem(), concreteType, o, err)
+		rv.Set(newRv.Elem())
+
+	case reflect.Slice:
+		elemRt := rt.Elem()
+		if elemRt.Kind() == reflect.Uint8 {
+			// Special case: Byteslices
+			oString, ok := o.(string)
+			if !ok {
+				*err = errors.New(Fmt("Expected string but got type %v", reflect.TypeOf(o)))
+				return
+			}
+			byteslice, err_ := hex.DecodeString(oString)
+			if err_ != nil {
+				*err = err_
+				return
+			}
+			log.Debug("Read byteslice", "bytes", byteslice)
+			rv.Set(reflect.ValueOf(byteslice))
+		} else {
+			// Read length
+			oSlice, ok := o.([]interface{})
+			if !ok {
+				*err = errors.New(Fmt("Expected array but got type %v", reflect.TypeOf(o)))
+				return
+			}
+			length := len(oSlice)
+			log.Debug(Fmt("Read length: %v", length))
+			sliceRv := reflect.MakeSlice(rt, length, length)
+			// Read elems
+			for i := 0; i < length; i++ {
+				elemRv := sliceRv.Index(i)
+				readReflectJSON(elemRv, elemRt, oSlice[i], err)
+			}
+			rv.Set(sliceRv)
+		}
+
+	case reflect.Struct:
+		oMap, ok := o.(map[string]interface{})
+		if !ok {
+			*err = errors.New(Fmt("Expected map but got type %v", reflect.TypeOf(o)))
+			return
+		}
+		// TODO: ensure that all fields are set?
+		for name, value := range oMap {
+			field, ok := rt.FieldByName(name)
+			if !ok {
+				*err = errors.New(Fmt("Attempt to set unknown field %v", field.Name))
+				return
+			}
+			// JAE: I don't think golang reflect lets us set unexported fields, but just in case:
+			if field.PkgPath != "" {
+				*err = errors.New(Fmt("Attempt to set unexported field %v", field.Name))
+				return
+			}
+			fieldRv := rv.FieldByName(name)
+			readReflectJSON(fieldRv, field.Type, value, err)
+		}
+
+	case reflect.String:
+		str, ok := o.(string)
+		if !ok {
+			*err = errors.New(Fmt("Expected string but got type %v", reflect.TypeOf(o)))
+			return
+		}
+		log.Debug(Fmt("Read string: %v", str))
+		rv.SetString(str)
+
+	case reflect.Int64, reflect.Int32, reflect.Int16, reflect.Int8, reflect.Int:
+		num, ok := o.(float64)
+		if !ok {
+			*err = errors.New(Fmt("Expected numeric but got type %v", reflect.TypeOf(o)))
+			return
+		}
+		log.Debug(Fmt("Read num: %v", num))
+		rv.SetInt(int64(num))
+
+	case reflect.Uint64, reflect.Uint32, reflect.Uint16, reflect.Uint8, reflect.Uint:
+		num, ok := o.(float64)
+		if !ok {
+			*err = errors.New(Fmt("Expected numeric but got type %v", reflect.TypeOf(o)))
+			return
+		}
+		if num < 0 {
+			*err = errors.New(Fmt("Expected unsigned numeric but got %v", num))
+			return
+		}
+		log.Debug(Fmt("Read num: %v", num))
+		rv.SetUint(uint64(num))
+
+	default:
+		panic(Fmt("Unknown field type %v", rt.Kind()))
+	}
+}
+
+func writeReflectJSON(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, err *error) {
+
+	// Get typeInfo
+	typeInfo := GetTypeInfo(rt)
+
+	// Custom encoder, say for an interface type rt.
+	if typeInfo.Encoder != nil {
+		typeInfo.Encoder(rv.Interface(), w, n, err)
+		return
+	}
+
+	// Dereference interface
+	if rt.Kind() == reflect.Interface {
+		rv = rv.Elem()
+		rt = rv.Type()
+		// If interface type, get typeInfo of underlying type.
+		typeInfo = GetTypeInfo(rt)
+	}
+
+	// Dereference pointer
+	if rt.Kind() == reflect.Ptr {
+		rt = rt.Elem()
+		rv = rv.Elem()
+	}
+
+	// Write TypeByte prefix
+	if typeInfo.HasTypeByte {
+		WriteTo([]byte(Fmt("[%v,", typeInfo.TypeByte)), w, n, err)
+	}
+
+	switch rt.Kind() {
+	case reflect.Slice:
+		elemRt := rt.Elem()
+		if elemRt.Kind() == reflect.Uint8 {
+			// Special case: Byteslices
+			byteslice := rv.Bytes()
+			WriteTo([]byte(Fmt("\"%X\"", byteslice)), w, n, err)
+			//WriteByteSlice(byteslice, w, n, err)
+		} else {
+			WriteTo([]byte("["), w, n, err)
+			// Write elems
+			length := rv.Len()
+			for i := 0; i < length; i++ {
+				elemRv := rv.Index(i)
+				writeReflectJSON(elemRv, elemRt, w, n, err)
+				if i < length-1 {
+					WriteTo([]byte(","), w, n, err)
+				}
+			}
+			WriteTo([]byte("]"), w, n, err)
+		}
+
+	case reflect.Struct:
+		WriteTo([]byte("{"), w, n, err)
+		numFields := rt.NumField()
+		for i := 0; i < numFields; i++ {
+			field := rt.Field(i)
+			if field.PkgPath != "" {
+				continue
+			}
+			fieldRv := rv.Field(i)
+			WriteTo([]byte(Fmt("\"%v\":", field.Name)), w, n, err)
+			writeReflectJSON(fieldRv, field.Type, w, n, err)
+			if i < numFields-1 {
+				WriteTo([]byte(","), w, n, err)
+			}
+		}
+		WriteTo([]byte("}"), w, n, err)
+
+	case reflect.String:
+		fallthrough
+	case reflect.Uint64, reflect.Uint32, reflect.Uint16, reflect.Uint8, reflect.Uint:
+		fallthrough
+	case reflect.Int64, reflect.Int32, reflect.Int16, reflect.Int8, reflect.Int:
+		jsonBytes, err_ := json.Marshal(rv.Interface())
+		if err_ != nil {
+			*err = err_
+			return
+		}
+		WriteTo(jsonBytes, w, n, err)
+
+	default:
+		panic(Fmt("Unknown field type %v", rt.Kind()))
+	}
+
+	// Write TypeByte close bracket
+	if typeInfo.HasTypeByte {
+		WriteTo([]byte("]"), w, n, err)
 	}
 }

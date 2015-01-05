@@ -1,6 +1,7 @@
 package binary
 
 import (
+	"encoding/json"
 	"io"
 	"reflect"
 )
@@ -26,6 +27,30 @@ func WriteBinary(o interface{}, w io.Writer, n *int64, err *error) {
 	rv := reflect.ValueOf(o)
 	rt := reflect.TypeOf(o)
 	writeReflect(rv, rt, w, n, err)
+}
+
+func ReadJSON(o interface{}, bytes []byte, err *error) interface{} {
+	var parsed interface{}
+	*err = json.Unmarshal(bytes, &parsed)
+	if *err != nil {
+		return o
+	}
+
+	rv, rt := reflect.ValueOf(o), reflect.TypeOf(o)
+	if rv.Kind() == reflect.Ptr {
+		readReflectJSON(rv.Elem(), rt.Elem(), parsed, err)
+		return o
+	} else {
+		ptrRv := reflect.New(rt)
+		readReflectJSON(ptrRv.Elem(), rt, parsed, err)
+		return ptrRv.Elem().Interface()
+	}
+}
+
+func WriteJSON(o interface{}, w io.Writer, n *int64, err *error) {
+	rv := reflect.ValueOf(o)
+	rt := reflect.TypeOf(o)
+	writeReflectJSON(rv, rt, w, n, err)
 }
 
 // Write all of bz to w

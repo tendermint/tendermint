@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -31,10 +30,7 @@ func MempoolHandler(w http.ResponseWriter, r *http.Request) {
 		ReturnJSON(API_ERROR, Fmt("Error broadcasting transaction: %v", err))
 	}
 
-	jsonBytes, err := json.MarshalIndent(tx, "", "  ")
-	if err != nil {
-		panic(err)
-	}
+	jsonBytes := JSONBytes(tx)
 	fmt.Println(">>", string(jsonBytes))
 
 	ReturnJSON(API_OK, Fmt("Broadcasted tx: %X", tx))

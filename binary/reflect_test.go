@@ -58,51 +58,40 @@ var _ = RegisterInterface(
 
 //-------------------------------------
 
-func TestBasic(t *testing.T) {
+type Constructor func() interface{}
+type Instantiator func() (o interface{}, ptr interface{})
+type Validator func(o interface{}, t *testing.T)
+
+type TestCase struct {
+	Constructor
+	Instantiator
+	Validator
+}
+
+//-------------------------------------
+
+func constructBasic() interface{} {
 	cat := Cat{
 		SimpleStruct{
 			String: "String",
 			Bytes:  []byte("Bytes"),
 		},
 	}
+	return cat
+}
 
-	buf, n, err := new(bytes.Buffer), new(int64), new(error)
-	WriteBinary(cat, buf, n, err)
-	if *err != nil {
-		t.Fatalf("Failed to write cat: %v", *err)
-	}
-	t.Logf("Wrote bytes: %X", buf.Bytes())
-	bufBytes := buf.Bytes()
+func instantiateBasic() (interface{}, interface{}) {
+	return Cat{}, &Cat{}
+}
 
-	// Read onto a struct
-	cat2_ := ReadBinary(Cat{}, buf, n, err)
-	if *err != nil {
-		t.Fatalf("Failed to read cat: %v", *err)
+func validateBasic(o interface{}, t *testing.T) {
+	cat := o.(Cat)
+	if cat.String != "String" {
+		t.Errorf("Expected cat2.String == 'String', got %v", cat.String)
 	}
-	cat2 := cat2_.(Cat)
-
-	if cat2.String != "String" {
-		t.Errorf("Expected cat2.String == 'String', got %v", cat2.String)
+	if string(cat.Bytes) != "Bytes" {
+		t.Errorf("Expected cat2.Bytes == 'Bytes', got %X", cat.Bytes)
 	}
-	if string(cat2.Bytes) != "Bytes" {
-		t.Errorf("Expected cat2.Bytes == 'Bytes', got %X", cat2.Bytes)
-	}
-
-	// Read onto a ptr
-	r := bytes.NewReader(bufBytes)
-	cat3_ := ReadBinary(&Cat{}, r, n, err)
-	if *err != nil {
-		t.Fatalf("Failed to read cat: %v", *err)
-	}
-	cat3 := cat3_.(*Cat)
-
-	if cat3.String != "String" {
-		t.Errorf("Expected cat3.String == 'String', got %v", cat3.String)
-	}
-	if string(cat3.Bytes) != "Bytes" {
-		t.Errorf("Expected cat3.Bytes == 'Bytes', got %X", cat3.Bytes)
-	}
-
 }
 
 //-------------------------------------
@@ -112,38 +101,22 @@ type ComplexStruct struct {
 	Animal Animal
 }
 
-func TestComplexStruct(t *testing.T) {
+func constructComplex() interface{} {
 	c := ComplexStruct{
-		Name: "Complex",
-		Animal: Cat{
-			SimpleStruct{
-				String: "String",
-				Bytes:  []byte("Bytes"),
-			},
-		},
+		Name:   "Complex",
+		Animal: constructBasic(),
 	}
+	return c
+}
 
-	buf, n, err := new(bytes.Buffer), new(int64), new(error)
-	WriteBinary(c, buf, n, err)
-	if *err != nil {
-		t.Fatalf("Failed to write c: %v", *err)
-	}
+func instantiateComplex() (interface{}, interface{}) {
+	return ComplexStruct{}, &ComplexStruct{}
+}
 
-	t.Logf("Wrote bytes: %X", buf.Bytes())
-
-	c2_ := ReadBinary(&ComplexStruct{}, buf, n, err)
-	if *err != nil {
-		t.Fatalf("Failed to read c: %v", *err)
-	}
-	c2 := c2_.(*ComplexStruct)
-
+func validateComplex(o interface{}, t *testing.T) {
+	c2 := o.(ComplexStruct)
 	if cat, ok := c2.Animal.(Cat); ok {
-		if cat.String != "String" {
-			t.Errorf("Expected cat.String == 'String', got %v", cat.String)
-		}
-		if string(cat.Bytes) != "Bytes" {
-			t.Errorf("Expected cat.Bytes == 'Bytes', got %X", cat.Bytes)
-		}
+		validateBasic(cat, t)
 	} else {
 		t.Errorf("Expected c2.Animal to be of type cat, got %v", reflect.ValueOf(c2.Animal).Elem().Type())
 	}
@@ -151,12 +124,91 @@ func TestComplexStruct(t *testing.T) {
 
 //-------------------------------------
 
-type ComplexArrayStruct struct {
+type ComplexStruct2 struct {
+	Cat    Cat
+	Dog    *Dog
+	Snake  Snake
+	Snake2 *Snake
+	Viper  Viper
+	Viper2 *Viper
+}
+
+func constructComplex2() interface{} {
+	snake_ := Snake([]byte("hiss"))
+	snakePtr_ := &snake_
+
+	c := ComplexStruct2{
+		Cat: Cat{
+			SimpleStruct{
+				String: "String",
+				Bytes:  []byte("Bytes"),
+			},
+		},
+		Dog: &Dog{
+			SimpleStruct{
+				String: "Woof",
+				Bytes:  []byte("Bark"),
+			},
+		},
+		Snake:  Snake([]byte("hiss")),
+		Snake2: snakePtr_,
+		Viper:  Viper{Bytes: []byte("hizz")},
+		Viper2: &Viper{Bytes: []byte("hizz")},
+	}
+	return c
+}
+
+func instantiateComplex2() (interface{}, interface{}) {
+	return ComplexStruct2{}, &ComplexStruct2{}
+}
+
+func validateComplex2(o interface{}, t *testing.T) {
+	c2 := o.(ComplexStruct2)
+	cat := c2.Cat
+	if cat.String != "String" {
+		t.Errorf("Expected cat.String == 'String', got %v", cat.String)
+	}
+	if string(cat.Bytes) != "Bytes" {
+		t.Errorf("Expected cat.Bytes == 'Bytes', got %X", cat.Bytes)
+	}
+
+	dog := c2.Dog
+	if dog.String != "Woof" {
+		t.Errorf("Expected dog.String == 'Woof', got %v", dog.String)
+	}
+	if string(dog.Bytes) != "Bark" {
+		t.Errorf("Expected dog.Bytes == 'Bark', got %X", dog.Bytes)
+	}
+
+	snake := c2.Snake
+	if string(snake) != "hiss" {
+		t.Errorf("Expected string(snake) == 'hiss', got %v", string(snake))
+	}
+
+	snake2 := c2.Snake2
+	if string(*snake2) != "hiss" {
+		t.Errorf("Expected string(snake2) == 'hiss', got %v", string(*snake2))
+	}
+
+	viper := c2.Viper
+	if string(viper.Bytes) != "hizz" {
+		t.Errorf("Expected string(viper.Bytes) == 'hizz', got %v", string(viper.Bytes))
+	}
+
+	viper2 := c2.Viper2
+	if string(viper2.Bytes) != "hizz" {
+		t.Errorf("Expected string(viper2.Bytes) == 'hizz', got %v", string(viper2.Bytes))
+	}
+}
+
+//-------------------------------------
+
+type ComplexStructArray struct {
 	Animals []Animal
 }
 
-func TestComplexArrayStruct(t *testing.T) {
-	c := ComplexArrayStruct{
+func constructComplexArray() interface{} {
+	c := ComplexStructArray{
 		Animals: []Animal{
 			Cat{
 				SimpleStruct{
@@ -176,21 +228,15 @@ func TestComplexArrayStruct(t *testing.T) {
 			},
 		},
 	}
+	return c
+}
 
-	buf, n, err := new(bytes.Buffer), new(int64), new(error)
-	WriteBinary(c, buf, n, err)
-	if *err != nil {
-		t.Fatalf("Failed to write c: %v", *err)
-	}
+func instantiateComplexArray() (interface{}, interface{}) {
+	return ComplexStructArray{}, &ComplexStructArray{}
+}
 
-	t.Logf("Wrote bytes: %X", buf.Bytes())
-
-	c2_ := ReadBinary(&ComplexArrayStruct{}, buf, n, err)
-	if *err != nil {
-		t.Fatalf("Failed to read c: %v", *err)
-	}
-	c2 := c2_.(*ComplexArrayStruct)
-
+func validateComplexArray(o interface{}, t *testing.T) {
+	c2 := o.(ComplexStructArray)
 	if cat, ok := c2.Animals[0].(Cat); ok {
 		if cat.String != "String" {
 			t.Errorf("Expected cat.String == 'String', got %v", cat.String)
@@ -230,88 +276,92 @@ func TestComplexArrayStruct(t *testing.T) {
 	}
 }
 
-//-------------------------------------
+//-----------------------------------------------------------------------------
 
-type ComplexStruct2 struct {
-	Cat    Cat
-	Dog    *Dog
-	Snake  Snake
-	Snake2 *Snake
-	Viper  Viper
-	Viper2 *Viper
+var testCases = []TestCase{}
+
+func init() {
+	testCases = append(testCases, TestCase{constructBasic, instantiateBasic, validateBasic})
+	testCases = append(testCases, TestCase{constructComplex, instantiateComplex, validateComplex})
+	testCases = append(testCases, TestCase{constructComplex2, instantiateComplex2, validateComplex2})
+	testCases = append(testCases, TestCase{constructComplexArray, instantiateComplexArray, validateComplexArray})
 }
 
-func TestComplexStruct2(t *testing.T) {
+func TestBinary(t *testing.T) {
 
-	snake_ := Snake([]byte("hiss"))
-	snakePtr_ := &snake_
+	for _, testCase := range testCases {
 
-	c := ComplexStruct2{
-		Cat: Cat{
-			SimpleStruct{
-				String: "String",
-				Bytes:  []byte("Bytes"),
-			},
-		},
-		Dog: &Dog{
-			SimpleStruct{
-				String: "Woof",
-				Bytes:  []byte("Bark"),
-			},
-		},
-		Snake:  Snake([]byte("hiss")),
-		Snake2: snakePtr_,
-		Viper:  Viper{Bytes: []byte("hizz")},
-		Viper2: &Viper{Bytes: []byte("hizz")},
+		// Construct an object
+		o := testCase.Constructor()
+
+		// Write the object
+		data := BinaryBytes(o)
+		t.Logf("Binary: %X", data)
+
+		instance, instancePtr := testCase.Instantiator()
+
+		// Read onto a struct
+		n, err := new(int64), new(error)
+		res := ReadBinary(instance, bytes.NewReader(data), n, err)
+		if *err != nil {
+			t.Fatalf("Failed to read cat: %v", *err)
+		}
+
+		// Validate object
+		testCase.Validator(res, t)
+
+		// Read onto a pointer
+		n, err = new(int64), new(error)
+		res = ReadBinary(instancePtr, bytes.NewReader(data), n, err)
+		if *err != nil {
+			t.Fatalf("Failed to read cat: %v", *err)
+		}
+
+		if res != instancePtr {
+			t.Errorf("Expected pointer to pass through")
+		}
+
+		// Validate object
+		testCase.Validator(reflect.ValueOf(res).Elem().Interface(), t)
 	}
 
-	buf, n, err := new(bytes.Buffer), new(int64), new(error)
-	WriteBinary(c, buf, n, err)
-	if *err != nil {
-		t.Fatalf("Failed to write c: %v", *err)
+}
+
+func TestJSON(t *testing.T) {
+
+	for _, testCase := range testCases {
+
+		// Construct an object
+		o := testCase.Constructor()
+
+		// Write the object
+		data := JSONBytes(o)
+		t.Logf("JSON: %v", string(data))
+
+		instance, instancePtr := testCase.Instantiator()
+
+		// Read onto a struct
+		err := new(error)
+		res := ReadJSON(instance, data, err)
+		if *err != nil {
+			t.Fatalf("Failed to read cat: %v", *err)
+		}
+
+		// Validate object
+		testCase.Validator(res, t)
+
+		// Read onto a pointer
+		res = ReadJSON(instancePtr, data, err)
+		if *err != nil {
+			t.Fatalf("Failed to read cat: %v", *err)
+		}
+
+		if res != instancePtr {
+			t.Errorf("Expected pointer to pass through")
+		}
+
+		// Validate object
+		testCase.Validator(reflect.ValueOf(res).Elem().Interface(), t)
 	}
 
-	t.Logf("Wrote bytes: %X", buf.Bytes())
-
-	c2_ := ReadBinary(&ComplexStruct2{}, buf, n, err)
-	if *err != nil {
-		t.Fatalf("Failed to read c: %v", *err)
-	}
-	c2 := c2_.(*ComplexStruct2)
-
-	cat := c2.Cat
-	if cat.String != "String" {
-		t.Errorf("Expected cat.String == 'String', got %v", cat.String)
-	}
-	if string(cat.Bytes) != "Bytes" {
-		t.Errorf("Expected cat.Bytes == 'Bytes', got %X", cat.Bytes)
-	}
-
-	dog := c2.Dog
-	if dog.String != "Woof" {
-		t.Errorf("Expected dog.String == 'Woof', got %v", dog.String)
-	}
-	if string(dog.Bytes) != "Bark" {
-		t.Errorf("Expected dog.Bytes == 'Bark', got %X", dog.Bytes)
-	}
-
-	snake := c2.Snake
-	if string(snake) != "hiss" {
-		t.Errorf("Expected string(snake) == 'hiss', got %v", string(snake))
-	}
-
-	snake2 := c2.Snake2
-	if string(*snake2) != "hiss" {
-		t.Errorf("Expected string(snake2) == 'hiss', got %v", string(*snake2))
-	}
-
-	viper := c2.Viper
-	if string(viper.Bytes) != "hizz" {
-		t.Errorf("Expected string(viper.Bytes) == 'hizz', got %v", string(viper.Bytes))
-	}
-
-	viper2 := c2.Viper2
-	if string(viper2.Bytes) != "hizz" {
-		t.Errorf("Expected string(viper2.Bytes) == 'hizz', got %v", string(viper2.Bytes))
-	}
 }
