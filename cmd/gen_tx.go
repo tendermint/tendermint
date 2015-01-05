@@ -23,20 +23,11 @@ func getString(prompt string) string {
 	return input[:len(input)-1]
 }
 
-func getByteSliceFromBase64(prompt string) []byte {
-	input := getString(prompt)
-	bytes, err := hex.DecodeString(input)
-	if err != nil {
-		Exit(Fmt("Not in hexadecimal format: %v\nError: %v\n", input, err))
-	}
-	return bytes
-}
-
 func getByteSliceFromHex(prompt string) []byte {
 	input := getString(prompt)
 	bytes, err := hex.DecodeString(input)
 	if err != nil {
-		Exit(Fmt("Not in hexadecimal format: %v\nError: %v\n", input, err))
+		Exit(Fmt("Not in hex format: %v\nError: %v\n", input, err))
 	}
 	return bytes
 }
@@ -57,13 +48,12 @@ func gen_tx() {
 	state := state_.LoadState(stateDB)
 
 	// Get source pubkey
-	srcPubKeyBytes := getByteSliceFromBase64("Enter source pubkey: ")
+	srcPubKeyBytes := getByteSliceFromHex("Enter source pubkey: ")
 	r, n, err := bytes.NewReader(srcPubKeyBytes), new(int64), new(error)
-	srcPubKey_ := account_.PubKeyDecoder(r, n, err)
+	srcPubKey := binary.ReadBinary(struct{ account_.PubKey }{}, r, n, err).(struct{ account_.PubKey }).PubKey
 	if *err != nil {
 		Exit(Fmt("Invalid PubKey. Error: %v", err))
 	}
-	srcPubKey := srcPubKey_.(account_.PubKey)
 
 	// Get the state of the account.
 	var srcAccount *account_.Account
@@ -112,13 +102,12 @@ func gen_tx() {
 	fmt.Printf("Generated tx: %X\n", binary.BinaryBytes(tx))
 
 	// Get source privkey (for signing)
-	srcPrivKeyBytes := getByteSliceFromBase64("Enter source privkey (for signing): ")
+	srcPrivKeyBytes := getByteSliceFromHex("Enter source privkey (for signing): ")
 	r, n, err = bytes.NewReader(srcPrivKeyBytes), new(int64), new(error)
-	srcPrivKey_ := account_.PrivKeyDecoder(r, n, err)
+	srcPrivKey := binary.ReadBinary(struct{ account_.PrivKey }{}, r, n, err).(struct{ account_.PrivKey }).PrivKey
 	if *err != nil {
 		Exit(Fmt("Invalid PrivKey. Error: %v", err))
 	}
-	srcPrivKey := srcPrivKey_.(account_.PrivKey)
 
 	// Sign
 	tx.Inputs[0].Signature = srcPrivKey.Sign(account_.SignBytes(tx))

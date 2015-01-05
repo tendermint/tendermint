@@ -2,11 +2,9 @@ package account
 
 import (
 	"errors"
-	"reflect"
 
 	"github.com/tendermint/go-ed25519"
 	. "github.com/tendermint/tendermint/binary"
-	. "github.com/tendermint/tendermint/common"
 )
 
 // PubKey is part of Account and Validator.
@@ -22,25 +20,12 @@ const (
 	PubKeyTypeEd25519 = byte(0x01)
 )
 
-//-------------------------------------
 // for binary.readReflect
-
-func PubKeyDecoder(r Unreader, n *int64, err *error) interface{} {
-	switch t := PeekByte(r, n, err); t {
-	case PubKeyTypeNil:
-		return PubKeyNil{}
-	case PubKeyTypeEd25519:
-		return ReadBinary(PubKeyEd25519{}, r, n, err)
-	default:
-		*err = Errorf("Unknown PubKey type %X", t)
-		return nil
-	}
-}
-
-var _ = RegisterType(&TypeInfo{
-	Type:    reflect.TypeOf((*PubKey)(nil)).Elem(),
-	Decoder: PubKeyDecoder,
-})
+var _ = RegisterInterface(
+	struct{ PubKey }{},
+	ConcreteType{PubKeyNil{}},
+	ConcreteType{PubKeyEd25519{}},
+)
 
 //-------------------------------------
 

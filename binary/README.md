@@ -96,62 +96,15 @@ foo := Foo{Dog{}}
 buf, n, err := new(bytes.Buffer), new(int64), new(error)
 WriteBinary(foo, buf, n, err)
 
-// This errors with "Unknown field type interface"
+// This errors because we don't know whether to read a Dog or Cat.
 foo2 := ReadBinary(Foo{}, buf, n, err)
 ```
 
 In the above example, `ReadBinary()` fails because the `Greeter` field for `Foo{}`
 is ambiguous -- it could be either a `Dog{}` or a `Cat{}`, like a union structure.
-In this case, the user must define a custom encoder/decoder as follows:
+The solution is to declare the concrete implementation types for interfaces:
 
 ```go
-const (
-	GreeterTypeDog = byte(0x01)
-	GreeterTypeCat = byte(0x02)
-)
-
-func GreeterEncoder(o interface{}, w io.Writer, n *int64, err *error) {
-	switch o.(type) {
-	case Dog:
-		WriteByte(GreeterTypeDog, w, n, err)
-		WriteBinary(o, w, n, err)
-	case Cat:
-		WriteByte(GreeterTypeCat, w, n, err)
-		WriteBinary(o, w, n, err)
-	default:
-		*err = errors.New(fmt.Sprintf("Unknown greeter type %v", o))
-	}
-}
-
-func GreeterDecoder(r Unreader, n *int64, err *error) interface{} {
-	switch t := ReadByte(r, n, err); t {
-	case GreeterTypeDog:
-		return ReadBinary(Dog{}, r, n, err)
-	case GreeterTypeCat:
-		return ReadBinary(Cat{}, r, n, err)
-	default:
-		*err = errors.New(fmt.Sprintf("Unknown greeter type byte %X", t))
-		return nil
-	}
-}
-
-// This tells the reflection system to use the custom encoder/decoder functions
-// for encoding/decoding interface struct-field types.
-var _ = RegisterType(&TypeInfo{
-	Type: reflect.TypeOf((*Greeter)(nil)).Elem(),
-	Encoder: GreeterEncoder,
-	Decoder: GreeterDecoder,
-})
-```
-
-Sometimes you want to always prefix a globally unique type byte while encoding,
-whether or not the declared type is an interface or concrete type.
-In this case, you can declare a "TypeByte() byte" function on the struct (as
-a value receiver, not a pointer receiver!), and you can skip the declaration of
-a custom encoder.  The decoder must "peek" the byte instead of consuming it.
-
-```go
-
 type Dog struct{}
 func (d Dog) TypeByte() byte { return GreeterTypeDog }
 func (d Dog) Greet() string { return "Woof!" }
@@ -160,21 +113,18 @@ type Cat struct{}
 func (c Cat) TypeByte() byte { return GreeterTypeCat }
 func (c Cat) Greet() string { return "Meow!" }
 
-func GreeterDecoder(r Unreader, n *int64, err *error) interface{} {
-	// We must peek the type byte because ReadBinary() expects it.
-	switch t := PeekByte(r, n, err); t {
-	case GreeterTypeDog:
-		return ReadBinary(Dog{}, r, n, err)
-	case GreeterTypeCat:
-		return ReadBinary(Cat{}, r, n, err)
-	default:
-		*err = errors.New(fmt.Sprintf("Unknown greeter type byte %X", t))
-		return nil
-	}
-}
-
-var _ = RegisterType(&TypeInfo{
-	Type: reflect.TypeOf((*Greeter)(nil)).Elem(),
-	Decoder: GreeterDecoder,
+var _ = RegisterInterface(
+	struct{Greeter}{},
+	ConcreteType{Dog{}},
+	ConcreteType{Cat{}},
 })
+```
+
+NOTE: The TypeByte() is written and expected to be read even when the struct
+is encoded or decoded directly:
+
+```go
+WriteBinary(Dog{}, buf, n, err)        // Writes GreeterTypeDog byte
+dog_ := ReadBinary(Dog{}, buf, n, err) // Expects to read GreeterTypeDog byte
+dog := dog_.(Dog)                      // ok if *err != nil, otherwise dog_ == nil.
 ```

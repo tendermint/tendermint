@@ -3,7 +3,6 @@ package account
 import (
 	"errors"
 	"fmt"
-	"reflect"
 
 	"github.com/tendermint/go-ed25519"
 	. "github.com/tendermint/tendermint/binary"
@@ -19,23 +18,11 @@ const (
 	SignatureTypeEd25519 = byte(0x01)
 )
 
-//-------------------------------------
 // for binary.readReflect
-
-func SignatureDecoder(r Unreader, n *int64, err *error) interface{} {
-	switch t := PeekByte(r, n, err); t {
-	case SignatureTypeEd25519:
-		return ReadBinary(SignatureEd25519{}, r, n, err)
-	default:
-		*err = Errorf("Unknown Signature type %X", t)
-		return nil
-	}
-}
-
-var _ = RegisterType(&TypeInfo{
-	Type:    reflect.TypeOf((*Signature)(nil)).Elem(),
-	Decoder: SignatureDecoder,
-})
+var _ = RegisterInterface(
+	struct{ Signature }{},
+	ConcreteType{SignatureEd25519{}},
+)
 
 //-------------------------------------
 

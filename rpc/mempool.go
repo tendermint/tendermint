@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/tendermint/tendermint/block"
+	. "github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/common"
 )
 
@@ -19,11 +20,11 @@ func MempoolHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	reader, n := bytes.NewReader(txBytes), new(int64)
-	tx_ := block.TxDecoder(reader, n, &err)
+	tx_ := ReadBinary(struct{ Tx }{}, reader, n, &err).(struct{ Tx })
 	if err != nil {
 		ReturnJSON(API_INVALID_PARAM, Fmt("Invalid tx_bytes: %v", err))
 	}
-	tx := tx_.(block.Tx)
+	tx := tx_.Tx
 
 	err = mempoolReactor.BroadcastTx(tx)
 	if err != nil {

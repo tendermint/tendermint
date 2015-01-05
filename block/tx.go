@@ -3,11 +3,9 @@ package block
 import (
 	"errors"
 	"io"
-	"reflect"
 
 	. "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/binary"
-	. "github.com/tendermint/tendermint/common"
 )
 
 var (
@@ -49,31 +47,15 @@ const (
 	TxTypeDupeout = byte(0x14)
 )
 
-//-------------------------------------
 // for binary.readReflect
-
-func TxDecoder(r Unreader, n *int64, err *error) interface{} {
-	switch t := PeekByte(r, n, err); t {
-	case TxTypeSend:
-		return ReadBinary(&SendTx{}, r, n, err)
-	case TxTypeBond:
-		return ReadBinary(&BondTx{}, r, n, err)
-	case TxTypeUnbond:
-		return ReadBinary(&UnbondTx{}, r, n, err)
-	case TxTypeRebond:
-		return ReadBinary(&RebondTx{}, r, n, err)
-	case TxTypeDupeout:
-		return ReadBinary(&DupeoutTx{}, r, n, err)
-	default:
-		*err = Errorf("Unknown Tx type %X", t)
-		return nil
-	}
-}
-
-var _ = RegisterType(&TypeInfo{
-	Type:    reflect.TypeOf((*Tx)(nil)).Elem(),
-	Decoder: TxDecoder,
-})
+var _ = RegisterInterface(
+	struct{ Tx }{},
+	ConcreteType{&SendTx{}},
+	ConcreteType{&BondTx{}},
+	ConcreteType{&UnbondTx{}},
+	ConcreteType{&RebondTx{}},
+	ConcreteType{&DupeoutTx{}},
+)
 
 //-----------------------------------------------------------------------------
 

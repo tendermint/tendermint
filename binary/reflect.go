@@ -11,21 +11,42 @@ import (
 )
 
 type TypeInfo struct {
-	Type    reflect.Type // The type
-	Encoder Encoder      // Optional custom encoder function
-	Decoder Decoder      // Optional custom decoder function
+	Type reflect.Type // The type
 
+	// Custom encoder/decoder
+	Encoder Encoder
+	Decoder Decoder
+
+	// If Type is kind reflect.Interface
+	ConcreteTypes map[byte]reflect.Type
+
+	// If Type is concrete
 	HasTypeByte bool
 	TypeByte    byte
 }
 
+// e.g. If o is struct{Foo}{}, return is the Foo interface type.
+func GetTypeFromStructDeclaration(o interface{}) reflect.Type {
+	rt := reflect.TypeOf(o)
+	if rt.NumField() != 1 {
+		panic("Unexpected number of fields in struct-wrapped declaration of type")
+	}
+	return rt.Field(0).Type
+}
+
+// If o implements HasTypeByte, returns (true, typeByte)
+func GetTypeByteFromStruct(o interface{}) (hasTypeByte bool, typeByte byte) {
+	if _, ok := o.(HasTypeByte); ok {
+		return true, o.(HasTypeByte).TypeByte()
+	} else {
+		return false, byte(0x00)
+	}
+}
+
 // If a type implements TypeByte, the byte is included
-// as the first byte for encoding.  This is used to encode
-// interfaces/union types.  In this case the decoding should
-// be done manually with a switch statement, and so the
-// reflection-based decoder provided here does not expect this
-// prefix byte.
-// See the reactor implementations for use-cases.
+// as the first byte for encoding and decoding.
+// This is primarily used to encode interfaces types.
+// The interface should be declared with RegisterInterface()
 type HasTypeByte interface {
 	TypeByte() byte
 }
@@ -45,11 +66,50 @@ func GetTypeInfo(rt reflect.Type) *TypeInfo {
 	return info
 }
 
+// For use with the RegisterInterface declaration
+type ConcreteType struct {
+	O interface{}
+}
+
+// Must use this to register an interface to properly decode the
+// underlying concrete type.
+func RegisterInterface(o interface{}, args ...interface{}) *TypeInfo {
+	it := GetTypeFromStructDeclaration(o)
+	if it.Kind() != reflect.Interface {
+		panic("RegisterInterface expects an interface")
+	}
+	concreteTypes := make(map[byte]reflect.Type, 0)
+	for _, arg := range args {
+		switch arg.(type) {
+		case ConcreteType:
+			concreteTypeInfo := arg.(ConcreteType)
+			concreteType := reflect.TypeOf(concreteTypeInfo.O)
+			hasTypeByte, typeByte := GetTypeByteFromStruct(concreteTypeInfo.O)
+			//fmt.Println(Fmt("HasTypeByte: %v typeByte: %X type: %X", hasTypeByte, typeByte, concreteType))
+			if !hasTypeByte {
+				panic(Fmt("Expected concrete type %v to implement HasTypeByte", concreteType))
+			}
+			if concreteTypes[typeByte] != nil {
+				panic(Fmt("Duplicate TypeByte for type %v and %v", concreteType, concreteTypes[typeByte]))
+			}
+			concreteTypes[typeByte] = concreteType
+		default:
+			panic(Fmt("Unexpected argument type %v", reflect.TypeOf(arg)))
+		}
+	}
+	typeInfo := &TypeInfo{
+		Type:          it,
+		ConcreteTypes: concreteTypes,
+	}
+	typeInfos[it] = typeInfo
+	return typeInfo
+}
+
 // Registers and possibly modifies the TypeInfo.
 // NOTE: not goroutine safe, so only call upon program init.
 func RegisterType(info *TypeInfo) *TypeInfo {
 
-	// Also register the underlying struct's info, if info.Type is a pointer.
+	// Also register the dereferenced struct if info.Type is a pointer.
 	// Or, if info.Type is not a pointer, register the pointer.
 	var rt, ptrRt reflect.Type
 	if info.Type.Kind() == reflect.Ptr {
@@ -96,8 +156,6 @@ func readReflect(rv reflect.Value, rt reflect.Type, r Unreader, n *int64, err *e
 	// Custom decoder
 	if typeInfo.Decoder != nil {
 		decoded := typeInfo.Decoder(r, n, err)
-		//decodedRv := reflect.Indirect(reflect.ValueOf(decoded))
-		//rv.Set(decodedRv)
 		rv.Set(reflect.ValueOf(decoded))
 		return
 	}
@@ -126,6 +184,19 @@ func readReflect(rv reflect.Value, rt reflect.Type, r Unreader, n *int64, err *e
 	}
 
 	switch rt.Kind() {
+	case reflect.Interface:
+		typeByte := PeekByte(r, n, err)
+		if *err != nil {
+			return
+		}
+		concreteType, ok := typeInfo.ConcreteTypes[typeByte]
+		if !ok {
+			panic(Fmt("TypeByte %X not registered for interface %v", typeByte, rt))
+		}
+		newRv := reflect.New(concreteType)
+		readReflect(newRv.Elem(), concreteType, r, n, err)
+		rv.Set(newRv.Elem())
+
 	case reflect.Slice:
 		elemRt := rt.Elem()
 		if elemRt.Kind() == reflect.Uint8 {

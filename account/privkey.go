@@ -2,11 +2,9 @@ package account
 
 import (
 	"errors"
-	"reflect"
 
 	"github.com/tendermint/go-ed25519"
 	. "github.com/tendermint/tendermint/binary"
-	. "github.com/tendermint/tendermint/common"
 )
 
 // PrivKey is part of PrivAccount and state.PrivValidator.
@@ -19,23 +17,11 @@ const (
 	PrivKeyTypeEd25519 = byte(0x01)
 )
 
-//-------------------------------------
-// For binary.readReflect
-
-func PrivKeyDecoder(r Unreader, n *int64, err *error) interface{} {
-	switch t := PeekByte(r, n, err); t {
-	case PrivKeyTypeEd25519:
-		return ReadBinary(PrivKeyEd25519{}, r, n, err)
-	default:
-		*err = Errorf("Unknown PrivKey type %X", t)
-		return nil
-	}
-}
-
-var _ = RegisterType(&TypeInfo{
-	Type:    reflect.TypeOf((*PrivKey)(nil)).Elem(),
-	Decoder: PrivKeyDecoder,
-})
+// for binary.readReflect
+var _ = RegisterInterface(
+	struct{ PrivKey }{},
+	ConcreteType{PrivKeyEd25519{}},
+)
 
 //-------------------------------------
 
