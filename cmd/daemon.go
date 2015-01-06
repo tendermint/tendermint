@@ -20,6 +20,7 @@ type Node struct {
 	sw               *p2p.Switch
 	book             *p2p.AddrBook
 	pexReactor       *p2p.PEXReactor
+	blockStore       *block.BlockStore
 	mempoolReactor   *mempool_.MempoolReactor
 	consensusReactor *consensus.ConsensusReactor
 	state            *state_.State
@@ -65,6 +66,7 @@ func NewNode() *Node {
 		sw:               sw,
 		book:             book,
 		pexReactor:       pexReactor,
+		blockStore:       blockStore,
 		mempoolReactor:   mempoolReactor,
 		consensusReactor: consensusReactor,
 		state:            state,
@@ -137,7 +139,8 @@ func daemon() {
 	}
 
 	// Run the RPC server.
-	if config.Config.RPC.HTTPPort != 0 {
+	if config.Config.RPC.HTTPLAddr != "" {
+		rpc.SetRPCBlockStore(n.blockStore)
 		rpc.SetRPCState(n.state)
 		rpc.SetRPCMempoolReactor(n.mempoolReactor)
 		rpc.StartHTTPServer()

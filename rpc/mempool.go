@@ -15,25 +15,29 @@ func MempoolHandler(w http.ResponseWriter, r *http.Request) {
 	//count, _ := GetParamUint64Safe(r, "count")
 	txBytes, err := GetParamByteSlice(r, "tx_bytes")
 	if err != nil {
-		ReturnJSON(API_INVALID_PARAM, Fmt("Invalid tx_bytes: %v", err))
+		WriteAPIResponse(w, API_INVALID_PARAM, Fmt("Invalid tx_bytes: %v", err))
+		return
 	}
 
 	reader, n := bytes.NewReader(txBytes), new(int64)
 	tx_ := ReadBinary(struct{ Tx }{}, reader, n, &err).(struct{ Tx })
 	if err != nil {
-		ReturnJSON(API_INVALID_PARAM, Fmt("Invalid tx_bytes: %v", err))
+		WriteAPIResponse(w, API_INVALID_PARAM, Fmt("Invalid tx_bytes: %v", err))
+		return
 	}
 	tx := tx_.Tx
 
 	err = mempoolReactor.BroadcastTx(tx)
 	if err != nil {
-		ReturnJSON(API_ERROR, Fmt("Error broadcasting transaction: %v", err))
+		WriteAPIResponse(w, API_ERROR, Fmt("Error broadcasting transaction: %v", err))
+		return
 	}
 
 	jsonBytes := JSONBytes(tx)
 	fmt.Println(">>", string(jsonBytes))
 
-	ReturnJSON(API_OK, Fmt("Broadcasted tx: %X", tx))
+	WriteAPIResponse(w, API_OK, Fmt("Broadcasted tx: %X", tx))
+	return
 }
 
 /*

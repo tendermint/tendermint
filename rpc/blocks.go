@@ -2,12 +2,36 @@ package rpc
 
 import (
 	"net/http"
-	//. "github.com/tendermint/tendermint/block"
+
+	. "github.com/tendermint/tendermint/block"
+	. "github.com/tendermint/tendermint/common"
 )
 
-func BlockHandler(w http.ResponseWriter, r *http.Request) {
-	//height, _ := GetParamUint64Safe(r, "height")
-	//count, _ := GetParamUint64Safe(r, "count")
+type BlockchainInfoResponse struct {
+	LastHeight uint
+	BlockMetas []*BlockMeta
+}
 
-	ReturnJSON(API_OK, "hello")
+func BlockchainInfoHandler(w http.ResponseWriter, r *http.Request) {
+	minHeight, _ := GetParamUint(r, "min_height")
+	maxHeight, _ := GetParamUint(r, "max_height")
+	if maxHeight == 0 {
+		maxHeight = blockStore.Height()
+	}
+	if minHeight == 0 {
+		minHeight = MaxUint(0, maxHeight-20)
+	}
+
+	blockMetas := []*BlockMeta{}
+	for height := minHeight; height <= maxHeight; height++ {
+		blockMetas = append(blockMetas, blockStore.LoadBlockMeta(height))
+	}
+
+	res := BlockchainInfoResponse{
+		LastHeight: blockStore.Height(),
+		BlockMetas: blockMetas,
+	}
+
+	WriteAPIResponse(w, API_OK, res)
+	return
 }

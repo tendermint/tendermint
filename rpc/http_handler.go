@@ -2,16 +2,14 @@
 package rpc
 
 import (
-	"encoding/json"
+	"bytes"
 	"fmt"
 	"net/http"
-	"net/url"
 	"runtime/debug"
-	"strings"
 	"time"
 
 	"github.com/tendermint/tendermint/alert"
-	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/binary"
 )
 
 type APIStatus string
@@ -33,12 +31,33 @@ func (res APIResponse) Error() string {
 	return fmt.Sprintf("Status(%v) %v", res.Status, res.Data)
 }
 
-// Throws a panic which the RecoverAndLogHandler catches.
-func ReturnJSON(status APIStatus, data interface{}) {
+func WriteAPIResponse(w http.ResponseWriter, status APIStatus, data interface{}) {
 	res := APIResponse{}
 	res.Status = status
 	res.Data = data
-	panic(res)
+
+	buf, n, err := new(bytes.Buffer), new(int64), new(error)
+	binary.WriteJSON(res, w, n, err)
+	if *err != nil {
+		log.Warn("Failed to write JSON APIResponse", "error", err)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	switch res.Status {
+	case API_OK:
+		w.WriteHeader(200)
+	case API_ERROR:
+		w.WriteHeader(400)
+	case API_UNAUTHORIZED:
+		w.WriteHeader(401)
+	case API_INVALID_PARAM:
+		w.WriteHeader(420)
+	case API_REDIRECT:
+		w.WriteHeader(430)
+	default:
+		w.WriteHeader(440)
+	}
+	w.Write(buf.Bytes())
 }
 
 // Wraps an HTTP handler, adding error logging.
@@ -52,16 +71,18 @@ func RecoverAndLogHandler(handler http.Handler) http.Handler {
 		begin := time.Now()
 
 		// Common headers
-		origin := r.Header.Get("Origin")
-		originUrl, err := url.Parse(origin)
-		if err == nil {
-			originHost := strings.Split(originUrl.Host, ":")[0]
-			if strings.HasSuffix(originHost, ".ftnox.com") {
-				rww.Header().Set("Access-Control-Allow-Origin", origin)
-				rww.Header().Set("Access-Control-Allow-Credentials", "true")
-				rww.Header().Set("Access-Control-Expose-Headers", "X-Server-Time")
+		/*
+			origin := r.Header.Get("Origin")
+			originUrl, err := url.Parse(origin)
+			if err == nil {
+				originHost := strings.Split(originUrl.Host, ":")[0]
+				if strings.HasSuffix(originHost, ".tendermint.com") {
+					rww.Header().Set("Access-Control-Allow-Origin", origin)
+					rww.Header().Set("Access-Control-Allow-Credentials", "true")
+					rww.Header().Set("Access-Control-Expose-Headers", "X-Server-Time")
+				}
 			}
-		}
+		*/
 		rww.Header().Set("X-Server-Time", fmt.Sprintf("%v", begin.Unix()))
 
 		defer func() {
@@ -72,26 +93,7 @@ func RecoverAndLogHandler(handler http.Handler) http.Handler {
 
 				// If APIResponse,
 				if res, ok := e.(APIResponse); ok {
-					resJSON, err := json.Marshal(res)
-					if err != nil {
-						panic(err)
-					}
-					rww.Header().Set("Content-Type", "application/json")
-					switch res.Status {
-					case API_OK:
-						rww.WriteHeader(200)
-					case API_ERROR:
-						rww.WriteHeader(400)
-					case API_UNAUTHORIZED:
-						rww.WriteHeader(401)
-					case API_INVALID_PARAM:
-						rww.WriteHeader(420)
-					case API_REDIRECT:
-						rww.WriteHeader(430)
-					default:
-						rww.WriteHeader(440)
-					}
-					rww.Write(resJSON)
+					WriteAPIResponse(rww, res.Status, res.Data)
 				} else {
 					// For the rest,
 					rww.WriteHeader(http.StatusInternalServerError)
@@ -105,7 +107,11 @@ func RecoverAndLogHandler(handler http.Handler) http.Handler {
 			if rww.Status == -1 {
 				rww.Status = 200
 			}
-			log.Debug(Fmt("%s %s %v %v %s", r.RemoteAddr, r.Method, rww.Status, durationMS, r.URL))
+			log.Debug("Served HTTP response",
+				"method", r.Method, "url", r.URL,
+				"status", rww.Status, "duration", durationMS,
+				"remoteAddr", r.RemoteAddr,
+			)
 		}()
 
 		handler.ServeHTTP(rww, r)

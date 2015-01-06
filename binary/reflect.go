@@ -7,6 +7,7 @@ import (
 	"io"
 	"reflect"
 	"sync"
+	"time"
 
 	. "github.com/tendermint/tendermint/common"
 )
@@ -15,8 +16,9 @@ type TypeInfo struct {
 	Type reflect.Type // The type
 
 	// Custom encoder/decoder
-	Encoder Encoder
-	Decoder Decoder
+	// NOTE: Not used.
+	BinaryEncoder Encoder
+	BinaryDecoder Decoder
 
 	// If Type is kind reflect.Interface
 	ConcreteTypes map[byte]reflect.Type
@@ -43,6 +45,15 @@ func GetTypeByteFromStruct(o interface{}) (hasTypeByte bool, typeByte byte) {
 		return false, byte(0x00)
 	}
 }
+
+// Predeclaration of common types
+var (
+	timeType = GetTypeFromStructDeclaration(struct{ time.Time }{})
+)
+
+const (
+	rfc2822 = "Mon Jan 02 15:04:05 -0700 2006"
+)
 
 // If a type implements TypeByte, the byte is included
 // as the first byte for encoding and decoding.
@@ -155,8 +166,8 @@ func readReflect(rv reflect.Value, rt reflect.Type, r Unreader, n *int64, err *e
 	typeInfo := GetTypeInfo(rt)
 
 	// Custom decoder
-	if typeInfo.Decoder != nil {
-		decoded := typeInfo.Decoder(r, n, err)
+	if typeInfo.BinaryDecoder != nil {
+		decoded := typeInfo.BinaryDecoder(r, n, err)
 		rv.Set(reflect.ValueOf(decoded))
 		return
 	}
@@ -219,14 +230,21 @@ func readReflect(rv reflect.Value, rt reflect.Type, r Unreader, n *int64, err *e
 		}
 
 	case reflect.Struct:
-		numFields := rt.NumField()
-		for i := 0; i < numFields; i++ {
-			field := rt.Field(i)
-			if field.PkgPath != "" {
-				continue
+		if rt == timeType {
+			// Special case: time.Time
+			num := ReadInt64(r, n, err)
+			log.Debug(Fmt("Read time: %v", num))
+			rv.Set(reflect.ValueOf(time.Unix(num, 0)))
+		} else {
+			numFields := rt.NumField()
+			for i := 0; i < numFields; i++ {
+				field := rt.Field(i)
+				if field.PkgPath != "" {
+					continue
+				}
+				fieldRv := rv.Field(i)
+				readReflect(fieldRv, field.Type, r, n, err)
 			}
-			fieldRv := rv.Field(i)
-			readReflect(fieldRv, field.Type, r, n, err)
 		}
 
 	case reflect.String:
@@ -295,8 +313,8 @@ func writeReflect(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, err 
 	typeInfo := GetTypeInfo(rt)
 
 	// Custom encoder, say for an interface type rt.
-	if typeInfo.Encoder != nil {
-		typeInfo.Encoder(rv.Interface(), w, n, err)
+	if typeInfo.BinaryEncoder != nil {
+		typeInfo.BinaryEncoder(rv.Interface(), w, n, err)
 		return
 	}
 
@@ -338,14 +356,19 @@ func writeReflect(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, err 
 		}
 
 	case reflect.Struct:
-		numFields := rt.NumField()
-		for i := 0; i < numFields; i++ {
-			field := rt.Field(i)
-			if field.PkgPath != "" {
-				continue
+		if rt == timeType {
+			// Special case: time.Time
+			WriteInt64(rv.Interface().(time.Time).Unix(), w, n, err)
+		} else {
+			numFields := rt.NumField()
+			for i := 0; i < numFields; i++ {
+				field := rt.Field(i)
+				if field.PkgPath != "" {
+					continue
+				}
+				fieldRv := rv.Field(i)
+				writeReflect(fieldRv, field.Type, w, n, err)
 			}
-			fieldRv := rv.Field(i)
-			writeReflect(fieldRv, field.Type, w, n, err)
 		}
 
 	case reflect.String:
@@ -488,25 +511,41 @@ func readReflectJSON(rv reflect.Value, rt reflect.Type, o interface{}, err *erro
 		}
 
 	case reflect.Struct:
-		oMap, ok := o.(map[string]interface{})
-		if !ok {
-			*err = errors.New(Fmt("Expected map but got type %v", reflect.TypeOf(o)))
-			return
-		}
-		// TODO: ensure that all fields are set?
-		for name, value := range oMap {
-			field, ok := rt.FieldByName(name)
+		if rt == timeType {
+			// Special case: time.Time
+			str, ok := o.(string)
 			if !ok {
-				*err = errors.New(Fmt("Attempt to set unknown field %v", field.Name))
+				*err = errors.New(Fmt("Expected string but got type %v", reflect.TypeOf(o)))
 				return
 			}
-			// JAE: I don't think golang reflect lets us set unexported fields, but just in case:
-			if field.PkgPath != "" {
-				*err = errors.New(Fmt("Attempt to set unexported field %v", field.Name))
+			log.Debug(Fmt("Read time: %v", str))
+			t, err_ := time.Parse(rfc2822, str)
+			if err_ != nil {
+				*err = err_
 				return
 			}
-			fieldRv := rv.FieldByName(name)
-			readReflectJSON(fieldRv, field.Type, value, err)
+			rv.Set(reflect.ValueOf(t))
+		} else {
+			oMap, ok := o.(map[string]interface{})
+			if !ok {
+				*err = errors.New(Fmt("Expected map but got type %v", reflect.TypeOf(o)))
+				return
+			}
+			// TODO: ensure that all fields are set?
+			for name, value := range oMap {
+				field, ok := rt.FieldByName(name)
+				if !ok {
+					*err = errors.New(Fmt("Attempt to set unknown field %v", field.Name))
+					return
+				}
+				// JAE: I don't think golang reflect lets us set unexported fields, but just in case:
+				if field.PkgPath != "" {
+					*err = errors.New(Fmt("Attempt to set unexported field %v", field.Name))
+					return
+				}
+				fieldRv := rv.FieldByName(name)
+				readReflectJSON(fieldRv, field.Type, value, err)
+			}
 		}
 
 	case reflect.String:
@@ -550,12 +589,6 @@ func writeReflectJSON(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, 
 	// Get typeInfo
 	typeInfo := GetTypeInfo(rt)
 
-	// Custom encoder, say for an interface type rt.
-	if typeInfo.Encoder != nil {
-		typeInfo.Encoder(rv.Interface(), w, n, err)
-		return
-	}
-
 	// Dereference interface
 	if rt.Kind() == reflect.Interface {
 		rv = rv.Elem()
@@ -598,21 +631,36 @@ func writeReflectJSON(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, 
 		}
 
 	case reflect.Struct:
-		WriteTo([]byte("{"), w, n, err)
-		numFields := rt.NumField()
-		for i := 0; i < numFields; i++ {
-			field := rt.Field(i)
-			if field.PkgPath != "" {
-				continue
+		if rt == timeType {
+			// Special case: time.Time
+			t := rv.Interface().(time.Time)
+			str := t.Format(rfc2822)
+			jsonBytes, err_ := json.Marshal(str)
+			if err_ != nil {
+				*err = err_
+				return
 			}
-			fieldRv := rv.Field(i)
-			WriteTo([]byte(Fmt("\"%v\":", field.Name)), w, n, err)
-			writeReflectJSON(fieldRv, field.Type, w, n, err)
-			if i < numFields-1 {
-				WriteTo([]byte(","), w, n, err)
+			WriteTo(jsonBytes, w, n, err)
+		} else {
+			WriteTo([]byte("{"), w, n, err)
+			numFields := rt.NumField()
+			wroteField := false
+			for i := 0; i < numFields; i++ {
+				field := rt.Field(i)
+				if field.PkgPath != "" {
+					continue
+				}
+				fieldRv := rv.Field(i)
+				if wroteField {
+					WriteTo([]byte(","), w, n, err)
+				} else {
+					wroteField = true
+				}
+				WriteTo([]byte(Fmt("\"%v\":", field.Name)), w, n, err)
+				writeReflectJSON(fieldRv, field.Type, w, n, err)
 			}
+			WriteTo([]byte("}"), w, n, err)
 		}
-		WriteTo([]byte("}"), w, n, err)
 
 	case reflect.String:
 		fallthrough
@@ -635,3 +683,5 @@ func writeReflectJSON(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, 
 		WriteTo([]byte("]"), w, n, err)
 	}
 }
+
+//-----------------------------------------------------------------------------

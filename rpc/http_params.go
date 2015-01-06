@@ -67,6 +67,15 @@ func GetParamUint64(r *http.Request, param string) (uint64, error) {
 	return i, nil
 }
 
+func GetParamUint(r *http.Request, param string) (uint, error) {
+	s := GetParam(r, param)
+	i, err := strconv.ParseUint(s, 10, 64)
+	if err != nil {
+		return 0, Errorf(param, err.Error())
+	}
+	return uint(i), nil
+}
+
 func GetParamRegexp(r *http.Request, param string, re *regexp.Regexp) (string, error) {
 	s := GetParam(r, param)
 	if !re.MatchString(s) {

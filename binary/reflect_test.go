@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"reflect"
 	"testing"
+	"time"
 )
 
 type SimpleStruct struct {
 	String string
 	Bytes  []byte
+	Time   time.Time
 }
 
 //-------------------------------------
@@ -75,6 +77,7 @@ func constructBasic() interface{} {
 		SimpleStruct{
 			String: "String",
 			Bytes:  []byte("Bytes"),
+			Time:   time.Unix(123, 0),
 		},
 	}
 	return cat
@@ -91,6 +94,9 @@ func validateBasic(o interface{}, t *testing.T) {
 	}
 	if string(cat.Bytes) != "Bytes" {
 		t.Errorf("Expected cat2.Bytes == 'Bytes', got %X", cat.Bytes)
+	}
+	if cat.Time.Unix() != 123 {
+		t.Errorf("Expected cat2.Time == 'Unix(123)', got %v", cat.Time)
 	}
 }
 

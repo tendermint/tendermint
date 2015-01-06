@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -50,7 +51,7 @@ type SMTPConfig struct {
 }
 
 type RPCConfig struct {
-	HTTPPort uint
+	HTTPLAddr string
 }
 
 func (cfg *ConfigType) validate() error {
@@ -65,6 +66,17 @@ func (cfg *ConfigType) validate() error {
 	}
 	if cfg.DB.Backend == "" {
 		return errors.New("DB.Backend must be set")
+	}
+	if cfg.RPC.HTTPLAddr == "" {
+		fmt.Println("Set RPC.HTTPLAddr to \"0.0.0.0:8888\" in your config.json to enable the RPC API server.")
+	} else {
+		_, port, err := net.SplitHostPort(cfg.RPC.HTTPLAddr)
+		if err != nil {
+			return errors.New(Fmt("RPC.HTTPLAddr is invalid.  %v", err))
+		}
+		if port == "" || port == "0" {
+			return errors.New("RPC.HTTPLAddr is invalid.  Port number must be defined")
+		}
 	}
 	return nil
 }
@@ -114,7 +126,7 @@ func init() {
 		Alert: AlertConfig{},
 		SMTP:  SMTPConfig{},
 		RPC: RPCConfig{
-			HTTPPort: 8888,
+			HTTPLAddr: "0.0.0.0:0",
 		},
 	}
 }
@@ -132,6 +144,7 @@ func parseFlags(flags *flag.FlagSet, args []string) (printHelp bool) {
 	flags.BoolVar(&printHelp, "help", false, "Print this help message.")
 	flags.StringVar(&Config.LAddr, "laddr", Config.LAddr, "Listen address. (0.0.0.0:0 means any interface, any port)")
 	flags.StringVar(&Config.SeedNode, "seed", Config.SeedNode, "Address of seed node")
+	flags.StringVar(&Config.RPC.HTTPLAddr, "rpc_http_laddr", Config.RPC.HTTPLAddr, "RPC listen address. (0.0.0.0:0 means any interface, any port)")
 	flags.Parse(args)
 	return
 }
@@ -152,11 +165,11 @@ func ParseFlags(args []string) {
 	Config = ConfigType{}
 	err = json.Unmarshal(configBytes, &Config)
 	if err != nil {
-		Exit(Fmt("Invalid configuration file %s: %v", configFile, err))
+		Exit(Fmt("Invalid configuration file %s:\n%v\n", configFile, err))
 	}
 	err = Config.validate()
 	if err != nil {
-		Exit(Fmt("Invalid configuration file %s: %v", configFile, err))
+		Exit(Fmt("Invalid configuration file %s:\n%v\n", configFile, err))
 	}
 
 	// try to parse arg flags, which can override file configuration.
