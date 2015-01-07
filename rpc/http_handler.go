@@ -37,7 +37,7 @@ func WriteAPIResponse(w http.ResponseWriter, status APIStatus, data interface{})
 	res.Data = data
 
 	buf, n, err := new(bytes.Buffer), new(int64), new(error)
-	binary.WriteJSON(res, w, n, err)
+	binary.WriteJSON(res, buf, n, err)
 	if *err != nil {
 		log.Warn("Failed to write JSON APIResponse", "error", err)
 	}

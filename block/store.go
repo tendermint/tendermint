@@ -51,7 +51,11 @@ func (bs *BlockStore) GetReader(key []byte) Unreader {
 func (bs *BlockStore) LoadBlock(height uint) *Block {
 	var n int64
 	var err error
-	meta := ReadBinary(&BlockMeta{}, bs.GetReader(calcBlockMetaKey(height)), &n, &err).(*BlockMeta)
+	r := bs.GetReader(calcBlockMetaKey(height))
+	if r == nil {
+		panic(Fmt("Block does not exist at height %v", height))
+	}
+	meta := ReadBinary(&BlockMeta{}, r, &n, &err).(*BlockMeta)
 	if err != nil {
 		panic(Fmt("Error reading block meta: %v", err))
 	}
@@ -70,7 +74,11 @@ func (bs *BlockStore) LoadBlock(height uint) *Block {
 func (bs *BlockStore) LoadBlockPart(height uint, index uint) *Part {
 	var n int64
 	var err error
-	part := ReadBinary(&Part{}, bs.GetReader(calcBlockPartKey(height, index)), &n, &err).(*Part)
+	r := bs.GetReader(calcBlockPartKey(height, index))
+	if r == nil {
+		panic(Fmt("BlockPart does not exist for height %v index %v", height, index))
+	}
+	part := ReadBinary(&Part{}, r, &n, &err).(*Part)
 	if err != nil {
 		panic(Fmt("Error reading block part: %v", err))
 	}
@@ -80,7 +88,11 @@ func (bs *BlockStore) LoadBlockPart(height uint, index uint) *Part {
 func (bs *BlockStore) LoadBlockMeta(height uint) *BlockMeta {
 	var n int64
 	var err error
-	meta := ReadBinary(&BlockMeta{}, bs.GetReader(calcBlockMetaKey(height)), &n, &err).(*BlockMeta)
+	r := bs.GetReader(calcBlockMetaKey(height))
+	if r == nil {
+		panic(Fmt("BlockMeta does not exist for height %v", height))
+	}
+	meta := ReadBinary(&BlockMeta{}, r, &n, &err).(*BlockMeta)
 	if err != nil {
 		panic(Fmt("Error reading block meta: %v", err))
 	}
@@ -90,7 +102,11 @@ func (bs *BlockStore) LoadBlockMeta(height uint) *BlockMeta {
 func (bs *BlockStore) LoadBlockValidation(height uint) *Validation {
 	var n int64
 	var err error
-	validation := ReadBinary(&Validation{}, bs.GetReader(calcBlockValidationKey(height)), &n, &err).(*Validation)
+	r := bs.GetReader(calcBlockValidationKey(height))
+	if r == nil {
+		panic(Fmt("Validation does not exist for height %v", height))
+	}
+	validation := ReadBinary(&Validation{}, r, &n, &err).(*Validation)
 	if err != nil {
 		panic(Fmt("Error reading validation: %v", err))
 	}

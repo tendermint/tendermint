@@ -9,8 +9,9 @@ import (
 
 func StartHTTPServer() {
 
-	http.HandleFunc("/block", BlockchainInfoHandler)
-	http.HandleFunc("/mempool", MempoolHandler)
+	http.HandleFunc("/blockchain", BlockchainInfoHandler)
+	http.HandleFunc("/block", BlockHandler)
+	http.HandleFunc("/broadcast_tx", BroadcastTxHandler)
 
 	log.Info(Fmt("Starting RPC HTTP server on %s", Config.RPC.HTTPLAddr))
 
