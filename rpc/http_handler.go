@@ -71,6 +71,7 @@ func RecoverAndLogHandler(handler http.Handler) http.Handler {
 		begin := time.Now()
 
 		// Common headers
+		rww.Header().Set("Access-Control-Allow-Origin", "*")
 		/*
 			origin := r.Header.Get("Origin")
 			originUrl, err := url.Parse(origin)
