@@ -21,12 +21,13 @@ func BlockchainInfoHandler(w http.ResponseWriter, r *http.Request) {
 		maxHeight = MinUint(blockStore.Height(), maxHeight)
 	}
 	if minHeight == 0 {
-		minHeight = MaxUint(1, maxHeight-20)
+		minHeight = MaxUint(1, MinUint(maxHeight-20, 1))
 	}
 
 	blockMetas := []*BlockMeta{}
 	for height := minHeight; height <= maxHeight; height++ {
-		blockMetas = append(blockMetas, blockStore.LoadBlockMeta(height))
+		blockMeta := blockStore.LoadBlockMeta(height)
+		blockMetas = append(blockMetas, blockMeta)
 	}
 
 	res := BlockchainInfoResponse{
