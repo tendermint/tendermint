@@ -99,12 +99,15 @@ func (bs *BlockStore) LoadBlockMeta(height uint) *BlockMeta {
 	return meta
 }
 
+// NOTE: the Commit-vote heights are for the block at `height-1`
+// Since these are included in the subsequent block, the height
+// is off by 1.
 func (bs *BlockStore) LoadBlockValidation(height uint) *Validation {
 	var n int64
 	var err error
 	r := bs.GetReader(calcBlockValidationKey(height))
 	if r == nil {
-		panic(Fmt("Validation does not exist for height %v", height))
+		panic(Fmt("BlockValidation does not exist for height %v", height))
 	}
 	validation := ReadBinary(&Validation{}, r, &n, &err).(*Validation)
 	if err != nil {
@@ -113,7 +116,29 @@ func (bs *BlockStore) LoadBlockValidation(height uint) *Validation {
 	return validation
 }
 
-func (bs *BlockStore) SaveBlock(block *Block, blockParts *PartSet) {
+// NOTE: the Commit-vote heights are for the block at `height`
+func (bs *BlockStore) LoadSeenValidation(height uint) *Validation {
+	var n int64
+	var err error
+	r := bs.GetReader(calcSeenValidationKey(height))
+	if r == nil {
+		panic(Fmt("SeenValidation does not exist for height %v", height))
+	}
+	validation := ReadBinary(&Validation{}, r, &n, &err).(*Validation)
+	if err != nil {
+		panic(Fmt("Error reading validation: %v", err))
+	}
+	return validation
+}
+
+// blockParts:     Must be parts of the block
+// seenValidation: The +2/3 commits that were seen which finalized the height.
+//                 If all the nodes restart after committing a block,
+//                 we need this to reload the commits to catch-up nodes to the
+//                 most recent height.  Otherwise they'd stall at H-1.
+//				   Also good to have to debug consensus issues & punish wrong-signers
+// 				   whose commits weren't included in the block.
+func (bs *BlockStore) SaveBlock(block *Block, blockParts *PartSet, seenValidation *Validation) {
 	height := block.Height
 	if height != bs.height+1 {
 		panic(Fmt("BlockStore can only save contiguous blocks. Wanted %v, got %v", bs.height+1, height))
@@ -132,9 +157,13 @@ func (bs *BlockStore) SaveBlock(block *Block, blockParts *PartSet) {
 		bs.saveBlockPart(height, i, blockParts.GetPart(i))
 	}
 
-	// Save block validation (duplicate and separate)
-	validationBytes := BinaryBytes(block.Validation)
-	bs.db.Set(calcBlockValidationKey(height), validationBytes)
+	// Save block validation (duplicate and separate from the Block)
+	blockValidationBytes := BinaryBytes(block.Validation)
+	bs.db.Set(calcBlockValidationKey(height), blockValidationBytes)
+
+	// Save seen validation (seen +2/3 commits)
+	seenValidationBytes := BinaryBytes(seenValidation)
+	bs.db.Set(calcSeenValidationKey(height), seenValidationBytes)
 
 	// Save new BlockStoreStateJSON descriptor
 	BlockStoreStateJSON{Height: height}.Save(bs.db)
@@ -179,6 +208,10 @@ func calcBlockPartKey(height uint, partIndex uint) []byte {
 
 func calcBlockValidationKey(height uint) []byte {
 	return []byte(fmt.Sprintf("V:%v", height))
+}
+
+func calcSeenValidationKey(height uint) []byte {
+	return []byte(fmt.Sprintf("SV:%v", height))
 }
 
 //-----------------------------------------------------------------------------

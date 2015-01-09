@@ -129,8 +129,8 @@ const (
 	RoundActionTryFinalize = RoundActionType(0xC2) // Maybe goto RoundStepPropose for next round.
 )
 
-func (ra RoundActionType) String() string {
-	switch ra {
+func (rat RoundActionType) String() string {
+	switch rat {
 	case RoundActionPropose:
 		return "RoundActionPropose"
 	case RoundActionPrevote:
@@ -144,7 +144,7 @@ func (ra RoundActionType) String() string {
 	case RoundActionTryFinalize:
 		return "RoundActionTryFinalize"
 	default:
-		panic(Fmt("Unknown RoundAction %X", ra))
+		panic(Fmt("Unknown RoundAction %X", rat))
 	}
 }
 
@@ -154,6 +154,10 @@ type RoundAction struct {
 	Height uint            // The block height for which consensus is reaching for.
 	Round  uint            // The round number at given height.
 	Action RoundActionType // Action to perform.
+}
+
+func (ra RoundAction) String() string {
+	return Fmt("RoundAction{H:%v R:%v A:%v}", ra.Height, ra.Round, ra.Action)
 }
 
 //-----------------------------------------------------------------------------
@@ -237,10 +241,10 @@ type ConsensusState struct {
 
 	mtx sync.Mutex
 	RoundState
-	state               *state.State // State until height-1.
-	stagedBlock         *Block       // Cache last staged block.
-	stagedState         *state.State // Cache result of staged block.
-	lastCommittedHeight uint         // Last called saveCommitVoteBlock() on.
+	state                *state.State // State until height-1.
+	stagedBlock          *Block       // Cache last staged block.
+	stagedState          *state.State // Cache result of staged block.
+	lastCommitVoteHeight uint         // Last called commitVoteBlock() or saveCommitVoteBlock() on.
 }
 
 func NewConsensusState(state *state.State, blockStore *BlockStore, mempoolReactor *mempool.MempoolReactor) *ConsensusState {
@@ -358,16 +362,19 @@ ACTION_LOOP:
 
 		height, round, action := roundAction.Height, roundAction.Round, roundAction.Action
 		rs := cs.GetRoundState()
-		log.Info("Running round action", "height", rs.Height, "round", rs.Round, "step", rs.Step, "action", action, "startTime", rs.StartTime)
 
 		// Continue if action is not relevant
 		if height != rs.Height {
+			log.Debug("Discarding round action: Height mismatch", "height", rs.Height, "roundAction", roundAction)
 			continue
 		}
 		// If action <= RoundActionPrecommit, the round must match too.
 		if action <= RoundActionPrecommit && round != rs.Round {
+			log.Debug("Discarding round action: Round mismatch", "round", rs.Round, "roundAction", roundAction)
 			continue
 		}
+
+		log.Info("Running round action", "height", rs.Height, "round", rs.Round, "step", rs.Step, "roundAction", roundAction, "startTime", rs.StartTime)
 
 		// Run action
 		switch action {
@@ -563,8 +570,14 @@ func (cs *ConsensusState) RunActionPropose(height uint, round uint) {
 	}()
 
 	// Nothing to do if it's not our turn.
-	if cs.PrivValidator == nil || !bytes.Equal(cs.Validators.Proposer().Address, cs.PrivValidator.Address) {
+	if cs.PrivValidator == nil {
 		return
+	}
+	if !bytes.Equal(cs.Validators.Proposer().Address, cs.PrivValidator.Address) {
+		log.Debug("Not our turn to propose", "proposer", cs.Validators.Proposer().Address, "privValidator", cs.PrivValidator)
+		return
+	} else {
+		log.Debug("Our turn to propose", "proposer", cs.Validators.Proposer().Address, "privValidator", cs.PrivValidator)
 	}
 
 	var block *Block
@@ -585,14 +598,16 @@ func (cs *ConsensusState) RunActionPropose(height uint, round uint) {
 			// We're creating a proposal for the first block.
 			// The validation is empty.
 			validation = &Validation{}
+		} else if cs.LastCommits.HasTwoThirdsMajority() {
+			// Make the validation from LastCommits
+			validation = cs.LastCommits.MakeValidation()
 		} else {
-			// We need to create a proposal.
-			// If we don't have enough commits from the last height,
-			// we can't do anything.
-			if !cs.LastCommits.HasTwoThirdsMajority() {
+			// Upon reboot, we may have to use SeenValidation
+			validation = cs.blockStore.LoadSeenValidation(height - 1)
+			if validation == nil {
+				// We just don't have any validation for the previous block
+				log.Debug("Cannot propose anything: No validation for the previous block.")
 				return
-			} else {
-				validation = cs.LastCommits.MakeValidation()
 			}
 		}
 		txs := cs.mempoolReactor.Mempool.GetProposalTxs()
@@ -788,8 +803,8 @@ func (cs *ConsensusState) RunActionCommit(height uint) {
 			// We just need to keep waiting.
 		}
 	} else {
-		// We have the block, so save/stage/sign-commit-vote.
-		cs.saveCommitVoteBlock(cs.ProposalBlock, cs.ProposalBlockParts)
+		// We have the block, so sign a Commit-vote.
+		cs.commitVoteBlock(cs.ProposalBlock, cs.ProposalBlockParts)
 	}
 
 	// If we have the block AND +2/3 commits, queue RoundActionTryFinalize.
@@ -830,7 +845,7 @@ func (cs *ConsensusState) TryFinalizeCommit(height uint) bool {
 		if err == nil {
 			log.Debug(Fmt("Finalizing commit of block: %v", cs.ProposalBlock))
 			// We have the block, so save/stage/sign-commit-vote.
-			cs.saveCommitVoteBlock(cs.ProposalBlock, cs.ProposalBlockParts)
+			cs.saveCommitVoteBlock(cs.ProposalBlock, cs.ProposalBlockParts, cs.Commits)
 			// Increment height.
 			cs.updateToState(cs.stagedState)
 			// cs.Step is now RoundStepNewHeight or RoundStepNewRound
@@ -945,16 +960,6 @@ func (cs *ConsensusState) AddVote(address []byte, vote *Vote) (added bool, index
 	return cs.addVote(address, vote)
 }
 
-// TODO: Maybe move this out of here?
-func (cs *ConsensusState) LoadHeaderValidation(height uint) (*Header, *Validation) {
-	meta := cs.blockStore.LoadBlockMeta(height)
-	if meta == nil {
-		return nil, nil
-	}
-	validation := cs.blockStore.LoadBlockValidation(height)
-	return meta.Header, validation
-}
-
 //-----------------------------------------------------------------------------
 
 func (cs *ConsensusState) addVote(address []byte, vote *Vote) (added bool, index uint, err error) {
@@ -1039,32 +1044,53 @@ func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header PartSetHea
 	}
 }
 
-func (cs *ConsensusState) saveCommitVoteBlock(block *Block, blockParts *PartSet) {
-
-	// Only run once per height.
-	if cs.lastCommittedHeight >= block.Height {
-		return
-	} else {
-		cs.lastCommittedHeight = block.Height
-	}
+// sign a Commit-Vote
+func (cs *ConsensusState) commitVoteBlock(block *Block, blockParts *PartSet) {
 
 	// The proposal must be valid.
 	if err := cs.stageBlock(block, blockParts); err != nil {
 		// Prevent zombies.
-		log.Warn("+2/3 precommitted an invalid block", "error", err)
+		log.Warn("commitVoteBlock() an invalid block", "error", err)
 		return
 	}
 
-	// Save to blockStore
-	cs.blockStore.SaveBlock(block, blockParts)
+	// Commit-vote.
+	if cs.lastCommitVoteHeight < block.Height {
+		cs.signAddVote(VoteTypeCommit, block.Hash(), blockParts.Header())
+		cs.lastCommitVoteHeight = block.Height
+	} else {
+		log.Error("Duplicate commitVoteBlock() attempt", "lastCommitVoteHeight", cs.lastCommitVoteHeight, "block.Height", block.Height)
+	}
+}
 
-	// Save the state
+// Save Block, save the +2/3 Commits we've seen,
+// and sign a Commit-Vote if we haven't already
+func (cs *ConsensusState) saveCommitVoteBlock(block *Block, blockParts *PartSet, commits *VoteSet) {
+
+	// The proposal must be valid.
+	if err := cs.stageBlock(block, blockParts); err != nil {
+		// Prevent zombies.
+		log.Warn("saveCommitVoteBlock() an invalid block", "error", err)
+		return
+	}
+
+	// Save to blockStore.
+	if cs.blockStore.Height() < block.Height {
+		seenValidation := commits.MakeValidation()
+		cs.blockStore.SaveBlock(block, blockParts, seenValidation)
+	}
+
+	// Save the state.
 	cs.stagedState.Save()
 
 	// Update mempool.
 	cs.mempoolReactor.Mempool.ResetForBlockAndState(block, cs.stagedState)
 
-	cs.signAddVote(VoteTypeCommit, block.Hash(), blockParts.Header())
+	// Commit-vote if we haven't already.
+	if cs.lastCommitVoteHeight < block.Height {
+		cs.signAddVote(VoteTypeCommit, block.Hash(), blockParts.Header())
+		cs.lastCommitVoteHeight = block.Height
+	}
 }
 
 //-----------------------------------------------------------------------------

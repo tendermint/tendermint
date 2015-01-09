@@ -7,18 +7,19 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/tendermint/confer"
 	flag "github.com/spf13/pflag"
+	"github.com/tendermint/confer"
 )
 
 var rootDir string
 var App *confer.Config
-var defaultConfig = `
-# This is a TOML config file.
+
+// NOTE: If you change this, maybe also change initDefaults()
+var defaultConfig = `# This is a TOML config file.
 # For more information, see https://github.com/toml-lang/toml
 
 Network =         "tendermint_testnet0"
-ListenAddr =      "0.0.0.0:0"
+ListenAddr =      "0.0.0.0:8080"
 # First node to connect to.  Command-line overridable.
 # SeedNode =          "a.b.c.d:pppp"
 
@@ -28,9 +29,9 @@ Backend =         "leveldb"
 # The leveldb data directory.
 # Dir =           "<YOUR_HOME_DIRECTORY>/.tendermint/data"
 
-[RPC]
+[RPC.HTTP]
 # For the RPC API HTTP server.  Port required.
-HTTP.ListenAddr = "0.0.0.0:8080"
+ListenAddr = "0.0.0.0:8081"
 
 [Alert]
 # TODO: Document options
@@ -38,6 +39,21 @@ HTTP.ListenAddr = "0.0.0.0:8080"
 [SMTP]
 # TODO: Document options
 `
+
+// NOTE: If you change this, maybe also change defaultConfig
+func initDefaults() {
+	App.SetDefault("Network", "tendermint_testnet0")
+	App.SetDefault("ListenAddr", "0.0.0.0:8080")
+	App.SetDefault("DB.Backend", "leveldb")
+	App.SetDefault("DB.Dir", rootDir+"/data")
+	App.SetDefault("Log.Level", "debug")
+	App.SetDefault("Log.Dir", rootDir+"/log")
+	App.SetDefault("RPC.HTTP.ListenAddr", "0.0.0.0:8081")
+
+	App.SetDefault("GenesisFile", rootDir+"/genesis.json")
+	App.SetDefault("AddrbookFile", rootDir+"/addrbook.json")
+	App.SetDefault("PrivValidatorfile", rootDir+"/priv_validator.json")
+}
 
 func init() {
 
@@ -73,20 +89,9 @@ func init() {
 	if err := App.ReadPaths(paths...); err != nil {
 		log.Warn("Error reading configuration", "paths", paths, "error", err)
 	}
-}
 
-func initDefaults() {
-	App.SetDefault("Network", "tendermint_testnet0")
-	App.SetDefault("ListenAddr", "0.0.0.0:0")
-	App.SetDefault("DB.Backend", "leveldb")
-	App.SetDefault("DB.Dir", rootDir+"/data")
-	App.SetDefault("Log.Level", "debug")
-	App.SetDefault("Log.Dir", rootDir+"/log")
-	App.SetDefault("RPC.HTTP.ListenAddr", "0.0.0.0:8080")
-
-	App.SetDefault("GenesisFile", rootDir+"/genesis.json")
-	App.SetDefault("AddrbookFile", rootDir+"/addrbook.json")
-	App.SetDefault("PrivValidatorfile", rootDir+"/priv_valdiator.json")
+	// Confused?
+	// App.Debug()
 }
 
 func ParseFlags(args []string) {

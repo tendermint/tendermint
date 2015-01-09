@@ -24,7 +24,7 @@ const (
 
 	peerStateKey = "ConsensusReactor.peerState"
 
-	peerGossipSleepDuration = 1000 * time.Millisecond // Time to sleep if there's nothing to send.
+	peerGossipSleepDuration = 100 * time.Millisecond // Time to sleep if there's nothing to send.
 )
 
 //-----------------------------------------------------------------------------
@@ -264,7 +264,7 @@ OUTER_LOOP:
 		// NOTE: if we or peer is at RoundStepCommit*, the round
 		// won't necessarily match, but that's OK.
 		if rs.ProposalBlockParts.HasHeader(prs.ProposalBlockParts) {
-			log.Debug("ProposalBlockParts matched", "blockParts", prs.ProposalBlockParts)
+			//log.Debug("ProposalBlockParts matched", "blockParts", prs.ProposalBlockParts)
 			if index, ok := rs.ProposalBlockParts.BitArray().Sub(prs.ProposalBlockBitArray.Copy()).PickRandom(); ok {
 				part := rs.ProposalBlockParts.GetPart(index)
 				msg := &PartMessage{
@@ -281,7 +281,7 @@ OUTER_LOOP:
 
 		// If the peer is on a previous height, help catch up.
 		if 0 < prs.Height && prs.Height < rs.Height {
-			log.Debug("Data catchup", "height", rs.Height, "peerHeight", prs.Height)
+			//log.Debug("Data catchup", "height", rs.Height, "peerHeight", prs.Height, "peerProposalBlockBitArray", prs.ProposalBlockBitArray)
 			if index, ok := prs.ProposalBlockBitArray.Not().PickRandom(); ok {
 				// Ensure that the peer's PartSetHeaeder is correct
 				blockMeta := conR.blockStore.LoadBlockMeta(prs.Height)
@@ -310,15 +310,15 @@ OUTER_LOOP:
 				ps.SetHasProposalBlockPart(prs.Height, prs.Round, index)
 				continue OUTER_LOOP
 			} else {
-				log.Debug("No parts to send in catch-up, sleeping")
+				//log.Debug("No parts to send in catch-up, sleeping")
 				time.Sleep(peerGossipSleepDuration)
 				continue OUTER_LOOP
 			}
 		}
 
-		// If height and round doesn't match, sleep.
+		// If height and round don't match, sleep.
 		if rs.Height != prs.Height || rs.Round != prs.Round {
-			log.Debug("Peer Height|Round mismatch, sleeping", "peerHeight", prs.Height, "peerRound", prs.Round, "peer", peer)
+			//log.Debug("Peer Height|Round mismatch, sleeping", "peerHeight", prs.Height, "peerRound", prs.Round, "peer", peer)
 			time.Sleep(peerGossipSleepDuration)
 			continue OUTER_LOOP
 		}
@@ -364,10 +364,37 @@ OUTER_LOOP:
 		prs := ps.GetRoundState()
 
 		trySendVote := func(voteSet *VoteSet, peerVoteSet BitArray) (sent bool) {
+			// Initialize Prevotes/Precommits/Commits if needed
+			ps.EnsureVoteBitArrays(prs.Height, voteSet.Size())
+
 			// TODO: give priority to our vote.
 			if index, ok := voteSet.BitArray().Sub(peerVoteSet.Copy()).PickRandom(); ok {
 				vote := voteSet.GetByIndex(index)
 				// NOTE: vote may be a commit.
+				msg := &VoteMessage{index, vote}
+				peer.Send(VoteCh, msg)
+				ps.SetHasVote(vote, index)
+				return true
+			}
+			return false
+		}
+
+		trySendCommitFromValidation := func(blockMeta *BlockMeta, validation *Validation, peerVoteSet BitArray) (sent bool) {
+			// Initialize Commits if needed
+			ps.EnsureVoteBitArrays(prs.Height, uint(len(validation.Commits)))
+
+			if index, ok := validation.BitArray().Sub(prs.Commits.Copy()).PickRandom(); ok {
+				commit := validation.Commits[index]
+				log.Debug("Picked commit to send", "index", index, "commit", commit)
+				// Reconstruct vote.
+				vote := &Vote{
+					Height:     prs.Height,
+					Round:      commit.Round,
+					Type:       VoteTypeCommit,
+					BlockHash:  blockMeta.Hash,
+					BlockParts: blockMeta.Parts,
+					Signature:  commit.Signature,
+				}
 				msg := &VoteMessage{index, vote}
 				peer.Send(VoteCh, msg)
 				ps.SetHasVote(vote, index)
@@ -387,9 +414,6 @@ OUTER_LOOP:
 					}
 				}
 			}
-
-			// Initialize Prevotes/Precommits/Commits if needed
-			ps.EnsureVoteBitArrays(rs.Height, rs.Validators.Size())
 
 			// If there are prevotes to send...
 			if rs.Round == prs.Round && prs.Step <= RoundStepPrevote {
@@ -411,50 +435,48 @@ OUTER_LOOP:
 			}
 		}
 
-		// If peer is lagging by height 1, match our LastCommits to peer's Commits.
-		if rs.Height == prs.Height+1 {
+		// Catchup logic
+		if prs.Height != 0 && !prs.HasAllCatchupCommits {
 
-			// Initialize Commits if needed
-			ps.EnsureVoteBitArrays(rs.Height-1, rs.LastCommits.Size())
-
-			// If there are lastcommits to send...
-			if trySendVote(rs.LastCommits, prs.Commits) {
-				continue OUTER_LOOP
+			// If peer is lagging by height 1, match our LastCommits or SeenValidation to peer's Commits.
+			if rs.Height == prs.Height+1 && rs.LastCommits.Size() > 0 {
+				// If there are lastcommits to send...
+				if trySendVote(rs.LastCommits, prs.Commits) {
+					continue OUTER_LOOP
+				} else {
+					ps.SetHasAllCatchupCommits(prs.Height)
+				}
 			}
 
-		}
+			// Or, if peer is lagging by 1 and we don't have LastCommits, send SeenValidation.
+			if rs.Height == prs.Height+1 && rs.LastCommits.Size() == 0 {
+				// Load the blockMeta for block at prs.Height
+				blockMeta := conR.blockStore.LoadBlockMeta(prs.Height)
+				// Load the seen validation for prs.Height
+				validation := conR.blockStore.LoadSeenValidation(prs.Height)
+				log.Debug("Loaded SeenValidation for catch-up", "height", prs.Height, "blockMeta", blockMeta, "validation", validation)
 
-		// If peer is lagging by more than 1, load and send Validation and send Commits.
-		if prs.Height != 0 && !prs.HasAllCatchupCommits && rs.Height >= prs.Height+2 {
-
-			// Load the block header and validation for prs.Height+1,
-			// which contains commit signatures for prs.Height.
-			header, validation := conR.conS.LoadHeaderValidation(prs.Height + 1)
-			size := uint(len(validation.Commits))
-			log.Debug("Loaded HeaderValidation for catch-up", "height", prs.Height+1, "header", header, "validation", validation, "size", size)
-
-			// Initialize Commits if needed
-			ps.EnsureVoteBitArrays(prs.Height, size)
-
-			if index, ok := validation.BitArray().Sub(prs.Commits.Copy()).PickRandom(); ok {
-				commit := validation.Commits[index]
-				log.Debug("Picked commit to send", "index", index, "commit", commit)
-				// Reconstruct vote.
-				vote := &Vote{
-					Height:     prs.Height,
-					Round:      commit.Round,
-					Type:       VoteTypeCommit,
-					BlockHash:  header.LastBlockHash,
-					BlockParts: header.LastBlockParts,
-					Signature:  commit.Signature,
+				if trySendCommitFromValidation(blockMeta, validation, prs.Commits) {
+					continue OUTER_LOOP
+				} else {
+					ps.SetHasAllCatchupCommits(prs.Height)
 				}
-				msg := &VoteMessage{index, vote}
-				peer.Send(VoteCh, msg)
-				ps.SetHasVote(vote, index)
-				continue OUTER_LOOP
-			} else {
-				log.Debug("No commits to send", "ours", validation.BitArray(), "theirs", prs.Commits)
-				ps.SetHasAllCatchupCommits(prs.Height)
+			}
+
+			// If peer is lagging by more than 1, send Validation.
+			if rs.Height >= prs.Height+2 {
+				// Load the blockMeta for block at prs.Height
+				blockMeta := conR.blockStore.LoadBlockMeta(prs.Height)
+				// Load the block validation for prs.Height+1,
+				// which contains commit signatures for prs.Height.
+				validation := conR.blockStore.LoadBlockValidation(prs.Height + 1)
+				log.Debug("Loaded BlockValidation for catch-up", "height", prs.Height+1, "blockMeta", blockMeta, "validation", validation)
+
+				if trySendCommitFromValidation(blockMeta, validation, prs.Commits) {
+					continue OUTER_LOOP
+				} else {
+					ps.SetHasAllCatchupCommits(prs.Height)
+				}
 			}
 		}
 

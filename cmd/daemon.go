@@ -44,6 +44,9 @@ func NewNode() *Node {
 	var privValidator *state_.PrivValidator
 	if _, err := os.Stat(config.App.GetString("PrivValidatorFile")); err == nil {
 		privValidator = state_.LoadPrivValidator(config.App.GetString("PrivValidatorFile"))
+		log.Info("Loaded PrivValidator", "file", config.App.GetString("PrivValidatorFile"), "privValidator", privValidator)
+	} else {
+		log.Info("No PrivValidator found", "file", config.App.GetString("PrivValidatorFile"))
 	}
 
 	// Get PEXReactor
