@@ -1,7 +1,7 @@
 package p2p
 
 import (
-	"github.com/tendermint/log15"
+	"github.com/tendermint/tendermint/logger"
 )
 
-var log = log15.New("module", "p2p")
+var log = logger.New("module", "p2p")

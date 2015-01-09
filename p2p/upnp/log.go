@@ -1,7 +1,7 @@
 package upnp
 
 import (
-	"github.com/tendermint/log15"
+	"github.com/tendermint/tendermint/logger"
 )
 
-var log = log15.New("module", "upnp")
+var log = logger.New("module", "upnp")

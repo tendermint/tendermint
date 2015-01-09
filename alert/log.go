@@ -1,7 +1,7 @@
 package alert
 
 import (
-	"github.com/tendermint/log15"
+	"github.com/tendermint/tendermint/logger"
 )
 
-var log = log15.New("module", "alert")
+var log = logger.New("module", "alert")

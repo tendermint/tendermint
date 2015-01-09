@@ -1,7 +1,7 @@
 package state
 
 import (
-	"github.com/tendermint/log15"
+	"github.com/tendermint/tendermint/logger"
 )
 
-var log = log15.New("module", "state")
+var log = logger.New("module", "state")
