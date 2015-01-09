@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	. "github.com/tendermint/tendermint/common"
-	. "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 )
 
 func StartHTTPServer() {
@@ -13,9 +13,9 @@ func StartHTTPServer() {
 	http.HandleFunc("/block", BlockHandler)
 	http.HandleFunc("/broadcast_tx", BroadcastTxHandler)
 
-	log.Info(Fmt("Starting RPC HTTP server on %s", Config.RPC.HTTPLAddr))
+	log.Info(Fmt("Starting RPC HTTP server on %s", config.App.GetString("RPC.HTTP.ListenAddr")))
 
 	go func() {
-		log.Crit("RPC HTTPServer stopped", "result", http.ListenAndServe(Config.RPC.HTTPLAddr, RecoverAndLogHandler(http.DefaultServeMux)))
+		log.Crit("RPC HTTPServer stopped", "result", http.ListenAndServe(config.App.GetString("RPC.HTTP.ListenAddr"), RecoverAndLogHandler(http.DefaultServeMux)))
 	}()
 }

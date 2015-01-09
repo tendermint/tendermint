@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/sfreiberg/gotwilio"
-	. "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 )
 
 var lastAlertUnix int64 = 0
@@ -15,16 +15,16 @@ var alertCountSince int = 0
 func Alert(message string) {
 	log.Error("<!> ALERT <!>\n" + message)
 	now := time.Now().Unix()
-	if now-lastAlertUnix > int64(Config.Alert.MinInterval) {
-		message = fmt.Sprintf("%v:%v", Config.Network, message)
+	if now-lastAlertUnix > int64(config.App.GetInt("Alert.MinInterval")) {
+		message = fmt.Sprintf("%v:%v", config.App.GetString("Network"), message)
 		if alertCountSince > 0 {
 			message = fmt.Sprintf("%v (+%v more since)", message, alertCountSince)
 			alertCountSince = 0
 		}
-		if len(Config.Alert.TwilioSid) > 0 {
+		if len(config.App.GetString("Alert.TwilioSid")) > 0 {
 			go sendTwilio(message)
 		}
-		if len(Config.Alert.EmailRecipients) > 0 {
+		if len(config.App.GetString("Alert.EmailRecipients")) > 0 {
 			go sendEmail(message)
 		}
 	} else {
@@ -41,8 +41,8 @@ func sendTwilio(message string) {
 	if len(message) > 50 {
 		message = message[:50]
 	}
-	twilio := gotwilio.NewTwilioClient(Config.Alert.TwilioSid, Config.Alert.TwilioToken)
-	res, exp, err := twilio.SendSMS(Config.Alert.TwilioFrom, Config.Alert.TwilioTo, message, "", "")
+	twilio := gotwilio.NewTwilioClient(config.App.GetString("Alert.TwilioSid"), config.App.GetString("Alert.TwilioToken"))
+	res, exp, err := twilio.SendSMS(config.App.GetString("Alert.TwilioFrom"), config.App.GetString("Alert.TwilioTo"), message, "", "")
 	if exp != nil || err != nil {
 		log.Error("sendTwilio error", "res", res, "exp", exp, "error", err)
 	}
@@ -58,7 +58,7 @@ func sendEmail(message string) {
 	if len(subject) > 80 {
 		subject = subject[:80]
 	}
-	err := SendEmail(subject, message, Config.Alert.EmailRecipients)
+	err := SendEmail(subject, message, config.App.GetStringSlice("Alert.EmailRecipients"))
 	if err != nil {
 		log.Error("sendEmail error", "error", err, "message", message)
 	}

@@ -16,7 +16,7 @@ import (
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/common"
-	. "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	. "github.com/tendermint/tendermint/consensus/types"
 
 	"github.com/tendermint/go-ed25519"
@@ -70,7 +70,7 @@ func GenPrivValidator() *PrivValidator {
 		LastHeight: 0,
 		LastRound:  0,
 		LastStep:   stepNone,
-		filename:   PrivValidatorFile(),
+		filename:   config.App.GetString("PrivValidatorFile"),
 	}
 }
 

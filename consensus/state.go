@@ -64,7 +64,7 @@ import (
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/common"
-	. "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	. "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/state"
@@ -598,7 +598,7 @@ func (cs *ConsensusState) RunActionPropose(height uint, round uint) {
 		txs := cs.mempoolReactor.Mempool.GetProposalTxs()
 		block = &Block{
 			Header: &Header{
-				Network:        Config.Network,
+				Network:        config.App.GetString("Network"),
 				Height:         cs.Height,
 				Time:           time.Now(),
 				Fees:           0, // TODO fees

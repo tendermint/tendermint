@@ -70,7 +70,7 @@ for _, peer := range switch.Peers().List() {
 A `PEXReactor` reactor implementation is provided to automate peer discovery.
 
 ```go
-book := p2p.NewAddrBook(config.AddrBookFile())
+book := p2p.NewAddrBook(config.App.GetString("AddrBookFile"))
 pexReactor := p2p.NewPEXReactor(book)
 ...
 switch := NewSwitch([]Reactor{pexReactor, myReactor, ...})

@@ -4,7 +4,7 @@ import (
 	. "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/block"
-	. "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 
 	"bytes"
 	"testing"
@@ -60,7 +60,7 @@ func TestGenesisSaveLoad(t *testing.T) {
 	// Mutate the state to append one empty block.
 	block := &Block{
 		Header: &Header{
-			Network:        Config.Network,
+			Network:        config.App.GetString("Network"),
 			Height:         1,
 			Time:           s0.LastBlockTime.Add(time.Minute),
 			Fees:           0,

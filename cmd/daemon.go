@@ -36,18 +36,18 @@ func NewNode() *Node {
 	stateDB := db_.GetDB("state")
 	state := state_.LoadState(stateDB)
 	if state == nil {
-		state = state_.MakeGenesisStateFromFile(stateDB, config.GenesisFile())
+		state = state_.MakeGenesisStateFromFile(stateDB, config.App.GetString("GenesisFile"))
 		state.Save()
 	}
 
 	// Get PrivValidator
 	var privValidator *state_.PrivValidator
-	if _, err := os.Stat(config.PrivValidatorFile()); err == nil {
-		privValidator = state_.LoadPrivValidator(config.PrivValidatorFile())
+	if _, err := os.Stat(config.App.GetString("PrivValidatorFile")); err == nil {
+		privValidator = state_.LoadPrivValidator(config.App.GetString("PrivValidatorFile"))
 	}
 
 	// Get PEXReactor
-	book := p2p.NewAddrBook(config.AddrBookFile())
+	book := p2p.NewAddrBook(config.App.GetString("AddrBookFile"))
 	pexReactor := p2p.NewPEXReactor(book)
 
 	// Get MempoolReactor
@@ -122,13 +122,13 @@ func daemon() {
 
 	// Create & start node
 	n := NewNode()
-	l := p2p.NewDefaultListener("tcp", config.Config.LAddr, false)
+	l := p2p.NewDefaultListener("tcp", config.App.GetString("ListenAddr"), false)
 	n.AddListener(l)
 	n.Start()
 
 	// If seedNode is provided by config, dial out.
-	if config.Config.SeedNode != "" {
-		peer, err := n.sw.DialPeerWithAddress(p2p.NewNetAddressString(config.Config.SeedNode))
+	if config.App.GetString("SeedNode") != "" {
+		peer, err := n.sw.DialPeerWithAddress(p2p.NewNetAddressString(config.App.GetString("SeedNode")))
 		if err != nil {
 			log.Error("Error dialing seed", "error", err)
 			//n.book.MarkAttempt(addr)
@@ -139,7 +139,7 @@ func daemon() {
 	}
 
 	// Run the RPC server.
-	if config.Config.RPC.HTTPLAddr != "" {
+	if config.App.GetString("RPC.HTTP.ListenAddr") != "" {
 		rpc.SetRPCBlockStore(n.blockStore)
 		rpc.SetRPCState(n.state)
 		rpc.SetRPCMempoolReactor(n.mempoolReactor)

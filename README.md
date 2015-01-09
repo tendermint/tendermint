@@ -52,44 +52,38 @@ make
 
 `./tendermint daemon --help`
 
+### Editing your config file
 
-
-### Editing your config.json
-
-The file will be create in ~/.tendermint/config.json
+When `./tendermint daemon` is first run, a file will be create in ~/.tendermint/config.toml
 
 There is not official or testnet SeedNode yet. Will updated with an official list of seed nodes.
 
-//TODO Explanation of other config.json fields
+//TODO Explanation of other config.toml fields
 
-```
-{
-        "Network": "tendermint_testnet0",
-        "LAddr": "0.0.0.0:0",
-        "SeedNode": "",
-        "DB": {
-                "Backend": "leveldb",
-                "Dir": "/home/zaki/.tendermint/data"
-        },
-        "Alert": {
-                "MinInterval": 0,
-                "TwilioSid": "",
-                "TwilioToken": "",
-                "TwilioFrom": "",
-                "TwilioTo": "",
-                "EmailRecipients": null
-        },
-        "SMTP": {
-                "User": "",
-                "Password": "",
-                "Host": "",
-                "Port": 0
-        },
-        "RPC": {
-                "HTTPLAddr": "0.0.0.0:0"
-        }
-}
+```toml
+# This is a TOML config file.
+# For more information, see https://github.com/toml-lang/toml
 
+Network =         "tendermint_testnet0"
+ListenAddr =      "0.0.0.0:0"
+# First node to connect to.  Command-line overridable.
+# Seed =          "a.b.c.d:pppp"
+
+[DB]
+# The only other available backend is "memdb"
+Backend =         "leveldb"
+# The leveldb data directory.
+# Dir =           "<YOUR_HOME_DIRECTORY>/.tendermint/data"
+
+[RPC]
+# For the RPC API HTTP server.  Port required.
+HTTP.ListenAddr = "0.0.0.0:8080"
+
+[Alert]
+# TODO: Document options
+
+[SMTP]
+# TODO: Document options
 ```
 
 You will also to need to have a genesis.json in ~/.tendermint/. This must be the common genesis.json as the network you are joining from the Seed Node
