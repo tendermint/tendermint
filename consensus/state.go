@@ -646,6 +646,7 @@ func (cs *ConsensusState) RunActionPropose(height uint, round uint) {
 	err := cs.PrivValidator.SignProposal(proposal)
 	if err == nil {
 		log.Info("Signed and set proposal", "height", cs.Height, "round", cs.Round, "proposal", proposal)
+		log.Debug(Fmt("Signed and set proposal block: %v", block))
 		// Set fields
 		cs.Proposal = proposal
 		cs.ProposalBlock = block

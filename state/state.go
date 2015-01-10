@@ -110,7 +110,8 @@ func (s *State) Copy() *State {
 
 // The accounts from the TxInputs must either already have
 // account.PubKey.(type) != PubKeyNil, (it must be known),
-// or it must be specified in the TxInput.  But not both.
+// or it must be specified in the TxInput.  If redeclared,
+// the TxInput is modified and input.PubKey set to PubKeyNil.
 func (s *State) GetOrMakeAccounts(ins []*TxInput, outs []*TxOutput) (map[string]*Account, error) {
 	accounts := map[string]*Account{}
 	for _, in := range ins {
@@ -132,9 +133,7 @@ func (s *State) GetOrMakeAccounts(ins []*TxInput, outs []*TxOutput) (map[string]
 			}
 			account.PubKey = in.PubKey
 		} else {
-			if _, isNil := in.PubKey.(PubKeyNil); !isNil {
-				return nil, ErrTxRedeclaredPubKey
-			}
+			in.PubKey = PubKeyNil{}
 		}
 		accounts[string(in.Address)] = account
 	}

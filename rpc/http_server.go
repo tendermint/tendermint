@@ -12,6 +12,8 @@ func StartHTTPServer() {
 	http.HandleFunc("/blockchain", BlockchainInfoHandler)
 	http.HandleFunc("/block", BlockHandler)
 	http.HandleFunc("/broadcast_tx", BroadcastTxHandler)
+	http.HandleFunc("/gen_priv_account", GenPrivAccountHandler)
+	http.HandleFunc("/sign_send_tx", SignSendTxHandler)
 
 	log.Info(Fmt("Starting RPC HTTP server on %s", config.App.GetString("RPC.HTTP.ListenAddr")))
 

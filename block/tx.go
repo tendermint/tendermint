@@ -15,7 +15,6 @@ var (
 	ErrTxInsufficientFunds = errors.New("Error insufficient funds")
 	ErrTxUnknownPubKey     = errors.New("Error unknown pubkey")
 	ErrTxInvalidPubKey     = errors.New("Error invalid pubkey")
-	ErrTxRedeclaredPubKey  = errors.New("Error redeclared pubkey")
 	ErrTxInvalidSignature  = errors.New("Error invalid signature")
 	ErrTxInvalidSequence   = errors.New("Error invalid sequence")
 )

@@ -11,6 +11,7 @@ func init() {
 	log.SetHandler(
 		log15.LvlFilterHandler(
 			log15.LvlWarn,
+			//log15.LvlDebug,
 			logger.RootHandler(),
 		),
 	)

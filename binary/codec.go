@@ -119,7 +119,7 @@ func BasicCodecDecoder(r Unreader, n *int64, err *error) (o interface{}) {
 		o = ReadTime(r, n, err)
 	default:
 		if *err != nil {
-			panic(err)
+			panic(*err)
 		} else {
 			panic(fmt.Sprintf("Unsupported type byte: %X", type_))
 		}

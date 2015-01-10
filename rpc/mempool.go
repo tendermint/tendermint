@@ -11,7 +11,8 @@ import (
 func BroadcastTxHandler(w http.ResponseWriter, r *http.Request) {
 	txJSON := GetParam(r, "tx")
 	var err error
-	tx := ReadJSON(struct{ Tx }{}, []byte(txJSON), &err).(struct{ Tx }).Tx
+	var tx Tx
+	ReadJSON(&tx, []byte(txJSON), &err)
 	if err != nil {
 		WriteAPIResponse(w, API_INVALID_PARAM, Fmt("Invalid tx: %v", err))
 		return

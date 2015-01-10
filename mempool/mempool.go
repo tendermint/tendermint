@@ -34,8 +34,10 @@ func (mem *Mempool) AddTx(tx Tx) (err error) {
 	defer mem.mtx.Unlock()
 	err = mem.state.ExecTx(tx)
 	if err != nil {
+		log.Debug("AddTx() error", "tx", tx, "error", err)
 		return err
 	} else {
+		log.Debug("AddTx() success", "tx", tx)
 		mem.txs = append(mem.txs, tx)
 		return nil
 	}
@@ -44,6 +46,7 @@ func (mem *Mempool) AddTx(tx Tx) (err error) {
 func (mem *Mempool) GetProposalTxs() []Tx {
 	mem.mtx.Lock()
 	defer mem.mtx.Unlock()
+	log.Debug("GetProposalTxs:", "txs", mem.txs)
 	return mem.txs
 }
 
@@ -68,8 +71,10 @@ func (mem *Mempool) ResetForBlockAndState(block *Block, state *state.State) {
 	for _, tx := range mem.txs {
 		txHash := BinarySha256(tx)
 		if _, ok := blockTxsMap[string(txHash)]; ok {
+			log.Debug("Filter out, already committed", "tx", tx, "txHash", txHash)
 			continue
 		} else {
+			log.Debug("Filter in, still new", "tx", tx, "txHash", txHash)
 			txs = append(txs, tx)
 		}
 	}
@@ -78,13 +83,16 @@ func (mem *Mempool) ResetForBlockAndState(block *Block, state *state.State) {
 	validTxs := []Tx{}
 	for _, tx := range txs {
 		err := mem.state.ExecTx(tx)
-		if err != nil {
+		if err == nil {
+			log.Debug("Filter in, valid", "tx", tx)
 			validTxs = append(validTxs, tx)
 		} else {
 			// tx is no longer valid.
+			log.Debug("Filter out, no longer valid", "tx", tx, "error", err)
 		}
 	}
 
 	// We're done!
+	log.Debug("New txs", "txs", validTxs, "oldTxs", mem.txs)
 	mem.txs = validTxs
 }

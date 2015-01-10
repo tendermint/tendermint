@@ -43,6 +43,8 @@ func WriteAPIResponse(w http.ResponseWriter, status APIStatus, data interface{})
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	/* Bad idea: (e.g. hard to use with jQuery)
 	switch res.Status {
 	case API_OK:
 		w.WriteHeader(200)
@@ -56,7 +58,7 @@ func WriteAPIResponse(w http.ResponseWriter, status APIStatus, data interface{})
 		w.WriteHeader(430)
 	default:
 		w.WriteHeader(440)
-	}
+	}*/
 	w.Write(buf.Bytes())
 }
 

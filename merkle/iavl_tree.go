@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	. "github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
 	db_ "github.com/tendermint/tendermint/db"
 )
 
@@ -205,12 +206,16 @@ func (ndb *nodeDB) GetNode(t *IAVLTree, hash []byte) *IAVLNode {
 	} else {
 		// Doesn't exist, load.
 		buf := ndb.db.Get(hash)
+		if len(buf) == 0 {
+			ndb.db.(*db_.LevelDB).Print()
+			panic(Fmt("Value missing for key %X", hash))
+		}
 		r := bytes.NewReader(buf)
 		var n int64
 		var err error
 		node := ReadIAVLNode(t, r, &n, &err)
 		if err != nil {
-			panic(err)
+			panic(Fmt("Error reading IAVLNode. bytes: %X  error: %v", buf, err))
 		}
 		node.persisted = true
 		ndb.cacheNode(node)

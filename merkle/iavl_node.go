@@ -67,7 +67,7 @@ func (node *IAVLNode) _copy() *IAVLNode {
 		leftNode:  node.leftNode,
 		rightHash: node.rightHash,
 		rightNode: node.rightNode,
-		persisted: node.persisted,
+		persisted: false, // Going to be mutated, so it can't already be persisted.
 	}
 }
 

@@ -21,11 +21,12 @@ func BlockchainInfoHandler(w http.ResponseWriter, r *http.Request) {
 		maxHeight = MinUint(blockStore.Height(), maxHeight)
 	}
 	if minHeight == 0 {
-		minHeight = MaxUint(1, MinUint(maxHeight-20, 1))
+		minHeight = uint(MaxInt(1, int(maxHeight)-20))
 	}
+	log.Debug("BlockchainInfoHandler", "maxHeight", maxHeight, "minHeight", minHeight)
 
 	blockMetas := []*BlockMeta{}
-	for height := minHeight; height <= maxHeight; height++ {
+	for height := maxHeight; height >= minHeight; height-- {
 		blockMeta := blockStore.LoadBlockMeta(height)
 		blockMetas = append(blockMetas, blockMeta)
 	}
@@ -41,6 +42,11 @@ func BlockchainInfoHandler(w http.ResponseWriter, r *http.Request) {
 
 //-----------------------------------------------------------------------------
 
+type BlockResponse struct {
+	BlockMeta *BlockMeta
+	Block     *Block
+}
+
 func BlockHandler(w http.ResponseWriter, r *http.Request) {
 	height, _ := GetParamUint(r, "height")
 	if height == 0 {
@@ -52,7 +58,12 @@ func BlockHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	blockMeta := blockStore.LoadBlockMeta(height)
 	block := blockStore.LoadBlock(height)
-	WriteAPIResponse(w, API_OK, block)
+	res := BlockResponse{
+		BlockMeta: blockMeta,
+		Block: block,
+	}
+	WriteAPIResponse(w, API_OK, res)
 	return
 }
