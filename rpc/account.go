@@ -54,3 +54,18 @@ func SignSendTxHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteAPIResponse(w, API_OK, res)
 }
+
+//-----------------------------------------------------------------------------
+
+type ListAccountsResponse struct {
+	Accounts []*account.Account
+}
+
+func ListAccountsHandler(w http.ResponseWriter, r *http.Request) {
+	state := consensusState.GetState()
+	state.GetAccounts().Iterate(func(key interface{}, value interface{}) bool {
+		log.Warn(">>", "key", key, "value", value)
+		return false
+	})
+	WriteAPIResponse(w, API_OK, state)
+}

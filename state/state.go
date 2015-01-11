@@ -254,7 +254,7 @@ func (s *State) ExecTx(tx_ Tx) error {
 		// Good! Adjust accounts
 		s.AdjustByInputs(accounts, tx.Inputs)
 		s.AdjustByOutputs(accounts, tx.Outputs)
-		s.SetAccounts(accounts)
+		s.UpdateAccounts(accounts)
 		return nil
 
 	case *BondTx:
@@ -289,7 +289,7 @@ func (s *State) ExecTx(tx_ Tx) error {
 
 		// Good! Adjust accounts
 		s.AdjustByInputs(accounts, tx.Inputs)
-		s.SetAccounts(accounts)
+		s.UpdateAccounts(accounts)
 		// Add ValidatorInfo
 		s.SetValidatorInfo(&ValidatorInfo{
 			Address:         tx.PubKey.Address(),
@@ -354,8 +354,6 @@ func (s *State) ExecTx(tx_ Tx) error {
 		if tx.Height != s.LastBlockHeight+1 {
 			return errors.New("Invalid rebond height")
 		}
-
-		// tx.Height must be
 
 		// Good!
 		s.rebondValidator(val)
@@ -444,7 +442,7 @@ func (s *State) releaseValidator(val *Validator) {
 		panic("Couldn't get or make unbondTo accounts")
 	}
 	s.AdjustByOutputs(accounts, valInfo.UnbondTo)
-	s.SetAccounts(accounts)
+	s.UpdateAccounts(accounts)
 
 	// Remove validator from UnbondingValidators
 	_, removed := s.UnbondingValidators.Remove(val.Address)
@@ -612,15 +610,21 @@ func (s *State) GetAccount(address []byte) *Account {
 	return account.(*Account).Copy()
 }
 
+// The returned Account is a copy, so mutating it
+// has no side effects.
+func (s *State) GetAccounts() merkle.Tree {
+	return s.accounts.Copy()
+}
+
 // The account is copied before setting, so mutating it
 // afterwards has no side effects.
-func (s *State) SetAccount(account *Account) {
+func (s *State) UpdateAccount(account *Account) {
 	s.accounts.Set(account.Address, account.Copy())
 }
 
 // The accounts are copied before setting, so mutating it
 // afterwards has no side effects.
-func (s *State) SetAccounts(accounts map[string]*Account) {
+func (s *State) UpdateAccounts(accounts map[string]*Account) {
 	for _, account := range accounts {
 		s.accounts.Set(account.Address, account.Copy())
 	}

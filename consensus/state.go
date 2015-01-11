@@ -259,6 +259,12 @@ func NewConsensusState(state *state.State, blockStore *BlockStore, mempoolReacto
 	return cs
 }
 
+func (cs *ConsensusState) GetState() *state.State {
+	cs.mtx.Lock()
+	defer cs.mtx.Unlock()
+	return cs.state.Copy()
+}
+
 func (cs *ConsensusState) GetRoundState() *RoundState {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()

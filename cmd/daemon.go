@@ -22,8 +22,8 @@ type Node struct {
 	pexReactor       *p2p.PEXReactor
 	blockStore       *block.BlockStore
 	mempoolReactor   *mempool_.MempoolReactor
+	consensusState   *consensus.ConsensusState
 	consensusReactor *consensus.ConsensusReactor
-	state            *state_.State
 	privValidator    *state_.PrivValidator
 }
 
@@ -58,7 +58,8 @@ func NewNode() *Node {
 	mempoolReactor := mempool_.NewMempoolReactor(mempool)
 
 	// Get ConsensusReactor
-	consensusReactor := consensus.NewConsensusReactor(blockStore, mempoolReactor, state)
+	consensusState := consensus.NewConsensusState(state, blockStore, mempoolReactor)
+	consensusReactor := consensus.NewConsensusReactor(consensusState, blockStore)
 	if privValidator != nil {
 		consensusReactor.SetPrivValidator(privValidator)
 	}
@@ -71,8 +72,8 @@ func NewNode() *Node {
 		pexReactor:       pexReactor,
 		blockStore:       blockStore,
 		mempoolReactor:   mempoolReactor,
+		consensusState:   consensusState,
 		consensusReactor: consensusReactor,
-		state:            state,
 		privValidator:    privValidator,
 	}
 }
@@ -144,7 +145,7 @@ func daemon() {
 	// Run the RPC server.
 	if config.App.GetString("RPC.HTTP.ListenAddr") != "" {
 		rpc.SetRPCBlockStore(n.blockStore)
-		rpc.SetRPCState(n.state)
+		rpc.SetRPCConsensusState(n.consensusState)
 		rpc.SetRPCMempoolReactor(n.mempoolReactor)
 		rpc.StartHTTPServer()
 	}

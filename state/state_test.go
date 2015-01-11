@@ -36,7 +36,7 @@ func TestCopyState(t *testing.T) {
 	}
 
 	// Setting, however, should change the balance.
-	s0.SetAccount(acc)
+	s0.UpdateAccount(acc)
 	if s0.GetAccount(acc0Address).Balance != acc.Balance {
 		t.Error("Account balance wasn't set")
 	}

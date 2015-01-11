@@ -12,7 +12,6 @@ import (
 	. "github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/common"
 	. "github.com/tendermint/tendermint/consensus/types"
-	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/state"
 )
@@ -39,12 +38,11 @@ type ConsensusReactor struct {
 	conS       *ConsensusState
 }
 
-func NewConsensusReactor(blockStore *BlockStore, mempoolReactor *mempool.MempoolReactor, state *state.State) *ConsensusReactor {
-	conS := NewConsensusState(state, blockStore, mempoolReactor)
+func NewConsensusReactor(consensusState *ConsensusState, blockStore *BlockStore) *ConsensusReactor {
 	conR := &ConsensusReactor{
 		blockStore: blockStore,
 		quit:       make(chan struct{}),
-		conS:       conS,
+		conS:       consensusState,
 	}
 	return conR
 }

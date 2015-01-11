@@ -2,20 +2,20 @@ package rpc
 
 import (
 	block_ "github.com/tendermint/tendermint/block"
+	"github.com/tendermint/tendermint/consensus"
 	mempool_ "github.com/tendermint/tendermint/mempool"
-	state_ "github.com/tendermint/tendermint/state"
 )
 
 var blockStore *block_.BlockStore
-var state *state_.State
+var consensusState *consensus.ConsensusState
 var mempoolReactor *mempool_.MempoolReactor
 
 func SetRPCBlockStore(bs *block_.BlockStore) {
 	blockStore = bs
 }
 
-func SetRPCState(s *state_.State) {
-	state = s
+func SetRPCConsensusState(cs *consensus.ConsensusState) {
+	consensusState = cs
 }
 
 func SetRPCMempoolReactor(mr *mempool_.MempoolReactor) {
