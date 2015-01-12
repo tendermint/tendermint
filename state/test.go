@@ -2,11 +2,9 @@ package state
 
 import (
 	"bytes"
-	"encoding/hex"
 	"sort"
 
 	. "github.com/tendermint/tendermint/account"
-	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/common"
 	db_ "github.com/tendermint/tendermint/db"
@@ -65,7 +63,7 @@ func RandGenesisState(numAccounts int, randBalance bool, minBalance uint64, numV
 	for i := 0; i < numAccounts; i++ {
 		account, privAccount := RandAccount(randBalance, minBalance)
 		accounts[i] = GenesisAccount{
-			Address: hex.EncodeToString(account.Address),
+			Address: account.Address,
 			Amount:  account.Balance,
 		}
 		privAccounts[i] = privAccount
@@ -75,11 +73,11 @@ func RandGenesisState(numAccounts int, randBalance bool, minBalance uint64, numV
 	for i := 0; i < numValidators; i++ {
 		valInfo, privVal := RandValidator(randBonded, minBonded)
 		validators[i] = GenesisValidator{
-			PubKey: hex.EncodeToString(BinaryBytes(valInfo.PubKey)),
+			PubKey: valInfo.PubKey,
 			Amount: valInfo.FirstBondAmount,
 			UnbondTo: []GenesisAccount{
 				{
-					Address: hex.EncodeToString(valInfo.PubKey.Address()),
+					Address: valInfo.PubKey.Address(),
 					Amount:  valInfo.FirstBondAmount,
 				},
 			},

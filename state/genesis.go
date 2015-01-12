@@ -1,9 +1,6 @@
 package state
 
 import (
-	"bytes"
-	"encoding/hex"
-	"encoding/json"
 	"io/ioutil"
 	"time"
 
@@ -16,12 +13,12 @@ import (
 )
 
 type GenesisAccount struct {
-	Address string
+	Address []byte
 	Amount  uint64
 }
 
 type GenesisValidator struct {
-	PubKey   string
+	PubKey   PubKeyEd25519
 	Amount   uint64
 	UnbondTo []GenesisAccount
 }
@@ -33,7 +30,8 @@ type GenesisDoc struct {
 }
 
 func GenesisDocFromJSON(jsonBlob []byte) (genState *GenesisDoc) {
-	err := json.Unmarshal(jsonBlob, &genState)
+	var err error
+	ReadJSON(&genState, jsonBlob, &err)
 	if err != nil {
 		panic(Fmt("Couldn't read GenesisDoc: %v", err))
 	}
@@ -61,32 +59,20 @@ func MakeGenesisState(db db_.DB, genDoc *GenesisDoc) *State {
 	// Make accounts state tree
 	accounts := merkle.NewIAVLTree(BasicCodec, AccountCodec, defaultAccountsCacheCapacity, db)
 	for _, acc := range genDoc.Accounts {
-		address, err := hex.DecodeString(acc.Address)
-		if err != nil {
-			Exit(Fmt("Invalid account address: %v", acc.Address))
-		}
 		account := &Account{
-			Address:  address,
+			Address:  acc.Address,
 			PubKey:   PubKeyNil{},
 			Sequence: 0,
 			Balance:  acc.Amount,
 		}
-		accounts.Set(address, account)
+		accounts.Set(acc.Address, account)
 	}
 
 	// Make validatorInfos state tree && validators slice
 	validatorInfos := merkle.NewIAVLTree(BasicCodec, ValidatorInfoCodec, 0, db)
 	validators := make([]*Validator, len(genDoc.Validators))
 	for i, val := range genDoc.Validators {
-		pubKeyBytes, err := hex.DecodeString(val.PubKey)
-		if err != nil {
-			Exit(Fmt("Invalid validator pubkey: %v", val.PubKey))
-		}
-		pubKey := ReadBinary(PubKeyEd25519{},
-			bytes.NewBuffer(pubKeyBytes), new(int64), &err).(PubKeyEd25519)
-		if err != nil {
-			Exit(Fmt("Invalid validator pubkey: %v", val.PubKey))
-		}
+		pubKey := val.PubKey
 		address := pubKey.Address()
 
 		// Make ValidatorInfo
@@ -98,12 +84,8 @@ func MakeGenesisState(db db_.DB, genDoc *GenesisDoc) *State {
 			FirstBondAmount: val.Amount,
 		}
 		for i, unbondTo := range val.UnbondTo {
-			address, err := hex.DecodeString(unbondTo.Address)
-			if err != nil {
-				Exit(Fmt("Invalid unbond-to address: %v", unbondTo.Address))
-			}
 			valInfo.UnbondTo[i] = &TxOutput{
-				Address: address,
+				Address: unbondTo.Address,
 				Amount:  unbondTo.Amount,
 			}
 		}

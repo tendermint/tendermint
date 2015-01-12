@@ -3,9 +3,6 @@ package state
 // TODO: This logic is crude. Should be more transactional.
 
 import (
-	"bytes"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -74,50 +71,16 @@ func GenPrivValidator() *PrivValidator {
 	}
 }
 
-type PrivValidatorJSON struct {
-	Address    string
-	PubKey     string
-	PrivKey    string
-	LastHeight uint
-	LastRound  uint
-	LastStep   uint8
-}
-
 func LoadPrivValidator(filename string) *PrivValidator {
 	privValJSONBytes, err := ioutil.ReadFile(filename)
 	if err != nil {
 		panic(err)
 	}
-	privValJSON := PrivValidatorJSON{}
-	err = json.Unmarshal(privValJSONBytes, &privValJSON)
+	privVal := ReadJSON(&PrivValidator{}, privValJSONBytes, &err).(*PrivValidator)
 	if err != nil {
-		panic(err)
+		Exit(Fmt("Error reading PrivValidator from %v: %v\n", filename, err))
 	}
-	address, err := hex.DecodeString(privValJSON.Address)
-	if err != nil {
-		panic(err)
-	}
-	pubKeyBytes, err := hex.DecodeString(privValJSON.PubKey)
-	if err != nil {
-		panic(err)
-	}
-	privKeyBytes, err := hex.DecodeString(privValJSON.PrivKey)
-	if err != nil {
-		panic(err)
-	}
-	n := new(int64)
-	privVal := &PrivValidator{
-		Address:    address,
-		PubKey:     ReadBinary(PubKeyEd25519{}, bytes.NewReader(pubKeyBytes), n, &err).(PubKeyEd25519),
-		PrivKey:    ReadBinary(PrivKeyEd25519{}, bytes.NewReader(privKeyBytes), n, &err).(PrivKeyEd25519),
-		LastHeight: privValJSON.LastHeight,
-		LastRound:  privValJSON.LastRound,
-		LastStep:   privValJSON.LastStep,
-		filename:   filename,
-	}
-	if err != nil {
-		panic(err)
-	}
+	privVal.filename = filename
 	return privVal
 }
 
@@ -135,21 +98,7 @@ func (privVal *PrivValidator) save() {
 	}
 }
 
-func (privVal *PrivValidator) JSONBytes() []byte {
-	privValJSON := PrivValidatorJSON{
-		Address:    hex.EncodeToString(privVal.Address),
-		PubKey:     hex.EncodeToString(BinaryBytes(privVal.PubKey)),
-		PrivKey:    hex.EncodeToString(BinaryBytes(privVal.PrivKey)),
-		LastHeight: privVal.LastHeight,
-		LastRound:  privVal.LastRound,
-		LastStep:   privVal.LastStep,
-	}
-	privValJSONBytes, err := json.MarshalIndent(privValJSON, "", "    ")
-	if err != nil {
-		panic(err)
-	}
-	return privValJSONBytes
-}
+func (privVal *PrivValidator) JSONBytes() []byte { return JSONBytes(privVal) }
 
 // TODO: test
 func (privVal *PrivValidator) SignVote(vote *Vote) error {
