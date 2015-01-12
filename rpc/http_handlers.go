@@ -6,10 +6,11 @@ import (
 
 func initHandlers() {
 	http.HandleFunc("/blockchain", BlockchainInfoHandler)
-	http.HandleFunc("/block", BlockHandler)
+	http.HandleFunc("/get_block", GetBlockHandler)
 	http.HandleFunc("/broadcast_tx", BroadcastTxHandler)
 	http.HandleFunc("/gen_priv_account", GenPrivAccountHandler)
-	http.HandleFunc("/sign_send_tx", SignSendTxHandler)
+	http.HandleFunc("/get_account", GetAccountHandler)
 	http.HandleFunc("/list_accounts", ListAccountsHandler)
+	http.HandleFunc("/sign_send_tx", SignSendTxHandler)
 	http.HandleFunc("/list_validators", ListValidatorsHandler)
 }

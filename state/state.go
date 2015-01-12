@@ -167,10 +167,6 @@ func (s *State) ValidateInputs(accounts map[string]*Account, signBytes []byte, i
 		if err := in.ValidateBasic(); err != nil {
 			return 0, err
 		}
-		// Check amount
-		if account.Balance < in.Amount {
-			return 0, ErrTxInsufficientFunds
-		}
 		// Check signatures
 		if !account.PubKey.VerifyBytes(signBytes, in.Signature) {
 			return 0, ErrTxInvalidSignature
@@ -178,6 +174,10 @@ func (s *State) ValidateInputs(accounts map[string]*Account, signBytes []byte, i
 		// Check sequences
 		if account.Sequence+1 != in.Sequence {
 			return 0, ErrTxInvalidSequence
+		}
+		// Check amount
+		if account.Balance < in.Amount {
+			return 0, ErrTxInsufficientFunds
 		}
 		// Good. Add amount to total
 		total += in.Amount
