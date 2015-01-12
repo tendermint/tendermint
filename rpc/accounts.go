@@ -9,24 +9,15 @@ import (
 	. "github.com/tendermint/tendermint/common"
 )
 
-type GenPrivAccountResponse struct {
-	PrivAccount *account.PrivAccount
-}
-
 func GenPrivAccountHandler(w http.ResponseWriter, r *http.Request) {
 	privAccount := account.GenPrivAccount()
 
-	res := GenPrivAccountResponse{
-		PrivAccount: privAccount,
-	}
-	WriteAPIResponse(w, API_OK, res)
+	WriteAPIResponse(w, API_OK, struct {
+		PrivAccount *account.PrivAccount
+	}{privAccount})
 }
 
 //-----------------------------------------------------------------------------
-
-type SignSendTxResponse struct {
-	SendTx *block.SendTx
-}
 
 func SignSendTxHandler(w http.ResponseWriter, r *http.Request) {
 	sendTxStr := GetParam(r, "sendTx")
@@ -49,23 +40,25 @@ func SignSendTxHandler(w http.ResponseWriter, r *http.Request) {
 		input.Signature = privAccounts[i].Sign(sendTx)
 	}
 
-	res := SignSendTxResponse{
-		SendTx: sendTx,
-	}
-	WriteAPIResponse(w, API_OK, res)
+	WriteAPIResponse(w, API_OK, struct {
+		SendTx *block.SendTx
+	}{sendTx})
 }
 
 //-----------------------------------------------------------------------------
 
-type ListAccountsResponse struct {
-	Accounts []*account.Account
-}
-
 func ListAccountsHandler(w http.ResponseWriter, r *http.Request) {
+	var blockHeight uint
+	var accounts []*account.Account
 	state := consensusState.GetState()
+	blockHeight = state.LastBlockHeight
 	state.GetAccounts().Iterate(func(key interface{}, value interface{}) bool {
-		log.Warn(">>", "key", key, "value", value)
+		accounts = append(accounts, value.(*account.Account))
 		return false
 	})
-	WriteAPIResponse(w, API_OK, state)
+
+	WriteAPIResponse(w, API_OK, struct {
+		BlockHeight uint
+		Accounts    []*account.Account
+	}{blockHeight, accounts})
 }
