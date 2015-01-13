@@ -65,7 +65,7 @@ When `./tendermint daemon` is first run, a file will be create in ~/.tendermint/
 Network =         "tendermint_testnet0"
 ListenAddr =      "0.0.0.0:0"
 # First node to connect to.  Command-line overridable.
-# Seed =          "23.239.22.253:8080"
+SeedNode =        "23.239.22.253:8080"
 
 [DB]
 # The only other available backend is "memdb"
