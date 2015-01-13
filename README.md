@@ -56,8 +56,6 @@ make
 
 When `./tendermint daemon` is first run, a file will be create in ~/.tendermint/config.toml
 
-There is not official or testnet SeedNode yet. Will updated with an official list of seed nodes.
-
 //TODO Explanation of other config.toml fields
 
 ```toml
@@ -67,7 +65,7 @@ There is not official or testnet SeedNode yet. Will updated with an official lis
 Network =         "tendermint_testnet0"
 ListenAddr =      "0.0.0.0:0"
 # First node to connect to.  Command-line overridable.
-# Seed =          "a.b.c.d:pppp"
+# Seed =          "23.239.22.253:8080"
 
 [DB]
 # The only other available backend is "memdb"
@@ -77,7 +75,7 @@ Backend =         "leveldb"
 
 [RPC]
 # For the RPC API HTTP server.  Port required.
-HTTP.ListenAddr = "0.0.0.0:8080"
+HTTP.ListenAddr = "0.0.0.0:8081"
 
 [Alert]
 # TODO: Document options
@@ -90,24 +88,24 @@ You will also to need to have a genesis.json in ~/.tendermint/. This must be the
 
 ```
 {
-    "Accounts": [
+  "Accounts": [
+    {
+      "Address": "6070ff17c39b2b0a64ca2bc431328037fa0f4760",
+      "Amount":  200000000
+    }
+  ],
+  "Validators": [
+    {
+      "PubKey": [1, "6bd490c212e701a2136eeea04f06fa4f287ee47e2b7a9b5d62edd84cd6ad9753"],
+      "Amount": 100000000,
+      "UnbondTo": [
         {
-            "Address": "6070ff17c39b2b0a64ca2bc431328037fa0f4760",
-            "Amount":  200000000
+          "Address": "6070ff17c39b2b0a64ca2bc431328037fa0f4760",
+          "Amount":  100000000
         }
-    ],
-    "Validators": [
-        {
-            "PubKey": "01206bd490c212e701a2136eeea04f06fa4f287ee47e2b7a9b5d62edd84cd6ad9753",
-            "Amount": 100000000,
-            "UnbondTo": [
-                {
-                        "Address": "6070ff17c39b2b0a64ca2bc431328037fa0f4760",
-                        "Amount":  100000000
-                }
-            ]
-        }
-    ]
+      ]
+    }
+  ]
 }
 ```
 
