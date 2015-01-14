@@ -50,7 +50,7 @@ type PubKeyEd25519 []byte
 func (key PubKeyEd25519) TypeByte() byte { return PubKeyTypeEd25519 }
 
 // TODO: Or should this just be BinaryRipemd160(key)? (The difference is the TypeByte.)
-func (key PubKeyEd25519) Address() []byte { return BinaryRipemd160([]byte(key)) }
+func (key PubKeyEd25519) Address() []byte { return BinaryRipemd160(key) }
 
 func (key PubKeyEd25519) ValidateBasic() error {
 	if len(key) != ed25519.PublicKeySize {

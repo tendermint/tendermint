@@ -90,17 +90,21 @@ You will also to need to have a genesis.json in ~/.tendermint/. This must be the
 {
   "Accounts": [
     {
-      "Address": "6070ff17c39b2b0a64ca2bc431328037fa0f4760",
+      "Address": "553722287BF1230C081C270908C1F453E7D1C397",
+      "Amount":  200000000
+    },
+    {
+      "Address": "AC89A6DDF4C309A89A2C4078CE409A5A7B282270",
       "Amount":  200000000
     }
   ],
   "Validators": [
     {
-      "PubKey": [1, "6bd490c212e701a2136eeea04f06fa4f287ee47e2b7a9b5d62edd84cd6ad9753"],
+      "PubKey": [1, "932A857D334BA5A38DD8E0D9CDE9C84687C21D0E5BEE64A1EDAB9C6C32344F1A"],
       "Amount": 100000000,
       "UnbondTo": [
         {
-          "Address": "6070ff17c39b2b0a64ca2bc431328037fa0f4760",
+          "Address": "553722287BF1230C081C270908C1F453E7D1C397",
           "Amount":  100000000
         }
       ]
