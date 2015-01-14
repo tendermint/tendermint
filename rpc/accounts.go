@@ -33,6 +33,11 @@ func GetAccountHandler(w http.ResponseWriter, r *http.Request) {
 	state := consensusState.GetState()
 	account_ := state.GetAccount(address)
 
+	if account_ == nil {
+		WriteAPIResponse(w, API_OK, struct{}{})
+		return
+	}
+
 	WriteAPIResponse(w, API_OK, struct {
 		Account *account.Account
 	}{account_})

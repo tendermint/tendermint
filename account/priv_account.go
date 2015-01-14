@@ -1,8 +1,6 @@
 package account
 
 import (
-	"github.com/tendermint/go-ed25519"
-
 	. "github.com/tendermint/tendermint/common"
 )
 
@@ -14,15 +12,11 @@ type PrivAccount struct {
 
 // Generates a new account with private key.
 func GenPrivAccount() *PrivAccount {
-	privKey := CRandBytes(32)
-	pubKey := PubKeyEd25519(ed25519.MakePubKey(privKey))
+	privKey := PrivKeyEd25519(CRandBytes(32))
 	return &PrivAccount{
-		pubKey.Address(),
-		pubKey,
-		PrivKeyEd25519{
-			PubKey:  pubKey,
-			PrivKey: privKey,
-		},
+		Address: privKey.PubKey().Address(),
+		PubKey:  privKey.PubKey(),
+		PrivKey: privKey,
 	}
 }
 

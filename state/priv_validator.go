@@ -59,7 +59,7 @@ func GenPrivValidator() *PrivValidator {
 	privKeyBytes := CRandBytes(32)
 	pubKeyBytes := ed25519.MakePubKey(privKeyBytes)
 	pubKey := PubKeyEd25519(pubKeyBytes)
-	privKey := PrivKeyEd25519{pubKeyBytes, privKeyBytes}
+	privKey := PrivKeyEd25519(privKeyBytes)
 	return &PrivValidator{
 		Address:    pubKey.Address(),
 		PubKey:     pubKey,
@@ -91,14 +91,12 @@ func (privVal *PrivValidator) Save() {
 }
 
 func (privVal *PrivValidator) save() {
-	jsonBytes := privVal.JSONBytes()
+	jsonBytes := JSONBytes(privVal)
 	err := ioutil.WriteFile(privVal.filename, jsonBytes, 0700)
 	if err != nil {
 		panic(err)
 	}
 }
-
-func (privVal *PrivValidator) JSONBytes() []byte { return JSONBytes(privVal) }
 
 // TODO: test
 func (privVal *PrivValidator) SignVote(vote *Vote) error {
