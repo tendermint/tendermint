@@ -98,6 +98,9 @@ func (conR *ConsensusReactor) AddPeer(peer *p2p.Peer) {
 	// Begin gossip routines for this peer.
 	go conR.gossipDataRoutine(peer, peerState)
 	go conR.gossipVotesRoutine(peer, peerState)
+
+	// Send our state to peer.
+	conR.sendNewRoundStepRoutine(peer)
 }
 
 // Implements Reactor
@@ -207,6 +210,30 @@ func (conR *ConsensusReactor) SetPrivValidator(priv *state.PrivValidator) {
 
 //--------------------------------------
 
+func makeRoundStepMessages(rs *RoundState) (nrsMsg *NewRoundStepMessage, csMsg *CommitStepMessage) {
+	// Get seconds since beginning of height.
+	timeElapsed := time.Now().Sub(rs.StartTime)
+
+	// Broadcast NewRoundStepMessage
+	nrsMsg = &NewRoundStepMessage{
+		Height: rs.Height,
+		Round:  rs.Round,
+		Step:   rs.Step,
+		SecondsSinceStartTime: uint(timeElapsed.Seconds()),
+	}
+
+	// If the step is commit, then also broadcast a CommitStepMessage.
+	if rs.Step == RoundStepCommit {
+		csMsg = &CommitStepMessage{
+			Height:        rs.Height,
+			BlockParts:    rs.ProposalBlockParts.Header(),
+			BlockBitArray: rs.ProposalBlockParts.BitArray(),
+		}
+	}
+
+	return
+}
+
 // Listens for changes to the ConsensusState.Step by pulling
 // on conR.conS.NewStepCh().
 func (conR *ConsensusReactor) broadcastNewRoundStepRoutine() {
@@ -219,30 +246,24 @@ func (conR *ConsensusReactor) broadcastNewRoundStepRoutine() {
 			return
 		}
 
-		// Get seconds since beginning of height.
-		// Due to the condition documented, this is safe.
-		timeElapsed := time.Now().Sub(rs.StartTime)
-
-		// Broadcast NewRoundStepMessage
-		{
-			msg := &NewRoundStepMessage{
-				Height: rs.Height,
-				Round:  rs.Round,
-				Step:   rs.Step,
-				SecondsSinceStartTime: uint(timeElapsed.Seconds()),
-			}
-			conR.sw.Broadcast(StateCh, msg)
+		nrsMsg, csMsg := makeRoundStepMessages(rs)
+		if nrsMsg != nil {
+			conR.sw.Broadcast(StateCh, nrsMsg)
 		}
-
-		// If the step is commit, then also broadcast a CommitStepMessage.
-		if rs.Step == RoundStepCommit {
-			msg := &CommitStepMessage{
-				Height:        rs.Height,
-				BlockParts:    rs.ProposalBlockParts.Header(),
-				BlockBitArray: rs.ProposalBlockParts.BitArray(),
-			}
-			conR.sw.Broadcast(StateCh, msg)
+		if csMsg != nil {
+			conR.sw.Broadcast(StateCh, csMsg)
 		}
+	}
+}
+
+func (conR *ConsensusReactor) sendNewRoundStepRoutine(peer *p2p.Peer) {
+	rs := conR.conS.GetRoundState()
+	nrsMsg, csMsg := makeRoundStepMessages(rs)
+	if nrsMsg != nil {
+		peer.Send(StateCh, nrsMsg)
+	}
+	if csMsg != nil {
+		peer.Send(StateCh, nrsMsg)
 	}
 }
 
