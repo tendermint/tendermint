@@ -11,9 +11,9 @@ import (
 	"time"
 
 	flow "code.google.com/p/mxk/go1/flowcontrol"
+	"github.com/tendermint/log15"
 	. "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/log15"
 )
 
 const (
@@ -261,11 +261,13 @@ FOR_LOOP:
 				channel.updateStats()
 			}
 		case <-c.pingTimer.Ch:
+			log.Debug("Send Ping")
 			WriteByte(packetTypePing, c.bufWriter, &n, &err)
 			c.sendMonitor.Update(int(n))
 			c.flush()
 		case <-c.pong:
-			WriteByte(packetTypePing, c.bufWriter, &n, &err)
+			log.Debug("Send Pong")
+			WriteByte(packetTypePong, c.bufWriter, &n, &err)
 			c.sendMonitor.Update(int(n))
 			c.flush()
 		case <-c.quit:
@@ -363,7 +365,7 @@ FOR_LOOP:
 
 		// Peek into bufReader for debugging
 		if numBytes := c.bufReader.Buffered(); numBytes > 0 {
-			log.Debug("Peek connection buffer", "bytes", log15.Lazy{func() []byte {
+			log.Debug("Peek connection buffer", "numBytes", numBytes, "bytes", log15.Lazy{func() []byte {
 				bytes, err := c.bufReader.Peek(MinInt(numBytes, 100))
 				if err == nil {
 					return bytes
@@ -391,9 +393,11 @@ FOR_LOOP:
 		switch pktType {
 		case packetTypePing:
 			// TODO: prevent abuse, as they cause flush()'s.
+			log.Debug("Receive Ping")
 			c.pong <- struct{}{}
 		case packetTypePong:
 			// do nothing
+			log.Debug("Receive Pong")
 		case packetTypeMsg:
 			pkt, n, err := msgPacket{}, new(int64), new(error)
 			ReadBinary(&pkt, c.bufReader, n, err)
