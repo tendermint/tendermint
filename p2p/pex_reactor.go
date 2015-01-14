@@ -152,6 +152,7 @@ FOR_LOOP:
 func (pexR *PEXReactor) ensurePeers() {
 	numOutPeers, _, numDialing := pexR.sw.NumPeers()
 	numToDial := minNumOutboundPeers - (numOutPeers + numDialing)
+	log.Info("Ensure peers", "numOutPeers", numOutPeers, "numDialing", numDialing, "numToDial", numToDial)
 	if numToDial <= 0 {
 		return
 	}
@@ -164,7 +165,7 @@ func (pexR *PEXReactor) ensurePeers() {
 		var picked *NetAddress
 		// Try to fetch a new peer 3 times.
 		// This caps the maximum number of tries to 3 * numToDial.
-		for j := 0; i < 3; j++ {
+		for j := 0; j < 3; j++ {
 			picked = pexR.book.PickAddress(newBias)
 			if picked == nil {
 				return

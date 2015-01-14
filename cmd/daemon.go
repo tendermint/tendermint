@@ -132,13 +132,15 @@ func daemon() {
 
 	// If seedNode is provided by config, dial out.
 	if config.App.GetString("SeedNode") != "" {
-		peer, err := n.sw.DialPeerWithAddress(p2p.NewNetAddressString(config.App.GetString("SeedNode")))
+		addr := p2p.NewNetAddressString(config.App.GetString("SeedNode"))
+		peer, err := n.sw.DialPeerWithAddress(addr)
 		if err != nil {
 			log.Error("Error dialing seed", "error", err)
 			//n.book.MarkAttempt(addr)
 			return
 		} else {
 			log.Info("Connected to seed", "peer", peer)
+			n.book.AddAddress(addr, addr)
 		}
 	}
 
