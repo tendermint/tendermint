@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 
-	. "github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
-	db_ "github.com/tendermint/tendermint/db"
+	dbm "github.com/tendermint/tendermint/db"
 )
 
 /*
@@ -24,10 +25,10 @@ the Validation data outside the Block.
 */
 type BlockStore struct {
 	height uint
-	db     db_.DB
+	db     dbm.DB
 }
 
-func NewBlockStore(db db_.DB) *BlockStore {
+func NewBlockStore(db dbm.DB) *BlockStore {
 	bsjson := LoadBlockStoreStateJSON(db)
 	return &BlockStore{
 		height: bsjson.Height,
@@ -40,7 +41,7 @@ func (bs *BlockStore) Height() uint {
 	return bs.height
 }
 
-func (bs *BlockStore) GetReader(key []byte) Unreader {
+func (bs *BlockStore) GetReader(key []byte) io.Reader {
 	bytez := bs.db.Get(key)
 	if bytez == nil {
 		return nil
@@ -55,7 +56,7 @@ func (bs *BlockStore) LoadBlock(height uint) *Block {
 	if r == nil {
 		panic(Fmt("Block does not exist at height %v", height))
 	}
-	meta := ReadBinary(&BlockMeta{}, r, &n, &err).(*BlockMeta)
+	meta := binary.ReadBinary(&BlockMeta{}, r, &n, &err).(*BlockMeta)
 	if err != nil {
 		panic(Fmt("Error reading block meta: %v", err))
 	}
@@ -64,7 +65,7 @@ func (bs *BlockStore) LoadBlock(height uint) *Block {
 		part := bs.LoadBlockPart(height, i)
 		bytez = append(bytez, part.Bytes...)
 	}
-	block := ReadBinary(&Block{}, bytes.NewReader(bytez), &n, &err).(*Block)
+	block := binary.ReadBinary(&Block{}, bytes.NewReader(bytez), &n, &err).(*Block)
 	if err != nil {
 		panic(Fmt("Error reading block: %v", err))
 	}
@@ -78,7 +79,7 @@ func (bs *BlockStore) LoadBlockPart(height uint, index uint) *Part {
 	if r == nil {
 		panic(Fmt("BlockPart does not exist for height %v index %v", height, index))
 	}
-	part := ReadBinary(&Part{}, r, &n, &err).(*Part)
+	part := binary.ReadBinary(&Part{}, r, &n, &err).(*Part)
 	if err != nil {
 		panic(Fmt("Error reading block part: %v", err))
 	}
@@ -92,7 +93,7 @@ func (bs *BlockStore) LoadBlockMeta(height uint) *BlockMeta {
 	if r == nil {
 		panic(Fmt("BlockMeta does not exist for height %v", height))
 	}
-	meta := ReadBinary(&BlockMeta{}, r, &n, &err).(*BlockMeta)
+	meta := binary.ReadBinary(&BlockMeta{}, r, &n, &err).(*BlockMeta)
 	if err != nil {
 		panic(Fmt("Error reading block meta: %v", err))
 	}
@@ -109,7 +110,7 @@ func (bs *BlockStore) LoadBlockValidation(height uint) *Validation {
 	if r == nil {
 		panic(Fmt("BlockValidation does not exist for height %v", height))
 	}
-	validation := ReadBinary(&Validation{}, r, &n, &err).(*Validation)
+	validation := binary.ReadBinary(&Validation{}, r, &n, &err).(*Validation)
 	if err != nil {
 		panic(Fmt("Error reading validation: %v", err))
 	}
@@ -124,7 +125,7 @@ func (bs *BlockStore) LoadSeenValidation(height uint) *Validation {
 	if r == nil {
 		panic(Fmt("SeenValidation does not exist for height %v", height))
 	}
-	validation := ReadBinary(&Validation{}, r, &n, &err).(*Validation)
+	validation := binary.ReadBinary(&Validation{}, r, &n, &err).(*Validation)
 	if err != nil {
 		panic(Fmt("Error reading validation: %v", err))
 	}
@@ -149,7 +150,7 @@ func (bs *BlockStore) SaveBlock(block *Block, blockParts *PartSet, seenValidatio
 
 	// Save block meta
 	meta := makeBlockMeta(block, blockParts)
-	metaBytes := BinaryBytes(meta)
+	metaBytes := binary.BinaryBytes(meta)
 	bs.db.Set(calcBlockMetaKey(height), metaBytes)
 
 	// Save block parts
@@ -158,11 +159,11 @@ func (bs *BlockStore) SaveBlock(block *Block, blockParts *PartSet, seenValidatio
 	}
 
 	// Save block validation (duplicate and separate from the Block)
-	blockValidationBytes := BinaryBytes(block.Validation)
+	blockValidationBytes := binary.BinaryBytes(block.Validation)
 	bs.db.Set(calcBlockValidationKey(height), blockValidationBytes)
 
 	// Save seen validation (seen +2/3 commits)
-	seenValidationBytes := BinaryBytes(seenValidation)
+	seenValidationBytes := binary.BinaryBytes(seenValidation)
 	bs.db.Set(calcSeenValidationKey(height), seenValidationBytes)
 
 	// Save new BlockStoreStateJSON descriptor
@@ -176,7 +177,7 @@ func (bs *BlockStore) saveBlockPart(height uint, index uint, part *Part) {
 	if height != bs.height+1 {
 		panic(Fmt("BlockStore can only save contiguous blocks. Wanted %v, got %v", bs.height+1, height))
 	}
-	partBytes := BinaryBytes(part)
+	partBytes := binary.BinaryBytes(part)
 	bs.db.Set(calcBlockPartKey(height, index), partBytes)
 }
 
@@ -222,7 +223,7 @@ type BlockStoreStateJSON struct {
 	Height uint
 }
 
-func (bsj BlockStoreStateJSON) Save(db db_.DB) {
+func (bsj BlockStoreStateJSON) Save(db dbm.DB) {
 	bytes, err := json.Marshal(bsj)
 	if err != nil {
 		panic(Fmt("Could not marshal state bytes: %v", err))
@@ -230,7 +231,7 @@ func (bsj BlockStoreStateJSON) Save(db db_.DB) {
 	db.Set(blockStoreKey, bytes)
 }
 
-func LoadBlockStoreStateJSON(db db_.DB) BlockStoreStateJSON {
+func LoadBlockStoreStateJSON(db dbm.DB) BlockStoreStateJSON {
 	bytes := db.Get(blockStoreKey)
 	if bytes == nil {
 		return BlockStoreStateJSON{

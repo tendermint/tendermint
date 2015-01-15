@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"io"
 
-	. "github.com/tendermint/tendermint/account"
-	. "github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/account"
+	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/block"
 )
 
@@ -20,7 +20,7 @@ type Proposal struct {
 	Round      uint
 	BlockParts PartSetHeader
 	POLParts   PartSetHeader
-	Signature  SignatureEd25519
+	Signature  account.SignatureEd25519
 }
 
 func NewProposal(height uint, round uint, blockParts, polParts PartSetHeader) *Proposal {
@@ -38,8 +38,8 @@ func (p *Proposal) String() string {
 }
 
 func (p *Proposal) WriteSignBytes(w io.Writer, n *int64, err *error) {
-	WriteUvarint(p.Height, w, n, err)
-	WriteUvarint(p.Round, w, n, err)
-	WriteBinary(p.BlockParts, w, n, err)
-	WriteBinary(p.POLParts, w, n, err)
+	binary.WriteUvarint(p.Height, w, n, err)
+	binary.WriteUvarint(p.Round, w, n, err)
+	binary.WriteBinary(p.BlockParts, w, n, err)
+	binary.WriteBinary(p.POLParts, w, n, err)
 }

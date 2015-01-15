@@ -5,9 +5,9 @@ import (
 	"container/list"
 	"sync"
 
-	. "github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
-	db_ "github.com/tendermint/tendermint/db"
+	dbm "github.com/tendermint/tendermint/db"
 )
 
 /*
@@ -15,13 +15,13 @@ Immutable AVL Tree (wraps the Node root)
 This tree is not goroutine safe.
 */
 type IAVLTree struct {
-	keyCodec   Codec
-	valueCodec Codec
+	keyCodec   binary.Codec
+	valueCodec binary.Codec
 	root       *IAVLNode
 	ndb        *nodeDB
 }
 
-func NewIAVLTree(keyCodec, valueCodec Codec, cacheSize int, db db_.DB) *IAVLTree {
+func NewIAVLTree(keyCodec, valueCodec binary.Codec, cacheSize int, db dbm.DB) *IAVLTree {
 	if db == nil {
 		// In-memory IAVLTree
 		return &IAVLTree{
@@ -182,10 +182,10 @@ type nodeDB struct {
 	cache      map[string]nodeElement
 	cacheSize  int
 	cacheQueue *list.List
-	db         db_.DB
+	db         dbm.DB
 }
 
-func newNodeDB(cacheSize int, db db_.DB) *nodeDB {
+func newNodeDB(cacheSize int, db dbm.DB) *nodeDB {
 	return &nodeDB{
 		cache:      make(map[string]nodeElement),
 		cacheSize:  cacheSize,
@@ -207,7 +207,7 @@ func (ndb *nodeDB) GetNode(t *IAVLTree, hash []byte) *IAVLNode {
 		// Doesn't exist, load.
 		buf := ndb.db.Get(hash)
 		if len(buf) == 0 {
-			ndb.db.(*db_.LevelDB).Print()
+			ndb.db.(*dbm.LevelDB).Print()
 			panic(Fmt("Value missing for key %X", hash))
 		}
 		r := bytes.NewReader(buf)

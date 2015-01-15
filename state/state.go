@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"time"
 
-	. "github.com/tendermint/tendermint/account"
-	. "github.com/tendermint/tendermint/binary"
-	. "github.com/tendermint/tendermint/block"
+	"github.com/tendermint/tendermint/account"
+	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/common"
-	db_ "github.com/tendermint/tendermint/db"
+	dbm "github.com/tendermint/tendermint/db"
 	"github.com/tendermint/tendermint/merkle"
 )
 
@@ -25,7 +25,7 @@ var (
 //-----------------------------------------------------------------------------
 
 type InvalidTxError struct {
-	Tx     Tx
+	Tx     block.Tx
 	Reason error
 }
 
@@ -37,10 +37,10 @@ func (txErr InvalidTxError) Error() string {
 
 // NOTE: not goroutine-safe.
 type State struct {
-	DB                  db_.DB
+	DB                  dbm.DB
 	LastBlockHeight     uint
 	LastBlockHash       []byte
-	LastBlockParts      PartSetHeader
+	LastBlockParts      block.PartSetHeader
 	LastBlockTime       time.Time
 	BondedValidators    *ValidatorSet
 	UnbondingValidators *ValidatorSet
@@ -48,24 +48,24 @@ type State struct {
 	validatorInfos      merkle.Tree // Shouldn't be accessed directly.
 }
 
-func LoadState(db db_.DB) *State {
+func LoadState(db dbm.DB) *State {
 	s := &State{DB: db}
 	buf := db.Get(stateKey)
 	if len(buf) == 0 {
 		return nil
 	} else {
 		r, n, err := bytes.NewReader(buf), new(int64), new(error)
-		s.LastBlockHeight = ReadUvarint(r, n, err)
-		s.LastBlockHash = ReadByteSlice(r, n, err)
-		s.LastBlockParts = ReadBinary(PartSetHeader{}, r, n, err).(PartSetHeader)
-		s.LastBlockTime = ReadTime(r, n, err)
-		s.BondedValidators = ReadBinary(&ValidatorSet{}, r, n, err).(*ValidatorSet)
-		s.UnbondingValidators = ReadBinary(&ValidatorSet{}, r, n, err).(*ValidatorSet)
-		accountsHash := ReadByteSlice(r, n, err)
-		s.accounts = merkle.NewIAVLTree(BasicCodec, AccountCodec, defaultAccountsCacheCapacity, db)
+		s.LastBlockHeight = binary.ReadUvarint(r, n, err)
+		s.LastBlockHash = binary.ReadByteSlice(r, n, err)
+		s.LastBlockParts = binary.ReadBinary(block.PartSetHeader{}, r, n, err).(block.PartSetHeader)
+		s.LastBlockTime = binary.ReadTime(r, n, err)
+		s.BondedValidators = binary.ReadBinary(&ValidatorSet{}, r, n, err).(*ValidatorSet)
+		s.UnbondingValidators = binary.ReadBinary(&ValidatorSet{}, r, n, err).(*ValidatorSet)
+		accountsHash := binary.ReadByteSlice(r, n, err)
+		s.accounts = merkle.NewIAVLTree(binary.BasicCodec, account.AccountCodec, defaultAccountsCacheCapacity, db)
 		s.accounts.Load(accountsHash)
-		validatorInfosHash := ReadByteSlice(r, n, err)
-		s.validatorInfos = merkle.NewIAVLTree(BasicCodec, ValidatorInfoCodec, 0, db)
+		validatorInfosHash := binary.ReadByteSlice(r, n, err)
+		s.validatorInfos = merkle.NewIAVLTree(binary.BasicCodec, ValidatorInfoCodec, 0, db)
 		s.validatorInfos.Load(validatorInfosHash)
 		if *err != nil {
 			panic(*err)
@@ -80,14 +80,14 @@ func (s *State) Save() {
 	s.accounts.Save()
 	s.validatorInfos.Save()
 	buf, n, err := new(bytes.Buffer), new(int64), new(error)
-	WriteUvarint(s.LastBlockHeight, buf, n, err)
-	WriteByteSlice(s.LastBlockHash, buf, n, err)
-	WriteBinary(s.LastBlockParts, buf, n, err)
-	WriteTime(s.LastBlockTime, buf, n, err)
-	WriteBinary(s.BondedValidators, buf, n, err)
-	WriteBinary(s.UnbondingValidators, buf, n, err)
-	WriteByteSlice(s.accounts.Hash(), buf, n, err)
-	WriteByteSlice(s.validatorInfos.Hash(), buf, n, err)
+	binary.WriteUvarint(s.LastBlockHeight, buf, n, err)
+	binary.WriteByteSlice(s.LastBlockHash, buf, n, err)
+	binary.WriteBinary(s.LastBlockParts, buf, n, err)
+	binary.WriteTime(s.LastBlockTime, buf, n, err)
+	binary.WriteBinary(s.BondedValidators, buf, n, err)
+	binary.WriteBinary(s.UnbondingValidators, buf, n, err)
+	binary.WriteByteSlice(s.accounts.Hash(), buf, n, err)
+	binary.WriteByteSlice(s.validatorInfos.Hash(), buf, n, err)
 	if *err != nil {
 		panic(*err)
 	}
@@ -112,55 +112,55 @@ func (s *State) Copy() *State {
 // account.PubKey.(type) != PubKeyNil, (it must be known),
 // or it must be specified in the TxInput.  If redeclared,
 // the TxInput is modified and input.PubKey set to PubKeyNil.
-func (s *State) GetOrMakeAccounts(ins []*TxInput, outs []*TxOutput) (map[string]*Account, error) {
-	accounts := map[string]*Account{}
+func (s *State) GetOrMakeAccounts(ins []*block.TxInput, outs []*block.TxOutput) (map[string]*account.Account, error) {
+	accounts := map[string]*account.Account{}
 	for _, in := range ins {
 		// Account shouldn't be duplicated
 		if _, ok := accounts[string(in.Address)]; ok {
-			return nil, ErrTxDuplicateAddress
+			return nil, block.ErrTxDuplicateAddress
 		}
-		account := s.GetAccount(in.Address)
-		if account == nil {
-			return nil, ErrTxInvalidAddress
+		acc := s.GetAccount(in.Address)
+		if acc == nil {
+			return nil, block.ErrTxInvalidAddress
 		}
 		// PubKey should be present in either "account" or "in"
-		if _, isNil := account.PubKey.(PubKeyNil); isNil {
-			if _, isNil := in.PubKey.(PubKeyNil); isNil {
-				return nil, ErrTxUnknownPubKey
+		if _, isNil := acc.PubKey.(account.PubKeyNil); isNil {
+			if _, isNil := in.PubKey.(account.PubKeyNil); isNil {
+				return nil, block.ErrTxUnknownPubKey
 			}
-			if !bytes.Equal(in.PubKey.Address(), account.Address) {
-				return nil, ErrTxInvalidPubKey
+			if !bytes.Equal(in.PubKey.Address(), acc.Address) {
+				return nil, block.ErrTxInvalidPubKey
 			}
-			account.PubKey = in.PubKey
+			acc.PubKey = in.PubKey
 		} else {
-			in.PubKey = PubKeyNil{}
+			in.PubKey = account.PubKeyNil{}
 		}
-		accounts[string(in.Address)] = account
+		accounts[string(in.Address)] = acc
 	}
 	for _, out := range outs {
 		// Account shouldn't be duplicated
 		if _, ok := accounts[string(out.Address)]; ok {
-			return nil, ErrTxDuplicateAddress
+			return nil, block.ErrTxDuplicateAddress
 		}
-		account := s.GetAccount(out.Address)
+		acc := s.GetAccount(out.Address)
 		// output account may be nil (new)
-		if account == nil {
-			account = &Account{
+		if acc == nil {
+			acc = &account.Account{
 				Address:  out.Address,
-				PubKey:   PubKeyNil{},
+				PubKey:   account.PubKeyNil{},
 				Sequence: 0,
 				Balance:  0,
 			}
 		}
-		accounts[string(out.Address)] = account
+		accounts[string(out.Address)] = acc
 	}
 	return accounts, nil
 }
 
-func (s *State) ValidateInputs(accounts map[string]*Account, signBytes []byte, ins []*TxInput) (total uint64, err error) {
+func (s *State) ValidateInputs(accounts map[string]*account.Account, signBytes []byte, ins []*block.TxInput) (total uint64, err error) {
 	for _, in := range ins {
-		account := accounts[string(in.Address)]
-		if account == nil {
+		acc := accounts[string(in.Address)]
+		if acc == nil {
 			panic("ValidateInputs() expects account in accounts")
 		}
 		// Check TxInput basic
@@ -168,16 +168,16 @@ func (s *State) ValidateInputs(accounts map[string]*Account, signBytes []byte, i
 			return 0, err
 		}
 		// Check signatures
-		if !account.PubKey.VerifyBytes(signBytes, in.Signature) {
-			return 0, ErrTxInvalidSignature
+		if !acc.PubKey.VerifyBytes(signBytes, in.Signature) {
+			return 0, block.ErrTxInvalidSignature
 		}
 		// Check sequences
-		if account.Sequence+1 != in.Sequence {
-			return 0, ErrTxInvalidSequence
+		if acc.Sequence+1 != in.Sequence {
+			return 0, block.ErrTxInvalidSequence
 		}
 		// Check amount
-		if account.Balance < in.Amount {
-			return 0, ErrTxInsufficientFunds
+		if acc.Balance < in.Amount {
+			return 0, block.ErrTxInsufficientFunds
 		}
 		// Good. Add amount to total
 		total += in.Amount
@@ -185,7 +185,7 @@ func (s *State) ValidateInputs(accounts map[string]*Account, signBytes []byte, i
 	return total, nil
 }
 
-func (s *State) ValidateOutputs(outs []*TxOutput) (total uint64, err error) {
+func (s *State) ValidateOutputs(outs []*block.TxOutput) (total uint64, err error) {
 	for _, out := range outs {
 		// Check TxOutput basic
 		if err := out.ValidateBasic(); err != nil {
@@ -197,46 +197,46 @@ func (s *State) ValidateOutputs(outs []*TxOutput) (total uint64, err error) {
 	return total, nil
 }
 
-func (s *State) AdjustByInputs(accounts map[string]*Account, ins []*TxInput) {
+func (s *State) AdjustByInputs(accounts map[string]*account.Account, ins []*block.TxInput) {
 	for _, in := range ins {
-		account := accounts[string(in.Address)]
-		if account == nil {
+		acc := accounts[string(in.Address)]
+		if acc == nil {
 			panic("AdjustByInputs() expects account in accounts")
 		}
-		if account.Balance < in.Amount {
+		if acc.Balance < in.Amount {
 			panic("AdjustByInputs() expects sufficient funds")
 		}
-		account.Balance -= in.Amount
-		account.Sequence += 1
+		acc.Balance -= in.Amount
+		acc.Sequence += 1
 	}
 }
 
-func (s *State) AdjustByOutputs(accounts map[string]*Account, outs []*TxOutput) {
+func (s *State) AdjustByOutputs(accounts map[string]*account.Account, outs []*block.TxOutput) {
 	for _, out := range outs {
-		account := accounts[string(out.Address)]
-		if account == nil {
+		acc := accounts[string(out.Address)]
+		if acc == nil {
 			panic("AdjustByOutputs() expects account in accounts")
 		}
-		account.Balance += out.Amount
+		acc.Balance += out.Amount
 	}
 }
 
 // If the tx is invalid, an error will be returned.
 // Unlike AppendBlock(), state will not be altered.
-func (s *State) ExecTx(tx_ Tx) error {
+func (s *State) ExecTx(tx_ block.Tx) error {
 
 	// TODO: do something with fees
 	fees := uint64(0)
 
 	// Exec tx
 	switch tx_.(type) {
-	case *SendTx:
-		tx := tx_.(*SendTx)
+	case *block.SendTx:
+		tx := tx_.(*block.SendTx)
 		accounts, err := s.GetOrMakeAccounts(tx.Inputs, tx.Outputs)
 		if err != nil {
 			return err
 		}
-		signBytes := SignBytes(tx)
+		signBytes := account.SignBytes(tx)
 		inTotal, err := s.ValidateInputs(accounts, signBytes, tx.Inputs)
 		if err != nil {
 			return err
@@ -246,7 +246,7 @@ func (s *State) ExecTx(tx_ Tx) error {
 			return err
 		}
 		if outTotal > inTotal {
-			return ErrTxInsufficientFunds
+			return block.ErrTxInsufficientFunds
 		}
 		fee := inTotal - outTotal
 		fees += fee
@@ -257,8 +257,8 @@ func (s *State) ExecTx(tx_ Tx) error {
 		s.UpdateAccounts(accounts)
 		return nil
 
-	case *BondTx:
-		tx := tx_.(*BondTx)
+	case *block.BondTx:
+		tx := tx_.(*block.BondTx)
 		valInfo := s.GetValidatorInfo(tx.PubKey.Address())
 		if valInfo != nil {
 			// TODO: In the future, check that the validator wasn't destroyed,
@@ -269,7 +269,7 @@ func (s *State) ExecTx(tx_ Tx) error {
 		if err != nil {
 			return err
 		}
-		signBytes := SignBytes(tx)
+		signBytes := account.SignBytes(tx)
 		inTotal, err := s.ValidateInputs(accounts, signBytes, tx.Inputs)
 		if err != nil {
 			return err
@@ -282,7 +282,7 @@ func (s *State) ExecTx(tx_ Tx) error {
 			return err
 		}
 		if outTotal > inTotal {
-			return ErrTxInsufficientFunds
+			return block.ErrTxInsufficientFunds
 		}
 		fee := inTotal - outTotal
 		fees += fee
@@ -311,19 +311,19 @@ func (s *State) ExecTx(tx_ Tx) error {
 		}
 		return nil
 
-	case *UnbondTx:
-		tx := tx_.(*UnbondTx)
+	case *block.UnbondTx:
+		tx := tx_.(*block.UnbondTx)
 
 		// The validator must be active
 		_, val := s.BondedValidators.GetByAddress(tx.Address)
 		if val == nil {
-			return ErrTxInvalidAddress
+			return block.ErrTxInvalidAddress
 		}
 
 		// Verify the signature
-		signBytes := SignBytes(tx)
+		signBytes := account.SignBytes(tx)
 		if !val.PubKey.VerifyBytes(signBytes, tx.Signature) {
-			return ErrTxInvalidSignature
+			return block.ErrTxInvalidSignature
 		}
 
 		// tx.Height must be greater than val.LastCommitHeight
@@ -335,19 +335,19 @@ func (s *State) ExecTx(tx_ Tx) error {
 		s.unbondValidator(val)
 		return nil
 
-	case *RebondTx:
-		tx := tx_.(*RebondTx)
+	case *block.RebondTx:
+		tx := tx_.(*block.RebondTx)
 
 		// The validator must be inactive
 		_, val := s.UnbondingValidators.GetByAddress(tx.Address)
 		if val == nil {
-			return ErrTxInvalidAddress
+			return block.ErrTxInvalidAddress
 		}
 
 		// Verify the signature
-		signBytes := SignBytes(tx)
+		signBytes := account.SignBytes(tx)
 		if !val.PubKey.VerifyBytes(signBytes, tx.Signature) {
-			return ErrTxInvalidSignature
+			return block.ErrTxInvalidSignature
 		}
 
 		// tx.Height must be equal to the next height
@@ -359,16 +359,16 @@ func (s *State) ExecTx(tx_ Tx) error {
 		s.rebondValidator(val)
 		return nil
 
-	case *DupeoutTx:
-		tx := tx_.(*DupeoutTx)
+	case *block.DupeoutTx:
+		tx := tx_.(*block.DupeoutTx)
 
 		// Verify the signatures
 		_, accused := s.BondedValidators.GetByAddress(tx.Address)
-		voteASignBytes := SignBytes(&tx.VoteA)
-		voteBSignBytes := SignBytes(&tx.VoteB)
+		voteASignBytes := account.SignBytes(&tx.VoteA)
+		voteBSignBytes := account.SignBytes(&tx.VoteB)
 		if !accused.PubKey.VerifyBytes(voteASignBytes, tx.VoteA.Signature) ||
 			!accused.PubKey.VerifyBytes(voteBSignBytes, tx.VoteB.Signature) {
-			return ErrTxInvalidSignature
+			return block.ErrTxInvalidSignature
 		}
 
 		// Verify equivocation
@@ -377,7 +377,7 @@ func (s *State) ExecTx(tx_ Tx) error {
 		if tx.VoteA.Height != tx.VoteB.Height {
 			return errors.New("DupeoutTx heights don't match")
 		}
-		if tx.VoteA.Type == VoteTypeCommit && tx.VoteA.Round < tx.VoteB.Round {
+		if tx.VoteA.Type == block.VoteTypeCommit && tx.VoteA.Round < tx.VoteB.Round {
 			// Check special case.
 			// Validators should not sign another vote after committing.
 		} else {
@@ -477,36 +477,36 @@ func (s *State) destroyValidator(val *Validator) {
 // (used for constructing a new proposal)
 // NOTE: If an error occurs during block execution, state will be left
 // at an invalid state.  Copy the state before calling AppendBlock!
-func (s *State) AppendBlock(block *Block, blockPartsHeader PartSetHeader, checkStateHash bool) error {
+func (s *State) AppendBlock(block_ *block.Block, blockPartsHeader block.PartSetHeader, checkStateHash bool) error {
 	// Basic block validation.
-	err := block.ValidateBasic(s.LastBlockHeight, s.LastBlockHash, s.LastBlockParts, s.LastBlockTime)
+	err := block_.ValidateBasic(s.LastBlockHeight, s.LastBlockHash, s.LastBlockParts, s.LastBlockTime)
 	if err != nil {
 		return err
 	}
 
 	// Validate block Validation.
-	if block.Height == 1 {
-		if len(block.Validation.Commits) != 0 {
+	if block_.Height == 1 {
+		if len(block_.Validation.Commits) != 0 {
 			return errors.New("Block at height 1 (first block) should have no Validation commits")
 		}
 	} else {
-		if uint(len(block.Validation.Commits)) != s.BondedValidators.Size() {
+		if uint(len(block_.Validation.Commits)) != s.BondedValidators.Size() {
 			return errors.New("Invalid block validation size")
 		}
 		var sumVotingPower uint64
 		s.BondedValidators.Iterate(func(index uint, val *Validator) bool {
-			commit := block.Validation.Commits[index]
+			commit := block_.Validation.Commits[index]
 			if commit.IsZero() {
 				return false
 			} else {
-				vote := &Vote{
-					Height:     block.Height - 1,
+				vote := &block.Vote{
+					Height:     block_.Height - 1,
 					Round:      commit.Round,
-					Type:       VoteTypeCommit,
-					BlockHash:  block.LastBlockHash,
-					BlockParts: block.LastBlockParts,
+					Type:       block.VoteTypeCommit,
+					BlockHash:  block_.LastBlockHash,
+					BlockParts: block_.LastBlockParts,
 				}
-				if val.PubKey.VerifyBytes(SignBytes(vote), commit.Signature) {
+				if val.PubKey.VerifyBytes(account.SignBytes(vote), commit.Signature) {
 					sumVotingPower += val.VotingPower
 					return false
 				} else {
@@ -525,7 +525,7 @@ func (s *State) AppendBlock(block *Block, blockPartsHeader PartSetHeader, checkS
 	}
 
 	// Commit each tx
-	for _, tx := range block.Data.Txs {
+	for _, tx := range block_.Data.Txs {
 		err := s.ExecTx(tx)
 		if err != nil {
 			return InvalidTxError{tx, err}
@@ -533,7 +533,7 @@ func (s *State) AppendBlock(block *Block, blockPartsHeader PartSetHeader, checkS
 	}
 
 	// Update Validator.LastCommitHeight as necessary.
-	for i, commit := range block.Validation.Commits {
+	for i, commit := range block_.Validation.Commits {
 		if commit.IsZero() {
 			continue
 		}
@@ -541,7 +541,7 @@ func (s *State) AppendBlock(block *Block, blockPartsHeader PartSetHeader, checkS
 		if val == nil {
 			panic(Fmt("Failed to fetch validator at index %v", i))
 		}
-		val.LastCommitHeight = block.Height - 1
+		val.LastCommitHeight = block_.Height - 1
 		updated := s.BondedValidators.Update(val)
 		if !updated {
 			panic("Failed to update validator LastCommitHeight")
@@ -552,7 +552,7 @@ func (s *State) AppendBlock(block *Block, blockPartsHeader PartSetHeader, checkS
 	// reward account with bonded coins.
 	toRelease := []*Validator{}
 	s.UnbondingValidators.Iterate(func(index uint, val *Validator) bool {
-		if val.UnbondHeight+unbondingPeriodBlocks < block.Height {
+		if val.UnbondHeight+unbondingPeriodBlocks < block_.Height {
 			toRelease = append(toRelease, val)
 		}
 		return false
@@ -565,7 +565,7 @@ func (s *State) AppendBlock(block *Block, blockPartsHeader PartSetHeader, checkS
 	// unbond them, they have timed out.
 	toTimeout := []*Validator{}
 	s.BondedValidators.Iterate(func(index uint, val *Validator) bool {
-		if val.LastCommitHeight+validatorTimeoutBlocks < block.Height {
+		if val.LastCommitHeight+validatorTimeoutBlocks < block_.Height {
 			toTimeout = append(toTimeout, val)
 		}
 		return false
@@ -581,33 +581,33 @@ func (s *State) AppendBlock(block *Block, blockPartsHeader PartSetHeader, checkS
 	stateHash := s.Hash()
 	if checkStateHash {
 		// State hash should match
-		if !bytes.Equal(stateHash, block.StateHash) {
+		if !bytes.Equal(stateHash, block_.StateHash) {
 			return Errorf("Invalid state hash. Got %X, block says %X",
-				stateHash, block.StateHash)
+				stateHash, block_.StateHash)
 		}
 	} else {
 		// Set the state hash.
-		if block.StateHash != nil {
-			panic("Cannot overwrite block.StateHash")
+		if block_.StateHash != nil {
+			panic("Cannot overwrite block_.StateHash")
 		}
-		block.StateHash = stateHash
+		block_.StateHash = stateHash
 	}
 
-	s.LastBlockHeight = block.Height
-	s.LastBlockHash = block.Hash()
+	s.LastBlockHeight = block_.Height
+	s.LastBlockHash = block_.Hash()
 	s.LastBlockParts = blockPartsHeader
-	s.LastBlockTime = block.Time
+	s.LastBlockTime = block_.Time
 	return nil
 }
 
 // The returned Account is a copy, so mutating it
 // has no side effects.
-func (s *State) GetAccount(address []byte) *Account {
-	_, account := s.accounts.Get(address)
-	if account == nil {
+func (s *State) GetAccount(address []byte) *account.Account {
+	_, acc := s.accounts.Get(address)
+	if acc == nil {
 		return nil
 	}
-	return account.(*Account).Copy()
+	return acc.(*account.Account).Copy()
 }
 
 // The returned Account is a copy, so mutating it
@@ -618,15 +618,15 @@ func (s *State) GetAccounts() merkle.Tree {
 
 // The account is copied before setting, so mutating it
 // afterwards has no side effects.
-func (s *State) UpdateAccount(account *Account) {
+func (s *State) UpdateAccount(account *account.Account) {
 	s.accounts.Set(account.Address, account.Copy())
 }
 
 // The accounts are copied before setting, so mutating it
 // afterwards has no side effects.
-func (s *State) UpdateAccounts(accounts map[string]*Account) {
-	for _, account := range accounts {
-		s.accounts.Set(account.Address, account.Copy())
+func (s *State) UpdateAccounts(accounts map[string]*account.Account) {
+	for _, acc := range accounts {
+		s.accounts.Set(acc.Address, acc.Copy())
 	}
 }
 

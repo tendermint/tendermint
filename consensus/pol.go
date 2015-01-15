@@ -3,10 +3,10 @@ package consensus
 import (
 	"fmt"
 
-	. "github.com/tendermint/tendermint/account"
-	. "github.com/tendermint/tendermint/block"
+	"github.com/tendermint/tendermint/account"
+	"github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/state"
+	sm "github.com/tendermint/tendermint/state"
 )
 
 // Each signature of a POL (proof-of-lock, see whitepaper) is
@@ -15,7 +15,7 @@ import (
 // the POL round.  Prevote rounds are equal to the POL round.
 type POLVoteSignature struct {
 	Round     uint
-	Signature SignatureEd25519
+	Signature account.SignatureEd25519
 }
 
 // Proof of lock.
@@ -23,13 +23,13 @@ type POLVoteSignature struct {
 type POL struct {
 	Height     uint
 	Round      uint
-	BlockHash  []byte             // Could be nil, which makes this a proof of unlock.
-	BlockParts PartSetHeader      // When BlockHash is nil, this is zero.
-	Votes      []POLVoteSignature // Prevote and commit signatures in ValidatorSet order.
+	BlockHash  []byte              // Could be nil, which makes this a proof of unlock.
+	BlockParts block.PartSetHeader // When BlockHash is nil, this is zero.
+	Votes      []POLVoteSignature  // Prevote and commit signatures in ValidatorSet order.
 }
 
 // Returns whether +2/3 have prevoted/committed for BlockHash.
-func (pol *POL) Verify(valSet *state.ValidatorSet) error {
+func (pol *POL) Verify(valSet *sm.ValidatorSet) error {
 
 	if uint(len(pol.Votes)) != valSet.Size() {
 		return Errorf("Invalid POL votes count: Expected %v, got %v",
@@ -37,8 +37,8 @@ func (pol *POL) Verify(valSet *state.ValidatorSet) error {
 	}
 
 	talliedVotingPower := uint64(0)
-	prevoteDoc := SignBytes(&Vote{
-		Height: pol.Height, Round: pol.Round, Type: VoteTypePrevote,
+	prevoteDoc := account.SignBytes(&block.Vote{
+		Height: pol.Height, Round: pol.Round, Type: block.VoteTypePrevote,
 		BlockHash:  pol.BlockHash,
 		BlockParts: pol.BlockParts,
 	})
@@ -54,8 +54,8 @@ func (pol *POL) Verify(valSet *state.ValidatorSet) error {
 
 		// Commit vote?
 		if vote.Round < pol.Round {
-			voteDoc = SignBytes(&Vote{
-				Height: pol.Height, Round: vote.Round, Type: VoteTypeCommit,
+			voteDoc = account.SignBytes(&block.Vote{
+				Height: pol.Height, Round: vote.Round, Type: block.VoteTypeCommit,
 				BlockHash:  pol.BlockHash,
 				BlockParts: pol.BlockParts,
 			})

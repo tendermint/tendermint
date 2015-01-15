@@ -1,9 +1,9 @@
 package state
 
 import (
-	. "github.com/tendermint/tendermint/account"
-	. "github.com/tendermint/tendermint/binary"
-	. "github.com/tendermint/tendermint/block"
+	"github.com/tendermint/tendermint/account"
+	"github.com/tendermint/tendermint/binary"
+	blk "github.com/tendermint/tendermint/block"
 	"github.com/tendermint/tendermint/config"
 
 	"bytes"
@@ -58,8 +58,8 @@ func TestGenesisSaveLoad(t *testing.T) {
 	s0, _, _ := RandGenesisState(10, true, 1000, 5, true, 1000)
 
 	// Mutate the state to append one empty block.
-	block := &Block{
-		Header: &Header{
+	block := &blk.Block{
+		Header: &blk.Header{
 			Network:        config.App.GetString("Network"),
 			Height:         1,
 			Time:           s0.LastBlockTime.Add(time.Minute),
@@ -69,12 +69,12 @@ func TestGenesisSaveLoad(t *testing.T) {
 			LastBlockParts: s0.LastBlockParts,
 			StateHash:      nil,
 		},
-		Validation: &Validation{},
-		Data: &Data{
-			Txs: []Tx{},
+		Validation: &blk.Validation{},
+		Data: &blk.Data{
+			Txs: []blk.Tx{},
 		},
 	}
-	blockParts := NewPartSetFromData(BinaryBytes(block))
+	blockParts := blk.NewPartSetFromData(binary.BinaryBytes(block))
 
 	// The last argument to AppendBlock() is `false`,
 	// which sets Block.Header.StateHash.
@@ -97,7 +97,7 @@ func TestGenesisSaveLoad(t *testing.T) {
 	s0.Save()
 
 	// Sanity check s0
-	//s0.DB.(*db_.MemDB).Print()
+	//s0.DB.(*dbm.MemDB).Print()
 	if s0.BondedValidators.TotalVotingPower() == 0 {
 		t.Error("s0 BondedValidators TotalVotingPower should not be 0")
 	}
@@ -143,72 +143,8 @@ func TestGenesisSaveLoad(t *testing.T) {
 	}
 }
 
-/* TODO: Write better tests, and also refactor out common code
+/* TODO
 func TestSendTxStateSave(t *testing.T) {
-
-	// Generate a state, save & load it.
-	s0, privAccounts, _ := RandGenesisState(10, true, 1000, 5, true, 1000)
-
-	sendTx := &SendTx{
-		Inputs: []*TxInput{
-			&TxInput{
-				Address:   privAccounts[0].PubKey.Address(),
-				Amount:    100,
-				Sequence:  1,
-				Signature: nil,
-				PubKey:    privAccounts[0].PubKey,
-			},
-		},
-		Outputs: []*TxOutput{
-			&TxOutput{
-				Address: []byte("01234567890123456789"),
-				Amount:  100,
-			},
-		},
-	}
-	sendTx.Inputs[0].Signature = privAccounts[0].Sign(sendTx)
-
-	// Mutate the state to append block with sendTx
-	block := &Block{
-		Header: &Header{
-			Network:        config.App.GetString("Network"),
-			Height:         1,
-			Time:           s0.LastBlockTime.Add(time.Minute),
-			Fees:           0,
-			NumTxs:         1,
-			LastBlockHash:  s0.LastBlockHash,
-			LastBlockParts: s0.LastBlockParts,
-			StateHash:      nil,
-		},
-		Validation: &Validation{},
-		Data: &Data{
-			Txs: []Tx{sendTx},
-		},
-	}
-	blockParts := NewPartSetFromData(BinaryBytes(block))
-
-	// The last argument to AppendBlock() is `false`,
-	// which sets Block.Header.StateHash.
-	err := s0.Copy().AppendBlock(block, blockParts.Header(), false)
-	if err != nil {
-		t.Error("Error appending initial block:", err)
-	}
-	if len(block.Header.StateHash) == 0 {
-		t.Error("Expected StateHash but got nothing.")
-	}
-
-	// Now append the block to s0.
-	// This time we also check the StateHash (as computed above).
-	err = s0.AppendBlock(block, blockParts.Header(), true)
-	if err != nil {
-		t.Error("Error appending initial block:", err)
-	}
-
-	// Save s0
-	s0.Save()
-	fmt.Printf("s0.accounts.Hash(): %X\n", s0.accounts.Hash())
-	s0.DB.Print()
-
 }
 */
 
@@ -220,18 +156,18 @@ func TestTxSequence(t *testing.T) {
 	acc1 := state.GetAccount(privAccounts[1].PubKey.Address())
 
 	// Try executing a SendTx with various sequence numbers.
-	makeSendTx := func(sequence uint) *SendTx {
-		return &SendTx{
-			Inputs: []*TxInput{
-				&TxInput{
+	makeSendTx := func(sequence uint) *blk.SendTx {
+		return &blk.SendTx{
+			Inputs: []*blk.TxInput{
+				&blk.TxInput{
 					Address:  acc0.Address,
 					Amount:   1,
 					Sequence: sequence,
 					PubKey:   acc0PubKey,
 				},
 			},
-			Outputs: []*TxOutput{
-				&TxOutput{
+			Outputs: []*blk.TxOutput{
+				&blk.TxOutput{
 					Address: acc1.Address,
 					Amount:  1,
 				},
@@ -287,17 +223,17 @@ func TestTxs(t *testing.T) {
 	// SendTx.
 	{
 		state := state.Copy()
-		tx := &SendTx{
-			Inputs: []*TxInput{
-				&TxInput{
+		tx := &blk.SendTx{
+			Inputs: []*blk.TxInput{
+				&blk.TxInput{
 					Address:  acc0.Address,
 					Amount:   1,
 					Sequence: acc0.Sequence + 1,
 					PubKey:   acc0PubKey,
 				},
 			},
-			Outputs: []*TxOutput{
-				&TxOutput{
+			Outputs: []*blk.TxOutput{
+				&blk.TxOutput{
 					Address: acc1.Address,
 					Amount:  1,
 				},
@@ -324,18 +260,18 @@ func TestTxs(t *testing.T) {
 	// BondTx.
 	{
 		state := state.Copy()
-		tx := &BondTx{
-			PubKey: acc0PubKey.(PubKeyEd25519),
-			Inputs: []*TxInput{
-				&TxInput{
+		tx := &blk.BondTx{
+			PubKey: acc0PubKey.(account.PubKeyEd25519),
+			Inputs: []*blk.TxInput{
+				&blk.TxInput{
 					Address:  acc0.Address,
 					Amount:   1,
 					Sequence: acc0.Sequence + 1,
 					PubKey:   acc0PubKey,
 				},
 			},
-			UnbondTo: []*TxOutput{
-				&TxOutput{
+			UnbondTo: []*blk.TxOutput{
+				&blk.TxOutput{
 					Address: acc0.Address,
 					Amount:  1,
 				},

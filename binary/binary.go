@@ -6,12 +6,7 @@ import (
 	"reflect"
 )
 
-type Unreader interface {
-	io.Reader
-	UnreadByte() error
-}
-
-func ReadBinary(o interface{}, r Unreader, n *int64, err *error) interface{} {
+func ReadBinary(o interface{}, r io.Reader, n *int64, err *error) interface{} {
 	rv, rt := reflect.ValueOf(o), reflect.TypeOf(o)
 	if rv.Kind() == reflect.Ptr {
 		readReflect(rv.Elem(), rt.Elem(), r, n, err)

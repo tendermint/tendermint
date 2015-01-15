@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
-	. "github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/db"
 
@@ -46,7 +46,7 @@ func N(l, r interface{}) *IAVLNode {
 
 // Setup a deep node
 func T(n *IAVLNode) *IAVLTree {
-	t := NewIAVLTree(BasicCodec, BasicCodec, 0, nil)
+	t := NewIAVLTree(binary.BasicCodec, binary.BasicCodec, 0, nil)
 	n.hashWithCount(t)
 	t.root = n
 	return t
@@ -152,7 +152,7 @@ func TestIntegration(t *testing.T) {
 	}
 
 	records := make([]*record, 400)
-	var tree *IAVLTree = NewIAVLTree(BasicCodec, BasicCodec, 0, nil)
+	var tree *IAVLTree = NewIAVLTree(binary.BasicCodec, binary.BasicCodec, 0, nil)
 
 	randomRecord := func() *record {
 		return &record{randstr(20), randstr(20)}
@@ -222,7 +222,7 @@ func TestPersistence(t *testing.T) {
 	}
 
 	// Construct some tree and save it
-	t1 := NewIAVLTree(BasicCodec, BasicCodec, 0, db)
+	t1 := NewIAVLTree(binary.BasicCodec, binary.BasicCodec, 0, db)
 	for key, value := range records {
 		t1.Set(key, value)
 	}
@@ -231,7 +231,7 @@ func TestPersistence(t *testing.T) {
 	hash, _ := t1.HashWithCount()
 
 	// Load a tree
-	t2 := NewIAVLTree(BasicCodec, BasicCodec, 0, db)
+	t2 := NewIAVLTree(binary.BasicCodec, binary.BasicCodec, 0, db)
 	t2.Load(hash)
 	for key, value := range records {
 		_, t2value := t2.Get(key)
@@ -244,7 +244,7 @@ func TestPersistence(t *testing.T) {
 func BenchmarkImmutableAvlTree(b *testing.B) {
 	b.StopTimer()
 
-	t := NewIAVLTree(BasicCodec, BasicCodec, 0, nil)
+	t := NewIAVLTree(binary.BasicCodec, binary.BasicCodec, 0, nil)
 	for i := 0; i < 1000000; i++ {
 		t.Set(RandUint64(), "")
 	}

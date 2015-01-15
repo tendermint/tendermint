@@ -28,15 +28,15 @@ import (
 	"bytes"
 	"crypto/sha256"
 
-	. "github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/binary"
 )
 
 func HashFromTwoHashes(left []byte, right []byte) []byte {
 	var n int64
 	var err error
 	var hasher = sha256.New()
-	WriteByteSlice(left, hasher, &n, &err)
-	WriteByteSlice(right, hasher, &n, &err)
+	binary.WriteByteSlice(left, hasher, &n, &err)
+	binary.WriteByteSlice(right, hasher, &n, &err)
 	if err != nil {
 		panic(err)
 	}
@@ -62,7 +62,7 @@ func HashFromBinaries(items []interface{}) []byte {
 	hashes := [][]byte{}
 	for _, item := range items {
 		hasher, n, err := sha256.New(), new(int64), new(error)
-		WriteBinary(item, hasher, n, err)
+		binary.WriteBinary(item, hasher, n, err)
 		if *err != nil {
 			panic(err)
 		}

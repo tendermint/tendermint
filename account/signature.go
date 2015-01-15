@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/tendermint/go-ed25519"
-	. "github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 )
 
@@ -19,9 +19,9 @@ const (
 )
 
 // for binary.readReflect
-var _ = RegisterInterface(
+var _ = binary.RegisterInterface(
 	struct{ Signature }{},
-	ConcreteType{SignatureEd25519{}},
+	binary.ConcreteType{SignatureEd25519{}},
 )
 
 //-------------------------------------

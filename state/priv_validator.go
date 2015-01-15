@@ -9,9 +9,9 @@ import (
 	"math"
 	"sync"
 
-	. "github.com/tendermint/tendermint/account"
-	. "github.com/tendermint/tendermint/binary"
-	. "github.com/tendermint/tendermint/block"
+	"github.com/tendermint/tendermint/account"
+	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/config"
 	. "github.com/tendermint/tendermint/consensus/types"
@@ -27,13 +27,13 @@ const (
 	stepCommit    = 4
 )
 
-func voteToStep(vote *Vote) uint8 {
+func voteToStep(vote *block.Vote) uint8 {
 	switch vote.Type {
-	case VoteTypePrevote:
+	case block.VoteTypePrevote:
 		return stepPrevote
-	case VoteTypePrecommit:
+	case block.VoteTypePrecommit:
 		return stepPrecommit
-	case VoteTypeCommit:
+	case block.VoteTypeCommit:
 		return stepCommit
 	default:
 		panic("Unknown vote type")
@@ -42,8 +42,8 @@ func voteToStep(vote *Vote) uint8 {
 
 type PrivValidator struct {
 	Address    []byte
-	PubKey     PubKeyEd25519
-	PrivKey    PrivKeyEd25519
+	PubKey     account.PubKeyEd25519
+	PrivKey    account.PrivKeyEd25519
 	LastHeight uint
 	LastRound  uint
 	LastStep   uint8
@@ -58,8 +58,8 @@ type PrivValidator struct {
 func GenPrivValidator() *PrivValidator {
 	privKeyBytes := CRandBytes(32)
 	pubKeyBytes := ed25519.MakePubKey(privKeyBytes)
-	pubKey := PubKeyEd25519(pubKeyBytes)
-	privKey := PrivKeyEd25519(privKeyBytes)
+	pubKey := account.PubKeyEd25519(pubKeyBytes)
+	privKey := account.PrivKeyEd25519(privKeyBytes)
 	return &PrivValidator{
 		Address:    pubKey.Address(),
 		PubKey:     pubKey,
@@ -76,7 +76,7 @@ func LoadPrivValidator(filename string) *PrivValidator {
 	if err != nil {
 		panic(err)
 	}
-	privVal := ReadJSON(&PrivValidator{}, privValJSONBytes, &err).(*PrivValidator)
+	privVal := binary.ReadJSON(&PrivValidator{}, privValJSONBytes, &err).(*PrivValidator)
 	if err != nil {
 		Exit(Fmt("Error reading PrivValidator from %v: %v\n", filename, err))
 	}
@@ -91,7 +91,7 @@ func (privVal *PrivValidator) Save() {
 }
 
 func (privVal *PrivValidator) save() {
-	jsonBytes := JSONBytes(privVal)
+	jsonBytes := binary.JSONBytes(privVal)
 	err := ioutil.WriteFile(privVal.filename, jsonBytes, 0700)
 	if err != nil {
 		panic(err)
@@ -99,7 +99,7 @@ func (privVal *PrivValidator) save() {
 }
 
 // TODO: test
-func (privVal *PrivValidator) SignVote(vote *Vote) error {
+func (privVal *PrivValidator) SignVote(vote *block.Vote) error {
 	privVal.mtx.Lock()
 	defer privVal.mtx.Unlock()
 
@@ -134,8 +134,8 @@ func (privVal *PrivValidator) SignVote(vote *Vote) error {
 	return nil
 }
 
-func (privVal *PrivValidator) SignVoteUnsafe(vote *Vote) {
-	vote.Signature = privVal.PrivKey.Sign(SignBytes(vote)).(SignatureEd25519)
+func (privVal *PrivValidator) SignVoteUnsafe(vote *block.Vote) {
+	vote.Signature = privVal.PrivKey.Sign(account.SignBytes(vote)).(account.SignatureEd25519)
 }
 
 func (privVal *PrivValidator) SignProposal(proposal *Proposal) error {
@@ -152,14 +152,14 @@ func (privVal *PrivValidator) SignProposal(proposal *Proposal) error {
 		privVal.save()
 
 		// Sign
-		proposal.Signature = privVal.PrivKey.Sign(SignBytes(proposal)).(SignatureEd25519)
+		proposal.Signature = privVal.PrivKey.Sign(account.SignBytes(proposal)).(account.SignatureEd25519)
 		return nil
 	} else {
 		return errors.New(fmt.Sprintf("Attempt of duplicate signing of proposal: Height %v, Round %v", proposal.Height, proposal.Round))
 	}
 }
 
-func (privVal *PrivValidator) SignRebondTx(rebondTx *RebondTx) error {
+func (privVal *PrivValidator) SignRebondTx(rebondTx *block.RebondTx) error {
 	privVal.mtx.Lock()
 	defer privVal.mtx.Unlock()
 	if privVal.LastHeight < rebondTx.Height {
@@ -171,7 +171,7 @@ func (privVal *PrivValidator) SignRebondTx(rebondTx *RebondTx) error {
 		privVal.save()
 
 		// Sign
-		rebondTx.Signature = privVal.PrivKey.Sign(SignBytes(rebondTx)).(SignatureEd25519)
+		rebondTx.Signature = privVal.PrivKey.Sign(account.SignBytes(rebondTx)).(account.SignatureEd25519)
 		return nil
 	} else {
 		return errors.New(fmt.Sprintf("Attempt of duplicate signing of rebondTx: Height %v", rebondTx.Height))

@@ -8,11 +8,11 @@ import (
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/consensus"
-	db_ "github.com/tendermint/tendermint/db"
-	mempool_ "github.com/tendermint/tendermint/mempool"
+	dbm "github.com/tendermint/tendermint/db"
+	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/rpc"
-	state_ "github.com/tendermint/tendermint/state"
+	sm "github.com/tendermint/tendermint/state"
 )
 
 type Node struct {
@@ -21,29 +21,29 @@ type Node struct {
 	book             *p2p.AddrBook
 	pexReactor       *p2p.PEXReactor
 	blockStore       *block.BlockStore
-	mempoolReactor   *mempool_.MempoolReactor
+	mempoolReactor   *mempl.MempoolReactor
 	consensusState   *consensus.ConsensusState
 	consensusReactor *consensus.ConsensusReactor
-	privValidator    *state_.PrivValidator
+	privValidator    *sm.PrivValidator
 }
 
 func NewNode() *Node {
 	// Get BlockStore
-	blockStoreDB := db_.GetDB("blockstore")
+	blockStoreDB := dbm.GetDB("blockstore")
 	blockStore := block.NewBlockStore(blockStoreDB)
 
 	// Get State
-	stateDB := db_.GetDB("state")
-	state := state_.LoadState(stateDB)
+	stateDB := dbm.GetDB("state")
+	state := sm.LoadState(stateDB)
 	if state == nil {
-		state = state_.MakeGenesisStateFromFile(stateDB, config.App.GetString("GenesisFile"))
+		state = sm.MakeGenesisStateFromFile(stateDB, config.App.GetString("GenesisFile"))
 		state.Save()
 	}
 
 	// Get PrivValidator
-	var privValidator *state_.PrivValidator
+	var privValidator *sm.PrivValidator
 	if _, err := os.Stat(config.App.GetString("PrivValidatorFile")); err == nil {
-		privValidator = state_.LoadPrivValidator(config.App.GetString("PrivValidatorFile"))
+		privValidator = sm.LoadPrivValidator(config.App.GetString("PrivValidatorFile"))
 		log.Info("Loaded PrivValidator", "file", config.App.GetString("PrivValidatorFile"), "privValidator", privValidator)
 	} else {
 		log.Info("No PrivValidator found", "file", config.App.GetString("PrivValidatorFile"))
@@ -54,8 +54,8 @@ func NewNode() *Node {
 	pexReactor := p2p.NewPEXReactor(book)
 
 	// Get MempoolReactor
-	mempool := mempool_.NewMempool(state.Copy())
-	mempoolReactor := mempool_.NewMempoolReactor(mempool)
+	mempool := mempl.NewMempool(state.Copy())
+	mempoolReactor := mempl.NewMempoolReactor(mempool)
 
 	// Get ConsensusReactor
 	consensusState := consensus.NewConsensusState(state, blockStore, mempoolReactor)

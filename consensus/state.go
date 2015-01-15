@@ -60,14 +60,14 @@ import (
 	"sync/atomic"
 	"time"
 
-	. "github.com/tendermint/tendermint/account"
-	. "github.com/tendermint/tendermint/binary"
-	. "github.com/tendermint/tendermint/block"
+	"github.com/tendermint/tendermint/account"
+	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/config"
 	. "github.com/tendermint/tendermint/consensus/types"
-	"github.com/tendermint/tendermint/mempool"
-	"github.com/tendermint/tendermint/state"
+	mempl "github.com/tendermint/tendermint/mempool"
+	sm "github.com/tendermint/tendermint/state"
 )
 
 const (
@@ -169,20 +169,20 @@ type RoundState struct {
 	Step               RoundStep
 	StartTime          time.Time
 	CommitTime         time.Time // Time when +2/3 commits were found
-	Validators         *state.ValidatorSet
+	Validators         *sm.ValidatorSet
 	Proposal           *Proposal
-	ProposalBlock      *Block
-	ProposalBlockParts *PartSet
+	ProposalBlock      *block.Block
+	ProposalBlockParts *block.PartSet
 	ProposalPOL        *POL
-	ProposalPOLParts   *PartSet
-	LockedBlock        *Block
-	LockedBlockParts   *PartSet
+	ProposalPOLParts   *block.PartSet
+	LockedBlock        *block.Block
+	LockedBlockParts   *block.PartSet
 	LockedPOL          *POL // Rarely needed, so no LockedPOLParts.
 	Prevotes           *VoteSet
 	Precommits         *VoteSet
 	Commits            *VoteSet
 	LastCommits        *VoteSet
-	PrivValidator      *state.PrivValidator
+	PrivValidator      *sm.PrivValidator
 }
 
 func (rs *RoundState) String() string {
@@ -234,20 +234,20 @@ type ConsensusState struct {
 	stopped uint32
 	quit    chan struct{}
 
-	blockStore     *BlockStore
-	mempoolReactor *mempool.MempoolReactor
+	blockStore     *block.BlockStore
+	mempoolReactor *mempl.MempoolReactor
 	runActionCh    chan RoundAction
 	newStepCh      chan *RoundState
 
 	mtx sync.Mutex
 	RoundState
-	state                *state.State // State until height-1.
-	stagedBlock          *Block       // Cache last staged block.
-	stagedState          *state.State // Cache result of staged block.
+	state                *sm.State    // State until height-1.
+	stagedBlock          *block.Block // Cache last staged block.
+	stagedState          *sm.State    // Cache result of staged block.
 	lastCommitVoteHeight uint         // Last called commitVoteBlock() or saveCommitVoteBlock() on.
 }
 
-func NewConsensusState(state *state.State, blockStore *BlockStore, mempoolReactor *mempool.MempoolReactor) *ConsensusState {
+func NewConsensusState(state *sm.State, blockStore *block.BlockStore, mempoolReactor *mempl.MempoolReactor) *ConsensusState {
 	cs := &ConsensusState{
 		quit:           make(chan struct{}),
 		blockStore:     blockStore,
@@ -259,7 +259,7 @@ func NewConsensusState(state *state.State, blockStore *BlockStore, mempoolReacto
 	return cs
 }
 
-func (cs *ConsensusState) GetState() *state.State {
+func (cs *ConsensusState) GetState() *sm.State {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	return cs.state.Copy()
@@ -456,7 +456,7 @@ ACTION_LOOP:
 // If calculated round is greater than 0 (based on BlockTime or calculated StartTime)
 // then also sets up the appropriate round, and cs.Step becomes RoundStepNewRound.
 // Otherwise the round is 0 and cs.Step becomes RoundStepNewHeight.
-func (cs *ConsensusState) updateToState(state *state.State) {
+func (cs *ConsensusState) updateToState(state *sm.State) {
 	// Sanity check state.
 	if cs.Height > 0 && cs.Height != state.LastBlockHeight {
 		panic(Fmt("updateToState() expected state height of %v but found %v",
@@ -484,10 +484,10 @@ func (cs *ConsensusState) updateToState(state *state.State) {
 	cs.LockedBlock = nil
 	cs.LockedBlockParts = nil
 	cs.LockedPOL = nil
-	cs.Prevotes = NewVoteSet(height, 0, VoteTypePrevote, validators)
-	cs.Precommits = NewVoteSet(height, 0, VoteTypePrecommit, validators)
+	cs.Prevotes = NewVoteSet(height, 0, block.VoteTypePrevote, validators)
+	cs.Precommits = NewVoteSet(height, 0, block.VoteTypePrecommit, validators)
 	cs.LastCommits = cs.Commits
-	cs.Commits = NewVoteSet(height, 0, VoteTypeCommit, validators)
+	cs.Commits = NewVoteSet(height, 0, block.VoteTypeCommit, validators)
 
 	cs.state = state
 	cs.stagedBlock = nil
@@ -501,7 +501,7 @@ func (cs *ConsensusState) updateToState(state *state.State) {
 
 	// If we've timed out, then send rebond tx.
 	if cs.PrivValidator != nil && cs.state.UnbondingValidators.HasAddress(cs.PrivValidator.Address) {
-		rebondTx := &RebondTx{
+		rebondTx := &block.RebondTx{
 			Address: cs.PrivValidator.Address,
 			Height:  cs.Height + 1,
 		}
@@ -534,13 +534,13 @@ func (cs *ConsensusState) setupNewRound(round uint) {
 	cs.ProposalBlockParts = nil
 	cs.ProposalPOL = nil
 	cs.ProposalPOLParts = nil
-	cs.Prevotes = NewVoteSet(cs.Height, round, VoteTypePrevote, validators)
+	cs.Prevotes = NewVoteSet(cs.Height, round, block.VoteTypePrevote, validators)
 	cs.Prevotes.AddFromCommits(cs.Commits)
-	cs.Precommits = NewVoteSet(cs.Height, round, VoteTypePrecommit, validators)
+	cs.Precommits = NewVoteSet(cs.Height, round, block.VoteTypePrecommit, validators)
 	cs.Precommits.AddFromCommits(cs.Commits)
 }
 
-func (cs *ConsensusState) SetPrivValidator(priv *state.PrivValidator) {
+func (cs *ConsensusState) SetPrivValidator(priv *sm.PrivValidator) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	cs.PrivValidator = priv
@@ -586,24 +586,24 @@ func (cs *ConsensusState) RunActionPropose(height uint, round uint) {
 		log.Debug("Our turn to propose", "proposer", cs.Validators.Proposer().Address, "privValidator", cs.PrivValidator)
 	}
 
-	var block *Block
-	var blockParts *PartSet
+	var block_ *block.Block
+	var blockParts *block.PartSet
 	var pol *POL
-	var polParts *PartSet
+	var polParts *block.PartSet
 
 	// Decide on block and POL
 	if cs.LockedBlock != nil {
 		// If we're locked onto a block, just choose that.
-		block = cs.LockedBlock
+		block_ = cs.LockedBlock
 		blockParts = cs.LockedBlockParts
 		pol = cs.LockedPOL
 	} else {
 		// Otherwise we should create a new proposal.
-		var validation *Validation
+		var validation *block.Validation
 		if cs.Height == 1 {
 			// We're creating a proposal for the first block.
 			// The validation is empty.
-			validation = &Validation{}
+			validation = &block.Validation{}
 		} else if cs.LastCommits.HasTwoThirdsMajority() {
 			// Make the validation from LastCommits
 			validation = cs.LastCommits.MakeValidation()
@@ -617,8 +617,8 @@ func (cs *ConsensusState) RunActionPropose(height uint, round uint) {
 			}
 		}
 		txs := cs.mempoolReactor.Mempool.GetProposalTxs()
-		block = &Block{
-			Header: &Header{
+		block_ = &block.Block{
+			Header: &block.Header{
 				Network:        config.App.GetString("Network"),
 				Height:         cs.Height,
 				Time:           time.Now(),
@@ -629,7 +629,7 @@ func (cs *ConsensusState) RunActionPropose(height uint, round uint) {
 				StateHash:      nil, // Will set afterwards.
 			},
 			Validation: validation,
-			Data: &Data{
+			Data: &block.Data{
 				Txs: txs,
 			},
 		}
@@ -637,14 +637,14 @@ func (cs *ConsensusState) RunActionPropose(height uint, round uint) {
 		// Set the block.Header.StateHash.
 		// TODO: we could cache the resulting state to cs.stagedState.
 		// TODO: This is confusing, not clear that we're mutating block.
-		cs.state.Copy().AppendBlock(block, PartSetHeader{}, false)
+		cs.state.Copy().AppendBlock(block_, block.PartSetHeader{}, false)
 
-		blockParts = NewPartSetFromData(BinaryBytes(block))
+		blockParts = block.NewPartSetFromData(binary.BinaryBytes(block_))
 		pol = cs.LockedPOL // If exists, is a PoUnlock.
 	}
 
 	if pol != nil {
-		polParts = NewPartSetFromData(BinaryBytes(pol))
+		polParts = block.NewPartSetFromData(binary.BinaryBytes(pol))
 	}
 
 	// Make proposal
@@ -652,10 +652,10 @@ func (cs *ConsensusState) RunActionPropose(height uint, round uint) {
 	err := cs.PrivValidator.SignProposal(proposal)
 	if err == nil {
 		log.Info("Signed and set proposal", "height", cs.Height, "round", cs.Round, "proposal", proposal)
-		log.Debug(Fmt("Signed and set proposal block: %v", block))
+		log.Debug(Fmt("Signed and set proposal block: %v", block_))
 		// Set fields
 		cs.Proposal = proposal
-		cs.ProposalBlock = block
+		cs.ProposalBlock = block_
 		cs.ProposalBlockParts = blockParts
 		cs.ProposalPOL = pol
 		cs.ProposalPOLParts = polParts
@@ -679,14 +679,14 @@ func (cs *ConsensusState) RunActionPrevote(height uint, round uint) {
 
 	// If a block is locked, prevote that.
 	if cs.LockedBlock != nil {
-		cs.signAddVote(VoteTypePrevote, cs.LockedBlock.Hash(), cs.LockedBlockParts.Header())
+		cs.signAddVote(block.VoteTypePrevote, cs.LockedBlock.Hash(), cs.LockedBlockParts.Header())
 		return
 	}
 
 	// If ProposalBlock is nil, prevote nil.
 	if cs.ProposalBlock == nil {
 		log.Warn("ProposalBlock is nil")
-		cs.signAddVote(VoteTypePrevote, nil, PartSetHeader{})
+		cs.signAddVote(block.VoteTypePrevote, nil, block.PartSetHeader{})
 		return
 	}
 
@@ -695,12 +695,12 @@ func (cs *ConsensusState) RunActionPrevote(height uint, round uint) {
 	if err != nil {
 		// ProposalBlock is invalid, prevote nil.
 		log.Warn("ProposalBlock is invalid", "error", err)
-		cs.signAddVote(VoteTypePrevote, nil, PartSetHeader{})
+		cs.signAddVote(block.VoteTypePrevote, nil, block.PartSetHeader{})
 		return
 	}
 
 	// Prevote cs.ProposalBlock
-	cs.signAddVote(VoteTypePrevote, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
+	cs.signAddVote(block.VoteTypePrevote, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
 	return
 }
 
@@ -736,7 +736,7 @@ func (cs *ConsensusState) RunActionPrecommit(height uint, round uint) {
 
 	// If +2/3 prevoted for already locked block, precommit it.
 	if cs.LockedBlock.HashesTo(hash) {
-		cs.signAddVote(VoteTypePrecommit, hash, partsHeader)
+		cs.signAddVote(block.VoteTypePrecommit, hash, partsHeader)
 		return
 	}
 
@@ -750,7 +750,7 @@ func (cs *ConsensusState) RunActionPrecommit(height uint, round uint) {
 		}
 		cs.LockedBlock = cs.ProposalBlock
 		cs.LockedBlockParts = cs.ProposalBlockParts
-		cs.signAddVote(VoteTypePrecommit, hash, partsHeader)
+		cs.signAddVote(block.VoteTypePrecommit, hash, partsHeader)
 		return
 	}
 
@@ -804,7 +804,7 @@ func (cs *ConsensusState) RunActionCommit(height uint) {
 			// We're getting the wrong block.
 			// Set up ProposalBlockParts and keep waiting.
 			cs.ProposalBlock = nil
-			cs.ProposalBlockParts = NewPartSetFromHeader(partsHeader)
+			cs.ProposalBlockParts = block.NewPartSetFromHeader(partsHeader)
 
 		} else {
 			// We just need to keep waiting.
@@ -889,19 +889,19 @@ func (cs *ConsensusState) SetProposal(proposal *Proposal) error {
 	}
 
 	// Verify signature
-	if !cs.Validators.Proposer().PubKey.VerifyBytes(SignBytes(proposal), proposal.Signature) {
+	if !cs.Validators.Proposer().PubKey.VerifyBytes(account.SignBytes(proposal), proposal.Signature) {
 		return ErrInvalidProposalSignature
 	}
 
 	cs.Proposal = proposal
-	cs.ProposalBlockParts = NewPartSetFromHeader(proposal.BlockParts)
-	cs.ProposalPOLParts = NewPartSetFromHeader(proposal.POLParts)
+	cs.ProposalBlockParts = block.NewPartSetFromHeader(proposal.BlockParts)
+	cs.ProposalPOLParts = block.NewPartSetFromHeader(proposal.POLParts)
 	return nil
 }
 
 // NOTE: block is not necessarily valid.
 // NOTE: This function may increment the height.
-func (cs *ConsensusState) AddProposalBlockPart(height uint, round uint, part *Part) (added bool, err error) {
+func (cs *ConsensusState) AddProposalBlockPart(height uint, round uint, part *block.Part) (added bool, err error) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 
@@ -922,7 +922,7 @@ func (cs *ConsensusState) AddProposalBlockPart(height uint, round uint, part *Pa
 	if added && cs.ProposalBlockParts.IsComplete() {
 		var n int64
 		var err error
-		cs.ProposalBlock = ReadBinary(&Block{}, cs.ProposalBlockParts.GetReader(), &n, &err).(*Block)
+		cs.ProposalBlock = binary.ReadBinary(&block.Block{}, cs.ProposalBlockParts.GetReader(), &n, &err).(*block.Block)
 		// If we're already in the commit step, try to finalize round.
 		if cs.Step == RoundStepCommit {
 			cs.queueAction(RoundAction{cs.Height, cs.Round, RoundActionTryFinalize})
@@ -934,7 +934,7 @@ func (cs *ConsensusState) AddProposalBlockPart(height uint, round uint, part *Pa
 }
 
 // NOTE: POL is not necessarily valid.
-func (cs *ConsensusState) AddProposalPOLPart(height uint, round uint, part *Part) (added bool, err error) {
+func (cs *ConsensusState) AddProposalPOLPart(height uint, round uint, part *block.Part) (added bool, err error) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 
@@ -954,13 +954,13 @@ func (cs *ConsensusState) AddProposalPOLPart(height uint, round uint, part *Part
 	if added && cs.ProposalPOLParts.IsComplete() {
 		var n int64
 		var err error
-		cs.ProposalPOL = ReadBinary(&POL{}, cs.ProposalPOLParts.GetReader(), &n, &err).(*POL)
+		cs.ProposalPOL = binary.ReadBinary(&POL{}, cs.ProposalPOLParts.GetReader(), &n, &err).(*POL)
 		return true, err
 	}
 	return true, nil
 }
 
-func (cs *ConsensusState) AddVote(address []byte, vote *Vote) (added bool, index uint, err error) {
+func (cs *ConsensusState) AddVote(address []byte, vote *block.Vote) (added bool, index uint, err error) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 
@@ -969,15 +969,15 @@ func (cs *ConsensusState) AddVote(address []byte, vote *Vote) (added bool, index
 
 //-----------------------------------------------------------------------------
 
-func (cs *ConsensusState) addVote(address []byte, vote *Vote) (added bool, index uint, err error) {
+func (cs *ConsensusState) addVote(address []byte, vote *block.Vote) (added bool, index uint, err error) {
 	switch vote.Type {
-	case VoteTypePrevote:
+	case block.VoteTypePrevote:
 		// Prevotes checks for height+round match.
 		return cs.Prevotes.Add(address, vote)
-	case VoteTypePrecommit:
+	case block.VoteTypePrecommit:
 		// Precommits checks for height+round match.
 		return cs.Precommits.Add(address, vote)
-	case VoteTypeCommit:
+	case block.VoteTypeCommit:
 		if vote.Height == cs.Height {
 			// No need to check if vote.Round < cs.Round ...
 			// Prevotes && Precommits already checks that.
@@ -1004,13 +1004,13 @@ func (cs *ConsensusState) addVote(address []byte, vote *Vote) (added bool, index
 	}
 }
 
-func (cs *ConsensusState) stageBlock(block *Block, blockParts *PartSet) error {
-	if block == nil {
+func (cs *ConsensusState) stageBlock(block_ *block.Block, blockParts *block.PartSet) error {
+	if block_ == nil {
 		panic("Cannot stage nil block")
 	}
 
 	// Already staged?
-	if cs.stagedBlock == block {
+	if cs.stagedBlock == block_ {
 		return nil
 	}
 
@@ -1019,21 +1019,21 @@ func (cs *ConsensusState) stageBlock(block *Block, blockParts *PartSet) error {
 
 	// Commit block onto the copied state.
 	// NOTE: Basic validation is done in state.AppendBlock().
-	err := stateCopy.AppendBlock(block, blockParts.Header(), true)
+	err := stateCopy.AppendBlock(block_, blockParts.Header(), true)
 	if err != nil {
 		return err
 	} else {
-		cs.stagedBlock = block
+		cs.stagedBlock = block_
 		cs.stagedState = stateCopy
 		return nil
 	}
 }
 
-func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header PartSetHeader) *Vote {
+func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header block.PartSetHeader) *block.Vote {
 	if cs.PrivValidator == nil || !cs.Validators.HasAddress(cs.PrivValidator.Address) {
 		return nil
 	}
-	vote := &Vote{
+	vote := &block.Vote{
 		Height:     cs.Height,
 		Round:      cs.Round,
 		Type:       type_,
@@ -1052,51 +1052,51 @@ func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header PartSetHea
 }
 
 // sign a Commit-Vote
-func (cs *ConsensusState) commitVoteBlock(block *Block, blockParts *PartSet) {
+func (cs *ConsensusState) commitVoteBlock(block_ *block.Block, blockParts *block.PartSet) {
 
 	// The proposal must be valid.
-	if err := cs.stageBlock(block, blockParts); err != nil {
+	if err := cs.stageBlock(block_, blockParts); err != nil {
 		// Prevent zombies.
 		log.Warn("commitVoteBlock() an invalid block", "error", err)
 		return
 	}
 
 	// Commit-vote.
-	if cs.lastCommitVoteHeight < block.Height {
-		cs.signAddVote(VoteTypeCommit, block.Hash(), blockParts.Header())
-		cs.lastCommitVoteHeight = block.Height
+	if cs.lastCommitVoteHeight < block_.Height {
+		cs.signAddVote(block.VoteTypeCommit, block_.Hash(), blockParts.Header())
+		cs.lastCommitVoteHeight = block_.Height
 	} else {
-		log.Error("Duplicate commitVoteBlock() attempt", "lastCommitVoteHeight", cs.lastCommitVoteHeight, "block.Height", block.Height)
+		log.Error("Duplicate commitVoteBlock() attempt", "lastCommitVoteHeight", cs.lastCommitVoteHeight, "block.Height", block_.Height)
 	}
 }
 
 // Save Block, save the +2/3 Commits we've seen,
 // and sign a Commit-Vote if we haven't already
-func (cs *ConsensusState) saveCommitVoteBlock(block *Block, blockParts *PartSet, commits *VoteSet) {
+func (cs *ConsensusState) saveCommitVoteBlock(block_ *block.Block, blockParts *block.PartSet, commits *VoteSet) {
 
 	// The proposal must be valid.
-	if err := cs.stageBlock(block, blockParts); err != nil {
+	if err := cs.stageBlock(block_, blockParts); err != nil {
 		// Prevent zombies.
 		log.Warn("saveCommitVoteBlock() an invalid block", "error", err)
 		return
 	}
 
 	// Save to blockStore.
-	if cs.blockStore.Height() < block.Height {
+	if cs.blockStore.Height() < block_.Height {
 		seenValidation := commits.MakeValidation()
-		cs.blockStore.SaveBlock(block, blockParts, seenValidation)
+		cs.blockStore.SaveBlock(block_, blockParts, seenValidation)
 	}
 
 	// Save the state.
 	cs.stagedState.Save()
 
 	// Update mempool.
-	cs.mempoolReactor.Mempool.ResetForBlockAndState(block, cs.stagedState)
+	cs.mempoolReactor.Mempool.ResetForBlockAndState(block_, cs.stagedState)
 
 	// Commit-vote if we haven't already.
-	if cs.lastCommitVoteHeight < block.Height {
-		cs.signAddVote(VoteTypeCommit, block.Hash(), blockParts.Header())
-		cs.lastCommitVoteHeight = block.Height
+	if cs.lastCommitVoteHeight < block_.Height {
+		cs.signAddVote(block.VoteTypeCommit, block_.Hash(), blockParts.Header())
+		cs.lastCommitVoteHeight = block_.Height
 	}
 }
 

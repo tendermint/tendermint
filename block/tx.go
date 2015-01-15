@@ -4,8 +4,8 @@ import (
 	"errors"
 	"io"
 
-	. "github.com/tendermint/tendermint/account"
-	. "github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/account"
+	"github.com/tendermint/tendermint/binary"
 )
 
 var (
@@ -47,23 +47,23 @@ const (
 )
 
 // for binary.readReflect
-var _ = RegisterInterface(
+var _ = binary.RegisterInterface(
 	struct{ Tx }{},
-	ConcreteType{&SendTx{}},
-	ConcreteType{&BondTx{}},
-	ConcreteType{&UnbondTx{}},
-	ConcreteType{&RebondTx{}},
-	ConcreteType{&DupeoutTx{}},
+	binary.ConcreteType{&SendTx{}},
+	binary.ConcreteType{&BondTx{}},
+	binary.ConcreteType{&UnbondTx{}},
+	binary.ConcreteType{&RebondTx{}},
+	binary.ConcreteType{&DupeoutTx{}},
 )
 
 //-----------------------------------------------------------------------------
 
 type TxInput struct {
-	Address   []byte    // Hash of the PubKey
-	Amount    uint64    // Must not exceed account balance
-	Sequence  uint      // Must be 1 greater than the last committed TxInput
-	Signature Signature // Depends on the PubKey type and the whole Tx
-	PubKey    PubKey    // Must not be nil, may be PubKeyNil.
+	Address   []byte            // Hash of the PubKey
+	Amount    uint64            // Must not exceed account balance
+	Sequence  uint              // Must be 1 greater than the last committed TxInput
+	Signature account.Signature // Depends on the PubKey type and the whole Tx
+	PubKey    account.PubKey    // Must not be nil, may be PubKeyNil.
 }
 
 func (txIn *TxInput) ValidateBasic() error {
@@ -77,9 +77,9 @@ func (txIn *TxInput) ValidateBasic() error {
 }
 
 func (txIn *TxInput) WriteSignBytes(w io.Writer, n *int64, err *error) {
-	WriteByteSlice(txIn.Address, w, n, err)
-	WriteUint64(txIn.Amount, w, n, err)
-	WriteUvarint(txIn.Sequence, w, n, err)
+	binary.WriteByteSlice(txIn.Address, w, n, err)
+	binary.WriteUint64(txIn.Amount, w, n, err)
+	binary.WriteUvarint(txIn.Sequence, w, n, err)
 }
 
 //-----------------------------------------------------------------------------
@@ -100,8 +100,8 @@ func (txOut *TxOutput) ValidateBasic() error {
 }
 
 func (txOut *TxOutput) WriteSignBytes(w io.Writer, n *int64, err *error) {
-	WriteByteSlice(txOut.Address, w, n, err)
-	WriteUint64(txOut.Amount, w, n, err)
+	binary.WriteByteSlice(txOut.Address, w, n, err)
+	binary.WriteUint64(txOut.Amount, w, n, err)
 }
 
 //-----------------------------------------------------------------------------
@@ -114,11 +114,11 @@ type SendTx struct {
 func (tx *SendTx) TypeByte() byte { return TxTypeSend }
 
 func (tx *SendTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
-	WriteUvarint(uint(len(tx.Inputs)), w, n, err)
+	binary.WriteUvarint(uint(len(tx.Inputs)), w, n, err)
 	for _, in := range tx.Inputs {
 		in.WriteSignBytes(w, n, err)
 	}
-	WriteUvarint(uint(len(tx.Outputs)), w, n, err)
+	binary.WriteUvarint(uint(len(tx.Outputs)), w, n, err)
 	for _, out := range tx.Outputs {
 		out.WriteSignBytes(w, n, err)
 	}
@@ -127,7 +127,7 @@ func (tx *SendTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
 //-----------------------------------------------------------------------------
 
 type BondTx struct {
-	PubKey   PubKeyEd25519
+	PubKey   account.PubKeyEd25519
 	Inputs   []*TxInput
 	UnbondTo []*TxOutput
 }
@@ -135,12 +135,12 @@ type BondTx struct {
 func (tx *BondTx) TypeByte() byte { return TxTypeBond }
 
 func (tx *BondTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
-	WriteBinary(tx.PubKey, w, n, err)
-	WriteUvarint(uint(len(tx.Inputs)), w, n, err)
+	binary.WriteBinary(tx.PubKey, w, n, err)
+	binary.WriteUvarint(uint(len(tx.Inputs)), w, n, err)
 	for _, in := range tx.Inputs {
 		in.WriteSignBytes(w, n, err)
 	}
-	WriteUvarint(uint(len(tx.UnbondTo)), w, n, err)
+	binary.WriteUvarint(uint(len(tx.UnbondTo)), w, n, err)
 	for _, out := range tx.UnbondTo {
 		out.WriteSignBytes(w, n, err)
 	}
@@ -151,14 +151,14 @@ func (tx *BondTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
 type UnbondTx struct {
 	Address   []byte
 	Height    uint
-	Signature SignatureEd25519
+	Signature account.SignatureEd25519
 }
 
 func (tx *UnbondTx) TypeByte() byte { return TxTypeUnbond }
 
 func (tx *UnbondTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
-	WriteByteSlice(tx.Address, w, n, err)
-	WriteUvarint(tx.Height, w, n, err)
+	binary.WriteByteSlice(tx.Address, w, n, err)
+	binary.WriteUvarint(tx.Height, w, n, err)
 }
 
 //-----------------------------------------------------------------------------
@@ -166,14 +166,14 @@ func (tx *UnbondTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
 type RebondTx struct {
 	Address   []byte
 	Height    uint
-	Signature SignatureEd25519
+	Signature account.SignatureEd25519
 }
 
 func (tx *RebondTx) TypeByte() byte { return TxTypeRebond }
 
 func (tx *RebondTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
-	WriteByteSlice(tx.Address, w, n, err)
-	WriteUvarint(tx.Height, w, n, err)
+	binary.WriteByteSlice(tx.Address, w, n, err)
+	binary.WriteUvarint(tx.Height, w, n, err)
 }
 
 //-----------------------------------------------------------------------------

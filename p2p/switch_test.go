@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 )
 
@@ -144,8 +144,8 @@ func TestSwitches(t *testing.T) {
 	if len(ch0Msgs) != 1 {
 		t.Errorf("Expected to have received 1 message in ch0")
 	}
-	if !bytes.Equal(ch0Msgs[0].Bytes, BinaryBytes(ch0Msg)) {
-		t.Errorf("Unexpected message bytes. Wanted: %X, Got: %X", BinaryBytes(ch0Msg), ch0Msgs[0].Bytes)
+	if !bytes.Equal(ch0Msgs[0].Bytes, binary.BinaryBytes(ch0Msg)) {
+		t.Errorf("Unexpected message bytes. Wanted: %X, Got: %X", binary.BinaryBytes(ch0Msg), ch0Msgs[0].Bytes)
 	}
 
 	// Check message on ch1
@@ -153,8 +153,8 @@ func TestSwitches(t *testing.T) {
 	if len(ch1Msgs) != 1 {
 		t.Errorf("Expected to have received 1 message in ch1")
 	}
-	if !bytes.Equal(ch1Msgs[0].Bytes, BinaryBytes(ch1Msg)) {
-		t.Errorf("Unexpected message bytes. Wanted: %X, Got: %X", BinaryBytes(ch1Msg), ch1Msgs[0].Bytes)
+	if !bytes.Equal(ch1Msgs[0].Bytes, binary.BinaryBytes(ch1Msg)) {
+		t.Errorf("Unexpected message bytes. Wanted: %X, Got: %X", binary.BinaryBytes(ch1Msg), ch1Msgs[0].Bytes)
 	}
 
 	// Check message on ch2
@@ -162,8 +162,8 @@ func TestSwitches(t *testing.T) {
 	if len(ch2Msgs) != 1 {
 		t.Errorf("Expected to have received 1 message in ch2")
 	}
-	if !bytes.Equal(ch2Msgs[0].Bytes, BinaryBytes(ch2Msg)) {
-		t.Errorf("Unexpected message bytes. Wanted: %X, Got: %X", BinaryBytes(ch2Msg), ch2Msgs[0].Bytes)
+	if !bytes.Equal(ch2Msgs[0].Bytes, binary.BinaryBytes(ch2Msg)) {
+		t.Errorf("Unexpected message bytes. Wanted: %X, Got: %X", binary.BinaryBytes(ch2Msg), ch2Msgs[0].Bytes)
 	}
 
 }

@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	. "github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 )
 
@@ -215,7 +215,7 @@ func DecodeMessage(bz []byte) (msg interface{}, err error) {
 	case msgTypeRequest:
 		msg = &pexRequestMessage{}
 	case msgTypeAddrs:
-		msg = ReadBinary(&pexAddrsMessage{}, r, n, &err)
+		msg = binary.ReadBinary(&pexAddrsMessage{}, r, n, &err)
 	default:
 		msg = nil
 	}

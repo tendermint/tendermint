@@ -5,16 +5,16 @@ import (
 	"fmt"
 	"io"
 
-	. "github.com/tendermint/tendermint/account"
-	. "github.com/tendermint/tendermint/binary"
-	. "github.com/tendermint/tendermint/block"
+	"github.com/tendermint/tendermint/account"
+	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/block"
 )
 
 // Persistent (mostly) static data for each Validator
 type ValidatorInfo struct {
 	Address         []byte
-	PubKey          PubKeyEd25519
-	UnbondTo        []*TxOutput
+	PubKey          account.PubKeyEd25519
+	UnbondTo        []*block.TxOutput
 	FirstBondHeight uint
 	FirstBondAmount uint64
 
@@ -32,14 +32,14 @@ func (valInfo *ValidatorInfo) Copy() *ValidatorInfo {
 }
 
 func ValidatorInfoEncoder(o interface{}, w io.Writer, n *int64, err *error) {
-	WriteBinary(o.(*ValidatorInfo), w, n, err)
+	binary.WriteBinary(o.(*ValidatorInfo), w, n, err)
 }
 
-func ValidatorInfoDecoder(r Unreader, n *int64, err *error) interface{} {
-	return ReadBinary(&ValidatorInfo{}, r, n, err)
+func ValidatorInfoDecoder(r io.Reader, n *int64, err *error) interface{} {
+	return binary.ReadBinary(&ValidatorInfo{}, r, n, err)
 }
 
-var ValidatorInfoCodec = Codec{
+var ValidatorInfoCodec = binary.Codec{
 	Encode: ValidatorInfoEncoder,
 	Decode: ValidatorInfoDecoder,
 }
@@ -51,7 +51,7 @@ var ValidatorInfoCodec = Codec{
 // every height|round so they don't go in merkle.Tree
 type Validator struct {
 	Address          []byte
-	PubKey           PubKeyEd25519
+	PubKey           account.PubKeyEd25519
 	BondHeight       uint
 	UnbondHeight     uint
 	LastCommitHeight uint
@@ -97,7 +97,7 @@ func (v *Validator) String() string {
 }
 
 func (v *Validator) Hash() []byte {
-	return BinarySha256(v)
+	return binary.BinarySha256(v)
 }
 
 //-------------------------------------
@@ -107,11 +107,11 @@ var ValidatorCodec = validatorCodec{}
 type validatorCodec struct{}
 
 func (vc validatorCodec) Encode(o interface{}, w io.Writer, n *int64, err *error) {
-	WriteBinary(o.(*Validator), w, n, err)
+	binary.WriteBinary(o.(*Validator), w, n, err)
 }
 
-func (vc validatorCodec) Decode(r Unreader, n *int64, err *error) interface{} {
-	return ReadBinary(&Validator{}, r, n, err)
+func (vc validatorCodec) Decode(r io.Reader, n *int64, err *error) interface{} {
+	return binary.ReadBinary(&Validator{}, r, n, err)
 }
 
 func (vc validatorCodec) Compare(o1 interface{}, o2 interface{}) int {

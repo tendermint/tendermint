@@ -12,7 +12,7 @@ import (
 
 	flow "code.google.com/p/mxk/go1/flowcontrol"
 	"github.com/tendermint/log15"
-	. "github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 )
 
@@ -182,7 +182,7 @@ func (c *MConnection) Send(chId byte, msg interface{}) bool {
 		return false
 	}
 
-	log.Debug("Send", "channel", chId, "connection", c, "msg", msg, "bytes", BinaryBytes(msg))
+	log.Debug("Send", "channel", chId, "connection", c, "msg", msg, "bytes", binary.BinaryBytes(msg))
 
 	// Send message to channel.
 	channel, ok := c.channelsIdx[chId]
@@ -191,7 +191,7 @@ func (c *MConnection) Send(chId byte, msg interface{}) bool {
 		return false
 	}
 
-	channel.sendBytes(BinaryBytes(msg))
+	channel.sendBytes(binary.BinaryBytes(msg))
 
 	// Wake up sendRoutine if necessary
 	select {
@@ -218,7 +218,7 @@ func (c *MConnection) TrySend(chId byte, msg interface{}) bool {
 		return false
 	}
 
-	ok = channel.trySendBytes(BinaryBytes(msg))
+	ok = channel.trySendBytes(binary.BinaryBytes(msg))
 	if ok {
 		// Wake up sendRoutine if necessary
 		select {
@@ -262,12 +262,12 @@ FOR_LOOP:
 			}
 		case <-c.pingTimer.Ch:
 			log.Debug("Send Ping")
-			WriteByte(packetTypePing, c.bufWriter, &n, &err)
+			binary.WriteByte(packetTypePing, c.bufWriter, &n, &err)
 			c.sendMonitor.Update(int(n))
 			c.flush()
 		case <-c.pong:
 			log.Debug("Send Pong")
-			WriteByte(packetTypePong, c.bufWriter, &n, &err)
+			binary.WriteByte(packetTypePong, c.bufWriter, &n, &err)
 			c.sendMonitor.Update(int(n))
 			c.flush()
 		case <-c.quit:
@@ -379,7 +379,7 @@ FOR_LOOP:
 		// Read packet type
 		var n int64
 		var err error
-		pktType := ReadByte(c.bufReader, &n, &err)
+		pktType := binary.ReadByte(c.bufReader, &n, &err)
 		c.recvMonitor.Update(int(n))
 		if err != nil {
 			if atomic.LoadUint32(&c.stopped) != 1 {
@@ -400,7 +400,7 @@ FOR_LOOP:
 			log.Debug("Receive Pong")
 		case packetTypeMsg:
 			pkt, n, err := msgPacket{}, new(int64), new(error)
-			ReadBinary(&pkt, c.bufReader, n, err)
+			binary.ReadBinary(&pkt, c.bufReader, n, err)
 			c.recvMonitor.Update(int(*n))
 			if *err != nil {
 				if atomic.LoadUint32(&c.stopped) != 1 {
@@ -533,8 +533,8 @@ func (ch *Channel) nextMsgPacket() msgPacket {
 // Not goroutine-safe
 func (ch *Channel) writeMsgPacketTo(w io.Writer) (n int64, err error) {
 	packet := ch.nextMsgPacket()
-	WriteByte(packetTypeMsg, w, &n, &err)
-	WriteBinary(packet, w, &n, &err)
+	binary.WriteByte(packetTypeMsg, w, &n, &err)
+	binary.WriteBinary(packet, w, &n, &err)
 	if err != nil {
 		ch.recentlySent += n
 	}

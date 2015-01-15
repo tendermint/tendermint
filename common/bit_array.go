@@ -1,12 +1,10 @@
-package binary
+package common
 
 import (
 	"fmt"
 	"math/rand"
 	"strings"
 	"sync"
-
-	. "github.com/tendermint/tendermint/common"
 )
 
 type BitArray struct {

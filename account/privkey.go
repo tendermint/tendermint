@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/tendermint/go-ed25519"
-	. "github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/binary"
 )
 
 // PrivKey is part of PrivAccount and state.PrivValidator.
@@ -19,9 +19,9 @@ const (
 )
 
 // for binary.readReflect
-var _ = RegisterInterface(
+var _ = binary.RegisterInterface(
 	struct{ PrivKey }{},
-	ConcreteType{PrivKeyEd25519{}},
+	binary.ConcreteType{PrivKeyEd25519{}},
 )
 
 //-------------------------------------

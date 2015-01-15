@@ -8,12 +8,12 @@ import (
 	"os"
 	"strconv"
 
-	account_ "github.com/tendermint/tendermint/account"
-	binary "github.com/tendermint/tendermint/binary"
-	block_ "github.com/tendermint/tendermint/block"
+	"github.com/tendermint/tendermint/account"
+	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/common"
-	db_ "github.com/tendermint/tendermint/db"
-	state_ "github.com/tendermint/tendermint/state"
+	dbm "github.com/tendermint/tendermint/db"
+	sm "github.com/tendermint/tendermint/state"
 )
 
 func getString(prompt string) string {
@@ -44,19 +44,19 @@ func getUint64(prompt string) uint64 {
 func gen_tx() {
 
 	// Get State, which may be nil.
-	stateDB := db_.GetDB("state")
-	state := state_.LoadState(stateDB)
+	stateDB := dbm.GetDB("state")
+	state := sm.LoadState(stateDB)
 
 	// Get source pubkey
 	srcPubKeyBytes := getByteSliceFromHex("Enter source pubkey: ")
 	r, n, err := bytes.NewReader(srcPubKeyBytes), new(int64), new(error)
-	srcPubKey := binary.ReadBinary(struct{ account_.PubKey }{}, r, n, err).(struct{ account_.PubKey }).PubKey
+	srcPubKey := binary.ReadBinary(struct{ account.PubKey }{}, r, n, err).(struct{ account.PubKey }).PubKey
 	if *err != nil {
 		Exit(Fmt("Invalid PubKey. Error: %v", err))
 	}
 
 	// Get the state of the account.
-	var srcAccount *account_.Account
+	var srcAccount *account.Account
 	var srcAccountAddress = srcPubKey.Address()
 	var srcAccountBalanceStr = "unknown"
 	var srcAccountSequenceStr = "unknown"
@@ -80,18 +80,18 @@ func gen_tx() {
 	dstSendAmount := getUint64(Fmt("Enter amount to send to %X: ", dstAddress))
 
 	// Construct SendTx
-	tx := &block_.SendTx{
-		Inputs: []*block_.TxInput{
-			&block_.TxInput{
+	tx := &block.SendTx{
+		Inputs: []*block.TxInput{
+			&block.TxInput{
 				Address:   srcAddress,
 				Amount:    srcSendAmount,
 				Sequence:  srcSendSequence,
-				Signature: account_.SignatureEd25519{},
+				Signature: account.SignatureEd25519{},
 				PubKey:    srcPubKey,
 			},
 		},
-		Outputs: []*block_.TxOutput{
-			&block_.TxOutput{
+		Outputs: []*block.TxOutput{
+			&block.TxOutput{
 				Address: dstAddress,
 				Amount:  dstSendAmount,
 			},
@@ -104,12 +104,12 @@ func gen_tx() {
 	// Get source privkey (for signing)
 	srcPrivKeyBytes := getByteSliceFromHex("Enter source privkey (for signing): ")
 	r, n, err = bytes.NewReader(srcPrivKeyBytes), new(int64), new(error)
-	srcPrivKey := binary.ReadBinary(struct{ account_.PrivKey }{}, r, n, err).(struct{ account_.PrivKey }).PrivKey
+	srcPrivKey := binary.ReadBinary(struct{ account.PrivKey }{}, r, n, err).(struct{ account.PrivKey }).PrivKey
 	if *err != nil {
 		Exit(Fmt("Invalid PrivKey. Error: %v", err))
 	}
 
 	// Sign
-	tx.Inputs[0].Signature = srcPrivKey.Sign(account_.SignBytes(tx))
+	tx.Inputs[0].Signature = srcPrivKey.Sign(account.SignBytes(tx))
 	fmt.Printf("Signed tx: %X\n", binary.BinaryBytes(tx))
 }

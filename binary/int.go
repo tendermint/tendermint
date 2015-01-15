@@ -18,16 +18,6 @@ func ReadByte(r io.Reader, n *int64, err *error) byte {
 	return buf[0]
 }
 
-// NOTE: may end up advancing the reader upon error.
-func PeekByte(r Unreader, n *int64, err *error) byte {
-	byte_ := ReadByte(r, n, err)
-	if *err != nil {
-		return 0
-	}
-	*err = r.UnreadByte()
-	return byte_
-}
-
 // Int8
 
 func WriteInt8(i int8, w io.Writer, n *int64, err *error) {

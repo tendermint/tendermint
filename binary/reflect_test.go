@@ -287,9 +287,9 @@ func validateComplexArray(o interface{}, t *testing.T) {
 var testCases = []TestCase{}
 
 func init() {
-	testCases = append(testCases, TestCase{constructBasic, instantiateBasic, validateBasic})
-	testCases = append(testCases, TestCase{constructComplex, instantiateComplex, validateComplex})
-	testCases = append(testCases, TestCase{constructComplex2, instantiateComplex2, validateComplex2})
+	//testCases = append(testCases, TestCase{constructBasic, instantiateBasic, validateBasic})
+	//testCases = append(testCases, TestCase{constructComplex, instantiateComplex, validateComplex})
+	//testCases = append(testCases, TestCase{constructComplex2, instantiateComplex2, validateComplex2})
 	testCases = append(testCases, TestCase{constructComplexArray, instantiateComplexArray, validateComplexArray})
 }
 

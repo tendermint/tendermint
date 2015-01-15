@@ -4,11 +4,11 @@ import (
 	"io/ioutil"
 	"time"
 
-	. "github.com/tendermint/tendermint/account"
-	. "github.com/tendermint/tendermint/binary"
-	. "github.com/tendermint/tendermint/block"
+	"github.com/tendermint/tendermint/account"
+	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/common"
-	db_ "github.com/tendermint/tendermint/db"
+	dbm "github.com/tendermint/tendermint/db"
 	"github.com/tendermint/tendermint/merkle"
 )
 
@@ -18,7 +18,7 @@ type GenesisAccount struct {
 }
 
 type GenesisValidator struct {
-	PubKey   PubKeyEd25519
+	PubKey   account.PubKeyEd25519
 	Amount   uint64
 	UnbondTo []GenesisAccount
 }
@@ -31,14 +31,14 @@ type GenesisDoc struct {
 
 func GenesisDocFromJSON(jsonBlob []byte) (genState *GenesisDoc) {
 	var err error
-	ReadJSON(&genState, jsonBlob, &err)
+	binary.ReadJSON(&genState, jsonBlob, &err)
 	if err != nil {
 		panic(Fmt("Couldn't read GenesisDoc: %v", err))
 	}
 	return
 }
 
-func MakeGenesisStateFromFile(db db_.DB, genDocFile string) *State {
+func MakeGenesisStateFromFile(db dbm.DB, genDocFile string) *State {
 	jsonBlob, err := ioutil.ReadFile(genDocFile)
 	if err != nil {
 		panic(Fmt("Couldn't read GenesisDoc file: %v", err))
@@ -47,7 +47,7 @@ func MakeGenesisStateFromFile(db db_.DB, genDocFile string) *State {
 	return MakeGenesisState(db, genDoc)
 }
 
-func MakeGenesisState(db db_.DB, genDoc *GenesisDoc) *State {
+func MakeGenesisState(db dbm.DB, genDoc *GenesisDoc) *State {
 	if len(genDoc.Validators) == 0 {
 		Exit(Fmt("The genesis file has no validators"))
 	}
@@ -57,19 +57,19 @@ func MakeGenesisState(db db_.DB, genDoc *GenesisDoc) *State {
 	}
 
 	// Make accounts state tree
-	accounts := merkle.NewIAVLTree(BasicCodec, AccountCodec, defaultAccountsCacheCapacity, db)
-	for _, acc := range genDoc.Accounts {
-		account := &Account{
-			Address:  acc.Address,
-			PubKey:   PubKeyNil{},
+	accounts := merkle.NewIAVLTree(binary.BasicCodec, account.AccountCodec, defaultAccountsCacheCapacity, db)
+	for _, genAcc := range genDoc.Accounts {
+		acc := &account.Account{
+			Address:  genAcc.Address,
+			PubKey:   account.PubKeyNil{},
 			Sequence: 0,
-			Balance:  acc.Amount,
+			Balance:  genAcc.Amount,
 		}
-		accounts.Set(acc.Address, account)
+		accounts.Set(acc.Address, acc)
 	}
 
 	// Make validatorInfos state tree && validators slice
-	validatorInfos := merkle.NewIAVLTree(BasicCodec, ValidatorInfoCodec, 0, db)
+	validatorInfos := merkle.NewIAVLTree(binary.BasicCodec, ValidatorInfoCodec, 0, db)
 	validators := make([]*Validator, len(genDoc.Validators))
 	for i, val := range genDoc.Validators {
 		pubKey := val.PubKey
@@ -79,12 +79,12 @@ func MakeGenesisState(db db_.DB, genDoc *GenesisDoc) *State {
 		valInfo := &ValidatorInfo{
 			Address:         address,
 			PubKey:          pubKey,
-			UnbondTo:        make([]*TxOutput, len(val.UnbondTo)),
+			UnbondTo:        make([]*block.TxOutput, len(val.UnbondTo)),
 			FirstBondHeight: 0,
 			FirstBondAmount: val.Amount,
 		}
 		for i, unbondTo := range val.UnbondTo {
-			valInfo.UnbondTo[i] = &TxOutput{
+			valInfo.UnbondTo[i] = &block.TxOutput{
 				Address: unbondTo.Address,
 				Amount:  unbondTo.Amount,
 			}
@@ -107,7 +107,7 @@ func MakeGenesisState(db db_.DB, genDoc *GenesisDoc) *State {
 		DB:                  db,
 		LastBlockHeight:     0,
 		LastBlockHash:       nil,
-		LastBlockParts:      PartSetHeader{},
+		LastBlockParts:      block.PartSetHeader{},
 		LastBlockTime:       genDoc.GenesisTime,
 		BondedValidators:    NewValidatorSet(validators),
 		UnbondingValidators: NewValidatorSet(nil),

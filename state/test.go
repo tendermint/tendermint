@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"sort"
 
-	. "github.com/tendermint/tendermint/account"
-	. "github.com/tendermint/tendermint/block"
+	"github.com/tendermint/tendermint/account"
+	"github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/common"
-	db_ "github.com/tendermint/tendermint/db"
+	dbm "github.com/tendermint/tendermint/db"
 
 	"io/ioutil"
 	"os"
@@ -22,18 +22,18 @@ func Tempfile(prefix string) (*os.File, string) {
 	return file, file.Name()
 }
 
-func RandAccount(randBalance bool, minBalance uint64) (*Account, *PrivAccount) {
-	privAccount := GenPrivAccount()
-	account := &Account{
+func RandAccount(randBalance bool, minBalance uint64) (*account.Account, *account.PrivAccount) {
+	privAccount := account.GenPrivAccount()
+	acc := &account.Account{
 		Address:  privAccount.PubKey.Address(),
 		PubKey:   privAccount.PubKey,
 		Sequence: RandUint(),
 		Balance:  minBalance,
 	}
 	if randBalance {
-		account.Balance += uint64(RandUint32())
+		acc.Balance += uint64(RandUint32())
 	}
-	return account, privAccount
+	return acc, privAccount
 }
 
 func RandValidator(randBonded bool, minBonded uint64) (*ValidatorInfo, *PrivValidator) {
@@ -46,7 +46,7 @@ func RandValidator(randBonded bool, minBonded uint64) (*ValidatorInfo, *PrivVali
 	valInfo := &ValidatorInfo{
 		Address: privVal.Address,
 		PubKey:  privVal.PubKey,
-		UnbondTo: []*TxOutput{&TxOutput{
+		UnbondTo: []*block.TxOutput{&block.TxOutput{
 			Amount:  bonded,
 			Address: privVal.Address,
 		}},
@@ -56,10 +56,10 @@ func RandValidator(randBonded bool, minBonded uint64) (*ValidatorInfo, *PrivVali
 	return valInfo, privVal
 }
 
-func RandGenesisState(numAccounts int, randBalance bool, minBalance uint64, numValidators int, randBonded bool, minBonded uint64) (*State, []*PrivAccount, []*PrivValidator) {
-	db := db_.NewMemDB()
+func RandGenesisState(numAccounts int, randBalance bool, minBalance uint64, numValidators int, randBonded bool, minBonded uint64) (*State, []*account.PrivAccount, []*PrivValidator) {
+	db := dbm.NewMemDB()
 	accounts := make([]GenesisAccount, numAccounts)
-	privAccounts := make([]*PrivAccount, numAccounts)
+	privAccounts := make([]*account.PrivAccount, numAccounts)
 	for i := 0; i < numAccounts; i++ {
 		account, privAccount := RandAccount(randBalance, minBalance)
 		accounts[i] = GenesisAccount{

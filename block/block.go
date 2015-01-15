@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/tendermint/tendermint/account"
-	. "github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/account"
+	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/merkle"
@@ -125,7 +125,7 @@ type Header struct {
 func (h *Header) Hash() []byte {
 	if h.hash == nil {
 		hasher, n, err := sha256.New(), new(int64), new(error)
-		WriteBinary(h, hasher, n, err)
+		binary.WriteBinary(h, hasher, n, err)
 		if *err != nil {
 			panic(err)
 		}
@@ -161,7 +161,7 @@ func (h *Header) StringIndented(indent string) string {
 type Commit struct {
 	Address   []byte
 	Round     uint
-	Signature SignatureEd25519
+	Signature account.SignatureEd25519
 }
 
 func (commit Commit) IsZero() bool {

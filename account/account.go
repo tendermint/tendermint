@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	. "github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/binary"
 )
 
 // Signable is an interface for all signable things.
@@ -46,14 +46,14 @@ func (account *Account) String() string {
 }
 
 func AccountEncoder(o interface{}, w io.Writer, n *int64, err *error) {
-	WriteBinary(o.(*Account), w, n, err)
+	binary.WriteBinary(o.(*Account), w, n, err)
 }
 
-func AccountDecoder(r Unreader, n *int64, err *error) interface{} {
-	return ReadBinary(&Account{}, r, n, err)
+func AccountDecoder(r io.Reader, n *int64, err *error) interface{} {
+	return binary.ReadBinary(&Account{}, r, n, err)
 }
 
-var AccountCodec = Codec{
+var AccountCodec = binary.Codec{
 	Encode: AccountEncoder,
 	Decode: AccountDecoder,
 }

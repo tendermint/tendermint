@@ -4,7 +4,7 @@ import (
 	"crypto/sha256"
 	"io"
 
-	. "github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/binary"
 )
 
 // Node
@@ -30,12 +30,12 @@ func NewIAVLNode(key interface{}, value interface{}) *IAVLNode {
 	}
 }
 
-func ReadIAVLNode(t *IAVLTree, r Unreader, n *int64, err *error) *IAVLNode {
+func ReadIAVLNode(t *IAVLTree, r io.Reader, n *int64, err *error) *IAVLNode {
 	node := &IAVLNode{}
 
 	// node header & key
-	node.height = ReadUint8(r, n, err)
-	node.size = ReadUint64(r, n, err)
+	node.height = binary.ReadUint8(r, n, err)
+	node.size = binary.ReadUint64(r, n, err)
 	node.key = t.keyCodec.Decode(r, n, err)
 	if *err != nil {
 		panic(*err)
@@ -45,8 +45,8 @@ func ReadIAVLNode(t *IAVLTree, r Unreader, n *int64, err *error) *IAVLNode {
 	if node.height == 0 {
 		node.value = t.valueCodec.Decode(r, n, err)
 	} else {
-		node.leftHash = ReadByteSlice(r, n, err)
-		node.rightHash = ReadByteSlice(r, n, err)
+		node.leftHash = binary.ReadByteSlice(r, n, err)
+		node.rightHash = binary.ReadByteSlice(r, n, err)
 	}
 	if *err != nil {
 		panic(*err)
@@ -254,8 +254,8 @@ func (node *IAVLNode) remove(t *IAVLTree, key interface{}) (
 // NOTE: sets hashes recursively
 func (node *IAVLNode) writeToCountHashes(t *IAVLTree, w io.Writer) (n int64, hashCount uint64, err error) {
 	// height & size & key
-	WriteUint8(node.height, w, &n, &err)
-	WriteUint64(node.size, w, &n, &err)
+	binary.WriteUint8(node.height, w, &n, &err)
+	binary.WriteUint64(node.size, w, &n, &err)
 	t.keyCodec.Encode(node.key, w, &n, &err)
 	if err != nil {
 		return
@@ -274,7 +274,7 @@ func (node *IAVLNode) writeToCountHashes(t *IAVLTree, w io.Writer) (n int64, has
 		if node.leftHash == nil {
 			panic("node.leftHash was nil in save")
 		}
-		WriteByteSlice(node.leftHash, w, &n, &err)
+		binary.WriteByteSlice(node.leftHash, w, &n, &err)
 		// right
 		if node.rightNode != nil {
 			rightHash, rightCount := node.rightNode.hashWithCount(t)
@@ -284,7 +284,7 @@ func (node *IAVLNode) writeToCountHashes(t *IAVLTree, w io.Writer) (n int64, has
 		if node.rightHash == nil {
 			panic("node.rightHash was nil in save")
 		}
-		WriteByteSlice(node.rightHash, w, &n, &err)
+		binary.WriteByteSlice(node.rightHash, w, &n, &err)
 	}
 	return
 }

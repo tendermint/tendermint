@@ -6,7 +6,7 @@ import (
 	"net"
 	"sync/atomic"
 
-	. "github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 )
 
@@ -92,7 +92,7 @@ func (p *Peer) CanSend(chId byte) bool {
 }
 
 func (p *Peer) WriteTo(w io.Writer) (n int64, err error) {
-	WriteString(p.Key, w, &n, &err)
+	binary.WriteString(p.Key, w, &n, &err)
 	return
 }
 

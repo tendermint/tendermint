@@ -158,7 +158,7 @@ func RegisterType(info *TypeInfo) *TypeInfo {
 	return info
 }
 
-func readReflect(rv reflect.Value, rt reflect.Type, r Unreader, n *int64, err *error) {
+func readReflect(rv reflect.Value, rt reflect.Type, r io.Reader, n *int64, err *error) {
 
 	log.Debug("Read reflect", "type", rt)
 
@@ -197,7 +197,7 @@ func readReflect(rv reflect.Value, rt reflect.Type, r Unreader, n *int64, err *e
 
 	switch rt.Kind() {
 	case reflect.Interface:
-		typeByte := PeekByte(r, n, err)
+		typeByte := ReadByte(r, n, err)
 		if *err != nil {
 			return
 		}
@@ -206,7 +206,7 @@ func readReflect(rv reflect.Value, rt reflect.Type, r Unreader, n *int64, err *e
 			panic(Fmt("TypeByte %X not registered for interface %v", typeByte, rt))
 		}
 		newRv := reflect.New(concreteType)
-		readReflect(newRv.Elem(), concreteType, r, n, err)
+		readReflect(newRv.Elem(), concreteType, NewPrefixedReader([]byte{typeByte}, r), n, err)
 		rv.Set(newRv.Elem())
 
 	case reflect.Slice:

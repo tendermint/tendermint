@@ -3,28 +3,28 @@ package rpc
 import (
 	"net/http"
 
-	state_ "github.com/tendermint/tendermint/state"
+	sm "github.com/tendermint/tendermint/state"
 )
 
 func ListValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 	var blockHeight uint
-	var bondedValidators []*state_.Validator
-	var unbondingValidators []*state_.Validator
+	var bondedValidators []*sm.Validator
+	var unbondingValidators []*sm.Validator
 
 	state := consensusState.GetState()
 	blockHeight = state.LastBlockHeight
-	state.BondedValidators.Iterate(func(index uint, val *state_.Validator) bool {
+	state.BondedValidators.Iterate(func(index uint, val *sm.Validator) bool {
 		bondedValidators = append(bondedValidators, val)
 		return false
 	})
-	state.UnbondingValidators.Iterate(func(index uint, val *state_.Validator) bool {
+	state.UnbondingValidators.Iterate(func(index uint, val *sm.Validator) bool {
 		unbondingValidators = append(unbondingValidators, val)
 		return false
 	})
 
 	WriteAPIResponse(w, API_OK, struct {
 		BlockHeight         uint
-		BondedValidators    []*state_.Validator
-		UnbondingValidators []*state_.Validator
+		BondedValidators    []*sm.Validator
+		UnbondingValidators []*sm.Validator
 	}{blockHeight, bondedValidators, unbondingValidators})
 }

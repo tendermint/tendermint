@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"io"
 
-	. "github.com/tendermint/tendermint/account"
-	. "github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/account"
+	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 )
 
@@ -27,7 +27,7 @@ type Vote struct {
 	Type       byte
 	BlockHash  []byte        // empty if vote is nil.
 	BlockParts PartSetHeader // zero if vote is nil.
-	Signature  SignatureEd25519
+	Signature  account.SignatureEd25519
 }
 
 // Types of votes
@@ -38,11 +38,11 @@ const (
 )
 
 func (vote *Vote) WriteSignBytes(w io.Writer, n *int64, err *error) {
-	WriteUvarint(vote.Height, w, n, err)
-	WriteUvarint(vote.Round, w, n, err)
-	WriteByte(vote.Type, w, n, err)
-	WriteByteSlice(vote.BlockHash, w, n, err)
-	WriteBinary(vote.BlockParts, w, n, err)
+	binary.WriteUvarint(vote.Height, w, n, err)
+	binary.WriteUvarint(vote.Round, w, n, err)
+	binary.WriteByte(vote.Type, w, n, err)
+	binary.WriteByteSlice(vote.BlockHash, w, n, err)
+	binary.WriteBinary(vote.BlockParts, w, n, err)
 }
 
 func (vote *Vote) Copy() *Vote {
