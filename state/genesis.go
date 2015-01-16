@@ -104,14 +104,15 @@ func MakeGenesisState(db dbm.DB, genDoc *GenesisDoc) *State {
 	validatorInfos.Save()
 
 	return &State{
-		DB:                  db,
-		LastBlockHeight:     0,
-		LastBlockHash:       nil,
-		LastBlockParts:      blk.PartSetHeader{},
-		LastBlockTime:       genDoc.GenesisTime,
-		BondedValidators:    NewValidatorSet(validators),
-		UnbondingValidators: NewValidatorSet(nil),
-		accounts:            accounts,
-		validatorInfos:      validatorInfos,
+		DB:                   db,
+		LastBlockHeight:      0,
+		LastBlockHash:        nil,
+		LastBlockParts:       blk.PartSetHeader{},
+		LastBlockTime:        genDoc.GenesisTime,
+		BondedValidators:     NewValidatorSet(validators),
+		LastBondedValidators: NewValidatorSet(nil),
+		UnbondingValidators:  NewValidatorSet(nil),
+		accounts:             accounts,
+		validatorInfos:       validatorInfos,
 	}
 }

@@ -37,15 +37,16 @@ func (txErr InvalidTxError) Error() string {
 
 // NOTE: not goroutine-safe.
 type State struct {
-	DB                  dbm.DB
-	LastBlockHeight     uint
-	LastBlockHash       []byte
-	LastBlockParts      blk.PartSetHeader
-	LastBlockTime       time.Time
-	BondedValidators    *ValidatorSet
-	UnbondingValidators *ValidatorSet
-	accounts            merkle.Tree // Shouldn't be accessed directly.
-	validatorInfos      merkle.Tree // Shouldn't be accessed directly.
+	DB                   dbm.DB
+	LastBlockHeight      uint
+	LastBlockHash        []byte
+	LastBlockParts       blk.PartSetHeader
+	LastBlockTime        time.Time
+	BondedValidators     *ValidatorSet
+	LastBondedValidators *ValidatorSet
+	UnbondingValidators  *ValidatorSet
+	accounts             merkle.Tree // Shouldn't be accessed directly.
+	validatorInfos       merkle.Tree // Shouldn't be accessed directly.
 }
 
 func LoadState(db dbm.DB) *State {
@@ -60,6 +61,7 @@ func LoadState(db dbm.DB) *State {
 		s.LastBlockParts = binary.ReadBinary(blk.PartSetHeader{}, r, n, err).(blk.PartSetHeader)
 		s.LastBlockTime = binary.ReadTime(r, n, err)
 		s.BondedValidators = binary.ReadBinary(&ValidatorSet{}, r, n, err).(*ValidatorSet)
+		s.LastBondedValidators = binary.ReadBinary(&ValidatorSet{}, r, n, err).(*ValidatorSet)
 		s.UnbondingValidators = binary.ReadBinary(&ValidatorSet{}, r, n, err).(*ValidatorSet)
 		accountsHash := binary.ReadByteSlice(r, n, err)
 		s.accounts = merkle.NewIAVLTree(binary.BasicCodec, account.AccountCodec, defaultAccountsCacheCapacity, db)
@@ -85,6 +87,7 @@ func (s *State) Save() {
 	binary.WriteBinary(s.LastBlockParts, buf, n, err)
 	binary.WriteTime(s.LastBlockTime, buf, n, err)
 	binary.WriteBinary(s.BondedValidators, buf, n, err)
+	binary.WriteBinary(s.LastBondedValidators, buf, n, err)
 	binary.WriteBinary(s.UnbondingValidators, buf, n, err)
 	binary.WriteByteSlice(s.accounts.Hash(), buf, n, err)
 	binary.WriteByteSlice(s.validatorInfos.Hash(), buf, n, err)
@@ -96,15 +99,16 @@ func (s *State) Save() {
 
 func (s *State) Copy() *State {
 	return &State{
-		DB:                  s.DB,
-		LastBlockHeight:     s.LastBlockHeight,
-		LastBlockHash:       s.LastBlockHash,
-		LastBlockParts:      s.LastBlockParts,
-		LastBlockTime:       s.LastBlockTime,
-		BondedValidators:    s.BondedValidators.Copy(),
-		UnbondingValidators: s.UnbondingValidators.Copy(),
-		accounts:            s.accounts.Copy(),
-		validatorInfos:      s.validatorInfos.Copy(),
+		DB:                   s.DB,
+		LastBlockHeight:      s.LastBlockHeight,
+		LastBlockHash:        s.LastBlockHash,
+		LastBlockParts:       s.LastBlockParts,
+		LastBlockTime:        s.LastBlockTime,
+		BondedValidators:     s.BondedValidators.Copy(),
+		LastBondedValidators: s.LastBondedValidators.Copy(),
+		UnbondingValidators:  s.UnbondingValidators.Copy(),
+		accounts:             s.accounts.Copy(),
+		validatorInfos:       s.validatorInfos.Copy(),
 	}
 }
 
@@ -352,7 +356,7 @@ func (s *State) ExecTx(tx_ blk.Tx) error {
 
 		// tx.Height must be equal to the next height
 		if tx.Height != s.LastBlockHeight+1 {
-			return errors.New("Invalid rebond height")
+			return errors.New(Fmt("Invalid rebond height.  Expected %v, got %v", s.LastBlockHeight+1, tx.Height))
 		}
 
 		// Good!
@@ -364,6 +368,12 @@ func (s *State) ExecTx(tx_ blk.Tx) error {
 
 		// Verify the signatures
 		_, accused := s.BondedValidators.GetByAddress(tx.Address)
+		if accused == nil {
+			_, accused = s.UnbondingValidators.GetByAddress(tx.Address)
+			if accused == nil {
+				return blk.ErrTxInvalidAddress
+			}
+		}
 		voteASignBytes := account.SignBytes(&tx.VoteA)
 		voteBSignBytes := account.SignBytes(&tx.VoteB)
 		if !accused.PubKey.VerifyBytes(voteASignBytes, tx.VoteA.Signature) ||
@@ -490,11 +500,12 @@ func (s *State) AppendBlock(block *blk.Block, blockPartsHeader blk.PartSetHeader
 			return errors.New("Block at height 1 (first block) should have no Validation commits")
 		}
 	} else {
-		if uint(len(block.Validation.Commits)) != s.BondedValidators.Size() {
-			return errors.New("Invalid block validation size")
+		if uint(len(block.Validation.Commits)) != s.LastBondedValidators.Size() {
+			return errors.New(Fmt("Invalid block validation size. Expected %v, got %v",
+				s.LastBondedValidators.Size(), len(block.Validation.Commits)))
 		}
 		var sumVotingPower uint64
-		s.BondedValidators.Iterate(func(index uint, val *Validator) bool {
+		s.LastBondedValidators.Iterate(func(index uint, val *Validator) bool {
 			commit := block.Validation.Commits[index]
 			if commit.IsZero() {
 				return false
@@ -519,16 +530,8 @@ func (s *State) AppendBlock(block *blk.Block, blockPartsHeader blk.PartSetHeader
 		if err != nil {
 			return err
 		}
-		if sumVotingPower <= s.BondedValidators.TotalVotingPower()*2/3 {
+		if sumVotingPower <= s.LastBondedValidators.TotalVotingPower()*2/3 {
 			return errors.New("Insufficient validation voting power")
-		}
-	}
-
-	// Commit each tx
-	for _, tx := range block.Data.Txs {
-		err := s.ExecTx(tx)
-		if err != nil {
-			return InvalidTxError{tx, err}
 		}
 	}
 
@@ -537,14 +540,35 @@ func (s *State) AppendBlock(block *blk.Block, blockPartsHeader blk.PartSetHeader
 		if commit.IsZero() {
 			continue
 		}
-		_, val := s.BondedValidators.GetByIndex(uint(i))
+		_, val := s.LastBondedValidators.GetByIndex(uint(i))
 		if val == nil {
 			panic(Fmt("Failed to fetch validator at index %v", i))
 		}
-		val.LastCommitHeight = block.Height - 1
-		updated := s.BondedValidators.Update(val)
-		if !updated {
-			panic("Failed to update validator LastCommitHeight")
+		if _, val_ := s.BondedValidators.GetByAddress(val.Address); val_ != nil {
+			val_.LastCommitHeight = block.Height - 1
+			updated := s.BondedValidators.Update(val_)
+			if !updated {
+				panic("Failed to update bonded validator LastCommitHeight")
+			}
+		} else if _, val_ := s.UnbondingValidators.GetByAddress(val.Address); val_ != nil {
+			val_.LastCommitHeight = block.Height - 1
+			updated := s.UnbondingValidators.Update(val_)
+			if !updated {
+				panic("Failed to update unbonding validator LastCommitHeight")
+			}
+		} else {
+			panic("Could not find validator")
+		}
+	}
+
+	// Remember LastBondedValidators
+	s.LastBondedValidators = s.BondedValidators.Copy()
+
+	// Commit each tx
+	for _, tx := range block.Data.Txs {
+		err := s.ExecTx(tx)
+		if err != nil {
+			return InvalidTxError{tx, err}
 		}
 	}
 
