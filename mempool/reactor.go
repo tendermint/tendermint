@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 
 	"github.com/tendermint/tendermint/binary"
-	"github.com/tendermint/tendermint/block"
+	blk "github.com/tendermint/tendermint/block"
 	"github.com/tendermint/tendermint/p2p"
 )
 
@@ -101,7 +101,7 @@ func (memR *MempoolReactor) Receive(chId byte, src *p2p.Peer, msgBytes []byte) {
 	}
 }
 
-func (memR *MempoolReactor) BroadcastTx(tx block.Tx) error {
+func (memR *MempoolReactor) BroadcastTx(tx blk.Tx) error {
 	err := memR.Mempool.AddTx(tx)
 	if err != nil {
 		return err
@@ -136,7 +136,7 @@ func DecodeMessage(bz []byte) (msgType byte, msg interface{}, err error) {
 //-------------------------------------
 
 type TxMessage struct {
-	Tx block.Tx
+	Tx blk.Tx
 }
 
 func (m *TxMessage) TypeByte() byte { return msgTypeTx }

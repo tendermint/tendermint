@@ -3,7 +3,7 @@ package consensus
 import (
 	"sort"
 
-	"github.com/tendermint/tendermint/block"
+	blk "github.com/tendermint/tendermint/block"
 	dbm "github.com/tendermint/tendermint/db"
 	mempl "github.com/tendermint/tendermint/mempool"
 	sm "github.com/tendermint/tendermint/state"
@@ -39,7 +39,7 @@ func randVoteSet(height uint, round uint, type_ byte, numValidators int, votingP
 
 func randConsensusState() (*ConsensusState, []*sm.PrivValidator) {
 	state, _, privValidators := sm.RandGenesisState(20, false, 1000, 10, false, 1000)
-	blockStore := block.NewBlockStore(dbm.NewMemDB())
+	blockStore := blk.NewBlockStore(dbm.NewMemDB())
 	mempool := mempl.NewMempool(state)
 	mempoolReactor := mempl.NewMempoolReactor(mempool)
 	cs := NewConsensusState(state, blockStore, mempoolReactor)

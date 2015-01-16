@@ -5,7 +5,7 @@ import (
 
 	"github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
-	"github.com/tendermint/tendermint/block"
+	blk "github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/common"
 )
 
@@ -68,7 +68,7 @@ func SignSendTxHandler(w http.ResponseWriter, r *http.Request) {
 	privAccountsStr := GetParam(r, "privAccounts")
 
 	var err error
-	sendTx := binary.ReadJSON(&block.SendTx{}, []byte(sendTxStr), &err).(*block.SendTx)
+	sendTx := binary.ReadJSON(&blk.SendTx{}, []byte(sendTxStr), &err).(*blk.SendTx)
 	if err != nil {
 		WriteAPIResponse(w, API_INVALID_PARAM, Fmt("Invalid sendTx: %v", err))
 		return
@@ -91,6 +91,6 @@ func SignSendTxHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	WriteAPIResponse(w, API_OK, struct {
-		SendTx *block.SendTx
+		SendTx *blk.SendTx
 	}{sendTx})
 }

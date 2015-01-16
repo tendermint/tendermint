@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/block"
+	blk "github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/common"
 	sm "github.com/tendermint/tendermint/state"
 )
@@ -23,9 +23,9 @@ type POLVoteSignature struct {
 type POL struct {
 	Height     uint
 	Round      uint
-	BlockHash  []byte              // Could be nil, which makes this a proof of unlock.
-	BlockParts block.PartSetHeader // When BlockHash is nil, this is zero.
-	Votes      []POLVoteSignature  // Prevote and commit signatures in ValidatorSet order.
+	BlockHash  []byte             // Could be nil, which makes this a proof of unlock.
+	BlockParts blk.PartSetHeader  // When BlockHash is nil, this is zero.
+	Votes      []POLVoteSignature // Prevote and commit signatures in ValidatorSet order.
 }
 
 // Returns whether +2/3 have prevoted/committed for BlockHash.
@@ -37,8 +37,8 @@ func (pol *POL) Verify(valSet *sm.ValidatorSet) error {
 	}
 
 	talliedVotingPower := uint64(0)
-	prevoteDoc := account.SignBytes(&block.Vote{
-		Height: pol.Height, Round: pol.Round, Type: block.VoteTypePrevote,
+	prevoteDoc := account.SignBytes(&blk.Vote{
+		Height: pol.Height, Round: pol.Round, Type: blk.VoteTypePrevote,
 		BlockHash:  pol.BlockHash,
 		BlockParts: pol.BlockParts,
 	})
@@ -54,8 +54,8 @@ func (pol *POL) Verify(valSet *sm.ValidatorSet) error {
 
 		// Commit vote?
 		if vote.Round < pol.Round {
-			voteDoc = account.SignBytes(&block.Vote{
-				Height: pol.Height, Round: vote.Round, Type: block.VoteTypeCommit,
+			voteDoc = account.SignBytes(&blk.Vote{
+				Height: pol.Height, Round: vote.Round, Type: blk.VoteTypeCommit,
 				BlockHash:  pol.BlockHash,
 				BlockParts: pol.BlockParts,
 			})

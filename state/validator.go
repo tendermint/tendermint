@@ -7,14 +7,14 @@ import (
 
 	"github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
-	"github.com/tendermint/tendermint/block"
+	blk "github.com/tendermint/tendermint/block"
 )
 
 // Persistent (mostly) static data for each Validator
 type ValidatorInfo struct {
 	Address         []byte
 	PubKey          account.PubKeyEd25519
-	UnbondTo        []*block.TxOutput
+	UnbondTo        []*blk.TxOutput
 	FirstBondHeight uint
 	FirstBondAmount uint64
 

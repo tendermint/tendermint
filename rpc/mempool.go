@@ -4,14 +4,14 @@ import (
 	"net/http"
 
 	"github.com/tendermint/tendermint/binary"
-	"github.com/tendermint/tendermint/block"
+	blk "github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/common"
 )
 
 func BroadcastTxHandler(w http.ResponseWriter, r *http.Request) {
 	txJSON := GetParam(r, "tx")
 	var err error
-	var tx block.Tx
+	var tx blk.Tx
 	binary.ReadJSON(&tx, []byte(txJSON), &err)
 	if err != nil {
 		WriteAPIResponse(w, API_INVALID_PARAM, Fmt("Invalid tx: %v", err))

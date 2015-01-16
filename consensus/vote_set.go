@@ -8,7 +8,7 @@ import (
 
 	"github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
-	"github.com/tendermint/tendermint/block"
+	blk "github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/common"
 	sm "github.com/tendermint/tendermint/state"
 )
@@ -25,12 +25,12 @@ type VoteSet struct {
 
 	mtx           sync.Mutex
 	valSet        *sm.ValidatorSet
-	votes         []*block.Vote     // validator index -> vote
+	votes         []*blk.Vote       // validator index -> vote
 	votesBitArray BitArray          // validator index -> has vote?
 	votesByBlock  map[string]uint64 // string(blockHash)+string(blockParts) -> vote sum.
 	totalVotes    uint64
 	maj23Hash     []byte
-	maj23Parts    block.PartSetHeader
+	maj23Parts    blk.PartSetHeader
 	maj23Exists   bool
 }
 
@@ -39,7 +39,7 @@ func NewVoteSet(height uint, round uint, type_ byte, valSet *sm.ValidatorSet) *V
 	if height == 0 {
 		panic("Cannot make VoteSet for height == 0, doesn't make sense.")
 	}
-	if type_ == block.VoteTypeCommit && round != 0 {
+	if type_ == blk.VoteTypeCommit && round != 0 {
 		panic("Expected round 0 for commit vote set")
 	}
 	return &VoteSet{
@@ -47,7 +47,7 @@ func NewVoteSet(height uint, round uint, type_ byte, valSet *sm.ValidatorSet) *V
 		round:         round,
 		type_:         type_,
 		valSet:        valSet,
-		votes:         make([]*block.Vote, valSet.Size()),
+		votes:         make([]*blk.Vote, valSet.Size()),
 		votesBitArray: NewBitArray(valSet.Size()),
 		votesByBlock:  make(map[string]uint64),
 		totalVotes:    0,
@@ -65,40 +65,40 @@ func (voteSet *VoteSet) Size() uint {
 // True if added, false if not.
 // Returns ErrVote[UnexpectedStep|InvalidAccount|InvalidSignature|InvalidBlockHash|ConflictingSignature]
 // NOTE: vote should not be mutated after adding.
-func (voteSet *VoteSet) Add(address []byte, vote *block.Vote) (bool, uint, error) {
+func (voteSet *VoteSet) Add(address []byte, vote *blk.Vote) (bool, uint, error) {
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
 
 	// Make sure the step matches. (or that vote is commit && round < voteSet.round)
 	if vote.Height != voteSet.height ||
-		(vote.Type != block.VoteTypeCommit && vote.Round != voteSet.round) ||
-		(vote.Type != block.VoteTypeCommit && vote.Type != voteSet.type_) ||
-		(vote.Type == block.VoteTypeCommit && voteSet.type_ != block.VoteTypeCommit && vote.Round >= voteSet.round) {
-		return false, 0, block.ErrVoteUnexpectedStep
+		(vote.Type != blk.VoteTypeCommit && vote.Round != voteSet.round) ||
+		(vote.Type != blk.VoteTypeCommit && vote.Type != voteSet.type_) ||
+		(vote.Type == blk.VoteTypeCommit && voteSet.type_ != blk.VoteTypeCommit && vote.Round >= voteSet.round) {
+		return false, 0, blk.ErrVoteUnexpectedStep
 	}
 
 	// Ensure that signer is a validator.
 	valIndex, val := voteSet.valSet.GetByAddress(address)
 	if val == nil {
-		return false, 0, block.ErrVoteInvalidAccount
+		return false, 0, blk.ErrVoteInvalidAccount
 	}
 
 	// Check signature.
 	if !val.PubKey.VerifyBytes(account.SignBytes(vote), vote.Signature) {
 		// Bad signature.
-		return false, 0, block.ErrVoteInvalidSignature
+		return false, 0, blk.ErrVoteInvalidSignature
 	}
 
 	return voteSet.addVote(valIndex, vote)
 }
 
-func (voteSet *VoteSet) addVote(valIndex uint, vote *block.Vote) (bool, uint, error) {
+func (voteSet *VoteSet) addVote(valIndex uint, vote *blk.Vote) (bool, uint, error) {
 	// If vote already exists, return false.
 	if existingVote := voteSet.votes[valIndex]; existingVote != nil {
 		if bytes.Equal(existingVote.BlockHash, vote.BlockHash) {
 			return false, 0, nil
 		} else {
-			return false, 0, block.ErrVoteConflictingSignature
+			return false, 0, blk.ErrVoteConflictingSignature
 		}
 	}
 
@@ -146,13 +146,13 @@ func (voteSet *VoteSet) BitArray() BitArray {
 	return voteSet.votesBitArray.Copy()
 }
 
-func (voteSet *VoteSet) GetByIndex(valIndex uint) *block.Vote {
+func (voteSet *VoteSet) GetByIndex(valIndex uint) *blk.Vote {
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
 	return voteSet.votes[valIndex]
 }
 
-func (voteSet *VoteSet) GetByAddress(address []byte) *block.Vote {
+func (voteSet *VoteSet) GetByAddress(address []byte) *blk.Vote {
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
 	valIndex, val := voteSet.valSet.GetByAddress(address)
@@ -173,19 +173,19 @@ func (voteSet *VoteSet) HasTwoThirdsMajority() bool {
 
 // Returns either a blockhash (or nil) that received +2/3 majority.
 // If there exists no such majority, returns (nil, false).
-func (voteSet *VoteSet) TwoThirdsMajority() (hash []byte, parts block.PartSetHeader, ok bool) {
+func (voteSet *VoteSet) TwoThirdsMajority() (hash []byte, parts blk.PartSetHeader, ok bool) {
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
 	if voteSet.maj23Exists {
 		return voteSet.maj23Hash, voteSet.maj23Parts, true
 	} else {
-		return nil, block.PartSetHeader{}, false
+		return nil, blk.PartSetHeader{}, false
 	}
 }
 
 func (voteSet *VoteSet) MakePOL() *POL {
-	if voteSet.type_ != block.VoteTypePrevote {
-		panic("Cannot MakePOL() unless VoteSet.Type is block.VoteTypePrevote")
+	if voteSet.type_ != blk.VoteTypePrevote {
+		panic("Cannot MakePOL() unless VoteSet.Type is blk.VoteTypePrevote")
 	}
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
@@ -217,16 +217,16 @@ func (voteSet *VoteSet) MakePOL() *POL {
 	return pol
 }
 
-func (voteSet *VoteSet) MakeValidation() *block.Validation {
-	if voteSet.type_ != block.VoteTypeCommit {
-		panic("Cannot MakeValidation() unless VoteSet.Type is block.VoteTypeCommit")
+func (voteSet *VoteSet) MakeValidation() *blk.Validation {
+	if voteSet.type_ != blk.VoteTypeCommit {
+		panic("Cannot MakeValidation() unless VoteSet.Type is blk.VoteTypeCommit")
 	}
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
 	if len(voteSet.maj23Hash) == 0 {
 		panic("Cannot MakeValidation() unless a blockhash has +2/3")
 	}
-	commits := make([]block.Commit, voteSet.valSet.Size())
+	commits := make([]blk.Commit, voteSet.valSet.Size())
 	voteSet.valSet.Iterate(func(valIndex uint, val *sm.Validator) bool {
 		vote := voteSet.votes[valIndex]
 		if vote == nil {
@@ -238,10 +238,10 @@ func (voteSet *VoteSet) MakeValidation() *block.Validation {
 		if !vote.BlockParts.Equals(voteSet.maj23Parts) {
 			return false
 		}
-		commits[valIndex] = block.Commit{val.Address, vote.Round, vote.Signature}
+		commits[valIndex] = blk.Commit{val.Address, vote.Round, vote.Signature}
 		return false
 	})
-	return &block.Validation{
+	return &blk.Validation{
 		Commits: commits,
 	}
 }

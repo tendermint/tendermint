@@ -2,7 +2,7 @@ package consensus
 
 import (
 	"github.com/tendermint/tendermint/binary"
-	"github.com/tendermint/tendermint/block"
+	blk "github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/common"
 	sm "github.com/tendermint/tendermint/state"
 
@@ -15,7 +15,7 @@ import (
 // Convenience method.
 // Signs the vote and sets the POL's vote at the desired index
 // Returns the POLVoteSignature pointer, so you can modify it afterwards.
-func signAddPOLVoteSignature(val *sm.PrivValidator, valSet *sm.ValidatorSet, vote *block.Vote, pol *POL) *POLVoteSignature {
+func signAddPOLVoteSignature(val *sm.PrivValidator, valSet *sm.ValidatorSet, vote *blk.Vote, pol *POL) *POLVoteSignature {
 	vote = vote.Copy()
 	err := val.SignVote(vote)
 	if err != nil {
@@ -28,7 +28,7 @@ func signAddPOLVoteSignature(val *sm.PrivValidator, valSet *sm.ValidatorSet, vot
 
 func TestVerifyVotes(t *testing.T) {
 	height, round := uint(1), uint(0)
-	_, valSet, privValidators := randVoteSet(height, round, block.VoteTypePrevote, 10, 1)
+	_, valSet, privValidators := randVoteSet(height, round, blk.VoteTypePrevote, 10, 1)
 
 	// Make a POL with -2/3 votes.
 	blockHash := RandBytes(32)
@@ -36,8 +36,8 @@ func TestVerifyVotes(t *testing.T) {
 		Height: height, Round: round, BlockHash: blockHash,
 		Votes: make([]POLVoteSignature, valSet.Size()),
 	}
-	voteProto := &block.Vote{
-		Height: height, Round: round, Type: block.VoteTypePrevote, BlockHash: blockHash,
+	voteProto := &blk.Vote{
+		Height: height, Round: round, Type: blk.VoteTypePrevote, BlockHash: blockHash,
 	}
 	for i := 0; i < 6; i++ {
 		signAddPOLVoteSignature(privValidators[i], valSet, voteProto, pol)
@@ -59,7 +59,7 @@ func TestVerifyVotes(t *testing.T) {
 
 func TestVerifyInvalidVote(t *testing.T) {
 	height, round := uint(1), uint(0)
-	_, valSet, privValidators := randVoteSet(height, round, block.VoteTypePrevote, 10, 1)
+	_, valSet, privValidators := randVoteSet(height, round, blk.VoteTypePrevote, 10, 1)
 
 	// Make a POL with +2/3 votes with the wrong signature.
 	blockHash := RandBytes(32)
@@ -67,8 +67,8 @@ func TestVerifyInvalidVote(t *testing.T) {
 		Height: height, Round: round, BlockHash: blockHash,
 		Votes: make([]POLVoteSignature, valSet.Size()),
 	}
-	voteProto := &block.Vote{
-		Height: height, Round: round, Type: block.VoteTypePrevote, BlockHash: blockHash,
+	voteProto := &blk.Vote{
+		Height: height, Round: round, Type: blk.VoteTypePrevote, BlockHash: blockHash,
 	}
 	for i := 0; i < 7; i++ {
 		polVoteSig := signAddPOLVoteSignature(privValidators[i], valSet, voteProto, pol)
@@ -83,7 +83,7 @@ func TestVerifyInvalidVote(t *testing.T) {
 
 func TestVerifyCommits(t *testing.T) {
 	height, round := uint(1), uint(2)
-	_, valSet, privValidators := randVoteSet(height, round, block.VoteTypePrevote, 10, 1)
+	_, valSet, privValidators := randVoteSet(height, round, blk.VoteTypePrevote, 10, 1)
 
 	// Make a POL with +2/3 votes.
 	blockHash := RandBytes(32)
@@ -91,8 +91,8 @@ func TestVerifyCommits(t *testing.T) {
 		Height: height, Round: round, BlockHash: blockHash,
 		Votes: make([]POLVoteSignature, valSet.Size()),
 	}
-	voteProto := &block.Vote{
-		Height: height, Round: round - 1, Type: block.VoteTypeCommit, BlockHash: blockHash,
+	voteProto := &blk.Vote{
+		Height: height, Round: round - 1, Type: blk.VoteTypeCommit, BlockHash: blockHash,
 	}
 	for i := 0; i < 7; i++ {
 		signAddPOLVoteSignature(privValidators[i], valSet, voteProto, pol)
@@ -106,7 +106,7 @@ func TestVerifyCommits(t *testing.T) {
 
 func TestVerifyInvalidCommits(t *testing.T) {
 	height, round := uint(1), uint(2)
-	_, valSet, privValidators := randVoteSet(height, round, block.VoteTypePrevote, 10, 1)
+	_, valSet, privValidators := randVoteSet(height, round, blk.VoteTypePrevote, 10, 1)
 
 	// Make a POL with +2/3 votes with the wrong signature.
 	blockHash := RandBytes(32)
@@ -114,8 +114,8 @@ func TestVerifyInvalidCommits(t *testing.T) {
 		Height: height, Round: round, BlockHash: blockHash,
 		Votes: make([]POLVoteSignature, valSet.Size()),
 	}
-	voteProto := &block.Vote{
-		Height: height, Round: round - 1, Type: block.VoteTypeCommit, BlockHash: blockHash,
+	voteProto := &blk.Vote{
+		Height: height, Round: round - 1, Type: blk.VoteTypeCommit, BlockHash: blockHash,
 	}
 	for i := 0; i < 7; i++ {
 		polVoteSig := signAddPOLVoteSignature(privValidators[i], valSet, voteProto, pol)
@@ -130,7 +130,7 @@ func TestVerifyInvalidCommits(t *testing.T) {
 
 func TestVerifyInvalidCommitRounds(t *testing.T) {
 	height, round := uint(1), uint(2)
-	_, valSet, privValidators := randVoteSet(height, round, block.VoteTypePrevote, 10, 1)
+	_, valSet, privValidators := randVoteSet(height, round, blk.VoteTypePrevote, 10, 1)
 
 	// Make a POL with +2/3 commits for the current round.
 	blockHash := RandBytes(32)
@@ -138,8 +138,8 @@ func TestVerifyInvalidCommitRounds(t *testing.T) {
 		Height: height, Round: round, BlockHash: blockHash,
 		Votes: make([]POLVoteSignature, valSet.Size()),
 	}
-	voteProto := &block.Vote{
-		Height: height, Round: round, Type: block.VoteTypeCommit, BlockHash: blockHash,
+	voteProto := &blk.Vote{
+		Height: height, Round: round, Type: blk.VoteTypeCommit, BlockHash: blockHash,
 	}
 	for i := 0; i < 7; i++ {
 		signAddPOLVoteSignature(privValidators[i], valSet, voteProto, pol)
@@ -153,7 +153,7 @@ func TestVerifyInvalidCommitRounds(t *testing.T) {
 
 func TestVerifyInvalidCommitRounds2(t *testing.T) {
 	height, round := uint(1), uint(2)
-	_, valSet, privValidators := randVoteSet(height, round, block.VoteTypePrevote, 10, 1)
+	_, valSet, privValidators := randVoteSet(height, round, blk.VoteTypePrevote, 10, 1)
 
 	// Make a POL with +2/3 commits for future round.
 	blockHash := RandBytes(32)
@@ -161,8 +161,8 @@ func TestVerifyInvalidCommitRounds2(t *testing.T) {
 		Height: height, Round: round, BlockHash: blockHash,
 		Votes: make([]POLVoteSignature, valSet.Size()),
 	}
-	voteProto := &block.Vote{
-		Height: height, Round: round + 1, Type: block.VoteTypeCommit, BlockHash: blockHash,
+	voteProto := &blk.Vote{
+		Height: height, Round: round + 1, Type: blk.VoteTypeCommit, BlockHash: blockHash,
 	}
 	for i := 0; i < 7; i++ {
 		polVoteSig := signAddPOLVoteSignature(privValidators[i], valSet, voteProto, pol)
@@ -177,7 +177,7 @@ func TestVerifyInvalidCommitRounds2(t *testing.T) {
 
 func TestReadWrite(t *testing.T) {
 	height, round := uint(1), uint(2)
-	_, valSet, privValidators := randVoteSet(height, round, block.VoteTypePrevote, 10, 1)
+	_, valSet, privValidators := randVoteSet(height, round, blk.VoteTypePrevote, 10, 1)
 
 	// Make a POL with +2/3 votes.
 	blockHash := RandBytes(32)
@@ -185,8 +185,8 @@ func TestReadWrite(t *testing.T) {
 		Height: height, Round: round, BlockHash: blockHash,
 		Votes: make([]POLVoteSignature, valSet.Size()),
 	}
-	voteProto := &block.Vote{
-		Height: height, Round: round, Type: block.VoteTypePrevote, BlockHash: blockHash,
+	voteProto := &blk.Vote{
+		Height: height, Round: round, Type: blk.VoteTypePrevote, BlockHash: blockHash,
 	}
 	for i := 0; i < 7; i++ {
 		signAddPOLVoteSignature(privValidators[i], valSet, voteProto, pol)

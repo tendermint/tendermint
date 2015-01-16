@@ -1,16 +1,16 @@
 package rpc
 
 import (
-	"github.com/tendermint/tendermint/block"
+	blk "github.com/tendermint/tendermint/block"
 	"github.com/tendermint/tendermint/consensus"
 	mempl "github.com/tendermint/tendermint/mempool"
 )
 
-var blockStore *block.BlockStore
+var blockStore *blk.BlockStore
 var consensusState *consensus.ConsensusState
 var mempoolReactor *mempl.MempoolReactor
 
-func SetRPCBlockStore(bs *block.BlockStore) {
+func SetRPCBlockStore(bs *blk.BlockStore) {
 	blockStore = bs
 }
 

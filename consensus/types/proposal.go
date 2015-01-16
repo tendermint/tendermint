@@ -7,7 +7,7 @@ import (
 
 	"github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
-	. "github.com/tendermint/tendermint/block"
+	blk "github.com/tendermint/tendermint/block"
 )
 
 var (
@@ -18,12 +18,12 @@ var (
 type Proposal struct {
 	Height     uint
 	Round      uint
-	BlockParts PartSetHeader
-	POLParts   PartSetHeader
+	BlockParts blk.PartSetHeader
+	POLParts   blk.PartSetHeader
 	Signature  account.SignatureEd25519
 }
 
-func NewProposal(height uint, round uint, blockParts, polParts PartSetHeader) *Proposal {
+func NewProposal(height uint, round uint, blockParts, polParts blk.PartSetHeader) *Proposal {
 	return &Proposal{
 		Height:     height,
 		Round:      round,

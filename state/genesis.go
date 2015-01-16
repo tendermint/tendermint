@@ -6,7 +6,7 @@ import (
 
 	"github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
-	"github.com/tendermint/tendermint/block"
+	blk "github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/common"
 	dbm "github.com/tendermint/tendermint/db"
 	"github.com/tendermint/tendermint/merkle"
@@ -79,12 +79,12 @@ func MakeGenesisState(db dbm.DB, genDoc *GenesisDoc) *State {
 		valInfo := &ValidatorInfo{
 			Address:         address,
 			PubKey:          pubKey,
-			UnbondTo:        make([]*block.TxOutput, len(val.UnbondTo)),
+			UnbondTo:        make([]*blk.TxOutput, len(val.UnbondTo)),
 			FirstBondHeight: 0,
 			FirstBondAmount: val.Amount,
 		}
 		for i, unbondTo := range val.UnbondTo {
-			valInfo.UnbondTo[i] = &block.TxOutput{
+			valInfo.UnbondTo[i] = &blk.TxOutput{
 				Address: unbondTo.Address,
 				Amount:  unbondTo.Amount,
 			}
@@ -107,7 +107,7 @@ func MakeGenesisState(db dbm.DB, genDoc *GenesisDoc) *State {
 		DB:                  db,
 		LastBlockHeight:     0,
 		LastBlockHash:       nil,
-		LastBlockParts:      block.PartSetHeader{},
+		LastBlockParts:      blk.PartSetHeader{},
 		LastBlockTime:       genDoc.GenesisTime,
 		BondedValidators:    NewValidatorSet(validators),
 		UnbondingValidators: NewValidatorSet(nil),

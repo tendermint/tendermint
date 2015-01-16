@@ -4,7 +4,7 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/tendermint/tendermint/block"
+	blk "github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/consensus"
@@ -20,7 +20,7 @@ type Node struct {
 	sw               *p2p.Switch
 	book             *p2p.AddrBook
 	pexReactor       *p2p.PEXReactor
-	blockStore       *block.BlockStore
+	blockStore       *blk.BlockStore
 	mempoolReactor   *mempl.MempoolReactor
 	consensusState   *consensus.ConsensusState
 	consensusReactor *consensus.ConsensusReactor
@@ -30,7 +30,7 @@ type Node struct {
 func NewNode() *Node {
 	// Get BlockStore
 	blockStoreDB := dbm.GetDB("blockstore")
-	blockStore := block.NewBlockStore(blockStoreDB)
+	blockStore := blk.NewBlockStore(blockStoreDB)
 
 	// Get State
 	stateDB := dbm.GetDB("state")
