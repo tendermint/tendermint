@@ -41,7 +41,7 @@ export GOPATH=$HOME/gopkg
 
 ## Build
 
-[![Build Status](https://drone.io/github.com/tendermint/tendermint/status.png)](https://drone.io/github.com/tendermint/tendermint/latest)
+[![Build Status](http://drone.io/github.com/tendermint/tendermint/status.png)](https://drone.io/github.com/tendermint/tendermint/latest)
 
 ```
 make get_deps
