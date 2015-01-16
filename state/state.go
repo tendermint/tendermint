@@ -565,7 +565,9 @@ func (s *State) AppendBlock(block *blk.Block, blockPartsHeader blk.PartSetHeader
 	// unbond them, they have timed out.
 	toTimeout := []*Validator{}
 	s.BondedValidators.Iterate(func(index uint, val *Validator) bool {
-		if val.LastCommitHeight+validatorTimeoutBlocks < block.Height {
+		lastActivityHeight := MaxUint(val.BondHeight, val.LastCommitHeight)
+		if lastActivityHeight+validatorTimeoutBlocks < block.Height {
+			log.Info("Validator timeout", "validator", val, "height", block.Height)
 			toTimeout = append(toTimeout, val)
 		}
 		return false
