@@ -54,6 +54,14 @@ func NewVoteSet(height uint, round uint, type_ byte, valSet *sm.ValidatorSet) *V
 	}
 }
 
+func (voteSet *VoteSet) Height() uint {
+	if voteSet == nil {
+		return 0
+	} else {
+		return voteSet.height
+	}
+}
+
 func (voteSet *VoteSet) Size() uint {
 	if voteSet == nil {
 		return 0

@@ -383,8 +383,10 @@ OUTER_LOOP:
 		prs := ps.GetRoundState()
 
 		trySendVote := func(voteSet *VoteSet, peerVoteSet BitArray) (sent bool) {
-			// Initialize Prevotes/Precommits/Commits if needed
-			ps.EnsureVoteBitArrays(prs.Height, voteSet.Size())
+			if prs.Height == voteSet.Height() {
+				// Initialize Prevotes/Precommits/Commits if needed
+				ps.EnsureVoteBitArrays(prs.Height, voteSet.Size())
+			}
 
 			// TODO: give priority to our vote.
 			if index, ok := voteSet.BitArray().Sub(peerVoteSet.Copy()).PickRandom(); ok {
