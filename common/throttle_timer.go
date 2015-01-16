@@ -12,6 +12,7 @@ If a long continuous burst of .Set() calls happens, ThrottleTimer fires
 at most once every "dur".
 */
 type ThrottleTimer struct {
+	Name  string
 	Ch    chan struct{}
 	quit  chan struct{}
 	dur   time.Duration
@@ -19,10 +20,10 @@ type ThrottleTimer struct {
 	isSet uint32
 }
 
-func NewThrottleTimer(dur time.Duration) *ThrottleTimer {
+func NewThrottleTimer(name string, dur time.Duration) *ThrottleTimer {
 	var ch = make(chan struct{})
 	var quit = make(chan struct{})
-	var t = &ThrottleTimer{Ch: ch, dur: dur, quit: quit}
+	var t = &ThrottleTimer{Name: name, Ch: ch, dur: dur, quit: quit}
 	t.timer = time.AfterFunc(dur, t.fireRoutine)
 	t.timer.Stop()
 	return t
@@ -33,6 +34,9 @@ func (t *ThrottleTimer) fireRoutine() {
 	case t.Ch <- struct{}{}:
 		atomic.StoreUint32(&t.isSet, 0)
 	case <-t.quit:
+		// do nothing
+	default:
+		t.timer.Reset(t.dur)
 	}
 }
 

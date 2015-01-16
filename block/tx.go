@@ -6,6 +6,7 @@ import (
 
 	"github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
 )
 
 var (
@@ -82,6 +83,10 @@ func (txIn *TxInput) WriteSignBytes(w io.Writer, n *int64, err *error) {
 	binary.WriteUvarint(txIn.Sequence, w, n, err)
 }
 
+func (txIn *TxInput) String() string {
+	return Fmt("TxInput{%X,%v,%v,%v,%v}", txIn.Address, txIn.Amount, txIn.Sequence, txIn.Signature, txIn.PubKey)
+}
+
 //-----------------------------------------------------------------------------
 
 type TxOutput struct {
@@ -104,6 +109,10 @@ func (txOut *TxOutput) WriteSignBytes(w io.Writer, n *int64, err *error) {
 	binary.WriteUint64(txOut.Amount, w, n, err)
 }
 
+func (txOut *TxOutput) String() string {
+	return Fmt("TxOutput{%X,%v}", txOut.Address, txOut.Amount)
+}
+
 //-----------------------------------------------------------------------------
 
 type SendTx struct {
@@ -122,6 +131,10 @@ func (tx *SendTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
 	for _, out := range tx.Outputs {
 		out.WriteSignBytes(w, n, err)
 	}
+}
+
+func (tx *SendTx) String() string {
+	return Fmt("SendTx{%v -> %v}", tx.Inputs, tx.Outputs)
 }
 
 //-----------------------------------------------------------------------------
@@ -146,6 +159,10 @@ func (tx *BondTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
 	}
 }
 
+func (tx *BondTx) String() string {
+	return Fmt("BondTx{%v: %v -> %v}", tx.PubKey, tx.Inputs, tx.UnbondTo)
+}
+
 //-----------------------------------------------------------------------------
 
 type UnbondTx struct {
@@ -159,6 +176,10 @@ func (tx *UnbondTx) TypeByte() byte { return TxTypeUnbond }
 func (tx *UnbondTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
 	binary.WriteByteSlice(tx.Address, w, n, err)
 	binary.WriteUvarint(tx.Height, w, n, err)
+}
+
+func (tx *UnbondTx) String() string {
+	return Fmt("UnbondTx{%X,%v,%v}", tx.Address, tx.Height, tx.Signature)
 }
 
 //-----------------------------------------------------------------------------
@@ -176,6 +197,10 @@ func (tx *RebondTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
 	binary.WriteUvarint(tx.Height, w, n, err)
 }
 
+func (tx *RebondTx) String() string {
+	return Fmt("RebondTx{%X,%v,%v}", tx.Address, tx.Height, tx.Signature)
+}
+
 //-----------------------------------------------------------------------------
 
 type DupeoutTx struct {
@@ -188,4 +213,8 @@ func (tx *DupeoutTx) TypeByte() byte { return TxTypeDupeout }
 
 func (tx *DupeoutTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
 	panic("DupeoutTx has no sign bytes")
+}
+
+func (tx *DupeoutTx) String() string {
+	return Fmt("DupeoutTx{%X,%v,%v}", tx.Address, tx.VoteA, tx.VoteB)
 }

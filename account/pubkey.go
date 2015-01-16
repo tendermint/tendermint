@@ -5,6 +5,7 @@ import (
 
 	"github.com/tendermint/go-ed25519"
 	"github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
 )
 
 // PubKey is part of Account and Validator.
@@ -42,6 +43,10 @@ func (key PubKeyNil) VerifyBytes(msg []byte, sig_ Signature) bool {
 	panic("PubKeyNil cannot verify messages")
 }
 
+func (key PubKeyNil) String() string {
+	return "PubKeyNil{}"
+}
+
 //-------------------------------------
 
 // Implements PubKey
@@ -70,4 +75,8 @@ func (key PubKeyEd25519) VerifyBytes(msg []byte, sig_ Signature) bool {
 		Signature: sig,
 	}
 	return ed25519.VerifyBatch([]*ed25519.Verify{v1})
+}
+
+func (key PubKeyEd25519) String() string {
+	return Fmt("PubKeyEd25519{%X}", []byte(key))
 }

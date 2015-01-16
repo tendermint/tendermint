@@ -133,7 +133,7 @@ func (pexR *PEXReactor) ensurePeersRoutine() {
 	// fire once immediately.
 	pexR.ensurePeers()
 	// fire periodically
-	timer := NewRepeatTimer(ensurePeersPeriodSeconds * time.Second)
+	timer := NewRepeatTimer("pex", ensurePeersPeriodSeconds*time.Second)
 FOR_LOOP:
 	for {
 		select {

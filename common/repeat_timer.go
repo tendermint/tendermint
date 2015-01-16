@@ -7,16 +7,17 @@ RepeatTimer repeatedly sends a struct{}{} to .Ch after each "dur" period.
 It's good for keeping connections alive.
 */
 type RepeatTimer struct {
+	Name  string
 	Ch    chan struct{}
 	quit  chan struct{}
 	dur   time.Duration
 	timer *time.Timer
 }
 
-func NewRepeatTimer(dur time.Duration) *RepeatTimer {
+func NewRepeatTimer(name string, dur time.Duration) *RepeatTimer {
 	var ch = make(chan struct{})
 	var quit = make(chan struct{})
-	var t = &RepeatTimer{Ch: ch, dur: dur, quit: quit}
+	var t = &RepeatTimer{Name: name, Ch: ch, dur: dur, quit: quit}
 	t.timer = time.AfterFunc(dur, t.fireRoutine)
 	return t
 }
@@ -26,6 +27,9 @@ func (t *RepeatTimer) fireRoutine() {
 	case t.Ch <- struct{}{}:
 		t.timer.Reset(t.dur)
 	case <-t.quit:
+		// do nothing
+	default:
+		t.timer.Reset(t.dur)
 	}
 }
 

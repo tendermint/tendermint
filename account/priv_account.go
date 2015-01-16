@@ -23,3 +23,7 @@ func GenPrivAccount() *PrivAccount {
 func (privAccount *PrivAccount) Sign(o Signable) Signature {
 	return privAccount.PrivKey.Sign(SignBytes(o))
 }
+
+func (privAccount *PrivAccount) String() string {
+	return Fmt("PrivAccount{%X}", privAccount.Address)
+}

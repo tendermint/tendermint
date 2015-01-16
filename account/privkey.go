@@ -5,6 +5,7 @@ import (
 
 	"github.com/tendermint/go-ed25519"
 	"github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
 )
 
 // PrivKey is part of PrivAccount and state.PrivValidator.
@@ -45,4 +46,8 @@ func (key PrivKeyEd25519) Sign(msg []byte) Signature {
 
 func (key PrivKeyEd25519) PubKey() PubKey {
 	return PubKeyEd25519(ed25519.MakePubKey(key))
+}
+
+func (key PrivKeyEd25519) String() string {
+	return Fmt("PrivKeyEd25519{*****}")
 }
