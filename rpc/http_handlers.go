@@ -11,6 +11,6 @@ func initHandlers() {
 	http.HandleFunc("/gen_priv_account", GenPrivAccountHandler)
 	http.HandleFunc("/get_account", GetAccountHandler)
 	http.HandleFunc("/list_accounts", ListAccountsHandler)
-	http.HandleFunc("/sign_send_tx", SignSendTxHandler)
+	http.HandleFunc("/sign_tx", SignTxHandler)
 	http.HandleFunc("/list_validators", ListValidatorsHandler)
 }
