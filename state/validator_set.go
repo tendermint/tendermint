@@ -144,8 +144,10 @@ func (valSet *ValidatorSet) Add(val *Validator) (added bool) {
 	} else if bytes.Compare(valSet.Validators[idx].Address, val.Address) == 0 {
 		return false
 	} else {
-		newValidators := append(valSet.Validators[:idx], val)
-		newValidators = append(newValidators, valSet.Validators[idx:]...)
+		newValidators := make([]*Validator, len(valSet.Validators)+1)
+		copy(newValidators[:idx], valSet.Validators[:idx])
+		newValidators[idx] = val
+		copy(newValidators[idx+1:], valSet.Validators[idx:])
 		valSet.Validators = newValidators
 		// Invalidate cache
 		valSet.proposer = nil
