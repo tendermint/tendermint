@@ -36,7 +36,7 @@ func RandAccount(randBalance bool, minBalance uint64) (*account.Account, *accoun
 	return acc, privAccount
 }
 
-func RandValidator(randBonded bool, minBonded uint64) (*ValidatorInfo, *PrivValidator) {
+func RandValidator(randBonded bool, minBonded uint64) (*ValidatorInfo, *Validator, *PrivValidator) {
 	privVal := GenPrivValidator()
 	_, privVal.filename = Tempfile("priv_validator_")
 	bonded := minBonded
@@ -53,7 +53,16 @@ func RandValidator(randBonded bool, minBonded uint64) (*ValidatorInfo, *PrivVali
 		FirstBondHeight: 0,
 		FirstBondAmount: bonded,
 	}
-	return valInfo, privVal
+	val := &Validator{
+		Address:          valInfo.Address,
+		PubKey:           valInfo.PubKey,
+		BondHeight:       0,
+		UnbondHeight:     0,
+		LastCommitHeight: 0,
+		VotingPower:      valInfo.FirstBondAmount,
+		Accum:            0,
+	}
+	return valInfo, val, privVal
 }
 
 func RandGenesisState(numAccounts int, randBalance bool, minBalance uint64, numValidators int, randBonded bool, minBonded uint64) (*State, []*account.PrivAccount, []*PrivValidator) {
@@ -71,7 +80,7 @@ func RandGenesisState(numAccounts int, randBalance bool, minBalance uint64, numV
 	validators := make([]GenesisValidator, numValidators)
 	privValidators := make([]*PrivValidator, numValidators)
 	for i := 0; i < numValidators; i++ {
-		valInfo, privVal := RandValidator(randBonded, minBonded)
+		valInfo, _, privVal := RandValidator(randBonded, minBonded)
 		validators[i] = GenesisValidator{
 			PubKey: valInfo.PubKey,
 			Amount: valInfo.FirstBondAmount,

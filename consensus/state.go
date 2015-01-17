@@ -635,9 +635,7 @@ func (cs *ConsensusState) RunActionPropose(height uint, round uint) {
 		}
 
 		// Set the blk.Header.StateHash.
-		// TODO: we could cache the resulting state to cs.stagedState.
-		// TODO: This is confusing, not clear that we're mutating block.
-		cs.state.Copy().AppendBlock(block, blk.PartSetHeader{}, false)
+		cs.state.SetBlockStateHash(block)
 
 		blockParts = blk.NewPartSetFromData(binary.BinaryBytes(block))
 		pol = cs.LockedPOL // If exists, is a PoUnlock.
@@ -1019,7 +1017,7 @@ func (cs *ConsensusState) stageBlock(block *blk.Block, blockParts *blk.PartSet) 
 
 	// Commit block onto the copied state.
 	// NOTE: Basic validation is done in state.AppendBlock().
-	err := stateCopy.AppendBlock(block, blockParts.Header(), true)
+	err := stateCopy.AppendBlock(block, blockParts.Header())
 	if err != nil {
 		return err
 	} else {

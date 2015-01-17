@@ -482,12 +482,37 @@ func (s *State) destroyValidator(val *Validator) {
 
 }
 
-// "checkStateHash": If false, instead of checking the resulting
-// state.Hash() against blk.StateHash, it *sets* the blk.StateHash.
-// (used for constructing a new proposal)
 // NOTE: If an error occurs during block execution, state will be left
 // at an invalid state.  Copy the state before calling AppendBlock!
-func (s *State) AppendBlock(block *blk.Block, blockPartsHeader blk.PartSetHeader, checkStateHash bool) error {
+func (s *State) AppendBlock(block *blk.Block, blockPartsHeader blk.PartSetHeader) error {
+	err := s.appendBlock(block, blockPartsHeader)
+	if err != nil {
+		return err
+	}
+	// State.Hash should match block.StateHash
+	stateHash := s.Hash()
+	if !bytes.Equal(stateHash, block.StateHash) {
+		return Errorf("Invalid state hash. Expected %X, got %X",
+			stateHash, block.StateHash)
+	}
+	return nil
+}
+
+func (s *State) SetBlockStateHash(block *blk.Block) error {
+	sCopy := s.Copy()
+	err := sCopy.appendBlock(block, blk.PartSetHeader{})
+	if err != nil {
+		return err
+	}
+	// Set block.StateHash
+	block.StateHash = sCopy.Hash()
+	return nil
+}
+
+// Appends the block, does not check block.StateHash
+// NOTE: If an error occurs during block execution, state will be left
+// at an invalid state.  Copy the state before calling appendBlock!
+func (s *State) appendBlock(block *blk.Block, blockPartsHeader blk.PartSetHeader) error {
 	// Basic block validation.
 	err := block.ValidateBasic(s.LastBlockHeight, s.LastBlockHash, s.LastBlockParts, s.LastBlockTime)
 	if err != nil {
@@ -603,22 +628,6 @@ func (s *State) AppendBlock(block *blk.Block, blockPartsHeader blk.PartSetHeader
 	// Increment validator AccumPowers
 	s.BondedValidators.IncrementAccum(1)
 
-	// Check or set blk.StateHash
-	stateHash := s.Hash()
-	if checkStateHash {
-		// State hash should match
-		if !bytes.Equal(stateHash, block.StateHash) {
-			return Errorf("Invalid state hash. Got %X, block says %X",
-				stateHash, block.StateHash)
-		}
-	} else {
-		// Set the state hash.
-		if block.StateHash != nil {
-			panic("Cannot overwrite block.StateHash")
-		}
-		block.StateHash = stateHash
-	}
-
 	s.LastBlockHeight = block.Height
 	s.LastBlockHash = block.Hash()
 	s.LastBlockParts = blockPartsHeader
@@ -674,7 +683,7 @@ func (s *State) SetValidatorInfo(valInfo *ValidatorInfo) (updated bool) {
 }
 
 // Returns a hash that represents the state data,
-// excluding LastBlock*
+// excluding Last*
 func (s *State) Hash() []byte {
 	hashables := []merkle.Hashable{
 		s.BondedValidators,

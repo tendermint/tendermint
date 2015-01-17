@@ -52,33 +52,28 @@ func TestCopyState(t *testing.T) {
 	}
 }
 
-func TestGenesisSaveLoad(t *testing.T) {
-
-	// Generate a state, save & load it.
-	s0, _, _ := RandGenesisState(10, true, 1000, 5, true, 1000)
-
-	// Mutate the state to append one empty block.
+func makeBlock(t *testing.T, state *State, commits []blk.Commit, txs []blk.Tx) *blk.Block {
 	block := &blk.Block{
 		Header: &blk.Header{
 			Network:        config.App.GetString("Network"),
-			Height:         1,
-			Time:           s0.LastBlockTime.Add(time.Minute),
+			Height:         state.LastBlockHeight + 1,
+			Time:           state.LastBlockTime.Add(time.Minute),
 			Fees:           0,
-			NumTxs:         0,
-			LastBlockHash:  s0.LastBlockHash,
-			LastBlockParts: s0.LastBlockParts,
+			NumTxs:         uint(len(txs)),
+			LastBlockHash:  state.LastBlockHash,
+			LastBlockParts: state.LastBlockParts,
 			StateHash:      nil,
 		},
-		Validation: &blk.Validation{},
+		Validation: &blk.Validation{
+			Commits: commits,
+		},
 		Data: &blk.Data{
-			Txs: []blk.Tx{},
+			Txs: txs,
 		},
 	}
-	blockParts := blk.NewPartSetFromData(binary.BinaryBytes(block))
 
-	// The last argument to AppendBlock() is `false`,
-	// which sets Block.Header.StateHash.
-	err := s0.Copy().AppendBlock(block, blockParts.Header(), false)
+	// Fill in block StateHash
+	err := state.SetBlockStateHash(block)
 	if err != nil {
 		t.Error("Error appending initial block:", err)
 	}
@@ -86,9 +81,20 @@ func TestGenesisSaveLoad(t *testing.T) {
 		t.Error("Expected StateHash but got nothing.")
 	}
 
+	return block
+}
+
+func TestGenesisSaveLoad(t *testing.T) {
+
+	// Generate a state, save & load it.
+	s0, _, _ := RandGenesisState(10, true, 1000, 5, true, 1000)
+
+	// Make complete block and blockParts
+	block := makeBlock(t, s0, nil, nil)
+	blockParts := blk.NewPartSetFromData(binary.BinaryBytes(block))
+
 	// Now append the block to s0.
-	// This time we also check the StateHash (as computed above).
-	err = s0.AppendBlock(block, blockParts.Header(), true)
+	err := s0.AppendBlock(block, blockParts.Header())
 	if err != nil {
 		t.Error("Error appending initial block:", err)
 	}
@@ -142,11 +148,6 @@ func TestGenesisSaveLoad(t *testing.T) {
 		t.Error("Accounts mismatch")
 	}
 }
-
-/* TODO
-func TestSendTxStateSave(t *testing.T) {
-}
-*/
 
 func TestTxSequence(t *testing.T) {
 
@@ -307,4 +308,80 @@ func TestTxs(t *testing.T) {
 
 	// TODO UnbondTx.
 
+}
+
+func TestAddValidator(t *testing.T) {
+
+	// Generate a state, save & load it.
+	s0, privAccounts, privValidators := RandGenesisState(10, false, 1000, 1, false, 1000)
+
+	// The first privAccount will become a validator
+	acc0 := privAccounts[0]
+	bondTx := &blk.BondTx{
+		PubKey: acc0.PubKey.(account.PubKeyEd25519),
+		Inputs: []*blk.TxInput{
+			&blk.TxInput{
+				Address:  acc0.Address,
+				Amount:   1000,
+				Sequence: 1,
+				PubKey:   acc0.PubKey,
+			},
+		},
+		UnbondTo: []*blk.TxOutput{
+			&blk.TxOutput{
+				Address: acc0.Address,
+				Amount:  1000,
+			},
+		},
+	}
+	bondTx.Inputs[0].Signature = acc0.Sign(bondTx)
+
+	// Make complete block and blockParts
+	block0 := makeBlock(t, s0, nil, []blk.Tx{bondTx})
+	block0Parts := blk.NewPartSetFromData(binary.BinaryBytes(block0))
+
+	// Sanity check
+	if s0.BondedValidators.Size() != 1 {
+		t.Error("Expected there to be 1 validators before bondTx")
+	}
+
+	// Now append the block to s0.
+	err := s0.AppendBlock(block0, block0Parts.Header())
+	if err != nil {
+		t.Error("Error appending initial block:", err)
+	}
+
+	// Must save before further modification
+	s0.Save()
+
+	// Test new validator set
+	if s0.BondedValidators.Size() != 2 {
+		t.Error("Expected there to be 2 validators after bondTx")
+	}
+
+	// The validation for the next block should only require 1 signature
+	// (the new validator wasn't active for block0)
+	commit0 := &blk.Vote{
+		Height:     1,
+		Round:      0,
+		Type:       blk.VoteTypeCommit,
+		BlockHash:  block0.Hash(),
+		BlockParts: block0Parts.Header(),
+	}
+	privValidators[0].SignVote(commit0)
+
+	block1 := makeBlock(t, s0,
+		[]blk.Commit{
+			blk.Commit{
+				Address:   privValidators[0].Address,
+				Round:     0,
+				Signature: commit0.Signature,
+			},
+		}, nil,
+	)
+	block1Parts := blk.NewPartSetFromData(binary.BinaryBytes(block1))
+	err = s0.AppendBlock(block1, block1Parts.Header())
+	if err != nil {
+		t.Error("Error appending secondary block:", err)
+	}
 }
