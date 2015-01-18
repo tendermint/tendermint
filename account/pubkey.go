@@ -3,16 +3,17 @@ package account
 import (
 	"errors"
 
-	"github.com/tendermint/go-ed25519"
+	"github.com/tendermint/ed25519"
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 )
 
 // PubKey is part of Account and Validator.
 type PubKey interface {
+	TypeByte() byte
+	IsNil() bool
 	Address() []byte
 	VerifyBytes(msg []byte, sig Signature) bool
-	TypeByte() byte
 }
 
 // Types of PubKey implementations
@@ -35,12 +36,21 @@ type PubKeyNil struct{}
 
 func (key PubKeyNil) TypeByte() byte { return PubKeyTypeNil }
 
+func (key PubKeyNil) IsNil() bool { return true }
+
 func (key PubKeyNil) Address() []byte {
 	panic("PubKeyNil has no address")
 }
 
 func (key PubKeyNil) VerifyBytes(msg []byte, sig_ Signature) bool {
 	panic("PubKeyNil cannot verify messages")
+}
+
+func (key PubKeyEd25519) ValidateBasic() error {
+	if len(key) != ed25519.PublicKeySize {
+		return errors.New("Invalid PubKeyEd25519 key size")
+	}
+	return nil
 }
 
 func (key PubKeyNil) String() string {
@@ -52,31 +62,25 @@ func (key PubKeyNil) String() string {
 // Implements PubKey
 type PubKeyEd25519 []byte
 
-func (key PubKeyEd25519) TypeByte() byte { return PubKeyTypeEd25519 }
+func (pubKey PubKeyEd25519) TypeByte() byte { return PubKeyTypeEd25519 }
+
+func (pubKey PubKeyEd25519) IsNil() bool { return false }
 
 // TODO: Or should this just be BinaryRipemd160(key)? (The difference is the TypeByte.)
-func (key PubKeyEd25519) Address() []byte { return binary.BinaryRipemd160(key) }
+func (pubKey PubKeyEd25519) Address() []byte { return binary.BinaryRipemd160(pubKey) }
 
-func (key PubKeyEd25519) ValidateBasic() error {
-	if len(key) != ed25519.PublicKeySize {
-		return errors.New("Invalid PubKeyEd25519 key size")
-	}
-	return nil
-}
-
-func (key PubKeyEd25519) VerifyBytes(msg []byte, sig_ Signature) bool {
+func (pubKey PubKeyEd25519) VerifyBytes(msg []byte, sig_ Signature) bool {
 	sig, ok := sig_.(SignatureEd25519)
 	if !ok {
 		panic("PubKeyEd25519 expects an SignatureEd25519 signature")
 	}
-	v1 := &ed25519.Verify{
-		Message:   msg,
-		PubKey:    key,
-		Signature: sig,
-	}
-	return ed25519.VerifyBatch([]*ed25519.Verify{v1})
+	pubKeyBytes := new([32]byte)
+	copy(pubKeyBytes[:], pubKey)
+	sigBytes := new([64]byte)
+	copy(sigBytes[:], sig)
+	return ed25519.Verify(pubKeyBytes, msg, sigBytes)
 }
 
-func (key PubKeyEd25519) String() string {
-	return Fmt("PubKeyEd25519{%X}", []byte(key))
+func (pubKey PubKeyEd25519) String() string {
+	return Fmt("PubKeyEd25519{%X}", pubKey)
 }

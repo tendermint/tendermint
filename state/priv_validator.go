@@ -16,7 +16,7 @@ import (
 	"github.com/tendermint/tendermint/config"
 	. "github.com/tendermint/tendermint/consensus/types"
 
-	"github.com/tendermint/go-ed25519"
+	"github.com/tendermint/ed25519"
 )
 
 const (
@@ -56,10 +56,11 @@ type PrivValidator struct {
 
 // Generates a new validator with private key.
 func GenPrivValidator() *PrivValidator {
-	privKeyBytes := CRandBytes(32)
-	pubKeyBytes := ed25519.MakePubKey(privKeyBytes)
-	pubKey := account.PubKeyEd25519(pubKeyBytes)
-	privKey := account.PrivKeyEd25519(privKeyBytes)
+	privKeyBytes := new([64]byte)
+	copy(privKeyBytes[:32], CRandBytes(32))
+	pubKeyBytes := ed25519.MakePublicKey(privKeyBytes)
+	pubKey := account.PubKeyEd25519(pubKeyBytes[:])
+	privKey := account.PrivKeyEd25519(privKeyBytes[:])
 	return &PrivValidator{
 		Address:    pubKey.Address(),
 		PubKey:     pubKey,
