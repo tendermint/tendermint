@@ -22,11 +22,6 @@ This project is a reference implementation of the protocol.
 
 [Go](http://golang.org) 1.2 or newer.
 
-OpenSSL header files. `sudo apt-get install libssl-dev` on Debian/Ubuntu
-
-//TODO OpenSSL header files for other platforms
-
-
 ###Setting up Golang
 
 [Install Go for your platform](https://golang.org/doc/install)
