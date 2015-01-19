@@ -635,7 +635,11 @@ func (cs *ConsensusState) RunActionPropose(height uint, round uint) {
 		}
 
 		// Set the blk.Header.StateHash.
-		cs.state.SetBlockStateHash(block)
+		err := cs.state.SetBlockStateHash(block)
+		if err != nil {
+			log.Error("Error setting state hash", "error", err)
+			return
+		}
 
 		blockParts = blk.NewPartSetFromData(binary.BinaryBytes(block))
 		pol = cs.LockedPOL // If exists, is a PoUnlock.
