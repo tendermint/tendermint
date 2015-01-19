@@ -232,9 +232,9 @@ func readReflect(rv reflect.Value, rt reflect.Type, r io.Reader, n *int64, err *
 	case reflect.Struct:
 		if rt == timeType {
 			// Special case: time.Time
-			num := ReadInt64(r, n, err)
-			log.Debug(Fmt("Read time: %v", num))
-			rv.Set(reflect.ValueOf(time.Unix(num, 0)))
+			t := ReadTime(r, n, err)
+			log.Debug(Fmt("Read time: %v", t))
+			rv.Set(reflect.ValueOf(t))
 		} else {
 			numFields := rt.NumField()
 			for i := 0; i < numFields; i++ {
@@ -358,7 +358,7 @@ func writeReflect(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, err 
 	case reflect.Struct:
 		if rt == timeType {
 			// Special case: time.Time
-			WriteInt64(rv.Interface().(time.Time).Unix(), w, n, err)
+			WriteTime(rv.Interface().(time.Time), w, n, err)
 		} else {
 			numFields := rt.NumField()
 			for i := 0; i < numFields; i++ {

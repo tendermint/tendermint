@@ -124,12 +124,16 @@ type Header struct {
 
 func (h *Header) Hash() []byte {
 	if h.hash == nil {
+		buf := new(bytes.Buffer)
 		hasher, n, err := sha256.New(), new(int64), new(error)
-		binary.WriteBinary(h, hasher, n, err)
+		binary.WriteBinary(h, buf, n, err)
 		if *err != nil {
 			panic(err)
 		}
+		log.Debug("Hashing", "bytes", buf.Bytes())
+		hasher.Write(buf.Bytes())
 		h.hash = hasher.Sum(nil)
+		log.Debug("Hashing got", "hash", h.hash)
 	}
 	return h.hash
 }
