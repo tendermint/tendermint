@@ -152,7 +152,7 @@ FOR_LOOP:
 func (pexR *PEXReactor) ensurePeers() {
 	numOutPeers, _, numDialing := pexR.sw.NumPeers()
 	numToDial := minNumOutboundPeers - (numOutPeers + numDialing)
-	log.Info("Ensure peers", "numOutPeers", numOutPeers, "numDialing", numDialing, "numToDial", numToDial)
+	log.Debug("Ensure peers", "numOutPeers", numOutPeers, "numDialing", numDialing, "numToDial", numToDial)
 	if numToDial <= 0 {
 		return
 	}
@@ -166,15 +166,16 @@ func (pexR *PEXReactor) ensurePeers() {
 		// Try to fetch a new peer 3 times.
 		// This caps the maximum number of tries to 3 * numToDial.
 		for j := 0; j < 3; j++ {
-			picked = pexR.book.PickAddress(newBias)
-			if picked == nil {
-				return
+			try := pexR.book.PickAddress(newBias)
+			if try == nil {
+				break
 			}
-			if toDial.Has(picked.String()) ||
-				pexR.sw.IsDialing(picked) ||
-				pexR.sw.Peers().Has(picked.String()) {
+			if toDial.Has(try.String()) ||
+				pexR.sw.IsDialing(try) ||
+				pexR.sw.Peers().Has(try.String()) {
 				continue
 			} else {
+				picked = try
 				break
 			}
 		}

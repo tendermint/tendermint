@@ -45,7 +45,7 @@ var (
 )
 
 const (
-	peerDialTimeoutSeconds = 30
+	peerDialTimeoutSeconds = 3
 )
 
 func NewSwitch(reactors []Reactor) *Switch {

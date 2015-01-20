@@ -21,13 +21,19 @@ var defaultConfig = `# This is a TOML config file.
 Network =         "tendermint_testnet0"
 ListenAddr =      "0.0.0.0:8080"
 # First node to connect to.  Command-line overridable.
-# SeedNode =          "a.b.c.d:pppp"
+SeedNode =        "23.239.22.253:8080"
 
 [DB]
 # The only other available backend is "memdb"
 Backend =         "leveldb"
-# The leveldb data directory.
-# Dir =           "<YOUR_HOME_DIRECTORY>/.tendermint/data"
+# Dir =             "~/.tendermint/data"
+
+[Log.Stdout]
+Level =           "info"
+
+[Log.File]
+Level =           "debug"
+# Dir =             "~/.tendermint/log"
 
 [RPC.HTTP]
 # For the RPC API HTTP server.  Port required.
@@ -46,8 +52,9 @@ func initDefaults() {
 	App.SetDefault("ListenAddr", "0.0.0.0:8080")
 	App.SetDefault("DB.Backend", "leveldb")
 	App.SetDefault("DB.Dir", rootDir+"/data")
-	App.SetDefault("Log.Level", "debug")
-	App.SetDefault("Log.Dir", rootDir+"/log")
+	App.SetDefault("Log.Stdout.Level", "info")
+	App.SetDefault("Log.File.Dir", rootDir+"/log")
+	App.SetDefault("Log.File.Level", "debug")
 	App.SetDefault("RPC.HTTP.ListenAddr", "0.0.0.0:8081")
 
 	App.SetDefault("GenesisFile", rootDir+"/genesis.json")

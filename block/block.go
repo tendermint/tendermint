@@ -120,10 +120,8 @@ func (h *Header) Hash() []byte {
 	if *err != nil {
 		panic(err)
 	}
-	log.Debug("Hashing", "bytes", buf.Bytes())
 	hasher.Write(buf.Bytes())
 	hash := hasher.Sum(nil)
-	log.Debug("Hashing got", "hash", hash)
 	return hash
 }
 

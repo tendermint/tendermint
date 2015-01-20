@@ -315,7 +315,7 @@ func (cs *ConsensusState) stepTransitionRoutine() {
 			// we're running in a separate goroutine, which avoids deadlocks.
 			rs := cs.getRoundState()
 			round, roundStartTime, roundDuration, _, elapsedRatio := calcRoundInfo(rs.StartTime)
-			log.Info("Scheduling next action", "height", rs.Height, "round", round, "step", rs.Step, "roundStartTime", roundStartTime, "elapsedRatio", elapsedRatio)
+			log.Debug("Scheduling next action", "height", rs.Height, "round", round, "step", rs.Step, "roundStartTime", roundStartTime, "elapsedRatio", elapsedRatio)
 			switch rs.Step {
 			case RoundStepNewHeight:
 				// We should run RoundActionPropose when rs.StartTime passes.
