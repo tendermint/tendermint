@@ -58,7 +58,7 @@ func initDefaults() {
 	App.SetDefault("RPC.HTTP.ListenAddr", "0.0.0.0:8081")
 
 	App.SetDefault("GenesisFile", rootDir+"/genesis.json")
-	App.SetDefault("AddrbookFile", rootDir+"/addrbook.json")
+	App.SetDefault("AddrBookFile", rootDir+"/addrbook.json")
 	App.SetDefault("PrivValidatorfile", rootDir+"/priv_validator.json")
 }
 

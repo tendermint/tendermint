@@ -82,5 +82,5 @@ func (pubKey PubKeyEd25519) VerifyBytes(msg []byte, sig_ Signature) bool {
 }
 
 func (pubKey PubKeyEd25519) String() string {
-	return Fmt("PubKeyEd25519{%X}", pubKey)
+	return Fmt("PubKeyEd25519{%X}", []byte(pubKey))
 }
