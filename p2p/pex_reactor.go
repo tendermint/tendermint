@@ -99,12 +99,7 @@ func (pexR *PEXReactor) Receive(chId byte, src *Peer, msgBytes []byte) {
 	case *pexRequestMessage:
 		// src requested some peers.
 		// TODO: prevent abuse.
-		addrs := pexR.book.GetSelection()
-		msg := &pexAddrsMessage{Addrs: addrs}
-		queued := src.TrySend(PexCh, msg)
-		if !queued {
-			// ignore
-		}
+		pexR.SendAddrs(src, pexR.book.GetSelection())
 	case *pexAddrsMessage:
 		// We received some peer addresses from src.
 		// TODO: prevent abuse.
@@ -121,7 +116,7 @@ func (pexR *PEXReactor) Receive(chId byte, src *Peer, msgBytes []byte) {
 
 // Asks peer for more addresses.
 func (pexR *PEXReactor) RequestPEX(peer *Peer) {
-	peer.TrySend(PexCh, &pexRequestMessage{})
+	peer.Send(PexCh, &pexRequestMessage{})
 }
 
 func (pexR *PEXReactor) SendAddrs(peer *Peer, addrs []*NetAddress) {
@@ -170,11 +165,17 @@ func (pexR *PEXReactor) ensurePeers() {
 			if try == nil {
 				break
 			}
-			if toDial.Has(try.String()) ||
-				pexR.sw.IsDialing(try) ||
-				pexR.sw.Peers().Has(try.String()) {
+			alreadySelected := toDial.Has(try.String())
+			alreadyDialing := pexR.sw.IsDialing(try)
+			alreadyConnected := pexR.sw.Peers().Has(try.String())
+			if alreadySelected || alreadyDialing || alreadyConnected {
+				log.Debug("Cannot dial address", "addr", try,
+					"alreadySelected", alreadySelected,
+					"alreadyDialing", alreadyDialing,
+					"alreadyConnected", alreadyConnected)
 				continue
 			} else {
+				log.Debug("Will dial address", "addr", try)
 				picked = try
 				break
 			}
