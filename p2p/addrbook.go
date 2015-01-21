@@ -334,7 +334,7 @@ func (a *AddrBook) loadFromFile(filePath string) {
 	// If doesn't exist, do nothing.
 	_, err := os.Stat(filePath)
 	if os.IsNotExist(err) {
-		return
+		panic(Fmt("File does not exist: %v", filePath))
 	}
 
 	// Load addrBookJSON{}
