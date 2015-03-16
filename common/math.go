@@ -42,6 +42,20 @@ func MaxUint32(a, b uint32) uint32 {
 	return b
 }
 
+func MaxInt64(a, b int64) int64 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func MaxUint64(a, b uint64) uint64 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
 func MaxInt(a, b int) int {
 	if a > b {
 		return a
@@ -100,6 +114,20 @@ func MinUint32(a, b uint32) uint32 {
 	return b
 }
 
+func MinInt64(a, b int64) int64 {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func MinUint64(a, b uint64) uint64 {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 func MinInt(a, b int) int {
 	if a < b {
 		return a
@@ -112,4 +140,18 @@ func MinUint(a, b uint) uint {
 		return a
 	}
 	return b
+}
+
+//-----------------------------------------------------------------------------
+
+func ExpUint64(a, b uint64) uint64 {
+	accum := uint64(1)
+	for b > 0 {
+		if b&1 == 1 {
+			accum *= a
+		}
+		a *= a
+		b >>= 1
+	}
+	return accum
 }
