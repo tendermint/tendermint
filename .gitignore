@@ -2,3 +2,4 @@
 *.swo
 .bak
 tendermint
+.DS_Store
