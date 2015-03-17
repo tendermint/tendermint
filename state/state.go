@@ -388,7 +388,7 @@ func (s *State) ExecTx(tx_ blk.Tx) error {
 			return errors.New("DupeoutTx heights don't match")
 		}
 		if tx.VoteA.Type == blk.VoteTypeCommit && tx.VoteA.Round < tx.VoteB.Round {
-			// Check special case.
+			// Check special case (not an error, validator must be slashed!)
 			// Validators should not sign another vote after committing.
 		} else {
 			if tx.VoteA.Round != tx.VoteB.Round {

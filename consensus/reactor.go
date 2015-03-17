@@ -175,8 +175,21 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 			address, _ := rs.Validators.GetByIndex(validatorIndex)
 			added, index, err := conR.conS.AddVote(address, vote)
 			if err != nil {
-				// Probably an invalid signature. Bad peer.
-				log.Warn("Error attempting to add vote", "error", err)
+				// If conflicting sig, broadcast evidence tx for slashing. Else punish peer.
+				if errDupe, ok := err.(*blk.ErrVoteConflictingSignature); ok {
+					log.Warn("Found conflicting vote. Publish evidence")
+					evidenceTx := &blk.DupeoutTx{
+						Address: address,
+						VoteA:   *errDupe.VoteA,
+						VoteB:   *errDupe.VoteB,
+					}
+					conR.conS.mempoolReactor.BroadcastTx(evidenceTx) // shouldn't need to check returned err
+				} else {
+					// Probably an invalid signature. Bad peer.
+					log.Warn("Error attempting to add vote", "error", err)
+
+					// TODO: punish peer
+				}
 			}
 			// Initialize Prevotes/Precommits/Commits if needed
 			ps.EnsureVoteBitArrays(rs.Height, rs.Validators.Size())
