@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net"
@@ -37,6 +38,7 @@ type Switch struct {
 	quit         chan struct{}
 	started      uint32
 	stopped      uint32
+	chainId      string
 }
 
 var (
@@ -129,6 +131,10 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 	// Notify listeners.
 	sw.doAddPeer(peer)
 
+	// Send handshake
+	msg := &pexHandshakeMessage{ChainId: sw.chainId}
+	peer.Send(PexCh, msg)
+
 	return peer, nil
 }
 
@@ -214,6 +220,10 @@ func (sw *Switch) StopPeerGracefully(peer *Peer) {
 
 	// Notify listeners
 	sw.doRemovePeer(peer, nil)
+}
+
+func (sw *Switch) SetChainId(hash []byte, network string) {
+	sw.chainId = hex.EncodeToString(hash) + "-" + network
 }
 
 func (sw *Switch) IsListening() bool {

@@ -65,6 +65,7 @@ func NewNode() *Node {
 	}
 
 	sw := p2p.NewSwitch([]p2p.Reactor{pexReactor, mempoolReactor, consensusReactor})
+	sw.SetChainId(state.Hash(), config.App().GetString("Network"))
 
 	return &Node{
 		sw:               sw,

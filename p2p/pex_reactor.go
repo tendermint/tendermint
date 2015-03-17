@@ -96,6 +96,12 @@ func (pexR *PEXReactor) Receive(chId byte, src *Peer, msgBytes []byte) {
 	log.Info("Received message", "msg", msg)
 
 	switch msg.(type) {
+	case *pexHandshakeMessage:
+		chainId := msg.(*pexHandshakeMessage).ChainId
+		if chainId != pexR.sw.chainId {
+			err := fmt.Sprintf("Peer is on a different chain/network. Got %s, expected %s", chainId, pexR.sw.chainId)
+			pexR.sw.StopPeerForError(src, err)
+		}
 	case *pexRequestMessage:
 		// src requested some peers.
 		// TODO: prevent abuse.
@@ -201,9 +207,10 @@ func (pexR *PEXReactor) ensurePeers() {
 // Messages
 
 const (
-	msgTypeUnknown = byte(0x00)
-	msgTypeRequest = byte(0x01)
-	msgTypeAddrs   = byte(0x02)
+	msgTypeUnknown   = byte(0x00)
+	msgTypeRequest   = byte(0x01)
+	msgTypeAddrs     = byte(0x02)
+	msgTypeHandshake = byte(0x03)
 )
 
 // TODO: check for unnecessary extra bytes at the end.
@@ -213,6 +220,8 @@ func DecodeMessage(bz []byte) (msg interface{}, err error) {
 	r := bytes.NewReader(bz)
 	// log.Debug(Fmt("decoding msg bytes: %X", bz))
 	switch msgType {
+	case msgTypeHandshake:
+		msg = binary.ReadBinary(&pexHandshakeMessage{}, r, n, &err)
 	case msgTypeRequest:
 		msg = &pexRequestMessage{}
 	case msgTypeAddrs:
@@ -221,6 +230,19 @@ func DecodeMessage(bz []byte) (msg interface{}, err error) {
 		msg = nil
 	}
 	return
+}
+
+/*
+A pexHandshakeMessage contains the peer's chainId
+*/
+type pexHandshakeMessage struct {
+	ChainId string
+}
+
+func (m *pexHandshakeMessage) TypeByte() byte { return msgTypeHandshake }
+
+func (m *pexHandshakeMessage) String() string {
+	return "[pexHandshake]"
 }
 
 /*
