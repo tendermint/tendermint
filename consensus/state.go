@@ -619,7 +619,7 @@ func (cs *ConsensusState) RunActionPropose(height uint, round uint) {
 		txs := cs.mempoolReactor.Mempool.GetProposalTxs()
 		block = &blk.Block{
 			Header: &blk.Header{
-				Network:        config.App.GetString("Network"),
+				Network:        config.App().GetString("Network"),
 				Height:         cs.Height,
 				Time:           time.Now(),
 				Fees:           0, // TODO fees

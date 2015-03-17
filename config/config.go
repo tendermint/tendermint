@@ -6,13 +6,23 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	flag "github.com/spf13/pflag"
 	"github.com/tendermint/confer"
 )
 
-var rootDir string
-var App *confer.Config
+var app *confer.Config
+var appMtx sync.Mutex
+
+func App() *confer.Config {
+	appMtx.Lock()
+	defer appMtx.Unlock()
+	if app == nil {
+		Init("")
+	}
+	return app
+}
 
 // NOTE: If you change this, maybe also change initDefaults()
 var defaultConfig = `# This is a TOML config file.
@@ -47,28 +57,32 @@ ListenAddr = "0.0.0.0:8081"
 `
 
 // NOTE: If you change this, maybe also change defaultConfig
-func initDefaults() {
-	App.SetDefault("Network", "tendermint_testnet0")
-	App.SetDefault("ListenAddr", "0.0.0.0:8080")
-	App.SetDefault("DB.Backend", "leveldb")
-	App.SetDefault("DB.Dir", rootDir+"/data")
-	App.SetDefault("Log.Stdout.Level", "info")
-	App.SetDefault("Log.File.Dir", rootDir+"/log")
-	App.SetDefault("Log.File.Level", "debug")
-	App.SetDefault("RPC.HTTP.ListenAddr", "0.0.0.0:8081")
+func initDefaults(rootDir string) {
+	app.SetDefault("Network", "tendermint_testnet0")
+	app.SetDefault("ListenAddr", "0.0.0.0:8080")
+	app.SetDefault("DB.Backend", "leveldb")
+	app.SetDefault("DB.Dir", rootDir+"/data")
+	app.SetDefault("Log.Stdout.Level", "info")
+	app.SetDefault("Log.File.Dir", rootDir+"/log")
+	app.SetDefault("Log.File.Level", "debug")
+	app.SetDefault("RPC.HTTP.ListenAddr", "0.0.0.0:8081")
 
-	App.SetDefault("GenesisFile", rootDir+"/genesis.json")
-	App.SetDefault("AddrBookFile", rootDir+"/addrbook.json")
-	App.SetDefault("PrivValidatorfile", rootDir+"/priv_validator.json")
+	app.SetDefault("GenesisFile", rootDir+"/genesis.json")
+	app.SetDefault("AddrBookFile", rootDir+"/addrbook.json")
+	app.SetDefault("PrivValidatorfile", rootDir+"/priv_validator.json")
 }
 
-func init() {
+func Init(rootDir string) {
 
 	// Get RootDir
-	rootDir = os.Getenv("TMROOT")
+	if rootDir == "" {
+		rootDir = os.Getenv("TMROOT")
+	}
+	fmt.Println("1: ", rootDir)
 	if rootDir == "" {
 		rootDir = os.Getenv("HOME") + "/.tendermint"
 	}
+	fmt.Println("2: ", rootDir)
 	configFile := rootDir + "/config.toml"
 
 	// Write default config file if missing.
@@ -85,20 +99,19 @@ func init() {
 			fmt.Printf("Could not write config file: %v", err)
 			os.Exit(1)
 		}
-		fmt.Printf("Config file written to %v. Please edit & run again\n", configFile)
-		os.Exit(1)
+		fmt.Printf("Config file written to %v.\n", configFile)
 	}
 
 	// Initialize Config
-	App = confer.NewConfig()
-	initDefaults()
+	app = confer.NewConfig()
+	initDefaults(rootDir)
 	paths := []string{configFile}
-	if err := App.ReadPaths(paths...); err != nil {
+	if err := app.ReadPaths(paths...); err != nil {
 		log.Warn("Error reading configuration", "paths", paths, "error", err)
 	}
 
 	// Confused?
-	// App.Debug()
+	// app.Debug()
 }
 
 func ParseFlags(args []string) {
@@ -107,20 +120,20 @@ func ParseFlags(args []string) {
 
 	// Declare flags
 	flags.BoolVar(&printHelp, "help", false, "Print this help message.")
-	flags.String("listen_addr", App.GetString("ListenAddr"), "Listen address. (0.0.0.0:0 means any interface, any port)")
-	flags.String("seed_node", App.GetString("SeedNode"), "Address of seed node")
-	flags.String("rpc_http_listen_addr", App.GetString("RPC.HTTP.ListenAddr"), "RPC listen address. Port required")
+	flags.String("listen_addr", app.GetString("ListenAddr"), "Listen address. (0.0.0.0:0 means any interface, any port)")
+	flags.String("seed_node", app.GetString("SeedNode"), "Address of seed node")
+	flags.String("rpc_http_listen_addr", app.GetString("RPC.HTTP.ListenAddr"), "RPC listen address. Port required")
 	flags.Parse(args)
 	if printHelp {
 		flags.PrintDefaults()
 		os.Exit(0)
 	}
 
-	// Merge parsed flag values onto App.
-	App.BindPFlag("ListenAddr", flags.Lookup("listen_addr"))
-	App.BindPFlag("SeedNode", flags.Lookup("seed_node"))
-	App.BindPFlag("RPC.HTTP.ListenAddr", flags.Lookup("rpc_http_listen_addr"))
+	// Merge parsed flag values onto app.
+	app.BindPFlag("ListenAddr", flags.Lookup("listen_addr"))
+	app.BindPFlag("SeedNode", flags.Lookup("seed_node"))
+	app.BindPFlag("RPC.HTTP.ListenAddr", flags.Lookup("rpc_http_listen_addr"))
 
 	// Confused?
-	//App.Debug()
+	//app.Debug()
 }
