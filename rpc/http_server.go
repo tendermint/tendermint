@@ -17,9 +17,9 @@ import (
 func StartHTTPServer() {
 	initHandlers()
 
-	log.Info(Fmt("Starting RPC HTTP server on %s", config.App.GetString("RPC.HTTP.ListenAddr")))
+	log.Info(Fmt("Starting RPC HTTP server on %s", config.App().GetString("RPC.HTTP.ListenAddr")))
 	go func() {
-		log.Crit("RPC HTTPServer stopped", "result", http.ListenAndServe(config.App.GetString("RPC.HTTP.ListenAddr"), RecoverAndLogHandler(http.DefaultServeMux)))
+		log.Crit("RPC HTTPServer stopped", "result", http.ListenAndServe(config.App().GetString("RPC.HTTP.ListenAddr"), RecoverAndLogHandler(http.DefaultServeMux)))
 	}()
 }
 

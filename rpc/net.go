@@ -17,14 +17,14 @@ func StatusHandler(w http.ResponseWriter, r *http.Request) {
 		LatestBlockHeight uint
 		LatestBlockTime   int64 // nano
 		Network           string
-	}{genesisHash, latestBlockHash, latestHeight, latestBlockTime, config.App.GetString("Network")})
+	}{genesisHash, latestBlockHash, latestHeight, latestBlockTime, config.App().GetString("Network")})
 }
 
 func NetInfoHandler(w http.ResponseWriter, r *http.Request) {
 	o, i, _ := p2pSwitch.NumPeers()
 	numPeers := o + i
 	listening := p2pSwitch.IsListening()
-	network := config.App.GetString("Network")
+	network := config.App().GetString("Network")
 	WriteAPIResponse(w, API_OK, struct {
 		NumPeers  int
 		Listening bool

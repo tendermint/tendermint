@@ -18,7 +18,7 @@ Paste the following JSON into your %v file
 %v
 
 `,
-		config.App.GetString("PrivValidatorFile"),
+		config.App().GetString("PrivValidatorFile"),
 		string(privValidatorJSONBytes),
 	)
 }

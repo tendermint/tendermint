@@ -36,21 +36,21 @@ func NewNode() *Node {
 	stateDB := dbm.GetDB("state")
 	state := sm.LoadState(stateDB)
 	if state == nil {
-		state = sm.MakeGenesisStateFromFile(stateDB, config.App.GetString("GenesisFile"))
+		state = sm.MakeGenesisStateFromFile(stateDB, config.App().GetString("GenesisFile"))
 		state.Save()
 	}
 
 	// Get PrivValidator
 	var privValidator *sm.PrivValidator
-	if _, err := os.Stat(config.App.GetString("PrivValidatorFile")); err == nil {
-		privValidator = sm.LoadPrivValidator(config.App.GetString("PrivValidatorFile"))
-		log.Info("Loaded PrivValidator", "file", config.App.GetString("PrivValidatorFile"), "privValidator", privValidator)
+	if _, err := os.Stat(config.App().GetString("PrivValidatorFile")); err == nil {
+		privValidator = sm.LoadPrivValidator(config.App().GetString("PrivValidatorFile"))
+		log.Info("Loaded PrivValidator", "file", config.App().GetString("PrivValidatorFile"), "privValidator", privValidator)
 	} else {
-		log.Info("No PrivValidator found", "file", config.App.GetString("PrivValidatorFile"))
+		log.Info("No PrivValidator found", "file", config.App().GetString("PrivValidatorFile"))
 	}
 
 	// Get PEXReactor
-	book := p2p.NewAddrBook(config.App.GetString("AddrBookFile"))
+	book := p2p.NewAddrBook(config.App().GetString("AddrBookFile"))
 	pexReactor := p2p.NewPEXReactor(book)
 
 	// Get MempoolReactor
@@ -126,13 +126,13 @@ func Daemon() {
 
 	// Create & start node
 	n := NewNode()
-	l := p2p.NewDefaultListener("tcp", config.App.GetString("ListenAddr"), false)
+	l := p2p.NewDefaultListener("tcp", config.App().GetString("ListenAddr"), false)
 	n.AddListener(l)
 	n.Start()
 
 	// If seedNode is provided by config, dial out.
-	if config.App.GetString("SeedNode") != "" {
-		addr := p2p.NewNetAddressString(config.App.GetString("SeedNode"))
+	if config.App().GetString("SeedNode") != "" {
+		addr := p2p.NewNetAddressString(config.App().GetString("SeedNode"))
 		peer, err := n.sw.DialPeerWithAddress(addr)
 		if err != nil {
 			log.Error("Error dialing seed", "error", err)
@@ -145,7 +145,7 @@ func Daemon() {
 	}
 
 	// Run the RPC server.
-	if config.App.GetString("RPC.HTTP.ListenAddr") != "" {
+	if config.App().GetString("RPC.HTTP.ListenAddr") != "" {
 		rpc.SetRPCBlockStore(n.blockStore)
 		rpc.SetRPCConsensusState(n.consensusState)
 		rpc.SetRPCMempoolReactor(n.mempoolReactor)
