@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/daemon"
 )
 
 func main() {
@@ -26,7 +27,7 @@ Commands:
 	switch args[0] {
 	case "daemon":
 		config.ParseFlags(args[1:])
-		daemon()
+		daemon.Daemon()
 	case "gen_account":
 		gen_account()
 	case "gen_validator":
