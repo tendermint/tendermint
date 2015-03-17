@@ -149,6 +149,7 @@ func Daemon() {
 		rpc.SetRPCBlockStore(n.blockStore)
 		rpc.SetRPCConsensusState(n.consensusState)
 		rpc.SetRPCMempoolReactor(n.mempoolReactor)
+		rpc.SetRPCSwitch(n.sw)
 		rpc.StartHTTPServer()
 	}
 
