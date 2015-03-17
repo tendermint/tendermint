@@ -1,4 +1,4 @@
-package main
+package daemon
 
 import (
 	"os"
@@ -122,7 +122,7 @@ func (n *Node) inboundConnectionRoutine(l p2p.Listener) {
 	// cleanup
 }
 
-func daemon() {
+func Daemon() {
 
 	// Create & start node
 	n := NewNode()
@@ -149,6 +149,7 @@ func daemon() {
 		rpc.SetRPCBlockStore(n.blockStore)
 		rpc.SetRPCConsensusState(n.consensusState)
 		rpc.SetRPCMempoolReactor(n.mempoolReactor)
+		rpc.SetRPCSwitch(n.sw)
 		rpc.StartHTTPServer()
 	}
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -46,6 +47,33 @@ ListenAddr = "localhost:8081"
 # TODO: Document options
 `
 
+var defaultGenesis = `
+{
+  "Accounts": [
+    {
+      "Address": "553722287BF1230C081C270908C1F453E7D1C397",
+      "Amount":  200000000
+    },
+    {
+      "Address": "AC89A6DDF4C309A89A2C4078CE409A5A7B282270",
+      "Amount":  200000000
+    }
+  ],
+  "Validators": [
+    {
+      "PubKey": [1, "932A857D334BA5A38DD8E0D9CDE9C84687C21D0E5BEE64A1EDAB9C6C32344F1A"],
+      "Amount": 100000000,
+      "UnbondTo": [
+        {
+          "Address": "553722287BF1230C081C270908C1F453E7D1C397",
+          "Amount":  100000000
+        }
+      ]
+    }
+  ]
+}
+`
+
 // NOTE: If you change this, maybe also change defaultConfig
 func initDefaults() {
 	App.SetDefault("Network", "tendermint_testnet0")
@@ -62,16 +90,8 @@ func initDefaults() {
 	App.SetDefault("PrivValidatorfile", rootDir+"/priv_validator.json")
 }
 
-func init() {
-
-	// Get RootDir
-	rootDir = os.Getenv("TMROOT")
-	if rootDir == "" {
-		rootDir = os.Getenv("HOME") + "/.tendermint"
-	}
-	configFile := rootDir + "/config.toml"
-
-	// Write default config file if missing.
+// Check if a file exists; if not, ensure the directory is made and write the file
+func checkWriteFile(configFile, contents string) {
 	if _, err := os.Stat(configFile); os.IsNotExist(err) {
 		if strings.Index(configFile, "/") != -1 {
 			err := os.MkdirAll(filepath.Dir(configFile), 0700)
@@ -80,14 +100,28 @@ func init() {
 				os.Exit(1)
 			}
 		}
-		err := ioutil.WriteFile(configFile, []byte(defaultConfig), 0600)
+		err := ioutil.WriteFile(configFile, []byte(contents), 0600)
 		if err != nil {
 			fmt.Printf("Could not write config file: %v", err)
 			os.Exit(1)
 		}
-		fmt.Printf("Config file written to %v. Please edit & run again\n", configFile)
-		os.Exit(1)
+		fmt.Printf("Config file written to %v.\n", configFile)
 	}
+}
+
+func init() {
+
+	// Get RootDir
+	rootDir = os.Getenv("TMROOT")
+	if rootDir == "" {
+		rootDir = os.Getenv("HOME") + "/.tendermint"
+	}
+	configFile := path.Join(rootDir, "config.toml")
+	genesisFile := path.Join(rootDir, "genesis.json")
+
+	// Write default config file if missing.
+	checkWriteFile(configFile, defaultConfig)
+	checkWriteFile(genesisFile, defaultGenesis)
 
 	// Initialize Config
 	App = confer.NewConfig()
