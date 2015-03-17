@@ -24,6 +24,6 @@ func SetRPCMempoolReactor(mr *mempl.MempoolReactor) {
 	mempoolReactor = mr
 }
 
-func SetSwitch(sw *p2p.Switch) {
+func SetRPCSwitch(sw *p2p.Switch) {
 	p2pSwitch = sw
 }
