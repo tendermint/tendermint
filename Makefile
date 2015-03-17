@@ -1,12 +1,14 @@
+.PHONY: get_deps build all list_deps
+
 all: build
 
-build:
+build: get_deps
 	go build -o tendermint github.com/tendermint/tendermint/cmd
 
-build_race:
+build_race: get_deps
 	go build -race -o tendermint github.com/tendermint/tendermint/cmd
 
-test:
+test: build
 	go test github.com/tendermint/tendermint/...
 
 list_deps:
@@ -14,3 +16,6 @@ list_deps:
 
 get_deps:
 	go get github.com/tendermint/tendermint/...
+
+clean:
+	rm -f tendermint
