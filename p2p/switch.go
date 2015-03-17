@@ -216,6 +216,10 @@ func (sw *Switch) StopPeerGracefully(peer *Peer) {
 	sw.doRemovePeer(peer, nil)
 }
 
+func (sw *Switch) IsListening() bool {
+	return sw.listeners.Size() > 0
+}
+
 func (sw *Switch) doAddPeer(peer *Peer) {
 	for _, reactor := range sw.reactors {
 		reactor.AddPeer(peer)
