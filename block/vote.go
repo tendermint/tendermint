@@ -11,12 +11,20 @@ import (
 )
 
 var (
-	ErrVoteUnexpectedStep       = errors.New("Unexpected step")
-	ErrVoteInvalidAccount       = errors.New("Invalid round vote account")
-	ErrVoteInvalidSignature     = errors.New("Invalid round vote signature")
-	ErrVoteInvalidBlockHash     = errors.New("Invalid block hash")
-	ErrVoteConflictingSignature = errors.New("Conflicting round vote signature")
+	ErrVoteUnexpectedStep   = errors.New("Unexpected step")
+	ErrVoteInvalidAccount   = errors.New("Invalid round vote account")
+	ErrVoteInvalidSignature = errors.New("Invalid round vote signature")
+	ErrVoteInvalidBlockHash = errors.New("Invalid block hash")
 )
+
+type ErrVoteConflictingSignature struct {
+	VoteA *Vote
+	VoteB *Vote
+}
+
+func (err *ErrVoteConflictingSignature) Error() string {
+	return "Conflicting round vote signature"
+}
 
 // Represents a prevote, precommit, or commit vote from validators for consensus.
 // Commit votes get aggregated into the next block's Validaiton.

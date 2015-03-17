@@ -106,7 +106,10 @@ func (voteSet *VoteSet) addVote(valIndex uint, vote *blk.Vote) (bool, uint, erro
 		if bytes.Equal(existingVote.BlockHash, vote.BlockHash) {
 			return false, 0, nil
 		} else {
-			return false, 0, blk.ErrVoteConflictingSignature
+			return false, 0, &blk.ErrVoteConflictingSignature{
+				VoteA: existingVote,
+				VoteB: vote,
+			}
 		}
 	}
 
