@@ -1,4 +1,4 @@
-package main
+package daemon
 
 import (
 	"os"
@@ -122,7 +122,7 @@ func (n *Node) inboundConnectionRoutine(l p2p.Listener) {
 	// cleanup
 }
 
-func daemon() {
+func Daemon() {
 
 	// Create & start node
 	n := NewNode()
