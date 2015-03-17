@@ -24,7 +24,7 @@ type Block struct {
 // Basic validation that doesn't involve state data.
 func (b *Block) ValidateBasic(lastBlockHeight uint, lastBlockHash []byte,
 	lastBlockParts PartSetHeader, lastBlockTime time.Time) error {
-	if b.Network != config.App.GetString("Network") {
+	if b.Network != config.App().GetString("Network") {
 		return errors.New("Wrong Block.Header.Network")
 	}
 	if b.Height != lastBlockHeight+1 {
