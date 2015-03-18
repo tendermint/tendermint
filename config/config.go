@@ -37,7 +37,7 @@ Level =           "debug"
 
 [RPC.HTTP]
 # For the RPC API HTTP server.  Port required.
-ListenAddr = "localhost:8081"
+ListenAddr = "127.0.0.1:8081"
 
 [Alert]
 # TODO: Document options
@@ -55,7 +55,7 @@ func initDefaults() {
 	App.SetDefault("Log.Stdout.Level", "info")
 	App.SetDefault("Log.File.Dir", rootDir+"/log")
 	App.SetDefault("Log.File.Level", "debug")
-	App.SetDefault("RPC.HTTP.ListenAddr", "localhost:8081")
+	App.SetDefault("RPC.HTTP.ListenAddr", "127.0.0.1:8081")
 
 	App.SetDefault("GenesisFile", rootDir+"/genesis.json")
 	App.SetDefault("AddrBookFile", rootDir+"/addrbook.json")
