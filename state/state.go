@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/tendermint/tendermint/account"
@@ -234,7 +235,7 @@ func (s *State) AdjustByOutputs(accounts map[string]*account.Account, outs []*bl
 
 // If the tx is invalid, an error will be returned.
 // Unlike AppendBlock(), state will not be altered.
-func (s *State) ExecTx(tx_ blk.Tx) error {
+func (s *State) ExecTx(tx_ blk.Tx, blk_ *blk.Block) error {
 
 	// TODO: do something with fees
 	fees := uint64(0)
@@ -296,8 +297,15 @@ func (s *State) ExecTx(tx_ blk.Tx) error {
 		}
 		accounts[string(tx.Address)] = outAcc
 
-		// TODO: fees
-		// inTotal -= fees
+		// ensure sufficient gas price
+		// we multiply to avoid dividing
+		bigProvidedFee := new(big.Int).Mul(big.NewInt(int64(tx.FeeLimit)), big.NewInt(int64(blk.GasPriceDivisor)))
+		bigMinFee := new(big.Int).Mul(big.NewInt(int64(blk_.GasPrice)), big.NewInt(int64(tx.GasLimit)))
+		if bigProvidedFee.Cmp(bigMinFee) < 0 {
+			return blk.ErrTxInsufficientGasPrice
+		}
+
+		inTotal -= tx.FeeLimit
 
 		// Good! Adjust accounts
 		s.AdjustByInputs(accounts, []*blk.TxInput{tx.Input})
@@ -305,6 +313,8 @@ func (s *State) ExecTx(tx_ blk.Tx) error {
 		s.UpdateAccounts(accounts)
 
 		// TODO: Run the contract call!
+
+		// TODO: refund some gas
 
 		return nil
 
@@ -640,7 +650,7 @@ func (s *State) appendBlock(block *blk.Block, blockPartsHeader blk.PartSetHeader
 
 	// Commit each tx
 	for _, tx := range block.Data.Txs {
-		err := s.ExecTx(tx)
+		err := s.ExecTx(tx, block)
 		if err != nil {
 			return InvalidTxError{tx, err}
 		}

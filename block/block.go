@@ -107,11 +107,15 @@ type Header struct {
 	Height         uint
 	Time           time.Time
 	Fees           uint64
+	GasPrice       uint64
 	NumTxs         uint
 	LastBlockHash  []byte
 	LastBlockParts PartSetHeader
 	StateHash      []byte
 }
+
+// possible for actual gas price to be less than 1
+var GasPriceDivisor = 1000000
 
 func (h *Header) Hash() []byte {
 	buf := new(bytes.Buffer)

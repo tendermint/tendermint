@@ -10,14 +10,15 @@ import (
 )
 
 var (
-	ErrTxInvalidAddress    = errors.New("Error invalid address")
-	ErrTxDuplicateAddress  = errors.New("Error duplicate address")
-	ErrTxInvalidAmount     = errors.New("Error invalid amount")
-	ErrTxInsufficientFunds = errors.New("Error insufficient funds")
-	ErrTxUnknownPubKey     = errors.New("Error unknown pubkey")
-	ErrTxInvalidPubKey     = errors.New("Error invalid pubkey")
-	ErrTxInvalidSignature  = errors.New("Error invalid signature")
-	ErrTxInvalidSequence   = errors.New("Error invalid sequence")
+	ErrTxInvalidAddress       = errors.New("Error invalid address")
+	ErrTxDuplicateAddress     = errors.New("Error duplicate address")
+	ErrTxInvalidAmount        = errors.New("Error invalid amount")
+	ErrTxInsufficientFunds    = errors.New("Error insufficient funds")
+	ErrTxInsufficientGasPrice = errors.New("Error insufficient gas price")
+	ErrTxUnknownPubKey        = errors.New("Error unknown pubkey")
+	ErrTxInvalidPubKey        = errors.New("Error invalid pubkey")
+	ErrTxInvalidSignature     = errors.New("Error invalid signature")
+	ErrTxInvalidSequence      = errors.New("Error invalid sequence")
 )
 
 /*
