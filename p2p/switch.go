@@ -161,24 +161,22 @@ func (sw *Switch) IsDialing(addr *NetAddress) bool {
 	return sw.dialing.Has(addr.String())
 }
 
-// XXX: This is wrong, we can't just ignore failures on TrySend.
-func (sw *Switch) Broadcast(chId byte, msg interface{}) (numSuccess, numFailure int) {
+// Broadcast runs a go routine for each attemptted send, which will block
+// trying to send for defaultSendTimeoutSeconds. Returns a channel
+// which receives success values for each attempted send (false if times out)
+func (sw *Switch) Broadcast(chId byte, msg interface{}) chan bool {
 	if atomic.LoadUint32(&sw.stopped) == 1 {
 		return
 	}
-
+	successChan := make(chan bool, len(sw.peers.List()))
 	log.Debug("Broadcast", "channel", chId, "msg", msg)
 	for _, peer := range sw.peers.List() {
-		// XXX XXX Change.
-		// success := peer.TrySend(chId, msg)
-		success := peer.Send(chId, msg)
-		if success {
-			numSuccess += 1
-		} else {
-			numFailure += 1
-		}
+		go func() {
+			success := peer.Send(chId, msg)
+			successChan <- success
+		}()
 	}
-	return
+	return successChan
 
 }
 
