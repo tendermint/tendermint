@@ -183,7 +183,7 @@ func TestTxSequence(t *testing.T) {
 		tx := makeSendTx(sequence)
 		tx.Inputs[0].Signature = privAccounts[0].Sign(tx)
 		stateCopy := state.Copy()
-		err := stateCopy.ExecTx(tx)
+		err := stateCopy.ExecTx(tx, &blk.Block{})
 		if i == 1 {
 			// Sequence is good.
 			if err != nil {
@@ -242,7 +242,7 @@ func TestTxs(t *testing.T) {
 		}
 
 		tx.Inputs[0].Signature = privAccounts[0].Sign(tx)
-		err := state.ExecTx(tx)
+		err := state.ExecTx(tx, &blk.Block{})
 		if err != nil {
 			t.Errorf("Got error in executing send transaction, %v", err)
 		}
@@ -279,7 +279,7 @@ func TestTxs(t *testing.T) {
 			},
 		}
 		tx.Inputs[0].Signature = privAccounts[0].Sign(tx)
-		err := state.ExecTx(tx)
+		err := state.ExecTx(tx, &blk.Block{})
 		if err != nil {
 			t.Errorf("Got error in executing bond transaction, %v", err)
 		}
