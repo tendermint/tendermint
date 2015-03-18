@@ -28,6 +28,7 @@ const (
 	defaultRecvRate           = 51200 // 5Kb/s
 	defaultSendQueueCapacity  = 1
 	defaultRecvBufferCapacity = 4096
+	defaultSendTimeoutSeconds = 10
 )
 
 type receiveCbFunc func(chId byte, msgBytes []byte)
@@ -191,7 +192,7 @@ func (c *MConnection) Send(chId byte, msg interface{}) bool {
 		return false
 	}
 
-	channel.sendBytes(binary.BinaryBytes(msg))
+	success := channel.sendBytes(binary.BinaryBytes(msg))
 
 	// Wake up sendRoutine if necessary
 	select {
@@ -199,7 +200,7 @@ func (c *MConnection) Send(chId byte, msg interface{}) bool {
 	default:
 	}
 
-	return true
+	return success
 }
 
 // Queues a message to be sent to channel.
@@ -470,9 +471,17 @@ func newChannel(conn *MConnection, desc *ChannelDescriptor) *Channel {
 
 // Queues message to send to this channel.
 // Goroutine-safe
-func (ch *Channel) sendBytes(bytes []byte) {
-	ch.sendQueue <- bytes
-	atomic.AddUint32(&ch.sendQueueSize, 1)
+// Times out (and returns false) after defaultSendTimeoutSeconds
+func (ch *Channel) sendBytes(bytes []byte) bool {
+	sendTicker := time.NewTicker(defaultSendTimeoutSeconds * time.Second)
+	select {
+	case <-sendTicker.C:
+		// timeout
+		return false
+	case ch.sendQueue <- bytes:
+		atomic.AddUint32(&ch.sendQueueSize, 1)
+		return true
+	}
 }
 
 // Queues message to send to this channel.
