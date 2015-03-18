@@ -109,7 +109,7 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 		case DIV: // 0x04
 			x, y := stack.Pop64(), stack.Pop64()
 			if y == 0 { // TODO
-				stack.Push64(0)
+				stack.Push(Zero)
 				fmt.Printf(" %v / %v = %v (TODO)\n", x, y, 0)
 			} else {
 				stack.Push64(x / y)
@@ -119,7 +119,7 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 		case SDIV: // 0x05
 			x, y := int64(stack.Pop64()), int64(stack.Pop64())
 			if y == 0 { // TODO
-				stack.Push64(0)
+				stack.Push(Zero)
 				fmt.Printf(" %v / %v = %v (TODO)\n", x, y, 0)
 			} else {
 				stack.Push64(uint64(x / y))
@@ -129,7 +129,7 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 		case MOD: // 0x06
 			x, y := stack.Pop64(), stack.Pop64()
 			if y == 0 { // TODO
-				stack.Push64(0)
+				stack.Push(Zero)
 				fmt.Printf(" %v %% %v = %v (TODO)\n", x, y, 0)
 			} else {
 				stack.Push64(x % y)
@@ -139,7 +139,7 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 		case SMOD: // 0x07
 			x, y := int64(stack.Pop64()), int64(stack.Pop64())
 			if y == 0 { // TODO
-				stack.Push64(0)
+				stack.Push(Zero)
 				fmt.Printf(" %v %% %v = %v (TODO)\n", x, y, 0)
 			} else {
 				stack.Push64(uint64(x % y))
@@ -149,7 +149,7 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 		case ADDMOD: // 0x08
 			x, y, z := stack.Pop64(), stack.Pop64(), stack.Pop64()
 			if z == 0 { // TODO
-				stack.Push64(0)
+				stack.Push(Zero)
 				fmt.Printf(" (%v + %v) %% %v = %v (TODO)\n", x, y, z, 0)
 			} else {
 				stack.Push64(x % y)
@@ -159,7 +159,7 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 		case MULMOD: // 0x09
 			x, y, z := stack.Pop64(), stack.Pop64(), stack.Pop64()
 			if z == 0 { // TODO
-				stack.Push64(0)
+				stack.Push(Zero)
 				fmt.Printf(" (%v + %v) %% %v = %v (TODO)\n", x, y, z, 0)
 			} else {
 				stack.Push64(x % y)
@@ -182,7 +182,7 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 			if x < y {
 				stack.Push64(1)
 			} else {
-				stack.Push64(0)
+				stack.Push(Zero)
 			}
 			fmt.Printf(" %v < %v = %v\n", x, y, x < y)
 
@@ -191,7 +191,7 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 			if x > y {
 				stack.Push64(1)
 			} else {
-				stack.Push64(0)
+				stack.Push(Zero)
 			}
 			fmt.Printf(" %v > %v = %v\n", x, y, x > y)
 
@@ -200,7 +200,7 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 			if x < y {
 				stack.Push64(1)
 			} else {
-				stack.Push64(0)
+				stack.Push(Zero)
 			}
 			fmt.Printf(" %v < %v = %v\n", x, y, x < y)
 
@@ -209,7 +209,7 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 			if x > y {
 				stack.Push64(1)
 			} else {
-				stack.Push64(0)
+				stack.Push(Zero)
 			}
 			fmt.Printf(" %v > %v = %v\n", x, y, x > y)
 
@@ -218,7 +218,7 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 			if x > y {
 				stack.Push64(1)
 			} else {
-				stack.Push64(0)
+				stack.Push(Zero)
 			}
 			fmt.Printf(" %v == %v = %v\n", x, y, x == y)
 
@@ -227,7 +227,7 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 			if x == 0 {
 				stack.Push64(1)
 			} else {
-				stack.Push64(0)
+				stack.Push(Zero)
 			}
 			fmt.Printf(" %v == 0 = %v\n", x, x == 0)
 
@@ -554,7 +554,7 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 
 			newAccount, err := vm.appState.CreateAccount(addr, value)
 			if err != nil {
-				stack.Push64(0)
+				stack.Push(Zero)
 				fmt.Printf(" (*) 0x0 %v\n", err)
 			} else {
 				// Run the input to get the contract code.
@@ -562,7 +562,7 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 				ret, err_ := vm.Call(callee, newAccount, input, input, value, gas)
 				if err_ != nil {
 					caller.Balance += value // Return the balance
-					stack.Push64(0)
+					stack.Push(Zero)
 				} else {
 					newAccount.Code = ret // Set the code
 					stack.Push(newAccount.Address)
@@ -660,27 +660,13 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 		}
 
 		pc++
+
+		// If there is an error, return
+		if err != nil {
+			return nil, err
+		}
 	}
 }
-
-/*
-func (vm *VM) CallPrecompiled(p *PrecompiledAccount, callData []byte, context *Context) (ret []byte, err error) {
-	gas := p.Gas(len(callData))
-	if context.UseGas(gas) {
-		ret = p.Call(callData)
-		fmt.Printf("NATIVE_FUNC => %X", ret)
-		vm.Endl()
-
-		return context.Return(ret), nil
-	} else {
-		fmt.Printf("NATIVE_FUNC => failed").Endl()
-
-		tmp := new(big.Int).Set(context.Gas)
-
-		panic(OOG(gas, tmp).Error())
-	}
-}
-*/
 
 func subslice(data []byte, offset, length uint64) ([]byte, bool) {
 	size := uint64(len(data))

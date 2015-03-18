@@ -24,10 +24,10 @@ type Log struct {
 type AppState interface {
 
 	// Accounts
-	GetAccount(Word) (*Account, error)
+	GetAccount(addr Word) (*Account, error)
 	UpdateAccount(*Account) error
 	DeleteAccount(*Account) error
-	CreateAccount(Word, uint64) (*Account, error)
+	CreateAccount(addr Word, balance uint64) (*Account, error)
 
 	// Storage
 	GetStorage(Word, Word) (Word, error)
