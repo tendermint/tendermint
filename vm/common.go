@@ -1,73 +1,54 @@
 package vm
 
 import (
-	"math/big"
+	"encoding/binary"
 )
 
 var (
-	GasStorageGet        = Big(50)
-	GasStorageAdd        = Big(20000)
-	GasStorageMod        = Big(5000)
-	GasLogBase           = Big(375)
-	GasLogTopic          = Big(375)
-	GasLogByte           = Big(8)
-	GasCreate            = Big(32000)
-	GasCreateByte        = Big(200)
-	GasCall              = Big(40)
-	GasCallValueTransfer = Big(9000)
-	GasStipend           = Big(2300)
-	GasCallNewAccount    = Big(25000)
-	GasReturn            = Big(0)
-	GasStop              = Big(0)
-	GasJumpDest          = Big(1)
-
-	RefundStorage = Big(15000)
-	RefundSuicide = Big(24000)
-
-	GasMemWord           = Big(3)
-	GasQuadCoeffDenom    = Big(512)
-	GasContractByte      = Big(200)
-	GasTransaction       = Big(21000)
-	GasTxDataNonzeroByte = Big(68)
-	GasTxDataZeroByte    = Big(4)
-	GasTx                = Big(21000)
-	GasExp               = Big(10)
-	GasExpByte           = Big(10)
-
-	GasSha3Base     = Big(30)
-	GasSha3Word     = Big(6)
-	GasSha256Base   = Big(60)
-	GasSha256Word   = Big(12)
-	GasRipemdBase   = Big(600)
-	GasRipemdWord   = Big(12)
-	GasEcrecover    = Big(3000)
-	GasIdentityBase = Big(15)
-	GasIdentityWord = Big(3)
-	GasCopyWord     = Big(3)
-
-	Pow256 = BigPow(2, 256)
-
-	LogTyPretty byte = 0x1
-	LogTyDiff   byte = 0x2
+	Zero = Word{0}
+	One  = Word{1}
 )
 
-const MaxCallDepth = 1025
+type Word [32]byte
 
-func calcMemSize(off, l *big.Int) *big.Int {
-	if l.Cmp(Big0) == 0 {
-		return Big0
+func (w Word) Copy() Word    { return w }
+func (w Word) Bytes() []byte { return w[:] } // copied.
+func (w Word) IsZero() bool {
+	accum := byte(0)
+	for _, byt := range w {
+		accum |= byt
 	}
-
-	return new(big.Int).Add(off, l)
+	return accum == 0
 }
 
-// Mainly used for print variables and passing to Print*
-func toValue(val *big.Int) interface{} {
-	// Let's assume a string on right padded zero's
-	b := val.Bytes()
-	if b[0] != 0 && b[len(b)-1] == 0x0 && b[len(b)-2] == 0x0 {
-		return string(b)
-	}
+func Uint64ToWord(i uint64) Word {
+	word := Word{}
+	PutUint64(word[:], i)
+	return word
+}
 
-	return val
+func BytesToWord(bz []byte) Word {
+	word := Word{}
+	copy(word[:], bz)
+	return word
+}
+
+func LeftPadWord(bz []byte) (word Word) {
+	copy(word[:], bz)
+	return
+}
+
+func RightPadWord(bz []byte) (word Word) {
+	copy(word[32-len(bz):], bz)
+	return
+}
+
+//-----------------------------------------------------------------------------
+
+func GetUint64(word Word) uint64 {
+	return binary.LittleEndian.Uint64(word[:])
+}
+
+func PutUint64(dest []byte, i uint64) {
+	binary.LittleEndian.PutUint64(dest, i)
 }
