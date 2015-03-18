@@ -17,5 +17,11 @@ list_deps:
 get_deps:
 	go get github.com/tendermint/tendermint/...
 
+tendermint_root/priv_validator.json: tendermint_root/priv_validator.json.orig
+	cp $< $@
+
+economy: tendermint_root/priv_validator.json
+	docker run -v $(CURDIR)/tendermint_root:/tendermint_root -p 8080:8080 tendermint
+
 clean:
-	rm -f tendermint
+	rm -f tendermint tendermint_root/priv_validator.json
