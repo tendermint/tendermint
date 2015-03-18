@@ -128,16 +128,8 @@ func (s *State) GetOrMakeAccounts(ins []*blk.TxInput, outs []*blk.TxOutput) (map
 			return nil, blk.ErrTxInvalidAddress
 		}
 		// PubKey should be present in either "account" or "in"
-		if _, isNil := acc.PubKey.(account.PubKeyNil); isNil {
-			if _, isNil := in.PubKey.(account.PubKeyNil); isNil {
-				return nil, blk.ErrTxUnknownPubKey
-			}
-			if !bytes.Equal(in.PubKey.Address(), acc.Address) {
-				return nil, blk.ErrTxInvalidPubKey
-			}
-			acc.PubKey = in.PubKey
-		} else {
-			in.PubKey = account.PubKeyNil{}
+		if err := checkInputPubKey(acc, in); err != nil {
+			return nil, err
 		}
 		accounts[string(in.Address)] = acc
 	}
@@ -159,6 +151,21 @@ func (s *State) GetOrMakeAccounts(ins []*blk.TxInput, outs []*blk.TxOutput) (map
 		accounts[string(out.Address)] = acc
 	}
 	return accounts, nil
+}
+
+func checkInputPubKey(acc *account.Account, in *blk.TxInput) error {
+	if _, isNil := acc.PubKey.(account.PubKeyNil); isNil {
+		if _, isNil := in.PubKey.(account.PubKeyNil); isNil {
+			return blk.ErrTxUnknownPubKey
+		}
+		if !bytes.Equal(in.PubKey.Address(), acc.Address) {
+			return blk.ErrTxInvalidPubKey
+		}
+		acc.PubKey = in.PubKey
+	} else {
+		in.PubKey = account.PubKeyNil{}
+	}
+	return nil
 }
 
 func (s *State) ValidateInputs(accounts map[string]*account.Account, signBytes []byte, ins []*blk.TxInput) (total uint64, err error) {
@@ -259,6 +266,46 @@ func (s *State) ExecTx(tx_ blk.Tx) error {
 		s.AdjustByInputs(accounts, tx.Inputs)
 		s.AdjustByOutputs(accounts, tx.Outputs)
 		s.UpdateAccounts(accounts)
+		return nil
+
+	case *blk.CallTx:
+		tx := tx_.(*blk.CallTx)
+		accounts := map[string]*account.Account{}
+		inAcc := s.GetAccount(tx.Input.Address)
+		if inAcc == nil {
+			return blk.ErrTxInvalidAddress
+		}
+		// PubKey should be present in either "inAcc" or "tx.Input"
+		if err := checkInputPubKey(inAcc, tx.Input); err != nil {
+			return err
+		}
+		accounts[string(tx.Input.Address)] = inAcc
+		signBytes := account.SignBytes(tx)
+		inTotal, err := s.ValidateInputs(accounts, signBytes, []*blk.TxInput{tx.Input})
+		if err != nil {
+			return err
+		}
+
+		// validate output address
+		if len(tx.Address) != 20 {
+			return blk.ErrTxInvalidAddress
+		}
+		outAcc := s.GetAccount(tx.Address)
+		if outAcc == nil {
+			return blk.ErrTxInvalidAddress
+		}
+		accounts[string(tx.Address)] = outAcc
+
+		// TODO: fees
+		// inTotal -= fees
+
+		// Good! Adjust accounts
+		s.AdjustByInputs(accounts, []*blk.TxInput{tx.Input})
+		outAcc.Balance += inTotal
+		s.UpdateAccounts(accounts)
+
+		// TODO: Run the contract call!
+
 		return nil
 
 	case *blk.BondTx:

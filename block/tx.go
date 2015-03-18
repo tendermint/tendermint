@@ -25,6 +25,7 @@ Tx (Transaction) is an atomic operation on the ledger state.
 
 Account Txs:
  - SendTx         Send coins to address
+ - CallTx 	  Send a msg to a contract that runs in the vm
 
 Validation Txs:
  - BondTx         New validator posts a bond
@@ -39,6 +40,7 @@ type Tx interface {
 const (
 	// Account transactions
 	TxTypeSend = byte(0x01)
+	TxTypeCall = byte(0x02)
 
 	// Validation transactions
 	TxTypeBond    = byte(0x11)
@@ -51,6 +53,7 @@ const (
 var _ = binary.RegisterInterface(
 	struct{ Tx }{},
 	binary.ConcreteType{&SendTx{}},
+	binary.ConcreteType{&CallTx{}},
 	binary.ConcreteType{&BondTx{}},
 	binary.ConcreteType{&UnbondTx{}},
 	binary.ConcreteType{&RebondTx{}},
@@ -135,6 +138,30 @@ func (tx *SendTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
 
 func (tx *SendTx) String() string {
 	return Fmt("SendTx{%v -> %v}", tx.Inputs, tx.Outputs)
+}
+
+//-----------------------------------------------------------------------------
+
+type CallTx struct {
+	Input    *TxInput
+	Address  []byte
+	GasLimit uint64
+	FeeLimit uint64
+	Data     []byte
+}
+
+func (tx *CallTx) TypeByte() byte { return TxTypeCall }
+
+func (tx *CallTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
+	tx.Input.WriteSignBytes(w, n, err)
+	binary.WriteByteSlice(tx.Address, w, n, err)
+	binary.WriteUint64(tx.GasLimit, w, n, err)
+	binary.WriteUint64(tx.FeeLimit, w, n, err)
+	binary.WriteByteSlice(tx.Data, w, n, err)
+}
+
+func (tx *CallTx) String() string {
+	return Fmt("CallTx{%v -> %x: %x}", tx.Input, tx.Address, tx.Data)
 }
 
 //-----------------------------------------------------------------------------
