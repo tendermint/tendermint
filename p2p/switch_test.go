@@ -141,10 +141,10 @@ func TestSwitches(t *testing.T) {
 
 	// Check message on ch0
 	ch0Msgs := s2.Reactors()[0].(*TestReactor).msgsReceived[byte(0x00)]
-	if len(ch0Msgs) != 1 {
+	if len(ch0Msgs) != 2 {
 		t.Errorf("Expected to have received 1 message in ch0")
 	}
-	if !bytes.Equal(ch0Msgs[0].Bytes, binary.BinaryBytes(ch0Msg)) {
+	if !bytes.Equal(ch0Msgs[1].Bytes, binary.BinaryBytes(ch0Msg)) {
 		t.Errorf("Unexpected message bytes. Wanted: %X, Got: %X", binary.BinaryBytes(ch0Msg), ch0Msgs[0].Bytes)
 	}
 
