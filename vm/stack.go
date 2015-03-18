@@ -1,25 +1,8 @@
 package vm
 
 import (
-	"encoding/binary"
-	"errors"
 	"fmt"
 )
-
-var (
-	ErrDataStackOverflow  = errors.New("DataStackOverflow")
-	ErrDataStackUnderflow = errors.New("DataStackUnderflow")
-)
-
-type Word [4]uint64
-
-func Bytes2Uint64(bz []byte) uint64 {
-	return binary.LittleEndian.Uint64(bz)
-}
-
-func Uint642Bytes(dest []byte, i uint64) {
-	binary.LittleEndian.PutUint64(dest, i)
-}
 
 // Not goroutine safe
 type Stack struct {
@@ -39,91 +22,86 @@ func NewStack(capacity int, gas *uint64, err *error) *Stack {
 	}
 }
 
-func (st *Stack) Push(d Word) error {
+func (st *Stack) useGas(gasToUse uint64) {
+	if *st.gas > gasToUse {
+		*st.gas -= gasToUse
+	} else {
+		st.setErr(ErrInsufficientGas)
+	}
+}
+
+func (st *Stack) setErr(err error) {
+	if *st.err != nil {
+		*st.err = err
+	}
+}
+
+func (st *Stack) Push(d Word) {
+	st.useGas(GasStackOp)
 	if st.ptr == cap(st.data) {
-		return ErrDataStackOverflow
+		st.setErr(ErrDataStackOverflow)
+		return
 	}
 	st.data[st.ptr] = d
 	st.ptr++
 }
 
-func (st *Stack) Push64(i uint64) error {
-	if st.ptr == cap(st.data) {
-		return ErrDataStackOverflow
-	}
-	st.data[st.ptr] = [4]uint64{i, 0, 0, 0}
-	st.ptr++
-}
-
-func (st *Stack) PushBytes(bz []byte) error {
+func (st *Stack) PushBytes(bz []byte) {
 	if len(bz) != 32 {
 		panic("Invalid bytes size: expected 32")
 	}
-	if st.ptr == cap(st.data) {
-		return ErrDataStackOverflow
-	}
-	st.data[st.ptr] = [4]uint64{
-		Bytes2Uint64(bz[0:8]),
-		Bytes2Uint64(bz[8:16]),
-		Bytes2Uint64(bz[16:24]),
-		Bytes2Uint64(bz[24:32]),
-	}
-	st.ptr++
+	st.Push(BytesToWord(bz))
 }
 
-func (st *Stack) Pop() (Word, error) {
-	if st.ptr == 0 {
-		return Zero, ErrDataStackUnderflow
-	}
-	st.ptr--
-	return st.data[st.ptr], nil
+func (st *Stack) Push64(i uint64) {
+	st.Push(Uint64ToWord(i))
 }
 
-func (st *Stack) Pop64() (uint64, error) {
+func (st *Stack) Pop() Word {
+	st.useGas(GasStackOp)
 	if st.ptr == 0 {
-		return Zero, ErrDataStackUnderflow
+		st.setErr(ErrDataStackUnderflow)
+		return Zero
 	}
 	st.ptr--
-	return st.data[st.ptr][0], nil
+	return st.data[st.ptr]
 }
 
-func (st *Stack) PopBytes() ([]byte, error) {
-	if st.ptr == 0 {
-		return Zero, ErrDataStackUnderflow
-	}
-	st.ptr--
-	res := make([]byte, 32)
-	copy(res[0:8], Uint642Bytes(st.data[st.ptr][0]))
-	copy(res[8:16], Uint642Bytes(st.data[st.ptr][1]))
-	copy(res[16:24], Uint642Bytes(st.data[st.ptr][2]))
-	copy(res[24:32], Uint642Bytes(st.data[st.ptr][3]))
-	return res, nil
+func (st *Stack) PopBytes() []byte {
+	return st.Pop().Bytes()
+}
+
+func (st *Stack) Pop64() uint64 {
+	return GetUint64(st.Pop())
 }
 
 func (st *Stack) Len() int {
 	return st.ptr
 }
 
-func (st *Stack) Swap(n int) error {
+func (st *Stack) Swap(n int) {
+	st.useGas(GasStackOp)
 	if st.ptr < n {
-		return ErrDataStackUnderflow
+		st.setErr(ErrDataStackUnderflow)
+		return
 	}
 	st.data[st.ptr-n], st.data[st.ptr-1] = st.data[st.ptr-1], st.data[st.ptr-n]
-	return nil
+	return
 }
 
 func (st *Stack) Dup(n int) {
+	st.useGas(GasStackOp)
+	if st.ptr < n {
+		st.setErr(ErrDataStackUnderflow)
+		return
+	}
 	st.Push(st.data[st.ptr-n])
+	return
 }
 
+// Not an opcode, costs no gas.
 func (st *Stack) Peek() Word {
 	return st.data[st.ptr-1]
-}
-
-func (st *Stack) Require(n int) error {
-	if st.ptr < n {
-		return ErrDataStackUnderflow
-	}
 }
 
 func (st *Stack) Print() {
