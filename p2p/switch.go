@@ -166,7 +166,7 @@ func (sw *Switch) IsDialing(addr *NetAddress) bool {
 // which receives success values for each attempted send (false if times out)
 func (sw *Switch) Broadcast(chId byte, msg interface{}) chan bool {
 	if atomic.LoadUint32(&sw.stopped) == 1 {
-		return
+		return nil
 	}
 	successChan := make(chan bool, len(sw.peers.List()))
 	log.Debug("Broadcast", "channel", chId, "msg", msg)

@@ -197,9 +197,14 @@ func BenchmarkSwitches(b *testing.B) {
 	// Send random message from one channel to another
 	for i := 0; i < b.N; i++ {
 		chId := byte(i % 4)
-		nS, nF := s1.Broadcast(chId, "test data")
-		numSuccess += nS
-		numFailure += nF
+		successChan := s1.Broadcast(chId, "test data")
+		for s := range successChan {
+			if s {
+				numSuccess += 1
+			} else {
+				numFailure += 1
+			}
+		}
 	}
 
 	log.Warn(Fmt("success: %v, failure: %v", numSuccess, numFailure))
