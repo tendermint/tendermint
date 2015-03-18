@@ -71,8 +71,8 @@ import (
 )
 
 const (
-	roundDuration0         = 30 * time.Second   // The first round is 60 seconds long.
-	roundDurationDelta     = 10 * time.Second   // Each successive round lasts 15 seconds longer.
+	roundDuration0         = 10 * time.Second   // The first round is 60 seconds long.
+	roundDurationDelta     = 3 * time.Second    // Each successive round lasts 15 seconds longer.
 	roundDeadlinePrevote   = float64(1.0 / 3.0) // When the prevote is due.
 	roundDeadlinePrecommit = float64(2.0 / 3.0) // When the precommit vote is due.
 	newHeightDelta         = roundDuration0 / 3 // The time to wait between commitTime and startTime of next consensus rounds.
