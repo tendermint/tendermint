@@ -11,8 +11,9 @@ var (
 
 type Word [32]byte
 
-func (w Word) Copy() Word    { return w }
-func (w Word) Bytes() []byte { return w[:] } // copied.
+func (w Word) String() string { return string(w[:]) }
+func (w Word) Copy() Word     { return w }
+func (w Word) Bytes() []byte  { return w[:] } // copied.
 func (w Word) IsZero() bool {
 	accum := byte(0)
 	for _, byt := range w {

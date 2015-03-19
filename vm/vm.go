@@ -41,7 +41,6 @@ type VMParams struct {
 	BlockHash      Word
 	BlockTime      int64
 	GasLimit       uint64
-	GasPrice       uint64
 	CallStackLimit uint64
 	Origin         Word
 }
@@ -69,8 +68,8 @@ func NewVM(appState AppState, params VMParams) *VM {
 // When the function returns, *gas will be the amount of remaining gas.
 func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, gas *uint64) (output []byte, err error) {
 
-	if len(callee.Code) == 0 {
-		panic("Call() requires callee with code")
+	if len(code) == 0 {
+		panic("Call() requires code")
 	}
 
 	fmt.Printf("(%d) (%X) %X (code=%d) gas: %v (d) %X\n", vm.callDepth, caller.Address[:4], callee.Address, len(callee.Code), *gas, input)
@@ -351,9 +350,9 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 			copy(dest, data)
 			fmt.Printf(" => [%v, %v, %v] %X\n", memOff, codeOff, length, data)
 
-		case GASPRICE: // 0x3A
-			stack.Push64(vm.params.GasPrice)
-			fmt.Printf(" => %X\n", vm.params.GasPrice)
+		case GASPRICE_DEPRECATED: // 0x3A
+			stack.Push(Zero)
+			fmt.Printf(" => %X (GASPRICE IS DEPRECATED)\n")
 
 		case EXTCODESIZE: // 0x3B
 			addr := stack.Pop()
