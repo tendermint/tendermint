@@ -40,3 +40,23 @@ func TestCopy(t *testing.T) {
 		t.Fatalf("ValidatorSet copy had wrong hash. Orig: %X, Copy: %X", vsetHash, vsetCopyHash)
 	}
 }
+
+func BenchmarkValidatorSetCopy(b *testing.B) {
+	b.StopTimer()
+	vset := NewValidatorSet([]*Validator{})
+	for i := 0; i < 1000; i++ {
+		privAccount := account.GenPrivAccount()
+		val := &Validator{
+			Address: privAccount.Address,
+			PubKey:  privAccount.PubKey.(account.PubKeyEd25519),
+		}
+		if !vset.Add(val) {
+			panic("Failde to add validator")
+		}
+	}
+	b.StartTimer()
+
+	for i := 0; i < b.N; i++ {
+		vset.Copy()
+	}
+}
