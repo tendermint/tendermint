@@ -147,7 +147,7 @@ type CallTx struct {
 	Input    *TxInput
 	Address  []byte
 	GasLimit uint64
-	FeeLimit uint64
+	Fee      uint64
 	Data     []byte
 }
 
@@ -157,7 +157,7 @@ func (tx *CallTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
 	tx.Input.WriteSignBytes(w, n, err)
 	binary.WriteByteSlice(tx.Address, w, n, err)
 	binary.WriteUint64(tx.GasLimit, w, n, err)
-	binary.WriteUint64(tx.FeeLimit, w, n, err)
+	binary.WriteUint64(tx.Fee, w, n, err)
 	binary.WriteByteSlice(tx.Data, w, n, err)
 }
 

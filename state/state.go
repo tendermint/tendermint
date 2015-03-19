@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"math/big"
 	"time"
 
 	"github.com/tendermint/tendermint/account"
@@ -235,15 +234,14 @@ func (s *State) AdjustByOutputs(accounts map[string]*account.Account, outs []*bl
 
 // If the tx is invalid, an error will be returned.
 // Unlike AppendBlock(), state will not be altered.
-func (s *State) ExecTx(tx_ blk.Tx, blk_ *blk.Block) error {
+func (s *State) ExecTx(tx_ blk.Tx, runCall bool) error {
 
 	// TODO: do something with fees
 	fees := uint64(0)
 
 	// Exec tx
-	switch tx_.(type) {
+	switch tx := tx_.(type) {
 	case *blk.SendTx:
-		tx := tx_.(*blk.SendTx)
 		accounts, err := s.GetOrMakeAccounts(tx.Inputs, tx.Outputs)
 		if err != nil {
 			return err
@@ -270,7 +268,6 @@ func (s *State) ExecTx(tx_ blk.Tx, blk_ *blk.Block) error {
 		return nil
 
 	case *blk.CallTx:
-		tx := tx_.(*blk.CallTx)
 		accounts := map[string]*account.Account{}
 		inAcc := s.GetAccount(tx.Input.Address)
 		if inAcc == nil {
@@ -297,29 +294,20 @@ func (s *State) ExecTx(tx_ blk.Tx, blk_ *blk.Block) error {
 		}
 		accounts[string(tx.Address)] = outAcc
 
-		// ensure sufficient gas price
-		// we multiply to avoid dividing
-		bigProvidedFee := new(big.Int).Mul(big.NewInt(int64(tx.FeeLimit)), big.NewInt(int64(blk.GasPriceDivisor)))
-		bigMinFee := new(big.Int).Mul(big.NewInt(int64(blk_.GasPrice)), big.NewInt(int64(tx.GasLimit)))
-		if bigProvidedFee.Cmp(bigMinFee) < 0 {
-			return blk.ErrTxInsufficientGasPrice
-		}
-
-		inTotal -= tx.FeeLimit
+		inTotal -= tx.Fee
 
 		// Good! Adjust accounts
 		s.AdjustByInputs(accounts, []*blk.TxInput{tx.Input})
 		outAcc.Balance += inTotal
 		s.UpdateAccounts(accounts)
 
-		// TODO: Run the contract call!
-
-		// TODO: refund some gas
-
+		if runCall {
+			// TODO: Run the contract call!
+			// TODO: refund some gas
+		}
 		return nil
 
 	case *blk.BondTx:
-		tx := tx_.(*blk.BondTx)
 		valInfo := s.GetValidatorInfo(tx.PubKey.Address())
 		if valInfo != nil {
 			// TODO: In the future, check that the validator wasn't destroyed,
@@ -373,8 +361,6 @@ func (s *State) ExecTx(tx_ blk.Tx, blk_ *blk.Block) error {
 		return nil
 
 	case *blk.UnbondTx:
-		tx := tx_.(*blk.UnbondTx)
-
 		// The validator must be active
 		_, val := s.BondedValidators.GetByAddress(tx.Address)
 		if val == nil {
@@ -397,8 +383,6 @@ func (s *State) ExecTx(tx_ blk.Tx, blk_ *blk.Block) error {
 		return nil
 
 	case *blk.RebondTx:
-		tx := tx_.(*blk.RebondTx)
-
 		// The validator must be inactive
 		_, val := s.UnbondingValidators.GetByAddress(tx.Address)
 		if val == nil {
@@ -421,8 +405,6 @@ func (s *State) ExecTx(tx_ blk.Tx, blk_ *blk.Block) error {
 		return nil
 
 	case *blk.DupeoutTx:
-		tx := tx_.(*blk.DupeoutTx)
-
 		// Verify the signatures
 		_, accused := s.BondedValidators.GetByAddress(tx.Address)
 		if accused == nil {
@@ -650,7 +632,7 @@ func (s *State) appendBlock(block *blk.Block, blockPartsHeader blk.PartSetHeader
 
 	// Commit each tx
 	for _, tx := range block.Data.Txs {
-		err := s.ExecTx(tx, block)
+		err := s.ExecTx(tx, true)
 		if err != nil {
 			return InvalidTxError{tx, err}
 		}

@@ -32,7 +32,7 @@ func NewMempool(state *sm.State) *Mempool {
 func (mem *Mempool) AddTx(tx blk.Tx) (err error) {
 	mem.mtx.Lock()
 	defer mem.mtx.Unlock()
-	err = mem.state.ExecTx(tx)
+	err = mem.state.ExecTx(tx, false)
 	if err != nil {
 		log.Debug("AddTx() error", "tx", tx, "error", err)
 		return err
@@ -82,7 +82,7 @@ func (mem *Mempool) ResetForBlockAndState(block *blk.Block, state *sm.State) {
 	// Next, filter all txs that aren't valid given new state.
 	validTxs := []blk.Tx{}
 	for _, tx := range txs {
-		err := mem.state.ExecTx(tx)
+		err := mem.state.ExecTx(tx, false)
 		if err == nil {
 			log.Debug("Filter in, valid", "tx", tx)
 			validTxs = append(validTxs, tx)
