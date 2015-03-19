@@ -282,18 +282,22 @@ func (s *State) ExecTx(tx_ blk.Tx, runCall bool) error {
 		// Validate input
 		inAcc = s.GetAccount(tx.Input.Address)
 		if inAcc == nil {
+			log.Debug("Can't find in account %X", tx.Input.Address)
 			return blk.ErrTxInvalidAddress
 		}
 		// pubKey should be present in either "inAcc" or "tx.Input"
 		if err := checkInputPubKey(inAcc, tx.Input); err != nil {
+			log.Debug("Can't find pubkey for %X", tx.Input.Address)
 			return err
 		}
 		signBytes := account.SignBytes(tx)
 		err := s.ValidateInput(inAcc, signBytes, tx.Input)
 		if err != nil {
+			log.Debug("ValidateInput failed on %X:", tx.Input.Address)
 			return err
 		}
 		if tx.Input.Amount < tx.Fee {
+			log.Debug("Sender did not send enough to cover the fee %X", tx.Input.Address)
 			return blk.ErrTxInsufficientFunds
 		}
 
@@ -301,10 +305,12 @@ func (s *State) ExecTx(tx_ blk.Tx, runCall bool) error {
 		if !createAccount {
 			// Validate output
 			if len(tx.Address) != 20 {
+				log.Debug("Destination address is not 20 bytes %X", tx.Address)
 				return blk.ErrTxInvalidAddress
 			}
 			outAcc = s.GetAccount(tx.Address)
 			if outAcc == nil {
+				log.Debug("Cannot find destination address %X", tx.Address)
 				return blk.ErrTxInvalidAddress
 			}
 		}
@@ -336,6 +342,7 @@ func (s *State) ExecTx(tx_ blk.Tx, runCall bool) error {
 			} else {
 				callee, err = appState.CreateAccount(caller)
 				if err != nil {
+					log.Debug("Error creating account")
 					return err
 				}
 			}

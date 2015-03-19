@@ -25,6 +25,12 @@ func App() *confer.Config {
 	return app
 }
 
+func SetApp(a *confer.Config) {
+	appMtx.Lock()
+	defer appMtx.Unlock()
+	app = a
+}
+
 // NOTE: If you change this, maybe also change initDefaults()
 var defaultConfig = `# This is a TOML config file.
 # For more information, see https://github.com/toml-lang/toml
@@ -57,7 +63,7 @@ ListenAddr = "127.0.0.1:8081"
 # TODO: Document options
 `
 
-var defaultGenesis = `
+var DefaultGenesis = `
 {
   "Accounts": [
     {
@@ -114,7 +120,7 @@ func Init(rootDir string) {
 
 	// Write default config file if missing.
 	checkWriteFile(configFile, defaultConfig)
-	checkWriteFile(genesisFile, defaultGenesis)
+	checkWriteFile(genesisFile, DefaultGenesis)
 
 	// Initialize Config
 	app = confer.NewConfig()
