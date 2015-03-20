@@ -30,10 +30,12 @@ func SignBytes(o Signable) []byte {
 // on the blockchain.
 // Serialized by binary.[read|write]Reflect
 type Account struct {
-	Address  []byte
-	PubKey   PubKey
-	Sequence uint
-	Balance  uint64
+	Address     []byte
+	PubKey      PubKey
+	Sequence    uint
+	Balance     uint64
+	Code        []byte // VM code
+	StorageRoot []byte // VM storage merkle root.
 }
 
 func (account *Account) Copy() *Account {
@@ -42,7 +44,7 @@ func (account *Account) Copy() *Account {
 }
 
 func (account *Account) String() string {
-	return fmt.Sprintf("Account{%X:%v}", account.Address, account.PubKey)
+	return fmt.Sprintf("Account{%X:%v C:%v S:%X}", account.Address, account.PubKey, len(account.Code), account.StorageRoot)
 }
 
 func AccountEncoder(o interface{}, w io.Writer, n *int64, err *error) {

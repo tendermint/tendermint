@@ -12,6 +12,7 @@ import (
 	. "github.com/tendermint/tendermint/common"
 	dbm "github.com/tendermint/tendermint/db"
 	"github.com/tendermint/tendermint/merkle"
+	"github.com/tendermint/tendermint/vm"
 )
 
 var (
@@ -97,6 +98,12 @@ func (s *State) Save() {
 	s.DB.Set(stateKey, buf.Bytes())
 }
 
+// NOTE: the valSets are not Copy()'d.
+// See TODOs in Copy() below.
+func (s *State) Reset(checkpoint *State) {
+	*s = *checkpoint
+}
+
 func (s *State) Copy() *State {
 	return &State{
 		DB:                   s.DB,
@@ -104,9 +111,9 @@ func (s *State) Copy() *State {
 		LastBlockHash:        s.LastBlockHash,
 		LastBlockParts:       s.LastBlockParts,
 		LastBlockTime:        s.LastBlockTime,
-		BondedValidators:     s.BondedValidators.Copy(),
-		LastBondedValidators: s.LastBondedValidators.Copy(),
-		UnbondingValidators:  s.UnbondingValidators.Copy(),
+		BondedValidators:     s.BondedValidators.Copy(),     // TODO remove need for Copy() here.
+		LastBondedValidators: s.LastBondedValidators.Copy(), // That is, make updates to the validator set
+		UnbondingValidators:  s.UnbondingValidators.Copy(),  // copy the valSet lazily.
 		accounts:             s.accounts.Copy(),
 		validatorInfos:       s.validatorInfos.Copy(),
 	}
@@ -268,7 +275,9 @@ func (s *State) ExecTx(tx_ blk.Tx, runCall bool) error {
 		return nil
 
 	case *blk.CallTx:
-		accounts := map[string]*account.Account{}
+		accounts := make(map[string]*account.Account)
+
+		// validate input
 		inAcc := s.GetAccount(tx.Input.Address)
 		if inAcc == nil {
 			return blk.ErrTxInvalidAddress
@@ -284,7 +293,7 @@ func (s *State) ExecTx(tx_ blk.Tx, runCall bool) error {
 			return err
 		}
 
-		// validate output address
+		// validate output
 		if len(tx.Address) != 20 {
 			return blk.ErrTxInvalidAddress
 		}
@@ -292,19 +301,54 @@ func (s *State) ExecTx(tx_ blk.Tx, runCall bool) error {
 		if outAcc == nil {
 			return blk.ErrTxInvalidAddress
 		}
+		if inTotal < tx.Fee {
+			return blk.ErrTxInsufficientFunds
+		}
 		accounts[string(tx.Address)] = outAcc
 
-		inTotal -= tx.Fee
+		// Remember unmodified state in case call fails.
+		checkpoint := s.Copy()
 
-		// Good! Adjust accounts
-		s.AdjustByInputs(accounts, []*blk.TxInput{tx.Input})
-		outAcc.Balance += inTotal
+		// Good! Adjust accounts and maybe actually run the tx.
+		value := inTotal - tx.Fee
+		s.AdjustByInputs(accounts, []*blk.TxInput{tx.Input}) // adjusts inAcc.
+		outAcc.Balance += value
 		s.UpdateAccounts(accounts)
 
 		if runCall {
-			// TODO: Run the contract call!
-			// TODO: refund some gas
+			appState := NewVMAppState(s)
+			params := vm.Params{
+				BlockHeight: uint64(s.LastBlockHeight),
+				BlockHash:   vm.BytesToWord(s.LastBlockHash),
+				BlockTime:   s.LastBlockTime.Unix(),
+				GasLimit:    10000000,
+			}
+			caller := toVMAccount(inAcc)
+			callee := toVMAccount(outAcc)
+			appState.AddAccount(caller) // because we adjusted by input above.
+			appState.AddAccount(callee) // because we adjusted by input above.
+			vmach := vm.NewVM(appState, params, caller.Address)
+			gas := tx.GasLimit
+			ret, err_ := vmach.Call(caller, callee, outAcc.Code, tx.Data, value, &gas)
+			if err_ != nil {
+				// Failure
+				// Revert the state while charging gas for the user.
+				s.Reset(checkpoint)
+				callee.Balance -= tx.Fee
+				s.UpdateAccounts(accounts)
+			} else {
+				// Success
+				appState.Sync()
+			}
+			// Create a receipt from the ret and whether errored.
+			log.Info("VM call complete", "caller", caller, "callee", callee, "return", ret, "err", err_)
+		} else {
+			// The mempool does not call txs until
+			// the proposer determines the order of txs.
+			// So mempool will skip the actual .Call(),
+			// and only deduct from the caller's balance.
 		}
+
 		return nil
 
 	case *blk.BondTx:
@@ -704,6 +748,11 @@ func (s *State) UpdateAccounts(accounts map[string]*account.Account) {
 	for _, acc := range accounts {
 		s.accounts.Set(acc.Address, acc.Copy())
 	}
+}
+
+func (s *State) RemoveAccount(address []byte) bool {
+	_, removed := s.accounts.Remove(address)
+	return removed
 }
 
 // The returned ValidatorInfo is a copy, so mutating it

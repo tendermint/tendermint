@@ -6,6 +6,15 @@ func Fingerprint(slice []byte) []byte {
 	return fingerprint
 }
 
+func IsZeros(slice []byte) bool {
+	for _, byt := range slice {
+		if byt != byte(0) {
+			return false
+		}
+	}
+	return true
+}
+
 func RightPadBytes(slice []byte, l int) []byte {
 	if l < len(slice) {
 		return slice

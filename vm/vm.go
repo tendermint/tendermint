@@ -31,40 +31,25 @@ const (
 
 type VM struct {
 	appState AppState
-	params   VMParams
+	params   Params
+	origin   Word
 
 	callDepth int
 }
 
-type VMParams struct {
-	BlockHeight    uint64
-	BlockHash      Word
-	BlockTime      int64
-	GasLimit       uint64
-	CallStackLimit uint64
-	Origin         Word
-}
-
-func NewVM(appState AppState, params VMParams) *VM {
+func NewVM(appState AppState, params Params, origin Word) *VM {
 	return &VM{
 		appState:  appState,
 		params:    params,
+		origin:    origin,
 		callDepth: 0,
 	}
 }
 
-/*
-	// When running a transaction, the caller the pays for the fees.
-
-	// Check caller's account balance vs feeLimit and value
-	if caller.Balance < (feeLimit + value) {
-		return nil, ErrInsufficientBalance
-	}
-	caller.Balance -= (feeLimit + value)
-
-*/
-
-// gas: the maximum gas that will be run.
+// value: The value transfered from caller to callee.
+// NOTE: The value should already have been transferred to the callee.
+// NOTE: When Call() fails, the value should be returned to the caller.
+// gas: The maximum gas that will be run.
 // When the function returns, *gas will be the amount of remaining gas.
 func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, gas *uint64) (output []byte, err error) {
 
@@ -282,17 +267,16 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 				return nil, firstErr(err, ErrInsufficientGas)
 			}
 			account, err_ := vm.appState.GetAccount(addr) // TODO ensure that 20byte lengths are supported.
-			if err = firstErr(err, err_); err != nil {
-				return nil, err
+			if err_ != nil {
+				return nil, firstErr(err, err_)
 			}
 			balance := account.Balance
 			stack.Push64(balance)
 			fmt.Printf(" => %v (%X)\n", balance, addr)
 
 		case ORIGIN: // 0x32
-			origin := vm.params.Origin
-			stack.Push(origin)
-			fmt.Printf(" => %X\n", origin)
+			stack.Push(vm.origin)
+			fmt.Printf(" => %X\n", vm.origin)
 
 		case CALLER: // 0x33
 			stack.Push(caller.Address)
@@ -360,8 +344,8 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 				return nil, firstErr(err, ErrInsufficientGas)
 			}
 			account, err_ := vm.appState.GetAccount(addr)
-			if err = firstErr(err, err_); err != nil {
-				return nil, err
+			if err_ != nil {
+				return nil, firstErr(err, err_)
 			}
 			code := account.Code
 			l := uint64(len(code))
@@ -374,8 +358,8 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 				return nil, firstErr(err, ErrInsufficientGas)
 			}
 			account, err_ := vm.appState.GetAccount(addr)
-			if err = firstErr(err, err_); err != nil {
-				return nil, err
+			if err_ != nil {
+				return nil, firstErr(err, err_)
 			}
 			code := account.Code
 			memOff := stack.Pop64()
@@ -383,11 +367,11 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 			length := stack.Pop64()
 			data, ok := subslice(code, codeOff, length)
 			if !ok {
-				return nil, ErrCodeOutOfBounds
+				return nil, firstErr(err, ErrCodeOutOfBounds)
 			}
 			dest, ok := subslice(memory, memOff, length)
 			if !ok {
-				return nil, ErrMemoryOutOfBounds
+				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
 			copy(dest, data)
 			fmt.Printf(" => [%v, %v, %v] %X\n", memOff, codeOff, length, data)
@@ -422,7 +406,7 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 			offset := stack.Pop64()
 			data, ok := subslice(memory, offset, 32)
 			if !ok {
-				return nil, ErrMemoryOutOfBounds
+				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
 			stack.Push(RightPadWord(data))
 			fmt.Printf(" => 0x%X\n", data)
@@ -431,7 +415,7 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 			offset, data := stack.Pop64(), stack.Pop()
 			dest, ok := subslice(memory, offset, 32)
 			if !ok {
-				return nil, ErrMemoryOutOfBounds
+				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
 			copy(dest, data[:])
 			fmt.Printf(" => 0x%X\n", data)
@@ -439,7 +423,7 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 		case MSTORE8: // 0x53
 			offset, val := stack.Pop64(), byte(stack.Pop64()&0xFF)
 			if len(memory) <= int(offset) {
-				return nil, ErrMemoryOutOfBounds
+				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
 			memory[offset] = val
 			fmt.Printf(" => [%v] 0x%X\n", offset, val)
@@ -540,8 +524,6 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 			// Check balance
 			if caller.Balance < value {
 				return nil, firstErr(err, ErrInsufficientBalance)
-			} else {
-				caller.Balance -= value
 			}
 
 			// Create a new address
@@ -551,13 +533,17 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 
 			// TODO charge for gas to create account _ the code length * GasCreateByte
 
-			newAccount, err := vm.appState.CreateAccount(addr, value)
+			newAccount, err := vm.appState.CreateAccount(addr)
 			if err != nil {
 				stack.Push(Zero)
 				fmt.Printf(" (*) 0x0 %v\n", err)
 			} else {
+				if err_ := transfer(callee, newAccount, value); err_ != nil {
+					return nil, err_ // prob never happens...
+				}
 				// Run the input to get the contract code.
 				// The code as well as the input to the code are the same.
+				// Will it halt?  Yes.
 				ret, err_ := vm.Call(callee, newAccount, input, input, value, gas)
 				if err_ != nil {
 					caller.Balance += value // Return the balance
@@ -592,11 +578,11 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 			// Begin execution
 			var ret []byte
 			var err error
-
-			// If addr is in nativeContracts
 			if nativeContract := nativeContracts[addr]; nativeContract != nil {
+				// Native contract
 				ret, err = nativeContract(args, &gasLimit)
 			} else {
+				// EVM contract
 				if ok = useGas(gas, GasGetAccount); !ok {
 					return nil, firstErr(err, ErrInsufficientGas)
 				}
@@ -607,6 +593,9 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 				if op == CALLCODE {
 					ret, err = vm.Call(callee, callee, account.Code, args, value, gas)
 				} else {
+					if err := transfer(callee, account, value); err != nil {
+						return nil, err
+					}
 					ret, err = vm.Call(callee, account, account.Code, args, value, gas)
 				}
 			}
@@ -642,6 +631,7 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 			if ok = useGas(gas, GasGetAccount); !ok {
 				return nil, firstErr(err, ErrInsufficientGas)
 			}
+			// TODO if the receiver is Zero, then make it the fee.
 			receiver, err_ := vm.appState.GetAccount(addr)
 			if err = firstErr(err, err_); err != nil {
 				return nil, err
@@ -718,4 +708,14 @@ func createAddress(creatorAddr Word, nonce uint64) Word {
 	copy(temp, creatorAddr[:])
 	PutUint64(temp[32:], nonce)
 	return RightPadWord(sha3.Sha3(temp)[:20])
+}
+
+func transfer(from, to *Account, amount uint64) error {
+	if from.Balance < amount {
+		return ErrInsufficientBalance
+	} else {
+		from.Balance -= amount
+		to.Balance += amount
+		return nil
+	}
 }

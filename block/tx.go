@@ -26,7 +26,7 @@ Tx (Transaction) is an atomic operation on the ledger state.
 
 Account Txs:
  - SendTx         Send coins to address
- - CallTx 	  Send a msg to a contract that runs in the vm
+ - CallTx         Send a msg to a contract that runs in the vm
 
 Validation Txs:
  - BondTx         New validator posts a bond

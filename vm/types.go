@@ -6,12 +6,33 @@ const (
 	defaultDataStackCapacity = 10
 )
 
+var (
+	Zero = Word{0}
+	One  = Word{1}
+)
+
+type Word [32]byte
+
+func (w Word) String() string  { return string(w[:]) }
+func (w Word) Copy() Word      { return w }
+func (w Word) Bytes() []byte   { return w[:] } // copied.
+func (w Word) Address() []byte { return w[:20] }
+func (w Word) IsZero() bool {
+	accum := byte(0)
+	for _, byt := range w {
+		accum |= byt
+	}
+	return accum == 0
+}
+
+//-----------------------------------------------------------------------------
+
 type Account struct {
-	Address   Word
-	Balance   uint64
-	Code      []byte
-	Nonce     uint64
-	StateRoot Word
+	Address     Word
+	Balance     uint64
+	Code        []byte
+	Nonce       uint64
+	StorageRoot Word
 }
 
 type Log struct {
@@ -27,13 +48,19 @@ type AppState interface {
 	GetAccount(addr Word) (*Account, error)
 	UpdateAccount(*Account) error
 	DeleteAccount(*Account) error
-	CreateAccount(addr Word, balance uint64) (*Account, error)
+	CreateAccount(addr Word) (*Account, error)
 
 	// Storage
 	GetStorage(Word, Word) (Word, error)
-	SetStorage(Word, Word, Word) (bool, error)
-	RemoveStorage(Word, Word) error
+	SetStorage(Word, Word, Word) (bool, error) // Setting to Zero is deleting.
 
 	// Logs
 	AddLog(*Log)
+}
+
+type Params struct {
+	BlockHeight uint64
+	BlockHash   Word
+	BlockTime   int64
+	GasLimit    uint64
 }
