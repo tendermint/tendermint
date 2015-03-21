@@ -63,7 +63,7 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 	output, err = vm.call(caller, callee, code, input, value, gas)
 	vm.callDepth -= 1
 	if err != nil {
-		err = transfer(callee, caller, value)
+		err := transfer(callee, caller, value)
 		if err != nil {
 			panic("Could not return value to caller")
 		}
@@ -270,7 +270,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 				return nil, firstErr(err, ErrInsufficientGas)
 			}
 			offset, size := stack.Pop64(), stack.Pop64()
-			data, ok := subslice(memory, offset, size)
+			data, ok := subslice(memory, offset, size, false)
 			if !ok {
 				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
@@ -309,7 +309,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 
 		case CALLDATALOAD: // 0x35
 			offset := stack.Pop64()
-			data, ok := subslice(input, offset, 32)
+			data, ok := subslice(input, offset, 32, true)
 			if !ok {
 				return nil, firstErr(err, ErrInputOutOfBounds)
 			}
@@ -324,11 +324,11 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			memOff := stack.Pop64()
 			inputOff := stack.Pop64()
 			length := stack.Pop64()
-			data, ok := subslice(input, inputOff, length)
+			data, ok := subslice(input, inputOff, length, false)
 			if !ok {
 				return nil, firstErr(err, ErrInputOutOfBounds)
 			}
-			dest, ok := subslice(memory, memOff, length)
+			dest, ok := subslice(memory, memOff, length, false)
 			if !ok {
 				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
@@ -344,11 +344,12 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			memOff := stack.Pop64()
 			codeOff := stack.Pop64()
 			length := stack.Pop64()
-			data, ok := subslice(code, codeOff, length)
+			fmt.Println("CODECOPY: codeOff, length, codelength", codeOff, length, len(code))
+			data, ok := subslice(code, codeOff, length, false)
 			if !ok {
 				return nil, firstErr(err, ErrCodeOutOfBounds)
 			}
-			dest, ok := subslice(memory, memOff, length)
+			dest, ok := subslice(memory, memOff, length, false)
 			if !ok {
 				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
@@ -386,11 +387,11 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			memOff := stack.Pop64()
 			codeOff := stack.Pop64()
 			length := stack.Pop64()
-			data, ok := subslice(code, codeOff, length)
+			data, ok := subslice(code, codeOff, length, false)
 			if !ok {
 				return nil, firstErr(err, ErrCodeOutOfBounds)
 			}
-			dest, ok := subslice(memory, memOff, length)
+			dest, ok := subslice(memory, memOff, length, false)
 			if !ok {
 				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
@@ -425,7 +426,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 
 		case MLOAD: // 0x51
 			offset := stack.Pop64()
-			data, ok := subslice(memory, offset, 32)
+			data, ok := subslice(memory, offset, 32, true)
 			if !ok {
 				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
@@ -434,7 +435,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 
 		case MSTORE: // 0x52
 			offset, data := stack.Pop64(), stack.Pop()
-			dest, ok := subslice(memory, offset, 32)
+			dest, ok := subslice(memory, offset, 32, true)
 			if !ok {
 				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
@@ -469,13 +470,13 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			fmt.Printf(" {0x%X : 0x%X}\n", loc, data)
 
 		case JUMP: // 0x56
-			err = jump(code, stack.Pop64())
+			err = jump(code, stack.Pop64(), &pc)
 			continue
 
 		case JUMPI: // 0x57
 			pos, cond := stack.Pop64(), stack.Pop64()
 			if cond >= 1 {
-				err = jump(code, pos)
+				err = jump(code, pos, &pc)
 				continue
 			}
 			fmt.Printf(" ~> false\n")
@@ -491,11 +492,12 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			fmt.Printf(" => %X\n", *gas)
 
 		case JUMPDEST: // 0x5B
+			fmt.Printf("\n")
 			// Do nothing
 
 		case PUSH1, PUSH2, PUSH3, PUSH4, PUSH5, PUSH6, PUSH7, PUSH8, PUSH9, PUSH10, PUSH11, PUSH12, PUSH13, PUSH14, PUSH15, PUSH16, PUSH17, PUSH18, PUSH19, PUSH20, PUSH21, PUSH22, PUSH23, PUSH24, PUSH25, PUSH26, PUSH27, PUSH28, PUSH29, PUSH30, PUSH31, PUSH32:
 			a := uint64(op - PUSH1 + 1)
-			codeSegment, ok := subslice(code, pc+1, a)
+			codeSegment, ok := subslice(code, pc+1, a, true)
 			if !ok {
 				return nil, firstErr(err, ErrCodeOutOfBounds)
 			}
@@ -521,7 +523,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			for i := 0; i < n; i++ {
 				topics[i] = stack.Pop()
 			}
-			data, ok := subslice(memory, offset, size)
+			data, ok := subslice(memory, offset, size, false)
 			if !ok {
 				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
@@ -537,7 +539,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 		case CREATE: // 0xF0
 			contractValue := stack.Pop64()
 			offset, size := stack.Pop64(), stack.Pop64()
-			input, ok := subslice(memory, offset, size)
+			input, ok := subslice(memory, offset, size, false)
 			if !ok {
 				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
@@ -572,7 +574,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			fmt.Printf(" => %X\n", addr)
 
 			// Get the arguments from the memory
-			args, ok := subslice(memory, inOffset, inSize)
+			args, ok := subslice(memory, inOffset, inSize, false)
 			if !ok {
 				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
@@ -612,7 +614,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 				stack.Push(Zero)
 			} else {
 				stack.Push(One)
-				dest, ok := subslice(memory, retOffset, retSize)
+				dest, ok := subslice(memory, retOffset, retSize, false)
 				if !ok {
 					return nil, firstErr(err, ErrMemoryOutOfBounds)
 				}
@@ -626,7 +628,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 
 		case RETURN: // 0xF3
 			offset, size := stack.Pop64(), stack.Pop64()
-			ret, ok := subslice(memory, offset, size)
+			ret, ok := subslice(memory, offset, size, false)
 			if !ok {
 				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
@@ -660,15 +662,19 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 	}
 }
 
-func subslice(data []byte, offset, length uint64) ([]byte, bool) {
+func subslice(data []byte, offset, length uint64, flip_ bool) (ret []byte, ok bool) {
 	size := uint64(len(data))
 	if size < offset {
 		return nil, false
 	} else if size < offset+length {
-		return data[offset:], false
+		ret, ok = data[offset:], false
 	} else {
-		return data[offset : offset+length], true
+		ret, ok = data[offset:offset+length], true
 	}
+	if flip_ {
+		ret = flip(ret)
+	}
+	return
 }
 
 func codeGetOp(code []byte, n uint64) OpCode {
@@ -679,12 +685,14 @@ func codeGetOp(code []byte, n uint64) OpCode {
 	}
 }
 
-func jump(code []byte, to uint64) (err error) {
+func jump(code []byte, to uint64, pc *uint64) (err error) {
 	dest := codeGetOp(code, to)
 	if dest != JUMPDEST {
+		fmt.Printf(" ~> %v invalid jump dest %v\n", to, dest)
 		return ErrInvalidJumpDest
 	}
 	fmt.Printf(" ~> %v\n", to)
+	*pc = to
 	return nil
 }
 
@@ -713,4 +721,13 @@ func transfer(from, to *Account, amount uint64) error {
 		to.Balance += amount
 		return nil
 	}
+}
+
+func flip(in []byte) []byte {
+	flipped := make([]byte, len(in))
+	for i := 0; i < len(flipped)/2; i++ {
+		flipped[i] = in[len(in)-1-i]
+		flipped[len(in)-1-i] = in[i]
+	}
+	return flipped
 }
