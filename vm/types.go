@@ -27,12 +27,18 @@ func (w Word) IsZero() bool {
 
 //-----------------------------------------------------------------------------
 
-type Account struct {
-	Address     Word
-	Balance     uint64
-	Code        []byte
-	Nonce       uint64
-	StorageRoot Word
+type Account interface {
+	GetAddress() Word
+	GetBalance() uint64
+	GetCode() []byte
+	GetNonce() uint64
+	GetStorageRoot() Word
+
+	SetAddress(Word)
+	SetBalance(uint64)
+	SetCode([]byte)
+	SetNonce(uint64)
+	SetStorageRoot(Word)
 }
 
 type Log struct {
@@ -45,10 +51,10 @@ type Log struct {
 type AppState interface {
 
 	// Accounts
-	GetAccount(addr Word) (*Account, error)
-	UpdateAccount(*Account) error
-	DeleteAccount(*Account) error
-	CreateAccount(*Account) (*Account, error)
+	GetAccount(addr Word) (Account, error)
+	UpdateAccount(Account) error
+	DeleteAccount(Account) error
+	CreateAccount(Account) (Account, error)
 
 	// Storage
 	GetStorage(Word, Word) (Word, error)

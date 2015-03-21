@@ -322,13 +322,13 @@ func (s *State) ExecTx(tx_ blk.Tx, runCall bool) error {
 		if runCall {
 
 			var (
-				gas      uint64      = tx.GasLimit
-				err      error       = nil
-				caller   *vm.Account = toVMAccount(inAcc)
-				callee   *vm.Account = nil
-				code     []byte      = nil
-				appState             = NewVMAppState(s) // TODO: confusing.
-				params               = vm.Params{
+				gas      uint64     = tx.GasLimit
+				err      error      = nil
+				caller   vm.Account = toVMAccount(inAcc)
+				callee   vm.Account = nil
+				code     []byte     = nil
+				appState            = NewVMAppState(s) // TODO: confusing.
+				params              = vm.Params{
 					BlockHeight: uint64(s.LastBlockHeight),
 					BlockHash:   vm.BytesToWord(s.LastBlockHash),
 					BlockTime:   s.LastBlockTime.Unix(),
@@ -340,7 +340,7 @@ func (s *State) ExecTx(tx_ blk.Tx, runCall bool) error {
 			// this transaction is creating a new contract.
 			if outAcc != nil {
 				callee = toVMAccount(outAcc)
-				code = callee.Code
+				code = callee.GetCode()
 			} else {
 				callee, err = appState.CreateAccount(caller)
 				if err != nil {
@@ -352,7 +352,7 @@ func (s *State) ExecTx(tx_ blk.Tx, runCall bool) error {
 
 			appState.UpdateAccount(caller) // because we adjusted by input above, and bumped nonce maybe.
 			appState.UpdateAccount(callee) // because we adjusted by input above.
-			vmach := vm.NewVM(appState, params, caller.Address)
+			vmach := vm.NewVM(appState, params, caller.GetAddress())
 			// NOTE: Call() transfers the value from caller to callee iff call succeeds.
 			ret, err := vmach.Call(caller, callee, code, tx.Data, value, &gas)
 			if err != nil {
@@ -363,7 +363,7 @@ func (s *State) ExecTx(tx_ blk.Tx, runCall bool) error {
 			} else {
 				// Success
 				if createAccount {
-					callee.Code = ret
+					callee.SetCode(ret)
 				}
 
 				appState.Sync()
