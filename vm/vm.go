@@ -49,7 +49,7 @@ func NewVM(appState AppState, params Params, origin Word) *VM {
 // CONTRACT appState is aware of caller and callee, so we can just mutate them.
 // value: To be transferred from caller to callee. Refunded upon error.
 // gas:   Available gas. No refunds for gas.
-func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, gas *uint64) (output []byte, err error) {
+func (vm *VM) Call(caller, callee Account, code, input []byte, value uint64, gas *uint64) (output []byte, err error) {
 
 	if len(code) == 0 {
 		panic("Call() requires code")
@@ -72,8 +72,9 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 }
 
 // Just like Call() but does not transfer 'value' or modify the callDepth.
-func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, gas *uint64) (output []byte, err error) {
-	fmt.Printf("(%d) (%X) %X (code=%d) gas: %v (d) %X\n", vm.callDepth, caller.Address[:4], callee.Address, len(callee.Code), *gas, input)
+func (vm *VM) call(caller, callee Account, code, input []byte, value uint64, gas *uint64) (output []byte, err error) {
+	callerAddr := caller.GetAddress()
+	fmt.Printf("(%d) (%X) %X (code=%d) gas: %v (d) %X\n", vm.callDepth, callerAddr[:4], callee.GetAddress(), len(callee.GetCode()), *gas, input)
 
 	var (
 		pc     uint64 = 0
@@ -279,8 +280,8 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			fmt.Printf(" => (%v) %X\n", size, data)
 
 		case ADDRESS: // 0x30
-			stack.Push(callee.Address)
-			fmt.Printf(" => %X\n", callee.Address)
+			stack.Push(callee.GetAddress())
+			fmt.Printf(" => %X\n", callee.GetAddress())
 
 		case BALANCE: // 0x31
 			addr := stack.Pop()
@@ -291,7 +292,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			if err_ != nil {
 				return nil, firstErr(err, err_)
 			}
-			balance := account.Balance
+			balance := account.GetBalance()
 			stack.Push64(balance)
 			fmt.Printf(" => %v (%X)\n", balance, addr)
 
@@ -300,8 +301,8 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			fmt.Printf(" => %X\n", vm.origin)
 
 		case CALLER: // 0x33
-			stack.Push(caller.Address)
-			fmt.Printf(" => %X\n", caller.Address)
+			stack.Push(caller.GetAddress())
+			fmt.Printf(" => %X\n", caller.GetAddress())
 
 		case CALLVALUE: // 0x34
 			stack.Push64(value)
@@ -368,7 +369,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			if err_ != nil {
 				return nil, firstErr(err, err_)
 			}
-			code := account.Code
+			code := account.GetCode()
 			l := uint64(len(code))
 			stack.Push64(l)
 			fmt.Printf(" => %d\n", l)
@@ -382,7 +383,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			if err_ != nil {
 				return nil, firstErr(err, err_)
 			}
-			code := account.Code
+			code := account.GetCode()
 			memOff := stack.Pop64()
 			codeOff := stack.Pop64()
 			length := stack.Pop64()
@@ -451,13 +452,13 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 
 		case SLOAD: // 0x54
 			loc := stack.Pop()
-			data, _ := vm.appState.GetStorage(callee.Address, loc)
+			data, _ := vm.appState.GetStorage(callee.GetAddress(), loc)
 			stack.Push(data)
 			fmt.Printf(" {0x%X : 0x%X}\n", loc, data)
 
 		case SSTORE: // 0x55
 			loc, data := stack.Pop(), stack.Pop()
-			updated, err_ := vm.appState.SetStorage(callee.Address, loc, data)
+			updated, err_ := vm.appState.SetStorage(callee.GetAddress(), loc, data)
 			if err = firstErr(err, err_); err != nil {
 				return nil, err
 			}
@@ -526,7 +527,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
 			log := &Log{
-				callee.Address,
+				callee.GetAddress(),
 				topics,
 				data,
 				vm.params.BlockHeight,
@@ -543,7 +544,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			}
 
 			// Check balance
-			if callee.Balance < contractValue {
+			if callee.GetBalance() < contractValue {
 				return nil, firstErr(err, ErrInsufficientBalance)
 			}
 
@@ -559,8 +560,8 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 				if err_ != nil {
 					stack.Push(Zero)
 				} else {
-					newAccount.Code = ret // Set the code
-					stack.Push(newAccount.Address)
+					newAccount.SetCode(ret) // Set the code
+					stack.Push(newAccount.GetAddress())
 				}
 			}
 
@@ -601,9 +602,9 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 					return nil, err
 				}
 				if op == CALLCODE {
-					ret, err = vm.Call(callee, callee, account.Code, args, value, gas)
+					ret, err = vm.Call(callee, callee, account.GetCode(), args, value, gas)
 				} else {
-					ret, err = vm.Call(callee, account, account.Code, args, value, gas)
+					ret, err = vm.Call(callee, account, account.GetCode(), args, value, gas)
 				}
 			}
 
@@ -622,7 +623,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			// Handle remaining gas.
 			*gas += gasLimit
 
-			fmt.Printf("resume %X (%v)\n", callee.Address, gas)
+			fmt.Printf("resume %X (%v)\n", callee.GetAddress(), gas)
 
 		case RETURN: // 0xF3
 			offset, size := stack.Pop64(), stack.Pop64()
@@ -643,8 +644,8 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			if err = firstErr(err, err_); err != nil {
 				return nil, err
 			}
-			balance := callee.Balance
-			receiver.Balance += balance
+			balance := callee.GetBalance()
+			receiver.SetBalance(receiver.GetBalance() + balance)
 			vm.appState.UpdateAccount(receiver)
 			vm.appState.DeleteAccount(callee)
 			fmt.Printf(" => (%X) %v\n", addr[:4], balance)
@@ -705,12 +706,12 @@ func useGas(gas *uint64, gasToUse uint64) bool {
 	}
 }
 
-func transfer(from, to *Account, amount uint64) error {
-	if from.Balance < amount {
+func transfer(from, to Account, amount uint64) error {
+	if from.GetBalance() < amount {
 		return ErrInsufficientBalance
 	} else {
-		from.Balance -= amount
-		to.Balance += amount
+		from.SetBalance(from.GetBalance() - amount)
+		to.SetBalance(to.GetBalance() - amount)
 		return nil
 	}
 }

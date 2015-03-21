@@ -12,32 +12,34 @@ import (
 	"github.com/tendermint/tendermint/vm/sha3"
 )
 
-// Converts state.Account to vm.Account struct.
-func toVMAccount(acc *ac.Account) *vm.Account {
-	return &vm.Account{
+// Converts account.Account to account.VmAccount struct.
+func toVMAccount(acc *ac.Account) *ac.VmAccount {
+	return &ac.VmAccount{
 		Address:     vm.BytesToWord(acc.Address),
 		Balance:     acc.Balance,
 		Code:        acc.Code, // This is crazy.
 		Nonce:       uint64(acc.Sequence),
 		StorageRoot: vm.BytesToWord(acc.StorageRoot),
+		PubKey:      acc.PubKey,
 	}
 }
 
-// Converts vm.Account to state.Account struct.
-func toStateAccount(acc *vm.Account) *ac.Account {
+// Converts account.VmAccount to account.Account struct.
+func toStateAccount(acc *ac.VmAccount) *ac.Account {
 	return &ac.Account{
 		Address:     acc.Address.Address(),
 		Balance:     acc.Balance,
 		Code:        acc.Code,
 		Sequence:    uint(acc.Nonce),
 		StorageRoot: acc.StorageRoot.Bytes(),
+		PubKey:      acc.PubKey,
 	}
 }
 
 //-----------------------------------------------------------------------------
 
 type AccountInfo struct {
-	account *vm.Account
+	account vm.Account
 	deleted bool
 }
 
@@ -58,11 +60,14 @@ func NewVMAppState(state *State) *VMAppState {
 	}
 }
 
-func unpack(accInfo AccountInfo) (*vm.Account, bool) {
-	return accInfo.account, accInfo.deleted
+func unpack(accInfo AccountInfo) (*ac.VmAccount, bool) {
+	if accInfo.account == nil {
+		return nil, accInfo.deleted
+	}
+	return accInfo.account.(*ac.VmAccount), accInfo.deleted
 }
 
-func (vas *VMAppState) GetAccount(addr vm.Word) (*vm.Account, error) {
+func (vas *VMAppState) GetAccount(addr vm.Word) (vm.Account, error) {
 	account, deleted := unpack(vas.accounts[addr.String()])
 	if deleted {
 		return nil, Errorf("Account was deleted: %X", addr)
@@ -77,56 +82,58 @@ func (vas *VMAppState) GetAccount(addr vm.Word) (*vm.Account, error) {
 	}
 }
 
-func (vas *VMAppState) UpdateAccount(account *vm.Account) error {
-	accountInfo, ok := vas.accounts[account.Address.String()]
+func (vas *VMAppState) UpdateAccount(account vm.Account) error {
+	accountInfo, ok := vas.accounts[account.GetAddress().String()]
 	if !ok {
-		vas.accounts[account.Address.String()] = AccountInfo{account, false}
+		vas.accounts[account.GetAddress().String()] = AccountInfo{account, false}
 		return nil
 	}
-	account, deleted := unpack(accountInfo)
+	vmAccount, deleted := unpack(accountInfo)
 	if deleted {
-		return Errorf("Account was deleted: %X", account.Address)
+		return Errorf("Account was deleted: %X", vmAccount.Address)
 	} else {
-		vas.accounts[account.Address.String()] = AccountInfo{account, false}
+		vas.accounts[vmAccount.Address.String()] = AccountInfo{vmAccount, false}
 		return nil
 	}
 }
 
-func (vas *VMAppState) DeleteAccount(account *vm.Account) error {
-	accountInfo, ok := vas.accounts[account.Address.String()]
+func (vas *VMAppState) DeleteAccount(account vm.Account) error {
+	accountInfo, ok := vas.accounts[account.GetAddress().String()]
 	if !ok {
-		vas.accounts[account.Address.String()] = AccountInfo{account, true}
+		vas.accounts[account.GetAddress().String()] = AccountInfo{account, true}
 		return nil
 	}
-	account, deleted := unpack(accountInfo)
+	vmAccount, deleted := unpack(accountInfo)
 	if deleted {
-		return Errorf("Account was already deleted: %X", account.Address)
+		return Errorf("Account was already deleted: %X", vmAccount.Address)
 	} else {
-		vas.accounts[account.Address.String()] = AccountInfo{account, true}
+		vas.accounts[vmAccount.Address.String()] = AccountInfo{vmAccount, true}
 		return nil
 	}
 }
 
 // Creates a 20 byte address and bumps the creator's nonce.
-func (vas *VMAppState) CreateAccount(creator *vm.Account) (*vm.Account, error) {
+func (vas *VMAppState) CreateAccount(creator vm.Account) (vm.Account, error) {
 
 	// Generate an address
-	nonce := creator.Nonce
-	creator.Nonce += 1
+	nonce := creator.GetNonce()
+	creator.SetNonce(nonce + 1)
 	temp := make([]byte, 32+8)
-	copy(temp, creator.Address[:])
+	addr := creator.GetAddress()
+	copy(temp, addr[:])
 	vm.PutUint64(temp[32:], nonce)
-	addr := vm.RightPadWord(sha3.Sha3(temp)[:20])
+	addr = vm.RightPadWord(sha3.Sha3(temp)[:20])
 
 	// Create account from address.
 	account, deleted := unpack(vas.accounts[addr.String()])
 	if deleted || account == nil {
-		account = &vm.Account{
+		account = &ac.VmAccount{
 			Address:     addr,
 			Balance:     0,
 			Code:        nil,
 			Nonce:       0,
 			StorageRoot: vm.Zero,
+			PubKey:      ac.PubKeyNil{},
 		}
 		vas.accounts[addr.String()] = AccountInfo{account, false}
 		return account, nil
@@ -207,7 +214,7 @@ func (vas *VMAppState) Sync() {
 		1024,              // TODO change.
 		vas.state.DB,
 	)
-	var currentAccount *vm.Account
+	var currentAccount *ac.VmAccount
 	var deleted bool
 	for _, storageKey := range storageKeyStrs {
 		value := vas.storage[storageKey]
