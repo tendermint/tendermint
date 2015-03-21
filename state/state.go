@@ -326,6 +326,7 @@ func (s *State) ExecTx(tx_ blk.Tx, runCall bool) error {
 				err      error       = nil
 				caller   *vm.Account = toVMAccount(inAcc)
 				callee   *vm.Account = nil
+				code     []byte      = nil
 				appState             = NewVMAppState(s) // TODO: confusing.
 				params               = vm.Params{
 					BlockHeight: uint64(s.LastBlockHeight),
@@ -337,21 +338,23 @@ func (s *State) ExecTx(tx_ blk.Tx, runCall bool) error {
 
 			// Maybe create a new callee account if
 			// this transaction is creating a new contract.
-			if outAcc == nil {
+			if outAcc != nil {
 				callee = toVMAccount(outAcc)
+				code = callee.Code
 			} else {
 				callee, err = appState.CreateAccount(caller)
 				if err != nil {
 					log.Debug("Error creating account")
 					return err
 				}
+				code = tx.Data
 			}
 
 			appState.UpdateAccount(caller) // because we adjusted by input above, and bumped nonce maybe.
 			appState.UpdateAccount(callee) // because we adjusted by input above.
 			vmach := vm.NewVM(appState, params, caller.Address)
 			// NOTE: Call() transfers the value from caller to callee iff call succeeds.
-			ret, err := vmach.Call(caller, callee, outAcc.Code, tx.Data, value, &gas)
+			ret, err := vmach.Call(caller, callee, code, tx.Data, value, &gas)
 			if err != nil {
 				// Failure. Charge the gas fee. The 'value' was otherwise not transferred.
 				inAcc.Balance -= tx.Fee
