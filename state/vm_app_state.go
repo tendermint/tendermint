@@ -30,13 +30,19 @@ func toStateAccount(acc *vm.Account) *ac.Account {
 	if !ok {
 		pubKey = ac.PubKeyNil{}
 	}
+	var storageRoot []byte
+	if acc.StorageRoot.IsZero() {
+		storageRoot = nil
+	} else {
+		storageRoot = acc.StorageRoot.Bytes()
+	}
 	return &ac.Account{
 		Address:     acc.Address.Address(),
 		PubKey:      pubKey,
 		Balance:     acc.Balance,
 		Code:        acc.Code,
 		Sequence:    uint(acc.Nonce),
-		StorageRoot: acc.StorageRoot.Bytes(),
+		StorageRoot: storageRoot,
 	}
 }
 
