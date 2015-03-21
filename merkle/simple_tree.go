@@ -61,14 +61,19 @@ func HashFromHashes(hashes [][]byte) []byte {
 func HashFromBinaries(items []interface{}) []byte {
 	hashes := [][]byte{}
 	for _, item := range items {
-		hasher, n, err := sha256.New(), new(int64), new(error)
-		binary.WriteBinary(item, hasher, n, err)
-		if *err != nil {
-			panic(err)
-		}
-		hashes = append(hashes, hasher.Sum(nil))
+		hashes = append(hashes, HashFromBinary(item))
 	}
 	return HashFromHashes(hashes)
+}
+
+// General Convenience
+func HashFromBinary(item interface{}) []byte {
+	hasher, n, err := sha256.New(), new(int64), new(error)
+	binary.WriteBinary(item, hasher, n, err)
+	if *err != nil {
+		panic(err)
+	}
+	return hasher.Sum(nil)
 }
 
 // Convenience for HashFromHashes.
