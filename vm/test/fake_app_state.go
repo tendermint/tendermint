@@ -5,6 +5,7 @@ import (
 
 	. "github.com/tendermint/tendermint/common"
 	. "github.com/tendermint/tendermint/vm"
+	"github.com/tendermint/tendermint/vm/sha3"
 )
 
 type FakeAppState struct {
@@ -43,7 +44,8 @@ func (fas *FakeAppState) DeleteAccount(account *Account) error {
 	}
 }
 
-func (fas *FakeAppState) CreateAccount(addr Word) (*Account, error) {
+func (fas *FakeAppState) CreateAccount(creator *Account) (*Account, error) {
+	addr := createAddress(creator)
 	account := fas.accounts[addr.String()]
 	if account == nil {
 		return &Account{
@@ -102,16 +104,24 @@ func main() {
 	ourVm := NewVM(appState, params, Zero)
 
 	// Create accounts
-	account1, err := appState.CreateAccount(Uint64ToWord(100))
-	if err != nil {
-		panic(err)
+	account1 := &Account{
+		Address: Uint64ToWord(100),
 	}
-	account2, err := appState.CreateAccount(Uint64ToWord(101))
-	if err != nil {
-		panic(err)
+	account2 := &Account{
+		Address: Uint64ToWord(101),
 	}
 
 	var gas uint64 = 1000
 	output, err := ourVm.Call(account1, account2, []byte{0x60, 0x01, 0x60, 0x01}, []byte{}, 0, &gas)
 	fmt.Printf("Output: %v Error: %v\n", output, err)
+}
+
+// Creates a 20 byte address and bumps the nonce.
+func createAddress(creator *Account) Word {
+	nonce := creator.Nonce
+	creator.Nonce += 1
+	temp := make([]byte, 32+8)
+	copy(temp, creator.Address[:])
+	PutUint64(temp[32:], nonce)
+	return RightPadWord(sha3.Sha3(temp)[:20])
 }

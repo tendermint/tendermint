@@ -46,6 +46,7 @@ func NewVM(appState AppState, params Params, origin Word) *VM {
 	}
 }
 
+// CONTRACT appState is aware of caller and callee, so we can just mutate them.
 // value: To be transferred from caller to callee. Refunded upon error.
 // gas:   Available gas. No refunds for gas.
 func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, gas *uint64) (output []byte, err error) {
@@ -541,14 +542,9 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 				return nil, firstErr(err, ErrInsufficientBalance)
 			}
 
-			// Create a new address
-			nonce := caller.Nonce
-			addr := createAddress(caller.Address, nonce)
-			caller.Nonce += 1
-
 			// TODO charge for gas to create account _ the code length * GasCreateByte
 
-			newAccount, err := vm.appState.CreateAccount(addr)
+			newAccount, err := vm.appState.CreateAccount(caller)
 			if err != nil {
 				stack.Push(Zero)
 				fmt.Printf(" (*) 0x0 %v\n", err)
@@ -706,14 +702,6 @@ func useGas(gas *uint64, gasToUse uint64) bool {
 	} else {
 		return false
 	}
-}
-
-// Creates a 20 byte address from the creatorAddr and nonce.
-func createAddress(creatorAddr Word, nonce uint64) Word {
-	temp := make([]byte, 32+8)
-	copy(temp, creatorAddr[:])
-	PutUint64(temp[32:], nonce)
-	return RightPadWord(sha3.Sha3(temp)[:20])
 }
 
 func transfer(from, to *Account, amount uint64) error {

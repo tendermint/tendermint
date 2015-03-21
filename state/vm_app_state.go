@@ -8,6 +8,7 @@ import (
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/merkle"
 	"github.com/tendermint/tendermint/vm"
+	"github.com/tendermint/tendermint/vm/sha3"
 )
 
 // Converts state.Account to vm.Account struct.
@@ -115,7 +116,18 @@ func (vas *VMAppState) DeleteAccount(account *vm.Account) error {
 	}
 }
 
-func (vas *VMAppState) CreateAccount(addr vm.Word) (*vm.Account, error) {
+// Creates a 20 byte address and bumps the creator's nonce.
+func (vas *VMAppState) CreateAccount(creator *vm.Account) (*vm.Account, error) {
+
+	// Generate an address
+	nonce := creator.Nonce
+	creator.Nonce += 1
+	temp := make([]byte, 32+8)
+	copy(temp, creator.Address[:])
+	vm.PutUint64(temp[32:], nonce)
+	addr := vm.RightPadWord(sha3.Sha3(temp)[:20])
+
+	// Create account from address.
 	account, deleted := unpack(vas.accounts[addr.String()])
 	if deleted || account == nil {
 		account = &vm.Account{
@@ -128,7 +140,8 @@ func (vas *VMAppState) CreateAccount(addr vm.Word) (*vm.Account, error) {
 		vas.accounts[addr.String()] = AccountInfo{account, false}
 		return account, nil
 	} else {
-		return nil, Errorf("Account already exists: %X", addr)
+		panic(Fmt("Could not create account, address already exists: %X", addr))
+		// return nil, Errorf("Account already exists: %X", addr)
 	}
 }
 

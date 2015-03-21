@@ -277,8 +277,10 @@ func (s *State) ExecTx(tx_ blk.Tx, runCall bool) error {
 		return nil
 
 	case *blk.CallTx:
+		var inAcc, outAcc *account.Account
+
 		// Validate input
-		inAcc := s.GetAccount(tx.Input.Address)
+		inAcc = s.GetAccount(tx.Input.Address)
 		if inAcc == nil {
 			return blk.ErrTxInvalidAddress
 		}
@@ -295,13 +297,16 @@ func (s *State) ExecTx(tx_ blk.Tx, runCall bool) error {
 			return blk.ErrTxInsufficientFunds
 		}
 
-		// Validate output
-		if len(tx.Address) != 20 {
-			return blk.ErrTxInvalidAddress
-		}
-		outAcc := s.GetAccount(tx.Address)
-		if outAcc == nil {
-			return blk.ErrTxInvalidAddress
+		createAccount := len(tx.Address) == 0
+		if !createAccount {
+			// Validate output
+			if len(tx.Address) != 20 {
+				return blk.ErrTxInvalidAddress
+			}
+			outAcc = s.GetAccount(tx.Address)
+			if outAcc == nil {
+				return blk.ErrTxInvalidAddress
+			}
 		}
 
 		// Good!
@@ -316,9 +321,18 @@ func (s *State) ExecTx(tx_ blk.Tx, runCall bool) error {
 				BlockTime:   s.LastBlockTime.Unix(),
 				GasLimit:    10000000,
 			}
-			caller := toVMAccount(inAcc)
-			callee := toVMAccount(outAcc)
-			appState.AddAccount(caller) // because we adjusted by input above.
+			var caller, callee *vm.Account
+			var err error
+			caller = toVMAccount(inAcc)
+			if outAcc == nil {
+				callee = toVMAccount(outAcc)
+			} else {
+				callee, err = appState.CreateAccount(caller)
+				if err != nil {
+					return err
+				}
+			}
+			appState.AddAccount(caller) // because we adjusted by input above, and bumped nonce maybe.
 			appState.AddAccount(callee) // because we adjusted by input above.
 			vmach := vm.NewVM(appState, params, caller.Address)
 			gas := tx.GasLimit
@@ -330,6 +344,9 @@ func (s *State) ExecTx(tx_ blk.Tx, runCall bool) error {
 				// Throw away 'appState' which holds incomplete updates.
 			} else {
 				// Success
+				if createAccount {
+					callee.Code = ret
+				}
 				appState.Sync()
 			}
 			// Create a receipt from the ret and whether errored.
@@ -339,6 +356,8 @@ func (s *State) ExecTx(tx_ blk.Tx, runCall bool) error {
 			// the proposer determines the order of txs.
 			// So mempool will skip the actual .Call(),
 			// and only deduct from the caller's balance.
+			inAcc.Balance -= value
+			s.UpdateAccount(inAcc)
 		}
 
 		return nil
