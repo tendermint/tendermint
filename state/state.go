@@ -98,12 +98,6 @@ func (s *State) Save() {
 	s.DB.Set(stateKey, buf.Bytes())
 }
 
-// NOTE: the valSets are not Copy()'d.
-// See TODOs in Copy() below.
-func (s *State) Reset(checkpoint *State) {
-	*s = *checkpoint
-}
-
 func (s *State) Copy() *State {
 	return &State{
 		DB:                   s.DB,
@@ -181,26 +175,34 @@ func (s *State) ValidateInputs(accounts map[string]*account.Account, signBytes [
 		if acc == nil {
 			panic("ValidateInputs() expects account in accounts")
 		}
-		// Check TxInput basic
-		if err := in.ValidateBasic(); err != nil {
-			return 0, err
-		}
-		// Check signatures
-		if !acc.PubKey.VerifyBytes(signBytes, in.Signature) {
-			return 0, blk.ErrTxInvalidSignature
-		}
-		// Check sequences
-		if acc.Sequence+1 != in.Sequence {
-			return 0, blk.ErrTxInvalidSequence
-		}
-		// Check amount
-		if acc.Balance < in.Amount {
-			return 0, blk.ErrTxInsufficientFunds
+		err = s.ValidateInput(acc, signBytes, in)
+		if err != nil {
+			return
 		}
 		// Good. Add amount to total
 		total += in.Amount
 	}
 	return total, nil
+}
+
+func (s *State) ValidateInput(acc *account.Account, signBytes []byte, in *blk.TxInput) (err error) {
+	// Check TxInput basic
+	if err := in.ValidateBasic(); err != nil {
+		return err
+	}
+	// Check signatures
+	if !acc.PubKey.VerifyBytes(signBytes, in.Signature) {
+		return blk.ErrTxInvalidSignature
+	}
+	// Check sequences
+	if acc.Sequence+1 != in.Sequence {
+		return blk.ErrTxInvalidSequence
+	}
+	// Check amount
+	if acc.Balance < in.Amount {
+		return blk.ErrTxInsufficientFunds
+	}
+	return nil
 }
 
 func (s *State) ValidateOutputs(outs []*blk.TxOutput) (total uint64, err error) {
@@ -275,25 +277,25 @@ func (s *State) ExecTx(tx_ blk.Tx, runCall bool) error {
 		return nil
 
 	case *blk.CallTx:
-		accounts := make(map[string]*account.Account)
-
-		// validate input
+		// Validate input
 		inAcc := s.GetAccount(tx.Input.Address)
 		if inAcc == nil {
 			return blk.ErrTxInvalidAddress
 		}
-		// PubKey should be present in either "inAcc" or "tx.Input"
+		// pubKey should be present in either "inAcc" or "tx.Input"
 		if err := checkInputPubKey(inAcc, tx.Input); err != nil {
 			return err
 		}
-		accounts[string(tx.Input.Address)] = inAcc
 		signBytes := account.SignBytes(tx)
-		inTotal, err := s.ValidateInputs(accounts, signBytes, []*blk.TxInput{tx.Input})
+		err := s.ValidateInput(inAcc, signBytes, tx.Input)
 		if err != nil {
 			return err
 		}
+		if tx.Input.Amount < tx.Fee {
+			return blk.ErrTxInsufficientFunds
+		}
 
-		// validate output
+		// Validate output
 		if len(tx.Address) != 20 {
 			return blk.ErrTxInvalidAddress
 		}
@@ -301,19 +303,10 @@ func (s *State) ExecTx(tx_ blk.Tx, runCall bool) error {
 		if outAcc == nil {
 			return blk.ErrTxInvalidAddress
 		}
-		if inTotal < tx.Fee {
-			return blk.ErrTxInsufficientFunds
-		}
-		accounts[string(tx.Address)] = outAcc
 
-		// Remember unmodified state in case call fails.
-		checkpoint := s.Copy()
-
-		// Good! Adjust accounts and maybe actually run the tx.
-		value := inTotal - tx.Fee
-		s.AdjustByInputs(accounts, []*blk.TxInput{tx.Input}) // adjusts inAcc.
-		outAcc.Balance += value
-		s.UpdateAccounts(accounts)
+		// Good!
+		value := tx.Input.Amount - tx.Fee
+		inAcc.Sequence += 1
 
 		if runCall {
 			appState := NewVMAppState(s)
@@ -331,11 +324,10 @@ func (s *State) ExecTx(tx_ blk.Tx, runCall bool) error {
 			gas := tx.GasLimit
 			ret, err_ := vmach.Call(caller, callee, outAcc.Code, tx.Data, value, &gas)
 			if err_ != nil {
-				// Failure
-				// Revert the state while charging gas for the user.
-				s.Reset(checkpoint)
-				callee.Balance -= tx.Fee
-				s.UpdateAccounts(accounts)
+				// Failure. Charge the gas fee. The 'value' was otherwise not transferred.
+				inAcc.Balance -= tx.Fee
+				s.UpdateAccount(inAcc)
+				// Throw away 'appState' which holds incomplete updates.
 			} else {
 				// Success
 				appState.Sync()

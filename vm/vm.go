@@ -46,17 +46,32 @@ func NewVM(appState AppState, params Params, origin Word) *VM {
 	}
 }
 
-// value: The value transfered from caller to callee.
-// NOTE: The value should already have been transferred to the callee.
-// NOTE: When Call() fails, the value should be returned to the caller.
-// gas: The maximum gas that will be run.
-// When the function returns, *gas will be the amount of remaining gas.
+// value: To be transferred from caller to callee. Refunded upon error.
+// gas:   Available gas. No refunds for gas.
 func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, gas *uint64) (output []byte, err error) {
 
 	if len(code) == 0 {
 		panic("Call() requires code")
 	}
 
+	if err = transfer(caller, callee, value); err != nil {
+		return
+	}
+
+	vm.callDepth += 1
+	output, err = vm.call(caller, callee, code, input, value, gas)
+	vm.callDepth -= 1
+	if err != nil {
+		err = transfer(callee, caller, value)
+		if err != nil {
+			panic("Could not return value to caller")
+		}
+	}
+	return
+}
+
+// Just like Call() but does not transfer 'value' or modify the callDepth.
+func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, gas *uint64) (output []byte, err error) {
 	fmt.Printf("(%d) (%X) %X (code=%d) gas: %v (d) %X\n", vm.callDepth, caller.Address[:4], callee.Address, len(callee.Code), *gas, input)
 
 	var (
@@ -538,15 +553,9 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 				stack.Push(Zero)
 				fmt.Printf(" (*) 0x0 %v\n", err)
 			} else {
-				if err_ := transfer(callee, newAccount, value); err_ != nil {
-					return nil, err_ // prob never happens...
-				}
 				// Run the input to get the contract code.
-				// The code as well as the input to the code are the same.
-				// Will it halt?  Yes.
 				ret, err_ := vm.Call(callee, newAccount, input, input, value, gas)
 				if err_ != nil {
-					caller.Balance += value // Return the balance
 					stack.Push(Zero)
 				} else {
 					newAccount.Code = ret // Set the code
@@ -593,9 +602,6 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 				if op == CALLCODE {
 					ret, err = vm.Call(callee, callee, account.Code, args, value, gas)
 				} else {
-					if err := transfer(callee, account, value); err != nil {
-						return nil, err
-					}
 					ret, err = vm.Call(callee, account, account.Code, args, value, gas)
 				}
 			}
