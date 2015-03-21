@@ -126,7 +126,7 @@ func (vas *VMAppState) CreateAccount(creator *vm.Account) (*vm.Account, error) {
 	nonce := creator.Nonce
 	creator.Nonce += 1
 
-	addr := vm.RightPadWord(NewContractAddress(creator.Address[:], nonce))
+	addr := vm.RightPadWord(NewContractAddress(creator.Address.Address(), nonce))
 
 	// Create account from address.
 	account, deleted := unpack(vas.accounts[addr.String()])
