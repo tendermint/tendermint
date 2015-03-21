@@ -20,6 +20,10 @@ func getLevel(lvlString string) log15.Lvl {
 }
 
 func init() {
+	InitLog()
+}
+
+func InitLog() {
 	handlers := []log15.Handler{}
 
 	// By default, there's a stdout terminal format handler.

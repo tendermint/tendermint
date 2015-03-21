@@ -123,6 +123,35 @@ func (n *Node) inboundConnectionRoutine(l p2p.Listener) {
 	// cleanup
 }
 
+func (n *Node) DialSeed() {
+	addr := p2p.NewNetAddressString(config.App().GetString("SeedNode"))
+	peer, err := n.sw.DialPeerWithAddress(addr)
+	if err != nil {
+		log.Error("Error dialing seed", "error", err)
+		//n.book.MarkAttempt(addr)
+		return
+	} else {
+		log.Info("Connected to seed", "peer", peer)
+		n.book.AddAddress(addr, addr)
+	}
+}
+
+func (n *Node) StartRpc() {
+	rpc.SetRPCBlockStore(n.blockStore)
+	rpc.SetRPCConsensusState(n.consensusState)
+	rpc.SetRPCMempoolReactor(n.mempoolReactor)
+	rpc.SetRPCSwitch(n.sw)
+	rpc.StartHTTPServer()
+}
+
+func (n *Node) ConsensusState() *consensus.ConsensusState {
+	return n.consensusState
+}
+
+func (n *Node) MempoolReactor() *mempl.MempoolReactor {
+	return n.mempoolReactor
+}
+
 func Daemon() {
 
 	// Create & start node
@@ -133,25 +162,12 @@ func Daemon() {
 
 	// If seedNode is provided by config, dial out.
 	if config.App().GetString("SeedNode") != "" {
-		addr := p2p.NewNetAddressString(config.App().GetString("SeedNode"))
-		peer, err := n.sw.DialPeerWithAddress(addr)
-		if err != nil {
-			log.Error("Error dialing seed", "error", err)
-			//n.book.MarkAttempt(addr)
-			return
-		} else {
-			log.Info("Connected to seed", "peer", peer)
-			n.book.AddAddress(addr, addr)
-		}
+		n.DialSeed()
 	}
 
 	// Run the RPC server.
 	if config.App().GetString("RPC.HTTP.ListenAddr") != "" {
-		rpc.SetRPCBlockStore(n.blockStore)
-		rpc.SetRPCConsensusState(n.consensusState)
-		rpc.SetRPCMempoolReactor(n.mempoolReactor)
-		rpc.SetRPCSwitch(n.sw)
-		rpc.StartHTTPServer()
+		n.StartRpc()
 	}
 
 	// Sleep forever and then...
