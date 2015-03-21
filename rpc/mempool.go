@@ -6,6 +6,8 @@ import (
 	"github.com/tendermint/tendermint/binary"
 	blk "github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/merkle"
+	"github.com/tendermint/tendermint/state"
 )
 
 func BroadcastTxHandler(w http.ResponseWriter, r *http.Request) {
@@ -24,7 +26,22 @@ func BroadcastTxHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	WriteAPIResponse(w, API_OK, "")
+	txHash := merkle.HashFromBinary(tx)
+	var createsContract bool
+	var contractAddr []byte
+
+	if callTx, ok := tx.(*blk.CallTx); ok {
+		if callTx.Address == nil {
+			createsContract = true
+			contractAddr = state.NewContractAddress(callTx.Input.Address, uint64(callTx.Input.Sequence))
+		}
+	}
+
+	WriteAPIResponse(w, API_OK, struct {
+		TxHash          []byte
+		CreatesContract bool
+		ContractAddr    []byte
+	}{txHash, createsContract, contractAddr})
 	return
 }
 

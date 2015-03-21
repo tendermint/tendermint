@@ -113,10 +113,8 @@ func (vas *VMAppState) CreateAccount(creator *vm.Account) (*vm.Account, error) {
 	// Generate an address
 	nonce := creator.Nonce
 	creator.Nonce += 1
-	temp := make([]byte, 32+8)
-	copy(temp, creator.Address[:])
-	vm.PutUint64(temp[32:], nonce)
-	addr := vm.RightPadWord(sha3.Sha3(temp)[:20])
+
+	addr := vm.RightPadWord(NewContractAddress(creator.Address[:], nonce))
 
 	// Create account from address.
 	account, deleted := unpack(vas.accounts[addr.String()])
@@ -237,4 +235,14 @@ func (vas *VMAppState) Sync() {
 
 func (vas *VMAppState) AddLog(log *vm.Log) {
 	vas.logs = append(vas.logs, log)
+}
+
+//-----------------------------------------------------------------------------
+
+// Convenience function to return address of new contract
+func NewContractAddress(caller []byte, nonce uint64) []byte {
+	temp := make([]byte, 32+8)
+	copy(temp, caller)
+	vm.PutUint64(temp[32:], nonce)
+	return sha3.Sha3(temp)[:20]
 }
