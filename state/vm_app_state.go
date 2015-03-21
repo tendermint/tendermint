@@ -229,8 +229,13 @@ func (vas *VMAppState) Sync() {
 			if deleted {
 				continue
 			}
-			storageRoot := currentAccount.StorageRoot
-			storage.Load(storageRoot.Bytes())
+			var storageRoot []byte
+			if currentAccount.StorageRoot.IsZero() {
+				storageRoot = nil
+			} else {
+				storageRoot = currentAccount.StorageRoot.Bytes()
+			}
+			storage.Load(storageRoot)
 		}
 		if value.IsZero() {
 			_, removed := storage.Remove(key)
