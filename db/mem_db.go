@@ -33,6 +33,10 @@ func (db *MemDB) DeleteSync(key []byte) {
 	delete(db.db, string(key))
 }
 
+func (db *MemDB) Close() {
+	db = nil
+}
+
 func (db *MemDB) Print() {
 	for key, value := range db.db {
 		fmt.Printf("[%X]:\t[%X]\n", []byte(key), value)
