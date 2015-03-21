@@ -28,6 +28,10 @@ func NewMempool(state *sm.State) *Mempool {
 	}
 }
 
+func (mem *Mempool) GetState() *sm.State {
+	return mem.state
+}
+
 // Apply tx to the state and remember it.
 func (mem *Mempool) AddTx(tx blk.Tx) (err error) {
 	mem.mtx.Lock()
