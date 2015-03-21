@@ -33,6 +33,7 @@ type Account struct {
 	Code        []byte
 	Nonce       uint64
 	StorageRoot Word
+	Other       interface{} // For holding all other data.
 }
 
 type Log struct {

@@ -20,13 +20,19 @@ func toVMAccount(acc *ac.Account) *vm.Account {
 		Code:        acc.Code, // This is crazy.
 		Nonce:       uint64(acc.Sequence),
 		StorageRoot: vm.BytesToWord(acc.StorageRoot),
+		Other:       acc.PubKey,
 	}
 }
 
 // Converts vm.Account to state.Account struct.
 func toStateAccount(acc *vm.Account) *ac.Account {
+	pubKey, ok := acc.Other.(ac.PubKey)
+	if !ok {
+		pubKey = ac.PubKeyNil{}
+	}
 	return &ac.Account{
 		Address:     acc.Address.Address(),
+		PubKey:      pubKey,
 		Balance:     acc.Balance,
 		Code:        acc.Code,
 		Sequence:    uint(acc.Nonce),
