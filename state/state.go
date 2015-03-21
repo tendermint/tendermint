@@ -320,7 +320,7 @@ func (s *State) ExecTx(tx_ blk.Tx, runCall bool) error {
 				err      error       = nil
 				caller   *vm.Account = toVMAccount(inAcc)
 				callee   *vm.Account = nil
-				appState             = NewVMAppState(s)
+				appState             = NewVMAppState(s) // TODO: confusing.
 				params               = vm.Params{
 					BlockHeight: uint64(s.LastBlockHeight),
 					BlockHash:   vm.BytesToWord(s.LastBlockHash),
@@ -340,11 +340,12 @@ func (s *State) ExecTx(tx_ blk.Tx, runCall bool) error {
 				}
 			}
 
-			appState.AddAccount(caller) // because we adjusted by input above, and bumped nonce maybe.
-			appState.AddAccount(callee) // because we adjusted by input above.
+			appState.UpdateAccount(caller) // because we adjusted by input above, and bumped nonce maybe.
+			appState.UpdateAccount(callee) // because we adjusted by input above.
 			vmach := vm.NewVM(appState, params, caller.Address)
-			ret, err_ := vmach.Call(caller, callee, outAcc.Code, tx.Data, value, &gas)
-			if err_ != nil {
+			// NOTE: Call() transfers the value from caller to callee iff call succeeds.
+			ret, err := vmach.Call(caller, callee, outAcc.Code, tx.Data, value, &gas)
+			if err != nil {
 				// Failure. Charge the gas fee. The 'value' was otherwise not transferred.
 				inAcc.Balance -= tx.Fee
 				s.UpdateAccount(inAcc)
@@ -357,7 +358,7 @@ func (s *State) ExecTx(tx_ blk.Tx, runCall bool) error {
 				appState.Sync()
 			}
 			// Create a receipt from the ret and whether errored.
-			log.Info("VM call complete", "caller", caller, "callee", callee, "return", ret, "err", err_)
+			log.Info("VM call complete", "caller", caller, "callee", callee, "return", ret, "err", err)
 		} else {
 			// The mempool does not call txs until
 			// the proposer determines the order of txs.

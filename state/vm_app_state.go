@@ -1,6 +1,7 @@
 package state
 
 import (
+	"bytes"
 	"sort"
 
 	ac "github.com/tendermint/tendermint/account"
@@ -59,16 +60,6 @@ func NewVMAppState(state *State) *VMAppState {
 
 func unpack(accInfo AccountInfo) (*vm.Account, bool) {
 	return accInfo.account, accInfo.deleted
-}
-
-// Used to add the origin of the tx to VMAppState.
-func (vas *VMAppState) AddAccount(account *vm.Account) error {
-	if _, ok := vas.accounts[account.Address.String()]; ok {
-		return Errorf("Account already exists: %X", account.Address)
-	} else {
-		vas.accounts[account.Address.String()] = AccountInfo{account, false}
-		return nil
-	}
 }
 
 func (vas *VMAppState) GetAccount(addr vm.Word) (*vm.Account, error) {
@@ -175,6 +166,7 @@ func (vas *VMAppState) SetStorage(addr vm.Word, key vm.Word, value vm.Word) (boo
 	return ok, nil
 }
 
+// CONTRACT the updates are in deterministic order.
 func (vas *VMAppState) Sync() {
 
 	// Determine order for accounts
@@ -200,18 +192,36 @@ func (vas *VMAppState) Sync() {
 		}
 	}
 
-	// Update or delete storage items.
+	// Determine order for storage updates
+	// The address comes first so it'll be grouped.
+	storageKeyStrs := []string{}
+	for keyStr := range vas.storage {
+		storageKeyStrs = append(storageKeyStrs, keyStr)
+	}
+	sort.Strings(storageKeyStrs)
+
+	// Update storage for all account/key.
 	storage := merkle.NewIAVLTree(
 		binary.BasicCodec, // TODO change
 		binary.BasicCodec, // TODO change
 		1024,              // TODO change.
 		vas.state.DB,
 	)
-
-	for addrKey, value := range vas.storage {
-		addrKeyBytes := []byte(addrKey)
+	var currentAccount *vm.Account
+	var deleted bool
+	for _, storageKey := range storageKeyStrs {
+		value := vas.storage[storageKey]
+		addrKeyBytes := []byte(storageKey)
 		addr := addrKeyBytes[:32]
 		key := addrKeyBytes[32:]
+		if currentAccount == nil || !bytes.Equal(currentAccount.Address[:], addr) {
+			currentAccount, deleted = unpack(vas.accounts[string(addr)])
+			if deleted {
+				continue
+			}
+			storageRoot := currentAccount.StorageRoot
+			storage.Load(storageRoot.Bytes())
+		}
 		if value.IsZero() {
 			_, removed := storage.Remove(key)
 			if !removed {

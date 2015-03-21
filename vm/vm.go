@@ -530,7 +530,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			fmt.Printf(" => %v\n", log)
 
 		case CREATE: // 0xF0
-			value := stack.Pop64()
+			contractValue := stack.Pop64()
 			offset, size := stack.Pop64(), stack.Pop64()
 			input, ok := subslice(memory, offset, size)
 			if !ok {
@@ -538,19 +538,19 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			}
 
 			// Check balance
-			if caller.Balance < value {
+			if callee.Balance < contractValue {
 				return nil, firstErr(err, ErrInsufficientBalance)
 			}
 
 			// TODO charge for gas to create account _ the code length * GasCreateByte
 
-			newAccount, err := vm.appState.CreateAccount(caller)
+			newAccount, err := vm.appState.CreateAccount(callee)
 			if err != nil {
 				stack.Push(Zero)
 				fmt.Printf(" (*) 0x0 %v\n", err)
 			} else {
 				// Run the input to get the contract code.
-				ret, err_ := vm.Call(callee, newAccount, input, input, value, gas)
+				ret, err_ := vm.Call(callee, newAccount, input, input, contractValue, gas)
 				if err_ != nil {
 					stack.Push(Zero)
 				} else {

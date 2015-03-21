@@ -120,11 +120,14 @@ func (t *IAVLTree) Save() []byte {
 	return t.root.save(t)
 }
 
+// Sets the root node by reading from db.
+// If the hash is empty, then sets root to nil.
 func (t *IAVLTree) Load(hash []byte) {
 	if len(hash) == 0 {
-		panic("IAVLTree.Load() hash was nil")
+		t.root = nil
+	} else {
+		t.root = t.ndb.GetNode(t, hash)
 	}
-	t.root = t.ndb.GetNode(t, hash)
 }
 
 func (t *IAVLTree) Get(key interface{}) (index uint64, value interface{}) {
