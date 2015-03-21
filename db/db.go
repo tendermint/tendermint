@@ -13,6 +13,7 @@ type DB interface {
 	SetSync([]byte, []byte)
 	Delete([]byte)
 	DeleteSync([]byte)
+	Close()
 
 	// For debugging
 	Print()
