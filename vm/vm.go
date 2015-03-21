@@ -83,6 +83,11 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 	)
 
 	for {
+		// If there is an error, return
+		if err != nil {
+			return nil, err
+		}
+
 		var op = codeGetOp(code, pc)
 		fmt.Printf("(pc) %-3d (op) %-14s (st) %-4d ", pc, op.String(), stack.Len())
 
@@ -652,10 +657,6 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 
 		pc++
 
-		// If there is an error, return
-		if err != nil {
-			return nil, err
-		}
 	}
 }
 
