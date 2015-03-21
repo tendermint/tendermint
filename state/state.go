@@ -347,6 +347,7 @@ func (s *State) ExecTx(tx_ blk.Tx, runCall bool) error {
 					log.Debug(Fmt("Error creating account"))
 					return err
 				}
+				log.Debug(Fmt("Created new account %X", callee.Address.Address()))
 				code = tx.Data
 			}
 

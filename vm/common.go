@@ -17,12 +17,12 @@ func BytesToWord(bz []byte) Word {
 }
 
 func LeftPadWord(bz []byte) (word Word) {
-	copy(word[:], bz)
+	copy(word[32-len(bz):], bz)
 	return
 }
 
 func RightPadWord(bz []byte) (word Word) {
-	copy(word[32-len(bz):], bz)
+	copy(word[:], bz)
 	return
 }
 
