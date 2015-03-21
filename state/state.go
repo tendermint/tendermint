@@ -314,16 +314,23 @@ func (s *State) ExecTx(tx_ blk.Tx, runCall bool) error {
 		inAcc.Sequence += 1
 
 		if runCall {
-			appState := NewVMAppState(s)
-			params := vm.Params{
-				BlockHeight: uint64(s.LastBlockHeight),
-				BlockHash:   vm.BytesToWord(s.LastBlockHash),
-				BlockTime:   s.LastBlockTime.Unix(),
-				GasLimit:    10000000,
-			}
-			var caller, callee *vm.Account
-			var err error
-			caller = toVMAccount(inAcc)
+
+			var (
+				gas      uint64      = tx.GasLimit
+				err      error       = nil
+				caller   *vm.Account = toVMAccount(inAcc)
+				callee   *vm.Account = nil
+				appState             = NewVMAppState(s)
+				params               = vm.Params{
+					BlockHeight: uint64(s.LastBlockHeight),
+					BlockHash:   vm.BytesToWord(s.LastBlockHash),
+					BlockTime:   s.LastBlockTime.Unix(),
+					GasLimit:    10000000,
+				}
+			)
+
+			// Maybe create a new callee account if
+			// this transaction is creating a new contract.
 			if outAcc == nil {
 				callee = toVMAccount(outAcc)
 			} else {
@@ -332,10 +339,10 @@ func (s *State) ExecTx(tx_ blk.Tx, runCall bool) error {
 					return err
 				}
 			}
+
 			appState.AddAccount(caller) // because we adjusted by input above, and bumped nonce maybe.
 			appState.AddAccount(callee) // because we adjusted by input above.
 			vmach := vm.NewVM(appState, params, caller.Address)
-			gas := tx.GasLimit
 			ret, err_ := vmach.Call(caller, callee, outAcc.Code, tx.Data, value, &gas)
 			if err_ != nil {
 				// Failure. Charge the gas fee. The 'value' was otherwise not transferred.
