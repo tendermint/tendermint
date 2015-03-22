@@ -1,6 +1,7 @@
 package block
 
 import (
+	"math/rand"
 	"sync/atomic"
 	"time"
 
@@ -27,18 +28,17 @@ type BlockRequest struct {
 type BlockPool struct {
 	peers      map[string]*bpPeer
 	blockInfos map[uint]*bpBlockInfo
-	height     uint // the lowest key in blockInfos.
-	started    int32
-	stopped    int32
+	height     uint  // the lowest key in blockInfos.
+	started    int32 // atomic
+	stopped    int32 // atomic
 	numPending int32
 	numTotal   int32
-	quit       chan struct{}
-
-	eventsCh   chan interface{}
+	eventsCh   chan interface{}    // internal events.
 	requestsCh chan<- BlockRequest // output of new requests to make.
 	timeoutsCh chan<- string       // output of peers that timed out.
 	blocksCh   chan<- *Block       // output of ordered blocks.
 	repeater   *RepeatTimer        // for requesting more bocks.
+	quit       chan struct{}
 }
 
 func NewBlockPool(start uint, timeoutsCh chan<- string, requestsCh chan<- BlockRequest, blocksCh chan<- *Block) *BlockPool {
@@ -55,6 +55,7 @@ func NewBlockPool(start uint, timeoutsCh chan<- string, requestsCh chan<- BlockR
 		eventsCh:   make(chan interface{}, eventsChannelCapacity),
 		requestsCh: requestsCh,
 		timeoutsCh: timeoutsCh,
+		blocksCh:   blocksCh,
 		repeater:   NewRepeatTimer("", requestIntervalMS*time.Millisecond),
 	}
 }
@@ -95,19 +96,8 @@ FOR_LOOP:
 		case msg := <-bp.eventsCh:
 			bp.handleEvent(msg)
 		case <-bp.repeater.Ch:
-			// make more requests if necessary.
-			for i := 0; i < requestBatchSize; i++ {
-				if atomic.LoadInt32(&bp.numPending) < maxPendingRequests &&
-					atomic.LoadInt32(&bp.numTotal) < maxTotalRequests {
-					atomic.AddInt32(&bp.numPending, 1)
-					atomic.AddInt32(&bp.numTotal, 1)
-					requestHeight := bp.height + uint(bp.numTotal)
-					blockInfo := bpNewBlockInfo(requestHeight)
-					bp.blockInfos[requestHeight] = blockInfo
-				} else {
-					break
-				}
-			}
+			bp.makeMoreBlockInfos()
+			bp.requestBlocksFromRandomPeers(10)
 		case <-bp.quit:
 			break FOR_LOOP
 		}
@@ -129,24 +119,26 @@ func (bp *BlockPool) handleEvent(event_ interface{}) {
 			if peer != nil {
 				peer.good++
 			}
+			delete(peer.requests, event.block.Height)
 			if blockInfo.block == nil {
 				// peer is the first to give it to us.
 				blockInfo.block = event.block
 				blockInfo.blockBy = peer.id
-				atomic.AddInt32(&bp.numPending, -1)
+				bp.numPending--
 				if event.block.Height == bp.height {
-					// push block to blocksCh.
-					atomic.AddInt32(&bp.numTotal, -1)
-					delete(peer.requests, bp.height)
-					delete(blockInfo.requests, peer.id)
-					go func() { bp.blocksCh <- event.block }()
+					go bp.pushBlocksFromStart()
 				}
 			}
 		}
 	case bpPeerStatus:
 		// we have updated (or new) status from peer,
 		// request blocks if possible.
-		bp.requestBlocksFromPeer(event.peerId, event.height)
+		peer := bp.peers[event.peerId]
+		if peer == nil {
+			peer = bpNewPeer(event.peerId, event.height)
+			bp.peers[peer.id] = peer
+		}
+		bp.requestBlocksFromPeer(peer)
 	case bpRequestTimeout:
 		peer := bp.peers[event.peerId]
 		request := peer.requests[event.height]
@@ -158,8 +150,8 @@ func (bp *BlockPool) handleEvent(event_ interface{}) {
 			if request.tries < maxTries {
 				// try again, start timer again.
 				request.start(bp.eventsCh)
-				event := BlockRequest{event.height, peer.id}
-				go func() { bp.requestsCh <- event }()
+				msg := BlockRequest{event.height, peer.id}
+				go func() { bp.requestsCh <- msg }()
 			} else {
 				// delete the request.
 				if peer != nil {
@@ -175,11 +167,15 @@ func (bp *BlockPool) handleEvent(event_ interface{}) {
 	}
 }
 
-func (bp *BlockPool) requestBlocksFromPeer(peerId string, height uint) {
-	peer := bp.peers[peerId]
-	if peer == nil {
-		bp.peers[peerId] = bpNewPeer(peerId, height)
+func (bp *BlockPool) requestBlocksFromRandomPeers(maxPeers int) {
+	chosen := bp.pickAvailablePeers(maxPeers)
+	log.Debug("requestBlocksFromRandomPeers", "chosen", len(chosen))
+	for _, peer := range chosen {
+		bp.requestBlocksFromPeer(peer)
 	}
+}
+
+func (bp *BlockPool) requestBlocksFromPeer(peer *bpPeer) {
 	// If peer is available and can provide something...
 	for height := bp.height; peer.available(); height++ {
 		blockInfo := bp.blockInfos[height]
@@ -187,7 +183,6 @@ func (bp *BlockPool) requestBlocksFromPeer(peerId string, height uint) {
 			// We're out of range.
 			return
 		}
-
 		needsMorePeers := blockInfo.needsMorePeers()
 		alreadyAskedPeer := blockInfo.requests[peer.id] != nil
 		if needsMorePeers && !alreadyAskedPeer {
@@ -202,6 +197,52 @@ func (bp *BlockPool) requestBlocksFromPeer(peerId string, height uint) {
 			msg := BlockRequest{height, peer.id}
 			go func() { bp.requestsCh <- msg }()
 		}
+	}
+}
+
+func (bp *BlockPool) makeMoreBlockInfos() {
+	// make more requests if necessary.
+	for i := 0; i < requestBatchSize; i++ {
+		if bp.numPending < maxPendingRequests && bp.numTotal < maxTotalRequests {
+			// Make a request for the next block height
+			requestHeight := bp.height + uint(bp.numTotal)
+			log.Debug("New blockInfo", "height", requestHeight)
+			blockInfo := bpNewBlockInfo(requestHeight)
+			bp.blockInfos[requestHeight] = blockInfo
+			bp.numPending++
+			bp.numTotal++
+		} else {
+			break
+		}
+	}
+}
+
+func (bp *BlockPool) pickAvailablePeers(choose int) []*bpPeer {
+	available := []*bpPeer{}
+	for _, peer := range bp.peers {
+		if peer.available() {
+			available = append(available, peer)
+		}
+	}
+	perm := rand.Perm(MinInt(choose, len(available)))
+	chosen := make([]*bpPeer, len(perm))
+	for i, idx := range perm {
+		chosen[i] = available[idx]
+	}
+	return chosen
+}
+
+func (bp *BlockPool) pushBlocksFromStart() {
+	for height := bp.height; ; height++ {
+		// push block to blocksCh.
+		blockInfo := bp.blockInfos[height]
+		if blockInfo == nil || blockInfo.block == nil {
+			break
+		}
+		bp.numTotal--
+		bp.height++
+		delete(bp.blockInfos, height)
+		go func() { bp.blocksCh <- blockInfo.block }()
 	}
 }
 
