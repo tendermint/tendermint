@@ -112,7 +112,7 @@ func main() {
 	}
 
 	var gas uint64 = 1000
-	output, err := ourVm.Call(account1, account2, []byte{0x60, 0x01, 0x60, 0x01}, []byte{}, 0, &gas)
+	output, err := ourVm.Call(account1, account2, []byte{0x5B, 0x60, 0x00, 0x56}, []byte{}, 0, &gas)
 	fmt.Printf("Output: %v Error: %v\n", output, err)
 }
 

@@ -332,11 +332,13 @@ func (a *AddrBook) saveToFile(filePath string) {
 	}
 }
 
-func (a *AddrBook) loadFromFile(filePath string) {
+// Returns false if file does not exist.
+// Panics if file is corrupt.
+func (a *AddrBook) loadFromFile(filePath string) bool {
 	// If doesn't exist, do nothing.
 	_, err := os.Stat(filePath)
 	if os.IsNotExist(err) {
-		panic(Fmt("File does not exist: %v", filePath))
+		return false
 	}
 
 	// Load addrBookJSON{}
@@ -368,6 +370,7 @@ func (a *AddrBook) loadFromFile(filePath string) {
 			a.nOld++
 		}
 	}
+	return true
 }
 
 /* Private methods */
