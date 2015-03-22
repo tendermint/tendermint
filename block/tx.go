@@ -18,8 +18,16 @@ var (
 	ErrTxUnknownPubKey        = errors.New("Error unknown pubkey")
 	ErrTxInvalidPubKey        = errors.New("Error invalid pubkey")
 	ErrTxInvalidSignature     = errors.New("Error invalid signature")
-	ErrTxInvalidSequence      = errors.New("Error invalid sequence")
 )
+
+type ErrTxInvalidSequence struct {
+	Got      uint64
+	Expected uint64
+}
+
+func (e ErrTxInvalidSequence) Error() string {
+	return Fmt("Error invalid sequence. Got %d, expected %d", e.Got, e.Expected)
+}
 
 /*
 Tx (Transaction) is an atomic operation on the ledger state.

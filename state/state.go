@@ -196,7 +196,10 @@ func (s *State) ValidateInput(acc *account.Account, signBytes []byte, in *blk.Tx
 	}
 	// Check sequences
 	if acc.Sequence+1 != in.Sequence {
-		return blk.ErrTxInvalidSequence
+		return blk.ErrTxInvalidSequence{
+			Got:      uint64(in.Sequence),
+			Expected: uint64(acc.Sequence + 1),
+		}
 	}
 	// Check amount
 	if acc.Balance < in.Amount {
@@ -308,12 +311,13 @@ func (s *State) ExecTx(tx_ blk.Tx, runCall bool) error {
 				log.Debug(Fmt("Destination address is not 20 bytes %X", tx.Address))
 				return blk.ErrTxInvalidAddress
 			}
+			// this may be nil if we are still in mempool and contract was created in same block as this tx
+			// but that's fine, because the account will be created properly when the create tx runs in the block
+			// and then this won't return nil. otherwise, we take their fee
 			outAcc = s.GetAccount(tx.Address)
-			if outAcc == nil {
-				log.Debug(Fmt("Cannot find destination address %X", tx.Address))
-				return blk.ErrTxInvalidAddress
-			}
 		}
+
+		log.Debug(Fmt("Out account: %v", outAcc))
 
 		// Good!
 		value := tx.Input.Amount - tx.Fee
@@ -338,9 +342,18 @@ func (s *State) ExecTx(tx_ blk.Tx, runCall bool) error {
 
 			// Maybe create a new callee account if
 			// this transaction is creating a new contract.
-			if outAcc != nil {
+			if !createAccount {
+				if outAcc == nil {
+					// take fees (sorry pal)
+					inAcc.Balance -= tx.Fee
+					s.UpdateAccount(inAcc)
+					log.Debug(Fmt("Cannot find destination address %X. Deducting fee from caller", tx.Address))
+					return blk.ErrTxInvalidAddress
+
+				}
 				callee = toVMAccount(outAcc)
 				code = callee.Code
+				log.Debug(Fmt("Calling contract %X with code %X", callee.Address.Address(), callee.Code))
 			} else {
 				callee, err = appState.CreateAccount(caller)
 				if err != nil {
@@ -350,6 +363,7 @@ func (s *State) ExecTx(tx_ blk.Tx, runCall bool) error {
 				log.Debug(Fmt("Created new account %X", callee.Address.Address()))
 				code = tx.Data
 			}
+			log.Debug(Fmt("Code for this contract: %X", code))
 
 			appState.UpdateAccount(caller) // because we adjusted by input above, and bumped nonce maybe.
 			appState.UpdateAccount(callee) // because we adjusted by input above.
@@ -358,10 +372,12 @@ func (s *State) ExecTx(tx_ blk.Tx, runCall bool) error {
 			ret, err := vmach.Call(caller, callee, code, tx.Data, value, &gas)
 			if err != nil {
 				// Failure. Charge the gas fee. The 'value' was otherwise not transferred.
+				log.Debug(Fmt("Error on execution: %v", err))
 				inAcc.Balance -= tx.Fee
 				s.UpdateAccount(inAcc)
-				// Throw away 'appState' which holds incomplete updates.
+				// Throw away 'appState' which holds incomplete updates (don't sync it).
 			} else {
+				log.Debug("Successful execution")
 				// Success
 				if createAccount {
 					callee.Code = ret
@@ -377,6 +393,9 @@ func (s *State) ExecTx(tx_ blk.Tx, runCall bool) error {
 			// So mempool will skip the actual .Call(),
 			// and only deduct from the caller's balance.
 			inAcc.Balance -= value
+			if createAccount {
+				inAcc.Sequence += 1
+			}
 			s.UpdateAccount(inAcc)
 		}
 
