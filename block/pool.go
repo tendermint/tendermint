@@ -181,6 +181,8 @@ func (bp *BlockPool) handleEvent(event_ interface{}) {
 	}
 }
 
+// NOTE: This function is sufficient, but we should find pending blocks
+// and sample the peers in one go rather than the current O(n^2) impl.
 func (bp *BlockPool) requestBlocksFromRandomPeers(maxPeers int) {
 	chosen := bp.pickAvailablePeers(maxPeers)
 	log.Debug("requestBlocksFromRandomPeers", "chosen", len(chosen))
