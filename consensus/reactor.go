@@ -123,32 +123,24 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 
 	switch chId {
 	case StateCh:
-		switch msg_.(type) {
+		switch msg := msg_.(type) {
 		case *NewRoundStepMessage:
-			msg := msg_.(*NewRoundStepMessage)
 			ps.ApplyNewRoundStepMessage(msg, rs)
-
 		case *CommitStepMessage:
-			msg := msg_.(*CommitStepMessage)
 			ps.ApplyCommitStepMessage(msg)
-
 		case *HasVoteMessage:
-			msg := msg_.(*HasVoteMessage)
 			ps.ApplyHasVoteMessage(msg)
-
 		default:
 			// Ignore unknown message
 		}
 
 	case DataCh:
-		switch msg_.(type) {
+		switch msg := msg_.(type) {
 		case *Proposal:
-			proposal := msg_.(*Proposal)
-			ps.SetHasProposal(proposal)
-			err = conR.conS.SetProposal(proposal)
+			ps.SetHasProposal(msg)
+			err = conR.conS.SetProposal(msg)
 
 		case *PartMessage:
-			msg := msg_.(*PartMessage)
 			if msg.Type == partTypeProposalBlock {
 				ps.SetHasProposalBlockPart(msg.Height, msg.Round, msg.Part.Index)
 				_, err = conR.conS.AddProposalBlockPart(msg.Height, msg.Round, msg.Part)
@@ -164,14 +156,13 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 		}
 
 	case VoteCh:
-		switch msg_.(type) {
+		switch msg := msg_.(type) {
 		case *VoteMessage:
-			voteMessage := msg_.(*VoteMessage)
-			vote := voteMessage.Vote
+			vote := msg.Vote
 			if rs.Height != vote.Height {
 				return // Wrong height. Not necessarily a bad peer.
 			}
-			validatorIndex := voteMessage.ValidatorIndex
+			validatorIndex := msg.ValidatorIndex
 			address, _ := rs.Validators.GetByIndex(validatorIndex)
 			added, index, err := conR.conS.AddVote(address, vote)
 			if err != nil {

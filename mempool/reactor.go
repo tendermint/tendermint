@@ -75,9 +75,8 @@ func (memR *MempoolReactor) Receive(chId byte, src *p2p.Peer, msgBytes []byte) {
 	}
 	log.Info("MempoolReactor received message", "msg", msg_)
 
-	switch msg_.(type) {
+	switch msg := msg_.(type) {
 	case *TxMessage:
-		msg := msg_.(*TxMessage)
 		err := memR.Mempool.AddTx(msg.Tx)
 		if err != nil {
 			// Bad, seen, or conflicting tx.
