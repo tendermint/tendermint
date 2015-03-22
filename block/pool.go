@@ -130,8 +130,7 @@ func (bp *BlockPool) handleEvent(event_ interface{}) {
 				}
 			}
 		}
-	case bpPeerStatus:
-		// we have updated (or new) status from peer,
+	case bpPeerStatus: // updated or new status from peer
 		// request blocks if possible.
 		peer := bp.peers[event.peerId]
 		if peer == nil {
@@ -139,30 +138,45 @@ func (bp *BlockPool) handleEvent(event_ interface{}) {
 			bp.peers[peer.id] = peer
 		}
 		bp.requestBlocksFromPeer(peer)
-	case bpRequestTimeout:
+	case bpRequestTimeout: // unconditional timeout for each peer's request.
 		peer := bp.peers[event.peerId]
-		request := peer.requests[event.height]
+		if peer == nil {
+			// cleanup was already handled.
+			return
+		}
+		height := event.height
+		request := peer.requests[height]
 		if request == nil || request.block != nil {
-			// a request for event.height might have timed out for peer.
-			// but not necessarily, the timeout is unconditional.
-		} else {
-			peer.bad++
-			if request.tries < maxTries {
-				// try again, start timer again.
-				request.start(bp.eventsCh)
-				msg := BlockRequest{event.height, peer.id}
-				go func() { bp.requestsCh <- msg }()
-			} else {
-				// delete the request.
-				if peer != nil {
-					delete(peer.requests, event.height)
-				}
-				blockInfo := bp.blockInfos[event.height]
-				if blockInfo != nil {
-					delete(blockInfo.requests, peer.id)
-				}
-				go func() { bp.timeoutsCh <- peer.id }()
+			// the request was fulfilled by some peer or this peer.
+			return
+		}
+
+		// A request for peer timed out.
+		peer.bad++
+		if request.tries < maxTries {
+			log.Warn("Timeout: Trying again.", "tries", request.tries, "peerId", peer.id)
+			// try again.
+			select {
+			case bp.requestsCh <- BlockRequest{height, peer.id}:
+				request.startAndTimeoutTo(bp.eventsCh) // also bumps request.tries
+			default:
+				// The request cannot be made because requestCh is full.
+				// Just delete the request.
+				delete(peer.requests, height)
 			}
+		} else {
+			log.Warn("Timeout: Deleting request")
+			// delete the request.
+			delete(peer.requests, height)
+			blockInfo := bp.blockInfos[height]
+			if blockInfo != nil {
+				delete(blockInfo.requests, peer.id)
+			}
+			select {
+			case bp.timeoutsCh <- peer.id:
+			default:
+			}
+
 		}
 	}
 }
@@ -186,16 +200,21 @@ func (bp *BlockPool) requestBlocksFromPeer(peer *bpPeer) {
 		needsMorePeers := blockInfo.needsMorePeers()
 		alreadyAskedPeer := blockInfo.requests[peer.id] != nil
 		if needsMorePeers && !alreadyAskedPeer {
-			// Create a new request and start the timer.
-			request := &bpBlockRequest{
-				height: height,
-				peer:   peer,
+			select {
+			case bp.requestsCh <- BlockRequest{height, peer.id}:
+				// Create a new request and start the timer.
+				request := &bpBlockRequest{
+					height: height,
+					peer:   peer,
+				}
+				blockInfo.requests[peer.id] = request
+				peer.requests[height] = request
+				request.startAndTimeoutTo(bp.eventsCh) // also bumps request.tries
+			default:
+				// The request cannot be made because requestCh is full.
+				// Just stop.
+				return
 			}
-			blockInfo.requests[peer.id] = request
-			peer.requests[height] = request
-			request.start(bp.eventsCh)
-			msg := BlockRequest{height, peer.id}
-			go func() { bp.requestsCh <- msg }()
 		}
 	}
 }
@@ -203,6 +222,8 @@ func (bp *BlockPool) requestBlocksFromPeer(peer *bpPeer) {
 func (bp *BlockPool) makeMoreBlockInfos() {
 	// make more requests if necessary.
 	for i := 0; i < requestBatchSize; i++ {
+		//log.Debug("Confused?",
+		//    "numPending", bp.numPending, "maxPendingRequests", maxPendingRequests, "numtotal", bp.numTotal, "maxTotalRequests", maxTotalRequests)
 		if bp.numPending < maxPendingRequests && bp.numTotal < maxTotalRequests {
 			// Make a request for the next block height
 			requestHeight := bp.height + uint(bp.numTotal)
@@ -232,6 +253,7 @@ func (bp *BlockPool) pickAvailablePeers(choose int) []*bpPeer {
 	return chosen
 }
 
+// blocking
 func (bp *BlockPool) pushBlocksFromStart() {
 	for height := bp.height; ; height++ {
 		// push block to blocksCh.
@@ -242,7 +264,7 @@ func (bp *BlockPool) pushBlocksFromStart() {
 		bp.numTotal--
 		bp.height++
 		delete(bp.blockInfos, height)
-		go func() { bp.blocksCh <- blockInfo.block }()
+		bp.blocksCh <- blockInfo.block
 	}
 }
 
@@ -277,7 +299,7 @@ type bpBlockRequest struct {
 
 // bump tries++ and set timeout.
 // NOTE: the timer is unconditional.
-func (request bpBlockRequest) start(eventsCh chan<- interface{}) {
+func (request *bpBlockRequest) startAndTimeoutTo(eventsCh chan<- interface{}) {
 	request.tries++
 	time.AfterFunc(requestTimeoutSeconds*time.Second, func() {
 		eventsCh <- bpRequestTimeout{
