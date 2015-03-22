@@ -143,17 +143,20 @@ func (sw *Switch) DialPeerWithAddress(addr *NetAddress) (*Peer, error) {
 		return nil, ErrSwitchStopped
 	}
 
-	log.Info("Dialing peer", "address", addr)
+	log.Debug("Dialing address", "address", addr)
 	sw.dialing.Set(addr.String(), addr)
 	conn, err := addr.DialTimeout(peerDialTimeoutSeconds * time.Second)
 	sw.dialing.Delete(addr.String())
 	if err != nil {
+		log.Debug("Failed dialing address", "address", addr, "error", err)
 		return nil, err
 	}
 	peer, err := sw.AddPeerWithConnection(conn, true)
 	if err != nil {
+		log.Debug("Failed adding peer", "address", addr, "conn", conn, "error", err)
 		return nil, err
 	}
+	log.Info("Dialed and added peer", "address", addr, "peer", peer)
 	return peer, nil
 }
 

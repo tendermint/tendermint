@@ -144,6 +144,7 @@ func (a *AddrBook) Stop() {
 func (a *AddrBook) AddOurAddress(addr *NetAddress) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
+	log.Debug("Add our address to book", "addr", addr)
 	a.ourAddrs[addr.String()] = addr
 }
 
@@ -158,6 +159,7 @@ func (a *AddrBook) OurAddresses() []*NetAddress {
 func (a *AddrBook) AddAddress(addr *NetAddress, src *NetAddress) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
+	log.Debug("Add address to book", "addr", addr, "src", src)
 	a.addAddress(addr, src)
 }
 
@@ -334,7 +336,7 @@ func (a *AddrBook) loadFromFile(filePath string) {
 	// If doesn't exist, do nothing.
 	_, err := os.Stat(filePath)
 	if os.IsNotExist(err) {
-		return
+		panic(Fmt("File does not exist: %v", filePath))
 	}
 
 	// Load addrBookJSON{}
@@ -546,7 +548,7 @@ func (a *AddrBook) addAddress(addr, src *NetAddress) {
 	bucket := a.calcNewBucket(addr, src)
 	a.addToNewBucket(ka, bucket)
 
-	log.Info(Fmt("Added new address %s for a total of %d addresses", addr, a.size()))
+	log.Info("Added new address", "address", addr, "total", a.size())
 }
 
 // Make space in the new buckets by expiring the really bad entries.

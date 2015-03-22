@@ -70,12 +70,13 @@ func (ps *PeerSet) Remove(peer *Peer) {
 	// If it's the last peer, that's an easy special case.
 	if index == len(ps.list)-1 {
 		ps.list = newList
+		delete(ps.lookup, peer.Key)
 		return
 	}
 	// Move the last item from ps.list to "index" in list.
 	lastPeer := ps.list[len(ps.list)-1]
-	lastPeerAddr := lastPeer.mconn.RemoteAddress.String()
-	lastPeerItem := ps.lookup[lastPeerAddr]
+	lastPeerKey := lastPeer.Key
+	lastPeerItem := ps.lookup[lastPeerKey]
 	newList[index] = lastPeer
 	lastPeerItem.index = index
 	ps.list = newList
