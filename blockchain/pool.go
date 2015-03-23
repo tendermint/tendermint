@@ -12,13 +12,16 @@ import (
 const (
 	maxOutstandingRequestsPerPeer = 10
 	eventsChannelCapacity         = 100
-	requestTimeoutSeconds         = 10
 	maxTries                      = 3
 	requestIntervalMS             = 500
 	requestBatchSize              = 50
 	maxPendingRequests            = 50
 	maxTotalRequests              = 100
 	maxPeersPerRequest            = 1
+)
+
+var (
+	requestTimeoutSeconds = time.Duration(10)
 )
 
 type BlockRequest struct {

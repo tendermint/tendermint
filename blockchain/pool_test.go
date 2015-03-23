@@ -3,6 +3,7 @@ package blockchain
 import (
 	"math/rand"
 	"testing"
+	"time"
 
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/types"
@@ -74,6 +75,10 @@ func TestBasic(t *testing.T) {
 }
 
 func TestTimeout(t *testing.T) {
+	origRequestTimeoutSeconds := requestTimeoutSeconds
+	requestTimeoutSeconds = time.Duration(0)
+	defer func() { requestTimeoutSeconds = origRequestTimeoutSeconds }()
+
 	peers := makePeers(100, 0, 1000)
 	start := uint(42)
 	timeoutsCh := make(chan string, 10)
