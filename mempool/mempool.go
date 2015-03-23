@@ -12,14 +12,14 @@ import (
 	"sync"
 
 	"github.com/tendermint/tendermint/binary"
-	blk "github.com/tendermint/tendermint/block"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/types"
 )
 
 type Mempool struct {
 	mtx   sync.Mutex
 	state *sm.State
-	txs   []blk.Tx
+	txs   []types.Tx
 }
 
 func NewMempool(state *sm.State) *Mempool {
@@ -33,7 +33,7 @@ func (mem *Mempool) GetState() *sm.State {
 }
 
 // Apply tx to the state and remember it.
-func (mem *Mempool) AddTx(tx blk.Tx) (err error) {
+func (mem *Mempool) AddTx(tx types.Tx) (err error) {
 	mem.mtx.Lock()
 	defer mem.mtx.Unlock()
 	err = mem.state.ExecTx(tx, false)
@@ -47,7 +47,7 @@ func (mem *Mempool) AddTx(tx blk.Tx) (err error) {
 	}
 }
 
-func (mem *Mempool) GetProposalTxs() []blk.Tx {
+func (mem *Mempool) GetProposalTxs() []types.Tx {
 	mem.mtx.Lock()
 	defer mem.mtx.Unlock()
 	log.Debug("GetProposalTxs:", "txs", mem.txs)
@@ -58,7 +58,7 @@ func (mem *Mempool) GetProposalTxs() []blk.Tx {
 // "state" is the result of state.AppendBlock("block").
 // Txs that are present in "block" are discarded from mempool.
 // Txs that have become invalid in the new "state" are also discarded.
-func (mem *Mempool) ResetForBlockAndState(block *blk.Block, state *sm.State) {
+func (mem *Mempool) ResetForBlockAndState(block *types.Block, state *sm.State) {
 	mem.mtx.Lock()
 	defer mem.mtx.Unlock()
 	mem.state = state.Copy()
@@ -71,7 +71,7 @@ func (mem *Mempool) ResetForBlockAndState(block *blk.Block, state *sm.State) {
 	}
 
 	// Next, filter all txs from mem.txs that are in blockTxsMap
-	txs := []blk.Tx{}
+	txs := []types.Tx{}
 	for _, tx := range mem.txs {
 		txHash := binary.BinarySha256(tx)
 		if _, ok := blockTxsMap[string(txHash)]; ok {
@@ -84,7 +84,7 @@ func (mem *Mempool) ResetForBlockAndState(block *blk.Block, state *sm.State) {
 	}
 
 	// Next, filter all txs that aren't valid given new state.
-	validTxs := []blk.Tx{}
+	validTxs := []types.Tx{}
 	for _, tx := range txs {
 		err := mem.state.ExecTx(tx, false)
 		if err == nil {

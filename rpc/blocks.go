@@ -3,8 +3,8 @@ package rpc
 import (
 	"net/http"
 
-	blk "github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/types"
 )
 
 func BlockchainInfoHandler(w http.ResponseWriter, r *http.Request) {
@@ -20,7 +20,7 @@ func BlockchainInfoHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Debug("BlockchainInfoHandler", "maxHeight", maxHeight, "minHeight", minHeight)
 
-	blockMetas := []*blk.BlockMeta{}
+	blockMetas := []*types.BlockMeta{}
 	for height := maxHeight; height >= minHeight; height-- {
 		blockMeta := blockStore.LoadBlockMeta(height)
 		blockMetas = append(blockMetas, blockMeta)
@@ -28,7 +28,7 @@ func BlockchainInfoHandler(w http.ResponseWriter, r *http.Request) {
 
 	WriteAPIResponse(w, API_OK, struct {
 		LastHeight uint
-		BlockMetas []*blk.BlockMeta
+		BlockMetas []*types.BlockMeta
 	}{blockStore.Height(), blockMetas})
 }
 
@@ -49,7 +49,7 @@ func GetBlockHandler(w http.ResponseWriter, r *http.Request) {
 	block := blockStore.LoadBlock(height)
 
 	WriteAPIResponse(w, API_OK, struct {
-		BlockMeta *blk.BlockMeta
-		Block     *blk.Block
+		BlockMeta *types.BlockMeta
+		Block     *types.Block
 	}{blockMeta, block})
 }

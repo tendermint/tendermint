@@ -4,16 +4,16 @@ import (
 	"net/http"
 
 	"github.com/tendermint/tendermint/binary"
-	blk "github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/merkle"
 	"github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/types"
 )
 
 func BroadcastTxHandler(w http.ResponseWriter, r *http.Request) {
 	txJSON := GetParam(r, "tx")
 	var err error
-	var tx blk.Tx
+	var tx types.Tx
 	binary.ReadJSON(&tx, []byte(txJSON), &err)
 	if err != nil {
 		WriteAPIResponse(w, API_INVALID_PARAM, Fmt("Invalid tx: %v", err))
@@ -30,7 +30,7 @@ func BroadcastTxHandler(w http.ResponseWriter, r *http.Request) {
 	var createsContract bool
 	var contractAddr []byte
 
-	if callTx, ok := tx.(*blk.CallTx); ok {
+	if callTx, ok := tx.(*types.CallTx); ok {
 		if callTx.Address == nil {
 			createsContract = true
 			contractAddr = state.NewContractAddress(callTx.Input.Address, uint64(callTx.Input.Sequence))

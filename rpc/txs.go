@@ -5,8 +5,8 @@ import (
 
 	"github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
-	blk "github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/types"
 )
 
 func SignTxHandler(w http.ResponseWriter, r *http.Request) {
@@ -14,7 +14,7 @@ func SignTxHandler(w http.ResponseWriter, r *http.Request) {
 	privAccountsStr := GetParam(r, "privAccounts")
 
 	var err error
-	var tx blk.Tx
+	var tx types.Tx
 	binary.ReadJSON(&tx, []byte(txStr), &err)
 	if err != nil {
 		WriteAPIResponse(w, API_INVALID_PARAM, Fmt("Invalid tx: %v", err))
@@ -33,25 +33,25 @@ func SignTxHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch tx.(type) {
-	case *blk.SendTx:
-		sendTx := tx.(*blk.SendTx)
+	case *types.SendTx:
+		sendTx := tx.(*types.SendTx)
 		for i, input := range sendTx.Inputs {
 			input.PubKey = privAccounts[i].PubKey
 			input.Signature = privAccounts[i].Sign(sendTx)
 		}
-	case *blk.BondTx:
-		bondTx := tx.(*blk.BondTx)
+	case *types.BondTx:
+		bondTx := tx.(*types.BondTx)
 		for i, input := range bondTx.Inputs {
 			input.PubKey = privAccounts[i].PubKey
 			input.Signature = privAccounts[i].Sign(bondTx)
 		}
-	case *blk.UnbondTx:
-		unbondTx := tx.(*blk.UnbondTx)
+	case *types.UnbondTx:
+		unbondTx := tx.(*types.UnbondTx)
 		unbondTx.Signature = privAccounts[0].Sign(unbondTx).(account.SignatureEd25519)
-	case *blk.RebondTx:
-		rebondTx := tx.(*blk.RebondTx)
+	case *types.RebondTx:
+		rebondTx := tx.(*types.RebondTx)
 		rebondTx.Signature = privAccounts[0].Sign(rebondTx).(account.SignatureEd25519)
 	}
 
-	WriteAPIResponse(w, API_OK, struct{ blk.Tx }{tx})
+	WriteAPIResponse(w, API_OK, struct{ types.Tx }{tx})
 }

@@ -5,9 +5,9 @@ import (
 	"sort"
 
 	"github.com/tendermint/tendermint/account"
-	blk "github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/common"
 	dbm "github.com/tendermint/tendermint/db"
+	"github.com/tendermint/tendermint/types"
 
 	"io/ioutil"
 	"os"
@@ -46,7 +46,7 @@ func RandValidator(randBonded bool, minBonded uint64) (*ValidatorInfo, *Validato
 	valInfo := &ValidatorInfo{
 		Address: privVal.Address,
 		PubKey:  privVal.PubKey,
-		UnbondTo: []*blk.TxOutput{&blk.TxOutput{
+		UnbondTo: []*types.TxOutput{&types.TxOutput{
 			Amount:  bonded,
 			Address: privVal.Address,
 		}},

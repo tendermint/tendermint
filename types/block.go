@@ -1,4 +1,4 @@
-package block
+package types
 
 import (
 	"bytes"
@@ -54,6 +54,9 @@ func (b *Block) ValidateBasic(lastBlockHeight uint, lastBlockHash []byte,
 }
 
 func (b *Block) Hash() []byte {
+	if b.Header == nil || b.Validation == nil || b.Data == nil {
+		return nil
+	}
 	hashes := [][]byte{
 		b.Header.Hash(),
 		b.Validation.Hash(),
@@ -81,6 +84,9 @@ func (b *Block) String() string {
 }
 
 func (b *Block) StringIndented(indent string) string {
+	if b == nil {
+		return "nil-Block"
+	}
 	return fmt.Sprintf(`Block{
 %s  %v
 %s  %v
@@ -126,6 +132,9 @@ func (h *Header) Hash() []byte {
 }
 
 func (h *Header) StringIndented(indent string) string {
+	if h == nil {
+		return "nil-Header"
+	}
 	return fmt.Sprintf(`Header{
 %s  Network:        %v
 %s  Height:         %v
@@ -212,6 +221,9 @@ func (v *Validation) Hash() []byte {
 }
 
 func (v *Validation) StringIndented(indent string) string {
+	if v == nil {
+		return "nil-Validation"
+	}
 	commitStrings := make([]string, len(v.Commits))
 	for i, commit := range v.Commits {
 		commitStrings[i] = commit.String()
@@ -254,6 +266,9 @@ func (data *Data) Hash() []byte {
 }
 
 func (data *Data) StringIndented(indent string) string {
+	if data == nil {
+		return "nil-Data"
+	}
 	txStrings := make([]string, len(data.Txs))
 	for i, tx := range data.Txs {
 		txStrings[i] = fmt.Sprintf("Tx:%v", tx)
