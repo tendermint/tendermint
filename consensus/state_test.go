@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	blk "github.com/tendermint/tendermint/block"
+	"github.com/tendermint/tendermint/types"
 )
 
 func TestSetupRound(t *testing.T) {
@@ -12,9 +12,9 @@ func TestSetupRound(t *testing.T) {
 	val0 := privValidators[0]
 
 	// Add a vote, precommit, and commit by val0.
-	voteTypes := []byte{blk.VoteTypePrevote, blk.VoteTypePrecommit, blk.VoteTypeCommit}
+	voteTypes := []byte{types.VoteTypePrevote, types.VoteTypePrecommit, types.VoteTypeCommit}
 	for _, voteType := range voteTypes {
-		vote := &blk.Vote{Height: 1, Round: 0, Type: voteType} // nil vote
+		vote := &types.Vote{Height: 1, Round: 0, Type: voteType} // nil vote
 		err := val0.SignVote(vote)
 		if err != nil {
 			t.Error("Error signing vote: %v", err)
@@ -24,13 +24,13 @@ func TestSetupRound(t *testing.T) {
 
 	// Ensure that vote appears in RoundState.
 	rs0 := cs.GetRoundState()
-	if vote := rs0.Prevotes.GetByAddress(val0.Address); vote == nil || vote.Type != blk.VoteTypePrevote {
+	if vote := rs0.Prevotes.GetByAddress(val0.Address); vote == nil || vote.Type != types.VoteTypePrevote {
 		t.Errorf("Expected to find prevote but got %v", vote)
 	}
-	if vote := rs0.Precommits.GetByAddress(val0.Address); vote == nil || vote.Type != blk.VoteTypePrecommit {
+	if vote := rs0.Precommits.GetByAddress(val0.Address); vote == nil || vote.Type != types.VoteTypePrecommit {
 		t.Errorf("Expected to find precommit but got %v", vote)
 	}
-	if vote := rs0.Commits.GetByAddress(val0.Address); vote == nil || vote.Type != blk.VoteTypeCommit {
+	if vote := rs0.Commits.GetByAddress(val0.Address); vote == nil || vote.Type != types.VoteTypeCommit {
 		t.Errorf("Expected to find commit but got %v", vote)
 	}
 
@@ -40,13 +40,13 @@ func TestSetupRound(t *testing.T) {
 
 	// Now the commit should be copied over to prevotes and precommits.
 	rs1 := cs.GetRoundState()
-	if vote := rs1.Prevotes.GetByAddress(val0.Address); vote == nil || vote.Type != blk.VoteTypeCommit {
+	if vote := rs1.Prevotes.GetByAddress(val0.Address); vote == nil || vote.Type != types.VoteTypeCommit {
 		t.Errorf("Expected to find commit but got %v", vote)
 	}
-	if vote := rs1.Precommits.GetByAddress(val0.Address); vote == nil || vote.Type != blk.VoteTypeCommit {
+	if vote := rs1.Precommits.GetByAddress(val0.Address); vote == nil || vote.Type != types.VoteTypeCommit {
 		t.Errorf("Expected to find commit but got %v", vote)
 	}
-	if vote := rs1.Commits.GetByAddress(val0.Address); vote == nil || vote.Type != blk.VoteTypeCommit {
+	if vote := rs1.Commits.GetByAddress(val0.Address); vote == nil || vote.Type != types.VoteTypeCommit {
 		t.Errorf("Expected to find commit but got %v", vote)
 	}
 
@@ -116,10 +116,10 @@ func TestRunActionPrecommitCommitFinalize(t *testing.T) {
 
 	// Add at least +2/3 prevotes.
 	for i := 0; i < 7; i++ {
-		vote := &blk.Vote{
+		vote := &types.Vote{
 			Height:     1,
 			Round:      0,
-			Type:       blk.VoteTypePrevote,
+			Type:       types.VoteTypePrevote,
 			BlockHash:  cs.ProposalBlock.Hash(),
 			BlockParts: cs.ProposalBlockParts.Header(),
 		}
@@ -146,10 +146,10 @@ func TestRunActionPrecommitCommitFinalize(t *testing.T) {
 			}
 			continue
 		}
-		vote := &blk.Vote{
+		vote := &types.Vote{
 			Height:     1,
 			Round:      0,
-			Type:       blk.VoteTypePrecommit,
+			Type:       types.VoteTypePrecommit,
 			BlockHash:  cs.ProposalBlock.Hash(),
 			BlockParts: cs.ProposalBlockParts.Header(),
 		}
@@ -184,10 +184,10 @@ func TestRunActionPrecommitCommitFinalize(t *testing.T) {
 			}
 			continue
 		}
-		vote := &blk.Vote{
+		vote := &types.Vote{
 			Height:     1,
 			Round:      uint(i), // Doesn't matter what round
-			Type:       blk.VoteTypeCommit,
+			Type:       types.VoteTypeCommit,
 			BlockHash:  cs.ProposalBlock.Hash(),
 			BlockParts: cs.ProposalBlockParts.Header(),
 		}

@@ -11,10 +11,10 @@ import (
 
 	"github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
-	blk "github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/config"
 	. "github.com/tendermint/tendermint/consensus/types"
+	"github.com/tendermint/tendermint/types"
 
 	"github.com/tendermint/ed25519"
 )
@@ -27,13 +27,13 @@ const (
 	stepCommit    = 4
 )
 
-func voteToStep(vote *blk.Vote) uint8 {
+func voteToStep(vote *types.Vote) uint8 {
 	switch vote.Type {
-	case blk.VoteTypePrevote:
+	case types.VoteTypePrevote:
 		return stepPrevote
-	case blk.VoteTypePrecommit:
+	case types.VoteTypePrecommit:
 		return stepPrecommit
-	case blk.VoteTypeCommit:
+	case types.VoteTypeCommit:
 		return stepCommit
 	default:
 		panic("Unknown vote type")
@@ -100,7 +100,7 @@ func (privVal *PrivValidator) save() {
 }
 
 // TODO: test
-func (privVal *PrivValidator) SignVote(vote *blk.Vote) error {
+func (privVal *PrivValidator) SignVote(vote *types.Vote) error {
 	privVal.mtx.Lock()
 	defer privVal.mtx.Unlock()
 
@@ -135,7 +135,7 @@ func (privVal *PrivValidator) SignVote(vote *blk.Vote) error {
 	return nil
 }
 
-func (privVal *PrivValidator) SignVoteUnsafe(vote *blk.Vote) {
+func (privVal *PrivValidator) SignVoteUnsafe(vote *types.Vote) {
 	vote.Signature = privVal.PrivKey.Sign(account.SignBytes(vote)).(account.SignatureEd25519)
 }
 
@@ -160,7 +160,7 @@ func (privVal *PrivValidator) SignProposal(proposal *Proposal) error {
 	}
 }
 
-func (privVal *PrivValidator) SignRebondTx(rebondTx *blk.RebondTx) error {
+func (privVal *PrivValidator) SignRebondTx(rebondTx *types.RebondTx) error {
 	privVal.mtx.Lock()
 	defer privVal.mtx.Unlock()
 	if privVal.LastHeight < rebondTx.Height {

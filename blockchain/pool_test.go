@@ -1,10 +1,11 @@
-package block
+package blockchain
 
 import (
 	"math/rand"
 	"testing"
 
 	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/types"
 )
 
 type testPeer struct {
@@ -30,7 +31,7 @@ func TestBasic(t *testing.T) {
 	maxHeight := uint(300)
 	timeoutsCh := make(chan string, 100)
 	requestsCh := make(chan BlockRequest, 100)
-	blocksCh := make(chan *Block, 100)
+	blocksCh := make(chan *types.Block, 100)
 
 	pool := NewBlockPool(start, timeoutsCh, requestsCh, blocksCh)
 	pool.Start()
@@ -53,7 +54,7 @@ func TestBasic(t *testing.T) {
 			log.Debug("TEST: Pulled new BlockRequest", "request", request)
 			// After a while, pretend like we got a block from the peer.
 			go func() {
-				block := &Block{Header: &Header{Height: request.Height}}
+				block := &types.Block{Header: &types.Header{Height: request.Height}}
 				pool.AddBlock(block, request.PeerId)
 				log.Debug("TEST: Added block", "block", request.Height, "peer", request.PeerId)
 			}()
@@ -77,7 +78,7 @@ func TestTimeout(t *testing.T) {
 	start := uint(42)
 	timeoutsCh := make(chan string, 10)
 	requestsCh := make(chan BlockRequest, 10)
-	blocksCh := make(chan *Block, 100)
+	blocksCh := make(chan *types.Block, 100)
 
 	pool := NewBlockPool(start, timeoutsCh, requestsCh, blocksCh)
 	pool.Start()
@@ -97,7 +98,7 @@ func TestTimeout(t *testing.T) {
 			if peers[peerId].id != peerId {
 				t.Errorf("Unexpected peer from timeoutsCh")
 			}
-			//return
+			return
 		case _ = <-requestsCh:
 			// Don't do anything, let it time out.
 		case _ = <-blocksCh:

@@ -6,10 +6,10 @@ import (
 
 	"github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
-	blk "github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/common"
 	dbm "github.com/tendermint/tendermint/db"
 	"github.com/tendermint/tendermint/merkle"
+	"github.com/tendermint/tendermint/types"
 )
 
 type GenesisAccount struct {
@@ -79,12 +79,12 @@ func MakeGenesisState(db dbm.DB, genDoc *GenesisDoc) *State {
 		valInfo := &ValidatorInfo{
 			Address:         address,
 			PubKey:          pubKey,
-			UnbondTo:        make([]*blk.TxOutput, len(val.UnbondTo)),
+			UnbondTo:        make([]*types.TxOutput, len(val.UnbondTo)),
 			FirstBondHeight: 0,
 			FirstBondAmount: val.Amount,
 		}
 		for i, unbondTo := range val.UnbondTo {
-			valInfo.UnbondTo[i] = &blk.TxOutput{
+			valInfo.UnbondTo[i] = &types.TxOutput{
 				Address: unbondTo.Address,
 				Amount:  unbondTo.Amount,
 			}
@@ -107,7 +107,7 @@ func MakeGenesisState(db dbm.DB, genDoc *GenesisDoc) *State {
 		DB:                   db,
 		LastBlockHeight:      0,
 		LastBlockHash:        nil,
-		LastBlockParts:       blk.PartSetHeader{},
+		LastBlockParts:       types.PartSetHeader{},
 		LastBlockTime:        genDoc.GenesisTime,
 		BondedValidators:     NewValidatorSet(validators),
 		LastBondedValidators: NewValidatorSet(nil),

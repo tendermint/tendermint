@@ -10,10 +10,10 @@ import (
 
 	"github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
-	blk "github.com/tendermint/tendermint/block"
 	. "github.com/tendermint/tendermint/common"
 	dbm "github.com/tendermint/tendermint/db"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/types"
 )
 
 func getString(prompt string) string {
@@ -80,9 +80,9 @@ func gen_tx() {
 	dstSendAmount := getUint64(Fmt("Enter amount to send to %X: ", dstAddress))
 
 	// Construct SendTx
-	tx := &blk.SendTx{
-		Inputs: []*blk.TxInput{
-			&blk.TxInput{
+	tx := &types.SendTx{
+		Inputs: []*types.TxInput{
+			&types.TxInput{
 				Address:   srcAddress,
 				Amount:    srcSendAmount,
 				Sequence:  srcSendSequence,
@@ -90,8 +90,8 @@ func gen_tx() {
 				PubKey:    srcPubKey,
 			},
 		},
-		Outputs: []*blk.TxOutput{
-			&blk.TxOutput{
+		Outputs: []*types.TxOutput{
+			&types.TxOutput{
 				Address: dstAddress,
 				Amount:  dstSendAmount,
 			},

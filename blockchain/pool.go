@@ -1,4 +1,4 @@
-package block
+package blockchain
 
 import (
 	"math/rand"
@@ -6,6 +6,7 @@ import (
 	"time"
 
 	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -36,12 +37,12 @@ type BlockPool struct {
 	eventsCh   chan interface{}    // internal events.
 	requestsCh chan<- BlockRequest // output of new requests to make.
 	timeoutsCh chan<- string       // output of peers that timed out.
-	blocksCh   chan<- *Block       // output of ordered blocks.
+	blocksCh   chan<- *types.Block // output of ordered blocks.
 	repeater   *RepeatTimer        // for requesting more bocks.
 	quit       chan struct{}
 }
 
-func NewBlockPool(start uint, timeoutsCh chan<- string, requestsCh chan<- BlockRequest, blocksCh chan<- *Block) *BlockPool {
+func NewBlockPool(start uint, timeoutsCh chan<- string, requestsCh chan<- BlockRequest, blocksCh chan<- *types.Block) *BlockPool {
 	return &BlockPool{
 		peers:      make(map[string]*bpPeer),
 		blockInfos: make(map[uint]*bpBlockInfo),
@@ -80,7 +81,7 @@ func (bp *BlockPool) Stop() {
 }
 
 // AddBlock should be called when a block is received.
-func (bp *BlockPool) AddBlock(block *Block, peerId string) {
+func (bp *BlockPool) AddBlock(block *types.Block, peerId string) {
 	bp.eventsCh <- bpBlockResponse{block, peerId}
 }
 
@@ -275,8 +276,8 @@ func (bp *BlockPool) pushBlocksFromStart() {
 type bpBlockInfo struct {
 	height   uint
 	requests map[string]*bpBlockRequest
-	block    *Block // first block received
-	blockBy  string // peerId of source
+	block    *types.Block // first block received
+	blockBy  string       // peerId of source
 }
 
 func bpNewBlockInfo(height uint) *bpBlockInfo {
@@ -295,7 +296,7 @@ func (blockInfo *bpBlockInfo) needsMorePeers() bool {
 type bpBlockRequest struct {
 	peer   *bpPeer
 	height uint
-	block  *Block
+	block  *types.Block
 	tries  int
 }
 
@@ -338,7 +339,7 @@ func (peer *bpPeer) available() bool {
 // bp.eventsCh messages
 
 type bpBlockResponse struct {
-	block  *Block
+	block  *types.Block
 	peerId string
 }
 

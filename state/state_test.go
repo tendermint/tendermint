@@ -3,8 +3,8 @@ package state
 import (
 	"github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
-	blk "github.com/tendermint/tendermint/block"
 	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/types"
 
 	"bytes"
 	"testing"
@@ -52,9 +52,9 @@ func TestCopyState(t *testing.T) {
 	}
 }
 
-func makeBlock(t *testing.T, state *State, commits []blk.Commit, txs []blk.Tx) *blk.Block {
-	block := &blk.Block{
-		Header: &blk.Header{
+func makeBlock(t *testing.T, state *State, commits []types.Commit, txs []types.Tx) *types.Block {
+	block := &types.Block{
+		Header: &types.Header{
 			Network:        config.App().GetString("Network"),
 			Height:         state.LastBlockHeight + 1,
 			Time:           state.LastBlockTime.Add(time.Minute),
@@ -64,10 +64,10 @@ func makeBlock(t *testing.T, state *State, commits []blk.Commit, txs []blk.Tx) *
 			LastBlockParts: state.LastBlockParts,
 			StateHash:      nil,
 		},
-		Validation: &blk.Validation{
+		Validation: &types.Validation{
 			Commits: commits,
 		},
-		Data: &blk.Data{
+		Data: &types.Data{
 			Txs: txs,
 		},
 	}
@@ -91,7 +91,7 @@ func TestGenesisSaveLoad(t *testing.T) {
 
 	// Make complete block and blockParts
 	block := makeBlock(t, s0, nil, nil)
-	blockParts := blk.NewPartSetFromData(binary.BinaryBytes(block))
+	blockParts := types.NewPartSetFromData(binary.BinaryBytes(block))
 
 	// Now append the block to s0.
 	err := s0.AppendBlock(block, blockParts.Header())
@@ -157,18 +157,18 @@ func TestTxSequence(t *testing.T) {
 	acc1 := state.GetAccount(privAccounts[1].PubKey.Address())
 
 	// Try executing a SendTx with various sequence numbers.
-	makeSendTx := func(sequence uint) *blk.SendTx {
-		return &blk.SendTx{
-			Inputs: []*blk.TxInput{
-				&blk.TxInput{
+	makeSendTx := func(sequence uint) *types.SendTx {
+		return &types.SendTx{
+			Inputs: []*types.TxInput{
+				&types.TxInput{
 					Address:  acc0.Address,
 					Amount:   1,
 					Sequence: sequence,
 					PubKey:   acc0PubKey,
 				},
 			},
-			Outputs: []*blk.TxOutput{
-				&blk.TxOutput{
+			Outputs: []*types.TxOutput{
+				&types.TxOutput{
 					Address: acc1.Address,
 					Amount:  1,
 				},
@@ -224,17 +224,17 @@ func TestTxs(t *testing.T) {
 	// SendTx.
 	{
 		state := state.Copy()
-		tx := &blk.SendTx{
-			Inputs: []*blk.TxInput{
-				&blk.TxInput{
+		tx := &types.SendTx{
+			Inputs: []*types.TxInput{
+				&types.TxInput{
 					Address:  acc0.Address,
 					Amount:   1,
 					Sequence: acc0.Sequence + 1,
 					PubKey:   acc0PubKey,
 				},
 			},
-			Outputs: []*blk.TxOutput{
-				&blk.TxOutput{
+			Outputs: []*types.TxOutput{
+				&types.TxOutput{
 					Address: acc1.Address,
 					Amount:  1,
 				},
@@ -261,18 +261,18 @@ func TestTxs(t *testing.T) {
 	// BondTx.
 	{
 		state := state.Copy()
-		tx := &blk.BondTx{
+		tx := &types.BondTx{
 			PubKey: acc0PubKey.(account.PubKeyEd25519),
-			Inputs: []*blk.TxInput{
-				&blk.TxInput{
+			Inputs: []*types.TxInput{
+				&types.TxInput{
 					Address:  acc0.Address,
 					Amount:   1,
 					Sequence: acc0.Sequence + 1,
 					PubKey:   acc0PubKey,
 				},
 			},
-			UnbondTo: []*blk.TxOutput{
-				&blk.TxOutput{
+			UnbondTo: []*types.TxOutput{
+				&types.TxOutput{
 					Address: acc0.Address,
 					Amount:  1,
 				},
@@ -317,18 +317,18 @@ func TestAddValidator(t *testing.T) {
 
 	// The first privAccount will become a validator
 	acc0 := privAccounts[0]
-	bondTx := &blk.BondTx{
+	bondTx := &types.BondTx{
 		PubKey: acc0.PubKey.(account.PubKeyEd25519),
-		Inputs: []*blk.TxInput{
-			&blk.TxInput{
+		Inputs: []*types.TxInput{
+			&types.TxInput{
 				Address:  acc0.Address,
 				Amount:   1000,
 				Sequence: 1,
 				PubKey:   acc0.PubKey,
 			},
 		},
-		UnbondTo: []*blk.TxOutput{
-			&blk.TxOutput{
+		UnbondTo: []*types.TxOutput{
+			&types.TxOutput{
 				Address: acc0.Address,
 				Amount:  1000,
 			},
@@ -337,8 +337,8 @@ func TestAddValidator(t *testing.T) {
 	bondTx.Inputs[0].Signature = acc0.Sign(bondTx)
 
 	// Make complete block and blockParts
-	block0 := makeBlock(t, s0, nil, []blk.Tx{bondTx})
-	block0Parts := blk.NewPartSetFromData(binary.BinaryBytes(block0))
+	block0 := makeBlock(t, s0, nil, []types.Tx{bondTx})
+	block0Parts := types.NewPartSetFromData(binary.BinaryBytes(block0))
 
 	// Sanity check
 	if s0.BondedValidators.Size() != 1 {
@@ -361,25 +361,25 @@ func TestAddValidator(t *testing.T) {
 
 	// The validation for the next block should only require 1 signature
 	// (the new validator wasn't active for block0)
-	commit0 := &blk.Vote{
+	commit0 := &types.Vote{
 		Height:     1,
 		Round:      0,
-		Type:       blk.VoteTypeCommit,
+		Type:       types.VoteTypeCommit,
 		BlockHash:  block0.Hash(),
 		BlockParts: block0Parts.Header(),
 	}
 	privValidators[0].SignVote(commit0)
 
 	block1 := makeBlock(t, s0,
-		[]blk.Commit{
-			blk.Commit{
+		[]types.Commit{
+			types.Commit{
 				Address:   privValidators[0].Address,
 				Round:     0,
 				Signature: commit0.Signature,
 			},
 		}, nil,
 	)
-	block1Parts := blk.NewPartSetFromData(binary.BinaryBytes(block1))
+	block1Parts := types.NewPartSetFromData(binary.BinaryBytes(block1))
 	err = s0.AppendBlock(block1, block1Parts.Header())
 	if err != nil {
 		t.Error("Error appending secondary block:", err)
