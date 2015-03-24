@@ -14,7 +14,7 @@ import (
 var pexErrInvalidMessage = errors.New("Invalid PEX message")
 
 const (
-	PexCh                    = byte(0x00)
+	PexChannel               = byte(0x00)
 	ensurePeersPeriodSeconds = 30
 	minNumOutboundPeers      = 10
 	maxNumPeers              = 50
@@ -62,7 +62,7 @@ func (pexR *PEXReactor) Stop() {
 func (pexR *PEXReactor) GetChannels() []*ChannelDescriptor {
 	return []*ChannelDescriptor{
 		&ChannelDescriptor{
-			Id:       PexCh,
+			Id:       PexChannel,
 			Priority: 1,
 		},
 	}
@@ -122,11 +122,11 @@ func (pexR *PEXReactor) Receive(chId byte, src *Peer, msgBytes []byte) {
 
 // Asks peer for more addresses.
 func (pexR *PEXReactor) RequestPEX(peer *Peer) {
-	peer.Send(PexCh, &pexRequestMessage{})
+	peer.Send(PexChannel, &pexRequestMessage{})
 }
 
 func (pexR *PEXReactor) SendAddrs(peer *Peer, addrs []*NetAddress) {
-	peer.Send(PexCh, &pexAddrsMessage{Addrs: addrs})
+	peer.Send(PexChannel, &pexAddrsMessage{Addrs: addrs})
 }
 
 // Ensures that sufficient peers are connected. (continuous)

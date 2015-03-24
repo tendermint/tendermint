@@ -641,12 +641,12 @@ func (cs *ConsensusState) RunActionPropose(height uint, round uint) {
 			return
 		}
 
-		blockParts = types.NewPartSetFromData(binary.BinaryBytes(block))
+		blockParts = block.MakePartSet()
 		pol = cs.LockedPOL // If exists, is a PoUnlock.
 	}
 
 	if pol != nil {
-		polParts = types.NewPartSetFromData(binary.BinaryBytes(pol))
+		polParts = pol.MakePartSet()
 	}
 
 	// Make proposal

@@ -133,7 +133,7 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 
 	// Send handshake
 	msg := &pexHandshakeMessage{ChainId: sw.chainId}
-	peer.Send(PexCh, msg)
+	peer.Send(PexChannel, msg)
 
 	return peer, nil
 }
@@ -164,7 +164,7 @@ func (sw *Switch) IsDialing(addr *NetAddress) bool {
 	return sw.dialing.Has(addr.String())
 }
 
-// Broadcast runs a go routine for each attemptted send, which will block
+// Broadcast runs a go routine for each attempted send, which will block
 // trying to send for defaultSendTimeoutSeconds. Returns a channel
 // which receives success values for each attempted send (false if times out)
 func (sw *Switch) Broadcast(chId byte, msg interface{}) chan bool {

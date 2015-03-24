@@ -17,9 +17,9 @@ import (
 )
 
 const (
-	StateCh = byte(0x20)
-	DataCh  = byte(0x21)
-	VoteCh  = byte(0x22)
+	StateChannel = byte(0x20)
+	DataChannel  = byte(0x21)
+	VoteChannel  = byte(0x22)
 
 	peerStateKey = "ConsensusReactor.peerState"
 
@@ -75,15 +75,15 @@ func (conR *ConsensusReactor) GetChannels() []*p2p.ChannelDescriptor {
 	// TODO optimize
 	return []*p2p.ChannelDescriptor{
 		&p2p.ChannelDescriptor{
-			Id:       StateCh,
+			Id:       StateChannel,
 			Priority: 5,
 		},
 		&p2p.ChannelDescriptor{
-			Id:       DataCh,
+			Id:       DataChannel,
 			Priority: 5,
 		},
 		&p2p.ChannelDescriptor{
-			Id:       VoteCh,
+			Id:       VoteChannel,
 			Priority: 5,
 		},
 	}
@@ -122,7 +122,7 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 	log.Debug("Receive", "channel", chId, "peer", peer, "msg", msg_, "bytes", msgBytes)
 
 	switch chId {
-	case StateCh:
+	case StateChannel:
 		switch msg := msg_.(type) {
 		case *NewRoundStepMessage:
 			ps.ApplyNewRoundStepMessage(msg, rs)
@@ -134,7 +134,7 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 			// Ignore unknown message
 		}
 
-	case DataCh:
+	case DataChannel:
 		switch msg := msg_.(type) {
 		case *Proposal:
 			ps.SetHasProposal(msg)
@@ -155,7 +155,7 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 			// Ignore unknown message
 		}
 
-	case VoteCh:
+	case VoteChannel:
 		switch msg := msg_.(type) {
 		case *VoteMessage:
 			vote := msg.Vote
@@ -192,7 +192,7 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 					Type:   vote.Type,
 					Index:  index,
 				}
-				conR.sw.Broadcast(StateCh, msg)
+				conR.sw.Broadcast(StateChannel, msg)
 			}
 
 		default:
@@ -252,10 +252,10 @@ func (conR *ConsensusReactor) broadcastNewRoundStepRoutine() {
 
 		nrsMsg, csMsg := makeRoundStepMessages(rs)
 		if nrsMsg != nil {
-			conR.sw.Broadcast(StateCh, nrsMsg)
+			conR.sw.Broadcast(StateChannel, nrsMsg)
 		}
 		if csMsg != nil {
-			conR.sw.Broadcast(StateCh, csMsg)
+			conR.sw.Broadcast(StateChannel, csMsg)
 		}
 	}
 }
@@ -264,10 +264,10 @@ func (conR *ConsensusReactor) sendNewRoundStepRoutine(peer *p2p.Peer) {
 	rs := conR.conS.GetRoundState()
 	nrsMsg, csMsg := makeRoundStepMessages(rs)
 	if nrsMsg != nil {
-		peer.Send(StateCh, nrsMsg)
+		peer.Send(StateChannel, nrsMsg)
 	}
 	if csMsg != nil {
-		peer.Send(StateCh, nrsMsg)
+		peer.Send(StateChannel, nrsMsg)
 	}
 }
 
@@ -296,7 +296,7 @@ OUTER_LOOP:
 					Type:   partTypeProposalBlock,
 					Part:   part,
 				}
-				peer.Send(DataCh, msg)
+				peer.Send(DataChannel, msg)
 				ps.SetHasProposalBlockPart(rs.Height, rs.Round, index)
 				continue OUTER_LOOP
 			}
@@ -306,7 +306,7 @@ OUTER_LOOP:
 		if 0 < prs.Height && prs.Height < rs.Height {
 			//log.Debug("Data catchup", "height", rs.Height, "peerHeight", prs.Height, "peerProposalBlockBitArray", prs.ProposalBlockBitArray)
 			if index, ok := prs.ProposalBlockBitArray.Not().PickRandom(); ok {
-				// Ensure that the peer's PartSetHeaeder is correct
+				// Ensure that the peer's PartSetHeader is correct
 				blockMeta := conR.blockStore.LoadBlockMeta(prs.Height)
 				if !blockMeta.Parts.Equals(prs.ProposalBlockParts) {
 					log.Debug("Peer ProposalBlockParts mismatch, sleeping",
@@ -329,7 +329,7 @@ OUTER_LOOP:
 					Type:   partTypeProposalBlock,
 					Part:   part,
 				}
-				peer.Send(DataCh, msg)
+				peer.Send(DataChannel, msg)
 				ps.SetHasProposalBlockPart(prs.Height, prs.Round, index)
 				continue OUTER_LOOP
 			} else {
@@ -349,7 +349,7 @@ OUTER_LOOP:
 		// Send proposal?
 		if rs.Proposal != nil && !prs.Proposal {
 			msg := p2p.TypedMessage{msgTypeProposal, rs.Proposal}
-			peer.Send(DataCh, msg)
+			peer.Send(DataChannel, msg)
 			ps.SetHasProposal(rs.Proposal)
 			continue OUTER_LOOP
 		}
@@ -363,7 +363,7 @@ OUTER_LOOP:
 					Type:   partTypeProposalPOL,
 					Part:   rs.ProposalPOLParts.GetPart(index),
 				}
-				peer.Send(DataCh, msg)
+				peer.Send(DataChannel, msg)
 				ps.SetHasProposalPOLPart(rs.Height, rs.Round, index)
 				continue OUTER_LOOP
 			}
@@ -397,7 +397,7 @@ OUTER_LOOP:
 				vote := voteSet.GetByIndex(index)
 				// NOTE: vote may be a commit.
 				msg := &VoteMessage{index, vote}
-				peer.Send(VoteCh, msg)
+				peer.Send(VoteChannel, msg)
 				ps.SetHasVote(vote, index)
 				return true
 			}
@@ -421,7 +421,7 @@ OUTER_LOOP:
 					Signature:  commit.Signature,
 				}
 				msg := &VoteMessage{index, vote}
-				peer.Send(VoteCh, msg)
+				peer.Send(VoteChannel, msg)
 				ps.SetHasVote(vote, index)
 				return true
 			}

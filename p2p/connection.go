@@ -50,8 +50,9 @@ There are two methods for sending messages:
 	func (m MConnection) TrySend(chId byte, msg interface{}) bool {}
 
 `Send(chId, msg)` is a blocking call that waits until `msg` is successfully queued
-for the channel with the given id byte `chId`.  The message `msg` is serialized
-using the `tendermint/binary` submodule's `WriteBinary()` reflection routine.
+for the channel with the given id byte `chId`, or until the request times out.
+The message `msg` is serialized using the `tendermint/binary` submodule's
+`WriteBinary()` reflection routine.
 
 `TrySend(chId, msg)` is a nonblocking call that returns false if the channel's
 queue is full.
@@ -437,8 +438,19 @@ FOR_LOOP:
 //-----------------------------------------------------------------------------
 
 type ChannelDescriptor struct {
-	Id       byte
-	Priority uint
+	Id                 byte
+	Priority           uint
+	SendQueueCapacity  uint
+	RecvBufferCapacity uint
+}
+
+func (chDesc *ChannelDescriptor) FillDefaults() {
+	if chDesc.SendQueueCapacity == 0 {
+		chDesc.SendQueueCapacity = defaultSendQueueCapacity
+	}
+	if chDesc.RecvBufferCapacity == 0 {
+		chDesc.RecvBufferCapacity = defaultRecvBufferCapacity
+	}
 }
 
 // TODO: lowercase.
@@ -448,7 +460,7 @@ type Channel struct {
 	desc          *ChannelDescriptor
 	id            byte
 	sendQueue     chan []byte
-	sendQueueSize uint32
+	sendQueueSize uint32 // atomic.
 	recving       []byte
 	sending       []byte
 	priority      uint
@@ -463,8 +475,8 @@ func newChannel(conn *MConnection, desc *ChannelDescriptor) *Channel {
 		conn:      conn,
 		desc:      desc,
 		id:        desc.Id,
-		sendQueue: make(chan []byte, defaultSendQueueCapacity),
-		recving:   make([]byte, 0, defaultRecvBufferCapacity),
+		sendQueue: make(chan []byte, desc.SendQueueCapacity),
+		recving:   make([]byte, 0, desc.RecvBufferCapacity),
 		priority:  desc.Priority,
 	}
 }

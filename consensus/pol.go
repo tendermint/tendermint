@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/tendermint/tendermint/account"
+	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -93,4 +94,8 @@ func (pol *POL) StringShort() string {
 		return fmt.Sprintf("POL{H:%v R:%v BH:%X}", pol.Height, pol.Round,
 			Fingerprint(pol.BlockHash), pol.BlockParts)
 	}
+}
+
+func (pol *POL) MakePartSet() *types.PartSet {
+	return types.NewPartSetFromData(binary.BinaryBytes(pol))
 }

@@ -66,6 +66,10 @@ func (b *Block) Hash() []byte {
 	return merkle.HashFromHashes(hashes)
 }
 
+func (b *Block) MakePartSet() *PartSet {
+	return NewPartSetFromData(binary.BinaryBytes(b))
+}
+
 // Convenience.
 // A nil block never hashes to anything.
 // Nothing hashes to a nil hash.
