@@ -25,26 +25,34 @@ func makePeers(numPeers int, minHeight, maxHeight uint) map[string]testPeer {
 }
 
 func TestBasic(t *testing.T) {
-	// 100 peers anywhere at height 0 to 1000.
-	peers := makePeers(100, 0, 1000)
-
+	peers := makePeers(10, 0, 1000)
 	start := uint(42)
-	maxHeight := uint(300)
 	timeoutsCh := make(chan string, 100)
 	requestsCh := make(chan BlockRequest, 100)
-	blocksCh := make(chan *types.Block, 100)
-
-	pool := NewBlockPool(start, timeoutsCh, requestsCh, blocksCh)
+	pool := NewBlockPool(start, requestsCh, timeoutsCh)
 	pool.Start()
 
 	// Introduce each peer.
 	go func() {
 		for _, peer := range peers {
-			pool.SetPeerStatus(peer.id, peer.height)
+			pool.SetPeerHeight(peer.id, peer.height)
 		}
 	}()
 
-	lastSeenBlock := uint(41)
+	// Start a goroutine to pull blocks
+	go func() {
+		for {
+			if !pool.IsRunning() {
+				return
+			}
+			first, second := pool.PeekTwoBlocks()
+			if first != nil && second != nil {
+				pool.PopRequest()
+			} else {
+				time.Sleep(1 * time.Second)
+			}
+		}
+	}()
 
 	// Pull from channels
 	for {
@@ -53,21 +61,15 @@ func TestBasic(t *testing.T) {
 			t.Errorf("timeout: %v", peerId)
 		case request := <-requestsCh:
 			log.Debug("TEST: Pulled new BlockRequest", "request", request)
-			// After a while, pretend like we got a block from the peer.
+			if request.Height == 300 {
+				return // Done!
+			}
+			// Request desired, pretend like we got the block immediately.
 			go func() {
 				block := &types.Block{Header: &types.Header{Height: request.Height}}
 				pool.AddBlock(block, request.PeerId)
 				log.Debug("TEST: Added block", "block", request.Height, "peer", request.PeerId)
 			}()
-		case block := <-blocksCh:
-			log.Debug("TEST: Pulled new Block", "height", block.Height)
-			if block.Height != lastSeenBlock+1 {
-				t.Fatalf("Wrong order of blocks seen. Expected: %v Got: %v", lastSeenBlock+1, block.Height)
-			}
-			lastSeenBlock++
-			if block.Height == maxHeight {
-				return // Done!
-			}
 		}
 	}
 
@@ -75,43 +77,52 @@ func TestBasic(t *testing.T) {
 }
 
 func TestTimeout(t *testing.T) {
-	origRequestTimeoutSeconds := requestTimeoutSeconds
-	requestTimeoutSeconds = time.Duration(0)
-	defer func() { requestTimeoutSeconds = origRequestTimeoutSeconds }()
-
-	peers := makePeers(100, 0, 1000)
+	peers := makePeers(10, 0, 1000)
 	start := uint(42)
-	timeoutsCh := make(chan string, 10)
-	requestsCh := make(chan BlockRequest, 10)
-	blocksCh := make(chan *types.Block, 100)
-
-	pool := NewBlockPool(start, timeoutsCh, requestsCh, blocksCh)
+	timeoutsCh := make(chan string, 100)
+	requestsCh := make(chan BlockRequest, 100)
+	pool := NewBlockPool(start, requestsCh, timeoutsCh)
 	pool.Start()
 
 	// Introduce each peer.
 	go func() {
 		for _, peer := range peers {
-			pool.SetPeerStatus(peer.id, peer.height)
+			pool.SetPeerHeight(peer.id, peer.height)
+		}
+	}()
+
+	// Start a goroutine to pull blocks
+	go func() {
+		for {
+			if !pool.IsRunning() {
+				return
+			}
+			first, second := pool.PeekTwoBlocks()
+			if first != nil && second != nil {
+				pool.PopRequest()
+			} else {
+				time.Sleep(1 * time.Second)
+			}
 		}
 	}()
 
 	// Pull from channels
+	counter := 0
+	timedOut := map[string]struct{}{}
 	for {
 		select {
 		case peerId := <-timeoutsCh:
-			// Timed out. Done!
-			if peers[peerId].id != peerId {
-				t.Errorf("Unexpected peer from timeoutsCh")
+			log.Debug("Timeout", "peerId", peerId)
+			if _, ok := timedOut[peerId]; !ok {
+				counter++
+				if counter == len(peers) {
+					return // Done!
+				}
 			}
-			return
-		case _ = <-requestsCh:
-			// Don't do anything, let it time out.
-		case _ = <-blocksCh:
-			t.Errorf("Got block when none expected")
-			return
+		case request := <-requestsCh:
+			log.Debug("TEST: Pulled new BlockRequest", "request", request)
 		}
 	}
 
 	pool.Stop()
-
 }
