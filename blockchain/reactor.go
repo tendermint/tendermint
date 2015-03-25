@@ -25,6 +25,10 @@ const (
 	stopSyncingDurationMinutes = 10
 )
 
+type stateResetter interface {
+	ResetToState(*sm.State)
+}
+
 // BlockchainReactor handles long-term catchup syncing.
 type BlockchainReactor struct {
 	sw         *p2p.Switch
@@ -93,6 +97,7 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 
 // Implements Reactor
 func (bcR *BlockchainReactor) AddPeer(peer *p2p.Peer) {
+	log.Debug("BlockchainReactor AddPeer", "peer", peer)
 	// Send peer our state.
 	peer.Send(BlockchainChannel, PeerStatusMessage{bcR.store.Height()})
 }
@@ -203,6 +208,7 @@ FOR_LOOP:
 					//bcR.sw.Reactor("BLOCKCHAIN").Stop()
 					trySyncTicker.Stop() // Just stop the block requests.  Still serve blocks to others.
 					conR := bcR.sw.Reactor("CONSENSUS")
+					conR.(stateResetter).ResetToState(bcR.state)
 					conR.Start(bcR.sw)
 					for _, peer := range bcR.sw.Peers().List() {
 						conR.AddPeer(peer)

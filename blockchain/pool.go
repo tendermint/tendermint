@@ -339,16 +339,19 @@ func requestRoutine(pool *BlockPool, height uint) {
 	PICK_LOOP:
 		for {
 			if !pool.IsRunning() {
+				log.Debug("BlockPool not running. Stopping requestRoutine", "height", height)
 				return
 			}
 			peer = pool.pickIncrAvailablePeer(height)
 			if peer == nil {
+				log.Debug("No peers available", "height", height)
 				time.Sleep(requestIntervalMS * time.Millisecond)
 				continue PICK_LOOP
 			}
 			break PICK_LOOP
 		}
 
+		log.Debug("Selected peer for request", "height", height, "peerId", peer.id)
 		pool.setPeerForRequest(height, peer.id)
 
 		for try := 0; try < maxTries; try++ {
