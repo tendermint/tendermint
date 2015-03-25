@@ -62,8 +62,9 @@ func (pexR *PEXReactor) Stop() {
 func (pexR *PEXReactor) GetChannels() []*ChannelDescriptor {
 	return []*ChannelDescriptor{
 		&ChannelDescriptor{
-			Id:       PexChannel,
-			Priority: 1,
+			Id:                PexChannel,
+			Priority:          1,
+			SendQueueCapacity: 10,
 		},
 	}
 }

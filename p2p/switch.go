@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"sync/atomic"
 	"time"
 
 	. "github.com/tendermint/tendermint/common"
@@ -35,13 +34,11 @@ type Switch struct {
 	reactorsByCh map[byte]Reactor
 	peers        *PeerSet
 	dialing      *CMap
-	listeners    *CMap  // listenerName -> chan interface{}
-	running      uint32 // atomic
+	listeners    *CMap // listenerName -> chan interface{}
 }
 
 var (
 	ErrSwitchDuplicatePeer = errors.New("Duplicate peer")
-	ErrSwitchStopped       = errors.New("Switch stopped")
 )
 
 const (
@@ -58,17 +55,18 @@ func NewSwitch() *Switch {
 		peers:        NewPeerSet(),
 		dialing:      NewCMap(),
 		listeners:    NewCMap(),
-		running:      0,
 	}
 
 	return sw
 }
 
+// Not goroutine safe.
 func (sw *Switch) SetChainId(hash []byte, network string) {
 	sw.chainId = hex.EncodeToString(hash) + "-" + network
 }
 
-func (sw *Switch) AddReactor(name string, reactor Reactor) {
+// Not goroutine safe.
+func (sw *Switch) AddReactor(name string, reactor Reactor) Reactor {
 	// Validate the reactor.
 	// No two reactors can share the same channel.
 	reactorChannels := reactor.GetChannels()
@@ -81,51 +79,49 @@ func (sw *Switch) AddReactor(name string, reactor Reactor) {
 		sw.reactorsByCh[chId] = reactor
 	}
 	sw.reactors[name] = reactor
-	time.Sleep(1 * time.Second)
+	return reactor
 }
 
-func (sw *Switch) StartReactor(name string) {
-	atomic.StoreUint32(&sw.running, 1)
-	sw.reactors[name].Start(sw)
+func (sw *Switch) Reactor(name string) Reactor {
+	return sw.reactors[name]
 }
 
 // Convenience function
-func (sw *Switch) StartAll() {
-	atomic.StoreUint32(&sw.running, 1)
+func (sw *Switch) StartReactors() {
 	for _, reactor := range sw.reactors {
 		reactor.Start(sw)
 	}
 }
 
-func (sw *Switch) StopReactor(name string) {
-	sw.reactors[name].Stop()
-}
-
 // Convenience function
-// Not goroutine safe
-func (sw *Switch) StopAll() {
-	atomic.StoreUint32(&sw.running, 0)
-	// Stop each peer.
-	for _, peer := range sw.peers.List() {
-		peer.stop()
-	}
-	sw.peers = NewPeerSet()
+func (sw *Switch) StopReactors() {
 	// Stop all reactors.
 	for _, reactor := range sw.reactors {
 		reactor.Stop()
 	}
 }
 
-// Not goroutine safe
+// Convenience function
+func (sw *Switch) StopPeers() {
+	// Stop each peer.
+	for _, peer := range sw.peers.List() {
+		peer.stop()
+	}
+	sw.peers = NewPeerSet()
+}
+
+// Convenience function
+func (sw *Switch) Stop() {
+	sw.StopPeers()
+	sw.StopReactors()
+}
+
+// Not goroutine safe to modify.
 func (sw *Switch) Reactors() map[string]Reactor {
 	return sw.reactors
 }
 
 func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, error) {
-	if atomic.LoadUint32(&sw.running) == 0 {
-		return nil, ErrSwitchStopped
-	}
-
 	peer := newPeer(conn, outbound, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError)
 
 	// Add the peer to .peers
@@ -150,10 +146,6 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 }
 
 func (sw *Switch) DialPeerWithAddress(addr *NetAddress) (*Peer, error) {
-	if atomic.LoadUint32(&sw.running) == 0 {
-		return nil, ErrSwitchStopped
-	}
-
 	log.Debug("Dialing address", "address", addr)
 	sw.dialing.Set(addr.String(), addr)
 	conn, err := addr.DialTimeout(peerDialTimeoutSeconds * time.Second)
@@ -179,9 +171,6 @@ func (sw *Switch) IsDialing(addr *NetAddress) bool {
 // trying to send for defaultSendTimeoutSeconds. Returns a channel
 // which receives success values for each attempted send (false if times out)
 func (sw *Switch) Broadcast(chId byte, msg interface{}) chan bool {
-	if atomic.LoadUint32(&sw.running) == 0 {
-		return nil
-	}
 	successChan := make(chan bool, len(sw.peers.List()))
 	log.Debug("Broadcast", "channel", chId, "msg", msg)
 	for _, peer := range sw.peers.List() {
@@ -239,7 +228,7 @@ func (sw *Switch) IsListening() bool {
 }
 
 func (sw *Switch) doAddPeer(peer *Peer) {
-	for name, reactor := range sw.reactors {
+	for _, reactor := range sw.reactors {
 		reactor.AddPeer(peer)
 	}
 }

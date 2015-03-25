@@ -94,13 +94,13 @@ func (n *Node) Start() {
 		go n.inboundConnectionRoutine(l)
 	}
 	n.book.Start()
-	n.sw.StartAll()
+	n.sw.StartReactors()
 }
 
 func (n *Node) Stop() {
 	log.Info("Stopping Node")
 	// TODO: gracefully disconnect from peers.
-	n.sw.StopAll()
+	n.sw.Stop()
 	n.book.Stop()
 }
 
