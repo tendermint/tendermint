@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/binary"
+	bc "github.com/tendermint/tendermint/blockchain"
 	. "github.com/tendermint/tendermint/common"
 	. "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/p2p"
@@ -34,11 +35,11 @@ type ConsensusReactor struct {
 	stopped uint32
 	quit    chan struct{}
 
-	blockStore *types.BlockStore
+	blockStore *bc.BlockStore
 	conS       *ConsensusState
 }
 
-func NewConsensusReactor(consensusState *ConsensusState, blockStore *types.BlockStore) *ConsensusReactor {
+func NewConsensusReactor(consensusState *ConsensusState, blockStore *bc.BlockStore) *ConsensusReactor {
 	conR := &ConsensusReactor{
 		blockStore: blockStore,
 		quit:       make(chan struct{}),

@@ -62,6 +62,7 @@ import (
 
 	"github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
+	bc "github.com/tendermint/tendermint/blockchain"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/config"
 	. "github.com/tendermint/tendermint/consensus/types"
@@ -234,7 +235,7 @@ type ConsensusState struct {
 	stopped uint32
 	quit    chan struct{}
 
-	blockStore     *types.BlockStore
+	blockStore     *bc.BlockStore
 	mempoolReactor *mempl.MempoolReactor
 	runActionCh    chan RoundAction
 	newStepCh      chan *RoundState
@@ -247,7 +248,7 @@ type ConsensusState struct {
 	lastCommitVoteHeight uint         // Last called commitVoteBlock() or saveCommitVoteBlock() on.
 }
 
-func NewConsensusState(state *sm.State, blockStore *types.BlockStore, mempoolReactor *mempl.MempoolReactor) *ConsensusState {
+func NewConsensusState(state *sm.State, blockStore *bc.BlockStore, mempoolReactor *mempl.MempoolReactor) *ConsensusState {
 	cs := &ConsensusState{
 		quit:           make(chan struct{}),
 		blockStore:     blockStore,

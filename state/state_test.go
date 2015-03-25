@@ -2,7 +2,6 @@ package state
 
 import (
 	"github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/binary"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/types"
 

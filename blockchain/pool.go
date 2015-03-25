@@ -149,7 +149,7 @@ func (bp *BlockPool) RedoRequest(height uint) {
 	if request.block == nil {
 		panic("Expected block to be non-nil")
 	}
-	bp.removePeer(request.peerId)
+	bp.RemovePeer(request.peerId) // Lock on peersMtx.
 	request.block = nil
 	request.peerId = ""
 	bp.numPending++

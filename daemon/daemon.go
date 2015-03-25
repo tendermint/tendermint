@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/signal"
 
+	bc "github.com/tendermint/tendermint/blockchain"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/consensus"
@@ -12,15 +13,15 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/rpc"
 	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
 )
 
 type Node struct {
 	lz               []p2p.Listener
 	sw               *p2p.Switch
 	book             *p2p.AddrBook
+	blockStore       *bc.BlockStore
 	pexReactor       *p2p.PEXReactor
-	blockStore       *types.BlockStore
+	bcReactor        *bc.BlockchainReactor
 	mempoolReactor   *mempl.MempoolReactor
 	consensusState   *consensus.ConsensusState
 	consensusReactor *consensus.ConsensusReactor
@@ -30,7 +31,7 @@ type Node struct {
 func NewNode() *Node {
 	// Get BlockStore
 	blockStoreDB := dbm.GetDB("blockstore")
-	blockStore := types.NewBlockStore(blockStoreDB)
+	blockStore := bc.NewBlockStore(blockStoreDB)
 
 	// Get State
 	stateDB := dbm.GetDB("state")
@@ -53,6 +54,9 @@ func NewNode() *Node {
 	book := p2p.NewAddrBook(config.App().GetString("AddrBookFile"))
 	pexReactor := p2p.NewPEXReactor(book)
 
+	// Get BlockchainReactor
+	bcReactor := bc.NewBlockchainReactor(blockStore)
+
 	// Get MempoolReactor
 	mempool := mempl.NewMempool(state.Copy())
 	mempoolReactor := mempl.NewMempoolReactor(mempool)
@@ -64,14 +68,19 @@ func NewNode() *Node {
 		consensusReactor.SetPrivValidator(privValidator)
 	}
 
-	sw := p2p.NewSwitch([]p2p.Reactor{pexReactor, mempoolReactor, consensusReactor})
+	sw := p2p.NewSwitch()
 	sw.SetChainId(state.Hash(), config.App().GetString("Network"))
+	sw.AddReactor("PEX", pexReactor)
+	//sw.AddReactor("BLOCKCHAIN", bcReactor)
+	sw.AddReactor("MEMPOOL", mempoolReactor)
+	sw.AddReactor("CONSENSUS", consensusReactor)
 
 	return &Node{
 		sw:               sw,
 		book:             book,
-		pexReactor:       pexReactor,
 		blockStore:       blockStore,
+		pexReactor:       pexReactor,
+		bcReactor:        bcReactor,
 		mempoolReactor:   mempoolReactor,
 		consensusState:   consensusState,
 		consensusReactor: consensusReactor,
@@ -85,13 +94,13 @@ func (n *Node) Start() {
 		go n.inboundConnectionRoutine(l)
 	}
 	n.book.Start()
-	n.sw.Start()
+	n.sw.StartAll()
 }
 
 func (n *Node) Stop() {
 	log.Info("Stopping Node")
 	// TODO: gracefully disconnect from peers.
-	n.sw.Stop()
+	n.sw.StopAll()
 	n.book.Stop()
 }
 

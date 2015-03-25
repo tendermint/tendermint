@@ -468,6 +468,7 @@ type Channel struct {
 }
 
 func newChannel(conn *MConnection, desc *ChannelDescriptor) *Channel {
+	desc.FillDefaults()
 	if desc.Priority <= 0 {
 		panic("Channel default priority must be a postive integer")
 	}

@@ -7,6 +7,7 @@ import (
 // IPeerSet has a (immutable) subset of the methods of PeerSet.
 type IPeerSet interface {
 	Has(key string) bool
+	Get(key string) *Peer
 	List() []*Peer
 	Size() int
 }
