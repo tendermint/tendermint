@@ -48,7 +48,7 @@ type AppState interface {
 	// Accounts
 	GetAccount(addr Word) (*Account, error)
 	UpdateAccount(*Account) error
-	DeleteAccount(*Account) error
+	RemoveAccount(*Account) error
 	CreateAccount(*Account) (*Account, error)
 
 	// Storage
