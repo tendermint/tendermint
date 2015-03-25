@@ -3,6 +3,7 @@ package merkle
 import (
 	"bytes"
 	"container/list"
+	"fmt"
 	"sync"
 
 	"github.com/tendermint/tendermint/binary"
@@ -144,20 +145,20 @@ func (t *IAVLTree) GetByIndex(index uint64) (key interface{}, value interface{})
 	return t.root.getByIndex(t, index)
 }
 
-func (t *IAVLTree) Remove(key interface{}) (value interface{}, removed bool) {
+func (t *IAVLTree) Remove(key interface{}) (value interface{}, removed error) {
 	if t.root == nil {
-		return nil, false
+		return nil, fmt.Errorf("Root is nil")
 	}
 	newRootHash, newRoot, _, value, removed := t.root.remove(t, key)
-	if !removed {
-		return nil, false
+	if removed != nil {
+		return nil, removed
 	}
 	if newRoot == nil && newRootHash != nil {
 		t.root = t.ndb.GetNode(t, newRootHash)
 	} else {
 		t.root = newRoot
 	}
-	return value, true
+	return value, nil
 }
 
 func (t *IAVLTree) Iterate(fn func(key interface{}, value interface{}) bool) (stopped bool) {

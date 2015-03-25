@@ -48,6 +48,9 @@ type State struct {
 	UnbondingValidators  *ValidatorSet
 	accounts             merkle.Tree // Shouldn't be accessed directly.
 	validatorInfos       merkle.Tree // Shouldn't be accessed directly.
+
+	// caches intermediate state during block processing (so we only update trees at the end of a block)
+	blockState *TransState
 }
 
 func LoadState(db dbm.DB) *State {
@@ -74,6 +77,8 @@ func LoadState(db dbm.DB) *State {
 			panic(*err)
 		}
 		// TODO: ensure that buf is completely read.
+
+		s.blockState = NewTransState(&TransStateWrapper{s})
 	}
 	return s
 }
@@ -110,6 +115,7 @@ func (s *State) Copy() *State {
 		UnbondingValidators:  s.UnbondingValidators.Copy(),  // copy the valSet lazily.
 		accounts:             s.accounts.Copy(),
 		validatorInfos:       s.validatorInfos.Copy(),
+		blockState:           s.blockState, // TODO: do we need to copy this?!
 	}
 }
 
@@ -280,7 +286,13 @@ func (s *State) ExecTx(tx_ types.Tx, runCall bool) error {
 		return nil
 
 	case *types.CallTx:
-		var inAcc, outAcc *account.Account
+		// XXX: inAcc *must* be in the tree
+		// while outAcc can be cached
+		// (we can't send from an account not yet in a block,
+		// but we can send to one)we can't send from an account not yet in a block,
+		// but we can send to one)
+		var inAcc *account.Account
+		var outAcc *vm.Account
 
 		// Validate input
 		inAcc = s.GetAccount(tx.Input.Address)
@@ -314,7 +326,7 @@ func (s *State) ExecTx(tx_ types.Tx, runCall bool) error {
 			// this may be nil if we are still in mempool and contract was created in same block as this tx
 			// but that's fine, because the account will be created properly when the create tx runs in the block
 			// and then this won't return nil. otherwise, we take their fee
-			outAcc = s.GetAccount(tx.Address)
+			outAcc, _ = s.blockState.GetAccount(vm.BytesToWord(tx.Address))
 		}
 
 		log.Debug(Fmt("Out account: %v", outAcc))
@@ -330,8 +342,8 @@ func (s *State) ExecTx(tx_ types.Tx, runCall bool) error {
 				err      error       = nil
 				caller   *vm.Account = toVMAccount(inAcc)
 				callee   *vm.Account = nil
+				appState *TransState = NewTransState(s.blockState)
 				code     []byte      = nil
-				appState             = NewVMAppState(s) // TODO: confusing.
 				params               = vm.Params{
 					BlockHeight: uint64(s.LastBlockHeight),
 					BlockHash:   vm.BytesToWord(s.LastBlockHash),
@@ -351,7 +363,7 @@ func (s *State) ExecTx(tx_ types.Tx, runCall bool) error {
 					return types.ErrTxInvalidAddress
 
 				}
-				callee = toVMAccount(outAcc)
+				callee = outAcc
 				code = callee.Code
 				log.Debug(Fmt("Calling contract %X with code %X", callee.Address.Address(), callee.Code))
 			} else {
@@ -383,6 +395,7 @@ func (s *State) ExecTx(tx_ types.Tx, runCall bool) error {
 					callee.Code = ret
 				}
 
+				// sync tx app state to blockState
 				appState.Sync()
 			}
 			// Create a receipt from the ret and whether errored.
@@ -600,7 +613,7 @@ func (s *State) destroyValidator(val *Validator) {
 	// Update validatorInfo
 	valInfo := s.GetValidatorInfo(val.Address)
 	if valInfo == nil {
-		panic("Couldn't find validatorInfo for release")
+		panic("Couldn't find v.alidatorInfo for release")
 	}
 	valInfo.DestroyedHeight = s.LastBlockHeight + 1
 	valInfo.DestroyedAmount = val.VotingPower
@@ -724,6 +737,10 @@ func (s *State) appendBlock(block *types.Block, blockPartsHeader types.PartSetHe
 	// Remember LastBondedValidators
 	s.LastBondedValidators = s.BondedValidators.Copy()
 
+	// Refresh the app state for running the txs
+	// (caches all state changes)
+	s.blockState = NewTransState(&TransStateWrapper{s})
+
 	// Commit each tx
 	for _, tx := range block.Data.Txs {
 		err := s.ExecTx(tx, true)
@@ -744,6 +761,10 @@ func (s *State) appendBlock(block *types.Block, blockPartsHeader types.PartSetHe
 	for _, val := range toRelease {
 		s.releaseValidator(val)
 	}
+
+	// Commit the account/storage changes to db
+	// and update state tree hashes
+	s.blockState.Sync()
 
 	// If any validators haven't signed in a while,
 	// unbond them, they have timed out.
@@ -770,6 +791,26 @@ func (s *State) appendBlock(block *types.Block, blockPartsHeader types.PartSetHe
 	return nil
 }
 
+func (s *State) GetStorage(addr []byte, slot []byte) []byte {
+	acc := s.GetAccount(addr)
+	if acc == nil {
+		return nil
+	}
+	fmt.Printf("GOT ACCOUNT: %x\n", acc.StorageRoot)
+
+	storage := merkle.NewIAVLTree(
+		binary.BasicCodec, // TODO change
+		binary.BasicCodec, // TODO change
+		1024,              // TODO change.
+		s.DB,
+	)
+	storage.Load(acc.StorageRoot)
+	fmt.Printf("Fetching storage: %x, %x\n", storage.Hash(), LeftPadBytes(slot, 32))
+	_, v := storage.Get(LeftPadBytes(slot, 32))
+	return v.([]byte) // !!
+
+}
+
 // The returned Account is a copy, so mutating it
 // has no side effects.
 func (s *State) GetAccount(address []byte) *account.Account {
@@ -788,21 +829,28 @@ func (s *State) GetAccounts() merkle.Tree {
 
 // The account is copied before setting, so mutating it
 // afterwards has no side effects.
-func (s *State) UpdateAccount(account *account.Account) {
-	s.accounts.Set(account.Address, account.Copy())
+// XXX: is this still true?
+func (s *State) UpdateAccount(acc *account.Account) error {
+	//s.accounts.Set(account.Address, account.Copy())
+	return s.blockState.UpdateAccount(toVMAccount(acc))
 }
 
 // The accounts are copied before setting, so mutating it
 // afterwards has no side effects.
 func (s *State) UpdateAccounts(accounts map[string]*account.Account) {
 	for _, acc := range accounts {
-		s.accounts.Set(acc.Address, acc.Copy())
+		//s.accounts.Set(acc.Address, acc.Copy())
+		s.blockState.UpdateAccount(toVMAccount(acc))
 	}
 }
 
-func (s *State) RemoveAccount(address []byte) bool {
-	_, removed := s.accounts.Remove(address)
-	return removed
+func (s *State) RemoveAccount(address []byte) error {
+	_, err := s.accounts.Remove(address)
+	return err
+}
+
+func (s *State) Sync(acc *account.Account) bool {
+	return s.accounts.Set(acc.Address, acc.Copy())
 }
 
 // The returned ValidatorInfo is a copy, so mutating it

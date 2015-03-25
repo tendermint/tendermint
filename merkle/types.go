@@ -7,7 +7,7 @@ type Tree interface {
 	Get(key interface{}) (index uint64, value interface{})
 	GetByIndex(index uint64) (key interface{}, value interface{})
 	Set(key interface{}, value interface{}) (updated bool)
-	Remove(key interface{}) (value interface{}, removed bool)
+	Remove(key interface{}) (value interface{}, removed error)
 	HashWithCount() (hash []byte, count uint64)
 	Hash() (hash []byte)
 	Save() (hash []byte)

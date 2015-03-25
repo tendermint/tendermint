@@ -2,6 +2,7 @@ package state
 
 import (
 	"bytes"
+	"fmt"
 	"sort"
 
 	ac "github.com/tendermint/tendermint/account"
@@ -53,16 +54,25 @@ type AccountInfo struct {
 	deleted bool
 }
 
-type VMAppState struct {
-	state *State
+type BackendState interface {
+	GetAccount(vm.Word) (*vm.Account, error)
+	GetStorage(vm.Word, vm.Word) (vm.Word, error)
+	UpdateAccount(*vm.Account) error
+	RemoveAccount(*vm.Account) error
+}
+
+// A cache for storage during block and/or tx processing
+type TransState struct {
+	// backend state we sync to or fetch from
+	state BackendState
 
 	accounts map[string]AccountInfo
 	storage  map[string]vm.Word
 	logs     []*vm.Log
 }
 
-func NewVMAppState(state *State) *VMAppState {
-	return &VMAppState{
+func NewTransState(state BackendState) *TransState {
+	return &TransState{
 		state:    state,
 		accounts: make(map[string]AccountInfo),
 		storage:  make(map[string]vm.Word),
@@ -74,22 +84,22 @@ func unpack(accInfo AccountInfo) (*vm.Account, bool) {
 	return accInfo.account, accInfo.deleted
 }
 
-func (vas *VMAppState) GetAccount(addr vm.Word) (*vm.Account, error) {
+func (vas *TransState) GetAccount(addr vm.Word) (*vm.Account, error) {
 	account, deleted := unpack(vas.accounts[addr.String()])
 	if deleted {
 		return nil, Errorf("Account was deleted: %X", addr)
 	} else if account != nil {
 		return account, nil
 	} else {
-		acc := vas.state.GetAccount(addr.Address())
-		if acc == nil {
-			return nil, Errorf("Invalid account addr: %X", addr)
+		acc, err := vas.state.GetAccount(addr)
+		if err != nil {
+			return nil, Errorf("Invalid account addr: %X. %s", addr, err.Error())
 		}
-		return toVMAccount(acc), nil
+		return acc, nil
 	}
 }
 
-func (vas *VMAppState) UpdateAccount(account *vm.Account) error {
+func (vas *TransState) UpdateAccount(account *vm.Account) error {
 	accountInfo, ok := vas.accounts[account.Address.String()]
 	if !ok {
 		vas.accounts[account.Address.String()] = AccountInfo{account, false}
@@ -104,7 +114,7 @@ func (vas *VMAppState) UpdateAccount(account *vm.Account) error {
 	}
 }
 
-func (vas *VMAppState) DeleteAccount(account *vm.Account) error {
+func (vas *TransState) RemoveAccount(account *vm.Account) error {
 	accountInfo, ok := vas.accounts[account.Address.String()]
 	if !ok {
 		vas.accounts[account.Address.String()] = AccountInfo{account, true}
@@ -120,7 +130,7 @@ func (vas *VMAppState) DeleteAccount(account *vm.Account) error {
 }
 
 // Creates a 20 byte address and bumps the creator's nonce.
-func (vas *VMAppState) CreateAccount(creator *vm.Account) (*vm.Account, error) {
+func (vas *TransState) CreateAccount(creator *vm.Account) (*vm.Account, error) {
 
 	// Generate an address
 	nonce := creator.Nonce
@@ -146,7 +156,7 @@ func (vas *VMAppState) CreateAccount(creator *vm.Account) (*vm.Account, error) {
 	}
 }
 
-func (vas *VMAppState) GetStorage(addr vm.Word, key vm.Word) (vm.Word, error) {
+func (vas *TransState) GetStorage(addr vm.Word, key vm.Word) (vm.Word, error) {
 	account, deleted := unpack(vas.accounts[addr.String()])
 	if account == nil {
 		return vm.Zero, Errorf("Invalid account addr: %X", addr)
@@ -158,12 +168,16 @@ func (vas *VMAppState) GetStorage(addr vm.Word, key vm.Word) (vm.Word, error) {
 	if ok {
 		return value, nil
 	} else {
-		return vm.Zero, nil
+		res, err := vas.state.GetStorage(addr, key)
+		if err != nil {
+			return vm.Zero, err
+		}
+		return res, nil
 	}
 }
 
 // NOTE: Set value to zero to delete from the trie.
-func (vas *VMAppState) SetStorage(addr vm.Word, key vm.Word, value vm.Word) (bool, error) {
+func (vas *TransState) SetStorage(addr vm.Word, key vm.Word, value vm.Word) (bool, error) {
 	account, deleted := unpack(vas.accounts[addr.String()])
 	if account == nil {
 		return false, Errorf("Invalid account addr: %X", addr)
@@ -176,9 +190,59 @@ func (vas *VMAppState) SetStorage(addr vm.Word, key vm.Word, value vm.Word) (boo
 	return ok, nil
 }
 
-// CONTRACT the updates are in deterministic order.
-func (vas *VMAppState) Sync() {
+// Sync 'vas' to 'vas.state'. If 'vas.state' is the 'blockState',
+// we should do a hashmap merge. Otherwise, we need the
+// keys to be in deterministic order for syncing to 'state.State'
+// (instertion in IAVL tree)
+func (vas *TransState) Sync() {
+	switch st := vas.state.(type) {
+	case *TransState:
+		vas.syncApp(st)
+	case *TransStateWrapper:
+		vas.syncState(st.state)
+	default:
+		panic("Unknown transState.state")
+	}
 
+}
+
+func (vas *TransState) syncAccount(addrStr string) {
+	account, deleted := unpack(vas.accounts[addrStr])
+	if deleted {
+		removed := vas.state.RemoveAccount(account)
+		if removed != nil {
+			panic(Fmt("Could not remove account to be deleted: %X. ", account.Address, removed.Error()))
+		}
+	} else {
+		if account == nil {
+			panic(Fmt("Account should not be nil for addr: %X", account.Address))
+		}
+		vas.state.UpdateAccount(account)
+	}
+}
+
+// sync storage to blockState
+func (vas *TransState) syncApp(blockState *TransState) {
+	// sync account balances or remove accounts from blockState
+	for addrStr := range vas.accounts {
+		vas.syncAccount(addrStr)
+	}
+
+	for storageKey, value := range vas.storage {
+		addrKeyBytes := []byte(storageKey)
+		addr := addrKeyBytes[:32]
+		if _, deleted := unpack(vas.accounts[string(addr)]); deleted {
+			continue
+		}
+		blockState.storage[storageKey] = value
+	}
+
+	// TODO support logs, add them to the state somehow.
+}
+
+// sync storage to state.State
+// CONTRACT deterministic order
+func (vas *TransState) syncState(st *State) {
 	// Determine order for accounts
 	addrStrs := []string{}
 	for addrStr := range vas.accounts {
@@ -188,34 +252,25 @@ func (vas *VMAppState) Sync() {
 
 	// Update or delete accounts.
 	for _, addrStr := range addrStrs {
-		account, deleted := unpack(vas.accounts[addrStr])
-		if deleted {
-			removed := vas.state.RemoveAccount(account.Address.Address())
-			if !removed {
-				panic(Fmt("Could not remove account to be deleted: %X", account.Address))
-			}
-		} else {
-			if account == nil {
-				panic(Fmt("Account should not be nil for addr: %X", account.Address))
-			}
-			vas.state.UpdateAccount(toStateAccount(account))
-		}
+		vas.syncAccount(addrStr)
 	}
 
 	// Determine order for storage updates
 	// The address comes first so it'll be grouped.
 	storageKeyStrs := []string{}
+	fmt.Println("KEYS TO UPDATE:")
 	for keyStr := range vas.storage {
 		storageKeyStrs = append(storageKeyStrs, keyStr)
+		fmt.Printf("%x, %x\n", keyStr, vas.storage[keyStr])
 	}
 	sort.Strings(storageKeyStrs)
 
-	// Update storage for all account/key.
+	// Update storage for each account
 	storage := merkle.NewIAVLTree(
 		binary.BasicCodec, // TODO change
 		binary.BasicCodec, // TODO change
 		1024,              // TODO change.
-		vas.state.DB,
+		st.DB,
 	)
 	var currentAccount *vm.Account
 	var deleted bool
@@ -225,6 +280,11 @@ func (vas *VMAppState) Sync() {
 		addr := addrKeyBytes[:32]
 		key := addrKeyBytes[32:]
 		if currentAccount == nil || !bytes.Equal(currentAccount.Address[:], addr) {
+			// if not nil, we're done processing storage for the account, so update it
+			if currentAccount != nil {
+				currentAccount.StorageRoot = vm.BytesToWord(storage.Hash())
+				st.Sync(toStateAccount(currentAccount))
+			}
 			currentAccount, deleted = unpack(vas.accounts[string(addr)])
 			if deleted {
 				continue
@@ -239,19 +299,62 @@ func (vas *VMAppState) Sync() {
 		}
 		if value.IsZero() {
 			_, removed := storage.Remove(key)
-			if !removed {
-				panic(Fmt("Storage could not be removed for addr: %X @ %X", addr, key))
+			if removed != nil {
+				panic(Fmt("Storage could not be removed for addr: %X @ %X. %s", addr, key, removed.Error()))
 			}
 		} else {
-			storage.Set(key, value)
+			storage.Set(key, value.Bytes())
 		}
+
+	}
+	// update the last account
+	if currentAccount != nil {
+		hash := storage.Save()
+		currentAccount.StorageRoot = vm.BytesToWord(hash)
+		fmt.Printf("new storage root: %x\n", currentAccount.StorageRoot)
+		st.Sync(toStateAccount(currentAccount))
 	}
 
+	if len(storageKeyStrs) > 0 {
+		a := st.GetAccount([]byte(storageKeyStrs[0][:20]))
+		fmt.Println("GRAB ACC: %v", a)
+		fmt.Printf("adddr %x, store %x\n", storageKeyStrs[0][:20], storageKeyStrs[0][32:])
+		fmt.Printf("RECO: %x\n", st.GetStorage([]byte(storageKeyStrs[0][:20]), []byte(storageKeyStrs[0][32:])))
+
+	}
 	// TODO support logs, add them to the state somehow.
+
 }
 
-func (vas *VMAppState) AddLog(log *vm.Log) {
+func (vas *TransState) AddLog(log *vm.Log) {
 	vas.logs = append(vas.logs, log)
+}
+
+//-----------------------------------------------------------------------------
+
+type TransStateWrapper struct {
+	state *State
+}
+
+func (app *TransStateWrapper) GetAccount(word vm.Word) (*vm.Account, error) {
+	acc := app.state.GetAccount(word.Address())
+	if acc == nil {
+		return nil, fmt.Errorf("Account not found %x", word.Address())
+	}
+	return toVMAccount(acc), nil
+}
+
+func (app *TransStateWrapper) GetStorage(addr vm.Word, slot vm.Word) (vm.Word, error) {
+	ret := app.state.GetStorage(addr.Address(), slot.Bytes())
+	return vm.BytesToWord(ret), nil
+}
+
+func (app *TransStateWrapper) UpdateAccount(acc *vm.Account) error {
+	return app.state.UpdateAccount(toStateAccount(acc))
+}
+
+func (app *TransStateWrapper) RemoveAccount(acc *vm.Account) error {
+	return app.state.RemoveAccount(acc.Address.Address())
 }
 
 //-----------------------------------------------------------------------------

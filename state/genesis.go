@@ -103,7 +103,7 @@ func MakeGenesisState(db dbm.DB, genDoc *GenesisDoc) *State {
 	accounts.Save()
 	validatorInfos.Save()
 
-	return &State{
+	s := &State{
 		DB:                   db,
 		LastBlockHeight:      0,
 		LastBlockHash:        nil,
@@ -115,4 +115,6 @@ func MakeGenesisState(db dbm.DB, genDoc *GenesisDoc) *State {
 		accounts:             accounts,
 		validatorInfos:       validatorInfos,
 	}
+	s.blockState = NewTransState(&TransStateWrapper{s})
+	return s
 }

@@ -1012,6 +1012,7 @@ func (cs *ConsensusState) stageBlock(block *types.Block, blockParts *types.PartS
 	}
 
 	// Already staged?
+	// XXX: check hash better than pointer?
 	if cs.stagedBlock == block {
 		return nil
 	}
