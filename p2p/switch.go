@@ -1,7 +1,6 @@
 package p2p
 
 import (
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"net"
@@ -28,7 +27,7 @@ or more `Channels`.  So while sending outgoing messages is typically performed o
 incoming messages are received on the reactor.
 */
 type Switch struct {
-	chainId      string
+	network      string
 	reactors     map[string]Reactor
 	chDescs      []*ChannelDescriptor
 	reactorsByCh map[byte]Reactor
@@ -48,7 +47,7 @@ const (
 func NewSwitch() *Switch {
 
 	sw := &Switch{
-		chainId:      "",
+		network:      "",
 		reactors:     make(map[string]Reactor),
 		chDescs:      make([]*ChannelDescriptor, 0),
 		reactorsByCh: make(map[byte]Reactor),
@@ -61,8 +60,8 @@ func NewSwitch() *Switch {
 }
 
 // Not goroutine safe.
-func (sw *Switch) SetChainId(hash []byte, network string) {
-	sw.chainId = hex.EncodeToString(hash) + "-" + network
+func (sw *Switch) SetNetwork(network string) {
+	sw.network = network
 }
 
 // Not goroutine safe.
@@ -139,7 +138,7 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 	go peer.start()
 
 	// Send handshake
-	msg := &pexHandshakeMessage{ChainId: sw.chainId}
+	msg := &pexHandshakeMessage{Network: sw.network}
 	peer.Send(PexChannel, msg)
 
 	return peer, nil

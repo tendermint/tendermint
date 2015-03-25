@@ -98,9 +98,9 @@ func (pexR *PEXReactor) Receive(chId byte, src *Peer, msgBytes []byte) {
 
 	switch msg.(type) {
 	case *pexHandshakeMessage:
-		chainId := msg.(*pexHandshakeMessage).ChainId
-		if chainId != pexR.sw.chainId {
-			err := fmt.Sprintf("Peer is on a different chain/network. Got %s, expected %s", chainId, pexR.sw.chainId)
+		network := msg.(*pexHandshakeMessage).Network
+		if network != pexR.sw.network {
+			err := fmt.Sprintf("Peer is on a different chain/network. Got %s, expected %s", network, pexR.sw.network)
 			pexR.sw.StopPeerForError(src, err)
 		}
 	case *pexRequestMessage:
@@ -238,7 +238,7 @@ func DecodeMessage(bz []byte) (msg interface{}, err error) {
 A pexHandshakeMessage contains the peer's chainId
 */
 type pexHandshakeMessage struct {
-	ChainId string
+	Network string
 }
 
 func (m *pexHandshakeMessage) TypeByte() byte { return msgTypeHandshake }

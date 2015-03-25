@@ -69,7 +69,7 @@ func NewNode() *Node {
 	}
 
 	sw := p2p.NewSwitch()
-	sw.SetChainId(state.Hash(), config.App().GetString("Network"))
+	sw.SetNetwork(config.App().GetString("Network"))
 	sw.AddReactor("PEX", pexReactor).Start(sw)
 	sw.AddReactor("BLOCKCHAIN", bcReactor).Start(sw)
 	sw.AddReactor("MEMPOOL", mempoolReactor).Start(sw)
