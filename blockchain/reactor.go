@@ -112,11 +112,10 @@ func (bcR *BlockchainReactor) Receive(chId byte, src *p2p.Peer, msgBytes []byte)
 		log.Warn("Error decoding message", "error", err)
 		return
 	}
-	log.Info("BlockchainReactor received message", "msg", msg_)
+	log.Debug("BlockchainReactor received message", "msg", msg_)
 
 	switch msg := msg_.(type) {
 	case BlockRequestMessage:
-		log.Debug("Got BlockRequest", "msg", msg)
 		// Got a request for a block. Respond with block if we have it.
 		block := bcR.store.LoadBlock(msg.Height)
 		if block != nil {
@@ -129,11 +128,9 @@ func (bcR *BlockchainReactor) Receive(chId byte, src *p2p.Peer, msgBytes []byte)
 			// TODO peer is asking for things we don't have.
 		}
 	case BlockResponseMessage:
-		log.Debug("Got BlockResponse", "msg", msg)
 		// Got a block.
 		bcR.pool.AddBlock(msg.Block, src.Key)
 	case PeerStatusMessage:
-		log.Debug("Got PeerStatus", "msg", msg)
 		// Got a peer status.
 		bcR.pool.SetPeerHeight(src.Key, msg.Height)
 	default:
@@ -165,7 +162,9 @@ FOR_LOOP:
 		case peerId := <-bcR.timeoutsCh: // chan string
 			// Peer timed out.
 			peer := bcR.sw.Peers().Get(peerId)
-			bcR.sw.StopPeerForError(peer, errors.New("BlockchainReactor Timeout"))
+			if peer != nil {
+				bcR.sw.StopPeerForError(peer, errors.New("BlockchainReactor Timeout"))
+			}
 		case _ = <-trySyncTicker.C: // chan time
 			var lastValidatedBlock *types.Block
 		SYNC_LOOP:
