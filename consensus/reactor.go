@@ -225,8 +225,8 @@ func (conR *ConsensusReactor) SetPrivValidator(priv *sm.PrivValidator) {
 	conR.conS.SetPrivValidator(priv)
 }
 
-// Fast forward to some state.
-func (conR *ConsensusReactor) UpdateToState(state *sm.State) {
+// Reset to some state.
+func (conR *ConsensusReactor) ResetToState(state *sm.State) {
 	conR.conS.updateToState(state, false)
 }
 

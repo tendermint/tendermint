@@ -131,11 +131,11 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 		return nil, ErrSwitchDuplicatePeer
 	}
 
-	// Notify listeners.
-	sw.doAddPeer(peer)
-
 	// Start the peer
 	go peer.start()
+
+	// Notify listeners.
+	sw.doAddPeer(peer)
 
 	// Send handshake
 	msg := &pexHandshakeMessage{Network: sw.network}
