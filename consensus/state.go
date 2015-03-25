@@ -256,7 +256,7 @@ func NewConsensusState(state *sm.State, blockStore *bc.BlockStore, mempoolReacto
 		runActionCh:    make(chan RoundAction, 1),
 		newStepCh:      make(chan *RoundState, 1),
 	}
-	cs.updateToState(state)
+	cs.updateToState(state, true)
 	return cs
 }
 
@@ -457,9 +457,9 @@ ACTION_LOOP:
 // If calculated round is greater than 0 (based on BlockTime or calculated StartTime)
 // then also sets up the appropriate round, and cs.Step becomes RoundStepNewRound.
 // Otherwise the round is 0 and cs.Step becomes RoundStepNewHeight.
-func (cs *ConsensusState) updateToState(state *sm.State) {
+func (cs *ConsensusState) updateToState(state *sm.State, contiguous bool) {
 	// Sanity check state.
-	if cs.Height > 0 && cs.Height != state.LastBlockHeight {
+	if contiguous && cs.Height > 0 && cs.Height != state.LastBlockHeight {
 		panic(Fmt("updateToState() expected state height of %v but found %v",
 			cs.Height, state.LastBlockHeight))
 	}
@@ -859,7 +859,7 @@ func (cs *ConsensusState) TryFinalizeCommit(height uint) bool {
 			// We have the block, so save/stage/sign-commit-vote.
 			cs.saveCommitVoteBlock(cs.ProposalBlock, cs.ProposalBlockParts, cs.Commits)
 			// Increment height.
-			cs.updateToState(cs.stagedState)
+			cs.updateToState(cs.stagedState, true)
 			// cs.Step is now RoundStepNewHeight or RoundStepNewRound
 			cs.newStepCh <- cs.getRoundState()
 			return true

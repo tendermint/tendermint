@@ -35,8 +35,7 @@ type BlockchainReactor struct {
 	timeoutsCh chan string
 	lastBlock  *types.Block
 	quit       chan struct{}
-	started    uint32
-	stopped    uint32
+	running    uint32
 }
 
 func NewBlockchainReactor(state *sm.State, store *BlockStore) *BlockchainReactor {
@@ -57,15 +56,14 @@ func NewBlockchainReactor(state *sm.State, store *BlockStore) *BlockchainReactor
 		requestsCh: requestsCh,
 		timeoutsCh: timeoutsCh,
 		quit:       make(chan struct{}),
-		started:    0,
-		stopped:    0,
+		running:    uint32(0),
 	}
 	return bcR
 }
 
 // Implements Reactor
 func (bcR *BlockchainReactor) Start(sw *p2p.Switch) {
-	if atomic.CompareAndSwapUint32(&bcR.started, 0, 1) {
+	if atomic.CompareAndSwapUint32(&bcR.running, 0, 1) {
 		log.Info("Starting BlockchainReactor")
 		bcR.sw = sw
 		bcR.pool.Start()
@@ -75,7 +73,7 @@ func (bcR *BlockchainReactor) Start(sw *p2p.Switch) {
 
 // Implements Reactor
 func (bcR *BlockchainReactor) Stop() {
-	if atomic.CompareAndSwapUint32(&bcR.stopped, 0, 1) {
+	if atomic.CompareAndSwapUint32(&bcR.running, 1, 0) {
 		log.Info("Stopping BlockchainReactor")
 		close(bcR.quit)
 		bcR.pool.Stop()
@@ -201,8 +199,14 @@ FOR_LOOP:
 			// method of syncing in the consensus reactor.
 			if lastValidatedBlock != nil && time.Now().Sub(lastValidatedBlock.Time) < stopSyncingDurationMinutes*time.Minute {
 				go func() {
-					bcR.sw.Reactor("BLOCKCHAIN").Stop()
-					bcR.sw.Reactor("CONSENSUS").Start(bcR.sw)
+					log.Info("Stopping blockpool syncing, turning on consensus...")
+					//bcR.sw.Reactor("BLOCKCHAIN").Stop()
+					trySyncTicker.Stop() // Just stop the block requests.  Still serve blocks to others.
+					conR := bcR.sw.Reactor("CONSENSUS")
+					conR.Start(bcR.sw)
+					for _, peer := range bcR.sw.Peers().List() {
+						conR.AddPeer(peer)
+					}
 				}()
 				break FOR_LOOP
 			}

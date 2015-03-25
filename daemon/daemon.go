@@ -94,7 +94,7 @@ func (n *Node) Start() {
 		go n.inboundConnectionRoutine(l)
 	}
 	n.book.Start()
-	n.sw.StartReactors()
+	//n.sw.StartReactors()
 }
 
 func (n *Node) Stop() {

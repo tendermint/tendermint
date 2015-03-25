@@ -13,8 +13,7 @@ import (
 type Peer struct {
 	outbound bool
 	mconn    *MConnection
-	started  uint32
-	stopped  uint32
+	running  uint32
 
 	Key  string
 	Data *CMap // User data.
@@ -37,7 +36,7 @@ func newPeer(conn net.Conn, outbound bool, reactorsByCh map[byte]Reactor, chDesc
 	p = &Peer{
 		outbound: outbound,
 		mconn:    mconn,
-		stopped:  0,
+		running:  0,
 		Key:      mconn.RemoteAddress.String(),
 		Data:     NewCMap(),
 	}
@@ -45,21 +44,21 @@ func newPeer(conn net.Conn, outbound bool, reactorsByCh map[byte]Reactor, chDesc
 }
 
 func (p *Peer) start() {
-	if atomic.CompareAndSwapUint32(&p.started, 0, 1) {
+	if atomic.CompareAndSwapUint32(&p.running, 0, 1) {
 		log.Debug("Starting Peer", "peer", p)
 		p.mconn.Start()
 	}
 }
 
 func (p *Peer) stop() {
-	if atomic.CompareAndSwapUint32(&p.stopped, 0, 1) {
+	if atomic.CompareAndSwapUint32(&p.running, 1, 0) {
 		log.Debug("Stopping Peer", "peer", p)
 		p.mconn.Stop()
 	}
 }
 
-func (p *Peer) IsStopped() bool {
-	return atomic.LoadUint32(&p.stopped) == 1
+func (p *Peer) IsRunning() bool {
+	return atomic.LoadUint32(&p.running) == 1
 }
 
 func (p *Peer) Connection() *MConnection {
@@ -71,21 +70,21 @@ func (p *Peer) IsOutbound() bool {
 }
 
 func (p *Peer) Send(chId byte, msg interface{}) bool {
-	if atomic.LoadUint32(&p.stopped) == 1 {
+	if atomic.LoadUint32(&p.running) == 0 {
 		return false
 	}
 	return p.mconn.Send(chId, msg)
 }
 
 func (p *Peer) TrySend(chId byte, msg interface{}) bool {
-	if atomic.LoadUint32(&p.stopped) == 1 {
+	if atomic.LoadUint32(&p.running) == 0 {
 		return false
 	}
 	return p.mconn.TrySend(chId, msg)
 }
 
 func (p *Peer) CanSend(chId byte) bool {
-	if atomic.LoadUint32(&p.stopped) == 1 {
+	if atomic.LoadUint32(&p.running) == 0 {
 		return false
 	}
 	return p.mconn.CanSend(chId)

@@ -33,8 +33,7 @@ const (
 // We atomically copy the RoundState struct before using it.
 type ConsensusReactor struct {
 	sw      *p2p.Switch
-	started uint32
-	stopped uint32
+	running uint32
 	quit    chan struct{}
 
 	blockStore *bc.BlockStore
@@ -52,7 +51,7 @@ func NewConsensusReactor(consensusState *ConsensusState, blockStore *bc.BlockSto
 
 // Implements Reactor
 func (conR *ConsensusReactor) Start(sw *p2p.Switch) {
-	if atomic.CompareAndSwapUint32(&conR.started, 0, 1) {
+	if atomic.CompareAndSwapUint32(&conR.running, 0, 1) {
 		log.Info("Starting ConsensusReactor")
 		conR.sw = sw
 		conR.conS.Start()
@@ -62,15 +61,15 @@ func (conR *ConsensusReactor) Start(sw *p2p.Switch) {
 
 // Implements Reactor
 func (conR *ConsensusReactor) Stop() {
-	if atomic.CompareAndSwapUint32(&conR.stopped, 0, 1) {
+	if atomic.CompareAndSwapUint32(&conR.running, 1, 0) {
 		log.Info("Stopping ConsensusReactor")
 		conR.conS.Stop()
 		close(conR.quit)
 	}
 }
 
-func (conR *ConsensusReactor) IsStopped() bool {
-	return atomic.LoadUint32(&conR.stopped) == 1
+func (conR *ConsensusReactor) IsRunning() bool {
+	return atomic.LoadUint32(&conR.running) == 0
 }
 
 // Implements Reactor
@@ -94,6 +93,10 @@ func (conR *ConsensusReactor) GetChannels() []*p2p.ChannelDescriptor {
 
 // Implements Reactor
 func (conR *ConsensusReactor) AddPeer(peer *p2p.Peer) {
+	if !conR.IsRunning() {
+		return
+	}
+
 	// Create peerState for peer
 	peerState := NewPeerState(peer)
 	peer.Data.Set(peerStateKey, peerState)
@@ -108,11 +111,18 @@ func (conR *ConsensusReactor) AddPeer(peer *p2p.Peer) {
 
 // Implements Reactor
 func (conR *ConsensusReactor) RemovePeer(peer *p2p.Peer, reason interface{}) {
+	if !conR.IsRunning() {
+		return
+	}
+
 	//peer.Data.Get(peerStateKey).(*PeerState).Disconnect()
 }
 
 // Implements Reactor
 func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte) {
+	if !conR.IsRunning() {
+		return
+	}
 
 	// Get round state
 	rs := conR.conS.GetRoundState()
@@ -215,6 +225,10 @@ func (conR *ConsensusReactor) SetPrivValidator(priv *sm.PrivValidator) {
 	conR.conS.SetPrivValidator(priv)
 }
 
+func (conR *ConsensusReactor) UpdateToState(state *sm.State) {
+	conR.conS.updateToState(state, false)
+}
+
 //--------------------------------------
 
 func makeRoundStepMessages(rs *RoundState) (nrsMsg *NewRoundStepMessage, csMsg *CommitStepMessage) {
@@ -279,7 +293,7 @@ func (conR *ConsensusReactor) gossipDataRoutine(peer *p2p.Peer, ps *PeerState) {
 OUTER_LOOP:
 	for {
 		// Manage disconnects from self or peer.
-		if peer.IsStopped() || conR.IsStopped() {
+		if !peer.IsRunning() || !conR.IsRunning() {
 			log.Info(Fmt("Stopping gossipDataRoutine for %v.", peer))
 			return
 		}
@@ -382,7 +396,7 @@ func (conR *ConsensusReactor) gossipVotesRoutine(peer *p2p.Peer, ps *PeerState) 
 OUTER_LOOP:
 	for {
 		// Manage disconnects from self or peer.
-		if peer.IsStopped() || conR.IsStopped() {
+		if !peer.IsRunning() || !conR.IsRunning() {
 			log.Info(Fmt("Stopping gossipVotesRoutine for %v.", peer))
 			return
 		}
