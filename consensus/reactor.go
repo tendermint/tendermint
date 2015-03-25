@@ -29,6 +29,8 @@ const (
 
 //-----------------------------------------------------------------------------
 
+// The reactor's underlying ConsensusState may change state at any time.
+// We atomically copy the RoundState struct before using it.
 type ConsensusReactor struct {
 	sw      *p2p.Switch
 	started uint32

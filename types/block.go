@@ -39,7 +39,9 @@ func (b *Block) ValidateBasic(lastBlockHeight uint, lastBlockHash []byte,
 	if !b.LastBlockParts.Equals(lastBlockParts) {
 		return errors.New("Wrong Block.Header.LastBlockParts")
 	}
-	/*	TODO: Determine bounds.
+	/*	TODO: Determine bounds
+		See blockchain/reactor "stopSyncingDurationMinutes"
+
 		if !b.Time.After(lastBlockTime) {
 			return errors.New("Invalid Block.Header.Time")
 		}

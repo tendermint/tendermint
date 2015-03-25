@@ -2,12 +2,15 @@ package state
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
 
+	"github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/merkle"
+	"github.com/tendermint/tendermint/types"
 )
 
 // ValidatorSet represent a set of *Validator at a given height.
@@ -195,6 +198,50 @@ func (valSet *ValidatorSet) Iterate(fn func(index uint, val *Validator) bool) {
 		if stop {
 			break
 		}
+	}
+}
+
+// Verify that +2/3 of the set had signed the given signBytes
+func (valSet *ValidatorSet) VerifyValidation(hash []byte, parts types.PartSetHeader, height uint, v *types.Validation) error {
+	if valSet.Size() != uint(len(v.Commits)) {
+		return errors.New(Fmt("Invalid validation -- wrong set size: %v vs %v",
+			valSet.Size(), len(v.Commits)))
+	}
+
+	talliedVotingPower := uint64(0)
+	seenValidators := map[string]struct{}{}
+
+	for idx, commit := range v.Commits {
+		// may be zero, in which case skip.
+		if commit.Signature.IsZero() {
+			continue
+		}
+		_, val := valSet.GetByIndex(uint(idx))
+		commitSignBytes := account.SignBytes(&types.Vote{
+			Height: height, Round: commit.Round, Type: types.VoteTypeCommit,
+			BlockHash:  hash,
+			BlockParts: parts,
+		})
+
+		// Validate
+		if _, seen := seenValidators[string(val.Address)]; seen {
+			return Errorf("Duplicate validator for commit %v for Validation %v", commit, v)
+		}
+
+		if !val.PubKey.VerifyBytes(commitSignBytes, commit.Signature) {
+			return Errorf("Invalid signature for commit %v for Validation %v", commit, v)
+		}
+
+		// Tally
+		seenValidators[string(val.Address)] = struct{}{}
+		talliedVotingPower += val.VotingPower
+	}
+
+	if talliedVotingPower > valSet.TotalVotingPower()*2/3 {
+		return nil
+	} else {
+		return Errorf("insufficient voting power %v, needed %v",
+			talliedVotingPower, (valSet.TotalVotingPower()*2/3 + 1))
 	}
 }
 

@@ -8,7 +8,9 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/p2p"
+	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -16,11 +18,17 @@ const (
 	BlockchainChannel      = byte(0x40)
 	defaultChannelCapacity = 100
 	defaultSleepIntervalMS = 500
+	trySyncIntervalMS      = 100
+
+	// stop syncing when last block's time is
+	// within this much of the system time.
+	stopSyncingDurationMinutes = 10
 )
 
 // BlockchainReactor handles long-term catchup syncing.
 type BlockchainReactor struct {
 	sw         *p2p.Switch
+	state      *sm.State
 	store      *BlockStore
 	pool       *BlockPool
 	requestsCh chan BlockRequest
@@ -31,7 +39,10 @@ type BlockchainReactor struct {
 	stopped    uint32
 }
 
-func NewBlockchainReactor(store *BlockStore) *BlockchainReactor {
+func NewBlockchainReactor(state *sm.State, store *BlockStore) *BlockchainReactor {
+	if state.LastBlockHeight != store.Height() {
+		panic(Fmt("state (%v) and store (%v) height mismatch", state.LastBlockHeight, store.Height()))
+	}
 	requestsCh := make(chan BlockRequest, defaultChannelCapacity)
 	timeoutsCh := make(chan string, defaultChannelCapacity)
 	pool := NewBlockPool(
@@ -40,6 +51,7 @@ func NewBlockchainReactor(store *BlockStore) *BlockchainReactor {
 		timeoutsCh,
 	)
 	bcR := &BlockchainReactor{
+		state:      state,
 		store:      store,
 		pool:       pool,
 		requestsCh: requestsCh,
@@ -129,7 +141,11 @@ func (bcR *BlockchainReactor) Receive(chId byte, src *p2p.Peer, msgBytes []byte)
 	}
 }
 
+// Handle messages from the poolReactor telling the reactor what to do.
 func (bcR *BlockchainReactor) poolRoutine() {
+
+	trySyncTicker := time.NewTicker(trySyncIntervalMS * time.Millisecond)
+
 FOR_LOOP:
 	for {
 		select {
@@ -150,6 +166,48 @@ FOR_LOOP:
 			// Peer timed out.
 			peer := bcR.sw.Peers().Get(peerId)
 			bcR.sw.StopPeerForError(peer, errors.New("BlockchainReactor Timeout"))
+		case _ = <-trySyncTicker.C: // chan time
+			var lastValidatedBlock *types.Block
+		SYNC_LOOP:
+			for i := 0; i < 10; i++ {
+				// See if there are any blocks to sync.
+				first, second := bcR.pool.PeekTwoBlocks()
+				if first == nil || second == nil {
+					// We need both to sync the first block.
+					break SYNC_LOOP
+				}
+				firstParts := first.MakePartSet().Header()
+				// Finally, verify the first block using the second's validation.
+				err := bcR.state.BondedValidators.VerifyValidation(
+					first.Hash(), firstParts, first.Height, second.Validation)
+				if err != nil {
+					bcR.pool.RedoRequest(first.Height)
+					break SYNC_LOOP
+				} else {
+					bcR.pool.PopRequest()
+					err := bcR.state.AppendBlock(first, firstParts)
+					if err != nil {
+						// TODO This is bad, are we zombie?
+						panic(Fmt("Failed to process committed block: %v", err))
+					}
+					lastValidatedBlock = first
+				}
+			}
+			// We're done syncing for now (will do again shortly)
+			// See if we want to stop syncing and turn on the
+			// consensus reactor.
+			// TODO: use other heuristics too besides blocktime.
+			// It's not a security concern, as it only needs to happen
+			// upon node sync, and there's also a second (slower)
+			// method of syncing in the consensus reactor.
+			if lastValidatedBlock != nil && time.Now().Sub(lastValidatedBlock.Time) < stopSyncingDurationMinutes*time.Minute {
+				go func() {
+					bcR.sw.Reactor("BLOCKCHAIN").Stop()
+					bcR.sw.Reactor("CONSENSUS").Start(bcR.sw)
+				}()
+				break FOR_LOOP
+			}
+			continue FOR_LOOP
 		case <-bcR.quit:
 			break FOR_LOOP
 		}

@@ -60,32 +60,32 @@ func NewBlockPool(start uint, requestsCh chan<- BlockRequest, timeoutsCh chan<- 
 	}
 }
 
-func (bp *BlockPool) Start() {
-	if atomic.CompareAndSwapInt32(&bp.running, 0, 1) {
+func (pool *BlockPool) Start() {
+	if atomic.CompareAndSwapInt32(&pool.running, 0, 1) {
 		log.Info("Starting BlockPool")
-		go bp.run()
+		go pool.run()
 	}
 }
 
-func (bp *BlockPool) Stop() {
-	if atomic.CompareAndSwapInt32(&bp.running, 1, 0) {
+func (pool *BlockPool) Stop() {
+	if atomic.CompareAndSwapInt32(&pool.running, 1, 0) {
 		log.Info("Stopping BlockPool")
-		bp.repeater.Stop()
+		pool.repeater.Stop()
 	}
 }
 
-func (bp *BlockPool) IsRunning() bool {
-	return atomic.LoadInt32(&bp.running) == 1
+func (pool *BlockPool) IsRunning() bool {
+	return atomic.LoadInt32(&pool.running) == 1
 }
 
 // Run spawns requests as needed.
-func (bp *BlockPool) run() {
+func (pool *BlockPool) run() {
 RUN_LOOP:
 	for {
-		if atomic.LoadInt32(&bp.running) == 0 {
+		if atomic.LoadInt32(&pool.running) == 0 {
 			break RUN_LOOP
 		}
-		height, numPending, numTotal := bp.GetStatus()
+		height, numPending, numTotal := pool.GetStatus()
 		log.Debug("BlockPool.run", "height", height, "numPending", numPending,
 			"numTotal", numTotal)
 		if numPending >= maxPendingRequests {
@@ -96,91 +96,91 @@ RUN_LOOP:
 			time.Sleep(requestIntervalMS * time.Millisecond)
 		} else {
 			// request for more blocks.
-			height := bp.nextHeight()
-			bp.makeRequest(height)
+			height := pool.nextHeight()
+			pool.makeRequest(height)
 		}
 	}
 }
 
-func (bp *BlockPool) GetStatus() (uint, int32, int32) {
-	bp.requestsMtx.Lock() // Lock
-	defer bp.requestsMtx.Unlock()
+func (pool *BlockPool) GetStatus() (uint, int32, int32) {
+	pool.requestsMtx.Lock() // Lock
+	defer pool.requestsMtx.Unlock()
 
-	return bp.height, bp.numPending, bp.numTotal
+	return pool.height, pool.numPending, pool.numTotal
 }
 
 // We need to see the second block's Validation to validate the first block.
 // So we peek two blocks at a time.
-func (bp *BlockPool) PeekTwoBlocks() (first *types.Block, second *types.Block) {
-	bp.requestsMtx.Lock() // Lock
-	defer bp.requestsMtx.Unlock()
+func (pool *BlockPool) PeekTwoBlocks() (first *types.Block, second *types.Block) {
+	pool.requestsMtx.Lock() // Lock
+	defer pool.requestsMtx.Unlock()
 
-	if r := bp.requests[bp.height]; r != nil {
+	if r := pool.requests[pool.height]; r != nil {
 		first = r.block
 	}
-	if r := bp.requests[bp.height+1]; r != nil {
+	if r := pool.requests[pool.height+1]; r != nil {
 		second = r.block
 	}
 	return
 }
 
-// Pop the first block at bp.height
+// Pop the first block at pool.height
 // It must have been validated by 'second'.Validation from PeekTwoBlocks().
-func (bp *BlockPool) PopRequest() {
-	bp.requestsMtx.Lock() // Lock
-	defer bp.requestsMtx.Unlock()
+func (pool *BlockPool) PopRequest() {
+	pool.requestsMtx.Lock() // Lock
+	defer pool.requestsMtx.Unlock()
 
-	if r := bp.requests[bp.height]; r == nil || r.block == nil {
+	if r := pool.requests[pool.height]; r == nil || r.block == nil {
 		panic("PopRequest() requires a valid block")
 	}
 
-	delete(bp.requests, bp.height)
-	bp.height++
-	bp.numTotal--
+	delete(pool.requests, pool.height)
+	pool.height++
+	pool.numTotal--
 }
 
-// Invalidates the block at bp.height.
+// Invalidates the block at pool.height.
 // Remove the peer and request from others.
-func (bp *BlockPool) RedoRequest(height uint) {
-	bp.requestsMtx.Lock() // Lock
-	defer bp.requestsMtx.Unlock()
+func (pool *BlockPool) RedoRequest(height uint) {
+	pool.requestsMtx.Lock() // Lock
+	defer pool.requestsMtx.Unlock()
 
-	request := bp.requests[height]
+	request := pool.requests[height]
 	if request.block == nil {
 		panic("Expected block to be non-nil")
 	}
-	bp.RemovePeer(request.peerId) // Lock on peersMtx.
+	pool.RemovePeer(request.peerId) // Lock on peersMtx.
 	request.block = nil
 	request.peerId = ""
-	bp.numPending++
+	pool.numPending++
 
-	go requestRoutine(bp, height)
+	go requestRoutine(pool, height)
 }
 
-func (bp *BlockPool) hasBlock(height uint) bool {
-	bp.requestsMtx.Lock() // Lock
-	defer bp.requestsMtx.Unlock()
+func (pool *BlockPool) hasBlock(height uint) bool {
+	pool.requestsMtx.Lock() // Lock
+	defer pool.requestsMtx.Unlock()
 
-	request := bp.requests[height]
+	request := pool.requests[height]
 	return request != nil && request.block != nil
 }
 
-func (bp *BlockPool) setPeerForRequest(height uint, peerId string) {
-	bp.requestsMtx.Lock() // Lock
-	defer bp.requestsMtx.Unlock()
+func (pool *BlockPool) setPeerForRequest(height uint, peerId string) {
+	pool.requestsMtx.Lock() // Lock
+	defer pool.requestsMtx.Unlock()
 
-	request := bp.requests[height]
+	request := pool.requests[height]
 	if request == nil {
 		return
 	}
 	request.peerId = peerId
 }
 
-func (bp *BlockPool) AddBlock(block *types.Block, peerId string) {
-	bp.requestsMtx.Lock() // Lock
-	defer bp.requestsMtx.Unlock()
+func (pool *BlockPool) AddBlock(block *types.Block, peerId string) {
+	pool.requestsMtx.Lock() // Lock
+	defer pool.requestsMtx.Unlock()
 
-	request := bp.requests[block.Height]
+	request := pool.requests[block.Height]
 	if request == nil {
 		return
 	}
@@ -191,23 +191,23 @@ func (bp *BlockPool) AddBlock(block *types.Block, peerId string) {
 		return
 	}
 	request.block = block
-	bp.numPending--
+	pool.numPending--
 }
 
-func (bp *BlockPool) getPeer(peerId string) *bpPeer {
-	bp.peersMtx.Lock() // Lock
-	defer bp.peersMtx.Unlock()
+func (pool *BlockPool) getPeer(peerId string) *bpPeer {
+	pool.peersMtx.Lock() // Lock
+	defer pool.peersMtx.Unlock()
 
-	peer := bp.peers[peerId]
+	peer := pool.peers[peerId]
 	return peer
 }
 
 // Sets the peer's blockchain height.
-func (bp *BlockPool) SetPeerHeight(peerId string, height uint) {
-	bp.peersMtx.Lock() // Lock
-	defer bp.peersMtx.Unlock()
+func (pool *BlockPool) SetPeerHeight(peerId string, height uint) {
+	pool.peersMtx.Lock() // Lock
+	defer pool.peersMtx.Unlock()
 
-	peer := bp.peers[peerId]
+	peer := pool.peers[peerId]
 	if peer != nil {
 		peer.height = height
 	} else {
@@ -216,24 +216,24 @@ func (bp *BlockPool) SetPeerHeight(peerId string, height uint) {
 			id:          peerId,
 			numRequests: 0,
 		}
-		bp.peers[peerId] = peer
+		pool.peers[peerId] = peer
 	}
 }
 
-func (bp *BlockPool) RemovePeer(peerId string) {
-	bp.peersMtx.Lock() // Lock
-	defer bp.peersMtx.Unlock()
+func (pool *BlockPool) RemovePeer(peerId string) {
+	pool.peersMtx.Lock() // Lock
+	defer pool.peersMtx.Unlock()
 
-	delete(bp.peers, peerId)
+	delete(pool.peers, peerId)
 }
 
 // Pick an available peer with at least the given minHeight.
 // If no peers are available, returns nil.
-func (bp *BlockPool) pickIncrAvailablePeer(minHeight uint) *bpPeer {
-	bp.peersMtx.Lock()
-	defer bp.peersMtx.Unlock()
+func (pool *BlockPool) pickIncrAvailablePeer(minHeight uint) *bpPeer {
+	pool.peersMtx.Lock()
+	defer pool.peersMtx.Unlock()
 
-	for _, peer := range bp.peers {
+	for _, peer := range pool.peers {
 		if peer.numRequests >= maxRequestsPerPeer {
 			continue
 		}
@@ -247,69 +247,69 @@ func (bp *BlockPool) pickIncrAvailablePeer(minHeight uint) *bpPeer {
 	return nil
 }
 
-func (bp *BlockPool) decrPeer(peerId string) {
-	bp.peersMtx.Lock()
-	defer bp.peersMtx.Unlock()
+func (pool *BlockPool) decrPeer(peerId string) {
+	pool.peersMtx.Lock()
+	defer pool.peersMtx.Unlock()
 
-	peer := bp.peers[peerId]
+	peer := pool.peers[peerId]
 	if peer == nil {
 		return
 	}
 	peer.numRequests--
 }
 
-func (bp *BlockPool) nextHeight() uint {
-	bp.requestsMtx.Lock() // Lock
-	defer bp.requestsMtx.Unlock()
+func (pool *BlockPool) nextHeight() uint {
+	pool.requestsMtx.Lock() // Lock
+	defer pool.requestsMtx.Unlock()
 
-	return bp.height + uint(bp.numTotal)
+	return pool.height + uint(pool.numTotal)
 }
 
-func (bp *BlockPool) makeRequest(height uint) {
-	bp.requestsMtx.Lock() // Lock
-	defer bp.requestsMtx.Unlock()
+func (pool *BlockPool) makeRequest(height uint) {
+	pool.requestsMtx.Lock() // Lock
+	defer pool.requestsMtx.Unlock()
 
 	request := &bpRequest{
 		height: height,
 		peerId: "",
 		block:  nil,
 	}
-	bp.requests[height] = request
+	pool.requests[height] = request
 
-	nextHeight := bp.height + uint(bp.numTotal)
+	nextHeight := pool.height + uint(pool.numTotal)
 	if nextHeight == height {
-		bp.numTotal++
-		bp.numPending++
+		pool.numTotal++
+		pool.numPending++
 	}
 
-	go requestRoutine(bp, height)
+	go requestRoutine(pool, height)
 }
 
-func (bp *BlockPool) sendRequest(height uint, peerId string) {
-	if atomic.LoadInt32(&bp.running) == 0 {
+func (pool *BlockPool) sendRequest(height uint, peerId string) {
+	if atomic.LoadInt32(&pool.running) == 0 {
 		return
 	}
-	bp.requestsCh <- BlockRequest{height, peerId}
+	pool.requestsCh <- BlockRequest{height, peerId}
 }
 
-func (bp *BlockPool) sendTimeout(peerId string) {
-	if atomic.LoadInt32(&bp.running) == 0 {
+func (pool *BlockPool) sendTimeout(peerId string) {
+	if atomic.LoadInt32(&pool.running) == 0 {
 		return
 	}
-	bp.timeoutsCh <- peerId
+	pool.timeoutsCh <- peerId
 }
 
-func (bp *BlockPool) debug() string {
-	bp.requestsMtx.Lock() // Lock
-	defer bp.requestsMtx.Unlock()
+func (pool *BlockPool) debug() string {
+	pool.requestsMtx.Lock() // Lock
+	defer pool.requestsMtx.Unlock()
 
 	str := ""
-	for h := bp.height; h < bp.height+uint(bp.numTotal); h++ {
-		if bp.requests[h] == nil {
+	for h := pool.height; h < pool.height+uint(pool.numTotal); h++ {
+		if pool.requests[h] == nil {
 			str += Fmt("H(%v):X ", h)
 		} else {
 			str += Fmt("H(%v):", h)
-			str += Fmt("B?(%v) ", bp.requests[h].block != nil)
+			str += Fmt("B?(%v) ", pool.requests[h].block != nil)
 		}
 	}
 	return str
@@ -333,15 +333,15 @@ type bpRequest struct {
 
 // Responsible for making more requests as necessary
 // Returns when a block is found (e.g. AddBlock() is called)
-func requestRoutine(bp *BlockPool, height uint) {
+func requestRoutine(pool *BlockPool, height uint) {
 	for {
 		var peer *bpPeer = nil
 	PICK_LOOP:
 		for {
-			if !bp.IsRunning() {
+			if !pool.IsRunning() {
 				return
 			}
-			peer = bp.pickIncrAvailablePeer(height)
+			peer = pool.pickIncrAvailablePeer(height)
 			if peer == nil {
 				time.Sleep(requestIntervalMS * time.Millisecond)
 				continue PICK_LOOP
@@ -349,24 +349,24 @@ func requestRoutine(bp *BlockPool, height uint) {
 			break PICK_LOOP
 		}
 
-		bp.setPeerForRequest(height, peer.id)
+		pool.setPeerForRequest(height, peer.id)
 
 		for try := 0; try < maxTries; try++ {
-			bp.sendRequest(height, peer.id)
+			pool.sendRequest(height, peer.id)
 			time.Sleep(requestTimeoutSeconds * time.Second)
-			if bp.hasBlock(height) {
-				bp.decrPeer(peer.id)
+			if pool.hasBlock(height) {
+				pool.decrPeer(peer.id)
 				return
 			}
-			bpHeight, _, _ := bp.GetStatus()
+			bpHeight, _, _ := pool.GetStatus()
 			if height < bpHeight {
-				bp.decrPeer(peer.id)
+				pool.decrPeer(peer.id)
 				return
 			}
 		}
 
-		bp.RemovePeer(peer.id)
-		bp.sendTimeout(peer.id)
+		pool.RemovePeer(peer.id)
+		pool.sendTimeout(peer.id)
 	}
 }
 

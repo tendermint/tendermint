@@ -59,7 +59,12 @@ func (ps *PeerSet) Has(peerKey string) bool {
 func (ps *PeerSet) Get(peerKey string) *Peer {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
-	return ps.lookup[peerKey].peer
+	item, ok := ps.lookup[peerKey]
+	if ok {
+		return item.peer
+	} else {
+		return nil
+	}
 }
 
 func (ps *PeerSet) Remove(peer *Peer) {
