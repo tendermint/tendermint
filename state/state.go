@@ -633,6 +633,7 @@ func (s *State) AppendBlock(block *types.Block, blockPartsHeader types.PartSetHe
 	return nil
 }
 
+// Mutates the block in place and updates it with new state hash.
 func (s *State) SetBlockStateHash(block *types.Block) error {
 	sCopy := s.Copy()
 	err := sCopy.appendBlock(block, types.PartSetHeader{})
