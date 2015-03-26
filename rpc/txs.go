@@ -9,6 +9,15 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+//-----------------------------------------------------------------------------
+
+// Request: {"tx": string}
+// Note: "tx" should be json encoded unsigned transaction
+
+type ResponseSignTx struct {
+	types.Tx
+}
+
 func SignTxHandler(w http.ResponseWriter, r *http.Request) {
 	txStr := GetParam(r, "tx")
 	privAccountsStr := GetParam(r, "privAccounts")
@@ -53,5 +62,5 @@ func SignTxHandler(w http.ResponseWriter, r *http.Request) {
 		rebondTx.Signature = privAccounts[0].Sign(rebondTx).(account.SignatureEd25519)
 	}
 
-	WriteAPIResponse(w, API_OK, struct{ types.Tx }{tx})
+	WriteAPIResponse(w, API_OK, ResponseSignTx{tx})
 }

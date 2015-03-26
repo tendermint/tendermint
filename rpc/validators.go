@@ -6,6 +6,16 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 )
 
+//-----------------------------------------------------------------------------
+
+// Request: {}
+
+type ResponseListValidators struct {
+	BlockHeight         uint
+	BondedValidators    []*sm.Validator
+	UnbondingValidators []*sm.Validator
+}
+
 func ListValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 	var blockHeight uint
 	var bondedValidators []*sm.Validator
@@ -22,9 +32,5 @@ func ListValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 		return false
 	})
 
-	WriteAPIResponse(w, API_OK, struct {
-		BlockHeight         uint
-		BondedValidators    []*sm.Validator
-		UnbondingValidators []*sm.Validator
-	}{blockHeight, bondedValidators, unbondingValidators})
+	WriteAPIResponse(w, API_OK, ResponseListValidators{blockHeight, bondedValidators, unbondingValidators})
 }

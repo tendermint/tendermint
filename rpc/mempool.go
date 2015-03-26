@@ -10,6 +10,17 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+//-----------------------------------------------------------------------------
+
+// Request: {"tx": string}
+// Note: "tx" should be json encoded signed transaction
+
+type ResponseBroadcastTx struct {
+	TxHash          []byte
+	CreatesContract bool
+	ContractAddr    []byte
+}
+
 func BroadcastTxHandler(w http.ResponseWriter, r *http.Request) {
 	txJSON := GetParam(r, "tx")
 	var err error
@@ -37,11 +48,7 @@ func BroadcastTxHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	WriteAPIResponse(w, API_OK, struct {
-		TxHash          []byte
-		CreatesContract bool
-		ContractAddr    []byte
-	}{txHash, createsContract, contractAddr})
+	WriteAPIResponse(w, API_OK, ResponseBroadcastTx{txHash, createsContract, contractAddr})
 	return
 }
 

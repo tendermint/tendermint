@@ -7,6 +7,15 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+//-----------------------------------------------------------------------------
+
+// Request: {}
+
+type ResponseBlockchainInfo struct {
+	LastHeight uint
+	BlockMetas []*types.BlockMeta
+}
+
 func BlockchainInfoHandler(w http.ResponseWriter, r *http.Request) {
 	minHeight, _ := GetParamUint(r, "min_height")
 	maxHeight, _ := GetParamUint(r, "max_height")
@@ -26,13 +35,17 @@ func BlockchainInfoHandler(w http.ResponseWriter, r *http.Request) {
 		blockMetas = append(blockMetas, blockMeta)
 	}
 
-	WriteAPIResponse(w, API_OK, struct {
-		LastHeight uint
-		BlockMetas []*types.BlockMeta
-	}{blockStore.Height(), blockMetas})
+	WriteAPIResponse(w, API_OK, ResponseBlockchainInfo{blockStore.Height(), blockMetas})
 }
 
 //-----------------------------------------------------------------------------
+
+// Request: {"height": uint}
+
+type ResponseGetBlock struct {
+	BlockMeta *types.BlockMeta
+	Block     *types.Block
+}
 
 func GetBlockHandler(w http.ResponseWriter, r *http.Request) {
 	height, _ := GetParamUint(r, "height")
@@ -48,8 +61,5 @@ func GetBlockHandler(w http.ResponseWriter, r *http.Request) {
 	blockMeta := blockStore.LoadBlockMeta(height)
 	block := blockStore.LoadBlock(height)
 
-	WriteAPIResponse(w, API_OK, struct {
-		BlockMeta *types.BlockMeta
-		Block     *types.Block
-	}{blockMeta, block})
+	WriteAPIResponse(w, API_OK, ResponseGetBlock{blockMeta, block})
 }

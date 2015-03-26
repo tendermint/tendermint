@@ -8,15 +8,27 @@ import (
 	. "github.com/tendermint/tendermint/common"
 )
 
+//-----------------------------------------------------------------------------
+
+// Request: {}
+
+type ResponseGenPrivAccount struct {
+	PrivAccount *account.PrivAccount
+}
+
 func GenPrivAccountHandler(w http.ResponseWriter, r *http.Request) {
 	privAccount := account.GenPrivAccount()
 
-	WriteAPIResponse(w, API_OK, struct {
-		PrivAccount *account.PrivAccount
-	}{privAccount})
+	WriteAPIResponse(w, API_OK, ResponseGenPrivAccount{privAccount})
 }
 
 //-----------------------------------------------------------------------------
+
+// Request: {"address": string}
+
+type ResponseGetAccount struct {
+	Account *account.Account
+}
 
 func GetAccountHandler(w http.ResponseWriter, r *http.Request) {
 	addressStr := GetParam(r, "address")
@@ -37,12 +49,17 @@ func GetAccountHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	WriteAPIResponse(w, API_OK, struct {
-		Account *account.Account
-	}{account_})
+	WriteAPIResponse(w, API_OK, ResponseGetAccount{account_})
 }
 
 //-----------------------------------------------------------------------------
+
+// Request: {}
+
+type ResponseListAccounts struct {
+	BlockHeight uint
+	Accounts    []*account.Account
+}
 
 func ListAccountsHandler(w http.ResponseWriter, r *http.Request) {
 	var blockHeight uint
@@ -54,8 +71,5 @@ func ListAccountsHandler(w http.ResponseWriter, r *http.Request) {
 		return false
 	})
 
-	WriteAPIResponse(w, API_OK, struct {
-		BlockHeight uint
-		Accounts    []*account.Account
-	}{blockHeight, accounts})
+	WriteAPIResponse(w, API_OK, ResponseListAccounts{blockHeight, accounts})
 }

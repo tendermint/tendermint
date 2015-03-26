@@ -144,6 +144,10 @@ func (n *Node) StartRpc() {
 	rpc.StartHTTPServer()
 }
 
+func (n *Node) Switch() *p2p.Switch {
+	return n.sw
+}
+
 func (n *Node) ConsensusState() *consensus.ConsensusState {
 	return n.consensusState
 }

@@ -223,6 +223,10 @@ func (sw *Switch) StopPeerGracefully(peer *Peer) {
 	sw.doRemovePeer(peer, nil)
 }
 
+func (sw *Switch) GetChainId() string {
+	return sw.chainId
+}
+
 func (sw *Switch) SetChainId(hash []byte, network string) {
 	sw.chainId = hex.EncodeToString(hash) + "-" + network
 }
