@@ -104,6 +104,8 @@ func initDefaults(rootDir string) {
 	app.SetDefault("GenesisFile", rootDir+"/genesis.json")
 	app.SetDefault("AddrBookFile", rootDir+"/addrbook.json")
 	app.SetDefault("PrivValidatorfile", rootDir+"/priv_validator.json")
+
+	app.SetDefault("FastSync", false)
 }
 
 func Init(rootDir string) {
@@ -161,6 +163,7 @@ func ParseFlags(args []string) {
 	flags.BoolVar(&printHelp, "help", false, "Print this help message.")
 	flags.String("listen_addr", app.GetString("ListenAddr"), "Listen address. (0.0.0.0:0 means any interface, any port)")
 	flags.String("seed_node", app.GetString("SeedNode"), "Address of seed node")
+	flags.Bool("fast_sync", app.GetBool("FastSync"), "Fast blockchain syncing")
 	flags.String("rpc_http_listen_addr", app.GetString("RPC.HTTP.ListenAddr"), "RPC listen address. Port required")
 	flags.Parse(args)
 	if printHelp {
@@ -171,6 +174,7 @@ func ParseFlags(args []string) {
 	// Merge parsed flag values onto app.
 	app.BindPFlag("ListenAddr", flags.Lookup("listen_addr"))
 	app.BindPFlag("SeedNode", flags.Lookup("seed_node"))
+	app.BindPFlag("FastSync", flags.Lookup("fast_sync"))
 	app.BindPFlag("RPC.HTTP.ListenAddr", flags.Lookup("rpc_http_listen_addr"))
 
 	// Confused?

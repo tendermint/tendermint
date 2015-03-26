@@ -35,6 +35,7 @@ type BlockchainReactor struct {
 	state      *sm.State
 	store      *BlockStore
 	pool       *BlockPool
+	sync       bool
 	requestsCh chan BlockRequest
 	timeoutsCh chan string
 	lastBlock  *types.Block
@@ -42,7 +43,7 @@ type BlockchainReactor struct {
 	running    uint32
 }
 
-func NewBlockchainReactor(state *sm.State, store *BlockStore) *BlockchainReactor {
+func NewBlockchainReactor(state *sm.State, store *BlockStore, sync bool) *BlockchainReactor {
 	if state.LastBlockHeight != store.Height() {
 		panic(Fmt("state (%v) and store (%v) height mismatch", state.LastBlockHeight, store.Height()))
 	}
@@ -57,6 +58,7 @@ func NewBlockchainReactor(state *sm.State, store *BlockStore) *BlockchainReactor
 		state:      state,
 		store:      store,
 		pool:       pool,
+		sync:       sync,
 		requestsCh: requestsCh,
 		timeoutsCh: timeoutsCh,
 		quit:       make(chan struct{}),
@@ -71,7 +73,9 @@ func (bcR *BlockchainReactor) Start(sw *p2p.Switch) {
 		log.Info("Starting BlockchainReactor")
 		bcR.sw = sw
 		bcR.pool.Start()
-		go bcR.poolRoutine()
+		if bcR.sync {
+			go bcR.poolRoutine()
+		}
 	}
 }
 
@@ -169,7 +173,7 @@ FOR_LOOP:
 				bcR.sw.StopPeerForError(peer, errors.New("BlockchainReactor Timeout"))
 			}
 		case _ = <-trySyncTicker.C: // chan time
-			var lastValidatedBlock *types.Block
+			//var lastValidatedBlock *types.Block
 		SYNC_LOOP:
 			for i := 0; i < 10; i++ {
 				// See if there are any blocks to sync.
@@ -197,30 +201,32 @@ FOR_LOOP:
 					}
 					bcR.store.SaveBlock(first, firstParts, second.Validation)
 					bcR.state.Save()
-					lastValidatedBlock = first
+					//lastValidatedBlock = first
 				}
 			}
-			// We're done syncing for now (will do again shortly)
-			// See if we want to stop syncing and turn on the
-			// consensus reactor.
-			// TODO: use other heuristics too besides blocktime.
-			// It's not a security concern, as it only needs to happen
-			// upon node sync, and there's also a second (slower)
-			// method of syncing in the consensus reactor.
-			if lastValidatedBlock != nil && time.Now().Sub(lastValidatedBlock.Time) < stopSyncingDurationMinutes*time.Minute {
-				go func() {
-					log.Info("Stopping blockpool syncing, turning on consensus...")
-					//bcR.sw.Reactor("BLOCKCHAIN").Stop()
-					trySyncTicker.Stop() // Just stop the block requests.  Still serve blocks to others.
-					conR := bcR.sw.Reactor("CONSENSUS")
-					conR.(stateResetter).ResetToState(bcR.state)
-					conR.Start(bcR.sw)
-					for _, peer := range bcR.sw.Peers().List() {
-						conR.AddPeer(peer)
-					}
-				}()
-				break FOR_LOOP
-			}
+			/*
+				// We're done syncing for now (will do again shortly)
+				// See if we want to stop syncing and turn on the
+				// consensus reactor.
+				// TODO: use other heuristics too besides blocktime.
+				// It's not a security concern, as it only needs to happen
+				// upon node sync, and there's also a second (slower)
+				// method of syncing in the consensus reactor.
+
+				if lastValidatedBlock != nil && time.Now().Sub(lastValidatedBlock.Time) < stopSyncingDurationMinutes*time.Minute {
+					go func() {
+						log.Info("Stopping blockpool syncing, turning on consensus...")
+						trySyncTicker.Stop() // Just stop the block requests.  Still serve blocks to others.
+						conR := bcR.sw.Reactor("CONSENSUS")
+						conR.(stateResetter).ResetToState(bcR.state)
+						conR.Start(bcR.sw)
+						for _, peer := range bcR.sw.Peers().List() {
+							conR.AddPeer(peer)
+						}
+					}()
+					break FOR_LOOP
+				}
+			*/
 			continue FOR_LOOP
 		case <-bcR.quit:
 			break FOR_LOOP

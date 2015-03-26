@@ -55,7 +55,7 @@ func NewNode() *Node {
 	pexReactor := p2p.NewPEXReactor(book)
 
 	// Get BlockchainReactor
-	bcReactor := bc.NewBlockchainReactor(state, blockStore)
+	bcReactor := bc.NewBlockchainReactor(state, blockStore, config.App().GetBool("FastSync"))
 
 	// Get MempoolReactor
 	mempool := mempl.NewMempool(state.Copy())
@@ -71,9 +71,13 @@ func NewNode() *Node {
 	sw := p2p.NewSwitch()
 	sw.SetNetwork(config.App().GetString("Network"))
 	sw.AddReactor("PEX", pexReactor).Start(sw)
-	sw.AddReactor("BLOCKCHAIN", bcReactor).Start(sw)
 	sw.AddReactor("MEMPOOL", mempoolReactor).Start(sw)
-	sw.AddReactor("CONSENSUS", consensusReactor) // Do not start yet.
+	sw.AddReactor("BLOCKCHAIN", bcReactor).Start(sw)
+	if !config.App().GetBool("FastSync") {
+		sw.AddReactor("CONSENSUS", consensusReactor).Start(sw)
+	} else {
+		sw.AddReactor("CONSENSUS", consensusReactor)
+	}
 
 	return &Node{
 		sw:               sw,
