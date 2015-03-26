@@ -10,14 +10,12 @@ import (
 )
 
 const (
-	maxOutstandingRequestsPerPeer = 10
-	inputsChannelCapacity         = 100
-	maxTries                      = 3
-	requestIntervalMS             = 500
-	requestBatchSize              = 50
-	maxPendingRequests            = 50
-	maxTotalRequests              = 100
-	maxRequestsPerPeer            = 20
+	maxTries              = 3
+	inputsChannelCapacity = 200
+	requestIntervalMS     = 500
+	maxPendingRequests    = 200
+	maxTotalRequests      = 300
+	maxRequestsPerPeer    = 300
 )
 
 var (
@@ -85,9 +83,7 @@ RUN_LOOP:
 		if atomic.LoadInt32(&pool.running) == 0 {
 			break RUN_LOOP
 		}
-		height, numPending, numTotal := pool.GetStatus()
-		log.Debug("BlockPool.run", "height", height, "numPending", numPending,
-			"numTotal", numTotal)
+		_, numPending, numTotal := pool.GetStatus()
 		if numPending >= maxPendingRequests {
 			// sleep for a bit.
 			time.Sleep(requestIntervalMS * time.Millisecond)
@@ -344,14 +340,13 @@ func requestRoutine(pool *BlockPool, height uint) {
 			}
 			peer = pool.pickIncrAvailablePeer(height)
 			if peer == nil {
-				log.Debug("No peers available", "height", height)
+				//log.Debug("No peers available", "height", height)
 				time.Sleep(requestIntervalMS * time.Millisecond)
 				continue PICK_LOOP
 			}
 			break PICK_LOOP
 		}
 
-		log.Debug("Selected peer for request", "height", height, "peerId", peer.id)
 		pool.setPeerForRequest(height, peer.id)
 
 		for try := 0; try < maxTries; try++ {

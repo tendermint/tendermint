@@ -176,10 +176,12 @@ func (pexR *PEXReactor) ensurePeers() {
 			alreadyDialing := pexR.sw.IsDialing(try)
 			alreadyConnected := pexR.sw.Peers().Has(try.String())
 			if alreadySelected || alreadyDialing || alreadyConnected {
-				log.Debug("Cannot dial address", "addr", try,
-					"alreadySelected", alreadySelected,
-					"alreadyDialing", alreadyDialing,
-					"alreadyConnected", alreadyConnected)
+				/*
+					log.Debug("Cannot dial address", "addr", try,
+						"alreadySelected", alreadySelected,
+						"alreadyDialing", alreadyDialing,
+						"alreadyConnected", alreadyConnected)
+				*/
 				continue
 			} else {
 				log.Debug("Will dial address", "addr", try)

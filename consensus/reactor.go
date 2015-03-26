@@ -69,7 +69,7 @@ func (conR *ConsensusReactor) Stop() {
 }
 
 func (conR *ConsensusReactor) IsRunning() bool {
-	return atomic.LoadUint32(&conR.running) == 0
+	return atomic.LoadUint32(&conR.running) == 1
 }
 
 // Implements Reactor

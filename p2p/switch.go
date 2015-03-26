@@ -132,7 +132,7 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 	}
 
 	// Start the peer
-	go peer.start()
+	peer.start()
 
 	// Notify listeners.
 	sw.doAddPeer(peer)

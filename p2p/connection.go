@@ -417,6 +417,7 @@ FOR_LOOP:
 			}
 			msgBytes := channel.recvMsgPacket(pkt)
 			if msgBytes != nil {
+				log.Debug("Received bytes", "chId", pkt.ChannelId, "msgBytes", msgBytes)
 				c.onReceive(pkt.ChannelId, msgBytes)
 			}
 		default:
