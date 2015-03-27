@@ -39,6 +39,7 @@ var funcMap = map[string]*FuncWrapper{
 	"sign_tx":          funcWrap("sign_tx", core.SignTx),
 }
 
+// map each function to an empty struct which can hold its return values
 var responseMap = map[string]reflect.Value{
 	"status":           reflect.ValueOf(&ResponseStatus{}),
 	"net_info":         reflect.ValueOf(&ResponseNetInfo{}),
@@ -52,6 +53,7 @@ var responseMap = map[string]reflect.Value{
 	"sign_tx":          reflect.ValueOf(&ResponseSignTx{}),
 }
 
+// holds all type information for each function
 type FuncWrapper struct {
 	f        reflect.Value  // function from "rpc/core"
 	args     []reflect.Type // type of each function arg
@@ -76,39 +78,57 @@ func toHandler(funcName string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		values, err := queryToValues(funcInfo, r)
 		if err != nil {
-			WriteAPIResponse(w, API_INVALID_PARAM, err.Error())
+			WriteAPIResponse(w, API_INVALID_PARAM, nil, err.Error())
 			return
 		}
 		returns := funcInfo.f.Call(values)
 		response, err := returnsToResponse(funcInfo, returns)
 		if err != nil {
-			WriteAPIResponse(w, API_ERROR, err.Error())
+			WriteAPIResponse(w, API_ERROR, nil, err.Error())
+			return
 		}
-		WriteAPIResponse(w, API_OK, response)
+		WriteAPIResponse(w, API_OK, response, "")
 	}
 }
 
 // covert an http query to a list of properly typed values
+// to be properly decoded the arg must be a concrete type from tendermint
 func queryToValues(funcInfo *FuncWrapper, r *http.Request) ([]reflect.Value, error) {
 	argTypes := funcInfo.args
 	argNames := funcInfo.argNames
 
 	var err error
 	values := make([]reflect.Value, len(argNames))
-	fmt.Println("names:", argNames)
 	for i, name := range argNames {
 		ty := argTypes[i]
 		v := reflect.New(ty).Elem()
 		kind := v.Kind()
 		arg := GetParam(r, name)
 		switch kind {
+		case reflect.Interface:
+			v = reflect.New(ty)
+			binary.ReadJSON(v.Interface(), []byte(arg), &err)
+			if err != nil {
+				return nil, err
+			}
+			v = v.Elem()
 		case reflect.Struct:
 			binary.ReadJSON(v.Interface(), []byte(arg), &err)
 			if err != nil {
 				return nil, err
 			}
 		case reflect.Slice:
-			v = reflect.ValueOf([]byte(arg))
+			rt := ty.Elem()
+			if rt.Kind() == reflect.Uint8 {
+				v = reflect.ValueOf([]byte(arg))
+			} else {
+				v = reflect.New(ty)
+				binary.ReadJSON(v.Interface(), []byte(arg), &err)
+				if err != nil {
+					return nil, err
+				}
+				v = v.Elem()
+			}
 		case reflect.Int64:
 			u, err := strconv.ParseInt(arg, 10, 64)
 			if err != nil {
@@ -142,6 +162,7 @@ func queryToValues(funcInfo *FuncWrapper, r *http.Request) ([]reflect.Value, err
 }
 
 // covert a list of interfaces to properly typed values
+// TODO!
 func paramsToValues(funcInfo *FuncWrapper, params []interface{}) ([]reflect.Value, error) {
 	values := make([]reflect.Value, len(params))
 	for i, p := range params {
@@ -156,7 +177,9 @@ func returnsToResponse(funcInfo *FuncWrapper, returns []reflect.Value) (interfac
 	finalType := returnTypes[len(returnTypes)-1]
 	if finalType.Implements(reflect.TypeOf((*error)(nil)).Elem()) {
 		errV := returns[len(returnTypes)-1]
-		return nil, errV.Interface().(error)
+		if errV.Interface() != nil {
+			return nil, fmt.Errorf("%v", errV.Interface())
+		}
 	}
 
 	v := funcInfo.response.Elem()
@@ -181,15 +204,16 @@ func JsonRpcHandler(w http.ResponseWriter, r *http.Request) {
 	funcInfo := funcMap[jrpc.Method]
 	values, err := paramsToValues(funcInfo, jrpc.Params)
 	if err != nil {
-		WriteAPIResponse(w, API_INVALID_PARAM, err.Error())
+		WriteAPIResponse(w, API_INVALID_PARAM, nil, err.Error())
 		return
 	}
 	returns := funcInfo.f.Call(values)
 	response, err := returnsToResponse(funcInfo, returns)
 	if err != nil {
-		WriteAPIResponse(w, API_ERROR, err.Error())
+		WriteAPIResponse(w, API_ERROR, nil, err.Error())
+		return
 	}
-	WriteAPIResponse(w, API_OK, response)
+	WriteAPIResponse(w, API_OK, response, "")
 }
 
 func initHandlers() {

@@ -16,7 +16,6 @@ func SignTx(tx types.Tx, privAccounts []*account.PrivAccount) (types.Tx, error) 
 			return nil, fmt.Errorf("Invalid (empty) privAccount @%v", i)
 		}
 	}
-
 	switch tx.(type) {
 	case *types.SendTx:
 		sendTx := tx.(*types.SendTx)
