@@ -8,7 +8,7 @@ import (
 
 //-----------------------------------------------------------------------------
 
-func BlockchainInfoHandler(minHeight, maxHeight uint) (uint, []*types.BlockMeta) {
+func BlockchainInfo(minHeight, maxHeight uint) (uint, []*types.BlockMeta) {
 	if maxHeight == 0 {
 		maxHeight = blockStore.Height()
 	} else {
@@ -30,7 +30,7 @@ func BlockchainInfoHandler(minHeight, maxHeight uint) (uint, []*types.BlockMeta)
 
 //-----------------------------------------------------------------------------
 
-func GetBlockHandler(height uint) (*types.BlockMeta, *types.Block, error) {
+func GetBlock(height uint) (*types.BlockMeta, *types.Block, error) {
 	if height == 0 {
 		return nil, nil, fmt.Errorf("height must be greater than 1")
 	}

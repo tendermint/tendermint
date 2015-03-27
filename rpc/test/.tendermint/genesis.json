@@ -1,0 +1,24 @@
+{
+  "Accounts": [
+    {
+      "Address": "d7dff9806078899c8da3fe3633cc0bf3c6c2b1bb",
+      "Amount":  200000000
+    },
+    {
+      "Address": "AC89A6DDF4C309A89A2C4078CE409A5A7B282270",
+      "Amount":  200000000
+    }
+  ],
+  "Validators": [
+    {
+      "PubKey": [1, "2239c21c81ea7173a6c489145490c015e05d4b97448933b708a7ec5b7b4921e3"],
+      "Amount": 1000000,
+      "UnbondTo": [
+        {
+          "Address": "d7dff9806078899c8da3fe3633cc0bf3c6c2b1bb",
+          "Amount":  100000
+        }
+      ]
+    }
+  ]
+}

@@ -11,6 +11,7 @@ import (
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/rpc"
+	"github.com/tendermint/tendermint/rpc/core"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -137,10 +138,10 @@ func (n *Node) DialSeed() {
 }
 
 func (n *Node) StartRpc() {
-	rpc.SetRPCBlockStore(n.blockStore)
-	rpc.SetRPCConsensusState(n.consensusState)
-	rpc.SetRPCMempoolReactor(n.mempoolReactor)
-	rpc.SetRPCSwitch(n.sw)
+	core.SetPipeBlockStore(n.blockStore)
+	core.SetPipeConsensusState(n.consensusState)
+	core.SetPipeMempoolReactor(n.mempoolReactor)
+	core.SetPipeSwitch(n.sw)
 	rpc.StartHTTPServer()
 }
 
