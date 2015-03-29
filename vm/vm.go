@@ -10,6 +10,7 @@ import (
 )
 
 var (
+	ErrUnknownAddress      = errors.New("Unknown address")
 	ErrInsufficientBalance = errors.New("Insufficient balance")
 	ErrInvalidJumpDest     = errors.New("Invalid jump dest")
 	ErrInsufficientGas     = errors.New("Insuffient gas")
@@ -32,12 +33,12 @@ const (
 type VM struct {
 	appState AppState
 	params   Params
-	origin   Word
+	origin   Word256
 
 	callDepth int
 }
 
-func NewVM(appState AppState, params Params, origin Word) *VM {
+func NewVM(appState AppState, params Params, origin Word256) *VM {
 	return &VM{
 		appState:  appState,
 		params:    params,
@@ -114,7 +115,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 		case DIV: // 0x04
 			x, y := stack.Pop64(), stack.Pop64()
 			if y == 0 { // TODO
-				stack.Push(Zero)
+				stack.Push(Zero256)
 				fmt.Printf(" %v / %v = %v (TODO)\n", x, y, 0)
 			} else {
 				stack.Push64(x / y)
@@ -124,7 +125,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 		case SDIV: // 0x05
 			x, y := int64(stack.Pop64()), int64(stack.Pop64())
 			if y == 0 { // TODO
-				stack.Push(Zero)
+				stack.Push(Zero256)
 				fmt.Printf(" %v / %v = %v (TODO)\n", x, y, 0)
 			} else {
 				stack.Push64(uint64(x / y))
@@ -134,7 +135,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 		case MOD: // 0x06
 			x, y := stack.Pop64(), stack.Pop64()
 			if y == 0 { // TODO
-				stack.Push(Zero)
+				stack.Push(Zero256)
 				fmt.Printf(" %v %% %v = %v (TODO)\n", x, y, 0)
 			} else {
 				stack.Push64(x % y)
@@ -144,7 +145,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 		case SMOD: // 0x07
 			x, y := int64(stack.Pop64()), int64(stack.Pop64())
 			if y == 0 { // TODO
-				stack.Push(Zero)
+				stack.Push(Zero256)
 				fmt.Printf(" %v %% %v = %v (TODO)\n", x, y, 0)
 			} else {
 				stack.Push64(uint64(x % y))
@@ -154,7 +155,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 		case ADDMOD: // 0x08
 			x, y, z := stack.Pop64(), stack.Pop64(), stack.Pop64()
 			if z == 0 { // TODO
-				stack.Push(Zero)
+				stack.Push(Zero256)
 				fmt.Printf(" (%v + %v) %% %v = %v (TODO)\n", x, y, z, 0)
 			} else {
 				stack.Push64(x % y)
@@ -164,7 +165,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 		case MULMOD: // 0x09
 			x, y, z := stack.Pop64(), stack.Pop64(), stack.Pop64()
 			if z == 0 { // TODO
-				stack.Push(Zero)
+				stack.Push(Zero256)
 				fmt.Printf(" (%v + %v) %% %v = %v (TODO)\n", x, y, z, 0)
 			} else {
 				stack.Push64(x % y)
@@ -187,7 +188,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			if x < y {
 				stack.Push64(1)
 			} else {
-				stack.Push(Zero)
+				stack.Push(Zero256)
 			}
 			fmt.Printf(" %v < %v = %v\n", x, y, x < y)
 
@@ -196,7 +197,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			if x > y {
 				stack.Push64(1)
 			} else {
-				stack.Push(Zero)
+				stack.Push(Zero256)
 			}
 			fmt.Printf(" %v > %v = %v\n", x, y, x > y)
 
@@ -205,7 +206,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			if x < y {
 				stack.Push64(1)
 			} else {
-				stack.Push(Zero)
+				stack.Push(Zero256)
 			}
 			fmt.Printf(" %v < %v = %v\n", x, y, x < y)
 
@@ -214,7 +215,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			if x > y {
 				stack.Push64(1)
 			} else {
-				stack.Push(Zero)
+				stack.Push(Zero256)
 			}
 			fmt.Printf(" %v > %v = %v\n", x, y, x > y)
 
@@ -223,7 +224,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			if x > y {
 				stack.Push64(1)
 			} else {
-				stack.Push(Zero)
+				stack.Push(Zero256)
 			}
 			fmt.Printf(" %v == %v = %v\n", x, y, x == y)
 
@@ -232,7 +233,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			if x == 0 {
 				stack.Push64(1)
 			} else {
-				stack.Push(Zero)
+				stack.Push(Zero256)
 			}
 			fmt.Printf(" %v == 0 = %v\n", x, x == 0)
 
@@ -287,11 +288,11 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			if ok = useGas(gas, GasGetAccount); !ok {
 				return nil, firstErr(err, ErrInsufficientGas)
 			}
-			account, err_ := vm.appState.GetAccount(addr) // TODO ensure that 20byte lengths are supported.
-			if err_ != nil {
-				return nil, firstErr(err, err_)
+			acc := vm.appState.GetAccount(addr) // TODO ensure that 20byte lengths are supported.
+			if acc == nil {
+				return nil, firstErr(err, ErrUnknownAddress)
 			}
-			balance := account.Balance
+			balance := acc.Balance
 			stack.Push64(balance)
 			fmt.Printf(" => %v (%X)\n", balance, addr)
 
@@ -313,7 +314,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			if !ok {
 				return nil, firstErr(err, ErrInputOutOfBounds)
 			}
-			stack.Push(RightPadWord(data))
+			stack.Push(RightPadWord256(data))
 			fmt.Printf(" => 0x%X\n", data)
 
 		case CALLDATASIZE: // 0x36
@@ -357,7 +358,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			fmt.Printf(" => [%v, %v, %v] %X\n", memOff, codeOff, length, data)
 
 		case GASPRICE_DEPRECATED: // 0x3A
-			stack.Push(Zero)
+			stack.Push(Zero256)
 			fmt.Printf(" => %X (GASPRICE IS DEPRECATED)\n")
 
 		case EXTCODESIZE: // 0x3B
@@ -365,11 +366,11 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			if ok = useGas(gas, GasGetAccount); !ok {
 				return nil, firstErr(err, ErrInsufficientGas)
 			}
-			account, err_ := vm.appState.GetAccount(addr)
-			if err_ != nil {
-				return nil, firstErr(err, err_)
+			acc := vm.appState.GetAccount(addr)
+			if acc == nil {
+				return nil, firstErr(err, ErrUnknownAddress)
 			}
-			code := account.Code
+			code := acc.Code
 			l := uint64(len(code))
 			stack.Push64(l)
 			fmt.Printf(" => %d\n", l)
@@ -379,11 +380,11 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			if ok = useGas(gas, GasGetAccount); !ok {
 				return nil, firstErr(err, ErrInsufficientGas)
 			}
-			account, err_ := vm.appState.GetAccount(addr)
-			if err_ != nil {
-				return nil, firstErr(err, err_)
+			acc := vm.appState.GetAccount(addr)
+			if acc == nil {
+				return nil, firstErr(err, ErrUnknownAddress)
 			}
-			code := account.Code
+			code := acc.Code
 			memOff := stack.Pop64()
 			codeOff := stack.Pop64()
 			length := stack.Pop64()
@@ -399,11 +400,11 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			fmt.Printf(" => [%v, %v, %v] %X\n", memOff, codeOff, length, data)
 
 		case BLOCKHASH: // 0x40
-			stack.Push(Zero)
+			stack.Push(Zero256)
 			fmt.Printf(" => 0x%X (NOT SUPPORTED)\n", stack.Peek().Bytes())
 
 		case COINBASE: // 0x41
-			stack.Push(Zero)
+			stack.Push(Zero256)
 			fmt.Printf(" => 0x%X (NOT SUPPORTED)\n", stack.Peek().Bytes())
 
 		case TIMESTAMP: // 0x42
@@ -430,7 +431,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			if !ok {
 				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
-			stack.Push(RightPadWord(data))
+			stack.Push(RightPadWord256(data))
 			fmt.Printf(" => 0x%X\n", data)
 
 		case MSTORE: // 0x52
@@ -452,21 +453,14 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 
 		case SLOAD: // 0x54
 			loc := stack.Pop()
-			data, _ := vm.appState.GetStorage(callee.Address, loc)
+			data := vm.appState.GetStorage(callee.Address, loc)
 			stack.Push(data)
 			fmt.Printf(" {0x%X : 0x%X}\n", loc, data)
 
 		case SSTORE: // 0x55
 			loc, data := stack.Pop(), stack.Pop()
-			updated, err_ := vm.appState.SetStorage(callee.Address, loc, data)
-			if err = firstErr(err, err_); err != nil {
-				return nil, err
-			}
-			if updated {
-				useGas(gas, GasStorageUpdate)
-			} else {
-				useGas(gas, GasStorageCreate)
-			}
+			vm.appState.SetStorage(callee.Address, loc, data)
+			useGas(gas, GasStorageUpdate)
 			fmt.Printf(" {0x%X : 0x%X}\n", loc, data)
 
 		case JUMP: // 0x56
@@ -501,7 +495,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			if !ok {
 				return nil, firstErr(err, ErrCodeOutOfBounds)
 			}
-			res := RightPadWord(codeSegment)
+			res := RightPadWord256(codeSegment)
 			stack.Push(res)
 			pc += a
 			fmt.Printf(" => 0x%X\n", res)
@@ -518,7 +512,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 
 		case LOG0, LOG1, LOG2, LOG3, LOG4:
 			n := int(op - LOG0)
-			topics := make([]Word, n)
+			topics := make([]Word256, n)
 			offset, size := stack.Pop64(), stack.Pop64()
 			for i := 0; i < n; i++ {
 				topics[i] = stack.Pop()
@@ -551,19 +545,14 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 
 			// TODO charge for gas to create account _ the code length * GasCreateByte
 
-			newAccount, err := vm.appState.CreateAccount(callee)
-			if err != nil {
-				stack.Push(Zero)
-				fmt.Printf(" (*) 0x0 %v\n", err)
+			newAccount := vm.appState.CreateAccount(callee)
+			// Run the input to get the contract code.
+			ret, err_ := vm.Call(callee, newAccount, input, input, contractValue, gas)
+			if err_ != nil {
+				stack.Push(Zero256)
 			} else {
-				// Run the input to get the contract code.
-				ret, err_ := vm.Call(callee, newAccount, input, input, contractValue, gas)
-				if err_ != nil {
-					stack.Push(Zero)
-				} else {
-					newAccount.Code = ret // Set the code
-					stack.Push(newAccount.Address)
-				}
+				newAccount.Code = ret // Set the code
+				stack.Push(newAccount.Address)
 			}
 
 		case CALL, CALLCODE: // 0xF1, 0xF2
@@ -598,22 +587,22 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 				if ok = useGas(gas, GasGetAccount); !ok {
 					return nil, firstErr(err, ErrInsufficientGas)
 				}
-				account, err_ := vm.appState.GetAccount(addr)
-				if err = firstErr(err, err_); err != nil {
-					return nil, err
+				acc := vm.appState.GetAccount(addr)
+				if acc == nil {
+					return nil, firstErr(err, ErrUnknownAddress)
 				}
 				if op == CALLCODE {
-					ret, err = vm.Call(callee, callee, account.Code, args, value, gas)
+					ret, err = vm.Call(callee, callee, acc.Code, args, value, gas)
 				} else {
-					ret, err = vm.Call(callee, account, account.Code, args, value, gas)
+					ret, err = vm.Call(callee, acc, acc.Code, args, value, gas)
 				}
 			}
 
 			// Push result
 			if err != nil {
-				stack.Push(Zero)
+				stack.Push(Zero256)
 			} else {
-				stack.Push(One)
+				stack.Push(One256)
 				dest, ok := subslice(memory, retOffset, retSize, false)
 				if !ok {
 					return nil, firstErr(err, ErrMemoryOutOfBounds)
@@ -640,15 +629,15 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			if ok = useGas(gas, GasGetAccount); !ok {
 				return nil, firstErr(err, ErrInsufficientGas)
 			}
-			// TODO if the receiver is Zero, then make it the fee.
-			receiver, err_ := vm.appState.GetAccount(addr)
-			if err = firstErr(err, err_); err != nil {
-				return nil, err
+			// TODO if the receiver is Zero256, then make it the fee.
+			receiver := vm.appState.GetAccount(addr)
+			if receiver == nil {
+				return nil, firstErr(err, ErrUnknownAddress)
 			}
 			balance := callee.Balance
 			receiver.Balance += balance
 			vm.appState.UpdateAccount(receiver)
-			vm.appState.DeleteAccount(callee)
+			vm.appState.RemoveAccount(callee)
 			fmt.Printf(" => (%X) %v\n", addr[:4], balance)
 			fallthrough
 

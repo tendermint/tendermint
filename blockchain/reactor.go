@@ -194,7 +194,7 @@ FOR_LOOP:
 					break SYNC_LOOP
 				} else {
 					bcR.pool.PopRequest()
-					err := bcR.state.AppendBlock(first, firstPartsHeader)
+					err := sm.ExecBlock(bcR.state, first, firstPartsHeader)
 					if err != nil {
 						// TODO This is bad, are we zombie?
 						panic(Fmt("Failed to process committed block: %v", err))

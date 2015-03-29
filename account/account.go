@@ -38,13 +38,13 @@ type Account struct {
 	StorageRoot []byte // VM storage merkle root.
 }
 
-func (account *Account) Copy() *Account {
-	accountCopy := *account
-	return &accountCopy
+func (acc *Account) Copy() *Account {
+	accCopy := *acc
+	return &accCopy
 }
 
-func (account *Account) String() string {
-	return fmt.Sprintf("Account{%X:%v C:%v S:%X}", account.Address, account.PubKey, len(account.Code), account.StorageRoot)
+func (acc *Account) String() string {
+	return fmt.Sprintf("Account{%X:%v C:%v S:%X}", acc.Address, acc.PubKey, len(acc.Code), acc.StorageRoot)
 }
 
 func AccountEncoder(o interface{}, w io.Writer, n *int64, err *error) {
