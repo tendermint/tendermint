@@ -12,29 +12,29 @@ import (
 
 type Receipt struct {
 	TxHash          []byte
-	CreatesContract bool
+	CreatesContract uint8
 	ContractAddr    []byte
 }
 
 // pass pointer?
 // Note: tx must be signed
-func BroadcastTx(tx types.Tx) (*Receipt, error) {
+func BroadcastTx(tx types.Tx) (Receipt, error) {
 	err := mempoolReactor.BroadcastTx(tx)
 	if err != nil {
-		return nil, fmt.Errorf("Error broadcasting transaction: %v", err)
+		return Receipt{}, fmt.Errorf("Error broadcasting transaction: %v", err)
 	}
 
 	txHash := merkle.HashFromBinary(tx)
-	var createsContract bool
+	var createsContract uint8
 	var contractAddr []byte
 	// check if creates new contract
 	if callTx, ok := tx.(*types.CallTx); ok {
 		if callTx.Address == nil {
-			createsContract = true
+			createsContract = 1
 			contractAddr = state.NewContractAddress(callTx.Input.Address, uint64(callTx.Input.Sequence))
 		}
 	}
-	return &Receipt{txHash, createsContract, contractAddr}, nil
+	return Receipt{txHash, createsContract, contractAddr}, nil
 }
 
 /*

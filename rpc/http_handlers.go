@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/tendermint/tendermint/binary"
@@ -11,46 +12,20 @@ import (
 	"strconv"
 )
 
-// map each function to the argument names
-var argsMap = map[string][]string{
-	"status":           []string{},
-	"net_info":         []string{},
-	"blockchain":       []string{"min_height", "max_height"},
-	"get_block":        []string{"height"},
-	"get_account":      []string{"address"},
-	"list_validators":  []string{},
-	"broadcast_tx":     []string{"tx"},
-	"list_accounts":    []string{},
-	"gen_priv_account": []string{},
-	"sign_tx":          []string{"tx", "privAccounts"},
-}
-
 // cache all type information about each function up front
+// (func, responseStruct, argNames)
+// XXX: response structs are allocated once and reused - will this cause an issue eg. if a field ever not overwritten?
 var funcMap = map[string]*FuncWrapper{
-	"status":           funcWrap("status", core.Status),
-	"net_info":         funcWrap("net_info", core.NetInfo),
-	"blockchain":       funcWrap("blockchain", core.BlockchainInfo),
-	"get_block":        funcWrap("get_block", core.GetBlock),
-	"get_account":      funcWrap("get_account", core.GetAccount),
-	"list_validators":  funcWrap("list_validators", core.ListValidators),
-	"broadcast_tx":     funcWrap("broadcast_tx", core.BroadcastTx),
-	"list_accounts":    funcWrap("list_accounts", core.ListAccounts),
-	"gen_priv_account": funcWrap("gen_priv_account", core.GenPrivAccount),
-	"sign_tx":          funcWrap("sign_tx", core.SignTx),
-}
-
-// map each function to an empty struct which can hold its return values
-var responseMap = map[string]reflect.Value{
-	"status":           reflect.ValueOf(&ResponseStatus{}),
-	"net_info":         reflect.ValueOf(&ResponseNetInfo{}),
-	"blockchain":       reflect.ValueOf(&ResponseBlockchainInfo{}),
-	"get_block":        reflect.ValueOf(&ResponseGetBlock{}),
-	"get_account":      reflect.ValueOf(&ResponseGetAccount{}),
-	"list_validators":  reflect.ValueOf(&ResponseListValidators{}),
-	"broadcast_tx":     reflect.ValueOf(&ResponseBroadcastTx{}),
-	"list_accounts":    reflect.ValueOf(&ResponseListAccounts{}),
-	"gen_priv_account": reflect.ValueOf(&ResponseGenPrivAccount{}),
-	"sign_tx":          reflect.ValueOf(&ResponseSignTx{}),
+	"status":                  funcWrap(core.Status, &ResponseStatus{}, []string{}),
+	"net_info":                funcWrap(core.NetInfo, &ResponseNetInfo{}, []string{}),
+	"blockchain":              funcWrap(core.BlockchainInfo, &ResponseBlockchainInfo{}, []string{"min_height", "max_height"}),
+	"get_block":               funcWrap(core.GetBlock, &ResponseGetBlock{}, []string{"height"}),
+	"get_account":             funcWrap(core.GetAccount, &ResponseGetAccount{}, []string{"address"}),
+	"list_validators":         funcWrap(core.ListValidators, &ResponseListValidators{}, []string{}),
+	"broadcast_tx":            funcWrap(core.BroadcastTx, &ResponseBroadcastTx{}, []string{"tx"}),
+	"list_accounts":           funcWrap(core.ListAccounts, &ResponseListAccounts{}, []string{}),
+	"unsafe/gen_priv_account": funcWrap(core.GenPrivAccount, &ResponseGenPrivAccount{}, []string{}),
+	"unsafe/sign_tx":          funcWrap(core.SignTx, &ResponseSignTx{}, []string{"tx", "privAccounts"}),
 }
 
 // holds all type information for each function
@@ -62,13 +37,13 @@ type FuncWrapper struct {
 	response reflect.Value  // response struct (to be filled with "returns")
 }
 
-func funcWrap(name string, f interface{}) *FuncWrapper {
+func funcWrap(f interface{}, response interface{}, args []string) *FuncWrapper {
 	return &FuncWrapper{
 		f:        reflect.ValueOf(f),
 		args:     funcArgTypes(f),
 		returns:  funcReturnTypes(f),
-		argNames: argsMap[name],
-		response: responseMap[name],
+		argNames: args,
+		response: reflect.ValueOf(response),
 	}
 }
 
@@ -91,8 +66,78 @@ func toHandler(funcName string) func(http.ResponseWriter, *http.Request) {
 	}
 }
 
-// covert an http query to a list of properly typed values
-// to be properly decoded the arg must be a concrete type from tendermint
+// convert a (json) string to a given type
+func jsonToArg(ty reflect.Type, arg string) (reflect.Value, error) {
+	v := reflect.New(ty).Elem()
+	kind := v.Kind()
+	var err error
+	switch kind {
+	case reflect.Interface:
+		v = reflect.New(ty)
+		binary.ReadJSON(v.Interface(), []byte(arg), &err)
+		if err != nil {
+			return v, err
+		}
+		v = v.Elem()
+	case reflect.Struct:
+		binary.ReadJSON(v.Interface(), []byte(arg), &err)
+		if err != nil {
+			return v, err
+		}
+	case reflect.Slice:
+		rt := ty.Elem()
+		if rt.Kind() == reflect.Uint8 {
+			// if hex, decode
+			if len(arg) > 2 && arg[:2] == "0x" {
+				arg = arg[2:]
+				b, err := hex.DecodeString(arg)
+				if err != nil {
+					return v, err
+				}
+				v = reflect.ValueOf(b)
+			} else {
+				v = reflect.ValueOf([]byte(arg))
+			}
+		} else {
+			v = reflect.New(ty)
+			binary.ReadJSON(v.Interface(), []byte(arg), &err)
+			if err != nil {
+				return v, err
+			}
+			v = v.Elem()
+		}
+	case reflect.Int64:
+		u, err := strconv.ParseInt(arg, 10, 64)
+		if err != nil {
+			return v, err
+		}
+		v = reflect.ValueOf(u)
+	case reflect.Int32:
+		u, err := strconv.ParseInt(arg, 10, 32)
+		if err != nil {
+			return v, err
+		}
+		v = reflect.ValueOf(u)
+	case reflect.Uint64:
+		u, err := strconv.ParseUint(arg, 10, 64)
+		if err != nil {
+			return v, err
+		}
+		v = reflect.ValueOf(u)
+	case reflect.Uint:
+		u, err := strconv.ParseUint(arg, 10, 32)
+		if err != nil {
+			return v, err
+		}
+		v = reflect.ValueOf(u)
+	default:
+		v = reflect.ValueOf(arg)
+	}
+	return v, nil
+}
+
+// covert an http query to a list of properly typed values.
+// to be properly decoded the arg must be a concrete type from tendermint (if its an interface).
 func queryToValues(funcInfo *FuncWrapper, r *http.Request) ([]reflect.Value, error) {
 	argTypes := funcInfo.args
 	argNames := funcInfo.argNames
@@ -101,72 +146,26 @@ func queryToValues(funcInfo *FuncWrapper, r *http.Request) ([]reflect.Value, err
 	values := make([]reflect.Value, len(argNames))
 	for i, name := range argNames {
 		ty := argTypes[i]
-		v := reflect.New(ty).Elem()
-		kind := v.Kind()
 		arg := GetParam(r, name)
-		switch kind {
-		case reflect.Interface:
-			v = reflect.New(ty)
-			binary.ReadJSON(v.Interface(), []byte(arg), &err)
-			if err != nil {
-				return nil, err
-			}
-			v = v.Elem()
-		case reflect.Struct:
-			binary.ReadJSON(v.Interface(), []byte(arg), &err)
-			if err != nil {
-				return nil, err
-			}
-		case reflect.Slice:
-			rt := ty.Elem()
-			if rt.Kind() == reflect.Uint8 {
-				v = reflect.ValueOf([]byte(arg))
-			} else {
-				v = reflect.New(ty)
-				binary.ReadJSON(v.Interface(), []byte(arg), &err)
-				if err != nil {
-					return nil, err
-				}
-				v = v.Elem()
-			}
-		case reflect.Int64:
-			u, err := strconv.ParseInt(arg, 10, 64)
-			if err != nil {
-				return nil, err
-			}
-			v = reflect.ValueOf(u)
-		case reflect.Int32:
-			u, err := strconv.ParseInt(arg, 10, 32)
-			if err != nil {
-				return nil, err
-			}
-			v = reflect.ValueOf(u)
-		case reflect.Uint64:
-			u, err := strconv.ParseUint(arg, 10, 64)
-			if err != nil {
-				return nil, err
-			}
-			v = reflect.ValueOf(u)
-		case reflect.Uint:
-			u, err := strconv.ParseUint(arg, 10, 32)
-			if err != nil {
-				return nil, err
-			}
-			v = reflect.ValueOf(u)
-		default:
-			v = reflect.ValueOf(arg)
+		values[i], err = jsonToArg(ty, arg)
+		if err != nil {
+			return nil, err
 		}
-		values[i] = v
 	}
 	return values, nil
 }
 
 // covert a list of interfaces to properly typed values
 // TODO!
-func paramsToValues(funcInfo *FuncWrapper, params []interface{}) ([]reflect.Value, error) {
+func paramsToValues(funcInfo *FuncWrapper, params []string) ([]reflect.Value, error) {
 	values := make([]reflect.Value, len(params))
 	for i, p := range params {
-		values[i] = reflect.ValueOf(p)
+		ty := funcInfo.args[i]
+		v, err := jsonToArg(ty, p)
+		if err != nil {
+			return nil, err
+		}
+		values[i] = v
 	}
 	return values, nil
 }
@@ -228,8 +227,8 @@ func initHandlers() {
 	http.HandleFunc("/list_validators", toHandler("list_validators"))
 	http.HandleFunc("/broadcast_tx", toHandler("broadcast_tx"))
 	http.HandleFunc("/list_accounts", toHandler("list_accounts"))
-	http.HandleFunc("/unsafe/gen_priv_account", toHandler("gen_priv_account"))
-	http.HandleFunc("/unsafe/sign_tx", toHandler("sign_tx"))
+	http.HandleFunc("/unsafe/gen_priv_account", toHandler("unsafe/gen_priv_account"))
+	http.HandleFunc("/unsafe/sign_tx", toHandler("unsafe/sign_tx"))
 	//http.HandleFunc("/call", CallHandler)
 	//http.HandleFunc("/get_storage", GetStorageHandler)
 
@@ -241,10 +240,10 @@ func initHandlers() {
 }
 
 type JsonRpc struct {
-	JsonRpc string        `json:"jsonrpc"`
-	Method  string        `json:"method"`
-	Params  []interface{} `json:"params"`
-	Id      int           `json:"id"`
+	JsonRpc string   `json:"jsonrpc"`
+	Method  string   `json:"method"`
+	Params  []string `json:"params"`
+	Id      int      `json:"id"`
 }
 
 // this will panic if not passed a function

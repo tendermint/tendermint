@@ -64,58 +64,28 @@ func init() {
 	<-ready
 }
 
-func TestSayHello(t *testing.T) {
-	resp, err := http.Get(requestAddr + "status")
-	if err != nil {
-		t.Fatal(err)
+func getAccount(t *testing.T, typ string, addr []byte) *account.Account {
+	var resp *http.Response
+	var err error
+	switch typ {
+	case "JSONRPC":
+		s := rpc.JsonRpc{
+			JsonRpc: "2.0",
+			Method:  "get_account",
+			Params:  []string{"0x" + hex.EncodeToString(addr)},
+			Id:      0,
+		}
+		b, err := json.Marshal(s)
+		if err != nil {
+			t.Fatal(err)
+		}
+		buf := bytes.NewBuffer(b)
+		resp, err = http.Post(requestAddr, "text/json", buf)
+	case "HTTP":
+		resp, err = http.PostForm(requestAddr+"get_account",
+			url.Values{"address": {string(addr)}})
 	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var status struct {
-		Status string
-		Data   rpc.ResponseStatus
-	}
-	err = json.Unmarshal(body, &status)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if status.Data.Network != config.App().GetString("Network") {
-		t.Fatal(fmt.Errorf("Network mismatch: got %s expected %s", status.Data.Network, config.App().Get("Network")))
-	}
-}
-
-func TestGenPriv(t *testing.T) {
-	resp, err := http.Get(requestAddr + "unsafe/gen_priv_account")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resp.StatusCode != 200 {
-		t.Fatal(resp)
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var status struct {
-		Status string
-		Data   rpc.ResponseGenPrivAccount
-	}
-	binary.ReadJSON(&status, body, &err)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(status.Data.PrivAccount.Address) == 0 {
-		t.Fatal("Failed to generate an address")
-	}
-}
-
-func getAccount(t *testing.T, addr []byte) *account.Account {
-	resp, err := http.PostForm(requestAddr+"get_account",
-		url.Values{"address": {string(addr)}})
+	fmt.Println("RESPONSE:", resp)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,17 +107,8 @@ func getAccount(t *testing.T, addr []byte) *account.Account {
 	return status.Data.Account
 }
 
-func TestGetAccount(t *testing.T) {
-	byteAddr, _ := hex.DecodeString(userAddr)
-	acc := getAccount(t, byteAddr)
-	if bytes.Compare(acc.Address, byteAddr) != 0 {
-		t.Fatalf("Failed to get correct account. Got %x, expected %x", acc.Address, byteAddr)
-	}
-
-}
-
-func makeTx(t *testing.T, from, to []byte, amt uint64) *types.SendTx {
-	acc := getAccount(t, from)
+func makeTx(t *testing.T, typ string, from, to []byte, amt uint64) *types.SendTx {
+	acc := getAccount(t, typ, from)
 	nonce := 0
 	if acc != nil {
 		nonce = int(acc.Sequence) + 1
@@ -193,32 +154,19 @@ func requestResponse(t *testing.T, method string, values url.Values, status inte
 	}
 }
 
-func TestSignedTx(t *testing.T) {
-	byteAddr, _ := hex.DecodeString(userAddr)
-	var byteKey [64]byte
-	oh, _ := hex.DecodeString(userPriv)
-	copy(byteKey[:], oh)
+func signTx(t *testing.T, typ string, fromAddr, toAddr []byte, key [64]byte, amt uint64) (*types.SendTx, *account.PrivAccount) {
+	tx := makeTx(t, typ, fromAddr, toAddr, amt)
 
-	amt := uint64(100)
-	toAddr := []byte{20, 143, 25, 63, 16, 177, 83, 29, 91, 91, 54, 23, 233, 46, 190, 121, 122, 34, 86, 54}
-	tx := makeTx(t, byteAddr, toAddr, amt)
-
-	/*b, err := json.Marshal(rpc.InterfaceType{types.TxTypeSend, tx})
-	if err != nil {
-		t.Fatal(err)
-	}*/
-
-	n := new(int64)
+	n, w := new(int64), new(bytes.Buffer)
 	var err error
-	w := new(bytes.Buffer)
 	binary.WriteJSON(tx, w, n, &err)
 	if err != nil {
 		t.Fatal(err)
 	}
 	b := w.Bytes()
 
-	privAcc := account.GenPrivAccountFromKey(byteKey)
-	if bytes.Compare(privAcc.PubKey.Address(), byteAddr) != 0 {
+	privAcc := account.GenPrivAccountFromKey(key)
+	if bytes.Compare(privAcc.PubKey.Address(), fromAddr) != 0 {
 		t.Fatal("Faield to generate correct priv acc")
 	}
 	w = new(bytes.Buffer)
@@ -233,14 +181,16 @@ func TestSignedTx(t *testing.T) {
 		Error  string
 	}
 	requestResponse(t, "unsafe/sign_tx", url.Values{"tx": {string(b)}, "privAccounts": {string(w.Bytes())}}, &status)
-
 	if status.Status == "ERROR" {
 		t.Fatal(status.Error)
 	}
 	response := status.Data
-	//tx = status.Data.(rpc.ResponseSignTx).Tx.(*types.SendTx)
 	tx = response.Tx.(*types.SendTx)
-	if bytes.Compare(tx.Inputs[0].Address, byteAddr) != 0 {
+	return tx, privAcc
+}
+
+func checkTx(t *testing.T, fromAddr []byte, priv *account.PrivAccount, tx *types.SendTx) {
+	if bytes.Compare(tx.Inputs[0].Address, fromAddr) != 0 {
 		t.Fatal("Tx input addresses don't match!")
 	}
 
@@ -250,7 +200,7 @@ func TestSignedTx(t *testing.T) {
 	if err := in.ValidateBasic(); err != nil {
 		t.Fatal(err)
 	}
-	fmt.Println(privAcc.PubKey, in.PubKey)
+	fmt.Println(priv.PubKey, in.PubKey)
 	// Check signatures
 	// acc := getAccount(t, byteAddr)
 	// NOTE: using the acc here instead of the in fails; its PubKeyNil ... ?
@@ -258,28 +208,3 @@ func TestSignedTx(t *testing.T) {
 		t.Fatal(types.ErrTxInvalidSignature)
 	}
 }
-
-func TestBroadcastTx(t *testing.T) {
-	/*
-		byteAddr, _ := hex.DecodeString(userAddr)
-
-		amt := uint64(100)
-		toAddr := []byte{20, 143, 25, 63, 16, 177, 83, 29, 91, 91, 54, 23, 233, 46, 190, 121, 122, 34, 86, 54}
-		tx := makeTx(t, byteAddr, toAddr, amt)
-
-		b, err := json.Marshal([]interface{}{types.TxTypeSend, tx})
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		var status struct {
-			Status string
-			Data   rpc.ResponseSignTx
-		}
-		// TODO ...
-	*/
-}
-
-/*tx.Inputs[0].Signature = mint.priv.PrivKey.Sign(account.SignBytes(tx))
-err = mint.MempoolReactor.BroadcastTx(tx)
-return hex.EncodeToString(merkle.HashFromBinary(tx)), err*/
