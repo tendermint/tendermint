@@ -6,20 +6,20 @@ import (
 
 //-----------------------------------------------------------------------------
 
-func GenPrivAccount() *account.PrivAccount {
-	return account.GenPrivAccount()
+func GenPrivAccount() (*ResponseGenPrivAccount, error) {
+	return &ResponseGenPrivAccount{account.GenPrivAccount()}, nil
 }
 
 //-----------------------------------------------------------------------------
 
-func GetAccount(address []byte) *account.Account {
+func GetAccount(address []byte) (*ResponseGetAccount, error) {
 	state := consensusState.GetState()
-	return state.GetAccount(address)
+	return &ResponseGetAccount{state.GetAccount(address)}, nil
 }
 
 //-----------------------------------------------------------------------------
 
-func ListAccounts() (uint, []*account.Account) {
+func ListAccounts() (*ResponseListAccounts, error) {
 	var blockHeight uint
 	var accounts []*account.Account
 	state := consensusState.GetState()
@@ -28,5 +28,5 @@ func ListAccounts() (uint, []*account.Account) {
 		accounts = append(accounts, value.(*account.Account))
 		return false
 	})
-	return blockHeight, accounts
+	return &ResponseListAccounts{blockHeight, accounts}, nil
 }

@@ -9,7 +9,7 @@ import (
 
 //-----------------------------------------------------------------------------
 
-func Status() ([]byte, string, []byte, uint, int64) {
+func Status() (*ResponseStatus, error) {
 	db := dbm.NewMemDB()
 	genesisState := sm.MakeGenesisStateFromFile(db, config.App().GetString("GenesisFile"))
 	genesisHash := genesisState.Hash()
@@ -25,15 +25,15 @@ func Status() ([]byte, string, []byte, uint, int64) {
 		latestBlockTime = latestBlockMeta.Header.Time.UnixNano()
 	}
 
-	return genesisHash, config.App().GetString("Network"), latestBlockHash, latestHeight, latestBlockTime
+	return &ResponseStatus{genesisHash, config.App().GetString("Network"), latestBlockHash, latestHeight, latestBlockTime}, nil
 }
 
 //-----------------------------------------------------------------------------
 
-func NetInfo() (int, bool, string) {
+func NetInfo() (*ResponseNetInfo, error) {
 	o, i, _ := p2pSwitch.NumPeers()
 	numPeers := o + i
 	listening := p2pSwitch.IsListening()
 	network := config.App().GetString("Network")
-	return numPeers, listening, network
+	return &ResponseNetInfo{numPeers, listening, network}, nil
 }

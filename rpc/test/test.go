@@ -12,6 +12,7 @@ import (
 	"github.com/tendermint/tendermint/logger"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/rpc"
+	"github.com/tendermint/tendermint/rpc/core"
 	"github.com/tendermint/tendermint/types"
 	"io/ioutil"
 	"net/http"
@@ -101,7 +102,7 @@ func getAccount(t *testing.T, typ string, addr []byte) *account.Account {
 	}
 	var status struct {
 		Status string
-		Data   rpc.ResponseGetAccount
+		Data   core.ResponseGetAccount
 		Error  string
 	}
 	fmt.Println(string(body))
@@ -182,7 +183,7 @@ func signTx(t *testing.T, typ string, fromAddr, toAddr []byte, key [64]byte, amt
 
 	var status struct {
 		Status string
-		Data   rpc.ResponseSignTx
+		Data   core.ResponseSignTx
 		Error  string
 	}
 	requestResponse(t, "unsafe/sign_tx", url.Values{"tx": {string(b)}, "privAccounts": {string(w.Bytes())}}, &status)

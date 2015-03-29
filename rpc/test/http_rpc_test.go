@@ -8,7 +8,7 @@ import (
 	"github.com/tendermint/tendermint/binary"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/merkle"
-	"github.com/tendermint/tendermint/rpc"
+	"github.com/tendermint/tendermint/rpc/core"
 	"github.com/tendermint/tendermint/types"
 	"io/ioutil"
 	"net/http"
@@ -28,7 +28,7 @@ func TestHTTPStatus(t *testing.T) {
 	}
 	var status struct {
 		Status string
-		Data   rpc.ResponseStatus
+		Data   core.ResponseStatus
 		Error  string
 	}
 	err = json.Unmarshal(body, &status)
@@ -56,7 +56,7 @@ func TestHTTPGenPriv(t *testing.T) {
 	}
 	var status struct {
 		Status string
-		Data   rpc.ResponseGenPrivAccount
+		Data   core.ResponseGenPrivAccount
 		Error  string
 	}
 	binary.ReadJSON(&status, body, &err)
@@ -118,7 +118,7 @@ func TestHTTPBroadcastTx(t *testing.T) {
 
 	var status struct {
 		Status string
-		Data   rpc.ResponseBroadcastTx
+		Data   core.ResponseBroadcastTx
 		Error  string
 	}
 	requestResponse(t, "broadcast_tx", url.Values{"tx": {string(b)}}, &status)

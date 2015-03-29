@@ -1,8 +1,7 @@
-package rpc
+package core
 
 import (
 	"github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/rpc/core"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -32,7 +31,7 @@ type ResponseGetBlock struct {
 
 // curl -H 'content-type: text/plain;' http://127.0.0.1:8888/submit_tx?tx=...
 type ResponseBroadcastTx struct {
-	Receipt core.Receipt
+	Receipt Receipt
 }
 
 type ResponseStatus struct {

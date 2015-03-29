@@ -8,7 +8,7 @@ import (
 
 //-----------------------------------------------------------------------------
 
-func SignTx(tx types.Tx, privAccounts []*account.PrivAccount) (types.Tx, error) {
+func SignTx(tx types.Tx, privAccounts []*account.PrivAccount) (*ResponseSignTx, error) {
 	// more checks?
 
 	for i, privAccount := range privAccounts {
@@ -40,5 +40,5 @@ func SignTx(tx types.Tx, privAccounts []*account.PrivAccount) (types.Tx, error) 
 		rebondTx := tx.(*types.RebondTx)
 		rebondTx.Signature = privAccounts[0].Sign(rebondTx).(account.SignatureEd25519)
 	}
-	return tx, nil
+	return &ResponseSignTx{tx}, nil
 }

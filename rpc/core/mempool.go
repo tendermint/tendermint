@@ -18,10 +18,10 @@ type Receipt struct {
 
 // pass pointer?
 // Note: tx must be signed
-func BroadcastTx(tx types.Tx) (Receipt, error) {
+func BroadcastTx(tx types.Tx) (*ResponseBroadcastTx, error) {
 	err := mempoolReactor.BroadcastTx(tx)
 	if err != nil {
-		return Receipt{}, fmt.Errorf("Error broadcasting transaction: %v", err)
+		return nil, fmt.Errorf("Error broadcasting transaction: %v", err)
 	}
 
 	txHash := merkle.HashFromBinary(tx)
@@ -34,7 +34,7 @@ func BroadcastTx(tx types.Tx) (Receipt, error) {
 			contractAddr = state.NewContractAddress(callTx.Input.Address, uint64(callTx.Input.Sequence))
 		}
 	}
-	return Receipt{txHash, createsContract, contractAddr}, nil
+	return &ResponseBroadcastTx{Receipt{txHash, createsContract, contractAddr}}, nil
 }
 
 /*

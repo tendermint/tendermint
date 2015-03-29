@@ -16,16 +16,16 @@ import (
 // (func, responseStruct, argNames)
 // XXX: response structs are allocated once and reused - will this cause an issue eg. if a field ever not overwritten?
 var funcMap = map[string]*FuncWrapper{
-	"status":                  funcWrap(core.Status, &ResponseStatus{}, []string{}),
-	"net_info":                funcWrap(core.NetInfo, &ResponseNetInfo{}, []string{}),
-	"blockchain":              funcWrap(core.BlockchainInfo, &ResponseBlockchainInfo{}, []string{"min_height", "max_height"}),
-	"get_block":               funcWrap(core.GetBlock, &ResponseGetBlock{}, []string{"height"}),
-	"get_account":             funcWrap(core.GetAccount, &ResponseGetAccount{}, []string{"address"}),
-	"list_validators":         funcWrap(core.ListValidators, &ResponseListValidators{}, []string{}),
-	"broadcast_tx":            funcWrap(core.BroadcastTx, &ResponseBroadcastTx{}, []string{"tx"}),
-	"list_accounts":           funcWrap(core.ListAccounts, &ResponseListAccounts{}, []string{}),
-	"unsafe/gen_priv_account": funcWrap(core.GenPrivAccount, &ResponseGenPrivAccount{}, []string{}),
-	"unsafe/sign_tx":          funcWrap(core.SignTx, &ResponseSignTx{}, []string{"tx", "privAccounts"}),
+	"status":                  funcWrap(core.Status, []string{}),
+	"net_info":                funcWrap(core.NetInfo, []string{}),
+	"blockchain":              funcWrap(core.BlockchainInfo, []string{"min_height", "max_height"}),
+	"get_block":               funcWrap(core.GetBlock, []string{"height"}),
+	"get_account":             funcWrap(core.GetAccount, []string{"address"}),
+	"list_validators":         funcWrap(core.ListValidators, []string{}),
+	"broadcast_tx":            funcWrap(core.BroadcastTx, []string{"tx"}),
+	"list_accounts":           funcWrap(core.ListAccounts, []string{}),
+	"unsafe/gen_priv_account": funcWrap(core.GenPrivAccount, []string{}),
+	"unsafe/sign_tx":          funcWrap(core.SignTx, []string{"tx", "privAccounts"}),
 }
 
 // holds all type information for each function
@@ -34,16 +34,14 @@ type FuncWrapper struct {
 	args     []reflect.Type // type of each function arg
 	returns  []reflect.Type // type of each return arg
 	argNames []string       // name of each argument
-	response reflect.Value  // response struct (to be filled with "returns")
 }
 
-func funcWrap(f interface{}, response interface{}, args []string) *FuncWrapper {
+func funcWrap(f interface{}, args []string) *FuncWrapper {
 	return &FuncWrapper{
 		f:        reflect.ValueOf(f),
 		args:     funcArgTypes(f),
 		returns:  funcReturnTypes(f),
 		argNames: args,
-		response: reflect.ValueOf(response),
 	}
 }
 
@@ -170,6 +168,16 @@ func paramsToValues(funcInfo *FuncWrapper, params []string) ([]reflect.Value, er
 	return values, nil
 }
 
+// returns is Response struct and error. If error is not nil, return it
+func returnsToResponse(funcInfo *FuncWrapper, returns []reflect.Value) (interface{}, error) {
+	errV := returns[1]
+	if errV.Interface() != nil {
+		return nil, fmt.Errorf("%v", errV.Interface())
+	}
+	return returns[0].Interface(), nil
+}
+
+/*
 // convert a list of values to a populated struct with the correct types
 func returnsToResponse(funcInfo *FuncWrapper, returns []reflect.Value) (interface{}, error) {
 	returnTypes := funcInfo.returns
@@ -190,7 +198,7 @@ func returnsToResponse(funcInfo *FuncWrapper, returns []reflect.Value) (interfac
 	}
 
 	return v.Interface(), nil
-}
+}*/
 
 // jsonrpc calls grab the given method's function info and runs reflect.Call
 func JsonRpcHandler(w http.ResponseWriter, r *http.Request) {

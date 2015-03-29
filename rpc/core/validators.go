@@ -6,7 +6,7 @@ import (
 
 //-----------------------------------------------------------------------------
 
-func ListValidators() (uint, []*sm.Validator, []*sm.Validator) {
+func ListValidators() (*ResponseListValidators, error) {
 	var blockHeight uint
 	var bondedValidators []*sm.Validator
 	var unbondingValidators []*sm.Validator
@@ -22,5 +22,5 @@ func ListValidators() (uint, []*sm.Validator, []*sm.Validator) {
 		return false
 	})
 
-	return blockHeight, bondedValidators, unbondingValidators
+	return &ResponseListValidators{blockHeight, bondedValidators, unbondingValidators}, nil
 }
