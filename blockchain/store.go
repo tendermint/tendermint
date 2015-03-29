@@ -57,7 +57,7 @@ func (bs *BlockStore) LoadBlock(height uint) *types.Block {
 	if r == nil {
 		panic(Fmt("Block does not exist at height %v", height))
 	}
-	meta := binary.ReadBinary(&BlockMeta{}, r, &n, &err).(*BlockMeta)
+	meta := binary.ReadBinary(&types.BlockMeta{}, r, &n, &err).(*types.BlockMeta)
 	if err != nil {
 		panic(Fmt("Error reading block meta: %v", err))
 	}
@@ -87,14 +87,14 @@ func (bs *BlockStore) LoadBlockPart(height uint, index uint) *types.Part {
 	return part
 }
 
-func (bs *BlockStore) LoadBlockMeta(height uint) *BlockMeta {
+func (bs *BlockStore) LoadBlockMeta(height uint) *types.BlockMeta {
 	var n int64
 	var err error
 	r := bs.GetReader(calcBlockMetaKey(height))
 	if r == nil {
 		panic(Fmt("BlockMeta does not exist for height %v", height))
 	}
-	meta := binary.ReadBinary(&BlockMeta{}, r, &n, &err).(*BlockMeta)
+	meta := binary.ReadBinary(&types.BlockMeta{}, r, &n, &err).(*types.BlockMeta)
 	if err != nil {
 		panic(Fmt("Error reading block meta: %v", err))
 	}
@@ -150,7 +150,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	}
 
 	// Save block meta
-	meta := makeBlockMeta(block, blockParts)
+	meta := types.NewBlockMeta(block, blockParts)
 	metaBytes := binary.BinaryBytes(meta)
 	bs.db.Set(calcBlockMetaKey(height), metaBytes)
 
@@ -180,22 +180,6 @@ func (bs *BlockStore) saveBlockPart(height uint, index uint, part *types.Part) {
 	}
 	partBytes := binary.BinaryBytes(part)
 	bs.db.Set(calcBlockPartKey(height, index), partBytes)
-}
-
-//-----------------------------------------------------------------------------
-
-type BlockMeta struct {
-	Hash   []byte              // The block hash
-	Header *types.Header       // The block's Header
-	Parts  types.PartSetHeader // The PartSetHeader, for transfer
-}
-
-func makeBlockMeta(block *types.Block, blockParts *types.PartSet) *BlockMeta {
-	return &BlockMeta{
-		Hash:   block.Hash(),
-		Header: block.Header,
-		Parts:  blockParts.Header(),
-	}
 }
 
 //-----------------------------------------------------------------------------

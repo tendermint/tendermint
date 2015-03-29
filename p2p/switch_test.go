@@ -69,11 +69,11 @@ func (tr *TestReactor) Receive(chId byte, peer *Peer, msgBytes []byte) {
 //-----------------------------------------------------------------------------
 
 // convenience method for creating two switches connected to each other.
-func makeSwitchPair(t testing.TB, reactorsGenerator func() []Reactor) (*Switch, *Switch) {
+func makeSwitchPair(t testing.TB, initSwitch func(*Switch) *Switch) (*Switch, *Switch) {
 
 	// Create two switches that will be interconnected.
-	s1 := NewSwitch(reactorsGenerator())
-	s2 := NewSwitch(reactorsGenerator())
+	s1 := initSwitch(NewSwitch())
+	s2 := initSwitch(NewSwitch())
 
 	// Create a listener for s1
 	l := NewDefaultListener("tcp", ":8001", true)
@@ -104,18 +104,17 @@ func makeSwitchPair(t testing.TB, reactorsGenerator func() []Reactor) (*Switch, 
 }
 
 func TestSwitches(t *testing.T) {
-	s1, s2 := makeSwitchPair(t, func() []Reactor {
+	s1, s2 := makeSwitchPair(t, func(sw *Switch) *Switch {
 		// Make two reactors of two channels each
-		reactors := make([]Reactor, 2)
-		reactors[0] = NewTestReactor([]*ChannelDescriptor{
+		sw.AddReactor("foo", NewTestReactor([]*ChannelDescriptor{
 			&ChannelDescriptor{Id: byte(0x00), Priority: 10},
 			&ChannelDescriptor{Id: byte(0x01), Priority: 10},
-		}, true)
-		reactors[1] = NewTestReactor([]*ChannelDescriptor{
+		}, true)).Start(sw) // Start the reactor
+		sw.AddReactor("bar", NewTestReactor([]*ChannelDescriptor{
 			&ChannelDescriptor{Id: byte(0x02), Priority: 10},
 			&ChannelDescriptor{Id: byte(0x03), Priority: 10},
-		}, true)
-		return reactors
+		}, true)).Start(sw) // Start the reactor
+		return sw
 	})
 	defer s1.Stop()
 	defer s2.Stop()
@@ -129,8 +128,8 @@ func TestSwitches(t *testing.T) {
 	}
 
 	ch0Msg := "channel zero"
-	ch1Msg := "channel one"
-	ch2Msg := "channel two"
+	ch1Msg := "channel foo"
+	ch2Msg := "channel bar"
 
 	s1.Broadcast(byte(0x00), ch0Msg)
 	s1.Broadcast(byte(0x01), ch1Msg)
@@ -140,7 +139,7 @@ func TestSwitches(t *testing.T) {
 	time.Sleep(5000 * time.Millisecond)
 
 	// Check message on ch0
-	ch0Msgs := s2.Reactors()[0].(*TestReactor).msgsReceived[byte(0x00)]
+	ch0Msgs := s2.Reactor("foo").(*TestReactor).msgsReceived[byte(0x00)]
 	if len(ch0Msgs) != 2 {
 		t.Errorf("Expected to have received 1 message in ch0")
 	}
@@ -149,7 +148,7 @@ func TestSwitches(t *testing.T) {
 	}
 
 	// Check message on ch1
-	ch1Msgs := s2.Reactors()[0].(*TestReactor).msgsReceived[byte(0x01)]
+	ch1Msgs := s2.Reactor("foo").(*TestReactor).msgsReceived[byte(0x01)]
 	if len(ch1Msgs) != 1 {
 		t.Errorf("Expected to have received 1 message in ch1")
 	}
@@ -158,7 +157,7 @@ func TestSwitches(t *testing.T) {
 	}
 
 	// Check message on ch2
-	ch2Msgs := s2.Reactors()[1].(*TestReactor).msgsReceived[byte(0x02)]
+	ch2Msgs := s2.Reactor("bar").(*TestReactor).msgsReceived[byte(0x02)]
 	if len(ch2Msgs) != 1 {
 		t.Errorf("Expected to have received 1 message in ch2")
 	}
@@ -172,18 +171,17 @@ func BenchmarkSwitches(b *testing.B) {
 
 	b.StopTimer()
 
-	s1, s2 := makeSwitchPair(b, func() []Reactor {
-		// Make two reactors of two channels each
-		reactors := make([]Reactor, 2)
-		reactors[0] = NewTestReactor([]*ChannelDescriptor{
+	s1, s2 := makeSwitchPair(b, func(sw *Switch) *Switch {
+		// Make bar reactors of bar channels each
+		sw.AddReactor("foo", NewTestReactor([]*ChannelDescriptor{
 			&ChannelDescriptor{Id: byte(0x00), Priority: 10},
 			&ChannelDescriptor{Id: byte(0x01), Priority: 10},
-		}, false)
-		reactors[1] = NewTestReactor([]*ChannelDescriptor{
+		}, false))
+		sw.AddReactor("bar", NewTestReactor([]*ChannelDescriptor{
 			&ChannelDescriptor{Id: byte(0x02), Priority: 10},
 			&ChannelDescriptor{Id: byte(0x03), Priority: 10},
-		}, false)
-		return reactors
+		}, false))
+		return sw
 	})
 	defer s1.Stop()
 	defer s2.Stop()
@@ -194,7 +192,7 @@ func BenchmarkSwitches(b *testing.B) {
 
 	numSuccess, numFailure := 0, 0
 
-	// Send random message from one channel to another
+	// Send random message from foo channel to another
 	for i := 0; i < b.N; i++ {
 		chId := byte(i % 4)
 		successChan := s1.Broadcast(chId, "test data")

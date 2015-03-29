@@ -2,7 +2,6 @@ package state
 
 import (
 	"github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/binary"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/types"
 
@@ -91,7 +90,7 @@ func TestGenesisSaveLoad(t *testing.T) {
 
 	// Make complete block and blockParts
 	block := makeBlock(t, s0, nil, nil)
-	blockParts := types.NewPartSetFromData(binary.BinaryBytes(block))
+	blockParts := block.MakePartSet()
 
 	// Now append the block to s0.
 	err := s0.AppendBlock(block, blockParts.Header())
@@ -338,7 +337,7 @@ func TestAddValidator(t *testing.T) {
 
 	// Make complete block and blockParts
 	block0 := makeBlock(t, s0, nil, []types.Tx{bondTx})
-	block0Parts := types.NewPartSetFromData(binary.BinaryBytes(block0))
+	block0Parts := block0.MakePartSet()
 
 	// Sanity check
 	if s0.BondedValidators.Size() != 1 {
@@ -379,7 +378,7 @@ func TestAddValidator(t *testing.T) {
 			},
 		}, nil,
 	)
-	block1Parts := types.NewPartSetFromData(binary.BinaryBytes(block1))
+	block1Parts := block1.MakePartSet()
 	err = s0.AppendBlock(block1, block1Parts.Header())
 	if err != nil {
 		t.Error("Error appending secondary block:", err)

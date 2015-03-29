@@ -62,6 +62,7 @@ import (
 
 	"github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
+	bc "github.com/tendermint/tendermint/blockchain"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/config"
 	. "github.com/tendermint/tendermint/consensus/types"
@@ -234,7 +235,7 @@ type ConsensusState struct {
 	stopped uint32
 	quit    chan struct{}
 
-	blockStore     *types.BlockStore
+	blockStore     *bc.BlockStore
 	mempoolReactor *mempl.MempoolReactor
 	runActionCh    chan RoundAction
 	newStepCh      chan *RoundState
@@ -247,7 +248,7 @@ type ConsensusState struct {
 	lastCommitVoteHeight uint         // Last called commitVoteBlock() or saveCommitVoteBlock() on.
 }
 
-func NewConsensusState(state *sm.State, blockStore *types.BlockStore, mempoolReactor *mempl.MempoolReactor) *ConsensusState {
+func NewConsensusState(state *sm.State, blockStore *bc.BlockStore, mempoolReactor *mempl.MempoolReactor) *ConsensusState {
 	cs := &ConsensusState{
 		quit:           make(chan struct{}),
 		blockStore:     blockStore,
@@ -255,7 +256,7 @@ func NewConsensusState(state *sm.State, blockStore *types.BlockStore, mempoolRea
 		runActionCh:    make(chan RoundAction, 1),
 		newStepCh:      make(chan *RoundState, 1),
 	}
-	cs.updateToState(state)
+	cs.updateToState(state, true)
 	return cs
 }
 
@@ -456,9 +457,9 @@ ACTION_LOOP:
 // If calculated round is greater than 0 (based on BlockTime or calculated StartTime)
 // then also sets up the appropriate round, and cs.Step becomes RoundStepNewRound.
 // Otherwise the round is 0 and cs.Step becomes RoundStepNewHeight.
-func (cs *ConsensusState) updateToState(state *sm.State) {
+func (cs *ConsensusState) updateToState(state *sm.State, contiguous bool) {
 	// Sanity check state.
-	if cs.Height > 0 && cs.Height != state.LastBlockHeight {
+	if contiguous && cs.Height > 0 && cs.Height != state.LastBlockHeight {
 		panic(Fmt("updateToState() expected state height of %v but found %v",
 			cs.Height, state.LastBlockHeight))
 	}
@@ -466,6 +467,8 @@ func (cs *ConsensusState) updateToState(state *sm.State) {
 	// Reset fields based on state.
 	validators := state.BondedValidators
 	height := state.LastBlockHeight + 1 // next desired block height
+
+	// RoundState fields
 	cs.Height = height
 	cs.Round = 0
 	cs.Step = RoundStepNewHeight
@@ -641,12 +644,12 @@ func (cs *ConsensusState) RunActionPropose(height uint, round uint) {
 			return
 		}
 
-		blockParts = types.NewPartSetFromData(binary.BinaryBytes(block))
+		blockParts = block.MakePartSet()
 		pol = cs.LockedPOL // If exists, is a PoUnlock.
 	}
 
 	if pol != nil {
-		polParts = types.NewPartSetFromData(binary.BinaryBytes(pol))
+		polParts = pol.MakePartSet()
 	}
 
 	// Make proposal
@@ -856,7 +859,7 @@ func (cs *ConsensusState) TryFinalizeCommit(height uint) bool {
 			// We have the block, so save/stage/sign-commit-vote.
 			cs.saveCommitVoteBlock(cs.ProposalBlock, cs.ProposalBlockParts, cs.Commits)
 			// Increment height.
-			cs.updateToState(cs.stagedState)
+			cs.updateToState(cs.stagedState, true)
 			// cs.Step is now RoundStepNewHeight or RoundStepNewRound
 			cs.newStepCh <- cs.getRoundState()
 			return true

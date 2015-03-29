@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	MempoolCh = byte(0x30)
+	MempoolChannel = byte(0x30)
 )
 
 // MempoolReactor handles mempool tx broadcasting amongst peers.
@@ -52,7 +52,7 @@ func (memR *MempoolReactor) Stop() {
 func (memR *MempoolReactor) GetChannels() []*p2p.ChannelDescriptor {
 	return []*p2p.ChannelDescriptor{
 		&p2p.ChannelDescriptor{
-			Id:       MempoolCh,
+			Id:       MempoolChannel,
 			Priority: 5,
 		},
 	}
@@ -92,7 +92,7 @@ func (memR *MempoolReactor) Receive(chId byte, src *p2p.Peer, msgBytes []byte) {
 			if peer.Key == src.Key {
 				continue
 			}
-			peer.TrySend(MempoolCh, msg)
+			peer.TrySend(MempoolChannel, msg)
 		}
 
 	default:
@@ -106,7 +106,7 @@ func (memR *MempoolReactor) BroadcastTx(tx types.Tx) error {
 		return err
 	}
 	msg := &TxMessage{Tx: tx}
-	memR.sw.Broadcast(MempoolCh, msg)
+	memR.sw.Broadcast(MempoolChannel, msg)
 	return nil
 }
 

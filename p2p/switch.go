@@ -1,11 +1,9 @@
 package p2p
 
 import (
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"net"
-	"sync/atomic"
 	"time"
 
 	. "github.com/tendermint/tendermint/common"
@@ -29,20 +27,16 @@ or more `Channels`.  So while sending outgoing messages is typically performed o
 incoming messages are received on the reactor.
 */
 type Switch struct {
-	reactors     []Reactor
+	network      string
+	reactors     map[string]Reactor
 	chDescs      []*ChannelDescriptor
 	reactorsByCh map[byte]Reactor
 	peers        *PeerSet
 	dialing      *CMap
 	listeners    *CMap // listenerName -> chan interface{}
-	quit         chan struct{}
-	started      uint32
-	stopped      uint32
-	chainId      string
 }
 
 var (
-	ErrSwitchStopped       = errors.New("Switch already stopped")
 	ErrSwitchDuplicatePeer = errors.New("Duplicate peer")
 )
 
@@ -50,71 +44,83 @@ const (
 	peerDialTimeoutSeconds = 3
 )
 
-func NewSwitch(reactors []Reactor) *Switch {
-
-	// Validate the reactors. no two reactors can share the same channel.
-	chDescs := []*ChannelDescriptor{}
-	reactorsByCh := make(map[byte]Reactor)
-	for _, reactor := range reactors {
-		reactorChannels := reactor.GetChannels()
-		for _, chDesc := range reactorChannels {
-			chId := chDesc.Id
-			if reactorsByCh[chId] != nil {
-				panic(fmt.Sprintf("Channel %X has multiple reactors %v & %v", chId, reactorsByCh[chId], reactor))
-			}
-			chDescs = append(chDescs, chDesc)
-			reactorsByCh[chId] = reactor
-		}
-	}
+func NewSwitch() *Switch {
 
 	sw := &Switch{
-		reactors:     reactors,
-		chDescs:      chDescs,
-		reactorsByCh: reactorsByCh,
+		network:      "",
+		reactors:     make(map[string]Reactor),
+		chDescs:      make([]*ChannelDescriptor, 0),
+		reactorsByCh: make(map[byte]Reactor),
 		peers:        NewPeerSet(),
 		dialing:      NewCMap(),
 		listeners:    NewCMap(),
-		quit:         make(chan struct{}),
-		stopped:      0,
 	}
 
 	return sw
 }
 
-func (sw *Switch) Start() {
-	if atomic.CompareAndSwapUint32(&sw.started, 0, 1) {
-		log.Info("Starting Switch")
-		for _, reactor := range sw.reactors {
-			reactor.Start(sw)
+// Not goroutine safe.
+func (sw *Switch) SetNetwork(network string) {
+	sw.network = network
+}
+
+// Not goroutine safe.
+func (sw *Switch) AddReactor(name string, reactor Reactor) Reactor {
+	// Validate the reactor.
+	// No two reactors can share the same channel.
+	reactorChannels := reactor.GetChannels()
+	for _, chDesc := range reactorChannels {
+		chId := chDesc.Id
+		if sw.reactorsByCh[chId] != nil {
+			panic(fmt.Sprintf("Channel %X has multiple reactors %v & %v", chId, sw.reactorsByCh[chId], reactor))
 		}
+		sw.chDescs = append(sw.chDescs, chDesc)
+		sw.reactorsByCh[chId] = reactor
+	}
+	sw.reactors[name] = reactor
+	return reactor
+}
+
+func (sw *Switch) Reactor(name string) Reactor {
+	return sw.reactors[name]
+}
+
+// Convenience function
+func (sw *Switch) StartReactors() {
+	for _, reactor := range sw.reactors {
+		reactor.Start(sw)
 	}
 }
 
+// Convenience function
+func (sw *Switch) StopReactors() {
+	// Stop all reactors.
+	for _, reactor := range sw.reactors {
+		reactor.Stop()
+	}
+}
+
+// Convenience function
+func (sw *Switch) StopPeers() {
+	// Stop each peer.
+	for _, peer := range sw.peers.List() {
+		peer.stop()
+	}
+	sw.peers = NewPeerSet()
+}
+
+// Convenience function
 func (sw *Switch) Stop() {
-	if atomic.CompareAndSwapUint32(&sw.stopped, 0, 1) {
-		log.Info("Stopping Switch")
-		close(sw.quit)
-		// Stop each peer.
-		for _, peer := range sw.peers.List() {
-			peer.stop()
-		}
-		sw.peers = NewPeerSet()
-		// Stop all reactors.
-		for _, reactor := range sw.reactors {
-			reactor.Stop()
-		}
-	}
+	sw.StopPeers()
+	sw.StopReactors()
 }
 
-func (sw *Switch) Reactors() []Reactor {
+// Not goroutine safe to modify.
+func (sw *Switch) Reactors() map[string]Reactor {
 	return sw.reactors
 }
 
 func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, error) {
-	if atomic.LoadUint32(&sw.stopped) == 1 {
-		return nil, ErrSwitchStopped
-	}
-
 	peer := newPeer(conn, outbound, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError)
 
 	// Add the peer to .peers
@@ -126,23 +132,19 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 	}
 
 	// Start the peer
-	go peer.start()
+	peer.start()
 
 	// Notify listeners.
 	sw.doAddPeer(peer)
 
 	// Send handshake
-	msg := &pexHandshakeMessage{ChainId: sw.chainId}
-	peer.Send(PexCh, msg)
+	msg := &pexHandshakeMessage{Network: sw.network}
+	peer.Send(PexChannel, msg)
 
 	return peer, nil
 }
 
 func (sw *Switch) DialPeerWithAddress(addr *NetAddress) (*Peer, error) {
-	if atomic.LoadUint32(&sw.stopped) == 1 {
-		return nil, ErrSwitchStopped
-	}
-
 	log.Debug("Dialing address", "address", addr)
 	sw.dialing.Set(addr.String(), addr)
 	conn, err := addr.DialTimeout(peerDialTimeoutSeconds * time.Second)
@@ -164,13 +166,10 @@ func (sw *Switch) IsDialing(addr *NetAddress) bool {
 	return sw.dialing.Has(addr.String())
 }
 
-// Broadcast runs a go routine for each attemptted send, which will block
+// Broadcast runs a go routine for each attempted send, which will block
 // trying to send for defaultSendTimeoutSeconds. Returns a channel
 // which receives success values for each attempted send (false if times out)
 func (sw *Switch) Broadcast(chId byte, msg interface{}) chan bool {
-	if atomic.LoadUint32(&sw.stopped) == 1 {
-		return nil
-	}
 	successChan := make(chan bool, len(sw.peers.List()))
 	log.Debug("Broadcast", "channel", chId, "msg", msg)
 	for _, peer := range sw.peers.List() {
@@ -221,10 +220,6 @@ func (sw *Switch) StopPeerGracefully(peer *Peer) {
 
 	// Notify listeners
 	sw.doRemovePeer(peer, nil)
-}
-
-func (sw *Switch) SetChainId(hash []byte, network string) {
-	sw.chainId = hex.EncodeToString(hash) + "-" + network
 }
 
 func (sw *Switch) IsListening() bool {
