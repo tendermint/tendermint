@@ -155,10 +155,11 @@ func TestJSONBroadcastTx(t *testing.T) {
 	}
 	pool := node.MempoolReactor().Mempool
 	txs := pool.GetProposalTxs()
-	if len(txs) != 1 {
-		t.Fatal("The mem pool has %d txs. Expected 1", len(txs))
+	if len(txs) != mempoolCount+1 {
+		t.Fatalf("The mem pool has %d txs. Expected %d", len(txs), mempoolCount+1)
 	}
-	tx2 := txs[0].(*types.SendTx)
+	tx2 := txs[mempoolCount].(*types.SendTx)
+	mempoolCount += 1
 	if bytes.Compare(merkle.HashFromBinary(tx), merkle.HashFromBinary(tx2)) != 0 {
 		t.Fatal("inconsistent hashes for mempool tx and sent tx")
 	}

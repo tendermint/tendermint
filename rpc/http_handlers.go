@@ -181,7 +181,8 @@ func returnsToResponse(funcInfo *FuncWrapper, returns []reflect.Value) (interfac
 		}
 	}
 
-	v := funcInfo.response.Elem()
+	// copy the response struct (New returns a pointer so we have to Elem() twice)
+	v := reflect.New(funcInfo.response.Elem().Type()).Elem()
 	nFields := v.NumField()
 	for i := 0; i < nFields; i++ {
 		field := v.FieldByIndex([]int{i})
