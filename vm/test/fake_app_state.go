@@ -1,8 +1,6 @@
 package vm
 
 import (
-	"fmt"
-
 	. "github.com/tendermint/tendermint/common"
 	. "github.com/tendermint/tendermint/vm"
 	"github.com/tendermint/tendermint/vm/sha3"
@@ -83,33 +81,6 @@ func (fas *FakeAppState) SetStorage(addr Word256, key Word256, value Word256) {
 
 func (fas *FakeAppState) AddLog(log *Log) {
 	fas.logs = append(fas.logs, log)
-}
-
-func main() {
-	appState := &FakeAppState{
-		accounts: make(map[string]*Account),
-		storage:  make(map[string]Word256),
-		logs:     nil,
-	}
-	params := Params{
-		BlockHeight: 0,
-		BlockHash:   Zero256,
-		BlockTime:   0,
-		GasLimit:    0,
-	}
-	ourVm := NewVM(appState, params, Zero256)
-
-	// Create accounts
-	account1 := &Account{
-		Address: Uint64ToWord256(100),
-	}
-	account2 := &Account{
-		Address: Uint64ToWord256(101),
-	}
-
-	var gas uint64 = 1000
-	output, err := ourVm.Call(account1, account2, []byte{0x5B, 0x60, 0x00, 0x56}, []byte{}, 0, &gas)
-	fmt.Printf("Output: %v Error: %v\n", output, err)
 }
 
 // Creates a 20 byte address and bumps the nonce.
