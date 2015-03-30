@@ -18,8 +18,8 @@ import (
 )
 
 func TestJSONStatus(t *testing.T) {
-	s := rpc.JsonRpc{
-		JsonRpc: "2.0",
+	s := rpc.JSONRPC{
+		JSONRPC: "2.0",
 		Method:  "status",
 		Params:  []interface{}{},
 		Id:      0,
@@ -53,8 +53,8 @@ func TestJSONStatus(t *testing.T) {
 }
 
 func TestJSONGenPriv(t *testing.T) {
-	s := rpc.JsonRpc{
-		JsonRpc: "2.0",
+	s := rpc.JSONRPC{
+		JSONRPC: "2.0",
 		Method:  "unsafe/gen_priv_account",
 		Params:  []interface{}{},
 		Id:      0,

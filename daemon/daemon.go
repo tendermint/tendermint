@@ -150,7 +150,7 @@ func (n *Node) DialSeed() {
 	}
 }
 
-func (n *Node) StartRpc() {
+func (n *Node) StartRPC() {
 	core.SetBlockStore(n.blockStore)
 	core.SetConsensusState(n.consensusState)
 	core.SetMempoolReactor(n.mempoolReactor)
@@ -185,7 +185,7 @@ func Daemon() {
 
 	// Run the RPC server.
 	if config.App().GetString("RPC.HTTP.ListenAddr") != "" {
-		n.StartRpc()
+		n.StartRPC()
 	}
 
 	// Sleep forever and then...

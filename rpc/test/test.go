@@ -41,7 +41,7 @@ func newNode(ready chan struct{}) {
 	node.Start()
 
 	// Run the RPC server.
-	node.StartRpc()
+	node.StartRPC()
 	ready <- struct{}{}
 
 	// Sleep forever
@@ -72,8 +72,8 @@ func getAccount(t *testing.T, typ string, addr []byte) *account.Account {
 	var err error
 	switch typ {
 	case "JSONRPC":
-		s := rpc.JsonRpc{
-			JsonRpc: "2.0",
+		s := rpc.JSONRPC{
+			JSONRPC: "2.0",
 			Method:  "get_account",
 			Params:  []interface{}{hex.EncodeToString(addr)},
 			Id:      0,
