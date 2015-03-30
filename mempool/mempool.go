@@ -19,12 +19,14 @@ import (
 type Mempool struct {
 	mtx   sync.Mutex
 	state *sm.State
+	cache *sm.BlockCache
 	txs   []types.Tx
 }
 
 func NewMempool(state *sm.State) *Mempool {
 	return &Mempool{
 		state: state,
+		cache: sm.NewBlockCache(state),
 	}
 }
 
@@ -32,11 +34,15 @@ func (mem *Mempool) GetState() *sm.State {
 	return mem.state
 }
 
+func (mem *Mempool) GetCache() *sm.BlockCache {
+	return mem.cache
+}
+
 // Apply tx to the state and remember it.
 func (mem *Mempool) AddTx(tx types.Tx) (err error) {
 	mem.mtx.Lock()
 	defer mem.mtx.Unlock()
-	err = mem.state.ExecTx(tx, false)
+	err = sm.ExecTx(mem.cache, tx, false)
 	if err != nil {
 		log.Debug("AddTx() error", "tx", tx, "error", err)
 		return err
@@ -62,6 +68,7 @@ func (mem *Mempool) ResetForBlockAndState(block *types.Block, state *sm.State) {
 	mem.mtx.Lock()
 	defer mem.mtx.Unlock()
 	mem.state = state.Copy()
+	mem.cache = sm.NewBlockCache(mem.state)
 
 	// First, create a lookup map of txns in new block.
 	blockTxsMap := make(map[string]struct{})
@@ -86,7 +93,7 @@ func (mem *Mempool) ResetForBlockAndState(block *types.Block, state *sm.State) {
 	// Next, filter all txs that aren't valid given new state.
 	validTxs := []types.Tx{}
 	for _, tx := range txs {
-		err := mem.state.ExecTx(tx, false)
+		err := sm.ExecTx(mem.cache, tx, false)
 		if err == nil {
 			log.Debug("Filter in, valid", "tx", tx)
 			validTxs = append(validTxs, tx)

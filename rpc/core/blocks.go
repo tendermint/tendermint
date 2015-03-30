@@ -1,15 +1,14 @@
-package rpc
+package core
 
 import (
-	"net/http"
-
+	"fmt"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/types"
 )
 
-func BlockchainInfoHandler(w http.ResponseWriter, r *http.Request) {
-	minHeight, _ := GetParamUint(r, "min_height")
-	maxHeight, _ := GetParamUint(r, "max_height")
+//-----------------------------------------------------------------------------
+
+func BlockchainInfo(minHeight, maxHeight uint) (*ResponseBlockchainInfo, error) {
 	if maxHeight == 0 {
 		maxHeight = blockStore.Height()
 	} else {
@@ -26,30 +25,20 @@ func BlockchainInfoHandler(w http.ResponseWriter, r *http.Request) {
 		blockMetas = append(blockMetas, blockMeta)
 	}
 
-	WriteAPIResponse(w, API_OK, struct {
-		LastHeight uint
-		BlockMetas []*types.BlockMeta
-	}{blockStore.Height(), blockMetas})
+	return &ResponseBlockchainInfo{blockStore.Height(), blockMetas}, nil
 }
 
 //-----------------------------------------------------------------------------
 
-func GetBlockHandler(w http.ResponseWriter, r *http.Request) {
-	height, _ := GetParamUint(r, "height")
+func GetBlock(height uint) (*ResponseGetBlock, error) {
 	if height == 0 {
-		WriteAPIResponse(w, API_INVALID_PARAM, "height must be greater than 1")
-		return
+		return nil, fmt.Errorf("height must be greater than 1")
 	}
 	if height > blockStore.Height() {
-		WriteAPIResponse(w, API_INVALID_PARAM, "height must be less than the current blockchain height")
-		return
+		return nil, fmt.Errorf("height must be less than the current blockchain height")
 	}
 
 	blockMeta := blockStore.LoadBlockMeta(height)
 	block := blockStore.LoadBlock(height)
-
-	WriteAPIResponse(w, API_OK, struct {
-		BlockMeta *types.BlockMeta
-		Block     *types.Block
-	}{blockMeta, block})
+	return &ResponseGetBlock{blockMeta, block}, nil
 }

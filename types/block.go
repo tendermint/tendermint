@@ -55,16 +55,24 @@ func (b *Block) ValidateBasic(lastBlockHeight uint, lastBlockHash []byte,
 	return nil
 }
 
+// Computes and returns the block hash.
+// If the block is incomplete (e.g. missing Header.StateHash)
+// then the hash is nil, to prevent the usage of that hash.
 func (b *Block) Hash() []byte {
 	if b.Header == nil || b.Validation == nil || b.Data == nil {
 		return nil
 	}
-	hashes := [][]byte{
-		b.Header.Hash(),
-		b.Validation.Hash(),
-		b.Data.Hash(),
+	hashHeader := b.Header.Hash()
+	hashValidation := b.Validation.Hash()
+	hashData := b.Data.Hash()
+
+	// If hashHeader is nil, required fields are missing.
+	if len(hashHeader) == 0 {
+		return nil
 	}
-	// Merkle hash from sub-hashes.
+
+	// Merkle hash from subhashes.
+	hashes := [][]byte{hashHeader, hashValidation, hashData}
 	return merkle.HashFromHashes(hashes)
 }
 
@@ -125,7 +133,12 @@ type Header struct {
 	StateHash      []byte
 }
 
+// NOTE: hash is nil if required fields are missing.
 func (h *Header) Hash() []byte {
+	if len(h.StateHash) == 0 {
+		return nil
+	}
+
 	buf := new(bytes.Buffer)
 	hasher, n, err := sha256.New(), new(int64), new(error)
 	binary.WriteBinary(h, buf, n, err)

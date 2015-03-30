@@ -38,16 +38,22 @@ const (
 type APIResponse struct {
 	Status APIStatus   `json:"status"`
 	Data   interface{} `json:"data"`
+	Error  string      `json:"error"`
 }
 
-func (res APIResponse) Error() string {
-	return fmt.Sprintf("Status(%v) %v", res.Status, res.Data)
+func (res APIResponse) StatusError() string {
+	return fmt.Sprintf("Status(%v) %v", res.Status, res.Error)
 }
 
-func WriteAPIResponse(w http.ResponseWriter, status APIStatus, data interface{}) {
+func WriteAPIResponse(w http.ResponseWriter, status APIStatus, data interface{}, responseErr string) {
 	res := APIResponse{}
 	res.Status = status
+	if data == nil {
+		// so json doesn't vommit
+		data = struct{}{}
+	}
 	res.Data = data
+	res.Error = responseErr
 
 	buf, n, err := new(bytes.Buffer), new(int64), new(error)
 	binary.WriteJSON(res, buf, n, err)
@@ -109,7 +115,7 @@ func RecoverAndLogHandler(handler http.Handler) http.Handler {
 
 				// If APIResponse,
 				if res, ok := e.(APIResponse); ok {
-					WriteAPIResponse(rww, res.Status, res.Data)
+					WriteAPIResponse(rww, res.Status, nil, res.Error)
 				} else {
 					// For the rest,
 					rww.WriteHeader(http.StatusInternalServerError)

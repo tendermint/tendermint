@@ -3,3 +3,4 @@
 .bak
 tendermint
 .DS_Store
+rpc/test/.tendermint

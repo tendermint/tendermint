@@ -1015,7 +1015,8 @@ func (cs *ConsensusState) stageBlock(block *types.Block, blockParts *types.PartS
 	}
 
 	// Already staged?
-	if cs.stagedBlock == block {
+	blockHash := block.Hash()
+	if cs.stagedBlock != nil && len(blockHash) != 0 && bytes.Equal(cs.stagedBlock.Hash(), blockHash) {
 		return nil
 	}
 
@@ -1024,7 +1025,7 @@ func (cs *ConsensusState) stageBlock(block *types.Block, blockParts *types.PartS
 
 	// Commit block onto the copied state.
 	// NOTE: Basic validation is done in state.AppendBlock().
-	err := stateCopy.AppendBlock(block, blockParts.Header())
+	err := sm.ExecBlock(stateCopy, block, blockParts.Header())
 	if err != nil {
 		return err
 	} else {

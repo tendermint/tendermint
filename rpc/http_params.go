@@ -24,7 +24,7 @@ var (
 )
 
 func panicAPI(err error) {
-	panic(APIResponse{API_INVALID_PARAM, err.Error()})
+	panic(APIResponse{API_INVALID_PARAM, nil, err.Error()})
 }
 
 func GetParam(r *http.Request, param string) string {
