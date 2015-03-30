@@ -151,10 +151,10 @@ func (n *Node) DialSeed() {
 }
 
 func (n *Node) StartRpc() {
-	core.SetPipeBlockStore(n.blockStore)
-	core.SetPipeConsensusState(n.consensusState)
-	core.SetPipeMempoolReactor(n.mempoolReactor)
-	core.SetPipeSwitch(n.sw)
+	core.SetBlockStore(n.blockStore)
+	core.SetConsensusState(n.consensusState)
+	core.SetMempoolReactor(n.mempoolReactor)
+	core.SetSwitch(n.sw)
 	rpc.StartHTTPServer()
 }
 

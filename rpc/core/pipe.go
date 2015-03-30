@@ -12,18 +12,18 @@ var consensusState *consensus.ConsensusState
 var mempoolReactor *mempl.MempoolReactor
 var p2pSwitch *p2p.Switch
 
-func SetRPCBlockStore(bs *bc.BlockStore) {
+func SetBlockStore(bs *bc.BlockStore) {
 	blockStore = bs
 }
 
-func SetPipeConsensusState(cs *consensus.ConsensusState) {
+func SetConsensusState(cs *consensus.ConsensusState) {
 	consensusState = cs
 }
 
-func SetPipeMempoolReactor(mr *mempl.MempoolReactor) {
+func SetMempoolReactor(mr *mempl.MempoolReactor) {
 	mempoolReactor = mr
 }
 
-func SetPipeSwitch(sw *p2p.Switch) {
+func SetSwitch(sw *p2p.Switch) {
 	p2pSwitch = sw
 }
