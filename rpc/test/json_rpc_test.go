@@ -21,7 +21,7 @@ func TestJSONStatus(t *testing.T) {
 	s := rpc.JsonRpc{
 		JsonRpc: "2.0",
 		Method:  "status",
-		Params:  []string{},
+		Params:  []interface{}{},
 		Id:      0,
 	}
 	b, err := json.Marshal(s)
@@ -56,7 +56,7 @@ func TestJSONGenPriv(t *testing.T) {
 	s := rpc.JsonRpc{
 		JsonRpc: "2.0",
 		Method:  "unsafe/gen_priv_account",
-		Params:  []string{},
+		Params:  []interface{}{},
 		Id:      0,
 	}
 	b, err := json.Marshal(s)

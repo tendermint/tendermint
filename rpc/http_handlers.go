@@ -1,7 +1,6 @@
 package rpc
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/tendermint/tendermint/binary"
@@ -9,7 +8,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"reflect"
-	"strconv"
 )
 
 // cache all type information about each function up front
@@ -66,71 +64,24 @@ func toHandler(funcName string) func(http.ResponseWriter, *http.Request) {
 
 // convert a (json) string to a given type
 func jsonToArg(ty reflect.Type, arg string) (reflect.Value, error) {
-	v := reflect.New(ty).Elem()
-	kind := v.Kind()
 	var err error
-	switch kind {
-	case reflect.Interface:
-		v = reflect.New(ty)
-		binary.ReadJSON(v.Interface(), []byte(arg), &err)
-		if err != nil {
-			return v, err
-		}
-		v = v.Elem()
-	case reflect.Struct:
-		binary.ReadJSON(v.Interface(), []byte(arg), &err)
-		if err != nil {
-			return v, err
-		}
-	case reflect.Slice:
-		rt := ty.Elem()
-		if rt.Kind() == reflect.Uint8 {
-			// if hex, decode
-			if len(arg) > 2 && arg[:2] == "0x" {
-				arg = arg[2:]
-				b, err := hex.DecodeString(arg)
-				if err != nil {
-					return v, err
-				}
-				v = reflect.ValueOf(b)
-			} else {
-				v = reflect.ValueOf([]byte(arg))
-			}
-		} else {
-			v = reflect.New(ty)
-			binary.ReadJSON(v.Interface(), []byte(arg), &err)
-			if err != nil {
-				return v, err
-			}
-			v = v.Elem()
-		}
-	case reflect.Int64:
-		u, err := strconv.ParseInt(arg, 10, 64)
-		if err != nil {
-			return v, err
-		}
-		v = reflect.ValueOf(u)
-	case reflect.Int32:
-		u, err := strconv.ParseInt(arg, 10, 32)
-		if err != nil {
-			return v, err
-		}
-		v = reflect.ValueOf(u)
-	case reflect.Uint64:
-		u, err := strconv.ParseUint(arg, 10, 64)
-		if err != nil {
-			return v, err
-		}
-		v = reflect.ValueOf(u)
-	case reflect.Uint:
-		u, err := strconv.ParseUint(arg, 10, 32)
-		if err != nil {
-			return v, err
-		}
-		v = reflect.ValueOf(u)
-	default:
-		v = reflect.ValueOf(arg)
+	v := reflect.New(ty)
+	binary.ReadJSON(v.Interface(), []byte(arg), &err)
+	if err != nil {
+		return v, err
 	}
+	v = v.Elem()
+	return v, nil
+}
+
+func jsonObjectToArg(ty reflect.Type, object interface{}) (reflect.Value, error) {
+	var err error
+	v := reflect.New(ty)
+	binary.ReadJSONFromObject(v.Interface(), object, &err)
+	if err != nil {
+		return v, err
+	}
+	v = v.Elem()
 	return v, nil
 }
 
@@ -145,6 +96,7 @@ func queryToValues(funcInfo *FuncWrapper, r *http.Request) ([]reflect.Value, err
 	for i, name := range argNames {
 		ty := argTypes[i]
 		arg := GetParam(r, name)
+		//fmt.Println("GetParam()", r, name, arg)
 		values[i], err = jsonToArg(ty, arg)
 		if err != nil {
 			return nil, err
@@ -154,12 +106,11 @@ func queryToValues(funcInfo *FuncWrapper, r *http.Request) ([]reflect.Value, err
 }
 
 // covert a list of interfaces to properly typed values
-// TODO!
-func paramsToValues(funcInfo *FuncWrapper, params []string) ([]reflect.Value, error) {
+func paramsToValues(funcInfo *FuncWrapper, params []interface{}) ([]reflect.Value, error) {
 	values := make([]reflect.Value, len(params))
 	for i, p := range params {
 		ty := funcInfo.args[i]
-		v, err := jsonToArg(ty, p)
+		v, err := jsonObjectToArg(ty, p)
 		if err != nil {
 			return nil, err
 		}
@@ -249,10 +200,10 @@ func initHandlers() {
 }
 
 type JsonRpc struct {
-	JsonRpc string   `json:"jsonrpc"`
-	Method  string   `json:"method"`
-	Params  []string `json:"params"`
-	Id      int      `json:"id"`
+	JsonRpc string        `json:"jsonrpc"`
+	Method  string        `json:"method"`
+	Params  []interface{} `json:"params"`
+	Id      int           `json:"id"`
 }
 
 // this will panic if not passed a function

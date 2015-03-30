@@ -71,6 +71,9 @@ func TestHTTPGenPriv(t *testing.T) {
 func TestHTTPGetAccount(t *testing.T) {
 	byteAddr, _ := hex.DecodeString(userAddr)
 	acc := getAccount(t, "HTTP", byteAddr)
+	if acc == nil {
+		t.Fatalf("Account was nil")
+	}
 	if bytes.Compare(acc.Address, byteAddr) != 0 {
 		t.Fatalf("Failed to get correct account. Got %x, expected %x", acc.Address, byteAddr)
 	}

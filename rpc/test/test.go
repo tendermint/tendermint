@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
 	"github.com/tendermint/tendermint/config"
@@ -23,8 +22,6 @@ import (
 var (
 	rpcAddr     = "127.0.0.1:8089"
 	requestAddr = "http://" + rpcAddr + "/"
-
-	chainId string
 
 	node *daemon.Node
 
@@ -78,7 +75,7 @@ func getAccount(t *testing.T, typ string, addr []byte) *account.Account {
 		s := rpc.JsonRpc{
 			JsonRpc: "2.0",
 			Method:  "get_account",
-			Params:  []string{"0x" + hex.EncodeToString(addr)},
+			Params:  []interface{}{hex.EncodeToString(addr)},
 			Id:      0,
 		}
 		b, err := json.Marshal(s)
@@ -89,9 +86,8 @@ func getAccount(t *testing.T, typ string, addr []byte) *account.Account {
 		resp, err = http.Post(requestAddr, "text/json", buf)
 	case "HTTP":
 		resp, err = http.PostForm(requestAddr+"get_account",
-			url.Values{"address": {string(addr)}})
+			url.Values{"address": {"\"" + (hex.EncodeToString(addr)) + "\""}})
 	}
-	fmt.Println("RESPONSE:", resp)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +101,6 @@ func getAccount(t *testing.T, typ string, addr []byte) *account.Account {
 		Data   core.ResponseGetAccount
 		Error  string
 	}
-	fmt.Println(string(body))
 	binary.ReadJSON(&status, body, &err)
 	if err != nil {
 		t.Fatal(err)
@@ -153,7 +148,6 @@ func requestResponse(t *testing.T, method string, values url.Values, status inte
 	if err != nil {
 		t.Fatal(err)
 	}
-	fmt.Println(string(body))
 	binary.ReadJSON(status, body, &err)
 	if err != nil {
 		t.Fatal(err)
@@ -206,7 +200,6 @@ func checkTx(t *testing.T, fromAddr []byte, priv *account.PrivAccount, tx *types
 	if err := in.ValidateBasic(); err != nil {
 		t.Fatal(err)
 	}
-	fmt.Println(priv.PubKey, in.PubKey)
 	// Check signatures
 	// acc := getAccount(t, byteAddr)
 	// NOTE: using the acc here instead of the in fails; its PubKeyNil ... ?

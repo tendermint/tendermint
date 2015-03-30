@@ -237,7 +237,7 @@ func DecodeMessage(bz []byte) (msg interface{}, err error) {
 }
 
 /*
-A pexHandshakeMessage contains the peer's chainId
+A pexHandshakeMessage contains the network identifier.
 */
 type pexHandshakeMessage struct {
 	Network string
