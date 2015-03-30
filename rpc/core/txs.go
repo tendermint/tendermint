@@ -1,37 +1,21 @@
-package rpc
+package core
 
 import (
-	"net/http"
-
+	"fmt"
 	"github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/binary"
-	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/types"
 )
 
-func SignTxHandler(w http.ResponseWriter, r *http.Request) {
-	txStr := GetParam(r, "tx")
-	privAccountsStr := GetParam(r, "privAccounts")
+//-----------------------------------------------------------------------------
 
-	var err error
-	var tx types.Tx
-	binary.ReadJSON(&tx, []byte(txStr), &err)
-	if err != nil {
-		WriteAPIResponse(w, API_INVALID_PARAM, Fmt("Invalid tx: %v", err))
-		return
-	}
-	privAccounts := binary.ReadJSON([]*account.PrivAccount{}, []byte(privAccountsStr), &err).([]*account.PrivAccount)
-	if err != nil {
-		WriteAPIResponse(w, API_INVALID_PARAM, Fmt("Invalid privAccounts: %v", err))
-		return
-	}
+func SignTx(tx types.Tx, privAccounts []*account.PrivAccount) (*ResponseSignTx, error) {
+	// more checks?
+
 	for i, privAccount := range privAccounts {
 		if privAccount == nil || privAccount.PrivKey == nil {
-			WriteAPIResponse(w, API_INVALID_PARAM, Fmt("Invalid (empty) privAccount @%v", i))
-			return
+			return nil, fmt.Errorf("Invalid (empty) privAccount @%v", i)
 		}
 	}
-
 	switch tx.(type) {
 	case *types.SendTx:
 		sendTx := tx.(*types.SendTx)
@@ -39,6 +23,10 @@ func SignTxHandler(w http.ResponseWriter, r *http.Request) {
 			input.PubKey = privAccounts[i].PubKey
 			input.Signature = privAccounts[i].Sign(sendTx)
 		}
+	case *types.CallTx:
+		callTx := tx.(*types.CallTx)
+		callTx.Input.PubKey = privAccounts[0].PubKey
+		callTx.Input.Signature = privAccounts[0].Sign(callTx)
 	case *types.BondTx:
 		bondTx := tx.(*types.BondTx)
 		for i, input := range bondTx.Inputs {
@@ -52,6 +40,5 @@ func SignTxHandler(w http.ResponseWriter, r *http.Request) {
 		rebondTx := tx.(*types.RebondTx)
 		rebondTx.Signature = privAccounts[0].Sign(rebondTx).(account.SignatureEd25519)
 	}
-
-	WriteAPIResponse(w, API_OK, struct{ types.Tx }{tx})
+	return &ResponseSignTx{tx}, nil
 }

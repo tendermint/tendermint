@@ -3,7 +3,6 @@ package vm
 const (
 	GasSha3          uint64 = 1
 	GasGetAccount    uint64 = 1
-	GasStorageCreate uint64 = 1
 	GasStorageUpdate uint64 = 1
 
 	GasStackOp uint64 = 1

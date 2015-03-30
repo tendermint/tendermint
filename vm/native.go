@@ -3,19 +3,18 @@ package vm
 import (
 	"code.google.com/p/go.crypto/ripemd160"
 	"crypto/sha256"
+	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/vm/secp256k1"
 	"github.com/tendermint/tendermint/vm/sha3"
-
-	. "github.com/tendermint/tendermint/common"
 )
 
-var nativeContracts = make(map[Word]NativeContract)
+var nativeContracts = make(map[Word256]NativeContract)
 
 func init() {
-	nativeContracts[Uint64ToWord(1)] = ecrecoverFunc
-	nativeContracts[Uint64ToWord(2)] = sha256Func
-	nativeContracts[Uint64ToWord(3)] = ripemd160Func
-	nativeContracts[Uint64ToWord(4)] = identityFunc
+	nativeContracts[Uint64ToWord256(1)] = ecrecoverFunc
+	nativeContracts[Uint64ToWord256(2)] = sha256Func
+	nativeContracts[Uint64ToWord256(3)] = ripemd160Func
+	nativeContracts[Uint64ToWord256(4)] = identityFunc
 }
 
 //-----------------------------------------------------------------------------

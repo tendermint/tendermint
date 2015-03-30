@@ -10,6 +10,17 @@ import (
 	"time"
 )
 
+func execTxWithState(state *State, tx types.Tx, runCall bool) error {
+	cache := NewBlockCache(state)
+	err := ExecTx(cache, tx, runCall)
+	if err != nil {
+		return err
+	} else {
+		cache.Sync()
+		return nil
+	}
+}
+
 func TestCopyState(t *testing.T) {
 	// Generate a random state
 	s0, privAccounts, _ := RandGenesisState(10, true, 1000, 5, true, 1000)
@@ -93,7 +104,7 @@ func TestGenesisSaveLoad(t *testing.T) {
 	blockParts := block.MakePartSet()
 
 	// Now append the block to s0.
-	err := s0.AppendBlock(block, blockParts.Header())
+	err := ExecBlock(s0, block, blockParts.Header())
 	if err != nil {
 		t.Error("Error appending initial block:", err)
 	}
@@ -182,7 +193,7 @@ func TestTxSequence(t *testing.T) {
 		tx := makeSendTx(sequence)
 		tx.Inputs[0].Signature = privAccounts[0].Sign(tx)
 		stateCopy := state.Copy()
-		err := stateCopy.ExecTx(tx, true)
+		err := execTxWithState(stateCopy, tx, true)
 		if i == 1 {
 			// Sequence is good.
 			if err != nil {
@@ -241,7 +252,7 @@ func TestTxs(t *testing.T) {
 		}
 
 		tx.Inputs[0].Signature = privAccounts[0].Sign(tx)
-		err := state.ExecTx(tx, true)
+		err := execTxWithState(state, tx, true)
 		if err != nil {
 			t.Errorf("Got error in executing send transaction, %v", err)
 		}
@@ -278,7 +289,7 @@ func TestTxs(t *testing.T) {
 			},
 		}
 		tx.Inputs[0].Signature = privAccounts[0].Sign(tx)
-		err := state.ExecTx(tx, true)
+		err := execTxWithState(state, tx, true)
 		if err != nil {
 			t.Errorf("Got error in executing bond transaction, %v", err)
 		}
@@ -345,7 +356,7 @@ func TestAddValidator(t *testing.T) {
 	}
 
 	// Now append the block to s0.
-	err := s0.AppendBlock(block0, block0Parts.Header())
+	err := ExecBlock(s0, block0, block0Parts.Header())
 	if err != nil {
 		t.Error("Error appending initial block:", err)
 	}
@@ -379,7 +390,7 @@ func TestAddValidator(t *testing.T) {
 		}, nil,
 	)
 	block1Parts := block1.MakePartSet()
-	err = s0.AppendBlock(block1, block1Parts.Header())
+	err = ExecBlock(s0, block1, block1Parts.Header())
 	if err != nil {
 		t.Error("Error appending secondary block:", err)
 	}

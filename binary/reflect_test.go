@@ -2,6 +2,7 @@ package binary
 
 import (
 	"bytes"
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -57,6 +58,35 @@ var _ = RegisterInterface(
 	ConcreteType{Snake{}},
 	ConcreteType{&Viper{}},
 )
+
+func TestAnimalInterface(t *testing.T) {
+	var foo Animal
+
+	// Type of pointer to Animal
+	rt := reflect.TypeOf(&foo)
+	fmt.Printf("rt: %v\n", rt)
+
+	// Type of Animal itself.
+	// NOTE: normally this is acquired through other means
+	// like introspecting on method signatures, or struct fields.
+	rte := rt.Elem()
+	fmt.Printf("rte: %v\n", rte)
+
+	// Get a new pointer to the interface
+	// NOTE: calling .Interface() is to get the actual value,
+	// instead of reflection values.
+	ptr := reflect.New(rte).Interface()
+	fmt.Printf("ptr: %v", ptr)
+
+	// Make a binary byteslice that represents a snake.
+	snakeBytes := BinaryBytes(Snake([]byte("snake")))
+	snakeReader := bytes.NewReader(snakeBytes)
+
+	// Now you can read it.
+	n, err := new(int64), new(error)
+	it := *ReadBinary(ptr, snakeReader, n, err).(*Animal)
+	fmt.Println(it, reflect.TypeOf(it))
+}
 
 //-------------------------------------
 
@@ -287,9 +317,9 @@ func validateComplexArray(o interface{}, t *testing.T) {
 var testCases = []TestCase{}
 
 func init() {
-	//testCases = append(testCases, TestCase{constructBasic, instantiateBasic, validateBasic})
-	//testCases = append(testCases, TestCase{constructComplex, instantiateComplex, validateComplex})
-	//testCases = append(testCases, TestCase{constructComplex2, instantiateComplex2, validateComplex2})
+	testCases = append(testCases, TestCase{constructBasic, instantiateBasic, validateBasic})
+	testCases = append(testCases, TestCase{constructComplex, instantiateComplex, validateComplex})
+	testCases = append(testCases, TestCase{constructComplex2, instantiateComplex2, validateComplex2})
 	testCases = append(testCases, TestCase{constructComplexArray, instantiateComplexArray, validateComplexArray})
 }
 

@@ -1,12 +1,12 @@
-package rpc
+package core
 
 import (
-	"net/http"
-
 	sm "github.com/tendermint/tendermint/state"
 )
 
-func ListValidatorsHandler(w http.ResponseWriter, r *http.Request) {
+//-----------------------------------------------------------------------------
+
+func ListValidators() (*ResponseListValidators, error) {
 	var blockHeight uint
 	var bondedValidators []*sm.Validator
 	var unbondingValidators []*sm.Validator
@@ -22,9 +22,5 @@ func ListValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 		return false
 	})
 
-	WriteAPIResponse(w, API_OK, struct {
-		BlockHeight         uint
-		BondedValidators    []*sm.Validator
-		UnbondingValidators []*sm.Validator
-	}{blockHeight, bondedValidators, unbondingValidators})
+	return &ResponseListValidators{blockHeight, bondedValidators, unbondingValidators}, nil
 }

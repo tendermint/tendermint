@@ -25,6 +25,18 @@ func GenPrivAccount() *PrivAccount {
 	}
 }
 
+func GenPrivAccountFromKey(privKeyBytes [64]byte) *PrivAccount {
+	pubKeyBytes := ed25519.MakePublicKey(&privKeyBytes)
+	pubKey := PubKeyEd25519(pubKeyBytes[:])
+	privKey := PrivKeyEd25519(privKeyBytes[:])
+	return &PrivAccount{
+		Address: pubKey.Address(),
+		PubKey:  pubKey,
+		PrivKey: privKey,
+	}
+
+}
+
 func (privAccount *PrivAccount) Sign(o Signable) Signature {
 	return privAccount.PrivKey.Sign(SignBytes(o))
 }
