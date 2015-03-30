@@ -94,10 +94,8 @@ func (cache *TxCache) GetStorage(addr Word256, key Word256) Word256 {
 		return value
 	}
 
-	// Load and set cache
-	value = cache.backend.GetStorage(addr, key)
-	cache.storages[Tuple256{addr, key}] = value
-	return value
+	// Load from backend
+	return cache.backend.GetStorage(addr, key)
 }
 
 // NOTE: Set value to zero to removed from the trie.
