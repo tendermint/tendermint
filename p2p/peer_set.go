@@ -7,6 +7,7 @@ import (
 // IPeerSet has a (immutable) subset of the methods of PeerSet.
 type IPeerSet interface {
 	Has(key string) bool
+	Get(key string) *Peer
 	List() []*Peer
 	Size() int
 }
@@ -53,6 +54,17 @@ func (ps *PeerSet) Has(peerKey string) bool {
 	defer ps.mtx.Unlock()
 	_, ok := ps.lookup[peerKey]
 	return ok
+}
+
+func (ps *PeerSet) Get(peerKey string) *Peer {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+	item, ok := ps.lookup[peerKey]
+	if ok {
+		return item.peer
+	} else {
+		return nil
+	}
 }
 
 func (ps *PeerSet) Remove(peer *Peer) {

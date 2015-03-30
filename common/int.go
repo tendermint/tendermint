@@ -1,6 +1,7 @@
 package common
 
 import (
+	"encoding/binary"
 	"sort"
 )
 
@@ -18,3 +19,13 @@ func SearchUint64s(a []uint64, x uint64) int {
 }
 
 func (p Uint64Slice) Search(x uint64) int { return SearchUint64s(p, x) }
+
+//-----------------------------------------------------------------------------
+
+func PutUint64(dest []byte, i uint64) {
+	binary.LittleEndian.PutUint64(dest, i)
+}
+
+func GetUint64(src []byte) uint64 {
+	return binary.LittleEndian.Uint64(src)
+}

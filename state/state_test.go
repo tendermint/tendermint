@@ -2,7 +2,6 @@ package state
 
 import (
 	"github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/binary"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/types"
 
@@ -10,6 +9,17 @@ import (
 	"testing"
 	"time"
 )
+
+func execTxWithState(state *State, tx types.Tx, runCall bool) error {
+	cache := NewBlockCache(state)
+	err := ExecTx(cache, tx, runCall)
+	if err != nil {
+		return err
+	} else {
+		cache.Sync()
+		return nil
+	}
+}
 
 func TestCopyState(t *testing.T) {
 	// Generate a random state
@@ -91,10 +101,10 @@ func TestGenesisSaveLoad(t *testing.T) {
 
 	// Make complete block and blockParts
 	block := makeBlock(t, s0, nil, nil)
-	blockParts := types.NewPartSetFromData(binary.BinaryBytes(block))
+	blockParts := block.MakePartSet()
 
 	// Now append the block to s0.
-	err := s0.AppendBlock(block, blockParts.Header())
+	err := ExecBlock(s0, block, blockParts.Header())
 	if err != nil {
 		t.Error("Error appending initial block:", err)
 	}
@@ -183,7 +193,7 @@ func TestTxSequence(t *testing.T) {
 		tx := makeSendTx(sequence)
 		tx.Inputs[0].Signature = privAccounts[0].Sign(tx)
 		stateCopy := state.Copy()
-		err := stateCopy.ExecTx(tx, true)
+		err := execTxWithState(stateCopy, tx, true)
 		if i == 1 {
 			// Sequence is good.
 			if err != nil {
@@ -242,7 +252,7 @@ func TestTxs(t *testing.T) {
 		}
 
 		tx.Inputs[0].Signature = privAccounts[0].Sign(tx)
-		err := state.ExecTx(tx, true)
+		err := execTxWithState(state, tx, true)
 		if err != nil {
 			t.Errorf("Got error in executing send transaction, %v", err)
 		}
@@ -279,7 +289,7 @@ func TestTxs(t *testing.T) {
 			},
 		}
 		tx.Inputs[0].Signature = privAccounts[0].Sign(tx)
-		err := state.ExecTx(tx, true)
+		err := execTxWithState(state, tx, true)
 		if err != nil {
 			t.Errorf("Got error in executing bond transaction, %v", err)
 		}
@@ -338,7 +348,7 @@ func TestAddValidator(t *testing.T) {
 
 	// Make complete block and blockParts
 	block0 := makeBlock(t, s0, nil, []types.Tx{bondTx})
-	block0Parts := types.NewPartSetFromData(binary.BinaryBytes(block0))
+	block0Parts := block0.MakePartSet()
 
 	// Sanity check
 	if s0.BondedValidators.Size() != 1 {
@@ -346,7 +356,7 @@ func TestAddValidator(t *testing.T) {
 	}
 
 	// Now append the block to s0.
-	err := s0.AppendBlock(block0, block0Parts.Header())
+	err := ExecBlock(s0, block0, block0Parts.Header())
 	if err != nil {
 		t.Error("Error appending initial block:", err)
 	}
@@ -379,8 +389,8 @@ func TestAddValidator(t *testing.T) {
 			},
 		}, nil,
 	)
-	block1Parts := types.NewPartSetFromData(binary.BinaryBytes(block1))
-	err = s0.AppendBlock(block1, block1Parts.Header())
+	block1Parts := block1.MakePartSet()
+	err = ExecBlock(s0, block1, block1Parts.Header())
 	if err != nil {
 		t.Error("Error appending secondary block:", err)
 	}

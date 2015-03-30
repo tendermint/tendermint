@@ -381,7 +381,7 @@ out:
 	for {
 		select {
 		case <-dumpAddressTicker.C:
-			log.Debug("Saving book to file", "size", a.Size())
+			log.Debug("Saving AddrBook to file", "size", a.Size())
 			a.saveToFile(a.filePath)
 		case <-a.quit:
 			break out

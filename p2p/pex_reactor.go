@@ -14,7 +14,7 @@ import (
 var pexErrInvalidMessage = errors.New("Invalid PEX message")
 
 const (
-	PexCh                    = byte(0x00)
+	PexChannel               = byte(0x00)
 	ensurePeersPeriodSeconds = 30
 	minNumOutboundPeers      = 10
 	maxNumPeers              = 50
@@ -62,8 +62,9 @@ func (pexR *PEXReactor) Stop() {
 func (pexR *PEXReactor) GetChannels() []*ChannelDescriptor {
 	return []*ChannelDescriptor{
 		&ChannelDescriptor{
-			Id:       PexCh,
-			Priority: 1,
+			Id:                PexChannel,
+			Priority:          1,
+			SendQueueCapacity: 10,
 		},
 	}
 }
@@ -97,9 +98,9 @@ func (pexR *PEXReactor) Receive(chId byte, src *Peer, msgBytes []byte) {
 
 	switch msg.(type) {
 	case *pexHandshakeMessage:
-		chainId := msg.(*pexHandshakeMessage).ChainId
-		if chainId != pexR.sw.chainId {
-			err := fmt.Sprintf("Peer is on a different chain/network. Got %s, expected %s", chainId, pexR.sw.chainId)
+		network := msg.(*pexHandshakeMessage).Network
+		if network != pexR.sw.network {
+			err := fmt.Sprintf("Peer is on a different chain/network. Got %s, expected %s", network, pexR.sw.network)
 			pexR.sw.StopPeerForError(src, err)
 		}
 	case *pexRequestMessage:
@@ -122,11 +123,11 @@ func (pexR *PEXReactor) Receive(chId byte, src *Peer, msgBytes []byte) {
 
 // Asks peer for more addresses.
 func (pexR *PEXReactor) RequestPEX(peer *Peer) {
-	peer.Send(PexCh, &pexRequestMessage{})
+	peer.Send(PexChannel, &pexRequestMessage{})
 }
 
 func (pexR *PEXReactor) SendAddrs(peer *Peer, addrs []*NetAddress) {
-	peer.Send(PexCh, &pexAddrsMessage{Addrs: addrs})
+	peer.Send(PexChannel, &pexAddrsMessage{Addrs: addrs})
 }
 
 // Ensures that sufficient peers are connected. (continuous)
@@ -175,10 +176,12 @@ func (pexR *PEXReactor) ensurePeers() {
 			alreadyDialing := pexR.sw.IsDialing(try)
 			alreadyConnected := pexR.sw.Peers().Has(try.String())
 			if alreadySelected || alreadyDialing || alreadyConnected {
-				log.Debug("Cannot dial address", "addr", try,
-					"alreadySelected", alreadySelected,
-					"alreadyDialing", alreadyDialing,
-					"alreadyConnected", alreadyConnected)
+				/*
+					log.Debug("Cannot dial address", "addr", try,
+						"alreadySelected", alreadySelected,
+						"alreadyDialing", alreadyDialing,
+						"alreadyConnected", alreadyConnected)
+				*/
 				continue
 			} else {
 				log.Debug("Will dial address", "addr", try)
@@ -237,7 +240,7 @@ func DecodeMessage(bz []byte) (msg interface{}, err error) {
 A pexHandshakeMessage contains the peer's chainId
 */
 type pexHandshakeMessage struct {
-	ChainId string
+	Network string
 }
 
 func (m *pexHandshakeMessage) TypeByte() byte { return msgTypeHandshake }

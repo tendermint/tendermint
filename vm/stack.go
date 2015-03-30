@@ -2,11 +2,12 @@ package vm
 
 import (
 	"fmt"
+	. "github.com/tendermint/tendermint/common"
 )
 
 // Not goroutine safe
 type Stack struct {
-	data []Word
+	data []Word256
 	ptr  int
 
 	gas *uint64
@@ -15,7 +16,7 @@ type Stack struct {
 
 func NewStack(capacity int, gas *uint64, err *error) *Stack {
 	return &Stack{
-		data: make([]Word, capacity),
+		data: make([]Word256, capacity),
 		ptr:  0,
 		gas:  gas,
 		err:  err,
@@ -36,7 +37,7 @@ func (st *Stack) setErr(err error) {
 	}
 }
 
-func (st *Stack) Push(d Word) {
+func (st *Stack) Push(d Word256) {
 	st.useGas(GasStackOp)
 	if st.ptr == cap(st.data) {
 		st.setErr(ErrDataStackOverflow)
@@ -50,18 +51,18 @@ func (st *Stack) PushBytes(bz []byte) {
 	if len(bz) != 32 {
 		panic("Invalid bytes size: expected 32")
 	}
-	st.Push(BytesToWord(bz))
+	st.Push(RightPadWord256(bz))
 }
 
 func (st *Stack) Push64(i uint64) {
-	st.Push(Uint64ToWord(i))
+	st.Push(Uint64ToWord256(i))
 }
 
-func (st *Stack) Pop() Word {
+func (st *Stack) Pop() Word256 {
 	st.useGas(GasStackOp)
 	if st.ptr == 0 {
 		st.setErr(ErrDataStackUnderflow)
-		return Zero
+		return Zero256
 	}
 	st.ptr--
 	return st.data[st.ptr]
@@ -72,7 +73,7 @@ func (st *Stack) PopBytes() []byte {
 }
 
 func (st *Stack) Pop64() uint64 {
-	return GetUint64(st.Pop())
+	return GetUint64(st.Pop().Bytes())
 }
 
 func (st *Stack) Len() int {
@@ -100,7 +101,7 @@ func (st *Stack) Dup(n int) {
 }
 
 // Not an opcode, costs no gas.
-func (st *Stack) Peek() Word {
+func (st *Stack) Peek() Word256 {
 	return st.data[st.ptr-1]
 }
 
