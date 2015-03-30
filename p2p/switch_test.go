@@ -68,10 +68,10 @@ func (tr *TestReactor) Receive(chId byte, peer *Peer, msgBytes []byte) {
 
 //-----------------------------------------------------------------------------
 
-// convenience method for creating bar switches connected to each other.
+// convenience method for creating two switches connected to each other.
 func makeSwitchPair(t testing.TB, initSwitch func(*Switch) *Switch) (*Switch, *Switch) {
 
-	// Create bar switches that will be interconnected.
+	// Create two switches that will be interconnected.
 	s1 := initSwitch(NewSwitch())
 	s2 := initSwitch(NewSwitch())
 
@@ -105,7 +105,7 @@ func makeSwitchPair(t testing.TB, initSwitch func(*Switch) *Switch) (*Switch, *S
 
 func TestSwitches(t *testing.T) {
 	s1, s2 := makeSwitchPair(t, func(sw *Switch) *Switch {
-		// Make bar reactors of bar channels each
+		// Make two reactors of two channels each
 		sw.AddReactor("foo", NewTestReactor([]*ChannelDescriptor{
 			&ChannelDescriptor{Id: byte(0x00), Priority: 10},
 			&ChannelDescriptor{Id: byte(0x01), Priority: 10},
