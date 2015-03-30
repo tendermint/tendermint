@@ -495,13 +495,11 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 		case SLOAD: // 0x54
 			loc := stack.Pop()
 			data := vm.appState.GetStorage(callee.Address, loc)
-			stack.Push(flipWord(data))
+			stack.Push(data)
 			dbg.Printf(" {0x%X : 0x%X}\n", loc, data)
 
 		case SSTORE: // 0x55
 			loc, data := stack.Pop(), stack.Pop()
-			loc = flipWord(loc)
-			data = flipWord(data)
 			vm.appState.SetStorage(callee.Address, loc, data)
 			useGas(gas, GasStorageUpdate)
 			dbg.Printf(" {0x%X : 0x%X}\n", loc, data)
