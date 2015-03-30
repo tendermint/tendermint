@@ -3,7 +3,6 @@ package core
 import (
 	"fmt"
 	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/merkle"
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -24,7 +23,7 @@ func BroadcastTx(tx types.Tx) (*ResponseBroadcastTx, error) {
 		return nil, fmt.Errorf("Error broadcasting transaction: %v", err)
 	}
 
-	txHash := merkle.HashFromBinary(tx)
+	txHash := types.TxId(tx)
 	var createsContract uint8
 	var contractAddr []byte
 	// check if creates new contract

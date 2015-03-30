@@ -13,8 +13,8 @@ func GenPrivAccount() (*ResponseGenPrivAccount, error) {
 //-----------------------------------------------------------------------------
 
 func GetAccount(address []byte) (*ResponseGetAccount, error) {
-	state := consensusState.GetState()
-	return &ResponseGetAccount{state.GetAccount(address)}, nil
+	cache := mempoolReactor.Mempool.GetCache()
+	return &ResponseGetAccount{cache.GetAccount(address)}, nil
 }
 
 //-----------------------------------------------------------------------------

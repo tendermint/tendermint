@@ -254,3 +254,10 @@ func (tx *DupeoutTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
 func (tx *DupeoutTx) String() string {
 	return Fmt("DupeoutTx{%X,%v,%v}", tx.Address, tx.VoteA, tx.VoteB)
 }
+
+//-----------------------------------------------------------------------------
+
+func TxId(tx Tx) []byte {
+	signBytes := account.SignBytes(tx)
+	return binary.BinaryRipemd160(signBytes)
+}

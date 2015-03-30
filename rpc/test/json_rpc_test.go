@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/merkle"
 	"github.com/tendermint/tendermint/rpc"
 	"github.com/tendermint/tendermint/rpc/core"
 	"github.com/tendermint/tendermint/types"
@@ -161,8 +161,8 @@ func TestJSONBroadcastTx(t *testing.T) {
 	}
 	tx2 := txs[mempoolCount].(*types.SendTx)
 	mempoolCount += 1
-	if bytes.Compare(merkle.HashFromBinary(tx), merkle.HashFromBinary(tx2)) != 0 {
-		t.Fatal("inconsistent hashes for mempool tx and sent tx")
+	if bytes.Compare(types.TxId(tx), types.TxId(tx2)) != 0 {
+		t.Fatal(Fmt("inconsistent hashes for mempool tx and sent tx: %v vs %v", tx, tx2))
 	}
 
 }

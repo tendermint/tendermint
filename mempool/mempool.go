@@ -34,6 +34,10 @@ func (mem *Mempool) GetState() *sm.State {
 	return mem.state
 }
 
+func (mem *Mempool) GetCache() *sm.BlockCache {
+	return mem.cache
+}
+
 // Apply tx to the state and remember it.
 func (mem *Mempool) AddTx(tx types.Tx) (err error) {
 	mem.mtx.Lock()
