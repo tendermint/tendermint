@@ -95,9 +95,11 @@ func (cache *BlockCache) GetStorage(addr Word256, key Word256) (value Word256) {
 	if removed {
 		panic("GetStorage() on removed account")
 	}
-	if storage == nil {
+	if acc != nil && storage == nil {
 		storage = makeStorage(cache.db, acc.StorageRoot)
 		cache.accounts[string(addr.Prefix(20))] = accountInfo{acc, storage, false, dirty}
+	} else if acc == nil {
+		return Zero256
 	}
 
 	// Load and set cache
@@ -145,6 +147,9 @@ func (cache *BlockCache) Sync() {
 		addr, key := Tuple256Split(storageKey)
 		if addr != curAddr || curAcc == nil {
 			acc, storage, removed, _ := cache.accounts[string(addr.Prefix(20))].unpack()
+			if storage == nil {
+				storage = makeStorage(cache.db, acc.StorageRoot)
+			}
 			curAddr = addr
 			curAcc = acc
 			curAccRemoved = removed
@@ -161,6 +166,7 @@ func (cache *BlockCache) Sync() {
 			curStorage.Remove(key.Bytes())
 		} else {
 			curStorage.Set(key.Bytes(), value.Bytes())
+			cache.accounts[string(addr.Prefix(20))] = accountInfo{curAcc, curStorage, false, true}
 		}
 	}
 
