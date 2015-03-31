@@ -71,14 +71,10 @@ func NewNode() *Node {
 
 	sw := p2p.NewSwitch()
 	sw.SetNetwork(config.App().GetString("Network"))
-	sw.AddReactor("PEX", pexReactor).Start(sw)
-	sw.AddReactor("MEMPOOL", mempoolReactor).Start(sw)
-	sw.AddReactor("BLOCKCHAIN", bcReactor).Start(sw)
-	if !config.App().GetBool("FastSync") {
-		sw.AddReactor("CONSENSUS", consensusReactor).Start(sw)
-	} else {
-		sw.AddReactor("CONSENSUS", consensusReactor)
-	}
+	sw.AddReactor("PEX", pexReactor)
+	sw.AddReactor("MEMPOOL", mempoolReactor)
+	sw.AddReactor("BLOCKCHAIN", bcReactor)
+	sw.AddReactor("CONSENSUS", consensusReactor)
 
 	return &Node{
 		sw:               sw,
@@ -99,7 +95,13 @@ func (n *Node) Start() {
 		go n.inboundConnectionRoutine(l)
 	}
 	n.book.Start()
-	//n.sw.StartReactors()
+	//n.sw.StartReactors()...
+	n.sw.Reactor("PEX").Start(n.sw)
+	n.sw.Reactor("MEMPOOL").Start(n.sw)
+	n.sw.Reactor("BLOCKCHAIN").Start(n.sw)
+	if !config.App().GetBool("FastSync") {
+		n.sw.Reactor("CONSENSUS").Start(n.sw)
+	}
 }
 
 func (n *Node) Stop() {
