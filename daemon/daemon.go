@@ -4,16 +4,16 @@ import (
 	"os"
 	"os/signal"
 
-	bc "github.com/tendermint/tendermint/blockchain"
-	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/consensus"
-	dbm "github.com/tendermint/tendermint/db"
-	mempl "github.com/tendermint/tendermint/mempool"
-	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/rpc"
-	"github.com/tendermint/tendermint/rpc/core"
-	sm "github.com/tendermint/tendermint/state"
+	bc "github.com/tendermint/tendermint2/blockchain"
+	. "github.com/tendermint/tendermint2/common"
+	"github.com/tendermint/tendermint2/config"
+	"github.com/tendermint/tendermint2/consensus"
+	dbm "github.com/tendermint/tendermint2/db"
+	mempl "github.com/tendermint/tendermint2/mempool"
+	"github.com/tendermint/tendermint2/p2p"
+	"github.com/tendermint/tendermint2/rpc"
+	"github.com/tendermint/tendermint2/rpc/core"
+	sm "github.com/tendermint/tendermint2/state"
 )
 
 type Node struct {

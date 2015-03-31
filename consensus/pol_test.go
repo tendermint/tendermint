@@ -1,10 +1,10 @@
 package consensus
 
 import (
-	"github.com/tendermint/tendermint/binary"
-	. "github.com/tendermint/tendermint/common"
-	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint2/binary"
+	. "github.com/tendermint/tendermint2/common"
+	sm "github.com/tendermint/tendermint2/state"
+	"github.com/tendermint/tendermint2/types"
 
 	"bytes"
 	"testing"

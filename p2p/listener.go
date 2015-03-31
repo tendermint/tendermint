@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"sync/atomic"
 
-	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/p2p/upnp"
+	. "github.com/tendermint/tendermint2/common"
+	"github.com/tendermint/tendermint2/p2p/upnp"
 )
 
 type Listener interface {

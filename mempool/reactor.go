@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"github.com/tendermint/tendermint/binary"
-	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint2/binary"
+	"github.com/tendermint/tendermint2/p2p"
+	"github.com/tendermint/tendermint2/types"
 )
 
 var (

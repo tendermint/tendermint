@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/tendermint/tendermint/common"
-	. "github.com/tendermint/tendermint/vm"
+	. "github.com/tendermint/tendermint2/common"
+	. "github.com/tendermint/tendermint2/vm"
 )
 
 func newAppState() *FakeAppState {

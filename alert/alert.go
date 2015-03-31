@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/sfreiberg/gotwilio"
-	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint2/config"
 )
 
 var lastAlertUnix int64 = 0

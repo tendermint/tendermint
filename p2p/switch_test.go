@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/binary"
-	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint2/binary"
+	. "github.com/tendermint/tendermint2/common"
 )
 
 type PeerMessage struct {

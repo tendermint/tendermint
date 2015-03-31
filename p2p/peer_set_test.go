@@ -4,7 +4,7 @@ import (
 	"math/rand"
 	"testing"
 
-	. "github.com/tendermint/tendermint/common"
+	. "github.com/tendermint/tendermint2/common"
 )
 
 // Returns an empty dummy peer

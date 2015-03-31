@@ -13,7 +13,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint2/config"
 )
 
 // Convenience function

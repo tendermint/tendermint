@@ -8,13 +8,13 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/tendermint/tendermint/binary"
-	bc "github.com/tendermint/tendermint/blockchain"
-	. "github.com/tendermint/tendermint/common"
-	. "github.com/tendermint/tendermint/consensus/types"
-	"github.com/tendermint/tendermint/p2p"
-	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint2/binary"
+	bc "github.com/tendermint/tendermint2/blockchain"
+	. "github.com/tendermint/tendermint2/common"
+	. "github.com/tendermint/tendermint2/consensus/types"
+	"github.com/tendermint/tendermint2/p2p"
+	sm "github.com/tendermint/tendermint2/state"
+	"github.com/tendermint/tendermint2/types"
 )
 
 const (

@@ -2,7 +2,7 @@ package account
 
 import (
 	"github.com/tendermint/ed25519"
-	. "github.com/tendermint/tendermint/common"
+	. "github.com/tendermint/tendermint2/common"
 )
 
 type PrivAccount struct {

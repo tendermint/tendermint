@@ -7,10 +7,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/tendermint/tendermint/account"
-	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/merkle"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint2/account"
+	. "github.com/tendermint/tendermint2/common"
+	"github.com/tendermint/tendermint2/merkle"
+	"github.com/tendermint/tendermint2/types"
 )
 
 // ValidatorSet represent a set of *Validator at a given height.

@@ -8,12 +8,12 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/binary"
-	. "github.com/tendermint/tendermint/common"
-	dbm "github.com/tendermint/tendermint/db"
-	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint2/account"
+	"github.com/tendermint/tendermint2/binary"
+	. "github.com/tendermint/tendermint2/common"
+	dbm "github.com/tendermint/tendermint2/db"
+	sm "github.com/tendermint/tendermint2/state"
+	"github.com/tendermint/tendermint2/types"
 )
 
 func getString(prompt string) string {

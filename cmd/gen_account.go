@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint2/account"
+	"github.com/tendermint/tendermint2/binary"
 )
 
 func gen_account() {

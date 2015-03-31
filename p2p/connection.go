@@ -12,8 +12,8 @@ import (
 
 	flow "code.google.com/p/mxk/go1/flowcontrol"
 	"github.com/tendermint/log15"
-	"github.com/tendermint/tendermint/binary"
-	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint2/binary"
+	. "github.com/tendermint/tendermint2/common"
 )
 
 const (

@@ -8,10 +8,10 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/tendermint/tendermint/alert"
-	"github.com/tendermint/tendermint/binary"
-	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint2/alert"
+	"github.com/tendermint/tendermint2/binary"
+	. "github.com/tendermint/tendermint2/common"
+	"github.com/tendermint/tendermint2/config"
 )
 
 func StartHTTPServer() {

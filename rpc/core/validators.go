@@ -1,7 +1,7 @@
 package core
 
 import (
-	sm "github.com/tendermint/tendermint/state"
+	sm "github.com/tendermint/tendermint2/state"
 )
 
 //-----------------------------------------------------------------------------

@@ -28,7 +28,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 
-	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint2/binary"
 )
 
 func HashFromTwoHashes(left []byte, right []byte) []byte {

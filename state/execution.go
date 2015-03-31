@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"errors"
 
-	"github.com/tendermint/tendermint/account"
-	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/vm"
+	"github.com/tendermint/tendermint2/account"
+	. "github.com/tendermint/tendermint2/common"
+	"github.com/tendermint/tendermint2/types"
+	"github.com/tendermint/tendermint2/vm"
 )
 
 // NOTE: If an error occurs during block execution, state will be left

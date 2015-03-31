@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"sort"
 
-	"github.com/tendermint/tendermint/account"
-	. "github.com/tendermint/tendermint/common"
-	dbm "github.com/tendermint/tendermint/db"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint2/account"
+	. "github.com/tendermint/tendermint2/common"
+	dbm "github.com/tendermint/tendermint2/db"
+	"github.com/tendermint/tendermint2/types"
 
 	"io/ioutil"
 	"os"

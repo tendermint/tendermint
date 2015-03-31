@@ -1,9 +1,9 @@
 package core
 
 import (
-	"github.com/tendermint/tendermint/account"
-	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint2/account"
+	sm "github.com/tendermint/tendermint2/state"
+	"github.com/tendermint/tendermint2/types"
 )
 
 type ResponseGenPrivAccount struct {

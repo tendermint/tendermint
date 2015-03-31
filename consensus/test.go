@@ -3,10 +3,10 @@ package consensus
 import (
 	"sort"
 
-	bc "github.com/tendermint/tendermint/blockchain"
-	dbm "github.com/tendermint/tendermint/db"
-	mempl "github.com/tendermint/tendermint/mempool"
-	sm "github.com/tendermint/tendermint/state"
+	bc "github.com/tendermint/tendermint2/blockchain"
+	dbm "github.com/tendermint/tendermint2/db"
+	mempl "github.com/tendermint/tendermint2/mempool"
+	sm "github.com/tendermint/tendermint2/state"
 )
 
 func randConsensusState() (*ConsensusState, []*sm.PrivValidator) {

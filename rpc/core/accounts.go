@@ -1,7 +1,7 @@
 package core
 
 import (
-	"github.com/tendermint/tendermint/account"
+	"github.com/tendermint/tendermint2/account"
 )
 
 //-----------------------------------------------------------------------------

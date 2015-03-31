@@ -1,10 +1,10 @@
 package core
 
 import (
-	bc "github.com/tendermint/tendermint/blockchain"
-	"github.com/tendermint/tendermint/consensus"
-	mempl "github.com/tendermint/tendermint/mempool"
-	"github.com/tendermint/tendermint/p2p"
+	bc "github.com/tendermint/tendermint2/blockchain"
+	"github.com/tendermint/tendermint2/consensus"
+	mempl "github.com/tendermint/tendermint2/mempool"
+	"github.com/tendermint/tendermint2/p2p"
 )
 
 var blockStore *bc.BlockStore

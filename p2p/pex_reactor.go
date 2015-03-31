@@ -7,8 +7,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/tendermint/tendermint/binary"
-	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint2/binary"
+	. "github.com/tendermint/tendermint2/common"
 )
 
 var pexErrInvalidMessage = errors.New("Invalid PEX message")
