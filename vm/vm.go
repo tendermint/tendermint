@@ -318,7 +318,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
 			data = sha3.Sha3(data)
-			stack.PushBytes(data)
+			stack.PushBytes(flip(data))
 			dbg.Printf(" => (%v) %X\n", size, data)
 
 		case ADDRESS: // 0x30
