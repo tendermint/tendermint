@@ -154,6 +154,7 @@ func TestHTTPGetStorage(t *testing.T) {
 		t.Fatal("Creates contract but resulting address is empty")
 	}
 	time.Sleep(time.Second * 20)
+	mempoolCount -= 1
 
 	v := getStorage(t, contractAddr, []byte{0x1})
 	got := RightPadWord256(v)
