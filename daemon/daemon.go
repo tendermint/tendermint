@@ -199,7 +199,7 @@ func deboraBroadcast(n *Node) func([]byte) {
 func Daemon(deborable DeboraMode) {
 	// Add to debora
 	if deborable == DeboraPeerMode {
-		if err := debora.Add(PublicKey, SrcPath, AppName); err != nil {
+		if err := debora.Add(PublicKey, SrcPath, AppName, config.App().GetString("Debora.LogFile")); err != nil {
 			log.Info("Failed to add program to debora", "error", err)
 		}
 	}

@@ -106,6 +106,8 @@ func initDefaults(rootDir string) {
 	app.SetDefault("PrivValidatorfile", rootDir+"/priv_validator.json")
 
 	app.SetDefault("FastSync", false)
+
+	app.SetDefault("Debora.LogFile", rootDir+"/debora.log")
 }
 
 func Init(rootDir string) {
