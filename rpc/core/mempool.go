@@ -28,7 +28,7 @@ func BroadcastTx(tx types.Tx) (*ResponseBroadcastTx, error) {
 	var contractAddr []byte
 	// check if creates new contract
 	if callTx, ok := tx.(*types.CallTx); ok {
-		if callTx.Address == nil {
+		if len(callTx.Address) == 0 {
 			createsContract = 1
 			contractAddr = state.NewContractAddress(callTx.Input.Address, uint64(callTx.Input.Sequence))
 		}

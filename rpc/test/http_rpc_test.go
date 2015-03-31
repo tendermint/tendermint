@@ -6,14 +6,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/tendermint/tendermint2/binary"
+	. "github.com/tendermint/tendermint2/common"
 	"github.com/tendermint/tendermint2/config"
 	"github.com/tendermint/tendermint2/merkle"
 	"github.com/tendermint/tendermint2/rpc/core"
+	"github.com/tendermint/tendermint2/state"
 	"github.com/tendermint/tendermint2/types"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"testing"
+	"time"
 )
 
 func TestHTTPStatus(t *testing.T) {
@@ -88,16 +90,16 @@ func TestHTTPSignedTx(t *testing.T) {
 
 	amt := uint64(100)
 	toAddr := []byte{20, 143, 25, 63, 16, 177, 83, 29, 91, 91, 54, 23, 233, 46, 190, 121, 122, 34, 86, 54}
-	tx, priv := signTx(t, "HTTP", byteAddr, toAddr, byteKey, amt)
-	checkTx(t, byteAddr, priv, tx)
+	tx, priv := signTx(t, "HTTP", byteAddr, toAddr, nil, byteKey, amt, 0, 0)
+	checkTx(t, byteAddr, priv, tx.(*types.SendTx))
 
 	toAddr = []byte{20, 143, 24, 63, 16, 17, 83, 29, 90, 91, 52, 2, 0, 41, 190, 121, 122, 34, 86, 54}
-	tx, priv = signTx(t, "HTTP", byteAddr, toAddr, byteKey, amt)
-	checkTx(t, byteAddr, priv, tx)
+	tx, priv = signTx(t, "HTTP", byteAddr, toAddr, nil, byteKey, amt, 0, 0)
+	checkTx(t, byteAddr, priv, tx.(*types.SendTx))
 
 	toAddr = []byte{0, 0, 4, 0, 0, 4, 0, 0, 4, 91, 52, 2, 0, 41, 190, 121, 122, 34, 86, 54}
-	tx, priv = signTx(t, "HTTP", byteAddr, toAddr, byteKey, amt)
-	checkTx(t, byteAddr, priv, tx)
+	tx, priv = signTx(t, "HTTP", byteAddr, toAddr, nil, byteKey, amt, 0, 0)
+	checkTx(t, byteAddr, priv, tx.(*types.SendTx))
 }
 
 func TestHTTPBroadcastTx(t *testing.T) {
@@ -108,27 +110,7 @@ func TestHTTPBroadcastTx(t *testing.T) {
 
 	amt := uint64(100)
 	toAddr := []byte{20, 143, 25, 63, 16, 177, 83, 29, 91, 91, 54, 23, 233, 46, 190, 121, 122, 34, 86, 54}
-	tx, priv := signTx(t, "HTTP", byteAddr, toAddr, byteKey, amt)
-	checkTx(t, byteAddr, priv, tx)
-
-	n, w := new(int64), new(bytes.Buffer)
-	var err error
-	binary.WriteJSON(tx, w, n, &err)
-	if err != nil {
-		t.Fatal(err)
-	}
-	b := w.Bytes()
-
-	var status struct {
-		Status string
-		Data   core.ResponseBroadcastTx
-		Error  string
-	}
-	requestResponse(t, "broadcast_tx", url.Values{"tx": {string(b)}}, &status)
-	if status.Status == "ERROR" {
-		t.Fatal(status.Error)
-	}
-	receipt := status.Data.Receipt
+	tx, receipt := broadcastTx(t, "HTTP", byteAddr, toAddr, nil, byteKey, amt, 0, 0)
 	if receipt.CreatesContract > 0 {
 		t.Fatal("This tx does not create a contract")
 	}
@@ -146,6 +128,39 @@ func TestHTTPBroadcastTx(t *testing.T) {
 		t.Fatal("inconsistent hashes for mempool tx and sent tx")
 	}
 
+}
+
+func TestHTTPGetStorage(t *testing.T) {
+	priv := state.LoadPrivValidator(".tendermint/priv_validator.json")
+	_ = priv
+	//core.SetPrivValidator(priv)
+
+	byteAddr, _ := hex.DecodeString(userAddr)
+	var byteKey [64]byte
+	oh, _ := hex.DecodeString(userPriv)
+	copy(byteKey[:], oh)
+
+	amt := uint64(1100)
+	code := []byte{0x60, 0x5, 0x60, 0x1, 0x55}
+	_, receipt := broadcastTx(t, "HTTP", byteAddr, nil, code, byteKey, amt, 1000, 1000)
+	if receipt.CreatesContract == 0 {
+		t.Fatal("This tx creates a contract")
+	}
+	if len(receipt.TxHash) == 0 {
+		t.Fatal("Failed to compute tx hash")
+	}
+	contractAddr := receipt.ContractAddr
+	if len(contractAddr) == 0 {
+		t.Fatal("Creates contract but resulting address is empty")
+	}
+	time.Sleep(time.Second * 20)
+
+	v := getStorage(t, contractAddr, []byte{0x1})
+	got := RightPadWord256(v)
+	expected := RightPadWord256([]byte{0x5})
+	if got.Compare(expected) != 0 {
+		t.Fatalf("Wrong storage value. Got %x, expected %x", got.Bytes(), expected.Bytes())
+	}
 }
 
 /*tx.Inputs[0].Signature = mint.priv.PrivKey.Sign(account.SignBytes(tx))

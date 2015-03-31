@@ -22,6 +22,8 @@ var funcMap = map[string]*FuncWrapper{
 	"blockchain":              funcWrap(core.BlockchainInfo, []string{"min_height", "max_height"}),
 	"get_block":               funcWrap(core.GetBlock, []string{"height"}),
 	"get_account":             funcWrap(core.GetAccount, []string{"address"}),
+	"get_storage":             funcWrap(core.GetStorage, []string{"address", "storage"}),
+	"call":                    funcWrap(core.Call, []string{"address", "data"}),
 	"list_validators":         funcWrap(core.ListValidators, []string{}),
 	"dump_storage":            funcWrap(core.DumpStorage, []string{"address"}),
 	"broadcast_tx":            funcWrap(core.BroadcastTx, []string{"tx"}),

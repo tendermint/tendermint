@@ -107,16 +107,16 @@ func TestJSONSignedTx(t *testing.T) {
 
 	amt := uint64(100)
 	toAddr := []byte{20, 143, 25, 63, 16, 177, 83, 29, 91, 91, 54, 23, 233, 46, 190, 121, 122, 34, 86, 54}
-	tx, priv := signTx(t, "JSONRPC", byteAddr, toAddr, byteKey, amt)
-	checkTx(t, byteAddr, priv, tx)
+	tx, priv := signTx(t, "JSONRPC", byteAddr, toAddr, nil, byteKey, amt, 0, 0)
+	checkTx(t, byteAddr, priv, tx.(*types.SendTx))
 
 	toAddr = []byte{20, 143, 24, 63, 16, 17, 83, 29, 90, 91, 52, 2, 0, 41, 190, 121, 122, 34, 86, 54}
-	tx, priv = signTx(t, "JSONRPC", byteAddr, toAddr, byteKey, amt)
-	checkTx(t, byteAddr, priv, tx)
+	tx, priv = signTx(t, "JSONRPC", byteAddr, toAddr, nil, byteKey, amt, 0, 0)
+	checkTx(t, byteAddr, priv, tx.(*types.SendTx))
 
 	toAddr = []byte{0, 0, 4, 0, 0, 4, 0, 0, 4, 91, 52, 2, 0, 41, 190, 121, 122, 34, 86, 54}
-	tx, priv = signTx(t, "JSONRPC", byteAddr, toAddr, byteKey, amt)
-	checkTx(t, byteAddr, priv, tx)
+	tx, priv = signTx(t, "JSONRPC", byteAddr, toAddr, nil, byteKey, amt, 0, 0)
+	checkTx(t, byteAddr, priv, tx.(*types.SendTx))
 }
 
 func TestJSONBroadcastTx(t *testing.T) {
@@ -127,8 +127,8 @@ func TestJSONBroadcastTx(t *testing.T) {
 
 	amt := uint64(100)
 	toAddr := []byte{20, 143, 25, 63, 16, 177, 83, 29, 91, 91, 54, 23, 233, 46, 190, 121, 122, 34, 86, 54}
-	tx, priv := signTx(t, "JSONRPC", byteAddr, toAddr, byteKey, amt)
-	checkTx(t, byteAddr, priv, tx)
+	tx, priv := signTx(t, "JSONRPC", byteAddr, toAddr, nil, byteKey, amt, 0, 0)
+	checkTx(t, byteAddr, priv, tx.(*types.SendTx))
 
 	n, w := new(int64), new(bytes.Buffer)
 	var err error

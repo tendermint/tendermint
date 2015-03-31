@@ -14,6 +14,17 @@ type ResponseGetAccount struct {
 	Account *account.Account
 }
 
+type ResponseGetStorage struct {
+	Key   []byte
+	Value []byte
+}
+
+type ResponseCall struct {
+	Return  []byte
+	GasUsed uint64
+	// TODO ...
+}
+
 type ResponseListAccounts struct {
 	BlockHeight uint
 	Accounts    []*account.Account
