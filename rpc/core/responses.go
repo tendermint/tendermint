@@ -19,6 +19,16 @@ type ResponseListAccounts struct {
 	Accounts    []*account.Account
 }
 
+type StorageItem struct {
+	Key   []byte
+	Value []byte
+}
+
+type ResponseDumpStorage struct {
+	StorageRoot  []byte
+	StorageItems []StorageItem
+}
+
 type ResponseBlockchainInfo struct {
 	LastHeight uint
 	BlockMetas []*types.BlockMeta

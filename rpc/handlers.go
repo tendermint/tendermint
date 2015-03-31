@@ -23,6 +23,7 @@ var funcMap = map[string]*FuncWrapper{
 	"get_block":               funcWrap(core.GetBlock, []string{"height"}),
 	"get_account":             funcWrap(core.GetAccount, []string{"address"}),
 	"list_validators":         funcWrap(core.ListValidators, []string{}),
+	"dump_storage":            funcWrap(core.DumpStorage, []string{"address"}),
 	"broadcast_tx":            funcWrap(core.BroadcastTx, []string{"tx"}),
 	"list_accounts":           funcWrap(core.ListAccounts, []string{}),
 	"unsafe/gen_priv_account": funcWrap(core.GenPrivAccount, []string{}),
