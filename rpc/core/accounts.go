@@ -43,14 +43,6 @@ func ListAccounts() (*ResponseListAccounts, error) {
 	return &ResponseListAccounts{blockHeight, accounts}, nil
 }
 
-func GetStorage(address, storage []byte) (*ResponseGetStorage, error) {
-	cache := mempoolReactor.Mempool.GetCache()
-	addr, slot := RightPadWord256(address), RightPadWord256(storage)
-	value := cache.GetStorage(addr, slot)
-	fmt.Printf("STORAGE: %x, %x, %x\n", addr, slot, value)
-	return &ResponseGetStorage{storage, value.Bytes()}, nil
-}
-
 func DumpStorage(addr []byte) (*ResponseDumpStorage, error) {
 	state := consensusState.GetState()
 	account := state.GetAccount(addr)
