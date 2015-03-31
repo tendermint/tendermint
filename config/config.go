@@ -163,8 +163,9 @@ func ParseFlags(args []string) {
 	flags.BoolVar(&printHelp, "help", false, "Print this help message.")
 	flags.String("listen_addr", app.GetString("ListenAddr"), "Listen address. (0.0.0.0:0 means any interface, any port)")
 	flags.String("seed_node", app.GetString("SeedNode"), "Address of seed node")
-	flags.Bool("fast_sync", app.GetBool("FastSync"), "Fast blockchain syncing")
 	flags.String("rpc_http_listen_addr", app.GetString("RPC.HTTP.ListenAddr"), "RPC listen address. Port required")
+	flags.Bool("fast_sync", app.GetBool("FastSync"), "Fast blockchain syncing")
+	flags.String("log_stdout_level", app.GetString("Log.Stdout.Level"), "Stdout log level")
 	flags.Parse(args)
 	if printHelp {
 		flags.PrintDefaults()
@@ -176,6 +177,7 @@ func ParseFlags(args []string) {
 	app.BindPFlag("SeedNode", flags.Lookup("seed_node"))
 	app.BindPFlag("FastSync", flags.Lookup("fast_sync"))
 	app.BindPFlag("RPC.HTTP.ListenAddr", flags.Lookup("rpc_http_listen_addr"))
+	app.BindPFlag("Log.Stdout.Level", flags.Lookup("log_stdout_level"))
 
 	// Confused?
 	//app.Debug()

@@ -11,19 +11,12 @@ import (
 
 var rootHandler log15.Handler
 
-func getLevel(lvlString string) log15.Lvl {
-	lvl, err := log15.LvlFromString(lvlString)
-	if err != nil {
-		Exit(Fmt("Invalid log level %v: %v", lvlString, err))
-	}
-	return lvl
-}
-
 func init() {
-	InitLog()
+	Reset()
 }
 
-func InitLog() {
+// You might want to call this after resetting tendermint/config.
+func Reset() {
 	handlers := []log15.Handler{}
 
 	// By default, there's a stdout terminal format handler.
@@ -61,4 +54,12 @@ func RootHandler() log15.Handler {
 
 func New(ctx ...interface{}) log15.Logger {
 	return log15.Root().New(ctx...)
+}
+
+func getLevel(lvlString string) log15.Lvl {
+	lvl, err := log15.LvlFromString(lvlString)
+	if err != nil {
+		Exit(Fmt("Invalid log level %v: %v", lvlString, err))
+	}
+	return lvl
 }

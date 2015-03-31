@@ -6,6 +6,7 @@ import (
 
 	"github.com/tendermint/tendermint2/config"
 	"github.com/tendermint/tendermint2/daemon"
+	"github.com/tendermint/tendermint2/logger"
 )
 
 func main() {
@@ -27,6 +28,7 @@ Commands:
 	switch args[0] {
 	case "daemon":
 		config.ParseFlags(args[1:])
+		logger.Reset()
 		daemon.Daemon()
 	case "gen_account":
 		gen_account()
@@ -34,6 +36,7 @@ Commands:
 		gen_validator()
 	case "gen_tx":
 		config.ParseFlags(args[1:])
+		logger.Reset()
 		gen_tx()
 	case "probe_upnp":
 		probe_upnp()

@@ -60,7 +60,7 @@ func init() {
 	app.Set("PrivValidatorFile", rootDir+"/priv_validator.json")
 	app.Set("Log.Stdout.Level", "debug")
 	config.SetApp(app)
-	logger.InitLog()
+	logger.Reset()
 	// start a node
 	ready := make(chan struct{})
 	go newNode(ready)
