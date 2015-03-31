@@ -108,7 +108,7 @@ func getAccount(t *testing.T, typ string, addr []byte) *account.Account {
 	return status.Data.Account
 }
 
-func makeTx(t *testing.T, typ string, from, to []byte, amt uint64) *types.SendTx {
+func makeSendTx(t *testing.T, typ string, from, to []byte, amt uint64) *types.SendTx {
 	acc := getAccount(t, typ, from)
 	nonce := 0
 	if acc != nil {
@@ -138,6 +138,33 @@ func makeTx(t *testing.T, typ string, from, to []byte, amt uint64) *types.SendTx
 	return tx
 }
 
+func makeCallTx(t *testing.T, typ string, from, to, data []byte, amt, gaslim, fee uint64) *types.CallTx {
+	acc := getAccount(t, typ, from)
+	nonce := 0
+	if acc != nil {
+		nonce = int(acc.Sequence) + 1
+	}
+
+	bytePub, err := hex.DecodeString(userPub)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tx := &types.CallTx{
+		Input: &types.TxInput{
+			Address:   from,
+			Amount:    amt,
+			Sequence:  uint(nonce),
+			Signature: account.SignatureEd25519{},
+			PubKey:    account.PubKeyEd25519(bytePub),
+		},
+		Address:  to,
+		GasLimit: gaslim,
+		Fee:      fee,
+		Data:     data,
+	}
+	return tx
+}
+
 func requestResponse(t *testing.T, method string, values url.Values, status interface{}) {
 	resp, err := http.PostForm(requestAddr+method, values)
 	if err != nil {
@@ -154,8 +181,13 @@ func requestResponse(t *testing.T, method string, values url.Values, status inte
 	}
 }
 
-func signTx(t *testing.T, typ string, fromAddr, toAddr []byte, key [64]byte, amt uint64) (*types.SendTx, *account.PrivAccount) {
-	tx := makeTx(t, typ, fromAddr, toAddr, amt)
+func signTx(t *testing.T, typ string, fromAddr, toAddr, data []byte, key [64]byte, amt, gaslim, fee uint64) (types.Tx, *account.PrivAccount) {
+	var tx types.Tx
+	if data == nil {
+		tx = makeSendTx(t, typ, fromAddr, toAddr, amt)
+	} else {
+		tx = makeCallTx(t, typ, fromAddr, toAddr, data, amt, gaslim, fee)
+	}
 
 	n, w := new(int64), new(bytes.Buffer)
 	var err error
@@ -185,8 +217,60 @@ func signTx(t *testing.T, typ string, fromAddr, toAddr []byte, key [64]byte, amt
 		t.Fatal(status.Error)
 	}
 	response := status.Data
-	tx = response.Tx.(*types.SendTx)
-	return tx, privAcc
+	//tx = response.Tx.(*types.SendTx)
+	return response.Tx, privAcc
+}
+
+func broadcastTx(t *testing.T, typ string, fromAddr, toAddr, data []byte, key [64]byte, amt, gaslim, fee uint64) (types.Tx, core.Receipt) {
+	tx, _ := signTx(t, typ, fromAddr, toAddr, data, key, amt, gaslim, fee)
+
+	n, w := new(int64), new(bytes.Buffer)
+	var err error
+	binary.WriteJSON(tx, w, n, &err)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := w.Bytes()
+
+	var status struct {
+		Status string
+		Data   core.ResponseBroadcastTx
+		Error  string
+	}
+	requestResponse(t, "broadcast_tx", url.Values{"tx": {string(b)}}, &status)
+	if status.Status == "ERROR" {
+		t.Fatal(status.Error)
+	}
+	return tx, status.Data.Receipt
+}
+
+func dumpStorage(t *testing.T, addr []byte) core.ResponseDumpStorage {
+	addrString := "\"" + hex.EncodeToString(addr) + "\""
+	var status struct {
+		Status string
+		Data   core.ResponseDumpStorage
+		Error  string
+	}
+	requestResponse(t, "dump_storage", url.Values{"address": {addrString}}, &status)
+	if status.Status != "OK" {
+		t.Fatal(status.Error)
+	}
+	return status.Data
+}
+
+func getStorage(t *testing.T, addr, slot []byte) []byte {
+	addrString := "\"" + hex.EncodeToString(addr) + "\""
+	slotString := "\"" + hex.EncodeToString(slot) + "\""
+	var status struct {
+		Status string
+		Data   core.ResponseGetStorage
+		Error  string
+	}
+	requestResponse(t, "get_storage", url.Values{"address": {addrString}, "storage": {slotString}}, &status)
+	if status.Status != "OK" {
+		t.Fatal(status.Error)
+	}
+	return status.Data.Value
 }
 
 func checkTx(t *testing.T, fromAddr []byte, priv *account.PrivAccount, tx *types.SendTx) {

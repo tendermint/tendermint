@@ -5,6 +5,7 @@ import (
 	"github.com/tendermint/tendermint2/consensus"
 	mempl "github.com/tendermint/tendermint2/mempool"
 	"github.com/tendermint/tendermint2/p2p"
+	"github.com/tendermint/tendermint2/state"
 )
 
 var blockStore *bc.BlockStore
@@ -26,4 +27,8 @@ func SetMempoolReactor(mr *mempl.MempoolReactor) {
 
 func SetSwitch(sw *p2p.Switch) {
 	p2pSwitch = sw
+}
+
+func SetPrivValidator(priv *state.PrivValidator) {
+	consensusState.SetPrivValidator(priv)
 }

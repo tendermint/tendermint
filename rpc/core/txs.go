@@ -3,8 +3,53 @@ package core
 import (
 	"fmt"
 	"github.com/tendermint/tendermint2/account"
+	. "github.com/tendermint/tendermint2/common"
+	"github.com/tendermint/tendermint2/state"
 	"github.com/tendermint/tendermint2/types"
+	"github.com/tendermint/tendermint2/vm"
 )
+
+func toVMAccount(acc *account.Account) *vm.Account {
+	return &vm.Account{
+		Address:     RightPadWord256(acc.Address),
+		Balance:     acc.Balance,
+		Code:        acc.Code, // This is crazy.
+		Nonce:       uint64(acc.Sequence),
+		StorageRoot: RightPadWord256(acc.StorageRoot),
+		Other:       acc.PubKey,
+	}
+}
+
+//-----------------------------------------------------------------------------
+
+// Run a contract's code on an isolated and unpersisted state
+// Cannot be used to create new contracts
+func Call(address, data []byte) (*ResponseCall, error) {
+
+	st := consensusState.GetState() // performs a copy
+	cache := mempoolReactor.Mempool.GetCache()
+	outAcc := cache.GetAccount(address)
+	if outAcc == nil {
+		return nil, fmt.Errorf("Account %x does not exist", address)
+	}
+	callee := toVMAccount(outAcc)
+	caller := &vm.Account{Address: Zero256}
+	txCache := state.NewTxCache(cache)
+	params := vm.Params{
+		BlockHeight: uint64(st.LastBlockHeight),
+		BlockHash:   RightPadWord256(st.LastBlockHash),
+		BlockTime:   st.LastBlockTime.Unix(),
+		GasLimit:    10000000,
+	}
+
+	vmach := vm.NewVM(txCache, params, caller.Address)
+	gas := uint64(1000000000)
+	ret, err := vmach.Call(caller, callee, callee.Code, data, 0, &gas)
+	if err != nil {
+		return nil, err
+	}
+	return &ResponseCall{Return: ret}, nil
+}
 
 //-----------------------------------------------------------------------------
 
