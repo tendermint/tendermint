@@ -25,28 +25,39 @@ func StartHTTPServer() {
 
 //-----------------------------------------------------------------------------
 
-type APIStatus string
+type RPCStatus string
 
 const (
-	API_OK            APIStatus = "OK"
-	API_ERROR         APIStatus = "ERROR"
-	API_INVALID_PARAM APIStatus = "INVALID_PARAM"
-	API_UNAUTHORIZED  APIStatus = "UNAUTHORIZED"
-	API_REDIRECT      APIStatus = "REDIRECT"
+	RPC_OK            RPCStatus = "OK"
+	RPC_ERROR         RPCStatus = "ERROR"
+	RPC_INVALID_PARAM RPCStatus = "INVALID_PARAM"
+	RPC_UNAUTHORIZED  RPCStatus = "UNAUTHORIZED"
+	RPC_REDIRECT      RPCStatus = "REDIRECT"
 )
 
-type APIResponse struct {
-	Status APIStatus   `json:"status"`
+//-----------------------------------------------------------------------------
+
+type JSONRPCResponse struct {
+	JSONRPC int `json:"jsonrpc"`
+	Result  interface{}
+	Error   string
+	Id      string
+}
+
+//-----------------------------------------------------------------------------
+
+type RestResponse struct {
+	Status RPCStatus   `json:"status"`
 	Data   interface{} `json:"data"`
 	Error  string      `json:"error"`
 }
 
-func (res APIResponse) StatusError() string {
+func (res RestResponse) StatusError() string {
 	return fmt.Sprintf("Status(%v) %v", res.Status, res.Error)
 }
 
-func WriteAPIResponse(w http.ResponseWriter, status APIStatus, data interface{}, responseErr string) {
-	res := APIResponse{}
+func WriteRestResponse(w http.ResponseWriter, status RPCStatus, data interface{}, responseErr string) {
+	res := RestResponse{}
 	res.Status = status
 	if data == nil {
 		// so json doesn't vommit
@@ -58,28 +69,30 @@ func WriteAPIResponse(w http.ResponseWriter, status APIStatus, data interface{},
 	buf, n, err := new(bytes.Buffer), new(int64), new(error)
 	binary.WriteJSON(res, buf, n, err)
 	if *err != nil {
-		log.Warn("Failed to write JSON APIResponse", "error", err)
+		log.Warn("Failed to write JSON RestResponse", "error", err)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 	/* Bad idea: (e.g. hard to use with jQuery)
 	switch res.Status {
-	case API_OK:
+	case RPC_OK:
 		w.WriteHeader(200)
-	case API_ERROR:
+	case RPC_ERROR:
 		w.WriteHeader(400)
-	case API_UNAUTHORIZED:
+	case RPC_UNAUTHORIZED:
 		w.WriteHeader(401)
-	case API_INVALID_PARAM:
+	case RPC_INVALID_PARAM:
 		w.WriteHeader(420)
-	case API_REDIRECT:
+	case RPC_REDIRECT:
 		w.WriteHeader(430)
 	default:
 		w.WriteHeader(440)
 	}*/
 	w.Write(buf.Bytes())
 }
+
+//-----------------------------------------------------------------------------
 
 // Wraps an HTTP handler, adding error logging.
 //
@@ -113,9 +126,9 @@ func RecoverAndLogHandler(handler http.Handler) http.Handler {
 			// at least to my localhost.
 			if e := recover(); e != nil {
 
-				// If APIResponse,
-				if res, ok := e.(APIResponse); ok {
-					WriteAPIResponse(rww, res.Status, nil, res.Error)
+				// If RestResponse,
+				if res, ok := e.(RestResponse); ok {
+					WriteRestResponse(rww, res.Status, nil, res.Error)
 				} else {
 					// For the rest,
 					rww.WriteHeader(http.StatusInternalServerError)
