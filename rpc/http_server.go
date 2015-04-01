@@ -23,63 +23,38 @@ func StartHTTPServer() {
 	}()
 }
 
-//-----------------------------------------------------------------------------
-
-type APIStatus string
-
-const (
-	API_OK            APIStatus = "OK"
-	API_ERROR         APIStatus = "ERROR"
-	API_INVALID_PARAM APIStatus = "INVALID_PARAM"
-	API_UNAUTHORIZED  APIStatus = "UNAUTHORIZED"
-	API_REDIRECT      APIStatus = "REDIRECT"
-)
-
-type APIResponse struct {
-	Status APIStatus   `json:"status"`
-	Data   interface{} `json:"data"`
-	Error  string      `json:"error"`
+type RPCResponse struct {
+	Result  interface{} `json:"result"`
+	Error   string      `json:"error"`
+	Id      string      `json:"id"`
+	JSONRPC int         `json:"jsonrpc"`
 }
 
-func (res APIResponse) StatusError() string {
-	return fmt.Sprintf("Status(%v) %v", res.Status, res.Error)
-}
-
-func WriteAPIResponse(w http.ResponseWriter, status APIStatus, data interface{}, responseErr string) {
-	res := APIResponse{}
-	res.Status = status
-	if data == nil {
-		// so json doesn't vommit
-		data = struct{}{}
+func NewRPCResponse(res interface{}, err string) RPCResponse {
+	if res == nil {
+		res = struct{}{}
 	}
-	res.Data = data
-	res.Error = responseErr
+	return RPCResponse{
+		Result:  res,
+		Error:   err,
+		Id:      "",
+		JSONRPC: 2,
+	}
+}
 
+func WriteRPCResponse(w http.ResponseWriter, res RPCResponse) {
 	buf, n, err := new(bytes.Buffer), new(int64), new(error)
 	binary.WriteJSON(res, buf, n, err)
 	if *err != nil {
-		log.Warn("Failed to write JSON APIResponse", "error", err)
+		log.Warn("Failed to write JSON RPCResponse", "error", err)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
-	/* Bad idea: (e.g. hard to use with jQuery)
-	switch res.Status {
-	case API_OK:
-		w.WriteHeader(200)
-	case API_ERROR:
-		w.WriteHeader(400)
-	case API_UNAUTHORIZED:
-		w.WriteHeader(401)
-	case API_INVALID_PARAM:
-		w.WriteHeader(420)
-	case API_REDIRECT:
-		w.WriteHeader(430)
-	default:
-		w.WriteHeader(440)
-	}*/
 	w.Write(buf.Bytes())
 }
+
+//-----------------------------------------------------------------------------
 
 // Wraps an HTTP handler, adding error logging.
 //
@@ -113,9 +88,9 @@ func RecoverAndLogHandler(handler http.Handler) http.Handler {
 			// at least to my localhost.
 			if e := recover(); e != nil {
 
-				// If APIResponse,
-				if res, ok := e.(APIResponse); ok {
-					WriteAPIResponse(rww, res.Status, nil, res.Error)
+				// If RPCResponse
+				if res, ok := e.(RPCResponse); ok {
+					WriteRPCResponse(rww, res)
 				} else {
 					// For the rest,
 					rww.WriteHeader(http.StatusInternalServerError)

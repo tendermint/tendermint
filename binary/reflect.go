@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	. "github.com/tendermint/tendermint2/common"
+	. "github.com/tendermint/tendermint/common"
 )
 
 type TypeInfo struct {
@@ -26,6 +26,19 @@ type TypeInfo struct {
 	// If Type is concrete
 	HasTypeByte bool
 	TypeByte    byte
+
+	// If Type is kind reflect.Struct
+	Fields []StructFieldInfo
+}
+
+type StructFieldInfo struct {
+	Index    int          // Struct field index
+	JSONName string       // Corresponding JSON field name. (override with `json=""`)
+	Type     reflect.Type // Struct field type
+}
+
+func (info StructFieldInfo) unpack() (int, string, reflect.Type) {
+	return info.Index, info.JSONName, info.Type
 }
 
 // e.g. If o is struct{Foo}{}, return is the Foo interface type.
@@ -153,6 +166,28 @@ func RegisterType(info *TypeInfo) *TypeInfo {
 			info.HasTypeByte = true
 			info.TypeByte = typeByte
 		}
+	}
+
+	// If struct, register field name options
+	if rt.Kind() == reflect.Struct {
+		numFields := rt.NumField()
+		structFields := []StructFieldInfo{}
+		for i := 0; i < numFields; i++ {
+			field := rt.Field(i)
+			if field.PkgPath != "" {
+				continue
+			}
+			jsonName := field.Tag.Get("json")
+			if jsonName == "" {
+				jsonName = field.Name
+			}
+			structFields = append(structFields, StructFieldInfo{
+				Index:    i,
+				JSONName: jsonName,
+				Type:     field.Type,
+			})
+		}
+		info.Fields = structFields
 	}
 
 	return info
@@ -532,19 +567,15 @@ func readReflectJSON(rv reflect.Value, rt reflect.Type, o interface{}, err *erro
 				return
 			}
 			// TODO: ensure that all fields are set?
-			for name, value := range oMap {
-				field, ok := rt.FieldByName(name)
+			// TODO: disallow unknown oMap fields?
+			for _, fieldInfo := range typeInfo.Fields {
+				i, jsonName, fieldType := fieldInfo.unpack()
+				value, ok := oMap[jsonName]
 				if !ok {
-					*err = errors.New(Fmt("Attempt to set unknown field %v", field.Name))
-					return
+					continue // Skip missing fields.
 				}
-				// JAE: I don't think golang reflect lets us set unexported fields, but just in case:
-				if field.PkgPath != "" {
-					*err = errors.New(Fmt("Attempt to set unexported field %v", field.Name))
-					return
-				}
-				fieldRv := rv.FieldByName(name)
-				readReflectJSON(fieldRv, field.Type, value, err)
+				fieldRv := rv.Field(i)
+				readReflectJSON(fieldRv, fieldType, value, err)
 			}
 		}
 
@@ -643,21 +674,17 @@ func writeReflectJSON(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, 
 			WriteTo(jsonBytes, w, n, err)
 		} else {
 			WriteTo([]byte("{"), w, n, err)
-			numFields := rt.NumField()
 			wroteField := false
-			for i := 0; i < numFields; i++ {
-				field := rt.Field(i)
-				if field.PkgPath != "" {
-					continue
-				}
+			for _, fieldInfo := range typeInfo.Fields {
+				i, jsonName, fieldType := fieldInfo.unpack()
 				fieldRv := rv.Field(i)
 				if wroteField {
 					WriteTo([]byte(","), w, n, err)
 				} else {
 					wroteField = true
 				}
-				WriteTo([]byte(Fmt("\"%v\":", field.Name)), w, n, err)
-				writeReflectJSON(fieldRv, field.Type, w, n, err)
+				WriteTo([]byte(Fmt("\"%v\":", jsonName)), w, n, err)
+				writeReflectJSON(fieldRv, fieldType, w, n, err)
 			}
 			WriteTo([]byte("}"), w, n, err)
 		}

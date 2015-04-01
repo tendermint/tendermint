@@ -97,22 +97,23 @@ func JSONRPCHandler(w http.ResponseWriter, r *http.Request) {
 	var jrpc JSONRPC
 	err := json.Unmarshal(b, &jrpc)
 	if err != nil {
-		// TODO
+		WriteRPCResponse(w, NewRPCResponse(nil, err.Error()))
+		return
 	}
 
 	funcInfo := funcMap[jrpc.Method]
 	args, err := jsonParamsToArgs(funcInfo, jrpc.Params)
 	if err != nil {
-		WriteAPIResponse(w, API_INVALID_PARAM, nil, err.Error())
+		WriteRPCResponse(w, NewRPCResponse(nil, err.Error()))
 		return
 	}
 	returns := funcInfo.f.Call(args)
 	response, err := returnsToResponse(returns)
 	if err != nil {
-		WriteAPIResponse(w, API_ERROR, nil, err.Error())
+		WriteRPCResponse(w, NewRPCResponse(nil, err.Error()))
 		return
 	}
-	WriteAPIResponse(w, API_OK, response, "")
+	WriteRPCResponse(w, NewRPCResponse(response, ""))
 }
 
 // covert a list of interfaces to properly typed values
@@ -149,16 +150,16 @@ func toHttpHandler(funcInfo *FuncWrapper) func(http.ResponseWriter, *http.Reques
 	return func(w http.ResponseWriter, r *http.Request) {
 		args, err := httpParamsToArgs(funcInfo, r)
 		if err != nil {
-			WriteAPIResponse(w, API_INVALID_PARAM, nil, err.Error())
+			WriteRPCResponse(w, NewRPCResponse(nil, err.Error()))
 			return
 		}
 		returns := funcInfo.f.Call(args)
 		response, err := returnsToResponse(returns)
 		if err != nil {
-			WriteAPIResponse(w, API_ERROR, nil, err.Error())
+			WriteRPCResponse(w, NewRPCResponse(nil, err.Error()))
 			return
 		}
-		WriteAPIResponse(w, API_OK, response, "")
+		WriteRPCResponse(w, NewRPCResponse(response, ""))
 	}
 }
 

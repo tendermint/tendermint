@@ -401,3 +401,23 @@ func TestJSON(t *testing.T) {
 	}
 
 }
+
+//------------------------------------------------------------------------------
+
+type Foo struct {
+	FieldA string `json:"fieldA"` // json field name is "fieldA"
+	FieldB string // json field name is "FieldB"
+	fieldC string // not exported, not serialized.
+}
+
+func TestJSONFieldNames(t *testing.T) {
+	for i := 0; i < 20; i++ { // Try to ensure deterministic success.
+		foo := Foo{"a", "b", "c"}
+		stringified := string(JSONBytes(foo))
+		expected := `{"fieldA":"a","FieldB":"b"}`
+		if stringified != expected {
+			t.Fatalf("JSONFieldNames error: expected %v, got %v",
+				expected, stringified)
+		}
+	}
+}
