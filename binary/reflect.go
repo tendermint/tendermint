@@ -337,6 +337,11 @@ func readReflect(rv reflect.Value, rt reflect.Type, r io.Reader, n *int64, err *
 		log.Debug(Fmt("Read num: %v", num))
 		rv.SetUint(uint64(num))
 
+	case reflect.Bool:
+		num := ReadUint8(r, n, err)
+		log.Debug(Fmt("Read bool: %v", num))
+		rv.SetBool(num > 0)
+
 	default:
 		panic(Fmt("Unknown field type %v", rt.Kind()))
 	}
@@ -438,6 +443,13 @@ func writeReflect(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, err 
 
 	case reflect.Uint:
 		WriteUvarint(uint(rv.Uint()), w, n, err)
+
+	case reflect.Bool:
+		if rv.Bool() {
+			WriteUint8(uint8(1), w, n, err)
+		} else {
+			WriteUint8(uint8(0), w, n, err)
+		}
 
 	default:
 		panic(Fmt("Unknown field type %v", rt.Kind()))
@@ -610,6 +622,15 @@ func readReflectJSON(rv reflect.Value, rt reflect.Type, o interface{}, err *erro
 		log.Debug(Fmt("Read num: %v", num))
 		rv.SetUint(uint64(num))
 
+	case reflect.Bool:
+		bl, ok := o.(bool)
+		if !ok {
+			*err = errors.New(Fmt("Expected boolean but got type %v", reflect.TypeOf(o)))
+			return
+		}
+		log.Debug(Fmt("Read boolean: %v", bl))
+		rv.SetBool(bl)
+
 	default:
 		panic(Fmt("Unknown field type %v", rt.Kind()))
 	}
@@ -694,6 +715,8 @@ func writeReflectJSON(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, 
 	case reflect.Uint64, reflect.Uint32, reflect.Uint16, reflect.Uint8, reflect.Uint:
 		fallthrough
 	case reflect.Int64, reflect.Int32, reflect.Int16, reflect.Int8, reflect.Int:
+		fallthrough
+	case reflect.Bool:
 		jsonBytes, err_ := json.Marshal(rv.Interface())
 		if err_ != nil {
 			*err = err_
