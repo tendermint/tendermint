@@ -18,7 +18,6 @@ import (
 )
 
 type Node struct {
-	lz               []p2p.Listener
 	sw               *p2p.Switch
 	book             *p2p.AddrBook
 	blockStore       *bc.BlockStore
@@ -92,11 +91,7 @@ func NewNode() *Node {
 
 func (n *Node) Start() {
 	log.Info("Starting Node")
-	for _, l := range n.lz {
-		go n.inboundConnectionRoutine(l)
-	}
 	n.book.Start()
-	//n.sw.StartReactors()...
 	n.sw.Reactor("PEX").Start(n.sw)
 	n.sw.Reactor("MEMPOOL").Start(n.sw)
 	n.sw.Reactor("BLOCKCHAIN").Start(n.sw)
@@ -115,7 +110,7 @@ func (n *Node) Stop() {
 // Add a Listener to accept inbound peer connections.
 func (n *Node) AddListener(l p2p.Listener) {
 	log.Info(Fmt("Added %v", l))
-	n.lz = append(n.lz, l)
+	n.sw.AddListener(l)
 	n.book.AddOurAddress(l.ExternalAddress())
 }
 
@@ -172,6 +167,8 @@ func (n *Node) ConsensusState() *consensus.ConsensusState {
 func (n *Node) MempoolReactor() *mempl.MempoolReactor {
 	return n.mempoolReactor
 }
+
+//------------------------------------------------------------------------------
 
 // debora variables
 var (

@@ -28,12 +28,12 @@ incoming messages are received on the reactor.
 */
 type Switch struct {
 	network      string
+	listeners    []Listener
 	reactors     map[string]Reactor
 	chDescs      []*ChannelDescriptor
 	reactorsByCh map[byte]Reactor
 	peers        *PeerSet
 	dialing      *CMap
-	listeners    *CMap // listenerName -> chan interface{}
 }
 
 var (
@@ -53,7 +53,6 @@ func NewSwitch() *Switch {
 		reactorsByCh: make(map[byte]Reactor),
 		peers:        NewPeerSet(),
 		dialing:      NewCMap(),
-		listeners:    NewCMap(),
 	}
 
 	return sw
@@ -110,14 +109,33 @@ func (sw *Switch) StopPeers() {
 }
 
 // Convenience function
+func (sw *Switch) StopListeners() {
+	// Stop each listener.
+	for _, listener := range sw.listeners {
+		listener.Stop()
+	}
+	sw.listeners = nil
+}
+
+// Convenience function
 func (sw *Switch) Stop() {
 	sw.StopPeers()
 	sw.StopReactors()
+	sw.StopListeners()
 }
 
 // Not goroutine safe to modify.
 func (sw *Switch) Reactors() map[string]Reactor {
 	return sw.reactors
+}
+
+func (sw *Switch) AddListener(l Listener) {
+	sw.listeners = append(sw.listeners, l)
+	go sw.listenerRoutine(l)
+}
+
+func (sw *Switch) IsListening() bool {
+	return len(sw.listeners) > 0
 }
 
 func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, error) {
@@ -134,7 +152,7 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 	// Start the peer
 	peer.start()
 
-	// Notify listeners.
+	// Notify reactors
 	sw.doAddPeer(peer)
 
 	// Send handshake
@@ -207,7 +225,7 @@ func (sw *Switch) StopPeerForError(peer *Peer, reason interface{}) {
 	sw.peers.Remove(peer)
 	peer.stop()
 
-	// Notify listeners
+	// Notify reactors
 	sw.doRemovePeer(peer, reason)
 }
 
@@ -218,12 +236,8 @@ func (sw *Switch) StopPeerGracefully(peer *Peer) {
 	sw.peers.Remove(peer)
 	peer.stop()
 
-	// Notify listeners
+	// Notify reactors
 	sw.doRemovePeer(peer, nil)
-}
-
-func (sw *Switch) IsListening() bool {
-	return sw.listeners.Size() > 0
 }
 
 func (sw *Switch) doAddPeer(peer *Peer) {
@@ -236,6 +250,27 @@ func (sw *Switch) doRemovePeer(peer *Peer, reason interface{}) {
 	for _, reactor := range sw.reactors {
 		reactor.RemovePeer(peer, reason)
 	}
+}
+
+func (sw *Switch) listenerRoutine(l Listener) {
+	for {
+		inConn, ok := <-l.Connections()
+		if !ok {
+			break
+		}
+		// New inbound connection!
+		peer, err := sw.AddPeerWithConnection(inConn, false)
+		if err != nil {
+			log.Info("Ignoring error from inbound connection: %v\n%v",
+				peer, err)
+			continue
+		}
+		// NOTE: We don't yet have the external address of the
+		// remote (if they have a listener at all).
+		// PEXReactor's pexRoutine will handle that.
+	}
+
+	// cleanup
 }
 
 //-----------------------------------------------------------------------------
