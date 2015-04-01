@@ -84,31 +84,24 @@ func funcReturnTypes(f interface{}) []reflect.Type {
 //-----------------------------------------------------------------------------
 // rpc.json
 
-type JSONRPC struct {
-	JSONRPC string        `json:"jsonrpc"`
-	Method  string        `json:"method"`
-	Params  []interface{} `json:"params"`
-	Id      int           `json:"id"`
-}
-
 // jsonrpc calls grab the given method's function info and runs reflect.Call
 func JSONRPCHandler(w http.ResponseWriter, r *http.Request) {
 	b, _ := ioutil.ReadAll(r.Body)
-	var jrpc JSONRPC
-	err := json.Unmarshal(b, &jrpc)
+	var request RPCRequest
+	err := json.Unmarshal(b, &request)
 	if err != nil {
 		WriteRPCResponse(w, NewRPCResponse(nil, err.Error()))
 		return
 	}
 
-	funcInfo := funcMap[jrpc.Method]
-	args, err := jsonParamsToArgs(funcInfo, jrpc.Params)
+	funcInfo := funcMap[request.Method]
+	args, err := jsonParamsToArgs(funcInfo, request.Params)
 	if err != nil {
 		WriteRPCResponse(w, NewRPCResponse(nil, err.Error()))
 		return
 	}
 	returns := funcInfo.f.Call(args)
-	response, err := returnsToResponse(returns)
+	response, err := unreflectResponse(returns)
 	if err != nil {
 		WriteRPCResponse(w, NewRPCResponse(nil, err.Error()))
 		return
@@ -154,7 +147,7 @@ func toHttpHandler(funcInfo *FuncWrapper) func(http.ResponseWriter, *http.Reques
 			return
 		}
 		returns := funcInfo.f.Call(args)
-		response, err := returnsToResponse(returns)
+		response, err := unreflectResponse(returns)
 		if err != nil {
 			WriteRPCResponse(w, NewRPCResponse(nil, err.Error()))
 			return
@@ -197,7 +190,7 @@ func _jsonStringToArg(ty reflect.Type, arg string) (reflect.Value, error) {
 //-----------------------------------------------------------------------------
 
 // returns is Response struct and error. If error is not nil, return it
-func returnsToResponse(returns []reflect.Value) (interface{}, error) {
+func unreflectResponse(returns []reflect.Value) (interface{}, error) {
 	errV := returns[1]
 	if errV.Interface() != nil {
 		return nil, fmt.Errorf("%v", errV.Interface())

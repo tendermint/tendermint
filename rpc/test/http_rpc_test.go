@@ -30,7 +30,7 @@ func TestHTTPStatus(t *testing.T) {
 		Result  core.ResponseStatus `json:"result"`
 		Error   string              `json:"error"`
 		Id      string              `json:"id"`
-		JSONRPC int                 `json:"jsonrpc"`
+		JSONRPC string              `json:"jsonrpc"`
 	}
 	binary.ReadJSON(&response, body, &err)
 	if err != nil {
@@ -58,7 +58,7 @@ func TestHTTPGenPriv(t *testing.T) {
 		Result  core.ResponseGenPrivAccount `json:"result"`
 		Error   string                      `json:"error"`
 		Id      string                      `json:"id"`
-		JSONRPC int                         `json:"jsonrpc"`
+		JSONRPC string                      `json:"jsonrpc"`
 	}
 	binary.ReadJSON(&response, body, &err)
 	if err != nil {

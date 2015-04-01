@@ -123,7 +123,7 @@ func getAccount(t *testing.T, typ string, addr []byte) *account.Account {
 		Result  core.ResponseGetAccount `json:"result"`
 		Error   string                  `json:"error"`
 		Id      string                  `json:"id"`
-		JSONRPC int                     `json:"jsonrpc"`
+		JSONRPC string                  `json:"jsonrpc"`
 	}
 	binary.ReadJSON(&response, body, &err)
 	if err != nil {
@@ -235,7 +235,7 @@ func signTx(t *testing.T, typ string, fromAddr, toAddr, data []byte, key [64]byt
 		Result  core.ResponseSignTx `json:"result"`
 		Error   string              `json:"error"`
 		Id      string              `json:"id"`
-		JSONRPC int                 `json:"jsonrpc"`
+		JSONRPC string              `json:"jsonrpc"`
 	}
 	requestResponse(t, "unsafe/sign_tx", url.Values{"tx": {string(b)}, "privAccounts": {string(w.Bytes())}}, &response)
 	if response.Error != "" {
@@ -260,7 +260,7 @@ func broadcastTx(t *testing.T, typ string, fromAddr, toAddr, data []byte, key [6
 		Result  core.ResponseBroadcastTx `json:"result"`
 		Error   string                   `json:"error"`
 		Id      string                   `json:"id"`
-		JSONRPC int                      `json:"jsonrpc"`
+		JSONRPC string                   `json:"jsonrpc"`
 	}
 	requestResponse(t, "broadcast_tx", url.Values{"tx": {string(b)}}, &response)
 	if response.Error != "" {
@@ -275,7 +275,7 @@ func dumpStorage(t *testing.T, addr []byte) core.ResponseDumpStorage {
 		Result  core.ResponseDumpStorage `json:"result"`
 		Error   string                   `json:"error"`
 		Id      string                   `json:"id"`
-		JSONRPC int                      `json:"jsonrpc"`
+		JSONRPC string                   `json:"jsonrpc"`
 	}
 	requestResponse(t, "dump_storage", url.Values{"address": {addrString}}, &response)
 	if response.Error != "" {
@@ -291,7 +291,7 @@ func getStorage(t *testing.T, addr, slot []byte) []byte {
 		Result  core.ResponseGetStorage `json:"result"`
 		Error   string                  `json:"error"`
 		Id      string                  `json:"id"`
-		JSONRPC int                     `json:"jsonrpc"`
+		JSONRPC string                  `json:"jsonrpc"`
 	}
 	requestResponse(t, "get_storage", url.Values{"address": {addrString}, "storage": {slotString}}, &response)
 	if response.Error != "" {

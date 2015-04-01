@@ -18,7 +18,7 @@ import (
 )
 
 func TestJSONStatus(t *testing.T) {
-	s := rpc.JSONRPC{
+	s := rpc.RPCRequest{
 		JSONRPC: "2.0",
 		Method:  "status",
 		Params:  []interface{}{},
@@ -43,7 +43,7 @@ func TestJSONStatus(t *testing.T) {
 		Result  core.ResponseStatus `json:"result"`
 		Error   string              `json:"error"`
 		Id      string              `json:"id"`
-		JSONRPC int                 `json:"jsonrpc"`
+		JSONRPC string              `json:"jsonrpc"`
 	}
 	binary.ReadJSON(&response, body, &err)
 	if err != nil {
@@ -56,7 +56,7 @@ func TestJSONStatus(t *testing.T) {
 }
 
 func TestJSONGenPriv(t *testing.T) {
-	s := rpc.JSONRPC{
+	s := rpc.RPCRequest{
 		JSONRPC: "2.0",
 		Method:  "unsafe/gen_priv_account",
 		Params:  []interface{}{},
@@ -83,7 +83,7 @@ func TestJSONGenPriv(t *testing.T) {
 		Result  core.ResponseGenPrivAccount `json:"result"`
 		Error   string                      `json:"error"`
 		Id      string                      `json:"id"`
-		JSONRPC int                         `json:"jsonrpc"`
+		JSONRPC string                      `json:"jsonrpc"`
 	}
 	binary.ReadJSON(&response, body, &err)
 	if err != nil {
@@ -146,7 +146,7 @@ func TestJSONBroadcastTx(t *testing.T) {
 		Result  core.ResponseBroadcastTx `json:"result"`
 		Error   string                   `json:"error"`
 		Id      string                   `json:"id"`
-		JSONRPC int                      `json:"jsonrpc"`
+		JSONRPC string                   `json:"jsonrpc"`
 	}
 	requestResponse(t, "broadcast_tx", url.Values{"tx": {string(b)}}, &response)
 	if response.Error != "" {

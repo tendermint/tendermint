@@ -23,25 +23,6 @@ func StartHTTPServer() {
 	}()
 }
 
-type RPCResponse struct {
-	Result  interface{} `json:"result"`
-	Error   string      `json:"error"`
-	Id      string      `json:"id"`
-	JSONRPC string      `json:"jsonrpc"`
-}
-
-func NewRPCResponse(res interface{}, err string) RPCResponse {
-	if res == nil {
-		res = struct{}{}
-	}
-	return RPCResponse{
-		Result:  res,
-		Error:   err,
-		Id:      "",
-		JSONRPC: "2.0",
-	}
-}
-
 func WriteRPCResponse(w http.ResponseWriter, res RPCResponse) {
 	buf, n, err := new(bytes.Buffer), new(int64), new(error)
 	binary.WriteJSON(res, buf, n, err)

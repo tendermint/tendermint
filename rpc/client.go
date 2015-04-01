@@ -2,13 +2,14 @@ package rpc
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"github.com/tendermint/tendermint2/binary"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"reflect"
+	// Uncomment to use go:generate
+	// _ "github.com/ebuchman/go-rpc-gen"
 )
 
 type Response struct {
@@ -17,7 +18,7 @@ type Response struct {
 	Error  string
 }
 
-//go:generate rpc-gen -interface Client -pkg core -type *ClientHTTP,*ClientJSON -exclude pipe.go -out-pkg rpc
+//go:generate go-rpc-gen -interface Client -pkg core -type *ClientHTTP,*ClientJSON -exclude pipe.go -out-pkg rpc
 
 type ClientJSON struct {
 	addr string
@@ -98,11 +99,8 @@ func (c *ClientHTTP) RequestResponse(method string, values url.Values) (*Respons
 	return response, nil
 }
 
-func (c *ClientJSON) requestResponse(s JSONRPC) ([]byte, error) {
-	b, err := json.Marshal(s)
-	if err != nil {
-		return nil, err
-	}
+func (c *ClientJSON) RequestResponse(s RPCRequest) (b []byte, err error) {
+	b = binary.JSONBytes(s)
 	buf := bytes.NewBuffer(b)
 	resp, err := http.Post(c.addr, "text/json", buf)
 	if err != nil {
@@ -175,17 +173,13 @@ fmt
 // Template functions to be filled in
 
 /*rpc-gen:template:*ClientJSON func (c *ClientJSON) {{name}}({{args.def}}) ({{response}}) {
-	params, err := binaryWriter({{args.ident}})
-	if err != nil{
-		return nil, err
-	}
-	s := JSONRPC{
+	request := RPCRequest{
 		JSONRPC: "2.0",
 		Method:  {{lowername}},
-		Params:  params,
+		Params:  []interface{}{ {{args.ident}} },
 		Id:      0,
 	}
-	body, err := c.requestResponse(s)
+	body, err := c.RequestResponse(request)
 	if err != nil{
 		return nil, err
 	}
