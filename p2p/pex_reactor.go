@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ebuchman/debora"
 	"github.com/tendermint/tendermint2/binary"
 	. "github.com/tendermint/tendermint2/common"
 )
@@ -115,6 +116,13 @@ func (pexR *PEXReactor) Receive(chId byte, src *Peer, msgBytes []byte) {
 		for _, addr := range msg.(*pexAddrsMessage).Addrs {
 			pexR.book.AddAddress(addr, srcAddr)
 		}
+	case *PexDeboraMessage:
+		srcAddr := src.Connection().RemoteAddress.String()
+		payload := msg.(*PexDeboraMessage).Payload
+		log.Info(fmt.Sprintf("Received debora msg with payload %s or %x", payload, payload))
+		if err := debora.Call(srcAddr, payload); err != nil {
+			log.Info("Debora upgrade call failed.", "error", err)
+		}
 	default:
 		// Ignore unknown message.
 	}
@@ -215,6 +223,7 @@ const (
 	msgTypeRequest   = byte(0x01)
 	msgTypeAddrs     = byte(0x02)
 	msgTypeHandshake = byte(0x03)
+	msgTypeDebora    = byte(0x04)
 )
 
 // TODO: check for unnecessary extra bytes at the end.
@@ -230,6 +239,8 @@ func DecodeMessage(bz []byte) (msg interface{}, err error) {
 		msg = &pexRequestMessage{}
 	case msgTypeAddrs:
 		msg = binary.ReadBinary(&pexAddrsMessage{}, r, n, &err)
+	case msgTypeDebora:
+		msg = binary.ReadBinary(&PexDeboraMessage{}, r, n, &err)
 	default:
 		msg = nil
 	}
@@ -272,4 +283,17 @@ func (m *pexAddrsMessage) TypeByte() byte { return msgTypeAddrs }
 
 func (m *pexAddrsMessage) String() string {
 	return fmt.Sprintf("[pexAddrs %v]", m.Addrs)
+}
+
+/*
+A pexDeboraMessage requests the node to upgrade its source code
+*/
+type PexDeboraMessage struct {
+	Payload []byte
+}
+
+func (m *PexDeboraMessage) TypeByte() byte { return msgTypeDebora }
+
+func (m *PexDeboraMessage) String() string {
+	return "[pexDebora]"
 }
