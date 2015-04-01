@@ -3,19 +3,19 @@
 all: build
 
 build: get_deps
-	go build -o tendermint github.com/tendermint/tendermint/cmd
+	go build -o tendermint github.com/tendermint/tendermint2/cmd
 
 build_race: get_deps
-	go build -race -o tendermint github.com/tendermint/tendermint/cmd
+	go build -race -o tendermint github.com/tendermint/tendermint2/cmd
 
 test: build
-	go test github.com/tendermint/tendermint/...
+	go test github.com/tendermint/tendermint2/...
 
 list_deps:
-	go list -f '{{join .Deps "\n"}}' github.com/tendermint/tendermint/... |  xargs go list -f '{{if not .Standard}}{{.ImportPath}}{{end}}'
+	go list -f '{{join .Deps "\n"}}' github.com/tendermint/tendermint2/... |  xargs go list -f '{{if not .Standard}}{{.ImportPath}}{{end}}'
 
 get_deps:
-	go get github.com/tendermint/tendermint/...
+	go get github.com/tendermint/tendermint2/...
 
 tendermint_root/priv_validator.json: tendermint_root/priv_validator.json.orig
 	cp $< $@
