@@ -27,7 +27,7 @@ type RPCResponse struct {
 	Result  interface{} `json:"result"`
 	Error   string      `json:"error"`
 	Id      string      `json:"id"`
-	JSONRPC int         `json:"jsonrpc"`
+	JSONRPC string      `json:"jsonrpc"`
 }
 
 func NewRPCResponse(res interface{}, err string) RPCResponse {
@@ -38,7 +38,7 @@ func NewRPCResponse(res interface{}, err string) RPCResponse {
 		Result:  res,
 		Error:   err,
 		Id:      "",
-		JSONRPC: 2,
+		JSONRPC: "2.0",
 	}
 }
 

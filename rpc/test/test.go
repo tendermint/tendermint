@@ -3,7 +3,6 @@ package rpc
 import (
 	"bytes"
 	"encoding/hex"
-	"encoding/json"
 	"github.com/tendermint/tendermint2/account"
 	"github.com/tendermint/tendermint2/binary"
 	"github.com/tendermint/tendermint2/config"
@@ -12,6 +11,7 @@ import (
 	"github.com/tendermint/tendermint2/p2p"
 	"github.com/tendermint/tendermint2/rpc"
 	"github.com/tendermint/tendermint2/rpc/core"
+	"github.com/tendermint/tendermint2/state"
 	"github.com/tendermint/tendermint2/types"
 	"io/ioutil"
 	"net/http"
@@ -61,12 +61,35 @@ func init() {
 	app.Set("Log.Stdout.Level", "debug")
 	config.SetApp(app)
 	logger.Reset()
+
+	priv := state.LoadPrivValidator(rootDir + "/priv_validator.json")
+	priv.LastHeight = 0
+	priv.LastRound = 0
+	priv.LastStep = 0
+	priv.Save()
+
 	// start a node
 	ready := make(chan struct{})
 	go newNode(ready)
 	<-ready
 }
 
+func getAccount(t *testing.T, typ string, addr []byte) *account.Account {
+	var client rpc.Client
+	switch typ {
+	case "JSONRPC":
+		client = rpc.NewClient(requestAddr, "JSONRPC")
+	case "HTTP":
+		client = rpc.NewClient(requestAddr, "HTTP")
+	}
+	ac, err := client.GetAccount(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return ac.Account
+}
+
+/*
 func getAccount(t *testing.T, typ string, addr []byte) *account.Account {
 	var resp *http.Response
 	var err error
@@ -107,7 +130,7 @@ func getAccount(t *testing.T, typ string, addr []byte) *account.Account {
 		t.Fatal(err)
 	}
 	return response.Result.Account
-}
+}*/
 
 func makeSendTx(t *testing.T, typ string, from, to []byte, amt uint64) *types.SendTx {
 	acc := getAccount(t, typ, from)

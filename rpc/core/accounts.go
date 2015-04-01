@@ -10,9 +10,9 @@ func GenPrivAccount() (*ResponseGenPrivAccount, error) {
 	return &ResponseGenPrivAccount{account.GenPrivAccount()}, nil
 }
 
-func GetAccount(addr []byte) (*ResponseGetAccount, error) {
+func GetAccount(address []byte) (*ResponseGetAccount, error) {
 	cache := mempoolReactor.Mempool.GetCache()
-	return &ResponseGetAccount{cache.GetAccount(addr)}, nil
+	return &ResponseGetAccount{cache.GetAccount(address)}, nil
 }
 
 func GetStorage(address, slot []byte) (*ResponseGetStorage, error) {
