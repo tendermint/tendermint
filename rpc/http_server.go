@@ -23,72 +23,34 @@ func StartHTTPServer() {
 	}()
 }
 
-//-----------------------------------------------------------------------------
-
-type RPCStatus string
-
-const (
-	RPC_OK            RPCStatus = "OK"
-	RPC_ERROR         RPCStatus = "ERROR"
-	RPC_INVALID_PARAM RPCStatus = "INVALID_PARAM"
-	RPC_UNAUTHORIZED  RPCStatus = "UNAUTHORIZED"
-	RPC_REDIRECT      RPCStatus = "REDIRECT"
-)
-
-//-----------------------------------------------------------------------------
-
-type JSONRPCResponse struct {
-	JSONRPC int `json:"jsonrpc"`
-	Result  interface{}
-	Error   string
-	Id      string
+type RPCResponse struct {
+	Result  interface{} `json:"result"`
+	Error   string      `json:"error"`
+	Id      string      `json:"id"`
+	JSONRPC int         `json:"jsonrpc"`
 }
 
-//-----------------------------------------------------------------------------
-
-type RestResponse struct {
-	Status RPCStatus   `json:"status"`
-	Data   interface{} `json:"data"`
-	Error  string      `json:"error"`
-}
-
-func (res RestResponse) StatusError() string {
-	return fmt.Sprintf("Status(%v) %v", res.Status, res.Error)
-}
-
-func WriteRestResponse(w http.ResponseWriter, status RPCStatus, data interface{}, responseErr string) {
-	res := RestResponse{}
-	res.Status = status
-	if data == nil {
-		// so json doesn't vommit
-		data = struct{}{}
+func NewRPCResponse(res interface{}, err string) RPCResponse {
+	if res == nil {
+		res = struct{}{}
 	}
-	res.Data = data
-	res.Error = responseErr
+	return RPCResponse{
+		Result:  res,
+		Error:   err,
+		Id:      "",
+		JSONRPC: 2,
+	}
+}
 
+func WriteRPCResponse(w http.ResponseWriter, res RPCResponse) {
 	buf, n, err := new(bytes.Buffer), new(int64), new(error)
 	binary.WriteJSON(res, buf, n, err)
 	if *err != nil {
-		log.Warn("Failed to write JSON RestResponse", "error", err)
+		log.Warn("Failed to write JSON RPCResponse", "error", err)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
-	/* Bad idea: (e.g. hard to use with jQuery)
-	switch res.Status {
-	case RPC_OK:
-		w.WriteHeader(200)
-	case RPC_ERROR:
-		w.WriteHeader(400)
-	case RPC_UNAUTHORIZED:
-		w.WriteHeader(401)
-	case RPC_INVALID_PARAM:
-		w.WriteHeader(420)
-	case RPC_REDIRECT:
-		w.WriteHeader(430)
-	default:
-		w.WriteHeader(440)
-	}*/
 	w.Write(buf.Bytes())
 }
 
@@ -126,9 +88,9 @@ func RecoverAndLogHandler(handler http.Handler) http.Handler {
 			// at least to my localhost.
 			if e := recover(); e != nil {
 
-				// If RestResponse,
-				if res, ok := e.(RestResponse); ok {
-					WriteRestResponse(rww, res.Status, nil, res.Error)
+				// If RPCResponse
+				if res, ok := e.(RPCResponse); ok {
+					WriteRPCResponse(rww, res)
 				} else {
 					// For the rest,
 					rww.WriteHeader(http.StatusInternalServerError)

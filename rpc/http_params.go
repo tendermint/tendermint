@@ -23,8 +23,8 @@ var (
 	//RE_ID12       = regexp.MustCompile(`^[a-zA-Z0-9]{12}$`)
 )
 
-func panicAPI(err error) {
-	panic(APIResponse{API_INVALID_PARAM, nil, err.Error()})
+func panicRPC(err error) {
+	panic(NewRPCResponse(nil, err.Error()))
 }
 
 func GetParam(r *http.Request, param string) string {

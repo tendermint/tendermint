@@ -38,17 +38,20 @@ func TestJSONStatus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	status := new(struct {
-		Status string
-		Data   core.ResponseStatus
-		Error  string
-	})
-	err = json.Unmarshal(body, status)
+
+	var response struct {
+		Result  core.ResponseStatus `json:"result"`
+		Error   string              `json:"error"`
+		Id      string              `json:"id"`
+		JSONRPC int                 `json:"jsonrpc"`
+	}
+	binary.ReadJSON(&response, body, &err)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if status.Data.Network != config.App().GetString("Network") {
-		t.Fatal(fmt.Errorf("Network mismatch: got %s expected %s", status.Data.Network, config.App().Get("Network")))
+	if response.Result.Network != config.App().GetString("Network") {
+		t.Fatal(fmt.Errorf("Network mismatch: got %s expected %s",
+			response.Result.Network, config.App().Get("Network")))
 	}
 }
 
@@ -76,16 +79,17 @@ func TestJSONGenPriv(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var status struct {
-		Status string
-		Data   core.ResponseGenPrivAccount
-		Error  string
+	var response struct {
+		Result  core.ResponseGenPrivAccount `json:"result"`
+		Error   string                      `json:"error"`
+		Id      string                      `json:"id"`
+		JSONRPC int                         `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&status, body, &err)
+	binary.ReadJSON(&response, body, &err)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(status.Data.PrivAccount.Address) == 0 {
+	if len(response.Result.PrivAccount.Address) == 0 {
 		t.Fatal("Failed to generate an address")
 	}
 }
@@ -138,16 +142,17 @@ func TestJSONBroadcastTx(t *testing.T) {
 	}
 	b := w.Bytes()
 
-	var status struct {
-		Status string
-		Data   core.ResponseBroadcastTx
-		Error  string
+	var response struct {
+		Result  core.ResponseBroadcastTx `json:"result"`
+		Error   string                   `json:"error"`
+		Id      string                   `json:"id"`
+		JSONRPC int                      `json:"jsonrpc"`
 	}
-	requestResponse(t, "broadcast_tx", url.Values{"tx": {string(b)}}, &status)
-	if status.Status == "ERROR" {
-		t.Fatal(status.Error)
+	requestResponse(t, "broadcast_tx", url.Values{"tx": {string(b)}}, &response)
+	if response.Error != "" {
+		t.Fatal(response.Error)
 	}
-	receipt := status.Data.Receipt
+	receipt := response.Result.Receipt
 	if receipt.CreatesContract > 0 {
 		t.Fatal("This tx does not create a contract")
 	}

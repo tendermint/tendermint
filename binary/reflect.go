@@ -572,8 +572,7 @@ func readReflectJSON(rv reflect.Value, rt reflect.Type, o interface{}, err *erro
 				i, jsonName, fieldType := fieldInfo.unpack()
 				value, ok := oMap[jsonName]
 				if !ok {
-					*err = errors.New(Fmt("Missing field: %v", jsonName))
-					return
+					continue // Skip missing fields.
 				}
 				fieldRv := rv.Field(i)
 				readReflectJSON(fieldRv, fieldType, value, err)

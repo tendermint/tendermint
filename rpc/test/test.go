@@ -96,16 +96,17 @@ func getAccount(t *testing.T, typ string, addr []byte) *account.Account {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var status struct {
-		Status string
-		Data   core.ResponseGetAccount
-		Error  string
+	var response struct {
+		Result  core.ResponseGetAccount `json:"result"`
+		Error   string                  `json:"error"`
+		Id      string                  `json:"id"`
+		JSONRPC int                     `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&status, body, &err)
+	binary.ReadJSON(&response, body, &err)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return status.Data.Account
+	return response.Result.Account
 }
 
 func makeSendTx(t *testing.T, typ string, from, to []byte, amt uint64) *types.SendTx {
@@ -165,7 +166,7 @@ func makeCallTx(t *testing.T, typ string, from, to, data []byte, amt, gaslim, fe
 	return tx
 }
 
-func requestResponse(t *testing.T, method string, values url.Values, status interface{}) {
+func requestResponse(t *testing.T, method string, values url.Values, response interface{}) {
 	resp, err := http.PostForm(requestAddr+method, values)
 	if err != nil {
 		t.Fatal(err)
@@ -175,7 +176,7 @@ func requestResponse(t *testing.T, method string, values url.Values, status inte
 	if err != nil {
 		t.Fatal(err)
 	}
-	binary.ReadJSON(status, body, &err)
+	binary.ReadJSON(response, body, &err)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -207,18 +208,18 @@ func signTx(t *testing.T, typ string, fromAddr, toAddr, data []byte, key [64]byt
 		t.Fatal(err)
 	}
 
-	var status struct {
-		Status string
-		Data   core.ResponseSignTx
-		Error  string
+	var response struct {
+		Result  core.ResponseSignTx `json:"result"`
+		Error   string              `json:"error"`
+		Id      string              `json:"id"`
+		JSONRPC int                 `json:"jsonrpc"`
 	}
-	requestResponse(t, "unsafe/sign_tx", url.Values{"tx": {string(b)}, "privAccounts": {string(w.Bytes())}}, &status)
-	if status.Status == "ERROR" {
-		t.Fatal(status.Error)
+	requestResponse(t, "unsafe/sign_tx", url.Values{"tx": {string(b)}, "privAccounts": {string(w.Bytes())}}, &response)
+	if response.Error != "" {
+		t.Fatal(response.Error)
 	}
-	response := status.Data
-	//tx = response.Tx.(*types.SendTx)
-	return response.Tx, privAcc
+	result := response.Result
+	return result.Tx, privAcc
 }
 
 func broadcastTx(t *testing.T, typ string, fromAddr, toAddr, data []byte, key [64]byte, amt, gaslim, fee uint64) (types.Tx, core.Receipt) {
@@ -232,45 +233,48 @@ func broadcastTx(t *testing.T, typ string, fromAddr, toAddr, data []byte, key [6
 	}
 	b := w.Bytes()
 
-	var status struct {
-		Status string
-		Data   core.ResponseBroadcastTx
-		Error  string
+	var response struct {
+		Result  core.ResponseBroadcastTx `json:"result"`
+		Error   string                   `json:"error"`
+		Id      string                   `json:"id"`
+		JSONRPC int                      `json:"jsonrpc"`
 	}
-	requestResponse(t, "broadcast_tx", url.Values{"tx": {string(b)}}, &status)
-	if status.Status == "ERROR" {
-		t.Fatal(status.Error)
+	requestResponse(t, "broadcast_tx", url.Values{"tx": {string(b)}}, &response)
+	if response.Error != "" {
+		t.Fatal(response.Error)
 	}
-	return tx, status.Data.Receipt
+	return tx, response.Result.Receipt
 }
 
 func dumpStorage(t *testing.T, addr []byte) core.ResponseDumpStorage {
 	addrString := "\"" + hex.EncodeToString(addr) + "\""
-	var status struct {
-		Status string
-		Data   core.ResponseDumpStorage
-		Error  string
+	var response struct {
+		Result  core.ResponseDumpStorage `json:"result"`
+		Error   string                   `json:"error"`
+		Id      string                   `json:"id"`
+		JSONRPC int                      `json:"jsonrpc"`
 	}
-	requestResponse(t, "dump_storage", url.Values{"address": {addrString}}, &status)
-	if status.Status != "OK" {
-		t.Fatal(status.Error)
+	requestResponse(t, "dump_storage", url.Values{"address": {addrString}}, &response)
+	if response.Error != "" {
+		t.Fatal(response.Error)
 	}
-	return status.Data
+	return response.Result
 }
 
 func getStorage(t *testing.T, addr, slot []byte) []byte {
 	addrString := "\"" + hex.EncodeToString(addr) + "\""
 	slotString := "\"" + hex.EncodeToString(slot) + "\""
-	var status struct {
-		Status string
-		Data   core.ResponseGetStorage
-		Error  string
+	var response struct {
+		Result  core.ResponseGetStorage `json:"result"`
+		Error   string                  `json:"error"`
+		Id      string                  `json:"id"`
+		JSONRPC int                     `json:"jsonrpc"`
 	}
-	requestResponse(t, "get_storage", url.Values{"address": {addrString}, "storage": {slotString}}, &status)
-	if status.Status != "OK" {
-		t.Fatal(status.Error)
+	requestResponse(t, "get_storage", url.Values{"address": {addrString}, "storage": {slotString}}, &response)
+	if response.Error != "" {
+		t.Fatal(response.Error)
 	}
-	return status.Data.Value
+	return response.Result.Value
 }
 
 func checkTx(t *testing.T, fromAddr []byte, priv *account.PrivAccount, tx *types.SendTx) {
