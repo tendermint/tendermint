@@ -48,19 +48,10 @@ func RecoverAndLogHandler(handler http.Handler) http.Handler {
 		begin := time.Now()
 
 		// Common headers
-		rww.Header().Set("Access-Control-Allow-Origin", "*")
-		/*
-			origin := r.Header.Get("Origin")
-			originUrl, err := url.Parse(origin)
-			if err == nil {
-				originHost := strings.Split(originUrl.Host, ":")[0]
-				if strings.HasSuffix(originHost, ".tendermint.com") {
-					rww.Header().Set("Access-Control-Allow-Origin", origin)
-					rww.Header().Set("Access-Control-Allow-Credentials", "true")
-					rww.Header().Set("Access-Control-Expose-Headers", "X-Server-Time")
-				}
-			}
-		*/
+		origin := r.Header.Get("Origin")
+		rww.Header().Set("Access-Control-Allow-Origin", origin)
+		rww.Header().Set("Access-Control-Allow-Credentials", "true")
+		rww.Header().Set("Access-Control-Expose-Headers", "X-Server-Time")
 		rww.Header().Set("X-Server-Time", fmt.Sprintf("%v", begin.Unix()))
 
 		defer func() {
