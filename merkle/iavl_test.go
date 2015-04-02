@@ -12,10 +12,6 @@ import (
 	"testing"
 )
 
-func init() {
-	// TODO: seed rand?
-}
-
 func randstr(length int) string {
 	return RandStr(length)
 }
