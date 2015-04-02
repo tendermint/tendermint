@@ -4,67 +4,31 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
-	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/merkle"
-	"github.com/tendermint/tendermint/rpc/core"
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	"io/ioutil"
-	"net/http"
 	"testing"
 	"time"
 )
 
 func TestHTTPStatus(t *testing.T) {
-	resp, err := http.Get(requestAddr + "status")
+	client := clients["HTTP"]
+	resp, err := client.Status()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var response struct {
-		Result  core.ResponseStatus `json:"result"`
-		Error   string              `json:"error"`
-		Id      string              `json:"id"`
-		JSONRPC string              `json:"jsonrpc"`
-	}
-	binary.ReadJSON(&response, body, &err)
-	if err != nil {
-		t.Fatal(err)
-	}
-	result := response.Result
-	fmt.Println(">>>", result)
+	fmt.Println(">>>", resp)
 	return
 }
 
 func TestHTTPGenPriv(t *testing.T) {
-	resp, err := http.Get(requestAddr + "unsafe/gen_priv_account")
+	client := clients["HTTP"]
+	resp, err := client.GenPrivAccount()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resp.StatusCode != 200 {
-		t.Fatal(resp)
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var response struct {
-		Result  core.ResponseGenPrivAccount `json:"result"`
-		Error   string                      `json:"error"`
-		Id      string                      `json:"id"`
-		JSONRPC string                      `json:"jsonrpc"`
-	}
-	binary.ReadJSON(&response, body, &err)
-	if err != nil {
-		t.Fatal(err)
-	}
-	fmt.Println(">>>", response)
+	fmt.Println(">>>", resp)
 }
 
 func TestHTTPGetAccount(t *testing.T) {
@@ -153,14 +117,10 @@ func TestHTTPGetStorage(t *testing.T) {
 	time.Sleep(time.Second * 20)
 	mempoolCount -= 1
 
-	v := getStorage(t, contractAddr, []byte{0x1})
+	v := getStorage(t, "HTTP", contractAddr, []byte{0x1})
 	got := RightPadWord256(v)
 	expected := RightPadWord256([]byte{0x5})
 	if got.Compare(expected) != 0 {
 		t.Fatalf("Wrong storage value. Got %x, expected %x", got.Bytes(), expected.Bytes())
 	}
 }
-
-/*tx.Inputs[0].Signature = mint.priv.PrivKey.Sign(account.SignBytes(tx))
-err = mint.MempoolReactor.BroadcastTx(tx)
-return hex.EncodeToString(merkle.HashFromBinary(tx)), err*/
