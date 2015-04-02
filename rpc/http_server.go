@@ -12,15 +12,17 @@ import (
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/events"
 )
 
-func StartHTTPServer() {
-	initHandlers()
+func StartHTTPServer(ew *events.EventSwitch) {
+	initHandlers(ew)
 
 	log.Info(Fmt("Starting RPC HTTP server on %s", config.App().GetString("RPC.HTTP.ListenAddr")))
 	go func() {
 		log.Crit("RPC HTTPServer stopped", "result", http.ListenAndServe(config.App().GetString("RPC.HTTP.ListenAddr"), RecoverAndLogHandler(http.DefaultServeMux)))
 	}()
+
 }
 
 func WriteRPCResponse(w http.ResponseWriter, res RPCResponse) {
