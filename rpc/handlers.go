@@ -12,7 +12,13 @@ import (
 	"io/ioutil"
 	"net/http"
 	"reflect"
+	"runtime"
+	"strings"
 )
+
+// maps camel-case function names to lower case rpc version
+// populated by calls to funcWrap
+var reverseFuncMap = make(map[string]string)
 
 // cache all type information about each function up front
 // (func, responseStruct, argNames)
@@ -40,6 +46,16 @@ func initHandlers() {
 
 	// JSONRPC endpoints
 	http.HandleFunc("/", JSONRPCHandler)
+
+	// fill the map from camelcase to lowercase
+	for name, f := range funcMap {
+		camelName := runtime.FuncForPC(f.f.Pointer()).Name()
+		spl := strings.Split(camelName, ".")
+		if len(spl) > 1 {
+			camelName = spl[len(spl)-1]
+		}
+		reverseFuncMap[camelName] = name
+	}
 }
 
 //-------------------------------------
@@ -86,6 +102,10 @@ func funcReturnTypes(f interface{}) []reflect.Type {
 
 // jsonrpc calls grab the given method's function info and runs reflect.Call
 func JSONRPCHandler(w http.ResponseWriter, r *http.Request) {
+	if len(r.URL.Path) > 1 {
+		WriteRPCResponse(w, NewRPCResponse(nil, fmt.Sprintf("Invalid JSONRPC endpoint %s", r.URL.Path)))
+		return
+	}
 	b, _ := ioutil.ReadAll(r.Body)
 	var request RPCRequest
 	err := json.Unmarshal(b, &request)
