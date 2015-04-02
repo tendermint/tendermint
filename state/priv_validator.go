@@ -9,12 +9,12 @@ import (
 	"math"
 	"sync"
 
-	"github.com/tendermint/tendermint2/account"
-	"github.com/tendermint/tendermint2/binary"
-	. "github.com/tendermint/tendermint2/common"
-	"github.com/tendermint/tendermint2/config"
-	. "github.com/tendermint/tendermint2/consensus/types"
-	"github.com/tendermint/tendermint2/types"
+	"github.com/tendermint/tendermint/account"
+	"github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/config"
+	. "github.com/tendermint/tendermint/consensus/types"
+	"github.com/tendermint/tendermint/types"
 
 	"github.com/tendermint/ed25519"
 )

@@ -1,10 +1,10 @@
 package state
 
 import (
-	ac "github.com/tendermint/tendermint2/account"
-	. "github.com/tendermint/tendermint2/common"
-	"github.com/tendermint/tendermint2/vm"
-	"github.com/tendermint/tendermint2/vm/sha3"
+	ac "github.com/tendermint/tendermint/account"
+	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/vm"
+	"github.com/tendermint/tendermint/vm/sha3"
 )
 
 type TxCache struct {

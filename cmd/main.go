@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/tendermint/tendermint2/config"
-	"github.com/tendermint/tendermint2/daemon"
-	"github.com/tendermint/tendermint2/logger"
+	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/daemon"
+	"github.com/tendermint/tendermint/logger"
 )
 
 func main() {

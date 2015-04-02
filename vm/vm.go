@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
-	. "github.com/tendermint/tendermint2/common"
-	"github.com/tendermint/tendermint2/vm/sha3"
+	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/vm/sha3"
 )
 
 var (

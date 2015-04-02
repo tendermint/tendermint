@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	. "github.com/tendermint/tendermint2/common"
+	. "github.com/tendermint/tendermint/common"
 )
 
 type TypeInfo struct {

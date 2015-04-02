@@ -9,8 +9,8 @@ import (
 	"strings"
 	"sync"
 
-	. "github.com/tendermint/tendermint2/common"
-	"github.com/tendermint/tendermint2/merkle"
+	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/merkle"
 )
 
 const (

@@ -3,7 +3,7 @@ package rpc
 import (
 	"bytes"
 	"fmt"
-	"github.com/tendermint/tendermint2/binary"
+	"github.com/tendermint/tendermint/binary"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -164,7 +164,7 @@ func argsToURLValues(argNames []string, args ...interface{}) (url.Values, error)
 // import statements we will need for the templates
 
 /*rpc-gen:imports:
-github.com/tendermint/tendermint2/binary
+github.com/tendermint/tendermint/binary
 net/http
 io/ioutil
 fmt

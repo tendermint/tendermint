@@ -5,16 +5,16 @@ import (
 	"os/signal"
 
 	"github.com/ebuchman/debora"
-	bc "github.com/tendermint/tendermint2/blockchain"
-	. "github.com/tendermint/tendermint2/common"
-	"github.com/tendermint/tendermint2/config"
-	"github.com/tendermint/tendermint2/consensus"
-	dbm "github.com/tendermint/tendermint2/db"
-	mempl "github.com/tendermint/tendermint2/mempool"
-	"github.com/tendermint/tendermint2/p2p"
-	"github.com/tendermint/tendermint2/rpc"
-	"github.com/tendermint/tendermint2/rpc/core"
-	sm "github.com/tendermint/tendermint2/state"
+	bc "github.com/tendermint/tendermint/blockchain"
+	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/consensus"
+	dbm "github.com/tendermint/tendermint/db"
+	mempl "github.com/tendermint/tendermint/mempool"
+	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/rpc"
+	"github.com/tendermint/tendermint/rpc/core"
+	sm "github.com/tendermint/tendermint/state"
 )
 
 type Node struct {
@@ -173,7 +173,7 @@ func (n *Node) MempoolReactor() *mempl.MempoolReactor {
 // debora variables
 var (
 	AppName   = "tendermint"
-	SrcPath   = "github.com/tendermint/tendermint2/cmd"
+	SrcPath   = "github.com/tendermint/tendermint/cmd"
 	PublicKey = "30820122300d06092a864886f70d01010105000382010f003082010a0282010100dd861e9cd5a3f3fc27d46531aa9d87f5b63f6358fa00397482c4ab93abf4ab2e3ed75380fc714d52b5e80afc184f21d5732f2d6dacc23f0e802e585ee005347c2af0ad992ee5c11b2a96f72bcae78bef314ba4448b33c3a1df7a4d6e6a808d21dfeb67ef974c0357ba54649dbcd92ec2a8d3a510da747e70cb859a7f9b15a6eceb2179c225afd3f8fb15be38988f9b82622d855f343af5830ca30a5beff3905b618f6cc39142a60ff5840595265a1f7b9fbd504760667a1b2508097c1831fd13f54c794a08468d65db9e27aff0a889665ebd7de4a6e9a6c09b3811b6cda623be48e1214ba0f9b378441e2a02b3891bc8ec1ae7081988e15c2f53fa6512784b390203010001"
 
 	DeboraCallPort = 56565

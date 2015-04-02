@@ -2,8 +2,8 @@ package account
 
 import (
 	"github.com/tendermint/ed25519"
-	"github.com/tendermint/tendermint2/binary"
-	. "github.com/tendermint/tendermint2/common"
+	"github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
 )
 
 // PrivKey is part of PrivAccount and state.PrivValidator.

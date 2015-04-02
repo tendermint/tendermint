@@ -7,8 +7,8 @@ TODO: support Call && GetStorage.
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/tendermint/tendermint2/binary"
-	"github.com/tendermint/tendermint2/rpc/core"
+	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/rpc/core"
 	"io/ioutil"
 	"net/http"
 	"reflect"

@@ -2,7 +2,7 @@ package binary
 
 import (
 	"github.com/tendermint/log15"
-	"github.com/tendermint/tendermint2/logger"
+	"github.com/tendermint/tendermint/logger"
 )
 
 var log = logger.New("module", "binary")

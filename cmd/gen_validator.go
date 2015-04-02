@@ -3,9 +3,9 @@ package main
 import (
 	"fmt"
 
-	"github.com/tendermint/tendermint2/binary"
-	"github.com/tendermint/tendermint2/config"
-	sm "github.com/tendermint/tendermint2/state"
+	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/config"
+	sm "github.com/tendermint/tendermint/state"
 )
 
 func gen_validator() {

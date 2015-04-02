@@ -6,11 +6,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/tendermint/tendermint2/account"
-	"github.com/tendermint/tendermint2/binary"
-	. "github.com/tendermint/tendermint2/common"
-	sm "github.com/tendermint/tendermint2/state"
-	"github.com/tendermint/tendermint2/types"
+	"github.com/tendermint/tendermint/account"
+	"github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
+	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/types"
 )
 
 // VoteSet helps collect signatures from validators at each height+round

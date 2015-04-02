@@ -1,7 +1,7 @@
 package consensus
 
 import (
-	"github.com/tendermint/tendermint2/logger"
+	"github.com/tendermint/tendermint/logger"
 )
 
 var log = logger.New("module", "consensus")

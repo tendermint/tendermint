@@ -6,8 +6,8 @@ import (
 	"net"
 	"sync/atomic"
 
-	"github.com/tendermint/tendermint2/binary"
-	. "github.com/tendermint/tendermint2/common"
+	"github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
 )
 
 type Peer struct {

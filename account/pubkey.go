@@ -4,8 +4,8 @@ import (
 	"errors"
 
 	"github.com/tendermint/ed25519"
-	"github.com/tendermint/tendermint2/binary"
-	. "github.com/tendermint/tendermint2/common"
+	"github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
 )
 
 // PubKey is part of Account and Validator.

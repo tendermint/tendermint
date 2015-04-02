@@ -5,8 +5,8 @@ import (
 	"os"
 
 	"github.com/tendermint/log15"
-	. "github.com/tendermint/tendermint2/common"
-	"github.com/tendermint/tendermint2/config"
+	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/config"
 )
 
 var rootHandler log15.Handler

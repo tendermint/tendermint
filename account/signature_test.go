@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/tendermint/ed25519"
-	"github.com/tendermint/tendermint2/binary"
-	. "github.com/tendermint/tendermint2/common"
+	"github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
 )
 
 func TestSignAndValidate(t *testing.T) {

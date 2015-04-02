@@ -60,15 +60,15 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/tendermint/tendermint2/account"
-	"github.com/tendermint/tendermint2/binary"
-	bc "github.com/tendermint/tendermint2/blockchain"
-	. "github.com/tendermint/tendermint2/common"
-	"github.com/tendermint/tendermint2/config"
-	. "github.com/tendermint/tendermint2/consensus/types"
-	mempl "github.com/tendermint/tendermint2/mempool"
-	sm "github.com/tendermint/tendermint2/state"
-	"github.com/tendermint/tendermint2/types"
+	"github.com/tendermint/tendermint/account"
+	"github.com/tendermint/tendermint/binary"
+	bc "github.com/tendermint/tendermint/blockchain"
+	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/config"
+	. "github.com/tendermint/tendermint/consensus/types"
+	mempl "github.com/tendermint/tendermint/mempool"
+	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/types"
 )
 
 const (

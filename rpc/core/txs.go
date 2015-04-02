@@ -2,11 +2,11 @@ package core
 
 import (
 	"fmt"
-	"github.com/tendermint/tendermint2/account"
-	. "github.com/tendermint/tendermint2/common"
-	"github.com/tendermint/tendermint2/state"
-	"github.com/tendermint/tendermint2/types"
-	"github.com/tendermint/tendermint2/vm"
+	"github.com/tendermint/tendermint/account"
+	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/vm"
 )
 
 func toVMAccount(acc *account.Account) *vm.Account {

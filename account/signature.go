@@ -3,8 +3,8 @@ package account
 import (
 	"fmt"
 
-	"github.com/tendermint/tendermint2/binary"
-	. "github.com/tendermint/tendermint2/common"
+	"github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
 )
 
 // Signature is a part of Txs and consensus Votes.

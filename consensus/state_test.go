@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/tendermint/tendermint2/types"
+	"github.com/tendermint/tendermint/types"
 )
 
 func TestSetupRound(t *testing.T) {

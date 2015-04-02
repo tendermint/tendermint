@@ -5,8 +5,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	. "github.com/tendermint/tendermint2/common"
-	"github.com/tendermint/tendermint2/types"
+	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/types"
 )
 
 const (

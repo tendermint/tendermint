@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tendermint/tendermint2/account"
-	"github.com/tendermint/tendermint2/binary"
-	dbm "github.com/tendermint/tendermint2/db"
-	"github.com/tendermint/tendermint2/merkle"
-	"github.com/tendermint/tendermint2/types"
+	"github.com/tendermint/tendermint/account"
+	"github.com/tendermint/tendermint/binary"
+	dbm "github.com/tendermint/tendermint/db"
+	"github.com/tendermint/tendermint/merkle"
+	"github.com/tendermint/tendermint/types"
 )
 
 var (

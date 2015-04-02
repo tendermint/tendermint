@@ -11,9 +11,9 @@ package mempool
 import (
 	"sync"
 
-	"github.com/tendermint/tendermint2/binary"
-	sm "github.com/tendermint/tendermint2/state"
-	"github.com/tendermint/tendermint2/types"
+	"github.com/tendermint/tendermint/binary"
+	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/types"
 )
 
 type Mempool struct {

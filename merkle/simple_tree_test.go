@@ -1,7 +1,7 @@
 package merkle
 
 import (
-	. "github.com/tendermint/tendermint2/common"
+	. "github.com/tendermint/tendermint/common"
 
 	"bytes"
 	"testing"

@@ -6,7 +6,7 @@ import (
 	"net"
 	"time"
 
-	. "github.com/tendermint/tendermint2/common"
+	. "github.com/tendermint/tendermint/common"
 )
 
 type Reactor interface {

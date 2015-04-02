@@ -3,8 +3,8 @@ package db
 import (
 	"path"
 
-	. "github.com/tendermint/tendermint2/common"
-	"github.com/tendermint/tendermint2/config"
+	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/config"
 )
 
 type DB interface {

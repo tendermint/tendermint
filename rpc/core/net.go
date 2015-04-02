@@ -1,10 +1,10 @@
 package core
 
 import (
-	"github.com/tendermint/tendermint2/config"
-	dbm "github.com/tendermint/tendermint2/db"
-	sm "github.com/tendermint/tendermint2/state"
-	"github.com/tendermint/tendermint2/types"
+	"github.com/tendermint/tendermint/config"
+	dbm "github.com/tendermint/tendermint/db"
+	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/types"
 )
 
 //-----------------------------------------------------------------------------

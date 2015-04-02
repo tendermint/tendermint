@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/ebuchman/debora"
-	"github.com/tendermint/tendermint2/binary"
-	. "github.com/tendermint/tendermint2/common"
+	"github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
 )
 
 var pexErrInvalidMessage = errors.New("Invalid PEX message")

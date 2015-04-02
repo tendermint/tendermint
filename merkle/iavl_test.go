@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/tendermint/tendermint2/binary"
-	. "github.com/tendermint/tendermint2/common"
-	"github.com/tendermint/tendermint2/db"
+	"github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/db"
 
 	"runtime"
 	"testing"

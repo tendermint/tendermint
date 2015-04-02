@@ -4,7 +4,7 @@ import (
 	"crypto/sha256"
 	"io"
 
-	"github.com/tendermint/tendermint2/binary"
+	"github.com/tendermint/tendermint/binary"
 )
 
 // Node
