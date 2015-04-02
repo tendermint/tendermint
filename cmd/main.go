@@ -29,7 +29,7 @@ Commands:
 	case "daemon":
 		config.ParseFlags(args[1:])
 		logger.Reset()
-		var deborable daemon.DeboraMode
+		var deborable daemon.DeboraMode = daemon.DeboraNullMode
 		if len(args) > 1 {
 			switch args[1] {
 			case "debora":
