@@ -35,7 +35,7 @@ var funcMap = map[string]*FuncWrapper{
 func initHandlers() {
 	// HTTP endpoints
 	for funcName, funcInfo := range funcMap {
-		http.HandleFunc("/"+funcName, toHttpHandler(funcInfo))
+		http.HandleFunc("/"+funcName, toHTTPHandler(funcInfo))
 	}
 
 	// JSONRPC endpoints
@@ -95,6 +95,10 @@ func JSONRPCHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	funcInfo := funcMap[request.Method]
+	if funcInfo == nil {
+		WriteRPCResponse(w, NewRPCResponse(nil, "RPC method unknown: "+request.Method))
+		return
+	}
 	args, err := jsonParamsToArgs(funcInfo, request.Params)
 	if err != nil {
 		WriteRPCResponse(w, NewRPCResponse(nil, err.Error()))
@@ -139,7 +143,7 @@ func _jsonObjectToArg(ty reflect.Type, object interface{}) (reflect.Value, error
 // rpc.http
 
 // convert from a function name to the http handler
-func toHttpHandler(funcInfo *FuncWrapper) func(http.ResponseWriter, *http.Request) {
+func toHTTPHandler(funcInfo *FuncWrapper) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		args, err := httpParamsToArgs(funcInfo, r)
 		if err != nil {

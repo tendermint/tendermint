@@ -32,7 +32,7 @@ func BlockchainInfo(minHeight, maxHeight uint) (*ResponseBlockchainInfo, error) 
 
 func GetBlock(height uint) (*ResponseGetBlock, error) {
 	if height == 0 {
-		return nil, fmt.Errorf("height must be greater than 1")
+		return nil, fmt.Errorf("height must be greater than 0")
 	}
 	if height > blockStore.Height() {
 		return nil, fmt.Errorf("height must be less than the current blockchain height")
