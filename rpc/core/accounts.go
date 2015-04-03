@@ -15,20 +15,20 @@ func GetAccount(address []byte) (*ResponseGetAccount, error) {
 	return &ResponseGetAccount{cache.GetAccount(address)}, nil
 }
 
-func GetStorage(address, slot []byte) (*ResponseGetStorage, error) {
+func GetStorage(address, storage []byte) (*ResponseGetStorage, error) {
 	state := consensusState.GetState()
 	account := state.GetAccount(address)
 	if account == nil {
 		return nil, fmt.Errorf("Unknown address: %X", address)
 	}
 	storageRoot := account.StorageRoot
-	storage := state.LoadStorage(storageRoot)
+	storageTree := state.LoadStorage(storageRoot)
 
-	_, value := storage.Get(RightPadWord256(slot).Bytes())
+	_, value := storageTree.Get(RightPadWord256(storage).Bytes())
 	if value == nil {
-		return &ResponseGetStorage{slot, nil}, nil
+		return &ResponseGetStorage{storage, nil}, nil
 	}
-	return &ResponseGetStorage{slot, value.([]byte)}, nil
+	return &ResponseGetStorage{storage, value.([]byte)}, nil
 }
 
 func ListAccounts() (*ResponseListAccounts, error) {

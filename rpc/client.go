@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"reflect"
+	//"reflect"
 	// Uncomment to use go:generate
 	// _ "github.com/ebuchman/go-rpc-gen"
 )
@@ -38,65 +38,19 @@ func NewClient(addr, typ string) Client {
 	return nil
 }
 
-func argsToJson(args ...interface{}) ([][]string, error) {
+func argsToJson(args ...interface{}) ([]string, error) {
 	l := len(args)
-	jsons := make([][]string, l)
+	jsons := make([]string, l)
 	n, err := new(int64), new(error)
 	for i, a := range args {
-		//if its a slice, we serliaze separately and pack into a slice of strings
-		// otherwise its a slice of length 1
-		if v := reflect.ValueOf(a); v.Kind() == reflect.Slice {
-			ty := v.Type()
-			rt := ty.Elem()
-			if rt.Kind() == reflect.Uint8 {
-				buf := new(bytes.Buffer)
-				binary.WriteJSON(a, buf, n, err)
-				if *err != nil {
-					return nil, *err
-				}
-				jsons[i] = []string{string(buf.Bytes())}
-			} else {
-				slice := make([]string, v.Len())
-				for j := 0; j < v.Len(); j++ {
-					buf := new(bytes.Buffer)
-					binary.WriteJSON(v.Index(j).Interface(), buf, n, err)
-					if *err != nil {
-						return nil, *err
-					}
-					slice[j] = string(buf.Bytes())
-				}
-				jsons[i] = slice
-			}
-		} else {
-			buf := new(bytes.Buffer)
-			binary.WriteJSON(a, buf, n, err)
-			if *err != nil {
-				return nil, *err
-			}
-			jsons[i] = []string{string(buf.Bytes())}
+		buf := new(bytes.Buffer)
+		binary.WriteJSON(a, buf, n, err)
+		if *err != nil {
+			return nil, *err
 		}
+		jsons[i] = string(buf.Bytes())
 	}
 	return jsons, nil
-}
-
-func (c *ClientHTTP) RequestResponse(method string, values url.Values) (*Response, error) {
-	resp, err := http.PostForm(c.addr+method, values)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	response := new(Response)
-	fmt.Println(string(body))
-	binary.ReadJSON(response, body, &err)
-	if err != nil {
-		return nil, err
-	}
-	fmt.Println(response.Data)
-	return response, nil
 }
 
 func (c *ClientJSON) RequestResponse(s RPCRequest) (b []byte, err error) {
@@ -153,10 +107,10 @@ func argsToURLValues(argNames []string, args ...interface{}) (url.Values, error)
 	}
 	for i, name := range argNames {
 		s := slice[i]
-		values.Set(name, s[0])
-		for i := 1; i < len(s); i++ {
-			values.Add(name, s[i])
-		}
+		values.Set(name, s) // s[0]
+		/*for j := 1; j < len(s); j++ {
+			values.Add(name, s[j])
+		}*/
 	}
 	return values, nil
 }
@@ -175,7 +129,7 @@ fmt
 /*rpc-gen:template:*ClientJSON func (c *ClientJSON) {{name}}({{args.def}}) ({{response}}) {
 	request := RPCRequest{
 		JSONRPC: "2.0",
-		Method:  {{lowername}},
+		Method:  reverseFuncMap["{{name}}"],
 		Params:  []interface{}{ {{args.ident}} },
 		Id:      0,
 	}
@@ -204,7 +158,7 @@ fmt
 	if err != nil{
 		return nil, err
 	}
-	resp, err := http.PostForm(c.addr+{{lowername}}, values)
+	resp, err := http.PostForm(c.addr+reverseFuncMap["{{name}}"], values)
 	if err != nil {
 		return nil, err
 	}

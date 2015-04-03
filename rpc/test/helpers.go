@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/daemon"
 	"github.com/tendermint/tendermint/logger"
@@ -13,12 +13,10 @@ import (
 	"github.com/tendermint/tendermint/rpc/core"
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	"io/ioutil"
-	"net/http"
-	"net/url"
 	"testing"
 )
 
+// global variables for use across all tests
 var (
 	rpcAddr     = "127.0.0.1:8089"
 	requestAddr = "http://" + rpcAddr + "/"
@@ -29,10 +27,14 @@ var (
 
 	userAddr = "D7DFF9806078899C8DA3FE3633CC0BF3C6C2B1BB"
 	userPriv = "FDE3BD94CB327D19464027BA668194C5EFA46AE83E8419D7542CFF41F00C81972239C21C81EA7173A6C489145490C015E05D4B97448933B708A7EC5B7B4921E3"
-
-	userPub = "2239C21C81EA7173A6C489145490C015E05D4B97448933B708A7EC5B7B4921E3"
+	userPub  = "2239C21C81EA7173A6C489145490C015E05D4B97448933B708A7EC5B7B4921E3"
+	clients  = map[string]rpc.Client{
+		"JSONRPC": rpc.NewClient(requestAddr, "JSONRPC"),
+		"HTTP":    rpc.NewClient(requestAddr, "HTTP"),
+	}
 )
 
+// create a new node and sleep forever
 func newNode(ready chan struct{}) {
 	// Create & start node
 	node = daemon.NewNode()
@@ -49,6 +51,7 @@ func newNode(ready chan struct{}) {
 	<-ch
 }
 
+// initialize config and create new node
 func init() {
 	rootDir := ".tendermint"
 	config.Init(rootDir)
@@ -74,64 +77,10 @@ func init() {
 	<-ready
 }
 
-func getAccount(t *testing.T, typ string, addr []byte) *account.Account {
-	var client rpc.Client
-	switch typ {
-	case "JSONRPC":
-		client = rpc.NewClient(requestAddr, "JSONRPC")
-	case "HTTP":
-		client = rpc.NewClient(requestAddr, "HTTP")
-	}
-	ac, err := client.GetAccount(addr)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return ac.Account
-}
+//-------------------------------------------------------------------------------
+// make transactions
 
-/*
-func getAccount(t *testing.T, typ string, addr []byte) *account.Account {
-	var resp *http.Response
-	var err error
-	switch typ {
-	case "JSONRPC":
-		s := rpc.JSONRPC{
-			JSONRPC: "2.0",
-			Method:  "get_account",
-			Params:  []interface{}{hex.EncodeToString(addr)},
-			Id:      0,
-		}
-		b, err := json.Marshal(s)
-		if err != nil {
-			t.Fatal(err)
-		}
-		buf := bytes.NewBuffer(b)
-		resp, err = http.Post(requestAddr, "text/json", buf)
-	case "HTTP":
-		resp, err = http.PostForm(requestAddr+"get_account",
-			url.Values{"address": {"\"" + (hex.EncodeToString(addr)) + "\""}})
-	}
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var response struct {
-		Result  core.ResponseGetAccount `json:"result"`
-		Error   string                  `json:"error"`
-		Id      string                  `json:"id"`
-		JSONRPC string                  `json:"jsonrpc"`
-	}
-	binary.ReadJSON(&response, body, &err)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return response.Result.Account
-}*/
-
+// make a send tx (uses get account to figure out the nonce)
 func makeSendTx(t *testing.T, typ string, from, to []byte, amt uint64) *types.SendTx {
 	acc := getAccount(t, typ, from)
 	nonce := 0
@@ -162,6 +111,7 @@ func makeSendTx(t *testing.T, typ string, from, to []byte, amt uint64) *types.Se
 	return tx
 }
 
+// make a call tx (uses get account to figure out the nonce)
 func makeCallTx(t *testing.T, typ string, from, to, data []byte, amt, gaslim, fee uint64) *types.CallTx {
 	acc := getAccount(t, typ, from)
 	nonce := 0
@@ -189,22 +139,21 @@ func makeCallTx(t *testing.T, typ string, from, to, data []byte, amt, gaslim, fe
 	return tx
 }
 
-func requestResponse(t *testing.T, method string, values url.Values, response interface{}) {
-	resp, err := http.PostForm(requestAddr+method, values)
+// make transactions
+//-------------------------------------------------------------------------------
+// rpc call wrappers
+
+// get the account
+func getAccount(t *testing.T, typ string, addr []byte) *account.Account {
+	client := clients[typ]
+	ac, err := client.GetAccount(addr)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	binary.ReadJSON(response, body, &err)
-	if err != nil {
-		t.Fatal(err)
-	}
+	return ac.Account
 }
 
+// make and sign transaction
 func signTx(t *testing.T, typ string, fromAddr, toAddr, data []byte, key [64]byte, amt, gaslim, fee uint64) (types.Tx, *account.PrivAccount) {
 	var tx types.Tx
 	if data == nil {
@@ -213,92 +162,75 @@ func signTx(t *testing.T, typ string, fromAddr, toAddr, data []byte, key [64]byt
 		tx = makeCallTx(t, typ, fromAddr, toAddr, data, amt, gaslim, fee)
 	}
 
-	n, w := new(int64), new(bytes.Buffer)
-	var err error
-	binary.WriteJSON(tx, w, n, &err)
-	if err != nil {
-		t.Fatal(err)
-	}
-	b := w.Bytes()
-
 	privAcc := account.GenPrivAccountFromKey(key)
 	if bytes.Compare(privAcc.PubKey.Address(), fromAddr) != 0 {
 		t.Fatal("Faield to generate correct priv acc")
 	}
-	w = new(bytes.Buffer)
-	binary.WriteJSON([]*account.PrivAccount{privAcc}, w, n, &err)
+
+	client := clients[typ]
+	resp, err := client.SignTx(tx, []*account.PrivAccount{privAcc})
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	var response struct {
-		Result  core.ResponseSignTx `json:"result"`
-		Error   string              `json:"error"`
-		Id      string              `json:"id"`
-		JSONRPC string              `json:"jsonrpc"`
-	}
-	requestResponse(t, "unsafe/sign_tx", url.Values{"tx": {string(b)}, "privAccounts": {string(w.Bytes())}}, &response)
-	if response.Error != "" {
-		t.Fatal(response.Error)
-	}
-	result := response.Result
-	return result.Tx, privAcc
+	return resp.Tx, privAcc
 }
 
+// create, sign, and broadcast a transaction
 func broadcastTx(t *testing.T, typ string, fromAddr, toAddr, data []byte, key [64]byte, amt, gaslim, fee uint64) (types.Tx, core.Receipt) {
 	tx, _ := signTx(t, typ, fromAddr, toAddr, data, key, amt, gaslim, fee)
-
-	n, w := new(int64), new(bytes.Buffer)
-	var err error
-	binary.WriteJSON(tx, w, n, &err)
+	client := clients[typ]
+	resp, err := client.BroadcastTx(tx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	b := w.Bytes()
-
-	var response struct {
-		Result  core.ResponseBroadcastTx `json:"result"`
-		Error   string                   `json:"error"`
-		Id      string                   `json:"id"`
-		JSONRPC string                   `json:"jsonrpc"`
-	}
-	requestResponse(t, "broadcast_tx", url.Values{"tx": {string(b)}}, &response)
-	if response.Error != "" {
-		t.Fatal(response.Error)
-	}
-	return tx, response.Result.Receipt
+	return tx, resp.Receipt
 }
 
+// dump all storage for an account. currently unused
 func dumpStorage(t *testing.T, addr []byte) core.ResponseDumpStorage {
-	addrString := "\"" + hex.EncodeToString(addr) + "\""
-	var response struct {
-		Result  core.ResponseDumpStorage `json:"result"`
-		Error   string                   `json:"error"`
-		Id      string                   `json:"id"`
-		JSONRPC string                   `json:"jsonrpc"`
+	client := clients["HTTP"]
+	resp, err := client.DumpStorage(addr)
+	if err != nil {
+		t.Fatal(err)
 	}
-	requestResponse(t, "dump_storage", url.Values{"address": {addrString}}, &response)
-	if response.Error != "" {
-		t.Fatal(response.Error)
-	}
-	return response.Result
+	return *resp
 }
 
-func getStorage(t *testing.T, addr, slot []byte) []byte {
-	addrString := "\"" + hex.EncodeToString(addr) + "\""
-	slotString := "\"" + hex.EncodeToString(slot) + "\""
-	var response struct {
-		Result  core.ResponseGetStorage `json:"result"`
-		Error   string                  `json:"error"`
-		Id      string                  `json:"id"`
-		JSONRPC string                  `json:"jsonrpc"`
+func getStorage(t *testing.T, typ string, addr, slot []byte) []byte {
+	client := clients[typ]
+	resp, err := client.GetStorage(addr, slot)
+	if err != nil {
+		t.Fatal(err)
 	}
-	requestResponse(t, "get_storage", url.Values{"address": {addrString}, "storage": {slotString}}, &response)
-	if response.Error != "" {
-		t.Fatal(response.Error)
-	}
-	return response.Result.Value
+	return resp.Value
 }
+
+func callCode(t *testing.T, client rpc.Client, code, data, expected []byte) {
+	resp, err := client.CallCode(code, data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ret := resp.Return
+	// NOTE: we don't flip memory when it comes out of RETURN (?!)
+	if bytes.Compare(ret, LeftPadWord256(expected).Bytes()) != 0 {
+		t.Fatalf("Conflicting return value. Got %x, expected %x", ret, expected)
+	}
+}
+
+func callContract(t *testing.T, client rpc.Client, address, data, expected []byte) {
+	resp, err := client.Call(address, data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ret := resp.Return
+	// NOTE: we don't flip memory when it comes out of RETURN (?!)
+	if bytes.Compare(ret, LeftPadWord256(expected).Bytes()) != 0 {
+		t.Fatalf("Conflicting return value. Got %x, expected %x", ret, expected)
+	}
+}
+
+//--------------------------------------------------------------------------------
+// utility verification function
 
 func checkTx(t *testing.T, fromAddr []byte, priv *account.PrivAccount, tx *types.SendTx) {
 	if bytes.Compare(tx.Inputs[0].Address, fromAddr) != 0 {
