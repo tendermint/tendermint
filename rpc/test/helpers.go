@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"github.com/tendermint/tendermint/account"
+	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/daemon"
 	"github.com/tendermint/tendermint/logger"
@@ -215,6 +216,30 @@ func getStorage(t *testing.T, typ string, addr, slot []byte) []byte {
 		t.Fatal(err)
 	}
 	return resp.Value
+}
+
+func callCode(t *testing.T, client rpc.Client, code, data, expected []byte) {
+	resp, err := client.CallCode(code, data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ret := resp.Return
+	// NOTE: we don't flip memory when it comes out of RETURN (?!)
+	if bytes.Compare(ret, LeftPadWord256(expected).Bytes()) != 0 {
+		t.Fatalf("Conflicting return value. Got %x, expected %x", ret, expected)
+	}
+}
+
+func callContract(t *testing.T, client rpc.Client, address, data, expected []byte) {
+	resp, err := client.Call(address, data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ret := resp.Return
+	// NOTE: we don't flip memory when it comes out of RETURN (?!)
+	if bytes.Compare(ret, LeftPadWord256(expected).Bytes()) != 0 {
+		t.Fatalf("Conflicting return value. Got %x, expected %x", ret, expected)
+	}
 }
 
 //--------------------------------------------------------------------------------

@@ -16,6 +16,7 @@ type Client interface {
 	BlockchainInfo(minHeight uint, maxHeight uint) (*core.ResponseBlockchainInfo, error)
 	BroadcastTx(tx types.Tx) (*core.ResponseBroadcastTx, error)
 	Call(address []byte, data []byte) (*core.ResponseCall, error)
+	CallCode(code []byte, data []byte) (*core.ResponseCall, error)
 	DumpStorage(addr []byte) (*core.ResponseDumpStorage, error)
 	GenPrivAccount() (*core.ResponseGenPrivAccount, error)
 	GetAccount(address []byte) (*core.ResponseGetAccount, error)
@@ -94,6 +95,36 @@ func (c *ClientHTTP) Call(address []byte, data []byte) (*core.ResponseCall, erro
 		return nil, err
 	}
 	resp, err := http.PostForm(c.addr+reverseFuncMap["Call"], values)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	var response struct {
+		Result  *core.ResponseCall `json:"result"`
+		Error   string             `json:"error"`
+		Id      string             `json:"id"`
+		JSONRPC string             `json:"jsonrpc"`
+	}
+	binary.ReadJSON(&response, body, &err)
+	if err != nil {
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, fmt.Errorf(response.Error)
+	}
+	return response.Result, nil
+}
+
+func (c *ClientHTTP) CallCode(code []byte, data []byte) (*core.ResponseCall, error) {
+	values, err := argsToURLValues([]string{"code", "data"}, code, data)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := http.PostForm(c.addr+reverseFuncMap["CallCode"], values)
 	if err != nil {
 		return nil, err
 	}
@@ -477,6 +508,33 @@ func (c *ClientJSON) Call(address []byte, data []byte) (*core.ResponseCall, erro
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["Call"],
 		Params:  []interface{}{address, data},
+		Id:      0,
+	}
+	body, err := c.RequestResponse(request)
+	if err != nil {
+		return nil, err
+	}
+	var response struct {
+		Result  *core.ResponseCall `json:"result"`
+		Error   string             `json:"error"`
+		Id      string             `json:"id"`
+		JSONRPC string             `json:"jsonrpc"`
+	}
+	binary.ReadJSON(&response, body, &err)
+	if err != nil {
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, fmt.Errorf(response.Error)
+	}
+	return response.Result, nil
+}
+
+func (c *ClientJSON) CallCode(code []byte, data []byte) (*core.ResponseCall, error) {
+	request := RPCRequest{
+		JSONRPC: "2.0",
+		Method:  reverseFuncMap["CallCode"],
+		Params:  []interface{}{code, data},
 		Id:      0,
 	}
 	body, err := c.RequestResponse(request)

@@ -132,3 +132,68 @@ func testGetStorage(t *testing.T, typ string) {
 		t.Fatalf("Wrong storage value. Got %x, expected %x", got.Bytes(), expected.Bytes())
 	}
 }
+
+func testCallCode(t *testing.T, typ string) {
+	client := clients[typ]
+
+	// add two integers and return the result
+	code := []byte{0x60, 0x5, 0x60, 0x6, 0x1, 0x60, 0x0, 0x52, 0x60, 0x20, 0x60, 0x0, 0xf3}
+	data := []byte{}
+	expected := []byte{0xb}
+	callCode(t, client, code, data, expected)
+
+	// pass two ints as calldata, add, and return the result
+	code = []byte{0x60, 0x0, 0x35, 0x60, 0x20, 0x35, 0x1, 0x60, 0x0, 0x52, 0x60, 0x20, 0x60, 0x0, 0xf3}
+	data = append(LeftPadWord256([]byte{0x5}).Bytes(), LeftPadWord256([]byte{0x6}).Bytes()...)
+	expected = []byte{0xb}
+	callCode(t, client, code, data, expected)
+}
+
+func testCall(t *testing.T, typ string) {
+	client := clients[typ]
+
+	priv := state.LoadPrivValidator(".tendermint/priv_validator.json")
+	_ = priv
+	//core.SetPrivValidator(priv)
+
+	byteAddr, _ := hex.DecodeString(userAddr)
+	var byteKey [64]byte
+	oh, _ := hex.DecodeString(userPriv)
+	copy(byteKey[:], oh)
+
+	// create the contract
+	amt := uint64(6969)
+	// this is the code we want to run when the contract is called
+	contractCode := []byte{0x60, 0x5, 0x60, 0x6, 0x1, 0x60, 0x0, 0x52, 0x60, 0x20, 0x60, 0x0, 0xf3}
+	// the is the code we need to return the contractCode when the contract is initialized
+	lenCode := len(contractCode)
+	// push code to the stack
+	//code := append([]byte{byte(0x60 + lenCode - 1)}, LeftPadWord256(contractCode).Bytes()...)
+	code := append([]byte{0x7f}, RightPadWord256(contractCode).Bytes()...)
+	// store it in memory
+	code = append(code, []byte{0x60, 0x0, 0x52}...)
+	// return whats in memory
+	//code = append(code, []byte{0x60, byte(32 - lenCode), 0x60, byte(lenCode), 0xf3}...)
+	code = append(code, []byte{0x60, byte(lenCode), 0x60, 0x0, 0xf3}...)
+
+	_, receipt := broadcastTx(t, typ, byteAddr, nil, code, byteKey, amt, 1000, 1000)
+	if receipt.CreatesContract == 0 {
+		t.Fatal("This tx creates a contract")
+	}
+	if len(receipt.TxHash) == 0 {
+		t.Fatal("Failed to compute tx hash")
+	}
+	contractAddr := receipt.ContractAddr
+	if len(contractAddr) == 0 {
+		t.Fatal("Creates contract but resulting address is empty")
+	}
+
+	// allow it to get mined
+	time.Sleep(time.Second * 20)
+	mempoolCount -= 1
+
+	// run a call through the contract
+	data := []byte{}
+	expected := []byte{0xb}
+	callContract(t, client, contractAddr, data, expected)
+}

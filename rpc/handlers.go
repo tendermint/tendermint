@@ -1,9 +1,5 @@
 package rpc
 
-/*
-TODO: support Call && GetStorage.
-*/
-
 import (
 	"bytes"
 	"encoding/json"
@@ -21,7 +17,7 @@ import (
 )
 
 // cache all type information about each function up front
-// (func, responseStruct, argNames)
+// (func, argNames)
 var funcMap = map[string]*FuncWrapper{
 	"status":                  funcWrap(core.Status, []string{}),
 	"net_info":                funcWrap(core.NetInfo, []string{}),
@@ -30,6 +26,7 @@ var funcMap = map[string]*FuncWrapper{
 	"get_account":             funcWrap(core.GetAccount, []string{"address"}),
 	"get_storage":             funcWrap(core.GetStorage, []string{"address", "storage"}),
 	"call":                    funcWrap(core.Call, []string{"address", "data"}),
+	"call_code":               funcWrap(core.CallCode, []string{"code", "data"}),
 	"list_validators":         funcWrap(core.ListValidators, []string{}),
 	"dump_storage":            funcWrap(core.DumpStorage, []string{"address"}),
 	"broadcast_tx":            funcWrap(core.BroadcastTx, []string{"tx"}),
@@ -39,7 +36,6 @@ var funcMap = map[string]*FuncWrapper{
 }
 
 // maps camel-case function names to lower case rpc version
-// populated by calls to funcWrap
 var reverseFuncMap = fillReverseFuncMap()
 
 // fill the map from camelcase to lowercase
@@ -56,7 +52,7 @@ func fillReverseFuncMap() map[string]string {
 	return fMap
 }
 
-func initHandlers(ew *events.EventSwitch) {
+func initHandlers(evsw *events.EventSwitch) {
 	// HTTP endpoints
 	for funcName, funcInfo := range funcMap {
 		http.HandleFunc("/"+funcName, toHTTPHandler(funcInfo))
@@ -65,12 +61,13 @@ func initHandlers(ew *events.EventSwitch) {
 	// JSONRPC endpoints
 	http.HandleFunc("/", JSONRPCHandler)
 
-	w := NewWebsocketManager(ew)
+	w := NewWebsocketManager(evsw)
 	// websocket endpoint
 	http.Handle("/events", websocket.Handler(w.eventsHandler))
 }
 
 //-------------------------------------
+// function introspection
 
 // holds all type information for each function
 type FuncWrapper struct {
@@ -80,6 +77,7 @@ type FuncWrapper struct {
 	argNames []string       // name of each argument
 }
 
+// wraps a function for quicker introspection
 func funcWrap(f interface{}, args []string) *FuncWrapper {
 	return &FuncWrapper{
 		f:        reflect.ValueOf(f),
@@ -89,6 +87,7 @@ func funcWrap(f interface{}, args []string) *FuncWrapper {
 	}
 }
 
+// return a function's argument types
 func funcArgTypes(f interface{}) []reflect.Type {
 	t := reflect.TypeOf(f)
 	n := t.NumIn()
@@ -99,6 +98,7 @@ func funcArgTypes(f interface{}) []reflect.Type {
 	return types
 }
 
+// return a function's return types
 func funcReturnTypes(f interface{}) []reflect.Type {
 	t := reflect.TypeOf(f)
 	n := t.NumOut()
@@ -109,6 +109,7 @@ func funcReturnTypes(f interface{}) []reflect.Type {
 	return types
 }
 
+// function introspection
 //-----------------------------------------------------------------------------
 // rpc.json
 
