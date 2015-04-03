@@ -31,6 +31,14 @@ func TestHTTPGetStorage(t *testing.T) {
 	testGetStorage(t, "HTTP")
 }
 
+func TestHTTPCallCode(t *testing.T) {
+	testCallCode(t, "HTTP")
+}
+
+func TestHTTPCallContract(t *testing.T) {
+	testCall(t, "HTTP")
+}
+
 //--------------------------------------------------------------------------------
 // Test the JSONRPC client
 
@@ -56,4 +64,12 @@ func TestJSONBroadcastTx(t *testing.T) {
 
 func TestJSONGetStorage(t *testing.T) {
 	testGetStorage(t, "JSONRPC")
+}
+
+func TestJSONCallCode(t *testing.T) {
+	testCallCode(t, "JSONRPC")
+}
+
+func TestJSONCallContract(t *testing.T) {
+	testCall(t, "JSONRPC")
 }
