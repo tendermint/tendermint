@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/hex"
 	"github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/binary"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/daemon"
 	"github.com/tendermint/tendermint/logger"
@@ -13,12 +12,10 @@ import (
 	"github.com/tendermint/tendermint/rpc/core"
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	"io/ioutil"
-	"net/http"
-	"net/url"
 	"testing"
 )
 
+// global variables for use across all tests
 var (
 	rpcAddr     = "127.0.0.1:8089"
 	requestAddr = "http://" + rpcAddr + "/"
@@ -196,17 +193,6 @@ func dumpStorage(t *testing.T, addr []byte) core.ResponseDumpStorage {
 		t.Fatal(err)
 	}
 	return *resp
-	/*addrString := "\"" + hex.EncodeToString(addr) + "\""
-	var response struct {
-		Result  core.ResponseDumpStorage `json:"result"`
-		Error   string                   `json:"error"`
-		Id      string                   `json:"id"`
-		JSONRPC string                   `json:"jsonrpc"`
-	}
-	requestResponse(t, "dump_storage", url.Values{"address": {addrString}}, &response)
-	if response.Error != "" {
-		t.Fatal(response.Error)
-	}*/
 }
 
 func getStorage(t *testing.T, typ string, addr, slot []byte) []byte {
@@ -237,23 +223,5 @@ func checkTx(t *testing.T, fromAddr []byte, priv *account.PrivAccount, tx *types
 	// NOTE: using the acc here instead of the in fails; its PubKeyNil ... ?
 	if !in.PubKey.VerifyBytes(signBytes, in.Signature) {
 		t.Fatal(types.ErrTxInvalidSignature)
-	}
-}
-
-//--------------------------------------------------------------------------------
-
-func requestResponse(t *testing.T, method string, values url.Values, response interface{}) {
-	resp, err := http.PostForm(requestAddr+method, values)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	binary.ReadJSON(response, body, &err)
-	if err != nil {
-		t.Fatal(err)
 	}
 }
