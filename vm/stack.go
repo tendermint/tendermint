@@ -32,9 +32,9 @@ func (st *Stack) useGas(gasToUse uint64) {
 }
 
 func (st *Stack) setErr(err error) {
-	if *st.err != nil {
-		*st.err = err
-	}
+	//if *st.err != nil {
+	*st.err = err
+	//}
 }
 
 func (st *Stack) Push(d Word256) {
