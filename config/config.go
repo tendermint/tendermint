@@ -63,32 +63,26 @@ ListenAddr = "127.0.0.1:8081"
 # TODO: Document options
 `
 
-var DefaultGenesis = `
-{
-  "Accounts": [
-    {
-      "Address": "553722287BF1230C081C270908C1F453E7D1C397",
-      "Amount":  200000000
-    },
-    {
-      "Address": "AC89A6DDF4C309A89A2C4078CE409A5A7B282270",
-      "Amount":  200000000
-    }
-  ],
-  "Validators": [
-    {
-      "PubKey": [1, "932A857D334BA5A38DD8E0D9CDE9C84687C21D0E5BEE64A1EDAB9C6C32344F1A"],
-      "Amount": 100000000,
-      "UnbondTo": [
+var DefaultGenesis = `{
+    "Accounts": [
         {
-          "Address": "553722287BF1230C081C270908C1F453E7D1C397",
-          "Amount":  100000000
+            "Address": "29BF3A0A13001A0D23533386BE03E74923AF1179",
+            "Amount": 2099900000000000 
         }
-      ]
-    }
-  ]
-}
-`
+    ],
+    "Validators": [
+        {
+            "PubKey": [1, "3A2C5C341FFC1D5F7AB518519FF8289D3BFAB82DFD6E167B926FAD72C1BF10F8"],
+            "Amount": 100000000000,
+            "UnbondTo": [
+            	{
+            		"Address": "29BF3A0A13001A0D23533386BE03E74923AF1179",
+            		"Amount":  100000000000
+            	}
+            ]
+        }
+    ]
+}`
 
 // NOTE: If you change this, maybe also change defaultConfig
 func initDefaults(rootDir string) {
