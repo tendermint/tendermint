@@ -226,6 +226,45 @@ func _jsonStringToArg(ty reflect.Type, arg string) (reflect.Value, error) {
 //-----------------------------------------------------------------------------
 // rpc.websocket
 
+// for requests coming in
+type WsRequest struct {
+	Type  string // subscribe or unsubscribe
+	Event string
+}
+
+// for responses going out
+type WsResponse struct {
+	Event string
+	Data  interface{}
+	Error string
+}
+
+// a single websocket connection
+// contains the listeners id
+type Connection struct {
+	id          string
+	wsCon       *websocket.Conn
+	writeChan   chan WsResponse
+	quitChan    chan struct{}
+	failedSends uint
+}
+
+// new websocket connection wrapper
+func NewConnection(con *websocket.Conn) *Connection {
+	return &Connection{
+		id:        con.RemoteAddr().String(),
+		wsCon:     con,
+		writeChan: make(chan WsResponse, WriteChanBuffer), // buffered. we keep track when its full
+	}
+}
+
+// close the connection
+func (c *Connection) Close() {
+	c.wsCon.Close()
+	close(c.writeChan)
+	close(c.quitChan)
+}
+
 // main manager for all websocket connections
 // holds the event switch
 type WebsocketManager struct {
@@ -327,50 +366,16 @@ func (w *WebsocketManager) write(con *Connection) {
 				websocket.Message.Send(con.wsCon, buf.Bytes())
 			}
 		case <-con.quitChan:
-			close(con.quitChan)
-			con.Close()
+			w.closeConn(con)
 			return
 		}
 	}
 }
 
-// a single websocket connection
-// contains the listeners id
-type Connection struct {
-	id          string
-	wsCon       *websocket.Conn
-	writeChan   chan WsResponse
-	quitChan    chan struct{}
-	failedSends uint
-}
-
-// for requests coming in
-type WsRequest struct {
-	Type  string // subscribe or unsubscribe
-	Event string
-}
-
-// for responses going out
-type WsResponse struct {
-	Event string
-	Data  interface{}
-	Error string
-}
-
-// new websocket connection wrapper
-func NewConnection(con *websocket.Conn) *Connection {
-	return &Connection{
-		id:        con.RemoteAddr().String(),
-		wsCon:     con,
-		writeChan: make(chan WsResponse, WriteChanBuffer), // buffered. we keep track when its full
-	}
-}
-
-// close the channel
-// should only be called by firing on c.quitChan
-func (c *Connection) Close() {
-	close(c.writeChan)
-	c.wsCon.Close()
+// close a connection and delete from manager
+func (w *WebsocketManager) closeConn(con *Connection) {
+	con.Close()
+	delete(w.cons, con.id)
 }
 
 // rpc.websocket

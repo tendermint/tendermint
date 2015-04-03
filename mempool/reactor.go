@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 
 	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/events"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 )
@@ -22,6 +23,8 @@ type MempoolReactor struct {
 	stopped uint32
 
 	Mempool *Mempool
+
+	evsw *events.EventSwitch
 }
 
 func NewMempoolReactor(mempool *Mempool) *MempoolReactor {
@@ -108,6 +111,11 @@ func (memR *MempoolReactor) BroadcastTx(tx types.Tx) error {
 	msg := &TxMessage{Tx: tx}
 	memR.sw.Broadcast(MempoolChannel, msg)
 	return nil
+}
+
+// implements events.Eventable
+func (memR *MempoolReactor) AddEventSwitch(evsw *events.EventSwitch) {
+	memR.evsw = evsw
 }
 
 //-----------------------------------------------------------------------------

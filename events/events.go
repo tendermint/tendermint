@@ -5,6 +5,12 @@ import (
 	"sync/atomic"
 )
 
+// reactors and other modules should export
+// this interface to become eventable
+type Eventable interface {
+	AddEventSwitch(*EventSwitch)
+}
+
 type EventSwitch struct {
 	mtx        sync.RWMutex
 	eventCells map[string]*eventCell
