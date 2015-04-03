@@ -38,7 +38,7 @@ var defaultConfig = `# This is a TOML config file.
 Network =         "tendermint_testnet0"
 ListenAddr =      "0.0.0.0:8080"
 # First node to connect to.  Command-line overridable.
-SeedNode =        "23.239.22.253:8080"
+SeedNode =        "188.166.55.222:8080"
 
 [DB]
 # The only other available backend is "memdb"
