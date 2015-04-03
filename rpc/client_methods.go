@@ -149,7 +149,7 @@ func (c *ClientHTTP) DumpStorage(addr []byte) (*core.ResponseDumpStorage, error)
 }
 
 func (c *ClientHTTP) GenPrivAccount() (*core.ResponseGenPrivAccount, error) {
-	values, err := argsToURLValues(nil, nil)
+	values, err := argsToURLValues(nil)
 	if err != nil {
 		return nil, err
 	}
@@ -269,7 +269,7 @@ func (c *ClientHTTP) GetStorage(address []byte, storage []byte) (*core.ResponseG
 }
 
 func (c *ClientHTTP) ListAccounts() (*core.ResponseListAccounts, error) {
-	values, err := argsToURLValues(nil, nil)
+	values, err := argsToURLValues(nil)
 	if err != nil {
 		return nil, err
 	}
@@ -299,7 +299,7 @@ func (c *ClientHTTP) ListAccounts() (*core.ResponseListAccounts, error) {
 }
 
 func (c *ClientHTTP) ListValidators() (*core.ResponseListValidators, error) {
-	values, err := argsToURLValues(nil, nil)
+	values, err := argsToURLValues(nil)
 	if err != nil {
 		return nil, err
 	}
@@ -329,7 +329,7 @@ func (c *ClientHTTP) ListValidators() (*core.ResponseListValidators, error) {
 }
 
 func (c *ClientHTTP) NetInfo() (*core.ResponseNetInfo, error) {
-	values, err := argsToURLValues(nil, nil)
+	values, err := argsToURLValues(nil)
 	if err != nil {
 		return nil, err
 	}
@@ -389,7 +389,7 @@ func (c *ClientHTTP) SignTx(tx types.Tx, privAccounts []*account.PrivAccount) (*
 }
 
 func (c *ClientHTTP) Status() (*core.ResponseStatus, error) {
-	values, err := argsToURLValues(nil, nil)
+	values, err := argsToURLValues(nil)
 	if err != nil {
 		return nil, err
 	}
@@ -530,7 +530,7 @@ func (c *ClientJSON) GenPrivAccount() (*core.ResponseGenPrivAccount, error) {
 	request := RPCRequest{
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["GenPrivAccount"],
-		Params:  []interface{}{nil},
+		Params:  []interface{}{},
 		Id:      0,
 	}
 	body, err := c.RequestResponse(request)
@@ -638,7 +638,7 @@ func (c *ClientJSON) ListAccounts() (*core.ResponseListAccounts, error) {
 	request := RPCRequest{
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["ListAccounts"],
-		Params:  []interface{}{nil},
+		Params:  []interface{}{},
 		Id:      0,
 	}
 	body, err := c.RequestResponse(request)
@@ -665,7 +665,7 @@ func (c *ClientJSON) ListValidators() (*core.ResponseListValidators, error) {
 	request := RPCRequest{
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["ListValidators"],
-		Params:  []interface{}{nil},
+		Params:  []interface{}{},
 		Id:      0,
 	}
 	body, err := c.RequestResponse(request)
@@ -692,7 +692,7 @@ func (c *ClientJSON) NetInfo() (*core.ResponseNetInfo, error) {
 	request := RPCRequest{
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["NetInfo"],
-		Params:  []interface{}{nil},
+		Params:  []interface{}{},
 		Id:      0,
 	}
 	body, err := c.RequestResponse(request)
@@ -746,7 +746,7 @@ func (c *ClientJSON) Status() (*core.ResponseStatus, error) {
 	request := RPCRequest{
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["Status"],
-		Params:  []interface{}{nil},
+		Params:  []interface{}{},
 		Id:      0,
 	}
 	body, err := c.RequestResponse(request)
