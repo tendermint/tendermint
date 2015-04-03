@@ -9,6 +9,7 @@ import (
 
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/events"
 )
 
 var pexErrInvalidMessage = errors.New("Invalid PEX message")
@@ -31,6 +32,8 @@ type PEXReactor struct {
 	stopped uint32
 
 	book *AddrBook
+
+	evsw *events.EventSwitch
 }
 
 func NewPEXReactor(book *AddrBook) *PEXReactor {
@@ -205,6 +208,11 @@ func (pexR *PEXReactor) ensurePeers() {
 			}
 		}()
 	}
+}
+
+// implements events.Eventable
+func (pexR *PEXReactor) AddEventSwitch(evsw *events.EventSwitch) {
+	pexR.evsw = evsw
 }
 
 //-----------------------------------------------------------------------------

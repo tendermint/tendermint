@@ -9,6 +9,7 @@ import (
 
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/events"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -19,7 +20,6 @@ const (
 	defaultChannelCapacity = 100
 	defaultSleepIntervalMS = 500
 	trySyncIntervalMS      = 100
-
 	// stop syncing when last block's time is
 	// within this much of the system time.
 	stopSyncingDurationMinutes = 10
@@ -41,6 +41,8 @@ type BlockchainReactor struct {
 	lastBlock  *types.Block
 	quit       chan struct{}
 	running    uint32
+
+	evsw *events.EventSwitch
 }
 
 func NewBlockchainReactor(state *sm.State, store *BlockStore, sync bool) *BlockchainReactor {
@@ -237,6 +239,11 @@ FOR_LOOP:
 func (bcR *BlockchainReactor) BroadcastStatus() error {
 	bcR.sw.Broadcast(BlockchainChannel, bcPeerStatusMessage{bcR.store.Height()})
 	return nil
+}
+
+// implements events.Eventable
+func (bcR *BlockchainReactor) AddEventSwitch(evsw *events.EventSwitch) {
+	bcR.evsw = evsw
 }
 
 //-----------------------------------------------------------------------------
