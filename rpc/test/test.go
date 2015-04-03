@@ -29,9 +29,16 @@ var (
 
 	userAddr = "D7DFF9806078899C8DA3FE3633CC0BF3C6C2B1BB"
 	userPriv = "FDE3BD94CB327D19464027BA668194C5EFA46AE83E8419D7542CFF41F00C81972239C21C81EA7173A6C489145490C015E05D4B97448933B708A7EC5B7B4921E3"
-
-	userPub = "2239C21C81EA7173A6C489145490C015E05D4B97448933B708A7EC5B7B4921E3"
+	userPub  = "2239C21C81EA7173A6C489145490C015E05D4B97448933B708A7EC5B7B4921E3"
 )
+
+func decodeHex(hexStr string) []byte {
+	bytes, err := hex.DecodeString(hexStr)
+	if err != nil {
+		panic(err)
+	}
+	return bytes
+}
 
 func newNode(ready chan struct{}) {
 	// Create & start node
@@ -62,10 +69,13 @@ func init() {
 	config.SetApp(app)
 	logger.Reset()
 
-	priv := state.LoadPrivValidator(rootDir + "/priv_validator.json")
-	priv.LastHeight = 0
-	priv.LastRound = 0
-	priv.LastStep = 0
+	// Save new priv_validator file.
+	priv := &state.PrivValidator{
+		Address: decodeHex(userAddr),
+		PubKey:  account.PubKeyEd25519(decodeHex(userPub)),
+		PrivKey: account.PrivKeyEd25519(decodeHex(userPriv)),
+	}
+	priv.SetFile(rootDir + "/priv_validator.json")
 	priv.Save()
 
 	// start a node

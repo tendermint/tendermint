@@ -847,6 +847,7 @@ func (cs *ConsensusState) TryFinalizeCommit(height uint) bool {
 		}
 		hash, header, _ := cs.Commits.TwoThirdsMajority()
 		if !cs.ProposalBlock.HashesTo(hash) {
+			// XXX See: https://github.com/tendermint/tendermint/issues/44
 			panic(Fmt("Expected ProposalBlock to hash to commit hash. Expected %X, got %X", hash, cs.ProposalBlock.Hash()))
 		}
 		if !cs.ProposalBlockParts.HasHeader(header) {

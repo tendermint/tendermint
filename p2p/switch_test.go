@@ -74,6 +74,8 @@ func makeSwitchPair(t testing.TB, initSwitch func(*Switch) *Switch) (*Switch, *S
 	// Create two switches that will be interconnected.
 	s1 := initSwitch(NewSwitch())
 	s2 := initSwitch(NewSwitch())
+	s1.Start()
+	s2.Start()
 
 	// Create a listener for s1
 	l := NewDefaultListener("tcp", ":8001", true)

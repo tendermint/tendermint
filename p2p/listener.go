@@ -13,6 +13,7 @@ import (
 type Listener interface {
 	Connections() <-chan net.Conn
 	ExternalAddress() *NetAddress
+	String() string
 	Stop()
 }
 

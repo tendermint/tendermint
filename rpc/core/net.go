@@ -31,9 +31,20 @@ func Status() (*ResponseStatus, error) {
 //-----------------------------------------------------------------------------
 
 func NetInfo() (*ResponseNetInfo, error) {
-	o, i, _ := p2pSwitch.NumPeers()
-	numPeers := o + i
 	listening := p2pSwitch.IsListening()
 	network := config.App().GetString("Network")
-	return &ResponseNetInfo{numPeers, listening, network}, nil
+	listeners := []string{}
+	for _, listener := range p2pSwitch.Listeners() {
+		listeners = append(listeners, listener.String())
+	}
+	peers := []string{}
+	for _, peer := range p2pSwitch.Peers().List() {
+		peers = append(peers, peer.String())
+	}
+	return &ResponseNetInfo{
+		Network:   network,
+		Listening: listening,
+		Listeners: listeners,
+		Peers:     peers,
+	}, nil
 }

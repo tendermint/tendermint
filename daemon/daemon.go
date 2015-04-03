@@ -4,7 +4,6 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/ebuchman/debora"
 	bc "github.com/tendermint/tendermint/blockchain"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/config"
@@ -92,11 +91,10 @@ func NewNode() *Node {
 func (n *Node) Start() {
 	log.Info("Starting Node")
 	n.book.Start()
-	n.sw.Reactor("PEX").Start(n.sw)
-	n.sw.Reactor("MEMPOOL").Start(n.sw)
-	n.sw.Reactor("BLOCKCHAIN").Start(n.sw)
-	if !config.App().GetBool("FastSync") {
-		n.sw.Reactor("CONSENSUS").Start(n.sw)
+	n.sw.Start()
+	if config.App().GetBool("FastSync") {
+		// TODO: When FastSync is done, start CONSENSUS.
+		n.sw.Reactor("CONSENSUS").Stop()
 	}
 }
 
@@ -112,27 +110,6 @@ func (n *Node) AddListener(l p2p.Listener) {
 	log.Info(Fmt("Added %v", l))
 	n.sw.AddListener(l)
 	n.book.AddOurAddress(l.ExternalAddress())
-}
-
-func (n *Node) inboundConnectionRoutine(l p2p.Listener) {
-	for {
-		inConn, ok := <-l.Connections()
-		if !ok {
-			break
-		}
-		// New inbound connection!
-		peer, err := n.sw.AddPeerWithConnection(inConn, false)
-		if err != nil {
-			log.Info("Ignoring error from inbound connection: %v\n%v",
-				peer, err)
-			continue
-		}
-		// NOTE: We don't yet have the external address of the
-		// remote (if they have a listener at all).
-		// PEXReactor's pexRoutine will handle that.
-	}
-
-	// cleanup
 }
 
 func (n *Node) DialSeed() {
@@ -170,49 +147,12 @@ func (n *Node) MempoolReactor() *mempl.MempoolReactor {
 
 //------------------------------------------------------------------------------
 
-// debora variables
-var (
-	AppName   = "tendermint"
-	SrcPath   = "github.com/tendermint/tendermint/cmd"
-	PublicKey = "30820122300d06092a864886f70d01010105000382010f003082010a0282010100d1ffab251e05c0cae7bdd5f94c1b9644d4eb66847ee2e9a622b09e0228f2e70e6fecd1dfe6b3dc59fefab1abf0ff4e5d9657541cbe697ab1cf23fb26c9b857f6b6db8b67a0223b514ca77c8f1e049eaf9477d1a5f8041d045eeb0253a3c1ff7b90150d9b5c814a8d05fb707dd35aac118d5457334a557a82579f727a8bed521b0895b73da2458ffd1fc4be91adb624cc25731194d491f23ed47bf9a7265d28b23885e8a70625772eeeaf8e56ff3a1a2f33934668cc3a874042711f8b386da7842c117441a4d6ed29a182a00499ed5d4b6ce9532c5468d3976991f66d595a6f361e29cdf7750cf1c21e583e4c2207334c8d33ead731bf1172793b176089978b110203010001"
-
-	DeboraCallPort = 56565
-)
-
-type DeboraMode int
-
-const (
-	DeboraNullMode = iota // debora off by default
-	DeboraPeerMode        // upgradeable
-	DeboraDevMode         // upgrader
-)
-
-func deboraBroadcast(n *Node) func([]byte) {
-	return func(payload []byte) {
-		msg := &p2p.PexDeboraMessage{Payload: payload}
-		n.sw.Broadcast(p2p.PexChannel, msg)
-	}
-}
-
-func Daemon(deborable DeboraMode) {
-	// Add to debora
-	if deborable == DeboraPeerMode {
-		// TODO: support debora.logfile
-		if err := debora.Add(PublicKey, SrcPath, AppName, config.App().GetString("Debora.LogFile")); err != nil {
-			log.Info("Failed to add program to debora", "error", err)
-		}
-	}
-
+func Daemon() {
 	// Create & start node
 	n := NewNode()
 	l := p2p.NewDefaultListener("tcp", config.App().GetString("ListenAddr"), false)
 	n.AddListener(l)
 	n.Start()
-
-	if deborable == DeboraDevMode {
-		log.Info("Running debora-dev server (listen to call)")
-		debora.DebListenAndServe("tendermint", DeboraCallPort, deboraBroadcast(n))
-	}
 
 	// If seedNode is provided by config, dial out.
 	if config.App().GetString("SeedNode") != "" {

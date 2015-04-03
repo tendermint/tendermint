@@ -85,6 +85,12 @@ func LoadPrivValidator(filename string) *PrivValidator {
 	return privVal
 }
 
+func (privVal *PrivValidator) SetFile(filename string) {
+	privVal.mtx.Lock()
+	defer privVal.mtx.Unlock()
+	privVal.filename = filename
+}
+
 func (privVal *PrivValidator) Save() {
 	privVal.mtx.Lock()
 	defer privVal.mtx.Unlock()

@@ -64,9 +64,10 @@ type ResponseStatus struct {
 }
 
 type ResponseNetInfo struct {
-	NumPeers  int
-	Listening bool
 	Network   string
+	Listening bool
+	Listeners []string
+	Peers     []string
 }
 
 type ResponseSignTx struct {

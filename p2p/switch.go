@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"sync/atomic"
 	"time"
 
 	. "github.com/tendermint/tendermint/common"
@@ -34,6 +35,7 @@ type Switch struct {
 	reactorsByCh map[byte]Reactor
 	peers        *PeerSet
 	dialing      *CMap
+	running      uint32
 }
 
 var (
@@ -53,6 +55,7 @@ func NewSwitch() *Switch {
 		reactorsByCh: make(map[byte]Reactor),
 		peers:        NewPeerSet(),
 		dialing:      NewCMap(),
+		running:      0,
 	}
 
 	return sw
@@ -80,62 +83,64 @@ func (sw *Switch) AddReactor(name string, reactor Reactor) Reactor {
 	return reactor
 }
 
-func (sw *Switch) Reactor(name string) Reactor {
-	return sw.reactors[name]
-}
-
-// Convenience function
-func (sw *Switch) StartReactors() {
-	for _, reactor := range sw.reactors {
-		reactor.Start(sw)
-	}
-}
-
-// Convenience function
-func (sw *Switch) StopReactors() {
-	// Stop all reactors.
-	for _, reactor := range sw.reactors {
-		reactor.Stop()
-	}
-}
-
-// Convenience function
-func (sw *Switch) StopPeers() {
-	// Stop each peer.
-	for _, peer := range sw.peers.List() {
-		peer.stop()
-	}
-	sw.peers = NewPeerSet()
-}
-
-// Convenience function
-func (sw *Switch) StopListeners() {
-	// Stop each listener.
-	for _, listener := range sw.listeners {
-		listener.Stop()
-	}
-	sw.listeners = nil
-}
-
-// Convenience function
-func (sw *Switch) Stop() {
-	sw.StopPeers()
-	sw.StopReactors()
-	sw.StopListeners()
-}
-
-// Not goroutine safe to modify.
+// Not goroutine safe.
 func (sw *Switch) Reactors() map[string]Reactor {
 	return sw.reactors
 }
 
-func (sw *Switch) AddListener(l Listener) {
-	sw.listeners = append(sw.listeners, l)
-	go sw.listenerRoutine(l)
+// Not goroutine safe.
+func (sw *Switch) Reactor(name string) Reactor {
+	return sw.reactors[name]
 }
 
+// Not goroutine safe.
+func (sw *Switch) AddListener(l Listener) {
+	sw.listeners = append(sw.listeners, l)
+}
+
+func (sw *Switch) Listeners() []Listener {
+	return sw.listeners
+}
+
+// Not goroutine safe.
 func (sw *Switch) IsListening() bool {
 	return len(sw.listeners) > 0
+}
+
+func (sw *Switch) Start() {
+	if atomic.CompareAndSwapUint32(&sw.running, 0, 1) {
+		// Start reactors
+		for _, reactor := range sw.reactors {
+			reactor.Start(sw)
+		}
+		// Start peers
+		for _, peer := range sw.peers.List() {
+			sw.startInitPeer(peer)
+		}
+		// Start listeners
+		for _, listener := range sw.listeners {
+			go sw.listenerRoutine(listener)
+		}
+	}
+}
+
+func (sw *Switch) Stop() {
+	if atomic.CompareAndSwapUint32(&sw.running, 1, 0) {
+		// Stop listeners
+		for _, listener := range sw.listeners {
+			listener.Stop()
+		}
+		sw.listeners = nil
+		// Stop peers
+		for _, peer := range sw.peers.List() {
+			peer.stop()
+		}
+		sw.peers = NewPeerSet()
+		// Stop reactors
+		for _, reactor := range sw.reactors {
+			reactor.Stop()
+		}
+	}
 }
 
 func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, error) {
@@ -149,6 +154,13 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 		return nil, ErrSwitchDuplicatePeer
 	}
 
+	if atomic.LoadUint32(&sw.running) == 1 {
+		sw.startInitPeer(peer)
+	}
+	return peer, nil
+}
+
+func (sw *Switch) startInitPeer(peer *Peer) {
 	// Start the peer
 	peer.start()
 
@@ -158,8 +170,6 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 	// Send handshake
 	msg := &pexHandshakeMessage{Network: sw.network}
 	peer.Send(PexChannel, msg)
-
-	return peer, nil
 }
 
 func (sw *Switch) DialPeerWithAddress(addr *NetAddress) (*Peer, error) {

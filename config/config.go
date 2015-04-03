@@ -35,22 +35,22 @@ func SetApp(a *confer.Config) {
 var defaultConfig = `# This is a TOML config file.
 # For more information, see https://github.com/toml-lang/toml
 
-Network =         "tendermint_testnet0"
-ListenAddr =      "0.0.0.0:8080"
+Network = "tendermint_testnet0"
+ListenAddr = "0.0.0.0:8080"
 # First node to connect to.  Command-line overridable.
-SeedNode =        "188.166.55.222:8080"
+SeedNode = "188.166.55.222:8080"
 
 [DB]
 # The only other available backend is "memdb"
-Backend =         "leveldb"
-# Dir =             "~/.tendermint/data"
+Backend = "leveldb"
+# Dir = "~/.tendermint/data"
 
 [Log.Stdout]
-Level =           "info"
+Level = "info"
 
 [Log.File]
-Level =           "debug"
-# Dir =             "~/.tendermint/log"
+Level = "debug"
+# Dir = "~/.tendermint/log"
 
 [RPC.HTTP]
 # For the RPC API HTTP server.  Port required.
@@ -100,8 +100,6 @@ func initDefaults(rootDir string) {
 	app.SetDefault("PrivValidatorfile", rootDir+"/priv_validator.json")
 
 	app.SetDefault("FastSync", false)
-
-	app.SetDefault("Debora.LogFile", rootDir+"/debora.log")
 }
 
 func Init(rootDir string) {

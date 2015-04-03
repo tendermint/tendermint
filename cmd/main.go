@@ -29,16 +29,7 @@ Commands:
 	case "daemon":
 		config.ParseFlags(args[1:])
 		logger.Reset()
-		var deborable daemon.DeboraMode = daemon.DeboraNullMode
-		if len(args) > 1 {
-			switch args[1] {
-			case "debora":
-				deborable = daemon.DeboraPeerMode
-			case "dev":
-				deborable = daemon.DeboraDevMode
-			}
-		}
-		daemon.Daemon(deborable)
+		daemon.Daemon()
 	case "gen_account":
 		gen_account()
 	case "gen_validator":
