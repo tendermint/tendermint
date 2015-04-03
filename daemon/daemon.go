@@ -10,6 +10,7 @@ import (
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/consensus"
 	dbm "github.com/tendermint/tendermint/db"
+	"github.com/tendermint/tendermint/events"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/rpc"
@@ -19,6 +20,7 @@ import (
 
 type Node struct {
 	sw               *p2p.Switch
+	evsw             *events.EventSwitch
 	book             *p2p.AddrBook
 	blockStore       *bc.BlockStore
 	pexReactor       *p2p.PEXReactor
@@ -51,6 +53,9 @@ func NewNode() *Node {
 		log.Info("No PrivValidator found", "file", config.App().GetString("PrivValidatorFile"))
 	}
 
+	eventSwitch := new(events.EventSwitch)
+	eventSwitch.Start()
+
 	// Get PEXReactor
 	book := p2p.NewAddrBook(config.App().GetString("AddrBookFile"))
 	pexReactor := p2p.NewPEXReactor(book)
@@ -76,8 +81,13 @@ func NewNode() *Node {
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)
 
+	// add the event switch to all services
+	// they should all satisfy events.Eventable
+	AddEventSwitch(eventSwitch, pexReactor, bcReactor, mempoolReactor, consensusReactor)
+
 	return &Node{
 		sw:               sw,
+		evsw:             eventSwitch,
 		book:             book,
 		blockStore:       blockStore,
 		pexReactor:       pexReactor,
@@ -105,6 +115,13 @@ func (n *Node) Stop() {
 	// TODO: gracefully disconnect from peers.
 	n.sw.Stop()
 	n.book.Stop()
+}
+
+// Add the event switch to reactors, mempool, etc.
+func AddEventSwitch(evsw *events.EventSwitch, eventables ...events.Eventable) {
+	for _, e := range eventables {
+		e.AddEventSwitch(evsw)
+	}
 }
 
 // Add a Listener to accept inbound peer connections.
@@ -153,7 +170,7 @@ func (n *Node) StartRPC() {
 	core.SetConsensusState(n.consensusState)
 	core.SetMempoolReactor(n.mempoolReactor)
 	core.SetSwitch(n.sw)
-	rpc.StartHTTPServer()
+	rpc.StartHTTPServer(n.evsw)
 }
 
 func (n *Node) Switch() *p2p.Switch {
