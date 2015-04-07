@@ -85,11 +85,10 @@ func TestWSConnect(t *testing.T) {
 	dialer := websocket.DefaultDialer
 	rHeader := http.Header{}
 	_, r, err := dialer.Dial(websocketAddr, rHeader)
+	fmt.Println("respoinse:", r)
 	if err != nil {
 		t.Fatal(err)
 	}
-	fmt.Println("respoinse:", r)
-
 }
 
 func TestWSSubscribe(t *testing.T) {
@@ -99,16 +98,13 @@ func TestWSSubscribe(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = con.WriteJSON(rpc.WsRequest{
+	err = con.WriteJSON(rpc.WSRequest{
 		Type:  "subscribe",
 		Event: "newblock",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	/*
-		typ, p, err := con.ReadMessage()
-		fmt.Println("RESPONSE:", typ, string(p), err)
-	*/
-
+	typ, p, err := con.ReadMessage()
+	fmt.Println("RESPONSE:", typ, string(p), err)
 }

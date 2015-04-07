@@ -236,6 +236,7 @@ func (conR *ConsensusReactor) ResetToState(state *sm.State) {
 // implements events.Eventable
 func (conR *ConsensusReactor) SetEventSwitch(evsw *events.EventSwitch) {
 	conR.evsw = evsw
+	conR.conS.SetEventSwitch(evsw)
 }
 
 //--------------------------------------

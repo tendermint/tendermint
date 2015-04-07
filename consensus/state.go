@@ -66,6 +66,7 @@ import (
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/config"
 	. "github.com/tendermint/tendermint/consensus/types"
+	"github.com/tendermint/tendermint/events"
 	mempl "github.com/tendermint/tendermint/mempool"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -246,6 +247,8 @@ type ConsensusState struct {
 	stagedBlock          *types.Block // Cache last staged block.
 	stagedState          *sm.State    // Cache result of staged block.
 	lastCommitVoteHeight uint         // Last called commitVoteBlock() or saveCommitVoteBlock() on.
+
+	evsw *events.EventSwitch
 }
 
 func NewConsensusState(state *sm.State, blockStore *bc.BlockStore, mempoolReactor *mempl.MempoolReactor) *ConsensusState {
@@ -437,6 +440,8 @@ ACTION_LOOP:
 			if cs.TryFinalizeCommit(rs.Height) {
 				// Now at new height
 				// cs.Step is at RoundStepNewHeight or RoundStepNewRound.
+				// newblock event!
+				cs.evsw.FireEvent("newblock", cs.state.LastBlockHash)
 				scheduleNextAction()
 				continue ACTION_LOOP
 			} else {
@@ -1105,6 +1110,11 @@ func (cs *ConsensusState) saveCommitVoteBlock(block *types.Block, blockParts *ty
 		cs.signAddVote(types.VoteTypeCommit, block.Hash(), blockParts.Header())
 		cs.lastCommitVoteHeight = block.Height
 	}
+}
+
+// implements events.Eventable
+func (cs *ConsensusState) SetEventSwitch(evsw *events.EventSwitch) {
+	cs.evsw = evsw
 }
 
 //-----------------------------------------------------------------------------

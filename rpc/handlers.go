@@ -26,7 +26,7 @@ func RegisterRPCFuncs(mux *http.ServeMux, funcMap map[string]*RPCFunc) {
 func RegisterEventsHandler(mux *http.ServeMux, evsw *events.EventSwitch) {
 	// websocket endpoint
 	w := NewWebsocketManager(evsw)
-	http.HandleFunc("/events", w.websocketHandler) // 	websocket.Handler(w.eventsHandler))
+	mux.HandleFunc("/events", w.websocketHandler) // 	websocket.Handler(w.eventsHandler))
 }
 
 //-------------------------------------
@@ -191,14 +191,20 @@ func _jsonStringToArg(ty reflect.Type, arg string) (reflect.Value, error) {
 //-----------------------------------------------------------------------------
 // rpc.websocket
 
+const (
+	WSConnectionReaperSeconds = 5
+	MaxFailedSendsSeconds     = 10
+	WriteChanBufferSize       = 10
+)
+
 // for requests coming in
-type WsRequest struct {
+type WSRequest struct {
 	Type  string // subscribe or unsubscribe
 	Event string
 }
 
 // for responses going out
-type WsResponse struct {
+type WSResponse struct {
 	Event string
 	Data  interface{}
 	Error string
@@ -209,7 +215,7 @@ type WsResponse struct {
 type Connection struct {
 	id          string
 	wsCon       *websocket.Conn
-	writeChan   chan WsResponse
+	writeChan   chan WSResponse
 	quitChan    chan struct{}
 	failedSends uint
 }
@@ -219,7 +225,7 @@ func NewConnection(con *websocket.Conn) *Connection {
 	return &Connection{
 		id:        con.RemoteAddr().String(),
 		wsCon:     con,
-		writeChan: make(chan WsResponse, WriteChanBuffer), // buffered. we keep track when its full
+		writeChan: make(chan WSResponse, WriteChanBufferSize), // buffered. we keep track when its full
 	}
 }
 
@@ -276,15 +282,9 @@ func (w *WebsocketManager) handleWebsocket(con *websocket.Conn) {
 	w.write(c)
 }
 
-const (
-	WsConnectionReaperSeconds = 5
-	MaxFailedSendsSeconds     = 10
-	WriteChanBuffer           = 10
-)
-
 // read from the socket and subscribe to or unsubscribe from events
 func (w *WebsocketManager) read(con *Connection) {
-	reaper := time.Tick(time.Second * WsConnectionReaperSeconds)
+	reaper := time.Tick(time.Second * WSConnectionReaperSeconds)
 	for {
 		select {
 		case <-reaper:
@@ -302,17 +302,17 @@ func (w *WebsocketManager) read(con *Connection) {
 				// so kill the connection
 				con.quitChan <- struct{}{}
 			}
-			var req WsRequest
+			var req WSRequest
 			err = json.Unmarshal(in, &req)
 			if err != nil {
 				errStr := fmt.Sprintf("Error unmarshaling data: %s", err.Error())
-				con.writeChan <- WsResponse{Error: errStr}
+				con.writeChan <- WSResponse{Error: errStr}
 			}
 			switch req.Type {
 			case "subscribe":
 				log.Info("New event subscription", "con id", con.id, "event", req.Event)
 				w.ew.AddListenerForEvent(con.id, req.Event, func(msg interface{}) {
-					resp := WsResponse{
+					resp := WSResponse{
 						Event: req.Event,
 						Data:  msg,
 					}
@@ -334,7 +334,7 @@ func (w *WebsocketManager) read(con *Connection) {
 					w.ew.RemoveListener(con.id)
 				}
 			default:
-				con.writeChan <- WsResponse{Error: "Unknown request type: " + req.Type}
+				con.writeChan <- WSResponse{Error: "Unknown request type: " + req.Type}
 			}
 
 		}
@@ -350,7 +350,7 @@ func (w *WebsocketManager) write(con *Connection) {
 			buf := new(bytes.Buffer)
 			binary.WriteJSON(msg, buf, n, err)
 			if *err != nil {
-				log.Error("Failed to write JSON WsResponse", "error", err)
+				log.Error("Failed to write JSON WSResponse", "error", err)
 			} else {
 				//websocket.Message.Send(con.wsCon, buf.Bytes())
 				if err := con.wsCon.WriteMessage(websocket.TextMessage, buf.Bytes()); err != nil {
