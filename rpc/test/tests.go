@@ -85,11 +85,10 @@ func testBroadcastTx(t *testing.T, typ string) {
 	}
 	pool := node.MempoolReactor().Mempool
 	txs := pool.GetProposalTxs()
-	if len(txs) != mempoolCount+1 {
-		t.Fatalf("The mem pool has %d txs. Expected %d", len(txs), mempoolCount+1)
+	if len(txs) != mempoolCount {
+		t.Fatalf("The mem pool has %d txs. Expected %d", len(txs), mempoolCount)
 	}
-	tx2 := txs[mempoolCount].(*types.SendTx)
-	mempoolCount += 1
+	tx2 := txs[mempoolCount-1].(*types.SendTx)
 	n, err := new(int64), new(error)
 	buf1, buf2 := new(bytes.Buffer), new(bytes.Buffer)
 	tx.WriteSignBytes(buf1, n, err)
@@ -122,8 +121,10 @@ func testGetStorage(t *testing.T, typ string) {
 	if len(contractAddr) == 0 {
 		t.Fatal("Creates contract but resulting address is empty")
 	}
+
+	// allow it to get mined
 	time.Sleep(time.Second * 20)
-	mempoolCount -= 1
+	mempoolCount = 0
 
 	v := getStorage(t, typ, contractAddr, []byte{0x1})
 	got := RightPadWord256(v)
@@ -190,7 +191,7 @@ func testCall(t *testing.T, typ string) {
 
 	// allow it to get mined
 	time.Sleep(time.Second * 20)
-	mempoolCount -= 1
+	mempoolCount = 0
 
 	// run a call through the contract
 	data := []byte{}

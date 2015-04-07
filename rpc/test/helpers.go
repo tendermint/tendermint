@@ -29,7 +29,7 @@ var (
 	userPriv = "FDE3BD94CB327D19464027BA668194C5EFA46AE83E8419D7542CFF41F00C81972239C21C81EA7173A6C489145490C015E05D4B97448933B708A7EC5B7B4921E3"
 	userPub  = "2239C21C81EA7173A6C489145490C015E05D4B97448933B708A7EC5B7B4921E3"
 
-	clients  = map[string]rpc.Client{
+	clients = map[string]rpc.Client{
 		"JSONRPC": rpc.NewClient(requestAddr, "JSONRPC"),
 		"HTTP":    rpc.NewClient(requestAddr, "HTTP"),
 	}
@@ -42,7 +42,6 @@ func decodeHex(hexStr string) []byte {
 	}
 	return bytes
 }
-
 
 // create a new node and sleep forever
 func newNode(ready chan struct{}) {
@@ -196,6 +195,7 @@ func broadcastTx(t *testing.T, typ string, fromAddr, toAddr, data []byte, key [6
 	if err != nil {
 		t.Fatal(err)
 	}
+	mempoolCount += 1
 	return tx, resp.Receipt
 }
 
