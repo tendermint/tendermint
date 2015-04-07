@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/vm"
@@ -24,7 +25,7 @@ func toVMAccount(acc *account.Account) *vm.Account {
 
 // Run a contract's code on an isolated and unpersisted state
 // Cannot be used to create new contracts
-func Call(address, data []byte) (*ResponseCall, error) {
+func Call(address, data []byte) (*ctypes.ResponseCall, error) {
 
 	st := consensusState.GetState() // performs a copy
 	cache := mempoolReactor.Mempool.GetCache()
@@ -48,12 +49,12 @@ func Call(address, data []byte) (*ResponseCall, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ResponseCall{Return: ret}, nil
+	return &ctypes.ResponseCall{Return: ret}, nil
 }
 
 //-----------------------------------------------------------------------------
 
-func SignTx(tx types.Tx, privAccounts []*account.PrivAccount) (*ResponseSignTx, error) {
+func SignTx(tx types.Tx, privAccounts []*account.PrivAccount) (*ctypes.ResponseSignTx, error) {
 	// more checks?
 
 	for i, privAccount := range privAccounts {
@@ -85,5 +86,5 @@ func SignTx(tx types.Tx, privAccounts []*account.PrivAccount) (*ResponseSignTx, 
 		rebondTx := tx.(*types.RebondTx)
 		rebondTx.Signature = privAccounts[0].Sign(rebondTx).(account.SignatureEd25519)
 	}
-	return &ResponseSignTx{tx}, nil
+	return &ctypes.ResponseSignTx{tx}, nil
 }

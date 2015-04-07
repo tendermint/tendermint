@@ -9,7 +9,7 @@ import (
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/rpc"
-	"github.com/tendermint/tendermint/rpc/core"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 	"io/ioutil"
 	"net/http"
@@ -40,10 +40,10 @@ func TestJSONStatus(t *testing.T) {
 	}
 
 	var response struct {
-		Result  core.ResponseStatus `json:"result"`
-		Error   string              `json:"error"`
-		Id      string              `json:"id"`
-		JSONRPC string              `json:"jsonrpc"`
+		Result  ctypes.ResponseStatus `json:"result"`
+		Error   string                `json:"error"`
+		Id      string                `json:"id"`
+		JSONRPC string                `json:"jsonrpc"`
 	}
 	binary.ReadJSON(&response, body, &err)
 	if err != nil {
@@ -80,10 +80,10 @@ func TestJSONGenPriv(t *testing.T) {
 		t.Fatal(err)
 	}
 	var response struct {
-		Result  core.ResponseGenPrivAccount `json:"result"`
-		Error   string                      `json:"error"`
-		Id      string                      `json:"id"`
-		JSONRPC string                      `json:"jsonrpc"`
+		Result  ctypes.ResponseGenPrivAccount `json:"result"`
+		Error   string                        `json:"error"`
+		Id      string                        `json:"id"`
+		JSONRPC string                        `json:"jsonrpc"`
 	}
 	binary.ReadJSON(&response, body, &err)
 	if err != nil {
@@ -143,10 +143,10 @@ func TestJSONBroadcastTx(t *testing.T) {
 	b := w.Bytes()
 
 	var response struct {
-		Result  core.ResponseBroadcastTx `json:"result"`
-		Error   string                   `json:"error"`
-		Id      string                   `json:"id"`
-		JSONRPC string                   `json:"jsonrpc"`
+		Result  ctypes.ResponseBroadcastTx `json:"result"`
+		Error   string                     `json:"error"`
+		Id      string                     `json:"id"`
+		JSONRPC string                     `json:"jsonrpc"`
 	}
 	requestResponse(t, "broadcast_tx", url.Values{"tx": {string(b)}}, &response)
 	if response.Error != "" {

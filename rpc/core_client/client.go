@@ -1,9 +1,10 @@
-package rpc
+package core_client
 
 import (
 	"bytes"
 	"fmt"
 	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/rpc"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -18,7 +19,7 @@ type Response struct {
 	Error  string
 }
 
-//go:generate go-rpc-gen -interface Client -pkg core -type *ClientHTTP,*ClientJSON -exclude pipe.go -out-pkg rpc
+//go:generate go-rpc-gen -interface Client -dir ../core -pkg core -type *ClientHTTP,*ClientJSON -exclude pipe.go -out-pkg core_client
 
 type ClientJSON struct {
 	addr string
@@ -99,7 +100,7 @@ func (c *ClientHTTP) RequestResponse(method string, values url.Values) (*Respons
 	return response, nil
 }
 
-func (c *ClientJSON) RequestResponse(s RPCRequest) (b []byte, err error) {
+func (c *ClientJSON) RequestResponse(s rpc.RPCRequest) (b []byte, err error) {
 	b = binary.JSONBytes(s)
 	buf := bytes.NewBuffer(b)
 	resp, err := http.Post(c.addr, "text/json", buf)
@@ -165,6 +166,7 @@ func argsToURLValues(argNames []string, args ...interface{}) (url.Values, error)
 
 /*rpc-gen:imports:
 github.com/tendermint/tendermint/binary
+github.com/tendermint/tendermint/rpc
 net/http
 io/ioutil
 fmt
@@ -173,7 +175,7 @@ fmt
 // Template functions to be filled in
 
 /*rpc-gen:template:*ClientJSON func (c *ClientJSON) {{name}}({{args.def}}) ({{response}}) {
-	request := RPCRequest{
+	request := rpc.RPCRequest{
 		JSONRPC: "2.0",
 		Method:  {{lowername}},
 		Params:  []interface{}{ {{args.ident}} },

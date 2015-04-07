@@ -7,7 +7,7 @@ import (
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/merkle"
-	"github.com/tendermint/tendermint/rpc/core"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	"io/ioutil"
@@ -27,10 +27,10 @@ func TestHTTPStatus(t *testing.T) {
 		t.Fatal(err)
 	}
 	var response struct {
-		Result  core.ResponseStatus `json:"result"`
-		Error   string              `json:"error"`
-		Id      string              `json:"id"`
-		JSONRPC string              `json:"jsonrpc"`
+		Result  ctypes.ResponseStatus `json:"result"`
+		Error   string                `json:"error"`
+		Id      string                `json:"id"`
+		JSONRPC string                `json:"jsonrpc"`
 	}
 	binary.ReadJSON(&response, body, &err)
 	if err != nil {
@@ -55,10 +55,10 @@ func TestHTTPGenPriv(t *testing.T) {
 		t.Fatal(err)
 	}
 	var response struct {
-		Result  core.ResponseGenPrivAccount `json:"result"`
-		Error   string                      `json:"error"`
-		Id      string                      `json:"id"`
-		JSONRPC string                      `json:"jsonrpc"`
+		Result  ctypes.ResponseGenPrivAccount `json:"result"`
+		Error   string                        `json:"error"`
+		Id      string                        `json:"id"`
+		JSONRPC string                        `json:"jsonrpc"`
 	}
 	binary.ReadJSON(&response, body, &err)
 	if err != nil {
@@ -130,7 +130,7 @@ func TestHTTPBroadcastTx(t *testing.T) {
 func TestHTTPGetStorage(t *testing.T) {
 	priv := state.LoadPrivValidator(".tendermint/priv_validator.json")
 	_ = priv
-	//core.SetPrivValidator(priv)
+	//ctypes.SetPrivValidator(priv)
 
 	byteAddr, _ := hex.DecodeString(userAddr)
 	var byteKey [64]byte

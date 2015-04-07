@@ -8,18 +8,20 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/tendermint/tendermint/alert"
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/config"
 )
 
-func StartHTTPServer() {
-	initHandlers()
-
-	log.Info(Fmt("Starting RPC HTTP server on %s", config.App().GetString("RPC.HTTP.ListenAddr")))
+func StartHTTPServer(listenAddr string, funcMap map[string]*RPCFunc) {
+	log.Info(Fmt("Starting RPC HTTP server on %s", listenAddr))
+	mux := http.NewServeMux()
+	RegisterRPCFuncs(mux, funcMap)
 	go func() {
-		log.Crit("RPC HTTPServer stopped", "result", http.ListenAndServe(config.App().GetString("RPC.HTTP.ListenAddr"), RecoverAndLogHandler(http.DefaultServeMux)))
+		res := http.ListenAndServe(
+			listenAddr,
+			RecoverAndLogHandler(mux),
+		)
+		log.Crit("RPC HTTPServer stopped", "result", res)
 	}()
 }
 
@@ -96,13 +98,4 @@ type ResponseWriterWrapper struct {
 func (w *ResponseWriterWrapper) WriteHeader(status int) {
 	w.Status = status
 	w.ResponseWriter.WriteHeader(status)
-}
-
-// Stick it as a deferred statement in gouroutines to prevent the program from crashing.
-func Recover(daemonName string) {
-	if e := recover(); e != nil {
-		stack := string(debug.Stack())
-		errorString := fmt.Sprintf("[%s] %s\n%s", daemonName, e, stack)
-		alert.Alert(errorString)
-	}
 }

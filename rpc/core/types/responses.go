@@ -1,4 +1,4 @@
-package core
+package core_types
 
 import (
 	"github.com/tendermint/tendermint/account"
@@ -53,6 +53,12 @@ type ResponseGetBlock struct {
 // curl -H 'content-type: text/plain;' http://127.0.0.1:8888/submit_tx?tx=...
 type ResponseBroadcastTx struct {
 	Receipt Receipt
+}
+
+type Receipt struct {
+	TxHash          []byte
+	CreatesContract uint8
+	ContractAddr    []byte
 }
 
 type ResponseStatus struct {

@@ -1,12 +1,13 @@
 package core
 
 import (
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	sm "github.com/tendermint/tendermint/state"
 )
 
 //-----------------------------------------------------------------------------
 
-func ListValidators() (*ResponseListValidators, error) {
+func ListValidators() (*ctypes.ResponseListValidators, error) {
 	var blockHeight uint
 	var bondedValidators []*sm.Validator
 	var unbondingValidators []*sm.Validator
@@ -22,5 +23,5 @@ func ListValidators() (*ResponseListValidators, error) {
 		return false
 	})
 
-	return &ResponseListValidators{blockHeight, bondedValidators, unbondingValidators}, nil
+	return &ctypes.ResponseListValidators{blockHeight, bondedValidators, unbondingValidators}, nil
 }

@@ -3,10 +3,12 @@
 all: build
 
 build: get_deps
-	go build -o tendermint github.com/tendermint/tendermint/cmd
+	go build -o tendermint github.com/tendermint/tendermint/cmd/tendermint
+	go build -o debora github.com/tendermint/tendermint/cmd/debora
 
 build_race: get_deps
-	go build -race -o tendermint github.com/tendermint/tendermint/cmd
+	go build -race -o tendermint github.com/tendermint/tendermint/cmd/tendermint
+	go build -race -o debora github.com/tendermint/tendermint/cmd/debora
 
 test: build
 	go test github.com/tendermint/tendermint/...

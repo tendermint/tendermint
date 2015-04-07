@@ -3,12 +3,13 @@ package core
 import (
 	"fmt"
 	. "github.com/tendermint/tendermint/common"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 )
 
 //-----------------------------------------------------------------------------
 
-func BlockchainInfo(minHeight, maxHeight uint) (*ResponseBlockchainInfo, error) {
+func BlockchainInfo(minHeight, maxHeight uint) (*ctypes.ResponseBlockchainInfo, error) {
 	if maxHeight == 0 {
 		maxHeight = blockStore.Height()
 	} else {
@@ -25,12 +26,12 @@ func BlockchainInfo(minHeight, maxHeight uint) (*ResponseBlockchainInfo, error) 
 		blockMetas = append(blockMetas, blockMeta)
 	}
 
-	return &ResponseBlockchainInfo{blockStore.Height(), blockMetas}, nil
+	return &ctypes.ResponseBlockchainInfo{blockStore.Height(), blockMetas}, nil
 }
 
 //-----------------------------------------------------------------------------
 
-func GetBlock(height uint) (*ResponseGetBlock, error) {
+func GetBlock(height uint) (*ctypes.ResponseGetBlock, error) {
 	if height == 0 {
 		return nil, fmt.Errorf("height must be greater than 0")
 	}
@@ -40,5 +41,5 @@ func GetBlock(height uint) (*ResponseGetBlock, error) {
 
 	blockMeta := blockStore.LoadBlockMeta(height)
 	block := blockStore.LoadBlock(height)
-	return &ResponseGetBlock{blockMeta, block}, nil
+	return &ctypes.ResponseGetBlock{blockMeta, block}, nil
 }

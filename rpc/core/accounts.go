@@ -4,18 +4,19 @@ import (
 	"fmt"
 	"github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 )
 
-func GenPrivAccount() (*ResponseGenPrivAccount, error) {
-	return &ResponseGenPrivAccount{account.GenPrivAccount()}, nil
+func GenPrivAccount() (*ctypes.ResponseGenPrivAccount, error) {
+	return &ctypes.ResponseGenPrivAccount{account.GenPrivAccount()}, nil
 }
 
-func GetAccount(address []byte) (*ResponseGetAccount, error) {
+func GetAccount(address []byte) (*ctypes.ResponseGetAccount, error) {
 	cache := mempoolReactor.Mempool.GetCache()
-	return &ResponseGetAccount{cache.GetAccount(address)}, nil
+	return &ctypes.ResponseGetAccount{cache.GetAccount(address)}, nil
 }
 
-func GetStorage(address, slot []byte) (*ResponseGetStorage, error) {
+func GetStorage(address, slot []byte) (*ctypes.ResponseGetStorage, error) {
 	state := consensusState.GetState()
 	account := state.GetAccount(address)
 	if account == nil {
@@ -26,12 +27,12 @@ func GetStorage(address, slot []byte) (*ResponseGetStorage, error) {
 
 	_, value := storage.Get(RightPadWord256(slot).Bytes())
 	if value == nil {
-		return &ResponseGetStorage{slot, nil}, nil
+		return &ctypes.ResponseGetStorage{slot, nil}, nil
 	}
-	return &ResponseGetStorage{slot, value.([]byte)}, nil
+	return &ctypes.ResponseGetStorage{slot, value.([]byte)}, nil
 }
 
-func ListAccounts() (*ResponseListAccounts, error) {
+func ListAccounts() (*ctypes.ResponseListAccounts, error) {
 	var blockHeight uint
 	var accounts []*account.Account
 	state := consensusState.GetState()
@@ -40,10 +41,10 @@ func ListAccounts() (*ResponseListAccounts, error) {
 		accounts = append(accounts, value.(*account.Account))
 		return false
 	})
-	return &ResponseListAccounts{blockHeight, accounts}, nil
+	return &ctypes.ResponseListAccounts{blockHeight, accounts}, nil
 }
 
-func DumpStorage(addr []byte) (*ResponseDumpStorage, error) {
+func DumpStorage(addr []byte) (*ctypes.ResponseDumpStorage, error) {
 	state := consensusState.GetState()
 	account := state.GetAccount(addr)
 	if account == nil {
@@ -51,11 +52,11 @@ func DumpStorage(addr []byte) (*ResponseDumpStorage, error) {
 	}
 	storageRoot := account.StorageRoot
 	storage := state.LoadStorage(storageRoot)
-	storageItems := []StorageItem{}
+	storageItems := []ctypes.StorageItem{}
 	storage.Iterate(func(key interface{}, value interface{}) bool {
-		storageItems = append(storageItems, StorageItem{
+		storageItems = append(storageItems, ctypes.StorageItem{
 			key.([]byte), value.([]byte)})
 		return false
 	})
-	return &ResponseDumpStorage{storageRoot, storageItems}, nil
+	return &ctypes.ResponseDumpStorage{storageRoot, storageItems}, nil
 }

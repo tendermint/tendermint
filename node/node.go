@@ -1,4 +1,4 @@
-package daemon
+package node
 
 import (
 	"os"
@@ -130,7 +130,8 @@ func (n *Node) StartRPC() {
 	core.SetConsensusState(n.consensusState)
 	core.SetMempoolReactor(n.mempoolReactor)
 	core.SetSwitch(n.sw)
-	rpc.StartHTTPServer()
+
+	rpc.StartHTTPServer(config.App().GetString("RPC.HTTP.ListenAddr"), core.Routes)
 }
 
 func (n *Node) Switch() *p2p.Switch {
@@ -147,7 +148,7 @@ func (n *Node) MempoolReactor() *mempl.MempoolReactor {
 
 //------------------------------------------------------------------------------
 
-func Daemon() {
+func RunNode() {
 	// Create & start node
 	n := NewNode()
 	l := p2p.NewDefaultListener("tcp", config.App().GetString("ListenAddr"), false)

@@ -3,13 +3,14 @@ package core
 import (
 	"github.com/tendermint/tendermint/config"
 	dbm "github.com/tendermint/tendermint/db"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
 //-----------------------------------------------------------------------------
 
-func Status() (*ResponseStatus, error) {
+func Status() (*ctypes.ResponseStatus, error) {
 	db := dbm.NewMemDB()
 	genesisState := sm.MakeGenesisStateFromFile(db, config.App().GetString("GenesisFile"))
 	genesisHash := genesisState.Hash()
@@ -25,12 +26,12 @@ func Status() (*ResponseStatus, error) {
 		latestBlockTime = latestBlockMeta.Header.Time.UnixNano()
 	}
 
-	return &ResponseStatus{genesisHash, config.App().GetString("Network"), latestBlockHash, latestHeight, latestBlockTime}, nil
+	return &ctypes.ResponseStatus{genesisHash, config.App().GetString("Network"), latestBlockHash, latestHeight, latestBlockTime}, nil
 }
 
 //-----------------------------------------------------------------------------
 
-func NetInfo() (*ResponseNetInfo, error) {
+func NetInfo() (*ctypes.ResponseNetInfo, error) {
 	listening := p2pSwitch.IsListening()
 	network := config.App().GetString("Network")
 	listeners := []string{}
@@ -41,7 +42,7 @@ func NetInfo() (*ResponseNetInfo, error) {
 	for _, peer := range p2pSwitch.Peers().List() {
 		peers = append(peers, peer.String())
 	}
-	return &ResponseNetInfo{
+	return &ctypes.ResponseNetInfo{
 		Network:   network,
 		Listening: listening,
 		Listeners: listeners,

@@ -3,21 +3,16 @@ package core
 import (
 	"fmt"
 	. "github.com/tendermint/tendermint/common"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
 //-----------------------------------------------------------------------------
 
-type Receipt struct {
-	TxHash          []byte
-	CreatesContract uint8
-	ContractAddr    []byte
-}
-
 // pass pointer?
 // Note: tx must be signed
-func BroadcastTx(tx types.Tx) (*ResponseBroadcastTx, error) {
+func BroadcastTx(tx types.Tx) (*ctypes.ResponseBroadcastTx, error) {
 	err := mempoolReactor.BroadcastTx(tx)
 	if err != nil {
 		return nil, fmt.Errorf("Error broadcasting transaction: %v", err)
@@ -33,7 +28,7 @@ func BroadcastTx(tx types.Tx) (*ResponseBroadcastTx, error) {
 			contractAddr = state.NewContractAddress(callTx.Input.Address, uint64(callTx.Input.Sequence))
 		}
 	}
-	return &ResponseBroadcastTx{Receipt{txHash, createsContract, contractAddr}}, nil
+	return &ctypes.ResponseBroadcastTx{ctypes.Receipt{txHash, createsContract, contractAddr}}, nil
 }
 
 /*

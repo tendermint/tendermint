@@ -6,11 +6,11 @@ import (
 	"github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
 	"github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/daemon"
 	"github.com/tendermint/tendermint/logger"
+	nm "github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/rpc"
-	"github.com/tendermint/tendermint/rpc/core"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	cclient "github.com/tendermint/tendermint/rpc/core_client"
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	"io/ioutil"
@@ -23,7 +23,7 @@ var (
 	rpcAddr     = "127.0.0.1:8089"
 	requestAddr = "http://" + rpcAddr + "/"
 
-	node *daemon.Node
+	node *nm.Node
 
 	mempoolCount = 0
 
@@ -42,7 +42,7 @@ func decodeHex(hexStr string) []byte {
 
 func newNode(ready chan struct{}) {
 	// Create & start node
-	node = daemon.NewNode()
+	node = nm.NewNode()
 	l := p2p.NewDefaultListener("tcp", config.App().GetString("ListenAddr"), false)
 	node.AddListener(l)
 	node.Start()
@@ -85,12 +85,12 @@ func init() {
 }
 
 func getAccount(t *testing.T, typ string, addr []byte) *account.Account {
-	var client rpc.Client
+	var client cclient.Client
 	switch typ {
 	case "JSONRPC":
-		client = rpc.NewClient(requestAddr, "JSONRPC")
+		client = cclient.NewClient(requestAddr, "JSONRPC")
 	case "HTTP":
-		client = rpc.NewClient(requestAddr, "HTTP")
+		client = cclient.NewClient(requestAddr, "HTTP")
 	}
 	ac, err := client.GetAccount(addr)
 	if err != nil {
@@ -130,7 +130,7 @@ func getAccount(t *testing.T, typ string, addr []byte) *account.Account {
 		t.Fatal(err)
 	}
 	var response struct {
-		Result  core.ResponseGetAccount `json:"result"`
+		Result  ctypes.ResponseGetAccount `json:"result"`
 		Error   string                  `json:"error"`
 		Id      string                  `json:"id"`
 		JSONRPC string                  `json:"jsonrpc"`
@@ -242,10 +242,10 @@ func signTx(t *testing.T, typ string, fromAddr, toAddr, data []byte, key [64]byt
 	}
 
 	var response struct {
-		Result  core.ResponseSignTx `json:"result"`
-		Error   string              `json:"error"`
-		Id      string              `json:"id"`
-		JSONRPC string              `json:"jsonrpc"`
+		Result  ctypes.ResponseSignTx `json:"result"`
+		Error   string                `json:"error"`
+		Id      string                `json:"id"`
+		JSONRPC string                `json:"jsonrpc"`
 	}
 	requestResponse(t, "unsafe/sign_tx", url.Values{"tx": {string(b)}, "privAccounts": {string(w.Bytes())}}, &response)
 	if response.Error != "" {
@@ -255,7 +255,7 @@ func signTx(t *testing.T, typ string, fromAddr, toAddr, data []byte, key [64]byt
 	return result.Tx, privAcc
 }
 
-func broadcastTx(t *testing.T, typ string, fromAddr, toAddr, data []byte, key [64]byte, amt, gaslim, fee uint64) (types.Tx, core.Receipt) {
+func broadcastTx(t *testing.T, typ string, fromAddr, toAddr, data []byte, key [64]byte, amt, gaslim, fee uint64) (types.Tx, ctypes.Receipt) {
 	tx, _ := signTx(t, typ, fromAddr, toAddr, data, key, amt, gaslim, fee)
 
 	n, w := new(int64), new(bytes.Buffer)
@@ -267,10 +267,10 @@ func broadcastTx(t *testing.T, typ string, fromAddr, toAddr, data []byte, key [6
 	b := w.Bytes()
 
 	var response struct {
-		Result  core.ResponseBroadcastTx `json:"result"`
-		Error   string                   `json:"error"`
-		Id      string                   `json:"id"`
-		JSONRPC string                   `json:"jsonrpc"`
+		Result  ctypes.ResponseBroadcastTx `json:"result"`
+		Error   string                     `json:"error"`
+		Id      string                     `json:"id"`
+		JSONRPC string                     `json:"jsonrpc"`
 	}
 	requestResponse(t, "broadcast_tx", url.Values{"tx": {string(b)}}, &response)
 	if response.Error != "" {
@@ -279,13 +279,13 @@ func broadcastTx(t *testing.T, typ string, fromAddr, toAddr, data []byte, key [6
 	return tx, response.Result.Receipt
 }
 
-func dumpStorage(t *testing.T, addr []byte) core.ResponseDumpStorage {
+func dumpStorage(t *testing.T, addr []byte) ctypes.ResponseDumpStorage {
 	addrString := "\"" + hex.EncodeToString(addr) + "\""
 	var response struct {
-		Result  core.ResponseDumpStorage `json:"result"`
-		Error   string                   `json:"error"`
-		Id      string                   `json:"id"`
-		JSONRPC string                   `json:"jsonrpc"`
+		Result  ctypes.ResponseDumpStorage `json:"result"`
+		Error   string                     `json:"error"`
+		Id      string                     `json:"id"`
+		JSONRPC string                     `json:"jsonrpc"`
 	}
 	requestResponse(t, "dump_storage", url.Values{"address": {addrString}}, &response)
 	if response.Error != "" {
@@ -298,10 +298,10 @@ func getStorage(t *testing.T, addr, slot []byte) []byte {
 	addrString := "\"" + hex.EncodeToString(addr) + "\""
 	slotString := "\"" + hex.EncodeToString(slot) + "\""
 	var response struct {
-		Result  core.ResponseGetStorage `json:"result"`
-		Error   string                  `json:"error"`
-		Id      string                  `json:"id"`
-		JSONRPC string                  `json:"jsonrpc"`
+		Result  ctypes.ResponseGetStorage `json:"result"`
+		Error   string                    `json:"error"`
+		Id      string                    `json:"id"`
+		JSONRPC string                    `json:"jsonrpc"`
 	}
 	requestResponse(t, "get_storage", url.Values{"address": {addrString}, "storage": {slotString}}, &response)
 	if response.Error != "" {

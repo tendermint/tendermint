@@ -2,5 +2,6 @@
 *.swo
 .bak
 tendermint
+debora
 .DS_Store
 rpc/test/.tendermint
