@@ -18,8 +18,9 @@ import (
 
 // global variables for use across all tests
 var (
-	rpcAddr     = "127.0.0.1:8089"
-	requestAddr = "http://" + rpcAddr + "/"
+	rpcAddr       = "127.0.0.1:8089"
+	requestAddr   = "http://" + rpcAddr + "/"
+	websocketAddr = "ws://" + rpcAddr + "/events"
 
 	node *nm.Node
 

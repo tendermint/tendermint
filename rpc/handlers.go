@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/gorilla/websocket"
 	"github.com/tendermint/tendermint/binary"
 	"github.com/tendermint/tendermint/events"
-	"golang.org/x/net/websocket"
 	"io/ioutil"
 	"net/http"
 	"reflect"
@@ -26,7 +26,7 @@ func RegisterRPCFuncs(mux *http.ServeMux, funcMap map[string]*RPCFunc) {
 func RegisterEventsHandler(mux *http.ServeMux, evsw *events.EventSwitch) {
 	// websocket endpoint
 	w := NewWebsocketManager(evsw)
-	mux.Handle("/events", websocket.Handler(w.eventsHandler))
+	http.HandleFunc("/events", w.websocketHandler) // 	websocket.Handler(w.eventsHandler))
 }
 
 //-------------------------------------
@@ -233,6 +233,7 @@ func (c *Connection) Close() {
 // main manager for all websocket connections
 // holds the event switch
 type WebsocketManager struct {
+	websocket.Upgrader
 	ew   *events.EventSwitch
 	cons map[string]*Connection
 }
@@ -241,18 +242,38 @@ func NewWebsocketManager(ew *events.EventSwitch) *WebsocketManager {
 	return &WebsocketManager{
 		ew:   ew,
 		cons: make(map[string]*Connection),
+		Upgrader: websocket.Upgrader{
+			ReadBufferSize:  1024,
+			WriteBufferSize: 1024,
+			CheckOrigin: func(r *http.Request) bool {
+				// TODO
+				return true
+			},
+		},
 	}
 }
 
-func (w *WebsocketManager) eventsHandler(con *websocket.Conn) {
+func (wm *WebsocketManager) websocketHandler(w http.ResponseWriter, r *http.Request) {
+	conn, err := wm.Upgrade(w, r, nil)
+	if err != nil {
+		// TODO
+		log.Error("Failed to upgrade to websocket connection", "error", err)
+		return
+	}
+	wm.handleWebsocket(conn)
+
+}
+
+func (w *WebsocketManager) handleWebsocket(con *websocket.Conn) {
 	// register connection
 	c := NewConnection(con)
-	w.cons[con.RemoteAddr().String()] = c
+	w.cons[c.id] = c
+	log.Info("New websocket connection", "origin", c.id)
 
 	// read subscriptions/unsubscriptions to events
 	go w.read(c)
 	// write responses
-	go w.write(c)
+	w.write(c)
 }
 
 const (
@@ -274,19 +295,22 @@ func (w *WebsocketManager) read(con *Connection) {
 			}
 		default:
 			var in []byte
-			if err := websocket.Message.Receive(con.wsCon, &in); err != nil {
+			_, in, err := con.wsCon.ReadMessage()
+			if err != nil {
+				//if err := websocket.Message.Receive(con.wsCon, &in); err != nil {
 				// an error reading the connection,
 				// so kill the connection
 				con.quitChan <- struct{}{}
 			}
 			var req WsRequest
-			err := json.Unmarshal(in, &req)
+			err = json.Unmarshal(in, &req)
 			if err != nil {
 				errStr := fmt.Sprintf("Error unmarshaling data: %s", err.Error())
 				con.writeChan <- WsResponse{Error: errStr}
 			}
 			switch req.Type {
 			case "subscribe":
+				log.Info("New event subscription", "con id", con.id, "event", req.Event)
 				w.ew.AddListenerForEvent(con.id, req.Event, func(msg interface{}) {
 					resp := WsResponse{
 						Event: req.Event,
@@ -328,7 +352,10 @@ func (w *WebsocketManager) write(con *Connection) {
 			if *err != nil {
 				log.Error("Failed to write JSON WsResponse", "error", err)
 			} else {
-				websocket.Message.Send(con.wsCon, buf.Bytes())
+				//websocket.Message.Send(con.wsCon, buf.Bytes())
+				if err := con.wsCon.WriteMessage(websocket.TextMessage, buf.Bytes()); err != nil {
+					log.Error("Failed to write response on websocket", "error", err)
+				}
 			}
 		case <-con.quitChan:
 			w.closeConn(con)

@@ -2,8 +2,10 @@
 package rpc
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
+	"net"
 	"net/http"
 	"runtime/debug"
 	"time"
@@ -50,7 +52,7 @@ func WriteRPCResponse(w http.ResponseWriter, res RPCResponse) {
 func RecoverAndLogHandler(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Wrap the ResponseWriter to remember the status
-		rww := &ResponseWriterWrapper{-1, w}
+		rww := &ResponseWriterWrapper{-1, w, w.(http.Hijacker)}
 		begin := time.Now()
 
 		// Common headers
@@ -97,9 +99,24 @@ func RecoverAndLogHandler(handler http.Handler) http.Handler {
 type ResponseWriterWrapper struct {
 	Status int
 	http.ResponseWriter
+	hj http.Hijacker // necessary for websocket upgrades
 }
 
 func (w *ResponseWriterWrapper) WriteHeader(status int) {
 	w.Status = status
 	w.ResponseWriter.WriteHeader(status)
+}
+
+// implements http.Hijacker
+func (w *ResponseWriterWrapper) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	return w.hj.Hijack()
+}
+
+// Stick it as a deferred statement in gouroutines to prevent the program from crashing.
+func Recover(daemonName string) {
+	if e := recover(); e != nil {
+		stack := string(debug.Stack())
+		errorString := fmt.Sprintf("[%s] %s\n%s", daemonName, e, stack)
+		alert.Alert(errorString)
+	}
 }
