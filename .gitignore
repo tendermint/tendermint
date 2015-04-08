@@ -1,7 +1,6 @@
 *.swp
 *.swo
 .bak
-tendermint
-debora
 .DS_Store
+build/*
 rpc/test/.tendermint
