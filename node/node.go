@@ -2,7 +2,6 @@ package node
 
 import (
 	"os"
-	"os/signal"
 
 	bc "github.com/tendermint/tendermint/blockchain"
 	. "github.com/tendermint/tendermint/common"
@@ -166,20 +165,7 @@ func RunNode() {
 	}
 
 	// Sleep forever and then...
-	trapSignal(func() {
+	TrapSignal(func() {
 		n.Stop()
 	})
-}
-
-func trapSignal(cb func()) {
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	go func() {
-		for sig := range c {
-			log.Info(Fmt("captured %v, exiting..", sig))
-			cb()
-			os.Exit(1)
-		}
-	}()
-	select {}
 }

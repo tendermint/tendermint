@@ -10,7 +10,7 @@ import (
 	"net/url"
 	"reflect"
 	// Uncomment to use go:generate
-	// _ "github.com/ebuchman/go-rpc-gen"
+	// _ "github.com/tendermint/go-rpc-gen"
 )
 
 type Response struct {

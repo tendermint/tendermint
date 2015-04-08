@@ -19,6 +19,17 @@ type Reactor interface {
 	Receive(chId byte, peer *Peer, msgBytes []byte)
 }
 
+//--------------------------------------
+
+type BaseReactor struct{}
+
+func (_ BaseReactor) Start(sw *Switch)                               {}
+func (_ BaseReactor) Stop()                                          {}
+func (_ BaseReactor) GetChannels() []*ChannelDescriptor              { return nil }
+func (_ BaseReactor) AddPeer(peer *Peer)                             {}
+func (_ BaseReactor) RemovePeer(peer *Peer, reason interface{})      {}
+func (_ BaseReactor) Receive(chId byte, peer *Peer, msgBytes []byte) {}
+
 //-----------------------------------------------------------------------------
 
 /*

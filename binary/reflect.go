@@ -178,7 +178,9 @@ func RegisterType(info *TypeInfo) *TypeInfo {
 				continue
 			}
 			jsonName := field.Tag.Get("json")
-			if jsonName == "" {
+			if jsonName == "-" {
+				continue
+			} else if jsonName == "" {
 				jsonName = field.Name
 			}
 			structFields = append(structFields, StructFieldInfo{

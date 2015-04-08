@@ -19,8 +19,12 @@ func makeFile(prefix string) *os.File {
 }
 
 type Process struct {
-	Cmd    *exec.Cmd
-	Output *os.File
+	Label     string
+	ExecPath  string
+	StartTime time.Time
+	Cmd       *exec.Cmd        `json:"-"`
+	Output    *os.File         `json:"-"`
+	ExitState *os.ProcessState `json:"-"`
 }
 
 const (
@@ -28,9 +32,11 @@ const (
 	ProcessModeDaemon
 )
 
-func CreateProcess(mode int, name string, args ...string) *Process {
-	out := makeFile(name)
-	cmd := exec.Command(name, args...)
+// execPath: command name
+// args: args to command. (should not include name)
+func Create(mode int, label string, execPath string, args ...string) *Process {
+	out := makeFile(label)
+	cmd := exec.Command(execPath, args...)
 	switch mode {
 	case ProcessModeStd:
 		cmd.Stdout = io.MultiWriter(os.Stdout, out)
@@ -48,14 +54,27 @@ func CreateProcess(mode int, name string, args ...string) *Process {
 		fmt.Printf("Success!")
 	}
 	return &Process{
-		Cmd:    cmd,
-		Output: out,
+		Label:     label,
+		ExecPath:  execPath,
+		StartTime: time.Now(),
+		Cmd:       cmd,
+		Output:    out,
 	}
 }
 
-func Watch(proc *Process) {
+func Wait(proc *Process) error {
 	exitErr := proc.Cmd.Wait()
 	if exitErr != nil {
-		fmt.Println("%v", exitErr)
+		fmt.Printf("Process exit: %v\n", exitErr)
+		proc.ExitState = exitErr.(*exec.ExitError).ProcessState
+	}
+	return exitErr
+}
+
+func Stop(proc *Process, kill bool) error {
+	if kill {
+		return proc.Cmd.Process.Kill()
+	} else {
+		return proc.Cmd.Process.Signal(os.Interrupt)
 	}
 }
