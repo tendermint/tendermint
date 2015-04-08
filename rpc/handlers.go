@@ -24,7 +24,7 @@ var funcMap = map[string]*FuncWrapper{
 	"blockchain":              funcWrap(core.BlockchainInfo, []string{"min_height", "max_height"}),
 	"get_block":               funcWrap(core.GetBlock, []string{"height"}),
 	"get_account":             funcWrap(core.GetAccount, []string{"address"}),
-	"get_storage":             funcWrap(core.GetStorage, []string{"address", "storage"}),
+	"get_storage":             funcWrap(core.GetStorage, []string{"address", "key"}),
 	"call":                    funcWrap(core.Call, []string{"address", "data"}),
 	"call_code":               funcWrap(core.CallCode, []string{"code", "data"}),
 	"list_validators":         funcWrap(core.ListValidators, []string{}),
@@ -32,7 +32,7 @@ var funcMap = map[string]*FuncWrapper{
 	"broadcast_tx":            funcWrap(core.BroadcastTx, []string{"tx"}),
 	"list_accounts":           funcWrap(core.ListAccounts, []string{}),
 	"unsafe/gen_priv_account": funcWrap(core.GenPrivAccount, []string{}),
-	"unsafe/sign_tx":          funcWrap(core.SignTx, []string{"tx", "privAccounts"}),
+	"unsafe/sign_tx":          funcWrap(core.SignTx, []string{"tx", "priv_accounts"}),
 }
 
 // maps camel-case function names to lower case rpc version

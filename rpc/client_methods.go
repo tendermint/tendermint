@@ -21,7 +21,7 @@ type Client interface {
 	GenPrivAccount() (*core.ResponseGenPrivAccount, error)
 	GetAccount(address []byte) (*core.ResponseGetAccount, error)
 	GetBlock(height uint) (*core.ResponseGetBlock, error)
-	GetStorage(address []byte, storage []byte) (*core.ResponseGetStorage, error)
+	GetStorage(address []byte, key []byte) (*core.ResponseGetStorage, error)
 	ListAccounts() (*core.ResponseListAccounts, error)
 	ListValidators() (*core.ResponseListValidators, error)
 	NetInfo() (*core.ResponseNetInfo, error)
@@ -269,8 +269,8 @@ func (c *ClientHTTP) GetBlock(height uint) (*core.ResponseGetBlock, error) {
 	return response.Result, nil
 }
 
-func (c *ClientHTTP) GetStorage(address []byte, storage []byte) (*core.ResponseGetStorage, error) {
-	values, err := argsToURLValues([]string{"address", "storage"}, address, storage)
+func (c *ClientHTTP) GetStorage(address []byte, key []byte) (*core.ResponseGetStorage, error) {
+	values, err := argsToURLValues([]string{"address", "key"}, address, key)
 	if err != nil {
 		return nil, err
 	}
@@ -390,7 +390,7 @@ func (c *ClientHTTP) NetInfo() (*core.ResponseNetInfo, error) {
 }
 
 func (c *ClientHTTP) SignTx(tx types.Tx, privAccounts []*account.PrivAccount) (*core.ResponseSignTx, error) {
-	values, err := argsToURLValues([]string{"tx", "privAccounts"}, tx, privAccounts)
+	values, err := argsToURLValues([]string{"tx", "priv_accounts"}, tx, privAccounts)
 	if err != nil {
 		return nil, err
 	}
@@ -665,11 +665,11 @@ func (c *ClientJSON) GetBlock(height uint) (*core.ResponseGetBlock, error) {
 	return response.Result, nil
 }
 
-func (c *ClientJSON) GetStorage(address []byte, storage []byte) (*core.ResponseGetStorage, error) {
+func (c *ClientJSON) GetStorage(address []byte, key []byte) (*core.ResponseGetStorage, error) {
 	request := RPCRequest{
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["GetStorage"],
-		Params:  []interface{}{address, storage},
+		Params:  []interface{}{address, key},
 		Id:      0,
 	}
 	body, err := c.RequestResponse(request)

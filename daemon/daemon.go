@@ -82,7 +82,7 @@ func NewNode() *Node {
 
 	// add the event switch to all services
 	// they should all satisfy events.Eventable
-	AddEventSwitch(eventSwitch, pexReactor, bcReactor, mempoolReactor, consensusReactor)
+	SetEventSwitch(eventSwitch, pexReactor, bcReactor, mempoolReactor, consensusReactor)
 
 	return &Node{
 		sw:               sw,
@@ -116,9 +116,9 @@ func (n *Node) Stop() {
 }
 
 // Add the event switch to reactors, mempool, etc.
-func AddEventSwitch(evsw *events.EventSwitch, eventables ...events.Eventable) {
+func SetEventSwitch(evsw *events.EventSwitch, eventables ...events.Eventable) {
 	for _, e := range eventables {
-		e.AddEventSwitch(evsw)
+		e.SetEventSwitch(evsw)
 	}
 }
 

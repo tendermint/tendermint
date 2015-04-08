@@ -114,7 +114,7 @@ func (memR *MempoolReactor) BroadcastTx(tx types.Tx) error {
 }
 
 // implements events.Eventable
-func (memR *MempoolReactor) AddEventSwitch(evsw *events.EventSwitch) {
+func (memR *MempoolReactor) SetEventSwitch(evsw *events.EventSwitch) {
 	memR.evsw = evsw
 }
 

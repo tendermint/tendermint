@@ -209,9 +209,9 @@ func dumpStorage(t *testing.T, addr []byte) core.ResponseDumpStorage {
 	return *resp
 }
 
-func getStorage(t *testing.T, typ string, addr, slot []byte) []byte {
+func getStorage(t *testing.T, typ string, addr, key []byte) []byte {
 	client := clients[typ]
-	resp, err := client.GetStorage(addr, slot)
+	resp, err := client.GetStorage(addr, key)
 	if err != nil {
 		t.Fatal(err)
 	}

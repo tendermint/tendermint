@@ -8,7 +8,7 @@ import (
 // reactors and other modules should export
 // this interface to become eventable
 type Eventable interface {
-	AddEventSwitch(*EventSwitch)
+	SetEventSwitch(*EventSwitch)
 }
 
 type EventSwitch struct {

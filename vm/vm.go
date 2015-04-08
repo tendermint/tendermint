@@ -659,7 +659,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 		case RETURN: // 0xF3
 			offset, size := stack.Pop64(), stack.Pop64()
 			ret, ok := subslice(memory, offset, size, false)
-			if !ok || err != nil {
+			if !ok {
 				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
 			dbg.Printf(" => [%v, %v] (%d) 0x%X\n", offset, size, len(ret), ret)

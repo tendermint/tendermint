@@ -211,7 +211,7 @@ func (pexR *PEXReactor) ensurePeers() {
 }
 
 // implements events.Eventable
-func (pexR *PEXReactor) AddEventSwitch(evsw *events.EventSwitch) {
+func (pexR *PEXReactor) SetEventSwitch(evsw *events.EventSwitch) {
 	pexR.evsw = evsw
 }
 

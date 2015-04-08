@@ -242,7 +242,7 @@ func (bcR *BlockchainReactor) BroadcastStatus() error {
 }
 
 // implements events.Eventable
-func (bcR *BlockchainReactor) AddEventSwitch(evsw *events.EventSwitch) {
+func (bcR *BlockchainReactor) SetEventSwitch(evsw *events.EventSwitch) {
 	bcR.evsw = evsw
 }
 
