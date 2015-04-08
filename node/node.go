@@ -8,6 +8,7 @@ import (
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/consensus"
 	dbm "github.com/tendermint/tendermint/db"
+	"github.com/tendermint/tendermint/events"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/rpc"
@@ -17,6 +18,7 @@ import (
 
 type Node struct {
 	sw               *p2p.Switch
+	evsw             *events.EventSwitch
 	book             *p2p.AddrBook
 	blockStore       *bc.BlockStore
 	pexReactor       *p2p.PEXReactor
@@ -49,6 +51,9 @@ func NewNode() *Node {
 		log.Info("No PrivValidator found", "file", config.App().GetString("PrivValidatorFile"))
 	}
 
+	eventSwitch := new(events.EventSwitch)
+	eventSwitch.Start()
+
 	// Get PEXReactor
 	book := p2p.NewAddrBook(config.App().GetString("AddrBookFile"))
 	pexReactor := p2p.NewPEXReactor(book)
@@ -74,8 +79,13 @@ func NewNode() *Node {
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)
 
+	// add the event switch to all services
+	// they should all satisfy events.Eventable
+	SetEventSwitch(eventSwitch, pexReactor, bcReactor, mempoolReactor, consensusReactor)
+
 	return &Node{
 		sw:               sw,
+		evsw:             eventSwitch,
 		book:             book,
 		blockStore:       blockStore,
 		pexReactor:       pexReactor,
@@ -104,6 +114,13 @@ func (n *Node) Stop() {
 	n.book.Stop()
 }
 
+// Add the event switch to reactors, mempool, etc.
+func SetEventSwitch(evsw *events.EventSwitch, eventables ...events.Eventable) {
+	for _, e := range eventables {
+		e.SetEventSwitch(evsw)
+	}
+}
+
 // Add a Listener to accept inbound peer connections.
 func (n *Node) AddListener(l p2p.Listener) {
 	log.Info(Fmt("Added %v", l))
@@ -129,8 +146,7 @@ func (n *Node) StartRPC() {
 	core.SetConsensusState(n.consensusState)
 	core.SetMempoolReactor(n.mempoolReactor)
 	core.SetSwitch(n.sw)
-
-	rpc.StartHTTPServer(config.App().GetString("RPC.HTTP.ListenAddr"), core.Routes)
+	rpc.StartHTTPServer(config.App().GetString("RPC.HTTP.ListenAddr"), core.Routes, n.evsw)
 }
 
 func (n *Node) Switch() *p2p.Switch {

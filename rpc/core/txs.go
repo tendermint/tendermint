@@ -52,6 +52,31 @@ func Call(address, data []byte) (*ctypes.ResponseCall, error) {
 	return &ctypes.ResponseCall{Return: ret}, nil
 }
 
+// Run the given code on an isolated and unpersisted state
+// Cannot be used to create new contracts
+func CallCode(code, data []byte) (*ctypes.ResponseCall, error) {
+
+	st := consensusState.GetState() // performs a copy
+	cache := mempoolReactor.Mempool.GetCache()
+	callee := &vm.Account{Address: Zero256}
+	caller := &vm.Account{Address: Zero256}
+	txCache := state.NewTxCache(cache)
+	params := vm.Params{
+		BlockHeight: uint64(st.LastBlockHeight),
+		BlockHash:   RightPadWord256(st.LastBlockHash),
+		BlockTime:   st.LastBlockTime.Unix(),
+		GasLimit:    10000000,
+	}
+
+	vmach := vm.NewVM(txCache, params, caller.Address)
+	gas := uint64(1000000000)
+	ret, err := vmach.Call(caller, callee, code, data, 0, &gas)
+	if err != nil {
+		return nil, err
+	}
+	return &ctypes.ResponseCall{Return: ret}, nil
+}
+
 //-----------------------------------------------------------------------------
 
 func SignTx(tx types.Tx, privAccounts []*account.PrivAccount) (*ctypes.ResponseSignTx, error) {

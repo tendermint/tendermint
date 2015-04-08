@@ -14,14 +14,15 @@ import (
 )
 
 type Client interface {
-	BlockchainInfo(minHeight uint) (*ctypes.ResponseBlockchainInfo, error)
+	BlockchainInfo(minHeight uint, maxHeight uint) (*ctypes.ResponseBlockchainInfo, error)
 	BroadcastTx(tx types.Tx) (*ctypes.ResponseBroadcastTx, error)
-	Call(address []byte) (*ctypes.ResponseCall, error)
+	Call(address []byte, data []byte) (*ctypes.ResponseCall, error)
+	CallCode(code []byte, data []byte) (*ctypes.ResponseCall, error)
 	DumpStorage(addr []byte) (*ctypes.ResponseDumpStorage, error)
 	GenPrivAccount() (*ctypes.ResponseGenPrivAccount, error)
 	GetAccount(address []byte) (*ctypes.ResponseGetAccount, error)
 	GetBlock(height uint) (*ctypes.ResponseGetBlock, error)
-	GetStorage(address []byte) (*ctypes.ResponseGetStorage, error)
+	GetStorage(address []byte, key []byte) (*ctypes.ResponseGetStorage, error)
 	ListAccounts() (*ctypes.ResponseListAccounts, error)
 	ListValidators() (*ctypes.ResponseListValidators, error)
 	NetInfo() (*ctypes.ResponseNetInfo, error)
@@ -29,12 +30,12 @@ type Client interface {
 	Status() (*ctypes.ResponseStatus, error)
 }
 
-func (c *ClientHTTP) BlockchainInfo(minHeight uint) (*ctypes.ResponseBlockchainInfo, error) {
-	values, err := argsToURLValues([]string{"minHeight"}, minHeight)
+func (c *ClientHTTP) BlockchainInfo(minHeight uint, maxHeight uint) (*ctypes.ResponseBlockchainInfo, error) {
+	values, err := argsToURLValues([]string{"minHeight", "maxHeight"}, minHeight, maxHeight)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := http.PostForm(c.addr+"blockchain_info", values)
+	resp, err := http.PostForm(c.addr+reverseFuncMap["BlockchainInfo"], values)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +65,7 @@ func (c *ClientHTTP) BroadcastTx(tx types.Tx) (*ctypes.ResponseBroadcastTx, erro
 	if err != nil {
 		return nil, err
 	}
-	resp, err := http.PostForm(c.addr+"broadcast_tx", values)
+	resp, err := http.PostForm(c.addr+reverseFuncMap["BroadcastTx"], values)
 	if err != nil {
 		return nil, err
 	}
@@ -89,12 +90,42 @@ func (c *ClientHTTP) BroadcastTx(tx types.Tx) (*ctypes.ResponseBroadcastTx, erro
 	return response.Result, nil
 }
 
-func (c *ClientHTTP) Call(address []byte) (*ctypes.ResponseCall, error) {
-	values, err := argsToURLValues([]string{"address"}, address)
+func (c *ClientHTTP) Call(address []byte, data []byte) (*ctypes.ResponseCall, error) {
+	values, err := argsToURLValues([]string{"address", "data"}, address, data)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := http.PostForm(c.addr+"call", values)
+	resp, err := http.PostForm(c.addr+reverseFuncMap["Call"], values)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	var response struct {
+		Result  *ctypes.ResponseCall `json:"result"`
+		Error   string               `json:"error"`
+		Id      string               `json:"id"`
+		JSONRPC string               `json:"jsonrpc"`
+	}
+	binary.ReadJSON(&response, body, &err)
+	if err != nil {
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, fmt.Errorf(response.Error)
+	}
+	return response.Result, nil
+}
+
+func (c *ClientHTTP) CallCode(code []byte, data []byte) (*ctypes.ResponseCall, error) {
+	values, err := argsToURLValues([]string{"code", "data"}, code, data)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := http.PostForm(c.addr+reverseFuncMap["CallCode"], values)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +155,7 @@ func (c *ClientHTTP) DumpStorage(addr []byte) (*ctypes.ResponseDumpStorage, erro
 	if err != nil {
 		return nil, err
 	}
-	resp, err := http.PostForm(c.addr+"dump_storage", values)
+	resp, err := http.PostForm(c.addr+reverseFuncMap["DumpStorage"], values)
 	if err != nil {
 		return nil, err
 	}
@@ -150,11 +181,11 @@ func (c *ClientHTTP) DumpStorage(addr []byte) (*ctypes.ResponseDumpStorage, erro
 }
 
 func (c *ClientHTTP) GenPrivAccount() (*ctypes.ResponseGenPrivAccount, error) {
-	values, err := argsToURLValues(nil, nil)
+	values, err := argsToURLValues(nil)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := http.PostForm(c.addr+"gen_priv_account", values)
+	resp, err := http.PostForm(c.addr+reverseFuncMap["GenPrivAccount"], values)
 	if err != nil {
 		return nil, err
 	}
@@ -184,7 +215,7 @@ func (c *ClientHTTP) GetAccount(address []byte) (*ctypes.ResponseGetAccount, err
 	if err != nil {
 		return nil, err
 	}
-	resp, err := http.PostForm(c.addr+"get_account", values)
+	resp, err := http.PostForm(c.addr+reverseFuncMap["GetAccount"], values)
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +245,7 @@ func (c *ClientHTTP) GetBlock(height uint) (*ctypes.ResponseGetBlock, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := http.PostForm(c.addr+"get_block", values)
+	resp, err := http.PostForm(c.addr+reverseFuncMap["GetBlock"], values)
 	if err != nil {
 		return nil, err
 	}
@@ -239,12 +270,12 @@ func (c *ClientHTTP) GetBlock(height uint) (*ctypes.ResponseGetBlock, error) {
 	return response.Result, nil
 }
 
-func (c *ClientHTTP) GetStorage(address []byte) (*ctypes.ResponseGetStorage, error) {
-	values, err := argsToURLValues([]string{"address"}, address)
+func (c *ClientHTTP) GetStorage(address []byte, key []byte) (*ctypes.ResponseGetStorage, error) {
+	values, err := argsToURLValues([]string{"address", "key"}, address, key)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := http.PostForm(c.addr+"get_storage", values)
+	resp, err := http.PostForm(c.addr+reverseFuncMap["GetStorage"], values)
 	if err != nil {
 		return nil, err
 	}
@@ -270,11 +301,11 @@ func (c *ClientHTTP) GetStorage(address []byte) (*ctypes.ResponseGetStorage, err
 }
 
 func (c *ClientHTTP) ListAccounts() (*ctypes.ResponseListAccounts, error) {
-	values, err := argsToURLValues(nil, nil)
+	values, err := argsToURLValues(nil)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := http.PostForm(c.addr+"list_accounts", values)
+	resp, err := http.PostForm(c.addr+reverseFuncMap["ListAccounts"], values)
 	if err != nil {
 		return nil, err
 	}
@@ -300,11 +331,11 @@ func (c *ClientHTTP) ListAccounts() (*ctypes.ResponseListAccounts, error) {
 }
 
 func (c *ClientHTTP) ListValidators() (*ctypes.ResponseListValidators, error) {
-	values, err := argsToURLValues(nil, nil)
+	values, err := argsToURLValues(nil)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := http.PostForm(c.addr+"list_validators", values)
+	resp, err := http.PostForm(c.addr+reverseFuncMap["ListValidators"], values)
 	if err != nil {
 		return nil, err
 	}
@@ -330,11 +361,11 @@ func (c *ClientHTTP) ListValidators() (*ctypes.ResponseListValidators, error) {
 }
 
 func (c *ClientHTTP) NetInfo() (*ctypes.ResponseNetInfo, error) {
-	values, err := argsToURLValues(nil, nil)
+	values, err := argsToURLValues(nil)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := http.PostForm(c.addr+"net_info", values)
+	resp, err := http.PostForm(c.addr+reverseFuncMap["NetInfo"], values)
 	if err != nil {
 		return nil, err
 	}
@@ -364,7 +395,7 @@ func (c *ClientHTTP) SignTx(tx types.Tx, privAccounts []*account.PrivAccount) (*
 	if err != nil {
 		return nil, err
 	}
-	resp, err := http.PostForm(c.addr+"sign_tx", values)
+	resp, err := http.PostForm(c.addr+reverseFuncMap["SignTx"], values)
 	if err != nil {
 		return nil, err
 	}
@@ -390,11 +421,11 @@ func (c *ClientHTTP) SignTx(tx types.Tx, privAccounts []*account.PrivAccount) (*
 }
 
 func (c *ClientHTTP) Status() (*ctypes.ResponseStatus, error) {
-	values, err := argsToURLValues(nil, nil)
+	values, err := argsToURLValues(nil)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := http.PostForm(c.addr+"status", values)
+	resp, err := http.PostForm(c.addr+reverseFuncMap["Status"], values)
 	if err != nil {
 		return nil, err
 	}
@@ -419,11 +450,11 @@ func (c *ClientHTTP) Status() (*ctypes.ResponseStatus, error) {
 	return response.Result, nil
 }
 
-func (c *ClientJSON) BlockchainInfo(minHeight uint) (*ctypes.ResponseBlockchainInfo, error) {
+func (c *ClientJSON) BlockchainInfo(minHeight uint, maxHeight uint) (*ctypes.ResponseBlockchainInfo, error) {
 	request := rpc.RPCRequest{
 		JSONRPC: "2.0",
-		Method:  "blockchain_info",
-		Params:  []interface{}{minHeight},
+		Method:  reverseFuncMap["BlockchainInfo"],
+		Params:  []interface{}{minHeight, maxHeight},
 		Id:      0,
 	}
 	body, err := c.RequestResponse(request)
@@ -449,7 +480,7 @@ func (c *ClientJSON) BlockchainInfo(minHeight uint) (*ctypes.ResponseBlockchainI
 func (c *ClientJSON) BroadcastTx(tx types.Tx) (*ctypes.ResponseBroadcastTx, error) {
 	request := rpc.RPCRequest{
 		JSONRPC: "2.0",
-		Method:  "broadcast_tx",
+		Method:  reverseFuncMap["BroadcastTx"],
 		Params:  []interface{}{tx},
 		Id:      0,
 	}
@@ -473,11 +504,38 @@ func (c *ClientJSON) BroadcastTx(tx types.Tx) (*ctypes.ResponseBroadcastTx, erro
 	return response.Result, nil
 }
 
-func (c *ClientJSON) Call(address []byte) (*ctypes.ResponseCall, error) {
+func (c *ClientJSON) Call(address []byte, data []byte) (*ctypes.ResponseCall, error) {
 	request := rpc.RPCRequest{
 		JSONRPC: "2.0",
-		Method:  "call",
-		Params:  []interface{}{address},
+		Method:  reverseFuncMap["Call"],
+		Params:  []interface{}{address, data},
+		Id:      0,
+	}
+	body, err := c.RequestResponse(request)
+	if err != nil {
+		return nil, err
+	}
+	var response struct {
+		Result  *ctypes.ResponseCall `json:"result"`
+		Error   string               `json:"error"`
+		Id      string               `json:"id"`
+		JSONRPC string               `json:"jsonrpc"`
+	}
+	binary.ReadJSON(&response, body, &err)
+	if err != nil {
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, fmt.Errorf(response.Error)
+	}
+	return response.Result, nil
+}
+
+func (c *ClientJSON) CallCode(code []byte, data []byte) (*ctypes.ResponseCall, error) {
+	request := rpc.RPCRequest{
+		JSONRPC: "2.0",
+		Method:  reverseFuncMap["CallCode"],
+		Params:  []interface{}{code, data},
 		Id:      0,
 	}
 	body, err := c.RequestResponse(request)
@@ -503,7 +561,7 @@ func (c *ClientJSON) Call(address []byte) (*ctypes.ResponseCall, error) {
 func (c *ClientJSON) DumpStorage(addr []byte) (*ctypes.ResponseDumpStorage, error) {
 	request := rpc.RPCRequest{
 		JSONRPC: "2.0",
-		Method:  "dump_storage",
+		Method:  reverseFuncMap["DumpStorage"],
 		Params:  []interface{}{addr},
 		Id:      0,
 	}
@@ -530,8 +588,8 @@ func (c *ClientJSON) DumpStorage(addr []byte) (*ctypes.ResponseDumpStorage, erro
 func (c *ClientJSON) GenPrivAccount() (*ctypes.ResponseGenPrivAccount, error) {
 	request := rpc.RPCRequest{
 		JSONRPC: "2.0",
-		Method:  "gen_priv_account",
-		Params:  []interface{}{nil},
+		Method:  reverseFuncMap["GenPrivAccount"],
+		Params:  []interface{}{},
 		Id:      0,
 	}
 	body, err := c.RequestResponse(request)
@@ -557,7 +615,7 @@ func (c *ClientJSON) GenPrivAccount() (*ctypes.ResponseGenPrivAccount, error) {
 func (c *ClientJSON) GetAccount(address []byte) (*ctypes.ResponseGetAccount, error) {
 	request := rpc.RPCRequest{
 		JSONRPC: "2.0",
-		Method:  "get_account",
+		Method:  reverseFuncMap["GetAccount"],
 		Params:  []interface{}{address},
 		Id:      0,
 	}
@@ -584,7 +642,7 @@ func (c *ClientJSON) GetAccount(address []byte) (*ctypes.ResponseGetAccount, err
 func (c *ClientJSON) GetBlock(height uint) (*ctypes.ResponseGetBlock, error) {
 	request := rpc.RPCRequest{
 		JSONRPC: "2.0",
-		Method:  "get_block",
+		Method:  reverseFuncMap["GetBlock"],
 		Params:  []interface{}{height},
 		Id:      0,
 	}
@@ -608,11 +666,11 @@ func (c *ClientJSON) GetBlock(height uint) (*ctypes.ResponseGetBlock, error) {
 	return response.Result, nil
 }
 
-func (c *ClientJSON) GetStorage(address []byte) (*ctypes.ResponseGetStorage, error) {
+func (c *ClientJSON) GetStorage(address []byte, key []byte) (*ctypes.ResponseGetStorage, error) {
 	request := rpc.RPCRequest{
 		JSONRPC: "2.0",
-		Method:  "get_storage",
-		Params:  []interface{}{address},
+		Method:  reverseFuncMap["GetStorage"],
+		Params:  []interface{}{address, key},
 		Id:      0,
 	}
 	body, err := c.RequestResponse(request)
@@ -638,8 +696,8 @@ func (c *ClientJSON) GetStorage(address []byte) (*ctypes.ResponseGetStorage, err
 func (c *ClientJSON) ListAccounts() (*ctypes.ResponseListAccounts, error) {
 	request := rpc.RPCRequest{
 		JSONRPC: "2.0",
-		Method:  "list_accounts",
-		Params:  []interface{}{nil},
+		Method:  reverseFuncMap["ListAccounts"],
+		Params:  []interface{}{},
 		Id:      0,
 	}
 	body, err := c.RequestResponse(request)
@@ -665,8 +723,8 @@ func (c *ClientJSON) ListAccounts() (*ctypes.ResponseListAccounts, error) {
 func (c *ClientJSON) ListValidators() (*ctypes.ResponseListValidators, error) {
 	request := rpc.RPCRequest{
 		JSONRPC: "2.0",
-		Method:  "list_validators",
-		Params:  []interface{}{nil},
+		Method:  reverseFuncMap["ListValidators"],
+		Params:  []interface{}{},
 		Id:      0,
 	}
 	body, err := c.RequestResponse(request)
@@ -692,8 +750,8 @@ func (c *ClientJSON) ListValidators() (*ctypes.ResponseListValidators, error) {
 func (c *ClientJSON) NetInfo() (*ctypes.ResponseNetInfo, error) {
 	request := rpc.RPCRequest{
 		JSONRPC: "2.0",
-		Method:  "net_info",
-		Params:  []interface{}{nil},
+		Method:  reverseFuncMap["NetInfo"],
+		Params:  []interface{}{},
 		Id:      0,
 	}
 	body, err := c.RequestResponse(request)
@@ -719,7 +777,7 @@ func (c *ClientJSON) NetInfo() (*ctypes.ResponseNetInfo, error) {
 func (c *ClientJSON) SignTx(tx types.Tx, privAccounts []*account.PrivAccount) (*ctypes.ResponseSignTx, error) {
 	request := rpc.RPCRequest{
 		JSONRPC: "2.0",
-		Method:  "sign_tx",
+		Method:  reverseFuncMap["SignTx"],
 		Params:  []interface{}{tx, privAccounts},
 		Id:      0,
 	}
@@ -746,8 +804,8 @@ func (c *ClientJSON) SignTx(tx types.Tx, privAccounts []*account.PrivAccount) (*
 func (c *ClientJSON) Status() (*ctypes.ResponseStatus, error) {
 	request := rpc.RPCRequest{
 		JSONRPC: "2.0",
-		Method:  "status",
-		Params:  []interface{}{nil},
+		Method:  reverseFuncMap["Status"],
+		Params:  []interface{}{},
 		Id:      0,
 	}
 	body, err := c.RequestResponse(request)

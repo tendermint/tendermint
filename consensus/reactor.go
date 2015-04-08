@@ -12,6 +12,7 @@ import (
 	bc "github.com/tendermint/tendermint/blockchain"
 	. "github.com/tendermint/tendermint/common"
 	. "github.com/tendermint/tendermint/consensus/types"
+	"github.com/tendermint/tendermint/events"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -38,6 +39,8 @@ type ConsensusReactor struct {
 
 	blockStore *bc.BlockStore
 	conS       *ConsensusState
+
+	evsw *events.EventSwitch
 }
 
 func NewConsensusReactor(consensusState *ConsensusState, blockStore *bc.BlockStore) *ConsensusReactor {
@@ -228,6 +231,11 @@ func (conR *ConsensusReactor) SetPrivValidator(priv *sm.PrivValidator) {
 // Reset to some state.
 func (conR *ConsensusReactor) ResetToState(state *sm.State) {
 	conR.conS.updateToState(state, false)
+}
+
+// implements events.Eventable
+func (conR *ConsensusReactor) SetEventSwitch(evsw *events.EventSwitch) {
+	conR.evsw = evsw
 }
 
 //--------------------------------------

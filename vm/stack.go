@@ -32,7 +32,7 @@ func (st *Stack) useGas(gasToUse uint64) {
 }
 
 func (st *Stack) setErr(err error) {
-	if *st.err != nil {
+	if *st.err == nil {
 		*st.err = err
 	}
 }

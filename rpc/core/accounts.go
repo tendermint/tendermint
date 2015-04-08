@@ -16,20 +16,20 @@ func GetAccount(address []byte) (*ctypes.ResponseGetAccount, error) {
 	return &ctypes.ResponseGetAccount{cache.GetAccount(address)}, nil
 }
 
-func GetStorage(address, slot []byte) (*ctypes.ResponseGetStorage, error) {
+func GetStorage(address, key []byte) (*ctypes.ResponseGetStorage, error) {
 	state := consensusState.GetState()
 	account := state.GetAccount(address)
 	if account == nil {
 		return nil, fmt.Errorf("Unknown address: %X", address)
 	}
 	storageRoot := account.StorageRoot
-	storage := state.LoadStorage(storageRoot)
+	storageTree := state.LoadStorage(storageRoot)
 
-	_, value := storage.Get(RightPadWord256(slot).Bytes())
+	_, value := storageTree.Get(RightPadWord256(key).Bytes())
 	if value == nil {
-		return &ctypes.ResponseGetStorage{slot, nil}, nil
+		return &ctypes.ResponseGetStorage{key, nil}, nil
 	}
-	return &ctypes.ResponseGetStorage{slot, value.([]byte)}, nil
+	return &ctypes.ResponseGetStorage{key, value.([]byte)}, nil
 }
 
 func ListAccounts() (*ctypes.ResponseListAccounts, error) {
@@ -51,9 +51,9 @@ func DumpStorage(addr []byte) (*ctypes.ResponseDumpStorage, error) {
 		return nil, fmt.Errorf("Unknown address: %X", addr)
 	}
 	storageRoot := account.StorageRoot
-	storage := state.LoadStorage(storageRoot)
+	storageTree := state.LoadStorage(storageRoot)
 	storageItems := []ctypes.StorageItem{}
-	storage.Iterate(func(key interface{}, value interface{}) bool {
+	storageTree.Iterate(func(key interface{}, value interface{}) bool {
 		storageItems = append(storageItems, ctypes.StorageItem{
 			key.([]byte), value.([]byte)})
 		return false
