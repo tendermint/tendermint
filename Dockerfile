@@ -24,4 +24,4 @@ USER tendermint
 ENV USER tendermint
 ENV TMROOT /tendermint_root
 # docker run -v $(pwd)/tendermint_root:/tendermint_root 
-CMD [ "./tendermint", "daemon" ]
+CMD [ "./build/tendermint", "node" ]

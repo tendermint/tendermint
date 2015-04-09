@@ -44,11 +44,11 @@ func ListAccounts() (*ctypes.ResponseListAccounts, error) {
 	return &ctypes.ResponseListAccounts{blockHeight, accounts}, nil
 }
 
-func DumpStorage(addr []byte) (*ctypes.ResponseDumpStorage, error) {
+func DumpStorage(address []byte) (*ctypes.ResponseDumpStorage, error) {
 	state := consensusState.GetState()
-	account := state.GetAccount(addr)
+	account := state.GetAccount(address)
 	if account == nil {
-		return nil, fmt.Errorf("Unknown address: %X", addr)
+		return nil, fmt.Errorf("Unknown address: %X", address)
 	}
 	storageRoot := account.StorageRoot
 	storageTree := state.LoadStorage(storageRoot)
