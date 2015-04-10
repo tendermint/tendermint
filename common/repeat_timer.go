@@ -42,13 +42,13 @@ func (t *RepeatTimer) fireRoutine(ticker *time.Ticker) {
 
 // Wait the duration again before firing.
 func (t *RepeatTimer) Reset() {
+	t.Stop()
+
 	t.mtx.Lock() // Lock
 	defer t.mtx.Unlock()
 
-	if t.ticker != nil {
-		t.ticker.Stop()
-	}
 	t.ticker = time.NewTicker(t.dur)
+	t.quit = make(chan struct{})
 	go t.fireRoutine(t.ticker)
 }
 
@@ -60,6 +60,7 @@ func (t *RepeatTimer) Stop() bool {
 	if exists {
 		t.ticker.Stop()
 		t.ticker = nil
+		close(t.quit)
 	}
 	return exists
 }
