@@ -1,6 +1,7 @@
 package node
 
 import (
+	"net/http"
 	"os"
 
 	bc "github.com/tendermint/tendermint/blockchain"
@@ -146,7 +147,12 @@ func (n *Node) StartRPC() {
 	core.SetConsensusState(n.consensusState)
 	core.SetMempoolReactor(n.mempoolReactor)
 	core.SetSwitch(n.sw)
-	rpc.StartHTTPServer(config.App().GetString("RPC.HTTP.ListenAddr"), core.Routes, n.evsw)
+
+	listenAddr := config.App().GetString("RPC.HTTP.ListenAddr")
+	mux := http.NewServeMux()
+	rpc.RegisterEventsHandler(mux, n.evsw)
+	rpc.RegisterRPCFuncs(mux, core.Routes)
+	rpc.StartHTTPServer(listenAddr, mux)
 }
 
 func (n *Node) Switch() *p2p.Switch {

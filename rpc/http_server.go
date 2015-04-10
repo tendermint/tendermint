@@ -10,16 +10,10 @@ import (
 
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/events"
 )
 
-func StartHTTPServer(listenAddr string, funcMap map[string]*RPCFunc, evsw *events.EventSwitch) {
+func StartHTTPServer(listenAddr string, mux *http.ServeMux) {
 	log.Info(Fmt("Starting RPC HTTP server on %s", listenAddr))
-	mux := http.NewServeMux()
-	RegisterRPCFuncs(mux, funcMap)
-	if evsw != nil {
-		RegisterEventsHandler(mux, evsw)
-	}
 	go func() {
 		res := http.ListenAndServe(
 			listenAddr,

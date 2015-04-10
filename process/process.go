@@ -1,6 +1,7 @@
 package process
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -8,23 +9,24 @@ import (
 	"time"
 )
 
-func makeFile(prefix string) *os.File {
+func makeFile(prefix string) (string, *os.File) {
 	now := time.Now()
-	filename := fmt.Sprintf("%v_%v.out", prefix, now.Format("2006_01_02_15_04_05_MST"))
-	f, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	path := fmt.Sprintf("%v_%v.out", prefix, now.Format("2006_01_02_15_04_05_MST"))
+	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		panic(err)
 	}
-	return f
+	return path, file
 }
 
 type Process struct {
-	Label     string
-	ExecPath  string
-	StartTime time.Time
-	Cmd       *exec.Cmd        `json:"-"`
-	Output    *os.File         `json:"-"`
-	ExitState *os.ProcessState `json:"-"`
+	Label      string
+	ExecPath   string
+	StartTime  time.Time
+	OutputPath string
+	Cmd        *exec.Cmd        `json:"-"`
+	ExitState  *os.ProcessState `json:"-"`
+	OutputFile *os.File         `json:"-"`
 }
 
 const (
@@ -34,18 +36,21 @@ const (
 
 // execPath: command name
 // args: args to command. (should not include name)
-func Create(mode int, label string, execPath string, args ...string) *Process {
-	out := makeFile(label)
+func Create(mode int, label string, execPath string, args []string, input string) *Process {
+	outPath, outFile := makeFile(label)
 	cmd := exec.Command(execPath, args...)
 	switch mode {
 	case ProcessModeStd:
-		cmd.Stdout = io.MultiWriter(os.Stdout, out)
-		cmd.Stderr = io.MultiWriter(os.Stderr, out)
+		cmd.Stdout = io.MultiWriter(os.Stdout, outFile)
+		cmd.Stderr = io.MultiWriter(os.Stderr, outFile)
 		cmd.Stdin = nil
 	case ProcessModeDaemon:
-		cmd.Stdout = out
-		cmd.Stderr = out
+		cmd.Stdout = outFile
+		cmd.Stderr = outFile
 		cmd.Stdin = nil
+	}
+	if input != "" {
+		cmd.Stdin = bytes.NewReader([]byte(input))
 	}
 	if err := cmd.Start(); err != nil {
 		fmt.Printf("Failed to run command. %v\n", err)
@@ -54,11 +59,13 @@ func Create(mode int, label string, execPath string, args ...string) *Process {
 		fmt.Printf("Success!")
 	}
 	return &Process{
-		Label:     label,
-		ExecPath:  execPath,
-		StartTime: time.Now(),
-		Cmd:       cmd,
-		Output:    out,
+		Label:      label,
+		ExecPath:   execPath,
+		StartTime:  time.Now(),
+		OutputPath: outPath,
+		Cmd:        cmd,
+		ExitState:  nil,
+		OutputFile: outFile,
 	}
 }
 
