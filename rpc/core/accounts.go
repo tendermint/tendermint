@@ -2,18 +2,29 @@ package core
 
 import (
 	"fmt"
-	"github.com/tendermint/tendermint/account"
+	acm "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 )
 
 func GenPrivAccount() (*ctypes.ResponseGenPrivAccount, error) {
-	return &ctypes.ResponseGenPrivAccount{account.GenPrivAccount()}, nil
+	return &ctypes.ResponseGenPrivAccount{acm.GenPrivAccount()}, nil
 }
 
 func GetAccount(address []byte) (*ctypes.ResponseGetAccount, error) {
 	cache := mempoolReactor.Mempool.GetCache()
-	return &ctypes.ResponseGetAccount{cache.GetAccount(address)}, nil
+	account := cache.GetAccount(address)
+	if account == nil {
+		account = &acm.Account{
+			Address:     address,
+			PubKey:      acm.PubKeyNil{},
+			Sequence:    0,
+			Balance:     0,
+			Code:        nil,
+			StorageRoot: nil,
+		}
+	}
+	return &ctypes.ResponseGetAccount{account}, nil
 }
 
 func GetStorage(address, key []byte) (*ctypes.ResponseGetStorage, error) {
@@ -34,11 +45,11 @@ func GetStorage(address, key []byte) (*ctypes.ResponseGetStorage, error) {
 
 func ListAccounts() (*ctypes.ResponseListAccounts, error) {
 	var blockHeight uint
-	var accounts []*account.Account
+	var accounts []*acm.Account
 	state := consensusState.GetState()
 	blockHeight = state.LastBlockHeight
 	state.GetAccounts().Iterate(func(key interface{}, value interface{}) bool {
-		accounts = append(accounts, value.(*account.Account))
+		accounts = append(accounts, value.(*acm.Account))
 		return false
 	})
 	return &ctypes.ResponseListAccounts{blockHeight, accounts}, nil
