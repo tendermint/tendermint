@@ -202,7 +202,7 @@ func TestReadWrite(t *testing.T) {
 	// Read from buffer.
 	pol2 := binary.ReadBinary(&POL{}, buf, n, err).(*POL)
 	if *err != nil {
-		t.Fatalf("Failed to read POL")
+		t.Fatalf("Failed to read POL: %v", *err)
 	}
 
 	// Check that validation succeeds.

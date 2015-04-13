@@ -258,7 +258,7 @@ func checkTx(t *testing.T, fromAddr []byte, priv *account.PrivAccount, tx *types
 	}
 	// Check signatures
 	// acc := getAccount(t, byteAddr)
-	// NOTE: using the acc here instead of the in fails; its PubKeyNil ... ?
+	// NOTE: using the acc here instead of the in fails; it is nil.
 	if !in.PubKey.VerifyBytes(signBytes, in.Signature) {
 		t.Fatal(types.ErrTxInvalidSignature)
 	}

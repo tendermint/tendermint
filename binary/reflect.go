@@ -15,13 +15,10 @@ import (
 type TypeInfo struct {
 	Type reflect.Type // The type
 
-	// Custom encoder/decoder
-	// NOTE: Not used.
-	BinaryEncoder Encoder
-	BinaryDecoder Decoder
-
-	// If Type is kind reflect.Interface
-	ConcreteTypes map[byte]reflect.Type
+	// If Type is kind reflect.Interface, is registered
+	IsRegisteredInterface bool
+	ConcreteTypes         map[byte]reflect.Type
+	ConcreteTypeBytes     map[reflect.Type]byte
 
 	// If Type is concrete
 	HasTypeByte bool
@@ -104,6 +101,7 @@ func RegisterInterface(o interface{}, args ...interface{}) *TypeInfo {
 		panic("RegisterInterface expects an interface")
 	}
 	concreteTypes := make(map[byte]reflect.Type, 0)
+	concreteTypesReversed := make(map[reflect.Type]byte, 0)
 	for _, arg := range args {
 		switch arg.(type) {
 		case ConcreteType:
@@ -114,17 +112,23 @@ func RegisterInterface(o interface{}, args ...interface{}) *TypeInfo {
 			if !hasTypeByte {
 				panic(Fmt("Expected concrete type %v to implement HasTypeByte", concreteType))
 			}
+			if typeByte == 0x00 {
+				panic(Fmt("TypeByte of 0x00 is reserved for nil (%v)", concreteType))
+			}
 			if concreteTypes[typeByte] != nil {
 				panic(Fmt("Duplicate TypeByte for type %v and %v", concreteType, concreteTypes[typeByte]))
 			}
 			concreteTypes[typeByte] = concreteType
+			concreteTypesReversed[concreteType] = typeByte
 		default:
 			panic(Fmt("Unexpected argument type %v", reflect.TypeOf(arg)))
 		}
 	}
 	typeInfo := &TypeInfo{
-		Type:          it,
-		ConcreteTypes: concreteTypes,
+		Type: it,
+		IsRegisteredInterface: true,
+		ConcreteTypes:         concreteTypes,
+		ConcreteTypeBytes:     concreteTypesReversed,
 	}
 	typeInfos[it] = typeInfo
 	return typeInfo
@@ -148,7 +152,8 @@ func RegisterType(info *TypeInfo) *TypeInfo {
 	typeInfos[ptrRt] = info
 
 	// See if the type implements HasTypeByte
-	if rt.Kind() != reflect.Interface && rt.Implements(reflect.TypeOf((*HasTypeByte)(nil)).Elem()) {
+	if rt.Kind() != reflect.Interface &&
+		rt.Implements(reflect.TypeOf((*HasTypeByte)(nil)).Elem()) {
 		zero := reflect.Zero(rt)
 		typeByte := zero.Interface().(HasTypeByte).TypeByte()
 		if info.HasTypeByte && info.TypeByte != typeByte {
@@ -197,35 +202,60 @@ func RegisterType(info *TypeInfo) *TypeInfo {
 
 func readReflect(rv reflect.Value, rt reflect.Type, r io.Reader, n *int64, err *error) {
 
-	log.Debug("Read reflect", "type", rt)
-
 	// Get typeInfo
 	typeInfo := GetTypeInfo(rt)
 
-	// Custom decoder
-	if typeInfo.BinaryDecoder != nil {
-		decoded := typeInfo.BinaryDecoder(r, n, err)
-		rv.Set(reflect.ValueOf(decoded))
+	if rt.Kind() == reflect.Interface {
+		if !typeInfo.IsRegisteredInterface {
+			// There's no way we can read such a thing.
+			*err = errors.New(Fmt("Cannot read unregistered interface type %v", rt))
+			return
+		}
+		typeByte := ReadByte(r, n, err)
+		if *err != nil {
+			return
+		}
+		if typeByte == 0x00 {
+			return // nil
+		}
+		crt, ok := typeInfo.ConcreteTypes[typeByte]
+		if !ok {
+			*err = errors.New(Fmt("Unexpected type byte %X for type %v", typeByte, crt))
+			return
+		}
+		crv := reflect.New(crt).Elem()
+		r = NewPrefixedReader([]byte{typeByte}, r)
+		readReflect(crv, crt, r, n, err)
+		rv.Set(crv) // NOTE: orig rv is ignored.
 		return
 	}
 
-	// Create a new struct if rv is nil pointer.
-	if rt.Kind() == reflect.Ptr && rv.IsNil() {
-		newRv := reflect.New(rt.Elem())
-		rv.Set(newRv)
-		rv = newRv
-	}
-
-	// Dereference pointer
-	// Still addressable, thus settable!
-	if rv.Kind() == reflect.Ptr {
+	if rt.Kind() == reflect.Ptr {
+		typeByte := ReadByte(r, n, err)
+		if *err != nil {
+			return
+		}
+		if typeByte == 0x00 {
+			return // nil
+		}
+		// Create new if rv is nil.
+		if rv.IsNil() {
+			newRv := reflect.New(rt.Elem())
+			rv.Set(newRv)
+			rv = newRv
+		}
+		// Dereference pointer
 		rv, rt = rv.Elem(), rt.Elem()
+		typeInfo = GetTypeInfo(rt)
+		if typeInfo.HasTypeByte {
+			r = NewPrefixedReader([]byte{typeByte}, r)
+		}
+		// continue...
 	}
 
 	// Read TypeByte prefix
 	if typeInfo.HasTypeByte {
 		typeByte := ReadByte(r, n, err)
-		log.Debug("Read typebyte", "typeByte", typeByte)
 		if typeByte != typeInfo.TypeByte {
 			*err = errors.New(Fmt("Expected TypeByte of %X but got %X", typeInfo.TypeByte, typeByte))
 			return
@@ -233,19 +263,6 @@ func readReflect(rv reflect.Value, rt reflect.Type, r io.Reader, n *int64, err *
 	}
 
 	switch rt.Kind() {
-	case reflect.Interface:
-		typeByte := ReadByte(r, n, err)
-		if *err != nil {
-			return
-		}
-		concreteType, ok := typeInfo.ConcreteTypes[typeByte]
-		if !ok {
-			panic(Fmt("TypeByte %X not registered for interface %v", typeByte, rt))
-		}
-		newRv := reflect.New(concreteType)
-		readReflect(newRv.Elem(), concreteType, NewPrefixedReader([]byte{typeByte}, r), n, err)
-		rv.Set(newRv.Elem())
-
 	case reflect.Slice:
 		elemRt := rt.Elem()
 		if elemRt.Kind() == reflect.Uint8 {
@@ -349,36 +366,66 @@ func readReflect(rv reflect.Value, rt reflect.Type, r io.Reader, n *int64, err *
 	}
 }
 
+// rv: the reflection value of the thing to write
+// rt: the type of rv as declared in the container, not necessarily rv.Type().
 func writeReflect(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, err *error) {
 
 	// Get typeInfo
 	typeInfo := GetTypeInfo(rt)
 
-	// Custom encoder, say for an interface type rt.
-	if typeInfo.BinaryEncoder != nil {
-		typeInfo.BinaryEncoder(rv.Interface(), w, n, err)
+	if rt.Kind() == reflect.Interface {
+		if rv.IsNil() {
+			// XXX ensure that typeByte 0 is reserved.
+			WriteByte(0x00, w, n, err)
+			return
+		}
+		crv := rv.Elem()  // concrete reflection value
+		crt := crv.Type() // concrete reflection type
+		if typeInfo.IsRegisteredInterface {
+			// See if the crt is registered.
+			// If so, we're more restrictive.
+			_, ok := typeInfo.ConcreteTypeBytes[crt]
+			if !ok {
+				switch crt.Kind() {
+				case reflect.Ptr:
+					*err = errors.New(Fmt("Unexpected pointer type %v. Was it registered as a value receiver rather than as a pointer receiver?", crt))
+				case reflect.Struct:
+					*err = errors.New(Fmt("Unexpected struct type %v. Was it registered as a pointer receiver rather than as a value receiver?", crt))
+				default:
+					*err = errors.New(Fmt("Unexpected type %v.", crt))
+				}
+				return
+			}
+		} else {
+			// We support writing unsafely for convenience.
+		}
+		// We don't have to write the typeByte here,
+		// the writeReflect() call below will write it.
+		writeReflect(crv, crt, w, n, err)
 		return
 	}
 
-	// Dereference interface
-	if rt.Kind() == reflect.Interface {
-		rv = rv.Elem()
-		rt = rv.Type()
-		// If interface type, get typeInfo of underlying type.
-		typeInfo = GetTypeInfo(rt)
-	}
-
-	// Dereference pointer
 	if rt.Kind() == reflect.Ptr {
-		rt = rt.Elem()
-		rv = rv.Elem()
+		// Dereference pointer
+		rv, rt = rv.Elem(), rt.Elem()
+		if !rv.IsValid() {
+			WriteByte(0x00, w, n, err)
+			return
+		}
+		if !typeInfo.HasTypeByte {
+			WriteByte(0x01, w, n, err)
+			// continue...
+		} else {
+			// continue...
+		}
 	}
 
-	// Write TypeByte prefix
+	// Write type byte
 	if typeInfo.HasTypeByte {
 		WriteByte(typeInfo.TypeByte, w, n, err)
 	}
 
+	// All other types
 	switch rt.Kind() {
 	case reflect.Slice:
 		elemRt := rt.Elem()
@@ -478,22 +525,47 @@ func readTypeByteJSON(o interface{}) (typeByte byte, rest interface{}, err error
 
 func readReflectJSON(rv reflect.Value, rt reflect.Type, o interface{}, err *error) {
 
-	log.Debug("Read reflect json", "type", rt)
-
 	// Get typeInfo
 	typeInfo := GetTypeInfo(rt)
 
-	// Create a new struct if rv is nil pointer.
-	if rt.Kind() == reflect.Ptr && rv.IsNil() {
-		newRv := reflect.New(rt.Elem())
-		rv.Set(newRv)
-		rv = newRv
+	if rt.Kind() == reflect.Interface {
+		if !typeInfo.IsRegisteredInterface {
+			// There's no way we can read such a thing.
+			*err = errors.New(Fmt("Cannot read unregistered interface type %v", rt))
+			return
+		}
+		if o == nil {
+			return // nil
+		}
+		typeByte, _, err_ := readTypeByteJSON(o)
+		if err_ != nil {
+			*err = err_
+			return
+		}
+		crt, ok := typeInfo.ConcreteTypes[typeByte]
+		if !ok {
+			*err = errors.New(Fmt("TypeByte %X not registered for interface %v", typeByte, rt))
+			return
+		}
+		crv := reflect.New(crt).Elem()
+		readReflectJSON(crv, crt, o, err)
+		rv.Set(crv) // NOTE: orig rv is ignored.
+		return
 	}
 
-	// Dereference pointer
-	// Still addressable, thus settable!
-	if rv.Kind() == reflect.Ptr {
+	if rt.Kind() == reflect.Ptr {
+		if o == nil {
+			return // nil
+		}
+		// Create new struct if rv is nil.
+		if rv.IsNil() {
+			newRv := reflect.New(rt.Elem())
+			rv.Set(newRv)
+			rv = newRv
+		}
+		// Dereference pointer
 		rv, rt = rv.Elem(), rt.Elem()
+		// continue...
 	}
 
 	// Read TypeByte prefix
@@ -511,20 +583,6 @@ func readReflectJSON(rv reflect.Value, rt reflect.Type, o interface{}, err *erro
 	}
 
 	switch rt.Kind() {
-	case reflect.Interface:
-		typeByte, _, err_ := readTypeByteJSON(o)
-		if err_ != nil {
-			*err = err_
-			return
-		}
-		concreteType, ok := typeInfo.ConcreteTypes[typeByte]
-		if !ok {
-			panic(Fmt("TypeByte %X not registered for interface %v", typeByte, rt))
-		}
-		newRv := reflect.New(concreteType)
-		readReflectJSON(newRv.Elem(), concreteType, o, err)
-		rv.Set(newRv.Elem())
-
 	case reflect.Slice:
 		elemRt := rt.Elem()
 		if elemRt.Kind() == reflect.Uint8 {
@@ -643,25 +701,55 @@ func writeReflectJSON(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, 
 	// Get typeInfo
 	typeInfo := GetTypeInfo(rt)
 
-	// Dereference interface
 	if rt.Kind() == reflect.Interface {
-		rv = rv.Elem()
-		rt = rv.Type()
-		// If interface type, get typeInfo of underlying type.
-		typeInfo = GetTypeInfo(rt)
+		if rv.IsNil() {
+			// XXX ensure that typeByte 0 is reserved.
+			WriteTo([]byte("null"), w, n, err)
+			return
+		}
+		crv := rv.Elem()  // concrete reflection value
+		crt := crv.Type() // concrete reflection type
+		if typeInfo.IsRegisteredInterface {
+			// See if the crt is registered.
+			// If so, we're more restrictive.
+			_, ok := typeInfo.ConcreteTypeBytes[crt]
+			if !ok {
+				switch crt.Kind() {
+				case reflect.Ptr:
+					*err = errors.New(Fmt("Unexpected pointer type %v. Was it registered as a value receiver rather than as a pointer receiver?", crt))
+				case reflect.Struct:
+					*err = errors.New(Fmt("Unexpected struct type %v. Was it registered as a pointer receiver rather than as a value receiver?", crt))
+				default:
+					*err = errors.New(Fmt("Unexpected type %v.", crt))
+				}
+				return
+			}
+		} else {
+			// We support writing unsafely for convenience.
+		}
+		// We don't have to write the typeByte here,
+		// the writeReflectJSON() call below will write it.
+		writeReflectJSON(crv, crt, w, n, err)
+		return
 	}
 
-	// Dereference pointer
 	if rt.Kind() == reflect.Ptr {
-		rt = rt.Elem()
-		rv = rv.Elem()
+		// Dereference pointer
+		rv, rt = rv.Elem(), rt.Elem()
+		if !rv.IsValid() {
+			WriteTo([]byte("null"), w, n, err)
+			return
+		}
+		// continue...
 	}
 
-	// Write TypeByte prefix
+	// Write TypeByte
 	if typeInfo.HasTypeByte {
 		WriteTo([]byte(Fmt("[%v,", typeInfo.TypeByte)), w, n, err)
+		defer WriteTo([]byte("]"), w, n, err)
 	}
 
+	// All other types
 	switch rt.Kind() {
 	case reflect.Slice:
 		elemRt := rt.Elem()
@@ -730,10 +818,4 @@ func writeReflectJSON(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, 
 		panic(Fmt("Unknown field type %v", rt.Kind()))
 	}
 
-	// Write TypeByte close bracket
-	if typeInfo.HasTypeByte {
-		WriteTo([]byte("]"), w, n, err)
-	}
 }
-
-//-----------------------------------------------------------------------------

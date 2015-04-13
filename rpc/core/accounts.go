@@ -17,7 +17,7 @@ func GetAccount(address []byte) (*ctypes.ResponseGetAccount, error) {
 	if account == nil {
 		account = &acm.Account{
 			Address:     address,
-			PubKey:      acm.PubKeyNil{},
+			PubKey:      nil,
 			Sequence:    0,
 			Balance:     0,
 			Code:        nil,

@@ -123,7 +123,7 @@ func (memR *MempoolReactor) SetEventSwitch(evsw *events.EventSwitch) {
 
 const (
 	msgTypeUnknown = byte(0x00)
-	msgTypeTx      = byte(0x10)
+	msgTypeTx      = byte(0x01)
 )
 
 // TODO: check for unnecessary extra bytes at the end.

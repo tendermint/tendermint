@@ -159,9 +159,9 @@ func execBlock(s *State, block *types.Block, blockPartsHeader types.PartSetHeade
 }
 
 // The accounts from the TxInputs must either already have
-// account.PubKey.(type) != PubKeyNil, (it must be known),
+// account.PubKey.(type) != nil, (it must be known),
 // or it must be specified in the TxInput.  If redeclared,
-// the TxInput is modified and input.PubKey set to PubKeyNil.
+// the TxInput is modified and input.PubKey set to nil.
 func getOrMakeAccounts(state AccountGetter, ins []*types.TxInput, outs []*types.TxOutput) (map[string]*account.Account, error) {
 	accounts := map[string]*account.Account{}
 	for _, in := range ins {
@@ -189,7 +189,7 @@ func getOrMakeAccounts(state AccountGetter, ins []*types.TxInput, outs []*types.
 		if acc == nil {
 			acc = &account.Account{
 				Address:  out.Address,
-				PubKey:   account.PubKeyNil{},
+				PubKey:   nil,
 				Sequence: 0,
 				Balance:  0,
 			}
@@ -200,8 +200,8 @@ func getOrMakeAccounts(state AccountGetter, ins []*types.TxInput, outs []*types.
 }
 
 func checkInputPubKey(acc *account.Account, in *types.TxInput) error {
-	if _, isNil := acc.PubKey.(account.PubKeyNil); isNil {
-		if _, isNil := in.PubKey.(account.PubKeyNil); isNil {
+	if acc.PubKey == nil {
+		if in.PubKey == nil {
 			return types.ErrTxUnknownPubKey
 		}
 		if !bytes.Equal(in.PubKey.Address(), acc.Address) {
@@ -209,7 +209,7 @@ func checkInputPubKey(acc *account.Account, in *types.TxInput) error {
 		}
 		acc.PubKey = in.PubKey
 	} else {
-		in.PubKey = account.PubKeyNil{}
+		in.PubKey = nil
 	}
 	return nil
 }

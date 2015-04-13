@@ -163,7 +163,7 @@ func toVMAccount(acc *ac.Account) *vm.Account {
 func toStateAccount(acc *vm.Account) *ac.Account {
 	pubKey, ok := acc.Other.(ac.PubKey)
 	if !ok {
-		pubKey = ac.PubKeyNil{}
+		pubKey = nil
 	}
 	var storageRoot []byte
 	if acc.StorageRoot.IsZero() {

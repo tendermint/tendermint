@@ -18,7 +18,7 @@ type Client interface {
 	BroadcastTx(tx types.Tx) (*ctypes.ResponseBroadcastTx, error)
 	Call(address []byte, data []byte) (*ctypes.ResponseCall, error)
 	CallCode(code []byte, data []byte) (*ctypes.ResponseCall, error)
-	DumpStorage(addr []byte) (*ctypes.ResponseDumpStorage, error)
+	DumpStorage(address []byte) (*ctypes.ResponseDumpStorage, error)
 	GenPrivAccount() (*ctypes.ResponseGenPrivAccount, error)
 	GetAccount(address []byte) (*ctypes.ResponseGetAccount, error)
 	GetBlock(height uint) (*ctypes.ResponseGetBlock, error)
@@ -150,8 +150,8 @@ func (c *ClientHTTP) CallCode(code []byte, data []byte) (*ctypes.ResponseCall, e
 	return response.Result, nil
 }
 
-func (c *ClientHTTP) DumpStorage(addr []byte) (*ctypes.ResponseDumpStorage, error) {
-	values, err := argsToURLValues([]string{"addr"}, addr)
+func (c *ClientHTTP) DumpStorage(address []byte) (*ctypes.ResponseDumpStorage, error) {
+	values, err := argsToURLValues([]string{"address"}, address)
 	if err != nil {
 		return nil, err
 	}
@@ -558,11 +558,11 @@ func (c *ClientJSON) CallCode(code []byte, data []byte) (*ctypes.ResponseCall, e
 	return response.Result, nil
 }
 
-func (c *ClientJSON) DumpStorage(addr []byte) (*ctypes.ResponseDumpStorage, error) {
+func (c *ClientJSON) DumpStorage(address []byte) (*ctypes.ResponseDumpStorage, error) {
 	request := rpc.RPCRequest{
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["DumpStorage"],
-		Params:  []interface{}{addr},
+		Params:  []interface{}{address},
 		Id:      0,
 	}
 	body, err := c.RequestResponse(request)

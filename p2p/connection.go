@@ -588,9 +588,9 @@ func (ch *Channel) updateStats() {
 
 const (
 	maxMsgPacketSize = 1024
-	packetTypePing   = byte(0x00)
-	packetTypePong   = byte(0x01)
-	packetTypeMsg    = byte(0x10)
+	packetTypePing   = byte(0x01)
+	packetTypePong   = byte(0x02)
+	packetTypeMsg    = byte(0x03)
 )
 
 // Messages in channels are chopped into smaller msgPackets for multiplexing.

@@ -4,6 +4,7 @@ package rpc
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"runtime/debug"
 	"time"
@@ -12,12 +13,12 @@ import (
 	. "github.com/tendermint/tendermint/common"
 )
 
-func StartHTTPServer(listenAddr string, mux *http.ServeMux) {
+func StartHTTPServer(listenAddr string, handler http.Handler) {
 	log.Info(Fmt("Starting RPC HTTP server on %s", listenAddr))
 	go func() {
 		res := http.ListenAndServe(
 			listenAddr,
-			RecoverAndLogHandler(mux),
+			RecoverAndLogHandler(handler),
 		)
 		log.Crit("RPC HTTPServer stopped", "result", res)
 	}()
@@ -37,8 +38,40 @@ func WriteRPCResponse(w http.ResponseWriter, res RPCResponse) {
 
 //-----------------------------------------------------------------------------
 
+func AuthenticateHandler(handler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// from https://medium.com/@xoen/golang-read-from-an-io-readwriter-without-loosing-its-content-2c6911805361
+		// Read the content
+		var bodyBytes []byte
+		if r.Body != nil {
+			bodyBytes, _ = ioutil.ReadAll(r.Body)
+		}
+		// Restore the io.ReadCloser to its original state
+		r.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+		// Get body string
+		bodyString := string(bodyBytes)
+		// Also read the path+"?"+query
+		pathQuery := Fmt("%v?%v", r.URL.Path, r.URL.RawQuery)
+		// Concatenate into tuple
+		tuple := struct {
+			Body string
+			Path string
+		}{bodyString, pathQuery}
+		// Get sign bytes
+		signBytes := binary.BinaryBytes(tuple)
+		// Validate the sign bytes.
+		// XXX
+		log.Debug("Should sign", "bytes", signBytes)
+		// If validation fails
+		// XXX
+		// If validation passes
+		handler.ServeHTTP(w, r)
+	})
+}
+
+//-----------------------------------------------------------------------------
+
 // Wraps an HTTP handler, adding error logging.
-//
 // If the inner function panics, the outer function recovers, logs, sends an
 // HTTP 500 error response.
 func RecoverAndLogHandler(handler http.Handler) http.Handler {

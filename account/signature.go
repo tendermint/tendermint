@@ -14,27 +14,14 @@ type Signature interface {
 
 // Types of Signature implementations
 const (
-	SignatureTypeNil     = byte(0x00)
 	SignatureTypeEd25519 = byte(0x01)
 )
 
 // for binary.readReflect
 var _ = binary.RegisterInterface(
 	struct{ Signature }{},
-	binary.ConcreteType{SignatureNil{}},
 	binary.ConcreteType{SignatureEd25519{}},
 )
-
-//-------------------------------------
-
-// Implements Signature
-type SignatureNil struct{}
-
-func (sig SignatureNil) TypeByte() byte { return SignatureTypeNil }
-
-func (sig SignatureNil) IsNil() bool { return true }
-
-func (sig SignatureNil) String() string { return "SignatureNil{}" }
 
 //-------------------------------------
 

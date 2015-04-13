@@ -21,6 +21,9 @@ func ReadBinary(o interface{}, r io.Reader, n *int64, err *error) interface{} {
 func WriteBinary(o interface{}, w io.Writer, n *int64, err *error) {
 	rv := reflect.ValueOf(o)
 	rt := reflect.TypeOf(o)
+	if rv.Kind() == reflect.Ptr {
+		rv, rt = rv.Elem(), rt.Elem()
+	}
 	writeReflect(rv, rt, w, n, err)
 }
 
@@ -49,6 +52,9 @@ func ReadJSONFromObject(o interface{}, object interface{}, err *error) interface
 func WriteJSON(o interface{}, w io.Writer, n *int64, err *error) {
 	rv := reflect.ValueOf(o)
 	rt := reflect.TypeOf(o)
+	if rv.Kind() == reflect.Ptr {
+		rv, rt = rv.Elem(), rt.Elem()
+	}
 	writeReflectJSON(rv, rt, w, n, err)
 }
 

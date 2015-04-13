@@ -40,9 +40,9 @@ type Vote struct {
 
 // Types of votes
 const (
-	VoteTypePrevote   = byte(0x00)
-	VoteTypePrecommit = byte(0x01)
-	VoteTypeCommit    = byte(0x02)
+	VoteTypePrevote   = byte(0x01)
+	VoteTypePrecommit = byte(0x02)
+	VoteTypeCommit    = byte(0x03)
 )
 
 func (vote *Vote) WriteSignBytes(w io.Writer, n *int64, err *error) {

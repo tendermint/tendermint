@@ -61,7 +61,7 @@ func MakeGenesisState(db dbm.DB, genDoc *GenesisDoc) *State {
 	for _, genAcc := range genDoc.Accounts {
 		acc := &account.Account{
 			Address:  genAcc.Address,
-			PubKey:   account.PubKeyNil{},
+			PubKey:   nil,
 			Sequence: 0,
 			Balance:  genAcc.Amount,
 		}

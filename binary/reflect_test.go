@@ -120,13 +120,42 @@ func instantiateBasic() (interface{}, interface{}) {
 func validateBasic(o interface{}, t *testing.T) {
 	cat := o.(Cat)
 	if cat.String != "String" {
-		t.Errorf("Expected cat2.String == 'String', got %v", cat.String)
+		t.Errorf("Expected cat.String == 'String', got %v", cat.String)
 	}
 	if string(cat.Bytes) != "Bytes" {
-		t.Errorf("Expected cat2.Bytes == 'Bytes', got %X", cat.Bytes)
+		t.Errorf("Expected cat.Bytes == 'Bytes', got %X", cat.Bytes)
 	}
 	if cat.Time.Unix() != 123 {
-		t.Errorf("Expected cat2.Time == 'Unix(123)', got %v", cat.Time)
+		t.Errorf("Expected cat.Time == 'Unix(123)', got %v", cat.Time)
+	}
+}
+
+//-------------------------------------
+
+type NilTestStruct struct {
+	IntPtr *int
+	CatPtr *Cat
+	Animal Animal
+}
+
+func constructNilTestStruct() interface{} {
+	return NilTestStruct{}
+}
+
+func instantiateNilTestStruct() (interface{}, interface{}) {
+	return NilTestStruct{}, &NilTestStruct{}
+}
+
+func validateNilTestStruct(o interface{}, t *testing.T) {
+	nts := o.(NilTestStruct)
+	if nts.IntPtr != nil {
+		t.Errorf("Expected nts.IntPtr to be nil, got %v", nts.IntPtr)
+	}
+	if nts.CatPtr != nil {
+		t.Errorf("Expected nts.CatPtr to be nil, got %v", nts.CatPtr)
+	}
+	if nts.Animal != nil {
+		t.Errorf("Expected nts.Animal to be nil, got %v", nts.Animal)
 	}
 }
 
@@ -252,7 +281,7 @@ func constructComplexArray() interface{} {
 					Bytes:  []byte("Bytes"),
 				},
 			},
-			&Dog{ // Even though it's a *Dog, we'll get a Dog{} back.
+			Dog{
 				SimpleStruct{
 					String: "Woof",
 					Bytes:  []byte("Bark"),
@@ -321,11 +350,14 @@ func init() {
 	testCases = append(testCases, TestCase{constructComplex, instantiateComplex, validateComplex})
 	testCases = append(testCases, TestCase{constructComplex2, instantiateComplex2, validateComplex2})
 	testCases = append(testCases, TestCase{constructComplexArray, instantiateComplexArray, validateComplexArray})
+	testCases = append(testCases, TestCase{constructNilTestStruct, instantiateNilTestStruct, validateNilTestStruct})
 }
 
 func TestBinary(t *testing.T) {
 
-	for _, testCase := range testCases {
+	for i, testCase := range testCases {
+
+		log.Info(fmt.Sprintf("Running test case %v", i))
 
 		// Construct an object
 		o := testCase.Constructor()
@@ -340,7 +372,7 @@ func TestBinary(t *testing.T) {
 		n, err := new(int64), new(error)
 		res := ReadBinary(instance, bytes.NewReader(data), n, err)
 		if *err != nil {
-			t.Fatalf("Failed to read cat: %v", *err)
+			t.Fatalf("Failed to read into instance: %v", *err)
 		}
 
 		// Validate object
@@ -350,7 +382,7 @@ func TestBinary(t *testing.T) {
 		n, err = new(int64), new(error)
 		res = ReadBinary(instancePtr, bytes.NewReader(data), n, err)
 		if *err != nil {
-			t.Fatalf("Failed to read cat: %v", *err)
+			t.Fatalf("Failed to read into instance: %v", *err)
 		}
 
 		if res != instancePtr {
@@ -365,7 +397,9 @@ func TestBinary(t *testing.T) {
 
 func TestJSON(t *testing.T) {
 
-	for _, testCase := range testCases {
+	for i, testCase := range testCases {
+
+		log.Info(fmt.Sprintf("Running test case %v", i))
 
 		// Construct an object
 		o := testCase.Constructor()
