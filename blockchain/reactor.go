@@ -270,6 +270,7 @@ func DecodeMessage(bz []byte) (msgType byte, msg interface{}, err error) {
 	case msgTypePeerStatus:
 		msg = binary.ReadBinary(bcPeerStatusMessage{}, r, n, &err)
 	default:
+		log.Warn(Fmt("Ignoring unknown message %X", bz))
 		msg = nil
 	}
 	return

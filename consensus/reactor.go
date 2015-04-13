@@ -152,9 +152,9 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 
 	case DataChannel:
 		switch msg := msg_.(type) {
-		case *Proposal:
-			ps.SetHasProposal(msg)
-			err = conR.conS.SetProposal(msg)
+		case *ProposalMessage:
+			ps.SetHasProposal(msg.Proposal)
+			err = conR.conS.SetProposal(msg.Proposal)
 
 		case *PartMessage:
 			if msg.Type == partTypeProposalBlock {
@@ -374,7 +374,7 @@ OUTER_LOOP:
 
 		// Send proposal?
 		if rs.Proposal != nil && !prs.Proposal {
-			msg := p2p.TypedMessage{msgTypeProposal, rs.Proposal}
+			msg := &ProposalMessage{Proposal: rs.Proposal}
 			peer.Send(DataChannel, msg)
 			ps.SetHasProposal(rs.Proposal)
 			continue OUTER_LOOP
@@ -777,8 +777,7 @@ func DecodeMessage(bz []byte) (msgType byte, msg interface{}, err error) {
 		msg = binary.ReadBinary(&CommitStepMessage{}, r, n, &err)
 	// Messages of data
 	case msgTypeProposal:
-		r.ReadByte() // Consume the byte
-		msg = binary.ReadBinary(&Proposal{}, r, n, &err)
+		msg = binary.ReadBinary(&ProposalMessage{}, r, n, &err)
 	case msgTypePart:
 		msg = binary.ReadBinary(&PartMessage{}, r, n, &err)
 	case msgTypeVote:
@@ -786,6 +785,7 @@ func DecodeMessage(bz []byte) (msgType byte, msg interface{}, err error) {
 	case msgTypeHasVote:
 		msg = binary.ReadBinary(&HasVoteMessage{}, r, n, &err)
 	default:
+		log.Warn(Fmt("Ignoring unknown message %X", bz))
 		msg = nil
 	}
 	return
@@ -818,6 +818,18 @@ func (m *CommitStepMessage) TypeByte() byte { return msgTypeCommitStep }
 
 func (m *CommitStepMessage) String() string {
 	return fmt.Sprintf("[CommitStep H:%v BP:%v BA:%v]", m.Height, m.BlockParts, m.BlockBitArray)
+}
+
+//-------------------------------------
+
+type ProposalMessage struct {
+	Proposal *Proposal
+}
+
+func (m *ProposalMessage) TypeByte() byte { return msgTypeProposal }
+
+func (m *ProposalMessage) String() string {
+	return fmt.Sprintf("[Proposal %v]", m.Proposal)
 }
 
 //-------------------------------------

@@ -239,6 +239,7 @@ func DecodeMessage(bz []byte) (msg interface{}, err error) {
 	case msgTypeAddrs:
 		msg = binary.ReadBinary(&pexAddrsMessage{}, r, n, &err)
 	default:
+		log.Warn(Fmt("Ignoring unknown message %X", bz))
 		msg = nil
 	}
 	return

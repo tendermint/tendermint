@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 
 	"github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/events"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
@@ -135,6 +136,7 @@ func DecodeMessage(bz []byte) (msgType byte, msg interface{}, err error) {
 	case msgTypeTx:
 		msg = binary.ReadBinary(&TxMessage{}, r, n, &err)
 	default:
+		log.Warn(Fmt("Ignoring unknown message %X", bz))
 		msg = nil
 	}
 	return
