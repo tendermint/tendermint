@@ -46,7 +46,8 @@ type BlockchainReactor struct {
 }
 
 func NewBlockchainReactor(state *sm.State, store *BlockStore, sync bool) *BlockchainReactor {
-	if state.LastBlockHeight != store.Height() {
+	if state.LastBlockHeight != store.Height() &&
+		state.LastBlockHeight != store.Height()-1 { // XXX double check this logic.
 		panic(Fmt("state (%v) and store (%v) height mismatch", state.LastBlockHeight, store.Height()))
 	}
 	requestsCh := make(chan BlockRequest, defaultChannelCapacity)
