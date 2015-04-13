@@ -152,8 +152,7 @@ func (n *Node) StartRPC() {
 	mux := http.NewServeMux()
 	rpc.RegisterEventsHandler(mux, n.evsw)
 	rpc.RegisterRPCFuncs(mux, core.Routes)
-	handler := rpc.AuthenticateHandler(mux)
-	rpc.StartHTTPServer(listenAddr, handler)
+	rpc.StartHTTPServer(listenAddr, mux)
 }
 
 func (n *Node) Switch() *p2p.Switch {
