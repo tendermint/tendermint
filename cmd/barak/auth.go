@@ -25,7 +25,7 @@ func validate(signBytes []byte, validators []Validator, signatures []acm.Signatu
 NOTE: Not used, just here in case we want it later.
 func ValidateHandler(handler http.Handler, validators []Validator) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		sigStrs := r.Header[http.CanonicalHeaderKey("debora-signatures")]
+		sigStrs := r.Header[http.CanonicalHeaderKey("signatures")]
 		log.Debug("Woot", "sigstrs", sigStrs, "len", len(sigStrs))
 		// from https://medium.com/@xoen/golang-read-from-an-io-readwriter-without-loosing-its-content-2c6911805361
 		// Read the content

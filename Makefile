@@ -4,11 +4,11 @@ all: build
 
 build: get_deps
 	go build -o build/tendermint github.com/tendermint/tendermint/cmd/tendermint
-	go build -o build/debora github.com/tendermint/tendermint/cmd/debora
+	go build -o build/barak github.com/tendermint/tendermint/cmd/barak
 
 build_race: get_deps
 	go build -race -o build/tendermint github.com/tendermint/tendermint/cmd/tendermint
-	go build -race -o build/debora github.com/tendermint/tendermint/cmd/debora
+	go build -race -o build/barak github.com/tendermint/tendermint/cmd/barak
 
 test: build
 	go test github.com/tendermint/tendermint/...

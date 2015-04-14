@@ -1,5 +1,7 @@
 package main
 
+// A note on the origin of the name.
+// http://en.wikipedia.org/wiki/Barak
 // TODO: Nonrepudiable command log
 
 import (
@@ -31,7 +33,7 @@ type Options struct {
 }
 
 // Global instance
-var debora = struct {
+var barak = struct {
 	mtx        sync.Mutex
 	processes  map[string]*pcm.Process
 	validators []Validator
@@ -50,12 +52,12 @@ func main() {
 	if err != nil {
 		panic(Fmt("Error parsing input: %v", err))
 	}
-	debora.nonce = options.StartNonce
-	debora.validators = options.Validators
+	barak.nonce = options.StartNonce
+	barak.validators = options.Validators
 
 	// Debug.
 	fmt.Printf("Options: %v\n", options)
-	fmt.Printf("Debora: %v\n", debora)
+	fmt.Printf("Barak: %v\n", barak)
 
 	// Start rpc server.
 	mux := http.NewServeMux()
@@ -65,7 +67,7 @@ func main() {
 	rpc.StartHTTPServer(options.ListenAddress, mux)
 
 	TrapSignal(func() {
-		fmt.Println("Debora shutting down")
+		fmt.Println("Barak shutting down")
 	})
 }
 
@@ -105,7 +107,7 @@ func parseValidateCommand(authCommand AuthCommand) (Command, error) {
 	commandJSONStr := authCommand.CommandJSONStr
 	signatures := authCommand.Signatures
 	// Validate commandJSONStr
-	if !validate([]byte(commandJSONStr), debora.validators, signatures) {
+	if !validate([]byte(commandJSONStr), barak.validators, signatures) {
 		fmt.Printf("Failed validation attempt")
 		return nil, errors.New("Validation error")
 	}
@@ -117,10 +119,10 @@ func parseValidateCommand(authCommand AuthCommand) (Command, error) {
 		return nil, errors.New("Command parse error")
 	}
 	// Prevent replays
-	if debora.nonce+1 != command.Nonce {
+	if barak.nonce+1 != command.Nonce {
 		return nil, errors.New("Replay error")
 	} else {
-		debora.nonce += 1
+		barak.nonce += 1
 	}
 	return command.Command, nil
 }
@@ -171,19 +173,19 @@ type ResponseRunProcess struct {
 }
 
 func RunProcess(wait bool, label string, execPath string, args []string, input string) (*ResponseRunProcess, error) {
-	debora.mtx.Lock()
+	barak.mtx.Lock()
 
 	// First, see if there already is a process labeled 'label'
-	existing := debora.processes[label]
+	existing := barak.processes[label]
 	if existing != nil {
-		debora.mtx.Unlock()
+		barak.mtx.Unlock()
 		return nil, Errorf("Process already exists: %v", label)
 	}
 
 	// Otherwise, create one.
 	proc := pcm.Create(pcm.ProcessModeDaemon, label, execPath, args, input)
-	debora.processes[label] = proc
-	debora.mtx.Unlock()
+	barak.processes[label] = proc
+	barak.mtx.Unlock()
 
 	if wait {
 		exitErr := pcm.Wait(proc)
@@ -206,9 +208,9 @@ type ResponseStopProcess struct {
 }
 
 func StopProcess(label string, kill bool) (*ResponseStopProcess, error) {
-	debora.mtx.Lock()
-	proc := debora.processes[label]
-	debora.mtx.Unlock()
+	barak.mtx.Lock()
+	proc := barak.processes[label]
+	barak.mtx.Unlock()
 
 	if proc == nil {
 		return nil, Errorf("Process does not exist: %v", label)
@@ -230,11 +232,11 @@ type ResponseListProcesses struct {
 
 func ListProcesses() (*ResponseListProcesses, error) {
 	var procs = []*pcm.Process{}
-	debora.mtx.Lock()
-	for _, proc := range debora.processes {
+	barak.mtx.Lock()
+	for _, proc := range barak.processes {
 		procs = append(procs, proc)
 	}
-	debora.mtx.Unlock()
+	barak.mtx.Unlock()
 
 	return &ResponseListProcesses{
 		Processes: procs,
