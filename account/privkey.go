@@ -8,7 +8,6 @@ import (
 
 // PrivKey is part of PrivAccount and state.PrivValidator.
 type PrivKey interface {
-	TypeByte() byte
 	Sign(msg []byte) Signature
 	PubKey() PubKey
 }
@@ -21,15 +20,13 @@ const (
 // for binary.readReflect
 var _ = binary.RegisterInterface(
 	struct{ PrivKey }{},
-	binary.ConcreteType{PrivKeyEd25519{}},
+	binary.ConcreteType{PrivKeyEd25519{}, PrivKeyTypeEd25519},
 )
 
 //-------------------------------------
 
 // Implements PrivKey
 type PrivKeyEd25519 []byte
-
-func (privKey PrivKeyEd25519) TypeByte() byte { return PrivKeyTypeEd25519 }
 
 func (privKey PrivKeyEd25519) Sign(msg []byte) Signature {
 	pubKey := privKey.PubKey().(PubKeyEd25519)

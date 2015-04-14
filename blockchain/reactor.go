@@ -116,15 +116,15 @@ func (bcR *BlockchainReactor) RemovePeer(peer *p2p.Peer, reason interface{}) {
 
 // Implements Reactor
 func (bcR *BlockchainReactor) Receive(chId byte, src *p2p.Peer, msgBytes []byte) {
-	_, msg_, err := DecodeMessage(msgBytes)
+	_, msg, err := DecodeMessage(msgBytes)
 	if err != nil {
 		log.Warn("Error decoding message", "error", err)
 		return
 	}
 
-	log.Info("Received message", "msg", msg_)
+	log.Info("Received message", "msg", msg)
 
-	switch msg := msg_.(type) {
+	switch msg := msg.(type) {
 	case bcBlockRequestMessage:
 		// Got a request for a block. Respond with block if we have it.
 		block := bcR.store.LoadBlock(msg.Height)
@@ -251,28 +251,25 @@ func (bcR *BlockchainReactor) SetEventSwitch(evsw *events.EventSwitch) {
 // Messages
 
 const (
-	msgTypeUnknown       = byte(0x00)
 	msgTypeBlockRequest  = byte(0x10)
 	msgTypeBlockResponse = byte(0x11)
 	msgTypePeerStatus    = byte(0x20)
 )
 
-// TODO: check for unnecessary extra bytes at the end.
-func DecodeMessage(bz []byte) (msgType byte, msg interface{}, err error) {
-	n := new(int64)
+type BlockchainMessage interface{}
+
+var _ = binary.RegisterInterface(
+	struct{ BlockchainMessage }{},
+	binary.ConcreteType{bcBlockRequestMessage{}, msgTypeBlockRequest},
+	binary.ConcreteType{bcBlockResponseMessage{}, msgTypeBlockResponse},
+	binary.ConcreteType{bcPeerStatusMessage{}, msgTypePeerStatus},
+)
+
+func DecodeMessage(bz []byte) (msgType byte, msg BlockchainMessage, err error) {
 	msgType = bz[0]
+	n := new(int64)
 	r := bytes.NewReader(bz)
-	switch msgType {
-	case msgTypeBlockRequest:
-		msg = binary.ReadBinary(bcBlockRequestMessage{}, r, n, &err)
-	case msgTypeBlockResponse:
-		msg = binary.ReadBinary(bcBlockResponseMessage{}, r, n, &err)
-	case msgTypePeerStatus:
-		msg = binary.ReadBinary(bcPeerStatusMessage{}, r, n, &err)
-	default:
-		log.Warn(Fmt("Ignoring unknown message %X", bz))
-		msg = nil
-	}
+	msg = binary.ReadBinary(&msg, r, n, &err)
 	return
 }
 
@@ -281,8 +278,6 @@ func DecodeMessage(bz []byte) (msgType byte, msg interface{}, err error) {
 type bcBlockRequestMessage struct {
 	Height uint
 }
-
-func (m bcBlockRequestMessage) TypeByte() byte { return msgTypeBlockRequest }
 
 func (m bcBlockRequestMessage) String() string {
 	return fmt.Sprintf("[bcBlockRequestMessage %v]", m.Height)
@@ -294,8 +289,6 @@ type bcBlockResponseMessage struct {
 	Block *types.Block
 }
 
-func (m bcBlockResponseMessage) TypeByte() byte { return msgTypeBlockResponse }
-
 func (m bcBlockResponseMessage) String() string {
 	return fmt.Sprintf("[bcBlockResponseMessage %v]", m.Block.Height)
 }
@@ -305,8 +298,6 @@ func (m bcBlockResponseMessage) String() string {
 type bcPeerStatusMessage struct {
 	Height uint
 }
-
-func (m bcPeerStatusMessage) TypeByte() byte { return msgTypePeerStatus }
 
 func (m bcPeerStatusMessage) String() string {
 	return fmt.Sprintf("[bcPeerStatusMessage %v]", m.Height)

@@ -17,28 +17,21 @@ type NoncedCommand struct {
 
 type Command interface{}
 
+const (
+	commandTypeRunProcess    = 0x01
+	commandTypeStopProcess   = 0x02
+	commandTypeListProcesses = 0x03
+	commandTypeServeFile     = 0x04
+)
+
 // for binary.readReflect
 var _ = binary.RegisterInterface(
 	struct{ Command }{},
-	binary.ConcreteType{CommandRunProcess{}},
-	binary.ConcreteType{CommandStopProcess{}},
-	binary.ConcreteType{CommandListProcesses{}},
-	binary.ConcreteType{CommandServeFile{}},
+	binary.ConcreteType{CommandRunProcess{}, commandTypeRunProcess},
+	binary.ConcreteType{CommandStopProcess{}, commandTypeStopProcess},
+	binary.ConcreteType{CommandListProcesses{}, commandTypeListProcesses},
+	binary.ConcreteType{CommandServeFile{}, commandTypeServeFile},
 )
-
-const (
-	typeByteRunProcess    = 0x01
-	typeByteStopProcess   = 0x02
-	typeByteListProcesses = 0x03
-	typeByteServeFile     = 0x04
-)
-
-// TODO: This is actually not cleaner than a method call.
-// In fact, this is stupid.
-func (_ CommandRunProcess) TypeByte() byte    { return typeByteRunProcess }
-func (_ CommandStopProcess) TypeByte() byte   { return typeByteStopProcess }
-func (_ CommandListProcesses) TypeByte() byte { return typeByteListProcesses }
-func (_ CommandServeFile) TypeByte() byte     { return typeByteServeFile }
 
 type CommandRunProcess struct {
 	Wait     bool

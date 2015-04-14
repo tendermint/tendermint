@@ -6,7 +6,6 @@ import (
 	"sync/atomic"
 
 	"github.com/tendermint/tendermint/binary"
-	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/events"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
@@ -123,22 +122,21 @@ func (memR *MempoolReactor) SetEventSwitch(evsw *events.EventSwitch) {
 // Messages
 
 const (
-	msgTypeUnknown = byte(0x00)
-	msgTypeTx      = byte(0x01)
+	msgTypeTx = byte(0x01)
 )
 
-// TODO: check for unnecessary extra bytes at the end.
-func DecodeMessage(bz []byte) (msgType byte, msg interface{}, err error) {
-	n := new(int64)
+type MempoolMessage interface{}
+
+var _ = binary.RegisterInterface(
+	struct{ MempoolMessage }{},
+	binary.ConcreteType{TxMessage{}, msgTypeTx},
+)
+
+func DecodeMessage(bz []byte) (msgType byte, msg MempoolMessage, err error) {
 	msgType = bz[0]
+	n := new(int64)
 	r := bytes.NewReader(bz)
-	switch msgType {
-	case msgTypeTx:
-		msg = binary.ReadBinary(&TxMessage{}, r, n, &err)
-	default:
-		log.Warn(Fmt("Ignoring unknown message %X", bz))
-		msg = nil
-	}
+	msg = binary.ReadBinary(&msg, r, n, &err)
 	return
 }
 
@@ -147,8 +145,6 @@ func DecodeMessage(bz []byte) (msgType byte, msg interface{}, err error) {
 type TxMessage struct {
 	Tx types.Tx
 }
-
-func (m *TxMessage) TypeByte() byte { return msgTypeTx }
 
 func (m *TxMessage) String() string {
 	return fmt.Sprintf("[TxMessage %v]", m.Tx)

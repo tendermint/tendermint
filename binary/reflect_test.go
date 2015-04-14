@@ -30,33 +30,25 @@ type Cat struct {
 	SimpleStruct
 }
 
-func (cat Cat) TypeByte() byte { return AnimalTypeCat }
-
 // Implements Animal
 type Dog struct {
 	SimpleStruct
 }
 
-func (dog Dog) TypeByte() byte { return AnimalTypeDog }
-
 // Implements Animal
 type Snake []byte
-
-func (snake Snake) TypeByte() byte { return AnimalTypeSnake }
 
 // Implements Animal
 type Viper struct {
 	Bytes []byte
 }
 
-func (viper *Viper) TypeByte() byte { return AnimalTypeViper }
-
 var _ = RegisterInterface(
 	struct{ Animal }{},
-	ConcreteType{Cat{}},
-	ConcreteType{Dog{}},
-	ConcreteType{Snake{}},
-	ConcreteType{&Viper{}},
+	ConcreteType{Cat{}, AnimalTypeCat},
+	ConcreteType{Dog{}, AnimalTypeDog},
+	ConcreteType{Snake{}, AnimalTypeSnake},
+	ConcreteType{&Viper{}, AnimalTypeViper},
 )
 
 func TestAnimalInterface(t *testing.T) {

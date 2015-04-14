@@ -763,31 +763,24 @@ const (
 	msgTypeHasVote      = byte(0x14)
 )
 
+type ConsensusMessage interface{}
+
+var _ = binary.RegisterInterface(
+	struct{ ConsensusMessage }{},
+	binary.ConcreteType{NewRoundStepMessage{}, msgTypeNewRoundStep},
+	binary.ConcreteType{CommitStepMessage{}, msgTypeCommitStep},
+	binary.ConcreteType{ProposalMessage{}, msgTypeProposal},
+	binary.ConcreteType{PartMessage{}, msgTypePart},
+	binary.ConcreteType{VoteMessage{}, msgTypeVote},
+	binary.ConcreteType{HasVoteMessage{}, msgTypeHasVote},
+)
+
 // TODO: check for unnecessary extra bytes at the end.
-func DecodeMessage(bz []byte) (msgType byte, msg interface{}, err error) {
-	n := new(int64)
-	// log.Debug(Fmt("decoding msg bytes: %X", bz))
+func DecodeMessage(bz []byte) (msgType byte, msg ConsensusMessage, err error) {
 	msgType = bz[0]
+	n := new(int64)
 	r := bytes.NewReader(bz)
-	switch msgType {
-	// Messages for communicating state changes
-	case msgTypeNewRoundStep:
-		msg = binary.ReadBinary(&NewRoundStepMessage{}, r, n, &err)
-	case msgTypeCommitStep:
-		msg = binary.ReadBinary(&CommitStepMessage{}, r, n, &err)
-	// Messages of data
-	case msgTypeProposal:
-		msg = binary.ReadBinary(&ProposalMessage{}, r, n, &err)
-	case msgTypePart:
-		msg = binary.ReadBinary(&PartMessage{}, r, n, &err)
-	case msgTypeVote:
-		msg = binary.ReadBinary(&VoteMessage{}, r, n, &err)
-	case msgTypeHasVote:
-		msg = binary.ReadBinary(&HasVoteMessage{}, r, n, &err)
-	default:
-		log.Warn(Fmt("Ignoring unknown message %X", bz))
-		msg = nil
-	}
+	msg = binary.ReadBinary(&msg, r, n, &err)
 	return
 }
 
@@ -799,8 +792,6 @@ type NewRoundStepMessage struct {
 	Step                  RoundStep
 	SecondsSinceStartTime uint
 }
-
-func (m *NewRoundStepMessage) TypeByte() byte { return msgTypeNewRoundStep }
 
 func (m *NewRoundStepMessage) String() string {
 	return fmt.Sprintf("[NewRoundStep H:%v R:%v S:%v]", m.Height, m.Round, m.Step)
@@ -814,8 +805,6 @@ type CommitStepMessage struct {
 	BlockBitArray BitArray
 }
 
-func (m *CommitStepMessage) TypeByte() byte { return msgTypeCommitStep }
-
 func (m *CommitStepMessage) String() string {
 	return fmt.Sprintf("[CommitStep H:%v BP:%v BA:%v]", m.Height, m.BlockParts, m.BlockBitArray)
 }
@@ -825,8 +814,6 @@ func (m *CommitStepMessage) String() string {
 type ProposalMessage struct {
 	Proposal *Proposal
 }
-
-func (m *ProposalMessage) TypeByte() byte { return msgTypeProposal }
 
 func (m *ProposalMessage) String() string {
 	return fmt.Sprintf("[Proposal %v]", m.Proposal)
@@ -846,8 +833,6 @@ type PartMessage struct {
 	Part   *types.Part
 }
 
-func (m *PartMessage) TypeByte() byte { return msgTypePart }
-
 func (m *PartMessage) String() string {
 	return fmt.Sprintf("[Part H:%v R:%v T:%X P:%v]", m.Height, m.Round, m.Type, m.Part)
 }
@@ -858,8 +843,6 @@ type VoteMessage struct {
 	ValidatorIndex uint
 	Vote           *types.Vote
 }
-
-func (m *VoteMessage) TypeByte() byte { return msgTypeVote }
 
 func (m *VoteMessage) String() string {
 	return fmt.Sprintf("[Vote VI:%v V:%v]", m.ValidatorIndex, m.Vote)
@@ -873,8 +856,6 @@ type HasVoteMessage struct {
 	Type   byte
 	Index  uint
 }
-
-func (m *HasVoteMessage) TypeByte() byte { return msgTypeHasVote }
 
 func (m *HasVoteMessage) String() string {
 	return fmt.Sprintf("[HasVote %v/%v T:%X]", m.Height, m.Round, m.Type)

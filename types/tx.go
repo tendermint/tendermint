@@ -61,12 +61,12 @@ const (
 // for binary.readReflect
 var _ = binary.RegisterInterface(
 	struct{ Tx }{},
-	binary.ConcreteType{&SendTx{}},
-	binary.ConcreteType{&CallTx{}},
-	binary.ConcreteType{&BondTx{}},
-	binary.ConcreteType{&UnbondTx{}},
-	binary.ConcreteType{&RebondTx{}},
-	binary.ConcreteType{&DupeoutTx{}},
+	binary.ConcreteType{&SendTx{}, TxTypeSend},
+	binary.ConcreteType{&CallTx{}, TxTypeCall},
+	binary.ConcreteType{&BondTx{}, TxTypeBond},
+	binary.ConcreteType{&UnbondTx{}, TxTypeUnbond},
+	binary.ConcreteType{&RebondTx{}, TxTypeRebond},
+	binary.ConcreteType{&DupeoutTx{}, TxTypeDupeout},
 )
 
 //-----------------------------------------------------------------------------
@@ -132,8 +132,6 @@ type SendTx struct {
 	Outputs []*TxOutput
 }
 
-func (tx *SendTx) TypeByte() byte { return TxTypeSend }
-
 func (tx *SendTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
 	binary.WriteUvarint(uint(len(tx.Inputs)), w, n, err)
 	for _, in := range tx.Inputs {
@@ -159,8 +157,6 @@ type CallTx struct {
 	Data     []byte
 }
 
-func (tx *CallTx) TypeByte() byte { return TxTypeCall }
-
 func (tx *CallTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
 	tx.Input.WriteSignBytes(w, n, err)
 	binary.WriteByteSlice(tx.Address, w, n, err)
@@ -180,8 +176,6 @@ type BondTx struct {
 	Inputs   []*TxInput
 	UnbondTo []*TxOutput
 }
-
-func (tx *BondTx) TypeByte() byte { return TxTypeBond }
 
 func (tx *BondTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
 	binary.WriteBinary(tx.PubKey, w, n, err)
@@ -207,8 +201,6 @@ type UnbondTx struct {
 	Signature account.SignatureEd25519
 }
 
-func (tx *UnbondTx) TypeByte() byte { return TxTypeUnbond }
-
 func (tx *UnbondTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
 	binary.WriteByteSlice(tx.Address, w, n, err)
 	binary.WriteUvarint(tx.Height, w, n, err)
@@ -226,8 +218,6 @@ type RebondTx struct {
 	Signature account.SignatureEd25519
 }
 
-func (tx *RebondTx) TypeByte() byte { return TxTypeRebond }
-
 func (tx *RebondTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
 	binary.WriteByteSlice(tx.Address, w, n, err)
 	binary.WriteUvarint(tx.Height, w, n, err)
@@ -244,8 +234,6 @@ type DupeoutTx struct {
 	VoteA   Vote
 	VoteB   Vote
 }
-
-func (tx *DupeoutTx) TypeByte() byte { return TxTypeDupeout }
 
 func (tx *DupeoutTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
 	panic("DupeoutTx has no sign bytes")

@@ -9,7 +9,6 @@ import (
 
 // PubKey is part of Account and Validator.
 type PubKey interface {
-	TypeByte() byte
 	IsNil() bool
 	Address() []byte
 	VerifyBytes(msg []byte, sig Signature) bool
@@ -23,15 +22,13 @@ const (
 // for binary.readReflect
 var _ = binary.RegisterInterface(
 	struct{ PubKey }{},
-	binary.ConcreteType{PubKeyEd25519{}},
+	binary.ConcreteType{PubKeyEd25519{}, PubKeyTypeEd25519},
 )
 
 //-------------------------------------
 
 // Implements PubKey
 type PubKeyEd25519 []byte
-
-func (pubKey PubKeyEd25519) TypeByte() byte { return PubKeyTypeEd25519 }
 
 func (pubKey PubKeyEd25519) IsNil() bool { return false }
 

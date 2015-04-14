@@ -92,7 +92,7 @@ func (pexR *PEXReactor) RemovePeer(peer *Peer, reason interface{}) {
 func (pexR *PEXReactor) Receive(chId byte, src *Peer, msgBytes []byte) {
 
 	// decode message
-	msg, err := DecodeMessage(msgBytes)
+	_, msg, err := DecodeMessage(msgBytes)
 	if err != nil {
 		log.Warn("Error decoding message", "error", err)
 		return
@@ -219,29 +219,25 @@ func (pexR *PEXReactor) SetEventSwitch(evsw *events.EventSwitch) {
 // Messages
 
 const (
-	msgTypeUnknown   = byte(0x00)
 	msgTypeRequest   = byte(0x01)
 	msgTypeAddrs     = byte(0x02)
 	msgTypeHandshake = byte(0x03)
 )
 
-// TODO: check for unnecessary extra bytes at the end.
-func DecodeMessage(bz []byte) (msg interface{}, err error) {
+type PexMessage interface{}
+
+var _ = binary.RegisterInterface(
+	struct{ PexMessage }{},
+	binary.ConcreteType{pexHandshakeMessage{}, msgTypeHandshake},
+	binary.ConcreteType{pexRequestMessage{}, msgTypeRequest},
+	binary.ConcreteType{pexAddrsMessage{}, msgTypeAddrs},
+)
+
+func DecodeMessage(bz []byte) (msgType byte, msg PexMessage, err error) {
+	msgType = bz[0]
 	n := new(int64)
-	msgType := bz[0]
 	r := bytes.NewReader(bz)
-	// log.Debug(Fmt("decoding msg bytes: %X", bz))
-	switch msgType {
-	case msgTypeHandshake:
-		msg = binary.ReadBinary(&pexHandshakeMessage{}, r, n, &err)
-	case msgTypeRequest:
-		msg = &pexRequestMessage{}
-	case msgTypeAddrs:
-		msg = binary.ReadBinary(&pexAddrsMessage{}, r, n, &err)
-	default:
-		log.Warn(Fmt("Ignoring unknown message %X", bz))
-		msg = nil
-	}
+	msg = binary.ReadBinary(&msg, r, n, &err)
 	return
 }
 
@@ -251,8 +247,6 @@ A pexHandshakeMessage contains the network identifier.
 type pexHandshakeMessage struct {
 	Network string
 }
-
-func (m *pexHandshakeMessage) TypeByte() byte { return msgTypeHandshake }
 
 func (m *pexHandshakeMessage) String() string {
 	return "[pexHandshake]"
@@ -264,8 +258,6 @@ A pexRequestMessage requests additional peer addresses.
 type pexRequestMessage struct {
 }
 
-func (m *pexRequestMessage) TypeByte() byte { return msgTypeRequest }
-
 func (m *pexRequestMessage) String() string {
 	return "[pexRequest]"
 }
@@ -276,8 +268,6 @@ A message with announced peer addresses.
 type pexAddrsMessage struct {
 	Addrs []*NetAddress
 }
-
-func (m *pexAddrsMessage) TypeByte() byte { return msgTypeAddrs }
 
 func (m *pexAddrsMessage) String() string {
 	return fmt.Sprintf("[pexAddrs %v]", m.Addrs)

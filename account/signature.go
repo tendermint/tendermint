@@ -9,7 +9,6 @@ import (
 
 // Signature is a part of Txs and consensus Votes.
 type Signature interface {
-	TypeByte() byte
 }
 
 // Types of Signature implementations
@@ -20,15 +19,13 @@ const (
 // for binary.readReflect
 var _ = binary.RegisterInterface(
 	struct{ Signature }{},
-	binary.ConcreteType{SignatureEd25519{}},
+	binary.ConcreteType{SignatureEd25519{}, SignatureTypeEd25519},
 )
 
 //-------------------------------------
 
 // Implements Signature
 type SignatureEd25519 []byte
-
-func (sig SignatureEd25519) TypeByte() byte { return SignatureTypeEd25519 }
 
 func (sig SignatureEd25519) IsNil() bool { return false }
 

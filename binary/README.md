@@ -1,3 +1,9 @@
+### NOTICE
+
+This documentation is out of date.
+* 0x00 is reserved as a nil byte for RegisterInterface
+* moved TypeByte() into RegisterInterface/ConcreteType
+
 # `tendermint/binary`
 
 The `binary` submodule encodes primary types and structs into bytes.
