@@ -14,7 +14,6 @@ import (
 	"reflect"
 	"sync"
 
-	acm "github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/cmd/barak/types"
 	. "github.com/tendermint/tendermint/common"
@@ -23,7 +22,7 @@ import (
 )
 
 var Routes = map[string]*rpc.RPCFunc{
-	"run_auth_command": rpc.NewRPCFunc(Run, []string{"auth_command"}),
+	"run": rpc.NewRPCFunc(Run, []string{"auth_command"}),
 	// NOTE: also, two special non-JSONRPC routes called "download" and "upload"
 }
 
@@ -128,47 +127,9 @@ func parseValidateCommand(authCommand AuthCommand) (Command, error) {
 	return command.Command, nil
 }
 
-type AuthCommand struct {
-	CommandJSONStr string
-	Signatures     []acm.Signature
-}
-
-type NoncedCommand struct {
-	Nonce uint64
-	Command
-}
-
-type Command interface{}
-
-// for binary.readReflect
-var _ = binary.RegisterInterface(
-	struct{ Command }{},
-	binary.ConcreteType{CommandRunProcess{}},
-	binary.ConcreteType{CommandStopProcess{}},
-	binary.ConcreteType{CommandListProcesses{}},
-	binary.ConcreteType{CommandServeFile{}},
-)
-
-const (
-	typeByteRunProcess    = 0x01
-	typeByteStopProcess   = 0x02
-	typeByteListProcesses = 0x03
-	typeByteServeFile     = 0x04
-)
-
 //------------------------------------------------------------------------------
 // RPC base commands
 // WARNING Not validated, do not export to routes.
-
-type CommandRunProcess struct {
-	Wait     bool
-	Label    string
-	ExecPath string
-	Args     []string
-	Input    string
-}
-
-func (_ CommandRunProcess) TypeByte() byte { return typeByteRunProcess }
 
 func RunProcess(wait bool, label string, execPath string, args []string, input string) (*ResponseRunProcess, error) {
 	barak.mtx.Lock()
@@ -193,15 +154,6 @@ func RunProcess(wait bool, label string, execPath string, args []string, input s
 	}
 }
 
-//--------------------------------------
-
-type CommandStopProcess struct {
-	Label string
-	Kill  bool
-}
-
-func (_ CommandStopProcess) TypeByte() byte { return typeByteStopProcess }
-
 func StopProcess(label string, kill bool) (*ResponseStopProcess, error) {
 	barak.mtx.Lock()
 	proc := barak.processes[label]
@@ -215,12 +167,6 @@ func StopProcess(label string, kill bool) (*ResponseStopProcess, error) {
 	return &ResponseStopProcess{}, err
 }
 
-//--------------------------------------
-
-type CommandListProcesses struct{}
-
-func (_ CommandListProcesses) TypeByte() byte { return typeByteListProcesses }
-
 func ListProcesses() (*ResponseListProcesses, error) {
 	var procs = []*pcm.Process{}
 	barak.mtx.Lock()
@@ -233,14 +179,6 @@ func ListProcesses() (*ResponseListProcesses, error) {
 		Processes: procs,
 	}, nil
 }
-
-//------------------------------------------------------------------------------
-
-type CommandServeFile struct {
-	Path string
-}
-
-func (_ CommandServeFile) TypeByte() byte { return typeByteServeFile }
 
 func ServeFile(w http.ResponseWriter, req *http.Request) {
 
