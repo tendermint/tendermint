@@ -1,10 +1,6 @@
 package rpc
 
 import (
-	"fmt"
-	"github.com/gorilla/websocket"
-	"github.com/tendermint/tendermint/rpc"
-	"net/http"
 	"testing"
 )
 
@@ -76,35 +72,4 @@ func TestJSONCallCode(t *testing.T) {
 
 func TestJSONCallContract(t *testing.T) {
 	testCall(t, "JSONRPC")
-}
-
-//--------------------------------------------------------------------------------
-// Test the websocket client
-
-func TestWSConnect(t *testing.T) {
-	dialer := websocket.DefaultDialer
-	rHeader := http.Header{}
-	_, r, err := dialer.Dial(websocketAddr, rHeader)
-	fmt.Println("respoinse:", r)
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestWSSubscribe(t *testing.T) {
-	dialer := websocket.DefaultDialer
-	rHeader := http.Header{}
-	con, _, err := dialer.Dial(websocketAddr, rHeader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = con.WriteJSON(rpc.WSRequest{
-		Type:  "subscribe",
-		Event: "newblock",
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	typ, p, err := con.ReadMessage()
-	fmt.Println("RESPONSE:", typ, string(p), err)
 }

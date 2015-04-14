@@ -119,7 +119,7 @@ func (s *State) Hash() []byte {
 // Mutates the block in place and updates it with new state hash.
 func (s *State) SetBlockStateHash(block *types.Block) error {
 	sCopy := s.Copy()
-	err := execBlock(sCopy, block, types.PartSetHeader{})
+	err := execBlock(sCopy, block, types.PartSetHeader{}, false) // don't fire events
 	if err != nil {
 		return err
 	}

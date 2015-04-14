@@ -13,7 +13,7 @@ import (
 // NOTE: If an error occurs during block execution, state will be left
 // at an invalid state.  Copy the state before calling ExecBlock!
 func ExecBlock(s *State, block *types.Block, blockPartsHeader types.PartSetHeader) error {
-	err := execBlock(s, block, blockPartsHeader)
+	err := execBlock(s, block, blockPartsHeader, true)
 	if err != nil {
 		return err
 	}
@@ -29,7 +29,7 @@ func ExecBlock(s *State, block *types.Block, blockPartsHeader types.PartSetHeade
 // executes transactions of a block, does not check block.StateHash
 // NOTE: If an error occurs during block execution, state will be left
 // at an invalid state.  Copy the state before calling execBlock!
-func execBlock(s *State, block *types.Block, blockPartsHeader types.PartSetHeader) error {
+func execBlock(s *State, block *types.Block, blockPartsHeader types.PartSetHeader, fireEvents bool) error {
 	// Basic block validation.
 	err := block.ValidateBasic(s.LastBlockHeight, s.LastBlockHash, s.LastBlockParts, s.LastBlockTime)
 	if err != nil {
@@ -111,7 +111,7 @@ func execBlock(s *State, block *types.Block, blockPartsHeader types.PartSetHeade
 
 	// Commit each tx
 	for _, tx := range block.Data.Txs {
-		err := ExecTx(blockCache, tx, true)
+		err := ExecTx(blockCache, tx, true, fireEvents)
 		if err != nil {
 			return InvalidTxError{tx, err}
 		}
@@ -291,7 +291,7 @@ func adjustByOutputs(accounts map[string]*account.Account, outs []*types.TxOutpu
 
 // If the tx is invalid, an error will be returned.
 // Unlike ExecBlock(), state will not be altered.
-func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool) error {
+func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall, fireEvents bool) error {
 
 	// TODO: do something with fees
 	fees := uint64(0)
@@ -329,7 +329,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool) error {
 		// If we're in a block (not mempool),
 		// fire event on all inputs and outputs
 		// see types/events.go for spec
-		if runCall {
+		if fireEvents {
 			for _, i := range tx.Inputs {
 				_s.evsw.FireEvent(types.EventStringAccInput(i.Address), tx)
 			}
@@ -449,19 +449,21 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool) error {
 			// Create a receipt from the ret and whether errored.
 			log.Info("VM call complete", "caller", caller, "callee", callee, "return", ret, "err", err)
 
-			// Fire Events for sender and receiver
-			// a separate event will be fired from vm for each
-			_s.evsw.FireEvent(types.EventStringAccInput(tx.Input.Address), struct {
-				Tx        types.Tx
-				Return    []byte
-				Exception string
-			}{tx, ret, exception})
+			if fireEvents {
+				// Fire Events for sender and receiver
+				// a separate event will be fired from vm for each
+				_s.evsw.FireEvent(types.EventStringAccInput(tx.Input.Address), struct {
+					Tx        types.Tx
+					Return    []byte
+					Exception string
+				}{tx, ret, exception})
 
-			_s.evsw.FireEvent(types.EventStringAccReceive(tx.Address), struct {
-				Tx        types.Tx
-				Return    []byte
-				Exception string
-			}{tx, ret, exception})
+				_s.evsw.FireEvent(types.EventStringAccReceive(tx.Address), struct {
+					Tx        types.Tx
+					Return    []byte
+					Exception string
+				}{tx, ret, exception})
+			}
 		} else {
 			// The mempool does not call txs until
 			// the proposer determines the order of txs.
@@ -529,7 +531,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool) error {
 		if !added {
 			panic("Failed to add validator")
 		}
-		if runCall {
+		if fireEvents {
 			_s.evsw.FireEvent(types.EventStringBond(), tx)
 		}
 		return nil
@@ -554,7 +556,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool) error {
 
 		// Good!
 		_s.unbondValidator(val)
-		if runCall {
+		if fireEvents {
 			_s.evsw.FireEvent(types.EventStringUnbond(), tx)
 		}
 		return nil
@@ -579,7 +581,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool) error {
 
 		// Good!
 		_s.rebondValidator(val)
-		if runCall {
+		if fireEvents {
 			_s.evsw.FireEvent(types.EventStringRebond(), tx)
 		}
 		return nil
@@ -625,7 +627,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool) error {
 
 		// Good! (Bad validator!)
 		_s.destroyValidator(accused)
-		if runCall {
+		if fireEvents {
 			_s.evsw.FireEvent(types.EventStringDupeout(), tx)
 		}
 		return nil

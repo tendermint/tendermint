@@ -6,6 +6,7 @@ import (
 	"github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/logger"
 	nm "github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/p2p"
@@ -14,6 +15,7 @@ import (
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	"testing"
+	"time"
 )
 
 // global variables for use across all tests
@@ -26,15 +28,24 @@ var (
 
 	mempoolCount = 0
 
-	userAddr = "D7DFF9806078899C8DA3FE3633CC0BF3C6C2B1BB"
-	userPriv = "FDE3BD94CB327D19464027BA668194C5EFA46AE83E8419D7542CFF41F00C81972239C21C81EA7173A6C489145490C015E05D4B97448933B708A7EC5B7B4921E3"
-	userPub  = "2239C21C81EA7173A6C489145490C015E05D4B97448933B708A7EC5B7B4921E3"
+	userAddr          = "D7DFF9806078899C8DA3FE3633CC0BF3C6C2B1BB"
+	userPriv          = "FDE3BD94CB327D19464027BA668194C5EFA46AE83E8419D7542CFF41F00C81972239C21C81EA7173A6C489145490C015E05D4B97448933B708A7EC5B7B4921E3"
+	userPub           = "2239C21C81EA7173A6C489145490C015E05D4B97448933B708A7EC5B7B4921E3"
+	byteAddr, byteKey = initUserBytes()
 
 	clients = map[string]cclient.Client{
 		"JSONRPC": cclient.NewClient(requestAddr, "JSONRPC"),
 		"HTTP":    cclient.NewClient(requestAddr, "HTTP"),
 	}
 )
+
+func initUserBytes() ([]byte, [64]byte) {
+	byteAddr, _ := hex.DecodeString(userAddr)
+	var byteKey [64]byte
+	oh, _ := hex.DecodeString(userPriv)
+	copy(byteKey[:], oh)
+	return byteAddr, byteKey
+}
 
 func decodeHex(hexStr string) []byte {
 	bytes, err := hex.DecodeString(hexStr)
@@ -83,6 +94,9 @@ func init() {
 	}
 	priv.SetFile(rootDir + "/priv_validator.json")
 	priv.Save()
+
+	consensus.RoundDuration0 = 3 * time.Second
+	consensus.RoundDurationDelta = 1 * time.Second
 
 	// start a node
 	ready := make(chan struct{})
@@ -263,4 +277,21 @@ func checkTx(t *testing.T, fromAddr []byte, priv *account.PrivAccount, tx *types
 	if !in.PubKey.VerifyBytes(signBytes, in.Signature) {
 		t.Fatal(types.ErrTxInvalidSignature)
 	}
+}
+
+// simple contract returns 5 + 6 = 0xb
+func simpleCallContract() ([]byte, []byte, []byte) {
+	// this is the code we want to run when the contract is called
+	contractCode := []byte{0x60, 0x5, 0x60, 0x6, 0x1, 0x60, 0x0, 0x52, 0x60, 0x20, 0x60, 0x0, 0xf3}
+	// the is the code we need to return the contractCode when the contract is initialized
+	lenCode := len(contractCode)
+	// push code to the stack
+	//code := append([]byte{byte(0x60 + lenCode - 1)}, LeftPadWord256(contractCode).Bytes()...)
+	code := append([]byte{0x7f}, RightPadWord256(contractCode).Bytes()...)
+	// store it in memory
+	code = append(code, []byte{0x60, 0x0, 0x52}...)
+	// return whats in memory
+	//code = append(code, []byte{0x60, byte(32 - lenCode), 0x60, byte(lenCode), 0xf3}...)
+	code = append(code, []byte{0x60, byte(lenCode), 0x60, 0x0, 0xf3}...)
+	return code, contractCode, LeftPadBytes([]byte{0xb}, 32)
 }

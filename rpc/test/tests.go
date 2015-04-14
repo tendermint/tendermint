@@ -49,11 +49,6 @@ func testGetAccount(t *testing.T, typ string) {
 }
 
 func testSignedTx(t *testing.T, typ string) {
-	byteAddr, _ := hex.DecodeString(userAddr)
-	var byteKey [64]byte
-	oh, _ := hex.DecodeString(userPriv)
-	copy(byteKey[:], oh)
-
 	amt := uint64(100)
 	toAddr := []byte{20, 143, 25, 63, 16, 177, 83, 29, 91, 91, 54, 23, 233, 46, 190, 121, 122, 34, 86, 54}
 	tx, priv := signTx(t, typ, byteAddr, toAddr, nil, byteKey, amt, 0, 0)
@@ -69,11 +64,6 @@ func testSignedTx(t *testing.T, typ string) {
 }
 
 func testBroadcastTx(t *testing.T, typ string) {
-	byteAddr, _ := hex.DecodeString(userAddr)
-	var byteKey [64]byte
-	oh, _ := hex.DecodeString(userPriv)
-	copy(byteKey[:], oh)
-
 	amt := uint64(100)
 	toAddr := []byte{20, 143, 25, 63, 16, 177, 83, 29, 91, 91, 54, 23, 233, 46, 190, 121, 122, 34, 86, 54}
 	tx, receipt := broadcastTx(t, typ, byteAddr, toAddr, nil, byteKey, amt, 0, 0)
@@ -102,11 +92,6 @@ func testGetStorage(t *testing.T, typ string) {
 	priv := state.LoadPrivValidator(".tendermint/priv_validator.json")
 	_ = priv
 	//core.SetPrivValidator(priv)
-
-	byteAddr, _ := hex.DecodeString(userAddr)
-	var byteKey [64]byte
-	oh, _ := hex.DecodeString(userPriv)
-	copy(byteKey[:], oh)
 
 	amt := uint64(1100)
 	code := []byte{0x60, 0x5, 0x60, 0x1, 0x55}
@@ -153,30 +138,9 @@ func testCallCode(t *testing.T, typ string) {
 func testCall(t *testing.T, typ string) {
 	client := clients[typ]
 
-	priv := state.LoadPrivValidator(".tendermint/priv_validator.json")
-	_ = priv
-	//core.SetPrivValidator(priv)
-
-	byteAddr, _ := hex.DecodeString(userAddr)
-	var byteKey [64]byte
-	oh, _ := hex.DecodeString(userPriv)
-	copy(byteKey[:], oh)
-
 	// create the contract
 	amt := uint64(6969)
-	// this is the code we want to run when the contract is called
-	contractCode := []byte{0x60, 0x5, 0x60, 0x6, 0x1, 0x60, 0x0, 0x52, 0x60, 0x20, 0x60, 0x0, 0xf3}
-	// the is the code we need to return the contractCode when the contract is initialized
-	lenCode := len(contractCode)
-	// push code to the stack
-	//code := append([]byte{byte(0x60 + lenCode - 1)}, LeftPadWord256(contractCode).Bytes()...)
-	code := append([]byte{0x7f}, RightPadWord256(contractCode).Bytes()...)
-	// store it in memory
-	code = append(code, []byte{0x60, 0x0, 0x52}...)
-	// return whats in memory
-	//code = append(code, []byte{0x60, byte(32 - lenCode), 0x60, byte(lenCode), 0xf3}...)
-	code = append(code, []byte{0x60, byte(lenCode), 0x60, 0x0, 0xf3}...)
-
+	code, _, _ := simpleCallContract()
 	_, receipt := broadcastTx(t, typ, byteAddr, nil, code, byteKey, amt, 1000, 1000)
 	if receipt.CreatesContract == 0 {
 		t.Fatal("This tx creates a contract")

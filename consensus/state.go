@@ -73,11 +73,14 @@ import (
 )
 
 const (
-	roundDuration0         = 10 * time.Second   // The first round is 60 seconds long.
-	roundDurationDelta     = 3 * time.Second    // Each successive round lasts 15 seconds longer.
 	roundDeadlinePrevote   = float64(1.0 / 3.0) // When the prevote is due.
 	roundDeadlinePrecommit = float64(2.0 / 3.0) // When the precommit vote is due.
-	newHeightDelta         = roundDuration0 / 3 // The time to wait between commitTime and startTime of next consensus rounds.
+)
+
+var (
+	RoundDuration0     = 10 * time.Second   // The first round is 60 seconds long.
+	RoundDurationDelta = 3 * time.Second    // Each successive round lasts 15 seconds longer.
+	newHeightDelta     = RoundDuration0 / 3 // The time to wait between commitTime and startTime of next consensus rounds.
 )
 
 var (
@@ -318,14 +321,14 @@ func (cs *ConsensusState) stepTransitionRoutine() {
 			// NOTE: We can push directly to runActionCh because
 			// we're running in a separate goroutine, which avoids deadlocks.
 			rs := cs.getRoundState()
-			round, roundStartTime, roundDuration, _, elapsedRatio := calcRoundInfo(rs.StartTime)
+			round, roundStartTime, RoundDuration, _, elapsedRatio := calcRoundInfo(rs.StartTime)
 			log.Debug("Scheduling next action", "height", rs.Height, "round", round, "step", rs.Step, "roundStartTime", roundStartTime, "elapsedRatio", elapsedRatio)
 			switch rs.Step {
 			case RoundStepNewHeight:
 				// We should run RoundActionPropose when rs.StartTime passes.
 				if elapsedRatio < 0 {
 					// startTime is in the future.
-					time.Sleep(time.Duration((-1.0 * elapsedRatio) * float64(roundDuration)))
+					time.Sleep(time.Duration((-1.0 * elapsedRatio) * float64(RoundDuration)))
 				}
 				cs.runActionCh <- RoundAction{rs.Height, rs.Round, RoundActionPropose}
 			case RoundStepNewRound:
@@ -333,15 +336,15 @@ func (cs *ConsensusState) stepTransitionRoutine() {
 				cs.runActionCh <- RoundAction{rs.Height, rs.Round, RoundActionPropose}
 			case RoundStepPropose:
 				// Wake up when it's time to vote.
-				time.Sleep(time.Duration((roundDeadlinePrevote - elapsedRatio) * float64(roundDuration)))
+				time.Sleep(time.Duration((roundDeadlinePrevote - elapsedRatio) * float64(RoundDuration)))
 				cs.runActionCh <- RoundAction{rs.Height, rs.Round, RoundActionPrevote}
 			case RoundStepPrevote:
 				// Wake up when it's time to precommit.
-				time.Sleep(time.Duration((roundDeadlinePrecommit - elapsedRatio) * float64(roundDuration)))
+				time.Sleep(time.Duration((roundDeadlinePrecommit - elapsedRatio) * float64(RoundDuration)))
 				cs.runActionCh <- RoundAction{rs.Height, rs.Round, RoundActionPrecommit}
 			case RoundStepPrecommit:
 				// Wake up when the round is over.
-				time.Sleep(time.Duration((1.0 - elapsedRatio) * float64(roundDuration)))
+				time.Sleep(time.Duration((1.0 - elapsedRatio) * float64(RoundDuration)))
 				cs.runActionCh <- RoundAction{rs.Height, rs.Round, RoundActionTryCommit}
 			case RoundStepCommit:
 				// There's nothing to scheudle, we're waiting for
@@ -1122,13 +1125,13 @@ func (cs *ConsensusState) SetEventSwitch(evsw *events.EventSwitch) {
 
 // total duration of given round
 func calcRoundDuration(round uint) time.Duration {
-	return roundDuration0 + roundDurationDelta*time.Duration(round)
+	return RoundDuration0 + RoundDurationDelta*time.Duration(round)
 }
 
 // startTime is when round zero started.
 func calcRoundStartTime(round uint, startTime time.Time) time.Time {
-	return startTime.Add(roundDuration0*time.Duration(round) +
-		roundDurationDelta*(time.Duration((int64(round)*int64(round)-int64(round))/2)))
+	return startTime.Add(RoundDuration0*time.Duration(round) +
+		RoundDurationDelta*(time.Duration((int64(round)*int64(round)-int64(round))/2)))
 }
 
 // calculates the current round given startTime of round zero.
@@ -1142,8 +1145,8 @@ func calcRound(startTime time.Time) uint {
 	// D_delta * R^2  +  (2D_0 - D_delta) * R  +  2(Start - Now)  <=  0.
 	// AR^2 + BR + C <= 0; A = D_delta, B = (2_D0 - D_delta), C = 2(Start - Now).
 	// R = Floor((-B + Sqrt(B^2 - 4AC))/2A)
-	A := float64(roundDurationDelta)
-	B := 2.0*float64(roundDuration0) - float64(roundDurationDelta)
+	A := float64(RoundDurationDelta)
+	B := 2.0*float64(RoundDuration0) - float64(RoundDurationDelta)
 	C := 2.0 * float64(startTime.Sub(now))
 	R := math.Floor((-B + math.Sqrt(B*B-4.0*A*C)) / (2 * A))
 	if math.IsNaN(R) {
@@ -1160,12 +1163,12 @@ func calcRound(startTime time.Time) uint {
 
 // convenience
 // NOTE: elapsedRatio can be negative if startTime is in the future.
-func calcRoundInfo(startTime time.Time) (round uint, roundStartTime time.Time, roundDuration time.Duration,
+func calcRoundInfo(startTime time.Time) (round uint, roundStartTime time.Time, RoundDuration time.Duration,
 	roundElapsed time.Duration, elapsedRatio float64) {
 	round = calcRound(startTime)
 	roundStartTime = calcRoundStartTime(round, startTime)
-	roundDuration = calcRoundDuration(round)
+	RoundDuration = calcRoundDuration(round)
 	roundElapsed = time.Now().Sub(roundStartTime)
-	elapsedRatio = float64(roundElapsed) / float64(roundDuration)
+	elapsedRatio = float64(roundElapsed) / float64(RoundDuration)
 	return
 }

@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/events"
 	"github.com/tendermint/tendermint/vm/sha3"
 )
 
@@ -45,6 +46,8 @@ type VM struct {
 	origin   Word256
 
 	callDepth int
+
+	evsw *events.EventSwitch
 }
 
 func NewVM(appState AppState, params Params, origin Word256) *VM {
@@ -54,6 +57,11 @@ func NewVM(appState AppState, params Params, origin Word256) *VM {
 		origin:    origin,
 		callDepth: 0,
 	}
+}
+
+// satisfies events.Eventable
+func (vm *VM) SetEventSwitch(evsw *events.EventSwitch) {
+	vm.evsw = evsw
 }
 
 // CONTRACT appState is aware of caller and callee, so we can just mutate them.
