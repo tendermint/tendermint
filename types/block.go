@@ -277,7 +277,7 @@ func (data *Data) Hash() []byte {
 	if data.hash == nil {
 		bs := make([]interface{}, len(data.Txs))
 		for i, tx := range data.Txs {
-			bs[i] = tx
+			bs[i] = account.SignBytes(tx)
 		}
 		data.hash = merkle.HashFromBinaries(bs)
 	}
