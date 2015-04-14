@@ -9,7 +9,7 @@ import (
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	"testing"
-	"time"
+	//"time"
 )
 
 func testStatus(t *testing.T, typ string) {
@@ -89,6 +89,13 @@ func testBroadcastTx(t *testing.T, typ string) {
 }
 
 func testGetStorage(t *testing.T, typ string) {
+	con := newWSCon(t)
+	eid := types.EventStringNewBlock()
+	subscribe(t, con, eid)
+	defer func() {
+		unsubscribe(t, con, eid)
+		con.Close()
+	}()
 	priv := state.LoadPrivValidator(".tendermint/priv_validator.json")
 	_ = priv
 	//core.SetPrivValidator(priv)
@@ -108,7 +115,11 @@ func testGetStorage(t *testing.T, typ string) {
 	}
 
 	// allow it to get mined
-	time.Sleep(time.Second * 20)
+	//time.Sleep(time.Second * 20)
+	waitForEvent(t, con, eid, true, func() {
+	}, func(eid string, b []byte) error {
+		return nil
+	})
 	mempoolCount = 0
 
 	v := getStorage(t, typ, contractAddr, []byte{0x1})
@@ -136,6 +147,14 @@ func testCallCode(t *testing.T, typ string) {
 }
 
 func testCall(t *testing.T, typ string) {
+	con := newWSCon(t)
+	eid := types.EventStringNewBlock()
+	subscribe(t, con, eid)
+	defer func() {
+		unsubscribe(t, con, eid)
+		con.Close()
+	}()
+
 	client := clients[typ]
 
 	// create the contract
@@ -154,7 +173,11 @@ func testCall(t *testing.T, typ string) {
 	}
 
 	// allow it to get mined
-	time.Sleep(time.Second * 20)
+	//time.Sleep(time.Second * 20)
+	waitForEvent(t, con, eid, true, func() {
+	}, func(eid string, b []byte) error {
+		return nil
+	})
 	mempoolCount = 0
 
 	// run a call through the contract
