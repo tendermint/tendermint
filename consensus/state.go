@@ -440,8 +440,8 @@ ACTION_LOOP:
 			if cs.TryFinalizeCommit(rs.Height) {
 				// Now at new height
 				// cs.Step is at RoundStepNewHeight or RoundStepNewRound.
-				// newblock event!
-				cs.evsw.FireEvent("newblock", cs.state.LastBlockHash)
+				newBlock := cs.blockStore.LoadBlock(cs.state.LastBlockHeight)
+				cs.evsw.FireEvent(types.EventStringNewBlock(), newBlock)
 				scheduleNextAction()
 				continue ACTION_LOOP
 			} else {
@@ -1115,6 +1115,7 @@ func (cs *ConsensusState) saveCommitVoteBlock(block *types.Block, blockParts *ty
 // implements events.Eventable
 func (cs *ConsensusState) SetEventSwitch(evsw *events.EventSwitch) {
 	cs.evsw = evsw
+	cs.state.SetEventSwitch(evsw)
 }
 
 //-----------------------------------------------------------------------------

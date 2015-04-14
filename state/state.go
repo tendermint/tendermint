@@ -8,6 +8,7 @@ import (
 	"github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
 	dbm "github.com/tendermint/tendermint/db"
+	"github.com/tendermint/tendermint/events"
 	"github.com/tendermint/tendermint/merkle"
 	"github.com/tendermint/tendermint/types"
 )
@@ -34,6 +35,8 @@ type State struct {
 	UnbondingValidators  *ValidatorSet
 	accounts             merkle.Tree // Shouldn't be accessed directly.
 	validatorInfos       merkle.Tree // Shouldn't be accessed directly.
+
+	evsw *events.EventSwitch
 }
 
 func LoadState(db dbm.DB) *State {
@@ -98,6 +101,7 @@ func (s *State) Copy() *State {
 		UnbondingValidators:  s.UnbondingValidators.Copy(),  // copy the valSet lazily.
 		accounts:             s.accounts.Copy(),
 		validatorInfos:       s.validatorInfos.Copy(),
+		evsw:                 s.evsw,
 	}
 }
 
@@ -263,6 +267,11 @@ func (s *State) LoadStorage(hash []byte) (storage merkle.Tree) {
 
 // State.storage
 //-------------------------------------
+
+// implements events.Eventable
+func (s *State) SetEventSwitch(evsw *events.EventSwitch) {
+	s.evsw = evsw
+}
 
 //-----------------------------------------------------------------------------
 

@@ -10,10 +10,10 @@ import (
 	"runtime/debug"
 	"time"
 
+	"github.com/tendermint/tendermint/alert"
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/events"
-	"github.com/tendermint/tendermint/alert"
 )
 
 func StartHTTPServer(listenAddr string, funcMap map[string]*RPCFunc, evsw *events.EventSwitch) {

@@ -295,7 +295,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool) error {
 
 	// TODO: do something with fees
 	fees := uint64(0)
-	_s := blockCache.State() // hack to access validators.
+	_s := blockCache.State() // hack to access validators and event switch.
 
 	// Exec tx
 	switch tx := tx_.(type) {
@@ -324,6 +324,19 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool) error {
 		adjustByOutputs(accounts, tx.Outputs)
 		for _, acc := range accounts {
 			blockCache.UpdateAccount(acc)
+		}
+
+		// If we're in a block (not mempool),
+		// fire event on all inputs and outputs
+		// see types/events.go for spec
+		if runCall {
+			for _, i := range tx.Inputs {
+				_s.evsw.FireEvent(types.EventStringAccInput(i.Address), tx)
+			}
+
+			for _, o := range tx.Outputs {
+				_s.evsw.FireEvent(types.EventStringAccOutput(o.Address), tx)
+			}
 		}
 		return nil
 
@@ -413,14 +426,18 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool) error {
 			txCache.UpdateAccount(callee) // because we adjusted by input above.
 			vmach := vm.NewVM(txCache, params, caller.Address)
 			// NOTE: Call() transfers the value from caller to callee iff call succeeds.
+
 			ret, err := vmach.Call(caller, callee, code, tx.Data, value, &gas)
+			var exception string
 			if err != nil {
+				exception = err.Error()
 				// Failure. Charge the gas fee. The 'value' was otherwise not transferred.
 				log.Debug(Fmt("Error on execution: %v", err))
 				inAcc.Balance -= tx.Fee
 				blockCache.UpdateAccount(inAcc)
 				// Throw away 'txCache' which holds incomplete updates (don't sync it).
 			} else {
+				exception = ""
 				log.Debug("Successful execution")
 				// Success
 				if createAccount {
@@ -431,6 +448,20 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool) error {
 			}
 			// Create a receipt from the ret and whether errored.
 			log.Info("VM call complete", "caller", caller, "callee", callee, "return", ret, "err", err)
+
+			// Fire Events for sender and receiver
+			// a separate event will be fired from vm for each
+			_s.evsw.FireEvent(types.EventStringAccInput(tx.Input.Address), struct {
+				Tx        types.Tx
+				Return    []byte
+				Exception string
+			}{tx, ret, exception})
+
+			_s.evsw.FireEvent(types.EventStringAccReceive(tx.Address), struct {
+				Tx        types.Tx
+				Return    []byte
+				Exception string
+			}{tx, ret, exception})
 		} else {
 			// The mempool does not call txs until
 			// the proposer determines the order of txs.
@@ -498,6 +529,9 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool) error {
 		if !added {
 			panic("Failed to add validator")
 		}
+		if runCall {
+			_s.evsw.FireEvent(types.EventStringBond(), tx)
+		}
 		return nil
 
 	case *types.UnbondTx:
@@ -520,6 +554,9 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool) error {
 
 		// Good!
 		_s.unbondValidator(val)
+		if runCall {
+			_s.evsw.FireEvent(types.EventStringUnbond(), tx)
+		}
 		return nil
 
 	case *types.RebondTx:
@@ -542,6 +579,9 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool) error {
 
 		// Good!
 		_s.rebondValidator(val)
+		if runCall {
+			_s.evsw.FireEvent(types.EventStringRebond(), tx)
+		}
 		return nil
 
 	case *types.DupeoutTx:
@@ -585,6 +625,9 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool) error {
 
 		// Good! (Bad validator!)
 		_s.destroyValidator(accused)
+		if runCall {
+			_s.evsw.FireEvent(types.EventStringDupeout(), tx)
+		}
 		return nil
 
 	default:
