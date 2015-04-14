@@ -603,7 +603,7 @@ func readReflectJSON(rv reflect.Value, rt reflect.Type, o interface{}, err *erro
 			// Read length
 			oSlice, ok := o.([]interface{})
 			if !ok {
-				*err = errors.New(Fmt("Expected array but got type %v", reflect.TypeOf(o)))
+				*err = errors.New(Fmt("Expected array of %v but got type %v", rt, reflect.TypeOf(o)))
 				return
 			}
 			length := len(oSlice)

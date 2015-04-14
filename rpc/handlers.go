@@ -128,7 +128,7 @@ func jsonParamsToArgs(rpcFunc *RPCFunc, params []interface{}) ([]reflect.Value, 
 func _jsonObjectToArg(ty reflect.Type, object interface{}) (reflect.Value, error) {
 	var err error
 	v := reflect.New(ty)
-	binary.ReadJSONFromObject(v.Interface(), object, &err)
+	binary.ReadJSONObject(v.Interface(), object, &err)
 	if err != nil {
 		return v, err
 	}

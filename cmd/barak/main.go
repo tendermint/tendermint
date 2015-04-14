@@ -16,6 +16,7 @@ import (
 
 	acm "github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/cmd/barak/types"
 	. "github.com/tendermint/tendermint/common"
 	pcm "github.com/tendermint/tendermint/process"
 	"github.com/tendermint/tendermint/rpc"
@@ -169,9 +170,6 @@ type CommandRunProcess struct {
 
 func (_ CommandRunProcess) TypeByte() byte { return typeByteRunProcess }
 
-type ResponseRunProcess struct {
-}
-
 func RunProcess(wait bool, label string, execPath string, args []string, input string) (*ResponseRunProcess, error) {
 	barak.mtx.Lock()
 
@@ -204,9 +202,6 @@ type CommandStopProcess struct {
 
 func (_ CommandStopProcess) TypeByte() byte { return typeByteStopProcess }
 
-type ResponseStopProcess struct {
-}
-
 func StopProcess(label string, kill bool) (*ResponseStopProcess, error) {
 	barak.mtx.Lock()
 	proc := barak.processes[label]
@@ -225,10 +220,6 @@ func StopProcess(label string, kill bool) (*ResponseStopProcess, error) {
 type CommandListProcesses struct{}
 
 func (_ CommandListProcesses) TypeByte() byte { return typeByteListProcesses }
-
-type ResponseListProcesses struct {
-	Processes []*pcm.Process
-}
 
 func ListProcesses() (*ResponseListProcesses, error) {
 	var procs = []*pcm.Process{}

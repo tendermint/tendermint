@@ -34,10 +34,10 @@ func ReadJSON(o interface{}, bytes []byte, err *error) interface{} {
 		return o
 	}
 
-	return ReadJSONFromObject(o, object, err)
+	return ReadJSONObject(o, object, err)
 }
 
-func ReadJSONFromObject(o interface{}, object interface{}, err *error) interface{} {
+func ReadJSONObject(o interface{}, object interface{}, err *error) interface{} {
 	rv, rt := reflect.ValueOf(o), reflect.TypeOf(o)
 	if rv.Kind() == reflect.Ptr {
 		readReflectJSON(rv.Elem(), rt.Elem(), object, err)
