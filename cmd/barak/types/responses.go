@@ -4,6 +4,11 @@ import (
 	pcm "github.com/tendermint/tendermint/process"
 )
 
+type ResponseStatus struct {
+	Nonce      uint64
+	Validators []Validator
+}
+
 type ResponseRunProcess struct {
 }
 

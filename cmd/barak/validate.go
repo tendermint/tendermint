@@ -1,11 +1,9 @@
 package main
 
-import acm "github.com/tendermint/tendermint/account"
-
-type Validator struct {
-	VotingPower uint64
-	PubKey      acm.PubKey
-}
+import (
+	acm "github.com/tendermint/tendermint/account"
+	. "github.com/tendermint/tendermint/cmd/barak/types"
+)
 
 func validate(signBytes []byte, validators []Validator, signatures []acm.Signature) bool {
 	var signedPower uint64

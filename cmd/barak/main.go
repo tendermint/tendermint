@@ -22,7 +22,8 @@ import (
 )
 
 var Routes = map[string]*rpc.RPCFunc{
-	"run": rpc.NewRPCFunc(Run, []string{"auth_command"}),
+	"status": rpc.NewRPCFunc(Status, []string{}),
+	"run":    rpc.NewRPCFunc(Run, []string{"auth_command"}),
 	// NOTE: also, two special non-JSONRPC routes called "download" and "upload"
 }
 
@@ -72,7 +73,19 @@ func main() {
 }
 
 //------------------------------------------------------------------------------
-// RPC main function
+// RPC functions
+
+func Status() (*ResponseStatus, error) {
+	barak.mtx.Lock()
+	nonce := barak.nonce
+	validators := barak.validators
+	barak.mtx.Unlock()
+
+	return &ResponseStatus{
+		Nonce:      nonce,
+		Validators: validators,
+	}, nil
+}
 
 func Run(authCommand AuthCommand) (interface{}, error) {
 	command, err := parseValidateCommand(authCommand)

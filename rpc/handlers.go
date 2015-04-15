@@ -3,6 +3,7 @@ package rpc
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/tendermint/tendermint/binary"
 	"github.com/tendermint/tendermint/events"
@@ -113,6 +114,10 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc) http.HandlerFunc {
 
 // covert a list of interfaces to properly typed values
 func jsonParamsToArgs(rpcFunc *RPCFunc, params []interface{}) ([]reflect.Value, error) {
+	if len(rpcFunc.argNames) != len(params) {
+		return nil, errors.New(fmt.Sprintf("Expected %v parameters (%v), got %v (%v)",
+			len(rpcFunc.argNames), rpcFunc.argNames, len(params), params))
+	}
 	values := make([]reflect.Value, len(params))
 	for i, p := range params {
 		ty := rpcFunc.args[i]
