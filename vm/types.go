@@ -46,3 +46,11 @@ type Params struct {
 	BlockTime   int64
 	GasLimit    uint64
 }
+
+type CallData struct {
+	Caller []byte
+	Callee []byte
+	Data   []byte
+	Value  uint64
+	Gas    uint64
+}

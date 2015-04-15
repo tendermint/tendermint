@@ -7,6 +7,7 @@ import (
 
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/events"
+	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/vm/sha3"
 )
 
@@ -44,18 +45,20 @@ type VM struct {
 	appState AppState
 	params   Params
 	origin   Word256
+	txid     []byte
 
 	callDepth int
 
 	evsw *events.EventSwitch
 }
 
-func NewVM(appState AppState, params Params, origin Word256) *VM {
+func NewVM(appState AppState, params Params, origin Word256, txid []byte) *VM {
 	return &VM{
 		appState:  appState,
 		params:    params,
 		origin:    origin,
 		callDepth: 0,
+		txid:      txid,
 	}
 }
 
@@ -80,11 +83,30 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 	vm.callDepth += 1
 	output, err = vm.call(caller, callee, code, input, value, gas)
 	vm.callDepth -= 1
+	exception := ""
 	if err != nil {
+		exception = err.Error()
 		err := transfer(callee, caller, value)
 		if err != nil {
 			panic("Could not return value to caller")
 		}
+	}
+	// if callDepth is 0 the event is fired from ExecTx (along with the Input invent)
+	// otherwise, we fire from here.
+	if vm.callDepth != 0 && vm.evsw != nil {
+		vm.evsw.FireEvent(types.EventStringAccReceive(callee.Address.Prefix(20)), struct {
+			CallData  *CallData
+			Origin    []byte
+			TxId      []byte
+			Return    []byte
+			Exception string
+		}{
+			&CallData{caller.Address.Prefix(20), callee.Address.Prefix(20), input, value, *gas},
+			vm.origin.Prefix(20),
+			vm.txid,
+			output,
+			exception,
+		})
 	}
 	return
 }
@@ -636,6 +658,8 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 				if ok = useGas(gas, GasGetAccount); !ok {
 					return nil, firstErr(err, ErrInsufficientGas)
 				}
+				// :(
+				addr = RightPadWord256(flip(addr.Prefix(20)))
 				acc := vm.appState.GetAccount(addr)
 				if acc == nil {
 					return nil, firstErr(err, ErrUnknownAddress)

@@ -36,7 +36,7 @@ func makeBytes(n int) []byte {
 }
 
 func TestVM(t *testing.T) {
-	ourVm := NewVM(newAppState(), newParams(), Zero256)
+	ourVm := NewVM(newAppState(), newParams(), Zero256, nil)
 
 	// Create accounts
 	account1 := &Account{
@@ -72,7 +72,7 @@ func TestSubcurrency(t *testing.T) {
 	st.accounts[account1.Address.String()] = account1
 	st.accounts[account2.Address.String()] = account2
 
-	ourVm := NewVM(st, newParams(), Zero256)
+	ourVm := NewVM(st, newParams(), Zero256, nil)
 
 	var gas uint64 = 1000
 	code_parts := []string{"620f42403355",
