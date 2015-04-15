@@ -1,10 +1,11 @@
 package rpc
 
 import (
-	"bytes"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
+	"github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
 	"github.com/tendermint/tendermint/rpc"
 	"github.com/tendermint/tendermint/types"
@@ -50,25 +51,39 @@ func unsubscribe(t *testing.T, con *websocket.Conn, eventid string) {
 	}
 }
 
-// wait for an event, do things that might trigger events, and check them when they are received
+// wait for an event; do things that might trigger events, and check them when they are received
 func waitForEvent(t *testing.T, con *websocket.Conn, eventid string, dieOnTimeout bool, f func(), check func(string, []byte) error) {
 	// go routine to wait for webscoket msg
-	gch := make(chan []byte)
-	ech := make(chan error)
+	gch := make(chan []byte) // good channel
+	ech := make(chan error)  // error channel
 	go func() {
-		typ, p, err := con.ReadMessage()
-		fmt.Println("RESPONSE:", typ, string(p), err)
-		if err != nil {
-			ech <- err
-		} else {
-			gch <- p
+		for {
+			_, p, err := con.ReadMessage()
+			if err != nil {
+				ech <- err
+				break
+			} else {
+				// if the event id isnt what we're waiting on
+				// ignore it
+				var response struct {
+					Event string
+				}
+				if err := json.Unmarshal(p, &response); err != nil {
+					ech <- err
+					break
+				}
+				if response.Event == eventid {
+					gch <- p
+					break
+				}
+			}
 		}
 	}()
 
 	// do stuff (transactions)
 	f()
 
-	// if the event is not received in 20 seconds, die
+	// wait for an event or 10 seconds
 	ticker := time.Tick(10 * time.Second)
 	select {
 	case <-ticker:
@@ -77,6 +92,7 @@ func waitForEvent(t *testing.T, con *websocket.Conn, eventid string, dieOnTimeou
 			t.Fatalf("%s event was not received in time", eventid)
 		}
 		// else that's great, we didn't hear the event
+		// and we shouldn't have
 	case p := <-gch:
 		if dieOnTimeout {
 			// message was received and expected
@@ -146,24 +162,8 @@ func TestWSBlockchainGrowth(t *testing.T) {
 		unsubscribe(t, con, eid)
 		con.Close()
 	}()
-	var initBlockN uint
-	for i := 0; i < 2; i++ {
-		waitForEvent(t, con, eid, true, func() {}, func(eid string, b []byte) error {
-			block, err := unmarshalResponseNewBlock(b)
-			if err != nil {
-				return err
-			}
-			if i == 0 {
-				initBlockN = block.Header.Height
-			} else {
-				if block.Header.Height != initBlockN+uint(i) {
-					return fmt.Errorf("Expected block %d, got block %d", i, block.Header.Height)
-				}
-			}
-
-			return nil
-		})
-	}
+	// listen for NewBlock, ensure height increases by 1
+	unmarshalValidateBlockchain(t, con, eid)
 }
 
 // send a transaction and validate the events from listening for both sender and receiver
@@ -181,40 +181,10 @@ func TestWSSend(t *testing.T) {
 		unsubscribe(t, con, eidOutput)
 		con.Close()
 	}()
-	checkerFunc := func(eid string, b []byte) error {
-		// unmarshal and assert correctness
-		var response struct {
-			Event string
-			Data  types.SendTx
-			Error string
-		}
-		var err error
-		binary.ReadJSON(&response, b, &err)
-		if err != nil {
-			return err
-		}
-		if response.Error != "" {
-			return fmt.Errorf(response.Error)
-		}
-		if eid != response.Event {
-			return fmt.Errorf("Eventid is not correct. Got %s, expected %s", response.Event, eid)
-		}
-		tx := response.Data
-		if bytes.Compare(tx.Inputs[0].Address, byteAddr) != 0 {
-			return fmt.Errorf("Senders do not match up! Got %x, expected %x", tx.Inputs[0].Address, byteAddr)
-		}
-		if tx.Inputs[0].Amount != amt {
-			return fmt.Errorf("Amt does not match up! Got %d, expected %d", tx.Inputs[0].Amount, amt)
-		}
-		if bytes.Compare(tx.Outputs[0].Address, toAddr) != 0 {
-			return fmt.Errorf("Receivers do not match up! Got %x, expected %x", tx.Outputs[0].Address, byteAddr)
-		}
-		return nil
-	}
 	waitForEvent(t, con, eidInput, true, func() {
 		broadcastTx(t, "JSONRPC", byteAddr, toAddr, nil, byteKey, amt, 0, 0)
-	}, checkerFunc)
-	waitForEvent(t, con, eidOutput, true, func() {}, checkerFunc)
+	}, unmarshalValidateSend(amt, toAddr))
+	waitForEvent(t, con, eidOutput, true, func() {}, unmarshalValidateSend(amt, toAddr))
 }
 
 // ensure events are only fired once for a given transaction
@@ -241,87 +211,96 @@ func TestWSDoubleFire(t *testing.T) {
 	})
 }
 
-// create a contract and send it a msg, validate the return
-func TestWSCall(t *testing.T) {
+// create a contract, wait for the event, and send it a msg, validate the return
+func TestWSCallWait(t *testing.T) {
 	byteAddr, _ := hex.DecodeString(userAddr)
 	con := newWSCon(t)
-	eid := types.EventStringAccInput(byteAddr)
+	eid1 := types.EventStringAccInput(byteAddr)
+	subscribe(t, con, eid1)
+	defer func() {
+		unsubscribe(t, con, eid1)
+		con.Close()
+	}()
+	amt := uint64(10000)
+	code, returnCode, returnVal := simpleContract()
+	var contractAddr []byte
+	// wait for the contract to be created
+	waitForEvent(t, con, eid1, true, func() {
+		_, receipt := broadcastTx(t, "JSONRPC", byteAddr, nil, code, byteKey, amt, 1000, 1000)
+		contractAddr = receipt.ContractAddr
+
+	}, unmarshalValidateCall(amt, returnCode))
+
+	// susbscribe to the new contract
+	amt = uint64(10001)
+	eid2 := types.EventStringAccReceive(contractAddr)
+	subscribe(t, con, eid2)
+	defer func() {
+		unsubscribe(t, con, eid2)
+	}()
+	// get the return value from a call
+	data := []byte{0x1} // just needs to be non empty for this to be a CallTx
+	waitForEvent(t, con, eid2, true, func() {
+		broadcastTx(t, "JSONRPC", byteAddr, contractAddr, data, byteKey, amt, 1000, 1000)
+	}, unmarshalValidateCall(amt, returnVal))
+}
+
+// create a contract and send it a msg without waiting. wait for contract event
+// and validate return
+func TestWSCallNoWait(t *testing.T) {
+	byteAddr, _ := hex.DecodeString(userAddr)
+	con := newWSCon(t)
+	amt := uint64(10000)
+	code, _, returnVal := simpleContract()
+
+	_, receipt := broadcastTx(t, "JSONRPC", byteAddr, nil, code, byteKey, amt, 1000, 1000)
+	contractAddr := receipt.ContractAddr
+
+	// susbscribe to the new contract
+	amt = uint64(10001)
+	eid := types.EventStringAccReceive(contractAddr)
 	subscribe(t, con, eid)
 	defer func() {
 		unsubscribe(t, con, eid)
 		con.Close()
 	}()
-	amt := uint64(10000)
-	code, returnCode, returnVal := simpleCallContract()
-	var contractAddr []byte
-	// wait for the contract to be created
-	waitForEvent(t, con, eid, true, func() {
-		_, receipt := broadcastTx(t, "JSONRPC", byteAddr, nil, code, byteKey, amt, 1000, 1000)
-		contractAddr = receipt.ContractAddr
-
-	}, func(eid string, b []byte) error {
-		// unmarshall and assert somethings
-		var response struct {
-			Event string
-			Data  struct {
-				Tx        types.CallTx
-				Return    []byte
-				Exception string
-			}
-			Error string
-		}
-		var err error
-		binary.ReadJSON(&response, b, &err)
-		if err != nil {
-			return err
-		}
-		if response.Error != "" {
-			return fmt.Errorf(response.Error)
-		}
-		if response.Data.Exception != "" {
-			return fmt.Errorf(response.Data.Exception)
-		}
-		tx := response.Data.Tx
-		if bytes.Compare(tx.Input.Address, byteAddr) != 0 {
-			return fmt.Errorf("Senders do not match up! Got %x, expected %x", tx.Input.Address, byteAddr)
-		}
-		if tx.Input.Amount != amt {
-			return fmt.Errorf("Amt does not match up! Got %d, expected %d", tx.Input.Amount, amt)
-		}
-		ret := response.Data.Return
-		if bytes.Compare(ret, returnCode) != 0 {
-			return fmt.Errorf("Create did not return correct byte code for new contract. Got %x, expected %x", ret, returnCode)
-		}
-		return nil
-	})
-
 	// get the return value from a call
 	data := []byte{0x1} // just needs to be non empty for this to be a CallTx
 	waitForEvent(t, con, eid, true, func() {
 		broadcastTx(t, "JSONRPC", byteAddr, contractAddr, data, byteKey, amt, 1000, 1000)
-	}, func(eid string, b []byte) error {
-		// unmarshall and assert somethings
-		var response struct {
-			Event string
-			Data  struct {
-				Tx        types.CallTx
-				Return    []byte
-				Exception string
-			}
-			Error string
-		}
-		var err error
-		binary.ReadJSON(&response, b, &err)
-		if err != nil {
-			return err
-		}
-		if response.Error != "" {
-			return fmt.Errorf(response.Error)
-		}
-		ret := response.Data.Return
-		if bytes.Compare(ret, returnVal) != 0 {
-			return fmt.Errorf("Call did not return correctly. Got %x, expected %x", ret, returnVal)
-		}
-		return nil
-	})
+	}, unmarshalValidateCall(amt, returnVal))
+}
+
+// create two contracts, one of which calls the other
+func TestWSCallCall(t *testing.T) {
+	byteAddr, _ := hex.DecodeString(userAddr)
+	con := newWSCon(t)
+	amt := uint64(10000)
+	code, _, returnVal := simpleContract()
+	txid := new([]byte)
+
+	// deploy the two contracts
+	_, receipt := broadcastTx(t, "JSONRPC", byteAddr, nil, code, byteKey, amt, 1000, 1000)
+	contractAddr1 := receipt.ContractAddr
+	code, _, _ = simpleCallContract(contractAddr1)
+	_, receipt = broadcastTx(t, "JSONRPC", byteAddr, nil, code, byteKey, amt, 1000, 1000)
+	contractAddr2 := receipt.ContractAddr
+
+	// susbscribe to the new contracts
+	amt = uint64(10001)
+	eid1 := types.EventStringAccReceive(contractAddr1)
+	eid2 := types.EventStringAccReceive(contractAddr2)
+	subscribe(t, con, eid1)
+	subscribe(t, con, eid2)
+	defer func() {
+		unsubscribe(t, con, eid1)
+		unsubscribe(t, con, eid2)
+		con.Close()
+	}()
+	// call contract2, which should call contract1, and wait for ev1
+	data := []byte{0x1} // just needs to be non empty for this to be a CallTx
+	waitForEvent(t, con, eid1, true, func() {
+		tx, _ := broadcastTx(t, "JSONRPC", byteAddr, contractAddr2, data, byteKey, amt, 1000, 1000)
+		*txid = account.SignBytes(tx)
+	}, unmarshalValidateCallCall(byteAddr, returnVal, txid))
 }

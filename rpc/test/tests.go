@@ -159,7 +159,7 @@ func testCall(t *testing.T, typ string) {
 
 	// create the contract
 	amt := uint64(6969)
-	code, _, _ := simpleCallContract()
+	code, _, _ := simpleContract()
 	_, receipt := broadcastTx(t, typ, byteAddr, nil, code, byteKey, amt, 1000, 1000)
 	if receipt.CreatesContract == 0 {
 		t.Fatal("This tx creates a contract")

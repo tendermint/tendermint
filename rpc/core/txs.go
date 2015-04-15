@@ -43,7 +43,7 @@ func Call(address, data []byte) (*ctypes.ResponseCall, error) {
 		GasLimit:    10000000,
 	}
 
-	vmach := vm.NewVM(txCache, params, caller.Address)
+	vmach := vm.NewVM(txCache, params, caller.Address, nil)
 	gas := uint64(1000000000)
 	ret, err := vmach.Call(caller, callee, callee.Code, data, 0, &gas)
 	if err != nil {
@@ -68,7 +68,7 @@ func CallCode(code, data []byte) (*ctypes.ResponseCall, error) {
 		GasLimit:    10000000,
 	}
 
-	vmach := vm.NewVM(txCache, params, caller.Address)
+	vmach := vm.NewVM(txCache, params, caller.Address, nil)
 	gas := uint64(1000000000)
 	ret, err := vmach.Call(caller, callee, code, data, 0, &gas)
 	if err != nil {

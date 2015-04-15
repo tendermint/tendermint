@@ -297,7 +297,6 @@ func (w *WebsocketManager) read(con *Connection) {
 			var in []byte
 			_, in, err := con.wsCon.ReadMessage()
 			if err != nil {
-				//if err := websocket.Message.Receive(con.wsCon, &in); err != nil {
 				// an error reading the connection,
 				// so kill the connection
 				con.quitChan <- struct{}{}

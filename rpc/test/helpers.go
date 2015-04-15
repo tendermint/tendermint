@@ -280,7 +280,7 @@ func checkTx(t *testing.T, fromAddr []byte, priv *account.PrivAccount, tx *types
 }
 
 // simple contract returns 5 + 6 = 0xb
-func simpleCallContract() ([]byte, []byte, []byte) {
+func simpleContract() ([]byte, []byte, []byte) {
 	// this is the code we want to run when the contract is called
 	contractCode := []byte{0x60, 0x5, 0x60, 0x6, 0x1, 0x60, 0x0, 0x52, 0x60, 0x20, 0x60, 0x0, 0xf3}
 	// the is the code we need to return the contractCode when the contract is initialized
@@ -293,5 +293,32 @@ func simpleCallContract() ([]byte, []byte, []byte) {
 	// return whats in memory
 	//code = append(code, []byte{0x60, byte(32 - lenCode), 0x60, byte(lenCode), 0xf3}...)
 	code = append(code, []byte{0x60, byte(lenCode), 0x60, 0x0, 0xf3}...)
+	// return init code, contract code, expected return
+	return code, contractCode, LeftPadBytes([]byte{0xb}, 32)
+}
+
+// simple call contract calls another contract
+func simpleCallContract(addr []byte) ([]byte, []byte, []byte) {
+	gas1, gas2 := byte(0x1), byte(0x1)
+	value := byte(0x1)
+	inOff, inSize := byte(0x0), byte(0x0) // no call data
+	retOff, retSize := byte(0x0), byte(0x20)
+	// this is the code we want to run (call a contract and return)
+	contractCode := []byte{0x60, retSize, 0x60, retOff, 0x60, inSize, 0x60, inOff, 0x60, value, 0x73}
+	contractCode = append(contractCode, addr...)
+	contractCode = append(contractCode, []byte{0x61, gas1, gas2, 0xf1, 0x60, 0x20, 0x60, 0x0, 0xf3}...)
+
+	// the is the code we need to return; the contractCode when the contract is initialized
+	// it should copy the code from the input into memory
+	lenCode := len(contractCode)
+	memOff := byte(0x0)
+	inOff = byte(0xc) // length of code before codeContract
+	length := byte(lenCode)
+
+	code := []byte{0x60, length, 0x60, inOff, 0x60, memOff, 0x37}
+	// return whats in memory
+	code = append(code, []byte{0x60, byte(lenCode), 0x60, 0x0, 0xf3}...)
+	code = append(code, contractCode...)
+	// return init code, contract code, expected return
 	return code, contractCode, LeftPadBytes([]byte{0xb}, 32)
 }
