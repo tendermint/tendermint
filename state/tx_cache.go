@@ -30,9 +30,13 @@ func (cache *TxCache) GetAccount(addr Word256) *vm.Account {
 	acc, removed := vmUnpack(cache.accounts[addr])
 	if removed {
 		return nil
-	} else {
-		return acc
+	} else if acc == nil {
+		acc2 := cache.backend.GetAccount(addr.Prefix(20))
+		if acc2 != nil {
+			return toVMAccount(acc2)
+		}
 	}
+	return acc
 }
 
 func (cache *TxCache) UpdateAccount(acc *vm.Account) {

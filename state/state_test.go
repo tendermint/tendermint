@@ -12,7 +12,7 @@ import (
 
 func execTxWithState(state *State, tx types.Tx, runCall bool) error {
 	cache := NewBlockCache(state)
-	err := ExecTx(cache, tx, runCall)
+	err := ExecTx(cache, tx, runCall, false)
 	if err != nil {
 		return err
 	} else {

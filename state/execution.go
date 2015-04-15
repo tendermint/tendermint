@@ -296,6 +296,8 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall, fireEvents bool) erro
 	// TODO: do something with fees
 	fees := uint64(0)
 	_s := blockCache.State() // hack to access validators and event switch.
+	nilSwitch := _s.evsw == nil
+	fireEvents = fireEvents && !nilSwitch
 
 	// Exec tx
 	switch tx := tx_.(type) {
@@ -424,7 +426,8 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall, fireEvents bool) erro
 
 			txCache.UpdateAccount(caller) // because we adjusted by input above, and bumped nonce maybe.
 			txCache.UpdateAccount(callee) // because we adjusted by input above.
-			vmach := vm.NewVM(txCache, params, caller.Address)
+			vmach := vm.NewVM(txCache, params, caller.Address, account.SignBytes(tx))
+			vmach.SetEventSwitch(_s.evsw)
 			// NOTE: Call() transfers the value from caller to callee iff call succeeds.
 
 			ret, err := vmach.Call(caller, callee, code, tx.Data, value, &gas)
