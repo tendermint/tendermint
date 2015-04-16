@@ -94,9 +94,9 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 	// if callDepth is 0 the event is fired from ExecTx (along with the Input event)
 	// otherwise, we fire from here.
 	if vm.callDepth != 0 && vm.evc != nil {
-		vm.evc.FireEvent(types.EventStringAccReceive(callee.Address.Prefix(20)), types.EventMsgCall{
-			&types.CallData{caller.Address.Prefix(20), callee.Address.Prefix(20), input, value, *gas},
-			vm.origin.Prefix(20),
+		vm.evc.FireEvent(types.EventStringAccReceive(callee.Address.Postfix(20)), types.EventMsgCall{
+			&types.CallData{caller.Address.Postfix(20), callee.Address.Postfix(20), input, value, *gas},
+			vm.origin.Postfix(20),
 			vm.txid,
 			output,
 			exception,
@@ -354,7 +354,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			if ok = useGas(gas, GasGetAccount); !ok {
 				return nil, firstErr(err, ErrInsufficientGas)
 			}
-			acc := vm.appState.GetAccount(addr) // TODO ensure that 20byte lengths are supported.
+			acc := vm.appState.GetAccount(flipWord(addr)) // TODO ensure that 20byte lengths are supported.
 			if acc == nil {
 				return nil, firstErr(err, ErrUnknownAddress)
 			}
@@ -431,7 +431,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			if ok = useGas(gas, GasGetAccount); !ok {
 				return nil, firstErr(err, ErrInsufficientGas)
 			}
-			acc := vm.appState.GetAccount(addr)
+			acc := vm.appState.GetAccount(flipWord(addr))
 			if acc == nil {
 				return nil, firstErr(err, ErrUnknownAddress)
 			}
@@ -445,7 +445,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			if ok = useGas(gas, GasGetAccount); !ok {
 				return nil, firstErr(err, ErrInsufficientGas)
 			}
-			acc := vm.appState.GetAccount(addr)
+			acc := vm.appState.GetAccount(flipWord(addr))
 			if acc == nil {
 				return nil, firstErr(err, ErrUnknownAddress)
 			}
@@ -652,9 +652,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 				if ok = useGas(gas, GasGetAccount); !ok {
 					return nil, firstErr(err, ErrInsufficientGas)
 				}
-				// :(
-				addr = RightPadWord256(flip(addr.Prefix(20)))
-				acc := vm.appState.GetAccount(addr)
+				acc := vm.appState.GetAccount(flipWord(addr))
 				if acc == nil {
 					return nil, firstErr(err, ErrUnknownAddress)
 				}
@@ -697,7 +695,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 				return nil, firstErr(err, ErrInsufficientGas)
 			}
 			// TODO if the receiver is , then make it the fee.
-			receiver := vm.appState.GetAccount(addr)
+			receiver := vm.appState.GetAccount(flipWord(addr))
 			if receiver == nil {
 				return nil, firstErr(err, ErrUnknownAddress)
 			}

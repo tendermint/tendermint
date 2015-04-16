@@ -31,7 +31,7 @@ func (cache *TxCache) GetAccount(addr Word256) *vm.Account {
 	if removed {
 		return nil
 	} else if acc == nil {
-		acc2 := cache.backend.GetAccount(addr.Prefix(20))
+		acc2 := cache.backend.GetAccount(addr.Postfix(20))
 		if acc2 != nil {
 			return toVMAccount(acc2)
 		}
@@ -68,7 +68,7 @@ func (cache *TxCache) CreateAccount(creator *vm.Account) *vm.Account {
 	nonce := creator.Nonce
 	creator.Nonce += 1
 
-	addr := RightPadWord256(NewContractAddress(creator.Address.Prefix(20), nonce))
+	addr := LeftPadWord256(NewContractAddress(creator.Address.Postfix(20), nonce))
 
 	// Create account from address.
 	account, removed := vmUnpack(cache.accounts[addr])
@@ -128,7 +128,7 @@ func (cache *TxCache) Sync() {
 	for addr, accInfo := range cache.accounts {
 		acc, removed := vmUnpack(accInfo)
 		if removed {
-			cache.backend.RemoveAccount(addr.Prefix(20))
+			cache.backend.RemoveAccount(addr.Postfix(20))
 		} else {
 			cache.backend.UpdateAccount(toStateAccount(acc))
 		}
@@ -154,7 +154,7 @@ func NewContractAddress(caller []byte, nonce uint64) []byte {
 // Converts backend.Account to vm.Account struct.
 func toVMAccount(acc *ac.Account) *vm.Account {
 	return &vm.Account{
-		Address:     RightPadWord256(acc.Address),
+		Address:     LeftPadWord256(acc.Address),
 		Balance:     acc.Balance,
 		Code:        acc.Code, // This is crazy.
 		Nonce:       uint64(acc.Sequence),
@@ -176,7 +176,7 @@ func toStateAccount(acc *vm.Account) *ac.Account {
 		storageRoot = acc.StorageRoot.Bytes()
 	}
 	return &ac.Account{
-		Address:     acc.Address.Prefix(20),
+		Address:     acc.Address.Postfix(20),
 		PubKey:      pubKey,
 		Balance:     acc.Balance,
 		Code:        acc.Code,
