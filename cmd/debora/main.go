@@ -26,6 +26,15 @@ var (
 		Value: "privkey",
 		Usage: "file containing private key json",
 	}
+	waitFlag = cli.BoolFlag{
+		Name:  "wait",
+		Usage: "whether to wait for termination",
+	}
+	inputFlag = cli.StringFlag{
+		Name:  "input",
+		Value: "",
+		Usage: "input to the program (e.g. stdin)",
+	}
 )
 
 func main() {
@@ -48,9 +57,9 @@ func main() {
 			Name:   "run",
 			Usage:  "run process",
 			Action: cliRunProcess,
-			Flags:  []cli.Flag{
-			//remotesFlag,
-			//privKeyFlag,
+			Flags: []cli.Flag{
+				waitFlag,
+				inputFlag,
 			},
 		},
 		cli.Command{
@@ -81,7 +90,8 @@ func ParseFlags(c *cli.Context) (remotes []string, privKey acm.PrivKey) {
 	privkeyFile := c.String("privkey-file")
 	privkeyJSONBytes, err := ioutil.ReadFile(privkeyFile)
 	if err != nil {
-		Exit(Fmt("Failed to read privkey from file %v. %v", privkeyFile, err))
+		fmt.Printf("Failed to read privkey from file %v. %v", privkeyFile, err)
+		return remotes, nil
 	}
 	binary.ReadJSON(&privKey, privkeyJSONBytes, &err)
 	if err != nil {
@@ -91,14 +101,20 @@ func ParseFlags(c *cli.Context) (remotes []string, privKey acm.PrivKey) {
 }
 
 func cliRunProcess(c *cli.Context) {
-	/*
-		args := c.Args()
-		if len(args) == 0 {
-			log.Fatal("Must specify application name")
-		}
-		app := args[0]
-	*/
-	command := btypes.CommandRunProcess{}
+	args := c.Args()
+	if len(args) < 2 {
+		Exit("Must specify <label> <execPath> <args...>")
+	}
+	label := args[0]
+	execPath := args[1]
+	args = args[2:]
+	command := btypes.CommandRunProcess{
+		Wait:     c.Bool("wait"),
+		Label:    label,
+		ExecPath: execPath,
+		Args:     args,
+		Input:    c.String("input"),
+	}
 	for _, remote := range remotes {
 		response, err := RunProcess(privKey, remote, command)
 		if err != nil {
@@ -110,14 +126,14 @@ func cliRunProcess(c *cli.Context) {
 }
 
 func cliStopProcess(c *cli.Context) {
-	/*
-		args := c.Args()
-		if len(args) == 0 {
-			log.Fatal("Must specify application name")
-		}
-		app := args[0]
-	*/
-	command := btypes.CommandStopProcess{}
+	args := c.Args()
+	if len(args) == 0 {
+		Exit("Must specify label to stop")
+	}
+	label := args[0]
+	command := btypes.CommandStopProcess{
+		Label: label,
+	}
 	for _, remote := range remotes {
 		response, err := StopProcess(privKey, remote, command)
 		if err != nil {
@@ -142,7 +158,12 @@ func cliListProcesses(c *cli.Context) {
 		if err != nil {
 			fmt.Printf("%v failure. %v\n", remote, err)
 		} else {
-			fmt.Printf("%v success: %v\n", remote, response)
+			fmt.Printf("%v processes:\n", remote)
+			for _, proc := range response.Processes {
+				fmt.Printf("  \"%v\" => `%v` (%v)  start:%v end:%v output:%v\n",
+					proc.Label, proc.ExecPath, proc.Pid,
+					proc.StartTime, proc.EndTime, proc.OutputPath)
+			}
 		}
 	}
 }

@@ -155,9 +155,14 @@ func RunProcess(wait bool, label string, execPath string, args []string, input s
 	}
 
 	// Otherwise, create one.
-	proc := pcm.Create(pcm.ProcessModeDaemon, label, execPath, args, input)
-	barak.processes[label] = proc
+	proc, err := pcm.Create(pcm.ProcessModeDaemon, label, execPath, args, input)
+	if err == nil {
+		barak.processes[label] = proc
+	}
 	barak.mtx.Unlock()
+	if err != nil {
+		return nil, err
+	}
 
 	if wait {
 		exitErr := pcm.Wait(proc)
@@ -183,6 +188,7 @@ func StopProcess(label string, kill bool) (*ResponseStopProcess, error) {
 func ListProcesses() (*ResponseListProcesses, error) {
 	var procs = []*pcm.Process{}
 	barak.mtx.Lock()
+	fmt.Println("Processes: %v", barak.processes)
 	for _, proc := range barak.processes {
 		procs = append(procs, proc)
 	}

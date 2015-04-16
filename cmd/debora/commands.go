@@ -9,6 +9,11 @@ import (
 	"github.com/tendermint/tendermint/rpc"
 )
 
+// These are convenience functions for a single developer.
+// When multiple are involved, the workflow is different.
+// (First the command(s) are signed by all validators,
+//  and then it is broadcast).
+
 func RunProcess(privKey acm.PrivKey, remote string, command btypes.CommandRunProcess) (response btypes.ResponseRunProcess, err error) {
 	nonce, err := GetNonce(remote)
 	if err != nil {

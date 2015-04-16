@@ -22,7 +22,9 @@ func makeFile(prefix string) (string, *os.File) {
 type Process struct {
 	Label      string
 	ExecPath   string
+	Pid        int
 	StartTime  time.Time
+	EndTime    time.Time
 	OutputPath string
 	Cmd        *exec.Cmd        `json:"-"`
 	ExitState  *os.ProcessState `json:"-"`
@@ -36,7 +38,7 @@ const (
 
 // execPath: command name
 // args: args to command. (should not include name)
-func Create(mode int, label string, execPath string, args []string, input string) *Process {
+func Create(mode int, label string, execPath string, args []string, input string) (*Process, error) {
 	outPath, outFile := makeFile(label)
 	cmd := exec.Command(execPath, args...)
 	switch mode {
@@ -53,20 +55,25 @@ func Create(mode int, label string, execPath string, args []string, input string
 		cmd.Stdin = bytes.NewReader([]byte(input))
 	}
 	if err := cmd.Start(); err != nil {
-		fmt.Printf("Failed to run command. %v\n", err)
-		return nil
+		return nil, err
 	} else {
 		fmt.Printf("Success!")
 	}
-	return &Process{
+	proc := &Process{
 		Label:      label,
 		ExecPath:   execPath,
+		Pid:        cmd.Process.Pid,
 		StartTime:  time.Now(),
 		OutputPath: outPath,
 		Cmd:        cmd,
 		ExitState:  nil,
 		OutputFile: outFile,
 	}
+	go func() {
+		Wait(proc)
+		proc.EndTime = time.Now() // TODO make this goroutine-safe
+	}()
+	return proc, nil
 }
 
 func Wait(proc *Process) error {
