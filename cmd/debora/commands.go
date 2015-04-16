@@ -49,13 +49,16 @@ func ListProcesses(privKey acm.PrivKey, remote string, command btypes.CommandLis
 // Utility method to get nonce from the remote.
 // The next command should include the returned nonce+1 as nonce.
 func GetNonce(remote string) (uint64, error) {
-	var err error
-	response := btypes.ResponseStatus{}
+	response, err := GetStatus(remote)
+	return response.Nonce, err
+}
+
+func GetStatus(remote string) (response btypes.ResponseStatus, err error) {
 	_, err = rpc.Call(remote, "status", Arr(), &response)
 	if err != nil {
-		return 0, fmt.Errorf("Error fetching nonce from remote %v:\n  %v", remote, err)
+		return response, fmt.Errorf("Error fetching nonce from remote %v:\n  %v", remote, err)
 	}
-	return response.Nonce, nil
+	return response, nil
 }
 
 // Each developer runs this

@@ -36,12 +36,20 @@ type Options struct {
 // Global instance
 var barak = struct {
 	mtx        sync.Mutex
+	pid        int
+	nonce      uint64
 	processes  map[string]*pcm.Process
 	validators []Validator
-	nonce      uint64
-}{sync.Mutex{}, make(map[string]*pcm.Process), nil, 0}
+}{
+	mtx:        sync.Mutex{},
+	pid:        os.Getpid(),
+	nonce:      0,
+	processes:  make(map[string]*pcm.Process),
+	validators: nil,
+}
 
 func main() {
+	fmt.Printf("New Debora Process (PID: %d)\n", os.Getpid())
 
 	// read options from stdin.
 	var err error
@@ -77,11 +85,13 @@ func main() {
 
 func Status() (*ResponseStatus, error) {
 	barak.mtx.Lock()
+	pid := barak.pid
 	nonce := barak.nonce
 	validators := barak.validators
 	barak.mtx.Unlock()
 
 	return &ResponseStatus{
+		Pid:        pid,
 		Nonce:      nonce,
 		Validators: validators,
 	}, nil

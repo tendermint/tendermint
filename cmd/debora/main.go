@@ -54,6 +54,11 @@ func main() {
 	}
 	app.Commands = []cli.Command{
 		cli.Command{
+			Name:   "status",
+			Usage:  "shows remote status",
+			Action: cliGetStatus,
+		},
+		cli.Command{
 			Name:   "run",
 			Usage:  "run process",
 			Action: cliRunProcess,
@@ -98,6 +103,21 @@ func ParseFlags(c *cli.Context) (remotes []string, privKey acm.PrivKey) {
 		Exit(Fmt("Failed to parse privkey. %v", err))
 	}
 	return remotes, privKey
+}
+
+func cliGetStatus(c *cli.Context) {
+	args := c.Args()
+	if len(args) != 0 {
+		fmt.Println("BTW, status takes no arguments.")
+	}
+	for _, remote := range remotes {
+		response, err := GetStatus(remote)
+		if err != nil {
+			fmt.Printf("%v failure. %v\n", remote, err)
+		} else {
+			fmt.Printf("%v success. %v\n", remote, response)
+		}
+	}
 }
 
 func cliRunProcess(c *cli.Context) {

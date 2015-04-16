@@ -5,6 +5,7 @@ import (
 )
 
 type ResponseStatus struct {
+	Pid        int
 	Nonce      uint64
 	Validators []Validator
 }
