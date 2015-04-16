@@ -49,7 +49,7 @@ var barak = struct {
 }
 
 func main() {
-	fmt.Printf("New Debora Process (PID: %d)\n", os.Getpid())
+	fmt.Printf("New Barak Process (PID: %d)\n", os.Getpid())
 
 	// read options from stdin.
 	var err error
