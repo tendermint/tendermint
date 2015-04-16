@@ -225,11 +225,11 @@ func (valSet *ValidatorSet) VerifyValidation(hash []byte, parts types.PartSetHea
 
 		// Validate
 		if _, seen := seenValidators[string(val.Address)]; seen {
-			return Errorf("Duplicate validator for commit %v for Validation %v", commit, v)
+			return fmt.Errorf("Duplicate validator for commit %v for Validation %v", commit, v)
 		}
 
 		if !val.PubKey.VerifyBytes(commitSignBytes, commit.Signature) {
-			return Errorf("Invalid signature for commit %v for Validation %v", commit, v)
+			return fmt.Errorf("Invalid signature for commit %v for Validation %v", commit, v)
 		}
 
 		// Tally
@@ -240,7 +240,7 @@ func (valSet *ValidatorSet) VerifyValidation(hash []byte, parts types.PartSetHea
 	if talliedVotingPower > valSet.TotalVotingPower()*2/3 {
 		return nil
 	} else {
-		return Errorf("insufficient voting power %v, needed %v",
+		return fmt.Errorf("insufficient voting power %v, needed %v",
 			talliedVotingPower, (valSet.TotalVotingPower()*2/3 + 1))
 	}
 }

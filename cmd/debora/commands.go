@@ -27,7 +27,7 @@ func GetNonce(remote string) uint64 {
 	response := btypes.ResponseStatus{}
 	_, err = rpc.Call(remote, "status", Arr(), &response)
 	if err != nil {
-		panic(Fmt("Error fetching nonce from remote %v: %v", remote, err))
+		Exit(Fmt("Error fetching nonce from remote %v: %v", remote, err))
 	}
 	return response.Nonce
 }

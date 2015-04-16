@@ -3,6 +3,7 @@ package state
 import (
 	"bytes"
 	"errors"
+	"fmt"
 
 	"github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
@@ -20,7 +21,7 @@ func ExecBlock(s *State, block *types.Block, blockPartsHeader types.PartSetHeade
 	// State.Hash should match block.StateHash
 	stateHash := s.Hash()
 	if !bytes.Equal(stateHash, block.StateHash) {
-		return Errorf("Invalid state hash. Expected %X, got %X",
+		return fmt.Errorf("Invalid state hash. Expected %X, got %X",
 			stateHash, block.StateHash)
 	}
 	return nil

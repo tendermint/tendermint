@@ -151,7 +151,7 @@ func RunProcess(wait bool, label string, execPath string, args []string, input s
 	existing := barak.processes[label]
 	if existing != nil {
 		barak.mtx.Unlock()
-		return nil, Errorf("Process already exists: %v", label)
+		return nil, fmt.Errorf("Process already exists: %v", label)
 	}
 
 	// Otherwise, create one.
@@ -173,7 +173,7 @@ func StopProcess(label string, kill bool) (*ResponseStopProcess, error) {
 	barak.mtx.Unlock()
 
 	if proc == nil {
-		return nil, Errorf("Process does not exist: %v", label)
+		return nil, fmt.Errorf("Process does not exist: %v", label)
 	}
 
 	err := pcm.Stop(proc, kill)
