@@ -5,7 +5,6 @@ import (
 	"github.com/codegangsta/cli"
 	"io/ioutil"
 	"os"
-	"strings"
 
 	acm "github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
@@ -13,18 +12,16 @@ import (
 	. "github.com/tendermint/tendermint/common"
 )
 
+var Config = struct {
+	Remotes []string
+	PrivKey acm.PrivKey
+}{}
+
 var (
-	remotes     []string
-	privKey     acm.PrivKey
-	remotesFlag = cli.StringFlag{
-		Name:  "remotes",
-		Value: "http://127.0.0.1:8082",
-		Usage: "comma separated list of remote baraks",
-	}
-	privKeyFlag = cli.StringFlag{
-		Name:  "privkey-file",
-		Value: "privkey",
-		Usage: "file containing private key json",
+	configFlag = cli.StringFlag{
+		Name:  "config-file",
+		Value: ".debora/config.json",
+		Usage: "config file",
 	}
 	waitFlag = cli.BoolFlag{
 		Name:  "wait",
@@ -45,11 +42,10 @@ func main() {
 	app.Version = "0.0.1"
 	app.Email = "ethan@erisindustries.com,jae@tendermint.com"
 	app.Flags = []cli.Flag{
-		remotesFlag,
-		privKeyFlag,
+		configFlag,
 	}
 	app.Before = func(c *cli.Context) error {
-		remotes, privKey = ParseFlags(c)
+		ReadConfig(c.String("config-file"))
 		return nil
 	}
 	app.Commands = []cli.Command{
@@ -71,38 +67,25 @@ func main() {
 			Name:   "stop",
 			Usage:  "stop process",
 			Action: cliStopProcess,
-			Flags:  []cli.Flag{
-			//remotesFlag,
-			//privKeyFlag,
-			},
 		},
 		cli.Command{
 			Name:   "list",
 			Usage:  "list processes",
 			Action: cliListProcesses,
-			Flags:  []cli.Flag{
-			//remotesFlag,
-			//privKeyFlag,
-			},
 		},
 	}
 	app.Run(os.Args)
 }
 
-func ParseFlags(c *cli.Context) (remotes []string, privKey acm.PrivKey) {
-	remotesStr := c.String("remotes")
-	remotes = strings.Split(remotesStr, ",")
-	privkeyFile := c.String("privkey-file")
-	privkeyJSONBytes, err := ioutil.ReadFile(privkeyFile)
+func ReadConfig(configFilePath string) {
+	configJSONBytes, err := ioutil.ReadFile(configFilePath)
 	if err != nil {
-		fmt.Printf("Failed to read privkey from file %v. %v", privkeyFile, err)
-		return remotes, nil
+		Exit(Fmt("Failed to read config file %v. %v\n", configFilePath, err))
 	}
-	binary.ReadJSON(&privKey, privkeyJSONBytes, &err)
+	binary.ReadJSON(&Config, configJSONBytes, &err)
 	if err != nil {
-		Exit(Fmt("Failed to parse privkey. %v", err))
+		Exit(Fmt("Failed to parse config. %v", err))
 	}
-	return remotes, privKey
 }
 
 func cliGetStatus(c *cli.Context) {
@@ -110,7 +93,7 @@ func cliGetStatus(c *cli.Context) {
 	if len(args) != 0 {
 		fmt.Println("BTW, status takes no arguments.")
 	}
-	for _, remote := range remotes {
+	for _, remote := range Config.Remotes {
 		response, err := GetStatus(remote)
 		if err != nil {
 			fmt.Printf("%v failure. %v\n", remote, err)
@@ -135,8 +118,8 @@ func cliRunProcess(c *cli.Context) {
 		Args:     args,
 		Input:    c.String("input"),
 	}
-	for _, remote := range remotes {
-		response, err := RunProcess(privKey, remote, command)
+	for _, remote := range Config.Remotes {
+		response, err := RunProcess(Config.PrivKey, remote, command)
 		if err != nil {
 			fmt.Printf("%v failure. %v\n", remote, err)
 		} else {
@@ -154,8 +137,8 @@ func cliStopProcess(c *cli.Context) {
 	command := btypes.CommandStopProcess{
 		Label: label,
 	}
-	for _, remote := range remotes {
-		response, err := StopProcess(privKey, remote, command)
+	for _, remote := range Config.Remotes {
+		response, err := StopProcess(Config.PrivKey, remote, command)
 		if err != nil {
 			fmt.Printf("%v failure. %v\n", remote, err)
 		} else {
@@ -173,8 +156,8 @@ func cliListProcesses(c *cli.Context) {
 		app := args[0]
 	*/
 	command := btypes.CommandListProcesses{}
-	for _, remote := range remotes {
-		response, err := ListProcesses(privKey, remote, command)
+	for _, remote := range Config.Remotes {
+		response, err := ListProcesses(Config.PrivKey, remote, command)
 		if err != nil {
 			fmt.Printf("%v failure. %v\n", remote, err)
 		} else {

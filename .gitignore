@@ -4,3 +4,5 @@
 .DS_Store
 build/*
 rpc/test/.tendermint
+.debora
+.tendermint
