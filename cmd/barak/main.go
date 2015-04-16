@@ -149,7 +149,7 @@ func RunProcess(wait bool, label string, execPath string, args []string, input s
 
 	// First, see if there already is a process labeled 'label'
 	existing := barak.processes[label]
-	if existing != nil {
+	if existing != nil && existing.EndTime.IsZero() {
 		barak.mtx.Unlock()
 		return nil, fmt.Errorf("Process already exists: %v", label)
 	}
