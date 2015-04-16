@@ -20,3 +20,8 @@ func TrapSignal(cb func()) {
 	}()
 	select {}
 }
+
+func Exit(s string) {
+	fmt.Printf(s + "\n")
+	os.Exit(1)
+}
