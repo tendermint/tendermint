@@ -91,17 +91,11 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 			panic("Could not return value to caller")
 		}
 	}
-	// if callDepth is 0 the event is fired from ExecTx (along with the Input invent)
+	// if callDepth is 0 the event is fired from ExecTx (along with the Input event)
 	// otherwise, we fire from here.
 	if vm.callDepth != 0 && vm.evsw != nil {
-		vm.evsw.FireEvent(types.EventStringAccReceive(callee.Address.Prefix(20)), struct {
-			CallData  *CallData
-			Origin    []byte
-			TxId      []byte
-			Return    []byte
-			Exception string
-		}{
-			&CallData{caller.Address.Prefix(20), callee.Address.Prefix(20), input, value, *gas},
+		vm.evsw.FireEvent(types.EventStringAccReceive(callee.Address.Prefix(20)), types.EventMsgCall{
+			&types.CallData{caller.Address.Prefix(20), callee.Address.Prefix(20), input, value, *gas},
 			vm.origin.Prefix(20),
 			vm.txid,
 			output,

@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/merkle"
 )
 
 // Signable is an interface for all signable things.
@@ -22,6 +23,11 @@ func SignBytes(o Signable) []byte {
 		panic(err)
 	}
 	return buf.Bytes()
+}
+
+// HashSignBytes is a convenience method for getting the hash of the bytes of a signable
+func HashSignBytes(o Signable) []byte {
+	return merkle.HashFromBinary(SignBytes(o))
 }
 
 //-----------------------------------------------------------------------------

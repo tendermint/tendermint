@@ -426,12 +426,12 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall, fireEvents bool) erro
 
 			txCache.UpdateAccount(caller) // because we adjusted by input above, and bumped nonce maybe.
 			txCache.UpdateAccount(callee) // because we adjusted by input above.
-			vmach := vm.NewVM(txCache, params, caller.Address, account.SignBytes(tx))
+			vmach := vm.NewVM(txCache, params, caller.Address, account.HashSignBytes(tx))
 			vmach.SetEventSwitch(_s.evsw)
 			// NOTE: Call() transfers the value from caller to callee iff call succeeds.
 
 			ret, err := vmach.Call(caller, callee, code, tx.Data, value, &gas)
-			var exception string
+			exception := ""
 			if err != nil {
 				exception = err.Error()
 				// Failure. Charge the gas fee. The 'value' was otherwise not transferred.
@@ -440,7 +440,6 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall, fireEvents bool) erro
 				blockCache.UpdateAccount(inAcc)
 				// Throw away 'txCache' which holds incomplete updates (don't sync it).
 			} else {
-				exception = ""
 				log.Debug("Successful execution")
 				// Success
 				if createAccount {
@@ -455,17 +454,9 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall, fireEvents bool) erro
 			if fireEvents {
 				// Fire Events for sender and receiver
 				// a separate event will be fired from vm for each
-				_s.evsw.FireEvent(types.EventStringAccInput(tx.Input.Address), struct {
-					Tx        types.Tx
-					Return    []byte
-					Exception string
-				}{tx, ret, exception})
+				_s.evsw.FireEvent(types.EventStringAccInput(tx.Input.Address), types.EventMsgCallTx{tx, ret, exception})
 
-				_s.evsw.FireEvent(types.EventStringAccReceive(tx.Address), struct {
-					Tx        types.Tx
-					Return    []byte
-					Exception string
-				}{tx, ret, exception})
+				_s.evsw.FireEvent(types.EventStringAccReceive(tx.Address), types.EventMsgCallTx{tx, ret, exception})
 			}
 		} else {
 			// The mempool does not call txs until

@@ -53,7 +53,7 @@ func WriteRPCResponse(w http.ResponseWriter, res RPCResponse) {
 func RecoverAndLogHandler(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Wrap the ResponseWriter to remember the status
-		rww := &ResponseWriterWrapper{-1, w, w.(http.Hijacker)}
+		rww := &ResponseWriterWrapper{-1, w}
 		begin := time.Now()
 
 		// Common headers
@@ -100,7 +100,6 @@ func RecoverAndLogHandler(handler http.Handler) http.Handler {
 type ResponseWriterWrapper struct {
 	Status int
 	http.ResponseWriter
-	hj http.Hijacker // necessary for websocket upgrades
 }
 
 func (w *ResponseWriterWrapper) WriteHeader(status int) {
@@ -110,7 +109,7 @@ func (w *ResponseWriterWrapper) WriteHeader(status int) {
 
 // implements http.Hijacker
 func (w *ResponseWriterWrapper) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	return w.hj.Hijack()
+	return w.ResponseWriter.(http.Hijacker).Hijack()
 }
 
 // Stick it as a deferred statement in gouroutines to prevent the program from crashing.

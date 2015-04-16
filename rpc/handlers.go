@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"reflect"
+	"sync/atomic"
 	"time"
 )
 
@@ -25,8 +26,8 @@ func RegisterRPCFuncs(mux *http.ServeMux, funcMap map[string]*RPCFunc) {
 
 func RegisterEventsHandler(mux *http.ServeMux, evsw *events.EventSwitch) {
 	// websocket endpoint
-	w := NewWebsocketManager(evsw)
-	mux.HandleFunc("/events", w.websocketHandler) // 	websocket.Handler(w.eventsHandler))
+	wm := NewWebsocketManager(evsw)
+	mux.HandleFunc("/events", wm.websocketHandler) // 	websocket.Handler(w.eventsHandler))
 }
 
 //-------------------------------------
@@ -193,7 +194,7 @@ func _jsonStringToArg(ty reflect.Type, arg string) (reflect.Value, error) {
 
 const (
 	WSConnectionReaperSeconds = 5
-	MaxFailedSendsSeconds     = 10
+	MaxFailedSends            = 10
 	WriteChanBufferSize       = 10
 )
 
@@ -214,103 +215,76 @@ type WSResponse struct {
 // contains the listeners id
 type Connection struct {
 	id          string
-	wsCon       *websocket.Conn
+	wsConn      *websocket.Conn
 	writeChan   chan WSResponse
-	quitChan    chan struct{}
 	failedSends uint
+	started     uint32
+	stopped     uint32
+
+	evsw *events.EventSwitch
 }
 
 // new websocket connection wrapper
-func NewConnection(con *websocket.Conn) *Connection {
+func NewConnection(wsConn *websocket.Conn) *Connection {
 	return &Connection{
-		id:        con.RemoteAddr().String(),
-		wsCon:     con,
+		id:        wsConn.RemoteAddr().String(),
+		wsConn:    wsConn,
 		writeChan: make(chan WSResponse, WriteChanBufferSize), // buffered. we keep track when its full
 	}
 }
 
+// start the connection and hand her the event switch
+func (con *Connection) Start(evsw *events.EventSwitch) {
+	if atomic.CompareAndSwapUint32(&con.started, 0, 1) {
+		con.evsw = evsw
+
+		// read subscriptions/unsubscriptions to events
+		go con.read()
+		// write responses
+		con.write()
+	}
+}
+
 // close the connection
-func (c *Connection) Close() {
-	c.wsCon.Close()
-	close(c.writeChan)
-	close(c.quitChan)
-}
-
-// main manager for all websocket connections
-// holds the event switch
-type WebsocketManager struct {
-	websocket.Upgrader
-	ew   *events.EventSwitch
-	cons map[string]*Connection
-}
-
-func NewWebsocketManager(ew *events.EventSwitch) *WebsocketManager {
-	return &WebsocketManager{
-		ew:   ew,
-		cons: make(map[string]*Connection),
-		Upgrader: websocket.Upgrader{
-			ReadBufferSize:  1024,
-			WriteBufferSize: 1024,
-			CheckOrigin: func(r *http.Request) bool {
-				// TODO
-				return true
-			},
-		},
+func (con *Connection) Stop() {
+	if atomic.CompareAndSwapUint32(&con.stopped, 0, 1) {
+		con.wsConn.Close()
+		close(con.writeChan)
 	}
-}
-
-func (wm *WebsocketManager) websocketHandler(w http.ResponseWriter, r *http.Request) {
-	conn, err := wm.Upgrade(w, r, nil)
-	if err != nil {
-		// TODO
-		log.Error("Failed to upgrade to websocket connection", "error", err)
-		return
-	}
-	wm.handleWebsocket(conn)
-
-}
-
-func (w *WebsocketManager) handleWebsocket(con *websocket.Conn) {
-	// register connection
-	c := NewConnection(con)
-	w.cons[c.id] = c
-	log.Info("New websocket connection", "origin", c.id)
-
-	// read subscriptions/unsubscriptions to events
-	go w.read(c)
-	// write responses
-	w.write(c)
 }
 
 // read from the socket and subscribe to or unsubscribe from events
-func (w *WebsocketManager) read(con *Connection) {
+func (con *Connection) read() {
 	reaper := time.Tick(time.Second * WSConnectionReaperSeconds)
 	for {
 		select {
 		case <-reaper:
-			if con.failedSends > MaxFailedSendsSeconds {
+			if con.failedSends > MaxFailedSends {
 				// sending has failed too many times.
 				// kill the connection
-				con.quitChan <- struct{}{}
+				con.Stop()
+				return
 			}
 		default:
 			var in []byte
-			_, in, err := con.wsCon.ReadMessage()
+			_, in, err := con.wsConn.ReadMessage()
 			if err != nil {
 				// an error reading the connection,
-				// so kill the connection
-				con.quitChan <- struct{}{}
+				// kill the connection
+				con.Stop()
+				return
 			}
 			var req WSRequest
 			err = json.Unmarshal(in, &req)
 			if err != nil {
 				errStr := fmt.Sprintf("Error unmarshaling data: %s", err.Error())
 				con.writeChan <- WSResponse{Error: errStr}
+				continue
 			}
 			switch req.Type {
 			case "subscribe":
 				log.Info("New event subscription", "con id", con.id, "event", req.Event)
-				w.ew.AddListenerForEvent(con.id, req.Event, func(msg interface{}) {
+				con.evsw.AddListenerForEvent(con.id, req.Event, func(msg interface{}) {
 					resp := WSResponse{
 						Event: req.Event,
 						Data:  msg,
@@ -328,9 +302,9 @@ func (w *WebsocketManager) read(con *Connection) {
 				})
 			case "unsubscribe":
 				if req.Event != "" {
-					w.ew.RemoveListenerForEvent(req.Event, con.id)
+					con.evsw.RemoveListenerForEvent(req.Event, con.id)
 				} else {
-					w.ew.RemoveListener(con.id)
+					con.evsw.RemoveListener(con.id)
 				}
 			default:
 				con.writeChan <- WSResponse{Error: "Unknown request type: " + req.Type}
@@ -340,33 +314,64 @@ func (w *WebsocketManager) read(con *Connection) {
 	}
 }
 
-// receives on a write channel and writes out to the socket
-func (w *WebsocketManager) write(con *Connection) {
+// receives on a write channel and writes out on the socket
+func (con *Connection) write() {
 	n, err := new(int64), new(error)
 	for {
-		select {
-		case msg := <-con.writeChan:
-			buf := new(bytes.Buffer)
-			binary.WriteJSON(msg, buf, n, err)
-			if *err != nil {
-				log.Error("Failed to write JSON WSResponse", "error", err)
-			} else {
-				//websocket.Message.Send(con.wsCon, buf.Bytes())
-				if err := con.wsCon.WriteMessage(websocket.TextMessage, buf.Bytes()); err != nil {
-					log.Error("Failed to write response on websocket", "error", err)
-				}
-			}
-		case <-con.quitChan:
-			w.closeConn(con)
+		msg, more := <-con.writeChan
+		if !more {
+			// the channel was closed, so ensure
+			// connection is stopped and return
+			con.Stop()
 			return
+		}
+		buf := new(bytes.Buffer)
+		binary.WriteJSON(msg, buf, n, err)
+		if *err != nil {
+			log.Error("Failed to write JSON WSResponse", "error", err)
+		} else {
+			if err := con.wsConn.WriteMessage(websocket.TextMessage, buf.Bytes()); err != nil {
+				log.Error("Failed to write response on websocket", "error", err)
+				con.Stop()
+				return
+			}
 		}
 	}
 }
 
-// close a connection and delete from manager
-func (w *WebsocketManager) closeConn(con *Connection) {
-	con.Close()
-	delete(w.cons, con.id)
+// main manager for all websocket connections
+// holds the event switch
+type WebsocketManager struct {
+	websocket.Upgrader
+	evsw *events.EventSwitch
+}
+
+func NewWebsocketManager(evsw *events.EventSwitch) *WebsocketManager {
+	return &WebsocketManager{
+		evsw: evsw,
+		Upgrader: websocket.Upgrader{
+			ReadBufferSize:  1024,
+			WriteBufferSize: 1024,
+			CheckOrigin: func(r *http.Request) bool {
+				// TODO
+				return true
+			},
+		},
+	}
+}
+
+func (wm *WebsocketManager) websocketHandler(w http.ResponseWriter, r *http.Request) {
+	wsConn, err := wm.Upgrade(w, r, nil)
+	if err != nil {
+		// TODO - return http error
+		log.Error("Failed to upgrade to websocket connection", "error", err)
+		return
+	}
+
+	// register connection
+	con := NewConnection(wsConn)
+	log.Info("New websocket connection", "origin", con.id)
+	con.Start(wm.evsw)
 }
 
 // rpc.websocket

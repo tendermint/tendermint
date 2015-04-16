@@ -445,6 +445,7 @@ ACTION_LOOP:
 				// cs.Step is at RoundStepNewHeight or RoundStepNewRound.
 				newBlock := cs.blockStore.LoadBlock(cs.state.LastBlockHeight)
 				cs.evsw.FireEvent(types.EventStringNewBlock(), newBlock)
+				// TODO: go fire events from event cache
 				scheduleNextAction()
 				continue ACTION_LOOP
 			} else {

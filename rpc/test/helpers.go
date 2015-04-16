@@ -28,10 +28,10 @@ var (
 
 	mempoolCount = 0
 
-	userAddr          = "D7DFF9806078899C8DA3FE3633CC0BF3C6C2B1BB"
-	userPriv          = "FDE3BD94CB327D19464027BA668194C5EFA46AE83E8419D7542CFF41F00C81972239C21C81EA7173A6C489145490C015E05D4B97448933B708A7EC5B7B4921E3"
-	userPub           = "2239C21C81EA7173A6C489145490C015E05D4B97448933B708A7EC5B7B4921E3"
-	byteAddr, byteKey = initUserBytes()
+	userAddr                   = "D7DFF9806078899C8DA3FE3633CC0BF3C6C2B1BB"
+	userPriv                   = "FDE3BD94CB327D19464027BA668194C5EFA46AE83E8419D7542CFF41F00C81972239C21C81EA7173A6C489145490C015E05D4B97448933B708A7EC5B7B4921E3"
+	userPub                    = "2239C21C81EA7173A6C489145490C015E05D4B97448933B708A7EC5B7B4921E3"
+	userByteAddr, userBytePriv = initUserBytes()
 
 	clients = map[string]cclient.Client{
 		"JSONRPC": cclient.NewClient(requestAddr, "JSONRPC"),
@@ -39,11 +39,13 @@ var (
 	}
 )
 
+// returns byte versions of address and private key
+// type [64]byte needed by account.GenPrivAccountFromKey
 func initUserBytes() ([]byte, [64]byte) {
 	byteAddr, _ := hex.DecodeString(userAddr)
 	var byteKey [64]byte
-	oh, _ := hex.DecodeString(userPriv)
-	copy(byteKey[:], oh)
+	userPrivByteSlice, _ := hex.DecodeString(userPriv)
+	copy(byteKey[:], userPrivByteSlice)
 	return byteAddr, byteKey
 }
 

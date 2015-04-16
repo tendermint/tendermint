@@ -53,9 +53,7 @@ func (cache *BlockCache) GetAccount(addr []byte) *ac.Account {
 		return acc
 	} else {
 		acc = cache.backend.GetAccount(addr)
-		if acc != nil {
-			cache.accounts[string(addr)] = accountInfo{acc, nil, false, false}
-		}
+		cache.accounts[string(addr)] = accountInfo{acc, nil, false, false}
 		return acc
 	}
 }
@@ -189,7 +187,7 @@ func (cache *BlockCache) Sync() {
 			}
 		} else {
 			if acc == nil {
-				panic(Fmt("Account should not be nil for addr: %x", addrStr))
+				continue
 			}
 			if storage != nil {
 				newStorageRoot := storage.Save()

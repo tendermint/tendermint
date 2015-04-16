@@ -4,6 +4,8 @@ import (
 	"fmt"
 )
 
+// Functions to generate eventId strings
+
 func EventStringAccInput(addr []byte) string {
 	return fmt.Sprintf("Acc/%x/Input", addr)
 }
@@ -38,6 +40,31 @@ func EventStringNewBlock() string {
 
 func EventStringFork() string {
 	return "Fork"
+}
+
+// Most event messages are basic types (a block, a transaction)
+// but some (an input to a call tx or a receive) are more exotic:
+
+type EventMsgCallTx struct {
+	Tx        Tx
+	Return    []byte
+	Exception string
+}
+
+type CallData struct {
+	Caller []byte
+	Callee []byte
+	Data   []byte
+	Value  uint64
+	Gas    uint64
+}
+
+type EventMsgCall struct {
+	CallData  *CallData
+	Origin    []byte
+	TxId      []byte
+	Return    []byte
+	Exception string
 }
 
 /*

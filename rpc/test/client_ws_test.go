@@ -1,7 +1,6 @@
 package rpc
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
@@ -172,7 +171,7 @@ func TestWSSend(t *testing.T) {
 	amt := uint64(100)
 
 	con := newWSCon(t)
-	eidInput := types.EventStringAccInput(byteAddr)
+	eidInput := types.EventStringAccInput(userByteAddr)
 	eidOutput := types.EventStringAccOutput(toAddr)
 	subscribe(t, con, eidInput)
 	subscribe(t, con, eidOutput)
@@ -182,7 +181,7 @@ func TestWSSend(t *testing.T) {
 		con.Close()
 	}()
 	waitForEvent(t, con, eidInput, true, func() {
-		broadcastTx(t, "JSONRPC", byteAddr, toAddr, nil, byteKey, amt, 0, 0)
+		broadcastTx(t, "JSONRPC", userByteAddr, toAddr, nil, userBytePriv, amt, 0, 0)
 	}, unmarshalValidateSend(amt, toAddr))
 	waitForEvent(t, con, eidOutput, true, func() {}, unmarshalValidateSend(amt, toAddr))
 }
@@ -190,7 +189,7 @@ func TestWSSend(t *testing.T) {
 // ensure events are only fired once for a given transaction
 func TestWSDoubleFire(t *testing.T) {
 	con := newWSCon(t)
-	eid := types.EventStringAccInput(byteAddr)
+	eid := types.EventStringAccInput(userByteAddr)
 	subscribe(t, con, eid)
 	defer func() {
 		unsubscribe(t, con, eid)
@@ -200,7 +199,7 @@ func TestWSDoubleFire(t *testing.T) {
 	toAddr := []byte{20, 143, 25, 63, 16, 177, 83, 29, 91, 91, 54, 23, 233, 46, 190, 121, 122, 34, 86, 54}
 	// broadcast the transaction, wait to hear about it
 	waitForEvent(t, con, eid, true, func() {
-		broadcastTx(t, "JSONRPC", byteAddr, toAddr, nil, byteKey, amt, 0, 0)
+		broadcastTx(t, "JSONRPC", userByteAddr, toAddr, nil, userBytePriv, amt, 0, 0)
 	}, func(eid string, b []byte) error {
 		return nil
 	})
@@ -213,9 +212,8 @@ func TestWSDoubleFire(t *testing.T) {
 
 // create a contract, wait for the event, and send it a msg, validate the return
 func TestWSCallWait(t *testing.T) {
-	byteAddr, _ := hex.DecodeString(userAddr)
 	con := newWSCon(t)
-	eid1 := types.EventStringAccInput(byteAddr)
+	eid1 := types.EventStringAccInput(userByteAddr)
 	subscribe(t, con, eid1)
 	defer func() {
 		unsubscribe(t, con, eid1)
@@ -226,7 +224,7 @@ func TestWSCallWait(t *testing.T) {
 	var contractAddr []byte
 	// wait for the contract to be created
 	waitForEvent(t, con, eid1, true, func() {
-		_, receipt := broadcastTx(t, "JSONRPC", byteAddr, nil, code, byteKey, amt, 1000, 1000)
+		_, receipt := broadcastTx(t, "JSONRPC", userByteAddr, nil, code, userBytePriv, amt, 1000, 1000)
 		contractAddr = receipt.ContractAddr
 
 	}, unmarshalValidateCall(amt, returnCode))
@@ -241,19 +239,18 @@ func TestWSCallWait(t *testing.T) {
 	// get the return value from a call
 	data := []byte{0x1} // just needs to be non empty for this to be a CallTx
 	waitForEvent(t, con, eid2, true, func() {
-		broadcastTx(t, "JSONRPC", byteAddr, contractAddr, data, byteKey, amt, 1000, 1000)
+		broadcastTx(t, "JSONRPC", userByteAddr, contractAddr, data, userBytePriv, amt, 1000, 1000)
 	}, unmarshalValidateCall(amt, returnVal))
 }
 
 // create a contract and send it a msg without waiting. wait for contract event
 // and validate return
 func TestWSCallNoWait(t *testing.T) {
-	byteAddr, _ := hex.DecodeString(userAddr)
 	con := newWSCon(t)
 	amt := uint64(10000)
 	code, _, returnVal := simpleContract()
 
-	_, receipt := broadcastTx(t, "JSONRPC", byteAddr, nil, code, byteKey, amt, 1000, 1000)
+	_, receipt := broadcastTx(t, "JSONRPC", userByteAddr, nil, code, userBytePriv, amt, 1000, 1000)
 	contractAddr := receipt.ContractAddr
 
 	// susbscribe to the new contract
@@ -267,23 +264,22 @@ func TestWSCallNoWait(t *testing.T) {
 	// get the return value from a call
 	data := []byte{0x1} // just needs to be non empty for this to be a CallTx
 	waitForEvent(t, con, eid, true, func() {
-		broadcastTx(t, "JSONRPC", byteAddr, contractAddr, data, byteKey, amt, 1000, 1000)
+		broadcastTx(t, "JSONRPC", userByteAddr, contractAddr, data, userBytePriv, amt, 1000, 1000)
 	}, unmarshalValidateCall(amt, returnVal))
 }
 
 // create two contracts, one of which calls the other
 func TestWSCallCall(t *testing.T) {
-	byteAddr, _ := hex.DecodeString(userAddr)
 	con := newWSCon(t)
 	amt := uint64(10000)
 	code, _, returnVal := simpleContract()
 	txid := new([]byte)
 
 	// deploy the two contracts
-	_, receipt := broadcastTx(t, "JSONRPC", byteAddr, nil, code, byteKey, amt, 1000, 1000)
+	_, receipt := broadcastTx(t, "JSONRPC", userByteAddr, nil, code, userBytePriv, amt, 1000, 1000)
 	contractAddr1 := receipt.ContractAddr
 	code, _, _ = simpleCallContract(contractAddr1)
-	_, receipt = broadcastTx(t, "JSONRPC", byteAddr, nil, code, byteKey, amt, 1000, 1000)
+	_, receipt = broadcastTx(t, "JSONRPC", userByteAddr, nil, code, userBytePriv, amt, 1000, 1000)
 	contractAddr2 := receipt.ContractAddr
 
 	// susbscribe to the new contracts
@@ -300,7 +296,7 @@ func TestWSCallCall(t *testing.T) {
 	// call contract2, which should call contract1, and wait for ev1
 	data := []byte{0x1} // just needs to be non empty for this to be a CallTx
 	waitForEvent(t, con, eid1, true, func() {
-		tx, _ := broadcastTx(t, "JSONRPC", byteAddr, contractAddr2, data, byteKey, amt, 1000, 1000)
-		*txid = account.SignBytes(tx)
-	}, unmarshalValidateCallCall(byteAddr, returnVal, txid))
+		tx, _ := broadcastTx(t, "JSONRPC", userByteAddr, contractAddr2, data, userBytePriv, amt, 1000, 1000)
+		*txid = account.HashSignBytes(tx)
+	}, unmarshalValidateCallCall(userByteAddr, returnVal, txid))
 }

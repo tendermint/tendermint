@@ -2,14 +2,12 @@ package rpc
 
 import (
 	"bytes"
-	"encoding/hex"
 	"fmt"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	"testing"
-	//"time"
 )
 
 func testStatus(t *testing.T, typ string) {
@@ -38,35 +36,34 @@ func testGenPriv(t *testing.T, typ string) {
 }
 
 func testGetAccount(t *testing.T, typ string) {
-	byteAddr, _ := hex.DecodeString(userAddr)
-	acc := getAccount(t, typ, byteAddr)
+	acc := getAccount(t, typ, userByteAddr)
 	if acc == nil {
 		t.Fatalf("Account was nil")
 	}
-	if bytes.Compare(acc.Address, byteAddr) != 0 {
-		t.Fatalf("Failed to get correct account. Got %x, expected %x", acc.Address, byteAddr)
+	if bytes.Compare(acc.Address, userByteAddr) != 0 {
+		t.Fatalf("Failed to get correct account. Got %x, expected %x", acc.Address, userByteAddr)
 	}
 }
 
 func testSignedTx(t *testing.T, typ string) {
 	amt := uint64(100)
 	toAddr := []byte{20, 143, 25, 63, 16, 177, 83, 29, 91, 91, 54, 23, 233, 46, 190, 121, 122, 34, 86, 54}
-	tx, priv := signTx(t, typ, byteAddr, toAddr, nil, byteKey, amt, 0, 0)
-	checkTx(t, byteAddr, priv, tx.(*types.SendTx))
+	tx, priv := signTx(t, typ, userByteAddr, toAddr, nil, userBytePriv, amt, 0, 0)
+	checkTx(t, userByteAddr, priv, tx.(*types.SendTx))
 
 	toAddr = []byte{20, 143, 24, 63, 16, 17, 83, 29, 90, 91, 52, 2, 0, 41, 190, 121, 122, 34, 86, 54}
-	tx, priv = signTx(t, typ, byteAddr, toAddr, nil, byteKey, amt, 0, 0)
-	checkTx(t, byteAddr, priv, tx.(*types.SendTx))
+	tx, priv = signTx(t, typ, userByteAddr, toAddr, nil, userBytePriv, amt, 0, 0)
+	checkTx(t, userByteAddr, priv, tx.(*types.SendTx))
 
 	toAddr = []byte{0, 0, 4, 0, 0, 4, 0, 0, 4, 91, 52, 2, 0, 41, 190, 121, 122, 34, 86, 54}
-	tx, priv = signTx(t, typ, byteAddr, toAddr, nil, byteKey, amt, 0, 0)
-	checkTx(t, byteAddr, priv, tx.(*types.SendTx))
+	tx, priv = signTx(t, typ, userByteAddr, toAddr, nil, userBytePriv, amt, 0, 0)
+	checkTx(t, userByteAddr, priv, tx.(*types.SendTx))
 }
 
 func testBroadcastTx(t *testing.T, typ string) {
 	amt := uint64(100)
 	toAddr := []byte{20, 143, 25, 63, 16, 177, 83, 29, 91, 91, 54, 23, 233, 46, 190, 121, 122, 34, 86, 54}
-	tx, receipt := broadcastTx(t, typ, byteAddr, toAddr, nil, byteKey, amt, 0, 0)
+	tx, receipt := broadcastTx(t, typ, userByteAddr, toAddr, nil, userBytePriv, amt, 0, 0)
 	if receipt.CreatesContract > 0 {
 		t.Fatal("This tx does not create a contract")
 	}
@@ -102,7 +99,7 @@ func testGetStorage(t *testing.T, typ string) {
 
 	amt := uint64(1100)
 	code := []byte{0x60, 0x5, 0x60, 0x1, 0x55}
-	_, receipt := broadcastTx(t, typ, byteAddr, nil, code, byteKey, amt, 1000, 1000)
+	_, receipt := broadcastTx(t, typ, userByteAddr, nil, code, userBytePriv, amt, 1000, 1000)
 	if receipt.CreatesContract == 0 {
 		t.Fatal("This tx creates a contract")
 	}
@@ -115,7 +112,6 @@ func testGetStorage(t *testing.T, typ string) {
 	}
 
 	// allow it to get mined
-	//time.Sleep(time.Second * 20)
 	waitForEvent(t, con, eid, true, func() {
 	}, func(eid string, b []byte) error {
 		return nil
@@ -160,7 +156,7 @@ func testCall(t *testing.T, typ string) {
 	// create the contract
 	amt := uint64(6969)
 	code, _, _ := simpleContract()
-	_, receipt := broadcastTx(t, typ, byteAddr, nil, code, byteKey, amt, 1000, 1000)
+	_, receipt := broadcastTx(t, typ, userByteAddr, nil, code, userBytePriv, amt, 1000, 1000)
 	if receipt.CreatesContract == 0 {
 		t.Fatal("This tx creates a contract")
 	}
@@ -173,7 +169,6 @@ func testCall(t *testing.T, typ string) {
 	}
 
 	// allow it to get mined
-	//time.Sleep(time.Second * 20)
 	waitForEvent(t, con, eid, true, func() {
 	}, func(eid string, b []byte) error {
 		return nil

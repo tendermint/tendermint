@@ -6,7 +6,6 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/tendermint/tendermint/binary"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/vm"
 	"testing"
 )
 
@@ -51,14 +50,14 @@ func unmarshalValidateSend(amt uint64, toAddr []byte) func(string, []byte) error
 			return fmt.Errorf("Eventid is not correct. Got %s, expected %s", response.Event, eid)
 		}
 		tx := response.Data
-		if bytes.Compare(tx.Inputs[0].Address, byteAddr) != 0 {
-			return fmt.Errorf("Senders do not match up! Got %x, expected %x", tx.Inputs[0].Address, byteAddr)
+		if bytes.Compare(tx.Inputs[0].Address, userByteAddr) != 0 {
+			return fmt.Errorf("Senders do not match up! Got %x, expected %x", tx.Inputs[0].Address, userByteAddr)
 		}
 		if tx.Inputs[0].Amount != amt {
 			return fmt.Errorf("Amt does not match up! Got %d, expected %d", tx.Inputs[0].Amount, amt)
 		}
 		if bytes.Compare(tx.Outputs[0].Address, toAddr) != 0 {
-			return fmt.Errorf("Receivers do not match up! Got %x, expected %x", tx.Outputs[0].Address, byteAddr)
+			return fmt.Errorf("Receivers do not match up! Got %x, expected %x", tx.Outputs[0].Address, userByteAddr)
 		}
 		return nil
 	}
@@ -88,8 +87,8 @@ func unmarshalValidateCall(amt uint64, returnCode []byte) func(string, []byte) e
 			return fmt.Errorf(response.Data.Exception)
 		}
 		tx := response.Data.Tx
-		if bytes.Compare(tx.Input.Address, byteAddr) != 0 {
-			return fmt.Errorf("Senders do not match up! Got %x, expected %x", tx.Input.Address, byteAddr)
+		if bytes.Compare(tx.Input.Address, userByteAddr) != 0 {
+			return fmt.Errorf("Senders do not match up! Got %x, expected %x", tx.Input.Address, userByteAddr)
 		}
 		if tx.Input.Amount != amt {
 			return fmt.Errorf("Amt does not match up! Got %d, expected %d", tx.Input.Amount, amt)
@@ -107,13 +106,7 @@ func unmarshalValidateCallCall(origin, returnCode []byte, txid *[]byte) func(str
 		// unmarshall and assert somethings
 		var response struct {
 			Event string
-			Data  struct {
-				CallData  *vm.CallData
-				Origin    []byte
-				TxId      []byte
-				Return    []byte
-				Exception string
-			}
+			Data  types.EventMsgCall
 			Error string
 		}
 		var err error
