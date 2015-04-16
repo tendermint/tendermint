@@ -10,6 +10,7 @@ type ResponseStatus struct {
 }
 
 type ResponseRunProcess struct {
+	Success bool
 }
 
 type ResponseStopProcess struct {

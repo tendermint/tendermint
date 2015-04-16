@@ -165,8 +165,16 @@ func RunProcess(wait bool, label string, execPath string, args []string, input s
 	}
 
 	if wait {
-		exitErr := pcm.Wait(proc)
-		return nil, exitErr
+		<-proc.WaitCh
+		if proc.ExitState == nil {
+			return &ResponseRunProcess{
+				Success: true,
+			}, nil
+		} else {
+			return &ResponseRunProcess{
+				Success: proc.ExitState.Success(), // Would be always false?
+			}, nil
+		}
 	} else {
 		return &ResponseRunProcess{}, nil
 	}

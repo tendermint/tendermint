@@ -29,6 +29,7 @@ type Process struct {
 	Cmd        *exec.Cmd        `json:"-"`
 	ExitState  *os.ProcessState `json:"-"`
 	OutputFile *os.File         `json:"-"`
+	WaitCh     chan struct{}    `json:"-"`
 }
 
 const (
@@ -56,8 +57,6 @@ func Create(mode int, label string, execPath string, args []string, input string
 	}
 	if err := cmd.Start(); err != nil {
 		return nil, err
-	} else {
-		fmt.Printf("Success!")
 	}
 	proc := &Process{
 		Label:      label,
@@ -68,21 +67,20 @@ func Create(mode int, label string, execPath string, args []string, input string
 		Cmd:        cmd,
 		ExitState:  nil,
 		OutputFile: outFile,
+		WaitCh:     make(chan struct{}),
 	}
 	go func() {
-		Wait(proc)
+		err := proc.Cmd.Wait()
+		if err != nil {
+			fmt.Printf("Process exit: %v\n", err)
+			if exitError, ok := err.(*exec.ExitError); ok {
+				proc.ExitState = exitError.ProcessState
+			}
+		}
 		proc.EndTime = time.Now() // TODO make this goroutine-safe
+		close(proc.WaitCh)
 	}()
 	return proc, nil
-}
-
-func Wait(proc *Process) error {
-	exitErr := proc.Cmd.Wait()
-	if exitErr != nil {
-		fmt.Printf("Process exit: %v\n", exitErr)
-		proc.ExitState = exitErr.(*exec.ExitError).ProcessState
-	}
-	return exitErr
 }
 
 func Stop(proc *Process, kill bool) error {
