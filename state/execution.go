@@ -6,6 +6,7 @@ import (
 
 	"github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/events"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/vm"
 )
@@ -13,7 +14,7 @@ import (
 // NOTE: If an error occurs during block execution, state will be left
 // at an invalid state.  Copy the state before calling ExecBlock!
 func ExecBlock(s *State, block *types.Block, blockPartsHeader types.PartSetHeader) error {
-	err := execBlock(s, block, blockPartsHeader, true)
+	err := execBlock(s, block, blockPartsHeader)
 	if err != nil {
 		return err
 	}
@@ -29,7 +30,7 @@ func ExecBlock(s *State, block *types.Block, blockPartsHeader types.PartSetHeade
 // executes transactions of a block, does not check block.StateHash
 // NOTE: If an error occurs during block execution, state will be left
 // at an invalid state.  Copy the state before calling execBlock!
-func execBlock(s *State, block *types.Block, blockPartsHeader types.PartSetHeader, fireEvents bool) error {
+func execBlock(s *State, block *types.Block, blockPartsHeader types.PartSetHeader) error {
 	// Basic block validation.
 	err := block.ValidateBasic(s.LastBlockHeight, s.LastBlockHash, s.LastBlockParts, s.LastBlockTime)
 	if err != nil {
@@ -111,7 +112,7 @@ func execBlock(s *State, block *types.Block, blockPartsHeader types.PartSetHeade
 
 	// Commit each tx
 	for _, tx := range block.Data.Txs {
-		err := ExecTx(blockCache, tx, true, fireEvents)
+		err := ExecTx(blockCache, tx, true, s.evc)
 		if err != nil {
 			return InvalidTxError{tx, err}
 		}
@@ -291,13 +292,11 @@ func adjustByOutputs(accounts map[string]*account.Account, outs []*types.TxOutpu
 
 // If the tx is invalid, an error will be returned.
 // Unlike ExecBlock(), state will not be altered.
-func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall, fireEvents bool) error {
+func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Fireable) error {
 
 	// TODO: do something with fees
 	fees := uint64(0)
 	_s := blockCache.State() // hack to access validators and event switch.
-	nilSwitch := _s.evsw == nil
-	fireEvents = fireEvents && !nilSwitch
 
 	// Exec tx
 	switch tx := tx_.(type) {
@@ -328,16 +327,14 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall, fireEvents bool) erro
 			blockCache.UpdateAccount(acc)
 		}
 
-		// If we're in a block (not mempool),
-		// fire event on all inputs and outputs
-		// see types/events.go for spec
-		if fireEvents {
+		// if the evc is nil, nothing will happen
+		if evc != nil {
 			for _, i := range tx.Inputs {
-				_s.evsw.FireEvent(types.EventStringAccInput(i.Address), tx)
+				evc.FireEvent(types.EventStringAccInput(i.Address), tx)
 			}
 
 			for _, o := range tx.Outputs {
-				_s.evsw.FireEvent(types.EventStringAccOutput(o.Address), tx)
+				evc.FireEvent(types.EventStringAccOutput(o.Address), tx)
 			}
 		}
 		return nil
@@ -427,7 +424,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall, fireEvents bool) erro
 			txCache.UpdateAccount(caller) // because we adjusted by input above, and bumped nonce maybe.
 			txCache.UpdateAccount(callee) // because we adjusted by input above.
 			vmach := vm.NewVM(txCache, params, caller.Address, account.HashSignBytes(tx))
-			vmach.SetEventSwitch(_s.evsw)
+			vmach.SetFireable(_s.evc)
 			// NOTE: Call() transfers the value from caller to callee iff call succeeds.
 
 			ret, err := vmach.Call(caller, callee, code, tx.Data, value, &gas)
@@ -451,12 +448,11 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall, fireEvents bool) erro
 			// Create a receipt from the ret and whether errored.
 			log.Info("VM call complete", "caller", caller, "callee", callee, "return", ret, "err", err)
 
-			if fireEvents {
-				// Fire Events for sender and receiver
-				// a separate event will be fired from vm for each
-				_s.evsw.FireEvent(types.EventStringAccInput(tx.Input.Address), types.EventMsgCallTx{tx, ret, exception})
-
-				_s.evsw.FireEvent(types.EventStringAccReceive(tx.Address), types.EventMsgCallTx{tx, ret, exception})
+			// Fire Events for sender and receiver
+			// a separate event will be fired from vm for each additional call
+			if evc != nil {
+				evc.FireEvent(types.EventStringAccInput(tx.Input.Address), types.EventMsgCallTx{tx, ret, exception})
+				evc.FireEvent(types.EventStringAccReceive(tx.Address), types.EventMsgCallTx{tx, ret, exception})
 			}
 		} else {
 			// The mempool does not call txs until
@@ -525,8 +521,8 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall, fireEvents bool) erro
 		if !added {
 			panic("Failed to add validator")
 		}
-		if fireEvents {
-			_s.evsw.FireEvent(types.EventStringBond(), tx)
+		if evc != nil {
+			evc.FireEvent(types.EventStringBond(), tx)
 		}
 		return nil
 
@@ -550,8 +546,8 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall, fireEvents bool) erro
 
 		// Good!
 		_s.unbondValidator(val)
-		if fireEvents {
-			_s.evsw.FireEvent(types.EventStringUnbond(), tx)
+		if evc != nil {
+			evc.FireEvent(types.EventStringUnbond(), tx)
 		}
 		return nil
 
@@ -575,8 +571,8 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall, fireEvents bool) erro
 
 		// Good!
 		_s.rebondValidator(val)
-		if fireEvents {
-			_s.evsw.FireEvent(types.EventStringRebond(), tx)
+		if evc != nil {
+			evc.FireEvent(types.EventStringRebond(), tx)
 		}
 		return nil
 
@@ -621,8 +617,8 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall, fireEvents bool) erro
 
 		// Good! (Bad validator!)
 		_s.destroyValidator(accused)
-		if fireEvents {
-			_s.evsw.FireEvent(types.EventStringDupeout(), tx)
+		if evc != nil {
+			evc.FireEvent(types.EventStringDupeout(), tx)
 		}
 		return nil
 

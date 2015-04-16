@@ -251,7 +251,8 @@ type ConsensusState struct {
 	stagedState          *sm.State    // Cache result of staged block.
 	lastCommitVoteHeight uint         // Last called commitVoteBlock() or saveCommitVoteBlock() on.
 
-	evsw *events.EventSwitch
+	evsw events.Fireable
+	evc  *events.EventCache // set in stageBlock and passed into state
 }
 
 func NewConsensusState(state *sm.State, blockStore *bc.BlockStore, mempoolReactor *mempl.MempoolReactor) *ConsensusState {
@@ -443,9 +444,12 @@ ACTION_LOOP:
 			if cs.TryFinalizeCommit(rs.Height) {
 				// Now at new height
 				// cs.Step is at RoundStepNewHeight or RoundStepNewRound.
-				newBlock := cs.blockStore.LoadBlock(cs.state.LastBlockHeight)
-				cs.evsw.FireEvent(types.EventStringNewBlock(), newBlock)
-				// TODO: go fire events from event cache
+				// fire some events!
+				go func() {
+					newBlock := cs.blockStore.LoadBlock(cs.state.LastBlockHeight)
+					cs.evsw.FireEvent(types.EventStringNewBlock(), newBlock)
+					cs.evc.Flush()
+				}()
 				scheduleNextAction()
 				continue ACTION_LOOP
 			} else {
@@ -1032,6 +1036,9 @@ func (cs *ConsensusState) stageBlock(block *types.Block, blockParts *types.PartS
 
 	// Create a copy of the state for staging
 	stateCopy := cs.state.Copy()
+	// reset the event cache and pass it into the state
+	cs.evc = events.NewEventCache(cs.evsw)
+	stateCopy.SetFireable(cs.evc)
 
 	// Commit block onto the copied state.
 	// NOTE: Basic validation is done in state.AppendBlock().
@@ -1117,9 +1124,8 @@ func (cs *ConsensusState) saveCommitVoteBlock(block *types.Block, blockParts *ty
 }
 
 // implements events.Eventable
-func (cs *ConsensusState) SetEventSwitch(evsw *events.EventSwitch) {
+func (cs *ConsensusState) SetFireable(evsw events.Fireable) {
 	cs.evsw = evsw
-	cs.state.SetEventSwitch(evsw)
 }
 
 //-----------------------------------------------------------------------------

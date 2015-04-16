@@ -49,7 +49,7 @@ type VM struct {
 
 	callDepth int
 
-	evsw *events.EventSwitch
+	evc events.Fireable
 }
 
 func NewVM(appState AppState, params Params, origin Word256, txid []byte) *VM {
@@ -63,8 +63,8 @@ func NewVM(appState AppState, params Params, origin Word256, txid []byte) *VM {
 }
 
 // satisfies events.Eventable
-func (vm *VM) SetEventSwitch(evsw *events.EventSwitch) {
-	vm.evsw = evsw
+func (vm *VM) SetFireable(evc events.Fireable) {
+	vm.evc = evc
 }
 
 // CONTRACT appState is aware of caller and callee, so we can just mutate them.
@@ -93,8 +93,8 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 	}
 	// if callDepth is 0 the event is fired from ExecTx (along with the Input event)
 	// otherwise, we fire from here.
-	if vm.callDepth != 0 && vm.evsw != nil {
-		vm.evsw.FireEvent(types.EventStringAccReceive(callee.Address.Prefix(20)), types.EventMsgCall{
+	if vm.callDepth != 0 && vm.evc != nil {
+		vm.evc.FireEvent(types.EventStringAccReceive(callee.Address.Prefix(20)), types.EventMsgCall{
 			&types.CallData{caller.Address.Prefix(20), callee.Address.Prefix(20), input, value, *gas},
 			vm.origin.Prefix(20),
 			vm.txid,

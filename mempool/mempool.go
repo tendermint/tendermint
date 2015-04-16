@@ -42,7 +42,7 @@ func (mem *Mempool) GetCache() *sm.BlockCache {
 func (mem *Mempool) AddTx(tx types.Tx) (err error) {
 	mem.mtx.Lock()
 	defer mem.mtx.Unlock()
-	err = sm.ExecTx(mem.cache, tx, false, false)
+	err = sm.ExecTx(mem.cache, tx, false, nil)
 	if err != nil {
 		log.Debug("AddTx() error", "tx", tx, "error", err)
 		return err
@@ -93,7 +93,7 @@ func (mem *Mempool) ResetForBlockAndState(block *types.Block, state *sm.State) {
 	// Next, filter all txs that aren't valid given new state.
 	validTxs := []types.Tx{}
 	for _, tx := range txs {
-		err := sm.ExecTx(mem.cache, tx, false, false)
+		err := sm.ExecTx(mem.cache, tx, false, nil)
 		if err == nil {
 			log.Debug("Filter in, valid", "tx", tx)
 			validTxs = append(validTxs, tx)

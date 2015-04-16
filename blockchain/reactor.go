@@ -42,7 +42,7 @@ type BlockchainReactor struct {
 	quit       chan struct{}
 	running    uint32
 
-	evsw *events.EventSwitch
+	evsw events.Fireable
 }
 
 func NewBlockchainReactor(state *sm.State, store *BlockStore, sync bool) *BlockchainReactor {
@@ -242,7 +242,7 @@ func (bcR *BlockchainReactor) BroadcastStatus() error {
 }
 
 // implements events.Eventable
-func (bcR *BlockchainReactor) SetEventSwitch(evsw *events.EventSwitch) {
+func (bcR *BlockchainReactor) SetFireable(evsw events.Fireable) {
 	bcR.evsw = evsw
 }
 

@@ -24,7 +24,7 @@ type MempoolReactor struct {
 
 	Mempool *Mempool
 
-	evsw *events.EventSwitch
+	evsw events.Fireable
 }
 
 func NewMempoolReactor(mempool *Mempool) *MempoolReactor {
@@ -114,7 +114,7 @@ func (memR *MempoolReactor) BroadcastTx(tx types.Tx) error {
 }
 
 // implements events.Eventable
-func (memR *MempoolReactor) SetEventSwitch(evsw *events.EventSwitch) {
+func (memR *MempoolReactor) SetFireable(evsw events.Fireable) {
 	memR.evsw = evsw
 }
 

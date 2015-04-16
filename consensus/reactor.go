@@ -40,7 +40,7 @@ type ConsensusReactor struct {
 	blockStore *bc.BlockStore
 	conS       *ConsensusState
 
-	evsw *events.EventSwitch
+	evsw events.Fireable
 }
 
 func NewConsensusReactor(consensusState *ConsensusState, blockStore *bc.BlockStore) *ConsensusReactor {
@@ -234,9 +234,9 @@ func (conR *ConsensusReactor) ResetToState(state *sm.State) {
 }
 
 // implements events.Eventable
-func (conR *ConsensusReactor) SetEventSwitch(evsw *events.EventSwitch) {
+func (conR *ConsensusReactor) SetFireable(evsw events.Fireable) {
 	conR.evsw = evsw
-	conR.conS.SetEventSwitch(evsw)
+	conR.conS.SetFireable(evsw)
 }
 
 //--------------------------------------
