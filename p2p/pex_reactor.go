@@ -34,7 +34,7 @@ type PEXReactor struct {
 
 	book *AddrBook
 
-	evsw *events.EventSwitch
+	evsw events.Fireable
 }
 
 func NewPEXReactor(book *AddrBook) *PEXReactor {
@@ -211,7 +211,7 @@ func (pexR *PEXReactor) ensurePeers() {
 }
 
 // implements events.Eventable
-func (pexR *PEXReactor) SetEventSwitch(evsw *events.EventSwitch) {
+func (pexR *PEXReactor) SetFireable(evsw events.Fireable) {
 	pexR.evsw = evsw
 }
 

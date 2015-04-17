@@ -8,7 +8,12 @@ import (
 // reactors and other modules should export
 // this interface to become eventable
 type Eventable interface {
-	SetEventSwitch(*EventSwitch)
+	SetFireable(Fireable)
+}
+
+// an event switch or cache implements fireable
+type Fireable interface {
+	FireEvent(event string, msg interface{})
 }
 
 type EventSwitch struct {

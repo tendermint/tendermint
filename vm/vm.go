@@ -6,6 +6,8 @@ import (
 	"math/big"
 
 	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/events"
+	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/vm/sha3"
 )
 
@@ -43,17 +45,26 @@ type VM struct {
 	appState AppState
 	params   Params
 	origin   Word256
+	txid     []byte
 
 	callDepth int
+
+	evc events.Fireable
 }
 
-func NewVM(appState AppState, params Params, origin Word256) *VM {
+func NewVM(appState AppState, params Params, origin Word256, txid []byte) *VM {
 	return &VM{
 		appState:  appState,
 		params:    params,
 		origin:    origin,
 		callDepth: 0,
+		txid:      txid,
 	}
+}
+
+// satisfies events.Eventable
+func (vm *VM) SetFireable(evc events.Fireable) {
+	vm.evc = evc
 }
 
 // CONTRACT appState is aware of caller and callee, so we can just mutate them.
@@ -72,11 +83,24 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 	vm.callDepth += 1
 	output, err = vm.call(caller, callee, code, input, value, gas)
 	vm.callDepth -= 1
+	exception := ""
 	if err != nil {
+		exception = err.Error()
 		err := transfer(callee, caller, value)
 		if err != nil {
 			panic("Could not return value to caller")
 		}
+	}
+	// if callDepth is 0 the event is fired from ExecTx (along with the Input event)
+	// otherwise, we fire from here.
+	if vm.callDepth != 0 && vm.evc != nil {
+		vm.evc.FireEvent(types.EventStringAccReceive(callee.Address.Postfix(20)), types.EventMsgCall{
+			&types.CallData{caller.Address.Postfix(20), callee.Address.Postfix(20), input, value, *gas},
+			vm.origin.Postfix(20),
+			vm.txid,
+			output,
+			exception,
+		})
 	}
 	return
 }
@@ -283,7 +307,6 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			x, y := stack.Pop64(), stack.Pop64()
 			stack.Push64(x & y)
 			dbg.Printf(" %v & %v = %v\n", x, y, x&y)
-
 		case OR: // 0x17
 			x, y := stack.Pop64(), stack.Pop64()
 			stack.Push64(x | y)
@@ -330,7 +353,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			if ok = useGas(gas, GasGetAccount); !ok {
 				return nil, firstErr(err, ErrInsufficientGas)
 			}
-			acc := vm.appState.GetAccount(addr) // TODO ensure that 20byte lengths are supported.
+			acc := vm.appState.GetAccount(flipWord(addr)) // TODO ensure that 20byte lengths are supported.
 			if acc == nil {
 				return nil, firstErr(err, ErrUnknownAddress)
 			}
@@ -357,7 +380,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 				return nil, firstErr(err, ErrInputOutOfBounds)
 			}
 			stack.Push(RightPadWord256(data))
-			dbg.Printf(" => 0x%X\n", data)
+			dbg.Printf(" => 0x%X\n", RightPadWord256(data))
 
 		case CALLDATASIZE: // 0x36
 			stack.Push64(uint64(len(input)))
@@ -407,7 +430,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			if ok = useGas(gas, GasGetAccount); !ok {
 				return nil, firstErr(err, ErrInsufficientGas)
 			}
-			acc := vm.appState.GetAccount(addr)
+			acc := vm.appState.GetAccount(flipWord(addr))
 			if acc == nil {
 				return nil, firstErr(err, ErrUnknownAddress)
 			}
@@ -421,7 +444,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			if ok = useGas(gas, GasGetAccount); !ok {
 				return nil, firstErr(err, ErrInsufficientGas)
 			}
-			acc := vm.appState.GetAccount(addr)
+			acc := vm.appState.GetAccount(flipWord(addr))
 			if acc == nil {
 				return nil, firstErr(err, ErrUnknownAddress)
 			}
@@ -628,7 +651,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 				if ok = useGas(gas, GasGetAccount); !ok {
 					return nil, firstErr(err, ErrInsufficientGas)
 				}
-				acc := vm.appState.GetAccount(addr)
+				acc := vm.appState.GetAccount(flipWord(addr))
 				if acc == nil {
 					return nil, firstErr(err, ErrUnknownAddress)
 				}
@@ -671,7 +694,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 				return nil, firstErr(err, ErrInsufficientGas)
 			}
 			// TODO if the receiver is , then make it the fee.
-			receiver := vm.appState.GetAccount(addr)
+			receiver := vm.appState.GetAccount(flipWord(addr))
 			if receiver == nil {
 				return nil, firstErr(err, ErrUnknownAddress)
 			}
@@ -697,10 +720,12 @@ func subslice(data []byte, offset, length uint64, flip_ bool) (ret []byte, ok bo
 	if size < offset {
 		return nil, false
 	} else if size < offset+length {
-		ret, ok = data[offset:], false
+		ret, ok = data[offset:], true
+		ret = RightPadBytes(ret, 32)
 	} else {
 		ret, ok = data[offset:offset+length], true
 	}
+
 	if flip_ {
 		ret = flip(ret)
 	}

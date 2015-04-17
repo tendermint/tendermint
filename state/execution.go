@@ -7,6 +7,7 @@ import (
 
 	"github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/events"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/vm"
 )
@@ -112,7 +113,7 @@ func execBlock(s *State, block *types.Block, blockPartsHeader types.PartSetHeade
 
 	// Commit each tx
 	for _, tx := range block.Data.Txs {
-		err := ExecTx(blockCache, tx, true)
+		err := ExecTx(blockCache, tx, true, s.evc)
 		if err != nil {
 			return InvalidTxError{tx, err}
 		}
@@ -292,11 +293,11 @@ func adjustByOutputs(accounts map[string]*account.Account, outs []*types.TxOutpu
 
 // If the tx is invalid, an error will be returned.
 // Unlike ExecBlock(), state will not be altered.
-func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool) error {
+func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Fireable) error {
 
 	// TODO: do something with fees
 	fees := uint64(0)
-	_s := blockCache.State() // hack to access validators.
+	_s := blockCache.State() // hack to access validators and event switch.
 
 	// Exec tx
 	switch tx := tx_.(type) {
@@ -325,6 +326,17 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool) error {
 		adjustByOutputs(accounts, tx.Outputs)
 		for _, acc := range accounts {
 			blockCache.UpdateAccount(acc)
+		}
+
+		// if the evc is nil, nothing will happen
+		if evc != nil {
+			for _, i := range tx.Inputs {
+				evc.FireEvent(types.EventStringAccInput(i.Address), tx)
+			}
+
+			for _, o := range tx.Outputs {
+				evc.FireEvent(types.EventStringAccOutput(o.Address), tx)
+			}
 		}
 		return nil
 
@@ -412,10 +424,14 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool) error {
 
 			txCache.UpdateAccount(caller) // because we adjusted by input above, and bumped nonce maybe.
 			txCache.UpdateAccount(callee) // because we adjusted by input above.
-			vmach := vm.NewVM(txCache, params, caller.Address)
+			vmach := vm.NewVM(txCache, params, caller.Address, account.HashSignBytes(tx))
+			vmach.SetFireable(_s.evc)
 			// NOTE: Call() transfers the value from caller to callee iff call succeeds.
+
 			ret, err := vmach.Call(caller, callee, code, tx.Data, value, &gas)
+			exception := ""
 			if err != nil {
+				exception = err.Error()
 				// Failure. Charge the gas fee. The 'value' was otherwise not transferred.
 				log.Debug(Fmt("Error on execution: %v", err))
 				inAcc.Balance -= tx.Fee
@@ -432,6 +448,13 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool) error {
 			}
 			// Create a receipt from the ret and whether errored.
 			log.Info("VM call complete", "caller", caller, "callee", callee, "return", ret, "err", err)
+
+			// Fire Events for sender and receiver
+			// a separate event will be fired from vm for each additional call
+			if evc != nil {
+				evc.FireEvent(types.EventStringAccInput(tx.Input.Address), types.EventMsgCallTx{tx, ret, exception})
+				evc.FireEvent(types.EventStringAccReceive(tx.Address), types.EventMsgCallTx{tx, ret, exception})
+			}
 		} else {
 			// The mempool does not call txs until
 			// the proposer determines the order of txs.
@@ -499,6 +522,9 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool) error {
 		if !added {
 			panic("Failed to add validator")
 		}
+		if evc != nil {
+			evc.FireEvent(types.EventStringBond(), tx)
+		}
 		return nil
 
 	case *types.UnbondTx:
@@ -521,6 +547,9 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool) error {
 
 		// Good!
 		_s.unbondValidator(val)
+		if evc != nil {
+			evc.FireEvent(types.EventStringUnbond(), tx)
+		}
 		return nil
 
 	case *types.RebondTx:
@@ -543,6 +572,9 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool) error {
 
 		// Good!
 		_s.rebondValidator(val)
+		if evc != nil {
+			evc.FireEvent(types.EventStringRebond(), tx)
+		}
 		return nil
 
 	case *types.DupeoutTx:
@@ -586,6 +618,9 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool) error {
 
 		// Good! (Bad validator!)
 		_s.destroyValidator(accused)
+		if evc != nil {
+			evc.FireEvent(types.EventStringDupeout(), tx)
+		}
 		return nil
 
 	default:

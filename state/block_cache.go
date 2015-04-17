@@ -91,13 +91,13 @@ func (cache *BlockCache) GetStorage(addr Word256, key Word256) (value Word256) {
 	}
 
 	// Get or load storage
-	acc, storage, removed, dirty := cache.accounts[string(addr.Prefix(20))].unpack()
+	acc, storage, removed, dirty := cache.accounts[string(addr.Postfix(20))].unpack()
 	if removed {
 		panic("GetStorage() on removed account")
 	}
 	if acc != nil && storage == nil {
 		storage = makeStorage(cache.db, acc.StorageRoot)
-		cache.accounts[string(addr.Prefix(20))] = accountInfo{acc, storage, false, dirty}
+		cache.accounts[string(addr.Postfix(20))] = accountInfo{acc, storage, false, dirty}
 	} else if acc == nil {
 		return Zero256
 	}
@@ -114,7 +114,7 @@ func (cache *BlockCache) GetStorage(addr Word256, key Word256) (value Word256) {
 
 // NOTE: Set value to zero to removed from the trie.
 func (cache *BlockCache) SetStorage(addr Word256, key Word256, value Word256) {
-	_, _, removed, _ := cache.accounts[string(addr.Prefix(20))].unpack()
+	_, _, removed, _ := cache.accounts[string(addr.Postfix(20))].unpack()
 	if removed {
 		panic("SetStorage() on a removed account")
 	}
@@ -146,7 +146,7 @@ func (cache *BlockCache) Sync() {
 	for _, storageKey := range storageKeys {
 		addr, key := Tuple256Split(storageKey)
 		if addr != curAddr || curAcc == nil {
-			acc, storage, removed, _ := cache.accounts[string(addr.Prefix(20))].unpack()
+			acc, storage, removed, _ := cache.accounts[string(addr.Postfix(20))].unpack()
 			if storage == nil {
 				storage = makeStorage(cache.db, acc.StorageRoot)
 			}
@@ -166,7 +166,7 @@ func (cache *BlockCache) Sync() {
 			curStorage.Remove(key.Bytes())
 		} else {
 			curStorage.Set(key.Bytes(), value.Bytes())
-			cache.accounts[string(addr.Prefix(20))] = accountInfo{curAcc, curStorage, false, true}
+			cache.accounts[string(addr.Postfix(20))] = accountInfo{curAcc, curStorage, false, true}
 		}
 	}
 
@@ -187,7 +187,7 @@ func (cache *BlockCache) Sync() {
 			}
 		} else {
 			if acc == nil {
-				panic(Fmt("Account should not be nil for addr: %X", acc.Address))
+				continue
 			}
 			if storage != nil {
 				newStorageRoot := storage.Save()

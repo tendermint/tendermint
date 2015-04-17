@@ -2,12 +2,15 @@
 package rpc
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
+	"net"
 	"net/http"
 	"runtime/debug"
 	"time"
 
+	"github.com/tendermint/tendermint/alert"
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 )
@@ -95,4 +98,18 @@ type ResponseWriterWrapper struct {
 func (w *ResponseWriterWrapper) WriteHeader(status int) {
 	w.Status = status
 	w.ResponseWriter.WriteHeader(status)
+}
+
+// implements http.Hijacker
+func (w *ResponseWriterWrapper) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	return w.ResponseWriter.(http.Hijacker).Hijack()
+}
+
+// Stick it as a deferred statement in gouroutines to prevent the program from crashing.
+func Recover(daemonName string) {
+	if e := recover(); e != nil {
+		stack := string(debug.Stack())
+		errorString := fmt.Sprintf("[%s] %s\n%s", daemonName, e, stack)
+		alert.Alert(errorString)
+	}
 }

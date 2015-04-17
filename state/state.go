@@ -8,6 +8,7 @@ import (
 	"github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
 	dbm "github.com/tendermint/tendermint/db"
+	"github.com/tendermint/tendermint/events"
 	"github.com/tendermint/tendermint/merkle"
 	"github.com/tendermint/tendermint/types"
 )
@@ -34,6 +35,8 @@ type State struct {
 	UnbondingValidators  *ValidatorSet
 	accounts             merkle.Tree // Shouldn't be accessed directly.
 	validatorInfos       merkle.Tree // Shouldn't be accessed directly.
+
+	evc events.Fireable // typically an events.EventCache
 }
 
 func LoadState(db dbm.DB) *State {
@@ -98,6 +101,7 @@ func (s *State) Copy() *State {
 		UnbondingValidators:  s.UnbondingValidators.Copy(),  // copy the valSet lazily.
 		accounts:             s.accounts.Copy(),
 		validatorInfos:       s.validatorInfos.Copy(),
+		evc:                  nil,
 	}
 }
 
@@ -115,6 +119,7 @@ func (s *State) Hash() []byte {
 // Mutates the block in place and updates it with new state hash.
 func (s *State) SetBlockStateHash(block *types.Block) error {
 	sCopy := s.Copy()
+	// sCopy has no event cache in it, so this won't fire events
 	err := execBlock(sCopy, block, types.PartSetHeader{})
 	if err != nil {
 		return err
@@ -263,6 +268,11 @@ func (s *State) LoadStorage(hash []byte) (storage merkle.Tree) {
 
 // State.storage
 //-------------------------------------
+
+// Implements events.Eventable. Typically uses events.EventCache
+func (s *State) SetFireable(evc events.Fireable) {
+	s.evc = evc
+}
 
 //-----------------------------------------------------------------------------
 

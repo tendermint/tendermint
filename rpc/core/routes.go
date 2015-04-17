@@ -4,10 +4,6 @@ import (
 	"github.com/tendermint/tendermint/rpc"
 )
 
-/*
-TODO: support Call && GetStorage.
-*/
-
 var Routes = map[string]*rpc.RPCFunc{
 	"status":                  rpc.NewRPCFunc(Status, []string{}),
 	"net_info":                rpc.NewRPCFunc(NetInfo, []string{}),
