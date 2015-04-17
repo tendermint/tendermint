@@ -41,7 +41,7 @@ const (
 // execPath: command name
 // args: args to command. (should not include name)
 func Create(mode int, label string, execPath string, args []string, input string) (*Process, error) {
-	outPath, outFile := makeFile(label)
+	outPath, outFile := makeFile("output_" + label)
 	cmd := exec.Command(execPath, args...)
 	switch mode {
 	case ProcessModeStd:

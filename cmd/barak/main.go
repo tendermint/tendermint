@@ -177,6 +177,7 @@ func RunProcess(wait bool, label string, execPath string, args []string, input s
 	if wait {
 		<-proc.WaitCh
 		output := pcm.ReadOutput(proc)
+		fmt.Println("Read output", output)
 		if proc.ExitState == nil {
 			return &ResponseRunProcess{
 				Success: true,
