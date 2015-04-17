@@ -148,7 +148,7 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 		case *HasVoteMessage:
 			ps.ApplyHasVoteMessage(msg)
 		default:
-			log.Warn("Unknown message type %v", reflect.TypeOf(msg))
+			log.Warn(Fmt("Unknown message type %v", reflect.TypeOf(msg)))
 		}
 
 	case DataChannel:
@@ -165,11 +165,11 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 				ps.SetHasProposalPOLPart(msg.Height, msg.Round, msg.Part.Index)
 				_, err = conR.conS.AddProposalPOLPart(msg.Height, msg.Round, msg.Part)
 			} else {
-				log.Warn("Unknown part type %v", msg.Type)
+				log.Warn(Fmt("Unknown part type %v", msg.Type))
 			}
 
 		default:
-			log.Warn("Unknown message type %v", reflect.TypeOf(msg))
+			log.Warn(Fmt("Unknown message type %v", reflect.TypeOf(msg)))
 		}
 
 	case VoteChannel:
@@ -213,10 +213,10 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 			}
 
 		default:
-			log.Warn("Unknown message type %v", reflect.TypeOf(msg))
+			log.Warn(Fmt("Unknown message type %v", reflect.TypeOf(msg)))
 		}
 	default:
-		log.Warn("Unknown channel %X", chId)
+		log.Warn(Fmt("Unknown channel %X", chId))
 	}
 
 	if err != nil {
@@ -755,7 +755,6 @@ func (ps *PeerState) ApplyHasVoteMessage(msg *HasVoteMessage) {
 // Messages
 
 const (
-	msgTypeUnknown      = byte(0x00)
 	msgTypeNewRoundStep = byte(0x01)
 	msgTypeCommitStep   = byte(0x02)
 	msgTypeProposal     = byte(0x11)

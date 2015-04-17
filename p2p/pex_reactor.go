@@ -120,7 +120,7 @@ func (pexR *PEXReactor) Receive(chId byte, src *Peer, msgBytes []byte) {
 			pexR.book.AddAddress(addr, srcAddr)
 		}
 	default:
-		log.Warn("Unknown message type %v", reflect.TypeOf(msg))
+		log.Warn(Fmt("Unknown message type %v", reflect.TypeOf(msg)))
 	}
 
 }

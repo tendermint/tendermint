@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 
 	"github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/events"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
@@ -100,7 +101,7 @@ func (memR *MempoolReactor) Receive(chId byte, src *p2p.Peer, msgBytes []byte) {
 		}
 
 	default:
-		log.Warn("Unknown message type %v", reflect.TypeOf(msg))
+		log.Warn(Fmt("Unknown message type %v", reflect.TypeOf(msg)))
 	}
 }
 

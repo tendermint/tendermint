@@ -145,7 +145,7 @@ func (bcR *BlockchainReactor) Receive(chId byte, src *p2p.Peer, msgBytes []byte)
 		// Got a peer status.
 		bcR.pool.SetPeerHeight(src.Key, msg.Height)
 	default:
-		log.Warn("Unknown message type %v", reflect.TypeOf(msg))
+		log.Warn(Fmt("Unknown message type %v", reflect.TypeOf(msg)))
 	}
 }
 
@@ -270,7 +270,7 @@ func DecodeMessage(bz []byte) (msgType byte, msg BlockchainMessage, err error) {
 	msgType = bz[0]
 	n := new(int64)
 	r := bytes.NewReader(bz)
-	msg = binary.ReadBinary(&msg, r, n, &err)
+	msg = binary.ReadBinary(struct{ BlockchainMessage }{}, r, n, &err).(struct{ BlockchainMessage }).BlockchainMessage
 	return
 }
 
@@ -300,6 +300,6 @@ type bcPeerStatusMessage struct {
 	Height uint
 }
 
-func (m bcPeerStatusMessage) String() string {
+func (m *bcPeerStatusMessage) String() string {
 	return fmt.Sprintf("[bcPeerStatusMessage %v]", m.Height)
 }
