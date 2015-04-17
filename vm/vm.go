@@ -307,7 +307,6 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			x, y := stack.Pop64(), stack.Pop64()
 			stack.Push64(x & y)
 			dbg.Printf(" %v & %v = %v\n", x, y, x&y)
-
 		case OR: // 0x17
 			x, y := stack.Pop64(), stack.Pop64()
 			stack.Push64(x | y)
@@ -381,7 +380,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 				return nil, firstErr(err, ErrInputOutOfBounds)
 			}
 			stack.Push(RightPadWord256(data))
-			dbg.Printf(" => 0x%X\n", data)
+			dbg.Printf(" => 0x%X\n", RightPadWord256(data))
 
 		case CALLDATASIZE: // 0x36
 			stack.Push64(uint64(len(input)))
@@ -721,10 +720,12 @@ func subslice(data []byte, offset, length uint64, flip_ bool) (ret []byte, ok bo
 	if size < offset {
 		return nil, false
 	} else if size < offset+length {
-		ret, ok = data[offset:], false
+		ret, ok = data[offset:], true
+		ret = RightPadBytes(ret, 32)
 	} else {
 		ret, ok = data[offset:offset+length], true
 	}
+
 	if flip_ {
 		ret = flip(ret)
 	}

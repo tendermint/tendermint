@@ -101,6 +101,7 @@ func (s *State) Copy() *State {
 		UnbondingValidators:  s.UnbondingValidators.Copy(),  // copy the valSet lazily.
 		accounts:             s.accounts.Copy(),
 		validatorInfos:       s.validatorInfos.Copy(),
+		evc:                  nil,
 	}
 }
 

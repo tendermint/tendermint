@@ -32,8 +32,10 @@ func (evc *EventCache) FireEvent(event string, msg interface{}) {
 }
 
 // Fire events by running evsw.FireEvent on all cached events. Blocks.
+// Clears cached events
 func (evc *EventCache) Flush() {
 	for _, ei := range evc.events {
 		evc.evsw.FireEvent(ei.event, ei.msg)
 	}
+	evc.events = make([]eventInfo, eventsBufferSize)
 }

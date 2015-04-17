@@ -212,8 +212,9 @@ type WSResponse struct {
 }
 
 // a single websocket connection
-// contains the listeners id
-type Connection struct {
+// contains listener id, underlying ws connection,
+// and the event switch for subscribing to events
+type WSConnection struct {
 	id          string
 	wsConn      *websocket.Conn
 	writeChan   chan WSResponse
@@ -225,8 +226,8 @@ type Connection struct {
 }
 
 // new websocket connection wrapper
-func NewConnection(wsConn *websocket.Conn) *Connection {
-	return &Connection{
+func NewWSConnection(wsConn *websocket.Conn) *WSConnection {
+	return &WSConnection{
 		id:        wsConn.RemoteAddr().String(),
 		wsConn:    wsConn,
 		writeChan: make(chan WSResponse, WriteChanBufferSize), // buffered. we keep track when its full
@@ -234,7 +235,7 @@ func NewConnection(wsConn *websocket.Conn) *Connection {
 }
 
 // start the connection and hand her the event switch
-func (con *Connection) Start(evsw *events.EventSwitch) {
+func (con *WSConnection) Start(evsw *events.EventSwitch) {
 	if atomic.CompareAndSwapUint32(&con.started, 0, 1) {
 		con.evsw = evsw
 
@@ -246,15 +247,29 @@ func (con *Connection) Start(evsw *events.EventSwitch) {
 }
 
 // close the connection
-func (con *Connection) Stop() {
+func (con *WSConnection) Stop() {
 	if atomic.CompareAndSwapUint32(&con.stopped, 0, 1) {
 		con.wsConn.Close()
 		close(con.writeChan)
 	}
 }
 
+// attempt to write response to writeChan and record failures
+func (con *WSConnection) safeWrite(resp WSResponse) {
+	select {
+	case con.writeChan <- resp:
+		// yay
+		con.failedSends = 0
+	default:
+		// channel is full
+		// if this happens too many times in a row,
+		// close connection
+		con.failedSends += 1
+	}
+}
+
 // read from the socket and subscribe to or unsubscribe from events
-func (con *Connection) read() {
+func (con *WSConnection) read() {
 	reaper := time.Tick(time.Second * WSConnectionReaperSeconds)
 	for {
 		select {
@@ -278,7 +293,7 @@ func (con *Connection) read() {
 			err = json.Unmarshal(in, &req)
 			if err != nil {
 				errStr := fmt.Sprintf("Error unmarshaling data: %s", err.Error())
-				con.writeChan <- WSResponse{Error: errStr}
+				con.safeWrite(WSResponse{Error: errStr})
 				continue
 			}
 			switch req.Type {
@@ -289,16 +304,7 @@ func (con *Connection) read() {
 						Event: req.Event,
 						Data:  msg,
 					}
-					select {
-					case con.writeChan <- resp:
-						// yay
-						con.failedSends = 0
-					default:
-						// channel is full
-						// if this happens too many times,
-						// close connection
-						con.failedSends += 1
-					}
+					con.safeWrite(resp)
 				})
 			case "unsubscribe":
 				if req.Event != "" {
@@ -307,7 +313,7 @@ func (con *Connection) read() {
 					con.evsw.RemoveListener(con.id)
 				}
 			default:
-				con.writeChan <- WSResponse{Error: "Unknown request type: " + req.Type}
+				con.safeWrite(WSResponse{Error: "Unknown request type: " + req.Type})
 			}
 
 		}
@@ -315,7 +321,7 @@ func (con *Connection) read() {
 }
 
 // receives on a write channel and writes out on the socket
-func (con *Connection) write() {
+func (con *WSConnection) write() {
 	n, err := new(int64), new(error)
 	for {
 		msg, more := <-con.writeChan
@@ -369,7 +375,7 @@ func (wm *WebsocketManager) websocketHandler(w http.ResponseWriter, r *http.Requ
 	}
 
 	// register connection
-	con := NewConnection(wsConn)
+	con := NewWSConnection(wsConn)
 	log.Info("New websocket connection", "origin", con.id)
 	con.Start(wm.evsw)
 }

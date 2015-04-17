@@ -161,6 +161,10 @@ func (n *Node) MempoolReactor() *mempl.MempoolReactor {
 	return n.mempoolReactor
 }
 
+func (n *Node) EventSwitch() *events.EventSwitch {
+	return n.evsw
+}
+
 //------------------------------------------------------------------------------
 
 func RunNode() {
