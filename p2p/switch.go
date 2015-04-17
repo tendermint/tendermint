@@ -212,10 +212,10 @@ func (sw *Switch) Broadcast(chId byte, msg interface{}) chan bool {
 	successChan := make(chan bool, len(sw.peers.List()))
 	log.Debug("Broadcast", "channel", chId, "msg", msg)
 	for _, peer := range sw.peers.List() {
-		go func() {
+		go func(peer *Peer) {
 			success := peer.Send(chId, msg)
 			successChan <- success
-		}()
+		}(peer)
 	}
 	return successChan
 

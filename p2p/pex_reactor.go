@@ -201,13 +201,12 @@ func (pexR *PEXReactor) ensurePeers() {
 
 	// Dial picked addresses
 	for _, item := range toDial.Values() {
-		picked := item.(*NetAddress)
-		go func() {
+		go func(picked *NetAddress) {
 			_, err := pexR.sw.DialPeerWithAddress(picked)
 			if err != nil {
 				pexR.book.MarkAttempt(picked)
 			}
-		}()
+		}(item.(*NetAddress))
 	}
 }
 
