@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"reflect"
 	"sync/atomic"
 	"time"
 
@@ -119,7 +120,7 @@ func (pexR *PEXReactor) Receive(chId byte, src *Peer, msgBytes []byte) {
 			pexR.book.AddAddress(addr, srcAddr)
 		}
 	default:
-		// Ignore unknown message.
+		log.Warn("Unknown message type %v", reflect.TypeOf(msg))
 	}
 
 }
@@ -228,16 +229,16 @@ type PexMessage interface{}
 
 var _ = binary.RegisterInterface(
 	struct{ PexMessage }{},
-	binary.ConcreteType{pexHandshakeMessage{}, msgTypeHandshake},
-	binary.ConcreteType{pexRequestMessage{}, msgTypeRequest},
-	binary.ConcreteType{pexAddrsMessage{}, msgTypeAddrs},
+	binary.ConcreteType{&pexHandshakeMessage{}, msgTypeHandshake},
+	binary.ConcreteType{&pexRequestMessage{}, msgTypeRequest},
+	binary.ConcreteType{&pexAddrsMessage{}, msgTypeAddrs},
 )
 
 func DecodeMessage(bz []byte) (msgType byte, msg PexMessage, err error) {
 	msgType = bz[0]
 	n := new(int64)
 	r := bytes.NewReader(bz)
-	msg = binary.ReadBinary(&msg, r, n, &err)
+	msg = binary.ReadBinary(struct{ PexMessage }{}, r, n, &err).(struct{ PexMessage }).PexMessage
 	return
 }
 

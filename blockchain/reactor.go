@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"reflect"
 	"sync/atomic"
 	"time"
 
@@ -105,7 +106,7 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 // Implements Reactor
 func (bcR *BlockchainReactor) AddPeer(peer *p2p.Peer) {
 	// Send peer our state.
-	peer.Send(BlockchainChannel, bcPeerStatusMessage{bcR.store.Height()})
+	peer.Send(BlockchainChannel, &bcPeerStatusMessage{bcR.store.Height()})
 }
 
 // Implements Reactor
@@ -125,11 +126,11 @@ func (bcR *BlockchainReactor) Receive(chId byte, src *p2p.Peer, msgBytes []byte)
 	log.Info("Received message", "msg", msg)
 
 	switch msg := msg.(type) {
-	case bcBlockRequestMessage:
+	case *bcBlockRequestMessage:
 		// Got a request for a block. Respond with block if we have it.
 		block := bcR.store.LoadBlock(msg.Height)
 		if block != nil {
-			msg := bcBlockResponseMessage{Block: block}
+			msg := &bcBlockResponseMessage{Block: block}
 			queued := src.TrySend(BlockchainChannel, msg)
 			if !queued {
 				// queue is full, just ignore.
@@ -137,14 +138,14 @@ func (bcR *BlockchainReactor) Receive(chId byte, src *p2p.Peer, msgBytes []byte)
 		} else {
 			// TODO peer is asking for things we don't have.
 		}
-	case bcBlockResponseMessage:
+	case *bcBlockResponseMessage:
 		// Got a block.
 		bcR.pool.AddBlock(msg.Block, src.Key)
-	case bcPeerStatusMessage:
+	case *bcPeerStatusMessage:
 		// Got a peer status.
 		bcR.pool.SetPeerHeight(src.Key, msg.Height)
 	default:
-		// Ignore unknown message
+		log.Warn("Unknown message type %v", reflect.TypeOf(msg))
 	}
 }
 
@@ -162,7 +163,7 @@ FOR_LOOP:
 				// We can't fulfill the request.
 				continue FOR_LOOP
 			}
-			msg := bcBlockRequestMessage{request.Height}
+			msg := &bcBlockRequestMessage{request.Height}
 			queued := peer.TrySend(BlockchainChannel, msg)
 			if !queued {
 				// We couldn't queue the request.
@@ -238,7 +239,7 @@ FOR_LOOP:
 }
 
 func (bcR *BlockchainReactor) BroadcastStatus() error {
-	bcR.sw.Broadcast(BlockchainChannel, bcPeerStatusMessage{bcR.store.Height()})
+	bcR.sw.Broadcast(BlockchainChannel, &bcPeerStatusMessage{bcR.store.Height()})
 	return nil
 }
 
@@ -260,9 +261,9 @@ type BlockchainMessage interface{}
 
 var _ = binary.RegisterInterface(
 	struct{ BlockchainMessage }{},
-	binary.ConcreteType{bcBlockRequestMessage{}, msgTypeBlockRequest},
-	binary.ConcreteType{bcBlockResponseMessage{}, msgTypeBlockResponse},
-	binary.ConcreteType{bcPeerStatusMessage{}, msgTypePeerStatus},
+	binary.ConcreteType{&bcBlockRequestMessage{}, msgTypeBlockRequest},
+	binary.ConcreteType{&bcBlockResponseMessage{}, msgTypeBlockResponse},
+	binary.ConcreteType{&bcPeerStatusMessage{}, msgTypePeerStatus},
 )
 
 func DecodeMessage(bz []byte) (msgType byte, msg BlockchainMessage, err error) {
@@ -279,7 +280,7 @@ type bcBlockRequestMessage struct {
 	Height uint
 }
 
-func (m bcBlockRequestMessage) String() string {
+func (m *bcBlockRequestMessage) String() string {
 	return fmt.Sprintf("[bcBlockRequestMessage %v]", m.Height)
 }
 
@@ -289,7 +290,7 @@ type bcBlockResponseMessage struct {
 	Block *types.Block
 }
 
-func (m bcBlockResponseMessage) String() string {
+func (m *bcBlockResponseMessage) String() string {
 	return fmt.Sprintf("[bcBlockResponseMessage %v]", m.Block.Height)
 }
 

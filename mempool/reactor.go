@@ -3,6 +3,7 @@ package mempool
 import (
 	"bytes"
 	"fmt"
+	"reflect"
 	"sync/atomic"
 
 	"github.com/tendermint/tendermint/binary"
@@ -99,7 +100,7 @@ func (memR *MempoolReactor) Receive(chId byte, src *p2p.Peer, msgBytes []byte) {
 		}
 
 	default:
-		// Ignore unknown message
+		log.Warn("Unknown message type %v", reflect.TypeOf(msg))
 	}
 }
 
@@ -129,14 +130,14 @@ type MempoolMessage interface{}
 
 var _ = binary.RegisterInterface(
 	struct{ MempoolMessage }{},
-	binary.ConcreteType{TxMessage{}, msgTypeTx},
+	binary.ConcreteType{&TxMessage{}, msgTypeTx},
 )
 
 func DecodeMessage(bz []byte) (msgType byte, msg MempoolMessage, err error) {
 	msgType = bz[0]
 	n := new(int64)
 	r := bytes.NewReader(bz)
-	msg = binary.ReadBinary(&msg, r, n, &err)
+	msg = binary.ReadBinary(struct{ MempoolMessage }{}, r, n, &err).(struct{ MempoolMessage }).MempoolMessage
 	return
 }
 

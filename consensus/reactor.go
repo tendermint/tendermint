@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"reflect"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -147,7 +148,7 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 		case *HasVoteMessage:
 			ps.ApplyHasVoteMessage(msg)
 		default:
-			// Ignore unknown message
+			log.Warn("Unknown message type %v", reflect.TypeOf(msg))
 		}
 
 	case DataChannel:
@@ -164,11 +165,11 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 				ps.SetHasProposalPOLPart(msg.Height, msg.Round, msg.Part.Index)
 				_, err = conR.conS.AddProposalPOLPart(msg.Height, msg.Round, msg.Part)
 			} else {
-				// Ignore unknown part type
+				log.Warn("Unknown part type %v", msg.Type)
 			}
 
 		default:
-			// Ignore unknown message
+			log.Warn("Unknown message type %v", reflect.TypeOf(msg))
 		}
 
 	case VoteChannel:
@@ -212,10 +213,10 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 			}
 
 		default:
-			// Ignore unknown message
+			log.Warn("Unknown message type %v", reflect.TypeOf(msg))
 		}
 	default:
-		// Ignore unknown channel
+		log.Warn("Unknown channel %X", chId)
 	}
 
 	if err != nil {
@@ -767,12 +768,12 @@ type ConsensusMessage interface{}
 
 var _ = binary.RegisterInterface(
 	struct{ ConsensusMessage }{},
-	binary.ConcreteType{NewRoundStepMessage{}, msgTypeNewRoundStep},
-	binary.ConcreteType{CommitStepMessage{}, msgTypeCommitStep},
-	binary.ConcreteType{ProposalMessage{}, msgTypeProposal},
-	binary.ConcreteType{PartMessage{}, msgTypePart},
-	binary.ConcreteType{VoteMessage{}, msgTypeVote},
-	binary.ConcreteType{HasVoteMessage{}, msgTypeHasVote},
+	binary.ConcreteType{&NewRoundStepMessage{}, msgTypeNewRoundStep},
+	binary.ConcreteType{&CommitStepMessage{}, msgTypeCommitStep},
+	binary.ConcreteType{&ProposalMessage{}, msgTypeProposal},
+	binary.ConcreteType{&PartMessage{}, msgTypePart},
+	binary.ConcreteType{&VoteMessage{}, msgTypeVote},
+	binary.ConcreteType{&HasVoteMessage{}, msgTypeHasVote},
 )
 
 // TODO: check for unnecessary extra bytes at the end.
@@ -780,7 +781,7 @@ func DecodeMessage(bz []byte) (msgType byte, msg ConsensusMessage, err error) {
 	msgType = bz[0]
 	n := new(int64)
 	r := bytes.NewReader(bz)
-	msg = binary.ReadBinary(&msg, r, n, &err)
+	msg = binary.ReadBinary(struct{ ConsensusMessage }{}, r, n, &err).(struct{ ConsensusMessage }).ConsensusMessage
 	return
 }
 
