@@ -12,6 +12,7 @@ type ResponseStatus struct {
 
 type ResponseRunProcess struct {
 	Success bool
+	Output  string
 }
 
 type ResponseStopProcess struct {

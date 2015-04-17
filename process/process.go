@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"time"
@@ -81,6 +82,14 @@ func Create(mode int, label string, execPath string, args []string, input string
 		close(proc.WaitCh)
 	}()
 	return proc, nil
+}
+
+func ReadOutput(proc *Process) string {
+	output, err := ioutil.ReadFile(proc.OutputPath)
+	if err != nil {
+		return fmt.Sprintf("ERROR READING OUTPUT: %v", err)
+	}
+	return string(output)
 }
 
 func Stop(proc *Process, kill bool) error {
