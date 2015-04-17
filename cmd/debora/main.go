@@ -136,6 +136,7 @@ func cliStopProcess(c *cli.Context) {
 	label := args[0]
 	command := btypes.CommandStopProcess{
 		Label: label,
+		Kill:  true,
 	}
 	for _, remote := range Config.Remotes {
 		response, err := StopProcess(Config.PrivKey, remote, command)
