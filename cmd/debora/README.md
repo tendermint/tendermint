@@ -7,4 +7,7 @@
 
 # Build tendermint from source
 ./build/debora run -- build_tendermint bash -c "cd $GOPATH/src/github.com/tendermint/tendermint; make"
+
+# Build and run tendermint
+./build/debora run -- tendermint bash -c "cd \$GOPATH/src/github.com/tendermint/tendermint; make; ./build/tendermint node"
 ```

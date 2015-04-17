@@ -6,6 +6,7 @@ package main
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -51,9 +52,17 @@ var barak = struct {
 func main() {
 	fmt.Printf("New Barak Process (PID: %d)\n", os.Getpid())
 
-	// read options from stdin.
+	// read flags to change options file.
+	var optionsBytes []byte
+	var optionsFile string
 	var err error
-	optionsBytes, err := ioutil.ReadAll(os.Stdin)
+	flag.StringVar(&optionsFile, "options-file", "", "Read options from file instead of stdin")
+	flag.Parse()
+	if optionsFile != "" {
+		optionsBytes, err = ioutil.ReadFile(optionsFile)
+	} else {
+		optionsBytes, err = ioutil.ReadAll(os.Stdin)
+	}
 	if err != nil {
 		panic(Fmt("Error reading input: %v", err))
 	}
