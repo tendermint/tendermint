@@ -84,6 +84,7 @@ func Create(mode int, label string, execPath string, args []string, input string
 }
 
 func Stop(proc *Process, kill bool) error {
+	defer proc.OutputFile.Close()
 	if kill {
 		fmt.Printf("Killing process %v\n", proc.Cmd.Process)
 		return proc.Cmd.Process.Kill()
