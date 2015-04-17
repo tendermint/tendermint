@@ -85,8 +85,10 @@ func Create(mode int, label string, execPath string, args []string, input string
 
 func Stop(proc *Process, kill bool) error {
 	if kill {
+		fmt.Printf("Killing process %v\n", proc.Cmd.Process)
 		return proc.Cmd.Process.Kill()
 	} else {
+		fmt.Printf("Stopping process %v\n", proc.Cmd.Process)
 		return proc.Cmd.Process.Signal(os.Interrupt)
 	}
 }
