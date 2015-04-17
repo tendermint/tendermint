@@ -123,9 +123,11 @@ func cliRunProcess(c *cli.Context) {
 		if err != nil {
 			fmt.Printf("%v failure. %v\n", remote, err)
 		} else {
-			fmt.Printf("%v success. %v\n", remote, response)
+			fmt.Printf("%v success.\n", remote)
 			if response.Output != "" {
+				fmt.Println("--------------------------------------------------------------------------------")
 				fmt.Println(response.Output)
+				fmt.Println("--------------------------------------------------------------------------------")
 			} else {
 				fmt.Println("(no output)")
 			}
