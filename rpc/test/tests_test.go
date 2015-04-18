@@ -119,8 +119,8 @@ func testGetStorage(t *testing.T, typ string) {
 	mempoolCount = 0
 
 	v := getStorage(t, typ, contractAddr, []byte{0x1})
-	got := RightPadWord256(v)
-	expected := RightPadWord256([]byte{0x5})
+	got := LeftPadWord256(v)
+	expected := LeftPadWord256([]byte{0x5})
 	if got.Compare(expected) != 0 {
 		t.Fatalf("Wrong storage value. Got %x, expected %x", got.Bytes(), expected.Bytes())
 	}
