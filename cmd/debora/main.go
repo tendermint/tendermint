@@ -17,25 +17,31 @@ var Config = struct {
 	PrivKey acm.PrivKey
 }{}
 
-var (
-	configFlag = cli.StringFlag{
-		Name:  "config-file",
-		Value: ".debora/config.json",
-		Usage: "config file",
-	}
-	waitFlag = cli.BoolFlag{
-		Name:  "wait",
-		Usage: "whether to wait for termination",
-	}
-	inputFlag = cli.StringFlag{
-		Name:  "input",
-		Value: "",
-		Usage: "input to the program (e.g. stdin)",
-	}
-)
-
 func main() {
 	fmt.Printf("New Debora Process (PID: %d)\n", os.Getpid())
+
+	rootDir := os.Getenv("DEBROOT")
+	if rootDir == "" {
+		rootDir = os.Getenv("HOME") + "/.debora"
+	}
+
+	var (
+		configFlag = cli.StringFlag{
+			Name:  "config-file",
+			Value: rootDir + "/config.json",
+			Usage: "config file",
+		}
+		waitFlag = cli.BoolFlag{
+			Name:  "wait",
+			Usage: "whether to wait for termination",
+		}
+		inputFlag = cli.StringFlag{
+			Name:  "input",
+			Value: "",
+			Usage: "input to the program (e.g. stdin)",
+		}
+	)
+
 	app := cli.NewApp()
 	app.Name = "debora"
 	app.Usage = "summons commands to barak"

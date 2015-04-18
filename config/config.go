@@ -20,7 +20,7 @@ func App() *confer.Config {
 	appMtx.Lock()
 	defer appMtx.Unlock()
 	if app == nil {
-		Init(".tendermint")
+		Init("")
 	}
 	return app
 }
@@ -104,7 +104,13 @@ func initDefaults(rootDir string) {
 
 func Init(rootDir string) {
 
-	// Get RootDir
+	// Get rootdir
+	if rootDir == "" {
+		rootDir = os.Getenv("TMROOT")
+	}
+	if rootDir == "" {
+		rootDir = os.Getenv("HOME") + "/.tendermint"
+	}
 	configFile := path.Join(rootDir, "config.toml")
 	genesisFile := path.Join(rootDir, "genesis.json")
 
