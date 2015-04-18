@@ -147,7 +147,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			xb := new(big.Int).SetBytes(flip(x[:]))
 			yb := new(big.Int).SetBytes(flip(y[:]))
 			prod := new(big.Int).Mul(xb, yb)
-			stack.Push(RightPadWord256(flip(prod.Bytes())))
+			stack.Push(RightPadWord256(flip(rightMostBytes(prod.Bytes(), 32))))
 			dbg.Printf(" %v * %v = %v\n", xb, yb, prod)
 
 		case SUB: // 0x03
@@ -304,13 +304,24 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			dbg.Printf(" %v == 0 = %v\n", x, x == 0)
 
 		case AND: // 0x16
-			x, y := stack.Pop64(), stack.Pop64()
-			stack.Push64(x & y)
-			dbg.Printf(" %v & %v = %v\n", x, y, x&y)
+			//x, y := stack.Pop64(), stack.Pop64()
+			//stack.Push64(x & y)
+			x, y := stack.Pop(), stack.Pop()
+			xb := new(big.Int).SetBytes(flip(x[:]))
+			yb := new(big.Int).SetBytes(flip(y[:]))
+			res := new(big.Int).And(xb, yb)
+			stack.Push(RightPadWord256(flip(res.Bytes())))
+			dbg.Printf(" %v & %v = %v\n", xb, yb, res)
 		case OR: // 0x17
-			x, y := stack.Pop64(), stack.Pop64()
-			stack.Push64(x | y)
-			dbg.Printf(" %v | %v = %v\n", x, y, x|y)
+			//x, y := stack.Pop64(), stack.Pop64()
+			//stack.Push64(x | y)
+			//dbg.Printf(" %v | %v = %v\n", x, y, x|y)
+			x, y := stack.Pop(), stack.Pop()
+			xb := new(big.Int).SetBytes(flip(x[:]))
+			yb := new(big.Int).SetBytes(flip(y[:]))
+			res := new(big.Int).Or(xb, yb)
+			stack.Push(RightPadWord256(flip(res.Bytes())))
+			dbg.Printf(" %v & %v = %v\n", xb, yb, res)
 
 		case XOR: // 0x18
 			x, y := stack.Pop64(), stack.Pop64()
@@ -345,8 +356,8 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			dbg.Printf(" => (%v) %X\n", size, data)
 
 		case ADDRESS: // 0x30
-			stack.Push(callee.Address)
-			dbg.Printf(" => %X\n", callee.Address)
+			stack.Push(flipWord(callee.Address))
+			dbg.Printf(" => %X\n", flipWord(callee.Address))
 
 		case BALANCE: // 0x31
 			addr := stack.Pop()
@@ -362,12 +373,12 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			dbg.Printf(" => %v (%X)\n", balance, addr)
 
 		case ORIGIN: // 0x32
-			stack.Push(vm.origin)
-			dbg.Printf(" => %X\n", vm.origin)
+			stack.Push(flipWord(vm.origin))
+			dbg.Printf(" => %X\n", flipWord(vm.origin))
 
 		case CALLER: // 0x33
-			stack.Push(caller.Address)
-			dbg.Printf(" => %X\n", caller.Address)
+			stack.Push(flipWord(caller.Address))
+			dbg.Printf(" => %X\n", flipWord(caller.Address))
 
 		case CALLVALUE: // 0x34
 			stack.Push64(value)
@@ -616,7 +627,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 				stack.Push(Zero256)
 			} else {
 				newAccount.Code = ret // Set the code
-				stack.Push(newAccount.Address)
+				stack.Push(flipWord(newAccount.Address))
 			}
 
 		case CALL, CALLCODE: // 0xF1, 0xF2
@@ -730,6 +741,12 @@ func subslice(data []byte, offset, length uint64, flip_ bool) (ret []byte, ok bo
 		ret = flip(ret)
 	}
 	return
+}
+
+func rightMostBytes(data []byte, n int) []byte {
+	size := MinInt(len(data), n)
+	offset := len(data) - size
+	return data[offset:]
 }
 
 func codeGetOp(code []byte, n uint64) OpCode {

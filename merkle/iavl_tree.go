@@ -235,9 +235,9 @@ func (ndb *nodeDB) SaveNode(t *IAVLTree, node *IAVLNode) {
 	if node.persisted {
 		panic("Shouldn't be calling save on an already persisted node.")
 	}
-	if _, ok := ndb.cache[string(node.hash)]; ok {
+	/*if _, ok := ndb.cache[string(node.hash)]; ok {
 		panic("Shouldn't be calling save on an already cached node.")
-	}
+	}*/
 	// Save node bytes to db
 	buf := bytes.NewBuffer(nil)
 	_, _, err := node.writeToCountHashes(t, buf)
