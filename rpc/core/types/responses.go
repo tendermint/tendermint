@@ -73,7 +73,12 @@ type ResponseNetInfo struct {
 	Network   string
 	Listening bool
 	Listeners []string
-	Peers     []string
+	Peers     []Peer
+}
+
+type Peer struct {
+	Address    string
+	IsOutbound bool
 }
 
 type ResponseSignTx struct {
