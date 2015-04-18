@@ -16,7 +16,7 @@ func toVMAccount(acc *account.Account) *vm.Account {
 		Balance:     acc.Balance,
 		Code:        acc.Code, // This is crazy.
 		Nonce:       uint64(acc.Sequence),
-		StorageRoot: RightPadWord256(acc.StorageRoot),
+		StorageRoot: LeftPadWord256(acc.StorageRoot),
 		Other:       acc.PubKey,
 	}
 }
@@ -37,7 +37,7 @@ func Call(address, data []byte) (*ctypes.ResponseCall, error) {
 	txCache := state.NewTxCache(cache)
 	params := vm.Params{
 		BlockHeight: uint64(st.LastBlockHeight),
-		BlockHash:   RightPadWord256(st.LastBlockHash),
+		BlockHash:   LeftPadWord256(st.LastBlockHash),
 		BlockTime:   st.LastBlockTime.Unix(),
 		GasLimit:    10000000,
 	}
@@ -62,7 +62,7 @@ func CallCode(code, data []byte) (*ctypes.ResponseCall, error) {
 	txCache := state.NewTxCache(cache)
 	params := vm.Params{
 		BlockHeight: uint64(st.LastBlockHeight),
-		BlockHash:   RightPadWord256(st.LastBlockHash),
+		BlockHash:   LeftPadWord256(st.LastBlockHash),
 		BlockTime:   st.LastBlockTime.Unix(),
 		GasLimit:    10000000,
 	}

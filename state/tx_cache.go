@@ -158,7 +158,7 @@ func toVMAccount(acc *ac.Account) *vm.Account {
 		Balance:     acc.Balance,
 		Code:        acc.Code, // This is crazy.
 		Nonce:       uint64(acc.Sequence),
-		StorageRoot: RightPadWord256(acc.StorageRoot),
+		StorageRoot: LeftPadWord256(acc.StorageRoot),
 		Other:       acc.PubKey,
 	}
 }

@@ -1,6 +1,7 @@
 package vm
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"math/big"
@@ -131,207 +132,252 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			return nil, nil
 
 		case ADD: // 0x01
-			//x, y := stack.Pop64(), stack.Pop64()
-			//stack.Push64(x + y)
 			x, y := stack.Pop(), stack.Pop()
-			xb := new(big.Int).SetBytes(flip(x[:]))
-			yb := new(big.Int).SetBytes(flip(y[:]))
+			xb := new(big.Int).SetBytes(x[:])
+			yb := new(big.Int).SetBytes(y[:])
 			sum := new(big.Int).Add(xb, yb)
-			stack.Push(RightPadWord256(flip(sum.Bytes())))
-			dbg.Printf(" %v + %v = %v\n", xb, yb, sum)
+			res := LeftPadWord256(U256(sum).Bytes())
+			stack.Push(res)
+			dbg.Printf(" %v + %v = %v (%X)\n", xb, yb, sum, res)
 
 		case MUL: // 0x02
-			//x, y := stack.Pop64(), stack.Pop64()
-			//stack.Push64(x * y)
 			x, y := stack.Pop(), stack.Pop()
-			xb := new(big.Int).SetBytes(flip(x[:]))
-			yb := new(big.Int).SetBytes(flip(y[:]))
+			xb := new(big.Int).SetBytes(x[:])
+			yb := new(big.Int).SetBytes(y[:])
 			prod := new(big.Int).Mul(xb, yb)
-			stack.Push(RightPadWord256(flip(rightMostBytes(prod.Bytes(), 32))))
-			dbg.Printf(" %v * %v = %v\n", xb, yb, prod)
+			res := LeftPadWord256(U256(prod).Bytes())
+			stack.Push(res)
+			dbg.Printf(" %v * %v = %v (%X)\n", xb, yb, prod, res)
 
 		case SUB: // 0x03
-			//x, y := stack.Pop64(), stack.Pop64()
-			//stack.Push64(x - y)
 			x, y := stack.Pop(), stack.Pop()
-			xb := new(big.Int).SetBytes(flip(x[:]))
-			yb := new(big.Int).SetBytes(flip(y[:]))
+			xb := new(big.Int).SetBytes(x[:])
+			yb := new(big.Int).SetBytes(y[:])
 			diff := new(big.Int).Sub(xb, yb)
-			stack.Push(RightPadWord256(flip(diff.Bytes())))
-			dbg.Printf(" %v - %v = %v\n", xb, yb, diff)
+			res := LeftPadWord256(U256(diff).Bytes())
+			stack.Push(res)
+			dbg.Printf(" %v - %v = %v (%X)\n", xb, yb, diff, res)
 
 		case DIV: // 0x04
-			//x, y := stack.Pop64(), stack.Pop64()
-			//stack.Push64(x / y)
 			x, y := stack.Pop(), stack.Pop()
-			if y.IsZero() { // TODO
+			if y.IsZero() {
 				stack.Push(Zero256)
-				dbg.Printf(" %x / %x = %v (TODO)\n", x, y, 0)
+				dbg.Printf(" %x / %x = %v\n", x, y, 0)
 			} else {
-				xb := new(big.Int).SetBytes(flip(x[:]))
-				yb := new(big.Int).SetBytes(flip(y[:]))
+				xb := new(big.Int).SetBytes(x[:])
+				yb := new(big.Int).SetBytes(y[:])
 				div := new(big.Int).Div(xb, yb)
-				stack.Push(RightPadWord256(flip(div.Bytes())))
-				dbg.Printf(" %v / %v = %v\n", xb, yb, div)
+				res := LeftPadWord256(U256(div).Bytes())
+				stack.Push(res)
+				dbg.Printf(" %v / %v = %v (%X)\n", xb, yb, div, res)
 			}
 
 		case SDIV: // 0x05
-			// TODO ... big?
-			x, y := int64(stack.Pop64()), int64(stack.Pop64())
-			if y == 0 { // TODO
+			x, y := stack.Pop(), stack.Pop()
+			if y.IsZero() {
 				stack.Push(Zero256)
-				dbg.Printf(" %v / %v = %v (TODO)\n", x, y, 0)
+				dbg.Printf(" %x / %x = %v\n", x, y, 0)
 			} else {
-				stack.Push64(uint64(x / y))
-				dbg.Printf(" %v / %v = %v\n", x, y, x/y)
+				xb := S256(new(big.Int).SetBytes(x[:]))
+				yb := S256(new(big.Int).SetBytes(y[:]))
+				div := new(big.Int).Div(xb, yb)
+				res := LeftPadWord256(U256(div).Bytes())
+				stack.Push(res)
+				dbg.Printf(" %v / %v = %v (%X)\n", xb, yb, div, res)
 			}
 
 		case MOD: // 0x06
-			//x, y := stack.Pop64(), stack.Pop64()
 			x, y := stack.Pop(), stack.Pop()
-			if y.IsZero() { // TODO
+			if y.IsZero() {
 				stack.Push(Zero256)
-				dbg.Printf(" %v %% %v = %v (TODO)\n", x, y, 0)
+				dbg.Printf(" %v %% %v = %v\n", x, y, 0)
 			} else {
-				xb := new(big.Int).SetBytes(flip(x[:]))
-				yb := new(big.Int).SetBytes(flip(y[:]))
+				xb := new(big.Int).SetBytes(x[:])
+				yb := new(big.Int).SetBytes(y[:])
 				mod := new(big.Int).Mod(xb, yb)
-				stack.Push(RightPadWord256(flip(mod.Bytes())))
-				dbg.Printf(" %v %% %v = %v\n", xb, yb, mod)
+				res := LeftPadWord256(U256(mod).Bytes())
+				stack.Push(res)
+				dbg.Printf(" %v %% %v = %v (%X)\n", xb, yb, mod, res)
 			}
 
 		case SMOD: // 0x07
-			// TODO ... big?
-			x, y := int64(stack.Pop64()), int64(stack.Pop64())
-			if y == 0 { // TODO
+			x, y := stack.Pop(), stack.Pop()
+			if y.IsZero() {
 				stack.Push(Zero256)
-				dbg.Printf(" %v %% %v = %v (TODO)\n", x, y, 0)
+				dbg.Printf(" %v %% %v = %v\n", x, y, 0)
 			} else {
-				stack.Push64(uint64(x % y))
-				dbg.Printf(" %v %% %v = %v\n", x, y, x%y)
+				xb := S256(new(big.Int).SetBytes(x[:]))
+				yb := S256(new(big.Int).SetBytes(y[:]))
+				mod := new(big.Int).Mod(xb, yb)
+				res := LeftPadWord256(U256(mod).Bytes())
+				stack.Push(res)
+				dbg.Printf(" %v %% %v = %v (%X)\n", xb, yb, mod, res)
 			}
 
 		case ADDMOD: // 0x08
-			// TODO ... big?
-			x, y, z := stack.Pop64(), stack.Pop64(), stack.Pop64()
-			if z == 0 { // TODO
+			x, y, z := stack.Pop(), stack.Pop(), stack.Pop()
+			if z.IsZero() {
 				stack.Push(Zero256)
-				dbg.Printf(" (%v + %v) %% %v = %v (TODO)\n", x, y, z, 0)
+				dbg.Printf(" %v %% %v = %v\n", x, y, 0)
 			} else {
-				stack.Push64((x + y) % z)
-				dbg.Printf(" (%v + %v) %% %v = %v\n", x, y, z, (x+y)%z)
+				xb := new(big.Int).SetBytes(x[:])
+				yb := new(big.Int).SetBytes(y[:])
+				zb := new(big.Int).SetBytes(z[:])
+				add := new(big.Int).Add(xb, yb)
+				mod := new(big.Int).Mod(add, zb)
+				res := LeftPadWord256(U256(mod).Bytes())
+				stack.Push(res)
+				dbg.Printf(" %v + %v %% %v = %v (%X)\n",
+					xb, yb, zb, mod, res)
 			}
 
 		case MULMOD: // 0x09
-			// TODO ... big?
-			x, y, z := stack.Pop64(), stack.Pop64(), stack.Pop64()
-			if z == 0 { // TODO
+			x, y, z := stack.Pop(), stack.Pop(), stack.Pop()
+			if z.IsZero() {
 				stack.Push(Zero256)
-				dbg.Printf(" (%v + %v) %% %v = %v (TODO)\n", x, y, z, 0)
+				dbg.Printf(" %v %% %v = %v\n", x, y, 0)
 			} else {
-				stack.Push64((x * y) % z)
-				dbg.Printf(" (%v + %v) %% %v = %v\n", x, y, z, (x*y)%z)
+				xb := new(big.Int).SetBytes(x[:])
+				yb := new(big.Int).SetBytes(y[:])
+				zb := new(big.Int).SetBytes(z[:])
+				mul := new(big.Int).Mul(xb, yb)
+				mod := new(big.Int).Mod(mul, zb)
+				res := LeftPadWord256(U256(mod).Bytes())
+				stack.Push(res)
+				dbg.Printf(" %v * %v %% %v = %v (%X)\n",
+					xb, yb, zb, mod, res)
 			}
 
 		case EXP: // 0x0A
-			//x, y := stack.Pop64(), stack.Pop64()
-			//stack.Push64(ExpUint64(x, y))
 			x, y := stack.Pop(), stack.Pop()
-			xb := new(big.Int).SetBytes(flip(x[:]))
-			yb := new(big.Int).SetBytes(flip(y[:]))
+			xb := new(big.Int).SetBytes(x[:])
+			yb := new(big.Int).SetBytes(y[:])
 			pow := new(big.Int).Exp(xb, yb, big.NewInt(0))
-			stack.Push(RightPadWord256(flip(pow.Bytes())))
-			dbg.Printf(" %v ** %v = %v\n", xb, yb, pow)
+			res := LeftPadWord256(U256(pow).Bytes())
+			dbg.Printf(" %v ** %v = %v (%X)\n", xb, yb, pow, res)
 
 		case SIGNEXTEND: // 0x0B
-			x, y := stack.Pop64(), stack.Pop64()
-			res := (y << uint(x)) >> x
-			stack.Push64(res)
-			dbg.Printf(" (%v << %v) >> %v = %v\n", y, x, x, res)
+			back := stack.Pop()
+			backb := new(big.Int).SetBytes(back[:])
+			if backb.Cmp(big.NewInt(31)) < 0 {
+				bit := uint(backb.Uint64()*8 + 7)
+				num := stack.Pop()
+				numb := new(big.Int).SetBytes(num[:])
+				mask := new(big.Int).Lsh(big.NewInt(1), bit)
+				mask.Sub(mask, big.NewInt(1))
+				if numb.Bit(int(bit)) == 1 {
+					numb.Or(numb, mask.Not(mask))
+				} else {
+					numb.Add(numb, mask)
+				}
+				res := LeftPadWord256(U256(numb).Bytes())
+				dbg.Printf(" = %v (%X)", numb, res)
+				stack.Push(res)
+			}
 
 		case LT: // 0x10
-			x, y := stack.Pop64(), stack.Pop64()
-			if x < y {
+			x, y := stack.Pop(), stack.Pop()
+			xb := new(big.Int).SetBytes(x[:])
+			yb := new(big.Int).SetBytes(y[:])
+			if xb.Cmp(yb) < 0 {
 				stack.Push64(1)
+				dbg.Printf(" %v < %v = %v\n", xb, yb, 1)
 			} else {
 				stack.Push(Zero256)
+				dbg.Printf(" %v < %v = %v\n", xb, yb, 0)
 			}
-			dbg.Printf(" %v < %v = %v\n", x, y, x < y)
 
 		case GT: // 0x11
-			x, y := stack.Pop64(), stack.Pop64()
-			if x > y {
+			x, y := stack.Pop(), stack.Pop()
+			xb := new(big.Int).SetBytes(x[:])
+			yb := new(big.Int).SetBytes(y[:])
+			if xb.Cmp(yb) > 0 {
 				stack.Push64(1)
+				dbg.Printf(" %v > %v = %v\n", xb, yb, 1)
 			} else {
 				stack.Push(Zero256)
+				dbg.Printf(" %v > %v = %v\n", xb, yb, 0)
 			}
-			dbg.Printf(" %v > %v = %v\n", x, y, x > y)
 
 		case SLT: // 0x12
-			x, y := int64(stack.Pop64()), int64(stack.Pop64())
-			if x < y {
+			x, y := stack.Pop(), stack.Pop()
+			xb := S256(new(big.Int).SetBytes(x[:]))
+			yb := S256(new(big.Int).SetBytes(y[:]))
+			if xb.Cmp(yb) < 0 {
 				stack.Push64(1)
+				dbg.Printf(" %v < %v = %v\n", xb, yb, 1)
 			} else {
 				stack.Push(Zero256)
+				dbg.Printf(" %v < %v = %v\n", xb, yb, 0)
 			}
-			dbg.Printf(" %v < %v = %v\n", x, y, x < y)
 
 		case SGT: // 0x13
-			x, y := int64(stack.Pop64()), int64(stack.Pop64())
-			if x > y {
+			x, y := stack.Pop(), stack.Pop()
+			xb := S256(new(big.Int).SetBytes(x[:]))
+			yb := S256(new(big.Int).SetBytes(y[:]))
+			if xb.Cmp(yb) > 0 {
 				stack.Push64(1)
+				dbg.Printf(" %v > %v = %v\n", xb, yb, 1)
 			} else {
 				stack.Push(Zero256)
+				dbg.Printf(" %v > %v = %v\n", xb, yb, 0)
 			}
-			dbg.Printf(" %v > %v = %v\n", x, y, x > y)
 
 		case EQ: // 0x14
-			x, y := stack.Pop64(), stack.Pop64()
-			if x == y {
+			x, y := stack.Pop(), stack.Pop()
+			if bytes.Equal(x[:], y[:]) {
 				stack.Push64(1)
+				dbg.Printf(" %X == %X = %v\n", x, y, 1)
 			} else {
 				stack.Push(Zero256)
+				dbg.Printf(" %X == %X = %v\n", x, y, 0)
 			}
-			dbg.Printf(" %v == %v = %v\n", x, y, x == y)
 
 		case ISZERO: // 0x15
-			x := stack.Pop64()
-			if x == 0 {
+			x := stack.Pop()
+			if x.IsZero() {
 				stack.Push64(1)
+				dbg.Printf(" %v == 0 = %v\n", x, 1)
 			} else {
 				stack.Push(Zero256)
+				dbg.Printf(" %v == 0 = %v\n", x, 0)
 			}
-			dbg.Printf(" %v == 0 = %v\n", x, x == 0)
 
 		case AND: // 0x16
-			//x, y := stack.Pop64(), stack.Pop64()
-			//stack.Push64(x & y)
 			x, y := stack.Pop(), stack.Pop()
-			xb := new(big.Int).SetBytes(flip(x[:]))
-			yb := new(big.Int).SetBytes(flip(y[:]))
-			res := new(big.Int).And(xb, yb)
-			stack.Push(RightPadWord256(flip(res.Bytes())))
-			dbg.Printf(" %v & %v = %v\n", xb, yb, res)
+			z := [32]byte{}
+			for i := 0; i < 32; i++ {
+				z[i] = x[i] & y[i]
+			}
+			stack.Push(z)
+			dbg.Printf(" %X & %X = %X\n", x, y, z)
+
 		case OR: // 0x17
-			//x, y := stack.Pop64(), stack.Pop64()
-			//stack.Push64(x | y)
-			//dbg.Printf(" %v | %v = %v\n", x, y, x|y)
 			x, y := stack.Pop(), stack.Pop()
-			xb := new(big.Int).SetBytes(flip(x[:]))
-			yb := new(big.Int).SetBytes(flip(y[:]))
-			res := new(big.Int).Or(xb, yb)
-			stack.Push(RightPadWord256(flip(res.Bytes())))
-			dbg.Printf(" %v & %v = %v\n", xb, yb, res)
+			z := [32]byte{}
+			for i := 0; i < 32; i++ {
+				z[i] = x[i] | y[i]
+			}
+			stack.Push(z)
+			dbg.Printf(" %X | %X = %X\n", x, y, z)
 
 		case XOR: // 0x18
-			x, y := stack.Pop64(), stack.Pop64()
-			stack.Push64(x ^ y)
-			dbg.Printf(" %v ^ %v = %v\n", x, y, x^y)
+			x, y := stack.Pop(), stack.Pop()
+			z := [32]byte{}
+			for i := 0; i < 32; i++ {
+				z[i] = x[i] ^ y[i]
+			}
+			stack.Push(z)
+			dbg.Printf(" %X ^ %X = %X\n", x, y, z)
 
 		case NOT: // 0x19
-			x := stack.Pop64()
-			stack.Push64(^x)
-			dbg.Printf(" !%v = %v\n", x, ^x)
+			x := stack.Pop()
+			z := [32]byte{}
+			for i := 0; i < 32; i++ {
+				z[i] = ^x[i]
+			}
+			stack.Push(z)
+			dbg.Printf(" !%X = %X\n", x, z)
 
 		case BYTE: // 0x1A
 			idx, val := stack.Pop64(), stack.Pop()
@@ -347,12 +393,12 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 				return nil, firstErr(err, ErrInsufficientGas)
 			}
 			offset, size := stack.Pop64(), stack.Pop64()
-			data, ok := subslice(memory, offset, size, false)
+			data, ok := subslice(memory, offset, size)
 			if !ok {
 				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
 			data = sha3.Sha3(data)
-			stack.PushBytes(flip(data))
+			stack.PushBytes(data)
 			dbg.Printf(" => (%v) %X\n", size, data)
 
 		case ADDRESS: // 0x30
@@ -364,7 +410,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			if ok = useGas(gas, GasGetAccount); !ok {
 				return nil, firstErr(err, ErrInsufficientGas)
 			}
-			acc := vm.appState.GetAccount(flipWord(addr)) // TODO ensure that 20byte lengths are supported.
+			acc := vm.appState.GetAccount(addr)
 			if acc == nil {
 				return nil, firstErr(err, ErrUnknownAddress)
 			}
@@ -386,12 +432,13 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 
 		case CALLDATALOAD: // 0x35
 			offset := stack.Pop64()
-			data, ok := subslice(input, offset, 32, true)
+			data, ok := subslice(input, offset, 32)
 			if !ok {
 				return nil, firstErr(err, ErrInputOutOfBounds)
 			}
-			stack.Push(RightPadWord256(data))
-			dbg.Printf(" => 0x%X\n", RightPadWord256(data))
+			res := LeftPadWord256(data)
+			stack.Push(res)
+			dbg.Printf(" => 0x%X\n", res)
 
 		case CALLDATASIZE: // 0x36
 			stack.Push64(uint64(len(input)))
@@ -401,11 +448,11 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			memOff := stack.Pop64()
 			inputOff := stack.Pop64()
 			length := stack.Pop64()
-			data, ok := subslice(input, inputOff, length, false)
+			data, ok := subslice(input, inputOff, length)
 			if !ok {
 				return nil, firstErr(err, ErrInputOutOfBounds)
 			}
-			dest, ok := subslice(memory, memOff, length, false)
+			dest, ok := subslice(memory, memOff, length)
 			if !ok {
 				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
@@ -421,11 +468,11 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			memOff := stack.Pop64()
 			codeOff := stack.Pop64()
 			length := stack.Pop64()
-			data, ok := subslice(code, codeOff, length, false)
+			data, ok := subslice(code, codeOff, length)
 			if !ok {
 				return nil, firstErr(err, ErrCodeOutOfBounds)
 			}
-			dest, ok := subslice(memory, memOff, length, false)
+			dest, ok := subslice(memory, memOff, length)
 			if !ok {
 				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
@@ -441,7 +488,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			if ok = useGas(gas, GasGetAccount); !ok {
 				return nil, firstErr(err, ErrInsufficientGas)
 			}
-			acc := vm.appState.GetAccount(flipWord(addr))
+			acc := vm.appState.GetAccount(addr)
 			if acc == nil {
 				return nil, firstErr(err, ErrUnknownAddress)
 			}
@@ -455,7 +502,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			if ok = useGas(gas, GasGetAccount); !ok {
 				return nil, firstErr(err, ErrInsufficientGas)
 			}
-			acc := vm.appState.GetAccount(flipWord(addr))
+			acc := vm.appState.GetAccount(addr)
 			if acc == nil {
 				return nil, firstErr(err, ErrUnknownAddress)
 			}
@@ -463,11 +510,11 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			memOff := stack.Pop64()
 			codeOff := stack.Pop64()
 			length := stack.Pop64()
-			data, ok := subslice(code, codeOff, length, false)
+			data, ok := subslice(code, codeOff, length)
 			if !ok {
 				return nil, firstErr(err, ErrCodeOutOfBounds)
 			}
-			dest, ok := subslice(memory, memOff, length, false)
+			dest, ok := subslice(memory, memOff, length)
 			if !ok {
 				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
@@ -502,20 +549,20 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 
 		case MLOAD: // 0x51
 			offset := stack.Pop64()
-			data, ok := subslice(memory, offset, 32, true)
+			data, ok := subslice(memory, offset, 32)
 			if !ok {
 				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
-			stack.Push(RightPadWord256(data))
+			stack.Push(LeftPadWord256(data))
 			dbg.Printf(" => 0x%X\n", data)
 
 		case MSTORE: // 0x52
 			offset, data := stack.Pop64(), stack.Pop()
-			dest, ok := subslice(memory, offset, 32, false)
+			dest, ok := subslice(memory, offset, 32)
 			if !ok {
 				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
-			copy(dest, flip(data[:]))
+			copy(dest, data[:])
 			dbg.Printf(" => 0x%X\n", data)
 
 		case MSTORE8: // 0x53
@@ -543,8 +590,8 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			continue
 
 		case JUMPI: // 0x57
-			pos, cond := stack.Pop64(), stack.Pop64()
-			if cond >= 1 {
+			pos, cond := stack.Pop64(), stack.Pop()
+			if !cond.IsZero() {
 				err = jump(code, pos, &pc)
 				continue
 			}
@@ -566,11 +613,11 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 
 		case PUSH1, PUSH2, PUSH3, PUSH4, PUSH5, PUSH6, PUSH7, PUSH8, PUSH9, PUSH10, PUSH11, PUSH12, PUSH13, PUSH14, PUSH15, PUSH16, PUSH17, PUSH18, PUSH19, PUSH20, PUSH21, PUSH22, PUSH23, PUSH24, PUSH25, PUSH26, PUSH27, PUSH28, PUSH29, PUSH30, PUSH31, PUSH32:
 			a := uint64(op - PUSH1 + 1)
-			codeSegment, ok := subslice(code, pc+1, a, true)
+			codeSegment, ok := subslice(code, pc+1, a)
 			if !ok {
 				return nil, firstErr(err, ErrCodeOutOfBounds)
 			}
-			res := RightPadWord256(codeSegment)
+			res := LeftPadWord256(codeSegment)
 			stack.Push(res)
 			pc += a
 			dbg.Printf(" => 0x%X\n", res)
@@ -592,7 +639,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			for i := 0; i < n; i++ {
 				topics[i] = stack.Pop()
 			}
-			data, ok := subslice(memory, offset, size, false)
+			data, ok := subslice(memory, offset, size)
 			if !ok {
 				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
@@ -608,7 +655,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 		case CREATE: // 0xF0
 			contractValue := stack.Pop64()
 			offset, size := stack.Pop64(), stack.Pop64()
-			input, ok := subslice(memory, offset, size, false)
+			input, ok := subslice(memory, offset, size)
 			if !ok {
 				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
@@ -638,7 +685,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			dbg.Printf(" => %X\n", addr)
 
 			// Get the arguments from the memory
-			args, ok := subslice(memory, inOffset, inSize, false)
+			args, ok := subslice(memory, inOffset, inSize)
 			if !ok {
 				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
@@ -662,7 +709,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 				if ok = useGas(gas, GasGetAccount); !ok {
 					return nil, firstErr(err, ErrInsufficientGas)
 				}
-				acc := vm.appState.GetAccount(flipWord(addr))
+				acc := vm.appState.GetAccount(addr)
 				if acc == nil {
 					return nil, firstErr(err, ErrUnknownAddress)
 				}
@@ -678,7 +725,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 				stack.Push(Zero256)
 			} else {
 				stack.Push(One256)
-				dest, ok := subslice(memory, retOffset, retSize, false)
+				dest, ok := subslice(memory, retOffset, retSize)
 				if !ok {
 					return nil, firstErr(err, ErrMemoryOutOfBounds)
 				}
@@ -692,7 +739,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 
 		case RETURN: // 0xF3
 			offset, size := stack.Pop64(), stack.Pop64()
-			ret, ok := subslice(memory, offset, size, false)
+			ret, ok := subslice(memory, offset, size)
 			if !ok {
 				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
@@ -705,7 +752,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 				return nil, firstErr(err, ErrInsufficientGas)
 			}
 			// TODO if the receiver is , then make it the fee.
-			receiver := vm.appState.GetAccount(flipWord(addr))
+			receiver := vm.appState.GetAccount(addr)
 			if receiver == nil {
 				return nil, firstErr(err, ErrUnknownAddress)
 			}
@@ -726,7 +773,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 	}
 }
 
-func subslice(data []byte, offset, length uint64, flip_ bool) (ret []byte, ok bool) {
+func subslice(data []byte, offset, length uint64) (ret []byte, ok bool) {
 	size := uint64(len(data))
 	if size < offset {
 		return nil, false
@@ -737,9 +784,6 @@ func subslice(data []byte, offset, length uint64, flip_ bool) (ret []byte, ok bo
 		ret, ok = data[offset:offset+length], true
 	}
 
-	if flip_ {
-		ret = flip(ret)
-	}
 	return
 }
 
@@ -793,28 +837,4 @@ func transfer(from, to *Account, amount uint64) error {
 		to.Balance += amount
 		return nil
 	}
-}
-
-func flip(in []byte) []byte {
-	l2 := len(in) / 2
-	flipped := make([]byte, len(in))
-	// copy the middle bit (if its even it will get overwritten)
-	if len(in) != 0 {
-		flipped[l2] = in[l2]
-	}
-	for i := 0; i < l2; i++ {
-		flipped[i] = in[len(in)-1-i]
-		flipped[len(in)-1-i] = in[i]
-	}
-	return flipped
-}
-
-func flipWord(in Word256) Word256 {
-	word := Word256{}
-	// copy the middle bit (if its even it will get overwritten)
-	for i := 0; i < 16; i++ {
-		word[i] = in[len(in)-1-i]
-		word[len(in)-1-i] = in[i]
-	}
-	return word
 }

@@ -64,10 +64,10 @@ func TestSubcurrency(t *testing.T) {
 	st := newAppState()
 	// Create accounts
 	account1 := &Account{
-		Address: RightPadWord256(makeBytes(20)),
+		Address: LeftPadWord256(makeBytes(20)),
 	}
 	account2 := &Account{
-		Address: RightPadWord256(makeBytes(20)),
+		Address: LeftPadWord256(makeBytes(20)),
 	}
 	st.accounts[account1.Address.String()] = account1
 	st.accounts[account2.Address.String()] = account2

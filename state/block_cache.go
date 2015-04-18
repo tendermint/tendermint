@@ -106,7 +106,7 @@ func (cache *BlockCache) GetStorage(addr Word256, key Word256) (value Word256) {
 	_, val_ := storage.Get(key.Bytes())
 	value = Zero256
 	if val_ != nil {
-		value = RightPadWord256(val_.([]byte))
+		value = LeftPadWord256(val_.([]byte))
 	}
 	cache.storages[Tuple256{addr, key}] = storageInfo{value, false}
 	return value

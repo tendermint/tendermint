@@ -31,7 +31,10 @@ func (w Word256) Compare(other Word256) int {
 
 func Uint64ToWord256(i uint64) Word256 {
 	word := Word256{}
-	PutUint64(word[:], i)
+	buf := [8]byte{}
+	PutUint64(buf[:], i)
+	word[24], word[25], word[26], word[27] = buf[7], buf[6], buf[5], buf[4]
+	word[28], word[29], word[30], word[31] = buf[3], buf[2], buf[1], buf[0]
 	return word
 }
 
@@ -46,7 +49,10 @@ func LeftPadWord256(bz []byte) (word Word256) {
 }
 
 func Uint64FromWord256(word Word256) uint64 {
-	return binary.LittleEndian.Uint64(word[:])
+	buf := [8]byte{}
+	buf[0], buf[1], buf[2], buf[3] = word[31], word[30], word[29], word[28]
+	buf[4], buf[5], buf[6], buf[7] = word[27], word[26], word[25], word[24]
+	return binary.LittleEndian.Uint64(buf[:])
 }
 
 //-------------------------------------
