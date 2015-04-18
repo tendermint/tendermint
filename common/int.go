@@ -22,10 +22,18 @@ func (p Uint64Slice) Search(x uint64) int { return SearchUint64s(p, x) }
 
 //-----------------------------------------------------------------------------
 
-func PutUint64(dest []byte, i uint64) {
+func PutUint64LE(dest []byte, i uint64) {
 	binary.LittleEndian.PutUint64(dest, i)
 }
 
-func GetUint64(src []byte) uint64 {
+func GetUint64LE(src []byte) uint64 {
 	return binary.LittleEndian.Uint64(src)
+}
+
+func PutUint64BE(dest []byte, i uint64) {
+	binary.BigEndian.PutUint64(dest, i)
+}
+
+func GetUint64BE(src []byte) uint64 {
+	return binary.BigEndian.Uint64(src)
 }

@@ -254,6 +254,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			yb := new(big.Int).SetBytes(y[:])
 			pow := new(big.Int).Exp(xb, yb, big.NewInt(0))
 			res := LeftPadWord256(U256(pow).Bytes())
+			stack.Push(res)
 			dbg.Printf(" %v ** %v = %v (%X)\n", xb, yb, pow, res)
 
 		case SIGNEXTEND: // 0x0B
@@ -402,8 +403,8 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			dbg.Printf(" => (%v) %X\n", size, data)
 
 		case ADDRESS: // 0x30
-			stack.Push(flipWord(callee.Address))
-			dbg.Printf(" => %X\n", flipWord(callee.Address))
+			stack.Push(callee.Address)
+			dbg.Printf(" => %X\n", callee.Address)
 
 		case BALANCE: // 0x31
 			addr := stack.Pop()
@@ -419,12 +420,12 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			dbg.Printf(" => %v (%X)\n", balance, addr)
 
 		case ORIGIN: // 0x32
-			stack.Push(flipWord(vm.origin))
-			dbg.Printf(" => %X\n", flipWord(vm.origin))
+			stack.Push(vm.origin)
+			dbg.Printf(" => %X\n", vm.origin)
 
 		case CALLER: // 0x33
-			stack.Push(flipWord(caller.Address))
-			dbg.Printf(" => %X\n", flipWord(caller.Address))
+			stack.Push(caller.Address)
+			dbg.Printf(" => %X\n", caller.Address)
 
 		case CALLVALUE: // 0x34
 			stack.Push64(value)
@@ -621,6 +622,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			stack.Push(res)
 			pc += a
 			dbg.Printf(" => 0x%X\n", res)
+			stack.Print(10)
 
 		case DUP1, DUP2, DUP3, DUP4, DUP5, DUP6, DUP7, DUP8, DUP9, DUP10, DUP11, DUP12, DUP13, DUP14, DUP15, DUP16:
 			n := int(op - DUP1 + 1)
@@ -630,7 +632,8 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 		case SWAP1, SWAP2, SWAP3, SWAP4, SWAP5, SWAP6, SWAP7, SWAP8, SWAP9, SWAP10, SWAP11, SWAP12, SWAP13, SWAP14, SWAP15, SWAP16:
 			n := int(op - SWAP1 + 2)
 			stack.Swap(n)
-			dbg.Printf(" => [%d]\n", n)
+			dbg.Printf(" => [%d] %X\n", n, stack.Peek())
+			stack.Print(10)
 
 		case LOG0, LOG1, LOG2, LOG3, LOG4:
 			n := int(op - LOG0)
@@ -674,7 +677,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 				stack.Push(Zero256)
 			} else {
 				newAccount.Code = ret // Set the code
-				stack.Push(flipWord(newAccount.Address))
+				stack.Push(newAccount.Address)
 			}
 
 		case CALL, CALLCODE: // 0xF1, 0xF2

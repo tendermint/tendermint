@@ -106,11 +106,13 @@ func (st *Stack) Peek() Word256 {
 	return st.data[st.ptr-1]
 }
 
-func (st *Stack) Print() {
+func (st *Stack) Print(n int) {
 	fmt.Println("### stack ###")
 	if st.ptr > 0 {
-		for i, val := range st.data {
-			fmt.Printf("%-3d  %v\n", i, val)
+		nn := MinInt(n, st.ptr)
+		for j, i := 0, st.ptr-1; i > st.ptr-1-nn; i-- {
+			fmt.Printf("%-3d  %X\n", j, st.data[i])
+			j += 1
 		}
 	} else {
 		fmt.Println("-- empty --")

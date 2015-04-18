@@ -147,7 +147,7 @@ func (cache *TxCache) AddLog(log *vm.Log) {
 func NewContractAddress(caller []byte, nonce uint64) []byte {
 	temp := make([]byte, 32+8)
 	copy(temp, caller)
-	PutUint64(temp[32:], nonce)
+	PutUint64LE(temp[32:], nonce)
 	return sha3.Sha3(temp)[:20]
 }
 
