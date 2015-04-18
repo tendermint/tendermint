@@ -2,7 +2,6 @@ package common
 
 import (
 	"bytes"
-	"encoding/binary"
 	"sort"
 )
 
@@ -30,9 +29,9 @@ func (w Word256) Compare(other Word256) int {
 }
 
 func Uint64ToWord256(i uint64) Word256 {
-	word := Word256{}
-	PutUint64(word[:], i)
-	return word
+	buf := [8]byte{}
+	PutUint64BE(buf[:], i)
+	return LeftPadWord256(buf[:])
 }
 
 func RightPadWord256(bz []byte) (word Word256) {
@@ -46,7 +45,8 @@ func LeftPadWord256(bz []byte) (word Word256) {
 }
 
 func Uint64FromWord256(word Word256) uint64 {
-	return binary.LittleEndian.Uint64(word[:])
+	buf := word.Postfix(8)
+	return GetUint64BE(buf)
 }
 
 //-------------------------------------

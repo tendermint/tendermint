@@ -12,11 +12,11 @@ import (
 
 func toVMAccount(acc *account.Account) *vm.Account {
 	return &vm.Account{
-		Address:     RightPadWord256(acc.Address),
+		Address:     LeftPadWord256(acc.Address),
 		Balance:     acc.Balance,
 		Code:        acc.Code, // This is crazy.
 		Nonce:       uint64(acc.Sequence),
-		StorageRoot: RightPadWord256(acc.StorageRoot),
+		StorageRoot: LeftPadWord256(acc.StorageRoot),
 		Other:       acc.PubKey,
 	}
 }
@@ -26,9 +26,8 @@ func toVMAccount(acc *account.Account) *vm.Account {
 // Run a contract's code on an isolated and unpersisted state
 // Cannot be used to create new contracts
 func Call(address, data []byte) (*ctypes.ResponseCall, error) {
-
 	st := consensusState.GetState() // performs a copy
-	cache := mempoolReactor.Mempool.GetCache()
+	cache := state.NewBlockCache(st)
 	outAcc := cache.GetAccount(address)
 	if outAcc == nil {
 		return nil, fmt.Errorf("Account %x does not exist", address)
@@ -38,7 +37,7 @@ func Call(address, data []byte) (*ctypes.ResponseCall, error) {
 	txCache := state.NewTxCache(cache)
 	params := vm.Params{
 		BlockHeight: uint64(st.LastBlockHeight),
-		BlockHash:   RightPadWord256(st.LastBlockHash),
+		BlockHash:   LeftPadWord256(st.LastBlockHash),
 		BlockTime:   st.LastBlockTime.Unix(),
 		GasLimit:    10000000,
 	}
@@ -63,7 +62,7 @@ func CallCode(code, data []byte) (*ctypes.ResponseCall, error) {
 	txCache := state.NewTxCache(cache)
 	params := vm.Params{
 		BlockHeight: uint64(st.LastBlockHeight),
-		BlockHash:   RightPadWord256(st.LastBlockHash),
+		BlockHash:   LeftPadWord256(st.LastBlockHash),
 		BlockTime:   st.LastBlockTime.Unix(),
 		GasLimit:    10000000,
 	}

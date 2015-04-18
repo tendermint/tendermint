@@ -39,7 +39,7 @@ func ecrecoverFunc(input []byte, gas *uint64) (output []byte, err error) {
 		return nil, err
 	}
 	hashed := sha3.Sha3(recovered[1:])
-	return RightPadBytes(hashed, 32), nil
+	return LeftPadBytes(hashed, 32), nil
 }
 
 func sha256Func(input []byte, gas *uint64) (output []byte, err error) {
@@ -73,7 +73,7 @@ func ripemd160Func(input []byte, gas *uint64) (output []byte, err error) {
 	if err != nil {
 		panic(err)
 	}
-	return RightPadBytes(hasher.Sum(nil), 32), nil
+	return LeftPadBytes(hasher.Sum(nil), 32), nil
 }
 
 func identityFunc(input []byte, gas *uint64) (output []byte, err error) {

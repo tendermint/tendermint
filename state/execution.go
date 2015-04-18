@@ -395,7 +395,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 				txCache             = NewTxCache(blockCache)
 				params              = vm.Params{
 					BlockHeight: uint64(_s.LastBlockHeight),
-					BlockHash:   RightPadWord256(_s.LastBlockHash),
+					BlockHash:   LeftPadWord256(_s.LastBlockHash),
 					BlockTime:   _s.LastBlockTime.Unix(),
 					GasLimit:    10000000,
 				}
