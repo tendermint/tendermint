@@ -319,14 +319,12 @@ func (a *AddrBook) saveToFile(filePath string) {
 		Addrs: addrs,
 	}
 
-	w, err := os.Create(filePath)
+	jsonBytes, err := json.MarshalIndent(aJSON, "", "\t")
 	if err != nil {
-		log.Error("Error opening file", "file", filePath, "error", err)
+		log.Error("Failed to save AddrBook to file", "err", err)
 		return
 	}
-	defer w.Close()
-	jsonBytes, err := json.MarshalIndent(aJSON, "", "\t")
-	_, err = w.Write(jsonBytes)
+	err = AtomicWriteFile(filePath, jsonBytes)
 	if err != nil {
 		log.Error("Failed to save AddrBook to file", "file", filePath, "error", err)
 	}

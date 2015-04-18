@@ -99,8 +99,9 @@ func (privVal *PrivValidator) Save() {
 
 func (privVal *PrivValidator) save() {
 	jsonBytes := binary.JSONBytes(privVal)
-	err := ioutil.WriteFile(privVal.filename, jsonBytes, 0700)
+	err := AtomicWriteFile(privVal.filename, jsonBytes)
 	if err != nil {
+		// `@; BOOM!!!
 		panic(err)
 	}
 }
