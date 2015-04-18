@@ -70,6 +70,7 @@ type ResponseStatus struct {
 }
 
 type ResponseNetInfo struct {
+	Moniker   string
 	Network   string
 	Listening bool
 	Listeners []string

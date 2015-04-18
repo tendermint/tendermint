@@ -35,6 +35,7 @@ func SetApp(a *confer.Config) {
 var defaultConfig = `# This is a TOML config file.
 # For more information, see https://github.com/toml-lang/toml
 
+Moniker = "anonymous"
 Network = "tendermint_testnet0"
 ListenAddr = "0.0.0.0:8080"
 # First node to connect to.  Command-line overridable.
@@ -86,6 +87,7 @@ var DefaultGenesis = `{
 
 // NOTE: If you change this, maybe also change defaultConfig
 func initDefaults(rootDir string) {
+	app.SetDefault("Moniker", "anonymous")
 	app.SetDefault("Network", "tendermint_testnet0")
 	app.SetDefault("ListenAddr", "0.0.0.0:8080")
 	app.SetDefault("DB.Backend", "leveldb")
