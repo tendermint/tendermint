@@ -118,7 +118,7 @@ func Run(authCommand AuthCommand) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Info(Fmt("Run() received command %v", reflect.TypeOf(command)))
+	log.Info(Fmt("Run() received command %v:\n%v", reflect.TypeOf(command), command))
 	// Issue command
 	switch c := command.(type) {
 	case CommandRunProcess:
