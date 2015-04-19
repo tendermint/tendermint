@@ -50,3 +50,13 @@ func AtomicWriteFile(filePath string, newBytes []byte) error {
 	}
 	return nil
 }
+
+func EnsureDir(dir string) error {
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		err := os.MkdirAll(dir, 0700)
+		if err != nil {
+			return fmt.Errorf("Could not create directory %v. %v", dir, err)
+		}
+	}
+	return nil
+}

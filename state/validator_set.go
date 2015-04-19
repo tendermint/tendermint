@@ -45,18 +45,12 @@ func NewValidatorSet(vals []*Validator) *ValidatorSet {
 
 // TODO: mind the overflow when times and votingPower shares too large.
 func (valSet *ValidatorSet) IncrementAccum(times uint) {
-	log.Debug("IncrementAccum", "times", times)
-
-	log.Debug(Fmt("IncrementAccum prior to accum: %v\n", valSet))
-
 	// Add VotingPower * times to each validator and order into heap.
 	validatorsHeap := NewHeap()
 	for _, val := range valSet.Validators {
 		val.Accum += int64(val.VotingPower) * int64(times) // TODO: mind overflow
 		validatorsHeap.Push(val, accumComparable(val.Accum))
 	}
-
-	log.Debug(Fmt("IncrementAccum after accum: %v\n", valSet))
 
 	// Decrement the validator with most accum, times times.
 	for i := uint(0); i < times; i++ {
@@ -67,9 +61,6 @@ func (valSet *ValidatorSet) IncrementAccum(times uint) {
 		mostest.Accum -= int64(valSet.TotalVotingPower())
 		validatorsHeap.Update(mostest, accumComparable(mostest.Accum))
 	}
-
-	log.Debug(Fmt("IncrementAccum after decrements: %v\n", valSet))
-	log.Debug(Fmt("IncrementAccum chose proposer: %v\n", valSet.proposer))
 }
 
 func (valSet *ValidatorSet) Copy() *ValidatorSet {

@@ -14,6 +14,7 @@ import (
 	"os"
 	"reflect"
 	"sync"
+	"time"
 
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/cmd/barak/types"
@@ -41,12 +42,14 @@ var barak = struct {
 	nonce      uint64
 	processes  map[string]*pcm.Process
 	validators []Validator
+	rootDir    string
 }{
 	mtx:        sync.Mutex{},
 	pid:        os.Getpid(),
 	nonce:      0,
 	processes:  make(map[string]*pcm.Process),
 	validators: nil,
+	rootDir:    "",
 }
 
 func main() {
@@ -72,6 +75,10 @@ func main() {
 	}
 	barak.nonce = options.StartNonce
 	barak.validators = options.Validators
+	barak.rootDir = os.Getenv("BRKROOT")
+	if barak.rootDir == "" {
+		barak.rootDir = os.Getenv("HOME") + "/.barak"
+	}
 
 	// Debug.
 	fmt.Printf("Options: %v\n", options)
@@ -174,7 +181,12 @@ func RunProcess(wait bool, label string, execPath string, args []string, input s
 	}
 
 	// Otherwise, create one.
-	proc, err := pcm.Create(pcm.ProcessModeDaemon, label, execPath, args, input)
+	err := EnsureDir(barak.rootDir + "/outputs")
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create outputs dir: %v", err)
+	}
+	outPath := Fmt("%v/outputs/%v_%v.out", barak.rootDir, label, time.Now().Format("2006_01_02_15_04_05_MST"))
+	proc, err := pcm.Create(pcm.ProcessModeDaemon, label, execPath, args, input, outPath)
 	if err == nil {
 		barak.processes[label] = proc
 	}
