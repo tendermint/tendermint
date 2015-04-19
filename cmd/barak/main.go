@@ -80,6 +80,9 @@ func main() {
 		barak.rootDir = os.Getenv("HOME") + "/.barak"
 	}
 
+	// Write pid to file.
+	AtomicWriteFile(barak.rootDir+"/pidfile", []byte(Fmt("%v", barak.pid)))
+
 	// Debug.
 	fmt.Printf("Options: %v\n", options)
 	fmt.Printf("Barak: %v\n", barak)
