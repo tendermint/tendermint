@@ -67,47 +67,47 @@ ListenAddr = "127.0.0.1:8081"
 var DefaultGenesis = `{
     "Accounts": [
         {
-            "Address": "29BF3A0A13001A0D23533386BE03E74923AF1179",
+            "Address": "69988763FCF806AC35D1A2F9C4885B7DD7B0599C",
             "Amount": 2099600000000000 
         }
     ],
     "Validators": [
         {
-            "PubKey": [1, "1ED8C1E665B5035E62DDB3D6B8E7B4D728E13B5F571E687BB9C4B161C23D7686"],
+            "PubKey": [1, "323A31EB01877858592AB7D593E9447110AFCD3ACF280D60C4F8E7C04FACC955"],
             "Amount": 100000000000,
             "UnbondTo": [
             	{
-            		"Address": "32B472D2E90FD423ABB6942AB27434471F92D736",
+            		"Address": "69988763FCF806AC35D1A2F9C4885B7DD7B0599C",
             		"Amount":  100000000000
             	}
             ]
         },
         {
-            "PubKey": [1, "3A2C5C341FFC1D5F7AB518519FF8289D3BFAB82DFD6E167B926FAD72C1BF10F8"],
+            "PubKey": [1, "DD2206E8F889EED3ABAAECEB2D18962D062A887346241820493FFE3B1DEF255D"],
             "Amount": 100000000000,
             "UnbondTo": [
             	{
-            		"Address": "29BF3A0A13001A0D23533386BE03E74923AF1179",
+            		"Address": "69988763FCF806AC35D1A2F9C4885B7DD7B0599C",
             		"Amount":  100000000000
             	}
             ]
         },
         {
-            "PubKey": [1, "E9664351DC7C15F431E1ADBA5E135F171F67C85DFF64B689FC3359D62E437EEF"],
+            "PubKey": [1, "1B3256A3754FC6AB01110C166199A2F619E2D76DB3EE751E376FE404AC9FDCFF"],
             "Amount": 100000000000,
             "UnbondTo": [
             	{
-            		"Address": "F1901AF1B2778DBB7939569A91CEB1FE72A7AB12",
+            		"Address": "69988763FCF806AC35D1A2F9C4885B7DD7B0599C",
             		"Amount":  100000000000
             	}
             ]
         },
         {
-            "PubKey": [1, "5D56001CB46D67045FC78A431E844AC94E5780CCEE235B3D8E8666349F1BC1C2"],
+            "PubKey": [1, "62CF1048BAEBB4FFFF360D5E896E3F4EC72D03D55183596931ED14995D512926"],
             "Amount": 100000000000,
             "UnbondTo": [
             	{
-            		"Address": "E91C4F631EF6DAA25C3E658F72E152AD853EA221",
+            		"Address": "69988763FCF806AC35D1A2F9C4885B7DD7B0599C",
             		"Amount":  100000000000
             	}
             ]
