@@ -68,16 +68,46 @@ var DefaultGenesis = `{
     "Accounts": [
         {
             "Address": "29BF3A0A13001A0D23533386BE03E74923AF1179",
-            "Amount": 2099900000000000 
+            "Amount": 2099600000000000 
         }
     ],
     "Validators": [
+        {
+            "PubKey": [1, "1ED8C1E665B5035E62DDB3D6B8E7B4D728E13B5F571E687BB9C4B161C23D7686"],
+            "Amount": 100000000000,
+            "UnbondTo": [
+            	{
+            		"Address": "32B472D2E90FD423ABB6942AB27434471F92D736",
+            		"Amount":  100000000000
+            	}
+            ]
+        },
         {
             "PubKey": [1, "3A2C5C341FFC1D5F7AB518519FF8289D3BFAB82DFD6E167B926FAD72C1BF10F8"],
             "Amount": 100000000000,
             "UnbondTo": [
             	{
             		"Address": "29BF3A0A13001A0D23533386BE03E74923AF1179",
+            		"Amount":  100000000000
+            	}
+            ]
+        },
+        {
+            "PubKey": [1, "E9664351DC7C15F431E1ADBA5E135F171F67C85DFF64B689FC3359D62E437EEF"],
+            "Amount": 100000000000,
+            "UnbondTo": [
+            	{
+            		"Address": "F1901AF1B2778DBB7939569A91CEB1FE72A7AB12",
+            		"Amount":  100000000000
+            	}
+            ]
+        },
+        {
+            "PubKey": [1, "5D56001CB46D67045FC78A431E844AC94E5780CCEE235B3D8E8666349F1BC1C2"],
+            "Amount": 100000000000,
+            "UnbondTo": [
+            	{
+            		"Address": "E91C4F631EF6DAA25C3E658F72E152AD853EA221",
             		"Amount":  100000000000
             	}
             ]

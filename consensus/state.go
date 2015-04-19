@@ -317,11 +317,10 @@ func (cs *ConsensusState) stepTransitionRoutine() {
 
 	// For clarity, all state transitions that happen after some timeout are here.
 	// Schedule the next action by pushing a RoundAction{} to cs.runActionCh.
-	scheduleNextAction := func() {
+	scheduleNextAction := func(rs *RoundState) {
 		go func() {
 			// NOTE: We can push directly to runActionCh because
 			// we're running in a separate goroutine, which avoids deadlocks.
-			rs := cs.getRoundState()
 			round, roundStartTime, RoundDuration, _, elapsedRatio := calcRoundInfo(rs.StartTime)
 			log.Debug("Scheduling next action", "height", rs.Height, "round", round, "step", rs.Step, "roundStartTime", roundStartTime, "elapsedRatio", elapsedRatio)
 			switch rs.Step {
@@ -351,14 +350,14 @@ func (cs *ConsensusState) stepTransitionRoutine() {
 				// There's nothing to scheudle, we're waiting for
 				// ProposalBlockParts.IsComplete() &&
 				// Commits.HasTwoThirdsMajority()
-				panic("The next action from RoundStepCommit is not scheduled by time")
+				//panic("The next action from RoundStepCommit is not scheduled by time")
 			default:
 				panic("Should not happen")
 			}
 		}()
 	}
 
-	scheduleNextAction()
+	scheduleNextAction(cs.getRoundState())
 
 	// NOTE: All ConsensusState.RunAction*() calls come from here.
 	// Since only one routine calls them, it is safe to assume that
@@ -397,7 +396,7 @@ ACTION_LOOP:
 				continue ACTION_LOOP
 			}
 			cs.RunActionPropose(rs.Height, rs.Round)
-			scheduleNextAction()
+			scheduleNextAction(rs)
 			continue ACTION_LOOP
 
 		case RoundActionPrevote:
@@ -405,7 +404,7 @@ ACTION_LOOP:
 				continue ACTION_LOOP
 			}
 			cs.RunActionPrevote(rs.Height, rs.Round)
-			scheduleNextAction()
+			scheduleNextAction(rs)
 			continue ACTION_LOOP
 
 		case RoundActionPrecommit:
@@ -413,7 +412,7 @@ ACTION_LOOP:
 				continue ACTION_LOOP
 			}
 			cs.RunActionPrecommit(rs.Height, rs.Round)
-			scheduleNextAction()
+			scheduleNextAction(rs)
 			continue ACTION_LOOP
 
 		case RoundActionTryCommit:
@@ -428,7 +427,7 @@ ACTION_LOOP:
 				// Could not commit, move onto next round.
 				cs.SetupNewRound(rs.Height, rs.Round+1)
 				// cs.Step is now at RoundStepNewRound
-				scheduleNextAction()
+				scheduleNextAction(rs)
 				continue ACTION_LOOP
 			}
 
@@ -450,7 +449,7 @@ ACTION_LOOP:
 					cs.evsw.FireEvent(types.EventStringNewBlock(), newBlock)
 					cs.evc.Flush()
 				}()
-				scheduleNextAction()
+				scheduleNextAction(rs)
 				continue ACTION_LOOP
 			} else {
 				// do not schedule next action.
@@ -533,14 +532,18 @@ func (cs *ConsensusState) updateToState(state *sm.State, contiguous bool) {
 
 // After the call cs.Step becomes RoundStepNewRound.
 func (cs *ConsensusState) setupNewRound(round uint) {
+	// XXX Looks like this is just not called.
 	// Sanity check
 	if round == 0 {
 		panic("setupNewRound() should never be called for round 0")
 	}
 
 	// Increment all the way to round.
+	log.Debug(Fmt("Validators prior to IncrementAccum: %v, %v-%v", cs.Validators.String(),
+		round, cs.Round))
 	validators := cs.Validators.Copy()
 	validators.IncrementAccum(round - cs.Round)
+	log.Debug(Fmt("Validators after IncrementAccum: %v", validators.String()))
 
 	cs.Round = round
 	cs.Step = RoundStepNewRound

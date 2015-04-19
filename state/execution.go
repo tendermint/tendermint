@@ -151,7 +151,9 @@ func execBlock(s *State, block *types.Block, blockPartsHeader types.PartSetHeade
 	}
 
 	// Increment validator AccumPowers
+	log.Debug(Fmt("Bonded Validators prior to IncrementAccum: %v", s.BondedValidators.String()))
 	s.BondedValidators.IncrementAccum(1)
+	log.Debug(Fmt("Bonded Validators after IncrementAccum: %v", s.BondedValidators.String()))
 
 	s.LastBlockHeight = block.Height
 	s.LastBlockHash = block.Hash()
