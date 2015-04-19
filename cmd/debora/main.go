@@ -177,9 +177,14 @@ func cliListProcesses(c *cli.Context) {
 		} else {
 			fmt.Printf("%v processes:\n", remote)
 			for _, proc := range response.Processes {
-				fmt.Printf("  \"%v\" => `%v` (%v)  start:%v end:%v output:%v\n",
-					proc.Label, proc.ExecPath, proc.Pid,
-					proc.StartTime, proc.EndTime, proc.OutputPath)
+				startTimeStr := Green(proc.StartTime.String())
+				endTimeStr := proc.EndTime.String()
+				if !proc.EndTime.IsZero() {
+					endTimeStr = Red(endTimeStr)
+				}
+				fmt.Printf("  %v  start:%v end:%v output:%v\n",
+					RightPadString(Fmt("\"%v\" => `%v` (%v)", proc.Label, proc.ExecPath, proc.Pid), 40),
+					startTimeStr, endTimeStr, proc.OutputPath)
 			}
 		}
 	}
