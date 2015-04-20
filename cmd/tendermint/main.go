@@ -40,6 +40,8 @@ Commands:
 		gen_tx()
 	case "probe_upnp":
 		probe_upnp()
+	case "unsafe_reset_priv_validator":
+		reset_priv_validator()
 	default:
 		fmt.Printf("Unknown command %v\n", args[0])
 	}
