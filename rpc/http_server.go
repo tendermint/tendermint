@@ -13,13 +13,16 @@ import (
 	"github.com/tendermint/tendermint/alert"
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/p2p"
 )
 
 func StartHTTPServer(listenAddr string, handler http.Handler) {
 	log.Info(Fmt("Starting RPC HTTP server on %s", listenAddr))
 	go func() {
-		res := http.ListenAndServe(
-			listenAddr,
+		listener := p2p.NewDefaultListener("tcp", listenAddr, false)
+		netListener := listener.(*p2p.DefaultListener).NetListener()
+		res := http.Serve(
+			netListener,
 			RecoverAndLogHandler(handler),
 		)
 		log.Crit("RPC HTTPServer stopped", "result", res)

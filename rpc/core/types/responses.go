@@ -78,7 +78,7 @@ type ResponseNetInfo struct {
 }
 
 type Peer struct {
-	Address    string
+	types.NodeInfo
 	IsOutbound bool
 }
 

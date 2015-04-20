@@ -8,6 +8,7 @@ import (
 
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/types"
 )
 
 type PeerMessage struct {
@@ -73,7 +74,17 @@ func makeSwitchPair(t testing.TB, initSwitch func(*Switch) *Switch) (*Switch, *S
 
 	// Create two switches that will be interconnected.
 	s1 := initSwitch(NewSwitch())
+	s1.SetNodeInfo(&types.NodeInfo{
+		Moniker: "switch1",
+		Network: "testing",
+	})
 	s2 := initSwitch(NewSwitch())
+	s2.SetNodeInfo(&types.NodeInfo{
+		Moniker: "switch2",
+		Network: "testing",
+	})
+
+	// Start switches
 	s1.Start()
 	s2.Start()
 
@@ -93,7 +104,7 @@ func makeSwitchPair(t testing.TB, initSwitch func(*Switch) *Switch) (*Switch, *S
 		t.Fatalf("Could not get inbound connection from listener")
 	}
 
-	s1.AddPeerWithConnection(connIn, false)
+	go s1.AddPeerWithConnection(connIn, false) // AddPeer is blocking, requires handshake.
 	s2.AddPeerWithConnection(connOut, true)
 
 	// Wait for things to happen, peers to get added...
@@ -142,10 +153,10 @@ func TestSwitches(t *testing.T) {
 
 	// Check message on ch0
 	ch0Msgs := s2.Reactor("foo").(*TestReactor).msgsReceived[byte(0x00)]
-	if len(ch0Msgs) != 2 {
+	if len(ch0Msgs) != 1 {
 		t.Errorf("Expected to have received 1 message in ch0")
 	}
-	if !bytes.Equal(ch0Msgs[1].Bytes, binary.BinaryBytes(ch0Msg)) {
+	if !bytes.Equal(ch0Msgs[0].Bytes, binary.BinaryBytes(ch0Msg)) {
 		t.Errorf("Unexpected message bytes. Wanted: %X, Got: %X", binary.BinaryBytes(ch0Msg), ch0Msgs[0].Bytes)
 	}
 

@@ -128,6 +128,10 @@ func (l *DefaultListener) ExternalAddress() *NetAddress {
 	return l.extAddr
 }
 
+func (l *DefaultListener) NetListener() net.Listener {
+	return l.listener
+}
+
 func (l *DefaultListener) Stop() {
 	if atomic.CompareAndSwapUint32(&l.stopped, 0, 1) {
 		l.listener.Close()
