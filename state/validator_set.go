@@ -45,7 +45,6 @@ func NewValidatorSet(vals []*Validator) *ValidatorSet {
 
 // TODO: mind the overflow when times and votingPower shares too large.
 func (valSet *ValidatorSet) IncrementAccum(times uint) {
-
 	// Add VotingPower * times to each validator and order into heap.
 	validatorsHeap := NewHeap()
 	for _, val := range valSet.Validators {
@@ -56,12 +55,12 @@ func (valSet *ValidatorSet) IncrementAccum(times uint) {
 	// Decrement the validator with most accum, times times.
 	for i := uint(0); i < times; i++ {
 		mostest := validatorsHeap.Peek().(*Validator)
+		if i == times-1 {
+			valSet.proposer = mostest
+		}
 		mostest.Accum -= int64(valSet.TotalVotingPower())
 		validatorsHeap.Update(mostest, accumComparable(mostest.Accum))
 	}
-
-	// The next proposer is the next most accums remaining
-	valSet.proposer = validatorsHeap.Peek().(*Validator)
 }
 
 func (valSet *ValidatorSet) Copy() *ValidatorSet {
@@ -293,5 +292,5 @@ type accumComparable uint64
 
 // We want to find the validator with the greatest accum.
 func (ac accumComparable) Less(o interface{}) bool {
-	return uint64(ac) > uint64(o.(accumComparable))
+	return uint64(ac) < uint64(o.(accumComparable))
 }

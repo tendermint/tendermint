@@ -45,11 +45,16 @@ func NewNode() *Node {
 
 	// Get PrivValidator
 	var privValidator *sm.PrivValidator
-	if _, err := os.Stat(config.App().GetString("PrivValidatorFile")); err == nil {
-		privValidator = sm.LoadPrivValidator(config.App().GetString("PrivValidatorFile"))
-		log.Info("Loaded PrivValidator", "file", config.App().GetString("PrivValidatorFile"), "privValidator", privValidator)
+	privValidatorFile := config.App().GetString("PrivValidatorFile")
+	if _, err := os.Stat(privValidatorFile); err == nil {
+		privValidator = sm.LoadPrivValidator(privValidatorFile)
+		log.Info("Loaded PrivValidator",
+			"file", privValidatorFile, "privValidator", privValidator)
 	} else {
-		log.Info("No PrivValidator found", "file", config.App().GetString("PrivValidatorFile"))
+		privValidator = sm.GenPrivValidator()
+		privValidator.SetFile(privValidatorFile)
+		privValidator.Save()
+		log.Info("Generated PrivValidator", "file", privValidatorFile)
 	}
 
 	eventSwitch := new(events.EventSwitch)

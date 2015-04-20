@@ -152,7 +152,6 @@ func execBlock(s *State, block *types.Block, blockPartsHeader types.PartSetHeade
 
 	// Increment validator AccumPowers
 	s.BondedValidators.IncrementAccum(1)
-
 	s.LastBlockHeight = block.Height
 	s.LastBlockHash = block.Hash()
 	s.LastBlockParts = blockPartsHeader
@@ -395,7 +394,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 				txCache             = NewTxCache(blockCache)
 				params              = vm.Params{
 					BlockHeight: uint64(_s.LastBlockHeight),
-					BlockHash:   RightPadWord256(_s.LastBlockHash),
+					BlockHash:   LeftPadWord256(_s.LastBlockHash),
 					BlockTime:   _s.LastBlockTime.Unix(),
 					GasLimit:    10000000,
 				}

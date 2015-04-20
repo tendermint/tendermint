@@ -288,7 +288,7 @@ func simpleContract() ([]byte, []byte, []byte) {
 	// the is the code we need to return the contractCode when the contract is initialized
 	lenCode := len(contractCode)
 	// push code to the stack
-	//code := append([]byte{byte(0x60 + lenCode - 1)}, LeftPadWord256(contractCode).Bytes()...)
+	//code := append([]byte{byte(0x60 + lenCode - 1)}, RightPadWord256(contractCode).Bytes()...)
 	code := append([]byte{0x7f}, RightPadWord256(contractCode).Bytes()...)
 	// store it in memory
 	code = append(code, []byte{0x60, 0x0, 0x52}...)

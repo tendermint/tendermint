@@ -318,10 +318,10 @@ func (cs *ConsensusState) stepTransitionRoutine() {
 	// For clarity, all state transitions that happen after some timeout are here.
 	// Schedule the next action by pushing a RoundAction{} to cs.runActionCh.
 	scheduleNextAction := func() {
+		rs := cs.getRoundState()
 		go func() {
 			// NOTE: We can push directly to runActionCh because
 			// we're running in a separate goroutine, which avoids deadlocks.
-			rs := cs.getRoundState()
 			round, roundStartTime, RoundDuration, _, elapsedRatio := calcRoundInfo(rs.StartTime)
 			log.Debug("Scheduling next action", "height", rs.Height, "round", round, "step", rs.Step, "roundStartTime", roundStartTime, "elapsedRatio", elapsedRatio)
 			switch rs.Step {
@@ -358,7 +358,12 @@ func (cs *ConsensusState) stepTransitionRoutine() {
 		}()
 	}
 
-	scheduleNextAction()
+	if cs.getRoundState().Step < RoundStepCommit {
+		scheduleNextAction()
+	} else {
+		// Race condition with receipt of commits, maybe.
+		// We shouldn't have to schedule anything.
+	}
 
 	// NOTE: All ConsensusState.RunAction*() calls come from here.
 	// Since only one routine calls them, it is safe to assume that
@@ -533,6 +538,7 @@ func (cs *ConsensusState) updateToState(state *sm.State, contiguous bool) {
 
 // After the call cs.Step becomes RoundStepNewRound.
 func (cs *ConsensusState) setupNewRound(round uint) {
+	// XXX Looks like this is just not called.
 	// Sanity check
 	if round == 0 {
 		panic("setupNewRound() should never be called for round 0")

@@ -147,7 +147,7 @@ func (cache *TxCache) AddLog(log *vm.Log) {
 func NewContractAddress(caller []byte, nonce uint64) []byte {
 	temp := make([]byte, 32+8)
 	copy(temp, caller)
-	PutUint64(temp[32:], nonce)
+	PutUint64LE(temp[32:], nonce)
 	return sha3.Sha3(temp)[:20]
 }
 
@@ -158,7 +158,7 @@ func toVMAccount(acc *ac.Account) *vm.Account {
 		Balance:     acc.Balance,
 		Code:        acc.Code, // This is crazy.
 		Nonce:       uint64(acc.Sequence),
-		StorageRoot: RightPadWord256(acc.StorageRoot),
+		StorageRoot: LeftPadWord256(acc.StorageRoot),
 		Other:       acc.PubKey,
 	}
 }

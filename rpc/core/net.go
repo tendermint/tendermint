@@ -33,16 +33,21 @@ func Status() (*ctypes.ResponseStatus, error) {
 
 func NetInfo() (*ctypes.ResponseNetInfo, error) {
 	listening := p2pSwitch.IsListening()
+	moniker := config.App().GetString("Moniker")
 	network := config.App().GetString("Network")
 	listeners := []string{}
 	for _, listener := range p2pSwitch.Listeners() {
 		listeners = append(listeners, listener.String())
 	}
-	peers := []string{}
+	peers := []ctypes.Peer{}
 	for _, peer := range p2pSwitch.Peers().List() {
-		peers = append(peers, peer.String())
+		peers = append(peers, ctypes.Peer{
+			Address:    peer.Connection().RemoteAddress.String(),
+			IsOutbound: peer.IsOutbound(),
+		})
 	}
 	return &ctypes.ResponseNetInfo{
+		Moniker:   moniker,
 		Network:   network,
 		Listening: listening,
 		Listeners: listeners,

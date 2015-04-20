@@ -10,16 +10,6 @@ import (
 	"time"
 )
 
-func makeFile(prefix string) (string, *os.File) {
-	now := time.Now()
-	path := fmt.Sprintf("%v_%v.out", prefix, now.Format("2006_01_02_15_04_05_MST"))
-	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		panic(err)
-	}
-	return path, file
-}
-
 type Process struct {
 	Label      string
 	ExecPath   string
@@ -40,8 +30,11 @@ const (
 
 // execPath: command name
 // args: args to command. (should not include name)
-func Create(mode int, label string, execPath string, args []string, input string) (*Process, error) {
-	outPath, outFile := makeFile("output_" + label)
+func Create(mode int, label string, execPath string, args []string, input string, outPath string) (*Process, error) {
+	outFile, err := os.OpenFile(outPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		return nil, err
+	}
 	cmd := exec.Command(execPath, args...)
 	switch mode {
 	case ProcessModeStd:

@@ -20,7 +20,7 @@ func App() *confer.Config {
 	appMtx.Lock()
 	defer appMtx.Unlock()
 	if app == nil {
-		Init(".tendermint")
+		Init("")
 	}
 	return app
 }
@@ -35,6 +35,7 @@ func SetApp(a *confer.Config) {
 var defaultConfig = `# This is a TOML config file.
 # For more information, see https://github.com/toml-lang/toml
 
+Moniker = "anonymous"
 Network = "tendermint_testnet0"
 ListenAddr = "0.0.0.0:8080"
 # First node to connect to.  Command-line overridable.
@@ -66,17 +67,47 @@ ListenAddr = "127.0.0.1:8081"
 var DefaultGenesis = `{
     "Accounts": [
         {
-            "Address": "29BF3A0A13001A0D23533386BE03E74923AF1179",
-            "Amount": 2099900000000000 
+            "Address": "69988763FCF806AC35D1A2F9C4885B7DD7B0599C",
+            "Amount": 2099600000000000 
         }
     ],
     "Validators": [
         {
-            "PubKey": [1, "3A2C5C341FFC1D5F7AB518519FF8289D3BFAB82DFD6E167B926FAD72C1BF10F8"],
+            "PubKey": [1, "323A31EB01877858592AB7D593E9447110AFCD3ACF280D60C4F8E7C04FACC955"],
             "Amount": 100000000000,
             "UnbondTo": [
             	{
-            		"Address": "29BF3A0A13001A0D23533386BE03E74923AF1179",
+            		"Address": "69988763FCF806AC35D1A2F9C4885B7DD7B0599C",
+            		"Amount":  100000000000
+            	}
+            ]
+        },
+        {
+            "PubKey": [1, "DD2206E8F889EED3ABAAECEB2D18962D062A887346241820493FFE3B1DEF255D"],
+            "Amount": 100000000000,
+            "UnbondTo": [
+            	{
+            		"Address": "69988763FCF806AC35D1A2F9C4885B7DD7B0599C",
+            		"Amount":  100000000000
+            	}
+            ]
+        },
+        {
+            "PubKey": [1, "1B3256A3754FC6AB01110C166199A2F619E2D76DB3EE751E376FE404AC9FDCFF"],
+            "Amount": 100000000000,
+            "UnbondTo": [
+            	{
+            		"Address": "69988763FCF806AC35D1A2F9C4885B7DD7B0599C",
+            		"Amount":  100000000000
+            	}
+            ]
+        },
+        {
+            "PubKey": [1, "62CF1048BAEBB4FFFF360D5E896E3F4EC72D03D55183596931ED14995D512926"],
+            "Amount": 100000000000,
+            "UnbondTo": [
+            	{
+            		"Address": "69988763FCF806AC35D1A2F9C4885B7DD7B0599C",
             		"Amount":  100000000000
             	}
             ]
@@ -86,6 +117,7 @@ var DefaultGenesis = `{
 
 // NOTE: If you change this, maybe also change defaultConfig
 func initDefaults(rootDir string) {
+	app.SetDefault("Moniker", "anonymous")
 	app.SetDefault("Network", "tendermint_testnet0")
 	app.SetDefault("ListenAddr", "0.0.0.0:8080")
 	app.SetDefault("DB.Backend", "leveldb")
@@ -104,7 +136,13 @@ func initDefaults(rootDir string) {
 
 func Init(rootDir string) {
 
-	// Get RootDir
+	// Get rootdir
+	if rootDir == "" {
+		rootDir = os.Getenv("TMROOT")
+	}
+	if rootDir == "" {
+		rootDir = os.Getenv("HOME") + "/.tendermint"
+	}
 	configFile := path.Join(rootDir, "config.toml")
 	genesisFile := path.Join(rootDir, "genesis.json")
 

@@ -36,7 +36,7 @@ func GetStorage(address, key []byte) (*ctypes.ResponseGetStorage, error) {
 	storageRoot := account.StorageRoot
 	storageTree := state.LoadStorage(storageRoot)
 
-	_, value := storageTree.Get(RightPadWord256(key).Bytes())
+	_, value := storageTree.Get(LeftPadWord256(key).Bytes())
 	if value == nil {
 		return &ctypes.ResponseGetStorage{key, nil}, nil
 	}
