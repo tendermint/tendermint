@@ -79,6 +79,11 @@ func main() {
 			Usage:  "list processes",
 			Action: cliListProcesses,
 		},
+		cli.Command{
+			Name:   "download",
+			Usage:  "download file <remote-path> <local-path-prefix>",
+			Action: cliDownloadFile,
+		},
 	}
 	app.Run(os.Args)
 }
@@ -186,6 +191,27 @@ func cliListProcesses(c *cli.Context) {
 					RightPadString(Fmt("\"%v\" => `%v` (%v)", proc.Label, proc.ExecPath, proc.Pid), 40),
 					startTimeStr, endTimeStr, proc.OutputPath)
 			}
+		}
+	}
+}
+
+func cliDownloadFile(c *cli.Context) {
+	args := c.Args()
+	if len(args) != 2 {
+		Exit("Must specify <remote-path> <local-path-prefix>")
+	}
+	remotePath := args[0]
+	localPathPrefix := args[1]
+	command := btypes.CommandServeFile{
+		Path: remotePath,
+	}
+	for i, remote := range Config.Remotes {
+		localPath := Fmt("%v_%v", localPathPrefix, i)
+		n, err := DownloadFile(Config.PrivKey, remote, command, localPath)
+		if err != nil {
+			fmt.Printf("%v failure. %v\n", remote, err)
+		} else {
+			fmt.Printf("%v success. Wrote %v bytes to %v\n", remote, n, localPath)
 		}
 	}
 }
