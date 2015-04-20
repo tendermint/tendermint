@@ -318,6 +318,7 @@ func (cs *ConsensusState) stepTransitionRoutine() {
 	// For clarity, all state transitions that happen after some timeout are here.
 	// Schedule the next action by pushing a RoundAction{} to cs.runActionCh.
 	scheduleNextAction := func() {
+		// NOTE: rs must be fetched in the same callstack as the caller.
 		rs := cs.getRoundState()
 		go func() {
 			// NOTE: We can push directly to runActionCh because
@@ -491,7 +492,8 @@ func (cs *ConsensusState) updateToState(state *sm.State, contiguous bool) {
 	cs.Round = 0
 	cs.Step = RoundStepNewHeight
 	if cs.CommitTime.IsZero() {
-		cs.StartTime = state.LastBlockTime.Add(newHeightDelta)
+		//cs.StartTime = state.LastBlockTime.Add(newHeightDelta)
+		cs.StartTime = time.Now() // Makes it easier to sync up dev nodes.
 	} else {
 		cs.StartTime = cs.CommitTime.Add(newHeightDelta)
 	}
