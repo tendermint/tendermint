@@ -10,10 +10,18 @@ import (
 	. "github.com/tendermint/tendermint/common"
 )
 
+type nodeInfo struct {
+	Host    string
+	RPCPort uint16
+	P2PPort uint16
+}
+
 type Peer struct {
 	outbound bool
 	mconn    *MConnection
 	running  uint32
+
+	Nodeinfo *nodeInfo
 
 	Key  string
 	Data *CMap // User data.

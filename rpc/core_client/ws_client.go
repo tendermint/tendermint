@@ -19,15 +19,15 @@ func NewWSClient(addr string) *WSClient {
 	}
 }
 
-func (wsc *WSClient) Dial() error {
+func (wsc *WSClient) Dial() (*http.Response, error) {
 	dialer := websocket.DefaultDialer
 	rHeader := http.Header{}
-	conn, _, err := dialer.Dial(wsc.host, rHeader)
+	conn, r, err := dialer.Dial(wsc.host, rHeader)
 	if err != nil {
-		return err
+		return r, err
 	}
 	wsc.conn = conn
-	return nil
+	return r, nil
 }
 
 // subscribe to an event
@@ -44,4 +44,26 @@ func (wsc *WSClient) Unsubscribe(eventid string) error {
 		Type:  "unsubscribe",
 		Event: eventid,
 	})
+}
+
+type WSMsg struct {
+	Data  []byte
+	Error error
+}
+
+// returns a channel from which messages can be pulled
+// from a go routine that reads the socket.
+// if the ws returns an error (eg. closes), we return
+func (wsc *WSClient) Read() chan *WSMsg {
+	ch := make(chan *WSMsg)
+	go func() {
+		for {
+			_, p, err := wsc.conn.ReadMessage()
+			ch <- &WSMsg{p, err}
+			if err != nil {
+				return
+			}
+		}
+	}()
+	return ch
 }
