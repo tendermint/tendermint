@@ -78,7 +78,9 @@ type ResponseNetInfo struct {
 }
 
 type Peer struct {
-	Address    string
+	Host       string // ip
+	P2PPort    uint16
+	RPCPort    uint16
 	IsOutbound bool
 }
 
