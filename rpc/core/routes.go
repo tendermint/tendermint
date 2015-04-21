@@ -14,6 +14,7 @@ var Routes = map[string]*rpc.RPCFunc{
 	"call":                    rpc.NewRPCFunc(Call, []string{"address", "data"}),
 	"call_code":               rpc.NewRPCFunc(CallCode, []string{"code", "data"}),
 	"list_validators":         rpc.NewRPCFunc(ListValidators, []string{}),
+	"dump_consensus_state":    rpc.NewRPCFunc(DumpConsensusState, []string{}),
 	"dump_storage":            rpc.NewRPCFunc(DumpStorage, []string{"address"}),
 	"broadcast_tx":            rpc.NewRPCFunc(BroadcastTx, []string{"tx"}),
 	"list_accounts":           rpc.NewRPCFunc(ListAccounts, []string{}),

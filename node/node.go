@@ -1,8 +1,10 @@
 package node
 
 import (
+	"net"
 	"net/http"
 	"os"
+	"strconv"
 
 	bc "github.com/tendermint/tendermint/blockchain"
 	. "github.com/tendermint/tendermint/common"
@@ -15,6 +17,7 @@ import (
 	"github.com/tendermint/tendermint/rpc"
 	"github.com/tendermint/tendermint/rpc/core"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/types"
 )
 
 type Node struct {
@@ -79,7 +82,6 @@ func NewNode() *Node {
 	}
 
 	sw := p2p.NewSwitch()
-	sw.SetNetwork(config.App().GetString("Network"))
 	sw.AddReactor("PEX", pexReactor)
 	sw.AddReactor("MEMPOOL", mempoolReactor)
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
@@ -103,9 +105,12 @@ func NewNode() *Node {
 	}
 }
 
+// Call Start() after adding the listeners.
 func (n *Node) Start() {
 	log.Info("Starting Node")
 	n.book.Start()
+	nodeInfo := makeNodeInfo(n.sw)
+	n.sw.SetNodeInfo(nodeInfo)
 	n.sw.Start()
 	if config.App().GetBool("FastSync") {
 		// TODO: When FastSync is done, start CONSENSUS.
@@ -128,6 +133,8 @@ func SetFireable(evsw *events.EventSwitch, eventables ...events.Eventable) {
 }
 
 // Add a Listener to accept inbound peer connections.
+// Add listeners before starting the Node.
+// The first listener is the primary listener (in NodeInfo)
 func (n *Node) AddListener(l p2p.Listener) {
 	log.Info(Fmt("Added %v", l))
 	n.sw.AddListener(l)
@@ -174,6 +181,32 @@ func (n *Node) MempoolReactor() *mempl.MempoolReactor {
 
 func (n *Node) EventSwitch() *events.EventSwitch {
 	return n.evsw
+}
+
+func makeNodeInfo(sw *p2p.Switch) *types.NodeInfo {
+	nodeInfo := &types.NodeInfo{
+		Moniker: config.App().GetString("Moniker"),
+		Network: config.App().GetString("Network"),
+	}
+	if !sw.IsListening() {
+		return nodeInfo
+	}
+	p2pListener := sw.Listeners()[0]
+	p2pHost := p2pListener.ExternalAddress().IP.String()
+	p2pPort := p2pListener.ExternalAddress().Port
+	rpcListenAddr := config.App().GetString("RPC.HTTP.ListenAddr")
+	_, rpcPortStr, _ := net.SplitHostPort(rpcListenAddr)
+	rpcPort, err := strconv.Atoi(rpcPortStr)
+	if err != nil {
+		panic(Fmt("Expected numeric RPC.HTTP.ListenAddr port but got %v", rpcPortStr))
+	}
+
+	// We assume that the rpcListener has the same ExternalAddress.
+	// This is probably true because both P2P and RPC listeners use UPnP.
+	nodeInfo.Host = p2pHost
+	nodeInfo.P2PPort = p2pPort
+	nodeInfo.RPCPort = uint16(rpcPort)
+	return nodeInfo
 }
 
 //------------------------------------------------------------------------------

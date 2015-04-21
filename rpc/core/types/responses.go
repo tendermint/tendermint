@@ -78,9 +78,7 @@ type ResponseNetInfo struct {
 }
 
 type Peer struct {
-	Host       string // ip
-	P2PPort    uint16
-	RPCPort    uint16
+	types.NodeInfo
 	IsOutbound bool
 }
 
@@ -92,4 +90,8 @@ type ResponseListValidators struct {
 	BlockHeight         uint
 	BondedValidators    []*sm.Validator
 	UnbondingValidators []*sm.Validator
+}
+
+type ResponseDumpConsensusState struct {
+	ConsensusState string
 }

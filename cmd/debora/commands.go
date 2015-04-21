@@ -2,11 +2,16 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"net/url"
+	"os"
+
 	acm "github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
 	btypes "github.com/tendermint/tendermint/cmd/barak/types"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/rpc"
+	"net/http"
 )
 
 // These are convenience functions for a single developer.
@@ -42,6 +47,36 @@ func ListProcesses(privKey acm.PrivKey, remote string, command btypes.CommandLis
 	commandBytes, signature := SignCommand(privKey, nonce+1, command)
 	_, err = RunAuthCommand(remote, commandBytes, []acm.Signature{signature}, &response)
 	return response, err
+}
+
+func DownloadFile(privKey acm.PrivKey, remote string, command btypes.CommandServeFile, outPath string) (n int64, err error) {
+	// Create authCommandJSONBytes
+	nonce, err := GetNonce(remote)
+	if err != nil {
+		return 0, err
+	}
+	commandBytes, signature := SignCommand(privKey, nonce+1, command)
+	authCommand := btypes.AuthCommand{
+		CommandJSONStr: string(commandBytes),
+		Signatures:     []acm.Signature{signature},
+	}
+	authCommandJSONBytes := binary.JSONBytes(authCommand)
+	// Make request and write to outPath.
+	httpResponse, err := http.PostForm(remote+"/download", url.Values{"auth_command": {string(authCommandJSONBytes)}})
+	if err != nil {
+		return 0, err
+	}
+	defer httpResponse.Body.Close()
+	outFile, err := os.OpenFile(outPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
+	if err != nil {
+		return 0, err
+	}
+	defer outFile.Close()
+	n, err = io.Copy(outFile, httpResponse.Body)
+	if err != nil {
+		return 0, err
+	}
+	return n, nil
 }
 
 //-----------------------------------------------------------------------------

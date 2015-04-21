@@ -101,12 +101,6 @@ func (pexR *PEXReactor) Receive(chId byte, src *Peer, msgBytes []byte) {
 	log.Info("Received message", "msg", msg)
 
 	switch msg.(type) {
-	case *pexHandshakeMessage:
-		network := msg.(*pexHandshakeMessage).Network
-		if network != pexR.sw.network {
-			err := fmt.Sprintf("Peer is on a different chain/network. Got %s, expected %s", network, pexR.sw.network)
-			pexR.sw.StopPeerForError(src, err)
-		}
 	case *pexRequestMessage:
 		// src requested some peers.
 		// TODO: prevent abuse.
@@ -219,16 +213,14 @@ func (pexR *PEXReactor) SetFireable(evsw events.Fireable) {
 // Messages
 
 const (
-	msgTypeRequest   = byte(0x01)
-	msgTypeAddrs     = byte(0x02)
-	msgTypeHandshake = byte(0x03)
+	msgTypeRequest = byte(0x01)
+	msgTypeAddrs   = byte(0x02)
 )
 
 type PexMessage interface{}
 
 var _ = binary.RegisterInterface(
 	struct{ PexMessage }{},
-	binary.ConcreteType{&pexHandshakeMessage{}, msgTypeHandshake},
 	binary.ConcreteType{&pexRequestMessage{}, msgTypeRequest},
 	binary.ConcreteType{&pexAddrsMessage{}, msgTypeAddrs},
 )
@@ -239,17 +231,6 @@ func DecodeMessage(bz []byte) (msgType byte, msg PexMessage, err error) {
 	r := bytes.NewReader(bz)
 	msg = binary.ReadBinary(struct{ PexMessage }{}, r, n, &err).(struct{ PexMessage }).PexMessage
 	return
-}
-
-/*
-A pexHandshakeMessage contains the network identifier.
-*/
-type pexHandshakeMessage struct {
-	Network string
-}
-
-func (m *pexHandshakeMessage) String() string {
-	return "[pexHandshake]"
 }
 
 /*

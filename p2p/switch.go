@@ -8,6 +8,7 @@ import (
 	"time"
 
 	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/types"
 )
 
 type Reactor interface {
@@ -39,7 +40,6 @@ or more `Channels`.  So while sending outgoing messages is typically performed o
 incoming messages are received on the reactor.
 */
 type Switch struct {
-	network      string
 	listeners    []Listener
 	reactors     map[string]Reactor
 	chDescs      []*ChannelDescriptor
@@ -47,6 +47,7 @@ type Switch struct {
 	peers        *PeerSet
 	dialing      *CMap
 	running      uint32
+	nodeInfo     *types.NodeInfo // our node info
 }
 
 var (
@@ -58,23 +59,16 @@ const (
 )
 
 func NewSwitch() *Switch {
-
 	sw := &Switch{
-		network:      "",
 		reactors:     make(map[string]Reactor),
 		chDescs:      make([]*ChannelDescriptor, 0),
 		reactorsByCh: make(map[byte]Reactor),
 		peers:        NewPeerSet(),
 		dialing:      NewCMap(),
 		running:      0,
+		nodeInfo:     nil,
 	}
-
 	return sw
-}
-
-// Not goroutine safe.
-func (sw *Switch) SetNetwork(network string) {
-	sw.network = network
 }
 
 // Not goroutine safe.
@@ -109,6 +103,7 @@ func (sw *Switch) AddListener(l Listener) {
 	sw.listeners = append(sw.listeners, l)
 }
 
+// Not goroutine safe.
 func (sw *Switch) Listeners() []Listener {
 	return sw.listeners
 }
@@ -116,6 +111,11 @@ func (sw *Switch) Listeners() []Listener {
 // Not goroutine safe.
 func (sw *Switch) IsListening() bool {
 	return len(sw.listeners) > 0
+}
+
+// Not goroutine safe.
+func (sw *Switch) SetNodeInfo(nodeInfo *types.NodeInfo) {
+	sw.nodeInfo = nodeInfo
 }
 
 func (sw *Switch) Start() {
@@ -154,8 +154,17 @@ func (sw *Switch) Stop() {
 	}
 }
 
+// NOTE: This performs a blocking handshake before the peer is added.
 func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, error) {
-	peer := newPeer(conn, outbound, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError)
+	// First, perform handshake
+	peerNodeInfo, err := peerHandshake(conn, sw.nodeInfo)
+	if err != nil {
+		return nil, err
+	}
+	if peerNodeInfo.Network != sw.nodeInfo.Network {
+		return nil, fmt.Errorf("Peer is on different network %v", peerNodeInfo.Network)
+	}
+	peer := newPeer(conn, peerNodeInfo, outbound, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError)
 
 	// Add the peer to .peers
 	if sw.peers.Add(peer) {
@@ -177,10 +186,6 @@ func (sw *Switch) startInitPeer(peer *Peer) {
 
 	// Notify reactors
 	sw.doAddPeer(peer)
-
-	// Send handshake
-	msg := &pexHandshakeMessage{Network: sw.network}
-	peer.Send(PexChannel, msg)
 }
 
 func (sw *Switch) DialPeerWithAddress(addr *NetAddress) (*Peer, error) {
@@ -282,8 +287,7 @@ func (sw *Switch) listenerRoutine(l Listener) {
 		// New inbound connection!
 		peer, err := sw.AddPeerWithConnection(inConn, false)
 		if err != nil {
-			log.Info("Ignoring error from inbound connection: %v\n%v",
-				peer, err)
+			log.Info(Fmt("Ignoring error from inbound connection: %v\n%v", peer, err))
 			continue
 		}
 		// NOTE: We don't yet have the external address of the

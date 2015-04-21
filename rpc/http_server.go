@@ -13,16 +13,19 @@ import (
 	"github.com/tendermint/tendermint/alert"
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/p2p"
 )
 
 func StartHTTPServer(listenAddr string, handler http.Handler) {
 	log.Info(Fmt("Starting RPC HTTP server on %s", listenAddr))
 	go func() {
-		res := http.ListenAndServe(
-			listenAddr,
+		listener := p2p.NewDefaultListener("tcp", listenAddr, false)
+		netListener := listener.(*p2p.DefaultListener).NetListener()
+		res := http.Serve(
+			netListener,
 			RecoverAndLogHandler(handler),
 		)
-		log.Crit("RPC HTTPServer stopped", "result", res)
+		log.Crit("RPC HTTP server stopped", "result", res)
 	}()
 }
 
@@ -30,7 +33,7 @@ func WriteRPCResponse(w http.ResponseWriter, res RPCResponse) {
 	buf, n, err := new(bytes.Buffer), new(int64), new(error)
 	binary.WriteJSON(res, buf, n, err)
 	if *err != nil {
-		log.Warn("Failed to write JSON RPCResponse", "error", err)
+		log.Warn("Failed to write RPC response", "error", err)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -67,7 +70,7 @@ func RecoverAndLogHandler(handler http.Handler) http.Handler {
 					WriteRPCResponse(rww, res)
 				} else {
 					// For the rest,
-					log.Error("Panic in HTTP handler", "error", e, "stack", string(debug.Stack()))
+					log.Error("Panic in RPC HTTP handler", "error", e, "stack", string(debug.Stack()))
 					rww.WriteHeader(http.StatusInternalServerError)
 					WriteRPCResponse(rww, NewRPCResponse(nil, Fmt("Internal Server Error: %v", e)))
 				}
@@ -78,7 +81,7 @@ func RecoverAndLogHandler(handler http.Handler) http.Handler {
 			if rww.Status == -1 {
 				rww.Status = 200
 			}
-			log.Debug("Served HTTP response",
+			log.Debug("Served RPC HTTP response",
 				"method", r.Method, "url", r.URL,
 				"status", rww.Status, "duration", durationMS,
 				"remoteAddr", r.RemoteAddr,

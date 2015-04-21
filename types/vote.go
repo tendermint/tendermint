@@ -8,6 +8,7 @@ import (
 	"github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/config"
 )
 
 var (
@@ -46,6 +47,7 @@ const (
 )
 
 func (vote *Vote) WriteSignBytes(w io.Writer, n *int64, err *error) {
+	binary.WriteString(config.App().GetString("Network"), w, n, err)
 	binary.WriteUvarint(vote.Height, w, n, err)
 	binary.WriteUvarint(vote.Round, w, n, err)
 	binary.WriteByte(vote.Type, w, n, err)

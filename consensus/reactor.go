@@ -136,7 +136,7 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 		log.Warn("Error decoding message", "channel", chId, "peer", peer, "msg", msg_, "error", err, "bytes", msgBytes)
 		return
 	}
-	log.Debug("Receive", "channel", chId, "peer", peer, "msg", msg_, "bytes", msgBytes)
+	log.Debug("Receive", "channel", chId, "peer", peer, "msg", msg_) //, "bytes", msgBytes)
 
 	switch chId {
 	case StateChannel:
@@ -295,7 +295,7 @@ func (conR *ConsensusReactor) sendNewRoundStepRoutine(peer *p2p.Peer) {
 		peer.Send(StateChannel, nrsMsg)
 	}
 	if csMsg != nil {
-		peer.Send(StateChannel, nrsMsg)
+		peer.Send(StateChannel, csMsg)
 	}
 }
 
@@ -545,7 +545,7 @@ OUTER_LOOP:
 type PeerRoundState struct {
 	Height                uint                // Height peer is at
 	Round                 uint                // Round peer is at
-	Step                  RoundStep           // Step peer is at
+	Step                  RoundStepType       // Step peer is at
 	StartTime             time.Time           // Estimated start of round 0 at this height
 	Proposal              bool                // True if peer has proposal for this round
 	ProposalBlockParts    types.PartSetHeader //
@@ -790,7 +790,7 @@ func DecodeMessage(bz []byte) (msgType byte, msg ConsensusMessage, err error) {
 type NewRoundStepMessage struct {
 	Height                uint
 	Round                 uint
-	Step                  RoundStep
+	Step                  RoundStepType
 	SecondsSinceStartTime uint
 }
 

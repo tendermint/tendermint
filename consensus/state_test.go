@@ -82,7 +82,7 @@ func TestRunActionPropose(t *testing.T) {
 }
 
 func checkRoundState(t *testing.T, rs *RoundState,
-	height uint, round uint, step RoundStep) {
+	height uint, round uint, step RoundStepType) {
 	if rs.Height != height {
 		t.Errorf("rs.Height should be %v, got %v", height, rs.Height)
 	}

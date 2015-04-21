@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"sync"
 	"sync/atomic"
 
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/types"
 )
 
 type nodeInfo struct {
@@ -21,13 +23,39 @@ type Peer struct {
 	mconn    *MConnection
 	running  uint32
 
-	Nodeinfo *nodeInfo
-
+	*types.NodeInfo
 	Key  string
 	Data *CMap // User data.
 }
 
-func newPeer(conn net.Conn, outbound bool, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor, onPeerError func(*Peer, interface{})) *Peer {
+func peerHandshake(conn net.Conn, ourNodeInfo *types.NodeInfo) (*types.NodeInfo, error) {
+	var peerNodeInfo = new(types.NodeInfo)
+	var wg sync.WaitGroup
+	var err1 error
+	var err2 error
+	wg.Add(2)
+	go func() {
+		var n int64
+		binary.WriteBinary(ourNodeInfo, conn, &n, &err1)
+		wg.Done()
+	}()
+	go func() {
+		var n int64
+		binary.ReadBinary(peerNodeInfo, conn, &n, &err2)
+		log.Info("Peer handshake", "peerNodeInfo", peerNodeInfo)
+		wg.Done()
+	}()
+	wg.Wait()
+	if err1 != nil {
+		return nil, err1
+	}
+	if err2 != nil {
+		return nil, err2
+	}
+	return peerNodeInfo, nil
+}
+
+func newPeer(conn net.Conn, peerNodeInfo *types.NodeInfo, outbound bool, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor, onPeerError func(*Peer, interface{})) *Peer {
 	var p *Peer
 	onReceive := func(chId byte, msgBytes []byte) {
 		reactor := reactorsByCh[chId]
@@ -45,6 +73,7 @@ func newPeer(conn net.Conn, outbound bool, reactorsByCh map[byte]Reactor, chDesc
 		outbound: outbound,
 		mconn:    mconn,
 		running:  0,
+		NodeInfo: peerNodeInfo,
 		Key:      mconn.RemoteAddress.String(),
 		Data:     NewCMap(),
 	}
