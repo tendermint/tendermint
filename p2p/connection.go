@@ -11,7 +11,7 @@ import (
 	"time"
 
 	flow "code.google.com/p/mxk/go1/flowcontrol"
-	"github.com/tendermint/log15"
+	//"github.com/tendermint/log15"
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 )
@@ -365,18 +365,20 @@ FOR_LOOP:
 		// Block until .recvMonitor says we can read.
 		c.recvMonitor.Limit(maxMsgPacketSize, atomic.LoadInt64(&c.recvRate), true)
 
-		// Peek into bufReader for debugging
-		if numBytes := c.bufReader.Buffered(); numBytes > 0 {
-			log.Debug("Peek connection buffer", "numBytes", numBytes, "bytes", log15.Lazy{func() []byte {
-				bytes, err := c.bufReader.Peek(MinInt(numBytes, 100))
-				if err == nil {
-					return bytes
-				} else {
-					log.Warn("Error peeking connection buffer", "error", err)
-					return nil
-				}
-			}})
-		}
+		/*
+			// Peek into bufReader for debugging
+			if numBytes := c.bufReader.Buffered(); numBytes > 0 {
+				log.Debug("Peek connection buffer", "numBytes", numBytes, "bytes", log15.Lazy{func() []byte {
+					bytes, err := c.bufReader.Peek(MinInt(numBytes, 100))
+					if err == nil {
+						return bytes
+					} else {
+						log.Warn("Error peeking connection buffer", "error", err)
+						return nil
+					}
+				}})
+			}
+		*/
 
 		// Read packet type
 		var n int64
@@ -417,7 +419,7 @@ FOR_LOOP:
 			}
 			msgBytes := channel.recvMsgPacket(pkt)
 			if msgBytes != nil {
-				log.Debug("Received bytes", "chId", pkt.ChannelId, "msgBytes", msgBytes)
+				//log.Debug("Received bytes", "chId", pkt.ChannelId, "msgBytes", msgBytes)
 				c.onReceive(pkt.ChannelId, msgBytes)
 			}
 		default:

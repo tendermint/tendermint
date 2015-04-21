@@ -7,6 +7,7 @@ import (
 	"github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/config"
 )
 
 var (
@@ -133,6 +134,7 @@ type SendTx struct {
 }
 
 func (tx *SendTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
+	binary.WriteString(config.App().GetString("Network"), w, n, err)
 	binary.WriteUvarint(uint(len(tx.Inputs)), w, n, err)
 	for _, in := range tx.Inputs {
 		in.WriteSignBytes(w, n, err)
@@ -158,6 +160,7 @@ type CallTx struct {
 }
 
 func (tx *CallTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
+	binary.WriteString(config.App().GetString("Network"), w, n, err)
 	tx.Input.WriteSignBytes(w, n, err)
 	binary.WriteByteSlice(tx.Address, w, n, err)
 	binary.WriteUint64(tx.GasLimit, w, n, err)
@@ -178,6 +181,7 @@ type BondTx struct {
 }
 
 func (tx *BondTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
+	binary.WriteString(config.App().GetString("Network"), w, n, err)
 	binary.WriteBinary(tx.PubKey, w, n, err)
 	binary.WriteUvarint(uint(len(tx.Inputs)), w, n, err)
 	for _, in := range tx.Inputs {
@@ -202,6 +206,7 @@ type UnbondTx struct {
 }
 
 func (tx *UnbondTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
+	binary.WriteString(config.App().GetString("Network"), w, n, err)
 	binary.WriteByteSlice(tx.Address, w, n, err)
 	binary.WriteUvarint(tx.Height, w, n, err)
 }
@@ -219,6 +224,7 @@ type RebondTx struct {
 }
 
 func (tx *RebondTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
+	binary.WriteString(config.App().GetString("Network"), w, n, err)
 	binary.WriteByteSlice(tx.Address, w, n, err)
 	binary.WriteUvarint(tx.Height, w, n, err)
 }

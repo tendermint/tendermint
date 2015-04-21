@@ -7,6 +7,7 @@ import (
 
 	"github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -38,6 +39,7 @@ func (p *Proposal) String() string {
 }
 
 func (p *Proposal) WriteSignBytes(w io.Writer, n *int64, err *error) {
+	binary.WriteString(config.App().GetString("Network"), w, n, err)
 	binary.WriteUvarint(p.Height, w, n, err)
 	binary.WriteUvarint(p.Round, w, n, err)
 	binary.WriteBinary(p.BlockParts, w, n, err)

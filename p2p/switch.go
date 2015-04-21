@@ -287,8 +287,7 @@ func (sw *Switch) listenerRoutine(l Listener) {
 		// New inbound connection!
 		peer, err := sw.AddPeerWithConnection(inConn, false)
 		if err != nil {
-			log.Info("Ignoring error from inbound connection: %v\n%v",
-				peer, err)
+			log.Info(Fmt("Ignoring error from inbound connection: %v\n%v", peer, err))
 			continue
 		}
 		// NOTE: We don't yet have the external address of the

@@ -88,20 +88,20 @@ var (
 )
 
 //-----------------------------------------------------------------------------
-// RoundStep enum type
+// RoundStepType enum type
 
-type RoundStep uint8
+type RoundStepType uint8 // These must be numeric, ordered.
 
 const (
-	RoundStepNewHeight = RoundStep(0x00) // Round0 for new height started, wait til CommitTime + Delta
-	RoundStepNewRound  = RoundStep(0x01) // Pseudostep, immediately goes to RoundStepPropose
-	RoundStepPropose   = RoundStep(0x10) // Did propose, gossip proposal
-	RoundStepPrevote   = RoundStep(0x11) // Did prevote, gossip prevotes
-	RoundStepPrecommit = RoundStep(0x12) // Did precommit, gossip precommits
-	RoundStepCommit    = RoundStep(0x20) // Entered commit state machine
+	RoundStepNewHeight = RoundStepType(0x01) // Round0 for new height started, wait til CommitTime + Delta
+	RoundStepNewRound  = RoundStepType(0x02) // Pseudostep, immediately goes to RoundStepPropose
+	RoundStepPropose   = RoundStepType(0x03) // Did propose, gossip proposal
+	RoundStepPrevote   = RoundStepType(0x04) // Did prevote, gossip prevotes
+	RoundStepPrecommit = RoundStepType(0x05) // Did precommit, gossip precommits
+	RoundStepCommit    = RoundStepType(0x06) // Entered commit state machine
 )
 
-func (rs RoundStep) String() string {
+func (rs RoundStepType) String() string {
 	switch rs {
 	case RoundStepNewHeight:
 		return "RoundStepNewHeight"
@@ -123,15 +123,15 @@ func (rs RoundStep) String() string {
 //-----------------------------------------------------------------------------
 // RoundAction enum type
 
-type RoundActionType uint8
+type RoundActionType string
 
 const (
-	RoundActionPropose     = RoundActionType(0xA0) // Propose and goto RoundStepPropose
-	RoundActionPrevote     = RoundActionType(0xA1) // Prevote and goto RoundStepPrevote
-	RoundActionPrecommit   = RoundActionType(0xA2) // Precommit and goto RoundStepPrecommit
-	RoundActionTryCommit   = RoundActionType(0xC0) // Goto RoundStepCommit, or RoundStepPropose for next round.
-	RoundActionCommit      = RoundActionType(0xC1) // Goto RoundStepCommit upon +2/3 commits
-	RoundActionTryFinalize = RoundActionType(0xC2) // Maybe goto RoundStepPropose for next round.
+	RoundActionPropose     = RoundActionType("PR") // Propose and goto RoundStepPropose
+	RoundActionPrevote     = RoundActionType("PV") // Prevote and goto RoundStepPrevote
+	RoundActionPrecommit   = RoundActionType("PC") // Precommit and goto RoundStepPrecommit
+	RoundActionTryCommit   = RoundActionType("TC") // Goto RoundStepCommit, or RoundStepPropose for next round.
+	RoundActionCommit      = RoundActionType("CM") // Goto RoundStepCommit upon +2/3 commits
+	RoundActionTryFinalize = RoundActionType("TF") // Maybe goto RoundStepPropose for next round.
 )
 
 func (rat RoundActionType) String() string {
@@ -171,7 +171,7 @@ func (ra RoundAction) String() string {
 type RoundState struct {
 	Height             uint // Height we are working on
 	Round              uint
-	Step               RoundStep
+	Step               RoundStepType
 	StartTime          time.Time
 	CommitTime         time.Time // Time when +2/3 commits were found
 	Validators         *sm.ValidatorSet
