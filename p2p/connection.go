@@ -184,7 +184,7 @@ func (c *MConnection) Send(chId byte, msg interface{}) bool {
 		return false
 	}
 
-	log.Debug("Send", "channel", chId, "connection", c, "msg", msg, "bytes", binary.BinaryBytes(msg))
+	log.Debug("Send", "channel", chId, "connection", c, "msg", msg) //, "bytes", binary.BinaryBytes(msg))
 
 	// Send message to channel.
 	channel, ok := c.channelsIdx[chId]

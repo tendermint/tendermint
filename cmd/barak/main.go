@@ -79,6 +79,10 @@ func main() {
 	if barak.rootDir == "" {
 		barak.rootDir = os.Getenv("HOME") + "/.barak"
 	}
+	err = EnsureDir(barak.rootDir)
+	if err != nil {
+		panic(Fmt("Error creating barak rootDir: %v", err))
+	}
 
 	// Write pid to file.
 	err = AtomicWriteFile(barak.rootDir+"/pidfile", []byte(Fmt("%v", barak.pid)))
