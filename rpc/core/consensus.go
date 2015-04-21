@@ -1,11 +1,10 @@
 package core
 
 import (
+	"github.com/tendermint/tendermint/binary"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	sm "github.com/tendermint/tendermint/state"
 )
-
-//-----------------------------------------------------------------------------
 
 func ListValidators() (*ctypes.ResponseListValidators, error) {
 	var blockHeight uint
@@ -24,4 +23,9 @@ func ListValidators() (*ctypes.ResponseListValidators, error) {
 	})
 
 	return &ctypes.ResponseListValidators{blockHeight, bondedValidators, unbondingValidators}, nil
+}
+
+func DumpConsensusState() (*ctypes.ResponseDumpConsensusState, error) {
+	jsonBytes := binary.JSONBytes(consensusState.GetRoundState())
+	return &ctypes.ResponseDumpConsensusState{string(jsonBytes)}, nil
 }

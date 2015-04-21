@@ -91,3 +91,7 @@ type ResponseListValidators struct {
 	BondedValidators    []*sm.Validator
 	UnbondingValidators []*sm.Validator
 }
+
+type ResponseDumpConsensusState struct {
+	ConsensusState string
+}

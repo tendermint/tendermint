@@ -18,6 +18,7 @@ type Client interface {
 	BroadcastTx(tx types.Tx) (*ctypes.ResponseBroadcastTx, error)
 	Call(address []byte, data []byte) (*ctypes.ResponseCall, error)
 	CallCode(code []byte, data []byte) (*ctypes.ResponseCall, error)
+	DumpConsensusState() (*ctypes.ResponseDumpConsensusState, error)
 	DumpStorage(address []byte) (*ctypes.ResponseDumpStorage, error)
 	GenPrivAccount() (*ctypes.ResponseGenPrivAccount, error)
 	GetAccount(address []byte) (*ctypes.ResponseGetAccount, error)
@@ -139,6 +140,36 @@ func (c *ClientHTTP) CallCode(code []byte, data []byte) (*ctypes.ResponseCall, e
 		Error   string               `json:"error"`
 		Id      string               `json:"id"`
 		JSONRPC string               `json:"jsonrpc"`
+	}
+	binary.ReadJSON(&response, body, &err)
+	if err != nil {
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, fmt.Errorf(response.Error)
+	}
+	return response.Result, nil
+}
+
+func (c *ClientHTTP) DumpConsensusState() (*ctypes.ResponseDumpConsensusState, error) {
+	values, err := argsToURLValues(nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := http.PostForm(c.addr+reverseFuncMap["DumpConsensusState"], values)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	var response struct {
+		Result  *ctypes.ResponseDumpConsensusState `json:"result"`
+		Error   string                             `json:"error"`
+		Id      string                             `json:"id"`
+		JSONRPC string                             `json:"jsonrpc"`
 	}
 	binary.ReadJSON(&response, body, &err)
 	if err != nil {
@@ -547,6 +578,33 @@ func (c *ClientJSON) CallCode(code []byte, data []byte) (*ctypes.ResponseCall, e
 		Error   string               `json:"error"`
 		Id      string               `json:"id"`
 		JSONRPC string               `json:"jsonrpc"`
+	}
+	binary.ReadJSON(&response, body, &err)
+	if err != nil {
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, fmt.Errorf(response.Error)
+	}
+	return response.Result, nil
+}
+
+func (c *ClientJSON) DumpConsensusState() (*ctypes.ResponseDumpConsensusState, error) {
+	request := rpc.RPCRequest{
+		JSONRPC: "2.0",
+		Method:  reverseFuncMap["DumpConsensusState"],
+		Params:  []interface{}{},
+		Id:      0,
+	}
+	body, err := c.RequestResponse(request)
+	if err != nil {
+		return nil, err
+	}
+	var response struct {
+		Result  *ctypes.ResponseDumpConsensusState `json:"result"`
+		Error   string                             `json:"error"`
+		Id      string                             `json:"id"`
+		JSONRPC string                             `json:"jsonrpc"`
 	}
 	binary.ReadJSON(&response, body, &err)
 	if err != nil {
