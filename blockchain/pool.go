@@ -18,15 +18,29 @@ const (
 	maxRequestsPerPeer    = 300
 )
 
+// numTotal = numPending + blocks in the pool we havnt synced yet
+
 var (
 	requestTimeoutSeconds = time.Duration(1)
 )
+
+/*
+	Peers self report their heights when a new peer joins the block pool.
+	Starting from whatever we've got (pool.height), we request blocks
+	in sequence from peers that reported higher heights than ours.
+	Every so often we ask peers what height they're on so we can keep going.
+
+	Requests are continuously made for blocks of heigher heights until
+	the limits. If most of the requests have no available peers, and we
+	are not at peer limits, we can probably switch to consensus reactor
+*/
 
 type BlockPool struct {
 	// block requests
 	requestsMtx sync.Mutex
 	requests    map[uint]*bpRequest
-	height      uint // the lowest key in requests.
+	peerless    int32 // number of requests without peers
+	height      uint  // the lowest key in requests.
 	numPending  int32
 	numTotal    int32
 
@@ -145,10 +159,13 @@ func (pool *BlockPool) RedoRequest(height uint) {
 	if request.block == nil {
 		panic("Expected block to be non-nil")
 	}
+	// TODO: record this malfeasance
+	// maybe punish peer on switch (an invalid block!)
 	pool.RemovePeer(request.peerId) // Lock on peersMtx.
 	request.block = nil
 	request.peerId = ""
 	pool.numPending++
+	pool.peerless++
 
 	go requestRoutine(pool, height)
 }
@@ -169,7 +186,20 @@ func (pool *BlockPool) setPeerForRequest(height uint, peerId string) {
 	if request == nil {
 		return
 	}
+	pool.peerless--
 	request.peerId = peerId
+}
+
+func (pool *BlockPool) removePeerForRequest(height uint, peerId string) {
+	pool.requestsMtx.Lock() // Lock
+	defer pool.requestsMtx.Unlock()
+
+	request := pool.requests[height]
+	if request == nil {
+		return
+	}
+	pool.peerless++
+	request.peerId = ""
 }
 
 func (pool *BlockPool) AddBlock(block *types.Block, peerId string) {
@@ -198,7 +228,7 @@ func (pool *BlockPool) getPeer(peerId string) *bpPeer {
 	return peer
 }
 
-// Sets the peer's blockchain height.
+// Sets the peer's alleged blockchain height.
 func (pool *BlockPool) SetPeerHeight(peerId string, height uint) {
 	pool.peersMtx.Lock() // Lock
 	defer pool.peersMtx.Unlock()
@@ -239,7 +269,6 @@ func (pool *BlockPool) pickIncrAvailablePeer(minHeight uint) *bpPeer {
 		peer.numRequests++
 		return peer
 	}
-
 	return nil
 }
 
@@ -258,6 +287,7 @@ func (pool *BlockPool) nextHeight() uint {
 	pool.requestsMtx.Lock() // Lock
 	defer pool.requestsMtx.Unlock()
 
+	// we make one request per height.
 	return pool.height + uint(pool.numTotal)
 }
 
@@ -271,6 +301,8 @@ func (pool *BlockPool) makeRequest(height uint) {
 		block:  nil,
 	}
 	pool.requests[height] = request
+
+	pool.peerless++
 
 	nextHeight := pool.height + uint(pool.numTotal)
 	if nextHeight == height {
@@ -328,7 +360,7 @@ type bpRequest struct {
 //-------------------------------------
 
 // Responsible for making more requests as necessary
-// Returns when a block is found (e.g. AddBlock() is called)
+// Returns only when a block is found (e.g. AddBlock() is called)
 func requestRoutine(pool *BlockPool, height uint) {
 	for {
 		var peer *bpPeer = nil
@@ -347,15 +379,18 @@ func requestRoutine(pool *BlockPool, height uint) {
 			break PICK_LOOP
 		}
 
+		// set the peer, decrement peerless
 		pool.setPeerForRequest(height, peer.id)
 
 		for try := 0; try < maxTries; try++ {
 			pool.sendRequest(height, peer.id)
 			time.Sleep(requestTimeoutSeconds * time.Second)
+			// if successful the block is either in the pool,
 			if pool.hasBlock(height) {
 				pool.decrPeer(peer.id)
 				return
 			}
+			// or already processed and we've moved past it
 			bpHeight, _, _ := pool.GetStatus()
 			if height < bpHeight {
 				pool.decrPeer(peer.id)
@@ -363,6 +398,10 @@ func requestRoutine(pool *BlockPool, height uint) {
 			}
 		}
 
+		// unset the peer, increment peerless
+		pool.removePeerForRequest(height, peer.id)
+
+		// this peer failed us, try again
 		pool.RemovePeer(peer.id)
 		pool.sendTimeout(peer.id)
 	}

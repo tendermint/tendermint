@@ -81,6 +81,11 @@ func NewNode() *Node {
 		consensusReactor.SetPrivValidator(privValidator)
 	}
 
+	// so the consensus reactor won't do anything until we're synced
+	if config.App().GetBool("FastSync") {
+		consensusReactor.SetSyncing(true)
+	}
+
 	sw := p2p.NewSwitch()
 	sw.AddReactor("PEX", pexReactor)
 	sw.AddReactor("MEMPOOL", mempoolReactor)
@@ -112,10 +117,6 @@ func (n *Node) Start() {
 	nodeInfo := makeNodeInfo(n.sw)
 	n.sw.SetNodeInfo(nodeInfo)
 	n.sw.Start()
-	if config.App().GetBool("FastSync") {
-		// TODO: When FastSync is done, start CONSENSUS.
-		n.sw.Reactor("CONSENSUS").Stop()
-	}
 }
 
 func (n *Node) Stop() {
