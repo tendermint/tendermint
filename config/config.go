@@ -55,7 +55,7 @@ Level = "debug"
 
 [RPC.HTTP]
 # For the RPC API HTTP server.  Port required.
-ListenAddr = "127.0.0.1:8081"
+ListenAddr = "0.0.0.0:8081"
 
 [Alert]
 # TODO: Document options
