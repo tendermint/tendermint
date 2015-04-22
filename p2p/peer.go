@@ -12,12 +12,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-type nodeInfo struct {
-	Host    string
-	RPCPort uint16
-	P2PPort uint16
-}
-
 type Peer struct {
 	outbound bool
 	mconn    *MConnection

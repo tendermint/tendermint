@@ -161,9 +161,10 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 	if err != nil {
 		return nil, err
 	}
-	if peerNodeInfo.Network != sw.nodeInfo.Network {
-		return nil, fmt.Errorf("Peer is on different network %v", peerNodeInfo.Network)
+	if err := sw.nodeInfo.CompatibleWith(peerNodeInfo); err != nil {
+		return nil, err
 	}
+
 	peer := newPeer(conn, peerNodeInfo, outbound, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError)
 
 	// Add the peer to .peers
