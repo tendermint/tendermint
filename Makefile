@@ -7,6 +7,11 @@ build: get_deps
 	go build -o build/barak github.com/tendermint/tendermint/cmd/barak
 	go build -o build/debora github.com/tendermint/tendermint/cmd/debora
 
+no_get: 
+	go build -o build/tendermint github.com/tendermint/tendermint/cmd/tendermint
+	go build -o build/barak github.com/tendermint/tendermint/cmd/barak
+	go build -o build/debora github.com/tendermint/tendermint/cmd/debora
+
 build_race: get_deps
 	go build -race -o build/tendermint github.com/tendermint/tendermint/cmd/tendermint
 	go build -race -o build/barak github.com/tendermint/tendermint/cmd/barak

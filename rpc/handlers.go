@@ -258,6 +258,7 @@ func (con *WSConnection) Start(evsw *events.EventSwitch) {
 // close the connection
 func (con *WSConnection) Stop() {
 	if atomic.CompareAndSwapUint32(&con.stopped, 0, 1) {
+		con.evsw.RemoveListener(con.id)
 		close(con.quitChan)
 		// the write loop closes the websocket connection
 		// when it exits its loop, and the read loop
@@ -285,6 +286,9 @@ func (con *WSConnection) read() {
 	reaper := time.Tick(time.Second * WSConnectionReaperSeconds)
 	for {
 		select {
+		// TODO: this actually doesn't work
+		// since ReadMessage blocks. Really it needs its own
+		// go routine
 		case <-reaper:
 			if con.failedSends > MaxFailedSends {
 				// sending has failed too many times.

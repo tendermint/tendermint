@@ -10,6 +10,7 @@ import (
 
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
+	dbm "github.com/tendermint/tendermint/db"
 	"github.com/tendermint/tendermint/events"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
@@ -24,9 +25,14 @@ const (
 	// stop syncing when last block's time is
 	// within this much of the system time.
 	stopSyncingDurationMinutes = 10
+	// ask for best height every 10s
+	statusUpdateIntervalSeconds = 10
+	// check if we should switch to consensus reactor
+	switchToConsensusIntervalSeconds = 10
 )
 
-type stateResetter interface {
+type consensusReactor interface {
+	SetSyncing(bool)
 	ResetToState(*sm.State)
 }
 
@@ -106,7 +112,7 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 // Implements Reactor
 func (bcR *BlockchainReactor) AddPeer(peer *p2p.Peer) {
 	// Send peer our state.
-	peer.Send(BlockchainChannel, &bcPeerStatusMessage{bcR.store.Height()})
+	peer.Send(BlockchainChannel, &bcStatusResponseMessage{bcR.store.Height()})
 }
 
 // Implements Reactor
@@ -141,8 +147,14 @@ func (bcR *BlockchainReactor) Receive(chId byte, src *p2p.Peer, msgBytes []byte)
 	case *bcBlockResponseMessage:
 		// Got a block.
 		bcR.pool.AddBlock(msg.Block, src.Key)
-	case *bcPeerStatusMessage:
-		// Got a peer status.
+	case *bcStatusRequestMessage:
+		// Send peer our state.
+		queued := src.TrySend(BlockchainChannel, &bcStatusResponseMessage{bcR.store.Height()})
+		if !queued {
+			// sorry
+		}
+	case *bcStatusResponseMessage:
+		// Got a peer status. Unverified.
 		bcR.pool.SetPeerHeight(src.Key, msg.Height)
 	default:
 		log.Warn(Fmt("Unknown message type %v", reflect.TypeOf(msg)))
@@ -153,6 +165,8 @@ func (bcR *BlockchainReactor) Receive(chId byte, src *p2p.Peer, msgBytes []byte)
 func (bcR *BlockchainReactor) poolRoutine() {
 
 	trySyncTicker := time.NewTicker(trySyncIntervalMS * time.Millisecond)
+	statusUpdateTicker := time.NewTicker(statusUpdateIntervalSeconds * time.Second)
+	switchToConsensusTicker := time.NewTicker(switchToConsensusIntervalSeconds * time.Second)
 
 FOR_LOOP:
 	for {
@@ -175,6 +189,24 @@ FOR_LOOP:
 			peer := bcR.sw.Peers().Get(peerId)
 			if peer != nil {
 				bcR.sw.StopPeerForError(peer, errors.New("BlockchainReactor Timeout"))
+			}
+		case _ = <-statusUpdateTicker.C:
+			// ask for status updates
+			go bcR.BroadcastStatusRequest()
+		case _ = <-switchToConsensusTicker.C:
+			// not thread safe access for peerless and numPending but should be fine
+			log.Debug("Consensus ticker", "peerless", bcR.pool.peerless, "pending", bcR.pool.numPending, "total", bcR.pool.numTotal)
+			// NOTE: this condition is very strict right now. may need to weaken
+			if bcR.pool.numPending == maxPendingRequests && bcR.pool.peerless == bcR.pool.numPending {
+				log.Warn("Time to switch to consensus reactor!", "height", bcR.pool.height)
+				bcR.pool.Stop()
+				stateDB := dbm.GetDB("state")
+				state := sm.LoadState(stateDB)
+
+				bcR.sw.Reactor("CONSENSUS").(consensusReactor).ResetToState(state)
+				bcR.sw.Reactor("CONSENSUS").(consensusReactor).SetSyncing(false)
+
+				break FOR_LOOP
 			}
 		case _ = <-trySyncTicker.C: // chan time
 			//var lastValidatedBlock *types.Block
@@ -215,6 +247,7 @@ FOR_LOOP:
 				// TODO: use other heuristics too besides blocktime.
 				// It's not a security concern, as it only needs to happen
 				// upon node sync, and there's also a second (slower)
+				// this peer failed us
 				// method of syncing in the consensus reactor.
 
 				if lastValidatedBlock != nil && time.Now().Sub(lastValidatedBlock.Time) < stopSyncingDurationMinutes*time.Minute {
@@ -238,8 +271,13 @@ FOR_LOOP:
 	}
 }
 
-func (bcR *BlockchainReactor) BroadcastStatus() error {
-	bcR.sw.Broadcast(BlockchainChannel, &bcPeerStatusMessage{bcR.store.Height()})
+func (bcR *BlockchainReactor) BroadcastStatusResponse() error {
+	bcR.sw.Broadcast(BlockchainChannel, &bcStatusResponseMessage{bcR.store.Height()})
+	return nil
+}
+
+func (bcR *BlockchainReactor) BroadcastStatusRequest() error {
+	bcR.sw.Broadcast(BlockchainChannel, &bcStatusRequestMessage{bcR.store.Height()})
 	return nil
 }
 
@@ -252,9 +290,10 @@ func (bcR *BlockchainReactor) SetFireable(evsw events.Fireable) {
 // Messages
 
 const (
-	msgTypeBlockRequest  = byte(0x10)
-	msgTypeBlockResponse = byte(0x11)
-	msgTypePeerStatus    = byte(0x20)
+	msgTypeBlockRequest   = byte(0x10)
+	msgTypeBlockResponse  = byte(0x11)
+	msgTypeStatusResponse = byte(0x20)
+	msgTypeStatusRequest  = byte(0x21)
 )
 
 type BlockchainMessage interface{}
@@ -263,7 +302,8 @@ var _ = binary.RegisterInterface(
 	struct{ BlockchainMessage }{},
 	binary.ConcreteType{&bcBlockRequestMessage{}, msgTypeBlockRequest},
 	binary.ConcreteType{&bcBlockResponseMessage{}, msgTypeBlockResponse},
-	binary.ConcreteType{&bcPeerStatusMessage{}, msgTypePeerStatus},
+	binary.ConcreteType{&bcStatusResponseMessage{}, msgTypeStatusResponse},
+	binary.ConcreteType{&bcStatusRequestMessage{}, msgTypeStatusRequest},
 )
 
 func DecodeMessage(bz []byte) (msgType byte, msg BlockchainMessage, err error) {
@@ -296,10 +336,20 @@ func (m *bcBlockResponseMessage) String() string {
 
 //-------------------------------------
 
-type bcPeerStatusMessage struct {
+type bcStatusRequestMessage struct {
 	Height uint
 }
 
-func (m *bcPeerStatusMessage) String() string {
-	return fmt.Sprintf("[bcPeerStatusMessage %v]", m.Height)
+func (m *bcStatusRequestMessage) String() string {
+	return fmt.Sprintf("[bcStatusRequestMessage %v]", m.Height)
+}
+
+//-------------------------------------
+
+type bcStatusResponseMessage struct {
+	Height uint
+}
+
+func (m *bcStatusResponseMessage) String() string {
+	return fmt.Sprintf("[bcStatusResponseMessage %v]", m.Height)
 }

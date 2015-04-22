@@ -41,6 +41,9 @@ type ConsensusReactor struct {
 	blockStore *bc.BlockStore
 	conS       *ConsensusState
 
+	// if fast sync is running we don't really do anything
+	syncing bool
+
 	evsw events.Fireable
 }
 
@@ -123,7 +126,7 @@ func (conR *ConsensusReactor) RemovePeer(peer *p2p.Peer, reason interface{}) {
 
 // Implements Reactor
 func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte) {
-	if !conR.IsRunning() {
+	if conR.syncing || !conR.IsRunning() {
 		return
 	}
 
@@ -222,6 +225,11 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 	if err != nil {
 		log.Warn("Error in Receive()", "error", err)
 	}
+}
+
+// Sets whether or not we're using the blockchain reactor for syncing
+func (conR *ConsensusReactor) SetSyncing(syncing bool) {
+	conR.syncing = syncing
 }
 
 // Sets our private validator account for signing votes.
