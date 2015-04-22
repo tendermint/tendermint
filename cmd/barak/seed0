@@ -1,5 +1,5 @@
 {
-	"ListenAddress": "0.0.0.0:8082",
+	"ListenAddress": "0.0.0.0:46660",
     "Validators": [
 		{
 			"VotingPower": 1,

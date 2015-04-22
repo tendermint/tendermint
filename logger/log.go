@@ -1,7 +1,6 @@
 package logger
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/tendermint/log15"
@@ -19,29 +18,33 @@ func init() {
 func Reset() {
 	handlers := []log15.Handler{}
 
-	// By default, there's a stdout terminal format handler.
-	handlers = append(handlers, log15.LvlFilterHandler(
+	// stdout handler
+	stdoutHandler := log15.LvlFilterHandler(
 		getLevel(config.App().GetString("Log.Stdout.Level")),
 		log15.StreamHandler(os.Stdout, log15.TerminalFormat()),
-	))
+	)
+	handlers = append(handlers, stdoutHandler)
 
-	// Maybe also write to a file.
-	if _logFileDir := config.App().GetString("Log.File.Dir"); _logFileDir != "" {
-		// Create log dir if it doesn't exist
-		err := os.MkdirAll(_logFileDir, 0700)
-		if err != nil {
-			fmt.Printf("Could not create directory: %v", err)
-			os.Exit(1)
+	/*
+		// Maybe also write to a file.
+		if _logFileDir := config.App().GetString("Log.File.Dir"); _logFileDir != "" {
+			// Create log dir if it doesn't exist
+			err := os.MkdirAll(_logFileDir, 0700)
+			if err != nil {
+				fmt.Printf("Could not create directory: %v", err)
+				os.Exit(1)
+			}
+			// File handler
+			handlers = append(handlers, log15.LvlFilterHandler(
+				getLevel(config.App().GetString("Log.File.Level")),
+				log15.Must.FileHandler(_logFileDir+"/tendermint.log", log15.LogfmtFormat()),
+			))
 		}
-		// File handler
-		handlers = append(handlers, log15.LvlFilterHandler(
-			getLevel(config.App().GetString("Log.File.Level")),
-			log15.Must.FileHandler(_logFileDir+"/tendermint.log", log15.LogfmtFormat()),
-		))
-	}
+	*/
 
 	// Set rootHandler.
-	rootHandler = log15.MultiHandler(handlers...)
+	//rootHandler = log15.MultiHandler(handlers...)
+	rootHandler = stdoutHandler
 
 	// By setting handlers on the root, we handle events from all loggers.
 	log15.Root().SetHandler(rootHandler)

@@ -181,11 +181,8 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 }
 
 func (sw *Switch) startInitPeer(peer *Peer) {
-	// Start the peer
 	peer.start()
-
-	// Notify reactors
-	sw.doAddPeer(peer)
+	sw.addPeerToReactors(peer)
 }
 
 func (sw *Switch) DialPeerWithAddress(addr *NetAddress) (*Peer, error) {
@@ -266,7 +263,7 @@ func (sw *Switch) StopPeerGracefully(peer *Peer) {
 	sw.doRemovePeer(peer, nil)
 }
 
-func (sw *Switch) doAddPeer(peer *Peer) {
+func (sw *Switch) addPeerToReactors(peer *Peer) {
 	for _, reactor := range sw.reactors {
 		reactor.AddPeer(peer)
 	}

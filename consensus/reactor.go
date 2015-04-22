@@ -110,7 +110,7 @@ func (conR *ConsensusReactor) AddPeer(peer *p2p.Peer) {
 	go conR.gossipVotesRoutine(peer, peerState)
 
 	// Send our state to peer.
-	conR.sendNewRoundStepRoutine(peer)
+	conR.sendNewRoundStep(peer)
 }
 
 // Implements Reactor
@@ -118,7 +118,6 @@ func (conR *ConsensusReactor) RemovePeer(peer *p2p.Peer, reason interface{}) {
 	if !conR.IsRunning() {
 		return
 	}
-
 	//peer.Data.Get(peerStateKey).(*PeerState).Disconnect()
 }
 
@@ -176,6 +175,7 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 		switch msg := msg_.(type) {
 		case *VoteMessage:
 			vote := msg.Vote
+			// XXX if we're receiving a commit from the last block while...
 			if rs.Height != vote.Height {
 				return // Wrong height. Not necessarily a bad peer.
 			}
@@ -288,7 +288,7 @@ func (conR *ConsensusReactor) broadcastNewRoundStepRoutine() {
 	}
 }
 
-func (conR *ConsensusReactor) sendNewRoundStepRoutine(peer *p2p.Peer) {
+func (conR *ConsensusReactor) sendNewRoundStep(peer *p2p.Peer) {
 	rs := conR.conS.GetRoundState()
 	nrsMsg, csMsg := makeRoundStepMessages(rs)
 	if nrsMsg != nil {

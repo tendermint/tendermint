@@ -154,9 +154,7 @@ func (c *MConnection) String() string {
 func (c *MConnection) flush() {
 	err := c.bufWriter.Flush()
 	if err != nil {
-		if atomic.LoadUint32(&c.stopped) != 1 {
-			log.Warn("MConnection flush failed", "error", err)
-		}
+		log.Warn("MConnection flush failed", "error", err)
 	}
 }
 

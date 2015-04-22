@@ -37,9 +37,9 @@ var defaultConfig = `# This is a TOML config file.
 
 Moniker = "anonymous"
 Network = "tendermint_testnet2"
-ListenAddr = "0.0.0.0:8080"
+ListenAddr = "0.0.0.0:46656"
 # First node to connect to.  Command-line overridable.
-SeedNode = "188.166.55.222:8080"
+SeedNode = "188.166.55.222:46656"
 
 [DB]
 # The only other available backend is "memdb"
@@ -49,13 +49,9 @@ Backend = "leveldb"
 [Log.Stdout]
 Level = "info"
 
-[Log.File]
-Level = "debug"
-# Dir = "~/.tendermint/log"
-
 [RPC.HTTP]
 # For the RPC API HTTP server.  Port required.
-ListenAddr = "0.0.0.0:8081"
+ListenAddr = "0.0.0.0:46657"
 
 [Alert]
 # TODO: Document options
@@ -119,13 +115,11 @@ var DefaultGenesis = `{
 func initDefaults(rootDir string) {
 	app.SetDefault("Moniker", "anonymous")
 	app.SetDefault("Network", "tendermint_testnet0")
-	app.SetDefault("ListenAddr", "0.0.0.0:8080")
+	app.SetDefault("ListenAddr", "0.0.0.0:46656")
 	app.SetDefault("DB.Backend", "leveldb")
 	app.SetDefault("DB.Dir", rootDir+"/data")
 	app.SetDefault("Log.Stdout.Level", "info")
-	app.SetDefault("Log.File.Dir", rootDir+"/log")
-	app.SetDefault("Log.File.Level", "debug")
-	app.SetDefault("RPC.HTTP.ListenAddr", "0.0.0.0:8081")
+	app.SetDefault("RPC.HTTP.ListenAddr", "0.0.0.0:46657")
 
 	app.SetDefault("GenesisFile", rootDir+"/genesis.json")
 	app.SetDefault("AddrBookFile", rootDir+"/addrbook.json")
