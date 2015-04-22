@@ -5,6 +5,7 @@ import (
 	"github.com/codegangsta/cli"
 	"io/ioutil"
 	"os"
+	"sync"
 
 	acm "github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
@@ -26,14 +27,14 @@ func main() {
 	}
 
 	var (
-		configFlag = cli.StringFlag{
-			Name:  "config-file",
-			Value: rootDir + "/config.json",
-			Usage: "config file",
+		groupFlag = cli.StringFlag{
+			Name:  "group",
+			Value: "default",
+			Usage: "uses ~/.debora/<group>.cfg",
 		}
-		waitFlag = cli.BoolFlag{
-			Name:  "wait",
-			Usage: "whether to wait for termination",
+		bgFlag = cli.BoolFlag{
+			Name:  "bg",
+			Usage: "if set, runs as a background daemon",
 		}
 		inputFlag = cli.StringFlag{
 			Name:  "input",
@@ -48,10 +49,12 @@ func main() {
 	app.Version = "0.0.1"
 	app.Email = "ethan@erisindustries.com,jae@tendermint.com"
 	app.Flags = []cli.Flag{
-		configFlag,
+		groupFlag,
 	}
 	app.Before = func(c *cli.Context) error {
-		ReadConfig(c.String("config-file"))
+		configFile := rootDir + "/" + c.String("group") + ".cfg"
+		fmt.Printf("Using configuration from %v\n", configFile)
+		ReadConfig(configFile)
 		return nil
 	}
 	app.Commands = []cli.Command{
@@ -65,7 +68,7 @@ func main() {
 			Usage:  "run process",
 			Action: cliRunProcess,
 			Flags: []cli.Flag{
-				waitFlag,
+				bgFlag,
 				inputFlag,
 			},
 		},
@@ -104,14 +107,20 @@ func cliGetStatus(c *cli.Context) {
 	if len(args) != 0 {
 		fmt.Println("BTW, status takes no arguments.")
 	}
+	wg := sync.WaitGroup{}
 	for _, remote := range Config.Remotes {
-		response, err := GetStatus(remote)
-		if err != nil {
-			fmt.Printf("%v failure. %v\n", remote, err)
-		} else {
-			fmt.Printf("%v success. %v\n", remote, response)
-		}
+		wg.Add(1)
+		go func(remote string) {
+			defer wg.Done()
+			response, err := GetStatus(remote)
+			if err != nil {
+				fmt.Printf("%v failure. %v\n", remote, err)
+			} else {
+				fmt.Printf("%v success. %v\n", remote, response)
+			}
+		}(remote)
 	}
+	wg.Wait()
 }
 
 func cliRunProcess(c *cli.Context) {
@@ -123,27 +132,33 @@ func cliRunProcess(c *cli.Context) {
 	execPath := args[1]
 	args = args[2:]
 	command := btypes.CommandRunProcess{
-		Wait:     c.Bool("wait"),
+		Wait:     !c.Bool("bg"),
 		Label:    label,
 		ExecPath: execPath,
 		Args:     args,
 		Input:    c.String("input"),
 	}
+	wg := sync.WaitGroup{}
 	for _, remote := range Config.Remotes {
-		response, err := RunProcess(Config.PrivKey, remote, command)
-		if err != nil {
-			fmt.Printf("%v failure. %v\n", remote, err)
-		} else {
-			fmt.Printf("%v success.\n", remote)
-			if response.Output != "" {
-				fmt.Println("--------------------------------------------------------------------------------")
-				fmt.Println(response.Output)
-				fmt.Println("--------------------------------------------------------------------------------")
+		wg.Add(1)
+		go func(remote string) {
+			defer wg.Done()
+			response, err := RunProcess(Config.PrivKey, remote, command)
+			if err != nil {
+				fmt.Printf("%v failure. %v\n", remote, err)
 			} else {
-				fmt.Println("(no output)")
+				fmt.Printf("%v success.\n", remote)
+				if response.Output != "" {
+					fmt.Println("--------------------------------------------------------------------------------")
+					fmt.Println(response.Output)
+					fmt.Println("--------------------------------------------------------------------------------")
+				} else {
+					fmt.Println("(no output)")
+				}
 			}
-		}
+		}(remote)
 	}
+	wg.Wait()
 }
 
 func cliStopProcess(c *cli.Context) {
@@ -156,14 +171,20 @@ func cliStopProcess(c *cli.Context) {
 		Label: label,
 		Kill:  true,
 	}
+	wg := sync.WaitGroup{}
 	for _, remote := range Config.Remotes {
-		response, err := StopProcess(Config.PrivKey, remote, command)
-		if err != nil {
-			fmt.Printf("%v failure. %v\n", remote, err)
-		} else {
-			fmt.Printf("%v success. %v\n", remote, response)
-		}
+		wg.Add(1)
+		go func(remote string) {
+			defer wg.Done()
+			response, err := StopProcess(Config.PrivKey, remote, command)
+			if err != nil {
+				fmt.Printf("%v failure. %v\n", remote, err)
+			} else {
+				fmt.Printf("%v success. %v\n", remote, response)
+			}
+		}(remote)
 	}
+	wg.Wait()
 }
 
 func cliListProcesses(c *cli.Context) {
@@ -175,24 +196,30 @@ func cliListProcesses(c *cli.Context) {
 		app := args[0]
 	*/
 	command := btypes.CommandListProcesses{}
+	wg := sync.WaitGroup{}
 	for _, remote := range Config.Remotes {
-		response, err := ListProcesses(Config.PrivKey, remote, command)
-		if err != nil {
-			fmt.Printf("%v failure. %v\n", remote, err)
-		} else {
-			fmt.Printf("%v processes:\n", remote)
-			for _, proc := range response.Processes {
-				startTimeStr := Green(proc.StartTime.String())
-				endTimeStr := proc.EndTime.String()
-				if !proc.EndTime.IsZero() {
-					endTimeStr = Red(endTimeStr)
+		wg.Add(1)
+		go func(remote string) {
+			defer wg.Done()
+			response, err := ListProcesses(Config.PrivKey, remote, command)
+			if err != nil {
+				fmt.Printf("%v failure. %v\n", Blue(remote), Red(err))
+			} else {
+				fmt.Printf("%v processes:\n", Blue(remote))
+				for _, proc := range response.Processes {
+					startTimeStr := Green(proc.StartTime.String())
+					endTimeStr := proc.EndTime.String()
+					if !proc.EndTime.IsZero() {
+						endTimeStr = Red(endTimeStr)
+					}
+					fmt.Printf("  %v  start:%v end:%v output:%v\n",
+						RightPadString(Fmt("\"%v\" => `%v` (%v)", Yellow(proc.Label), proc.ExecPath, proc.Pid), 40),
+						startTimeStr, endTimeStr, proc.OutputPath)
 				}
-				fmt.Printf("  %v  start:%v end:%v output:%v\n",
-					RightPadString(Fmt("\"%v\" => `%v` (%v)", proc.Label, proc.ExecPath, proc.Pid), 40),
-					startTimeStr, endTimeStr, proc.OutputPath)
 			}
-		}
+		}(remote)
 	}
+	wg.Wait()
 }
 
 func cliDownloadFile(c *cli.Context) {
@@ -205,13 +232,19 @@ func cliDownloadFile(c *cli.Context) {
 	command := btypes.CommandServeFile{
 		Path: remotePath,
 	}
+	wg := sync.WaitGroup{}
 	for i, remote := range Config.Remotes {
-		localPath := Fmt("%v_%v", localPathPrefix, i)
-		n, err := DownloadFile(Config.PrivKey, remote, command, localPath)
-		if err != nil {
-			fmt.Printf("%v failure. %v\n", remote, err)
-		} else {
-			fmt.Printf("%v success. Wrote %v bytes to %v\n", remote, n, localPath)
-		}
+		wg.Add(1)
+		go func(remote string) {
+			defer wg.Done()
+			localPath := Fmt("%v_%v", localPathPrefix, i)
+			n, err := DownloadFile(Config.PrivKey, remote, command, localPath)
+			if err != nil {
+				fmt.Printf("%v failure. %v\n", remote, err)
+			} else {
+				fmt.Printf("%v success. Wrote %v bytes to %v\n", remote, n, localPath)
+			}
+		}(remote)
 	}
+	wg.Wait()
 }

@@ -76,8 +76,8 @@ func (bcR *BlockchainReactor) Start(sw *p2p.Switch) {
 	if atomic.CompareAndSwapUint32(&bcR.running, 0, 1) {
 		log.Info("Starting BlockchainReactor")
 		bcR.sw = sw
-		bcR.pool.Start()
 		if bcR.sync {
+			bcR.pool.Start()
 			go bcR.poolRoutine()
 		}
 	}
