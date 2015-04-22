@@ -248,9 +248,7 @@ func (sw *Switch) StopPeerForError(peer *Peer, reason interface{}) {
 	log.Info("Stopping peer for error", "peer", peer, "error", reason)
 	sw.peers.Remove(peer)
 	peer.stop()
-
-	// Notify reactors
-	sw.doRemovePeer(peer, reason)
+	sw.removePeerFromReactors(peer, reason)
 }
 
 // Disconnect from a peer gracefully.
@@ -259,9 +257,7 @@ func (sw *Switch) StopPeerGracefully(peer *Peer) {
 	log.Info("Stopping peer gracefully")
 	sw.peers.Remove(peer)
 	peer.stop()
-
-	// Notify reactors
-	sw.doRemovePeer(peer, nil)
+	sw.removePeerFromReactors(peer, nil)
 }
 
 func (sw *Switch) addPeerToReactors(peer *Peer) {
@@ -270,7 +266,7 @@ func (sw *Switch) addPeerToReactors(peer *Peer) {
 	}
 }
 
-func (sw *Switch) doRemovePeer(peer *Peer, reason interface{}) {
+func (sw *Switch) removePeerFromReactors(peer *Peer, reason interface{}) {
 	for _, reactor := range sw.reactors {
 		reactor.RemovePeer(peer, reason)
 	}
