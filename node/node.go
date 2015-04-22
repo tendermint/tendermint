@@ -188,6 +188,7 @@ func makeNodeInfo(sw *p2p.Switch) *types.NodeInfo {
 	nodeInfo := &types.NodeInfo{
 		Moniker: config.App().GetString("Moniker"),
 		Network: config.App().GetString("Network"),
+		Version: "0.0.1",
 	}
 	if !sw.IsListening() {
 		return nodeInfo
