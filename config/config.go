@@ -36,7 +36,7 @@ var defaultConfig = `# This is a TOML config file.
 # For more information, see https://github.com/toml-lang/toml
 
 Moniker = "anonymous"
-Network = "tendermint_testnet2"
+Network = "tendermint_testnet3"
 ListenAddr = "0.0.0.0:46656"
 # First node to connect to.  Command-line overridable.
 SeedNode = "188.166.55.222:46656"
