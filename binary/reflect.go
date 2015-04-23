@@ -170,7 +170,7 @@ func readReflect(rv reflect.Value, rt reflect.Type, r io.Reader, n *int64, err *
 		}
 		crt, ok := typeInfo.ByteToType[typeByte]
 		if !ok {
-			*err = errors.New(Fmt("Unexpected type byte %X for type %v", typeByte, crt))
+			*err = errors.New(Fmt("Unexpected type byte %X for type %v", typeByte, rt))
 			return
 		}
 		crv := reflect.New(crt).Elem()

@@ -1,9 +1,12 @@
 {
-	"ListenAddress": "0.0.0.0:46661",
+    "ListenAddress": "0.0.0.0:46661",
     "Validators": [
-		{
-			"VotingPower": 1,
-			"PubKey": [1,"3A2C5C341FFC1D5F7AB518519FF8289D3BFAB82DFD6E167B926FAD72C1BF10F8"]
-		}
-	]
+        {
+            "VotingPower": 1,
+            "PubKey": [1,"3A2C5C341FFC1D5F7AB518519FF8289D3BFAB82DFD6E167B926FAD72C1BF10F8"]
+        }
+    ],
+    "Registries": [
+        "http://navytoad.chaintest.net:46660"
+    ]
 }

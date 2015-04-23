@@ -28,12 +28,22 @@ func NewNetAddress(addr net.Addr) *NetAddress {
 	return NewNetAddressIPPort(ip, port)
 }
 
+// Also resolves the host if host is not an IP.
 func NewNetAddressString(addr string) *NetAddress {
 	host, portStr, err := net.SplitHostPort(addr)
 	if err != nil {
 		panic(err)
 	}
 	ip := net.ParseIP(host)
+	if ip == nil {
+		if len(host) > 0 {
+			ips, err := net.LookupIP(host)
+			if err != nil {
+				panic(err)
+			}
+			ip = ips[0]
+		}
+	}
 	port, err := strconv.ParseUint(portStr, 10, 16)
 	if err != nil {
 		panic(err)

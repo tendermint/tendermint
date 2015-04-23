@@ -86,6 +86,7 @@ func main() {
 	if err != nil {
 		panic(Fmt("Error creating barak rootDir: %v", err))
 	}
+	barak.registries = options.Registries
 
 	// Write pid to file.
 	err = AtomicWriteFile(barak.rootDir+"/pidfile", []byte(Fmt("%v", barak.pid)))
