@@ -19,6 +19,7 @@ import (
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/cmd/barak/types"
 	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/p2p"
 	pcm "github.com/tendermint/tendermint/process"
 	"github.com/tendermint/tendermint/rpc"
 )
@@ -33,6 +34,7 @@ type Options struct {
 	Validators    []Validator
 	ListenAddress string
 	StartNonce    uint64
+	Registries    []string
 }
 
 // Global instance
@@ -43,6 +45,7 @@ var barak = struct {
 	processes  map[string]*pcm.Process
 	validators []Validator
 	rootDir    string
+	registries []string
 }{
 	mtx:        sync.Mutex{},
 	pid:        os.Getpid(),
@@ -50,6 +53,7 @@ var barak = struct {
 	processes:  make(map[string]*pcm.Process),
 	validators: nil,
 	rootDir:    "",
+	registries: nil,
 }
 
 func main() {
@@ -95,11 +99,27 @@ func main() {
 	fmt.Printf("Barak: %v\n", barak)
 
 	// Start rpc server.
+	listener := p2p.NewDefaultListener("tcp", options.ListenAddress, false)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/download", ServeFile)
+	mux.HandleFunc("/register", Register)
 	// TODO: mux.HandleFunc("/upload", UploadFile)
 	rpc.RegisterRPCFuncs(mux, Routes)
-	rpc.StartHTTPServer(options.ListenAddress, mux)
+	rpc.StartHTTPServer(listener, mux)
+
+	// Register this barak with central listener
+	extAddress := listener.ExternalAddress().String()
+	for _, registry := range barak.registries {
+		go func(registry string) {
+			var response ResponseRegister
+			_, err = rpc.Call(registry, "register", Arr(extAddress), &response)
+			if err != nil {
+				fmt.Printf("Error registering to registry %v:\n  %v\n", registry, err)
+			} else {
+				fmt.Printf("Successfully registered with registry %v\n", registry)
+			}
+		}(registry)
+	}
 
 	TrapSignal(func() {
 		fmt.Println("Barak shutting down")
@@ -255,8 +275,23 @@ func ListProcesses() (*ResponseListProcesses, error) {
 	}, nil
 }
 
-func ServeFile(w http.ResponseWriter, req *http.Request) {
+// Another barak instance registering its external
+// address to a remote barak.
+func Register(w http.ResponseWriter, req *http.Request) {
+	registry, err := os.OpenFile(barak.rootDir+"/registry.log", os.O_RDWR|os.O_APPEND, 0x600)
+	if err != nil {
+		http.Error(w, "Could not open registry file. Please contact the administrator", 500)
+		return
+	}
+	// TODO: Also check the X-FORWARDED-FOR or whatever it's called.
+	registry.Write([]byte(Fmt("++ %v\n", req.RemoteAddr)))
+	registry.Close()
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	w.Write([]byte("Noted!"))
+}
 
+func ServeFile(w http.ResponseWriter, req *http.Request) {
 	authCommandStr := req.FormValue("auth_command")
 	command, err := parseValidateCommandStr(authCommandStr)
 	if err != nil {

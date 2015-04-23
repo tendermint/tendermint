@@ -162,10 +162,11 @@ func (n *Node) StartRPC() {
 	core.SetSwitch(n.sw)
 
 	listenAddr := config.App().GetString("RPC.HTTP.ListenAddr")
+	listener := p2p.NewDefaultListener("tcp", listenAddr, false)
 	mux := http.NewServeMux()
 	rpc.RegisterEventsHandler(mux, n.evsw)
 	rpc.RegisterRPCFuncs(mux, core.Routes)
-	rpc.StartHTTPServer(listenAddr, mux)
+	rpc.StartHTTPServer(listener, mux)
 }
 
 func (n *Node) Switch() *p2p.Switch {

@@ -16,10 +16,11 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 )
 
-func StartHTTPServer(listenAddr string, handler http.Handler) {
-	log.Info(Fmt("Starting RPC HTTP server on %s", listenAddr))
+func StartHTTPServer(listener p2p.Listener, handler http.Handler) {
+	log.Info(Fmt("Starting RPC HTTP server on ext:%v int:%v",
+		listener.ExternalAddress(),
+		listener.InternalAddress()))
 	go func() {
-		listener := p2p.NewDefaultListener("tcp", listenAddr, false)
 		netListener := listener.(*p2p.DefaultListener).NetListener()
 		res := http.Serve(
 			netListener,

@@ -10,6 +10,9 @@ type ResponseStatus struct {
 	Validators []Validator
 }
 
+type ResponseRegister struct {
+}
+
 type ResponseRunProcess struct {
 	Success bool
 	Output  string

@@ -12,6 +12,7 @@ import (
 
 type Listener interface {
 	Connections() <-chan net.Conn
+	InternalAddress() *NetAddress
 	ExternalAddress() *NetAddress
 	String() string
 	Stop()
@@ -20,6 +21,7 @@ type Listener interface {
 // Implements Listener
 type DefaultListener struct {
 	listener    net.Listener
+	intAddr     *NetAddress
 	extAddr     *NetAddress
 	connections chan net.Conn
 	stopped     uint32
@@ -55,9 +57,11 @@ func NewDefaultListener(protocol string, lAddr string, requireUPNPHairpin bool) 
 	listenerIP, listenerPort := splitHostPort(listener.Addr().String())
 	log.Debug("Local listener", "ip", listenerIP, "port", listenerPort)
 
+	// Determine internal address...
+	var intAddr *NetAddress = NewNetAddressString(lAddr)
+
 	// Determine external address...
 	var extAddr *NetAddress
-
 	// If the lAddrIP is INADDR_ANY, try UPnP
 	if lAddrIP == "" || lAddrIP == "0.0.0.0" {
 		if requireUPNPHairpin {
@@ -84,6 +88,7 @@ SKIP_UPNP:
 
 	dl := &DefaultListener{
 		listener:    listener,
+		intAddr:     intAddr,
 		extAddr:     extAddr,
 		connections: make(chan net.Conn, numBufferedConnections),
 	}
@@ -122,6 +127,10 @@ func (l *DefaultListener) listenRoutine() {
 // It gets closed when the listener closes.
 func (l *DefaultListener) Connections() <-chan net.Conn {
 	return l.connections
+}
+
+func (l *DefaultListener) InternalAddress() *NetAddress {
+	return l.intAddr
 }
 
 func (l *DefaultListener) ExternalAddress() *NetAddress {

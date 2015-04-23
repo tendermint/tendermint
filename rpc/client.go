@@ -31,7 +31,6 @@ func Call(remote string, method string, params []interface{}, dest interface{}) 
 	if err != nil {
 		return dest, err
 	}
-
 	log.Debug(Fmt("RPC response: %v", string(responseBytes)))
 
 	// Parse response into JSONResponse
