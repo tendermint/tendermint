@@ -197,7 +197,13 @@ FOR_LOOP:
 			// not thread safe access for peerless and numPending but should be fine
 			log.Debug("Consensus ticker", "peerless", bcR.pool.peerless, "pending", bcR.pool.numPending, "total", bcR.pool.numTotal)
 			// NOTE: this condition is very strict right now. may need to weaken
-			if bcR.pool.numPending == maxPendingRequests && bcR.pool.peerless == bcR.pool.numPending {
+			// if the max amount of requests are pending and peerless
+			// and we have some peers (say > 5), then we're caught up
+			maxPending := bcR.pool.numPending == maxPendingRequests
+			maxPeerless := bcR.pool.peerless == bcR.pool.numPending
+			o, i, _ := bcR.sw.NumPeers()
+			enoughPeers := o+i > 5
+			if maxPending && maxPeerless && enoughPeers {
 				log.Warn("Time to switch to consensus reactor!", "height", bcR.pool.height)
 				bcR.pool.Stop()
 				stateDB := dbm.GetDB("state")
