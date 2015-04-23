@@ -39,7 +39,11 @@ Moniker = "anonymous"
 Network = "tendermint_testnet3"
 ListenAddr = "0.0.0.0:46656"
 # First node to connect to.  Command-line overridable.
-SeedNode = "188.166.55.222:46656"
+SeedNode = ""
+# Pool of seeds. Best to use these, and specify one on command line 
+# if needed to override
+SeedNodes = ["navytoad.chaintest.net:46656", "whiteferret.chaintest.net:46656", "magentagriffin.chaintest.net:46656", "greensalamander.chaintest.net:46656", "blackshadow.chaintest.net:46656", "purpleanteater.chaintest.net:46656", "pinkpenguin.chaintest.net:46656", "polkapig.chaintest.net:46656", "128.199.230.153:8080"]
+
 
 [DB]
 # The only other available backend is "memdb"
@@ -153,7 +157,7 @@ func Init(rootDir string) {
 	}
 
 	// Confused?
-	// app.Debug()
+	//app.Debug()
 }
 
 // Check if a file exists; if not, ensure the directory is made and write the file
@@ -182,7 +186,7 @@ func ParseFlags(args []string) {
 	// Declare flags
 	flags.BoolVar(&printHelp, "help", false, "Print this help message.")
 	flags.String("listen_addr", app.GetString("ListenAddr"), "Listen address. (0.0.0.0:0 means any interface, any port)")
-	flags.String("seed_node", app.GetString("SeedNode"), "Address of seed node")
+	flags.String("seed_node", app.GetString("SeedNode"), "Address of seed nodes")
 	flags.String("rpc_http_listen_addr", app.GetString("RPC.HTTP.ListenAddr"), "RPC listen address. Port required")
 	flags.Bool("fast_sync", app.GetBool("FastSync"), "Fast blockchain syncing")
 	flags.String("log_stdout_level", app.GetString("Log.Stdout.Level"), "Stdout log level")

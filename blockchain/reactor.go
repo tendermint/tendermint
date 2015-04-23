@@ -24,7 +24,8 @@ const (
 	trySyncIntervalMS      = 100
 	// stop syncing when last block's time is
 	// within this much of the system time.
-	stopSyncingDurationMinutes = 10
+	// stopSyncingDurationMinutes = 10
+
 	// ask for best height every 10s
 	statusUpdateIntervalSeconds = 10
 	// check if we should switch to consensus reactor

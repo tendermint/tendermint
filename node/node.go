@@ -1,6 +1,7 @@
 package node
 
 import (
+	"math/rand"
 	"net"
 	"net/http"
 	"os"
@@ -143,7 +144,26 @@ func (n *Node) AddListener(l p2p.Listener) {
 }
 
 func (n *Node) DialSeed() {
-	addr := p2p.NewNetAddressString(config.App().GetString("SeedNode"))
+	// if the single seed node is available, use only it
+	prioritySeed := config.App().GetString("SeedNode")
+	if prioritySeed != "" {
+		addr := p2p.NewNetAddressString(prioritySeed)
+		n.dialSeed(addr)
+		return
+	}
+
+	// permute the list, dial half of them
+	seeds := config.App().GetStringSlice("SeedNodes")
+	perm := rand.Perm(len(seeds))
+	// TODO: we shouldn't necessarily connect to all of them every time ...
+	for i := 0; i < len(perm); i++ {
+		j := perm[i]
+		addr := p2p.NewNetAddressString(seeds[j])
+		n.dialSeed(addr)
+	}
+}
+
+func (n *Node) dialSeed(addr *p2p.NetAddress) {
 	peer, err := n.sw.DialPeerWithAddress(addr)
 	if err != nil {
 		log.Error("Error dialing seed", "error", err)
@@ -221,7 +241,7 @@ func RunNode() {
 	n.Start()
 
 	// If seedNode is provided by config, dial out.
-	if config.App().GetString("SeedNode") != "" {
+	if config.App().GetString("SeedNode") != "" || len(config.App().GetStringSlice("SeedNodes")) != 0 {
 		n.DialSeed()
 	}
 

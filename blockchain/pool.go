@@ -21,7 +21,7 @@ const (
 // numTotal = numPending + blocks in the pool we havnt synced yet
 
 var (
-	requestTimeoutSeconds = time.Duration(1)
+	requestTimeoutSeconds = time.Duration(3)
 )
 
 /*
