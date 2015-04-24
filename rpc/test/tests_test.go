@@ -16,7 +16,6 @@ func testStatus(t *testing.T, typ string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fmt.Println(">>>", resp)
 	if resp.Network != config.App().GetString("Network") {
 		t.Fatal(fmt.Errorf("Network mismatch: got %s expected %s",
 			resp.Network, config.App().Get("Network")))
@@ -29,7 +28,6 @@ func testGenPriv(t *testing.T, typ string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fmt.Println(">>>", resp)
 	if len(resp.PrivAccount.Address) == 0 {
 		t.Fatal("Failed to generate an address")
 	}

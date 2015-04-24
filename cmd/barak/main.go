@@ -19,7 +19,6 @@ import (
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/cmd/barak/types"
 	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/p2p"
 	pcm "github.com/tendermint/tendermint/process"
 	"github.com/tendermint/tendermint/rpc"
 )
@@ -99,25 +98,23 @@ func main() {
 	fmt.Printf("Barak: %v\n", barak)
 
 	// Start rpc server.
-	listener := p2p.NewDefaultListener("tcp", options.ListenAddress, false)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/download", ServeFile)
 	mux.HandleFunc("/register", Register)
 	// TODO: mux.HandleFunc("/upload", UploadFile)
 	rpc.RegisterRPCFuncs(mux, Routes)
-	rpc.StartHTTPServer(listener, mux)
+	rpc.StartHTTPServer(options.ListenAddress, mux)
 
 	// Register this barak with central listener
-	extAddress := listener.ExternalAddress().String()
 	for _, registry := range barak.registries {
 		go func(registry string) {
-			var response ResponseRegister
-			_, err = rpc.Call(registry, "register", Arr(extAddress), &response)
+			resp, err := http.Get(registry + "/register")
 			if err != nil {
 				fmt.Printf("Error registering to registry %v:\n  %v\n", registry, err)
-			} else {
-				fmt.Printf("Successfully registered with registry %v\n", registry)
+				return
 			}
+			body, _ := ioutil.ReadAll(resp.Body)
+			fmt.Printf("Successfully registered with registry %v\n  %v\n", registry, string(body))
 		}(registry)
 	}
 

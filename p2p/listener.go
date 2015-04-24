@@ -137,6 +137,8 @@ func (l *DefaultListener) ExternalAddress() *NetAddress {
 	return l.extAddr
 }
 
+// NOTE: The returned listener is already Accept()'ing.
+// So it's not suitable to pass into http.Serve().
 func (l *DefaultListener) NetListener() net.Listener {
 	return l.listener
 }
