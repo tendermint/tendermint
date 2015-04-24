@@ -32,6 +32,11 @@ func main() {
 			Value: "default",
 			Usage: "uses ~/.debora/<group>.cfg",
 		}
+		labelFlag = cli.StringFlag{
+			Name:  "label",
+			Value: "_",
+			Usage: "label of the process, or _ by default",
+		}
 		bgFlag = cli.BoolFlag{
 			Name:  "bg",
 			Usage: "if set, runs as a background daemon",
@@ -68,6 +73,7 @@ func main() {
 			Usage:  "run process",
 			Action: cliRunProcess,
 			Flags: []cli.Flag{
+				labelFlag,
 				bgFlag,
 				inputFlag,
 			},
@@ -125,15 +131,14 @@ func cliGetStatus(c *cli.Context) {
 
 func cliRunProcess(c *cli.Context) {
 	args := c.Args()
-	if len(args) < 2 {
-		Exit("Must specify <label> <execPath> <args...>")
+	if len(args) < 1 {
+		Exit("Must specify <execPath> <args...>")
 	}
-	label := args[0]
-	execPath := args[1]
-	args = args[2:]
+	execPath := args[0]
+	args = args[1:]
 	command := btypes.CommandRunProcess{
 		Wait:     !c.Bool("bg"),
-		Label:    label,
+		Label:    c.String("label"),
 		ExecPath: execPath,
 		Args:     args,
 		Input:    c.String("input"),
@@ -207,14 +212,15 @@ func cliListProcesses(c *cli.Context) {
 			} else {
 				fmt.Printf("%v processes:\n", Blue(remote))
 				for _, proc := range response.Processes {
-					startTimeStr := Green(proc.StartTime.String())
-					endTimeStr := proc.EndTime.String()
-					if !proc.EndTime.IsZero() {
-						endTimeStr = Red(endTimeStr)
+					fmt.Printf("  \"%v\" => `%v  %v` (%v)\n", Yellow(proc.Label), proc.ExecPath, proc.Args, proc.Pid)
+					fmt.Printf("     started at %v", proc.StartTime.String())
+					if proc.EndTime.IsZero() {
+						fmt.Printf(", running still\n")
+					} else {
+						endTimeStr := proc.EndTime.String()
+						fmt.Printf(", stopped at %v\n", Yellow(endTimeStr))
 					}
-					fmt.Printf("  %v  start:%v end:%v output:%v\n",
-						RightPadString(Fmt("\"%v\" => `%v` (%v)", Yellow(proc.Label), proc.ExecPath, proc.Pid), 40),
-						startTimeStr, endTimeStr, proc.OutputPath)
+					fmt.Printf("     stdout/stderr goes to %v\n", proc.OutputPath)
 				}
 			}
 		}(remote)
