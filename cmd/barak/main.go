@@ -88,12 +88,6 @@ func main() {
 	}
 	barak.registries = options.Registries
 
-	// Write pid to file.
-	err = AtomicWriteFile(barak.rootDir+"/pidfile", []byte(Fmt("%v", barak.pid)))
-	if err != nil {
-		panic(Fmt("Error writing pidfile: %v", err))
-	}
-
 	// Debug.
 	fmt.Printf("Options: %v\n", options)
 	fmt.Printf("Barak: %v\n", barak)
@@ -117,6 +111,12 @@ func main() {
 			body, _ := ioutil.ReadAll(resp.Body)
 			fmt.Printf("Successfully registered with registry %v\n  %v\n", registry, string(body))
 		}(registry)
+	}
+
+	// Write pid to file.  This should be the last thing before TrapSignal.
+	err = AtomicWriteFile(barak.rootDir+"/pidfile", []byte(Fmt("%v", barak.pid)))
+	if err != nil {
+		panic(Fmt("Error writing pidfile: %v", err))
 	}
 
 	TrapSignal(func() {
