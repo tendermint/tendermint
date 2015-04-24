@@ -68,7 +68,11 @@ var DefaultGenesis = `{
     "Accounts": [
         {
             "Address": "69988763FCF806AC35D1A2F9C4885B7DD7B0599C",
-            "Amount": 2099600000000000 
+            "Amount": 1049800000000000 
+        },
+        {
+            "Address": "D7DFF9806078899C8DA3FE3633CC0BF3C6C2B1BB",
+            "Amount": 1049800000000000 
         }
     ],
     "Validators": [
@@ -78,6 +82,16 @@ var DefaultGenesis = `{
             "UnbondTo": [
             	{
             		"Address": "69988763FCF806AC35D1A2F9C4885B7DD7B0599C",
+            		"Amount":  100000000000
+            	}
+            ]
+        },
+        {
+            "PubKey": [1, "2239C21C81EA7173A6C489145490C015E05D4B97448933B708A7EC5B7B4921E3"],
+            "Amount": 100000000000,
+            "UnbondTo": [
+            	{
+            		"Address": "D7DFF9806078899C8DA3FE3633CC0BF3C6C2B1BB",
             		"Amount":  100000000000
             	}
             ]
@@ -98,7 +112,7 @@ var DefaultGenesis = `{
             "UnbondTo": [
             	{
             		"Address": "69988763FCF806AC35D1A2F9C4885B7DD7B0599C",
-            		"Amount":  100000000000
+            		"Amount":  50000000000
             	}
             ]
         },
@@ -108,7 +122,7 @@ var DefaultGenesis = `{
             "UnbondTo": [
             	{
             		"Address": "69988763FCF806AC35D1A2F9C4885B7DD7B0599C",
-            		"Amount":  100000000000
+            		"Amount":  50000000000
             	}
             ]
         }
