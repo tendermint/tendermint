@@ -13,6 +13,11 @@ Consensus State Machine Overview:
   at least Delta duration *after* +2/3 Commits were found.
   The step stays at NewHeight until this timeout occurs before
   proceeding to Propose.
+* The NewHeight is a transition period after the height is incremented,
+  where the node still receives late commits before potentially proposing.
+  The height should be incremented because a block had been
+  "committed by the network", and clients should see that
+  reflected as a new height.
 
                             +-------------------------------------+
                             |                                     |
@@ -550,7 +555,6 @@ func (cs *ConsensusState) updateToState(state *sm.State, contiguous bool) {
 
 // After the call cs.Step becomes RoundStepNewRound.
 func (cs *ConsensusState) setupNewRound(round uint) {
-	// XXX Looks like this is just not called.
 	// Sanity check
 	if round == 0 {
 		panic("setupNewRound() should never be called for round 0")

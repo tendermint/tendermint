@@ -178,10 +178,15 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 		switch msg := msg_.(type) {
 		case *VoteMessage:
 			vote := msg.Vote
-			// XXX if we're receiving a commit from the last block while...
 			if rs.Height != vote.Height {
+				if rs.Height == vote.Height+1 {
+					if rs.Step == RoundStepNewHeight && vote.Type == types.VoteTypeCommit {
+						goto VOTE_PASS // *ducks*
+					}
+				}
 				return // Wrong height. Not necessarily a bad peer.
 			}
+		VOTE_PASS:
 			validatorIndex := msg.ValidatorIndex
 			address, _ := rs.Validators.GetByIndex(validatorIndex)
 			added, index, err := conR.conS.AddVote(address, vote)
