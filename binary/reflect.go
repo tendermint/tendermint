@@ -12,6 +12,10 @@ import (
 	. "github.com/tendermint/tendermint/common"
 )
 
+const (
+	ReflectSliceChunk = 1024
+)
+
 type TypeInfo struct {
 	Type reflect.Type // The type
 
@@ -221,15 +225,25 @@ func readReflect(rv reflect.Value, rt reflect.Type, r io.Reader, n *int64, err *
 			log.Debug("Read byteslice", "bytes", byteslice)
 			rv.Set(reflect.ValueOf(byteslice))
 		} else {
+			var sliceRv reflect.Value
 			// Read length
 			length := int(ReadUvarint(r, n, err))
 			log.Debug(Fmt("Read length: %v", length))
-			sliceRv := reflect.MakeSlice(rt, length, length)
-			// Read elems
-			for i := 0; i < length; i++ {
-				elemRv := sliceRv.Index(i)
-				readReflect(elemRv, elemRt, r, n, err)
+			sliceRv = reflect.MakeSlice(rt, 0, 0)
+			// read one ReflectSliceChunk at a time and append
+			for i := 0; i*ReflectSliceChunk < length; i++ {
+				l := MinInt(ReflectSliceChunk, length-i*ReflectSliceChunk)
+				tmpSliceRv := reflect.MakeSlice(rt, l, l)
+				for j := 0; j < l; j++ {
+					elemRv := tmpSliceRv.Index(j)
+					readReflect(elemRv, elemRt, r, n, err)
+					if *err != nil {
+						return
+					}
+				}
+				sliceRv = reflect.AppendSlice(sliceRv, tmpSliceRv)
 			}
+
 			rv.Set(sliceRv)
 		}
 

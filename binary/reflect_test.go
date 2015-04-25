@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	. "github.com/tendermint/tendermint/common"
 )
 
 type SimpleStruct struct {
@@ -446,4 +448,18 @@ func TestJSONFieldNames(t *testing.T) {
 				expected, stringified)
 		}
 	}
+}
+
+//------------------------------------------------------------------------------
+
+func TestBadAlloc(t *testing.T) {
+	n, err := new(int64), new(error)
+	instance := new([]byte)
+	data := RandBytes(ByteSliceChunk * 100)
+	b := new(bytes.Buffer)
+	// this slice of data claims to be much bigger than it really is
+	WriteUvarint(uint(10000000000000000), b, n, err)
+	b.Write(data)
+	res := ReadBinary(instance, b, n, err)
+	fmt.Println(res, *err)
 }
