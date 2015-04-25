@@ -178,6 +178,7 @@ func (n *Node) dialSeed(addr *p2p.NetAddress) {
 func (n *Node) StartRPC() {
 	core.SetBlockStore(n.blockStore)
 	core.SetConsensusState(n.consensusState)
+	core.SetConsensusReactor(n.consensusReactor)
 	core.SetMempoolReactor(n.mempoolReactor)
 	core.SetSwitch(n.sw)
 
