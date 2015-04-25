@@ -534,8 +534,14 @@ func (cs *ConsensusState) updateToState(state *sm.State, contiguous bool) {
 		}
 		err := cs.privValidator.SignRebondTx(rebondTx)
 		if err == nil {
-			log.Info("Signed and broadcast RebondTx", "height", cs.Height, "round", cs.Round, "tx", rebondTx)
-			cs.mempoolReactor.BroadcastTx(rebondTx)
+			err := cs.mempoolReactor.BroadcastTx(rebondTx)
+			if err != nil {
+				log.Error("Failed to broadcast RebondTx",
+					"height", cs.Height, "round", cs.Round, "tx", rebondTx, "error", err)
+			} else {
+				log.Info("Signed and broadcast RebondTx",
+					"height", cs.Height, "round", cs.Round, "tx", rebondTx)
+			}
 		} else {
 			log.Warn("Error signing RebondTx", "height", cs.Height, "round", cs.Round, "tx", rebondTx, "error", err)
 		}
