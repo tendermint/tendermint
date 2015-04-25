@@ -30,6 +30,7 @@ func BroadcastTx(tx types.Tx) (*ctypes.ResponseBroadcastTx, error) {
 	return &ctypes.ResponseBroadcastTx{ctypes.Receipt{txHash, createsContract, contractAddr}}, nil
 }
 
-/*
-curl -H 'content-type: text/plain;' http://127.0.0.1:8888/submit_tx?tx=...
-*/
+func ListUnconfirmedTxs() (*ctypes.ResponseListUnconfirmedTxs, error) {
+	txs := mempoolReactor.Mempool.GetProposalTxs()
+	return &ctypes.ResponseListUnconfirmedTxs{txs}, nil
+}

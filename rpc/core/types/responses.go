@@ -50,9 +50,12 @@ type ResponseGetBlock struct {
 	Block     *types.Block
 }
 
-// curl -H 'content-type: text/plain;' http://127.0.0.1:8888/submit_tx?tx=...
 type ResponseBroadcastTx struct {
 	Receipt Receipt
+}
+
+type ResponseListUnconfirmedTxs struct {
+	Txs []types.Tx
 }
 
 type Receipt struct {
