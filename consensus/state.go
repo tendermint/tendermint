@@ -530,7 +530,7 @@ func (cs *ConsensusState) updateToState(state *sm.State, contiguous bool) {
 	if cs.privValidator != nil && cs.state.UnbondingValidators.HasAddress(cs.privValidator.Address) {
 		rebondTx := &types.RebondTx{
 			Address: cs.privValidator.Address,
-			Height:  cs.Height + 1,
+			Height:  cs.Height,
 		}
 		err := cs.privValidator.SignRebondTx(rebondTx)
 		if err == nil {
