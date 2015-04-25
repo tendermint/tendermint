@@ -3,6 +3,8 @@
 This documentation is out of date.
 * 0x00 is reserved as a nil byte for RegisterInterface
 * moved TypeByte() into RegisterInterface/ConcreteType
+* Pointers that don't have a declared TypeByte() are
+  encoded with a leading 0x00 (nil) or 0x01.
 
 # `tendermint/binary`
 

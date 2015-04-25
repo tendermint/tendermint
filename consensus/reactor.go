@@ -24,7 +24,7 @@ const (
 	DataChannel  = byte(0x21)
 	VoteChannel  = byte(0x22)
 
-	peerStateKey = "ConsensusReactor.peerState"
+	PeerStateKey = "ConsensusReactor.peerState"
 
 	peerGossipSleepDuration = 100 * time.Millisecond // Time to sleep if there's nothing to send.
 )
@@ -106,7 +106,7 @@ func (conR *ConsensusReactor) AddPeer(peer *p2p.Peer) {
 
 	// Create peerState for peer
 	peerState := NewPeerState(peer)
-	peer.Data.Set(peerStateKey, peerState)
+	peer.Data.Set(PeerStateKey, peerState)
 
 	// Begin gossip routines for this peer.
 	go conR.gossipDataRoutine(peer, peerState)
@@ -121,7 +121,7 @@ func (conR *ConsensusReactor) RemovePeer(peer *p2p.Peer, reason interface{}) {
 	if !conR.IsRunning() {
 		return
 	}
-	//peer.Data.Get(peerStateKey).(*PeerState).Disconnect()
+	//peer.Data.Get(PeerStateKey).(*PeerState).Disconnect()
 }
 
 // Implements Reactor
@@ -132,7 +132,7 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 
 	// Get round state
 	rs := conR.conS.GetRoundState()
-	ps := peer.Data.Get(peerStateKey).(*PeerState)
+	ps := peer.Data.Get(PeerStateKey).(*PeerState)
 	_, msg_, err := DecodeMessage(msgBytes)
 	if err != nil {
 		log.Warn("Error decoding message", "channel", chId, "peer", peer, "msg", msg_, "error", err, "bytes", msgBytes)

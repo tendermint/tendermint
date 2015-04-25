@@ -93,5 +93,6 @@ type ResponseListValidators struct {
 }
 
 type ResponseDumpConsensusState struct {
-	ConsensusState string
+	RoundState      string
+	PeerRoundStates []string
 }

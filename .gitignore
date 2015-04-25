@@ -1,6 +1,7 @@
 *.swp
 *.swo
 .bak
+*.bak
 .DS_Store
 build/*
 rpc/test/.tendermint

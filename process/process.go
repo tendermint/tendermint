@@ -13,6 +13,7 @@ import (
 type Process struct {
 	Label      string
 	ExecPath   string
+	Args       []string
 	Pid        int
 	StartTime  time.Time
 	EndTime    time.Time
@@ -55,6 +56,7 @@ func Create(mode int, label string, execPath string, args []string, input string
 	proc := &Process{
 		Label:      label,
 		ExecPath:   execPath,
+		Args:       args,
 		Pid:        cmd.Process.Pid,
 		StartTime:  time.Now(),
 		OutputPath: outPath,

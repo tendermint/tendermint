@@ -2,6 +2,7 @@ package core
 
 import (
 	"github.com/tendermint/tendermint/binary"
+	cm "github.com/tendermint/tendermint/consensus"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	sm "github.com/tendermint/tendermint/state"
 )
@@ -26,6 +27,14 @@ func ListValidators() (*ctypes.ResponseListValidators, error) {
 }
 
 func DumpConsensusState() (*ctypes.ResponseDumpConsensusState, error) {
-	jsonBytes := binary.JSONBytes(consensusState.GetRoundState())
-	return &ctypes.ResponseDumpConsensusState{string(jsonBytes)}, nil
+	roundState := consensusState.GetRoundState()
+	peerRoundStates := []string{}
+	for _, peer := range p2pSwitch.Peers().List() {
+		// TODO: clean this up?
+		peerState := peer.Data.Get(cm.PeerStateKey).(*cm.PeerState)
+		peerRoundState := peerState.GetRoundState()
+		peerRoundStateStr := peer.Key + ":" + string(binary.JSONBytes(peerRoundState))
+		peerRoundStates = append(peerRoundStates, peerRoundStateStr)
+	}
+	return &ctypes.ResponseDumpConsensusState{roundState.String(), peerRoundStates}, nil
 }
