@@ -188,9 +188,9 @@ func (sw *Switch) startInitPeer(peer *Peer) {
 
 func (sw *Switch) DialPeerWithAddress(addr *NetAddress) (*Peer, error) {
 	log.Debug("Dialing address", "address", addr)
-	sw.dialing.Set(addr.String(), addr)
+	sw.dialing.Set(addr.IP.String(), addr)
 	conn, err := addr.DialTimeout(peerDialTimeoutSeconds * time.Second)
-	sw.dialing.Delete(addr.String())
+	sw.dialing.Delete(addr.IP.String())
 	if err != nil {
 		log.Debug("Failed dialing address", "address", addr, "error", err)
 		return nil, err
@@ -205,7 +205,7 @@ func (sw *Switch) DialPeerWithAddress(addr *NetAddress) (*Peer, error) {
 }
 
 func (sw *Switch) IsDialing(addr *NetAddress) bool {
-	return sw.dialing.Has(addr.String())
+	return sw.dialing.Has(addr.IP.String())
 }
 
 // Broadcast runs a go routine for each attempted send, which will block

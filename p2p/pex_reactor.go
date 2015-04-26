@@ -170,9 +170,9 @@ func (pexR *PEXReactor) ensurePeers() {
 			if try == nil {
 				break
 			}
-			alreadySelected := toDial.Has(try.String())
+			alreadySelected := toDial.Has(try.IP.String())
 			alreadyDialing := pexR.sw.IsDialing(try)
-			alreadyConnected := pexR.sw.Peers().Has(try.String())
+			alreadyConnected := pexR.sw.Peers().Has(try.IP.String())
 			if alreadySelected || alreadyDialing || alreadyConnected {
 				/*
 					log.Debug("Cannot dial address", "addr", try,
@@ -190,7 +190,7 @@ func (pexR *PEXReactor) ensurePeers() {
 		if picked == nil {
 			continue
 		}
-		toDial.Set(picked.String(), picked)
+		toDial.Set(picked.IP.String(), picked)
 	}
 
 	// Dial picked addresses
