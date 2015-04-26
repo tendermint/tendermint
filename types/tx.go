@@ -91,9 +91,7 @@ func (txIn *TxInput) ValidateBasic() error {
 }
 
 func (txIn *TxInput) WriteSignBytes(w io.Writer, n *int64, err *error) {
-	binary.WriteByteSlice(txIn.Address, w, n, err)
-	binary.WriteUint64(txIn.Amount, w, n, err)
-	binary.WriteUvarint(txIn.Sequence, w, n, err)
+	binary.WriteTo([]byte(Fmt(`{"Address":"%X","Amount":%v,"Sequence":%v}`, txIn.Address, txIn.Amount, txIn.Sequence)), w, n, err)
 }
 
 func (txIn *TxInput) String() string {
@@ -118,8 +116,7 @@ func (txOut *TxOutput) ValidateBasic() error {
 }
 
 func (txOut *TxOutput) WriteSignBytes(w io.Writer, n *int64, err *error) {
-	binary.WriteByteSlice(txOut.Address, w, n, err)
-	binary.WriteUint64(txOut.Amount, w, n, err)
+	binary.WriteTo([]byte(Fmt(`{"Address":"%X","Amount":%v}`, txOut.Address, txOut.Amount)), w, n, err)
 }
 
 func (txOut *TxOutput) String() string {
@@ -134,15 +131,23 @@ type SendTx struct {
 }
 
 func (tx *SendTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
-	binary.WriteString(config.App().GetString("Network"), w, n, err)
-	binary.WriteUvarint(uint(len(tx.Inputs)), w, n, err)
-	for _, in := range tx.Inputs {
+	// We hex encode the network name so we don't deal with escaping issues.
+	binary.WriteTo([]byte(Fmt(`{"Network":"%X"`, config.App().GetString("Network"))), w, n, err)
+	binary.WriteTo([]byte(Fmt(`,"Tx":[%v,{"Inputs":[`, TxTypeSend)), w, n, err)
+	for i, in := range tx.Inputs {
 		in.WriteSignBytes(w, n, err)
+		if i != len(tx.Inputs)-1 {
+			binary.WriteTo([]byte(","), w, n, err)
+		}
 	}
-	binary.WriteUvarint(uint(len(tx.Outputs)), w, n, err)
-	for _, out := range tx.Outputs {
+	binary.WriteTo([]byte(`],"Outputs":[`), w, n, err)
+	for i, out := range tx.Outputs {
 		out.WriteSignBytes(w, n, err)
+		if i != len(tx.Outputs)-1 {
+			binary.WriteTo([]byte(","), w, n, err)
+		}
 	}
+	binary.WriteTo([]byte(`]}]}`), w, n, err)
 }
 
 func (tx *SendTx) String() string {
@@ -160,12 +165,12 @@ type CallTx struct {
 }
 
 func (tx *CallTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
-	binary.WriteString(config.App().GetString("Network"), w, n, err)
+	// We hex encode the network name so we don't deal with escaping issues.
+	binary.WriteTo([]byte(Fmt(`{"Network":"%X"`, config.App().GetString("Network"))), w, n, err)
+	binary.WriteTo([]byte(Fmt(`,"Tx":[%v,{"Address":"%X","Data":"%X"`, TxTypeCall, tx.Address, tx.Data)), w, n, err)
+	binary.WriteTo([]byte(Fmt(`,"Fee":%v,"GasLimit":%v,"Input":`, tx.Fee, tx.GasLimit)), w, n, err)
 	tx.Input.WriteSignBytes(w, n, err)
-	binary.WriteByteSlice(tx.Address, w, n, err)
-	binary.WriteUint64(tx.GasLimit, w, n, err)
-	binary.WriteUint64(tx.Fee, w, n, err)
-	binary.WriteByteSlice(tx.Data, w, n, err)
+	binary.WriteTo([]byte(`}]}`), w, n, err)
 }
 
 func (tx *CallTx) String() string {
@@ -181,16 +186,25 @@ type BondTx struct {
 }
 
 func (tx *BondTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
-	binary.WriteString(config.App().GetString("Network"), w, n, err)
-	binary.WriteBinary(tx.PubKey, w, n, err)
-	binary.WriteUvarint(uint(len(tx.Inputs)), w, n, err)
-	for _, in := range tx.Inputs {
+	// We hex encode the network name so we don't deal with escaping issues.
+	binary.WriteTo([]byte(Fmt(`{"Network":"%X"`, config.App().GetString("Network"))), w, n, err)
+	binary.WriteTo([]byte(Fmt(`,"Tx":[%v,{"Inputs":[`, TxTypeBond)), w, n, err)
+	for i, in := range tx.Inputs {
 		in.WriteSignBytes(w, n, err)
+		if i != len(tx.Inputs)-1 {
+			binary.WriteTo([]byte(","), w, n, err)
+		}
 	}
-	binary.WriteUvarint(uint(len(tx.UnbondTo)), w, n, err)
-	for _, out := range tx.UnbondTo {
+	binary.WriteTo([]byte(Fmt(`],"PubKey":`)), w, n, err)
+	binary.WriteTo(binary.JSONBytes(tx.PubKey), w, n, err)
+	binary.WriteTo([]byte(`,"UnbondTo":[`), w, n, err)
+	for i, out := range tx.UnbondTo {
 		out.WriteSignBytes(w, n, err)
+		if i != len(tx.UnbondTo)-1 {
+			binary.WriteTo([]byte(","), w, n, err)
+		}
 	}
+	binary.WriteTo([]byte(`]}]}`), w, n, err)
 }
 
 func (tx *BondTx) String() string {
@@ -206,9 +220,9 @@ type UnbondTx struct {
 }
 
 func (tx *UnbondTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
-	binary.WriteString(config.App().GetString("Network"), w, n, err)
-	binary.WriteByteSlice(tx.Address, w, n, err)
-	binary.WriteUvarint(tx.Height, w, n, err)
+	// We hex encode the network name so we don't deal with escaping issues.
+	binary.WriteTo([]byte(Fmt(`{"Network":"%X"`, config.App().GetString("Network"))), w, n, err)
+	binary.WriteTo([]byte(Fmt(`,"Tx":[%v,{"Address":"%X","Height":%v}]}`, TxTypeUnbond, tx.Address, tx.Height)), w, n, err)
 }
 
 func (tx *UnbondTx) String() string {
@@ -224,9 +238,9 @@ type RebondTx struct {
 }
 
 func (tx *RebondTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
-	binary.WriteString(config.App().GetString("Network"), w, n, err)
-	binary.WriteByteSlice(tx.Address, w, n, err)
-	binary.WriteUvarint(tx.Height, w, n, err)
+	// We hex encode the network name so we don't deal with escaping issues.
+	binary.WriteTo([]byte(Fmt(`{"Network":"%X"`, config.App().GetString("Network"))), w, n, err)
+	binary.WriteTo([]byte(Fmt(`,"Tx":[%v,{"Address":"%X","Height":%v}]}`, TxTypeRebond, tx.Address, tx.Height)), w, n, err)
 }
 
 func (tx *RebondTx) String() string {

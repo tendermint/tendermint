@@ -47,12 +47,10 @@ const (
 )
 
 func (vote *Vote) WriteSignBytes(w io.Writer, n *int64, err *error) {
-	binary.WriteString(config.App().GetString("Network"), w, n, err)
-	binary.WriteUvarint(vote.Height, w, n, err)
-	binary.WriteUvarint(vote.Round, w, n, err)
-	binary.WriteByte(vote.Type, w, n, err)
-	binary.WriteByteSlice(vote.BlockHash, w, n, err)
-	binary.WriteBinary(vote.BlockParts, w, n, err)
+	// We hex encode the network name so we don't deal with escaping issues.
+	binary.WriteTo([]byte(Fmt(`{"Network":"%X"`, config.App().GetString("Network"))), w, n, err)
+	binary.WriteTo([]byte(Fmt(`,"Vote":{"BlockHash":"%X","BlockParts":%v`, vote.BlockHash, vote.BlockParts)), w, n, err)
+	binary.WriteTo([]byte(Fmt(`,"Height":%v,"Round":%v,"Type":%v}}`, vote.Height, vote.Round, vote.Type)), w, n, err)
 }
 
 func (vote *Vote) Copy() *Vote {

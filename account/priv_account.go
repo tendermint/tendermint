@@ -34,7 +34,6 @@ func GenPrivAccountFromKey(privKeyBytes [64]byte) *PrivAccount {
 		PubKey:  pubKey,
 		PrivKey: privKey,
 	}
-
 }
 
 func (privAccount *PrivAccount) Sign(o Signable) Signature {
