@@ -487,9 +487,9 @@ func newChannel(conn *MConnection, desc *ChannelDescriptor) *Channel {
 // Goroutine-safe
 // Times out (and returns false) after defaultSendTimeoutSeconds
 func (ch *Channel) sendBytes(bytes []byte) bool {
-	sendTicker := time.NewTicker(defaultSendTimeoutSeconds * time.Second)
+	timeout := time.NewTimer(defaultSendTimeoutSeconds * time.Second)
 	select {
-	case <-sendTicker.C:
+	case <-timeout.C:
 		// timeout
 		return false
 	case ch.sendQueue <- bytes:
