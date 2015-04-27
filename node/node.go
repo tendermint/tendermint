@@ -1,6 +1,7 @@
 package node
 
 import (
+	"fmt"
 	"math/rand"
 	"net"
 	"net/http"
@@ -20,6 +21,14 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
+
+import _ "net/http/pprof"
+
+func init() {
+	go func() {
+		fmt.Println(http.ListenAndServe("0.0.0.0:6060", nil))
+	}()
+}
 
 type Node struct {
 	sw               *p2p.Switch
@@ -209,7 +218,7 @@ func makeNodeInfo(sw *p2p.Switch) *types.NodeInfo {
 	nodeInfo := &types.NodeInfo{
 		Moniker: config.App().GetString("Moniker"),
 		Network: config.App().GetString("Network"),
-		Version: "0.0.1",
+		Version: "0.0.2", // Bumped for new SignBytes.
 	}
 	if !sw.IsListening() {
 		return nodeInfo
