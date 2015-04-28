@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/merkle"
 )
@@ -82,6 +83,10 @@ func (psh PartSetHeader) IsZero() bool {
 
 func (psh PartSetHeader) Equals(other PartSetHeader) bool {
 	return psh.Total == other.Total && bytes.Equal(psh.Hash, other.Hash)
+}
+
+func (psh PartSetHeader) WriteSignBytes(w io.Writer, n *int64, err *error) {
+	binary.WriteTo([]byte(Fmt(`{"Hash":"%X","Total":%v}`, psh.Hash, psh.Total)), w, n, err)
 }
 
 //-------------------------------------
