@@ -276,7 +276,7 @@ func ListProcesses() (*ResponseListProcesses, error) {
 // Another barak instance registering its external
 // address to a remote barak.
 func Register(w http.ResponseWriter, req *http.Request) {
-	registry, err := os.OpenFile(barak.rootDir+"/registry.log", os.O_RDWR|os.O_APPEND, 0x600)
+	registry, err := os.OpenFile(barak.rootDir+"/registry.log", os.O_RDWR|os.O_APPEND|os.O_CREATE, 0x600)
 	if err != nil {
 		http.Error(w, "Could not open registry file. Please contact the administrator", 500)
 		return
