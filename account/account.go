@@ -36,12 +36,12 @@ func HashSignBytes(o Signable) []byte {
 // on the blockchain.
 // Serialized by binary.[read|write]Reflect
 type Account struct {
-	Address     []byte
-	PubKey      PubKey
-	Sequence    uint
-	Balance     uint64
-	Code        []byte // VM code
-	StorageRoot []byte // VM storage merkle root.
+	Address     []byte `json:"address"`
+	PubKey      PubKey `json:"pub_key"`
+	Sequence    uint   `json:"sequence"`
+	Balance     uint64 `json:"balance"`
+	Code        []byte `json:"code"`         // VM code
+	StorageRoot []byte `json:"storage_root"` // VM storage merkle root.
 }
 
 func (acc *Account) Copy() *Account {

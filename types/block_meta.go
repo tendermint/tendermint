@@ -1,9 +1,9 @@
 package types
 
 type BlockMeta struct {
-	Hash   []byte        // The block hash
-	Header *Header       // The block's Header
-	Parts  PartSetHeader // The PartSetHeader, for transfer
+	Hash   []byte        `json:"hash"`   // The block hash
+	Header *Header       `json:"header"` // The block's Header
+	Parts  PartSetHeader `json:"parts"`  // The PartSetHeader, for transfer
 }
 
 func NewBlockMeta(block *Block, blockParts *PartSet) *BlockMeta {

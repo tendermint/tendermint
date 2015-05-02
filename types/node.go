@@ -6,13 +6,13 @@ import (
 )
 
 type NodeInfo struct {
-	Moniker string
-	Network string
-	Version string
+	Moniker string `json:"moniker"`
+	Network string `json:"network"`
+	Version string `json:"version"`
 
-	Host    string
-	P2PPort uint16
-	RPCPort uint16
+	Host    string `json:"host"`
+	P2PPort uint16 `json:"p2p_port"`
+	RPCPort uint16 `json:"rpc_port"`
 }
 
 func (ni *NodeInfo) CompatibleWith(no *NodeInfo) error {

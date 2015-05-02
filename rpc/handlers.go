@@ -207,15 +207,15 @@ const (
 
 // for requests coming in
 type WSRequest struct {
-	Type  string // subscribe or unsubscribe
-	Event string
+	Type  string `json:"type"` // subscribe or unsubscribe
+	Event string `json:"event"`
 }
 
 // for responses going out
 type WSResponse struct {
-	Event string
-	Data  interface{}
-	Error string
+	Event string      `json:"event"`
+	Data  interface{} `json:"data"`
+	Error string      `json:"error"`
 }
 
 // a single websocket connection

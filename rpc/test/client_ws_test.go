@@ -65,7 +65,7 @@ func waitForEvent(t *testing.T, con *websocket.Conn, eventid string, dieOnTimeou
 				// if the event id isnt what we're waiting on
 				// ignore it
 				var response struct {
-					Event string
+					Event string `json:"event"`
 				}
 				if err := json.Unmarshal(p, &response); err != nil {
 					ech <- err
@@ -112,9 +112,9 @@ func waitForEvent(t *testing.T, con *websocket.Conn, eventid string, dieOnTimeou
 func unmarshalResponseNewBlock(b []byte) (*types.Block, error) {
 	// unmarshall and assert somethings
 	var response struct {
-		Event string
-		Data  *types.Block
-		Error string
+		Event string       `json:"event"`
+		Data  *types.Block `json:"data"`
+		Error string       `json:"error"`
 	}
 	var err error
 	binary.ReadJSON(&response, b, &err)
@@ -226,7 +226,6 @@ func TestWSCallWait(t *testing.T) {
 	waitForEvent(t, con, eid1, true, func() {
 		_, receipt := broadcastTx(t, "JSONRPC", userByteAddr, nil, code, userBytePriv, amt, 1000, 1000)
 		contractAddr = receipt.ContractAddr
-
 	}, unmarshalValidateCall(amt, returnCode))
 
 	// susbscribe to the new contract

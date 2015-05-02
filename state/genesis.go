@@ -13,20 +13,20 @@ import (
 )
 
 type GenesisAccount struct {
-	Address []byte
-	Amount  uint64
+	Address []byte `json:"address"`
+	Amount  uint64 `json:"amount"`
 }
 
 type GenesisValidator struct {
-	PubKey   account.PubKeyEd25519
-	Amount   uint64
-	UnbondTo []GenesisAccount
+	PubKey   account.PubKeyEd25519 `json:"pub_key"`
+	Amount   uint64                `json:"amount"`
+	UnbondTo []GenesisAccount      `json:"unbond_to"`
 }
 
 type GenesisDoc struct {
-	GenesisTime time.Time
-	Accounts    []GenesisAccount
-	Validators  []GenesisValidator
+	GenesisTime time.Time          `json:"genesis_time"`
+	Accounts    []GenesisAccount   `json:"accounts"`
+	Validators  []GenesisValidator `json:"validators"`
 }
 
 func GenesisDocFromJSON(jsonBlob []byte) (genState *GenesisDoc) {

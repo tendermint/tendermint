@@ -18,11 +18,11 @@ var (
 )
 
 type Proposal struct {
-	Height     uint
-	Round      uint
-	BlockParts types.PartSetHeader
-	POLParts   types.PartSetHeader
-	Signature  account.SignatureEd25519
+	Height     uint                     `json:"height"`
+	Round      uint                     `json:"round"`
+	BlockParts types.PartSetHeader      `json:"block_parts"`
+	POLParts   types.PartSetHeader      `json:"pol_parts"`
+	Signature  account.SignatureEd25519 `json:"signature"`
 }
 
 func NewProposal(height uint, round uint, blockParts, polParts types.PartSetHeader) *Proposal {
@@ -41,10 +41,10 @@ func (p *Proposal) String() string {
 
 func (p *Proposal) WriteSignBytes(w io.Writer, n *int64, err *error) {
 	// We hex encode the network name so we don't deal with escaping issues.
-	binary.WriteTo([]byte(Fmt(`{"Network":"%X"`, config.App().GetString("Network"))), w, n, err)
-	binary.WriteTo([]byte(`,"Proprosal":{"BlockParts":`), w, n, err)
+	binary.WriteTo([]byte(Fmt(`{"network":"%X"`, config.App().GetString("Network"))), w, n, err)
+	binary.WriteTo([]byte(`,"proposal":{"block_parts":`), w, n, err)
 	p.BlockParts.WriteSignBytes(w, n, err)
-	binary.WriteTo([]byte(Fmt(`,"Height":%v,"POLParts":`, p.Height)), w, n, err)
+	binary.WriteTo([]byte(Fmt(`,"height":%v,"pol_parts":`, p.Height)), w, n, err)
 	p.POLParts.WriteSignBytes(w, n, err)
-	binary.WriteTo([]byte(Fmt(`,"Round":%v}}`, p.Round)), w, n, err)
+	binary.WriteTo([]byte(Fmt(`,"round":%v}}`, p.Round)), w, n, err)
 }

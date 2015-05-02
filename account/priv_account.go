@@ -6,9 +6,9 @@ import (
 )
 
 type PrivAccount struct {
-	Address []byte
-	PubKey  PubKey
-	PrivKey PrivKey
+	Address []byte  `json:"address"`
+	PubKey  PubKey  `json:"pub_key"`
+	PrivKey PrivKey `json:"priv_key"`
 }
 
 // Generates a new account with private key.

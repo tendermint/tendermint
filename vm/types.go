@@ -17,6 +17,11 @@ type Account struct {
 	Other       interface{} // For holding all other data.
 }
 
+func (acc *Account) String() string {
+	return Fmt("VMAccount{%X B:%v C:%X N:%v S:%X}",
+		acc.Address, acc.Balance, acc.Code, acc.Nonce, acc.StorageRoot)
+}
+
 type Log struct {
 	Address Word256
 	Topics  []Word256

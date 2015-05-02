@@ -24,9 +24,9 @@ var (
 )
 
 type Part struct {
-	Index uint
-	Trail [][]byte
-	Bytes []byte
+	Index uint     `json:"index"`
+	Trail [][]byte `json:"trail"`
+	Bytes []byte   `json:"bytes"`
 
 	// Cache
 	hash []byte
@@ -69,8 +69,8 @@ func (part *Part) StringIndented(indent string) string {
 //-------------------------------------
 
 type PartSetHeader struct {
-	Total uint
-	Hash  []byte
+	Total uint   `json:"total"`
+	Hash  []byte `json:"hash"`
 }
 
 func (psh PartSetHeader) String() string {
@@ -86,7 +86,7 @@ func (psh PartSetHeader) Equals(other PartSetHeader) bool {
 }
 
 func (psh PartSetHeader) WriteSignBytes(w io.Writer, n *int64, err *error) {
-	binary.WriteTo([]byte(Fmt(`{"Hash":"%X","Total":%v}`, psh.Hash, psh.Total)), w, n, err)
+	binary.WriteTo([]byte(Fmt(`{"hash":"%X","total":%v}`, psh.Hash, psh.Total)), w, n, err)
 }
 
 //-------------------------------------

@@ -65,64 +65,64 @@ ListenAddr = "0.0.0.0:46657"
 `
 
 var DefaultGenesis = `{
-    "Accounts": [
+    "accounts": [
         {
-            "Address": "69988763FCF806AC35D1A2F9C4885B7DD7B0599C",
-            "Amount": 1049800000000000 
+            "address": "69988763FCF806AC35D1A2F9C4885B7DD7B0599C",
+            "amount": 1049800000000000 
         },
         {
-            "Address": "D7DFF9806078899C8DA3FE3633CC0BF3C6C2B1BB",
-            "Amount": 1049800000000000 
+            "address": "D7DFF9806078899C8DA3FE3633CC0BF3C6C2B1BB",
+            "amount": 1049800000000000 
         }
     ],
-    "Validators": [
+    "validators": [
         {
-            "PubKey": [1, "323A31EB01877858592AB7D593E9447110AFCD3ACF280D60C4F8E7C04FACC955"],
-            "Amount": 100000000000,
-            "UnbondTo": [
+            "pub_key": [1, "323A31EB01877858592AB7D593E9447110AFCD3ACF280D60C4F8E7C04FACC955"],
+            "amount": 100000000000,
+            "unbond_to": [
             	{
-            		"Address": "69988763FCF806AC35D1A2F9C4885B7DD7B0599C",
-            		"Amount":  100000000000
+            		"address": "69988763FCF806AC35D1A2F9C4885B7DD7B0599C",
+            		"amount":  100000000000
             	}
             ]
         },
         {
-            "PubKey": [1, "2239C21C81EA7173A6C489145490C015E05D4B97448933B708A7EC5B7B4921E3"],
-            "Amount": 100000000000,
-            "UnbondTo": [
+            "pub_key": [1, "2239C21C81EA7173A6C489145490C015E05D4B97448933B708A7EC5B7B4921E3"],
+            "amount": 100000000000,
+            "unbond_to": [
             	{
-            		"Address": "D7DFF9806078899C8DA3FE3633CC0BF3C6C2B1BB",
-            		"Amount":  100000000000
+            		"address": "D7DFF9806078899C8DA3FE3633CC0BF3C6C2B1BB",
+            		"amount":  100000000000
             	}
             ]
         },
         {
-            "PubKey": [1, "DD2206E8F889EED3ABAAECEB2D18962D062A887346241820493FFE3B1DEF255D"],
-            "Amount": 100000000000,
-            "UnbondTo": [
+            "pub_key": [1, "DD2206E8F889EED3ABAAECEB2D18962D062A887346241820493FFE3B1DEF255D"],
+            "amount": 100000000000,
+            "unbond_to": [
             	{
-            		"Address": "69988763FCF806AC35D1A2F9C4885B7DD7B0599C",
-            		"Amount":  100000000000
+            		"address": "69988763FCF806AC35D1A2F9C4885B7DD7B0599C",
+            		"amount":  100000000000
             	}
             ]
         },
         {
-            "PubKey": [1, "1B3256A3754FC6AB01110C166199A2F619E2D76DB3EE751E376FE404AC9FDCFF"],
-            "Amount": 100000000000,
-            "UnbondTo": [
+            "pub_key": [1, "1B3256A3754FC6AB01110C166199A2F619E2D76DB3EE751E376FE404AC9FDCFF"],
+            "amount": 100000000000,
+            "unbond_to": [
             	{
-            		"Address": "69988763FCF806AC35D1A2F9C4885B7DD7B0599C",
-            		"Amount":  50000000000
+            		"address": "69988763FCF806AC35D1A2F9C4885B7DD7B0599C",
+            		"amount":  50000000000
             	}
             ]
         },
         {
-            "PubKey": [1, "62CF1048BAEBB4FFFF360D5E896E3F4EC72D03D55183596931ED14995D512926"],
-            "Amount": 100000000000,
-            "UnbondTo": [
+            "pub_key": [1, "62CF1048BAEBB4FFFF360D5E896E3F4EC72D03D55183596931ED14995D512926"],
+            "amount": 100000000000,
+            "unbond_to": [
             	{
-            		"Address": "69988763FCF806AC35D1A2F9C4885B7DD7B0599C",
-            		"Amount":  50000000000
+            		"address": "69988763FCF806AC35D1A2F9C4885B7DD7B0599C",
+            		"amount":  50000000000
             	}
             ]
         }

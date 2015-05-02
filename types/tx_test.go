@@ -35,7 +35,7 @@ func TestSendTxSignable(t *testing.T) {
 	}
 	signBytes := account.SignBytes(sendTx)
 	signStr := string(signBytes)
-	expected := Fmt(`{"Network":"%X","Tx":[1,{"Inputs":[{"Address":"696E70757431","Amount":12345,"Sequence":67890},{"Address":"696E70757432","Amount":111,"Sequence":222}],"Outputs":[{"Address":"6F757470757431","Amount":333},{"Address":"6F757470757432","Amount":444}]}]}`,
+	expected := Fmt(`{"network":"%X","tx":[1,{"inputs":[{"address":"696E70757431","amount":12345,"sequence":67890},{"address":"696E70757432","amount":111,"sequence":222}],"outputs":[{"address":"6F757470757431","amount":333},{"address":"6F757470757432","amount":444}]}]}`,
 		config.App().GetString("Network"))
 	if signStr != expected {
 		t.Errorf("Got unexpected sign string for SendTx. Expected:\n%v\nGot:\n%v", expected, signStr)
@@ -56,7 +56,7 @@ func TestCallTxSignable(t *testing.T) {
 	}
 	signBytes := account.SignBytes(callTx)
 	signStr := string(signBytes)
-	expected := Fmt(`{"Network":"%X","Tx":[2,{"Address":"636F6E747261637431","Data":"6461746131","Fee":222,"GasLimit":111,"Input":{"Address":"696E70757431","Amount":12345,"Sequence":67890}}]}`,
+	expected := Fmt(`{"network":"%X","tx":[2,{"address":"636F6E747261637431","data":"6461746131","fee":222,"gas_limit":111,"input":{"address":"696E70757431","amount":12345,"sequence":67890}}]}`,
 		config.App().GetString("Network"))
 	if signStr != expected {
 		t.Errorf("Got unexpected sign string for CallTx. Expected:\n%v\nGot:\n%v", expected, signStr)
@@ -92,7 +92,7 @@ func TestBondTxSignable(t *testing.T) {
 	}
 	signBytes := account.SignBytes(bondTx)
 	signStr := string(signBytes)
-	expected := Fmt(`{"Network":"%X","Tx":[17,{"Inputs":[{"Address":"696E70757431","Amount":12345,"Sequence":67890},{"Address":"696E70757432","Amount":111,"Sequence":222}],"PubKey":[1,"3B6A27BCCEB6A42D62A3A8D02A6F0D73653215771DE243A63AC048A18B59DA29"],"UnbondTo":[{"Address":"6F757470757431","Amount":333},{"Address":"6F757470757432","Amount":444}]}]}`,
+	expected := Fmt(`{"network":"%X","tx":[17,{"inputs":[{"address":"696E70757431","amount":12345,"sequence":67890},{"address":"696E70757432","amount":111,"sequence":222}],"pub_key":[1,"3B6A27BCCEB6A42D62A3A8D02A6F0D73653215771DE243A63AC048A18B59DA29"],"unbond_to":[{"address":"6F757470757431","amount":333},{"address":"6F757470757432","amount":444}]}]}`,
 		config.App().GetString("Network"))
 	if signStr != expected {
 		t.Errorf("Got unexpected sign string for BondTx")
@@ -106,7 +106,7 @@ func TestUnbondTxSignable(t *testing.T) {
 	}
 	signBytes := account.SignBytes(unbondTx)
 	signStr := string(signBytes)
-	expected := Fmt(`{"Network":"%X","Tx":[18,{"Address":"6164647265737331","Height":111}]}`,
+	expected := Fmt(`{"network":"%X","tx":[18,{"address":"6164647265737331","height":111}]}`,
 		config.App().GetString("Network"))
 	if signStr != expected {
 		t.Errorf("Got unexpected sign string for UnbondTx")
@@ -120,7 +120,7 @@ func TestRebondTxSignable(t *testing.T) {
 	}
 	signBytes := account.SignBytes(rebondTx)
 	signStr := string(signBytes)
-	expected := Fmt(`{"Network":"%X","Tx":[19,{"Address":"6164647265737331","Height":111}]}`,
+	expected := Fmt(`{"network":"%X","tx":[19,{"address":"6164647265737331","height":111}]}`,
 		config.App().GetString("Network"))
 	if signStr != expected {
 		t.Errorf("Got unexpected sign string for RebondTx")

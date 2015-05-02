@@ -31,12 +31,12 @@ func (err *ErrVoteConflictingSignature) Error() string {
 // Commit votes get aggregated into the next block's Validaiton.
 // See the whitepaper for details.
 type Vote struct {
-	Height     uint
-	Round      uint
-	Type       byte
-	BlockHash  []byte        // empty if vote is nil.
-	BlockParts PartSetHeader // zero if vote is nil.
-	Signature  account.SignatureEd25519
+	Height     uint                     `json:"height"`
+	Round      uint                     `json:"round"`
+	Type       byte                     `json:"type"`
+	BlockHash  []byte                   `json:"block_hash"`  // empty if vote is nil.
+	BlockParts PartSetHeader            `json:"block_parts"` // zero if vote is nil.
+	Signature  account.SignatureEd25519 `json:"signature"`
 }
 
 // Types of votes
@@ -48,9 +48,9 @@ const (
 
 func (vote *Vote) WriteSignBytes(w io.Writer, n *int64, err *error) {
 	// We hex encode the network name so we don't deal with escaping issues.
-	binary.WriteTo([]byte(Fmt(`{"Network":"%X"`, config.App().GetString("Network"))), w, n, err)
-	binary.WriteTo([]byte(Fmt(`,"Vote":{"BlockHash":"%X","BlockParts":%v`, vote.BlockHash, vote.BlockParts)), w, n, err)
-	binary.WriteTo([]byte(Fmt(`,"Height":%v,"Round":%v,"Type":%v}}`, vote.Height, vote.Round, vote.Type)), w, n, err)
+	binary.WriteTo([]byte(Fmt(`{"network":"%X"`, config.App().GetString("Network"))), w, n, err)
+	binary.WriteTo([]byte(Fmt(`,"vote":{"block_hash":"%X","block_parts":%v`, vote.BlockHash, vote.BlockParts)), w, n, err)
+	binary.WriteTo([]byte(Fmt(`,"height":%v,"round":%v,"type":%v}}`, vote.Height, vote.Round, vote.Type)), w, n, err)
 }
 
 func (vote *Vote) Copy() *Vote {

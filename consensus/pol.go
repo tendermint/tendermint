@@ -15,18 +15,18 @@ import (
 // Commits require an additional round which is strictly less than
 // the POL round.  Prevote rounds are equal to the POL round.
 type POLVoteSignature struct {
-	Round     uint
-	Signature account.SignatureEd25519
+	Round     uint                     `json:"round"`
+	Signature account.SignatureEd25519 `json:"signature"`
 }
 
 // Proof of lock.
 // +2/3 of validators' prevotes for a given blockhash (or nil)
 type POL struct {
-	Height     uint
-	Round      uint
-	BlockHash  []byte              // Could be nil, which makes this a proof of unlock.
-	BlockParts types.PartSetHeader // When BlockHash is nil, this is zero.
-	Votes      []POLVoteSignature  // Prevote and commit signatures in ValidatorSet order.
+	Height     uint                `json:"height"`
+	Round      uint                `json:"round"`
+	BlockHash  []byte              `json:"block_hash"`  // Could be nil, which makes this a proof of unlock.
+	BlockParts types.PartSetHeader `json:"block_parts"` // When BlockHash is nil, this is zero.
+	Votes      []POLVoteSignature  `json:"votes"`       // Prevote and commit signatures in ValidatorSet order.
 }
 
 // Returns whether +2/3 have prevoted/committed for BlockHash.

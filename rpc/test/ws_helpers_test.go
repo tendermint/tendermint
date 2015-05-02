@@ -34,9 +34,9 @@ func unmarshalValidateSend(amt uint64, toAddr []byte) func(string, []byte) error
 	return func(eid string, b []byte) error {
 		// unmarshal and assert correctness
 		var response struct {
-			Event string
-			Data  types.SendTx
-			Error string
+			Event string       `json:"event"`
+			Data  types.SendTx `json:"data"`
+			Error string       `json:"error"`
 		}
 		var err error
 		binary.ReadJSON(&response, b, &err)
@@ -67,13 +67,13 @@ func unmarshalValidateCall(amt uint64, returnCode []byte) func(string, []byte) e
 	return func(eid string, b []byte) error {
 		// unmarshall and assert somethings
 		var response struct {
-			Event string
+			Event string `json:"event"`
 			Data  struct {
-				Tx        types.CallTx
-				Return    []byte
-				Exception string
-			}
-			Error string
+				Tx        types.CallTx `json:"tx"`
+				Return    []byte       `json:"return"`
+				Exception string       `json:"exception"`
+			} `json:"data"`
+			Error string `json:"error"`
 		}
 		var err error
 		binary.ReadJSON(&response, b, &err)
@@ -105,9 +105,9 @@ func unmarshalValidateCallCall(origin, returnCode []byte, txid *[]byte) func(str
 	return func(eid string, b []byte) error {
 		// unmarshall and assert somethings
 		var response struct {
-			Event string
-			Data  types.EventMsgCall
-			Error string
+			Event string             `json:"event"`
+			Data  types.EventMsgCall `json:"data"`
+			Error string             `json:"error"`
 		}
 		var err error
 		binary.ReadJSON(&response, b, &err)

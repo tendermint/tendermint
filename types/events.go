@@ -7,15 +7,15 @@ import (
 // Functions to generate eventId strings
 
 func EventStringAccInput(addr []byte) string {
-	return fmt.Sprintf("Acc/%x/Input", addr)
+	return fmt.Sprintf("Acc/%X/Input", addr)
 }
 
 func EventStringAccOutput(addr []byte) string {
-	return fmt.Sprintf("Acc/%x/Output", addr)
+	return fmt.Sprintf("Acc/%X/Output", addr)
 }
 
 func EventStringAccReceive(addr []byte) string {
-	return fmt.Sprintf("Acc/%x/Receive", addr)
+	return fmt.Sprintf("Acc/%X/Receive", addr)
 }
 
 func EventStringBond() string {
@@ -46,25 +46,25 @@ func EventStringFork() string {
 // but some (an input to a call tx or a receive) are more exotic:
 
 type EventMsgCallTx struct {
-	Tx        Tx
-	Return    []byte
-	Exception string
+	Tx        Tx     `json:"tx"`
+	Return    []byte `json:"return"`
+	Exception string `json:"exception"`
 }
 
 type CallData struct {
-	Caller []byte
-	Callee []byte
-	Data   []byte
-	Value  uint64
-	Gas    uint64
+	Caller []byte `json:"caller"`
+	Callee []byte `json:"callee"`
+	Data   []byte `json:"data"`
+	Value  uint64 `json:"value"`
+	Gas    uint64 `json:"gas"`
 }
 
 type EventMsgCall struct {
-	CallData  *CallData
-	Origin    []byte
-	TxId      []byte
-	Return    []byte
-	Exception string
+	CallData  *CallData `json:"call_data"`
+	Origin    []byte    `json:"origin"`
+	TxId      []byte    `json:"tx_id"`
+	Return    []byte    `json:"return"`
+	Exception string    `json:"exception"`
 }
 
 /*

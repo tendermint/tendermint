@@ -12,18 +12,14 @@ import (
 
 // Persistent (mostly) static data for each Validator
 type ValidatorInfo struct {
-	Address         []byte
-	PubKey          account.PubKeyEd25519
-	UnbondTo        []*types.TxOutput
-	FirstBondHeight uint
-	FirstBondAmount uint64
-
-	// If destroyed:
-	DestroyedHeight uint
-	DestroyedAmount uint64
-
-	// If released:
-	ReleasedHeight uint
+	Address         []byte                `json:"address"`
+	PubKey          account.PubKeyEd25519 `json:"pub_key"`
+	UnbondTo        []*types.TxOutput     `json:"unbond_to"`
+	FirstBondHeight uint                  `json:"first_bond_height"`
+	FirstBondAmount uint64                `json:"first_bond_amount"`
+	DestroyedHeight uint                  `json:"destroyed_height"` // If destroyed
+	DestroyedAmount uint64                `json:"destroyed_amount"` // If destroyed
+	ReleasedHeight  uint                  `json:"released_height"`  // If released
 }
 
 func (valInfo *ValidatorInfo) Copy() *ValidatorInfo {
@@ -50,13 +46,13 @@ var ValidatorInfoCodec = binary.Codec{
 // Also persisted with the state, but fields change
 // every height|round so they don't go in merkle.Tree
 type Validator struct {
-	Address          []byte
-	PubKey           account.PubKeyEd25519
-	BondHeight       uint
-	UnbondHeight     uint
-	LastCommitHeight uint
-	VotingPower      uint64
-	Accum            int64
+	Address          []byte                `json:"address"`
+	PubKey           account.PubKeyEd25519 `json:"pub_key"`
+	BondHeight       uint                  `json:"bond_height"`
+	UnbondHeight     uint                  `json:"unbond_height"`
+	LastCommitHeight uint                  `json:"last_commit_height"`
+	VotingPower      uint64                `json:"voting_power"`
+	Accum            int64                 `json:"accum"`
 }
 
 // Creates a new copy of the validator so we can mutate accum.

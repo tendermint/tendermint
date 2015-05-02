@@ -16,9 +16,9 @@ import (
 )
 
 type Block struct {
-	*Header
-	*Validation
-	*Data
+	*Header     `json:"header"`
+	*Validation `json:"validation"`
+	*Data       `json:"data"`
 }
 
 // Basic validation that doesn't involve state data.
@@ -123,14 +123,14 @@ func (b *Block) StringShort() string {
 //-----------------------------------------------------------------------------
 
 type Header struct {
-	Network        string
-	Height         uint
-	Time           time.Time
-	Fees           uint64
-	NumTxs         uint
-	LastBlockHash  []byte
-	LastBlockParts PartSetHeader
-	StateHash      []byte
+	Network        string        `json:"network"`
+	Height         uint          `json:"height"`
+	Time           time.Time     `json:"time"`
+	Fees           uint64        `json:"fees"`
+	NumTxs         uint          `json:"num_txs"`
+	LastBlockHash  []byte        `json:"last_block_hash"`
+	LastBlockParts PartSetHeader `json:"last_block_parts"`
+	StateHash      []byte        `json:"state_hash"`
 }
 
 // NOTE: hash is nil if required fields are missing.
@@ -178,9 +178,9 @@ func (h *Header) StringIndented(indent string) string {
 //-----------------------------------------------------------------------------
 
 type Commit struct {
-	Address   []byte
-	Round     uint
-	Signature account.SignatureEd25519
+	Address   []byte                   `json:"address"`
+	Round     uint                     `json:"round"`
+	Signature account.SignatureEd25519 `json:"signature"`
 }
 
 func (commit Commit) IsZero() bool {
@@ -197,7 +197,7 @@ func (commit Commit) String() string {
 // Any peer with a block can gossip commits by index with a peer without recalculating the
 // active ValidatorSet.
 type Validation struct {
-	Commits []Commit // Commits (or nil) of all active validators in address order.
+	Commits []Commit `json:"commits"` // Commits (or nil) of all active validators in address order.
 
 	// Volatile
 	hash     []byte
@@ -267,7 +267,7 @@ func (v *Validation) BitArray() BitArray {
 //-----------------------------------------------------------------------------
 
 type Data struct {
-	Txs []Tx
+	Txs []Tx `json:"txs"`
 
 	// Volatile
 	hash []byte

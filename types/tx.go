@@ -73,11 +73,11 @@ var _ = binary.RegisterInterface(
 //-----------------------------------------------------------------------------
 
 type TxInput struct {
-	Address   []byte            // Hash of the PubKey
-	Amount    uint64            // Must not exceed account balance
-	Sequence  uint              // Must be 1 greater than the last committed TxInput
-	Signature account.Signature // Depends on the PubKey type and the whole Tx
-	PubKey    account.PubKey    // Must not be nil, may be nil
+	Address   []byte            `json:"address"`   // Hash of the PubKey
+	Amount    uint64            `json:"amount"`    // Must not exceed account balance
+	Sequence  uint              `json:"sequence"`  // Must be 1 greater than the last committed TxInput
+	Signature account.Signature `json:"signature"` // Depends on the PubKey type and the whole Tx
+	PubKey    account.PubKey    `json:"pub_key"`   // Must not be nil, may be nil
 }
 
 func (txIn *TxInput) ValidateBasic() error {
@@ -91,7 +91,7 @@ func (txIn *TxInput) ValidateBasic() error {
 }
 
 func (txIn *TxInput) WriteSignBytes(w io.Writer, n *int64, err *error) {
-	binary.WriteTo([]byte(Fmt(`{"Address":"%X","Amount":%v,"Sequence":%v}`, txIn.Address, txIn.Amount, txIn.Sequence)), w, n, err)
+	binary.WriteTo([]byte(Fmt(`{"address":"%X","amount":%v,"sequence":%v}`, txIn.Address, txIn.Amount, txIn.Sequence)), w, n, err)
 }
 
 func (txIn *TxInput) String() string {
@@ -101,8 +101,8 @@ func (txIn *TxInput) String() string {
 //-----------------------------------------------------------------------------
 
 type TxOutput struct {
-	Address []byte // Hash of the PubKey
-	Amount  uint64 // The sum of all outputs must not exceed the inputs.
+	Address []byte `json:"address"` // Hash of the PubKey
+	Amount  uint64 `json:"amount"`  // The sum of all outputs must not exceed the inputs.
 }
 
 func (txOut *TxOutput) ValidateBasic() error {
@@ -116,7 +116,7 @@ func (txOut *TxOutput) ValidateBasic() error {
 }
 
 func (txOut *TxOutput) WriteSignBytes(w io.Writer, n *int64, err *error) {
-	binary.WriteTo([]byte(Fmt(`{"Address":"%X","Amount":%v}`, txOut.Address, txOut.Amount)), w, n, err)
+	binary.WriteTo([]byte(Fmt(`{"address":"%X","amount":%v}`, txOut.Address, txOut.Amount)), w, n, err)
 }
 
 func (txOut *TxOutput) String() string {
@@ -126,21 +126,21 @@ func (txOut *TxOutput) String() string {
 //-----------------------------------------------------------------------------
 
 type SendTx struct {
-	Inputs  []*TxInput
-	Outputs []*TxOutput
+	Inputs  []*TxInput  `json:"inputs"`
+	Outputs []*TxOutput `json:"outputs"`
 }
 
 func (tx *SendTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
 	// We hex encode the network name so we don't deal with escaping issues.
-	binary.WriteTo([]byte(Fmt(`{"Network":"%X"`, config.App().GetString("Network"))), w, n, err)
-	binary.WriteTo([]byte(Fmt(`,"Tx":[%v,{"Inputs":[`, TxTypeSend)), w, n, err)
+	binary.WriteTo([]byte(Fmt(`{"network":"%X"`, config.App().GetString("Network"))), w, n, err)
+	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"inputs":[`, TxTypeSend)), w, n, err)
 	for i, in := range tx.Inputs {
 		in.WriteSignBytes(w, n, err)
 		if i != len(tx.Inputs)-1 {
 			binary.WriteTo([]byte(","), w, n, err)
 		}
 	}
-	binary.WriteTo([]byte(`],"Outputs":[`), w, n, err)
+	binary.WriteTo([]byte(`],"outputs":[`), w, n, err)
 	for i, out := range tx.Outputs {
 		out.WriteSignBytes(w, n, err)
 		if i != len(tx.Outputs)-1 {
@@ -157,18 +157,18 @@ func (tx *SendTx) String() string {
 //-----------------------------------------------------------------------------
 
 type CallTx struct {
-	Input    *TxInput
-	Address  []byte
-	GasLimit uint64
-	Fee      uint64
-	Data     []byte
+	Input    *TxInput `json:"input"`
+	Address  []byte   `json:"address"`
+	GasLimit uint64   `json:"gas_limit"`
+	Fee      uint64   `json:"fee"`
+	Data     []byte   `json:"data"`
 }
 
 func (tx *CallTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
 	// We hex encode the network name so we don't deal with escaping issues.
-	binary.WriteTo([]byte(Fmt(`{"Network":"%X"`, config.App().GetString("Network"))), w, n, err)
-	binary.WriteTo([]byte(Fmt(`,"Tx":[%v,{"Address":"%X","Data":"%X"`, TxTypeCall, tx.Address, tx.Data)), w, n, err)
-	binary.WriteTo([]byte(Fmt(`,"Fee":%v,"GasLimit":%v,"Input":`, tx.Fee, tx.GasLimit)), w, n, err)
+	binary.WriteTo([]byte(Fmt(`{"network":"%X"`, config.App().GetString("Network"))), w, n, err)
+	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"address":"%X","data":"%X"`, TxTypeCall, tx.Address, tx.Data)), w, n, err)
+	binary.WriteTo([]byte(Fmt(`,"fee":%v,"gas_limit":%v,"input":`, tx.Fee, tx.GasLimit)), w, n, err)
 	tx.Input.WriteSignBytes(w, n, err)
 	binary.WriteTo([]byte(`}]}`), w, n, err)
 }
@@ -180,24 +180,24 @@ func (tx *CallTx) String() string {
 //-----------------------------------------------------------------------------
 
 type BondTx struct {
-	PubKey   account.PubKeyEd25519
-	Inputs   []*TxInput
-	UnbondTo []*TxOutput
+	PubKey   account.PubKeyEd25519 `json:"pub_key"`
+	Inputs   []*TxInput            `json:"inputs"`
+	UnbondTo []*TxOutput           `json:"unbond_to"`
 }
 
 func (tx *BondTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
 	// We hex encode the network name so we don't deal with escaping issues.
-	binary.WriteTo([]byte(Fmt(`{"Network":"%X"`, config.App().GetString("Network"))), w, n, err)
-	binary.WriteTo([]byte(Fmt(`,"Tx":[%v,{"Inputs":[`, TxTypeBond)), w, n, err)
+	binary.WriteTo([]byte(Fmt(`{"network":"%X"`, config.App().GetString("Network"))), w, n, err)
+	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"inputs":[`, TxTypeBond)), w, n, err)
 	for i, in := range tx.Inputs {
 		in.WriteSignBytes(w, n, err)
 		if i != len(tx.Inputs)-1 {
 			binary.WriteTo([]byte(","), w, n, err)
 		}
 	}
-	binary.WriteTo([]byte(Fmt(`],"PubKey":`)), w, n, err)
+	binary.WriteTo([]byte(Fmt(`],"pub_key":`)), w, n, err)
 	binary.WriteTo(binary.JSONBytes(tx.PubKey), w, n, err)
-	binary.WriteTo([]byte(`,"UnbondTo":[`), w, n, err)
+	binary.WriteTo([]byte(`,"unbond_to":[`), w, n, err)
 	for i, out := range tx.UnbondTo {
 		out.WriteSignBytes(w, n, err)
 		if i != len(tx.UnbondTo)-1 {
@@ -214,15 +214,15 @@ func (tx *BondTx) String() string {
 //-----------------------------------------------------------------------------
 
 type UnbondTx struct {
-	Address   []byte
-	Height    uint
-	Signature account.SignatureEd25519
+	Address   []byte                   `json:"address"`
+	Height    uint                     `json:"height"`
+	Signature account.SignatureEd25519 `json:"signature"`
 }
 
 func (tx *UnbondTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
 	// We hex encode the network name so we don't deal with escaping issues.
-	binary.WriteTo([]byte(Fmt(`{"Network":"%X"`, config.App().GetString("Network"))), w, n, err)
-	binary.WriteTo([]byte(Fmt(`,"Tx":[%v,{"Address":"%X","Height":%v}]}`, TxTypeUnbond, tx.Address, tx.Height)), w, n, err)
+	binary.WriteTo([]byte(Fmt(`{"network":"%X"`, config.App().GetString("Network"))), w, n, err)
+	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"address":"%X","height":%v}]}`, TxTypeUnbond, tx.Address, tx.Height)), w, n, err)
 }
 
 func (tx *UnbondTx) String() string {
@@ -232,15 +232,15 @@ func (tx *UnbondTx) String() string {
 //-----------------------------------------------------------------------------
 
 type RebondTx struct {
-	Address   []byte
-	Height    uint
-	Signature account.SignatureEd25519
+	Address   []byte                   `json:"address"`
+	Height    uint                     `json:"height"`
+	Signature account.SignatureEd25519 `json:"signature"`
 }
 
 func (tx *RebondTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
 	// We hex encode the network name so we don't deal with escaping issues.
-	binary.WriteTo([]byte(Fmt(`{"Network":"%X"`, config.App().GetString("Network"))), w, n, err)
-	binary.WriteTo([]byte(Fmt(`,"Tx":[%v,{"Address":"%X","Height":%v}]}`, TxTypeRebond, tx.Address, tx.Height)), w, n, err)
+	binary.WriteTo([]byte(Fmt(`{"network":"%X"`, config.App().GetString("Network"))), w, n, err)
+	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"address":"%X","height":%v}]}`, TxTypeRebond, tx.Address, tx.Height)), w, n, err)
 }
 
 func (tx *RebondTx) String() string {
@@ -250,9 +250,9 @@ func (tx *RebondTx) String() string {
 //-----------------------------------------------------------------------------
 
 type DupeoutTx struct {
-	Address []byte
-	VoteA   Vote
-	VoteB   Vote
+	Address []byte `json:"address"`
+	VoteA   Vote   `json:"vote_a"`
+	VoteB   Vote   `json:"vote_b"`
 }
 
 func (tx *DupeoutTx) WriteSignBytes(w io.Writer, n *int64, err *error) {

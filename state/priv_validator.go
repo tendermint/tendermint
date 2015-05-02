@@ -41,12 +41,12 @@ func voteToStep(vote *types.Vote) uint8 {
 }
 
 type PrivValidator struct {
-	Address    []byte
-	PubKey     account.PubKeyEd25519
-	PrivKey    account.PrivKeyEd25519
-	LastHeight uint
-	LastRound  uint
-	LastStep   uint8
+	Address    []byte                 `json:"address"`
+	PubKey     account.PubKeyEd25519  `json:"pub_key"`
+	PrivKey    account.PrivKeyEd25519 `json:"priv_key"`
+	LastHeight uint                   `json:"last_height"`
+	LastRound  uint                   `json:"last_round"`
+	LastStep   uint8                  `json:"last_step"`
 
 	// For persistence.
 	// Overloaded for testing.
