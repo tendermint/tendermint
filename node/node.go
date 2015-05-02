@@ -218,7 +218,7 @@ func makeNodeInfo(sw *p2p.Switch) *types.NodeInfo {
 	nodeInfo := &types.NodeInfo{
 		Moniker: config.App().GetString("Moniker"),
 		Network: config.App().GetString("Network"),
-		Version: "0.0.2", // Bumped for new SignBytes.
+		Version: "0.1.0", // all JSON fields are under_score
 	}
 	if !sw.IsListening() {
 		return nodeInfo
