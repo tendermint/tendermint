@@ -67,7 +67,7 @@ ListenAddr = "0.0.0.0:46657"
 var DefaultGenesis = `{
     "accounts": [
         {
-            "address": "69988763FCF806AC35D1A2F9C4885B7DD7B0599C",
+            "address": "02AE5F611B6453922859715177B9F1294571861B",
             "amount": 1049800000000000 
         },
         {
@@ -77,11 +77,11 @@ var DefaultGenesis = `{
     ],
     "validators": [
         {
-            "pub_key": [1, "323A31EB01877858592AB7D593E9447110AFCD3ACF280D60C4F8E7C04FACC955"],
+            "pub_key": [1, "F60966A2ACF4F6F47E7705854A3A6842748B31531751EC755EABC4F248145BC6"],
             "amount": 100000000000,
             "unbond_to": [
             	{
-            		"address": "69988763FCF806AC35D1A2F9C4885B7DD7B0599C",
+            		"address": "02AE5F611B6453922859715177B9F1294571861B",
             		"amount":  100000000000
             	}
             ]
@@ -97,31 +97,31 @@ var DefaultGenesis = `{
             ]
         },
         {
-            "pub_key": [1, "DD2206E8F889EED3ABAAECEB2D18962D062A887346241820493FFE3B1DEF255D"],
+            "pub_key": [1, "338B632269B2DAE077BCF5CC2F6BDDD843F3AF64C1762270482BB6D163F5E4FB"],
             "amount": 100000000000,
             "unbond_to": [
             	{
-            		"address": "69988763FCF806AC35D1A2F9C4885B7DD7B0599C",
+            		"address": "02AE5F611B6453922859715177B9F1294571861B",
             		"amount":  100000000000
             	}
             ]
         },
         {
-            "pub_key": [1, "1B3256A3754FC6AB01110C166199A2F619E2D76DB3EE751E376FE404AC9FDCFF"],
+            "pub_key": [1, "AFCCAF02A65546D2F728EB84853BD6041AB2CBE98655B5FE64BE67988CAB2F47"],
             "amount": 100000000000,
             "unbond_to": [
             	{
-            		"address": "69988763FCF806AC35D1A2F9C4885B7DD7B0599C",
+            		"address": "02AE5F611B6453922859715177B9F1294571861B",
             		"amount":  50000000000
             	}
             ]
         },
         {
-            "pub_key": [1, "62CF1048BAEBB4FFFF360D5E896E3F4EC72D03D55183596931ED14995D512926"],
+            "pub_key": [1, "ECBB3FFD17B050B23E63A08CC7CB7A0195D2EB2AC4E632CCCC270E7FB35C6CEF"],
             "amount": 100000000000,
             "unbond_to": [
             	{
-            		"address": "69988763FCF806AC35D1A2F9C4885B7DD7B0599C",
+            		"address": "02AE5F611B6453922859715177B9F1294571861B",
             		"amount":  50000000000
             	}
             ]
