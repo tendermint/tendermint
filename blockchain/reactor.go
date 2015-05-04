@@ -203,7 +203,7 @@ FOR_LOOP:
 			maxPending := bcR.pool.numPending == maxPendingRequests
 			maxPeerless := bcR.pool.peerless == bcR.pool.numPending
 			o, i, _ := bcR.sw.NumPeers()
-			enoughPeers := o+i > 5
+			enoughPeers := o+i >= 5
 			if maxPending && maxPeerless && enoughPeers {
 				log.Warn("Time to switch to consensus reactor!", "height", bcR.pool.height)
 				bcR.pool.Stop()
