@@ -89,6 +89,6 @@ func createAddress(creator *Account) Word256 {
 	creator.Nonce += 1
 	temp := make([]byte, 32+8)
 	copy(temp, creator.Address[:])
-	PutUint64LE(temp[32:], nonce)
+	PutUint64BE(temp[32:], nonce)
 	return LeftPadWord256(sha3.Sha3(temp)[:20])
 }

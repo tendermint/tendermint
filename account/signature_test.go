@@ -48,8 +48,8 @@ func TestBinaryDecode(t *testing.T) {
 		t.Fatalf("Failed to write Signature: %v", err)
 	}
 
-	if len(buf.Bytes()) != ed25519.SignatureSize+2 {
-		// 1 byte TypeByte, 1 byte length, 64 bytes signature bytes
+	if len(buf.Bytes()) != ed25519.SignatureSize+3 {
+		// 1 byte TypeByte, 2 bytes length, 64 bytes signature bytes
 		t.Fatalf("Unexpected signature write size: %v", len(buf.Bytes()))
 	}
 	if buf.Bytes()[0] != SignatureTypeEd25519 {

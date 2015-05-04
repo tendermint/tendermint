@@ -1,7 +1,7 @@
 {
   "accounts": [
     {
-      "address": "d7dff9806078899c8da3fe3633cc0bf3c6c2b1bb",
+      "address": "1D7A91CB32F758A02EBB9BE1FB6F8DEE56F90D42",
       "amount":  200000000
     },
     {
@@ -11,11 +11,11 @@
   ],
   "validators": [
     {
-      "pub_key": [1, "2239c21c81ea7173a6c489145490c015e05d4b97448933b708a7ec5b7b4921e3"],
+      "pub_key": [1, "06FBAC4E285285D1D91FCBC7E91C780ADA11516F67462340B3980CE2B94940E8"],
       "amount": 1000000,
       "unbond_to": [
         {
-          "address": "d7dff9806078899c8da3fe3633cc0bf3c6c2b1bb",
+          "address": "1D7A91CB32F758A02EBB9BE1FB6F8DEE56F90D42",
           "amount":  100000
         }
       ]

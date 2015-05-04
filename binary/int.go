@@ -42,7 +42,7 @@ func ReadUint8(r io.Reader, n *int64, err *error) uint8 {
 
 func WriteInt16(i int16, w io.Writer, n *int64, err *error) {
 	buf := make([]byte, 2)
-	binary.LittleEndian.PutUint16(buf, uint16(i))
+	binary.BigEndian.PutUint16(buf, uint16(i))
 	*n += 2
 	WriteTo(buf, w, n, err)
 }
@@ -50,14 +50,14 @@ func WriteInt16(i int16, w io.Writer, n *int64, err *error) {
 func ReadInt16(r io.Reader, n *int64, err *error) int16 {
 	buf := make([]byte, 2)
 	ReadFull(buf, r, n, err)
-	return int16(binary.LittleEndian.Uint16(buf))
+	return int16(binary.BigEndian.Uint16(buf))
 }
 
 // Uint16
 
 func WriteUint16(i uint16, w io.Writer, n *int64, err *error) {
 	buf := make([]byte, 2)
-	binary.LittleEndian.PutUint16(buf, uint16(i))
+	binary.BigEndian.PutUint16(buf, uint16(i))
 	*n += 2
 	WriteTo(buf, w, n, err)
 }
@@ -65,7 +65,7 @@ func WriteUint16(i uint16, w io.Writer, n *int64, err *error) {
 func ReadUint16(r io.Reader, n *int64, err *error) uint16 {
 	buf := make([]byte, 2)
 	ReadFull(buf, r, n, err)
-	return uint16(binary.LittleEndian.Uint16(buf))
+	return uint16(binary.BigEndian.Uint16(buf))
 }
 
 // []Uint16
@@ -100,7 +100,7 @@ func ReadUint16s(r io.Reader, n *int64, err *error) []uint16 {
 
 func WriteInt32(i int32, w io.Writer, n *int64, err *error) {
 	buf := make([]byte, 4)
-	binary.LittleEndian.PutUint32(buf, uint32(i))
+	binary.BigEndian.PutUint32(buf, uint32(i))
 	*n += 4
 	WriteTo(buf, w, n, err)
 }
@@ -108,14 +108,14 @@ func WriteInt32(i int32, w io.Writer, n *int64, err *error) {
 func ReadInt32(r io.Reader, n *int64, err *error) int32 {
 	buf := make([]byte, 4)
 	ReadFull(buf, r, n, err)
-	return int32(binary.LittleEndian.Uint32(buf))
+	return int32(binary.BigEndian.Uint32(buf))
 }
 
 // Uint32
 
 func WriteUint32(i uint32, w io.Writer, n *int64, err *error) {
 	buf := make([]byte, 4)
-	binary.LittleEndian.PutUint32(buf, uint32(i))
+	binary.BigEndian.PutUint32(buf, uint32(i))
 	*n += 4
 	WriteTo(buf, w, n, err)
 }
@@ -123,14 +123,14 @@ func WriteUint32(i uint32, w io.Writer, n *int64, err *error) {
 func ReadUint32(r io.Reader, n *int64, err *error) uint32 {
 	buf := make([]byte, 4)
 	ReadFull(buf, r, n, err)
-	return uint32(binary.LittleEndian.Uint32(buf))
+	return uint32(binary.BigEndian.Uint32(buf))
 }
 
 // Int64
 
 func WriteInt64(i int64, w io.Writer, n *int64, err *error) {
 	buf := make([]byte, 8)
-	binary.LittleEndian.PutUint64(buf, uint64(i))
+	binary.BigEndian.PutUint64(buf, uint64(i))
 	*n += 8
 	WriteTo(buf, w, n, err)
 }
@@ -138,14 +138,14 @@ func WriteInt64(i int64, w io.Writer, n *int64, err *error) {
 func ReadInt64(r io.Reader, n *int64, err *error) int64 {
 	buf := make([]byte, 8)
 	ReadFull(buf, r, n, err)
-	return int64(binary.LittleEndian.Uint64(buf))
+	return int64(binary.BigEndian.Uint64(buf))
 }
 
 // Uint64
 
 func WriteUint64(i uint64, w io.Writer, n *int64, err *error) {
 	buf := make([]byte, 8)
-	binary.LittleEndian.PutUint64(buf, uint64(i))
+	binary.BigEndian.PutUint64(buf, uint64(i))
 	*n += 8
 	WriteTo(buf, w, n, err)
 }
@@ -153,80 +153,110 @@ func WriteUint64(i uint64, w io.Writer, n *int64, err *error) {
 func ReadUint64(r io.Reader, n *int64, err *error) uint64 {
 	buf := make([]byte, 8)
 	ReadFull(buf, r, n, err)
-	return uint64(binary.LittleEndian.Uint64(buf))
+	return uint64(binary.BigEndian.Uint64(buf))
 }
 
 // Varint
 
+func uvarIntSize(i uint) int {
+	if i < 1<<8 {
+		return 1
+	}
+	if i < 1<<16 {
+		return 2
+	}
+	if i < 1<<24 {
+		return 3
+	}
+	if i < 1<<32 {
+		return 4
+	}
+	if i < 1<<40 {
+		return 5
+	}
+	if i < 1<<48 {
+		return 6
+	}
+	if i < 1<<56 {
+		return 7
+	}
+	return 8
+}
+
 func WriteVarint(i int, w io.Writer, n *int64, err *error) {
-	buf := make([]byte, binary.MaxVarintLen64)
-	n_ := int64(binary.PutVarint(buf, int64(i)))
-	*n += n_
-	WriteTo(buf[:n_], w, n, err)
+	var negate = false
+	if i < 0 {
+		negate = true
+		i = -i
+	}
+	var size = uvarIntSize(uint(i))
+	if negate {
+		// e.g. 0xF1 for a single negative byte
+		WriteUint8(uint8(size+0xF0), w, n, err)
+	} else {
+		WriteUint8(uint8(size), w, n, err)
+	}
+	buf := make([]byte, 8)
+	binary.BigEndian.PutUint64(buf, uint64(i))
+	WriteTo(buf[(8-size):], w, n, err)
+	*n += int64(1 + size)
 }
 
 func ReadVarint(r io.Reader, n *int64, err *error) int {
-	res, n_, err_ := readVarint(r)
-	*n += n_
-	*err = err_
-	return int(res)
+	var size = ReadUint8(r, n, err)
+	var negate = false
+	if (size >> 4) == 0xF {
+		negate = true
+		size = size & 0x0F
+	}
+	if size > 8 {
+		setFirstErr(err, errors.New("Varint overflow"))
+		return 0
+	}
+	if size == 0 {
+		setFirstErr(err, errors.New("Varint underflow"))
+		return 0
+	}
+	buf := make([]byte, 8)
+	ReadFull(buf[(8-size):], r, n, err)
+	*n += int64(1 + size)
+	var i = int(binary.BigEndian.Uint64(buf))
+	if negate {
+		return -i
+	} else {
+		return i
+	}
 }
 
 // Uvarint
 
 func WriteUvarint(i uint, w io.Writer, n *int64, err *error) {
-	buf := make([]byte, binary.MaxVarintLen64)
-	n_ := int64(binary.PutUvarint(buf, uint64(i)))
-	*n += n_
-	WriteTo(buf[:n_], w, n, err)
+	var size = uvarIntSize(i)
+	WriteUint8(uint8(size), w, n, err)
+	buf := make([]byte, 8)
+	binary.BigEndian.PutUint64(buf, uint64(i))
+	WriteTo(buf[(8-size):], w, n, err)
+	*n += int64(1 + size)
 }
 
 func ReadUvarint(r io.Reader, n *int64, err *error) uint {
-	res, n_, err_ := readUvarint(r)
-	*n += n_
-	*err = err_
-	return uint(res)
+	var size = ReadUint8(r, n, err)
+	if size > 8 {
+		setFirstErr(err, errors.New("Uvarint overflow"))
+		return 0
+	}
+	if size == 0 {
+		setFirstErr(err, errors.New("Uvarint underflow"))
+		return 0
+	}
+	buf := make([]byte, 8)
+	ReadFull(buf[(8-size):], r, n, err)
+	*n += int64(1 + size)
+	return uint(binary.BigEndian.Uint64(buf))
 }
 
-//-----------------------------------------------------------------------------
-
-var overflow = errors.New("binary: varint overflows a 64-bit integer")
-
-// Modified to return number of bytes read, from
-// http://golang.org/src/pkg/encoding/binary/varint.go?s=3652:3699#L116
-func readUvarint(r io.Reader) (uint64, int64, error) {
-	var x uint64
-	var s uint
-	var buf = make([]byte, 1)
-	for i := 0; ; i++ {
-		for {
-			n, err := r.Read(buf)
-			if err != nil {
-				return x, int64(i), err
-			}
-			if n > 0 {
-				break
-			}
-		}
-		b := buf[0]
-		if b < 0x80 {
-			if i > 9 || i == 9 && b > 1 {
-				return x, int64(i), overflow
-			}
-			return x | uint64(b)<<s, int64(i), nil
-		}
-		x |= uint64(b&0x7f) << s
-		s += 7
+func setFirstErr(err *error, newErr error) {
+	if *err == nil && newErr != nil {
+		*err = newErr
 	}
-}
-
-// Modified to return number of bytes read, from
-// http://golang.org/src/pkg/encoding/binary/varint.go?s=3652:3699#L116
-func readVarint(r io.Reader) (int64, int64, error) {
-	ux, n, err := readUvarint(r) // ok to continue in presence of error
-	x := int64(ux >> 1)
-	if ux&1 != 0 {
-		x = ^x
-	}
-	return x, n, err
 }

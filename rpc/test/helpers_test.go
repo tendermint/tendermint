@@ -28,9 +28,9 @@ var (
 
 	mempoolCount = 0
 
-	userAddr                   = "D7DFF9806078899C8DA3FE3633CC0BF3C6C2B1BB"
-	userPriv                   = "FDE3BD94CB327D19464027BA668194C5EFA46AE83E8419D7542CFF41F00C81972239C21C81EA7173A6C489145490C015E05D4B97448933B708A7EC5B7B4921E3"
-	userPub                    = "2239C21C81EA7173A6C489145490C015E05D4B97448933B708A7EC5B7B4921E3"
+	userAddr                   = "1D7A91CB32F758A02EBB9BE1FB6F8DEE56F90D42"
+	userPriv                   = "C453604BD6480D5538B4C6FD2E3E314B5BCE518D75ADE4DA3DA85AB8ADFD819606FBAC4E285285D1D91FCBC7E91C780ADA11516F67462340B3980CE2B94940E8"
+	userPub                    = "06FBAC4E285285D1D91FCBC7E91C780ADA11516F67462340B3980CE2B94940E8"
 	userByteAddr, userBytePriv = initUserBytes()
 
 	clients = map[string]cclient.Client{
@@ -193,7 +193,7 @@ func signTx(t *testing.T, typ string, fromAddr, toAddr, data []byte, key [64]byt
 
 	privAcc := account.GenPrivAccountFromKey(key)
 	if bytes.Compare(privAcc.PubKey.Address(), fromAddr) != 0 {
-		t.Fatal("Faield to generate correct priv acc")
+		t.Fatal("Failed to generate correct priv acc")
 	}
 
 	client := clients[typ]

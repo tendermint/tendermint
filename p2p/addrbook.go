@@ -623,17 +623,17 @@ func (a *AddrBook) calcNewBucket(addr, src *NetAddress) int {
 	data1 = append(data1, []byte(groupKey(addr))...)
 	data1 = append(data1, []byte(groupKey(src))...)
 	hash1 := doubleSha256(data1)
-	hash64 := binary.LittleEndian.Uint64(hash1)
+	hash64 := binary.BigEndian.Uint64(hash1)
 	hash64 %= newBucketsPerGroup
 	var hashbuf [8]byte
-	binary.LittleEndian.PutUint64(hashbuf[:], hash64)
+	binary.BigEndian.PutUint64(hashbuf[:], hash64)
 	data2 := []byte{}
 	data2 = append(data2, []byte(a.key)...)
 	data2 = append(data2, groupKey(src)...)
 	data2 = append(data2, hashbuf[:]...)
 
 	hash2 := doubleSha256(data2)
-	return int(binary.LittleEndian.Uint64(hash2) % newBucketCount)
+	return int(binary.BigEndian.Uint64(hash2) % newBucketCount)
 }
 
 // doublesha256(key + group + truncate_to_64bits(doublesha256(key + addr))%buckets_per_group) % num_buckets
@@ -642,17 +642,17 @@ func (a *AddrBook) calcOldBucket(addr *NetAddress) int {
 	data1 = append(data1, []byte(a.key)...)
 	data1 = append(data1, []byte(addr.String())...)
 	hash1 := doubleSha256(data1)
-	hash64 := binary.LittleEndian.Uint64(hash1)
+	hash64 := binary.BigEndian.Uint64(hash1)
 	hash64 %= oldBucketsPerGroup
 	var hashbuf [8]byte
-	binary.LittleEndian.PutUint64(hashbuf[:], hash64)
+	binary.BigEndian.PutUint64(hashbuf[:], hash64)
 	data2 := []byte{}
 	data2 = append(data2, []byte(a.key)...)
 	data2 = append(data2, groupKey(addr)...)
 	data2 = append(data2, hashbuf[:]...)
 
 	hash2 := doubleSha256(data2)
-	return int(binary.LittleEndian.Uint64(hash2) % oldBucketCount)
+	return int(binary.BigEndian.Uint64(hash2) % oldBucketCount)
 }
 
 // Return a string representing the network group of this address.
