@@ -241,16 +241,15 @@ func cliDownloadFile(c *cli.Context) {
 	wg := sync.WaitGroup{}
 	for i, remote := range Config.Remotes {
 		wg.Add(1)
-		go func(remote string) {
+		go func(remote string, localPath string) {
 			defer wg.Done()
-			localPath := Fmt("%v_%v", localPathPrefix, i)
 			n, err := DownloadFile(Config.PrivKey, remote, command, localPath)
 			if err != nil {
 				fmt.Printf("%v failure. %v\n", remote, err)
 			} else {
 				fmt.Printf("%v success. Wrote %v bytes to %v\n", remote, n, localPath)
 			}
-		}(remote)
+		}(remote, Fmt("%v_%v", localPathPrefix, i))
 	}
 	wg.Wait()
 }

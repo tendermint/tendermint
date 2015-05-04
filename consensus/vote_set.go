@@ -287,6 +287,6 @@ func (voteSet *VoteSet) StringShort() string {
 	}
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
-	return fmt.Sprintf(`VoteSet{H:%v R:%v T:%v %v}`,
-		voteSet.height, voteSet.round, voteSet.type_, voteSet.votesBitArray)
+	return fmt.Sprintf(`VoteSet{H:%v R:%v T:%v +2/3:%v %v}`,
+		voteSet.height, voteSet.round, voteSet.type_, voteSet.maj23Exists, voteSet.votesBitArray)
 }

@@ -1025,10 +1025,18 @@ func (cs *ConsensusState) addVote(address []byte, vote *types.Vote) (added bool,
 	switch vote.Type {
 	case types.VoteTypePrevote:
 		// Prevotes checks for height+round match.
-		return cs.Prevotes.Add(address, vote)
+		added, index, err = cs.Prevotes.Add(address, vote)
+		if added {
+			log.Debug(Fmt("Added prevote: %v", cs.Prevotes.StringShort()))
+		}
+		return
 	case types.VoteTypePrecommit:
 		// Precommits checks for height+round match.
-		return cs.Precommits.Add(address, vote)
+		added, index, err = cs.Precommits.Add(address, vote)
+		if added {
+			log.Debug(Fmt("Added precommit: %v", cs.Precommits.StringShort()))
+		}
+		return
 	case types.VoteTypeCommit:
 		if vote.Height == cs.Height {
 			// No need to check if vote.Round < cs.Round ...
@@ -1045,10 +1053,18 @@ func (cs *ConsensusState) addVote(address []byte, vote *types.Vote) (added bool,
 					cs.queueAction(RoundAction{cs.Height, cs.Round, RoundActionTryFinalize})
 				}
 			}
-			return added, index, err
+			if added {
+				log.Debug(Fmt("Added commit: %v\nprecommits: %v\nprevotes: %v",
+					cs.Commits.StringShort(),
+					cs.Precommits.StringShort(),
+					cs.Prevotes.StringShort()))
+			}
+			return
 		}
 		if vote.Height+1 == cs.Height {
-			return cs.LastCommits.Add(address, vote)
+			added, index, err = cs.LastCommits.Add(address, vote)
+			log.Debug(Fmt("Added lastCommits: %v", cs.LastCommits.StringShort()))
+			return
 		}
 		return false, 0, nil
 	default:
