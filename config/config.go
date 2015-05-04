@@ -51,7 +51,7 @@ Backend = "leveldb"
 # Dir = "~/.tendermint/data"
 
 [Log.Stdout]
-Level = "info"
+Level = "debug"
 
 [RPC.HTTP]
 # For the RPC API HTTP server.  Port required.
