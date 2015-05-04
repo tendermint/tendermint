@@ -69,6 +69,10 @@ var DefaultGenesis = `{
         {
             "address": "93E243AC8A01F723DE353A4FA1ED911529CCB6E5",
             "amount": 1049800000000000 
+        },
+        {
+            "address": "9e54c9eca9a3fd5d4496696818da17a9e17f69da",
+            "amount": 1049800000000000 
         }
     ],
     "validators": [
@@ -78,6 +82,16 @@ var DefaultGenesis = `{
             "unbond_to": [
             	{
             		"address": "93E243AC8A01F723DE353A4FA1ED911529CCB6E5",
+            		"amount":  100000000000
+            	}
+            ]
+        },
+        {
+            "pub_key": [1, "e56663353d01c58a1d4cdb4d14b70c2e3335be1ebb6c3f697af7882c03837962"],
+            "amount": 100000000000,
+            "unbond_to": [
+            	{
+            		"address": "9e54c9eca9a3fd5d4496696818da17a9e17f69da",
             		"amount":  100000000000
             	}
             ]
