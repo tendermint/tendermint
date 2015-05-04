@@ -36,7 +36,7 @@ var defaultConfig = `# This is a TOML config file.
 # For more information, see https://github.com/toml-lang/toml
 
 Moniker = "anonymous"
-Network = "tendermint_testnet3"
+Network = "tendermint_testnet4"
 ListenAddr = "0.0.0.0:46656"
 # First node to connect to.  Command-line overridable.
 SeedNode = ""
@@ -67,62 +67,58 @@ ListenAddr = "0.0.0.0:46657"
 var DefaultGenesis = `{
     "accounts": [
         {
-            "address": "02AE5F611B6453922859715177B9F1294571861B",
-            "amount": 1049800000000000 
-        },
-        {
-            "address": "D7DFF9806078899C8DA3FE3633CC0BF3C6C2B1BB",
+            "address": "93E243AC8A01F723DE353A4FA1ED911529CCB6E5",
             "amount": 1049800000000000 
         }
     ],
     "validators": [
         {
-            "pub_key": [1, "F60966A2ACF4F6F47E7705854A3A6842748B31531751EC755EABC4F248145BC6"],
+            "pub_key": [1, "9D1ACB248A713A4DC03A5546D43D12D10060E0B081B22D5731478314243C75A5"],
             "amount": 100000000000,
             "unbond_to": [
             	{
-            		"address": "02AE5F611B6453922859715177B9F1294571861B",
+            		"address": "93E243AC8A01F723DE353A4FA1ED911529CCB6E5",
             		"amount":  100000000000
             	}
             ]
         },
         {
-            "pub_key": [1, "2239C21C81EA7173A6C489145490C015E05D4B97448933B708A7EC5B7B4921E3"],
+            "pub_key": [1, "006C05174D39330324F6DEA0CE8CA263FC023331A107DD6C342B0BF1711B747D"],
             "amount": 100000000000,
             "unbond_to": [
             	{
-            		"address": "D7DFF9806078899C8DA3FE3633CC0BF3C6C2B1BB",
+            		"address": "93E243AC8A01F723DE353A4FA1ED911529CCB6E5",
             		"amount":  100000000000
             	}
             ]
         },
         {
-            "pub_key": [1, "338B632269B2DAE077BCF5CC2F6BDDD843F3AF64C1762270482BB6D163F5E4FB"],
+            "pub_key": [1, "7AEAC3C6F053893F9E7FA44AF5024DC45A7857AFA07C4166A2B210340FF3B9A3"],
             "amount": 100000000000,
             "unbond_to": [
             	{
-            		"address": "02AE5F611B6453922859715177B9F1294571861B",
+            		"address": "93E243AC8A01F723DE353A4FA1ED911529CCB6E5",
             		"amount":  100000000000
             	}
             ]
         },
         {
-            "pub_key": [1, "AFCCAF02A65546D2F728EB84853BD6041AB2CBE98655B5FE64BE67988CAB2F47"],
+            "pub_key": [1, "178EC6008A4364508979C70CBF100BD4BCBAA12DDE6251F5F486B4FD09014F06"],
             "amount": 100000000000,
             "unbond_to": [
             	{
-            		"address": "02AE5F611B6453922859715177B9F1294571861B",
-            		"amount":  50000000000
+            		"address": "93E243AC8A01F723DE353A4FA1ED911529CCB6E5",
+            		"amount":  100000000000
             	}
             ]
         },
         {
-            "pub_key": [1, "ECBB3FFD17B050B23E63A08CC7CB7A0195D2EB2AC4E632CCCC270E7FB35C6CEF"],
+            "pub_key": [1, "161F61AB54194473DD018FFFB253FD3D763A92BB97B9CA731CE1E89C2B761FFE"],
             "amount": 100000000000,
             "unbond_to": [
             	{
-            		"address": "02AE5F611B6453922859715177B9F1294571861B",
-            		"amount":  50000000000
+            		"address": "93E243AC8A01F723DE353A4FA1ED911529CCB6E5",
+            		"amount":  100000000000
             	}
             ]
         }
