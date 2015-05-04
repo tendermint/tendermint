@@ -872,5 +872,5 @@ type HasVoteMessage struct {
 }
 
 func (m *HasVoteMessage) String() string {
-	return fmt.Sprintf("[HasVote %v/%v T:%X]", m.Height, m.Round, m.Type)
+	return fmt.Sprintf("[HasVote %v/%v T:%X VI:%v]", m.Height, m.Round, m.Type, m.Index)
 }

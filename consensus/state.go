@@ -719,6 +719,7 @@ func (cs *ConsensusState) RunActionPrevote(height uint, round uint) {
 
 	// If a block is locked, prevote that.
 	if cs.LockedBlock != nil {
+		log.Debug("Block was locked")
 		cs.signAddVote(types.VoteTypePrevote, cs.LockedBlock.Hash(), cs.LockedBlockParts.Header())
 		return
 	}
@@ -761,6 +762,7 @@ func (cs *ConsensusState) RunActionPrecommit(height uint, round uint) {
 	if !ok {
 		// If we don't have two thirds of prevotes,
 		// don't do anything at all.
+		log.Info("Insufficient prevotes for precommit")
 		return
 	}
 
@@ -769,35 +771,43 @@ func (cs *ConsensusState) RunActionPrecommit(height uint, round uint) {
 
 	// If +2/3 prevoted nil. Just unlock.
 	if len(hash) == 0 {
-		cs.LockedBlock = nil
-		cs.LockedBlockParts = nil
+		if cs.LockedBlock == nil {
+			log.Info("+2/3 prevoted for nil.")
+		} else {
+			log.Info("+2/3 prevoted for nil. Unlocking")
+			cs.LockedBlock = nil
+			cs.LockedBlockParts = nil
+		}
 		return
 	}
 
 	// If +2/3 prevoted for already locked block, precommit it.
 	if cs.LockedBlock.HashesTo(hash) {
+		log.Info("+2/3 prevoted locked block.")
 		cs.signAddVote(types.VoteTypePrecommit, hash, partsHeader)
 		return
 	}
 
 	// If +2/3 prevoted for cs.ProposalBlock, lock it and precommit it.
-	if cs.ProposalBlock.HashesTo(hash) {
-		// Validate the block.
-		if err := cs.stageBlock(cs.ProposalBlock, cs.ProposalBlockParts); err != nil {
-			// Prevent zombies.
-			log.Warn("+2/3 prevoted for an invalid block", "error", err)
-			return
-		}
-		cs.LockedBlock = cs.ProposalBlock
-		cs.LockedBlockParts = cs.ProposalBlockParts
-		cs.signAddVote(types.VoteTypePrecommit, hash, partsHeader)
+	if !cs.ProposalBlock.HashesTo(hash) {
+		log.Warn("Proposal does not hash to +2/3 prevotes")
+		// We don't have the block that validators prevoted.
+		// Unlock if we're locked.
+		cs.LockedBlock = nil
+		cs.LockedBlockParts = nil
 		return
 	}
 
-	// We don't have the block that validators prevoted.
-	// Unlock if we're locked.
-	cs.LockedBlock = nil
-	cs.LockedBlockParts = nil
+	// Validate the block.
+	if err := cs.stageBlock(cs.ProposalBlock, cs.ProposalBlockParts); err != nil {
+		// Prevent zombies.
+		log.Warn("+2/3 prevoted for an invalid block", "error", err)
+		return
+	}
+
+	cs.LockedBlock = cs.ProposalBlock
+	cs.LockedBlockParts = cs.ProposalBlockParts
+	cs.signAddVote(types.VoteTypePrecommit, hash, partsHeader)
 	return
 }
 
@@ -964,6 +974,7 @@ func (cs *ConsensusState) AddProposalBlockPart(height uint, round uint, part *ty
 		var n int64
 		var err error
 		cs.ProposalBlock = binary.ReadBinary(&types.Block{}, cs.ProposalBlockParts.GetReader(), &n, &err).(*types.Block)
+		log.Debug("Received complete proposal", "hash", cs.ProposalBlock.Hash())
 		// If we're already in the commit step, try to finalize round.
 		if cs.Step == RoundStepCommit {
 			cs.queueAction(RoundAction{cs.Height, cs.Round, RoundActionTryFinalize})
