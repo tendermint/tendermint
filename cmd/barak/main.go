@@ -304,6 +304,13 @@ func ServeFile(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, "Must specify path", 400)
 		return
 	}
+	if path[0] == '.' {
+		// local paths must be explicitly local, e.g. "./xyz"
+	} else if path[0] != '/' {
+		// If not an absolute path, then is label
+		proc := barak.processes[path]
+		path = proc.OutputPath
+	}
 	file, err := os.Open(path)
 	if err != nil {
 		http.Error(w, Fmt("Error opening file: %v. %v", path, err), 400)

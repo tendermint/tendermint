@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"github.com/codegangsta/cli"
 	"io/ioutil"
+	"net/url"
 	"os"
+	"regexp"
+	"strings"
 	"sync"
 
 	acm "github.com/tendermint/tendermint/account"
@@ -12,6 +15,15 @@ import (
 	btypes "github.com/tendermint/tendermint/cmd/barak/types"
 	. "github.com/tendermint/tendermint/common"
 )
+
+func remoteNick(remote string) string {
+	u, err := url.Parse(remote)
+	if err != nil {
+		return regexp.MustCompile(`[[:^alnum:]]`).ReplaceAllString(remote, "_")
+	} else {
+		return regexp.MustCompile(`[[:^alnum:]]`).ReplaceAllString(u.Host, "_")
+	}
+}
 
 var Config = struct {
 	Remotes []string
@@ -212,7 +224,7 @@ func cliListProcesses(c *cli.Context) {
 			} else {
 				fmt.Printf("%v processes:\n", Blue(remote))
 				for _, proc := range response.Processes {
-					fmt.Printf("  \"%v\" => `%v  %v` (%v)\n", Yellow(proc.Label), proc.ExecPath, proc.Args, proc.Pid)
+					fmt.Printf("  \"%v\" => `%v  %v` (%v)\n", Yellow(proc.Label), proc.ExecPath, strings.Join(proc.Args, ","), proc.Pid)
 					fmt.Printf("     started at %v", proc.StartTime.String())
 					if proc.EndTime.IsZero() {
 						fmt.Printf(", running still\n")
@@ -238,8 +250,9 @@ func cliDownloadFile(c *cli.Context) {
 	command := btypes.CommandServeFile{
 		Path: remotePath,
 	}
+
 	wg := sync.WaitGroup{}
-	for i, remote := range Config.Remotes {
+	for _, remote := range Config.Remotes {
 		wg.Add(1)
 		go func(remote string, localPath string) {
 			defer wg.Done()
@@ -249,7 +262,7 @@ func cliDownloadFile(c *cli.Context) {
 			} else {
 				fmt.Printf("%v success. Wrote %v bytes to %v\n", remote, n, localPath)
 			}
-		}(remote, Fmt("%v_%v", localPathPrefix, i))
+		}(remote, Fmt("%v_%v", localPathPrefix, remoteNick(remote)))
 	}
 	wg.Wait()
 }
