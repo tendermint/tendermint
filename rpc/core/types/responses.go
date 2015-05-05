@@ -67,9 +67,9 @@ type Receipt struct {
 type ResponseStatus struct {
 	GenesisHash       []byte `json:"genesis_hash"`
 	Network           string `json:"network"`
-	LatestBlockHash   []byte `json:"lastest_block_hash"`
-	LatestBlockHeight uint   `json:"lastest_block_height"`
-	LatestBlockTime   int64  `json:"latest_bloick_time"` // nano
+	LatestBlockHash   []byte `json:"latest_block_hash"`
+	LatestBlockHeight uint   `json:"latest_block_height"`
+	LatestBlockTime   int64  `json:"latest_block_time"` // nano
 }
 
 type ResponseNetInfo struct {
@@ -81,7 +81,7 @@ type ResponseNetInfo struct {
 }
 
 type Peer struct {
-	types.NodeInfo `json:"net_info"`
+	types.NodeInfo `json:"node_info"`
 	IsOutbound     bool `json:"is_outbound"`
 }
 
