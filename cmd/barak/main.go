@@ -103,13 +103,17 @@ func main() {
 	// Register this barak with central listener
 	for _, registry := range barak.registries {
 		go func(registry string) {
-			resp, err := http.Get(registry + "/register")
-			if err != nil {
-				fmt.Printf("Error registering to registry %v:\n  %v\n", registry, err)
+			for {
+				resp, err := http.Get(registry + "/register")
+				if err != nil {
+					fmt.Printf("Error registering to registry %v:\n  %v\n", registry, err)
+					time.Sleep(1 * time.Hour)
+					continue
+				}
+				body, _ := ioutil.ReadAll(resp.Body)
+				fmt.Printf("Successfully registered with registry %v\n  %v\n", registry, string(body))
 				return
 			}
-			body, _ := ioutil.ReadAll(resp.Body)
-			fmt.Printf("Successfully registered with registry %v\n  %v\n", registry, string(body))
 		}(registry)
 	}
 
@@ -276,7 +280,7 @@ func ListProcesses() (*ResponseListProcesses, error) {
 // Another barak instance registering its external
 // address to a remote barak.
 func Register(w http.ResponseWriter, req *http.Request) {
-	registry, err := os.OpenFile(barak.rootDir+"/registry.log", os.O_RDWR|os.O_APPEND|os.O_CREATE, 0x600)
+	registry, err := os.OpenFile(barak.rootDir+"/registry.log", os.O_RDWR|os.O_APPEND|os.O_CREATE, 0600)
 	if err != nil {
 		http.Error(w, "Could not open registry file. Please contact the administrator", 500)
 		return

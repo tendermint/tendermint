@@ -1,0 +1,16 @@
+debugging this thing.
+Why doesn't the network boot up quicker?
+Why does the VI:0 Precommit for height 1 not come around after round 1 and before round 6?
+ [Vote VI:0 V:Precommit{1/0 4B634C4301EA#PartSet{T:1 67344F9BB237} 9974E3F32592}]
+ [Vote VI:0 V:Precommit{1/1 4B634C4301EA#PartSet{T:1 67344F9BB237} B600DBFA00B3}]
+ [Vote VI:0 V:Precommit{1/6 4B634C4301EA#PartSet{T:1 67344F9BB237} 2C51D4B6047C}]
+
+Yet blackshadow did send a Prevote for 1/2 to whiteferret...
+DBUG[05-04|14:19:36] Send module=p2p channel=22 connection=MConn{162.243.85.60:52630} msg="[Vote VI:0 V:Prevote{1/2 4B634C4301EA#PartSet{T:1 67344F9BB237} 2CFCF951C4D9}]"
+
+Why did blackshadow not send Prevote{1/2} to any other peer?
+Did whiteferret not broadcast the Prevote to anyone else?
+What is the capacity of our buffers? (the defaultSendQueueCapcity for the VotesCh is 1. Oops)
+
+Blackshadow was locked, so it did:
+INFO[05-04|14:19:36] Signed and added vote module=consensus height=1 round=2 vote="Prevote{1/2 4B634C4301EA#PartSet{T:1 67344F9BB237} 2CFCF951C4D9}"
