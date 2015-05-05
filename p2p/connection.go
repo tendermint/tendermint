@@ -192,13 +192,15 @@ func (c *MConnection) Send(chId byte, msg interface{}) bool {
 	}
 
 	success := channel.sendBytes(binary.BinaryBytes(msg))
-
-	// Wake up sendRoutine if necessary
-	select {
-	case c.send <- struct{}{}:
-	default:
+	if success {
+		// Wake up sendRoutine if necessary
+		select {
+		case c.send <- struct{}{}:
+		default:
+		}
+	} else {
+		log.Warn("Send failed", "channel", chId, "connection", c, "msg", msg)
 	}
-
 	return success
 }
 

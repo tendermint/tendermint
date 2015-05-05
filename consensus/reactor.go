@@ -418,6 +418,10 @@ OUTER_LOOP:
 }
 
 func (conR *ConsensusReactor) gossipVotesRoutine(peer *p2p.Peer, ps *PeerState) {
+
+	// Simple hack to throttle logs upon sleep.
+	var sleeping = 0
+
 OUTER_LOOP:
 	for {
 		// Manage disconnects from self or peer.
@@ -427,6 +431,13 @@ OUTER_LOOP:
 		}
 		rs := conR.conS.GetRoundState()
 		prs := ps.GetRoundState()
+
+		switch sleeping {
+		case 1: // First sleep
+			sleeping = 2
+		case 2: // No more sleep
+			sleeping = 0
+		}
 
 		trySendVote := func(voteSet *VoteSet, peerVoteSet BitArray) (sent bool) {
 			if prs.Height == voteSet.Height() {
@@ -547,7 +558,15 @@ OUTER_LOOP:
 			}
 		}
 
-		// We sent nothing. Sleep...
+		if sleeping == 0 {
+			// We sent nothing. Sleep...
+			sleeping = 1
+			log.Debug("No votes to send, sleeping", "peer", peer)
+		} else if sleeping == 2 {
+			// Continued sleep...
+			sleeping = 1
+		}
+
 		time.Sleep(peerGossipSleepDuration)
 		continue OUTER_LOOP
 	}
