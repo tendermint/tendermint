@@ -71,5 +71,5 @@ func (vote *Vote) String() string {
 		panic("Unknown vote type")
 	}
 
-	return fmt.Sprintf("%v{%v/%v %X#%v %v}", typeString, vote.Height, vote.Round, Fingerprint(vote.BlockHash), vote.BlockParts, vote.Signature)
+	return fmt.Sprintf("Vote{%v/%02d/%v(%v) %X#%v %v}", vote.Height, vote.Round, vote.Type, typeString, Fingerprint(vote.BlockHash), vote.BlockParts, vote.Signature)
 }
