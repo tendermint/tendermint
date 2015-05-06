@@ -564,7 +564,10 @@ OUTER_LOOP:
 		if sleeping == 0 {
 			// We sent nothing. Sleep...
 			sleeping = 1
-			log.Debug("No votes to send, sleeping", "peer", peer)
+			log.Debug("No votes to send, sleeping", "peer", peer,
+				"localPV", rs.Prevotes.BitArray(), "peerPV", prs.Prevotes,
+				"localPC", rs.Precommits.BitArray(), "peerPC", prs.Precommits,
+				"localCM", rs.Commits.BitArray(), "peerCM", prs.Commits)
 		} else if sleeping == 2 {
 			// Continued sleep...
 			sleeping = 1

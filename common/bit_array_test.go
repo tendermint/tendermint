@@ -104,3 +104,17 @@ func TestSub2(t *testing.T) {
 		}
 	}
 }
+
+func TestPickRandom(t *testing.T) {
+	for idx := 0; idx < 123; idx++ {
+		bA1 := NewBitArray(123)
+		bA1.SetIndex(uint(idx), true)
+		index, ok := bA1.PickRandom()
+		if !ok {
+			t.Fatal("Expected to pick element but got none")
+		}
+		if index != uint(idx) {
+			t.Fatalf("Expected to pick element at %v but got wrong index", idx)
+		}
+	}
+}
