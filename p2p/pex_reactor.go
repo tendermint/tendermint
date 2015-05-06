@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"math/rand"
 	"reflect"
 	"sync/atomic"
 	"time"
@@ -130,6 +131,9 @@ func (pexR *PEXReactor) SendAddrs(peer *Peer, addrs []*NetAddress) {
 
 // Ensures that sufficient peers are connected. (continuous)
 func (pexR *PEXReactor) ensurePeersRoutine() {
+	// Randomize when routine starts
+	time.Sleep(time.Duration(rand.Int63n(500*ensurePeersPeriodSeconds)) * time.Millisecond)
+
 	// fire once immediately.
 	pexR.ensurePeers()
 	// fire periodically

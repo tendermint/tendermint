@@ -95,6 +95,10 @@ func RandUint64Exp() uint64 {
 	return n
 }
 
+func RandFloat32() float32 {
+	return rand.Float32()
+}
+
 func RandTime() time.Time {
 	return time.Unix(int64(RandUint64Exp()), 0)
 }

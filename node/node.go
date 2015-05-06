@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	bc "github.com/tendermint/tendermint/blockchain"
 	. "github.com/tendermint/tendermint/common"
@@ -152,6 +153,7 @@ func (n *Node) AddListener(l p2p.Listener) {
 	n.book.AddOurAddress(l.ExternalAddress())
 }
 
+// NOTE: Blocking
 func (n *Node) DialSeed() {
 	// if the single seed node is available, use only it
 	prioritySeed := config.App().GetString("SeedNode")
@@ -161,14 +163,16 @@ func (n *Node) DialSeed() {
 		return
 	}
 
-	// permute the list, dial half of them
+	// permute the list, dial them in random order.
 	seeds := config.App().GetStringSlice("SeedNodes")
 	perm := rand.Perm(len(seeds))
-	// TODO: we shouldn't necessarily connect to all of them every time ...
 	for i := 0; i < len(perm); i++ {
-		j := perm[i]
-		addr := p2p.NewNetAddressString(seeds[j])
-		n.dialSeed(addr)
+		go func(i int) {
+			time.Sleep(time.Duration(rand.Int63n(3000)) * time.Millisecond)
+			j := perm[i]
+			addr := p2p.NewNetAddressString(seeds[j])
+			n.dialSeed(addr)
+		}(i)
 	}
 }
 
