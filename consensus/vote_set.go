@@ -73,6 +73,7 @@ func (voteSet *VoteSet) Size() uint {
 // True if added, false if not.
 // Returns ErrVote[UnexpectedStep|InvalidAccount|InvalidSignature|InvalidBlockHash|ConflictingSignature]
 // NOTE: vote should not be mutated after adding.
+// Returns the validator index of the vote unless error is set.
 func (voteSet *VoteSet) Add(address []byte, vote *types.Vote) (bool, uint, error) {
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
@@ -104,9 +105,9 @@ func (voteSet *VoteSet) addVote(valIndex uint, vote *types.Vote) (bool, uint, er
 	// If vote already exists, return false.
 	if existingVote := voteSet.votes[valIndex]; existingVote != nil {
 		if bytes.Equal(existingVote.BlockHash, vote.BlockHash) {
-			return false, 0, nil
+			return false, valIndex, nil
 		} else {
-			return false, 0, &types.ErrVoteConflictingSignature{
+			return false, valIndex, &types.ErrVoteConflictingSignature{
 				VoteA: existingVote,
 				VoteB: vote,
 			}
