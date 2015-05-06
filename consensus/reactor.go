@@ -886,7 +886,7 @@ type VoteMessage struct {
 }
 
 func (m *VoteMessage) String() string {
-	return fmt.Sprintf("[Vote VI:%v V:%v]", m.ValidatorIndex, m.Vote)
+	return fmt.Sprintf("[Vote VI:%v V:%v VI:%v]", m.ValidatorIndex, m.Vote, m.ValidatorIndex)
 }
 
 //-------------------------------------
@@ -899,5 +899,5 @@ type HasVoteMessage struct {
 }
 
 func (m *HasVoteMessage) String() string {
-	return fmt.Sprintf("[HasVote VI:%v V:Vote{%v/%02d/%v}]", m.Index, m.Height, m.Round, m.Type)
+	return fmt.Sprintf("[HasVote VI:%v V:{%v/%02d/%v} VI:%v]", m.Index, m.Height, m.Round, m.Type, m.Index)
 }
