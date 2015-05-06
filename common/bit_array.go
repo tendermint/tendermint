@@ -13,30 +13,26 @@ type BitArray struct {
 	Elems []uint64 // NOTE: persisted via reflect, must be exported
 }
 
-func NewBitArray(bits uint) BitArray {
-	return BitArray{
+func NewBitArray(bits uint) *BitArray {
+	return &BitArray{
 		Bits:  bits,
 		Elems: make([]uint64, (bits+63)/64),
 	}
 }
 
-func (bA BitArray) Size() uint {
+func (bA *BitArray) Size() uint {
 	return bA.Bits
 }
 
-func (bA BitArray) IsZero() bool {
-	return bA.Bits == 0
-}
-
 // NOTE: behavior is undefined if i >= bA.Bits
-func (bA BitArray) GetIndex(i uint) bool {
+func (bA *BitArray) GetIndex(i uint) bool {
 	bA.mtx.Lock()
 	defer bA.mtx.Unlock()
 
 	return bA.getIndex(i)
 }
 
-func (bA BitArray) getIndex(i uint) bool {
+func (bA *BitArray) getIndex(i uint) bool {
 	if i >= bA.Bits {
 		return false
 	}
@@ -44,15 +40,14 @@ func (bA BitArray) getIndex(i uint) bool {
 }
 
 // NOTE: behavior is undefined if i >= bA.Bits
-func (bA BitArray) SetIndex(i uint, v bool) bool {
+func (bA *BitArray) SetIndex(i uint, v bool) bool {
 	bA.mtx.Lock()
 	defer bA.mtx.Unlock()
 
 	return bA.setIndex(i, v)
 }
 
-func (bA BitArray) setIndex(i uint, v bool) bool {
-
+func (bA *BitArray) setIndex(i uint, v bool) bool {
 	if i >= bA.Bits {
 		return false
 	}
@@ -64,32 +59,32 @@ func (bA BitArray) setIndex(i uint, v bool) bool {
 	return true
 }
 
-func (bA BitArray) Copy() BitArray {
+func (bA *BitArray) Copy() *BitArray {
 	bA.mtx.Lock()
 	defer bA.mtx.Unlock()
 	return bA.copy()
 }
 
-func (bA BitArray) copy() BitArray {
+func (bA *BitArray) copy() *BitArray {
 	c := make([]uint64, len(bA.Elems))
 	copy(c, bA.Elems)
-	return BitArray{
+	return &BitArray{
 		Bits:  bA.Bits,
 		Elems: c,
 	}
 }
 
-func (bA BitArray) copyBits(bits uint) BitArray {
+func (bA *BitArray) copyBits(bits uint) *BitArray {
 	c := make([]uint64, (bits+63)/64)
 	copy(c, bA.Elems)
-	return BitArray{
+	return &BitArray{
 		Bits:  bits,
 		Elems: c,
 	}
 }
 
 // Returns a BitArray of larger bits size.
-func (bA BitArray) Or(o BitArray) BitArray {
+func (bA *BitArray) Or(o *BitArray) *BitArray {
 	bA.mtx.Lock()
 	defer bA.mtx.Unlock()
 
@@ -101,14 +96,14 @@ func (bA BitArray) Or(o BitArray) BitArray {
 }
 
 // Returns a BitArray of smaller bit size.
-func (bA BitArray) And(o BitArray) BitArray {
+func (bA *BitArray) And(o *BitArray) *BitArray {
 	bA.mtx.Lock()
 	defer bA.mtx.Unlock()
 
 	return bA.and(o)
 }
 
-func (bA BitArray) and(o BitArray) BitArray {
+func (bA *BitArray) and(o *BitArray) *BitArray {
 	c := bA.copyBits(MinUint(bA.Bits, o.Bits))
 	for i := 0; i < len(c.Elems); i++ {
 		c.Elems[i] &= o.Elems[i]
@@ -116,7 +111,7 @@ func (bA BitArray) and(o BitArray) BitArray {
 	return c
 }
 
-func (bA BitArray) Not() BitArray {
+func (bA *BitArray) Not() *BitArray {
 	bA.mtx.Lock()
 	defer bA.mtx.Unlock()
 
@@ -127,7 +122,7 @@ func (bA BitArray) Not() BitArray {
 	return c
 }
 
-func (bA BitArray) Sub(o BitArray) BitArray {
+func (bA *BitArray) Sub(o *BitArray) *BitArray {
 	bA.mtx.Lock()
 	defer bA.mtx.Unlock()
 
@@ -148,7 +143,7 @@ func (bA BitArray) Sub(o BitArray) BitArray {
 	}
 }
 
-func (bA BitArray) IsFull() bool {
+func (bA *BitArray) IsFull() bool {
 	bA.mtx.Lock()
 	defer bA.mtx.Unlock()
 
@@ -169,7 +164,7 @@ func (bA BitArray) IsFull() bool {
 	return (lastElem+1)&((uint64(1)<<lastElemBits)-1) == 0
 }
 
-func (bA BitArray) PickRandom() (uint, bool) {
+func (bA *BitArray) PickRandom() (uint, bool) {
 	bA.mtx.Lock()
 	defer bA.mtx.Unlock()
 
@@ -209,20 +204,23 @@ func (bA BitArray) PickRandom() (uint, bool) {
 	return 0, false
 }
 
-func (bA BitArray) String() string {
+func (bA *BitArray) String() string {
+	if bA == nil {
+		return "nil-BitArray"
+	}
 	bA.mtx.Lock()
 	defer bA.mtx.Unlock()
 
 	return bA.stringIndented("")
 }
 
-func (bA BitArray) StringIndented(indent string) string {
+func (bA *BitArray) StringIndented(indent string) string {
 	bA.mtx.Lock()
 	defer bA.mtx.Unlock()
 	return bA.StringIndented(indent)
 }
 
-func (bA BitArray) stringIndented(indent string) string {
+func (bA *BitArray) stringIndented(indent string) string {
 
 	lines := []string{}
 	bits := ""

@@ -442,7 +442,7 @@ OUTER_LOOP:
 			sleeping = 0
 		}
 
-		trySendVote := func(voteSet *VoteSet, peerVoteSet BitArray) (sent bool) {
+		trySendVote := func(voteSet *VoteSet, peerVoteSet *BitArray) (sent bool) {
 			if prs.Height == voteSet.Height() {
 				// Initialize Prevotes/Precommits/Commits if needed
 				ps.EnsureVoteBitArrays(prs.Height, voteSet.Size())
@@ -460,7 +460,7 @@ OUTER_LOOP:
 			return false
 		}
 
-		trySendCommitFromValidation := func(blockMeta *types.BlockMeta, validation *types.Validation, peerVoteSet BitArray) (sent bool) {
+		trySendCommitFromValidation := func(blockMeta *types.BlockMeta, validation *types.Validation, peerVoteSet *BitArray) (sent bool) {
 			// Initialize Commits if needed
 			ps.EnsureVoteBitArrays(prs.Height, uint(len(validation.Commits)))
 
@@ -588,13 +588,13 @@ type PeerRoundState struct {
 	StartTime             time.Time           // Estimated start of round 0 at this height
 	Proposal              bool                // True if peer has proposal for this round
 	ProposalBlockParts    types.PartSetHeader //
-	ProposalBlockBitArray BitArray            // True bit -> has part
+	ProposalBlockBitArray *BitArray           // True bit -> has part
 	ProposalPOLParts      types.PartSetHeader //
-	ProposalPOLBitArray   BitArray            // True bit -> has part
-	Prevotes              BitArray            // All votes peer has for this round
-	Precommits            BitArray            // All precommits peer has for this round
-	Commits               BitArray            // All commits peer has for this height
-	LastCommits           BitArray            // All commits peer has for last height
+	ProposalPOLBitArray   *BitArray           // True bit -> has part
+	Prevotes              *BitArray           // All votes peer has for this round
+	Precommits            *BitArray           // All precommits peer has for this round
+	Commits               *BitArray           // All commits peer has for this height
+	LastCommits           *BitArray           // All commits peer has for last height
 	HasAllCatchupCommits  bool                // Used for catch-up
 }
 
@@ -606,12 +606,14 @@ var (
 )
 
 type PeerState struct {
+	Key string
+
 	mtx sync.Mutex
 	PeerRoundState
 }
 
 func NewPeerState(peer *p2p.Peer) *PeerState {
-	return &PeerState{}
+	return &PeerState{Key: peer.Key}
 }
 
 // Returns an atomic snapshot of the PeerRoundState.
@@ -672,13 +674,13 @@ func (ps *PeerState) EnsureVoteBitArrays(height uint, numValidators uint) {
 		return
 	}
 
-	if ps.Prevotes.IsZero() {
+	if ps.Prevotes == nil {
 		ps.Prevotes = NewBitArray(numValidators)
 	}
-	if ps.Precommits.IsZero() {
+	if ps.Precommits == nil {
 		ps.Precommits = NewBitArray(numValidators)
 	}
-	if ps.Commits.IsZero() {
+	if ps.Commits == nil {
 		ps.Commits = NewBitArray(numValidators)
 	}
 }
@@ -694,6 +696,7 @@ func (ps *PeerState) setHasVote(height uint, round uint, type_ byte, index uint)
 	if ps.Height == height+1 && type_ == types.VoteTypeCommit {
 		// Special case for LastCommits.
 		ps.LastCommits.SetIndex(index, true)
+		log.Debug("SetHasVote", "lastCommits", ps.LastCommits, "index", index)
 		return
 	} else if ps.Height != height {
 		// Does not apply.
@@ -703,14 +706,17 @@ func (ps *PeerState) setHasVote(height uint, round uint, type_ byte, index uint)
 	switch type_ {
 	case types.VoteTypePrevote:
 		ps.Prevotes.SetIndex(index, true)
+		log.Debug("SetHasVote", "peer", ps.Key, "prevotes", ps.Prevotes, "index", index)
 	case types.VoteTypePrecommit:
 		ps.Precommits.SetIndex(index, true)
+		log.Debug("SetHasVote", "peer", ps.Key, "precommits", ps.Precommits, "index", index)
 	case types.VoteTypeCommit:
 		if round < ps.Round {
 			ps.Prevotes.SetIndex(index, true)
 			ps.Precommits.SetIndex(index, true)
 		}
 		ps.Commits.SetIndex(index, true)
+		log.Debug("SetHasVote", "peer", ps.Key, "commits", ps.Commits, "index", index)
 	default:
 		panic("Invalid vote type")
 	}
@@ -744,22 +750,22 @@ func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage, rs *Roun
 	if psHeight != msg.Height || psRound != msg.Round {
 		ps.Proposal = false
 		ps.ProposalBlockParts = types.PartSetHeader{}
-		ps.ProposalBlockBitArray = BitArray{}
+		ps.ProposalBlockBitArray = nil
 		ps.ProposalPOLParts = types.PartSetHeader{}
-		ps.ProposalPOLBitArray = BitArray{}
+		ps.ProposalPOLBitArray = nil
 		// We'll update the BitArray capacity later.
-		ps.Prevotes = BitArray{}
-		ps.Precommits = BitArray{}
+		ps.Prevotes = nil
+		ps.Precommits = nil
 	}
 	if psHeight != msg.Height {
 		// Shift Commits to LastCommits
 		if psHeight+1 == msg.Height {
 			ps.LastCommits = ps.Commits
 		} else {
-			ps.LastCommits = BitArray{}
+			ps.LastCommits = nil
 		}
 		// We'll update the BitArray capacity later.
-		ps.Commits = BitArray{}
+		ps.Commits = nil
 		ps.HasAllCatchupCommits = false
 	}
 }
@@ -842,7 +848,7 @@ func (m *NewRoundStepMessage) String() string {
 type CommitStepMessage struct {
 	Height        uint
 	BlockParts    types.PartSetHeader
-	BlockBitArray BitArray
+	BlockBitArray *BitArray
 }
 
 func (m *CommitStepMessage) String() string {

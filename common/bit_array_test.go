@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func randBitArray(bits uint) (BitArray, []byte) {
+func randBitArray(bits uint) (*BitArray, []byte) {
 	src := RandBytes(int((bits + 7) / 8))
 	bA := NewBitArray(bits)
 	for i := uint(0); i < uint(len(src)); i++ {

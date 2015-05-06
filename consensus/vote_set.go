@@ -26,7 +26,7 @@ type VoteSet struct {
 	mtx           sync.Mutex
 	valSet        *sm.ValidatorSet
 	votes         []*types.Vote     // validator index -> vote
-	votesBitArray BitArray          // validator index -> has vote?
+	votesBitArray *BitArray         // validator index -> has vote?
 	votesByBlock  map[string]uint64 // string(blockHash)+string(blockParts) -> vote sum.
 	totalVotes    uint64
 	maj23Hash     []byte
@@ -148,9 +148,9 @@ func (voteSet *VoteSet) AddFromCommits(commits *VoteSet) {
 	}
 }
 
-func (voteSet *VoteSet) BitArray() BitArray {
+func (voteSet *VoteSet) BitArray() *BitArray {
 	if voteSet == nil {
-		return BitArray{}
+		return nil
 	}
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()

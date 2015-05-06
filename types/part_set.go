@@ -97,7 +97,7 @@ type PartSet struct {
 
 	mtx           sync.Mutex
 	parts         []*Part
-	partsBitArray BitArray
+	partsBitArray *BitArray
 	count         uint
 }
 
@@ -162,7 +162,7 @@ func (ps *PartSet) HasHeader(header PartSetHeader) bool {
 	}
 }
 
-func (ps *PartSet) BitArray() BitArray {
+func (ps *PartSet) BitArray() *BitArray {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 	return ps.partsBitArray.Copy()

@@ -201,7 +201,7 @@ type Validation struct {
 
 	// Volatile
 	hash     []byte
-	bitArray BitArray
+	bitArray *BitArray
 }
 
 func (v *Validation) ValidateBasic() error {
@@ -254,8 +254,8 @@ func (v *Validation) StringIndented(indent string) string {
 		indent, v.hash)
 }
 
-func (v *Validation) BitArray() BitArray {
-	if v.bitArray.IsZero() {
+func (v *Validation) BitArray() *BitArray {
+	if v.bitArray == nil {
 		v.bitArray = NewBitArray(uint(len(v.Commits)))
 		for i, commit := range v.Commits {
 			v.bitArray.SetIndex(uint(i), !commit.IsZero())
