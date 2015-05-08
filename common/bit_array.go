@@ -21,14 +21,19 @@ func NewBitArray(bits uint) *BitArray {
 }
 
 func (bA *BitArray) Size() uint {
+	if bA == nil {
+		return 0
+	}
 	return bA.Bits
 }
 
 // NOTE: behavior is undefined if i >= bA.Bits
 func (bA *BitArray) GetIndex(i uint) bool {
+	if bA == nil {
+		return false
+	}
 	bA.mtx.Lock()
 	defer bA.mtx.Unlock()
-
 	return bA.getIndex(i)
 }
 
@@ -41,9 +46,11 @@ func (bA *BitArray) getIndex(i uint) bool {
 
 // NOTE: behavior is undefined if i >= bA.Bits
 func (bA *BitArray) SetIndex(i uint, v bool) bool {
+	if bA == nil {
+		return false
+	}
 	bA.mtx.Lock()
 	defer bA.mtx.Unlock()
-
 	return bA.setIndex(i, v)
 }
 
@@ -60,6 +67,9 @@ func (bA *BitArray) setIndex(i uint, v bool) bool {
 }
 
 func (bA *BitArray) Copy() *BitArray {
+	if bA == nil {
+		return nil
+	}
 	bA.mtx.Lock()
 	defer bA.mtx.Unlock()
 	return bA.copy()
@@ -85,9 +95,11 @@ func (bA *BitArray) copyBits(bits uint) *BitArray {
 
 // Returns a BitArray of larger bits size.
 func (bA *BitArray) Or(o *BitArray) *BitArray {
+	if bA == nil {
+		o.Copy()
+	}
 	bA.mtx.Lock()
 	defer bA.mtx.Unlock()
-
 	c := bA.copyBits(MaxUint(bA.Bits, o.Bits))
 	for i := 0; i < len(c.Elems); i++ {
 		c.Elems[i] |= o.Elems[i]
@@ -97,9 +109,11 @@ func (bA *BitArray) Or(o *BitArray) *BitArray {
 
 // Returns a BitArray of smaller bit size.
 func (bA *BitArray) And(o *BitArray) *BitArray {
+	if bA == nil {
+		return nil
+	}
 	bA.mtx.Lock()
 	defer bA.mtx.Unlock()
-
 	return bA.and(o)
 }
 
@@ -112,9 +126,11 @@ func (bA *BitArray) and(o *BitArray) *BitArray {
 }
 
 func (bA *BitArray) Not() *BitArray {
+	if bA == nil {
+		return nil // Degenerate
+	}
 	bA.mtx.Lock()
 	defer bA.mtx.Unlock()
-
 	c := bA.copy()
 	for i := 0; i < len(c.Elems); i++ {
 		c.Elems[i] = ^c.Elems[i]
@@ -123,9 +139,11 @@ func (bA *BitArray) Not() *BitArray {
 }
 
 func (bA *BitArray) Sub(o *BitArray) *BitArray {
+	if bA == nil {
+		return nil
+	}
 	bA.mtx.Lock()
 	defer bA.mtx.Unlock()
-
 	if bA.Bits > o.Bits {
 		c := bA.copy()
 		for i := 0; i < len(o.Elems)-1; i++ {
@@ -139,11 +157,14 @@ func (bA *BitArray) Sub(o *BitArray) *BitArray {
 		}
 		return c
 	} else {
-		return bA.and(o.Not())
+		return bA.and(o.Not()) // Note degenerate case where o == nil
 	}
 }
 
 func (bA *BitArray) IsFull() bool {
+	if bA == nil {
+		return true
+	}
 	bA.mtx.Lock()
 	defer bA.mtx.Unlock()
 
@@ -165,6 +186,9 @@ func (bA *BitArray) IsFull() bool {
 }
 
 func (bA *BitArray) PickRandom() (uint, bool) {
+	if bA == nil {
+		return 0, false
+	}
 	bA.mtx.Lock()
 	defer bA.mtx.Unlock()
 
@@ -210,14 +234,16 @@ func (bA *BitArray) String() string {
 	}
 	bA.mtx.Lock()
 	defer bA.mtx.Unlock()
-
 	return bA.stringIndented("")
 }
 
 func (bA *BitArray) StringIndented(indent string) string {
+	if bA == nil {
+		return "nil-BitArray"
+	}
 	bA.mtx.Lock()
 	defer bA.mtx.Unlock()
-	return bA.StringIndented(indent)
+	return bA.stringIndented(indent)
 }
 
 func (bA *BitArray) stringIndented(indent string) string {

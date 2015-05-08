@@ -433,7 +433,6 @@ OUTER_LOOP:
 			return
 		}
 		rs := conR.conS.GetRoundState()
-		ps.EnsureVoteBitArrays(rs.Height, rs.Validators.Size())
 		prs := ps.GetRoundState()
 
 		switch sleeping {
@@ -443,7 +442,14 @@ OUTER_LOOP:
 			sleeping = 0
 		}
 
-		trySendVote := func(voteSet *VoteSet, peerVoteSet *BitArray) (sent bool) {
+		// Returns true when useful work was done.
+		trySendVote := func(height uint, voteSet *VoteSet, peerVoteSet *BitArray) (sent bool) {
+			if voteSet == nil {
+				return false
+			} else if peerVoteSet == nil {
+				ps.EnsureVoteBitArrays(height, voteSet.Size())
+				return true
+			}
 			// TODO: give priority to our vote.
 			if index, ok := voteSet.BitArray().Sub(peerVoteSet.Copy()).PickRandom(); ok {
 				vote := voteSet.GetByIndex(index)
@@ -456,7 +462,14 @@ OUTER_LOOP:
 			return false
 		}
 
+		// Returns true when useful work was done.
 		trySendCommitFromValidation := func(blockMeta *types.BlockMeta, validation *types.Validation, peerVoteSet *BitArray) (sent bool) {
+			if validation == nil {
+				return false
+			} else if peerVoteSet == nil {
+				ps.EnsureVoteBitArrays(blockMeta.Header.Height, uint(len(validation.Commits)))
+				return true
+			}
 			if index, ok := validation.BitArray().Sub(prs.Commits.Copy()).PickRandom(); ok {
 				commit := validation.Commits[index]
 				log.Debug("Picked commit to send", "index", index, "commit", commit)
@@ -482,31 +495,27 @@ OUTER_LOOP:
 
 			// If there are lastcommits to send...
 			if prs.Round == 0 && prs.Step == RoundStepNewHeight {
-				if prs.LastCommits != nil && rs.LastCommits != nil {
-					if prs.LastCommits.Size() == rs.LastCommits.Size() {
-						if trySendVote(rs.LastCommits, prs.LastCommits) {
-							continue OUTER_LOOP
-						}
-					}
+				if trySendVote(rs.Height-1, rs.LastCommits, prs.LastCommits) {
+					continue OUTER_LOOP
 				}
 			}
 
 			// If there are prevotes to send...
 			if rs.Round == prs.Round && prs.Step <= RoundStepPrevote {
-				if trySendVote(rs.Prevotes, prs.Prevotes) {
+				if trySendVote(rs.Height, rs.Prevotes, prs.Prevotes) {
 					continue OUTER_LOOP
 				}
 			}
 
 			// If there are precommits to send...
 			if rs.Round == prs.Round && prs.Step <= RoundStepPrecommit {
-				if trySendVote(rs.Precommits, prs.Precommits) {
+				if trySendVote(rs.Height, rs.Precommits, prs.Precommits) {
 					continue OUTER_LOOP
 				}
 			}
 
 			// If there are any commits to send...
-			if trySendVote(rs.Commits, prs.Commits) {
+			if trySendVote(rs.Height, rs.Commits, prs.Commits) {
 				continue OUTER_LOOP
 			}
 		}
@@ -517,7 +526,7 @@ OUTER_LOOP:
 			// If peer is lagging by height 1, match our LastCommits or SeenValidation to peer's Commits.
 			if rs.Height == prs.Height+1 && rs.LastCommits.Size() > 0 {
 				// If there are lastcommits to send...
-				if trySendVote(rs.LastCommits, prs.Commits) {
+				if trySendVote(prs.Height, rs.LastCommits, prs.Commits) {
 					continue OUTER_LOOP
 				} else {
 					ps.SetHasAllCatchupCommits(prs.Height)
@@ -665,18 +674,20 @@ func (ps *PeerState) EnsureVoteBitArrays(height uint, numValidators uint) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
-	if ps.Height != height {
-		return
-	}
-
-	if ps.Prevotes == nil {
-		ps.Prevotes = NewBitArray(numValidators)
-	}
-	if ps.Precommits == nil {
-		ps.Precommits = NewBitArray(numValidators)
-	}
-	if ps.Commits == nil {
-		ps.Commits = NewBitArray(numValidators)
+	if ps.Height == height {
+		if ps.Prevotes == nil {
+			ps.Prevotes = NewBitArray(numValidators)
+		}
+		if ps.Precommits == nil {
+			ps.Precommits = NewBitArray(numValidators)
+		}
+		if ps.Commits == nil {
+			ps.Commits = NewBitArray(numValidators)
+		}
+	} else if ps.Height == height+1 {
+		if ps.LastCommits == nil {
+			ps.LastCommits = NewBitArray(numValidators)
+		}
 	}
 }
 
