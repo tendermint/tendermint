@@ -43,12 +43,14 @@ func AtomicWriteFile(filePath string, newBytes []byte) error {
 			return fmt.Errorf("Failed to write file %v. %v", filePath+".bak", err)
 		}
 	}
-	// Write newBytes to filePath.
-	err := ioutil.WriteFile(filePath, newBytes, 0600)
+	// Write newBytes to filePath.new
+	err := ioutil.WriteFile(filePath+".new", newBytes, 0600)
 	if err != nil {
-		return fmt.Errorf("Failed to write file %v. %v", filePath, err)
+		return fmt.Errorf("Failed to write file %v. %v", filePath+".new", err)
 	}
-	return nil
+	// Move filePath.new to filePath
+	err = os.Rename(filePath+".new", filePath)
+	return err
 }
 
 func EnsureDir(dir string) error {
