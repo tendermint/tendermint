@@ -46,23 +46,8 @@ Don't use `apt-get install golang`, it's still on an old version.
 
 ### Install/Update Tendermint
 
-    #!/bin/bash
-    # Run this as tmuser user
-    # This part is for installing Tendermint
+    go install github.com/tendermint/tendermint/cmd/tendermint # install
+    go get -u github.com/tendermint/tendermint/cmd/tendermint  # update
 
-    if [ `whoami` != "root" ];
-    then
-      cd
-      source /home/tmuser/.bashrc
-      rm -rf $GOPATH/src/github.com/tendermint/tendermint
-      go get github.com/tendermint/tendermint
 
-      cd $GOPATH/src/github.com/tendermint/tendermint
-      git checkout develop
-      git pull 
-      make
-    else
-      echo "should not be root to run update_tendermint.sh"
-    fi
-
-Finally, head back to [Developer Quick Start](https://github.com/tendermint/tendermint/wiki/Developer-Quick-Start) to compile and run Tendermint.
+Check out the [Developer Quick Start](https://github.com/tendermint/tendermint/wiki/Developer-Quick-Start) to learn more.

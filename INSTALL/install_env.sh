@@ -8,4 +8,3 @@ useradd tmuser -d /home/tmuser
 usermod -aG sudo tmuser
 mkdir /home/tmuser
 chown -R tmuser /home/tmuser
-su tmuser
