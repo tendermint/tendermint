@@ -241,8 +241,8 @@ func (s *State) releaseValidator(val *Validator) {
 	s.SetValidatorInfo(valInfo)
 
 	// Send coins back to UnbondTo outputs
-	accounts, err := getOrMakeAccounts(s, nil, valInfo.UnbondTo)
 	// SANITY CHECK
+	accounts, err := getOrMakeOutputs(s, nil, valInfo.UnbondTo)
 	if err != nil {
 		panic("Couldn't get or make unbondTo accounts")
 	}

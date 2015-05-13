@@ -89,3 +89,13 @@ func identityFunc(input []byte, gas *int64) (output []byte, err error) {
 	// Return identity
 	return input, nil
 }
+
+//-----------------------------------------------------------------------------
+// Doug Contracts are stateful and must be set with closures wrapping the current tx cache
+// Note they should be reset to refresh the closure or it will be stale
+
+var dougContracts = make(map[Word256]NativeContract)
+
+func (vm *VM) SetDougFunc(n Word256, f NativeContract) {
+	dougContracts[n] = f
+}

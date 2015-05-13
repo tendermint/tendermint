@@ -27,6 +27,14 @@ var (
 	ErrInvalidContract     = errors.New("Invalid contract")
 )
 
+type ErrPermission struct {
+	typ string
+}
+
+func (err ErrPermission) Error() string {
+	return fmt.Sprintf("Contract does not have permission to %s", err.typ)
+}
+
 type Debug bool
 
 const (
@@ -51,6 +59,10 @@ type VM struct {
 	callDepth int
 
 	evc events.Fireable
+
+	doug bool // is this the gendoug contract
+
+	sendPerm, callPerm, createPerm bool // this contract's permissions
 }
 
 func NewVM(appState AppState, params Params, origin Word256, txid []byte) *VM {
@@ -60,12 +72,26 @@ func NewVM(appState AppState, params Params, origin Word256, txid []byte) *VM {
 		origin:    origin,
 		callDepth: 0,
 		txid:      txid,
+		doug:      false,
 	}
 }
 
 // satisfies events.Eventable
 func (vm *VM) SetFireable(evc events.Fireable) {
 	vm.evc = evc
+}
+
+// to allow calls to native DougContracts (off by default)
+func (vm *VM) EnableDoug() {
+	vm.doug = true
+}
+
+// set the contract's generic permissions
+func (vm *VM) SetPermissions(send, call, create bool) {
+	// TODO: distinction between send and call not defined at the VM yet (it's all through a CALL!)
+	vm.sendPerm = send
+	vm.callPerm = call
+	vm.createPerm = create
 }
 
 // CONTRACT appState is aware of caller and callee, so we can just mutate them.
@@ -659,6 +685,9 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 			dbg.Printf(" => %v\n", log)
 
 		case CREATE: // 0xF0
+			if !vm.createPerm {
+				return nil, ErrPermission{"create"}
+			}
 			contractValue := stack.Pop64()
 			offset, size := stack.Pop64(), stack.Pop64()
 			input, ok := subslice(memory, offset, size)
@@ -684,6 +713,9 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 			}
 
 		case CALL, CALLCODE: // 0xF1, 0xF2
+			if !vm.callPerm {
+				return nil, ErrPermission{"call"}
+			}
 			gasLimit := stack.Pop64()
 			addr, value := stack.Pop(), stack.Pop64()
 			inOffset, inSize := stack.Pop64(), stack.Pop64()   // inputs
@@ -710,6 +742,9 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 			if nativeContract := nativeContracts[addr]; nativeContract != nil {
 				// Native contract
 				ret, err = nativeContract(args, &gasLimit)
+			} else if dougContract := dougContracts[addr]; vm.doug && dougContract != nil {
+				// This is Doug and we're calling a doug contract
+				ret, err = dougContract(args, &gasLimit)
 			} else {
 				// EVM contract
 				if ok = useGas(gas, GasGetAccount); !ok {

@@ -22,6 +22,7 @@ func GetAccount(address []byte) (*acm.Account, error) {
 			Balance:     0,
 			Code:        nil,
 			StorageRoot: nil,
+			Permissions: cache.GetAccount(acm.GlobalPermissionsAddress).Permissions,
 		}
 	}
 	return account, nil

@@ -14,8 +14,11 @@ import (
 )
 
 type GenesisAccount struct {
-	Address []byte `json:"address"`
-	Amount  int64  `json:"amount"`
+	Address     []byte               `json:"address"`
+	Amount      int64                `json:"amount"`
+	Address     []byte               `json:"address"`
+	Amount      uint64               `json:"amount"`
+	Permissions *account.Permissions `json:"global_permissions"` // pointer so optional
 }
 
 type GenesisValidator struct {
@@ -24,9 +27,17 @@ type GenesisValidator struct {
 	UnbondTo []GenesisAccount      `json:"unbond_to"`
 }
 
+type GenesisParams struct {
+	// Default permissions for newly created accounts
+	GlobalPermissions *account.Permissions `json:"global_permissions"`
+
+	// TODO: other params we may want to tweak?
+}
+
 type GenesisDoc struct {
 	GenesisTime time.Time          `json:"genesis_time"`
 	ChainID     string             `json:"chain_id"`
+	Params      *GenesisParams     `json:"params"` // pointer so optional
 	Accounts    []GenesisAccount   `json:"accounts"`
 	Validators  []GenesisValidator `json:"validators"`
 }
@@ -63,14 +74,34 @@ func MakeGenesisState(db dbm.DB, genDoc *GenesisDoc) *State {
 	// Make accounts state tree
 	accounts := merkle.NewIAVLTree(binary.BasicCodec, account.AccountCodec, defaultAccountsCacheCapacity, db)
 	for _, genAcc := range genDoc.Accounts {
+		perm := account.DefaultPermissions
+		if genAcc.Permissions != nil {
+			perm = *(genAcc.Permissions)
+		}
 		acc := &account.Account{
-			Address:  genAcc.Address,
-			PubKey:   nil,
-			Sequence: 0,
-			Balance:  genAcc.Amount,
+			Address:     genAcc.Address,
+			PubKey:      nil,
+			Sequence:    0,
+			Balance:     genAcc.Amount,
+			Permissions: perm,
 		}
 		accounts.Set(acc.Address, acc)
 	}
+
+	// global permissions are saved as the 0 address
+	// so they are included in the accounts tree
+	globalPerms := account.DefaultPermissions
+	if genDoc.Params != nil && genDoc.Params.GlobalPermissions != nil {
+		globalPerms = *(genDoc.Params.GlobalPermissions)
+	}
+	permsAcc := &account.Account{
+		Address:     account.GlobalPermissionsAddress,
+		PubKey:      nil,
+		Sequence:    0,
+		Balance:     1337,
+		Permissions: globalPerms,
+	}
+	accounts.Set(permsAcc.Address, permsAcc)
 
 	// Make validatorInfos state tree && validators slice
 	validatorInfos := merkle.NewIAVLTree(binary.BasicCodec, ValidatorInfoCodec, 0, db)

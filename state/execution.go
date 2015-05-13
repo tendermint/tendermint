@@ -139,7 +139,7 @@ func execBlock(s *State, block *types.Block, blockPartsHeader types.PartSetHeade
 // account.PubKey.(type) != nil, (it must be known),
 // or it must be specified in the TxInput.  If redeclared,
 // the TxInput is modified and input.PubKey set to nil.
-func getOrMakeAccounts(state AccountGetter, ins []*types.TxInput, outs []*types.TxOutput) (map[string]*account.Account, error) {
+func getInputs(state AccountGetter, ins []*types.TxInput) (map[string]*account.Account, error) {
 	accounts := map[string]*account.Account{}
 	for _, in := range ins {
 		// Account shouldn't be duplicated
@@ -156,6 +156,14 @@ func getOrMakeAccounts(state AccountGetter, ins []*types.TxInput, outs []*types.
 		}
 		accounts[string(in.Address)] = acc
 	}
+	return accounts, nil
+}
+
+func getOrMakeOutputs(state AccountGetter, accounts map[string]*account.Account, outs []*types.TxOutput) (map[string]*account.Account, error) {
+	if accounts == nil {
+		accounts = make(map[string]*account.Account)
+	}
+
 	for _, out := range outs {
 		// Account shouldn't be duplicated
 		if _, ok := accounts[string(out.Address)]; ok {
@@ -165,10 +173,11 @@ func getOrMakeAccounts(state AccountGetter, ins []*types.TxInput, outs []*types.
 		// output account may be nil (new)
 		if acc == nil {
 			acc = &account.Account{
-				Address:  out.Address,
-				PubKey:   nil,
-				Sequence: 0,
-				Balance:  0,
+				Address:     out.Address,
+				PubKey:      nil,
+				Sequence:    0,
+				Balance:     0,
+				Permissions: state.GetAccount(account.GlobalPermissionsAddress).Permissions,
 			}
 		}
 		accounts[string(out.Address)] = acc
@@ -291,10 +300,22 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 	// Exec tx
 	switch tx := tx_.(type) {
 	case *types.SendTx:
-		accounts, err := getOrMakeAccounts(blockCache, tx.Inputs, tx.Outputs)
+		accounts, err := getInputs(blockCache, tx.Inputs)
 		if err != nil {
 			return err
 		}
+
+		// ensure all inputs have send permissions
+		if !hasSendPermission(accounts) {
+			return fmt.Errorf("At least one input lacks permission for SendTx")
+		}
+
+		// add outputs to accounts map
+		accounts, err = getOrMakeOutputs(blockCache, accounts, tx.Outputs)
+		if err != nil {
+			return err
+		}
+
 		signBytes := account.SignBytes(_s.ChainID, tx)
 		inTotal, err := validateInputs(accounts, signBytes, tx.Inputs)
 		if err != nil {
@@ -331,6 +352,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 
 	case *types.CallTx:
 		var inAcc, outAcc *account.Account
+		var isDoug bool // is this a call to the gendoug?
 
 		// Validate input
 		inAcc = blockCache.GetAccount(tx.Input.Address)
@@ -338,6 +360,18 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 			log.Debug(Fmt("Can't find in account %X", tx.Input.Address))
 			return types.ErrTxInvalidAddress
 		}
+
+		createAccount := len(tx.Address) == 0
+		if createAccount {
+			if !hasCreatePermission(inAcc) {
+				return fmt.Errorf("Account %X does not have Create permission", tx.Input.Address)
+			}
+		} else {
+			if !hasCallPermission(inAcc) {
+				return fmt.Errorf("Account %X does not have Call permission", tx.Input.Address)
+			}
+		}
+
 		// pubKey should be present in either "inAcc" or "tx.Input"
 		if err := checkInputPubKey(inAcc, tx.Input); err != nil {
 			log.Debug(Fmt("Can't find pubkey for %X", tx.Input.Address))
@@ -354,7 +388,6 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 			return types.ErrTxInsufficientFunds
 		}
 
-		createAccount := len(tx.Address) == 0
 		if !createAccount {
 			// Validate output
 			if len(tx.Address) != 20 {
@@ -426,6 +459,15 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 			vmach := vm.NewVM(txCache, params, caller.Address, account.HashSignBytes(_s.ChainID, tx))
 			vmach.SetFireable(evc)
 			// NOTE: Call() transfers the value from caller to callee iff call succeeds.
+
+			if isDoug {
+				// we need to bind a copy of the accounts tree (in the txCache)
+				// so the gendoug can make a native call to create accounts and update
+				// permissions
+				setupDoug(vmach, txCache, _s)
+			}
+			// set the contracts permissions
+			vmach.SetPermissions(inAcc.Permissions.Send, inAcc.Permissions.Call, inAcc.Permissions.Create)
 
 			ret, err := vmach.Call(caller, callee, code, tx.Data, value, &gas)
 			exception := ""
@@ -589,9 +631,14 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 			// add funds, merge UnbondTo outputs, and unbond validator.
 			return errors.New("Adding coins to existing validators not yet supported")
 		}
-		accounts, err := getOrMakeAccounts(blockCache, tx.Inputs, nil)
+
+		accounts, err := getInputs(blockCache, tx.Inputs)
 		if err != nil {
 			return err
+		}
+
+		if !hasBondPermission(accounts) {
+			return fmt.Errorf("At least one input lacks permission to bond")
 		}
 
 		signBytes := account.SignBytes(_s.ChainID, tx)
@@ -739,4 +786,161 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 		// before they get here
 		panic("Unknown Tx type")
 	}
+}
+
+//---------------------------------------------------------------
+// TODO: for debug log the failed accounts
+
+func hasSendPermission(accs map[string]*account.Account) bool {
+	for _, acc := range accs {
+		if !acc.Permissions.Send {
+			return false
+		}
+	}
+	return true
+}
+
+func hasCallPermission(acc *account.Account) bool {
+	if !acc.Permissions.Call {
+		return false
+	}
+	return true
+}
+
+func hasCreatePermission(acc *account.Account) bool {
+	if !acc.Permissions.Create {
+		return false
+	}
+	return true
+}
+
+func hasBondPermission(accs map[string]*account.Account) bool {
+	for _, acc := range accs {
+		if !acc.Permissions.Bond {
+			return false
+		}
+	}
+	return true
+}
+
+// permission management functions
+// get/set closures which bind the txCache (for modifying an accounts permissions)
+// add/rm closures which bind txCache & state (for creating/removing permissions on *all* accounts - expensive!)
+func setupDoug(vmach *vm.VM, txCache *TxCache, _s *State) {
+
+	// get takes (address, permissionNum Word256), returns a permission int
+	getFunc := func(args []byte, gas *uint64) (output []byte, err error) {
+		if len(args) != 2*32 {
+			return nil, fmt.Errorf("Get() takes two arguments (address, permission number)")
+		}
+		var addr, permNum Word256
+		copy(addr[:], args[:32])
+		copy(permNum[:], args[32:64])
+		vmAcc := txCache.GetAccount(addr)
+		if vmAcc == nil {
+			return nil, fmt.Errorf("Unknown account %X", addr)
+		}
+		stAcc := toStateAccount(vmAcc)
+		permN := uint(Uint64FromWord256(permNum))
+		perm, err := stAcc.Permissions.Get(permN)
+		if err != nil {
+			return nil, err
+		}
+		var permInt byte
+		if perm {
+			permInt = 0x1
+		} else {
+			permInt = 0x0
+		}
+		return LeftPadWord256([]byte{permInt}).Bytes(), nil
+
+	}
+
+	// set takes (address, permissionNum, permissionValue Word256), returns the permission value
+	setFunc := func(args []byte, gas *uint64) (output []byte, err error) {
+		if len(args) != 3*32 {
+			return nil, fmt.Errorf("Set() takes three arguments (address, permission number, permission value)")
+		}
+		var addr, permNum, perm Word256
+		copy(addr[:], args[:32])
+		copy(permNum[:], args[32:64])
+		copy(perm[:], args[64:96])
+		vmAcc := txCache.GetAccount(addr)
+		if vmAcc == nil {
+			return nil, fmt.Errorf("Unknown account %X", addr)
+		}
+		stAcc := toStateAccount(vmAcc)
+		permN := uint(Uint64FromWord256(permNum))
+		permV := !perm.IsZero()
+		if err = stAcc.Permissions.Set(permN, permV); err != nil {
+			return nil, err
+		}
+		vmAcc = toVMAccount(stAcc)
+		txCache.UpdateAccount(vmAcc)
+		return perm.Bytes(), nil
+	}
+
+	// add creates a new permission at the next available index and returns the index
+	addFunc := func(args []byte, gas *uint64) (output []byte, err error) {
+		if len(args) != 0 {
+			return nil, fmt.Errorf("Add() takes no arguments")
+		}
+
+		accounts := _s.GetAccounts()
+		size := accounts.Size()
+		var l int
+		for i := uint64(0); i < size; i++ {
+			_, v := accounts.GetByIndex(uint64(i))
+			acc := v.(*account.Account)
+
+			if i == 0 {
+				l = len(acc.Permissions.Other)
+			} else if l != len(acc.Permissions.Other) {
+				panic(Fmt("Accounts have different numbers of permissions: %v, %v", l, acc.Permissions.Other))
+			}
+			if _, err := acc.Permissions.Add(false); err != nil {
+				return nil, err
+			}
+			txCache.UpdateAccount(toVMAccount(acc))
+		}
+		return Uint64ToWord256(uint64(l)).Bytes(), nil
+	}
+
+	// rm takes (permissionNum) and removes the corresponding permission, shortening the `Other` list.
+	// returns the permissionNum
+	rmFunc := func(args []byte, gas *uint64) (output []byte, err error) {
+		if len(args) != 32 {
+			return nil, fmt.Errorf("Get() takes one argument (permissionNum)")
+		}
+		var permNum Word256
+		copy(permNum[:], args[:32])
+		permN := uint(Uint64FromWord256(permNum)) // danger?
+
+		accounts := _s.GetAccounts()
+		size := accounts.Size()
+		var l int
+		for i := uint64(0); i < size; i++ {
+			_, v := accounts.GetByIndex(uint64(i))
+			acc := v.(*account.Account)
+
+			if i == 0 {
+				l = len(acc.Permissions.Other)
+			} else if l != len(acc.Permissions.Other) {
+				panic(Fmt("Accounts have different numbers of permissions: %v, %v", l, acc.Permissions.Other))
+			}
+			acc.Permissions.Remove(permN)
+			txCache.UpdateAccount(toVMAccount(acc))
+		}
+		return args, nil
+
+	}
+
+	// Set the native contract addresses and functions
+	vmach.SetDougFunc(RightPadWord256([]byte("get")), vm.NativeContract(getFunc))
+	vmach.SetDougFunc(RightPadWord256([]byte("set")), vm.NativeContract(setFunc))
+	vmach.SetDougFunc(RightPadWord256([]byte("add")), vm.NativeContract(addFunc))
+	vmach.SetDougFunc(RightPadWord256([]byte("rm")), vm.NativeContract(rmFunc))
+
+	// must be called or else functions not accessible
+	vmach.EnableDoug()
 }
