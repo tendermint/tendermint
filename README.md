@@ -6,4 +6,25 @@
 
 Tendermint is blockchain consensus.  No proof of work.
 
-Check out the [Developer Quick Start](https://github.com/tendermint/tendermint/wiki/Developer-Quick-Start)
+### Install Tendermint
+
+* See: https://github.com/tendermint/tendermint/tree/master/INSTALL
+
+### Coding style
+
+* Go
+  * Use gofmt. Consider vim-go or gosublime.
+  * Write godoc. 
+  * Write tests.
+  * Tabs, not spaces
+
+### First pull request
+You can make your first pull request in an hour or so!
+
+* Fix a bug: https://github.com/tendermint/tendermint/issues
+* Write a unit test
+* Pull requests that only add comments or documentation are still cool
+
+## Welcome aboard!
+
+![ship](http://i.imgur.com/Z2it1La.png)

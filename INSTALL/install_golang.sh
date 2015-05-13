@@ -16,6 +16,7 @@ then
   echo 'export GOROOT=/home/tmuser/go' >> /home/tmuser/.bashrc
   echo 'export GOPATH=/home/tmuser/gocode' >> /home/tmuser/.bashrc
   echo 'export PATH=$PATH:$GOROOT/bin:$GOPATH/bin' >> /home/tmuser/.bashrc
+  source ~/.bashrc
 else
   echo "should not be root to run install_golang.sh"
 fi

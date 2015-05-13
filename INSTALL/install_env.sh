@@ -7,4 +7,5 @@ apt-get install -y make screen gcc git mercurial libc6-dev pkg-config libgmp-dev
 useradd tmuser -d /home/tmuser
 usermod -aG sudo tmuser
 mkdir /home/tmuser
-chown -R tmuser /home/tmuser
+chown -R tmuser:tmuser /home/tmuser
+su tmuser
