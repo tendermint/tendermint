@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bufio"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -32,11 +33,11 @@ func SetApp(a *confer.Config) {
 }
 
 // NOTE: If you change this, maybe also change initDefaults()
-var defaultConfig = `# This is a TOML config file.
+var defaultConfigTmpl = `# This is a TOML config file.
 # For more information, see https://github.com/toml-lang/toml
 
 network = "tendermint_testnet_5"
-moniker = "anonymous"
+moniker = "__MONIKER__"
 node_laddr = "0.0.0.0:46656"
 seeds = "goldenalchemist.chaintest.net:46656"
 fast_sync = true
@@ -120,6 +121,7 @@ var DefaultGenesis = `{
     ]
 }`
 
+// If not defined in the process args nor config file, then use these defaults.
 // NOTE: If you change this, maybe also change defaultConfig
 func initDefaults(rootDir string) {
 	app.SetDefault("network", "tendermint_testnet0")
@@ -149,8 +151,15 @@ func Init(rootDir string) {
 	genesisFile := path.Join(rootDir, "genesis.json")
 
 	// Write default config file if missing.
-	checkWriteFile(configFile, defaultConfig)
-	checkWriteFile(genesisFile, DefaultGenesis)
+	if !fileExists(configFile) {
+		// Ask user for moniker
+		moniker := getInput("Type hostname: ", "anonymous")
+		defaultConfig := strings.Replace(defaultConfigTmpl, "__MONIKER__", moniker, -1)
+		writeFile(configFile, defaultConfig)
+	}
+	if !fileExists(genesisFile) {
+		writeFile(genesisFile, DefaultGenesis)
+	}
 
 	// Initialize Config
 	app = confer.NewConfig()
@@ -164,22 +173,42 @@ func Init(rootDir string) {
 	//app.Debug()
 }
 
-// Check if a file exists; if not, ensure the directory is made and write the file
-func checkWriteFile(configFile, contents string) {
-	if _, err := os.Stat(configFile); os.IsNotExist(err) {
-		if strings.Index(configFile, "/") != -1 {
-			err := os.MkdirAll(filepath.Dir(configFile), 0700)
+func getInput(prompt string, defaultValue string) string {
+	fmt.Print(prompt)
+	reader := bufio.NewReader(os.Stdin)
+	line, err := reader.ReadString('\n')
+	if err != nil {
+		log.Warn("Error reading stdin", "err", err)
+		return defaultValue
+	} else {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			return defaultValue
+		}
+		return line
+	}
+}
+
+func fileExists(file string) bool {
+	_, err := os.Stat(file)
+	return !os.IsNotExist(err)
+}
+
+func writeFile(file, contents string) {
+	if _, err := os.Stat(file); os.IsNotExist(err) {
+		if strings.Index(file, "/") != -1 {
+			err := os.MkdirAll(filepath.Dir(file), 0700)
 			if err != nil {
 				fmt.Printf("Could not create directory: %v", err)
 				os.Exit(1)
 			}
 		}
-		err := ioutil.WriteFile(configFile, []byte(contents), 0600)
+		err := ioutil.WriteFile(file, []byte(contents), 0600)
 		if err != nil {
-			fmt.Printf("Could not write config file: %v", err)
+			fmt.Printf("Could not write file: %v", err)
 			os.Exit(1)
 		}
-		fmt.Printf("Config file written to %v.\n", configFile)
+		fmt.Printf("File written to %v.\n", file)
 	}
 }
 

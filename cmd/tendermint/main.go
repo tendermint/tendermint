@@ -16,6 +16,7 @@ func main() {
 		fmt.Println(`Tendermint
 
 Commands:
+    init          Initialize the TMROOT directory
     node          Run the tendermint node 
     gen_account   Generate new account keypair
     gen_validator Generate new validator keypair
@@ -26,6 +27,9 @@ Commands:
 	}
 
 	switch args[0] {
+	case "init":
+		config.ParseFlags(args[1:])
+		logger.Reset()
 	case "node":
 		config.ParseFlags(args[1:])
 		logger.Reset()
