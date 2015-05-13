@@ -187,6 +187,7 @@ func (n *Node) StartRPC() {
 	core.SetConsensusReactor(n.consensusReactor)
 	core.SetMempoolReactor(n.mempoolReactor)
 	core.SetSwitch(n.sw)
+	core.SetPrivValidator(n.privValidator)
 
 	listenAddr := config.App().GetString("rpc_laddr")
 	mux := http.NewServeMux()
@@ -215,7 +216,7 @@ func makeNodeInfo(sw *p2p.Switch) *types.NodeInfo {
 	nodeInfo := &types.NodeInfo{
 		Network: config.App().GetString("network"),
 		Moniker: config.App().GetString("moniker"),
-		Version: "0.2.0", // Everything is in Big Endian.
+		Version: config.App().GetString("version"),
 	}
 	if !sw.IsListening() {
 		return nodeInfo

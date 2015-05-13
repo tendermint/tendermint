@@ -32,7 +32,7 @@ type Node struct {
 	client *NodeClient
 
 	LastSeen     time.Time
-	GenesisHash  []byte
+	Network      string
 	BlockHeight  uint
 	BlockHistory map[uint]time.Time // when we saw each block
 	NetInfo      *rpctypes.ResponseNetInfo
@@ -50,7 +50,7 @@ func (n *Node) Address() string {
 // Set the basic status and network info for a node from RPC responses
 func (n *Node) SetInfo(status *rpctypes.ResponseStatus, netinfo *rpctypes.ResponseNetInfo) {
 	n.LastSeen = time.Now()
-	n.GenesisHash = status.GenesisHash
+	n.Network = status.Network
 	n.BlockHeight = status.LatestBlockHeight
 	n.NetInfo = netinfo
 	// n.Validator

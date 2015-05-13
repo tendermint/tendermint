@@ -125,6 +125,7 @@ var DefaultGenesis = `{
 // NOTE: If you change this, maybe also change defaultConfig
 func initDefaults(rootDir string) {
 	app.SetDefault("network", "tendermint_testnet0")
+	app.SetDefault("version", "0.2.1")
 	app.SetDefault("genesis_file", rootDir+"/genesis.json")
 	app.SetDefault("moniker", "anonymous")
 	app.SetDefault("node_laddr", "0.0.0.0:46656")

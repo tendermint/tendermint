@@ -13,6 +13,7 @@ var consensusState *consensus.ConsensusState
 var consensusReactor *consensus.ConsensusReactor
 var mempoolReactor *mempl.MempoolReactor
 var p2pSwitch *p2p.Switch
+var privValidator *state.PrivValidator
 
 func SetBlockStore(bs *bc.BlockStore) {
 	blockStore = bs
@@ -34,7 +35,6 @@ func SetSwitch(sw *p2p.Switch) {
 	p2pSwitch = sw
 }
 
-// JAE Why is this here?
-func SetPrivValidator(priv *state.PrivValidator) {
-	consensusReactor.SetPrivValidator(priv)
+func SetPrivValidator(pv *state.PrivValidator) {
+	privValidator = pv
 }

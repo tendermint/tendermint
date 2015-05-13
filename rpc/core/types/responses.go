@@ -65,16 +65,17 @@ type Receipt struct {
 }
 
 type ResponseStatus struct {
-	GenesisHash       []byte `json:"genesis_hash"`
-	Network           string `json:"network"`
-	LatestBlockHash   []byte `json:"latest_block_hash"`
-	LatestBlockHeight uint   `json:"latest_block_height"`
-	LatestBlockTime   int64  `json:"latest_block_time"` // nano
+	Moniker           string         `json:"moniker"`
+	Network           string         `json:"network"`
+	Version           string         `json:"version"`
+	GenesisHash       []byte         `json:"genesis_hash"`
+	PubKey            account.PubKey `json:"pub_key"`
+	LatestBlockHash   []byte         `json:"latest_block_hash"`
+	LatestBlockHeight uint           `json:"latest_block_height"`
+	LatestBlockTime   int64          `json:"latest_block_time"` // nano
 }
 
 type ResponseNetInfo struct {
-	Moniker   string   `json:"moniker"`
-	Network   string   `json:"network"`
 	Listening bool     `json:"listening"`
 	Listeners []string `json:"listeners"`
 	Peers     []Peer   `json:"peers"`

@@ -26,15 +26,21 @@ func Status() (*ctypes.ResponseStatus, error) {
 		latestBlockTime = latestBlockMeta.Header.Time.UnixNano()
 	}
 
-	return &ctypes.ResponseStatus{genesisHash, config.App().GetString("network"), latestBlockHash, latestHeight, latestBlockTime}, nil
+	return &ctypes.ResponseStatus{
+		Moniker:           config.App().GetString("moniker"),
+		Network:           config.App().GetString("network"),
+		Version:           config.App().GetString("version"),
+		GenesisHash:       genesisHash,
+		PubKey:            privValidator.PubKey,
+		LatestBlockHash:   latestBlockHash,
+		LatestBlockHeight: latestHeight,
+		LatestBlockTime:   latestBlockTime}, nil
 }
 
 //-----------------------------------------------------------------------------
 
 func NetInfo() (*ctypes.ResponseNetInfo, error) {
 	listening := p2pSwitch.IsListening()
-	moniker := config.App().GetString("moniker")
-	network := config.App().GetString("network")
 	listeners := []string{}
 	for _, listener := range p2pSwitch.Listeners() {
 		listeners = append(listeners, listener.String())
@@ -47,8 +53,6 @@ func NetInfo() (*ctypes.ResponseNetInfo, error) {
 		})
 	}
 	return &ctypes.ResponseNetInfo{
-		Moniker:   moniker,
-		Network:   network,
 		Listening: listening,
 		Listeners: listeners,
 		Peers:     peers,

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	"testing"
 )
@@ -91,9 +90,6 @@ func testGetStorage(t *testing.T, typ string) {
 		unsubscribe(t, con, eid)
 		con.Close()
 	}()
-	priv := state.LoadPrivValidator(".tendermint/priv_validator.json")
-	_ = priv
-	//core.SetPrivValidator(priv)
 
 	amt := uint64(1100)
 	code := []byte{0x60, 0x5, 0x60, 0x1, 0x55}
