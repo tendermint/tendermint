@@ -35,33 +35,14 @@ func SetApp(a *confer.Config) {
 var defaultConfig = `# This is a TOML config file.
 # For more information, see https://github.com/toml-lang/toml
 
-Moniker = "anonymous"
-Network = "tendermint_testnet4.2"
-ListenAddr = "0.0.0.0:46656"
-# First node to connect to.  Command-line overridable.
-SeedNode = ""
-# Pool of seeds. Best to use these, and specify one on command line 
-# if needed to override
-SeedNodes = ["navytoad.chaintest.net:46656", "whiteferret.chaintest.net:46656", "magentagriffin.chaintest.net:46656", "greensalamander.chaintest.net:46656", "blackshadow.chaintest.net:46656", "purpleanteater.chaintest.net:46656", "pinkpenguin.chaintest.net:46656", "polkapig.chaintest.net:46656", "128.199.230.153:8080"]
-
-
-[DB]
-# The only other available backend is "memdb"
-Backend = "leveldb"
-# Dir = "~/.tendermint/data"
-
-[Log.Stdout]
-Level = "debug"
-
-[RPC.HTTP]
-# For the RPC API HTTP server.  Port required.
-ListenAddr = "0.0.0.0:46657"
-
-[Alert]
-# TODO: Document options
-
-[SMTP]
-# TODO: Document options
+network = "tendermint_testnet_5"
+moniker = "anonymous"
+node_laddr = "0.0.0.0:46656"
+seeds = "goldenalchemist.chaintest.net:46656"
+fast_sync = true
+db_backend = "leveldb"
+log_level = "debug"
+rpc_laddr = "0.0.0.0:46657"
 `
 
 var DefaultGenesis = `{
@@ -141,19 +122,18 @@ var DefaultGenesis = `{
 
 // NOTE: If you change this, maybe also change defaultConfig
 func initDefaults(rootDir string) {
-	app.SetDefault("Moniker", "anonymous")
-	app.SetDefault("Network", "tendermint_testnet0")
-	app.SetDefault("ListenAddr", "0.0.0.0:46656")
-	app.SetDefault("DB.Backend", "leveldb")
-	app.SetDefault("DB.Dir", rootDir+"/data")
-	app.SetDefault("Log.Stdout.Level", "info")
-	app.SetDefault("RPC.HTTP.ListenAddr", "0.0.0.0:46657")
-
-	app.SetDefault("GenesisFile", rootDir+"/genesis.json")
-	app.SetDefault("AddrBookFile", rootDir+"/addrbook.json")
-	app.SetDefault("PrivValidatorfile", rootDir+"/priv_validator.json")
-
-	app.SetDefault("FastSync", false)
+	app.SetDefault("network", "tendermint_testnet0")
+	app.SetDefault("genesis_file", rootDir+"/genesis.json")
+	app.SetDefault("moniker", "anonymous")
+	app.SetDefault("node_laddr", "0.0.0.0:46656")
+	app.SetDefault("seeds", "goldenalchemist.chaintest.net:46656")
+	app.SetDefault("fast_sync", true)
+	app.SetDefault("addrbook_file", rootDir+"/addrbook.json")
+	app.SetDefault("priv_validator_file", rootDir+"/priv_validator.json")
+	app.SetDefault("db_backend", "leveldb")
+	app.SetDefault("db_dir", rootDir+"/data")
+	app.SetDefault("log_level", "info")
+	app.SetDefault("rpc_laddr", "0.0.0.0:46657")
 }
 
 func Init(rootDir string) {
@@ -209,11 +189,12 @@ func ParseFlags(args []string) {
 
 	// Declare flags
 	flags.BoolVar(&printHelp, "help", false, "Print this help message.")
-	flags.String("listen_addr", app.GetString("ListenAddr"), "Listen address. (0.0.0.0:0 means any interface, any port)")
-	flags.String("seed_node", app.GetString("SeedNode"), "Address of seed nodes")
-	flags.String("rpc_http_listen_addr", app.GetString("RPC.HTTP.ListenAddr"), "RPC listen address. Port required")
-	flags.Bool("fast_sync", app.GetBool("FastSync"), "Fast blockchain syncing")
-	flags.String("log_stdout_level", app.GetString("Log.Stdout.Level"), "Stdout log level")
+	flags.String("moniker", app.GetString("moniker"), "Node Name")
+	flags.String("node_laddr", app.GetString("node_laddr"), "Node listen address. (0.0.0.0:0 means any interface, any port)")
+	flags.String("seeds", app.GetString("seeds"), "Comma delimited seed nodes")
+	flags.Bool("fast_sync", app.GetBool("fast_sync"), "Fast blockchain syncing")
+	flags.String("rpc_laddr", app.GetString("rpc_laddr"), "RPC listen address. Port required")
+	flags.String("log_level", app.GetString("log_level"), "Log level")
 	flags.Parse(args)
 	if printHelp {
 		flags.PrintDefaults()
@@ -221,11 +202,12 @@ func ParseFlags(args []string) {
 	}
 
 	// Merge parsed flag values onto app.
-	app.BindPFlag("ListenAddr", flags.Lookup("listen_addr"))
-	app.BindPFlag("SeedNode", flags.Lookup("seed_node"))
-	app.BindPFlag("FastSync", flags.Lookup("fast_sync"))
-	app.BindPFlag("RPC.HTTP.ListenAddr", flags.Lookup("rpc_http_listen_addr"))
-	app.BindPFlag("Log.Stdout.Level", flags.Lookup("log_stdout_level"))
+	app.BindPFlag("moniker", flags.Lookup("moniker"))
+	app.BindPFlag("node_laddr", flags.Lookup("node_laddr"))
+	app.BindPFlag("seeds", flags.Lookup("seeds"))
+	app.BindPFlag("fast_sync", flags.Lookup("fast_sync"))
+	app.BindPFlag("rpc_laddr", flags.Lookup("rpc_laddr"))
+	app.BindPFlag("log_level", flags.Lookup("log_level"))
 
 	// Confused?
 	//app.Debug()

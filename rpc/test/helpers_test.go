@@ -61,7 +61,7 @@ func decodeHex(hexStr string) []byte {
 func newNode(ready chan struct{}) {
 	// Create & start node
 	node = nm.NewNode()
-	l := p2p.NewDefaultListener("tcp", config.App().GetString("ListenAddr"), false)
+	l := p2p.NewDefaultListener("tcp", config.App().GetString("node_laddr"), false)
 	node.AddListener(l)
 	node.Start()
 
@@ -79,12 +79,12 @@ func init() {
 	rootDir := ".tendermint"
 	config.Init(rootDir)
 	app := config.App()
-	app.Set("SeedNode", "")
-	app.Set("DB.Backend", "memdb")
-	app.Set("RPC.HTTP.ListenAddr", rpcAddr)
-	app.Set("GenesisFile", rootDir+"/genesis.json")
-	app.Set("PrivValidatorFile", rootDir+"/priv_validator.json")
-	app.Set("Log.Stdout.Level", "debug")
+	app.Set("genesis_file", rootDir+"/genesis.json")
+	app.Set("seeds", "")
+	app.Set("priv_validator_file", rootDir+"/priv_validator.json")
+	app.Set("db_backend", "memdb")
+	app.Set("rpc_laddr", rpcAddr)
+	app.Set("log_level", "debug")
 	config.SetApp(app)
 	logger.Reset()
 

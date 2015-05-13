@@ -68,7 +68,7 @@ func GenPrivValidator() *PrivValidator {
 		LastHeight: 0,
 		LastRound:  0,
 		LastStep:   stepNone,
-		filename:   config.App().GetString("PrivValidatorFile"),
+		filename:   config.App().GetString("priv_validator_file"),
 	}
 }
 

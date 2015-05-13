@@ -20,14 +20,14 @@ func Reset() {
 
 	// stdout handler
 	stdoutHandler := log15.LvlFilterHandler(
-		getLevel(config.App().GetString("Log.Stdout.Level")),
+		getLevel(config.App().GetString("log_level")),
 		log15.StreamHandler(os.Stdout, log15.TerminalFormat()),
 	)
 	handlers = append(handlers, stdoutHandler)
 
 	/*
 		// Maybe also write to a file.
-		if _logFileDir := config.App().GetString("Log.File.Dir"); _logFileDir != "" {
+		if _logFileDir := config.App().GetString("log_file_dir"); _logFileDir != "" {
 			// Create log dir if it doesn't exist
 			err := os.MkdirAll(_logFileDir, 0700)
 			if err != nil {
@@ -36,7 +36,7 @@ func Reset() {
 			}
 			// File handler
 			handlers = append(handlers, log15.LvlFilterHandler(
-				getLevel(config.App().GetString("Log.File.Level")),
+				getLevel(config.App().GetString("log_file_level")),
 				log15.Must.FileHandler(_logFileDir+"/tendermint.log", log15.LogfmtFormat()),
 			))
 		}

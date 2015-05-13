@@ -32,19 +32,19 @@ func GetDB(name string) DB {
 	if db != nil {
 		return db.(DB)
 	}
-	switch config.App().GetString("DB.Backend") {
+	switch config.App().GetString("db_backend") {
 	case DBBackendMemDB:
 		db := NewMemDB()
 		dbs.Set(name, db)
 		return db
 	case DBBackendLevelDB:
-		db, err := NewLevelDB(path.Join(config.App().GetString("DB.Dir"), name+".db"))
+		db, err := NewLevelDB(path.Join(config.App().GetString("db_dir"), name+".db"))
 		if err != nil {
 			panic(err)
 		}
 		dbs.Set(name, db)
 		return db
 	default:
-		panic(Fmt("Unknown DB backend: %v", config.App().GetString("DB.Backend")))
+		panic(Fmt("Unknown DB backend: %v", config.App().GetString("db_backend")))
 	}
 }

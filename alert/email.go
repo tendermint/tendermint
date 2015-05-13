@@ -19,7 +19,7 @@ import (
 // Convenience function
 func SendEmail(subject, body string, tos []string) error {
 	email := Compose(subject, body)
-	email.From = config.App().GetString("SMTP.User")
+	email.From = config.App().GetString("smtp_user")
 	email.ContentType = "text/html; charset=utf-8"
 	email.AddRecipients(tos...)
 	err := email.Send()
@@ -86,12 +86,12 @@ func (e *Email) Send() error {
 
 	auth := smtp.PlainAuth(
 		"",
-		config.App().GetString("SMTP.User"),
-		config.App().GetString("SMTP.Password"),
-		config.App().GetString("SMTP.Host"),
+		config.App().GetString("smtp_user"),
+		config.App().GetString("smtp_password"),
+		config.App().GetString("smtp_host"),
 	)
 
-	conn, err := smtp.Dial(fmt.Sprintf("%v:%v", config.App().GetString("SMTP.Host"), config.App().GetString("SMTP.Port")))
+	conn, err := smtp.Dial(fmt.Sprintf("%v:%v", config.App().GetString("smtp_host"), config.App().GetString("smtp_port")))
 	if err != nil {
 		return err
 	}

@@ -16,9 +16,9 @@ func testStatus(t *testing.T, typ string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resp.Network != config.App().GetString("Network") {
+	if resp.Network != config.App().GetString("network") {
 		t.Fatal(fmt.Errorf("Network mismatch: got %s expected %s",
-			resp.Network, config.App().Get("Network")))
+			resp.Network, config.App().Get("network")))
 	}
 }
 

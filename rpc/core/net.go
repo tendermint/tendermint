@@ -12,7 +12,7 @@ import (
 
 func Status() (*ctypes.ResponseStatus, error) {
 	db := dbm.NewMemDB()
-	genesisState := sm.MakeGenesisStateFromFile(db, config.App().GetString("GenesisFile"))
+	genesisState := sm.MakeGenesisStateFromFile(db, config.App().GetString("genesis_file"))
 	genesisHash := genesisState.Hash()
 	latestHeight := blockStore.Height()
 	var (
@@ -26,15 +26,15 @@ func Status() (*ctypes.ResponseStatus, error) {
 		latestBlockTime = latestBlockMeta.Header.Time.UnixNano()
 	}
 
-	return &ctypes.ResponseStatus{genesisHash, config.App().GetString("Network"), latestBlockHash, latestHeight, latestBlockTime}, nil
+	return &ctypes.ResponseStatus{genesisHash, config.App().GetString("network"), latestBlockHash, latestHeight, latestBlockTime}, nil
 }
 
 //-----------------------------------------------------------------------------
 
 func NetInfo() (*ctypes.ResponseNetInfo, error) {
 	listening := p2pSwitch.IsListening()
-	moniker := config.App().GetString("Moniker")
-	network := config.App().GetString("Network")
+	moniker := config.App().GetString("moniker")
+	network := config.App().GetString("network")
 	listeners := []string{}
 	for _, listener := range p2pSwitch.Listeners() {
 		listeners = append(listeners, listener.String())

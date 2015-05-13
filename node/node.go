@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	bc "github.com/tendermint/tendermint/blockchain"
@@ -53,13 +54,13 @@ func NewNode() *Node {
 	stateDB := dbm.GetDB("state")
 	state := sm.LoadState(stateDB)
 	if state == nil {
-		state = sm.MakeGenesisStateFromFile(stateDB, config.App().GetString("GenesisFile"))
+		state = sm.MakeGenesisStateFromFile(stateDB, config.App().GetString("genesis_file"))
 		state.Save()
 	}
 
 	// Get PrivValidator
 	var privValidator *sm.PrivValidator
-	privValidatorFile := config.App().GetString("PrivValidatorFile")
+	privValidatorFile := config.App().GetString("priv_validator_file")
 	if _, err := os.Stat(privValidatorFile); err == nil {
 		privValidator = sm.LoadPrivValidator(privValidatorFile)
 		log.Info("Loaded PrivValidator",
@@ -75,11 +76,11 @@ func NewNode() *Node {
 	eventSwitch.Start()
 
 	// Get PEXReactor
-	book := p2p.NewAddrBook(config.App().GetString("AddrBookFile"))
+	book := p2p.NewAddrBook(config.App().GetString("addrbook_file"))
 	pexReactor := p2p.NewPEXReactor(book)
 
 	// Get BlockchainReactor
-	bcReactor := bc.NewBlockchainReactor(state, blockStore, config.App().GetBool("FastSync"))
+	bcReactor := bc.NewBlockchainReactor(state, blockStore, config.App().GetBool("fast_sync"))
 
 	// Get MempoolReactor
 	mempool := mempl.NewMempool(state.Copy())
@@ -93,7 +94,7 @@ func NewNode() *Node {
 	}
 
 	// so the consensus reactor won't do anything until we're synced
-	if config.App().GetBool("FastSync") {
+	if config.App().GetBool("fast_sync") {
 		consensusReactor.SetSyncing(true)
 	}
 
@@ -155,16 +156,8 @@ func (n *Node) AddListener(l p2p.Listener) {
 
 // NOTE: Blocking
 func (n *Node) DialSeed() {
-	// if the single seed node is available, use only it
-	prioritySeed := config.App().GetString("SeedNode")
-	if prioritySeed != "" {
-		addr := p2p.NewNetAddressString(prioritySeed)
-		n.dialSeed(addr)
-		return
-	}
-
 	// permute the list, dial them in random order.
-	seeds := config.App().GetStringSlice("SeedNodes")
+	seeds := strings.Split(config.App().GetString("seeds"), ",")
 	perm := rand.Perm(len(seeds))
 	for i := 0; i < len(perm); i++ {
 		go func(i int) {
@@ -195,7 +188,7 @@ func (n *Node) StartRPC() {
 	core.SetMempoolReactor(n.mempoolReactor)
 	core.SetSwitch(n.sw)
 
-	listenAddr := config.App().GetString("RPC.HTTP.ListenAddr")
+	listenAddr := config.App().GetString("rpc_laddr")
 	mux := http.NewServeMux()
 	rpc.RegisterEventsHandler(mux, n.evsw)
 	rpc.RegisterRPCFuncs(mux, core.Routes)
@@ -220,8 +213,8 @@ func (n *Node) EventSwitch() *events.EventSwitch {
 
 func makeNodeInfo(sw *p2p.Switch) *types.NodeInfo {
 	nodeInfo := &types.NodeInfo{
-		Moniker: config.App().GetString("Moniker"),
-		Network: config.App().GetString("Network"),
+		Network: config.App().GetString("network"),
+		Moniker: config.App().GetString("moniker"),
 		Version: "0.2.0", // Everything is in Big Endian.
 	}
 	if !sw.IsListening() {
@@ -230,11 +223,11 @@ func makeNodeInfo(sw *p2p.Switch) *types.NodeInfo {
 	p2pListener := sw.Listeners()[0]
 	p2pHost := p2pListener.ExternalAddress().IP.String()
 	p2pPort := p2pListener.ExternalAddress().Port
-	rpcListenAddr := config.App().GetString("RPC.HTTP.ListenAddr")
+	rpcListenAddr := config.App().GetString("rpc_laddr")
 	_, rpcPortStr, _ := net.SplitHostPort(rpcListenAddr)
 	rpcPort, err := strconv.Atoi(rpcPortStr)
 	if err != nil {
-		panic(Fmt("Expected numeric RPC.HTTP.ListenAddr port but got %v", rpcPortStr))
+		panic(Fmt("Expected numeric RPC.ListenAddr port but got %v", rpcPortStr))
 	}
 
 	// We assume that the rpcListener has the same ExternalAddress.
@@ -250,17 +243,17 @@ func makeNodeInfo(sw *p2p.Switch) *types.NodeInfo {
 func RunNode() {
 	// Create & start node
 	n := NewNode()
-	l := p2p.NewDefaultListener("tcp", config.App().GetString("ListenAddr"), false)
+	l := p2p.NewDefaultListener("tcp", config.App().GetString("node_laddr"), false)
 	n.AddListener(l)
 	n.Start()
 
 	// If seedNode is provided by config, dial out.
-	if config.App().GetString("SeedNode") != "" || len(config.App().GetStringSlice("SeedNodes")) != 0 {
+	if len(config.App().GetStringSlice("seeds")) != 0 {
 		n.DialSeed()
 	}
 
 	// Run the RPC server.
-	if config.App().GetString("RPC.HTTP.ListenAddr") != "" {
+	if config.App().GetString("rpc_laddr") != "" {
 		n.StartRPC()
 	}
 

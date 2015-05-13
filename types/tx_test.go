@@ -36,7 +36,7 @@ func TestSendTxSignable(t *testing.T) {
 	signBytes := account.SignBytes(sendTx)
 	signStr := string(signBytes)
 	expected := Fmt(`{"network":"%X","tx":[1,{"inputs":[{"address":"696E70757431","amount":12345,"sequence":67890},{"address":"696E70757432","amount":111,"sequence":222}],"outputs":[{"address":"6F757470757431","amount":333},{"address":"6F757470757432","amount":444}]}]}`,
-		config.App().GetString("Network"))
+		config.App().GetString("network"))
 	if signStr != expected {
 		t.Errorf("Got unexpected sign string for SendTx. Expected:\n%v\nGot:\n%v", expected, signStr)
 	}
@@ -57,7 +57,7 @@ func TestCallTxSignable(t *testing.T) {
 	signBytes := account.SignBytes(callTx)
 	signStr := string(signBytes)
 	expected := Fmt(`{"network":"%X","tx":[2,{"address":"636F6E747261637431","data":"6461746131","fee":222,"gas_limit":111,"input":{"address":"696E70757431","amount":12345,"sequence":67890}}]}`,
-		config.App().GetString("Network"))
+		config.App().GetString("network"))
 	if signStr != expected {
 		t.Errorf("Got unexpected sign string for CallTx. Expected:\n%v\nGot:\n%v", expected, signStr)
 	}
@@ -93,7 +93,7 @@ func TestBondTxSignable(t *testing.T) {
 	signBytes := account.SignBytes(bondTx)
 	signStr := string(signBytes)
 	expected := Fmt(`{"network":"%X","tx":[17,{"inputs":[{"address":"696E70757431","amount":12345,"sequence":67890},{"address":"696E70757432","amount":111,"sequence":222}],"pub_key":[1,"3B6A27BCCEB6A42D62A3A8D02A6F0D73653215771DE243A63AC048A18B59DA29"],"unbond_to":[{"address":"6F757470757431","amount":333},{"address":"6F757470757432","amount":444}]}]}`,
-		config.App().GetString("Network"))
+		config.App().GetString("network"))
 	if signStr != expected {
 		t.Errorf("Got unexpected sign string for BondTx")
 	}
@@ -107,7 +107,7 @@ func TestUnbondTxSignable(t *testing.T) {
 	signBytes := account.SignBytes(unbondTx)
 	signStr := string(signBytes)
 	expected := Fmt(`{"network":"%X","tx":[18,{"address":"6164647265737331","height":111}]}`,
-		config.App().GetString("Network"))
+		config.App().GetString("network"))
 	if signStr != expected {
 		t.Errorf("Got unexpected sign string for UnbondTx")
 	}
@@ -121,7 +121,7 @@ func TestRebondTxSignable(t *testing.T) {
 	signBytes := account.SignBytes(rebondTx)
 	signStr := string(signBytes)
 	expected := Fmt(`{"network":"%X","tx":[19,{"address":"6164647265737331","height":111}]}`,
-		config.App().GetString("Network"))
+		config.App().GetString("network"))
 	if signStr != expected {
 		t.Errorf("Got unexpected sign string for RebondTx")
 	}

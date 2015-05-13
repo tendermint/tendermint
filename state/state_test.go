@@ -65,7 +65,7 @@ func TestCopyState(t *testing.T) {
 func makeBlock(t *testing.T, state *State, commits []types.Commit, txs []types.Tx) *types.Block {
 	block := &types.Block{
 		Header: &types.Header{
-			Network:        config.App().GetString("Network"),
+			Network:        config.App().GetString("network"),
 			Height:         state.LastBlockHeight + 1,
 			Time:           state.LastBlockTime.Add(time.Minute),
 			Fees:           0,
