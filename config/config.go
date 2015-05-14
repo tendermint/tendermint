@@ -49,73 +49,81 @@ rpc_laddr = "0.0.0.0:46657"
 var DefaultGenesis = `{
     "accounts": [
         {
-            "address": "93E243AC8A01F723DE353A4FA1ED911529CCB6E5",
-            "amount": 1049800000000000 
+            "address": "F81CB9ED0A868BD961C4F5BBC0E39B763B89FCB6",
+            "amount": 690000000000
         },
         {
-            "address": "9e54c9eca9a3fd5d4496696818da17a9e17f69da",
-            "amount": 1049800000000000 
+            "address": "0000000000000000000000000000000000000002",
+            "amount": 565000000000
+        },
+        {
+            "address": "9E54C9ECA9A3FD5D4496696818DA17A9E17F69DA",
+            "amount": 525000000000
+        },
+        {
+            "address": "0000000000000000000000000000000000000004",
+            "amount": 110000000000
         }
     ],
     "validators": [
         {
-            "pub_key": [1, "9D1ACB248A713A4DC03A5546D43D12D10060E0B081B22D5731478314243C75A5"],
-            "amount": 100000000000,
-            "unbond_to": [
-            	{
-            		"address": "93E243AC8A01F723DE353A4FA1ED911529CCB6E5",
-            		"amount":  100000000000
-            	}
-            ]
-        },
-        {
-            "pub_key": [1, "e56663353d01c58a1d4cdb4d14b70c2e3335be1ebb6c3f697af7882c03837962"],
-            "amount": 100000000000,
-            "unbond_to": [
-            	{
-            		"address": "9e54c9eca9a3fd5d4496696818da17a9e17f69da",
-            		"amount":  100000000000
-            	}
-            ]
-        },
-        {
-            "pub_key": [1, "006C05174D39330324F6DEA0CE8CA263FC023331A107DD6C342B0BF1711B747D"],
-            "amount": 100000000000,
-            "unbond_to": [
-            	{
-            		"address": "93E243AC8A01F723DE353A4FA1ED911529CCB6E5",
-            		"amount":  100000000000
-            	}
-            ]
-        },
-        {
-            "pub_key": [1, "7AEAC3C6F053893F9E7FA44AF5024DC45A7857AFA07C4166A2B210340FF3B9A3"],
-            "amount": 100000000000,
-            "unbond_to": [
-            	{
-            		"address": "93E243AC8A01F723DE353A4FA1ED911529CCB6E5",
-            		"amount":  100000000000
-            	}
-            ]
-        },
-        {
             "pub_key": [1, "178EC6008A4364508979C70CBF100BD4BCBAA12DDE6251F5F486B4FD09014F06"],
-            "amount": 100000000000,
+            "amount": 5000000000,
             "unbond_to": [
-            	{
-            		"address": "93E243AC8A01F723DE353A4FA1ED911529CCB6E5",
-            		"amount":  100000000000
-            	}
+                {
+                    "address": "93E243AC8A01F723DE353A4FA1ED911529CCB6E5",
+                    "amount":  5000000000
+                }
             ]
         },
         {
-            "pub_key": [1, "161F61AB54194473DD018FFFB253FD3D763A92BB97B9CA731CE1E89C2B761FFE"],
-            "amount": 100000000000,
+            "pub_key": [1, "2A77777CC51467DE42350D4A8F34720D527734189BE64C7A930DD169E1FED3C6"],
+            "amount": 5000000000,
             "unbond_to": [
-            	{
-            		"address": "93E243AC8A01F723DE353A4FA1ED911529CCB6E5",
-            		"amount":  100000000000
-            	}
+                {
+                    "address": "93E243AC8A01F723DE353A4FA1ED911529CCB6E5",
+                    "amount":  5000000000
+                }
+            ]
+        },
+        {
+            "pub_key": [1, "3718E69D09B11B3AD3FA31AEF07EC416D2AEED241CACE7B0F30AE9803FFB0F08"],
+            "amount": 5000000000,
+            "unbond_to": [
+                {
+                    "address": "93E243AC8A01F723DE353A4FA1ED911529CCB6E5",
+                    "amount":  5000000000
+                }
+            ]
+        },
+        {
+            "pub_key": [1, "C6B0440DEACD1E4CF1C736CEB8E38E788B700BA2B2045A55CB657A455CF5F889"],
+            "amount": 5000000000,
+            "unbond_to": [
+                {
+                    "address": "93E243AC8A01F723DE353A4FA1ED911529CCB6E5",
+                    "amount":  5000000000
+                }
+            ]
+        },
+        {
+            "pub_key": [1, "3BA1190D54F91EFBF8B0125F7EC116AD4BA2894B6EE38564A5D5FD3230D91F7B"],
+            "amount": 5000000000,
+            "unbond_to": [
+                {
+                    "address": "93E243AC8A01F723DE353A4FA1ED911529CCB6E5",
+                    "amount":  5000000000
+                }
+            ]
+        },
+        {
+            "pub_key": [1, "E56663353D01C58A1D4CDB4D14B70C2E3335BE1EBB6C3F697AF7882C03837962"],
+            "amount": 5000000000,
+            "unbond_to": [
+                {
+                    "address": "9E54C9ECA9A3FD5D4496696818DA17A9E17F69DA",
+                    "amount":  5000000000
+                }
             ]
         }
     ]
