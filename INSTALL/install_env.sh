@@ -11,6 +11,7 @@ fi
 USER="tmuser"
 ADMIN_EMAIL="ENTER_ADMIN_EMAIL"
 OPEN_PORTS=(46656 46657 46658 46659 46660 46661 46662 46663 46664 46665 46666 46667 46668 46669 46670 46671)
+SSH_PORT=20
 WHITELIST=()
 
 # update and upgrade
@@ -30,14 +31,18 @@ apt-get install -y make screen gcc git mercurial libc6-dev pkg-config libgmp-dev
 echo "ENABLE FIREWALL ..."
 # copy in the ssh config with locked down settings
 source ssh_config.sh
-echo "$SSHCONFIG" > /etc/ssh/sshd_config
-service ssh restart
+if [ "$SSH_CONFIG" != "" ]; then
+  echo "$SSH_CONFIG" > /etc/ssh/sshd_config
+  service ssh restart
+else
+  echo "Skipping over sshd_config rewrite"
+fi
 # white list ssh access 
 for ip in "${WHITELIST[@]}"; do
-	ufw allow from $ip to any port $SSHPORT
+	ufw allow from $ip to any port $SSH_PORT
 done
 if [ ${#WHITELIST[@]} -eq 0 ]; then
-	ufw allow $SSHPORT
+	ufw allow $SSH_PORT
 fi
 # open ports
 for port in "${OPEN_PORTS[@]}"; do

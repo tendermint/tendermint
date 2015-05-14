@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SSHCONFIG="# Package generated configuration file
+SSH_CONFIG="# Package generated configuration file
 # See the sshd_config(5) manpage for details
 
 # What ports, IPs and protocols we listen for
