@@ -461,13 +461,19 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 			// NOTE: Call() transfers the value from caller to callee iff call succeeds.
 
 			if isDoug {
-				// we need to bind a copy of the accounts tree (in the txCache)
+				// we need to bind a copy of the accounts tree (from the txCache)
 				// so the gendoug can make a native call to create accounts and update
 				// permissions
 				setupDoug(vmach, txCache, _s)
 			}
-			// set the contracts permissions
-			vmach.SetPermissions(inAcc.Permissions.Send, inAcc.Permissions.Call, inAcc.Permissions.Create)
+			// set the contract's permissions
+			// (the vm doesn't know about account.Account or account.Permissions
+			vmach.SetPermissionsGetter(func(vmAcc *vm.Account) (bool, bool, bool) {
+				stAcc := toStateAccount(vmAcc)
+				p := stAcc.Permissions
+				return p.Send, p.Call, p.Create
+			})
+			vmach.SetPermissions(callee)
 
 			ret, err := vmach.Call(caller, callee, code, tx.Data, value, &gas)
 			exception := ""
@@ -853,7 +859,6 @@ func setupDoug(vmach *vm.VM, txCache *TxCache, _s *State) {
 			permInt = 0x0
 		}
 		return LeftPadWord256([]byte{permInt}).Bytes(), nil
-
 	}
 
 	// set takes (address, permissionNum, permissionValue Word256), returns the permission value

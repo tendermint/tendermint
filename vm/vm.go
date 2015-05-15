@@ -63,16 +63,21 @@ type VM struct {
 	doug bool // is this the gendoug contract
 
 	sendPerm, callPerm, createPerm bool // this contract's permissions
+
+	getPerms func(*Account) (bool, bool, bool) // gets permissions out of an account (wraps toStateFunction to get perms out of Other)
 }
 
 func NewVM(appState AppState, params Params, origin Word256, txid []byte) *VM {
 	return &VM{
-		appState:  appState,
-		params:    params,
-		origin:    origin,
-		callDepth: 0,
-		txid:      txid,
-		doug:      false,
+		appState:   appState,
+		params:     params,
+		origin:     origin,
+		callDepth:  0,
+		txid:       txid,
+		doug:       false,
+		sendPerm:   true,
+		callPerm:   true,
+		createPerm: true,
 	}
 }
 
@@ -86,8 +91,19 @@ func (vm *VM) EnableDoug() {
 	vm.doug = true
 }
 
+func (vm *VM) SetPermissionsGetter(getPerms func(acc *Account) (bool, bool, bool)) {
+	vm.getPerms = getPerms
+}
+
+func (vm *VM) SetPermissions(acc *Account) {
+	if vm.getPerms != nil {
+		send, call, create := vm.getPerms(acc)
+		vm.setPermissions(send, call, create)
+	}
+}
+
 // set the contract's generic permissions
-func (vm *VM) SetPermissions(send, call, create bool) {
+func (vm *VM) setPermissions(send, call, create bool) {
 	// TODO: distinction between send and call not defined at the VM yet (it's all through a CALL!)
 	vm.sendPerm = send
 	vm.callPerm = call
@@ -744,6 +760,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 				ret, err = nativeContract(args, &gasLimit)
 			} else if dougContract := dougContracts[addr]; vm.doug && dougContract != nil {
 				// This is Doug and we're calling a doug contract
+				// TODO: Doug contract should have all permissions
 				ret, err = dougContract(args, &gasLimit)
 			} else {
 				// EVM contract
@@ -769,14 +786,17 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 						}
 						vm.appState.UpdateAccount(acc)
 					}
+					// copy permissions and set permissions for new contract
+					send, call, create := vm.sendPerm, vm.callPerm, vm.createPerm
+					vm.SetPermissions(acc)
 					ret, err = vm.Call(callee, acc, acc.Code, args, value, gas)
+					vm.sendPerm, vm.callPerm, vm.createPerm = send, call, create
 				}
 			}
 
 			// Push result
 			if err != nil {
 				dbg.Printf("error on call: %s", err.Error())
-				// TODO: fire event
 				stack.Push(Zero256)
 			} else {
 				stack.Push(One256)
