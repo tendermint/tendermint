@@ -403,11 +403,16 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 			// Maybe create a new callee account if
 			// this transaction is creating a new contract.
 			if !createAccount {
-				if outAcc == nil {
-					// take fees (sorry pal)
+				if outAcc == nil || len(outAcc.Code) == 0 {
+					// if you call an account that doesn't exist
+					// or an account with no code then we take fees (sorry pal)
 					inAcc.Balance -= tx.Fee
 					blockCache.UpdateAccount(inAcc)
-					log.Debug(Fmt("Cannot find destination address %X. Deducting fee from caller", tx.Address))
+					if outAcc == nil {
+						log.Debug(Fmt("Cannot find destination address %X. Deducting fee from caller", tx.Address))
+					} else {
+						log.Debug(Fmt("Attempting to call an account (%X) with no code. Deducting fee from caller", tx.Address))
+					}
 					return types.ErrTxInvalidAddress
 
 				}
