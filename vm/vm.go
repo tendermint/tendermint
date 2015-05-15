@@ -74,17 +74,33 @@ func (vm *VM) SetFireable(evc events.Fireable) {
 // code: May be nil, since the CALL opcode may be used to send value from contracts to accounts
 func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, gas *uint64) (output []byte, err error) {
 
+	exception := new(string)
+	defer func() {
+		// if callDepth is 0 the event is fired from ExecTx (along with the Input event)
+		// otherwise, we fire from here.
+		if vm.callDepth != 0 && vm.evc != nil {
+			fmt.Println("FIRE AWAY!", types.EventStringAccReceive(callee.Address.Postfix(20)))
+			vm.evc.FireEvent(types.EventStringAccReceive(callee.Address.Postfix(20)), types.EventMsgCall{
+				&types.CallData{caller.Address.Postfix(20), callee.Address.Postfix(20), input, value, *gas},
+				vm.origin.Postfix(20),
+				vm.txid,
+				output,
+				*exception,
+			})
+		}
+	}()
+
 	if err = transfer(caller, callee, value); err != nil {
+		*exception = err.Error()
 		return
 	}
 
-	exception := ""
 	if len(code) > 0 {
 		vm.callDepth += 1
 		output, err = vm.call(caller, callee, code, input, value, gas)
 		vm.callDepth -= 1
 		if err != nil {
-			exception = err.Error()
+			*exception = err.Error()
 			err := transfer(callee, caller, value)
 			if err != nil {
 				panic("Could not return value to caller")
@@ -92,17 +108,6 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 		}
 	}
 
-	// if callDepth is 0 the event is fired from ExecTx (along with the Input event)
-	// otherwise, we fire from here.
-	if vm.callDepth != 0 && vm.evc != nil {
-		vm.evc.FireEvent(types.EventStringAccReceive(callee.Address.Postfix(20)), types.EventMsgCall{
-			&types.CallData{caller.Address.Postfix(20), callee.Address.Postfix(20), input, value, *gas},
-			vm.origin.Postfix(20),
-			vm.txid,
-			output,
-			exception,
-		})
-	}
 	return
 }
 
@@ -737,6 +742,8 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 
 			// Push result
 			if err != nil {
+				dbg.Printf("error on call: %s", err.Error())
+				// TODO: fire event
 				stack.Push(Zero256)
 			} else {
 				stack.Push(One256)
