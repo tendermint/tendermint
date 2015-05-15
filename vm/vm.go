@@ -71,27 +71,27 @@ func (vm *VM) SetFireable(evc events.Fireable) {
 // CONTRACT appState is aware of caller and callee, so we can just mutate them.
 // value: To be transferred from caller to callee. Refunded upon error.
 // gas:   Available gas. No refunds for gas.
+// code: May be nil, since the CALL opcode may be used to send value from contracts to accounts
 func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, gas *uint64) (output []byte, err error) {
-
-	if len(code) == 0 {
-		panic("Call() requires code")
-	}
 
 	if err = transfer(caller, callee, value); err != nil {
 		return
 	}
 
-	vm.callDepth += 1
-	output, err = vm.call(caller, callee, code, input, value, gas)
-	vm.callDepth -= 1
 	exception := ""
-	if err != nil {
-		exception = err.Error()
-		err := transfer(callee, caller, value)
+	if len(code) > 0 {
+		vm.callDepth += 1
+		output, err = vm.call(caller, callee, code, input, value, gas)
+		vm.callDepth -= 1
 		if err != nil {
-			panic("Could not return value to caller")
+			exception = err.Error()
+			err := transfer(callee, caller, value)
+			if err != nil {
+				panic("Could not return value to caller")
+			}
 		}
 	}
+
 	// if callDepth is 0 the event is fired from ExecTx (along with the Input event)
 	// otherwise, we fire from here.
 	if vm.callDepth != 0 && vm.evc != nil {
@@ -713,12 +713,24 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 					return nil, firstErr(err, ErrInsufficientGas)
 				}
 				acc := vm.appState.GetAccount(addr)
-				if acc == nil {
-					return nil, firstErr(err, ErrUnknownAddress)
-				}
+				// since CALL is used also for sending funds,
+				// acc may not exist yet. This is an error for
+				// CALLCODE, but not for CALL, though I don't think
+				// ethereum actually cares
 				if op == CALLCODE {
+					if acc == nil {
+						return nil, firstErr(err, ErrUnknownAddress)
+					}
 					ret, err = vm.Call(callee, callee, acc.Code, args, value, gas)
 				} else {
+					if acc == nil {
+						// if we have not seen the account before, create it
+						// so we can send funds
+						acc = &Account{
+							Address: addr,
+						}
+						vm.appState.UpdateAccount(acc)
+					}
 					ret, err = vm.Call(callee, acc, acc.Code, args, value, gas)
 				}
 			}

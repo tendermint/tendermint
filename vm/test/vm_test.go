@@ -103,10 +103,13 @@ func TestSendCall(t *testing.T) {
 	account2 := &Account{
 		Address: Uint64ToWord256(101),
 	}
-	fakeAppState.UpdateAccount(account1)
-	fakeAppState.UpdateAccount(account2)
+	account3 := &Account{
+		Address: Uint64ToWord256(102),
+	}
 
-	addr := account1.Address.Postfix(20)
+	// account1 will call account2 which will trigger CALL opcode to account3
+
+	addr := account3.Address.Postfix(20)
 	gas1, gas2 := byte(0x1), byte(0x1)
 	value := byte(0x69)
 	inOff, inSize := byte(0x0), byte(0x0) // no call data
@@ -121,6 +124,9 @@ func TestSendCall(t *testing.T) {
 	output, err := ourVm.Call(account1, account2, contractCode, []byte{}, 0, &gas)
 	fmt.Printf("Output: %v Error: %v\n", output, err)
 	fmt.Println("Call took:", time.Since(start))
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 /*
