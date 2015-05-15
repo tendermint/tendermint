@@ -200,6 +200,10 @@ func (n *Node) Switch() *p2p.Switch {
 	return n.sw
 }
 
+func (n *Node) BlockStore() *bc.BlockStore {
+	return n.blockStore
+}
+
 func (n *Node) ConsensusState() *consensus.ConsensusState {
 	return n.consensusState
 }
