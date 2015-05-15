@@ -14,20 +14,11 @@ type FakeAppState struct {
 
 func (fas *FakeAppState) GetAccount(addr Word256) *Account {
 	account := fas.accounts[addr.String()]
-	if account != nil {
-		return account
-	} else {
-		panic(Fmt("Invalid account addr: %X", addr))
-	}
+	return account
 }
 
 func (fas *FakeAppState) UpdateAccount(account *Account) {
-	_, ok := fas.accounts[account.Address.String()]
-	if !ok {
-		panic(Fmt("Invalid account addr: %X", account.Address))
-	} else {
-		// Nothing to do
-	}
+	fas.accounts[account.Address.String()] = account
 }
 
 func (fas *FakeAppState) RemoveAccount(account *Account) {

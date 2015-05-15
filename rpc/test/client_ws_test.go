@@ -230,7 +230,7 @@ func TestWSCallWait(t *testing.T) {
 
 	// susbscribe to the new contract
 	amt = uint64(10001)
-	eid2 := types.EventStringAccReceive(contractAddr)
+	eid2 := types.EventStringAccOutput(contractAddr)
 	subscribe(t, con, eid2)
 	defer func() {
 		unsubscribe(t, con, eid2)
@@ -254,7 +254,7 @@ func TestWSCallNoWait(t *testing.T) {
 
 	// susbscribe to the new contract
 	amt = uint64(10001)
-	eid := types.EventStringAccReceive(contractAddr)
+	eid := types.EventStringAccOutput(contractAddr)
 	subscribe(t, con, eid)
 	defer func() {
 		unsubscribe(t, con, eid)
@@ -284,16 +284,20 @@ func TestWSCallCall(t *testing.T) {
 	// susbscribe to the new contracts
 	amt = uint64(10001)
 	eid1 := types.EventStringAccReceive(contractAddr1)
-	eid2 := types.EventStringAccReceive(contractAddr2)
 	subscribe(t, con, eid1)
-	subscribe(t, con, eid2)
 	defer func() {
 		unsubscribe(t, con, eid1)
-		unsubscribe(t, con, eid2)
 		con.Close()
 	}()
 	// call contract2, which should call contract1, and wait for ev1
 	data := []byte{0x1} // just needs to be non empty for this to be a CallTx
+
+	// let the contract get created first
+	waitForEvent(t, con, eid1, true, func() {
+	}, func(eid string, b []byte) error {
+		return nil
+	})
+	// call it
 	waitForEvent(t, con, eid1, true, func() {
 		tx, _ := broadcastTx(t, "JSONRPC", userByteAddr, contractAddr2, data, userBytePriv, amt, 1000, 1000)
 		*txid = account.HashSignBytes(tx)
