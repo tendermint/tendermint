@@ -35,6 +35,7 @@ func makeBytes(n int) []byte {
 	return b
 }
 
+// Runs a basic loop
 func TestVM(t *testing.T) {
 	ourVm := NewVM(newAppState(), newParams(), Zero256, nil)
 
@@ -60,6 +61,7 @@ func TestVM(t *testing.T) {
 	fmt.Println("Call took:", time.Since(start))
 }
 
+// Tests the code for a subcurrency contract compiled by serpent
 func TestSubcurrency(t *testing.T) {
 	st := newAppState()
 	// Create accounts
@@ -87,6 +89,38 @@ func TestSubcurrency(t *testing.T) {
 	output, err := ourVm.Call(account1, account2, code, data, 0, &gas)
 	fmt.Printf("Output: %v Error: %v\n", output, err)
 
+}
+
+// Test sending tokens from a contract to another account
+func TestSendCall(t *testing.T) {
+	fakeAppState := newAppState()
+	ourVm := NewVM(fakeAppState, newParams(), Zero256, nil)
+
+	// Create accounts
+	account1 := &Account{
+		Address: Uint64ToWord256(100),
+	}
+	account2 := &Account{
+		Address: Uint64ToWord256(101),
+	}
+	fakeAppState.UpdateAccount(account1)
+	fakeAppState.UpdateAccount(account2)
+
+	addr := account1.Address.Postfix(20)
+	gas1, gas2 := byte(0x1), byte(0x1)
+	value := byte(0x69)
+	inOff, inSize := byte(0x0), byte(0x0) // no call data
+	retOff, retSize := byte(0x0), byte(0x20)
+	// this is the code we want to run (send funds to an account and return)
+	contractCode := []byte{0x60, retSize, 0x60, retOff, 0x60, inSize, 0x60, inOff, 0x60, value, 0x73}
+	contractCode = append(contractCode, addr...)
+	contractCode = append(contractCode, []byte{0x61, gas1, gas2, 0xf1, 0x60, 0x20, 0x60, 0x0, 0xf3}...)
+
+	var gas uint64 = 1000
+	start := time.Now()
+	output, err := ourVm.Call(account1, account2, contractCode, []byte{}, 0, &gas)
+	fmt.Printf("Output: %v Error: %v\n", output, err)
+	fmt.Println("Call took:", time.Since(start))
 }
 
 /*

@@ -622,7 +622,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			stack.Push(res)
 			pc += a
 			dbg.Printf(" => 0x%X\n", res)
-			stack.Print(10)
+			//stack.Print(10)
 
 		case DUP1, DUP2, DUP3, DUP4, DUP5, DUP6, DUP7, DUP8, DUP9, DUP10, DUP11, DUP12, DUP13, DUP14, DUP15, DUP16:
 			n := int(op - DUP1 + 1)
@@ -633,7 +633,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			n := int(op - SWAP1 + 2)
 			stack.Swap(n)
 			dbg.Printf(" => [%d] %X\n", n, stack.Peek())
-			stack.Print(10)
+			//stack.Print(10)
 
 		case LOG0, LOG1, LOG2, LOG3, LOG4:
 			n := int(op - LOG0)
