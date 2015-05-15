@@ -26,6 +26,11 @@ list_deps:
 get_deps:
 	go get github.com/tendermint/tendermint/...
 
+gen_client:
+	go get -u github.com/ebuchman/go-rpc-gen
+	go install github.com/ebuchman/go-rpc-gen
+	go generate rpc/core_client/*.go
+
 tendermint_root/priv_validator.json: tendermint_root/priv_validator.json.orig
 	cp $< $@
 
