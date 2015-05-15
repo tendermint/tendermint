@@ -76,10 +76,7 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 
 	exception := new(string)
 	defer func() {
-		// if callDepth is 0 the event is fired from ExecTx (along with the Input event)
-		// otherwise, we fire from here.
-		if vm.callDepth != 0 && vm.evc != nil {
-			fmt.Println("FIRE AWAY!", types.EventStringAccReceive(callee.Address.Postfix(20)))
+		if vm.evc != nil {
 			vm.evc.FireEvent(types.EventStringAccReceive(callee.Address.Postfix(20)), types.EventMsgCall{
 				&types.CallData{caller.Address.Postfix(20), callee.Address.Postfix(20), input, value, *gas},
 				vm.origin.Postfix(20),

@@ -130,7 +130,6 @@ func unmarshalValidateCallCall(origin, returnCode []byte, txid *[]byte) func(str
 		if bytes.Compare(response.Data.TxId, *txid) != 0 {
 			return fmt.Errorf("TxIds do not match up! Got %x, expected %x", response.Data.TxId, *txid)
 		}
-		// calldata := response.Data.CallData
 		return nil
 	}
 }

@@ -406,6 +406,11 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 				if outAcc == nil || len(outAcc.Code) == 0 {
 					// if you call an account that doesn't exist
 					// or an account with no code then we take fees (sorry pal)
+					// NOTE: it's fine to create a contract and call it within one
+					// block (nonce will prevent re-ordering of those txs)
+					// but to create with one account and call with another
+					// you have to wait a block to avoid a re-ordering attack
+					// that will take your fees
 					inAcc.Balance -= tx.Fee
 					blockCache.UpdateAccount(inAcc)
 					if outAcc == nil {
@@ -457,7 +462,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 			// a separate event will be fired from vm for each additional call
 			if evc != nil {
 				evc.FireEvent(types.EventStringAccInput(tx.Input.Address), types.EventMsgCallTx{tx, ret, exception})
-				evc.FireEvent(types.EventStringAccReceive(tx.Address), types.EventMsgCallTx{tx, ret, exception})
+				evc.FireEvent(types.EventStringAccOutput(tx.Address), types.EventMsgCallTx{tx, ret, exception})
 			}
 		} else {
 			// The mempool does not call txs until
