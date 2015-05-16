@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/tendermint/tendermint/binary"
-	"github.com/tendermint/tendermint/config"
 	sm "github.com/tendermint/tendermint/state"
 )
 
@@ -18,7 +17,7 @@ Paste the following JSON into your %v file
 %v
 
 `,
-		config.App().GetString("priv_validator_file"),
+		config.GetString("priv_validator_file"),
 		string(privValidatorJSONBytes),
 	)
 }

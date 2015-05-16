@@ -4,7 +4,6 @@ import (
 	"path"
 
 	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/config"
 )
 
 type DB interface {
@@ -32,19 +31,19 @@ func GetDB(name string) DB {
 	if db != nil {
 		return db.(DB)
 	}
-	switch config.App().GetString("db_backend") {
+	switch config.GetString("db_backend") {
 	case DBBackendMemDB:
 		db := NewMemDB()
 		dbs.Set(name, db)
 		return db
 	case DBBackendLevelDB:
-		db, err := NewLevelDB(path.Join(config.App().GetString("db_dir"), name+".db"))
+		db, err := NewLevelDB(path.Join(config.GetString("db_dir"), name+".db"))
 		if err != nil {
 			panic(err)
 		}
 		dbs.Set(name, db)
 		return db
 	default:
-		panic(Fmt("Unknown DB backend: %v", config.App().GetString("db_backend")))
+		panic(Fmt("Unknown DB backend: %v", config.GetString("db_backend")))
 	}
 }

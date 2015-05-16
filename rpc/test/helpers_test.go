@@ -5,9 +5,9 @@ import (
 	"encoding/hex"
 	"github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/config"
+	cfg "github.com/tendermint/tendermint/config"
+	tmcfg "github.com/tendermint/tendermint/config/tendermint_test"
 	"github.com/tendermint/tendermint/consensus"
-	"github.com/tendermint/tendermint/logger"
 	nm "github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/p2p"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -20,9 +20,10 @@ import (
 
 // global variables for use across all tests
 var (
-	rpcAddr       = "127.0.0.1:8089"
-	requestAddr   = "http://" + rpcAddr + "/"
-	websocketAddr = "ws://" + rpcAddr + "/events"
+	config        cfg.Config = nil
+	rpcAddr                  = "127.0.0.1:36657" // Not 46657
+	requestAddr              = "http://" + rpcAddr + "/"
+	websocketAddr            = "ws://" + rpcAddr + "/events"
 
 	node *nm.Node
 
@@ -61,7 +62,7 @@ func decodeHex(hexStr string) []byte {
 func newNode(ready chan struct{}) {
 	// Create & start node
 	node = nm.NewNode()
-	l := p2p.NewDefaultListener("tcp", config.App().GetString("node_laddr"), false)
+	l := p2p.NewDefaultListener("tcp", config.GetString("node_laddr"), false)
 	node.AddListener(l)
 	node.Start()
 
@@ -76,17 +77,8 @@ func newNode(ready chan struct{}) {
 
 // initialize config and create new node
 func init() {
-	rootDir := ".tendermint"
-	config.Init(rootDir)
-	app := config.App()
-	app.Set("genesis_file", rootDir+"/genesis.json")
-	app.Set("seeds", "")
-	app.Set("priv_validator_file", rootDir+"/priv_validator.json")
-	app.Set("db_backend", "memdb")
-	app.Set("rpc_laddr", rpcAddr)
-	app.Set("log_level", "debug")
-	config.SetApp(app)
-	logger.Reset()
+	config = tmcfg.GetConfig("")
+	cfg.ApplyConfig(config)
 
 	// Save new priv_validator file.
 	priv := &state.PrivValidator{
@@ -94,7 +86,7 @@ func init() {
 		PubKey:  account.PubKeyEd25519(decodeHex(userPub)),
 		PrivKey: account.PrivKeyEd25519(decodeHex(userPriv)),
 	}
-	priv.SetFile(rootDir + "/priv_validator.json")
+	priv.SetFile(config.GetString("priv_validator_file"))
 	priv.Save()
 
 	consensus.RoundDuration0 = 3 * time.Second

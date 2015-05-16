@@ -11,7 +11,6 @@ import (
 	"github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/merkle"
 )
 
@@ -24,7 +23,7 @@ type Block struct {
 // Basic validation that doesn't involve state data.
 func (b *Block) ValidateBasic(lastBlockHeight uint, lastBlockHash []byte,
 	lastBlockParts PartSetHeader, lastBlockTime time.Time) error {
-	if b.Network != config.App().GetString("network") {
+	if b.Network != config.GetString("network") {
 		return errors.New("Wrong Block.Header.Network")
 	}
 	if b.Height != lastBlockHeight+1 {

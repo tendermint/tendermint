@@ -2,7 +2,7 @@ package state
 
 import (
 	"github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/config"
+	_ "github.com/tendermint/tendermint/test"
 	"github.com/tendermint/tendermint/types"
 
 	"bytes"
@@ -65,7 +65,7 @@ func TestCopyState(t *testing.T) {
 func makeBlock(t *testing.T, state *State, commits []types.Commit, txs []types.Tx) *types.Block {
 	block := &types.Block{
 		Header: &types.Header{
-			Network:        config.App().GetString("network"),
+			Network:        "tendermint_test",
 			Height:         state.LastBlockHeight + 1,
 			Time:           state.LastBlockTime.Add(time.Minute),
 			Fees:           0,

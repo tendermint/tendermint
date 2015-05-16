@@ -8,7 +8,6 @@ import (
 	"github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/config"
 )
 
 var (
@@ -48,7 +47,7 @@ const (
 
 func (vote *Vote) WriteSignBytes(w io.Writer, n *int64, err *error) {
 	// We hex encode the network name so we don't deal with escaping issues.
-	binary.WriteTo([]byte(Fmt(`{"network":"%X"`, config.App().GetString("network"))), w, n, err)
+	binary.WriteTo([]byte(Fmt(`{"network":"%X"`, config.GetString("network"))), w, n, err)
 	binary.WriteTo([]byte(Fmt(`,"vote":{"block_hash":"%X","block_parts":%v`, vote.BlockHash, vote.BlockParts)), w, n, err)
 	binary.WriteTo([]byte(Fmt(`,"height":%v,"round":%v,"type":%v}}`, vote.Height, vote.Round, vote.Type)), w, n, err)
 }

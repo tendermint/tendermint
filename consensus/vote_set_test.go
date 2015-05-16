@@ -6,6 +6,7 @@ import (
 	. "github.com/tendermint/tendermint/common"
 	. "github.com/tendermint/tendermint/common/test"
 	sm "github.com/tendermint/tendermint/state"
+	_ "github.com/tendermint/tendermint/test"
 	"github.com/tendermint/tendermint/types"
 
 	"testing"

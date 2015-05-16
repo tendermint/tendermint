@@ -3,7 +3,6 @@ package main
 import (
 	"os"
 
-	"github.com/tendermint/tendermint/config"
 	sm "github.com/tendermint/tendermint/state"
 )
 
@@ -12,7 +11,7 @@ import (
 func reset_priv_validator() {
 	// Get PrivValidator
 	var privValidator *sm.PrivValidator
-	privValidatorFile := config.App().GetString("priv_validator_file")
+	privValidatorFile := config.GetString("priv_validator_file")
 	if _, err := os.Stat(privValidatorFile); err == nil {
 		privValidator = sm.LoadPrivValidator(privValidatorFile)
 		privValidator.LastHeight = 0

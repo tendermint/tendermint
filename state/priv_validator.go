@@ -12,7 +12,6 @@ import (
 	"github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/config"
 	. "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/types"
 
@@ -50,7 +49,7 @@ type PrivValidator struct {
 
 	// For persistence.
 	// Overloaded for testing.
-	filename string
+	filePath string
 	mtx      sync.Mutex
 }
 
@@ -68,27 +67,27 @@ func GenPrivValidator() *PrivValidator {
 		LastHeight: 0,
 		LastRound:  0,
 		LastStep:   stepNone,
-		filename:   config.App().GetString("priv_validator_file"),
+		filePath:   "",
 	}
 }
 
-func LoadPrivValidator(filename string) *PrivValidator {
-	privValJSONBytes, err := ioutil.ReadFile(filename)
+func LoadPrivValidator(filePath string) *PrivValidator {
+	privValJSONBytes, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		panic(err)
 	}
 	privVal := binary.ReadJSON(&PrivValidator{}, privValJSONBytes, &err).(*PrivValidator)
 	if err != nil {
-		Exit(Fmt("Error reading PrivValidator from %v: %v\n", filename, err))
+		Exit(Fmt("Error reading PrivValidator from %v: %v\n", filePath, err))
 	}
-	privVal.filename = filename
+	privVal.filePath = filePath
 	return privVal
 }
 
-func (privVal *PrivValidator) SetFile(filename string) {
+func (privVal *PrivValidator) SetFile(filePath string) {
 	privVal.mtx.Lock()
 	defer privVal.mtx.Unlock()
-	privVal.filename = filename
+	privVal.filePath = filePath
 }
 
 func (privVal *PrivValidator) Save() {
@@ -98,8 +97,11 @@ func (privVal *PrivValidator) Save() {
 }
 
 func (privVal *PrivValidator) save() {
+	if privVal.filePath == "" {
+		panic("Cannot save PrivValidator: filePath not set")
+	}
 	jsonBytes := binary.JSONBytes(privVal)
-	err := AtomicWriteFile(privVal.filename, jsonBytes)
+	err := WriteFileAtomic(privVal.filePath, jsonBytes)
 	if err != nil {
 		// `@; BOOM!!!
 		panic(err)

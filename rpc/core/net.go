@@ -1,7 +1,6 @@
 package core
 
 import (
-	"github.com/tendermint/tendermint/config"
 	dbm "github.com/tendermint/tendermint/db"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	sm "github.com/tendermint/tendermint/state"
@@ -12,7 +11,7 @@ import (
 
 func Status() (*ctypes.ResponseStatus, error) {
 	db := dbm.NewMemDB()
-	genesisState := sm.MakeGenesisStateFromFile(db, config.App().GetString("genesis_file"))
+	genesisState := sm.MakeGenesisStateFromFile(db, config.GetString("genesis_file"))
 	genesisHash := genesisState.Hash()
 	latestHeight := blockStore.Height()
 	var (
@@ -27,9 +26,9 @@ func Status() (*ctypes.ResponseStatus, error) {
 	}
 
 	return &ctypes.ResponseStatus{
-		Moniker:           config.App().GetString("moniker"),
-		Network:           config.App().GetString("network"),
-		Version:           config.App().GetString("version"),
+		Moniker:           config.GetString("moniker"),
+		Network:           config.GetString("network"),
+		Version:           config.GetString("version"),
 		GenesisHash:       genesisHash,
 		PubKey:            privValidator.PubKey,
 		LatestBlockHash:   latestBlockHash,

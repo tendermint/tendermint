@@ -118,7 +118,7 @@ func main() {
 	}
 
 	// Write pid to file.  This should be the last thing before TrapSignal.
-	err = AtomicWriteFile(barak.rootDir+"/pidfile", []byte(Fmt("%v", barak.pid)))
+	err = WriteFileAtomic(barak.rootDir+"/pidfile", []byte(Fmt("%v", barak.pid)))
 	if err != nil {
 		panic(Fmt("Error writing pidfile: %v", err))
 	}

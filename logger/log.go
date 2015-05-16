@@ -5,7 +5,6 @@ import (
 
 	"github.com/tendermint/log15"
 	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/config"
 )
 
 var rootHandler log15.Handler
@@ -16,31 +15,19 @@ func init() {
 
 // You might want to call this after resetting tendermint/config.
 func Reset() {
-	handlers := []log15.Handler{}
+
+	var logLevel string = "debug"
+	if config != nil {
+		logLevel = config.GetString("log_level")
+	}
 
 	// stdout handler
+	//handlers := []log15.Handler{}
 	stdoutHandler := log15.LvlFilterHandler(
-		getLevel(config.App().GetString("log_level")),
+		getLevel(logLevel),
 		log15.StreamHandler(os.Stdout, log15.TerminalFormat()),
 	)
-	handlers = append(handlers, stdoutHandler)
-
-	/*
-		// Maybe also write to a file.
-		if _logFileDir := config.App().GetString("log_file_dir"); _logFileDir != "" {
-			// Create log dir if it doesn't exist
-			err := os.MkdirAll(_logFileDir, 0700)
-			if err != nil {
-				fmt.Printf("Could not create directory: %v", err)
-				os.Exit(1)
-			}
-			// File handler
-			handlers = append(handlers, log15.LvlFilterHandler(
-				getLevel(config.App().GetString("log_file_level")),
-				log15.Must.FileHandler(_logFileDir+"/tendermint.log", log15.LogfmtFormat()),
-			))
-		}
-	*/
+	//handlers = append(handlers, stdoutHandler)
 
 	// Set rootHandler.
 	//rootHandler = log15.MultiHandler(handlers...)

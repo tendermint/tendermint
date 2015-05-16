@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/logger"
+	cfg "github.com/tendermint/tendermint/config"
+	tmcfg "github.com/tendermint/tendermint/config/tendermint"
 	"github.com/tendermint/tendermint/node"
 )
 
@@ -25,18 +25,19 @@ Commands:
 		return
 	}
 
+	// Get configuration
+	config := tmcfg.GetConfig("")
+	parseFlags(config, args[1:]) // Command line overrides
+	cfg.ApplyConfig(config)      // Notify modules of new config
+
 	switch args[0] {
 	case "node":
-		config.ParseFlags(args[1:])
-		logger.Reset()
 		node.RunNode()
 	case "gen_account":
 		gen_account()
 	case "gen_validator":
 		gen_validator()
 	case "gen_tx":
-		config.ParseFlags(args[1:])
-		logger.Reset()
 		gen_tx()
 	case "probe_upnp":
 		probe_upnp()

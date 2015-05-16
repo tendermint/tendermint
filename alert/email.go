@@ -12,14 +12,12 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-
-	"github.com/tendermint/tendermint/config"
 )
 
 // Convenience function
 func SendEmail(subject, body string, tos []string) error {
 	email := Compose(subject, body)
-	email.From = config.App().GetString("smtp_user")
+	email.From = config.GetString("smtp_user")
 	email.ContentType = "text/html; charset=utf-8"
 	email.AddRecipients(tos...)
 	err := email.Send()
@@ -86,12 +84,12 @@ func (e *Email) Send() error {
 
 	auth := smtp.PlainAuth(
 		"",
-		config.App().GetString("smtp_user"),
-		config.App().GetString("smtp_password"),
-		config.App().GetString("smtp_host"),
+		config.GetString("smtp_user"),
+		config.GetString("smtp_password"),
+		config.GetString("smtp_host"),
 	)
 
-	conn, err := smtp.Dial(fmt.Sprintf("%v:%v", config.App().GetString("smtp_host"), config.App().GetString("smtp_port")))
+	conn, err := smtp.Dial(fmt.Sprintf("%v:%v", config.GetString("smtp_host"), config.GetString("smtp_port")))
 	if err != nil {
 		return err
 	}

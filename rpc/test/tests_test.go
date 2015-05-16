@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/types"
 	"testing"
 )
@@ -15,9 +14,9 @@ func testStatus(t *testing.T, typ string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resp.Network != config.App().GetString("network") {
+	if resp.Network != config.GetString("network") {
 		t.Fatal(fmt.Errorf("Network mismatch: got %s expected %s",
-			resp.Network, config.App().Get("network")))
+			resp.Network, config.Get("network")))
 	}
 }
 

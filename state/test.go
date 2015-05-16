@@ -38,7 +38,8 @@ func RandAccount(randBalance bool, minBalance uint64) (*account.Account, *accoun
 
 func RandValidator(randBonded bool, minBonded uint64) (*ValidatorInfo, *Validator, *PrivValidator) {
 	privVal := GenPrivValidator()
-	_, privVal.filename = Tempfile("priv_validator_")
+	_, tempFilePath := Tempfile("priv_validator_")
+	privVal.SetFile(tempFilePath)
 	bonded := minBonded
 	if randBonded {
 		bonded += uint64(RandUint32())

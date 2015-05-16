@@ -12,7 +12,6 @@ import (
 
 	bc "github.com/tendermint/tendermint/blockchain"
 	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/consensus"
 	dbm "github.com/tendermint/tendermint/db"
 	"github.com/tendermint/tendermint/events"
@@ -54,13 +53,13 @@ func NewNode() *Node {
 	stateDB := dbm.GetDB("state")
 	state := sm.LoadState(stateDB)
 	if state == nil {
-		state = sm.MakeGenesisStateFromFile(stateDB, config.App().GetString("genesis_file"))
+		state = sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
 		state.Save()
 	}
 
 	// Get PrivValidator
 	var privValidator *sm.PrivValidator
-	privValidatorFile := config.App().GetString("priv_validator_file")
+	privValidatorFile := config.GetString("priv_validator_file")
 	if _, err := os.Stat(privValidatorFile); err == nil {
 		privValidator = sm.LoadPrivValidator(privValidatorFile)
 		log.Info("Loaded PrivValidator",
@@ -76,11 +75,11 @@ func NewNode() *Node {
 	eventSwitch.Start()
 
 	// Get PEXReactor
-	book := p2p.NewAddrBook(config.App().GetString("addrbook_file"))
+	book := p2p.NewAddrBook(config.GetString("addrbook_file"))
 	pexReactor := p2p.NewPEXReactor(book)
 
 	// Get BlockchainReactor
-	bcReactor := bc.NewBlockchainReactor(state, blockStore, config.App().GetBool("fast_sync"))
+	bcReactor := bc.NewBlockchainReactor(state, blockStore, config.GetBool("fast_sync"))
 
 	// Get MempoolReactor
 	mempool := mempl.NewMempool(state.Copy())
@@ -94,7 +93,7 @@ func NewNode() *Node {
 	}
 
 	// so the consensus reactor won't do anything until we're synced
-	if config.App().GetBool("fast_sync") {
+	if config.GetBool("fast_sync") {
 		consensusReactor.SetSyncing(true)
 	}
 
@@ -157,7 +156,7 @@ func (n *Node) AddListener(l p2p.Listener) {
 // NOTE: Blocking
 func (n *Node) DialSeed() {
 	// permute the list, dial them in random order.
-	seeds := strings.Split(config.App().GetString("seeds"), ",")
+	seeds := strings.Split(config.GetString("seeds"), ",")
 	perm := rand.Perm(len(seeds))
 	for i := 0; i < len(perm); i++ {
 		go func(i int) {
@@ -189,7 +188,7 @@ func (n *Node) StartRPC() {
 	core.SetSwitch(n.sw)
 	core.SetPrivValidator(n.privValidator)
 
-	listenAddr := config.App().GetString("rpc_laddr")
+	listenAddr := config.GetString("rpc_laddr")
 	mux := http.NewServeMux()
 	rpc.RegisterEventsHandler(mux, n.evsw)
 	rpc.RegisterRPCFuncs(mux, core.Routes)
@@ -218,9 +217,9 @@ func (n *Node) EventSwitch() *events.EventSwitch {
 
 func makeNodeInfo(sw *p2p.Switch) *types.NodeInfo {
 	nodeInfo := &types.NodeInfo{
-		Network: config.App().GetString("network"),
-		Moniker: config.App().GetString("moniker"),
-		Version: config.App().GetString("version"),
+		Network: config.GetString("network"),
+		Moniker: config.GetString("moniker"),
+		Version: config.GetString("version"),
 	}
 	if !sw.IsListening() {
 		return nodeInfo
@@ -228,7 +227,7 @@ func makeNodeInfo(sw *p2p.Switch) *types.NodeInfo {
 	p2pListener := sw.Listeners()[0]
 	p2pHost := p2pListener.ExternalAddress().IP.String()
 	p2pPort := p2pListener.ExternalAddress().Port
-	rpcListenAddr := config.App().GetString("rpc_laddr")
+	rpcListenAddr := config.GetString("rpc_laddr")
 	_, rpcPortStr, _ := net.SplitHostPort(rpcListenAddr)
 	rpcPort, err := strconv.Atoi(rpcPortStr)
 	if err != nil {
@@ -248,17 +247,17 @@ func makeNodeInfo(sw *p2p.Switch) *types.NodeInfo {
 func RunNode() {
 	// Create & start node
 	n := NewNode()
-	l := p2p.NewDefaultListener("tcp", config.App().GetString("node_laddr"), false)
+	l := p2p.NewDefaultListener("tcp", config.GetString("node_laddr"), false)
 	n.AddListener(l)
 	n.Start()
 
 	// If seedNode is provided by config, dial out.
-	if len(config.App().GetStringSlice("seeds")) != 0 {
+	if len(config.GetStringSlice("seeds")) != 0 {
 		n.DialSeed()
 	}
 
 	// Run the RPC server.
-	if config.App().GetString("rpc_laddr") != "" {
+	if config.GetString("rpc_laddr") != "" {
 		n.StartRPC()
 	}
 
