@@ -1,4 +1,4 @@
-package rpc
+package rpctest
 
 import (
 	"bytes"

@@ -1,6 +1,7 @@
-package rpc
+package rpctest
 
 import (
+	_ "github.com/tendermint/tendermint/test"
 	"testing"
 )
 

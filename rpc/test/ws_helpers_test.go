@@ -1,10 +1,11 @@
-package rpc
+package rpctest
 
 import (
 	"bytes"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/tendermint/tendermint/binary"
+	_ "github.com/tendermint/tendermint/test"
 	"github.com/tendermint/tendermint/types"
 	"testing"
 )

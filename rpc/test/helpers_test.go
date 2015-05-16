@@ -1,12 +1,10 @@
-package rpc
+package rpctest
 
 import (
 	"bytes"
 	"encoding/hex"
 	"github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
-	cfg "github.com/tendermint/tendermint/config"
-	tmcfg "github.com/tendermint/tendermint/config/tendermint_test"
 	"github.com/tendermint/tendermint/consensus"
 	nm "github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/p2p"
@@ -20,10 +18,9 @@ import (
 
 // global variables for use across all tests
 var (
-	config        cfg.Config = nil
-	rpcAddr                  = "127.0.0.1:36657" // Not 46657
-	requestAddr              = "http://" + rpcAddr + "/"
-	websocketAddr            = "ws://" + rpcAddr + "/events"
+	rpcAddr       = "127.0.0.1:36657" // Not 46657
+	requestAddr   = "http://" + rpcAddr + "/"
+	websocketAddr = "ws://" + rpcAddr + "/events"
 
 	node *nm.Node
 
@@ -77,9 +74,6 @@ func newNode(ready chan struct{}) {
 
 // initialize config and create new node
 func init() {
-	config = tmcfg.GetConfig("")
-	cfg.ApplyConfig(config)
-
 	// Save new priv_validator file.
 	priv := &state.PrivValidator{
 		Address: decodeHex(userAddr),

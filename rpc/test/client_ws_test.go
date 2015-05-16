@@ -1,4 +1,4 @@
-package rpc
+package rpctest
 
 import (
 	"encoding/json"
@@ -7,6 +7,7 @@ import (
 	"github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
 	"github.com/tendermint/tendermint/rpc/types"
+	_ "github.com/tendermint/tendermint/test"
 	"github.com/tendermint/tendermint/types"
 	"net/http"
 	"testing"
