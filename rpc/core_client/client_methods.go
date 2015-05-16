@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
-	"github.com/tendermint/tendermint/rpc"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tendermint/rpc/types"
 	"github.com/tendermint/tendermint/types"
 	"io/ioutil"
 	"net/http"
@@ -513,7 +513,7 @@ func (c *ClientHTTP) Status() (*ctypes.ResponseStatus, error) {
 }
 
 func (c *ClientJSON) BlockchainInfo(minHeight uint, maxHeight uint) (*ctypes.ResponseBlockchainInfo, error) {
-	request := rpc.RPCRequest{
+	request := rpctypes.RPCRequest{
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["BlockchainInfo"],
 		Params:  []interface{}{minHeight, maxHeight},
@@ -540,7 +540,7 @@ func (c *ClientJSON) BlockchainInfo(minHeight uint, maxHeight uint) (*ctypes.Res
 }
 
 func (c *ClientJSON) BroadcastTx(tx types.Tx) (*ctypes.ResponseBroadcastTx, error) {
-	request := rpc.RPCRequest{
+	request := rpctypes.RPCRequest{
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["BroadcastTx"],
 		Params:  []interface{}{tx},
@@ -567,7 +567,7 @@ func (c *ClientJSON) BroadcastTx(tx types.Tx) (*ctypes.ResponseBroadcastTx, erro
 }
 
 func (c *ClientJSON) Call(address []byte, data []byte) (*ctypes.ResponseCall, error) {
-	request := rpc.RPCRequest{
+	request := rpctypes.RPCRequest{
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["Call"],
 		Params:  []interface{}{address, data},
@@ -594,7 +594,7 @@ func (c *ClientJSON) Call(address []byte, data []byte) (*ctypes.ResponseCall, er
 }
 
 func (c *ClientJSON) CallCode(code []byte, data []byte) (*ctypes.ResponseCall, error) {
-	request := rpc.RPCRequest{
+	request := rpctypes.RPCRequest{
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["CallCode"],
 		Params:  []interface{}{code, data},
@@ -621,7 +621,7 @@ func (c *ClientJSON) CallCode(code []byte, data []byte) (*ctypes.ResponseCall, e
 }
 
 func (c *ClientJSON) DumpConsensusState() (*ctypes.ResponseDumpConsensusState, error) {
-	request := rpc.RPCRequest{
+	request := rpctypes.RPCRequest{
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["DumpConsensusState"],
 		Params:  []interface{}{},
@@ -648,7 +648,7 @@ func (c *ClientJSON) DumpConsensusState() (*ctypes.ResponseDumpConsensusState, e
 }
 
 func (c *ClientJSON) DumpStorage(address []byte) (*ctypes.ResponseDumpStorage, error) {
-	request := rpc.RPCRequest{
+	request := rpctypes.RPCRequest{
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["DumpStorage"],
 		Params:  []interface{}{address},
@@ -675,7 +675,7 @@ func (c *ClientJSON) DumpStorage(address []byte) (*ctypes.ResponseDumpStorage, e
 }
 
 func (c *ClientJSON) GenPrivAccount() (*ctypes.ResponseGenPrivAccount, error) {
-	request := rpc.RPCRequest{
+	request := rpctypes.RPCRequest{
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["GenPrivAccount"],
 		Params:  []interface{}{},
@@ -702,7 +702,7 @@ func (c *ClientJSON) GenPrivAccount() (*ctypes.ResponseGenPrivAccount, error) {
 }
 
 func (c *ClientJSON) GetAccount(address []byte) (*ctypes.ResponseGetAccount, error) {
-	request := rpc.RPCRequest{
+	request := rpctypes.RPCRequest{
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["GetAccount"],
 		Params:  []interface{}{address},
@@ -729,7 +729,7 @@ func (c *ClientJSON) GetAccount(address []byte) (*ctypes.ResponseGetAccount, err
 }
 
 func (c *ClientJSON) GetBlock(height uint) (*ctypes.ResponseGetBlock, error) {
-	request := rpc.RPCRequest{
+	request := rpctypes.RPCRequest{
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["GetBlock"],
 		Params:  []interface{}{height},
@@ -756,7 +756,7 @@ func (c *ClientJSON) GetBlock(height uint) (*ctypes.ResponseGetBlock, error) {
 }
 
 func (c *ClientJSON) GetStorage(address []byte, key []byte) (*ctypes.ResponseGetStorage, error) {
-	request := rpc.RPCRequest{
+	request := rpctypes.RPCRequest{
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["GetStorage"],
 		Params:  []interface{}{address, key},
@@ -783,7 +783,7 @@ func (c *ClientJSON) GetStorage(address []byte, key []byte) (*ctypes.ResponseGet
 }
 
 func (c *ClientJSON) ListAccounts() (*ctypes.ResponseListAccounts, error) {
-	request := rpc.RPCRequest{
+	request := rpctypes.RPCRequest{
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["ListAccounts"],
 		Params:  []interface{}{},
@@ -810,7 +810,7 @@ func (c *ClientJSON) ListAccounts() (*ctypes.ResponseListAccounts, error) {
 }
 
 func (c *ClientJSON) ListUnconfirmedTxs() (*ctypes.ResponseListUnconfirmedTxs, error) {
-	request := rpc.RPCRequest{
+	request := rpctypes.RPCRequest{
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["ListUnconfirmedTxs"],
 		Params:  []interface{}{},
@@ -837,7 +837,7 @@ func (c *ClientJSON) ListUnconfirmedTxs() (*ctypes.ResponseListUnconfirmedTxs, e
 }
 
 func (c *ClientJSON) ListValidators() (*ctypes.ResponseListValidators, error) {
-	request := rpc.RPCRequest{
+	request := rpctypes.RPCRequest{
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["ListValidators"],
 		Params:  []interface{}{},
@@ -864,7 +864,7 @@ func (c *ClientJSON) ListValidators() (*ctypes.ResponseListValidators, error) {
 }
 
 func (c *ClientJSON) NetInfo() (*ctypes.ResponseNetInfo, error) {
-	request := rpc.RPCRequest{
+	request := rpctypes.RPCRequest{
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["NetInfo"],
 		Params:  []interface{}{},
@@ -891,7 +891,7 @@ func (c *ClientJSON) NetInfo() (*ctypes.ResponseNetInfo, error) {
 }
 
 func (c *ClientJSON) SignTx(tx types.Tx, privAccounts []*account.PrivAccount) (*ctypes.ResponseSignTx, error) {
-	request := rpc.RPCRequest{
+	request := rpctypes.RPCRequest{
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["SignTx"],
 		Params:  []interface{}{tx, privAccounts},
@@ -918,7 +918,7 @@ func (c *ClientJSON) SignTx(tx types.Tx, privAccounts []*account.PrivAccount) (*
 }
 
 func (c *ClientJSON) Status() (*ctypes.ResponseStatus, error) {
-	request := rpc.RPCRequest{
+	request := rpctypes.RPCRequest{
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["Status"],
 		Params:  []interface{}{},

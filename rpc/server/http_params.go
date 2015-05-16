@@ -1,4 +1,4 @@
-package rpc
+package rpcserver
 
 import (
 	"encoding/hex"
@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+
+	. "github.com/tendermint/tendermint/rpc/types"
 )
 
 var (

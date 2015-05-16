@@ -1,5 +1,5 @@
 // Commons for HTTP handling
-package rpc
+package rpcserver
 
 import (
 	"bufio"
@@ -13,6 +13,7 @@ import (
 	"github.com/tendermint/tendermint/alert"
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
+	. "github.com/tendermint/tendermint/rpc/types"
 )
 
 func StartHTTPServer(listenAddr string, handler http.Handler) {

@@ -17,8 +17,8 @@ import (
 	"github.com/tendermint/tendermint/events"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/rpc"
 	"github.com/tendermint/tendermint/rpc/core"
+	"github.com/tendermint/tendermint/rpc/server"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -190,9 +190,9 @@ func (n *Node) StartRPC() {
 
 	listenAddr := config.GetString("rpc_laddr")
 	mux := http.NewServeMux()
-	rpc.RegisterEventsHandler(mux, n.evsw)
-	rpc.RegisterRPCFuncs(mux, core.Routes)
-	rpc.StartHTTPServer(listenAddr, mux)
+	rpcserver.RegisterEventsHandler(mux, n.evsw)
+	rpcserver.RegisterRPCFuncs(mux, core.Routes)
+	rpcserver.StartHTTPServer(listenAddr, mux)
 }
 
 func (n *Node) Switch() *p2p.Switch {
@@ -252,7 +252,7 @@ func RunNode() {
 	n.Start()
 
 	// If seedNode is provided by config, dial out.
-	if len(config.GetStringSlice("seeds")) != 0 {
+	if len(config.GetString("seeds")) > 0 {
 		n.DialSeed()
 	}
 

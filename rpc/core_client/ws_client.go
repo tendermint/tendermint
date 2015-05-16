@@ -2,7 +2,7 @@ package core_client
 
 import (
 	"github.com/gorilla/websocket"
-	"github.com/tendermint/tendermint/rpc"
+	rpctypes "github.com/tendermint/tendermint/rpc/types"
 	"net/http"
 )
 
@@ -32,7 +32,7 @@ func (wsc *WSClient) Dial() (*http.Response, error) {
 
 // subscribe to an event
 func (wsc *WSClient) Subscribe(eventid string) error {
-	return wsc.conn.WriteJSON(rpc.WSRequest{
+	return wsc.conn.WriteJSON(rpctypes.WSRequest{
 		Type:  "subscribe",
 		Event: eventid,
 	})
@@ -40,7 +40,7 @@ func (wsc *WSClient) Subscribe(eventid string) error {
 
 // unsubscribe from an event
 func (wsc *WSClient) Unsubscribe(eventid string) error {
-	return wsc.conn.WriteJSON(rpc.WSRequest{
+	return wsc.conn.WriteJSON(rpctypes.WSRequest{
 		Type:  "unsubscribe",
 		Event: eventid,
 	})

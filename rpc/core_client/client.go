@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/tendermint/tendermint/binary"
-	"github.com/tendermint/tendermint/rpc"
+	rpctypes "github.com/tendermint/tendermint/rpc/types"
 	// NOTE: do not import rpc/core.
 	// What kind of client imports all of core logic? :P
 	"io/ioutil"
@@ -91,7 +91,7 @@ func argsToJson(args ...interface{}) ([]string, error) {
 	return jsons, nil
 }
 
-func (c *ClientJSON) RequestResponse(s rpc.RPCRequest) (b []byte, err error) {
+func (c *ClientJSON) RequestResponse(s rpctypes.RPCRequest) (b []byte, err error) {
 	b = binary.JSONBytes(s)
 	buf := bytes.NewBuffer(b)
 	resp, err := http.Post(c.addr, "text/json", buf)
@@ -157,7 +157,7 @@ func argsToURLValues(argNames []string, args ...interface{}) (url.Values, error)
 
 /*rpc-gen:imports:
 github.com/tendermint/tendermint/binary
-github.com/tendermint/tendermint/rpc
+github.com/tendermint/tendermint/rpc/types
 net/http
 io/ioutil
 fmt
@@ -166,7 +166,7 @@ fmt
 // Template functions to be filled in
 
 /*rpc-gen:template:*ClientJSON func (c *ClientJSON) {{name}}({{args.def}}) ({{response}}) {
-	request := rpc.RPCRequest{
+	request := rpctypes.RPCRequest{
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["{{name}}"],
 		Params:  []interface{}{ {{args.ident}} },

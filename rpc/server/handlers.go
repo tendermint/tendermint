@@ -1,4 +1,4 @@
-package rpc
+package rpcserver
 
 import (
 	"bytes"
@@ -8,6 +8,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/tendermint/tendermint/binary"
 	"github.com/tendermint/tendermint/events"
+	. "github.com/tendermint/tendermint/rpc/types"
 	"io/ioutil"
 	"net/http"
 	"reflect"
@@ -204,19 +205,6 @@ const (
 	MaxFailedSends            = 10
 	WriteChanBufferSize       = 10
 )
-
-// for requests coming in
-type WSRequest struct {
-	Type  string `json:"type"` // subscribe or unsubscribe
-	Event string `json:"event"`
-}
-
-// for responses going out
-type WSResponse struct {
-	Event string      `json:"event"`
-	Data  interface{} `json:"data"`
-	Error string      `json:"error"`
-}
 
 // a single websocket connection
 // contains listener id, underlying ws connection,

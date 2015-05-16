@@ -10,7 +10,7 @@ import (
 	"github.com/tendermint/tendermint/binary"
 	btypes "github.com/tendermint/tendermint/cmd/barak/types"
 	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/rpc"
+	"github.com/tendermint/tendermint/rpc/client"
 	"net/http"
 )
 
@@ -89,7 +89,7 @@ func GetNonce(remote string) (uint64, error) {
 }
 
 func GetStatus(remote string) (response btypes.ResponseStatus, err error) {
-	_, err = rpc.Call(remote, "status", Arr(), &response)
+	_, err = rpcclient.Call(remote, "status", Arr(), &response)
 	if err != nil {
 		return response, fmt.Errorf("Error fetching nonce from remote %v:\n  %v", remote, err)
 	}
@@ -113,5 +113,5 @@ func RunAuthCommand(remote string, commandJSONBytes []byte, signatures []acm.Sig
 		CommandJSONStr: string(commandJSONBytes),
 		Signatures:     signatures,
 	}
-	return rpc.Call(remote, "run", Arr(authCommand), dest)
+	return rpcclient.Call(remote, "run", Arr(authCommand), dest)
 }

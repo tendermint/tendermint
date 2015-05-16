@@ -1,7 +1,7 @@
 package core
 
 import (
-	"github.com/tendermint/tendermint/rpc"
+	rpc "github.com/tendermint/tendermint/rpc/server"
 )
 
 var Routes = map[string]*rpc.RPCFunc{

@@ -14,6 +14,7 @@ import (
 	"github.com/tendermint/tendermint/binary"
 	btypes "github.com/tendermint/tendermint/cmd/barak/types"
 	. "github.com/tendermint/tendermint/common"
+	cfg "github.com/tendermint/tendermint/config"
 )
 
 func remoteNick(remote string) string {
@@ -32,6 +33,9 @@ var Config = struct {
 
 func main() {
 	fmt.Printf("New Debora Process (PID: %d)\n", os.Getpid())
+
+	// Apply bare tendermint/* configuration.
+	cfg.ApplyConfig(cfg.MapConfig(map[string]interface{}{"log_level": "info"}))
 
 	rootDir := os.Getenv("DEBROOT")
 	if rootDir == "" {

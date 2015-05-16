@@ -19,13 +19,14 @@ import (
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/cmd/barak/types"
 	. "github.com/tendermint/tendermint/common"
+	cfg "github.com/tendermint/tendermint/config"
 	pcm "github.com/tendermint/tendermint/process"
-	"github.com/tendermint/tendermint/rpc"
+	"github.com/tendermint/tendermint/rpc/server"
 )
 
-var Routes = map[string]*rpc.RPCFunc{
-	"status": rpc.NewRPCFunc(Status, []string{}),
-	"run":    rpc.NewRPCFunc(Run, []string{"auth_command"}),
+var Routes = map[string]*rpcserver.RPCFunc{
+	"status": rpcserver.NewRPCFunc(Status, []string{}),
+	"run":    rpcserver.NewRPCFunc(Run, []string{"auth_command"}),
 	// NOTE: also, two special non-JSONRPC routes called "download" and "upload"
 }
 
@@ -57,6 +58,9 @@ var barak = struct {
 
 func main() {
 	fmt.Printf("New Barak Process (PID: %d)\n", os.Getpid())
+
+	// Apply bare tendermint/* configuration.
+	cfg.ApplyConfig(cfg.MapConfig(map[string]interface{}{"log_level": "info"}))
 
 	// read flags to change options file.
 	var optionsBytes []byte
@@ -97,8 +101,8 @@ func main() {
 	mux.HandleFunc("/download", ServeFile)
 	mux.HandleFunc("/register", Register)
 	// TODO: mux.HandleFunc("/upload", UploadFile)
-	rpc.RegisterRPCFuncs(mux, Routes)
-	rpc.StartHTTPServer(options.ListenAddress, mux)
+	rpcserver.RegisterRPCFuncs(mux, Routes)
+	rpcserver.StartHTTPServer(options.ListenAddress, mux)
 
 	// Register this barak with central listener
 	for _, registry := range barak.registries {

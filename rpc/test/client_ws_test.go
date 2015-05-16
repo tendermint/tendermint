@@ -6,7 +6,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
-	"github.com/tendermint/tendermint/rpc"
+	"github.com/tendermint/tendermint/rpc/types"
 	"github.com/tendermint/tendermint/types"
 	"net/http"
 	"testing"
@@ -30,7 +30,7 @@ func newWSCon(t *testing.T) *websocket.Conn {
 
 // subscribe to an event
 func subscribe(t *testing.T, con *websocket.Conn, eventid string) {
-	err := con.WriteJSON(rpc.WSRequest{
+	err := con.WriteJSON(rpctypes.WSRequest{
 		Type:  "subscribe",
 		Event: eventid,
 	})
@@ -41,7 +41,7 @@ func subscribe(t *testing.T, con *websocket.Conn, eventid string) {
 
 // unsubscribe from an event
 func unsubscribe(t *testing.T, con *websocket.Conn, eventid string) {
-	err := con.WriteJSON(rpc.WSRequest{
+	err := con.WriteJSON(rpctypes.WSRequest{
 		Type:  "unsubscribe",
 		Event: eventid,
 	})

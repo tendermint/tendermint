@@ -20,6 +20,11 @@ build_race: get_deps
 test: build
 	go test github.com/tendermint/tendermint/...
 
+draw_deps:
+	# requires brew install graphviz
+	go get github.com/hirokidaichi/goviz
+	goviz -i github.com/tendermint/tendermint/cmd/tendermint | dot -Tpng -o hoge.png
+
 list_deps:
 	go list -f '{{join .Deps "\n"}}' github.com/tendermint/tendermint/... |  xargs go list -f '{{if not .Standard}}{{.ImportPath}}{{end}}'
 
