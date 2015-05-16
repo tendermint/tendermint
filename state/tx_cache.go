@@ -3,6 +3,7 @@ package state
 import (
 	ac "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
+	ptypes "github.com/tendermint/tendermint/permission/types" // for GlobalPermissionAddress ...
 	"github.com/tendermint/tendermint/vm"
 	"github.com/tendermint/tendermint/vm/sha3"
 )
@@ -79,7 +80,8 @@ func (cache *TxCache) CreateAccount(creator *vm.Account) *vm.Account {
 			Code:        nil,
 			Nonce:       0,
 			StorageRoot: Zero256,
-			Other:       otherAccountInfo{nil, toStateAccount(cache.GetAccount(LeftPadWord256(ac.GlobalPermissionsAddress))).Permissions},
+			Permissions: cache.GetAccount(ptypes.GlobalPermissionsAddress256).Permissions,
+			Other:       nil,
 		}
 		cache.accounts[addr] = vmAccountInfo{account, false}
 		return account
@@ -155,12 +157,6 @@ func NewContractAddress(caller []byte, nonce int) []byte {
 	return sha3.Sha3(temp)[:20]
 }
 
-// struct for carrying data the vm need not know about
-type otherAccountInfo struct {
-	PubKey      ac.PubKey
-	Permissions ac.Permissions
-}
-
 // Converts backend.Account to vm.Account struct.
 func toVMAccount(acc *ac.Account) *vm.Account {
 	return &vm.Account{
@@ -169,19 +165,17 @@ func toVMAccount(acc *ac.Account) *vm.Account {
 		Code:        acc.Code, // This is crazy.
 		Nonce:       int64(acc.Sequence),
 		StorageRoot: LeftPadWord256(acc.StorageRoot),
-		Other:       otherAccountInfo{acc.PubKey, acc.Permissions},
+		Permissions: acc.Permissions.Copy(),
+		Other:       acc.PubKey,
 	}
 }
 
 // Converts vm.Account to backend.Account struct.
 func toStateAccount(acc *vm.Account) *ac.Account {
-	otherInfo, ok := acc.Other.(otherAccountInfo)
+	pubKey, ok := acc.Other.(ac.PubKey)
 	if !ok {
-		panic("vm.Account.Other should be type state.otherAccountInfo")
+		pubKey = nil
 	}
-
-	pubKey := otherInfo.PubKey
-	perms := otherInfo.Permissions
 
 	var storageRoot []byte
 	if acc.StorageRoot.IsZero() {
@@ -196,7 +190,7 @@ func toStateAccount(acc *vm.Account) *ac.Account {
 		Code:        acc.Code,
 		Sequence:    int(acc.Nonce),
 		StorageRoot: storageRoot,
-		Permissions: perms,
+		Permissions: acc.Permissions,
 	}
 }
 

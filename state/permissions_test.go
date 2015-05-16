@@ -10,6 +10,7 @@ import (
 	. "github.com/tendermint/tendermint/common"
 	dbm "github.com/tendermint/tendermint/db"
 	"github.com/tendermint/tendermint/events"
+	ptypes "github.com/tendermint/tendermint/permission/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -61,7 +62,7 @@ func makeUsers(n int) []*account.PrivAccount {
 }
 
 var (
-	PermsAllFalse = account.Permissions{
+	PermsAllFalse = ptypes.Permissions{
 		Send:   false,
 		Call:   false,
 		Create: false,
@@ -69,7 +70,7 @@ var (
 	}
 )
 
-func newBaseGenDoc(globalPerm, accountPerm account.Permissions) GenesisDoc {
+func newBaseGenDoc(globalPerm, accountPerm ptypes.Permissions) GenesisDoc {
 	genAccounts := []GenesisAccount{}
 	for _, u := range user[:5] {
 		accPerm := accountPerm
@@ -290,6 +291,7 @@ func TestCallPermission(t *testing.T) {
 		Code:        []byte{0x60},
 		Sequence:    0,
 		StorageRoot: Zero256.Bytes(),
+		Permissions: ptypes.NilPermissions.Copy(),
 	}
 	st.UpdateAccount(simpleAcc)
 
@@ -313,6 +315,7 @@ func TestCallPermission(t *testing.T) {
 		Code:        contractCode,
 		Sequence:    0,
 		StorageRoot: Zero256.Bytes(),
+		Permissions: ptypes.NilPermissions.Copy(),
 	}
 	blockCache.UpdateAccount(caller1Acc)
 
@@ -356,6 +359,7 @@ func TestCallPermission(t *testing.T) {
 		Code:        contractCode2,
 		Sequence:    0,
 		StorageRoot: Zero256.Bytes(),
+		Permissions: ptypes.NilPermissions.Copy(),
 	}
 	caller1Acc.Permissions.Call = false
 	caller2Acc.Permissions.Call = true
@@ -417,136 +421,4 @@ func execTxWaitEvent(t *testing.T, blockCache *BlockCache, tx types.Tx, addr []b
 	}
 	return ""
 
-}
-
-/*
-- CallTx (Create)
-x	- 1 input, no perm, send perm, call perm
-	- CallTx to create new contract, perm
-	- contract runs create but doesn't have create perm
-	- contract runs create but has perm
-	- contract runs call with empty address (has call perm, not create perm)
-	- contract runs call with empty address (has call perm, and create perm)
-	- contract runs call (with perm), runs contract that runs create (without perm)
-	- contract runs call (with perm), runs contract that runs create (with perm)
-*/
-
-// TODO: this is just a copy of CALL...
-func TestCreatePermission(t *testing.T) {
-	stateDB := dbm.GetDB("state")
-	genDoc := newBaseGenDoc(PermsAllFalse, PermsAllFalse)
-	genDoc.Accounts[0].Permissions.Call = true // give the 0 account permission
-	st := MakeGenesisState(stateDB, &genDoc)
-	blockCache := NewBlockCache(st)
-
-	//------------------------------
-	// create simple contract
-	fmt.Println("##### SIMPLE CONTRACT")
-
-	// create simple contract
-	simpleContractAddr := NewContractAddress(user[0].Address, 100)
-	simpleAcc := &account.Account{
-		Address:     simpleContractAddr,
-		Balance:     0,
-		Code:        []byte{0x60},
-		Sequence:    0,
-		StorageRoot: Zero256.Bytes(),
-	}
-	st.UpdateAccount(simpleAcc)
-
-	// A single input, having the permission, should succeed
-	tx, _ := NewCallTx(blockCache, user[0].PubKey, simpleContractAddr, nil, 100, 100, 100)
-	SignCallTx(tx, user[0])
-	if err := ExecTx(blockCache, tx, true, nil); err != nil {
-		t.Fatal("Transaction failed", err)
-	}
-
-	//----------------------------------------------------------
-	// call to contract that calls simple contract - without perm
-	fmt.Println("##### CALL TO SIMPLE CONTRACT (FAIL)")
-
-	// create contract that calls the simple contract
-	contractCode := callContractCode(simpleContractAddr)
-	caller1ContractAddr := NewContractAddress(user[0].Address, 101)
-	caller1Acc := &account.Account{
-		Address:     caller1ContractAddr,
-		Balance:     0,
-		Code:        contractCode,
-		Sequence:    0,
-		StorageRoot: Zero256.Bytes(),
-	}
-	blockCache.UpdateAccount(caller1Acc)
-
-	// A single input, having the permission, but the contract doesn't have permission
-	tx, _ = NewCallTx(blockCache, user[0].PubKey, caller1ContractAddr, nil, 100, 10000, 100)
-	SignCallTx(tx, user[0])
-
-	// we need to subscribe to the Receive event to detect the exception
-	exception := execTxWaitEvent(t, blockCache, tx, caller1ContractAddr) //
-	if exception == "" {
-		t.Fatal("Expected exception")
-	}
-
-	//----------------------------------------------------------
-	// call to contract that calls simple contract - with perm
-	fmt.Println("##### CALL TO SIMPLE CONTRACT (PASS)")
-
-	// A single input, having the permission, and the contract has permission
-	caller1Acc.Permissions.Call = true
-	blockCache.UpdateAccount(caller1Acc)
-	tx, _ = NewCallTx(blockCache, user[0].PubKey, caller1ContractAddr, nil, 100, 10000, 100)
-	SignCallTx(tx, user[0])
-
-	// we need to subscribe to the Receive event to detect the exception
-	exception = execTxWaitEvent(t, blockCache, tx, caller1ContractAddr) //
-	if exception != "" {
-		t.Fatal("Unexpected exception:", exception)
-	}
-
-	//----------------------------------------------------------
-	// call to contract that calls contract that calls simple contract - without perm
-	// caller1Contract calls simpleContract. caller2Contract calls caller1Contract.
-	// caller1Contract does not have call perms, but caller2Contract does.
-	fmt.Println("##### CALL TO CONTRACT CALLING SIMPLE CONTRACT (FAIL)")
-
-	contractCode2 := callContractCode(caller1ContractAddr)
-	caller2ContractAddr := NewContractAddress(user[0].Address, 102)
-	caller2Acc := &account.Account{
-		Address:     caller2ContractAddr,
-		Balance:     1000,
-		Code:        contractCode2,
-		Sequence:    0,
-		StorageRoot: Zero256.Bytes(),
-	}
-	caller1Acc.Permissions.Call = false
-	caller2Acc.Permissions.Call = true
-	blockCache.UpdateAccount(caller1Acc)
-	blockCache.UpdateAccount(caller2Acc)
-
-	tx, _ = NewCallTx(blockCache, user[0].PubKey, caller2ContractAddr, nil, 100, 10000, 100)
-	SignCallTx(tx, user[0])
-
-	// we need to subscribe to the Receive event to detect the exception
-	exception = execTxWaitEvent(t, blockCache, tx, caller1ContractAddr) //
-	if exception == "" {
-		t.Fatal("Expected exception")
-	}
-
-	//----------------------------------------------------------
-	// call to contract that calls contract that calls simple contract - without perm
-	// caller1Contract calls simpleContract. caller2Contract calls caller1Contract.
-	// both caller1 and caller2 have permission
-	fmt.Println("##### CALL TO CONTRACT CALLING SIMPLE CONTRACT (PASS)")
-
-	caller1Acc.Permissions.Call = true
-	blockCache.UpdateAccount(caller1Acc)
-
-	tx, _ = NewCallTx(blockCache, user[0].PubKey, caller2ContractAddr, nil, 100, 10000, 100)
-	SignCallTx(tx, user[0])
-
-	// we need to subscribe to the Receive event to detect the exception
-	exception = execTxWaitEvent(t, blockCache, tx, caller1ContractAddr) //
-	if exception != "" {
-		t.Fatal("Unexpected exception", exception)
-	}
 }

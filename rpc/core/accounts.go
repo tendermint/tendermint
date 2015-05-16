@@ -4,6 +4,7 @@ import (
 	"fmt"
 	acm "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
+	ptypes "github.com/tendermint/tendermint/permission/types"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 )
 
@@ -22,7 +23,7 @@ func GetAccount(address []byte) (*acm.Account, error) {
 			Balance:     0,
 			Code:        nil,
 			StorageRoot: nil,
-			Permissions: cache.GetAccount(acm.GlobalPermissionsAddress).Permissions,
+			Permissions: cache.GetAccount(ptypes.GlobalPermissionsAddress).Permissions,
 		}
 	}
 	return account, nil

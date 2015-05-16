@@ -53,9 +53,7 @@ func TestVM(t *testing.T) {
 	N := []byte{0x0f, 0x0f}
 	// Loop N times
 	code := []byte{0x60, 0x00, 0x60, 0x20, 0x52, 0x5B, byte(0x60 + len(N) - 1)}
-	for i := 0; i < len(N); i++ {
-		code = append(code, N[i])
-	}
+	code = append(code, N...)
 	code = append(code, []byte{0x60, 0x20, 0x51, 0x12, 0x15, 0x60, byte(0x1b + len(N)), 0x57, 0x60, 0x01, 0x60, 0x20, 0x51, 0x01, 0x60, 0x20, 0x52, 0x60, 0x05, 0x56, 0x5B}...)
 	start := time.Now()
 	output, err := ourVm.Call(account1, account2, code, []byte{}, 0, &gas)
@@ -120,6 +118,7 @@ func TestSendCall(t *testing.T) {
 
 	//----------------------------------------------
 	// account2 has insufficient balance, should fail
+	fmt.Println("Should fail with insufficient balance")
 
 	exception := runVMWaitEvents(t, ourVm, account1, account2, addr, contractCode, 1000)
 	if exception == "" {
@@ -137,6 +136,7 @@ func TestSendCall(t *testing.T) {
 
 	//----------------------------------------------
 	// insufficient gas, should fail
+	fmt.Println("Should fail with insufficient gas")
 
 	account2.Balance = 100000
 	exception = runVMWaitEvents(t, ourVm, account1, account2, addr, contractCode, 100)

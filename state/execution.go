@@ -7,6 +7,7 @@ import (
 	"github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/events"
+	ptypes "github.com/tendermint/tendermint/permission/types" // for GlobalPermissionAddress ...
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/vm"
 )
@@ -177,7 +178,7 @@ func getOrMakeOutputs(state AccountGetter, accounts map[string]*account.Account,
 				PubKey:      nil,
 				Sequence:    0,
 				Balance:     0,
-				Permissions: state.GetAccount(account.GlobalPermissionsAddress).Permissions,
+				Permissions: state.GetAccount(ptypes.GlobalPermissionsAddress).Permissions,
 			}
 		}
 		accounts[string(out.Address)] = acc
@@ -442,7 +443,6 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 						log.Debug(Fmt("Attempting to call an account (%X) with no code. Deducting fee from caller", tx.Address))
 					}
 					return types.ErrTxInvalidAddress
-
 				}
 				callee = toVMAccount(outAcc)
 				code = callee.Code
@@ -458,6 +458,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 			txCache.UpdateAccount(callee) // because we adjusted by input above.
 			vmach := vm.NewVM(txCache, params, caller.Address, account.HashSignBytes(_s.ChainID, tx))
 			vmach.SetFireable(evc)
+			vmach.EnablePermissions()
 			// NOTE: Call() transfers the value from caller to callee iff call succeeds.
 
 			if isDoug {
@@ -466,14 +467,6 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 				// permissions
 				setupDoug(vmach, txCache, _s)
 			}
-			// set the contract's permissions
-			// (the vm doesn't know about account.Account or account.Permissions
-			vmach.SetPermissionsGetter(func(vmAcc *vm.Account) (bool, bool, bool) {
-				stAcc := toStateAccount(vmAcc)
-				p := stAcc.Permissions
-				return p.Send, p.Call, p.Create
-			})
-			vmach.SetPermissions(callee)
 
 			ret, err := vmach.Call(caller, callee, code, tx.Data, value, &gas)
 			exception := ""

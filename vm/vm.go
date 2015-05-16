@@ -60,24 +60,18 @@ type VM struct {
 
 	evc events.Fireable
 
-	doug bool // is this the gendoug contract
-
-	sendPerm, callPerm, createPerm bool // this contract's permissions
-
-	getPerms func(*Account) (bool, bool, bool) // gets permissions out of an account (wraps toStateFunction to get perms out of Other)
+	doug  bool // is this the gendoug contract
+	perms bool // permission checking can be turned off
 }
 
 func NewVM(appState AppState, params Params, origin Word256, txid []byte) *VM {
 	return &VM{
-		appState:   appState,
-		params:     params,
-		origin:     origin,
-		callDepth:  0,
-		txid:       txid,
-		doug:       false,
-		sendPerm:   true,
-		callPerm:   true,
-		createPerm: true,
+		appState:  appState,
+		params:    params,
+		origin:    origin,
+		callDepth: 0,
+		txid:      txid,
+		doug:      false,
 	}
 }
 
@@ -91,23 +85,9 @@ func (vm *VM) EnableDoug() {
 	vm.doug = true
 }
 
-func (vm *VM) SetPermissionsGetter(getPerms func(acc *Account) (bool, bool, bool)) {
-	vm.getPerms = getPerms
-}
-
-func (vm *VM) SetPermissions(acc *Account) {
-	if vm.getPerms != nil {
-		send, call, create := vm.getPerms(acc)
-		vm.setPermissions(send, call, create)
-	}
-}
-
-// set the contract's generic permissions
-func (vm *VM) setPermissions(send, call, create bool) {
-	// TODO: distinction between send and call not defined at the VM yet (it's all through a CALL!)
-	vm.sendPerm = send
-	vm.callPerm = call
-	vm.createPerm = create
+// run permission checks before call and create
+func (vm *VM) EnablePermissions() {
+	vm.perms = true
 }
 
 // CONTRACT appState is aware of caller and callee, so we can just mutate them.
@@ -701,7 +681,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 			dbg.Printf(" => %v\n", log)
 
 		case CREATE: // 0xF0
-			if !vm.createPerm {
+			if vm.perms && !callee.Permissions.Create {
 				return nil, ErrPermission{"create"}
 			}
 			contractValue := stack.Pop64()
@@ -729,7 +709,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 			}
 
 		case CALL, CALLCODE: // 0xF1, 0xF2
-			if !vm.callPerm {
+			if vm.perms && !callee.Permissions.Call {
 				return nil, ErrPermission{"call"}
 			}
 			gasLimit := stack.Pop64()
@@ -786,11 +766,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 						}
 						vm.appState.UpdateAccount(acc)
 					}
-					// copy permissions and set permissions for new contract
-					send, call, create := vm.sendPerm, vm.callPerm, vm.createPerm
-					vm.SetPermissions(acc)
 					ret, err = vm.Call(callee, acc, acc.Code, args, value, gas)
-					vm.sendPerm, vm.callPerm, vm.createPerm = send, call, create
 				}
 			}
 

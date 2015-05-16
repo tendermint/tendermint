@@ -2,6 +2,7 @@ package vm
 
 import (
 	. "github.com/tendermint/tendermint/common"
+	ptypes "github.com/tendermint/tendermint/permission/types"
 )
 
 const (
@@ -15,6 +16,8 @@ type Account struct {
 	Nonce       int64
 	StorageRoot Word256
 	Other       interface{} // For holding all other data.
+
+	Permissions *ptypes.Permissions
 }
 
 func (acc *Account) String() string {

@@ -6,8 +6,8 @@ import (
 	"io"
 
 	"github.com/tendermint/tendermint/binary"
-	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/merkle"
+	ptypes "github.com/tendermint/tendermint/permission/types"
 )
 
 // Signable is an interface for all signable things.
@@ -45,7 +45,7 @@ type Account struct {
 	Code        []byte `json:"code"`         // VM code
 	StorageRoot []byte `json:"storage_root"` // VM storage merkle root.
 
-	Permissions Permissions `json:"permissions"`
+	Permissions *ptypes.Permissions `json:"permissions"`
 }
 
 func (acc *Account) Copy() *Account {
@@ -73,100 +73,10 @@ var AccountCodec = binary.Codec{
 
 //-----------------------------------------------------------------------------
 
-var GlobalPermissionsAddress = LeftPadBytes([]byte{}, 20)
-var DougAddress = GlobalPermissionsAddress
-
-type Permission uint
-
-const (
-	SendPermission Permission = iota
-	CallPermission
-	CreatePermission
-	BondPermission
-
-	NumBasePermissions = 4
-)
-
-type Permissions struct {
-	Send   bool
-	Call   bool
-	Create bool
-	Bond   bool
-	Other  []bool
-}
-
-func (p Permissions) Get(ty uint) (bool, error) {
-	tyP := Permission(ty)
-	switch tyP {
-	case SendPermission:
-		return p.Send, nil
-	case CallPermission:
-		return p.Call, nil
-	case CreatePermission:
-		return p.Create, nil
-	case BondPermission:
-		return p.Bond, nil
-	default:
-		ty = ty - 4
-		if ty <= uint(len(p.Other)-1) {
-			return p.Other[ty], nil
-		}
-		return false, fmt.Errorf("Unknown permission number %v", ty)
-	}
-}
-
-func (p Permissions) Set(ty uint, val bool) error {
-	tyP := Permission(ty)
-	switch tyP {
-	case SendPermission:
-		p.Send = val
-	case CallPermission:
-		p.Call = val
-	case CreatePermission:
-		p.Create = val
-	case BondPermission:
-		p.Bond = val
-	default:
-		ty = ty - 4
-		if ty <= uint(len(p.Other)-1) {
-			p.Other[ty] = val
-			return nil
-		}
-		return fmt.Errorf("Unknown permission number %v", ty)
-	}
-	return nil
-}
-
-// Add should be called on all accounts in tandem
-func (p Permissions) Add(val bool) (uint, error) {
-	l := len(p.Other)
-	p.Other = append(p.Other, val)
-	return uint(l), nil
-}
-
-// Remove should be called on all accounts in tandem
-func (p Permissions) Remove(ty uint) error {
-	if ty < uint(NumBasePermissions) || ty >= uint(len(p.Other)) {
-		return fmt.Errorf("Invalid permission number %v", ty)
-	}
-
-	// pop the permission out of the array
-	perms := p.Other[:ty]
-	if ty+1 < uint(len(p.Other)) {
-		perms = append(perms, p.Other[ty+1:]...)
-	}
-	p.Other = perms
-	return nil
-}
-
 // defaults for a Big Bad Public Blockchain
-var DefaultPermissions = Permissions{
+var DefaultPermissions = ptypes.Permissions{
 	Send:   true,
 	Call:   true,
 	Create: true,
 	Bond:   true,
-}
-
-func (p Permissions) String() string {
-	return fmt.Sprintf("CanSend:%v, CanCall:%v, CanCreate:%v, CanBond:%v", p.Send, p.Call, p.Create, p.Bond)
 }
