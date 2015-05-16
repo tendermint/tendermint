@@ -1,133 +1,13 @@
 package rpctest
 
 import (
-	"encoding/json"
 	"fmt"
-	"github.com/gorilla/websocket"
+	"testing"
+
 	"github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/binary"
-	"github.com/tendermint/tendermint/rpc/types"
 	_ "github.com/tendermint/tendermint/test"
 	"github.com/tendermint/tendermint/types"
-	"net/http"
-	"testing"
-	"time"
 )
-
-//--------------------------------------------------------------------------------
-// Utilities for testing the websocket service
-
-// create a new connection
-func newWSCon(t *testing.T) *websocket.Conn {
-	dialer := websocket.DefaultDialer
-	rHeader := http.Header{}
-	con, r, err := dialer.Dial(websocketAddr, rHeader)
-	fmt.Println("response", r)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return con
-}
-
-// subscribe to an event
-func subscribe(t *testing.T, con *websocket.Conn, eventid string) {
-	err := con.WriteJSON(rpctypes.WSRequest{
-		Type:  "subscribe",
-		Event: eventid,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-// unsubscribe from an event
-func unsubscribe(t *testing.T, con *websocket.Conn, eventid string) {
-	err := con.WriteJSON(rpctypes.WSRequest{
-		Type:  "unsubscribe",
-		Event: eventid,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-// wait for an event; do things that might trigger events, and check them when they are received
-func waitForEvent(t *testing.T, con *websocket.Conn, eventid string, dieOnTimeout bool, f func(), check func(string, []byte) error) {
-	// go routine to wait for webscoket msg
-	gch := make(chan []byte) // good channel
-	ech := make(chan error)  // error channel
-	go func() {
-		for {
-			_, p, err := con.ReadMessage()
-			if err != nil {
-				ech <- err
-				break
-			} else {
-				// if the event id isnt what we're waiting on
-				// ignore it
-				var response struct {
-					Event string `json:"event"`
-				}
-				if err := json.Unmarshal(p, &response); err != nil {
-					ech <- err
-					break
-				}
-				if response.Event == eventid {
-					gch <- p
-					break
-				}
-			}
-		}
-	}()
-
-	// do stuff (transactions)
-	f()
-
-	// wait for an event or 10 seconds
-	ticker := time.Tick(10 * time.Second)
-	select {
-	case <-ticker:
-		if dieOnTimeout {
-			con.Close()
-			t.Fatalf("%s event was not received in time", eventid)
-		}
-		// else that's great, we didn't hear the event
-		// and we shouldn't have
-	case p := <-gch:
-		if dieOnTimeout {
-			// message was received and expected
-			// run the check
-			err := check(eventid, p)
-			if err != nil {
-				t.Fatal(err)
-			}
-		} else {
-			con.Close()
-			t.Fatalf("%s event was not expected", eventid)
-		}
-	case err := <-ech:
-		t.Fatal(err)
-	}
-}
-
-func unmarshalResponseNewBlock(b []byte) (*types.Block, error) {
-	// unmarshall and assert somethings
-	var response struct {
-		Event string       `json:"event"`
-		Data  *types.Block `json:"data"`
-		Error string       `json:"error"`
-	}
-	var err error
-	binary.ReadJSON(&response, b, &err)
-	if err != nil {
-		return nil, err
-	}
-	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
-	}
-	block := response.Data
-	return block, nil
-}
 
 //--------------------------------------------------------------------------------
 // Test the websocket service
