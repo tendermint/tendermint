@@ -434,7 +434,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 			txCache.UpdateAccount(caller) // because we adjusted by input above, and bumped nonce maybe.
 			txCache.UpdateAccount(callee) // because we adjusted by input above.
 			vmach := vm.NewVM(txCache, params, caller.Address, account.HashSignBytes(tx))
-			vmach.SetFireable(_s.evc)
+			vmach.SetFireable(evc)
 			// NOTE: Call() transfers the value from caller to callee iff call succeeds.
 
 			ret, err := vmach.Call(caller, callee, code, tx.Data, value, &gas)
