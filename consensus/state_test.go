@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	_ "github.com/tendermint/tendermint/test"
+	_ "github.com/tendermint/tendermint/config/tendermint_test"
 	"github.com/tendermint/tendermint/types"
 )
 

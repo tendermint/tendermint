@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/tendermint/tendermint/account"
-	_ "github.com/tendermint/tendermint/test"
+	_ "github.com/tendermint/tendermint/config/tendermint_test"
 	"github.com/tendermint/tendermint/types"
 )
 

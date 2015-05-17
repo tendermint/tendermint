@@ -1,3 +1,5 @@
+// Import this in all *_test.go files to initialize ~/.tendermint_test.
+
 package tendermint_test
 
 import (
@@ -9,6 +11,12 @@ import (
 	. "github.com/tendermint/tendermint/common"
 	cfg "github.com/tendermint/tendermint/config"
 )
+
+func init() {
+	// Creates ~/.tendermint_test/*
+	config := GetConfig("")
+	cfg.ApplyConfig(config)
+}
 
 func getTMRoot(rootDir string) string {
 	if rootDir == "" {
