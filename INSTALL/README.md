@@ -19,7 +19,8 @@ Don't use `apt-get install golang`, it's still on an old version.
 
 WARNING: THIS STEP WILL GIVE CONTROL OF THE CURRENT USER TO THE DEV TEAM.
 
-    go install github.com/tendermint/tendermint/cmd/barak
+    go get -u github.com/tendermint/tendermint/cmd/barak # get+update
+    go install github.com/tendermint/tendermint/cmd/barak # install
     cat $GOPATH/src/github.com/tendermint/tendermint/cmd/barak/seed0 | barak
 
 ### Install/Update Tendermint
