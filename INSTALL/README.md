@@ -21,7 +21,7 @@ WARNING: THIS STEP WILL GIVE CONTROL OF THE CURRENT USER TO THE DEV TEAM.
 
     go get -u github.com/tendermint/tendermint/cmd/barak # get+update
     go install github.com/tendermint/tendermint/cmd/barak # install
-    cat $GOPATH/src/github.com/tendermint/tendermint/cmd/barak/seed0 | barak
+    nohup barak -options-file="$GOPATH/src/github.com/tendermint/tendermint/cmd/barak/seed0" &
 
 ### Install/Update Tendermint
 

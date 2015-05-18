@@ -28,6 +28,7 @@ apt-get install -y make screen gcc git mercurial libc6-dev pkg-config libgmp-dev
 
 # set up firewall
 echo "ENABLE FIREWALL ..."
+set -x
 # white list ssh access 
 for ip in "${WHITELIST[@]}"; do
 	ufw allow from $ip to any port $SSH_PORT
@@ -40,7 +41,9 @@ for port in "${OPEN_PORTS[@]}"; do
 	ufw allow $port
 done
 # apply
-ufw enable
+ufw --force enable
+set +x
+# set up firewall END
 
 # watch the logs and have them emailed to me
 # apt-get install -y logwatch
