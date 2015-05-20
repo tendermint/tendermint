@@ -1,6 +1,7 @@
 package state
 
 import (
+	"bytes"
 	"fmt"
 	"strconv"
 	"testing"
@@ -22,7 +23,7 @@ x	- 1 input, no perm, call perm, create perm
 x	- 1 input, perm
 x	- 2 inputs, one with perm one without
 
-- CallTx
+- CallTx, CALL
 x	- 1 input, no perm, send perm, create perm
 x	- 1 input, perm
 x	- contract runs call but doesn't have call perm
@@ -30,26 +31,28 @@ x	- contract runs call and has call perm
 x	- contract runs call (with perm), runs contract that runs call (without perm)
 x	- contract runs call (with perm), runs contract that runs call (with perm)
 
-- CallTx (Create)
+- CallTx for Create, CREATE
 x	- 1 input, no perm, send perm, call perm
-	- 1 input, perm
-	- contract runs create but doesn't have create perm
-	- contract runs create but has perm
-	- contract runs call with empty address (has call perm, not create perm)
-	- contract runs call with empty address (has call perm, and create perm)
+x 	- 1 input, perm
+x	- contract runs create but doesn't have create perm
+x	- contract runs create but has perm
+x	- contract runs call with empty address (has call and create perm)
 
 - BondTx
 	- 1 input, no perm
 	- 1 input, perm
 	- 2 inputs, one with perm one without
 
-- Gendoug: get/set/add/rm
+- SendTx for new account ? CALL for new account?
+
+- Gendoug:
+	- base: has,set,unset
+	- roles: has, add, r
+
 */
 
 // keys
-var (
-	user = makeUsers(5)
-)
+var user = makeUsers(5)
 
 func makeUsers(n int) []*account.PrivAccount {
 	accounts := []*account.PrivAccount{}
@@ -253,19 +256,6 @@ func TestSendPermission(t *testing.T) {
 	}
 }
 
-// convenience function for contract that calls a given address
-func callContractCode(contractAddr []byte) []byte {
-	gas1, gas2 := byte(0x1), byte(0x1)
-	value := byte(0x1)
-	inOff, inSize := byte(0x0), byte(0x0) // no call data
-	retOff, retSize := byte(0x0), byte(0x20)
-	// this is the code we want to run (call a contract and return)
-	contractCode := []byte{0x60, retSize, 0x60, retOff, 0x60, inSize, 0x60, inOff, 0x60, value, 0x73}
-	contractCode = append(contractCode, contractAddr...)
-	contractCode = append(contractCode, []byte{0x61, gas1, gas2, 0xf1, 0x60, 0x20, 0x60, 0x0, 0xf3}...)
-	return contractCode
-}
-
 func TestCallPermission(t *testing.T) {
 	stateDB := dbm.GetDB("state")
 	genDoc := newBaseGenDoc(PermsAllFalse, PermsAllFalse)
@@ -318,7 +308,7 @@ func TestCallPermission(t *testing.T) {
 	SignCallTx(tx, user[0])
 
 	// we need to subscribe to the Receive event to detect the exception
-	exception := execTxWaitEvent(t, blockCache, tx, caller1ContractAddr) //
+	_, exception := execTxWaitEvent(t, blockCache, tx, types.EventStringAccReceive(caller1ContractAddr)) //
 	if exception == "" {
 		t.Fatal("Expected exception")
 	}
@@ -334,7 +324,7 @@ func TestCallPermission(t *testing.T) {
 	SignCallTx(tx, user[0])
 
 	// we need to subscribe to the Receive event to detect the exception
-	exception = execTxWaitEvent(t, blockCache, tx, caller1ContractAddr) //
+	_, exception = execTxWaitEvent(t, blockCache, tx, types.EventStringAccReceive(caller1ContractAddr)) //
 	if exception != "" {
 		t.Fatal("Unexpected exception:", exception)
 	}
@@ -364,7 +354,7 @@ func TestCallPermission(t *testing.T) {
 	SignCallTx(tx, user[0])
 
 	// we need to subscribe to the Receive event to detect the exception
-	exception = execTxWaitEvent(t, blockCache, tx, caller1ContractAddr) //
+	_, exception = execTxWaitEvent(t, blockCache, tx, types.EventStringAccReceive(caller1ContractAddr)) //
 	if exception == "" {
 		t.Fatal("Expected exception")
 	}
@@ -382,19 +372,249 @@ func TestCallPermission(t *testing.T) {
 	SignCallTx(tx, user[0])
 
 	// we need to subscribe to the Receive event to detect the exception
-	exception = execTxWaitEvent(t, blockCache, tx, caller1ContractAddr) //
+	_, exception = execTxWaitEvent(t, blockCache, tx, types.EventStringAccReceive(caller1ContractAddr)) //
 	if exception != "" {
 		t.Fatal("Unexpected exception", exception)
 	}
 }
 
+func TestCreatePermission(t *testing.T) {
+	stateDB := dbm.GetDB("state")
+	genDoc := newBaseGenDoc(PermsAllFalse, PermsAllFalse)
+	genDoc.Accounts[0].Permissions.Base.Set(ptypes.Create, true) // give the 0 account permission
+	genDoc.Accounts[0].Permissions.Base.Set(ptypes.Call, true)   // give the 0 account permission
+	st := MakeGenesisState(stateDB, &genDoc)
+	blockCache := NewBlockCache(st)
+
+	//------------------------------
+	// create a simple contract
+	fmt.Println("##### CREATE SIMPLE CONTRACT")
+
+	contractCode := []byte{0x60}
+	createCode := wrapContractForCreate(contractCode)
+
+	// A single input, having the permission, should succeed
+	tx, _ := NewCallTx(blockCache, user[0].PubKey, nil, createCode, 100, 100, 100)
+	SignCallTx(tx, user[0])
+	if err := ExecTx(blockCache, tx, true, nil); err != nil {
+		t.Fatal("Transaction failed", err)
+	}
+	// ensure the contract is there
+	contractAddr := NewContractAddress(tx.Input.Address, uint64(tx.Input.Sequence))
+	contractAcc := blockCache.GetAccount(contractAddr)
+	if contractAcc == nil {
+		t.Fatalf("failed to create contract %X", contractAddr)
+	}
+	if bytes.Compare(contractAcc.Code, contractCode) != 0 {
+		t.Fatalf("contract does not have correct code. Got %X, expected %X", contractAcc.Code, contractCode)
+	}
+
+	//------------------------------
+	// create contract that uses the CREATE op
+	fmt.Println("##### CREATE FACTORY")
+
+	contractCode = []byte{0x60}
+	createCode = wrapContractForCreate(contractCode)
+	factoryCode := createContractCode()
+	createFactoryCode := wrapContractForCreate(factoryCode)
+
+	// A single input, having the permission, should succeed
+	tx, _ = NewCallTx(blockCache, user[0].PubKey, nil, createFactoryCode, 100, 100, 100)
+	SignCallTx(tx, user[0])
+	if err := ExecTx(blockCache, tx, true, nil); err != nil {
+		t.Fatal("Transaction failed", err)
+	}
+	// ensure the contract is there
+	contractAddr = NewContractAddress(tx.Input.Address, uint64(tx.Input.Sequence))
+	contractAcc = blockCache.GetAccount(contractAddr)
+	if contractAcc == nil {
+		t.Fatalf("failed to create contract %X", contractAddr)
+	}
+	if bytes.Compare(contractAcc.Code, factoryCode) != 0 {
+		t.Fatalf("contract does not have correct code. Got %X, expected %X", contractAcc.Code, factoryCode)
+	}
+
+	//------------------------------
+	// call the contract (should FAIL)
+	fmt.Println("###### CALL THE FACTORY (FAIL)")
+
+	// A single input, having the permission, should succeed
+	tx, _ = NewCallTx(blockCache, user[0].PubKey, contractAddr, createCode, 100, 100, 100)
+	SignCallTx(tx, user[0])
+	// we need to subscribe to the Receive event to detect the exception
+	_, exception := execTxWaitEvent(t, blockCache, tx, types.EventStringAccReceive(contractAddr)) //
+	if exception == "" {
+		t.Fatal("expected exception")
+	}
+
+	//------------------------------
+	// call the contract (should PASS)
+	fmt.Println("###### CALL THE FACTORY (PASS)")
+
+	contractAcc.Permissions.Base.Set(ptypes.Create, true)
+	blockCache.UpdateAccount(contractAcc)
+
+	// A single input, having the permission, should succeed
+	tx, _ = NewCallTx(blockCache, user[0].PubKey, contractAddr, createCode, 100, 100, 100)
+	SignCallTx(tx, user[0])
+	// we need to subscribe to the Receive event to detect the exception
+	_, exception = execTxWaitEvent(t, blockCache, tx, types.EventStringAccReceive(contractAddr)) //
+	if exception != "" {
+		t.Fatal("unexpected exception", exception)
+	}
+
+	//--------------------------------
+	fmt.Println("##### CALL to empty address")
+	zeroAddr := LeftPadBytes([]byte{}, 20)
+	code := callContractCode(zeroAddr)
+
+	contractAddr = NewContractAddress(user[0].Address, 110)
+	contractAcc = &account.Account{
+		Address:     contractAddr,
+		Balance:     1000,
+		Code:        code,
+		Sequence:    0,
+		StorageRoot: Zero256.Bytes(),
+		Permissions: ptypes.NewAccountPermissions(),
+	}
+	contractAcc.Permissions.Base.Set(ptypes.Call, true)
+	contractAcc.Permissions.Base.Set(ptypes.Create, true)
+	blockCache.UpdateAccount(contractAcc)
+
+	// this should call the 0 address but not create ...
+	tx, _ = NewCallTx(blockCache, user[0].PubKey, contractAddr, createCode, 100, 10000, 100)
+	SignCallTx(tx, user[0])
+	// we need to subscribe to the Receive event to detect the exception
+	_, exception = execTxWaitEvent(t, blockCache, tx, types.EventStringAccReceive(zeroAddr)) //
+	if exception != "" {
+		t.Fatal("unexpected exception", exception)
+	}
+	zeroAcc := blockCache.GetAccount(zeroAddr)
+	if len(zeroAcc.Code) != 0 {
+		t.Fatal("the zero account was given code from a CALL!")
+	}
+}
+
+func TestBondPermission(t *testing.T) {
+	stateDB := dbm.GetDB("state")
+	genDoc := newBaseGenDoc(PermsAllFalse, PermsAllFalse)
+	st := MakeGenesisState(stateDB, &genDoc)
+	blockCache := NewBlockCache(st)
+
+	//------------------------------
+	// a bond tx from someone without bond perm should fail
+	tx, _ := NewCallTx(blockCache, user[0].PubKey, nil, createCode, 100, 100, 100)
+	SignCallTx(tx, user[0])
+	if err := ExecTx(blockCache, tx, true, nil); err != nil {
+		t.Fatal("Transaction failed", err)
+	}
+	// ensure the contract is there
+	contractAddr := NewContractAddress(tx.Input.Address, uint64(tx.Input.Sequence))
+	contractAcc := blockCache.GetAccount(contractAddr)
+	if contractAcc == nil {
+		t.Fatalf("failed to create contract %X", contractAddr)
+	}
+	if bytes.Compare(contractAcc.Code, contractCode) != 0 {
+		t.Fatalf("contract does not have correct code. Got %X, expected %X", contractAcc.Code, contractCode)
+	}
+
+	//------------------------------
+	// create contract that uses the CREATE op
+	fmt.Println("##### CREATE FACTORY")
+
+	contractCode = []byte{0x60}
+	createCode = wrapContractForCreate(contractCode)
+	factoryCode := createContractCode()
+	createFactoryCode := wrapContractForCreate(factoryCode)
+
+	// A single input, having the permission, should succeed
+	tx, _ = NewCallTx(blockCache, user[0].PubKey, nil, createFactoryCode, 100, 100, 100)
+	SignCallTx(tx, user[0])
+	if err := ExecTx(blockCache, tx, true, nil); err != nil {
+		t.Fatal("Transaction failed", err)
+	}
+	// ensure the contract is there
+	contractAddr = NewContractAddress(tx.Input.Address, uint64(tx.Input.Sequence))
+	contractAcc = blockCache.GetAccount(contractAddr)
+	if contractAcc == nil {
+		t.Fatalf("failed to create contract %X", contractAddr)
+	}
+	if bytes.Compare(contractAcc.Code, factoryCode) != 0 {
+		t.Fatalf("contract does not have correct code. Got %X, expected %X", contractAcc.Code, factoryCode)
+	}
+
+	//------------------------------
+	// call the contract (should FAIL)
+	fmt.Println("###### CALL THE FACTORY (FAIL)")
+
+	// A single input, having the permission, should succeed
+	tx, _ = NewCallTx(blockCache, user[0].PubKey, contractAddr, createCode, 100, 100, 100)
+	SignCallTx(tx, user[0])
+	// we need to subscribe to the Receive event to detect the exception
+	_, exception := execTxWaitEvent(t, blockCache, tx, types.EventStringAccReceive(contractAddr)) //
+	if exception == "" {
+		t.Fatal("expected exception")
+	}
+
+	//------------------------------
+	// call the contract (should PASS)
+	fmt.Println("###### CALL THE FACTORY (PASS)")
+
+	contractAcc.Permissions.Base.Set(ptypes.Create, true)
+	blockCache.UpdateAccount(contractAcc)
+
+	// A single input, having the permission, should succeed
+	tx, _ = NewCallTx(blockCache, user[0].PubKey, contractAddr, createCode, 100, 100, 100)
+	SignCallTx(tx, user[0])
+	// we need to subscribe to the Receive event to detect the exception
+	_, exception = execTxWaitEvent(t, blockCache, tx, types.EventStringAccReceive(contractAddr)) //
+	if exception != "" {
+		t.Fatal("unexpected exception", exception)
+	}
+
+	//--------------------------------
+	fmt.Println("##### CALL to empty address")
+	zeroAddr := LeftPadBytes([]byte{}, 20)
+	code := callContractCode(zeroAddr)
+
+	contractAddr = NewContractAddress(user[0].Address, 110)
+	contractAcc = &account.Account{
+		Address:     contractAddr,
+		Balance:     1000,
+		Code:        code,
+		Sequence:    0,
+		StorageRoot: Zero256.Bytes(),
+		Permissions: ptypes.NewAccountPermissions(),
+	}
+	contractAcc.Permissions.Base.Set(ptypes.Call, true)
+	contractAcc.Permissions.Base.Set(ptypes.Create, true)
+	blockCache.UpdateAccount(contractAcc)
+
+	// this should call the 0 address but not create ...
+	tx, _ = NewCallTx(blockCache, user[0].PubKey, contractAddr, createCode, 100, 10000, 100)
+	SignCallTx(tx, user[0])
+	// we need to subscribe to the Receive event to detect the exception
+	_, exception = execTxWaitEvent(t, blockCache, tx, types.EventStringAccReceive(zeroAddr)) //
+	if exception != "" {
+		t.Fatal("unexpected exception", exception)
+	}
+	zeroAcc := blockCache.GetAccount(zeroAddr)
+	if len(zeroAcc.Code) != 0 {
+		t.Fatal("the zero account was given code from a CALL!")
+	}
+
+}
+
+//-------------------------------------------------------------------------------------
+// helpers
+
 // run ExecTx and wait for the Receive event on given addr
-// returns error/exception
-func execTxWaitEvent(t *testing.T, blockCache *BlockCache, tx types.Tx, addr []byte) string {
+// returns the msg data and an error/exception
+func execTxWaitEvent(t *testing.T, blockCache *BlockCache, tx types.Tx, eventid string) (interface{}, string) {
 	evsw := new(events.EventSwitch)
 	evsw.Start()
 	ch := make(chan interface{})
-	evsw.AddListenerForEvent("test", types.EventStringAccReceive(addr), func(msg interface{}) {
+	evsw.AddListenerForEvent("test", eventid, func(msg interface{}) {
 		ch <- msg
 	})
 	evc := events.NewEventCache(evsw)
@@ -407,12 +627,57 @@ func execTxWaitEvent(t *testing.T, blockCache *BlockCache, tx types.Tx, addr []b
 	msg := <-ch
 	switch ev := msg.(type) {
 	case types.EventMsgCallTx:
-		return ev.Exception
+		return ev, ev.Exception
 	case types.EventMsgCall:
-		return ev.Exception
+		return ev, ev.Exception
 	case string:
-		return ev
+		return nil, ev
+	default:
+		return ev, ""
 	}
-	return ""
+}
 
+// convenience function for contract that calls a given address
+func callContractCode(contractAddr []byte) []byte {
+	// calldatacopy into mem and use as input to call
+	memOff, inputOff := byte(0x0), byte(0x0)
+	contractCode := []byte{0x60, memOff, 0x60, inputOff, 0x36, 0x37}
+
+	gas1, gas2 := byte(0x1), byte(0x1)
+	value := byte(0x1)
+	inOff := byte(0x0)
+	retOff, retSize := byte(0x0), byte(0x20)
+	// this is the code we want to run (call a contract and return)
+	contractCode = append(contractCode, []byte{0x60, retSize, 0x60, retOff, 0x36, 0x60, inOff, 0x60, value, 0x73}...)
+	contractCode = append(contractCode, contractAddr...)
+	contractCode = append(contractCode, []byte{0x61, gas1, gas2, 0xf1, 0x60, 0x20, 0x60, 0x0, 0xf3}...)
+	return contractCode
+}
+
+// convenience function for contract that is a factory for the code that comes as call data
+func createContractCode() []byte {
+	// TODO: gas ...
+
+	// calldatacopy the calldatasize
+	memOff, inputOff := byte(0x0), byte(0x0)
+	contractCode := []byte{0x60, memOff, 0x60, inputOff, 0x36, 0x37}
+
+	// create
+	value := byte(0x1)
+	contractCode = append(contractCode, []byte{0x60, value, 0x36, 0x60, memOff, 0xf0}...)
+	return contractCode
+}
+
+// wrap a contract in create code
+func wrapContractForCreate(contractCode []byte) []byte {
+	// the is the code we need to return the contractCode when the contract is initialized
+	lenCode := len(contractCode)
+	// push code to the stack
+	code := append([]byte{0x7f}, RightPadWord256(contractCode).Bytes()...)
+	// store it in memory
+	code = append(code, []byte{0x60, 0x0, 0x52}...)
+	// return whats in memory
+	code = append(code, []byte{0x60, byte(lenCode), 0x60, 0x0, 0xf3}...)
+	// return init code, contract code, expected return
+	return code
 }
