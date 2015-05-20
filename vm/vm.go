@@ -8,6 +8,7 @@ import (
 
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/events"
+	ptypes "github.com/tendermint/tendermint/permission/types"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/vm/sha3"
 )
@@ -88,6 +89,14 @@ func (vm *VM) EnableDoug() {
 // run permission checks before call and create
 func (vm *VM) EnablePermissions() {
 	vm.perms = true
+}
+
+func (vm *VM) HasPermission(acc *Account, perm ptypes.PermFlag) bool {
+	v, err := acc.Permissions.Base.Get(perm)
+	if _, ok := err.(ptypes.ErrValueNotSet); ok {
+		return vm.HasPermission(vm.appState.GetAccount(ptypes.GlobalPermissionsAddress256), perm)
+	}
+	return v
 }
 
 // CONTRACT appState is aware of caller and callee, so we can just mutate them.
@@ -681,7 +690,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 			dbg.Printf(" => %v\n", log)
 
 		case CREATE: // 0xF0
-			if vm.perms && !callee.Permissions.Create {
+			if vm.perms && !vm.HasPermission(callee, ptypes.Create) {
 				return nil, ErrPermission{"create"}
 			}
 			contractValue := stack.Pop64()
@@ -709,7 +718,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 			}
 
 		case CALL, CALLCODE: // 0xF1, 0xF2
-			if vm.perms && !callee.Permissions.Call {
+			if vm.perms && !vm.HasPermission(callee, ptypes.Call) {
 				return nil, ErrPermission{"call"}
 			}
 			gasLimit := stack.Pop64()

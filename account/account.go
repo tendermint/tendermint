@@ -45,7 +45,7 @@ type Account struct {
 	Code        []byte `json:"code"`         // VM code
 	StorageRoot []byte `json:"storage_root"` // VM storage merkle root.
 
-	Permissions *ptypes.Permissions `json:"permissions"`
+	Permissions *ptypes.AccountPermissions `json:"permissions"`
 }
 
 func (acc *Account) Copy() *Account {
@@ -69,14 +69,4 @@ func AccountDecoder(r io.Reader, n *int64, err *error) interface{} {
 var AccountCodec = binary.Codec{
 	Encode: AccountEncoder,
 	Decode: AccountDecoder,
-}
-
-//-----------------------------------------------------------------------------
-
-// defaults for a Big Bad Public Blockchain
-var DefaultPermissions = ptypes.Permissions{
-	Send:   true,
-	Call:   true,
-	Create: true,
-	Bond:   true,
 }

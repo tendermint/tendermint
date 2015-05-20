@@ -15,9 +15,9 @@ import (
 )
 
 type GenesisAccount struct {
-	Address     []byte              `json:"address"`
-	Amount      uint64              `json:"amount"`
-	Permissions *ptypes.Permissions `json:"global_permissions"` // pointer so optional
+	Address     []byte                     `json:"address"`
+	Amount      uint64                     `json:"amount"`
+	Permissions *ptypes.AccountPermissions `json:"global_permissions"` // pointer so optional
 }
 
 type GenesisValidator struct {
@@ -28,7 +28,7 @@ type GenesisValidator struct {
 
 type GenesisParams struct {
 	// Default permissions for newly created accounts
-	GlobalPermissions *ptypes.Permissions `json:"global_permissions"`
+	GlobalPermissions *ptypes.AccountPermissions `json:"global_permissions"`
 
 	// TODO: other params we may want to tweak?
 }
@@ -73,8 +73,7 @@ func MakeGenesisState(db dbm.DB, genDoc *GenesisDoc) *State {
 	// Make accounts state tree
 	accounts := merkle.NewIAVLTree(binary.BasicCodec, account.AccountCodec, defaultAccountsCacheCapacity, db)
 	for _, genAcc := range genDoc.Accounts {
-		perm_ := account.DefaultPermissions
-		perm := &perm_
+		perm := ptypes.NewDefaultAccountPermissions()
 		if genAcc.Permissions != nil {
 			perm = genAcc.Permissions
 		}
@@ -90,10 +89,11 @@ func MakeGenesisState(db dbm.DB, genDoc *GenesisDoc) *State {
 
 	// global permissions are saved as the 0 address
 	// so they are included in the accounts tree
-	globalPerms_ := account.DefaultPermissions
-	globalPerms := &globalPerms_
+	globalPerms := ptypes.NewDefaultAccountPermissions()
 	if genDoc.Params != nil && genDoc.Params.GlobalPermissions != nil {
 		globalPerms = genDoc.Params.GlobalPermissions
+		// XXX: make sure the set bits are all true
+		globalPerms.Base.SetBit = ptypes.AllSet
 	}
 	permsAcc := &account.Account{
 		Address:     ptypes.GlobalPermissionsAddress,

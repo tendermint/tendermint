@@ -178,7 +178,7 @@ func getOrMakeOutputs(state AccountGetter, accounts map[string]*account.Account,
 				PubKey:      nil,
 				Sequence:    0,
 				Balance:     0,
-				Permissions: state.GetAccount(ptypes.GlobalPermissionsAddress).Permissions,
+				Permissions: ptypes.NewAccountPermissions(),
 			}
 		}
 		accounts[string(out.Address)] = acc
@@ -307,7 +307,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 		}
 
 		// ensure all inputs have send permissions
-		if !hasSendPermission(accounts) {
+		if !hasSendPermission(blockCache, accounts) {
 			return fmt.Errorf("At least one input lacks permission for SendTx")
 		}
 
@@ -364,11 +364,11 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 
 		createAccount := len(tx.Address) == 0
 		if createAccount {
-			if !hasCreatePermission(inAcc) {
+			if !hasCreatePermission(blockCache, inAcc) {
 				return fmt.Errorf("Account %X does not have Create permission", tx.Input.Address)
 			}
 		} else {
-			if !hasCallPermission(inAcc) {
+			if !hasCallPermission(blockCache, inAcc) {
 				return fmt.Errorf("Account %X does not have Call permission", tx.Input.Address)
 			}
 		}
@@ -465,7 +465,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 				// we need to bind a copy of the accounts tree (from the txCache)
 				// so the gendoug can make a native call to create accounts and update
 				// permissions
-				setupDoug(vmach, txCache, _s)
+				// setupDoug(vmach, txCache, _s)
 			}
 
 			ret, err := vmach.Call(caller, callee, code, tx.Data, value, &gas)
@@ -636,7 +636,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 			return err
 		}
 
-		if !hasBondPermission(accounts) {
+		if !hasBondPermission(blockCache, accounts) {
 			return fmt.Errorf("At least one input lacks permission to bond")
 		}
 
@@ -790,38 +790,49 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 //---------------------------------------------------------------
 // TODO: for debug log the failed accounts
 
-func hasSendPermission(accs map[string]*account.Account) bool {
+// Get permission on an account or fall back to global value
+func HasPermission(state AccountGetter, acc *account.Account, perm ptypes.PermFlag) bool {
+	v, err := acc.Permissions.Base.Get(perm)
+	fmt.Printf("has permission? %x %v %b %v %v\n", acc.Address, acc.Permissions, perm, v, err)
+	if _, ok := err.(ptypes.ErrValueNotSet); ok {
+		return HasPermission(state, state.GetAccount(ptypes.GlobalPermissionsAddress), perm)
+	}
+	return v
+}
+
+func hasSendPermission(state AccountGetter, accs map[string]*account.Account) bool {
 	for _, acc := range accs {
-		if !acc.Permissions.Send {
+		if !HasPermission(state, acc, ptypes.Send) {
 			return false
 		}
 	}
 	return true
 }
 
-func hasCallPermission(acc *account.Account) bool {
-	if !acc.Permissions.Call {
+func hasCallPermission(state AccountGetter, acc *account.Account) bool {
+	if !HasPermission(state, acc, ptypes.Call) {
 		return false
 	}
 	return true
 }
 
-func hasCreatePermission(acc *account.Account) bool {
-	if !acc.Permissions.Create {
+func hasCreatePermission(state AccountGetter, acc *account.Account) bool {
+	if !HasPermission(state, acc, ptypes.Create) {
 		return false
 	}
 	return true
 }
 
-func hasBondPermission(accs map[string]*account.Account) bool {
+func hasBondPermission(state AccountGetter, accs map[string]*account.Account) bool {
 	for _, acc := range accs {
-		if !acc.Permissions.Bond {
+		if !HasPermission(state, acc, ptypes.Bond) {
 			return false
 		}
 	}
 	return true
 }
 
+/*
 // permission management functions
 // get/set closures which bind the txCache (for modifying an accounts permissions)
 // add/rm closures which bind txCache & state (for creating/removing permissions on *all* accounts - expensive!)
@@ -841,7 +852,7 @@ func setupDoug(vmach *vm.VM, txCache *TxCache, _s *State) {
 		}
 		stAcc := toStateAccount(vmAcc)
 		permN := uint(Uint64FromWord256(permNum))
-		perm, err := stAcc.Permissions.Get(permN)
+		perm, err := stAcc.Permissions.Base.Get(permN)
 		if err != nil {
 			return nil, err
 		}
@@ -870,7 +881,7 @@ func setupDoug(vmach *vm.VM, txCache *TxCache, _s *State) {
 		stAcc := toStateAccount(vmAcc)
 		permN := uint(Uint64FromWord256(permNum))
 		permV := !perm.IsZero()
-		if err = stAcc.Permissions.Set(permN, permV); err != nil {
+		if err = stAcc.Permissions.Base.Set(permN, permV); err != nil {
 			return nil, err
 		}
 		vmAcc = toVMAccount(stAcc)
@@ -942,3 +953,4 @@ func setupDoug(vmach *vm.VM, txCache *TxCache, _s *State) {
 	// must be called or else functions not accessible
 	vmach.EnableDoug()
 }
+*/

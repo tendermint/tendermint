@@ -62,29 +62,23 @@ func makeUsers(n int) []*account.PrivAccount {
 }
 
 var (
-	PermsAllFalse = ptypes.Permissions{
-		Send:   false,
-		Call:   false,
-		Create: false,
-		Bond:   false,
-	}
+	PermsAllFalse = ptypes.NewAccountPermissions()
 )
 
-func newBaseGenDoc(globalPerm, accountPerm ptypes.Permissions) GenesisDoc {
+func newBaseGenDoc(globalPerm, accountPerm *ptypes.AccountPermissions) GenesisDoc {
 	genAccounts := []GenesisAccount{}
 	for _, u := range user[:5] {
-		accPerm := accountPerm
 		genAccounts = append(genAccounts, GenesisAccount{
 			Address:     u.Address,
 			Amount:      1000000,
-			Permissions: &accPerm,
+			Permissions: accountPerm.Copy(),
 		})
 	}
 
 	return GenesisDoc{
 		GenesisTime: time.Now(),
 		Params: &GenesisParams{
-			GlobalPermissions: &globalPerm,
+			GlobalPermissions: globalPerm,
 		},
 		Accounts: genAccounts,
 		Validators: []GenesisValidator{
@@ -104,9 +98,9 @@ func newBaseGenDoc(globalPerm, accountPerm ptypes.Permissions) GenesisDoc {
 func TestSendFails(t *testing.T) {
 	stateDB := dbm.GetDB("state")
 	genDoc := newBaseGenDoc(PermsAllFalse, PermsAllFalse)
-	genDoc.Accounts[1].Permissions.Send = true
-	genDoc.Accounts[2].Permissions.Call = true
-	genDoc.Accounts[3].Permissions.Create = true
+	genDoc.Accounts[1].Permissions.Base.Set(ptypes.Send, true)
+	genDoc.Accounts[2].Permissions.Base.Set(ptypes.Call, true)
+	genDoc.Accounts[3].Permissions.Base.Set(ptypes.Create, true)
 	st := MakeGenesisState(stateDB, &genDoc)
 	blockCache := NewBlockCache(st)
 
@@ -156,9 +150,9 @@ func TestSendFails(t *testing.T) {
 func TestCallFails(t *testing.T) {
 	stateDB := dbm.GetDB("state")
 	genDoc := newBaseGenDoc(PermsAllFalse, PermsAllFalse)
-	genDoc.Accounts[1].Permissions.Send = true
-	genDoc.Accounts[2].Permissions.Call = true
-	genDoc.Accounts[3].Permissions.Create = true
+	genDoc.Accounts[1].Permissions.Base.Set(ptypes.Send, true)
+	genDoc.Accounts[2].Permissions.Base.Set(ptypes.Call, true)
+	genDoc.Accounts[3].Permissions.Base.Set(ptypes.Create, true)
 	st := MakeGenesisState(stateDB, &genDoc)
 	blockCache := NewBlockCache(st)
 
@@ -226,7 +220,7 @@ func TestCallFails(t *testing.T) {
 func TestSendPermission(t *testing.T) {
 	stateDB := dbm.GetDB("state")
 	genDoc := newBaseGenDoc(PermsAllFalse, PermsAllFalse)
-	genDoc.Accounts[0].Permissions.Send = true // give the 0 account permission
+	genDoc.Accounts[0].Permissions.Base.Set(ptypes.Send, true) // give the 0 account permission
 	st := MakeGenesisState(stateDB, &genDoc)
 	blockCache := NewBlockCache(st)
 
@@ -275,7 +269,7 @@ func callContractCode(contractAddr []byte) []byte {
 func TestCallPermission(t *testing.T) {
 	stateDB := dbm.GetDB("state")
 	genDoc := newBaseGenDoc(PermsAllFalse, PermsAllFalse)
-	genDoc.Accounts[0].Permissions.Call = true // give the 0 account permission
+	genDoc.Accounts[0].Permissions.Base.Set(ptypes.Call, true) // give the 0 account permission
 	st := MakeGenesisState(stateDB, &genDoc)
 	blockCache := NewBlockCache(st)
 
@@ -291,7 +285,7 @@ func TestCallPermission(t *testing.T) {
 		Code:        []byte{0x60},
 		Sequence:    0,
 		StorageRoot: Zero256.Bytes(),
-		Permissions: ptypes.NilPermissions.Copy(),
+		Permissions: ptypes.NewAccountPermissions(),
 	}
 	st.UpdateAccount(simpleAcc)
 
@@ -315,7 +309,7 @@ func TestCallPermission(t *testing.T) {
 		Code:        contractCode,
 		Sequence:    0,
 		StorageRoot: Zero256.Bytes(),
-		Permissions: ptypes.NilPermissions.Copy(),
+		Permissions: ptypes.NewAccountPermissions(),
 	}
 	blockCache.UpdateAccount(caller1Acc)
 
@@ -334,7 +328,7 @@ func TestCallPermission(t *testing.T) {
 	fmt.Println("##### CALL TO SIMPLE CONTRACT (PASS)")
 
 	// A single input, having the permission, and the contract has permission
-	caller1Acc.Permissions.Call = true
+	caller1Acc.Permissions.Base.Set(ptypes.Call, true)
 	blockCache.UpdateAccount(caller1Acc)
 	tx, _ = NewCallTx(blockCache, user[0].PubKey, caller1ContractAddr, nil, 100, 10000, 100)
 	SignCallTx(tx, user[0])
@@ -359,10 +353,10 @@ func TestCallPermission(t *testing.T) {
 		Code:        contractCode2,
 		Sequence:    0,
 		StorageRoot: Zero256.Bytes(),
-		Permissions: ptypes.NilPermissions.Copy(),
+		Permissions: ptypes.NewAccountPermissions(),
 	}
-	caller1Acc.Permissions.Call = false
-	caller2Acc.Permissions.Call = true
+	caller1Acc.Permissions.Base.Set(ptypes.Call, false)
+	caller2Acc.Permissions.Base.Set(ptypes.Call, true)
 	blockCache.UpdateAccount(caller1Acc)
 	blockCache.UpdateAccount(caller2Acc)
 
@@ -381,7 +375,7 @@ func TestCallPermission(t *testing.T) {
 	// both caller1 and caller2 have permission
 	fmt.Println("##### CALL TO CONTRACT CALLING SIMPLE CONTRACT (PASS)")
 
-	caller1Acc.Permissions.Call = true
+	caller1Acc.Permissions.Base.Set(ptypes.Call, true)
 	blockCache.UpdateAccount(caller1Acc)
 
 	tx, _ = NewCallTx(blockCache, user[0].PubKey, caller2ContractAddr, nil, 100, 10000, 100)
