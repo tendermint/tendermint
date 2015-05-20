@@ -7,7 +7,35 @@ import (
 	ptypes "github.com/tendermint/tendermint/permission/types"
 )
 
-type SNativeContract func(input []byte) (output []byte, err error)
+// Checks if a permission flag is valid (a known base chain or snative permission)
+func ValidPermN(n ptypes.PermFlag) bool {
+	if n > ptypes.TopBasePermission && n < FirstSNativePerm {
+		return false
+	} else if n > TopSNativePermission {
+		return false
+	}
+	return true
+}
+
+const (
+	// first 32 bits of BasePermission are for chain, second 32 are for snative
+	FirstSNativePerm ptypes.PermFlag = 1 << 32
+
+	HasBasePerm ptypes.PermFlag = FirstSNativePerm << iota
+	SetBasePerm
+	UnsetBasePerm
+	SetGlobalPerm
+	ClearBasePerm
+	HasRole
+	AddRole
+	RmRole
+
+	// XXX: must be adjusted if snative's added/removed
+	NumSNativePermissions uint            = 8
+	TopSNativePermission  ptypes.PermFlag = FirstSNativePerm << (NumSNativePermissions - 1)
+)
+
+type SNativeContract func(acc *Account, input []byte) (output []byte, err error)
 
 //-----------------------------------------------------------------------------
 // snative are native contracts that can access and manipulate the chain state
@@ -15,7 +43,10 @@ type SNativeContract func(input []byte) (output []byte, err error)
 
 // TODO: catch errors, log em, return 0s to the vm (should some errors cause exceptions though?)
 
-func (vm *VM) hasBasePerm(args []byte) (output []byte, err error) {
+func (vm *VM) hasBasePerm(acc *Account, args []byte) (output []byte, err error) {
+	if !vm.HasPermission(acc, HasBasePerm) {
+		return nil, fmt.Errorf("acc %X does not have permission to call snative.HasBasePerm")
+	}
 	if len(args) != 2*32 {
 		return nil, fmt.Errorf("hasBasePerm() takes two arguments (address, permission number)")
 	}
@@ -26,7 +57,10 @@ func (vm *VM) hasBasePerm(args []byte) (output []byte, err error) {
 	if vmAcc == nil {
 		return nil, fmt.Errorf("Unknown account %X", addr)
 	}
-	permN := ptypes.PermFlag(Uint64FromWord256(permNum))
+	permN := ptypes.PermFlag(Uint64FromWord256(permNum)) // already shifted
+	if !ValidPermN(permN) {
+		return nil, ptypes.ErrInvalidPermission(permN)
+	}
 	var permInt byte
 	if vm.HasPermission(vmAcc, permN) {
 		permInt = 0x1
@@ -36,7 +70,10 @@ func (vm *VM) hasBasePerm(args []byte) (output []byte, err error) {
 	return LeftPadWord256([]byte{permInt}).Bytes(), nil
 }
 
-func (vm *VM) setBasePerm(args []byte) (output []byte, err error) {
+func (vm *VM) setBasePerm(acc *Account, args []byte) (output []byte, err error) {
+	if !vm.HasPermission(acc, SetBasePerm) {
+		return nil, fmt.Errorf("acc %X does not have permission to call snative.SetBasePerm")
+	}
 	if len(args) != 3*32 {
 		return nil, fmt.Errorf("setBasePerm() takes three arguments (address, permission number, permission value)")
 	}
@@ -49,6 +86,9 @@ func (vm *VM) setBasePerm(args []byte) (output []byte, err error) {
 		return nil, fmt.Errorf("Unknown account %X", addr)
 	}
 	permN := ptypes.PermFlag(Uint64FromWord256(permNum))
+	if !ValidPermN(permN) {
+		return nil, ptypes.ErrInvalidPermission(permN)
+	}
 	permV := !perm.IsZero()
 	if err = vmAcc.Permissions.Base.Set(permN, permV); err != nil {
 		return nil, err
@@ -57,7 +97,10 @@ func (vm *VM) setBasePerm(args []byte) (output []byte, err error) {
 	return perm.Bytes(), nil
 }
 
-func (vm *VM) unsetBasePerm(args []byte) (output []byte, err error) {
+func (vm *VM) unsetBasePerm(acc *Account, args []byte) (output []byte, err error) {
+	if !vm.HasPermission(acc, UnsetBasePerm) {
+		return nil, fmt.Errorf("acc %X does not have permission to call snative.UnsetBasePerm")
+	}
 	if len(args) != 2*32 {
 		return nil, fmt.Errorf("unsetBasePerm() takes two arguments (address, permission number)")
 	}
@@ -69,6 +112,9 @@ func (vm *VM) unsetBasePerm(args []byte) (output []byte, err error) {
 		return nil, fmt.Errorf("Unknown account %X", addr)
 	}
 	permN := ptypes.PermFlag(Uint64FromWord256(permNum))
+	if !ValidPermN(permN) {
+		return nil, ptypes.ErrInvalidPermission(permN)
+	}
 	if err = vmAcc.Permissions.Base.Unset(permN); err != nil {
 		return nil, err
 	}
@@ -76,7 +122,7 @@ func (vm *VM) unsetBasePerm(args []byte) (output []byte, err error) {
 	return permNum.Bytes(), nil
 }
 
-func (vm *VM) setGlobalPerm(args []byte) (output []byte, err error) {
+func (vm *VM) setGlobalPerm(acc *Account, args []byte) (output []byte, err error) {
 	if len(args) != 2*32 {
 		return nil, fmt.Errorf("setGlobalPerm() takes three arguments (permission number, permission value)")
 	}
@@ -88,6 +134,9 @@ func (vm *VM) setGlobalPerm(args []byte) (output []byte, err error) {
 		panic("cant find the global permissions account")
 	}
 	permN := ptypes.PermFlag(Uint64FromWord256(permNum))
+	if !ValidPermN(permN) {
+		return nil, ptypes.ErrInvalidPermission(permN)
+	}
 	permV := !perm.IsZero()
 	if err = vmAcc.Permissions.Base.Set(permN, permV); err != nil {
 		return nil, err
@@ -97,11 +146,17 @@ func (vm *VM) setGlobalPerm(args []byte) (output []byte, err error) {
 }
 
 // TODO: needs access to an iterator ...
-func (vm *VM) clearPerm(args []byte) (output []byte, err error) {
+func (vm *VM) clearPerm(acc *Account, args []byte) (output []byte, err error) {
+	if !vm.HasPermission(acc, ClearBasePerm) {
+		return nil, fmt.Errorf("acc %X does not have permission to call snative.ClearBasePerm")
+	}
 	return nil, nil
 }
 
-func (vm *VM) hasRole(args []byte) (output []byte, err error) {
+func (vm *VM) hasRole(acc *Account, args []byte) (output []byte, err error) {
+	if !vm.HasPermission(acc, HasRole) {
+		return nil, fmt.Errorf("acc %X does not have permission to call snative.HasRole")
+	}
 	if len(args) != 2*32 {
 		return nil, fmt.Errorf("hasRole() takes two arguments (address, role)")
 	}
@@ -122,7 +177,10 @@ func (vm *VM) hasRole(args []byte) (output []byte, err error) {
 	return LeftPadWord256([]byte{permInt}).Bytes(), nil
 }
 
-func (vm *VM) addRole(args []byte) (output []byte, err error) {
+func (vm *VM) addRole(acc *Account, args []byte) (output []byte, err error) {
+	if !vm.HasPermission(acc, AddRole) {
+		return nil, fmt.Errorf("acc %X does not have permission to call snative.AddRole")
+	}
 	if len(args) != 2*32 {
 		return nil, fmt.Errorf("addRole() takes two arguments (address, role)")
 	}
@@ -143,7 +201,10 @@ func (vm *VM) addRole(args []byte) (output []byte, err error) {
 	return LeftPadWord256([]byte{permInt}).Bytes(), nil
 }
 
-func (vm *VM) rmRole(args []byte) (output []byte, err error) {
+func (vm *VM) rmRole(acc *Account, args []byte) (output []byte, err error) {
+	if !vm.HasPermission(acc, RmRole) {
+		return nil, fmt.Errorf("acc %X does not have permission to call snative.RmRole")
+	}
 	if len(args) != 2*32 {
 		return nil, fmt.Errorf("rmRole() takes two arguments (address, role)")
 	}

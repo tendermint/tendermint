@@ -15,19 +15,20 @@ var (
 )
 
 // A particular permission
-type PermFlag uint16
+type PermFlag uint64
 
 // Base permission references are like unix (the index is already bit shifted)
 const (
-	Send   PermFlag = 1 << iota // 1
-	Call                        // 2
-	Create                      // 4
-	Bond                        // 8
-	Root                        // 16
+	Root           PermFlag = 1 << iota // 1
+	Send                                // 2
+	Call                                // 4
+	CreateContract                      // 8
+	CreateAccount                       // 16
+	Bond                                // 32
 
-	DefaultBBPB = Send | Call | Create | Bond
+	DefaultBBPB = Send | Call | CreateContract | CreateAccount | Bond
 
-	NumBasePermissions uint     = 5
+	NumBasePermissions uint     = 6
 	TopBasePermission  PermFlag = 1 << (NumBasePermissions - 1)
 	AllSet             PermFlag = 1<<NumBasePermissions - 1
 )
@@ -51,9 +52,6 @@ func NewBasePermissions() *BasePermissions {
 // ErrValueNotSet is returned if the permission's set bit is off,
 // and should be caught by caller so the global permission can be fetched
 func (p *BasePermissions) Get(ty PermFlag) (bool, error) {
-	if ty > TopBasePermission {
-		return false, ErrInvalidPermission(ty)
-	}
 	if p.SetBit&ty == 0 {
 		return false, ErrValueNotSet(ty)
 	}
@@ -62,10 +60,6 @@ func (p *BasePermissions) Get(ty PermFlag) (bool, error) {
 
 // Set a permission bit. Will set the permission's set bit to true.
 func (p *BasePermissions) Set(ty PermFlag, value bool) error {
-	if ty > TopBasePermission {
-		return ErrInvalidPermission(ty)
-	}
-
 	p.SetBit |= ty
 	if value {
 		p.Perms |= ty
@@ -77,9 +71,6 @@ func (p *BasePermissions) Set(ty PermFlag, value bool) error {
 
 // Set the permission's set bit to false
 func (p *BasePermissions) Unset(ty PermFlag) error {
-	if ty > TopBasePermission {
-		return ErrInvalidPermission(ty)
-	}
 	p.SetBit &= ^ty
 	return nil
 }

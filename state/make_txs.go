@@ -81,3 +81,47 @@ func SignCallTx(tx *types.CallTx, privAccount *account.PrivAccount) {
 	tx.Input.PubKey = privAccount.PubKey
 	tx.Input.Signature = privAccount.Sign(tx)
 }
+
+//----------------------------------------------------------------------------
+// BondTx interface for adding inputs/outputs and adding signatures
+
+func NewBondTx() *types.BondTx {
+	return &types.BondTx{
+		Inputs:   []*types.TxInput{},
+		UnbondTo: []*types.TxOutput{},
+	}
+}
+
+func BondTxAddInput(st AccountGetter, tx *types.BondTx, pubkey account.PubKey, amt uint64) error {
+	addr := pubkey.Address()
+	acc := st.GetAccount(addr)
+	if acc == nil {
+		return fmt.Errorf("Invalid address %X from pubkey %X", addr, pubkey)
+	}
+
+	tx.Inputs = append(tx.Inputs, &types.TxInput{
+		Address:   addr,
+		Amount:    amt,
+		Sequence:  uint(acc.Sequence) + 1,
+		Signature: account.SignatureEd25519{},
+		PubKey:    pubkey,
+	})
+	return nil
+}
+
+func BondTxAddOutput(tx *types.BondTx, addr []byte, amt uint64) error {
+	tx.UnbondTo = append(tx.UnbondTo, &types.TxOutput{
+		Address: addr,
+		Amount:  amt,
+	})
+	return nil
+}
+
+func SignBondTx(tx *types.BondTx, i int, privAccount *account.PrivAccount) error {
+	if i >= len(tx.Inputs) {
+		return fmt.Errorf("Index %v is greater than number of inputs (%v)", i, len(tx.Inputs))
+	}
+	tx.Inputs[i].PubKey = privAccount.PubKey
+	tx.Inputs[i].Signature = privAccount.Sign(tx)
+	return nil
+}

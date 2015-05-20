@@ -39,9 +39,12 @@ x	- contract runs create but has perm
 x	- contract runs call with empty address (has call and create perm)
 
 - BondTx
-	- 1 input, no perm
-	- 1 input, perm
-	- 2 inputs, one with perm one without
+x	- 1 input, no perm
+x	- 1 input, perm
+x	- 1 bonder with perm, input without send or bond
+x	- 1 bonder with perm, input with send
+x	- 1 bonder with perm, input with bond
+x	- 2 inputs, one with perm one without
 
 - SendTx for new account ? CALL for new account?
 
@@ -103,7 +106,7 @@ func TestSendFails(t *testing.T) {
 	genDoc := newBaseGenDoc(PermsAllFalse, PermsAllFalse)
 	genDoc.Accounts[1].Permissions.Base.Set(ptypes.Send, true)
 	genDoc.Accounts[2].Permissions.Base.Set(ptypes.Call, true)
-	genDoc.Accounts[3].Permissions.Base.Set(ptypes.Create, true)
+	genDoc.Accounts[3].Permissions.Base.Set(ptypes.CreateContract, true)
 	st := MakeGenesisState(stateDB, &genDoc)
 	blockCache := NewBlockCache(st)
 
@@ -111,12 +114,12 @@ func TestSendFails(t *testing.T) {
 	// send txs
 
 	// simple send tx should fail
-	tx := NewSendTx()
-	if err := SendTxAddInput(blockCache, tx, user[0].PubKey, 5); err != nil {
+	tx := types.NewSendTx()
+	if err := tx.AddInput(blockCache, user[0].PubKey, 5); err != nil {
 		t.Fatal(err)
 	}
-	SendTxAddOutput(tx, user[1].Address, 5)
-	SignSendTx(tx, 0, user[0])
+	tx.AddOutput(user[1].Address, 5)
+	tx.SignInput(0, user[0])
 	if err := ExecTx(blockCache, tx, true, nil); err == nil {
 		t.Fatal("Expected error")
 	} else {
@@ -124,12 +127,12 @@ func TestSendFails(t *testing.T) {
 	}
 
 	// simple send tx with call perm should fail
-	tx = NewSendTx()
-	if err := SendTxAddInput(blockCache, tx, user[2].PubKey, 5); err != nil {
+	tx = types.NewSendTx()
+	if err := tx.AddInput(blockCache, user[2].PubKey, 5); err != nil {
 		t.Fatal(err)
 	}
-	SendTxAddOutput(tx, user[4].Address, 5)
-	SignSendTx(tx, 0, user[2])
+	tx.AddOutput(user[4].Address, 5)
+	tx.SignInput(0, user[2])
 	if err := ExecTx(blockCache, tx, true, nil); err == nil {
 		t.Fatal("Expected error")
 	} else {
@@ -137,12 +140,12 @@ func TestSendFails(t *testing.T) {
 	}
 
 	// simple send tx with create perm should fail
-	tx = NewSendTx()
-	if err := SendTxAddInput(blockCache, tx, user[3].PubKey, 5); err != nil {
+	tx = types.NewSendTx()
+	if err := tx.AddInput(blockCache, user[3].PubKey, 5); err != nil {
 		t.Fatal(err)
 	}
-	SendTxAddOutput(tx, user[4].Address, 5)
-	SignSendTx(tx, 0, user[3])
+	tx.AddOutput(user[4].Address, 5)
+	tx.SignInput(0, user[3])
 	if err := ExecTx(blockCache, tx, true, nil); err == nil {
 		t.Fatal("Expected error")
 	} else {
@@ -155,7 +158,7 @@ func TestCallFails(t *testing.T) {
 	genDoc := newBaseGenDoc(PermsAllFalse, PermsAllFalse)
 	genDoc.Accounts[1].Permissions.Base.Set(ptypes.Send, true)
 	genDoc.Accounts[2].Permissions.Base.Set(ptypes.Call, true)
-	genDoc.Accounts[3].Permissions.Base.Set(ptypes.Create, true)
+	genDoc.Accounts[3].Permissions.Base.Set(ptypes.CreateContract, true)
 	st := MakeGenesisState(stateDB, &genDoc)
 	blockCache := NewBlockCache(st)
 
@@ -163,8 +166,8 @@ func TestCallFails(t *testing.T) {
 	// call txs
 
 	// simple call tx should fail
-	tx, _ := NewCallTx(blockCache, user[0].PubKey, user[4].Address, nil, 100, 100, 100)
-	SignCallTx(tx, user[0])
+	tx, _ := types.NewCallTx(blockCache, user[0].PubKey, user[4].Address, nil, 100, 100, 100)
+	tx.Sign(user[0])
 	if err := ExecTx(blockCache, tx, true, nil); err == nil {
 		t.Fatal("Expected error")
 	} else {
@@ -172,8 +175,8 @@ func TestCallFails(t *testing.T) {
 	}
 
 	// simple call tx with send permission should fail
-	tx, _ = NewCallTx(blockCache, user[1].PubKey, user[4].Address, nil, 100, 100, 100)
-	SignCallTx(tx, user[1])
+	tx, _ = types.NewCallTx(blockCache, user[1].PubKey, user[4].Address, nil, 100, 100, 100)
+	tx.Sign(user[1])
 	if err := ExecTx(blockCache, tx, true, nil); err == nil {
 		t.Fatal("Expected error")
 	} else {
@@ -181,8 +184,8 @@ func TestCallFails(t *testing.T) {
 	}
 
 	// simple call tx with create permission should fail
-	tx, _ = NewCallTx(blockCache, user[3].PubKey, user[4].Address, nil, 100, 100, 100)
-	SignCallTx(tx, user[3])
+	tx, _ = types.NewCallTx(blockCache, user[3].PubKey, user[4].Address, nil, 100, 100, 100)
+	tx.Sign(user[3])
 	if err := ExecTx(blockCache, tx, true, nil); err == nil {
 		t.Fatal("Expected error")
 	} else {
@@ -193,8 +196,8 @@ func TestCallFails(t *testing.T) {
 	// create txs
 
 	// simple call create tx should fail
-	tx, _ = NewCallTx(blockCache, user[0].PubKey, nil, nil, 100, 100, 100)
-	SignCallTx(tx, user[0])
+	tx, _ = types.NewCallTx(blockCache, user[0].PubKey, nil, nil, 100, 100, 100)
+	tx.Sign(user[0])
 	if err := ExecTx(blockCache, tx, true, nil); err == nil {
 		t.Fatal("Expected error")
 	} else {
@@ -202,8 +205,8 @@ func TestCallFails(t *testing.T) {
 	}
 
 	// simple call create tx with send perm should fail
-	tx, _ = NewCallTx(blockCache, user[1].PubKey, nil, nil, 100, 100, 100)
-	SignCallTx(tx, user[1])
+	tx, _ = types.NewCallTx(blockCache, user[1].PubKey, nil, nil, 100, 100, 100)
+	tx.Sign(user[1])
 	if err := ExecTx(blockCache, tx, true, nil); err == nil {
 		t.Fatal("Expected error")
 	} else {
@@ -211,8 +214,8 @@ func TestCallFails(t *testing.T) {
 	}
 
 	// simple call create tx with call perm should fail
-	tx, _ = NewCallTx(blockCache, user[2].PubKey, nil, nil, 100, 100, 100)
-	SignCallTx(tx, user[2])
+	tx, _ = types.NewCallTx(blockCache, user[2].PubKey, nil, nil, 100, 100, 100)
+	tx.Sign(user[2])
 	if err := ExecTx(blockCache, tx, true, nil); err == nil {
 		t.Fatal("Expected error")
 	} else {
@@ -280,8 +283,8 @@ func TestCallPermission(t *testing.T) {
 	st.UpdateAccount(simpleAcc)
 
 	// A single input, having the permission, should succeed
-	tx, _ := NewCallTx(blockCache, user[0].PubKey, simpleContractAddr, nil, 100, 100, 100)
-	SignCallTx(tx, user[0])
+	tx, _ := types.NewCallTx(blockCache, user[0].PubKey, simpleContractAddr, nil, 100, 100, 100)
+	tx.Sign(user[0])
 	if err := ExecTx(blockCache, tx, true, nil); err != nil {
 		t.Fatal("Transaction failed", err)
 	}
@@ -304,8 +307,8 @@ func TestCallPermission(t *testing.T) {
 	blockCache.UpdateAccount(caller1Acc)
 
 	// A single input, having the permission, but the contract doesn't have permission
-	tx, _ = NewCallTx(blockCache, user[0].PubKey, caller1ContractAddr, nil, 100, 10000, 100)
-	SignCallTx(tx, user[0])
+	tx, _ = types.NewCallTx(blockCache, user[0].PubKey, caller1ContractAddr, nil, 100, 10000, 100)
+	tx.Sign(user[0])
 
 	// we need to subscribe to the Receive event to detect the exception
 	_, exception := execTxWaitEvent(t, blockCache, tx, types.EventStringAccReceive(caller1ContractAddr)) //
@@ -320,8 +323,8 @@ func TestCallPermission(t *testing.T) {
 	// A single input, having the permission, and the contract has permission
 	caller1Acc.Permissions.Base.Set(ptypes.Call, true)
 	blockCache.UpdateAccount(caller1Acc)
-	tx, _ = NewCallTx(blockCache, user[0].PubKey, caller1ContractAddr, nil, 100, 10000, 100)
-	SignCallTx(tx, user[0])
+	tx, _ = types.NewCallTx(blockCache, user[0].PubKey, caller1ContractAddr, nil, 100, 10000, 100)
+	tx.Sign(user[0])
 
 	// we need to subscribe to the Receive event to detect the exception
 	_, exception = execTxWaitEvent(t, blockCache, tx, types.EventStringAccReceive(caller1ContractAddr)) //
@@ -350,8 +353,8 @@ func TestCallPermission(t *testing.T) {
 	blockCache.UpdateAccount(caller1Acc)
 	blockCache.UpdateAccount(caller2Acc)
 
-	tx, _ = NewCallTx(blockCache, user[0].PubKey, caller2ContractAddr, nil, 100, 10000, 100)
-	SignCallTx(tx, user[0])
+	tx, _ = types.NewCallTx(blockCache, user[0].PubKey, caller2ContractAddr, nil, 100, 10000, 100)
+	tx.Sign(user[0])
 
 	// we need to subscribe to the Receive event to detect the exception
 	_, exception = execTxWaitEvent(t, blockCache, tx, types.EventStringAccReceive(caller1ContractAddr)) //
@@ -368,8 +371,8 @@ func TestCallPermission(t *testing.T) {
 	caller1Acc.Permissions.Base.Set(ptypes.Call, true)
 	blockCache.UpdateAccount(caller1Acc)
 
-	tx, _ = NewCallTx(blockCache, user[0].PubKey, caller2ContractAddr, nil, 100, 10000, 100)
-	SignCallTx(tx, user[0])
+	tx, _ = types.NewCallTx(blockCache, user[0].PubKey, caller2ContractAddr, nil, 100, 10000, 100)
+	tx.Sign(user[0])
 
 	// we need to subscribe to the Receive event to detect the exception
 	_, exception = execTxWaitEvent(t, blockCache, tx, types.EventStringAccReceive(caller1ContractAddr)) //
@@ -381,8 +384,8 @@ func TestCallPermission(t *testing.T) {
 func TestCreatePermission(t *testing.T) {
 	stateDB := dbm.GetDB("state")
 	genDoc := newBaseGenDoc(PermsAllFalse, PermsAllFalse)
-	genDoc.Accounts[0].Permissions.Base.Set(ptypes.Create, true) // give the 0 account permission
-	genDoc.Accounts[0].Permissions.Base.Set(ptypes.Call, true)   // give the 0 account permission
+	genDoc.Accounts[0].Permissions.Base.Set(ptypes.CreateContract, true) // give the 0 account permission
+	genDoc.Accounts[0].Permissions.Base.Set(ptypes.Call, true)           // give the 0 account permission
 	st := MakeGenesisState(stateDB, &genDoc)
 	blockCache := NewBlockCache(st)
 
@@ -394,8 +397,8 @@ func TestCreatePermission(t *testing.T) {
 	createCode := wrapContractForCreate(contractCode)
 
 	// A single input, having the permission, should succeed
-	tx, _ := NewCallTx(blockCache, user[0].PubKey, nil, createCode, 100, 100, 100)
-	SignCallTx(tx, user[0])
+	tx, _ := types.NewCallTx(blockCache, user[0].PubKey, nil, createCode, 100, 100, 100)
+	tx.Sign(user[0])
 	if err := ExecTx(blockCache, tx, true, nil); err != nil {
 		t.Fatal("Transaction failed", err)
 	}
@@ -419,8 +422,8 @@ func TestCreatePermission(t *testing.T) {
 	createFactoryCode := wrapContractForCreate(factoryCode)
 
 	// A single input, having the permission, should succeed
-	tx, _ = NewCallTx(blockCache, user[0].PubKey, nil, createFactoryCode, 100, 100, 100)
-	SignCallTx(tx, user[0])
+	tx, _ = types.NewCallTx(blockCache, user[0].PubKey, nil, createFactoryCode, 100, 100, 100)
+	tx.Sign(user[0])
 	if err := ExecTx(blockCache, tx, true, nil); err != nil {
 		t.Fatal("Transaction failed", err)
 	}
@@ -439,8 +442,8 @@ func TestCreatePermission(t *testing.T) {
 	fmt.Println("###### CALL THE FACTORY (FAIL)")
 
 	// A single input, having the permission, should succeed
-	tx, _ = NewCallTx(blockCache, user[0].PubKey, contractAddr, createCode, 100, 100, 100)
-	SignCallTx(tx, user[0])
+	tx, _ = types.NewCallTx(blockCache, user[0].PubKey, contractAddr, createCode, 100, 100, 100)
+	tx.Sign(user[0])
 	// we need to subscribe to the Receive event to detect the exception
 	_, exception := execTxWaitEvent(t, blockCache, tx, types.EventStringAccReceive(contractAddr)) //
 	if exception == "" {
@@ -451,12 +454,12 @@ func TestCreatePermission(t *testing.T) {
 	// call the contract (should PASS)
 	fmt.Println("###### CALL THE FACTORY (PASS)")
 
-	contractAcc.Permissions.Base.Set(ptypes.Create, true)
+	contractAcc.Permissions.Base.Set(ptypes.CreateContract, true)
 	blockCache.UpdateAccount(contractAcc)
 
 	// A single input, having the permission, should succeed
-	tx, _ = NewCallTx(blockCache, user[0].PubKey, contractAddr, createCode, 100, 100, 100)
-	SignCallTx(tx, user[0])
+	tx, _ = types.NewCallTx(blockCache, user[0].PubKey, contractAddr, createCode, 100, 100, 100)
+	tx.Sign(user[0])
 	// we need to subscribe to the Receive event to detect the exception
 	_, exception = execTxWaitEvent(t, blockCache, tx, types.EventStringAccReceive(contractAddr)) //
 	if exception != "" {
@@ -478,12 +481,12 @@ func TestCreatePermission(t *testing.T) {
 		Permissions: ptypes.NewAccountPermissions(),
 	}
 	contractAcc.Permissions.Base.Set(ptypes.Call, true)
-	contractAcc.Permissions.Base.Set(ptypes.Create, true)
+	contractAcc.Permissions.Base.Set(ptypes.CreateContract, true)
 	blockCache.UpdateAccount(contractAcc)
 
 	// this should call the 0 address but not create ...
-	tx, _ = NewCallTx(blockCache, user[0].PubKey, contractAddr, createCode, 100, 10000, 100)
-	SignCallTx(tx, user[0])
+	tx, _ = types.NewCallTx(blockCache, user[0].PubKey, contractAddr, createCode, 100, 10000, 100)
+	tx.Sign(user[0])
 	// we need to subscribe to the Receive event to detect the exception
 	_, exception = execTxWaitEvent(t, blockCache, tx, types.EventStringAccReceive(zeroAddr)) //
 	if exception != "" {
@@ -500,109 +503,122 @@ func TestBondPermission(t *testing.T) {
 	genDoc := newBaseGenDoc(PermsAllFalse, PermsAllFalse)
 	st := MakeGenesisState(stateDB, &genDoc)
 	blockCache := NewBlockCache(st)
+	var bondAcc *account.Account
 
 	//------------------------------
-	// a bond tx from someone without bond perm should fail
-	tx, _ := NewCallTx(blockCache, user[0].PubKey, nil, createCode, 100, 100, 100)
-	SignCallTx(tx, user[0])
+	// one bonder without permission should fail
+	tx, _ := types.NewBondTx(user[1].PubKey)
+	if err := tx.AddInput(blockCache, user[1].PubKey, 5); err != nil {
+		t.Fatal(err)
+	}
+	tx.AddOutput(user[1].Address, 5)
+	tx.SignInput(0, user[1])
+	tx.SignBond(user[1])
+	if err := ExecTx(blockCache, tx, true, nil); err == nil {
+		t.Fatal("Expected error")
+	} else {
+		fmt.Println(err)
+	}
+
+	//------------------------------
+	// one bonder with permission should pass
+	bondAcc = blockCache.GetAccount(user[1].Address)
+	bondAcc.Permissions.Base.Set(ptypes.Bond, true)
+	blockCache.UpdateAccount(bondAcc)
 	if err := ExecTx(blockCache, tx, true, nil); err != nil {
-		t.Fatal("Transaction failed", err)
-	}
-	// ensure the contract is there
-	contractAddr := NewContractAddress(tx.Input.Address, uint64(tx.Input.Sequence))
-	contractAcc := blockCache.GetAccount(contractAddr)
-	if contractAcc == nil {
-		t.Fatalf("failed to create contract %X", contractAddr)
-	}
-	if bytes.Compare(contractAcc.Code, contractCode) != 0 {
-		t.Fatalf("contract does not have correct code. Got %X, expected %X", contractAcc.Code, contractCode)
+		t.Fatal("Unexpected error", err)
 	}
 
+	// reset state (we can only bond with an account once ..)
+	genDoc = newBaseGenDoc(PermsAllFalse, PermsAllFalse)
+	st = MakeGenesisState(stateDB, &genDoc)
+	blockCache = NewBlockCache(st)
+	bondAcc = blockCache.GetAccount(user[1].Address)
+	bondAcc.Permissions.Base.Set(ptypes.Bond, true)
+	blockCache.UpdateAccount(bondAcc)
 	//------------------------------
-	// create contract that uses the CREATE op
-	fmt.Println("##### CREATE FACTORY")
+	// one bonder with permission and an input without send should fail
+	tx, _ = types.NewBondTx(user[1].PubKey)
+	if err := tx.AddInput(blockCache, user[2].PubKey, 5); err != nil {
+		t.Fatal(err)
+	}
+	tx.AddOutput(user[1].Address, 5)
+	tx.SignInput(0, user[2])
+	tx.SignBond(user[1])
+	if err := ExecTx(blockCache, tx, true, nil); err == nil {
+		t.Fatal("Expected error")
+	} else {
+		fmt.Println(err)
+	}
 
-	contractCode = []byte{0x60}
-	createCode = wrapContractForCreate(contractCode)
-	factoryCode := createContractCode()
-	createFactoryCode := wrapContractForCreate(factoryCode)
-
-	// A single input, having the permission, should succeed
-	tx, _ = NewCallTx(blockCache, user[0].PubKey, nil, createFactoryCode, 100, 100, 100)
-	SignCallTx(tx, user[0])
+	// reset state (we can only bond with an account once ..)
+	genDoc = newBaseGenDoc(PermsAllFalse, PermsAllFalse)
+	st = MakeGenesisState(stateDB, &genDoc)
+	blockCache = NewBlockCache(st)
+	bondAcc = blockCache.GetAccount(user[1].Address)
+	bondAcc.Permissions.Base.Set(ptypes.Bond, true)
+	blockCache.UpdateAccount(bondAcc)
+	//------------------------------
+	// one bonder with permission and an input with send should pass
+	sendAcc := blockCache.GetAccount(user[2].Address)
+	sendAcc.Permissions.Base.Set(ptypes.Send, true)
+	blockCache.UpdateAccount(sendAcc)
+	tx, _ = types.NewBondTx(user[1].PubKey)
+	if err := tx.AddInput(blockCache, user[2].PubKey, 5); err != nil {
+		t.Fatal(err)
+	}
+	tx.AddOutput(user[1].Address, 5)
+	tx.SignInput(0, user[2])
+	tx.SignBond(user[1])
 	if err := ExecTx(blockCache, tx, true, nil); err != nil {
-		t.Fatal("Transaction failed", err)
-	}
-	// ensure the contract is there
-	contractAddr = NewContractAddress(tx.Input.Address, uint64(tx.Input.Sequence))
-	contractAcc = blockCache.GetAccount(contractAddr)
-	if contractAcc == nil {
-		t.Fatalf("failed to create contract %X", contractAddr)
-	}
-	if bytes.Compare(contractAcc.Code, factoryCode) != 0 {
-		t.Fatalf("contract does not have correct code. Got %X, expected %X", contractAcc.Code, factoryCode)
+		t.Fatal("Unexpected error", err)
 	}
 
+	// reset state (we can only bond with an account once ..)
+	genDoc = newBaseGenDoc(PermsAllFalse, PermsAllFalse)
+	st = MakeGenesisState(stateDB, &genDoc)
+	blockCache = NewBlockCache(st)
+	bondAcc = blockCache.GetAccount(user[1].Address)
+	bondAcc.Permissions.Base.Set(ptypes.Bond, true)
+	blockCache.UpdateAccount(bondAcc)
 	//------------------------------
-	// call the contract (should FAIL)
-	fmt.Println("###### CALL THE FACTORY (FAIL)")
-
-	// A single input, having the permission, should succeed
-	tx, _ = NewCallTx(blockCache, user[0].PubKey, contractAddr, createCode, 100, 100, 100)
-	SignCallTx(tx, user[0])
-	// we need to subscribe to the Receive event to detect the exception
-	_, exception := execTxWaitEvent(t, blockCache, tx, types.EventStringAccReceive(contractAddr)) //
-	if exception == "" {
-		t.Fatal("expected exception")
+	// one bonder with permission and an input with bond should pass
+	sendAcc.Permissions.Base.Set(ptypes.Bond, true)
+	blockCache.UpdateAccount(sendAcc)
+	tx, _ = types.NewBondTx(user[1].PubKey)
+	if err := tx.AddInput(blockCache, user[2].PubKey, 5); err != nil {
+		t.Fatal(err)
+	}
+	tx.AddOutput(user[1].Address, 5)
+	tx.SignInput(0, user[2])
+	tx.SignBond(user[1])
+	if err := ExecTx(blockCache, tx, true, nil); err != nil {
+		t.Fatal("Unexpected error", err)
 	}
 
+	// reset state (we can only bond with an account once ..)
+	genDoc = newBaseGenDoc(PermsAllFalse, PermsAllFalse)
+	st = MakeGenesisState(stateDB, &genDoc)
+	blockCache = NewBlockCache(st)
+	bondAcc = blockCache.GetAccount(user[1].Address)
+	bondAcc.Permissions.Base.Set(ptypes.Bond, true)
+	blockCache.UpdateAccount(bondAcc)
 	//------------------------------
-	// call the contract (should PASS)
-	fmt.Println("###### CALL THE FACTORY (PASS)")
-
-	contractAcc.Permissions.Base.Set(ptypes.Create, true)
-	blockCache.UpdateAccount(contractAcc)
-
-	// A single input, having the permission, should succeed
-	tx, _ = NewCallTx(blockCache, user[0].PubKey, contractAddr, createCode, 100, 100, 100)
-	SignCallTx(tx, user[0])
-	// we need to subscribe to the Receive event to detect the exception
-	_, exception = execTxWaitEvent(t, blockCache, tx, types.EventStringAccReceive(contractAddr)) //
-	if exception != "" {
-		t.Fatal("unexpected exception", exception)
+	// one bonder with permission and an input from that bonder and an input without send or bond should fail
+	tx, _ = types.NewBondTx(user[1].PubKey)
+	if err := tx.AddInput(blockCache, user[1].PubKey, 5); err != nil {
+		t.Fatal(err)
 	}
-
-	//--------------------------------
-	fmt.Println("##### CALL to empty address")
-	zeroAddr := LeftPadBytes([]byte{}, 20)
-	code := callContractCode(zeroAddr)
-
-	contractAddr = NewContractAddress(user[0].Address, 110)
-	contractAcc = &account.Account{
-		Address:     contractAddr,
-		Balance:     1000,
-		Code:        code,
-		Sequence:    0,
-		StorageRoot: Zero256.Bytes(),
-		Permissions: ptypes.NewAccountPermissions(),
+	if err := tx.AddInput(blockCache, user[2].PubKey, 5); err != nil {
+		t.Fatal(err)
 	}
-	contractAcc.Permissions.Base.Set(ptypes.Call, true)
-	contractAcc.Permissions.Base.Set(ptypes.Create, true)
-	blockCache.UpdateAccount(contractAcc)
-
-	// this should call the 0 address but not create ...
-	tx, _ = NewCallTx(blockCache, user[0].PubKey, contractAddr, createCode, 100, 10000, 100)
-	SignCallTx(tx, user[0])
-	// we need to subscribe to the Receive event to detect the exception
-	_, exception = execTxWaitEvent(t, blockCache, tx, types.EventStringAccReceive(zeroAddr)) //
-	if exception != "" {
-		t.Fatal("unexpected exception", exception)
+	tx.AddOutput(user[1].Address, 5)
+	tx.SignInput(0, user[1])
+	tx.SignInput(1, user[2])
+	tx.SignBond(user[1])
+	if err := ExecTx(blockCache, tx, true, nil); err == nil {
+		t.Fatal("Expected error")
 	}
-	zeroAcc := blockCache.GetAccount(zeroAddr)
-	if len(zeroAcc.Code) != 0 {
-		t.Fatal("the zero account was given code from a CALL!")
-	}
-
 }
 
 //-------------------------------------------------------------------------------------

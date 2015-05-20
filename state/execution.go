@@ -634,7 +634,12 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 			return err
 		}
 
-		if !hasBondPermission(blockCache, accounts) {
+		bondAcc := blockCache.GetAccount(tx.PubKey.Address())
+		if !hasBondPermission(blockCache, bondAcc) {
+			return fmt.Errorf("The bonder does not have permission to bond")
+		}
+
+		if !hasBondOrSendPermission(blockCache, accounts) {
 			return fmt.Errorf("At least one input lacks permission to bond")
 		}
 
@@ -786,18 +791,23 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 }
 
 //---------------------------------------------------------------
-// TODO: for debug log the failed accounts
 
 // Get permission on an account or fall back to global value
 func HasPermission(state AccountGetter, acc *account.Account, perm ptypes.PermFlag) bool {
+	if acc == nil {
+		// TODO
+		// this needs to fall back to global or do some other specific things
+		// eg. a bondAcc may be nil and so can only bond if global bonding is true
+	}
+
 	v, err := acc.Permissions.Base.Get(perm)
-	fmt.Printf("has permission? %x %v %b %v %v\n", acc.Address, acc.Permissions, perm, v, err)
 	if _, ok := err.(ptypes.ErrValueNotSet); ok {
 		return HasPermission(state, state.GetAccount(ptypes.GlobalPermissionsAddress), perm)
 	}
 	return v
 }
 
+// TODO: for debug log the failed accounts
 func hasSendPermission(state AccountGetter, accs map[string]*account.Account) bool {
 	for _, acc := range accs {
 		if !HasPermission(state, acc, ptypes.Send) {
@@ -808,23 +818,23 @@ func hasSendPermission(state AccountGetter, accs map[string]*account.Account) bo
 }
 
 func hasCallPermission(state AccountGetter, acc *account.Account) bool {
-	if !HasPermission(state, acc, ptypes.Call) {
-		return false
-	}
-	return true
+	return HasPermission(state, acc, ptypes.Call)
 }
 
 func hasCreatePermission(state AccountGetter, acc *account.Account) bool {
-	if !HasPermission(state, acc, ptypes.Create) {
-		return false
-	}
-	return true
+	return HasPermission(state, acc, ptypes.CreateContract)
 }
 
-func hasBondPermission(state AccountGetter, accs map[string]*account.Account) bool {
+func hasBondPermission(state AccountGetter, acc *account.Account) bool {
+	return HasPermission(state, acc, ptypes.Bond)
+}
+
+func hasBondOrSendPermission(state AccountGetter, accs map[string]*account.Account) bool {
 	for _, acc := range accs {
 		if !HasPermission(state, acc, ptypes.Bond) {
-			return false
+			if !HasPermission(state, acc, ptypes.Send) {
+				return false
+			}
 		}
 	}
 	return true
