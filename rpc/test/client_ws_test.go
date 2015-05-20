@@ -91,7 +91,26 @@ func TestWSDoubleFire(t *testing.T) {
 	})
 }
 
-// create a contract, wait for the event, and send it a msg, validate the return
+// create a contract, wait for the create event
+func TestWSCreate(t *testing.T) {
+	con := newWSCon(t)
+	eid1 := types.EventStringAccCreate(userByteAddr)
+	subscribe(t, con, eid1)
+	defer func() {
+		unsubscribe(t, con, eid1)
+		con.Close()
+	}()
+	amt := uint64(10000)
+	code, returnCode, _ := simpleContract()
+	var contractAddr []byte
+	// wait for the contract to be created
+	waitForEvent(t, con, eid1, true, func() {
+		_, receipt := broadcastTx(t, "JSONRPC", userByteAddr, nil, code, userBytePriv, amt, 1000, 1000)
+		contractAddr = receipt.ContractAddr
+	}, unmarshalValidateCreate(amt, returnCode))
+}
+
+// create a contract, wait for the input event, and send it a msg, validate the return
 func TestWSCallWait(t *testing.T) {
 	con := newWSCon(t)
 	eid1 := types.EventStringAccInput(userByteAddr)

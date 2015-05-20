@@ -18,6 +18,10 @@ func EventStringAccReceive(addr []byte) string {
 	return fmt.Sprintf("Acc/%X/Receive", addr)
 }
 
+func EventStringAccCreate(addr []byte) string {
+	return fmt.Sprintf("Acc/%X/Create", addr)
+}
+
 func EventStringBond() string {
 	return "Bond"
 }
@@ -65,6 +69,11 @@ type EventMsgCall struct {
 	TxId      []byte    `json:"tx_id"`
 	Return    []byte    `json:"return"`
 	Exception string    `json:"exception"`
+}
+
+type EventMsgCreate struct {
+	Address []byte `json:"address"`
+	TxId    []byte `json:"txid"`
 }
 
 /*

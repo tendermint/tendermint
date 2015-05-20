@@ -10,8 +10,8 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/tendermint/tendermint/binary"
-	"github.com/tendermint/tendermint/rpc/types"
 	_ "github.com/tendermint/tendermint/config/tendermint_test"
+	"github.com/tendermint/tendermint/rpc/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -219,6 +219,33 @@ func unmarshalValidateCall(amt uint64, returnCode []byte) func(string, []byte) e
 		ret := response.Data.Return
 		if bytes.Compare(ret, returnCode) != 0 {
 			return fmt.Errorf("Call did not return correctly. Got %x, expected %x", ret, returnCode)
+		}
+		return nil
+	}
+}
+
+func unmarshalValidateCreate(amt uint64, returnCode []byte) func(string, []byte) error {
+	return func(eid string, b []byte) error {
+		// unmarshall and assert somethings
+		var response struct {
+			Event string `json:"event"`
+			Data  struct {
+				Address []byte `json:"address"`
+				TxId    []byte `json:"txid"`
+			} `json:"data"`
+			Error string `json:"error"`
+		}
+		var err error
+		binary.ReadJSON(&response, b, &err)
+		if err != nil {
+			return err
+		}
+		if response.Error != "" {
+			return fmt.Errorf(response.Error)
+		}
+		addr := response.Data.Address
+		if len(addr) != 20 {
+			return fmt.Errorf("invalid created address %X", addr)
 		}
 		return nil
 	}
