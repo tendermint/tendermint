@@ -61,8 +61,9 @@ type VM struct {
 
 	evc events.Fireable
 
-	doug  bool // is this the gendoug contract
-	perms bool // permission checking can be turned off
+	doug             bool // is this the gendoug contract
+	perms            bool // permission checking can be turned off
+	snativeContracts map[Word256]SNativeContract
 }
 
 func NewVM(appState AppState, params Params, origin Word256, txid []byte) *VM {
@@ -84,6 +85,15 @@ func (vm *VM) SetFireable(evc events.Fireable) {
 // to allow calls to native DougContracts (off by default)
 func (vm *VM) EnableDoug() {
 	vm.doug = true
+	vm.snativeContracts = map[Word256]SNativeContract{
+		RightPadWord256([]byte("hasBasePerm")):   vm.hasBasePerm,
+		RightPadWord256([]byte("setBasePerm")):   vm.setBasePerm,
+		RightPadWord256([]byte("unsetBasePerm")): vm.unsetBasePerm,
+		RightPadWord256([]byte("setGlobalPerm")): vm.setGlobalPerm,
+		RightPadWord256([]byte("hasRole")):       vm.hasRole,
+		RightPadWord256([]byte("addRole")):       vm.addRole,
+		RightPadWord256([]byte("rmRole")):        vm.rmRole,
+	}
 }
 
 // run permission checks before call and create
@@ -747,10 +757,10 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 			if nativeContract := nativeContracts[addr]; nativeContract != nil {
 				// Native contract
 				ret, err = nativeContract(args, &gasLimit)
-			} else if dougContract := dougContracts[addr]; vm.doug && dougContract != nil {
-				// This is Doug and we're calling a doug contract
+			} else if snativeContract := vm.snativeContracts[addr]; vm.doug && snativeContract != nil {
+				// This is Doug and we're calling a snative contract
 				// TODO: Doug contract should have all permissions
-				ret, err = dougContract(args, &gasLimit)
+				ret, err = snativeContract(args)
 			} else {
 				// EVM contract
 				if ok = useGas(gas, GasGetAccount); !ok {
