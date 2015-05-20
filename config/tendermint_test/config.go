@@ -71,7 +71,7 @@ func GetConfig(rootDir string) cfg.Config {
 	mapConfig.SetDefault("genesis_file", rootDir+"/genesis.json")
 	mapConfig.SetDefault("moniker", "anonymous")
 	mapConfig.SetDefault("node_laddr", "0.0.0.0:36656")
-	mapConfig.SetDefault("fast_sync", true)
+	mapConfig.SetDefault("fast_sync", false)
 	mapConfig.SetDefault("addrbook_file", rootDir+"/addrbook.json")
 	mapConfig.SetDefault("priv_validator_file", rootDir+"/priv_validator.json")
 	mapConfig.SetDefault("db_backend", "memdb")
@@ -94,7 +94,7 @@ network = "tendermint_test"
 moniker = "__MONIKER__"
 node_laddr = "0.0.0.0:36656"
 seeds = ""
-fast_sync = true
+fast_sync = false
 db_backend = "memdb"
 log_level = "debug"
 rpc_laddr = "0.0.0.0:36657"

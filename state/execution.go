@@ -462,7 +462,11 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 			// a separate event will be fired from vm for each additional call
 			if evc != nil {
 				evc.FireEvent(types.EventStringAccInput(tx.Input.Address), types.EventMsgCallTx{tx, ret, exception})
-				evc.FireEvent(types.EventStringAccOutput(tx.Address), types.EventMsgCallTx{tx, ret, exception})
+				if createAccount {
+					evc.FireEvent(types.EventStringAccCreate(tx.Input.Address), types.EventMsgCreate{callee.Address.Postfix(20), account.HashSignBytes(tx)})
+				} else {
+					evc.FireEvent(types.EventStringAccOutput(tx.Address), types.EventMsgCallTx{tx, ret, exception})
+				}
 			}
 		} else {
 			// The mempool does not call txs until
