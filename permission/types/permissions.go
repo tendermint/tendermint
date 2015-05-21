@@ -63,6 +63,9 @@ func (p *BasePermissions) Get(ty PermFlag) (bool, error) {
 
 // Set a permission bit. Will set the permission's set bit to true.
 func (p *BasePermissions) Set(ty PermFlag, value bool) error {
+	if ty == 0 {
+		return ErrInvalidPermission(ty)
+	}
 	p.SetBit |= ty
 	if value {
 		p.Perms |= ty
@@ -74,6 +77,9 @@ func (p *BasePermissions) Set(ty PermFlag, value bool) error {
 
 // Set the permission's set bit to false
 func (p *BasePermissions) Unset(ty PermFlag) error {
+	if ty == 0 {
+		return ErrInvalidPermission(ty)
+	}
 	p.SetBit &= ^ty
 	return nil
 }

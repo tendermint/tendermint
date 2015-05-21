@@ -61,6 +61,16 @@ x	- unknown output, without create (fail)
 x	- unknown output, with create (pass)
 
 
+- SNative (CallTx, CALL):
+	- for each of CallTx, Call
+x		- call each snative without permission, fails
+x		- call each snative with permission, pass
+	- list:
+x		- base: has,set,unset
+x		- globals: set
+x 		- roles: has, add, rm
+
+
 */
 
 // keys
@@ -785,17 +795,6 @@ func TestCreateAccountPermission(t *testing.T) {
 	}
 
 }
-
-/*
-- SNative (CallTx, CALL):
-	- for each of CallTx, Call
-		- call each snative without permission, fails
-		- call each snative with permission, pass
-	- list:
-		- base: has,set,unset
-		- globals: set
-		- roles: has, add, r
-*/
 
 func TestSNativeCALL(t *testing.T) {
 	stateDB := dbm.GetDB("state")
