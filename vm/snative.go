@@ -45,7 +45,7 @@ const (
 	TopSNativePermission  ptypes.PermFlag = FirstSNativePerm << (NumSNativePermissions - 1)
 )
 
-var registeredSNativeContracts = map[Word256]ptypes.PermFlag{
+var RegisteredSNativeContracts = map[Word256]ptypes.PermFlag{
 	LeftPadWord256([]byte("hasBasePerm")):   HasBasePerm,
 	LeftPadWord256([]byte("setBasePerm")):   SetBasePerm,
 	LeftPadWord256([]byte("unsetBasePerm")): UnsetBasePerm,
@@ -60,7 +60,7 @@ var registeredSNativeContracts = map[Word256]ptypes.PermFlag{
 type SNativeContract func(acc *Account, input []byte) (output []byte, err error)
 
 func (vm *VM) SNativeContract(name Word256) SNativeContract {
-	flag := registeredSNativeContracts[name]
+	flag := RegisteredSNativeContracts[name]
 	switch flag {
 	case HasBasePerm:
 		return vm.hasBasePerm

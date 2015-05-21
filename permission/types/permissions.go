@@ -79,6 +79,9 @@ func (p *BasePermissions) Unset(ty PermFlag) error {
 }
 
 func (p *BasePermissions) Copy() *BasePermissions {
+	if p == nil {
+		return nil
+	}
 	return &BasePermissions{
 		Perms:  p.Perms,
 		SetBit: p.SetBit,
@@ -140,6 +143,9 @@ func (aP *AccountPermissions) RmRole(role string) bool {
 }
 
 func (aP *AccountPermissions) Copy() *AccountPermissions {
+	if aP == nil {
+		return nil
+	}
 	r := make([]string, len(aP.Roles))
 	copy(r, aP.Roles)
 	return &AccountPermissions{

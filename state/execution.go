@@ -405,6 +405,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 			// this may be nil if we are still in mempool and contract was created in same block as this tx
 			// but that's fine, because the account will be created properly when the create tx runs in the block
 			// and then this won't return nil. otherwise, we take their fee
+			// it may also be nil if its an snative (not a "real" account)
 			outAcc = blockCache.GetAccount(tx.Address)
 		}
 
@@ -431,9 +432,16 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 				}
 			)
 
-			// Maybe create a new callee account if
-			// this transaction is creating a new contract.
+			// get or create callee
 			if !createAccount {
+				if outAcc == nil {
+					// check if its an snative
+					if _, ok := vm.RegisteredSNativeContracts[LeftPadWord256(tx.Address)]; ok {
+						// set the outAcc (simply a placeholder until we reach the call)
+						outAcc = &account.Account{Address: tx.Address}
+					}
+				}
+
 				if outAcc == nil || len(outAcc.Code) == 0 {
 					// if you call an account that doesn't exist
 					// or an account with no code then we take fees (sorry pal)
@@ -456,13 +464,15 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 				log.Debug(Fmt("Calling contract %X with code %X", callee.Address, callee.Code))
 			} else {
 				callee = txCache.CreateAccount(caller)
+				txCache.UpdateAccount(callee)
 				log.Debug(Fmt("Created new account %X", callee.Address))
 				code = tx.Data
 			}
 			log.Debug(Fmt("Code for this contract: %X", code))
 
-			txCache.UpdateAccount(caller) // because we adjusted by input above, and bumped nonce maybe.
-			txCache.UpdateAccount(callee) // because we adjusted by input above.
+			txCache.UpdateAccount(caller) // because we bumped nonce
+			txCache.UpdateAccount(callee) // so the txCache knows about the callee and the transfer takes effect
+
 			vmach := vm.NewVM(txCache, params, caller.Address, account.HashSignBytes(_s.ChainID, tx))
 			vmach.SetFireable(evc)
 
