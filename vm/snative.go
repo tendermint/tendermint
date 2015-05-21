@@ -21,6 +21,7 @@ const (
 	// first 32 bits of BasePermission are for chain, second 32 are for snative
 	FirstSNativePerm ptypes.PermFlag = 1 << 32
 
+	// each snative has an associated permission flag
 	HasBasePerm ptypes.PermFlag = FirstSNativePerm << iota
 	SetBasePerm
 	UnsetBasePerm
@@ -35,7 +36,41 @@ const (
 	TopSNativePermission  ptypes.PermFlag = FirstSNativePerm << (NumSNativePermissions - 1)
 )
 
+var registeredSNativeContracts = map[Word256]ptypes.PermFlag{
+	RightPadWord256([]byte("hasBasePerm")):   HasBasePerm,
+	RightPadWord256([]byte("setBasePerm")):   SetBasePerm,
+	RightPadWord256([]byte("unsetBasePerm")): UnsetBasePerm,
+	RightPadWord256([]byte("setGlobalPerm")): SetGlobalPerm,
+	RightPadWord256([]byte("hasRole")):       HasRole,
+	RightPadWord256([]byte("addRole")):       AddRole,
+	RightPadWord256([]byte("rmRole")):        RmRole,
+}
+
+// takes an account so it can check for permission to access the contract
+// NOTE: the account is the currently executing account (the callee), not say an origin caller
 type SNativeContract func(acc *Account, input []byte) (output []byte, err error)
+
+func (vm *VM) SNativeContract(name Word256) SNativeContract {
+	flag := registeredSNativeContracts[name]
+	switch flag {
+	case HasBasePerm:
+		return vm.hasBasePerm
+	case SetBasePerm:
+		return vm.setBasePerm
+	case UnsetBasePerm:
+		return vm.unsetBasePerm
+	case SetGlobalPerm:
+		return vm.setGlobalPerm
+	case HasRole:
+		return vm.hasRole
+	case AddRole:
+		return vm.addRole
+	case RmRole:
+		return vm.rmRole
+	default:
+		return nil
+	}
+}
 
 //-----------------------------------------------------------------------------
 // snative are native contracts that can access and manipulate the chain state

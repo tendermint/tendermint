@@ -61,9 +61,8 @@ type VM struct {
 
 	evc events.Fireable
 
-	doug             bool // is this the gendoug contract
-	perms            bool // permission checking can be turned off
-	snativeContracts map[Word256]SNativeContract
+	perms   bool // permission checking can be turned off
+	snative bool // access to snatives
 }
 
 func NewVM(appState AppState, params Params, origin Word256, txid []byte) *VM {
@@ -73,7 +72,6 @@ func NewVM(appState AppState, params Params, origin Word256, txid []byte) *VM {
 		origin:    origin,
 		callDepth: 0,
 		txid:      txid,
-		doug:      false,
 	}
 }
 
@@ -83,17 +81,8 @@ func (vm *VM) SetFireable(evc events.Fireable) {
 }
 
 // to allow calls to native DougContracts (off by default)
-func (vm *VM) EnableDoug() {
-	vm.doug = true
-	vm.snativeContracts = map[Word256]SNativeContract{
-		RightPadWord256([]byte("hasBasePerm")):   vm.hasBasePerm,
-		RightPadWord256([]byte("setBasePerm")):   vm.setBasePerm,
-		RightPadWord256([]byte("unsetBasePerm")): vm.unsetBasePerm,
-		RightPadWord256([]byte("setGlobalPerm")): vm.setGlobalPerm,
-		RightPadWord256([]byte("hasRole")):       vm.hasRole,
-		RightPadWord256([]byte("addRole")):       vm.addRole,
-		RightPadWord256([]byte("rmRole")):        vm.rmRole,
-	}
+func (vm *VM) EnableSNatives() {
+	vm.snative = true
 }
 
 // run permission checks before call and create
@@ -757,9 +746,8 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 			if nativeContract := nativeContracts[addr]; nativeContract != nil {
 				// Native contract
 				ret, err = nativeContract(args, &gasLimit)
-			} else if snativeContract := vm.snativeContracts[addr]; vm.doug && snativeContract != nil {
-				// This is Doug and we're calling a snative contract
-				// TODO: Doug contract should have all permissions
+			} else if snativeContract := vm.SNativeContract(addr); vm.snative && snativeContract != nil {
+				// Secure native contract (with access to chain state)
 				ret, err = snativeContract(callee, args)
 			} else {
 				// EVM contract
