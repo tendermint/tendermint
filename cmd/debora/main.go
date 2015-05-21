@@ -87,7 +87,7 @@ func main() {
 		cli.Command{
 			Name:   "run",
 			Usage:  "run process",
-			Action: cliRunProcess,
+			Action: cliStartProcess,
 			Flags: []cli.Flag{
 				labelFlag,
 				bgFlag,
@@ -145,14 +145,14 @@ func cliGetStatus(c *cli.Context) {
 	wg.Wait()
 }
 
-func cliRunProcess(c *cli.Context) {
+func cliStartProcess(c *cli.Context) {
 	args := c.Args()
 	if len(args) < 1 {
 		Exit("Must specify <execPath> <args...>")
 	}
 	execPath := args[0]
 	args = args[1:]
-	command := btypes.CommandRunProcess{
+	command := btypes.CommandStartProcess{
 		Wait:     !c.Bool("bg"),
 		Label:    c.String("label"),
 		ExecPath: execPath,
@@ -164,7 +164,7 @@ func cliRunProcess(c *cli.Context) {
 		wg.Add(1)
 		go func(remote string) {
 			defer wg.Done()
-			response, err := RunProcess(Config.PrivKey, remote, command)
+			response, err := StartProcess(Config.PrivKey, remote, command)
 			if err != nil {
 				fmt.Printf("%v failure. %v\n", remote, err)
 			} else {

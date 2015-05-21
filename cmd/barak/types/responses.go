@@ -13,7 +13,7 @@ type ResponseStatus struct {
 type ResponseRegister struct {
 }
 
-type ResponseRunProcess struct {
+type ResponseStartProcess struct {
 	Success bool
 	Output  string
 }
@@ -23,4 +23,11 @@ type ResponseStopProcess struct {
 
 type ResponseListProcesses struct {
 	Processes []*pcm.Process
+}
+
+type ResponseOpenListener struct {
+	Addr string
+}
+
+type ResponseCloseListener struct {
 }
