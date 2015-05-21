@@ -179,9 +179,10 @@ func (tx *CallTx) String() string {
 //-----------------------------------------------------------------------------
 
 type BondTx struct {
-	PubKey   account.PubKeyEd25519 `json:"pub_key"`
-	Inputs   []*TxInput            `json:"inputs"`
-	UnbondTo []*TxOutput           `json:"unbond_to"`
+	PubKey    account.PubKeyEd25519    `json:"pub_key"`
+	Signature account.SignatureEd25519 `json:"signature"`
+	Inputs    []*TxInput               `json:"inputs"`
+	UnbondTo  []*TxOutput              `json:"unbond_to"`
 }
 
 func (tx *BondTx) WriteSignBytes(w io.Writer, n *int64, err *error) {

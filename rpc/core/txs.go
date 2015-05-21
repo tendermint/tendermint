@@ -99,9 +99,12 @@ func SignTx(tx types.Tx, privAccounts []*account.PrivAccount) (*ctypes.ResponseS
 		callTx.Input.Signature = privAccounts[0].Sign(callTx)
 	case *types.BondTx:
 		bondTx := tx.(*types.BondTx)
+		// the first privaccount corresponds to the BondTx pub key.
+		// the rest to the inputs
+		bondTx.Signature = privAccounts[0].Sign(bondTx).(account.SignatureEd25519)
 		for i, input := range bondTx.Inputs {
-			input.PubKey = privAccounts[i].PubKey
-			input.Signature = privAccounts[i].Sign(bondTx)
+			input.PubKey = privAccounts[i+1].PubKey
+			input.Signature = privAccounts[i+1].Sign(bondTx)
 		}
 	case *types.UnbondTx:
 		unbondTx := tx.(*types.UnbondTx)

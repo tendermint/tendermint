@@ -288,6 +288,7 @@ func TestTxs(t *testing.T) {
 				},
 			},
 		}
+		tx.Signature = privAccounts[0].Sign(tx).(account.SignatureEd25519)
 		tx.Inputs[0].Signature = privAccounts[0].Sign(tx)
 		err := execTxWithState(state, tx, true)
 		if err != nil {
@@ -344,6 +345,7 @@ func TestAddValidator(t *testing.T) {
 			},
 		},
 	}
+	bondTx.Signature = acc0.Sign(bondTx).(account.SignatureEd25519)
 	bondTx.Inputs[0].Signature = acc0.Sign(bondTx)
 
 	// Make complete block and blockParts
