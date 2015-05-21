@@ -18,22 +18,26 @@ type NoncedCommand struct {
 type Command interface{}
 
 const (
-	commandTypeRunProcess    = 0x01
+	commandTypeStartProcess  = 0x01
 	commandTypeStopProcess   = 0x02
 	commandTypeListProcesses = 0x03
 	commandTypeServeFile     = 0x04
+	commandTypeOpenListener  = 0x05
+	commandTypeCloseListener = 0x06
 )
 
 // for binary.readReflect
 var _ = binary.RegisterInterface(
 	struct{ Command }{},
-	binary.ConcreteType{CommandRunProcess{}, commandTypeRunProcess},
+	binary.ConcreteType{CommandStartProcess{}, commandTypeStartProcess},
 	binary.ConcreteType{CommandStopProcess{}, commandTypeStopProcess},
 	binary.ConcreteType{CommandListProcesses{}, commandTypeListProcesses},
 	binary.ConcreteType{CommandServeFile{}, commandTypeServeFile},
+	binary.ConcreteType{CommandOpenListener{}, commandTypeOpenListener},
+	binary.ConcreteType{CommandCloseListener{}, commandTypeCloseListener},
 )
 
-type CommandRunProcess struct {
+type CommandStartProcess struct {
 	Wait     bool
 	Label    string
 	ExecPath string
@@ -50,4 +54,12 @@ type CommandListProcesses struct{}
 
 type CommandServeFile struct {
 	Path string
+}
+
+type CommandOpenListener struct {
+	Addr string
+}
+
+type CommandCloseListener struct {
+	Addr string
 }

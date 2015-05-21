@@ -19,7 +19,7 @@ import (
 // (First the command(s) are signed by all validators,
 //  and then it is broadcast).
 
-func RunProcess(privKey acm.PrivKey, remote string, command btypes.CommandRunProcess) (response btypes.ResponseRunProcess, err error) {
+func StartProcess(privKey acm.PrivKey, remote string, command btypes.CommandStartProcess) (response btypes.ResponseStartProcess, err error) {
 	nonce, err := GetNonce(remote)
 	if err != nil {
 		return response, err
