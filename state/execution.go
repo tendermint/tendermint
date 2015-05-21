@@ -489,6 +489,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 		if err != nil {
 			return err
 		}
+
 		signBytes := account.SignBytes(tx)
 		inTotal, err := validateInputs(accounts, signBytes, tx.Inputs)
 		if err != nil {
