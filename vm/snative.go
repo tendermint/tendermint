@@ -111,6 +111,7 @@ func (vm *VM) hasBasePerm(acc *Account, args []byte) (output []byte, err error) 
 	} else {
 		permInt = 0x0
 	}
+	dbg.Printf("snative.hasBasePerm(0x%X, %b) = %v\n", addr.Postfix(20), permN, permInt)
 	return LeftPadWord256([]byte{permInt}).Bytes(), nil
 }
 
@@ -138,6 +139,7 @@ func (vm *VM) setBasePerm(acc *Account, args []byte) (output []byte, err error) 
 		return nil, err
 	}
 	vm.appState.UpdateAccount(vmAcc)
+	dbg.Printf("snative.setBasePerm(0x%X, %b, %v)\n", addr.Postfix(20), permN, permV)
 	return perm.Bytes(), nil
 }
 
@@ -163,6 +165,7 @@ func (vm *VM) unsetBasePerm(acc *Account, args []byte) (output []byte, err error
 		return nil, err
 	}
 	vm.appState.UpdateAccount(vmAcc)
+	dbg.Printf("snative.unsetBasePerm(0x%X, %b)\n", addr.Postfix(20), permN)
 	return permNum.Bytes(), nil
 }
 
@@ -171,11 +174,11 @@ func (vm *VM) setGlobalPerm(acc *Account, args []byte) (output []byte, err error
 		return nil, ErrInvalidPermission{acc.Address, "SetGlobalPerm"}
 	}
 	if len(args) != 2*32 {
-		return nil, fmt.Errorf("setGlobalPerm() takes three arguments (permission number, permission value)")
+		return nil, fmt.Errorf("setGlobalPerm() takes two arguments (permission number, permission value)")
 	}
 	var permNum, perm Word256
-	copy(permNum[:], args[32:64])
-	copy(perm[:], args[64:96])
+	copy(permNum[:], args[:32])
+	copy(perm[:], args[32:64])
 	vmAcc := vm.appState.GetAccount(ptypes.GlobalPermissionsAddress256)
 	if vmAcc == nil {
 		panic("cant find the global permissions account")
@@ -189,6 +192,7 @@ func (vm *VM) setGlobalPerm(acc *Account, args []byte) (output []byte, err error
 		return nil, err
 	}
 	vm.appState.UpdateAccount(vmAcc)
+	dbg.Printf("snative.setGlobalPerm(%b, %v)\n", permN, permV)
 	return perm.Bytes(), nil
 }
 
@@ -208,8 +212,8 @@ func (vm *VM) hasRole(acc *Account, args []byte) (output []byte, err error) {
 		return nil, fmt.Errorf("hasRole() takes two arguments (address, role)")
 	}
 	var addr, role Word256
-	copy(addr[:], args[32:64])
-	copy(role[:], args[64:96])
+	copy(addr[:], args[:32])
+	copy(role[:], args[32:64])
 	vmAcc := vm.appState.GetAccount(addr)
 	if vmAcc == nil {
 		return nil, fmt.Errorf("Unknown account %X", addr)
@@ -221,6 +225,7 @@ func (vm *VM) hasRole(acc *Account, args []byte) (output []byte, err error) {
 	} else {
 		permInt = 0x0
 	}
+	dbg.Printf("snative.hasRole(0x%X, %s) = %v\n", addr.Postfix(20), roleS, permInt > 0)
 	return LeftPadWord256([]byte{permInt}).Bytes(), nil
 }
 
@@ -232,8 +237,8 @@ func (vm *VM) addRole(acc *Account, args []byte) (output []byte, err error) {
 		return nil, fmt.Errorf("addRole() takes two arguments (address, role)")
 	}
 	var addr, role Word256
-	copy(addr[:], args[32:64])
-	copy(role[:], args[64:96])
+	copy(addr[:], args[:32])
+	copy(role[:], args[32:64])
 	vmAcc := vm.appState.GetAccount(addr)
 	if vmAcc == nil {
 		return nil, fmt.Errorf("Unknown account %X", addr)
@@ -245,6 +250,8 @@ func (vm *VM) addRole(acc *Account, args []byte) (output []byte, err error) {
 	} else {
 		permInt = 0x0
 	}
+	vm.appState.UpdateAccount(vmAcc)
+	dbg.Printf("snative.addRole(0x%X, %s) = %v\n", addr.Postfix(20), roleS, permInt > 0)
 	return LeftPadWord256([]byte{permInt}).Bytes(), nil
 }
 
@@ -256,8 +263,8 @@ func (vm *VM) rmRole(acc *Account, args []byte) (output []byte, err error) {
 		return nil, fmt.Errorf("rmRole() takes two arguments (address, role)")
 	}
 	var addr, role Word256
-	copy(addr[:], args[32:64])
-	copy(role[:], args[64:96])
+	copy(addr[:], args[:32])
+	copy(role[:], args[32:64])
 	vmAcc := vm.appState.GetAccount(addr)
 	if vmAcc == nil {
 		return nil, fmt.Errorf("Unknown account %X", addr)
@@ -269,5 +276,7 @@ func (vm *VM) rmRole(acc *Account, args []byte) (output []byte, err error) {
 	} else {
 		permInt = 0x0
 	}
+	vm.appState.UpdateAccount(vmAcc)
+	dbg.Printf("snative.rmRole(0x%X, %s) = %v\n", addr.Postfix(20), roleS, permInt > 0)
 	return LeftPadWord256([]byte{permInt}).Bytes(), nil
 }

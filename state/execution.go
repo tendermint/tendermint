@@ -434,30 +434,29 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 
 			// get or create callee
 			if !createAccount {
-				if outAcc == nil {
+
+				if outAcc == nil || len(outAcc.Code) == 0 {
 					// check if its an snative
 					if _, ok := vm.RegisteredSNativeContracts[LeftPadWord256(tx.Address)]; ok {
 						// set the outAcc (simply a placeholder until we reach the call)
 						outAcc = &account.Account{Address: tx.Address}
-					}
-				}
-
-				if outAcc == nil || len(outAcc.Code) == 0 {
-					// if you call an account that doesn't exist
-					// or an account with no code then we take fees (sorry pal)
-					// NOTE: it's fine to create a contract and call it within one
-					// block (nonce will prevent re-ordering of those txs)
-					// but to create with one account and call with another
-					// you have to wait a block to avoid a re-ordering attack
-					// that will take your fees
-					inAcc.Balance -= tx.Fee
-					blockCache.UpdateAccount(inAcc)
-					if outAcc == nil {
-						log.Debug(Fmt("Cannot find destination address %X. Deducting fee from caller", tx.Address))
 					} else {
-						log.Debug(Fmt("Attempting to call an account (%X) with no code. Deducting fee from caller", tx.Address))
+						// if you call an account that doesn't exist
+						// or an account with no code then we take fees (sorry pal)
+						// NOTE: it's fine to create a contract and call it within one
+						// block (nonce will prevent re-ordering of those txs)
+						// but to create with one account and call with another
+						// you have to wait a block to avoid a re-ordering attack
+						// that will take your fees
+						inAcc.Balance -= tx.Fee
+						blockCache.UpdateAccount(inAcc)
+						if outAcc == nil {
+							log.Debug(Fmt("Cannot find destination address %X. Deducting fee from caller", tx.Address))
+						} else {
+							log.Debug(Fmt("Attempting to call an account (%X) with no code. Deducting fee from caller", tx.Address))
+						}
+						return types.ErrTxInvalidAddress
 					}
-					return types.ErrTxInvalidAddress
 				}
 				callee = toVMAccount(outAcc)
 				code = callee.Code
