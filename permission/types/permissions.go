@@ -30,7 +30,7 @@ const (
 
 	NumBasePermissions uint     = 6
 	TopBasePermission  PermFlag = 1 << (NumBasePermissions - 1)
-	AllSet             PermFlag = 1<<NumBasePermissions - 1
+	AllSet             PermFlag = (1 << 63) - 1 + (1 << 63)
 )
 
 //---------------------------------------------------------------------------------------------
@@ -52,6 +52,9 @@ func NewBasePermissions() *BasePermissions {
 // ErrValueNotSet is returned if the permission's set bit is off,
 // and should be caught by caller so the global permission can be fetched
 func (p *BasePermissions) Get(ty PermFlag) (bool, error) {
+	if ty == 0 {
+		return false, ErrInvalidPermission(ty)
+	}
 	if p.SetBit&ty == 0 {
 		return false, ErrValueNotSet(ty)
 	}

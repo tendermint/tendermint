@@ -782,7 +782,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 
 			// Push result
 			if err != nil {
-				dbg.Printf("error on call: %s", err.Error())
+				dbg.Printf("error on call: %s\n", err.Error())
 				stack.Push(Zero256)
 			} else {
 				stack.Push(One256)
