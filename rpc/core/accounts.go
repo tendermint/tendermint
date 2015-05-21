@@ -16,6 +16,7 @@ func GetAccount(address []byte) (*acm.Account, error) {
 	cache := mempoolReactor.Mempool.GetCache()
 	account := cache.GetAccount(address)
 	if account == nil {
+		// XXX: shouldn't we return "account not found"?
 		account = &acm.Account{
 			Address:     address,
 			PubKey:      nil,

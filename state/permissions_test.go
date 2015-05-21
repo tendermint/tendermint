@@ -16,7 +16,7 @@ import (
 )
 
 /*
-To Test:
+Permission Tests:
 
 - SendTx:
 x	- 1 input, no perm, call perm, create perm
@@ -46,7 +46,19 @@ x	- 1 bonder with perm, input with send
 x	- 1 bonder with perm, input with bond
 x	- 2 inputs, one with perm one without
 
-- SendTx for new account ? CALL for new account?
+- SendTx for new account
+x 	- 1 input, 1 unknown ouput, input with send, not create  (fail)
+x 	- 1 input, 1 unknown ouput, input with send and create (pass)
+x 	- 2 inputs, 1 unknown ouput, both inputs with send, one with create, one without (fail)
+x 	- 2 inputs, 1 known output, 1 unknown ouput, one input with create, one without (fail)
+x 	- 2 inputs, 1 unknown ouput, both inputs with send, both inputs with create (pass )
+x 	- 2 inputs, 1 known output, 1 unknown ouput, both inputs with create, (pass)
+
+
+- CALL for new account
+x	- unknown output, without create (fail)
+x	- unknown output, with create (pass)
+
 
 - Gendoug:
 	- base: has,set,unset
@@ -55,7 +67,7 @@ x	- 2 inputs, one with perm one without
 */
 
 // keys
-var user = makeUsers(5)
+var user = makeUsers(10)
 
 func makeUsers(n int) []*account.PrivAccount {
 	accounts := []*account.PrivAccount{}
@@ -145,6 +157,22 @@ func TestSendFails(t *testing.T) {
 		t.Fatal(err)
 	}
 	tx.AddOutput(user[4].Address, 5)
+	tx.SignInput(0, user[3])
+	if err := ExecTx(blockCache, tx, true, nil); err == nil {
+		t.Fatal("Expected error")
+	} else {
+		fmt.Println(err)
+	}
+
+	// simple send tx to unknown account without create_account perm should fail
+	acc := blockCache.GetAccount(user[3].Address)
+	acc.Permissions.Base.Set(ptypes.Send, true)
+	blockCache.UpdateAccount(acc)
+	tx = types.NewSendTx()
+	if err := tx.AddInput(blockCache, user[3].PubKey, 5); err != nil {
+		t.Fatal(err)
+	}
+	tx.AddOutput(user[6].Address, 5)
 	tx.SignInput(0, user[3])
 	if err := ExecTx(blockCache, tx, true, nil); err == nil {
 		t.Fatal("Expected error")
@@ -619,6 +647,146 @@ func TestBondPermission(t *testing.T) {
 	if err := ExecTx(blockCache, tx, true, nil); err == nil {
 		t.Fatal("Expected error")
 	}
+}
+
+func TestCreateAccountPermission(t *testing.T) {
+	stateDB := dbm.GetDB("state")
+	genDoc := newBaseGenDoc(PermsAllFalse, PermsAllFalse)
+	genDoc.Accounts[0].Permissions.Base.Set(ptypes.Send, true)          // give the 0 account permission
+	genDoc.Accounts[1].Permissions.Base.Set(ptypes.Send, true)          // give the 0 account permission
+	genDoc.Accounts[0].Permissions.Base.Set(ptypes.CreateAccount, true) // give the 0 account permission
+	st := MakeGenesisState(stateDB, &genDoc)
+	blockCache := NewBlockCache(st)
+
+	//----------------------------------------------------------
+	// SendTx to unknown account
+
+	// A single input, having the permission, should succeed
+	tx := types.NewSendTx()
+	if err := tx.AddInput(blockCache, user[0].PubKey, 5); err != nil {
+		t.Fatal(err)
+	}
+	tx.AddOutput(user[6].Address, 5)
+	tx.SignInput(0, user[0])
+	if err := ExecTx(blockCache, tx, true, nil); err != nil {
+		t.Fatal("Transaction failed", err)
+	}
+
+	// Two inputs, both with send, one with create, one without, should fail
+	tx = types.NewSendTx()
+	if err := tx.AddInput(blockCache, user[0].PubKey, 5); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.AddInput(blockCache, user[1].PubKey, 5); err != nil {
+		t.Fatal(err)
+	}
+	tx.AddOutput(user[7].Address, 10)
+	tx.SignInput(0, user[0])
+	tx.SignInput(1, user[1])
+	if err := ExecTx(blockCache, tx, true, nil); err == nil {
+		t.Fatal("Expected error")
+	} else {
+		fmt.Println(err)
+	}
+
+	// Two inputs, both with send, one with create, one without, two ouputs (one known, one unknown) should fail
+	tx = types.NewSendTx()
+	if err := tx.AddInput(blockCache, user[0].PubKey, 5); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.AddInput(blockCache, user[1].PubKey, 5); err != nil {
+		t.Fatal(err)
+	}
+	tx.AddOutput(user[7].Address, 4)
+	tx.AddOutput(user[4].Address, 6)
+	tx.SignInput(0, user[0])
+	tx.SignInput(1, user[1])
+	if err := ExecTx(blockCache, tx, true, nil); err == nil {
+		t.Fatal("Expected error")
+	} else {
+		fmt.Println(err)
+	}
+
+	// Two inputs, both with send, both with create, should pass
+	acc := blockCache.GetAccount(user[1].Address)
+	acc.Permissions.Base.Set(ptypes.CreateAccount, true)
+	blockCache.UpdateAccount(acc)
+	tx = types.NewSendTx()
+	if err := tx.AddInput(blockCache, user[0].PubKey, 5); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.AddInput(blockCache, user[1].PubKey, 5); err != nil {
+		t.Fatal(err)
+	}
+	tx.AddOutput(user[7].Address, 10)
+	tx.SignInput(0, user[0])
+	tx.SignInput(1, user[1])
+	if err := ExecTx(blockCache, tx, true, nil); err != nil {
+		t.Fatal("Unexpected error", err)
+	}
+
+	// Two inputs, both with send, both with create, two outputs (one known, one unknown) should pass
+	tx = types.NewSendTx()
+	if err := tx.AddInput(blockCache, user[0].PubKey, 5); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.AddInput(blockCache, user[1].PubKey, 5); err != nil {
+		t.Fatal(err)
+	}
+	tx.AddOutput(user[7].Address, 7)
+	tx.AddOutput(user[4].Address, 3)
+	tx.SignInput(0, user[0])
+	tx.SignInput(1, user[1])
+	if err := ExecTx(blockCache, tx, true, nil); err != nil {
+		t.Fatal("Unexpected error", err)
+	}
+
+	//----------------------------------------------------------
+	// CALL to unknown account
+
+	acc = blockCache.GetAccount(user[0].Address)
+	acc.Permissions.Base.Set(ptypes.Call, true)
+	blockCache.UpdateAccount(acc)
+
+	// call to contract that calls unknown account - without create_account perm
+	// create contract that calls the simple contract
+	contractCode := callContractCode(user[9].Address)
+	caller1ContractAddr := NewContractAddress(user[4].Address, 101)
+	caller1Acc := &account.Account{
+		Address:     caller1ContractAddr,
+		Balance:     0,
+		Code:        contractCode,
+		Sequence:    0,
+		StorageRoot: Zero256.Bytes(),
+		Permissions: ptypes.NewAccountPermissions(),
+	}
+	blockCache.UpdateAccount(caller1Acc)
+
+	// A single input, having the permission, but the contract doesn't have permission
+	txCall, _ := types.NewCallTx(blockCache, user[0].PubKey, caller1ContractAddr, nil, 100, 10000, 100)
+	txCall.Sign(user[0])
+
+	// we need to subscribe to the Receive event to detect the exception
+	_, exception := execTxWaitEvent(t, blockCache, txCall, types.EventStringAccReceive(caller1ContractAddr)) //
+	if exception == "" {
+		t.Fatal("Expected exception")
+	}
+
+	// NOTE: for a contract to be able to CreateAccount, it must be able to call
+	// NOTE: for a user to be able to CreateAccount, it must be able to send!
+	caller1Acc.Permissions.Base.Set(ptypes.CreateAccount, true)
+	caller1Acc.Permissions.Base.Set(ptypes.Call, true)
+	blockCache.UpdateAccount(caller1Acc)
+	// A single input, having the permission, but the contract doesn't have permission
+	txCall, _ = types.NewCallTx(blockCache, user[0].PubKey, caller1ContractAddr, nil, 100, 10000, 100)
+	txCall.Sign(user[0])
+
+	// we need to subscribe to the Receive event to detect the exception
+	_, exception = execTxWaitEvent(t, blockCache, txCall, types.EventStringAccReceive(caller1ContractAddr)) //
+	if exception != "" {
+		t.Fatal("Unexpected exception", exception)
+	}
+
 }
 
 //-------------------------------------------------------------------------------------

@@ -701,7 +701,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 
 		case CREATE: // 0xF0
 			if vm.perms && !vm.HasPermission(callee, ptypes.CreateContract) {
-				return nil, ErrPermission{"create"}
+				return nil, ErrPermission{"create_contract"}
 			}
 			contractValue := stack.Pop64()
 			offset, size := stack.Pop64(), stack.Pop64()
@@ -780,6 +780,9 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 					if acc == nil {
 						// if we have not seen the account before, create it
 						// so we can send funds
+						if vm.perms && !vm.HasPermission(caller, ptypes.CreateAccount) {
+							return nil, ErrPermission{"create_account"}
+						}
 						acc = &Account{
 							Address: addr,
 						}

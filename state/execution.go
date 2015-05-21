@@ -165,6 +165,7 @@ func getOrMakeOutputs(state AccountGetter, accounts map[string]*account.Account,
 		accounts = make(map[string]*account.Account)
 	}
 
+	var checkedCreatePerms bool
 	for _, out := range outs {
 		// Account shouldn't be duplicated
 		if _, ok := accounts[string(out.Address)]; ok {
@@ -173,6 +174,12 @@ func getOrMakeOutputs(state AccountGetter, accounts map[string]*account.Account,
 		acc := state.GetAccount(out.Address)
 		// output account may be nil (new)
 		if acc == nil {
+			if !checkedCreatePerms {
+				if !hasCreateAccountPermission(state, accounts) {
+					return nil, fmt.Errorf("At least one input does not have permission to create accounts")
+				}
+				checkedCreatePerms = true
+			}
 			acc = &account.Account{
 				Address:     out.Address,
 				PubKey:      nil,
@@ -312,6 +319,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 		}
 
 		// add outputs to accounts map
+		// if any outputs don't exist, all inputs must have CreateAccount perm
 		accounts, err = getOrMakeOutputs(blockCache, accounts, tx.Outputs)
 		if err != nil {
 			return err
@@ -364,7 +372,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 
 		createAccount := len(tx.Address) == 0
 		if createAccount {
-			if !hasCreatePermission(blockCache, inAcc) {
+			if !hasCreateContractPermission(blockCache, inAcc) {
 				return fmt.Errorf("Account %X does not have Create permission", tx.Input.Address)
 			}
 		} else {
@@ -634,6 +642,17 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 			return err
 		}
 
+		// add outputs to accounts map
+		// if any outputs don't exist, all inputs must have CreateAccount perm
+		// though outputs aren't created until unbonding/release time
+		canCreate := hasCreateAccountPermission(blockCache, accounts)
+		for _, out := range tx.UnbondTo {
+			acc := blockCache.GetAccount(out.Address)
+			if acc == nil && !canCreate {
+				return fmt.Errorf("At least one input does not have permission to create accounts")
+			}
+		}
+
 		bondAcc := blockCache.GetAccount(tx.PubKey.Address())
 		if !hasBondPermission(blockCache, bondAcc) {
 			return fmt.Errorf("The bonder does not have permission to bond")
@@ -821,8 +840,17 @@ func hasCallPermission(state AccountGetter, acc *account.Account) bool {
 	return HasPermission(state, acc, ptypes.Call)
 }
 
-func hasCreatePermission(state AccountGetter, acc *account.Account) bool {
+func hasCreateContractPermission(state AccountGetter, acc *account.Account) bool {
 	return HasPermission(state, acc, ptypes.CreateContract)
+}
+
+func hasCreateAccountPermission(state AccountGetter, accs map[string]*account.Account) bool {
+	for _, acc := range accs {
+		if !HasPermission(state, acc, ptypes.CreateAccount) {
+			return false
+		}
+	}
+	return true
 }
 
 func hasBondPermission(state AccountGetter, acc *account.Account) bool {
