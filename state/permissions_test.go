@@ -231,27 +231,27 @@ func TestSendPermission(t *testing.T) {
 	blockCache := NewBlockCache(st)
 
 	// A single input, having the permission, should succeed
-	tx := NewSendTx()
-	if err := SendTxAddInput(blockCache, tx, user[0].PubKey, 5); err != nil {
+	tx := types.NewSendTx()
+	if err := tx.AddInput(blockCache, user[0].PubKey, 5); err != nil {
 		t.Fatal(err)
 	}
-	SendTxAddOutput(tx, user[1].Address, 5)
-	SignSendTx(tx, 0, user[0])
+	tx.AddOutput(user[1].Address, 5)
+	tx.SignInput(0, user[0])
 	if err := ExecTx(blockCache, tx, true, nil); err != nil {
 		t.Fatal("Transaction failed", err)
 	}
 
 	// Two inputs, one with permission, one without, should fail
-	tx = NewSendTx()
-	if err := SendTxAddInput(blockCache, tx, user[0].PubKey, 5); err != nil {
+	tx = types.NewSendTx()
+	if err := tx.AddInput(blockCache, user[0].PubKey, 5); err != nil {
 		t.Fatal(err)
 	}
-	if err := SendTxAddInput(blockCache, tx, user[1].PubKey, 5); err != nil {
+	if err := tx.AddInput(blockCache, user[1].PubKey, 5); err != nil {
 		t.Fatal(err)
 	}
-	SendTxAddOutput(tx, user[2].Address, 10)
-	SignSendTx(tx, 0, user[0])
-	SignSendTx(tx, 1, user[1])
+	tx.AddOutput(user[2].Address, 10)
+	tx.SignInput(0, user[0])
+	tx.SignInput(1, user[1])
 	if err := ExecTx(blockCache, tx, true, nil); err == nil {
 		t.Fatal("Expected error")
 	} else {
