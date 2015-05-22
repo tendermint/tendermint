@@ -175,6 +175,10 @@ func (brk *Barak) CloseListener(addr string) {
 	filtered := []net.Listener{}
 	for _, listener := range brk.listeners {
 		if listener.Addr().String() == addr {
+			err := listener.Close()
+			if err != nil {
+				fmt.Printf("Error closing listener: %v\n", err)
+			}
 			continue
 		}
 		filtered = append(filtered, listener)

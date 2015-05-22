@@ -257,7 +257,7 @@ func cliListProcesses(c *cli.Context) {
 func cliOpenListener(c *cli.Context) {
 	args := c.Args()
 	if len(args) < 1 {
-		Exit("Must specify <listenAddr e.g. 0.0.0.0:46660>")
+		Exit("Must specify <listenAddr e.g. [::]:46661>")
 	}
 	listenAddr := args[0]
 	command := btypes.CommandOpenListener{
