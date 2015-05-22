@@ -36,6 +36,18 @@ func (tx *SendTx) AddInput(st AccountGetter, pubkey account.PubKey, amt uint64) 
 	return nil
 }
 
+func (tx *SendTx) AddInputWithNonce(pubkey account.PubKey, amt, nonce uint64) error {
+	addr := pubkey.Address()
+	tx.Inputs = append(tx.Inputs, &TxInput{
+		Address:   addr,
+		Amount:    amt,
+		Sequence:  uint(nonce) + 1,
+		Signature: account.SignatureEd25519{},
+		PubKey:    pubkey,
+	})
+	return nil
+}
+
 func (tx *SendTx) AddOutput(addr []byte, amt uint64) error {
 	tx.Outputs = append(tx.Outputs, &TxOutput{
 		Address: addr,
@@ -63,10 +75,16 @@ func NewCallTx(st AccountGetter, from account.PubKey, to, data []byte, amt, gasL
 		return nil, fmt.Errorf("Invalid address %X from pubkey %X", addr, from)
 	}
 
+	nonce := uint64(acc.Sequence)
+	return NewCallTxWithNonce(from, to, data, amt, gasLimit, fee, nonce), nil
+}
+
+func NewCallTxWithNonce(from account.PubKey, to, data []byte, amt, gasLimit, fee, nonce uint64) *CallTx {
+	addr := from.Address()
 	input := &TxInput{
 		Address:   addr,
 		Amount:    amt,
-		Sequence:  uint(acc.Sequence) + 1,
+		Sequence:  uint(nonce) + 1,
 		Signature: account.SignatureEd25519{},
 		PubKey:    from,
 	}
@@ -77,7 +95,7 @@ func NewCallTx(st AccountGetter, from account.PubKey, to, data []byte, amt, gasL
 		GasLimit: gasLimit,
 		Fee:      fee,
 		Data:     data,
-	}, nil
+	}
 }
 
 func (tx *CallTx) Sign(privAccount *account.PrivAccount) {
@@ -111,6 +129,18 @@ func (tx *BondTx) AddInput(st AccountGetter, pubkey account.PubKey, amt uint64) 
 		Address:   addr,
 		Amount:    amt,
 		Sequence:  uint(acc.Sequence) + 1,
+		Signature: account.SignatureEd25519{},
+		PubKey:    pubkey,
+	})
+	return nil
+}
+
+func (tx *BondTx) AddInputWithNonce(pubkey account.PubKey, amt, nonce uint64) error {
+	addr := pubkey.Address()
+	tx.Inputs = append(tx.Inputs, &TxInput{
+		Address:   addr,
+		Amount:    amt,
+		Sequence:  uint(nonce) + 1,
 		Signature: account.SignatureEd25519{},
 		PubKey:    pubkey,
 	})
