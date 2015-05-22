@@ -10,8 +10,8 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/tendermint/tendermint/binary"
-	"github.com/tendermint/tendermint/rpc/types"
 	_ "github.com/tendermint/tendermint/config/tendermint_test"
+	"github.com/tendermint/tendermint/rpc/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -173,14 +173,14 @@ func unmarshalValidateSend(amt uint64, toAddr []byte) func(string, []byte) error
 			return fmt.Errorf("Eventid is not correct. Got %s, expected %s", response.Event, eid)
 		}
 		tx := response.Data
-		if bytes.Compare(tx.Inputs[0].Address, userByteAddr) != 0 {
-			return fmt.Errorf("Senders do not match up! Got %x, expected %x", tx.Inputs[0].Address, userByteAddr)
+		if bytes.Compare(tx.Inputs[0].Address, user[0].Address) != 0 {
+			return fmt.Errorf("Senders do not match up! Got %x, expected %x", tx.Inputs[0].Address, user[0].Address)
 		}
 		if tx.Inputs[0].Amount != amt {
 			return fmt.Errorf("Amt does not match up! Got %d, expected %d", tx.Inputs[0].Amount, amt)
 		}
 		if bytes.Compare(tx.Outputs[0].Address, toAddr) != 0 {
-			return fmt.Errorf("Receivers do not match up! Got %x, expected %x", tx.Outputs[0].Address, userByteAddr)
+			return fmt.Errorf("Receivers do not match up! Got %x, expected %x", tx.Outputs[0].Address, user[0].Address)
 		}
 		return nil
 	}
@@ -210,8 +210,8 @@ func unmarshalValidateCall(amt uint64, returnCode []byte) func(string, []byte) e
 			return fmt.Errorf(response.Data.Exception)
 		}
 		tx := response.Data.Tx
-		if bytes.Compare(tx.Input.Address, userByteAddr) != 0 {
-			return fmt.Errorf("Senders do not match up! Got %x, expected %x", tx.Input.Address, userByteAddr)
+		if bytes.Compare(tx.Input.Address, user[0].Address) != 0 {
+			return fmt.Errorf("Senders do not match up! Got %x, expected %x", tx.Input.Address, user[0].Address)
 		}
 		if tx.Input.Amount != amt {
 			return fmt.Errorf("Amt does not match up! Got %d, expected %d", tx.Input.Amount, amt)

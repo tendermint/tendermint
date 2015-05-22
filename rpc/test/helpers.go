@@ -3,6 +3,10 @@ package rpctest
 import (
 	"bytes"
 	"encoding/hex"
+	"strconv"
+	"testing"
+	"time"
+
 	"github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/consensus"
@@ -12,8 +16,6 @@ import (
 	cclient "github.com/tendermint/tendermint/rpc/core_client"
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	"testing"
-	"time"
 )
 
 // global variables for use across all tests
@@ -26,10 +28,9 @@ var (
 
 	mempoolCount = 0
 
-	userAddr                   = "1D7A91CB32F758A02EBB9BE1FB6F8DEE56F90D42"
-	userPriv                   = "C453604BD6480D5538B4C6FD2E3E314B5BCE518D75ADE4DA3DA85AB8ADFD819606FBAC4E285285D1D91FCBC7E91C780ADA11516F67462340B3980CE2B94940E8"
-	userPub                    = "06FBAC4E285285D1D91FCBC7E91C780ADA11516F67462340B3980CE2B94940E8"
-	userByteAddr, userBytePriv = initUserBytes()
+	// make keys
+	userPriv = "C453604BD6480D5538B4C6FD2E3E314B5BCE518D75ADE4DA3DA85AB8ADFD819606FBAC4E285285D1D91FCBC7E91C780ADA11516F67462340B3980CE2B94940E8"
+	user     = makeUsers(2)
 
 	clients = map[string]cclient.Client{
 		"JSONRPC": cclient.NewClient(requestAddr, "JSONRPC"),
@@ -37,22 +38,21 @@ var (
 	}
 )
 
-// returns byte versions of address and private key
-// type [64]byte needed by account.GenPrivAccountFromKey
-func initUserBytes() ([]byte, [64]byte) {
-	byteAddr, _ := hex.DecodeString(userAddr)
+func makeUsers(n int) []*account.PrivAccount {
+	accounts := []*account.PrivAccount{}
+	for i := 0; i < n; i++ {
+		secret := []byte("mysecret" + strconv.Itoa(i))
+		user := account.GenPrivAccountFromSecret(secret)
+		accounts = append(accounts, user)
+	}
+
+	// include our validator
 	var byteKey [64]byte
 	userPrivByteSlice, _ := hex.DecodeString(userPriv)
 	copy(byteKey[:], userPrivByteSlice)
-	return byteAddr, byteKey
-}
-
-func decodeHex(hexStr string) []byte {
-	bytes, err := hex.DecodeString(hexStr)
-	if err != nil {
-		panic(err)
-	}
-	return bytes
+	privAcc := account.GenPrivAccountFromKey(byteKey)
+	accounts[0] = privAcc
+	return accounts
 }
 
 // create a new node and sleep forever
@@ -76,9 +76,9 @@ func newNode(ready chan struct{}) {
 func init() {
 	// Save new priv_validator file.
 	priv := &state.PrivValidator{
-		Address: decodeHex(userAddr),
-		PubKey:  account.PubKeyEd25519(decodeHex(userPub)),
-		PrivKey: account.PrivKeyEd25519(decodeHex(userPriv)),
+		Address: user[0].Address,
+		PubKey:  account.PubKeyEd25519(user[0].PubKey.(account.PubKeyEd25519)),
+		PrivKey: account.PrivKeyEd25519(user[0].PrivKey.(account.PrivKeyEd25519)),
 	}
 	priv.SetFile(config.GetString("priv_validator_file"))
 	priv.Save()
@@ -93,70 +93,44 @@ func init() {
 }
 
 //-------------------------------------------------------------------------------
-// make transactions
+// some default transaction functions
 
-// make a send tx (uses get account to figure out the nonce)
-func makeSendTx(t *testing.T, typ string, from, to []byte, amt uint64) *types.SendTx {
-	acc := getAccount(t, typ, from)
-	nonce := 0
-	if acc != nil {
-		nonce = int(acc.Sequence) + 1
-	}
-	bytePub, err := hex.DecodeString(userPub)
-	if err != nil {
-		t.Fatal(err)
-	}
-	tx := &types.SendTx{
-		Inputs: []*types.TxInput{
-			&types.TxInput{
-				Address:   from,
-				Amount:    amt,
-				Sequence:  uint(nonce),
-				Signature: account.SignatureEd25519{},
-				PubKey:    account.PubKeyEd25519(bytePub),
-			},
-		},
-		Outputs: []*types.TxOutput{
-			&types.TxOutput{
-				Address: to,
-				Amount:  amt,
-			},
-		},
-	}
+func makeDefaultSendTx(t *testing.T, typ string, addr []byte, amt uint64) *types.SendTx {
+	nonce := getNonce(t, typ, user[0].Address)
+	tx := types.NewSendTx()
+	tx.AddInputWithNonce(user[0].PubKey, amt, nonce)
+	tx.AddOutput(addr, amt)
 	return tx
 }
 
-// make a call tx (uses get account to figure out the nonce)
-func makeCallTx(t *testing.T, typ string, from, to, data []byte, amt, gaslim, fee uint64) *types.CallTx {
-	acc := getAccount(t, typ, from)
-	nonce := 0
-	if acc != nil {
-		nonce = int(acc.Sequence) + 1
-	}
-
-	bytePub, err := hex.DecodeString(userPub)
-	if err != nil {
-		t.Fatal(err)
-	}
-	tx := &types.CallTx{
-		Input: &types.TxInput{
-			Address:   from,
-			Amount:    amt,
-			Sequence:  uint(nonce),
-			Signature: account.SignatureEd25519{},
-			PubKey:    account.PubKeyEd25519(bytePub),
-		},
-		Address:  to,
-		GasLimit: gaslim,
-		Fee:      fee,
-		Data:     data,
-	}
+func makeDefaultSendTxSigned(t *testing.T, typ string, addr []byte, amt uint64) *types.SendTx {
+	tx := makeDefaultSendTx(t, typ, addr, amt)
+	tx.SignInput(0, user[0])
 	return tx
 }
 
-// make transactions
+func makeDefaultCallTx(t *testing.T, typ string, addr, code []byte, amt, gasLim, fee uint64) *types.CallTx {
+	nonce := getNonce(t, typ, user[0].Address)
+	tx := types.NewCallTxWithNonce(user[0].PubKey, addr, code, amt, gasLim, fee, nonce)
+	tx.Sign(user[0])
+	return tx
+}
+
 //-------------------------------------------------------------------------------
-// rpc call wrappers
+// rpc call wrappers (fail on err)
+
+// get an account's nonce
+func getNonce(t *testing.T, typ string, addr []byte) uint64 {
+	client := clients[typ]
+	ac, err := client.GetAccount(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ac.Account == nil {
+		return 0
+	}
+	return uint64(ac.Account.Sequence)
+}
 
 // get the account
 func getAccount(t *testing.T, typ string, addr []byte) *account.Account {
@@ -168,38 +142,25 @@ func getAccount(t *testing.T, typ string, addr []byte) *account.Account {
 	return ac.Account
 }
 
-// make and sign transaction
-func signTx(t *testing.T, typ string, fromAddr, toAddr, data []byte, key [64]byte, amt, gaslim, fee uint64) (types.Tx, *account.PrivAccount) {
-	var tx types.Tx
-	if data == nil {
-		tx = makeSendTx(t, typ, fromAddr, toAddr, amt)
-	} else {
-		tx = makeCallTx(t, typ, fromAddr, toAddr, data, amt, gaslim, fee)
-	}
-
-	privAcc := account.GenPrivAccountFromKey(key)
-	if bytes.Compare(privAcc.PubKey.Address(), fromAddr) != 0 {
-		t.Fatal("Failed to generate correct priv acc")
-	}
-
+// sign transaction
+func signTx(t *testing.T, typ string, tx types.Tx, privAcc *account.PrivAccount) types.Tx {
 	client := clients[typ]
 	resp, err := client.SignTx(tx, []*account.PrivAccount{privAcc})
 	if err != nil {
 		t.Fatal(err)
 	}
-	return resp.Tx, privAcc
+	return resp.Tx
 }
 
-// create, sign, and broadcast a transaction
-func broadcastTx(t *testing.T, typ string, fromAddr, toAddr, data []byte, key [64]byte, amt, gaslim, fee uint64) (types.Tx, ctypes.Receipt) {
-	tx, _ := signTx(t, typ, fromAddr, toAddr, data, key, amt, gaslim, fee)
+// broadcast transaction
+func broadcastTx(t *testing.T, typ string, tx types.Tx) ctypes.Receipt {
 	client := clients[typ]
 	resp, err := client.BroadcastTx(tx)
 	if err != nil {
 		t.Fatal(err)
 	}
 	mempoolCount += 1
-	return tx, resp.Receipt
+	return resp.Receipt
 }
 
 // dump all storage for an account. currently unused
