@@ -1091,7 +1091,7 @@ func execTxWaitEvent(t *testing.T, blockCache *BlockCache, tx types.Tx, eventid 
 
 // give a contract perms for an snative, call it, it calls the snative, ensure the check funciton (f) succeeds
 func testSNativeCALLExpectPass(t *testing.T, blockCache *BlockCache, doug *account.Account, snativeAddress, data []byte, f func([]byte) error) {
-	perm := vm.RegisteredSNativeContracts[LeftPadWord256(snativeAddress)]
+	perm := vm.RegisteredSNativePermissions[LeftPadWord256(snativeAddress)]
 	var addr []byte
 	if doug != nil {
 		contractCode := callContractCode(snativeAddress)
