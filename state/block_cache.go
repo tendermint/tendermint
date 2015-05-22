@@ -9,6 +9,7 @@ import (
 	. "github.com/tendermint/tendermint/common"
 	dbm "github.com/tendermint/tendermint/db"
 	"github.com/tendermint/tendermint/merkle"
+	"github.com/tendermint/tendermint/types"
 )
 
 func makeStorage(db dbm.DB, root []byte) merkle.Tree {
@@ -27,6 +28,7 @@ type BlockCache struct {
 	backend  *State
 	accounts map[string]accountInfo
 	storages map[Tuple256]storageInfo
+	names    map[string]nameInfo
 }
 
 func NewBlockCache(backend *State) *BlockCache {
@@ -35,6 +37,7 @@ func NewBlockCache(backend *State) *BlockCache {
 		backend:  backend,
 		accounts: make(map[string]accountInfo),
 		storages: make(map[Tuple256]storageInfo),
+		names:    make(map[string]nameInfo),
 	}
 }
 
@@ -123,6 +126,44 @@ func (cache *BlockCache) SetStorage(addr Word256, key Word256, value Word256) {
 
 // BlockCache.storage
 //-------------------------------------
+// BlockCache.names
+
+func (cache *BlockCache) GetNameRegEntry(name []byte) *types.NameRegEntry {
+	entry, removed, _ := cache.names[string(name)].unpack()
+	if removed {
+		return nil
+	} else if entry != nil {
+		return entry
+	} else {
+		entry = cache.backend.GetNameRegEntry(name)
+		cache.names[string(name)] = nameInfo{entry, false, false}
+		return entry
+	}
+}
+
+func (cache *BlockCache) UpdateNameRegEntry(entry *types.NameRegEntry) {
+	name := entry.Name
+	// SANITY CHECK
+	_, removed, _ := cache.names[string(name)].unpack()
+	if removed {
+		panic("UpdateNameRegEntry on a removed name")
+	}
+	// SANITY CHECK END
+	cache.names[string(name)] = nameInfo{entry, false, true}
+}
+
+func (cache *BlockCache) RemoveNameRegEntry(name []byte) {
+	// SANITY CHECK
+	_, removed, _ := cache.names[string(name)].unpack()
+	if removed {
+		panic("RemoveNameRegEntry on a removed entry")
+	}
+	// SANITY CHECK END
+	cache.names[string(name)] = nameInfo{nil, true, false}
+}
+
+// BlockCache.names
+//-------------------------------------
 
 // CONTRACT the updates are in deterministic order.
 func (cache *BlockCache) Sync() {
@@ -202,6 +243,33 @@ func (cache *BlockCache) Sync() {
 		}
 	}
 
+	// Determine order for names
+	// note names may be of any length less than some limit
+	// and are arbitrary byte arrays...
+	nameStrs := []string{}
+	for nameStr := range cache.names {
+		nameStrs = append(nameStrs, nameStr)
+	}
+	sort.Strings(nameStrs)
+
+	// Update or delete names.
+	for _, nameStr := range nameStrs {
+		entry, removed, dirty := cache.names[nameStr].unpack()
+		if removed {
+			removed := cache.backend.RemoveNameRegEntry(entry.Name)
+			if !removed {
+				panic(Fmt("Could not remove namereg entry to be removed: %X", entry.Name))
+			}
+		} else {
+			if entry == nil {
+				continue
+			}
+			if dirty {
+				cache.backend.UpdateNameRegEntry(entry)
+			}
+		}
+	}
+
 }
 
 //-----------------------------------------------------------------------------
@@ -224,4 +292,14 @@ type storageInfo struct {
 
 func (stjInfo storageInfo) unpack() (Word256, bool) {
 	return stjInfo.value, stjInfo.dirty
+}
+
+type nameInfo struct {
+	name    *types.NameRegEntry
+	removed bool
+	dirty   bool
+}
+
+func (nInfo nameInfo) unpack() (*types.NameRegEntry, bool, bool) {
+	return nInfo.name, nInfo.removed, nInfo.dirty
 }
