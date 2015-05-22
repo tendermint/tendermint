@@ -157,7 +157,7 @@ func argsToURLValues(argNames []string, args ...interface{}) (url.Values, error)
 
 /*rpc-gen:imports:
 github.com/tendermint/tendermint/binary
-github.com/tendermint/tendermint/rpc/types
+rpctypes github.com/tendermint/tendermint/rpc/types
 net/http
 io/ioutil
 fmt

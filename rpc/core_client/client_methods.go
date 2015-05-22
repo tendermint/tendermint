@@ -7,7 +7,7 @@ import (
 	"github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	"github.com/tendermint/tendermint/rpc/types"
+	rpctypes "github.com/tendermint/tendermint/rpc/types"
 	"github.com/tendermint/tendermint/types"
 	"io/ioutil"
 	"net/http"
