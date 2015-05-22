@@ -35,6 +35,7 @@ Tx (Transaction) is an atomic operation on the ledger state.
 Account Txs:
  - SendTx         Send coins to address
  - CallTx         Send a msg to a contract that runs in the vm
+ - NameTx	  Store some value under a name in the global namereg
 
 Validation Txs:
  - BondTx         New validator posts a bond
@@ -50,6 +51,7 @@ const (
 	// Account transactions
 	TxTypeSend = byte(0x01)
 	TxTypeCall = byte(0x02)
+	TxTypeName = byte(0x03)
 
 	// Validation transactions
 	TxTypeBond    = byte(0x11)
@@ -63,6 +65,7 @@ var _ = binary.RegisterInterface(
 	struct{ Tx }{},
 	binary.ConcreteType{&SendTx{}, TxTypeSend},
 	binary.ConcreteType{&CallTx{}, TxTypeCall},
+	binary.ConcreteType{&NameTx{}, TxTypeName},
 	binary.ConcreteType{&BondTx{}, TxTypeBond},
 	binary.ConcreteType{&UnbondTx{}, TxTypeUnbond},
 	binary.ConcreteType{&RebondTx{}, TxTypeRebond},
@@ -174,6 +177,28 @@ func (tx *CallTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
 
 func (tx *CallTx) String() string {
 	return Fmt("CallTx{%v -> %x: %x}", tx.Input, tx.Address, tx.Data)
+}
+
+//-----------------------------------------------------------------------------
+
+type NameTx struct {
+	Input *TxInput `json:"input"`
+	Name  []byte   `json:"name"`
+	Data  []byte   `json:"data"`
+	Fee   uint64   `json:"fee"`
+}
+
+func (tx *NameTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
+	// We hex encode the network name so we don't deal with escaping issues.
+	binary.WriteTo([]byte(Fmt(`{"network":"%X"`, config.GetString("network"))), w, n, err)
+	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"name":"%s","data":"%s"`, TxTypeName, tx.Name, tx.Data)), w, n, err)
+	binary.WriteTo([]byte(Fmt(`,"fee":%v,"input":`, tx.Fee)), w, n, err)
+	tx.Input.WriteSignBytes(w, n, err)
+	binary.WriteTo([]byte(`}]}`), w, n, err)
+}
+
+func (tx *NameTx) String() string {
+	return Fmt("NameTx{%v -> %s: %s}", tx.Input, tx.Name, tx.Data)
 }
 
 //-----------------------------------------------------------------------------

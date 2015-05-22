@@ -268,6 +268,91 @@ func TestTxs(t *testing.T) {
 		}
 	}
 
+	// CallTx.
+	{
+		state := state.Copy()
+		newAcc1 := state.GetAccount(acc1.Address)
+		newAcc1.Code = []byte{0x60}
+		state.UpdateAccount(newAcc1)
+		tx := &types.CallTx{
+			Input: &types.TxInput{
+				Address:  acc0.Address,
+				Amount:   1,
+				Sequence: acc0.Sequence + 1,
+				PubKey:   acc0PubKey,
+			},
+			Address:  acc1.Address,
+			GasLimit: 10,
+		}
+
+		tx.Input.Signature = privAccounts[0].Sign(tx)
+		err := execTxWithState(state, tx, true)
+		if err != nil {
+			t.Errorf("Got error in executing call transaction, %v", err)
+		}
+		newAcc0 := state.GetAccount(acc0.Address)
+		if acc0.Balance-1 != newAcc0.Balance {
+			t.Errorf("Unexpected newAcc0 balance. Expected %v, got %v",
+				acc0.Balance-1, newAcc0.Balance)
+		}
+		newAcc1 = state.GetAccount(acc1.Address)
+		if acc1.Balance+1 != newAcc1.Balance {
+			t.Errorf("Unexpected newAcc1 balance. Expected %v, got %v",
+				acc1.Balance+1, newAcc1.Balance)
+		}
+	}
+
+	// NameTx.
+	{
+		entryName := []byte("satoshi")
+		entryData := []byte(`
+A  purely   peer-to-peer   version   of   electronic   cash   would   allow   online
+payments  to  be  sent   directly  from  one  party  to  another  without   going  through  a
+financial institution.   Digital signatures provide part of the solution, but the main
+benefits are lost if a trusted third party is still required to prevent double-spending.
+We propose a solution to the double-spending problem using a peer-to-peer network.
+The   network   timestamps   transactions  by  hashing   them   into   an   ongoing   chain   of
+hash-based proof-of-work, forming a record that cannot be changed without redoing
+the proof-of-work.   The longest chain not only serves as proof of the sequence of
+events witnessed, but proof that it came from the largest pool of CPU power.   As
+long as a majority of CPU power is controlled by nodes that are not cooperating to
+attack the network, they'll generate the longest chain and outpace attackers.   The
+network itself requires minimal structure.   Messages are broadcast on a best effort
+basis,   and   nodes   can   leave  and   rejoin   the  network   at  will,  accepting   the   longest
+proof-of-work chain as proof of what happened while they were gone `)
+		entryAmount := uint64(10000)
+
+		state := state.Copy()
+		tx := &types.NameTx{
+			Input: &types.TxInput{
+				Address:  acc0.Address,
+				Amount:   entryAmount,
+				Sequence: acc0.Sequence + 1,
+				PubKey:   acc0PubKey,
+			},
+			Name: entryName,
+			Data: entryData,
+		}
+
+		tx.Input.Signature = privAccounts[0].Sign(tx)
+		err := execTxWithState(state, tx, true)
+		if err != nil {
+			t.Errorf("Got error in executing call transaction, %v", err)
+		}
+		newAcc0 := state.GetAccount(acc0.Address)
+		if acc0.Balance-entryAmount != newAcc0.Balance {
+			t.Errorf("Unexpected newAcc0 balance. Expected %v, got %v",
+				acc0.Balance-entryAmount, newAcc0.Balance)
+		}
+		entry := state.GetNameRegEntry(entryName)
+		if entry == nil {
+			t.Errorf("Expected an entry but got nil")
+		}
+		if bytes.Compare(entry.Data, entryData) != 0 {
+			t.Errorf("Wrong data stored")
+		}
+	}
+
 	// BondTx.
 	{
 		state := state.Copy()
