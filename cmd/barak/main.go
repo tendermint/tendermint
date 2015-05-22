@@ -33,7 +33,7 @@ func init() {
 }
 
 // Global instance
-var barak *Barak
+var barak_ *Barak
 
 // Parse command-line options
 func parseFlags() (optionsFile string) {
@@ -53,9 +53,9 @@ func main() {
 	options := ReadBarakOptions(optionsFile)
 
 	// Init barak
-	barak = NewBarakFromOptions(options)
-	barak.StartRegisterRoutine()
-	barak.WritePidFile() // This should be last, before TrapSignal().
+	barak_ = NewBarakFromOptions(options)
+	barak_.StartRegisterRoutine()
+	barak_.WritePidFile() // This should be last, before TrapSignal().
 	TrapSignal(func() {
 		fmt.Println("Barak shutting down")
 	})
@@ -65,11 +65,11 @@ func main() {
 // RPC functions
 
 func Status() (*ResponseStatus, error) {
-	barak.mtx.Lock()
-	pid := barak.pid
-	nonce := barak.nonce
-	validators := barak.validators
-	barak.mtx.Unlock()
+	barak_.mtx.Lock()
+	pid := barak_.pid
+	nonce := barak_.nonce
+	validators := barak_.validators
+	barak_.mtx.Unlock()
 
 	return &ResponseStatus{
 		Pid:        pid,
@@ -115,7 +115,7 @@ func parseValidateCommand(authCommand AuthCommand) (Command, error) {
 	commandJSONStr := authCommand.CommandJSONStr
 	signatures := authCommand.Signatures
 	// Validate commandJSONStr
-	if !validate([]byte(commandJSONStr), barak.ListValidators(), signatures) {
+	if !validate([]byte(commandJSONStr), barak_.ListValidators(), signatures) {
 		fmt.Printf("Failed validation attempt")
 		return nil, errors.New("Validation error")
 	}
@@ -127,7 +127,7 @@ func parseValidateCommand(authCommand AuthCommand) (Command, error) {
 		return nil, errors.New("Command parse error")
 	}
 	// Prevent replays
-	barak.CheckIncrNonce(command.Nonce)
+	barak_.CheckIncrNonce(command.Nonce)
 	return command.Command, nil
 }
 
@@ -137,22 +137,22 @@ func parseValidateCommand(authCommand AuthCommand) (Command, error) {
 
 func StartProcess(wait bool, label string, execPath string, args []string, input string) (*ResponseStartProcess, error) {
 	// First, see if there already is a process labeled 'label'
-	existing := barak.GetProcess(label)
+	existing := barak_.GetProcess(label)
 	if existing != nil && existing.EndTime.IsZero() {
 		return nil, fmt.Errorf("Process already exists: %v", label)
 	}
 
 	// Otherwise, create one.
-	err := EnsureDir(barak.RootDir() + "/outputs")
+	err := EnsureDir(barak_.RootDir() + "/outputs")
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create outputs dir: %v", err)
 	}
-	outPath := Fmt("%v/outputs/%v_%v.out", barak.RootDir(), label, time.Now().Format("2006_01_02_15_04_05_MST"))
+	outPath := Fmt("%v/outputs/%v_%v.out", barak_.RootDir(), label, time.Now().Format("2006_01_02_15_04_05_MST"))
 	proc, err := pcm.Create(pcm.ProcessModeDaemon, label, execPath, args, input, outPath)
 	if err != nil {
 		return nil, err
 	}
-	barak.AddProcess(label, proc)
+	barak_.AddProcess(label, proc)
 
 	if wait {
 		<-proc.WaitCh
@@ -178,26 +178,29 @@ func StartProcess(wait bool, label string, execPath string, args []string, input
 }
 
 func StopProcess(label string, kill bool) (*ResponseStopProcess, error) {
-	err := barak.StopProcess(label, kill)
+	err := barak_.StopProcess(label, kill)
 	return &ResponseStopProcess{}, err
 }
 
 func ListProcesses() (*ResponseListProcesses, error) {
-	procs := barak.ListProcesses()
+	procs := barak_.ListProcesses()
 	return &ResponseListProcesses{
 		Processes: procs,
 	}, nil
 }
 
 func OpenListener(addr string) (*ResponseOpenListener, error) {
-	listener := barak.OpenListener(addr)
+	listener, err := barak_.OpenListener(addr)
+	if err != nil {
+		return nil, err
+	}
 	return &ResponseOpenListener{
 		Addr: listener.Addr().String(),
 	}, nil
 }
 
 func CloseListener(addr string) (*ResponseCloseListener, error) {
-	barak.CloseListener(addr)
+	barak_.CloseListener(addr)
 	return &ResponseCloseListener{}, nil
 }
 
@@ -206,7 +209,7 @@ func CloseListener(addr string) (*ResponseCloseListener, error) {
 // Another barak instance registering its external
 // address to a remote barak.
 func RegisterHandler(w http.ResponseWriter, req *http.Request) {
-	registry, err := os.OpenFile(barak.RootDir()+"/registry.log", os.O_RDWR|os.O_APPEND|os.O_CREATE, 0600)
+	registry, err := os.OpenFile(barak_.RootDir()+"/registry.log", os.O_RDWR|os.O_APPEND|os.O_CREATE, 0600)
 	if err != nil {
 		http.Error(w, "Could not open registry file. Please contact the administrator", 500)
 		return
@@ -238,7 +241,7 @@ func ServeFileHandler(w http.ResponseWriter, req *http.Request) {
 		// local paths must be explicitly local, e.g. "./xyz"
 	} else if path[0] != '/' {
 		// If not an absolute path, then is label
-		proc := barak.GetProcess(path)
+		proc := barak_.GetProcess(path)
 		if proc == nil {
 			http.Error(w, Fmt("Unknown process label: %v", path), 400)
 			return

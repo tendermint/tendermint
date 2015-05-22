@@ -105,6 +105,16 @@ func main() {
 			Action: cliListProcesses,
 		},
 		cli.Command{
+			Name:   "open",
+			Usage:  "open listener",
+			Action: cliOpenListener,
+		},
+		cli.Command{
+			Name:   "close",
+			Usage:  "close listener",
+			Action: cliCloseListener,
+		},
+		cli.Command{
 			Name:   "download",
 			Usage:  "download file <remote-path> <local-path-prefix>",
 			Action: cliDownloadFile,
@@ -238,6 +248,56 @@ func cliListProcesses(c *cli.Context) {
 					}
 					fmt.Printf("     stdout/stderr goes to %v\n", proc.OutputPath)
 				}
+			}
+		}(remote)
+	}
+	wg.Wait()
+}
+
+func cliOpenListener(c *cli.Context) {
+	args := c.Args()
+	if len(args) < 1 {
+		Exit("Must specify <listenAddr e.g. 0.0.0.0:46660>")
+	}
+	listenAddr := args[0]
+	command := btypes.CommandOpenListener{
+		Addr: listenAddr,
+	}
+	wg := sync.WaitGroup{}
+	for _, remote := range Config.Remotes {
+		wg.Add(1)
+		go func(remote string) {
+			defer wg.Done()
+			response, err := OpenListener(Config.PrivKey, remote, command)
+			if err != nil {
+				fmt.Printf("%v failure. %v\n", remote, err)
+			} else {
+				fmt.Printf("%v opened %v.\n", remote, response.Addr)
+			}
+		}(remote)
+	}
+	wg.Wait()
+}
+
+func cliCloseListener(c *cli.Context) {
+	args := c.Args()
+	if len(args) == 0 {
+		Exit("Must specify listenAddr to stop")
+	}
+	listenAddr := args[0]
+	command := btypes.CommandCloseListener{
+		Addr: listenAddr,
+	}
+	wg := sync.WaitGroup{}
+	for _, remote := range Config.Remotes {
+		wg.Add(1)
+		go func(remote string) {
+			defer wg.Done()
+			response, err := CloseListener(Config.PrivKey, remote, command)
+			if err != nil {
+				fmt.Printf("%v failure. %v\n", remote, err)
+			} else {
+				fmt.Printf("%v success. %v\n", remote, response)
 			}
 		}(remote)
 	}
