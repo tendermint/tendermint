@@ -190,3 +190,33 @@ func testCall(t *testing.T, typ string) {
 	expected := []byte{0xb}
 	callContract(t, client, contractAddr, data, expected)
 }
+
+func testNameReg(t *testing.T, typ string) {
+	con := newWSCon(t)
+	eid := types.EventStringNewBlock()
+	subscribe(t, con, eid)
+	defer func() {
+		unsubscribe(t, con, eid)
+		con.Close()
+	}()
+
+	amt, fee := uint64(6969), uint64(1000)
+	// since entries ought to be unique and these run against different clients, we append the typ
+	name := []byte("ye-old-domain-name-" + typ)
+	data := []byte("these are amongst the things I wish to bestow upon the youth of generations come: a safe supply of honey, and a better money. For what else shall they need?")
+	tx := makeDefaultNameTx(t, typ, name, data, amt, fee)
+	broadcastTx(t, typ, tx)
+
+	// allow it to get mined
+	waitForEvent(t, con, eid, true, func() {
+	}, func(eid string, b []byte) error {
+		return nil
+	})
+
+	entry := getNameRegEntry(t, typ, name)
+
+	if bytes.Compare(entry.Data, data) != 0 {
+		t.Fatal(fmt.Sprintf("Got %s, expected %s", entry.Data, data))
+	}
+
+}

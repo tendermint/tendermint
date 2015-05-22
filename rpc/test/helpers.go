@@ -116,6 +116,13 @@ func makeDefaultCallTx(t *testing.T, typ string, addr, code []byte, amt, gasLim,
 	return tx
 }
 
+func makeDefaultNameTx(t *testing.T, typ string, name, value []byte, amt, fee uint64) *types.NameTx {
+	nonce := getNonce(t, typ, user[0].Address)
+	tx := types.NewNameTxWithNonce(user[0].PubKey, name, value, amt, fee, nonce)
+	tx.Sign(user[0])
+	return tx
+}
+
 //-------------------------------------------------------------------------------
 // rpc call wrappers (fail on err)
 
@@ -204,6 +211,16 @@ func callContract(t *testing.T, client cclient.Client, address, data, expected [
 	if bytes.Compare(ret, LeftPadWord256(expected).Bytes()) != 0 {
 		t.Fatalf("Conflicting return value. Got %x, expected %x", ret, expected)
 	}
+}
+
+// get the namereg entry
+func getNameRegEntry(t *testing.T, typ string, name []byte) *types.NameRegEntry {
+	client := clients[typ]
+	r, err := client.NameRegEntry(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return r.Entry
 }
 
 //--------------------------------------------------------------------------------
