@@ -18,6 +18,7 @@ import (
 // When multiple are involved, the workflow is different.
 // (First the command(s) are signed by all validators,
 //  and then it is broadcast).
+// TODO: Implement a reasonable workflow with multiple validators.
 
 func StartProcess(privKey acm.PrivKey, remote string, command btypes.CommandStartProcess) (response btypes.ResponseStartProcess, err error) {
 	nonce, err := GetNonce(remote)
@@ -40,6 +41,26 @@ func StopProcess(privKey acm.PrivKey, remote string, command btypes.CommandStopP
 }
 
 func ListProcesses(privKey acm.PrivKey, remote string, command btypes.CommandListProcesses) (response btypes.ResponseListProcesses, err error) {
+	nonce, err := GetNonce(remote)
+	if err != nil {
+		return response, err
+	}
+	commandBytes, signature := SignCommand(privKey, nonce+1, command)
+	_, err = RunAuthCommand(remote, commandBytes, []acm.Signature{signature}, &response)
+	return response, err
+}
+
+func OpenListener(privKey acm.PrivKey, remote string, command btypes.CommandOpenListener) (response btypes.ResponseOpenListener, err error) {
+	nonce, err := GetNonce(remote)
+	if err != nil {
+		return response, err
+	}
+	commandBytes, signature := SignCommand(privKey, nonce+1, command)
+	_, err = RunAuthCommand(remote, commandBytes, []acm.Signature{signature}, &response)
+	return response, err
+}
+
+func CloseListener(privKey acm.PrivKey, remote string, command btypes.CommandCloseListener) (response btypes.ResponseCloseListener, err error) {
 	nonce, err := GetNonce(remote)
 	if err != nil {
 		return response, err

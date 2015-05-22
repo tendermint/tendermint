@@ -16,11 +16,11 @@ import (
 	. "github.com/tendermint/tendermint/rpc/types"
 )
 
-func StartHTTPServer(listenAddr string, handler http.Handler) net.Listener {
+func StartHTTPServer(listenAddr string, handler http.Handler) (net.Listener, error) {
 	log.Info(Fmt("Starting RPC HTTP server on %v", listenAddr))
 	listener, err := net.Listen("tcp", listenAddr)
 	if err != nil {
-		Exit(Fmt("Failed to listen to %v", listenAddr))
+		return nil, fmt.Errorf("Failed to listen to %v", listenAddr)
 	}
 	go func() {
 		res := http.Serve(
@@ -29,7 +29,7 @@ func StartHTTPServer(listenAddr string, handler http.Handler) net.Listener {
 		)
 		log.Crit("RPC HTTP server stopped", "result", res)
 	}()
-	return listener
+	return listener, nil
 }
 
 func WriteRPCResponse(w http.ResponseWriter, res RPCResponse) {

@@ -104,7 +104,7 @@ func (brk *Barak) ListProcesses() []*pcm.Process {
 	brk.mtx.Lock()
 	defer brk.mtx.Unlock()
 	processes := []*pcm.Process{}
-	for _, process := range processes {
+	for _, process := range brk.processes {
 		processes = append(processes, process)
 	}
 	return processes
@@ -128,9 +128,9 @@ func (brk *Barak) AddProcess(label string, process *pcm.Process) error {
 }
 
 func (brk *Barak) StopProcess(label string, kill bool) error {
-	barak.mtx.Lock()
-	proc := barak.processes[label]
-	barak.mtx.Unlock()
+	brk.mtx.Lock()
+	proc := brk.processes[label]
+	brk.mtx.Unlock()
 
 	if proc == nil {
 		return fmt.Errorf("Process does not exist: %v", label)
@@ -152,7 +152,7 @@ func (brk *Barak) ListListeners() []net.Listener {
 	return brk.listeners
 }
 
-func (brk *Barak) OpenListener(addr string) net.Listener {
+func (brk *Barak) OpenListener(addr string) (net.Listener, error) {
 	brk.mtx.Lock()
 	defer brk.mtx.Unlock()
 	// Start rpc server.
@@ -161,9 +161,12 @@ func (brk *Barak) OpenListener(addr string) net.Listener {
 	mux.HandleFunc("/register", RegisterHandler)
 	// TODO: mux.HandleFunc("/upload", UploadFile)
 	rpcserver.RegisterRPCFuncs(mux, Routes)
-	listener := rpcserver.StartHTTPServer(addr, mux)
+	listener, err := rpcserver.StartHTTPServer(addr, mux)
+	if err != nil {
+		return nil, err
+	}
 	brk.listeners = append(brk.listeners, listener)
-	return listener
+	return listener, nil
 }
 
 func (brk *Barak) CloseListener(addr string) {
