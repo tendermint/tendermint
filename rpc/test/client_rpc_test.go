@@ -40,6 +40,10 @@ func TestHTTPCallContract(t *testing.T) {
 	testCall(t, "HTTP")
 }
 
+func TestHTTPNameReg(t *testing.T) {
+	testNameReg(t, "HTTP")
+}
+
 //--------------------------------------------------------------------------------
 // Test the JSONRPC client
 
@@ -73,4 +77,8 @@ func TestJSONCallCode(t *testing.T) {
 
 func TestJSONCallContract(t *testing.T) {
 	testCall(t, "JSONRPC")
+}
+
+func TestJSONNameReg(t *testing.T) {
+	testNameReg(t, "JSONRPC")
 }

@@ -100,3 +100,7 @@ type ResponseDumpConsensusState struct {
 	RoundState      string   `json:"round_state"`
 	PeerRoundStates []string `json:"peer_round_states"`
 }
+
+type ResponseNameRegEntry struct {
+	Entry *types.NameRegEntry `json:"entry"`
+}

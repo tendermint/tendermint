@@ -104,6 +104,43 @@ func (tx *CallTx) Sign(chainID string, privAccount *account.PrivAccount) {
 }
 
 //----------------------------------------------------------------------------
+// NameTx interface for creating tx
+
+func NewNameTx(st AccountGetter, from account.PubKey, name, data []byte, amt, fee uint64) (*NameTx, error) {
+	addr := from.Address()
+	acc := st.GetAccount(addr)
+	if acc == nil {
+		return nil, fmt.Errorf("Invalid address %X from pubkey %X", addr, from)
+	}
+
+	nonce := uint64(acc.Sequence)
+	return NewNameTxWithNonce(from, name, data, amt, fee, nonce), nil
+}
+
+func NewNameTxWithNonce(from account.PubKey, name, data []byte, amt, fee, nonce uint64) *NameTx {
+	addr := from.Address()
+	input := &TxInput{
+		Address:   addr,
+		Amount:    amt,
+		Sequence:  uint(nonce) + 1,
+		Signature: account.SignatureEd25519{},
+		PubKey:    from,
+	}
+
+	return &NameTx{
+		Input: input,
+		Name:  name,
+		Data:  data,
+		Fee:   fee,
+	}
+}
+
+func (tx *NameTx) Sign(privAccount *account.PrivAccount) {
+	tx.Input.PubKey = privAccount.PubKey
+	tx.Input.Signature = privAccount.Sign(tx)
+}
+
+//----------------------------------------------------------------------------
 // BondTx interface for adding inputs/outputs and adding signatures
 
 func NewBondTx(pubkey account.PubKey) (*BondTx, error) {
