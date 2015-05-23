@@ -202,8 +202,8 @@ func testNameReg(t *testing.T, typ string) {
 
 	amt, fee := uint64(6969), uint64(1000)
 	// since entries ought to be unique and these run against different clients, we append the typ
-	name := []byte("ye-old-domain-name-" + typ)
-	data := []byte("these are amongst the things I wish to bestow upon the youth of generations come: a safe supply of honey, and a better money. For what else shall they need?")
+	name := "ye-old-domain-name-" + typ
+	data := "these are amongst the things I wish to bestow upon the youth of generations come: a safe supply of honey, and a better money. For what else shall they need?"
 	tx := makeDefaultNameTx(t, typ, name, data, amt, fee)
 	broadcastTx(t, typ, tx)
 
@@ -215,7 +215,7 @@ func testNameReg(t *testing.T, typ string) {
 
 	entry := getNameRegEntry(t, typ, name)
 
-	if bytes.Compare(entry.Data, data) != 0 {
+	if entry.Data != data {
 		t.Fatal(fmt.Sprintf("Got %s, expected %s", entry.Data, data))
 	}
 

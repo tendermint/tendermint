@@ -128,15 +128,15 @@ func (cache *BlockCache) SetStorage(addr Word256, key Word256, value Word256) {
 //-------------------------------------
 // BlockCache.names
 
-func (cache *BlockCache) GetNameRegEntry(name []byte) *types.NameRegEntry {
-	entry, removed, _ := cache.names[string(name)].unpack()
+func (cache *BlockCache) GetNameRegEntry(name string) *types.NameRegEntry {
+	entry, removed, _ := cache.names[name].unpack()
 	if removed {
 		return nil
 	} else if entry != nil {
 		return entry
 	} else {
 		entry = cache.backend.GetNameRegEntry(name)
-		cache.names[string(name)] = nameInfo{entry, false, false}
+		cache.names[name] = nameInfo{entry, false, false}
 		return entry
 	}
 }
@@ -144,22 +144,22 @@ func (cache *BlockCache) GetNameRegEntry(name []byte) *types.NameRegEntry {
 func (cache *BlockCache) UpdateNameRegEntry(entry *types.NameRegEntry) {
 	name := entry.Name
 	// SANITY CHECK
-	_, removed, _ := cache.names[string(name)].unpack()
+	_, removed, _ := cache.names[name].unpack()
 	if removed {
 		panic("UpdateNameRegEntry on a removed name")
 	}
 	// SANITY CHECK END
-	cache.names[string(name)] = nameInfo{entry, false, true}
+	cache.names[name] = nameInfo{entry, false, true}
 }
 
-func (cache *BlockCache) RemoveNameRegEntry(name []byte) {
+func (cache *BlockCache) RemoveNameRegEntry(name string) {
 	// SANITY CHECK
-	_, removed, _ := cache.names[string(name)].unpack()
+	_, removed, _ := cache.names[name].unpack()
 	if removed {
 		panic("RemoveNameRegEntry on a removed entry")
 	}
 	// SANITY CHECK END
-	cache.names[string(name)] = nameInfo{nil, true, false}
+	cache.names[name] = nameInfo{nil, true, false}
 }
 
 // BlockCache.names

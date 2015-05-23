@@ -106,7 +106,7 @@ func (tx *CallTx) Sign(privAccount *account.PrivAccount) {
 //----------------------------------------------------------------------------
 // NameTx interface for creating tx
 
-func NewNameTx(st AccountGetter, from account.PubKey, name, data []byte, amt, fee uint64) (*NameTx, error) {
+func NewNameTx(st AccountGetter, from account.PubKey, name, data string, amt, fee uint64) (*NameTx, error) {
 	addr := from.Address()
 	acc := st.GetAccount(addr)
 	if acc == nil {
@@ -117,7 +117,7 @@ func NewNameTx(st AccountGetter, from account.PubKey, name, data []byte, amt, fe
 	return NewNameTxWithNonce(from, name, data, amt, fee, nonce), nil
 }
 
-func NewNameTxWithNonce(from account.PubKey, name, data []byte, amt, fee, nonce uint64) *NameTx {
+func NewNameTxWithNonce(from account.PubKey, name, data string, amt, fee, nonce uint64) *NameTx {
 	addr := from.Address()
 	input := &TxInput{
 		Address:   addr,
