@@ -36,51 +36,51 @@ const (
 )
 
 func BasicCodecEncoder(o interface{}, w io.Writer, n *int64, err *error) {
-	switch o.(type) {
+	switch o := o.(type) {
 	case nil:
 		panic("nil type unsupported")
 	case byte:
 		WriteByte(typeByte, w, n, err)
-		WriteByte(o.(byte), w, n, err)
+		WriteByte(o, w, n, err)
 	case int8:
 		WriteByte(typeInt8, w, n, err)
-		WriteInt8(o.(int8), w, n, err)
+		WriteInt8(o, w, n, err)
 	//case uint8:
 	//	WriteByte( typeUint8, w, n, err)
-	//	WriteUint8( o.(uint8), w, n, err)
+	//	WriteUint8( o, w, n, err)
 	case int16:
 		WriteByte(typeInt16, w, n, err)
-		WriteInt16(o.(int16), w, n, err)
+		WriteInt16(o, w, n, err)
 	case uint16:
 		WriteByte(typeUint16, w, n, err)
-		WriteUint16(o.(uint16), w, n, err)
+		WriteUint16(o, w, n, err)
 	case int32:
 		WriteByte(typeInt32, w, n, err)
-		WriteInt32(o.(int32), w, n, err)
+		WriteInt32(o, w, n, err)
 	case uint32:
 		WriteByte(typeUint32, w, n, err)
-		WriteUint32(o.(uint32), w, n, err)
+		WriteUint32(o, w, n, err)
 	case int64:
 		WriteByte(typeInt64, w, n, err)
-		WriteInt64(o.(int64), w, n, err)
+		WriteInt64(o, w, n, err)
 	case uint64:
 		WriteByte(typeUint64, w, n, err)
-		WriteUint64(o.(uint64), w, n, err)
+		WriteUint64(o, w, n, err)
 	case int:
 		WriteByte(typeVarint, w, n, err)
-		WriteVarint(o.(int), w, n, err)
+		WriteVarint(o, w, n, err)
 	case uint:
 		WriteByte(typeUvarint, w, n, err)
-		WriteUvarint(o.(uint), w, n, err)
+		WriteUvarint(o, w, n, err)
 	case string:
 		WriteByte(typeString, w, n, err)
-		WriteString(o.(string), w, n, err)
+		WriteString(o, w, n, err)
 	case []byte:
 		WriteByte(typeByteSlice, w, n, err)
-		WriteByteSlice(o.([]byte), w, n, err)
+		WriteByteSlice(o, w, n, err)
 	case time.Time:
 		WriteByte(typeTime, w, n, err)
-		WriteTime(o.(time.Time), w, n, err)
+		WriteTime(o, w, n, err)
 	default:
 		panic(fmt.Sprintf("Unsupported type: %v", reflect.TypeOf(o)))
 	}

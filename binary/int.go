@@ -158,7 +158,8 @@ func ReadUint64(r io.Reader, n *int64, err *error) uint64 {
 
 // Varint
 
-func uvarIntSize(i uint) int {
+func uvarintSize(i_ uint) int {
+	i := uint64(i_)
 	if i < 1<<8 {
 		return 1
 	}
@@ -189,7 +190,7 @@ func WriteVarint(i int, w io.Writer, n *int64, err *error) {
 		negate = true
 		i = -i
 	}
-	var size = uvarIntSize(uint(i))
+	var size = uvarintSize(uint(i))
 	if negate {
 		// e.g. 0xF1 for a single negative byte
 		WriteUint8(uint8(size+0xF0), w, n, err)
@@ -231,7 +232,7 @@ func ReadVarint(r io.Reader, n *int64, err *error) int {
 // Uvarint
 
 func WriteUvarint(i uint, w io.Writer, n *int64, err *error) {
-	var size = uvarIntSize(i)
+	var size = uvarintSize(i)
 	WriteUint8(uint8(size), w, n, err)
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, uint64(i))
