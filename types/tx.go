@@ -20,6 +20,7 @@ var (
 	ErrTxInvalidPubKey        = errors.New("Error invalid pubkey")
 	ErrTxInvalidSignature     = errors.New("Error invalid signature")
 	ErrTxInvalidString        = errors.New("Error invalid string")
+	ErrIncorrectOwner         = errors.New("Error incorrect owner")
 )
 
 type ErrTxInvalidSequence struct {

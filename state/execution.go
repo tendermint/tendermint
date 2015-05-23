@@ -527,7 +527,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 				// ensure we are owner
 				if bytes.Compare(entry.Owner, tx.Input.Address) != 0 {
 					log.Debug(Fmt("Sender %X is trying to update a name (%s) for which he is not owner", tx.Input.Address, tx.Name))
-					return types.ErrTxInvalidAddress // (?)
+					return types.ErrIncorrectOwner
 				}
 			} else {
 				expired = true

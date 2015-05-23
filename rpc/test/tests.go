@@ -9,6 +9,8 @@ import (
 	"testing"
 )
 
+var doNothing = func(eid string, b []byte) error { return nil }
+
 func testStatus(t *testing.T, typ string) {
 	client := clients[typ]
 	resp, err := client.Status()
@@ -44,13 +46,13 @@ func testGetAccount(t *testing.T, typ string) {
 
 func testSignedTx(t *testing.T, typ string) {
 	amt := uint64(100)
-	toAddr := []byte{20, 143, 25, 63, 16, 177, 83, 29, 91, 91, 54, 23, 233, 46, 190, 121, 122, 34, 86, 54}
+	toAddr := user[1].Address
 	testOneSignTx(t, typ, toAddr, amt)
 
-	toAddr = []byte{20, 143, 24, 63, 16, 17, 83, 29, 90, 91, 52, 2, 0, 41, 190, 121, 122, 34, 86, 54}
+	toAddr = user[2].Address
 	testOneSignTx(t, typ, toAddr, amt)
 
-	toAddr = []byte{0, 0, 4, 0, 0, 4, 0, 0, 4, 91, 52, 2, 0, 41, 190, 121, 122, 34, 86, 54}
+	toAddr = user[3].Address
 	testOneSignTx(t, typ, toAddr, amt)
 }
 
@@ -71,7 +73,7 @@ func testOneSignTx(t *testing.T, typ string, addr []byte, amt uint64) {
 
 func testBroadcastTx(t *testing.T, typ string) {
 	amt := uint64(100)
-	toAddr := []byte{20, 143, 25, 63, 16, 177, 83, 29, 91, 91, 54, 23, 233, 46, 190, 121, 122, 34, 86, 54}
+	toAddr := user[1].Address
 	tx := makeDefaultSendTxSigned(t, typ, toAddr, amt)
 	receipt := broadcastTx(t, typ, tx)
 	if receipt.CreatesContract > 0 {
@@ -120,10 +122,7 @@ func testGetStorage(t *testing.T, typ string) {
 	}
 
 	// allow it to get mined
-	waitForEvent(t, con, eid, true, func() {
-	}, func(eid string, b []byte) error {
-		return nil
-	})
+	waitForEvent(t, con, eid, true, func() {}, doNothing)
 	mempoolCount = 0
 
 	v := getStorage(t, typ, contractAddr, []byte{0x1})
@@ -179,10 +178,7 @@ func testCall(t *testing.T, typ string) {
 	}
 
 	// allow it to get mined
-	waitForEvent(t, con, eid, true, func() {
-	}, func(eid string, b []byte) error {
-		return nil
-	})
+	waitForEvent(t, con, eid, true, func() {}, doNothing)
 	mempoolCount = 0
 
 	// run a call through the contract
@@ -192,6 +188,7 @@ func testCall(t *testing.T, typ string) {
 }
 
 func testNameReg(t *testing.T, typ string) {
+	client := clients[typ]
 	con := newWSCon(t)
 	eid := types.EventStringNewBlock()
 	subscribe(t, con, eid)
@@ -200,23 +197,39 @@ func testNameReg(t *testing.T, typ string) {
 		con.Close()
 	}()
 
+	// register a new name, check if its there
 	amt, fee := uint64(6969), uint64(1000)
 	// since entries ought to be unique and these run against different clients, we append the typ
-	name := "ye-old-domain-name-" + typ
-	data := "these are amongst the things I wish to bestow upon the youth of generations come: a safe supply of honey, and a better money. For what else shall they need?"
+	name := "ye_old_domain_name_" + typ
+	data := "these are amongst the things I wish to bestow upon the youth of generations come: a safe supply of honey, and a better money. For what else shall they need"
+
 	tx := makeDefaultNameTx(t, typ, name, data, amt, fee)
 	broadcastTx(t, typ, tx)
-
-	// allow it to get mined
-	waitForEvent(t, con, eid, true, func() {
-	}, func(eid string, b []byte) error {
-		return nil
-	})
-
+	waitForEvent(t, con, eid, true, func() {}, doNothing)
+	mempoolCount = 0
 	entry := getNameRegEntry(t, typ, name)
-
 	if entry.Data != data {
 		t.Fatal(fmt.Sprintf("Got %s, expected %s", entry.Data, data))
 	}
 
+	// update the data as the owner, make sure still there
+	data = "if not now, when"
+	tx = makeDefaultNameTx(t, typ, name, data, amt, fee)
+	broadcastTx(t, typ, tx)
+	waitForEvent(t, con, eid, true, func() {}, doNothing)
+	mempoolCount = 0
+	entry = getNameRegEntry(t, typ, name)
+	if entry.Data != data {
+		t.Fatal(fmt.Sprintf("Got %s, expected %s", entry.Data, data))
+	}
+
+	// try to update as non owner, should fail
+	nonce := getNonce(t, typ, user[1].Address)
+	data2 := "this is not my beautiful house"
+	tx = types.NewNameTxWithNonce(user[1].PubKey, name, data2, amt, fee, nonce)
+	tx.Sign(user[1])
+	_, err := client.BroadcastTx(tx)
+	if err == nil {
+		t.Fatal("Expected error on NameTx")
+	}
 }

@@ -104,25 +104,38 @@ func defaultConfig(moniker string) (defaultConfig string) {
 	return
 }
 
+// priv keys generated deterministically eg rpc/tests/helpers.go
 var defaultGenesis = `{
   "chain_id" : "tendermint_test",
   "accounts": [
     {
-      "address": "1D7A91CB32F758A02EBB9BE1FB6F8DEE56F90D42",
-      "amount":  200000000
+	    "address": "E9B5D87313356465FAE33C406CE2C2979DE60BCB",
+	    "amount": 200000000
     },
     {
-      "address": "AC89A6DDF4C309A89A2C4078CE409A5A7B282270",
-      "amount":  200000000
+	    "address": "DFE4AFFA4CEE17CD01CB9E061D77C3ECED29BD88",
+	    "amount": 200000000
+    },
+    {
+	    "address": "F60D30722E7B497FA532FB3207C3FB29C31B1992",
+	    "amount": 200000000
+    },
+    {
+	    "address": "336CB40A5EB92E496E19B74FDFF2BA017C877FD6",
+	    "amount": 200000000
+    },
+    {
+	    "address": "D218F0F439BF0384F6F5EF8D0F8B398D941BD1DC",
+	    "amount": 200000000
     }
   ],
   "validators": [
     {
-      "pub_key": [1, "06FBAC4E285285D1D91FCBC7E91C780ADA11516F67462340B3980CE2B94940E8"],
+      "pub_key": [1, "583779C3BFA3F6C7E23C7D830A9C3D023A216B55079AD38BFED1207B94A19548"],
       "amount": 1000000,
       "unbond_to": [
         {
-          "address": "1D7A91CB32F758A02EBB9BE1FB6F8DEE56F90D42",
+          "address": "E9B5D87313356465FAE33C406CE2C2979DE60BCB",
           "amount":  100000
         }
       ]
