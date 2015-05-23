@@ -120,7 +120,7 @@ func makeDefaultCallTx(t *testing.T, typ string, addr, code []byte, amt, gasLim,
 	return tx
 }
 
-func makeDefaultNameTx(t *testing.T, typ string, name, value []byte, amt, fee uint64) *types.NameTx {
+func makeDefaultNameTx(t *testing.T, typ string, name, value string, amt, fee uint64) *types.NameTx {
 	nonce := getNonce(t, typ, user[0].Address)
 	tx := types.NewNameTxWithNonce(user[0].PubKey, name, value, amt, fee, nonce)
 	tx.Sign(user[0])
@@ -218,7 +218,7 @@ func callContract(t *testing.T, client cclient.Client, address, data, expected [
 }
 
 // get the namereg entry
-func getNameRegEntry(t *testing.T, typ string, name []byte) *types.NameRegEntry {
+func getNameRegEntry(t *testing.T, typ string, name string) *types.NameRegEntry {
 	client := clients[typ]
 	r, err := client.NameRegEntry(name)
 	if err != nil {

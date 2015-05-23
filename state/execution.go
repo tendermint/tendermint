@@ -504,13 +504,18 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 			return types.ErrTxInsufficientFunds
 		}
 
+		// validate the input strings
+		if !tx.Validate() {
+			log.Debug(Fmt("Invalid characters present in NameTx name (%s) or data (%s)", tx.Name, tx.Data))
+			return types.ErrTxInvalidString
+		}
+
 		value := tx.Input.Amount - tx.Fee
 
 		// let's say cost of a name for one block is len(data) + 32
-		// TODO: the casting is dangerous and things can overflow (below)!
-		// we should make LastBlockHeight a uint64
-		costPerBlock := uint(len(tx.Data) + 32)
-		expiresIn := uint(value / uint64(costPerBlock))
+		costPerBlock := uint64(len(tx.Data) + 32)
+		expiresIn := value / uint64(costPerBlock)
+		lastBlockHeight := uint64(_s.LastBlockHeight)
 
 		// check if the name exists
 		entry := blockCache.GetNameRegEntry(tx.Name)
@@ -518,7 +523,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 		if entry != nil {
 			var expired bool
 			// if the entry already exists, and hasn't expired, we must be owner
-			if entry.Expires > _s.LastBlockHeight {
+			if entry.Expires > lastBlockHeight {
 				// ensure we are owner
 				if bytes.Compare(entry.Owner, tx.Input.Address) != 0 {
 					log.Debug(Fmt("Sender %X is trying to update a name (%s) for which he is not owner", tx.Input.Address, tx.Name))
@@ -537,14 +542,14 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 				// update the entry by bumping the expiry
 				// and changing the data
 				if expired {
-					entry.Expires = _s.LastBlockHeight + expiresIn
+					entry.Expires = lastBlockHeight + expiresIn
 				} else {
 					// since the size of the data may have changed
 					// we use the total amount of "credit"
-					credit := uint64((entry.Expires - _s.LastBlockHeight) * uint(len(entry.Data)))
+					credit := (entry.Expires - lastBlockHeight) * uint64(len(entry.Data))
 					credit += value
-					expiresIn = uint(credit) / costPerBlock
-					entry.Expires = _s.LastBlockHeight + expiresIn
+					expiresIn = credit / costPerBlock
+					entry.Expires = lastBlockHeight + expiresIn
 				}
 				entry.Data = tx.Data
 				blockCache.UpdateNameRegEntry(entry)
@@ -558,7 +563,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 				Name:    tx.Name,
 				Owner:   tx.Input.Address,
 				Data:    tx.Data,
-				Expires: _s.LastBlockHeight + expiresIn,
+				Expires: lastBlockHeight + expiresIn,
 			}
 			blockCache.UpdateNameRegEntry(entry)
 		}

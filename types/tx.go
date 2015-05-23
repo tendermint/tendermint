@@ -3,6 +3,7 @@ package types
 import (
 	"errors"
 	"io"
+	"regexp"
 
 	"github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
@@ -18,6 +19,7 @@ var (
 	ErrTxUnknownPubKey        = errors.New("Error unknown pubkey")
 	ErrTxInvalidPubKey        = errors.New("Error invalid pubkey")
 	ErrTxInvalidSignature     = errors.New("Error invalid signature")
+	ErrTxInvalidString        = errors.New("Error invalid string")
 )
 
 type ErrTxInvalidSequence struct {
@@ -183,8 +185,8 @@ func (tx *CallTx) String() string {
 
 type NameTx struct {
 	Input *TxInput `json:"input"`
-	Name  []byte   `json:"name"`
-	Data  []byte   `json:"data"`
+	Name  string   `json:"name"`
+	Data  string   `json:"data"`
 	Fee   uint64   `json:"fee"`
 }
 
@@ -195,6 +197,17 @@ func (tx *NameTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
 	binary.WriteTo([]byte(Fmt(`,"fee":%v,"input":`, tx.Fee)), w, n, err)
 	tx.Input.WriteSignBytes(w, n, err)
 	binary.WriteTo([]byte(`}]}`), w, n, err)
+}
+
+// alphanum, underscore, forward slash
+var regexpAlphaNum, _ = regexp.Compile("^[a-zA-Z0-9_/]*$")
+
+// anything you might find in a json
+var regexpJSON, err = regexp.Compile(`^[a-zA-Z0-9_/ \-"':,\n\t.{}()\[\]]*$`)
+
+func (tx *NameTx) Validate() bool {
+	// Name should be alphanum and Data should be like JSON
+	return regexpAlphaNum.Match([]byte(tx.Name)) && regexpJSON.Match([]byte(tx.Data))
 }
 
 func (tx *NameTx) String() string {

@@ -304,8 +304,8 @@ func TestTxs(t *testing.T) {
 
 	// NameTx.
 	{
-		entryName := []byte("satoshi")
-		entryData := []byte(`
+		entryName := "satoshi"
+		entryData := `
 A  purely   peer-to-peer   version   of   electronic   cash   would   allow   online
 payments  to  be  sent   directly  from  one  party  to  another  without   going  through  a
 financial institution.   Digital signatures provide part of the solution, but the main
@@ -319,7 +319,7 @@ long as a majority of CPU power is controlled by nodes that are not cooperating 
 attack the network, they'll generate the longest chain and outpace attackers.   The
 network itself requires minimal structure.   Messages are broadcast on a best effort
 basis,   and   nodes   can   leave  and   rejoin   the  network   at  will,  accepting   the   longest
-proof-of-work chain as proof of what happened while they were gone `)
+proof-of-work chain as proof of what happened while they were gone `
 		entryAmount := uint64(10000)
 
 		state := state.Copy()
@@ -348,8 +348,17 @@ proof-of-work chain as proof of what happened while they were gone `)
 		if entry == nil {
 			t.Errorf("Expected an entry but got nil")
 		}
-		if bytes.Compare(entry.Data, entryData) != 0 {
+		if entry.Data != entryData {
 			t.Errorf("Wrong data stored")
+		}
+
+		// test a bad string
+		tx.Data = string([]byte{0, 1, 2, 3, 127, 128, 129, 200, 251})
+		tx.Input.Sequence += 1
+		tx.Input.Signature = privAccounts[0].Sign(tx)
+		err = execTxWithState(state, tx, true)
+		if err != types.ErrTxInvalidString {
+			t.Errorf("Expected invalid string error. Got: %s", err.Error())
 		}
 	}
 

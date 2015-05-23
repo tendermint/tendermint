@@ -283,21 +283,20 @@ func (s *State) LoadStorage(hash []byte) (storage merkle.Tree) {
 //-------------------------------------
 // State.nameReg
 
-func (s *State) GetNameRegEntry(name []byte) *types.NameRegEntry {
+func (s *State) GetNameRegEntry(name string) *types.NameRegEntry {
 	_, value := s.nameReg.Get(name)
 	if value == nil {
 		return nil
 	}
 	entry := value.(*types.NameRegEntry)
-	// XXX: do we need to copy?
-	return entry
+	return entry.Copy()
 }
 
 func (s *State) UpdateNameRegEntry(entry *types.NameRegEntry) bool {
 	return s.nameReg.Set(entry.Name, entry)
 }
 
-func (s *State) RemoveNameRegEntry(name []byte) bool {
+func (s *State) RemoveNameRegEntry(name string) bool {
 	_, removed := s.nameReg.Remove(name)
 	return removed
 }
