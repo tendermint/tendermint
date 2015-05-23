@@ -31,14 +31,39 @@ type TypeInfo struct {
 	Fields []StructFieldInfo
 }
 
-type StructFieldInfo struct {
-	Index    int          // Struct field index
-	JSONName string       // Corresponding JSON field name. (override with `json=""`)
-	Type     reflect.Type // Struct field type
+type Options struct {
+	JSONName string // (JSON) Corresponding JSON field name. (override with `json=""`)
+	Varint   bool   // (Binary) Use length-prefixed encoding for (u)int*
 }
 
-func (info StructFieldInfo) unpack() (int, string, reflect.Type) {
-	return info.Index, info.JSONName, info.Type
+func getOptionsFromField(field reflect.StructField) (skip bool, opts Options) {
+	jsonName := field.Tag.Get("json")
+	if jsonName == "-" {
+		skip = true
+		return
+	} else if jsonName == "" {
+		jsonName = field.Name
+	}
+	varint := false
+	binTag := field.Tag.Get("binary")
+	if binTag == "varint" { // TODO: extend
+		varint = true
+	}
+	opts = Options{
+		JSONName: jsonName,
+		Varint:   varint,
+	}
+	return
+}
+
+type StructFieldInfo struct {
+	Index   int          // Struct field index
+	Type    reflect.Type // Struct field type
+	Options              // Encoding options
+}
+
+func (info StructFieldInfo) unpack() (int, reflect.Type, Options) {
+	return info.Index, info.Type, info.Options
 }
 
 // e.g. If o is struct{Foo}{}, return is the Foo interface type.
@@ -136,16 +161,14 @@ func MakeTypeInfo(rt reflect.Type) *TypeInfo {
 			if field.PkgPath != "" {
 				continue
 			}
-			jsonName := field.Tag.Get("json")
-			if jsonName == "-" {
+			skip, opts := getOptionsFromField(field)
+			if skip {
 				continue
-			} else if jsonName == "" {
-				jsonName = field.Name
 			}
 			structFields = append(structFields, StructFieldInfo{
-				Index:    i,
-				JSONName: jsonName,
-				Type:     field.Type,
+				Index:   i,
+				Type:    field.Type,
+				Options: opts,
 			})
 		}
 		info.Fields = structFields
@@ -154,7 +177,7 @@ func MakeTypeInfo(rt reflect.Type) *TypeInfo {
 	return info
 }
 
-func readReflect(rv reflect.Value, rt reflect.Type, r io.Reader, n *int64, err *error) {
+func readReflectBinary(rv reflect.Value, rt reflect.Type, opts Options, r io.Reader, n *int64, err *error) {
 
 	// Get typeInfo
 	typeInfo := GetTypeInfo(rt)
@@ -179,7 +202,7 @@ func readReflect(rv reflect.Value, rt reflect.Type, r io.Reader, n *int64, err *
 		}
 		crv := reflect.New(crt).Elem()
 		r = NewPrefixedReader([]byte{typeByte}, r)
-		readReflect(crv, crt, r, n, err)
+		readReflectBinary(crv, crt, opts, r, n, err)
 		rv.Set(crv) // NOTE: orig rv is ignored.
 		return
 	}
@@ -236,7 +259,7 @@ func readReflect(rv reflect.Value, rt reflect.Type, r io.Reader, n *int64, err *
 				tmpSliceRv := reflect.MakeSlice(rt, l, l)
 				for j := 0; j < l; j++ {
 					elemRv := tmpSliceRv.Index(j)
-					readReflect(elemRv, elemRt, r, n, err)
+					readReflectBinary(elemRv, elemRt, opts, r, n, err)
 					if *err != nil {
 						return
 					}
@@ -254,14 +277,10 @@ func readReflect(rv reflect.Value, rt reflect.Type, r io.Reader, n *int64, err *
 			log.Debug(Fmt("Read time: %v", t))
 			rv.Set(reflect.ValueOf(t))
 		} else {
-			numFields := rt.NumField()
-			for i := 0; i < numFields; i++ {
-				field := rt.Field(i)
-				if field.PkgPath != "" {
-					continue
-				}
+			for _, fieldInfo := range typeInfo.Fields {
+				i, fieldType, opts := fieldInfo.unpack()
 				fieldRv := rv.Field(i)
-				readReflect(fieldRv, field.Type, r, n, err)
+				readReflectBinary(fieldRv, fieldType, opts, r, n, err)
 			}
 		}
 
@@ -271,9 +290,15 @@ func readReflect(rv reflect.Value, rt reflect.Type, r io.Reader, n *int64, err *
 		rv.SetString(str)
 
 	case reflect.Int64:
-		num := ReadUint64(r, n, err)
-		log.Debug(Fmt("Read num: %v", num))
-		rv.SetInt(int64(num))
+		if opts.Varint {
+			num := ReadVarint(r, n, err)
+			log.Debug(Fmt("Read num: %v", num))
+			rv.SetInt(int64(num))
+		} else {
+			num := ReadInt64(r, n, err)
+			log.Debug(Fmt("Read num: %v", num))
+			rv.SetInt(int64(num))
+		}
 
 	case reflect.Int32:
 		num := ReadUint32(r, n, err)
@@ -291,14 +316,20 @@ func readReflect(rv reflect.Value, rt reflect.Type, r io.Reader, n *int64, err *
 		rv.SetInt(int64(num))
 
 	case reflect.Int:
-		num := ReadUvarint(r, n, err)
+		num := ReadVarint(r, n, err)
 		log.Debug(Fmt("Read num: %v", num))
 		rv.SetInt(int64(num))
 
 	case reflect.Uint64:
-		num := ReadUint64(r, n, err)
-		log.Debug(Fmt("Read num: %v", num))
-		rv.SetUint(uint64(num))
+		if opts.Varint {
+			num := ReadUvarint(r, n, err)
+			log.Debug(Fmt("Read num: %v", num))
+			rv.SetUint(uint64(num))
+		} else {
+			num := ReadUint64(r, n, err)
+			log.Debug(Fmt("Read num: %v", num))
+			rv.SetUint(uint64(num))
+		}
 
 	case reflect.Uint32:
 		num := ReadUint32(r, n, err)
@@ -332,7 +363,7 @@ func readReflect(rv reflect.Value, rt reflect.Type, r io.Reader, n *int64, err *
 
 // rv: the reflection value of the thing to write
 // rt: the type of rv as declared in the container, not necessarily rv.Type().
-func writeReflect(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, err *error) {
+func writeReflectBinary(rv reflect.Value, rt reflect.Type, opts Options, w io.Writer, n *int64, err *error) {
 
 	// Get typeInfo
 	typeInfo := GetTypeInfo(rt)
@@ -364,8 +395,8 @@ func writeReflect(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, err 
 			// We support writing unsafely for convenience.
 		}
 		// We don't have to write the typeByte here,
-		// the writeReflect() call below will write it.
-		writeReflect(crv, crt, w, n, err)
+		// the writeReflectBinary() call below will write it.
+		writeReflectBinary(crv, crt, opts, w, n, err)
 		return
 	}
 
@@ -405,7 +436,7 @@ func writeReflect(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, err 
 			// Write elems
 			for i := 0; i < length; i++ {
 				elemRv := rv.Index(i)
-				writeReflect(elemRv, elemRt, w, n, err)
+				writeReflectBinary(elemRv, elemRt, opts, w, n, err)
 			}
 		}
 
@@ -414,14 +445,10 @@ func writeReflect(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, err 
 			// Special case: time.Time
 			WriteTime(rv.Interface().(time.Time), w, n, err)
 		} else {
-			numFields := rt.NumField()
-			for i := 0; i < numFields; i++ {
-				field := rt.Field(i)
-				if field.PkgPath != "" {
-					continue
-				}
+			for _, fieldInfo := range typeInfo.Fields {
+				i, fieldType, opts := fieldInfo.unpack()
 				fieldRv := rv.Field(i)
-				writeReflect(fieldRv, field.Type, w, n, err)
+				writeReflectBinary(fieldRv, fieldType, opts, w, n, err)
 			}
 		}
 
@@ -429,7 +456,11 @@ func writeReflect(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, err 
 		WriteString(rv.String(), w, n, err)
 
 	case reflect.Int64:
-		WriteInt64(rv.Int(), w, n, err)
+		if opts.Varint {
+			WriteVarint(int(rv.Int()), w, n, err)
+		} else {
+			WriteInt64(rv.Int(), w, n, err)
+		}
 
 	case reflect.Int32:
 		WriteInt32(int32(rv.Int()), w, n, err)
@@ -444,7 +475,11 @@ func writeReflect(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, err 
 		WriteVarint(int(rv.Int()), w, n, err)
 
 	case reflect.Uint64:
-		WriteUint64(rv.Uint(), w, n, err)
+		if opts.Varint {
+			WriteUvarint(uint(rv.Uint()), w, n, err)
+		} else {
+			WriteUint64(rv.Uint(), w, n, err)
+		}
 
 	case reflect.Uint32:
 		WriteUint32(uint32(rv.Uint()), w, n, err)
@@ -607,8 +642,8 @@ func readReflectJSON(rv reflect.Value, rt reflect.Type, o interface{}, err *erro
 			// TODO: ensure that all fields are set?
 			// TODO: disallow unknown oMap fields?
 			for _, fieldInfo := range typeInfo.Fields {
-				i, jsonName, fieldType := fieldInfo.unpack()
-				value, ok := oMap[jsonName]
+				i, fieldType, opts := fieldInfo.unpack()
+				value, ok := oMap[opts.JSONName]
 				if !ok {
 					continue // Skip missing fields.
 				}
@@ -755,14 +790,14 @@ func writeReflectJSON(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, 
 			WriteTo([]byte("{"), w, n, err)
 			wroteField := false
 			for _, fieldInfo := range typeInfo.Fields {
-				i, jsonName, fieldType := fieldInfo.unpack()
+				i, fieldType, opts := fieldInfo.unpack()
 				fieldRv := rv.Field(i)
 				if wroteField {
 					WriteTo([]byte(","), w, n, err)
 				} else {
 					wroteField = true
 				}
-				WriteTo([]byte(Fmt("\"%v\":", jsonName)), w, n, err)
+				WriteTo([]byte(Fmt("\"%v\":", opts.JSONName)), w, n, err)
 				writeReflectJSON(fieldRv, fieldType, w, n, err)
 			}
 			WriteTo([]byte("}"), w, n, err)

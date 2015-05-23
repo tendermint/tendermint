@@ -46,12 +46,12 @@ func WriteByteSlices(bzz [][]byte, w io.Writer, n *int64, err *error) {
 }
 
 func ReadByteSlices(r io.Reader, n *int64, err *error) [][]byte {
-	length := ReadUvarint(r, n, err)
+	length := int(ReadUvarint(r, n, err))
 	if *err != nil {
 		return nil
 	}
 	bzz := make([][]byte, length)
-	for i := uint(0); i < length; i++ {
+	for i := 0; i < length; i++ {
 		bz := ReadByteSlice(r, n, err)
 		if *err != nil {
 			return nil

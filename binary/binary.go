@@ -9,11 +9,11 @@ import (
 func ReadBinary(o interface{}, r io.Reader, n *int64, err *error) interface{} {
 	rv, rt := reflect.ValueOf(o), reflect.TypeOf(o)
 	if rv.Kind() == reflect.Ptr {
-		readReflect(rv.Elem(), rt.Elem(), r, n, err)
+		readReflectBinary(rv.Elem(), rt.Elem(), Options{}, r, n, err)
 		return o
 	} else {
 		ptrRv := reflect.New(rt)
-		readReflect(ptrRv.Elem(), rt, r, n, err)
+		readReflectBinary(ptrRv.Elem(), rt, Options{}, r, n, err)
 		return ptrRv.Elem().Interface()
 	}
 }
@@ -24,7 +24,7 @@ func WriteBinary(o interface{}, w io.Writer, n *int64, err *error) {
 	if rv.Kind() == reflect.Ptr {
 		rv, rt = rv.Elem(), rt.Elem()
 	}
-	writeReflect(rv, rt, w, n, err)
+	writeReflectBinary(rv, rt, Options{}, w, n, err)
 }
 
 func ReadJSON(o interface{}, bytes []byte, err *error) interface{} {

@@ -9,8 +9,8 @@ import (
 
 type BitArray struct {
 	mtx   sync.Mutex
-	Bits  uint     // NOTE: persisted via reflect, must be exported
-	Elems []uint64 // NOTE: persisted via reflect, must be exported
+	Bits  uint     `json:"bits"`  // NOTE: persisted via reflect, must be exported
+	Elems []uint64 `json:"elems"` // NOTE: persisted via reflect, must be exported
 }
 
 func NewBitArray(bits uint) *BitArray {
