@@ -71,7 +71,7 @@ func GetConfig(rootDir string) cfg.Config {
 	mapConfig.SetDefault("genesis_file", rootDir+"/genesis.json")
 	mapConfig.SetDefault("moniker", "anonymous")
 	mapConfig.SetDefault("node_laddr", "0.0.0.0:36656")
-	mapConfig.SetDefault("fast_sync", true)
+	mapConfig.SetDefault("fast_sync", false)
 	mapConfig.SetDefault("addrbook_file", rootDir+"/addrbook.json")
 	mapConfig.SetDefault("priv_validator_file", rootDir+"/priv_validator.json")
 	mapConfig.SetDefault("db_backend", "memdb")
@@ -94,7 +94,7 @@ network = "tendermint_test"
 moniker = "__MONIKER__"
 node_laddr = "0.0.0.0:36656"
 seeds = ""
-fast_sync = true
+fast_sync = false
 db_backend = "memdb"
 log_level = "debug"
 rpc_laddr = "0.0.0.0:36657"
@@ -105,24 +105,37 @@ func defaultConfig(moniker string) (defaultConfig string) {
 	return
 }
 
+// priv keys generated deterministically eg rpc/tests/helpers.go
 var defaultGenesis = `{
   "accounts": [
     {
-      "address": "1D7A91CB32F758A02EBB9BE1FB6F8DEE56F90D42",
-      "amount":  200000000
+	    "address": "E9B5D87313356465FAE33C406CE2C2979DE60BCB",
+	    "amount": 200000000
     },
     {
-      "address": "AC89A6DDF4C309A89A2C4078CE409A5A7B282270",
-      "amount":  200000000
+	    "address": "DFE4AFFA4CEE17CD01CB9E061D77C3ECED29BD88",
+	    "amount": 200000000
+    },
+    {
+	    "address": "F60D30722E7B497FA532FB3207C3FB29C31B1992",
+	    "amount": 200000000
+    },
+    {
+	    "address": "336CB40A5EB92E496E19B74FDFF2BA017C877FD6",
+	    "amount": 200000000
+    },
+    {
+	    "address": "D218F0F439BF0384F6F5EF8D0F8B398D941BD1DC",
+	    "amount": 200000000
     }
   ],
   "validators": [
     {
-      "pub_key": [1, "06FBAC4E285285D1D91FCBC7E91C780ADA11516F67462340B3980CE2B94940E8"],
+      "pub_key": [1, "583779C3BFA3F6C7E23C7D830A9C3D023A216B55079AD38BFED1207B94A19548"],
       "amount": 1000000,
       "unbond_to": [
         {
-          "address": "1D7A91CB32F758A02EBB9BE1FB6F8DEE56F90D42",
+          "address": "E9B5D87313356465FAE33C406CE2C2979DE60BCB",
           "amount":  100000
         }
       ]

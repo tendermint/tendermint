@@ -2,7 +2,6 @@ package rpctest
 
 import (
 	"bytes"
-	"encoding/hex"
 	"strconv"
 	"testing"
 	"time"
@@ -29,8 +28,7 @@ var (
 	mempoolCount = 0
 
 	// make keys
-	userPriv = "C453604BD6480D5538B4C6FD2E3E314B5BCE518D75ADE4DA3DA85AB8ADFD819606FBAC4E285285D1D91FCBC7E91C780ADA11516F67462340B3980CE2B94940E8"
-	user     = makeUsers(2)
+	user = makeUsers(5)
 
 	clients = map[string]cclient.Client{
 		"JSONRPC": cclient.NewClient(requestAddr, "JSONRPC"),
@@ -38,6 +36,7 @@ var (
 	}
 )
 
+// deterministic account generation, synced with genesis file in config/tendermint_test/config.go
 func makeUsers(n int) []*account.PrivAccount {
 	accounts := []*account.PrivAccount{}
 	for i := 0; i < n; i++ {
@@ -45,13 +44,6 @@ func makeUsers(n int) []*account.PrivAccount {
 		user := account.GenPrivAccountFromSecret(secret)
 		accounts = append(accounts, user)
 	}
-
-	// include our validator
-	var byteKey [64]byte
-	userPrivByteSlice, _ := hex.DecodeString(userPriv)
-	copy(byteKey[:], userPrivByteSlice)
-	privAcc := account.GenPrivAccountFromKey(byteKey)
-	accounts[0] = privAcc
 	return accounts
 }
 
