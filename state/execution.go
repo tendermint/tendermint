@@ -505,17 +505,19 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 		}
 
 		// validate the input strings
-		if !tx.Validate() {
-			log.Debug(Fmt("Invalid characters present in NameTx name (%s) or data (%s)", tx.Name, tx.Data))
+		if err := tx.ValidateStrings(); err != nil {
+			log.Debug(err.Error())
 			return types.ErrTxInvalidString
 		}
 
 		value := tx.Input.Amount - tx.Fee
 
 		// let's say cost of a name for one block is len(data) + 32
-		costPerBlock := uint64(len(tx.Data) + 32)
+		costPerBlock := types.NameCostPerBlock * types.NameCostPerByte * tx.BaseEntryCost()
 		expiresIn := value / uint64(costPerBlock)
 		lastBlockHeight := uint64(_s.LastBlockHeight)
+
+		log.Debug("New NameTx", "value", value, "costPerBlock", costPerBlock, "expiresIn", expiresIn, "lastBlock", lastBlockHeight)
 
 		// check if the name exists
 		entry := blockCache.GetNameRegEntry(tx.Name)
@@ -537,26 +539,36 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 			if value == 0 && len(tx.Data) == 0 {
 				// maybe we reward you for telling us we can delete this crap
 				// (owners if not expired, anyone if expired)
+				log.Debug("Removing namereg entry", "name", entry.Name)
 				blockCache.RemoveNameRegEntry(entry.Name)
 			} else {
 				// update the entry by bumping the expiry
 				// and changing the data
 				if expired {
+					if expiresIn < types.MinNameRegistrationPeriod {
+						return fmt.Errorf("Names must be registered for at least %d blocks", types.MinNameRegistrationPeriod)
+					}
 					entry.Expires = lastBlockHeight + expiresIn
+					entry.Owner = tx.Input.Address
+					log.Debug("An old namereg entry has expired and been reclaimed", "name", entry.Name, "expiresIn", expiresIn, "owner", entry.Owner)
 				} else {
 					// since the size of the data may have changed
 					// we use the total amount of "credit"
-					credit := (entry.Expires - lastBlockHeight) * uint64(len(entry.Data))
-					credit += value
+					oldCredit := (entry.Expires - lastBlockHeight) * types.BaseEntryCost(entry.Name, entry.Data)
+					credit := oldCredit + value
 					expiresIn = credit / costPerBlock
+					if expiresIn < types.MinNameRegistrationPeriod {
+						return fmt.Errorf("Names must be registered for at least %d blocks", types.MinNameRegistrationPeriod)
+					}
 					entry.Expires = lastBlockHeight + expiresIn
+					log.Debug("Updated namereg entry", "name", entry.Name, "expiresIn", expiresIn, "oldCredit", oldCredit, "value", value, "credit", credit)
 				}
 				entry.Data = tx.Data
 				blockCache.UpdateNameRegEntry(entry)
 			}
 		} else {
-			if expiresIn < 5 {
-				return fmt.Errorf("Names must be registered for at least 5 blocks")
+			if expiresIn < types.MinNameRegistrationPeriod {
+				return fmt.Errorf("Names must be registered for at least %d blocks", types.MinNameRegistrationPeriod)
 			}
 			// entry does not exist, so create it
 			entry = &types.NameRegEntry{
@@ -565,6 +577,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 				Data:    tx.Data,
 				Expires: lastBlockHeight + expiresIn,
 			}
+			log.Debug("Creating namereg entry", "name", entry.Name, "expiresIn", expiresIn)
 			blockCache.UpdateNameRegEntry(entry)
 		}
 

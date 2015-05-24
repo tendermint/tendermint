@@ -3,7 +3,6 @@ package types
 import (
 	"errors"
 	"io"
-	"regexp"
 
 	"github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
@@ -200,15 +199,30 @@ func (tx *NameTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
 	binary.WriteTo([]byte(`}]}`), w, n, err)
 }
 
-// alphanum, underscore, forward slash
-var regexpAlphaNum, _ = regexp.Compile("^[a-zA-Z0-9_/]*$")
+func (tx *NameTx) ValidateStrings() error {
+	if len(tx.Name) == 0 {
+		return errors.New("Name must not be empty")
+	}
+	if len(tx.Name) > MaxNameLength {
+		return errors.New(Fmt("Name is too long. Max %d bytes", MaxNameLength))
+	}
+	if len(tx.Data) > MaxDataLength {
+		return errors.New(Fmt("Data is too long. Max %d bytes", MaxDataLength))
+	}
 
-// anything you might find in a json
-var regexpJSON, err = regexp.Compile(`^[a-zA-Z0-9_/ \-"':,\n\t.{}()\[\]]*$`)
+	if !validateNameRegEntryName(tx.Name) {
+		return errors.New(Fmt("Invalid characters found in NameTx.Name (%s). Only alphanumeric, underscores, and forward slashes allowed", tx.Name))
+	}
 
-func (tx *NameTx) Validate() bool {
-	// Name should be alphanum and Data should be like JSON
-	return regexpAlphaNum.Match([]byte(tx.Name)) && regexpJSON.Match([]byte(tx.Data))
+	if !validateNameRegEntryData(tx.Data) {
+		return errors.New(Fmt("Invalid characters found in NameTx.Data (%s). Only the kind of things found in a JSON file are allowed", tx.Data))
+	}
+
+	return nil
+}
+
+func (tx *NameTx) BaseEntryCost() uint64 {
+	return BaseEntryCost(tx.Name, tx.Data)
 }
 
 func (tx *NameTx) String() string {

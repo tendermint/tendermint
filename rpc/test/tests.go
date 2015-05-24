@@ -197,30 +197,41 @@ func testNameReg(t *testing.T, typ string) {
 		con.Close()
 	}()
 
+	types.MinNameRegistrationPeriod = 1
+
 	// register a new name, check if its there
-	amt, fee := uint64(6969), uint64(1000)
 	// since entries ought to be unique and these run against different clients, we append the typ
 	name := "ye_old_domain_name_" + typ
-	data := "these are amongst the things I wish to bestow upon the youth of generations come: a safe supply of honey, and a better money. For what else shall they need"
+	data := "if not now, when"
+	fee := uint64(1000)
+	numDesiredBlocks := uint64(2)
+	amt := fee + numDesiredBlocks*types.NameCostPerByte*types.NameCostPerBlock*types.BaseEntryCost(name, data)
 
 	tx := makeDefaultNameTx(t, typ, name, data, amt, fee)
 	broadcastTx(t, typ, tx)
+	// commit block
 	waitForEvent(t, con, eid, true, func() {}, doNothing)
 	mempoolCount = 0
 	entry := getNameRegEntry(t, typ, name)
 	if entry.Data != data {
-		t.Fatal(fmt.Sprintf("Got %s, expected %s", entry.Data, data))
+		t.Fatal(fmt.Sprintf("Err on entry.Data: Got %s, expected %s", entry.Data, data))
+	}
+	if bytes.Compare(entry.Owner, user[0].Address) != 0 {
+		t.Fatal(fmt.Sprintf("Err on entry.Owner: Got %s, expected %s", entry.Owner, user[0].Address))
 	}
 
 	// update the data as the owner, make sure still there
-	data = "if not now, when"
+	numDesiredBlocks = uint64(2)
+	data = "these are amongst the things I wish to bestow upon the youth of generations come: a safe supply of honey, and a better money. For what else shall they need"
+	amt = fee + numDesiredBlocks*types.NameCostPerByte*types.NameCostPerBlock*types.BaseEntryCost(name, data)
 	tx = makeDefaultNameTx(t, typ, name, data, amt, fee)
 	broadcastTx(t, typ, tx)
+	// commit block
 	waitForEvent(t, con, eid, true, func() {}, doNothing)
 	mempoolCount = 0
 	entry = getNameRegEntry(t, typ, name)
 	if entry.Data != data {
-		t.Fatal(fmt.Sprintf("Got %s, expected %s", entry.Data, data))
+		t.Fatal(fmt.Sprintf("Err on entry.Data: Got %s, expected %s", entry.Data, data))
 	}
 
 	// try to update as non owner, should fail
@@ -231,5 +242,20 @@ func testNameReg(t *testing.T, typ string) {
 	_, err := client.BroadcastTx(tx)
 	if err == nil {
 		t.Fatal("Expected error on NameTx")
+	}
+
+	// commit block
+	waitForEvent(t, con, eid, true, func() {}, doNothing)
+
+	// now the entry should be expired, so we can update as non owner
+	_, err = client.BroadcastTx(tx)
+	waitForEvent(t, con, eid, true, func() {}, doNothing)
+	mempoolCount = 0
+	entry = getNameRegEntry(t, typ, name)
+	if entry.Data != data2 {
+		t.Fatal(fmt.Sprintf("Error on entry.Data: Got %s, expected %s", entry.Data, data2))
+	}
+	if bytes.Compare(entry.Owner, user[1].Address) != 0 {
+		t.Fatal(fmt.Sprintf("Err on entry.Owner: Got %s, expected %s", entry.Owner, user[1].Address))
 	}
 }
