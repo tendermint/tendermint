@@ -68,7 +68,7 @@ func (t *IAVLTree) Copy() Tree {
 	}
 }
 
-func (t *IAVLTree) Size() uint64 {
+func (t *IAVLTree) Size() uint {
 	if t.root == nil {
 		return 0
 	}
@@ -106,7 +106,7 @@ func (t *IAVLTree) Hash() []byte {
 	return hash
 }
 
-func (t *IAVLTree) HashWithCount() ([]byte, uint64) {
+func (t *IAVLTree) HashWithCount() ([]byte, uint) {
 	if t.root == nil {
 		return nil, 0
 	}
@@ -130,14 +130,14 @@ func (t *IAVLTree) Load(hash []byte) {
 	}
 }
 
-func (t *IAVLTree) Get(key interface{}) (index uint64, value interface{}) {
+func (t *IAVLTree) Get(key interface{}) (index uint, value interface{}) {
 	if t.root == nil {
 		return 0, nil
 	}
 	return t.root.get(t, key)
 }
 
-func (t *IAVLTree) GetByIndex(index uint64) (key interface{}, value interface{}) {
+func (t *IAVLTree) GetByIndex(index uint) (key interface{}, value interface{}) {
 	if t.root == nil {
 		return nil, nil
 	}
@@ -220,6 +220,7 @@ func (ndb *nodeDB) GetNode(t *IAVLTree, hash []byte) *IAVLNode {
 		if err != nil {
 			panic(Fmt("Error reading IAVLNode. bytes: %X  error: %v", buf, err))
 		}
+		node.hash = hash
 		node.persisted = true
 		ndb.cacheNode(node)
 		return node
@@ -240,7 +241,7 @@ func (ndb *nodeDB) SaveNode(t *IAVLTree, node *IAVLNode) {
 	}*/
 	// Save node bytes to db
 	buf := bytes.NewBuffer(nil)
-	_, _, err := node.writeToCountHashes(t, buf)
+	_, err := node.writePersistBytes(t, buf)
 	if err != nil {
 		panic(err)
 	}

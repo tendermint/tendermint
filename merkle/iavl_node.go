@@ -1,6 +1,7 @@
 package merkle
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"io"
 
@@ -12,8 +13,8 @@ import (
 type IAVLNode struct {
 	key       interface{}
 	value     interface{}
-	size      uint64
 	height    uint8
+	size      uint
 	hash      []byte
 	leftHash  []byte
 	leftNode  *IAVLNode
@@ -24,27 +25,28 @@ type IAVLNode struct {
 
 func NewIAVLNode(key interface{}, value interface{}) *IAVLNode {
 	return &IAVLNode{
-		key:   key,
-		value: value,
-		size:  1,
+		key:    key,
+		value:  value,
+		height: 0,
+		size:   1,
 	}
 }
 
+// NOTE: The hash is not saved or set.  The caller should set the hash afterwards.
+// (Presumably the caller already has the hash)
 func ReadIAVLNode(t *IAVLTree, r io.Reader, n *int64, err *error) *IAVLNode {
 	node := &IAVLNode{}
 
-	// node header & key
+	// node header
 	node.height = binary.ReadUint8(r, n, err)
-	node.size = binary.ReadUint64(r, n, err)
-	node.key = t.keyCodec.Decode(r, n, err)
-	if *err != nil {
-		panic(*err)
-	}
+	node.size = binary.ReadUvarint(r, n, err)
+	node.key = decodeByteSlice(t.keyCodec, r, n, err)
 
-	// node value or children.
 	if node.height == 0 {
-		node.value = t.valueCodec.Decode(r, n, err)
+		// value
+		node.value = decodeByteSlice(t.valueCodec, r, n, err)
 	} else {
+		// children
 		node.leftHash = binary.ReadByteSlice(r, n, err)
 		node.rightHash = binary.ReadByteSlice(r, n, err)
 	}
@@ -60,8 +62,8 @@ func (node *IAVLNode) _copy() *IAVLNode {
 	}
 	return &IAVLNode{
 		key:       node.key,
-		size:      node.size,
 		height:    node.height,
+		size:      node.size,
 		hash:      nil, // Going to be mutated anyways.
 		leftHash:  node.leftHash,
 		leftNode:  node.leftNode,
@@ -86,7 +88,7 @@ func (node *IAVLNode) has(t *IAVLTree, key interface{}) (has bool) {
 	}
 }
 
-func (node *IAVLNode) get(t *IAVLTree, key interface{}) (index uint64, value interface{}) {
+func (node *IAVLNode) get(t *IAVLTree, key interface{}) (index uint, value interface{}) {
 	if node.height == 0 {
 		if t.keyCodec.Compare(node.key, key) == 0 {
 			return 0, node.value
@@ -105,7 +107,7 @@ func (node *IAVLNode) get(t *IAVLTree, key interface{}) (index uint64, value int
 	}
 }
 
-func (node *IAVLNode) getByIndex(t *IAVLTree, index uint64) (key interface{}, value interface{}) {
+func (node *IAVLNode) getByIndex(t *IAVLTree, index uint) (key interface{}, value interface{}) {
 	if node.height == 0 {
 		if index == 0 {
 			return node.key, node.value
@@ -125,19 +127,59 @@ func (node *IAVLNode) getByIndex(t *IAVLTree, index uint64) (key interface{}, va
 }
 
 // NOTE: sets hashes recursively
-func (node *IAVLNode) hashWithCount(t *IAVLTree) ([]byte, uint64) {
+func (node *IAVLNode) hashWithCount(t *IAVLTree) ([]byte, uint) {
 	if node.hash != nil {
 		return node.hash, 0
 	}
 
 	hasher := sha256.New()
-	_, hashCount, err := node.writeToCountHashes(t, hasher)
+	buf := new(bytes.Buffer)
+	_, hashCount, err := node.writeHashBytes(t, buf)
 	if err != nil {
 		panic(err)
 	}
+	// fmt.Printf("Wrote IAVL hash bytes: %X\n", buf.Bytes())
+	hasher.Write(buf.Bytes())
 	node.hash = hasher.Sum(nil)
+	// fmt.Printf("Write IAVL hash: %X\n", node.hash)
 
 	return node.hash, hashCount + 1
+}
+
+// NOTE: sets hashes recursively
+func (node *IAVLNode) writeHashBytes(t *IAVLTree, w io.Writer) (n int64, hashCount uint, err error) {
+	// height & size
+	binary.WriteUint8(node.height, w, &n, &err)
+	binary.WriteUvarint(node.size, w, &n, &err)
+	// key is not written for inner nodes, unlike writePersistBytes
+
+	if node.height == 0 {
+		// key & value
+		encodeByteSlice(node.key, t.keyCodec, w, &n, &err)
+		encodeByteSlice(node.value, t.valueCodec, w, &n, &err)
+	} else {
+		// left
+		if node.leftNode != nil {
+			leftHash, leftCount := node.leftNode.hashWithCount(t)
+			node.leftHash = leftHash
+			hashCount += leftCount
+		}
+		if node.leftHash == nil {
+			panic("node.leftHash was nil in writeHashBytes")
+		}
+		binary.WriteByteSlice(node.leftHash, w, &n, &err)
+		// right
+		if node.rightNode != nil {
+			rightHash, rightCount := node.rightNode.hashWithCount(t)
+			node.rightHash = rightHash
+			hashCount += rightCount
+		}
+		if node.rightHash == nil {
+			panic("node.rightHash was nil in writeHashBytes")
+		}
+		binary.WriteByteSlice(node.rightHash, w, &n, &err)
+	}
+	return
 }
 
 // NOTE: sets hashes recursively
@@ -163,6 +205,32 @@ func (node *IAVLNode) save(t *IAVLTree) []byte {
 	// save node
 	t.ndb.SaveNode(t, node)
 	return node.hash
+}
+
+// NOTE: sets hashes recursively
+func (node *IAVLNode) writePersistBytes(t *IAVLTree, w io.Writer) (n int64, err error) {
+	// node header
+	binary.WriteUint8(node.height, w, &n, &err)
+	binary.WriteUvarint(node.size, w, &n, &err)
+	// key (unlike writeHashBytes, key is written for inner nodes)
+	encodeByteSlice(node.key, t.keyCodec, w, &n, &err)
+
+	if node.height == 0 {
+		// value
+		encodeByteSlice(node.value, t.valueCodec, w, &n, &err)
+	} else {
+		// left
+		if node.leftHash == nil {
+			panic("node.leftHash was nil in writePersistBytes")
+		}
+		binary.WriteByteSlice(node.leftHash, w, &n, &err)
+		// right
+		if node.rightHash == nil {
+			panic("node.rightHash was nil in writePersistBytes")
+		}
+		binary.WriteByteSlice(node.rightHash, w, &n, &err)
+	}
+	return
 }
 
 func (node *IAVLNode) set(t *IAVLTree, key interface{}, value interface{}) (newSelf *IAVLNode, updated bool) {
@@ -249,44 +317,6 @@ func (node *IAVLNode) remove(t *IAVLTree, key interface{}) (
 			return nil, node.balance(t), newKey, value, true
 		}
 	}
-}
-
-// NOTE: sets hashes recursively
-func (node *IAVLNode) writeToCountHashes(t *IAVLTree, w io.Writer) (n int64, hashCount uint64, err error) {
-	// height & size & key
-	binary.WriteUint8(node.height, w, &n, &err)
-	binary.WriteUint64(node.size, w, &n, &err)
-	t.keyCodec.Encode(node.key, w, &n, &err)
-	if err != nil {
-		return
-	}
-
-	if node.height == 0 {
-		// value
-		t.valueCodec.Encode(node.value, w, &n, &err)
-	} else {
-		// left
-		if node.leftNode != nil {
-			leftHash, leftCount := node.leftNode.hashWithCount(t)
-			node.leftHash = leftHash
-			hashCount += leftCount
-		}
-		if node.leftHash == nil {
-			panic("node.leftHash was nil in save")
-		}
-		binary.WriteByteSlice(node.leftHash, w, &n, &err)
-		// right
-		if node.rightNode != nil {
-			rightHash, rightCount := node.rightNode.hashWithCount(t)
-			node.rightHash = rightHash
-			hashCount += rightCount
-		}
-		if node.rightHash == nil {
-			panic("node.rightHash was nil in save")
-		}
-		binary.WriteByteSlice(node.rightHash, w, &n, &err)
-	}
-	return
 }
 
 func (node *IAVLNode) getLeftNode(t *IAVLTree) *IAVLNode {
@@ -405,4 +435,26 @@ func (node *IAVLNode) rmd(t *IAVLTree) *IAVLNode {
 		return node
 	}
 	return node.getRightNode(t).rmd(t)
+}
+
+//--------------------------------------------------------------------------------
+
+// Read a (length prefixed) byteslice then decode the object using the codec
+func decodeByteSlice(codec binary.Codec, r io.Reader, n *int64, err *error) interface{} {
+	bytez := binary.ReadByteSlice(r, n, err)
+	if *err != nil {
+		return nil
+	}
+	n_ := new(int64)
+	return codec.Decode(bytes.NewBuffer(bytez), n_, err)
+}
+
+// Encode object using codec, then write a (length prefixed) byteslice.
+func encodeByteSlice(o interface{}, codec binary.Codec, w io.Writer, n *int64, err *error) {
+	buf, n_ := new(bytes.Buffer), new(int64)
+	codec.Encode(o, buf, n_, err)
+	if *err != nil {
+		return
+	}
+	binary.WriteByteSlice(buf.Bytes(), w, n, err)
 }

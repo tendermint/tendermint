@@ -6,6 +6,7 @@ import (
 
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
+	. "github.com/tendermint/tendermint/common/test"
 	"github.com/tendermint/tendermint/db"
 
 	"runtime"
@@ -59,7 +60,7 @@ func P(n *IAVLNode) string {
 
 func TestUnit(t *testing.T) {
 
-	expectHash := func(tree *IAVLTree, hashCount uint64) {
+	expectHash := func(tree *IAVLTree, hashCount uint) {
 		// ensure number of new hash calculations is as expected.
 		hash, count := tree.HashWithCount()
 		if count != hashCount {
@@ -77,7 +78,7 @@ func TestUnit(t *testing.T) {
 		}
 	}
 
-	expectSet := func(tree *IAVLTree, i int, repr string, hashCount uint64) {
+	expectSet := func(tree *IAVLTree, i int, repr string, hashCount uint) {
 		origNode := tree.root
 		updated := tree.Set(i, "")
 		// ensure node was added & structure is as expected.
@@ -90,7 +91,7 @@ func TestUnit(t *testing.T) {
 		tree.root = origNode
 	}
 
-	expectRemove := func(tree *IAVLTree, i int, repr string, hashCount uint64) {
+	expectRemove := func(tree *IAVLTree, i int, repr string, hashCount uint) {
 		origNode := tree.root
 		value, removed := tree.Remove(i)
 		// ensure node was added & structure is as expected.
@@ -167,7 +168,7 @@ func TestIntegration(t *testing.T) {
 		if !updated {
 			t.Error("should have been updated")
 		}
-		if tree.Size() != uint64(i+1) {
+		if tree.Size() != uint(i+1) {
 			t.Error("size was wrong", tree.Size(), i+1)
 		}
 	}
@@ -202,7 +203,7 @@ func TestIntegration(t *testing.T) {
 				t.Error("wrong value")
 			}
 		}
-		if tree.Size() != uint64(len(records)-(i+1)) {
+		if tree.Size() != uint(len(records)-(i+1)) {
 			t.Error("size was wrong", tree.Size(), (len(records) - (i + 1)))
 		}
 	}
@@ -235,6 +236,71 @@ func TestPersistence(t *testing.T) {
 			t.Fatalf("Invalid value. Expected %v, got %v", value, t2value)
 		}
 	}
+}
+
+func testProof(t *testing.T, proof *IAVLProof) {
+	// Proof must verify.
+	if !proof.Verify() {
+		t.Errorf("Invalid proof. Verification failed.")
+		return
+	}
+	// Write/Read then verify.
+	proofBytes := binary.BinaryBytes(proof)
+	n, err := int64(0), error(nil)
+	proof2 := binary.ReadBinary(&IAVLProof{}, bytes.NewBuffer(proofBytes), &n, &err).(*IAVLProof)
+	if err != nil {
+		t.Errorf("Failed to read IAVLProof from bytes: %v", err)
+		return
+	}
+	if !proof2.Verify() {
+		t.Errorf("Invalid proof after write/read. Verification failed.")
+		return
+	}
+	// Random mutations must not verify
+	for i := 0; i < 3; i++ {
+		badProofBytes := MutateByteSlice(proofBytes)
+		n, err := int64(0), error(nil)
+		badProof := binary.ReadBinary(&IAVLProof{}, bytes.NewBuffer(badProofBytes), &n, &err).(*IAVLProof)
+		if err != nil {
+			continue // This is fine.
+		}
+		if badProof.Verify() {
+			t.Errorf("Proof was still valid after a random mutation:\n%X\n%X", proofBytes, badProofBytes)
+		}
+	}
+}
+
+func TestConstructProof(t *testing.T) {
+	// Construct some random tree
+	db := db.NewMemDB()
+	var tree *IAVLTree = NewIAVLTree(binary.BasicCodec, binary.BasicCodec, 100, db)
+	for i := 0; i < 1000; i++ {
+		key, value := randstr(20), randstr(20)
+		tree.Set(key, value)
+	}
+
+	// Persist the items so far
+	tree.Save()
+
+	// Add more items so it's not all persisted
+	for i := 0; i < 100; i++ {
+		key, value := randstr(20), randstr(20)
+		tree.Set(key, value)
+	}
+
+	// Now for each item, construct a proof and verify
+	tree.Iterate(func(key interface{}, value interface{}) bool {
+		proof := tree.ConstructProof(key)
+		if !bytes.Equal(proof.Root, tree.Hash()) {
+			t.Errorf("Invalid proof. Expected root %X, got %X", tree.Hash(), proof.Root)
+		}
+		if !proof.Verify() {
+			t.Errorf("Invalid proof. Verification failed.")
+		}
+		testProof(t, proof)
+		return false
+	})
+
 }
 
 func BenchmarkImmutableAvlTree(b *testing.B) {

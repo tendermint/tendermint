@@ -32,7 +32,7 @@ func TestVarint(t *testing.T) {
 
 	// Near zero
 	check(-1, "F101")
-	check(0, "0100")
+	check(0, "00")
 	check(1, "0101")
 	// Positives
 	check(1<<32-1, "04FFFFFFFF")

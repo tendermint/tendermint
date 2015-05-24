@@ -160,6 +160,9 @@ func ReadUint64(r io.Reader, n *int64, err *error) uint64 {
 
 func uvarintSize(i_ uint) int {
 	i := uint64(i_)
+	if i == 0 {
+		return 0
+	}
 	if i < 1<<8 {
 		return 1
 	}
@@ -197,9 +200,11 @@ func WriteVarint(i int, w io.Writer, n *int64, err *error) {
 	} else {
 		WriteUint8(uint8(size), w, n, err)
 	}
-	buf := make([]byte, 8)
-	binary.BigEndian.PutUint64(buf, uint64(i))
-	WriteTo(buf[(8-size):], w, n, err)
+	if size > 0 {
+		buf := make([]byte, 8)
+		binary.BigEndian.PutUint64(buf, uint64(i))
+		WriteTo(buf[(8-size):], w, n, err)
+	}
 	*n += int64(1 + size)
 }
 
@@ -215,7 +220,6 @@ func ReadVarint(r io.Reader, n *int64, err *error) int {
 		return 0
 	}
 	if size == 0 {
-		setFirstErr(err, errors.New("Varint underflow"))
 		return 0
 	}
 	buf := make([]byte, 8)
@@ -234,9 +238,11 @@ func ReadVarint(r io.Reader, n *int64, err *error) int {
 func WriteUvarint(i uint, w io.Writer, n *int64, err *error) {
 	var size = uvarintSize(i)
 	WriteUint8(uint8(size), w, n, err)
-	buf := make([]byte, 8)
-	binary.BigEndian.PutUint64(buf, uint64(i))
-	WriteTo(buf[(8-size):], w, n, err)
+	if size > 0 {
+		buf := make([]byte, 8)
+		binary.BigEndian.PutUint64(buf, uint64(i))
+		WriteTo(buf[(8-size):], w, n, err)
+	}
 	*n += int64(1 + size)
 }
 
@@ -247,7 +253,6 @@ func ReadUvarint(r io.Reader, n *int64, err *error) uint {
 		return 0
 	}
 	if size == 0 {
-		setFirstErr(err, errors.New("Uvarint underflow"))
 		return 0
 	}
 	buf := make([]byte, 8)

@@ -62,6 +62,10 @@ func RandUint() uint {
 	return uint(rand.Int())
 }
 
+func RandInt() int {
+	return rand.Int()
+}
+
 // Distributed pseudo-exponentially to test for various cases
 func RandUint16Exp() uint16 {
 	bits := rand.Uint32() % 16
