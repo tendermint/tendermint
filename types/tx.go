@@ -42,7 +42,7 @@ Validation Txs:
  - DupeoutTx      Validator dupes out (equivocates)
 */
 type Tx interface {
-	WriteSignBytes(w io.Writer, n *int64, err *error)
+	account.Signable
 }
 
 // Types of Tx implementations
