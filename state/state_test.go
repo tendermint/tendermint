@@ -331,6 +331,44 @@ func TestNameTxs(t *testing.T) {
 	entry = state.GetNameRegEntry(name)
 	validateEntry(t, entry, name, data, privAccounts[1].Address, uint64(state.LastBlockHeight)+numDesiredBlocks)
 
+	// test removal
+	amt = fee
+	data = ""
+	tx, _ = types.NewNameTx(state, privAccounts[1].PubKey, name, data, amt, fee)
+	tx.Sign(privAccounts[1])
+	if err := execTxWithStateNewBlock(state, tx, true); err != nil {
+		t.Fatal(err)
+	}
+	entry = state.GetNameRegEntry(name)
+	if entry != nil {
+		t.Fatal("Expected removed entry to be nil")
+	}
+
+	// create entry by key0,
+	// test removal by key1 after expiry
+	name = "looking_good/karaoke_bar"
+	data = "some data"
+	amt = fee + numDesiredBlocks*types.NameCostPerByte*types.NameCostPerBlock*types.BaseEntryCost(name, data)
+	tx, _ = types.NewNameTx(state, privAccounts[0].PubKey, name, data, amt, fee)
+	tx.Sign(privAccounts[0])
+	if err := execTxWithState(state, tx, true); err != nil {
+		t.Fatal(err)
+	}
+	entry = state.GetNameRegEntry(name)
+	validateEntry(t, entry, name, data, privAccounts[0].Address, uint64(state.LastBlockHeight)+numDesiredBlocks)
+	state.LastBlockHeight = uint(entry.Expires)
+
+	amt = fee
+	data = ""
+	tx, _ = types.NewNameTx(state, privAccounts[1].PubKey, name, data, amt, fee)
+	tx.Sign(privAccounts[1])
+	if err := execTxWithStateNewBlock(state, tx, true); err != nil {
+		t.Fatal(err)
+	}
+	entry = state.GetNameRegEntry(name)
+	if entry != nil {
+		t.Fatal("Expected removed entry to be nil")
+	}
 }
 
 // TODO: test overflows.
