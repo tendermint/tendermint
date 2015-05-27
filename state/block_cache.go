@@ -245,7 +245,6 @@ func (cache *BlockCache) Sync() {
 
 	// Determine order for names
 	// note names may be of any length less than some limit
-	// and are arbitrary byte arrays...
 	nameStrs := []string{}
 	for nameStr := range cache.names {
 		nameStrs = append(nameStrs, nameStr)
@@ -256,9 +255,9 @@ func (cache *BlockCache) Sync() {
 	for _, nameStr := range nameStrs {
 		entry, removed, dirty := cache.names[nameStr].unpack()
 		if removed {
-			removed := cache.backend.RemoveNameRegEntry(entry.Name)
+			removed := cache.backend.RemoveNameRegEntry(nameStr)
 			if !removed {
-				panic(Fmt("Could not remove namereg entry to be removed: %X", entry.Name))
+				panic(Fmt("Could not remove namereg entry to be removed: %s", nameStr))
 			}
 		} else {
 			if entry == nil {

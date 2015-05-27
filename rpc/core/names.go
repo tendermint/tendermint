@@ -6,7 +6,6 @@ import (
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 )
 
-// XXX: need we be careful about rendering bytes as string or is that their problem ?
 func NameRegEntry(name string) (*ctypes.ResponseNameRegEntry, error) {
 	st := consensusState.GetState() // performs a copy
 	entry := st.GetNameRegEntry(name)
