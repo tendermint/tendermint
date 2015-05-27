@@ -180,7 +180,7 @@ func TestTxSequence(t *testing.T) {
 	for i := -1; i < 3; i++ {
 		sequence := acc0.Sequence + uint(i)
 		tx := types.NewSendTx()
-		tx.AddInputWithNonce(acc0PubKey, 1, uint64(sequence))
+		tx.AddInputWithNonce(acc0PubKey, 1, sequence)
 		tx.AddOutput(acc1.Address, 1)
 		tx.Inputs[0].Signature = privAccounts[0].Sign(tx)
 		stateCopy := state.Copy()
