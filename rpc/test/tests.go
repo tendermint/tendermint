@@ -237,7 +237,7 @@ func testNameReg(t *testing.T, typ string) {
 	// try to update as non owner, should fail
 	nonce := getNonce(t, typ, user[1].Address)
 	data2 := "this is not my beautiful house"
-	tx = types.NewNameTxWithNonce(user[1].PubKey, name, data2, amt, fee, nonce)
+	tx = types.NewNameTxWithNonce(user[1].PubKey, name, data2, amt, fee, nonce+1)
 	tx.Sign(user[1])
 	_, err := client.BroadcastTx(tx)
 	if err == nil {

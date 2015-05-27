@@ -94,7 +94,7 @@ func init() {
 func makeDefaultSendTx(t *testing.T, typ string, addr []byte, amt uint64) *types.SendTx {
 	nonce := getNonce(t, typ, user[0].Address)
 	tx := types.NewSendTx()
-	tx.AddInputWithNonce(user[0].PubKey, amt, nonce)
+	tx.AddInputWithNonce(user[0].PubKey, amt, nonce+1)
 	tx.AddOutput(addr, amt)
 	return tx
 }
@@ -114,7 +114,7 @@ func makeDefaultCallTx(t *testing.T, typ string, addr, code []byte, amt, gasLim,
 
 func makeDefaultNameTx(t *testing.T, typ string, name, value string, amt, fee uint64) *types.NameTx {
 	nonce := getNonce(t, typ, user[0].Address)
-	tx := types.NewNameTxWithNonce(user[0].PubKey, name, value, amt, fee, nonce)
+	tx := types.NewNameTxWithNonce(user[0].PubKey, name, value, amt, fee, nonce+1)
 	tx.Sign(user[0])
 	return tx
 }
@@ -123,7 +123,7 @@ func makeDefaultNameTx(t *testing.T, typ string, name, value string, amt, fee ui
 // rpc call wrappers (fail on err)
 
 // get an account's nonce
-func getNonce(t *testing.T, typ string, addr []byte) uint64 {
+func getNonce(t *testing.T, typ string, addr []byte) uint {
 	client := clients[typ]
 	ac, err := client.GetAccount(addr)
 	if err != nil {
@@ -132,7 +132,7 @@ func getNonce(t *testing.T, typ string, addr []byte) uint64 {
 	if ac.Account == nil {
 		return 0
 	}
-	return uint64(ac.Account.Sequence)
+	return ac.Account.Sequence
 }
 
 // get the account
