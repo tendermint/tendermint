@@ -197,18 +197,19 @@ FOR_LOOP:
 			// ask for status updates
 			go bcR.BroadcastStatusRequest()
 		case _ = <-switchToConsensusTicker.C:
-			// not thread safe access for numUnassigned and numWaiting but should be fine
+			// not thread safe access for numUnassigned and numPending but should be fine
 			// TODO make threadsafe and use exposed functions
-			log.Debug("Consensus ticker", "numUnassigned", bcR.pool.numUnassigned, "numWaiting", bcR.pool.numWaiting, "total", len(bcR.pool.requests))
+			outbound, inbound, _ := bcR.sw.NumPeers()
+			log.Debug("Consensus ticker", "numUnassigned", bcR.pool.numUnassigned, "numPending", bcR.pool.numPending,
+				"total", len(bcR.pool.requests), "outbound", outbound, "inbound", inbound)
 			// NOTE: this condition is very strict right now. may need to weaken
-			// if the max amount of requests are waiting and numUnassigned
-			// and we have some peers (say > 5), then we're caught up
-			maxWaiting := bcR.pool.numWaiting == maxWaitingRequests
-			peersUnavailable := bcR.pool.numWaiting == bcR.pool.numUnassigned
-			o, i, _ := bcR.sw.NumPeers()
-			enoughPeers := o+i >= 5
-			if maxWaiting && peersUnavailable && enoughPeers {
-				log.Warn("Time to switch to consensus reactor!", "height", bcR.pool.height)
+			// If all `maxPendingRequests` requests are unassigned
+			// and we have some peers (say >= 3), then we're caught up
+			maxPending := bcR.pool.numPending == maxPendingRequests
+			allUnassigned := bcR.pool.numPending == bcR.pool.numUnassigned
+			enoughPeers := outbound+inbound >= 3
+			if maxPending && allUnassigned && enoughPeers {
+				log.Info("Time to switch to consensus reactor!", "height", bcR.pool.height)
 				bcR.pool.Stop()
 				stateDB := dbm.GetDB("state")
 				state := sm.LoadState(stateDB)
