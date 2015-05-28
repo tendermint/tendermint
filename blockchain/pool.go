@@ -13,7 +13,7 @@ const (
 	maxTries              = 3
 	inputsChannelCapacity = 200
 	requestIntervalMS     = 500
-	maxPendingRequests    = 200
+	maxWaitingRequests    = 200
 	maxTotalRequests      = 300
 	maxRequestsPerPeer    = 300
 )
@@ -95,7 +95,7 @@ RUN_LOOP:
 			break RUN_LOOP
 		}
 		_, numWaiting := pool.GetStatus()
-		if numWaiting >= maxPendingRequests {
+		if numWaiting >= maxWaitingRequests {
 			// sleep for a bit.
 			time.Sleep(requestIntervalMS * time.Millisecond)
 		} else if len(pool.requests) >= maxTotalRequests {
