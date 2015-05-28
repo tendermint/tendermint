@@ -42,16 +42,17 @@ type ConsensusReactor struct {
 	conS       *ConsensusState
 
 	// if fast sync is running we don't really do anything
-	syncing bool
+	sync bool
 
 	evsw events.Fireable
 }
 
-func NewConsensusReactor(consensusState *ConsensusState, blockStore *bc.BlockStore) *ConsensusReactor {
+func NewConsensusReactor(consensusState *ConsensusState, blockStore *bc.BlockStore, sync bool) *ConsensusReactor {
 	conR := &ConsensusReactor{
 		blockStore: blockStore,
 		quit:       make(chan struct{}),
 		conS:       consensusState,
+		sync:       sync,
 	}
 	return conR
 }
@@ -61,7 +62,9 @@ func (conR *ConsensusReactor) Start(sw *p2p.Switch) {
 	if atomic.CompareAndSwapUint32(&conR.running, 0, 1) {
 		log.Info("Starting ConsensusReactor")
 		conR.sw = sw
-		conR.conS.Start()
+		if !conR.sync {
+			conR.conS.Start()
+		}
 		go conR.broadcastNewRoundStepRoutine()
 	}
 }
@@ -129,7 +132,7 @@ func (conR *ConsensusReactor) RemovePeer(peer *p2p.Peer, reason interface{}) {
 
 // Implements Reactor
 func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte) {
-	if conR.syncing || !conR.IsRunning() {
+	if conR.sync || !conR.IsRunning() {
 		return
 	}
 
@@ -235,20 +238,18 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 	}
 }
 
-// Sets whether or not we're using the blockchain reactor for syncing
-func (conR *ConsensusReactor) SetSyncing(syncing bool) {
-	conR.syncing = syncing
-}
-
 // Sets our private validator account for signing votes.
 func (conR *ConsensusReactor) SetPrivValidator(priv *sm.PrivValidator) {
 	conR.conS.SetPrivValidator(priv)
 }
 
-// Reset to some state.
-func (conR *ConsensusReactor) ResetToState(state *sm.State) {
+// Switch from the fast sync to the consensus:
+// reset the state, turn off fast sync, start the consensus-state-machine
+func (conR *ConsensusReactor) SwitchToConsensus(state *sm.State) {
 	conR.conS.updateToState(state, false)
 	conR.conS.newStepCh <- conR.conS.getRoundState()
+	conR.sync = false
+	conR.conS.Start()
 }
 
 // implements events.Eventable

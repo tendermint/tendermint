@@ -10,7 +10,6 @@ import (
 
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
-	dbm "github.com/tendermint/tendermint/db"
 	"github.com/tendermint/tendermint/events"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
@@ -33,8 +32,9 @@ const (
 )
 
 type consensusReactor interface {
-	SetSyncing(bool)
-	ResetToState(*sm.State)
+	// for when we switch from blockchain reactor and fast sync to
+	// the consensus machine
+	SwitchToConsensus(*sm.State)
 }
 
 // BlockchainReactor handles long-term catchup syncing.
@@ -211,11 +211,9 @@ FOR_LOOP:
 			if maxPending && allUnassigned && enoughPeers {
 				log.Info("Time to switch to consensus reactor!", "height", bcR.pool.height)
 				bcR.pool.Stop()
-				stateDB := dbm.GetDB("state")
-				state := sm.LoadState(stateDB)
 
-				bcR.sw.Reactor("CONSENSUS").(consensusReactor).ResetToState(state)
-				bcR.sw.Reactor("CONSENSUS").(consensusReactor).SetSyncing(false)
+				conR := bcR.sw.Reactor("CONSENSUS").(consensusReactor)
+				conR.SwitchToConsensus(bcR.state)
 
 				break FOR_LOOP
 			}

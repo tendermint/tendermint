@@ -87,14 +87,9 @@ func NewNode() *Node {
 
 	// Get ConsensusReactor
 	consensusState := consensus.NewConsensusState(state, blockStore, mempoolReactor)
-	consensusReactor := consensus.NewConsensusReactor(consensusState, blockStore)
+	consensusReactor := consensus.NewConsensusReactor(consensusState, blockStore, config.GetBool("fast_sync"))
 	if privValidator != nil {
 		consensusReactor.SetPrivValidator(privValidator)
-	}
-
-	// so the consensus reactor won't do anything until we're synced
-	if config.GetBool("fast_sync") {
-		consensusReactor.SetSyncing(true)
 	}
 
 	sw := p2p.NewSwitch()
