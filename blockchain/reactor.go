@@ -195,13 +195,14 @@ FOR_LOOP:
 			// ask for status updates
 			go bcR.BroadcastStatusRequest()
 		case _ = <-switchToConsensusTicker.C:
-			// not thread safe access for peerless and numPending but should be fine
-			log.Debug("Consensus ticker", "peerless", bcR.pool.peerless, "pending", bcR.pool.numPending, "total", bcR.pool.numTotal)
+			// not thread safe access for numUnassigned and numWaiting but should be fine
+			// TODO make threadsafe and use exposed functions
+			log.Debug("Consensus ticker", "numUnassigned", bcR.pool.numUnassigned, "numWaiting", bcR.pool.numWaiting, "total", len(bcR.pool.requests))
 			// NOTE: this condition is very strict right now. may need to weaken
-			// if the max amount of requests are pending and peerless
+			// if the max amount of requests are waiting and numUnassigned
 			// and we have some peers (say > 5), then we're caught up
-			maxPending := bcR.pool.numPending == maxPendingRequests
-			maxPeerless := bcR.pool.peerless == bcR.pool.numPending
+			maxPending := bcR.pool.numWaiting == maxPendingRequests
+			maxPeerless := bcR.pool.numUnassigned == bcR.pool.numWaiting
 			o, i, _ := bcR.sw.NumPeers()
 			enoughPeers := o+i >= 5
 			if maxPending && maxPeerless && enoughPeers {
