@@ -130,8 +130,8 @@ type SendTx struct {
 }
 
 func (tx *SendTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
-	// We hex encode the network name so we don't deal with escaping issues.
-	binary.WriteTo([]byte(Fmt(`{"network":"%X"`, config.GetString("network"))), w, n, err)
+	// We hex encode the chain_id so we don't deal with escaping issues.
+	binary.WriteTo([]byte(Fmt(`{"chain_id":"%X"`, config.GetString("chain_id"))), w, n, err)
 	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"inputs":[`, TxTypeSend)), w, n, err)
 	for i, in := range tx.Inputs {
 		in.WriteSignBytes(w, n, err)
@@ -164,8 +164,8 @@ type CallTx struct {
 }
 
 func (tx *CallTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
-	// We hex encode the network name so we don't deal with escaping issues.
-	binary.WriteTo([]byte(Fmt(`{"network":"%X"`, config.GetString("network"))), w, n, err)
+	// We hex encode the chain_id so we don't deal with escaping issues.
+	binary.WriteTo([]byte(Fmt(`{"chain_id":"%X"`, config.GetString("chain_id"))), w, n, err)
 	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"address":"%X","data":"%X"`, TxTypeCall, tx.Address, tx.Data)), w, n, err)
 	binary.WriteTo([]byte(Fmt(`,"fee":%v,"gas_limit":%v,"input":`, tx.Fee, tx.GasLimit)), w, n, err)
 	tx.Input.WriteSignBytes(w, n, err)
@@ -186,8 +186,8 @@ type BondTx struct {
 }
 
 func (tx *BondTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
-	// We hex encode the network name so we don't deal with escaping issues.
-	binary.WriteTo([]byte(Fmt(`{"network":"%X"`, config.GetString("network"))), w, n, err)
+	// We hex encode the chain_id so we don't deal with escaping issues.
+	binary.WriteTo([]byte(Fmt(`{"chain_id":"%X"`, config.GetString("chain_id"))), w, n, err)
 	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"inputs":[`, TxTypeBond)), w, n, err)
 	for i, in := range tx.Inputs {
 		in.WriteSignBytes(w, n, err)
@@ -220,8 +220,8 @@ type UnbondTx struct {
 }
 
 func (tx *UnbondTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
-	// We hex encode the network name so we don't deal with escaping issues.
-	binary.WriteTo([]byte(Fmt(`{"network":"%X"`, config.GetString("network"))), w, n, err)
+	// We hex encode the chain_id so we don't deal with escaping issues.
+	binary.WriteTo([]byte(Fmt(`{"chain_id":"%X"`, config.GetString("chain_id"))), w, n, err)
 	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"address":"%X","height":%v}]}`, TxTypeUnbond, tx.Address, tx.Height)), w, n, err)
 }
 
@@ -238,8 +238,8 @@ type RebondTx struct {
 }
 
 func (tx *RebondTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
-	// We hex encode the network name so we don't deal with escaping issues.
-	binary.WriteTo([]byte(Fmt(`{"network":"%X"`, config.GetString("network"))), w, n, err)
+	// We hex encode the chain_id so we don't deal with escaping issues.
+	binary.WriteTo([]byte(Fmt(`{"chain_id":"%X"`, config.GetString("chain_id"))), w, n, err)
 	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"address":"%X","height":%v}]}`, TxTypeRebond, tx.Address, tx.Height)), w, n, err)
 }
 

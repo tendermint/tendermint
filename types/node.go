@@ -7,7 +7,7 @@ import (
 
 type NodeInfo struct {
 	Moniker string `json:"moniker"`
-	Network string `json:"network"`
+	ChainID string `json:"chain_id"`
 	Version string `json:"version"`
 
 	Host    string `json:"host"`
@@ -39,9 +39,9 @@ func (ni *NodeInfo) CompatibleWith(no *NodeInfo) error {
 		return fmt.Errorf("Peer is on a different minor version. Got %v, expected %v", om, im)
 	}
 
-	// nodes must be on the same network
-	if ni.Network != no.Network {
-		return fmt.Errorf("Peer is on a different network. Got %v, expected %v", no.Network, ni.Network)
+	// nodes must be on the same chain_id
+	if ni.ChainID != no.ChainID {
+		return fmt.Errorf("Peer is on a different chain_id. Got %v, expected %v", no.ChainID, ni.ChainID)
 	}
 
 	return nil

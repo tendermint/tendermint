@@ -23,8 +23,8 @@ type Block struct {
 // Basic validation that doesn't involve state data.
 func (b *Block) ValidateBasic(lastBlockHeight uint, lastBlockHash []byte,
 	lastBlockParts PartSetHeader, lastBlockTime time.Time) error {
-	if b.Network != config.GetString("network") {
-		return errors.New("Wrong Block.Header.Network")
+	if b.ChainID != config.GetString("chain_id") {
+		return errors.New("Wrong Block.Header.ChainID")
 	}
 	if b.Height != lastBlockHeight+1 {
 		return errors.New("Wrong Block.Header.Height")
@@ -122,7 +122,7 @@ func (b *Block) StringShort() string {
 //-----------------------------------------------------------------------------
 
 type Header struct {
-	Network        string        `json:"network"`
+	ChainID        string        `json:"chain_id"`
 	Height         uint          `json:"height"`
 	Time           time.Time     `json:"time"`
 	Fees           uint64        `json:"fees"`
@@ -154,7 +154,7 @@ func (h *Header) StringIndented(indent string) string {
 		return "nil-Header"
 	}
 	return fmt.Sprintf(`Header{
-%s  Network:        %v
+%s  ChainID:        %v
 %s  Height:         %v
 %s  Time:           %v
 %s  Fees:           %v
@@ -163,7 +163,7 @@ func (h *Header) StringIndented(indent string) string {
 %s  LastBlockParts: %v
 %s  StateHash:      %X
 %s}#%X`,
-		indent, h.Network,
+		indent, h.ChainID,
 		indent, h.Height,
 		indent, h.Time,
 		indent, h.Fees,

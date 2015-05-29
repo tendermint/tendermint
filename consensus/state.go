@@ -16,7 +16,7 @@ Consensus State Machine Overview:
 * The NewHeight is a transition period after the height is incremented,
   where the node still receives late commits before potentially proposing.
   The height should be incremented because a block had been
-  "committed by the network", and clients should see that
+  "committed by the chain_id", and clients should see that
   reflected as a new height.
 
                             +-------------------------------------+
@@ -656,7 +656,7 @@ func (cs *ConsensusState) RunActionPropose(height uint, round uint) {
 		txs := cs.mempoolReactor.Mempool.GetProposalTxs()
 		block = &types.Block{
 			Header: &types.Header{
-				Network:        config.GetString("network"),
+				ChainID:        config.GetString("chain_id"),
 				Height:         cs.Height,
 				Time:           time.Now(),
 				Fees:           0, // TODO fees

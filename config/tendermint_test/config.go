@@ -60,13 +60,13 @@ func GetConfig(rootDir string) cfg.Config {
 	}
 
 	// Set defaults or panic
-	if !mapConfig.IsSet("network") {
-		Exit("Must set 'network'")
+	if mapConfig.IsSet("chain_id") {
+		Exit("Cannot set 'chain_id' via config.toml")
 	}
 	if mapConfig.IsSet("version") {
 		Exit("Cannot set 'version' via config.toml")
 	}
-	// mapConfig.SetDefault("network", "tendermint_testnet0")
+	mapConfig.SetDefault("chain_id", "tendermint_test")
 	mapConfig.SetDefault("version", "0.3.0")
 	mapConfig.SetDefault("genesis_file", rootDir+"/genesis.json")
 	mapConfig.SetDefault("moniker", "anonymous")
@@ -90,7 +90,6 @@ func ensureDefault(mapConfig cfg.MapConfig, key string, value interface{}) {
 var defaultConfigTmpl = `# This is a TOML config file.
 # For more information, see https://github.com/toml-lang/toml
 
-network = "tendermint_test"
 moniker = "__MONIKER__"
 node_laddr = "0.0.0.0:36656"
 seeds = ""
@@ -106,6 +105,7 @@ func defaultConfig(moniker string) (defaultConfig string) {
 }
 
 var defaultGenesis = `{
+  "chain_id" : "tendermint_test",
   "accounts": [
     {
       "address": "1D7A91CB32F758A02EBB9BE1FB6F8DEE56F90D42",

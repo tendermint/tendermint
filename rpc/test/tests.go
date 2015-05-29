@@ -15,9 +15,9 @@ func testStatus(t *testing.T, typ string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resp.Network != config.GetString("network") {
-		t.Fatal(fmt.Errorf("Network mismatch: got %s expected %s",
-			resp.Network, config.Get("network")))
+	if resp.ChainID != config.GetString("chain_id") {
+		t.Fatal(fmt.Errorf("ChainID mismatch: got %s expected %s",
+			resp.ChainID, config.Get("chain_id")))
 	}
 }
 
