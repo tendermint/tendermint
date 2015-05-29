@@ -42,7 +42,7 @@ Validation Txs:
  - DupeoutTx      Validator dupes out (equivocates)
 */
 type Tx interface {
-	WriteSignBytes(w io.Writer, n *int64, err *error)
+	WriteSignBytes(chainID string, w io.Writer, n *int64, err *error)
 }
 
 // Types of Tx implementations
@@ -129,9 +129,9 @@ type SendTx struct {
 	Outputs []*TxOutput `json:"outputs"`
 }
 
-func (tx *SendTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
+func (tx *SendTx) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
 	// We hex encode the chain_id so we don't deal with escaping issues.
-	binary.WriteTo([]byte(Fmt(`{"chain_id":"%X"`, config.GetString("chain_id"))), w, n, err)
+	binary.WriteTo([]byte(Fmt(`{"chain_id":"%X"`, chainID)), w, n, err)
 	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"inputs":[`, TxTypeSend)), w, n, err)
 	for i, in := range tx.Inputs {
 		in.WriteSignBytes(w, n, err)
@@ -163,9 +163,9 @@ type CallTx struct {
 	Data     []byte   `json:"data"`
 }
 
-func (tx *CallTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
+func (tx *CallTx) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
 	// We hex encode the chain_id so we don't deal with escaping issues.
-	binary.WriteTo([]byte(Fmt(`{"chain_id":"%X"`, config.GetString("chain_id"))), w, n, err)
+	binary.WriteTo([]byte(Fmt(`{"chain_id":"%X"`, chainID)), w, n, err)
 	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"address":"%X","data":"%X"`, TxTypeCall, tx.Address, tx.Data)), w, n, err)
 	binary.WriteTo([]byte(Fmt(`,"fee":%v,"gas_limit":%v,"input":`, tx.Fee, tx.GasLimit)), w, n, err)
 	tx.Input.WriteSignBytes(w, n, err)
@@ -185,9 +185,9 @@ type BondTx struct {
 	UnbondTo  []*TxOutput              `json:"unbond_to"`
 }
 
-func (tx *BondTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
+func (tx *BondTx) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
 	// We hex encode the chain_id so we don't deal with escaping issues.
-	binary.WriteTo([]byte(Fmt(`{"chain_id":"%X"`, config.GetString("chain_id"))), w, n, err)
+	binary.WriteTo([]byte(Fmt(`{"chain_id":"%X"`, chainID)), w, n, err)
 	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"inputs":[`, TxTypeBond)), w, n, err)
 	for i, in := range tx.Inputs {
 		in.WriteSignBytes(w, n, err)
@@ -219,9 +219,9 @@ type UnbondTx struct {
 	Signature account.SignatureEd25519 `json:"signature"`
 }
 
-func (tx *UnbondTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
+func (tx *UnbondTx) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
 	// We hex encode the chain_id so we don't deal with escaping issues.
-	binary.WriteTo([]byte(Fmt(`{"chain_id":"%X"`, config.GetString("chain_id"))), w, n, err)
+	binary.WriteTo([]byte(Fmt(`{"chain_id":"%X"`, chainID)), w, n, err)
 	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"address":"%X","height":%v}]}`, TxTypeUnbond, tx.Address, tx.Height)), w, n, err)
 }
 
@@ -237,9 +237,9 @@ type RebondTx struct {
 	Signature account.SignatureEd25519 `json:"signature"`
 }
 
-func (tx *RebondTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
+func (tx *RebondTx) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
 	// We hex encode the chain_id so we don't deal with escaping issues.
-	binary.WriteTo([]byte(Fmt(`{"chain_id":"%X"`, config.GetString("chain_id"))), w, n, err)
+	binary.WriteTo([]byte(Fmt(`{"chain_id":"%X"`, chainID)), w, n, err)
 	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"address":"%X","height":%v}]}`, TxTypeRebond, tx.Address, tx.Height)), w, n, err)
 }
 
@@ -255,7 +255,7 @@ type DupeoutTx struct {
 	VoteB   Vote   `json:"vote_b"`
 }
 
-func (tx *DupeoutTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
+func (tx *DupeoutTx) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
 	panic("DupeoutTx has no sign bytes")
 }
 
@@ -265,7 +265,7 @@ func (tx *DupeoutTx) String() string {
 
 //-----------------------------------------------------------------------------
 
-func TxId(tx Tx) []byte {
-	signBytes := account.SignBytes(tx)
+func TxId(chainID string, tx Tx) []byte {
+	signBytes := account.SignBytes(chainID, tx)
 	return binary.BinaryRipemd160(signBytes)
 }

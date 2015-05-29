@@ -15,9 +15,9 @@ func testStatus(t *testing.T, typ string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resp.ChainID != config.GetString("chain_id") {
+	if resp.ChainID != chainID {
 		t.Fatal(fmt.Errorf("ChainID mismatch: got %s expected %s",
-			resp.ChainID, config.Get("chain_id")))
+			resp.ChainID, chainID))
 	}
 }
 
@@ -57,9 +57,9 @@ func testSignedTx(t *testing.T, typ string) {
 func testOneSignTx(t *testing.T, typ string, addr []byte, amt uint64) {
 	tx := makeDefaultSendTx(t, typ, addr, amt)
 	tx2 := signTx(t, typ, tx, user[0])
-	tx2hash := account.HashSignBytes(tx2)
-	tx.SignInput(0, user[0])
-	txhash := account.HashSignBytes(tx)
+	tx2hash := account.HashSignBytes(chainID, tx2)
+	tx.SignInput(chainID, 0, user[0])
+	txhash := account.HashSignBytes(chainID, tx)
 	if bytes.Compare(txhash, tx2hash) != 0 {
 		t.Fatal("Got different signatures for signing via rpc vs tx_utils")
 	}
@@ -88,8 +88,8 @@ func testBroadcastTx(t *testing.T, typ string) {
 	tx2 := txs[mempoolCount-1].(*types.SendTx)
 	n, err := new(int64), new(error)
 	buf1, buf2 := new(bytes.Buffer), new(bytes.Buffer)
-	tx.WriteSignBytes(buf1, n, err)
-	tx2.WriteSignBytes(buf2, n, err)
+	tx.WriteSignBytes(chainID, buf1, n, err)
+	tx2.WriteSignBytes(chainID, buf2, n, err)
 	if bytes.Compare(buf1.Bytes(), buf2.Bytes()) != 0 {
 		t.Fatal("inconsistent hashes for mempool tx and sent tx")
 	}

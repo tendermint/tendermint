@@ -33,7 +33,7 @@ func ExecBlock(s *State, block *types.Block, blockPartsHeader types.PartSetHeade
 // at an invalid state.  Copy the state before calling execBlock!
 func execBlock(s *State, block *types.Block, blockPartsHeader types.PartSetHeader) error {
 	// Basic block validation.
-	err := block.ValidateBasic(s.LastBlockHeight, s.LastBlockHash, s.LastBlockParts, s.LastBlockTime)
+	err := block.ValidateBasic(s.ChainID, s.LastBlockHeight, s.LastBlockHash, s.LastBlockParts, s.LastBlockTime)
 	if err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func execBlock(s *State, block *types.Block, blockPartsHeader types.PartSetHeade
 					BlockHash:  block.LastBlockHash,
 					BlockParts: block.LastBlockParts,
 				}
-				if val.PubKey.VerifyBytes(account.SignBytes(vote), commit.Signature) {
+				if val.PubKey.VerifyBytes(account.SignBytes(s.ChainID, vote), commit.Signature) {
 					sumVotingPower += val.VotingPower
 					return false
 				} else {
@@ -305,7 +305,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 		if err != nil {
 			return err
 		}
-		signBytes := account.SignBytes(tx)
+		signBytes := account.SignBytes(_s.ChainID, tx)
 		inTotal, err := validateInputs(accounts, signBytes, tx.Inputs)
 		if err != nil {
 			return err
@@ -353,7 +353,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 			log.Debug(Fmt("Can't find pubkey for %X", tx.Input.Address))
 			return err
 		}
-		signBytes := account.SignBytes(tx)
+		signBytes := account.SignBytes(_s.ChainID, tx)
 		err := validateInput(inAcc, signBytes, tx.Input)
 		if err != nil {
 			log.Debug(Fmt("validateInput failed on %X:", tx.Input.Address))
@@ -433,7 +433,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 
 			txCache.UpdateAccount(caller) // because we adjusted by input above, and bumped nonce maybe.
 			txCache.UpdateAccount(callee) // because we adjusted by input above.
-			vmach := vm.NewVM(txCache, params, caller.Address, account.HashSignBytes(tx))
+			vmach := vm.NewVM(txCache, params, caller.Address, account.HashSignBytes(_s.ChainID, tx))
 			vmach.SetFireable(evc)
 			// NOTE: Call() transfers the value from caller to callee iff call succeeds.
 
@@ -490,7 +490,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 			return err
 		}
 
-		signBytes := account.SignBytes(tx)
+		signBytes := account.SignBytes(_s.ChainID, tx)
 		inTotal, err := validateInputs(accounts, signBytes, tx.Inputs)
 		if err != nil {
 			return err
@@ -548,7 +548,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 		}
 
 		// Verify the signature
-		signBytes := account.SignBytes(tx)
+		signBytes := account.SignBytes(_s.ChainID, tx)
 		if !val.PubKey.VerifyBytes(signBytes, tx.Signature) {
 			return types.ErrTxInvalidSignature
 		}
@@ -573,7 +573,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 		}
 
 		// Verify the signature
-		signBytes := account.SignBytes(tx)
+		signBytes := account.SignBytes(_s.ChainID, tx)
 		if !val.PubKey.VerifyBytes(signBytes, tx.Signature) {
 			return types.ErrTxInvalidSignature
 		}
@@ -599,8 +599,8 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 				return types.ErrTxInvalidAddress
 			}
 		}
-		voteASignBytes := account.SignBytes(&tx.VoteA)
-		voteBSignBytes := account.SignBytes(&tx.VoteB)
+		voteASignBytes := account.SignBytes(_s.ChainID, &tx.VoteA)
+		voteBSignBytes := account.SignBytes(_s.ChainID, &tx.VoteB)
 		if !accused.PubKey.VerifyBytes(voteASignBytes, tx.VoteA.Signature) ||
 			!accused.PubKey.VerifyBytes(voteBSignBytes, tx.VoteB.Signature) {
 			return types.ErrTxInvalidSignature

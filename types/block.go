@@ -21,9 +21,9 @@ type Block struct {
 }
 
 // Basic validation that doesn't involve state data.
-func (b *Block) ValidateBasic(lastBlockHeight uint, lastBlockHash []byte,
+func (b *Block) ValidateBasic(chainID string, lastBlockHeight uint, lastBlockHash []byte,
 	lastBlockParts PartSetHeader, lastBlockTime time.Time) error {
-	if b.ChainID != config.GetString("chain_id") {
+	if b.ChainID != chainID {
 		return errors.New("Wrong Block.Header.ChainID")
 	}
 	if b.Height != lastBlockHeight+1 {
@@ -276,7 +276,7 @@ func (data *Data) Hash() []byte {
 	if data.hash == nil {
 		bs := make([]interface{}, len(data.Txs))
 		for i, tx := range data.Txs {
-			bs[i] = account.SignBytes(tx)
+			bs[i] = account.SignBytes(config.GetString("chain_id"), tx)
 		}
 		data.hash = merkle.HashFromBinaries(bs)
 	}

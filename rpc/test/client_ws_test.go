@@ -193,6 +193,6 @@ func TestWSCallCall(t *testing.T) {
 	waitForEvent(t, con, eid1, true, func() {
 		tx := makeDefaultCallTx(t, wsTyp, contractAddr2, nil, amt, gasLim, fee)
 		broadcastTx(t, wsTyp, tx)
-		*txid = account.HashSignBytes(tx)
+		*txid = account.HashSignBytes(chainID, tx)
 	}, unmarshalValidateCallCall(user[0].Address, returnVal, txid))
 }

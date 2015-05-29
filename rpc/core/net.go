@@ -66,7 +66,8 @@ func NetInfo() (*ctypes.ResponseNetInfo, error) {
 func Genesis() (*string, error) {
 	b, err := ioutil.ReadFile(config.GetString("genesis_file"))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return &string(b), nil
+	ret := string(b)
+	return &ret, nil
 }
