@@ -1,6 +1,8 @@
 package core
 
 import (
+	"io/ioutil"
+
 	dbm "github.com/tendermint/tendermint/db"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	sm "github.com/tendermint/tendermint/state"
@@ -27,7 +29,7 @@ func Status() (*ctypes.ResponseStatus, error) {
 
 	return &ctypes.ResponseStatus{
 		Moniker:           config.GetString("moniker"),
-		Network:           config.GetString("network"),
+		ChainID:           config.GetString("chain_id"),
 		Version:           config.GetString("version"),
 		GenesisHash:       genesisHash,
 		PubKey:            privValidator.PubKey,
@@ -56,4 +58,16 @@ func NetInfo() (*ctypes.ResponseNetInfo, error) {
 		Listeners: listeners,
 		Peers:     peers,
 	}, nil
+}
+
+//-----------------------------------------------------------------------------
+
+// returns pointer because the rpc-gen code returns nil (TODO!)
+func Genesis() (*string, error) {
+	b, err := ioutil.ReadFile(config.GetString("genesis_file"))
+	if err != nil {
+		return nil, err
+	}
+	ret := string(b)
+	return &ret, nil
 }

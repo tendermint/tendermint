@@ -109,7 +109,7 @@ func (privVal *PrivValidator) save() {
 }
 
 // TODO: test
-func (privVal *PrivValidator) SignVote(vote *types.Vote) error {
+func (privVal *PrivValidator) SignVote(chainID string, vote *types.Vote) error {
 	privVal.mtx.Lock()
 	defer privVal.mtx.Unlock()
 
@@ -140,15 +140,15 @@ func (privVal *PrivValidator) SignVote(vote *types.Vote) error {
 	privVal.save()
 
 	// Sign
-	privVal.SignVoteUnsafe(vote)
+	privVal.SignVoteUnsafe(chainID, vote)
 	return nil
 }
 
-func (privVal *PrivValidator) SignVoteUnsafe(vote *types.Vote) {
-	vote.Signature = privVal.PrivKey.Sign(account.SignBytes(vote)).(account.SignatureEd25519)
+func (privVal *PrivValidator) SignVoteUnsafe(chainID string, vote *types.Vote) {
+	vote.Signature = privVal.PrivKey.Sign(account.SignBytes(chainID, vote)).(account.SignatureEd25519)
 }
 
-func (privVal *PrivValidator) SignProposal(proposal *Proposal) error {
+func (privVal *PrivValidator) SignProposal(chainID string, proposal *Proposal) error {
 	privVal.mtx.Lock()
 	defer privVal.mtx.Unlock()
 	if privVal.LastHeight < proposal.Height ||
@@ -162,14 +162,14 @@ func (privVal *PrivValidator) SignProposal(proposal *Proposal) error {
 		privVal.save()
 
 		// Sign
-		proposal.Signature = privVal.PrivKey.Sign(account.SignBytes(proposal)).(account.SignatureEd25519)
+		proposal.Signature = privVal.PrivKey.Sign(account.SignBytes(chainID, proposal)).(account.SignatureEd25519)
 		return nil
 	} else {
 		return errors.New(fmt.Sprintf("Attempt of duplicate signing of proposal: Height %v, Round %v", proposal.Height, proposal.Round))
 	}
 }
 
-func (privVal *PrivValidator) SignRebondTx(rebondTx *types.RebondTx) error {
+func (privVal *PrivValidator) SignRebondTx(chainID string, rebondTx *types.RebondTx) error {
 	privVal.mtx.Lock()
 	defer privVal.mtx.Unlock()
 	if privVal.LastHeight < rebondTx.Height {
@@ -181,7 +181,7 @@ func (privVal *PrivValidator) SignRebondTx(rebondTx *types.RebondTx) error {
 		privVal.save()
 
 		// Sign
-		rebondTx.Signature = privVal.PrivKey.Sign(account.SignBytes(rebondTx)).(account.SignatureEd25519)
+		rebondTx.Signature = privVal.PrivKey.Sign(account.SignBytes(chainID, rebondTx)).(account.SignatureEd25519)
 		return nil
 	} else {
 		return errors.New(fmt.Sprintf("Attempt of duplicate signing of rebondTx: Height %v", rebondTx.Height))

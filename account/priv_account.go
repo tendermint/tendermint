@@ -52,8 +52,8 @@ func GenPrivAccountFromKey(privKeyBytes [64]byte) *PrivAccount {
 	}
 }
 
-func (privAccount *PrivAccount) Sign(o Signable) Signature {
-	return privAccount.PrivKey.Sign(SignBytes(o))
+func (privAccount *PrivAccount) Sign(chainID string, o Signable) Signature {
+	return privAccount.PrivKey.Sign(SignBytes(chainID, o))
 }
 
 func (privAccount *PrivAccount) String() string {

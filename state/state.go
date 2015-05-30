@@ -26,6 +26,7 @@ var (
 // NOTE: not goroutine-safe.
 type State struct {
 	DB                   dbm.DB
+	ChainID              string
 	LastBlockHeight      uint
 	LastBlockHash        []byte
 	LastBlockParts       types.PartSetHeader
@@ -46,6 +47,7 @@ func LoadState(db dbm.DB) *State {
 		return nil
 	} else {
 		r, n, err := bytes.NewReader(buf), new(int64), new(error)
+		s.ChainID = binary.ReadString(r, n, err)
 		s.LastBlockHeight = binary.ReadUvarint(r, n, err)
 		s.LastBlockHash = binary.ReadByteSlice(r, n, err)
 		s.LastBlockParts = binary.ReadBinary(types.PartSetHeader{}, r, n, err).(types.PartSetHeader)
@@ -71,6 +73,7 @@ func (s *State) Save() {
 	s.accounts.Save()
 	s.validatorInfos.Save()
 	buf, n, err := new(bytes.Buffer), new(int64), new(error)
+	binary.WriteString(s.ChainID, buf, n, err)
 	binary.WriteUvarint(s.LastBlockHeight, buf, n, err)
 	binary.WriteByteSlice(s.LastBlockHash, buf, n, err)
 	binary.WriteBinary(s.LastBlockParts, buf, n, err)
@@ -92,6 +95,7 @@ func (s *State) Save() {
 func (s *State) Copy() *State {
 	return &State{
 		DB:                   s.DB,
+		ChainID:              s.ChainID,
 		LastBlockHeight:      s.LastBlockHeight,
 		LastBlockHash:        s.LastBlockHash,
 		LastBlockParts:       s.LastBlockParts,

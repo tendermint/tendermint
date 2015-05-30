@@ -66,7 +66,7 @@ type Receipt struct {
 
 type ResponseStatus struct {
 	Moniker           string         `json:"moniker"`
-	Network           string         `json:"network"`
+	ChainID           string         `json:"chain_id"`
 	Version           string         `json:"version"`
 	GenesisHash       []byte         `json:"genesis_hash"`
 	PubKey            account.PubKey `json:"pub_key"`

@@ -232,7 +232,7 @@ FOR_LOOP:
 				firstPartsHeader := firstParts.Header()
 				// Finally, verify the first block using the second's validation.
 				err := bcR.state.BondedValidators.VerifyValidation(
-					first.Hash(), firstPartsHeader, first.Height, second.Validation)
+					bcR.state.ChainID, first.Hash(), firstPartsHeader, first.Height, second.Validation)
 				if err != nil {
 					log.Debug("error in validation", "error", err)
 					bcR.pool.RedoRequest(first.Height)

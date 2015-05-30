@@ -3,8 +3,8 @@ package consensus
 import (
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
-	sm "github.com/tendermint/tendermint/state"
 	_ "github.com/tendermint/tendermint/config/tendermint_test"
+	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 
 	"bytes"
@@ -18,7 +18,7 @@ import (
 // Returns the POLVoteSignature pointer, so you can modify it afterwards.
 func signAddPOLVoteSignature(val *sm.PrivValidator, valSet *sm.ValidatorSet, vote *types.Vote, pol *POL) *POLVoteSignature {
 	vote = vote.Copy()
-	err := val.SignVote(vote)
+	err := val.SignVote(config.GetString("chain_id"), vote)
 	if err != nil {
 		panic(err)
 	}

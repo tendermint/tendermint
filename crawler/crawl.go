@@ -20,7 +20,7 @@ const (
 //---------------------------------------------------------------------------------------
 // crawler.Node
 
-// A node is a peer on the network.
+// A node is a peer on the network
 type Node struct {
 	Host    string
 	P2PPort uint16
@@ -32,7 +32,7 @@ type Node struct {
 	client *NodeClient
 
 	LastSeen     time.Time
-	Network      string
+	ChainID      string
 	BlockHeight  uint
 	BlockHistory map[uint]time.Time // when we saw each block
 	NetInfo      *rpctypes.ResponseNetInfo
@@ -47,10 +47,10 @@ func (n *Node) Address() string {
 	return fmt.Sprintf("%s:%d", n.Host, n.RPCPort)
 }
 
-// Set the basic status and network info for a node from RPC responses
+// Set the basic status and chain_id info for a node from RPC responses
 func (n *Node) SetInfo(status *rpctypes.ResponseStatus, netinfo *rpctypes.ResponseNetInfo) {
 	n.LastSeen = time.Now()
-	n.Network = status.Network
+	n.ChainID = status.ChainID
 	n.BlockHeight = status.LatestBlockHeight
 	n.NetInfo = netinfo
 	// n.Validator

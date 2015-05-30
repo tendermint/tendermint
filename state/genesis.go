@@ -25,6 +25,7 @@ type GenesisValidator struct {
 
 type GenesisDoc struct {
 	GenesisTime time.Time          `json:"genesis_time"`
+	ChainID     string             `json:"chain_id"`
 	Accounts    []GenesisAccount   `json:"accounts"`
 	Validators  []GenesisValidator `json:"validators"`
 }
@@ -105,6 +106,7 @@ func MakeGenesisState(db dbm.DB, genDoc *GenesisDoc) *State {
 
 	return &State{
 		DB:                   db,
+		ChainID:              genDoc.ChainID,
 		LastBlockHeight:      0,
 		LastBlockHash:        nil,
 		LastBlockParts:       types.PartSetHeader{},

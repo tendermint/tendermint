@@ -18,7 +18,7 @@ type PrivNodeID struct {
 type NodeGreeting struct {
 	NodeID
 	Version string
-	Network string
+	ChainID string
 	Message string
 	Time    time.Time
 }

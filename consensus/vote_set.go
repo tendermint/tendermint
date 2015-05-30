@@ -93,7 +93,7 @@ func (voteSet *VoteSet) Add(address []byte, vote *types.Vote) (bool, uint, error
 	}
 
 	// Check signature.
-	if !val.PubKey.VerifyBytes(account.SignBytes(vote), vote.Signature) {
+	if !val.PubKey.VerifyBytes(account.SignBytes(config.GetString("chain_id"), vote), vote.Signature) {
 		// Bad signature.
 		return false, 0, types.ErrVoteInvalidSignature
 	}

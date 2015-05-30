@@ -5,8 +5,8 @@ import (
 
 	. "github.com/tendermint/tendermint/common"
 	. "github.com/tendermint/tendermint/common/test"
-	sm "github.com/tendermint/tendermint/state"
 	_ "github.com/tendermint/tendermint/config/tendermint_test"
+	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 
 	"testing"
@@ -50,7 +50,7 @@ func withBlockParts(vote *types.Vote, blockParts types.PartSetHeader) *types.Vot
 }
 
 func signAddVote(privVal *sm.PrivValidator, vote *types.Vote, voteSet *VoteSet) (bool, error) {
-	privVal.SignVoteUnsafe(vote)
+	privVal.SignVoteUnsafe(config.GetString("chain_id"), vote)
 	added, _, err := voteSet.Add(privVal.Address, vote)
 	return added, err
 }

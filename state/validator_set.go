@@ -201,7 +201,7 @@ func (valSet *ValidatorSet) Iterate(fn func(index uint, val *Validator) bool) {
 }
 
 // Verify that +2/3 of the set had signed the given signBytes
-func (valSet *ValidatorSet) VerifyValidation(hash []byte, parts types.PartSetHeader, height uint, v *types.Validation) error {
+func (valSet *ValidatorSet) VerifyValidation(chainID string, hash []byte, parts types.PartSetHeader, height uint, v *types.Validation) error {
 	if valSet.Size() != uint(len(v.Commits)) {
 		return errors.New(Fmt("Invalid validation -- wrong set size: %v vs %v",
 			valSet.Size(), len(v.Commits)))
@@ -216,7 +216,7 @@ func (valSet *ValidatorSet) VerifyValidation(hash []byte, parts types.PartSetHea
 			continue
 		}
 		_, val := valSet.GetByIndex(uint(idx))
-		commitSignBytes := account.SignBytes(&types.Vote{
+		commitSignBytes := account.SignBytes(chainID, &types.Vote{
 			Height: height, Round: commit.Round, Type: types.VoteTypeCommit,
 			BlockHash:  hash,
 			BlockParts: parts,
