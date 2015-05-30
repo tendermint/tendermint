@@ -18,15 +18,13 @@ const (
 	maxRequestsPerPeer    = 300
 )
 
-// numTotal = numPending + blocks in the pool we havnt synced yet
-
 var (
 	requestTimeoutSeconds = time.Duration(3)
 )
 
 /*
 	Peers self report their heights when a new peer joins the block pool.
-	Starting from whatever we've got (pool.height), we request blocks
+	Starting from pool.height (inclusive), we request blocks
 	in sequence from peers that reported higher heights than ours.
 	Every so often we ask peers what height they're on so we can keep going.
 
@@ -37,12 +35,11 @@ var (
 
 type BlockPool struct {
 	// block requests
-	requestsMtx sync.Mutex
-	requests    map[uint]*bpRequest
-	peerless    int32 // number of requests without peers
-	height      uint  // the lowest key in requests.
-	numPending  int32
-	numTotal    int32
+	requestsMtx   sync.Mutex
+	requests      map[uint]*bpRequest
+	height        uint  // the lowest key in requests.
+	numUnassigned int32 // number of requests not yet assigned to a peer
+	numPending    int32 // number of requests pending assignment or block response
 
 	// peers
 	peersMtx sync.Mutex
@@ -59,10 +56,10 @@ func NewBlockPool(start uint, requestsCh chan<- BlockRequest, timeoutsCh chan<- 
 	return &BlockPool{
 		peers: make(map[string]*bpPeer),
 
-		requests:   make(map[uint]*bpRequest),
-		height:     start,
-		numPending: 0,
-		numTotal:   0,
+		requests:      make(map[uint]*bpRequest),
+		height:        start,
+		numUnassigned: 0,
+		numPending:    0,
 
 		requestsCh: requestsCh,
 		timeoutsCh: timeoutsCh,
@@ -97,26 +94,25 @@ RUN_LOOP:
 		if atomic.LoadInt32(&pool.running) == 0 {
 			break RUN_LOOP
 		}
-		_, numPending, numTotal := pool.GetStatus()
+		_, numPending := pool.GetStatus()
 		if numPending >= maxPendingRequests {
 			// sleep for a bit.
 			time.Sleep(requestIntervalMS * time.Millisecond)
-		} else if numTotal >= maxTotalRequests {
+		} else if len(pool.requests) >= maxTotalRequests {
 			// sleep for a bit.
 			time.Sleep(requestIntervalMS * time.Millisecond)
 		} else {
 			// request for more blocks.
-			height := pool.nextHeight()
-			pool.makeRequest(height)
+			pool.makeNextRequest()
 		}
 	}
 }
 
-func (pool *BlockPool) GetStatus() (uint, int32, int32) {
+func (pool *BlockPool) GetStatus() (uint, int32) {
 	pool.requestsMtx.Lock() // Lock
 	defer pool.requestsMtx.Unlock()
 
-	return pool.height, pool.numPending, pool.numTotal
+	return pool.height, pool.numPending
 }
 
 // We need to see the second block's Validation to validate the first block.
@@ -146,7 +142,6 @@ func (pool *BlockPool) PopRequest() {
 
 	delete(pool.requests, pool.height)
 	pool.height++
-	pool.numTotal--
 }
 
 // Invalidates the block at pool.height.
@@ -165,7 +160,7 @@ func (pool *BlockPool) RedoRequest(height uint) {
 	request.block = nil
 	request.peerId = ""
 	pool.numPending++
-	pool.peerless++
+	pool.numUnassigned++
 
 	go requestRoutine(pool, height)
 }
@@ -186,7 +181,7 @@ func (pool *BlockPool) setPeerForRequest(height uint, peerId string) {
 	if request == nil {
 		return
 	}
-	pool.peerless--
+	pool.numUnassigned--
 	request.peerId = peerId
 }
 
@@ -198,7 +193,7 @@ func (pool *BlockPool) removePeerForRequest(height uint, peerId string) {
 	if request == nil {
 		return
 	}
-	pool.peerless++
+	pool.numUnassigned++
 	request.peerId = ""
 }
 
@@ -283,34 +278,22 @@ func (pool *BlockPool) decrPeer(peerId string) {
 	peer.numRequests--
 }
 
-func (pool *BlockPool) nextHeight() uint {
+func (pool *BlockPool) makeNextRequest() {
 	pool.requestsMtx.Lock() // Lock
 	defer pool.requestsMtx.Unlock()
 
-	// we make one request per height.
-	return pool.height + uint(pool.numTotal)
-}
-
-func (pool *BlockPool) makeRequest(height uint) {
-	pool.requestsMtx.Lock() // Lock
-	defer pool.requestsMtx.Unlock()
-
+	nextHeight := pool.height + uint(len(pool.requests))
 	request := &bpRequest{
-		height: height,
+		height: nextHeight,
 		peerId: "",
 		block:  nil,
 	}
-	pool.requests[height] = request
 
-	pool.peerless++
+	pool.requests[nextHeight] = request
+	pool.numUnassigned++
+	pool.numPending++
 
-	nextHeight := pool.height + uint(pool.numTotal)
-	if nextHeight == height {
-		pool.numTotal++
-		pool.numPending++
-	}
-
-	go requestRoutine(pool, height)
+	go requestRoutine(pool, nextHeight)
 }
 
 func (pool *BlockPool) sendRequest(height uint, peerId string) {
@@ -332,7 +315,7 @@ func (pool *BlockPool) debug() string {
 	defer pool.requestsMtx.Unlock()
 
 	str := ""
-	for h := pool.height; h < pool.height+uint(pool.numTotal); h++ {
+	for h := pool.height; h < pool.height+uint(len(pool.requests)); h++ {
 		if pool.requests[h] == nil {
 			str += Fmt("H(%v):X ", h)
 		} else {
@@ -379,7 +362,7 @@ func requestRoutine(pool *BlockPool, height uint) {
 			break PICK_LOOP
 		}
 
-		// set the peer, decrement peerless
+		// set the peer, decrement numUnassigned
 		pool.setPeerForRequest(height, peer.id)
 
 		for try := 0; try < maxTries; try++ {
@@ -391,14 +374,14 @@ func requestRoutine(pool *BlockPool, height uint) {
 				return
 			}
 			// or already processed and we've moved past it
-			bpHeight, _, _ := pool.GetStatus()
+			bpHeight, _ := pool.GetStatus()
 			if height < bpHeight {
 				pool.decrPeer(peer.id)
 				return
 			}
 		}
 
-		// unset the peer, increment peerless
+		// unset the peer, increment numUnassigned
 		pool.removePeerForRequest(height, peer.id)
 
 		// this peer failed us, try again

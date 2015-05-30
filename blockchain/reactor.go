@@ -10,7 +10,6 @@ import (
 
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
-	dbm "github.com/tendermint/tendermint/db"
 	"github.com/tendermint/tendermint/events"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
@@ -33,8 +32,9 @@ const (
 )
 
 type consensusReactor interface {
-	SetSyncing(bool)
-	ResetToState(*sm.State)
+	// for when we switch from blockchain reactor and fast sync to
+	// the consensus machine
+	SwitchToConsensus(*sm.State)
 }
 
 // BlockchainReactor handles long-term catchup syncing.
@@ -163,6 +163,8 @@ func (bcR *BlockchainReactor) Receive(chId byte, src *p2p.Peer, msgBytes []byte)
 }
 
 // Handle messages from the poolReactor telling the reactor what to do.
+// NOTE: Don't sleep in the FOR_LOOP or otherwise slow it down!
+// (Except for the SYNC_LOOP, which is the primary purpose and must be synchronous.)
 func (bcR *BlockchainReactor) poolRoutine() {
 
 	trySyncTicker := time.NewTicker(trySyncIntervalMS * time.Millisecond)
@@ -175,14 +177,14 @@ FOR_LOOP:
 		case request := <-bcR.requestsCh: // chan BlockRequest
 			peer := bcR.sw.Peers().Get(request.PeerId)
 			if peer == nil {
-				// We can't fulfill the request.
+				// We can't assign the request.
 				continue FOR_LOOP
 			}
 			msg := &bcBlockRequestMessage{request.Height}
 			queued := peer.TrySend(BlockchainChannel, msg)
 			if !queued {
-				// We couldn't queue the request.
-				time.Sleep(defaultSleepIntervalMS * time.Millisecond)
+				// We couldn't make the request, send-queue full.
+				// The pool handles retries, so just let it go.
 				continue FOR_LOOP
 			}
 		case peerId := <-bcR.timeoutsCh: // chan string
@@ -195,28 +197,28 @@ FOR_LOOP:
 			// ask for status updates
 			go bcR.BroadcastStatusRequest()
 		case _ = <-switchToConsensusTicker.C:
-			// not thread safe access for peerless and numPending but should be fine
-			log.Debug("Consensus ticker", "peerless", bcR.pool.peerless, "pending", bcR.pool.numPending, "total", bcR.pool.numTotal)
+			// not thread safe access for numUnassigned and numPending but should be fine
+			// TODO make threadsafe and use exposed functions
+			outbound, inbound, _ := bcR.sw.NumPeers()
+			log.Debug("Consensus ticker", "numUnassigned", bcR.pool.numUnassigned, "numPending", bcR.pool.numPending,
+				"total", len(bcR.pool.requests), "outbound", outbound, "inbound", inbound)
 			// NOTE: this condition is very strict right now. may need to weaken
-			// if the max amount of requests are pending and peerless
-			// and we have some peers (say > 5), then we're caught up
+			// If all `maxPendingRequests` requests are unassigned
+			// and we have some peers (say >= 3), then we're caught up
 			maxPending := bcR.pool.numPending == maxPendingRequests
-			maxPeerless := bcR.pool.peerless == bcR.pool.numPending
-			o, i, _ := bcR.sw.NumPeers()
-			enoughPeers := o+i >= 5
-			if maxPending && maxPeerless && enoughPeers {
-				log.Warn("Time to switch to consensus reactor!", "height", bcR.pool.height)
+			allUnassigned := bcR.pool.numPending == bcR.pool.numUnassigned
+			enoughPeers := outbound+inbound >= 3
+			if maxPending && allUnassigned && enoughPeers {
+				log.Info("Time to switch to consensus reactor!", "height", bcR.pool.height)
 				bcR.pool.Stop()
-				stateDB := dbm.GetDB("state")
-				state := sm.LoadState(stateDB)
 
-				bcR.sw.Reactor("CONSENSUS").(consensusReactor).ResetToState(state)
-				bcR.sw.Reactor("CONSENSUS").(consensusReactor).SetSyncing(false)
+				conR := bcR.sw.Reactor("CONSENSUS").(consensusReactor)
+				conR.SwitchToConsensus(bcR.state)
 
 				break FOR_LOOP
 			}
 		case _ = <-trySyncTicker.C: // chan time
-			//var lastValidatedBlock *types.Block
+			// This loop can be slow as long as it's doing syncing work.
 		SYNC_LOOP:
 			for i := 0; i < 10; i++ {
 				// See if there are any blocks to sync.
@@ -244,33 +246,8 @@ FOR_LOOP:
 					}
 					bcR.store.SaveBlock(first, firstParts, second.Validation)
 					bcR.state.Save()
-					//lastValidatedBlock = first
 				}
 			}
-			/*
-				// We're done syncing for now (will do again shortly)
-				// See if we want to stop syncing and turn on the
-				// consensus reactor.
-				// TODO: use other heuristics too besides blocktime.
-				// It's not a security concern, as it only needs to happen
-				// upon node sync, and there's also a second (slower)
-				// this peer failed us
-				// method of syncing in the consensus reactor.
-
-				if lastValidatedBlock != nil && time.Now().Sub(lastValidatedBlock.Time) < stopSyncingDurationMinutes*time.Minute {
-					go func() {
-						log.Info("Stopping blockpool syncing, turning on consensus...")
-						trySyncTicker.Stop() // Just stop the block requests.  Still serve blocks to others.
-						conR := bcR.sw.Reactor("CONSENSUS")
-						conR.(stateResetter).ResetToState(bcR.state)
-						conR.Start(bcR.sw)
-						for _, peer := range bcR.sw.Peers().List() {
-							conR.AddPeer(peer)
-						}
-					}()
-					break FOR_LOOP
-				}
-			*/
 			continue FOR_LOOP
 		case <-bcR.quit:
 			break FOR_LOOP
