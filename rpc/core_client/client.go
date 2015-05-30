@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"github.com/tendermint/tendermint/binary"
 	rpctypes "github.com/tendermint/tendermint/rpc/types"
-	// NOTE: do not import rpc/core.
-	// What kind of client imports all of core logic? :P
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -30,6 +28,7 @@ var reverseFuncMap = map[string]string{
 	"DumpStorage":    "dump_storage",
 	"BroadcastTx":    "broadcast_tx",
 	"ListAccounts":   "list_accounts",
+	"NameRegEntry":   "name_reg_entry",
 	"GenPrivAccount": "unsafe/gen_priv_account",
 	"SignTx":         "unsafe/sign_tx",
 }

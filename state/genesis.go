@@ -99,9 +99,14 @@ func MakeGenesisState(db dbm.DB, genDoc *GenesisDoc) *State {
 		}
 	}
 
+	// Make namereg tree
+	nameReg := merkle.NewIAVLTree(binary.BasicCodec, NameRegCodec, 0, db)
+	// TODO: add names to genesis.json
+
 	// IAVLTrees must be persisted before copy operations.
 	accounts.Save()
 	validatorInfos.Save()
+	nameReg.Save()
 
 	return &State{
 		DB:                   db,
@@ -114,5 +119,6 @@ func MakeGenesisState(db dbm.DB, genDoc *GenesisDoc) *State {
 		UnbondingValidators:  NewValidatorSet(nil),
 		accounts:             accounts,
 		validatorInfos:       validatorInfos,
+		nameReg:              nameReg,
 	}
 }

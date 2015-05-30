@@ -296,7 +296,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 
 	// TODO: do something with fees
 	fees := uint64(0)
-	_s := blockCache.State() // hack to access validators and event switch.
+	_s := blockCache.State() // hack to access validators and block height
 
 	// Exec tx
 	switch tx := tx_.(type) {
@@ -475,6 +475,120 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 			}
 			blockCache.UpdateAccount(inAcc)
 		}
+
+		return nil
+
+	case *types.NameTx:
+		var inAcc *account.Account
+
+		// Validate input
+		inAcc = blockCache.GetAccount(tx.Input.Address)
+		if inAcc == nil {
+			log.Debug(Fmt("Can't find in account %X", tx.Input.Address))
+			return types.ErrTxInvalidAddress
+		}
+		// pubKey should be present in either "inAcc" or "tx.Input"
+		if err := checkInputPubKey(inAcc, tx.Input); err != nil {
+			log.Debug(Fmt("Can't find pubkey for %X", tx.Input.Address))
+			return err
+		}
+		signBytes := account.SignBytes(tx)
+		err := validateInput(inAcc, signBytes, tx.Input)
+		if err != nil {
+			log.Debug(Fmt("validateInput failed on %X:", tx.Input.Address))
+			return err
+		}
+		// fee is in addition to the amount which is used to determine the TTL
+		if tx.Input.Amount < tx.Fee {
+			log.Debug(Fmt("Sender did not send enough to cover the fee %X", tx.Input.Address))
+			return types.ErrTxInsufficientFunds
+		}
+
+		// validate the input strings
+		if err := tx.ValidateStrings(); err != nil {
+			log.Debug(err.Error())
+			return types.ErrTxInvalidString
+		}
+
+		value := tx.Input.Amount - tx.Fee
+
+		// let's say cost of a name for one block is len(data) + 32
+		costPerBlock := types.NameCostPerBlock * types.NameCostPerByte * tx.BaseEntryCost()
+		expiresIn := value / uint64(costPerBlock)
+		lastBlockHeight := uint64(_s.LastBlockHeight)
+
+		log.Debug("New NameTx", "value", value, "costPerBlock", costPerBlock, "expiresIn", expiresIn, "lastBlock", lastBlockHeight)
+
+		// check if the name exists
+		entry := blockCache.GetNameRegEntry(tx.Name)
+
+		if entry != nil {
+			var expired bool
+			// if the entry already exists, and hasn't expired, we must be owner
+			if entry.Expires > lastBlockHeight {
+				// ensure we are owner
+				if bytes.Compare(entry.Owner, tx.Input.Address) != 0 {
+					log.Debug(Fmt("Sender %X is trying to update a name (%s) for which he is not owner", tx.Input.Address, tx.Name))
+					return types.ErrIncorrectOwner
+				}
+			} else {
+				expired = true
+			}
+
+			// no value and empty data means delete the entry
+			if value == 0 && len(tx.Data) == 0 {
+				// maybe we reward you for telling us we can delete this crap
+				// (owners if not expired, anyone if expired)
+				log.Debug("Removing namereg entry", "name", entry.Name)
+				blockCache.RemoveNameRegEntry(entry.Name)
+			} else {
+				// update the entry by bumping the expiry
+				// and changing the data
+				if expired {
+					if expiresIn < types.MinNameRegistrationPeriod {
+						return fmt.Errorf("Names must be registered for at least %d blocks", types.MinNameRegistrationPeriod)
+					}
+					entry.Expires = lastBlockHeight + expiresIn
+					entry.Owner = tx.Input.Address
+					log.Debug("An old namereg entry has expired and been reclaimed", "name", entry.Name, "expiresIn", expiresIn, "owner", entry.Owner)
+				} else {
+					// since the size of the data may have changed
+					// we use the total amount of "credit"
+					oldCredit := (entry.Expires - lastBlockHeight) * types.BaseEntryCost(entry.Name, entry.Data)
+					credit := oldCredit + value
+					expiresIn = credit / costPerBlock
+					if expiresIn < types.MinNameRegistrationPeriod {
+						return fmt.Errorf("Names must be registered for at least %d blocks", types.MinNameRegistrationPeriod)
+					}
+					entry.Expires = lastBlockHeight + expiresIn
+					log.Debug("Updated namereg entry", "name", entry.Name, "expiresIn", expiresIn, "oldCredit", oldCredit, "value", value, "credit", credit)
+				}
+				entry.Data = tx.Data
+				blockCache.UpdateNameRegEntry(entry)
+			}
+		} else {
+			if expiresIn < types.MinNameRegistrationPeriod {
+				return fmt.Errorf("Names must be registered for at least %d blocks", types.MinNameRegistrationPeriod)
+			}
+			// entry does not exist, so create it
+			entry = &types.NameRegEntry{
+				Name:    tx.Name,
+				Owner:   tx.Input.Address,
+				Data:    tx.Data,
+				Expires: lastBlockHeight + expiresIn,
+			}
+			log.Debug("Creating namereg entry", "name", entry.Name, "expiresIn", expiresIn)
+			blockCache.UpdateNameRegEntry(entry)
+		}
+
+		// TODO: something with the value sent?
+
+		// Good!
+		inAcc.Sequence += 1
+		inAcc.Balance -= value
+		blockCache.UpdateAccount(inAcc)
+
+		// TODO: maybe we want to take funds on error and allow txs in that don't do anythingi?
 
 		return nil
 

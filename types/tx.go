@@ -18,6 +18,8 @@ var (
 	ErrTxUnknownPubKey        = errors.New("Error unknown pubkey")
 	ErrTxInvalidPubKey        = errors.New("Error invalid pubkey")
 	ErrTxInvalidSignature     = errors.New("Error invalid signature")
+	ErrTxInvalidString        = errors.New("Error invalid string")
+	ErrIncorrectOwner         = errors.New("Error incorrect owner")
 )
 
 type ErrTxInvalidSequence struct {
@@ -35,6 +37,7 @@ Tx (Transaction) is an atomic operation on the ledger state.
 Account Txs:
  - SendTx         Send coins to address
  - CallTx         Send a msg to a contract that runs in the vm
+ - NameTx	  Store some value under a name in the global namereg
 
 Validation Txs:
  - BondTx         New validator posts a bond
@@ -50,6 +53,7 @@ const (
 	// Account transactions
 	TxTypeSend = byte(0x01)
 	TxTypeCall = byte(0x02)
+	TxTypeName = byte(0x03)
 
 	// Validation transactions
 	TxTypeBond    = byte(0x11)
@@ -63,6 +67,7 @@ var _ = binary.RegisterInterface(
 	struct{ Tx }{},
 	binary.ConcreteType{&SendTx{}, TxTypeSend},
 	binary.ConcreteType{&CallTx{}, TxTypeCall},
+	binary.ConcreteType{&NameTx{}, TxTypeName},
 	binary.ConcreteType{&BondTx{}, TxTypeBond},
 	binary.ConcreteType{&UnbondTx{}, TxTypeUnbond},
 	binary.ConcreteType{&RebondTx{}, TxTypeRebond},
@@ -174,6 +179,54 @@ func (tx *CallTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
 
 func (tx *CallTx) String() string {
 	return Fmt("CallTx{%v -> %x: %x}", tx.Input, tx.Address, tx.Data)
+}
+
+//-----------------------------------------------------------------------------
+
+type NameTx struct {
+	Input *TxInput `json:"input"`
+	Name  string   `json:"name"`
+	Data  string   `json:"data"`
+	Fee   uint64   `json:"fee"`
+}
+
+func (tx *NameTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
+	// We hex encode the network name so we don't deal with escaping issues.
+	binary.WriteTo([]byte(Fmt(`{"network":"%X"`, config.GetString("network"))), w, n, err)
+	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"name":"%s","data":"%s"`, TxTypeName, tx.Name, tx.Data)), w, n, err)
+	binary.WriteTo([]byte(Fmt(`,"fee":%v,"input":`, tx.Fee)), w, n, err)
+	tx.Input.WriteSignBytes(w, n, err)
+	binary.WriteTo([]byte(`}]}`), w, n, err)
+}
+
+func (tx *NameTx) ValidateStrings() error {
+	if len(tx.Name) == 0 {
+		return errors.New("Name must not be empty")
+	}
+	if len(tx.Name) > MaxNameLength {
+		return errors.New(Fmt("Name is too long. Max %d bytes", MaxNameLength))
+	}
+	if len(tx.Data) > MaxDataLength {
+		return errors.New(Fmt("Data is too long. Max %d bytes", MaxDataLength))
+	}
+
+	if !validateNameRegEntryName(tx.Name) {
+		return errors.New(Fmt("Invalid characters found in NameTx.Name (%s). Only alphanumeric, underscores, and forward slashes allowed", tx.Name))
+	}
+
+	if !validateNameRegEntryData(tx.Data) {
+		return errors.New(Fmt("Invalid characters found in NameTx.Data (%s). Only the kind of things found in a JSON file are allowed", tx.Data))
+	}
+
+	return nil
+}
+
+func (tx *NameTx) BaseEntryCost() uint64 {
+	return BaseEntryCost(tx.Name, tx.Data)
+}
+
+func (tx *NameTx) String() string {
+	return Fmt("NameTx{%v -> %s: %s}", tx.Input, tx.Name, tx.Data)
 }
 
 //-----------------------------------------------------------------------------

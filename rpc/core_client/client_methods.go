@@ -27,6 +27,7 @@ type Client interface {
 	ListAccounts() (*ctypes.ResponseListAccounts, error)
 	ListUnconfirmedTxs() (*ctypes.ResponseListUnconfirmedTxs, error)
 	ListValidators() (*ctypes.ResponseListValidators, error)
+	NameRegEntry(name string) (*ctypes.ResponseNameRegEntry, error)
 	NetInfo() (*ctypes.ResponseNetInfo, error)
 	SignTx(tx types.Tx, privAccounts []*account.PrivAccount) (*ctypes.ResponseSignTx, error)
 	Status() (*ctypes.ResponseStatus, error)
@@ -411,6 +412,36 @@ func (c *ClientHTTP) ListValidators() (*ctypes.ResponseListValidators, error) {
 		Error   string                         `json:"error"`
 		Id      string                         `json:"id"`
 		JSONRPC string                         `json:"jsonrpc"`
+	}
+	binary.ReadJSON(&response, body, &err)
+	if err != nil {
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, fmt.Errorf(response.Error)
+	}
+	return response.Result, nil
+}
+
+func (c *ClientHTTP) NameRegEntry(name string) (*ctypes.ResponseNameRegEntry, error) {
+	values, err := argsToURLValues([]string{"name"}, name)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := http.PostForm(c.addr+reverseFuncMap["NameRegEntry"], values)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	var response struct {
+		Result  *ctypes.ResponseNameRegEntry `json:"result"`
+		Error   string                       `json:"error"`
+		Id      string                       `json:"id"`
+		JSONRPC string                       `json:"jsonrpc"`
 	}
 	binary.ReadJSON(&response, body, &err)
 	if err != nil {
@@ -852,6 +883,33 @@ func (c *ClientJSON) ListValidators() (*ctypes.ResponseListValidators, error) {
 		Error   string                         `json:"error"`
 		Id      string                         `json:"id"`
 		JSONRPC string                         `json:"jsonrpc"`
+	}
+	binary.ReadJSON(&response, body, &err)
+	if err != nil {
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, fmt.Errorf(response.Error)
+	}
+	return response.Result, nil
+}
+
+func (c *ClientJSON) NameRegEntry(name string) (*ctypes.ResponseNameRegEntry, error) {
+	request := rpctypes.RPCRequest{
+		JSONRPC: "2.0",
+		Method:  reverseFuncMap["NameRegEntry"],
+		Params:  []interface{}{name},
+		Id:      0,
+	}
+	body, err := c.RequestResponse(request)
+	if err != nil {
+		return nil, err
+	}
+	var response struct {
+		Result  *ctypes.ResponseNameRegEntry `json:"result"`
+		Error   string                       `json:"error"`
+		Id      string                       `json:"id"`
+		JSONRPC string                       `json:"jsonrpc"`
 	}
 	binary.ReadJSON(&response, body, &err)
 	if err != nil {
