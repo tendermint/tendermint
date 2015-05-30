@@ -179,7 +179,9 @@ func TestTxSequence(t *testing.T) {
 	// The tx should only pass when i == 1.
 	for i := -1; i < 3; i++ {
 		sequence := acc0.Sequence + uint(i)
-		tx := makeSendTx(sequence)
+		tx := types.NewSendTx()
+		tx.AddInputWithNonce(acc0PubKey, 1, sequence)
+		tx.AddOutput(acc1.Address, 1)
 		tx.Inputs[0].Signature = privAccounts[0].Sign(state.ChainID, tx)
 		stateCopy := state.Copy()
 		err := execTxWithState(stateCopy, tx, true)
@@ -223,7 +225,7 @@ func TestNameTxs(t *testing.T) {
 	for _, name := range names {
 		amt := fee + numDesiredBlocks*types.NameCostPerByte*types.NameCostPerBlock*types.BaseEntryCost(name, data)
 		tx, _ := types.NewNameTx(state, privAccounts[0].PubKey, name, data, amt, fee)
-		tx.Sign(privAccounts[0])
+		tx.Sign(state.ChainID, privAccounts[0])
 
 		if err := execTxWithState(state, tx, true); err == nil {
 			t.Fatalf("Expected invalid name error from %s", name)
@@ -236,7 +238,7 @@ func TestNameTxs(t *testing.T) {
 	for _, data := range datas {
 		amt := fee + numDesiredBlocks*types.NameCostPerByte*types.NameCostPerBlock*types.BaseEntryCost(name, data)
 		tx, _ := types.NewNameTx(state, privAccounts[0].PubKey, name, data, amt, fee)
-		tx.Sign(privAccounts[0])
+		tx.Sign(state.ChainID, privAccounts[0])
 
 		if err := execTxWithState(state, tx, true); err == nil {
 			t.Fatalf("Expected invalid data error from %s", data)
@@ -267,7 +269,7 @@ func TestNameTxs(t *testing.T) {
 	data = "on this side of neptune there are 1234567890 people: first is OMNIVORE. Or is it. Ok this is pretty restrictive. No exclamations :(. Faces tho :')"
 	amt := fee + numDesiredBlocks*types.NameCostPerByte*types.NameCostPerBlock*types.BaseEntryCost(name, data)
 	tx, _ := types.NewNameTx(state, privAccounts[0].PubKey, name, data, amt, fee)
-	tx.Sign(privAccounts[0])
+	tx.Sign(state.ChainID, privAccounts[0])
 	if err := execTxWithState(state, tx, true); err != nil {
 		t.Fatal(err)
 	}
@@ -276,7 +278,7 @@ func TestNameTxs(t *testing.T) {
 
 	// fail to update it as non-owner, in same block
 	tx, _ = types.NewNameTx(state, privAccounts[1].PubKey, name, data, amt, fee)
-	tx.Sign(privAccounts[1])
+	tx.Sign(state.ChainID, privAccounts[1])
 	if err := execTxWithState(state, tx, true); err == nil {
 		t.Fatal("Expected error")
 	}
@@ -284,7 +286,7 @@ func TestNameTxs(t *testing.T) {
 	// update it as owner, just to increase expiry, in same block
 	// NOTE: we have to resend the data or it will clear it (is this what we want?)
 	tx, _ = types.NewNameTx(state, privAccounts[0].PubKey, name, data, amt, fee)
-	tx.Sign(privAccounts[0])
+	tx.Sign(state.ChainID, privAccounts[0])
 	if err := execTxWithStateNewBlock(state, tx, true); err != nil {
 		t.Fatal(err)
 	}
@@ -293,7 +295,7 @@ func TestNameTxs(t *testing.T) {
 
 	// update it as owner, just to increase expiry, in next block
 	tx, _ = types.NewNameTx(state, privAccounts[0].PubKey, name, data, amt, fee)
-	tx.Sign(privAccounts[0])
+	tx.Sign(state.ChainID, privAccounts[0])
 	if err := execTxWithStateNewBlock(state, tx, true); err != nil {
 		t.Fatal(err)
 	}
@@ -303,7 +305,7 @@ func TestNameTxs(t *testing.T) {
 	// fail to update it as non-owner
 	state.LastBlockHeight = uint(entry.Expires - 1)
 	tx, _ = types.NewNameTx(state, privAccounts[1].PubKey, name, data, amt, fee)
-	tx.Sign(privAccounts[1])
+	tx.Sign(state.ChainID, privAccounts[1])
 	if err := execTxWithState(state, tx, true); err == nil {
 		t.Fatal("Expected error")
 	}
@@ -311,7 +313,7 @@ func TestNameTxs(t *testing.T) {
 	// once expires, non-owner succeeds
 	state.LastBlockHeight = uint(entry.Expires)
 	tx, _ = types.NewNameTx(state, privAccounts[1].PubKey, name, data, amt, fee)
-	tx.Sign(privAccounts[1])
+	tx.Sign(state.ChainID, privAccounts[1])
 	if err := execTxWithState(state, tx, true); err != nil {
 		t.Fatal(err)
 	}
@@ -324,7 +326,7 @@ func TestNameTxs(t *testing.T) {
 	numDesiredBlocks = 10
 	amt = fee + (numDesiredBlocks*types.NameCostPerByte*types.NameCostPerBlock*types.BaseEntryCost(name, data) - oldCredit)
 	tx, _ = types.NewNameTx(state, privAccounts[1].PubKey, name, data, amt, fee)
-	tx.Sign(privAccounts[1])
+	tx.Sign(state.ChainID, privAccounts[1])
 	if err := execTxWithState(state, tx, true); err != nil {
 		t.Fatal(err)
 	}
@@ -335,7 +337,7 @@ func TestNameTxs(t *testing.T) {
 	amt = fee
 	data = ""
 	tx, _ = types.NewNameTx(state, privAccounts[1].PubKey, name, data, amt, fee)
-	tx.Sign(privAccounts[1])
+	tx.Sign(state.ChainID, privAccounts[1])
 	if err := execTxWithStateNewBlock(state, tx, true); err != nil {
 		t.Fatal(err)
 	}
@@ -350,7 +352,7 @@ func TestNameTxs(t *testing.T) {
 	data = "some data"
 	amt = fee + numDesiredBlocks*types.NameCostPerByte*types.NameCostPerBlock*types.BaseEntryCost(name, data)
 	tx, _ = types.NewNameTx(state, privAccounts[0].PubKey, name, data, amt, fee)
-	tx.Sign(privAccounts[0])
+	tx.Sign(state.ChainID, privAccounts[0])
 	if err := execTxWithState(state, tx, true); err != nil {
 		t.Fatal(err)
 	}
@@ -361,7 +363,7 @@ func TestNameTxs(t *testing.T) {
 	amt = fee
 	data = ""
 	tx, _ = types.NewNameTx(state, privAccounts[1].PubKey, name, data, amt, fee)
-	tx.Sign(privAccounts[1])
+	tx.Sign(state.ChainID, privAccounts[1])
 	if err := execTxWithStateNewBlock(state, tx, true); err != nil {
 		t.Fatal(err)
 	}
@@ -436,7 +438,7 @@ func TestTxs(t *testing.T) {
 			GasLimit: 10,
 		}
 
-		tx.Input.Signature = privAccounts[0].Sign(tx)
+		tx.Input.Signature = privAccounts[0].Sign(state.ChainID, tx)
 		err := execTxWithState(state, tx, true)
 		if err != nil {
 			t.Errorf("Got error in executing call transaction, %v", err)
@@ -485,7 +487,7 @@ proof-of-work chain as proof of what happened while they were gone `
 			Data: entryData,
 		}
 
-		tx.Input.Signature = privAccounts[0].Sign(tx)
+		tx.Input.Signature = privAccounts[0].Sign(state.ChainID, tx)
 		err := execTxWithState(state, tx, true)
 		if err != nil {
 			t.Errorf("Got error in executing call transaction, %v", err)
@@ -506,7 +508,7 @@ proof-of-work chain as proof of what happened while they were gone `
 		// test a bad string
 		tx.Data = string([]byte{0, 1, 2, 3, 127, 128, 129, 200, 251})
 		tx.Input.Sequence += 1
-		tx.Input.Signature = privAccounts[0].Sign(tx)
+		tx.Input.Signature = privAccounts[0].Sign(state.ChainID, tx)
 		err = execTxWithState(state, tx, true)
 		if err != types.ErrTxInvalidString {
 			t.Errorf("Expected invalid string error. Got: %s", err.Error())

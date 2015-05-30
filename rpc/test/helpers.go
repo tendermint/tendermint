@@ -107,7 +107,7 @@ func makeDefaultSendTxSigned(t *testing.T, typ string, addr []byte, amt uint64) 
 
 func makeDefaultCallTx(t *testing.T, typ string, addr, code []byte, amt, gasLim, fee uint64) *types.CallTx {
 	nonce := getNonce(t, typ, user[0].Address)
-	tx := types.NewCallTxWithNonce(user[0].PubKey, addr, code, amt, gasLim, fee, nonce)
+	tx := types.NewCallTxWithNonce(user[0].PubKey, addr, code, amt, gasLim, fee, nonce+1)
 	tx.Sign(chainID, user[0])
 	return tx
 }
@@ -115,7 +115,7 @@ func makeDefaultCallTx(t *testing.T, typ string, addr, code []byte, amt, gasLim,
 func makeDefaultNameTx(t *testing.T, typ string, name, value string, amt, fee uint64) *types.NameTx {
 	nonce := getNonce(t, typ, user[0].Address)
 	tx := types.NewNameTxWithNonce(user[0].PubKey, name, value, amt, fee, nonce+1)
-	tx.Sign(user[0])
+	tx.Sign(chainID, user[0])
 	return tx
 }
 

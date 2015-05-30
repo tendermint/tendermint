@@ -127,9 +127,9 @@ func NewNameTxWithNonce(from account.PubKey, name, data string, amt, fee uint64,
 	}
 }
 
-func (tx *NameTx) Sign(privAccount *account.PrivAccount) {
+func (tx *NameTx) Sign(chainID string, privAccount *account.PrivAccount) {
 	tx.Input.PubKey = privAccount.PubKey
-	tx.Input.Signature = privAccount.Sign(tx)
+	tx.Input.Signature = privAccount.Sign(chainID, tx)
 }
 
 //----------------------------------------------------------------------------

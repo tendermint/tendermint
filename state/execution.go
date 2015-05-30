@@ -492,7 +492,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 			log.Debug(Fmt("Can't find pubkey for %X", tx.Input.Address))
 			return err
 		}
-		signBytes := account.SignBytes(tx)
+		signBytes := account.SignBytes(_s.ChainID, tx)
 		err := validateInput(inAcc, signBytes, tx.Input)
 		if err != nil {
 			log.Debug(Fmt("validateInput failed on %X:", tx.Input.Address))

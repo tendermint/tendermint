@@ -238,7 +238,7 @@ func testNameReg(t *testing.T, typ string) {
 	nonce := getNonce(t, typ, user[1].Address)
 	data2 := "this is not my beautiful house"
 	tx = types.NewNameTxWithNonce(user[1].PubKey, name, data2, amt, fee, nonce+1)
-	tx.Sign(user[1])
+	tx.Sign(chainID, user[1])
 	_, err := client.BroadcastTx(tx)
 	if err == nil {
 		t.Fatal("Expected error on NameTx")

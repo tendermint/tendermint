@@ -190,9 +190,9 @@ type NameTx struct {
 	Fee   uint64   `json:"fee"`
 }
 
-func (tx *NameTx) WriteSignBytes(w io.Writer, n *int64, err *error) {
+func (tx *NameTx) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
 	// We hex encode the network name so we don't deal with escaping issues.
-	binary.WriteTo([]byte(Fmt(`{"network":"%X"`, config.GetString("network"))), w, n, err)
+	binary.WriteTo([]byte(Fmt(`{"network":"%X"`, chainID)), w, n, err)
 	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"name":"%s","data":"%s"`, TxTypeName, tx.Name, tx.Data)), w, n, err)
 	binary.WriteTo([]byte(Fmt(`,"fee":%v,"input":`, tx.Fee)), w, n, err)
 	tx.Input.WriteSignBytes(w, n, err)
