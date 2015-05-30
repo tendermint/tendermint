@@ -24,7 +24,7 @@ var (
 
 /*
 	Peers self report their heights when a new peer joins the block pool.
-	Starting from whatever we've got (pool.height), we request blocks
+	Starting from pool.height (inclusive), we request blocks
 	in sequence from peers that reported higher heights than ours.
 	Every so often we ask peers what height they're on so we can keep going.
 
@@ -282,7 +282,7 @@ func (pool *BlockPool) makeNextRequest() {
 	pool.requestsMtx.Lock() // Lock
 	defer pool.requestsMtx.Unlock()
 
-	nextHeight := pool.height + uint(len(pool.requests)) + 1
+	nextHeight := pool.height + uint(len(pool.requests))
 	request := &bpRequest{
 		height: nextHeight,
 		peerId: "",
