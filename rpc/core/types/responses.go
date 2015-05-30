@@ -101,6 +101,7 @@ type ResponseDumpConsensusState struct {
 	PeerRoundStates []string `json:"peer_round_states"`
 }
 
-type ResponseNameRegEntry struct {
-	Entry *types.NameRegEntry `json:"entry"`
+type ResponseListNames struct {
+	BlockHeight uint                  `json:"block_height"`
+	Names       []*types.NameRegEntry `json:"names"`
 }
