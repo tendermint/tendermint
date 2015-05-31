@@ -46,8 +46,7 @@ const (
 )
 
 func (vote *Vote) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
-	// We hex encode the chain_id name so we don't deal with escaping issues.
-	binary.WriteTo([]byte(Fmt(`{"chain_id":"%X"`, chainID)), w, n, err)
+	binary.WriteTo([]byte(Fmt(`{"chain_id":"%s"`, chainID)), w, n, err)
 	binary.WriteTo([]byte(Fmt(`,"vote":{"block_hash":"%X","block_parts":%v`, vote.BlockHash, vote.BlockParts)), w, n, err)
 	binary.WriteTo([]byte(Fmt(`,"height":%v,"round":%v,"type":%v}}`, vote.Height, vote.Round, vote.Type)), w, n, err)
 }

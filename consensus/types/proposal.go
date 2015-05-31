@@ -39,8 +39,7 @@ func (p *Proposal) String() string {
 }
 
 func (p *Proposal) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
-	// We hex encode the chain_id name so we don't deal with escaping issues.
-	binary.WriteTo([]byte(Fmt(`{"chain_id":"%X"`, chainID)), w, n, err)
+	binary.WriteTo([]byte(Fmt(`{"chain_id":"%s"`, chainID)), w, n, err)
 	binary.WriteTo([]byte(`,"proposal":{"block_parts":`), w, n, err)
 	p.BlockParts.WriteSignBytes(w, n, err)
 	binary.WriteTo([]byte(Fmt(`,"height":%v,"pol_parts":`, p.Height)), w, n, err)
