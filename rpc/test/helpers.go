@@ -212,11 +212,11 @@ func callContract(t *testing.T, client cclient.Client, address, data, expected [
 // get the namereg entry
 func getNameRegEntry(t *testing.T, typ string, name string) *types.NameRegEntry {
 	client := clients[typ]
-	r, err := client.NameRegEntry(name)
+	entry, err := client.GetName(name)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return r.Entry
+	return entry
 }
 
 //--------------------------------------------------------------------------------
