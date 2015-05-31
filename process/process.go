@@ -74,6 +74,10 @@ func Create(mode int, label string, execPath string, args []string, input string
 			}
 		}
 		proc.EndTime = time.Now() // TODO make this goroutine-safe
+		err = proc.OutputFile.Close()
+		if err != nil {
+			fmt.Printf("Error closing output file for %v: %v\n", proc.Label, err)
+		}
 		close(proc.WaitCh)
 	}()
 	return proc, nil
