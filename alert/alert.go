@@ -15,7 +15,7 @@ func Alert(message string) {
 	log.Error("<!> ALERT <!>\n" + message)
 	now := time.Now().Unix()
 	if now-lastAlertUnix > int64(config.GetInt("alert_min_interval")) {
-		message = fmt.Sprintf("%v:%v", config.GetString("network"), message)
+		message = fmt.Sprintf("%v:%v", config.GetString("chain_id"), message)
 		if alertCountSince > 0 {
 			message = fmt.Sprintf("%v (+%v more since)", message, alertCountSince)
 			alertCountSince = 0

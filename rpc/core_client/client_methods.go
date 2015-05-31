@@ -21,6 +21,7 @@ type Client interface {
 	DumpConsensusState() (*ctypes.ResponseDumpConsensusState, error)
 	DumpStorage(address []byte) (*ctypes.ResponseDumpStorage, error)
 	GenPrivAccount() (*ctypes.ResponseGenPrivAccount, error)
+	Genesis() (*string, error)
 	GetAccount(address []byte) (*ctypes.ResponseGetAccount, error)
 	GetBlock(height uint) (*ctypes.ResponseGetBlock, error)
 	GetStorage(address []byte, key []byte) (*ctypes.ResponseGetStorage, error)
@@ -231,6 +232,36 @@ func (c *ClientHTTP) GenPrivAccount() (*ctypes.ResponseGenPrivAccount, error) {
 		Error   string                         `json:"error"`
 		Id      string                         `json:"id"`
 		JSONRPC string                         `json:"jsonrpc"`
+	}
+	binary.ReadJSON(&response, body, &err)
+	if err != nil {
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, fmt.Errorf(response.Error)
+	}
+	return response.Result, nil
+}
+
+func (c *ClientHTTP) Genesis() (*string, error) {
+	values, err := argsToURLValues(nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := http.PostForm(c.addr+reverseFuncMap["Genesis"], values)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	var response struct {
+		Result  *string `json:"result"`
+		Error   string  `json:"error"`
+		Id      string  `json:"id"`
+		JSONRPC string  `json:"jsonrpc"`
 	}
 	binary.ReadJSON(&response, body, &err)
 	if err != nil {
@@ -690,6 +721,33 @@ func (c *ClientJSON) GenPrivAccount() (*ctypes.ResponseGenPrivAccount, error) {
 		Error   string                         `json:"error"`
 		Id      string                         `json:"id"`
 		JSONRPC string                         `json:"jsonrpc"`
+	}
+	binary.ReadJSON(&response, body, &err)
+	if err != nil {
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, fmt.Errorf(response.Error)
+	}
+	return response.Result, nil
+}
+
+func (c *ClientJSON) Genesis() (*string, error) {
+	request := rpctypes.RPCRequest{
+		JSONRPC: "2.0",
+		Method:  reverseFuncMap["Genesis"],
+		Params:  []interface{}{},
+		Id:      0,
+	}
+	body, err := c.RequestResponse(request)
+	if err != nil {
+		return nil, err
+	}
+	var response struct {
+		Result  *string `json:"result"`
+		Error   string  `json:"error"`
+		Id      string  `json:"id"`
+		JSONRPC string  `json:"jsonrpc"`
 	}
 	binary.ReadJSON(&response, body, &err)
 	if err != nil {

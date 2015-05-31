@@ -97,6 +97,7 @@ func RandGenesisState(numAccounts int, randBalance bool, minBalance uint64, numV
 	sort.Sort(PrivValidatorsByAddress(privValidators))
 	s0 := MakeGenesisState(db, &GenesisDoc{
 		GenesisTime: time.Now(),
+		ChainID:     "tendermint_test",
 		Accounts:    accounts,
 		Validators:  validators,
 	})

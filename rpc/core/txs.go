@@ -91,27 +91,27 @@ func SignTx(tx types.Tx, privAccounts []*account.PrivAccount) (*ctypes.ResponseS
 		sendTx := tx.(*types.SendTx)
 		for i, input := range sendTx.Inputs {
 			input.PubKey = privAccounts[i].PubKey
-			input.Signature = privAccounts[i].Sign(sendTx)
+			input.Signature = privAccounts[i].Sign(config.GetString("chain_id"), sendTx)
 		}
 	case *types.CallTx:
 		callTx := tx.(*types.CallTx)
 		callTx.Input.PubKey = privAccounts[0].PubKey
-		callTx.Input.Signature = privAccounts[0].Sign(callTx)
+		callTx.Input.Signature = privAccounts[0].Sign(config.GetString("chain_id"), callTx)
 	case *types.BondTx:
 		bondTx := tx.(*types.BondTx)
 		// the first privaccount corresponds to the BondTx pub key.
 		// the rest to the inputs
-		bondTx.Signature = privAccounts[0].Sign(bondTx).(account.SignatureEd25519)
+		bondTx.Signature = privAccounts[0].Sign(config.GetString("chain_id"), bondTx).(account.SignatureEd25519)
 		for i, input := range bondTx.Inputs {
 			input.PubKey = privAccounts[i+1].PubKey
-			input.Signature = privAccounts[i+1].Sign(bondTx)
+			input.Signature = privAccounts[i+1].Sign(config.GetString("chain_id"), bondTx)
 		}
 	case *types.UnbondTx:
 		unbondTx := tx.(*types.UnbondTx)
-		unbondTx.Signature = privAccounts[0].Sign(unbondTx).(account.SignatureEd25519)
+		unbondTx.Signature = privAccounts[0].Sign(config.GetString("chain_id"), unbondTx).(account.SignatureEd25519)
 	case *types.RebondTx:
 		rebondTx := tx.(*types.RebondTx)
-		rebondTx.Signature = privAccounts[0].Sign(rebondTx).(account.SignatureEd25519)
+		rebondTx.Signature = privAccounts[0].Sign(config.GetString("chain_id"), rebondTx).(account.SignatureEd25519)
 	}
 	return &ctypes.ResponseSignTx{tx}, nil
 }

@@ -51,13 +51,13 @@ func GetConfig(rootDir string) cfg.Config {
 	}
 
 	// Set defaults or panic
-	if !mapConfig.IsSet("network") {
-		Exit("Must set 'network'")
+	if mapConfig.IsSet("chain_id") {
+		Exit("Cannot set 'chain_id' via config.toml")
 	}
 	if mapConfig.IsSet("version") {
 		Exit("Cannot set 'version' via config.toml")
 	}
-	// mapConfig.SetDefault("network", "tendermint_testnet0")
+	mapConfig.SetDefault("chain_id", "tendermint_testnet_5")
 	mapConfig.SetDefault("version", "0.3.0") // JAE: changed merkle tree persistence format for merkle proofs.
 	mapConfig.SetDefault("genesis_file", rootDir+"/genesis.json")
 	mapConfig.SetDefault("moniker", "anonymous")
@@ -82,7 +82,6 @@ func ensureDefault(mapConfig cfg.MapConfig, key string, value interface{}) {
 var defaultConfigTmpl = `# This is a TOML config file.
 # For more information, see https://github.com/toml-lang/toml
 
-network = "tendermint_testnet_5"
 moniker = "__MONIKER__"
 node_laddr = "0.0.0.0:46656"
 seeds = "goldenalchemist.chaintest.net:46656"
@@ -98,6 +97,7 @@ func defaultConfig(moniker string) (defaultConfig string) {
 }
 
 var defaultGenesis = `{
+    "chain_id": "tendermint_testnet_5",
     "accounts": [
         {
             "address": "F81CB9ED0A868BD961C4F5BBC0E39B763B89FCB6",

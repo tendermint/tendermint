@@ -56,12 +56,12 @@ func (tx *SendTx) AddOutput(addr []byte, amt uint64) error {
 	return nil
 }
 
-func (tx *SendTx) SignInput(i int, privAccount *account.PrivAccount) error {
+func (tx *SendTx) SignInput(chainID string, i int, privAccount *account.PrivAccount) error {
 	if i >= len(tx.Inputs) {
 		return fmt.Errorf("Index %v is greater than number of inputs (%v)", i, len(tx.Inputs))
 	}
 	tx.Inputs[i].PubKey = privAccount.PubKey
-	tx.Inputs[i].Signature = privAccount.Sign(tx)
+	tx.Inputs[i].Signature = privAccount.Sign(chainID, tx)
 	return nil
 }
 
@@ -98,9 +98,9 @@ func NewCallTxWithNonce(from account.PubKey, to, data []byte, amt, gasLimit, fee
 	}
 }
 
-func (tx *CallTx) Sign(privAccount *account.PrivAccount) {
+func (tx *CallTx) Sign(chainID string, privAccount *account.PrivAccount) {
 	tx.Input.PubKey = privAccount.PubKey
-	tx.Input.Signature = privAccount.Sign(tx)
+	tx.Input.Signature = privAccount.Sign(chainID, tx)
 }
 
 //----------------------------------------------------------------------------
@@ -155,8 +155,8 @@ func (tx *BondTx) AddOutput(addr []byte, amt uint64) error {
 	return nil
 }
 
-func (tx *BondTx) SignBond(privAccount *account.PrivAccount) error {
-	sig := privAccount.Sign(tx)
+func (tx *BondTx) SignBond(chainID string, privAccount *account.PrivAccount) error {
+	sig := privAccount.Sign(chainID, tx)
 	sigEd, ok := sig.(account.SignatureEd25519)
 	if !ok {
 		return fmt.Errorf("Bond signer must be ED25519")
@@ -165,11 +165,11 @@ func (tx *BondTx) SignBond(privAccount *account.PrivAccount) error {
 	return nil
 }
 
-func (tx *BondTx) SignInput(i int, privAccount *account.PrivAccount) error {
+func (tx *BondTx) SignInput(chainID string, i int, privAccount *account.PrivAccount) error {
 	if i >= len(tx.Inputs) {
 		return fmt.Errorf("Index %v is greater than number of inputs (%v)", i, len(tx.Inputs))
 	}
 	tx.Inputs[i].PubKey = privAccount.PubKey
-	tx.Inputs[i].Signature = privAccount.Sign(tx)
+	tx.Inputs[i].Signature = privAccount.Sign(chainID, tx)
 	return nil
 }

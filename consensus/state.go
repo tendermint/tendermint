@@ -536,7 +536,7 @@ func (cs *ConsensusState) updateToState(state *sm.State, contiguous bool) {
 			Address: cs.privValidator.Address,
 			Height:  cs.Height,
 		}
-		err := cs.privValidator.SignRebondTx(rebondTx)
+		err := cs.privValidator.SignRebondTx(cs.state.ChainID, rebondTx)
 		if err == nil {
 			err := cs.mempoolReactor.BroadcastTx(rebondTx)
 			if err != nil {
@@ -656,7 +656,7 @@ func (cs *ConsensusState) RunActionPropose(height uint, round uint) {
 		txs := cs.mempoolReactor.Mempool.GetProposalTxs()
 		block = &types.Block{
 			Header: &types.Header{
-				Network:        config.GetString("network"),
+				ChainID:        cs.state.ChainID,
 				Height:         cs.Height,
 				Time:           time.Now(),
 				Fees:           0, // TODO fees
@@ -688,7 +688,7 @@ func (cs *ConsensusState) RunActionPropose(height uint, round uint) {
 
 	// Make proposal
 	proposal := NewProposal(cs.Height, cs.Round, blockParts.Header(), polParts.Header())
-	err := cs.privValidator.SignProposal(proposal)
+	err := cs.privValidator.SignProposal(cs.state.ChainID, proposal)
 	if err == nil {
 		log.Info("Signed and set proposal", "height", cs.Height, "round", cs.Round, "proposal", proposal)
 		log.Debug(Fmt("Signed and set proposal block: %v", block))
@@ -939,7 +939,7 @@ func (cs *ConsensusState) SetProposal(proposal *Proposal) error {
 	}
 
 	// Verify signature
-	if !cs.Validators.Proposer().PubKey.VerifyBytes(account.SignBytes(proposal), proposal.Signature) {
+	if !cs.Validators.Proposer().PubKey.VerifyBytes(account.SignBytes(cs.state.ChainID, proposal), proposal.Signature) {
 		return ErrInvalidProposalSignature
 	}
 
@@ -1111,7 +1111,7 @@ func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header types.Part
 		BlockHash:  hash,
 		BlockParts: header,
 	}
-	err := cs.privValidator.SignVote(vote)
+	err := cs.privValidator.SignVote(cs.state.ChainID, vote)
 	if err == nil {
 		log.Info("Signed and added vote", "height", cs.Height, "round", cs.Round, "vote", vote)
 		cs.addVote(cs.privValidator.Address, vote)

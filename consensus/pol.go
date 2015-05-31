@@ -38,7 +38,7 @@ func (pol *POL) Verify(valSet *sm.ValidatorSet) error {
 	}
 
 	talliedVotingPower := uint64(0)
-	prevoteDoc := account.SignBytes(&types.Vote{
+	prevoteDoc := account.SignBytes(config.GetString("chain_id"), &types.Vote{
 		Height: pol.Height, Round: pol.Round, Type: types.VoteTypePrevote,
 		BlockHash:  pol.BlockHash,
 		BlockParts: pol.BlockParts,
@@ -55,7 +55,7 @@ func (pol *POL) Verify(valSet *sm.ValidatorSet) error {
 
 		// Commit vote?
 		if vote.Round < pol.Round {
-			voteDoc = account.SignBytes(&types.Vote{
+			voteDoc = account.SignBytes(config.GetString("chain_id"), &types.Vote{
 				Height: pol.Height, Round: vote.Round, Type: types.VoteTypeCommit,
 				BlockHash:  pol.BlockHash,
 				BlockParts: pol.BlockParts,

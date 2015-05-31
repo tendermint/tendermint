@@ -16,7 +16,7 @@ func TestSetupRound(t *testing.T) {
 	voteTypes := []byte{types.VoteTypePrevote, types.VoteTypePrecommit, types.VoteTypeCommit}
 	for _, voteType := range voteTypes {
 		vote := &types.Vote{Height: 1, Round: 0, Type: voteType} // nil vote
-		err := val0.SignVote(vote)
+		err := val0.SignVote(cs.state.ChainID, vote)
 		if err != nil {
 			t.Error("Error signing vote: %v", err)
 		}
@@ -124,7 +124,7 @@ func TestRunActionPrecommitCommitFinalize(t *testing.T) {
 			BlockHash:  cs.ProposalBlock.Hash(),
 			BlockParts: cs.ProposalBlockParts.Header(),
 		}
-		err := privValidators[i].SignVote(vote)
+		err := privValidators[i].SignVote(cs.state.ChainID, vote)
 		if err != nil {
 			t.Error("Error signing vote: %v", err)
 		}
@@ -154,7 +154,7 @@ func TestRunActionPrecommitCommitFinalize(t *testing.T) {
 			BlockHash:  cs.ProposalBlock.Hash(),
 			BlockParts: cs.ProposalBlockParts.Header(),
 		}
-		err := privValidators[i].SignVote(vote)
+		err := privValidators[i].SignVote(cs.state.ChainID, vote)
 		if err != nil {
 			t.Error("Error signing vote: %v", err)
 		}
@@ -192,7 +192,7 @@ func TestRunActionPrecommitCommitFinalize(t *testing.T) {
 			BlockHash:  cs.ProposalBlock.Hash(),
 			BlockParts: cs.ProposalBlockParts.Header(),
 		}
-		err := privValidators[i].SignVote(vote)
+		err := privValidators[i].SignVote(cs.state.ChainID, vote)
 		if err != nil {
 			t.Error("Error signing vote: %v", err)
 		}

@@ -32,6 +32,8 @@ var (
 	userPriv = "C453604BD6480D5538B4C6FD2E3E314B5BCE518D75ADE4DA3DA85AB8ADFD819606FBAC4E285285D1D91FCBC7E91C780ADA11516F67462340B3980CE2B94940E8"
 	user     = makeUsers(2)
 
+	chainID string
+
 	clients = map[string]cclient.Client{
 		"JSONRPC": cclient.NewClient(requestAddr, "JSONRPC"),
 		"HTTP":    cclient.NewClient(requestAddr, "HTTP"),
@@ -74,6 +76,8 @@ func newNode(ready chan struct{}) {
 
 // initialize config and create new node
 func init() {
+	chainID = config.GetString("chain_id")
+
 	// Save new priv_validator file.
 	priv := &state.PrivValidator{
 		Address: user[0].Address,
@@ -83,7 +87,7 @@ func init() {
 	priv.SetFile(config.GetString("priv_validator_file"))
 	priv.Save()
 
-	consensus.RoundDuration0 = 3 * time.Second
+	consensus.RoundDuration0 = 2 * time.Second
 	consensus.RoundDurationDelta = 1 * time.Second
 
 	// start a node
@@ -105,14 +109,14 @@ func makeDefaultSendTx(t *testing.T, typ string, addr []byte, amt uint64) *types
 
 func makeDefaultSendTxSigned(t *testing.T, typ string, addr []byte, amt uint64) *types.SendTx {
 	tx := makeDefaultSendTx(t, typ, addr, amt)
-	tx.SignInput(0, user[0])
+	tx.SignInput(chainID, 0, user[0])
 	return tx
 }
 
 func makeDefaultCallTx(t *testing.T, typ string, addr, code []byte, amt, gasLim, fee uint64) *types.CallTx {
 	nonce := getNonce(t, typ, user[0].Address)
 	tx := types.NewCallTxWithNonce(user[0].PubKey, addr, code, amt, gasLim, fee, nonce)
-	tx.Sign(user[0])
+	tx.Sign(chainID, user[0])
 	return tx
 }
 
@@ -214,7 +218,7 @@ func checkTx(t *testing.T, fromAddr []byte, priv *account.PrivAccount, tx *types
 		t.Fatal("Tx input addresses don't match!")
 	}
 
-	signBytes := account.SignBytes(tx)
+	signBytes := account.SignBytes(chainID, tx)
 	in := tx.Inputs[0] //(*types.SendTx).Inputs[0]
 
 	if err := in.ValidateBasic(); err != nil {

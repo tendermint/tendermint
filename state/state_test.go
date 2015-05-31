@@ -65,7 +65,7 @@ func TestCopyState(t *testing.T) {
 func makeBlock(t *testing.T, state *State, commits []types.Commit, txs []types.Tx) *types.Block {
 	block := &types.Block{
 		Header: &types.Header{
-			Network:        "tendermint_test",
+			ChainID:        state.ChainID,
 			Height:         state.LastBlockHeight + 1,
 			Time:           state.LastBlockTime.Add(time.Minute),
 			Fees:           0,
@@ -191,7 +191,7 @@ func TestTxSequence(t *testing.T) {
 	for i := -1; i < 3; i++ {
 		sequence := acc0.Sequence + uint(i)
 		tx := makeSendTx(sequence)
-		tx.Inputs[0].Signature = privAccounts[0].Sign(tx)
+		tx.Inputs[0].Signature = privAccounts[0].Sign(state.ChainID, tx)
 		stateCopy := state.Copy()
 		err := execTxWithState(stateCopy, tx, true)
 		if i == 1 {
@@ -251,7 +251,7 @@ func TestTxs(t *testing.T) {
 			},
 		}
 
-		tx.Inputs[0].Signature = privAccounts[0].Sign(tx)
+		tx.Inputs[0].Signature = privAccounts[0].Sign(state.ChainID, tx)
 		err := execTxWithState(state, tx, true)
 		if err != nil {
 			t.Errorf("Got error in executing send transaction, %v", err)
@@ -288,8 +288,8 @@ func TestTxs(t *testing.T) {
 				},
 			},
 		}
-		tx.Signature = privAccounts[0].Sign(tx).(account.SignatureEd25519)
-		tx.Inputs[0].Signature = privAccounts[0].Sign(tx)
+		tx.Signature = privAccounts[0].Sign(state.ChainID, tx).(account.SignatureEd25519)
+		tx.Inputs[0].Signature = privAccounts[0].Sign(state.ChainID, tx)
 		err := execTxWithState(state, tx, true)
 		if err != nil {
 			t.Errorf("Got error in executing bond transaction, %v", err)
@@ -345,8 +345,8 @@ func TestAddValidator(t *testing.T) {
 			},
 		},
 	}
-	bondTx.Signature = acc0.Sign(bondTx).(account.SignatureEd25519)
-	bondTx.Inputs[0].Signature = acc0.Sign(bondTx)
+	bondTx.Signature = acc0.Sign(s0.ChainID, bondTx).(account.SignatureEd25519)
+	bondTx.Inputs[0].Signature = acc0.Sign(s0.ChainID, bondTx)
 
 	// Make complete block and blockParts
 	block0 := makeBlock(t, s0, nil, []types.Tx{bondTx})
@@ -380,7 +380,7 @@ func TestAddValidator(t *testing.T) {
 		BlockHash:  block0.Hash(),
 		BlockParts: block0Parts.Header(),
 	}
-	privValidators[0].SignVote(commit0)
+	privValidators[0].SignVote(s0.ChainID, commit0)
 
 	block1 := makeBlock(t, s0,
 		[]types.Commit{

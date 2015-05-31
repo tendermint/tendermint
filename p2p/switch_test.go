@@ -76,13 +76,13 @@ func makeSwitchPair(t testing.TB, initSwitch func(*Switch) *Switch) (*Switch, *S
 	s1 := initSwitch(NewSwitch())
 	s1.SetNodeInfo(&types.NodeInfo{
 		Moniker: "switch1",
-		Network: "testing",
+		ChainID: "testing",
 		Version: "123.123.123",
 	})
 	s2 := initSwitch(NewSwitch())
 	s2.SetNodeInfo(&types.NodeInfo{
 		Moniker: "switch2",
-		Network: "testing",
+		ChainID: "testing",
 		Version: "123.123.123",
 	})
 

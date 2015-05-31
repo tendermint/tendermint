@@ -56,6 +56,8 @@ func NewNode() *Node {
 		state = sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
 		state.Save()
 	}
+	// add the chainid to the global config
+	config.Set("chain_id", state.ChainID)
 
 	// Get PrivValidator
 	var privValidator *sm.PrivValidator
@@ -212,7 +214,7 @@ func (n *Node) EventSwitch() *events.EventSwitch {
 
 func makeNodeInfo(sw *p2p.Switch) *types.NodeInfo {
 	nodeInfo := &types.NodeInfo{
-		Network: config.GetString("network"),
+		ChainID: config.GetString("chain_id"),
 		Moniker: config.GetString("moniker"),
 		Version: config.GetString("version"),
 	}
