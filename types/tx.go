@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"errors"
 	"io"
 
@@ -18,6 +19,8 @@ var (
 	ErrTxUnknownPubKey        = errors.New("Error unknown pubkey")
 	ErrTxInvalidPubKey        = errors.New("Error invalid pubkey")
 	ErrTxInvalidSignature     = errors.New("Error invalid signature")
+	ErrTxInvalidString        = errors.New("Error invalid string")
+	ErrIncorrectOwner         = errors.New("Error incorrect owner")
 )
 
 type ErrTxInvalidSequence struct {
@@ -35,6 +38,7 @@ Tx (Transaction) is an atomic operation on the ledger state.
 Account Txs:
  - SendTx         Send coins to address
  - CallTx         Send a msg to a contract that runs in the vm
+ - NameTx	  Store some value under a name in the global namereg
 
 Validation Txs:
  - BondTx         New validator posts a bond
@@ -50,6 +54,7 @@ const (
 	// Account transactions
 	TxTypeSend = byte(0x01)
 	TxTypeCall = byte(0x02)
+	TxTypeName = byte(0x03)
 
 	// Validation transactions
 	TxTypeBond    = byte(0x11)
@@ -63,6 +68,7 @@ var _ = binary.RegisterInterface(
 	struct{ Tx }{},
 	binary.ConcreteType{&SendTx{}, TxTypeSend},
 	binary.ConcreteType{&CallTx{}, TxTypeCall},
+	binary.ConcreteType{&NameTx{}, TxTypeName},
 	binary.ConcreteType{&BondTx{}, TxTypeBond},
 	binary.ConcreteType{&UnbondTx{}, TxTypeUnbond},
 	binary.ConcreteType{&RebondTx{}, TxTypeRebond},
@@ -130,8 +136,7 @@ type SendTx struct {
 }
 
 func (tx *SendTx) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
-	// We hex encode the chain_id so we don't deal with escaping issues.
-	binary.WriteTo([]byte(Fmt(`{"chain_id":"%X"`, chainID)), w, n, err)
+	binary.WriteTo([]byte(Fmt(`{"chain_id":%s`, jsonEscape(chainID))), w, n, err)
 	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"inputs":[`, TxTypeSend)), w, n, err)
 	for i, in := range tx.Inputs {
 		in.WriteSignBytes(w, n, err)
@@ -164,8 +169,7 @@ type CallTx struct {
 }
 
 func (tx *CallTx) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
-	// We hex encode the chain_id so we don't deal with escaping issues.
-	binary.WriteTo([]byte(Fmt(`{"chain_id":"%X"`, chainID)), w, n, err)
+	binary.WriteTo([]byte(Fmt(`{"chain_id":%s`, jsonEscape(chainID))), w, n, err)
 	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"address":"%X","data":"%X"`, TxTypeCall, tx.Address, tx.Data)), w, n, err)
 	binary.WriteTo([]byte(Fmt(`,"fee":%v,"gas_limit":%v,"input":`, tx.Fee, tx.GasLimit)), w, n, err)
 	tx.Input.WriteSignBytes(w, n, err)
@@ -178,6 +182,54 @@ func (tx *CallTx) String() string {
 
 //-----------------------------------------------------------------------------
 
+type NameTx struct {
+	Input *TxInput `json:"input"`
+	Name  string   `json:"name"`
+	Data  string   `json:"data"`
+	Fee   uint64   `json:"fee"`
+}
+
+func (tx *NameTx) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
+	binary.WriteTo([]byte(Fmt(`{"chain_id":%s`, jsonEscape(chainID))), w, n, err)
+	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"data":%s,"fee":%v`, TxTypeName, jsonEscape(tx.Data), tx.Fee)), w, n, err)
+	binary.WriteTo([]byte(Fmt(`,"input":`, tx.Input)), w, n, err)
+	tx.Input.WriteSignBytes(w, n, err)
+	binary.WriteTo([]byte(Fmt(`,"name":%s`, jsonEscape(tx.Name))), w, n, err)
+	binary.WriteTo([]byte(`}]}`), w, n, err)
+}
+
+func (tx *NameTx) ValidateStrings() error {
+	if len(tx.Name) == 0 {
+		return errors.New("Name must not be empty")
+	}
+	if len(tx.Name) > MaxNameLength {
+		return errors.New(Fmt("Name is too long. Max %d bytes", MaxNameLength))
+	}
+	if len(tx.Data) > MaxDataLength {
+		return errors.New(Fmt("Data is too long. Max %d bytes", MaxDataLength))
+	}
+
+	if !validateNameRegEntryName(tx.Name) {
+		return errors.New(Fmt("Invalid characters found in NameTx.Name (%s). Only alphanumeric, underscores, and forward slashes allowed", tx.Name))
+	}
+
+	if !validateNameRegEntryData(tx.Data) {
+		return errors.New(Fmt("Invalid characters found in NameTx.Data (%s). Only the kind of things found in a JSON file are allowed", tx.Data))
+	}
+
+	return nil
+}
+
+func (tx *NameTx) BaseEntryCost() uint64 {
+	return BaseEntryCost(tx.Name, tx.Data)
+}
+
+func (tx *NameTx) String() string {
+	return Fmt("NameTx{%v -> %s: %s}", tx.Input, tx.Name, tx.Data)
+}
+
+//-----------------------------------------------------------------------------
+
 type BondTx struct {
 	PubKey    account.PubKeyEd25519    `json:"pub_key"`
 	Signature account.SignatureEd25519 `json:"signature"`
@@ -186,8 +238,7 @@ type BondTx struct {
 }
 
 func (tx *BondTx) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
-	// We hex encode the chain_id so we don't deal with escaping issues.
-	binary.WriteTo([]byte(Fmt(`{"chain_id":"%X"`, chainID)), w, n, err)
+	binary.WriteTo([]byte(Fmt(`{"chain_id":%s`, jsonEscape(chainID))), w, n, err)
 	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"inputs":[`, TxTypeBond)), w, n, err)
 	for i, in := range tx.Inputs {
 		in.WriteSignBytes(w, n, err)
@@ -220,8 +271,7 @@ type UnbondTx struct {
 }
 
 func (tx *UnbondTx) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
-	// We hex encode the chain_id so we don't deal with escaping issues.
-	binary.WriteTo([]byte(Fmt(`{"chain_id":"%X"`, chainID)), w, n, err)
+	binary.WriteTo([]byte(Fmt(`{"chain_id":%s`, jsonEscape(chainID))), w, n, err)
 	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"address":"%X","height":%v}]}`, TxTypeUnbond, tx.Address, tx.Height)), w, n, err)
 }
 
@@ -238,8 +288,7 @@ type RebondTx struct {
 }
 
 func (tx *RebondTx) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
-	// We hex encode the chain_id so we don't deal with escaping issues.
-	binary.WriteTo([]byte(Fmt(`{"chain_id":"%X"`, chainID)), w, n, err)
+	binary.WriteTo([]byte(Fmt(`{"chain_id":%s`, jsonEscape(chainID))), w, n, err)
 	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"address":"%X","height":%v}]}`, TxTypeRebond, tx.Address, tx.Height)), w, n, err)
 }
 
@@ -268,4 +317,15 @@ func (tx *DupeoutTx) String() string {
 func TxId(chainID string, tx Tx) []byte {
 	signBytes := account.SignBytes(chainID, tx)
 	return binary.BinaryRipemd160(signBytes)
+}
+
+//--------------------------------------------------------------------------------
+
+// Contract: This function is deterministic and completely reversible.
+func jsonEscape(str string) string {
+	escapedBytes, err := json.Marshal(str)
+	if err != nil {
+		panic(Fmt("Error json-escaping a string", str))
+	}
+	return string(escapedBytes)
 }

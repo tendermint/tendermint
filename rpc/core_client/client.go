@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"github.com/tendermint/tendermint/binary"
 	rpctypes "github.com/tendermint/tendermint/rpc/types"
-	// NOTE: do not import rpc/core.
-	// What kind of client imports all of core logic? :P
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -18,20 +16,25 @@ import (
 
 // maps camel-case function names to lower case rpc version
 var reverseFuncMap = map[string]string{
-	"Status":         "status",
-	"NetInfo":        "net_info",
-	"BlockchainInfo": "blockchain",
-	"GetBlock":       "get_block",
-	"GetAccount":     "get_account",
-	"GetStorage":     "get_storage",
-	"Call":           "call",
-	"CallCode":       "call_code",
-	"ListValidators": "list_validators",
-	"DumpStorage":    "dump_storage",
-	"BroadcastTx":    "broadcast_tx",
-	"ListAccounts":   "list_accounts",
-	"GenPrivAccount": "unsafe/gen_priv_account",
-	"SignTx":         "unsafe/sign_tx",
+	"Status":             "status",
+	"NetInfo":            "net_info",
+	"BlockchainInfo":     "blockchain",
+	"Genesis":            "genesis",
+	"GetBlock":           "get_block",
+	"GetAccount":         "get_account",
+	"GetStorage":         "get_storage",
+	"Call":               "call",
+	"CallCode":           "call_code",
+	"ListValidators":     "list_validators",
+	"DumpConsensusState": "dump_consensus_state",
+	"DumpStorage":        "dump_storage",
+	"BroadcastTx":        "broadcast_tx",
+	"ListUnconfirmedTxs": "list_unconfirmed_txs",
+	"ListAccounts":       "list_accounts",
+	"GetName":            "get_name",
+	"ListNames":          "list_names",
+	"GenPrivAccount":     "unsafe/gen_priv_account",
+	"SignTx":             "unsafe/sign_tx",
 }
 
 /*

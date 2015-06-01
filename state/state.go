@@ -3,6 +3,7 @@ package state
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/tendermint/tendermint/account"
@@ -36,6 +37,7 @@ type State struct {
 	UnbondingValidators  *ValidatorSet
 	accounts             merkle.Tree // Shouldn't be accessed directly.
 	validatorInfos       merkle.Tree // Shouldn't be accessed directly.
+	nameReg              merkle.Tree // Shouldn't be accessed directly.
 
 	evc events.Fireable // typically an events.EventCache
 }
@@ -61,6 +63,9 @@ func LoadState(db dbm.DB) *State {
 		validatorInfosHash := binary.ReadByteSlice(r, n, err)
 		s.validatorInfos = merkle.NewIAVLTree(binary.BasicCodec, ValidatorInfoCodec, 0, db)
 		s.validatorInfos.Load(validatorInfosHash)
+		nameRegHash := binary.ReadByteSlice(r, n, err)
+		s.nameReg = merkle.NewIAVLTree(binary.BasicCodec, NameRegCodec, 0, db)
+		s.nameReg.Load(nameRegHash)
 		if *err != nil {
 			panic(*err)
 		}
@@ -72,6 +77,7 @@ func LoadState(db dbm.DB) *State {
 func (s *State) Save() {
 	s.accounts.Save()
 	s.validatorInfos.Save()
+	s.nameReg.Save()
 	buf, n, err := new(bytes.Buffer), new(int64), new(error)
 	binary.WriteString(s.ChainID, buf, n, err)
 	binary.WriteUvarint(s.LastBlockHeight, buf, n, err)
@@ -83,6 +89,7 @@ func (s *State) Save() {
 	binary.WriteBinary(s.UnbondingValidators, buf, n, err)
 	binary.WriteByteSlice(s.accounts.Hash(), buf, n, err)
 	binary.WriteByteSlice(s.validatorInfos.Hash(), buf, n, err)
+	binary.WriteByteSlice(s.nameReg.Hash(), buf, n, err)
 	if *err != nil {
 		panic(*err)
 	}
@@ -105,6 +112,7 @@ func (s *State) Copy() *State {
 		UnbondingValidators:  s.UnbondingValidators.Copy(),  // copy the valSet lazily.
 		accounts:             s.accounts.Copy(),
 		validatorInfos:       s.validatorInfos.Copy(),
+		nameReg:              s.nameReg.Copy(),
 		evc:                  nil,
 	}
 }
@@ -116,6 +124,7 @@ func (s *State) Hash() []byte {
 		s.UnbondingValidators,
 		s.accounts,
 		s.validatorInfos,
+		s.nameReg,
 	}
 	return merkle.HashFromHashables(hashables)
 }
@@ -271,6 +280,45 @@ func (s *State) LoadStorage(hash []byte) (storage merkle.Tree) {
 }
 
 // State.storage
+//-------------------------------------
+// State.nameReg
+
+func (s *State) GetNameRegEntry(name string) *types.NameRegEntry {
+	_, value := s.nameReg.Get(name)
+	if value == nil {
+		return nil
+	}
+	entry := value.(*types.NameRegEntry)
+	return entry.Copy()
+}
+
+func (s *State) UpdateNameRegEntry(entry *types.NameRegEntry) bool {
+	return s.nameReg.Set(entry.Name, entry)
+}
+
+func (s *State) RemoveNameRegEntry(name string) bool {
+	_, removed := s.nameReg.Remove(name)
+	return removed
+}
+
+func (s *State) GetNames() merkle.Tree {
+	return s.nameReg.Copy()
+}
+
+func NameRegEncoder(o interface{}, w io.Writer, n *int64, err *error) {
+	binary.WriteBinary(o.(*types.NameRegEntry), w, n, err)
+}
+
+func NameRegDecoder(r io.Reader, n *int64, err *error) interface{} {
+	return binary.ReadBinary(&types.NameRegEntry{}, r, n, err)
+}
+
+var NameRegCodec = binary.Codec{
+	Encode: NameRegEncoder,
+	Decode: NameRegDecoder,
+}
+
+// State.nameReg
 //-------------------------------------
 
 // Implements events.Eventable. Typically uses events.EventCache

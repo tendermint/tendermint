@@ -50,7 +50,7 @@ func TestWSBlockchainGrowth(t *testing.T) {
 
 // send a transaction and validate the events from listening for both sender and receiver
 func TestWSSend(t *testing.T) {
-	toAddr := []byte{20, 143, 25, 63, 16, 177, 83, 29, 91, 91, 54, 23, 233, 46, 190, 121, 122, 34, 86, 54}
+	toAddr := user[1].Address
 	amt := uint64(100)
 
 	con := newWSCon(t)
@@ -80,7 +80,7 @@ func TestWSDoubleFire(t *testing.T) {
 		con.Close()
 	}()
 	amt := uint64(100)
-	toAddr := []byte{20, 143, 25, 63, 16, 177, 83, 29, 91, 91, 54, 23, 233, 46, 190, 121, 122, 34, 86, 54}
+	toAddr := user[1].Address
 	// broadcast the transaction, wait to hear about it
 	waitForEvent(t, con, eid, true, func() {
 		tx := makeDefaultSendTxSigned(t, wsTyp, toAddr, amt)

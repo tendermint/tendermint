@@ -9,6 +9,8 @@ import (
 	"testing"
 )
 
+var doNothing = func(eid string, b []byte) error { return nil }
+
 func testStatus(t *testing.T, typ string) {
 	client := clients[typ]
 	resp, err := client.Status()
@@ -23,11 +25,11 @@ func testStatus(t *testing.T, typ string) {
 
 func testGenPriv(t *testing.T, typ string) {
 	client := clients[typ]
-	resp, err := client.GenPrivAccount()
+	privAcc, err := client.GenPrivAccount()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(resp.PrivAccount.Address) == 0 {
+	if len(privAcc.Address) == 0 {
 		t.Fatal("Failed to generate an address")
 	}
 }
@@ -44,13 +46,13 @@ func testGetAccount(t *testing.T, typ string) {
 
 func testSignedTx(t *testing.T, typ string) {
 	amt := uint64(100)
-	toAddr := []byte{20, 143, 25, 63, 16, 177, 83, 29, 91, 91, 54, 23, 233, 46, 190, 121, 122, 34, 86, 54}
+	toAddr := user[1].Address
 	testOneSignTx(t, typ, toAddr, amt)
 
-	toAddr = []byte{20, 143, 24, 63, 16, 17, 83, 29, 90, 91, 52, 2, 0, 41, 190, 121, 122, 34, 86, 54}
+	toAddr = user[2].Address
 	testOneSignTx(t, typ, toAddr, amt)
 
-	toAddr = []byte{0, 0, 4, 0, 0, 4, 0, 0, 4, 91, 52, 2, 0, 41, 190, 121, 122, 34, 86, 54}
+	toAddr = user[3].Address
 	testOneSignTx(t, typ, toAddr, amt)
 }
 
@@ -71,7 +73,7 @@ func testOneSignTx(t *testing.T, typ string, addr []byte, amt uint64) {
 
 func testBroadcastTx(t *testing.T, typ string) {
 	amt := uint64(100)
-	toAddr := []byte{20, 143, 25, 63, 16, 177, 83, 29, 91, 91, 54, 23, 233, 46, 190, 121, 122, 34, 86, 54}
+	toAddr := user[1].Address
 	tx := makeDefaultSendTxSigned(t, typ, toAddr, amt)
 	receipt := broadcastTx(t, typ, tx)
 	if receipt.CreatesContract > 0 {
@@ -120,10 +122,7 @@ func testGetStorage(t *testing.T, typ string) {
 	}
 
 	// allow it to get mined
-	waitForEvent(t, con, eid, true, func() {
-	}, func(eid string, b []byte) error {
-		return nil
-	})
+	waitForEvent(t, con, eid, true, func() {}, doNothing)
 	mempoolCount = 0
 
 	v := getStorage(t, typ, contractAddr, []byte{0x1})
@@ -179,14 +178,84 @@ func testCall(t *testing.T, typ string) {
 	}
 
 	// allow it to get mined
-	waitForEvent(t, con, eid, true, func() {
-	}, func(eid string, b []byte) error {
-		return nil
-	})
+	waitForEvent(t, con, eid, true, func() {}, doNothing)
 	mempoolCount = 0
 
 	// run a call through the contract
 	data := []byte{}
 	expected := []byte{0xb}
 	callContract(t, client, contractAddr, data, expected)
+}
+
+func testNameReg(t *testing.T, typ string) {
+	client := clients[typ]
+	con := newWSCon(t)
+	eid := types.EventStringNewBlock()
+	subscribe(t, con, eid)
+	defer func() {
+		unsubscribe(t, con, eid)
+		con.Close()
+	}()
+
+	types.MinNameRegistrationPeriod = 1
+
+	// register a new name, check if its there
+	// since entries ought to be unique and these run against different clients, we append the typ
+	name := "ye_old_domain_name_" + typ
+	data := "if not now, when"
+	fee := uint64(1000)
+	numDesiredBlocks := uint64(2)
+	amt := fee + numDesiredBlocks*types.NameCostPerByte*types.NameCostPerBlock*types.BaseEntryCost(name, data)
+
+	tx := makeDefaultNameTx(t, typ, name, data, amt, fee)
+	broadcastTx(t, typ, tx)
+	// commit block
+	waitForEvent(t, con, eid, true, func() {}, doNothing)
+	mempoolCount = 0
+	entry := getNameRegEntry(t, typ, name)
+	if entry.Data != data {
+		t.Fatal(fmt.Sprintf("Err on entry.Data: Got %s, expected %s", entry.Data, data))
+	}
+	if bytes.Compare(entry.Owner, user[0].Address) != 0 {
+		t.Fatal(fmt.Sprintf("Err on entry.Owner: Got %s, expected %s", entry.Owner, user[0].Address))
+	}
+
+	// update the data as the owner, make sure still there
+	numDesiredBlocks = uint64(2)
+	data = "these are amongst the things I wish to bestow upon the youth of generations come: a safe supply of honey, and a better money. For what else shall they need"
+	amt = fee + numDesiredBlocks*types.NameCostPerByte*types.NameCostPerBlock*types.BaseEntryCost(name, data)
+	tx = makeDefaultNameTx(t, typ, name, data, amt, fee)
+	broadcastTx(t, typ, tx)
+	// commit block
+	waitForEvent(t, con, eid, true, func() {}, doNothing)
+	mempoolCount = 0
+	entry = getNameRegEntry(t, typ, name)
+	if entry.Data != data {
+		t.Fatal(fmt.Sprintf("Err on entry.Data: Got %s, expected %s", entry.Data, data))
+	}
+
+	// try to update as non owner, should fail
+	nonce := getNonce(t, typ, user[1].Address)
+	data2 := "this is not my beautiful house"
+	tx = types.NewNameTxWithNonce(user[1].PubKey, name, data2, amt, fee, nonce+1)
+	tx.Sign(chainID, user[1])
+	_, err := client.BroadcastTx(tx)
+	if err == nil {
+		t.Fatal("Expected error on NameTx")
+	}
+
+	// commit block
+	waitForEvent(t, con, eid, true, func() {}, doNothing)
+
+	// now the entry should be expired, so we can update as non owner
+	_, err = client.BroadcastTx(tx)
+	waitForEvent(t, con, eid, true, func() {}, doNothing)
+	mempoolCount = 0
+	entry = getNameRegEntry(t, typ, name)
+	if entry.Data != data2 {
+		t.Fatal(fmt.Sprintf("Error on entry.Data: Got %s, expected %s", entry.Data, data2))
+	}
+	if bytes.Compare(entry.Owner, user[1].Address) != 0 {
+		t.Fatal(fmt.Sprintf("Err on entry.Owner: Got %s, expected %s", entry.Owner, user[1].Address))
+	}
 }

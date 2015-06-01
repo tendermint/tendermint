@@ -21,6 +21,15 @@ func execTxWithState(state *State, tx types.Tx, runCall bool) error {
 	}
 }
 
+func execTxWithStateNewBlock(state *State, tx types.Tx, runCall bool) error {
+	if err := execTxWithState(state, tx, runCall); err != nil {
+		return err
+	}
+
+	state.LastBlockHeight += 1
+	return nil
+}
+
 func TestCopyState(t *testing.T) {
 	// Generate a random state
 	s0, privAccounts, _ := RandGenesisState(10, true, 1000, 5, true, 1000)
@@ -166,31 +175,13 @@ func TestTxSequence(t *testing.T) {
 	acc0PubKey := privAccounts[0].PubKey
 	acc1 := state.GetAccount(privAccounts[1].PubKey.Address())
 
-	// Try executing a SendTx with various sequence numbers.
-	makeSendTx := func(sequence uint) *types.SendTx {
-		return &types.SendTx{
-			Inputs: []*types.TxInput{
-				&types.TxInput{
-					Address:  acc0.Address,
-					Amount:   1,
-					Sequence: sequence,
-					PubKey:   acc0PubKey,
-				},
-			},
-			Outputs: []*types.TxOutput{
-				&types.TxOutput{
-					Address: acc1.Address,
-					Amount:  1,
-				},
-			},
-		}
-	}
-
 	// Test a variety of sequence numbers for the tx.
 	// The tx should only pass when i == 1.
 	for i := -1; i < 3; i++ {
 		sequence := acc0.Sequence + uint(i)
-		tx := makeSendTx(sequence)
+		tx := types.NewSendTx()
+		tx.AddInputWithNonce(acc0PubKey, 1, sequence)
+		tx.AddOutput(acc1.Address, 1)
 		tx.Inputs[0].Signature = privAccounts[0].Sign(state.ChainID, tx)
 		stateCopy := state.Copy()
 		err := execTxWithState(stateCopy, tx, true)
@@ -217,6 +208,168 @@ func TestTxSequence(t *testing.T) {
 					acc0.Sequence, newAcc0.Sequence)
 			}
 		}
+	}
+}
+
+func TestNameTxs(t *testing.T) {
+	state, privAccounts, _ := RandGenesisState(3, true, 1000, 1, true, 1000)
+
+	types.MinNameRegistrationPeriod = 5
+	startingBlock := uint64(state.LastBlockHeight)
+
+	// try some bad names. these should all fail
+	names := []string{"", "\n", "123#$%", "\x00", string([]byte{20, 40, 60, 80}), "baffledbythespectacleinallofthisyouseeehesaidwithouteyes", "no spaces please"}
+	data := "something about all this just doesn't feel right."
+	fee := uint64(1000)
+	numDesiredBlocks := uint64(5)
+	for _, name := range names {
+		amt := fee + numDesiredBlocks*types.NameCostPerByte*types.NameCostPerBlock*types.BaseEntryCost(name, data)
+		tx, _ := types.NewNameTx(state, privAccounts[0].PubKey, name, data, amt, fee)
+		tx.Sign(state.ChainID, privAccounts[0])
+
+		if err := execTxWithState(state, tx, true); err == nil {
+			t.Fatalf("Expected invalid name error from %s", name)
+		}
+	}
+
+	// try some bad data. these should all fail
+	name := "hold_it_chum"
+	datas := []string{"cold&warm", "!@#$%^&*()", "<<<>>>>", "because why would you ever need a ~ or a & or even a % in a json file? make your case and we'll talk"}
+	for _, data := range datas {
+		amt := fee + numDesiredBlocks*types.NameCostPerByte*types.NameCostPerBlock*types.BaseEntryCost(name, data)
+		tx, _ := types.NewNameTx(state, privAccounts[0].PubKey, name, data, amt, fee)
+		tx.Sign(state.ChainID, privAccounts[0])
+
+		if err := execTxWithState(state, tx, true); err == nil {
+			t.Fatalf("Expected invalid data error from %s", data)
+		}
+	}
+
+	validateEntry := func(t *testing.T, entry *types.NameRegEntry, name, data string, addr []byte, expires uint64) {
+
+		if entry == nil {
+			t.Fatalf("Could not find name %s", name)
+		}
+		if bytes.Compare(entry.Owner, addr) != 0 {
+			t.Fatalf("Wrong owner. Got %X expected %X", entry.Owner, addr)
+		}
+		if data != entry.Data {
+			t.Fatalf("Wrong data. Got %s expected %s", entry.Data, data)
+		}
+		if name != entry.Name {
+			t.Fatalf("Wrong name. Got %s expected %s", entry.Name, name)
+		}
+		if expires != entry.Expires {
+			t.Fatalf("Wrong expiry. Got %d, expected %d", entry.Expires, expires)
+		}
+	}
+
+	// try a good one, check data, owner, expiry
+	name = "looking_good/karaoke_bar"
+	data = "on this side of neptune there are 1234567890 people: first is OMNIVORE. Or is it. Ok this is pretty restrictive. No exclamations :(. Faces tho :')"
+	amt := fee + numDesiredBlocks*types.NameCostPerByte*types.NameCostPerBlock*types.BaseEntryCost(name, data)
+	tx, _ := types.NewNameTx(state, privAccounts[0].PubKey, name, data, amt, fee)
+	tx.Sign(state.ChainID, privAccounts[0])
+	if err := execTxWithState(state, tx, true); err != nil {
+		t.Fatal(err)
+	}
+	entry := state.GetNameRegEntry(name)
+	validateEntry(t, entry, name, data, privAccounts[0].Address, startingBlock+numDesiredBlocks)
+
+	// fail to update it as non-owner, in same block
+	tx, _ = types.NewNameTx(state, privAccounts[1].PubKey, name, data, amt, fee)
+	tx.Sign(state.ChainID, privAccounts[1])
+	if err := execTxWithState(state, tx, true); err == nil {
+		t.Fatal("Expected error")
+	}
+
+	// update it as owner, just to increase expiry, in same block
+	// NOTE: we have to resend the data or it will clear it (is this what we want?)
+	tx, _ = types.NewNameTx(state, privAccounts[0].PubKey, name, data, amt, fee)
+	tx.Sign(state.ChainID, privAccounts[0])
+	if err := execTxWithStateNewBlock(state, tx, true); err != nil {
+		t.Fatal(err)
+	}
+	entry = state.GetNameRegEntry(name)
+	validateEntry(t, entry, name, data, privAccounts[0].Address, startingBlock+numDesiredBlocks*2)
+
+	// update it as owner, just to increase expiry, in next block
+	tx, _ = types.NewNameTx(state, privAccounts[0].PubKey, name, data, amt, fee)
+	tx.Sign(state.ChainID, privAccounts[0])
+	if err := execTxWithStateNewBlock(state, tx, true); err != nil {
+		t.Fatal(err)
+	}
+	entry = state.GetNameRegEntry(name)
+	validateEntry(t, entry, name, data, privAccounts[0].Address, startingBlock+numDesiredBlocks*3)
+
+	// fail to update it as non-owner
+	state.LastBlockHeight = uint(entry.Expires - 1)
+	tx, _ = types.NewNameTx(state, privAccounts[1].PubKey, name, data, amt, fee)
+	tx.Sign(state.ChainID, privAccounts[1])
+	if err := execTxWithState(state, tx, true); err == nil {
+		t.Fatal("Expected error")
+	}
+
+	// once expires, non-owner succeeds
+	state.LastBlockHeight = uint(entry.Expires)
+	tx, _ = types.NewNameTx(state, privAccounts[1].PubKey, name, data, amt, fee)
+	tx.Sign(state.ChainID, privAccounts[1])
+	if err := execTxWithState(state, tx, true); err != nil {
+		t.Fatal(err)
+	}
+	entry = state.GetNameRegEntry(name)
+	validateEntry(t, entry, name, data, privAccounts[1].Address, uint64(state.LastBlockHeight)+numDesiredBlocks)
+
+	// update it as new owner, with new data (longer), but keep the expiry!
+	data = "In the beginning there was no thing, not even the beginning. It hadn't been here, no there, nor for that matter anywhere, not especially because it had not to even exist, let alone to not. Nothing especially odd about that."
+	oldCredit := amt - fee
+	numDesiredBlocks = 10
+	amt = fee + (numDesiredBlocks*types.NameCostPerByte*types.NameCostPerBlock*types.BaseEntryCost(name, data) - oldCredit)
+	tx, _ = types.NewNameTx(state, privAccounts[1].PubKey, name, data, amt, fee)
+	tx.Sign(state.ChainID, privAccounts[1])
+	if err := execTxWithState(state, tx, true); err != nil {
+		t.Fatal(err)
+	}
+	entry = state.GetNameRegEntry(name)
+	validateEntry(t, entry, name, data, privAccounts[1].Address, uint64(state.LastBlockHeight)+numDesiredBlocks)
+
+	// test removal
+	amt = fee
+	data = ""
+	tx, _ = types.NewNameTx(state, privAccounts[1].PubKey, name, data, amt, fee)
+	tx.Sign(state.ChainID, privAccounts[1])
+	if err := execTxWithStateNewBlock(state, tx, true); err != nil {
+		t.Fatal(err)
+	}
+	entry = state.GetNameRegEntry(name)
+	if entry != nil {
+		t.Fatal("Expected removed entry to be nil")
+	}
+
+	// create entry by key0,
+	// test removal by key1 after expiry
+	name = "looking_good/karaoke_bar"
+	data = "some data"
+	amt = fee + numDesiredBlocks*types.NameCostPerByte*types.NameCostPerBlock*types.BaseEntryCost(name, data)
+	tx, _ = types.NewNameTx(state, privAccounts[0].PubKey, name, data, amt, fee)
+	tx.Sign(state.ChainID, privAccounts[0])
+	if err := execTxWithState(state, tx, true); err != nil {
+		t.Fatal(err)
+	}
+	entry = state.GetNameRegEntry(name)
+	validateEntry(t, entry, name, data, privAccounts[0].Address, uint64(state.LastBlockHeight)+numDesiredBlocks)
+	state.LastBlockHeight = uint(entry.Expires)
+
+	amt = fee
+	data = ""
+	tx, _ = types.NewNameTx(state, privAccounts[1].PubKey, name, data, amt, fee)
+	tx.Sign(state.ChainID, privAccounts[1])
+	if err := execTxWithStateNewBlock(state, tx, true); err != nil {
+		t.Fatal(err)
+	}
+	entry = state.GetNameRegEntry(name)
+	if entry != nil {
+		t.Fatal("Expected removed entry to be nil")
 	}
 }
 
@@ -265,6 +418,100 @@ func TestTxs(t *testing.T) {
 		if acc1.Balance+1 != newAcc1.Balance {
 			t.Errorf("Unexpected newAcc1 balance. Expected %v, got %v",
 				acc1.Balance+1, newAcc1.Balance)
+		}
+	}
+
+	// CallTx. Just runs through it and checks the transfer. See vm, rpc tests for more
+	{
+		state := state.Copy()
+		newAcc1 := state.GetAccount(acc1.Address)
+		newAcc1.Code = []byte{0x60}
+		state.UpdateAccount(newAcc1)
+		tx := &types.CallTx{
+			Input: &types.TxInput{
+				Address:  acc0.Address,
+				Amount:   1,
+				Sequence: acc0.Sequence + 1,
+				PubKey:   acc0PubKey,
+			},
+			Address:  acc1.Address,
+			GasLimit: 10,
+		}
+
+		tx.Input.Signature = privAccounts[0].Sign(state.ChainID, tx)
+		err := execTxWithState(state, tx, true)
+		if err != nil {
+			t.Errorf("Got error in executing call transaction, %v", err)
+		}
+		newAcc0 := state.GetAccount(acc0.Address)
+		if acc0.Balance-1 != newAcc0.Balance {
+			t.Errorf("Unexpected newAcc0 balance. Expected %v, got %v",
+				acc0.Balance-1, newAcc0.Balance)
+		}
+		newAcc1 = state.GetAccount(acc1.Address)
+		if acc1.Balance+1 != newAcc1.Balance {
+			t.Errorf("Unexpected newAcc1 balance. Expected %v, got %v",
+				acc1.Balance+1, newAcc1.Balance)
+		}
+	}
+
+	// NameTx.
+	{
+		entryName := "satoshi"
+		entryData := `
+A  purely   peer-to-peer   version   of   electronic   cash   would   allow   online
+payments  to  be  sent   directly  from  one  party  to  another  without   going  through  a
+financial institution.   Digital signatures provide part of the solution, but the main
+benefits are lost if a trusted third party is still required to prevent double-spending.
+We propose a solution to the double-spending problem using a peer-to-peer network.
+The   network   timestamps   transactions  by  hashing   them   into   an   ongoing   chain   of
+hash-based proof-of-work, forming a record that cannot be changed without redoing
+the proof-of-work.   The longest chain not only serves as proof of the sequence of
+events witnessed, but proof that it came from the largest pool of CPU power.   As
+long as a majority of CPU power is controlled by nodes that are not cooperating to
+attack the network, they'll generate the longest chain and outpace attackers.   The
+network itself requires minimal structure.   Messages are broadcast on a best effort
+basis,   and   nodes   can   leave  and   rejoin   the  network   at  will,  accepting   the   longest
+proof-of-work chain as proof of what happened while they were gone `
+		entryAmount := uint64(10000)
+
+		state := state.Copy()
+		tx := &types.NameTx{
+			Input: &types.TxInput{
+				Address:  acc0.Address,
+				Amount:   entryAmount,
+				Sequence: acc0.Sequence + 1,
+				PubKey:   acc0PubKey,
+			},
+			Name: entryName,
+			Data: entryData,
+		}
+
+		tx.Input.Signature = privAccounts[0].Sign(state.ChainID, tx)
+		err := execTxWithState(state, tx, true)
+		if err != nil {
+			t.Errorf("Got error in executing call transaction, %v", err)
+		}
+		newAcc0 := state.GetAccount(acc0.Address)
+		if acc0.Balance-entryAmount != newAcc0.Balance {
+			t.Errorf("Unexpected newAcc0 balance. Expected %v, got %v",
+				acc0.Balance-entryAmount, newAcc0.Balance)
+		}
+		entry := state.GetNameRegEntry(entryName)
+		if entry == nil {
+			t.Errorf("Expected an entry but got nil")
+		}
+		if entry.Data != entryData {
+			t.Errorf("Wrong data stored")
+		}
+
+		// test a bad string
+		tx.Data = string([]byte{0, 1, 2, 3, 127, 128, 129, 200, 251})
+		tx.Input.Sequence += 1
+		tx.Input.Signature = privAccounts[0].Sign(state.ChainID, tx)
+		err = execTxWithState(state, tx, true)
+		if err != types.ErrTxInvalidString {
+			t.Errorf("Expected invalid string error. Got: %s", err.Error())
 		}
 	}
 

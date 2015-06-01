@@ -6,14 +6,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-type ResponseGenPrivAccount struct {
-	PrivAccount *account.PrivAccount `json:"priv_account"`
-}
-
-type ResponseGetAccount struct {
-	Account *account.Account `json:"account"`
-}
-
 type ResponseGetStorage struct {
 	Key   []byte `json:"key"`
 	Value []byte `json:"value"`
@@ -50,14 +42,6 @@ type ResponseGetBlock struct {
 	Block     *types.Block     `json:"block"`
 }
 
-type ResponseBroadcastTx struct {
-	Receipt Receipt `json:"receipt"`
-}
-
-type ResponseListUnconfirmedTxs struct {
-	Txs []types.Tx `json:"txs"`
-}
-
 type Receipt struct {
 	TxHash          []byte `json:"tx_hash"`
 	CreatesContract uint8  `json:"creates_contract"`
@@ -86,10 +70,6 @@ type Peer struct {
 	IsOutbound     bool `json:"is_outbound"`
 }
 
-type ResponseSignTx struct {
-	Tx types.Tx `json:"tx"`
-}
-
 type ResponseListValidators struct {
 	BlockHeight         uint            `json:"block_height"`
 	BondedValidators    []*sm.Validator `json:"bonded_validators"`
@@ -99,4 +79,9 @@ type ResponseListValidators struct {
 type ResponseDumpConsensusState struct {
 	RoundState      string   `json:"round_state"`
 	PeerRoundStates []string `json:"peer_round_states"`
+}
+
+type ResponseListNames struct {
+	BlockHeight uint                  `json:"block_height"`
+	Names       []*types.NameRegEntry `json:"names"`
 }

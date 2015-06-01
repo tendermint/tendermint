@@ -2,7 +2,6 @@ package rpctest
 
 import (
 	"bytes"
-	"encoding/hex"
 	"strconv"
 	"testing"
 	"time"
@@ -29,8 +28,7 @@ var (
 	mempoolCount = 0
 
 	// make keys
-	userPriv = "C453604BD6480D5538B4C6FD2E3E314B5BCE518D75ADE4DA3DA85AB8ADFD819606FBAC4E285285D1D91FCBC7E91C780ADA11516F67462340B3980CE2B94940E8"
-	user     = makeUsers(2)
+	user = makeUsers(5)
 
 	chainID string
 
@@ -40,6 +38,7 @@ var (
 	}
 )
 
+// deterministic account generation, synced with genesis file in config/tendermint_test/config.go
 func makeUsers(n int) []*account.PrivAccount {
 	accounts := []*account.PrivAccount{}
 	for i := 0; i < n; i++ {
@@ -47,13 +46,6 @@ func makeUsers(n int) []*account.PrivAccount {
 		user := account.GenPrivAccountFromSecret(secret)
 		accounts = append(accounts, user)
 	}
-
-	// include our validator
-	var byteKey [64]byte
-	userPrivByteSlice, _ := hex.DecodeString(userPriv)
-	copy(byteKey[:], userPrivByteSlice)
-	privAcc := account.GenPrivAccountFromKey(byteKey)
-	accounts[0] = privAcc
 	return accounts
 }
 
@@ -102,7 +94,7 @@ func init() {
 func makeDefaultSendTx(t *testing.T, typ string, addr []byte, amt uint64) *types.SendTx {
 	nonce := getNonce(t, typ, user[0].Address)
 	tx := types.NewSendTx()
-	tx.AddInputWithNonce(user[0].PubKey, amt, nonce)
+	tx.AddInputWithNonce(user[0].PubKey, amt, nonce+1)
 	tx.AddOutput(addr, amt)
 	return tx
 }
@@ -115,7 +107,14 @@ func makeDefaultSendTxSigned(t *testing.T, typ string, addr []byte, amt uint64) 
 
 func makeDefaultCallTx(t *testing.T, typ string, addr, code []byte, amt, gasLim, fee uint64) *types.CallTx {
 	nonce := getNonce(t, typ, user[0].Address)
-	tx := types.NewCallTxWithNonce(user[0].PubKey, addr, code, amt, gasLim, fee, nonce)
+	tx := types.NewCallTxWithNonce(user[0].PubKey, addr, code, amt, gasLim, fee, nonce+1)
+	tx.Sign(chainID, user[0])
+	return tx
+}
+
+func makeDefaultNameTx(t *testing.T, typ string, name, value string, amt, fee uint64) *types.NameTx {
+	nonce := getNonce(t, typ, user[0].Address)
+	tx := types.NewNameTxWithNonce(user[0].PubKey, name, value, amt, fee, nonce+1)
 	tx.Sign(chainID, user[0])
 	return tx
 }
@@ -124,16 +123,16 @@ func makeDefaultCallTx(t *testing.T, typ string, addr, code []byte, amt, gasLim,
 // rpc call wrappers (fail on err)
 
 // get an account's nonce
-func getNonce(t *testing.T, typ string, addr []byte) uint64 {
+func getNonce(t *testing.T, typ string, addr []byte) uint {
 	client := clients[typ]
 	ac, err := client.GetAccount(addr)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ac.Account == nil {
+	if ac == nil {
 		return 0
 	}
-	return uint64(ac.Account.Sequence)
+	return ac.Sequence
 }
 
 // get the account
@@ -143,28 +142,28 @@ func getAccount(t *testing.T, typ string, addr []byte) *account.Account {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return ac.Account
+	return ac
 }
 
 // sign transaction
 func signTx(t *testing.T, typ string, tx types.Tx, privAcc *account.PrivAccount) types.Tx {
 	client := clients[typ]
-	resp, err := client.SignTx(tx, []*account.PrivAccount{privAcc})
+	signedTx, err := client.SignTx(tx, []*account.PrivAccount{privAcc})
 	if err != nil {
 		t.Fatal(err)
 	}
-	return resp.Tx
+	return signedTx
 }
 
 // broadcast transaction
-func broadcastTx(t *testing.T, typ string, tx types.Tx) ctypes.Receipt {
+func broadcastTx(t *testing.T, typ string, tx types.Tx) *ctypes.Receipt {
 	client := clients[typ]
-	resp, err := client.BroadcastTx(tx)
+	rec, err := client.BroadcastTx(tx)
 	if err != nil {
 		t.Fatal(err)
 	}
 	mempoolCount += 1
-	return resp.Receipt
+	return rec
 }
 
 // dump all storage for an account. currently unused
@@ -208,6 +207,16 @@ func callContract(t *testing.T, client cclient.Client, address, data, expected [
 	if bytes.Compare(ret, LeftPadWord256(expected).Bytes()) != 0 {
 		t.Fatalf("Conflicting return value. Got %x, expected %x", ret, expected)
 	}
+}
+
+// get the namereg entry
+func getNameRegEntry(t *testing.T, typ string, name string) *types.NameRegEntry {
+	client := clients[typ]
+	entry, err := client.GetName(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return entry
 }
 
 //--------------------------------------------------------------------------------

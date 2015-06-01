@@ -7,11 +7,11 @@ import (
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 )
 
-func GenPrivAccount() (*ctypes.ResponseGenPrivAccount, error) {
-	return &ctypes.ResponseGenPrivAccount{acm.GenPrivAccount()}, nil
+func GenPrivAccount() (*acm.PrivAccount, error) {
+	return acm.GenPrivAccount(), nil
 }
 
-func GetAccount(address []byte) (*ctypes.ResponseGetAccount, error) {
+func GetAccount(address []byte) (*acm.Account, error) {
 	cache := mempoolReactor.Mempool.GetCache()
 	account := cache.GetAccount(address)
 	if account == nil {
@@ -24,7 +24,7 @@ func GetAccount(address []byte) (*ctypes.ResponseGetAccount, error) {
 			StorageRoot: nil,
 		}
 	}
-	return &ctypes.ResponseGetAccount{account}, nil
+	return account, nil
 }
 
 func GetStorage(address, key []byte) (*ctypes.ResponseGetStorage, error) {

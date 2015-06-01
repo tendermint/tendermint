@@ -78,7 +78,7 @@ func CallCode(code, data []byte) (*ctypes.ResponseCall, error) {
 
 //-----------------------------------------------------------------------------
 
-func SignTx(tx types.Tx, privAccounts []*account.PrivAccount) (*ctypes.ResponseSignTx, error) {
+func SignTx(tx types.Tx, privAccounts []*account.PrivAccount) (types.Tx, error) {
 	// more checks?
 
 	for i, privAccount := range privAccounts {
@@ -113,5 +113,5 @@ func SignTx(tx types.Tx, privAccounts []*account.PrivAccount) (*ctypes.ResponseS
 		rebondTx := tx.(*types.RebondTx)
 		rebondTx.Signature = privAccounts[0].Sign(config.GetString("chain_id"), rebondTx).(account.SignatureEd25519)
 	}
-	return &ctypes.ResponseSignTx{tx}, nil
+	return tx, nil
 }

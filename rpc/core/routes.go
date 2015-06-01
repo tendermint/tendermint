@@ -20,6 +20,8 @@ var Routes = map[string]*rpc.RPCFunc{
 	"broadcast_tx":            rpc.NewRPCFunc(BroadcastTx, []string{"tx"}),
 	"list_unconfirmed_txs":    rpc.NewRPCFunc(ListUnconfirmedTxs, []string{}),
 	"list_accounts":           rpc.NewRPCFunc(ListAccounts, []string{}),
+	"get_name":                rpc.NewRPCFunc(GetName, []string{"name"}),
+	"list_names":              rpc.NewRPCFunc(ListNames, []string{}),
 	"unsafe/gen_priv_account": rpc.NewRPCFunc(GenPrivAccount, []string{}),
 	"unsafe/sign_tx":          rpc.NewRPCFunc(SignTx, []string{"tx", "privAccounts"}),
 }
