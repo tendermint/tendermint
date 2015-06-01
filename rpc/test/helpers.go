@@ -129,10 +129,10 @@ func getNonce(t *testing.T, typ string, addr []byte) uint {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ac.Account == nil {
+	if ac == nil {
 		return 0
 	}
-	return ac.Account.Sequence
+	return ac.Sequence
 }
 
 // get the account
@@ -142,28 +142,28 @@ func getAccount(t *testing.T, typ string, addr []byte) *account.Account {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return ac.Account
+	return ac
 }
 
 // sign transaction
 func signTx(t *testing.T, typ string, tx types.Tx, privAcc *account.PrivAccount) types.Tx {
 	client := clients[typ]
-	resp, err := client.SignTx(tx, []*account.PrivAccount{privAcc})
+	signedTx, err := client.SignTx(tx, []*account.PrivAccount{privAcc})
 	if err != nil {
 		t.Fatal(err)
 	}
-	return resp.Tx
+	return signedTx
 }
 
 // broadcast transaction
-func broadcastTx(t *testing.T, typ string, tx types.Tx) ctypes.Receipt {
+func broadcastTx(t *testing.T, typ string, tx types.Tx) *ctypes.Receipt {
 	client := clients[typ]
-	resp, err := client.BroadcastTx(tx)
+	rec, err := client.BroadcastTx(tx)
 	if err != nil {
 		t.Fatal(err)
 	}
 	mempoolCount += 1
-	return resp.Receipt
+	return rec
 }
 
 // dump all storage for an account. currently unused

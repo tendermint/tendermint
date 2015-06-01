@@ -25,11 +25,11 @@ func testStatus(t *testing.T, typ string) {
 
 func testGenPriv(t *testing.T, typ string) {
 	client := clients[typ]
-	resp, err := client.GenPrivAccount()
+	privAcc, err := client.GenPrivAccount()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(resp.PrivAccount.Address) == 0 {
+	if len(privAcc.Address) == 0 {
 		t.Fatal("Failed to generate an address")
 	}
 }

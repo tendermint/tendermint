@@ -9,9 +9,8 @@ import (
 
 //-----------------------------------------------------------------------------
 
-// pass pointer?
 // Note: tx must be signed
-func BroadcastTx(tx types.Tx) (*ctypes.ResponseBroadcastTx, error) {
+func BroadcastTx(tx types.Tx) (*ctypes.Receipt, error) {
 	err := mempoolReactor.BroadcastTx(tx)
 	if err != nil {
 		return nil, fmt.Errorf("Error broadcasting transaction: %v", err)
@@ -27,10 +26,9 @@ func BroadcastTx(tx types.Tx) (*ctypes.ResponseBroadcastTx, error) {
 			contractAddr = state.NewContractAddress(callTx.Input.Address, uint64(callTx.Input.Sequence))
 		}
 	}
-	return &ctypes.ResponseBroadcastTx{ctypes.Receipt{txHash, createsContract, contractAddr}}, nil
+	return &ctypes.Receipt{txHash, createsContract, contractAddr}, nil
 }
 
-func ListUnconfirmedTxs() (*ctypes.ResponseListUnconfirmedTxs, error) {
-	txs := mempoolReactor.Mempool.GetProposalTxs()
-	return &ctypes.ResponseListUnconfirmedTxs{txs}, nil
+func ListUnconfirmedTxs() ([]types.Tx, error) {
+	return mempoolReactor.Mempool.GetProposalTxs(), nil
 }
