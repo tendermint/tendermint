@@ -192,7 +192,7 @@ type NameTx struct {
 func (tx *NameTx) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
 	binary.WriteTo([]byte(Fmt(`{"chain_id":%s`, jsonEscape(chainID))), w, n, err)
 	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"data":%s,"fee":%v`, TxTypeName, jsonEscape(tx.Data), tx.Fee)), w, n, err)
-	binary.WriteTo([]byte(Fmt(`,"input":`, tx.Input)), w, n, err)
+	binary.WriteTo([]byte(`,"input":`), w, n, err)
 	tx.Input.WriteSignBytes(w, n, err)
 	binary.WriteTo([]byte(Fmt(`,"name":%s`, jsonEscape(tx.Name))), w, n, err)
 	binary.WriteTo([]byte(`}]}`), w, n, err)

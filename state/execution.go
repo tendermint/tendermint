@@ -356,7 +356,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 		signBytes := account.SignBytes(_s.ChainID, tx)
 		err := validateInput(inAcc, signBytes, tx.Input)
 		if err != nil {
-			log.Debug(Fmt("validateInput failed on %X:", tx.Input.Address))
+			log.Debug(Fmt("validateInput failed on %X: %v", tx.Input.Address, err))
 			return err
 		}
 		if tx.Input.Amount < tx.Fee {
@@ -495,7 +495,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 		signBytes := account.SignBytes(_s.ChainID, tx)
 		err := validateInput(inAcc, signBytes, tx.Input)
 		if err != nil {
-			log.Debug(Fmt("validateInput failed on %X:", tx.Input.Address))
+			log.Debug(Fmt("validateInput failed on %X: %v", tx.Input.Address, err))
 			return err
 		}
 		// fee is in addition to the amount which is used to determine the TTL
