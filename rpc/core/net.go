@@ -3,6 +3,7 @@ package core
 import (
 	"io/ioutil"
 
+	"github.com/tendermint/tendermint/binary"
 	dbm "github.com/tendermint/tendermint/db"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	sm "github.com/tendermint/tendermint/state"
@@ -62,12 +63,19 @@ func NetInfo() (*ctypes.ResponseNetInfo, error) {
 
 //-----------------------------------------------------------------------------
 
-// returns pointer because the rpc-gen code returns nil (TODO!)
-func Genesis() (*string, error) {
-	b, err := ioutil.ReadFile(config.GetString("genesis_file"))
-	if err != nil {
-		return nil, err
+// cache the genesis structure
+var genDoc *sm.GenesisDoc
+
+func Genesis() (*sm.GenesisDoc, error) {
+	if genDoc == nil {
+		b, err := ioutil.ReadFile(config.GetString("genesis_file"))
+		if err != nil {
+			return nil, err
+		}
+		binary.ReadJSON(&genDoc, b, &err)
+		if err != nil {
+			return nil, err
+		}
 	}
-	ret := string(b)
-	return &ret, nil
+	return genDoc, nil
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/tendermint/tendermint/binary"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/types"
+	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	"io/ioutil"
 	"net/http"
@@ -22,7 +23,7 @@ type Client interface {
 	DumpConsensusState() (*ctypes.ResponseDumpConsensusState, error)
 	DumpStorage(address []byte) (*ctypes.ResponseDumpStorage, error)
 	GenPrivAccount() (*acm.PrivAccount, error)
-	Genesis() (*string, error)
+	Genesis() (*sm.GenesisDoc, error)
 	GetAccount(address []byte) (*acm.Account, error)
 	GetBlock(height uint) (*ctypes.ResponseGetBlock, error)
 	GetName(name string) (*types.NameRegEntry, error)
@@ -246,7 +247,7 @@ func (c *ClientHTTP) GenPrivAccount() (*acm.PrivAccount, error) {
 	return response.Result, nil
 }
 
-func (c *ClientHTTP) Genesis() (*string, error) {
+func (c *ClientHTTP) Genesis() (*sm.GenesisDoc, error) {
 	values, err := argsToURLValues(nil)
 	if err != nil {
 		return nil, err
@@ -261,10 +262,10 @@ func (c *ClientHTTP) Genesis() (*string, error) {
 		return nil, err
 	}
 	var response struct {
-		Result  *string `json:"result"`
-		Error   string  `json:"error"`
-		Id      string  `json:"id"`
-		JSONRPC string  `json:"jsonrpc"`
+		Result  *sm.GenesisDoc `json:"result"`
+		Error   string         `json:"error"`
+		Id      string         `json:"id"`
+		JSONRPC string         `json:"jsonrpc"`
 	}
 	binary.ReadJSON(&response, body, &err)
 	if err != nil {
@@ -795,7 +796,7 @@ func (c *ClientJSON) GenPrivAccount() (*acm.PrivAccount, error) {
 	return response.Result, nil
 }
 
-func (c *ClientJSON) Genesis() (*string, error) {
+func (c *ClientJSON) Genesis() (*sm.GenesisDoc, error) {
 	request := rpctypes.RPCRequest{
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["Genesis"],
@@ -807,10 +808,10 @@ func (c *ClientJSON) Genesis() (*string, error) {
 		return nil, err
 	}
 	var response struct {
-		Result  *string `json:"result"`
-		Error   string  `json:"error"`
-		Id      string  `json:"id"`
-		JSONRPC string  `json:"jsonrpc"`
+		Result  *sm.GenesisDoc `json:"result"`
+		Error   string         `json:"error"`
+		Id      string         `json:"id"`
+		JSONRPC string         `json:"jsonrpc"`
 	}
 	binary.ReadJSON(&response, body, &err)
 	if err != nil {
