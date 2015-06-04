@@ -51,7 +51,7 @@ func withBlockParts(vote *types.Vote, blockParts types.PartSetHeader) *types.Vot
 
 func signAddVote(privVal *sm.PrivValidator, vote *types.Vote, voteSet *VoteSet) (bool, error) {
 	privVal.SignVoteUnsafe(config.GetString("chain_id"), vote)
-	added, _, err := voteSet.Add(privVal.Address, vote)
+	added, _, err := voteSet.AddByAddress(privVal.Address, vote)
 	return added, err
 }
 
@@ -197,31 +197,31 @@ func TestBadVotes(t *testing.T) {
 	vote := &types.Vote{Height: height, Round: round, Type: types.VoteTypePrevote, BlockHash: nil}
 	added, err := signAddVote(privValidators[0], vote, voteSet)
 	if !added || err != nil {
-		t.Errorf("Expected Add() to succeed")
+		t.Errorf("Expected VoteSet.Add to succeed")
 	}
 
 	// val0 votes again for some block.
 	added, err = signAddVote(privValidators[0], withBlockHash(vote, RandBytes(32)), voteSet)
 	if added || err == nil {
-		t.Errorf("Expected Add() to fail, dupeout.")
+		t.Errorf("Expected VoteSet.Add to fail, dupeout.")
 	}
 
 	// val1 votes on another height
 	added, err = signAddVote(privValidators[1], withHeight(vote, height+1), voteSet)
 	if added {
-		t.Errorf("Expected Add() to fail, wrong height")
+		t.Errorf("Expected VoteSet.Add to fail, wrong height")
 	}
 
 	// val2 votes on another round
 	added, err = signAddVote(privValidators[2], withRound(vote, round+1), voteSet)
 	if added {
-		t.Errorf("Expected Add() to fail, wrong round")
+		t.Errorf("Expected VoteSet.Add to fail, wrong round")
 	}
 
 	// val3 votes of another type.
 	added, err = signAddVote(privValidators[3], withType(vote, types.VoteTypePrecommit), voteSet)
 	if added {
-		t.Errorf("Expected Add() to fail, wrong type")
+		t.Errorf("Expected VoteSet.Add to fail, wrong type")
 	}
 }
 
@@ -243,35 +243,35 @@ func TestAddCommitsToPrevoteVotes(t *testing.T) {
 	vote = &types.Vote{Height: height - 1, Round: round, Type: types.VoteTypeCommit, BlockHash: nil}
 	added, _ := signAddVote(privValidators[6], vote, voteSet)
 	if added {
-		t.Errorf("Expected Add() to fail, wrong height.")
+		t.Errorf("Expected VoteSet.Add to fail, wrong height.")
 	}
 
 	// Attempt to add a commit from val6 at a later round
 	vote = &types.Vote{Height: height, Round: round + 1, Type: types.VoteTypeCommit, BlockHash: nil}
 	added, _ = signAddVote(privValidators[6], vote, voteSet)
 	if added {
-		t.Errorf("Expected Add() to fail, cannot add future round vote.")
+		t.Errorf("Expected VoteSet.Add to fail, cannot add future round vote.")
 	}
 
 	// Attempt to add a commit from val6 for currrent height/round.
 	vote = &types.Vote{Height: height, Round: round, Type: types.VoteTypeCommit, BlockHash: nil}
 	added, err := signAddVote(privValidators[6], vote, voteSet)
 	if added || err == nil {
-		t.Errorf("Expected Add() to fail, only prior round commits can be added.")
+		t.Errorf("Expected VoteSet.Add to fail, only prior round commits can be added.")
 	}
 
 	// Add commit from val6 at a previous round
 	vote = &types.Vote{Height: height, Round: round - 1, Type: types.VoteTypeCommit, BlockHash: nil}
 	added, err = signAddVote(privValidators[6], vote, voteSet)
 	if !added || err != nil {
-		t.Errorf("Expected Add() to succeed, commit for prior rounds are relevant.")
+		t.Errorf("Expected VoteSet.Add to succeed, commit for prior rounds are relevant.")
 	}
 
 	// Also add commit from val7 for previous round.
 	vote = &types.Vote{Height: height, Round: round - 2, Type: types.VoteTypeCommit, BlockHash: nil}
 	added, err = signAddVote(privValidators[7], vote, voteSet)
 	if !added || err != nil {
-		t.Errorf("Expected Add() to succeed. err: %v", err)
+		t.Errorf("Expected VoteSet.Add to succeed. err: %v", err)
 	}
 
 	// We should have 2/3 majority

@@ -524,28 +524,15 @@ OUTER_LOOP:
 		// Catchup logic
 		if prs.Height != 0 && !prs.HasAllCatchupCommits {
 
-			// If peer is lagging by height 1, match our LastCommits or SeenValidation to peer's Commits.
-			if rs.Height == prs.Height+1 && rs.LastCommits.Size() > 0 {
-				// If there are lastcommits to send...
-				if trySendVote(prs.Height, rs.LastCommits, prs.Commits) {
-					continue OUTER_LOOP
-				} else {
-					ps.SetHasAllCatchupCommits(prs.Height)
-				}
-			}
-
-			// Or, if peer is lagging by 1 and we don't have LastCommits, send SeenValidation.
-			if rs.Height == prs.Height+1 && rs.LastCommits.Size() == 0 {
-				// Load the blockMeta for block at prs.Height
-				blockMeta := conR.blockStore.LoadBlockMeta(prs.Height)
-				// Load the seen validation for prs.Height
-				validation := conR.blockStore.LoadSeenValidation(prs.Height)
-				log.Debug("Loaded SeenValidation for catch-up", "height", prs.Height, "blockMeta", blockMeta, "validation", validation)
-
-				if trySendCommitFromValidation(blockMeta, validation, prs.Commits) {
-					continue OUTER_LOOP
-				} else {
-					ps.SetHasAllCatchupCommits(prs.Height)
+			// If peer is lagging by height 1
+			if rs.Height == prs.Height+1 {
+				if rs.LastCommits.Size() > 0 {
+					// Sync peer to rs.LastCommits
+					if trySendVote(prs.Height, rs.LastCommits, prs.Commits) {
+						continue OUTER_LOOP
+					} else {
+						ps.SetHasAllCatchupCommits(prs.Height)
+					}
 				}
 			}
 

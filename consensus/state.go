@@ -268,7 +268,36 @@ func NewConsensusState(state *sm.State, blockStore *bc.BlockStore, mempoolReacto
 		newStepCh:      make(chan *RoundState, 1),
 	}
 	cs.updateToState(state, true)
+	cs.reconstructLastCommits(state)
 	return cs
+}
+
+// Reconstruct LastCommits from SeenValidation, which we saved along with the block,
+// (which happens even before saving the state)
+func (cs *ConsensusState) reconstructLastCommits(state *sm.State) {
+	if state.LastBlockHeight == 0 {
+		return
+	}
+	lastCommits := NewVoteSet(state.LastBlockHeight, 0, types.VoteTypeCommit, state.LastBondedValidators)
+	seenValidation := cs.blockStore.LoadSeenValidation(state.LastBlockHeight)
+	for idx, commit := range seenValidation.Commits {
+		commitVote := &types.Vote{
+			Height:     state.LastBlockHeight,
+			Round:      commit.Round,
+			Type:       types.VoteTypeCommit,
+			BlockHash:  state.LastBlockHash,
+			BlockParts: state.LastBlockParts,
+			Signature:  commit.Signature,
+		}
+		added, _, err := lastCommits.AddByIndex(uint(idx), commitVote)
+		if !added || err != nil {
+			panic(Fmt("Failed to reconstruct LastCommits: %v", err))
+		}
+	}
+	if !lastCommits.HasTwoThirdsMajority() {
+		panic("Failed to reconstruct LastCommits: Does not have +2/3 maj")
+	}
+	cs.LastCommits = lastCommits
 }
 
 func (cs *ConsensusState) GetState() *sm.State {
@@ -645,13 +674,9 @@ func (cs *ConsensusState) RunActionPropose(height uint, round uint) {
 			// Make the validation from LastCommits
 			validation = cs.LastCommits.MakeValidation()
 		} else {
-			// Upon reboot, we may have to use SeenValidation
-			validation = cs.blockStore.LoadSeenValidation(height - 1)
-			if validation == nil {
-				// We just don't have any validation for the previous block
-				log.Debug("Cannot propose anything: No validation for the previous block.")
-				return
-			}
+			// We just don't have any validation for the previous block
+			log.Debug("Cannot propose anything: No validation for the previous block.")
+			return
 		}
 		txs := cs.mempoolReactor.Mempool.GetProposalTxs()
 		block = &types.Block{
@@ -1024,14 +1049,14 @@ func (cs *ConsensusState) addVote(address []byte, vote *types.Vote) (added bool,
 	switch vote.Type {
 	case types.VoteTypePrevote:
 		// Prevotes checks for height+round match.
-		added, index, err = cs.Prevotes.Add(address, vote)
+		added, index, err = cs.Prevotes.AddByAddress(address, vote)
 		if added {
 			log.Debug(Fmt("Added prevote: %v", cs.Prevotes.StringShort()))
 		}
 		return
 	case types.VoteTypePrecommit:
 		// Precommits checks for height+round match.
-		added, index, err = cs.Precommits.Add(address, vote)
+		added, index, err = cs.Precommits.AddByAddress(address, vote)
 		if added {
 			log.Debug(Fmt("Added precommit: %v", cs.Precommits.StringShort()))
 		}
@@ -1040,9 +1065,9 @@ func (cs *ConsensusState) addVote(address []byte, vote *types.Vote) (added bool,
 		if vote.Height == cs.Height {
 			// No need to check if vote.Round < cs.Round ...
 			// Prevotes && Precommits already checks that.
-			cs.Prevotes.Add(address, vote)
-			cs.Precommits.Add(address, vote)
-			added, index, err = cs.Commits.Add(address, vote)
+			cs.Prevotes.AddByAddress(address, vote)
+			cs.Precommits.AddByAddress(address, vote)
+			added, index, err = cs.Commits.AddByAddress(address, vote)
 			if added && cs.Commits.HasTwoThirdsMajority() && cs.CommitTime.IsZero() {
 				cs.CommitTime = time.Now()
 				log.Debug(Fmt("Set CommitTime to %v", cs.CommitTime))
@@ -1061,7 +1086,7 @@ func (cs *ConsensusState) addVote(address []byte, vote *types.Vote) (added bool,
 			return
 		}
 		if vote.Height+1 == cs.Height {
-			added, index, err = cs.LastCommits.Add(address, vote)
+			added, index, err = cs.LastCommits.AddByAddress(address, vote)
 			log.Debug(Fmt("Added lastCommits: %v", cs.LastCommits.StringShort()))
 			return
 		}
