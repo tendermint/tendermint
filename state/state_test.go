@@ -71,7 +71,7 @@ func TestCopyState(t *testing.T) {
 	}
 }
 
-func makeBlock(t *testing.T, state *State, commits []types.Commit, txs []types.Tx) *types.Block {
+func makeBlock(t *testing.T, state *State, validation *types.Validation, txs []types.Tx) *types.Block {
 	block := &types.Block{
 		Header: &types.Header{
 			ChainID:        state.ChainID,
@@ -83,16 +83,14 @@ func makeBlock(t *testing.T, state *State, commits []types.Commit, txs []types.T
 			LastBlockParts: state.LastBlockParts,
 			StateHash:      nil,
 		},
-		Validation: &types.Validation{
-			Commits: commits,
-		},
+		Validation: validation,
 		Data: &types.Data{
 			Txs: txs,
 		},
 	}
 
 	// Fill in block StateHash
-	err := state.SetBlockStateHash(block)
+	err := state.ComputeBlockStateHash(block)
 	if err != nil {
 		t.Error("Error appending initial block:", err)
 	}
@@ -620,21 +618,23 @@ func TestAddValidator(t *testing.T) {
 
 	// The validation for the next block should only require 1 signature
 	// (the new validator wasn't active for block0)
-	commit0 := &types.Vote{
+	precommit0 := &types.Vote{
 		Height:     1,
 		Round:      0,
-		Type:       types.VoteTypeCommit,
+		Type:       types.VoteTypePrecommit,
 		BlockHash:  block0.Hash(),
 		BlockParts: block0Parts.Header(),
 	}
-	privValidators[0].SignVote(s0.ChainID, commit0)
+	privValidators[0].SignVote(s0.ChainID, precommit0)
 
 	block1 := makeBlock(t, s0,
-		[]types.Commit{
-			types.Commit{
-				Address:   privValidators[0].Address,
-				Round:     0,
-				Signature: commit0.Signature,
+		types.Validation{
+			Round: 0,
+			Precommits: []types.Precommit{
+				types.Precommit{
+					Address:   privValidators[0].Address,
+					Signature: precommit0.Signature,
+				},
 			},
 		}, nil,
 	)

@@ -176,27 +176,27 @@ func (h *Header) StringIndented(indent string) string {
 
 //-----------------------------------------------------------------------------
 
-type Commit struct {
+type Precommit struct {
 	Address   []byte                   `json:"address"`
-	Round     uint                     `json:"round"`
 	Signature account.SignatureEd25519 `json:"signature"`
 }
 
-func (commit Commit) IsZero() bool {
-	return commit.Round == 0 && commit.Signature.IsZero()
+func (pc Precommit) IsZero() bool {
+	return pc.Signature.IsZero()
 }
 
-func (commit Commit) String() string {
-	return fmt.Sprintf("Commit{A:%X R:%v %X}", commit.Address, commit.Round, Fingerprint(commit.Signature))
+func (pc Precommit) String() string {
+	return fmt.Sprintf("Precommit{A:%X %X}", pc.Address, Fingerprint(pc.Signature))
 }
 
 //-------------------------------------
 
-// NOTE: The Commits are in order of address to preserve the bonded ValidatorSet order.
-// Any peer with a block can gossip commits by index with a peer without recalculating the
+// NOTE: The Precommits are in order of address to preserve the bonded ValidatorSet order.
+// Any peer with a block can gossip precommits by index with a peer without recalculating the
 // active ValidatorSet.
 type Validation struct {
-	Commits []Commit `json:"commits"` // Commits (or nil) of all active validators in address order.
+	Round      uint        `json:"round"`      // Round for all precommits
+	Precommits []Precommit `json:"precommits"` // Precommits (or nil) of all active validators in address order.
 
 	// Volatile
 	hash     []byte
@@ -204,24 +204,24 @@ type Validation struct {
 }
 
 func (v *Validation) ValidateBasic() error {
-	if len(v.Commits) == 0 {
-		return errors.New("No commits in validation")
+	if len(v.Precommits) == 0 {
+		return errors.New("No precommits in validation")
 	}
 	lastAddress := []byte{}
-	for i := 0; i < len(v.Commits); i++ {
-		commit := v.Commits[i]
-		if commit.IsZero() {
-			if len(commit.Address) > 0 {
-				return errors.New("Zero commits should not have an address")
+	for i := 0; i < len(v.Precommits); i++ {
+		precommit := v.Precommits[i]
+		if precommit.IsZero() {
+			if len(precommit.Address) > 0 {
+				return errors.New("Zero precommits should not have an address")
 			}
 		} else {
-			if len(commit.Address) == 0 {
-				return errors.New("Nonzero commits should have an address")
+			if len(precommit.Address) == 0 {
+				return errors.New("Nonzero precommits should have an address")
 			}
-			if len(lastAddress) > 0 && bytes.Compare(lastAddress, commit.Address) != -1 {
-				return errors.New("Invalid commit order")
+			if len(lastAddress) > 0 && bytes.Compare(lastAddress, precommit.Address) != -1 {
+				return errors.New("Invalid precommit order")
 			}
-			lastAddress = commit.Address
+			lastAddress = precommit.Address
 		}
 	}
 	return nil
@@ -229,9 +229,10 @@ func (v *Validation) ValidateBasic() error {
 
 func (v *Validation) Hash() []byte {
 	if v.hash == nil {
-		bs := make([]interface{}, len(v.Commits))
-		for i, commit := range v.Commits {
-			bs[i] = commit
+		bs := make([]interface{}, 1+len(v.Precommits))
+		bs[0] = v.Round
+		for i, precommit := range v.Precommits {
+			bs[1+i] = precommit
 		}
 		v.hash = merkle.SimpleHashFromBinaries(bs)
 	}
@@ -242,22 +243,24 @@ func (v *Validation) StringIndented(indent string) string {
 	if v == nil {
 		return "nil-Validation"
 	}
-	commitStrings := make([]string, len(v.Commits))
-	for i, commit := range v.Commits {
-		commitStrings[i] = commit.String()
+	precommitStrings := make([]string, len(v.Precommits))
+	for i, precommit := range v.Precommits {
+		precommitStrings[i] = precommit.String()
 	}
 	return fmt.Sprintf(`Validation{
-%s  %v
+%s  Round:      %v
+%s  Precommits: %v
 %s}#%X`,
-		indent, strings.Join(commitStrings, "\n"+indent+"  "),
+		indent, v.Round,
+		indent, strings.Join(precommitStrings, "\n"+indent+"  "),
 		indent, v.hash)
 }
 
 func (v *Validation) BitArray() *BitArray {
 	if v.bitArray == nil {
-		v.bitArray = NewBitArray(uint(len(v.Commits)))
-		for i, commit := range v.Commits {
-			v.bitArray.SetIndex(uint(i), !commit.IsZero())
+		v.bitArray = NewBitArray(uint(len(v.Precommits)))
+		for i, precommit := range v.Precommits {
+			v.bitArray.SetIndex(uint(i), !precommit.IsZero())
 		}
 	}
 	return v.bitArray

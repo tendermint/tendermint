@@ -130,7 +130,7 @@ func (s *State) Hash() []byte {
 }
 
 // Mutates the block in place and updates it with new state hash.
-func (s *State) SetBlockStateHash(block *types.Block) error {
+func (s *State) ComputeBlockStateHash(block *types.Block) error {
 	sCopy := s.Copy()
 	// sCopy has no event cache in it, so this won't fire events
 	err := execBlock(sCopy, block, types.PartSetHeader{})

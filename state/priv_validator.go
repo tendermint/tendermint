@@ -1,7 +1,5 @@
 package state
 
-// TODO: This logic is crude. Should be more transactional.
-
 import (
 	"errors"
 	"fmt"
@@ -23,7 +21,6 @@ const (
 	stepPropose   = 1
 	stepPrevote   = 2
 	stepPrecommit = 3
-	stepCommit    = 4
 )
 
 func voteToStep(vote *types.Vote) uint8 {
@@ -32,8 +29,6 @@ func voteToStep(vote *types.Vote) uint8 {
 		return stepPrevote
 	case types.VoteTypePrecommit:
 		return stepPrecommit
-	case types.VoteTypeCommit:
-		return stepCommit
 	default:
 		panic("Unknown vote type")
 	}
@@ -108,7 +103,6 @@ func (privVal *PrivValidator) save() {
 	}
 }
 
-// TODO: test
 func (privVal *PrivValidator) SignVote(chainID string, vote *types.Vote) error {
 	privVal.mtx.Lock()
 	defer privVal.mtx.Unlock()
@@ -119,10 +113,6 @@ func (privVal *PrivValidator) SignVote(chainID string, vote *types.Vote) error {
 	}
 	// More cases for when the height matches
 	if privVal.LastHeight == vote.Height {
-		// If attempting any sign after commit, panic
-		if privVal.LastStep == stepCommit {
-			return errors.New("SignVote on matching height after a commit")
-		}
 		// If round regression, panic
 		if privVal.LastRound > vote.Round {
 			return errors.New("Round regression in SignVote")

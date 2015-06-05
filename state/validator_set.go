@@ -202,33 +202,33 @@ func (valSet *ValidatorSet) Iterate(fn func(index uint, val *Validator) bool) {
 
 // Verify that +2/3 of the set had signed the given signBytes
 func (valSet *ValidatorSet) VerifyValidation(chainID string, hash []byte, parts types.PartSetHeader, height uint, v *types.Validation) error {
-	if valSet.Size() != uint(len(v.Commits)) {
+	if valSet.Size() != uint(len(v.Precommits)) {
 		return errors.New(Fmt("Invalid validation -- wrong set size: %v vs %v",
-			valSet.Size(), len(v.Commits)))
+			valSet.Size(), len(v.Precommits)))
 	}
 
 	talliedVotingPower := uint64(0)
 	seenValidators := map[string]struct{}{}
 
-	for idx, commit := range v.Commits {
+	for idx, precommit := range v.Precommits {
 		// may be zero, in which case skip.
-		if commit.Signature.IsZero() {
+		if precommit.Signature.IsZero() {
 			continue
 		}
 		_, val := valSet.GetByIndex(uint(idx))
-		commitSignBytes := account.SignBytes(chainID, &types.Vote{
-			Height: height, Round: commit.Round, Type: types.VoteTypeCommit,
+		precommitSignBytes := account.SignBytes(chainID, &types.Vote{
+			Height: height, Round: v.Round, Type: types.VoteTypePrecommit,
 			BlockHash:  hash,
 			BlockParts: parts,
 		})
 
 		// Validate
 		if _, seen := seenValidators[string(val.Address)]; seen {
-			return fmt.Errorf("Duplicate validator for commit %v for Validation %v", commit, v)
+			return fmt.Errorf("Duplicate validator for precommit %v for Validation %v", precommit, v)
 		}
 
-		if !val.PubKey.VerifyBytes(commitSignBytes, commit.Signature) {
-			return fmt.Errorf("Invalid signature for commit %v for Validation %v", commit, v)
+		if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
+			return fmt.Errorf("Invalid signature for precommit %v for Validation %v", precommit, v)
 		}
 
 		// Tally

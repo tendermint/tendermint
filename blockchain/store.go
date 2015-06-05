@@ -18,9 +18,9 @@ Simple low level store for blocks.
 There are three types of information stored:
  - BlockMeta:   Meta information about each block
  - Block part:  Parts of each block, aggregated w/ PartSet
- - Validation:  The Validation part of each block, for gossiping commit votes
+ - Validation:  The Validation part of each block, for gossiping precommit votes
 
-Currently the commit signatures are duplicated in the Block parts as
+Currently the precommit signatures are duplicated in the Block parts as
 well as the Validation.  In the future this may change, perhaps by moving
 the Validation data outside the Block.
 */
@@ -101,7 +101,7 @@ func (bs *BlockStore) LoadBlockMeta(height uint) *types.BlockMeta {
 	return meta
 }
 
-// NOTE: the Commit-vote heights are for the block at `height-1`
+// NOTE: the Precommit-vote heights are for the block at `height-1`
 // Since these are included in the subsequent block, the height
 // is off by 1.
 func (bs *BlockStore) LoadBlockValidation(height uint) *types.Validation {
@@ -118,7 +118,7 @@ func (bs *BlockStore) LoadBlockValidation(height uint) *types.Validation {
 	return validation
 }
 
-// NOTE: the Commit-vote heights are for the block at `height`
+// NOTE: the Precommit-vote heights are for the block at `height`
 func (bs *BlockStore) LoadSeenValidation(height uint) *types.Validation {
 	var n int64
 	var err error
@@ -134,12 +134,10 @@ func (bs *BlockStore) LoadSeenValidation(height uint) *types.Validation {
 }
 
 // blockParts:     Must be parts of the block
-// seenValidation: The +2/3 commits that were seen which finalized the height.
+// seenValidation: The +2/3 precommits that were seen which committed at height.
 //                 If all the nodes restart after committing a block,
-//                 we need this to reload the commits to catch-up nodes to the
+//                 we need this to reload the precommits to catch-up nodes to the
 //                 most recent height.  Otherwise they'd stall at H-1.
-//				   Also good to have to debug consensus issues & punish wrong-signers
-// 				   whose commits weren't included in the block.
 func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, seenValidation *types.Validation) {
 	height := block.Height
 	if height != bs.height+1 {
@@ -163,7 +161,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	blockValidationBytes := binary.BinaryBytes(block.Validation)
 	bs.db.Set(calcBlockValidationKey(height), blockValidationBytes)
 
-	// Save seen validation (seen +2/3 commits)
+	// Save seen validation (seen +2/3 precommits for block)
 	seenValidationBytes := binary.BinaryBytes(seenValidation)
 	bs.db.Set(calcSeenValidationKey(height), seenValidationBytes)
 

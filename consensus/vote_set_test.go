@@ -225,69 +225,12 @@ func TestBadVotes(t *testing.T) {
 	}
 }
 
-func TestAddCommitsToPrevoteVotes(t *testing.T) {
-	height, round := uint(2), uint(5)
-	voteSet, _, privValidators := randVoteSet(height, round, types.VoteTypePrevote, 10, 1)
-
-	// val0, val1, val2, val3, val4, val5 vote for nil.
-	vote := &types.Vote{Height: height, Round: round, Type: types.VoteTypePrevote, BlockHash: nil}
-	for i := 0; i < 6; i++ {
-		signAddVote(privValidators[i], vote, voteSet)
-	}
-	hash, header, ok := voteSet.TwoThirdsMajority()
-	if hash != nil || !header.IsZero() || ok {
-		t.Errorf("There should be no 2/3 majority")
-	}
-
-	// Attempt to add a commit from val6 at a previous height
-	vote = &types.Vote{Height: height - 1, Round: round, Type: types.VoteTypeCommit, BlockHash: nil}
-	added, _ := signAddVote(privValidators[6], vote, voteSet)
-	if added {
-		t.Errorf("Expected VoteSet.Add to fail, wrong height.")
-	}
-
-	// Attempt to add a commit from val6 at a later round
-	vote = &types.Vote{Height: height, Round: round + 1, Type: types.VoteTypeCommit, BlockHash: nil}
-	added, _ = signAddVote(privValidators[6], vote, voteSet)
-	if added {
-		t.Errorf("Expected VoteSet.Add to fail, cannot add future round vote.")
-	}
-
-	// Attempt to add a commit from val6 for currrent height/round.
-	vote = &types.Vote{Height: height, Round: round, Type: types.VoteTypeCommit, BlockHash: nil}
-	added, err := signAddVote(privValidators[6], vote, voteSet)
-	if added || err == nil {
-		t.Errorf("Expected VoteSet.Add to fail, only prior round commits can be added.")
-	}
-
-	// Add commit from val6 at a previous round
-	vote = &types.Vote{Height: height, Round: round - 1, Type: types.VoteTypeCommit, BlockHash: nil}
-	added, err = signAddVote(privValidators[6], vote, voteSet)
-	if !added || err != nil {
-		t.Errorf("Expected VoteSet.Add to succeed, commit for prior rounds are relevant.")
-	}
-
-	// Also add commit from val7 for previous round.
-	vote = &types.Vote{Height: height, Round: round - 2, Type: types.VoteTypeCommit, BlockHash: nil}
-	added, err = signAddVote(privValidators[7], vote, voteSet)
-	if !added || err != nil {
-		t.Errorf("Expected VoteSet.Add to succeed. err: %v", err)
-	}
-
-	// We should have 2/3 majority
-	hash, header, ok = voteSet.TwoThirdsMajority()
-	if hash != nil || !header.IsZero() || !ok {
-		t.Errorf("There should be 2/3 majority for nil")
-	}
-
-}
-
 func TestMakeValidation(t *testing.T) {
 	height, round := uint(1), uint(0)
-	voteSet, _, privValidators := randVoteSet(height, round, types.VoteTypeCommit, 10, 1)
+	voteSet, _, privValidators := randVoteSet(height, round, types.VoteTypePrecommit, 10, 1)
 	blockHash, blockParts := CRandBytes(32), types.PartSetHeader{123, CRandBytes(32)}
 
-	vote := &types.Vote{Height: height, Round: round, Type: types.VoteTypeCommit,
+	vote := &types.Vote{Height: height, Round: round, Type: types.VoteTypePrecommit,
 		BlockHash: blockHash, BlockParts: blockParts}
 
 	// 6 out of 10 voted for some block.
@@ -313,11 +256,11 @@ func TestMakeValidation(t *testing.T) {
 	validation := voteSet.MakeValidation()
 
 	// Validation should have 10 elements
-	if len(validation.Commits) != 10 {
-		t.Errorf("Validation Commits should have the same number of commits as validators")
+	if len(validation.Precommits) != 10 {
+		t.Errorf("Validation Precommits should have the same number of precommits as validators")
 	}
 
-	// Ensure that Validation commits are ordered.
+	// Ensure that Validation precommits are ordered.
 	if err := validation.ValidateBasic(); err != nil {
 		t.Errorf("Error in Validation.ValidateBasic(): %v", err)
 	}

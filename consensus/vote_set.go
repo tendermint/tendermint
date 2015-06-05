@@ -39,9 +39,6 @@ func NewVoteSet(height uint, round uint, type_ byte, valSet *sm.ValidatorSet) *V
 	if height == 0 {
 		panic("Cannot make VoteSet for height == 0, doesn't make sense.")
 	}
-	if type_ == types.VoteTypeCommit && round != 0 {
-		panic("Expected round 0 for commit vote set")
-	}
 	return &VoteSet{
 		height:        height,
 		round:         round,
@@ -111,10 +108,9 @@ func (voteSet *VoteSet) addByIndex(valIndex uint, vote *types.Vote) (bool, uint,
 func (voteSet *VoteSet) addVote(val *sm.Validator, valIndex uint, vote *types.Vote) (bool, uint, error) {
 
 	// Make sure the step matches. (or that vote is commit && round < voteSet.round)
-	if vote.Height != voteSet.height ||
-		(vote.Type != types.VoteTypeCommit && vote.Round != voteSet.round) ||
-		(vote.Type != types.VoteTypeCommit && vote.Type != voteSet.type_) ||
-		(vote.Type == types.VoteTypeCommit && voteSet.type_ != types.VoteTypeCommit && vote.Round >= voteSet.round) {
+	if (vote.Height != voteSet.height) ||
+		(vote.Round != voteSet.round) ||
+		(vote.Type != voteSet.type_) {
 		return false, 0, types.ErrVoteUnexpectedStep
 	}
 
@@ -155,18 +151,6 @@ func (voteSet *VoteSet) addVote(val *sm.Validator, valIndex uint, vote *types.Vo
 	return true, valIndex, nil
 }
 
-// Assumes that commits VoteSet is valid.
-func (voteSet *VoteSet) AddFromCommits(commits *VoteSet) {
-	for valIndex, commit := range commits.votes {
-		if commit == nil {
-			continue
-		}
-		if commit.Round < voteSet.round {
-			voteSet.addByIndex(uint(valIndex), commit)
-		}
-	}
-}
-
 func (voteSet *VoteSet) BitArray() *BitArray {
 	if voteSet == nil {
 		return nil
@@ -201,6 +185,15 @@ func (voteSet *VoteSet) HasTwoThirdsMajority() bool {
 	return voteSet.maj23Exists
 }
 
+func (voteSet *VoteSet) HasTwoThirdsAny() bool {
+	if voteSet == nil {
+		return false
+	}
+	voteSet.mtx.Lock()
+	defer voteSet.mtx.Unlock()
+	return voteSet.totalBlockHashVotes > voteSet.valSet.TotalVotingPower()*2/3
+}
+
 // Returns either a blockhash (or nil) that received +2/3 majority.
 // If there exists no such majority, returns (nil, false).
 func (voteSet *VoteSet) TwoThirdsMajority() (hash []byte, parts types.PartSetHeader, ok bool) {
@@ -213,50 +206,16 @@ func (voteSet *VoteSet) TwoThirdsMajority() (hash []byte, parts types.PartSetHea
 	}
 }
 
-func (voteSet *VoteSet) MakePOL() *POL {
-	if voteSet.type_ != types.VoteTypePrevote {
-		panic("Cannot MakePOL() unless VoteSet.Type is types.VoteTypePrevote")
-	}
-	voteSet.mtx.Lock()
-	defer voteSet.mtx.Unlock()
-	if !voteSet.maj23Exists {
-		return nil
-	}
-	pol := &POL{
-		Height:     voteSet.height,
-		Round:      voteSet.round,
-		BlockHash:  voteSet.maj23Hash,
-		BlockParts: voteSet.maj23Parts,
-		Votes:      make([]POLVoteSignature, voteSet.valSet.Size()),
-	}
-	for valIndex, vote := range voteSet.votes {
-		if vote == nil {
-			continue
-		}
-		if !bytes.Equal(vote.BlockHash, voteSet.maj23Hash) {
-			continue
-		}
-		if !vote.BlockParts.Equals(voteSet.maj23Parts) {
-			continue
-		}
-		pol.Votes[valIndex] = POLVoteSignature{
-			Round:     vote.Round,
-			Signature: vote.Signature,
-		}
-	}
-	return pol
-}
-
 func (voteSet *VoteSet) MakeValidation() *types.Validation {
-	if voteSet.type_ != types.VoteTypeCommit {
-		panic("Cannot MakeValidation() unless VoteSet.Type is types.VoteTypeCommit")
+	if voteSet.type_ != types.VoteTypePrecommit {
+		panic("Cannot MakeValidation() unless VoteSet.Type is types.VoteTypePrecommit")
 	}
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
 	if len(voteSet.maj23Hash) == 0 {
 		panic("Cannot MakeValidation() unless a blockhash has +2/3")
 	}
-	commits := make([]types.Commit, voteSet.valSet.Size())
+	precommits := make([]types.Precommit, voteSet.valSet.Size())
 	voteSet.valSet.Iterate(func(valIndex uint, val *sm.Validator) bool {
 		vote := voteSet.votes[valIndex]
 		if vote == nil {
@@ -268,11 +227,12 @@ func (voteSet *VoteSet) MakeValidation() *types.Validation {
 		if !vote.BlockParts.Equals(voteSet.maj23Parts) {
 			return false
 		}
-		commits[valIndex] = types.Commit{val.Address, vote.Round, vote.Signature}
+		precommits[valIndex] = types.Precommit{val.Address, vote.Signature}
 		return false
 	})
 	return &types.Validation{
-		Commits: commits,
+		Round:      voteSet.round,
+		Precommits: precommits,
 	}
 }
 

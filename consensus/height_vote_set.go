@@ -15,9 +15,6 @@ type RoundVoteSet struct {
 }
 
 // Keeps track of VoteSets for all the rounds of a height.
-// We add the commit votes to all the affected rounds,
-// and for new rounds carry over the commit set. Commits have
-// an associated round, so the performance hit won't be O(rounds).
 type HeightVoteSet struct {
 	height uint
 	valSet *sm.ValidatorSet
@@ -25,7 +22,6 @@ type HeightVoteSet struct {
 	mtx           sync.Mutex
 	round         uint                  // max tracked round
 	roundVoteSets map[uint]RoundVoteSet // keys: [0...round]
-	commits       *VoteSet              // all commits for height
 }
 
 func NewHeightVoteSet(height uint, valSet *sm.ValidatorSet) *HeightVoteSet {
@@ -33,7 +29,6 @@ func NewHeightVoteSet(height uint, valSet *sm.ValidatorSet) *HeightVoteSet {
 		height:        height,
 		valSet:        valSet,
 		roundVoteSets: make(map[uint]RoundVoteSet),
-		commits:       NewVoteSet(height, 0, types.VoteTypeCommit, valSet),
 	}
 	hvs.SetRound(0)
 	return hvs
@@ -49,7 +44,7 @@ func (hvs *HeightVoteSet) Round() uint {
 	return hvs.round
 }
 
-// Create more RoundVoteSets up to round with all commits carried over.
+// Create more RoundVoteSets up to round.
 func (hvs *HeightVoteSet) SetRound(round uint) {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
@@ -58,9 +53,7 @@ func (hvs *HeightVoteSet) SetRound(round uint) {
 	}
 	for r := hvs.round + 1; r <= round; r++ {
 		prevotes := NewVoteSet(hvs.height, r, types.VoteTypePrevote, hvs.valSet)
-		prevotes.AddFromCommits(hvs.commits)
 		precommits := NewVoteSet(hvs.height, r, types.VoteTypePrecommit, hvs.valSet)
-		precommits.AddFromCommits(hvs.commits)
 		hvs.roundVoteSets[r] = RoundVoteSet{
 			Prevotes:   prevotes,
 			Precommits: precommits,
@@ -78,39 +71,35 @@ func (hvs *HeightVoteSet) AddByAddress(address []byte, vote *types.Vote) (added 
 		return
 	}
 	added, index, err = voteSet.AddByAddress(address, vote)
-	if err != nil {
-		return
-	}
-	// If vote is commit, also add to all prevote/precommit for future rounds.
-	if vote.Type == types.VoteTypeCommit {
-		for round := vote.Round + 1; round <= hvs.round; round++ {
-			voteSet := hvs.getVoteSet(round, types.VoteTypePrevote)
-			_, _, err = voteSet.AddByAddress(address, vote)
-			if err != nil {
-				// TODO slash for prevote after commit
-				log.Warn("Prevote after commit", "address", address, "vote", vote)
-			}
-			voteSet = hvs.getVoteSet(round, types.VoteTypePrecommit)
-			_, _, err = voteSet.AddByAddress(address, vote)
-			if err != nil {
-				// TODO slash for prevote after commit
-				log.Warn("Prevote after commit", "address", address, "vote", vote)
-			}
-		}
-	}
 	return
 }
 
-func (hvs *HeightVoteSet) GetVoteSet(round uint, type_ byte) *VoteSet {
+func (hvs *HeightVoteSet) Prevotes(round uint) *VoteSet {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
-	return hvs.getVoteSet(round, type_)
+	return hvs.getVoteSet(round, types.VoteTypePrevote)
+}
+
+func (hvs *HeightVoteSet) Precommits(round uint) *VoteSet {
+	hvs.mtx.Lock()
+	defer hvs.mtx.Unlock()
+	return hvs.getVoteSet(round, types.VoteTypePrecommit)
+}
+
+// Last round that has +2/3 prevotes for a particular block or nik.
+// Returns -1 if no such round exists.
+func (hvs *HeightVoteSet) POLRound() int {
+	hvs.mtx.Lock()
+	defer hvs.mtx.Unlock()
+	for r := hvs.round; r >= 0; r-- {
+		if hvs.getVoteSet(r, types.VoteTypePrevote).HasTwoThirdsMajority() {
+			return int(r)
+		}
+	}
+	return -1
 }
 
 func (hvs *HeightVoteSet) getVoteSet(round uint, type_ byte) *VoteSet {
-	if type_ == types.VoteTypeCommit {
-		return hvs.commits
-	}
 	rvs, ok := hvs.roundVoteSets[round]
 	if !ok {
 		return nil
@@ -130,8 +119,7 @@ func (hvs *HeightVoteSet) String() string {
 }
 
 func (hvs *HeightVoteSet) StringIndented(indent string) string {
-	vsStrings := make([]string, 0, hvs.round*2+1)
-	vsStrings = append(vsStrings, hvs.commits.StringShort())
+	vsStrings := make([]string, 0, hvs.round*2)
 	for round := uint(0); round <= hvs.round; round++ {
 		voteSetString := hvs.roundVoteSets[round].Prevotes.StringShort()
 		vsStrings = append(vsStrings, voteSetString)
