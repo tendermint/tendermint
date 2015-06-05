@@ -17,7 +17,7 @@ var (
 
 	// Name should be alphanum, underscore, slash
 	// Data should be anything permitted in JSON
-	regexpAlphaNum = regexp.MustCompile("^[a-zA-Z0-9_/]*$")
+	regexpAlphaNum = regexp.MustCompile("^[a-zA-Z0-9._/]*$")
 	regexpJSON     = regexp.MustCompile(`^[a-zA-Z0-9_/ \-"':,\n\t.{}()\[\]]*$`)
 )
 
