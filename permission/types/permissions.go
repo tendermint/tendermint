@@ -25,10 +25,11 @@ const (
 	CreateContract                      // 8
 	CreateAccount                       // 16
 	Bond                                // 32
+	Name                                // 64
 
-	DefaultBBPB = Send | Call | CreateContract | CreateAccount | Bond
+	DefaultBBPB = Send | Call | CreateContract | CreateAccount | Bond | Name
 
-	NumBasePermissions uint     = 6
+	NumBasePermissions uint     = 7
 	TopBasePermission  PermFlag = 1 << (NumBasePermissions - 1)
 	AllSet             PermFlag = (1 << 63) - 1 + (1 << 63)
 )

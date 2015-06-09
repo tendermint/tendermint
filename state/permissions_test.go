@@ -39,6 +39,10 @@ x	- contract runs create but doesn't have create perm
 x	- contract runs create but has perm
 x	- contract runs call with empty address (has call and create perm)
 
+- NameTx
+	- no perm, send perm, call perm
+	- with perm
+
 - BondTx
 x	- 1 input, no perm
 x	- 1 input, perm
@@ -187,6 +191,40 @@ func TestSendFails(t *testing.T) {
 		t.Fatal("Expected error")
 	} else {
 		fmt.Println(err)
+	}
+}
+
+func TestName(t *testing.T) {
+	stateDB := dbm.GetDB("state")
+	genDoc := newBaseGenDoc(PermsAllFalse, PermsAllFalse)
+	genDoc.Accounts[0].Permissions.Base.Set(ptypes.Send, true)
+	genDoc.Accounts[1].Permissions.Base.Set(ptypes.Name, true)
+	st := MakeGenesisState(stateDB, &genDoc)
+	blockCache := NewBlockCache(st)
+
+	//-------------------
+	// name txs
+
+	// simple name tx without perm should fail
+	tx, err := types.NewNameTx(st, user[0].PubKey, "somename", "somedata", 10000, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tx.Sign(chainID, user[0])
+	if err := ExecTx(blockCache, tx, true, nil); err == nil {
+		t.Fatal("Expected error")
+	} else {
+		fmt.Println(err)
+	}
+
+	// simple name tx with perm should pass
+	tx, err = types.NewNameTx(st, user[1].PubKey, "somename", "somedata", 10000, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tx.Sign(chainID, user[1])
+	if err := ExecTx(blockCache, tx, true, nil); err != nil {
+		t.Fatal(err)
 	}
 }
 

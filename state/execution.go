@@ -529,6 +529,10 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 			log.Debug(Fmt("Can't find in account %X", tx.Input.Address))
 			return types.ErrTxInvalidAddress
 		}
+		// check permission
+		if !hasNamePermission(blockCache, inAcc) {
+			return fmt.Errorf("Account %X does not have Name permission", tx.Input.Address)
+		}
 		// pubKey should be present in either "inAcc" or "tx.Input"
 		if err := checkInputPubKey(inAcc, tx.Input); err != nil {
 			log.Debug(Fmt("Can't find pubkey for %X", tx.Input.Address))
@@ -839,6 +843,10 @@ func hasSendPermission(state AccountGetter, accs map[string]*account.Account) bo
 		}
 	}
 	return true
+}
+
+func hasNamePermission(state AccountGetter, acc *account.Account) bool {
+	return HasPermission(state, acc, ptypes.Name)
 }
 
 func hasCallPermission(state AccountGetter, acc *account.Account) bool {
