@@ -3,7 +3,7 @@ package logger
 import (
 	"os"
 
-	"github.com/tendermint/log15"
+	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/tendermint/log15"
 	. "github.com/tendermint/tendermint/common"
 )
 

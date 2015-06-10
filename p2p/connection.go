@@ -10,9 +10,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	flow "code.google.com/p/mxk/go1/flowcontrol"
-	//"github.com/tendermint/log15"
-	"github.com/tendermint/tendermint/binary"
+	flow "github.com/tendermint/tendermint/Godeps/_workspace/src/code.google.com/p/mxk/go1/flowcontrol"
+	"github.com/tendermint/tendermint/binary" //"github.com/tendermint/log15"
 	. "github.com/tendermint/tendermint/common"
 )
 

@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/codegangsta/cli"
+	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/codegangsta/cli"
 	"io/ioutil"
 	"net/url"
 	"os"

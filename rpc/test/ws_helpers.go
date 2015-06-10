@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gorilla/websocket"
+	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/gorilla/websocket"
 	"github.com/tendermint/tendermint/binary"
 	_ "github.com/tendermint/tendermint/config/tendermint_test"
 	"github.com/tendermint/tendermint/rpc/types"

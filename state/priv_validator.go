@@ -15,7 +15,7 @@ import (
 	. "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/types"
 
-	"github.com/tendermint/ed25519"
+	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/tendermint/ed25519"
 )
 
 const (

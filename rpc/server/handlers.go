@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/gorilla/websocket"
+	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/gorilla/websocket"
 	"github.com/tendermint/tendermint/binary"
 	"github.com/tendermint/tendermint/events"
 	. "github.com/tendermint/tendermint/rpc/types"

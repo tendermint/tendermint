@@ -1,7 +1,7 @@
 package core_client
 
 import (
-	"github.com/gorilla/websocket"
+	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/gorilla/websocket"
 	rpctypes "github.com/tendermint/tendermint/rpc/types"
 	"net/http"
 )
