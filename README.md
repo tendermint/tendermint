@@ -10,6 +10,10 @@ Tendermint is blockchain consensus.  No proof of work.
 
 * See: https://github.com/tendermint/tendermint/tree/master/INSTALL
 
+### Docker 
+
+* See: https://github.com/tendermint/tendermint/tree/master/DOCKER
+
 ### Coding style
 
 * Go
