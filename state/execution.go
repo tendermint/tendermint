@@ -165,6 +165,7 @@ func getOrMakeOutputs(state AccountGetter, accounts map[string]*account.Account,
 		accounts = make(map[string]*account.Account)
 	}
 
+	// we should err if an account is being created but the inputs don't have permission
 	var checkedCreatePerms bool
 	for _, out := range outs {
 		// Account shouldn't be duplicated
@@ -463,14 +464,13 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 				log.Debug(Fmt("Calling contract %X with code %X", callee.Address, callee.Code))
 			} else {
 				callee = txCache.CreateAccount(caller)
-				txCache.UpdateAccount(callee)
 				log.Debug(Fmt("Created new account %X", callee.Address))
 				code = tx.Data
 			}
 			log.Debug(Fmt("Code for this contract: %X", code))
 
 			txCache.UpdateAccount(caller) // because we bumped nonce
-			txCache.UpdateAccount(callee) // so the txCache knows about the callee and the transfer takes effect
+			txCache.UpdateAccount(callee) // so the txCache knows about the callee and the create and/or transfer takes effect
 
 			vmach := vm.NewVM(txCache, params, caller.Address, account.HashSignBytes(_s.ChainID, tx))
 			vmach.SetFireable(evc)
