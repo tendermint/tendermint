@@ -932,10 +932,8 @@ func (cs *ConsensusState) AddProposalBlockPart(height uint, round uint, part *ty
 		var err error
 		cs.ProposalBlock = binary.ReadBinary(&types.Block{}, cs.ProposalBlockParts.GetReader(), &n, &err).(*types.Block)
 		log.Debug("Received complete proposal", "hash", cs.ProposalBlock.Hash())
-		if cs.Step == RoundStepPropose {
-			if cs.isProposalComplete() {
-				go cs.EnterPrevote(height, round)
-			}
+		if cs.Step == RoundStepPropose && cs.isProposalComplete() {
+			go cs.EnterPrevote(height, round)
 		} else if cs.Step == RoundStepCommit {
 			cs.TryFinalizeCommit(height)
 		}
@@ -975,20 +973,22 @@ func (cs *ConsensusState) addVote(address []byte, vote *types.Vote) (added bool,
 					go func() {
 						cs.EnterNewRound(height, vote.Round)
 						cs.EnterPrevote(height, vote.Round)
+						cs.EnterPrevoteWait(height, vote.Round)
 					}()
-				}
-				if cs.Round == vote.Round {
+				} else if cs.Round == vote.Round {
 					if cs.Votes.Prevotes(cs.Round).HasTwoThirdsMajority() {
 						// Goto Precommit, whether for block or nil.
-						go func() {
-							cs.EnterPrecommit(height, cs.Round)
-						}()
-					}
-					if cs.Votes.Prevotes(cs.Round).HasTwoThirdsAny() {
+						go cs.EnterPrecommit(height, cs.Round)
+					} else if cs.Votes.Prevotes(cs.Round).HasTwoThirdsAny() {
 						// Goto PrevoteWait
 						go func() {
+							cs.EnterPrevote(height, cs.Round)
 							cs.EnterPrevoteWait(height, cs.Round)
 						}()
+					}
+				} else if cs.Proposal != nil && cs.Proposal.POLRound == vote.Round {
+					if cs.isProposalComplete() {
+						go cs.EnterPrevote(height, cs.Round)
 					}
 				}
 			case types.VoteTypePrecommit:
@@ -998,21 +998,21 @@ func (cs *ConsensusState) addVote(address []byte, vote *types.Vote) (added bool,
 					go func() {
 						cs.EnterNewRound(height, vote.Round)
 						cs.EnterPrecommit(height, vote.Round)
+						cs.EnterPrecommitWait(height, vote.Round)
 					}()
-				}
-				if cs.Round == vote.Round {
+				} else if cs.Round == vote.Round {
 					if hash, _, ok := cs.Votes.Precommits(cs.Round).TwoThirdsMajority(); ok {
 						if len(hash) == 0 {
 							// If hash is nil, goto NewRound
-							cs.EnterNewRound(height, cs.Round+1)
+							go cs.EnterNewRound(height, cs.Round+1)
 						} else {
 							// If hash is block, goto Commit
-							cs.EnterCommit(height, cs.Round)
+							go cs.EnterCommit(height, cs.Round)
 						}
-					}
-					if cs.Votes.Precommits(cs.Round).HasTwoThirdsAny() {
+					} else if cs.Votes.Precommits(cs.Round).HasTwoThirdsAny() {
 						// Goto PrecommitWait
 						go func() {
+							cs.EnterPrecommit(height, cs.Round)
 							cs.EnterPrecommitWait(height, cs.Round)
 						}()
 					}
