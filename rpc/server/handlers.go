@@ -5,15 +5,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"reflect"
+	"sort"
+	"sync/atomic"
+	"time"
+
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/gorilla/websocket"
 	"github.com/tendermint/tendermint/binary"
 	"github.com/tendermint/tendermint/events"
 	. "github.com/tendermint/tendermint/rpc/types"
-	"io/ioutil"
-	"net/http"
-	"reflect"
-	"sync/atomic"
-	"time"
 )
 
 func RegisterRPCFuncs(mux *http.ServeMux, funcMap map[string]*RPCFunc) {
@@ -87,6 +89,14 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc) http.HandlerFunc {
 			return
 		}
 		b, _ := ioutil.ReadAll(r.Body)
+
+		// if its an empty request (like from a browser),
+		// just display a list of functions
+		if len(b) == 0 {
+			writeListOfEndpoints(w, r, funcMap)
+			return
+		}
+
 		var request RPCRequest
 		err := json.Unmarshal(b, &request)
 		if err != nil {
@@ -392,4 +402,44 @@ func unreflectResponse(returns []reflect.Value) (interface{}, error) {
 		return nil, fmt.Errorf("%v", errV.Interface())
 	}
 	return returns[0].Interface(), nil
+}
+
+// writes a list of available rpc endpoints as an html page
+func writeListOfEndpoints(w http.ResponseWriter, r *http.Request, funcMap map[string]*RPCFunc) {
+	noArgNames := []string{}
+	argNames := []string{}
+	for name, funcData := range funcMap {
+		if len(funcData.args) == 0 {
+			noArgNames = append(noArgNames, name)
+		} else {
+			argNames = append(argNames, name)
+		}
+	}
+	sort.Strings(noArgNames)
+	sort.Strings(argNames)
+	buf := new(bytes.Buffer)
+	buf.WriteString("<html><body>")
+	buf.WriteString("<br>Available endpoints:<br>")
+
+	for _, name := range noArgNames {
+		link := fmt.Sprintf("http://%s/%s", r.Host, name)
+		buf.WriteString(fmt.Sprintf("<a href=\"%s\">%s</a></br>", link, link))
+	}
+
+	buf.WriteString("<br>Endpoints that require arguments:<br>")
+	for _, name := range argNames {
+		link := fmt.Sprintf("http://%s/%s?", r.Host, name)
+		funcData := funcMap[name]
+		for i, argName := range funcData.argNames {
+			link += argName + "=_"
+			if i < len(funcData.argNames)-1 {
+				link += "&"
+			}
+		}
+		buf.WriteString(fmt.Sprintf("<a href=\"%s\">%s</a></br>", link, link))
+	}
+	buf.WriteString("</body></html>")
+	w.Header().Set("Content-Type", "text/html")
+	w.WriteHeader(200)
+	w.Write(buf.Bytes())
 }
