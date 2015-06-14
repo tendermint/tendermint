@@ -14,32 +14,47 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+//------------------------------------------------------------
+// we store the gendoc in the db
+
+var GenDocKey = []byte("GenDocKey")
+
+//------------------------------------------------------------
+// core types for a genesis definition
+
+type BasicAccount struct {
+	Address []byte `json:"address"`
+	Amount  uint64 `json:"amount"`
+}
+
 type GenesisAccount struct {
 	Address     []byte                     `json:"address"`
 	Amount      uint64                     `json:"amount"`
-	Permissions *ptypes.AccountPermissions `json:"global_permissions"` // pointer so optional
+	Name        string                     `json:"name"`
+	Permissions *ptypes.AccountPermissions `json:"permissions"`
 }
 
 type GenesisValidator struct {
 	PubKey   account.PubKeyEd25519 `json:"pub_key"`
-	Amount   int64                 `json:"amount"`
-	UnbondTo []GenesisAccount      `json:"unbond_to"`
+	Amount   uint64                `json:"amount"`
+	Name     string                `json:"name"`
+	UnbondTo []BasicAccount        `json:"unbond_to"`
 }
 
 type GenesisParams struct {
-	// Default permissions for newly created accounts
 	GlobalPermissions *ptypes.AccountPermissions `json:"global_permissions"`
-
-	// TODO: other params we may want to tweak?
 }
 
 type GenesisDoc struct {
 	GenesisTime time.Time          `json:"genesis_time"`
 	ChainID     string             `json:"chain_id"`
-	Params      *GenesisParams     `json:"params"` // pointer so optional
+	Params      *GenesisParams     `json:"params"`
 	Accounts    []GenesisAccount   `json:"accounts"`
 	Validators  []GenesisValidator `json:"validators"`
 }
+
+//------------------------------------------------------------
+// Make genesis state from file
 
 func GenesisDocFromJSON(jsonBlob []byte) (genState *GenesisDoc) {
 	var err error
@@ -51,14 +66,14 @@ func GenesisDocFromJSON(jsonBlob []byte) (genState *GenesisDoc) {
 	return
 }
 
-func MakeGenesisStateFromFile(db dbm.DB, genDocFile string) *State {
+func MakeGenesisStateFromFile(db dbm.DB, genDocFile string) (*GenesisDoc, *State) {
 	jsonBlob, err := ioutil.ReadFile(genDocFile)
 	if err != nil {
 		log.Error(Fmt("Couldn't read GenesisDoc file: %v", err))
 		os.Exit(1)
 	}
 	genDoc := GenesisDocFromJSON(jsonBlob)
-	return MakeGenesisState(db, genDoc)
+	return genDoc, MakeGenesisState(db, genDoc)
 }
 
 func MakeGenesisState(db dbm.DB, genDoc *GenesisDoc) *State {

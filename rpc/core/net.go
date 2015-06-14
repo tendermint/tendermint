@@ -1,9 +1,6 @@
 package core
 
 import (
-	"io/ioutil"
-
-	"github.com/tendermint/tendermint/binary"
 	dbm "github.com/tendermint/tendermint/db"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	sm "github.com/tendermint/tendermint/state"
@@ -12,9 +9,14 @@ import (
 
 //-----------------------------------------------------------------------------
 
+// cache the genesis state
+var genesisState *sm.State
+
 func Status() (*ctypes.ResponseStatus, error) {
 	db := dbm.NewMemDB()
-	genesisState := sm.MakeGenesisStateFromFile(db, config.GetString("genesis_file"))
+	if genesisState == nil {
+		genesisState = sm.MakeGenesisState(db, genDoc)
+	}
 	genesisHash := genesisState.Hash()
 	latestHeight := blockStore.Height()
 	var (
@@ -63,19 +65,6 @@ func NetInfo() (*ctypes.ResponseNetInfo, error) {
 
 //-----------------------------------------------------------------------------
 
-// cache the genesis structure
-var genDoc *sm.GenesisDoc
-
 func Genesis() (*sm.GenesisDoc, error) {
-	if genDoc == nil {
-		b, err := ioutil.ReadFile(config.GetString("genesis_file"))
-		if err != nil {
-			return nil, err
-		}
-		binary.ReadJSON(&genDoc, b, &err)
-		if err != nil {
-			return nil, err
-		}
-	}
 	return genDoc, nil
 }

@@ -3,6 +3,7 @@ package types
 import (
 	"fmt"
 	. "github.com/tendermint/tendermint/common"
+	"reflect"
 )
 
 //------------------------------------------------------------------------------------------------
@@ -34,15 +35,26 @@ const (
 	AllSet             PermFlag = (1 << 63) - 1 + (1 << 63)
 )
 
+// should have same ordering as above
+type BasePermissionsString struct {
+	Root           bool `json:"root,omitempty"`
+	Send           bool `json:"send,omitempty"`
+	Call           bool `json:"call,omitempty"`
+	CreateContract bool `json:"create_contract,omitempty"`
+	CreateAccount  bool `json:"create_account,omitempty"`
+	Bond           bool `json:"bond,omitempty"`
+	Name           bool `json:"name,omitempty"`
+}
+
 //---------------------------------------------------------------------------------------------
 
 // Base chain permissions struct
 type BasePermissions struct {
 	// bit array with "has"/"doesn't have" for each permission
-	Perms PermFlag
+	Perms PermFlag `json:"perms"`
 
 	// bit array with "set"/"not set" for each permission (not-set should fall back to global)
-	SetBit PermFlag
+	SetBit PermFlag `json:"set"`
 }
 
 func NewBasePermissions() *BasePermissions {
@@ -85,6 +97,14 @@ func (p *BasePermissions) Unset(ty PermFlag) error {
 	return nil
 }
 
+// Check if the permission is set
+func (p *BasePermissions) IsSet(ty PermFlag) bool {
+	if ty == 0 {
+		return false
+	}
+	return p.SetBit&ty > 0
+}
+
 func (p *BasePermissions) Copy() *BasePermissions {
 	if p == nil {
 		return nil
@@ -102,8 +122,8 @@ func (p *BasePermissions) String() string {
 //---------------------------------------------------------------------------------------------
 
 type AccountPermissions struct {
-	Base  *BasePermissions
-	Roles []string
+	Base  *BasePermissions `json:"base"`
+	Roles []string         `json:"roles"`
 }
 
 func NewAccountPermissions() *AccountPermissions {
@@ -172,4 +192,96 @@ func NewDefaultAccountPermissions() *AccountPermissions {
 		},
 		Roles: []string{},
 	}
+}
+
+//---------------------------------------------------------------------------------------------
+// Utilities to make bitmasks human readable
+
+func NewDefaultAccountPermissionsString() BasePermissionsString {
+	return BasePermissionsString{
+		Root:           false,
+		Bond:           true,
+		Send:           true,
+		Call:           true,
+		Name:           true,
+		CreateAccount:  true,
+		CreateContract: true,
+	}
+}
+
+func AccountPermissionsFromStrings(perms *BasePermissionsString, roles []string) (*AccountPermissions, error) {
+	base := NewBasePermissions()
+	permRv := reflect.ValueOf(perms)
+	for i := uint(0); i < uint(permRv.NumField()); i++ {
+		v := permRv.Field(int(i)).Bool()
+		base.Set(1<<i, v)
+	}
+
+	aP := &AccountPermissions{
+		Base:  base,
+		Roles: make([]string, len(roles)),
+	}
+	copy(aP.Roles, roles)
+	return aP, nil
+}
+
+func AccountPermissionsToStrings(aP *AccountPermissions) (*BasePermissionsString, []string, error) {
+	perms := new(BasePermissionsString)
+	permsRv := reflect.ValueOf(perms).Elem()
+	for i := uint(0); i < NumBasePermissions; i++ {
+		pf := PermFlag(1 << i)
+		if aP.Base.IsSet(pf) {
+			// won't err if the bit is set
+			v, _ := aP.Base.Get(pf)
+			f := permsRv.Field(int(i))
+			f.SetBool(v)
+		}
+	}
+	roles := make([]string, len(aP.Roles))
+	copy(roles, aP.Roles)
+	return perms, roles, nil
+}
+
+func PermFlagToString(pf PermFlag) (perm string, err error) {
+	switch pf {
+	case Root:
+		perm = "root"
+	case Send:
+		perm = "send"
+	case Call:
+		perm = "call"
+	case CreateContract:
+		perm = "create_contract"
+	case CreateAccount:
+		perm = "create_account"
+	case Bond:
+		perm = "bond"
+	case Name:
+		perm = "name"
+	default:
+		err = fmt.Errorf("Unknown permission flag %b", pf)
+	}
+	return
+}
+
+func PermStringToFlag(perm string) (pf PermFlag, err error) {
+	switch perm {
+	case "root":
+		pf = Root
+	case "send":
+		pf = Send
+	case "call":
+		pf = Call
+	case "create_contract":
+		pf = CreateContract
+	case "create_account":
+		pf = CreateAccount
+	case "bond":
+		pf = Bond
+	case "name":
+		pf = Name
+	default:
+		err = fmt.Errorf("Unknown permission %s", perm)
+	}
+	return
 }

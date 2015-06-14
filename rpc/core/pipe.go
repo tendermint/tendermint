@@ -14,6 +14,7 @@ var consensusReactor *consensus.ConsensusReactor
 var mempoolReactor *mempl.MempoolReactor
 var p2pSwitch *p2p.Switch
 var privValidator *state.PrivValidator
+var genDoc *state.GenesisDoc // cache the genesis structure
 
 func SetBlockStore(bs *bc.BlockStore) {
 	blockStore = bs
@@ -37,4 +38,8 @@ func SetSwitch(sw *p2p.Switch) {
 
 func SetPrivValidator(pv *state.PrivValidator) {
 	privValidator = pv
+}
+
+func SetGenDoc(doc *state.GenesisDoc) {
+	genDoc = doc
 }

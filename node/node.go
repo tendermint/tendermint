@@ -1,6 +1,7 @@
 package node
 
 import (
+	"bytes"
 	"fmt"
 	"math/rand"
 	"net"
@@ -10,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tendermint/tendermint/binary"
 	bc "github.com/tendermint/tendermint/blockchain"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/consensus"
@@ -42,6 +44,7 @@ type Node struct {
 	consensusState   *consensus.ConsensusState
 	consensusReactor *consensus.ConsensusReactor
 	privValidator    *sm.PrivValidator
+	genDoc           *sm.GenesisDoc
 }
 
 func NewNode() *Node {
@@ -52,9 +55,24 @@ func NewNode() *Node {
 	// Get State
 	stateDB := dbm.GetDB("state")
 	state := sm.LoadState(stateDB)
+	var genDoc *sm.GenesisDoc
 	if state == nil {
-		state = sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
+		genDoc, state = sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
 		state.Save()
+		// write the gendoc to db
+		buf, n, err := new(bytes.Buffer), new(int64), new(error)
+		binary.WriteJSON(genDoc, buf, n, err)
+		stateDB.Set(sm.GenDocKey, buf.Bytes())
+		if *err != nil {
+			panic(Fmt("Unable to write gendoc to db: %v", err))
+		}
+	} else {
+		genDocBytes := stateDB.Get(sm.GenDocKey)
+		err := new(error)
+		binary.ReadJSON(&genDoc, genDocBytes, err)
+		if *err != nil {
+			panic(Fmt("Unable to read gendoc from db: %v", err))
+		}
 	}
 	// add the chainid to the global config
 	config.Set("chain_id", state.ChainID)
@@ -115,6 +133,7 @@ func NewNode() *Node {
 		consensusState:   consensusState,
 		consensusReactor: consensusReactor,
 		privValidator:    privValidator,
+		genDoc:           genDoc,
 	}
 }
 
@@ -184,6 +203,7 @@ func (n *Node) StartRPC() {
 	core.SetMempoolReactor(n.mempoolReactor)
 	core.SetSwitch(n.sw)
 	core.SetPrivValidator(n.privValidator)
+	core.SetGenDoc(n.genDoc)
 
 	listenAddr := config.GetString("rpc_laddr")
 	mux := http.NewServeMux()
