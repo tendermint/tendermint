@@ -969,7 +969,7 @@ func (cs *ConsensusState) addVote(address []byte, vote *types.Vote) (added bool,
 			case types.VoteTypePrevote:
 				log.Debug(Fmt("Added to prevotes: %v", cs.Votes.Prevotes(vote.Round).StringShort()))
 				if cs.Round < vote.Round && cs.Votes.Prevotes(vote.Round).HasTwoThirdsAny() {
-					// Goto to Prevote next round.
+					// Goto to Prevote vote.Round.
 					go func() {
 						cs.EnterNewRound(height, vote.Round)
 						cs.EnterPrevote(height, vote.Round)
@@ -993,13 +993,32 @@ func (cs *ConsensusState) addVote(address []byte, vote *types.Vote) (added bool,
 				}
 			case types.VoteTypePrecommit:
 				log.Debug(Fmt("Added to precommit: %v", cs.Votes.Precommits(vote.Round).StringShort()))
-				if cs.Round < vote.Round && cs.Votes.Precommits(vote.Round).HasTwoThirdsAny() {
-					// Skip to Precommit next round.
-					go func() {
-						cs.EnterNewRound(height, vote.Round)
-						cs.EnterPrecommit(height, vote.Round)
-						cs.EnterPrecommitWait(height, vote.Round)
-					}()
+				if cs.Round < vote.Round {
+					if hash, _, ok := cs.Votes.Precommits(cs.Round).TwoThirdsMajority(); ok {
+						if len(hash) == 0 {
+							// This is weird, shouldn't happen
+							log.Warn("This is weird, why did we receive +2/3 of nil precommits?")
+							// Skip to Precommit of vote.Round
+							go func() {
+								cs.EnterNewRound(height, vote.Round)
+								cs.EnterPrecommit(height, vote.Round)
+								cs.EnterPrecommitWait(height, vote.Round)
+							}()
+						} else {
+							// If hash is block, goto Commit
+							go func() {
+								cs.EnterNewRound(height, vote.Round)
+								cs.EnterCommit(height, vote.Round)
+							}()
+						}
+					} else if cs.Votes.Precommits(vote.Round).HasTwoThirdsAny() {
+						// Skip to Precommit of vote.Round
+						go func() {
+							cs.EnterNewRound(height, vote.Round)
+							cs.EnterPrecommit(height, vote.Round)
+							cs.EnterPrecommitWait(height, vote.Round)
+						}()
+					}
 				} else if cs.Round == vote.Round {
 					if hash, _, ok := cs.Votes.Precommits(cs.Round).TwoThirdsMajority(); ok {
 						if len(hash) == 0 {

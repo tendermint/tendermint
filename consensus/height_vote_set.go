@@ -14,21 +14,33 @@ type RoundVoteSet struct {
 	Precommits *VoteSet
 }
 
-// Keeps track of VoteSets for all the rounds of a height.
+/*
+Keeps track of all VoteSets from round 0 to round 'round'.
+
+Also keeps track of up to one RoundVoteSet greater than
+'round' from each peer, to facilitate fast-forward syncing.
+A commit is +2/3 precommits for a block at a round,
+but which round is not known in advance, so when a peer
+provides a precommit for a round greater than mtx.round,
+we create a new entry in roundVoteSets but also remember the
+peer to prevent abuse.
+*/
 type HeightVoteSet struct {
 	height uint
 	valSet *sm.ValidatorSet
 
-	mtx           sync.Mutex
-	round         uint                  // max tracked round
-	roundVoteSets map[uint]RoundVoteSet // keys: [0...round]
+	mtx             sync.Mutex
+	round           uint                  // max tracked round
+	roundVoteSets   map[uint]RoundVoteSet // keys: [0...round]
+	peerFastForward map[string]uint       // keys: peer.Key; values: round
 }
 
 func NewHeightVoteSet(height uint, valSet *sm.ValidatorSet) *HeightVoteSet {
 	hvs := &HeightVoteSet{
-		height:        height,
-		valSet:        valSet,
-		roundVoteSets: make(map[uint]RoundVoteSet),
+		height:         height,
+		valSet:         valSet,
+		roundVoteSets:  make(map[uint]RoundVoteSet),
+		peerFFPrevotes: make(map[string]*VoteSet),
 	}
 	hvs.SetRound(0)
 	return hvs
@@ -52,22 +64,41 @@ func (hvs *HeightVoteSet) SetRound(round uint) {
 		panic("SetRound() must increment hvs.round")
 	}
 	for r := hvs.round + 1; r <= round; r++ {
-		prevotes := NewVoteSet(hvs.height, r, types.VoteTypePrevote, hvs.valSet)
-		precommits := NewVoteSet(hvs.height, r, types.VoteTypePrecommit, hvs.valSet)
-		hvs.roundVoteSets[r] = RoundVoteSet{
-			Prevotes:   prevotes,
-			Precommits: precommits,
+		if _, ok := hvs.roundVoteSet[r]; ok {
+			continue // Already exists because peerFastForward.
 		}
+		hvs.addRound(round)
 	}
 	hvs.round = round
 }
 
+func (hvs *HeightVoteSet) addRound(round uint) {
+	if _, ok := hvs.roundVoteSet[r]; ok {
+		panic("addRound() for an existing round")
+	}
+	prevotes := NewVoteSet(hvs.height, r, types.VoteTypePrevote, hvs.valSet)
+	precommits := NewVoteSet(hvs.height, r, types.VoteTypePrecommit, hvs.valSet)
+	hvs.roundVoteSets[r] = RoundVoteSet{
+		Prevotes:   prevotes,
+		Precommits: precommits,
+	}
+}
+
 // CONTRACT: if err == nil, added == true
-func (hvs *HeightVoteSet) AddByAddress(address []byte, vote *types.Vote) (added bool, index uint, err error) {
+func (hvs *HeightVoteSet) AddByAddress(address []byte, vote *types.Vote, peer string) (added bool, index uint, err error) {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
 	voteSet := hvs.getVoteSet(vote.Round, vote.Type)
 	if voteSet == nil {
+		if _, ok := hvs.peerFastForward[peer]; !ok {
+			hvs.addRound(vote.Round)
+			hvs.peerFastForwards[peer] = vote.Round
+		} else {
+			// Peer has sent a vote that does not match our round,
+			// for more than one round.  Bad peer!
+			// TODO punish peer.
+			log.Warn("Deal with peer giving votes from unwanted rounds")
+		}
 		return
 	}
 	added, index, err = voteSet.AddByAddress(address, vote)
@@ -119,16 +150,28 @@ func (hvs *HeightVoteSet) String() string {
 }
 
 func (hvs *HeightVoteSet) StringIndented(indent string) string {
-	vsStrings := make([]string, 0, hvs.round*2)
+	vsStrings := make([]string, 0, (len(hvs.roundVoteSets)+1)*2)
+	// rounds 0 ~ hvs.round inclusive
 	for round := uint(0); round <= hvs.round; round++ {
 		voteSetString := hvs.roundVoteSets[round].Prevotes.StringShort()
 		vsStrings = append(vsStrings, voteSetString)
 		voteSetString = hvs.roundVoteSets[round].Precommits.StringShort()
 		vsStrings = append(vsStrings, voteSetString)
 	}
+	// all other peer fast-forward rounds
+	for round, roundVoteSet := range hvs.roundVoteSets {
+		if round <= hvs.round {
+			continue
+		}
+		voteSetString := roundVoteSet.Prevotes.StringShort()
+		vsStrings = append(vsStrings, voteSetString)
+		voteSetString = roundVoteSet.Precommits.StringShort()
+		vsStrings = append(vsStrings, voteSetString)
+	}
 	return Fmt(`HeightVoteSet{H:%v R:0~%v
 %s  %v
 %s}`,
+		hvs.height, hvs.round,
 		indent, strings.Join(vsStrings, "\n"+indent+"  "),
 		indent)
 }
