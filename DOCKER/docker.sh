@@ -5,6 +5,7 @@ if [[ ! $NO_BUILD ]]; then
 	if [ `basename $(pwd)` = DOCKER ]; then
 		docker build -t mint -f Dockerfile ..
 	else
+		# cd $GOPATH/src/github.com/tendermint/tendermint
 		docker build -t mint -f DOCKER/Dockerfile .
 	fi
 fi
