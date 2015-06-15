@@ -335,7 +335,54 @@ func validateComplexArray(o interface{}, t *testing.T) {
 	}
 }
 
-//-----------------------------------------------------------------------------
+//-------------------------------------
+
+type MapStruct struct {
+	String string
+	Map1   map[string]int
+	Map2   map[string]string
+}
+
+func constructMap() interface{} {
+	mapper := MapStruct{
+		String: "String",
+		Map1:   map[string]int{"hi": 5, "bye": 6, "howdy": 7},
+		Map2:   map[string]string{"hi": "5", "bye": "6", "howdy": "7"},
+	}
+	return mapper
+}
+
+func instantiateMap() (interface{}, interface{}) {
+	return MapStruct{}, &MapStruct{}
+}
+
+func validateMap(o interface{}, t *testing.T) {
+	mapper := o.(MapStruct)
+	if mapper.String != "String" {
+		t.Errorf("Expected mapper.String == 'String', got %v", mapper.String)
+	}
+	if mapper.Map1["hi"] != 5 {
+		t.Errorf("Expected Map1['hi']== 5, got %d", mapper.Map1["hi"])
+	}
+	if mapper.Map1["bye"] != 6 {
+		t.Errorf("Expected Map1['bye']== 6, got %d", mapper.Map1["bye"])
+	}
+	if mapper.Map1["howdy"] != 7 {
+		t.Errorf("Expected Map1['howdy']== 7, got %d", mapper.Map1["howdy"])
+	}
+
+	if mapper.Map2["hi"] != "5" {
+		t.Errorf("Expected Map2['hi']== '5', got %s", mapper.Map2["hi"])
+	}
+	if mapper.Map2["bye"] != "6" {
+		t.Errorf("Expected Map2['bye']== '6', got %s", mapper.Map2["bye"])
+	}
+	if mapper.Map2["howdy"] != "7" {
+		t.Errorf("Expected Map2['howdy']== '7', got %s", mapper.Map2["howdy"])
+	}
+}
+
+//-------------------------------------
 
 var testCases = []TestCase{}
 
@@ -391,7 +438,8 @@ func TestBinary(t *testing.T) {
 
 func TestJSON(t *testing.T) {
 
-	for i, testCase := range testCases {
+	testCasesWithMap := append(testCases, TestCase{constructMap, instantiateMap, validateMap})
+	for i, testCase := range testCasesWithMap {
 
 		log.Info(fmt.Sprintf("Running test case %v", i))
 
@@ -408,7 +456,7 @@ func TestJSON(t *testing.T) {
 		err := new(error)
 		res := ReadJSON(instance, data, err)
 		if *err != nil {
-			t.Fatalf("Failed to read cat: %v", *err)
+			t.Fatalf("Failed to read object onto struct: %v", *err)
 		}
 
 		// Validate object
@@ -417,7 +465,7 @@ func TestJSON(t *testing.T) {
 		// Read onto a pointer
 		res = ReadJSON(instancePtr, data, err)
 		if *err != nil {
-			t.Fatalf("Failed to read cat: %v", *err)
+			t.Fatalf("Failed to read object onto pointer: %v", *err)
 		}
 
 		if res != instancePtr {

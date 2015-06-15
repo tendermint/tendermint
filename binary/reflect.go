@@ -652,6 +652,23 @@ func readReflectJSON(rv reflect.Value, rt reflect.Type, o interface{}, err *erro
 			}
 		}
 
+	case reflect.Map:
+		oMap, ok := o.(map[string]interface{})
+		if !ok {
+			*err = errors.New(Fmt("Expected map but got type %v", reflect.TypeOf(o)))
+			return
+		}
+		// rv may hold a non-initialized map
+		rv.Set(reflect.MakeMap(rv.Type()))
+		for k, v := range oMap {
+			keyRv := reflect.New(rt.Key())
+			valueRv := reflect.New(rt.Elem())
+			// ensure types are correct for all entries
+			readReflectJSON(keyRv.Elem(), rt.Key(), k, err)
+			readReflectJSON(valueRv.Elem(), rt.Elem(), v, err)
+			rv.SetMapIndex(keyRv.Elem(), valueRv.Elem())
+		}
+
 	case reflect.String:
 		str, ok := o.(string)
 		if !ok {
@@ -802,6 +819,24 @@ func writeReflectJSON(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, 
 			}
 			WriteTo([]byte("}"), w, n, err)
 		}
+
+	case reflect.Map:
+		WriteTo([]byte("{"), w, n, err)
+		keys := rv.MapKeys()
+		wroteField := false
+		for _, k := range keys {
+			if wroteField {
+				WriteTo([]byte(","), w, n, err)
+			} else {
+				wroteField = true
+			}
+			vRv := rv.MapIndex(k)
+			// json keys are always strings
+			WriteTo([]byte(Fmt("\"%v\":", k.Interface())), w, n, err)
+			//
+			writeReflectJSON(vRv, rt.Elem(), w, n, err)
+		}
+		WriteTo([]byte("}"), w, n, err)
 
 	case reflect.String:
 		fallthrough
