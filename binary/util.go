@@ -6,6 +6,8 @@ import (
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/code.google.com/p/go.crypto/ripemd160"
 )
 
+// THESE PANICS ARE SANITY CHECKS
+
 func BinaryBytes(o interface{}) []byte {
 	w, n, err := new(bytes.Buffer), new(int64), new(error)
 	WriteBinary(o, w, n, err)

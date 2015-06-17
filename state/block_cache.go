@@ -63,8 +63,8 @@ func (cache *BlockCache) GetAccount(addr []byte) *ac.Account {
 
 func (cache *BlockCache) UpdateAccount(acc *ac.Account) {
 	addr := acc.Address
-	// SANITY CHECK
 	_, storage, removed, _ := cache.accounts[string(addr)].unpack()
+	// SANITY CHECK
 	if removed {
 		panic("UpdateAccount on a removed account")
 	}
@@ -95,9 +95,11 @@ func (cache *BlockCache) GetStorage(addr Word256, key Word256) (value Word256) {
 
 	// Get or load storage
 	acc, storage, removed, dirty := cache.accounts[string(addr.Postfix(20))].unpack()
+	// SANITY CHECK
 	if removed {
 		panic("GetStorage() on removed account")
 	}
+	// SANITY CHECK END
 	if acc != nil && storage == nil {
 		storage = makeStorage(cache.db, acc.StorageRoot)
 		cache.accounts[string(addr.Postfix(20))] = accountInfo{acc, storage, false, dirty}
@@ -117,10 +119,12 @@ func (cache *BlockCache) GetStorage(addr Word256, key Word256) (value Word256) {
 
 // NOTE: Set value to zero to removed from the trie.
 func (cache *BlockCache) SetStorage(addr Word256, key Word256, value Word256) {
+	// SANITY CHECK
 	_, _, removed, _ := cache.accounts[string(addr.Postfix(20))].unpack()
 	if removed {
 		panic("SetStorage() on a removed account")
 	}
+	// SANITY CHECK END
 	cache.storages[Tuple256{addr, key}] = storageInfo{value, true}
 }
 
@@ -143,12 +147,6 @@ func (cache *BlockCache) GetNameRegEntry(name string) *types.NameRegEntry {
 
 func (cache *BlockCache) UpdateNameRegEntry(entry *types.NameRegEntry) {
 	name := entry.Name
-	// SANITY CHECK
-	_, removed, _ := cache.names[name].unpack()
-	if removed {
-		panic("UpdateNameRegEntry on a removed name")
-	}
-	// SANITY CHECK END
 	cache.names[name] = nameInfo{entry, false, true}
 }
 
@@ -224,6 +222,7 @@ func (cache *BlockCache) Sync() {
 		if removed {
 			removed := cache.backend.RemoveAccount(acc.Address)
 			if !removed {
+				// SOMETHING HORRIBLE HAS GONE WRONG
 				panic(Fmt("Could not remove account to be removed: %X", acc.Address))
 			}
 		} else {
@@ -257,6 +256,7 @@ func (cache *BlockCache) Sync() {
 		if removed {
 			removed := cache.backend.RemoveNameRegEntry(nameStr)
 			if !removed {
+				// SOMETHING HORRIBLE HAS GONE WRONG
 				panic(Fmt("Could not remove namereg entry to be removed: %s", nameStr))
 			}
 		} else {

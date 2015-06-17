@@ -2,6 +2,7 @@ package state
 
 import (
 	"io/ioutil"
+	"os"
 	"time"
 
 	"github.com/tendermint/tendermint/account"
@@ -34,7 +35,8 @@ func GenesisDocFromJSON(jsonBlob []byte) (genState *GenesisDoc) {
 	var err error
 	binary.ReadJSON(&genState, jsonBlob, &err)
 	if err != nil {
-		panic(Fmt("Couldn't read GenesisDoc: %v", err))
+		log.Error(Fmt("Couldn't read GenesisDoc: %v", err))
+		os.Exit(1)
 	}
 	return
 }
@@ -42,7 +44,8 @@ func GenesisDocFromJSON(jsonBlob []byte) (genState *GenesisDoc) {
 func MakeGenesisStateFromFile(db dbm.DB, genDocFile string) *State {
 	jsonBlob, err := ioutil.ReadFile(genDocFile)
 	if err != nil {
-		panic(Fmt("Couldn't read GenesisDoc file: %v", err))
+		log.Error(Fmt("Couldn't read GenesisDoc file: %v", err))
+		os.Exit(1)
 	}
 	genDoc := GenesisDocFromJSON(jsonBlob)
 	return MakeGenesisState(db, genDoc)

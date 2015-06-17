@@ -35,10 +35,11 @@ func (pubKey PubKeyEd25519) IsNil() bool { return false }
 // TODO: Or should this just be BinaryRipemd160(key)? (The difference is the TypeByte.)
 func (pubKey PubKeyEd25519) Address() []byte { return binary.BinaryRipemd160(pubKey) }
 
+// TODO: Consider returning a reason for failure, or logging a runtime type mismatch.
 func (pubKey PubKeyEd25519) VerifyBytes(msg []byte, sig_ Signature) bool {
 	sig, ok := sig_.(SignatureEd25519)
 	if !ok {
-		panic("PubKeyEd25519 expects an SignatureEd25519 signature")
+		return false
 	}
 	pubKeyBytes := new([32]byte)
 	copy(pubKeyBytes[:], pubKey)

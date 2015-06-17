@@ -3,7 +3,6 @@ package state
 import (
 	"bytes"
 	"errors"
-	"fmt"
 
 	"github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
@@ -22,8 +21,8 @@ func ExecBlock(s *State, block *types.Block, blockPartsHeader types.PartSetHeade
 	// State.Hash should match block.StateHash
 	stateHash := s.Hash()
 	if !bytes.Equal(stateHash, block.StateHash) {
-		return fmt.Errorf("Invalid state hash. Expected %X, got %X",
-			stateHash, block.StateHash)
+		return errors.New(Fmt("Invalid state hash. Expected %X, got %X",
+			stateHash, block.StateHash))
 	}
 	return nil
 }
@@ -56,6 +55,7 @@ func execBlock(s *State, block *types.Block, blockPartsHeader types.PartSetHeade
 	}
 
 	// Update Validator.LastCommitHeight as necessary.
+	// If we panic in here, something has gone horribly wrong
 	for i, precommit := range block.LastValidation.Precommits {
 		if precommit == nil {
 			continue
@@ -194,9 +194,11 @@ func checkInputPubKey(acc *account.Account, in *types.TxInput) error {
 func validateInputs(accounts map[string]*account.Account, signBytes []byte, ins []*types.TxInput) (total int64, err error) {
 	for _, in := range ins {
 		acc := accounts[string(in.Address)]
+		// SANITY CHECK
 		if acc == nil {
 			panic("validateInputs() expects account in accounts")
 		}
+		// SANITY CHECK END
 		err = validateInput(acc, signBytes, in)
 		if err != nil {
 			return
@@ -245,12 +247,14 @@ func validateOutputs(outs []*types.TxOutput) (total int64, err error) {
 func adjustByInputs(accounts map[string]*account.Account, ins []*types.TxInput) {
 	for _, in := range ins {
 		acc := accounts[string(in.Address)]
+		// SANITY CHECK
 		if acc == nil {
 			panic("adjustByInputs() expects account in accounts")
 		}
 		if acc.Balance < in.Amount {
 			panic("adjustByInputs() expects sufficient funds")
 		}
+		// SANITY CHECK END
 		acc.Balance -= in.Amount
 		acc.Sequence += 1
 	}
@@ -259,9 +263,11 @@ func adjustByInputs(accounts map[string]*account.Account, ins []*types.TxInput) 
 func adjustByOutputs(accounts map[string]*account.Account, outs []*types.TxOutput) {
 	for _, out := range outs {
 		acc := accounts[string(out.Address)]
+		// SANITY CHECK
 		if acc == nil {
 			panic("adjustByOutputs() expects account in accounts")
 		}
+		// SANITY CHECK END
 		acc.Balance += out.Amount
 	}
 }
@@ -269,6 +275,14 @@ func adjustByOutputs(accounts map[string]*account.Account, outs []*types.TxOutpu
 // If the tx is invalid, an error will be returned.
 // Unlike ExecBlock(), state will not be altered.
 func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Fireable) error {
+
+	defer func() {
+		if r := recover(); r != nil {
+			err := errors.New(Fmt("Recovered from panic in ExecTx", "err", r, "tx", tx_))
+			log.Error(err.Error())
+			// TODO return error
+		}
+	}()
 
 	// TODO: do something with fees
 	fees := int64(0)
@@ -522,7 +536,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 				// and changing the data
 				if expired {
 					if expiresIn < types.MinNameRegistrationPeriod {
-						return fmt.Errorf("Names must be registered for at least %d blocks", types.MinNameRegistrationPeriod)
+						return errors.New(Fmt("Names must be registered for at least %d blocks", types.MinNameRegistrationPeriod))
 					}
 					entry.Expires = lastBlockHeight + expiresIn
 					entry.Owner = tx.Input.Address
@@ -534,7 +548,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 					credit := oldCredit + value
 					expiresIn = int(credit / costPerBlock)
 					if expiresIn < types.MinNameRegistrationPeriod {
-						return fmt.Errorf("Names must be registered for at least %d blocks", types.MinNameRegistrationPeriod)
+						return errors.New(Fmt("Names must be registered for at least %d blocks", types.MinNameRegistrationPeriod))
 					}
 					entry.Expires = lastBlockHeight + expiresIn
 					log.Debug("Updated namereg entry", "name", entry.Name, "expiresIn", expiresIn, "oldCredit", oldCredit, "value", value, "credit", credit)
@@ -544,7 +558,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 			}
 		} else {
 			if expiresIn < types.MinNameRegistrationPeriod {
-				return fmt.Errorf("Names must be registered for at least %d blocks", types.MinNameRegistrationPeriod)
+				return errors.New(Fmt("Names must be registered for at least %d blocks", types.MinNameRegistrationPeriod))
 			}
 			// entry does not exist, so create it
 			entry = &types.NameRegEntry{
@@ -623,6 +637,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 			Accum:       0,
 		})
 		if !added {
+			// SOMETHING HAS GONE HORRIBLY WRONG
 			panic("Failed to add validator")
 		}
 		if evc != nil {
@@ -720,6 +735,8 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 		return nil
 
 	default:
+		// SANITY CHECK (binary decoding should catch bad tx types
+		// before they get here
 		panic("Unknown Tx type")
 	}
 }

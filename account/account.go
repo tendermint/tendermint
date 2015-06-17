@@ -20,6 +20,7 @@ func SignBytes(chainID string, o Signable) []byte {
 	buf, n, err := new(bytes.Buffer), new(int64), new(error)
 	o.WriteSignBytes(chainID, buf, n, err)
 	if *err != nil {
+		// SOMETHING HAS GONE HORRIBLY WRONG
 		panic(err)
 	}
 	return buf.Bytes()

@@ -2,12 +2,12 @@ package state
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"time"
 
 	"github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
 	dbm "github.com/tendermint/tendermint/db"
 	"github.com/tendermint/tendermint/events"
 	"github.com/tendermint/tendermint/merkle"
@@ -67,7 +67,8 @@ func LoadState(db dbm.DB) *State {
 		s.nameReg = merkle.NewIAVLTree(binary.BasicCodec, NameRegCodec, 0, db)
 		s.nameReg.Load(nameRegHash)
 		if *err != nil {
-			panic(*err)
+			// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
+			Exit(Fmt("Data has been corrupted or its spec has changed: %v\n", *err))
 		}
 		// TODO: ensure that buf is completely read.
 	}
@@ -91,6 +92,7 @@ func (s *State) Save() {
 	binary.WriteByteSlice(s.validatorInfos.Hash(), buf, n, err)
 	binary.WriteByteSlice(s.nameReg.Hash(), buf, n, err)
 	if *err != nil {
+		// SOMETHING HAS GONE HORRIBLY WRONG
 		panic(*err)
 	}
 	s.DB.Set(stateKey, buf.Bytes())
@@ -145,6 +147,7 @@ func (s *State) ComputeBlockStateHash(block *types.Block) error {
 //-------------------------------------
 // State.accounts
 
+// Returns nil if account does not exist with given address.
 // The returned Account is a copy, so mutating it
 // has no side effects.
 // Implements Statelike
@@ -200,11 +203,13 @@ func (s *State) unbondValidator(val *Validator) {
 	// Move validator to UnbondingValidators
 	val, removed := s.BondedValidators.Remove(val.Address)
 	if !removed {
+		// SOMETHING HAS GONE HORRIBLY WRONG
 		panic("Couldn't remove validator for unbonding")
 	}
 	val.UnbondHeight = s.LastBlockHeight + 1
 	added := s.UnbondingValidators.Add(val)
 	if !added {
+		// SOMETHING HAS GONE HORRIBLY WRONG
 		panic("Couldn't add validator for unbonding")
 	}
 }
@@ -213,11 +218,13 @@ func (s *State) rebondValidator(val *Validator) {
 	// Move validator to BondingValidators
 	val, removed := s.UnbondingValidators.Remove(val.Address)
 	if !removed {
+		// SOMETHING HAS GONE HORRIBLY WRONG
 		panic("Couldn't remove validator for rebonding")
 	}
 	val.BondHeight = s.LastBlockHeight + 1
 	added := s.BondedValidators.Add(val)
 	if !added {
+		// SOMETHING HAS GONE HORRIBLY WRONG
 		panic("Couldn't add validator for rebonding")
 	}
 }
@@ -225,17 +232,21 @@ func (s *State) rebondValidator(val *Validator) {
 func (s *State) releaseValidator(val *Validator) {
 	// Update validatorInfo
 	valInfo := s.GetValidatorInfo(val.Address)
+	// SANITY CHECK
 	if valInfo == nil {
 		panic("Couldn't find validatorInfo for release")
 	}
+	// SANITY CHECK END
 	valInfo.ReleasedHeight = s.LastBlockHeight + 1
 	s.SetValidatorInfo(valInfo)
 
 	// Send coins back to UnbondTo outputs
 	accounts, err := getOrMakeAccounts(s, nil, valInfo.UnbondTo)
+	// SANITY CHECK
 	if err != nil {
 		panic("Couldn't get or make unbondTo accounts")
 	}
+	// SANITY CHECK END
 	adjustByOutputs(accounts, valInfo.UnbondTo)
 	for _, acc := range accounts {
 		s.UpdateAccount(acc)
@@ -244,6 +255,7 @@ func (s *State) releaseValidator(val *Validator) {
 	// Remove validator from UnbondingValidators
 	_, removed := s.UnbondingValidators.Remove(val.Address)
 	if !removed {
+		// SOMETHING HAS GONE HORRIBLY WRONG
 		panic("Couldn't remove validator for release")
 	}
 }
@@ -251,9 +263,11 @@ func (s *State) releaseValidator(val *Validator) {
 func (s *State) destroyValidator(val *Validator) {
 	// Update validatorInfo
 	valInfo := s.GetValidatorInfo(val.Address)
+	// SANITY CHECK
 	if valInfo == nil {
 		panic("Couldn't find validatorInfo for release")
 	}
+	// SANITY CHECK END
 	valInfo.DestroyedHeight = s.LastBlockHeight + 1
 	valInfo.DestroyedAmount = val.VotingPower
 	s.SetValidatorInfo(valInfo)
@@ -263,6 +277,7 @@ func (s *State) destroyValidator(val *Validator) {
 	if !removed {
 		_, removed := s.UnbondingValidators.Remove(val.Address)
 		if !removed {
+			// SOMETHING HAS GONE HORRIBLY WRONG
 			panic("Couldn't remove validator for destruction")
 		}
 	}
@@ -334,5 +349,5 @@ type InvalidTxError struct {
 }
 
 func (txErr InvalidTxError) Error() string {
-	return fmt.Sprintf("Invalid tx: [%v] reason: [%v]", txErr.Tx, txErr.Reason)
+	return Fmt("Invalid tx: [%v] reason: [%v]", txErr.Tx, txErr.Reason)
 }

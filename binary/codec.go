@@ -2,7 +2,9 @@ package binary
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	. "github.com/tendermint/tendermint/common"
 	"io"
 	"reflect"
 	"time"
@@ -38,6 +40,7 @@ const (
 func BasicCodecEncoder(o interface{}, w io.Writer, n *int64, err *error) {
 	switch o := o.(type) {
 	case nil:
+		// SANITY CHECK
 		panic("nil type unsupported")
 	case byte:
 		WriteByte(typeByte, w, n, err)
@@ -82,12 +85,16 @@ func BasicCodecEncoder(o interface{}, w io.Writer, n *int64, err *error) {
 		WriteByte(typeTime, w, n, err)
 		WriteTime(o, w, n, err)
 	default:
+		// SANITY CHECK
 		panic(fmt.Sprintf("Unsupported type: %v", reflect.TypeOf(o)))
 	}
 }
 
 func BasicCodecDecoder(r io.Reader, n *int64, err *error) (o interface{}) {
 	type_ := ReadByte(r, n, err)
+	if *err != nil {
+		return
+	}
 	switch type_ {
 	case typeByte:
 		o = ReadByte(r, n, err)
@@ -118,15 +125,12 @@ func BasicCodecDecoder(r io.Reader, n *int64, err *error) (o interface{}) {
 	case typeTime:
 		o = ReadTime(r, n, err)
 	default:
-		if *err != nil {
-			panic(*err)
-		} else {
-			panic(fmt.Sprintf("Unsupported type byte: %X", type_))
-		}
+		*err = errors.New(Fmt("Unsupported type byte: %X", type_))
 	}
-	return o
+	return
 }
 
+// Contract: Caller must ensure that types match.
 func BasicCodecComparator(o1 interface{}, o2 interface{}) int {
 	switch o1.(type) {
 	case byte:
@@ -157,8 +161,10 @@ func BasicCodecComparator(o1 interface{}, o2 interface{}) int {
 	case time.Time:
 		return int(o1.(time.Time).UnixNano() - o2.(time.Time).UnixNano())
 	default:
-		panic(fmt.Sprintf("Unsupported type: %v", reflect.TypeOf(o1)))
+		// SANITY CHECK
+		panic(Fmt("Unsupported type: %v", reflect.TypeOf(o1)))
 	}
+	return 0
 }
 
 var BasicCodec = Codec{

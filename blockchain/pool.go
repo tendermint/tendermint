@@ -136,9 +136,11 @@ func (pool *BlockPool) PopRequest() {
 	pool.requestsMtx.Lock() // Lock
 	defer pool.requestsMtx.Unlock()
 
+	// SANITY CHECK
 	if r := pool.requests[pool.height]; r == nil || r.block == nil {
 		panic("PopRequest() requires a valid block")
 	}
+	// SANITY CHECK END
 
 	delete(pool.requests, pool.height)
 	pool.height++
@@ -151,9 +153,11 @@ func (pool *BlockPool) RedoRequest(height int) {
 	defer pool.requestsMtx.Unlock()
 
 	request := pool.requests[height]
+	// SANITY CHECK
 	if request.block == nil {
 		panic("Expected block to be non-nil")
 	}
+	// SANITY CHECK END
 	// TODO: record this malfeasance
 	// maybe punish peer on switch (an invalid block!)
 	pool.RemovePeer(request.peerId) // Lock on peersMtx.

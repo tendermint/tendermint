@@ -70,6 +70,7 @@ func (info StructFieldInfo) unpack() (int, reflect.Type, Options) {
 func GetTypeFromStructDeclaration(o interface{}) reflect.Type {
 	rt := reflect.TypeOf(o)
 	if rt.NumField() != 1 {
+		// SANITY CHECK
 		panic("Unexpected number of fields in struct-wrapped declaration of type")
 	}
 	return rt.Field(0).Type
@@ -78,6 +79,7 @@ func GetTypeFromStructDeclaration(o interface{}) reflect.Type {
 func SetByteForType(typeByte byte, rt reflect.Type) {
 	typeInfo := GetTypeInfo(rt)
 	if typeInfo.Byte != 0x00 && typeInfo.Byte != typeByte {
+		// SANITY CHECK
 		panic(Fmt("Type %v already registered with type byte %X", rt, typeByte))
 	}
 	typeInfo.Byte = typeByte
@@ -122,6 +124,7 @@ type ConcreteType struct {
 func RegisterInterface(o interface{}, ctypes ...ConcreteType) *TypeInfo {
 	it := GetTypeFromStructDeclaration(o)
 	if it.Kind() != reflect.Interface {
+		// SANITY CHECK
 		panic("RegisterInterface expects an interface")
 	}
 	toType := make(map[byte]reflect.Type, 0)
@@ -131,9 +134,11 @@ func RegisterInterface(o interface{}, ctypes ...ConcreteType) *TypeInfo {
 		typeByte := ctype.Byte
 		SetByteForType(typeByte, crt)
 		if typeByte == 0x00 {
+			// SANITY CHECK
 			panic(Fmt("Byte of 0x00 is reserved for nil (%v)", ctype))
 		}
 		if toType[typeByte] != nil {
+			// SANITY CHECK
 			panic(Fmt("Duplicate Byte for type %v and %v", ctype, toType[typeByte]))
 		}
 		toType[typeByte] = crt
@@ -177,6 +182,8 @@ func MakeTypeInfo(rt reflect.Type) *TypeInfo {
 	return info
 }
 
+// Contract: Caller must ensure that rt is supported
+// (e.g. is recursively composed of supported native types, and structs and slices.)
 func readReflectBinary(rv reflect.Value, rt reflect.Type, opts Options, r io.Reader, n *int64, err *error) {
 
 	// Get typeInfo
@@ -360,6 +367,7 @@ func readReflectBinary(rv reflect.Value, rt reflect.Type, opts Options, r io.Rea
 		rv.SetBool(num > 0)
 
 	default:
+		// SANITY CHECK
 		panic(Fmt("Unknown field type %v", rt.Kind()))
 	}
 }
@@ -504,6 +512,7 @@ func writeReflectBinary(rv reflect.Value, rt reflect.Type, opts Options, w io.Wr
 		}
 
 	default:
+		// SANITY CHECK
 		panic(Fmt("Unknown field type %v", rt.Kind()))
 	}
 }
@@ -526,6 +535,8 @@ func readByteJSON(o interface{}) (typeByte byte, rest interface{}, err error) {
 	return
 }
 
+// Contract: Caller must ensure that rt is supported
+// (e.g. is recursively composed of supported native types, and structs and slices.)
 func readReflectJSON(rv reflect.Value, rt reflect.Type, o interface{}, err *error) {
 
 	// Get typeInfo
@@ -696,6 +707,7 @@ func readReflectJSON(rv reflect.Value, rt reflect.Type, o interface{}, err *erro
 		rv.SetBool(bl)
 
 	default:
+		// SANITY CHECK
 		panic(Fmt("Unknown field type %v", rt.Kind()))
 	}
 }
@@ -821,6 +833,7 @@ func writeReflectJSON(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, 
 		WriteTo(jsonBytes, w, n, err)
 
 	default:
+		// SANITY CHECK
 		panic(Fmt("Unknown field type %v", rt.Kind()))
 	}
 
