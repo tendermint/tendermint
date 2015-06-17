@@ -2,13 +2,13 @@ package vm
 
 import (
 	"fmt"
-	"gopkg.in/fatih/set.v0"
+	"github.com/tendermint/tendermint/Godeps/_workspace/src/gopkg.in/fatih/set.v0"
 )
 
 type OpCode byte
 
-// Op codes
 const (
+	// Op codes
 	// 0x0 range - arithmetic ops
 	STOP OpCode = iota
 	ADD

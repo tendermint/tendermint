@@ -2,8 +2,8 @@ package binary
 
 import (
 	"bytes"
-	"code.google.com/p/go.crypto/ripemd160"
 	"crypto/sha256"
+	"github.com/tendermint/tendermint/Godeps/_workspace/src/code.google.com/p/go.crypto/ripemd160"
 )
 
 func BinaryBytes(o interface{}) []byte {

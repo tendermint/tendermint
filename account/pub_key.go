@@ -2,7 +2,7 @@ package account
 
 import (
 	"errors"
-	"github.com/tendermint/ed25519"
+	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/tendermint/ed25519"
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 )

@@ -1,8 +1,8 @@
 package vm
 
 import (
-	"code.google.com/p/go.crypto/ripemd160"
 	"crypto/sha256"
+	"github.com/tendermint/tendermint/Godeps/_workspace/src/code.google.com/p/go.crypto/ripemd160"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/vm/secp256k1"
 	"github.com/tendermint/tendermint/vm/sha3"

@@ -1,0 +1,84 @@
+{
+	"ImportPath": "github.com/tendermint/tendermint",
+	"GoVersion": "go1.4.2",
+	"Packages": [
+		"./..."
+	],
+	"Deps": [
+		{
+			"ImportPath": "code.google.com/p/go.crypto/ripemd160",
+			"Comment": "null-236",
+			"Rev": "69e2a90ed92d03812364aeb947b7068dc42e561e"
+		},
+		{
+			"ImportPath": "code.google.com/p/mxk/go1/flowcontrol",
+			"Comment": "null-12",
+			"Rev": "5ff2502e25566863e8a0136c7aae8838e4c7de39"
+		},
+		{
+			"ImportPath": "github.com/agl/ed25519/edwards25519",
+			"Rev": "d2b94fd789ea21d12fac1a4443dd3a3f79cda72c"
+		},
+		{
+			"ImportPath": "github.com/codegangsta/cli",
+			"Comment": "1.2.0-106-ga889873",
+			"Rev": "a889873af50a499d060097216dcdbcc26ed09e7c"
+		},
+		{
+			"ImportPath": "github.com/gorilla/websocket",
+			"Rev": "1f87405cd9755fc388e111c4003caca4a2f52fa6"
+		},
+		{
+			"ImportPath": "github.com/inconshreveable/log15/stack",
+			"Comment": "v2.3-38-g352fceb",
+			"Rev": "352fceb48e895bd1dd0b9f5d3ae8f8516c49af0f"
+		},
+		{
+			"ImportPath": "github.com/inconshreveable/log15/term",
+			"Comment": "v2.3-38-g352fceb",
+			"Rev": "352fceb48e895bd1dd0b9f5d3ae8f8516c49af0f"
+		},
+		{
+			"ImportPath": "github.com/mattn/go-colorable",
+			"Rev": "043ae16291351db8465272edf465c9f388161627"
+		},
+		{
+			"ImportPath": "github.com/naoina/go-stringutil",
+			"Rev": "360db0db4b01d34e12a2ec042c09e7d37fece761"
+		},
+		{
+			"ImportPath": "github.com/naoina/toml",
+			"Rev": "7b2dffbeaee47506726f29e36d19cf4ee90d361b"
+		},
+		{
+			"ImportPath": "github.com/sfreiberg/gotwilio",
+			"Rev": "b7230c284bd0c1614c94d00b9998c49f9a2737d8"
+		},
+		{
+			"ImportPath": "github.com/spf13/pflag",
+			"Rev": "5644820622454e71517561946e3d94b9f9db6842"
+		},
+		{
+			"ImportPath": "github.com/syndtr/goleveldb/leveldb",
+			"Rev": "63c9e642efad852f49e20a6f90194cae112fd2ac"
+		},
+		{
+			"ImportPath": "github.com/syndtr/gosnappy/snappy",
+			"Rev": "ce8acff4829e0c2458a67ead32390ac0a381c862"
+		},
+		{
+			"ImportPath": "github.com/tendermint/ed25519",
+			"Rev": "533fb6548e2071076888eda3c38749d707ba49bc"
+		},
+		{
+			"ImportPath": "github.com/tendermint/log15",
+			"Comment": "v2.3-33-g105a1be",
+			"Rev": "105a1beefe3379227a0d61733a29fd2c34f7080c"
+		},
+		{
+			"ImportPath": "gopkg.in/fatih/set.v0",
+			"Comment": "v0.1.0-3-g27c4092",
+			"Rev": "27c40922c40b43fe04554d8223a402af3ea333f3"
+		}
+	]
+}

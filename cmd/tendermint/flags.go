@@ -1,7 +1,7 @@
 package main
 
 import (
-	flag "github.com/spf13/pflag"
+	flag "github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/spf13/pflag"
 	"os"
 
 	cfg "github.com/tendermint/tendermint/config"

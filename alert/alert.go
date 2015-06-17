@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sfreiberg/gotwilio"
+	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/sfreiberg/gotwilio"
 )
 
 var lastAlertUnix int64 = 0
