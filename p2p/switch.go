@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strconv"
 	"sync/atomic"
 	"time"
 
@@ -165,6 +166,16 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 		return nil, err
 	}
 
+	// the peerNodeInfo is not verified,
+	// so we overwrite the IP with that from the conn
+	// and if we dialed out, the port too
+	// everything else we just have to trust
+	ip, port, _ := net.SplitHostPort(conn.RemoteAddr().String())
+	peerNodeInfo.Host = ip
+	if outbound {
+		porti, _ := strconv.Atoi(port)
+		peerNodeInfo.P2PPort = uint16(porti)
+	}
 	peer := newPeer(conn, peerNodeInfo, outbound, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError)
 
 	// Add the peer to .peers
