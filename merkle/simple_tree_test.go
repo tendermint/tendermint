@@ -2,8 +2,8 @@ package merkle
 
 import (
 	. "github.com/tendermint/tendermint/common"
+	. "github.com/tendermint/tendermint/common/test"
 
-	"bytes"
 	"testing"
 )
 
@@ -13,7 +13,7 @@ func (tI testItem) Hash() []byte {
 	return []byte(tI)
 }
 
-func TestMerkleTrails(t *testing.T) {
+func TestSimpleProof(t *testing.T) {
 
 	numItems := uint(100)
 
@@ -22,53 +22,62 @@ func TestMerkleTrails(t *testing.T) {
 		items[i] = testItem(RandBytes(32))
 	}
 
-	root := HashFromHashables(items)
+	rootHash := SimpleHashFromHashables(items)
 
-	trails, rootTrail := HashTrailsFromHashables(items)
-
-	// Assert that HashFromHashables and HashTrailsFromHashables are compatible.
-	if !bytes.Equal(root, rootTrail.Hash) {
-		t.Errorf("Root mismatch:\n%X vs\n%X", root, rootTrail.Hash)
-	}
+	proofs := SimpleProofsFromHashables(items)
 
 	// For each item, check the trail.
 	for i, item := range items {
 		itemHash := item.Hash()
-		flatTrail := trails[i].Flatten()
+		proof := proofs[i]
 
 		// Verify success
-		ok := VerifyHashTrail(uint(i), numItems, itemHash, flatTrail, root)
+		ok := proof.Verify(itemHash, rootHash)
 		if !ok {
 			t.Errorf("Verification failed for index %v.", i)
 		}
 
 		// Wrong item index should make it fail
-		ok = VerifyHashTrail(uint(i)+1, numItems, itemHash, flatTrail, root)
-		if ok {
-			t.Errorf("Expected verification to fail for wrong index %v.", i)
+		proof.Index += 1
+		{
+			ok = proof.Verify(itemHash, rootHash)
+			if ok {
+				t.Errorf("Expected verification to fail for wrong index %v.", i)
+			}
 		}
+		proof.Index -= 1
 
 		// Trail too long should make it fail
-		trail2 := append(flatTrail, RandBytes(32))
-		ok = VerifyHashTrail(uint(i), numItems, itemHash, trail2, root)
-		if ok {
-			t.Errorf("Expected verification to fail for wrong trail length.")
+		origInnerHashes := proof.InnerHashes
+		proof.InnerHashes = append(proof.InnerHashes, RandBytes(32))
+		{
+			ok = proof.Verify(itemHash, rootHash)
+			if ok {
+				t.Errorf("Expected verification to fail for wrong trail length.")
+			}
 		}
+		proof.InnerHashes = origInnerHashes
 
 		// Trail too short should make it fail
-		trail2 = flatTrail[:len(flatTrail)-1]
-		ok = VerifyHashTrail(uint(i), numItems, itemHash, trail2, root)
-		if ok {
-			t.Errorf("Expected verification to fail for wrong trail length.")
+		proof.InnerHashes = proof.InnerHashes[0 : len(proof.InnerHashes)-1]
+		{
+			ok = proof.Verify(itemHash, rootHash)
+			if ok {
+				t.Errorf("Expected verification to fail for wrong trail length.")
+			}
 		}
+		proof.InnerHashes = origInnerHashes
 
 		// Mutating the itemHash should make it fail.
-		itemHash2 := make([]byte, len(itemHash))
-		copy(itemHash2, itemHash)
-		itemHash2[0] += byte(0x01)
-		ok = VerifyHashTrail(uint(i), numItems, itemHash2, flatTrail, root)
+		ok = proof.Verify(MutateByteSlice(itemHash), rootHash)
 		if ok {
 			t.Errorf("Expected verification to fail for mutated leaf hash")
+		}
+
+		// Mutating the rootHash should make it fail.
+		ok = proof.Verify(itemHash, MutateByteSlice(rootHash))
+		if ok {
+			t.Errorf("Expected verification to fail for mutated root hash")
 		}
 	}
 }

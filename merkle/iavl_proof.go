@@ -9,30 +9,39 @@ import (
 )
 
 type IAVLProof struct {
-	Root     []byte
-	Branches []IAVLProofBranch
-	Leaf     IAVLProofLeaf
+	LeafNode   IAVLProofLeafNode
+	InnerNodes []IAVLProofInnerNode
+	RootHash   []byte
 }
 
-func (proof *IAVLProof) Verify() bool {
-	hash := proof.Leaf.Hash()
+func (proof *IAVLProof) Verify(keyBytes, valueBytes, rootHash []byte) bool {
+	if !bytes.Equal(keyBytes, proof.LeafNode.KeyBytes) {
+		return false
+	}
+	if !bytes.Equal(valueBytes, proof.LeafNode.ValueBytes) {
+		return false
+	}
+	if !bytes.Equal(rootHash, proof.RootHash) {
+		return false
+	}
+	hash := proof.LeafNode.Hash()
 	// fmt.Printf("leaf hash: %X\n", hash)
-	for i := len(proof.Branches) - 1; 0 <= i; i-- {
-		hash = proof.Branches[i].Hash(hash)
+	for _, branch := range proof.InnerNodes {
+		hash = branch.Hash(hash)
 		// fmt.Printf("branch hash: %X\n", hash)
 	}
-	// fmt.Printf("root: %X, computed: %X\n", proof.Root, hash)
-	return bytes.Equal(proof.Root, hash)
+	// fmt.Printf("root: %X, computed: %X\n", proof.RootHash, hash)
+	return bytes.Equal(proof.RootHash, hash)
 }
 
-type IAVLProofBranch struct {
+type IAVLProofInnerNode struct {
 	Height uint8
 	Size   uint
 	Left   []byte
 	Right  []byte
 }
 
-func (branch IAVLProofBranch) Hash(childHash []byte) []byte {
+func (branch IAVLProofInnerNode) Hash(childHash []byte) []byte {
 	hasher := sha256.New()
 	buf := new(bytes.Buffer)
 	n, err := int64(0), error(nil)
@@ -46,19 +55,19 @@ func (branch IAVLProofBranch) Hash(childHash []byte) []byte {
 		binary.WriteByteSlice(childHash, buf, &n, &err)
 	}
 	if err != nil {
-		panic(Fmt("Failed to hash IAVLProofBranch: %v", err))
+		panic(Fmt("Failed to hash IAVLProofInnerNode: %v", err))
 	}
-	// fmt.Printf("Branch hash bytes: %X\n", buf.Bytes())
+	// fmt.Printf("InnerNode hash bytes: %X\n", buf.Bytes())
 	hasher.Write(buf.Bytes())
 	return hasher.Sum(nil)
 }
 
-type IAVLProofLeaf struct {
+type IAVLProofLeafNode struct {
 	KeyBytes   []byte
 	ValueBytes []byte
 }
 
-func (leaf IAVLProofLeaf) Hash() []byte {
+func (leaf IAVLProofLeafNode) Hash() []byte {
 	hasher := sha256.New()
 	buf := new(bytes.Buffer)
 	n, err := int64(0), error(nil)
@@ -67,9 +76,9 @@ func (leaf IAVLProofLeaf) Hash() []byte {
 	binary.WriteByteSlice(leaf.KeyBytes, buf, &n, &err)
 	binary.WriteByteSlice(leaf.ValueBytes, buf, &n, &err)
 	if err != nil {
-		panic(Fmt("Failed to hash IAVLProofLeaf: %v", err))
+		panic(Fmt("Failed to hash IAVLProofLeafNode: %v", err))
 	}
-	// fmt.Printf("Leaf hash bytes:   %X\n", buf.Bytes())
+	// fmt.Printf("LeafNode hash bytes:   %X\n", buf.Bytes())
 	hasher.Write(buf.Bytes())
 	return hasher.Sum(nil)
 }
@@ -87,38 +96,42 @@ func (node *IAVLNode) constructProof(t *IAVLTree, key interface{}, proof *IAVLPr
 			if err != nil {
 				panic(Fmt("Failed to encode node.value: %v", err))
 			}
-			leaf := IAVLProofLeaf{
+			leaf := IAVLProofLeafNode{
 				KeyBytes:   keyBuf.Bytes(),
 				ValueBytes: valueBuf.Bytes(),
 			}
-			proof.Leaf = leaf
+			proof.LeafNode = leaf
 			return true
 		} else {
 			return false
 		}
 	} else {
 		if t.keyCodec.Compare(key, node.key) < 0 {
-			branch := IAVLProofBranch{
+			exists := node.getLeftNode(t).constructProof(t, key, proof)
+			if !exists {
+				return false
+			}
+			branch := IAVLProofInnerNode{
 				Height: node.height,
 				Size:   node.size,
 				Left:   nil,
 				Right:  node.getRightNode(t).hash,
 			}
-			if node.getRightNode(t).hash == nil {
-				// fmt.Println(node.getRightNode(t))
-				panic("WTF")
-			}
-			proof.Branches = append(proof.Branches, branch)
-			return node.getLeftNode(t).constructProof(t, key, proof)
+			proof.InnerNodes = append(proof.InnerNodes, branch)
+			return true
 		} else {
-			branch := IAVLProofBranch{
+			exists := node.getRightNode(t).constructProof(t, key, proof)
+			if !exists {
+				return false
+			}
+			branch := IAVLProofInnerNode{
 				Height: node.height,
 				Size:   node.size,
 				Left:   node.getLeftNode(t).hash,
 				Right:  nil,
 			}
-			proof.Branches = append(proof.Branches, branch)
-			return node.getRightNode(t).constructProof(t, key, proof)
+			proof.InnerNodes = append(proof.InnerNodes, branch)
+			return true
 		}
 	}
 }
@@ -130,7 +143,7 @@ func (t *IAVLTree) ConstructProof(key interface{}) *IAVLProof {
 	}
 	t.root.hashWithCount(t) // Ensure that all hashes are calculated.
 	proof := &IAVLProof{
-		Root: t.root.hash,
+		RootHash: t.root.hash,
 	}
 	t.root.constructProof(t, key, proof)
 	return proof

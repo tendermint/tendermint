@@ -238,9 +238,9 @@ func TestPersistence(t *testing.T) {
 	}
 }
 
-func testProof(t *testing.T, proof *IAVLProof) {
+func testProof(t *testing.T, proof *IAVLProof, keyBytes, valueBytes, rootHash []byte) {
 	// Proof must verify.
-	if !proof.Verify() {
+	if !proof.Verify(keyBytes, valueBytes, rootHash) {
 		t.Errorf("Invalid proof. Verification failed.")
 		return
 	}
@@ -252,25 +252,36 @@ func testProof(t *testing.T, proof *IAVLProof) {
 		t.Errorf("Failed to read IAVLProof from bytes: %v", err)
 		return
 	}
-	if !proof2.Verify() {
+	if !proof2.Verify(keyBytes, valueBytes, rootHash) {
 		t.Errorf("Invalid proof after write/read. Verification failed.")
 		return
 	}
 	// Random mutations must not verify
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 5; i++ {
 		badProofBytes := MutateByteSlice(proofBytes)
 		n, err := int64(0), error(nil)
 		badProof := binary.ReadBinary(&IAVLProof{}, bytes.NewBuffer(badProofBytes), &n, &err).(*IAVLProof)
 		if err != nil {
 			continue // This is fine.
 		}
-		if badProof.Verify() {
+		if badProof.Verify(keyBytes, valueBytes, rootHash) {
 			t.Errorf("Proof was still valid after a random mutation:\n%X\n%X", proofBytes, badProofBytes)
 		}
 	}
 }
 
-func TestConstructProof(t *testing.T) {
+func TestIAVLProof(t *testing.T) {
+
+	// Convenient wrapper around binary.BasicCodec.
+	toBytes := func(o interface{}) []byte {
+		buf, n, err := new(bytes.Buffer), int64(0), error(nil)
+		binary.BasicCodec.Encode(o, buf, &n, &err)
+		if err != nil {
+			panic(Fmt("Failed to encode thing: %v", err))
+		}
+		return buf.Bytes()
+	}
+
 	// Construct some random tree
 	db := db.NewMemDB()
 	var tree *IAVLTree = NewIAVLTree(binary.BasicCodec, binary.BasicCodec, 100, db)
@@ -291,13 +302,10 @@ func TestConstructProof(t *testing.T) {
 	// Now for each item, construct a proof and verify
 	tree.Iterate(func(key interface{}, value interface{}) bool {
 		proof := tree.ConstructProof(key)
-		if !bytes.Equal(proof.Root, tree.Hash()) {
-			t.Errorf("Invalid proof. Expected root %X, got %X", tree.Hash(), proof.Root)
+		if !bytes.Equal(proof.RootHash, tree.Hash()) {
+			t.Errorf("Invalid proof. Expected root %X, got %X", tree.Hash(), proof.RootHash)
 		}
-		if !proof.Verify() {
-			t.Errorf("Invalid proof. Verification failed.")
-		}
-		testProof(t, proof)
+		testProof(t, proof, toBytes(key), toBytes(value), tree.Hash())
 		return false
 	})
 
