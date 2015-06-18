@@ -194,3 +194,31 @@ func (tx *BondTx) SignInput(chainID string, i int, privAccount *account.PrivAcco
 	tx.Inputs[i].Signature = privAccount.Sign(chainID, tx)
 	return nil
 }
+
+//----------------------------------------------------------------------
+// UnbondTx interface for creating tx
+
+func NewUnbondTx(addr []byte, height uint) *UnbondTx {
+	return &UnbondTx{
+		Address: addr,
+		Height:  height,
+	}
+}
+
+func (tx *UnbondTx) Sign(chainID string, privAccount *account.PrivAccount) {
+	tx.Signature = privAccount.Sign(chainID, tx)
+}
+
+//----------------------------------------------------------------------
+// RebondTx interface for creating tx
+
+func NewRebondTx(addr []byte, height uint) *RebondTx {
+	return &RebondTx{
+		Address: addr,
+		Height:  height,
+	}
+}
+
+func (tx *RebondTx) Sign(chainID string, privAccount *account.PrivAccount) {
+	tx.Signature = privAccount.Sign(chainID, tx)
+}
