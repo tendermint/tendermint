@@ -66,7 +66,7 @@ func (info StructFieldInfo) unpack() (int, reflect.Type, Options) {
 	return info.Index, info.Type, info.Options
 }
 
-// e.g. If o is struct{Foo}{}, return is the Foo interface type.
+// e.g. If o is struct{Foo}{}, return is the Foo reflection type.
 func GetTypeFromStructDeclaration(o interface{}) reflect.Type {
 	rt := reflect.TypeOf(o)
 	if rt.NumField() != 1 {

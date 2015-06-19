@@ -206,7 +206,7 @@ func NewUnbondTx(addr []byte, height uint) *UnbondTx {
 }
 
 func (tx *UnbondTx) Sign(chainID string, privAccount *account.PrivAccount) {
-	tx.Signature = privAccount.Sign(chainID, tx)
+	tx.Signature = privAccount.Sign(chainID, tx).(account.SignatureEd25519)
 }
 
 //----------------------------------------------------------------------
@@ -220,5 +220,5 @@ func NewRebondTx(addr []byte, height uint) *RebondTx {
 }
 
 func (tx *RebondTx) Sign(chainID string, privAccount *account.PrivAccount) {
-	tx.Signature = privAccount.Sign(chainID, tx)
+	tx.Signature = privAccount.Sign(chainID, tx).(account.SignatureEd25519)
 }
