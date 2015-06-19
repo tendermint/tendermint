@@ -15,9 +15,9 @@ import (
 )
 
 type Block struct {
-	*Header     `json:"header"`
-	*Validation `json:"validation"`
-	*Data       `json:"data"`
+	*Header        `json:"header"`
+	*Data          `json:"data"`
+	LastValidation *Validation `json:"last_validation"`
 }
 
 // Basic validation that doesn't involve state data.
@@ -46,7 +46,7 @@ func (b *Block) ValidateBasic(chainID string, lastBlockHeight uint, lastBlockHas
 		}
 	*/
 	if b.Header.Height != 1 {
-		if err := b.Validation.ValidateBasic(); err != nil {
+		if err := b.LastValidation.ValidateBasic(); err != nil {
 			return err
 		}
 	}
@@ -58,12 +58,12 @@ func (b *Block) ValidateBasic(chainID string, lastBlockHeight uint, lastBlockHas
 // If the block is incomplete (e.g. missing Header.StateHash)
 // then the hash is nil, to prevent the usage of that hash.
 func (b *Block) Hash() []byte {
-	if b.Header == nil || b.Validation == nil || b.Data == nil {
+	if b.Header == nil || b.Data == nil || b.LastValidation == nil {
 		return nil
 	}
 	hashHeader := b.Header.Hash()
-	hashValidation := b.Validation.Hash()
 	hashData := b.Data.Hash()
+	hashLastValidation := b.LastValidation.Hash()
 
 	// If hashHeader is nil, required fields are missing.
 	if len(hashHeader) == 0 {
@@ -71,7 +71,7 @@ func (b *Block) Hash() []byte {
 	}
 
 	// Merkle hash from subhashes.
-	hashes := [][]byte{hashHeader, hashValidation, hashData}
+	hashes := [][]byte{hashHeader, hashData, hashLastValidation}
 	return merkle.SimpleHashFromHashes(hashes)
 }
 
@@ -106,8 +106,8 @@ func (b *Block) StringIndented(indent string) string {
 %s  %v
 %s}#%X`,
 		indent, b.Header.StringIndented(indent+"  "),
-		indent, b.Validation.StringIndented(indent+"  "),
 		indent, b.Data.StringIndented(indent+"  "),
+		indent, b.LastValidation.StringIndented(indent+"  "),
 		indent, b.Hash())
 }
 
@@ -174,56 +174,39 @@ func (h *Header) StringIndented(indent string) string {
 		indent, h.Hash())
 }
 
-//-----------------------------------------------------------------------------
-
-type Precommit struct {
-	Address   []byte                   `json:"address"`
-	Signature account.SignatureEd25519 `json:"signature"`
-}
-
-func (pc Precommit) IsZero() bool {
-	return pc.Signature.IsZero()
-}
-
-func (pc Precommit) String() string {
-	return fmt.Sprintf("Precommit{A:%X %X}", pc.Address, Fingerprint(pc.Signature))
-}
-
 //-------------------------------------
 
-// NOTE: The Precommits are in order of address to preserve the bonded ValidatorSet order.
-// Any peer with a block can gossip precommits by index with a peer without recalculating the
-// active ValidatorSet.
+// NOTE: Validation is empty for height 1, but never nil.
 type Validation struct {
-	Round      uint        `json:"round"`      // Round for all precommits
-	Precommits []Precommit `json:"precommits"` // Precommits (or nil) of all active validators in address order.
+	// NOTE: The Precommits are in order of address to preserve the bonded ValidatorSet order.
+	// Any peer with a block can gossip precommits by index with a peer without recalculating the
+	// active ValidatorSet.
+	Precommits []*Vote `json:"precommits"`
 
 	// Volatile
 	hash     []byte
 	bitArray *BitArray
 }
 
+func (v *Validation) Height() uint {
+	if len(v.Precommits) == 0 {
+		return 0
+	}
+	return v.Precommits[0].Height
+}
+
+func (v *Validation) Round() uint {
+	if len(v.Precommits) == 0 {
+		return 0
+	}
+	return v.Precommits[0].Round
+}
+
 func (v *Validation) ValidateBasic() error {
 	if len(v.Precommits) == 0 {
 		return errors.New("No precommits in validation")
 	}
-	lastAddress := []byte{}
-	for i := 0; i < len(v.Precommits); i++ {
-		precommit := v.Precommits[i]
-		if precommit.IsZero() {
-			if len(precommit.Address) > 0 {
-				return errors.New("Zero precommits should not have an address")
-			}
-		} else {
-			if len(precommit.Address) == 0 {
-				return errors.New("Nonzero precommits should have an address")
-			}
-			if len(lastAddress) > 0 && bytes.Compare(lastAddress, precommit.Address) != -1 {
-				return errors.New("Invalid precommit order")
-			}
-			lastAddress = precommit.Address
-		}
-	}
+	// TODO Additional validation?
 	return nil
 }
 
@@ -248,10 +231,8 @@ func (v *Validation) StringIndented(indent string) string {
 		precommitStrings[i] = precommit.String()
 	}
 	return fmt.Sprintf(`Validation{
-%s  Round:      %v
 %s  Precommits: %v
 %s}#%X`,
-		indent, v.Round,
 		indent, strings.Join(precommitStrings, "\n"+indent+"  "),
 		indent, v.hash)
 }

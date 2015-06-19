@@ -56,7 +56,7 @@ Consensus State Machine Overview:
 
 * NewHeight:
   * Upon entering NewHeight,
-    * Move Precommits to LastPrecommits and increment height.
+    * Move Precommits to LastCommit and increment height.
     * Wait until `CommitTime+timeoutCommit` to receive straggler commits. --> Then, goto NewRound round 0
 
 * Proof of Safety:
@@ -184,7 +184,7 @@ type RoundState struct {
 	LockedBlock        *types.Block
 	LockedBlockParts   *types.PartSet
 	Votes              *HeightVoteSet
-	LastPrecommits     *VoteSet // Last precommits for Height-1
+	LastCommit         *VoteSet // Last precommits for Height-1
 }
 
 func (rs *RoundState) String() string {
@@ -201,7 +201,7 @@ func (rs *RoundState) StringIndented(indent string) string {
 %s  ProposalBlock: %v %v
 %s  LockedBlock:   %v %v
 %s  Votes:         %v
-%s  LastPrecommits: %v
+%s  LastCommit: %v
 %s}`,
 		indent, rs.Height, rs.Round, rs.Step,
 		indent, rs.StartTime,
@@ -211,7 +211,7 @@ func (rs *RoundState) StringIndented(indent string) string {
 		indent, rs.ProposalBlockParts.StringShort(), rs.ProposalBlock.StringShort(),
 		indent, rs.LockedBlockParts.StringShort(), rs.LockedBlock.StringShort(),
 		indent, rs.Votes.StringIndented(indent+"    "),
-		indent, rs.LastPrecommits.StringShort(),
+		indent, rs.LastCommit.StringShort(),
 		indent)
 }
 
@@ -252,13 +252,13 @@ func NewConsensusState(state *sm.State, blockStore *bc.BlockStore, mempoolReacto
 	}
 	cs.updateToState(state, true)
 	cs.maybeRebond()
-	cs.reconstructLastPrecommits(state)
+	cs.reconstructLastCommit(state)
 	return cs
 }
 
-// Reconstruct LastPrecommits from SeenValidation, which we saved along with the block,
+// Reconstruct LastCommit from SeenValidation, which we saved along with the block,
 // (which happens even before saving the state)
-func (cs *ConsensusState) reconstructLastPrecommits(state *sm.State) {
+func (cs *ConsensusState) reconstructLastCommit(state *sm.State) {
 	if state.LastBlockHeight == 0 {
 		return
 	}
@@ -275,13 +275,13 @@ func (cs *ConsensusState) reconstructLastPrecommits(state *sm.State) {
 		}
 		added, _, err := lastPrecommits.AddByIndex(uint(idx), precommitVote)
 		if !added || err != nil {
-			panic(Fmt("Failed to reconstruct LastPrecommits: %v", err))
+			panic(Fmt("Failed to reconstruct LastCommit: %v", err))
 		}
 	}
 	if !lastPrecommits.HasTwoThirdsMajority() {
-		panic("Failed to reconstruct LastPrecommits: Does not have +2/3 maj")
+		panic("Failed to reconstruct LastCommit: Does not have +2/3 maj")
 	}
-	cs.LastPrecommits = lastPrecommits
+	cs.LastCommit = lastPrecommits
 }
 
 func (cs *ConsensusState) GetState() *sm.State {
@@ -373,11 +373,14 @@ func (cs *ConsensusState) updateToState(state *sm.State, contiguous bool) {
 	cs.LockedBlock = nil
 	cs.LockedBlockParts = nil
 	cs.Votes = NewHeightVoteSet(height, validators)
-	cs.LastPrecommits = lastPrecommits
+	cs.LastCommit = lastPrecommits
 
 	cs.state = state
 	cs.stagedBlock = nil
 	cs.stagedState = nil
+
+	// Finally, broadcast RoundState
+	cs.newStepCh <- cs.getRoundState()
 }
 
 // If we're unbonded, broadcast RebondTx.
@@ -528,11 +531,11 @@ func (cs *ConsensusState) createProposalBlock() (*types.Block, *types.PartSet) {
 	var validation *types.Validation
 	if cs.Height == 1 {
 		// We're creating a proposal for the first block.
-		// The validation is empty.
+		// The validation is empty, but not nil.
 		validation = &types.Validation{}
-	} else if cs.LastPrecommits.HasTwoThirdsMajority() {
-		// Make the validation from LastPrecommits
-		validation = cs.LastPrecommits.MakeValidation()
+	} else if cs.LastCommit.HasTwoThirdsMajority() {
+		// Make the validation from LastCommit
+		validation = cs.LastCommit.MakeValidation()
 	} else {
 		// This shouldn't happen.
 		log.Error("EnterPropose: Cannot propose anything: No validation for the previous block.")
@@ -871,7 +874,6 @@ func (cs *ConsensusState) FinalizeCommit(height uint) {
 	// * cs.Height has been increment to height+1
 	// * cs.Step is now RoundStepNewHeight
 	// * cs.StartTime is set to when we should start round0.
-	cs.newStepCh <- cs.getRoundState()
 	// Start round 0 when cs.StartTime.
 	go cs.scheduleRound0(height)
 	return
@@ -954,9 +956,9 @@ func (cs *ConsensusState) AddVote(address []byte, vote *types.Vote) (added bool,
 func (cs *ConsensusState) addVote(address []byte, vote *types.Vote) (added bool, index uint, err error) {
 	// A precommit for the previous height?
 	if vote.Height+1 == cs.Height && vote.Type == types.VoteTypePrecommit {
-		added, index, err = cs.LastPrecommits.AddByAddress(address, vote)
+		added, index, err = cs.LastCommit.AddByAddress(address, vote)
 		if added {
-			log.Debug(Fmt("Added to lastPrecommits: %v", cs.LastPrecommits.StringShort()))
+			log.Debug(Fmt("Added to lastPrecommits: %v", cs.LastCommit.StringShort()))
 		}
 		return
 	}

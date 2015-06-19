@@ -59,6 +59,14 @@ func (voteSet *VoteSet) Height() uint {
 	}
 }
 
+func (voteSet *VoteSet) Round() uint {
+	if voteSet == nil {
+		return 0
+	} else {
+		return voteSet.round
+	}
+}
+
 func (voteSet *VoteSet) Size() uint {
 	if voteSet == nil {
 		return 0
@@ -206,36 +214,6 @@ func (voteSet *VoteSet) TwoThirdsMajority() (hash []byte, parts types.PartSetHea
 	}
 }
 
-func (voteSet *VoteSet) MakeValidation() *types.Validation {
-	if voteSet.type_ != types.VoteTypePrecommit {
-		panic("Cannot MakeValidation() unless VoteSet.Type is types.VoteTypePrecommit")
-	}
-	voteSet.mtx.Lock()
-	defer voteSet.mtx.Unlock()
-	if len(voteSet.maj23Hash) == 0 {
-		panic("Cannot MakeValidation() unless a blockhash has +2/3")
-	}
-	precommits := make([]types.Precommit, voteSet.valSet.Size())
-	voteSet.valSet.Iterate(func(valIndex uint, val *sm.Validator) bool {
-		vote := voteSet.votes[valIndex]
-		if vote == nil {
-			return false
-		}
-		if !bytes.Equal(vote.BlockHash, voteSet.maj23Hash) {
-			return false
-		}
-		if !vote.BlockParts.Equals(voteSet.maj23Parts) {
-			return false
-		}
-		precommits[valIndex] = types.Precommit{val.Address, vote.Signature}
-		return false
-	})
-	return &types.Validation{
-		Round:      voteSet.round,
-		Precommits: precommits,
-	}
-}
-
 func (voteSet *VoteSet) String() string {
 	return voteSet.StringIndented("")
 }
@@ -268,4 +246,57 @@ func (voteSet *VoteSet) StringShort() string {
 	defer voteSet.mtx.Unlock()
 	return fmt.Sprintf(`VoteSet{H:%v R:%v T:%v +2/3:%v %v}`,
 		voteSet.height, voteSet.round, voteSet.type_, voteSet.maj23Exists, voteSet.votesBitArray)
+}
+
+//--------------------------------------------------------------------------------
+// Validation
+
+func (voteSet *VoteSet) MakeValidation() *types.Validation {
+	if voteSet.type_ != types.VoteTypePrecommit {
+		panic("Cannot MakeValidation() unless VoteSet.Type is types.VoteTypePrecommit")
+	}
+	voteSet.mtx.Lock()
+	defer voteSet.mtx.Unlock()
+	if len(voteSet.maj23Hash) == 0 {
+		panic("Cannot MakeValidation() unless a blockhash has +2/3")
+	}
+	precommits := make([]types.Precommit, voteSet.valSet.Size())
+	voteSet.valSet.Iterate(func(valIndex uint, val *sm.Validator) bool {
+		vote := voteSet.votes[valIndex]
+		if vote == nil {
+			return false
+		}
+		if !bytes.Equal(vote.BlockHash, voteSet.maj23Hash) {
+			return false
+		}
+		if !vote.BlockParts.Equals(voteSet.maj23Parts) {
+			return false
+		}
+		precommits[valIndex] = types.Precommit{val.Address, vote.Signature}
+		return false
+	})
+	return &types.Validation{
+		Round:      voteSet.round,
+		Precommits: precommits,
+	}
+}
+
+// XXX
+func VoteSetFromValidation(validation *types.Validation) *VoteSet {
+	lastPrecommits := NewVoteSet(state.LastBlockHeight, 0, types.VoteTypePrecommit, state.LastBondedValidators)
+	seenValidation := cs.blockStore.LoadSeenValidation(state.LastBlockHeight)
+	for idx, precommit := range seenValidation.Precommits {
+		precommitVote := &types.Vote{
+			Height:     state.LastBlockHeight,
+			Round:      seenValidation.Round,
+			Type:       types.VoteTypePrecommit,
+			BlockHash:  state.LastBlockHash,
+			BlockParts: state.LastBlockParts,
+			Signature:  precommit.Signature,
+		}
+		added, _, err := lastPrecommits.AddByIndex(uint(idx), precommitVote)
+		if !added || err != nil {
+			panic(Fmt("Failed to reconstruct LastPrecommits: %v", err))
+		}
+	}
 }

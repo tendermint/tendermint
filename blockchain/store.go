@@ -101,9 +101,8 @@ func (bs *BlockStore) LoadBlockMeta(height uint) *types.BlockMeta {
 	return meta
 }
 
-// NOTE: the Precommit-vote heights are for the block at `height-1`
-// Since these are included in the subsequent block, the height
-// is off by 1.
+// The +2/3 and other Precommit-votes for block at `height`.
+// This Validation comes from block.LastValidation for `height+1`.
 func (bs *BlockStore) LoadBlockValidation(height uint) *types.Validation {
 	var n int64
 	var err error
@@ -158,8 +157,8 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	}
 
 	// Save block validation (duplicate and separate from the Block)
-	blockValidationBytes := binary.BinaryBytes(block.Validation)
-	bs.db.Set(calcBlockValidationKey(height), blockValidationBytes)
+	blockValidationBytes := binary.BinaryBytes(block.LastValidation)
+	bs.db.Set(calcBlockValidationKey(height-1), blockValidationBytes)
 
 	// Save seen validation (seen +2/3 precommits for block)
 	seenValidationBytes := binary.BinaryBytes(seenValidation)
