@@ -27,6 +27,7 @@ package merkle
 import (
 	"bytes"
 	"crypto/sha256"
+	"fmt"
 
 	"github.com/tendermint/tendermint/binary"
 )
@@ -89,11 +90,11 @@ func SimpleHashFromHashables(items []Hashable) []byte {
 //--------------------------------------------------------------------------------
 
 type SimpleProof struct {
-	Index       uint
-	Total       uint
-	LeafHash    []byte
-	InnerHashes [][]byte // Hashes from leaf's sibling to a root's child.
-	RootHash    []byte
+	Index       uint     `json:"index"`
+	Total       uint     `json:"total"`
+	LeafHash    []byte   `json:"leaf_hash"`
+	InnerHashes [][]byte `json:"inner_hashes"` // Hashes from leaf's sibling to a root's child.
+	RootHash    []byte   `json:"root_hash"`
 }
 
 // proofs[0] is the proof for items[0].
@@ -129,6 +130,26 @@ func (sp *SimpleProof) Verify(leafHash []byte, rootHash []byte) bool {
 		return false
 	}
 	return true
+}
+
+func (sp *SimpleProof) String() string {
+	return sp.StringIndented("")
+}
+
+func (sp *SimpleProof) StringIndented(indent string) string {
+	return fmt.Sprintf(`SimpleProof{
+%s  Index:       %v
+%s  Total:       %v
+%s  LeafHash:    %X
+%s  InnerHashes: %X
+%s  RootHash:    %X
+%s}`,
+		indent, sp.Index,
+		indent, sp.Total,
+		indent, sp.LeafHash,
+		indent, sp.InnerHashes,
+		indent, sp.RootHash,
+		indent)
 }
 
 // Use the leafHash and innerHashes to get the root merkle hash.

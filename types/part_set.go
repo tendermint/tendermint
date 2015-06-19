@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strings"
 	"sync"
 
 	"github.com/tendermint/tendermint/binary"
@@ -20,13 +19,12 @@ const (
 
 var (
 	ErrPartSetUnexpectedIndex = errors.New("Error part set unexpected index")
-	ErrPartSetInvalidTrail    = errors.New("Error part set invalid trail")
+	ErrPartSetInvalidProof    = errors.New("Error part set invalid proof")
 )
 
 type Part struct {
-	Index uint     `json:"index"`
-	Trail [][]byte `json:"trail"`
-	Bytes []byte   `json:"bytes"`
+	Proof merkle.SimpleProof `json:"proof"`
+	Bytes []byte             `json:"bytes"`
 
 	// Cache
 	hash []byte
@@ -51,18 +49,12 @@ func (part *Part) String() string {
 }
 
 func (part *Part) StringIndented(indent string) string {
-	trailStrings := make([]string, len(part.Trail))
-	for i, hash := range part.Trail {
-		trailStrings[i] = fmt.Sprintf("%X", hash)
-	}
 	return fmt.Sprintf(`Part{
-%s  Index: %v
-%s  Trail:
-%s    %v
+%s  Proof: %v
+%s  Bytes: %X
 %s}`,
-		indent, part.Index,
-		indent,
-		indent, strings.Join(trailStrings, "\n"+indent+"    "),
+		indent, part.Proof.StringIndented(indent+"  "),
+		indent, part.Bytes,
 		indent)
 }
 
@@ -111,21 +103,20 @@ func NewPartSetFromData(data []byte) *PartSet {
 	partsBitArray := NewBitArray(uint(total))
 	for i := 0; i < total; i++ {
 		part := &Part{
-			Index: uint(i),
 			Bytes: data[i*partSize : MinInt(len(data), (i+1)*partSize)],
 		}
 		parts[i] = part
 		parts_[i] = part
 		partsBitArray.SetIndex(uint(i), true)
 	}
-	// Compute merkle trails
-	trails, rootTrail := merkle.HashTrailsFromHashables(parts_)
+	// Compute merkle proofs
+	proofs := merkle.SimpleProofsFromHashables(parts_)
 	for i := 0; i < total; i++ {
-		parts[i].Trail = trails[i].Flatten()
+		parts[i].Proof = *proofs[i]
 	}
 	return &PartSet{
 		total:         uint(total),
-		hash:          rootTrail.Hash,
+		hash:          proofs[0].RootHash,
 		parts:         parts,
 		partsBitArray: partsBitArray,
 		count:         uint(total),
@@ -201,23 +192,23 @@ func (ps *PartSet) AddPart(part *Part) (bool, error) {
 	defer ps.mtx.Unlock()
 
 	// Invalid part index
-	if part.Index >= ps.total {
+	if part.Proof.Index >= ps.total {
 		return false, ErrPartSetUnexpectedIndex
 	}
 
 	// If part already exists, return false.
-	if ps.parts[part.Index] != nil {
+	if ps.parts[part.Proof.Index] != nil {
 		return false, nil
 	}
 
-	// Check hash trail
-	if !merkle.VerifyHashTrail(uint(part.Index), uint(ps.total), part.Hash(), part.Trail, ps.hash) {
-		return false, ErrPartSetInvalidTrail
+	// Check hash proof
+	if !part.Proof.Verify(part.Hash(), ps.Hash()) {
+		return false, ErrPartSetInvalidProof
 	}
 
 	// Add part
-	ps.parts[part.Index] = part
-	ps.partsBitArray.SetIndex(uint(part.Index), true)
+	ps.parts[part.Proof.Index] = part
+	ps.partsBitArray.SetIndex(uint(part.Proof.Index), true)
 	ps.count++
 	return true, nil
 }

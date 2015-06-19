@@ -27,7 +27,7 @@ func SignBytes(chainID string, o Signable) []byte {
 
 // HashSignBytes is a convenience method for getting the hash of the bytes of a signable
 func HashSignBytes(chainID string, o Signable) []byte {
-	return merkle.HashFromBinary(SignBytes(chainID, o))
+	return merkle.SimpleHashFromBinary(SignBytes(chainID, o))
 }
 
 //-----------------------------------------------------------------------------

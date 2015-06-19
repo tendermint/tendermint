@@ -126,7 +126,7 @@ func (s *State) Hash() []byte {
 		s.validatorInfos,
 		s.nameReg,
 	}
-	return merkle.HashFromHashables(hashables)
+	return merkle.SimpleHashFromHashables(hashables)
 }
 
 // Mutates the block in place and updates it with new state hash.

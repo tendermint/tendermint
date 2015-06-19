@@ -72,7 +72,7 @@ func (b *Block) Hash() []byte {
 
 	// Merkle hash from subhashes.
 	hashes := [][]byte{hashHeader, hashValidation, hashData}
-	return merkle.HashFromHashes(hashes)
+	return merkle.SimpleHashFromHashes(hashes)
 }
 
 func (b *Block) MakePartSet() *PartSet {
@@ -233,7 +233,7 @@ func (v *Validation) Hash() []byte {
 		for i, commit := range v.Commits {
 			bs[i] = commit
 		}
-		v.hash = merkle.HashFromBinaries(bs)
+		v.hash = merkle.SimpleHashFromBinaries(bs)
 	}
 	return v.hash
 }
@@ -278,7 +278,7 @@ func (data *Data) Hash() []byte {
 		for i, tx := range data.Txs {
 			bs[i] = account.SignBytes(config.GetString("chain_id"), tx)
 		}
-		data.hash = merkle.HashFromBinaries(bs)
+		data.hash = merkle.SimpleHashFromBinaries(bs)
 	}
 	return data.hash
 }

@@ -58,7 +58,7 @@ func TestBasicPartSet(t *testing.T) {
 
 }
 
-func TestWrongTrail(t *testing.T) {
+func TestWrongProof(t *testing.T) {
 
 	// Construct random data of size partSize * 100
 	data := RandBytes(partSize * 100)
@@ -69,7 +69,7 @@ func TestWrongTrail(t *testing.T) {
 
 	// Test adding a part with wrong trail.
 	part := partSet.GetPart(0)
-	part.Trail[0][0] += byte(0x01)
+	part.Proof.InnerHashes[0][0] += byte(0x01)
 	added, err := partSet2.AddPart(part)
 	if added || err == nil {
 		t.Errorf("Expected to fail adding a part with bad trail.")

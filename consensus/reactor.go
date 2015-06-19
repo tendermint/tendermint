@@ -167,10 +167,10 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 
 		case *PartMessage:
 			if msg.Type == partTypeProposalBlock {
-				ps.SetHasProposalBlockPart(msg.Height, msg.Round, msg.Part.Index)
+				ps.SetHasProposalBlockPart(msg.Height, msg.Round, msg.Part.Proof.Index)
 				_, err = conR.conS.AddProposalBlockPart(msg.Height, msg.Round, msg.Part)
 			} else if msg.Type == partTypeProposalPOL {
-				ps.SetHasProposalPOLPart(msg.Height, msg.Round, msg.Part.Index)
+				ps.SetHasProposalPOLPart(msg.Height, msg.Round, msg.Part.Proof.Index)
 				_, err = conR.conS.AddProposalPOLPart(msg.Height, msg.Round, msg.Part)
 			} else {
 				log.Warn(Fmt("Unknown part type %v", msg.Type))

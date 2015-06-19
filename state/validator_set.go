@@ -129,7 +129,7 @@ func (valSet *ValidatorSet) Hash() []byte {
 	for i, val := range valSet.Validators {
 		hashables[i] = val
 	}
-	return merkle.HashFromHashables(hashables)
+	return merkle.SimpleHashFromHashables(hashables)
 }
 
 func (valSet *ValidatorSet) Add(val *Validator) (added bool) {
