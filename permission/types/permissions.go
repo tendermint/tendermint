@@ -30,9 +30,12 @@ const (
 
 	DefaultBBPB = Send | Call | CreateContract | CreateAccount | Bond | Name
 
+	// XXX: must be adjusted if base perms added/removed
 	NumBasePermissions uint     = 7
 	TopBasePermission  PermFlag = 1 << (NumBasePermissions - 1)
-	AllSet             PermFlag = (1 << 63) - 1 + (1 << 63)
+	AllBasePermissions PermFlag = TopBasePermission | (TopBasePermission - 1)
+
+	AllSet PermFlag = AllBasePermissions | AllSNativePermissions
 )
 
 // should have same ordering as above

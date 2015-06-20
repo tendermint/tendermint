@@ -10,25 +10,6 @@ import (
 //------------------------------------------------------------------------------------------------
 // Registered SNative contracts
 
-const (
-	// first 32 bits of BasePermission are for chain, second 32 are for snative
-	FirstSNativePerm ptypes.PermFlag = 1 << 32
-
-	// each snative has an associated permission flag
-	HasBasePerm ptypes.PermFlag = FirstSNativePerm << iota
-	SetBasePerm
-	UnsetBasePerm
-	SetGlobalPerm
-	ClearBasePerm
-	HasRole
-	AddRole
-	RmRole
-
-	// XXX: must be adjusted if snative's added/removed
-	NumSNativePermissions uint            = 8
-	TopSNativePermission  ptypes.PermFlag = FirstSNativePerm << (NumSNativePermissions - 1)
-)
-
 var RegisteredSNativeContracts = map[Word256]SNativeContract{
 	LeftPadWord256([]byte("hasBasePerm")):   hasBasePerm,
 	LeftPadWord256([]byte("setBasePerm")):   setBasePerm,
@@ -51,7 +32,7 @@ type SNativeContract func(appState AppState, acc *Account, input []byte) (output
 // TODO: catch errors, log em, return 0s to the vm (should some errors cause exceptions though?)
 
 func hasBasePerm(appState AppState, acc *Account, args []byte) (output []byte, err error) {
-	if !HasPermission(appState, acc, HasBasePerm) {
+	if !HasPermission(appState, acc, ptypes.HasBasePerm) {
 		return nil, ErrInvalidPermission{acc.Address, "HasBasePerm"}
 	}
 	if len(args) != 2*32 {
@@ -77,7 +58,7 @@ func hasBasePerm(appState AppState, acc *Account, args []byte) (output []byte, e
 }
 
 func setBasePerm(appState AppState, acc *Account, args []byte) (output []byte, err error) {
-	if !HasPermission(appState, acc, SetBasePerm) {
+	if !HasPermission(appState, acc, ptypes.SetBasePerm) {
 		return nil, ErrInvalidPermission{acc.Address, "SetBasePerm"}
 	}
 	if len(args) != 3*32 {
@@ -102,7 +83,7 @@ func setBasePerm(appState AppState, acc *Account, args []byte) (output []byte, e
 }
 
 func unsetBasePerm(appState AppState, acc *Account, args []byte) (output []byte, err error) {
-	if !HasPermission(appState, acc, UnsetBasePerm) {
+	if !HasPermission(appState, acc, ptypes.UnsetBasePerm) {
 		return nil, ErrInvalidPermission{acc.Address, "UnsetBasePerm"}
 	}
 	if len(args) != 2*32 {
@@ -126,7 +107,7 @@ func unsetBasePerm(appState AppState, acc *Account, args []byte) (output []byte,
 }
 
 func setGlobalPerm(appState AppState, acc *Account, args []byte) (output []byte, err error) {
-	if !HasPermission(appState, acc, SetGlobalPerm) {
+	if !HasPermission(appState, acc, ptypes.SetGlobalPerm) {
 		return nil, ErrInvalidPermission{acc.Address, "SetGlobalPerm"}
 	}
 	if len(args) != 2*32 {
@@ -152,14 +133,14 @@ func setGlobalPerm(appState AppState, acc *Account, args []byte) (output []byte,
 
 // TODO: needs access to an iterator ...
 func clearPerm(appState AppState, acc *Account, args []byte) (output []byte, err error) {
-	if !HasPermission(appState, acc, ClearBasePerm) {
+	if !HasPermission(appState, acc, ptypes.ClearBasePerm) {
 		return nil, ErrInvalidPermission{acc.Address, "ClearPerm"}
 	}
 	return nil, nil
 }
 
 func hasRole(appState AppState, acc *Account, args []byte) (output []byte, err error) {
-	if !HasPermission(appState, acc, HasRole) {
+	if !HasPermission(appState, acc, ptypes.HasRole) {
 		return nil, ErrInvalidPermission{acc.Address, "HasRole"}
 	}
 	if len(args) != 2*32 {
@@ -182,7 +163,7 @@ func hasRole(appState AppState, acc *Account, args []byte) (output []byte, err e
 }
 
 func addRole(appState AppState, acc *Account, args []byte) (output []byte, err error) {
-	if !HasPermission(appState, acc, AddRole) {
+	if !HasPermission(appState, acc, ptypes.AddRole) {
 		return nil, ErrInvalidPermission{acc.Address, "AddRole"}
 	}
 	if len(args) != 2*32 {
@@ -206,7 +187,7 @@ func addRole(appState AppState, acc *Account, args []byte) (output []byte, err e
 }
 
 func rmRole(appState AppState, acc *Account, args []byte) (output []byte, err error) {
-	if !HasPermission(appState, acc, RmRole) {
+	if !HasPermission(appState, acc, ptypes.RmRole) {
 		return nil, ErrInvalidPermission{acc.Address, "RmRole"}
 	}
 	if len(args) != 2*32 {
@@ -243,9 +224,9 @@ func (e ErrInvalidPermission) Error() string {
 
 // Checks if a permission flag is valid (a known base chain or snative permission)
 func ValidPermN(n ptypes.PermFlag) bool {
-	if n > ptypes.TopBasePermission && n < FirstSNativePerm {
+	if n > ptypes.TopBasePermission && n < ptypes.FirstSNativePerm {
 		return false
-	} else if n > TopSNativePermission {
+	} else if n > ptypes.TopSNativePermission {
 		return false
 	}
 	return true
@@ -268,11 +249,11 @@ func returnThreeArgs(args []byte) (a Word256, b Word256, c Word256) {
 
 // mostly a convenience for testing
 var RegisteredSNativePermissions = map[Word256]ptypes.PermFlag{
-	LeftPadWord256([]byte("hasBasePerm")):   HasBasePerm,
-	LeftPadWord256([]byte("setBasePerm")):   SetBasePerm,
-	LeftPadWord256([]byte("unsetBasePerm")): UnsetBasePerm,
-	LeftPadWord256([]byte("setGlobalPerm")): SetGlobalPerm,
-	LeftPadWord256([]byte("hasRole")):       HasRole,
-	LeftPadWord256([]byte("addRole")):       AddRole,
-	LeftPadWord256([]byte("rmRole")):        RmRole,
+	LeftPadWord256([]byte("hasBasePerm")):   ptypes.HasBasePerm,
+	LeftPadWord256([]byte("setBasePerm")):   ptypes.SetBasePerm,
+	LeftPadWord256([]byte("unsetBasePerm")): ptypes.UnsetBasePerm,
+	LeftPadWord256([]byte("setGlobalPerm")): ptypes.SetGlobalPerm,
+	LeftPadWord256([]byte("hasRole")):       ptypes.HasRole,
+	LeftPadWord256([]byte("addRole")):       ptypes.AddRole,
+	LeftPadWord256([]byte("rmRole")):        ptypes.RmRole,
 }
