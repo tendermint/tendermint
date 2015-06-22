@@ -13,7 +13,11 @@ type BitArray struct {
 	Elems []uint64 `json:"elems"` // NOTE: persisted via reflect, must be exported
 }
 
+// There is no BitArray whose Size is 0.  Use nil instead.
 func NewBitArray(bits uint) *BitArray {
+	if bits == 0 {
+		return nil
+	}
 	return &BitArray{
 		Bits:  bits,
 		Elems: make([]uint64, (bits+63)/64),
@@ -167,10 +171,6 @@ func (bA *BitArray) IsFull() bool {
 	}
 	bA.mtx.Lock()
 	defer bA.mtx.Unlock()
-
-	if bA.Bits == 0 {
-		return false
-	}
 
 	// Check all elements except the last
 	for _, elem := range bA.Elems[:len(bA.Elems)-1] {
