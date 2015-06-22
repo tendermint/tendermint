@@ -206,7 +206,24 @@ func (v *Validation) ValidateBasic() error {
 	if len(v.Precommits) == 0 {
 		return errors.New("No precommits in validation")
 	}
-	// TODO Additional validation?
+	height, round := v.Height(), v.Round()
+	for _, precommit := range v.Precommits {
+		// Ensure that all votes are precommits
+		if precommit.Type != VoteTypePrecommit {
+			return fmt.Errorf("Invalid validation vote. Expected precommit, got %v",
+				precommit.Type)
+		}
+		// Ensure that all heights are the same
+		if precommit.Height != height {
+			return fmt.Errorf("Invalid validation precommit height. Expected %v, got %v",
+				height, precommit.Height)
+		}
+		// Ensure that all rounds are the same
+		if precommit.Round != round {
+			return fmt.Errorf("Invalid validation precommit round. Expected %v, got %v",
+				round, precommit.Round)
+		}
+	}
 	return nil
 }
 
@@ -241,7 +258,7 @@ func (v *Validation) BitArray() *BitArray {
 	if v.bitArray == nil {
 		v.bitArray = NewBitArray(uint(len(v.Precommits)))
 		for i, precommit := range v.Precommits {
-			v.bitArray.SetIndex(uint(i), !precommit.IsZero())
+			v.bitArray.SetIndex(uint(i), precommit != nil)
 		}
 	}
 	return v.bitArray

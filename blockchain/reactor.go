@@ -232,7 +232,7 @@ FOR_LOOP:
 				firstPartsHeader := firstParts.Header()
 				// Finally, verify the first block using the second's validation.
 				err := bcR.state.BondedValidators.VerifyValidation(
-					bcR.state.ChainID, first.Hash(), firstPartsHeader, first.Height, second.Validation)
+					bcR.state.ChainID, first.Hash(), firstPartsHeader, first.Height, second.LastValidation)
 				if err != nil {
 					log.Debug("error in validation", "error", err)
 					bcR.pool.RedoRequest(first.Height)
@@ -244,7 +244,7 @@ FOR_LOOP:
 						// TODO This is bad, are we zombie?
 						panic(Fmt("Failed to process committed block: %v", err))
 					}
-					bcR.store.SaveBlock(first, firstParts, second.Validation)
+					bcR.store.SaveBlock(first, firstParts, second.LastValidation)
 					bcR.state.Save()
 				}
 			}

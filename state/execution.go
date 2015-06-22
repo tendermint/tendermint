@@ -38,50 +38,26 @@ func execBlock(s *State, block *types.Block, blockPartsHeader types.PartSetHeade
 		return err
 	}
 
-	// Validate block Validation.
+	// Validate block LastValidation.
 	if block.Height == 1 {
-		if len(block.Validation.Precommits) != 0 {
-			return errors.New("Block at height 1 (first block) should have no Validation precommits")
+		if len(block.LastValidation.Precommits) != 0 {
+			return errors.New("Block at height 1 (first block) should have no LastValidation precommits")
 		}
 	} else {
-		if uint(len(block.Validation.Precommits)) != s.LastBondedValidators.Size() {
+		if uint(len(block.LastValidation.Precommits)) != s.LastBondedValidators.Size() {
 			return errors.New(Fmt("Invalid block validation size. Expected %v, got %v",
-				s.LastBondedValidators.Size(), len(block.Validation.Precommits)))
+				s.LastBondedValidators.Size(), len(block.LastValidation.Precommits)))
 		}
-		var sumVotingPower uint64
-		s.LastBondedValidators.Iterate(func(index uint, val *Validator) bool {
-			precommit := block.Validation.Precommits[index]
-			if precommit.IsZero() {
-				return false
-			} else {
-				vote := &types.Vote{
-					Height:     block.Height - 1,
-					Round:      block.Validation.Round,
-					Type:       types.VoteTypePrecommit,
-					BlockHash:  block.LastBlockHash,
-					BlockParts: block.LastBlockParts,
-				}
-				if val.PubKey.VerifyBytes(account.SignBytes(s.ChainID, vote), precommit.Signature) {
-					sumVotingPower += val.VotingPower
-					return false
-				} else {
-					log.Warn(Fmt("Invalid validation signature.\nval: %v\nvote: %v", val, vote))
-					err = errors.New("Invalid validation signature")
-					return true
-				}
-			}
-		})
+		err := s.LastBondedValidators.VerifyValidation(
+			s.ChainID, s.LastBlockHash, s.LastBlockParts, block.Height-1, block.LastValidation)
 		if err != nil {
 			return err
-		}
-		if sumVotingPower <= s.LastBondedValidators.TotalVotingPower()*2/3 {
-			return errors.New("Insufficient validation voting power")
 		}
 	}
 
 	// Update Validator.LastCommitHeight as necessary.
-	for i, precommit := range block.Validation.Precommits {
-		if precommit.IsZero() {
+	for i, precommit := range block.LastValidation.Precommits {
+		if precommit == nil {
 			continue
 		}
 		_, val := s.LastBondedValidators.GetByIndex(uint(i))

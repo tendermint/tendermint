@@ -2,7 +2,6 @@ package state
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -201,45 +200,52 @@ func (valSet *ValidatorSet) Iterate(fn func(index uint, val *Validator) bool) {
 }
 
 // Verify that +2/3 of the set had signed the given signBytes
-func (valSet *ValidatorSet) VerifyValidation(chainID string, hash []byte, parts types.PartSetHeader, height uint, v *types.Validation) error {
+func (valSet *ValidatorSet) VerifyValidation(chainID string,
+	hash []byte, parts types.PartSetHeader, height uint, v *types.Validation) error {
 	if valSet.Size() != uint(len(v.Precommits)) {
-		return errors.New(Fmt("Invalid validation -- wrong set size: %v vs %v",
-			valSet.Size(), len(v.Precommits)))
+		return fmt.Errorf("Invalid validation -- wrong set size: %v vs %v", valSet.Size(), len(v.Precommits))
+	}
+	if height != v.Height() {
+		return fmt.Errorf("Invalid validation -- wrong height: %v vs %v", height, v.Height())
 	}
 
 	talliedVotingPower := uint64(0)
-	seenValidators := map[string]struct{}{}
+	round := v.Round()
 
 	for idx, precommit := range v.Precommits {
-		// may be zero, in which case skip.
-		if precommit.Signature.IsZero() {
+		// may be nil if validator skipped.
+		if precommit == nil {
 			continue
 		}
+		if precommit.Height != height {
+			return fmt.Errorf("Invalid validation -- wrong height: %v vs %v", height, precommit.Height)
+		}
+		if precommit.Round != round {
+			return fmt.Errorf("Invalid validation -- wrong round: %v vs %v", round, precommit.Round)
+		}
+		if precommit.Type != types.VoteTypePrecommit {
+			return fmt.Errorf("Invalid validation -- not precommit @ index %v", idx)
+		}
 		_, val := valSet.GetByIndex(uint(idx))
-		precommitSignBytes := account.SignBytes(chainID, &types.Vote{
-			Height: height, Round: v.Round, Type: types.VoteTypePrecommit,
-			BlockHash:  hash,
-			BlockParts: parts,
-		})
-
-		// Validate
-		if _, seen := seenValidators[string(val.Address)]; seen {
-			return fmt.Errorf("Duplicate validator for precommit %v for Validation %v", precommit, v)
-		}
-
+		// Validate signature
+		precommitSignBytes := account.SignBytes(chainID, precommit)
 		if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
-			return fmt.Errorf("Invalid signature for precommit %v for Validation %v", precommit, v)
+			return fmt.Errorf("Invalid validation -- invalid signature: %v", precommit)
 		}
-
-		// Tally
-		seenValidators[string(val.Address)] = struct{}{}
+		if !bytes.Equal(precommit.BlockHash, hash) {
+			continue // Not an error, but doesn't count
+		}
+		if !parts.Equals(precommit.BlockParts) {
+			continue // Not an error, but doesn't count
+		}
+		// Good precommit!
 		talliedVotingPower += val.VotingPower
 	}
 
 	if talliedVotingPower > valSet.TotalVotingPower()*2/3 {
 		return nil
 	} else {
-		return fmt.Errorf("insufficient voting power %v, needed %v",
+		return fmt.Errorf("Invalid validation -- insufficient voting power: got %v, needed %v",
 			talliedVotingPower, (valSet.TotalVotingPower()*2/3 + 1))
 	}
 }
