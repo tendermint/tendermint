@@ -37,10 +37,10 @@ type HeightVoteSet struct {
 
 func NewHeightVoteSet(height uint, valSet *sm.ValidatorSet) *HeightVoteSet {
 	hvs := &HeightVoteSet{
-		height:         height,
-		valSet:         valSet,
-		roundVoteSets:  make(map[uint]RoundVoteSet),
-		peerFFPrevotes: make(map[string]*VoteSet),
+		height:          height,
+		valSet:          valSet,
+		roundVoteSets:   make(map[uint]RoundVoteSet),
+		peerFastForward: make(map[string]uint),
 	}
 	hvs.SetRound(0)
 	return hvs
@@ -64,7 +64,7 @@ func (hvs *HeightVoteSet) SetRound(round uint) {
 		panic("SetRound() must increment hvs.round")
 	}
 	for r := hvs.round + 1; r <= round; r++ {
-		if _, ok := hvs.roundVoteSet[r]; ok {
+		if _, ok := hvs.roundVoteSets[r]; ok {
 			continue // Already exists because peerFastForward.
 		}
 		hvs.addRound(round)
@@ -73,18 +73,18 @@ func (hvs *HeightVoteSet) SetRound(round uint) {
 }
 
 func (hvs *HeightVoteSet) addRound(round uint) {
-	if _, ok := hvs.roundVoteSet[r]; ok {
+	if _, ok := hvs.roundVoteSets[round]; ok {
 		panic("addRound() for an existing round")
 	}
-	prevotes := NewVoteSet(hvs.height, r, types.VoteTypePrevote, hvs.valSet)
-	precommits := NewVoteSet(hvs.height, r, types.VoteTypePrecommit, hvs.valSet)
-	hvs.roundVoteSets[r] = RoundVoteSet{
+	prevotes := NewVoteSet(hvs.height, round, types.VoteTypePrevote, hvs.valSet)
+	precommits := NewVoteSet(hvs.height, round, types.VoteTypePrecommit, hvs.valSet)
+	hvs.roundVoteSets[round] = RoundVoteSet{
 		Prevotes:   prevotes,
 		Precommits: precommits,
 	}
 }
 
-// CONTRACT: if err == nil, added == true
+// Duplicate votes return added=false, err=nil.
 func (hvs *HeightVoteSet) AddByAddress(address []byte, vote *types.Vote, peer string) (added bool, index uint, err error) {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
@@ -92,7 +92,7 @@ func (hvs *HeightVoteSet) AddByAddress(address []byte, vote *types.Vote, peer st
 	if voteSet == nil {
 		if _, ok := hvs.peerFastForward[peer]; !ok {
 			hvs.addRound(vote.Round)
-			hvs.peerFastForwards[peer] = vote.Round
+			hvs.peerFastForward[peer] = vote.Round
 		} else {
 			// Peer has sent a vote that does not match our round,
 			// for more than one round.  Bad peer!

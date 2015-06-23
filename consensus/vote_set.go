@@ -77,7 +77,7 @@ func (voteSet *VoteSet) Size() uint {
 
 // Returns added=true, index if vote was added
 // Otherwise returns err=ErrVote[UnexpectedStep|InvalidAccount|InvalidSignature|InvalidBlockHash|ConflictingSignature]
-// CONTRACT: if err == nil, added == true
+// Duplicate votes return added=false, err=nil.
 // NOTE: vote should not be mutated after adding.
 func (voteSet *VoteSet) AddByIndex(valIndex uint, vote *types.Vote) (added bool, index uint, err error) {
 	voteSet.mtx.Lock()
@@ -88,7 +88,7 @@ func (voteSet *VoteSet) AddByIndex(valIndex uint, vote *types.Vote) (added bool,
 
 // Returns added=true, index if vote was added
 // Otherwise returns err=ErrVote[UnexpectedStep|InvalidAccount|InvalidSignature|InvalidBlockHash|ConflictingSignature]
-// CONTRACT: if err == nil, added == true
+// Duplicate votes return added=false, err=nil.
 // NOTE: vote should not be mutated after adding.
 func (voteSet *VoteSet) AddByAddress(address []byte, vote *types.Vote) (added bool, index uint, err error) {
 	voteSet.mtx.Lock()

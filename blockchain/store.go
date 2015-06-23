@@ -62,7 +62,7 @@ func (bs *BlockStore) LoadBlock(height uint) *types.Block {
 		panic(Fmt("Error reading block meta: %v", err))
 	}
 	bytez := []byte{}
-	for i := uint(0); i < meta.Parts.Total; i++ {
+	for i := uint(0); i < meta.PartsHeader.Total; i++ {
 		part := bs.LoadBlockPart(height, i)
 		bytez = append(bytez, part.Bytes...)
 	}

@@ -126,6 +126,7 @@ var (
 
 var (
 	ErrInvalidProposalSignature = errors.New("Error invalid proposal signature")
+	ErrInvalidProposalPOLRound  = errors.New("Error invalid proposal POL round")
 )
 
 //-----------------------------------------------------------------------------
@@ -898,6 +899,12 @@ func (cs *ConsensusState) SetProposal(proposal *Proposal) error {
 	// We don't care about the proposal if we're already in RoundStepCommit.
 	if cs.Step >= RoundStepCommit {
 		return nil
+	}
+
+	// Verify POLRound, which must be -1 or between 0 and proposal.Round exclusive.
+	if proposal.POLRound != -1 &&
+		(proposal.POLRound < 0 || proposal.Round <= proposal.POLRound) {
+		return ErrInvalidProposalPOLRound
 	}
 
 	// Verify signature
