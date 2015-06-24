@@ -208,6 +208,10 @@ func (v *Validation) ValidateBasic() error {
 	}
 	height, round := v.Height(), v.Round()
 	for _, precommit := range v.Precommits {
+		// It's OK for precommits to be missing.
+		if precommit == nil {
+			continue
+		}
 		// Ensure that all votes are precommits
 		if precommit.Type != VoteTypePrecommit {
 			return fmt.Errorf("Invalid validation vote. Expected precommit, got %v",
@@ -229,10 +233,9 @@ func (v *Validation) ValidateBasic() error {
 
 func (v *Validation) Hash() []byte {
 	if v.hash == nil {
-		bs := make([]interface{}, 1+len(v.Precommits))
-		bs[0] = v.Round
+		bs := make([]interface{}, len(v.Precommits))
 		for i, precommit := range v.Precommits {
-			bs[1+i] = precommit
+			bs[i] = precommit
 		}
 		v.hash = merkle.SimpleHashFromBinaries(bs)
 	}

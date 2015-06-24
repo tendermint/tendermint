@@ -1,28 +1,26 @@
 package consensus
 
 import (
-	"bytes"
 	"testing"
 
 	_ "github.com/tendermint/tendermint/config/tendermint_test"
-	"github.com/tendermint/tendermint/types"
 )
 
-func TestRunActionProposeNoPrivValidator(t *testing.T) {
+func TestEnterProposeNoPrivValidator(t *testing.T) {
 	cs, _ := randConsensusState()
-	cs.RunActionPropose(1, 0)
+	cs.EnterPropose(1, 0)
 	rs := cs.GetRoundState()
 	if rs.Proposal != nil {
 		t.Error("Expected to make no proposal, since no privValidator")
 	}
 }
 
-func TestRunActionPropose(t *testing.T) {
+func TestEnterPropose(t *testing.T) {
 	cs, privValidators := randConsensusState()
 	val0 := privValidators[0]
 	cs.SetPrivValidator(val0)
 
-	cs.RunActionPropose(1, 0)
+	cs.EnterPropose(1, 0)
 	rs := cs.GetRoundState()
 
 	// Check that Proposal, ProposalBlock, ProposalBlockParts are set.

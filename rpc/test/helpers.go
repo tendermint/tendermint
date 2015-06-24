@@ -4,11 +4,9 @@ import (
 	"bytes"
 	"strconv"
 	"testing"
-	"time"
 
 	"github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/consensus"
 	nm "github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/p2p"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -79,8 +77,7 @@ func init() {
 	priv.SetFile(config.GetString("priv_validator_file"))
 	priv.Save()
 
-	consensus.RoundDuration0 = 2 * time.Second
-	consensus.RoundDurationDelta = 1 * time.Second
+	// TODO: change consensus/state.go timeouts to be shorter
 
 	// start a node
 	ready := make(chan struct{})

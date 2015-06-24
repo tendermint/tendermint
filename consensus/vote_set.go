@@ -199,7 +199,7 @@ func (voteSet *VoteSet) HasTwoThirdsAny() bool {
 	}
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
-	return voteSet.totalBlockHashVotes > voteSet.valSet.TotalVotingPower()*2/3
+	return voteSet.totalVotes > voteSet.valSet.TotalVotingPower()*2/3
 }
 
 // Returns either a blockhash (or nil) that received +2/3 majority.
@@ -215,6 +215,9 @@ func (voteSet *VoteSet) TwoThirdsMajority() (hash []byte, parts types.PartSetHea
 }
 
 func (voteSet *VoteSet) String() string {
+	if voteSet == nil {
+		return "nil-VoteSet"
+	}
 	return voteSet.StringIndented("")
 }
 
@@ -260,7 +263,7 @@ func (voteSet *VoteSet) MakeValidation() *types.Validation {
 	if len(voteSet.maj23Hash) == 0 {
 		panic("Cannot MakeValidation() unless a blockhash has +2/3")
 	}
-	precommits := make([]types.Precommit, voteSet.valSet.Size())
+	precommits := make([]*types.Vote, voteSet.valSet.Size())
 	voteSet.valSet.Iterate(func(valIndex uint, val *sm.Validator) bool {
 		vote := voteSet.votes[valIndex]
 		if vote == nil {
@@ -272,31 +275,10 @@ func (voteSet *VoteSet) MakeValidation() *types.Validation {
 		if !vote.BlockParts.Equals(voteSet.maj23Parts) {
 			return false
 		}
-		precommits[valIndex] = types.Precommit{val.Address, vote.Signature}
+		precommits[valIndex] = vote
 		return false
 	})
 	return &types.Validation{
-		Round:      voteSet.round,
 		Precommits: precommits,
-	}
-}
-
-// XXX
-func VoteSetFromValidation(validation *types.Validation) *VoteSet {
-	lastPrecommits := NewVoteSet(state.LastBlockHeight, 0, types.VoteTypePrecommit, state.LastBondedValidators)
-	seenValidation := cs.blockStore.LoadSeenValidation(state.LastBlockHeight)
-	for idx, precommit := range seenValidation.Precommits {
-		precommitVote := &types.Vote{
-			Height:     state.LastBlockHeight,
-			Round:      seenValidation.Round,
-			Type:       types.VoteTypePrecommit,
-			BlockHash:  state.LastBlockHash,
-			BlockParts: state.LastBlockParts,
-			Signature:  precommit.Signature,
-		}
-		added, _, err := lastPrecommits.AddByIndex(uint(idx), precommitVote)
-		if !added || err != nil {
-			panic(Fmt("Failed to reconstruct LastPrecommits: %v", err))
-		}
 	}
 }

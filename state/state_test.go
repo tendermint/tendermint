@@ -72,6 +72,9 @@ func TestCopyState(t *testing.T) {
 }
 
 func makeBlock(t *testing.T, state *State, validation *types.Validation, txs []types.Tx) *types.Block {
+	if validation == nil {
+		validation = &types.Validation{}
+	}
 	block := &types.Block{
 		Header: &types.Header{
 			ChainID:        state.ChainID,
@@ -83,7 +86,7 @@ func makeBlock(t *testing.T, state *State, validation *types.Validation, txs []t
 			LastBlockParts: state.LastBlockParts,
 			StateHash:      nil,
 		},
-		Validation: validation,
+		LastValidation: validation,
 		Data: &types.Data{
 			Txs: txs,
 		},
@@ -628,13 +631,9 @@ func TestAddValidator(t *testing.T) {
 	privValidators[0].SignVote(s0.ChainID, precommit0)
 
 	block1 := makeBlock(t, s0,
-		types.Validation{
-			Round: 0,
-			Precommits: []types.Precommit{
-				types.Precommit{
-					Address:   privValidators[0].Address,
-					Signature: precommit0.Signature,
-				},
+		&types.Validation{
+			Precommits: []*types.Vote{
+				precommit0,
 			},
 		}, nil,
 	)

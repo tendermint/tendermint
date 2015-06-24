@@ -187,7 +187,7 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 			}
 		VOTE_PASS:
 			address, _ := rs.Validators.GetByIndex(msg.ValidatorIndex)
-			added, index, err := conR.conS.AddVote(address, vote)
+			added, index, err := conR.conS.AddVote(address, vote, peer.Key)
 			if err != nil {
 				// If conflicting sig, broadcast evidence tx for slashing. Else punish peer.
 				if errDupe, ok := err.(*types.ErrVoteConflictingSignature); ok {

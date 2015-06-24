@@ -42,7 +42,8 @@ func NewHeightVoteSet(height uint, valSet *sm.ValidatorSet) *HeightVoteSet {
 		roundVoteSets:   make(map[uint]RoundVoteSet),
 		peerFastForward: make(map[string]uint),
 	}
-	hvs.SetRound(0)
+	hvs.addRound(0)
+	hvs.round = 0
 	return hvs
 }
 
@@ -85,14 +86,15 @@ func (hvs *HeightVoteSet) addRound(round uint) {
 }
 
 // Duplicate votes return added=false, err=nil.
-func (hvs *HeightVoteSet) AddByAddress(address []byte, vote *types.Vote, peer string) (added bool, index uint, err error) {
+// By convention, peerKey is "" if origin is self.
+func (hvs *HeightVoteSet) AddByAddress(address []byte, vote *types.Vote, peerKey string) (added bool, index uint, err error) {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
 	voteSet := hvs.getVoteSet(vote.Round, vote.Type)
 	if voteSet == nil {
-		if _, ok := hvs.peerFastForward[peer]; !ok {
+		if _, ok := hvs.peerFastForward[peerKey]; !ok {
 			hvs.addRound(vote.Round)
-			hvs.peerFastForward[peer] = vote.Round
+			hvs.peerFastForward[peerKey] = vote.Round
 		} else {
 			// Peer has sent a vote that does not match our round,
 			// for more than one round.  Bad peer!
@@ -122,8 +124,8 @@ func (hvs *HeightVoteSet) Precommits(round uint) *VoteSet {
 func (hvs *HeightVoteSet) POLRound() int {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
-	for r := hvs.round; r >= 0; r-- {
-		if hvs.getVoteSet(r, types.VoteTypePrevote).HasTwoThirdsMajority() {
+	for r := int(hvs.round); r >= 0; r-- {
+		if hvs.getVoteSet(uint(r), types.VoteTypePrevote).HasTwoThirdsMajority() {
 			return int(r)
 		}
 	}
