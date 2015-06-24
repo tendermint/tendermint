@@ -5,59 +5,64 @@ Consensus State Machine Overview:
 * NewHeight, NewRound, Propose, Prevote, Precommit represent state machine steps. (aka RoundStep).
 * To "prevote/precommit" something means to broadcast a prevote/precommit vote for something.
 * During NewHeight/NewRound/Propose/Prevote/Precommit:
-  * Nodes gossip the locked proposal, if locked on a proposal.
-  * Nodes gossip the proposal proposed by the designated proposer for that round.
+  * Nodes gossip the proposal block proposed by the designated proposer for that round.
   * Nodes gossip prevotes/precommits for rounds [0...currentRound+1] (currentRound+1 for catch-up)
+  * Nodes also gossip prevotes for the proposal's POL (proof-of-lock) round if proposed.
 * Upon each state transition, the height/round/step is broadcast to neighboring peers.
-* The set of +2/3 of precommits from the same round for a block "commits the block".
+* The set of +2/3 of precommits at the same round for the same block is called a Commit, or Validation.
+* A block contains the last block's Validation, which includes the Commit precommits.
+  While all the precommits in the Validation are from the same height & round (ordered by validator index),
+  some precommits may be nil (if the validator's precommit vote didn't reach the proposer in time),
+  or some precommits may be for different blockhashes for the last block hash (which is fine).
 
-* NewRound:
-	* Set up new round. --> Then, goto Propose
+* NewRound(height:H,round:R):
+  * Set up new round.                                                --> goto Propose(H,R)
+  * NOTE: Not much happens in this step. It exists for clarity.
 
-* Propose:
+* Propose(height:H,round:R):
   * Upon entering Propose:
-    * The designated proposer proposes a block.
+    * The designated proposer proposes a block for (H,R).
   * The Propose step ends:
-    * After `timeoutPropose` after entering Propose. --> Then, goto Prevote
-    * After receiving proposal block and POL prevotes are ready. --> Then, goto Prevote
-    * After any +2/3 prevotes received for the next round. --> Then, goto Prevote next round
-    * After any +2/3 precommits received for the next round. --> Then, goto Precommit next round
-    * After +2/3 precommits received for a particular block. --> Then, goto Commit
+    * After `timeoutPropose` after entering Propose.                 --> goto Prevote(H,R)
+    * After receiving proposal block and all POL prevotes.           --> goto Prevote(H,R)
+    * After any +2/3 prevotes received for (H,R+1).                  --> goto Prevote(H,R+1)
+    * After any +2/3 precommits received for (H,R+1).                --> goto Precommit(H,R+1)
+    * After +2/3 precommits received for a particular block.         --> goto Commit(H)
 
-* Prevote:
+* Prevote(height:H,round:R):
   * Upon entering Prevote, each validator broadcasts its prevote vote.
     * If the validator is locked on a block, it prevotes that.
-    * Else, if the proposed block from the previous step is good, it prevotes that.
+    * Else, if the proposed block from Propose(H,R) is good, it prevotes that.
     * Else, if the proposal is invalid or wasn't received on time, it prevotes <nil>.
   * The Prevote step ends:
-    * After +2/3 prevotes for a particular block or <nil>. --> Then, goto Precommit
-    * After `timeoutPrevote` after receiving any +2/3 prevotes. --> Then, goto Precommit
-    * After any +2/3 prevotes received for the next round. --> Then, goto Prevote next round
-    * After any +2/3 precommits received for the next round. --> Then, goto Precommit next round
-    * After +2/3 precommits received for a particular block. --> Then, goto Commit
+    * After +2/3 prevotes for a particular block or <nil>.           --> goto Precommit(H,R)
+    * After `timeoutPrevote` after receiving any +2/3 prevotes.      --> goto Precommit(H,R)
+    * After any +2/3 prevotes received for (H,R+1).                  --> goto Prevote(H,R+1)
+    * After any +2/3 precommits received for (H,R+1).                --> goto Precommit(H,R+1)
+    * After +2/3 precommits received for a particular block.         --> goto Commit(H)
 
-* Precommit:
+* Precommit(height:H,round:R):
   * Upon entering Precommit, each validator broadcasts its precommit vote.
-    * If the validator had seen +2/3 of prevotes for a particular block,
+    * If the validator had seen +2/3 of prevotes for a particular block from Prevote(H,R),
       it locks (changes lock to) that block and precommits that block.
-    * Else, if the validator had seen +2/3 of prevotes for nil, it unlocks and precommits <nil>.
-    * Else, if +2/3 of prevotes for a particular block or nil is not received on time,
+    * Else, if the validator had seen +2/3 of prevotes for <nil>, it unlocks and precommits <nil>.
+    * Else, if +2/3 of prevotes for a particular block or <nil> is not received on time,
       it precommits what it's locked on, or <nil>.
   * The Precommit step ends:
-    * After +2/3 precommits for a particular block. --> Then, goto Commit
-    * After +2/3 precommits for <nil>. --> Then, goto NewRound next round
-    * After `timeoutPrecommit` after receiving any +2/3 precommits. --> Then, goto NewRound next round
-    * After any +2/3 prevotes received for the next round. --> Then, goto Prevote next round
-    * After any +2/3 precommits received for the next round. --> Then, goto Precommit next round
+    * After +2/3 precommits for a particular block.                  --> goto Commit(H)
+    * After +2/3 precommits for <nil>.                               --> goto NewRound(H,R+1)
+    * After `timeoutPrecommit` after receiving any +2/3 precommits.  --> goto NewRound(H,R+1)
+    * After any +2/3 prevotes received for (H,R+1).                  --> goto Prevote(H,R+1)
+    * After any +2/3 precommits received for (H,R+1).                --> goto Precommit(H,R+1)
 
-* Commit:
+* Commit(height:H):
   * Set CommitTime = now
-  * Wait until block is received, then goto NewHeight
+  * Wait until block is received.                                    --> goto NewHeight(H+1)
 
-* NewHeight:
-  * Upon entering NewHeight,
-    * Move Precommits to LastCommit and increment height.
-    * Wait until `CommitTime+timeoutCommit` to receive straggler commits. --> Then, goto NewRound round 0
+* NewHeight(height:H):
+  * Move Precommits to LastCommit and increment height.
+  * Set StartTime = CommitTime+timeoutCommit
+  * Wait until `StartTime` to receive straggler commits.             --> goto NewRound(H,0)
 
 * Proof of Safety:
   If a good validator commits at round R, it's because it saw +2/3 of precommits for round R.
