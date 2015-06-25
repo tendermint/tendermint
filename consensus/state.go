@@ -7,8 +7,8 @@
 	To "prevote/precommit" something means to broadcast a prevote/precommit vote for something.
 
 	During NewHeight/NewRound/Propose/Prevote/Precommit:
-	* Nodes gossip the proposal block proposed by the designated proposer for that round.
-	* Nodes gossip prevotes/precommits for rounds [0...currentRound+1] (currentRound+1 to allow round-skipping)
+	* Nodes gossip the proposal block proposed by the designated proposer at round.
+	* Nodes gossip prevotes/precommits at rounds [0...currentRound+1] (currentRound+1 to allow round-skipping)
 	* Nodes gossip prevotes for the proposal's POL (proof-of-lock) round if proposed.
 	* Nodes gossip to late nodes (lagging in height) with precommits of the commit round (aka catchup)
 
@@ -24,7 +24,7 @@
 	Each unlock/change-of-lock should be justifiable by an POL where +2/3 prevoted for
 	some block or <nil> at some round.
 
-		POL = Proof-of-Lock = +2/3 prevotes for block B or <nil> for (H,R)
+		POL = Proof-of-Lock = +2/3 prevotes for block B (or +2/3 prevotes for <nil>) at (H,R)
 		lockRound < POLRound <= unlockOrChangeLockRound
 
 * NewRound(height:H,round:R):
@@ -33,12 +33,12 @@
 
 * Propose(height:H,round:R):
   * Upon entering Propose:
-    * The designated proposer proposes a block for (H,R).
+    * The designated proposer proposes a block at (H,R).
   * The Propose step ends:
     * After `timeoutPropose` after entering Propose.                 --> goto Prevote(H,R)
     * After receiving proposal block and all POL prevotes.           --> goto Prevote(H,R)
-    * After any +2/3 prevotes received for (H,R+1).                  --> goto Prevote(H,R+1)
-    * After any +2/3 precommits received for (H,R+1).                --> goto Precommit(H,R+1)
+    * After any +2/3 prevotes received at (H,R+1).                   --> goto Prevote(H,R+1)
+    * After any +2/3 precommits received at (H,R+1).                 --> goto Precommit(H,R+1)
     * After +2/3 precommits received for a particular block.         --> goto Commit(H)
 
 * Prevote(height:H,round:R):
@@ -49,8 +49,8 @@
   * The Prevote step ends:
     * After +2/3 prevotes for a particular block or <nil>.           --> goto Precommit(H,R)
     * After `timeoutPrevote` after receiving any +2/3 prevotes.      --> goto Precommit(H,R)
-    * After any +2/3 prevotes received for (H,R+1).                  --> goto Prevote(H,R+1)
-    * After any +2/3 precommits received for (H,R+1).                --> goto Precommit(H,R+1)
+    * After any +2/3 prevotes received at (H,R+1).                   --> goto Prevote(H,R+1)
+    * After any +2/3 precommits received at (H,R+1).                 --> goto Precommit(H,R+1)
     * After +2/3 precommits received for a particular block.         --> goto Commit(H)
 
 * Precommit(height:H,round:R):
@@ -64,8 +64,8 @@
     * After +2/3 precommits for a particular block.                  --> goto Commit(H)
     * After +2/3 precommits for <nil>.                               --> goto NewRound(H,R+1)
     * After `timeoutPrecommit` after receiving any +2/3 precommits.  --> goto NewRound(H,R+1)
-    * After any +2/3 prevotes received for (H,R+1).                  --> goto Prevote(H,R+1)
-    * After any +2/3 precommits received for (H,R+1).                --> goto Precommit(H,R+1)
+    * After any +2/3 prevotes received at (H,R+1).                   --> goto Prevote(H,R+1)
+    * After any +2/3 precommits received at (H,R+1).                 --> goto Precommit(H,R+1)
 
 * Commit(height:H):
   * Set CommitTime = now
@@ -77,7 +77,7 @@
   * Wait until `StartTime` to receive straggler commits.             --> goto NewRound(H,0)
 
 * Proof of Safety:
-  If a good validator commits at round R, it's because it saw +2/3 of precommits for round R.
+  If a good validator commits at round R, it's because it saw +2/3 of precommits at round R.
   This implies that (assuming tolerance bounds) +1/3 of honest nodes are still locked at round R+1.
   These locked validators will remain locked until they see +2/3 prevote for something
   else, but this won't happen because +1/3 are locked and honest.
@@ -199,10 +199,11 @@ type RoundState struct {
 	Proposal           *Proposal
 	ProposalBlock      *types.Block
 	ProposalBlockParts *types.PartSet
+	LockedRound        uint
 	LockedBlock        *types.Block
 	LockedBlockParts   *types.PartSet
 	Votes              *HeightVoteSet
-	LastCommit         *VoteSet // Last precommits for Height-1
+	LastCommit         *VoteSet // Last precommits at Height-1
 }
 
 func (rs *RoundState) String() string {
@@ -217,6 +218,7 @@ func (rs *RoundState) StringIndented(indent string) string {
 %s  Validators:    %v
 %s  Proposal:      %v
 %s  ProposalBlock: %v %v
+%s  LockedRound:   %v
 %s  LockedBlock:   %v %v
 %s  Votes:         %v
 %s  LastCommit: %v
@@ -227,6 +229,7 @@ func (rs *RoundState) StringIndented(indent string) string {
 		indent, rs.Validators.StringIndented(indent+"    "),
 		indent, rs.Proposal,
 		indent, rs.ProposalBlockParts.StringShort(), rs.ProposalBlock.StringShort(),
+		indent, rs.LockedRound,
 		indent, rs.LockedBlockParts.StringShort(), rs.LockedBlock.StringShort(),
 		indent, rs.Votes.StringIndented(indent+"    "),
 		indent, rs.LastCommit.StringShort(),
@@ -387,6 +390,7 @@ func (cs *ConsensusState) updateToState(state *sm.State, contiguous bool) {
 	cs.Proposal = nil
 	cs.ProposalBlock = nil
 	cs.ProposalBlockParts = nil
+	cs.LockedRound = 0
 	cs.LockedBlock = nil
 	cs.LockedBlockParts = nil
 	cs.Votes = NewHeightVoteSet(height, validators)
@@ -432,7 +436,7 @@ func (cs *ConsensusState) SetPrivValidator(priv *sm.PrivValidator) {
 
 //-----------------------------------------------------------------------------
 
-// Enter: +2/3 precommits for nil from (height,round-1)
+// Enter: +2/3 precommits for nil at (height,round-1)
 // Enter: `timeoutPrecommits` after any +2/3 precommits from (height,round-1)
 // Enter: `startTime = commitTime+timeoutCommit` from NewHeight(height)
 // NOTE: cs.StartTime was already set for height.
@@ -650,7 +654,7 @@ func (cs *ConsensusState) doPrevote(height uint, round uint) {
 	return
 }
 
-// Enter: any +2/3 prevotes for next round.
+// Enter: any +2/3 prevotes at next round.
 func (cs *ConsensusState) EnterPrevoteWait(height uint, round uint) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
@@ -719,6 +723,7 @@ func (cs *ConsensusState) EnterPrecommit(height uint, round uint) {
 			log.Info("EnterPrecommit: +2/3 prevoted for nil.")
 		} else {
 			log.Info("EnterPrecommit: +2/3 prevoted for nil. Unlocking")
+			cs.LockedRound = 0
 			cs.LockedBlock = nil
 			cs.LockedBlockParts = nil
 		}
@@ -742,6 +747,7 @@ func (cs *ConsensusState) EnterPrecommit(height uint, round uint) {
 		if err := cs.stageBlock(cs.ProposalBlock, cs.ProposalBlockParts); err != nil {
 			panic(Fmt("EnterPrecommit: +2/3 prevoted for an invalid block: %v", err))
 		}
+		cs.LockedRound = round
 		cs.LockedBlock = cs.ProposalBlock
 		cs.LockedBlockParts = cs.ProposalBlockParts
 		cs.signAddVote(types.VoteTypePrecommit, hash, partsHeader)
@@ -751,9 +757,10 @@ func (cs *ConsensusState) EnterPrecommit(height uint, round uint) {
 	// Otherwise, we need to fetch the +2/3 prevoted block.
 	// Unlock and precommit nil.
 	// The +2/3 prevotes for this round is the POL for our unlock.
-	if cs.Votes.POLRound() < round {
+	if cs.Votes.POLRound() < int(round) {
 		panic(Fmt("This POLRound shold be %v but got %", round, cs.Votes.POLRound()))
 	}
+	cs.LockedRound = 0
 	cs.LockedBlock = nil
 	cs.LockedBlockParts = nil
 	if !cs.ProposalBlockParts.HasHeader(partsHeader) {
@@ -824,9 +831,11 @@ func (cs *ConsensusState) EnterCommit(height uint) {
 	if cs.LockedBlock.HashesTo(hash) {
 		cs.ProposalBlock = cs.LockedBlock
 		cs.ProposalBlockParts = cs.LockedBlockParts
+		cs.LockedRound = 0
 		cs.LockedBlock = nil
 		cs.LockedBlockParts = nil
 	} else {
+		cs.LockedRound = 0
 		cs.LockedBlock = nil
 		cs.LockedBlockParts = nil
 	}
@@ -854,10 +863,10 @@ func (cs *ConsensusState) tryFinalizeCommit(height uint) {
 
 	hash, _, ok := cs.Votes.Precommits(cs.Round).TwoThirdsMajority()
 	if !ok || len(hash) == 0 {
-		return
+		return // There was no +2/3 majority, or +2/3 was for <nil>.
 	}
 	if !cs.ProposalBlock.HashesTo(hash) {
-		return
+		return // We don't have the commit block.
 	}
 	go cs.FinalizeCommit(height)
 }
@@ -964,19 +973,21 @@ func (cs *ConsensusState) AddProposalBlockPart(height uint, round uint, part *ty
 		return added, err
 	}
 	if added && cs.ProposalBlockParts.IsComplete() {
+		// Added and completed!
 		var n int64
 		var err error
 		cs.ProposalBlock = binary.ReadBinary(&types.Block{}, cs.ProposalBlockParts.GetReader(), &n, &err).(*types.Block)
 		log.Debug("Received complete proposal", "hash", cs.ProposalBlock.Hash())
 		if cs.Step == RoundStepPropose && cs.isProposalComplete() {
+			// Move onto the next step
 			go cs.EnterPrevote(height, round)
 		} else if cs.Step == RoundStepCommit {
-			/// XXX How about, EnterCommit()?
+			// If we're waiting on the proposal block...
 			cs.tryFinalizeCommit(height)
 		}
 		return true, err
 	}
-	return true, nil
+	return added, nil
 }
 
 func (cs *ConsensusState) AddVote(address []byte, vote *types.Vote, peerKey string) (added bool, index uint, err error) {
@@ -1005,74 +1016,57 @@ func (cs *ConsensusState) addVote(address []byte, vote *types.Vote, peerKey stri
 		if added {
 			switch vote.Type {
 			case types.VoteTypePrevote:
-				log.Debug(Fmt("Added to prevotes: %v", cs.Votes.Prevotes(vote.Round).StringShort()))
-				if cs.Round < vote.Round && cs.Votes.Prevotes(vote.Round).HasTwoThirdsAny() {
-					// Goto to Prevote vote.Round.
-					go func() {
-						cs.EnterNewRound(height, vote.Round)
-						cs.EnterPrevote(height, vote.Round)
-						cs.EnterPrevoteWait(height, vote.Round)
-					}()
-				} else if cs.Round == vote.Round {
-					if cs.Votes.Prevotes(cs.Round).HasTwoThirdsMajority() {
-						// Goto Precommit, whether for block or nil.
-						go cs.EnterPrecommit(height, cs.Round)
-					} else if cs.Votes.Prevotes(cs.Round).HasTwoThirdsAny() {
-						// Goto PrevoteWait
-						go func() {
-							cs.EnterPrevote(height, cs.Round)
-							cs.EnterPrevoteWait(height, cs.Round)
-						}()
+				prevotes := cs.Votes.Prevotes(vote.Round)
+				log.Debug(Fmt("Added to prevotes: %v", prevotes.StringShort()))
+				// First, unlock if prevotes is a valid POL.
+				if cs.LockedBlock != nil && cs.LockedRound < vote.Round {
+					hash, _, ok := prevotes.TwoThirdsMajority()
+					if ok && !cs.LockedBlock.HashesTo(hash) {
+						log.Info("Unlocking because of POL.", "lockedRound", cs.LockedRound, "POLRound", vote.Round)
+						cs.LockedRound = 0
+						cs.LockedBlock = nil
+						cs.LockedBlockParts = nil
 					}
-				} else if cs.Proposal != nil && 0 <= cs.Proposal.POLRound && uint(cs.Proposal.POLRound) == vote.Round {
+				}
+				if cs.Round <= vote.Round && prevotes.HasTwoThirdsAny() {
+					// Round-skip over to PrevoteWait or goto Precommit.
+					go func() {
+						if cs.Round < vote.Round {
+							cs.EnterNewRound(height, vote.Round)
+						}
+						if prevotes.HasTwoThirdsMajority() {
+							cs.EnterPrecommit(height, vote.Round)
+						} else {
+							cs.EnterPrevote(height, vote.Round)
+							cs.EnterPrevoteWait(height, vote.Round)
+						}
+					}()
+				} else if cs.Proposal != nil &&
+					0 <= cs.Proposal.POLRound && uint(cs.Proposal.POLRound) == vote.Round {
+					// If the proposal is now complete, enter prevote of cs.Round.
 					if cs.isProposalComplete() {
 						go cs.EnterPrevote(height, cs.Round)
 					}
 				}
 			case types.VoteTypePrecommit:
-				log.Debug(Fmt("Added to precommit: %v", cs.Votes.Precommits(vote.Round).StringShort()))
-				if cs.Round < vote.Round {
-					if hash, _, ok := cs.Votes.Precommits(cs.Round).TwoThirdsMajority(); ok {
-						if len(hash) == 0 {
-							// This is weird, shouldn't happen
-							log.Warn("This is weird, why did we receive +2/3 of nil precommits?")
-							// Skip to Precommit of vote.Round
-							go func() {
-								cs.EnterNewRound(height, vote.Round)
-								cs.EnterPrecommit(height, vote.Round)
-								cs.EnterPrecommitWait(height, vote.Round)
-							}()
-						} else {
-							// If hash is block, goto Commit
-							go func() {
-								cs.EnterNewRound(height, vote.Round)
-								cs.EnterCommit(height)
-							}()
-						}
-					} else if cs.Votes.Precommits(vote.Round).HasTwoThirdsAny() {
-						// Skip to Precommit of vote.Round
-						go func() {
+				precommits := cs.Votes.Precommits(vote.Round)
+				log.Debug(Fmt("Added to precommit: %v", precommits.StringShort()))
+				if cs.Round <= vote.Round && precommits.HasTwoThirdsAny() {
+					go func() {
+						hash, _, ok := precommits.TwoThirdsMajority()
+						if ok && len(hash) == 0 {
+							cs.EnterNewRound(height, vote.Round+1)
+							return
+						} else if cs.Round < vote.Round {
 							cs.EnterNewRound(height, vote.Round)
+						}
+						if ok {
+							cs.EnterCommit(height)
+						} else {
 							cs.EnterPrecommit(height, vote.Round)
 							cs.EnterPrecommitWait(height, vote.Round)
-						}()
-					}
-				} else if cs.Round == vote.Round {
-					if hash, _, ok := cs.Votes.Precommits(cs.Round).TwoThirdsMajority(); ok {
-						if len(hash) == 0 {
-							// If hash is nil, goto NewRound
-							go cs.EnterNewRound(height, cs.Round+1)
-						} else {
-							// If hash is block, goto Commit
-							go cs.EnterCommit(height)
 						}
-					} else if cs.Votes.Precommits(cs.Round).HasTwoThirdsAny() {
-						// Goto PrecommitWait
-						go func() {
-							cs.EnterPrecommit(height, cs.Round)
-							cs.EnterPrecommitWait(height, cs.Round)
-						}()
-					}
+					}()
 				}
 			default:
 				panic(Fmt("Unexpected vote type %X", vote.Type)) // Should not happen.
