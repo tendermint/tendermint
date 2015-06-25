@@ -18,7 +18,8 @@ type RoundVoteSet struct {
 Keeps track of all VoteSets from round 0 to round 'round'.
 
 Also keeps track of up to one RoundVoteSet greater than
-'round' from each peer, to facilitate fast-forward syncing.
+'round' from each peer, to facilitate catchup syncing of commits.
+
 A commit is +2/3 precommits for a block at a round,
 but which round is not known in advance, so when a peer
 provides a precommit for a round greater than mtx.round,
@@ -29,18 +30,18 @@ type HeightVoteSet struct {
 	height uint
 	valSet *sm.ValidatorSet
 
-	mtx             sync.Mutex
-	round           uint                  // max tracked round
-	roundVoteSets   map[uint]RoundVoteSet // keys: [0...round]
-	peerFastForward map[string]uint       // keys: peer.Key; values: round
+	mtx               sync.Mutex
+	round             uint                  // max tracked round
+	roundVoteSets     map[uint]RoundVoteSet // keys: [0...round]
+	peerCatchupRounds map[string]uint       // keys: peer.Key; values: round
 }
 
 func NewHeightVoteSet(height uint, valSet *sm.ValidatorSet) *HeightVoteSet {
 	hvs := &HeightVoteSet{
-		height:          height,
-		valSet:          valSet,
-		roundVoteSets:   make(map[uint]RoundVoteSet),
-		peerFastForward: make(map[string]uint),
+		height:            height,
+		valSet:            valSet,
+		roundVoteSets:     make(map[uint]RoundVoteSet),
+		peerCatchupRounds: make(map[string]uint),
 	}
 	hvs.addRound(0)
 	hvs.round = 0
@@ -66,7 +67,7 @@ func (hvs *HeightVoteSet) SetRound(round uint) {
 	}
 	for r := hvs.round + 1; r <= round; r++ {
 		if _, ok := hvs.roundVoteSets[r]; ok {
-			continue // Already exists because peerFastForward.
+			continue // Already exists because peerCatchupRounds.
 		}
 		hvs.addRound(round)
 	}
@@ -92,9 +93,9 @@ func (hvs *HeightVoteSet) AddByAddress(address []byte, vote *types.Vote, peerKey
 	defer hvs.mtx.Unlock()
 	voteSet := hvs.getVoteSet(vote.Round, vote.Type)
 	if voteSet == nil {
-		if _, ok := hvs.peerFastForward[peerKey]; !ok {
+		if _, ok := hvs.peerCatchupRounds[peerKey]; !ok {
 			hvs.addRound(vote.Round)
-			hvs.peerFastForward[peerKey] = vote.Round
+			hvs.peerCatchupRounds[peerKey] = vote.Round
 		} else {
 			// Peer has sent a vote that does not match our round,
 			// for more than one round.  Bad peer!
@@ -160,7 +161,7 @@ func (hvs *HeightVoteSet) StringIndented(indent string) string {
 		voteSetString = hvs.roundVoteSets[round].Precommits.StringShort()
 		vsStrings = append(vsStrings, voteSetString)
 	}
-	// all other peer fast-forward rounds
+	// all other peer catchup rounds
 	for round, roundVoteSet := range hvs.roundVoteSets {
 		if round <= hvs.round {
 			continue
