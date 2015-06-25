@@ -499,7 +499,7 @@ func (cs *ConsensusState) EnterPropose(height uint, round uint) {
 
 		// If we already have the proposal + POL, then goto Prevote
 		if cs.isProposalComplete() {
-			go cs.EnterPrevote(height, round)
+			go cs.EnterPrevote(height, cs.Round)
 		}
 	}()
 
@@ -965,7 +965,7 @@ func (cs *ConsensusState) SetProposal(proposal *Proposal) error {
 }
 
 // NOTE: block is not necessarily valid.
-func (cs *ConsensusState) AddProposalBlockPart(height uint, round uint, part *types.Part) (added bool, err error) {
+func (cs *ConsensusState) AddProposalBlockPart(height uint, part *types.Part) (added bool, err error) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 
@@ -991,7 +991,7 @@ func (cs *ConsensusState) AddProposalBlockPart(height uint, round uint, part *ty
 		log.Debug("Received complete proposal", "hash", cs.ProposalBlock.Hash())
 		if cs.Step == RoundStepPropose && cs.isProposalComplete() {
 			// Move onto the next step
-			go cs.EnterPrevote(height, round)
+			go cs.EnterPrevote(height, cs.Round)
 		} else if cs.Step == RoundStepCommit {
 			// If we're waiting on the proposal block...
 			cs.tryFinalizeCommit(height)
