@@ -353,7 +353,7 @@ OUTER_LOOP:
 		}
 
 		// If the peer is on a previous height, help catch up.
-		if 0 < prs.Height && prs.Height < rs.Height {
+		if (0 < prs.Height) && (prs.Height < rs.Height) {
 			//log.Debug("Data catchup", "height", rs.Height, "peerHeight", prs.Height, "peerProposalBlockParts", prs.ProposalBlockParts)
 			if index, ok := prs.ProposalBlockParts.Not().PickRandom(); ok {
 				// Ensure that the peer's PartSetHeader is correct

@@ -1,31 +1,35 @@
 /*
 
-	Consensus State Machine Overview:
+  Consensus State Machine Overview:
 
-	NewHeight, NewRound, Propose, Prevote, Precommit represent state machine steps. (aka RoundStep).
+  NewHeight, NewRound, Propose, Prevote, Precommit represent state machine steps. (aka RoundStep).
 
-	To "prevote/precommit" something means to broadcast a prevote/precommit vote for something.
+  To "prevote/precommit" something means to broadcast a prevote/precommit vote for something.
 
-	During NewHeight/NewRound/Propose/Prevote/Precommit:
-	* Nodes gossip the proposal block proposed by the designated proposer at round.
-	* Nodes gossip prevotes/precommits at rounds [0...currentRound+1] (currentRound+1 to allow round-skipping)
-	* Nodes gossip prevotes for the proposal's POL (proof-of-lock) round if proposed.
-	* Nodes gossip to late nodes (lagging in height) with precommits of the commit round (aka catchup)
+  During NewHeight/NewRound/Propose/Prevote/Precommit:
+  * Nodes gossip the proposal block proposed by the designated proposer at round.
+  * Nodes gossip prevotes/precommits at rounds [0...currentRound+1] (currentRound+1 to allow round-skipping)
+  * Nodes gossip prevotes for the proposal's POL (proof-of-lock) round if proposed.
+  * Nodes gossip to late nodes (lagging in height) with precommits of the commit round (aka catchup)
 
-	Upon each state transition, the height/round/step is broadcast to neighboring peers.
+  Upon each state transition, the height/round/step is broadcast to neighboring peers.
 
-	The set of +2/3 of precommits at the same round for the same block is called a Commit, or Validation.
+  The set of +2/3 of precommits at the same round for the same block is called a Commit, or Validation.
 
-	A block contains the last block's Validation, which includes the Commit precommits.
-	While all the precommits in the Validation are from the same height & round (ordered by validator index),
-	some precommits may be <nil> (if the validator's precommit vote didn't reach the proposer in time),
-	or some precommits may be for different blockhashes for the last block hash (which is fine).
+  A block contains the last block's Validation, which includes the Commit precommits.
+  While all the precommits in the Validation are from the same height & round (ordered by validator index),
+  some precommits may be <nil> (if the validator's precommit vote didn't reach the proposer in time),
+  or some precommits may be for different blockhashes for the last block hash (which is fine).
 
-	Each unlock/change-of-lock should be justifiable by an POL where +2/3 prevoted for
-	some block or <nil> at some round.
+  Each unlock/change-of-lock should be justifiable by an POL where +2/3 prevoted for
+  some block or <nil> at some round.
 
-		POL = Proof-of-Lock = +2/3 prevotes for block B (or +2/3 prevotes for <nil>) at (H,R)
-		lockRound < POLRound <= unlockOrChangeLockRound
+    POL = Proof-of-Lock = +2/3 prevotes for block B (or +2/3 prevotes for <nil>) at (H,R)
+    lockRound < POLRound <= unlockOrChangeLockRound
+
+  Without the POLRound <= unlockOrChangeLockRound condition, an unlock would be possible from a
+  future condition that hasn't happened yet, so it destroys deterministic accountability.
+  With lockRound < POLRound <= unlockOrChangeLockRound, blame can be shifted to lower rounds.
 
 * NewRound(height:H,round:R):
   * Set up new round.                                                --> goto Propose(H,R)
@@ -89,6 +93,13 @@
        are fixed, so eventually we'll be able to "fully gossip" the block & POL.
     TODO: cap the block.size at something reasonable.
   Lemma 2: If a good node is at round R, neighboring good nodes will soon catch up to round R.
+  Lemma 3: If a node at (H,R) receives +2/3 prevotes for a block (or +2/3 for <nil>) at (H,R+1),
+    it will enter NewRound(H,R+1).
+  Lemma 4: Terminal conditions imply the existence of deterministic accountability, for
+    a synchronous (fixed-duration) protocol extension (judgement).
+    TODO: define terminal conditions (fork and non-decision).
+    TODO: define new assumptions for the synchronous judgement period.
+
 
                             +-------------------------------------+
                             v                                     |(Wait til `CommmitTime+timeoutCommit`)
@@ -1019,7 +1030,11 @@ func (cs *ConsensusState) addVote(address []byte, vote *types.Vote, peerKey stri
 				prevotes := cs.Votes.Prevotes(vote.Round)
 				log.Debug(Fmt("Added to prevotes: %v", prevotes.StringShort()))
 				// First, unlock if prevotes is a valid POL.
-				if cs.LockedBlock != nil && cs.LockedRound < vote.Round {
+				// >> lockRound < POLRound <= unlockOrChangeLockRound (see spec)
+				// NOTE: If (lockRound < POLRound) but !(POLRound <= unlockOrChangeLockRound),
+				// we'll still EnterNewRound(H,vote.R) and EnterPrecommit(H,vote.R) to process it
+				// there.
+				if (cs.LockedBlock != nil) && (cs.LockedRound < vote.Round) && (vote.Round <= cs.Round) {
 					hash, _, ok := prevotes.TwoThirdsMajority()
 					if ok && !cs.LockedBlock.HashesTo(hash) {
 						log.Info("Unlocking because of POL.", "lockedRound", cs.LockedRound, "POLRound", vote.Round)
