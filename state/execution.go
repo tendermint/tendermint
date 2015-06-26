@@ -293,15 +293,6 @@ func adjustByOutputs(accounts map[string]*account.Account, outs []*types.TxOutpu
 // If the tx is invalid, an error will be returned.
 // Unlike ExecBlock(), state will not be altered.
 func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Fireable) error {
-
-	defer func() {
-		if r := recover(); r != nil {
-			err := errors.New(Fmt("Recovered from panic in ExecTx", "err", r, "tx", tx_))
-			log.Error(err.Error())
-			// TODO return error
-		}
-	}()
-
 	// TODO: do something with fees
 	fees := int64(0)
 	_s := blockCache.State() // hack to access validators and block height
@@ -822,6 +813,10 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 
 // Get permission on an account or fall back to global value
 func HasPermission(state AccountGetter, acc *account.Account, perm ptypes.PermFlag) bool {
+	if perm > ptypes.AllBasePermissions {
+		panic("Checking an unknown permission in state should never happen")
+	}
+
 	if acc == nil {
 		// TODO
 		// this needs to fall back to global or do some other specific things
@@ -830,7 +825,10 @@ func HasPermission(state AccountGetter, acc *account.Account, perm ptypes.PermFl
 
 	v, err := acc.Permissions.Base.Get(perm)
 	if _, ok := err.(ptypes.ErrValueNotSet); ok {
-		return HasPermission(state, state.GetAccount(ptypes.GlobalPermissionsAddress), perm)
+		if state == nil {
+			panic("All known global permissions should be set!")
+		}
+		return HasPermission(nil, state.GetAccount(ptypes.GlobalPermissionsAddress), perm)
 	}
 	return v
 }

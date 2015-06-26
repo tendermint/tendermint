@@ -90,11 +90,16 @@ func (vm *VM) EnablePermissions() {
 	vm.perms = true
 }
 
+// XXX: it is the duty of the contract writer to call known permissions
+// we do not convey if a permission is not set
+// (unlike in state/execution, where we guarantee HasPermission is called
+// on known permissions and panics else)
 func HasPermission(appState AppState, acc *Account, perm ptypes.PermFlag) bool {
 	v, err := acc.Permissions.Base.Get(perm)
 	if _, ok := err.(ptypes.ErrValueNotSet); ok {
 		if appState == nil {
-			panic(fmt.Sprintf("Global permission value not set for %b", perm))
+			fmt.Printf("\n\n***** Unknown permission %b! ********\n\n", perm)
+			return false
 		}
 		return HasPermission(nil, appState.GetAccount(ptypes.GlobalPermissionsAddress256), perm)
 	}

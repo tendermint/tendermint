@@ -108,7 +108,7 @@ func MakeGenesisState(db dbm.DB, genDoc *GenesisDoc) *State {
 	if genDoc.Params != nil && genDoc.Params.GlobalPermissions != nil {
 		globalPerms = genDoc.Params.GlobalPermissions
 		// XXX: make sure the set bits are all true
-		// Without it the HasPermission() functions will recurse till death
+		// Without it the HasPermission() functions will fail
 		globalPerms.Base.SetBit = ptypes.AllSet
 	}
 
