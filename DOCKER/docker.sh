@@ -2,7 +2,11 @@
 
 # don't build if you're impatient
 if [[ ! $NO_BUILD ]]; then
-	docker build -t mint .
+	if [ `basename $(pwd)` = DOCKER ]; then
+		docker build -t mint -f Dockerfile ..
+	else
+		docker build -t mint -f DOCKER/Dockerfile .
+	fi
 fi
 
 # create the data-only container 

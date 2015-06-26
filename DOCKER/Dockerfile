@@ -37,5 +37,5 @@ USER tendermint
 ENV TMROOT $data_root
 
 # run tendermint
-CMD ["./run.sh"]
+CMD ["./DOCKER/run.sh"]
 
