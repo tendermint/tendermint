@@ -100,6 +100,7 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 			*exception = err.Error()
 			err := transfer(callee, caller, value)
 			if err != nil {
+				// data has been corrupted in ram
 				panic("Could not return value to caller")
 			}
 		}
@@ -784,7 +785,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 
 		default:
 			dbg.Printf("(pc) %-3v Invalid opcode %X\n", pc, op)
-			panic(fmt.Errorf("Invalid opcode %X", op))
+			return nil, fmt.Errorf("Invalid opcode %X", op)
 		}
 
 		pc++
