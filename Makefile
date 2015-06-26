@@ -1,6 +1,11 @@
-.PHONY: get_deps build all list_deps
+.PHONY: get_deps build all list_deps install
 
-all: build
+all: install
+
+install: 
+	go install github.com/tendermint/tendermint/cmd/tendermint
+	go install github.com/tendermint/tendermint/cmd/barak
+	go install github.com/tendermint/tendermint/cmd/debora
 
 build: 
 	go build -o build/tendermint github.com/tendermint/tendermint/cmd/tendermint

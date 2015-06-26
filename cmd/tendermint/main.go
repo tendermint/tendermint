@@ -21,6 +21,7 @@ Commands:
     gen_validator Generate new validator keypair
     gen_tx        Generate new transaction
     probe_upnp    Test UPnP functionality
+    version       Show version info
 `)
 		return
 	}
@@ -43,6 +44,8 @@ Commands:
 		probe_upnp()
 	case "unsafe_reset_priv_validator":
 		reset_priv_validator()
+	case "version":
+		fmt.Println(config.GetString("version"))
 	default:
 		fmt.Printf("Unknown command %v\n", args[0])
 	}
