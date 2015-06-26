@@ -432,7 +432,7 @@ func writeReflectBinary(rv reflect.Value, rt reflect.Type, opts Options, w io.Wr
 		} else {
 			// Write length
 			length := rv.Len()
-			WriteUvarint(uint(length), w, n, err)
+			WriteVarint(length, w, n, err)
 			// Write elems
 			for i := 0; i < length; i++ {
 				elemRv := rv.Index(i)

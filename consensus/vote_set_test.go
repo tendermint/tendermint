@@ -15,14 +15,14 @@ import (
 // NOTE: see consensus/test.go for common test methods.
 
 // Convenience: Return new vote with different height
-func withHeight(vote *types.Vote, height uint) *types.Vote {
+func withHeight(vote *types.Vote, height int) *types.Vote {
 	vote = vote.Copy()
 	vote.Height = height
 	return vote
 }
 
 // Convenience: Return new vote with different round
-func withRound(vote *types.Vote, round uint) *types.Vote {
+func withRound(vote *types.Vote, round int) *types.Vote {
 	vote = vote.Copy()
 	vote.Round = round
 	return vote
@@ -56,7 +56,7 @@ func signAddVote(privVal *sm.PrivValidator, vote *types.Vote, voteSet *VoteSet) 
 }
 
 func TestAddVote(t *testing.T) {
-	height, round := uint(1), uint(0)
+	height, round := 1, 0
 	voteSet, _, privValidators := randVoteSet(height, round, types.VoteTypePrevote, 10, 1)
 	val0 := privValidators[0]
 
@@ -89,7 +89,7 @@ func TestAddVote(t *testing.T) {
 }
 
 func Test2_3Majority(t *testing.T) {
-	height, round := uint(1), uint(0)
+	height, round := 1, 0
 	voteSet, _, privValidators := randVoteSet(height, round, types.VoteTypePrevote, 10, 1)
 
 	vote := &types.Vote{Height: height, Round: round, Type: types.VoteTypePrevote, BlockHash: nil}
@@ -123,11 +123,11 @@ func Test2_3Majority(t *testing.T) {
 }
 
 func Test2_3MajorityRedux(t *testing.T) {
-	height, round := uint(1), uint(0)
+	height, round := 1, 0
 	voteSet, _, privValidators := randVoteSet(height, round, types.VoteTypePrevote, 100, 1)
 
 	blockHash := CRandBytes(32)
-	blockPartsTotal := uint(123)
+	blockPartsTotal := 123
 	blockParts := types.PartSetHeader{blockPartsTotal, CRandBytes(32)}
 
 	vote := &types.Vote{Height: height, Round: round, Type: types.VoteTypePrevote, BlockHash: blockHash, BlockParts: blockParts}
@@ -190,7 +190,7 @@ func Test2_3MajorityRedux(t *testing.T) {
 }
 
 func TestBadVotes(t *testing.T) {
-	height, round := uint(1), uint(0)
+	height, round := 1, 0
 	voteSet, _, privValidators := randVoteSet(height, round, types.VoteTypePrevote, 10, 1)
 
 	// val0 votes for nil.
@@ -226,7 +226,7 @@ func TestBadVotes(t *testing.T) {
 }
 
 func TestMakeValidation(t *testing.T) {
-	height, round := uint(1), uint(0)
+	height, round := 1, 0
 	voteSet, _, privValidators := randVoteSet(height, round, types.VoteTypePrecommit, 10, 1)
 	blockHash, blockParts := CRandBytes(32), types.PartSetHeader{123, CRandBytes(32)}
 

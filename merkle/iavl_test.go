@@ -60,7 +60,7 @@ func P(n *IAVLNode) string {
 
 func TestUnit(t *testing.T) {
 
-	expectHash := func(tree *IAVLTree, hashCount uint) {
+	expectHash := func(tree *IAVLTree, hashCount int) {
 		// ensure number of new hash calculations is as expected.
 		hash, count := tree.HashWithCount()
 		if count != hashCount {
@@ -78,7 +78,7 @@ func TestUnit(t *testing.T) {
 		}
 	}
 
-	expectSet := func(tree *IAVLTree, i int, repr string, hashCount uint) {
+	expectSet := func(tree *IAVLTree, i int, repr string, hashCount int) {
 		origNode := tree.root
 		updated := tree.Set(i, "")
 		// ensure node was added & structure is as expected.
@@ -91,7 +91,7 @@ func TestUnit(t *testing.T) {
 		tree.root = origNode
 	}
 
-	expectRemove := func(tree *IAVLTree, i int, repr string, hashCount uint) {
+	expectRemove := func(tree *IAVLTree, i int, repr string, hashCount int) {
 		origNode := tree.root
 		value, removed := tree.Remove(i)
 		// ensure node was added & structure is as expected.
@@ -168,7 +168,7 @@ func TestIntegration(t *testing.T) {
 		if !updated {
 			t.Error("should have been updated")
 		}
-		if tree.Size() != uint(i+1) {
+		if tree.Size() != i+1 {
 			t.Error("size was wrong", tree.Size(), i+1)
 		}
 	}
@@ -203,7 +203,7 @@ func TestIntegration(t *testing.T) {
 				t.Error("wrong value")
 			}
 		}
-		if tree.Size() != uint(len(records)-(i+1)) {
+		if tree.Size() != len(records)-(i+1) {
 			t.Error("size was wrong", tree.Size(), (len(records) - (i + 1)))
 		}
 	}
@@ -318,7 +318,7 @@ func BenchmarkImmutableAvlTree(b *testing.B) {
 	// 23000ns/op, 43000ops/s
 	// for i := 0; i < 10000000; i++ {
 	for i := 0; i < 1000000; i++ {
-		t.Set(RandUint64(), "")
+		t.Set(RandInt64(), "")
 	}
 
 	fmt.Println("ok, starting")
@@ -327,7 +327,7 @@ func BenchmarkImmutableAvlTree(b *testing.B) {
 
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		ri := RandUint64()
+		ri := RandInt64()
 		t.Set(ri, "")
 		t.Remove(ri)
 	}

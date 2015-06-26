@@ -224,7 +224,7 @@ type WSConnection struct {
 	wsConn      *websocket.Conn
 	writeChan   chan WSResponse
 	quitChan    chan struct{}
-	failedSends uint
+	failedSends int
 	started     uint32
 	stopped     uint32
 

@@ -25,7 +25,7 @@ well as the Validation.  In the future this may change, perhaps by moving
 the Validation data outside the Block.
 */
 type BlockStore struct {
-	height uint
+	height int
 	db     dbm.DB
 }
 
@@ -38,7 +38,7 @@ func NewBlockStore(db dbm.DB) *BlockStore {
 }
 
 // Height() returns the last known contiguous block height.
-func (bs *BlockStore) Height() uint {
+func (bs *BlockStore) Height() int {
 	return bs.height
 }
 
@@ -50,7 +50,7 @@ func (bs *BlockStore) GetReader(key []byte) io.Reader {
 	return bytes.NewReader(bytez)
 }
 
-func (bs *BlockStore) LoadBlock(height uint) *types.Block {
+func (bs *BlockStore) LoadBlock(height int) *types.Block {
 	var n int64
 	var err error
 	r := bs.GetReader(calcBlockMetaKey(height))
@@ -62,7 +62,7 @@ func (bs *BlockStore) LoadBlock(height uint) *types.Block {
 		panic(Fmt("Error reading block meta: %v", err))
 	}
 	bytez := []byte{}
-	for i := uint(0); i < meta.PartsHeader.Total; i++ {
+	for i := 0; i < meta.PartsHeader.Total; i++ {
 		part := bs.LoadBlockPart(height, i)
 		bytez = append(bytez, part.Bytes...)
 	}
@@ -73,7 +73,7 @@ func (bs *BlockStore) LoadBlock(height uint) *types.Block {
 	return block
 }
 
-func (bs *BlockStore) LoadBlockPart(height uint, index uint) *types.Part {
+func (bs *BlockStore) LoadBlockPart(height int, index int) *types.Part {
 	var n int64
 	var err error
 	r := bs.GetReader(calcBlockPartKey(height, index))
@@ -87,7 +87,7 @@ func (bs *BlockStore) LoadBlockPart(height uint, index uint) *types.Part {
 	return part
 }
 
-func (bs *BlockStore) LoadBlockMeta(height uint) *types.BlockMeta {
+func (bs *BlockStore) LoadBlockMeta(height int) *types.BlockMeta {
 	var n int64
 	var err error
 	r := bs.GetReader(calcBlockMetaKey(height))
@@ -103,7 +103,7 @@ func (bs *BlockStore) LoadBlockMeta(height uint) *types.BlockMeta {
 
 // The +2/3 and other Precommit-votes for block at `height`.
 // This Validation comes from block.LastValidation for `height+1`.
-func (bs *BlockStore) LoadBlockValidation(height uint) *types.Validation {
+func (bs *BlockStore) LoadBlockValidation(height int) *types.Validation {
 	var n int64
 	var err error
 	r := bs.GetReader(calcBlockValidationKey(height))
@@ -118,7 +118,7 @@ func (bs *BlockStore) LoadBlockValidation(height uint) *types.Validation {
 }
 
 // NOTE: the Precommit-vote heights are for the block at `height`
-func (bs *BlockStore) LoadSeenValidation(height uint) *types.Validation {
+func (bs *BlockStore) LoadSeenValidation(height int) *types.Validation {
 	var n int64
 	var err error
 	r := bs.GetReader(calcSeenValidationKey(height))
@@ -152,7 +152,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	bs.db.Set(calcBlockMetaKey(height), metaBytes)
 
 	// Save block parts
-	for i := uint(0); i < blockParts.Total(); i++ {
+	for i := 0; i < blockParts.Total(); i++ {
 		bs.saveBlockPart(height, i, blockParts.GetPart(i))
 	}
 
@@ -171,7 +171,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	bs.height = height
 }
 
-func (bs *BlockStore) saveBlockPart(height uint, index uint, part *types.Part) {
+func (bs *BlockStore) saveBlockPart(height int, index int, part *types.Part) {
 	if height != bs.height+1 {
 		panic(Fmt("BlockStore can only save contiguous blocks. Wanted %v, got %v", bs.height+1, height))
 	}
@@ -181,19 +181,19 @@ func (bs *BlockStore) saveBlockPart(height uint, index uint, part *types.Part) {
 
 //-----------------------------------------------------------------------------
 
-func calcBlockMetaKey(height uint) []byte {
+func calcBlockMetaKey(height int) []byte {
 	return []byte(fmt.Sprintf("H:%v", height))
 }
 
-func calcBlockPartKey(height uint, partIndex uint) []byte {
+func calcBlockPartKey(height int, partIndex int) []byte {
 	return []byte(fmt.Sprintf("P:%v:%v", height, partIndex))
 }
 
-func calcBlockValidationKey(height uint) []byte {
+func calcBlockValidationKey(height int) []byte {
 	return []byte(fmt.Sprintf("V:%v", height))
 }
 
-func calcSeenValidationKey(height uint) []byte {
+func calcSeenValidationKey(height int) []byte {
 	return []byte(fmt.Sprintf("SV:%v", height))
 }
 
@@ -202,7 +202,7 @@ func calcSeenValidationKey(height uint) []byte {
 var blockStoreKey = []byte("blockStore")
 
 type BlockStoreStateJSON struct {
-	Height uint
+	Height int
 }
 
 func (bsj BlockStoreStateJSON) Save(db dbm.DB) {

@@ -21,7 +21,7 @@ type Block struct {
 }
 
 // Basic validation that doesn't involve state data.
-func (b *Block) ValidateBasic(chainID string, lastBlockHeight uint, lastBlockHash []byte,
+func (b *Block) ValidateBasic(chainID string, lastBlockHeight int, lastBlockHash []byte,
 	lastBlockParts PartSetHeader, lastBlockTime time.Time) error {
 	if b.ChainID != chainID {
 		return errors.New("Wrong Block.Header.ChainID")
@@ -29,7 +29,7 @@ func (b *Block) ValidateBasic(chainID string, lastBlockHeight uint, lastBlockHas
 	if b.Height != lastBlockHeight+1 {
 		return errors.New("Wrong Block.Header.Height")
 	}
-	if b.NumTxs != uint(len(b.Data.Txs)) {
+	if b.NumTxs != len(b.Data.Txs) {
 		return errors.New("Wrong Block.Header.NumTxs")
 	}
 	if !bytes.Equal(b.LastBlockHash, lastBlockHash) {
@@ -123,10 +123,10 @@ func (b *Block) StringShort() string {
 
 type Header struct {
 	ChainID        string        `json:"chain_id"`
-	Height         uint          `json:"height"`
+	Height         int           `json:"height"`
 	Time           time.Time     `json:"time"`
-	Fees           uint64        `json:"fees"`
-	NumTxs         uint          `json:"num_txs"`
+	Fees           int64         `json:"fees"`
+	NumTxs         int           `json:"num_txs"`
 	LastBlockHash  []byte        `json:"last_block_hash"`
 	LastBlockParts PartSetHeader `json:"last_block_parts"`
 	StateHash      []byte        `json:"state_hash"`
@@ -188,14 +188,14 @@ type Validation struct {
 	bitArray *BitArray
 }
 
-func (v *Validation) Height() uint {
+func (v *Validation) Height() int {
 	if len(v.Precommits) == 0 {
 		return 0
 	}
 	return v.Precommits[0].Height
 }
 
-func (v *Validation) Round() uint {
+func (v *Validation) Round() int {
 	if len(v.Precommits) == 0 {
 		return 0
 	}
@@ -259,9 +259,9 @@ func (v *Validation) StringIndented(indent string) string {
 
 func (v *Validation) BitArray() *BitArray {
 	if v.bitArray == nil {
-		v.bitArray = NewBitArray(uint(len(v.Precommits)))
+		v.bitArray = NewBitArray(len(v.Precommits))
 		for i, precommit := range v.Precommits {
-			v.bitArray.SetIndex(uint(i), precommit != nil)
+			v.bitArray.SetIndex(i, precommit != nil)
 		}
 	}
 	return v.bitArray

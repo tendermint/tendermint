@@ -17,14 +17,14 @@ var (
 )
 
 type Proposal struct {
-	Height           uint                     `json:"height"`
-	Round            uint                     `json:"round"`
+	Height           int                      `json:"height"`
+	Round            int                      `json:"round"`
 	BlockPartsHeader types.PartSetHeader      `json:"block_parts_header"`
 	POLRound         int                      `json:"pol_round"` // -1 if null.
 	Signature        account.SignatureEd25519 `json:"signature"`
 }
 
-func NewProposal(height uint, round uint, blockPartsHeader types.PartSetHeader, polRound int) *Proposal {
+func NewProposal(height int, round int, blockPartsHeader types.PartSetHeader, polRound int) *Proposal {
 	return &Proposal{
 		Height:           height,
 		Round:            round,

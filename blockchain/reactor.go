@@ -301,7 +301,7 @@ func DecodeMessage(bz []byte) (msgType byte, msg BlockchainMessage, err error) {
 //-------------------------------------
 
 type bcBlockRequestMessage struct {
-	Height uint
+	Height int
 }
 
 func (m *bcBlockRequestMessage) String() string {
@@ -321,7 +321,7 @@ func (m *bcBlockResponseMessage) String() string {
 //-------------------------------------
 
 type bcStatusRequestMessage struct {
-	Height uint
+	Height int
 }
 
 func (m *bcStatusRequestMessage) String() string {
@@ -331,7 +331,7 @@ func (m *bcStatusRequestMessage) String() string {
 //-------------------------------------
 
 type bcStatusResponseMessage struct {
-	Height uint
+	Height int
 }
 
 func (m *bcStatusResponseMessage) String() string {

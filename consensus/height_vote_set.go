@@ -27,39 +27,39 @@ we create a new entry in roundVoteSets but also remember the
 peer to prevent abuse.
 */
 type HeightVoteSet struct {
-	height uint
+	height int
 	valSet *sm.ValidatorSet
 
 	mtx               sync.Mutex
-	round             uint                  // max tracked round
-	roundVoteSets     map[uint]RoundVoteSet // keys: [0...round]
-	peerCatchupRounds map[string]uint       // keys: peer.Key; values: round
+	round             int                  // max tracked round
+	roundVoteSets     map[int]RoundVoteSet // keys: [0...round]
+	peerCatchupRounds map[string]int       // keys: peer.Key; values: round
 }
 
-func NewHeightVoteSet(height uint, valSet *sm.ValidatorSet) *HeightVoteSet {
+func NewHeightVoteSet(height int, valSet *sm.ValidatorSet) *HeightVoteSet {
 	hvs := &HeightVoteSet{
 		height:            height,
 		valSet:            valSet,
-		roundVoteSets:     make(map[uint]RoundVoteSet),
-		peerCatchupRounds: make(map[string]uint),
+		roundVoteSets:     make(map[int]RoundVoteSet),
+		peerCatchupRounds: make(map[string]int),
 	}
 	hvs.addRound(0)
 	hvs.round = 0
 	return hvs
 }
 
-func (hvs *HeightVoteSet) Height() uint {
+func (hvs *HeightVoteSet) Height() int {
 	return hvs.height
 }
 
-func (hvs *HeightVoteSet) Round() uint {
+func (hvs *HeightVoteSet) Round() int {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
 	return hvs.round
 }
 
 // Create more RoundVoteSets up to round.
-func (hvs *HeightVoteSet) SetRound(round uint) {
+func (hvs *HeightVoteSet) SetRound(round int) {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
 	if hvs.round != 0 && (round < hvs.round+1) {
@@ -74,7 +74,7 @@ func (hvs *HeightVoteSet) SetRound(round uint) {
 	hvs.round = round
 }
 
-func (hvs *HeightVoteSet) addRound(round uint) {
+func (hvs *HeightVoteSet) addRound(round int) {
 	if _, ok := hvs.roundVoteSets[round]; ok {
 		panic("addRound() for an existing round")
 	}
@@ -88,7 +88,7 @@ func (hvs *HeightVoteSet) addRound(round uint) {
 
 // Duplicate votes return added=false, err=nil.
 // By convention, peerKey is "" if origin is self.
-func (hvs *HeightVoteSet) AddByAddress(address []byte, vote *types.Vote, peerKey string) (added bool, index uint, err error) {
+func (hvs *HeightVoteSet) AddByAddress(address []byte, vote *types.Vote, peerKey string) (added bool, index int, err error) {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
 	voteSet := hvs.getVoteSet(vote.Round, vote.Type)
@@ -108,13 +108,13 @@ func (hvs *HeightVoteSet) AddByAddress(address []byte, vote *types.Vote, peerKey
 	return
 }
 
-func (hvs *HeightVoteSet) Prevotes(round uint) *VoteSet {
+func (hvs *HeightVoteSet) Prevotes(round int) *VoteSet {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
 	return hvs.getVoteSet(round, types.VoteTypePrevote)
 }
 
-func (hvs *HeightVoteSet) Precommits(round uint) *VoteSet {
+func (hvs *HeightVoteSet) Precommits(round int) *VoteSet {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
 	return hvs.getVoteSet(round, types.VoteTypePrecommit)
@@ -125,15 +125,15 @@ func (hvs *HeightVoteSet) Precommits(round uint) *VoteSet {
 func (hvs *HeightVoteSet) POLRound() int {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
-	for r := int(hvs.round); r >= 0; r-- {
-		if hvs.getVoteSet(uint(r), types.VoteTypePrevote).HasTwoThirdsMajority() {
-			return int(r)
+	for r := hvs.round; r >= 0; r-- {
+		if hvs.getVoteSet(r, types.VoteTypePrevote).HasTwoThirdsMajority() {
+			return r
 		}
 	}
 	return -1
 }
 
-func (hvs *HeightVoteSet) getVoteSet(round uint, type_ byte) *VoteSet {
+func (hvs *HeightVoteSet) getVoteSet(round int, type_ byte) *VoteSet {
 	rvs, ok := hvs.roundVoteSets[round]
 	if !ok {
 		return nil
@@ -155,7 +155,7 @@ func (hvs *HeightVoteSet) String() string {
 func (hvs *HeightVoteSet) StringIndented(indent string) string {
 	vsStrings := make([]string, 0, (len(hvs.roundVoteSets)+1)*2)
 	// rounds 0 ~ hvs.round inclusive
-	for round := uint(0); round <= hvs.round; round++ {
+	for round := 0; round <= hvs.round; round++ {
 		voteSetString := hvs.roundVoteSets[round].Prevotes.StringShort()
 		vsStrings = append(vsStrings, voteSetString)
 		voteSetString = hvs.roundVoteSets[round].Precommits.StringShort()

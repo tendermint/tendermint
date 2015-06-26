@@ -28,7 +28,7 @@ type ValidatorSet struct {
 
 	// cached (unexported)
 	proposer         *Validator
-	totalVotingPower uint64
+	totalVotingPower int64
 }
 
 func NewValidatorSet(vals []*Validator) *ValidatorSet {
@@ -43,7 +43,7 @@ func NewValidatorSet(vals []*Validator) *ValidatorSet {
 }
 
 // TODO: mind the overflow when times and votingPower shares too large.
-func (valSet *ValidatorSet) IncrementAccum(times uint) {
+func (valSet *ValidatorSet) IncrementAccum(times int) {
 	// Add VotingPower * times to each validator and order into heap.
 	validatorsHeap := NewHeap()
 	for _, val := range valSet.Validators {
@@ -52,7 +52,7 @@ func (valSet *ValidatorSet) IncrementAccum(times uint) {
 	}
 
 	// Decrement the validator with most accum, times times.
-	for i := uint(0); i < times; i++ {
+	for i := 0; i < times; i++ {
 		mostest := validatorsHeap.Peek().(*Validator)
 		if i == times-1 {
 			valSet.proposer = mostest
@@ -82,27 +82,27 @@ func (valSet *ValidatorSet) HasAddress(address []byte) bool {
 	return idx != len(valSet.Validators) && bytes.Compare(valSet.Validators[idx].Address, address) == 0
 }
 
-func (valSet *ValidatorSet) GetByAddress(address []byte) (index uint, val *Validator) {
+func (valSet *ValidatorSet) GetByAddress(address []byte) (index int, val *Validator) {
 	idx := sort.Search(len(valSet.Validators), func(i int) bool {
 		return bytes.Compare(address, valSet.Validators[i].Address) <= 0
 	})
 	if idx != len(valSet.Validators) && bytes.Compare(valSet.Validators[idx].Address, address) == 0 {
-		return uint(idx), valSet.Validators[idx].Copy()
+		return idx, valSet.Validators[idx].Copy()
 	} else {
 		return 0, nil
 	}
 }
 
-func (valSet *ValidatorSet) GetByIndex(index uint) (address []byte, val *Validator) {
+func (valSet *ValidatorSet) GetByIndex(index int) (address []byte, val *Validator) {
 	val = valSet.Validators[index]
 	return val.Address, val.Copy()
 }
 
-func (valSet *ValidatorSet) Size() uint {
-	return uint(len(valSet.Validators))
+func (valSet *ValidatorSet) Size() int {
+	return len(valSet.Validators)
 }
 
-func (valSet *ValidatorSet) TotalVotingPower() uint64 {
+func (valSet *ValidatorSet) TotalVotingPower() int64 {
 	if valSet.totalVotingPower == 0 {
 		for _, val := range valSet.Validators {
 			valSet.totalVotingPower += val.VotingPower
@@ -190,9 +190,9 @@ func (valSet *ValidatorSet) Remove(address []byte) (val *Validator, removed bool
 	}
 }
 
-func (valSet *ValidatorSet) Iterate(fn func(index uint, val *Validator) bool) {
+func (valSet *ValidatorSet) Iterate(fn func(index int, val *Validator) bool) {
 	for i, val := range valSet.Validators {
-		stop := fn(uint(i), val.Copy())
+		stop := fn(i, val.Copy())
 		if stop {
 			break
 		}
@@ -201,15 +201,15 @@ func (valSet *ValidatorSet) Iterate(fn func(index uint, val *Validator) bool) {
 
 // Verify that +2/3 of the set had signed the given signBytes
 func (valSet *ValidatorSet) VerifyValidation(chainID string,
-	hash []byte, parts types.PartSetHeader, height uint, v *types.Validation) error {
-	if valSet.Size() != uint(len(v.Precommits)) {
+	hash []byte, parts types.PartSetHeader, height int, v *types.Validation) error {
+	if valSet.Size() != len(v.Precommits) {
 		return fmt.Errorf("Invalid validation -- wrong set size: %v vs %v", valSet.Size(), len(v.Precommits))
 	}
 	if height != v.Height() {
 		return fmt.Errorf("Invalid validation -- wrong height: %v vs %v", height, v.Height())
 	}
 
-	talliedVotingPower := uint64(0)
+	talliedVotingPower := int64(0)
 	round := v.Round()
 
 	for idx, precommit := range v.Precommits {
@@ -226,7 +226,7 @@ func (valSet *ValidatorSet) VerifyValidation(chainID string,
 		if precommit.Type != types.VoteTypePrecommit {
 			return fmt.Errorf("Invalid validation -- not precommit @ index %v", idx)
 		}
-		_, val := valSet.GetByIndex(uint(idx))
+		_, val := valSet.GetByIndex(idx)
 		// Validate signature
 		precommitSignBytes := account.SignBytes(chainID, precommit)
 		if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
@@ -256,7 +256,7 @@ func (valSet *ValidatorSet) String() string {
 
 func (valSet *ValidatorSet) StringIndented(indent string) string {
 	valStrings := []string{}
-	valSet.Iterate(func(index uint, val *Validator) bool {
+	valSet.Iterate(func(index int, val *Validator) bool {
 		valStrings = append(valStrings, val.String())
 		return false
 	})
@@ -294,9 +294,9 @@ func (vs ValidatorsByAddress) Swap(i, j int) {
 //-------------------------------------
 // Use with Heap for sorting validators by accum
 
-type accumComparable uint64
+type accumComparable int64
 
 // We want to find the validator with the greatest accum.
 func (ac accumComparable) Less(o interface{}) bool {
-	return uint64(ac) < uint64(o.(accumComparable))
+	return int64(ac) < int64(o.(accumComparable))
 }

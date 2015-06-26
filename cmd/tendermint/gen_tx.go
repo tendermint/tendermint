@@ -32,13 +32,17 @@ func getByteSliceFromHex(prompt string) []byte {
 	return bytes
 }
 
-func getUint64(prompt string) uint64 {
+func getInt(prompt string) int {
 	input := getString(prompt)
 	i, err := strconv.Atoi(input)
 	if err != nil {
-		Exit(Fmt("Not a valid uint64 amount: %v\nError: %v\n", input, err))
+		Exit(Fmt("Not a valid int64 amount: %v\nError: %v\n", input, err))
 	}
-	return uint64(i)
+	return i
+}
+
+func getInt64(prompt string) int64 {
+	return int64(getInt(prompt))
 }
 
 func gen_tx() {
@@ -68,16 +72,16 @@ func gen_tx() {
 	}
 
 	// Get the amount to send from src account
-	srcSendAmount := getUint64(Fmt("Enter amount to send from %X (total: %v): ", srcAccountAddress, srcAccountBalanceStr))
+	srcSendAmount := getInt64(Fmt("Enter amount to send from %X (total: %v): ", srcAccountAddress, srcAccountBalanceStr))
 
 	// Get the next sequence of src account
-	srcSendSequence := uint(getUint64(Fmt("Enter next sequence for %X (guess: %v): ", srcAccountAddress, srcAccountSequenceStr)))
+	srcSendSequence := getInt(Fmt("Enter next sequence for %X (guess: %v): ", srcAccountAddress, srcAccountSequenceStr))
 
 	// Get dest address
 	dstAddress := getByteSliceFromHex("Enter destination address: ")
 
 	// Get the amount to send to dst account
-	dstSendAmount := getUint64(Fmt("Enter amount to send to %X: ", dstAddress))
+	dstSendAmount := getInt64(Fmt("Enter amount to send to %X: ", dstAddress))
 
 	// Construct SendTx
 	tx := &types.SendTx{

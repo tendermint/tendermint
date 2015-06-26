@@ -51,7 +51,7 @@ func TestWSBlockchainGrowth(t *testing.T) {
 // send a transaction and validate the events from listening for both sender and receiver
 func TestWSSend(t *testing.T) {
 	toAddr := user[1].Address
-	amt := uint64(100)
+	amt := int64(100)
 
 	con := newWSCon(t)
 	eidInput := types.EventStringAccInput(user[0].Address)
@@ -79,7 +79,7 @@ func TestWSDoubleFire(t *testing.T) {
 		unsubscribe(t, con, eid)
 		con.Close()
 	}()
-	amt := uint64(100)
+	amt := int64(100)
 	toAddr := user[1].Address
 	// broadcast the transaction, wait to hear about it
 	waitForEvent(t, con, eid, true, func() {
@@ -104,7 +104,7 @@ func TestWSCallWait(t *testing.T) {
 		unsubscribe(t, con, eid1)
 		con.Close()
 	}()
-	amt, gasLim, fee := uint64(10000), uint64(1000), uint64(1000)
+	amt, gasLim, fee := int64(10000), int64(1000), int64(1000)
 	code, returnCode, returnVal := simpleContract()
 	var contractAddr []byte
 	// wait for the contract to be created
@@ -115,7 +115,7 @@ func TestWSCallWait(t *testing.T) {
 	}, unmarshalValidateCall(amt, returnCode))
 
 	// susbscribe to the new contract
-	amt = uint64(10001)
+	amt = int64(10001)
 	eid2 := types.EventStringAccOutput(contractAddr)
 	subscribe(t, con, eid2)
 	defer func() {
@@ -134,7 +134,7 @@ func TestWSCallWait(t *testing.T) {
 // and validate return
 func TestWSCallNoWait(t *testing.T) {
 	con := newWSCon(t)
-	amt, gasLim, fee := uint64(10000), uint64(1000), uint64(1000)
+	amt, gasLim, fee := int64(10000), int64(1000), int64(1000)
 	code, _, returnVal := simpleContract()
 
 	tx := makeDefaultCallTx(t, wsTyp, nil, code, amt, gasLim, fee)
@@ -142,7 +142,7 @@ func TestWSCallNoWait(t *testing.T) {
 	contractAddr := receipt.ContractAddr
 
 	// susbscribe to the new contract
-	amt = uint64(10001)
+	amt = int64(10001)
 	eid := types.EventStringAccOutput(contractAddr)
 	subscribe(t, con, eid)
 	defer func() {
@@ -160,7 +160,7 @@ func TestWSCallNoWait(t *testing.T) {
 // create two contracts, one of which calls the other
 func TestWSCallCall(t *testing.T) {
 	con := newWSCon(t)
-	amt, gasLim, fee := uint64(10000), uint64(1000), uint64(1000)
+	amt, gasLim, fee := int64(10000), int64(1000), int64(1000)
 	code, _, returnVal := simpleContract()
 	txid := new([]byte)
 
@@ -175,7 +175,7 @@ func TestWSCallCall(t *testing.T) {
 	contractAddr2 := receipt.ContractAddr
 
 	// susbscribe to the new contracts
-	amt = uint64(10001)
+	amt = int64(10001)
 	eid1 := types.EventStringAccReceive(contractAddr1)
 	subscribe(t, con, eid1)
 	defer func() {

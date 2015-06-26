@@ -19,23 +19,23 @@ import (
 // A commit of prior rounds can be added added in lieu of votes/precommits.
 // NOTE: Assumes that the sum total of voting power does not exceed MaxUInt64.
 type VoteSet struct {
-	height uint
-	round  uint
+	height int
+	round  int
 	type_  byte
 
 	mtx           sync.Mutex
 	valSet        *sm.ValidatorSet
-	votes         []*types.Vote     // validator index -> vote
-	votesBitArray *BitArray         // validator index -> has vote?
-	votesByBlock  map[string]uint64 // string(blockHash)+string(blockParts) -> vote sum.
-	totalVotes    uint64
+	votes         []*types.Vote    // validator index -> vote
+	votesBitArray *BitArray        // validator index -> has vote?
+	votesByBlock  map[string]int64 // string(blockHash)+string(blockParts) -> vote sum.
+	totalVotes    int64
 	maj23Hash     []byte
 	maj23Parts    types.PartSetHeader
 	maj23Exists   bool
 }
 
 // Constructs a new VoteSet struct used to accumulate votes for given height/round.
-func NewVoteSet(height uint, round uint, type_ byte, valSet *sm.ValidatorSet) *VoteSet {
+func NewVoteSet(height int, round int, type_ byte, valSet *sm.ValidatorSet) *VoteSet {
 	if height == 0 {
 		panic("Cannot make VoteSet for height == 0, doesn't make sense.")
 	}
@@ -46,12 +46,12 @@ func NewVoteSet(height uint, round uint, type_ byte, valSet *sm.ValidatorSet) *V
 		valSet:        valSet,
 		votes:         make([]*types.Vote, valSet.Size()),
 		votesBitArray: NewBitArray(valSet.Size()),
-		votesByBlock:  make(map[string]uint64),
+		votesByBlock:  make(map[string]int64),
 		totalVotes:    0,
 	}
 }
 
-func (voteSet *VoteSet) Height() uint {
+func (voteSet *VoteSet) Height() int {
 	if voteSet == nil {
 		return 0
 	} else {
@@ -59,7 +59,7 @@ func (voteSet *VoteSet) Height() uint {
 	}
 }
 
-func (voteSet *VoteSet) Round() uint {
+func (voteSet *VoteSet) Round() int {
 	if voteSet == nil {
 		return 0
 	} else {
@@ -67,7 +67,7 @@ func (voteSet *VoteSet) Round() uint {
 	}
 }
 
-func (voteSet *VoteSet) Size() uint {
+func (voteSet *VoteSet) Size() int {
 	if voteSet == nil {
 		return 0
 	} else {
@@ -79,7 +79,7 @@ func (voteSet *VoteSet) Size() uint {
 // Otherwise returns err=ErrVote[UnexpectedStep|InvalidAccount|InvalidSignature|InvalidBlockHash|ConflictingSignature]
 // Duplicate votes return added=false, err=nil.
 // NOTE: vote should not be mutated after adding.
-func (voteSet *VoteSet) AddByIndex(valIndex uint, vote *types.Vote) (added bool, index uint, err error) {
+func (voteSet *VoteSet) AddByIndex(valIndex int, vote *types.Vote) (added bool, index int, err error) {
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
 
@@ -90,7 +90,7 @@ func (voteSet *VoteSet) AddByIndex(valIndex uint, vote *types.Vote) (added bool,
 // Otherwise returns err=ErrVote[UnexpectedStep|InvalidAccount|InvalidSignature|InvalidBlockHash|ConflictingSignature]
 // Duplicate votes return added=false, err=nil.
 // NOTE: vote should not be mutated after adding.
-func (voteSet *VoteSet) AddByAddress(address []byte, vote *types.Vote) (added bool, index uint, err error) {
+func (voteSet *VoteSet) AddByAddress(address []byte, vote *types.Vote) (added bool, index int, err error) {
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
 
@@ -103,7 +103,7 @@ func (voteSet *VoteSet) AddByAddress(address []byte, vote *types.Vote) (added bo
 	return voteSet.addVote(val, valIndex, vote)
 }
 
-func (voteSet *VoteSet) addByIndex(valIndex uint, vote *types.Vote) (bool, uint, error) {
+func (voteSet *VoteSet) addByIndex(valIndex int, vote *types.Vote) (bool, int, error) {
 	// Ensure that signer is a validator.
 	_, val := voteSet.valSet.GetByIndex(valIndex)
 	if val == nil {
@@ -113,7 +113,7 @@ func (voteSet *VoteSet) addByIndex(valIndex uint, vote *types.Vote) (bool, uint,
 	return voteSet.addVote(val, valIndex, vote)
 }
 
-func (voteSet *VoteSet) addVote(val *sm.Validator, valIndex uint, vote *types.Vote) (bool, uint, error) {
+func (voteSet *VoteSet) addVote(val *sm.Validator, valIndex int, vote *types.Vote) (bool, int, error) {
 
 	// Make sure the step matches. (or that vote is commit && round < voteSet.round)
 	if (vote.Height != voteSet.height) ||
@@ -168,7 +168,7 @@ func (voteSet *VoteSet) BitArray() *BitArray {
 	return voteSet.votesBitArray.Copy()
 }
 
-func (voteSet *VoteSet) GetByIndex(valIndex uint) *types.Vote {
+func (voteSet *VoteSet) GetByIndex(valIndex int) *types.Vote {
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
 	return voteSet.votes[valIndex]
@@ -264,7 +264,7 @@ func (voteSet *VoteSet) MakeValidation() *types.Validation {
 		panic("Cannot MakeValidation() unless a blockhash has +2/3")
 	}
 	precommits := make([]*types.Vote, voteSet.valSet.Size())
-	voteSet.valSet.Iterate(func(valIndex uint, val *sm.Validator) bool {
+	voteSet.valSet.Iterate(func(valIndex int, val *sm.Validator) bool {
 		vote := voteSet.votes[valIndex]
 		if vote == nil {
 			return false

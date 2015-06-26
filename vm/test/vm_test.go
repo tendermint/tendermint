@@ -43,13 +43,13 @@ func TestVM(t *testing.T) {
 
 	// Create accounts
 	account1 := &Account{
-		Address: Uint64ToWord256(100),
+		Address: Int64ToWord256(100),
 	}
 	account2 := &Account{
-		Address: Uint64ToWord256(101),
+		Address: Int64ToWord256(101),
 	}
 
-	var gas uint64 = 100000
+	var gas int64 = 100000
 	N := []byte{0x0f, 0x0f}
 	// Loop N times
 	code := []byte{0x60, 0x00, 0x60, 0x20, 0x52, 0x5B, byte(0x60 + len(N) - 1)}
@@ -81,7 +81,7 @@ func TestSubcurrency(t *testing.T) {
 
 	ourVm := NewVM(st, newParams(), Zero256, nil)
 
-	var gas uint64 = 1000
+	var gas int64 = 1000
 	code_parts := []string{"620f42403355",
 		"7c0100000000000000000000000000000000000000000000000000000000",
 		"600035046315cf268481141561004657",
@@ -105,13 +105,13 @@ func TestSendCall(t *testing.T) {
 
 	// Create accounts
 	account1 := &Account{
-		Address: Uint64ToWord256(100),
+		Address: Int64ToWord256(100),
 	}
 	account2 := &Account{
-		Address: Uint64ToWord256(101),
+		Address: Int64ToWord256(101),
 	}
 	account3 := &Account{
-		Address: Uint64ToWord256(102),
+		Address: Int64ToWord256(102),
 	}
 
 	// account1 will call account2 which will trigger CALL opcode to account3
@@ -146,7 +146,7 @@ func TestSendCall(t *testing.T) {
 }
 
 // subscribes to an AccReceive, runs the vm, returns the exception
-func runVMWaitEvents(t *testing.T, ourVm *VM, caller, callee *Account, subscribeAddr, contractCode []byte, gas uint64) string {
+func runVMWaitEvents(t *testing.T, ourVm *VM, caller, callee *Account, subscribeAddr, contractCode []byte, gas int64) string {
 	// we need to catch the event from the CALL to check for exceptions
 	evsw := new(events.EventSwitch)
 	evsw.Start()

@@ -68,14 +68,14 @@ func (t *IAVLTree) Copy() Tree {
 	}
 }
 
-func (t *IAVLTree) Size() uint {
+func (t *IAVLTree) Size() int {
 	if t.root == nil {
 		return 0
 	}
 	return t.root.size
 }
 
-func (t *IAVLTree) Height() uint8 {
+func (t *IAVLTree) Height() int8 {
 	if t.root == nil {
 		return 0
 	}
@@ -106,7 +106,7 @@ func (t *IAVLTree) Hash() []byte {
 	return hash
 }
 
-func (t *IAVLTree) HashWithCount() ([]byte, uint) {
+func (t *IAVLTree) HashWithCount() ([]byte, int) {
 	if t.root == nil {
 		return nil, 0
 	}
@@ -130,14 +130,14 @@ func (t *IAVLTree) Load(hash []byte) {
 	}
 }
 
-func (t *IAVLTree) Get(key interface{}) (index uint, value interface{}) {
+func (t *IAVLTree) Get(key interface{}) (index int, value interface{}) {
 	if t.root == nil {
 		return 0, nil
 	}
 	return t.root.get(t, key)
 }
 
-func (t *IAVLTree) GetByIndex(index uint) (key interface{}, value interface{}) {
+func (t *IAVLTree) GetByIndex(index int) (key interface{}, value interface{}) {
 	if t.root == nil {
 		return nil, nil
 	}

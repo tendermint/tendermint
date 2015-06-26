@@ -28,8 +28,8 @@ func (err *ErrVoteConflictingSignature) Error() string {
 
 // Represents a prevote, precommit, or commit vote from validators for consensus.
 type Vote struct {
-	Height     uint                     `json:"height"`
-	Round      uint                     `json:"round"`
+	Height     int                      `json:"height"`
+	Round      int                      `json:"round"`
 	Type       byte                     `json:"type"`
 	BlockHash  []byte                   `json:"block_hash"`  // empty if vote is nil.
 	BlockParts PartSetHeader            `json:"block_parts"` // zero if vote is nil.

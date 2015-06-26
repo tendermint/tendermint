@@ -10,11 +10,11 @@ type Stack struct {
 	data []Word256
 	ptr  int
 
-	gas *uint64
+	gas *int64
 	err *error
 }
 
-func NewStack(capacity int, gas *uint64, err *error) *Stack {
+func NewStack(capacity int, gas *int64, err *error) *Stack {
 	return &Stack{
 		data: make([]Word256, capacity),
 		ptr:  0,
@@ -23,7 +23,7 @@ func NewStack(capacity int, gas *uint64, err *error) *Stack {
 	}
 }
 
-func (st *Stack) useGas(gasToUse uint64) {
+func (st *Stack) useGas(gasToUse int64) {
 	if *st.gas > gasToUse {
 		*st.gas -= gasToUse
 	} else {
@@ -54,8 +54,8 @@ func (st *Stack) PushBytes(bz []byte) {
 	st.Push(LeftPadWord256(bz))
 }
 
-func (st *Stack) Push64(i uint64) {
-	st.Push(Uint64ToWord256(i))
+func (st *Stack) Push64(i int64) {
+	st.Push(Int64ToWord256(i))
 }
 
 func (st *Stack) Pop() Word256 {
@@ -72,9 +72,9 @@ func (st *Stack) PopBytes() []byte {
 	return st.Pop().Bytes()
 }
 
-func (st *Stack) Pop64() uint64 {
+func (st *Stack) Pop64() int64 {
 	d := st.Pop()
-	return Uint64FromWord256(d)
+	return Int64FromWord256(d)
 }
 
 func (st *Stack) Len() int {

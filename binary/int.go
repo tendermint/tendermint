@@ -219,6 +219,9 @@ func ReadVarint(r io.Reader, n *int64, err *error) int {
 		return 0
 	}
 	if size == 0 {
+		if negate {
+			setFirstErr(err, errors.New("Varint does not allow negative zero"))
+		}
 		return 0
 	}
 	buf := make([]byte, 8)

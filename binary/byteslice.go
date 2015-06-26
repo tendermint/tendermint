@@ -10,12 +10,12 @@ const (
 )
 
 func WriteByteSlice(bz []byte, w io.Writer, n *int64, err *error) {
-	WriteUvarint(uint(len(bz)), w, n, err)
+	WriteVarint(len(bz), w, n, err)
 	WriteTo(bz, w, n, err)
 }
 
 func ReadByteSlice(r io.Reader, n *int64, err *error) []byte {
-	length := int(ReadUvarint(r, n, err))
+	length := ReadVarint(r, n, err)
 	if *err != nil {
 		return nil
 	}
@@ -36,7 +36,7 @@ func ReadByteSlice(r io.Reader, n *int64, err *error) []byte {
 //-----------------------------------------------------------------------------
 
 func WriteByteSlices(bzz [][]byte, w io.Writer, n *int64, err *error) {
-	WriteUvarint(uint(len(bzz)), w, n, err)
+	WriteVarint(len(bzz), w, n, err)
 	for _, bz := range bzz {
 		WriteByteSlice(bz, w, n, err)
 		if *err != nil {
@@ -46,7 +46,7 @@ func WriteByteSlices(bzz [][]byte, w io.Writer, n *int64, err *error) {
 }
 
 func ReadByteSlices(r io.Reader, n *int64, err *error) [][]byte {
-	length := int(ReadUvarint(r, n, err))
+	length := ReadVarint(r, n, err)
 	if *err != nil {
 		return nil
 	}

@@ -715,7 +715,7 @@ func groupKey(na *NetAddress) string {
 type knownAddress struct {
 	Addr        *NetAddress
 	Src         *NetAddress
-	Attempts    uint32
+	Attempts    int32
 	LastAttempt time.Time
 	LastSuccess time.Time
 	BucketType  byte

@@ -5,12 +5,12 @@ import (
 )
 
 var (
-	MinNameRegistrationPeriod uint64 = 5
+	MinNameRegistrationPeriod int = 5
 
 	// cost for storing a name for a block is
 	// CostPerBlock*CostPerByte*(len(data) + 32)
-	NameCostPerByte  uint64 = 1
-	NameCostPerBlock uint64 = 1
+	NameCostPerByte  int64 = 1
+	NameCostPerBlock int64 = 1
 
 	MaxNameLength = 32
 	MaxDataLength = 1 << 16
@@ -31,15 +31,15 @@ func validateNameRegEntryData(data string) bool {
 }
 
 // base cost is "effective" number of bytes
-func BaseEntryCost(name, data string) uint64 {
-	return uint64(len(data) + 32)
+func BaseEntryCost(name, data string) int64 {
+	return int64(len(data) + 32)
 }
 
 type NameRegEntry struct {
 	Name    string `json:"name"`    // registered name for the entry
 	Owner   []byte `json:"owner"`   // address that created the entry
 	Data    string `json:"data"`    // data to store under this name
-	Expires uint64 `json:"expires"` // block at which this entry expires
+	Expires int    `json:"expires"` // block at which this entry expires
 }
 
 func (entry *NameRegEntry) Copy() *NameRegEntry {

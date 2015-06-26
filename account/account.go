@@ -38,8 +38,8 @@ func HashSignBytes(chainID string, o Signable) []byte {
 type Account struct {
 	Address     []byte `json:"address"`
 	PubKey      PubKey `json:"pub_key"`
-	Sequence    uint   `json:"sequence"`
-	Balance     uint64 `json:"balance"`
+	Sequence    int    `json:"sequence"`
+	Balance     int64  `json:"balance"`
 	Code        []byte `json:"code"`         // VM code
 	StorageRoot []byte `json:"storage_root"` // VM storage merkle root.
 }

@@ -11,7 +11,7 @@ type AuthCommand struct {
 }
 
 type NoncedCommand struct {
-	Nonce uint64
+	Nonce int64
 	Command
 }
 

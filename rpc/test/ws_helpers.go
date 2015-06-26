@@ -133,7 +133,7 @@ func unmarshalResponseNewBlock(b []byte) (*types.Block, error) {
 }
 
 func unmarshalValidateBlockchain(t *testing.T, con *websocket.Conn, eid string) {
-	var initBlockN uint
+	var initBlockN int
 	for i := 0; i < 2; i++ {
 		waitForEvent(t, con, eid, true, func() {}, func(eid string, b []byte) error {
 			block, err := unmarshalResponseNewBlock(b)
@@ -143,7 +143,7 @@ func unmarshalValidateBlockchain(t *testing.T, con *websocket.Conn, eid string) 
 			if i == 0 {
 				initBlockN = block.Header.Height
 			} else {
-				if block.Header.Height != initBlockN+uint(i) {
+				if block.Header.Height != initBlockN+i {
 					return fmt.Errorf("Expected block %d, got block %d", i, block.Header.Height)
 				}
 			}
@@ -153,7 +153,7 @@ func unmarshalValidateBlockchain(t *testing.T, con *websocket.Conn, eid string) 
 	}
 }
 
-func unmarshalValidateSend(amt uint64, toAddr []byte) func(string, []byte) error {
+func unmarshalValidateSend(amt int64, toAddr []byte) func(string, []byte) error {
 	return func(eid string, b []byte) error {
 		// unmarshal and assert correctness
 		var response struct {
@@ -186,7 +186,7 @@ func unmarshalValidateSend(amt uint64, toAddr []byte) func(string, []byte) error
 	}
 }
 
-func unmarshalValidateCall(amt uint64, returnCode []byte) func(string, []byte) error {
+func unmarshalValidateCall(amt int64, returnCode []byte) func(string, []byte) error {
 	return func(eid string, b []byte) error {
 		// unmarshall and assert somethings
 		var response struct {

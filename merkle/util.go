@@ -35,7 +35,7 @@ func printIAVLNode(node *IAVLNode, indent int) {
 
 }
 
-func maxUint8(a, b uint8) uint8 {
+func maxInt8(a, b int8) int8 {
 	if a > b {
 		return a
 	}

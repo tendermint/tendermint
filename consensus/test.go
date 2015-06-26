@@ -18,7 +18,7 @@ func randConsensusState() (*ConsensusState, []*sm.PrivValidator) {
 	return cs, privValidators
 }
 
-func randVoteSet(height uint, round uint, type_ byte, numValidators int, votingPower uint64) (*VoteSet, *sm.ValidatorSet, []*sm.PrivValidator) {
+func randVoteSet(height int, round int, type_ byte, numValidators int, votingPower int64) (*VoteSet, *sm.ValidatorSet, []*sm.PrivValidator) {
 	vals := make([]*sm.Validator, numValidators)
 	privValidators := make([]*sm.PrivValidator, numValidators)
 	for i := 0; i < numValidators; i++ {

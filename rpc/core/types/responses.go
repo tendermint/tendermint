@@ -13,12 +13,12 @@ type ResponseGetStorage struct {
 
 type ResponseCall struct {
 	Return  []byte `json:"return"`
-	GasUsed uint64 `json:"gas_used"`
+	GasUsed int64  `json:"gas_used"`
 	// TODO ...
 }
 
 type ResponseListAccounts struct {
-	BlockHeight uint               `json:"block_height"`
+	BlockHeight int                `json:"block_height"`
 	Accounts    []*account.Account `json:"accounts"`
 }
 
@@ -33,7 +33,7 @@ type ResponseDumpStorage struct {
 }
 
 type ResponseBlockchainInfo struct {
-	LastHeight uint               `json:"last_height"`
+	LastHeight int                `json:"last_height"`
 	BlockMetas []*types.BlockMeta `json:"block_metas"`
 }
 
@@ -55,7 +55,7 @@ type ResponseStatus struct {
 	GenesisHash       []byte         `json:"genesis_hash"`
 	PubKey            account.PubKey `json:"pub_key"`
 	LatestBlockHash   []byte         `json:"latest_block_hash"`
-	LatestBlockHeight uint           `json:"latest_block_height"`
+	LatestBlockHeight int            `json:"latest_block_height"`
 	LatestBlockTime   int64          `json:"latest_block_time"` // nano
 }
 
@@ -71,7 +71,7 @@ type Peer struct {
 }
 
 type ResponseListValidators struct {
-	BlockHeight         uint            `json:"block_height"`
+	BlockHeight         int             `json:"block_height"`
 	BondedValidators    []*sm.Validator `json:"bonded_validators"`
 	UnbondingValidators []*sm.Validator `json:"unbonding_validators"`
 }
@@ -82,6 +82,6 @@ type ResponseDumpConsensusState struct {
 }
 
 type ResponseListNames struct {
-	BlockHeight uint                  `json:"block_height"`
+	BlockHeight int                   `json:"block_height"`
 	Names       []*types.NameRegEntry `json:"names"`
 }

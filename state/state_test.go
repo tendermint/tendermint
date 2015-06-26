@@ -81,7 +81,7 @@ func makeBlock(t *testing.T, state *State, validation *types.Validation, txs []t
 			Height:         state.LastBlockHeight + 1,
 			Time:           state.LastBlockTime.Add(time.Minute),
 			Fees:           0,
-			NumTxs:         uint(len(txs)),
+			NumTxs:         len(txs),
 			LastBlockHash:  state.LastBlockHash,
 			LastBlockParts: state.LastBlockParts,
 			StateHash:      nil,
@@ -179,7 +179,7 @@ func TestTxSequence(t *testing.T) {
 	// Test a variety of sequence numbers for the tx.
 	// The tx should only pass when i == 1.
 	for i := -1; i < 3; i++ {
-		sequence := acc0.Sequence + uint(i)
+		sequence := acc0.Sequence + i
 		tx := types.NewSendTx()
 		tx.AddInputWithNonce(acc0PubKey, 1, sequence)
 		tx.AddOutput(acc1.Address, 1)
@@ -216,15 +216,15 @@ func TestNameTxs(t *testing.T) {
 	state, privAccounts, _ := RandGenesisState(3, true, 1000, 1, true, 1000)
 
 	types.MinNameRegistrationPeriod = 5
-	startingBlock := uint64(state.LastBlockHeight)
+	startingBlock := state.LastBlockHeight
 
 	// try some bad names. these should all fail
 	names := []string{"", "\n", "123#$%", "\x00", string([]byte{20, 40, 60, 80}), "baffledbythespectacleinallofthisyouseeehesaidwithouteyes", "no spaces please"}
 	data := "something about all this just doesn't feel right."
-	fee := uint64(1000)
-	numDesiredBlocks := uint64(5)
+	fee := int64(1000)
+	numDesiredBlocks := 5
 	for _, name := range names {
-		amt := fee + numDesiredBlocks*types.NameCostPerByte*types.NameCostPerBlock*types.BaseEntryCost(name, data)
+		amt := fee + int64(numDesiredBlocks)*types.NameCostPerByte*types.NameCostPerBlock*types.BaseEntryCost(name, data)
 		tx, _ := types.NewNameTx(state, privAccounts[0].PubKey, name, data, amt, fee)
 		tx.Sign(state.ChainID, privAccounts[0])
 
@@ -237,7 +237,7 @@ func TestNameTxs(t *testing.T) {
 	name := "hold_it_chum"
 	datas := []string{"cold&warm", "!@#$%^&*()", "<<<>>>>", "because why would you ever need a ~ or a & or even a % in a json file? make your case and we'll talk"}
 	for _, data := range datas {
-		amt := fee + numDesiredBlocks*types.NameCostPerByte*types.NameCostPerBlock*types.BaseEntryCost(name, data)
+		amt := fee + int64(numDesiredBlocks)*types.NameCostPerByte*types.NameCostPerBlock*types.BaseEntryCost(name, data)
 		tx, _ := types.NewNameTx(state, privAccounts[0].PubKey, name, data, amt, fee)
 		tx.Sign(state.ChainID, privAccounts[0])
 
@@ -246,7 +246,7 @@ func TestNameTxs(t *testing.T) {
 		}
 	}
 
-	validateEntry := func(t *testing.T, entry *types.NameRegEntry, name, data string, addr []byte, expires uint64) {
+	validateEntry := func(t *testing.T, entry *types.NameRegEntry, name, data string, addr []byte, expires int) {
 
 		if entry == nil {
 			t.Fatalf("Could not find name %s", name)
@@ -268,7 +268,7 @@ func TestNameTxs(t *testing.T) {
 	// try a good one, check data, owner, expiry
 	name = "looking_good/karaoke_bar"
 	data = "on this side of neptune there are 1234567890 people: first is OMNIVORE. Or is it. Ok this is pretty restrictive. No exclamations :(. Faces tho :')"
-	amt := fee + numDesiredBlocks*types.NameCostPerByte*types.NameCostPerBlock*types.BaseEntryCost(name, data)
+	amt := fee + int64(numDesiredBlocks)*types.NameCostPerByte*types.NameCostPerBlock*types.BaseEntryCost(name, data)
 	tx, _ := types.NewNameTx(state, privAccounts[0].PubKey, name, data, amt, fee)
 	tx.Sign(state.ChainID, privAccounts[0])
 	if err := execTxWithState(state, tx, true); err != nil {
@@ -304,7 +304,7 @@ func TestNameTxs(t *testing.T) {
 	validateEntry(t, entry, name, data, privAccounts[0].Address, startingBlock+numDesiredBlocks*3)
 
 	// fail to update it as non-owner
-	state.LastBlockHeight = uint(entry.Expires - 1)
+	state.LastBlockHeight = entry.Expires - 1
 	tx, _ = types.NewNameTx(state, privAccounts[1].PubKey, name, data, amt, fee)
 	tx.Sign(state.ChainID, privAccounts[1])
 	if err := execTxWithState(state, tx, true); err == nil {
@@ -312,27 +312,27 @@ func TestNameTxs(t *testing.T) {
 	}
 
 	// once expires, non-owner succeeds
-	state.LastBlockHeight = uint(entry.Expires)
+	state.LastBlockHeight = entry.Expires
 	tx, _ = types.NewNameTx(state, privAccounts[1].PubKey, name, data, amt, fee)
 	tx.Sign(state.ChainID, privAccounts[1])
 	if err := execTxWithState(state, tx, true); err != nil {
 		t.Fatal(err)
 	}
 	entry = state.GetNameRegEntry(name)
-	validateEntry(t, entry, name, data, privAccounts[1].Address, uint64(state.LastBlockHeight)+numDesiredBlocks)
+	validateEntry(t, entry, name, data, privAccounts[1].Address, state.LastBlockHeight+numDesiredBlocks)
 
 	// update it as new owner, with new data (longer), but keep the expiry!
 	data = "In the beginning there was no thing, not even the beginning. It hadn't been here, no there, nor for that matter anywhere, not especially because it had not to even exist, let alone to not. Nothing especially odd about that."
 	oldCredit := amt - fee
 	numDesiredBlocks = 10
-	amt = fee + (numDesiredBlocks*types.NameCostPerByte*types.NameCostPerBlock*types.BaseEntryCost(name, data) - oldCredit)
+	amt = fee + (int64(numDesiredBlocks)*types.NameCostPerByte*types.NameCostPerBlock*types.BaseEntryCost(name, data) - oldCredit)
 	tx, _ = types.NewNameTx(state, privAccounts[1].PubKey, name, data, amt, fee)
 	tx.Sign(state.ChainID, privAccounts[1])
 	if err := execTxWithState(state, tx, true); err != nil {
 		t.Fatal(err)
 	}
 	entry = state.GetNameRegEntry(name)
-	validateEntry(t, entry, name, data, privAccounts[1].Address, uint64(state.LastBlockHeight)+numDesiredBlocks)
+	validateEntry(t, entry, name, data, privAccounts[1].Address, state.LastBlockHeight+numDesiredBlocks)
 
 	// test removal
 	amt = fee
@@ -351,15 +351,15 @@ func TestNameTxs(t *testing.T) {
 	// test removal by key1 after expiry
 	name = "looking_good/karaoke_bar"
 	data = "some data"
-	amt = fee + numDesiredBlocks*types.NameCostPerByte*types.NameCostPerBlock*types.BaseEntryCost(name, data)
+	amt = fee + int64(numDesiredBlocks)*types.NameCostPerByte*types.NameCostPerBlock*types.BaseEntryCost(name, data)
 	tx, _ = types.NewNameTx(state, privAccounts[0].PubKey, name, data, amt, fee)
 	tx.Sign(state.ChainID, privAccounts[0])
 	if err := execTxWithState(state, tx, true); err != nil {
 		t.Fatal(err)
 	}
 	entry = state.GetNameRegEntry(name)
-	validateEntry(t, entry, name, data, privAccounts[0].Address, uint64(state.LastBlockHeight)+numDesiredBlocks)
-	state.LastBlockHeight = uint(entry.Expires)
+	validateEntry(t, entry, name, data, privAccounts[0].Address, state.LastBlockHeight+numDesiredBlocks)
+	state.LastBlockHeight = entry.Expires
 
 	amt = fee
 	data = ""
@@ -474,7 +474,7 @@ attack the network, they'll generate the longest chain and outpace attackers.   
 network itself requires minimal structure.   Messages are broadcast on a best effort
 basis,   and   nodes   can   leave  and   rejoin   the  network   at  will,  accepting   the   longest
 proof-of-work chain as proof of what happened while they were gone `
-		entryAmount := uint64(10000)
+		entryAmount := int64(10000)
 
 		state := state.Copy()
 		tx := &types.NameTx{

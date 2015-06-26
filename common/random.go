@@ -62,6 +62,18 @@ func RandUint() uint {
 	return uint(rand.Int())
 }
 
+func RandInt16() int16 {
+	return int16(rand.Uint32() & (1<<16 - 1))
+}
+
+func RandInt32() int32 {
+	return int32(rand.Uint32())
+}
+
+func RandInt64() int64 {
+	return int64(rand.Uint32())<<32 + int64(rand.Uint32())
+}
+
 func RandInt() int {
 	return rand.Int()
 }

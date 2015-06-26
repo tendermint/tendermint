@@ -15,7 +15,7 @@ func toVMAccount(acc *account.Account) *vm.Account {
 		Address:     LeftPadWord256(acc.Address),
 		Balance:     acc.Balance,
 		Code:        acc.Code, // This is crazy.
-		Nonce:       uint64(acc.Sequence),
+		Nonce:       int64(acc.Sequence),
 		StorageRoot: LeftPadWord256(acc.StorageRoot),
 		Other:       acc.PubKey,
 	}
@@ -36,14 +36,14 @@ func Call(address, data []byte) (*ctypes.ResponseCall, error) {
 	caller := &vm.Account{Address: Zero256}
 	txCache := state.NewTxCache(cache)
 	params := vm.Params{
-		BlockHeight: uint64(st.LastBlockHeight),
+		BlockHeight: int64(st.LastBlockHeight),
 		BlockHash:   LeftPadWord256(st.LastBlockHash),
 		BlockTime:   st.LastBlockTime.Unix(),
 		GasLimit:    10000000,
 	}
 
 	vmach := vm.NewVM(txCache, params, caller.Address, nil)
-	gas := uint64(1000000000)
+	gas := int64(1000000000)
 	ret, err := vmach.Call(caller, callee, callee.Code, data, 0, &gas)
 	if err != nil {
 		return nil, err
@@ -61,14 +61,14 @@ func CallCode(code, data []byte) (*ctypes.ResponseCall, error) {
 	caller := &vm.Account{Address: Zero256}
 	txCache := state.NewTxCache(cache)
 	params := vm.Params{
-		BlockHeight: uint64(st.LastBlockHeight),
+		BlockHeight: int64(st.LastBlockHeight),
 		BlockHash:   LeftPadWord256(st.LastBlockHash),
 		BlockTime:   st.LastBlockTime.Unix(),
 		GasLimit:    10000000,
 	}
 
 	vmach := vm.NewVM(txCache, params, caller.Address, nil)
-	gas := uint64(1000000000)
+	gas := int64(1000000000)
 	ret, err := vmach.Call(caller, callee, code, data, 0, &gas)
 	if err != nil {
 		return nil, err

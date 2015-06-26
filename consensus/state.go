@@ -201,8 +201,8 @@ func (rs RoundStepType) String() string {
 
 // Immutable when returned from ConsensusState.GetRoundState()
 type RoundState struct {
-	Height             uint // Height we are working on
-	Round              uint
+	Height             int // Height we are working on
+	Round              int
 	Step               RoundStepType
 	StartTime          time.Time
 	CommitTime         time.Time // Subjective time when +2/3 precommits for Block at Round were found
@@ -210,7 +210,7 @@ type RoundState struct {
 	Proposal           *Proposal
 	ProposalBlock      *types.Block
 	ProposalBlockParts *types.PartSet
-	LockedRound        uint
+	LockedRound        int
 	LockedBlock        *types.Block
 	LockedBlockParts   *types.PartSet
 	Votes              *HeightVoteSet
@@ -299,7 +299,7 @@ func (cs *ConsensusState) reconstructLastCommit(state *sm.State) {
 	lastPrecommits := NewVoteSet(state.LastBlockHeight, 0, types.VoteTypePrecommit, state.LastBondedValidators)
 	seenValidation := cs.blockStore.LoadSeenValidation(state.LastBlockHeight)
 	for idx, precommit := range seenValidation.Precommits {
-		added, _, err := lastPrecommits.AddByIndex(uint(idx), precommit)
+		added, _, err := lastPrecommits.AddByIndex(idx, precommit)
 		if !added || err != nil {
 			panic(Fmt("Failed to reconstruct LastCommit: %v", err))
 		}
@@ -339,7 +339,7 @@ func (cs *ConsensusState) Start() {
 }
 
 // EnterNewRound(height, 0) at cs.StartTime.
-func (cs *ConsensusState) scheduleRound0(height uint) {
+func (cs *ConsensusState) scheduleRound0(height int) {
 	//log.Debug("scheduleRound0", "now", time.Now(), "startTime", cs.StartTime)
 	sleepDuration := cs.StartTime.Sub(time.Now())
 	go func() {
@@ -451,7 +451,7 @@ func (cs *ConsensusState) SetPrivValidator(priv *sm.PrivValidator) {
 // Enter: `timeoutPrecommits` after any +2/3 precommits from (height,round-1)
 // Enter: `startTime = commitTime+timeoutCommit` from NewHeight(height)
 // NOTE: cs.StartTime was already set for height.
-func (cs *ConsensusState) EnterNewRound(height uint, round uint) {
+func (cs *ConsensusState) EnterNewRound(height int, round int) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cs.Step != RoundStepNewHeight) {
@@ -483,7 +483,7 @@ func (cs *ConsensusState) EnterNewRound(height uint, round uint) {
 }
 
 // Enter: from NewRound(height,round).
-func (cs *ConsensusState) EnterPropose(height uint, round uint) {
+func (cs *ConsensusState) EnterPropose(height int, round int) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	if cs.Height != height || round < cs.Round || (cs.Round == round && RoundStepPropose <= cs.Step) {
@@ -523,7 +523,7 @@ func (cs *ConsensusState) EnterPropose(height uint, round uint) {
 }
 
 // Decides on the next proposal and sets them onto cs.Proposal*
-func (cs *ConsensusState) decideProposal(height uint, round uint) {
+func (cs *ConsensusState) decideProposal(height int, round int) {
 	var block *types.Block
 	var blockParts *types.PartSet
 
@@ -561,7 +561,7 @@ func (cs *ConsensusState) isProposalComplete() bool {
 	if cs.Proposal.POLRound < 0 {
 		return true
 	} else {
-		return cs.Votes.Prevotes(uint(cs.Proposal.POLRound)).HasTwoThirdsMajority()
+		return cs.Votes.Prevotes(cs.Proposal.POLRound).HasTwoThirdsMajority()
 	}
 }
 
@@ -588,7 +588,7 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 			Height:         cs.Height,
 			Time:           time.Now(),
 			Fees:           0, // TODO fees
-			NumTxs:         uint(len(txs)),
+			NumTxs:         len(txs),
 			LastBlockHash:  cs.state.LastBlockHash,
 			LastBlockParts: cs.state.LastBlockParts,
 			StateHash:      nil, // Will set afterwards.
@@ -615,7 +615,7 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 // Enter: any +2/3 prevotes for future round.
 // Prevote for LockedBlock if we're locked, or ProposalBlock if valid.
 // Otherwise vote nil.
-func (cs *ConsensusState) EnterPrevote(height uint, round uint) {
+func (cs *ConsensusState) EnterPrevote(height int, round int) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	if cs.Height != height || round < cs.Round || (cs.Round == round && RoundStepPrevote <= cs.Step) {
@@ -636,7 +636,7 @@ func (cs *ConsensusState) EnterPrevote(height uint, round uint) {
 	}*/
 }
 
-func (cs *ConsensusState) doPrevote(height uint, round uint) {
+func (cs *ConsensusState) doPrevote(height int, round int) {
 	// If a block is locked, prevote that.
 	if cs.LockedBlock != nil {
 		log.Debug("EnterPrevote: Block was locked")
@@ -666,7 +666,7 @@ func (cs *ConsensusState) doPrevote(height uint, round uint) {
 }
 
 // Enter: any +2/3 prevotes at next round.
-func (cs *ConsensusState) EnterPrevoteWait(height uint, round uint) {
+func (cs *ConsensusState) EnterPrevoteWait(height int, round int) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	if cs.Height != height || round < cs.Round || (cs.Round == round && RoundStepPrevoteWait <= cs.Step) {
@@ -695,7 +695,7 @@ func (cs *ConsensusState) EnterPrevoteWait(height uint, round uint) {
 // Lock & precommit the ProposalBlock if we have enough prevotes for it,
 // else, unlock an existing lock and precommit nil if +2/3 of prevotes were nil,
 // else, precommit locked block or nil otherwise.
-func (cs *ConsensusState) EnterPrecommit(height uint, round uint) {
+func (cs *ConsensusState) EnterPrecommit(height int, round int) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	if cs.Height != height || round < cs.Round || (cs.Round == round && RoundStepPrecommit <= cs.Step) {
@@ -768,7 +768,7 @@ func (cs *ConsensusState) EnterPrecommit(height uint, round uint) {
 	// Otherwise, we need to fetch the +2/3 prevoted block.
 	// Unlock and precommit nil.
 	// The +2/3 prevotes for this round is the POL for our unlock.
-	if cs.Votes.POLRound() < int(round) {
+	if cs.Votes.POLRound() < round {
 		panic(Fmt("This POLRound shold be %v but got %", round, cs.Votes.POLRound()))
 	}
 	cs.LockedRound = 0
@@ -783,7 +783,7 @@ func (cs *ConsensusState) EnterPrecommit(height uint, round uint) {
 }
 
 // Enter: any +2/3 precommits for next round.
-func (cs *ConsensusState) EnterPrecommitWait(height uint, round uint) {
+func (cs *ConsensusState) EnterPrecommitWait(height int, round int) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	if cs.Height != height || round < cs.Round || (cs.Round == round && RoundStepPrecommitWait <= cs.Step) {
@@ -811,7 +811,7 @@ func (cs *ConsensusState) EnterPrecommitWait(height uint, round uint) {
 }
 
 // Enter: +2/3 precommits for block
-func (cs *ConsensusState) EnterCommit(height uint) {
+func (cs *ConsensusState) EnterCommit(height int) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	if cs.Height != height || RoundStepCommit <= cs.Step {
@@ -865,7 +865,7 @@ func (cs *ConsensusState) EnterCommit(height uint) {
 }
 
 // If we have the block AND +2/3 commits for it, finalize.
-func (cs *ConsensusState) tryFinalizeCommit(height uint) {
+func (cs *ConsensusState) tryFinalizeCommit(height int) {
 	// SANITY CHECK
 	if cs.Height != height {
 		panic(Fmt("tryFinalizeCommit() cs.Height: %v vs height: %v", cs.Height, height))
@@ -883,7 +883,7 @@ func (cs *ConsensusState) tryFinalizeCommit(height uint) {
 }
 
 // Increment height and goto RoundStepNewHeight
-func (cs *ConsensusState) FinalizeCommit(height uint) {
+func (cs *ConsensusState) FinalizeCommit(height int) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 
@@ -950,7 +950,7 @@ func (cs *ConsensusState) SetProposal(proposal *Proposal) error {
 
 	// Verify POLRound, which must be -1 or between 0 and proposal.Round exclusive.
 	if proposal.POLRound != -1 &&
-		(proposal.POLRound < 0 || proposal.Round <= uint(proposal.POLRound)) {
+		(proposal.POLRound < 0 || proposal.Round <= proposal.POLRound) {
 		return ErrInvalidProposalPOLRound
 	}
 
@@ -965,7 +965,7 @@ func (cs *ConsensusState) SetProposal(proposal *Proposal) error {
 }
 
 // NOTE: block is not necessarily valid.
-func (cs *ConsensusState) AddProposalBlockPart(height uint, part *types.Part) (added bool, err error) {
+func (cs *ConsensusState) AddProposalBlockPart(height int, part *types.Part) (added bool, err error) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 
@@ -1001,7 +1001,7 @@ func (cs *ConsensusState) AddProposalBlockPart(height uint, part *types.Part) (a
 	return added, nil
 }
 
-func (cs *ConsensusState) AddVote(address []byte, vote *types.Vote, peerKey string) (added bool, index uint, err error) {
+func (cs *ConsensusState) AddVote(address []byte, vote *types.Vote, peerKey string) (added bool, index int, err error) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 
@@ -1010,7 +1010,7 @@ func (cs *ConsensusState) AddVote(address []byte, vote *types.Vote, peerKey stri
 
 //-----------------------------------------------------------------------------
 
-func (cs *ConsensusState) addVote(address []byte, vote *types.Vote, peerKey string) (added bool, index uint, err error) {
+func (cs *ConsensusState) addVote(address []byte, vote *types.Vote, peerKey string) (added bool, index int, err error) {
 	// A precommit for the previous height?
 	if vote.Height+1 == cs.Height && vote.Type == types.VoteTypePrecommit {
 		added, index, err = cs.LastCommit.AddByAddress(address, vote)
@@ -1056,8 +1056,7 @@ func (cs *ConsensusState) addVote(address []byte, vote *types.Vote, peerKey stri
 							cs.EnterPrevoteWait(height, vote.Round)
 						}
 					}()
-				} else if cs.Proposal != nil &&
-					0 <= cs.Proposal.POLRound && uint(cs.Proposal.POLRound) == vote.Round {
+				} else if cs.Proposal != nil && 0 <= cs.Proposal.POLRound && cs.Proposal.POLRound == vote.Round {
 					// If the proposal is now complete, enter prevote of cs.Round.
 					if cs.isProposalComplete() {
 						go cs.EnterPrevote(height, cs.Round)

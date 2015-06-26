@@ -23,7 +23,7 @@ const (
 	stepPrecommit = 3
 )
 
-func voteToStep(vote *types.Vote) uint8 {
+func voteToStep(vote *types.Vote) int8 {
 	switch vote.Type {
 	case types.VoteTypePrevote:
 		return stepPrevote
@@ -38,9 +38,9 @@ type PrivValidator struct {
 	Address    []byte                 `json:"address"`
 	PubKey     account.PubKeyEd25519  `json:"pub_key"`
 	PrivKey    account.PrivKeyEd25519 `json:"priv_key"`
-	LastHeight uint                   `json:"last_height"`
-	LastRound  uint                   `json:"last_round"`
-	LastStep   uint8                  `json:"last_step"`
+	LastHeight int                    `json:"last_height"`
+	LastRound  int                    `json:"last_round"`
+	LastStep   int8                   `json:"last_step"`
 
 	// For persistence.
 	// Overloaded for testing.
@@ -166,8 +166,8 @@ func (privVal *PrivValidator) SignRebondTx(chainID string, rebondTx *types.Rebon
 
 		// Persist height/round/step
 		privVal.LastHeight = rebondTx.Height
-		privVal.LastRound = math.MaxUint64 // We can't do anything else for this rebondTx.Height.
-		privVal.LastStep = math.MaxUint8
+		privVal.LastRound = math.MaxInt64 // We can't do anything else for this rebondTx.Height.
+		privVal.LastStep = math.MaxInt8
 		privVal.save()
 
 		// Sign

@@ -22,27 +22,27 @@ func Tempfile(prefix string) (*os.File, string) {
 	return file, file.Name()
 }
 
-func RandAccount(randBalance bool, minBalance uint64) (*account.Account, *account.PrivAccount) {
+func RandAccount(randBalance bool, minBalance int64) (*account.Account, *account.PrivAccount) {
 	privAccount := account.GenPrivAccount()
 	acc := &account.Account{
 		Address:  privAccount.PubKey.Address(),
 		PubKey:   privAccount.PubKey,
-		Sequence: RandUint(),
+		Sequence: RandInt(),
 		Balance:  minBalance,
 	}
 	if randBalance {
-		acc.Balance += uint64(RandUint32())
+		acc.Balance += int64(RandUint32())
 	}
 	return acc, privAccount
 }
 
-func RandValidator(randBonded bool, minBonded uint64) (*ValidatorInfo, *Validator, *PrivValidator) {
+func RandValidator(randBonded bool, minBonded int64) (*ValidatorInfo, *Validator, *PrivValidator) {
 	privVal := GenPrivValidator()
 	_, tempFilePath := Tempfile("priv_validator_")
 	privVal.SetFile(tempFilePath)
 	bonded := minBonded
 	if randBonded {
-		bonded += uint64(RandUint32())
+		bonded += int64(RandUint32())
 	}
 	valInfo := &ValidatorInfo{
 		Address: privVal.Address,
@@ -66,7 +66,7 @@ func RandValidator(randBonded bool, minBonded uint64) (*ValidatorInfo, *Validato
 	return valInfo, val, privVal
 }
 
-func RandGenesisState(numAccounts int, randBalance bool, minBalance uint64, numValidators int, randBonded bool, minBonded uint64) (*State, []*account.PrivAccount, []*PrivValidator) {
+func RandGenesisState(numAccounts int, randBalance bool, minBalance int64, numValidators int, randBonded bool, minBonded int64) (*State, []*account.PrivAccount, []*PrivValidator) {
 	db := dbm.NewMemDB()
 	accounts := make([]GenesisAccount, numAccounts)
 	privAccounts := make([]*account.PrivAccount, numAccounts)

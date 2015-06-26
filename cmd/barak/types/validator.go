@@ -5,6 +5,6 @@ import (
 )
 
 type Validator struct {
-	VotingPower uint64
+	VotingPower int64
 	PubKey      acm.PubKey
 }

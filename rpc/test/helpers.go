@@ -88,7 +88,7 @@ func init() {
 //-------------------------------------------------------------------------------
 // some default transaction functions
 
-func makeDefaultSendTx(t *testing.T, typ string, addr []byte, amt uint64) *types.SendTx {
+func makeDefaultSendTx(t *testing.T, typ string, addr []byte, amt int64) *types.SendTx {
 	nonce := getNonce(t, typ, user[0].Address)
 	tx := types.NewSendTx()
 	tx.AddInputWithNonce(user[0].PubKey, amt, nonce+1)
@@ -96,20 +96,20 @@ func makeDefaultSendTx(t *testing.T, typ string, addr []byte, amt uint64) *types
 	return tx
 }
 
-func makeDefaultSendTxSigned(t *testing.T, typ string, addr []byte, amt uint64) *types.SendTx {
+func makeDefaultSendTxSigned(t *testing.T, typ string, addr []byte, amt int64) *types.SendTx {
 	tx := makeDefaultSendTx(t, typ, addr, amt)
 	tx.SignInput(chainID, 0, user[0])
 	return tx
 }
 
-func makeDefaultCallTx(t *testing.T, typ string, addr, code []byte, amt, gasLim, fee uint64) *types.CallTx {
+func makeDefaultCallTx(t *testing.T, typ string, addr, code []byte, amt, gasLim, fee int64) *types.CallTx {
 	nonce := getNonce(t, typ, user[0].Address)
 	tx := types.NewCallTxWithNonce(user[0].PubKey, addr, code, amt, gasLim, fee, nonce+1)
 	tx.Sign(chainID, user[0])
 	return tx
 }
 
-func makeDefaultNameTx(t *testing.T, typ string, name, value string, amt, fee uint64) *types.NameTx {
+func makeDefaultNameTx(t *testing.T, typ string, name, value string, amt, fee int64) *types.NameTx {
 	nonce := getNonce(t, typ, user[0].Address)
 	tx := types.NewNameTxWithNonce(user[0].PubKey, name, value, amt, fee, nonce+1)
 	tx.Sign(chainID, user[0])
@@ -120,7 +120,7 @@ func makeDefaultNameTx(t *testing.T, typ string, name, value string, amt, fee ui
 // rpc call wrappers (fail on err)
 
 // get an account's nonce
-func getNonce(t *testing.T, typ string, addr []byte) uint {
+func getNonce(t *testing.T, typ string, addr []byte) int {
 	client := clients[typ]
 	ac, err := client.GetAccount(addr)
 	if err != nil {
