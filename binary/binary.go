@@ -9,7 +9,7 @@ import (
 func ReadBinary(o interface{}, r io.Reader, n *int64, err *error) interface{} {
 	rv, rt := reflect.ValueOf(o), reflect.TypeOf(o)
 	if rv.Kind() == reflect.Ptr {
-		readReflectBinary(rv.Elem(), rt.Elem(), Options{}, r, n, err)
+		readReflectBinary(rv, rt, Options{}, r, n, err)
 		return o
 	} else {
 		ptrRv := reflect.New(rt)
@@ -18,12 +18,19 @@ func ReadBinary(o interface{}, r io.Reader, n *int64, err *error) interface{} {
 	}
 }
 
+func ReadBinaryPtr(o interface{}, r io.Reader, n *int64, err *error) interface{} {
+	rv, rt := reflect.ValueOf(o), reflect.TypeOf(o)
+	if rv.Kind() == reflect.Ptr {
+		readReflectBinary(rv.Elem(), rt.Elem(), Options{}, r, n, err)
+		return o
+	} else {
+		panic("ReadBinaryPtr expects o to be a pointer")
+	}
+}
+
 func WriteBinary(o interface{}, w io.Writer, n *int64, err *error) {
 	rv := reflect.ValueOf(o)
 	rt := reflect.TypeOf(o)
-	if rv.Kind() == reflect.Ptr {
-		rv, rt = rv.Elem(), rt.Elem()
-	}
 	writeReflectBinary(rv, rt, Options{}, w, n, err)
 }
 

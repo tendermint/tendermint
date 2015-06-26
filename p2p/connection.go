@@ -403,7 +403,7 @@ FOR_LOOP:
 			log.Debug("Receive Pong")
 		case packetTypeMsg:
 			pkt, n, err := msgPacket{}, new(int64), new(error)
-			binary.ReadBinary(&pkt, c.bufReader, n, err)
+			binary.ReadBinaryPtr(&pkt, c.bufReader, n, err)
 			c.recvMonitor.Update(int(*n))
 			if *err != nil {
 				if atomic.LoadUint32(&c.stopped) != 1 {
