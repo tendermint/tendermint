@@ -78,7 +78,7 @@ WriteBinary(foo, buf, n, err)
 foo2 := ReadBinary(Foo{}, buf, n, err).(Foo)
 
 // Or, to decode onto a pointer:
-foo2 := ReadBinary(&Foo{}, buf, n, err).(*Foo)
+foo2 := ReadBinaryPtr(&Foo{}, buf, n, err).(*Foo)
 ```
 
 WriteBinary and ReadBinary can encode/decode structs recursively. However, interface field

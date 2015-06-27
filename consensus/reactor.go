@@ -520,6 +520,18 @@ OUTER_LOOP:
 					continue OUTER_LOOP
 				}
 			}
+			// If there are prevotes to send for the last round...
+			if rs.Round == prs.Round+1 && prs.Step <= RoundStepPrevote {
+				if trySendVote(rs.Votes.Prevotes(prs.Round), &prs.Prevotes) {
+					continue OUTER_LOOP
+				}
+			}
+			// If there are precommits to send for the last round...
+			if rs.Round == prs.Round+1 && prs.Step <= RoundStepPrecommit {
+				if trySendVote(rs.Votes.Precommits(prs.Round), &prs.Precommits) {
+					continue OUTER_LOOP
+				}
+			}
 			// If there are POLPrevotes to send...
 			if 0 <= prs.ProposalPOLRound {
 				if polPrevotes := rs.Votes.Prevotes(prs.ProposalPOLRound); polPrevotes != nil {
