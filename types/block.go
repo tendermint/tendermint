@@ -184,22 +184,39 @@ type Validation struct {
 	Precommits []*Vote `json:"precommits"`
 
 	// Volatile
-	hash     []byte
-	bitArray *BitArray
+	firstPrecommit *Vote
+	hash           []byte
+	bitArray       *BitArray
+}
+
+func (v *Validation) FirstPrecommit() *Vote {
+	if len(v.Precommits) == 0 {
+		return nil
+	}
+	if v.firstPrecommit != nil {
+		return v.firstPrecommit
+	}
+	for _, precommit := range v.Precommits {
+		if precommit != nil {
+			v.firstPrecommit = precommit
+			return precommit
+		}
+	}
+	return nil
 }
 
 func (v *Validation) Height() int {
 	if len(v.Precommits) == 0 {
 		return 0
 	}
-	return v.Precommits[0].Height
+	return v.FirstPrecommit().Height
 }
 
 func (v *Validation) Round() int {
 	if len(v.Precommits) == 0 {
 		return 0
 	}
-	return v.Precommits[0].Round
+	return v.FirstPrecommit().Round
 }
 
 func (v *Validation) ValidateBasic() error {

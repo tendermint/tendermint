@@ -177,18 +177,20 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 		switch msg := msg_.(type) {
 		case *VoteMessage:
 			vote := msg.Vote
-			var validators *ValidatorSet
+			var validators *sm.ValidatorSet
 			if rs.Height == vote.Height {
 				validators = rs.Validators
 			} else if rs.Height == vote.Height+1 {
-				validators = rs.LastBondedValidators
 				if !(rs.Step == RoundStepNewHeight && vote.Type == types.VoteTypePrecommit) {
 					return // Wrong height, not a LastCommit straggler commit.
 				}
+				validators = rs.LastValidators
 			} else {
 				return // Wrong height. Not necessarily a bad peer.
 			}
-		VOTE_PASS:
+
+			// We have vote/validators.  Height may not be rs.Height
+
 			address, _ := validators.GetByIndex(msg.ValidatorIndex)
 			added, index, err := conR.conS.AddVote(address, vote, peer.Key)
 			if err != nil {

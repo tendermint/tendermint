@@ -215,6 +215,7 @@ type RoundState struct {
 	LockedBlockParts   *types.PartSet
 	Votes              *HeightVoteSet
 	LastCommit         *VoteSet // Last precommits at Height-1
+	LastValidators     *sm.ValidatorSet
 }
 
 func (rs *RoundState) String() string {
@@ -233,6 +234,7 @@ func (rs *RoundState) StringIndented(indent string) string {
 %s  LockedBlock:   %v %v
 %s  Votes:         %v
 %s  LastCommit: %v
+%s  LastValidators:    %v
 %s}`,
 		indent, rs.Height, rs.Round, rs.Step,
 		indent, rs.StartTime,
@@ -244,6 +246,7 @@ func (rs *RoundState) StringIndented(indent string) string {
 		indent, rs.LockedBlockParts.StringShort(), rs.LockedBlock.StringShort(),
 		indent, rs.Votes.StringIndented(indent+"    "),
 		indent, rs.LastCommit.StringShort(),
+		indent, rs.LastValidators.StringIndented(indent+"    "),
 		indent)
 }
 
@@ -406,6 +409,7 @@ func (cs *ConsensusState) updateToState(state *sm.State, contiguous bool) {
 	cs.LockedBlockParts = nil
 	cs.Votes = NewHeightVoteSet(height, validators)
 	cs.LastCommit = lastPrecommits
+	cs.LastValidators = state.LastBondedValidators
 
 	cs.state = state
 	cs.stagedBlock = nil
