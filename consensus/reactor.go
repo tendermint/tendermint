@@ -938,7 +938,7 @@ type BlockPartMessage struct {
 }
 
 func (m *BlockPartMessage) String() string {
-	return fmt.Sprintf("[BlockPart H:%v R:%v T:%X P:%v]", m.Height, m.Round, m.Part)
+	return fmt.Sprintf("[BlockPart H:%v R:%v P:%v]", m.Height, m.Round, m.Part)
 }
 
 //-------------------------------------
