@@ -15,10 +15,10 @@ func (tI testItem) Hash() []byte {
 
 func TestSimpleProof(t *testing.T) {
 
-	numItems := uint(100)
+	numItems := 100
 
 	items := make([]Hashable, numItems)
-	for i := uint(0); i < numItems; i++ {
+	for i := 0; i < numItems; i++ {
 		items[i] = testItem(RandBytes(32))
 	}
 

@@ -226,6 +226,9 @@ func readReflectBinary(rv reflect.Value, rt reflect.Type, opts Options, r io.Rea
 		typeInfo = GetTypeInfo(rt)
 		if typeInfo.Byte != 0x00 {
 			r = NewPrefixedReader([]byte{typeByte}, r)
+		} else if typeByte != 0x01 {
+			*err = errors.New(Fmt("Unexpected type byte %X for ptr of untyped thing", typeByte))
+			return
 		}
 		// continue...
 	}
@@ -250,7 +253,7 @@ func readReflectBinary(rv reflect.Value, rt reflect.Type, opts Options, r io.Rea
 		} else {
 			var sliceRv reflect.Value
 			// Read length
-			length := int(ReadUvarint(r, n, err))
+			length := ReadVarint(r, n, err)
 			log.Debug(Fmt("Read length: %v", length))
 			sliceRv = reflect.MakeSlice(rt, 0, 0)
 			// read one ReflectSliceChunk at a time and append
@@ -322,7 +325,7 @@ func readReflectBinary(rv reflect.Value, rt reflect.Type, opts Options, r io.Rea
 
 	case reflect.Uint64:
 		if opts.Varint {
-			num := ReadUvarint(r, n, err)
+			num := ReadVarint(r, n, err)
 			log.Debug(Fmt("Read num: %v", num))
 			rv.SetUint(uint64(num))
 		} else {
@@ -347,7 +350,7 @@ func readReflectBinary(rv reflect.Value, rt reflect.Type, opts Options, r io.Rea
 		rv.SetUint(uint64(num))
 
 	case reflect.Uint:
-		num := ReadUvarint(r, n, err)
+		num := ReadVarint(r, n, err)
 		log.Debug(Fmt("Read num: %v", num))
 		rv.SetUint(uint64(num))
 
@@ -432,7 +435,7 @@ func writeReflectBinary(rv reflect.Value, rt reflect.Type, opts Options, w io.Wr
 		} else {
 			// Write length
 			length := rv.Len()
-			WriteUvarint(uint(length), w, n, err)
+			WriteVarint(length, w, n, err)
 			// Write elems
 			for i := 0; i < length; i++ {
 				elemRv := rv.Index(i)

@@ -38,53 +38,29 @@ func execBlock(s *State, block *types.Block, blockPartsHeader types.PartSetHeade
 		return err
 	}
 
-	// Validate block Validation.
+	// Validate block LastValidation.
 	if block.Height == 1 {
-		if len(block.Validation.Commits) != 0 {
-			return errors.New("Block at height 1 (first block) should have no Validation commits")
+		if len(block.LastValidation.Precommits) != 0 {
+			return errors.New("Block at height 1 (first block) should have no LastValidation precommits")
 		}
 	} else {
-		if uint(len(block.Validation.Commits)) != s.LastBondedValidators.Size() {
+		if len(block.LastValidation.Precommits) != s.LastBondedValidators.Size() {
 			return errors.New(Fmt("Invalid block validation size. Expected %v, got %v",
-				s.LastBondedValidators.Size(), len(block.Validation.Commits)))
+				s.LastBondedValidators.Size(), len(block.LastValidation.Precommits)))
 		}
-		var sumVotingPower uint64
-		s.LastBondedValidators.Iterate(func(index uint, val *Validator) bool {
-			commit := block.Validation.Commits[index]
-			if commit.IsZero() {
-				return false
-			} else {
-				vote := &types.Vote{
-					Height:     block.Height - 1,
-					Round:      commit.Round,
-					Type:       types.VoteTypeCommit,
-					BlockHash:  block.LastBlockHash,
-					BlockParts: block.LastBlockParts,
-				}
-				if val.PubKey.VerifyBytes(account.SignBytes(s.ChainID, vote), commit.Signature) {
-					sumVotingPower += val.VotingPower
-					return false
-				} else {
-					log.Warn(Fmt("Invalid validation signature.\nval: %v\nvote: %v", val, vote))
-					err = errors.New("Invalid validation signature")
-					return true
-				}
-			}
-		})
+		err := s.LastBondedValidators.VerifyValidation(
+			s.ChainID, s.LastBlockHash, s.LastBlockParts, block.Height-1, block.LastValidation)
 		if err != nil {
 			return err
-		}
-		if sumVotingPower <= s.LastBondedValidators.TotalVotingPower()*2/3 {
-			return errors.New("Insufficient validation voting power")
 		}
 	}
 
 	// Update Validator.LastCommitHeight as necessary.
-	for i, commit := range block.Validation.Commits {
-		if commit.IsZero() {
+	for i, precommit := range block.LastValidation.Precommits {
+		if precommit == nil {
 			continue
 		}
-		_, val := s.LastBondedValidators.GetByIndex(uint(i))
+		_, val := s.LastBondedValidators.GetByIndex(i)
 		if val == nil {
 			panic(Fmt("Failed to fetch validator at index %v", i))
 		}
@@ -111,7 +87,7 @@ func execBlock(s *State, block *types.Block, blockPartsHeader types.PartSetHeade
 	// Create BlockCache to cache changes to state.
 	blockCache := NewBlockCache(s)
 
-	// Commit each tx
+	// Execute each tx
 	for _, tx := range block.Data.Txs {
 		err := ExecTx(blockCache, tx, true, s.evc)
 		if err != nil {
@@ -125,7 +101,7 @@ func execBlock(s *State, block *types.Block, blockPartsHeader types.PartSetHeade
 	// If any unbonding periods are over,
 	// reward account with bonded coins.
 	toRelease := []*Validator{}
-	s.UnbondingValidators.Iterate(func(index uint, val *Validator) bool {
+	s.UnbondingValidators.Iterate(func(index int, val *Validator) bool {
 		if val.UnbondHeight+unbondingPeriodBlocks < block.Height {
 			toRelease = append(toRelease, val)
 		}
@@ -138,8 +114,8 @@ func execBlock(s *State, block *types.Block, blockPartsHeader types.PartSetHeade
 	// If any validators haven't signed in a while,
 	// unbond them, they have timed out.
 	toTimeout := []*Validator{}
-	s.BondedValidators.Iterate(func(index uint, val *Validator) bool {
-		lastActivityHeight := MaxUint(val.BondHeight, val.LastCommitHeight)
+	s.BondedValidators.Iterate(func(index int, val *Validator) bool {
+		lastActivityHeight := MaxInt(val.BondHeight, val.LastCommitHeight)
 		if lastActivityHeight+validatorTimeoutBlocks < block.Height {
 			log.Info("Validator timeout", "validator", val, "height", block.Height)
 			toTimeout = append(toTimeout, val)
@@ -215,7 +191,7 @@ func checkInputPubKey(acc *account.Account, in *types.TxInput) error {
 	return nil
 }
 
-func validateInputs(accounts map[string]*account.Account, signBytes []byte, ins []*types.TxInput) (total uint64, err error) {
+func validateInputs(accounts map[string]*account.Account, signBytes []byte, ins []*types.TxInput) (total int64, err error) {
 	for _, in := range ins {
 		acc := accounts[string(in.Address)]
 		if acc == nil {
@@ -243,8 +219,8 @@ func validateInput(acc *account.Account, signBytes []byte, in *types.TxInput) (e
 	// Check sequences
 	if acc.Sequence+1 != in.Sequence {
 		return types.ErrTxInvalidSequence{
-			Got:      uint64(in.Sequence),
-			Expected: uint64(acc.Sequence + 1),
+			Got:      in.Sequence,
+			Expected: acc.Sequence + 1,
 		}
 	}
 	// Check amount
@@ -254,7 +230,7 @@ func validateInput(acc *account.Account, signBytes []byte, in *types.TxInput) (e
 	return nil
 }
 
-func validateOutputs(outs []*types.TxOutput) (total uint64, err error) {
+func validateOutputs(outs []*types.TxOutput) (total int64, err error) {
 	for _, out := range outs {
 		// Check TxOutput basic
 		if err := out.ValidateBasic(); err != nil {
@@ -295,7 +271,7 @@ func adjustByOutputs(accounts map[string]*account.Account, outs []*types.TxOutpu
 func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Fireable) error {
 
 	// TODO: do something with fees
-	fees := uint64(0)
+	fees := int64(0)
 	_s := blockCache.State() // hack to access validators and block height
 
 	// Exec tx
@@ -386,14 +362,14 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 		if runCall {
 
 			var (
-				gas     uint64      = tx.GasLimit
+				gas     int64       = tx.GasLimit
 				err     error       = nil
 				caller  *vm.Account = toVMAccount(inAcc)
 				callee  *vm.Account = nil
 				code    []byte      = nil
 				txCache             = NewTxCache(blockCache)
 				params              = vm.Params{
-					BlockHeight: uint64(_s.LastBlockHeight),
+					BlockHeight: int64(_s.LastBlockHeight),
 					BlockHash:   LeftPadWord256(_s.LastBlockHash),
 					BlockTime:   _s.LastBlockTime.Unix(),
 					GasLimit:    10000000,
@@ -514,8 +490,8 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 
 		// let's say cost of a name for one block is len(data) + 32
 		costPerBlock := types.NameCostPerBlock * types.NameCostPerByte * tx.BaseEntryCost()
-		expiresIn := value / uint64(costPerBlock)
-		lastBlockHeight := uint64(_s.LastBlockHeight)
+		expiresIn := int(value / costPerBlock)
+		lastBlockHeight := _s.LastBlockHeight
 
 		log.Debug("New NameTx", "value", value, "costPerBlock", costPerBlock, "expiresIn", expiresIn, "lastBlock", lastBlockHeight)
 
@@ -554,9 +530,9 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 				} else {
 					// since the size of the data may have changed
 					// we use the total amount of "credit"
-					oldCredit := (entry.Expires - lastBlockHeight) * types.BaseEntryCost(entry.Name, entry.Data)
+					oldCredit := int64(entry.Expires-lastBlockHeight) * types.BaseEntryCost(entry.Name, entry.Data)
 					credit := oldCredit + value
-					expiresIn = credit / costPerBlock
+					expiresIn = int(credit / costPerBlock)
 					if expiresIn < types.MinNameRegistrationPeriod {
 						return fmt.Errorf("Names must be registered for at least %d blocks", types.MinNameRegistrationPeriod)
 					}
@@ -726,21 +702,14 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 		if tx.VoteA.Height != tx.VoteB.Height {
 			return errors.New("DupeoutTx heights don't match")
 		}
-		if tx.VoteA.Type == types.VoteTypeCommit && tx.VoteA.Round < tx.VoteB.Round {
-			// Check special case (not an error, validator must be slashed!)
-			// Validators should not sign another vote after committing.
-		} else if tx.VoteB.Type == types.VoteTypeCommit && tx.VoteB.Round < tx.VoteA.Round {
-			// We need to check both orderings of the votes
-		} else {
-			if tx.VoteA.Round != tx.VoteB.Round {
-				return errors.New("DupeoutTx rounds don't match")
-			}
-			if tx.VoteA.Type != tx.VoteB.Type {
-				return errors.New("DupeoutTx types don't match")
-			}
-			if bytes.Equal(tx.VoteA.BlockHash, tx.VoteB.BlockHash) {
-				return errors.New("DupeoutTx blockhashes shouldn't match")
-			}
+		if tx.VoteA.Round != tx.VoteB.Round {
+			return errors.New("DupeoutTx rounds don't match")
+		}
+		if tx.VoteA.Type != tx.VoteB.Type {
+			return errors.New("DupeoutTx types don't match")
+		}
+		if bytes.Equal(tx.VoteA.BlockHash, tx.VoteB.BlockHash) {
+			return errors.New("DupeoutTx blockhashes shouldn't match")
 		}
 
 		// Good! (Bad validator!)

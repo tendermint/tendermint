@@ -20,7 +20,7 @@ import (
 type BarakOptions struct {
 	Validators    []Validator
 	ListenAddress string
-	StartNonce    uint64
+	StartNonce    int64
 	Registries    []string
 }
 
@@ -74,7 +74,7 @@ func NewBarakFromOptions(opt *BarakOptions) *Barak {
 type Barak struct {
 	mtx        sync.Mutex
 	pid        int
-	nonce      uint64
+	nonce      int64
 	processes  map[string]*pcm.Process
 	validators []Validator
 	listeners  []net.Listener
@@ -82,7 +82,7 @@ type Barak struct {
 	registries []string
 }
 
-func NewBarak(rootDir string, nonce uint64, validators []Validator) *Barak {
+func NewBarak(rootDir string, nonce int64, validators []Validator) *Barak {
 	return &Barak{
 		pid:        os.Getpid(),
 		nonce:      nonce,
@@ -243,7 +243,7 @@ func (brk *Barak) WritePidFile() {
 	}
 }
 
-func (brk *Barak) CheckIncrNonce(newNonce uint64) error {
+func (brk *Barak) CheckIncrNonce(newNonce int64) error {
 	brk.mtx.Lock()
 	defer brk.mtx.Unlock()
 	if brk.nonce+1 != newNonce {

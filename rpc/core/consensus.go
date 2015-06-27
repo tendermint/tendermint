@@ -8,17 +8,17 @@ import (
 )
 
 func ListValidators() (*ctypes.ResponseListValidators, error) {
-	var blockHeight uint
+	var blockHeight int
 	var bondedValidators []*sm.Validator
 	var unbondingValidators []*sm.Validator
 
 	state := consensusState.GetState()
 	blockHeight = state.LastBlockHeight
-	state.BondedValidators.Iterate(func(index uint, val *sm.Validator) bool {
+	state.BondedValidators.Iterate(func(index int, val *sm.Validator) bool {
 		bondedValidators = append(bondedValidators, val)
 		return false
 	})
-	state.UnbondingValidators.Iterate(func(index uint, val *sm.Validator) bool {
+	state.UnbondingValidators.Iterate(func(index int, val *sm.Validator) bool {
 		unbondingValidators = append(unbondingValidators, val)
 		return false
 	})

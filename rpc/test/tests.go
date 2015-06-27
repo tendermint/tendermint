@@ -45,7 +45,7 @@ func testGetAccount(t *testing.T, typ string) {
 }
 
 func testSignedTx(t *testing.T, typ string) {
-	amt := uint64(100)
+	amt := int64(100)
 	toAddr := user[1].Address
 	testOneSignTx(t, typ, toAddr, amt)
 
@@ -56,7 +56,7 @@ func testSignedTx(t *testing.T, typ string) {
 	testOneSignTx(t, typ, toAddr, amt)
 }
 
-func testOneSignTx(t *testing.T, typ string, addr []byte, amt uint64) {
+func testOneSignTx(t *testing.T, typ string, addr []byte, amt int64) {
 	tx := makeDefaultSendTx(t, typ, addr, amt)
 	tx2 := signTx(t, typ, tx, user[0])
 	tx2hash := account.HashSignBytes(chainID, tx2)
@@ -72,7 +72,7 @@ func testOneSignTx(t *testing.T, typ string, addr []byte, amt uint64) {
 }
 
 func testBroadcastTx(t *testing.T, typ string) {
-	amt := uint64(100)
+	amt := int64(100)
 	toAddr := user[1].Address
 	tx := makeDefaultSendTxSigned(t, typ, toAddr, amt)
 	receipt := broadcastTx(t, typ, tx)
@@ -106,7 +106,7 @@ func testGetStorage(t *testing.T, typ string) {
 		con.Close()
 	}()
 
-	amt, gasLim, fee := uint64(1100), uint64(1000), uint64(1000)
+	amt, gasLim, fee := int64(1100), int64(1000), int64(1000)
 	code := []byte{0x60, 0x5, 0x60, 0x1, 0x55}
 	tx := makeDefaultCallTx(t, typ, nil, code, amt, gasLim, fee)
 	receipt := broadcastTx(t, typ, tx)
@@ -161,7 +161,7 @@ func testCall(t *testing.T, typ string) {
 	client := clients[typ]
 
 	// create the contract
-	amt, gasLim, fee := uint64(6969), uint64(1000), uint64(1000)
+	amt, gasLim, fee := int64(6969), int64(1000), int64(1000)
 	code, _, _ := simpleContract()
 	tx := makeDefaultCallTx(t, typ, nil, code, amt, gasLim, fee)
 	receipt := broadcastTx(t, typ, tx)
@@ -203,8 +203,8 @@ func testNameReg(t *testing.T, typ string) {
 	// since entries ought to be unique and these run against different clients, we append the typ
 	name := "ye_old_domain_name_" + typ
 	data := "if not now, when"
-	fee := uint64(1000)
-	numDesiredBlocks := uint64(2)
+	fee := int64(1000)
+	numDesiredBlocks := int64(2)
 	amt := fee + numDesiredBlocks*types.NameCostPerByte*types.NameCostPerBlock*types.BaseEntryCost(name, data)
 
 	tx := makeDefaultNameTx(t, typ, name, data, amt, fee)
@@ -221,7 +221,7 @@ func testNameReg(t *testing.T, typ string) {
 	}
 
 	// update the data as the owner, make sure still there
-	numDesiredBlocks = uint64(2)
+	numDesiredBlocks = int64(2)
 	data = "these are amongst the things I wish to bestow upon the youth of generations come: a safe supply of honey, and a better money. For what else shall they need"
 	amt = fee + numDesiredBlocks*types.NameCostPerByte*types.NameCostPerBlock*types.BaseEntryCost(name, data)
 	tx = makeDefaultNameTx(t, typ, name, data, amt, fee)

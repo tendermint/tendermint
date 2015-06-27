@@ -15,13 +15,13 @@ import (
 )
 
 type Block struct {
-	*Header     `json:"header"`
-	*Validation `json:"validation"`
-	*Data       `json:"data"`
+	*Header        `json:"header"`
+	*Data          `json:"data"`
+	LastValidation *Validation `json:"last_validation"`
 }
 
 // Basic validation that doesn't involve state data.
-func (b *Block) ValidateBasic(chainID string, lastBlockHeight uint, lastBlockHash []byte,
+func (b *Block) ValidateBasic(chainID string, lastBlockHeight int, lastBlockHash []byte,
 	lastBlockParts PartSetHeader, lastBlockTime time.Time) error {
 	if b.ChainID != chainID {
 		return errors.New("Wrong Block.Header.ChainID")
@@ -29,7 +29,7 @@ func (b *Block) ValidateBasic(chainID string, lastBlockHeight uint, lastBlockHas
 	if b.Height != lastBlockHeight+1 {
 		return errors.New("Wrong Block.Header.Height")
 	}
-	if b.NumTxs != uint(len(b.Data.Txs)) {
+	if b.NumTxs != len(b.Data.Txs) {
 		return errors.New("Wrong Block.Header.NumTxs")
 	}
 	if !bytes.Equal(b.LastBlockHash, lastBlockHash) {
@@ -46,7 +46,7 @@ func (b *Block) ValidateBasic(chainID string, lastBlockHeight uint, lastBlockHas
 		}
 	*/
 	if b.Header.Height != 1 {
-		if err := b.Validation.ValidateBasic(); err != nil {
+		if err := b.LastValidation.ValidateBasic(); err != nil {
 			return err
 		}
 	}
@@ -58,12 +58,12 @@ func (b *Block) ValidateBasic(chainID string, lastBlockHeight uint, lastBlockHas
 // If the block is incomplete (e.g. missing Header.StateHash)
 // then the hash is nil, to prevent the usage of that hash.
 func (b *Block) Hash() []byte {
-	if b.Header == nil || b.Validation == nil || b.Data == nil {
+	if b.Header == nil || b.Data == nil || b.LastValidation == nil {
 		return nil
 	}
 	hashHeader := b.Header.Hash()
-	hashValidation := b.Validation.Hash()
 	hashData := b.Data.Hash()
+	hashLastValidation := b.LastValidation.Hash()
 
 	// If hashHeader is nil, required fields are missing.
 	if len(hashHeader) == 0 {
@@ -71,7 +71,7 @@ func (b *Block) Hash() []byte {
 	}
 
 	// Merkle hash from subhashes.
-	hashes := [][]byte{hashHeader, hashValidation, hashData}
+	hashes := [][]byte{hashHeader, hashData, hashLastValidation}
 	return merkle.SimpleHashFromHashes(hashes)
 }
 
@@ -106,8 +106,8 @@ func (b *Block) StringIndented(indent string) string {
 %s  %v
 %s}#%X`,
 		indent, b.Header.StringIndented(indent+"  "),
-		indent, b.Validation.StringIndented(indent+"  "),
 		indent, b.Data.StringIndented(indent+"  "),
+		indent, b.LastValidation.StringIndented(indent+"  "),
 		indent, b.Hash())
 }
 
@@ -123,10 +123,10 @@ func (b *Block) StringShort() string {
 
 type Header struct {
 	ChainID        string        `json:"chain_id"`
-	Height         uint          `json:"height"`
+	Height         int           `json:"height"`
 	Time           time.Time     `json:"time"`
-	Fees           uint64        `json:"fees"`
-	NumTxs         uint          `json:"num_txs"`
+	Fees           int64         `json:"fees"`
+	NumTxs         int           `json:"num_txs"`
 	LastBlockHash  []byte        `json:"last_block_hash"`
 	LastBlockParts PartSetHeader `json:"last_block_parts"`
 	StateHash      []byte        `json:"state_hash"`
@@ -174,54 +174,75 @@ func (h *Header) StringIndented(indent string) string {
 		indent, h.Hash())
 }
 
-//-----------------------------------------------------------------------------
-
-type Commit struct {
-	Address   []byte                   `json:"address"`
-	Round     uint                     `json:"round"`
-	Signature account.SignatureEd25519 `json:"signature"`
-}
-
-func (commit Commit) IsZero() bool {
-	return commit.Round == 0 && commit.Signature.IsZero()
-}
-
-func (commit Commit) String() string {
-	return fmt.Sprintf("Commit{A:%X R:%v %X}", commit.Address, commit.Round, Fingerprint(commit.Signature))
-}
-
 //-------------------------------------
 
-// NOTE: The Commits are in order of address to preserve the bonded ValidatorSet order.
-// Any peer with a block can gossip commits by index with a peer without recalculating the
-// active ValidatorSet.
+// NOTE: Validation is empty for height 1, but never nil.
 type Validation struct {
-	Commits []Commit `json:"commits"` // Commits (or nil) of all active validators in address order.
+	// NOTE: The Precommits are in order of address to preserve the bonded ValidatorSet order.
+	// Any peer with a block can gossip precommits by index with a peer without recalculating the
+	// active ValidatorSet.
+	Precommits []*Vote `json:"precommits"`
 
 	// Volatile
-	hash     []byte
-	bitArray *BitArray
+	firstPrecommit *Vote
+	hash           []byte
+	bitArray       *BitArray
+}
+
+func (v *Validation) FirstPrecommit() *Vote {
+	if len(v.Precommits) == 0 {
+		return nil
+	}
+	if v.firstPrecommit != nil {
+		return v.firstPrecommit
+	}
+	for _, precommit := range v.Precommits {
+		if precommit != nil {
+			v.firstPrecommit = precommit
+			return precommit
+		}
+	}
+	return nil
+}
+
+func (v *Validation) Height() int {
+	if len(v.Precommits) == 0 {
+		return 0
+	}
+	return v.FirstPrecommit().Height
+}
+
+func (v *Validation) Round() int {
+	if len(v.Precommits) == 0 {
+		return 0
+	}
+	return v.FirstPrecommit().Round
 }
 
 func (v *Validation) ValidateBasic() error {
-	if len(v.Commits) == 0 {
-		return errors.New("No commits in validation")
+	if len(v.Precommits) == 0 {
+		return errors.New("No precommits in validation")
 	}
-	lastAddress := []byte{}
-	for i := 0; i < len(v.Commits); i++ {
-		commit := v.Commits[i]
-		if commit.IsZero() {
-			if len(commit.Address) > 0 {
-				return errors.New("Zero commits should not have an address")
-			}
-		} else {
-			if len(commit.Address) == 0 {
-				return errors.New("Nonzero commits should have an address")
-			}
-			if len(lastAddress) > 0 && bytes.Compare(lastAddress, commit.Address) != -1 {
-				return errors.New("Invalid commit order")
-			}
-			lastAddress = commit.Address
+	height, round := v.Height(), v.Round()
+	for _, precommit := range v.Precommits {
+		// It's OK for precommits to be missing.
+		if precommit == nil {
+			continue
+		}
+		// Ensure that all votes are precommits
+		if precommit.Type != VoteTypePrecommit {
+			return fmt.Errorf("Invalid validation vote. Expected precommit, got %v",
+				precommit.Type)
+		}
+		// Ensure that all heights are the same
+		if precommit.Height != height {
+			return fmt.Errorf("Invalid validation precommit height. Expected %v, got %v",
+				height, precommit.Height)
+		}
+		// Ensure that all rounds are the same
+		if precommit.Round != round {
+			return fmt.Errorf("Invalid validation precommit round. Expected %v, got %v",
+				round, precommit.Round)
 		}
 	}
 	return nil
@@ -229,9 +250,9 @@ func (v *Validation) ValidateBasic() error {
 
 func (v *Validation) Hash() []byte {
 	if v.hash == nil {
-		bs := make([]interface{}, len(v.Commits))
-		for i, commit := range v.Commits {
-			bs[i] = commit
+		bs := make([]interface{}, len(v.Precommits))
+		for i, precommit := range v.Precommits {
+			bs[i] = precommit
 		}
 		v.hash = merkle.SimpleHashFromBinaries(bs)
 	}
@@ -242,22 +263,22 @@ func (v *Validation) StringIndented(indent string) string {
 	if v == nil {
 		return "nil-Validation"
 	}
-	commitStrings := make([]string, len(v.Commits))
-	for i, commit := range v.Commits {
-		commitStrings[i] = commit.String()
+	precommitStrings := make([]string, len(v.Precommits))
+	for i, precommit := range v.Precommits {
+		precommitStrings[i] = precommit.String()
 	}
 	return fmt.Sprintf(`Validation{
-%s  %v
+%s  Precommits: %v
 %s}#%X`,
-		indent, strings.Join(commitStrings, "\n"+indent+"  "),
+		indent, strings.Join(precommitStrings, "\n"+indent+"  "),
 		indent, v.hash)
 }
 
 func (v *Validation) BitArray() *BitArray {
 	if v.bitArray == nil {
-		v.bitArray = NewBitArray(uint(len(v.Commits)))
-		for i, commit := range v.Commits {
-			v.bitArray.SetIndex(uint(i), !commit.IsZero())
+		v.bitArray = NewBitArray(len(v.Precommits))
+		for i, precommit := range v.Precommits {
+			v.bitArray.SetIndex(i, precommit != nil)
 		}
 	}
 	return v.bitArray

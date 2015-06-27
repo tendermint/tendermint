@@ -37,3 +37,19 @@ func PutUint64BE(dest []byte, i uint64) {
 func GetUint64BE(src []byte) uint64 {
 	return binary.BigEndian.Uint64(src)
 }
+
+func PutInt64LE(dest []byte, i int64) {
+	binary.LittleEndian.PutUint64(dest, uint64(i))
+}
+
+func GetInt64LE(src []byte) int64 {
+	return int64(binary.LittleEndian.Uint64(src))
+}
+
+func PutInt64BE(dest []byte, i int64) {
+	binary.BigEndian.PutUint64(dest, uint64(i))
+}
+
+func GetInt64BE(src []byte) int64 {
+	return int64(binary.BigEndian.Uint64(src))
+}

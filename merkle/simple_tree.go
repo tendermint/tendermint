@@ -90,8 +90,8 @@ func SimpleHashFromHashables(items []Hashable) []byte {
 //--------------------------------------------------------------------------------
 
 type SimpleProof struct {
-	Index       uint     `json:"index"`
-	Total       uint     `json:"total"`
+	Index       int      `json:"index"`
+	Total       int      `json:"total"`
 	LeafHash    []byte   `json:"leaf_hash"`
 	InnerHashes [][]byte `json:"inner_hashes"` // Hashes from leaf's sibling to a root's child.
 	RootHash    []byte   `json:"root_hash"`
@@ -103,8 +103,8 @@ func SimpleProofsFromHashables(items []Hashable) (proofs []*SimpleProof) {
 	proofs = make([]*SimpleProof, len(items))
 	for i, trail := range trails {
 		proofs[i] = &SimpleProof{
-			Index:       uint(i),
-			Total:       uint(len(items)),
+			Index:       i,
+			Total:       len(items),
 			LeafHash:    trail.Hash,
 			InnerHashes: trail.FlattenInnerHashes(),
 			RootHash:    root.Hash,
@@ -154,7 +154,7 @@ func (sp *SimpleProof) StringIndented(indent string) string {
 
 // Use the leafHash and innerHashes to get the root merkle hash.
 // If the length of the innerHashes slice isn't exactly correct, the result is nil.
-func computeHashFromInnerHashes(index uint, total uint, leafHash []byte, innerHashes [][]byte) []byte {
+func computeHashFromInnerHashes(index int, total int, leafHash []byte, innerHashes [][]byte) []byte {
 	// Recursive impl.
 	if index >= total {
 		return nil

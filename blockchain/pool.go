@@ -36,8 +36,8 @@ var (
 type BlockPool struct {
 	// block requests
 	requestsMtx   sync.Mutex
-	requests      map[uint]*bpRequest
-	height        uint  // the lowest key in requests.
+	requests      map[int]*bpRequest
+	height        int   // the lowest key in requests.
 	numUnassigned int32 // number of requests not yet assigned to a peer
 	numPending    int32 // number of requests pending assignment or block response
 
@@ -52,11 +52,11 @@ type BlockPool struct {
 	running int32 // atomic
 }
 
-func NewBlockPool(start uint, requestsCh chan<- BlockRequest, timeoutsCh chan<- string) *BlockPool {
+func NewBlockPool(start int, requestsCh chan<- BlockRequest, timeoutsCh chan<- string) *BlockPool {
 	return &BlockPool{
 		peers: make(map[string]*bpPeer),
 
-		requests:      make(map[uint]*bpRequest),
+		requests:      make(map[int]*bpRequest),
 		height:        start,
 		numUnassigned: 0,
 		numPending:    0,
@@ -108,7 +108,7 @@ RUN_LOOP:
 	}
 }
 
-func (pool *BlockPool) GetStatus() (uint, int32) {
+func (pool *BlockPool) GetStatus() (int, int32) {
 	pool.requestsMtx.Lock() // Lock
 	defer pool.requestsMtx.Unlock()
 
@@ -146,7 +146,7 @@ func (pool *BlockPool) PopRequest() {
 
 // Invalidates the block at pool.height.
 // Remove the peer and request from others.
-func (pool *BlockPool) RedoRequest(height uint) {
+func (pool *BlockPool) RedoRequest(height int) {
 	pool.requestsMtx.Lock() // Lock
 	defer pool.requestsMtx.Unlock()
 
@@ -165,7 +165,7 @@ func (pool *BlockPool) RedoRequest(height uint) {
 	go requestRoutine(pool, height)
 }
 
-func (pool *BlockPool) hasBlock(height uint) bool {
+func (pool *BlockPool) hasBlock(height int) bool {
 	pool.requestsMtx.Lock() // Lock
 	defer pool.requestsMtx.Unlock()
 
@@ -173,7 +173,7 @@ func (pool *BlockPool) hasBlock(height uint) bool {
 	return request != nil && request.block != nil
 }
 
-func (pool *BlockPool) setPeerForRequest(height uint, peerId string) {
+func (pool *BlockPool) setPeerForRequest(height int, peerId string) {
 	pool.requestsMtx.Lock() // Lock
 	defer pool.requestsMtx.Unlock()
 
@@ -185,7 +185,7 @@ func (pool *BlockPool) setPeerForRequest(height uint, peerId string) {
 	request.peerId = peerId
 }
 
-func (pool *BlockPool) removePeerForRequest(height uint, peerId string) {
+func (pool *BlockPool) removePeerForRequest(height int, peerId string) {
 	pool.requestsMtx.Lock() // Lock
 	defer pool.requestsMtx.Unlock()
 
@@ -224,7 +224,7 @@ func (pool *BlockPool) getPeer(peerId string) *bpPeer {
 }
 
 // Sets the peer's alleged blockchain height.
-func (pool *BlockPool) SetPeerHeight(peerId string, height uint) {
+func (pool *BlockPool) SetPeerHeight(peerId string, height int) {
 	pool.peersMtx.Lock() // Lock
 	defer pool.peersMtx.Unlock()
 
@@ -250,7 +250,7 @@ func (pool *BlockPool) RemovePeer(peerId string) {
 
 // Pick an available peer with at least the given minHeight.
 // If no peers are available, returns nil.
-func (pool *BlockPool) pickIncrAvailablePeer(minHeight uint) *bpPeer {
+func (pool *BlockPool) pickIncrAvailablePeer(minHeight int) *bpPeer {
 	pool.peersMtx.Lock()
 	defer pool.peersMtx.Unlock()
 
@@ -282,7 +282,7 @@ func (pool *BlockPool) makeNextRequest() {
 	pool.requestsMtx.Lock() // Lock
 	defer pool.requestsMtx.Unlock()
 
-	nextHeight := pool.height + uint(len(pool.requests))
+	nextHeight := pool.height + len(pool.requests)
 	request := &bpRequest{
 		height: nextHeight,
 		peerId: "",
@@ -296,7 +296,7 @@ func (pool *BlockPool) makeNextRequest() {
 	go requestRoutine(pool, nextHeight)
 }
 
-func (pool *BlockPool) sendRequest(height uint, peerId string) {
+func (pool *BlockPool) sendRequest(height int, peerId string) {
 	if atomic.LoadInt32(&pool.running) == 0 {
 		return
 	}
@@ -315,7 +315,7 @@ func (pool *BlockPool) debug() string {
 	defer pool.requestsMtx.Unlock()
 
 	str := ""
-	for h := pool.height; h < pool.height+uint(len(pool.requests)); h++ {
+	for h := pool.height; h < pool.height+len(pool.requests); h++ {
 		if pool.requests[h] == nil {
 			str += Fmt("H(%v):X ", h)
 		} else {
@@ -330,12 +330,12 @@ func (pool *BlockPool) debug() string {
 
 type bpPeer struct {
 	id          string
-	height      uint
+	height      int
 	numRequests int32
 }
 
 type bpRequest struct {
-	height uint
+	height int
 	peerId string
 	block  *types.Block
 }
@@ -344,7 +344,7 @@ type bpRequest struct {
 
 // Responsible for making more requests as necessary
 // Returns only when a block is found (e.g. AddBlock() is called)
-func requestRoutine(pool *BlockPool, height uint) {
+func requestRoutine(pool *BlockPool, height int) {
 	for {
 		var peer *bpPeer = nil
 	PICK_LOOP:
@@ -393,6 +393,6 @@ func requestRoutine(pool *BlockPool, height uint) {
 //-------------------------------------
 
 type BlockRequest struct {
-	Height uint
+	Height int
 	PeerId string
 }

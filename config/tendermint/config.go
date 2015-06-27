@@ -57,8 +57,8 @@ func GetConfig(rootDir string) cfg.Config {
 	if mapConfig.IsSet("version") {
 		Exit("Cannot set 'version' via config.toml")
 	}
-	mapConfig.SetDefault("chain_id", "tendermint_testnet_5")
-	mapConfig.SetDefault("version", "0.3.0") // JAE: changed merkle tree persistence format for merkle proofs.
+	mapConfig.SetDefault("chain_id", "tendermint_testnet_6")
+	mapConfig.SetDefault("version", "0.4.0") // JAE: async consensus!
 	mapConfig.SetDefault("genesis_file", rootDir+"/genesis.json")
 	mapConfig.SetDefault("moniker", "anonymous")
 	mapConfig.SetDefault("node_laddr", "0.0.0.0:46656")

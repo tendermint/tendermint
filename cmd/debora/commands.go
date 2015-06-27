@@ -104,7 +104,7 @@ func DownloadFile(privKey acm.PrivKey, remote string, command btypes.CommandServ
 
 // Utility method to get nonce from the remote.
 // The next command should include the returned nonce+1 as nonce.
-func GetNonce(remote string) (uint64, error) {
+func GetNonce(remote string) (int64, error) {
 	response, err := GetStatus(remote)
 	return response.Nonce, err
 }
@@ -118,7 +118,7 @@ func GetStatus(remote string) (response btypes.ResponseStatus, err error) {
 }
 
 // Each developer runs this
-func SignCommand(privKey acm.PrivKey, nonce uint64, command btypes.Command) ([]byte, acm.Signature) {
+func SignCommand(privKey acm.PrivKey, nonce int64, command btypes.Command) ([]byte, acm.Signature) {
 	noncedCommand := btypes.NoncedCommand{
 		Nonce:   nonce,
 		Command: command,

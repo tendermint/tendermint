@@ -1,7 +1,5 @@
 package state
 
-// TODO: This logic is crude. Should be more transactional.
-
 import (
 	"errors"
 	"fmt"
@@ -23,17 +21,14 @@ const (
 	stepPropose   = 1
 	stepPrevote   = 2
 	stepPrecommit = 3
-	stepCommit    = 4
 )
 
-func voteToStep(vote *types.Vote) uint8 {
+func voteToStep(vote *types.Vote) int8 {
 	switch vote.Type {
 	case types.VoteTypePrevote:
 		return stepPrevote
 	case types.VoteTypePrecommit:
 		return stepPrecommit
-	case types.VoteTypeCommit:
-		return stepCommit
 	default:
 		panic("Unknown vote type")
 	}
@@ -43,9 +38,9 @@ type PrivValidator struct {
 	Address    []byte                 `json:"address"`
 	PubKey     account.PubKeyEd25519  `json:"pub_key"`
 	PrivKey    account.PrivKeyEd25519 `json:"priv_key"`
-	LastHeight uint                   `json:"last_height"`
-	LastRound  uint                   `json:"last_round"`
-	LastStep   uint8                  `json:"last_step"`
+	LastHeight int                    `json:"last_height"`
+	LastRound  int                    `json:"last_round"`
+	LastStep   int8                   `json:"last_step"`
 
 	// For persistence.
 	// Overloaded for testing.
@@ -108,7 +103,6 @@ func (privVal *PrivValidator) save() {
 	}
 }
 
-// TODO: test
 func (privVal *PrivValidator) SignVote(chainID string, vote *types.Vote) error {
 	privVal.mtx.Lock()
 	defer privVal.mtx.Unlock()
@@ -119,10 +113,6 @@ func (privVal *PrivValidator) SignVote(chainID string, vote *types.Vote) error {
 	}
 	// More cases for when the height matches
 	if privVal.LastHeight == vote.Height {
-		// If attempting any sign after commit, panic
-		if privVal.LastStep == stepCommit {
-			return errors.New("SignVote on matching height after a commit")
-		}
 		// If round regression, panic
 		if privVal.LastRound > vote.Round {
 			return errors.New("Round regression in SignVote")
@@ -176,8 +166,8 @@ func (privVal *PrivValidator) SignRebondTx(chainID string, rebondTx *types.Rebon
 
 		// Persist height/round/step
 		privVal.LastHeight = rebondTx.Height
-		privVal.LastRound = math.MaxUint64 // We can't do anything else for this rebondTx.Height.
-		privVal.LastStep = math.MaxUint8
+		privVal.LastRound = math.MaxInt64 // We can't do anything else for this rebondTx.Height.
+		privVal.LastStep = math.MaxInt8
 		privVal.save()
 
 		// Sign

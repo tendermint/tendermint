@@ -19,7 +19,7 @@ func NewSendTx() *SendTx {
 	}
 }
 
-func (tx *SendTx) AddInput(st AccountGetter, pubkey account.PubKey, amt uint64) error {
+func (tx *SendTx) AddInput(st AccountGetter, pubkey account.PubKey, amt int64) error {
 	addr := pubkey.Address()
 	acc := st.GetAccount(addr)
 	if acc == nil {
@@ -28,7 +28,7 @@ func (tx *SendTx) AddInput(st AccountGetter, pubkey account.PubKey, amt uint64) 
 	return tx.AddInputWithNonce(pubkey, amt, acc.Sequence+1)
 }
 
-func (tx *SendTx) AddInputWithNonce(pubkey account.PubKey, amt uint64, nonce uint) error {
+func (tx *SendTx) AddInputWithNonce(pubkey account.PubKey, amt int64, nonce int) error {
 	addr := pubkey.Address()
 	tx.Inputs = append(tx.Inputs, &TxInput{
 		Address:   addr,
@@ -40,7 +40,7 @@ func (tx *SendTx) AddInputWithNonce(pubkey account.PubKey, amt uint64, nonce uin
 	return nil
 }
 
-func (tx *SendTx) AddOutput(addr []byte, amt uint64) error {
+func (tx *SendTx) AddOutput(addr []byte, amt int64) error {
 	tx.Outputs = append(tx.Outputs, &TxOutput{
 		Address: addr,
 		Amount:  amt,
@@ -60,7 +60,7 @@ func (tx *SendTx) SignInput(chainID string, i int, privAccount *account.PrivAcco
 //----------------------------------------------------------------------------
 // CallTx interface for creating tx
 
-func NewCallTx(st AccountGetter, from account.PubKey, to, data []byte, amt, gasLimit, fee uint64) (*CallTx, error) {
+func NewCallTx(st AccountGetter, from account.PubKey, to, data []byte, amt, gasLimit, fee int64) (*CallTx, error) {
 	addr := from.Address()
 	acc := st.GetAccount(addr)
 	if acc == nil {
@@ -71,7 +71,7 @@ func NewCallTx(st AccountGetter, from account.PubKey, to, data []byte, amt, gasL
 	return NewCallTxWithNonce(from, to, data, amt, gasLimit, fee, nonce), nil
 }
 
-func NewCallTxWithNonce(from account.PubKey, to, data []byte, amt, gasLimit, fee uint64, nonce uint) *CallTx {
+func NewCallTxWithNonce(from account.PubKey, to, data []byte, amt, gasLimit, fee int64, nonce int) *CallTx {
 	addr := from.Address()
 	input := &TxInput{
 		Address:   addr,
@@ -98,7 +98,7 @@ func (tx *CallTx) Sign(chainID string, privAccount *account.PrivAccount) {
 //----------------------------------------------------------------------------
 // NameTx interface for creating tx
 
-func NewNameTx(st AccountGetter, from account.PubKey, name, data string, amt, fee uint64) (*NameTx, error) {
+func NewNameTx(st AccountGetter, from account.PubKey, name, data string, amt, fee int64) (*NameTx, error) {
 	addr := from.Address()
 	acc := st.GetAccount(addr)
 	if acc == nil {
@@ -109,7 +109,7 @@ func NewNameTx(st AccountGetter, from account.PubKey, name, data string, amt, fe
 	return NewNameTxWithNonce(from, name, data, amt, fee, nonce), nil
 }
 
-func NewNameTxWithNonce(from account.PubKey, name, data string, amt, fee uint64, nonce uint) *NameTx {
+func NewNameTxWithNonce(from account.PubKey, name, data string, amt, fee int64, nonce int) *NameTx {
 	addr := from.Address()
 	input := &TxInput{
 		Address:   addr,
@@ -147,7 +147,7 @@ func NewBondTx(pubkey account.PubKey) (*BondTx, error) {
 	}, nil
 }
 
-func (tx *BondTx) AddInput(st AccountGetter, pubkey account.PubKey, amt uint64) error {
+func (tx *BondTx) AddInput(st AccountGetter, pubkey account.PubKey, amt int64) error {
 	addr := pubkey.Address()
 	acc := st.GetAccount(addr)
 	if acc == nil {
@@ -156,7 +156,7 @@ func (tx *BondTx) AddInput(st AccountGetter, pubkey account.PubKey, amt uint64) 
 	return tx.AddInputWithNonce(pubkey, amt, acc.Sequence+1)
 }
 
-func (tx *BondTx) AddInputWithNonce(pubkey account.PubKey, amt uint64, nonce uint) error {
+func (tx *BondTx) AddInputWithNonce(pubkey account.PubKey, amt int64, nonce int) error {
 	addr := pubkey.Address()
 	tx.Inputs = append(tx.Inputs, &TxInput{
 		Address:   addr,
@@ -168,7 +168,7 @@ func (tx *BondTx) AddInputWithNonce(pubkey account.PubKey, amt uint64, nonce uin
 	return nil
 }
 
-func (tx *BondTx) AddOutput(addr []byte, amt uint64) error {
+func (tx *BondTx) AddOutput(addr []byte, amt int64) error {
 	tx.UnbondTo = append(tx.UnbondTo, &TxOutput{
 		Address: addr,
 		Amount:  amt,
@@ -198,7 +198,7 @@ func (tx *BondTx) SignInput(chainID string, i int, privAccount *account.PrivAcco
 //----------------------------------------------------------------------
 // UnbondTx interface for creating tx
 
-func NewUnbondTx(addr []byte, height uint) *UnbondTx {
+func NewUnbondTx(addr []byte, height int) *UnbondTx {
 	return &UnbondTx{
 		Address: addr,
 		Height:  height,
@@ -212,7 +212,7 @@ func (tx *UnbondTx) Sign(chainID string, privAccount *account.PrivAccount) {
 //----------------------------------------------------------------------
 // RebondTx interface for creating tx
 
-func NewRebondTx(addr []byte, height uint) *RebondTx {
+func NewRebondTx(addr []byte, height int) *RebondTx {
 	return &RebondTx{
 		Address: addr,
 		Height:  height,

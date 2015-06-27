@@ -158,8 +158,7 @@ func ReadUint64(r io.Reader, n *int64, err *error) uint64 {
 
 // Varint
 
-func uvarintSize(i_ uint) int {
-	i := uint64(i_)
+func uvarintSize(i uint64) int {
 	if i == 0 {
 		return 0
 	}
@@ -193,7 +192,7 @@ func WriteVarint(i int, w io.Writer, n *int64, err *error) {
 		negate = true
 		i = -i
 	}
-	var size = uvarintSize(uint(i))
+	var size = uvarintSize(uint64(i))
 	if negate {
 		// e.g. 0xF1 for a single negative byte
 		WriteUint8(uint8(size+0xF0), w, n, err)
@@ -220,6 +219,9 @@ func ReadVarint(r io.Reader, n *int64, err *error) int {
 		return 0
 	}
 	if size == 0 {
+		if negate {
+			setFirstErr(err, errors.New("Varint does not allow negative zero"))
+		}
 		return 0
 	}
 	buf := make([]byte, 8)
@@ -236,7 +238,7 @@ func ReadVarint(r io.Reader, n *int64, err *error) int {
 // Uvarint
 
 func WriteUvarint(i uint, w io.Writer, n *int64, err *error) {
-	var size = uvarintSize(i)
+	var size = uvarintSize(uint64(i))
 	WriteUint8(uint8(size), w, n, err)
 	if size > 0 {
 		buf := make([]byte, 8)

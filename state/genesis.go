@@ -14,12 +14,12 @@ import (
 
 type GenesisAccount struct {
 	Address []byte `json:"address"`
-	Amount  uint64 `json:"amount"`
+	Amount  int64  `json:"amount"`
 }
 
 type GenesisValidator struct {
 	PubKey   account.PubKeyEd25519 `json:"pub_key"`
-	Amount   uint64                `json:"amount"`
+	Amount   int64                 `json:"amount"`
 	UnbondTo []GenesisAccount      `json:"unbond_to"`
 }
 

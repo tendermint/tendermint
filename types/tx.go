@@ -24,8 +24,8 @@ var (
 )
 
 type ErrTxInvalidSequence struct {
-	Got      uint64
-	Expected uint64
+	Got      int
+	Expected int
 }
 
 func (e ErrTxInvalidSequence) Error() string {
@@ -79,8 +79,8 @@ var _ = binary.RegisterInterface(
 
 type TxInput struct {
 	Address   []byte            `json:"address"`   // Hash of the PubKey
-	Amount    uint64            `json:"amount"`    // Must not exceed account balance
-	Sequence  uint              `json:"sequence"`  // Must be 1 greater than the last committed TxInput
+	Amount    int64             `json:"amount"`    // Must not exceed account balance
+	Sequence  int               `json:"sequence"`  // Must be 1 greater than the last committed TxInput
 	Signature account.Signature `json:"signature"` // Depends on the PubKey type and the whole Tx
 	PubKey    account.PubKey    `json:"pub_key"`   // Must not be nil, may be nil
 }
@@ -107,7 +107,7 @@ func (txIn *TxInput) String() string {
 
 type TxOutput struct {
 	Address []byte `json:"address"` // Hash of the PubKey
-	Amount  uint64 `json:"amount"`  // The sum of all outputs must not exceed the inputs.
+	Amount  int64  `json:"amount"`  // The sum of all outputs must not exceed the inputs.
 }
 
 func (txOut *TxOutput) ValidateBasic() error {
@@ -163,8 +163,8 @@ func (tx *SendTx) String() string {
 type CallTx struct {
 	Input    *TxInput `json:"input"`
 	Address  []byte   `json:"address"`
-	GasLimit uint64   `json:"gas_limit"`
-	Fee      uint64   `json:"fee"`
+	GasLimit int64    `json:"gas_limit"`
+	Fee      int64    `json:"fee"`
 	Data     []byte   `json:"data"`
 }
 
@@ -186,7 +186,7 @@ type NameTx struct {
 	Input *TxInput `json:"input"`
 	Name  string   `json:"name"`
 	Data  string   `json:"data"`
-	Fee   uint64   `json:"fee"`
+	Fee   int64    `json:"fee"`
 }
 
 func (tx *NameTx) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
@@ -220,7 +220,7 @@ func (tx *NameTx) ValidateStrings() error {
 	return nil
 }
 
-func (tx *NameTx) BaseEntryCost() uint64 {
+func (tx *NameTx) BaseEntryCost() int64 {
 	return BaseEntryCost(tx.Name, tx.Data)
 }
 
@@ -266,7 +266,7 @@ func (tx *BondTx) String() string {
 
 type UnbondTx struct {
 	Address   []byte                   `json:"address"`
-	Height    uint                     `json:"height"`
+	Height    int                      `json:"height"`
 	Signature account.SignatureEd25519 `json:"signature"`
 }
 
@@ -283,7 +283,7 @@ func (tx *UnbondTx) String() string {
 
 type RebondTx struct {
 	Address   []byte                   `json:"address"`
-	Height    uint                     `json:"height"`
+	Height    int                      `json:"height"`
 	Signature account.SignatureEd25519 `json:"signature"`
 }
 

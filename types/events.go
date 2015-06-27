@@ -55,8 +55,8 @@ type CallData struct {
 	Caller []byte `json:"caller"`
 	Callee []byte `json:"callee"`
 	Data   []byte `json:"data"`
-	Value  uint64 `json:"value"`
-	Gas    uint64 `json:"gas"`
+	Value  int64  `json:"value"`
+	Gas    int64  `json:"gas"`
 }
 
 type EventMsgCall struct {

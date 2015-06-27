@@ -68,7 +68,7 @@ func (cache *TxCache) CreateAccount(creator *vm.Account) *vm.Account {
 	nonce := creator.Nonce
 	creator.Nonce += 1
 
-	addr := LeftPadWord256(NewContractAddress(creator.Address.Postfix(20), nonce))
+	addr := LeftPadWord256(NewContractAddress(creator.Address.Postfix(20), int(nonce)))
 
 	// Create account from address.
 	account, removed := vmUnpack(cache.accounts[addr])
@@ -144,10 +144,10 @@ func (cache *TxCache) AddLog(log *vm.Log) {
 //-----------------------------------------------------------------------------
 
 // Convenience function to return address of new contract
-func NewContractAddress(caller []byte, nonce uint64) []byte {
+func NewContractAddress(caller []byte, nonce int) []byte {
 	temp := make([]byte, 32+8)
 	copy(temp, caller)
-	PutUint64BE(temp[32:], nonce)
+	PutInt64BE(temp[32:], int64(nonce))
 	return sha3.Sha3(temp)[:20]
 }
 
@@ -157,7 +157,7 @@ func toVMAccount(acc *ac.Account) *vm.Account {
 		Address:     LeftPadWord256(acc.Address),
 		Balance:     acc.Balance,
 		Code:        acc.Code, // This is crazy.
-		Nonce:       uint64(acc.Sequence),
+		Nonce:       int64(acc.Sequence),
 		StorageRoot: LeftPadWord256(acc.StorageRoot),
 		Other:       acc.PubKey,
 	}
@@ -180,7 +180,7 @@ func toStateAccount(acc *vm.Account) *ac.Account {
 		PubKey:      pubKey,
 		Balance:     acc.Balance,
 		Code:        acc.Code,
-		Sequence:    uint(acc.Nonce),
+		Sequence:    int(acc.Nonce),
 		StorageRoot: storageRoot,
 	}
 }

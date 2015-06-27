@@ -6,8 +6,8 @@ import (
 )
 
 func validate(signBytes []byte, validators []Validator, signatures []acm.Signature) bool {
-	var signedPower uint64
-	var totalPower uint64
+	var signedPower int64
+	var totalPower int64
 	for i, val := range validators {
 		if val.PubKey.VerifyBytes(signBytes, signatures[i]) {
 			signedPower += val.VotingPower

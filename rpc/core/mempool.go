@@ -23,7 +23,7 @@ func BroadcastTx(tx types.Tx) (*ctypes.Receipt, error) {
 	if callTx, ok := tx.(*types.CallTx); ok {
 		if len(callTx.Address) == 0 {
 			createsContract = 1
-			contractAddr = state.NewContractAddress(callTx.Input.Address, uint64(callTx.Input.Sequence))
+			contractAddr = state.NewContractAddress(callTx.Input.Address, callTx.Input.Sequence)
 		}
 	}
 	return &ctypes.Receipt{txHash, createsContract, contractAddr}, nil

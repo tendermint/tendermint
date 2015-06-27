@@ -9,14 +9,14 @@ import (
 
 //-----------------------------------------------------------------------------
 
-func BlockchainInfo(minHeight, maxHeight uint) (*ctypes.ResponseBlockchainInfo, error) {
+func BlockchainInfo(minHeight, maxHeight int) (*ctypes.ResponseBlockchainInfo, error) {
 	if maxHeight == 0 {
 		maxHeight = blockStore.Height()
 	} else {
-		maxHeight = MinUint(blockStore.Height(), maxHeight)
+		maxHeight = MinInt(blockStore.Height(), maxHeight)
 	}
 	if minHeight == 0 {
-		minHeight = uint(MaxInt(1, int(maxHeight)-20))
+		minHeight = MaxInt(1, maxHeight-20)
 	}
 	log.Debug("BlockchainInfoHandler", "maxHeight", maxHeight, "minHeight", minHeight)
 
@@ -31,7 +31,7 @@ func BlockchainInfo(minHeight, maxHeight uint) (*ctypes.ResponseBlockchainInfo, 
 
 //-----------------------------------------------------------------------------
 
-func GetBlock(height uint) (*ctypes.ResponseGetBlock, error) {
+func GetBlock(height int) (*ctypes.ResponseGetBlock, error) {
 	if height == 0 {
 		return nil, fmt.Errorf("height must be greater than 0")
 	}

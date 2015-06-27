@@ -11,14 +11,14 @@ import (
 
 type testPeer struct {
 	id     string
-	height uint
+	height int
 }
 
-func makePeers(numPeers int, minHeight, maxHeight uint) map[string]testPeer {
+func makePeers(numPeers int, minHeight, maxHeight int) map[string]testPeer {
 	peers := make(map[string]testPeer, numPeers)
 	for i := 0; i < numPeers; i++ {
 		peerId := RandStr(12)
-		height := minHeight + uint(rand.Intn(int(maxHeight-minHeight)))
+		height := minHeight + rand.Intn(maxHeight-minHeight)
 		peers[peerId] = testPeer{peerId, height}
 	}
 	return peers
@@ -26,7 +26,7 @@ func makePeers(numPeers int, minHeight, maxHeight uint) map[string]testPeer {
 
 func TestBasic(t *testing.T) {
 	peers := makePeers(10, 0, 1000)
-	start := uint(42)
+	start := 42
 	timeoutsCh := make(chan string, 100)
 	requestsCh := make(chan BlockRequest, 100)
 	pool := NewBlockPool(start, requestsCh, timeoutsCh)
@@ -78,7 +78,7 @@ func TestBasic(t *testing.T) {
 
 func TestTimeout(t *testing.T) {
 	peers := makePeers(10, 0, 1000)
-	start := uint(42)
+	start := 42
 	timeoutsCh := make(chan string, 100)
 	requestsCh := make(chan BlockRequest, 100)
 	pool := NewBlockPool(start, requestsCh, timeoutsCh)

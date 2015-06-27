@@ -232,7 +232,7 @@ FOR_LOOP:
 				firstPartsHeader := firstParts.Header()
 				// Finally, verify the first block using the second's validation.
 				err := bcR.state.BondedValidators.VerifyValidation(
-					bcR.state.ChainID, first.Hash(), firstPartsHeader, first.Height, second.Validation)
+					bcR.state.ChainID, first.Hash(), firstPartsHeader, first.Height, second.LastValidation)
 				if err != nil {
 					log.Debug("error in validation", "error", err)
 					bcR.pool.RedoRequest(first.Height)
@@ -244,7 +244,7 @@ FOR_LOOP:
 						// TODO This is bad, are we zombie?
 						panic(Fmt("Failed to process committed block: %v", err))
 					}
-					bcR.store.SaveBlock(first, firstParts, second.Validation)
+					bcR.store.SaveBlock(first, firstParts, second.LastValidation)
 					bcR.state.Save()
 				}
 			}
@@ -301,7 +301,7 @@ func DecodeMessage(bz []byte) (msgType byte, msg BlockchainMessage, err error) {
 //-------------------------------------
 
 type bcBlockRequestMessage struct {
-	Height uint
+	Height int
 }
 
 func (m *bcBlockRequestMessage) String() string {
@@ -321,7 +321,7 @@ func (m *bcBlockResponseMessage) String() string {
 //-------------------------------------
 
 type bcStatusRequestMessage struct {
-	Height uint
+	Height int
 }
 
 func (m *bcStatusRequestMessage) String() string {
@@ -331,7 +331,7 @@ func (m *bcStatusRequestMessage) String() string {
 //-------------------------------------
 
 type bcStatusResponseMessage struct {
-	Height uint
+	Height int
 }
 
 func (m *bcStatusResponseMessage) String() string {

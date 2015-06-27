@@ -16,10 +16,10 @@ import (
 
 var (
 	stateKey                     = []byte("stateKey")
-	minBondAmount                = uint64(1)           // TODO adjust
-	defaultAccountsCacheCapacity = 1000                // TODO adjust
-	unbondingPeriodBlocks        = uint(60 * 24 * 365) // TODO probably better to make it time based.
-	validatorTimeoutBlocks       = uint(10)            // TODO adjust
+	minBondAmount                = int64(1)           // TODO adjust
+	defaultAccountsCacheCapacity = 1000               // TODO adjust
+	unbondingPeriodBlocks        = int(60 * 24 * 365) // TODO probably better to make it time based.
+	validatorTimeoutBlocks       = int(10)            // TODO adjust
 )
 
 //-----------------------------------------------------------------------------
@@ -28,7 +28,7 @@ var (
 type State struct {
 	DB                   dbm.DB
 	ChainID              string
-	LastBlockHeight      uint
+	LastBlockHeight      int
 	LastBlockHash        []byte
 	LastBlockParts       types.PartSetHeader
 	LastBlockTime        time.Time
@@ -50,7 +50,7 @@ func LoadState(db dbm.DB) *State {
 	} else {
 		r, n, err := bytes.NewReader(buf), new(int64), new(error)
 		s.ChainID = binary.ReadString(r, n, err)
-		s.LastBlockHeight = binary.ReadUvarint(r, n, err)
+		s.LastBlockHeight = binary.ReadVarint(r, n, err)
 		s.LastBlockHash = binary.ReadByteSlice(r, n, err)
 		s.LastBlockParts = binary.ReadBinary(types.PartSetHeader{}, r, n, err).(types.PartSetHeader)
 		s.LastBlockTime = binary.ReadTime(r, n, err)
@@ -80,7 +80,7 @@ func (s *State) Save() {
 	s.nameReg.Save()
 	buf, n, err := new(bytes.Buffer), new(int64), new(error)
 	binary.WriteString(s.ChainID, buf, n, err)
-	binary.WriteUvarint(s.LastBlockHeight, buf, n, err)
+	binary.WriteVarint(s.LastBlockHeight, buf, n, err)
 	binary.WriteByteSlice(s.LastBlockHash, buf, n, err)
 	binary.WriteBinary(s.LastBlockParts, buf, n, err)
 	binary.WriteTime(s.LastBlockTime, buf, n, err)
@@ -130,7 +130,7 @@ func (s *State) Hash() []byte {
 }
 
 // Mutates the block in place and updates it with new state hash.
-func (s *State) SetBlockStateHash(block *types.Block) error {
+func (s *State) ComputeBlockStateHash(block *types.Block) error {
 	sCopy := s.Copy()
 	// sCopy has no event cache in it, so this won't fire events
 	err := execBlock(sCopy, block, types.PartSetHeader{})

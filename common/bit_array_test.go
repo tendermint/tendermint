@@ -4,15 +4,15 @@ import (
 	"testing"
 )
 
-func randBitArray(bits uint) (*BitArray, []byte) {
-	src := RandBytes(int((bits + 7) / 8))
+func randBitArray(bits int) (*BitArray, []byte) {
+	src := RandBytes((bits + 7) / 8)
 	bA := NewBitArray(bits)
-	for i := uint(0); i < uint(len(src)); i++ {
-		for j := uint(0); j < 8; j++ {
+	for i := 0; i < len(src); i++ {
+		for j := 0; j < 8; j++ {
 			if i*8+j >= bits {
 				return bA, src
 			}
-			setBit := src[i]&(1<<j) > 0
+			setBit := src[i]&(1<<uint(j)) > 0
 			bA.SetIndex(i*8+j, setBit)
 		}
 	}
@@ -31,7 +31,7 @@ func TestAnd(t *testing.T) {
 	if len(bA3.Elems) != len(bA2.Elems) {
 		t.Error("Expected min elems length")
 	}
-	for i := uint(0); i < bA3.Bits; i++ {
+	for i := 0; i < bA3.Bits; i++ {
 		expected := bA1.GetIndex(i) && bA2.GetIndex(i)
 		if bA3.GetIndex(i) != expected {
 			t.Error("Wrong bit from bA3", i, bA1.GetIndex(i), bA2.GetIndex(i), bA3.GetIndex(i))
@@ -51,7 +51,7 @@ func TestOr(t *testing.T) {
 	if len(bA3.Elems) != len(bA1.Elems) {
 		t.Error("Expected max elems length")
 	}
-	for i := uint(0); i < bA3.Bits; i++ {
+	for i := 0; i < bA3.Bits; i++ {
 		expected := bA1.GetIndex(i) || bA2.GetIndex(i)
 		if bA3.GetIndex(i) != expected {
 			t.Error("Wrong bit from bA3", i, bA1.GetIndex(i), bA2.GetIndex(i), bA3.GetIndex(i))
@@ -71,7 +71,7 @@ func TestSub1(t *testing.T) {
 	if len(bA3.Elems) != len(bA1.Elems) {
 		t.Error("Expected bA1 elems length")
 	}
-	for i := uint(0); i < bA3.Bits; i++ {
+	for i := 0; i < bA3.Bits; i++ {
 		expected := bA1.GetIndex(i)
 		if bA2.GetIndex(i) {
 			expected = false
@@ -94,7 +94,7 @@ func TestSub2(t *testing.T) {
 	if len(bA3.Elems) != len(bA1.Elems) {
 		t.Error("Expected bA1 elems length")
 	}
-	for i := uint(0); i < bA3.Bits; i++ {
+	for i := 0; i < bA3.Bits; i++ {
 		expected := bA1.GetIndex(i)
 		if i < bA2.Bits && bA2.GetIndex(i) {
 			expected = false
@@ -108,12 +108,12 @@ func TestSub2(t *testing.T) {
 func TestPickRandom(t *testing.T) {
 	for idx := 0; idx < 123; idx++ {
 		bA1 := NewBitArray(123)
-		bA1.SetIndex(uint(idx), true)
+		bA1.SetIndex(idx, true)
 		index, ok := bA1.PickRandom()
 		if !ok {
 			t.Fatal("Expected to pick element but got none")
 		}
-		if index != uint(idx) {
+		if index != idx {
 			t.Fatalf("Expected to pick element at %v but got wrong index", idx)
 		}
 	}

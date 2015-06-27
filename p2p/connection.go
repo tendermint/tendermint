@@ -403,7 +403,7 @@ FOR_LOOP:
 			log.Debug("Receive Pong")
 		case packetTypeMsg:
 			pkt, n, err := msgPacket{}, new(int64), new(error)
-			binary.ReadBinary(&pkt, c.bufReader, n, err)
+			binary.ReadBinaryPtr(&pkt, c.bufReader, n, err)
 			c.recvMonitor.Update(int(*n))
 			if *err != nil {
 				if atomic.LoadUint32(&c.stopped) != 1 {
@@ -441,9 +441,9 @@ FOR_LOOP:
 
 type ChannelDescriptor struct {
 	Id                 byte
-	Priority           uint
-	SendQueueCapacity  uint
-	RecvBufferCapacity uint
+	Priority           int
+	SendQueueCapacity  int
+	RecvBufferCapacity int
 }
 
 func (chDesc *ChannelDescriptor) FillDefaults() {
@@ -462,10 +462,10 @@ type Channel struct {
 	desc          *ChannelDescriptor
 	id            byte
 	sendQueue     chan []byte
-	sendQueueSize uint32 // atomic.
+	sendQueueSize int32 // atomic.
 	recving       []byte
 	sending       []byte
-	priority      uint
+	priority      int
 	recentlySent  int64 // exponential moving average
 }
 
@@ -494,7 +494,7 @@ func (ch *Channel) sendBytes(bytes []byte) bool {
 		// timeout
 		return false
 	case ch.sendQueue <- bytes:
-		atomic.AddUint32(&ch.sendQueueSize, 1)
+		atomic.AddInt32(&ch.sendQueueSize, 1)
 		return true
 	}
 }
@@ -505,7 +505,7 @@ func (ch *Channel) sendBytes(bytes []byte) bool {
 func (ch *Channel) trySendBytes(bytes []byte) bool {
 	select {
 	case ch.sendQueue <- bytes:
-		atomic.AddUint32(&ch.sendQueueSize, 1)
+		atomic.AddInt32(&ch.sendQueueSize, 1)
 		return true
 	default:
 		return false
@@ -514,7 +514,7 @@ func (ch *Channel) trySendBytes(bytes []byte) bool {
 
 // Goroutine-safe
 func (ch *Channel) loadSendQueueSize() (size int) {
-	return int(atomic.LoadUint32(&ch.sendQueueSize))
+	return int(atomic.LoadInt32(&ch.sendQueueSize))
 }
 
 // Goroutine-safe
@@ -545,7 +545,7 @@ func (ch *Channel) nextMsgPacket() msgPacket {
 	if len(ch.sending) <= maxMsgPacketSize {
 		packet.EOF = byte(0x01)
 		ch.sending = nil
-		atomic.AddUint32(&ch.sendQueueSize, ^uint32(0)) // decrement sendQueueSize
+		atomic.AddInt32(&ch.sendQueueSize, -1) // decrement sendQueueSize
 	} else {
 		packet.EOF = byte(0x00)
 		ch.sending = ch.sending[MinInt(maxMsgPacketSize, len(ch.sending)):]

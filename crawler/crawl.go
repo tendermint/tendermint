@@ -33,8 +33,8 @@ type Node struct {
 
 	LastSeen     time.Time
 	ChainID      string
-	BlockHeight  uint
-	BlockHistory map[uint]time.Time // when we saw each block
+	BlockHeight  int
+	BlockHistory map[int]time.Time // when we saw each block
 	NetInfo      *rpctypes.ResponseNetInfo
 
 	Validator bool

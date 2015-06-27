@@ -17,7 +17,7 @@ func GetName(name string) (*types.NameRegEntry, error) {
 }
 
 func ListNames() (*ctypes.ResponseListNames, error) {
-	var blockHeight uint
+	var blockHeight int
 	var names []*types.NameRegEntry
 	state := consensusState.GetState()
 	blockHeight = state.LastBlockHeight
