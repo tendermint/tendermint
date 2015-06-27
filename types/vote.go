@@ -54,6 +54,9 @@ func (vote *Vote) Copy() *Vote {
 }
 
 func (vote *Vote) String() string {
+	if vote == nil {
+		return "nil-Vote"
+	}
 	var typeString string
 	switch vote.Type {
 	case VoteTypePrevote:
