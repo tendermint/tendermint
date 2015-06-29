@@ -158,7 +158,7 @@ func (h *Header) StringIndented(indent string) string {
 %s  Height:         %v
 %s  Time:           %v
 %s  Fees:           %v
-%s  NumTxs:			%v
+%s  NumTxs:         %v
 %s  LastBlockHash:  %X
 %s  LastBlockParts: %v
 %s  StateHash:      %X
