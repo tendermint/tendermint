@@ -1,10 +1,53 @@
 /*
 
-  Consensus State Machine Overview:
+* Terms:
 
   NewHeight, NewRound, Propose, Prevote, Precommit represent state machine steps. (aka RoundStep).
 
   To "prevote/precommit" something means to broadcast a prevote/precommit vote for something.
+
+  (H,R) means a particular height H and round R.  A vote "at (H,R)" is a vote signed with (H,R).
+
+* Proposals:
+
+  A proposal is signed and published by the designated proposer at each round.
+  A proposal at (H,R) is composed of a proposed block of height H, and optionally a POL round number.
+  The POL round number R' (where R' < R) is set to the latest POL round known to the proposer.
+  If the proposer is locked on a block, it must include a POL round for the proposal.
+
+* POL and Justification of votes:
+
+  A set of +2/3 of prevotes for a particular block or <nil> at (H,R) is called a POL (proof-of-lock).
+  A POL for <nil> might instead be called a proof-of-unlock, but it's better to have a single terminology for both.
+
+  Each precommit which changes the lock at round R must be justified by a POL
+  where +2/3 prevoted for some block or <nil> at some round, equal to or less than R,
+  but greater than the last round at which the lock was changed.
+
+    POL = Proof-of-Lock = +2/3 prevotes for block B (or +2/3 prevotes for <nil>) at (H,R)
+
+    lastLockChangeRound < POLRound <= newLockChangeRound
+
+  Without the POLRound <= newLockChangeRound condition, an unlock would be possible from a
+  future condition that hasn't happened yet, so it destroys deterministic accountability.
+
+  The point of the above inequality is to ensure that changes in the lock (locking/unlocking/lock-changing)
+  are always justified by something that happened "in the past" by round numbers, so if there is a problem,
+  we can deterministically figure out "when it was caused" and by who.
+
+  If there is a blockchain halt or fork, the blame will fall on +1/3 of Byzantine voting power =
+	who cannot push the blame into earlier rounds. (See lemma 4).
+
+* Block commits:
+
+  The set of +2/3 of precommits at the same round for the same block is called a commit.
+
+  A block contains the last block's commit which is comprised of +2/3 precommit votes at (H-1,R).
+  While all the precommits in the commit are from the same height & round (ordered by validator index),
+  some precommits may be absent (e.g. if the validator's precommit vote didn't reach the proposer in time),
+  or some precommits may be for different blockhashes for the last block hash (which is fine).
+
+* Consensus State Machine Overview:
 
   During NewHeight/NewRound/Propose/Prevote/Precommit:
   * Nodes gossip the proposal block proposed by the designated proposer at round.
@@ -13,23 +56,6 @@
   * Nodes gossip to late nodes (lagging in height) with precommits of the commit round (aka catchup)
 
   Upon each state transition, the height/round/step is broadcast to neighboring peers.
-
-  The set of +2/3 of precommits at the same round for the same block is called a Commit, or Validation.
-
-  A block contains the last block's Validation, which includes the Commit precommits.
-  While all the precommits in the Validation are from the same height & round (ordered by validator index),
-  some precommits may be <nil> (if the validator's precommit vote didn't reach the proposer in time),
-  or some precommits may be for different blockhashes for the last block hash (which is fine).
-
-  Each unlock/change-of-lock should be justifiable by an POL where +2/3 prevoted for
-  some block or <nil> at some round.
-
-    POL = Proof-of-Lock = +2/3 prevotes for block B (or +2/3 prevotes for <nil>) at (H,R)
-    lockRound < POLRound <= unlockOrChangeLockRound
-
-  Without the POLRound <= unlockOrChangeLockRound condition, an unlock would be possible from a
-  future condition that hasn't happened yet, so it destroys deterministic accountability.
-  With lockRound < POLRound <= unlockOrChangeLockRound, blame can be shifted to lower rounds.
 
 * NewRound(height:H,round:R):
   * Set up new round.                                                --> goto Propose(H,R)
