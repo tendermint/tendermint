@@ -168,8 +168,9 @@ func (privVal *PrivValidator) SignRebondTx(chainID string, rebondTx *types.Rebon
 	if privVal.LastHeight < rebondTx.Height {
 
 		// Persist height/round/step
+		// Prevent doing anything else for this rebondTx.Height.
 		privVal.LastHeight = rebondTx.Height
-		privVal.LastRound = math.MaxInt64 // We can't do anything else for this rebondTx.Height.
+		privVal.LastRound = math.MaxInt32 // MaxInt64 overflows on 32bit architectures.
 		privVal.LastStep = math.MaxInt8
 		privVal.save()
 
