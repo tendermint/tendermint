@@ -298,5 +298,5 @@ type accumComparable int64
 
 // We want to find the validator with the greatest accum.
 func (ac accumComparable) Less(o interface{}) bool {
-	return int64(ac) < int64(o.(accumComparable))
+	return int64(ac) > int64(o.(accumComparable))
 }

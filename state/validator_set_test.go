@@ -5,7 +5,7 @@ import (
 	. "github.com/tendermint/tendermint/common"
 
 	"bytes"
-	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -43,11 +43,38 @@ func TestCopy(t *testing.T) {
 }
 
 func TestProposerSelection(t *testing.T) {
-	vset := randValidatorSet(10)
+	vset := NewValidatorSet([]*Validator{
+		&Validator{
+			Address:     []byte("foo"),
+			PubKey:      account.PubKeyEd25519(RandBytes(64)),
+			BondHeight:  RandInt(),
+			VotingPower: 1000,
+			Accum:       0,
+		},
+		&Validator{
+			Address:     []byte("bar"),
+			PubKey:      account.PubKeyEd25519(RandBytes(64)),
+			BondHeight:  RandInt(),
+			VotingPower: 300,
+			Accum:       0,
+		},
+		&Validator{
+			Address:     []byte("baz"),
+			PubKey:      account.PubKeyEd25519(RandBytes(64)),
+			BondHeight:  RandInt(),
+			VotingPower: 330,
+			Accum:       0,
+		},
+	})
+	proposers := []string{}
 	for i := 0; i < 100; i++ {
 		val := vset.Proposer()
-		fmt.Printf("Proposer: %v\n", val)
+		proposers = append(proposers, string(val.Address))
 		vset.IncrementAccum(1)
+	}
+	expected := `bar foo baz foo bar foo foo baz foo bar foo foo baz foo foo bar foo baz foo foo bar foo foo baz foo bar foo foo baz foo bar foo foo baz foo foo bar foo baz foo foo bar foo baz foo foo bar foo baz foo foo bar foo baz foo foo foo baz bar foo foo foo baz foo bar foo foo baz foo bar foo foo baz foo bar foo foo baz foo bar foo foo baz foo foo bar foo baz foo foo bar foo baz foo foo bar foo baz foo foo`
+	if expected != strings.Join(proposers, " ") {
+		t.Errorf("Expected sequence of proposers was\n%v\nbut got \n%v", expected, strings.Join(proposers, " "))
 	}
 }
 
