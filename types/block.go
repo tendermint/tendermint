@@ -219,6 +219,35 @@ func (v *Validation) Round() int {
 	return v.FirstPrecommit().Round
 }
 
+func (v *Validation) Type() byte {
+	return VoteTypePrecommit
+}
+
+func (v *Validation) Size() int {
+	return len(v.Precommits)
+}
+
+func (v *Validation) BitArray() *BitArray {
+	if v.bitArray == nil {
+		v.bitArray = NewBitArray(len(v.Precommits))
+		for i, precommit := range v.Precommits {
+			v.bitArray.SetIndex(i, precommit != nil)
+		}
+	}
+	return v.bitArray
+}
+
+func (v *Validation) GetByIndex(index int) *Vote {
+	return v.Precommits[index]
+}
+
+func (v *Validation) IsCommit() bool {
+	if len(v.Precommits) == 0 {
+		return false
+	}
+	return true
+}
+
 func (v *Validation) ValidateBasic() error {
 	if len(v.Precommits) == 0 {
 		return errors.New("No precommits in validation")
@@ -272,16 +301,6 @@ func (v *Validation) StringIndented(indent string) string {
 %s}#%X`,
 		indent, strings.Join(precommitStrings, "\n"+indent+"  "),
 		indent, v.hash)
-}
-
-func (v *Validation) BitArray() *BitArray {
-	if v.bitArray == nil {
-		v.bitArray = NewBitArray(len(v.Precommits))
-		for i, precommit := range v.Precommits {
-			v.bitArray.SetIndex(i, precommit != nil)
-		}
-	}
-	return v.bitArray
 }
 
 //-----------------------------------------------------------------------------

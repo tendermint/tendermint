@@ -67,6 +67,14 @@ func (voteSet *VoteSet) Round() int {
 	}
 }
 
+func (voteSet *VoteSet) Type() byte {
+	if voteSet == nil {
+		return 0x00
+	} else {
+		return voteSet.type_
+	}
+}
+
 func (voteSet *VoteSet) Size() int {
 	if voteSet == nil {
 		return 0
@@ -191,6 +199,15 @@ func (voteSet *VoteSet) HasTwoThirdsMajority() bool {
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
 	return voteSet.maj23Exists
+}
+
+func (voteSet *VoteSet) IsCommit() bool {
+	if voteSet == nil {
+		return false
+	}
+	voteSet.mtx.Lock()
+	defer voteSet.mtx.Unlock()
+	return len(voteSet.maj23Hash) > 0
 }
 
 func (voteSet *VoteSet) HasTwoThirdsAny() bool {
