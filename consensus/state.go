@@ -491,6 +491,7 @@ func (cs *ConsensusState) EnterNewRound(height int, round int) {
 	if now := time.Now(); cs.StartTime.After(now) {
 		log.Warn("Need to set a buffer and log.Warn() here for sanity.", "startTime", cs.StartTime, "now", now)
 	}
+	log.Debug(Fmt("EnterNewRound(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
 	// Increment validators if necessary
 	validators := cs.Validators
@@ -503,9 +504,15 @@ func (cs *ConsensusState) EnterNewRound(height int, round int) {
 	cs.Round = round
 	cs.Step = RoundStepNewRound
 	cs.Validators = validators
-	cs.Proposal = nil
-	cs.ProposalBlock = nil
-	cs.ProposalBlockParts = nil
+	if round == 0 {
+		// We've already reset these upon new height,
+		// and meanwhile we might have received a proposal
+		// for round 0.
+	} else {
+		cs.Proposal = nil
+		cs.ProposalBlock = nil
+		cs.ProposalBlockParts = nil
+	}
 	cs.Votes.SetRound(round + 1) // also track next round (round+1) to allow round-skipping
 
 	// Immediately go to EnterPropose.
@@ -520,6 +527,7 @@ func (cs *ConsensusState) EnterPropose(height int, round int) {
 		log.Debug(Fmt("EnterPropose(%v/%v): Invalid args. Current step: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 		return
 	}
+	log.Debug(Fmt("EnterPropose(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
 	defer func() {
 		// Done EnterPropose:
@@ -652,6 +660,7 @@ func (cs *ConsensusState) EnterPrevote(height int, round int) {
 		log.Debug(Fmt("EnterPrevote(%v/%v): Invalid args. Current step: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 		return
 	}
+	log.Debug(Fmt("EnterPrevote(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
 	// Sign and broadcast vote as necessary
 	cs.doPrevote(height, round)
@@ -706,6 +715,7 @@ func (cs *ConsensusState) EnterPrevoteWait(height int, round int) {
 	if !cs.Votes.Prevotes(round).HasTwoThirdsAny() {
 		panic(Fmt("EnterPrevoteWait(%v/%v), but Prevotes does not have any +2/3 votes", height, round))
 	}
+	log.Debug(Fmt("EnterPrevoteWait(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
 	// Done EnterPrevoteWait:
 	cs.Round = round
@@ -732,6 +742,7 @@ func (cs *ConsensusState) EnterPrecommit(height int, round int) {
 		log.Debug(Fmt("EnterPrecommit(%v/%v): Invalid args. Current step: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 		return
 	}
+	log.Debug(Fmt("EnterPrecommit(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
 	defer func() {
 		// Done EnterPrecommit:
@@ -823,6 +834,7 @@ func (cs *ConsensusState) EnterPrecommitWait(height int, round int) {
 	if !cs.Votes.Precommits(round).HasTwoThirdsAny() {
 		panic(Fmt("EnterPrecommitWait(%v/%v), but Precommits does not have any +2/3 votes", height, round))
 	}
+	log.Debug(Fmt("EnterPrecommitWait(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
 	// Done EnterPrecommitWait:
 	cs.Round = round
@@ -848,6 +860,7 @@ func (cs *ConsensusState) EnterCommit(height int) {
 		log.Debug(Fmt("EnterCommit(%v): Invalid args. Current step: %v/%v/%v", height, cs.Height, cs.Round, cs.Step))
 		return
 	}
+	log.Debug(Fmt("EnterCommit(%v). Current: %v/%v/%v", height, cs.Height, cs.Round, cs.Step))
 
 	defer func() {
 		// Done Entercommit:

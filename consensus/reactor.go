@@ -458,35 +458,43 @@ OUTER_LOOP:
 			sleeping = 0
 		}
 
+		log.Debug("gossipVotesRoutine", "rsHeight", rs.Height, "rsRound", rs.Round,
+			"prsHeight", prs.Height, "prsRound", prs.Round, "prsStep", prs.Step)
+
 		// If height matches, then send LastCommit, Prevotes, Precommits.
 		if rs.Height == prs.Height {
 			// If there are lastCommits to send...
 			if prs.Step == RoundStepNewHeight {
 				if ps.PickSendVote(rs.LastCommit) {
+					log.Debug("Picked rs.LastCommit to send")
 					continue OUTER_LOOP
 				}
 			}
 			// If there are prevotes to send...
 			if rs.Round == prs.Round && prs.Step <= RoundStepPrevote {
 				if ps.PickSendVote(rs.Votes.Prevotes(rs.Round)) {
+					log.Debug("Picked rs.Prevotes(rs.Round) to send")
 					continue OUTER_LOOP
 				}
 			}
 			// If there are precommits to send...
 			if rs.Round == prs.Round && prs.Step <= RoundStepPrecommit {
 				if ps.PickSendVote(rs.Votes.Precommits(rs.Round)) {
+					log.Debug("Picked rs.Precommits(rs.Round) to send")
 					continue OUTER_LOOP
 				}
 			}
 			// If there are prevotes to send for the last round...
 			if rs.Round == prs.Round+1 && prs.Step <= RoundStepPrevote {
 				if ps.PickSendVote(rs.Votes.Prevotes(prs.Round)) {
+					log.Debug("Picked rs.Prevotes(prs.Round) to send")
 					continue OUTER_LOOP
 				}
 			}
 			// If there are precommits to send for the last round...
 			if rs.Round == prs.Round+1 && prs.Step <= RoundStepPrecommit {
 				if ps.PickSendVote(rs.Votes.Precommits(prs.Round)) {
+					log.Debug("Picked rs.Precommits(prs.Round) to send")
 					continue OUTER_LOOP
 				}
 			}
@@ -494,6 +502,7 @@ OUTER_LOOP:
 			if 0 <= prs.ProposalPOLRound {
 				if polPrevotes := rs.Votes.Prevotes(prs.ProposalPOLRound); polPrevotes != nil {
 					if ps.PickSendVote(polPrevotes) {
+						log.Debug("Picked rs.Prevotes(prs.ProposalPOLRound) to send")
 						continue OUTER_LOOP
 					}
 				}
@@ -502,20 +511,22 @@ OUTER_LOOP:
 
 		// Special catchup logic.
 		// If peer is lagging by height 1, send LastCommit.
-		if prs.Height != 0 && prs.Height == rs.Height-1 {
+		if prs.Height != 0 && rs.Height == prs.Height+1 {
 			if ps.PickSendVote(rs.LastCommit) {
+				log.Debug("Picked rs.LastCommit to send")
 				continue OUTER_LOOP
 			}
 		}
 
 		// Catchup logic
 		// If peer is lagging by more than 1, send Validation.
-		if prs.Height != 0 && prs.Height <= rs.Height-2 {
+		if prs.Height != 0 && rs.Height <= prs.Height+2 {
 			// Load the block validation for prs.Height,
 			// which contains precommit signatures for prs.Height.
 			validation := conR.blockStore.LoadBlockValidation(prs.Height)
 			log.Debug("Loaded BlockValidation for catch-up", "height", prs.Height, "validation", validation)
 			if ps.PickSendVote(validation) {
+				log.Debug("Picked Catchup validation to send")
 				continue OUTER_LOOP
 			}
 		}
