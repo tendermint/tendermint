@@ -151,6 +151,7 @@ func (c *MConnection) String() string {
 }
 
 func (c *MConnection) flush() {
+	log.Debug("Flush", "conn", c)
 	err := c.bufWriter.Flush()
 	if err != nil {
 		log.Warn("MConnection flush failed", "error", err)
@@ -557,6 +558,7 @@ func (ch *Channel) nextMsgPacket() msgPacket {
 // Not goroutine-safe
 func (ch *Channel) writeMsgPacketTo(w io.Writer) (n int64, err error) {
 	packet := ch.nextMsgPacket()
+	log.Debug("Write Msg Packet", "conn", ch.conn, "packet", packet)
 	binary.WriteByte(packetTypeMsg, w, &n, &err)
 	binary.WriteBinary(packet, w, &n, &err)
 	if err != nil {
@@ -567,9 +569,10 @@ func (ch *Channel) writeMsgPacketTo(w io.Writer) (n int64, err error) {
 
 // Handles incoming msgPackets. Returns a msg bytes if msg is complete.
 // Not goroutine-safe
-func (ch *Channel) recvMsgPacket(pkt msgPacket) []byte {
-	ch.recving = append(ch.recving, pkt.Bytes...)
-	if pkt.EOF == byte(0x01) {
+func (ch *Channel) recvMsgPacket(packet msgPacket) []byte {
+	log.Debug("Read Msg Packet", "conn", ch.conn, "packet", packet)
+	ch.recving = append(ch.recving, packet.Bytes...)
+	if packet.EOF == byte(0x01) {
 		msgBytes := ch.recving
 		ch.recving = make([]byte, 0, defaultRecvBufferCapacity)
 		return msgBytes
