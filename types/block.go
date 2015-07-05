@@ -224,6 +224,9 @@ func (v *Validation) Type() byte {
 }
 
 func (v *Validation) Size() int {
+	if v == nil {
+		return 0
+	}
 	return len(v.Precommits)
 }
 
