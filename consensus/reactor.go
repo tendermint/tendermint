@@ -133,9 +133,10 @@ func (conR *ConsensusReactor) RemovePeer(peer *p2p.Peer, reason interface{}) {
 }
 
 // Implements Reactor
+// NOTE: We process these messages even when we're fast_syncing.
 func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte) {
 	log.Debug("Receive", "channel", chId, "peer", peer, "bytes", msgBytes)
-	if conR.sync || !conR.IsRunning() {
+	if !conR.IsRunning() {
 		return
 	}
 
