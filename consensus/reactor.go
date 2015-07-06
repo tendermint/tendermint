@@ -26,7 +26,8 @@ const (
 
 	PeerStateKey = "ConsensusReactor.peerState"
 
-	peerGossipSleepDuration = 100 * time.Millisecond // Time to sleep if there's nothing to send.
+	peerGossipSleepDuration      = 100 * time.Millisecond  // Time to sleep if there's nothing to send.
+	rebroadcastRoundStepDuration = 1000 * time.Millisecond // Time to sleep if there's nothing to send.
 )
 
 //-----------------------------------------------------------------------------
@@ -66,6 +67,7 @@ func (conR *ConsensusReactor) Start(sw *p2p.Switch) {
 			conR.conS.Start()
 		}
 		go conR.broadcastNewRoundStepRoutine()
+		go conR.rebroadcastRoundStepRoutine()
 	}
 }
 
@@ -309,6 +311,24 @@ func (conR *ConsensusReactor) broadcastNewRoundStepRoutine() {
 			return
 		}
 
+		nrsMsg, csMsg := makeRoundStepMessages(rs)
+		if nrsMsg != nil {
+			conR.sw.Broadcast(StateChannel, nrsMsg)
+		}
+		if csMsg != nil {
+			conR.sw.Broadcast(StateChannel, csMsg)
+		}
+	}
+}
+
+// Periodically broadcast NewRoundStepMessage.
+// This is a hack. TODO remove the need for it?
+// The issue is with Start() happening after a NewRoundStep message
+// was received from a peer, for the bootstrapping set.
+func (conR *ConsensusReactor) rebroadcastRoundStepRoutine() {
+	for {
+		time.Sleep(rebroadcastRoundStepDuration)
+		rs := conR.conS.GetRoundState()
 		nrsMsg, csMsg := makeRoundStepMessages(rs)
 		if nrsMsg != nil {
 			conR.sw.Broadcast(StateChannel, nrsMsg)
@@ -808,6 +828,12 @@ func (ps *PeerState) setHasVote(height int, round int, type_ byte, index int) {
 func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage, rs *RoundState) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
+
+	// Ignore duplicate messages.
+	// TODO: This is only necessary because rebroadcastRoundStepRoutine.
+	if ps.Height == msg.Height && ps.Round == msg.Round && ps.Step == msg.Step {
+		return
+	}
 
 	// Just remember these values.
 	psHeight := ps.Height
