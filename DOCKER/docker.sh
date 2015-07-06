@@ -18,7 +18,7 @@ fi
 # copy a directory from host to data-only volume
 if [[ $VC ]]; then
 	cd $VC
-	tar cf - . | docker run -i --volumes-from mintdata mint tar xvf - -C /data/tendermint
+	tar cf - . | docker run -i --rm --volumes-from mintdata mint tar xvf - -C /data/tendermint
 fi
 
 # run tendermint 
