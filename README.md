@@ -1,8 +1,6 @@
 # Tendermint
 Byzantine Blockchain Consensus
 
-![inoodle](http://i.imgur.com/ECr9rLT.png)
-
 ### Install Tendermint
 
 * See: https://github.com/tendermint/tendermint/tree/master/INSTALL
