@@ -67,7 +67,7 @@ func (conR *ConsensusReactor) Start(sw *p2p.Switch) {
 			conR.conS.Start()
 		}
 		go conR.broadcastNewRoundStepRoutine()
-		go conR.rebroadcastRoundStepRoutine()
+		// go conR.rebroadcastRoundStepRoutine()
 	}
 }
 
@@ -322,6 +322,7 @@ func (conR *ConsensusReactor) broadcastNewRoundStepRoutine() {
 	}
 }
 
+/* TODO delete
 // Periodically broadcast NewRoundStepMessage.
 // This is a hack. TODO remove the need for it?
 // The issue is with Start() happening after a NewRoundStep message
@@ -339,6 +340,7 @@ func (conR *ConsensusReactor) rebroadcastRoundStepRoutine() {
 		}
 	}
 }
+*/
 
 func (conR *ConsensusReactor) sendNewRoundStepMessage(peer *p2p.Peer) {
 	rs := conR.conS.GetRoundState()

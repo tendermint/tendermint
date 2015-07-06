@@ -400,6 +400,14 @@ func (cs *ConsensusState) updateToState(state *sm.State, contiguous bool) {
 	}
 	// END SANITY CHECK
 
+	// If state isn't further out than cs.state, just ignore.
+	// This happens when SwitchToConsensus() is called in the reactor.
+	// We don't want to reset e.g. the Votes.
+	if cs.state != nil && (state.LastBlockHeight <= cs.state.LastBlockHeight) {
+		log.Info("Ignoring updateToState()", "newHeight", state.LastBlockHeight+1, "oldHeight", cs.state.LastBlockHeight+1)
+		return
+	}
+
 	// Reset fields based on state.
 	validators := state.BondedValidators
 	height := state.LastBlockHeight + 1 // next desired block height
