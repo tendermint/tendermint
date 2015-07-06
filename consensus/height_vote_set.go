@@ -69,7 +69,7 @@ func (hvs *HeightVoteSet) SetRound(round int) {
 		if _, ok := hvs.roundVoteSets[r]; ok {
 			continue // Already exists because peerCatchupRounds.
 		}
-		hvs.addRound(round)
+		hvs.addRound(r)
 	}
 	hvs.round = round
 }

@@ -1054,6 +1054,8 @@ func (cs *ConsensusState) AddVote(address []byte, vote *types.Vote, peerKey stri
 //-----------------------------------------------------------------------------
 
 func (cs *ConsensusState) addVote(address []byte, vote *types.Vote, peerKey string) (added bool, index int, err error) {
+	log.Debug("addVote", "voteHeight", vote.Height, "voteType", vote.Type, "csHeight", cs.Height)
+
 	// A precommit for the previous height?
 	if vote.Height+1 == cs.Height && vote.Type == types.VoteTypePrecommit {
 		added, index, err = cs.LastCommit.AddByAddress(address, vote)
@@ -1129,10 +1131,12 @@ func (cs *ConsensusState) addVote(address []byte, vote *types.Vote, peerKey stri
 				panic(Fmt("Unexpected vote type %X", vote.Type)) // Should not happen.
 			}
 		}
+		// Either duplicate, or error upon cs.Votes.AddByAddress()
 		return
 	}
 
-	// Height mismatch, bad peer? TODO
+	// Height mismatch, bad peer?
+	log.Debug("Vote ignored and not added", "voteHeight", vote.Height, "csHeight", cs.Height)
 	return
 }
 
