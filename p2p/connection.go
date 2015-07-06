@@ -419,7 +419,7 @@ FOR_LOOP:
 			}
 			msgBytes := channel.recvMsgPacket(pkt)
 			if msgBytes != nil {
-				//log.Debug("Received bytes", "chId", pkt.ChannelId, "msgBytes", msgBytes)
+				log.Debug("Received bytes", "chId", pkt.ChannelId, "msgBytes", msgBytes)
 				c.onReceive(pkt.ChannelId, msgBytes)
 			}
 		default:
@@ -605,7 +605,7 @@ type msgPacket struct {
 }
 
 func (p msgPacket) String() string {
-	return fmt.Sprintf("MsgPacket{%X:%X}", p.ChannelId, p.Bytes)
+	return fmt.Sprintf("MsgPacket{%X:%X T:%X}", p.ChannelId, p.Bytes, p.EOF)
 }
 
 //-----------------------------------------------------------------------------

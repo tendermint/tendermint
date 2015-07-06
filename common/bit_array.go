@@ -156,6 +156,7 @@ func (bA *BitArray) Sub(o *BitArray) *BitArray {
 		i := len(o.Elems) - 1
 		if i >= 0 {
 			for idx := i * 64; idx < o.Bits; idx++ {
+				// NOTE: each individual GetIndex() call to o is safe.
 				c.setIndex(idx, c.getIndex(idx) && !o.GetIndex(idx))
 			}
 		}
