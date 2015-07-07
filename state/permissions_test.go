@@ -92,16 +92,17 @@ func makeUsers(n int) []*account.PrivAccount {
 }
 
 var (
-	PermsAllFalse = ptypes.NewAccountPermissions()
+	PermsAllFalse = ptypes.ZeroAccountPermissions
 )
 
-func newBaseGenDoc(globalPerm, accountPerm *ptypes.AccountPermissions) GenesisDoc {
+func newBaseGenDoc(globalPerm, accountPerm ptypes.AccountPermissions) GenesisDoc {
 	genAccounts := []GenesisAccount{}
 	for _, u := range user[:5] {
+		accountPermCopy := accountPerm // Create new instance for custom overridability.
 		genAccounts = append(genAccounts, GenesisAccount{
 			Address:     u.Address,
 			Amount:      1000000,
-			Permissions: accountPerm.Copy(),
+			Permissions: &accountPermCopy,
 		})
 	}
 
@@ -109,7 +110,7 @@ func newBaseGenDoc(globalPerm, accountPerm *ptypes.AccountPermissions) GenesisDo
 		GenesisTime: time.Now(),
 		ChainID:     chainID,
 		Params: &GenesisParams{
-			GlobalPermissions: globalPerm,
+			GlobalPermissions: &globalPerm,
 		},
 		Accounts: genAccounts,
 		Validators: []GenesisValidator{
@@ -353,7 +354,7 @@ func TestCallPermission(t *testing.T) {
 		Code:        []byte{0x60},
 		Sequence:    0,
 		StorageRoot: Zero256.Bytes(),
-		Permissions: ptypes.NewAccountPermissions(),
+		Permissions: ptypes.ZeroAccountPermissions,
 	}
 	st.UpdateAccount(simpleAcc)
 
@@ -377,7 +378,7 @@ func TestCallPermission(t *testing.T) {
 		Code:        contractCode,
 		Sequence:    0,
 		StorageRoot: Zero256.Bytes(),
-		Permissions: ptypes.NewAccountPermissions(),
+		Permissions: ptypes.ZeroAccountPermissions,
 	}
 	blockCache.UpdateAccount(caller1Acc)
 
@@ -421,7 +422,7 @@ func TestCallPermission(t *testing.T) {
 		Code:        contractCode2,
 		Sequence:    0,
 		StorageRoot: Zero256.Bytes(),
-		Permissions: ptypes.NewAccountPermissions(),
+		Permissions: ptypes.ZeroAccountPermissions,
 	}
 	caller1Acc.Permissions.Base.Set(ptypes.Call, false)
 	caller2Acc.Permissions.Base.Set(ptypes.Call, true)
@@ -553,7 +554,7 @@ func TestCreatePermission(t *testing.T) {
 		Code:        code,
 		Sequence:    0,
 		StorageRoot: Zero256.Bytes(),
-		Permissions: ptypes.NewAccountPermissions(),
+		Permissions: ptypes.ZeroAccountPermissions,
 	}
 	contractAcc.Permissions.Base.Set(ptypes.Call, true)
 	contractAcc.Permissions.Base.Set(ptypes.CreateContract, true)
@@ -805,7 +806,7 @@ func TestCreateAccountPermission(t *testing.T) {
 		Code:        contractCode,
 		Sequence:    0,
 		StorageRoot: Zero256.Bytes(),
-		Permissions: ptypes.NewAccountPermissions(),
+		Permissions: ptypes.ZeroAccountPermissions,
 	}
 	blockCache.UpdateAccount(caller1Acc)
 
@@ -856,7 +857,7 @@ func TestSNativeCALL(t *testing.T) {
 		Code:        nil,
 		Sequence:    0,
 		StorageRoot: Zero256.Bytes(),
-		Permissions: ptypes.NewAccountPermissions(),
+		Permissions: ptypes.ZeroAccountPermissions,
 	}
 	doug.Permissions.Base.Set(ptypes.Call, true)
 	blockCache.UpdateAccount(doug)

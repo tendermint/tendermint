@@ -187,7 +187,7 @@ func getOrMakeOutputs(state AccountGetter, accounts map[string]*account.Account,
 				PubKey:      nil,
 				Sequence:    0,
 				Balance:     0,
-				Permissions: ptypes.NewAccountPermissions(),
+				Permissions: ptypes.ZeroAccountPermissions,
 			}
 		}
 		accounts[string(out.Address)] = acc
@@ -293,7 +293,8 @@ func adjustByOutputs(accounts map[string]*account.Account, outs []*types.TxOutpu
 
 // If the tx is invalid, an error will be returned.
 // Unlike ExecBlock(), state will not be altered.
-func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Fireable) error {
+func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Fireable) (err error) {
+
 	// TODO: do something with fees
 	fees := int64(0)
 	_s := blockCache.State() // hack to access validators and block height
@@ -466,9 +467,6 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 
 			vmach := vm.NewVM(txCache, params, caller.Address, account.HashSignBytes(_s.ChainID, tx))
 			vmach.SetFireable(evc)
-
-			vmach.EnablePermissions() // permission checks on CALL/CREATE
-			vmach.EnableSNatives()    // allows calls to snatives (with permission checks)
 
 			// NOTE: Call() transfers the value from caller to callee iff call succeeds.
 			ret, err := vmach.Call(caller, callee, code, tx.Data, value, &gas)
@@ -814,7 +812,7 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 
 // Get permission on an account or fall back to global value
 func HasPermission(state AccountGetter, acc *account.Account, perm ptypes.PermFlag) bool {
-	if perm > ptypes.AllBasePermissions {
+	if perm > ptypes.AllBasePermFlags {
 		panic("Checking an unknown permission in state should never happen")
 	}
 
@@ -826,10 +824,14 @@ func HasPermission(state AccountGetter, acc *account.Account, perm ptypes.PermFl
 
 	v, err := acc.Permissions.Base.Get(perm)
 	if _, ok := err.(ptypes.ErrValueNotSet); ok {
+		log.Debug("Account does not have permission", "account", acc, "accPermissions", acc.Permissions, "perm", perm)
 		if state == nil {
 			panic("All known global permissions should be set!")
 		}
+		log.Debug("Querying GlobalPermissionsAddress")
 		return HasPermission(nil, state.GetAccount(ptypes.GlobalPermissionsAddress), perm)
+	} else {
+		log.Debug("Account has permission", "account", acc, "accPermissions", acc.Permissions, "perm", perm)
 	}
 	return v
 }

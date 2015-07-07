@@ -10,16 +10,22 @@ import (
 
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/events"
+	ptypes "github.com/tendermint/tendermint/permission/types"
 	"github.com/tendermint/tendermint/types"
 	. "github.com/tendermint/tendermint/vm"
 )
 
 func newAppState() *FakeAppState {
-	return &FakeAppState{
+	fas := &FakeAppState{
 		accounts: make(map[string]*Account),
 		storage:  make(map[string]Word256),
 		logs:     nil,
 	}
+	// For default permissions
+	fas.accounts[ptypes.GlobalPermissionsAddress256.String()] = &Account{
+		Permissions: ptypes.DefaultAccountPermissions,
+	}
+	return fas
 }
 
 func newParams() Params {

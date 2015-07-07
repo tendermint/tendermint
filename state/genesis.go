@@ -88,9 +88,9 @@ func MakeGenesisState(db dbm.DB, genDoc *GenesisDoc) *State {
 	// Make accounts state tree
 	accounts := merkle.NewIAVLTree(binary.BasicCodec, account.AccountCodec, defaultAccountsCacheCapacity, db)
 	for _, genAcc := range genDoc.Accounts {
-		perm := ptypes.NewDefaultAccountPermissions()
+		perm := ptypes.ZeroAccountPermissions
 		if genAcc.Permissions != nil {
-			perm = genAcc.Permissions
+			perm = *genAcc.Permissions
 		}
 		acc := &account.Account{
 			Address:     genAcc.Address,
@@ -104,12 +104,12 @@ func MakeGenesisState(db dbm.DB, genDoc *GenesisDoc) *State {
 
 	// global permissions are saved as the 0 address
 	// so they are included in the accounts tree
-	globalPerms := ptypes.NewDefaultAccountPermissions()
+	globalPerms := ptypes.DefaultAccountPermissions
 	if genDoc.Params != nil && genDoc.Params.GlobalPermissions != nil {
-		globalPerms = genDoc.Params.GlobalPermissions
+		globalPerms = *genDoc.Params.GlobalPermissions
 		// XXX: make sure the set bits are all true
 		// Without it the HasPermission() functions will fail
-		globalPerms.Base.SetBit = ptypes.AllSet
+		globalPerms.Base.SetBit = ptypes.AllPermFlags
 	}
 
 	permsAcc := &account.Account{

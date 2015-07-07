@@ -17,7 +17,7 @@ type Account struct {
 	StorageRoot Word256
 	Other       interface{} // For holding all other data.
 
-	Permissions *ptypes.AccountPermissions
+	Permissions ptypes.AccountPermissions
 }
 
 func (acc *Account) String() string {

@@ -165,7 +165,7 @@ func toVMAccount(acc *ac.Account) *vm.Account {
 		Code:        acc.Code, // This is crazy.
 		Nonce:       int64(acc.Sequence),
 		StorageRoot: LeftPadWord256(acc.StorageRoot),
-		Permissions: acc.Permissions.Copy(),
+		Permissions: acc.Permissions, // Copy
 		Other:       acc.PubKey,
 	}
 }
@@ -190,7 +190,7 @@ func toStateAccount(acc *vm.Account) *ac.Account {
 		Code:        acc.Code,
 		Sequence:    int(acc.Nonce),
 		StorageRoot: storageRoot,
-		Permissions: acc.Permissions,
+		Permissions: acc.Permissions, // Copy
 	}
 }
 

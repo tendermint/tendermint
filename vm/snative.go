@@ -224,9 +224,9 @@ func (e ErrInvalidPermission) Error() string {
 
 // Checks if a permission flag is valid (a known base chain or snative permission)
 func ValidPermN(n ptypes.PermFlag) bool {
-	if n > ptypes.TopBasePermission && n < ptypes.FirstSNativePerm {
+	if n > ptypes.TopBasePermFlag && n < ptypes.FirstSNativePermFlag {
 		return false
-	} else if n > ptypes.TopSNativePermission {
+	} else if n > ptypes.TopSNativePermFlag {
 		return false
 	}
 	return true

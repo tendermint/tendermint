@@ -25,7 +25,7 @@ func Tempfile(prefix string) (*os.File, string) {
 
 func RandAccount(randBalance bool, minBalance int64) (*account.Account, *account.PrivAccount) {
 	privAccount := account.GenPrivAccount()
-	perms := ptypes.NewDefaultAccountPermissions()
+	perms := ptypes.DefaultAccountPermissions
 	acc := &account.Account{
 		Address:     privAccount.PubKey.Address(),
 		PubKey:      privAccount.PubKey,
@@ -73,12 +73,13 @@ func RandGenesisState(numAccounts int, randBalance bool, minBalance int64, numVa
 	db := dbm.NewMemDB()
 	accounts := make([]GenesisAccount, numAccounts)
 	privAccounts := make([]*account.PrivAccount, numAccounts)
+	defaultPerms := ptypes.DefaultAccountPermissions
 	for i := 0; i < numAccounts; i++ {
 		account, privAccount := RandAccount(randBalance, minBalance)
 		accounts[i] = GenesisAccount{
 			Address:     account.Address,
 			Amount:      account.Balance,
-			Permissions: ptypes.NewDefaultAccountPermissions(),
+			Permissions: &defaultPerms, // This will get copied into each state.Account.
 		}
 		privAccounts[i] = privAccount
 	}
@@ -105,7 +106,7 @@ func RandGenesisState(numAccounts int, randBalance bool, minBalance int64, numVa
 		Accounts:    accounts,
 		Validators:  validators,
 		Params: &GenesisParams{
-			GlobalPermissions: ptypes.NewDefaultAccountPermissions(),
+			GlobalPermissions: &defaultPerms,
 		},
 	})
 	s0.Save()

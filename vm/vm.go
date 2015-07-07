@@ -60,9 +60,6 @@ type VM struct {
 	callDepth int
 
 	evc events.Fireable
-
-	perms   bool // permission checking can be turned off
-	snative bool // access to snatives
 }
 
 func NewVM(appState AppState, params Params, origin Word256, txid []byte) *VM {
@@ -80,25 +77,17 @@ func (vm *VM) SetFireable(evc events.Fireable) {
 	vm.evc = evc
 }
 
-// to allow calls to native DougContracts (off by default)
-func (vm *VM) EnableSNatives() {
-	vm.snative = true
-}
-
-// run permission checks before call and create
-func (vm *VM) EnablePermissions() {
-	vm.perms = true
-}
-
-// XXX: it is the duty of the contract writer to call known permissions
+// CONTRACT: it is the duty of the contract writer to call known permissions
 // we do not convey if a permission is not set
 // (unlike in state/execution, where we guarantee HasPermission is called
 // on known permissions and panics else)
+// If the perm is not defined in the acc nor set by default in GlobalPermissions,
+// prints a log warning and returns false.
 func HasPermission(appState AppState, acc *Account, perm ptypes.PermFlag) bool {
 	v, err := acc.Permissions.Base.Get(perm)
 	if _, ok := err.(ptypes.ErrValueNotSet); ok {
 		if appState == nil {
-			fmt.Printf("\n\n***** Unknown permission %b! ********\n\n", perm)
+			log.Warn(Fmt("\n\n***** Unknown permission %b! ********\n\n", perm))
 			return false
 		}
 		return HasPermission(nil, appState.GetAccount(ptypes.GlobalPermissionsAddress256), perm)
@@ -125,8 +114,9 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value int64, gas
 		}
 	}()
 
+	// SNATIVE ACCESS
 	// if code is empty, callee may be snative contract
-	if vm.snative && len(code) == 0 {
+	if len(code) == 0 {
 		if snativeContract, ok := RegisteredSNativeContracts[callee.Address]; ok {
 			output, err = snativeContract(vm.appState, caller, input)
 			if err != nil {
@@ -135,6 +125,7 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value int64, gas
 			return
 		}
 	}
+	// SNATIVE ACCESS END
 
 	if err = transfer(caller, callee, value); err != nil {
 		*exception = err.Error()
@@ -708,7 +699,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 			dbg.Printf(" => %v\n", log)
 
 		case CREATE: // 0xF0
-			if vm.perms && !HasPermission(vm.appState, callee, ptypes.CreateContract) {
+			if !HasPermission(vm.appState, callee, ptypes.CreateContract) {
 				return nil, ErrPermission{"create_contract"}
 			}
 			contractValue := stack.Pop64()
@@ -736,7 +727,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 			}
 
 		case CALL, CALLCODE: // 0xF1, 0xF2
-			if vm.perms && !HasPermission(vm.appState, callee, ptypes.Call) {
+			if !HasPermission(vm.appState, callee, ptypes.Call) {
 				return nil, ErrPermission{"call"}
 			}
 			gasLimit := stack.Pop64()
@@ -782,12 +773,12 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 					ret, err = vm.Call(callee, callee, acc.Code, args, value, gas)
 				} else {
 					if acc == nil {
-						if _, ok := RegisteredSNativeContracts[addr]; vm.snative && ok {
+						if _, ok := RegisteredSNativeContracts[addr]; ok {
 							acc = &Account{Address: addr}
 						} else {
 							// if we have not seen the account before, create it
 							// so we can send funds
-							if vm.perms && !HasPermission(vm.appState, caller, ptypes.CreateAccount) {
+							if !HasPermission(vm.appState, caller, ptypes.CreateAccount) {
 								return nil, ErrPermission{"create_account"}
 							}
 							acc = &Account{Address: addr}
