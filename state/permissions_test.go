@@ -478,7 +478,7 @@ func TestCreatePermission(t *testing.T) {
 		t.Fatal("Transaction failed", err)
 	}
 	// ensure the contract is there
-	contractAddr := NewContractAddress(tx.Input.Address, uint64(tx.Input.Sequence))
+	contractAddr := NewContractAddress(tx.Input.Address, tx.Input.Sequence)
 	contractAcc := blockCache.GetAccount(contractAddr)
 	if contractAcc == nil {
 		t.Fatalf("failed to create contract %X", contractAddr)
@@ -503,7 +503,7 @@ func TestCreatePermission(t *testing.T) {
 		t.Fatal("Transaction failed", err)
 	}
 	// ensure the contract is there
-	contractAddr = NewContractAddress(tx.Input.Address, uint64(tx.Input.Sequence))
+	contractAddr = NewContractAddress(tx.Input.Address, tx.Input.Sequence)
 	contractAcc = blockCache.GetAccount(contractAddr)
 	if contractAcc == nil {
 		t.Fatalf("failed to create contract %X", contractAddr)

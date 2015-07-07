@@ -16,7 +16,7 @@ var send1, name1, call1 = 1, 1, 0
 var perms, setbit = 66, 70
 var accName = "me"
 var roles1 = []string{"master", "universal-ruler"}
-var amt1 uint64 = 1000000
+var amt1 int64 = 1000000
 var g1 = fmt.Sprintf(`
 {
     "chain_id":"%s",

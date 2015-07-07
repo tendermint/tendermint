@@ -3,6 +3,7 @@ package state
 import (
 	"bytes"
 	"errors"
+	"fmt"
 
 	"github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"

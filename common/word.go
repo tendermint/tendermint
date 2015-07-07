@@ -28,6 +28,12 @@ func (w Word256) Compare(other Word256) int {
 	return bytes.Compare(w[:], other[:])
 }
 
+func Uint64ToWord256(i uint64) Word256 {
+	buf := [8]byte{}
+	PutUint64BE(buf[:], i)
+	return LeftPadWord256(buf[:])
+}
+
 func Int64ToWord256(i int64) Word256 {
 	buf := [8]byte{}
 	PutInt64BE(buf[:], i)
@@ -42,6 +48,11 @@ func RightPadWord256(bz []byte) (word Word256) {
 func LeftPadWord256(bz []byte) (word Word256) {
 	copy(word[32-len(bz):], bz)
 	return
+}
+
+func Uint64FromWord256(word Word256) uint64 {
+	buf := word.Postfix(8)
+	return GetUint64BE(buf)
 }
 
 func Int64FromWord256(word Word256) int64 {

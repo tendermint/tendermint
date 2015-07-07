@@ -24,19 +24,19 @@ var GenDocKey = []byte("GenDocKey")
 
 type BasicAccount struct {
 	Address []byte `json:"address"`
-	Amount  uint64 `json:"amount"`
+	Amount  int64  `json:"amount"`
 }
 
 type GenesisAccount struct {
 	Address     []byte                     `json:"address"`
-	Amount      uint64                     `json:"amount"`
+	Amount      int64                      `json:"amount"`
 	Name        string                     `json:"name"`
 	Permissions *ptypes.AccountPermissions `json:"permissions"`
 }
 
 type GenesisValidator struct {
 	PubKey   account.PubKeyEd25519 `json:"pub_key"`
-	Amount   uint64                `json:"amount"`
+	Amount   int64                 `json:"amount"`
 	Name     string                `json:"name"`
 	UnbondTo []BasicAccount        `json:"unbond_to"`
 }
