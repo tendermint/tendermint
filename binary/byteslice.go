@@ -1,12 +1,7 @@
 package binary
 
 import (
-	. "github.com/tendermint/tendermint/common"
 	"io"
-)
-
-const (
-	ByteSliceChunk = 1024
 )
 
 func WriteByteSlice(bz []byte, w io.Writer, n *int64, err *error) {
@@ -24,16 +19,8 @@ func ReadByteSlice(r io.Reader, n *int64, err *error) []byte {
 		return nil
 	}
 
-	var buf, tmpBuf []byte
-	// read one ByteSliceChunk at a time and append
-	for i := 0; i*ByteSliceChunk < length; i++ {
-		tmpBuf = make([]byte, MinInt(ByteSliceChunk, length-i*ByteSliceChunk))
-		ReadFull(tmpBuf, r, n, err)
-		if *err != nil {
-			return nil
-		}
-		buf = append(buf, tmpBuf...)
-	}
+	buf := make([]byte, length)
+	ReadFull(buf, r, n, err)
 	return buf
 }
 

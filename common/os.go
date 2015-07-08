@@ -160,7 +160,6 @@ func (af *AutoFile) processTicks() {
 		if !ok {
 			return // Done.
 		}
-		fmt.Println("closeFile()")
 		af.mtx.Lock()
 		af.closeFile()
 		af.mtx.Unlock()
@@ -184,7 +183,6 @@ func (af *AutoFile) Write(b []byte) (n int, err error) {
 			return
 		}
 	}
-	fmt.Println("Write:", string(b))
 	return af.file.Write(b)
 }
 

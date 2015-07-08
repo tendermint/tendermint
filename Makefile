@@ -6,21 +6,19 @@ install:
 	go install github.com/tendermint/tendermint/cmd/tendermint
 	go install github.com/tendermint/tendermint/cmd/barak
 	go install github.com/tendermint/tendermint/cmd/debora
+	go install github.com/tendermint/tendermint/cmd/filelogger
 
 build: 
 	go build -o build/tendermint github.com/tendermint/tendermint/cmd/tendermint
 	go build -o build/barak github.com/tendermint/tendermint/cmd/barak
 	go build -o build/debora github.com/tendermint/tendermint/cmd/debora
-
-no_get: 
-	go build -o build/tendermint github.com/tendermint/tendermint/cmd/tendermint
-	go build -o build/barak github.com/tendermint/tendermint/cmd/barak
-	go build -o build/debora github.com/tendermint/tendermint/cmd/debora
+	go build -o build/filelogger github.com/tendermint/tendermint/cmd/filelogger
 
 build_race: 
 	go build -race -o build/tendermint github.com/tendermint/tendermint/cmd/tendermint
 	go build -race -o build/barak github.com/tendermint/tendermint/cmd/barak
 	go build -race -o build/debora github.com/tendermint/tendermint/cmd/debora
+	go build -race -o build/filelogger github.com/tendermint/tendermint/cmd/filelogger
 
 test: build
 	go test github.com/tendermint/tendermint/...
