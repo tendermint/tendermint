@@ -8,6 +8,8 @@ import (
 	"os"
 	"os/exec"
 	"time"
+
+	. "github.com/tendermint/tendermint/common"
 )
 
 type Process struct {
@@ -20,7 +22,7 @@ type Process struct {
 	OutputPath string
 	Cmd        *exec.Cmd        `json:"-"`
 	ExitState  *os.ProcessState `json:"-"`
-	OutputFile *os.File         `json:"-"`
+	OutputFile *AutoFile        `json:"-"`
 	WaitCh     chan struct{}    `json:"-"`
 }
 
@@ -32,7 +34,7 @@ const (
 // execPath: command name
 // args: args to command. (should not include name)
 func Create(mode int, label string, execPath string, args []string, input string, outPath string) (*Process, error) {
-	outFile, err := os.OpenFile(outPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
+	outFile, err := OpenAutoFile(outPath)
 	if err != nil {
 		return nil, err
 	}
