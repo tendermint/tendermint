@@ -14,7 +14,7 @@ const readBufferSize = 1024
 
 // Parse command-line options
 func parseFlags() (outpath string, version bool) {
-	flag.StringVar(&outpath, "outpath", "filelogger.out", "Output file name")
+	flag.StringVar(&outpath, "outpath", "stdinwriter.out", "Output file name")
 	flag.BoolVar(&version, "version", false, "Version")
 	flag.Parse()
 	return
@@ -25,13 +25,13 @@ func main() {
 	// Read options
 	outpath, version := parseFlags()
 	if version {
-		fmt.Println(Fmt("filelogger version %v", Version))
+		fmt.Println(Fmt("stdinwriter version %v", Version))
 		return
 	}
 
 	outfile, err := OpenAutoFile(outpath)
 	if err != nil {
-		fmt.Println(Fmt("filelogger couldn't create outfile %v", outfile))
+		fmt.Println(Fmt("stdinwriter couldn't create outfile %v", outfile))
 		os.Exit(1)
 	}
 
@@ -40,7 +40,7 @@ func main() {
 	// Trap signal
 	TrapSignal(func() {
 		outfile.Close()
-		fmt.Println("filelogger shutting down")
+		fmt.Println("stdinwriter shutting down")
 	})
 }
 
@@ -55,7 +55,7 @@ func writeToOutfile(outfile *AutoFile) {
 			if err == io.EOF {
 				os.Exit(0)
 			} else {
-				fmt.Println("filelogger errored")
+				fmt.Println("stdinwriter errored")
 				os.Exit(1)
 			}
 		}

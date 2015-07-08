@@ -7,7 +7,7 @@ sleep 10
 debora --group default.upgrade close "[::]:46660"
 debora --group default.upgrade run -- bash -c "cd \$GOPATH/src/github.com/tendermint/tendermint; git pull origin develop; make"
 debora --group default.upgrade run -- bash -c "cd \$GOPATH/src/github.com/tendermint/tendermint; mkdir -p ~/.barak/logs"
-debora --group default.upgrade run --bg --label barak -- bash -c "cd \$GOPATH/src/github.com/tendermint/tendermint; barak --options-file=cmd/barak/seed0 | filelogger -outpath ~/.barak/logs/barak.log"
+debora --group default.upgrade run --bg --label barak -- bash -c "cd \$GOPATH/src/github.com/tendermint/tendermint; barak --options-file=cmd/barak/seed0 | stdinwriter -outpath ~/.barak/logs/barak.log"
 echo "Testing new barak..."
 debora list
 sleep 10
