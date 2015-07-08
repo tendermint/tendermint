@@ -39,7 +39,7 @@ var barak_ *Barak
 
 // Parse command-line options
 func parseFlags() (optionsFile string) {
-	flag.StringVar(&optionsFile, "options-file", "", "Read options from file instead of stdin")
+	flag.StringVar(&optionsFile, "config", "", "Read config from file instead of stdin")
 	flag.Parse()
 	return
 }
