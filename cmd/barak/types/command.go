@@ -24,6 +24,7 @@ const (
 	commandTypeServeFile     = 0x04
 	commandTypeOpenListener  = 0x05
 	commandTypeCloseListener = 0x06
+	commandTypeQuit          = 0x07
 )
 
 // for binary.readReflect
@@ -35,6 +36,7 @@ var _ = binary.RegisterInterface(
 	binary.ConcreteType{CommandServeFile{}, commandTypeServeFile},
 	binary.ConcreteType{CommandOpenListener{}, commandTypeOpenListener},
 	binary.ConcreteType{CommandCloseListener{}, commandTypeCloseListener},
+	binary.ConcreteType{CommandQuit{}, commandTypeQuit},
 )
 
 type CommandStartProcess struct {
@@ -63,3 +65,5 @@ type CommandOpenListener struct {
 type CommandCloseListener struct {
 	Addr string
 }
+
+type CommandQuit struct{}

@@ -22,6 +22,8 @@ import (
 	"github.com/tendermint/tendermint/rpc/server"
 )
 
+const BarakVersion = "0.0.1"
+
 var Routes map[string]*rpcserver.RPCFunc
 
 func init() {
@@ -72,6 +74,7 @@ func Status() (*ResponseStatus, error) {
 	barak_.mtx.Unlock()
 
 	return &ResponseStatus{
+		Version:    BarakVersion,
 		Pid:        pid,
 		Nonce:      nonce,
 		Validators: validators,
@@ -96,6 +99,8 @@ func Run(authCommand AuthCommand) (interface{}, error) {
 		return OpenListener(c.Addr)
 	case CommandCloseListener:
 		return CloseListener(c.Addr)
+	case CommandQuit:
+		return Quit()
 	default:
 		return nil, errors.New("Invalid endpoint for command")
 	}
@@ -202,6 +207,15 @@ func OpenListener(addr string) (*ResponseOpenListener, error) {
 func CloseListener(addr string) (*ResponseCloseListener, error) {
 	barak_.CloseListener(addr)
 	return &ResponseCloseListener{}, nil
+}
+
+func Quit() (*ResponseQuit, error) {
+	fmt.Println("Barak shutting down due to Quit()")
+	go func() {
+		time.Sleep(time.Second)
+		os.Exit(0)
+	}()
+	return &ResponseQuit{}, nil
 }
 
 //--------------------------------------------------------------------------------

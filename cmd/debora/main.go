@@ -106,18 +106,23 @@ func main() {
 		},
 		cli.Command{
 			Name:   "open",
-			Usage:  "open listener",
+			Usage:  "open barak listener",
 			Action: cliOpenListener,
 		},
 		cli.Command{
 			Name:   "close",
-			Usage:  "close listener",
+			Usage:  "close barka listener",
 			Action: cliCloseListener,
 		},
 		cli.Command{
 			Name:   "download",
 			Usage:  "download file <remote-path> <local-path-prefix>",
 			Action: cliDownloadFile,
+		},
+		cli.Command{
+			Name:   "quit",
+			Usage:  "quit barak",
+			Action: cliQuit,
 		},
 	}
 	app.Run(os.Args)
@@ -327,6 +332,24 @@ func cliDownloadFile(c *cli.Context) {
 				fmt.Printf("%v success. Wrote %v bytes to %v\n", remote, n, localPath)
 			}
 		}(remote, Fmt("%v_%v", localPathPrefix, remoteNick(remote)))
+	}
+	wg.Wait()
+}
+
+func cliQuit(c *cli.Context) {
+	command := btypes.CommandQuit{}
+	wg := sync.WaitGroup{}
+	for _, remote := range Config.Remotes {
+		wg.Add(1)
+		go func(remote string) {
+			defer wg.Done()
+			response, err := Quit(Config.PrivKey, remote, command)
+			if err != nil {
+				fmt.Printf("%v failure. %v\n", remote, err)
+			} else {
+				fmt.Printf("%v success. %v\n", remote, response)
+			}
+		}(remote)
 	}
 	wg.Wait()
 }

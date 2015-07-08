@@ -5,6 +5,7 @@ import (
 )
 
 type ResponseStatus struct {
+	Version    string
 	Pid        int
 	Nonce      int64
 	Validators []Validator
@@ -30,4 +31,7 @@ type ResponseOpenListener struct {
 }
 
 type ResponseCloseListener struct {
+}
+
+type ResponseQuit struct {
 }

@@ -100,6 +100,16 @@ func DownloadFile(privKey acm.PrivKey, remote string, command btypes.CommandServ
 	return n, nil
 }
 
+func Quit(privKey acm.PrivKey, remote string, command btypes.CommandQuit) (response btypes.ResponseQuit, err error) {
+	nonce, err := GetNonce(remote)
+	if err != nil {
+		return response, err
+	}
+	commandBytes, signature := SignCommand(privKey, nonce+1, command)
+	_, err = RunAuthCommand(remote, commandBytes, []acm.Signature{signature}, &response)
+	return response, err
+}
+
 //-----------------------------------------------------------------------------
 
 // Utility method to get nonce from the remote.
