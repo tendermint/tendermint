@@ -403,13 +403,13 @@ FOR_LOOP:
 			// do nothing
 			log.Debug("Receive Pong")
 		case packetTypeMsg:
-			pkt, n, err := msgPacket{}, new(int64), new(error)
-			binary.ReadBinaryPtr(&pkt, c.bufReader, n, err)
-			c.recvMonitor.Update(int(*n))
-			if *err != nil {
+			pkt, n, err := msgPacket{}, int64(0), error(nil)
+			binary.ReadBinaryPtr(&pkt, c.bufReader, &n, &err)
+			c.recvMonitor.Update(int(n))
+			if err != nil {
 				if atomic.LoadUint32(&c.stopped) != 1 {
-					log.Warn("Connection failed @ recvRoutine", "connection", c, "error", *err)
-					c.stopForError(*err)
+					log.Warn("Connection failed @ recvRoutine", "connection", c, "error", err)
+					c.stopForError(err)
 				}
 				break FOR_LOOP
 			}
@@ -417,7 +417,14 @@ FOR_LOOP:
 			if !ok || channel == nil {
 				panic(Fmt("Unknown channel %X", pkt.ChannelId))
 			}
-			msgBytes := channel.recvMsgPacket(pkt)
+			msgBytes, err := channel.recvMsgPacket(pkt)
+			if err != nil {
+				if atomic.LoadUint32(&c.stopped) != 1 {
+					log.Warn("Connection failed @ recvRoutine", "connection", c, "error", err)
+					c.stopForError(err)
+				}
+				break FOR_LOOP
+			}
 			if msgBytes != nil {
 				log.Debug("Received bytes", "chId", pkt.ChannelId, "msgBytes", msgBytes)
 				c.onReceive(pkt.ChannelId, msgBytes)
@@ -569,15 +576,18 @@ func (ch *Channel) writeMsgPacketTo(w io.Writer) (n int64, err error) {
 
 // Handles incoming msgPackets. Returns a msg bytes if msg is complete.
 // Not goroutine-safe
-func (ch *Channel) recvMsgPacket(packet msgPacket) []byte {
+func (ch *Channel) recvMsgPacket(packet msgPacket) ([]byte, error) {
 	log.Debug("Read Msg Packet", "conn", ch.conn, "packet", packet)
+	if binary.MaxBinaryReadSize < len(ch.recving)+len(packet.Bytes) {
+		return nil, binary.ErrMaxBinaryReadSizeReached
+	}
 	ch.recving = append(ch.recving, packet.Bytes...)
 	if packet.EOF == byte(0x01) {
 		msgBytes := ch.recving
 		ch.recving = make([]byte, 0, defaultRecvBufferCapacity)
-		return msgBytes
+		return msgBytes, nil
 	}
-	return nil
+	return nil, nil
 }
 
 // Call this periodically to update stats for throttling purposes.

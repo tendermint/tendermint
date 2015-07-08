@@ -2,9 +2,15 @@ package binary
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"reflect"
 )
+
+// TODO document and maybe make it configurable.
+const MaxBinaryReadSize = 21 * 1024 * 1024
+
+var ErrMaxBinaryReadSizeReached = errors.New("Error: max binary read size reached")
 
 func ReadBinary(o interface{}, r io.Reader, n *int64, err *error) interface{} {
 	rv, rt := reflect.ValueOf(o), reflect.TypeOf(o)

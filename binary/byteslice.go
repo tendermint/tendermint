@@ -19,6 +19,10 @@ func ReadByteSlice(r io.Reader, n *int64, err *error) []byte {
 	if *err != nil {
 		return nil
 	}
+	if MaxBinaryReadSize < *n+int64(length) {
+		*err = ErrMaxBinaryReadSizeReached
+		return nil
+	}
 
 	var buf, tmpBuf []byte
 	// read one ByteSliceChunk at a time and append
@@ -50,6 +54,11 @@ func ReadByteSlices(r io.Reader, n *int64, err *error) [][]byte {
 	if *err != nil {
 		return nil
 	}
+	if MaxBinaryReadSize < *n+int64(length) {
+		*err = ErrMaxBinaryReadSizeReached
+		return nil
+	}
+
 	bzz := make([][]byte, length)
 	for i := 0; i < length; i++ {
 		bz := ReadByteSlice(r, n, err)

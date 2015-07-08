@@ -273,6 +273,10 @@ func readReflectBinary(rv reflect.Value, rt reflect.Type, opts Options, r io.Rea
 					if *err != nil {
 						return
 					}
+					if MaxBinaryReadSize < *n {
+						*err = ErrMaxBinaryReadSizeReached
+						return
+					}
 				}
 				sliceRv = reflect.AppendSlice(sliceRv, tmpSliceRv)
 			}

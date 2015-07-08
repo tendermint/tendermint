@@ -14,6 +14,11 @@ func ReadString(r io.Reader, n *int64, err *error) string {
 	if *err != nil {
 		return ""
 	}
+	if MaxBinaryReadSize < *n+int64(length) {
+		*err = ErrMaxBinaryReadSizeReached
+		return ""
+	}
+
 	buf := make([]byte, length)
 	ReadFull(buf, r, n, err)
 	return string(buf)
