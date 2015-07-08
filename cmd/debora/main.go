@@ -145,12 +145,14 @@ func cliGetStatus(c *cli.Context) {
 		fmt.Println("BTW, status takes no arguments.")
 	}
 	wg := sync.WaitGroup{}
+	failed := 0
 	for _, remote := range Config.Remotes {
 		wg.Add(1)
 		go func(remote string) {
 			defer wg.Done()
 			response, err := GetStatus(remote)
 			if err != nil {
+				failed++
 				fmt.Printf("%v failure. %v\n", remote, err)
 			} else {
 				fmt.Printf("%v success. %v\n", remote, response)
@@ -158,6 +160,9 @@ func cliGetStatus(c *cli.Context) {
 		}(remote)
 	}
 	wg.Wait()
+	if 0 < failed {
+		os.Exit(1)
+	}
 }
 
 func cliStartProcess(c *cli.Context) {
@@ -175,12 +180,14 @@ func cliStartProcess(c *cli.Context) {
 		Input:    c.String("input"),
 	}
 	wg := sync.WaitGroup{}
+	failed := 0
 	for _, remote := range Config.Remotes {
 		wg.Add(1)
 		go func(remote string) {
 			defer wg.Done()
 			response, err := StartProcess(Config.PrivKey, remote, command)
 			if err != nil {
+				failed++
 				fmt.Printf("%v failure. %v\n", remote, err)
 			} else {
 				fmt.Printf("%v success.\n", remote)
@@ -195,6 +202,9 @@ func cliStartProcess(c *cli.Context) {
 		}(remote)
 	}
 	wg.Wait()
+	if 0 < failed {
+		os.Exit(1)
+	}
 }
 
 func cliStopProcess(c *cli.Context) {
@@ -208,12 +218,14 @@ func cliStopProcess(c *cli.Context) {
 		Kill:  true,
 	}
 	wg := sync.WaitGroup{}
+	failed := 0
 	for _, remote := range Config.Remotes {
 		wg.Add(1)
 		go func(remote string) {
 			defer wg.Done()
 			response, err := StopProcess(Config.PrivKey, remote, command)
 			if err != nil {
+				failed++
 				fmt.Printf("%v failure. %v\n", remote, err)
 			} else {
 				fmt.Printf("%v success. %v\n", remote, response)
@@ -221,6 +233,9 @@ func cliStopProcess(c *cli.Context) {
 		}(remote)
 	}
 	wg.Wait()
+	if 0 < failed {
+		os.Exit(1)
+	}
 }
 
 func cliListProcesses(c *cli.Context) {
@@ -233,12 +248,14 @@ func cliListProcesses(c *cli.Context) {
 	*/
 	command := btypes.CommandListProcesses{}
 	wg := sync.WaitGroup{}
+	failed := 0
 	for _, remote := range Config.Remotes {
 		wg.Add(1)
 		go func(remote string) {
 			defer wg.Done()
 			response, err := ListProcesses(Config.PrivKey, remote, command)
 			if err != nil {
+				failed++
 				fmt.Printf("%v failure. %v\n", Blue(remote), Red(err))
 			} else {
 				fmt.Printf("%v processes:\n", Blue(remote))
@@ -257,6 +274,9 @@ func cliListProcesses(c *cli.Context) {
 		}(remote)
 	}
 	wg.Wait()
+	if 0 < failed {
+		os.Exit(1)
+	}
 }
 
 func cliOpenListener(c *cli.Context) {
@@ -269,12 +289,14 @@ func cliOpenListener(c *cli.Context) {
 		Addr: listenAddr,
 	}
 	wg := sync.WaitGroup{}
+	failed := 0
 	for _, remote := range Config.Remotes {
 		wg.Add(1)
 		go func(remote string) {
 			defer wg.Done()
 			response, err := OpenListener(Config.PrivKey, remote, command)
 			if err != nil {
+				failed++
 				fmt.Printf("%v failure. %v\n", remote, err)
 			} else {
 				fmt.Printf("%v opened %v.\n", remote, response.Addr)
@@ -282,6 +304,9 @@ func cliOpenListener(c *cli.Context) {
 		}(remote)
 	}
 	wg.Wait()
+	if 0 < failed {
+		os.Exit(1)
+	}
 }
 
 func cliCloseListener(c *cli.Context) {
@@ -294,12 +319,14 @@ func cliCloseListener(c *cli.Context) {
 		Addr: listenAddr,
 	}
 	wg := sync.WaitGroup{}
+	failed := 0
 	for _, remote := range Config.Remotes {
 		wg.Add(1)
 		go func(remote string) {
 			defer wg.Done()
 			response, err := CloseListener(Config.PrivKey, remote, command)
 			if err != nil {
+				failed++
 				fmt.Printf("%v failure. %v\n", remote, err)
 			} else {
 				fmt.Printf("%v success. %v\n", remote, response)
@@ -307,6 +334,9 @@ func cliCloseListener(c *cli.Context) {
 		}(remote)
 	}
 	wg.Wait()
+	if 0 < failed {
+		os.Exit(1)
+	}
 }
 
 func cliDownloadFile(c *cli.Context) {
@@ -321,12 +351,14 @@ func cliDownloadFile(c *cli.Context) {
 	}
 
 	wg := sync.WaitGroup{}
+	failed := 0
 	for _, remote := range Config.Remotes {
 		wg.Add(1)
 		go func(remote string, localPath string) {
 			defer wg.Done()
 			n, err := DownloadFile(Config.PrivKey, remote, command, localPath)
 			if err != nil {
+				failed++
 				fmt.Printf("%v failure. %v\n", remote, err)
 			} else {
 				fmt.Printf("%v success. Wrote %v bytes to %v\n", remote, n, localPath)
@@ -334,17 +366,22 @@ func cliDownloadFile(c *cli.Context) {
 		}(remote, Fmt("%v_%v", localPathPrefix, remoteNick(remote)))
 	}
 	wg.Wait()
+	if 0 < failed {
+		os.Exit(1)
+	}
 }
 
 func cliQuit(c *cli.Context) {
 	command := btypes.CommandQuit{}
 	wg := sync.WaitGroup{}
+	failed := 0
 	for _, remote := range Config.Remotes {
 		wg.Add(1)
 		go func(remote string) {
 			defer wg.Done()
 			response, err := Quit(Config.PrivKey, remote, command)
 			if err != nil {
+				failed++
 				fmt.Printf("%v failure. %v\n", remote, err)
 			} else {
 				fmt.Printf("%v success. %v\n", remote, response)
@@ -352,4 +389,7 @@ func cliQuit(c *cli.Context) {
 		}(remote)
 	}
 	wg.Wait()
+	if 0 < failed {
+		os.Exit(1)
+	}
 }

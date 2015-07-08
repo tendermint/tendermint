@@ -86,7 +86,7 @@ func Run(authCommand AuthCommand) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Info(Fmt("Run() received command %v:\n%v", reflect.TypeOf(command), command))
+	log.Info(Fmt("Run() received command %v:%v", reflect.TypeOf(command), command))
 	// Issue command
 	switch c := command.(type) {
 	case CommandStartProcess:
@@ -162,7 +162,7 @@ func StartProcess(wait bool, label string, execPath string, args []string, input
 	if wait {
 		<-proc.WaitCh
 		output := pcm.ReadOutput(proc)
-		fmt.Println("Read output", output)
+		// fmt.Println("Read output", output)
 		if proc.ExitState == nil {
 			return &ResponseStartProcess{
 				Success: true,
