@@ -16,4 +16,4 @@ debora status
 printf "\n\nShutting down old barak...\n\n"
 sleep 3
 debora --group default.upgrade quit
-printf "Done!"
+printf "Done!\n"
