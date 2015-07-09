@@ -37,6 +37,9 @@ func _TestWSNewBlock(t *testing.T) {
 
 // receive a few new block messages in a row, with increasing height
 func TestWSBlockchainGrowth(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
 	con := newWSCon(t)
 	eid := types.EventStringNewBlock()
 	subscribe(t, con, eid)
@@ -72,6 +75,9 @@ func TestWSSend(t *testing.T) {
 
 // ensure events are only fired once for a given transaction
 func TestWSDoubleFire(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
 	con := newWSCon(t)
 	eid := types.EventStringAccInput(user[0].Address)
 	subscribe(t, con, eid)
@@ -97,6 +103,9 @@ func TestWSDoubleFire(t *testing.T) {
 
 // create a contract, wait for the event, and send it a msg, validate the return
 func TestWSCallWait(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
 	con := newWSCon(t)
 	eid1 := types.EventStringAccInput(user[0].Address)
 	subscribe(t, con, eid1)
@@ -133,6 +142,9 @@ func TestWSCallWait(t *testing.T) {
 // create a contract and send it a msg without waiting. wait for contract event
 // and validate return
 func TestWSCallNoWait(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
 	con := newWSCon(t)
 	amt, gasLim, fee := int64(10000), int64(1000), int64(1000)
 	code, _, returnVal := simpleContract()
@@ -159,6 +171,9 @@ func TestWSCallNoWait(t *testing.T) {
 
 // create two contracts, one of which calls the other
 func TestWSCallCall(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
 	con := newWSCon(t)
 	amt, gasLim, fee := int64(10000), int64(1000), int64(1000)
 	code, _, returnVal := simpleContract()
