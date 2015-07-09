@@ -3,7 +3,6 @@ package merkle
 import (
 	"bytes"
 	"crypto/sha256"
-
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 )
@@ -47,7 +46,7 @@ func (branch IAVLProofInnerNode) Hash(childHash []byte) []byte {
 	n, err := int64(0), error(nil)
 	binary.WriteInt8(branch.Height, buf, &n, &err)
 	binary.WriteVarint(branch.Size, buf, &n, &err)
-	if branch.Left == nil {
+	if len(branch.Left) == 0 {
 		binary.WriteByteSlice(childHash, buf, &n, &err)
 		binary.WriteByteSlice(branch.Right, buf, &n, &err)
 	} else {

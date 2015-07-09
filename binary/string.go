@@ -1,6 +1,10 @@
 package binary
 
-import "io"
+import (
+	"io"
+
+	. "github.com/tendermint/tendermint/common"
+)
 
 // String
 
@@ -14,8 +18,12 @@ func ReadString(r io.Reader, n *int64, err *error) string {
 	if *err != nil {
 		return ""
 	}
-	if MaxBinaryReadSize < *n+int64(length) {
-		*err = ErrMaxBinaryReadSizeReached
+	if length < 0 {
+		*err = ErrBinaryReadSizeUnderflow
+		return ""
+	}
+	if MaxBinaryReadSize < MaxInt64(int64(length), *n+int64(length)) {
+		*err = ErrBinaryReadSizeOverflow
 		return ""
 	}
 

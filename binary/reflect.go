@@ -274,7 +274,7 @@ func readReflectBinary(rv reflect.Value, rt reflect.Type, opts Options, r io.Rea
 						return
 					}
 					if MaxBinaryReadSize < *n {
-						*err = ErrMaxBinaryReadSizeReached
+						*err = ErrBinaryReadSizeOverflow
 						return
 					}
 				}

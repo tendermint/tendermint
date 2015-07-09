@@ -579,7 +579,7 @@ func (ch *Channel) writeMsgPacketTo(w io.Writer) (n int64, err error) {
 func (ch *Channel) recvMsgPacket(packet msgPacket) ([]byte, error) {
 	log.Debug("Read Msg Packet", "conn", ch.conn, "packet", packet)
 	if binary.MaxBinaryReadSize < len(ch.recving)+len(packet.Bytes) {
-		return nil, binary.ErrMaxBinaryReadSizeReached
+		return nil, binary.ErrBinaryReadSizeOverflow
 	}
 	ch.recving = append(ch.recving, packet.Bytes...)
 	if packet.EOF == byte(0x01) {

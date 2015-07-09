@@ -456,7 +456,7 @@ func TestJSONFieldNames(t *testing.T) {
 func TestBadAlloc(t *testing.T) {
 	n, err := new(int64), new(error)
 	instance := new([]byte)
-	data := RandBytes(ByteSliceChunk * 100)
+	data := RandBytes(100 * 1024)
 	b := new(bytes.Buffer)
 	// this slice of data claims to be much bigger than it really is
 	WriteUvarint(uint(10000000000000000), b, n, err)

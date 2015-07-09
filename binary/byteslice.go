@@ -2,6 +2,8 @@ package binary
 
 import (
 	"io"
+
+	. "github.com/tendermint/tendermint/common"
 )
 
 func WriteByteSlice(bz []byte, w io.Writer, n *int64, err *error) {
@@ -14,8 +16,12 @@ func ReadByteSlice(r io.Reader, n *int64, err *error) []byte {
 	if *err != nil {
 		return nil
 	}
-	if MaxBinaryReadSize < *n+int64(length) {
-		*err = ErrMaxBinaryReadSizeReached
+	if length < 0 {
+		*err = ErrBinaryReadSizeUnderflow
+		return nil
+	}
+	if MaxBinaryReadSize < MaxInt64(int64(length), *n+int64(length)) {
+		*err = ErrBinaryReadSizeOverflow
 		return nil
 	}
 
@@ -41,8 +47,12 @@ func ReadByteSlices(r io.Reader, n *int64, err *error) [][]byte {
 	if *err != nil {
 		return nil
 	}
-	if MaxBinaryReadSize < *n+int64(length) {
-		*err = ErrMaxBinaryReadSizeReached
+	if length < 0 {
+		*err = ErrBinaryReadSizeUnderflow
+		return nil
+	}
+	if MaxBinaryReadSize < MaxInt64(int64(length), *n+int64(length)) {
+		*err = ErrBinaryReadSizeOverflow
 		return nil
 	}
 

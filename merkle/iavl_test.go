@@ -253,6 +253,7 @@ func testProof(t *testing.T, proof *IAVLProof, keyBytes, valueBytes, rootHash []
 		return
 	}
 	if !proof2.Verify(keyBytes, valueBytes, rootHash) {
+		// t.Log(Fmt("%X\n%X\n", proofBytes, binary.BinaryBytes(proof2)))
 		t.Errorf("Invalid proof after write/read. Verification failed.")
 		return
 	}
