@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -242,9 +243,16 @@ func makeNodeInfo(sw *p2p.Switch) *types.NodeInfo {
 		Moniker: config.GetString("moniker"),
 		Version: config.GetString("version"),
 	}
+
+	// include git hash in the nodeInfo if available
+	if rev, err := ReadFile(path.Join(TendermintRepo, ".revision")); err == nil {
+		nodeInfo.Revision = string(rev)
+	}
+
 	if !sw.IsListening() {
 		return nodeInfo
 	}
+
 	p2pListener := sw.Listeners()[0]
 	p2pHost := p2pListener.ExternalAddress().IP.String()
 	p2pPort := p2pListener.ExternalAddress().Port

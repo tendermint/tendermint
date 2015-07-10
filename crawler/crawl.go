@@ -50,7 +50,7 @@ func (n *Node) Address() string {
 // Set the basic status and chain_id info for a node from RPC responses
 func (n *Node) SetInfo(status *rpctypes.ResponseStatus, netinfo *rpctypes.ResponseNetInfo) {
 	n.LastSeen = time.Now()
-	n.ChainID = status.ChainID
+	n.ChainID = status.NodeInfo.ChainID
 	n.BlockHeight = status.LatestBlockHeight
 	n.NetInfo = netinfo
 	// n.Validator

@@ -8,3 +8,4 @@ rpc/test/.tendermint
 .debora
 .tendermint
 remote_dump
+.revision
