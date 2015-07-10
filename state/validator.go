@@ -98,7 +98,7 @@ func (v *Validator) String() string {
 }
 
 func (v *Validator) Hash() []byte {
-	return binary.BinarySha256(v)
+	return binary.BinaryRipemd160(v)
 }
 
 //-------------------------------------

@@ -2,7 +2,7 @@ package merkle
 
 import (
 	"bytes"
-	"crypto/sha256"
+	"github.com/tendermint/tendermint/Godeps/_workspace/src/code.google.com/p/go.crypto/ripemd160"
 	"io"
 
 	"github.com/tendermint/tendermint/binary"
@@ -132,7 +132,7 @@ func (node *IAVLNode) hashWithCount(t *IAVLTree) ([]byte, int) {
 		return node.hash, 0
 	}
 
-	hasher := sha256.New()
+	hasher := ripemd160.New()
 	buf := new(bytes.Buffer)
 	_, hashCount, err := node.writeHashBytes(t, buf)
 	if err != nil {

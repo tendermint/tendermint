@@ -2,7 +2,9 @@ package merkle
 
 import (
 	"bytes"
-	"crypto/sha256"
+
+	"github.com/tendermint/tendermint/Godeps/_workspace/src/code.google.com/p/go.crypto/ripemd160"
+
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 )
@@ -41,7 +43,7 @@ type IAVLProofInnerNode struct {
 }
 
 func (branch IAVLProofInnerNode) Hash(childHash []byte) []byte {
-	hasher := sha256.New()
+	hasher := ripemd160.New()
 	buf := new(bytes.Buffer)
 	n, err := int64(0), error(nil)
 	binary.WriteInt8(branch.Height, buf, &n, &err)
@@ -67,7 +69,7 @@ type IAVLProofLeafNode struct {
 }
 
 func (leaf IAVLProofLeafNode) Hash() []byte {
-	hasher := sha256.New()
+	hasher := ripemd160.New()
 	buf := new(bytes.Buffer)
 	n, err := int64(0), error(nil)
 	binary.WriteInt8(0, buf, &n, &err)

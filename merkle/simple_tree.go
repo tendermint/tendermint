@@ -26,8 +26,9 @@ package merkle
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"fmt"
+
+	"github.com/tendermint/tendermint/Godeps/_workspace/src/code.google.com/p/go.crypto/ripemd160"
 
 	"github.com/tendermint/tendermint/binary"
 )
@@ -35,7 +36,7 @@ import (
 func SimpleHashFromTwoHashes(left []byte, right []byte) []byte {
 	var n int64
 	var err error
-	var hasher = sha256.New()
+	var hasher = ripemd160.New()
 	binary.WriteByteSlice(left, hasher, &n, &err)
 	binary.WriteByteSlice(right, hasher, &n, &err)
 	if err != nil {
@@ -69,7 +70,7 @@ func SimpleHashFromBinaries(items []interface{}) []byte {
 
 // General Convenience
 func SimpleHashFromBinary(item interface{}) []byte {
-	hasher, n, err := sha256.New(), new(int64), new(error)
+	hasher, n, err := ripemd160.New(), new(int64), new(error)
 	binary.WriteBinary(item, hasher, n, err)
 	if *err != nil {
 		panic(err)

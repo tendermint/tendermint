@@ -314,8 +314,7 @@ func (tx *DupeoutTx) String() string {
 
 //-----------------------------------------------------------------------------
 
-// NOTE: the tx merkle tree uses sha256, so this TxID is really just for
-// reference when using the rpc and catching events
+// This should match the leaf hashes of Block.Data.Hash()'s SimpleMerkleTree.
 func TxID(chainID string, tx Tx) []byte {
 	signBytes := account.SignBytes(chainID, tx)
 	return binary.BinaryRipemd160(signBytes)

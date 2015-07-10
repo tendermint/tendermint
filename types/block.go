@@ -2,7 +2,6 @@ package types
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"strings"
@@ -138,15 +137,7 @@ func (h *Header) Hash() []byte {
 		return nil
 	}
 
-	buf := new(bytes.Buffer)
-	hasher, n, err := sha256.New(), new(int64), new(error)
-	binary.WriteBinary(h, buf, n, err)
-	if *err != nil {
-		panic(err)
-	}
-	hasher.Write(buf.Bytes())
-	hash := hasher.Sum(nil)
-	return hash
+	return binary.BinaryRipemd160(h)
 }
 
 func (h *Header) StringIndented(indent string) string {
@@ -321,7 +312,7 @@ func (data *Data) Hash() []byte {
 		for i, tx := range data.Txs {
 			bs[i] = account.SignBytes(config.GetString("chain_id"), tx)
 		}
-		data.hash = merkle.SimpleHashFromBinaries(bs)
+		data.hash = merkle.SimpleHashFromBinaries(bs) // NOTE: leaves are TxIDs.
 	}
 	return data.hash
 }

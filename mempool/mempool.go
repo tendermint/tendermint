@@ -11,7 +11,6 @@ package mempool
 import (
 	"sync"
 
-	"github.com/tendermint/tendermint/binary"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -73,19 +72,18 @@ func (mem *Mempool) ResetForBlockAndState(block *types.Block, state *sm.State) {
 	// First, create a lookup map of txns in new block.
 	blockTxsMap := make(map[string]struct{})
 	for _, tx := range block.Data.Txs {
-		txHash := binary.BinarySha256(tx)
-		blockTxsMap[string(txHash)] = struct{}{}
+		blockTxsMap[string(types.TxID(state.ChainID, tx))] = struct{}{}
 	}
 
 	// Next, filter all txs from mem.txs that are in blockTxsMap
 	txs := []types.Tx{}
 	for _, tx := range mem.txs {
-		txHash := binary.BinarySha256(tx)
-		if _, ok := blockTxsMap[string(txHash)]; ok {
-			log.Debug("Filter out, already committed", "tx", tx, "txHash", txHash)
+		txID := types.TxID(state.ChainID, tx)
+		if _, ok := blockTxsMap[string(txID)]; ok {
+			log.Debug("Filter out, already committed", "tx", tx, "txID", txID)
 			continue
 		} else {
-			log.Debug("Filter in, still new", "tx", tx, "txHash", txHash)
+			log.Debug("Filter in, still new", "tx", tx, "txID", txID)
 			txs = append(txs, tx)
 		}
 	}

@@ -2,11 +2,12 @@ package types
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
 	"sync"
+
+	"github.com/tendermint/tendermint/Godeps/_workspace/src/code.google.com/p/go.crypto/ripemd160"
 
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
@@ -34,7 +35,7 @@ func (part *Part) Hash() []byte {
 	if part.hash != nil {
 		return part.hash
 	} else {
-		hasher := sha256.New()
+		hasher := ripemd160.New()
 		_, err := hasher.Write(part.Bytes)
 		if err != nil {
 			panic(err)
