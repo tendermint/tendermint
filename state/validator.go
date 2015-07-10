@@ -56,6 +56,7 @@ type Validator struct {
 }
 
 // Creates a new copy of the validator so we can mutate accum.
+// Panics if the validator is nil.
 func (v *Validator) Copy() *Validator {
 	vCopy := *v
 	return &vCopy
@@ -83,6 +84,9 @@ func (v *Validator) CompareAccum(other *Validator) *Validator {
 }
 
 func (v *Validator) String() string {
+	if v == nil {
+		return "nil-Validator"
+	}
 	return fmt.Sprintf("Validator{%X %v %v-%v-%v VP:%v A:%v}",
 		v.Address,
 		v.PubKey,

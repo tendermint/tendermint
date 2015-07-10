@@ -112,6 +112,9 @@ func (valSet *ValidatorSet) TotalVotingPower() int64 {
 }
 
 func (valSet *ValidatorSet) Proposer() (proposer *Validator) {
+	if len(valSet.Validators) == 0 {
+		return nil
+	}
 	if valSet.proposer == nil {
 		for _, val := range valSet.Validators {
 			valSet.proposer = valSet.proposer.CompareAccum(val)
@@ -255,6 +258,9 @@ func (valSet *ValidatorSet) String() string {
 }
 
 func (valSet *ValidatorSet) StringIndented(indent string) string {
+	if valSet == nil {
+		return "nil-ValidatorSet"
+	}
 	valStrings := []string{}
 	valSet.Iterate(func(index int, val *Validator) bool {
 		valStrings = append(valStrings, val.String())
