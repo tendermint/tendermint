@@ -5,8 +5,14 @@ import (
 	"io/ioutil"
 	"os"
 	"os/signal"
+	"path"
 	"sync"
 	"time"
+)
+
+var (
+	GoPath         = os.Getenv("GOPATH")
+	TendermintRepo = path.Join(GoPath, "src", "github.com", "tendermint", "tendermint")
 )
 
 func TrapSignal(cb func()) {

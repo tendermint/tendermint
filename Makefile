@@ -8,6 +8,7 @@ install:
 	go install github.com/tendermint/tendermint/cmd/debora
 	go install github.com/tendermint/tendermint/cmd/stdinwriter
 	go install github.com/tendermint/tendermint/cmd/logjack
+	echo -n `git rev-parse --verify HEAD` > .revision
 
 build: 
 	go build -o build/tendermint github.com/tendermint/tendermint/cmd/tendermint
@@ -42,11 +43,11 @@ gen_client:
 	go install github.com/ebuchman/go-rpc-gen
 	go generate rpc/core_client/*.go
 
+revision:
+	echo -n `git rev-parse --verify HEAD` > .revision
+
 tendermint_root/priv_validator.json: tendermint_root/priv_validator.json.orig
 	cp $< $@
-
-economy: tendermint_root/priv_validator.json
-	docker run -v $(CURDIR)/tendermint_root:/tendermint_root -p 46656:46656 tendermint
 
 clean:
 	rm -f tendermint tendermint_root/priv_validator.json
