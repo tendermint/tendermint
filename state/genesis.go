@@ -154,7 +154,7 @@ func MakeGenesisState(db dbm.DB, genDoc *GenesisDoc) *State {
 
 	// Make namereg tree
 	nameReg := merkle.NewIAVLTree(binary.BasicCodec, NameRegCodec, 0, db)
-	// TODO: add names to genesis.json
+	// TODO: add names, contracts to genesis.json
 
 	// IAVLTrees must be persisted before copy operations.
 	accounts.Save()
