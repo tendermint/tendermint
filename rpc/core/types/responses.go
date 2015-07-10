@@ -49,14 +49,12 @@ type Receipt struct {
 }
 
 type ResponseStatus struct {
-	Moniker           string         `json:"moniker"`
-	ChainID           string         `json:"chain_id"`
-	Version           string         `json:"version"`
-	GenesisHash       []byte         `json:"genesis_hash"`
-	PubKey            account.PubKey `json:"pub_key"`
-	LatestBlockHash   []byte         `json:"latest_block_hash"`
-	LatestBlockHeight int            `json:"latest_block_height"`
-	LatestBlockTime   int64          `json:"latest_block_time"` // nano
+	NodeInfo          *types.NodeInfo `json:"node_info"`
+	GenesisHash       []byte          `json:"genesis_hash"`
+	PubKey            account.PubKey  `json:"pub_key"`
+	LatestBlockHash   []byte          `json:"latest_block_hash"`
+	LatestBlockHeight int             `json:"latest_block_height"`
+	LatestBlockTime   int64           `json:"latest_block_time"` // nano
 }
 
 type ResponseNetInfo struct {

@@ -16,9 +16,9 @@ func testStatus(t *testing.T, typ string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resp.ChainID != chainID {
+	if resp.NodeInfo.ChainID != chainID {
 		t.Fatal(fmt.Errorf("ChainID mismatch: got %s expected %s",
-			resp.ChainID, chainID))
+			resp.NodeInfo.ChainID, chainID))
 	}
 }
 

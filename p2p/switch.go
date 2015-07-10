@@ -119,6 +119,11 @@ func (sw *Switch) SetNodeInfo(nodeInfo *types.NodeInfo) {
 	sw.nodeInfo = nodeInfo
 }
 
+// Not goroutine safe.
+func (sw *Switch) NodeInfo() *types.NodeInfo {
+	return sw.nodeInfo
+}
+
 func (sw *Switch) Start() {
 	if atomic.CompareAndSwapUint32(&sw.running, 0, 1) {
 		// Start reactors

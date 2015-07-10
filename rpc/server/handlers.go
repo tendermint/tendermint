@@ -346,7 +346,7 @@ func (con *WSConnection) write() {
 				log.Error("Failed to marshal WSResponse to JSON", "error", err)
 			} else {
 				if err := con.wsConn.WriteMessage(websocket.TextMessage, buf.Bytes()); err != nil {
-					log.Error("Failed to write response on websocket", "error", err)
+					log.Warn("Failed to write response on websocket", "error", err)
 					con.Stop()
 					return
 				}

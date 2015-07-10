@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -141,8 +142,7 @@ func NewNode() *Node {
 func (n *Node) Start() {
 	log.Info("Starting Node")
 	n.book.Start()
-	nodeInfo := makeNodeInfo(n.sw)
-	n.sw.SetNodeInfo(nodeInfo)
+	n.sw.SetNodeInfo(makeNodeInfo(n.sw))
 	n.sw.Start()
 }
 
@@ -169,7 +169,8 @@ func (n *Node) AddListener(l p2p.Listener) {
 	n.book.AddOurAddress(l.ExternalAddress())
 }
 
-// NOTE: Blocking
+// Dial a list of seeds in random order
+// Spawns a go routine for each dial
 func (n *Node) DialSeed() {
 	// permute the list, dial them in random order.
 	seeds := strings.Split(config.GetString("seeds"), ",")
@@ -196,7 +197,7 @@ func (n *Node) dialSeed(addr *p2p.NetAddress) {
 	}
 }
 
-func (n *Node) StartRPC() {
+func (n *Node) StartRPC() net.Listener {
 	core.SetBlockStore(n.blockStore)
 	core.SetConsensusState(n.consensusState)
 	core.SetConsensusReactor(n.consensusReactor)
@@ -209,7 +210,11 @@ func (n *Node) StartRPC() {
 	mux := http.NewServeMux()
 	rpcserver.RegisterEventsHandler(mux, n.evsw)
 	rpcserver.RegisterRPCFuncs(mux, core.Routes)
-	rpcserver.StartHTTPServer(listenAddr, mux)
+	listener, err := rpcserver.StartHTTPServer(listenAddr, mux)
+	if err != nil {
+		panic(err)
+	}
+	return listener
 }
 
 func (n *Node) Switch() *p2p.Switch {
@@ -238,9 +243,16 @@ func makeNodeInfo(sw *p2p.Switch) *types.NodeInfo {
 		Moniker: config.GetString("moniker"),
 		Version: config.GetString("version"),
 	}
+
+	// include git hash in the nodeInfo if available
+	if rev, err := ReadFile(path.Join(TendermintRepo, ".revision")); err == nil {
+		nodeInfo.Revision = string(rev)
+	}
+
 	if !sw.IsListening() {
 		return nodeInfo
 	}
+
 	p2pListener := sw.Listeners()[0]
 	p2pHost := p2pListener.ExternalAddress().IP.String()
 	p2pPort := p2pListener.ExternalAddress().Port
@@ -252,7 +264,8 @@ func makeNodeInfo(sw *p2p.Switch) *types.NodeInfo {
 	}
 
 	// We assume that the rpcListener has the same ExternalAddress.
-	// This is probably true because both P2P and RPC listeners use UPnP.
+	// This is probably true because both P2P and RPC listeners use UPnP,
+	// except of course if the rpc is only bound to localhost
 	nodeInfo.Host = p2pHost
 	nodeInfo.P2PPort = p2pPort
 	nodeInfo.RPCPort = uint16(rpcPort)
@@ -269,7 +282,7 @@ func RunNode() {
 	n.Start()
 
 	// If seedNode is provided by config, dial out.
-	if len(config.GetString("seeds")) > 0 {
+	if config.GetString("seeds") != "" {
 		n.DialSeed()
 	}
 

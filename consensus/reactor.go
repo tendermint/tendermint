@@ -126,6 +126,7 @@ func (conR *ConsensusReactor) RemovePeer(peer *p2p.Peer, reason interface{}) {
 	if !conR.IsRunning() {
 		return
 	}
+	// TODO
 	//peer.Data.Get(PeerStateKey).(*PeerState).Disconnect()
 }
 

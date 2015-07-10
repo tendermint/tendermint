@@ -31,9 +31,7 @@ func Status() (*ctypes.ResponseStatus, error) {
 	}
 
 	return &ctypes.ResponseStatus{
-		Moniker:           config.GetString("moniker"),
-		ChainID:           config.GetString("chain_id"),
-		Version:           config.GetString("version"),
+		NodeInfo:          p2pSwitch.NodeInfo(),
 		GenesisHash:       genesisHash,
 		PubKey:            privValidator.PubKey,
 		LatestBlockHash:   latestBlockHash,
