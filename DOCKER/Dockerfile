@@ -1,5 +1,5 @@
 # Pull base image.
-FROM golang:1.4.2-wheezy
+FROM golang:1.4
 
 ENV user tendermint
 ENV data_root /data/tendermint
