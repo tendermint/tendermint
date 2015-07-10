@@ -7,18 +7,21 @@ install:
 	go install github.com/tendermint/tendermint/cmd/barak
 	go install github.com/tendermint/tendermint/cmd/debora
 	go install github.com/tendermint/tendermint/cmd/stdinwriter
+	go install github.com/tendermint/tendermint/cmd/logjack
 
 build: 
 	go build -o build/tendermint github.com/tendermint/tendermint/cmd/tendermint
 	go build -o build/barak github.com/tendermint/tendermint/cmd/barak
 	go build -o build/debora github.com/tendermint/tendermint/cmd/debora
 	go build -o build/stdinwriter github.com/tendermint/tendermint/cmd/stdinwriter
+	go build -o build/logjack github.com/tendermint/tendermint/cmd/logjack
 
 build_race: 
 	go build -race -o build/tendermint github.com/tendermint/tendermint/cmd/tendermint
 	go build -race -o build/barak github.com/tendermint/tendermint/cmd/barak
 	go build -race -o build/debora github.com/tendermint/tendermint/cmd/debora
 	go build -race -o build/stdinwriter github.com/tendermint/tendermint/cmd/stdinwriter
+	go build -race -o build/logjack github.com/tendermint/tendermint/cmd/logjack
 
 test: build
 	go test github.com/tendermint/tendermint/...
