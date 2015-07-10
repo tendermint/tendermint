@@ -24,19 +24,19 @@ type Block struct {
 func (b *Block) ValidateBasic(chainID string, lastBlockHeight int, lastBlockHash []byte,
 	lastBlockParts PartSetHeader, lastBlockTime time.Time) error {
 	if b.ChainID != chainID {
-		return errors.New("Wrong Block.Header.ChainID")
+		return errors.New(Fmt("Wrong Block.Header.ChainID. Expected %v, got %v", chainID, b.ChainID))
 	}
 	if b.Height != lastBlockHeight+1 {
-		return errors.New("Wrong Block.Header.Height")
+		return errors.New(Fmt("Wrong Block.Header.Height. Expected %v, got %v", lastBlockHeight+1, b.Height))
 	}
 	if b.NumTxs != len(b.Data.Txs) {
-		return errors.New("Wrong Block.Header.NumTxs")
+		return errors.New(Fmt("Wrong Block.Header.NumTxs. Expected %v, got %v", len(b.Data.Txs), b.NumTxs))
 	}
 	if !bytes.Equal(b.LastBlockHash, lastBlockHash) {
-		return errors.New("Wrong Block.Header.LastBlockHash")
+		return errors.New(Fmt("Wrong Block.Header.LastBlockHash.  Expected %X, got %X", lastBlockHash, b.LastBlockHash))
 	}
 	if !b.LastBlockParts.Equals(lastBlockParts) {
-		return errors.New("Wrong Block.Header.LastBlockParts")
+		return errors.New(Fmt("Wrong Block.Header.LastBlockParts. Expected %v, got %v", lastBlockParts, b.LastBlockParts))
 	}
 	/*	TODO: Determine bounds
 		See blockchain/reactor "stopSyncingDurationMinutes"

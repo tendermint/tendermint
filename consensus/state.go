@@ -328,6 +328,9 @@ func (cs *ConsensusState) reconstructLastCommit(state *sm.State) {
 	lastPrecommits := NewVoteSet(state.LastBlockHeight, 0, types.VoteTypePrecommit, state.LastBondedValidators)
 	seenValidation := cs.blockStore.LoadSeenValidation(state.LastBlockHeight)
 	for idx, precommit := range seenValidation.Precommits {
+		if precommit == nil {
+			continue
+		}
 		added, _, err := lastPrecommits.AddByIndex(idx, precommit)
 		if !added || err != nil {
 			panic(Fmt("Failed to reconstruct LastCommit: %v", err))
@@ -386,10 +389,6 @@ func (cs *ConsensusState) Stop() {
 	}
 }
 
-func (cs *ConsensusState) IsStopped() bool {
-	return atomic.LoadUint32(&cs.stopped) == 1
-}
-
 // Updates ConsensusState and increments height to match that of state.
 // The round becomes 0 and cs.Step becomes RoundStepNewHeight.
 func (cs *ConsensusState) updateToState(state *sm.State, contiguous bool) {
@@ -397,6 +396,12 @@ func (cs *ConsensusState) updateToState(state *sm.State, contiguous bool) {
 	if contiguous && 0 < cs.Height && cs.Height != state.LastBlockHeight {
 		panic(Fmt("updateToState() expected state height of %v but found %v",
 			cs.Height, state.LastBlockHeight))
+	}
+	if cs.state != nil && cs.state.LastBlockHeight+1 != cs.Height {
+		// This might happen when someone else is mutating cs.state.
+		// Someone forgot to pass in state.Copy() somewhere!
+		panic(Fmt("Inconsistent cs.state.LastBlockHeight+1 %v vs cs.Height %v",
+			cs.state.LastBlockHeight+1, cs.Height))
 	}
 	// END SANITY CHECK
 

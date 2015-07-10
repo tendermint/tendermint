@@ -99,14 +99,14 @@ func NewNode() *Node {
 	pexReactor := p2p.NewPEXReactor(book)
 
 	// Get BlockchainReactor
-	bcReactor := bc.NewBlockchainReactor(state, blockStore, config.GetBool("fast_sync"))
+	bcReactor := bc.NewBlockchainReactor(state.Copy(), blockStore, config.GetBool("fast_sync"))
 
 	// Get MempoolReactor
 	mempool := mempl.NewMempool(state.Copy())
 	mempoolReactor := mempl.NewMempoolReactor(mempool)
 
 	// Get ConsensusReactor
-	consensusState := consensus.NewConsensusState(state, blockStore, mempoolReactor)
+	consensusState := consensus.NewConsensusState(state.Copy(), blockStore, mempoolReactor)
 	consensusReactor := consensus.NewConsensusReactor(consensusState, blockStore, config.GetBool("fast_sync"))
 	if privValidator != nil {
 		consensusReactor.SetPrivValidator(privValidator)

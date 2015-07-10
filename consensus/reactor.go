@@ -26,14 +26,11 @@ const (
 
 	PeerStateKey = "ConsensusReactor.peerState"
 
-	peerGossipSleepDuration      = 100 * time.Millisecond  // Time to sleep if there's nothing to send.
-	rebroadcastRoundStepDuration = 1000 * time.Millisecond // Time to sleep if there's nothing to send.
+	peerGossipSleepDuration = 100 * time.Millisecond // Time to sleep if there's nothing to send.
 )
 
 //-----------------------------------------------------------------------------
 
-// The reactor's underlying ConsensusState may change state at any time.
-// We atomically copy the RoundState struct before using it.
 type ConsensusReactor struct {
 	sw      *p2p.Switch
 	running uint32
@@ -41,19 +38,17 @@ type ConsensusReactor struct {
 
 	blockStore *bc.BlockStore
 	conS       *ConsensusState
-
-	// if fast sync is running we don't really do anything
-	sync bool
+	fastSync   bool
 
 	evsw events.Fireable
 }
 
-func NewConsensusReactor(consensusState *ConsensusState, blockStore *bc.BlockStore, sync bool) *ConsensusReactor {
+func NewConsensusReactor(consensusState *ConsensusState, blockStore *bc.BlockStore, fastSync bool) *ConsensusReactor {
 	conR := &ConsensusReactor{
 		quit:       make(chan struct{}),
 		blockStore: blockStore,
 		conS:       consensusState,
-		sync:       sync,
+		fastSync:   fastSync,
 	}
 	return conR
 }
@@ -61,13 +56,12 @@ func NewConsensusReactor(consensusState *ConsensusState, blockStore *bc.BlockSto
 // Implements Reactor
 func (conR *ConsensusReactor) Start(sw *p2p.Switch) {
 	if atomic.CompareAndSwapUint32(&conR.running, 0, 1) {
-		log.Info("Starting ConsensusReactor")
+		log.Info("Starting ConsensusReactor", "fastSync", conR.fastSync)
 		conR.sw = sw
-		if !conR.sync {
+		if !conR.fastSync {
 			conR.conS.Start()
 		}
 		go conR.broadcastNewRoundStepRoutine()
-		// go conR.rebroadcastRoundStepRoutine()
 	}
 }
 
@@ -121,7 +115,10 @@ func (conR *ConsensusReactor) AddPeer(peer *p2p.Peer) {
 	go conR.gossipVotesRoutine(peer, peerState)
 
 	// Send our state to peer.
-	conR.sendNewRoundStepMessage(peer)
+	// If we're fast_syncing, broadcast a RoundStepMessage later upon SwitchToConsensus().
+	if !conR.fastSync {
+		conR.sendNewRoundStepMessage(peer)
+	}
 }
 
 // Implements Reactor
@@ -148,7 +145,7 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 		log.Warn("Error decoding message", "channel", chId, "peer", peer, "msg", msg_, "error", err, "bytes", msgBytes)
 		return
 	}
-	log.Debug("Receive", "channel", chId, "peer", peer, "msg", msg_) //, "bytes", msgBytes)
+	log.Debug("Receive", "channel", chId, "peer", peer, "msg", msg_, "rsHeight", rs.Height) //, "bytes", msgBytes)
 
 	switch chId {
 	case StateChannel:
@@ -164,6 +161,10 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 		}
 
 	case DataChannel:
+		if conR.fastSync {
+			log.Warn("Ignoring message received during fastSync", "msg", msg_)
+			return
+		}
 		switch msg := msg_.(type) {
 		case *ProposalMessage:
 			ps.SetHasProposal(msg.Proposal)
@@ -178,6 +179,10 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 		}
 
 	case VoteChannel:
+		if conR.fastSync {
+			log.Warn("Ignoring message received during fastSync", "msg", msg_)
+			return
+		}
 		switch msg := msg_.(type) {
 		case *VoteMessage:
 			vote := msg.Vote
@@ -266,11 +271,14 @@ func (conR *ConsensusReactor) SetPrivValidator(priv *sm.PrivValidator) {
 	conR.conS.SetPrivValidator(priv)
 }
 
-// Switch from the fast sync to the consensus:
-// reset the state, turn off fast sync, start the consensus-state-machine
+// Switch from the fast_sync to the consensus:
+// reset the state, turn off fast_sync, start the consensus-state-machine
 func (conR *ConsensusReactor) SwitchToConsensus(state *sm.State) {
+	log.Info("SwitchToConsensus")
+	// NOTE: The line below causes broadcastNewRoundStepRoutine() to
+	// broadcast a NewRoundStepMessage.
 	conR.conS.updateToState(state, false)
-	conR.sync = false
+	conR.fastSync = false
 	conR.conS.Start()
 }
 
@@ -321,26 +329,6 @@ func (conR *ConsensusReactor) broadcastNewRoundStepRoutine() {
 		}
 	}
 }
-
-/* TODO delete
-// Periodically broadcast NewRoundStepMessage.
-// This is a hack. TODO remove the need for it?
-// The issue is with Start() happening after a NewRoundStep message
-// was received from a peer, for the bootstrapping set.
-func (conR *ConsensusReactor) rebroadcastRoundStepRoutine() {
-	for {
-		time.Sleep(rebroadcastRoundStepDuration)
-		rs := conR.conS.GetRoundState()
-		nrsMsg, csMsg := makeRoundStepMessages(rs)
-		if nrsMsg != nil {
-			conR.sw.Broadcast(StateChannel, nrsMsg)
-		}
-		if csMsg != nil {
-			conR.sw.Broadcast(StateChannel, csMsg)
-		}
-	}
-}
-*/
 
 func (conR *ConsensusReactor) sendNewRoundStepMessage(peer *p2p.Peer) {
 	rs := conR.conS.GetRoundState()
@@ -833,7 +821,6 @@ func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage, rs *Roun
 	defer ps.mtx.Unlock()
 
 	// Ignore duplicate messages.
-	// TODO: This is only necessary because rebroadcastRoundStepRoutine.
 	if ps.Height == msg.Height && ps.Round == msg.Round && ps.Step == msg.Step {
 		return
 	}
