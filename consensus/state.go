@@ -399,7 +399,7 @@ func (cs *ConsensusState) updateToState(state *sm.State, contiguous bool) {
 	}
 	if cs.state != nil && cs.state.LastBlockHeight+1 != cs.Height {
 		// This might happen when someone else is mutating cs.state.
-		// Someone forgot to pass in state.Copy() somewhere!
+		// Someone forgot to pass in state.Copy() somewhere?!
 		panic(Fmt("Inconsistent cs.state.LastBlockHeight+1 %v vs cs.Height %v",
 			cs.state.LastBlockHeight+1, cs.Height))
 	}
@@ -504,7 +504,7 @@ func (cs *ConsensusState) EnterNewRound(height int, round int) {
 	if now := time.Now(); cs.StartTime.After(now) {
 		log.Warn("Need to set a buffer and log.Warn() here for sanity.", "startTime", cs.StartTime, "now", now)
 	}
-	log.Debug(Fmt("EnterNewRound(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
+	log.Info(Fmt("EnterNewRound(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
 	// Increment validators if necessary
 	validators := cs.Validators
@@ -773,10 +773,10 @@ func (cs *ConsensusState) EnterPrecommit(height int, round int) {
 	// If we don't have two thirds of prevotes, just precommit locked block or nil
 	if !ok {
 		if cs.LockedBlock != nil {
-			log.Info("EnterPrecommit: No +2/3 prevotes during EnterPrecommit. Precommitting lock.")
+			log.Debug("EnterPrecommit: No +2/3 prevotes during EnterPrecommit. Precommitting lock.")
 			cs.signAddVote(types.VoteTypePrecommit, cs.LockedBlock.Hash(), cs.LockedBlockParts.Header())
 		} else {
-			log.Info("EnterPrecommit: No +2/3 prevotes during EnterPrecommit. Precommitting nil.")
+			log.Debug("EnterPrecommit: No +2/3 prevotes during EnterPrecommit. Precommitting nil.")
 			cs.signAddVote(types.VoteTypePrecommit, nil, types.PartSetHeader{})
 		}
 		return
@@ -785,9 +785,9 @@ func (cs *ConsensusState) EnterPrecommit(height int, round int) {
 	// +2/3 prevoted nil. Unlock and precommit nil.
 	if len(hash) == 0 {
 		if cs.LockedBlock == nil {
-			log.Info("EnterPrecommit: +2/3 prevoted for nil.")
+			log.Debug("EnterPrecommit: +2/3 prevoted for nil.")
 		} else {
-			log.Info("EnterPrecommit: +2/3 prevoted for nil. Unlocking")
+			log.Debug("EnterPrecommit: +2/3 prevoted for nil. Unlocking")
 			cs.LockedRound = 0
 			cs.LockedBlock = nil
 			cs.LockedBlockParts = nil
@@ -800,14 +800,14 @@ func (cs *ConsensusState) EnterPrecommit(height int, round int) {
 
 	// If +2/3 prevoted for already locked block, precommit it.
 	if cs.LockedBlock.HashesTo(hash) {
-		log.Info("EnterPrecommit: +2/3 prevoted locked block.")
+		log.Debug("EnterPrecommit: +2/3 prevoted locked block.")
 		cs.signAddVote(types.VoteTypePrecommit, hash, partsHeader)
 		return
 	}
 
 	// If +2/3 prevoted for proposal block, stage and precommit it
 	if cs.ProposalBlock.HashesTo(hash) {
-		log.Info("EnterPrecommit: +2/3 prevoted proposal block.")
+		log.Debug("EnterPrecommit: +2/3 prevoted proposal block.")
 		// Validate the block.
 		if err := cs.stageBlock(cs.ProposalBlock, cs.ProposalBlockParts); err != nil {
 			panic(Fmt("EnterPrecommit: +2/3 prevoted for an invalid block: %v", err))
