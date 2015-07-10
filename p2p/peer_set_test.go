@@ -4,13 +4,14 @@ import (
 	"math/rand"
 	"testing"
 
+	"github.com/tendermint/tendermint/Godeps/_workspace/src/code.google.com/p/go-uuid/uuid"
 	. "github.com/tendermint/tendermint/common"
 )
 
 // Returns an empty dummy peer
 func randPeer() *Peer {
 	return &Peer{
-		Key: Fmt("%v.%v.%v.%v:%v", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%10000+80),
+		Key: uuid.New(),
 	}
 }
 
