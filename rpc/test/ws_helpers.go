@@ -250,8 +250,8 @@ func unmarshalValidateCallCall(origin, returnCode []byte, txid *[]byte) func(str
 		if bytes.Compare(ret, returnCode) != 0 {
 			return fmt.Errorf("Call did not return correctly. Got %x, expected %x", ret, returnCode)
 		}
-		if bytes.Compare(response.Data.TxId, *txid) != 0 {
-			return fmt.Errorf("TxIds do not match up! Got %x, expected %x", response.Data.TxId, *txid)
+		if bytes.Compare(response.Data.TxID, *txid) != 0 {
+			return fmt.Errorf("TxIDs do not match up! Got %x, expected %x", response.Data.TxID, *txid)
 		}
 		return nil
 	}

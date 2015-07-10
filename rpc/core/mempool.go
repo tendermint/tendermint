@@ -16,7 +16,7 @@ func BroadcastTx(tx types.Tx) (*ctypes.Receipt, error) {
 		return nil, fmt.Errorf("Error broadcasting transaction: %v", err)
 	}
 
-	txHash := types.TxId(mempoolReactor.Mempool.GetState().ChainID, tx)
+	txHash := types.TxID(mempoolReactor.Mempool.GetState().ChainID, tx)
 	var createsContract uint8
 	var contractAddr []byte
 	// check if creates new contract

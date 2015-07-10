@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/tendermint/tendermint/account"
 	_ "github.com/tendermint/tendermint/config/tendermint_test"
 	"github.com/tendermint/tendermint/types"
 )
@@ -208,6 +207,6 @@ func TestWSCallCall(t *testing.T) {
 	waitForEvent(t, con, eid1, true, func() {
 		tx := makeDefaultCallTx(t, wsTyp, contractAddr2, nil, amt, gasLim, fee)
 		broadcastTx(t, wsTyp, tx)
-		*txid = account.HashSignBytes(chainID, tx)
+		*txid = types.TxID(chainID, tx)
 	}, unmarshalValidateCallCall(user[0].Address, returnVal, txid))
 }

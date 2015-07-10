@@ -3,7 +3,6 @@ package rpctest
 import (
 	"bytes"
 	"fmt"
-	"github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/types"
 	"testing"
@@ -59,9 +58,9 @@ func testSignedTx(t *testing.T, typ string) {
 func testOneSignTx(t *testing.T, typ string, addr []byte, amt int64) {
 	tx := makeDefaultSendTx(t, typ, addr, amt)
 	tx2 := signTx(t, typ, tx, user[0])
-	tx2hash := account.HashSignBytes(chainID, tx2)
+	tx2hash := types.TxID(chainID, tx2)
 	tx.SignInput(chainID, 0, user[0])
-	txhash := account.HashSignBytes(chainID, tx)
+	txhash := types.TxID(chainID, tx)
 	if bytes.Compare(txhash, tx2hash) != 0 {
 		t.Fatal("Got different signatures for signing via rpc vs tx_utils")
 	}

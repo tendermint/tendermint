@@ -62,7 +62,7 @@ type CallData struct {
 type EventMsgCall struct {
 	CallData  *CallData `json:"call_data"`
 	Origin    []byte    `json:"origin"`
-	TxId      []byte    `json:"tx_id"`
+	TxID      []byte    `json:"tx_id"`
 	Return    []byte    `json:"return"`
 	Exception string    `json:"exception"`
 }
