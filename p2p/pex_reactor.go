@@ -101,7 +101,7 @@ func (pexR *PEXReactor) Receive(chId byte, src *Peer, msgBytes []byte) {
 	}
 	log.Info("Received message", "msg", msg)
 
-	switch msg.(type) {
+	switch msgT := msg.(type) {
 	case *pexRequestMessage:
 		// src requested some peers.
 		// TODO: prevent abuse.
@@ -111,7 +111,7 @@ func (pexR *PEXReactor) Receive(chId byte, src *Peer, msgBytes []byte) {
 		// TODO: prevent abuse.
 		// (We don't want to get spammed with bad peers)
 		srcAddr := src.Connection().RemoteAddress
-		for _, addr := range msg.(*pexAddrsMessage).Addrs {
+		for _, addr := range msgT.Addrs {
 			pexR.book.AddAddress(addr, srcAddr)
 		}
 	default:
