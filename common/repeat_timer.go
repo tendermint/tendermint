@@ -6,6 +6,7 @@ import "sync"
 /*
 RepeatTimer repeatedly sends a struct{}{} to .Ch after each "dur" period.
 It's good for keeping connections alive.
+A RepeatTimer must be Stop()'d or it will keep a goroutine alive.
 */
 type RepeatTimer struct {
 	Ch chan time.Time

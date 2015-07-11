@@ -156,13 +156,16 @@ func (sw *Switch) Stop() {
 }
 
 // NOTE: This performs a blocking handshake before the peer is added.
+// CONTRACT: Iff error is returned, peer is nil, and conn is immediately closed.
 func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, error) {
 	// First, perform handshake
 	peerNodeInfo, err := peerHandshake(conn, sw.nodeInfo)
 	if err != nil {
+		conn.Close()
 		return nil, err
 	}
 	if err := sw.nodeInfo.CompatibleWith(peerNodeInfo); err != nil {
+		conn.Close()
 		return nil, err
 	}
 
@@ -183,6 +186,7 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 		log.Info("Added peer", "peer", peer)
 	} else {
 		log.Info("Ignoring duplicate peer", "peer", peer)
+		peer.stop() // will also close conn
 		return nil, ErrSwitchDuplicatePeer
 	}
 
