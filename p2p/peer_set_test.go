@@ -1,11 +1,9 @@
 package p2p
 
 import (
-	"math/rand"
 	"testing"
 
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/code.google.com/p/go-uuid/uuid"
-	. "github.com/tendermint/tendermint/common"
 )
 
 // Returns an empty dummy peer

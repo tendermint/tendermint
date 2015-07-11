@@ -53,10 +53,12 @@ type Switch struct {
 
 var (
 	ErrSwitchDuplicatePeer = errors.New("Duplicate peer")
+	ErrSwitchMaxPeersPerIP = errors.New("IP has too many peers")
 )
 
 const (
 	peerDialTimeoutSeconds = 3
+	maxPeersPerIP          = 3
 )
 
 func NewSwitch() *Switch {
@@ -186,10 +188,21 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 	}
 	peer := newPeer(conn, peerNodeInfo, outbound, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError)
 
+	// restrict the number of peers we're willing to connect to behind a single IP
+	var numPeersOnThisIP int
+	peers := sw.Peers().List()
+	for _, p := range peers {
+		if p.Host == peerNodeInfo.Host {
+			numPeersOnThisIP += 1
+		}
+	}
+	if numPeersOnThisIP == maxPeersPerIP {
+		log.Info("Ignoring peer as we have the max allowed for that IP", "IP", peerNodeInfo.Host, "peer", peer, "max", maxPeersPerIP)
+		return nil, ErrSwitchMaxPeersPerIP
+	}
+
 	// Add the peer to .peers
-	if sw.peers.Add(peer) {
-		log.Info("Added peer", "peer", peer)
-	} else {
+	if !sw.peers.Add(peer) {
 		log.Info("Ignoring duplicate peer", "peer", peer)
 		peer.stop() // will also close conn
 		return nil, ErrSwitchDuplicatePeer
@@ -198,6 +211,8 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 	if atomic.LoadUint32(&sw.running) == 1 {
 		sw.startInitPeer(peer)
 	}
+
+	log.Info("Added peer", "peer", peer)
 	return peer, nil
 }
 

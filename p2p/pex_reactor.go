@@ -209,6 +209,9 @@ func (pexR *PEXReactor) ensurePeers() {
 			}
 		}(item.(*NetAddress))
 	}
+
+	// TODO: if no addresses to dial, we should send a pexRequest to a random peer
+	// so we can get more peers
 }
 
 // implements events.Eventable

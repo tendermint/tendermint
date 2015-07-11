@@ -35,8 +35,6 @@ func NewPeerSet() *PeerSet {
 }
 
 // Returns false if peer with key (uuid) is already in set.
-// TODO: we may want to do other things like restrict how many peers
-// we're willing to connect to behind a single IP
 func (ps *PeerSet) Add(peer *Peer) bool {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
