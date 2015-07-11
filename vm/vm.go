@@ -696,7 +696,13 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 				vm.params.BlockHeight,
 			}
 			vm.appState.AddLog(log)
-			dbg.Printf(" => %v\n", log)
+			if vm.evc != nil {
+				eventId := types.EventStringLogEvent(callee.Address.Postfix(20))
+				fmt.Printf("eventId: %s\n", eventId)
+				vm.evc.FireEvent(eventId, log)
+			}
+			// Using sol-log for this as well since 'log' will print garbage.
+			dbg.Printf(" => T:%X D:%X\n", log.Topics, log.Data)
 
 		case CREATE: // 0xF0
 			if !HasPermission(vm.appState, callee, ptypes.CreateContract) {

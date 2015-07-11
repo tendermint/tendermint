@@ -250,6 +250,33 @@ func readReflectBinary(rv reflect.Value, rt reflect.Type, opts Options, r io.Rea
 	}
 
 	switch rt.Kind() {
+	case reflect.Array:
+		elemRt := rt.Elem()
+		length := rt.Len()
+		if elemRt.Kind() == reflect.Uint8 {
+			// Special case: Bytearrays
+			buf := make([]byte, length)
+			ReadFull(buf, r, n, err)
+			if *err != nil {
+				return
+			}
+			log.Debug("Read bytearray", "bytes", buf)
+			reflect.Copy(rv, reflect.ValueOf(buf))
+		} else {
+			for i := 0; i < length; i++ {
+				elemRv := rv.Index(i)
+				readReflectBinary(elemRv, elemRt, opts, r, n, err)
+				if *err != nil {
+					return
+				}
+				if MaxBinaryReadSize < *n {
+					*err = ErrBinaryReadSizeOverflow
+					return
+				}
+			}
+			log.Debug(Fmt("Read %v-array", elemRt), "length", length)
+		}
+
 	case reflect.Slice:
 		elemRt := rt.Elem()
 		if elemRt.Kind() == reflect.Uint8 {
@@ -438,6 +465,27 @@ func writeReflectBinary(rv reflect.Value, rt reflect.Type, opts Options, w io.Wr
 
 	// All other types
 	switch rt.Kind() {
+	case reflect.Array:
+		elemRt := rt.Elem()
+		length := rt.Len()
+		if elemRt.Kind() == reflect.Uint8 {
+			// Special case: Bytearrays
+			if rv.CanAddr() {
+				byteslice := rv.Slice(0, length).Bytes()
+				WriteTo(byteslice, w, n, err)
+			} else {
+				buf := make([]byte, length)
+				reflect.Copy(reflect.ValueOf(buf), rv)
+				WriteTo(buf, w, n, err)
+			}
+		} else {
+			// Write elems
+			for i := 0; i < length; i++ {
+				elemRv := rv.Index(i)
+				writeReflectBinary(elemRv, elemRt, opts, w, n, err)
+			}
+		}
+
 	case reflect.Slice:
 		elemRt := rt.Elem()
 		if elemRt.Kind() == reflect.Uint8 {
@@ -602,6 +650,44 @@ func readReflectJSON(rv reflect.Value, rt reflect.Type, o interface{}, err *erro
 	}
 
 	switch rt.Kind() {
+	case reflect.Array:
+		elemRt := rt.Elem()
+		length := rt.Len()
+		if elemRt.Kind() == reflect.Uint8 {
+			// Special case: Bytearrays
+			oString, ok := o.(string)
+			if !ok {
+				*err = errors.New(Fmt("Expected string but got type %v", reflect.TypeOf(o)))
+				return
+			}
+			buf, err_ := hex.DecodeString(oString)
+			if err_ != nil {
+				*err = err_
+				return
+			}
+			if len(buf) != length {
+				*err = errors.New(Fmt("Expected bytearray of length %v but got %v", length, len(buf)))
+				return
+			}
+			log.Debug("Read bytearray", "bytes", buf)
+			rv.Set(reflect.ValueOf(buf))
+		} else {
+			oSlice, ok := o.([]interface{})
+			if !ok {
+				*err = errors.New(Fmt("Expected array of %v but got type %v", rt, reflect.TypeOf(o)))
+				return
+			}
+			if len(oSlice) != length {
+				*err = errors.New(Fmt("Expected array of length %v but got %v", length, len(oSlice)))
+				return
+			}
+			for i := 0; i < length; i++ {
+				elemRv := rv.Index(i)
+				readReflectJSON(elemRv, elemRt, oSlice[i], err)
+			}
+			log.Debug(Fmt("Read %v-array", elemRt), "length", length)
+		}
+
 	case reflect.Slice:
 		elemRt := rt.Elem()
 		if elemRt.Kind() == reflect.Uint8 {
@@ -773,13 +859,32 @@ func writeReflectJSON(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, 
 
 	// All other types
 	switch rt.Kind() {
+	case reflect.Array:
+		elemRt := rt.Elem()
+		length := rt.Len()
+		if elemRt.Kind() == reflect.Uint8 {
+			// Special case: Bytearray
+			bytearray := rv.Interface()
+			WriteTo([]byte(Fmt("\"%X\"", bytearray)), w, n, err)
+		} else {
+			WriteTo([]byte("["), w, n, err)
+			// Write elems
+			for i := 0; i < length; i++ {
+				elemRv := rv.Index(i)
+				writeReflectJSON(elemRv, elemRt, w, n, err)
+				if i < length-1 {
+					WriteTo([]byte(","), w, n, err)
+				}
+			}
+			WriteTo([]byte("]"), w, n, err)
+		}
+
 	case reflect.Slice:
 		elemRt := rt.Elem()
 		if elemRt.Kind() == reflect.Uint8 {
 			// Special case: Byteslices
 			byteslice := rv.Bytes()
 			WriteTo([]byte(Fmt("\"%X\"", byteslice)), w, n, err)
-			//WriteByteSlice(byteslice, w, n, err)
 		} else {
 			WriteTo([]byte("["), w, n, err)
 			// Write elems
