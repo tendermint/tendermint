@@ -1,6 +1,7 @@
 package vm
 
 import (
+	"encoding/hex"
 	. "github.com/tendermint/tendermint/common"
 	ptypes "github.com/tendermint/tendermint/permission/types"
 )
@@ -30,6 +31,26 @@ type Log struct {
 	Topics  []Word256
 	Data    []byte
 	Height  int64
+}
+
+type SolLog struct {
+	Address string
+	Topics  []string
+	Data    string
+	Height  int64
+}
+
+func toSolLog(log *Log) *SolLog{
+	ts := make([]string, len(log.Topics))
+	for i := 0; i < len(log.Topics); i++ {
+		ts[i] = hex.EncodeToString(log.Topics[i].Bytes())
+	}
+	return &SolLog{
+		hex.EncodeToString(log.Address.Bytes()),
+		ts,
+		hex.EncodeToString(log.Data),
+		log.Height,
+	}
 }
 
 type AppState interface {

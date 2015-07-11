@@ -2,16 +2,16 @@ package vm
 
 import (
 	"crypto/rand"
-	"encoding/hex"
-	"fmt"
-	"strings"
-	"testing"
-	"time"
+	// "encoding/hex"
+	// "fmt"
+	// "strings"
+	// "testing"
+	// "time"
 
 	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/events"
+	// "github.com/tendermint/tendermint/events"
 	ptypes "github.com/tendermint/tendermint/permission/types"
-	"github.com/tendermint/tendermint/types"
+	// "github.com/tendermint/tendermint/types"
 	. "github.com/tendermint/tendermint/vm"
 )
 
@@ -42,6 +42,8 @@ func makeBytes(n int) []byte {
 	rand.Read(b)
 	return b
 }
+
+/*
 
 // Runs a basic loop
 func TestVM(t *testing.T) {
@@ -184,6 +186,7 @@ func runVMWaitEvents(t *testing.T, ourVm *VM, caller, callee *Account, subscribe
 	}
 	return ""
 }
+*/
 
 // this is code to call another contract (hardcoded as addr)
 func callContractCode(addr []byte) []byte {
