@@ -9,6 +9,8 @@ import (
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/types"
+
+	"github.com/tendermint/tendermint/Godeps/_workspace/src/code.google.com/p/go-uuid/uuid"
 )
 
 type PeerMessage struct {
@@ -78,12 +80,14 @@ func makeSwitchPair(t testing.TB, initSwitch func(*Switch) *Switch) (*Switch, *S
 		Moniker: "switch1",
 		ChainID: "testing",
 		Version: "123.123.123",
+		UUID:    uuid.New(),
 	})
 	s2 := initSwitch(NewSwitch())
 	s2.SetNodeInfo(&types.NodeInfo{
 		Moniker: "switch2",
 		ChainID: "testing",
 		Version: "123.123.123",
+		UUID:    uuid.New(),
 	})
 
 	// Start switches

@@ -171,9 +171,15 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 		conn.Close()
 		return nil, err
 	}
+	// check version, chain id
 	if err := sw.nodeInfo.CompatibleWith(peerNodeInfo); err != nil {
 		conn.Close()
 		return nil, err
+	}
+	// avoid self
+	if peerNodeInfo.UUID == sw.nodeInfo.UUID {
+		conn.Close()
+		return nil, fmt.Errorf("Ignoring connection from self")
 	}
 
 	// the peerNodeInfo is not verified,
