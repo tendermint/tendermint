@@ -202,8 +202,8 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 }
 
 func (sw *Switch) startInitPeer(peer *Peer) {
-	peer.start()
-	sw.addPeerToReactors(peer)
+	peer.start()               // spawn send/recv routines
+	sw.addPeerToReactors(peer) // run AddPeer on each reactor
 }
 
 func (sw *Switch) DialPeerWithAddress(addr *NetAddress) (*Peer, error) {
@@ -306,7 +306,7 @@ func (sw *Switch) listenerRoutine(l Listener) {
 		}
 		// NOTE: We don't yet have the external address of the
 		// remote (if they have a listener at all).
-		// PEXReactor's pexRoutine will handle that.
+		// The peerHandshake will take care of that
 	}
 
 	// cleanup
