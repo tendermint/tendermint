@@ -141,7 +141,7 @@ func NewNode() *Node {
 
 // Call Start() after adding the listeners.
 func (n *Node) Start() {
-	log.Info("Starting Node")
+	log.Info("Starting Node", "chainID", config.GetString("chain_id"))
 	n.book.Start()
 	n.sw.SetNodeInfo(makeNodeInfo(n.sw))
 	n.sw.Start()
