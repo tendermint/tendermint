@@ -210,8 +210,13 @@ func (pexR *PEXReactor) ensurePeers() {
 		}(item.(*NetAddress))
 	}
 
-	// TODO: if no addresses to dial, we should send a pexRequest to a random peer
-	// so we can get more peers
+	// if no addresses to dial, pick a random connected peer and ask for more peers
+	if toDial.Size() == 0 {
+		peers := pexR.sw.Peers().List()
+		i := rand.Int() % len(peers)
+		log.Debug("No addresses to dial. Sending pexRequest to random peer", "peer", peers[i])
+		pexR.RequestPEX(peers[i])
+	}
 }
 
 // implements events.Eventable
