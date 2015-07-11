@@ -69,7 +69,7 @@ func NewNode() *Node {
 	} else {
 		genDocBytes := stateDB.Get(sm.GenDocKey)
 		err := new(error)
-		binary.ReadJSON(&genDoc, genDocBytes, err)
+		binary.ReadJSONPtr(&genDoc, genDocBytes, err)
 		if *err != nil {
 			panic(Fmt("Unable to read gendoc from db: %v", err))
 		}

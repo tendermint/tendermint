@@ -58,7 +58,7 @@ type GenesisDoc struct {
 
 func GenesisDocFromJSON(jsonBlob []byte) (genState *GenesisDoc) {
 	var err error
-	binary.ReadJSON(&genState, jsonBlob, &err)
+	binary.ReadJSONPtr(&genState, jsonBlob, &err)
 	if err != nil {
 		log.Error(Fmt("Couldn't read GenesisDoc: %v", err))
 		os.Exit(1)

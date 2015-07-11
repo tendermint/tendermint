@@ -16,6 +16,10 @@ var ErrBinaryReadSizeUnderflow = errors.New("Error: binary read size underflow")
 func ReadBinary(o interface{}, r io.Reader, n *int64, err *error) interface{} {
 	rv, rt := reflect.ValueOf(o), reflect.TypeOf(o)
 	if rv.Kind() == reflect.Ptr {
+		if rv.IsNil() {
+			rv = reflect.New(rt.Elem())
+			o = rv.Interface()
+		}
 		readReflectBinary(rv, rt, Options{}, r, n, err)
 		return o
 	} else {
@@ -51,15 +55,39 @@ func ReadJSON(o interface{}, bytes []byte, err *error) interface{} {
 	return ReadJSONObject(o, object, err)
 }
 
+func ReadJSONPtr(o interface{}, bytes []byte, err *error) interface{} {
+	var object interface{}
+	*err = json.Unmarshal(bytes, &object)
+	if *err != nil {
+		return o
+	}
+
+	return ReadJSONObjectPtr(o, object, err)
+}
+
 func ReadJSONObject(o interface{}, object interface{}, err *error) interface{} {
 	rv, rt := reflect.ValueOf(o), reflect.TypeOf(o)
 	if rv.Kind() == reflect.Ptr {
-		readReflectJSON(rv.Elem(), rt.Elem(), object, err)
+		if rv.IsNil() {
+			rv = reflect.New(rt.Elem())
+			o = rv.Interface()
+		}
+		readReflectJSON(rv, rt, object, err)
 		return o
 	} else {
 		ptrRv := reflect.New(rt)
 		readReflectJSON(ptrRv.Elem(), rt, object, err)
 		return ptrRv.Elem().Interface()
+	}
+}
+
+func ReadJSONObjectPtr(o interface{}, object interface{}, err *error) interface{} {
+	rv, rt := reflect.ValueOf(o), reflect.TypeOf(o)
+	if rv.Kind() == reflect.Ptr {
+		readReflectJSON(rv.Elem(), rt.Elem(), object, err)
+		return o
+	} else {
+		panic("ReadJSON(Object)Ptr expects o to be a pointer")
 	}
 }
 
