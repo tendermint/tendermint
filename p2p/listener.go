@@ -98,7 +98,9 @@ SKIP_UPNP:
 	return dl
 }
 
-// TODO: prevent abuse, esp a bunch of connections coming from the same IP range.
+// Accept connections and pass on the channel
+// Reading from the channel blocks on the peerHandshake for each connection
+// Connection is ignored if we have too many connections to that ip range
 func (l *DefaultListener) listenRoutine() {
 	for {
 		conn, err := l.listener.Accept()
