@@ -17,11 +17,15 @@ func ReadBinary(o interface{}, r io.Reader, n *int64, err *error) interface{} {
 	rv, rt := reflect.ValueOf(o), reflect.TypeOf(o)
 	if rv.Kind() == reflect.Ptr {
 		if rv.IsNil() {
-			rv = reflect.New(rt.Elem())
-			o = rv.Interface()
+			// This allows ReadBinaryObject() to return a nil pointer,
+			// if the value read is nil.
+			rvPtr := reflect.New(rt)
+			ReadBinaryPtr(rvPtr.Interface(), r, n, err)
+			return rvPtr.Elem().Interface()
+		} else {
+			readReflectBinary(rv, rt, Options{}, r, n, err)
+			return o
 		}
-		readReflectBinary(rv, rt, Options{}, r, n, err)
-		return o
 	} else {
 		ptrRv := reflect.New(rt)
 		readReflectBinary(ptrRv.Elem(), rt, Options{}, r, n, err)
@@ -69,11 +73,15 @@ func ReadJSONObject(o interface{}, object interface{}, err *error) interface{} {
 	rv, rt := reflect.ValueOf(o), reflect.TypeOf(o)
 	if rv.Kind() == reflect.Ptr {
 		if rv.IsNil() {
-			rv = reflect.New(rt.Elem())
-			o = rv.Interface()
+			// This allows ReadJSONObject() to return a nil pointer
+			// if the value read is nil.
+			rvPtr := reflect.New(rt)
+			ReadJSONObjectPtr(rvPtr.Interface(), object, err)
+			return rvPtr.Elem().Interface()
+		} else {
+			readReflectJSON(rv, rt, object, err)
+			return o
 		}
-		readReflectJSON(rv, rt, object, err)
-		return o
 	} else {
 		ptrRv := reflect.New(rt)
 		readReflectJSON(ptrRv.Elem(), rt, object, err)
