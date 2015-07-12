@@ -58,7 +58,6 @@ var (
 
 const (
 	peerDialTimeoutSeconds = 3
-	maxPeersPerIP          = 3
 )
 
 func NewSwitch() *Switch {
@@ -307,21 +306,31 @@ func (sw *Switch) listenerRoutine(l Listener) {
 		if !ok {
 			break
 		}
+
+		// ignore connection if we already have enough
+		// note we might exceed the maxNumPeers in order to
+		// achieve minNumOutboundPeers
+		if sw.peers.Size() >= maxNumPeers {
+			log.Debug("Ignoring inbound connection: already have enough peers", "conn", inConn, "numPeers", sw.peers.Size(), "max", maxNumPeers)
+			continue
+		}
+
 		// Ignore connections from ip ranges for which we have too many
 		if sw.peers.HasMaxForIPRange(inConn) {
-			log.Debug("Already have enough peers for that IP range", "address", inConn.RemoteAddr().String())
+			log.Debug("Ignoring inbound connection: already have enough peers for that IP range", "address", inConn.RemoteAddr().String())
 			continue
 		}
 
 		// New inbound connection!
-		peer, err := sw.AddPeerWithConnection(inConn, false)
+		_, err := sw.AddPeerWithConnection(inConn, false)
 		if err != nil {
-			log.Info(Fmt("Ignoring error from inbound connection: %v\n%v", peer, err))
+			log.Info("Ignoring inbound connection: error on AddPeerWithConnection", "conn", inConn, "error", err)
 			continue
 		}
-		// NOTE: We don't yet have the external address of the
+
+		// NOTE: We don't yet have the listening port of the
 		// remote (if they have a listener at all).
-		// The peerHandshake will take care of that
+		// The peerHandshake will handle that
 	}
 
 	// cleanup
