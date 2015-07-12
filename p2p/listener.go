@@ -98,7 +98,9 @@ SKIP_UPNP:
 	return dl
 }
 
-// TODO: prevent abuse, esp a bunch of connections coming from the same IP range.
+// Accept connections and pass on the channel
+// Reading from the channel blocks on the peerHandshake for each connection
+// Connection is ignored if we have too many connections to that ip range
 func (l *DefaultListener) listenRoutine() {
 	for {
 		conn, err := l.listener.Accept()
@@ -160,7 +162,7 @@ func getUPNPExternalAddress(externalPort, internalPort int) *NetAddress {
 	log.Debug("Getting UPNP external address")
 	nat, err := upnp.Discover()
 	if err != nil {
-		log.Debug("Could not get UPNP extrernal address", "error", err)
+		log.Debug("Could not perform UPNP discover", "error", err)
 		return nil
 	}
 
@@ -177,7 +179,7 @@ func getUPNPExternalAddress(externalPort, internalPort int) *NetAddress {
 
 	externalPort, err = nat.AddPortMapping("tcp", externalPort, internalPort, "tendermint", 0)
 	if err != nil {
-		log.Debug("Could not get UPNP external address", "error", err)
+		log.Debug("Could not add UPNP port mapping", "error", err)
 		return nil
 	}
 

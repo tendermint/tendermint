@@ -57,7 +57,7 @@ func GetConfig(rootDir string) cfg.Config {
 	if mapConfig.IsSet("version") {
 		Exit("Cannot set 'version' via config.toml")
 	}
-	mapConfig.SetDefault("chain_id", "tendermint_testnet_6")
+	mapConfig.SetDefault("chain_id", "tendermint_testnet_7")
 	mapConfig.SetDefault("version", "0.4.0") // JAE: async consensus!
 	mapConfig.SetDefault("genesis_file", rootDir+"/genesis.json")
 	mapConfig.SetDefault("moniker", "anonymous")
@@ -97,7 +97,7 @@ func defaultConfig(moniker string) (defaultConfig string) {
 }
 
 var defaultGenesis = `{
-    "chain_id": "tendermint_testnet_5",
+    "chain_id": "tendermint_testnet_7",
     "accounts": [
         {
             "address": "F81CB9ED0A868BD961C4F5BBC0E39B763B89FCB6",
@@ -112,7 +112,7 @@ var defaultGenesis = `{
             "amount": 525000000000
         },
         {
-            "address": "0000000000000000000000000000000000000004",
+            "address": "86ADF455E215711B6D8D8ED7F626C5AD3F349D2C",
             "amount": 110000000000
         }
     ],

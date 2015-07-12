@@ -52,7 +52,8 @@ type Switch struct {
 }
 
 var (
-	ErrSwitchDuplicatePeer = errors.New("Duplicate peer")
+	ErrSwitchDuplicatePeer      = errors.New("Duplicate peer")
+	ErrSwitchMaxPeersPerIPRange = errors.New("IP range has too many peers")
 )
 
 const (
@@ -119,6 +120,11 @@ func (sw *Switch) SetNodeInfo(nodeInfo *types.NodeInfo) {
 	sw.nodeInfo = nodeInfo
 }
 
+// Not goroutine safe.
+func (sw *Switch) NodeInfo() *types.NodeInfo {
+	return sw.nodeInfo
+}
+
 func (sw *Switch) Start() {
 	if atomic.CompareAndSwapUint32(&sw.running, 0, 1) {
 		// Start reactors
@@ -156,14 +162,23 @@ func (sw *Switch) Stop() {
 }
 
 // NOTE: This performs a blocking handshake before the peer is added.
+// CONTRACT: Iff error is returned, peer is nil, and conn is immediately closed.
 func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, error) {
 	// First, perform handshake
 	peerNodeInfo, err := peerHandshake(conn, sw.nodeInfo)
 	if err != nil {
+		conn.Close()
 		return nil, err
 	}
+	// check version, chain id
 	if err := sw.nodeInfo.CompatibleWith(peerNodeInfo); err != nil {
+		conn.Close()
 		return nil, err
+	}
+	// avoid self
+	if peerNodeInfo.UUID == sw.nodeInfo.UUID {
+		conn.Close()
+		return nil, fmt.Errorf("Ignoring connection from self")
 	}
 
 	// the peerNodeInfo is not verified,
@@ -179,22 +194,24 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 	peer := newPeer(conn, peerNodeInfo, outbound, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError)
 
 	// Add the peer to .peers
-	if sw.peers.Add(peer) {
-		log.Info("Added peer", "peer", peer)
-	} else {
-		log.Info("Ignoring duplicate peer", "peer", peer)
-		return nil, ErrSwitchDuplicatePeer
+	// ignore if duplicate or if we already have too many for that ip range
+	if err := sw.peers.Add(peer); err != nil {
+		log.Info("Ignoring peer", "error", err, "peer", peer)
+		peer.stop() // will also close conn
+		return nil, err
 	}
 
 	if atomic.LoadUint32(&sw.running) == 1 {
 		sw.startInitPeer(peer)
 	}
+
+	log.Info("Added peer", "peer", peer)
 	return peer, nil
 }
 
 func (sw *Switch) startInitPeer(peer *Peer) {
-	peer.start()
-	sw.addPeerToReactors(peer)
+	peer.start()               // spawn send/recv routines
+	sw.addPeerToReactors(peer) // run AddPeer on each reactor
 }
 
 func (sw *Switch) DialPeerWithAddress(addr *NetAddress) (*Peer, error) {
@@ -289,15 +306,31 @@ func (sw *Switch) listenerRoutine(l Listener) {
 		if !ok {
 			break
 		}
-		// New inbound connection!
-		peer, err := sw.AddPeerWithConnection(inConn, false)
-		if err != nil {
-			log.Info(Fmt("Ignoring error from inbound connection: %v\n%v", peer, err))
+
+		// ignore connection if we already have enough
+		// note we might exceed the maxNumPeers in order to
+		// achieve minNumOutboundPeers
+		if sw.peers.Size() >= maxNumPeers {
+			log.Debug("Ignoring inbound connection: already have enough peers", "conn", inConn, "numPeers", sw.peers.Size(), "max", maxNumPeers)
 			continue
 		}
-		// NOTE: We don't yet have the external address of the
+
+		// Ignore connections from ip ranges for which we have too many
+		if sw.peers.HasMaxForIPRange(inConn) {
+			log.Debug("Ignoring inbound connection: already have enough peers for that IP range", "address", inConn.RemoteAddr().String())
+			continue
+		}
+
+		// New inbound connection!
+		_, err := sw.AddPeerWithConnection(inConn, false)
+		if err != nil {
+			log.Info("Ignoring inbound connection: error on AddPeerWithConnection", "conn", inConn, "error", err)
+			continue
+		}
+
+		// NOTE: We don't yet have the listening port of the
 		// remote (if they have a listener at all).
-		// PEXReactor's pexRoutine will handle that.
+		// The peerHandshake will handle that
 	}
 
 	// cleanup

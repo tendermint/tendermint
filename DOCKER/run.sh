@@ -5,8 +5,8 @@ if [[ $BARAK_SEED ]]; then
 fi
 
 if [ "$FAST_SYNC" = "true" ]; then
-	./build/tendermint node --fast_sync
+	tendermint node --fast_sync
 else 
-	./build/tendermint node
+	tendermint node
 fi
 

@@ -58,7 +58,7 @@ type GenesisDoc struct {
 
 func GenesisDocFromJSON(jsonBlob []byte) (genState *GenesisDoc) {
 	var err error
-	binary.ReadJSON(&genState, jsonBlob, &err)
+	binary.ReadJSONPtr(&genState, jsonBlob, &err)
 	if err != nil {
 		log.Error(Fmt("Couldn't read GenesisDoc: %v", err))
 		os.Exit(1)
@@ -154,7 +154,7 @@ func MakeGenesisState(db dbm.DB, genDoc *GenesisDoc) *State {
 
 	// Make namereg tree
 	nameReg := merkle.NewIAVLTree(binary.BasicCodec, NameRegCodec, 0, db)
-	// TODO: add names to genesis.json
+	// TODO: add names, contracts to genesis.json
 
 	// IAVLTrees must be persisted before copy operations.
 	accounts.Save()

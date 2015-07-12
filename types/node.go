@@ -6,10 +6,12 @@ import (
 )
 
 type NodeInfo struct {
-	Moniker string `json:"moniker"`
-	ChainID string `json:"chain_id"`
-	Version string `json:"version"`
+	Moniker  string `json:"moniker"`
+	ChainID  string `json:"chain_id"`
+	Version  string `json:"version"`
+	Revision string `json:"revision"`
 
+	UUID    string `json:"uuid"`
 	Host    string `json:"host"`
 	P2PPort uint16 `json:"p2p_port"`
 	RPCPort uint16 `json:"rpc_port"`

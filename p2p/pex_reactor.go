@@ -76,8 +76,11 @@ func (pexR *PEXReactor) GetChannels() []*ChannelDescriptor {
 
 // Implements Reactor
 func (pexR *PEXReactor) AddPeer(peer *Peer) {
+	// Add the peer to the address book
+	netAddr := NewNetAddressString(fmt.Sprintf("%s:%d", peer.Host, peer.P2PPort))
+	pexR.book.AddAddress(netAddr, netAddr) // the peer is its own source
+
 	if peer.IsOutbound() {
-		pexR.SendAddrs(peer, pexR.book.OurAddresses())
 		if pexR.book.NeedMoreAddrs() {
 			pexR.RequestPEX(peer)
 		}
@@ -101,7 +104,7 @@ func (pexR *PEXReactor) Receive(chId byte, src *Peer, msgBytes []byte) {
 	}
 	log.Info("Received message", "msg", msg)
 
-	switch msg.(type) {
+	switch msgT := msg.(type) {
 	case *pexRequestMessage:
 		// src requested some peers.
 		// TODO: prevent abuse.
@@ -111,7 +114,7 @@ func (pexR *PEXReactor) Receive(chId byte, src *Peer, msgBytes []byte) {
 		// TODO: prevent abuse.
 		// (We don't want to get spammed with bad peers)
 		srcAddr := src.Connection().RemoteAddress
-		for _, addr := range msg.(*pexAddrsMessage).Addrs {
+		for _, addr := range msgT.Addrs {
 			pexR.book.AddAddress(addr, srcAddr)
 		}
 	default:
@@ -205,6 +208,15 @@ func (pexR *PEXReactor) ensurePeers() {
 				pexR.book.MarkAttempt(picked)
 			}
 		}(item.(*NetAddress))
+	}
+
+	// if no addresses to dial, pick a random connected peer and ask for more peers
+	if toDial.Size() == 0 {
+		if peers := pexR.sw.Peers().List(); len(peers) > 0 {
+			i := rand.Int() % len(peers)
+			log.Debug("No addresses to dial. Sending pexRequest to random peer", "peer", peers[i])
+			pexR.RequestPEX(peers[i])
+		}
 	}
 }
 

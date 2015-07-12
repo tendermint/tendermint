@@ -23,8 +23,8 @@ var (
 )
 
 /*
-	Peers self report their heights when a new peer joins the block pool.
-	Starting from pool.height (inclusive), we request blocks
+	Peers self report their heights when we join the block pool.
+	Starting from our latest pool.height, we request blocks
 	in sequence from peers that reported higher heights than ours.
 	Every so often we ask peers what height they're on so we can keep going.
 
@@ -94,7 +94,7 @@ RUN_LOOP:
 		if atomic.LoadInt32(&pool.running) == 0 {
 			break RUN_LOOP
 		}
-		_, numPending := pool.GetStatus()
+		_, numPending, _ := pool.GetStatus()
 		if numPending >= maxPendingRequests {
 			// sleep for a bit.
 			time.Sleep(requestIntervalMS * time.Millisecond)
@@ -108,11 +108,11 @@ RUN_LOOP:
 	}
 }
 
-func (pool *BlockPool) GetStatus() (int, int32) {
+func (pool *BlockPool) GetStatus() (int, int32, int32) {
 	pool.requestsMtx.Lock() // Lock
 	defer pool.requestsMtx.Unlock()
 
-	return pool.height, pool.numPending
+	return pool.height, pool.numPending, pool.numUnassigned
 }
 
 // We need to see the second block's Validation to validate the first block.
@@ -378,7 +378,7 @@ func requestRoutine(pool *BlockPool, height int) {
 				return
 			}
 			// or already processed and we've moved past it
-			bpHeight, _ := pool.GetStatus()
+			bpHeight, _, _ := pool.GetStatus()
 			if height < bpHeight {
 				pool.decrPeer(peer.id)
 				return
