@@ -2,13 +2,15 @@
 
 all: install
 
+TMROOT = $${TMROOT:-$$HOME/.tendermint}
+
 install: 
 	go install github.com/tendermint/tendermint/cmd/tendermint
 	go install github.com/tendermint/tendermint/cmd/barak
 	go install github.com/tendermint/tendermint/cmd/debora
 	go install github.com/tendermint/tendermint/cmd/stdinwriter
 	go install github.com/tendermint/tendermint/cmd/logjack
-	echo -n `git rev-parse --verify HEAD` > .revision
+	@echo -n `git rev-parse --verify HEAD` > $(TMROOT)/revisions
 
 build: 
 	go build -o build/tendermint github.com/tendermint/tendermint/cmd/tendermint
@@ -44,10 +46,4 @@ gen_client:
 	go generate rpc/core_client/*.go
 
 revision:
-	echo -n `git rev-parse --verify HEAD` > .revision
-
-tendermint_root/priv_validator.json: tendermint_root/priv_validator.json.orig
-	cp $< $@
-
-clean:
-	rm -f tendermint tendermint_root/priv_validator.json
+	@echo -n `git rev-parse --verify HEAD` > $(TMROOT)/revisions

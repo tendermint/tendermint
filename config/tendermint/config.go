@@ -70,6 +70,7 @@ func GetConfig(rootDir string) cfg.Config {
 	mapConfig.SetDefault("db_dir", rootDir+"/data")
 	mapConfig.SetDefault("log_level", "info")
 	mapConfig.SetDefault("rpc_laddr", "0.0.0.0:46657")
+	mapConfig.SetDefault("revisions_file", rootDir+"/revisions")
 	return mapConfig
 }
 

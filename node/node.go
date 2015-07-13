@@ -7,7 +7,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -247,7 +246,7 @@ func makeNodeInfo(sw *p2p.Switch) *types.NodeInfo {
 	}
 
 	// include git hash in the nodeInfo if available
-	if rev, err := ReadFile(path.Join(TendermintRepo, ".revision")); err == nil {
+	if rev, err := ReadFile(config.GetString("revisions_file")); err == nil {
 		nodeInfo.Revision = string(rev)
 	}
 
