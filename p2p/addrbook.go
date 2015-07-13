@@ -615,8 +615,8 @@ func (a *AddrBook) moveToOld(ka *knownAddress) {
 	}
 }
 
-// doublesha256(key + sourcegroup +
-//              int64(doublesha256(key + group + sourcegroup))%bucket_per_source_group) % num_new_buckes
+// doublesha256(  key + sourcegroup +
+//                int64(doublesha256(key + group + sourcegroup))%bucket_per_group  ) % num_new_buckets
 func (a *AddrBook) calcNewBucket(addr, src *NetAddress) int {
 	data1 := []byte{}
 	data1 = append(data1, []byte(a.key)...)
@@ -636,7 +636,8 @@ func (a *AddrBook) calcNewBucket(addr, src *NetAddress) int {
 	return int(binary.BigEndian.Uint64(hash2) % newBucketCount)
 }
 
-// doublesha256(key + group + truncate_to_64bits(doublesha256(key + addr))%buckets_per_group) % num_buckets
+// doublesha256(  key + group +
+//                int64(doublesha256(key + addr))%buckets_per_group  ) % num_old_buckets
 func (a *AddrBook) calcOldBucket(addr *NetAddress) int {
 	data1 := []byte{}
 	data1 = append(data1, []byte(a.key)...)

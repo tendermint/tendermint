@@ -22,7 +22,7 @@ var (
 
 // PeerSet is a special structure for keeping a table of peers.
 // Iteration over the peers is super fast and thread-safe.
-// We also track how many peers per ip range and avoid too many
+// We also track how many peers per IP range and avoid too many
 type PeerSet struct {
 	mtx          sync.Mutex
 	lookup       map[string]*peerSetItem
@@ -44,7 +44,7 @@ func NewPeerSet() *PeerSet {
 }
 
 // Returns false if peer with key (uuid) is already in set
-// or if we have too many peers from the peer's ip range
+// or if we have too many peers from the peer's IP range
 func (ps *PeerSet) Add(peer *Peer) error {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
@@ -52,8 +52,8 @@ func (ps *PeerSet) Add(peer *Peer) error {
 		return ErrSwitchDuplicatePeer
 	}
 
-	// ensure we havent maxed out connections for the peer's ip range yet
-	// and update the ip range counters
+	// ensure we havent maxed out connections for the peer's IP range yet
+	// and update the IP range counters
 	if !ps.updateIPRangeCounts(peer.Host) {
 		return ErrSwitchMaxPeersPerIPRange
 	}
@@ -126,9 +126,9 @@ func (ps *PeerSet) List() []*Peer {
 }
 
 //-----------------------------------------------------------------------------
-// track the number of ips we're connected to for each ip address range
+// track the number of IPs we're connected to for each IP address range
 
-// forms an ip address hierarchy tree with counts
+// forms an IP address hierarchy tree with counts
 // the struct itself is not thread safe and should always only be accessed with the ps.mtx locked
 type nestedCounter struct {
 	count    int
@@ -141,7 +141,7 @@ func NewNestedCounter() *nestedCounter {
 	return nc
 }
 
-// Check if we have too many ips in the ip range of the incoming connection
+// Check if we have too many IPs in the IP range of the incoming connection
 // Thread safe
 func (ps *PeerSet) HasMaxForIPRange(conn net.Conn) (ok bool) {
 	ps.mtx.Lock()
@@ -161,7 +161,7 @@ func (ps *PeerSet) HasMaxForIPRange(conn net.Conn) (ok bool) {
 	return false
 }
 
-// Update counts for this address' ip range
+// Update counts for this address' IP range
 // Returns false if we already have enough connections
 // Not thread safe (only called by ps.Add())
 func (ps *PeerSet) updateIPRangeCounts(address string) bool {
@@ -171,7 +171,7 @@ func (ps *PeerSet) updateIPRangeCounts(address string) bool {
 	return updateNestedCountRecursive(c, spl, 0)
 }
 
-// recursively descend the ip hierarchy, checking if we have
+// recursively descend the IP hierarchy, checking if we have
 // max peers for each range and updating if not
 func updateNestedCountRecursive(c *nestedCounter, ipBytes []string, index int) bool {
 	if index == len(ipBytes) {

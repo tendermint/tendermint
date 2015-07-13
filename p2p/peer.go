@@ -22,6 +22,7 @@ type Peer struct {
 	Data *CMap // User data.
 }
 
+// NOTE: blocking
 func peerHandshake(conn net.Conn, ourNodeInfo *types.NodeInfo) (*types.NodeInfo, error) {
 	var peerNodeInfo = new(types.NodeInfo)
 	var wg sync.WaitGroup

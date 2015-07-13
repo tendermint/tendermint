@@ -194,7 +194,7 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 	peer := newPeer(conn, peerNodeInfo, outbound, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError)
 
 	// Add the peer to .peers
-	// ignore if duplicate or if we already have too many for that ip range
+	// ignore if duplicate or if we already have too many for that IP range
 	if err := sw.peers.Add(peer); err != nil {
 		log.Info("Ignoring peer", "error", err, "peer", peer)
 		peer.stop() // will also close conn
@@ -315,7 +315,7 @@ func (sw *Switch) listenerRoutine(l Listener) {
 			continue
 		}
 
-		// Ignore connections from ip ranges for which we have too many
+		// Ignore connections from IP ranges for which we have too many
 		if sw.peers.HasMaxForIPRange(inConn) {
 			log.Debug("Ignoring inbound connection: already have enough peers for that IP range", "address", inConn.RemoteAddr().String())
 			continue
