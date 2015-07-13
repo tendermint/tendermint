@@ -293,14 +293,14 @@ func adjustByOutputs(accounts map[string]*account.Account, outs []*types.TxOutpu
 
 // If the tx is invalid, an error will be returned.
 // Unlike ExecBlock(), state will not be altered.
-func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Fireable) (err error) {
+func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireable) (err error) {
 
 	// TODO: do something with fees
 	fees := int64(0)
 	_s := blockCache.State() // hack to access validators and block height
 
 	// Exec tx
-	switch tx := tx_.(type) {
+	switch tx := tx.(type) {
 	case *types.SendTx:
 		accounts, err := getInputs(blockCache, tx.Inputs)
 		if err != nil {

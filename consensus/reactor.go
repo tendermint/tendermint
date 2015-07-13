@@ -141,16 +141,16 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 	// Get round state
 	rs := conR.conS.GetRoundState()
 	ps := peer.Data.Get(PeerStateKey).(*PeerState)
-	_, msg_, err := DecodeMessage(msgBytes)
+	_, msg, err := DecodeMessage(msgBytes)
 	if err != nil {
-		log.Warn("Error decoding message", "channel", chId, "peer", peer, "msg", msg_, "error", err, "bytes", msgBytes)
+		log.Warn("Error decoding message", "channel", chId, "peer", peer, "msg", msg, "error", err, "bytes", msgBytes)
 		return
 	}
-	log.Debug("Receive", "channel", chId, "peer", peer, "msg", msg_, "rsHeight", rs.Height) //, "bytes", msgBytes)
+	log.Debug("Receive", "channel", chId, "peer", peer, "msg", msg, "rsHeight", rs.Height) //, "bytes", msgBytes)
 
 	switch chId {
 	case StateChannel:
-		switch msg := msg_.(type) {
+		switch msg := msg.(type) {
 		case *NewRoundStepMessage:
 			ps.ApplyNewRoundStepMessage(msg, rs)
 		case *CommitStepMessage:
@@ -163,10 +163,10 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 
 	case DataChannel:
 		if conR.fastSync {
-			log.Warn("Ignoring message received during fastSync", "msg", msg_)
+			log.Warn("Ignoring message received during fastSync", "msg", msg)
 			return
 		}
-		switch msg := msg_.(type) {
+		switch msg := msg.(type) {
 		case *ProposalMessage:
 			ps.SetHasProposal(msg.Proposal)
 			err = conR.conS.SetProposal(msg.Proposal)
@@ -181,10 +181,10 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 
 	case VoteChannel:
 		if conR.fastSync {
-			log.Warn("Ignoring message received during fastSync", "msg", msg_)
+			log.Warn("Ignoring message received during fastSync", "msg", msg)
 			return
 		}
-		switch msg := msg_.(type) {
+		switch msg := msg.(type) {
 		case *VoteMessage:
 			vote := msg.Vote
 			var validators *sm.ValidatorSet

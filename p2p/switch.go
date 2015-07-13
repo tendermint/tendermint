@@ -57,7 +57,8 @@ var (
 )
 
 const (
-	peerDialTimeoutSeconds = 3
+	peerDialTimeoutSeconds = 3  // TODO make this configurable
+	maxNumPeers            = 50 // TODO make this configurable
 )
 
 func NewSwitch() *Switch {
@@ -308,9 +309,7 @@ func (sw *Switch) listenerRoutine(l Listener) {
 		}
 
 		// ignore connection if we already have enough
-		// note we might exceed the maxNumPeers in order to
-		// achieve minNumOutboundPeers
-		if sw.peers.Size() >= maxNumPeers {
+		if maxNumPeers <= sw.peers.Size() {
 			log.Debug("Ignoring inbound connection: already have enough peers", "conn", inConn, "numPeers", sw.peers.Size(), "max", maxNumPeers)
 			continue
 		}

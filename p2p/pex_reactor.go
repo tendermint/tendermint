@@ -20,7 +20,6 @@ const (
 	PexChannel               = byte(0x00)
 	ensurePeersPeriodSeconds = 30
 	minNumOutboundPeers      = 10
-	maxNumPeers              = 50
 )
 
 /*
@@ -78,12 +77,14 @@ func (pexR *PEXReactor) GetChannels() []*ChannelDescriptor {
 func (pexR *PEXReactor) AddPeer(peer *Peer) {
 	// Add the peer to the address book
 	netAddr := NewNetAddressString(fmt.Sprintf("%s:%d", peer.Host, peer.P2PPort))
-	pexR.book.AddAddress(netAddr, netAddr) // the peer is its own source
-
 	if peer.IsOutbound() {
 		if pexR.book.NeedMoreAddrs() {
 			pexR.RequestPEX(peer)
 		}
+	} else {
+		// For inbound connections, the peer is its own source
+		// (For outbound peers, the address is already in the books)
+		pexR.book.AddAddress(netAddr, netAddr)
 	}
 }
 
@@ -104,7 +105,7 @@ func (pexR *PEXReactor) Receive(chId byte, src *Peer, msgBytes []byte) {
 	}
 	log.Info("Received message", "msg", msg)
 
-	switch msgT := msg.(type) {
+	switch msg := msg.(type) {
 	case *pexRequestMessage:
 		// src requested some peers.
 		// TODO: prevent abuse.
@@ -114,7 +115,7 @@ func (pexR *PEXReactor) Receive(chId byte, src *Peer, msgBytes []byte) {
 		// TODO: prevent abuse.
 		// (We don't want to get spammed with bad peers)
 		srcAddr := src.Connection().RemoteAddress
-		for _, addr := range msgT.Addrs {
+		for _, addr := range msg.Addrs {
 			pexR.book.AddAddress(addr, srcAddr)
 		}
 	default:
@@ -210,12 +211,13 @@ func (pexR *PEXReactor) ensurePeers() {
 		}(item.(*NetAddress))
 	}
 
-	// if no addresses to dial, pick a random connected peer and ask for more peers
-	if toDial.Size() == 0 {
+	// If we need more addresses, pick a random peer and ask for more.
+	if pexR.book.NeedMoreAddrs() {
 		if peers := pexR.sw.Peers().List(); len(peers) > 0 {
 			i := rand.Int() % len(peers)
-			log.Debug("No addresses to dial. Sending pexRequest to random peer", "peer", peers[i])
-			pexR.RequestPEX(peers[i])
+			peer := peers[i]
+			log.Debug("No addresses to dial. Sending pexRequest to random peer", "peer", peer)
+			pexR.RequestPEX(peer)
 		}
 	}
 }

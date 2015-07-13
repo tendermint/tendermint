@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"fmt"
 	"net"
 	"strings"
 	"sync"
@@ -54,7 +55,7 @@ func (ps *PeerSet) Add(peer *Peer) error {
 
 	// ensure we havent maxed out connections for the peer's IP range yet
 	// and update the IP range counters
-	if !ps.updateIPRangeCounts(peer.Host) {
+	if !ps.incrIPRangeCounts(peer.Host) {
 		return ErrSwitchMaxPeersPerIPRange
 	}
 
@@ -91,6 +92,10 @@ func (ps *PeerSet) Remove(peer *Peer) {
 	if item == nil {
 		return
 	}
+
+	// update the IP range counters
+	ps.decrIPRangeCounts(peer.Host)
+
 	index := item.index
 	// Copy the list but without the last element.
 	// (we must copy because we're mutating the list)
@@ -102,6 +107,7 @@ func (ps *PeerSet) Remove(peer *Peer) {
 		delete(ps.lookup, peer.Key)
 		return
 	}
+
 	// Move the last item from ps.list to "index" in list.
 	lastPeer := ps.list[len(ps.list)-1]
 	lastPeerKey := lastPeer.Key
@@ -110,6 +116,7 @@ func (ps *PeerSet) Remove(peer *Peer) {
 	lastPeerItem.index = index
 	ps.list = newList
 	delete(ps.lookup, peer.Key)
+
 }
 
 func (ps *PeerSet) Size() int {
@@ -147,50 +154,80 @@ func (ps *PeerSet) HasMaxForIPRange(conn net.Conn) (ok bool) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 	ip, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
-	spl := strings.Split(ip, ".")
+	ipBytes := strings.Split(ip, ".")
 
 	c := ps.connectedIPs
-	for i, ipByte := range spl {
+	for i, ipByte := range ipBytes {
 		if c, ok = c.children[ipByte]; !ok {
 			return false
 		}
-		if c.count == maxPeersPerIPRange[i] {
+		if maxPeersPerIPRange[i] <= c.count {
 			return true
 		}
 	}
 	return false
 }
 
-// Update counts for this address' IP range
+// Increments counts for this address' IP range
 // Returns false if we already have enough connections
 // Not thread safe (only called by ps.Add())
-func (ps *PeerSet) updateIPRangeCounts(address string) bool {
-	spl := strings.Split(address, ".")
+func (ps *PeerSet) incrIPRangeCounts(address string) bool {
+	addrParts := strings.Split(address, ".")
 
 	c := ps.connectedIPs
-	return updateNestedCountRecursive(c, spl, 0)
+	return incrNestedCounters(c, addrParts, 0)
 }
 
-// recursively descend the IP hierarchy, checking if we have
-// max peers for each range and updating if not
-func updateNestedCountRecursive(c *nestedCounter, ipBytes []string, index int) bool {
-	if index == len(ipBytes) {
-		return true
-	}
+// Recursively descend the IP hierarchy, checking if we have
+// max peers for each range and incrementing if not.
+// Returns false if incr failed because max peers reached for some range counter.
+func incrNestedCounters(c *nestedCounter, ipBytes []string, index int) bool {
+	fmt.Println("incr:", c.count, ipBytes, index)
 	ipByte := ipBytes[index]
-	if c2, ok := c.children[ipByte]; !ok {
-		c2 = NewNestedCounter()
-		c.children[ipByte] = c2
-		c = c2
-	} else {
-		c = c2
-		if c.count == maxPeersPerIPRange[index] {
+	child := c.children[ipByte]
+	if child == nil {
+		child = NewNestedCounter()
+		c.children[ipByte] = child
+	}
+	fmt.Println("incr child:", child.count)
+	if index+1 < len(ipBytes) {
+		fmt.Println("1>>")
+		if !incrNestedCounters(child, ipBytes, index+1) {
 			return false
 		}
+	} else {
+		fmt.Println("2>>")
 	}
-	if !updateNestedCountRecursive(c, ipBytes, index+1) {
+	if maxPeersPerIPRange[index] <= child.count {
 		return false
+	} else {
+		child.count += 1
+		return true
 	}
-	c.count += 1
-	return true
+}
+
+// Decrement counts for this address' IP range
+func (ps *PeerSet) decrIPRangeCounts(address string) {
+	addrParts := strings.Split(address, ".")
+
+	c := ps.connectedIPs
+	decrNestedCounters(c, addrParts, 0)
+}
+
+// Recursively descend the IP hierarchy, decrementing by one.
+// If the counter is zero, deletes the child.
+func decrNestedCounters(c *nestedCounter, ipBytes []string, index int) {
+	ipByte := ipBytes[index]
+	child := c.children[ipByte]
+	if child == nil {
+		log.Error("p2p/peer_set decrNestedCounters encountered a missing child counter")
+		return
+	}
+	if index+1 < len(ipBytes) {
+		decrNestedCounters(child, ipBytes, index+1)
+	}
+	child.count -= 1
+	if child.count <= 0 {
+		delete(c.children, ipByte)
+	}
 }

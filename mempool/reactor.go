@@ -73,14 +73,14 @@ func (pexR *MempoolReactor) RemovePeer(peer *p2p.Peer, reason interface{}) {
 
 // Implements Reactor
 func (memR *MempoolReactor) Receive(chId byte, src *p2p.Peer, msgBytes []byte) {
-	_, msg_, err := DecodeMessage(msgBytes)
+	_, msg, err := DecodeMessage(msgBytes)
 	if err != nil {
 		log.Warn("Error decoding message", "error", err)
 		return
 	}
-	log.Info("MempoolReactor received message", "msg", msg_)
+	log.Info("MempoolReactor received message", "msg", msg)
 
-	switch msg := msg_.(type) {
+	switch msg := msg.(type) {
 	case *TxMessage:
 		err := memR.Mempool.AddTx(msg.Tx)
 		if err != nil {
