@@ -108,7 +108,7 @@ RUN_LOOP:
 	}
 }
 
-func (pool *BlockPool) GetStatus() (int, int32, int32) {
+func (pool *BlockPool) GetStatus() (height int, numPending int32, numUnssigned int32) {
 	pool.requestsMtx.Lock() // Lock
 	defer pool.requestsMtx.Unlock()
 
