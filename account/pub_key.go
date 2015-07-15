@@ -74,6 +74,12 @@ func (pubKey PubKeyEd25519) String() string {
 	return Fmt("PubKeyEd25519{%X}", []byte(pubKey))
 }
 
+// Must return the full bytes in hex.
+// Used for map keying, etc.
+func (pubKey PubKeyEd25519) KeyString() string {
+	return Fmt("%X", []byte(pubKey))
+}
+
 func (pubKey PubKeyEd25519) Equals(other PubKey) bool {
 	if _, ok := other.(PubKeyEd25519); ok {
 		return bytes.Equal(pubKey, other.(PubKeyEd25519))

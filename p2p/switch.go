@@ -194,15 +194,15 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 		return nil, fmt.Errorf("Ignoring connection with unmatching pubkey: %v vs %v",
 			peerNodeInfo.PubKey, sconn.RemotePubKey())
 	}
+	// Avoid self
+	if peerNodeInfo.PubKey.Equals(sw.nodeInfo.PubKey) {
+		sconn.Close()
+		return nil, fmt.Errorf("Ignoring connection from self")
+	}
 	// Check version, chain id
 	if err := sw.nodeInfo.CompatibleWith(peerNodeInfo); err != nil {
 		sconn.Close()
 		return nil, err
-	}
-	// Avoid self
-	if peerNodeInfo.UUID == sw.nodeInfo.UUID {
-		sconn.Close()
-		return nil, fmt.Errorf("Ignoring connection from self")
 	}
 
 	// The peerNodeInfo is not verified, so overwrite.

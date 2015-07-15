@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tendermint/tendermint/Godeps/_workspace/src/code.google.com/p/go-uuid/uuid"
 	acm "github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
 	bc "github.com/tendermint/tendermint/blockchain"
@@ -253,7 +252,6 @@ func makeNodeInfo(sw *p2p.Switch, privKey acm.PrivKeyEd25519) *types.NodeInfo {
 		Moniker: config.GetString("moniker"),
 		ChainID: config.GetString("chain_id"),
 		Version: config.GetString("version"),
-		UUID:    uuid.New(),
 	}
 
 	// include git hash in the nodeInfo if available

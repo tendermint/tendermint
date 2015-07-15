@@ -66,7 +66,7 @@ func newPeer(conn net.Conn, peerNodeInfo *types.NodeInfo, outbound bool, reactor
 		mconn:    mconn,
 		running:  0,
 		NodeInfo: peerNodeInfo,
-		Key:      peerNodeInfo.UUID,
+		Key:      peerNodeInfo.PubKey.KeyString(),
 		Data:     NewCMap(),
 	}
 	return p

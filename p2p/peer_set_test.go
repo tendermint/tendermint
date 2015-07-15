@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tendermint/tendermint/Godeps/_workspace/src/code.google.com/p/go-uuid/uuid"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/types"
 )
@@ -13,7 +12,7 @@ import (
 // Returns an empty dummy peer
 func randPeer() *Peer {
 	return &Peer{
-		Key: uuid.New(),
+		Key: RandStr(12),
 		NodeInfo: &types.NodeInfo{
 			Host: Fmt("%v.%v.%v.%v", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256),
 		},
@@ -81,7 +80,7 @@ func newPeerInIPRange(ipBytes ...string) *Peer {
 
 	ipS := strings.Join(ips, ".")
 	return &Peer{
-		Key: uuid.New(),
+		Key: RandStr(12),
 		NodeInfo: &types.NodeInfo{
 			Host: ipS,
 		},

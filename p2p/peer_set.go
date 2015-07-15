@@ -43,7 +43,7 @@ func NewPeerSet() *PeerSet {
 	}
 }
 
-// Returns false if peer with key (uuid) is already in set
+// Returns false if peer with key (PubKeyEd25519) is already in set
 // or if we have too many peers from the peer's IP range
 func (ps *PeerSet) Add(peer *Peer) error {
 	ps.mtx.Lock()
