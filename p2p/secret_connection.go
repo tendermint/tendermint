@@ -1,4 +1,6 @@
 // Uses nacl's secret_box to encrypt a net.Conn.
+// It is (meant to be) an implementation of the STS protocol.
+// See docs/sts-final.pdf for more info
 package p2p
 
 import (
