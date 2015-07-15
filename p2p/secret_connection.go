@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
+	//"fmt"
 	"io"
 	"sync"
 
@@ -109,7 +110,8 @@ func (sc *SecretConnection) Write(data []byte) (n int, err error) {
 
 		// encrypt the frame
 		var sealedFrame = make([]byte, sealedFrameSize)
-		secretbox.Seal(sealedFrame, frame, sc.sendNonce, sc.shrSecret)
+		secretbox.Seal(sealedFrame[:0], frame, sc.sendNonce, sc.shrSecret)
+		// fmt.Printf("secretbox.Seal(sealed:%X,sendNonce:%X,shrSecret:%X\n", sealedFrame, sc.sendNonce, sc.shrSecret)
 		incr2Nonce(sc.sendNonce)
 		// end encryption
 
@@ -139,7 +141,8 @@ func (sc *SecretConnection) Read(data []byte) (n int, err error) {
 
 	// decrypt the frame
 	var frame = make([]byte, totalFrameSize)
-	_, ok := secretbox.Open(frame, sealedFrame, sc.recvNonce, sc.shrSecret)
+	// fmt.Printf("secretbox.Open(sealed:%X,recvNonce:%X,shrSecret:%X\n", sealedFrame, sc.recvNonce, sc.shrSecret)
+	_, ok := secretbox.Open(frame[:0], sealedFrame, sc.recvNonce, sc.shrSecret)
 	if !ok {
 		return n, errors.New("Failed to decrypt SecretConnection")
 	}
@@ -216,8 +219,8 @@ func genNonces(loPubKey, hiPubKey *[32]byte, locIsLo bool) (recvNonce, sendNonce
 		recvNonce = nonce1
 		sendNonce = nonce2
 	} else {
-		recvNonce = nonce1
-		sendNonce = nonce2
+		recvNonce = nonce2
+		sendNonce = nonce1
 	}
 	return
 }

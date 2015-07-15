@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"sync"
 	"sync/atomic"
 
 	"github.com/tendermint/tendermint/binary"
@@ -26,22 +25,16 @@ type Peer struct {
 // Before creating a peer with newPeer(), perform a handshake on connection.
 func peerHandshake(conn net.Conn, ourNodeInfo *types.NodeInfo) (*types.NodeInfo, error) {
 	var peerNodeInfo = new(types.NodeInfo)
-	var wg sync.WaitGroup
 	var err1 error
 	var err2 error
-	wg.Add(2)
-	go func() {
+	Parallel(func() {
 		var n int64
 		binary.WriteBinary(ourNodeInfo, conn, &n, &err1)
-		wg.Done()
-	}()
-	go func() {
+	}, func() {
 		var n int64
 		binary.ReadBinary(peerNodeInfo, conn, &n, &err2)
 		log.Info("Peer handshake", "peerNodeInfo", peerNodeInfo)
-		wg.Done()
-	}()
-	wg.Wait()
+	})
 	if err1 != nil {
 		return nil, err1
 	}
