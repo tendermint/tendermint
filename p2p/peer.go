@@ -23,6 +23,7 @@ type Peer struct {
 }
 
 // NOTE: blocking
+// Before creating a peer with newPeer(), perform a handshake on connection.
 func peerHandshake(conn net.Conn, ourNodeInfo *types.NodeInfo) (*types.NodeInfo, error) {
 	var peerNodeInfo = new(types.NodeInfo)
 	var wg sync.WaitGroup
@@ -50,6 +51,7 @@ func peerHandshake(conn net.Conn, ourNodeInfo *types.NodeInfo) (*types.NodeInfo,
 	return peerNodeInfo, nil
 }
 
+// NOTE: call peerHandshake on conn before calling newPeer().
 func newPeer(conn net.Conn, peerNodeInfo *types.NodeInfo, outbound bool, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor, onPeerError func(*Peer, interface{})) *Peer {
 	var p *Peer
 	onReceive := func(chId byte, msgBytes []byte) {

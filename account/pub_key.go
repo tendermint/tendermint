@@ -3,6 +3,7 @@ package account
 import (
 	"errors"
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/tendermint/ed25519"
+	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/tendermint/ed25519/extra25519"
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 )
@@ -46,6 +47,18 @@ func (pubKey PubKeyEd25519) VerifyBytes(msg []byte, sig_ Signature) bool {
 	sigBytes := new([64]byte)
 	copy(sigBytes[:], sig)
 	return ed25519.Verify(pubKeyBytes, msg, sigBytes)
+}
+
+// For use with golang/crypto/nacl/box
+// If error, returns nil.
+func (pubKey PubKeyEd25519) ToCurve25519() *[32]byte {
+	keyEd25519, keyCurve25519 := new([32]byte), new([32]byte)
+	copy(keyEd25519[:], pubKey)
+	ok := extra25519.PublicKeyToCurve25519(keyCurve25519, keyEd25519)
+	if !ok {
+		return nil
+	}
+	return keyCurve25519
 }
 
 func (pubKey PubKeyEd25519) ValidateBasic() error {

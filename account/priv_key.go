@@ -2,6 +2,7 @@ package account
 
 import (
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/tendermint/ed25519"
+	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/tendermint/ed25519/extra25519"
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 )
@@ -37,12 +38,19 @@ func (privKey PrivKeyEd25519) Sign(msg []byte) Signature {
 	return SignatureEd25519(signatureBytes[:])
 }
 
-func (key PrivKeyEd25519) PubKey() PubKey {
-	keyBytes := new([64]byte)
-	copy(keyBytes[:], key[:])
-	return PubKeyEd25519(ed25519.MakePublicKey(keyBytes)[:])
+func (privKey PrivKeyEd25519) PubKey() PubKey {
+	privKeyBytes := new([64]byte)
+	copy(privKeyBytes[:], privKey[:])
+	return PubKeyEd25519(ed25519.MakePublicKey(privKeyBytes)[:])
 }
 
-func (key PrivKeyEd25519) String() string {
+func (privKey PrivKeyEd25519) ToCurve25519() *[32]byte {
+	keyEd25519, keyCurve25519 := new([64]byte), new([32]byte)
+	copy(keyEd25519[:], privKey)
+	extra25519.PrivateKeyToCurve25519(keyCurve25519, keyEd25519)
+	return keyCurve25519
+}
+
+func (privKey PrivKeyEd25519) String() string {
 	return Fmt("PrivKeyEd25519{*****}")
 }
