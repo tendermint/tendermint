@@ -1,7 +1,6 @@
 package p2p
 
 import (
-	"fmt"
 	"math/rand"
 	"strings"
 	"testing"
@@ -93,7 +92,6 @@ func TestIPRanges(t *testing.T) {
 	peerSet := NewPeerSet()
 
 	// test  /8
-	fmt.Println("---")
 	maxPeersPerIPRange = [4]int{2, 2, 2, 2}
 	peer := newPeerInIPRange("54")
 	if err := peerSet.Add(peer); err != nil {
@@ -111,7 +109,6 @@ func TestIPRanges(t *testing.T) {
 	if err := peerSet.Add(peer); err != nil {
 		t.Errorf("Failed to add new peer")
 	}
-	fmt.Println("---END")
 
 	// test  /16
 	peerSet = NewPeerSet()

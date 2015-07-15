@@ -1,7 +1,6 @@
 package p2p
 
 import (
-	"fmt"
 	"net"
 	"strings"
 	"sync"
@@ -182,21 +181,16 @@ func (ps *PeerSet) incrIPRangeCounts(address string) bool {
 // max peers for each range and incrementing if not.
 // Returns false if incr failed because max peers reached for some range counter.
 func incrNestedCounters(c *nestedCounter, ipBytes []string, index int) bool {
-	fmt.Println("incr:", c.count, ipBytes, index)
 	ipByte := ipBytes[index]
 	child := c.children[ipByte]
 	if child == nil {
 		child = NewNestedCounter()
 		c.children[ipByte] = child
 	}
-	fmt.Println("incr child:", child.count)
 	if index+1 < len(ipBytes) {
-		fmt.Println("1>>")
 		if !incrNestedCounters(child, ipBytes, index+1) {
 			return false
 		}
-	} else {
-		fmt.Println("2>>")
 	}
 	if maxPeersPerIPRange[index] <= child.count {
 		return false

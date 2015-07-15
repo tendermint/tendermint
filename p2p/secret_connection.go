@@ -8,7 +8,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
-	"net"
 	"sync"
 
 	"golang.org/x/crypto/nacl/box"
@@ -23,9 +22,10 @@ import (
 const dataLenSize = 2 // uint16 to describe the length, is <= dataMaxSize
 const dataMaxSize = 1024
 const totalFrameSize = dataMaxSize + dataLenSize
+const sealedFrameSize = totalFrameSize + secretbox.Overhead
 
 type SecretConnection struct {
-	conn       net.Conn
+	conn       io.ReadWriter
 	recvBuffer []byte
 	recvNonce  *[24]byte
 	sendNonce  *[24]byte
@@ -33,9 +33,10 @@ type SecretConnection struct {
 	shrSecret  *[32]byte // shared secret
 }
 
-// If handshake error, will return nil.
+// Performs handshake and returns a new authenticated SecretConnection.
+// Returns nil if error in handshake.
 // Caller should call conn.Close()
-func secretHandshake(conn net.Conn, locPrivKey acm.PrivKeyEd25519) (*SecretConnection, error) {
+func MakeSecretConnection(conn io.ReadWriter, locPrivKey acm.PrivKeyEd25519) (*SecretConnection, error) {
 
 	locPubKey := locPrivKey.PubKey().(acm.PubKeyEd25519)
 
@@ -43,7 +44,7 @@ func secretHandshake(conn net.Conn, locPrivKey acm.PrivKeyEd25519) (*SecretConne
 	locEphPub, locEphPriv := genEphKeys()
 
 	// Write local ephemeral pubkey and receive one too.
-	remEphPub, err := share32(conn, locEphPub)
+	remEphPub, err := shareEphPubKey(conn, locEphPub)
 
 	// Compute common shared secret.
 	shrSecret := computeSharedSecret(remEphPub, locEphPriv)
@@ -84,6 +85,12 @@ func secretHandshake(conn net.Conn, locPrivKey acm.PrivKeyEd25519) (*SecretConne
 	return sc, nil
 }
 
+// Returns authenticated remote pubkey
+func (sc *SecretConnection) RemotePubKey() acm.PubKeyEd25519 {
+	return sc.remPubKey
+}
+
+// Writes encrypted frames of `sealedFrameSize`
 // CONTRACT: data smaller than dataMaxSize is read atomically.
 func (sc *SecretConnection) Write(data []byte) (n int, err error) {
 	for 0 < len(data) {
@@ -101,7 +108,7 @@ func (sc *SecretConnection) Write(data []byte) (n int, err error) {
 		copy(frame[dataLenSize:], chunk)
 
 		// encrypt the frame
-		var sealedFrame = make([]byte, totalFrameSize+secretbox.Overhead)
+		var sealedFrame = make([]byte, sealedFrameSize)
 		secretbox.Seal(sealedFrame, frame, sc.sendNonce, sc.shrSecret)
 		incr2Nonce(sc.sendNonce)
 		// end encryption
@@ -124,7 +131,7 @@ func (sc *SecretConnection) Read(data []byte) (n int, err error) {
 		return
 	}
 
-	sealedFrame := make([]byte, totalFrameSize+secretbox.Overhead)
+	sealedFrame := make([]byte, sealedFrameSize)
 	_, err = io.ReadFull(sc.conn, sealedFrame)
 	if err != nil {
 		return
@@ -156,20 +163,20 @@ func genEphKeys() (ephPub, ephPriv *[32]byte) {
 	return
 }
 
-func share32(conn net.Conn, sendBytes *[32]byte) (recvBytes *[32]byte, err error) {
+func shareEphPubKey(conn io.ReadWriter, locEphPub *[32]byte) (remEphPub *[32]byte, err error) {
 	var err1, err2 error
 	var wg sync.WaitGroup
 	wg.Add(2)
 
 	go func() {
 		defer wg.Done()
-		_, err1 = conn.Write(sendBytes[:])
+		_, err1 = conn.Write(locEphPub[:])
 	}()
 
 	go func() {
 		defer wg.Done()
-		recvBytes = new([32]byte)
-		_, err2 = io.ReadFull(conn, recvBytes[:])
+		remEphPub = new([32]byte)
+		_, err2 = io.ReadFull(conn, remEphPub[:])
 	}()
 
 	wg.Wait()
@@ -180,7 +187,7 @@ func share32(conn net.Conn, sendBytes *[32]byte) (recvBytes *[32]byte, err error
 		return nil, err2
 	}
 
-	return recvBytes, nil
+	return remEphPub, nil
 }
 
 func computeSharedSecret(remPubKey, locPrivKey *[32]byte) (shrSecret *[32]byte) {
