@@ -42,6 +42,7 @@ type SecretConnection struct {
 // Performs handshake and returns a new authenticated SecretConnection.
 // Returns nil if error in handshake.
 // Caller should call conn.Close()
+// See docs/sts-final.pdf for more information.
 func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey acm.PrivKeyEd25519) (*SecretConnection, error) {
 
 	locPubKey := locPrivKey.PubKey().(acm.PubKeyEd25519)
