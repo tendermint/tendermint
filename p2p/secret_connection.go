@@ -7,6 +7,8 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
+	"net"
+	"time"
 	//"fmt"
 	"io"
 	"sync"
@@ -17,6 +19,7 @@ import (
 
 	acm "github.com/tendermint/tendermint/account"
 	bm "github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
 )
 
 // 2 + 1024 == 1026 total frame size
@@ -25,6 +28,7 @@ const dataMaxSize = 1024
 const totalFrameSize = dataMaxSize + dataLenSize
 const sealedFrameSize = totalFrameSize + secretbox.Overhead
 
+// Implements net.Conn
 type SecretConnection struct {
 	conn       io.ReadWriteCloser
 	recvBuffer []byte
@@ -157,8 +161,16 @@ func (sc *SecretConnection) Read(data []byte) (n int, err error) {
 	return
 }
 
-func (sc *SecretConnection) Close() error {
-	return sc.conn.Close()
+// Implements net.Conn
+func (sc *SecretConnection) Close() error                  { return sc.conn.Close() }
+func (sc *SecretConnection) LocalAddr() net.Addr           { return sc.conn.(net.Conn).LocalAddr() }
+func (sc *SecretConnection) RemoteAddr() net.Addr          { return sc.conn.(net.Conn).RemoteAddr() }
+func (sc *SecretConnection) SetDeadline(t time.Time) error { return sc.conn.(net.Conn).SetDeadline(t) }
+func (sc *SecretConnection) SetReadDeadline(t time.Time) error {
+	return sc.conn.(net.Conn).SetReadDeadline(t)
+}
+func (sc *SecretConnection) SetWriteDeadline(t time.Time) error {
+	return sc.conn.(net.Conn).SetWriteDeadline(t)
 }
 
 func genEphKeys() (ephPub, ephPriv *[32]byte) {
@@ -246,28 +258,23 @@ type authSigMessage struct {
 func shareAuthSignature(sc *SecretConnection, pubKey acm.PubKeyEd25519, signature acm.SignatureEd25519) (acm.PubKeyEd25519, acm.SignatureEd25519, error) {
 	var recvMsg authSigMessage
 	var err1, err2 error
-	var wg sync.WaitGroup
-	wg.Add(2)
 
-	go func() {
-		defer wg.Done()
-		msgBytes := bm.BinaryBytes(authSigMessage{pubKey, signature})
-		_, err1 = sc.Write(msgBytes)
-	}()
+	Parallel(
+		func() {
+			msgBytes := bm.BinaryBytes(authSigMessage{pubKey, signature})
+			_, err1 = sc.Write(msgBytes)
+		},
+		func() {
+			// NOTE relies on atomicity of small data.
+			readBuffer := make([]byte, dataMaxSize)
+			_, err2 = sc.Read(readBuffer)
+			if err2 != nil {
+				return
+			}
+			n := int64(0) // not used.
+			recvMsg = bm.ReadBinary(authSigMessage{}, bytes.NewBuffer(readBuffer), &n, &err2).(authSigMessage)
+		})
 
-	go func() {
-		defer wg.Done()
-		// NOTE relies on atomicity of small data.
-		readBuffer := make([]byte, dataMaxSize)
-		_, err2 = sc.Read(readBuffer)
-		if err2 != nil {
-			return
-		}
-		n := int64(0) // not used.
-		recvMsg = bm.ReadBinary(authSigMessage{}, bytes.NewBuffer(readBuffer), &n, &err2).(authSigMessage)
-	}()
-
-	wg.Wait()
 	if err1 != nil {
 		return nil, nil, err1
 	}

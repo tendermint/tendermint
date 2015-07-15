@@ -27,14 +27,16 @@ func peerHandshake(conn net.Conn, ourNodeInfo *types.NodeInfo) (*types.NodeInfo,
 	var peerNodeInfo = new(types.NodeInfo)
 	var err1 error
 	var err2 error
-	Parallel(func() {
-		var n int64
-		binary.WriteBinary(ourNodeInfo, conn, &n, &err1)
-	}, func() {
-		var n int64
-		binary.ReadBinary(peerNodeInfo, conn, &n, &err2)
-		log.Info("Peer handshake", "peerNodeInfo", peerNodeInfo)
-	})
+	Parallel(
+		func() {
+			var n int64
+			binary.WriteBinary(ourNodeInfo, conn, &n, &err1)
+		},
+		func() {
+			var n int64
+			binary.ReadBinary(peerNodeInfo, conn, &n, &err2)
+			log.Info("Peer handshake", "peerNodeInfo", peerNodeInfo)
+		})
 	if err1 != nil {
 		return nil, err1
 	}

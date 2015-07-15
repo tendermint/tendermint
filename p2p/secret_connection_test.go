@@ -37,29 +37,31 @@ func makeSecretConnPair(tb testing.TB) (fooSecConn, barSecConn *SecretConnection
 	barPrvKey := acm.PrivKeyEd25519(CRandBytes(32))
 	barPubKey := barPrvKey.PubKey().(acm.PubKeyEd25519)
 
-	Parallel(func() {
-		var err error
-		fooSecConn, err = MakeSecretConnection(fooConn, fooPrvKey)
-		if err != nil {
-			tb.Errorf("Failed to establish SecretConnection for foo: %v", err)
-			return
-		}
-		if !bytes.Equal(fooSecConn.RemotePubKey(), barPubKey) {
-			tb.Errorf("Unexpected fooSecConn.RemotePubKey.  Expected %v, got %v",
-				barPubKey, fooSecConn.RemotePubKey())
-		}
-	}, func() {
-		var err error
-		barSecConn, err = MakeSecretConnection(barConn, barPrvKey)
-		if barSecConn == nil {
-			tb.Errorf("Failed to establish SecretConnection for bar: %v", err)
-			return
-		}
-		if !bytes.Equal(barSecConn.RemotePubKey(), fooPubKey) {
-			tb.Errorf("Unexpected barSecConn.RemotePubKey.  Expected %v, got %v",
-				fooPubKey, barSecConn.RemotePubKey())
-		}
-	})
+	Parallel(
+		func() {
+			var err error
+			fooSecConn, err = MakeSecretConnection(fooConn, fooPrvKey)
+			if err != nil {
+				tb.Errorf("Failed to establish SecretConnection for foo: %v", err)
+				return
+			}
+			if !bytes.Equal(fooSecConn.RemotePubKey(), barPubKey) {
+				tb.Errorf("Unexpected fooSecConn.RemotePubKey.  Expected %v, got %v",
+					barPubKey, fooSecConn.RemotePubKey())
+			}
+		},
+		func() {
+			var err error
+			barSecConn, err = MakeSecretConnection(barConn, barPrvKey)
+			if barSecConn == nil {
+				tb.Errorf("Failed to establish SecretConnection for bar: %v", err)
+				return
+			}
+			if !bytes.Equal(barSecConn.RemotePubKey(), fooPubKey) {
+				tb.Errorf("Unexpected barSecConn.RemotePubKey.  Expected %v, got %v",
+					fooPubKey, barSecConn.RemotePubKey())
+			}
+		})
 
 	return
 }
@@ -92,35 +94,37 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 				return
 			}
 			// In parallel, handle reads and writes
-			Parallel(func() {
-				// Node writes
-				for _, nodeWrite := range nodeWrites {
-					n, err := nodeSecretConn.Write([]byte(nodeWrite))
-					if err != nil {
-						t.Errorf("Failed to write to nodeSecretConn: %v", err)
-						return
+			Parallel(
+				func() {
+					// Node writes
+					for _, nodeWrite := range nodeWrites {
+						n, err := nodeSecretConn.Write([]byte(nodeWrite))
+						if err != nil {
+							t.Errorf("Failed to write to nodeSecretConn: %v", err)
+							return
+						}
+						if n != len(nodeWrite) {
+							t.Errorf("Failed to write all bytes. Expected %v, wrote %v", len(nodeWrite), n)
+							return
+						}
 					}
-					if n != len(nodeWrite) {
-						t.Errorf("Failed to write all bytes. Expected %v, wrote %v", len(nodeWrite), n)
-						return
+					nodeConn.PipeWriter.Close()
+				},
+				func() {
+					// Node reads
+					readBuffer := make([]byte, dataMaxSize)
+					for {
+						n, err := nodeSecretConn.Read(readBuffer)
+						if err == io.EOF {
+							return
+						} else if err != nil {
+							t.Errorf("Failed to read from nodeSecretConn: %v", err)
+							return
+						}
+						*nodeReads = append(*nodeReads, string(readBuffer[:n]))
 					}
-				}
-				nodeConn.PipeWriter.Close()
-			}, func() {
-				// Node reads
-				readBuffer := make([]byte, dataMaxSize)
-				for {
-					n, err := nodeSecretConn.Read(readBuffer)
-					if err == io.EOF {
-						return
-					} else if err != nil {
-						t.Errorf("Failed to read from nodeSecretConn: %v", err)
-						return
-					}
-					*nodeReads = append(*nodeReads, string(readBuffer[:n]))
-				}
-				nodeConn.PipeReader.Close()
-			})
+					nodeConn.PipeReader.Close()
+				})
 		}
 	}
 
