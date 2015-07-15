@@ -76,6 +76,30 @@
 			"Rev": "105a1beefe3379227a0d61733a29fd2c34f7080c"
 		},
 		{
+			"ImportPath": "golang.org/x/crypto/curve25519",
+			"Rev": "02a186af8b62cb007f392270669b91be5527d39c"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/nacl/box",
+			"Rev": "02a186af8b62cb007f392270669b91be5527d39c"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/nacl/secretbox",
+			"Rev": "02a186af8b62cb007f392270669b91be5527d39c"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/poly1305",
+			"Rev": "02a186af8b62cb007f392270669b91be5527d39c"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/ripemd160",
+			"Rev": "02a186af8b62cb007f392270669b91be5527d39c"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/salsa20/salsa",
+			"Rev": "02a186af8b62cb007f392270669b91be5527d39c"
+		},
+		{
 			"ImportPath": "gopkg.in/fatih/set.v0",
 			"Comment": "v0.1.0-3-g27c4092",
 			"Rev": "27c40922c40b43fe04554d8223a402af3ea333f3"

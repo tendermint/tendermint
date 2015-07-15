@@ -14,10 +14,11 @@ import (
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/syndtr/goleveldb/leveldb/storage"
 )
 
+// Logging.
+
 type dropper struct {
 	s    *session
-	file storage. // Logging.
-	File
+	file storage.File
 }
 
 func (d dropper) Drop(err error) {
