@@ -1,7 +1,9 @@
 package account
 
 import (
+	"bytes"
 	"errors"
+
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/tendermint/ed25519"
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/tendermint/ed25519/extra25519"
 	"github.com/tendermint/tendermint/binary"
@@ -70,4 +72,12 @@ func (pubKey PubKeyEd25519) ValidateBasic() error {
 
 func (pubKey PubKeyEd25519) String() string {
 	return Fmt("PubKeyEd25519{%X}", []byte(pubKey))
+}
+
+func (pubKey PubKeyEd25519) Equals(other PubKey) bool {
+	if _, ok := other.(PubKeyEd25519); ok {
+		return bytes.Equal(pubKey, other.(PubKeyEd25519))
+	} else {
+		return false
+	}
 }

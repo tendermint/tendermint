@@ -9,11 +9,10 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
-	"net"
-	"time"
-	//"fmt"
 	"io"
+	"net"
 	"sync"
+	"time"
 
 	"golang.org/x/crypto/nacl/box"
 	"golang.org/x/crypto/nacl/secretbox"

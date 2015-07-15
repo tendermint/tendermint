@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	acm "github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/types"
@@ -74,21 +75,28 @@ func (tr *TestReactor) Receive(chId byte, peer *Peer, msgBytes []byte) {
 // convenience method for creating two switches connected to each other.
 func makeSwitchPair(t testing.TB, initSwitch func(*Switch) *Switch) (*Switch, *Switch) {
 
+	s1PrivKey := acm.GenPrivKeyEd25519()
+	s2PrivKey := acm.GenPrivKeyEd25519()
+
 	// Create two switches that will be interconnected.
 	s1 := initSwitch(NewSwitch())
 	s1.SetNodeInfo(&types.NodeInfo{
+		PubKey:  s1PrivKey.PubKey().(acm.PubKeyEd25519),
 		Moniker: "switch1",
 		ChainID: "testing",
 		Version: "123.123.123",
 		UUID:    uuid.New(),
 	})
+	s1.SetNodePrivKey(s1PrivKey)
 	s2 := initSwitch(NewSwitch())
 	s2.SetNodeInfo(&types.NodeInfo{
+		PubKey:  s2PrivKey.PubKey().(acm.PubKeyEd25519),
 		Moniker: "switch2",
 		ChainID: "testing",
 		Version: "123.123.123",
 		UUID:    uuid.New(),
 	})
+	s2.SetNodePrivKey(s2PrivKey)
 
 	// Start switches
 	s1.Start()

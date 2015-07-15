@@ -54,3 +54,10 @@ func (privKey PrivKeyEd25519) ToCurve25519() *[32]byte {
 func (privKey PrivKeyEd25519) String() string {
 	return Fmt("PrivKeyEd25519{*****}")
 }
+
+func GenPrivKeyEd25519() PrivKeyEd25519 {
+	privKeyBytes := new([64]byte)
+	copy(privKeyBytes[:32], CRandBytes(32))
+	ed25519.MakePublicKey(privKeyBytes)
+	return PrivKeyEd25519(privKeyBytes[:])
+}

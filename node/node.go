@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/code.google.com/p/go-uuid/uuid"
+	acm "github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
 	bc "github.com/tendermint/tendermint/blockchain"
 	. "github.com/tendermint/tendermint/common"
@@ -46,6 +47,7 @@ type Node struct {
 	consensusReactor *consensus.ConsensusReactor
 	privValidator    *sm.PrivValidator
 	genDoc           *sm.GenesisDoc
+	privKey          acm.PrivKeyEd25519
 }
 
 func NewNode() *Node {
@@ -92,6 +94,10 @@ func NewNode() *Node {
 		log.Info("Generated PrivValidator", "file", privValidatorFile)
 	}
 
+	// Generate node PrivKey
+	privKey := acm.GenPrivKeyEd25519()
+
+	// Make event switch
 	eventSwitch := new(events.EventSwitch)
 	eventSwitch.Start()
 
@@ -113,6 +119,7 @@ func NewNode() *Node {
 		consensusReactor.SetPrivValidator(privValidator)
 	}
 
+	// Make Switch
 	sw := p2p.NewSwitch()
 	sw.AddReactor("PEX", pexReactor)
 	sw.AddReactor("MEMPOOL", mempoolReactor)
@@ -135,6 +142,7 @@ func NewNode() *Node {
 		consensusReactor: consensusReactor,
 		privValidator:    privValidator,
 		genDoc:           genDoc,
+		privKey:          privKey,
 	}
 }
 
@@ -142,7 +150,8 @@ func NewNode() *Node {
 func (n *Node) Start() {
 	log.Info("Starting Node", "chainID", config.GetString("chain_id"))
 	n.book.Start()
-	n.sw.SetNodeInfo(makeNodeInfo(n.sw))
+	n.sw.SetNodeInfo(makeNodeInfo(n.sw, n.privKey))
+	n.sw.SetNodePrivKey(n.privKey)
 	n.sw.Start()
 }
 
@@ -237,10 +246,12 @@ func (n *Node) EventSwitch() *events.EventSwitch {
 	return n.evsw
 }
 
-func makeNodeInfo(sw *p2p.Switch) *types.NodeInfo {
+func makeNodeInfo(sw *p2p.Switch, privKey acm.PrivKeyEd25519) *types.NodeInfo {
+
 	nodeInfo := &types.NodeInfo{
-		ChainID: config.GetString("chain_id"),
+		PubKey:  privKey.PubKey().(acm.PubKeyEd25519),
 		Moniker: config.GetString("moniker"),
+		ChainID: config.GetString("chain_id"),
 		Version: config.GetString("version"),
 		UUID:    uuid.New(),
 	}

@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	acm "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/types"
 )
@@ -48,7 +49,8 @@ type Switch struct {
 	peers        *PeerSet
 	dialing      *CMap
 	running      uint32
-	nodeInfo     *types.NodeInfo // our node info
+	nodeInfo     *types.NodeInfo    // our node info
+	nodePrivKey  acm.PrivKeyEd25519 // our node privkey
 }
 
 var (
@@ -70,6 +72,7 @@ func NewSwitch() *Switch {
 		dialing:      NewCMap(),
 		running:      0,
 		nodeInfo:     nil,
+		nodePrivKey:  nil,
 	}
 	return sw
 }
@@ -126,6 +129,15 @@ func (sw *Switch) NodeInfo() *types.NodeInfo {
 	return sw.nodeInfo
 }
 
+// Not goroutine safe.
+// NOTE: Overwrites sw.nodeInfo.PubKey
+func (sw *Switch) SetNodePrivKey(nodePrivKey acm.PrivKeyEd25519) {
+	sw.nodePrivKey = nodePrivKey
+	if sw.nodeInfo != nil {
+		sw.nodeInfo.PubKey = nodePrivKey.PubKey().(acm.PubKeyEd25519)
+	}
+}
+
 func (sw *Switch) Start() {
 	if atomic.CompareAndSwapUint32(&sw.running, 0, 1) {
 		// Start reactors
@@ -165,40 +177,51 @@ func (sw *Switch) Stop() {
 // NOTE: This performs a blocking handshake before the peer is added.
 // CONTRACT: Iff error is returned, peer is nil, and conn is immediately closed.
 func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, error) {
-	// First, perform handshake
-	peerNodeInfo, err := peerHandshake(conn, sw.nodeInfo)
+	// First, encrypt the connection.
+	sconn, err := MakeSecretConnection(conn, sw.nodePrivKey)
 	if err != nil {
-		conn.Close()
 		return nil, err
 	}
-	// check version, chain id
+	// Then, perform node handshake
+	peerNodeInfo, err := peerHandshake(sconn, sw.nodeInfo)
+	if err != nil {
+		sconn.Close()
+		return nil, err
+	}
+	// Check that the professed PubKey matches the sconn's.
+	if !peerNodeInfo.PubKey.Equals(sconn.RemotePubKey()) {
+		sconn.Close()
+		return nil, fmt.Errorf("Ignoring connection with unmatching pubkey: %v vs %v",
+			peerNodeInfo.PubKey, sconn.RemotePubKey())
+	}
+	// Check version, chain id
 	if err := sw.nodeInfo.CompatibleWith(peerNodeInfo); err != nil {
-		conn.Close()
+		sconn.Close()
 		return nil, err
 	}
-	// avoid self
+	// Avoid self
 	if peerNodeInfo.UUID == sw.nodeInfo.UUID {
-		conn.Close()
+		sconn.Close()
 		return nil, fmt.Errorf("Ignoring connection from self")
 	}
 
-	// the peerNodeInfo is not verified,
-	// so we overwrite the IP with that from the conn
+	// The peerNodeInfo is not verified, so overwrite.
+	// Overwrite the IP with that from the conn
 	// and if we dialed out, the port too
-	// everything else we just have to trust
-	ip, port, _ := net.SplitHostPort(conn.RemoteAddr().String())
+	// Everything else we just have to trust
+	ip, port, _ := net.SplitHostPort(sconn.RemoteAddr().String())
 	peerNodeInfo.Host = ip
 	if outbound {
 		porti, _ := strconv.Atoi(port)
 		peerNodeInfo.P2PPort = uint16(porti)
 	}
-	peer := newPeer(conn, peerNodeInfo, outbound, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError)
+	peer := newPeer(sconn, peerNodeInfo, outbound, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError)
 
 	// Add the peer to .peers
 	// ignore if duplicate or if we already have too many for that IP range
 	if err := sw.peers.Add(peer); err != nil {
 		log.Info("Ignoring peer", "error", err, "peer", peer)
-		peer.stop() // will also close conn
+		peer.stop() // will also close sconn
 		return nil, err
 	}
 
