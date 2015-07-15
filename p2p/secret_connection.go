@@ -26,7 +26,7 @@ const totalFrameSize = dataMaxSize + dataLenSize
 const sealedFrameSize = totalFrameSize + secretbox.Overhead
 
 type SecretConnection struct {
-	conn       io.ReadWriter
+	conn       io.ReadWriteCloser
 	recvBuffer []byte
 	recvNonce  *[24]byte
 	sendNonce  *[24]byte
@@ -37,7 +37,7 @@ type SecretConnection struct {
 // Performs handshake and returns a new authenticated SecretConnection.
 // Returns nil if error in handshake.
 // Caller should call conn.Close()
-func MakeSecretConnection(conn io.ReadWriter, locPrivKey acm.PrivKeyEd25519) (*SecretConnection, error) {
+func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey acm.PrivKeyEd25519) (*SecretConnection, error) {
 
 	locPubKey := locPrivKey.PubKey().(acm.PubKeyEd25519)
 
@@ -157,6 +157,10 @@ func (sc *SecretConnection) Read(data []byte) (n int, err error) {
 	return
 }
 
+func (sc *SecretConnection) Close() error {
+	return sc.conn.Close()
+}
+
 func genEphKeys() (ephPub, ephPriv *[32]byte) {
 	var err error
 	ephPub, ephPriv, err = box.GenerateKey(crand.Reader)
@@ -166,7 +170,7 @@ func genEphKeys() (ephPub, ephPriv *[32]byte) {
 	return
 }
 
-func shareEphPubKey(conn io.ReadWriter, locEphPub *[32]byte) (remEphPub *[32]byte, err error) {
+func shareEphPubKey(conn io.ReadWriteCloser, locEphPub *[32]byte) (remEphPub *[32]byte, err error) {
 	var err1, err2 error
 	var wg sync.WaitGroup
 	wg.Add(2)
