@@ -52,6 +52,9 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey acm.PrivKeyEd25519
 
 	// Write local ephemeral pubkey and receive one too.
 	remEphPub, err := shareEphPubKey(conn, locEphPub)
+	if err != nil {
+		return nil, err
+	}
 
 	// Compute common shared secret.
 	shrSecret := computeSharedSecret(remEphPub, locEphPriv)
