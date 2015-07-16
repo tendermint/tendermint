@@ -750,9 +750,12 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 			return types.ErrTxInvalidSignature
 		}
 
-		// tx.Height must be equal to the next height
-		if tx.Height != _s.LastBlockHeight+1 {
-			return errors.New(Fmt("Invalid rebond height.  Expected %v, got %v", _s.LastBlockHeight+1, tx.Height))
+		// tx.Height must be in a suitable range
+		minRebondHeight := _s.LastBlockHeight - (validatorTimeoutBlocks / 2)
+		maxRebondHeight := _s.LastBlockHeight + 2
+		if !((minRebondHeight <= tx.Height) && (tx.Height <= maxRebondHeight)) {
+			return errors.New(Fmt("Rebond height not in range.  Expected %v <= %v <= %v",
+				minRebondHeight, tx.Height, maxRebondHeight))
 		}
 
 		// Good!
