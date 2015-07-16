@@ -14,7 +14,7 @@ import (
 )
 
 const Version = "0.0.1"
-const sleepSeconds = 1 // Every minute
+const sleepSeconds = 1 // Every second
 
 // Parse command-line options
 func parseFlags() (chopSize int64, limitSize int64, version bool, logFiles []string) {

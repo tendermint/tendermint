@@ -3,7 +3,7 @@ package crawler
 import (
 	"fmt"
 	"github.com/tendermint/tendermint/binary"
-	rpctypes "github.com/tendermint/tendermint/rpc/core/types"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpcclient "github.com/tendermint/tendermint/rpc/core_client"
 	"github.com/tendermint/tendermint/types"
 	"time"
@@ -35,7 +35,7 @@ type Node struct {
 	ChainID      string
 	BlockHeight  int
 	BlockHistory map[int]time.Time // when we saw each block
-	NetInfo      *rpctypes.ResponseNetInfo
+	NetInfo      *ctypes.ResponseNetInfo
 
 	Validator bool
 
@@ -48,7 +48,7 @@ func (n *Node) Address() string {
 }
 
 // Set the basic status and chain_id info for a node from RPC responses
-func (n *Node) SetInfo(status *rpctypes.ResponseStatus, netinfo *rpctypes.ResponseNetInfo) {
+func (n *Node) SetInfo(status *ctypes.ResponseStatus, netinfo *ctypes.ResponseNetInfo) {
 	n.LastSeen = time.Now()
 	n.ChainID = status.NodeInfo.ChainID
 	n.BlockHeight = status.LatestBlockHeight

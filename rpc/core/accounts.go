@@ -4,7 +4,6 @@ import (
 	"fmt"
 	acm "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
-	ptypes "github.com/tendermint/tendermint/permission/types"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 )
 
@@ -12,20 +11,12 @@ func GenPrivAccount() (*acm.PrivAccount, error) {
 	return acm.GenPrivAccount(), nil
 }
 
+// If the account is not known, returns nil, nil.
 func GetAccount(address []byte) (*acm.Account, error) {
 	cache := mempoolReactor.Mempool.GetCache()
 	account := cache.GetAccount(address)
 	if account == nil {
-		// XXX: shouldn't we return "account not found"?
-		account = &acm.Account{
-			Address:     address,
-			PubKey:      nil,
-			Sequence:    0,
-			Balance:     0,
-			Code:        nil,
-			StorageRoot: nil,
-			Permissions: cache.GetAccount(ptypes.GlobalPermissionsAddress).Permissions,
-		}
+		return nil, nil
 	}
 	return account, nil
 }
@@ -34,7 +25,7 @@ func GetStorage(address, key []byte) (*ctypes.ResponseGetStorage, error) {
 	state := consensusState.GetState()
 	account := state.GetAccount(address)
 	if account == nil {
-		return nil, fmt.Errorf("Unknown address: %X", address)
+		return nil, fmt.Errorf("UnknownAddress: %X", address)
 	}
 	storageRoot := account.StorageRoot
 	storageTree := state.LoadStorage(storageRoot)
@@ -62,7 +53,7 @@ func DumpStorage(address []byte) (*ctypes.ResponseDumpStorage, error) {
 	state := consensusState.GetState()
 	account := state.GetAccount(address)
 	if account == nil {
-		return nil, fmt.Errorf("Unknown address: %X", address)
+		return nil, fmt.Errorf("UnknownAddress: %X", address)
 	}
 	storageRoot := account.StorageRoot
 	storageTree := state.LoadStorage(storageRoot)

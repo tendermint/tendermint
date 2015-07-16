@@ -31,4 +31,4 @@ func (sig SignatureEd25519) IsNil() bool { return false }
 
 func (sig SignatureEd25519) IsZero() bool { return len(sig) == 0 }
 
-func (sig SignatureEd25519) String() string { return fmt.Sprintf("%X", Fingerprint(sig)) }
+func (sig SignatureEd25519) String() string { return fmt.Sprintf("/%X.../", Fingerprint(sig)) }

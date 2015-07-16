@@ -29,12 +29,12 @@ var _ = binary.RegisterInterface(
 // Implements PrivKey
 type PrivKeyEd25519 []byte
 
-func (privKey PrivKeyEd25519) Sign(msg []byte) Signature {
-	pubKey := privKey.PubKey().(PubKeyEd25519)
-	privKeyBytes := new([64]byte)
-	copy(privKeyBytes[:32], privKey[:])
-	copy(privKeyBytes[32:], pubKey[:])
-	signatureBytes := ed25519.Sign(privKeyBytes, msg)
+func (key PrivKeyEd25519) Sign(msg []byte) Signature {
+	pubKey := key.PubKey().(PubKeyEd25519)
+	keyBytes := new([64]byte)
+	copy(keyBytes[:32], key[:])
+	copy(keyBytes[32:], pubKey[:])
+	signatureBytes := ed25519.Sign(keyBytes, msg)
 	return SignatureEd25519(signatureBytes[:])
 }
 
@@ -53,6 +53,15 @@ func (privKey PrivKeyEd25519) ToCurve25519() *[32]byte {
 
 func (privKey PrivKeyEd25519) String() string {
 	return Fmt("PrivKeyEd25519{*****}")
+}
+
+// Deterministically generates new priv-key bytes from key.
+func (key PrivKeyEd25519) Generate(index int) PrivKeyEd25519 {
+	newBytes := binary.BinarySha256(struct {
+		PrivKey []byte
+		Index   int
+	}{key, index})
+	return PrivKeyEd25519(newBytes)
 }
 
 func GenPrivKeyEd25519() PrivKeyEd25519 {

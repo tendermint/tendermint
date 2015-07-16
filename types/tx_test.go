@@ -70,7 +70,7 @@ func TestCallTxSignable(t *testing.T) {
 }
 
 func TestBondTxSignable(t *testing.T) {
-	privAccount := account.GenPrivAccountFromKey([64]byte{})
+	privAccount := account.GenPrivAccountFromPrivKeyBytes(make([]byte, 64))
 	bondTx := &BondTx{
 		PubKey: privAccount.PubKey.(account.PubKeyEd25519),
 		Inputs: []*TxInput{
