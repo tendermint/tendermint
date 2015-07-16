@@ -18,6 +18,10 @@ func EventStringAccReceive(addr []byte) string {
 	return fmt.Sprintf("Acc/%X/Receive", addr)
 }
 
+func EventStringSolidityEvent(addr []byte) string{
+	return fmt.Sprintf("Solidity/%X", addr)
+}
+
 func EventStringBond() string {
 	return "Bond"
 }
