@@ -55,8 +55,8 @@ func GenPrivValidator() *PrivValidator {
 	privKeyBytes := new([64]byte)
 	copy(privKeyBytes[:32], CRandBytes(32))
 	pubKeyBytes := ed25519.MakePublicKey(privKeyBytes)
-	pubKey := account.PubKeyEd25519(pubKeyBytes[:])
-	privKey := account.PrivKeyEd25519(privKeyBytes[:])
+	pubKey := account.PubKeyEd25519(*pubKeyBytes)
+	privKey := account.PrivKeyEd25519(*privKeyBytes)
 	return &PrivValidator{
 		Address:    pubKey.Address(),
 		PubKey:     pubKey,

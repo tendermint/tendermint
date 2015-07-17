@@ -22,7 +22,7 @@ const (
 	flushThrottleMS           = 50
 	idleTimeoutMinutes        = 5
 	updateStatsSeconds        = 2
-	pingTimeoutMinutes        = 2
+	pingTimeoutSeconds        = 40
 	defaultSendRate           = 51200 // 5Kb/s
 	defaultRecvRate           = 51200 // 5Kb/s
 	defaultSendQueueCapacity  = 1
@@ -97,7 +97,7 @@ func NewMConnection(conn net.Conn, chDescs []*ChannelDescriptor, onReceive recei
 		flushTimer:    NewThrottleTimer("flush", flushThrottleMS*time.Millisecond),
 		send:          make(chan struct{}, 1),
 		quit:          make(chan struct{}),
-		pingTimer:     NewRepeatTimer("ping", pingTimeoutMinutes*time.Minute),
+		pingTimer:     NewRepeatTimer("ping", pingTimeoutSeconds*time.Second),
 		pong:          make(chan struct{}),
 		chStatsTimer:  NewRepeatTimer("chStats", updateStatsSeconds*time.Second),
 		onReceive:     onReceive,

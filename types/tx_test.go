@@ -70,7 +70,10 @@ func TestCallTxSignable(t *testing.T) {
 }
 
 func TestBondTxSignable(t *testing.T) {
-	privAccount := account.GenPrivAccountFromPrivKeyBytes(make([]byte, 64))
+	privKeyBytes := make([]byte, 64)
+	var privKeyArray [64]byte
+	copy(privKeyArray[:], privKeyBytes)
+	privAccount := account.GenPrivAccountFromPrivKeyBytes(&privKeyArray)
 	bondTx := &BondTx{
 		PubKey: privAccount.PubKey.(account.PubKeyEd25519),
 		Inputs: []*TxInput{
@@ -101,7 +104,7 @@ func TestBondTxSignable(t *testing.T) {
 	expected := Fmt(`{"chain_id":"%s","tx":[17,{"inputs":[{"address":"696E70757431","amount":12345,"sequence":67890},{"address":"696E70757432","amount":111,"sequence":222}],"pub_key":[1,"3B6A27BCCEB6A42D62A3A8D02A6F0D73653215771DE243A63AC048A18B59DA29"],"unbond_to":[{"address":"6F757470757431","amount":333},{"address":"6F757470757432","amount":444}]}]}`,
 		config.GetString("chain_id"))
 	if signStr != expected {
-		t.Errorf("Got unexpected sign string for BondTx")
+		t.Errorf("Unexpected sign string for BondTx. \nGot %s\nExpected %s", signStr, expected)
 	}
 }
 

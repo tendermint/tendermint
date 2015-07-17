@@ -110,23 +110,23 @@ var defaultGenesis = `{
   "chain_id" : "tendermint_test",
   "accounts": [
     {
-	    "address": "E9B5D87313356465FAE33C406CE2C2979DE60BCB",
+	    "address": "C3C1AF26C0CB2C1DB233D8936AD2C6335AAB6844",
 	    "amount": 200000000
     },
     {
-	    "address": "DFE4AFFA4CEE17CD01CB9E061D77C3ECED29BD88",
+	    "address": "C76F0E490A003FDB4A94B310C354F1650A6F97B7",
 	    "amount": 200000000
     },
     {
-	    "address": "F60D30722E7B497FA532FB3207C3FB29C31B1992",
+	    "address": "576C84059355CD3B8CBDD81C3FCBC5CE5B6632E0",
 	    "amount": 200000000
     },
     {
-	    "address": "336CB40A5EB92E496E19B74FDFF2BA017C877FD6",
+	    "address": "CD9AB051EDEA88E61ABDF2A1ACF10C3803F0972F",
 	    "amount": 200000000
     },
     {
-	    "address": "D218F0F439BF0384F6F5EF8D0F8B398D941BD1DC",
+	    "address": "4EE2D93B0A1FBA4E9EBE20E088AA122002A2EB0C",
 	    "amount": 200000000
     }
   ],

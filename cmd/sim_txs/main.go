@@ -43,7 +43,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	root := acm.GenPrivAccountFromPrivKeyBytes(privKeyBytes)
+	var privKeyArray [64]byte
+	copy(privKeyArray[:], privKeyBytes)
+	root := acm.GenPrivAccountFromPrivKeyBytes(&privKeyArray)
 	fmt.Println("Computed address: %X", root.Address)
 
 	// Get root account.

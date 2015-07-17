@@ -16,6 +16,38 @@ type SimpleStruct struct {
 	Time   time.Time
 }
 
+type SimpleArray [5]byte
+
+func TestSimpleArray(t *testing.T) {
+	var foo SimpleArray
+
+	// Type of pointer to array
+	rt := reflect.TypeOf(&foo)
+	fmt.Printf("rt: %v\n", rt)
+
+	// Type of array itself.
+	// NOTE: normally this is acquired through other means
+	// like introspecting on method signatures, or struct fields.
+	rte := rt.Elem()
+	fmt.Printf("rte: %v\n", rte)
+
+	// Get a new pointer to the array
+	// NOTE: calling .Interface() is to get the actual value,
+	// instead of reflection values.
+	ptr := reflect.New(rte).Interface()
+	fmt.Printf("ptr: %v", ptr)
+
+	// Make a simple int aray
+	fooArray := SimpleArray([5]byte{1, 10, 50, 100, 200})
+	fooBytes := BinaryBytes(fooArray)
+	fooReader := bytes.NewReader(fooBytes)
+
+	// Now you can read it.
+	n, err := new(int64), new(error)
+	it := ReadBinary(foo, fooReader, n, err)
+	fmt.Println(it, reflect.TypeOf(it))
+}
+
 //-------------------------------------
 
 type Animal interface{}
@@ -265,6 +297,9 @@ func validateComplex2(o interface{}, t *testing.T) {
 
 type ComplexStructArray struct {
 	Animals []Animal
+	Bytes   [5]byte
+	Ints    [5]int
+	Array   SimpleArray
 }
 
 func constructComplexArray() interface{} {
@@ -287,6 +322,9 @@ func constructComplexArray() interface{} {
 				Bytes: []byte("hizz"),
 			},
 		},
+		Bytes: [5]byte{1, 10, 50, 100, 200},
+		Ints:  [5]int{1, 2, 3, 4, 5},
+		Array: SimpleArray([5]byte{1, 10, 50, 100, 200}),
 	}
 	return c
 }

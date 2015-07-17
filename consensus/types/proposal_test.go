@@ -15,7 +15,6 @@ func TestProposalSignable(t *testing.T) {
 		Round:            23456,
 		BlockPartsHeader: types.PartSetHeader{111, []byte("blockparts")},
 		POLRound:         -1,
-		Signature:        nil,
 	}
 	signBytes := account.SignBytes(config.GetString("chain_id"), proposal)
 	signStr := string(signBytes)

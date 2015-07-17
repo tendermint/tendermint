@@ -60,7 +60,7 @@ var (
 
 const (
 	peerDialTimeoutSeconds  = 3  // TODO make this configurable
-	handshakeTimeoutSeconds = 5  // TODO make this configurable
+	handshakeTimeoutSeconds = 20 // TODO make this configurable
 	maxNumPeers             = 50 // TODO make this configurable
 )
 
@@ -73,7 +73,6 @@ func NewSwitch() *Switch {
 		dialing:      NewCMap(),
 		running:      0,
 		nodeInfo:     nil,
-		nodePrivKey:  nil,
 	}
 	return sw
 }
@@ -178,7 +177,7 @@ func (sw *Switch) Stop() {
 // NOTE: This performs a blocking handshake before the peer is added.
 // CONTRACT: Iff error is returned, peer is nil, and conn is immediately closed.
 func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, error) {
-	// Set deadline so we don't block forever on conn.ReadFull
+	// Set deadline for handshake so we don't block forever on conn.ReadFull
 	conn.SetDeadline(time.Now().Add(handshakeTimeoutSeconds * time.Second))
 
 	// First, encrypt the connection.
@@ -229,6 +228,8 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 		return nil, err
 	}
 
+	// remove deadline and start peer
+	conn.SetDeadline(time.Time{})
 	if atomic.LoadUint32(&sw.running) == 1 {
 		sw.startInitPeer(peer)
 	}

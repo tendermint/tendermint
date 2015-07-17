@@ -670,7 +670,8 @@ func readReflectJSON(rv reflect.Value, rt reflect.Type, o interface{}, err *erro
 				return
 			}
 			log.Debug("Read bytearray", "bytes", buf)
-			rv.Set(reflect.ValueOf(buf))
+
+			reflect.Copy(rv, reflect.ValueOf(buf))
 		} else {
 			oSlice, ok := o.([]interface{})
 			if !ok {
@@ -864,8 +865,9 @@ func writeReflectJSON(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, 
 		length := rt.Len()
 		if elemRt.Kind() == reflect.Uint8 {
 			// Special case: Bytearray
-			bytearray := rv.Interface()
-			WriteTo([]byte(Fmt("\"%X\"", bytearray)), w, n, err)
+			bytearray := reflect.ValueOf(make([]byte, length))
+			reflect.Copy(bytearray, rv)
+			WriteTo([]byte(Fmt("\"%X\"", bytearray.Interface())), w, n, err)
 		} else {
 			WriteTo([]byte("["), w, n, err)
 			// Write elems

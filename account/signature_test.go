@@ -25,7 +25,9 @@ func TestSignAndValidate(t *testing.T) {
 	}
 
 	// Mutate the signature, just one bit.
-	sig.(SignatureEd25519)[0] ^= byte(0x01)
+	sigEd := sig.(SignatureEd25519)
+	sigEd[0] ^= byte(0x01)
+	sig = Signature(sigEd)
 
 	if pubKey.VerifyBytes(msg, sig) {
 		t.Errorf("Account message signature verification should have failed but passed instead")
@@ -48,8 +50,8 @@ func TestBinaryDecode(t *testing.T) {
 		t.Fatalf("Failed to write Signature: %v", err)
 	}
 
-	if len(buf.Bytes()) != ed25519.SignatureSize+3 {
-		// 1 byte TypeByte, 2 bytes length, 64 bytes signature bytes
+	if len(buf.Bytes()) != ed25519.SignatureSize+1 {
+		// 1 byte TypeByte, 64 bytes signature bytes
 		t.Fatalf("Unexpected signature write size: %v", len(buf.Bytes()))
 	}
 	if buf.Bytes()[0] != SignatureTypeEd25519 {

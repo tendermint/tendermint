@@ -32,9 +32,9 @@ func makeDummyConnPair() (fooConn, barConn dummyConn) {
 
 func makeSecretConnPair(tb testing.TB) (fooSecConn, barSecConn *SecretConnection) {
 	fooConn, barConn := makeDummyConnPair()
-	fooPrvKey := acm.PrivKeyEd25519(CRandBytes(32))
+	fooPrvKey := acm.GenPrivKeyEd25519()
 	fooPubKey := fooPrvKey.PubKey().(acm.PubKeyEd25519)
-	barPrvKey := acm.PrivKeyEd25519(CRandBytes(32))
+	barPrvKey := acm.GenPrivKeyEd25519()
 	barPubKey := barPrvKey.PubKey().(acm.PubKeyEd25519)
 
 	Parallel(
@@ -45,7 +45,8 @@ func makeSecretConnPair(tb testing.TB) (fooSecConn, barSecConn *SecretConnection
 				tb.Errorf("Failed to establish SecretConnection for foo: %v", err)
 				return
 			}
-			if !bytes.Equal(fooSecConn.RemotePubKey(), barPubKey) {
+			remotePubBytes := fooSecConn.RemotePubKey()
+			if !bytes.Equal(remotePubBytes[:], barPubKey[:]) {
 				tb.Errorf("Unexpected fooSecConn.RemotePubKey.  Expected %v, got %v",
 					barPubKey, fooSecConn.RemotePubKey())
 			}
@@ -57,7 +58,8 @@ func makeSecretConnPair(tb testing.TB) (fooSecConn, barSecConn *SecretConnection
 				tb.Errorf("Failed to establish SecretConnection for bar: %v", err)
 				return
 			}
-			if !bytes.Equal(barSecConn.RemotePubKey(), fooPubKey) {
+			remotePubBytes := barSecConn.RemotePubKey()
+			if !bytes.Equal(remotePubBytes[:], fooPubKey[:]) {
 				tb.Errorf("Unexpected barSecConn.RemotePubKey.  Expected %v, got %v",
 					fooPubKey, barSecConn.RemotePubKey())
 			}
@@ -87,7 +89,7 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 	genNodeRunner := func(nodeConn dummyConn, nodeWrites []string, nodeReads *[]string) func() {
 		return func() {
 			// Node handskae
-			nodePrvKey := acm.PrivKeyEd25519(CRandBytes(32))
+			nodePrvKey := acm.GenPrivKeyEd25519()
 			nodeSecretConn, err := MakeSecretConnection(nodeConn, nodePrvKey)
 			if err != nil {
 				t.Errorf("Failed to establish SecretConnection for node: %v", err)

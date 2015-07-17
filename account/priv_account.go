@@ -38,8 +38,8 @@ func GenPrivAccount() *PrivAccount {
 	privKeyBytes := new([64]byte)
 	copy(privKeyBytes[:32], CRandBytes(32))
 	pubKeyBytes := ed25519.MakePublicKey(privKeyBytes)
-	pubKey := PubKeyEd25519(pubKeyBytes[:])
-	privKey := PrivKeyEd25519(privKeyBytes[:])
+	pubKey := PubKeyEd25519(*pubKeyBytes)
+	privKey := PrivKeyEd25519(*privKeyBytes)
 	return &PrivAccount{
 		Address: pubKey.Address(),
 		PubKey:  pubKey,
@@ -53,8 +53,8 @@ func GenPrivAccountFromSecret(secret []byte) *PrivAccount {
 	privKeyBytes := new([64]byte)
 	copy(privKeyBytes[:32], privKey32)
 	pubKeyBytes := ed25519.MakePublicKey(privKeyBytes)
-	pubKey := PubKeyEd25519(pubKeyBytes[:])
-	privKey := PrivKeyEd25519(privKeyBytes[:])
+	pubKey := PubKeyEd25519(*pubKeyBytes)
+	privKey := PrivKeyEd25519(*privKeyBytes)
 	return &PrivAccount{
 		Address: pubKey.Address(),
 		PubKey:  pubKey,
@@ -62,15 +62,13 @@ func GenPrivAccountFromSecret(secret []byte) *PrivAccount {
 	}
 }
 
-func GenPrivAccountFromPrivKeyBytes(privKeyBytes []byte) *PrivAccount {
+func GenPrivAccountFromPrivKeyBytes(privKeyBytes *[64]byte) *PrivAccount {
 	if len(privKeyBytes) != 64 {
 		panic(Fmt("Expected 64 bytes but got %v", len(privKeyBytes)))
 	}
-	privKeyBytes64 := [64]byte{}
-	copy(privKeyBytes64[:], privKeyBytes)
-	pubKeyBytes := ed25519.MakePublicKey(&privKeyBytes64)
-	pubKey := PubKeyEd25519(pubKeyBytes[:])
-	privKey := PrivKeyEd25519(privKeyBytes)
+	pubKeyBytes := ed25519.MakePublicKey(privKeyBytes)
+	pubKey := PubKeyEd25519(*pubKeyBytes)
+	privKey := PrivKeyEd25519(*privKeyBytes)
 	return &PrivAccount{
 		Address: pubKey.Address(),
 		PubKey:  pubKey,

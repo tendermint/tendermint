@@ -9,10 +9,16 @@ import (
 	"testing"
 )
 
+func randPubKey() account.PubKeyEd25519 {
+	var pubKey [32]byte
+	copy(pubKey[:], RandBytes(32))
+	return account.PubKeyEd25519(pubKey)
+}
+
 func randValidator_() *Validator {
 	return &Validator{
 		Address:     RandBytes(20),
-		PubKey:      account.PubKeyEd25519(RandBytes(64)),
+		PubKey:      randPubKey(),
 		BondHeight:  RandInt(),
 		VotingPower: RandInt64(),
 		Accum:       RandInt64(),
@@ -46,21 +52,21 @@ func TestProposerSelection(t *testing.T) {
 	vset := NewValidatorSet([]*Validator{
 		&Validator{
 			Address:     []byte("foo"),
-			PubKey:      account.PubKeyEd25519(RandBytes(64)),
+			PubKey:      randPubKey(),
 			BondHeight:  RandInt(),
 			VotingPower: 1000,
 			Accum:       0,
 		},
 		&Validator{
 			Address:     []byte("bar"),
-			PubKey:      account.PubKeyEd25519(RandBytes(64)),
+			PubKey:      randPubKey(),
 			BondHeight:  RandInt(),
 			VotingPower: 300,
 			Accum:       0,
 		},
 		&Validator{
 			Address:     []byte("baz"),
-			PubKey:      account.PubKeyEd25519(RandBytes(64)),
+			PubKey:      randPubKey(),
 			BondHeight:  RandInt(),
 			VotingPower: 330,
 			Accum:       0,
