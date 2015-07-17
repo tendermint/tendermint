@@ -1,5 +1,8 @@
 // Uses nacl's secret_box to encrypt a net.Conn.
 // It is (meant to be) an implementation of the STS protocol.
+// Note we do not (yet) assume that a remote peer's pubkey
+// is known ahead of time, and thus we are technically
+// still vulnerable to MITM. (TODO!)
 // See docs/sts-final.pdf for more info
 package p2p
 
@@ -11,7 +14,6 @@ import (
 	"errors"
 	"io"
 	"net"
-	"sync"
 	"time"
 
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/golang.org/x/crypto/nacl/box"
@@ -51,6 +53,8 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey acm.PrivKeyEd25519
 	locEphPub, locEphPriv := genEphKeys()
 
 	// Write local ephemeral pubkey and receive one too.
+	// NOTE: every 32-byte string is accepted as a Curve25519 public key
+	// (see DJB's Curve25519 paper: http://cr.yp.to/ecdh/curve25519-20060209.pdf)
 	remEphPub, err := shareEphPubKey(conn, locEphPub)
 	if err != nil {
 		return nil, err
@@ -158,7 +162,10 @@ func (sc *SecretConnection) Read(data []byte) (n int, err error) {
 	incr2Nonce(sc.recvNonce)
 	// end decryption
 
-	var chunkLength = binary.BigEndian.Uint16(frame)
+	var chunkLength = binary.BigEndian.Uint16(frame) // read the first two bytes
+	if chunkLength > dataMaxSize {
+		return 0, errors.New("chunkLength is greater than dataMaxSize")
+	}
 	var chunk = frame[dataLenSize : dataLenSize+chunkLength]
 
 	n = copy(data, chunk)
@@ -189,21 +196,17 @@ func genEphKeys() (ephPub, ephPriv *[32]byte) {
 
 func shareEphPubKey(conn io.ReadWriteCloser, locEphPub *[32]byte) (remEphPub *[32]byte, err error) {
 	var err1, err2 error
-	var wg sync.WaitGroup
-	wg.Add(2)
 
-	go func() {
-		defer wg.Done()
-		_, err1 = conn.Write(locEphPub[:])
-	}()
+	Parallel(
+		func() {
+			_, err1 = conn.Write(locEphPub[:])
+		},
+		func() {
+			remEphPub = new([32]byte)
+			_, err2 = io.ReadFull(conn, remEphPub[:])
+		},
+	)
 
-	go func() {
-		defer wg.Done()
-		remEphPub = new([32]byte)
-		_, err2 = io.ReadFull(conn, remEphPub[:])
-	}()
-
-	wg.Wait()
 	if err1 != nil {
 		return nil, err1
 	}
@@ -271,6 +274,7 @@ func shareAuthSignature(sc *SecretConnection, pubKey acm.PubKeyEd25519, signatur
 		},
 		func() {
 			// NOTE relies on atomicity of small data.
+			// XXX: isn't dataMaxSize twice the size of authSigMessage?
 			readBuffer := make([]byte, dataMaxSize)
 			_, err2 = sc.Read(readBuffer)
 			if err2 != nil {

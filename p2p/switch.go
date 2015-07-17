@@ -59,8 +59,9 @@ var (
 )
 
 const (
-	peerDialTimeoutSeconds = 3  // TODO make this configurable
-	maxNumPeers            = 50 // TODO make this configurable
+	peerDialTimeoutSeconds  = 3  // TODO make this configurable
+	handshakeTimeoutSeconds = 5  // TODO make this configurable
+	maxNumPeers             = 50 // TODO make this configurable
 )
 
 func NewSwitch() *Switch {
@@ -177,9 +178,13 @@ func (sw *Switch) Stop() {
 // NOTE: This performs a blocking handshake before the peer is added.
 // CONTRACT: Iff error is returned, peer is nil, and conn is immediately closed.
 func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, error) {
+	// Set deadline so we don't block forever on conn.ReadFull
+	conn.SetDeadline(time.Now().Add(handshakeTimeoutSeconds * time.Second))
+
 	// First, encrypt the connection.
 	sconn, err := MakeSecretConnection(conn, sw.nodePrivKey)
 	if err != nil {
+		conn.Close()
 		return nil, err
 	}
 	// Then, perform node handshake
@@ -205,9 +210,8 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 		return nil, err
 	}
 
-	// The peerNodeInfo is not verified, so overwrite.
-	// Overwrite the IP with that from the conn
-	// and if we dialed out, the port too
+	// The peerNodeInfo is not verified, so overwrite
+	// the IP, and the port too if we dialed out
 	// Everything else we just have to trust
 	ip, port, _ := net.SplitHostPort(sconn.RemoteAddr().String())
 	peerNodeInfo.Host = ip
