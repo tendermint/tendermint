@@ -147,7 +147,6 @@ func NewNode() *Node {
 
 // Call Start() after adding the listeners.
 func (n *Node) Start() {
-	log.Info("Starting Node", "chainID", config.GetString("chain_id"))
 	n.book.Start()
 	n.sw.SetNodeInfo(makeNodeInfo(n.sw, n.privKey))
 	n.sw.SetNodePrivKey(n.privKey)
@@ -290,6 +289,8 @@ func RunNode() {
 	l := p2p.NewDefaultListener("tcp", config.GetString("node_laddr"), false)
 	n.AddListener(l)
 	n.Start()
+
+	log.Notice("Started node", "nodeInfo", n.sw.NodeInfo())
 
 	// If seedNode is provided by config, dial out.
 	if config.GetString("seeds") != "" {

@@ -338,7 +338,7 @@ func (sw *Switch) listenerRoutine(l Listener) {
 
 		// ignore connection if we already have enough
 		if maxNumPeers <= sw.peers.Size() {
-			log.Debug("Ignoring inbound connection: already have enough peers", "conn", inConn, "numPeers", sw.peers.Size(), "max", maxNumPeers)
+			log.Debug("Ignoring inbound connection: already have enough peers", "address", inConn.RemoteAddr().String(), "numPeers", sw.peers.Size(), "max", maxNumPeers)
 			continue
 		}
 
@@ -351,7 +351,7 @@ func (sw *Switch) listenerRoutine(l Listener) {
 		// New inbound connection!
 		_, err := sw.AddPeerWithConnection(inConn, false)
 		if err != nil {
-			log.Info("Ignoring inbound connection: error on AddPeerWithConnection", "conn", inConn, "error", err)
+			log.Info("Ignoring inbound connection: error on AddPeerWithConnection", "address", inConn.RemoteAddr().String(), "error", err)
 			continue
 		}
 
