@@ -133,8 +133,8 @@ func (conR *ConsensusReactor) RemovePeer(peer *p2p.Peer, reason interface{}) {
 // Implements Reactor
 // NOTE: We process these messages even when we're fast_syncing.
 func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte) {
-	log.Info("Receive", "channel", chId, "peer", peer, "bytes", msgBytes)
 	if !conR.IsRunning() {
+		log.Debug("Receive", "channel", chId, "peer", peer, "bytes", msgBytes)
 		return
 	}
 
@@ -146,7 +146,7 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 		log.Warn("Error decoding message", "channel", chId, "peer", peer, "msg", msg, "error", err, "bytes", msgBytes)
 		return
 	}
-	log.Info("Receive", "channel", chId, "peer", peer, "msg", msg, "rsHeight", rs.Height) //, "bytes", msgBytes)
+	log.Debug("Receive", "channel", chId, "peer", peer, "msg", msg, "rsHeight", rs.Height)
 
 	switch chId {
 	case StateChannel:
@@ -471,7 +471,7 @@ OUTER_LOOP:
 			sleeping = 0
 		}
 
-		log.Info("gossipVotesRoutine", "rsHeight", rs.Height, "rsRound", rs.Round,
+		log.Debug("gossipVotesRoutine", "rsHeight", rs.Height, "rsRound", rs.Round,
 			"prsHeight", prs.Height, "prsRound", prs.Round, "prsStep", prs.Step)
 
 		// If height matches, then send LastCommit, Prevotes, Precommits.

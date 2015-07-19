@@ -151,7 +151,7 @@ func (c *MConnection) String() string {
 }
 
 func (c *MConnection) flush() {
-	log.Info("Flush", "conn", c)
+	log.Debug("Flush", "conn", c)
 	err := c.bufWriter.Flush()
 	if err != nil {
 		log.Warn("MConnection flush failed", "error", err)
@@ -426,7 +426,7 @@ FOR_LOOP:
 				break FOR_LOOP
 			}
 			if msgBytes != nil {
-				log.Info("Received bytes", "chId", pkt.ChannelId, "msgBytes", msgBytes)
+				log.Debug("Received bytes", "chId", pkt.ChannelId, "msgBytes", msgBytes)
 				c.onReceive(pkt.ChannelId, msgBytes)
 			}
 		default:
@@ -565,7 +565,7 @@ func (ch *Channel) nextMsgPacket() msgPacket {
 // Not goroutine-safe
 func (ch *Channel) writeMsgPacketTo(w io.Writer) (n int64, err error) {
 	packet := ch.nextMsgPacket()
-	log.Info("Write Msg Packet", "conn", ch.conn, "packet", packet)
+	log.Debug("Write Msg Packet", "conn", ch.conn, "packet", packet)
 	binary.WriteByte(packetTypeMsg, w, &n, &err)
 	binary.WriteBinary(packet, w, &n, &err)
 	if err != nil {
@@ -577,7 +577,7 @@ func (ch *Channel) writeMsgPacketTo(w io.Writer) (n int64, err error) {
 // Handles incoming msgPackets. Returns a msg bytes if msg is complete.
 // Not goroutine-safe
 func (ch *Channel) recvMsgPacket(packet msgPacket) ([]byte, error) {
-	log.Info("Read Msg Packet", "conn", ch.conn, "packet", packet)
+	log.Debug("Read Msg Packet", "conn", ch.conn, "packet", packet)
 	if binary.MaxBinaryReadSize < len(ch.recving)+len(packet.Bytes) {
 		return nil, binary.ErrBinaryReadSizeOverflow
 	}
