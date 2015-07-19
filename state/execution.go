@@ -666,9 +666,6 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 		if err != nil {
 			return err
 		}
-		if err := tx.PubKey.ValidateBasic(); err != nil {
-			return err
-		}
 		if !tx.PubKey.VerifyBytes(signBytes, tx.Signature) {
 			return types.ErrTxInvalidSignature
 		}

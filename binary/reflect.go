@@ -670,7 +670,6 @@ func readReflectJSON(rv reflect.Value, rt reflect.Type, o interface{}, err *erro
 				return
 			}
 			log.Debug("Read bytearray", "bytes", buf)
-
 			reflect.Copy(rv, reflect.ValueOf(buf))
 		} else {
 			oSlice, ok := o.([]interface{})
