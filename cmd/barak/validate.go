@@ -24,7 +24,7 @@ NOTE: Not used, just here in case we want it later.
 func ValidateHandler(handler http.Handler, validators []Validator) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		sigStrs := r.Header[http.CanonicalHeaderKey("signatures")]
-		log.Debug("Woot", "sigstrs", sigStrs, "len", len(sigStrs))
+		log.Info("Woot", "sigstrs", sigStrs, "len", len(sigStrs))
 		// from https://medium.com/@xoen/golang-read-from-an-io-readwriter-without-loosing-its-content-2c6911805361
 		// Read the content
 		var bodyBytes []byte
@@ -46,7 +46,7 @@ func ValidateHandler(handler http.Handler, validators []Validator) http.Handler 
 		signBytes := binary.BinaryBytes(tuple)
 		// Validate the sign bytes.
 		//if validate(signBytes, validators,
-		log.Debug("Should sign", "bytes", signBytes)
+		log.Info("Should sign", "bytes", signBytes)
 		// If validation fails
 		// XXX
 		// If validation passes

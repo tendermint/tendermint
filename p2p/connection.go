@@ -124,7 +124,7 @@ func NewMConnection(conn net.Conn, chDescs []*ChannelDescriptor, onReceive recei
 // .Start() begins multiplexing packets to and from "channels".
 func (c *MConnection) Start() {
 	if atomic.CompareAndSwapUint32(&c.started, 0, 1) {
-		log.Debug("Starting MConnection", "connection", c)
+		log.Info("Starting MConnection", "connection", c)
 		go c.sendRoutine()
 		go c.recvRoutine()
 	}
@@ -132,7 +132,7 @@ func (c *MConnection) Start() {
 
 func (c *MConnection) Stop() {
 	if atomic.CompareAndSwapUint32(&c.stopped, 0, 1) {
-		log.Debug("Stopping MConnection", "connection", c)
+		log.Info("Stopping MConnection", "connection", c)
 		close(c.quit)
 		c.conn.Close()
 		c.flushTimer.Stop()
@@ -151,7 +151,7 @@ func (c *MConnection) String() string {
 }
 
 func (c *MConnection) flush() {
-	log.Debug("Flush", "conn", c)
+	log.Info("Flush", "conn", c)
 	err := c.bufWriter.Flush()
 	if err != nil {
 		log.Warn("MConnection flush failed", "error", err)
@@ -182,7 +182,7 @@ func (c *MConnection) Send(chId byte, msg interface{}) bool {
 		return false
 	}
 
-	log.Debug("Send", "channel", chId, "connection", c, "msg", msg) //, "bytes", binary.BinaryBytes(msg))
+	log.Info("Send", "channel", chId, "connection", c, "msg", msg) //, "bytes", binary.BinaryBytes(msg))
 
 	// Send message to channel.
 	channel, ok := c.channelsIdx[chId]
@@ -211,7 +211,7 @@ func (c *MConnection) TrySend(chId byte, msg interface{}) bool {
 		return false
 	}
 
-	log.Debug("TrySend", "channel", chId, "connection", c, "msg", msg)
+	log.Info("TrySend", "channel", chId, "connection", c, "msg", msg)
 
 	// Send message to channel.
 	channel, ok := c.channelsIdx[chId]
@@ -263,12 +263,12 @@ FOR_LOOP:
 				channel.updateStats()
 			}
 		case <-c.pingTimer.Ch:
-			log.Debug("Send Ping")
+			log.Info("Send Ping")
 			binary.WriteByte(packetTypePing, c.bufWriter, &n, &err)
 			c.sendMonitor.Update(int(n))
 			c.flush()
 		case <-c.pong:
-			log.Debug("Send Pong")
+			log.Info("Send Pong")
 			binary.WriteByte(packetTypePong, c.bufWriter, &n, &err)
 			c.sendMonitor.Update(int(n))
 			c.flush()
@@ -339,7 +339,7 @@ func (c *MConnection) sendMsgPacket() bool {
 	if leastChannel == nil {
 		return true
 	} else {
-		// log.Debug("Found a msgPacket to send")
+		// log.Info("Found a msgPacket to send")
 	}
 
 	// Make & send a msgPacket from this channel
@@ -368,7 +368,7 @@ FOR_LOOP:
 		/*
 			// Peek into bufReader for debugging
 			if numBytes := c.bufReader.Buffered(); numBytes > 0 {
-				log.Debug("Peek connection buffer", "numBytes", numBytes, "bytes", log15.Lazy{func() []byte {
+				log.Info("Peek connection buffer", "numBytes", numBytes, "bytes", log15.Lazy{func() []byte {
 					bytes, err := c.bufReader.Peek(MinInt(numBytes, 100))
 					if err == nil {
 						return bytes
@@ -397,11 +397,11 @@ FOR_LOOP:
 		switch pktType {
 		case packetTypePing:
 			// TODO: prevent abuse, as they cause flush()'s.
-			log.Debug("Receive Ping")
+			log.Info("Receive Ping")
 			c.pong <- struct{}{}
 		case packetTypePong:
 			// do nothing
-			log.Debug("Receive Pong")
+			log.Info("Receive Pong")
 		case packetTypeMsg:
 			pkt, n, err := msgPacket{}, int64(0), error(nil)
 			binary.ReadBinaryPtr(&pkt, c.bufReader, &n, &err)
@@ -426,7 +426,7 @@ FOR_LOOP:
 				break FOR_LOOP
 			}
 			if msgBytes != nil {
-				log.Debug("Received bytes", "chId", pkt.ChannelId, "msgBytes", msgBytes)
+				log.Info("Received bytes", "chId", pkt.ChannelId, "msgBytes", msgBytes)
 				c.onReceive(pkt.ChannelId, msgBytes)
 			}
 		default:
@@ -565,7 +565,7 @@ func (ch *Channel) nextMsgPacket() msgPacket {
 // Not goroutine-safe
 func (ch *Channel) writeMsgPacketTo(w io.Writer) (n int64, err error) {
 	packet := ch.nextMsgPacket()
-	log.Debug("Write Msg Packet", "conn", ch.conn, "packet", packet)
+	log.Info("Write Msg Packet", "conn", ch.conn, "packet", packet)
 	binary.WriteByte(packetTypeMsg, w, &n, &err)
 	binary.WriteBinary(packet, w, &n, &err)
 	if err != nil {
@@ -577,7 +577,7 @@ func (ch *Channel) writeMsgPacketTo(w io.Writer) (n int64, err error) {
 // Handles incoming msgPackets. Returns a msg bytes if msg is complete.
 // Not goroutine-safe
 func (ch *Channel) recvMsgPacket(packet msgPacket) ([]byte, error) {
-	log.Debug("Read Msg Packet", "conn", ch.conn, "packet", packet)
+	log.Info("Read Msg Packet", "conn", ch.conn, "packet", packet)
 	if binary.MaxBinaryReadSize < len(ch.recving)+len(packet.Bytes) {
 		return nil, binary.ErrBinaryReadSizeOverflow
 	}

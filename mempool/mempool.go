@@ -43,10 +43,10 @@ func (mem *Mempool) AddTx(tx types.Tx) (err error) {
 	defer mem.mtx.Unlock()
 	err = sm.ExecTx(mem.cache, tx, false, nil)
 	if err != nil {
-		log.Debug("AddTx() error", "tx", tx, "error", err)
+		log.Info("AddTx() error", "tx", tx, "error", err)
 		return err
 	} else {
-		log.Debug("AddTx() success", "tx", tx)
+		log.Info("AddTx() success", "tx", tx)
 		mem.txs = append(mem.txs, tx)
 		return nil
 	}
@@ -55,7 +55,7 @@ func (mem *Mempool) AddTx(tx types.Tx) (err error) {
 func (mem *Mempool) GetProposalTxs() []types.Tx {
 	mem.mtx.Lock()
 	defer mem.mtx.Unlock()
-	log.Debug("GetProposalTxs:", "txs", mem.txs)
+	log.Info("GetProposalTxs:", "txs", mem.txs)
 	return mem.txs
 }
 
@@ -80,10 +80,10 @@ func (mem *Mempool) ResetForBlockAndState(block *types.Block, state *sm.State) {
 	for _, tx := range mem.txs {
 		txID := types.TxID(state.ChainID, tx)
 		if _, ok := blockTxsMap[string(txID)]; ok {
-			log.Debug("Filter out, already committed", "tx", tx, "txID", txID)
+			log.Info("Filter out, already committed", "tx", tx, "txID", txID)
 			continue
 		} else {
-			log.Debug("Filter in, still new", "tx", tx, "txID", txID)
+			log.Info("Filter in, still new", "tx", tx, "txID", txID)
 			txs = append(txs, tx)
 		}
 	}
@@ -93,15 +93,15 @@ func (mem *Mempool) ResetForBlockAndState(block *types.Block, state *sm.State) {
 	for _, tx := range txs {
 		err := sm.ExecTx(mem.cache, tx, false, nil)
 		if err == nil {
-			log.Debug("Filter in, valid", "tx", tx)
+			log.Info("Filter in, valid", "tx", tx)
 			validTxs = append(validTxs, tx)
 		} else {
 			// tx is no longer valid.
-			log.Debug("Filter out, no longer valid", "tx", tx, "error", err)
+			log.Info("Filter out, no longer valid", "tx", tx, "error", err)
 		}
 	}
 
 	// We're done!
-	log.Debug("New txs", "txs", validTxs, "oldTxs", mem.txs)
+	log.Info("New txs", "txs", validTxs, "oldTxs", mem.txs)
 	mem.txs = validTxs
 }

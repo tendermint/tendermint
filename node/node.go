@@ -84,13 +84,13 @@ func NewNode() *Node {
 	privValidatorFile := config.GetString("priv_validator_file")
 	if _, err := os.Stat(privValidatorFile); err == nil {
 		privValidator = sm.LoadPrivValidator(privValidatorFile)
-		log.Info("Loaded PrivValidator",
+		log.Notice("Loaded PrivValidator",
 			"file", privValidatorFile, "privValidator", privValidator)
 	} else {
 		privValidator = sm.GenPrivValidator()
 		privValidator.SetFile(privValidatorFile)
 		privValidator.Save()
-		log.Info("Generated PrivValidator", "file", privValidatorFile)
+		log.Notice("Generated PrivValidator", "file", privValidatorFile)
 	}
 
 	// Generate node PrivKey
@@ -154,7 +154,7 @@ func (n *Node) Start() {
 }
 
 func (n *Node) Stop() {
-	log.Info("Stopping Node")
+	log.Notice("Stopping Node")
 	// TODO: gracefully disconnect from peers.
 	n.sw.Stop()
 	n.book.Stop()
@@ -171,7 +171,7 @@ func SetFireable(evsw *events.EventSwitch, eventables ...events.Eventable) {
 // Add listeners before starting the Node.
 // The first listener is the primary listener (in NodeInfo)
 func (n *Node) AddListener(l p2p.Listener) {
-	log.Info(Fmt("Added %v", l))
+	log.Notice(Fmt("Added %v", l))
 	n.sw.AddListener(l)
 	n.book.AddOurAddress(l.ExternalAddress())
 }
@@ -199,7 +199,7 @@ func (n *Node) dialSeed(addr *p2p.NetAddress) {
 		//n.book.MarkAttempt(addr)
 		return
 	} else {
-		log.Info("Connected to seed", "peer", peer)
+		log.Notice("Connected to seed", "peer", peer)
 		n.book.AddAddress(addr, addr)
 	}
 }

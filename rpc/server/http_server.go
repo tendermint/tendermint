@@ -17,7 +17,7 @@ import (
 )
 
 func StartHTTPServer(listenAddr string, handler http.Handler) (net.Listener, error) {
-	log.Info(Fmt("Starting RPC HTTP server on %v", listenAddr))
+	log.Notice(Fmt("Starting RPC HTTP server on %v", listenAddr))
 	listener, err := net.Listen("tcp", listenAddr)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to listen to %v", listenAddr)
@@ -84,7 +84,7 @@ func RecoverAndLogHandler(handler http.Handler) http.Handler {
 			if rww.Status == -1 {
 				rww.Status = 200
 			}
-			log.Debug("Served RPC HTTP response",
+			log.Info("Served RPC HTTP response",
 				"method", r.Method, "url", r.URL,
 				"status", rww.Status, "duration", durationMS,
 				"remoteAddr", r.RemoteAddr,

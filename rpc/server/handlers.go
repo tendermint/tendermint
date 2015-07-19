@@ -114,7 +114,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc) http.HandlerFunc {
 			return
 		}
 		returns := rpcFunc.f.Call(args)
-		log.Debug("HTTPJSONRPC", "method", request.Method, "args", args, "returns", returns)
+		log.Info("HTTPJSONRPC", "method", request.Method, "args", args, "returns", returns)
 		response, err := unreflectResponse(returns)
 		if err != nil {
 			WriteRPCResponse(w, NewRPCResponse(nil, err.Error()))
@@ -166,7 +166,7 @@ func makeHTTPHandler(rpcFunc *RPCFunc) func(http.ResponseWriter, *http.Request) 
 			return
 		}
 		returns := rpcFunc.f.Call(args)
-		log.Debug("HTTPRestRPC", "method", r.URL.Path, "args", args, "returns", returns)
+		log.Info("HTTPRestRPC", "method", r.URL.Path, "args", args, "returns", returns)
 		response, err := unreflectResponse(returns)
 		if err != nil {
 			WriteRPCResponse(w, NewRPCResponse(nil, err.Error()))
@@ -312,7 +312,7 @@ func (con *WSConnection) read() {
 			}
 			switch req.Type {
 			case "subscribe":
-				log.Info("New event subscription", "con id", con.id, "event", req.Event)
+				log.Notice("New event subscription", "con id", con.id, "event", req.Event)
 				con.evsw.AddListenerForEvent(con.id, req.Event, func(msg interface{}) {
 					resp := WSResponse{
 						Event: req.Event,
@@ -388,7 +388,7 @@ func (wm *WebsocketManager) websocketHandler(w http.ResponseWriter, r *http.Requ
 
 	// register connection
 	con := NewWSConnection(wsConn)
-	log.Info("New websocket connection", "origin", con.id)
+	log.Notice("New websocket connection", "origin", con.id)
 	con.Start(wm.evsw)
 }
 

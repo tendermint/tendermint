@@ -41,14 +41,14 @@ func NewMempoolReactor(mempool *Mempool) *MempoolReactor {
 func (memR *MempoolReactor) Start(sw *p2p.Switch) {
 	if atomic.CompareAndSwapUint32(&memR.started, 0, 1) {
 		memR.sw = sw
-		log.Info("Starting MempoolReactor")
+		log.Notice("Starting MempoolReactor")
 	}
 }
 
 // Implements Reactor
 func (memR *MempoolReactor) Stop() {
 	if atomic.CompareAndSwapUint32(&memR.stopped, 0, 1) {
-		log.Info("Stopping MempoolReactor")
+		log.Notice("Stopping MempoolReactor")
 		close(memR.quit)
 	}
 }
@@ -78,17 +78,17 @@ func (memR *MempoolReactor) Receive(chId byte, src *p2p.Peer, msgBytes []byte) {
 		log.Warn("Error decoding message", "error", err)
 		return
 	}
-	log.Info("MempoolReactor received message", "msg", msg)
+	log.Notice("MempoolReactor received message", "msg", msg)
 
 	switch msg := msg.(type) {
 	case *TxMessage:
 		err := memR.Mempool.AddTx(msg.Tx)
 		if err != nil {
 			// Bad, seen, or conflicting tx.
-			log.Debug("Could not add tx", "tx", msg.Tx)
+			log.Info("Could not add tx", "tx", msg.Tx)
 			return
 		} else {
-			log.Debug("Added valid tx", "tx", msg.Tx)
+			log.Info("Added valid tx", "tx", msg.Tx)
 		}
 		// Share tx.
 		// We use a simple shotgun approach for now.

@@ -18,11 +18,11 @@ func reset_priv_validator() {
 		privValidator.LastRound = 0
 		privValidator.LastStep = 0
 		privValidator.Save()
-		log.Info("Reset PrivValidator", "file", privValidatorFile)
+		log.Notice("Reset PrivValidator", "file", privValidatorFile)
 	} else {
 		privValidator = sm.GenPrivValidator()
 		privValidator.SetFile(privValidatorFile)
 		privValidator.Save()
-		log.Info("Generated PrivValidator", "file", privValidatorFile)
+		log.Notice("Generated PrivValidator", "file", privValidatorFile)
 	}
 }

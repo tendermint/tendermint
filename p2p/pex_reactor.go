@@ -48,7 +48,7 @@ func NewPEXReactor(book *AddrBook) *PEXReactor {
 // Implements Reactor
 func (pexR *PEXReactor) Start(sw *Switch) {
 	if atomic.CompareAndSwapUint32(&pexR.started, 0, 1) {
-		log.Info("Starting PEXReactor")
+		log.Notice("Starting PEXReactor")
 		pexR.sw = sw
 		go pexR.ensurePeersRoutine()
 	}
@@ -57,7 +57,7 @@ func (pexR *PEXReactor) Start(sw *Switch) {
 // Implements Reactor
 func (pexR *PEXReactor) Stop() {
 	if atomic.CompareAndSwapUint32(&pexR.stopped, 0, 1) {
-		log.Info("Stopping PEXReactor")
+		log.Notice("Stopping PEXReactor")
 		close(pexR.quit)
 	}
 }
@@ -103,7 +103,7 @@ func (pexR *PEXReactor) Receive(chId byte, src *Peer, msgBytes []byte) {
 		log.Warn("Error decoding message", "error", err)
 		return
 	}
-	log.Info("Received message", "msg", msg)
+	log.Notice("Received message", "msg", msg)
 
 	switch msg := msg.(type) {
 	case *pexRequestMessage:
@@ -160,7 +160,7 @@ FOR_LOOP:
 func (pexR *PEXReactor) ensurePeers() {
 	numOutPeers, _, numDialing := pexR.sw.NumPeers()
 	numToDial := minNumOutboundPeers - (numOutPeers + numDialing)
-	log.Debug("Ensure peers", "numOutPeers", numOutPeers, "numDialing", numDialing, "numToDial", numToDial)
+	log.Info("Ensure peers", "numOutPeers", numOutPeers, "numDialing", numDialing, "numToDial", numToDial)
 	if numToDial <= 0 {
 		return
 	}
@@ -183,14 +183,14 @@ func (pexR *PEXReactor) ensurePeers() {
 			alreadyConnected := pexR.sw.Peers().Has(try.IP.String())
 			if alreadySelected || alreadyDialing || alreadyConnected {
 				/*
-					log.Debug("Cannot dial address", "addr", try,
+					log.Info("Cannot dial address", "addr", try,
 						"alreadySelected", alreadySelected,
 						"alreadyDialing", alreadyDialing,
 						"alreadyConnected", alreadyConnected)
 				*/
 				continue
 			} else {
-				log.Debug("Will dial address", "addr", try)
+				log.Info("Will dial address", "addr", try)
 				picked = try
 				break
 			}
@@ -216,7 +216,7 @@ func (pexR *PEXReactor) ensurePeers() {
 		if peers := pexR.sw.Peers().List(); len(peers) > 0 {
 			i := rand.Int() % len(peers)
 			peer := peers[i]
-			log.Debug("No addresses to dial. Sending pexRequest to random peer", "peer", peer)
+			log.Info("No addresses to dial. Sending pexRequest to random peer", "peer", peer)
 			pexR.RequestPEX(peer)
 		}
 	}
