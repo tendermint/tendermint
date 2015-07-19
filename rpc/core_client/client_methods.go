@@ -15,7 +15,7 @@ import (
 )
 
 type Client interface {
-	BlockchainInfo(minHeight uint, maxHeight uint) (*ctypes.ResponseBlockchainInfo, error)
+	BlockchainInfo(minHeight int, maxHeight int) (*ctypes.ResponseBlockchainInfo, error)
 	BroadcastTx(tx types.Tx) (*ctypes.Receipt, error)
 	Call(address []byte, data []byte) (*ctypes.ResponseCall, error)
 	CallCode(code []byte, data []byte) (*ctypes.ResponseCall, error)
@@ -24,7 +24,7 @@ type Client interface {
 	GenPrivAccount() (*acm.PrivAccount, error)
 	Genesis() (*sm.GenesisDoc, error)
 	GetAccount(address []byte) (*acm.Account, error)
-	GetBlock(height uint) (*ctypes.ResponseGetBlock, error)
+	GetBlock(height int) (*ctypes.ResponseGetBlock, error)
 	GetName(name string) (*types.NameRegEntry, error)
 	GetStorage(address []byte, key []byte) (*ctypes.ResponseGetStorage, error)
 	ListAccounts() (*ctypes.ResponseListAccounts, error)
@@ -36,7 +36,7 @@ type Client interface {
 	Status() (*ctypes.ResponseStatus, error)
 }
 
-func (c *ClientHTTP) BlockchainInfo(minHeight uint, maxHeight uint) (*ctypes.ResponseBlockchainInfo, error) {
+func (c *ClientHTTP) BlockchainInfo(minHeight int, maxHeight int) (*ctypes.ResponseBlockchainInfo, error) {
 	values, err := argsToURLValues([]string{"minHeight", "maxHeight"}, minHeight, maxHeight)
 	if err != nil {
 		return nil, err
@@ -306,7 +306,7 @@ func (c *ClientHTTP) GetAccount(address []byte) (*acm.Account, error) {
 	return response.Result, nil
 }
 
-func (c *ClientHTTP) GetBlock(height uint) (*ctypes.ResponseGetBlock, error) {
+func (c *ClientHTTP) GetBlock(height int) (*ctypes.ResponseGetBlock, error) {
 	values, err := argsToURLValues([]string{"height"}, height)
 	if err != nil {
 		return nil, err
@@ -606,7 +606,7 @@ func (c *ClientHTTP) Status() (*ctypes.ResponseStatus, error) {
 	return response.Result, nil
 }
 
-func (c *ClientJSON) BlockchainInfo(minHeight uint, maxHeight uint) (*ctypes.ResponseBlockchainInfo, error) {
+func (c *ClientJSON) BlockchainInfo(minHeight int, maxHeight int) (*ctypes.ResponseBlockchainInfo, error) {
 	request := rpctypes.RPCRequest{
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["BlockchainInfo"],
@@ -849,7 +849,7 @@ func (c *ClientJSON) GetAccount(address []byte) (*acm.Account, error) {
 	return response.Result, nil
 }
 
-func (c *ClientJSON) GetBlock(height uint) (*ctypes.ResponseGetBlock, error) {
+func (c *ClientJSON) GetBlock(height int) (*ctypes.ResponseGetBlock, error) {
 	request := rpctypes.RPCRequest{
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["GetBlock"],
