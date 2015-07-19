@@ -134,7 +134,7 @@ func CRandBytes(numBytes int) []byte {
 	b := make([]byte, numBytes)
 	_, err := crand.Read(b)
 	if err != nil {
-		panic(err)
+		PanicCrisis(err)
 	}
 	return b
 }

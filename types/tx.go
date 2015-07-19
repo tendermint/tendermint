@@ -305,7 +305,7 @@ type DupeoutTx struct {
 }
 
 func (tx *DupeoutTx) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
-	panic("DupeoutTx has no sign bytes")
+	PanicSanity("DupeoutTx has no sign bytes")
 }
 
 func (tx *DupeoutTx) String() string {
@@ -326,7 +326,7 @@ func TxID(chainID string, tx Tx) []byte {
 func jsonEscape(str string) string {
 	escapedBytes, err := json.Marshal(str)
 	if err != nil {
-		panic(Fmt("Error json-escaping a string", str))
+		PanicSanity(Fmt("Error json-escaping a string", str))
 	}
 	return string(escapedBytes)
 }

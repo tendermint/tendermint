@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/merkle"
 	ptypes "github.com/tendermint/tendermint/permission/types"
 )
@@ -21,8 +22,7 @@ func SignBytes(chainID string, o Signable) []byte {
 	buf, n, err := new(bytes.Buffer), new(int64), new(error)
 	o.WriteSignBytes(chainID, buf, n, err)
 	if *err != nil {
-		// SOMETHING HAS GONE HORRIBLY WRONG
-		panic(err)
+		PanicCrisis(err)
 	}
 	return buf.Bytes()
 }

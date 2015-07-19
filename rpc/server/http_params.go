@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
-
-	. "github.com/tendermint/tendermint/rpc/types"
 )
 
 var (
@@ -23,10 +21,6 @@ var (
 
 	//RE_ID12       = regexp.MustCompile(`^[a-zA-Z0-9]{12}$`)
 )
-
-func panicRPC(err error) {
-	panic(NewRPCResponse(nil, err.Error()))
-}
 
 func GetParam(r *http.Request, param string) string {
 	s := r.URL.Query().Get(param)

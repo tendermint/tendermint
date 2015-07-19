@@ -30,9 +30,8 @@ func voteToStep(vote *types.Vote) int8 {
 	case types.VoteTypePrecommit:
 		return stepPrecommit
 	default:
-		// SANITY CHECK (binary decoding should catch bad vote types
-		// before they get here (right?!)
-		panic("Unknown vote type")
+		PanicSanity("Unknown vote type")
+		return 0
 	}
 }
 
@@ -95,14 +94,13 @@ func (privVal *PrivValidator) Save() {
 
 func (privVal *PrivValidator) save() {
 	if privVal.filePath == "" {
-		// SANITY CHECK
-		panic("Cannot save PrivValidator: filePath not set")
+		PanicSanity("Cannot save PrivValidator: filePath not set")
 	}
 	jsonBytes := binary.JSONBytes(privVal)
 	err := WriteFileAtomic(privVal.filePath, jsonBytes)
 	if err != nil {
 		// `@; BOOM!!!
-		panic(err)
+		PanicCrisis(err)
 	}
 }
 

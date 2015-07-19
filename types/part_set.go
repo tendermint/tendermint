@@ -36,10 +36,7 @@ func (part *Part) Hash() []byte {
 		return part.hash
 	} else {
 		hasher := ripemd160.New()
-		_, err := hasher.Write(part.Bytes)
-		if err != nil {
-			panic(err)
-		}
+		hasher.Write(part.Bytes) // doesn't err
 		part.hash = hasher.Sum(nil)
 		return part.hash
 	}
@@ -226,7 +223,7 @@ func (ps *PartSet) IsComplete() bool {
 
 func (ps *PartSet) GetReader() io.Reader {
 	if !ps.IsComplete() {
-		panic("Cannot GetReader() on incomplete PartSet")
+		PanicSanity("Cannot GetReader() on incomplete PartSet")
 	}
 	buf := []byte{}
 	for _, part := range ps.parts {

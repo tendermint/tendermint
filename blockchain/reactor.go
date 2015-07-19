@@ -53,12 +53,10 @@ type BlockchainReactor struct {
 }
 
 func NewBlockchainReactor(state *sm.State, store *BlockStore, sync bool) *BlockchainReactor {
-	// SANITY CHECK
 	if state.LastBlockHeight != store.Height() &&
 		state.LastBlockHeight != store.Height()-1 { // XXX double check this logic.
-		panic(Fmt("state (%v) and store (%v) height mismatch", state.LastBlockHeight, store.Height()))
+		PanicSanity(Fmt("state (%v) and store (%v) height mismatch", state.LastBlockHeight, store.Height()))
 	}
-	// SANITY CHECK END
 	requestsCh := make(chan BlockRequest, defaultChannelCapacity)
 	timeoutsCh := make(chan string, defaultChannelCapacity)
 	pool := NewBlockPool(
@@ -231,7 +229,7 @@ FOR_LOOP:
 					err := sm.ExecBlock(bcR.state, first, firstPartsHeader)
 					if err != nil {
 						// TODO This is bad, are we zombie?
-						panic(Fmt("Failed to process committed block: %v", err))
+						PanicQ(Fmt("Failed to process committed block: %v", err))
 					}
 					bcR.store.SaveBlock(first, firstParts, second.LastValidation)
 					bcR.state.Save()

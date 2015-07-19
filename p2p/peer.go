@@ -52,7 +52,7 @@ func newPeer(conn net.Conn, peerNodeInfo *types.NodeInfo, outbound bool, reactor
 	onReceive := func(chId byte, msgBytes []byte) {
 		reactor := reactorsByCh[chId]
 		if reactor == nil {
-			panic(Fmt("Unknown channel %X", chId))
+			PanicSanity(Fmt("Unknown channel %X", chId))
 		}
 		reactor.Receive(chId, p, msgBytes)
 	}

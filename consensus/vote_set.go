@@ -37,7 +37,7 @@ type VoteSet struct {
 // Constructs a new VoteSet struct used to accumulate votes for given height/round.
 func NewVoteSet(height int, round int, type_ byte, valSet *sm.ValidatorSet) *VoteSet {
 	if height == 0 {
-		panic("Cannot make VoteSet for height == 0, doesn't make sense.")
+		PanicSanity("Cannot make VoteSet for height == 0, doesn't make sense.")
 	}
 	return &VoteSet{
 		height:        height,
@@ -187,7 +187,7 @@ func (voteSet *VoteSet) GetByAddress(address []byte) *types.Vote {
 	defer voteSet.mtx.Unlock()
 	valIndex, val := voteSet.valSet.GetByAddress(address)
 	if val == nil {
-		panic("GetByAddress(address) returned nil")
+		PanicSanity("GetByAddress(address) returned nil")
 	}
 	return voteSet.votes[valIndex]
 }
@@ -273,12 +273,12 @@ func (voteSet *VoteSet) StringShort() string {
 
 func (voteSet *VoteSet) MakeValidation() *types.Validation {
 	if voteSet.type_ != types.VoteTypePrecommit {
-		panic("Cannot MakeValidation() unless VoteSet.Type is types.VoteTypePrecommit")
+		PanicSanity("Cannot MakeValidation() unless VoteSet.Type is types.VoteTypePrecommit")
 	}
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
 	if len(voteSet.maj23Hash) == 0 {
-		panic("Cannot MakeValidation() unless a blockhash has +2/3")
+		PanicSanity("Cannot MakeValidation() unless a blockhash has +2/3")
 	}
 	precommits := make([]*types.Vote, voteSet.valSet.Size())
 	voteSet.valSet.Iterate(func(valIndex int, val *sm.Validator) bool {

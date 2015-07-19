@@ -200,7 +200,7 @@ func (a *AddrBook) PickAddress(newBias int) *NetAddress {
 			}
 			randIndex--
 		}
-		panic("Should not happen")
+		PanicSanity("Should not happen")
 	} else {
 		// pick random New bucket.
 		var bucket map[string]*knownAddress = nil
@@ -215,7 +215,7 @@ func (a *AddrBook) PickAddress(newBias int) *NetAddress {
 			}
 			randIndex--
 		}
-		panic("Should not happen")
+		PanicSanity("Should not happen")
 	}
 	return nil
 }
@@ -332,14 +332,14 @@ func (a *AddrBook) loadFromFile(filePath string) bool {
 	// Load addrBookJSON{}
 	r, err := os.Open(filePath)
 	if err != nil {
-		panic(Fmt("Error opening file %s: %v", filePath, err))
+		PanicCrisis(Fmt("Error opening file %s: %v", filePath, err))
 	}
 	defer r.Close()
 	aJSON := &addrBookJSON{}
 	dec := json.NewDecoder(r)
 	err = dec.Decode(aJSON)
 	if err != nil {
-		panic(Fmt("Error reading file %s: %v", filePath, err))
+		PanicCrisis(Fmt("Error reading file %s: %v", filePath, err))
 	}
 
 	// Restore all the fields...
@@ -388,7 +388,8 @@ func (a *AddrBook) getBucket(bucketType byte, bucketIdx int) map[string]*knownAd
 	case bucketTypeOld:
 		return a.addrOld[bucketIdx]
 	default:
-		panic("Should not happen")
+		PanicSanity("Should not happen")
+		return nil
 	}
 }
 

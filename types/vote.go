@@ -64,7 +64,7 @@ func (vote *Vote) String() string {
 	case VoteTypePrecommit:
 		typeString = "Precommit"
 	default:
-		panic("Unknown vote type")
+		PanicSanity("Unknown vote type")
 	}
 
 	return fmt.Sprintf("Vote{%v/%02d/%v(%v) %X#%v %v}", vote.Height, vote.Round, vote.Type, typeString, Fingerprint(vote.BlockHash), vote.BlockParts, vote.Signature)

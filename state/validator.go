@@ -7,6 +7,7 @@ import (
 
 	acm "github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -77,8 +78,8 @@ func (v *Validator) CompareAccum(other *Validator) *Validator {
 		} else if bytes.Compare(v.Address, other.Address) > 0 {
 			return other
 		} else {
-			// SANITY CHECK
-			panic("Cannot compare identical validators")
+			PanicSanity("Cannot compare identical validators")
+			return nil
 		}
 	}
 }
@@ -116,5 +117,6 @@ func (vc validatorCodec) Decode(r io.Reader, n *int64, err *error) interface{} {
 }
 
 func (vc validatorCodec) Compare(o1 interface{}, o2 interface{}) int {
-	panic("ValidatorCodec.Compare not implemented")
+	PanicSanity("ValidatorCodec.Compare not implemented")
+	return 0
 }

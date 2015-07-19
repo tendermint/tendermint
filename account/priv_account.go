@@ -64,7 +64,7 @@ func GenPrivAccountFromSecret(secret []byte) *PrivAccount {
 
 func GenPrivAccountFromPrivKeyBytes(privKeyBytes *[64]byte) *PrivAccount {
 	if len(privKeyBytes) != 64 {
-		panic(Fmt("Expected 64 bytes but got %v", len(privKeyBytes)))
+		PanicSanity(Fmt("Expected 64 bytes but got %v", len(privKeyBytes)))
 	}
 	pubKeyBytes := ed25519.MakePublicKey(privKeyBytes)
 	pubKey := PubKeyEd25519(*pubKeyBytes)

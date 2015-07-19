@@ -50,7 +50,7 @@ func (st *Stack) Push(d Word256) {
 // currently only called after Sha3
 func (st *Stack) PushBytes(bz []byte) {
 	if len(bz) != 32 {
-		panic("Invalid bytes size: expected 32")
+		PanicSanity("Invalid bytes size: expected 32")
 	}
 	st.Push(LeftPadWord256(bz))
 }

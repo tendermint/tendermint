@@ -669,7 +669,7 @@ func (ps *PeerState) getVoteBitArray(height, round int, type_ byte) *BitArray {
 			case types.VoteTypePrecommit:
 				return ps.Precommits
 			default:
-				panic(Fmt("Unexpected vote type %X", type_))
+				PanicSanity(Fmt("Unexpected vote type %X", type_))
 			}
 		}
 		if ps.CatchupCommitRound == round {
@@ -679,7 +679,7 @@ func (ps *PeerState) getVoteBitArray(height, round int, type_ byte) *BitArray {
 			case types.VoteTypePrecommit:
 				return ps.CatchupCommit
 			default:
-				panic(Fmt("Unexpected vote type %X", type_))
+				PanicSanity(Fmt("Unexpected vote type %X", type_))
 			}
 		}
 		return nil
@@ -692,7 +692,7 @@ func (ps *PeerState) getVoteBitArray(height, round int, type_ byte) *BitArray {
 			case types.VoteTypePrecommit:
 				return ps.LastCommit
 			default:
-				panic(Fmt("Unexpected vote type %X", type_))
+				PanicSanity(Fmt("Unexpected vote type %X", type_))
 			}
 		}
 		return nil
@@ -706,7 +706,7 @@ func (ps *PeerState) ensureCatchupCommitRound(height, round int, numValidators i
 		return
 	}
 	if ps.CatchupCommitRound != -1 && ps.CatchupCommitRound != round {
-		panic(Fmt("Conflicting CatchupCommitRound. Height: %v, Orig: %v, New: %v", height, ps.CatchupCommitRound, round))
+		PanicSanity(Fmt("Conflicting CatchupCommitRound. Height: %v, Orig: %v, New: %v", height, ps.CatchupCommitRound, round))
 	}
 	if ps.CatchupCommitRound == round {
 		return // Nothing to do!
@@ -758,7 +758,7 @@ func (ps *PeerState) SetHasVote(vote *types.Vote, index int) {
 func (ps *PeerState) setHasVote(height int, round int, type_ byte, index int) {
 	log := log.New("peer", ps.Peer.Key, "peerRound", ps.Round, "height", height, "round", round)
 	if type_ != types.VoteTypePrevote && type_ != types.VoteTypePrecommit {
-		panic("Invalid vote type") // SANITY
+		PanicSanity("Invalid vote type")
 	}
 
 	if ps.Height == height {

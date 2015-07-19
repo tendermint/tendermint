@@ -98,7 +98,7 @@ func (sw *Switch) AddReactor(name string, reactor Reactor) Reactor {
 	for _, chDesc := range reactorChannels {
 		chId := chDesc.Id
 		if sw.reactorsByCh[chId] != nil {
-			panic(fmt.Sprintf("Channel %X has multiple reactors %v & %v", chId, sw.reactorsByCh[chId], reactor))
+			PanicSanity(fmt.Sprintf("Channel %X has multiple reactors %v & %v", chId, sw.reactorsByCh[chId], reactor))
 		}
 		sw.chDescs = append(sw.chDescs, chDesc)
 		sw.reactorsByCh[chId] = reactor
