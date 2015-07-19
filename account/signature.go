@@ -9,6 +9,8 @@ import (
 
 // Signature is a part of Txs and consensus Votes.
 type Signature interface {
+	IsZero() bool
+	String() string
 }
 
 // Types of Signature implementations
