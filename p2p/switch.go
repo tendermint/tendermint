@@ -224,7 +224,7 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 	// ignore if duplicate or if we already have too many for that IP range
 	if err := sw.peers.Add(peer); err != nil {
 		log.Info("Ignoring peer", "error", err, "peer", peer)
-		peer.stop() // will also close sconn
+		peer.mconn.Stop()
 		return nil, err
 	}
 
