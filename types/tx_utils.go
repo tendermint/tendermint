@@ -2,11 +2,11 @@ package types
 
 import (
 	"fmt"
-	"github.com/tendermint/tendermint/account"
+	acm "github.com/tendermint/tendermint/account"
 )
 
 type AccountGetter interface {
-	GetAccount(addr []byte) *account.Account
+	GetAccount(addr []byte) *acm.Account
 }
 
 //----------------------------------------------------------------------------
@@ -19,7 +19,7 @@ func NewSendTx() *SendTx {
 	}
 }
 
-func (tx *SendTx) AddInput(st AccountGetter, pubkey account.PubKey, amt int64) error {
+func (tx *SendTx) AddInput(st AccountGetter, pubkey acm.PubKey, amt int64) error {
 	addr := pubkey.Address()
 	acc := st.GetAccount(addr)
 	if acc == nil {
@@ -28,13 +28,13 @@ func (tx *SendTx) AddInput(st AccountGetter, pubkey account.PubKey, amt int64) e
 	return tx.AddInputWithNonce(pubkey, amt, acc.Sequence+1)
 }
 
-func (tx *SendTx) AddInputWithNonce(pubkey account.PubKey, amt int64, nonce int) error {
+func (tx *SendTx) AddInputWithNonce(pubkey acm.PubKey, amt int64, nonce int) error {
 	addr := pubkey.Address()
 	tx.Inputs = append(tx.Inputs, &TxInput{
 		Address:   addr,
 		Amount:    amt,
 		Sequence:  nonce,
-		Signature: account.SignatureEd25519{},
+		Signature: acm.SignatureEd25519{},
 		PubKey:    pubkey,
 	})
 	return nil
@@ -48,7 +48,7 @@ func (tx *SendTx) AddOutput(addr []byte, amt int64) error {
 	return nil
 }
 
-func (tx *SendTx) SignInput(chainID string, i int, privAccount *account.PrivAccount) error {
+func (tx *SendTx) SignInput(chainID string, i int, privAccount *acm.PrivAccount) error {
 	if i >= len(tx.Inputs) {
 		return fmt.Errorf("Index %v is greater than number of inputs (%v)", i, len(tx.Inputs))
 	}
@@ -60,7 +60,7 @@ func (tx *SendTx) SignInput(chainID string, i int, privAccount *account.PrivAcco
 //----------------------------------------------------------------------------
 // CallTx interface for creating tx
 
-func NewCallTx(st AccountGetter, from account.PubKey, to, data []byte, amt, gasLimit, fee int64) (*CallTx, error) {
+func NewCallTx(st AccountGetter, from acm.PubKey, to, data []byte, amt, gasLimit, fee int64) (*CallTx, error) {
 	addr := from.Address()
 	acc := st.GetAccount(addr)
 	if acc == nil {
@@ -71,13 +71,13 @@ func NewCallTx(st AccountGetter, from account.PubKey, to, data []byte, amt, gasL
 	return NewCallTxWithNonce(from, to, data, amt, gasLimit, fee, nonce), nil
 }
 
-func NewCallTxWithNonce(from account.PubKey, to, data []byte, amt, gasLimit, fee int64, nonce int) *CallTx {
+func NewCallTxWithNonce(from acm.PubKey, to, data []byte, amt, gasLimit, fee int64, nonce int) *CallTx {
 	addr := from.Address()
 	input := &TxInput{
 		Address:   addr,
 		Amount:    amt,
 		Sequence:  nonce,
-		Signature: account.SignatureEd25519{},
+		Signature: acm.SignatureEd25519{},
 		PubKey:    from,
 	}
 
@@ -90,7 +90,7 @@ func NewCallTxWithNonce(from account.PubKey, to, data []byte, amt, gasLimit, fee
 	}
 }
 
-func (tx *CallTx) Sign(chainID string, privAccount *account.PrivAccount) {
+func (tx *CallTx) Sign(chainID string, privAccount *acm.PrivAccount) {
 	tx.Input.PubKey = privAccount.PubKey
 	tx.Input.Signature = privAccount.Sign(chainID, tx)
 }
@@ -98,7 +98,7 @@ func (tx *CallTx) Sign(chainID string, privAccount *account.PrivAccount) {
 //----------------------------------------------------------------------------
 // NameTx interface for creating tx
 
-func NewNameTx(st AccountGetter, from account.PubKey, name, data string, amt, fee int64) (*NameTx, error) {
+func NewNameTx(st AccountGetter, from acm.PubKey, name, data string, amt, fee int64) (*NameTx, error) {
 	addr := from.Address()
 	acc := st.GetAccount(addr)
 	if acc == nil {
@@ -109,13 +109,13 @@ func NewNameTx(st AccountGetter, from account.PubKey, name, data string, amt, fe
 	return NewNameTxWithNonce(from, name, data, amt, fee, nonce), nil
 }
 
-func NewNameTxWithNonce(from account.PubKey, name, data string, amt, fee int64, nonce int) *NameTx {
+func NewNameTxWithNonce(from acm.PubKey, name, data string, amt, fee int64, nonce int) *NameTx {
 	addr := from.Address()
 	input := &TxInput{
 		Address:   addr,
 		Amount:    amt,
 		Sequence:  nonce,
-		Signature: account.SignatureEd25519{},
+		Signature: acm.SignatureEd25519{},
 		PubKey:    from,
 	}
 
@@ -127,7 +127,7 @@ func NewNameTxWithNonce(from account.PubKey, name, data string, amt, fee int64, 
 	}
 }
 
-func (tx *NameTx) Sign(chainID string, privAccount *account.PrivAccount) {
+func (tx *NameTx) Sign(chainID string, privAccount *acm.PrivAccount) {
 	tx.Input.PubKey = privAccount.PubKey
 	tx.Input.Signature = privAccount.Sign(chainID, tx)
 }
@@ -135,8 +135,8 @@ func (tx *NameTx) Sign(chainID string, privAccount *account.PrivAccount) {
 //----------------------------------------------------------------------------
 // BondTx interface for adding inputs/outputs and adding signatures
 
-func NewBondTx(pubkey account.PubKey) (*BondTx, error) {
-	pubkeyEd, ok := pubkey.(account.PubKeyEd25519)
+func NewBondTx(pubkey acm.PubKey) (*BondTx, error) {
+	pubkeyEd, ok := pubkey.(acm.PubKeyEd25519)
 	if !ok {
 		return nil, fmt.Errorf("Pubkey must be ed25519")
 	}
@@ -147,7 +147,7 @@ func NewBondTx(pubkey account.PubKey) (*BondTx, error) {
 	}, nil
 }
 
-func (tx *BondTx) AddInput(st AccountGetter, pubkey account.PubKey, amt int64) error {
+func (tx *BondTx) AddInput(st AccountGetter, pubkey acm.PubKey, amt int64) error {
 	addr := pubkey.Address()
 	acc := st.GetAccount(addr)
 	if acc == nil {
@@ -156,13 +156,13 @@ func (tx *BondTx) AddInput(st AccountGetter, pubkey account.PubKey, amt int64) e
 	return tx.AddInputWithNonce(pubkey, amt, acc.Sequence+1)
 }
 
-func (tx *BondTx) AddInputWithNonce(pubkey account.PubKey, amt int64, nonce int) error {
+func (tx *BondTx) AddInputWithNonce(pubkey acm.PubKey, amt int64, nonce int) error {
 	addr := pubkey.Address()
 	tx.Inputs = append(tx.Inputs, &TxInput{
 		Address:   addr,
 		Amount:    amt,
 		Sequence:  nonce,
-		Signature: account.SignatureEd25519{},
+		Signature: acm.SignatureEd25519{},
 		PubKey:    pubkey,
 	})
 	return nil
@@ -176,9 +176,9 @@ func (tx *BondTx) AddOutput(addr []byte, amt int64) error {
 	return nil
 }
 
-func (tx *BondTx) SignBond(chainID string, privAccount *account.PrivAccount) error {
+func (tx *BondTx) SignBond(chainID string, privAccount *acm.PrivAccount) error {
 	sig := privAccount.Sign(chainID, tx)
-	sigEd, ok := sig.(account.SignatureEd25519)
+	sigEd, ok := sig.(acm.SignatureEd25519)
 	if !ok {
 		return fmt.Errorf("Bond signer must be ED25519")
 	}
@@ -186,7 +186,7 @@ func (tx *BondTx) SignBond(chainID string, privAccount *account.PrivAccount) err
 	return nil
 }
 
-func (tx *BondTx) SignInput(chainID string, i int, privAccount *account.PrivAccount) error {
+func (tx *BondTx) SignInput(chainID string, i int, privAccount *acm.PrivAccount) error {
 	if i >= len(tx.Inputs) {
 		return fmt.Errorf("Index %v is greater than number of inputs (%v)", i, len(tx.Inputs))
 	}
@@ -205,8 +205,8 @@ func NewUnbondTx(addr []byte, height int) *UnbondTx {
 	}
 }
 
-func (tx *UnbondTx) Sign(chainID string, privAccount *account.PrivAccount) {
-	tx.Signature = privAccount.Sign(chainID, tx).(account.SignatureEd25519)
+func (tx *UnbondTx) Sign(chainID string, privAccount *acm.PrivAccount) {
+	tx.Signature = privAccount.Sign(chainID, tx).(acm.SignatureEd25519)
 }
 
 //----------------------------------------------------------------------
@@ -219,6 +219,6 @@ func NewRebondTx(addr []byte, height int) *RebondTx {
 	}
 }
 
-func (tx *RebondTx) Sign(chainID string, privAccount *account.PrivAccount) {
-	tx.Signature = privAccount.Sign(chainID, tx).(account.SignatureEd25519)
+func (tx *RebondTx) Sign(chainID string, privAccount *acm.PrivAccount) {
+	tx.Signature = privAccount.Sign(chainID, tx).(acm.SignatureEd25519)
 }

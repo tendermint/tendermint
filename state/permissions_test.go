@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/account"
+	acm "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
 	dbm "github.com/tendermint/tendermint/db"
 	"github.com/tendermint/tendermint/events"
@@ -81,11 +81,11 @@ x 		- roles: has, add, rm
 var user = makeUsers(10)
 var chainID = "testchain"
 
-func makeUsers(n int) []*account.PrivAccount {
-	accounts := []*account.PrivAccount{}
+func makeUsers(n int) []*acm.PrivAccount {
+	accounts := []*acm.PrivAccount{}
 	for i := 0; i < n; i++ {
 		secret := []byte("mysecret" + strconv.Itoa(i))
-		user := account.GenPrivAccountFromSecret(secret)
+		user := acm.GenPrivAccountFromSecret(secret)
 		accounts = append(accounts, user)
 	}
 	return accounts
@@ -115,7 +115,7 @@ func newBaseGenDoc(globalPerm, accountPerm ptypes.AccountPermissions) GenesisDoc
 		Accounts: genAccounts,
 		Validators: []GenesisValidator{
 			GenesisValidator{
-				PubKey: user[0].PubKey.(account.PubKeyEd25519),
+				PubKey: user[0].PubKey.(acm.PubKeyEd25519),
 				Amount: 10,
 				UnbondTo: []BasicAccount{
 					BasicAccount{
@@ -348,7 +348,7 @@ func TestCallPermission(t *testing.T) {
 
 	// create simple contract
 	simpleContractAddr := NewContractAddress(user[0].Address, 100)
-	simpleAcc := &account.Account{
+	simpleAcc := &acm.Account{
 		Address:     simpleContractAddr,
 		Balance:     0,
 		Code:        []byte{0x60},
@@ -372,7 +372,7 @@ func TestCallPermission(t *testing.T) {
 	// create contract that calls the simple contract
 	contractCode := callContractCode(simpleContractAddr)
 	caller1ContractAddr := NewContractAddress(user[0].Address, 101)
-	caller1Acc := &account.Account{
+	caller1Acc := &acm.Account{
 		Address:     caller1ContractAddr,
 		Balance:     0,
 		Code:        contractCode,
@@ -416,7 +416,7 @@ func TestCallPermission(t *testing.T) {
 
 	contractCode2 := callContractCode(caller1ContractAddr)
 	caller2ContractAddr := NewContractAddress(user[0].Address, 102)
-	caller2Acc := &account.Account{
+	caller2Acc := &acm.Account{
 		Address:     caller2ContractAddr,
 		Balance:     1000,
 		Code:        contractCode2,
@@ -548,7 +548,7 @@ func TestCreatePermission(t *testing.T) {
 	code := callContractCode(zeroAddr)
 
 	contractAddr = NewContractAddress(user[0].Address, 110)
-	contractAcc = &account.Account{
+	contractAcc = &acm.Account{
 		Address:     contractAddr,
 		Balance:     1000,
 		Code:        code,
@@ -579,7 +579,7 @@ func TestBondPermission(t *testing.T) {
 	genDoc := newBaseGenDoc(PermsAllFalse, PermsAllFalse)
 	st := MakeGenesisState(stateDB, &genDoc)
 	blockCache := NewBlockCache(st)
-	var bondAcc *account.Account
+	var bondAcc *acm.Account
 
 	//------------------------------
 	// one bonder without permission should fail
@@ -800,7 +800,7 @@ func TestCreateAccountPermission(t *testing.T) {
 	// create contract that calls the simple contract
 	contractCode := callContractCode(user[9].Address)
 	caller1ContractAddr := NewContractAddress(user[4].Address, 101)
-	caller1Acc := &account.Account{
+	caller1Acc := &acm.Account{
 		Address:     caller1ContractAddr,
 		Balance:     0,
 		Code:        contractCode,
@@ -851,7 +851,7 @@ func TestSNativeCALL(t *testing.T) {
 	// Test CALL to SNative contracts
 
 	// make the main contract once
-	doug := &account.Account{
+	doug := &acm.Account{
 		Address:     ptypes.DougAddress,
 		Balance:     0,
 		Code:        nil,
@@ -985,7 +985,7 @@ func TestSNativeCallTx(t *testing.T) {
 
 	//----------------------------------------------------------
 	// Test CallTx to SNative contracts
-	var doug *account.Account = nil
+	var doug *acm.Account = nil
 
 	fmt.Println("#### hasBasePerm")
 	// hasBasePerm
@@ -1131,7 +1131,7 @@ func execTxWaitEvent(t *testing.T, blockCache *BlockCache, tx types.Tx, eventid 
 }
 
 // give a contract perms for an snative, call it, it calls the snative, ensure the check funciton (f) succeeds
-func testSNativeCALLExpectPass(t *testing.T, blockCache *BlockCache, doug *account.Account, snativeAddress, data []byte, f func([]byte) error) {
+func testSNativeCALLExpectPass(t *testing.T, blockCache *BlockCache, doug *acm.Account, snativeAddress, data []byte, f func([]byte) error) {
 	perm := vm.RegisteredSNativePermissions[LeftPadWord256(snativeAddress)]
 	var addr []byte
 	if doug != nil {
@@ -1160,7 +1160,7 @@ func testSNativeCALLExpectPass(t *testing.T, blockCache *BlockCache, doug *accou
 }
 
 // assumes the contract has not been given the permission. calls the it, it calls the snative, expects to fail
-func testSNativeCALLExpectFail(t *testing.T, blockCache *BlockCache, doug *account.Account, snativeAddress, data []byte) {
+func testSNativeCALLExpectFail(t *testing.T, blockCache *BlockCache, doug *acm.Account, snativeAddress, data []byte) {
 	var addr []byte
 	if doug != nil {
 		contractCode := callContractCode(snativeAddress)
@@ -1189,7 +1189,7 @@ func boolToWord256(v bool) Word256 {
 	return LeftPadWord256([]byte{vint})
 }
 
-func snativePermTestInput(name string, user *account.PrivAccount, perm ptypes.PermFlag, val bool) (addr []byte, data []byte) {
+func snativePermTestInput(name string, user *acm.PrivAccount, perm ptypes.PermFlag, val bool) (addr []byte, data []byte) {
 	addr = LeftPadWord256([]byte(name)).Postfix(20)
 	switch name {
 	case "hasBasePerm", "unsetBasePerm":
@@ -1207,7 +1207,7 @@ func snativePermTestInput(name string, user *account.PrivAccount, perm ptypes.Pe
 	return
 }
 
-func snativeRoleTestInput(name string, user *account.PrivAccount, role string) (addr []byte, data []byte) {
+func snativeRoleTestInput(name string, user *acm.PrivAccount, role string) (addr []byte, data []byte) {
 	addr = LeftPadWord256([]byte(name)).Postfix(20)
 	data = LeftPadBytes(user.Address, 32)
 	data = append(data, LeftPadBytes([]byte(role), 32)...)

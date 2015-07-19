@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/tendermint/tendermint/account"
+	acm "github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 	dbm "github.com/tendermint/tendermint/db"
@@ -35,10 +35,10 @@ type GenesisAccount struct {
 }
 
 type GenesisValidator struct {
-	PubKey   account.PubKeyEd25519 `json:"pub_key"`
-	Amount   int64                 `json:"amount"`
-	Name     string                `json:"name"`
-	UnbondTo []BasicAccount        `json:"unbond_to"`
+	PubKey   acm.PubKeyEd25519 `json:"pub_key"`
+	Amount   int64             `json:"amount"`
+	Name     string            `json:"name"`
+	UnbondTo []BasicAccount    `json:"unbond_to"`
 }
 
 type GenesisParams struct {
@@ -86,13 +86,13 @@ func MakeGenesisState(db dbm.DB, genDoc *GenesisDoc) *State {
 	}
 
 	// Make accounts state tree
-	accounts := merkle.NewIAVLTree(binary.BasicCodec, account.AccountCodec, defaultAccountsCacheCapacity, db)
+	accounts := merkle.NewIAVLTree(binary.BasicCodec, acm.AccountCodec, defaultAccountsCacheCapacity, db)
 	for _, genAcc := range genDoc.Accounts {
 		perm := ptypes.ZeroAccountPermissions
 		if genAcc.Permissions != nil {
 			perm = *genAcc.Permissions
 		}
-		acc := &account.Account{
+		acc := &acm.Account{
 			Address:     genAcc.Address,
 			PubKey:      nil,
 			Sequence:    0,
@@ -112,7 +112,7 @@ func MakeGenesisState(db dbm.DB, genDoc *GenesisDoc) *State {
 		globalPerms.Base.SetBit = ptypes.AllPermFlags
 	}
 
-	permsAcc := &account.Account{
+	permsAcc := &acm.Account{
 		Address:     ptypes.GlobalPermissionsAddress,
 		PubKey:      nil,
 		Sequence:    0,

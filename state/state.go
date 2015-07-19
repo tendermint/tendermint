@@ -5,7 +5,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/tendermint/tendermint/account"
+	acm "github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 	dbm "github.com/tendermint/tendermint/db"
@@ -58,7 +58,7 @@ func LoadState(db dbm.DB) *State {
 		s.LastBondedValidators = binary.ReadBinary(&ValidatorSet{}, r, n, err).(*ValidatorSet)
 		s.UnbondingValidators = binary.ReadBinary(&ValidatorSet{}, r, n, err).(*ValidatorSet)
 		accountsHash := binary.ReadByteSlice(r, n, err)
-		s.accounts = merkle.NewIAVLTree(binary.BasicCodec, account.AccountCodec, defaultAccountsCacheCapacity, db)
+		s.accounts = merkle.NewIAVLTree(binary.BasicCodec, acm.AccountCodec, defaultAccountsCacheCapacity, db)
 		s.accounts.Load(accountsHash)
 		validatorInfosHash := binary.ReadByteSlice(r, n, err)
 		s.validatorInfos = merkle.NewIAVLTree(binary.BasicCodec, ValidatorInfoCodec, 0, db)
@@ -155,18 +155,18 @@ func (s *State) SetDB(db dbm.DB) {
 // The returned Account is a copy, so mutating it
 // has no side effects.
 // Implements Statelike
-func (s *State) GetAccount(address []byte) *account.Account {
+func (s *State) GetAccount(address []byte) *acm.Account {
 	_, acc := s.accounts.Get(address)
 	if acc == nil {
 		return nil
 	}
-	return acc.(*account.Account).Copy()
+	return acc.(*acm.Account).Copy()
 }
 
 // The account is copied before setting, so mutating it
 // afterwards has no side effects.
 // Implements Statelike
-func (s *State) UpdateAccount(account *account.Account) bool {
+func (s *State) UpdateAccount(account *acm.Account) bool {
 	return s.accounts.Set(account.Address, account.Copy())
 }
 
