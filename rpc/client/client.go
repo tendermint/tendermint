@@ -22,7 +22,7 @@ func Call(remote string, method string, params []interface{}, dest interface{}) 
 	}
 	requestBytes := binary.JSONBytes(request)
 	requestBuf := bytes.NewBuffer(requestBytes)
-	log.Debug(Fmt("RPC request to %v: %v", remote, string(requestBytes)))
+	log.Info(Fmt("RPC request to %v: %v", remote, string(requestBytes)))
 	httpResponse, err := http.Post(remote, "text/json", requestBuf)
 	if err != nil {
 		return dest, err
@@ -32,7 +32,7 @@ func Call(remote string, method string, params []interface{}, dest interface{}) 
 	if err != nil {
 		return dest, err
 	}
-	log.Debug(Fmt("RPC response: %v", string(responseBytes)))
+	log.Info(Fmt("RPC response: %v", string(responseBytes)))
 
 	// Parse response into JSONResponse
 	response := RPCResponse{}

@@ -83,7 +83,7 @@ func NewBlockchainReactor(state *sm.State, store *BlockStore, sync bool) *Blockc
 // Implements Reactor
 func (bcR *BlockchainReactor) Start(sw *p2p.Switch) {
 	if atomic.CompareAndSwapUint32(&bcR.running, 0, 1) {
-		log.Info("Starting BlockchainReactor")
+		log.Notice("Starting BlockchainReactor")
 		bcR.sw = sw
 		if bcR.sync {
 			bcR.pool.Start()
@@ -95,7 +95,7 @@ func (bcR *BlockchainReactor) Start(sw *p2p.Switch) {
 // Implements Reactor
 func (bcR *BlockchainReactor) Stop() {
 	if atomic.CompareAndSwapUint32(&bcR.running, 1, 0) {
-		log.Info("Stopping BlockchainReactor")
+		log.Notice("Stopping BlockchainReactor")
 		close(bcR.quit)
 		bcR.pool.Stop()
 	}
@@ -132,7 +132,7 @@ func (bcR *BlockchainReactor) Receive(chId byte, src *p2p.Peer, msgBytes []byte)
 		return
 	}
 
-	log.Info("Received message", "msg", msg)
+	log.Notice("Received message", "msg", msg)
 
 	switch msg := msg.(type) {
 	case *bcBlockRequestMessage:
@@ -201,7 +201,7 @@ FOR_LOOP:
 		case _ = <-switchToConsensusTicker.C:
 			height, numPending, numUnassigned := bcR.pool.GetStatus()
 			outbound, inbound, _ := bcR.sw.NumPeers()
-			log.Debug("Consensus ticker", "numUnassigned", numUnassigned, "numPending", numPending,
+			log.Info("Consensus ticker", "numUnassigned", numUnassigned, "numPending", numPending,
 				"total", len(bcR.pool.requests), "outbound", outbound, "inbound", inbound)
 			// NOTE: this condition is very strict right now. may need to weaken
 			// If all `maxPendingRequests` requests are unassigned
@@ -210,7 +210,7 @@ FOR_LOOP:
 			allUnassigned := numPending == numUnassigned
 			enoughPeers := outbound+inbound >= 3
 			if maxPending && allUnassigned && enoughPeers {
-				log.Info("Time to switch to consensus reactor!", "height", height)
+				log.Notice("Time to switch to consensus reactor!", "height", height)
 				bcR.pool.Stop()
 
 				conR := bcR.sw.Reactor("CONSENSUS").(consensusReactor)
@@ -224,7 +224,7 @@ FOR_LOOP:
 			for i := 0; i < 10; i++ {
 				// See if there are any blocks to sync.
 				first, second := bcR.pool.PeekTwoBlocks()
-				//log.Debug("TrySync peeked", "first", first, "second", second)
+				//log.Info("TrySync peeked", "first", first, "second", second)
 				if first == nil || second == nil {
 					// We need both to sync the first block.
 					break SYNC_LOOP
@@ -235,7 +235,7 @@ FOR_LOOP:
 				err := bcR.state.BondedValidators.VerifyValidation(
 					bcR.state.ChainID, first.Hash(), firstPartsHeader, first.Height, second.LastValidation)
 				if err != nil {
-					log.Debug("error in validation", "error", err)
+					log.Info("error in validation", "error", err)
 					bcR.pool.RedoRequest(first.Height)
 					break SYNC_LOOP
 				} else {

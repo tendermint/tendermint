@@ -34,6 +34,8 @@ func sharedSyslog(fmtr Format, sysWr *syslog.Writer, err error) (Handler, error)
 			syslogFn = sysWr.Err
 		case LvlWarn:
 			syslogFn = sysWr.Warning
+		case LvlNotice:
+			syslogFn = sysWr.Notice
 		case LvlInfo:
 			syslogFn = sysWr.Info
 		case LvlDebug:

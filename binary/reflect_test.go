@@ -356,7 +356,7 @@ func TestBinary(t *testing.T) {
 
 	for i, testCase := range testCases {
 
-		log.Info(fmt.Sprintf("Running test case %v", i))
+		log.Notice(fmt.Sprintf("Running test case %v", i))
 
 		// Construct an object
 		o := testCase.Constructor()
@@ -398,7 +398,7 @@ func TestJSON(t *testing.T) {
 
 	for i, testCase := range testCases {
 
-		log.Info(fmt.Sprintf("Running test case %v", i))
+		log.Notice(fmt.Sprintf("Running test case %v", i))
 
 		// Construct an object
 		o := testCase.Constructor()

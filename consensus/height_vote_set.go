@@ -78,7 +78,7 @@ func (hvs *HeightVoteSet) addRound(round int) {
 	if _, ok := hvs.roundVoteSets[round]; ok {
 		panic("addRound() for an existing round")
 	}
-	log.Debug("addRound(round)", "round", round)
+	log.Info("addRound(round)", "round", round)
 	prevotes := NewVoteSet(hvs.height, round, types.VoteTypePrevote, hvs.valSet)
 	precommits := NewVoteSet(hvs.height, round, types.VoteTypePrecommit, hvs.valSet)
 	hvs.roundVoteSets[round] = RoundVoteSet{
@@ -135,7 +135,7 @@ func (hvs *HeightVoteSet) POLRound() int {
 }
 
 func (hvs *HeightVoteSet) getVoteSet(round int, type_ byte) *VoteSet {
-	log.Debug("getVoteSet(round)", "round", round, "type", type_)
+	log.Info("getVoteSet(round)", "round", round, "type", type_)
 	rvs, ok := hvs.roundVoteSets[round]
 	if !ok {
 		return nil

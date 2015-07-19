@@ -52,8 +52,10 @@ func TerminalFormat() Format {
 			color = 31
 		case LvlWarn:
 			color = 33
-		case LvlInfo:
+		case LvlNotice:
 			color = 32
+		case LvlInfo:
+			color = 34
 		case LvlDebug:
 			color = 36
 		}

@@ -60,7 +60,7 @@ func TestBasic(t *testing.T) {
 		case peerId := <-timeoutsCh:
 			t.Errorf("timeout: %v", peerId)
 		case request := <-requestsCh:
-			log.Debug("TEST: Pulled new BlockRequest", "request", request)
+			log.Info("TEST: Pulled new BlockRequest", "request", request)
 			if request.Height == 300 {
 				return // Done!
 			}
@@ -68,7 +68,7 @@ func TestBasic(t *testing.T) {
 			go func() {
 				block := &types.Block{Header: &types.Header{Height: request.Height}}
 				pool.AddBlock(block, request.PeerId)
-				log.Debug("TEST: Added block", "block", request.Height, "peer", request.PeerId)
+				log.Info("TEST: Added block", "block", request.Height, "peer", request.PeerId)
 			}()
 		}
 	}
@@ -112,7 +112,7 @@ func TestTimeout(t *testing.T) {
 	for {
 		select {
 		case peerId := <-timeoutsCh:
-			log.Debug("Timeout", "peerId", peerId)
+			log.Info("Timeout", "peerId", peerId)
 			if _, ok := timedOut[peerId]; !ok {
 				counter++
 				if counter == len(peers) {
@@ -120,7 +120,7 @@ func TestTimeout(t *testing.T) {
 				}
 			}
 		case request := <-requestsCh:
-			log.Debug("TEST: Pulled new BlockRequest", "request", request)
+			log.Info("TEST: Pulled new BlockRequest", "request", request)
 		}
 	}
 

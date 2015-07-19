@@ -223,7 +223,7 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 	// Add the peer to .peers
 	// ignore if duplicate or if we already have too many for that IP range
 	if err := sw.peers.Add(peer); err != nil {
-		log.Info("Ignoring peer", "error", err, "peer", peer)
+		log.Notice("Ignoring peer", "error", err, "peer", peer)
 		peer.mconn.Stop()
 		return nil, err
 	}
@@ -234,7 +234,7 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 		sw.startInitPeer(peer)
 	}
 
-	log.Info("Added peer", "peer", peer)
+	log.Notice("Added peer", "peer", peer)
 	return peer, nil
 }
 
@@ -244,20 +244,20 @@ func (sw *Switch) startInitPeer(peer *Peer) {
 }
 
 func (sw *Switch) DialPeerWithAddress(addr *NetAddress) (*Peer, error) {
-	log.Debug("Dialing address", "address", addr)
+	log.Info("Dialing address", "address", addr)
 	sw.dialing.Set(addr.IP.String(), addr)
 	conn, err := addr.DialTimeout(peerDialTimeoutSeconds * time.Second)
 	sw.dialing.Delete(addr.IP.String())
 	if err != nil {
-		log.Debug("Failed dialing address", "address", addr, "error", err)
+		log.Info("Failed dialing address", "address", addr, "error", err)
 		return nil, err
 	}
 	peer, err := sw.AddPeerWithConnection(conn, true)
 	if err != nil {
-		log.Debug("Failed adding peer", "address", addr, "conn", conn, "error", err)
+		log.Info("Failed adding peer", "address", addr, "conn", conn, "error", err)
 		return nil, err
 	}
-	log.Info("Dialed and added peer", "address", addr, "peer", peer)
+	log.Notice("Dialed and added peer", "address", addr, "peer", peer)
 	return peer, nil
 }
 
@@ -270,7 +270,7 @@ func (sw *Switch) IsDialing(addr *NetAddress) bool {
 // which receives success values for each attempted send (false if times out)
 func (sw *Switch) Broadcast(chId byte, msg interface{}) chan bool {
 	successChan := make(chan bool, len(sw.peers.List()))
-	log.Debug("Broadcast", "channel", chId, "msg", msg)
+	log.Info("Broadcast", "channel", chId, "msg", msg)
 	for _, peer := range sw.peers.List() {
 		go func(peer *Peer) {
 			success := peer.Send(chId, msg)
@@ -302,7 +302,7 @@ func (sw *Switch) Peers() IPeerSet {
 // Disconnect from a peer due to external error.
 // TODO: make record depending on reason.
 func (sw *Switch) StopPeerForError(peer *Peer, reason interface{}) {
-	log.Info("Stopping peer for error", "peer", peer, "error", reason)
+	log.Notice("Stopping peer for error", "peer", peer, "error", reason)
 	sw.peers.Remove(peer)
 	peer.stop()
 	sw.removePeerFromReactors(peer, reason)
@@ -311,7 +311,7 @@ func (sw *Switch) StopPeerForError(peer *Peer, reason interface{}) {
 // Disconnect from a peer gracefully.
 // TODO: handle graceful disconnects.
 func (sw *Switch) StopPeerGracefully(peer *Peer) {
-	log.Info("Stopping peer gracefully")
+	log.Notice("Stopping peer gracefully")
 	sw.peers.Remove(peer)
 	peer.stop()
 	sw.removePeerFromReactors(peer, nil)
@@ -338,20 +338,20 @@ func (sw *Switch) listenerRoutine(l Listener) {
 
 		// ignore connection if we already have enough
 		if maxNumPeers <= sw.peers.Size() {
-			log.Debug("Ignoring inbound connection: already have enough peers", "conn", inConn, "numPeers", sw.peers.Size(), "max", maxNumPeers)
+			log.Info("Ignoring inbound connection: already have enough peers", "address", inConn.RemoteAddr().String(), "numPeers", sw.peers.Size(), "max", maxNumPeers)
 			continue
 		}
 
 		// Ignore connections from IP ranges for which we have too many
 		if sw.peers.HasMaxForIPRange(inConn) {
-			log.Debug("Ignoring inbound connection: already have enough peers for that IP range", "address", inConn.RemoteAddr().String())
+			log.Info("Ignoring inbound connection: already have enough peers for that IP range", "address", inConn.RemoteAddr().String())
 			continue
 		}
 
 		// New inbound connection!
 		_, err := sw.AddPeerWithConnection(inConn, false)
 		if err != nil {
-			log.Info("Ignoring inbound connection: error on AddPeerWithConnection", "conn", inConn, "error", err)
+			log.Notice("Ignoring inbound connection: error on AddPeerWithConnection", "address", inConn.RemoteAddr().String(), "error", err)
 			continue
 		}
 

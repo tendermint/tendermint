@@ -35,7 +35,7 @@ func peerHandshake(conn net.Conn, ourNodeInfo *types.NodeInfo) (*types.NodeInfo,
 		func() {
 			var n int64
 			binary.ReadBinary(peerNodeInfo, conn, &n, &err2)
-			log.Info("Peer handshake", "peerNodeInfo", peerNodeInfo)
+			log.Notice("Peer handshake", "peerNodeInfo", peerNodeInfo)
 		})
 	if err1 != nil {
 		return nil, err1
@@ -74,14 +74,14 @@ func newPeer(conn net.Conn, peerNodeInfo *types.NodeInfo, outbound bool, reactor
 
 func (p *Peer) start() {
 	if atomic.CompareAndSwapUint32(&p.running, 0, 1) {
-		log.Debug("Starting Peer", "peer", p)
+		log.Info("Starting Peer", "peer", p)
 		p.mconn.Start()
 	}
 }
 
 func (p *Peer) stop() {
 	if atomic.CompareAndSwapUint32(&p.running, 1, 0) {
-		log.Debug("Stopping Peer", "peer", p)
+		log.Info("Stopping Peer", "peer", p)
 		p.mconn.Stop()
 	}
 }

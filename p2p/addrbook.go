@@ -126,7 +126,7 @@ func (a *AddrBook) init() {
 
 func (a *AddrBook) Start() {
 	if atomic.CompareAndSwapUint32(&a.started, 0, 1) {
-		log.Info("Starting AddrBook")
+		log.Notice("Starting AddrBook")
 		a.loadFromFile(a.filePath)
 		a.wg.Add(1)
 		go a.saveRoutine()
@@ -135,7 +135,7 @@ func (a *AddrBook) Start() {
 
 func (a *AddrBook) Stop() {
 	if atomic.CompareAndSwapUint32(&a.stopped, 0, 1) {
-		log.Info("Stopping AddrBook")
+		log.Notice("Stopping AddrBook")
 		close(a.quit)
 		a.wg.Wait()
 	}
@@ -144,7 +144,7 @@ func (a *AddrBook) Stop() {
 func (a *AddrBook) AddOurAddress(addr *NetAddress) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
-	log.Debug("Add our address to book", "addr", addr)
+	log.Info("Add our address to book", "addr", addr)
 	a.ourAddrs[addr.String()] = addr
 }
 
@@ -159,7 +159,7 @@ func (a *AddrBook) OurAddresses() []*NetAddress {
 func (a *AddrBook) AddAddress(addr *NetAddress, src *NetAddress) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
-	log.Debug("Add address to book", "addr", addr, "src", src)
+	log.Info("Add address to book", "addr", addr, "src", src)
 	a.addAddress(addr, src)
 }
 
@@ -379,7 +379,7 @@ out:
 	for {
 		select {
 		case <-dumpAddressTicker.C:
-			log.Debug("Saving AddrBook to file", "size", a.Size())
+			log.Info("Saving AddrBook to file", "size", a.Size())
 			a.saveToFile(a.filePath)
 		case <-a.quit:
 			break out
@@ -388,7 +388,7 @@ out:
 	dumpAddressTicker.Stop()
 	a.saveToFile(a.filePath)
 	a.wg.Done()
-	log.Info("Address handler done")
+	log.Notice("Address handler done")
 }
 
 func (a *AddrBook) getBucket(bucketType byte, bucketIdx int) map[string]*knownAddress {
@@ -421,7 +421,7 @@ func (a *AddrBook) addToNewBucket(ka *knownAddress, bucketIdx int) bool {
 
 	// Enforce max addresses.
 	if len(bucket) > newBucketSize {
-		log.Info("new bucket is full, expiring old ")
+		log.Notice("new bucket is full, expiring old ")
 		a.expireNew(bucketIdx)
 	}
 
@@ -549,7 +549,7 @@ func (a *AddrBook) addAddress(addr, src *NetAddress) {
 	bucket := a.calcNewBucket(addr, src)
 	a.addToNewBucket(ka, bucket)
 
-	log.Info("Added new address", "address", addr, "total", a.size())
+	log.Notice("Added new address", "address", addr, "total", a.size())
 }
 
 // Make space in the new buckets by expiring the really bad entries.
@@ -558,7 +558,7 @@ func (a *AddrBook) expireNew(bucketIdx int) {
 	for addrStr, ka := range a.addrNew[bucketIdx] {
 		// If an entry is bad, throw it away
 		if ka.isBad() {
-			log.Info(Fmt("expiring bad address %v", addrStr))
+			log.Notice(Fmt("expiring bad address %v", addrStr))
 			a.removeFromBucket(ka, bucketTypeNew, bucketIdx)
 			return
 		}

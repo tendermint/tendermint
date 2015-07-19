@@ -51,6 +51,11 @@ func Info(msg string, ctx ...interface{}) {
 	root.write(msg, LvlInfo, ctx)
 }
 
+// Notice is a convenient alias for Root().Notice
+func Notice(msg string, ctx ...interface{}) {
+	root.write(msg, LvlNotice, ctx)
+}
+
 // Warn is a convenient alias for Root().Warn
 func Warn(msg string, ctx ...interface{}) {
 	root.write(msg, LvlWarn, ctx)

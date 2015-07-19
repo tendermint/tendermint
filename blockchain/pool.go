@@ -71,14 +71,14 @@ func NewBlockPool(start int, requestsCh chan<- BlockRequest, timeoutsCh chan<- s
 
 func (pool *BlockPool) Start() {
 	if atomic.CompareAndSwapInt32(&pool.running, 0, 1) {
-		log.Info("Starting BlockPool")
+		log.Notice("Starting BlockPool")
 		go pool.run()
 	}
 }
 
 func (pool *BlockPool) Stop() {
 	if atomic.CompareAndSwapInt32(&pool.running, 1, 0) {
-		log.Info("Stopping BlockPool")
+		log.Notice("Stopping BlockPool")
 		pool.repeater.Stop()
 	}
 }
@@ -354,12 +354,12 @@ func requestRoutine(pool *BlockPool, height int) {
 	PICK_LOOP:
 		for {
 			if !pool.IsRunning() {
-				log.Debug("BlockPool not running. Stopping requestRoutine", "height", height)
+				log.Info("BlockPool not running. Stopping requestRoutine", "height", height)
 				return
 			}
 			peer = pool.pickIncrAvailablePeer(height)
 			if peer == nil {
-				//log.Debug("No peers available", "height", height)
+				//log.Info("No peers available", "height", height)
 				time.Sleep(requestIntervalMS * time.Millisecond)
 				continue PICK_LOOP
 			}
