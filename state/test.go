@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"sort"
 
-	"github.com/tendermint/tendermint/account"
+	acm "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
 	dbm "github.com/tendermint/tendermint/db"
 	ptypes "github.com/tendermint/tendermint/permission/types"
@@ -23,10 +23,10 @@ func Tempfile(prefix string) (*os.File, string) {
 	return file, file.Name()
 }
 
-func RandAccount(randBalance bool, minBalance int64) (*account.Account, *account.PrivAccount) {
-	privAccount := account.GenPrivAccount()
+func RandAccount(randBalance bool, minBalance int64) (*acm.Account, *acm.PrivAccount) {
+	privAccount := acm.GenPrivAccount()
 	perms := ptypes.DefaultAccountPermissions
-	acc := &account.Account{
+	acc := &acm.Account{
 		Address:     privAccount.PubKey.Address(),
 		PubKey:      privAccount.PubKey,
 		Sequence:    RandInt(),
@@ -69,9 +69,9 @@ func RandValidator(randBonded bool, minBonded int64) (*ValidatorInfo, *Validator
 	return valInfo, val, privVal
 }
 
-func RandGenesisDoc(numAccounts int, randBalance bool, minBalance int64, numValidators int, randBonded bool, minBonded int64) (*GenesisDoc, []*account.PrivAccount, []*PrivValidator) {
+func RandGenesisDoc(numAccounts int, randBalance bool, minBalance int64, numValidators int, randBonded bool, minBonded int64) (*GenesisDoc, []*acm.PrivAccount, []*PrivValidator) {
 	accounts := make([]GenesisAccount, numAccounts)
-	privAccounts := make([]*account.PrivAccount, numAccounts)
+	privAccounts := make([]*acm.PrivAccount, numAccounts)
 	defaultPerms := ptypes.DefaultAccountPermissions
 	for i := 0; i < numAccounts; i++ {
 		account, privAccount := RandAccount(randBalance, minBalance)
@@ -108,7 +108,7 @@ func RandGenesisDoc(numAccounts int, randBalance bool, minBalance int64, numVali
 
 }
 
-func RandGenesisState(numAccounts int, randBalance bool, minBalance int64, numValidators int, randBonded bool, minBonded int64) (*State, []*account.PrivAccount, []*PrivValidator) {
+func RandGenesisState(numAccounts int, randBalance bool, minBalance int64, numValidators int, randBonded bool, minBonded int64) (*State, []*acm.PrivAccount, []*PrivValidator) {
 	db := dbm.NewMemDB()
 	genDoc, privAccounts, privValidators := RandGenesisDoc(numAccounts, randBalance, minBalance, numValidators, randBonded, minBonded)
 	s0 := MakeGenesisState(db, genDoc)

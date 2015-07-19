@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"sort"
 
-	ac "github.com/tendermint/tendermint/account"
+	acm "github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 	dbm "github.com/tendermint/tendermint/db"
@@ -48,7 +48,7 @@ func (cache *BlockCache) State() *State {
 //-------------------------------------
 // BlockCache.account
 
-func (cache *BlockCache) GetAccount(addr []byte) *ac.Account {
+func (cache *BlockCache) GetAccount(addr []byte) *acm.Account {
 	acc, _, removed, _ := cache.accounts[string(addr)].unpack()
 	if removed {
 		return nil
@@ -61,7 +61,7 @@ func (cache *BlockCache) GetAccount(addr []byte) *ac.Account {
 	}
 }
 
-func (cache *BlockCache) UpdateAccount(acc *ac.Account) {
+func (cache *BlockCache) UpdateAccount(acc *acm.Account) {
 	addr := acc.Address
 	_, storage, removed, _ := cache.accounts[string(addr)].unpack()
 	// SANITY CHECK
@@ -178,7 +178,7 @@ func (cache *BlockCache) Sync() {
 	// Later we'll iterate over all the users and save storage + update storage root.
 	var (
 		curAddr       Word256
-		curAcc        *ac.Account
+		curAcc        *acm.Account
 		curAccRemoved bool
 		curStorage    merkle.Tree
 	)
@@ -274,13 +274,13 @@ func (cache *BlockCache) Sync() {
 //-----------------------------------------------------------------------------
 
 type accountInfo struct {
-	account *ac.Account
+	account *acm.Account
 	storage merkle.Tree
 	removed bool
 	dirty   bool
 }
 
-func (accInfo accountInfo) unpack() (*ac.Account, merkle.Tree, bool, bool) {
+func (accInfo accountInfo) unpack() (*acm.Account, merkle.Tree, bool, bool) {
 	return accInfo.account, accInfo.storage, accInfo.removed, accInfo.dirty
 }
 

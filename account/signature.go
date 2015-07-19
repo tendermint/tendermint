@@ -9,6 +9,8 @@ import (
 
 // Signature is a part of Txs and consensus Votes.
 type Signature interface {
+	IsZero() bool
+	String() string
 }
 
 // Types of Signature implementations
@@ -26,8 +28,6 @@ var _ = binary.RegisterInterface(
 
 // Implements Signature
 type SignatureEd25519 [64]byte
-
-func (sig SignatureEd25519) IsNil() bool { return false }
 
 func (sig SignatureEd25519) IsZero() bool { return len(sig) == 0 }
 

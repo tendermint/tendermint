@@ -4,7 +4,6 @@ package core_client
 
 import (
 	"fmt"
-	"github.com/tendermint/tendermint/account"
 	acm "github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -33,7 +32,7 @@ type Client interface {
 	ListUnconfirmedTxs() ([]types.Tx, error)
 	ListValidators() (*ctypes.ResponseListValidators, error)
 	NetInfo() (*ctypes.ResponseNetInfo, error)
-	SignTx(tx types.Tx, privAccounts []*account.PrivAccount) (types.Tx, error)
+	SignTx(tx types.Tx, privAccounts []*acm.PrivAccount) (types.Tx, error)
 	Status() (*ctypes.ResponseStatus, error)
 }
 
@@ -547,7 +546,7 @@ func (c *ClientHTTP) NetInfo() (*ctypes.ResponseNetInfo, error) {
 	return response.Result, nil
 }
 
-func (c *ClientHTTP) SignTx(tx types.Tx, privAccounts []*account.PrivAccount) (types.Tx, error) {
+func (c *ClientHTTP) SignTx(tx types.Tx, privAccounts []*acm.PrivAccount) (types.Tx, error) {
 	values, err := argsToURLValues([]string{"tx", "privAccounts"}, tx, privAccounts)
 	if err != nil {
 		return nil, err
@@ -1066,7 +1065,7 @@ func (c *ClientJSON) NetInfo() (*ctypes.ResponseNetInfo, error) {
 	return response.Result, nil
 }
 
-func (c *ClientJSON) SignTx(tx types.Tx, privAccounts []*account.PrivAccount) (types.Tx, error) {
+func (c *ClientJSON) SignTx(tx types.Tx, privAccounts []*acm.PrivAccount) (types.Tx, error) {
 	request := rpctypes.RPCRequest{
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["SignTx"],

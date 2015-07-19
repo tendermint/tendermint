@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/tendermint/tendermint/account"
+	acm "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
 	nm "github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/p2p"
@@ -37,11 +37,11 @@ var (
 )
 
 // deterministic account generation, synced with genesis file in config/tendermint_test/config.go
-func makeUsers(n int) []*account.PrivAccount {
-	accounts := []*account.PrivAccount{}
+func makeUsers(n int) []*acm.PrivAccount {
+	accounts := []*acm.PrivAccount{}
 	for i := 0; i < n; i++ {
 		secret := []byte("mysecret" + strconv.Itoa(i))
-		user := account.GenPrivAccountFromSecret(secret)
+		user := acm.GenPrivAccountFromSecret(secret)
 		accounts = append(accounts, user)
 	}
 	return accounts
@@ -71,8 +71,8 @@ func init() {
 	// Save new priv_validator file.
 	priv := &state.PrivValidator{
 		Address: user[0].Address,
-		PubKey:  account.PubKeyEd25519(user[0].PubKey.(account.PubKeyEd25519)),
-		PrivKey: account.PrivKeyEd25519(user[0].PrivKey.(account.PrivKeyEd25519)),
+		PubKey:  acm.PubKeyEd25519(user[0].PubKey.(acm.PubKeyEd25519)),
+		PrivKey: acm.PrivKeyEd25519(user[0].PrivKey.(acm.PrivKeyEd25519)),
 	}
 	priv.SetFile(config.GetString("priv_validator_file"))
 	priv.Save()
@@ -133,7 +133,7 @@ func getNonce(t *testing.T, typ string, addr []byte) int {
 }
 
 // get the account
-func getAccount(t *testing.T, typ string, addr []byte) *account.Account {
+func getAccount(t *testing.T, typ string, addr []byte) *acm.Account {
 	client := clients[typ]
 	ac, err := client.GetAccount(addr)
 	if err != nil {
@@ -143,9 +143,9 @@ func getAccount(t *testing.T, typ string, addr []byte) *account.Account {
 }
 
 // sign transaction
-func signTx(t *testing.T, typ string, tx types.Tx, privAcc *account.PrivAccount) types.Tx {
+func signTx(t *testing.T, typ string, tx types.Tx, privAcc *acm.PrivAccount) types.Tx {
 	client := clients[typ]
-	signedTx, err := client.SignTx(tx, []*account.PrivAccount{privAcc})
+	signedTx, err := client.SignTx(tx, []*acm.PrivAccount{privAcc})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -219,12 +219,12 @@ func getNameRegEntry(t *testing.T, typ string, name string) *types.NameRegEntry 
 //--------------------------------------------------------------------------------
 // utility verification function
 
-func checkTx(t *testing.T, fromAddr []byte, priv *account.PrivAccount, tx *types.SendTx) {
+func checkTx(t *testing.T, fromAddr []byte, priv *acm.PrivAccount, tx *types.SendTx) {
 	if bytes.Compare(tx.Inputs[0].Address, fromAddr) != 0 {
 		t.Fatal("Tx input addresses don't match!")
 	}
 
-	signBytes := account.SignBytes(chainID, tx)
+	signBytes := acm.SignBytes(chainID, tx)
 	in := tx.Inputs[0] //(*types.SendTx).Inputs[0]
 
 	if err := in.ValidateBasic(); err != nil {

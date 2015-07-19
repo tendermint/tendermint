@@ -2,7 +2,7 @@ package core
 
 import (
 	"fmt"
-	"github.com/tendermint/tendermint/account"
+	acm "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/state"
@@ -10,7 +10,7 @@ import (
 	"github.com/tendermint/tendermint/vm"
 )
 
-func toVMAccount(acc *account.Account) *vm.Account {
+func toVMAccount(acc *acm.Account) *vm.Account {
 	return &vm.Account{
 		Address:     LeftPadWord256(acc.Address),
 		Balance:     acc.Balance,
@@ -78,7 +78,7 @@ func CallCode(code, data []byte) (*ctypes.ResponseCall, error) {
 
 //-----------------------------------------------------------------------------
 
-func SignTx(tx types.Tx, privAccounts []*account.PrivAccount) (types.Tx, error) {
+func SignTx(tx types.Tx, privAccounts []*acm.PrivAccount) (types.Tx, error) {
 	// more checks?
 
 	for i, privAccount := range privAccounts {
@@ -101,17 +101,17 @@ func SignTx(tx types.Tx, privAccounts []*account.PrivAccount) (types.Tx, error) 
 		bondTx := tx.(*types.BondTx)
 		// the first privaccount corresponds to the BondTx pub key.
 		// the rest to the inputs
-		bondTx.Signature = privAccounts[0].Sign(config.GetString("chain_id"), bondTx).(account.SignatureEd25519)
+		bondTx.Signature = privAccounts[0].Sign(config.GetString("chain_id"), bondTx).(acm.SignatureEd25519)
 		for i, input := range bondTx.Inputs {
 			input.PubKey = privAccounts[i+1].PubKey
 			input.Signature = privAccounts[i+1].Sign(config.GetString("chain_id"), bondTx)
 		}
 	case *types.UnbondTx:
 		unbondTx := tx.(*types.UnbondTx)
-		unbondTx.Signature = privAccounts[0].Sign(config.GetString("chain_id"), unbondTx).(account.SignatureEd25519)
+		unbondTx.Signature = privAccounts[0].Sign(config.GetString("chain_id"), unbondTx).(acm.SignatureEd25519)
 	case *types.RebondTx:
 		rebondTx := tx.(*types.RebondTx)
-		rebondTx.Signature = privAccounts[0].Sign(config.GetString("chain_id"), rebondTx).(account.SignatureEd25519)
+		rebondTx.Signature = privAccounts[0].Sign(config.GetString("chain_id"), rebondTx).(acm.SignatureEd25519)
 	}
 	return tx, nil
 }

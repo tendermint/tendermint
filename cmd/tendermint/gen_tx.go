@@ -8,7 +8,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/tendermint/tendermint/account"
+	acm "github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 	dbm "github.com/tendermint/tendermint/db"
@@ -54,13 +54,13 @@ func gen_tx() {
 	// Get source pubkey
 	srcPubKeyBytes := getByteSliceFromHex("Enter source pubkey: ")
 	r, n, err := bytes.NewReader(srcPubKeyBytes), new(int64), new(error)
-	srcPubKey := binary.ReadBinary(struct{ account.PubKey }{}, r, n, err).(struct{ account.PubKey }).PubKey
+	srcPubKey := binary.ReadBinary(struct{ acm.PubKey }{}, r, n, err).(struct{ acm.PubKey }).PubKey
 	if *err != nil {
 		Exit(Fmt("Invalid PubKey. Error: %v", err))
 	}
 
 	// Get the state of the account.
-	var srcAccount *account.Account
+	var srcAccount *acm.Account
 	var srcAccountAddress = srcPubKey.Address()
 	var srcAccountBalanceStr = "unknown"
 	var srcAccountSequenceStr = "unknown"
@@ -90,7 +90,7 @@ func gen_tx() {
 				Address:   srcAddress,
 				Amount:    srcSendAmount,
 				Sequence:  srcSendSequence,
-				Signature: account.SignatureEd25519{},
+				Signature: acm.SignatureEd25519{},
 				PubKey:    srcPubKey,
 			},
 		},
@@ -108,12 +108,12 @@ func gen_tx() {
 	// Get source privkey (for signing)
 	srcPrivKeyBytes := getByteSliceFromHex("Enter source privkey (for signing): ")
 	r, n, err = bytes.NewReader(srcPrivKeyBytes), new(int64), new(error)
-	srcPrivKey := binary.ReadBinary(struct{ account.PrivKey }{}, r, n, err).(struct{ account.PrivKey }).PrivKey
+	srcPrivKey := binary.ReadBinary(struct{ acm.PrivKey }{}, r, n, err).(struct{ acm.PrivKey }).PrivKey
 	if *err != nil {
 		Exit(Fmt("Invalid PrivKey. Error: %v", err))
 	}
 
 	// Sign
-	tx.Inputs[0].Signature = srcPrivKey.Sign(account.SignBytes(config.GetString("chain_id"), tx))
+	tx.Inputs[0].Signature = srcPrivKey.Sign(acm.SignBytes(config.GetString("chain_id"), tx))
 	fmt.Printf("Signed tx: %X\n", binary.BinaryBytes(tx))
 }

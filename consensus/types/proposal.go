@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/tendermint/tendermint/account"
+	acm "github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/types"
@@ -17,11 +17,11 @@ var (
 )
 
 type Proposal struct {
-	Height           int                      `json:"height"`
-	Round            int                      `json:"round"`
-	BlockPartsHeader types.PartSetHeader      `json:"block_parts_header"`
-	POLRound         int                      `json:"pol_round"` // -1 if null.
-	Signature        account.SignatureEd25519 `json:"signature"`
+	Height           int                  `json:"height"`
+	Round            int                  `json:"round"`
+	BlockPartsHeader types.PartSetHeader  `json:"block_parts_header"`
+	POLRound         int                  `json:"pol_round"` // -1 if null.
+	Signature        acm.SignatureEd25519 `json:"signature"`
 }
 
 func NewProposal(height int, round int, blockPartsHeader types.PartSetHeader, polRound int) *Proposal {

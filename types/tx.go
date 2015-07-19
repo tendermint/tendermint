@@ -5,7 +5,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/tendermint/tendermint/account"
+	acm "github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 )
@@ -78,11 +78,11 @@ var _ = binary.RegisterInterface(
 //-----------------------------------------------------------------------------
 
 type TxInput struct {
-	Address   []byte            `json:"address"`   // Hash of the PubKey
-	Amount    int64             `json:"amount"`    // Must not exceed account balance
-	Sequence  int               `json:"sequence"`  // Must be 1 greater than the last committed TxInput
-	Signature account.Signature `json:"signature"` // Depends on the PubKey type and the whole Tx
-	PubKey    account.PubKey    `json:"pub_key"`   // Must not be nil, may be nil
+	Address   []byte        `json:"address"`   // Hash of the PubKey
+	Amount    int64         `json:"amount"`    // Must not exceed account balance
+	Sequence  int           `json:"sequence"`  // Must be 1 greater than the last committed TxInput
+	Signature acm.Signature `json:"signature"` // Depends on the PubKey type and the whole Tx
+	PubKey    acm.PubKey    `json:"pub_key"`   // Must not be nil, may be nil
 }
 
 func (txIn *TxInput) ValidateBasic() error {
@@ -231,10 +231,10 @@ func (tx *NameTx) String() string {
 //-----------------------------------------------------------------------------
 
 type BondTx struct {
-	PubKey    account.PubKeyEd25519    `json:"pub_key"`
-	Signature account.SignatureEd25519 `json:"signature"`
-	Inputs    []*TxInput               `json:"inputs"`
-	UnbondTo  []*TxOutput              `json:"unbond_to"`
+	PubKey    acm.PubKeyEd25519    `json:"pub_key"`
+	Signature acm.SignatureEd25519 `json:"signature"`
+	Inputs    []*TxInput           `json:"inputs"`
+	UnbondTo  []*TxOutput          `json:"unbond_to"`
 }
 
 func (tx *BondTx) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
@@ -265,9 +265,9 @@ func (tx *BondTx) String() string {
 //-----------------------------------------------------------------------------
 
 type UnbondTx struct {
-	Address   []byte                   `json:"address"`
-	Height    int                      `json:"height"`
-	Signature account.SignatureEd25519 `json:"signature"`
+	Address   []byte               `json:"address"`
+	Height    int                  `json:"height"`
+	Signature acm.SignatureEd25519 `json:"signature"`
 }
 
 func (tx *UnbondTx) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
@@ -282,9 +282,9 @@ func (tx *UnbondTx) String() string {
 //-----------------------------------------------------------------------------
 
 type RebondTx struct {
-	Address   []byte                   `json:"address"`
-	Height    int                      `json:"height"`
-	Signature account.SignatureEd25519 `json:"signature"`
+	Address   []byte               `json:"address"`
+	Height    int                  `json:"height"`
+	Signature acm.SignatureEd25519 `json:"signature"`
 }
 
 func (tx *RebondTx) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
@@ -316,7 +316,7 @@ func (tx *DupeoutTx) String() string {
 
 // This should match the leaf hashes of Block.Data.Hash()'s SimpleMerkleTree.
 func TxID(chainID string, tx Tx) []byte {
-	signBytes := account.SignBytes(chainID, tx)
+	signBytes := acm.SignBytes(chainID, tx)
 	return binary.BinaryRipemd160(signBytes)
 }
 

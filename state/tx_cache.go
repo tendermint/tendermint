@@ -1,7 +1,7 @@
 package state
 
 import (
-	ac "github.com/tendermint/tendermint/account"
+	acm "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
 	ptypes "github.com/tendermint/tendermint/permission/types" // for GlobalPermissionAddress ...
 	"github.com/tendermint/tendermint/vm"
@@ -158,7 +158,7 @@ func NewContractAddress(caller []byte, nonce int) []byte {
 }
 
 // Converts backend.Account to vm.Account struct.
-func toVMAccount(acc *ac.Account) *vm.Account {
+func toVMAccount(acc *acm.Account) *vm.Account {
 	return &vm.Account{
 		Address:     LeftPadWord256(acc.Address),
 		Balance:     acc.Balance,
@@ -171,8 +171,8 @@ func toVMAccount(acc *ac.Account) *vm.Account {
 }
 
 // Converts vm.Account to backend.Account struct.
-func toStateAccount(acc *vm.Account) *ac.Account {
-	pubKey, ok := acc.Other.(ac.PubKey)
+func toStateAccount(acc *vm.Account) *acm.Account {
+	pubKey, ok := acc.Other.(acm.PubKey)
 	if !ok {
 		pubKey = nil
 	}
@@ -183,7 +183,7 @@ func toStateAccount(acc *vm.Account) *ac.Account {
 	} else {
 		storageRoot = acc.StorageRoot.Bytes()
 	}
-	return &ac.Account{
+	return &acm.Account{
 		Address:     acc.Address.Postfix(20),
 		PubKey:      pubKey,
 		Balance:     acc.Balance,

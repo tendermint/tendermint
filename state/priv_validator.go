@@ -7,7 +7,7 @@ import (
 	"math"
 	"sync"
 
-	"github.com/tendermint/tendermint/account"
+	acm "github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 	. "github.com/tendermint/tendermint/consensus/types"
@@ -37,12 +37,12 @@ func voteToStep(vote *types.Vote) int8 {
 }
 
 type PrivValidator struct {
-	Address    []byte                 `json:"address"`
-	PubKey     account.PubKeyEd25519  `json:"pub_key"`
-	PrivKey    account.PrivKeyEd25519 `json:"priv_key"`
-	LastHeight int                    `json:"last_height"`
-	LastRound  int                    `json:"last_round"`
-	LastStep   int8                   `json:"last_step"`
+	Address    []byte             `json:"address"`
+	PubKey     acm.PubKeyEd25519  `json:"pub_key"`
+	PrivKey    acm.PrivKeyEd25519 `json:"priv_key"`
+	LastHeight int                `json:"last_height"`
+	LastRound  int                `json:"last_round"`
+	LastStep   int8               `json:"last_step"`
 
 	// For persistence.
 	// Overloaded for testing.
@@ -55,8 +55,8 @@ func GenPrivValidator() *PrivValidator {
 	privKeyBytes := new([64]byte)
 	copy(privKeyBytes[:32], CRandBytes(32))
 	pubKeyBytes := ed25519.MakePublicKey(privKeyBytes)
-	pubKey := account.PubKeyEd25519(*pubKeyBytes)
-	privKey := account.PrivKeyEd25519(*privKeyBytes)
+	pubKey := acm.PubKeyEd25519(*pubKeyBytes)
+	privKey := acm.PrivKeyEd25519(*privKeyBytes)
 	return &PrivValidator{
 		Address:    pubKey.Address(),
 		PubKey:     pubKey,
@@ -138,7 +138,7 @@ func (privVal *PrivValidator) SignVote(chainID string, vote *types.Vote) error {
 }
 
 func (privVal *PrivValidator) SignVoteUnsafe(chainID string, vote *types.Vote) {
-	vote.Signature = privVal.PrivKey.Sign(account.SignBytes(chainID, vote)).(account.SignatureEd25519)
+	vote.Signature = privVal.PrivKey.Sign(acm.SignBytes(chainID, vote)).(acm.SignatureEd25519)
 }
 
 func (privVal *PrivValidator) SignProposal(chainID string, proposal *Proposal) error {
@@ -155,7 +155,7 @@ func (privVal *PrivValidator) SignProposal(chainID string, proposal *Proposal) e
 		privVal.save()
 
 		// Sign
-		proposal.Signature = privVal.PrivKey.Sign(account.SignBytes(chainID, proposal)).(account.SignatureEd25519)
+		proposal.Signature = privVal.PrivKey.Sign(acm.SignBytes(chainID, proposal)).(acm.SignatureEd25519)
 		return nil
 	} else {
 		return errors.New(fmt.Sprintf("Attempt of duplicate signing of proposal: Height %v, Round %v", proposal.Height, proposal.Round))
@@ -175,7 +175,7 @@ func (privVal *PrivValidator) SignRebondTx(chainID string, rebondTx *types.Rebon
 		privVal.save()
 
 		// Sign
-		rebondTx.Signature = privVal.PrivKey.Sign(account.SignBytes(chainID, rebondTx)).(account.SignatureEd25519)
+		rebondTx.Signature = privVal.PrivKey.Sign(acm.SignBytes(chainID, rebondTx)).(acm.SignatureEd25519)
 		return nil
 	} else {
 		return errors.New(fmt.Sprintf("Attempt of duplicate signing of rebondTx: Height %v", rebondTx.Height))

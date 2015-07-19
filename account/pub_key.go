@@ -2,7 +2,6 @@ package account
 
 import (
 	"bytes"
-	"errors"
 
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/tendermint/ed25519"
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/tendermint/ed25519/extra25519"
@@ -12,7 +11,6 @@ import (
 
 // PubKey is part of Account and Validator.
 type PubKey interface {
-	IsNil() bool
 	Address() []byte
 	VerifyBytes(msg []byte, sig Signature) bool
 }
@@ -32,8 +30,6 @@ var _ = binary.RegisterInterface(
 
 // Implements PubKey
 type PubKeyEd25519 [32]byte
-
-func (pubKey PubKeyEd25519) IsNil() bool { return false }
 
 // TODO: Or should this just be BinaryRipemd160(key)? (The difference is the TypeByte.)
 func (pubKey PubKeyEd25519) Address() []byte { return binary.BinaryRipemd160(pubKey[:]) }
@@ -58,14 +54,6 @@ func (pubKey PubKeyEd25519) ToCurve25519() *[32]byte {
 		return nil
 	}
 	return keyCurve25519
-}
-
-// redundant: compiler does it for us
-func (pubKey PubKeyEd25519) ValidateBasic() error {
-	if len(pubKey) != ed25519.PublicKeySize {
-		return errors.New("Invalid PubKeyEd25519 key size")
-	}
-	return nil
 }
 
 func (pubKey PubKeyEd25519) String() string {

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tendermint/tendermint/account"
+	acm "github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/merkle"
@@ -310,7 +310,7 @@ func (data *Data) Hash() []byte {
 	if data.hash == nil {
 		bs := make([]interface{}, len(data.Txs))
 		for i, tx := range data.Txs {
-			bs[i] = account.SignBytes(config.GetString("chain_id"), tx)
+			bs[i] = acm.SignBytes(config.GetString("chain_id"), tx)
 		}
 		data.hash = merkle.SimpleHashFromBinaries(bs) // NOTE: leaves are TxIDs.
 	}

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/tendermint/tendermint/account"
+	acm "github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 	sm "github.com/tendermint/tendermint/state"
@@ -131,7 +131,7 @@ func (voteSet *VoteSet) addVote(val *sm.Validator, valIndex int, vote *types.Vot
 	}
 
 	// Check signature.
-	if !val.PubKey.VerifyBytes(account.SignBytes(config.GetString("chain_id"), vote), vote.Signature) {
+	if !val.PubKey.VerifyBytes(acm.SignBytes(config.GetString("chain_id"), vote), vote.Signature) {
 		// Bad signature.
 		return false, 0, types.ErrVoteInvalidSignature
 	}

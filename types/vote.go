@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/tendermint/tendermint/account"
+	acm "github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 )
@@ -28,12 +28,12 @@ func (err *ErrVoteConflictingSignature) Error() string {
 
 // Represents a prevote, precommit, or commit vote from validators for consensus.
 type Vote struct {
-	Height     int                      `json:"height"`
-	Round      int                      `json:"round"`
-	Type       byte                     `json:"type"`
-	BlockHash  []byte                   `json:"block_hash"`  // empty if vote is nil.
-	BlockParts PartSetHeader            `json:"block_parts"` // zero if vote is nil.
-	Signature  account.SignatureEd25519 `json:"signature"`
+	Height     int                  `json:"height"`
+	Round      int                  `json:"round"`
+	Type       byte                 `json:"type"`
+	BlockHash  []byte               `json:"block_hash"`  // empty if vote is nil.
+	BlockParts PartSetHeader        `json:"block_parts"` // zero if vote is nil.
+	Signature  acm.SignatureEd25519 `json:"signature"`
 }
 
 // Types of votes

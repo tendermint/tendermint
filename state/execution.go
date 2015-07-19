@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/tendermint/tendermint/account"
+	acm "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/events"
 	ptypes "github.com/tendermint/tendermint/permission/types" // for GlobalPermissionAddress ...
@@ -138,11 +138,11 @@ func execBlock(s *State, block *types.Block, blockPartsHeader types.PartSetHeade
 }
 
 // The accounts from the TxInputs must either already have
-// account.PubKey.(type) != nil, (it must be known),
+// acm.PubKey.(type) != nil, (it must be known),
 // or it must be specified in the TxInput.  If redeclared,
 // the TxInput is modified and input.PubKey set to nil.
-func getInputs(state AccountGetter, ins []*types.TxInput) (map[string]*account.Account, error) {
-	accounts := map[string]*account.Account{}
+func getInputs(state AccountGetter, ins []*types.TxInput) (map[string]*acm.Account, error) {
+	accounts := map[string]*acm.Account{}
 	for _, in := range ins {
 		// Account shouldn't be duplicated
 		if _, ok := accounts[string(in.Address)]; ok {
@@ -161,9 +161,9 @@ func getInputs(state AccountGetter, ins []*types.TxInput) (map[string]*account.A
 	return accounts, nil
 }
 
-func getOrMakeOutputs(state AccountGetter, accounts map[string]*account.Account, outs []*types.TxOutput) (map[string]*account.Account, error) {
+func getOrMakeOutputs(state AccountGetter, accounts map[string]*acm.Account, outs []*types.TxOutput) (map[string]*acm.Account, error) {
 	if accounts == nil {
-		accounts = make(map[string]*account.Account)
+		accounts = make(map[string]*acm.Account)
 	}
 
 	// we should err if an account is being created but the inputs don't have permission
@@ -182,7 +182,7 @@ func getOrMakeOutputs(state AccountGetter, accounts map[string]*account.Account,
 				}
 				checkedCreatePerms = true
 			}
-			acc = &account.Account{
+			acc = &acm.Account{
 				Address:     out.Address,
 				PubKey:      nil,
 				Sequence:    0,
@@ -195,7 +195,7 @@ func getOrMakeOutputs(state AccountGetter, accounts map[string]*account.Account,
 	return accounts, nil
 }
 
-func checkInputPubKey(acc *account.Account, in *types.TxInput) error {
+func checkInputPubKey(acc *acm.Account, in *types.TxInput) error {
 	if acc.PubKey == nil {
 		if in.PubKey == nil {
 			return types.ErrTxUnknownPubKey
@@ -210,7 +210,7 @@ func checkInputPubKey(acc *account.Account, in *types.TxInput) error {
 	return nil
 }
 
-func validateInputs(accounts map[string]*account.Account, signBytes []byte, ins []*types.TxInput) (total int64, err error) {
+func validateInputs(accounts map[string]*acm.Account, signBytes []byte, ins []*types.TxInput) (total int64, err error) {
 	for _, in := range ins {
 		acc := accounts[string(in.Address)]
 		// SANITY CHECK
@@ -228,7 +228,7 @@ func validateInputs(accounts map[string]*account.Account, signBytes []byte, ins 
 	return total, nil
 }
 
-func validateInput(acc *account.Account, signBytes []byte, in *types.TxInput) (err error) {
+func validateInput(acc *acm.Account, signBytes []byte, in *types.TxInput) (err error) {
 	// Check TxInput basic
 	if err := in.ValidateBasic(); err != nil {
 		return err
@@ -263,7 +263,7 @@ func validateOutputs(outs []*types.TxOutput) (total int64, err error) {
 	return total, nil
 }
 
-func adjustByInputs(accounts map[string]*account.Account, ins []*types.TxInput) {
+func adjustByInputs(accounts map[string]*acm.Account, ins []*types.TxInput) {
 	for _, in := range ins {
 		acc := accounts[string(in.Address)]
 		// SANITY CHECK
@@ -279,7 +279,7 @@ func adjustByInputs(accounts map[string]*account.Account, ins []*types.TxInput) 
 	}
 }
 
-func adjustByOutputs(accounts map[string]*account.Account, outs []*types.TxOutput) {
+func adjustByOutputs(accounts map[string]*acm.Account, outs []*types.TxOutput) {
 	for _, out := range outs {
 		acc := accounts[string(out.Address)]
 		// SANITY CHECK
@@ -319,7 +319,7 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 			return err
 		}
 
-		signBytes := account.SignBytes(_s.ChainID, tx)
+		signBytes := acm.SignBytes(_s.ChainID, tx)
 		inTotal, err := validateInputs(accounts, signBytes, tx.Inputs)
 		if err != nil {
 			return err
@@ -354,7 +354,7 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 		return nil
 
 	case *types.CallTx:
-		var inAcc, outAcc *account.Account
+		var inAcc, outAcc *acm.Account
 
 		// Validate input
 		inAcc = blockCache.GetAccount(tx.Input.Address)
@@ -379,7 +379,7 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 			log.Debug(Fmt("Can't find pubkey for %X", tx.Input.Address))
 			return err
 		}
-		signBytes := account.SignBytes(_s.ChainID, tx)
+		signBytes := acm.SignBytes(_s.ChainID, tx)
 		err := validateInput(inAcc, signBytes, tx.Input)
 		if err != nil {
 			log.Debug(Fmt("validateInput failed on %X: %v", tx.Input.Address, err))
@@ -433,7 +433,7 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 					// check if its an snative
 					if _, ok := vm.RegisteredSNativeContracts[LeftPadWord256(tx.Address)]; ok {
 						// set the outAcc (simply a placeholder until we reach the call)
-						outAcc = &account.Account{Address: tx.Address}
+						outAcc = &acm.Account{Address: tx.Address}
 					} else {
 						// if you call an account that doesn't exist
 						// or an account with no code then we take fees (sorry pal)
@@ -511,7 +511,7 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 		return nil
 
 	case *types.NameTx:
-		var inAcc *account.Account
+		var inAcc *acm.Account
 
 		// Validate input
 		inAcc = blockCache.GetAccount(tx.Input.Address)
@@ -528,7 +528,7 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 			log.Debug(Fmt("Can't find pubkey for %X", tx.Input.Address))
 			return err
 		}
-		signBytes := account.SignBytes(_s.ChainID, tx)
+		signBytes := acm.SignBytes(_s.ChainID, tx)
 		err := validateInput(inAcc, signBytes, tx.Input)
 		if err != nil {
 			log.Debug(Fmt("validateInput failed on %X: %v", tx.Input.Address, err))
@@ -661,12 +661,9 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 			return fmt.Errorf("At least one input lacks permission to bond")
 		}
 
-		signBytes := account.SignBytes(_s.ChainID, tx)
+		signBytes := acm.SignBytes(_s.ChainID, tx)
 		inTotal, err := validateInputs(accounts, signBytes, tx.Inputs)
 		if err != nil {
-			return err
-		}
-		if err := tx.PubKey.ValidateBasic(); err != nil {
 			return err
 		}
 		if !tx.PubKey.VerifyBytes(signBytes, tx.Signature) {
@@ -720,7 +717,7 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 		}
 
 		// Verify the signature
-		signBytes := account.SignBytes(_s.ChainID, tx)
+		signBytes := acm.SignBytes(_s.ChainID, tx)
 		if !val.PubKey.VerifyBytes(signBytes, tx.Signature) {
 			return types.ErrTxInvalidSignature
 		}
@@ -745,7 +742,7 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 		}
 
 		// Verify the signature
-		signBytes := account.SignBytes(_s.ChainID, tx)
+		signBytes := acm.SignBytes(_s.ChainID, tx)
 		if !val.PubKey.VerifyBytes(signBytes, tx.Signature) {
 			return types.ErrTxInvalidSignature
 		}
@@ -774,8 +771,8 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 				return types.ErrTxInvalidAddress
 			}
 		}
-		voteASignBytes := account.SignBytes(_s.ChainID, &tx.VoteA)
-		voteBSignBytes := account.SignBytes(_s.ChainID, &tx.VoteB)
+		voteASignBytes := acm.SignBytes(_s.ChainID, &tx.VoteA)
+		voteBSignBytes := acm.SignBytes(_s.ChainID, &tx.VoteB)
 		if !accused.PubKey.VerifyBytes(voteASignBytes, tx.VoteA.Signature) ||
 			!accused.PubKey.VerifyBytes(voteBSignBytes, tx.VoteB.Signature) {
 			return types.ErrTxInvalidSignature
@@ -814,7 +811,7 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 //---------------------------------------------------------------
 
 // Get permission on an account or fall back to global value
-func HasPermission(state AccountGetter, acc *account.Account, perm ptypes.PermFlag) bool {
+func HasPermission(state AccountGetter, acc *acm.Account, perm ptypes.PermFlag) bool {
 	if perm > ptypes.AllBasePermFlags {
 		panic("Checking an unknown permission in state should never happen")
 	}
@@ -840,7 +837,7 @@ func HasPermission(state AccountGetter, acc *account.Account, perm ptypes.PermFl
 }
 
 // TODO: for debug log the failed accounts
-func hasSendPermission(state AccountGetter, accs map[string]*account.Account) bool {
+func hasSendPermission(state AccountGetter, accs map[string]*acm.Account) bool {
 	for _, acc := range accs {
 		if !HasPermission(state, acc, ptypes.Send) {
 			return false
@@ -849,19 +846,19 @@ func hasSendPermission(state AccountGetter, accs map[string]*account.Account) bo
 	return true
 }
 
-func hasNamePermission(state AccountGetter, acc *account.Account) bool {
+func hasNamePermission(state AccountGetter, acc *acm.Account) bool {
 	return HasPermission(state, acc, ptypes.Name)
 }
 
-func hasCallPermission(state AccountGetter, acc *account.Account) bool {
+func hasCallPermission(state AccountGetter, acc *acm.Account) bool {
 	return HasPermission(state, acc, ptypes.Call)
 }
 
-func hasCreateContractPermission(state AccountGetter, acc *account.Account) bool {
+func hasCreateContractPermission(state AccountGetter, acc *acm.Account) bool {
 	return HasPermission(state, acc, ptypes.CreateContract)
 }
 
-func hasCreateAccountPermission(state AccountGetter, accs map[string]*account.Account) bool {
+func hasCreateAccountPermission(state AccountGetter, accs map[string]*acm.Account) bool {
 	for _, acc := range accs {
 		if !HasPermission(state, acc, ptypes.CreateAccount) {
 			return false
@@ -870,11 +867,11 @@ func hasCreateAccountPermission(state AccountGetter, accs map[string]*account.Ac
 	return true
 }
 
-func hasBondPermission(state AccountGetter, acc *account.Account) bool {
+func hasBondPermission(state AccountGetter, acc *acm.Account) bool {
 	return HasPermission(state, acc, ptypes.Bond)
 }
 
-func hasBondOrSendPermission(state AccountGetter, accs map[string]*account.Account) bool {
+func hasBondOrSendPermission(state AccountGetter, accs map[string]*acm.Account) bool {
 	for _, acc := range accs {
 		if !HasPermission(state, acc, ptypes.Bond) {
 			if !HasPermission(state, acc, ptypes.Send) {

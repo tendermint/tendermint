@@ -3,7 +3,7 @@ package consensus
 import (
 	"testing"
 
-	"github.com/tendermint/tendermint/account"
+	acm "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
 	_ "github.com/tendermint/tendermint/config/tendermint_test"
 	"github.com/tendermint/tendermint/types"
@@ -16,7 +16,7 @@ func TestProposalSignable(t *testing.T) {
 		BlockPartsHeader: types.PartSetHeader{111, []byte("blockparts")},
 		POLRound:         -1,
 	}
-	signBytes := account.SignBytes(config.GetString("chain_id"), proposal)
+	signBytes := acm.SignBytes(config.GetString("chain_id"), proposal)
 	signStr := string(signBytes)
 
 	expected := Fmt(`{"chain_id":"%s","proposal":{"block_parts_header":{"hash":"626C6F636B7061727473","total":111},"height":12345,"pol_round":-1,"round":23456}}`,

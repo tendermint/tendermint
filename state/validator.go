@@ -5,21 +5,21 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/tendermint/tendermint/account"
+	acm "github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
 	"github.com/tendermint/tendermint/types"
 )
 
 // Persistent (mostly) static data for each Validator
 type ValidatorInfo struct {
-	Address         []byte                `json:"address"`
-	PubKey          account.PubKeyEd25519 `json:"pub_key"`
-	UnbondTo        []*types.TxOutput     `json:"unbond_to"`
-	FirstBondHeight int                   `json:"first_bond_height"`
-	FirstBondAmount int64                 `json:"first_bond_amount"`
-	DestroyedHeight int                   `json:"destroyed_height"` // If destroyed
-	DestroyedAmount int64                 `json:"destroyed_amount"` // If destroyed
-	ReleasedHeight  int                   `json:"released_height"`  // If released
+	Address         []byte            `json:"address"`
+	PubKey          acm.PubKeyEd25519 `json:"pub_key"`
+	UnbondTo        []*types.TxOutput `json:"unbond_to"`
+	FirstBondHeight int               `json:"first_bond_height"`
+	FirstBondAmount int64             `json:"first_bond_amount"`
+	DestroyedHeight int               `json:"destroyed_height"` // If destroyed
+	DestroyedAmount int64             `json:"destroyed_amount"` // If destroyed
+	ReleasedHeight  int               `json:"released_height"`  // If released
 }
 
 func (valInfo *ValidatorInfo) Copy() *ValidatorInfo {
@@ -46,13 +46,13 @@ var ValidatorInfoCodec = binary.Codec{
 // Also persisted with the state, but fields change
 // every height|round so they don't go in merkle.Tree
 type Validator struct {
-	Address          []byte                `json:"address"`
-	PubKey           account.PubKeyEd25519 `json:"pub_key"`
-	BondHeight       int                   `json:"bond_height"`
-	UnbondHeight     int                   `json:"unbond_height"`
-	LastCommitHeight int                   `json:"last_commit_height"`
-	VotingPower      int64                 `json:"voting_power"`
-	Accum            int64                 `json:"accum"`
+	Address          []byte            `json:"address"`
+	PubKey           acm.PubKeyEd25519 `json:"pub_key"`
+	BondHeight       int               `json:"bond_height"`
+	UnbondHeight     int               `json:"unbond_height"`
+	LastCommitHeight int               `json:"last_commit_height"`
+	VotingPower      int64             `json:"voting_power"`
+	Accum            int64             `json:"accum"`
 }
 
 // Creates a new copy of the validator so we can mutate accum.
