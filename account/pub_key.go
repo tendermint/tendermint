@@ -5,6 +5,7 @@ import (
 
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/tendermint/ed25519"
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/tendermint/ed25519/extra25519"
+	"github.com/tendermint/tendermint/Godeps/_workspace/src/golang.org/x/crypto/ripemd160"
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
 )
@@ -31,8 +32,22 @@ var _ = binary.RegisterInterface(
 // Implements PubKey
 type PubKeyEd25519 [32]byte
 
-// TODO: Or should this just be BinaryRipemd160(key)? (The difference is the TypeByte.)
-func (pubKey PubKeyEd25519) Address() []byte { return binary.BinaryRipemd160(pubKey[:]) }
+// TODO: Slicing the array gives us length prefixing but loses the type byte.
+// Revisit if we add more pubkey types.
+// For now, we artificially append the type byte in front to give us backwards
+// compatibility for when the pubkey wasn't fixed length array
+func (pubKey PubKeyEd25519) Address() []byte {
+	w, n, err := new(bytes.Buffer), new(int64), new(error)
+	binary.WriteBinary(pubKey[:], w, n, err)
+	if *err != nil {
+		panic(*err)
+	}
+	// append type byte
+	encodedPubkey := append([]byte{1}, w.Bytes()...)
+	hasher := ripemd160.New()
+	hasher.Write(encodedPubkey) // does not error
+	return hasher.Sum(nil)
+}
 
 // TODO: Consider returning a reason for failure, or logging a runtime type mismatch.
 func (pubKey PubKeyEd25519) VerifyBytes(msg []byte, sig_ Signature) bool {
