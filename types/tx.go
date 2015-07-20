@@ -8,6 +8,7 @@ import (
 	acm "github.com/tendermint/tendermint/account"
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
+	ptypes "github.com/tendermint/tendermint/permission/types"
 )
 
 var (
@@ -44,7 +45,11 @@ Validation Txs:
  - BondTx         New validator posts a bond
  - UnbondTx       Validator leaves
  - DupeoutTx      Validator dupes out (equivocates)
+
+Admin Txs:
+ - SNativeTx (CapTx ?)
 */
+
 type Tx interface {
 	WriteSignBytes(chainID string, w io.Writer, n *int64, err *error)
 }
@@ -61,6 +66,9 @@ const (
 	TxTypeUnbond  = byte(0x12)
 	TxTypeRebond  = byte(0x13)
 	TxTypeDupeout = byte(0x14)
+
+	// Admin transactions
+	TxTypeSNative = byte(0x20)
 )
 
 // for binary.readReflect
@@ -73,6 +81,7 @@ var _ = binary.RegisterInterface(
 	binary.ConcreteType{&UnbondTx{}, TxTypeUnbond},
 	binary.ConcreteType{&RebondTx{}, TxTypeRebond},
 	binary.ConcreteType{&DupeoutTx{}, TxTypeDupeout},
+	binary.ConcreteType{&SNativeTx{}, TxTypeSNative},
 )
 
 //-----------------------------------------------------------------------------
@@ -310,6 +319,27 @@ func (tx *DupeoutTx) WriteSignBytes(chainID string, w io.Writer, n *int64, err *
 
 func (tx *DupeoutTx) String() string {
 	return Fmt("DupeoutTx{%X,%v,%v}", tx.Address, tx.VoteA, tx.VoteB)
+}
+
+//-----------------------------------------------------------------------------
+
+type SNativeTx struct {
+	Input   *TxInput           `json:"input"`
+	SNative ptypes.SNativeArgs `json:"snative"`
+}
+
+// TODO: check the tx.SNative encoding ...
+func (tx *SNativeTx) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
+	binary.WriteTo([]byte(Fmt(`{"chain_id":%s`, jsonEscape(chainID))), w, n, err)
+	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"args":%v`, TxTypeSNative, tx.SNative)), w, n, err)
+	binary.WriteTo([]byte(`,"input":`), w, n, err)
+	tx.Input.WriteSignBytes(w, n, err)
+	binary.WriteTo([]byte(Fmt(`,"snative":%s`, tx.SNative)), w, n, err)
+	binary.WriteTo([]byte(`}]}`), w, n, err)
+}
+
+func (tx *SNativeTx) String() string {
+	return Fmt("SNativeTx{%v -> %v}", tx.Input, tx.SNative)
 }
 
 //-----------------------------------------------------------------------------

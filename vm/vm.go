@@ -95,6 +95,46 @@ func HasPermission(appState AppState, acc *Account, perm ptypes.PermFlag) bool {
 	return v
 }
 
+func (vm *VM) fireEvent(exception *string, output *[]byte, caller, callee *Account, input []byte, value int64, gas *int64) {
+	// fire the post call event (including exception if applicable)
+	if vm.evc != nil {
+		vm.evc.FireEvent(types.EventStringAccReceive(callee.Address.Postfix(20)), types.EventMsgCall{
+			&types.CallData{caller.Address.Postfix(20), callee.Address.Postfix(20), input, value, *gas},
+			vm.origin.Postfix(20),
+			vm.txid,
+			*output,
+			*exception,
+		})
+	}
+}
+
+// call an snative contract (includes event processing)
+// addr and permFlag refer to the same snative's address and it's permFlag
+func (vm *VM) callSNative(addr Word256, permFlag ptypes.PermFlag, caller *Account, input []byte, value int64, gas *int64) (ret []byte, err error) {
+	exception := new(string)
+	// fire the post call event (including exception if applicable)
+	defer vm.fireEvent(exception, &ret, caller, &Account{Address: addr}, input, value, gas)
+
+	if !HasPermission(vm.appState, caller, permFlag) {
+		err = ErrInvalidPermission{caller.Address, addr.TrimmedString()}
+		*exception = err.Error()
+		return
+	}
+	snInfo := getSNativeInfo(permFlag)
+	if len(input) != snInfo.NArgs*32 {
+		err = snInfo.ArgsError
+		*exception = err.Error()
+		return
+	}
+	// SNATIVE ACCESS
+	ret, err = snInfo.Executable(vm.appState, caller, input)
+	// END SNATIVE ACCESS
+	if err != nil {
+		*exception = err.Error()
+	}
+	return
+}
+
 // CONTRACT appState is aware of caller and callee, so we can just mutate them.
 // value: To be transferred from caller to callee. Refunded upon error.
 // gas:   Available gas. No refunds for gas.
@@ -102,30 +142,8 @@ func HasPermission(appState AppState, acc *Account, perm ptypes.PermFlag) bool {
 func (vm *VM) Call(caller, callee *Account, code, input []byte, value int64, gas *int64) (output []byte, err error) {
 
 	exception := new(string)
-	defer func() {
-		if vm.evc != nil {
-			vm.evc.FireEvent(types.EventStringAccReceive(callee.Address.Postfix(20)), types.EventMsgCall{
-				&types.CallData{caller.Address.Postfix(20), callee.Address.Postfix(20), input, value, *gas},
-				vm.origin.Postfix(20),
-				vm.txid,
-				output,
-				*exception,
-			})
-		}
-	}()
-
-	// SNATIVE ACCESS
-	// if code is empty, callee may be snative contract
-	if len(code) == 0 {
-		if snativeContract, ok := RegisteredSNativeContracts[callee.Address]; ok {
-			output, err = snativeContract(vm.appState, caller, input)
-			if err != nil {
-				*exception = err.Error()
-			}
-			return
-		}
-	}
-	// SNATIVE ACCESS END
+	// fire the post call event (including exception if applicable)
+	defer vm.fireEvent(exception, &output, caller, callee, input, value, gas)
 
 	if err = transfer(caller, callee, value); err != nil {
 		*exception = err.Error()
@@ -779,19 +797,27 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 					ret, err = vm.Call(callee, callee, acc.Code, args, value, gas)
 				} else {
 					if acc == nil {
-						if _, ok := RegisteredSNativeContracts[addr]; ok {
-							acc = &Account{Address: addr}
+						// nil account means either the address is the name of an snative,
+						// or we're sending funds to a new account
+
+						// trim  the 0s off the address and check if its known
+						trimmedAddr := addr.TrimmedString()
+						if permFlag, unknownPermErr := ptypes.SNativeStringToPermFlag(trimmedAddr); unknownPermErr == nil {
+							ret, err = vm.callSNative(addr, permFlag, callee, input, value, gas)
 						} else {
 							// if we have not seen the account before, create it
-							// so we can send funds
 							if !HasPermission(vm.appState, caller, ptypes.CreateAccount) {
 								return nil, ErrPermission{"create_account"}
 							}
 							acc = &Account{Address: addr}
+							vm.appState.UpdateAccount(acc)
+							// send funds to new account
+							ret, err = vm.Call(callee, acc, acc.Code, args, value, gas)
 						}
-						vm.appState.UpdateAccount(acc)
+					} else {
+						// call standard contract
+						ret, err = vm.Call(callee, acc, acc.Code, args, value, gas)
 					}
-					ret, err = vm.Call(callee, acc, acc.Code, args, value, gas)
 				}
 			}
 

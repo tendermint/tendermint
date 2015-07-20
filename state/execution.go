@@ -424,26 +424,26 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 
 				if outAcc == nil || len(outAcc.Code) == 0 {
 					// check if its an snative
-					if _, ok := vm.RegisteredSNativeContracts[LeftPadWord256(tx.Address)]; ok {
-						// set the outAcc (simply a placeholder until we reach the call)
-						outAcc = &acm.Account{Address: tx.Address}
-					} else {
-						// if you call an account that doesn't exist
-						// or an account with no code then we take fees (sorry pal)
-						// NOTE: it's fine to create a contract and call it within one
-						// block (nonce will prevent re-ordering of those txs)
-						// but to create with one account and call with another
-						// you have to wait a block to avoid a re-ordering attack
-						// that will take your fees
-						inAcc.Balance -= tx.Fee
-						blockCache.UpdateAccount(inAcc)
-						if outAcc == nil {
-							log.Info(Fmt("Cannot find destination address %X. Deducting fee from caller", tx.Address))
-						} else {
-							log.Info(Fmt("Attempting to call an account (%X) with no code. Deducting fee from caller", tx.Address))
-						}
-						return types.ErrTxInvalidAddress
+					trimmedAddr := TrimmedString(tx.Address)
+					if _, unknownPermErr := ptypes.SNativeStringToPermFlag(string(trimmedAddr)); unknownPermErr == nil {
+						return fmt.Errorf("SNatives can not be called using CallTx. Either use a contract or a SNativeTx")
 					}
+
+					// if you call an account that doesn't exist
+					// or an account with no code then we take fees (sorry pal)
+					// NOTE: it's fine to create a contract and call it within one
+					// block (nonce will prevent re-ordering of those txs)
+					// but to create with one account and call with another
+					// you have to wait a block to avoid a re-ordering attack
+					// that will take your fees
+					inAcc.Balance -= tx.Fee
+					blockCache.UpdateAccount(inAcc)
+					if outAcc == nil {
+						log.Info(Fmt("Cannot find destination address %X. Deducting fee from caller", tx.Address))
+					} else {
+						log.Info(Fmt("Attempting to call an account (%X) with no code. Deducting fee from caller", tx.Address))
+					}
+					return types.ErrTxInvalidAddress
 				}
 				callee = toVMAccount(outAcc)
 				code = callee.Code
@@ -697,6 +697,7 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 			PanicCrisis("Failed to add validator")
 		}
 		if evc != nil {
+			// TODO: fire for all inputs
 			evc.FireEvent(types.EventStringBond(), tx)
 		}
 		return nil
@@ -793,6 +794,100 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 		}
 		return nil
 
+	case *types.SNativeTx:
+		var inAcc *acm.Account
+
+		// Validate input
+		inAcc = blockCache.GetAccount(tx.Input.Address)
+		if inAcc == nil {
+			log.Debug(Fmt("Can't find in account %X", tx.Input.Address))
+			return types.ErrTxInvalidAddress
+		}
+
+		permFlag := tx.SNative.PermFlag()
+		// check permission
+		if !hasSNativePermission(blockCache, inAcc, permFlag) {
+			return fmt.Errorf("Account %X does not have permission to call snative %s (%b)", tx.Input.Address, tx.SNative, permFlag)
+		}
+
+		// pubKey should be present in either "inAcc" or "tx.Input"
+		if err := checkInputPubKey(inAcc, tx.Input); err != nil {
+			log.Debug(Fmt("Can't find pubkey for %X", tx.Input.Address))
+			return err
+		}
+		signBytes := acm.SignBytes(_s.ChainID, tx)
+		err := validateInput(inAcc, signBytes, tx.Input)
+		if err != nil {
+			log.Debug(Fmt("validateInput failed on %X: %v", tx.Input.Address, err))
+			return err
+		}
+
+		value := tx.Input.Amount
+
+		log.Debug("New SNativeTx", "snative", ptypes.SNativePermFlagToString(permFlag), "args", tx.SNative)
+
+		var permAcc *acm.Account
+		switch args := tx.SNative.(type) {
+		case *ptypes.HasBaseArgs:
+			// this one doesn't make sense from txs
+			return fmt.Errorf("HasBase is for contracts, not humans. Just look at the blockchain")
+		case *ptypes.SetBaseArgs:
+			if permAcc = blockCache.GetAccount(args.Address); permAcc == nil {
+				return fmt.Errorf("Trying to update permissions for unknown account %X", args.Address)
+			}
+			err = permAcc.Permissions.Base.Set(args.Permission, args.Value)
+		case *ptypes.UnsetBaseArgs:
+			if permAcc = blockCache.GetAccount(args.Address); permAcc == nil {
+				return fmt.Errorf("Trying to update permissions for unknown account %X", args.Address)
+			}
+			err = permAcc.Permissions.Base.Unset(args.Permission)
+		case *ptypes.SetGlobalArgs:
+			if permAcc = blockCache.GetAccount(ptypes.GlobalPermissionsAddress); permAcc == nil {
+				// PanicSanity("can't find global permissions account")
+			}
+			err = permAcc.Permissions.Base.Set(args.Permission, args.Value)
+		case *ptypes.ClearBaseArgs:
+			//
+		case *ptypes.HasRoleArgs:
+			return fmt.Errorf("HasRole is for contracts, not humans. Just look at the blockchain")
+		case *ptypes.AddRoleArgs:
+			if permAcc = blockCache.GetAccount(args.Address); permAcc == nil {
+				return fmt.Errorf("Trying to update roles for unknown account %X", args.Address)
+			}
+			if !permAcc.Permissions.AddRole(args.Role) {
+				return fmt.Errorf("Role (%s) already exists for account %X", args.Role, args.Address)
+			}
+		case *ptypes.RmRoleArgs:
+			if permAcc = blockCache.GetAccount(args.Address); permAcc == nil {
+				return fmt.Errorf("Trying to update roles for unknown account %X", args.Address)
+			}
+			if !permAcc.Permissions.RmRole(args.Role) {
+				return fmt.Errorf("Role (%s) does not exist for account %X", args.Role, args.Address)
+			}
+		default:
+			// PanicSanity("invalid snative")
+		}
+
+		// TODO: maybe we want to take funds on error and allow txs in that don't do anythingi?
+		if err != nil {
+			return err
+		}
+
+		// Good!
+		inAcc.Sequence += 1
+		inAcc.Balance -= value
+		blockCache.UpdateAccount(inAcc)
+		if permAcc != nil {
+			blockCache.UpdateAccount(permAcc)
+		}
+
+		if evc != nil {
+			evc.FireEvent(types.EventStringAccInput(tx.Input.Address), tx)
+			evc.FireEvent(types.EventStringSNative(ptypes.SNativePermFlagToString(permFlag)), tx)
+		}
+
+		return nil
+
 	default:
 		// binary decoding should not let this happen
 		PanicSanity("Unknown Tx type")
@@ -804,7 +899,8 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 
 // Get permission on an account or fall back to global value
 func HasPermission(state AccountGetter, acc *acm.Account, perm ptypes.PermFlag) bool {
-	if perm > ptypes.AllBasePermFlags {
+	if (perm > ptypes.AllBasePermFlags && perm < ptypes.FirstSNativePermFlag) ||
+		(perm > ptypes.AllSNativePermFlags) {
 		PanicSanity("Checking an unknown permission in state should never happen")
 	}
 
@@ -813,17 +909,19 @@ func HasPermission(state AccountGetter, acc *acm.Account, perm ptypes.PermFlag) 
 		// this needs to fall back to global or do some other specific things
 		// eg. a bondAcc may be nil and so can only bond if global bonding is true
 	}
+	permString := ptypes.PermFlagToString(perm)
 
 	v, err := acc.Permissions.Base.Get(perm)
 	if _, ok := err.(ptypes.ErrValueNotSet); ok {
-		log.Info("Account does not have permission", "account", acc, "accPermissions", acc.Permissions, "perm", perm)
 		if state == nil {
 			PanicSanity("All known global permissions should be set!")
 		}
-		log.Info("Querying GlobalPermissionsAddress")
+		log.Info("Permission for account is not set. Querying GlobalPermissionsAddress", "perm", permString)
 		return HasPermission(nil, state.GetAccount(ptypes.GlobalPermissionsAddress), perm)
+	} else if v {
+		log.Info("Account has permission", "address", Fmt("%X", acc.Address), "perm", permString)
 	} else {
-		log.Info("Account has permission", "account", acc, "accPermissions", acc.Permissions, "perm", perm)
+		log.Info("Account does not have permission", "address", Fmt("%X", acc.Address), "perm", permString)
 	}
 	return v
 }
@@ -872,4 +970,8 @@ func hasBondOrSendPermission(state AccountGetter, accs map[string]*acm.Account) 
 		}
 	}
 	return true
+}
+
+func hasSNativePermission(state AccountGetter, acc *acm.Account, permFlag ptypes.PermFlag) bool {
+	return HasPermission(state, acc, permFlag)
 }

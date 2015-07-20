@@ -12,11 +12,12 @@ var (
 
 type Word256 [32]byte
 
-func (w Word256) String() string       { return string(w[:]) }
-func (w Word256) Copy() Word256        { return w }
-func (w Word256) Bytes() []byte        { return w[:] } // copied.
-func (w Word256) Prefix(n int) []byte  { return w[:n] }
-func (w Word256) Postfix(n int) []byte { return w[32-n:] }
+func (w Word256) String() string        { return string(w[:]) }
+func (w Word256) TrimmedString() string { return TrimmedString(w.Bytes()) }
+func (w Word256) Copy() Word256         { return w }
+func (w Word256) Bytes() []byte         { return w[:] } // copied.
+func (w Word256) Prefix(n int) []byte   { return w[:n] }
+func (w Word256) Postfix(n int) []byte  { return w[32-n:] }
 func (w Word256) IsZero() bool {
 	accum := byte(0)
 	for _, byt := range w {

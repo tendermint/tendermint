@@ -3,6 +3,7 @@ package types
 import (
 	"fmt"
 	acm "github.com/tendermint/tendermint/account"
+	ptypes "github.com/tendermint/tendermint/permission/types"
 )
 
 type AccountGetter interface {
@@ -221,4 +222,39 @@ func NewRebondTx(addr []byte, height int) *RebondTx {
 
 func (tx *RebondTx) Sign(chainID string, privAccount *acm.PrivAccount) {
 	tx.Signature = privAccount.Sign(chainID, tx).(acm.SignatureEd25519)
+}
+
+//----------------------------------------------------------------------------
+// SNativeTx interface for creating tx
+
+func NewSNativeTx(st AccountGetter, from acm.PubKey, snativeArgs ptypes.SNativeArgs) (*SNativeTx, error) {
+	addr := from.Address()
+	acc := st.GetAccount(addr)
+	if acc == nil {
+		return nil, fmt.Errorf("Invalid address %X from pubkey %X", addr, from)
+	}
+
+	nonce := acc.Sequence + 1
+	return NewSNativeTxWithNonce(from, snativeArgs, nonce), nil
+}
+
+func NewSNativeTxWithNonce(from acm.PubKey, snativeArgs ptypes.SNativeArgs, nonce int) *SNativeTx {
+	addr := from.Address()
+	input := &TxInput{
+		Address:   addr,
+		Amount:    1, // NOTE: amounts can't be 0 ...
+		Sequence:  nonce,
+		Signature: acm.SignatureEd25519{},
+		PubKey:    from,
+	}
+
+	return &SNativeTx{
+		Input:   input,
+		SNative: snativeArgs,
+	}
+}
+
+func (tx *SNativeTx) Sign(chainID string, privAccount *acm.PrivAccount) {
+	tx.Input.PubKey = privAccount.PubKey
+	tx.Input.Signature = privAccount.Sign(chainID, tx)
 }

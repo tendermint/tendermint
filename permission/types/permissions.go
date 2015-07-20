@@ -154,8 +154,15 @@ func (aP *AccountPermissions) RmRole(role string) bool {
 }
 
 //--------------------------------------------------------------------------------
+func PermFlagToString(pf PermFlag) string {
+	if pf < FirstSNativePermFlag {
+		return BasePermFlagToString(pf)
+	} else {
+		return SNativePermFlagToString(pf)
+	}
+}
 
-func PermFlagToString(pf PermFlag) (perm string, err error) {
+func BasePermFlagToString(pf PermFlag) (perm string) {
 	switch pf {
 	case Root:
 		perm = "root"
@@ -171,13 +178,11 @@ func PermFlagToString(pf PermFlag) (perm string, err error) {
 		perm = "bond"
 	case Name:
 		perm = "name"
-	default:
-		err = fmt.Errorf("Unknown permission flag %b", pf)
 	}
 	return
 }
 
-func PermStringToFlag(perm string) (pf PermFlag, err error) {
+func BasePermStringToFlag(perm string) (pf PermFlag, err error) {
 	switch perm {
 	case "root":
 		pf = Root
