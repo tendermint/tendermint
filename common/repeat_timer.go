@@ -53,7 +53,12 @@ func (t *RepeatTimer) Reset() {
 	go t.fireRoutine(t.ticker)
 }
 
+// For ease of .Stop()'ing services before .Start()'ing them,
+// we ignore .Stop()'s on nil RepeatTimers.
 func (t *RepeatTimer) Stop() bool {
+	if t == nil {
+		return false
+	}
 	t.mtx.Lock() // Lock
 	defer t.mtx.Unlock()
 
