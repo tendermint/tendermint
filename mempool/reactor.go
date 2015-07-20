@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"reflect"
-	"sync/atomic"
 
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
@@ -19,11 +18,9 @@ var (
 
 // MempoolReactor handles mempool tx broadcasting amongst peers.
 type MempoolReactor struct {
-	sw      *p2p.Switch
-	quit    chan struct{}
-	started uint32
-	stopped uint32
+	p2p.BaseReactor
 
+	sw      *p2p.Switch
 	Mempool *Mempool
 
 	evsw events.Fireable
@@ -31,27 +28,15 @@ type MempoolReactor struct {
 
 func NewMempoolReactor(mempool *Mempool) *MempoolReactor {
 	memR := &MempoolReactor{
-		quit:    make(chan struct{}),
 		Mempool: mempool,
 	}
+	memR.BaseReactor = *p2p.NewBaseReactor(log, "MempoolReactor", memR)
 	return memR
 }
 
-// Implements Reactor
-func (memR *MempoolReactor) Start(sw *p2p.Switch) {
-	if atomic.CompareAndSwapUint32(&memR.started, 0, 1) {
-		memR.sw = sw
-		log.Notice("Starting MempoolReactor")
-	}
-}
+// func (memR *MempoolReactor) AfterStart() {}
 
-// Implements Reactor
-func (memR *MempoolReactor) Stop() {
-	if atomic.CompareAndSwapUint32(&memR.stopped, 0, 1) {
-		log.Notice("Stopping MempoolReactor")
-		close(memR.quit)
-	}
-}
+// func (memR *MempoolReactor) AfterStop() {}
 
 // Implements Reactor
 func (memR *MempoolReactor) GetChannels() []*p2p.ChannelDescriptor {
@@ -93,7 +78,7 @@ func (memR *MempoolReactor) Receive(chId byte, src *p2p.Peer, msgBytes []byte) {
 		// Share tx.
 		// We use a simple shotgun approach for now.
 		// TODO: improve efficiency
-		for _, peer := range memR.sw.Peers().List() {
+		for _, peer := range memR.Switch.Peers().List() {
 			if peer.Key == src.Key {
 				continue
 			}
@@ -111,7 +96,7 @@ func (memR *MempoolReactor) BroadcastTx(tx types.Tx) error {
 		return err
 	}
 	msg := &TxMessage{Tx: tx}
-	memR.sw.Broadcast(MempoolChannel, msg)
+	memR.Switch.Broadcast(MempoolChannel, msg)
 	return nil
 }
 

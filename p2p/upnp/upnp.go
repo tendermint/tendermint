@@ -126,7 +126,7 @@ type ExternalIPAddress struct {
 	IP      string
 }
 
-type Service struct {
+type UPNPService struct {
 	ServiceType string `xml:"serviceType"`
 	ControlURL  string `xml:"controlURL"`
 }
@@ -136,7 +136,7 @@ type DeviceList struct {
 }
 
 type ServiceList struct {
-	Service []Service `xml:"service"`
+	Service []UPNPService `xml:"service"`
 }
 
 type Device struct {
@@ -160,7 +160,7 @@ func getChildDevice(d *Device, deviceType string) *Device {
 	return nil
 }
 
-func getChildService(d *Device, serviceType string) *Service {
+func getChildService(d *Device, serviceType string) *UPNPService {
 	sl := d.ServiceList.Service
 	for i := 0; i < len(sl); i++ {
 		if strings.Index(sl[i].ServiceType, serviceType) >= 0 {

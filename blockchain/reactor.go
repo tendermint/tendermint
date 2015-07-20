@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"sync/atomic"
 	"time"
 
 	"github.com/tendermint/tendermint/binary"
@@ -39,6 +38,8 @@ type consensusReactor interface {
 
 // BlockchainReactor handles long-term catchup syncing.
 type BlockchainReactor struct {
+	p2p.BaseReactor
+
 	sw         *p2p.Switch
 	state      *sm.State
 	store      *BlockStore
@@ -47,8 +48,6 @@ type BlockchainReactor struct {
 	requestsCh chan BlockRequest
 	timeoutsCh chan string
 	lastBlock  *types.Block
-	quit       chan struct{}
-	running    uint32
 
 	evsw events.Fireable
 }
@@ -74,31 +73,20 @@ func NewBlockchainReactor(state *sm.State, store *BlockStore, sync bool) *Blockc
 		sync:       sync,
 		requestsCh: requestsCh,
 		timeoutsCh: timeoutsCh,
-		quit:       make(chan struct{}),
-		running:    uint32(0),
 	}
+	bcR.BaseReactor = *p2p.NewBaseReactor(log, "BlockchainReactor", bcR)
 	return bcR
 }
 
-// Implements Reactor
-func (bcR *BlockchainReactor) Start(sw *p2p.Switch) {
-	if atomic.CompareAndSwapUint32(&bcR.running, 0, 1) {
-		log.Notice("Starting BlockchainReactor")
-		bcR.sw = sw
-		if bcR.sync {
-			bcR.pool.Start()
-			go bcR.poolRoutine()
-		}
+func (bcR *BlockchainReactor) AfterStart() {
+	if bcR.sync {
+		bcR.pool.Start()
+		go bcR.poolRoutine()
 	}
 }
 
-// Implements Reactor
-func (bcR *BlockchainReactor) Stop() {
-	if atomic.CompareAndSwapUint32(&bcR.running, 1, 0) {
-		log.Notice("Stopping BlockchainReactor")
-		close(bcR.quit)
-		bcR.pool.Stop()
-	}
+func (bcR *BlockchainReactor) AfterStop() {
+	bcR.pool.Stop()
 }
 
 // Implements Reactor
@@ -177,7 +165,7 @@ FOR_LOOP:
 	for {
 		select {
 		case request := <-bcR.requestsCh: // chan BlockRequest
-			peer := bcR.sw.Peers().Get(request.PeerId)
+			peer := bcR.Switch.Peers().Get(request.PeerId)
 			if peer == nil {
 				// We can't assign the request.
 				continue FOR_LOOP
@@ -191,16 +179,16 @@ FOR_LOOP:
 			}
 		case peerId := <-bcR.timeoutsCh: // chan string
 			// Peer timed out.
-			peer := bcR.sw.Peers().Get(peerId)
+			peer := bcR.Switch.Peers().Get(peerId)
 			if peer != nil {
-				bcR.sw.StopPeerForError(peer, errors.New("BlockchainReactor Timeout"))
+				bcR.Switch.StopPeerForError(peer, errors.New("BlockchainReactor Timeout"))
 			}
 		case _ = <-statusUpdateTicker.C:
 			// ask for status updates
 			go bcR.BroadcastStatusRequest()
 		case _ = <-switchToConsensusTicker.C:
 			height, numPending, numUnassigned := bcR.pool.GetStatus()
-			outbound, inbound, _ := bcR.sw.NumPeers()
+			outbound, inbound, _ := bcR.Switch.NumPeers()
 			log.Info("Consensus ticker", "numUnassigned", numUnassigned, "numPending", numPending,
 				"total", len(bcR.pool.requests), "outbound", outbound, "inbound", inbound)
 			// NOTE: this condition is very strict right now. may need to weaken
@@ -213,7 +201,7 @@ FOR_LOOP:
 				log.Notice("Time to switch to consensus reactor!", "height", height)
 				bcR.pool.Stop()
 
-				conR := bcR.sw.Reactor("CONSENSUS").(consensusReactor)
+				conR := bcR.Switch.Reactor("CONSENSUS").(consensusReactor)
 				conR.SwitchToConsensus(bcR.state)
 
 				break FOR_LOOP
@@ -250,19 +238,19 @@ FOR_LOOP:
 				}
 			}
 			continue FOR_LOOP
-		case <-bcR.quit:
+		case <-bcR.Quit:
 			break FOR_LOOP
 		}
 	}
 }
 
 func (bcR *BlockchainReactor) BroadcastStatusResponse() error {
-	bcR.sw.Broadcast(BlockchainChannel, &bcStatusResponseMessage{bcR.store.Height()})
+	bcR.Switch.Broadcast(BlockchainChannel, &bcStatusResponseMessage{bcR.store.Height()})
 	return nil
 }
 
 func (bcR *BlockchainReactor) BroadcastStatusRequest() error {
-	bcR.sw.Broadcast(BlockchainChannel, &bcStatusRequestMessage{bcR.store.Height()})
+	bcR.Switch.Broadcast(BlockchainChannel, &bcStatusRequestMessage{bcR.store.Height()})
 	return nil
 }
 

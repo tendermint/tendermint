@@ -2,7 +2,8 @@ package events
 
 import (
 	"sync"
-	"sync/atomic"
+
+	. "github.com/tendermint/tendermint/common"
 )
 
 // reactors and other modules should export
@@ -17,27 +18,27 @@ type Fireable interface {
 }
 
 type EventSwitch struct {
+	BaseService
+
 	mtx        sync.RWMutex
 	eventCells map[string]*eventCell
 	listeners  map[string]*eventListener
-	running    uint32
-	quit       chan struct{}
 }
 
-func (evsw *EventSwitch) Start() {
-	if atomic.CompareAndSwapUint32(&evsw.running, 0, 1) {
-		evsw.eventCells = make(map[string]*eventCell)
-		evsw.listeners = make(map[string]*eventListener)
-		evsw.quit = make(chan struct{})
-	}
+func NewEventSwitch() *EventSwitch {
+	evsw := &EventSwitch{}
+	evsw.BaseService = *NewBaseService(log, "EventSwitch", evsw)
+	return evsw
 }
 
-func (evsw *EventSwitch) Stop() {
-	if atomic.CompareAndSwapUint32(&evsw.running, 1, 0) {
-		evsw.eventCells = nil
-		evsw.listeners = nil
-		close(evsw.quit)
-	}
+func (evsw *EventSwitch) AfterStart() {
+	evsw.eventCells = make(map[string]*eventCell)
+	evsw.listeners = make(map[string]*eventListener)
+}
+
+func (evsw *EventSwitch) AfterStop() {
+	evsw.eventCells = nil
+	evsw.listeners = nil
 }
 
 func (evsw *EventSwitch) AddListenerForEvent(listenerId, event string, cb eventCallback) {

@@ -122,12 +122,12 @@ func NewMConnection(conn net.Conn, chDescs []*ChannelDescriptor, onReceive recei
 	mconn.channels = channels
 	mconn.channelsIdx = channelsIdx
 
-	mconn.BaseService = *NewBaseService("MConnection", mconn, mconn.onStart, mconn.onStop)
+	mconn.BaseService = *NewBaseService(log, "MConnection", mconn)
 
 	return mconn
 }
 
-func (c *MConnection) onStart() {
+func (c *MConnection) AfterStart() {
 	c.quit = make(chan struct{})
 	go c.sendRoutine()
 	go c.recvRoutine()
@@ -136,7 +136,7 @@ func (c *MConnection) onStart() {
 	c.chStatsTimer = NewRepeatTimer("chStats", updateStatsSeconds*time.Second)
 }
 
-func (c *MConnection) onStop() {
+func (c *MConnection) AfterStop() {
 	c.flushTimer.Stop()
 	c.pingTimer.Stop()
 	c.chStatsTimer.Stop()
@@ -391,7 +391,7 @@ FOR_LOOP:
 		pktType := binary.ReadByte(c.bufReader, &n, &err)
 		c.recvMonitor.Update(int(n))
 		if err != nil {
-			if !c.IsRunning() {
+			if c.IsRunning() {
 				log.Warn("Connection failed @ recvRoutine (reading byte)", "conn", c, "error", err)
 				c.stopForError(err)
 			}
@@ -412,8 +412,7 @@ FOR_LOOP:
 			binary.ReadBinaryPtr(&pkt, c.bufReader, &n, &err)
 			c.recvMonitor.Update(int(n))
 			if err != nil {
-				if !c.IsRunning() {
-
+				if c.IsRunning() {
 					log.Warn("Connection failed @ recvRoutine", "conn", c, "error", err)
 					c.stopForError(err)
 				}
@@ -425,8 +424,7 @@ FOR_LOOP:
 			}
 			msgBytes, err := channel.recvMsgPacket(pkt)
 			if err != nil {
-				if !c.IsRunning() {
-
+				if c.IsRunning() {
 					log.Warn("Connection failed @ recvRoutine", "conn", c, "error", err)
 					c.stopForError(err)
 				}

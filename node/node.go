@@ -97,28 +97,28 @@ func NewNode() *Node {
 	privKey := acm.GenPrivKeyEd25519()
 
 	// Make event switch
-	eventSwitch := new(events.EventSwitch)
+	eventSwitch := events.NewEventSwitch()
 	eventSwitch.Start()
 
-	// Get PEXReactor
+	// Make PEXReactor
 	book := p2p.NewAddrBook(config.GetString("addrbook_file"))
 	pexReactor := p2p.NewPEXReactor(book)
 
-	// Get BlockchainReactor
+	// Make BlockchainReactor
 	bcReactor := bc.NewBlockchainReactor(state.Copy(), blockStore, config.GetBool("fast_sync"))
 
-	// Get MempoolReactor
+	// Make MempoolReactor
 	mempool := mempl.NewMempool(state.Copy())
 	mempoolReactor := mempl.NewMempoolReactor(mempool)
 
-	// Get ConsensusReactor
+	// Make ConsensusReactor
 	consensusState := consensus.NewConsensusState(state.Copy(), blockStore, mempoolReactor)
 	consensusReactor := consensus.NewConsensusReactor(consensusState, blockStore, config.GetBool("fast_sync"))
 	if privValidator != nil {
 		consensusReactor.SetPrivValidator(privValidator)
 	}
 
-	// Make Switch
+	// Make p2p network switch
 	sw := p2p.NewSwitch()
 	sw.AddReactor("PEX", pexReactor)
 	sw.AddReactor("MEMPOOL", mempoolReactor)

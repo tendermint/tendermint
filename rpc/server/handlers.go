@@ -9,11 +9,11 @@ import (
 	"net/http"
 	"reflect"
 	"sort"
-	"sync/atomic"
 	"time"
 
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/gorilla/websocket"
 	"github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/events"
 	. "github.com/tendermint/tendermint/rpc/types"
 )
@@ -220,49 +220,42 @@ const (
 // contains listener id, underlying ws connection,
 // and the event switch for subscribing to events
 type WSConnection struct {
+	QuitService
+
 	id          string
 	wsConn      *websocket.Conn
 	writeChan   chan WSResponse
-	quitChan    chan struct{}
 	failedSends int
-	started     uint32
-	stopped     uint32
 
 	evsw *events.EventSwitch
 }
 
 // new websocket connection wrapper
 func NewWSConnection(wsConn *websocket.Conn) *WSConnection {
-	return &WSConnection{
+	con := &WSConnection{
 		id:        wsConn.RemoteAddr().String(),
 		wsConn:    wsConn,
 		writeChan: make(chan WSResponse, WriteChanBufferSize), // buffered. we keep track when its full
-		quitChan:  make(chan struct{}),
 	}
+	con.QuitService = *NewQuitService(log, "WSConnection", con)
+	return con
 }
 
-// start the connection and hand her the event switch
-func (con *WSConnection) Start(evsw *events.EventSwitch) {
-	if atomic.CompareAndSwapUint32(&con.started, 0, 1) {
-		con.evsw = evsw
-
-		// read subscriptions/unsubscriptions to events
-		go con.read()
-		// write responses
-		con.write()
-	}
+func (con *WSConnection) AfterStart() {
+	// read subscriptions/unsubscriptions to events
+	go con.read()
+	// write responses
+	con.write()
 }
 
-// close the connection
-func (con *WSConnection) Stop() {
-	if atomic.CompareAndSwapUint32(&con.stopped, 0, 1) {
-		con.evsw.RemoveListener(con.id)
-		close(con.quitChan)
-		// the write loop closes the websocket connection
-		// when it exits its loop, and the read loop
-		// closes the writeChan
-	}
+func (con *WSConnection) AfterStop() {
+	con.evsw.RemoveListener(con.id)
+	// the write loop closes the websocket connection
+	// when it exits its loop, and the read loop
+	// closes the writeChan
 }
+
+func (con *WSConnection) SetEventSwitch(evsw *events.EventSwitch) { con.evsw = evsw }
 
 // attempt to write response to writeChan and record failures
 func (con *WSConnection) safeWrite(resp WSResponse) {
@@ -351,7 +344,7 @@ func (con *WSConnection) write() {
 					return
 				}
 			}
-		case <-con.quitChan:
+		case <-con.Quit:
 			return
 		}
 	}
@@ -389,7 +382,8 @@ func (wm *WebsocketManager) websocketHandler(w http.ResponseWriter, r *http.Requ
 	// register connection
 	con := NewWSConnection(wsConn)
 	log.Notice("New websocket connection", "origin", con.id)
-	con.Start(wm.evsw)
+	con.SetEventSwitch(wm.evsw)
+	con.Start()
 }
 
 // rpc.websocket

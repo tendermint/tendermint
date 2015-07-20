@@ -5,17 +5,18 @@ import (
 	"fmt"
 	"net"
 	"strconv"
-	"sync/atomic"
 	"time"
 
+	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/tendermint/log15"
 	acm "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/types"
 )
 
 type Reactor interface {
-	Start(sw *Switch)
-	Stop()
+	Service // Start, Stop
+
+	SetSwitch(*Switch)
 	GetChannels() []*ChannelDescriptor
 	AddPeer(peer *Peer)
 	RemovePeer(peer *Peer, reason interface{})
@@ -24,14 +25,25 @@ type Reactor interface {
 
 //--------------------------------------
 
-type BaseReactor struct{}
+type BaseReactor struct {
+	QuitService // Provides Start, Stop, .Quit
+	Switch      *Switch
+}
 
-func (_ BaseReactor) Start(sw *Switch)                               {}
-func (_ BaseReactor) Stop()                                          {}
-func (_ BaseReactor) GetChannels() []*ChannelDescriptor              { return nil }
-func (_ BaseReactor) AddPeer(peer *Peer)                             {}
-func (_ BaseReactor) RemovePeer(peer *Peer, reason interface{})      {}
-func (_ BaseReactor) Receive(chId byte, peer *Peer, msgBytes []byte) {}
+func NewBaseReactor(log log15.Logger, name string, impl Reactor) *BaseReactor {
+	return &BaseReactor{
+		QuitService: *NewQuitService(log, name, impl),
+		Switch:      nil,
+	}
+}
+
+func (br *BaseReactor) SetSwitch(sw *Switch) {
+	br.Switch = sw
+}
+func (_ *BaseReactor) GetChannels() []*ChannelDescriptor              { return nil }
+func (_ *BaseReactor) AddPeer(peer *Peer)                             {}
+func (_ *BaseReactor) RemovePeer(peer *Peer, reason interface{})      {}
+func (_ *BaseReactor) Receive(chId byte, peer *Peer, msgBytes []byte) {}
 
 //-----------------------------------------------------------------------------
 
@@ -42,13 +54,14 @@ or more `Channels`.  So while sending outgoing messages is typically performed o
 incoming messages are received on the reactor.
 */
 type Switch struct {
+	BaseService
+
 	listeners    []Listener
 	reactors     map[string]Reactor
 	chDescs      []*ChannelDescriptor
 	reactorsByCh map[byte]Reactor
 	peers        *PeerSet
 	dialing      *CMap
-	running      uint32
 	nodeInfo     *types.NodeInfo    // our node info
 	nodePrivKey  acm.PrivKeyEd25519 // our node privkey
 }
@@ -71,9 +84,9 @@ func NewSwitch() *Switch {
 		reactorsByCh: make(map[byte]Reactor),
 		peers:        NewPeerSet(),
 		dialing:      NewCMap(),
-		running:      0,
 		nodeInfo:     nil,
 	}
+	sw.BaseService = *NewBaseService(log, "P2P Switch", sw)
 	return sw
 }
 
@@ -91,6 +104,7 @@ func (sw *Switch) AddReactor(name string, reactor Reactor) Reactor {
 		sw.reactorsByCh[chId] = reactor
 	}
 	sw.reactors[name] = reactor
+	reactor.SetSwitch(sw)
 	return reactor
 }
 
@@ -138,39 +152,36 @@ func (sw *Switch) SetNodePrivKey(nodePrivKey acm.PrivKeyEd25519) {
 	}
 }
 
-func (sw *Switch) Start() {
-	if atomic.CompareAndSwapUint32(&sw.running, 0, 1) {
-		// Start reactors
-		for _, reactor := range sw.reactors {
-			reactor.Start(sw)
-		}
-		// Start peers
-		for _, peer := range sw.peers.List() {
-			sw.startInitPeer(peer)
-		}
-		// Start listeners
-		for _, listener := range sw.listeners {
-			go sw.listenerRoutine(listener)
-		}
+// Switch.Start() starts all the reactors, peers, and listeners.
+func (sw *Switch) AfterStart() {
+	// Start reactors
+	for _, reactor := range sw.reactors {
+		reactor.Start()
+	}
+	// Start peers
+	for _, peer := range sw.peers.List() {
+		sw.startInitPeer(peer)
+	}
+	// Start listeners
+	for _, listener := range sw.listeners {
+		go sw.listenerRoutine(listener)
 	}
 }
 
-func (sw *Switch) Stop() {
-	if atomic.CompareAndSwapUint32(&sw.running, 1, 0) {
-		// Stop listeners
-		for _, listener := range sw.listeners {
-			listener.Stop()
-		}
-		sw.listeners = nil
-		// Stop peers
-		for _, peer := range sw.peers.List() {
-			peer.stop()
-		}
-		sw.peers = NewPeerSet()
-		// Stop reactors
-		for _, reactor := range sw.reactors {
-			reactor.Stop()
-		}
+func (sw *Switch) AfterStop() {
+	// Stop listeners
+	for _, listener := range sw.listeners {
+		listener.Stop()
+	}
+	sw.listeners = nil
+	// Stop peers
+	for _, peer := range sw.peers.List() {
+		peer.Stop()
+	}
+	sw.peers = NewPeerSet()
+	// Stop reactors
+	for _, reactor := range sw.reactors {
+		reactor.Stop()
 	}
 }
 
@@ -230,7 +241,7 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 
 	// remove deadline and start peer
 	conn.SetDeadline(time.Time{})
-	if atomic.LoadUint32(&sw.running) == 1 {
+	if sw.IsRunning() {
 		sw.startInitPeer(peer)
 	}
 
@@ -239,7 +250,7 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 }
 
 func (sw *Switch) startInitPeer(peer *Peer) {
-	peer.start()               // spawn send/recv routines
+	peer.Start()               // spawn send/recv routines
 	sw.addPeerToReactors(peer) // run AddPeer on each reactor
 }
 
@@ -304,7 +315,7 @@ func (sw *Switch) Peers() IPeerSet {
 func (sw *Switch) StopPeerForError(peer *Peer, reason interface{}) {
 	log.Notice("Stopping peer for error", "peer", peer, "error", reason)
 	sw.peers.Remove(peer)
-	peer.stop()
+	peer.Stop()
 	sw.removePeerFromReactors(peer, reason)
 }
 
@@ -313,7 +324,7 @@ func (sw *Switch) StopPeerForError(peer *Peer, reason interface{}) {
 func (sw *Switch) StopPeerGracefully(peer *Peer) {
 	log.Notice("Stopping peer gracefully")
 	sw.peers.Remove(peer)
-	peer.stop()
+	peer.Stop()
 	sw.removePeerFromReactors(peer, nil)
 }
 

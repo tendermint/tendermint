@@ -1104,7 +1104,7 @@ func TestSNativeCallTx(t *testing.T) {
 // run ExecTx and wait for the Receive event on given addr
 // returns the msg data and an error/exception
 func execTxWaitEvent(t *testing.T, blockCache *BlockCache, tx types.Tx, eventid string) (interface{}, string) {
-	evsw := new(events.EventSwitch)
+	evsw := events.NewEventSwitch()
 	evsw.Start()
 	ch := make(chan interface{})
 	evsw.AddListenerForEvent("test", eventid, func(msg interface{}) {

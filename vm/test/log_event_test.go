@@ -35,7 +35,7 @@ func TestLog4(t *testing.T) {
 
 	ourVm := NewVM(st, newParams(), Zero256, nil)
 
-	eventSwitch := &events.EventSwitch{}
+	eventSwitch := events.NewEventSwitch()
 	eventSwitch.Start()
 	eventId := types.EventStringLogEvent(account2.Address.Postfix(20))
 

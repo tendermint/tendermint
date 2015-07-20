@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/rand"
 	"reflect"
-	"sync/atomic"
 	"time"
 
 	"github.com/tendermint/tendermint/binary"
@@ -27,39 +26,26 @@ PEXReactor handles PEX (peer exchange) and ensures that an
 adequate number of peers are connected to the switch.
 */
 type PEXReactor struct {
-	sw      *Switch
-	quit    chan struct{}
-	started uint32
-	stopped uint32
+	BaseReactor
 
+	sw   *Switch
 	book *AddrBook
-
 	evsw events.Fireable
 }
 
 func NewPEXReactor(book *AddrBook) *PEXReactor {
 	pexR := &PEXReactor{
-		quit: make(chan struct{}),
 		book: book,
 	}
+	pexR.BaseReactor = *NewBaseReactor(log, "PEXReactor", pexR)
 	return pexR
 }
 
-// Implements Reactor
-func (pexR *PEXReactor) Start(sw *Switch) {
-	if atomic.CompareAndSwapUint32(&pexR.started, 0, 1) {
-		log.Notice("Starting PEXReactor")
-		pexR.sw = sw
-		go pexR.ensurePeersRoutine()
-	}
+func (pexR *PEXReactor) AfterStart() {
+	go pexR.ensurePeersRoutine()
 }
 
-// Implements Reactor
-func (pexR *PEXReactor) Stop() {
-	if atomic.CompareAndSwapUint32(&pexR.stopped, 0, 1) {
-		log.Notice("Stopping PEXReactor")
-		close(pexR.quit)
-	}
+func (pexR *PEXReactor) AfterStop() {
 }
 
 // Implements Reactor
@@ -147,7 +133,7 @@ FOR_LOOP:
 		select {
 		case <-timer.Ch:
 			pexR.ensurePeers()
-		case <-pexR.quit:
+		case <-pexR.Quit:
 			break FOR_LOOP
 		}
 	}
@@ -158,7 +144,7 @@ FOR_LOOP:
 
 // Ensures that sufficient peers are connected. (once)
 func (pexR *PEXReactor) ensurePeers() {
-	numOutPeers, _, numDialing := pexR.sw.NumPeers()
+	numOutPeers, _, numDialing := pexR.Switch.NumPeers()
 	numToDial := minNumOutboundPeers - (numOutPeers + numDialing)
 	log.Info("Ensure peers", "numOutPeers", numOutPeers, "numDialing", numDialing, "numToDial", numToDial)
 	if numToDial <= 0 {
@@ -179,8 +165,8 @@ func (pexR *PEXReactor) ensurePeers() {
 				break
 			}
 			alreadySelected := toDial.Has(try.IP.String())
-			alreadyDialing := pexR.sw.IsDialing(try)
-			alreadyConnected := pexR.sw.Peers().Has(try.IP.String())
+			alreadyDialing := pexR.Switch.IsDialing(try)
+			alreadyConnected := pexR.Switch.Peers().Has(try.IP.String())
 			if alreadySelected || alreadyDialing || alreadyConnected {
 				/*
 					log.Info("Cannot dial address", "addr", try,
@@ -204,7 +190,7 @@ func (pexR *PEXReactor) ensurePeers() {
 	// Dial picked addresses
 	for _, item := range toDial.Values() {
 		go func(picked *NetAddress) {
-			_, err := pexR.sw.DialPeerWithAddress(picked)
+			_, err := pexR.Switch.DialPeerWithAddress(picked)
 			if err != nil {
 				pexR.book.MarkAttempt(picked)
 			}
@@ -213,7 +199,7 @@ func (pexR *PEXReactor) ensurePeers() {
 
 	// If we need more addresses, pick a random peer and ask for more.
 	if pexR.book.NeedMoreAddrs() {
-		if peers := pexR.sw.Peers().List(); len(peers) > 0 {
+		if peers := pexR.Switch.Peers().List(); len(peers) > 0 {
 			i := rand.Int() % len(peers)
 			peer := peers[i]
 			log.Info("No addresses to dial. Sending pexRequest to random peer", "peer", peer)

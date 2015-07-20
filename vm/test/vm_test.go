@@ -154,7 +154,7 @@ func TestSendCall(t *testing.T) {
 // subscribes to an AccReceive, runs the vm, returns the exception
 func runVMWaitEvents(t *testing.T, ourVm *VM, caller, callee *Account, subscribeAddr, contractCode []byte, gas int64) string {
 	// we need to catch the event from the CALL to check for exceptions
-	evsw := new(events.EventSwitch)
+	evsw := events.NewEventSwitch()
 	evsw.Start()
 	ch := make(chan interface{})
 	fmt.Printf("subscribe to %x\n", subscribeAddr)

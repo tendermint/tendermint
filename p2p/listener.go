@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net"
 	"strconv"
-	"sync/atomic"
 
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/p2p/upnp"
@@ -15,16 +14,17 @@ type Listener interface {
 	InternalAddress() *NetAddress
 	ExternalAddress() *NetAddress
 	String() string
-	Stop()
+	Stop() bool
 }
 
 // Implements Listener
 type DefaultListener struct {
+	BaseService
+
 	listener    net.Listener
 	intAddr     *NetAddress
 	extAddr     *NetAddress
 	connections chan net.Conn
-	stopped     uint32
 }
 
 const (
@@ -92,10 +92,17 @@ SKIP_UPNP:
 		extAddr:     extAddr,
 		connections: make(chan net.Conn, numBufferedConnections),
 	}
-
-	go dl.listenRoutine()
-
+	dl.BaseService = *NewBaseService(log, "DefaultListener", dl)
+	dl.Start() // Started upon construction
 	return dl
+}
+
+func (l *DefaultListener) AfterStart() {
+	go l.listenRoutine()
+}
+
+func (l *DefaultListener) AfterStop() {
+	l.listener.Close()
 }
 
 // Accept connections and pass on the channel
@@ -103,7 +110,7 @@ func (l *DefaultListener) listenRoutine() {
 	for {
 		conn, err := l.listener.Accept()
 
-		if atomic.LoadUint32(&l.stopped) == 1 {
+		if !l.IsRunning() {
 			break // Go to cleanup
 		}
 
@@ -141,12 +148,6 @@ func (l *DefaultListener) ExternalAddress() *NetAddress {
 // So it's not suitable to pass into http.Serve().
 func (l *DefaultListener) NetListener() net.Listener {
 	return l.listener
-}
-
-func (l *DefaultListener) Stop() {
-	if atomic.CompareAndSwapUint32(&l.stopped, 0, 1) {
-		l.listener.Close()
-	}
 }
 
 func (l *DefaultListener) String() string {

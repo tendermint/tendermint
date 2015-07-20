@@ -2,7 +2,6 @@ package blockchain
 
 import (
 	"sync"
-	"sync/atomic"
 	"time"
 
 	. "github.com/tendermint/tendermint/common"
@@ -34,6 +33,8 @@ var (
 */
 
 type BlockPool struct {
+	BaseService
+
 	// block requests
 	requestsMtx   sync.Mutex
 	requests      map[int]*bpRequest
@@ -48,12 +49,10 @@ type BlockPool struct {
 	requestsCh chan<- BlockRequest
 	timeoutsCh chan<- string
 	repeater   *RepeatTimer
-
-	running int32 // atomic
 }
 
 func NewBlockPool(start int, requestsCh chan<- BlockRequest, timeoutsCh chan<- string) *BlockPool {
-	return &BlockPool{
+	bp := &BlockPool{
 		peers: make(map[string]*bpPeer),
 
 		requests:      make(map[int]*bpRequest),
@@ -63,35 +62,26 @@ func NewBlockPool(start int, requestsCh chan<- BlockRequest, timeoutsCh chan<- s
 
 		requestsCh: requestsCh,
 		timeoutsCh: timeoutsCh,
-		repeater:   NewRepeatTimer("", requestIntervalMS*time.Millisecond),
-
-		running: 0,
+		repeater:   nil,
 	}
+	bp.BaseService = *NewBaseService(log, "BlockPool", bp)
+	return bp
 }
 
-func (pool *BlockPool) Start() {
-	if atomic.CompareAndSwapInt32(&pool.running, 0, 1) {
-		log.Notice("Starting BlockPool")
-		go pool.run()
-	}
+func (pool *BlockPool) AfterStart() {
+	pool.repeater = NewRepeatTimer("", requestIntervalMS*time.Millisecond)
+	go pool.run()
 }
 
-func (pool *BlockPool) Stop() {
-	if atomic.CompareAndSwapInt32(&pool.running, 1, 0) {
-		log.Notice("Stopping BlockPool")
-		pool.repeater.Stop()
-	}
-}
-
-func (pool *BlockPool) IsRunning() bool {
-	return atomic.LoadInt32(&pool.running) == 1
+func (pool *BlockPool) AfterStop() {
+	pool.repeater.Stop()
 }
 
 // Run spawns requests as needed.
 func (pool *BlockPool) run() {
 RUN_LOOP:
 	for {
-		if atomic.LoadInt32(&pool.running) == 0 {
+		if !pool.IsRunning() {
 			break RUN_LOOP
 		}
 		_, numPending, _ := pool.GetStatus()
@@ -301,14 +291,14 @@ func (pool *BlockPool) makeNextRequest() {
 }
 
 func (pool *BlockPool) sendRequest(height int, peerId string) {
-	if atomic.LoadInt32(&pool.running) == 0 {
+	if !pool.IsRunning() {
 		return
 	}
 	pool.requestsCh <- BlockRequest{height, peerId}
 }
 
 func (pool *BlockPool) sendTimeout(peerId string) {
-	if atomic.LoadInt32(&pool.running) == 0 {
+	if !pool.IsRunning() {
 		return
 	}
 	pool.timeoutsCh <- peerId

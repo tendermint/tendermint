@@ -19,6 +19,8 @@ type PeerMessage struct {
 }
 
 type TestReactor struct {
+	BaseReactor
+
 	mtx          sync.Mutex
 	channels     []*ChannelDescriptor
 	peersAdded   []*Peer
@@ -29,17 +31,13 @@ type TestReactor struct {
 }
 
 func NewTestReactor(channels []*ChannelDescriptor, logMessages bool) *TestReactor {
-	return &TestReactor{
+	tr := &TestReactor{
 		channels:     channels,
 		logMessages:  logMessages,
 		msgsReceived: make(map[byte][]PeerMessage),
 	}
-}
-
-func (tr *TestReactor) Start(sw *Switch) {
-}
-
-func (tr *TestReactor) Stop() {
+	tr.BaseReactor = *NewBaseReactor(log, "TestReactor", tr)
+	return tr
 }
 
 func (tr *TestReactor) GetChannels() []*ChannelDescriptor {
@@ -132,11 +130,11 @@ func TestSwitches(t *testing.T) {
 		sw.AddReactor("foo", NewTestReactor([]*ChannelDescriptor{
 			&ChannelDescriptor{Id: byte(0x00), Priority: 10},
 			&ChannelDescriptor{Id: byte(0x01), Priority: 10},
-		}, true)).Start(sw) // Start the reactor
+		}, true)).Start() // Start the reactor
 		sw.AddReactor("bar", NewTestReactor([]*ChannelDescriptor{
 			&ChannelDescriptor{Id: byte(0x02), Priority: 10},
 			&ChannelDescriptor{Id: byte(0x03), Priority: 10},
-		}, true)).Start(sw) // Start the reactor
+		}, true)).Start() // Start the reactor
 		return sw
 	})
 	defer s1.Stop()

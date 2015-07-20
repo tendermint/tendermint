@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"reflect"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/tendermint/tendermint/binary"
@@ -32,50 +31,45 @@ const (
 //-----------------------------------------------------------------------------
 
 type ConsensusReactor struct {
-	sw      *p2p.Switch
-	running uint32
-	quit    chan struct{}
+	p2p.BaseReactor
 
 	blockStore *bc.BlockStore
 	conS       *ConsensusState
 	fastSync   bool
-
-	evsw events.Fireable
+	evsw       events.Fireable
 }
 
 func NewConsensusReactor(consensusState *ConsensusState, blockStore *bc.BlockStore, fastSync bool) *ConsensusReactor {
 	conR := &ConsensusReactor{
-		quit:       make(chan struct{}),
 		blockStore: blockStore,
 		conS:       consensusState,
 		fastSync:   fastSync,
 	}
+	conR.BaseReactor = *p2p.NewBaseReactor(log, "ConsensusReactor", conR)
 	return conR
 }
 
-// Implements Reactor
-func (conR *ConsensusReactor) Start(sw *p2p.Switch) {
-	if atomic.CompareAndSwapUint32(&conR.running, 0, 1) {
-		log.Notice("Starting ConsensusReactor", "fastSync", conR.fastSync)
-		conR.sw = sw
-		if !conR.fastSync {
-			conR.conS.Start()
-		}
-		go conR.broadcastNewRoundStepRoutine()
+func (conR *ConsensusReactor) AfterStart() {
+	log.Notice("ConsensusReactor ", "fastSync", conR.fastSync)
+	if !conR.fastSync {
+		conR.conS.Start()
 	}
+	go conR.broadcastNewRoundStepRoutine()
 }
 
-// Implements Reactor
-func (conR *ConsensusReactor) Stop() {
-	if atomic.CompareAndSwapUint32(&conR.running, 1, 0) {
-		log.Notice("Stopping ConsensusReactor")
-		conR.conS.Stop()
-		close(conR.quit)
-	}
+func (conR *ConsensusReactor) AfterStop() {
+	conR.conS.Stop()
 }
 
-func (conR *ConsensusReactor) IsRunning() bool {
-	return atomic.LoadUint32(&conR.running) == 1
+// Switch from the fast_sync to the consensus:
+// reset the state, turn off fast_sync, start the consensus-state-machine
+func (conR *ConsensusReactor) SwitchToConsensus(state *sm.State) {
+	log.Notice("SwitchToConsensus")
+	// NOTE: The line below causes broadcastNewRoundStepRoutine() to
+	// broadcast a NewRoundStepMessage.
+	conR.conS.updateToState(state, false)
+	conR.fastSync = false
+	conR.conS.Start()
 }
 
 // Implements Reactor
@@ -249,10 +243,10 @@ func (conR *ConsensusReactor) broadcastHasVoteMessage(vote *types.Vote, index in
 		Type:   vote.Type,
 		Index:  index,
 	}
-	conR.sw.Broadcast(StateChannel, msg)
+	conR.Switch.Broadcast(StateChannel, msg)
 	/*
 		// TODO: Make this broadcast more selective.
-		for _, peer := range conR.sw.Peers().List() {
+		for _, peer := range conR.Switch.Peers().List() {
 			ps := peer.Data.Get(PeerStateKey).(*PeerState)
 			prs := ps.GetRoundState()
 			if prs.Height == vote.Height {
@@ -270,17 +264,6 @@ func (conR *ConsensusReactor) broadcastHasVoteMessage(vote *types.Vote, index in
 // Sets our private validator account for signing votes.
 func (conR *ConsensusReactor) SetPrivValidator(priv *sm.PrivValidator) {
 	conR.conS.SetPrivValidator(priv)
-}
-
-// Switch from the fast_sync to the consensus:
-// reset the state, turn off fast_sync, start the consensus-state-machine
-func (conR *ConsensusReactor) SwitchToConsensus(state *sm.State) {
-	log.Notice("SwitchToConsensus")
-	// NOTE: The line below causes broadcastNewRoundStepRoutine() to
-	// broadcast a NewRoundStepMessage.
-	conR.conS.updateToState(state, false)
-	conR.fastSync = false
-	conR.conS.Start()
 }
 
 // implements events.Eventable
@@ -317,16 +300,16 @@ func (conR *ConsensusReactor) broadcastNewRoundStepRoutine() {
 		var rs *RoundState
 		select {
 		case rs = <-conR.conS.NewStepCh():
-		case <-conR.quit:
+		case <-conR.Quit:
 			return
 		}
 
 		nrsMsg, csMsg := makeRoundStepMessages(rs)
 		if nrsMsg != nil {
-			conR.sw.Broadcast(StateChannel, nrsMsg)
+			conR.Switch.Broadcast(StateChannel, nrsMsg)
 		}
 		if csMsg != nil {
-			conR.sw.Broadcast(StateChannel, csMsg)
+			conR.Switch.Broadcast(StateChannel, csMsg)
 		}
 	}
 }

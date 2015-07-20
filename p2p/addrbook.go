@@ -12,7 +12,6 @@ import (
 	"net"
 	"os"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	. "github.com/tendermint/tendermint/common"
@@ -74,19 +73,17 @@ const (
 
 /* AddrBook - concurrency safe peer address manager */
 type AddrBook struct {
-	filePath string
+	QuitService
 
 	mtx        sync.Mutex
+	filePath   string
 	rand       *rand.Rand
 	key        string
 	ourAddrs   map[string]*NetAddress
 	addrLookup map[string]*knownAddress // new & old
 	addrNew    []map[string]*knownAddress
 	addrOld    []map[string]*knownAddress
-	started    uint32
-	stopped    uint32
 	wg         sync.WaitGroup
-	quit       chan struct{}
 	nOld       int
 	nNew       int
 }
@@ -98,15 +95,15 @@ const (
 
 // Use Start to begin processing asynchronous address updates.
 func NewAddrBook(filePath string) *AddrBook {
-	am := AddrBook{
+	am := &AddrBook{
 		rand:       rand.New(rand.NewSource(time.Now().UnixNano())),
 		ourAddrs:   make(map[string]*NetAddress),
 		addrLookup: make(map[string]*knownAddress),
-		quit:       make(chan struct{}),
 		filePath:   filePath,
 	}
 	am.init()
-	return &am
+	am.QuitService = *NewQuitService(log, "AddrBook", am)
+	return am
 }
 
 // When modifying this, don't forget to update loadFromFile()
@@ -124,21 +121,14 @@ func (a *AddrBook) init() {
 	}
 }
 
-func (a *AddrBook) Start() {
-	if atomic.CompareAndSwapUint32(&a.started, 0, 1) {
-		log.Notice("Starting AddrBook")
-		a.loadFromFile(a.filePath)
-		a.wg.Add(1)
-		go a.saveRoutine()
-	}
+func (a *AddrBook) AfterStart() {
+	a.loadFromFile(a.filePath)
+	a.wg.Add(1)
+	go a.saveRoutine()
 }
 
-func (a *AddrBook) Stop() {
-	if atomic.CompareAndSwapUint32(&a.stopped, 0, 1) {
-		log.Notice("Stopping AddrBook")
-		close(a.quit)
-		a.wg.Wait()
-	}
+func (a *AddrBook) AfterStop() {
+	a.wg.Wait()
 }
 
 func (a *AddrBook) AddOurAddress(addr *NetAddress) {
@@ -381,7 +371,7 @@ out:
 		case <-dumpAddressTicker.C:
 			log.Info("Saving AddrBook to file", "size", a.Size())
 			a.saveToFile(a.filePath)
-		case <-a.quit:
+		case <-a.Quit:
 			break out
 		}
 	}

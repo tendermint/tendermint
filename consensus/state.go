@@ -155,7 +155,6 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	acm "github.com/tendermint/tendermint/account"
@@ -285,9 +284,7 @@ func (rs *RoundState) StringShort() string {
 
 // Tracks consensus state across block heights and rounds.
 type ConsensusState struct {
-	started uint32
-	stopped uint32
-	quit    chan struct{}
+	BaseService
 
 	blockStore     *bc.BlockStore
 	mempoolReactor *mempl.MempoolReactor
@@ -306,7 +303,6 @@ type ConsensusState struct {
 
 func NewConsensusState(state *sm.State, blockStore *bc.BlockStore, mempoolReactor *mempl.MempoolReactor) *ConsensusState {
 	cs := &ConsensusState{
-		quit:           make(chan struct{}),
 		blockStore:     blockStore,
 		mempoolReactor: mempoolReactor,
 		newStepCh:      make(chan *RoundState, 10),
@@ -316,6 +312,7 @@ func NewConsensusState(state *sm.State, blockStore *bc.BlockStore, mempoolReacto
 	// We do that upon Start().
 	cs.maybeRebond()
 	cs.reconstructLastCommit(state)
+	cs.BaseService = *NewBaseService(log, "ConsensusState", cs)
 	return cs
 }
 
@@ -363,11 +360,12 @@ func (cs *ConsensusState) NewStepCh() chan *RoundState {
 	return cs.newStepCh
 }
 
-func (cs *ConsensusState) Start() {
-	if atomic.CompareAndSwapUint32(&cs.started, 0, 1) {
-		log.Notice("Starting ConsensusState")
-		cs.scheduleRound0(cs.Height)
-	}
+func (cs *ConsensusState) AfterStart() {
+	cs.scheduleRound0(cs.Height)
+}
+
+func (cs *ConsensusState) AfterStop() {
+	// It's mostly asynchronous so, there's not much to stop.
 }
 
 // EnterNewRound(height, 0) at cs.StartTime.
@@ -380,13 +378,6 @@ func (cs *ConsensusState) scheduleRound0(height int) {
 		}
 		cs.EnterNewRound(height, 0)
 	}()
-}
-
-func (cs *ConsensusState) Stop() {
-	if atomic.CompareAndSwapUint32(&cs.stopped, 0, 1) {
-		log.Notice("Stopping ConsensusState")
-		close(cs.quit)
-	}
 }
 
 // Updates ConsensusState and increments height to match that of state.

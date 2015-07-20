@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"sync/atomic"
 
 	"github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
@@ -58,7 +57,7 @@ func newPeer(conn net.Conn, peerNodeInfo *types.NodeInfo, outbound bool, reactor
 		reactor.Receive(chId, p, msgBytes)
 	}
 	onError := func(r interface{}) {
-		p.stop()
+		p.Stop()
 		onPeerError(p, r)
 	}
 	mconn := NewMConnection(conn, chDescs, onReceive, onError)
@@ -69,15 +68,15 @@ func newPeer(conn net.Conn, peerNodeInfo *types.NodeInfo, outbound bool, reactor
 		Key:      peerNodeInfo.PubKey.KeyString(),
 		Data:     NewCMap(),
 	}
-	p.BaseService = *NewBaseService("Peer", p, p.onStart, p.onStop)
+	p.BaseService = *NewBaseService(log, "Peer", p)
 	return p
 }
 
-func (p *Peer) onStart() {
+func (p *Peer) AfterStart() {
 	p.mconn.Start()
 }
 
-func (p *Peer) onStop() {
+func (p *Peer) AfterStop() {
 	p.mconn.Stop()
 }
 
