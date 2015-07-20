@@ -25,11 +25,13 @@ func (acc *Account) String() string {
 		acc.Address, acc.Balance, acc.Code, acc.Nonce, acc.StorageRoot)
 }
 
+// NOTE: This is serialized as an event from vm/vm.
+// See: EventStringLogEvent
 type Log struct {
-	Address Word256
-	Topics  []Word256
-	Data    []byte
-	Height  int64
+	Address Word256   `json:"address"`
+	Topics  []Word256 `json:"topics"`
+	Data    []byte    `json:"data"`
+	Height  int64     `json:"height"`
 }
 
 type AppState interface {
