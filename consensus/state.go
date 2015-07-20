@@ -1227,3 +1227,7 @@ func (cs *ConsensusState) saveBlock(block *types.Block, blockParts *types.PartSe
 func (cs *ConsensusState) SetFireable(evsw events.Fireable) {
 	cs.evsw = evsw
 }
+
+func (cs *ConsensusState) String() string {
+	return Fmt("ConsensusState(H:%v R:%v S:%v", cs.Height, cs.Round, cs.Step)
+}

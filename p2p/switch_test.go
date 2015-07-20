@@ -92,7 +92,7 @@ func makeSwitchPair(t testing.TB, initSwitch func(*Switch) *Switch) (*Switch, *S
 	})
 	s2.SetNodePrivKey(s2PrivKey)
 
-	// Start switches
+	// Start switches and reactors
 	s1.Start()
 	s2.Start()
 
@@ -130,11 +130,11 @@ func TestSwitches(t *testing.T) {
 		sw.AddReactor("foo", NewTestReactor([]*ChannelDescriptor{
 			&ChannelDescriptor{Id: byte(0x00), Priority: 10},
 			&ChannelDescriptor{Id: byte(0x01), Priority: 10},
-		}, true)).Start() // Start the reactor
+		}, true))
 		sw.AddReactor("bar", NewTestReactor([]*ChannelDescriptor{
 			&ChannelDescriptor{Id: byte(0x02), Priority: 10},
 			&ChannelDescriptor{Id: byte(0x03), Priority: 10},
-		}, true)).Start() // Start the reactor
+		}, true))
 		return sw
 	})
 	defer s1.Stop()

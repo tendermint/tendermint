@@ -49,6 +49,8 @@ type Service interface {
 	AfterStop()
 
 	IsRunning() bool
+
+	String() string
 }
 
 type BaseService struct {
@@ -115,6 +117,11 @@ func (bs *BaseService) AfterStop() {}
 // Implements Service
 func (bs *BaseService) IsRunning() bool {
 	return atomic.LoadUint32(&bs.started) == 1 && atomic.LoadUint32(&bs.stopped) == 0
+}
+
+// Implements Servce
+func (bs *BaseService) String() string {
+	return bs.name
 }
 
 //----------------------------------------
