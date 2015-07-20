@@ -129,11 +129,11 @@ func NewMConnection(conn net.Conn, chDescs []*ChannelDescriptor, onReceive recei
 
 func (c *MConnection) AfterStart() {
 	c.quit = make(chan struct{})
-	go c.sendRoutine()
-	go c.recvRoutine()
 	c.flushTimer = NewThrottleTimer("flush", flushThrottleMS*time.Millisecond)
 	c.pingTimer = NewRepeatTimer("ping", pingTimeoutSeconds*time.Second)
 	c.chStatsTimer = NewRepeatTimer("chStats", updateStatsSeconds*time.Second)
+	go c.sendRoutine()
+	go c.recvRoutine()
 }
 
 func (c *MConnection) AfterStop() {
