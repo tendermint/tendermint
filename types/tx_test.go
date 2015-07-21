@@ -157,22 +157,22 @@ func TestRebondTxSignable(t *testing.T) {
 	}
 }
 
-func TestSNativeTxSignable(t *testing.T) {
-	snativeTx := &SNativeTx{
+func TestPermissionsTxSignable(t *testing.T) {
+	permsTx := &PermissionsTx{
 		Input: &TxInput{
 			Address:  []byte("input1"),
 			Amount:   12345,
 			Sequence: 250,
 		},
-		SNative: &ptypes.SetBaseArgs{
+		PermArgs: &ptypes.SetBaseArgs{
 			Address:    []byte("address1"),
 			Permission: 1,
 			Value:      true,
 		},
 	}
-	signBytes := acm.SignBytes(chainID, snativeTx)
+	signBytes := acm.SignBytes(chainID, permsTx)
 	signStr := string(signBytes)
-	expected := Fmt(`{"chain_id":"%s","tx":[32,{"args":"[2,{"address":"6164647265737331","permission":1,"value":true}]","input":{"address":"696E70757431","amount":12345,"sequence":250},"snative":"SetBase"}]}`,
+	expected := Fmt(`{"chain_id":"%s","tx":[32,{"args":"[2,{"address":"6164647265737331","permission":1,"value":true}]","input":{"address":"696E70757431","amount":12345,"sequence":250}}]}`,
 		config.GetString("chain_id"))
 	if signStr != expected {
 		t.Errorf("Got unexpected sign string for CallTx. Expected:\n%v\nGot:\n%v", expected, signStr)

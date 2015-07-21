@@ -108,33 +108,6 @@ func (vm *VM) fireEvent(exception *string, output *[]byte, caller, callee *Accou
 	}
 }
 
-// call an snative contract (includes event processing)
-// addr and permFlag refer to the same snative's address and it's permFlag
-func (vm *VM) callSNative(addr Word256, snInfo *snativeInfo, caller *Account, input []byte) (ret []byte, err error) {
-	exception := new(string)
-	// fire the post call event (including exception if applicable)
-	value, gas := int64(0), new(int64)
-	defer vm.fireEvent(exception, &ret, caller, &Account{Address: addr}, input, value, gas)
-
-	if !HasPermission(vm.appState, caller, snInfo.PermFlag) {
-		err = ErrInvalidPermission{caller.Address, addr.TrimmedString()}
-		*exception = err.Error()
-		return
-	}
-	if len(input) != snInfo.NArgs*32 {
-		err = snInfo.ArgsError
-		*exception = err.Error()
-		return
-	}
-	// SNATIVE ACCESS
-	ret, err = snInfo.Executable(vm.appState, input)
-	// END SNATIVE ACCESS
-	if err != nil {
-		*exception = err.Error()
-	}
-	return
-}
-
 // CONTRACT appState is aware of caller and callee, so we can just mutate them.
 // value: To be transferred from caller to callee. Refunded upon error.
 // gas:   Available gas. No refunds for gas.
@@ -777,11 +750,16 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 			// Begin execution
 			var ret []byte
 			var err error
-			if nativeContract := nativeContracts[addr]; nativeContract != nil {
+			if nativeContract := registeredNativeContracts[addr]; nativeContract != nil {
 				// Native contract
-				ret, err = nativeContract(args, &gasLimit)
-			} else if snInfo, ok := RegisteredSNativeContracts[addr]; ok {
-				ret, err = vm.callSNative(addr, snInfo, callee, input)
+				ret, err = nativeContract(vm.appState, callee, args, &gasLimit)
+
+				// for now we fire the Receive event. maybe later we'll fire more particulars
+				var exception string
+				if err != nil {
+					exception = err.Error()
+				}
+				vm.fireEvent(&exception, &ret, callee, &Account{Address: addr}, args, value, gas)
 			} else {
 				// EVM contract
 				if ok = useGas(gas, GasGetAccount); !ok {

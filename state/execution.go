@@ -392,7 +392,6 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 			// this may be nil if we are still in mempool and contract was created in same block as this tx
 			// but that's fine, because the account will be created properly when the create tx runs in the block
 			// and then this won't return nil. otherwise, we take their fee
-			// it may also be nil if its an snative (not a "real" account)
 			outAcc = blockCache.GetAccount(tx.Address)
 		}
 
@@ -423,10 +422,9 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 			if !createAccount {
 
 				if outAcc == nil || len(outAcc.Code) == 0 {
-					// check if its an snative
-					// TODO: should we restrict from calling natives too?
-					if _, ok := vm.RegisteredSNativeContracts[LeftPadWord256(tx.Address)]; ok {
-						return fmt.Errorf("SNatives can not be called using CallTx. Either use a contract or a SNativeTx")
+					// check if its a native contract
+					if vm.RegisteredNativeContract(LeftPadWord256(tx.Address)) {
+						return fmt.Errorf("NativeContracts can not be called using CallTx. Use a contract or the appropriate tx type (eg. PermissionsTx, NameTx)")
 					}
 
 					// if you call an account that doesn't exist
@@ -794,7 +792,7 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 		}
 		return nil
 
-	case *types.SNativeTx:
+	case *types.PermissionsTx:
 		var inAcc *acm.Account
 
 		// Validate input
@@ -804,10 +802,10 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 			return types.ErrTxInvalidAddress
 		}
 
-		permFlag := tx.SNative.PermFlag()
+		permFlag := tx.PermArgs.PermFlag()
 		// check permission
-		if !hasSNativePermission(blockCache, inAcc, permFlag) {
-			return fmt.Errorf("Account %X does not have permission to call snative %s (%b)", tx.Input.Address, ptypes.SNativePermFlagToString(permFlag), permFlag)
+		if !HasPermission(blockCache, inAcc, permFlag) {
+			return fmt.Errorf("Account %X does not have moderator permission %s (%b)", tx.Input.Address, ptypes.PermFlagToString(permFlag), permFlag)
 		}
 
 		// pubKey should be present in either "inAcc" or "tx.Input"
@@ -824,10 +822,10 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 
 		value := tx.Input.Amount
 
-		log.Debug("New SNativeTx", "snative", ptypes.SNativePermFlagToString(permFlag), "args", tx.SNative)
+		log.Debug("New PermissionsTx", "function", ptypes.PermFlagToString(permFlag), "args", tx.PermArgs)
 
 		var permAcc *acm.Account
-		switch args := tx.SNative.(type) {
+		switch args := tx.PermArgs.(type) {
 		case *ptypes.HasBaseArgs:
 			// this one doesn't make sense from txs
 			return fmt.Errorf("HasBase is for contracts, not humans. Just look at the blockchain")
@@ -863,7 +861,7 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 				return fmt.Errorf("Role (%s) does not exist for account %X", args.Role, args.Address)
 			}
 		default:
-			PanicSanity(Fmt("invalid snative: %s", ptypes.SNativePermFlagToString(permFlag)))
+			PanicSanity(Fmt("invalid permission function: %s", ptypes.PermFlagToString(permFlag)))
 		}
 
 		// TODO: maybe we want to take funds on error and allow txs in that don't do anythingi?
@@ -881,7 +879,7 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 
 		if evc != nil {
 			evc.FireEvent(types.EventStringAccInput(tx.Input.Address), tx)
-			evc.FireEvent(types.EventStringSNative(ptypes.SNativePermFlagToString(permFlag)), tx)
+			evc.FireEvent(types.EventStringPermissions(ptypes.PermFlagToString(permFlag)), tx)
 		}
 
 		return nil
@@ -897,8 +895,7 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 
 // Get permission on an account or fall back to global value
 func HasPermission(state AccountGetter, acc *acm.Account, perm ptypes.PermFlag) bool {
-	if (perm > ptypes.AllBasePermFlags && perm < ptypes.FirstSNativePermFlag) ||
-		(perm > ptypes.AllSNativePermFlags) {
+	if perm > ptypes.AllPermFlags {
 		PanicSanity("Checking an unknown permission in state should never happen")
 	}
 
@@ -968,8 +965,4 @@ func hasBondOrSendPermission(state AccountGetter, accs map[string]*acm.Account) 
 		}
 	}
 	return true
-}
-
-func hasSNativePermission(state AccountGetter, acc *acm.Account, permFlag ptypes.PermFlag) bool {
-	return HasPermission(state, acc, permFlag)
 }

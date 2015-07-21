@@ -47,7 +47,7 @@ Validation Txs:
  - DupeoutTx      Validator dupes out (equivocates)
 
 Admin Txs:
- - SNativeTx (CapTx ?)
+ - PermissionsTx
 */
 
 type Tx interface {
@@ -68,7 +68,7 @@ const (
 	TxTypeDupeout = byte(0x14)
 
 	// Admin transactions
-	TxTypeSNative = byte(0x20)
+	TxTypePermissions = byte(0x20)
 )
 
 // for binary.readReflect
@@ -81,7 +81,7 @@ var _ = binary.RegisterInterface(
 	binary.ConcreteType{&UnbondTx{}, TxTypeUnbond},
 	binary.ConcreteType{&RebondTx{}, TxTypeRebond},
 	binary.ConcreteType{&DupeoutTx{}, TxTypeDupeout},
-	binary.ConcreteType{&SNativeTx{}, TxTypeSNative},
+	binary.ConcreteType{&PermissionsTx{}, TxTypePermissions},
 )
 
 //-----------------------------------------------------------------------------
@@ -323,23 +323,22 @@ func (tx *DupeoutTx) String() string {
 
 //-----------------------------------------------------------------------------
 
-type SNativeTx struct {
-	Input   *TxInput           `json:"input"`
-	SNative ptypes.SNativeArgs `json:"snative"`
+type PermissionsTx struct {
+	Input    *TxInput        `json:"input"`
+	PermArgs ptypes.PermArgs `json:"args"`
 }
 
-func (tx *SNativeTx) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
+func (tx *PermissionsTx) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
 	binary.WriteTo([]byte(Fmt(`{"chain_id":%s`, jsonEscape(chainID))), w, n, err)
-	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"args":"`, TxTypeSNative)), w, n, err)
-	binary.WriteJSON(tx.SNative, w, n, err)
+	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"args":"`, TxTypePermissions)), w, n, err)
+	binary.WriteJSON(tx.PermArgs, w, n, err)
 	binary.WriteTo([]byte(`","input":`), w, n, err)
 	tx.Input.WriteSignBytes(w, n, err)
-	binary.WriteTo([]byte(Fmt(`,"snative":%s`, jsonEscape(ptypes.PermFlagToString(tx.SNative.PermFlag())))), w, n, err)
 	binary.WriteTo([]byte(`}]}`), w, n, err)
 }
 
-func (tx *SNativeTx) String() string {
-	return Fmt("SNativeTx{%v -> %v}", tx.Input, tx.SNative)
+func (tx *PermissionsTx) String() string {
+	return Fmt("PermissionsTx{%v -> %v}", tx.Input, tx.PermArgs)
 }
 
 //-----------------------------------------------------------------------------

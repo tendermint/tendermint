@@ -225,9 +225,9 @@ func (tx *RebondTx) Sign(chainID string, privAccount *acm.PrivAccount) {
 }
 
 //----------------------------------------------------------------------------
-// SNativeTx interface for creating tx
+// PermissionsTx interface for creating tx
 
-func NewSNativeTx(st AccountGetter, from acm.PubKey, snativeArgs ptypes.SNativeArgs) (*SNativeTx, error) {
+func NewPermissionsTx(st AccountGetter, from acm.PubKey, args ptypes.PermArgs) (*PermissionsTx, error) {
 	addr := from.Address()
 	acc := st.GetAccount(addr)
 	if acc == nil {
@@ -235,10 +235,10 @@ func NewSNativeTx(st AccountGetter, from acm.PubKey, snativeArgs ptypes.SNativeA
 	}
 
 	nonce := acc.Sequence + 1
-	return NewSNativeTxWithNonce(from, snativeArgs, nonce), nil
+	return NewPermissionsTxWithNonce(from, args, nonce), nil
 }
 
-func NewSNativeTxWithNonce(from acm.PubKey, snativeArgs ptypes.SNativeArgs, nonce int) *SNativeTx {
+func NewPermissionsTxWithNonce(from acm.PubKey, args ptypes.PermArgs, nonce int) *PermissionsTx {
 	addr := from.Address()
 	input := &TxInput{
 		Address:   addr,
@@ -248,13 +248,13 @@ func NewSNativeTxWithNonce(from acm.PubKey, snativeArgs ptypes.SNativeArgs, nonc
 		PubKey:    from,
 	}
 
-	return &SNativeTx{
-		Input:   input,
-		SNative: snativeArgs,
+	return &PermissionsTx{
+		Input:    input,
+		PermArgs: args,
 	}
 }
 
-func (tx *SNativeTx) Sign(chainID string, privAccount *acm.PrivAccount) {
+func (tx *PermissionsTx) Sign(chainID string, privAccount *acm.PrivAccount) {
 	tx.Input.PubKey = privAccount.PubKey
 	tx.Input.Signature = privAccount.Sign(chainID, tx)
 }

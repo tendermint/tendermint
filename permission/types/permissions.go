@@ -17,19 +17,29 @@ type PermFlag uint64
 
 // Base permission references are like unix (the index is already bit shifted)
 const (
-	Root               PermFlag = 1 << iota // 1
-	Send                                    // 2
-	Call                                    // 4
-	CreateContract                          // 8
-	CreateAccount                           // 16
-	Bond                                    // 32
-	Name                                    // 64
-	NumBasePermissions uint     = 7         // NOTE Adjust this too.
+	// chain permissions
+	Root           PermFlag = 1 << iota // 1
+	Send                                // 2
+	Call                                // 4
+	CreateContract                      // 8
+	CreateAccount                       // 16
+	Bond                                // 32
+	Name                                // 64
 
-	TopBasePermFlag      PermFlag = 1 << (NumBasePermissions - 1)
-	AllBasePermFlags     PermFlag = TopBasePermFlag | (TopBasePermFlag - 1)
-	AllPermFlags         PermFlag = AllBasePermFlags | AllSNativePermFlags
-	DefaultBasePermFlags PermFlag = Send | Call | CreateContract | CreateAccount | Bond | Name
+	// moderator permissions
+	HasBase
+	SetBase
+	UnsetBase
+	SetGlobal
+	HasRole
+	AddRole
+	RmRole
+
+	NumPermissions uint = 14 // NOTE Adjust this too. We can support upto 64
+
+	TopPermFlag      PermFlag = 1 << (NumPermissions - 1)
+	AllPermFlags     PermFlag = TopPermFlag | (TopPermFlag - 1)
+	DefaultPermFlags PermFlag = Send | Call | CreateContract | CreateAccount | Bond | Name | HasBase | HasRole
 )
 
 var (
@@ -39,7 +49,7 @@ var (
 	}
 	DefaultAccountPermissions = AccountPermissions{
 		Base: BasePermissions{
-			Perms:  DefaultBasePermFlags,
+			Perms:  DefaultPermFlags,
 			SetBit: AllPermFlags,
 		},
 		Roles: []string{},
@@ -154,16 +164,8 @@ func (aP *AccountPermissions) RmRole(role string) bool {
 //--------------------------------------------------------------------------------
 // string utilities
 
-// CONTRACT: PermFlagToString functions assume the permFlag is valid, else return "#-UNKNOWN-#"
-func PermFlagToString(pf PermFlag) string {
-	if pf < FirstSNativePermFlag {
-		return BasePermFlagToString(pf)
-	} else {
-		return SNativePermFlagToString(pf)
-	}
-}
-
-func BasePermFlagToString(pf PermFlag) (perm string) {
+// PermFlagToString assumes the permFlag is valid, else returns "#-UNKNOWN-#"
+func PermFlagToString(pf PermFlag) (perm string) {
 	switch pf {
 	case Root:
 		perm = "root"
@@ -179,13 +181,27 @@ func BasePermFlagToString(pf PermFlag) (perm string) {
 		perm = "bond"
 	case Name:
 		perm = "name"
+	case HasBase:
+		perm = "has_base"
+	case SetBase:
+		perm = "set_base"
+	case UnsetBase:
+		perm = "unset_base"
+	case SetGlobal:
+		perm = "set_global"
+	case HasRole:
+		perm = "has_role"
+	case AddRole:
+		perm = "add_role"
+	case RmRole:
+		perm = "rm_role"
 	default:
 		perm = "#-UNKNOWN-#"
 	}
 	return
 }
 
-func BasePermStringToFlag(perm string) (pf PermFlag, err error) {
+func PermStringToFlag(perm string) (pf PermFlag, err error) {
 	switch perm {
 	case "root":
 		pf = Root
@@ -201,6 +217,20 @@ func BasePermStringToFlag(perm string) (pf PermFlag, err error) {
 		pf = Bond
 	case "name":
 		pf = Name
+	case "has_base":
+		pf = HasBase
+	case "set_base":
+		pf = SetBase
+	case "unset_base":
+		pf = UnsetBase
+	case "set_global":
+		pf = SetGlobal
+	case "has_role":
+		pf = HasRole
+	case "add_role":
+		pf = AddRole
+	case "rm_role":
+		pf = RmRole
 	default:
 		err = fmt.Errorf("Unknown permission %s", perm)
 	}

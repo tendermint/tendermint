@@ -22,8 +22,8 @@ func EventStringLogEvent(addr []byte) string {
 	return fmt.Sprintf("Log/%X", addr)
 }
 
-func EventStringSNative(name string) string {
-	return fmt.Sprintf("SNative/%s", name)
+func EventStringPermissions(name string) string {
+	return fmt.Sprintf("Permissions/%s", name)
 }
 
 func EventStringBond() string {
