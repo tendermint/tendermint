@@ -116,7 +116,7 @@ func setGlobalPerm(appState AppState, acc *Account, args []byte) (output []byte,
 	permNum, perm := returnTwoArgs(args)
 	vmAcc := appState.GetAccount(ptypes.GlobalPermissionsAddress256)
 	if vmAcc == nil {
-		panic("cant find the global permissions account")
+		PanicSanity("cant find the global permissions account")
 	}
 	permN := ptypes.PermFlag(Uint64FromWord256(permNum))
 	if !ValidPermN(permN) {

@@ -63,7 +63,7 @@ func (hvs *HeightVoteSet) SetRound(round int) {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
 	if hvs.round != 0 && (round < hvs.round+1) {
-		panic("SetRound() must increment hvs.round")
+		PanicSanity("SetRound() must increment hvs.round")
 	}
 	for r := hvs.round + 1; r <= round; r++ {
 		if _, ok := hvs.roundVoteSets[r]; ok {
@@ -76,7 +76,7 @@ func (hvs *HeightVoteSet) SetRound(round int) {
 
 func (hvs *HeightVoteSet) addRound(round int) {
 	if _, ok := hvs.roundVoteSets[round]; ok {
-		panic("addRound() for an existing round")
+		PanicSanity("addRound() for an existing round")
 	}
 	log.Info("addRound(round)", "round", round)
 	prevotes := NewVoteSet(hvs.height, round, types.VoteTypePrevote, hvs.valSet)
@@ -146,7 +146,8 @@ func (hvs *HeightVoteSet) getVoteSet(round int, type_ byte) *VoteSet {
 	case types.VoteTypePrecommit:
 		return rvs.Precommits
 	default:
-		panic(Fmt("Unexpected vote type %X", type_))
+		PanicSanity(Fmt("Unexpected vote type %X", type_))
+		return nil
 	}
 }
 

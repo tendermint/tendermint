@@ -54,7 +54,7 @@ func (t *IAVLTree) Copy() Tree {
 		// It sets all the hashes recursively,
 		// clears all the leftNode/rightNode values recursively,
 		// and all the .persisted flags get set.
-		panic("It is unsafe to Copy() an unpersisted tree.")
+		PanicSanity("It is unsafe to Copy() an unpersisted tree.")
 	} else if t.ndb == nil && t.root.hash == nil {
 		// An in-memory IAVLTree is finalized when the hashes are
 		// calculated.
@@ -211,14 +211,14 @@ func (ndb *nodeDB) GetNode(t *IAVLTree, hash []byte) *IAVLNode {
 		buf := ndb.db.Get(hash)
 		if len(buf) == 0 {
 			ndb.db.(*dbm.LevelDB).Print()
-			panic(Fmt("Value missing for key %X", hash))
+			PanicSanity(Fmt("Value missing for key %X", hash))
 		}
 		r := bytes.NewReader(buf)
 		var n int64
 		var err error
 		node := ReadIAVLNode(t, r, &n, &err)
 		if err != nil {
-			panic(Fmt("Error reading IAVLNode. bytes: %X  error: %v", buf, err))
+			PanicCrisis(Fmt("Error reading IAVLNode. bytes: %X  error: %v", buf, err))
 		}
 		node.hash = hash
 		node.persisted = true
@@ -231,10 +231,10 @@ func (ndb *nodeDB) SaveNode(t *IAVLTree, node *IAVLNode) {
 	ndb.mtx.Lock()
 	defer ndb.mtx.Unlock()
 	if node.hash == nil {
-		panic("Expected to find node.hash, but none found.")
+		PanicSanity("Expected to find node.hash, but none found.")
 	}
 	if node.persisted {
-		panic("Shouldn't be calling save on an already persisted node.")
+		PanicSanity("Shouldn't be calling save on an already persisted node.")
 	}
 	/*if _, ok := ndb.cache[string(node.hash)]; ok {
 		panic("Shouldn't be calling save on an already cached node.")
@@ -243,7 +243,7 @@ func (ndb *nodeDB) SaveNode(t *IAVLTree, node *IAVLNode) {
 	buf := bytes.NewBuffer(nil)
 	_, err := node.writePersistBytes(t, buf)
 	if err != nil {
-		panic(err)
+		PanicCrisis(err)
 	}
 	ndb.db.Set(node.hash, buf.Bytes())
 	node.persisted = true

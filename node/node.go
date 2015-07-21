@@ -66,14 +66,16 @@ func NewNode() *Node {
 		binary.WriteJSON(genDoc, buf, n, err)
 		stateDB.Set(sm.GenDocKey, buf.Bytes())
 		if *err != nil {
-			panic(Fmt("Unable to write gendoc to db: %v", err))
+			log.Error("Unable to write gendoc to db", "error", err)
+			os.Exit(1)
 		}
 	} else {
 		genDocBytes := stateDB.Get(sm.GenDocKey)
 		err := new(error)
 		binary.ReadJSONPtr(&genDoc, genDocBytes, err)
 		if *err != nil {
-			panic(Fmt("Unable to read gendoc from db: %v", err))
+			log.Error("Unable to read gendoc from db", "error", err)
+			os.Exit(1)
 		}
 	}
 	// add the chainid to the global config
@@ -204,7 +206,7 @@ func (n *Node) dialSeed(addr *p2p.NetAddress) {
 	}
 }
 
-func (n *Node) StartRPC() net.Listener {
+func (n *Node) StartRPC() (net.Listener, error) {
 	core.SetBlockStore(n.blockStore)
 	core.SetConsensusState(n.consensusState)
 	core.SetConsensusReactor(n.consensusReactor)
@@ -217,11 +219,7 @@ func (n *Node) StartRPC() net.Listener {
 	mux := http.NewServeMux()
 	rpcserver.RegisterEventsHandler(mux, n.evsw)
 	rpcserver.RegisterRPCFuncs(mux, core.Routes)
-	listener, err := rpcserver.StartHTTPServer(listenAddr, mux)
-	if err != nil {
-		panic(err)
-	}
-	return listener
+	return rpcserver.StartHTTPServer(listenAddr, mux)
 }
 
 func (n *Node) Switch() *p2p.Switch {
@@ -269,7 +267,7 @@ func makeNodeInfo(sw *p2p.Switch, privKey acm.PrivKeyEd25519) *types.NodeInfo {
 	_, rpcPortStr, _ := net.SplitHostPort(rpcListenAddr)
 	rpcPort, err := strconv.Atoi(rpcPortStr)
 	if err != nil {
-		panic(Fmt("Expected numeric RPC.ListenAddr port but got %v", rpcPortStr))
+		PanicSanity(Fmt("Expected numeric RPC.ListenAddr port but got %v", rpcPortStr))
 	}
 
 	// We assume that the rpcListener has the same ExternalAddress.
@@ -299,7 +297,10 @@ func RunNode() {
 
 	// Run the RPC server.
 	if config.GetString("rpc_laddr") != "" {
-		n.StartRPC()
+		_, err := n.StartRPC()
+		if err != nil {
+			PanicCrisis(err)
+		}
 	}
 
 	// Sleep forever and then...

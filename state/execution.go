@@ -57,29 +57,28 @@ func execBlock(s *State, block *types.Block, blockPartsHeader types.PartSetHeade
 	}
 
 	// Update Validator.LastCommitHeight as necessary.
-	// If we panic in here, something has gone horribly wrong
 	for i, precommit := range block.LastValidation.Precommits {
 		if precommit == nil {
 			continue
 		}
 		_, val := s.LastBondedValidators.GetByIndex(i)
 		if val == nil {
-			panic(Fmt("Failed to fetch validator at index %v", i))
+			PanicCrisis(Fmt("Failed to fetch validator at index %v", i))
 		}
 		if _, val_ := s.BondedValidators.GetByAddress(val.Address); val_ != nil {
 			val_.LastCommitHeight = block.Height - 1
 			updated := s.BondedValidators.Update(val_)
 			if !updated {
-				panic("Failed to update bonded validator LastCommitHeight")
+				PanicCrisis("Failed to update bonded validator LastCommitHeight")
 			}
 		} else if _, val_ := s.UnbondingValidators.GetByAddress(val.Address); val_ != nil {
 			val_.LastCommitHeight = block.Height - 1
 			updated := s.UnbondingValidators.Update(val_)
 			if !updated {
-				panic("Failed to update unbonding validator LastCommitHeight")
+				PanicCrisis("Failed to update unbonding validator LastCommitHeight")
 			}
 		} else {
-			panic("Could not find validator")
+			PanicCrisis("Could not find validator")
 		}
 	}
 
@@ -213,11 +212,9 @@ func checkInputPubKey(acc *acm.Account, in *types.TxInput) error {
 func validateInputs(accounts map[string]*acm.Account, signBytes []byte, ins []*types.TxInput) (total int64, err error) {
 	for _, in := range ins {
 		acc := accounts[string(in.Address)]
-		// SANITY CHECK
 		if acc == nil {
-			panic("validateInputs() expects account in accounts")
+			PanicSanity("validateInputs() expects account in accounts")
 		}
-		// SANITY CHECK END
 		err = validateInput(acc, signBytes, in)
 		if err != nil {
 			return
@@ -266,14 +263,12 @@ func validateOutputs(outs []*types.TxOutput) (total int64, err error) {
 func adjustByInputs(accounts map[string]*acm.Account, ins []*types.TxInput) {
 	for _, in := range ins {
 		acc := accounts[string(in.Address)]
-		// SANITY CHECK
 		if acc == nil {
-			panic("adjustByInputs() expects account in accounts")
+			PanicSanity("adjustByInputs() expects account in accounts")
 		}
 		if acc.Balance < in.Amount {
-			panic("adjustByInputs() expects sufficient funds")
+			PanicSanity("adjustByInputs() expects sufficient funds")
 		}
-		// SANITY CHECK END
 		acc.Balance -= in.Amount
 		acc.Sequence += 1
 	}
@@ -282,11 +277,9 @@ func adjustByInputs(accounts map[string]*acm.Account, ins []*types.TxInput) {
 func adjustByOutputs(accounts map[string]*acm.Account, outs []*types.TxOutput) {
 	for _, out := range outs {
 		acc := accounts[string(out.Address)]
-		// SANITY CHECK
 		if acc == nil {
-			panic("adjustByOutputs() expects account in accounts")
+			PanicSanity("adjustByOutputs() expects account in accounts")
 		}
-		// SANITY CHECK END
 		acc.Balance += out.Amount
 	}
 }
@@ -701,8 +694,7 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 			Accum:       0,
 		})
 		if !added {
-			// SOMETHING HAS GONE HORRIBLY WRONG
-			panic("Failed to add validator")
+			PanicCrisis("Failed to add validator")
 		}
 		if evc != nil {
 			evc.FireEvent(types.EventStringBond(), tx)
@@ -802,9 +794,9 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 		return nil
 
 	default:
-		// SANITY CHECK (binary decoding should catch bad tx types
-		// before they get here
-		panic("Unknown Tx type")
+		// binary decoding should not let this happen
+		PanicSanity("Unknown Tx type")
+		return nil
 	}
 }
 
@@ -813,7 +805,7 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 // Get permission on an account or fall back to global value
 func HasPermission(state AccountGetter, acc *acm.Account, perm ptypes.PermFlag) bool {
 	if perm > ptypes.AllBasePermFlags {
-		panic("Checking an unknown permission in state should never happen")
+		PanicSanity("Checking an unknown permission in state should never happen")
 	}
 
 	if acc == nil {
@@ -826,7 +818,7 @@ func HasPermission(state AccountGetter, acc *acm.Account, perm ptypes.PermFlag) 
 	if _, ok := err.(ptypes.ErrValueNotSet); ok {
 		log.Info("Account does not have permission", "account", acc, "accPermissions", acc.Permissions, "perm", perm)
 		if state == nil {
-			panic("All known global permissions should be set!")
+			PanicSanity("All known global permissions should be set!")
 		}
 		log.Info("Querying GlobalPermissionsAddress")
 		return HasPermission(nil, state.GetAccount(ptypes.GlobalPermissionsAddress), perm)

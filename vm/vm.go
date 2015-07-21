@@ -141,7 +141,7 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value int64, gas
 			err := transfer(callee, caller, value)
 			if err != nil {
 				// data has been corrupted in ram
-				panic("Could not return value to caller")
+				PanicCrisis("Could not return value to caller")
 			}
 		}
 	}

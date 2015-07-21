@@ -40,7 +40,7 @@ func (pubKey PubKeyEd25519) Address() []byte {
 	w, n, err := new(bytes.Buffer), new(int64), new(error)
 	binary.WriteBinary(pubKey[:], w, n, err)
 	if *err != nil {
-		panic(*err)
+		PanicCrisis(*err)
 	}
 	// append type byte
 	encodedPubkey := append([]byte{1}, w.Bytes()...)

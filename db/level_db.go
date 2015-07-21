@@ -6,6 +6,8 @@ import (
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/syndtr/goleveldb/leveldb/errors"
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/syndtr/goleveldb/leveldb/opt"
 	"path"
+
+	. "github.com/tendermint/tendermint/common"
 )
 
 type LevelDB struct {
@@ -28,7 +30,7 @@ func (db *LevelDB) Get(key []byte) []byte {
 		if err == errors.ErrNotFound {
 			return nil
 		} else {
-			panic(err)
+			PanicCrisis(err)
 		}
 	}
 	return res
@@ -37,28 +39,28 @@ func (db *LevelDB) Get(key []byte) []byte {
 func (db *LevelDB) Set(key []byte, value []byte) {
 	err := db.db.Put(key, value, nil)
 	if err != nil {
-		panic(err)
+		PanicCrisis(err)
 	}
 }
 
 func (db *LevelDB) SetSync(key []byte, value []byte) {
 	err := db.db.Put(key, value, &opt.WriteOptions{Sync: true})
 	if err != nil {
-		panic(err)
+		PanicCrisis(err)
 	}
 }
 
 func (db *LevelDB) Delete(key []byte) {
 	err := db.db.Delete(key, nil)
 	if err != nil {
-		panic(err)
+		PanicCrisis(err)
 	}
 }
 
 func (db *LevelDB) DeleteSync(key []byte) {
 	err := db.db.Delete(key, &opt.WriteOptions{Sync: true})
 	if err != nil {
-		panic(err)
+		PanicCrisis(err)
 	}
 }
 

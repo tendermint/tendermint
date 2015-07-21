@@ -39,11 +39,12 @@ func GetDB(name string) DB {
 	case DBBackendLevelDB:
 		db, err := NewLevelDB(path.Join(config.GetString("db_dir"), name+".db"))
 		if err != nil {
-			panic(err)
+			PanicCrisis(err)
 		}
 		dbs.Set(name, db)
 		return db
 	default:
-		panic(Fmt("Unknown DB backend: %v", config.GetString("db_backend")))
+		PanicSanity(Fmt("Unknown DB backend: %v", config.GetString("db_backend")))
 	}
+	return nil
 }

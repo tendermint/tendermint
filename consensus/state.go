@@ -330,11 +330,11 @@ func (cs *ConsensusState) reconstructLastCommit(state *sm.State) {
 		}
 		added, _, err := lastPrecommits.AddByIndex(idx, precommit)
 		if !added || err != nil {
-			panic(Fmt("Failed to reconstruct LastCommit: %v", err))
+			PanicCrisis(Fmt("Failed to reconstruct LastCommit: %v", err))
 		}
 	}
 	if !lastPrecommits.HasTwoThirdsMajority() {
-		panic("Failed to reconstruct LastCommit: Does not have +2/3 maj")
+		PanicSanity("Failed to reconstruct LastCommit: Does not have +2/3 maj")
 	}
 	cs.LastCommit = lastPrecommits
 }
@@ -383,18 +383,16 @@ func (cs *ConsensusState) scheduleRound0(height int) {
 // Updates ConsensusState and increments height to match that of state.
 // The round becomes 0 and cs.Step becomes RoundStepNewHeight.
 func (cs *ConsensusState) updateToState(state *sm.State, contiguous bool) {
-	// SANITY CHECK
 	if contiguous && 0 < cs.Height && cs.Height != state.LastBlockHeight {
-		panic(Fmt("updateToState() expected state height of %v but found %v",
+		PanicSanity(Fmt("updateToState() expected state height of %v but found %v",
 			cs.Height, state.LastBlockHeight))
 	}
 	if cs.state != nil && cs.state.LastBlockHeight+1 != cs.Height {
 		// This might happen when someone else is mutating cs.state.
 		// Someone forgot to pass in state.Copy() somewhere?!
-		panic(Fmt("Inconsistent cs.state.LastBlockHeight+1 %v vs cs.Height %v",
+		PanicSanity(Fmt("Inconsistent cs.state.LastBlockHeight+1 %v vs cs.Height %v",
 			cs.state.LastBlockHeight+1, cs.Height))
 	}
-	// END SANITY CHECK
 
 	// If state isn't further out than cs.state, just ignore.
 	// This happens when SwitchToConsensus() is called in the reactor.
@@ -410,7 +408,7 @@ func (cs *ConsensusState) updateToState(state *sm.State, contiguous bool) {
 	lastPrecommits := (*VoteSet)(nil)
 	if contiguous && cs.Votes != nil {
 		if !cs.Votes.Precommits(cs.Round).HasTwoThirdsMajority() {
-			panic("updateToState(state, true) called but last Precommit round didn't have +2/3")
+			PanicSanity("updateToState(state, true) called but last Precommit round didn't have +2/3")
 		}
 		lastPrecommits = cs.Votes.Precommits(cs.Round)
 	}
@@ -717,7 +715,7 @@ func (cs *ConsensusState) EnterPrevoteWait(height int, round int) {
 		return
 	}
 	if !cs.Votes.Prevotes(round).HasTwoThirdsAny() {
-		panic(Fmt("EnterPrevoteWait(%v/%v), but Prevotes does not have any +2/3 votes", height, round))
+		PanicSanity(Fmt("EnterPrevoteWait(%v/%v), but Prevotes does not have any +2/3 votes", height, round))
 	}
 	log.Info(Fmt("EnterPrevoteWait(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
@@ -801,7 +799,7 @@ func (cs *ConsensusState) EnterPrecommit(height int, round int) {
 		log.Info("EnterPrecommit: +2/3 prevoted proposal block.")
 		// Validate the block.
 		if err := cs.stageBlock(cs.ProposalBlock, cs.ProposalBlockParts); err != nil {
-			panic(Fmt("EnterPrecommit: +2/3 prevoted for an invalid block: %v", err))
+			PanicConsensus(Fmt("EnterPrecommit: +2/3 prevoted for an invalid block: %v", err))
 		}
 		cs.LockedRound = round
 		cs.LockedBlock = cs.ProposalBlock
@@ -814,7 +812,7 @@ func (cs *ConsensusState) EnterPrecommit(height int, round int) {
 	// Unlock and precommit nil.
 	// The +2/3 prevotes for this round is the POL for our unlock.
 	if cs.Votes.POLRound() < round {
-		panic(Fmt("This POLRound shold be %v but got %", round, cs.Votes.POLRound()))
+		PanicSanity(Fmt("This POLRound shold be %v but got %", round, cs.Votes.POLRound()))
 	}
 	cs.LockedRound = 0
 	cs.LockedBlock = nil
@@ -836,7 +834,7 @@ func (cs *ConsensusState) EnterPrecommitWait(height int, round int) {
 		return
 	}
 	if !cs.Votes.Precommits(round).HasTwoThirdsAny() {
-		panic(Fmt("EnterPrecommitWait(%v/%v), but Precommits does not have any +2/3 votes", height, round))
+		PanicSanity(Fmt("EnterPrecommitWait(%v/%v), but Precommits does not have any +2/3 votes", height, round))
 	}
 	log.Info(Fmt("EnterPrecommitWait(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
@@ -876,12 +874,10 @@ func (cs *ConsensusState) EnterCommit(height int) {
 		cs.tryFinalizeCommit(height)
 	}()
 
-	// SANITY CHECK
 	hash, partsHeader, ok := cs.Votes.Precommits(cs.Round).TwoThirdsMajority()
 	if !ok {
-		panic("RunActionCommit() expects +2/3 precommits")
+		PanicSanity("RunActionCommit() expects +2/3 precommits")
 	}
-	// END SANITY CHECK
 
 	// The Locked* fields no longer matter.
 	// Move them over to ProposalBlock if they match the commit hash,
@@ -913,11 +909,9 @@ func (cs *ConsensusState) EnterCommit(height int) {
 
 // If we have the block AND +2/3 commits for it, finalize.
 func (cs *ConsensusState) tryFinalizeCommit(height int) {
-	// SANITY CHECK
 	if cs.Height != height {
-		panic(Fmt("tryFinalizeCommit() cs.Height: %v vs height: %v", cs.Height, height))
+		PanicSanity(Fmt("tryFinalizeCommit() cs.Height: %v vs height: %v", cs.Height, height))
 	}
-	// END SANITY CHECK
 
 	hash, _, ok := cs.Votes.Precommits(cs.Round).TwoThirdsMajority()
 	if !ok || len(hash) == 0 {
@@ -941,20 +935,18 @@ func (cs *ConsensusState) FinalizeCommit(height int) {
 
 	hash, header, ok := cs.Votes.Precommits(cs.Round).TwoThirdsMajority()
 
-	// SANITY CHECK
 	if !ok {
-		panic(Fmt("Cannot FinalizeCommit, commit does not have two thirds majority"))
+		PanicSanity(Fmt("Cannot FinalizeCommit, commit does not have two thirds majority"))
 	}
 	if !cs.ProposalBlockParts.HasHeader(header) {
-		panic(Fmt("Expected ProposalBlockParts header to be commit header"))
+		PanicSanity(Fmt("Expected ProposalBlockParts header to be commit header"))
 	}
 	if !cs.ProposalBlock.HashesTo(hash) {
-		panic(Fmt("Cannot FinalizeCommit, ProposalBlock does not hash to commit hash"))
+		PanicSanity(Fmt("Cannot FinalizeCommit, ProposalBlock does not hash to commit hash"))
 	}
 	if err := cs.stageBlock(cs.ProposalBlock, cs.ProposalBlockParts); err != nil {
-		panic(Fmt("+2/3 committed an invalid block: %v", err))
+		PanicConsensus(Fmt("+2/3 committed an invalid block: %v", err))
 	}
-	// END SANITY CHECK
 
 	log.Info(Fmt("Finalizing commit of block: %v", cs.ProposalBlock))
 	// We have the block, so stage/save/commit-vote.
@@ -1132,7 +1124,7 @@ func (cs *ConsensusState) addVote(address []byte, vote *types.Vote, peerKey stri
 					}()
 				}
 			default:
-				panic(Fmt("Unexpected vote type %X", vote.Type)) // Should not happen.
+				PanicSanity(Fmt("Unexpected vote type %X", vote.Type)) // Should not happen.
 			}
 		}
 		// Either duplicate, or error upon cs.Votes.AddByAddress()
@@ -1146,7 +1138,7 @@ func (cs *ConsensusState) addVote(address []byte, vote *types.Vote, peerKey stri
 
 func (cs *ConsensusState) stageBlock(block *types.Block, blockParts *types.PartSet) error {
 	if block == nil {
-		panic("Cannot stage nil block")
+		PanicSanity("Cannot stage nil block")
 	}
 
 	// Already staged?
@@ -1200,7 +1192,7 @@ func (cs *ConsensusState) saveBlock(block *types.Block, blockParts *types.PartSe
 
 	// The proposal must be valid.
 	if err := cs.stageBlock(block, blockParts); err != nil {
-		panic(Fmt("saveBlock() an invalid block: %v", err))
+		PanicSanity(Fmt("saveBlock() an invalid block: %v", err))
 	}
 
 	// Save to blockStore.

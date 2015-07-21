@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"github.com/tendermint/tendermint/binary"
+	. "github.com/tendermint/tendermint/common"
 )
 
 // Node
@@ -50,15 +51,12 @@ func ReadIAVLNode(t *IAVLTree, r io.Reader, n *int64, err *error) *IAVLNode {
 		node.leftHash = binary.ReadByteSlice(r, n, err)
 		node.rightHash = binary.ReadByteSlice(r, n, err)
 	}
-	if *err != nil {
-		panic(*err)
-	}
 	return node
 }
 
 func (node *IAVLNode) _copy() *IAVLNode {
 	if node.height == 0 {
-		panic("Why are you copying a value node?")
+		PanicSanity("Why are you copying a value node?")
 	}
 	return &IAVLNode{
 		key:       node.key,
@@ -112,7 +110,8 @@ func (node *IAVLNode) getByIndex(t *IAVLTree, index int) (key interface{}, value
 		if index == 0 {
 			return node.key, node.value
 		} else {
-			panic("getByIndex asked for invalid index")
+			PanicSanity("getByIndex asked for invalid index")
+			return nil, nil
 		}
 	} else {
 		// TODO: could improve this by storing the
@@ -136,7 +135,7 @@ func (node *IAVLNode) hashWithCount(t *IAVLTree) ([]byte, int) {
 	buf := new(bytes.Buffer)
 	_, hashCount, err := node.writeHashBytes(t, buf)
 	if err != nil {
-		panic(err)
+		PanicCrisis(err)
 	}
 	// fmt.Printf("Wrote IAVL hash bytes: %X\n", buf.Bytes())
 	hasher.Write(buf.Bytes())
@@ -165,7 +164,7 @@ func (node *IAVLNode) writeHashBytes(t *IAVLTree, w io.Writer) (n int64, hashCou
 			hashCount += leftCount
 		}
 		if node.leftHash == nil {
-			panic("node.leftHash was nil in writeHashBytes")
+			PanicSanity("node.leftHash was nil in writeHashBytes")
 		}
 		binary.WriteByteSlice(node.leftHash, w, &n, &err)
 		// right
@@ -175,7 +174,7 @@ func (node *IAVLNode) writeHashBytes(t *IAVLTree, w io.Writer) (n int64, hashCou
 			hashCount += rightCount
 		}
 		if node.rightHash == nil {
-			panic("node.rightHash was nil in writeHashBytes")
+			PanicSanity("node.rightHash was nil in writeHashBytes")
 		}
 		binary.WriteByteSlice(node.rightHash, w, &n, &err)
 	}
@@ -221,12 +220,12 @@ func (node *IAVLNode) writePersistBytes(t *IAVLTree, w io.Writer) (n int64, err 
 	} else {
 		// left
 		if node.leftHash == nil {
-			panic("node.leftHash was nil in writePersistBytes")
+			PanicSanity("node.leftHash was nil in writePersistBytes")
 		}
 		binary.WriteByteSlice(node.leftHash, w, &n, &err)
 		// right
 		if node.rightHash == nil {
-			panic("node.rightHash was nil in writePersistBytes")
+			PanicSanity("node.rightHash was nil in writePersistBytes")
 		}
 		binary.WriteByteSlice(node.rightHash, w, &n, &err)
 	}

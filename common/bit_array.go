@@ -209,7 +209,7 @@ func (bA *BitArray) PickRandom() (int, bool) {
 						return 64*elemIdx + bitIdx, true
 					}
 				}
-				panic("should not happen")
+				PanicSanity("should not happen")
 			}
 		} else {
 			// Special case for last elem, to ignore straggler bits

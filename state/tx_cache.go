@@ -42,23 +42,19 @@ func (cache *TxCache) GetAccount(addr Word256) *vm.Account {
 
 func (cache *TxCache) UpdateAccount(acc *vm.Account) {
 	addr := acc.Address
-	// SANITY CHECK
 	_, removed := vmUnpack(cache.accounts[addr])
 	if removed {
-		panic("UpdateAccount on a removed account")
+		PanicSanity("UpdateAccount on a removed account")
 	}
-	// SANITY CHECK END
 	cache.accounts[addr] = vmAccountInfo{acc, false}
 }
 
 func (cache *TxCache) RemoveAccount(acc *vm.Account) {
 	addr := acc.Address
-	// SANITY CHECK
 	_, removed := vmUnpack(cache.accounts[addr])
 	if removed {
-		panic("RemoveAccount on a removed account")
+		PanicSanity("RemoveAccount on a removed account")
 	}
-	// SANITY CHECK END
 	cache.accounts[addr] = vmAccountInfo{acc, true}
 }
 
@@ -86,8 +82,9 @@ func (cache *TxCache) CreateAccount(creator *vm.Account) *vm.Account {
 		cache.accounts[addr] = vmAccountInfo{account, false}
 		return account
 	} else {
-		// NONCE HANDLING SANITY CHECK OR SHA3 IS BROKEN
-		panic(Fmt("Could not create account, address already exists: %X", addr))
+		// either we've messed up nonce handling, or sha3 is broken
+		PanicSanity(Fmt("Could not create account, address already exists: %X", addr))
+		return nil
 	}
 }
 
@@ -108,12 +105,10 @@ func (cache *TxCache) GetStorage(addr Word256, key Word256) Word256 {
 
 // NOTE: Set value to zero to removed from the trie.
 func (cache *TxCache) SetStorage(addr Word256, key Word256, value Word256) {
-	// SANITY CHECK
 	_, removed := vmUnpack(cache.accounts[addr])
 	if removed {
-		panic("SetStorage() on a removed account")
+		PanicSanity("SetStorage() on a removed account")
 	}
-	// SANITY CHECK END
 	cache.storages[Tuple256{addr, key}] = value
 }
 

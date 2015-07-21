@@ -5,6 +5,8 @@ import (
 	"errors"
 	"io"
 	"reflect"
+
+	. "github.com/tendermint/tendermint/common"
 )
 
 // TODO document and maybe make it configurable.
@@ -37,10 +39,10 @@ func ReadBinaryPtr(o interface{}, r io.Reader, n *int64, err *error) interface{}
 	rv, rt := reflect.ValueOf(o), reflect.TypeOf(o)
 	if rv.Kind() == reflect.Ptr {
 		readReflectBinary(rv.Elem(), rt.Elem(), Options{}, r, n, err)
-		return o
 	} else {
-		panic("ReadBinaryPtr expects o to be a pointer")
+		PanicSanity("ReadBinaryPtr expects o to be a pointer")
 	}
+	return o
 }
 
 func WriteBinary(o interface{}, w io.Writer, n *int64, err *error) {
@@ -93,10 +95,10 @@ func ReadJSONObjectPtr(o interface{}, object interface{}, err *error) interface{
 	rv, rt := reflect.ValueOf(o), reflect.TypeOf(o)
 	if rv.Kind() == reflect.Ptr {
 		readReflectJSON(rv.Elem(), rt.Elem(), object, err)
-		return o
 	} else {
-		panic("ReadJSON(Object)Ptr expects o to be a pointer")
+		PanicSanity("ReadJSON(Object)Ptr expects o to be a pointer")
 	}
+	return o
 }
 
 func WriteJSON(o interface{}, w io.Writer, n *int64, err *error) {

@@ -92,8 +92,7 @@ func (s *State) Save() {
 	binary.WriteByteSlice(s.validatorInfos.Hash(), buf, n, err)
 	binary.WriteByteSlice(s.nameReg.Hash(), buf, n, err)
 	if *err != nil {
-		// SOMETHING HAS GONE HORRIBLY WRONG
-		panic(*err)
+		PanicCrisis(*err)
 	}
 	s.DB.Set(stateKey, buf.Bytes())
 }
@@ -216,14 +215,12 @@ func (s *State) unbondValidator(val *Validator) {
 	// Move validator to UnbondingValidators
 	val, removed := s.BondedValidators.Remove(val.Address)
 	if !removed {
-		// SOMETHING HAS GONE HORRIBLY WRONG
-		panic("Couldn't remove validator for unbonding")
+		PanicCrisis("Couldn't remove validator for unbonding")
 	}
 	val.UnbondHeight = s.LastBlockHeight + 1
 	added := s.UnbondingValidators.Add(val)
 	if !added {
-		// SOMETHING HAS GONE HORRIBLY WRONG
-		panic("Couldn't add validator for unbonding")
+		PanicCrisis("Couldn't add validator for unbonding")
 	}
 }
 
@@ -231,35 +228,29 @@ func (s *State) rebondValidator(val *Validator) {
 	// Move validator to BondingValidators
 	val, removed := s.UnbondingValidators.Remove(val.Address)
 	if !removed {
-		// SOMETHING HAS GONE HORRIBLY WRONG
-		panic("Couldn't remove validator for rebonding")
+		PanicCrisis("Couldn't remove validator for rebonding")
 	}
 	val.BondHeight = s.LastBlockHeight + 1
 	added := s.BondedValidators.Add(val)
 	if !added {
-		// SOMETHING HAS GONE HORRIBLY WRONG
-		panic("Couldn't add validator for rebonding")
+		PanicCrisis("Couldn't add validator for rebonding")
 	}
 }
 
 func (s *State) releaseValidator(val *Validator) {
 	// Update validatorInfo
 	valInfo := s.GetValidatorInfo(val.Address)
-	// SANITY CHECK
 	if valInfo == nil {
-		panic("Couldn't find validatorInfo for release")
+		PanicSanity("Couldn't find validatorInfo for release")
 	}
-	// SANITY CHECK END
 	valInfo.ReleasedHeight = s.LastBlockHeight + 1
 	s.SetValidatorInfo(valInfo)
 
 	// Send coins back to UnbondTo outputs
 	accounts, err := getOrMakeOutputs(s, nil, valInfo.UnbondTo)
-	// SANITY CHECK
 	if err != nil {
-		panic("Couldn't get or make unbondTo accounts")
+		PanicSanity("Couldn't get or make unbondTo accounts")
 	}
-	// SANITY CHECK END
 	adjustByOutputs(accounts, valInfo.UnbondTo)
 	for _, acc := range accounts {
 		s.UpdateAccount(acc)
@@ -268,19 +259,16 @@ func (s *State) releaseValidator(val *Validator) {
 	// Remove validator from UnbondingValidators
 	_, removed := s.UnbondingValidators.Remove(val.Address)
 	if !removed {
-		// SOMETHING HAS GONE HORRIBLY WRONG
-		panic("Couldn't remove validator for release")
+		PanicCrisis("Couldn't remove validator for release")
 	}
 }
 
 func (s *State) destroyValidator(val *Validator) {
 	// Update validatorInfo
 	valInfo := s.GetValidatorInfo(val.Address)
-	// SANITY CHECK
 	if valInfo == nil {
-		panic("Couldn't find validatorInfo for release")
+		PanicSanity("Couldn't find validatorInfo for release")
 	}
-	// SANITY CHECK END
 	valInfo.DestroyedHeight = s.LastBlockHeight + 1
 	valInfo.DestroyedAmount = val.VotingPower
 	s.SetValidatorInfo(valInfo)
@@ -290,8 +278,7 @@ func (s *State) destroyValidator(val *Validator) {
 	if !removed {
 		_, removed := s.UnbondingValidators.Remove(val.Address)
 		if !removed {
-			// SOMETHING HAS GONE HORRIBLY WRONG
-			panic("Couldn't remove validator for destruction")
+			PanicCrisis("Couldn't remove validator for destruction")
 		}
 	}
 

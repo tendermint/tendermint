@@ -18,7 +18,7 @@ import (
 func Tempfile(prefix string) (*os.File, string) {
 	file, err := ioutil.TempFile("", prefix)
 	if err != nil {
-		panic(err)
+		PanicCrisis(err)
 	}
 	return file, file.Name()
 }

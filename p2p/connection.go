@@ -420,7 +420,7 @@ FOR_LOOP:
 			}
 			channel, ok := c.channelsIdx[pkt.ChannelId]
 			if !ok || channel == nil {
-				panic(Fmt("Unknown channel %X", pkt.ChannelId))
+				PanicQ(Fmt("Unknown channel %X", pkt.ChannelId))
 			}
 			msgBytes, err := channel.recvMsgPacket(pkt)
 			if err != nil {
@@ -435,7 +435,7 @@ FOR_LOOP:
 				c.onReceive(pkt.ChannelId, msgBytes)
 			}
 		default:
-			panic(Fmt("Unknown message type %X", pktType))
+			PanicSanity(Fmt("Unknown message type %X", pktType))
 		}
 
 		// TODO: shouldn't this go in the sendRoutine?
@@ -485,7 +485,7 @@ type Channel struct {
 func newChannel(conn *MConnection, desc *ChannelDescriptor) *Channel {
 	desc.FillDefaults()
 	if desc.Priority <= 0 {
-		panic("Channel default priority must be a postive integer")
+		PanicSanity("Channel default priority must be a postive integer")
 	}
 	return &Channel{
 		conn:      conn,

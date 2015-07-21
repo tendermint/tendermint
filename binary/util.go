@@ -4,15 +4,15 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/code.google.com/p/go.crypto/ripemd160"
-)
 
-// THESE PANICS ARE SANITY CHECKS
+	. "github.com/tendermint/tendermint/common"
+)
 
 func BinaryBytes(o interface{}) []byte {
 	w, n, err := new(bytes.Buffer), new(int64), new(error)
 	WriteBinary(o, w, n, err)
 	if *err != nil {
-		panic(*err)
+		PanicSanity(*err)
 	}
 	return w.Bytes()
 }
@@ -21,7 +21,7 @@ func JSONBytes(o interface{}) []byte {
 	w, n, err := new(bytes.Buffer), new(int64), new(error)
 	WriteJSON(o, w, n, err)
 	if *err != nil {
-		panic(*err)
+		PanicSanity(*err)
 	}
 	return w.Bytes()
 }
@@ -45,7 +45,7 @@ func BinarySha256(o interface{}) []byte {
 	hasher, n, err := sha256.New(), new(int64), new(error)
 	WriteBinary(o, hasher, n, err)
 	if *err != nil {
-		panic(*err)
+		PanicSanity(*err)
 	}
 	return hasher.Sum(nil)
 }
@@ -55,7 +55,7 @@ func BinaryRipemd160(o interface{}) []byte {
 	hasher, n, err := ripemd160.New(), new(int64), new(error)
 	WriteBinary(o, hasher, n, err)
 	if *err != nil {
-		panic(*err)
+		PanicSanity(*err)
 	}
 	return hasher.Sum(nil)
 }

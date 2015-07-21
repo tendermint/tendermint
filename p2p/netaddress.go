@@ -9,6 +9,8 @@ import (
 	"net"
 	"strconv"
 	"time"
+
+	. "github.com/tendermint/tendermint/common"
 )
 
 type NetAddress struct {
@@ -21,7 +23,7 @@ type NetAddress struct {
 func NewNetAddress(addr net.Addr) *NetAddress {
 	tcpAddr, ok := addr.(*net.TCPAddr)
 	if !ok {
-		panic(fmt.Sprintf("Only TCPAddrs are supported. Got: %v", addr))
+		PanicSanity(fmt.Sprintf("Only TCPAddrs are supported. Got: %v", addr))
 	}
 	ip := tcpAddr.IP
 	port := uint16(tcpAddr.Port)
@@ -32,21 +34,21 @@ func NewNetAddress(addr net.Addr) *NetAddress {
 func NewNetAddressString(addr string) *NetAddress {
 	host, portStr, err := net.SplitHostPort(addr)
 	if err != nil {
-		panic(err)
+		PanicSanity(err)
 	}
 	ip := net.ParseIP(host)
 	if ip == nil {
 		if len(host) > 0 {
 			ips, err := net.LookupIP(host)
 			if err != nil {
-				panic(err)
+				PanicSanity(err)
 			}
 			ip = ips[0]
 		}
 	}
 	port, err := strconv.ParseUint(portStr, 10, 16)
 	if err != nil {
-		panic(err)
+		PanicSanity(err)
 	}
 	na := NewNetAddressIPPort(ip, uint16(port))
 	return na
@@ -76,7 +78,8 @@ func (na *NetAddress) Less(other interface{}) bool {
 	if o, ok := other.(*NetAddress); ok {
 		return na.String() < o.String()
 	} else {
-		panic("Cannot compare unequal types")
+		PanicSanity("Cannot compare unequal types")
+		return false
 	}
 }
 
