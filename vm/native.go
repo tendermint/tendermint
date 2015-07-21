@@ -11,6 +11,11 @@ import (
 var nativeContracts = make(map[Word256]NativeContract)
 
 func init() {
+	registerNativeContracts()
+	registerSNativeContracts()
+}
+
+func registerNativeContracts() {
 	nativeContracts[Int64ToWord256(1)] = ecrecoverFunc
 	nativeContracts[Int64ToWord256(2)] = sha256Func
 	nativeContracts[Int64ToWord256(3)] = ripemd160Func

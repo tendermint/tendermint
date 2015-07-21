@@ -424,8 +424,8 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 
 				if outAcc == nil || len(outAcc.Code) == 0 {
 					// check if its an snative
-					trimmedAddr := TrimmedString(tx.Address)
-					if _, unknownPermErr := ptypes.SNativeStringToPermFlag(string(trimmedAddr)); unknownPermErr == nil {
+					// TODO: should we restrict from calling natives too?
+					if _, ok := vm.RegisteredSNativeContracts[LeftPadWord256(tx.Address)]; ok {
 						return fmt.Errorf("SNatives can not be called using CallTx. Either use a contract or a SNativeTx")
 					}
 

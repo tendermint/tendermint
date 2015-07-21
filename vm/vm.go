@@ -110,17 +110,17 @@ func (vm *VM) fireEvent(exception *string, output *[]byte, caller, callee *Accou
 
 // call an snative contract (includes event processing)
 // addr and permFlag refer to the same snative's address and it's permFlag
-func (vm *VM) callSNative(addr Word256, permFlag ptypes.PermFlag, caller *Account, input []byte, value int64, gas *int64) (ret []byte, err error) {
+func (vm *VM) callSNative(addr Word256, snInfo *snativeInfo, caller *Account, input []byte) (ret []byte, err error) {
 	exception := new(string)
 	// fire the post call event (including exception if applicable)
+	value, gas := int64(0), new(int64)
 	defer vm.fireEvent(exception, &ret, caller, &Account{Address: addr}, input, value, gas)
 
-	if !HasPermission(vm.appState, caller, permFlag) {
+	if !HasPermission(vm.appState, caller, snInfo.PermFlag) {
 		err = ErrInvalidPermission{caller.Address, addr.TrimmedString()}
 		*exception = err.Error()
 		return
 	}
-	snInfo := getSNativeInfo(permFlag)
 	if len(input) != snInfo.NArgs*32 {
 		err = snInfo.ArgsError
 		*exception = err.Error()
@@ -780,6 +780,8 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 			if nativeContract := nativeContracts[addr]; nativeContract != nil {
 				// Native contract
 				ret, err = nativeContract(args, &gasLimit)
+			} else if snInfo, ok := RegisteredSNativeContracts[addr]; ok {
+				ret, err = vm.callSNative(addr, snInfo, callee, input)
 			} else {
 				// EVM contract
 				if ok = useGas(gas, GasGetAccount); !ok {
@@ -797,23 +799,14 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 					ret, err = vm.Call(callee, callee, acc.Code, args, value, gas)
 				} else {
 					if acc == nil {
-						// nil account means either the address is the name of an snative,
-						// or we're sending funds to a new account
-
-						// trim  the 0s off the address and check if its known
-						trimmedAddr := addr.TrimmedString()
-						if permFlag, unknownPermErr := ptypes.SNativeStringToPermFlag(trimmedAddr); unknownPermErr == nil {
-							ret, err = vm.callSNative(addr, permFlag, callee, input, value, gas)
-						} else {
-							// if we have not seen the account before, create it
-							if !HasPermission(vm.appState, caller, ptypes.CreateAccount) {
-								return nil, ErrPermission{"create_account"}
-							}
-							acc = &Account{Address: addr}
-							vm.appState.UpdateAccount(acc)
-							// send funds to new account
-							ret, err = vm.Call(callee, acc, acc.Code, args, value, gas)
+						// nil account means we're sending funds to a new account
+						if !HasPermission(vm.appState, caller, ptypes.CreateAccount) {
+							return nil, ErrPermission{"create_account"}
 						}
+						acc = &Account{Address: addr}
+						vm.appState.UpdateAccount(acc)
+						// send funds to new account
+						ret, err = vm.Call(callee, acc, acc.Code, args, value, gas)
 					} else {
 						// call standard contract
 						ret, err = vm.Call(callee, acc, acc.Code, args, value, gas)

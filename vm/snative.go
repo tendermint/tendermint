@@ -22,8 +22,24 @@ type SNativeContract func(appState AppState, input []byte) (output []byte, err e
 //------------------------------------------------------------------------------------------------
 // Registered SNative contracts
 
+var RegisteredSNativeContracts = make(map[Word256]*snativeInfo)
+
+func registerSNativeContracts() {
+	RegisteredSNativeContracts[LeftPadWord256([]byte("HasBase"))] = getSNativeInfo("HasBase")
+	RegisteredSNativeContracts[LeftPadWord256([]byte("SetBase"))] = getSNativeInfo("SetBase")
+	RegisteredSNativeContracts[LeftPadWord256([]byte("UnsetBase"))] = getSNativeInfo("UnsetBase")
+	RegisteredSNativeContracts[LeftPadWord256([]byte("SetGlobal"))] = getSNativeInfo("SetGlobal")
+	RegisteredSNativeContracts[LeftPadWord256([]byte("HasRole"))] = getSNativeInfo("HasRole")
+	RegisteredSNativeContracts[LeftPadWord256([]byte("AddRole"))] = getSNativeInfo("AddRole")
+	RegisteredSNativeContracts[LeftPadWord256([]byte("RmRole"))] = getSNativeInfo("RmRole")
+}
+
 // sets the number of arguments, a friendly error message, and the snative function ("executable")
-func getSNativeInfo(permFlag ptypes.PermFlag) *snativeInfo {
+func getSNativeInfo(permString string) *snativeInfo {
+	permFlag, err := ptypes.SNativeStringToPermFlag(permString)
+	if err != nil {
+		PanicSanity(err)
+	}
 	si := &snativeInfo{PermFlag: permFlag}
 	var errS string
 	switch permFlag {
