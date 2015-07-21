@@ -46,7 +46,12 @@ func (t *ThrottleTimer) Set() {
 	}
 }
 
+// For ease of .Stop()'ing services before .Start()'ing them,
+// we ignore .Stop()'s on nil ThrottleTimers
 func (t *ThrottleTimer) Stop() bool {
+	if t == nil {
+		return false
+	}
 	close(t.quit)
 	return t.timer.Stop()
 }
