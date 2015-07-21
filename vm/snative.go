@@ -15,9 +15,9 @@ type snativeInfo struct {
 }
 
 // Takes an appState so it can lookup/update accounts,
-// an account to check for permission to access the snative contract
-// and some input bytes (presumably 32byte words)
-type SNativeContract func(appState AppState, acc *Account, input []byte) (output []byte, err error)
+// and an input byte array containing at least one Word256
+// TODO: ABI
+type SNativeContract func(appState AppState, input []byte) (output []byte, err error)
 
 //------------------------------------------------------------------------------------------------
 // Registered SNative contracts
@@ -28,15 +28,13 @@ func getSNativeInfo(permFlag ptypes.PermFlag) *snativeInfo {
 	var errS string
 	switch permFlag {
 	case ptypes.HasBase:
-		si.NArgs, errS, si.Executable = 2, "hasBasePerm() takes two arguments (address, permission number)", hasBasePerm
+		si.NArgs, errS, si.Executable = 2, "hasBase() takes two arguments (address, permFlag)", hasBasePerm
 	case ptypes.SetBase:
-		si.NArgs, errS, si.Executable = 3, "setBasePerm() takes three arguments (address, permission number, permission value)", setBasePerm
+		si.NArgs, errS, si.Executable = 3, "setBase() takes three arguments (address, permFlag, permission value)", setBasePerm
 	case ptypes.UnsetBase:
-		si.NArgs, errS, si.Executable = 2, "unsetBasePerm() takes two arguments (address, permission number)", unsetBasePerm
+		si.NArgs, errS, si.Executable = 2, "unsetBase() takes two arguments (address, permFlag)", unsetBasePerm
 	case ptypes.SetGlobal:
-		si.NArgs, errS, si.Executable = 2, "setGlobalPerm() takes two arguments (permission number, permission value)", setGlobalPerm
-	case ptypes.ClearBase:
-		//
+		si.NArgs, errS, si.Executable = 2, "setGlobal() takes two arguments (permFlag, permission value)", setGlobalPerm
 	case ptypes.HasRole:
 		si.NArgs, errS, si.Executable = 2, "hasRole() takes two arguments (address, role)", hasRole
 	case ptypes.AddRole:
@@ -56,7 +54,7 @@ func getSNativeInfo(permFlag ptypes.PermFlag) *snativeInfo {
 
 // TODO: catch errors, log em, return 0s to the vm (should some errors cause exceptions though?)
 
-func hasBasePerm(appState AppState, acc *Account, args []byte) (output []byte, err error) {
+func hasBasePerm(appState AppState, args []byte) (output []byte, err error) {
 	addr, permNum := returnTwoArgs(args)
 	vmAcc := appState.GetAccount(addr)
 	if vmAcc == nil {
@@ -76,7 +74,7 @@ func hasBasePerm(appState AppState, acc *Account, args []byte) (output []byte, e
 	return LeftPadWord256([]byte{permInt}).Bytes(), nil
 }
 
-func setBasePerm(appState AppState, acc *Account, args []byte) (output []byte, err error) {
+func setBasePerm(appState AppState, args []byte) (output []byte, err error) {
 	addr, permNum, perm := returnThreeArgs(args)
 	vmAcc := appState.GetAccount(addr)
 	if vmAcc == nil {
@@ -95,7 +93,7 @@ func setBasePerm(appState AppState, acc *Account, args []byte) (output []byte, e
 	return perm.Bytes(), nil
 }
 
-func unsetBasePerm(appState AppState, acc *Account, args []byte) (output []byte, err error) {
+func unsetBasePerm(appState AppState, args []byte) (output []byte, err error) {
 	addr, permNum := returnTwoArgs(args)
 	vmAcc := appState.GetAccount(addr)
 	if vmAcc == nil {
@@ -113,7 +111,7 @@ func unsetBasePerm(appState AppState, acc *Account, args []byte) (output []byte,
 	return permNum.Bytes(), nil
 }
 
-func setGlobalPerm(appState AppState, acc *Account, args []byte) (output []byte, err error) {
+func setGlobalPerm(appState AppState, args []byte) (output []byte, err error) {
 	permNum, perm := returnTwoArgs(args)
 	vmAcc := appState.GetAccount(ptypes.GlobalPermissionsAddress256)
 	if vmAcc == nil {
@@ -132,12 +130,7 @@ func setGlobalPerm(appState AppState, acc *Account, args []byte) (output []byte,
 	return perm.Bytes(), nil
 }
 
-// TODO: needs access to an iterator ...
-func clearPerm(appState AppState, acc *Account, args []byte) (output []byte, err error) {
-	return nil, nil
-}
-
-func hasRole(appState AppState, acc *Account, args []byte) (output []byte, err error) {
+func hasRole(appState AppState, args []byte) (output []byte, err error) {
 	addr, role := returnTwoArgs(args)
 	vmAcc := appState.GetAccount(addr)
 	if vmAcc == nil {
@@ -154,7 +147,7 @@ func hasRole(appState AppState, acc *Account, args []byte) (output []byte, err e
 	return LeftPadWord256([]byte{permInt}).Bytes(), nil
 }
 
-func addRole(appState AppState, acc *Account, args []byte) (output []byte, err error) {
+func addRole(appState AppState, args []byte) (output []byte, err error) {
 	addr, role := returnTwoArgs(args)
 	vmAcc := appState.GetAccount(addr)
 	if vmAcc == nil {
@@ -172,7 +165,7 @@ func addRole(appState AppState, acc *Account, args []byte) (output []byte, err e
 	return LeftPadWord256([]byte{permInt}).Bytes(), nil
 }
 
-func rmRole(appState AppState, acc *Account, args []byte) (output []byte, err error) {
+func rmRole(appState AppState, args []byte) (output []byte, err error) {
 	addr, role := returnTwoArgs(args)
 	vmAcc := appState.GetAccount(addr)
 	if vmAcc == nil {

@@ -127,7 +127,7 @@ func (vm *VM) callSNative(addr Word256, permFlag ptypes.PermFlag, caller *Accoun
 		return
 	}
 	// SNATIVE ACCESS
-	ret, err = snInfo.Executable(vm.appState, caller, input)
+	ret, err = snInfo.Executable(vm.appState, input)
 	// END SNATIVE ACCESS
 	if err != nil {
 		*exception = err.Error()

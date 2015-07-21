@@ -807,7 +807,7 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 		permFlag := tx.SNative.PermFlag()
 		// check permission
 		if !hasSNativePermission(blockCache, inAcc, permFlag) {
-			return fmt.Errorf("Account %X does not have permission to call snative %s (%b)", tx.Input.Address, tx.SNative, permFlag)
+			return fmt.Errorf("Account %X does not have permission to call snative %s (%b)", tx.Input.Address, ptypes.SNativePermFlagToString(permFlag), permFlag)
 		}
 
 		// pubKey should be present in either "inAcc" or "tx.Input"
@@ -843,11 +843,9 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 			err = permAcc.Permissions.Base.Unset(args.Permission)
 		case *ptypes.SetGlobalArgs:
 			if permAcc = blockCache.GetAccount(ptypes.GlobalPermissionsAddress); permAcc == nil {
-				// PanicSanity("can't find global permissions account")
+				PanicSanity("can't find global permissions account")
 			}
 			err = permAcc.Permissions.Base.Set(args.Permission, args.Value)
-		case *ptypes.ClearBaseArgs:
-			//
 		case *ptypes.HasRoleArgs:
 			return fmt.Errorf("HasRole is for contracts, not humans. Just look at the blockchain")
 		case *ptypes.AddRoleArgs:
@@ -865,7 +863,7 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 				return fmt.Errorf("Role (%s) does not exist for account %X", args.Role, args.Address)
 			}
 		default:
-			// PanicSanity("invalid snative")
+			PanicSanity(Fmt("invalid snative: %s", ptypes.SNativePermFlagToString(permFlag)))
 		}
 
 		// TODO: maybe we want to take funds on error and allow txs in that don't do anythingi?

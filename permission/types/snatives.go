@@ -14,18 +14,17 @@ const (
 	FirstSNativePermFlag PermFlag = 1 << 32
 )
 
-// we need to reset iota with no const block
+// we need to reset iota with new const block
 const (
 	// each snative has an associated permission flag
 	HasBase PermFlag = FirstSNativePermFlag << iota
 	SetBase
 	UnsetBase
 	SetGlobal
-	ClearBase
 	HasRole
 	AddRole
 	RmRole
-	NumSNativePermissions uint = 8 // NOTE adjust this too
+	NumSNativePermissions uint = 7 // NOTE adjust this too
 
 	TopSNativePermFlag  PermFlag = FirstSNativePermFlag << (NumSNativePermissions - 1)
 	AllSNativePermFlags PermFlag = (TopSNativePermFlag | (TopSNativePermFlag - 1)) &^ (FirstSNativePermFlag - 1)
@@ -34,9 +33,10 @@ const (
 //---------------------------------------------------------------------------------------------------
 // snative tx interface and argument encoding
 
-// SNatives are represented as an interface in the SNative tx,
-// so binary does the work of handling args and determining which snative we're calling
-// NOTE: we're definining an implicit map from registration bytes to perm flags
+// SNativesArgs are a registered interface in the SNativeTx,
+// so binary handles the arguments and each snative gets a type-byte
+// PermFlag() maps the type-byte to the permission
+// The account sending the SNativeTx must have this PermFlag set
 type SNativeArgs interface {
 	PermFlag() PermFlag
 }
@@ -46,10 +46,9 @@ const (
 	SNativeArgsTypeSetBase   = byte(0x02)
 	SNativeArgsTypeUnsetBase = byte(0x03)
 	SNativeArgsTypeSetGlobal = byte(0x04)
-	SNativeArgsTypeClearBase = byte(0x05)
-	SNativeArgsTypeHasRole   = byte(0x06)
-	SNativeArgsTypeAddRole   = byte(0x07)
-	SNativeArgsTypeRmRole    = byte(0x08)
+	SNativeArgsTypeHasRole   = byte(0x05)
+	SNativeArgsTypeAddRole   = byte(0x06)
+	SNativeArgsTypeRmRole    = byte(0x07)
 )
 
 // for binary.readReflect
@@ -59,7 +58,6 @@ var _ = binary.RegisterInterface(
 	binary.ConcreteType{&SetBaseArgs{}, SNativeArgsTypeSetBase},
 	binary.ConcreteType{&UnsetBaseArgs{}, SNativeArgsTypeUnsetBase},
 	binary.ConcreteType{&SetGlobalArgs{}, SNativeArgsTypeSetGlobal},
-	binary.ConcreteType{&ClearBaseArgs{}, SNativeArgsTypeClearBase},
 	binary.ConcreteType{&HasRoleArgs{}, SNativeArgsTypeHasRole},
 	binary.ConcreteType{&AddRoleArgs{}, SNativeArgsTypeAddRole},
 	binary.ConcreteType{&RmRoleArgs{}, SNativeArgsTypeRmRole},
@@ -102,14 +100,6 @@ func (*SetGlobalArgs) PermFlag() PermFlag {
 	return SetGlobal
 }
 
-type ClearBaseArgs struct {
-	//
-}
-
-func (*ClearBaseArgs) PermFlag() PermFlag {
-	return ClearBase
-}
-
 type HasRoleArgs struct {
 	Address []byte
 	Role    string
@@ -150,8 +140,6 @@ func SNativePermFlagToString(pF PermFlag) (perm string) {
 		perm = "UnsetBase"
 	case SetGlobal:
 		perm = "SetGlobal"
-	case ClearBase:
-		perm = "ClearBase"
 	case HasRole:
 		perm = "HasRole"
 	case AddRole:
@@ -174,8 +162,6 @@ func SNativeStringToPermFlag(perm string) (pF PermFlag, err error) {
 		pF = UnsetBase
 	case "SetGlobal":
 		pF = SetGlobal
-	case "ClearBase":
-		pF = ClearBase
 	case "HasRole":
 		pF = HasRole
 	case "AddRole":

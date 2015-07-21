@@ -836,6 +836,9 @@ func TestCreateAccountPermission(t *testing.T) {
 
 }
 
+// holla at my boy
+var DougAddress = append([]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, []byte("THISISDOUG")...)
+
 func TestSNativeCALL(t *testing.T) {
 	stateDB := dbm.GetDB("state")
 	genDoc := newBaseGenDoc(PermsAllFalse, PermsAllFalse)
@@ -851,7 +854,7 @@ func TestSNativeCALL(t *testing.T) {
 
 	// make the main contract once
 	doug := &acm.Account{
-		Address:     ptypes.DougAddress,
+		Address:     DougAddress,
 		Balance:     0,
 		Code:        nil,
 		Sequence:    0,
@@ -924,9 +927,6 @@ func TestSNativeCALL(t *testing.T) {
 		}
 		return nil
 	})
-
-	// ClearBase
-	// TODO
 
 	fmt.Println("\n#### HasRole")
 	// HasRole
@@ -1021,9 +1021,6 @@ func TestSNativeTx(t *testing.T) {
 	if v, _ := acc.Permissions.Base.Get(ptypes.CreateContract); !v {
 		t.Fatal("expected permission to be set true")
 	}
-
-	// ClearBase
-	// TODO
 
 	fmt.Println("\n#### AddRole")
 	// AddRole
@@ -1184,7 +1181,6 @@ func snativePermTestInputCALL(name string, user *acm.PrivAccount, perm ptypes.Pe
 	case "SetGlobal":
 		data = Uint64ToWord256(uint64(perm)).Bytes()
 		data = append(data, boolToWord256(val).Bytes()...)
-	case "ClearBase":
 	}
 	return
 }
@@ -1199,7 +1195,6 @@ func snativePermTestInputTx(name string, user *acm.PrivAccount, perm ptypes.Perm
 		snativeArgs = &ptypes.SetBaseArgs{user.Address, perm, val}
 	case "SetGlobal":
 		snativeArgs = &ptypes.SetGlobalArgs{perm, val}
-	case "ClearBase":
 	}
 	return
 }

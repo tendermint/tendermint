@@ -10,8 +10,6 @@ import (
 var (
 	GlobalPermissionsAddress    = Zero256[:20]
 	GlobalPermissionsAddress256 = Zero256
-	DougAddress                 = append([]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, []byte("THISISDOUG")...)
-	DougAddress256              = LeftPadWord256(DougAddress)
 )
 
 // A particular permission
@@ -154,6 +152,9 @@ func (aP *AccountPermissions) RmRole(role string) bool {
 }
 
 //--------------------------------------------------------------------------------
+// string utilities
+
+// CONTRACT: PermFlagToString functions assume the permFlag is valid, else return "#-UNKNOWN-#"
 func PermFlagToString(pf PermFlag) string {
 	if pf < FirstSNativePermFlag {
 		return BasePermFlagToString(pf)
@@ -178,6 +179,8 @@ func BasePermFlagToString(pf PermFlag) (perm string) {
 		perm = "bond"
 	case Name:
 		perm = "name"
+	default:
+		perm = "#-UNKNOWN-#"
 	}
 	return
 }
