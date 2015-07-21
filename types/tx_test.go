@@ -6,6 +6,7 @@ import (
 	acm "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
 	_ "github.com/tendermint/tendermint/config/tendermint_test"
+	ptypes "github.com/tendermint/tendermint/permission/types"
 )
 
 var chainID string
@@ -63,6 +64,26 @@ func TestCallTxSignable(t *testing.T) {
 	signBytes := acm.SignBytes(chainID, callTx)
 	signStr := string(signBytes)
 	expected := Fmt(`{"chain_id":"%s","tx":[2,{"address":"636F6E747261637431","data":"6461746131","fee":222,"gas_limit":111,"input":{"address":"696E70757431","amount":12345,"sequence":67890}}]}`,
+		config.GetString("chain_id"))
+	if signStr != expected {
+		t.Errorf("Got unexpected sign string for CallTx. Expected:\n%v\nGot:\n%v", expected, signStr)
+	}
+}
+
+func TestNameTxSignable(t *testing.T) {
+	nameTx := &NameTx{
+		Input: &TxInput{
+			Address:  []byte("input1"),
+			Amount:   12345,
+			Sequence: 250,
+		},
+		Name: "google.com",
+		Data: "secretly.not.google.com",
+		Fee:  1000,
+	}
+	signBytes := acm.SignBytes(chainID, nameTx)
+	signStr := string(signBytes)
+	expected := Fmt(`{"chain_id":"%s","tx":[3,{"data":"secretly.not.google.com","fee":1000,"input":{"address":"696E70757431","amount":12345,"sequence":250},"name":"google.com"}]}`,
 		config.GetString("chain_id"))
 	if signStr != expected {
 		t.Errorf("Got unexpected sign string for CallTx. Expected:\n%v\nGot:\n%v", expected, signStr)
@@ -133,5 +154,27 @@ func TestRebondTxSignable(t *testing.T) {
 		config.GetString("chain_id"))
 	if signStr != expected {
 		t.Errorf("Got unexpected sign string for RebondTx")
+	}
+}
+
+func TestSNativeTxSignable(t *testing.T) {
+	snativeTx := &SNativeTx{
+		Input: &TxInput{
+			Address:  []byte("input1"),
+			Amount:   12345,
+			Sequence: 250,
+		},
+		SNative: &ptypes.SetBaseArgs{
+			Address:    []byte("address1"),
+			Permission: 1,
+			Value:      true,
+		},
+	}
+	signBytes := acm.SignBytes(chainID, snativeTx)
+	signStr := string(signBytes)
+	expected := Fmt(`{"chain_id":"%s","tx":[32,{"args":"[2,{"address":"6164647265737331","permission":1,"value":true}]","input":{"address":"696E70757431","amount":12345,"sequence":250},"snative":"SetBase"}]}`,
+		config.GetString("chain_id"))
+	if signStr != expected {
+		t.Errorf("Got unexpected sign string for CallTx. Expected:\n%v\nGot:\n%v", expected, signStr)
 	}
 }

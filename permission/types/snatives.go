@@ -64,8 +64,8 @@ var _ = binary.RegisterInterface(
 )
 
 type HasBaseArgs struct {
-	Address    []byte
-	Permission PermFlag
+	Address    []byte   `json:"address"`
+	Permission PermFlag `json:"permission"`
 }
 
 func (*HasBaseArgs) PermFlag() PermFlag {
@@ -73,9 +73,9 @@ func (*HasBaseArgs) PermFlag() PermFlag {
 }
 
 type SetBaseArgs struct {
-	Address    []byte
-	Permission PermFlag
-	Value      bool
+	Address    []byte   `json:"address"`
+	Permission PermFlag `json:"permission"`
+	Value      bool     `json:"value"`
 }
 
 func (*SetBaseArgs) PermFlag() PermFlag {
@@ -83,8 +83,8 @@ func (*SetBaseArgs) PermFlag() PermFlag {
 }
 
 type UnsetBaseArgs struct {
-	Address    []byte
-	Permission PermFlag
+	Address    []byte   `json:"address"`
+	Permission PermFlag `json:"permission"`
 }
 
 func (*UnsetBaseArgs) PermFlag() PermFlag {
@@ -92,8 +92,8 @@ func (*UnsetBaseArgs) PermFlag() PermFlag {
 }
 
 type SetGlobalArgs struct {
-	Permission PermFlag
-	Value      bool
+	Permission PermFlag `json:"permission"`
+	Value      bool     `json:"value"`
 }
 
 func (*SetGlobalArgs) PermFlag() PermFlag {
@@ -101,8 +101,8 @@ func (*SetGlobalArgs) PermFlag() PermFlag {
 }
 
 type HasRoleArgs struct {
-	Address []byte
-	Role    string
+	Address []byte `json:"address"`
+	Role    string `json:"role"`
 }
 
 func (*HasRoleArgs) PermFlag() PermFlag {
@@ -110,8 +110,8 @@ func (*HasRoleArgs) PermFlag() PermFlag {
 }
 
 type AddRoleArgs struct {
-	Address []byte
-	Role    string
+	Address []byte `json:"address"`
+	Role    string `json:"role"`
 }
 
 func (*AddRoleArgs) PermFlag() PermFlag {
@@ -119,8 +119,8 @@ func (*AddRoleArgs) PermFlag() PermFlag {
 }
 
 type RmRoleArgs struct {
-	Address []byte
-	Role    string
+	Address []byte `json:"address"`
+	Role    string `json:"role"`
 }
 
 func (*RmRoleArgs) PermFlag() PermFlag {

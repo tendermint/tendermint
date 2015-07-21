@@ -328,13 +328,13 @@ type SNativeTx struct {
 	SNative ptypes.SNativeArgs `json:"snative"`
 }
 
-// TODO: check the tx.SNative encoding ...
 func (tx *SNativeTx) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
 	binary.WriteTo([]byte(Fmt(`{"chain_id":%s`, jsonEscape(chainID))), w, n, err)
-	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"args":%v`, TxTypeSNative, tx.SNative)), w, n, err)
-	binary.WriteTo([]byte(`,"input":`), w, n, err)
+	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"args":"`, TxTypeSNative)), w, n, err)
+	binary.WriteJSON(tx.SNative, w, n, err)
+	binary.WriteTo([]byte(`","input":`), w, n, err)
 	tx.Input.WriteSignBytes(w, n, err)
-	binary.WriteTo([]byte(Fmt(`,"snative":%s`, tx.SNative)), w, n, err)
+	binary.WriteTo([]byte(Fmt(`,"snative":%s`, jsonEscape(ptypes.PermFlagToString(tx.SNative.PermFlag())))), w, n, err)
 	binary.WriteTo([]byte(`}]}`), w, n, err)
 }
 
