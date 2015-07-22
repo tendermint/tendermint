@@ -134,8 +134,6 @@ func (cache *TxCache) Sync() {
 			cache.backend.UpdateAccount(toStateAccount(acc))
 		}
 	}
-
-	// TODO support logs, add them to the cache somehow.
 }
 
 func (cache *TxCache) AddLog(log *vm.Log) {

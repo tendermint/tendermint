@@ -23,6 +23,7 @@ func makeStorage(db dbm.DB, root []byte) merkle.Tree {
 	return storage
 }
 
+// The blockcache helps prevent unnecessary IAVLTree updates and garbage generation.
 type BlockCache struct {
 	db       dbm.DB
 	backend  *State
