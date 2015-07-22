@@ -182,8 +182,8 @@ func getStorage(t *testing.T, typ string, addr, key []byte) []byte {
 	return resp.Value
 }
 
-func callCode(t *testing.T, client cclient.Client, code, data, expected []byte) {
-	resp, err := client.CallCode(code, data)
+func callCode(t *testing.T, client cclient.Client, fromAddress, code, data, expected []byte) {
+	resp, err := client.CallCode(fromAddress, code, data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -194,8 +194,8 @@ func callCode(t *testing.T, client cclient.Client, code, data, expected []byte) 
 	}
 }
 
-func callContract(t *testing.T, client cclient.Client, address, data, expected []byte) {
-	resp, err := client.Call(address, data)
+func callContract(t *testing.T, client cclient.Client, fromAddress, toAddress, data, expected []byte) {
+	resp, err := client.Call(fromAddress, toAddress, data)
 	if err != nil {
 		t.Fatal(err)
 	}

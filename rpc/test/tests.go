@@ -139,13 +139,13 @@ func testCallCode(t *testing.T, typ string) {
 	code := []byte{0x60, 0x5, 0x60, 0x6, 0x1, 0x60, 0x0, 0x52, 0x60, 0x20, 0x60, 0x0, 0xf3}
 	data := []byte{}
 	expected := []byte{0xb}
-	callCode(t, client, code, data, expected)
+	callCode(t, client, user[0].PubKey.Address(), code, data, expected)
 
 	// pass two ints as calldata, add, and return the result
 	code = []byte{0x60, 0x0, 0x35, 0x60, 0x20, 0x35, 0x1, 0x60, 0x0, 0x52, 0x60, 0x20, 0x60, 0x0, 0xf3}
 	data = append(LeftPadWord256([]byte{0x5}).Bytes(), LeftPadWord256([]byte{0x6}).Bytes()...)
 	expected = []byte{0xb}
-	callCode(t, client, code, data, expected)
+	callCode(t, client, user[0].PubKey.Address(), code, data, expected)
 }
 
 func testCall(t *testing.T, typ string) {
@@ -183,7 +183,7 @@ func testCall(t *testing.T, typ string) {
 	// run a call through the contract
 	data := []byte{}
 	expected := []byte{0xb}
-	callContract(t, client, contractAddr, data, expected)
+	callContract(t, client, user[0].PubKey.Address(), contractAddr, data, expected)
 }
 
 func testNameReg(t *testing.T, typ string) {

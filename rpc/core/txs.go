@@ -25,15 +25,15 @@ func toVMAccount(acc *acm.Account) *vm.Account {
 
 // Run a contract's code on an isolated and unpersisted state
 // Cannot be used to create new contracts
-func Call(address, data []byte) (*ctypes.ResponseCall, error) {
+func Call(fromAddress, toAddress, data []byte) (*ctypes.ResponseCall, error) {
 	st := consensusState.GetState() // performs a copy
 	cache := state.NewBlockCache(st)
-	outAcc := cache.GetAccount(address)
+	outAcc := cache.GetAccount(toAddress)
 	if outAcc == nil {
-		return nil, fmt.Errorf("Account %x does not exist", address)
+		return nil, fmt.Errorf("Account %x does not exist", toAddress)
 	}
 	callee := toVMAccount(outAcc)
-	caller := &vm.Account{Address: Zero256}
+	caller := &vm.Account{Address: LeftPadWord256(fromAddress)}
 	txCache := state.NewTxCache(cache)
 	params := vm.Params{
 		BlockHeight: int64(st.LastBlockHeight),
@@ -53,12 +53,12 @@ func Call(address, data []byte) (*ctypes.ResponseCall, error) {
 
 // Run the given code on an isolated and unpersisted state
 // Cannot be used to create new contracts
-func CallCode(code, data []byte) (*ctypes.ResponseCall, error) {
+func CallCode(fromAddress, code, data []byte) (*ctypes.ResponseCall, error) {
 
 	st := consensusState.GetState() // performs a copy
 	cache := mempoolReactor.Mempool.GetCache()
-	callee := &vm.Account{Address: Zero256}
-	caller := &vm.Account{Address: Zero256}
+	callee := &vm.Account{Address: LeftPadWord256(fromAddress)}
+	caller := &vm.Account{Address: LeftPadWord256(fromAddress)}
 	txCache := state.NewTxCache(cache)
 	params := vm.Params{
 		BlockHeight: int64(st.LastBlockHeight),

@@ -17,8 +17,8 @@ import (
 type Client interface {
 	BlockchainInfo(minHeight int, maxHeight int) (*ctypes.ResponseBlockchainInfo, error)
 	BroadcastTx(tx types.Tx) (*ctypes.Receipt, error)
-	Call(address []byte, data []byte) (*ctypes.ResponseCall, error)
-	CallCode(code []byte, data []byte) (*ctypes.ResponseCall, error)
+	Call(fromAddress []byte, toAddress []byte, data []byte) (*ctypes.ResponseCall, error)
+	CallCode(fromAddress []byte, code []byte, data []byte) (*ctypes.ResponseCall, error)
 	DumpConsensusState() (*ctypes.ResponseDumpConsensusState, error)
 	DumpStorage(address []byte) (*ctypes.ResponseDumpStorage, error)
 	GenPrivAccount() (*acm.PrivAccount, error)
@@ -96,8 +96,8 @@ func (c *ClientHTTP) BroadcastTx(tx types.Tx) (*ctypes.Receipt, error) {
 	return response.Result, nil
 }
 
-func (c *ClientHTTP) Call(address []byte, data []byte) (*ctypes.ResponseCall, error) {
-	values, err := argsToURLValues([]string{"address", "data"}, address, data)
+func (c *ClientHTTP) Call(fromAddress []byte, toAddress []byte, data []byte) (*ctypes.ResponseCall, error) {
+	values, err := argsToURLValues([]string{"fromAddress", "toAddress", "data"}, fromAddress, toAddress, data)
 	if err != nil {
 		return nil, err
 	}
@@ -126,8 +126,8 @@ func (c *ClientHTTP) Call(address []byte, data []byte) (*ctypes.ResponseCall, er
 	return response.Result, nil
 }
 
-func (c *ClientHTTP) CallCode(code []byte, data []byte) (*ctypes.ResponseCall, error) {
-	values, err := argsToURLValues([]string{"code", "data"}, code, data)
+func (c *ClientHTTP) CallCode(fromAddress []byte, code []byte, data []byte) (*ctypes.ResponseCall, error) {
+	values, err := argsToURLValues([]string{"fromAddress", "code", "data"}, fromAddress, code, data)
 	if err != nil {
 		return nil, err
 	}
@@ -660,11 +660,11 @@ func (c *ClientJSON) BroadcastTx(tx types.Tx) (*ctypes.Receipt, error) {
 	return response.Result, nil
 }
 
-func (c *ClientJSON) Call(address []byte, data []byte) (*ctypes.ResponseCall, error) {
+func (c *ClientJSON) Call(fromAddress []byte, toAddress []byte, data []byte) (*ctypes.ResponseCall, error) {
 	request := rpctypes.RPCRequest{
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["Call"],
-		Params:  []interface{}{address, data},
+		Params:  []interface{}{fromAddress, toAddress, data},
 		Id:      0,
 	}
 	body, err := c.RequestResponse(request)
@@ -687,11 +687,11 @@ func (c *ClientJSON) Call(address []byte, data []byte) (*ctypes.ResponseCall, er
 	return response.Result, nil
 }
 
-func (c *ClientJSON) CallCode(code []byte, data []byte) (*ctypes.ResponseCall, error) {
+func (c *ClientJSON) CallCode(fromAddress []byte, code []byte, data []byte) (*ctypes.ResponseCall, error) {
 	request := rpctypes.RPCRequest{
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["CallCode"],
-		Params:  []interface{}{code, data},
+		Params:  []interface{}{fromAddress, code, data},
 		Id:      0,
 	}
 	body, err := c.RequestResponse(request)
