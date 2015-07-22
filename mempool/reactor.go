@@ -34,9 +34,9 @@ func NewMempoolReactor(mempool *Mempool) *MempoolReactor {
 	return memR
 }
 
-// func (memR *MempoolReactor) AfterStart() {}
+// func (memR *MempoolReactor) OnStart() { memR.BaseReactor.OnStart() }
 
-// func (memR *MempoolReactor) AfterStop() {}
+// func (memR *MempoolReactor) OnStop() { memR.BaseReactor.OnStop() }
 
 // Implements Reactor
 func (memR *MempoolReactor) GetChannels() []*p2p.ChannelDescriptor {

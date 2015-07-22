@@ -97,11 +97,13 @@ SKIP_UPNP:
 	return dl
 }
 
-func (l *DefaultListener) AfterStart() {
+func (l *DefaultListener) OnStart() {
+	l.BaseService.OnStart()
 	go l.listenRoutine()
 }
 
-func (l *DefaultListener) AfterStop() {
+func (l *DefaultListener) OnStop() {
+	l.BaseService.OnStop()
 	l.listener.Close()
 }
 

@@ -76,14 +76,16 @@ func NewBlockchainReactor(state *sm.State, store *BlockStore, sync bool) *Blockc
 	return bcR
 }
 
-func (bcR *BlockchainReactor) AfterStart() {
+func (bcR *BlockchainReactor) OnStart() {
+	bcR.BaseReactor.OnStart()
 	if bcR.sync {
 		bcR.pool.Start()
 		go bcR.poolRoutine()
 	}
 }
 
-func (bcR *BlockchainReactor) AfterStop() {
+func (bcR *BlockchainReactor) OnStop() {
+	bcR.BaseReactor.OnStop()
 	bcR.pool.Stop()
 }
 

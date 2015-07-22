@@ -153,7 +153,8 @@ func (sw *Switch) SetNodePrivKey(nodePrivKey acm.PrivKeyEd25519) {
 }
 
 // Switch.Start() starts all the reactors, peers, and listeners.
-func (sw *Switch) AfterStart() {
+func (sw *Switch) OnStart() {
+	sw.BaseService.OnStart()
 	// Start reactors
 	for _, reactor := range sw.reactors {
 		reactor.Start()
@@ -168,7 +169,8 @@ func (sw *Switch) AfterStart() {
 	}
 }
 
-func (sw *Switch) AfterStop() {
+func (sw *Switch) OnStop() {
+	sw.BaseService.OnStop()
 	// Stop listeners
 	for _, listener := range sw.listeners {
 		listener.Stop()

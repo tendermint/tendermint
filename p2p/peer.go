@@ -72,11 +72,13 @@ func newPeer(conn net.Conn, peerNodeInfo *types.NodeInfo, outbound bool, reactor
 	return p
 }
 
-func (p *Peer) AfterStart() {
+func (p *Peer) OnStart() {
+	p.BaseService.OnStart()
 	p.mconn.Start()
 }
 
-func (p *Peer) AfterStop() {
+func (p *Peer) OnStop() {
+	p.BaseService.OnStop()
 	p.mconn.Stop()
 }
 

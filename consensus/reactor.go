@@ -49,15 +49,17 @@ func NewConsensusReactor(consensusState *ConsensusState, blockStore *bc.BlockSto
 	return conR
 }
 
-func (conR *ConsensusReactor) AfterStart() {
+func (conR *ConsensusReactor) OnStart() {
 	log.Notice("ConsensusReactor ", "fastSync", conR.fastSync)
+	conR.BaseReactor.OnStart()
 	if !conR.fastSync {
 		conR.conS.Start()
 	}
 	go conR.broadcastNewRoundStepRoutine()
 }
 
-func (conR *ConsensusReactor) AfterStop() {
+func (conR *ConsensusReactor) OnStop() {
+	conR.BaseReactor.OnStop()
 	conR.conS.Stop()
 }
 

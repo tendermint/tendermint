@@ -68,12 +68,14 @@ func NewBlockPool(start int, requestsCh chan<- BlockRequest, timeoutsCh chan<- s
 	return bp
 }
 
-func (pool *BlockPool) AfterStart() {
+func (pool *BlockPool) OnStart() {
+	pool.BaseService.OnStart()
 	pool.repeater = NewRepeatTimer("", requestIntervalMS*time.Millisecond)
 	go pool.run()
 }
 
-func (pool *BlockPool) AfterStop() {
+func (pool *BlockPool) OnStop() {
+	pool.BaseService.OnStop()
 	pool.repeater.Stop()
 }
 

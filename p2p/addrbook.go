@@ -121,13 +121,15 @@ func (a *AddrBook) init() {
 	}
 }
 
-func (a *AddrBook) AfterStart() {
+func (a *AddrBook) OnStart() {
+	a.QuitService.OnStart()
 	a.loadFromFile(a.filePath)
 	a.wg.Add(1)
 	go a.saveRoutine()
 }
 
-func (a *AddrBook) AfterStop() {
+func (a *AddrBook) OnStop() {
+	a.QuitService.OnStop()
 	a.wg.Wait()
 }
 

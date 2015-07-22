@@ -127,7 +127,8 @@ func NewMConnection(conn net.Conn, chDescs []*ChannelDescriptor, onReceive recei
 	return mconn
 }
 
-func (c *MConnection) AfterStart() {
+func (c *MConnection) OnStart() {
+	c.BaseService.OnStart()
 	c.quit = make(chan struct{})
 	c.flushTimer = NewThrottleTimer("flush", flushThrottleMS*time.Millisecond)
 	c.pingTimer = NewRepeatTimer("ping", pingTimeoutSeconds*time.Second)
@@ -136,7 +137,8 @@ func (c *MConnection) AfterStart() {
 	go c.recvRoutine()
 }
 
-func (c *MConnection) AfterStop() {
+func (c *MConnection) OnStop() {
+	c.BaseService.OnStop()
 	c.flushTimer.Stop()
 	c.pingTimer.Stop()
 	c.chStatsTimer.Stop()

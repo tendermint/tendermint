@@ -360,12 +360,14 @@ func (cs *ConsensusState) NewStepCh() chan *RoundState {
 	return cs.newStepCh
 }
 
-func (cs *ConsensusState) AfterStart() {
+func (cs *ConsensusState) OnStart() {
+	cs.BaseService.OnStart()
 	cs.scheduleRound0(cs.Height)
 }
 
-func (cs *ConsensusState) AfterStop() {
+func (cs *ConsensusState) OnStop() {
 	// It's mostly asynchronous so, there's not much to stop.
+	cs.BaseService.OnStop()
 }
 
 // EnterNewRound(height, 0) at cs.StartTime.

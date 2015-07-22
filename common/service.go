@@ -2,7 +2,7 @@
 
 Classical-inheritance-style service declarations.
 Services can be started, then stopped.
-Users can override the AfterStart/AfterStop methods.
+Users can override the OnStart/OnStop methods.
 These methods are guaranteed to be called at most once.
 Caller must ensure that Start() and Stop() are not called concurrently.
 It is ok to call Stop() without calling Start() first.
@@ -19,16 +19,18 @@ func NewFooService() *FooService {
 	fs := &FooService{
 		// init
 	}
-	fs.BaseService = *BaseService(log, "FooService", fs)
+	fs.BaseService = *NewBaseService(log, "FooService", fs)
 	return fs
 }
 
-func (fs *FooService) AfterStart() {
+func (fs *FooService) OnStart() {
+	fs.BaseService.OnStart() // Always call the overridden method.
 	// initialize private fields
 	// start subroutines, etc.
 }
 
-func (fs *FooService) AfterStart() {
+func (fs *FooService) OnStop() {
+	fs.BaseService.OnStop() // Always call the overridden method.
 	// close/destroy private fields
 	// stop subroutines, etc.
 }
@@ -41,12 +43,10 @@ import "github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/tender
 
 type Service interface {
 	Start() bool
-	BeforeStart()
-	AfterStart()
+	OnStart()
 
 	Stop() bool
-	BeforeStop()
-	AfterStop()
+	OnStop()
 
 	IsRunning() bool
 
@@ -80,8 +80,7 @@ func (bs *BaseService) Start() bool {
 		} else {
 			bs.log.Notice(Fmt("Starting %v", bs.name), "impl", bs.impl)
 		}
-		bs.impl.BeforeStart()
-		bs.impl.AfterStart()
+		bs.impl.OnStart()
 		return true
 	} else {
 		bs.log.Info(Fmt("Not starting %v -- already started", bs.name), "impl", bs.impl)
@@ -90,17 +89,13 @@ func (bs *BaseService) Start() bool {
 }
 
 // Implements Service
-func (bs *BaseService) BeforeStart() {}
-
-// Implements Service
-func (bs *BaseService) AfterStart() {}
+func (bs *BaseService) OnStart() {}
 
 // Implements Service
 func (bs *BaseService) Stop() bool {
 	if atomic.CompareAndSwapUint32(&bs.stopped, 0, 1) {
 		bs.log.Notice(Fmt("Stopping %v", bs.name), "impl", bs.impl)
-		bs.impl.BeforeStop()
-		bs.impl.AfterStop()
+		bs.impl.OnStop()
 		return true
 	} else {
 		bs.log.Notice(Fmt("Not stopping %v", bs.name), "impl", bs.impl)
@@ -109,10 +104,7 @@ func (bs *BaseService) Stop() bool {
 }
 
 // Implements Service
-func (bs *BaseService) BeforeStop() {}
-
-// Implements Service
-func (bs *BaseService) AfterStop() {}
+func (bs *BaseService) OnStop() {}
 
 // Implements Service
 func (bs *BaseService) IsRunning() bool {
@@ -138,17 +130,12 @@ func NewQuitService(log log15.Logger, name string, impl Service) *QuitService {
 	}
 }
 
-// Init .Quit in BeforeStart such that AfterStart of impls have access to Quit.
-// NOTE: When overriding BeforeStart, call QuitService.BeforeStart() manually.
-func (qs *QuitService) BeforeStart() {
+// NOTE: when overriding OnStart, must call .QuitService.OnStart().
+func (qs *QuitService) OnStart() {
 	qs.Quit = make(chan struct{})
 }
 
-// Close .Quit after Stop/BeforeStop/AfterStop
-func (qs *QuitService) Stop() bool {
-	res := qs.BaseService.Stop()
-	if res {
-		close(qs.Quit)
-	}
-	return res
+// NOTE: when overriding OnStop, must call .QuitService.OnStop().
+func (qs *QuitService) OnStop() {
+	close(qs.Quit)
 }

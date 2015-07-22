@@ -241,14 +241,16 @@ func NewWSConnection(wsConn *websocket.Conn) *WSConnection {
 	return con
 }
 
-func (con *WSConnection) AfterStart() {
+func (con *WSConnection) OnStart() {
+	con.QuitService.OnStart()
 	// read subscriptions/unsubscriptions to events
 	go con.read()
 	// write responses
 	con.write()
 }
 
-func (con *WSConnection) AfterStop() {
+func (con *WSConnection) OnStop() {
+	con.QuitService.OnStop()
 	con.evsw.RemoveListener(con.id)
 	// the write loop closes the websocket connection
 	// when it exits its loop, and the read loop

@@ -41,11 +41,13 @@ func NewPEXReactor(book *AddrBook) *PEXReactor {
 	return pexR
 }
 
-func (pexR *PEXReactor) AfterStart() {
+func (pexR *PEXReactor) OnStart() {
+	pexR.BaseReactor.OnStart()
 	go pexR.ensurePeersRoutine()
 }
 
-func (pexR *PEXReactor) AfterStop() {
+func (pexR *PEXReactor) OnStop() {
+	pexR.BaseReactor.OnStop()
 }
 
 // Implements Reactor
