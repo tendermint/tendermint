@@ -7,36 +7,31 @@ import (
 	ptypes "github.com/tendermint/tendermint/permission/types"
 )
 
+// TODO: ABI
 //------------------------------------------------------------------------------------------------
 // Registered SNative contracts
 
-var RegisteredSNativeContracts = map[Word256]SNativeContract{
-	LeftPadWord256([]byte("hasBasePerm")):   hasBasePerm,
-	LeftPadWord256([]byte("setBasePerm")):   setBasePerm,
-	LeftPadWord256([]byte("unsetBasePerm")): unsetBasePerm,
-	LeftPadWord256([]byte("setGlobalPerm")): setGlobalPerm,
-	LeftPadWord256([]byte("hasRole")):       hasRole,
-	LeftPadWord256([]byte("addRole")):       addRole,
-	LeftPadWord256([]byte("rmRole")):        rmRole,
+func registerSNativeContracts() {
+	registeredNativeContracts[LeftPadWord256([]byte("has_base"))] = hasBasePerm
+	registeredNativeContracts[LeftPadWord256([]byte("set_base"))] = setBasePerm
+	registeredNativeContracts[LeftPadWord256([]byte("unset_base"))] = unsetBasePerm
+	registeredNativeContracts[LeftPadWord256([]byte("set_global"))] = setGlobalPerm
+	registeredNativeContracts[LeftPadWord256([]byte("has_role"))] = hasRole
+	registeredNativeContracts[LeftPadWord256([]byte("add_role"))] = addRole
+	registeredNativeContracts[LeftPadWord256([]byte("rm_role"))] = rmRole
 }
 
-// Takes an appState so it can lookup/update accounts,
-// an account to check for permission to access the snative contract
-// and some input bytes (presumably 32byte words)
-type SNativeContract func(appState AppState, acc *Account, input []byte) (output []byte, err error)
-
 //-----------------------------------------------------------------------------
-// snative are native contracts that can access and manipulate the chain state
-// (in particular the permissions values)
+// snative are native contracts that can access and modify an account's permissions
 
 // TODO: catch errors, log em, return 0s to the vm (should some errors cause exceptions though?)
 
-func hasBasePerm(appState AppState, acc *Account, args []byte) (output []byte, err error) {
-	if !HasPermission(appState, acc, ptypes.HasBasePerm) {
-		return nil, ErrInvalidPermission{acc.Address, "HasBasePerm"}
+func hasBasePerm(appState AppState, caller *Account, args []byte, gas *int64) (output []byte, err error) {
+	if !HasPermission(appState, caller, ptypes.HasBase) {
+		return nil, ErrInvalidPermission{caller.Address, "has_base"}
 	}
 	if len(args) != 2*32 {
-		return nil, fmt.Errorf("hasBasePerm() takes two arguments (address, permission number)")
+		return nil, fmt.Errorf("hasBasePerm() takes two arguments (address, permFlag)")
 	}
 	addr, permNum := returnTwoArgs(args)
 	vmAcc := appState.GetAccount(addr)
@@ -57,12 +52,12 @@ func hasBasePerm(appState AppState, acc *Account, args []byte) (output []byte, e
 	return LeftPadWord256([]byte{permInt}).Bytes(), nil
 }
 
-func setBasePerm(appState AppState, acc *Account, args []byte) (output []byte, err error) {
-	if !HasPermission(appState, acc, ptypes.SetBasePerm) {
-		return nil, ErrInvalidPermission{acc.Address, "SetBasePerm"}
+func setBasePerm(appState AppState, caller *Account, args []byte, gas *int64) (output []byte, err error) {
+	if !HasPermission(appState, caller, ptypes.SetBase) {
+		return nil, ErrInvalidPermission{caller.Address, "set_base"}
 	}
 	if len(args) != 3*32 {
-		return nil, fmt.Errorf("setBasePerm() takes three arguments (address, permission number, permission value)")
+		return nil, fmt.Errorf("setBase() takes three arguments (address, permFlag, permission value)")
 	}
 	addr, permNum, perm := returnThreeArgs(args)
 	vmAcc := appState.GetAccount(addr)
@@ -82,12 +77,12 @@ func setBasePerm(appState AppState, acc *Account, args []byte) (output []byte, e
 	return perm.Bytes(), nil
 }
 
-func unsetBasePerm(appState AppState, acc *Account, args []byte) (output []byte, err error) {
-	if !HasPermission(appState, acc, ptypes.UnsetBasePerm) {
-		return nil, ErrInvalidPermission{acc.Address, "UnsetBasePerm"}
+func unsetBasePerm(appState AppState, caller *Account, args []byte, gas *int64) (output []byte, err error) {
+	if !HasPermission(appState, caller, ptypes.UnsetBase) {
+		return nil, ErrInvalidPermission{caller.Address, "unset_base"}
 	}
 	if len(args) != 2*32 {
-		return nil, fmt.Errorf("unsetBasePerm() takes two arguments (address, permission number)")
+		return nil, fmt.Errorf("unsetBase() takes two arguments (address, permFlag)")
 	}
 	addr, permNum := returnTwoArgs(args)
 	vmAcc := appState.GetAccount(addr)
@@ -106,12 +101,12 @@ func unsetBasePerm(appState AppState, acc *Account, args []byte) (output []byte,
 	return permNum.Bytes(), nil
 }
 
-func setGlobalPerm(appState AppState, acc *Account, args []byte) (output []byte, err error) {
-	if !HasPermission(appState, acc, ptypes.SetGlobalPerm) {
-		return nil, ErrInvalidPermission{acc.Address, "SetGlobalPerm"}
+func setGlobalPerm(appState AppState, caller *Account, args []byte, gas *int64) (output []byte, err error) {
+	if !HasPermission(appState, caller, ptypes.SetGlobal) {
+		return nil, ErrInvalidPermission{caller.Address, "set_global"}
 	}
 	if len(args) != 2*32 {
-		return nil, fmt.Errorf("setGlobalPerm() takes two arguments (permission number, permission value)")
+		return nil, fmt.Errorf("setGlobal() takes two arguments (permFlag, permission value)")
 	}
 	permNum, perm := returnTwoArgs(args)
 	vmAcc := appState.GetAccount(ptypes.GlobalPermissionsAddress256)
@@ -131,17 +126,9 @@ func setGlobalPerm(appState AppState, acc *Account, args []byte) (output []byte,
 	return perm.Bytes(), nil
 }
 
-// TODO: needs access to an iterator ...
-func clearPerm(appState AppState, acc *Account, args []byte) (output []byte, err error) {
-	if !HasPermission(appState, acc, ptypes.ClearBasePerm) {
-		return nil, ErrInvalidPermission{acc.Address, "ClearPerm"}
-	}
-	return nil, nil
-}
-
-func hasRole(appState AppState, acc *Account, args []byte) (output []byte, err error) {
-	if !HasPermission(appState, acc, ptypes.HasRole) {
-		return nil, ErrInvalidPermission{acc.Address, "HasRole"}
+func hasRole(appState AppState, caller *Account, args []byte, gas *int64) (output []byte, err error) {
+	if !HasPermission(appState, caller, ptypes.HasRole) {
+		return nil, ErrInvalidPermission{caller.Address, "has_role"}
 	}
 	if len(args) != 2*32 {
 		return nil, fmt.Errorf("hasRole() takes two arguments (address, role)")
@@ -162,9 +149,9 @@ func hasRole(appState AppState, acc *Account, args []byte) (output []byte, err e
 	return LeftPadWord256([]byte{permInt}).Bytes(), nil
 }
 
-func addRole(appState AppState, acc *Account, args []byte) (output []byte, err error) {
-	if !HasPermission(appState, acc, ptypes.AddRole) {
-		return nil, ErrInvalidPermission{acc.Address, "AddRole"}
+func addRole(appState AppState, caller *Account, args []byte, gas *int64) (output []byte, err error) {
+	if !HasPermission(appState, caller, ptypes.AddRole) {
+		return nil, ErrInvalidPermission{caller.Address, "add_role"}
 	}
 	if len(args) != 2*32 {
 		return nil, fmt.Errorf("addRole() takes two arguments (address, role)")
@@ -186,9 +173,9 @@ func addRole(appState AppState, acc *Account, args []byte) (output []byte, err e
 	return LeftPadWord256([]byte{permInt}).Bytes(), nil
 }
 
-func rmRole(appState AppState, acc *Account, args []byte) (output []byte, err error) {
-	if !HasPermission(appState, acc, ptypes.RmRole) {
-		return nil, ErrInvalidPermission{acc.Address, "RmRole"}
+func rmRole(appState AppState, caller *Account, args []byte, gas *int64) (output []byte, err error) {
+	if !HasPermission(appState, caller, ptypes.RmRole) {
+		return nil, ErrInvalidPermission{caller.Address, "rm_role"}
 	}
 	if len(args) != 2*32 {
 		return nil, fmt.Errorf("rmRole() takes two arguments (address, role)")
@@ -224,36 +211,23 @@ func (e ErrInvalidPermission) Error() string {
 
 // Checks if a permission flag is valid (a known base chain or snative permission)
 func ValidPermN(n ptypes.PermFlag) bool {
-	if n > ptypes.TopBasePermFlag && n < ptypes.FirstSNativePermFlag {
-		return false
-	} else if n > ptypes.TopSNativePermFlag {
+	if n > ptypes.TopPermFlag {
 		return false
 	}
 	return true
 }
 
-// assumes length has already been checked
+// CONTRACT: length has already been checked
 func returnTwoArgs(args []byte) (a Word256, b Word256) {
 	copy(a[:], args[:32])
 	copy(b[:], args[32:64])
 	return
 }
 
-// assumes length has already been checked
+// CONTRACT: length has already been checked
 func returnThreeArgs(args []byte) (a Word256, b Word256, c Word256) {
 	copy(a[:], args[:32])
 	copy(b[:], args[32:64])
 	copy(c[:], args[64:96])
 	return
-}
-
-// mostly a convenience for testing
-var RegisteredSNativePermissions = map[Word256]ptypes.PermFlag{
-	LeftPadWord256([]byte("hasBasePerm")):   ptypes.HasBasePerm,
-	LeftPadWord256([]byte("setBasePerm")):   ptypes.SetBasePerm,
-	LeftPadWord256([]byte("unsetBasePerm")): ptypes.UnsetBasePerm,
-	LeftPadWord256([]byte("setGlobalPerm")): ptypes.SetGlobalPerm,
-	LeftPadWord256([]byte("hasRole")):       ptypes.HasRole,
-	LeftPadWord256([]byte("addRole")):       ptypes.AddRole,
-	LeftPadWord256([]byte("rmRole")):        ptypes.RmRole,
 }

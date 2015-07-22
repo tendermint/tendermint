@@ -95,6 +95,19 @@ func HasPermission(appState AppState, acc *Account, perm ptypes.PermFlag) bool {
 	return v
 }
 
+func (vm *VM) fireEvent(exception *string, output *[]byte, caller, callee *Account, input []byte, value int64, gas *int64) {
+	// fire the post call event (including exception if applicable)
+	if vm.evc != nil {
+		vm.evc.FireEvent(types.EventStringAccReceive(callee.Address.Postfix(20)), types.EventMsgCall{
+			&types.CallData{caller.Address.Postfix(20), callee.Address.Postfix(20), input, value, *gas},
+			vm.origin.Postfix(20),
+			vm.txid,
+			*output,
+			*exception,
+		})
+	}
+}
+
 // CONTRACT appState is aware of caller and callee, so we can just mutate them.
 // value: To be transferred from caller to callee. Refunded upon error.
 // gas:   Available gas. No refunds for gas.
@@ -102,30 +115,8 @@ func HasPermission(appState AppState, acc *Account, perm ptypes.PermFlag) bool {
 func (vm *VM) Call(caller, callee *Account, code, input []byte, value int64, gas *int64) (output []byte, err error) {
 
 	exception := new(string)
-	defer func() {
-		if vm.evc != nil {
-			vm.evc.FireEvent(types.EventStringAccReceive(callee.Address.Postfix(20)), types.EventMsgCall{
-				&types.CallData{caller.Address.Postfix(20), callee.Address.Postfix(20), input, value, *gas},
-				vm.origin.Postfix(20),
-				vm.txid,
-				output,
-				*exception,
-			})
-		}
-	}()
-
-	// SNATIVE ACCESS
-	// if code is empty, callee may be snative contract
-	if len(code) == 0 {
-		if snativeContract, ok := RegisteredSNativeContracts[callee.Address]; ok {
-			output, err = snativeContract(vm.appState, caller, input)
-			if err != nil {
-				*exception = err.Error()
-			}
-			return
-		}
-	}
-	// SNATIVE ACCESS END
+	// fire the post call event (including exception if applicable)
+	defer vm.fireEvent(exception, &output, caller, callee, input, value, gas)
 
 	if err = transfer(caller, callee, value); err != nil {
 		*exception = err.Error()
@@ -759,9 +750,16 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 			// Begin execution
 			var ret []byte
 			var err error
-			if nativeContract := nativeContracts[addr]; nativeContract != nil {
+			if nativeContract := registeredNativeContracts[addr]; nativeContract != nil {
 				// Native contract
-				ret, err = nativeContract(args, &gasLimit)
+				ret, err = nativeContract(vm.appState, callee, args, &gasLimit)
+
+				// for now we fire the Receive event. maybe later we'll fire more particulars
+				var exception string
+				if err != nil {
+					exception = err.Error()
+				}
+				vm.fireEvent(&exception, &ret, callee, &Account{Address: addr}, args, value, gas)
 			} else {
 				// EVM contract
 				if ok = useGas(gas, GasGetAccount); !ok {
@@ -779,19 +777,18 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 					ret, err = vm.Call(callee, callee, acc.Code, args, value, gas)
 				} else {
 					if acc == nil {
-						if _, ok := RegisteredSNativeContracts[addr]; ok {
-							acc = &Account{Address: addr}
-						} else {
-							// if we have not seen the account before, create it
-							// so we can send funds
-							if !HasPermission(vm.appState, caller, ptypes.CreateAccount) {
-								return nil, ErrPermission{"create_account"}
-							}
-							acc = &Account{Address: addr}
+						// nil account means we're sending funds to a new account
+						if !HasPermission(vm.appState, caller, ptypes.CreateAccount) {
+							return nil, ErrPermission{"create_account"}
 						}
+						acc = &Account{Address: addr}
 						vm.appState.UpdateAccount(acc)
+						// send funds to new account
+						ret, err = vm.Call(callee, acc, acc.Code, args, value, gas)
+					} else {
+						// call standard contract
+						ret, err = vm.Call(callee, acc, acc.Code, args, value, gas)
 					}
-					ret, err = vm.Call(callee, acc, acc.Code, args, value, gas)
 				}
 			}
 
