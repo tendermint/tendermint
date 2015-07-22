@@ -28,7 +28,7 @@ build_race:
 
 test: build
 	-rm -rf ~/.tendermint_test_bak
-	-mv ~/.tendermint_test ~/.tendermint_test_bak
+	-mv ~/.tendermint_test ~/.tendermint_test_bak && true
 	go test github.com/tendermint/tendermint/...
 
 draw_deps:

@@ -31,7 +31,6 @@ func initTMRoot(rootDir string) {
 
 	configFilePath := path.Join(rootDir, "config.toml")
 	genesisFilePath := path.Join(rootDir, "genesis.json")
-	privValFilePath := path.Join(rootDir, "priv_validator.json")
 
 	// Write default config file if missing.
 	if !FileExists(configFilePath) {
@@ -41,9 +40,6 @@ func initTMRoot(rootDir string) {
 	}
 	if !FileExists(genesisFilePath) {
 		MustWriteFile(genesisFilePath, []byte(defaultGenesis))
-	}
-	if !FileExists(privValFilePath) {
-		MustWriteFile(privValFilePath, []byte(privValFilePath))
 	}
 }
 

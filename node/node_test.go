@@ -4,15 +4,9 @@ import (
 	"testing"
 	"time"
 
-	cfg "github.com/tendermint/tendermint/config"
-	tmcfg "github.com/tendermint/tendermint/config/tendermint"
+	_ "github.com/tendermint/tendermint/config/tendermint_test"
 	"github.com/tendermint/tendermint/p2p"
 )
-
-func init() {
-	config := tmcfg.GetConfig("")
-	cfg.ApplyConfig(config)
-}
 
 func TestNodeStartStop(t *testing.T) {
 	// Create & start node
