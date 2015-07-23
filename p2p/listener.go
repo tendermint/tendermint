@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"time"
 
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/p2p/upnp"
@@ -30,6 +31,7 @@ type DefaultListener struct {
 const (
 	numBufferedConnections = 10
 	defaultExternalPort    = 8770
+	tryListenSeconds       = 5
 )
 
 func splitHostPort(addr string) (host string, port int) {
@@ -49,7 +51,16 @@ func NewDefaultListener(protocol string, lAddr string, requireUPNPHairpin bool) 
 	lAddrIP, lAddrPort := splitHostPort(lAddr)
 
 	// Create listener
-	listener, err := net.Listen(protocol, lAddr)
+	var listener net.Listener
+	var err error
+	for i := 0; i < tryListenSeconds; i++ {
+		listener, err = net.Listen(protocol, lAddr)
+		if err == nil {
+			break
+		} else if i < tryListenSeconds-1 {
+			time.Sleep(time.Second * 1)
+		}
+	}
 	if err != nil {
 		PanicCrisis(err)
 	}
