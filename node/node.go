@@ -2,7 +2,6 @@ package node
 
 import (
 	"bytes"
-	"fmt"
 	"math/rand"
 	"net"
 	"net/http"
@@ -27,12 +26,6 @@ import (
 )
 
 import _ "net/http/pprof"
-
-func init() {
-	go func() {
-		fmt.Println(http.ListenAndServe("0.0.0.0:6060", nil))
-	}()
-}
 
 type Node struct {
 	sw               *p2p.Switch
