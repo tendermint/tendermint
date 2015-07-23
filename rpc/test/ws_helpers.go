@@ -11,6 +11,7 @@ import (
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/gorilla/websocket"
 	"github.com/tendermint/tendermint/binary"
 	_ "github.com/tendermint/tendermint/config/tendermint_test"
+	"github.com/tendermint/tendermint/rpc/server"
 	"github.com/tendermint/tendermint/rpc/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -55,13 +56,32 @@ func unsubscribe(t *testing.T, con *websocket.Conn, eventid string) {
 // wait for an event; do things that might trigger events, and check them when they are received
 func waitForEvent(t *testing.T, con *websocket.Conn, eventid string, dieOnTimeout bool, f func(), check func(string, []byte) error) {
 	// go routine to wait for webscoket msg
-	gch := make(chan []byte) // good channel
-	ech := make(chan error)  // error channel
+	goodCh := make(chan []byte)
+	errCh := make(chan error)
+	quitCh := make(chan struct{})
+	defer close(quitCh)
+
+	// Write pings repeatedly
+	// TODO: Maybe move this out to something that manages the con?
+	go func() {
+		pingTicker := time.NewTicker((time.Second * rpcserver.WSReadTimeoutSeconds) / 2)
+		for {
+			select {
+			case <-quitCh:
+				pingTicker.Stop()
+				return
+			case <-pingTicker.C:
+				con.WriteControl(websocket.PingMessage, []byte("whatevs"), time.Now().Add(time.Second))
+			}
+		}
+	}()
+
+	// Read message
 	go func() {
 		for {
 			_, p, err := con.ReadMessage()
 			if err != nil {
-				ech <- err
+				errCh <- err
 				break
 			} else {
 				// if the event id isnt what we're waiting on
@@ -70,11 +90,11 @@ func waitForEvent(t *testing.T, con *websocket.Conn, eventid string, dieOnTimeou
 					Event string `json:"event"`
 				}
 				if err := json.Unmarshal(p, &response); err != nil {
-					ech <- err
+					errCh <- err
 					break
 				}
 				if response.Event == eventid {
-					gch <- p
+					goodCh <- p
 					break
 				}
 			}
@@ -84,17 +104,17 @@ func waitForEvent(t *testing.T, con *websocket.Conn, eventid string, dieOnTimeou
 	// do stuff (transactions)
 	f()
 
-	// wait for an event or 10 seconds
-	ticker := time.Tick(10 * time.Second)
+	// wait for an event or timeout
+	timeout := time.NewTimer(10 * time.Second)
 	select {
-	case <-ticker:
+	case <-timeout.C:
 		if dieOnTimeout {
 			con.Close()
 			t.Fatalf("%s event was not received in time", eventid)
 		}
 		// else that's great, we didn't hear the event
 		// and we shouldn't have
-	case p := <-gch:
+	case p := <-goodCh:
 		if dieOnTimeout {
 			// message was received and expected
 			// run the check
@@ -106,7 +126,7 @@ func waitForEvent(t *testing.T, con *websocket.Conn, eventid string, dieOnTimeou
 			con.Close()
 			t.Fatalf("%s event was not expected", eventid)
 		}
-	case err := <-ech:
+	case err := <-errCh:
 		t.Fatal(err)
 	}
 }
