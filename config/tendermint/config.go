@@ -57,7 +57,7 @@ func GetConfig(rootDir string) cfg.Config {
 	if mapConfig.IsSet("version") {
 		Exit("Cannot set 'version' via config.toml")
 	}
-	mapConfig.SetDefault("chain_id", "tendermint_testnet_7")
+	mapConfig.SetDefault("chain_id", "tendermint_testnet_8")
 	mapConfig.SetDefault("version", "0.5.0") // JAE: encrypted p2p!
 	mapConfig.SetDefault("genesis_file", rootDir+"/genesis.json")
 	mapConfig.SetDefault("moniker", "anonymous")
@@ -98,24 +98,20 @@ func defaultConfig(moniker string) (defaultConfig string) {
 }
 
 var defaultGenesis = `{
-    "chain_id": "tendermint_testnet_7",
+    "chain_id": "tendermint_testnet_8",
     "accounts": [
         {
             "address": "F81CB9ED0A868BD961C4F5BBC0E39B763B89FCB6",
             "amount": 690000000000
         },
         {
-            "address": "0000000000000000000000000000000000000002",
-            "amount": 565000000000
-        },
+            "address": "A88A61069B6660F30F65E8786AFDD4F1D8F625E9",
+						"amount": 1000000
+				},
         {
-            "address": "9E54C9ECA9A3FD5D4496696818DA17A9E17F69DA",
-            "amount": 525000000000
-        },
-        {
-            "address": "86ADF455E215711B6D8D8ED7F626C5AD3F349D2C",
-            "amount": 110000000000
-        }
+            "address": "EE2EE9247973B4AFC3867CFE5F415410AC251B61",
+						"amount": 1000000
+				}
     ],
     "validators": [
         {
