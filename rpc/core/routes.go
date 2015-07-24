@@ -25,4 +25,5 @@ var Routes = map[string]*rpc.RPCFunc{
 	"list_names":              rpc.NewRPCFunc(ListNames, []string{}),
 	"unsafe/gen_priv_account": rpc.NewRPCFunc(GenPrivAccount, []string{}),
 	"unsafe/sign_tx":          rpc.NewRPCFunc(SignTx, []string{"tx", "privAccounts"}),
+	// subscribe/unsubscribe are reserved for websocket events.
 }

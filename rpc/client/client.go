@@ -18,7 +18,7 @@ func Call(remote string, method string, params []interface{}, dest interface{}) 
 		JSONRPC: "2.0",
 		Method:  method,
 		Params:  params,
-		Id:      0,
+		Id:      "",
 	}
 	requestBytes := binary.JSONBytes(request)
 	requestBuf := bytes.NewBuffer(requestBytes)

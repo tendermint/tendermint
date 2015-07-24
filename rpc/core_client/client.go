@@ -173,7 +173,7 @@ fmt
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["{{name}}"],
 		Params:  []interface{}{ {{args.ident}} },
-		Id:      0,
+		Id:      "",
 	}
 	body, err := c.RequestResponse(request)
 	if err != nil{

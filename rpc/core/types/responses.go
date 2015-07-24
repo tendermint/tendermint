@@ -83,3 +83,11 @@ type ResponseListNames struct {
 	BlockHeight int                   `json:"block_height"`
 	Names       []*types.NameRegEntry `json:"names"`
 }
+
+//----------------------------------------
+// event responses
+
+type ResponseEvent struct {
+	Event string      `json:"event"`
+	Data  interface{} `json:"data"`
+}

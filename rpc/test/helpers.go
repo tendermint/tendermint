@@ -19,7 +19,7 @@ import (
 var (
 	rpcAddr       = "127.0.0.1:36657" // Not 46657
 	requestAddr   = "http://" + rpcAddr + "/"
-	websocketAddr = "ws://" + rpcAddr + "/events"
+	websocketAddr = "ws://" + rpcAddr + "/websocket"
 
 	node *nm.Node
 

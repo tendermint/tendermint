@@ -32,17 +32,21 @@ func (wsc *WSClient) Dial() (*http.Response, error) {
 
 // subscribe to an event
 func (wsc *WSClient) Subscribe(eventid string) error {
-	return wsc.conn.WriteJSON(rpctypes.WSRequest{
-		Type:  "subscribe",
-		Event: eventid,
+	return wsc.conn.WriteJSON(rpctypes.RPCRequest{
+		JSONRPC: "2.0",
+		Id:      "",
+		Method:  "subscribe",
+		Params:  []interface{}{eventid},
 	})
 }
 
 // unsubscribe from an event
 func (wsc *WSClient) Unsubscribe(eventid string) error {
-	return wsc.conn.WriteJSON(rpctypes.WSRequest{
-		Type:  "unsubscribe",
-		Event: eventid,
+	return wsc.conn.WriteJSON(rpctypes.RPCRequest{
+		JSONRPC: "2.0",
+		Id:      "",
+		Method:  "unsubscribe",
+		Params:  []interface{}{eventid},
 	})
 }
 

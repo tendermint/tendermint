@@ -209,8 +209,10 @@ func (n *Node) StartRPC() (net.Listener, error) {
 	core.SetGenDoc(n.genDoc)
 
 	listenAddr := config.GetString("rpc_laddr")
+
 	mux := http.NewServeMux()
-	rpcserver.RegisterEventsHandler(mux, n.evsw)
+	wm := rpcserver.NewWebsocketManager(core.Routes, n.evsw)
+	mux.HandleFunc("/websocket", wm.WebsocketHandler)
 	rpcserver.RegisterRPCFuncs(mux, core.Routes)
 	return rpcserver.StartHTTPServer(listenAddr, mux)
 }

@@ -2,39 +2,32 @@ package rpctypes
 
 type RPCRequest struct {
 	JSONRPC string        `json:"jsonrpc"`
+	Id      string        `json:"id"`
 	Method  string        `json:"method"`
 	Params  []interface{} `json:"params"`
-	Id      int           `json:"id"`
 }
 
 type RPCResponse struct {
+	JSONRPC string      `json:"jsonrpc"`
+	Id      string      `json:"id"`
 	Result  interface{} `json:"result"`
 	Error   string      `json:"error"`
-	Id      string      `json:"id"`
-	JSONRPC string      `json:"jsonrpc"`
 }
 
-func NewRPCResponse(res interface{}, err string) RPCResponse {
+func NewRPCResponse(id string, res interface{}, err string) RPCResponse {
 	if res == nil {
 		res = struct{}{}
 	}
 	return RPCResponse{
+		JSONRPC: "2.0",
+		Id:      id,
 		Result:  res,
 		Error:   err,
-		Id:      "",
-		JSONRPC: "2.0",
 	}
 }
 
-// for requests coming in
-type WSRequest struct {
-	Type  string `json:"type"` // subscribe or unsubscribe
-	Event string `json:"event"`
-}
-
-// for responses going out
-type WSResponse struct {
+// Goes in the Result field of an RPCResponse.
+type RPCEventResult struct {
 	Event string      `json:"event"`
 	Data  interface{} `json:"data"`
-	Error string      `json:"error"`
 }

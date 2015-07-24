@@ -20,7 +20,7 @@ func TestWSConnect(t *testing.T) {
 }
 
 // receive a new block message
-func _TestWSNewBlock(t *testing.T) {
+func TestWSNewBlock(t *testing.T) {
 	con := newWSCon(t)
 	eid := types.EventStringNewBlock()
 	subscribe(t, con, eid)

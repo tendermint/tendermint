@@ -611,7 +611,7 @@ func (c *ClientJSON) BlockchainInfo(minHeight int, maxHeight int) (*ctypes.Respo
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["BlockchainInfo"],
 		Params:  []interface{}{minHeight, maxHeight},
-		Id:      0,
+		Id:      "",
 	}
 	body, err := c.RequestResponse(request)
 	if err != nil {
@@ -638,7 +638,7 @@ func (c *ClientJSON) BroadcastTx(tx types.Tx) (*ctypes.Receipt, error) {
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["BroadcastTx"],
 		Params:  []interface{}{tx},
-		Id:      0,
+		Id:      "",
 	}
 	body, err := c.RequestResponse(request)
 	if err != nil {
@@ -665,7 +665,7 @@ func (c *ClientJSON) Call(fromAddress []byte, toAddress []byte, data []byte) (*c
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["Call"],
 		Params:  []interface{}{fromAddress, toAddress, data},
-		Id:      0,
+		Id:      "",
 	}
 	body, err := c.RequestResponse(request)
 	if err != nil {
@@ -692,7 +692,7 @@ func (c *ClientJSON) CallCode(fromAddress []byte, code []byte, data []byte) (*ct
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["CallCode"],
 		Params:  []interface{}{fromAddress, code, data},
-		Id:      0,
+		Id:      "",
 	}
 	body, err := c.RequestResponse(request)
 	if err != nil {
@@ -719,7 +719,7 @@ func (c *ClientJSON) DumpConsensusState() (*ctypes.ResponseDumpConsensusState, e
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["DumpConsensusState"],
 		Params:  []interface{}{},
-		Id:      0,
+		Id:      "",
 	}
 	body, err := c.RequestResponse(request)
 	if err != nil {
@@ -746,7 +746,7 @@ func (c *ClientJSON) DumpStorage(address []byte) (*ctypes.ResponseDumpStorage, e
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["DumpStorage"],
 		Params:  []interface{}{address},
-		Id:      0,
+		Id:      "",
 	}
 	body, err := c.RequestResponse(request)
 	if err != nil {
@@ -773,7 +773,7 @@ func (c *ClientJSON) GenPrivAccount() (*acm.PrivAccount, error) {
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["GenPrivAccount"],
 		Params:  []interface{}{},
-		Id:      0,
+		Id:      "",
 	}
 	body, err := c.RequestResponse(request)
 	if err != nil {
@@ -800,7 +800,7 @@ func (c *ClientJSON) Genesis() (*sm.GenesisDoc, error) {
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["Genesis"],
 		Params:  []interface{}{},
-		Id:      0,
+		Id:      "",
 	}
 	body, err := c.RequestResponse(request)
 	if err != nil {
@@ -827,7 +827,7 @@ func (c *ClientJSON) GetAccount(address []byte) (*acm.Account, error) {
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["GetAccount"],
 		Params:  []interface{}{address},
-		Id:      0,
+		Id:      "",
 	}
 	body, err := c.RequestResponse(request)
 	if err != nil {
@@ -854,7 +854,7 @@ func (c *ClientJSON) GetBlock(height int) (*ctypes.ResponseGetBlock, error) {
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["GetBlock"],
 		Params:  []interface{}{height},
-		Id:      0,
+		Id:      "",
 	}
 	body, err := c.RequestResponse(request)
 	if err != nil {
@@ -881,7 +881,7 @@ func (c *ClientJSON) GetName(name string) (*types.NameRegEntry, error) {
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["GetName"],
 		Params:  []interface{}{name},
-		Id:      0,
+		Id:      "",
 	}
 	body, err := c.RequestResponse(request)
 	if err != nil {
@@ -908,7 +908,7 @@ func (c *ClientJSON) GetStorage(address []byte, key []byte) (*ctypes.ResponseGet
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["GetStorage"],
 		Params:  []interface{}{address, key},
-		Id:      0,
+		Id:      "",
 	}
 	body, err := c.RequestResponse(request)
 	if err != nil {
@@ -935,7 +935,7 @@ func (c *ClientJSON) ListAccounts() (*ctypes.ResponseListAccounts, error) {
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["ListAccounts"],
 		Params:  []interface{}{},
-		Id:      0,
+		Id:      "",
 	}
 	body, err := c.RequestResponse(request)
 	if err != nil {
@@ -962,7 +962,7 @@ func (c *ClientJSON) ListNames() (*ctypes.ResponseListNames, error) {
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["ListNames"],
 		Params:  []interface{}{},
-		Id:      0,
+		Id:      "",
 	}
 	body, err := c.RequestResponse(request)
 	if err != nil {
@@ -989,7 +989,7 @@ func (c *ClientJSON) ListUnconfirmedTxs() ([]types.Tx, error) {
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["ListUnconfirmedTxs"],
 		Params:  []interface{}{},
-		Id:      0,
+		Id:      "",
 	}
 	body, err := c.RequestResponse(request)
 	if err != nil {
@@ -1016,7 +1016,7 @@ func (c *ClientJSON) ListValidators() (*ctypes.ResponseListValidators, error) {
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["ListValidators"],
 		Params:  []interface{}{},
-		Id:      0,
+		Id:      "",
 	}
 	body, err := c.RequestResponse(request)
 	if err != nil {
@@ -1043,7 +1043,7 @@ func (c *ClientJSON) NetInfo() (*ctypes.ResponseNetInfo, error) {
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["NetInfo"],
 		Params:  []interface{}{},
-		Id:      0,
+		Id:      "",
 	}
 	body, err := c.RequestResponse(request)
 	if err != nil {
@@ -1070,7 +1070,7 @@ func (c *ClientJSON) SignTx(tx types.Tx, privAccounts []*acm.PrivAccount) (types
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["SignTx"],
 		Params:  []interface{}{tx, privAccounts},
-		Id:      0,
+		Id:      "",
 	}
 	body, err := c.RequestResponse(request)
 	if err != nil {
@@ -1097,7 +1097,7 @@ func (c *ClientJSON) Status() (*ctypes.ResponseStatus, error) {
 		JSONRPC: "2.0",
 		Method:  reverseFuncMap["Status"],
 		Params:  []interface{}{},
-		Id:      0,
+		Id:      "",
 	}
 	body, err := c.RequestResponse(request)
 	if err != nil {
