@@ -5,6 +5,7 @@ const (
 	GasGetAccount    int64 = 1
 	GasStorageUpdate int64 = 1
 
+	GasBaseOp  int64 = 0 // TODO: make this 1
 	GasStackOp int64 = 1
 
 	GasEcRecover     int64 = 1

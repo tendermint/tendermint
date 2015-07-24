@@ -148,6 +148,14 @@ func (s *State) SetDB(db dbm.DB) {
 }
 
 //-------------------------------------
+// State.params
+
+func (s *State) GetGasLimit() int64 {
+	return 1000000 // TODO
+}
+
+// State.params
+//-------------------------------------
 // State.accounts
 
 // Returns nil if account does not exist with given address.
