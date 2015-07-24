@@ -95,10 +95,10 @@ func HasPermission(appState AppState, acc *Account, perm ptypes.PermFlag) bool {
 	return v
 }
 
-func (vm *VM) fireEvent(exception *string, output *[]byte, caller, callee *Account, input []byte, value int64, gas *int64) {
+func (vm *VM) fireCallEvent(exception *string, output *[]byte, caller, callee *Account, input []byte, value int64, gas *int64) {
 	// fire the post call event (including exception if applicable)
 	if vm.evc != nil {
-		vm.evc.FireEvent(types.EventStringAccReceive(callee.Address.Postfix(20)), types.EventMsgCall{
+		vm.evc.FireEvent(types.EventStringAccCall(callee.Address.Postfix(20)), types.EventMsgCall{
 			&types.CallData{caller.Address.Postfix(20), callee.Address.Postfix(20), input, value, *gas},
 			vm.origin.Postfix(20),
 			vm.txid,
@@ -116,7 +116,7 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value int64, gas
 
 	exception := new(string)
 	// fire the post call event (including exception if applicable)
-	defer vm.fireEvent(exception, &output, caller, callee, input, value, gas)
+	defer vm.fireCallEvent(exception, &output, caller, callee, input, value, gas)
 
 	if err = transfer(caller, callee, value); err != nil {
 		*exception = err.Error()
@@ -754,12 +754,12 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 				// Native contract
 				ret, err = nativeContract(vm.appState, callee, args, &gasLimit)
 
-				// for now we fire the Receive event. maybe later we'll fire more particulars
+				// for now we fire the Call event. maybe later we'll fire more particulars
 				var exception string
 				if err != nil {
 					exception = err.Error()
 				}
-				vm.fireEvent(&exception, &ret, callee, &Account{Address: addr}, args, value, gas)
+				vm.fireCallEvent(&exception, &ret, callee, &Account{Address: addr}, args, value, gas)
 			} else {
 				// EVM contract
 				if ok = useGas(gas, GasGetAccount); !ok {

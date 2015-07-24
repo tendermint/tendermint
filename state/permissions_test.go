@@ -385,8 +385,8 @@ func TestCallPermission(t *testing.T) {
 	tx, _ = types.NewCallTx(blockCache, user[0].PubKey, caller1ContractAddr, nil, 100, 10000, 100)
 	tx.Sign(chainID, user[0])
 
-	// we need to subscribe to the Receive event to detect the exception
-	_, exception := execTxWaitEvent(t, blockCache, tx, types.EventStringAccReceive(caller1ContractAddr)) //
+	// we need to subscribe to the Call event to detect the exception
+	_, exception := execTxWaitEvent(t, blockCache, tx, types.EventStringAccCall(caller1ContractAddr)) //
 	if exception == "" {
 		t.Fatal("Expected exception")
 	}
@@ -401,8 +401,8 @@ func TestCallPermission(t *testing.T) {
 	tx, _ = types.NewCallTx(blockCache, user[0].PubKey, caller1ContractAddr, nil, 100, 10000, 100)
 	tx.Sign(chainID, user[0])
 
-	// we need to subscribe to the Receive event to detect the exception
-	_, exception = execTxWaitEvent(t, blockCache, tx, types.EventStringAccReceive(caller1ContractAddr)) //
+	// we need to subscribe to the Call event to detect the exception
+	_, exception = execTxWaitEvent(t, blockCache, tx, types.EventStringAccCall(caller1ContractAddr)) //
 	if exception != "" {
 		t.Fatal("Unexpected exception:", exception)
 	}
@@ -431,8 +431,8 @@ func TestCallPermission(t *testing.T) {
 	tx, _ = types.NewCallTx(blockCache, user[0].PubKey, caller2ContractAddr, nil, 100, 10000, 100)
 	tx.Sign(chainID, user[0])
 
-	// we need to subscribe to the Receive event to detect the exception
-	_, exception = execTxWaitEvent(t, blockCache, tx, types.EventStringAccReceive(caller1ContractAddr)) //
+	// we need to subscribe to the Call event to detect the exception
+	_, exception = execTxWaitEvent(t, blockCache, tx, types.EventStringAccCall(caller1ContractAddr)) //
 	if exception == "" {
 		t.Fatal("Expected exception")
 	}
@@ -449,8 +449,8 @@ func TestCallPermission(t *testing.T) {
 	tx, _ = types.NewCallTx(blockCache, user[0].PubKey, caller2ContractAddr, nil, 100, 10000, 100)
 	tx.Sign(chainID, user[0])
 
-	// we need to subscribe to the Receive event to detect the exception
-	_, exception = execTxWaitEvent(t, blockCache, tx, types.EventStringAccReceive(caller1ContractAddr)) //
+	// we need to subscribe to the Call event to detect the exception
+	_, exception = execTxWaitEvent(t, blockCache, tx, types.EventStringAccCall(caller1ContractAddr)) //
 	if exception != "" {
 		t.Fatal("Unexpected exception", exception)
 	}
@@ -519,8 +519,8 @@ func TestCreatePermission(t *testing.T) {
 	// A single input, having the permission, should succeed
 	tx, _ = types.NewCallTx(blockCache, user[0].PubKey, contractAddr, createCode, 100, 100, 100)
 	tx.Sign(chainID, user[0])
-	// we need to subscribe to the Receive event to detect the exception
-	_, exception := execTxWaitEvent(t, blockCache, tx, types.EventStringAccReceive(contractAddr)) //
+	// we need to subscribe to the Call event to detect the exception
+	_, exception := execTxWaitEvent(t, blockCache, tx, types.EventStringAccCall(contractAddr)) //
 	if exception == "" {
 		t.Fatal("expected exception")
 	}
@@ -535,8 +535,8 @@ func TestCreatePermission(t *testing.T) {
 	// A single input, having the permission, should succeed
 	tx, _ = types.NewCallTx(blockCache, user[0].PubKey, contractAddr, createCode, 100, 100, 100)
 	tx.Sign(chainID, user[0])
-	// we need to subscribe to the Receive event to detect the exception
-	_, exception = execTxWaitEvent(t, blockCache, tx, types.EventStringAccReceive(contractAddr)) //
+	// we need to subscribe to the Call event to detect the exception
+	_, exception = execTxWaitEvent(t, blockCache, tx, types.EventStringAccCall(contractAddr)) //
 	if exception != "" {
 		t.Fatal("unexpected exception", exception)
 	}
@@ -562,8 +562,8 @@ func TestCreatePermission(t *testing.T) {
 	// this should call the 0 address but not create ...
 	tx, _ = types.NewCallTx(blockCache, user[0].PubKey, contractAddr, createCode, 100, 10000, 100)
 	tx.Sign(chainID, user[0])
-	// we need to subscribe to the Receive event to detect the exception
-	_, exception = execTxWaitEvent(t, blockCache, tx, types.EventStringAccReceive(zeroAddr)) //
+	// we need to subscribe to the Call event to detect the exception
+	_, exception = execTxWaitEvent(t, blockCache, tx, types.EventStringAccCall(zeroAddr)) //
 	if exception != "" {
 		t.Fatal("unexpected exception", exception)
 	}
@@ -813,8 +813,8 @@ func TestCreateAccountPermission(t *testing.T) {
 	txCall, _ := types.NewCallTx(blockCache, user[0].PubKey, caller1ContractAddr, nil, 100, 10000, 100)
 	txCall.Sign(chainID, user[0])
 
-	// we need to subscribe to the Receive event to detect the exception
-	_, exception := execTxWaitEvent(t, blockCache, txCall, types.EventStringAccReceive(caller1ContractAddr)) //
+	// we need to subscribe to the Call event to detect the exception
+	_, exception := execTxWaitEvent(t, blockCache, txCall, types.EventStringAccCall(caller1ContractAddr)) //
 	if exception == "" {
 		t.Fatal("Expected exception")
 	}
@@ -828,8 +828,8 @@ func TestCreateAccountPermission(t *testing.T) {
 	txCall, _ = types.NewCallTx(blockCache, user[0].PubKey, caller1ContractAddr, nil, 100, 10000, 100)
 	txCall.Sign(chainID, user[0])
 
-	// we need to subscribe to the Receive event to detect the exception
-	_, exception = execTxWaitEvent(t, blockCache, txCall, types.EventStringAccReceive(caller1ContractAddr)) //
+	// we need to subscribe to the Call event to detect the exception
+	_, exception = execTxWaitEvent(t, blockCache, txCall, types.EventStringAccCall(caller1ContractAddr)) //
 	if exception != "" {
 		t.Fatal("Unexpected exception", exception)
 	}
@@ -1048,7 +1048,7 @@ func TestSNativeTx(t *testing.T) {
 
 var ExceptionTimeOut = "timed out waiting for event"
 
-// run ExecTx and wait for the Receive event on given addr
+// run ExecTx and wait for the Call event on given addr
 // returns the msg data and an error/exception
 func execTxWaitEvent(t *testing.T, blockCache *BlockCache, tx types.Tx, eventid string) (interface{}, string) {
 	evsw := events.NewEventSwitch()
@@ -1109,8 +1109,8 @@ func testSNativeCALL(t *testing.T, expectPass bool, blockCache *BlockCache, doug
 	addr = doug.Address
 	tx, _ := types.NewCallTx(blockCache, user[0].PubKey, addr, data, 100, 10000, 100)
 	tx.Sign(chainID, user[0])
-	fmt.Println("subscribing to", types.EventStringAccReceive(snativeAddress))
-	ev, exception := execTxWaitEvent(t, blockCache, tx, types.EventStringAccReceive(snativeAddress))
+	fmt.Println("subscribing to", types.EventStringAccCall(snativeAddress))
+	ev, exception := execTxWaitEvent(t, blockCache, tx, types.EventStringAccCall(snativeAddress))
 	if exception == ExceptionTimeOut {
 		t.Fatal("Timed out waiting for event")
 	}

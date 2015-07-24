@@ -190,7 +190,7 @@ func TestWSCallCall(t *testing.T) {
 
 	// susbscribe to the new contracts
 	amt = int64(10001)
-	eid1 := types.EventStringAccReceive(contractAddr1)
+	eid1 := types.EventStringAccCall(contractAddr1)
 	subscribe(t, con, eid1)
 	defer func() {
 		unsubscribe(t, con, eid1)
