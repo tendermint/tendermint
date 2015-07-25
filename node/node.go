@@ -11,7 +11,7 @@ import (
 	"time"
 
 	acm "github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/wire"
 	bc "github.com/tendermint/tendermint/blockchain"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/consensus"
@@ -56,7 +56,7 @@ func NewNode() *Node {
 		state.Save()
 		// write the gendoc to db
 		buf, n, err := new(bytes.Buffer), new(int64), new(error)
-		binary.WriteJSON(genDoc, buf, n, err)
+		wire.WriteJSON(genDoc, buf, n, err)
 		stateDB.Set(sm.GenDocKey, buf.Bytes())
 		if *err != nil {
 			log.Error("Unable to write gendoc to db", "error", err)
@@ -65,7 +65,7 @@ func NewNode() *Node {
 	} else {
 		genDocBytes := stateDB.Get(sm.GenDocKey)
 		err := new(error)
-		binary.ReadJSONPtr(&genDoc, genDocBytes, err)
+		wire.ReadJSONPtr(&genDoc, genDocBytes, err)
 		if *err != nil {
 			log.Error("Unable to read gendoc from db", "error", err)
 			os.Exit(1)

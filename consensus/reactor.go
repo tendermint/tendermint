@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/wire"
 	bc "github.com/tendermint/tendermint/blockchain"
 	. "github.com/tendermint/tendermint/common"
 	. "github.com/tendermint/tendermint/consensus/types"
@@ -909,15 +909,15 @@ const (
 
 type ConsensusMessage interface{}
 
-var _ = binary.RegisterInterface(
+var _ = wire.RegisterInterface(
 	struct{ ConsensusMessage }{},
-	binary.ConcreteType{&NewRoundStepMessage{}, msgTypeNewRoundStep},
-	binary.ConcreteType{&CommitStepMessage{}, msgTypeCommitStep},
-	binary.ConcreteType{&ProposalMessage{}, msgTypeProposal},
-	binary.ConcreteType{&ProposalPOLMessage{}, msgTypeProposalPOL},
-	binary.ConcreteType{&BlockPartMessage{}, msgTypeBlockPart},
-	binary.ConcreteType{&VoteMessage{}, msgTypeVote},
-	binary.ConcreteType{&HasVoteMessage{}, msgTypeHasVote},
+	wire.ConcreteType{&NewRoundStepMessage{}, msgTypeNewRoundStep},
+	wire.ConcreteType{&CommitStepMessage{}, msgTypeCommitStep},
+	wire.ConcreteType{&ProposalMessage{}, msgTypeProposal},
+	wire.ConcreteType{&ProposalPOLMessage{}, msgTypeProposalPOL},
+	wire.ConcreteType{&BlockPartMessage{}, msgTypeBlockPart},
+	wire.ConcreteType{&VoteMessage{}, msgTypeVote},
+	wire.ConcreteType{&HasVoteMessage{}, msgTypeHasVote},
 )
 
 // TODO: check for unnecessary extra bytes at the end.
@@ -925,7 +925,7 @@ func DecodeMessage(bz []byte) (msgType byte, msg ConsensusMessage, err error) {
 	msgType = bz[0]
 	n := new(int64)
 	r := bytes.NewReader(bz)
-	msg = binary.ReadBinary(struct{ ConsensusMessage }{}, r, n, &err).(struct{ ConsensusMessage }).ConsensusMessage
+	msg = wire.ReadBinary(struct{ ConsensusMessage }{}, r, n, &err).(struct{ ConsensusMessage }).ConsensusMessage
 	return
 }
 

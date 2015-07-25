@@ -22,7 +22,7 @@ func (m MConnection) TrySend(chId byte, msg interface{}) bool {}
 
 `Send(chId, msg)` is a blocking call that waits until `msg` is successfully queued
 for the channel with the given id byte `chId`.  The message `msg` is serialized
-using the `tendermint/binary` submodule's `WriteBinary()` reflection routine.
+using the `tendermint/wire` submodule's `WriteBinary()` reflection routine.
 
 `TrySend(chId, msg)` is a nonblocking call that returns false if the channel's
 queue is full.

@@ -1,4 +1,4 @@
-package binary
+package wire
 
 import (
 	"encoding/hex"
@@ -442,7 +442,7 @@ func writeReflectBinary(rv reflect.Value, rt reflect.Type, opts Options, w io.Wr
 		typeInfo = GetTypeInfo(rt)
 		if !rv.IsValid() {
 			// For better compatibility with other languages,
-			// as far as tendermint/binary is concerned,
+			// as far as tendermint/wire is concerned,
 			// pointers to nil values are the same as nil.
 			WriteByte(0x00, w, n, err)
 			return
@@ -841,7 +841,7 @@ func writeReflectJSON(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, 
 		typeInfo = GetTypeInfo(rt)
 		if !rv.IsValid() {
 			// For better compatibility with other languages,
-			// as far as tendermint/binary is concerned,
+			// as far as tendermint/wire is concerned,
 			// pointers to nil values are the same as nil.
 			WriteTo([]byte("null"), w, n, err)
 			return

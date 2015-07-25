@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
 	. "github.com/tendermint/tendermint/rpc/types"
 )
@@ -20,7 +20,7 @@ func Call(remote string, method string, params []interface{}, dest interface{}) 
 		Params:  params,
 		Id:      "",
 	}
-	requestBytes := binary.JSONBytes(request)
+	requestBytes := wire.JSONBytes(request)
 	requestBuf := bytes.NewBuffer(requestBytes)
 	log.Info(Fmt("RPC request to %v: %v", remote, string(requestBytes)))
 	httpResponse, err := http.Post(remote, "text/json", requestBuf)
@@ -46,6 +46,6 @@ func Call(remote string, method string, params []interface{}, dest interface{}) 
 	if errorStr != "" {
 		return dest, errors.New(errorStr)
 	}
-	dest = binary.ReadJSONObject(dest, resultJSONObject, &err)
+	dest = wire.ReadJSONObject(dest, resultJSONObject, &err)
 	return dest, err
 }

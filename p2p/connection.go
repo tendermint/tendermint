@@ -11,7 +11,7 @@ import (
 	"time"
 
 	flow "github.com/tendermint/tendermint/Godeps/_workspace/src/code.google.com/p/mxk/go1/flowcontrol"
-	"github.com/tendermint/tendermint/binary" //"github.com/tendermint/log15"
+	"github.com/tendermint/tendermint/wire" //"github.com/tendermint/log15"
 	. "github.com/tendermint/tendermint/common"
 )
 
@@ -50,7 +50,7 @@ There are two methods for sending messages:
 
 `Send(chId, msg)` is a blocking call that waits until `msg` is successfully queued
 for the channel with the given id byte `chId`, or until the request times out.
-The message `msg` is serialized using the `tendermint/binary` submodule's
+The message `msg` is serialized using the `tendermint/wire` submodule's
 `WriteBinary()` reflection routine.
 
 `TrySend(chId, msg)` is a nonblocking call that returns false if the channel's
@@ -189,7 +189,7 @@ func (c *MConnection) Send(chId byte, msg interface{}) bool {
 		return false
 	}
 
-	log.Info("Send", "channel", chId, "conn", c, "msg", msg) //, "bytes", binary.BinaryBytes(msg))
+	log.Info("Send", "channel", chId, "conn", c, "msg", msg) //, "bytes", wire.BinaryBytes(msg))
 
 	// Send message to channel.
 	channel, ok := c.channelsIdx[chId]
@@ -198,7 +198,7 @@ func (c *MConnection) Send(chId byte, msg interface{}) bool {
 		return false
 	}
 
-	success := channel.sendBytes(binary.BinaryBytes(msg))
+	success := channel.sendBytes(wire.BinaryBytes(msg))
 	if success {
 		// Wake up sendRoutine if necessary
 		select {
@@ -227,7 +227,7 @@ func (c *MConnection) TrySend(chId byte, msg interface{}) bool {
 		return false
 	}
 
-	ok = channel.trySendBytes(binary.BinaryBytes(msg))
+	ok = channel.trySendBytes(wire.BinaryBytes(msg))
 	if ok {
 		// Wake up sendRoutine if necessary
 		select {
@@ -271,12 +271,12 @@ FOR_LOOP:
 			}
 		case <-c.pingTimer.Ch:
 			log.Info("Send Ping")
-			binary.WriteByte(packetTypePing, c.bufWriter, &n, &err)
+			wire.WriteByte(packetTypePing, c.bufWriter, &n, &err)
 			c.sendMonitor.Update(int(n))
 			c.flush()
 		case <-c.pong:
 			log.Info("Send Pong")
-			binary.WriteByte(packetTypePong, c.bufWriter, &n, &err)
+			wire.WriteByte(packetTypePong, c.bufWriter, &n, &err)
 			c.sendMonitor.Update(int(n))
 			c.flush()
 		case <-c.quit:
@@ -390,7 +390,7 @@ FOR_LOOP:
 		// Read packet type
 		var n int64
 		var err error
-		pktType := binary.ReadByte(c.bufReader, &n, &err)
+		pktType := wire.ReadByte(c.bufReader, &n, &err)
 		c.recvMonitor.Update(int(n))
 		if err != nil {
 			if c.IsRunning() {
@@ -411,7 +411,7 @@ FOR_LOOP:
 			log.Info("Receive Pong")
 		case packetTypeMsg:
 			pkt, n, err := msgPacket{}, int64(0), error(nil)
-			binary.ReadBinaryPtr(&pkt, c.bufReader, &n, &err)
+			wire.ReadBinaryPtr(&pkt, c.bufReader, &n, &err)
 			c.recvMonitor.Update(int(n))
 			if err != nil {
 				if c.IsRunning() {
@@ -573,8 +573,8 @@ func (ch *Channel) nextMsgPacket() msgPacket {
 func (ch *Channel) writeMsgPacketTo(w io.Writer) (n int64, err error) {
 	packet := ch.nextMsgPacket()
 	log.Debug("Write Msg Packet", "conn", ch.conn, "packet", packet)
-	binary.WriteByte(packetTypeMsg, w, &n, &err)
-	binary.WriteBinary(packet, w, &n, &err)
+	wire.WriteByte(packetTypeMsg, w, &n, &err)
+	wire.WriteBinary(packet, w, &n, &err)
 	if err != nil {
 		ch.recentlySent += n
 	}
@@ -585,8 +585,8 @@ func (ch *Channel) writeMsgPacketTo(w io.Writer) (n int64, err error) {
 // Not goroutine-safe
 func (ch *Channel) recvMsgPacket(packet msgPacket) ([]byte, error) {
 	log.Debug("Read Msg Packet", "conn", ch.conn, "packet", packet)
-	if binary.MaxBinaryReadSize < len(ch.recving)+len(packet.Bytes) {
-		return nil, binary.ErrBinaryReadSizeOverflow
+	if wire.MaxBinaryReadSize < len(ch.recving)+len(packet.Bytes) {
+		return nil, wire.ErrBinaryReadSizeOverflow
 	}
 	ch.recving = append(ch.recving, packet.Bytes...)
 	if packet.EOF == byte(0x01) {

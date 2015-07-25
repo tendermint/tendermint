@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/gorilla/websocket"
-	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/wire"
 	_ "github.com/tendermint/tendermint/config/tendermint_test"
 	"github.com/tendermint/tendermint/rpc/server"
 	"github.com/tendermint/tendermint/rpc/types"
@@ -149,7 +149,7 @@ func unmarshalResponseNewBlock(b []byte) (*types.Block, error) {
 		Error string `json:"error"`
 	}
 	var err error
-	binary.ReadJSON(&response, b, &err)
+	wire.ReadJSON(&response, b, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +194,7 @@ func unmarshalValidateSend(amt int64, toAddr []byte) func(string, []byte) error 
 			Error string `json:"error"`
 		}
 		var err error
-		binary.ReadJSON(&response, b, &err)
+		wire.ReadJSON(&response, b, &err)
 		if err != nil {
 			return err
 		}
@@ -235,7 +235,7 @@ func unmarshalValidateCall(amt int64, returnCode []byte) func(string, []byte) er
 			Error string `json:"error"`
 		}
 		var err error
-		binary.ReadJSON(&response, b, &err)
+		wire.ReadJSON(&response, b, &err)
 		if err != nil {
 			return err
 		}
@@ -273,7 +273,7 @@ func unmarshalValidateCallCall(origin, returnCode []byte, txid *[]byte) func(str
 			Error string `json:"error"`
 		}
 		var err error
-		binary.ReadJSON(&response, b, &err)
+		wire.ReadJSON(&response, b, &err)
 		if err != nil {
 			return err
 		}

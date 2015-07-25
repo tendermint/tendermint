@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/gorilla/websocket"
-	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/events"
 	. "github.com/tendermint/tendermint/rpc/types"
@@ -138,7 +138,7 @@ func jsonParamsToArgs(rpcFunc *RPCFunc, params []interface{}) ([]reflect.Value, 
 func _jsonObjectToArg(ty reflect.Type, object interface{}) (reflect.Value, error) {
 	var err error
 	v := reflect.New(ty)
-	binary.ReadJSONObjectPtr(v.Interface(), object, &err)
+	wire.ReadJSONObjectPtr(v.Interface(), object, &err)
 	if err != nil {
 		return v, err
 	}
@@ -191,7 +191,7 @@ func httpParamsToArgs(rpcFunc *RPCFunc, r *http.Request) ([]reflect.Value, error
 func _jsonStringToArg(ty reflect.Type, arg string) (reflect.Value, error) {
 	var err error
 	v := reflect.New(ty)
-	binary.ReadJSONPtr(v.Interface(), []byte(arg), &err)
+	wire.ReadJSONPtr(v.Interface(), []byte(arg), &err)
 	if err != nil {
 		return v, err
 	}
@@ -390,7 +390,7 @@ func (wsc *WSConnection) writeRoutine() {
 			return
 		case msg := <-wsc.writeChan:
 			buf := new(bytes.Buffer)
-			binary.WriteJSON(msg, buf, n, err)
+			wire.WriteJSON(msg, buf, n, err)
 			if *err != nil {
 				log.Error("Failed to marshal RPCResponse to JSON", "error", err)
 			} else {

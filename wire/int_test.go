@@ -1,4 +1,4 @@
-package binary
+package wire
 
 import (
 	"bytes"

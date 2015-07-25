@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/tendermint/ed25519"
-	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
 )
 
@@ -45,7 +45,7 @@ func TestBinaryDecode(t *testing.T) {
 	t.Logf("msg: %X, sig: %X", msg, sig)
 
 	buf, n, err := new(bytes.Buffer), new(int64), new(error)
-	binary.WriteBinary(sig, buf, n, err)
+	wire.WriteBinary(sig, buf, n, err)
 	if *err != nil {
 		t.Fatalf("Failed to write Signature: %v", err)
 	}
@@ -58,7 +58,7 @@ func TestBinaryDecode(t *testing.T) {
 		t.Fatalf("Unexpected signature type byte")
 	}
 
-	sig2, ok := binary.ReadBinary(SignatureEd25519{}, buf, n, err).(SignatureEd25519)
+	sig2, ok := wire.ReadBinary(SignatureEd25519{}, buf, n, err).(SignatureEd25519)
 	if !ok || *err != nil {
 		t.Fatalf("Failed to read Signature: %v", err)
 	}

@@ -14,7 +14,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/cmd/barak/types"
 	. "github.com/tendermint/tendermint/common"
 	cfg "github.com/tendermint/tendermint/config"
@@ -108,7 +108,7 @@ func Run(authCommand AuthCommand) (interface{}, error) {
 
 func parseValidateCommandStr(authCommandStr string) (Command, error) {
 	var err error
-	authCommand := binary.ReadJSON(AuthCommand{}, []byte(authCommandStr), &err).(AuthCommand)
+	authCommand := wire.ReadJSON(AuthCommand{}, []byte(authCommandStr), &err).(AuthCommand)
 	if err != nil {
 		fmt.Printf("Failed to parse auth_command")
 		return nil, errors.New("AuthCommand parse error")
@@ -126,7 +126,7 @@ func parseValidateCommand(authCommand AuthCommand) (Command, error) {
 	}
 	// Parse command
 	var err error
-	command := binary.ReadJSON(NoncedCommand{}, []byte(commandJSONStr), &err).(NoncedCommand)
+	command := wire.ReadJSON(NoncedCommand{}, []byte(commandJSONStr), &err).(NoncedCommand)
 	if err != nil {
 		fmt.Printf("Failed to parse command")
 		return nil, errors.New("Command parse error")

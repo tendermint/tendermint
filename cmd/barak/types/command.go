@@ -2,7 +2,7 @@ package types
 
 import (
 	acm "github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/wire"
 )
 
 type AuthCommand struct {
@@ -27,16 +27,16 @@ const (
 	commandTypeQuit          = 0x07
 )
 
-// for binary.readReflect
-var _ = binary.RegisterInterface(
+// for wire.readReflect
+var _ = wire.RegisterInterface(
 	struct{ Command }{},
-	binary.ConcreteType{CommandStartProcess{}, commandTypeStartProcess},
-	binary.ConcreteType{CommandStopProcess{}, commandTypeStopProcess},
-	binary.ConcreteType{CommandListProcesses{}, commandTypeListProcesses},
-	binary.ConcreteType{CommandServeFile{}, commandTypeServeFile},
-	binary.ConcreteType{CommandOpenListener{}, commandTypeOpenListener},
-	binary.ConcreteType{CommandCloseListener{}, commandTypeCloseListener},
-	binary.ConcreteType{CommandQuit{}, commandTypeQuit},
+	wire.ConcreteType{CommandStartProcess{}, commandTypeStartProcess},
+	wire.ConcreteType{CommandStopProcess{}, commandTypeStopProcess},
+	wire.ConcreteType{CommandListProcesses{}, commandTypeListProcesses},
+	wire.ConcreteType{CommandServeFile{}, commandTypeServeFile},
+	wire.ConcreteType{CommandOpenListener{}, commandTypeOpenListener},
+	wire.ConcreteType{CommandCloseListener{}, commandTypeCloseListener},
+	wire.ConcreteType{CommandQuit{}, commandTypeQuit},
 )
 
 type CommandStartProcess struct {

@@ -6,7 +6,7 @@ import (
 	"io"
 
 	acm "github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
 	ptypes "github.com/tendermint/tendermint/permission/types"
 )
@@ -71,17 +71,17 @@ const (
 	TxTypePermissions = byte(0x20)
 )
 
-// for binary.readReflect
-var _ = binary.RegisterInterface(
+// for wire.readReflect
+var _ = wire.RegisterInterface(
 	struct{ Tx }{},
-	binary.ConcreteType{&SendTx{}, TxTypeSend},
-	binary.ConcreteType{&CallTx{}, TxTypeCall},
-	binary.ConcreteType{&NameTx{}, TxTypeName},
-	binary.ConcreteType{&BondTx{}, TxTypeBond},
-	binary.ConcreteType{&UnbondTx{}, TxTypeUnbond},
-	binary.ConcreteType{&RebondTx{}, TxTypeRebond},
-	binary.ConcreteType{&DupeoutTx{}, TxTypeDupeout},
-	binary.ConcreteType{&PermissionsTx{}, TxTypePermissions},
+	wire.ConcreteType{&SendTx{}, TxTypeSend},
+	wire.ConcreteType{&CallTx{}, TxTypeCall},
+	wire.ConcreteType{&NameTx{}, TxTypeName},
+	wire.ConcreteType{&BondTx{}, TxTypeBond},
+	wire.ConcreteType{&UnbondTx{}, TxTypeUnbond},
+	wire.ConcreteType{&RebondTx{}, TxTypeRebond},
+	wire.ConcreteType{&DupeoutTx{}, TxTypeDupeout},
+	wire.ConcreteType{&PermissionsTx{}, TxTypePermissions},
 )
 
 //-----------------------------------------------------------------------------
@@ -105,7 +105,7 @@ func (txIn *TxInput) ValidateBasic() error {
 }
 
 func (txIn *TxInput) WriteSignBytes(w io.Writer, n *int64, err *error) {
-	binary.WriteTo([]byte(Fmt(`{"address":"%X","amount":%v,"sequence":%v}`, txIn.Address, txIn.Amount, txIn.Sequence)), w, n, err)
+	wire.WriteTo([]byte(Fmt(`{"address":"%X","amount":%v,"sequence":%v}`, txIn.Address, txIn.Amount, txIn.Sequence)), w, n, err)
 }
 
 func (txIn *TxInput) String() string {
@@ -130,7 +130,7 @@ func (txOut *TxOutput) ValidateBasic() error {
 }
 
 func (txOut *TxOutput) WriteSignBytes(w io.Writer, n *int64, err *error) {
-	binary.WriteTo([]byte(Fmt(`{"address":"%X","amount":%v}`, txOut.Address, txOut.Amount)), w, n, err)
+	wire.WriteTo([]byte(Fmt(`{"address":"%X","amount":%v}`, txOut.Address, txOut.Amount)), w, n, err)
 }
 
 func (txOut *TxOutput) String() string {
@@ -145,22 +145,22 @@ type SendTx struct {
 }
 
 func (tx *SendTx) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
-	binary.WriteTo([]byte(Fmt(`{"chain_id":%s`, jsonEscape(chainID))), w, n, err)
-	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"inputs":[`, TxTypeSend)), w, n, err)
+	wire.WriteTo([]byte(Fmt(`{"chain_id":%s`, jsonEscape(chainID))), w, n, err)
+	wire.WriteTo([]byte(Fmt(`,"tx":[%v,{"inputs":[`, TxTypeSend)), w, n, err)
 	for i, in := range tx.Inputs {
 		in.WriteSignBytes(w, n, err)
 		if i != len(tx.Inputs)-1 {
-			binary.WriteTo([]byte(","), w, n, err)
+			wire.WriteTo([]byte(","), w, n, err)
 		}
 	}
-	binary.WriteTo([]byte(`],"outputs":[`), w, n, err)
+	wire.WriteTo([]byte(`],"outputs":[`), w, n, err)
 	for i, out := range tx.Outputs {
 		out.WriteSignBytes(w, n, err)
 		if i != len(tx.Outputs)-1 {
-			binary.WriteTo([]byte(","), w, n, err)
+			wire.WriteTo([]byte(","), w, n, err)
 		}
 	}
-	binary.WriteTo([]byte(`]}]}`), w, n, err)
+	wire.WriteTo([]byte(`]}]}`), w, n, err)
 }
 
 func (tx *SendTx) String() string {
@@ -178,11 +178,11 @@ type CallTx struct {
 }
 
 func (tx *CallTx) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
-	binary.WriteTo([]byte(Fmt(`{"chain_id":%s`, jsonEscape(chainID))), w, n, err)
-	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"address":"%X","data":"%X"`, TxTypeCall, tx.Address, tx.Data)), w, n, err)
-	binary.WriteTo([]byte(Fmt(`,"fee":%v,"gas_limit":%v,"input":`, tx.Fee, tx.GasLimit)), w, n, err)
+	wire.WriteTo([]byte(Fmt(`{"chain_id":%s`, jsonEscape(chainID))), w, n, err)
+	wire.WriteTo([]byte(Fmt(`,"tx":[%v,{"address":"%X","data":"%X"`, TxTypeCall, tx.Address, tx.Data)), w, n, err)
+	wire.WriteTo([]byte(Fmt(`,"fee":%v,"gas_limit":%v,"input":`, tx.Fee, tx.GasLimit)), w, n, err)
 	tx.Input.WriteSignBytes(w, n, err)
-	binary.WriteTo([]byte(`}]}`), w, n, err)
+	wire.WriteTo([]byte(`}]}`), w, n, err)
 }
 
 func (tx *CallTx) String() string {
@@ -199,12 +199,12 @@ type NameTx struct {
 }
 
 func (tx *NameTx) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
-	binary.WriteTo([]byte(Fmt(`{"chain_id":%s`, jsonEscape(chainID))), w, n, err)
-	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"data":%s,"fee":%v`, TxTypeName, jsonEscape(tx.Data), tx.Fee)), w, n, err)
-	binary.WriteTo([]byte(`,"input":`), w, n, err)
+	wire.WriteTo([]byte(Fmt(`{"chain_id":%s`, jsonEscape(chainID))), w, n, err)
+	wire.WriteTo([]byte(Fmt(`,"tx":[%v,{"data":%s,"fee":%v`, TxTypeName, jsonEscape(tx.Data), tx.Fee)), w, n, err)
+	wire.WriteTo([]byte(`,"input":`), w, n, err)
 	tx.Input.WriteSignBytes(w, n, err)
-	binary.WriteTo([]byte(Fmt(`,"name":%s`, jsonEscape(tx.Name))), w, n, err)
-	binary.WriteTo([]byte(`}]}`), w, n, err)
+	wire.WriteTo([]byte(Fmt(`,"name":%s`, jsonEscape(tx.Name))), w, n, err)
+	wire.WriteTo([]byte(`}]}`), w, n, err)
 }
 
 func (tx *NameTx) ValidateStrings() error {
@@ -247,24 +247,24 @@ type BondTx struct {
 }
 
 func (tx *BondTx) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
-	binary.WriteTo([]byte(Fmt(`{"chain_id":%s`, jsonEscape(chainID))), w, n, err)
-	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"inputs":[`, TxTypeBond)), w, n, err)
+	wire.WriteTo([]byte(Fmt(`{"chain_id":%s`, jsonEscape(chainID))), w, n, err)
+	wire.WriteTo([]byte(Fmt(`,"tx":[%v,{"inputs":[`, TxTypeBond)), w, n, err)
 	for i, in := range tx.Inputs {
 		in.WriteSignBytes(w, n, err)
 		if i != len(tx.Inputs)-1 {
-			binary.WriteTo([]byte(","), w, n, err)
+			wire.WriteTo([]byte(","), w, n, err)
 		}
 	}
-	binary.WriteTo([]byte(Fmt(`],"pub_key":`)), w, n, err)
-	binary.WriteTo(binary.JSONBytes(tx.PubKey), w, n, err)
-	binary.WriteTo([]byte(`,"unbond_to":[`), w, n, err)
+	wire.WriteTo([]byte(Fmt(`],"pub_key":`)), w, n, err)
+	wire.WriteTo(wire.JSONBytes(tx.PubKey), w, n, err)
+	wire.WriteTo([]byte(`,"unbond_to":[`), w, n, err)
 	for i, out := range tx.UnbondTo {
 		out.WriteSignBytes(w, n, err)
 		if i != len(tx.UnbondTo)-1 {
-			binary.WriteTo([]byte(","), w, n, err)
+			wire.WriteTo([]byte(","), w, n, err)
 		}
 	}
-	binary.WriteTo([]byte(`]}]}`), w, n, err)
+	wire.WriteTo([]byte(`]}]}`), w, n, err)
 }
 
 func (tx *BondTx) String() string {
@@ -280,8 +280,8 @@ type UnbondTx struct {
 }
 
 func (tx *UnbondTx) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
-	binary.WriteTo([]byte(Fmt(`{"chain_id":%s`, jsonEscape(chainID))), w, n, err)
-	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"address":"%X","height":%v}]}`, TxTypeUnbond, tx.Address, tx.Height)), w, n, err)
+	wire.WriteTo([]byte(Fmt(`{"chain_id":%s`, jsonEscape(chainID))), w, n, err)
+	wire.WriteTo([]byte(Fmt(`,"tx":[%v,{"address":"%X","height":%v}]}`, TxTypeUnbond, tx.Address, tx.Height)), w, n, err)
 }
 
 func (tx *UnbondTx) String() string {
@@ -297,8 +297,8 @@ type RebondTx struct {
 }
 
 func (tx *RebondTx) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
-	binary.WriteTo([]byte(Fmt(`{"chain_id":%s`, jsonEscape(chainID))), w, n, err)
-	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"address":"%X","height":%v}]}`, TxTypeRebond, tx.Address, tx.Height)), w, n, err)
+	wire.WriteTo([]byte(Fmt(`{"chain_id":%s`, jsonEscape(chainID))), w, n, err)
+	wire.WriteTo([]byte(Fmt(`,"tx":[%v,{"address":"%X","height":%v}]}`, TxTypeRebond, tx.Address, tx.Height)), w, n, err)
 }
 
 func (tx *RebondTx) String() string {
@@ -329,12 +329,12 @@ type PermissionsTx struct {
 }
 
 func (tx *PermissionsTx) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
-	binary.WriteTo([]byte(Fmt(`{"chain_id":%s`, jsonEscape(chainID))), w, n, err)
-	binary.WriteTo([]byte(Fmt(`,"tx":[%v,{"args":"`, TxTypePermissions)), w, n, err)
-	binary.WriteJSON(tx.PermArgs, w, n, err)
-	binary.WriteTo([]byte(`","input":`), w, n, err)
+	wire.WriteTo([]byte(Fmt(`{"chain_id":%s`, jsonEscape(chainID))), w, n, err)
+	wire.WriteTo([]byte(Fmt(`,"tx":[%v,{"args":"`, TxTypePermissions)), w, n, err)
+	wire.WriteJSON(tx.PermArgs, w, n, err)
+	wire.WriteTo([]byte(`","input":`), w, n, err)
 	tx.Input.WriteSignBytes(w, n, err)
-	binary.WriteTo([]byte(`}]}`), w, n, err)
+	wire.WriteTo([]byte(`}]}`), w, n, err)
 }
 
 func (tx *PermissionsTx) String() string {
@@ -346,7 +346,7 @@ func (tx *PermissionsTx) String() string {
 // This should match the leaf hashes of Block.Data.Hash()'s SimpleMerkleTree.
 func TxID(chainID string, tx Tx) []byte {
 	signBytes := acm.SignBytes(chainID, tx)
-	return binary.BinaryRipemd160(signBytes)
+	return wire.BinaryRipemd160(signBytes)
 }
 
 //--------------------------------------------------------------------------------

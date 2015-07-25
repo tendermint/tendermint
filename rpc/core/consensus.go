@@ -1,7 +1,7 @@
 package core
 
 import (
-	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/wire"
 	cm "github.com/tendermint/tendermint/consensus"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	sm "github.com/tendermint/tendermint/state"
@@ -33,7 +33,7 @@ func DumpConsensusState() (*ctypes.ResponseDumpConsensusState, error) {
 		// TODO: clean this up?
 		peerState := peer.Data.Get(cm.PeerStateKey).(*cm.PeerState)
 		peerRoundState := peerState.GetRoundState()
-		peerRoundStateStr := peer.Key + ":" + string(binary.JSONBytes(peerRoundState))
+		peerRoundStateStr := peer.Key + ":" + string(wire.JSONBytes(peerRoundState))
 		peerRoundStates = append(peerRoundStates, peerRoundStateStr)
 	}
 	return &ctypes.ResponseDumpConsensusState{roundState.String(), peerRoundStates}, nil

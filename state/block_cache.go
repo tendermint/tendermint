@@ -5,7 +5,7 @@ import (
 	"sort"
 
 	acm "github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
 	dbm "github.com/tendermint/tendermint/db"
 	"github.com/tendermint/tendermint/merkle"
@@ -14,8 +14,8 @@ import (
 
 func makeStorage(db dbm.DB, root []byte) merkle.Tree {
 	storage := merkle.NewIAVLTree(
-		binary.BasicCodec,
-		binary.BasicCodec,
+		wire.BasicCodec,
+		wire.BasicCodec,
 		1024,
 		db,
 	)

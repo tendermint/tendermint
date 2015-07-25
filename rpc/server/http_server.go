@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/alert"
-	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
 	. "github.com/tendermint/tendermint/rpc/types"
 )
@@ -34,7 +34,7 @@ func StartHTTPServer(listenAddr string, handler http.Handler) (net.Listener, err
 
 func WriteRPCResponse(w http.ResponseWriter, res RPCResponse) {
 	buf, n, err := new(bytes.Buffer), new(int64), new(error)
-	binary.WriteJSON(res, buf, n, err)
+	wire.WriteJSON(res, buf, n, err)
 	if *err != nil {
 		log.Warn("Failed to write RPC response", "error", err)
 	}

@@ -3,7 +3,7 @@ package account
 import (
 	"fmt"
 
-	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
 )
 
@@ -18,10 +18,10 @@ const (
 	SignatureTypeEd25519 = byte(0x01)
 )
 
-// for binary.readReflect
-var _ = binary.RegisterInterface(
+// for wire.readReflect
+var _ = wire.RegisterInterface(
 	struct{ Signature }{},
-	binary.ConcreteType{SignatureEd25519{}, SignatureTypeEd25519},
+	wire.ConcreteType{SignatureEd25519{}, SignatureTypeEd25519},
 )
 
 //-------------------------------------

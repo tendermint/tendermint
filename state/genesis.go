@@ -6,7 +6,7 @@ import (
 	"time"
 
 	acm "github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
 	dbm "github.com/tendermint/tendermint/db"
 	"github.com/tendermint/tendermint/merkle"
@@ -58,7 +58,7 @@ type GenesisDoc struct {
 
 func GenesisDocFromJSON(jsonBlob []byte) (genState *GenesisDoc) {
 	var err error
-	binary.ReadJSONPtr(&genState, jsonBlob, &err)
+	wire.ReadJSONPtr(&genState, jsonBlob, &err)
 	if err != nil {
 		log.Error(Fmt("Couldn't read GenesisDoc: %v", err))
 		os.Exit(1)
@@ -86,7 +86,7 @@ func MakeGenesisState(db dbm.DB, genDoc *GenesisDoc) *State {
 	}
 
 	// Make accounts state tree
-	accounts := merkle.NewIAVLTree(binary.BasicCodec, acm.AccountCodec, defaultAccountsCacheCapacity, db)
+	accounts := merkle.NewIAVLTree(wire.BasicCodec, acm.AccountCodec, defaultAccountsCacheCapacity, db)
 	for _, genAcc := range genDoc.Accounts {
 		perm := ptypes.ZeroAccountPermissions
 		if genAcc.Permissions != nil {
@@ -122,7 +122,7 @@ func MakeGenesisState(db dbm.DB, genDoc *GenesisDoc) *State {
 	accounts.Set(permsAcc.Address, permsAcc)
 
 	// Make validatorInfos state tree && validators slice
-	validatorInfos := merkle.NewIAVLTree(binary.BasicCodec, ValidatorInfoCodec, 0, db)
+	validatorInfos := merkle.NewIAVLTree(wire.BasicCodec, ValidatorInfoCodec, 0, db)
 	validators := make([]*Validator, len(genDoc.Validators))
 	for i, val := range genDoc.Validators {
 		pubKey := val.PubKey
@@ -153,7 +153,7 @@ func MakeGenesisState(db dbm.DB, genDoc *GenesisDoc) *State {
 	}
 
 	// Make namereg tree
-	nameReg := merkle.NewIAVLTree(binary.BasicCodec, NameRegCodec, 0, db)
+	nameReg := merkle.NewIAVLTree(wire.BasicCodec, NameRegCodec, 0, db)
 	// TODO: add names, contracts to genesis.json
 
 	// IAVLTrees must be persisted before copy operations.

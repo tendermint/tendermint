@@ -11,7 +11,7 @@ import (
 	"sync"
 
 	acm "github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/wire"
 	btypes "github.com/tendermint/tendermint/cmd/barak/types"
 	. "github.com/tendermint/tendermint/common"
 	cfg "github.com/tendermint/tendermint/config"
@@ -133,7 +133,7 @@ func ReadConfig(configFilePath string) {
 	if err != nil {
 		Exit(Fmt("Failed to read config file %v. %v\n", configFilePath, err))
 	}
-	binary.ReadJSON(&Config, configJSONBytes, &err)
+	wire.ReadJSON(&Config, configJSONBytes, &err)
 	if err != nil {
 		Exit(Fmt("Failed to parse config. %v", err))
 	}
