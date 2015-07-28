@@ -4,13 +4,11 @@ import (
 	"bytes"
 	"testing"
 
-	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/wire"
 )
 
 func TestStateToFromVMAccount(t *testing.T) {
 	acmAcc1, _ := RandAccount(true, 456)
-	acmAcc1.StorageRoot = RandBytes(20)
 	vmAcc := toVMAccount(acmAcc1)
 	acmAcc2 := toStateAccount(vmAcc)
 

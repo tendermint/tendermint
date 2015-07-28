@@ -75,7 +75,6 @@ func (cache *TxCache) CreateAccount(creator *vm.Account) *vm.Account {
 			Balance:     0,
 			Code:        nil,
 			Nonce:       0,
-			StorageRoot: Zero256,
 			Permissions: cache.GetAccount(ptypes.GlobalPermissionsAddress256).Permissions,
 			Other:       nil,
 		}
@@ -157,7 +156,6 @@ func toVMAccount(acc *acm.Account) *vm.Account {
 		Balance:     acc.Balance,
 		Code:        acc.Code, // This is crazy.
 		Nonce:       int64(acc.Sequence),
-		StorageRoot: LeftPadWord256(acc.StorageRoot),
 		Permissions: acc.Permissions, // Copy
 		Other:       acc.PubKey,
 	}
@@ -170,19 +168,12 @@ func toStateAccount(acc *vm.Account) *acm.Account {
 		pubKey = nil
 	}
 
-	var storageRoot []byte
-	if acc.StorageRoot.IsZero() {
-		storageRoot = nil
-	} else {
-		storageRoot = acc.StorageRoot.Postfix(20)
-	}
 	return &acm.Account{
 		Address:     acc.Address.Postfix(20),
 		PubKey:      pubKey,
 		Balance:     acc.Balance,
 		Code:        acc.Code,
 		Sequence:    int(acc.Nonce),
-		StorageRoot: storageRoot,
 		Permissions: acc.Permissions, // Copy
 	}
 }

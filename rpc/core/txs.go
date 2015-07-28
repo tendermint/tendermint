@@ -12,12 +12,11 @@ import (
 
 func toVMAccount(acc *acm.Account) *vm.Account {
 	return &vm.Account{
-		Address:     LeftPadWord256(acc.Address),
-		Balance:     acc.Balance,
-		Code:        acc.Code, // This is crazy.
-		Nonce:       int64(acc.Sequence),
-		StorageRoot: LeftPadWord256(acc.StorageRoot),
-		Other:       acc.PubKey,
+		Address: LeftPadWord256(acc.Address),
+		Balance: acc.Balance,
+		Code:    acc.Code, // This is crazy.
+		Nonce:   int64(acc.Sequence),
+		Other:   acc.PubKey,
 	}
 }
 

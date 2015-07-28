@@ -36,11 +36,10 @@ func (fas *FakeAppState) CreateAccount(creator *Account) *Account {
 	account := fas.accounts[addr.String()]
 	if account == nil {
 		return &Account{
-			Address:     addr,
-			Balance:     0,
-			Code:        nil,
-			Nonce:       0,
-			StorageRoot: Zero256,
+			Address: addr,
+			Balance: 0,
+			Code:    nil,
+			Nonce:   0,
 		}
 	} else {
 		panic(Fmt("Invalid account addr: %X", addr))
