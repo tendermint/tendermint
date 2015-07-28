@@ -174,7 +174,7 @@ func toStateAccount(acc *vm.Account) *acm.Account {
 	if acc.StorageRoot.IsZero() {
 		storageRoot = nil
 	} else {
-		storageRoot = acc.StorageRoot.Bytes()
+		storageRoot = acc.StorageRoot.Postfix(20)
 	}
 	return &acm.Account{
 		Address:     acc.Address.Postfix(20),
