@@ -6,7 +6,7 @@ import (
 	"time"
 
 	acm "github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
 	dbm "github.com/tendermint/tendermint/db"
 	"github.com/tendermint/tendermint/events"
@@ -49,22 +49,22 @@ func LoadState(db dbm.DB) *State {
 		return nil
 	} else {
 		r, n, err := bytes.NewReader(buf), new(int64), new(error)
-		s.ChainID = binary.ReadString(r, n, err)
-		s.LastBlockHeight = binary.ReadVarint(r, n, err)
-		s.LastBlockHash = binary.ReadByteSlice(r, n, err)
-		s.LastBlockParts = binary.ReadBinary(types.PartSetHeader{}, r, n, err).(types.PartSetHeader)
-		s.LastBlockTime = binary.ReadTime(r, n, err)
-		s.BondedValidators = binary.ReadBinary(&ValidatorSet{}, r, n, err).(*ValidatorSet)
-		s.LastBondedValidators = binary.ReadBinary(&ValidatorSet{}, r, n, err).(*ValidatorSet)
-		s.UnbondingValidators = binary.ReadBinary(&ValidatorSet{}, r, n, err).(*ValidatorSet)
-		accountsHash := binary.ReadByteSlice(r, n, err)
-		s.accounts = merkle.NewIAVLTree(binary.BasicCodec, acm.AccountCodec, defaultAccountsCacheCapacity, db)
+		s.ChainID = wire.ReadString(r, n, err)
+		s.LastBlockHeight = wire.ReadVarint(r, n, err)
+		s.LastBlockHash = wire.ReadByteSlice(r, n, err)
+		s.LastBlockParts = wire.ReadBinary(types.PartSetHeader{}, r, n, err).(types.PartSetHeader)
+		s.LastBlockTime = wire.ReadTime(r, n, err)
+		s.BondedValidators = wire.ReadBinary(&ValidatorSet{}, r, n, err).(*ValidatorSet)
+		s.LastBondedValidators = wire.ReadBinary(&ValidatorSet{}, r, n, err).(*ValidatorSet)
+		s.UnbondingValidators = wire.ReadBinary(&ValidatorSet{}, r, n, err).(*ValidatorSet)
+		accountsHash := wire.ReadByteSlice(r, n, err)
+		s.accounts = merkle.NewIAVLTree(wire.BasicCodec, acm.AccountCodec, defaultAccountsCacheCapacity, db)
 		s.accounts.Load(accountsHash)
-		validatorInfosHash := binary.ReadByteSlice(r, n, err)
-		s.validatorInfos = merkle.NewIAVLTree(binary.BasicCodec, ValidatorInfoCodec, 0, db)
+		validatorInfosHash := wire.ReadByteSlice(r, n, err)
+		s.validatorInfos = merkle.NewIAVLTree(wire.BasicCodec, ValidatorInfoCodec, 0, db)
 		s.validatorInfos.Load(validatorInfosHash)
-		nameRegHash := binary.ReadByteSlice(r, n, err)
-		s.nameReg = merkle.NewIAVLTree(binary.BasicCodec, NameRegCodec, 0, db)
+		nameRegHash := wire.ReadByteSlice(r, n, err)
+		s.nameReg = merkle.NewIAVLTree(wire.BasicCodec, NameRegCodec, 0, db)
 		s.nameReg.Load(nameRegHash)
 		if *err != nil {
 			// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
@@ -80,17 +80,17 @@ func (s *State) Save() {
 	s.validatorInfos.Save()
 	s.nameReg.Save()
 	buf, n, err := new(bytes.Buffer), new(int64), new(error)
-	binary.WriteString(s.ChainID, buf, n, err)
-	binary.WriteVarint(s.LastBlockHeight, buf, n, err)
-	binary.WriteByteSlice(s.LastBlockHash, buf, n, err)
-	binary.WriteBinary(s.LastBlockParts, buf, n, err)
-	binary.WriteTime(s.LastBlockTime, buf, n, err)
-	binary.WriteBinary(s.BondedValidators, buf, n, err)
-	binary.WriteBinary(s.LastBondedValidators, buf, n, err)
-	binary.WriteBinary(s.UnbondingValidators, buf, n, err)
-	binary.WriteByteSlice(s.accounts.Hash(), buf, n, err)
-	binary.WriteByteSlice(s.validatorInfos.Hash(), buf, n, err)
-	binary.WriteByteSlice(s.nameReg.Hash(), buf, n, err)
+	wire.WriteString(s.ChainID, buf, n, err)
+	wire.WriteVarint(s.LastBlockHeight, buf, n, err)
+	wire.WriteByteSlice(s.LastBlockHash, buf, n, err)
+	wire.WriteBinary(s.LastBlockParts, buf, n, err)
+	wire.WriteTime(s.LastBlockTime, buf, n, err)
+	wire.WriteBinary(s.BondedValidators, buf, n, err)
+	wire.WriteBinary(s.LastBondedValidators, buf, n, err)
+	wire.WriteBinary(s.UnbondingValidators, buf, n, err)
+	wire.WriteByteSlice(s.accounts.Hash(), buf, n, err)
+	wire.WriteByteSlice(s.validatorInfos.Hash(), buf, n, err)
+	wire.WriteByteSlice(s.nameReg.Hash(), buf, n, err)
 	if *err != nil {
 		PanicCrisis(*err)
 	}
@@ -147,6 +147,14 @@ func (s *State) SetDB(db dbm.DB) {
 	s.DB = db
 }
 
+//-------------------------------------
+// State.params
+
+func (s *State) GetGasLimit() int64 {
+	return 1000000 // TODO
+}
+
+// State.params
 //-------------------------------------
 // State.accounts
 
@@ -294,7 +302,7 @@ func (s *State) SetValidatorInfos(validatorInfos merkle.Tree) {
 // State.storage
 
 func (s *State) LoadStorage(hash []byte) (storage merkle.Tree) {
-	storage = merkle.NewIAVLTree(binary.BasicCodec, binary.BasicCodec, 1024, s.DB)
+	storage = merkle.NewIAVLTree(wire.BasicCodec, wire.BasicCodec, 1024, s.DB)
 	storage.Load(hash)
 	return storage
 }
@@ -331,14 +339,14 @@ func (s *State) SetNameReg(nameReg merkle.Tree) {
 }
 
 func NameRegEncoder(o interface{}, w io.Writer, n *int64, err *error) {
-	binary.WriteBinary(o.(*types.NameRegEntry), w, n, err)
+	wire.WriteBinary(o.(*types.NameRegEntry), w, n, err)
 }
 
 func NameRegDecoder(r io.Reader, n *int64, err *error) interface{} {
-	return binary.ReadBinary(&types.NameRegEntry{}, r, n, err)
+	return wire.ReadBinary(&types.NameRegEntry{}, r, n, err)
 }
 
-var NameRegCodec = binary.Codec{
+var NameRegCodec = wire.Codec{
 	Encode: NameRegEncoder,
 	Decode: NameRegDecoder,
 }

@@ -39,11 +39,11 @@ func Call(fromAddress, toAddress, data []byte) (*ctypes.ResponseCall, error) {
 		BlockHeight: int64(st.LastBlockHeight),
 		BlockHash:   LeftPadWord256(st.LastBlockHash),
 		BlockTime:   st.LastBlockTime.Unix(),
-		GasLimit:    10000000,
+		GasLimit:    st.GetGasLimit(),
 	}
 
 	vmach := vm.NewVM(txCache, params, caller.Address, nil)
-	gas := int64(1000000000)
+	gas := st.GetGasLimit()
 	ret, err := vmach.Call(caller, callee, callee.Code, data, 0, &gas)
 	if err != nil {
 		return nil, err
@@ -64,11 +64,11 @@ func CallCode(fromAddress, code, data []byte) (*ctypes.ResponseCall, error) {
 		BlockHeight: int64(st.LastBlockHeight),
 		BlockHash:   LeftPadWord256(st.LastBlockHash),
 		BlockTime:   st.LastBlockTime.Unix(),
-		GasLimit:    10000000,
+		GasLimit:    st.GetGasLimit(),
 	}
 
 	vmach := vm.NewVM(txCache, params, caller.Address, nil)
-	gas := int64(1000000000)
+	gas := st.GetGasLimit()
 	ret, err := vmach.Call(caller, callee, code, data, 0, &gas)
 	if err != nil {
 		return nil, err

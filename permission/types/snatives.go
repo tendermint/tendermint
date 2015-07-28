@@ -1,7 +1,7 @@
 package types
 
 import (
-	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/wire"
 )
 
 //---------------------------------------------------------------------------------------------------
@@ -25,16 +25,16 @@ const (
 	PermArgsTypeRmRole    = byte(0x07)
 )
 
-// for binary.readReflect
-var _ = binary.RegisterInterface(
+// for wire.readReflect
+var _ = wire.RegisterInterface(
 	struct{ PermArgs }{},
-	binary.ConcreteType{&HasBaseArgs{}, PermArgsTypeHasBase},
-	binary.ConcreteType{&SetBaseArgs{}, PermArgsTypeSetBase},
-	binary.ConcreteType{&UnsetBaseArgs{}, PermArgsTypeUnsetBase},
-	binary.ConcreteType{&SetGlobalArgs{}, PermArgsTypeSetGlobal},
-	binary.ConcreteType{&HasRoleArgs{}, PermArgsTypeHasRole},
-	binary.ConcreteType{&AddRoleArgs{}, PermArgsTypeAddRole},
-	binary.ConcreteType{&RmRoleArgs{}, PermArgsTypeRmRole},
+	wire.ConcreteType{&HasBaseArgs{}, PermArgsTypeHasBase},
+	wire.ConcreteType{&SetBaseArgs{}, PermArgsTypeSetBase},
+	wire.ConcreteType{&UnsetBaseArgs{}, PermArgsTypeUnsetBase},
+	wire.ConcreteType{&SetGlobalArgs{}, PermArgsTypeSetGlobal},
+	wire.ConcreteType{&HasRoleArgs{}, PermArgsTypeHasRole},
+	wire.ConcreteType{&AddRoleArgs{}, PermArgsTypeAddRole},
+	wire.ConcreteType{&RmRoleArgs{}, PermArgsTypeRmRole},
 )
 
 type HasBaseArgs struct {

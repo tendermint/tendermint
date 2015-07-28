@@ -6,7 +6,7 @@ This documentation is out of date.
 * Pointers that don't have a declared TypeByte() are
   encoded with a leading 0x00 (nil) or 0x01.
 
-# `tendermint/binary`
+# `tendermint/wire`
 
 The `binary` submodule encodes primary types and structs into bytes.
 

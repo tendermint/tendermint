@@ -3,7 +3,7 @@ package core_client
 import (
 	"bytes"
 	"fmt"
-	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/wire"
 	rpctypes "github.com/tendermint/tendermint/rpc/types"
 	"io/ioutil"
 	"net/http"
@@ -85,7 +85,7 @@ func argsToJson(args ...interface{}) ([]string, error) {
 	n, err := new(int64), new(error)
 	for i, a := range args {
 		buf := new(bytes.Buffer)
-		binary.WriteJSON(a, buf, n, err)
+		wire.WriteJSON(a, buf, n, err)
 		if *err != nil {
 			return nil, *err
 		}
@@ -95,7 +95,7 @@ func argsToJson(args ...interface{}) ([]string, error) {
 }
 
 func (c *ClientJSON) RequestResponse(s rpctypes.RPCRequest) (b []byte, err error) {
-	b = binary.JSONBytes(s)
+	b = wire.JSONBytes(s)
 	buf := bytes.NewBuffer(b)
 	resp, err := http.Post(c.addr, "text/json", buf)
 	if err != nil {
@@ -124,7 +124,7 @@ func binaryWriter(args ...interface{}) ([]interface{}, error) {
 	list := []interface{}{}
 	for _, a := range args {
 		buf, n, err := new(bytes.Buffer), new(int64), new(error)
-		binary.WriteJSON(a, buf, n, err)
+		wire.WriteJSON(a, buf, n, err)
 		if *err != nil {
 			return nil, *err
 		}
@@ -159,7 +159,7 @@ func argsToURLValues(argNames []string, args ...interface{}) (url.Values, error)
 // import statements we will need for the templates
 
 /*rpc-gen:imports:
-github.com/tendermint/tendermint/binary
+github.com/tendermint/tendermint/wire
 rpctypes github.com/tendermint/tendermint/rpc/types
 net/http
 io/ioutil
@@ -185,7 +185,7 @@ fmt
 		Id string `json:"id"`
 		JSONRPC string `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -215,7 +215,7 @@ fmt
 		Id string `json:"id"`
 		JSONRPC string `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}

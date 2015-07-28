@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	acm "github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -151,7 +151,7 @@ func (voteSet *VoteSet) addVote(val *sm.Validator, valIndex int, vote *types.Vot
 	// Add vote.
 	voteSet.votes[valIndex] = vote
 	voteSet.votesBitArray.SetIndex(valIndex, true)
-	blockKey := string(vote.BlockHash) + string(binary.BinaryBytes(vote.BlockParts))
+	blockKey := string(vote.BlockHash) + string(wire.BinaryBytes(vote.BlockParts))
 	totalBlockHashVotes := voteSet.votesByBlock[blockKey] + val.VotingPower
 	voteSet.votesByBlock[blockKey] = totalBlockHashVotes
 	voteSet.totalVotes += val.VotingPower

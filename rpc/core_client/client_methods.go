@@ -5,7 +5,7 @@ package core_client
 import (
 	"fmt"
 	acm "github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/wire"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/types"
 	sm "github.com/tendermint/tendermint/state"
@@ -56,7 +56,7 @@ func (c *ClientHTTP) BlockchainInfo(minHeight int, maxHeight int) (*ctypes.Respo
 		Id      string                         `json:"id"`
 		JSONRPC string                         `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func (c *ClientHTTP) BroadcastTx(tx types.Tx) (*ctypes.Receipt, error) {
 		Id      string          `json:"id"`
 		JSONRPC string          `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +116,7 @@ func (c *ClientHTTP) Call(fromAddress []byte, toAddress []byte, data []byte) (*c
 		Id      string               `json:"id"`
 		JSONRPC string               `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +146,7 @@ func (c *ClientHTTP) CallCode(fromAddress []byte, code []byte, data []byte) (*ct
 		Id      string               `json:"id"`
 		JSONRPC string               `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +176,7 @@ func (c *ClientHTTP) DumpConsensusState() (*ctypes.ResponseDumpConsensusState, e
 		Id      string                             `json:"id"`
 		JSONRPC string                             `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -206,7 +206,7 @@ func (c *ClientHTTP) DumpStorage(address []byte) (*ctypes.ResponseDumpStorage, e
 		Id      string                      `json:"id"`
 		JSONRPC string                      `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -236,7 +236,7 @@ func (c *ClientHTTP) GenPrivAccount() (*acm.PrivAccount, error) {
 		Id      string           `json:"id"`
 		JSONRPC string           `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -266,7 +266,7 @@ func (c *ClientHTTP) Genesis() (*sm.GenesisDoc, error) {
 		Id      string         `json:"id"`
 		JSONRPC string         `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +296,7 @@ func (c *ClientHTTP) GetAccount(address []byte) (*acm.Account, error) {
 		Id      string       `json:"id"`
 		JSONRPC string       `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -326,7 +326,7 @@ func (c *ClientHTTP) GetBlock(height int) (*ctypes.ResponseGetBlock, error) {
 		Id      string                   `json:"id"`
 		JSONRPC string                   `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -356,7 +356,7 @@ func (c *ClientHTTP) GetName(name string) (*types.NameRegEntry, error) {
 		Id      string              `json:"id"`
 		JSONRPC string              `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -386,7 +386,7 @@ func (c *ClientHTTP) GetStorage(address []byte, key []byte) (*ctypes.ResponseGet
 		Id      string                     `json:"id"`
 		JSONRPC string                     `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -416,7 +416,7 @@ func (c *ClientHTTP) ListAccounts() (*ctypes.ResponseListAccounts, error) {
 		Id      string                       `json:"id"`
 		JSONRPC string                       `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -446,7 +446,7 @@ func (c *ClientHTTP) ListNames() (*ctypes.ResponseListNames, error) {
 		Id      string                    `json:"id"`
 		JSONRPC string                    `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -476,7 +476,7 @@ func (c *ClientHTTP) ListUnconfirmedTxs() ([]types.Tx, error) {
 		Id      string     `json:"id"`
 		JSONRPC string     `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -506,7 +506,7 @@ func (c *ClientHTTP) ListValidators() (*ctypes.ResponseListValidators, error) {
 		Id      string                         `json:"id"`
 		JSONRPC string                         `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -536,7 +536,7 @@ func (c *ClientHTTP) NetInfo() (*ctypes.ResponseNetInfo, error) {
 		Id      string                  `json:"id"`
 		JSONRPC string                  `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -566,7 +566,7 @@ func (c *ClientHTTP) SignTx(tx types.Tx, privAccounts []*acm.PrivAccount) (types
 		Id      string   `json:"id"`
 		JSONRPC string   `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -596,7 +596,7 @@ func (c *ClientHTTP) Status() (*ctypes.ResponseStatus, error) {
 		Id      string                 `json:"id"`
 		JSONRPC string                 `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -623,7 +623,7 @@ func (c *ClientJSON) BlockchainInfo(minHeight int, maxHeight int) (*ctypes.Respo
 		Id      string                         `json:"id"`
 		JSONRPC string                         `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -650,7 +650,7 @@ func (c *ClientJSON) BroadcastTx(tx types.Tx) (*ctypes.Receipt, error) {
 		Id      string          `json:"id"`
 		JSONRPC string          `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -677,7 +677,7 @@ func (c *ClientJSON) Call(fromAddress []byte, toAddress []byte, data []byte) (*c
 		Id      string               `json:"id"`
 		JSONRPC string               `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -704,7 +704,7 @@ func (c *ClientJSON) CallCode(fromAddress []byte, code []byte, data []byte) (*ct
 		Id      string               `json:"id"`
 		JSONRPC string               `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -731,7 +731,7 @@ func (c *ClientJSON) DumpConsensusState() (*ctypes.ResponseDumpConsensusState, e
 		Id      string                             `json:"id"`
 		JSONRPC string                             `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -758,7 +758,7 @@ func (c *ClientJSON) DumpStorage(address []byte) (*ctypes.ResponseDumpStorage, e
 		Id      string                      `json:"id"`
 		JSONRPC string                      `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -785,7 +785,7 @@ func (c *ClientJSON) GenPrivAccount() (*acm.PrivAccount, error) {
 		Id      string           `json:"id"`
 		JSONRPC string           `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -812,7 +812,7 @@ func (c *ClientJSON) Genesis() (*sm.GenesisDoc, error) {
 		Id      string         `json:"id"`
 		JSONRPC string         `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -839,7 +839,7 @@ func (c *ClientJSON) GetAccount(address []byte) (*acm.Account, error) {
 		Id      string       `json:"id"`
 		JSONRPC string       `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -866,7 +866,7 @@ func (c *ClientJSON) GetBlock(height int) (*ctypes.ResponseGetBlock, error) {
 		Id      string                   `json:"id"`
 		JSONRPC string                   `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -893,7 +893,7 @@ func (c *ClientJSON) GetName(name string) (*types.NameRegEntry, error) {
 		Id      string              `json:"id"`
 		JSONRPC string              `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -920,7 +920,7 @@ func (c *ClientJSON) GetStorage(address []byte, key []byte) (*ctypes.ResponseGet
 		Id      string                     `json:"id"`
 		JSONRPC string                     `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -947,7 +947,7 @@ func (c *ClientJSON) ListAccounts() (*ctypes.ResponseListAccounts, error) {
 		Id      string                       `json:"id"`
 		JSONRPC string                       `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -974,7 +974,7 @@ func (c *ClientJSON) ListNames() (*ctypes.ResponseListNames, error) {
 		Id      string                    `json:"id"`
 		JSONRPC string                    `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -1001,7 +1001,7 @@ func (c *ClientJSON) ListUnconfirmedTxs() ([]types.Tx, error) {
 		Id      string     `json:"id"`
 		JSONRPC string     `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -1028,7 +1028,7 @@ func (c *ClientJSON) ListValidators() (*ctypes.ResponseListValidators, error) {
 		Id      string                         `json:"id"`
 		JSONRPC string                         `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -1055,7 +1055,7 @@ func (c *ClientJSON) NetInfo() (*ctypes.ResponseNetInfo, error) {
 		Id      string                  `json:"id"`
 		JSONRPC string                  `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -1082,7 +1082,7 @@ func (c *ClientJSON) SignTx(tx types.Tx, privAccounts []*acm.PrivAccount) (types
 		Id      string   `json:"id"`
 		JSONRPC string   `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -1109,7 +1109,7 @@ func (c *ClientJSON) Status() (*ctypes.ResponseStatus, error) {
 		Id      string                 `json:"id"`
 		JSONRPC string                 `json:"jsonrpc"`
 	}
-	binary.ReadJSON(&response, body, &err)
+	wire.ReadJSON(&response, body, &err)
 	if err != nil {
 		return nil, err
 	}

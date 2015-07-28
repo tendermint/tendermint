@@ -5,7 +5,7 @@ import (
 
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/code.google.com/p/go.crypto/ripemd160"
 
-	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
 )
 
@@ -46,14 +46,14 @@ func (branch IAVLProofInnerNode) Hash(childHash []byte) []byte {
 	hasher := ripemd160.New()
 	buf := new(bytes.Buffer)
 	n, err := int64(0), error(nil)
-	binary.WriteInt8(branch.Height, buf, &n, &err)
-	binary.WriteVarint(branch.Size, buf, &n, &err)
+	wire.WriteInt8(branch.Height, buf, &n, &err)
+	wire.WriteVarint(branch.Size, buf, &n, &err)
 	if len(branch.Left) == 0 {
-		binary.WriteByteSlice(childHash, buf, &n, &err)
-		binary.WriteByteSlice(branch.Right, buf, &n, &err)
+		wire.WriteByteSlice(childHash, buf, &n, &err)
+		wire.WriteByteSlice(branch.Right, buf, &n, &err)
 	} else {
-		binary.WriteByteSlice(branch.Left, buf, &n, &err)
-		binary.WriteByteSlice(childHash, buf, &n, &err)
+		wire.WriteByteSlice(branch.Left, buf, &n, &err)
+		wire.WriteByteSlice(childHash, buf, &n, &err)
 	}
 	if err != nil {
 		PanicCrisis(Fmt("Failed to hash IAVLProofInnerNode: %v", err))
@@ -72,10 +72,10 @@ func (leaf IAVLProofLeafNode) Hash() []byte {
 	hasher := ripemd160.New()
 	buf := new(bytes.Buffer)
 	n, err := int64(0), error(nil)
-	binary.WriteInt8(0, buf, &n, &err)
-	binary.WriteVarint(1, buf, &n, &err)
-	binary.WriteByteSlice(leaf.KeyBytes, buf, &n, &err)
-	binary.WriteByteSlice(leaf.ValueBytes, buf, &n, &err)
+	wire.WriteInt8(0, buf, &n, &err)
+	wire.WriteVarint(1, buf, &n, &err)
+	wire.WriteByteSlice(leaf.KeyBytes, buf, &n, &err)
+	wire.WriteByteSlice(leaf.ValueBytes, buf, &n, &err)
 	if err != nil {
 		PanicCrisis(Fmt("Failed to hash IAVLProofLeafNode: %v", err))
 	}

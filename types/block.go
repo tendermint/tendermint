@@ -8,7 +8,7 @@ import (
 	"time"
 
 	acm "github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/merkle"
 )
@@ -75,7 +75,7 @@ func (b *Block) Hash() []byte {
 }
 
 func (b *Block) MakePartSet() *PartSet {
-	return NewPartSetFromData(binary.BinaryBytes(b))
+	return NewPartSetFromData(wire.BinaryBytes(b))
 }
 
 // Convenience.
@@ -137,7 +137,7 @@ func (h *Header) Hash() []byte {
 		return nil
 	}
 
-	return binary.BinaryRipemd160(h)
+	return wire.BinaryRipemd160(h)
 }
 
 func (h *Header) StringIndented(indent string) string {

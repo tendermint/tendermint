@@ -7,7 +7,7 @@ import (
 	"os"
 
 	acm "github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/wire"
 	btypes "github.com/tendermint/tendermint/cmd/barak/types"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/rpc/client"
@@ -81,7 +81,7 @@ func DownloadFile(privKey acm.PrivKey, remote string, command btypes.CommandServ
 		CommandJSONStr: string(commandBytes),
 		Signatures:     []acm.Signature{signature},
 	}
-	authCommandJSONBytes := binary.JSONBytes(authCommand)
+	authCommandJSONBytes := wire.JSONBytes(authCommand)
 	// Make request and write to outPath.
 	httpResponse, err := http.PostForm(remote+"/download", url.Values{"auth_command": {string(authCommandJSONBytes)}})
 	if err != nil {
@@ -133,7 +133,7 @@ func SignCommand(privKey acm.PrivKey, nonce int64, command btypes.Command) ([]by
 		Nonce:   nonce,
 		Command: command,
 	}
-	commandJSONBytes := binary.JSONBytes(noncedCommand)
+	commandJSONBytes := wire.JSONBytes(noncedCommand)
 	signature := privKey.Sign(commandJSONBytes)
 	return commandJSONBytes, signature
 }

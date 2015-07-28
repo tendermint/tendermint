@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
 	dbm "github.com/tendermint/tendermint/db"
 	"github.com/tendermint/tendermint/types"
@@ -59,7 +59,7 @@ func (bs *BlockStore) LoadBlock(height int) *types.Block {
 	if r == nil {
 		return nil
 	}
-	meta := binary.ReadBinary(&types.BlockMeta{}, r, &n, &err).(*types.BlockMeta)
+	meta := wire.ReadBinary(&types.BlockMeta{}, r, &n, &err).(*types.BlockMeta)
 	if err != nil {
 		PanicCrisis(Fmt("Error reading block meta: %v", err))
 	}
@@ -68,7 +68,7 @@ func (bs *BlockStore) LoadBlock(height int) *types.Block {
 		part := bs.LoadBlockPart(height, i)
 		bytez = append(bytez, part.Bytes...)
 	}
-	block := binary.ReadBinary(&types.Block{}, bytes.NewReader(bytez), &n, &err).(*types.Block)
+	block := wire.ReadBinary(&types.Block{}, bytes.NewReader(bytez), &n, &err).(*types.Block)
 	if err != nil {
 		PanicCrisis(Fmt("Error reading block: %v", err))
 	}
@@ -82,7 +82,7 @@ func (bs *BlockStore) LoadBlockPart(height int, index int) *types.Part {
 	if r == nil {
 		return nil
 	}
-	part := binary.ReadBinary(&types.Part{}, r, &n, &err).(*types.Part)
+	part := wire.ReadBinary(&types.Part{}, r, &n, &err).(*types.Part)
 	if err != nil {
 		PanicCrisis(Fmt("Error reading block part: %v", err))
 	}
@@ -96,7 +96,7 @@ func (bs *BlockStore) LoadBlockMeta(height int) *types.BlockMeta {
 	if r == nil {
 		return nil
 	}
-	meta := binary.ReadBinary(&types.BlockMeta{}, r, &n, &err).(*types.BlockMeta)
+	meta := wire.ReadBinary(&types.BlockMeta{}, r, &n, &err).(*types.BlockMeta)
 	if err != nil {
 		PanicCrisis(Fmt("Error reading block meta: %v", err))
 	}
@@ -112,7 +112,7 @@ func (bs *BlockStore) LoadBlockValidation(height int) *types.Validation {
 	if r == nil {
 		return nil
 	}
-	validation := binary.ReadBinary(&types.Validation{}, r, &n, &err).(*types.Validation)
+	validation := wire.ReadBinary(&types.Validation{}, r, &n, &err).(*types.Validation)
 	if err != nil {
 		PanicCrisis(Fmt("Error reading validation: %v", err))
 	}
@@ -127,7 +127,7 @@ func (bs *BlockStore) LoadSeenValidation(height int) *types.Validation {
 	if r == nil {
 		return nil
 	}
-	validation := binary.ReadBinary(&types.Validation{}, r, &n, &err).(*types.Validation)
+	validation := wire.ReadBinary(&types.Validation{}, r, &n, &err).(*types.Validation)
 	if err != nil {
 		PanicCrisis(Fmt("Error reading validation: %v", err))
 	}
@@ -150,7 +150,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 
 	// Save block meta
 	meta := types.NewBlockMeta(block, blockParts)
-	metaBytes := binary.BinaryBytes(meta)
+	metaBytes := wire.BinaryBytes(meta)
 	bs.db.Set(calcBlockMetaKey(height), metaBytes)
 
 	// Save block parts
@@ -159,11 +159,11 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	}
 
 	// Save block validation (duplicate and separate from the Block)
-	blockValidationBytes := binary.BinaryBytes(block.LastValidation)
+	blockValidationBytes := wire.BinaryBytes(block.LastValidation)
 	bs.db.Set(calcBlockValidationKey(height-1), blockValidationBytes)
 
 	// Save seen validation (seen +2/3 precommits for block)
-	seenValidationBytes := binary.BinaryBytes(seenValidation)
+	seenValidationBytes := wire.BinaryBytes(seenValidation)
 	bs.db.Set(calcSeenValidationKey(height), seenValidationBytes)
 
 	// Save new BlockStoreStateJSON descriptor
@@ -177,7 +177,7 @@ func (bs *BlockStore) saveBlockPart(height int, index int, part *types.Part) {
 	if height != bs.height+1 {
 		PanicSanity(Fmt("BlockStore can only save contiguous blocks. Wanted %v, got %v", bs.height+1, height))
 	}
-	partBytes := binary.BinaryBytes(part)
+	partBytes := wire.BinaryBytes(part)
 	bs.db.Set(calcBlockPartKey(height, index), partBytes)
 }
 

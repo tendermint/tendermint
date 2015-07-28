@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
 	. "github.com/tendermint/tendermint/common/test"
 	"github.com/tendermint/tendermint/db"
@@ -43,7 +43,7 @@ func N(l, r interface{}) *IAVLNode {
 
 // Setup a deep node
 func T(n *IAVLNode) *IAVLTree {
-	t := NewIAVLTree(binary.BasicCodec, binary.BasicCodec, 0, nil)
+	t := NewIAVLTree(wire.BasicCodec, wire.BasicCodec, 0, nil)
 	n.hashWithCount(t)
 	t.root = n
 	return t
@@ -149,7 +149,7 @@ func TestIntegration(t *testing.T) {
 	}
 
 	records := make([]*record, 400)
-	var tree *IAVLTree = NewIAVLTree(binary.BasicCodec, binary.BasicCodec, 0, nil)
+	var tree *IAVLTree = NewIAVLTree(wire.BasicCodec, wire.BasicCodec, 0, nil)
 
 	randomRecord := func() *record {
 		return &record{randstr(20), randstr(20)}
@@ -219,7 +219,7 @@ func TestPersistence(t *testing.T) {
 	}
 
 	// Construct some tree and save it
-	t1 := NewIAVLTree(binary.BasicCodec, binary.BasicCodec, 0, db)
+	t1 := NewIAVLTree(wire.BasicCodec, wire.BasicCodec, 0, db)
 	for key, value := range records {
 		t1.Set(key, value)
 	}
@@ -228,7 +228,7 @@ func TestPersistence(t *testing.T) {
 	hash, _ := t1.HashWithCount()
 
 	// Load a tree
-	t2 := NewIAVLTree(binary.BasicCodec, binary.BasicCodec, 0, db)
+	t2 := NewIAVLTree(wire.BasicCodec, wire.BasicCodec, 0, db)
 	t2.Load(hash)
 	for key, value := range records {
 		_, t2value := t2.Get(key)
@@ -245,15 +245,15 @@ func testProof(t *testing.T, proof *IAVLProof, keyBytes, valueBytes, rootHash []
 		return
 	}
 	// Write/Read then verify.
-	proofBytes := binary.BinaryBytes(proof)
+	proofBytes := wire.BinaryBytes(proof)
 	n, err := int64(0), error(nil)
-	proof2 := binary.ReadBinary(&IAVLProof{}, bytes.NewBuffer(proofBytes), &n, &err).(*IAVLProof)
+	proof2 := wire.ReadBinary(&IAVLProof{}, bytes.NewBuffer(proofBytes), &n, &err).(*IAVLProof)
 	if err != nil {
 		t.Errorf("Failed to read IAVLProof from bytes: %v", err)
 		return
 	}
 	if !proof2.Verify(keyBytes, valueBytes, rootHash) {
-		// t.Log(Fmt("%X\n%X\n", proofBytes, binary.BinaryBytes(proof2)))
+		// t.Log(Fmt("%X\n%X\n", proofBytes, wire.BinaryBytes(proof2)))
 		t.Errorf("Invalid proof after write/read. Verification failed.")
 		return
 	}
@@ -261,7 +261,7 @@ func testProof(t *testing.T, proof *IAVLProof, keyBytes, valueBytes, rootHash []
 	for i := 0; i < 5; i++ {
 		badProofBytes := MutateByteSlice(proofBytes)
 		n, err := int64(0), error(nil)
-		badProof := binary.ReadBinary(&IAVLProof{}, bytes.NewBuffer(badProofBytes), &n, &err).(*IAVLProof)
+		badProof := wire.ReadBinary(&IAVLProof{}, bytes.NewBuffer(badProofBytes), &n, &err).(*IAVLProof)
 		if err != nil {
 			continue // This is fine.
 		}
@@ -273,10 +273,10 @@ func testProof(t *testing.T, proof *IAVLProof, keyBytes, valueBytes, rootHash []
 
 func TestIAVLProof(t *testing.T) {
 
-	// Convenient wrapper around binary.BasicCodec.
+	// Convenient wrapper around wire.BasicCodec.
 	toBytes := func(o interface{}) []byte {
 		buf, n, err := new(bytes.Buffer), int64(0), error(nil)
-		binary.BasicCodec.Encode(o, buf, &n, &err)
+		wire.BasicCodec.Encode(o, buf, &n, &err)
 		if err != nil {
 			panic(Fmt("Failed to encode thing: %v", err))
 		}
@@ -285,7 +285,7 @@ func TestIAVLProof(t *testing.T) {
 
 	// Construct some random tree
 	db := db.NewMemDB()
-	var tree *IAVLTree = NewIAVLTree(binary.BasicCodec, binary.BasicCodec, 100, db)
+	var tree *IAVLTree = NewIAVLTree(wire.BasicCodec, wire.BasicCodec, 100, db)
 	for i := 0; i < 1000; i++ {
 		key, value := randstr(20), randstr(20)
 		tree.Set(key, value)
@@ -315,7 +315,7 @@ func TestIAVLProof(t *testing.T) {
 func BenchmarkImmutableAvlTree(b *testing.B) {
 	b.StopTimer()
 
-	t := NewIAVLTree(binary.BasicCodec, binary.BasicCodec, 0, nil)
+	t := NewIAVLTree(wire.BasicCodec, wire.BasicCodec, 0, nil)
 	// 23000ns/op, 43000ops/s
 	// for i := 0; i < 10000000; i++ {
 	for i := 0; i < 1000000; i++ {

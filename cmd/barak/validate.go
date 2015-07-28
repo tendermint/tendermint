@@ -43,7 +43,7 @@ func ValidateHandler(handler http.Handler, validators []Validator) http.Handler 
 			Path string
 		}{bodyString, pathQuery}
 		// Get sign bytes
-		signBytes := binary.BinaryBytes(tuple)
+		signBytes := wire.BinaryBytes(tuple)
 		// Validate the sign bytes.
 		//if validate(signBytes, validators,
 		log.Info("Should sign", "bytes", signBytes)

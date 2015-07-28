@@ -140,6 +140,18 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value int64, gas
 	return
 }
 
+// Try to deduct gasToUse from gasLeft.  If ok return false, otherwise
+// set err and return true.
+func useGasNegative(gasLeft *int64, gasToUse int64, err *error) bool {
+	if *gasLeft >= gasToUse {
+		*gasLeft -= gasToUse
+		return false
+	} else if *err == nil {
+		*err = ErrInsufficientGas
+	}
+	return true
+}
+
 // Just like Call() but does not transfer 'value' or modify the callDepth.
 func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas *int64) (output []byte, err error) {
 	dbg.Printf("(%d) (%X) %X (code=%d) gas: %v (d) %X\n", vm.callDepth, caller.Address[:4], callee.Address, len(callee.Code), *gas, input)
@@ -148,12 +160,12 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 		pc     int64 = 0
 		stack        = NewStack(dataStackCapacity, gas, &err)
 		memory       = make([]byte, memoryCapacity)
-		ok           = false // convenience
 	)
 
 	for {
-		// If there is an error, return
-		if err != nil {
+
+		// Use BaseOp gas.
+		if useGasNegative(gas, GasBaseOp, &err) {
 			return nil, err
 		}
 
@@ -424,8 +436,8 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 			dbg.Printf(" => 0x%X\n", res)
 
 		case SHA3: // 0x20
-			if ok = useGas(gas, GasSha3); !ok {
-				return nil, firstErr(err, ErrInsufficientGas)
+			if useGasNegative(gas, GasSha3, &err) {
+				return nil, err
 			}
 			offset, size := stack.Pop64(), stack.Pop64()
 			data, ok := subslice(memory, offset, size)
@@ -442,8 +454,8 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 
 		case BALANCE: // 0x31
 			addr := stack.Pop()
-			if ok = useGas(gas, GasGetAccount); !ok {
-				return nil, firstErr(err, ErrInsufficientGas)
+			if useGasNegative(gas, GasGetAccount, &err) {
+				return nil, err
 			}
 			acc := vm.appState.GetAccount(addr)
 			if acc == nil {
@@ -520,8 +532,8 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 
 		case EXTCODESIZE: // 0x3B
 			addr := stack.Pop()
-			if ok = useGas(gas, GasGetAccount); !ok {
-				return nil, firstErr(err, ErrInsufficientGas)
+			if useGasNegative(gas, GasGetAccount, &err) {
+				return nil, err
 			}
 			acc := vm.appState.GetAccount(addr)
 			if acc == nil {
@@ -534,8 +546,8 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 
 		case EXTCODECOPY: // 0x3C
 			addr := stack.Pop()
-			if ok = useGas(gas, GasGetAccount); !ok {
-				return nil, firstErr(err, ErrInsufficientGas)
+			if useGasNegative(gas, GasGetAccount, &err) {
+				return nil, err
 			}
 			acc := vm.appState.GetAccount(addr)
 			if acc == nil {
@@ -579,8 +591,8 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 			dbg.Printf(" => %v\n", vm.params.GasLimit)
 
 		case POP: // 0x50
-			stack.Pop()
-			dbg.Printf(" => %v\n", vm.params.GasLimit)
+			popped := stack.Pop()
+			dbg.Printf(" => 0x%X\n", popped)
 
 		case MLOAD: // 0x51
 			offset := stack.Pop64()
@@ -616,8 +628,10 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 
 		case SSTORE: // 0x55
 			loc, data := stack.Pop(), stack.Pop()
+			if useGasNegative(gas, GasStorageUpdate, &err) {
+				return nil, err
+			}
 			vm.appState.SetStorage(callee.Address, loc, data)
-			useGas(gas, GasStorageUpdate)
 			dbg.Printf(" {0x%X : 0x%X}\n", loc, data)
 
 		case JUMP: // 0x56
@@ -762,8 +776,8 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 				vm.fireCallEvent(&exception, &ret, callee, &Account{Address: addr}, args, value, gas)
 			} else {
 				// EVM contract
-				if ok = useGas(gas, GasGetAccount); !ok {
-					return nil, firstErr(err, ErrInsufficientGas)
+				if useGasNegative(gas, GasGetAccount, &err) {
+					return nil, err
 				}
 				acc := vm.appState.GetAccount(addr)
 				// since CALL is used also for sending funds,
@@ -821,8 +835,8 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 
 		case SUICIDE: // 0xFF
 			addr := stack.Pop()
-			if ok = useGas(gas, GasGetAccount); !ok {
-				return nil, firstErr(err, ErrInsufficientGas)
+			if useGasNegative(gas, GasGetAccount, &err) {
+				return nil, err
 			}
 			// TODO if the receiver is , then make it the fee.
 			receiver := vm.appState.GetAccount(addr)
@@ -890,15 +904,6 @@ func firstErr(errA, errB error) error {
 		return errA
 	} else {
 		return errB
-	}
-}
-
-func useGas(gas *int64, gasToUse int64) bool {
-	if *gas > gasToUse {
-		*gas -= gasToUse
-		return true
-	} else {
-		return false
 	}
 }
 

@@ -3,7 +3,7 @@ package account
 import (
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/tendermint/ed25519"
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/tendermint/ed25519/extra25519"
-	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
 )
 
@@ -18,10 +18,10 @@ const (
 	PrivKeyTypeEd25519 = byte(0x01)
 )
 
-// for binary.readReflect
-var _ = binary.RegisterInterface(
+// for wire.readReflect
+var _ = wire.RegisterInterface(
 	struct{ PrivKey }{},
-	binary.ConcreteType{PrivKeyEd25519{}, PrivKeyTypeEd25519},
+	wire.ConcreteType{PrivKeyEd25519{}, PrivKeyTypeEd25519},
 )
 
 //-------------------------------------
@@ -53,7 +53,7 @@ func (privKey PrivKeyEd25519) String() string {
 
 // Deterministically generates new priv-key bytes from key.
 func (key PrivKeyEd25519) Generate(index int) PrivKeyEd25519 {
-	newBytes := binary.BinarySha256(struct {
+	newBytes := wire.BinarySha256(struct {
 		PrivKey [64]byte
 		Index   int
 	}{key, index})

@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/events"
 )
@@ -225,17 +225,17 @@ const (
 
 type PexMessage interface{}
 
-var _ = binary.RegisterInterface(
+var _ = wire.RegisterInterface(
 	struct{ PexMessage }{},
-	binary.ConcreteType{&pexRequestMessage{}, msgTypeRequest},
-	binary.ConcreteType{&pexAddrsMessage{}, msgTypeAddrs},
+	wire.ConcreteType{&pexRequestMessage{}, msgTypeRequest},
+	wire.ConcreteType{&pexAddrsMessage{}, msgTypeAddrs},
 )
 
 func DecodeMessage(bz []byte) (msgType byte, msg PexMessage, err error) {
 	msgType = bz[0]
 	n := new(int64)
 	r := bytes.NewReader(bz)
-	msg = binary.ReadBinary(struct{ PexMessage }{}, r, n, &err).(struct{ PexMessage }).PexMessage
+	msg = wire.ReadBinary(struct{ PexMessage }{}, r, n, &err).(struct{ PexMessage }).PexMessage
 	return
 }
 

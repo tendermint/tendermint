@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/events"
 	"github.com/tendermint/tendermint/p2p"
@@ -271,19 +271,19 @@ const (
 
 type BlockchainMessage interface{}
 
-var _ = binary.RegisterInterface(
+var _ = wire.RegisterInterface(
 	struct{ BlockchainMessage }{},
-	binary.ConcreteType{&bcBlockRequestMessage{}, msgTypeBlockRequest},
-	binary.ConcreteType{&bcBlockResponseMessage{}, msgTypeBlockResponse},
-	binary.ConcreteType{&bcStatusResponseMessage{}, msgTypeStatusResponse},
-	binary.ConcreteType{&bcStatusRequestMessage{}, msgTypeStatusRequest},
+	wire.ConcreteType{&bcBlockRequestMessage{}, msgTypeBlockRequest},
+	wire.ConcreteType{&bcBlockResponseMessage{}, msgTypeBlockResponse},
+	wire.ConcreteType{&bcStatusResponseMessage{}, msgTypeStatusResponse},
+	wire.ConcreteType{&bcStatusRequestMessage{}, msgTypeStatusRequest},
 )
 
 func DecodeMessage(bz []byte) (msgType byte, msg BlockchainMessage, err error) {
 	msgType = bz[0]
 	n := new(int64)
 	r := bytes.NewReader(bz)
-	msg = binary.ReadBinary(struct{ BlockchainMessage }{}, r, n, &err).(struct{ BlockchainMessage }).BlockchainMessage
+	msg = wire.ReadBinary(struct{ BlockchainMessage }{}, r, n, &err).(struct{ BlockchainMessage }).BlockchainMessage
 	return
 }
 

@@ -6,7 +6,7 @@ import (
 	"io"
 
 	acm "github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/types"
 )
@@ -39,9 +39,9 @@ func (p *Proposal) String() string {
 }
 
 func (p *Proposal) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
-	binary.WriteTo([]byte(Fmt(`{"chain_id":"%s"`, chainID)), w, n, err)
-	binary.WriteTo([]byte(`,"proposal":{"block_parts_header":`), w, n, err)
+	wire.WriteTo([]byte(Fmt(`{"chain_id":"%s"`, chainID)), w, n, err)
+	wire.WriteTo([]byte(`,"proposal":{"block_parts_header":`), w, n, err)
 	p.BlockPartsHeader.WriteSignBytes(w, n, err)
-	binary.WriteTo([]byte(Fmt(`,"height":%v,"pol_round":%v`, p.Height, p.POLRound)), w, n, err)
-	binary.WriteTo([]byte(Fmt(`,"round":%v}}`, p.Round)), w, n, err)
+	wire.WriteTo([]byte(Fmt(`,"height":%v,"pol_round":%v`, p.Height, p.POLRound)), w, n, err)
+	wire.WriteTo([]byte(Fmt(`,"round":%v}}`, p.Round)), w, n, err)
 }

@@ -21,8 +21,8 @@ import (
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/golang.org/x/crypto/ripemd160"
 
 	acm "github.com/tendermint/tendermint/account"
-	bm "github.com/tendermint/tendermint/binary"
 	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/wire"
 )
 
 // 2 + 1024 == 1026 total frame size
@@ -270,7 +270,7 @@ func shareAuthSignature(sc *SecretConnection, pubKey acm.PubKeyEd25519, signatur
 
 	Parallel(
 		func() {
-			msgBytes := bm.BinaryBytes(authSigMessage{pubKey, signature})
+			msgBytes := wire.BinaryBytes(authSigMessage{pubKey, signature})
 			_, err1 = sc.Write(msgBytes)
 		},
 		func() {
@@ -280,7 +280,7 @@ func shareAuthSignature(sc *SecretConnection, pubKey acm.PubKeyEd25519, signatur
 				return
 			}
 			n := int64(0) // not used.
-			recvMsg = bm.ReadBinary(authSigMessage{}, bytes.NewBuffer(readBuffer), &n, &err2).(authSigMessage)
+			recvMsg = wire.ReadBinary(authSigMessage{}, bytes.NewBuffer(readBuffer), &n, &err2).(authSigMessage)
 		})
 
 	if err1 != nil {

@@ -356,10 +356,10 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 			return types.ErrTxInvalidAddress
 		}
 
-		createAccount := len(tx.Address) == 0
-		if createAccount {
+		createContract := len(tx.Address) == 0
+		if createContract {
 			if !hasCreateContractPermission(blockCache, inAcc) {
-				return fmt.Errorf("Account %X does not have Create permission", tx.Input.Address)
+				return fmt.Errorf("Account %X does not have CreateContract permission", tx.Input.Address)
 			}
 		} else {
 			if !hasCallPermission(blockCache, inAcc) {
@@ -383,13 +383,18 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 			return types.ErrTxInsufficientFunds
 		}
 
-		if !createAccount {
+		if !createContract {
 			// Validate output
 			if len(tx.Address) != 20 {
 				log.Info(Fmt("Destination address is not 20 bytes %X", tx.Address))
 				return types.ErrTxInvalidAddress
 			}
-			// this may be nil if we are still in mempool and contract was created in same block as this tx
+			// check if its a native contract
+			if vm.RegisteredNativeContract(LeftPadWord256(tx.Address)) {
+				return fmt.Errorf("NativeContracts can not be called using CallTx. Use a contract or the appropriate tx type (eg. PermissionsTx, NameTx)")
+			}
+
+			// Output account may be nil if we are still in mempool and contract was created in same block as this tx
 			// but that's fine, because the account will be created properly when the create tx runs in the block
 			// and then this won't return nil. otherwise, we take their fee
 			outAcc = blockCache.GetAccount(tx.Address)
@@ -400,90 +405,101 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 		// Good!
 		value := tx.Input.Amount - tx.Fee
 		inAcc.Sequence += 1
+		inAcc.Balance -= tx.Fee
+		blockCache.UpdateAccount(inAcc)
 
+		// The logic in runCall MUST NOT return.
 		if runCall {
 
+			// VM call variables
 			var (
 				gas     int64       = tx.GasLimit
 				err     error       = nil
 				caller  *vm.Account = toVMAccount(inAcc)
-				callee  *vm.Account = nil
+				callee  *vm.Account = nil // initialized below
 				code    []byte      = nil
+				ret     []byte      = nil
 				txCache             = NewTxCache(blockCache)
 				params              = vm.Params{
 					BlockHeight: int64(_s.LastBlockHeight),
 					BlockHash:   LeftPadWord256(_s.LastBlockHash),
 					BlockTime:   _s.LastBlockTime.Unix(),
-					GasLimit:    10000000,
+					GasLimit:    _s.GetGasLimit(),
 				}
 			)
 
-			// get or create callee
-			if !createAccount {
-
-				if outAcc == nil || len(outAcc.Code) == 0 {
-					// check if its a native contract
-					if vm.RegisteredNativeContract(LeftPadWord256(tx.Address)) {
-						return fmt.Errorf("NativeContracts can not be called using CallTx. Use a contract or the appropriate tx type (eg. PermissionsTx, NameTx)")
-					}
-
-					// if you call an account that doesn't exist
-					// or an account with no code then we take fees (sorry pal)
-					// NOTE: it's fine to create a contract and call it within one
-					// block (nonce will prevent re-ordering of those txs)
-					// but to create with one account and call with another
-					// you have to wait a block to avoid a re-ordering attack
-					// that will take your fees
-					inAcc.Balance -= tx.Fee
-					blockCache.UpdateAccount(inAcc)
-					if outAcc == nil {
-						log.Info(Fmt("Cannot find destination address %X. Deducting fee from caller", tx.Address))
-					} else {
-						log.Info(Fmt("Attempting to call an account (%X) with no code. Deducting fee from caller", tx.Address))
-					}
-					return types.ErrTxInvalidAddress
+			if !createContract && (outAcc == nil || len(outAcc.Code) == 0) {
+				// if you call an account that doesn't exist
+				// or an account with no code then we take fees (sorry pal)
+				// NOTE: it's fine to create a contract and call it within one
+				// block (nonce will prevent re-ordering of those txs)
+				// but to create with one contract and call with another
+				// you have to wait a block to avoid a re-ordering attack
+				// that will take your fees
+				if outAcc == nil {
+					log.Info(Fmt("%X tries to call %X but it does not exist.",
+						inAcc.Address, tx.Address))
+				} else {
+					log.Info(Fmt("%X tries to call %X but code is blank.",
+						inAcc.Address, tx.Address))
 				}
-				callee = toVMAccount(outAcc)
-				code = callee.Code
-				log.Info(Fmt("Calling contract %X with code %X", callee.Address, callee.Code))
+				err = types.ErrTxInvalidAddress
+				goto CALL_COMPLETE
+			}
+
+			// get or create callee
+			if createContract {
+				if HasPermission(blockCache, inAcc, ptypes.CreateContract) {
+					callee = txCache.CreateAccount(caller)
+					log.Info(Fmt("Created new contract %X", callee.Address))
+					code = tx.Data
+				} else {
+					log.Info(Fmt("Error on execution: Caller %X cannot create contract",
+						caller.Address))
+					err = types.ErrTxPermissionDenied
+					goto CALL_COMPLETE
+				}
 			} else {
-				callee = txCache.CreateAccount(caller)
-				log.Info(Fmt("Created new account %X", callee.Address))
-				code = tx.Data
+				callee = toVMAccount(outAcc)
+				log.Info(Fmt("Calling contract %X with code %X", callee.Address, callee.Code))
+				code = callee.Code
 			}
 			log.Info(Fmt("Code for this contract: %X", code))
 
-			txCache.UpdateAccount(caller) // because we bumped nonce
-			txCache.UpdateAccount(callee) // so the txCache knows about the callee and the create and/or transfer takes effect
-
-			vmach := vm.NewVM(txCache, params, caller.Address, types.TxID(_s.ChainID, tx))
-			vmach.SetFireable(evc)
-
-			// NOTE: Call() transfers the value from caller to callee iff call succeeds.
-			ret, err := vmach.Call(caller, callee, code, tx.Data, value, &gas)
-			exception := ""
-			if err != nil {
-				exception = err.Error()
-				// Failure. Charge the gas fee. The 'value' was otherwise not transferred.
-				log.Info(Fmt("Error on execution: %v", err))
-				inAcc.Balance -= tx.Fee
-				blockCache.UpdateAccount(inAcc)
-				// Throw away 'txCache' which holds incomplete updates (don't sync it).
-			} else {
-				log.Info("Successful execution")
-				// Success
-				if createAccount {
-					callee.Code = ret
+			// Run VM call and sync txCache to blockCache.
+			{ // Capture scope for goto.
+				// Write caller/callee to txCache.
+				txCache.UpdateAccount(caller)
+				txCache.UpdateAccount(callee)
+				vmach := vm.NewVM(txCache, params, caller.Address, types.TxID(_s.ChainID, tx))
+				vmach.SetFireable(evc)
+				// NOTE: Call() transfers the value from caller to callee iff call succeeds.
+				ret, err = vmach.Call(caller, callee, code, tx.Data, value, &gas)
+				if err != nil {
+					// Failure. Charge the gas fee. The 'value' was otherwise not transferred.
+					log.Info(Fmt("Error on execution: %v", err))
+					goto CALL_COMPLETE
 				}
 
+				log.Info("Successful execution")
+				if createContract {
+					callee.Code = ret
+				}
 				txCache.Sync()
 			}
+
+		CALL_COMPLETE: // err may or may not be nil.
+
 			// Create a receipt from the ret and whether errored.
 			log.Notice("VM call complete", "caller", caller, "callee", callee, "return", ret, "err", err)
 
 			// Fire Events for sender and receiver
 			// a separate event will be fired from vm for each additional call
 			if evc != nil {
+				exception := ""
+				if err != nil {
+					exception = err.Error()
+				}
 				evc.FireEvent(types.EventStringAccInput(tx.Input.Address), types.EventMsgCallTx{tx, ret, exception})
 				evc.FireEvent(types.EventStringAccOutput(tx.Address), types.EventMsgCallTx{tx, ret, exception})
 			}
@@ -493,7 +509,7 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 			// So mempool will skip the actual .Call(),
 			// and only deduct from the caller's balance.
 			inAcc.Balance -= value
-			if createAccount {
+			if createContract {
 				inAcc.Sequence += 1
 			}
 			blockCache.UpdateAccount(inAcc)
@@ -556,7 +572,7 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 				// ensure we are owner
 				if bytes.Compare(entry.Owner, tx.Input.Address) != 0 {
 					log.Info(Fmt("Sender %X is trying to update a name (%s) for which he is not owner", tx.Input.Address, tx.Name))
-					return types.ErrIncorrectOwner
+					return types.ErrTxPermissionDenied
 				}
 			} else {
 				expired = true

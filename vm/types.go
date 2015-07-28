@@ -21,6 +21,9 @@ type Account struct {
 }
 
 func (acc *Account) String() string {
+	if acc == nil {
+		return "nil-VMAccount"
+	}
 	return Fmt("VMAccount{%X B:%v C:%X N:%v S:%X}",
 		acc.Address, acc.Balance, acc.Code, acc.Nonce, acc.StorageRoot)
 }

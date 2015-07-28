@@ -9,7 +9,7 @@ import (
 
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/code.google.com/p/go.crypto/ripemd160"
 
-	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/merkle"
 )
@@ -76,7 +76,7 @@ func (psh PartSetHeader) Equals(other PartSetHeader) bool {
 }
 
 func (psh PartSetHeader) WriteSignBytes(w io.Writer, n *int64, err *error) {
-	binary.WriteTo([]byte(Fmt(`{"hash":"%X","total":%v}`, psh.Hash, psh.Total)), w, n, err)
+	wire.WriteTo([]byte(Fmt(`{"hash":"%X","total":%v}`, psh.Hash, psh.Total)), w, n, err)
 }
 
 //-------------------------------------

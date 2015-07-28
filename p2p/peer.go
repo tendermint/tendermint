@@ -5,7 +5,7 @@ import (
 	"io"
 	"net"
 
-	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/types"
 )
@@ -30,11 +30,11 @@ func peerHandshake(conn net.Conn, ourNodeInfo *types.NodeInfo) (*types.NodeInfo,
 	Parallel(
 		func() {
 			var n int64
-			binary.WriteBinary(ourNodeInfo, conn, &n, &err1)
+			wire.WriteBinary(ourNodeInfo, conn, &n, &err1)
 		},
 		func() {
 			var n int64
-			binary.ReadBinary(peerNodeInfo, conn, &n, &err2)
+			wire.ReadBinary(peerNodeInfo, conn, &n, &err2)
 			log.Notice("Peer handshake", "peerNodeInfo", peerNodeInfo)
 		})
 	if err1 != nil {
@@ -112,7 +112,7 @@ func (p *Peer) CanSend(chId byte) bool {
 }
 
 func (p *Peer) WriteTo(w io.Writer) (n int64, err error) {
-	binary.WriteString(p.Key, w, &n, &err)
+	wire.WriteString(p.Key, w, &n, &err)
 	return
 }
 

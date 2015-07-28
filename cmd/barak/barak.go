@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/cmd/barak/types"
 	. "github.com/tendermint/tendermint/common"
 	pcm "github.com/tendermint/tendermint/process"
@@ -36,7 +36,7 @@ func ReadBarakOptions(optFile string) *BarakOptions {
 	if err != nil {
 		panic(Fmt("Error reading input: %v", err))
 	}
-	opt := binary.ReadJSON(&BarakOptions{}, optBytes, &err).(*BarakOptions)
+	opt := wire.ReadJSON(&BarakOptions{}, optBytes, &err).(*BarakOptions)
 	if err != nil {
 		panic(Fmt("Error parsing input: %v", err))
 	}

@@ -2,7 +2,7 @@ package crawler
 
 import (
 	"fmt"
-	"github.com/tendermint/tendermint/binary"
+	"github.com/tendermint/tendermint/wire"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpcclient "github.com/tendermint/tendermint/rpc/core_client"
 	"github.com/tendermint/tendermint/types"
@@ -196,7 +196,7 @@ func (c *Crawler) consumeMessage(wsMsg *rpcclient.WSMsg, node *Node) error {
 		Error string
 	}
 	var err error
-	binary.ReadJSON(&response, wsMsg.Data, &err)
+	wire.ReadJSON(&response, wsMsg.Data, &err)
 	if err != nil {
 		return err
 	}
