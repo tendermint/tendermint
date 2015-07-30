@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/gorilla/websocket"
-	"github.com/tendermint/tendermint/wire"
 	_ "github.com/tendermint/tendermint/config/tendermint_test"
 	"github.com/tendermint/tendermint/rpc/server"
 	"github.com/tendermint/tendermint/rpc/types"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/wire"
 )
 
 //--------------------------------------------------------------------------------
@@ -58,6 +58,7 @@ func unsubscribe(t *testing.T, con *websocket.Conn, eventid string) {
 }
 
 // wait for an event; do things that might trigger events, and check them when they are received
+// the check function takes an event id and the byte slice read off the ws
 func waitForEvent(t *testing.T, con *websocket.Conn, eventid string, dieOnTimeout bool, f func(), check func(string, []byte) error) {
 	// go routine to wait for webscoket msg
 	goodCh := make(chan []byte)
@@ -158,6 +159,29 @@ func unmarshalResponseNewBlock(b []byte) (*types.Block, error) {
 	}
 	block := response.Result.Data
 	return block, nil
+}
+
+func unmarshalResponseNameReg(b []byte) (*types.NameTx, error) {
+	// unmarshall and assert somethings
+	var response struct {
+		JSONRPC string `json:"jsonrpc"`
+		Id      string `json:"id"`
+		Result  struct {
+			Event string        `json:"event"`
+			Data  *types.NameTx `json:"data"`
+		} `json:"result"`
+		Error string `json:"error"`
+	}
+	var err error
+	wire.ReadJSON(&response, b, &err)
+	if err != nil {
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, fmt.Errorf(response.Error)
+	}
+	tx := response.Result.Data
+	return tx, nil
 }
 
 func unmarshalValidateBlockchain(t *testing.T, con *websocket.Conn, eid string) {
