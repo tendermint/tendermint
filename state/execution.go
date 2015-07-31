@@ -449,16 +449,10 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 
 			// get or create callee
 			if createContract {
-				if HasPermission(blockCache, inAcc, ptypes.CreateContract) {
-					callee = txCache.CreateAccount(caller)
-					log.Info(Fmt("Created new contract %X", callee.Address))
-					code = tx.Data
-				} else {
-					log.Info(Fmt("Error on execution: Caller %X cannot create contract",
-						caller.Address))
-					err = types.ErrTxPermissionDenied
-					goto CALL_COMPLETE
-				}
+				// We already checked for permission
+				callee = txCache.CreateAccount(caller)
+				log.Info(Fmt("Created new contract %X", callee.Address))
+				code = tx.Data
 			} else {
 				callee = toVMAccount(outAcc)
 				log.Info(Fmt("Calling contract %X with code %X", callee.Address, callee.Code))
