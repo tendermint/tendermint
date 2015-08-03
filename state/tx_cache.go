@@ -4,8 +4,8 @@ import (
 	acm "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
 	ptypes "github.com/tendermint/tendermint/permission/types" // for GlobalPermissionAddress ...
+	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/vm"
-	"github.com/tendermint/tendermint/vm/sha3"
 )
 
 type TxCache struct {
@@ -146,10 +146,7 @@ func (cache *TxCache) AddLog(log *vm.Log) {
 
 // Convenience function to return address of new contract
 func NewContractAddress(caller []byte, nonce int) []byte {
-	temp := make([]byte, 32+8)
-	copy(temp, caller)
-	PutInt64BE(temp[32:], int64(nonce))
-	return sha3.Sha3(temp)[:20]
+	return types.NewContractAddress(caller, nonce)
 }
 
 // Converts backend.Account to vm.Account struct.
