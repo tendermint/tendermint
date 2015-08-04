@@ -9,7 +9,6 @@ import (
 	. "github.com/tendermint/tendermint/common"
 	_ "github.com/tendermint/tendermint/config/tendermint_test"
 	"github.com/tendermint/tendermint/rpc/types"
-	"github.com/tendermint/tendermint/wire"
 )
 
 const wsEventsChannelCapacity = 10
@@ -52,26 +51,21 @@ func (wsc *WSClient) receiveEventsRoutine() {
 	for {
 		_, data, err := wsc.ReadMessage()
 		if err != nil {
-			log.Info("WSClient failed to read message: %v", err)
+			log.Info(Fmt("WSClient failed to read message: %v", err))
 			wsc.Stop()
 			break
 		} else {
 			var response rpctypes.RPCResponse
 			if err := json.Unmarshal(data, &response); err != nil {
-				log.Info("WSClient failed to parse message: %v", err)
+				log.Info(Fmt("WSClient failed to parse message: %v", err))
 				wsc.Stop()
 				break
 			}
 			if strings.HasSuffix(response.Id, "#event") {
-				var eventResult rpctypes.RPCEventResult
-				var err error
-				wire.ReadJSONObject(&eventResult, response.Result, &err)
-				if err != nil {
-					log.Info("WSClient failed to parse RPCEventResult: %v", err)
-					wsc.Stop()
-					break
-				}
-				wsc.EventsCh <- eventResult
+				result := response.Result.(map[string]interface{})
+				event := result["event"].(string)
+				data := result["data"]
+				wsc.EventsCh <- rpctypes.RPCEventResult{event, data}
 			} else {
 				wsc.ResponsesCh <- response
 			}

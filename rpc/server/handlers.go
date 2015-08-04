@@ -220,7 +220,7 @@ type WSConnection struct {
 	baseConn    *websocket.Conn
 	writeChan   chan RPCResponse
 	readTimeout *time.Timer
-	pingTicker  *time.Timer
+	pingTicker  *time.Ticker
 
 	funcMap map[string]*RPCFunc
 	evsw    *events.EventSwitch
@@ -248,7 +248,7 @@ func (wsc *WSConnection) OnStart() {
 
 	// Custom Ping handler to touch readTimeout
 	wsc.readTimeout = time.NewTimer(time.Second * wsReadTimeoutSeconds)
-	wsc.pingTicker = time.NewTimer(time.Second * wsPingTickerSeconds)
+	wsc.pingTicker = time.NewTicker(time.Second * wsPingTickerSeconds)
 	wsc.baseConn.SetPingHandler(func(m string) error {
 		wsc.baseConn.WriteControl(websocket.PongMessage, []byte(m), time.Now().Add(time.Second*wsWriteTimeoutSeconds))
 		wsc.readTimeout.Reset(time.Second * wsReadTimeoutSeconds)
