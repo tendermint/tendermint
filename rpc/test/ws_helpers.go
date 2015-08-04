@@ -9,11 +9,10 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/gorilla/websocket"
-	"github.com/tendermint/tendermint/wire"
 	_ "github.com/tendermint/tendermint/config/tendermint_test"
-	"github.com/tendermint/tendermint/rpc/server"
 	"github.com/tendermint/tendermint/rpc/types"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/wire"
 )
 
 //--------------------------------------------------------------------------------
@@ -65,20 +64,22 @@ func waitForEvent(t *testing.T, con *websocket.Conn, eventid string, dieOnTimeou
 	quitCh := make(chan struct{})
 	defer close(quitCh)
 
-	// Write pings repeatedly
-	// TODO: Maybe move this out to something that manages the con?
-	go func() {
-		pingTicker := time.NewTicker((time.Second * rpcserver.WSReadTimeoutSeconds) / 2)
-		for {
-			select {
-			case <-quitCh:
-				pingTicker.Stop()
-				return
-			case <-pingTicker.C:
-				con.WriteControl(websocket.PingMessage, []byte("whatevs"), time.Now().Add(time.Second))
+	/*
+		// TODO delete: we moved pinging to the server.
+		// Write pings repeatedly
+		go func() {
+			pingTicker := time.NewTicker((time.Second * rpcserver.WSReadTimeoutSeconds) / 2)
+			for {
+				select {
+				case <-quitCh:
+					pingTicker.Stop()
+					return
+				case <-pingTicker.C:
+					con.WriteControl(websocket.PingMessage, []byte("whatevs"), time.Now().Add(time.Second))
+				}
 			}
-		}
-	}()
+		}()
+	*/
 
 	// Read message
 	go func() {
@@ -188,8 +189,8 @@ func unmarshalValidateSend(amt int64, toAddr []byte) func(string, []byte) error 
 			JSONRPC string `json:"jsonrpc"`
 			Id      string `json:"id"`
 			Result  struct {
-				Event string        `json:"event"`
-				Data  *types.SendTx `json:"data"`
+				Event string           `json:"event"`
+				Data  types.EventMsgTx `json:"data"`
 			} `json:"result"`
 			Error string `json:"error"`
 		}
@@ -204,7 +205,7 @@ func unmarshalValidateSend(amt int64, toAddr []byte) func(string, []byte) error 
 		if eid != response.Result.Event {
 			return fmt.Errorf("Eventid is not correct. Got %s, expected %s", response.Result.Event, eid)
 		}
-		tx := response.Result.Data
+		tx := response.Result.Data.Tx.(*types.SendTx)
 		if bytes.Compare(tx.Inputs[0].Address, user[0].Address) != 0 {
 			return fmt.Errorf("Senders do not match up! Got %x, expected %x", tx.Inputs[0].Address, user[0].Address)
 		}

@@ -337,11 +337,11 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 		// if the evc is nil, nothing will happen
 		if evc != nil {
 			for _, i := range tx.Inputs {
-				evc.FireEvent(types.EventStringAccInput(i.Address), tx)
+				evc.FireEvent(types.EventStringAccInput(i.Address), types.EventMsgTx{tx, nil, ""})
 			}
 
 			for _, o := range tx.Outputs {
-				evc.FireEvent(types.EventStringAccOutput(o.Address), tx)
+				evc.FireEvent(types.EventStringAccOutput(o.Address), types.EventMsgTx{tx, nil, ""})
 			}
 		}
 		return nil
@@ -494,8 +494,8 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 				if err != nil {
 					exception = err.Error()
 				}
-				evc.FireEvent(types.EventStringAccInput(tx.Input.Address), types.EventMsgCallTx{tx, ret, exception})
-				evc.FireEvent(types.EventStringAccOutput(tx.Address), types.EventMsgCallTx{tx, ret, exception})
+				evc.FireEvent(types.EventStringAccInput(tx.Input.Address), types.EventMsgTx{tx, ret, exception})
+				evc.FireEvent(types.EventStringAccOutput(tx.Address), types.EventMsgTx{tx, ret, exception})
 			}
 		} else {
 			// The mempool does not call txs until
@@ -888,7 +888,7 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 		}
 
 		if evc != nil {
-			evc.FireEvent(types.EventStringAccInput(tx.Input.Address), tx)
+			evc.FireEvent(types.EventStringAccInput(tx.Input.Address), types.EventMsgTx{tx, nil, ""})
 			evc.FireEvent(types.EventStringPermissions(ptypes.PermFlagToString(permFlag)), tx)
 		}
 

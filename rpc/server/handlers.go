@@ -12,10 +12,10 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/gorilla/websocket"
-	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/events"
 	. "github.com/tendermint/tendermint/rpc/types"
+	"github.com/tendermint/tendermint/wire"
 )
 
 func RegisterRPCFuncs(mux *http.ServeMux, funcMap map[string]*RPCFunc) {
@@ -205,8 +205,9 @@ func _jsonStringToArg(ty reflect.Type, arg string) (reflect.Value, error) {
 
 const (
 	writeChanCapacity     = 20
-	WSWriteTimeoutSeconds = 10 // exposed for tests
-	WSReadTimeoutSeconds  = 10 // exposed for tests
+	wsWriteTimeoutSeconds = 30 // each write times out after this
+	wsReadTimeoutSeconds  = 30 // connection times out if we haven't received *anything* in this long, not even pings.
+	wsPingTickerSeconds   = 10 // send a ping every PingTickerSeconds.
 )
 
 // a single websocket connection
@@ -219,6 +220,7 @@ type WSConnection struct {
 	baseConn    *websocket.Conn
 	writeChan   chan RPCResponse
 	readTimeout *time.Timer
+	pingTicker  *time.Timer
 
 	funcMap map[string]*RPCFunc
 	evsw    *events.EventSwitch
@@ -245,14 +247,15 @@ func (wsc *WSConnection) OnStart() {
 	go wsc.readRoutine()
 
 	// Custom Ping handler to touch readTimeout
-	wsc.readTimeout = time.NewTimer(time.Second * WSReadTimeoutSeconds)
+	wsc.readTimeout = time.NewTimer(time.Second * wsReadTimeoutSeconds)
+	wsc.pingTicker = time.NewTimer(time.Second * wsPingTickerSeconds)
 	wsc.baseConn.SetPingHandler(func(m string) error {
-		wsc.baseConn.WriteControl(websocket.PongMessage, []byte(m), time.Now().Add(time.Second*WSWriteTimeoutSeconds))
-		wsc.readTimeout.Reset(time.Second * WSReadTimeoutSeconds)
+		wsc.baseConn.WriteControl(websocket.PongMessage, []byte(m), time.Now().Add(time.Second*wsWriteTimeoutSeconds))
+		wsc.readTimeout.Reset(time.Second * wsReadTimeoutSeconds)
 		return nil
 	})
 	wsc.baseConn.SetPongHandler(func(m string) error {
-		wsc.readTimeout.Reset(time.Second * WSReadTimeoutSeconds)
+		wsc.readTimeout.Reset(time.Second * wsReadTimeoutSeconds)
 		return nil
 	})
 	go wsc.readTimeoutRoutine()
@@ -265,6 +268,7 @@ func (wsc *WSConnection) OnStop() {
 	wsc.QuitService.OnStop()
 	wsc.evsw.RemoveListener(wsc.id)
 	wsc.readTimeout.Stop()
+	wsc.pingTicker.Stop()
 	// The write loop closes the websocket connection
 	// when it exits its loop, and the read loop
 	// closes the writeChan
@@ -302,7 +306,7 @@ func (wsc *WSConnection) readRoutine() {
 		default:
 			var in []byte
 			// Do not set a deadline here like below:
-			// wsc.baseConn.SetReadDeadline(time.Now().Add(time.Second * WSReadTimeoutSeconds))
+			// wsc.baseConn.SetReadDeadline(time.Now().Add(time.Second * wsReadTimeoutSeconds))
 			// The client may not send anything for a while.
 			// We use `readTimeout` to handle read timeouts.
 			_, in, err := wsc.baseConn.ReadMessage()
@@ -332,7 +336,8 @@ func (wsc *WSConnection) readRoutine() {
 				} else {
 					log.Notice("Subscribe to event", "id", wsc.id, "event", event)
 					wsc.evsw.AddListenerForEvent(wsc.id, event, func(msg interface{}) {
-						wsc.writeRPCResponse(NewRPCResponse(request.Id, RPCEventResult{event, msg}, ""))
+						// NOTE: RPCResponses of subscribed events have id suffix "#event"
+						wsc.writeRPCResponse(NewRPCResponse(request.Id+"#event", RPCEventResult{event, msg}, ""))
 					})
 					continue
 				}
@@ -340,6 +345,7 @@ func (wsc *WSConnection) readRoutine() {
 				if len(request.Params) == 0 {
 					log.Notice("Unsubscribe from all events", "id", wsc.id)
 					wsc.evsw.RemoveListener(wsc.id)
+					wsc.writeRPCResponse(NewRPCResponse(request.Id, nil, ""))
 					continue
 				} else if len(request.Params) == 1 {
 					if event, ok := request.Params[0].(string); !ok {
@@ -348,6 +354,7 @@ func (wsc *WSConnection) readRoutine() {
 					} else {
 						log.Notice("Unsubscribe from event", "id", wsc.id, "event", event)
 						wsc.evsw.RemoveListenerForEvent(event, wsc.id)
+						wsc.writeRPCResponse(NewRPCResponse(request.Id, nil, ""))
 						continue
 					}
 				} else {
@@ -383,19 +390,26 @@ func (wsc *WSConnection) readRoutine() {
 // receives on a write channel and writes out on the socket
 func (wsc *WSConnection) writeRoutine() {
 	defer wsc.baseConn.Close()
-	n, err := new(int64), new(error)
+	var n, err = int64(0), error(nil)
 	for {
 		select {
 		case <-wsc.Quit:
 			return
+		case <-wsc.pingTicker.C:
+			err := wsc.baseConn.WriteMessage(websocket.PingMessage, []byte{})
+			if err != nil {
+				log.Error("Failed to write ping message on websocket", "error", err)
+				wsc.Stop()
+				return
+			}
 		case msg := <-wsc.writeChan:
 			buf := new(bytes.Buffer)
-			wire.WriteJSON(msg, buf, n, err)
-			if *err != nil {
+			wire.WriteJSON(msg, buf, &n, &err)
+			if err != nil {
 				log.Error("Failed to marshal RPCResponse to JSON", "error", err)
 			} else {
-				wsc.baseConn.SetWriteDeadline(time.Now().Add(time.Second * WSWriteTimeoutSeconds))
-				if err := wsc.baseConn.WriteMessage(websocket.TextMessage, buf.Bytes()); err != nil {
+				wsc.baseConn.SetWriteDeadline(time.Now().Add(time.Second * wsWriteTimeoutSeconds))
+				if err = wsc.baseConn.WriteMessage(websocket.TextMessage, buf.Bytes()); err != nil {
 					log.Warn("Failed to write response on websocket", "error", err)
 					wsc.Stop()
 					return
@@ -407,8 +421,9 @@ func (wsc *WSConnection) writeRoutine() {
 
 //----------------------------------------
 
-// main manager for all websocket connections
-// holds the event switch
+// Main manager for all websocket connections
+// Holds the event switch
+// NOTE: The websocket path is defined externally, e.g. in node/node.go
 type WebsocketManager struct {
 	websocket.Upgrader
 	funcMap map[string]*RPCFunc
