@@ -20,7 +20,7 @@ func parseFlags() (privKeyHex string, numAccounts int, remote string) {
 	var version bool
 	flag.StringVar(&privKeyHex, "priv-key", "", "Private key bytes in HEX")
 	flag.IntVar(&numAccounts, "num-accounts", 1000, "Deterministically generates this many sub-accounts")
-	flag.StringVar(&remote, "remote", "http://localhost:46657", "Remote RPC host:port")
+	flag.StringVar(&remote, "remote", "localhost:46657", "Remote RPC host:port")
 	flag.BoolVar(&version, "version", false, "Version")
 	flag.Parse()
 	if version {
@@ -49,7 +49,7 @@ func main() {
 	// Get root account.
 	rootAccount, err := getAccount(remote, root.Address)
 	if err != nil {
-		fmt.Println(Fmt("Root account does not exist: %X", root.Address))
+		fmt.Println(Fmt("Root account %X does not exist: %v", root.Address, err))
 		return
 	} else {
 		fmt.Println("Root account", rootAccount)
@@ -60,7 +60,7 @@ func main() {
 	accounts[0] = rootAccount
 	privAccounts := make([]*acm.PrivAccount, numAccounts+1)
 	privAccounts[0] = root
-	for i := 1; i < numAccounts; i++ {
+	for i := 1; i < numAccounts+1; i++ {
 		privAccounts[i] = root.Generate(i)
 		account, err := getAccount(remote, privAccounts[i].Address)
 		if err != nil {
@@ -75,11 +75,12 @@ func main() {
 	sendTx := makeRandomTransaction(10, rootAccount.Sequence+1, root, 2, accounts)
 	fmt.Println(sendTx)
 
-	wsClient, err := rpcclient.NewWSClient("http://localhost:46657/websocket")
+	wsClient, err := rpcclient.NewWSClient("ws://" + remote + "/websocket")
 	if err != nil {
 		Exit(Fmt("Failed to establish websocket connection: %v", err))
 	}
-	wsClient.Subscribe(types.EventStringAccInput(sendTx.Outputs[0].Address))
+	wsClient.Subscribe(types.EventStringAccInput(sendTx.Inputs[0].Address))
+	wsClient.Start()
 
 	go func() {
 		for {
@@ -87,6 +88,12 @@ func main() {
 			fmt.Println("!!", foo)
 		}
 	}()
+
+	err = broadcastSendTx(remote, sendTx)
+	if err != nil {
+		Exit(Fmt("Failed to broadcast SendTx: %v", err))
+		return
+	}
 
 	/*
 		go func() {
@@ -112,7 +119,7 @@ func main() {
 
 func getAccount(remote string, address []byte) (*acm.Account, error) {
 	// var account *acm.Account = new(acm.Account)
-	account, err := rpcclient.Call(remote, "get_account", []interface{}{address}, (*acm.Account)(nil))
+	account, err := rpcclient.Call("http://"+remote, "get_account", []interface{}{address}, (*acm.Account)(nil))
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +131,7 @@ func getAccount(remote string, address []byte) (*acm.Account, error) {
 }
 
 func broadcastSendTx(remote string, sendTx *types.SendTx) error {
-	receipt, err := rpcclient.Call(remote, "broadcast_tx", []interface{}{sendTx}, (*ctypes.Receipt)(nil))
+	receipt, err := rpcclient.Call("http://"+remote, "broadcast_tx", []interface{}{sendTx}, (*ctypes.Receipt)(nil))
 	if err != nil {
 		return err
 	}
@@ -137,6 +144,10 @@ func broadcastSendTx(remote string, sendTx *types.SendTx) error {
 // sequence: sequence to sign with
 // inputPriv: input privAccount
 func makeRandomTransaction(balance int64, sequence int, inputPriv *acm.PrivAccount, sendCount int, accounts []*acm.Account) *types.SendTx {
+
+	if sendCount >= len(accounts) {
+		PanicSanity("Cannot make tx with sendCount >= len(accounts)")
+	}
 
 	// Remember which accounts were chosen
 	accMap := map[string]struct{}{}
