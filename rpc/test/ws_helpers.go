@@ -64,23 +64,6 @@ func waitForEvent(t *testing.T, con *websocket.Conn, eventid string, dieOnTimeou
 	quitCh := make(chan struct{})
 	defer close(quitCh)
 
-	/*
-		// TODO delete: we moved pinging to the server.
-		// Write pings repeatedly
-		go func() {
-			pingTicker := time.NewTicker((time.Second * rpcserver.WSReadTimeoutSeconds) / 2)
-			for {
-				select {
-				case <-quitCh:
-					pingTicker.Stop()
-					return
-				case <-pingTicker.C:
-					con.WriteControl(websocket.PingMessage, []byte("whatevs"), time.Now().Add(time.Second))
-				}
-			}
-		}()
-	*/
-
 	// Read message
 	go func() {
 		for {
