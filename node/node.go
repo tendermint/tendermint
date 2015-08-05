@@ -59,16 +59,14 @@ func NewNode() *Node {
 		wire.WriteJSON(genDoc, buf, n, err)
 		stateDB.Set(sm.GenDocKey, buf.Bytes())
 		if *err != nil {
-			log.Error("Unable to write gendoc to db", "error", err)
-			os.Exit(1)
+			Exit(Fmt("Unable to write gendoc to db: %v", err))
 		}
 	} else {
 		genDocBytes := stateDB.Get(sm.GenDocKey)
 		err := new(error)
 		wire.ReadJSONPtr(&genDoc, genDocBytes, err)
 		if *err != nil {
-			log.Error("Unable to read gendoc from db", "error", err)
-			os.Exit(1)
+			Exit(Fmt("Unable to read gendoc from db: %v", err))
 		}
 	}
 	// add the chainid to the global config
@@ -93,7 +91,10 @@ func NewNode() *Node {
 
 	// Make event switch
 	eventSwitch := events.NewEventSwitch()
-	eventSwitch.Start()
+	_, err := eventSwitch.Start()
+	if err != nil {
+		Exit(Fmt("Failed to start switch: %v", err))
+	}
 
 	// Make PEXReactor
 	book := p2p.NewAddrBook(config.GetString("addrbook_file"))
@@ -145,8 +146,8 @@ func (n *Node) Start() error {
 	n.book.Start()
 	n.sw.SetNodeInfo(makeNodeInfo(n.sw, n.privKey))
 	n.sw.SetNodePrivKey(n.privKey)
-	n.sw.Start()
-	return nil
+	_, err := n.sw.Start()
+	return err
 }
 
 func (n *Node) Stop() {
@@ -282,7 +283,10 @@ func RunNode() {
 	n := NewNode()
 	l := p2p.NewDefaultListener("tcp", config.GetString("node_laddr"), false)
 	n.AddListener(l)
-	n.Start()
+	err := n.Start()
+	if err != nil {
+		Exit(Fmt("Failed to start node: %v", err))
+	}
 
 	log.Notice("Started node", "nodeInfo", n.sw.NodeInfo())
 

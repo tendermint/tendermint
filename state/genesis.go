@@ -2,16 +2,15 @@ package state
 
 import (
 	"io/ioutil"
-	"os"
 	"time"
 
 	acm "github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
 	dbm "github.com/tendermint/tendermint/db"
 	"github.com/tendermint/tendermint/merkle"
 	ptypes "github.com/tendermint/tendermint/permission/types"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/wire"
 )
 
 //------------------------------------------------------------
@@ -60,8 +59,7 @@ func GenesisDocFromJSON(jsonBlob []byte) (genState *GenesisDoc) {
 	var err error
 	wire.ReadJSONPtr(&genState, jsonBlob, &err)
 	if err != nil {
-		log.Error(Fmt("Couldn't read GenesisDoc: %v", err))
-		os.Exit(1)
+		Exit(Fmt("Couldn't read GenesisDoc: %v", err))
 	}
 	return
 }
@@ -69,8 +67,7 @@ func GenesisDocFromJSON(jsonBlob []byte) (genState *GenesisDoc) {
 func MakeGenesisStateFromFile(db dbm.DB, genDocFile string) (*GenesisDoc, *State) {
 	jsonBlob, err := ioutil.ReadFile(genDocFile)
 	if err != nil {
-		log.Error(Fmt("Couldn't read GenesisDoc file: %v", err))
-		os.Exit(1)
+		Exit(Fmt("Couldn't read GenesisDoc file: %v", err))
 	}
 	genDoc := GenesisDocFromJSON(jsonBlob)
 	return genDoc, MakeGenesisState(db, genDoc)
