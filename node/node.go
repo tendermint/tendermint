@@ -11,7 +11,6 @@ import (
 	"time"
 
 	acm "github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/wire"
 	bc "github.com/tendermint/tendermint/blockchain"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/consensus"
@@ -23,6 +22,7 @@ import (
 	"github.com/tendermint/tendermint/rpc/server"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/wire"
 )
 
 import _ "net/http/pprof"
@@ -141,11 +141,12 @@ func NewNode() *Node {
 }
 
 // Call Start() after adding the listeners.
-func (n *Node) Start() {
+func (n *Node) Start() error {
 	n.book.Start()
 	n.sw.SetNodeInfo(makeNodeInfo(n.sw, n.privKey))
 	n.sw.SetNodePrivKey(n.privKey)
 	n.sw.Start()
+	return nil
 }
 
 func (n *Node) Stop() {

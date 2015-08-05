@@ -23,13 +23,13 @@ func NewFooService() *FooService {
 	return fs
 }
 
-func (fs *FooService) OnStart() {
+func (fs *FooService) OnStart() error {
 	fs.BaseService.OnStart() // Always call the overridden method.
 	// initialize private fields
 	// start subroutines, etc.
 }
 
-func (fs *FooService) OnStop() {
+func (fs *FooService) OnStop() error {
 	fs.BaseService.OnStop() // Always call the overridden method.
 	// close/destroy private fields
 	// stop subroutines, etc.
@@ -42,8 +42,8 @@ import "sync/atomic"
 import "github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/tendermint/log15"
 
 type Service interface {
-	Start() bool
-	OnStart()
+	Start() (bool, error)
+	OnStart() error
 
 	Stop() bool
 	OnStop()
@@ -72,24 +72,24 @@ func NewBaseService(log log15.Logger, name string, impl Service) *BaseService {
 }
 
 // Implements Servce
-func (bs *BaseService) Start() bool {
+func (bs *BaseService) Start() (bool, error) {
 	if atomic.CompareAndSwapUint32(&bs.started, 0, 1) {
 		if atomic.LoadUint32(&bs.stopped) == 1 {
 			bs.log.Warn(Fmt("Not starting %v -- already stopped", bs.name), "impl", bs.impl)
-			return false
+			return false, nil
 		} else {
 			bs.log.Notice(Fmt("Starting %v", bs.name), "impl", bs.impl)
 		}
-		bs.impl.OnStart()
-		return true
+		err := bs.impl.OnStart()
+		return true, err
 	} else {
 		bs.log.Info(Fmt("Not starting %v -- already started", bs.name), "impl", bs.impl)
-		return false
+		return false, nil
 	}
 }
 
 // Implements Service
-func (bs *BaseService) OnStart() {}
+func (bs *BaseService) OnStart() error { return nil }
 
 // Implements Service
 func (bs *BaseService) Stop() bool {
@@ -131,8 +131,9 @@ func NewQuitService(log log15.Logger, name string, impl Service) *QuitService {
 }
 
 // NOTE: when overriding OnStart, must call .QuitService.OnStart().
-func (qs *QuitService) OnStart() {
+func (qs *QuitService) OnStart() error {
 	qs.Quit = make(chan struct{})
+	return nil
 }
 
 // NOTE: when overriding OnStop, must call .QuitService.OnStop().

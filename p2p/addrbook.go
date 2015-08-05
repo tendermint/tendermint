@@ -121,11 +121,12 @@ func (a *AddrBook) init() {
 	}
 }
 
-func (a *AddrBook) OnStart() {
+func (a *AddrBook) OnStart() error {
 	a.QuitService.OnStart()
 	a.loadFromFile(a.filePath)
 	a.wg.Add(1)
 	go a.saveRoutine()
+	return nil
 }
 
 func (a *AddrBook) OnStop() {

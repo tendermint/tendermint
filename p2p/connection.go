@@ -11,8 +11,8 @@ import (
 	"time"
 
 	flow "github.com/tendermint/tendermint/Godeps/_workspace/src/code.google.com/p/mxk/go1/flowcontrol"
-	"github.com/tendermint/tendermint/wire" //"github.com/tendermint/log15"
 	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/wire" //"github.com/tendermint/log15"
 )
 
 const (
@@ -127,7 +127,7 @@ func NewMConnection(conn net.Conn, chDescs []*ChannelDescriptor, onReceive recei
 	return mconn
 }
 
-func (c *MConnection) OnStart() {
+func (c *MConnection) OnStart() error {
 	c.BaseService.OnStart()
 	c.quit = make(chan struct{})
 	c.flushTimer = NewThrottleTimer("flush", flushThrottleMS*time.Millisecond)
@@ -135,6 +135,7 @@ func (c *MConnection) OnStart() {
 	c.chStatsTimer = NewRepeatTimer("chStats", updateStatsSeconds*time.Second)
 	go c.sendRoutine()
 	go c.recvRoutine()
+	return nil
 }
 
 func (c *MConnection) OnStop() {
