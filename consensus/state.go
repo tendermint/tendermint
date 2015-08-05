@@ -158,7 +158,6 @@ import (
 	"time"
 
 	acm "github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/wire"
 	bc "github.com/tendermint/tendermint/blockchain"
 	. "github.com/tendermint/tendermint/common"
 	. "github.com/tendermint/tendermint/consensus/types"
@@ -166,6 +165,7 @@ import (
 	mempl "github.com/tendermint/tendermint/mempool"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/wire"
 )
 
 var (
@@ -360,9 +360,10 @@ func (cs *ConsensusState) NewStepCh() chan *RoundState {
 	return cs.newStepCh
 }
 
-func (cs *ConsensusState) OnStart() {
+func (cs *ConsensusState) OnStart() error {
 	cs.BaseService.OnStart()
 	cs.scheduleRound0(cs.Height)
+	return nil
 }
 
 func (cs *ConsensusState) OnStop() {

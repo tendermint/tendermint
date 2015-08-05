@@ -8,9 +8,9 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/events"
+	"github.com/tendermint/tendermint/wire"
 )
 
 var pexErrInvalidMessage = errors.New("Invalid PEX message")
@@ -41,9 +41,10 @@ func NewPEXReactor(book *AddrBook) *PEXReactor {
 	return pexR
 }
 
-func (pexR *PEXReactor) OnStart() {
+func (pexR *PEXReactor) OnStart() error {
 	pexR.BaseReactor.OnStart()
 	go pexR.ensurePeersRoutine()
+	return nil
 }
 
 func (pexR *PEXReactor) OnStop() {

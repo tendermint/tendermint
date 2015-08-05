@@ -16,31 +16,44 @@ const wsResponsesChannelCapacity = 10
 
 type WSClient struct {
 	QuitService
+	Address string
 	*websocket.Conn
 	EventsCh    chan rpctypes.RPCEventResult
 	ResponsesCh chan rpctypes.RPCResponse
 }
 
 // create a new connection
-func NewWSClient(addr string) (*WSClient, error) {
-	dialer := websocket.DefaultDialer
-	rHeader := http.Header{}
-	con, _, err := dialer.Dial(addr, rHeader)
-	if err != nil {
-		return nil, err
-	}
+func NewWSClient(addr string) *WSClient {
 	wsClient := &WSClient{
-		Conn:        con,
+		Address:     addr,
+		Conn:        nil,
 		EventsCh:    make(chan rpctypes.RPCEventResult, wsEventsChannelCapacity),
 		ResponsesCh: make(chan rpctypes.RPCResponse, wsResponsesChannelCapacity),
 	}
 	wsClient.QuitService = *NewQuitService(log, "WSClient", wsClient)
-	return wsClient, nil
+	return wsClient
 }
 
-func (wsc *WSClient) OnStart() {
+func (wsc *WSClient) OnStart() error {
 	wsc.QuitService.OnStart()
+	err := wsc.dial()
+	if err != nil {
+		return err
+	}
 	go wsc.receiveEventsRoutine()
+	return nil
+}
+
+func (wsc *WSClient) dial() error {
+	// Dial
+	dialer := websocket.DefaultDialer
+	rHeader := http.Header{}
+	con, _, err := dialer.Dial(wsc.Address, rHeader)
+	if err != nil {
+		return err
+	}
+	wsc.Conn = con
+	return nil
 }
 
 func (wsc *WSClient) OnStop() {

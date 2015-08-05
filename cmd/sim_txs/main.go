@@ -75,12 +75,12 @@ func main() {
 	sendTx := makeRandomTransaction(10, rootAccount.Sequence+1, root, 2, accounts)
 	fmt.Println(sendTx)
 
-	wsClient, err := rpcclient.NewWSClient("ws://" + remote + "/websocket")
+	wsClient := rpcclient.NewWSClient("ws://" + remote + "/websocket")
+	_, err = wsClient.Start()
 	if err != nil {
 		Exit(Fmt("Failed to establish websocket connection: %v", err))
 	}
 	wsClient.Subscribe(types.EventStringAccInput(sendTx.Inputs[0].Address))
-	wsClient.Start()
 
 	go func() {
 		for {

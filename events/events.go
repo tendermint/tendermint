@@ -31,10 +31,11 @@ func NewEventSwitch() *EventSwitch {
 	return evsw
 }
 
-func (evsw *EventSwitch) OnStart() {
+func (evsw *EventSwitch) OnStart() error {
 	evsw.BaseService.OnStart()
 	evsw.eventCells = make(map[string]*eventCell)
 	evsw.listeners = make(map[string]*eventListener)
+	return nil
 }
 
 func (evsw *EventSwitch) OnStop() {

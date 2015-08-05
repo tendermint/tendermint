@@ -240,7 +240,7 @@ func NewWSConnection(baseConn *websocket.Conn, funcMap map[string]*RPCFunc, evsw
 }
 
 // wsc.Start() blocks until the connection closes.
-func (wsc *WSConnection) OnStart() {
+func (wsc *WSConnection) OnStart() error {
 	wsc.QuitService.OnStart()
 
 	// Read subscriptions/unsubscriptions to events
@@ -262,6 +262,7 @@ func (wsc *WSConnection) OnStart() {
 
 	// Write responses, BLOCKING.
 	wsc.writeRoutine()
+	return nil
 }
 
 func (wsc *WSConnection) OnStop() {

@@ -108,9 +108,10 @@ SKIP_UPNP:
 	return dl
 }
 
-func (l *DefaultListener) OnStart() {
+func (l *DefaultListener) OnStart() error {
 	l.BaseService.OnStart()
 	go l.listenRoutine()
+	return nil
 }
 
 func (l *DefaultListener) OnStop() {
