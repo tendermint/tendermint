@@ -95,22 +95,6 @@ func main() {
 		return
 	}
 
-	/*
-		go func() {
-			for {
-				sendTx := makeRandomTransaction(rootAccount, root, accounts, privAccounts)
-				// Broadcast it.
-				err := broadcastSendTx(remote, sendTx)
-				if err != nil {
-					Exit(Fmt("Failed to broadcast SendTx: %v", err))
-					return
-				}
-				// Broadcast 1 tx!
-				time.Sleep(10 * time.Millisecond)
-			}
-		}()
-	*/
-
 	// Trap signal
 	TrapSignal(func() {
 		fmt.Println("sim_txs shutting down")

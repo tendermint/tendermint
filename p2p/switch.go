@@ -157,7 +157,10 @@ func (sw *Switch) OnStart() error {
 	sw.BaseService.OnStart()
 	// Start reactors
 	for _, reactor := range sw.reactors {
-		reactor.Start()
+		_, err := reactor.Start()
+		if err != nil {
+			return err
+		}
 	}
 	// Start peers
 	for _, peer := range sw.peers.List() {

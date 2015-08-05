@@ -36,7 +36,10 @@ func TestLog4(t *testing.T) {
 	ourVm := NewVM(st, newParams(), Zero256, nil)
 
 	eventSwitch := events.NewEventSwitch()
-	eventSwitch.Start()
+	_, err := eventSwitch.Start()
+	if err != nil {
+		t.Errorf("Failed to start eventSwitch: %v", err)
+	}
 	eventId := types.EventStringLogEvent(account2.Address.Postfix(20))
 
 	doneChan := make(chan struct{}, 1)
@@ -79,7 +82,7 @@ func TestLog4(t *testing.T) {
 		stop,
 	}
 
-	_, err := ourVm.Call(account1, account2, code, []byte{}, 0, &gas)
+	_, err = ourVm.Call(account1, account2, code, []byte{}, 0, &gas)
 	<-doneChan
 	if err != nil {
 		t.Fatal(err)

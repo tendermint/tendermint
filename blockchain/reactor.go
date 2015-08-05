@@ -79,7 +79,10 @@ func NewBlockchainReactor(state *sm.State, store *BlockStore, sync bool) *Blockc
 func (bcR *BlockchainReactor) OnStart() error {
 	bcR.BaseReactor.OnStart()
 	if bcR.sync {
-		bcR.pool.Start()
+		_, err := bcR.pool.Start()
+		if err != nil {
+			return err
+		}
 		go bcR.poolRoutine()
 	}
 	return nil
