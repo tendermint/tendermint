@@ -5,8 +5,8 @@ import (
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/code.google.com/p/go.crypto/ripemd160"
 	"io"
 
-	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/wire"
 )
 
 // Node

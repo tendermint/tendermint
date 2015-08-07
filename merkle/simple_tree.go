@@ -27,11 +27,12 @@ package merkle
 import (
 	"bytes"
 	"fmt"
+	"sort"
 
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/code.google.com/p/go.crypto/ripemd160"
 
-	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/wire"
 )
 
 func SimpleHashFromTwoHashes(left []byte, right []byte) []byte {
@@ -87,6 +88,58 @@ func SimpleHashFromHashables(items []Hashable) []byte {
 		hashes = append(hashes, hash)
 	}
 	return SimpleHashFromHashes(hashes)
+}
+
+// Convenience for SimpleHashFromHashes.
+func SimpleHashFromMap(m map[string]interface{}) []byte {
+	kpPairsH := MakeSortedKVPairs(m)
+	return SimpleHashFromHashables(kpPairsH)
+}
+
+//--------------------------------------------------------------------------------
+
+/* Convenience struct for key-value pairs.
+A list of KVPairs is hashed via `SimpleHashFromHashables`.
+NOTE: Each `Value` is encoded for hashing without extra type information,
+so the user is presumed to be aware of the Value types.
+*/
+type KVPair struct {
+	Key   string
+	Value interface{}
+}
+
+func (kv KVPair) Hash() []byte {
+	hasher, n, err := ripemd160.New(), new(int64), new(error)
+	wire.WriteString(kv.Key, hasher, n, err)
+	if kvH, ok := kv.Value.(Hashable); ok {
+		wire.WriteByteSlice(kvH.Hash(), hasher, n, err)
+	} else {
+		wire.WriteBinary(kv.Value, hasher, n, err)
+	}
+	if *err != nil {
+		PanicSanity(*err)
+	}
+	return hasher.Sum(nil)
+}
+
+type KVPairs []KVPair
+
+func (kvps KVPairs) Len() int           { return len(kvps) }
+func (kvps KVPairs) Less(i, j int) bool { return kvps[i].Key < kvps[j].Key }
+func (kvps KVPairs) Swap(i, j int)      { kvps[i], kvps[j] = kvps[j], kvps[i] }
+func (kvps KVPairs) Sort()              { sort.Sort(kvps) }
+
+func MakeSortedKVPairs(m map[string]interface{}) []Hashable {
+	kvPairs := []KVPair{}
+	for k, v := range m {
+		kvPairs = append(kvPairs, KVPair{k, v})
+	}
+	KVPairs(kvPairs).Sort()
+	kvPairsH := []Hashable{}
+	for _, kvp := range kvPairs {
+		kvPairsH = append(kvPairsH, kvp)
+	}
+	return kvPairsH
 }
 
 //--------------------------------------------------------------------------------

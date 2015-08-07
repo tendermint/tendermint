@@ -1,9 +1,12 @@
 package merkle
 
 import (
+	"bytes"
+
 	. "github.com/tendermint/tendermint/common"
 	. "github.com/tendermint/tendermint/common/test"
 
+	"fmt"
 	"testing"
 )
 
@@ -80,4 +83,37 @@ func TestSimpleProof(t *testing.T) {
 			t.Errorf("Expected verification to fail for mutated root hash")
 		}
 	}
+}
+
+func TestKVPairs(t *testing.T) {
+	// NOTE: in alphabetical order for convenience.
+	m := map[string]interface{}{}
+	m["bytez"] = []byte("hizz") // 0
+	m["light"] = "shadow"       // 1
+	m["one"] = 1                // 2
+	m["one_u64"] = uint64(1)    // 3
+	m["struct"] = struct {      // 4
+		A int
+		B int
+	}{0, 1}
+
+	kvPairsH := MakeSortedKVPairs(m)
+	// rootHash := SimpleHashFromHashables(kvPairsH)
+	proofs := SimpleProofsFromHashables(kvPairsH)
+
+	// Some manual tests
+	if !bytes.Equal(proofs[1].LeafHash, KVPair{"light", "shadow"}.Hash()) {
+		t.Errorf("\"light\": proof failed")
+		fmt.Printf("%v\n%X", proofs[0], KVPair{"light", "shadow"}.Hash())
+	}
+	if !bytes.Equal(proofs[2].LeafHash, KVPair{"one", 1}.Hash()) {
+		t.Errorf("\"one\": proof failed")
+	}
+	if !bytes.Equal(proofs[4].LeafHash, KVPair{"struct", struct {
+		A int
+		B int
+	}{0, 1}}.Hash()) {
+		t.Errorf("\"struct\": proof failed")
+	}
+
 }
