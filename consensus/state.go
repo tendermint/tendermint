@@ -640,6 +640,7 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 			Txs: txs,
 		},
 	}
+	block.FillHeader()
 
 	// Set the block.Header.StateHash.
 	err := cs.state.ComputeBlockStateHash(block)

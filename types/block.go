@@ -8,9 +8,9 @@ import (
 	"time"
 
 	acm "github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/merkle"
+	"github.com/tendermint/tendermint/wire"
 )
 
 type Block struct {
@@ -28,6 +28,14 @@ func (b *Block) ValidateBasic(chainID string, lastBlockHeight int, lastBlockHash
 	if b.Height != lastBlockHeight+1 {
 		return errors.New(Fmt("Wrong Block.Header.Height. Expected %v, got %v", lastBlockHeight+1, b.Height))
 	}
+	/*	TODO: Determine bounds for Time
+		See blockchain/reactor "stopSyncingDurationMinutes"
+
+		if !b.Time.After(lastBlockTime) {
+			return errors.New("Invalid Block.Header.Time")
+		}
+	*/
+	// TODO: validate Fees
 	if b.NumTxs != len(b.Data.Txs) {
 		return errors.New(Fmt("Wrong Block.Header.NumTxs. Expected %v, got %v", len(b.Data.Txs), b.NumTxs))
 	}
@@ -37,20 +45,24 @@ func (b *Block) ValidateBasic(chainID string, lastBlockHeight int, lastBlockHash
 	if !b.LastBlockParts.Equals(lastBlockParts) {
 		return errors.New(Fmt("Wrong Block.Header.LastBlockParts. Expected %v, got %v", lastBlockParts, b.LastBlockParts))
 	}
-	/*	TODO: Determine bounds
-		See blockchain/reactor "stopSyncingDurationMinutes"
-
-		if !b.Time.After(lastBlockTime) {
-			return errors.New("Invalid Block.Header.Time")
-		}
-	*/
+	if !bytes.Equal(b.LastValidationHash, b.LastValidation.Hash()) {
+		return errors.New(Fmt("Wrong Block.Header.LastValidationHash.  Expected %X, got %X", b.LastValidationHash, b.LastValidation.Hash()))
+	}
 	if b.Header.Height != 1 {
 		if err := b.LastValidation.ValidateBasic(); err != nil {
 			return err
 		}
 	}
-	// XXX more validation
+	if !bytes.Equal(b.DataHash, b.Data.Hash()) {
+		return errors.New(Fmt("Wrong Block.Header.DataHash.  Expected %X, got %X", b.DataHash, b.Data.Hash()))
+	}
+	// NOTE: the StateHash is validated later.
 	return nil
+}
+
+func (b *Block) FillHeader() {
+	b.LastValidationHash = b.LastValidation.Hash()
+	b.DataHash = b.Data.Hash()
 }
 
 // Computes and returns the block hash.
@@ -60,18 +72,8 @@ func (b *Block) Hash() []byte {
 	if b.Header == nil || b.Data == nil || b.LastValidation == nil {
 		return nil
 	}
-	hashHeader := b.Header.Hash()
-	hashData := b.Data.Hash()
-	hashLastValidation := b.LastValidation.Hash()
-
-	// If hashHeader is nil, required fields are missing.
-	if len(hashHeader) == 0 {
-		return nil
-	}
-
-	// Merkle hash from subhashes.
-	hashes := [][]byte{hashHeader, hashData, hashLastValidation}
-	return merkle.SimpleHashFromHashes(hashes)
+	b.FillHeader()
+	return b.Header.Hash()
 }
 
 func (b *Block) MakePartSet() *PartSet {
@@ -121,14 +123,16 @@ func (b *Block) StringShort() string {
 //-----------------------------------------------------------------------------
 
 type Header struct {
-	ChainID        string        `json:"chain_id"`
-	Height         int           `json:"height"`
-	Time           time.Time     `json:"time"`
-	Fees           int64         `json:"fees"`
-	NumTxs         int           `json:"num_txs"`
-	LastBlockHash  []byte        `json:"last_block_hash"`
-	LastBlockParts PartSetHeader `json:"last_block_parts"`
-	StateHash      []byte        `json:"state_hash"`
+	ChainID            string        `json:"chain_id"`
+	Height             int           `json:"height"`
+	Time               time.Time     `json:"time"`
+	Fees               int64         `json:"fees"`
+	NumTxs             int           `json:"num_txs"`
+	LastBlockHash      []byte        `json:"last_block_hash"`
+	LastBlockParts     PartSetHeader `json:"last_block_parts"`
+	LastValidationHash []byte        `json:"last_validation_hash"`
+	DataHash           []byte        `json:"data_hash"`
+	StateHash          []byte        `json:"state_hash"`
 }
 
 // NOTE: hash is nil if required fields are missing.
@@ -136,8 +140,18 @@ func (h *Header) Hash() []byte {
 	if len(h.StateHash) == 0 {
 		return nil
 	}
-
-	return wire.BinaryRipemd160(h)
+	return merkle.SimpleHashFromMap(map[string]interface{}{
+		"ChainID":        h.ChainID,
+		"Height":         h.Height,
+		"Time":           h.Time,
+		"Fees":           h.Fees,
+		"NumTxs":         h.NumTxs,
+		"LastBlock":      h.LastBlockHash,
+		"LastBlockParts": h.LastBlockParts,
+		"LastValidation": h.LastValidationHash,
+		"Data":           h.DataHash,
+		"State":          h.StateHash,
+	})
 }
 
 func (h *Header) StringIndented(indent string) string {

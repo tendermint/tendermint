@@ -123,14 +123,13 @@ func (s *State) Copy() *State {
 
 // Returns a hash that represents the state data, excluding Last*
 func (s *State) Hash() []byte {
-	hashables := []merkle.Hashable{
-		s.BondedValidators,
-		s.UnbondingValidators,
-		s.accounts,
-		s.validatorInfos,
-		s.nameReg,
-	}
-	return merkle.SimpleHashFromHashables(hashables)
+	return merkle.SimpleHashFromMap(map[string]interface{}{
+		"BondedValidators":    s.BondedValidators,
+		"UnbondingValidators": s.UnbondingValidators,
+		"Accounts":            s.accounts,
+		"ValidatorInfos":      s.validatorInfos,
+		"NameRegistry":        s.nameReg,
+	})
 }
 
 // Mutates the block in place and updates it with new state hash.

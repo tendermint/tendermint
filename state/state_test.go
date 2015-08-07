@@ -91,6 +91,7 @@ func makeBlock(t *testing.T, state *State, validation *types.Validation, txs []t
 			Txs: txs,
 		},
 	}
+	block.FillHeader()
 
 	// Fill in block StateHash
 	err := state.ComputeBlockStateHash(block)
