@@ -848,11 +848,15 @@ func (cs *ConsensusState) EnterPrecommit(height int, round int) {
 
 	// Otherwise, we need to fetch the +2/3 prevoted block.
 	// Unlock and precommit nil.
+
 	// The +2/3 prevotes for this round is the POL for our unlock.
+	// TODO: In the future save the POL prevotes for justification.
+	// NOTE: we could have performed this check sooner above.
 	if cs.Votes.POLRound() < round {
-		PanicSanity(Fmt("This POLRound shold be %v but got %", round, cs.Votes.POLRound()))
+		PanicSanity(Fmt("This POLRound should be %v but got %", round, cs.Votes.POLRound()))
 	}
-	cs.LockedRound = 0 // XXX: shouldn't we set this to this round
+
+	cs.LockedRound = 0
 	cs.LockedBlock = nil
 	cs.LockedBlockParts = nil
 	if !cs.ProposalBlockParts.HasHeader(partsHeader) {
@@ -894,14 +898,14 @@ func (cs *ConsensusState) EnterPrecommitWait(height int, round int) {
 }
 
 // Enter: +2/3 precommits for block
-func (cs *ConsensusState) EnterCommit(height int) {
+func (cs *ConsensusState) EnterCommit(height int, commitRound int) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	if cs.Height != height || RoundStepCommit <= cs.Step {
-		log.Info(Fmt("EnterCommit(%v): Invalid args. Current step: %v/%v/%v", height, cs.Height, cs.Round, cs.Step))
+		log.Info(Fmt("EnterCommit(%v/%v): Invalid args. Current step: %v/%v/%v", height, commitRound, cs.Height, cs.Round, cs.Step))
 		return
 	}
-	log.Info(Fmt("EnterCommit(%v). Current: %v/%v/%v", height, cs.Height, cs.Round, cs.Step))
+	log.Info(Fmt("EnterCommit(%v/%v). Current: %v/%v/%v", height, commitRound, cs.Height, cs.Round, cs.Step))
 
 	defer func() {
 		// Done Entercommit:
@@ -913,7 +917,7 @@ func (cs *ConsensusState) EnterCommit(height int) {
 		cs.tryFinalizeCommit(height)
 	}()
 
-	hash, partsHeader, ok := cs.Votes.Precommits(cs.Round).TwoThirdsMajority()
+	hash, partsHeader, ok := cs.Votes.Precommits(commitRound).TwoThirdsMajority()
 	if !ok {
 		PanicSanity("RunActionCommit() expects +2/3 precommits")
 	}
@@ -1169,13 +1173,7 @@ func (cs *ConsensusState) addVote(address []byte, vote *types.Vote, peerKey stri
 				if cs.Round <= vote.Round && prevotes.HasTwoThirdsAny() {
 					// Round-skip over to PrevoteWait or goto Precommit.
 					go func() {
-						cs.mtx.Lock()
-						csRound := cs.Round
-						cs.mtx.Unlock()
-
-						if csRound < vote.Round {
-							cs.EnterNewRound(height, vote.Round)
-						}
+						cs.EnterNewRound(height, vote.Round)
 						if prevotes.HasTwoThirdsMajority() {
 							cs.EnterPrecommit(height, vote.Round)
 						} else {
@@ -1192,26 +1190,22 @@ func (cs *ConsensusState) addVote(address []byte, vote *types.Vote, peerKey stri
 			case types.VoteTypePrecommit:
 				precommits := cs.Votes.Precommits(vote.Round)
 				log.Info(Fmt("Added to precommit: %v", precommits.StringShort()))
-				if cs.Round <= vote.Round && precommits.HasTwoThirdsAny() {
+				hash, _, ok := precommits.TwoThirdsMajority()
+				if ok {
 					go func() {
-						cs.mtx.Lock()
-						csRound := cs.Round
-						cs.mtx.Unlock()
-						hash, _, ok := precommits.TwoThirdsMajority()
-						if ok && len(hash) == 0 {
+						if len(hash) == 0 {
 							cs.EnterNewRound(height, vote.Round+1)
-							return
 						} else {
-							if csRound < vote.Round {
-								cs.EnterNewRound(height, vote.Round)
-							}
-						}
-						if ok {
-							cs.EnterCommit(height)
-						} else {
+							cs.EnterNewRound(height, vote.Round)
 							cs.EnterPrecommit(height, vote.Round)
-							cs.EnterPrecommitWait(height, vote.Round)
+							cs.EnterCommit(height, vote.Round)
 						}
+					}()
+				} else if cs.Round <= vote.Round && precommits.HasTwoThirdsAny() {
+					go func() {
+						cs.EnterNewRound(height, vote.Round)
+						cs.EnterPrecommit(height, vote.Round)
+						cs.EnterPrecommitWait(height, vote.Round)
 					}()
 				}
 			default:
