@@ -121,7 +121,7 @@ func (hvs *HeightVoteSet) Precommits(round int) *VoteSet {
 	return hvs.getVoteSet(round, types.VoteTypePrecommit)
 }
 
-// Last round that has +2/3 prevotes for a particular block or nik.
+// Last round that has +2/3 prevotes for a particular block or nil.
 // Returns -1 if no such round exists.
 func (hvs *HeightVoteSet) POLRound() int {
 	hvs.mtx.Lock()
