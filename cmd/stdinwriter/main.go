@@ -31,8 +31,7 @@ func main() {
 
 	outfile, err := OpenAutoFile(outpath)
 	if err != nil {
-		fmt.Println(Fmt("stdinwriter couldn't create outfile %v", outfile))
-		os.Exit(1)
+		Exit(Fmt("stdinwriter couldn't create outfile %v", outfile))
 	}
 
 	go writeToOutfile(outfile)
@@ -55,8 +54,7 @@ func writeToOutfile(outfile *AutoFile) {
 			if err == io.EOF {
 				os.Exit(0)
 			} else {
-				fmt.Println("stdinwriter errored")
-				os.Exit(1)
+				Exit("stdinwriter errored")
 			}
 		}
 	}

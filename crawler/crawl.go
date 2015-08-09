@@ -2,13 +2,15 @@ package crawler
 
 import (
 	"fmt"
-	"github.com/tendermint/tendermint/wire"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	rpcclient "github.com/tendermint/tendermint/rpc/core_client"
-	"github.com/tendermint/tendermint/types"
 	"time"
 
-	"io/ioutil"
+	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/rpc/client"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	core "github.com/tendermint/tendermint/rpc/core_client"
+	"github.com/tendermint/tendermint/rpc/types"
+	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/wire"
 )
 
 const (
@@ -58,14 +60,14 @@ func (n *Node) SetInfo(status *ctypes.ResponseStatus, netinfo *ctypes.ResponseNe
 
 // A node client is used to talk to a node over rpc and websockets
 type NodeClient struct {
-	rpc rpcclient.Client
+	rpc core.Client
 	ws  *rpcclient.WSClient
 }
 
 // Create a new client for the node at the given addr
 func NewNodeClient(addr string) *NodeClient {
 	return &NodeClient{
-		rpc: rpcclient.NewClient("http://"+addr, "JSONRPC"),
+		rpc: core.NewClient("http://"+addr, "JSONRPC"),
 		ws:  rpcclient.NewWSClient("ws://" + addr + "/events"),
 	}
 }
@@ -90,6 +92,8 @@ func (ni nodeInfo) unpack() (string, uint16, string, bool, bool) {
 // A crawler has a local node, a set of potential nodes in the nodePool, and connected nodes.
 // Maps are only accessed by one go-routine, mediated by the checkQueue
 type Crawler struct {
+	QuitService
+
 	self   *Node
 	client *NodeClient
 
@@ -98,22 +102,22 @@ type Crawler struct {
 	nodes      map[string]*Node
 
 	nodeQueue chan *Node
-	quit      chan struct{}
 }
 
 // Create a new Crawler using the local RPC server at addr
 func NewCrawler(host string, port uint16) *Crawler {
-	return &Crawler{
+	crawler := &Crawler{
 		self:       &Node{Host: host, RPCPort: port, client: NewNodeClient(fmt.Sprintf("%s:%d", host, port))},
 		checkQueue: make(chan nodeInfo, CheckQueueBufferSize),
 		nodePool:   make(map[string]*Node),
 		nodes:      make(map[string]*Node),
 		nodeQueue:  make(chan *Node, NodeQueueBufferSize),
-		quit:       make(chan struct{}),
 	}
+	crawler.QuitService = *NewQuitService(log, "Crawler", crawler)
+	return crawler
 }
 
-func (c *Crawler) Start() error {
+func (c *Crawler) OnStart() error {
 	// connect to local node first, set info,
 	// and fire peers onto the checkQueue
 	if err := c.pollNode(c.self); err != nil {
@@ -122,10 +126,8 @@ func (c *Crawler) Start() error {
 
 	// connect to weboscket, subscribe to local events
 	// and run the read loop to listen for new blocks
-	if r, err := c.self.client.ws.Dial(); err != nil {
-		fmt.Println(r)
-		b, _ := ioutil.ReadAll(r.Body)
-		fmt.Println(string(b))
+	_, err := c.self.client.ws.Start()
+	if err != nil {
 		return err
 	}
 	if err := c.self.client.ws.Subscribe(types.EventStringNewBlock()); err != nil {
@@ -147,20 +149,16 @@ func (c *Crawler) Start() error {
 	return nil
 }
 
-func (c *Crawler) Stop() {
-	close(c.quit)
-}
-
 // listen for events from the node and ping it for peers on a ticker
 func (c *Crawler) readLoop(node *Node) {
-	wsChan := node.client.ws.Read()
+	eventsCh := node.client.ws.EventsCh
 	getPeersTicker := time.Tick(time.Second * GetPeersTickerSeconds)
 
 	for {
 		select {
-		case wsMsg := <-wsChan:
+		case eventMsg := <-eventsCh:
 			// update the node with his new info
-			if err := c.consumeMessage(wsMsg, node); err != nil {
+			if err := c.consumeMessage(eventMsg, node); err != nil {
 				// lost the node, put him back on the checkQueu
 				c.checkNode(nodeInfo{
 					host:         node.Host,
@@ -178,37 +176,21 @@ func (c *Crawler) readLoop(node *Node) {
 					disconnected: true,
 				})
 			}
-		case <-c.quit:
+		case <-c.Quit:
 			return
 
 		}
 	}
 }
 
-func (c *Crawler) consumeMessage(wsMsg *rpcclient.WSMsg, node *Node) error {
-	if wsMsg.Error != nil {
-		return wsMsg.Error
-	}
-	// unmarshal block event
-	var response struct {
-		Event string
-		Data  *types.Block
-		Error string
-	}
+func (c *Crawler) consumeMessage(eventMsg rpctypes.RPCEventResult, node *Node) error {
+	var block *types.Block
 	var err error
-	wire.ReadJSON(&response, wsMsg.Data, &err)
-	if err != nil {
-		return err
-	}
-	if response.Error != "" {
-		return fmt.Errorf(response.Error)
-	}
-	block := response.Data
+	wire.ReadJSONObject(block, eventMsg.Data, &err)
 
 	node.LastSeen = time.Now()
 	node.BlockHeight = block.Height
 	node.BlockHistory[block.Height] = node.LastSeen
-
 	return nil
 }
 
@@ -251,7 +233,7 @@ func (c *Crawler) checkLoop() {
 			// queue it for connecting to
 			c.nodeQueue <- n
 
-		case <-c.quit:
+		case <-c.Quit:
 			return
 		}
 	}
@@ -263,7 +245,7 @@ func (c *Crawler) connectLoop() {
 		select {
 		case node := <-c.nodeQueue:
 			go c.connectToNode(node)
-		case <-c.quit:
+		case <-c.Quit:
 			// close all connections
 			for addr, node := range c.nodes {
 				_, _ = addr, node
@@ -278,9 +260,9 @@ func (c *Crawler) connectToNode(node *Node) {
 
 	addr := node.Address()
 	node.client = NewNodeClient(addr)
-
-	if b, err := node.client.ws.Dial(); err != nil {
-		fmt.Println("err on ws dial:", b, err)
+	_, err := node.client.ws.Start()
+	if err != nil {
+		fmt.Println("err on ws start:", err)
 		//  set failed, return
 	}
 

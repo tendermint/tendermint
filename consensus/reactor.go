@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tendermint/tendermint/wire"
 	bc "github.com/tendermint/tendermint/blockchain"
 	. "github.com/tendermint/tendermint/common"
 	. "github.com/tendermint/tendermint/consensus/types"
@@ -16,6 +15,7 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/wire"
 )
 
 const (
@@ -49,13 +49,17 @@ func NewConsensusReactor(consensusState *ConsensusState, blockStore *bc.BlockSto
 	return conR
 }
 
-func (conR *ConsensusReactor) OnStart() {
+func (conR *ConsensusReactor) OnStart() error {
 	log.Notice("ConsensusReactor ", "fastSync", conR.fastSync)
 	conR.BaseReactor.OnStart()
 	if !conR.fastSync {
-		conR.conS.Start()
+		_, err := conR.conS.Start()
+		if err != nil {
+			return err
+		}
 	}
 	go conR.broadcastNewRoundStepRoutine()
+	return nil
 }
 
 func (conR *ConsensusReactor) OnStop() {

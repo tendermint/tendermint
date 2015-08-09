@@ -153,11 +153,14 @@ func (sw *Switch) SetNodePrivKey(nodePrivKey acm.PrivKeyEd25519) {
 }
 
 // Switch.Start() starts all the reactors, peers, and listeners.
-func (sw *Switch) OnStart() {
+func (sw *Switch) OnStart() error {
 	sw.BaseService.OnStart()
 	// Start reactors
 	for _, reactor := range sw.reactors {
-		reactor.Start()
+		_, err := reactor.Start()
+		if err != nil {
+			return err
+		}
 	}
 	// Start peers
 	for _, peer := range sw.peers.List() {
@@ -167,6 +170,7 @@ func (sw *Switch) OnStart() {
 	for _, listener := range sw.listeners {
 		go sw.listenerRoutine(listener)
 	}
+	return nil
 }
 
 func (sw *Switch) OnStop() {

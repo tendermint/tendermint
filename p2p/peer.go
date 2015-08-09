@@ -5,9 +5,9 @@ import (
 	"io"
 	"net"
 
-	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/wire"
 )
 
 type Peer struct {
@@ -72,9 +72,10 @@ func newPeer(conn net.Conn, peerNodeInfo *types.NodeInfo, outbound bool, reactor
 	return p
 }
 
-func (p *Peer) OnStart() {
+func (p *Peer) OnStart() error {
 	p.BaseService.OnStart()
-	p.mconn.Start()
+	_, err := p.mconn.Start()
+	return err
 }
 
 func (p *Peer) OnStop() {

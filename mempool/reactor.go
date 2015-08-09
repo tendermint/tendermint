@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/events"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/wire"
 )
 
 var (
@@ -33,10 +33,6 @@ func NewMempoolReactor(mempool *Mempool) *MempoolReactor {
 	memR.BaseReactor = *p2p.NewBaseReactor(log, "MempoolReactor", memR)
 	return memR
 }
-
-// func (memR *MempoolReactor) OnStart() { memR.BaseReactor.OnStart() }
-
-// func (memR *MempoolReactor) OnStop() { memR.BaseReactor.OnStop() }
 
 // Implements Reactor
 func (memR *MempoolReactor) GetChannels() []*p2p.ChannelDescriptor {

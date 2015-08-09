@@ -1073,7 +1073,7 @@ func execTxWaitEvent(t *testing.T, blockCache *BlockCache, tx types.Tx, eventid 
 	}
 
 	switch ev := msg.(type) {
-	case types.EventMsgCallTx:
+	case types.EventMsgTx:
 		return ev, ev.Exception
 	case types.EventMsgCall:
 		return ev, ev.Exception
