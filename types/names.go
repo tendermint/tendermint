@@ -7,6 +7,9 @@ import (
 var (
 	MinNameRegistrationPeriod int = 5
 
+	// NOTE: base costs and validity checks are here so clients
+	// can use them without importing state
+
 	// cost for storing a name for a block is
 	// CostPerBlock*CostPerByte*(len(data) + 32)
 	NameCostPerByte  int64 = 1

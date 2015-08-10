@@ -773,6 +773,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 				if err != nil {
 					exception = err.Error()
 				}
+				// NOTE: these fire call events and not particular events for eg name reg or permissions
 				vm.fireCallEvent(&exception, &ret, callee, &Account{Address: addr}, args, value, gas)
 			} else {
 				// EVM contract

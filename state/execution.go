@@ -627,6 +627,11 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 
 		// TODO: maybe we want to take funds on error and allow txs in that don't do anythingi?
 
+		if evc != nil {
+			evc.FireEvent(types.EventStringAccInput(tx.Input.Address), tx)
+			evc.FireEvent(types.EventStringNameReg(tx.Name), tx)
+		}
+
 		return nil
 
 	case *types.BondTx:

@@ -189,12 +189,6 @@ func testCall(t *testing.T, typ string) {
 func testNameReg(t *testing.T, typ string) {
 	client := clients[typ]
 	con := newWSCon(t)
-	eid := types.EventStringNewBlock()
-	subscribe(t, con, eid)
-	defer func() {
-		unsubscribe(t, con, eid)
-		con.Close()
-	}()
 
 	types.MinNameRegistrationPeriod = 1
 
@@ -206,10 +200,26 @@ func testNameReg(t *testing.T, typ string) {
 	numDesiredBlocks := int64(2)
 	amt := fee + numDesiredBlocks*types.NameCostPerByte*types.NameCostPerBlock*types.BaseEntryCost(name, data)
 
+	eid := types.EventStringNameReg(name)
+	subscribe(t, con, eid)
+
 	tx := makeDefaultNameTx(t, typ, name, data, amt, fee)
 	broadcastTx(t, typ, tx)
-	// commit block
-	waitForEvent(t, con, eid, true, func() {}, doNothing)
+	// verify the name by both using the event and by checking get_name
+	waitForEvent(t, con, eid, true, func() {}, func(eid string, b []byte) error {
+		// TODO: unmarshal the response
+		tx, err := unmarshalResponseNameReg(b)
+		if err != nil {
+			return err
+		}
+		if tx.Name != name {
+			t.Fatal(fmt.Sprintf("Err on received event tx.Name: Got %s, expected %s", tx.Name, name))
+		}
+		if tx.Data != data {
+			t.Fatal(fmt.Sprintf("Err on received event tx.Data: Got %s, expected %s", tx.Data, data))
+		}
+		return nil
+	})
 	mempoolCount = 0
 	entry := getNameRegEntry(t, typ, name)
 	if entry.Data != data {
@@ -218,6 +228,17 @@ func testNameReg(t *testing.T, typ string) {
 	if bytes.Compare(entry.Owner, user[0].Address) != 0 {
 		t.Fatal(fmt.Sprintf("Err on entry.Owner: Got %s, expected %s", entry.Owner, user[0].Address))
 	}
+
+	unsubscribe(t, con, eid)
+
+	// for the rest we just use new block event
+	// since we already tested the namereg event
+	eid = types.EventStringNewBlock()
+	subscribe(t, con, eid)
+	defer func() {
+		unsubscribe(t, con, eid)
+		con.Close()
+	}()
 
 	// update the data as the owner, make sure still there
 	numDesiredBlocks = int64(2)

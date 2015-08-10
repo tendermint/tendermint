@@ -26,6 +26,10 @@ func EventStringPermissions(name string) string {
 	return fmt.Sprintf("Permissions/%s", name)
 }
 
+func EventStringNameReg(name string) string {
+	return fmt.Sprintf("NameReg/%s", name)
+}
+
 func EventStringBond() string {
 	return "Bond"
 }
