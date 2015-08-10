@@ -58,7 +58,10 @@ func GetConfig(rootDir string) cfg.Config {
 		Exit("Cannot set 'version' via config.toml")
 	}
 	mapConfig.SetDefault("chain_id", "tendermint_testnet_9")
-	mapConfig.SetDefault("version", "0.5.0") // JAE: encrypted p2p!
+	// Major: alpha
+	// Minor: encrypted p2p!
+	// Revision: ripemd for NewContractAddress
+	mapConfig.SetDefault("version", "0.5.1")
 	mapConfig.SetDefault("genesis_file", rootDir+"/genesis.json")
 	mapConfig.SetDefault("moniker", "anonymous")
 	mapConfig.SetDefault("node_laddr", "0.0.0.0:46656")
