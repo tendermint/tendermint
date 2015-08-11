@@ -14,6 +14,7 @@ func parseFlags(config cfg.Config, args []string) {
 		nodeLaddr string
 		seeds     string
 		fastSync  bool
+		skipUPNP  bool
 		rpcLaddr  string
 		logLevel  string
 	)
@@ -25,6 +26,7 @@ func parseFlags(config cfg.Config, args []string) {
 	flags.StringVar(&nodeLaddr, "node_laddr", config.GetString("node_laddr"), "Node listen address. (0.0.0.0:0 means any interface, any port)")
 	flags.StringVar(&seeds, "seeds", config.GetString("seeds"), "Comma delimited seed nodes")
 	flags.BoolVar(&fastSync, "fast_sync", config.GetBool("fast_sync"), "Fast blockchain syncing")
+	flags.BoolVar(&skipUPNP, "skip_upnp", config.GetBool("skip_upnp"), "Skip UPNP configuration")
 	flags.StringVar(&rpcLaddr, "rpc_laddr", config.GetString("rpc_laddr"), "RPC listen address. Port required")
 	flags.StringVar(&logLevel, "log_level", config.GetString("log_level"), "Log level")
 	flags.Parse(args)
@@ -38,6 +40,7 @@ func parseFlags(config cfg.Config, args []string) {
 	config.Set("node_laddr", nodeLaddr)
 	config.Set("seeds", seeds)
 	config.Set("fast_sync", fastSync)
+	config.Set("skip_upnp", skipUPNP)
 	config.Set("rpc_laddr", rpcLaddr)
 	config.Set("log_level", logLevel)
 }
