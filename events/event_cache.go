@@ -30,7 +30,7 @@ type eventInfo struct {
 }
 
 // Cache an event to be fired upon finality.
-func (evc *EventCache) FireEvent(event string, data interface{}) {
+func (evc *EventCache) FireEvent(event string, data types.EventData) {
 	// append to list
 	evc.events = append(evc.events, eventInfo{event, data})
 }

@@ -1055,7 +1055,7 @@ func execTxWaitEvent(t *testing.T, blockCache *BlockCache, tx types.Tx, eventid 
 	evsw := events.NewEventSwitch()
 	evsw.Start()
 	ch := make(chan interface{})
-	evsw.AddListenerForEvent("test", eventid, func(msg interface{}) {
+	evsw.AddListenerForEvent("test", eventid, func(msg types.EventData) {
 		ch <- msg
 	})
 	evc := events.NewEventCache(evsw)

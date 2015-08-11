@@ -628,8 +628,8 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 		// TODO: maybe we want to take funds on error and allow txs in that don't do anythingi?
 
 		if evc != nil {
-			evc.FireEvent(types.EventStringAccInput(tx.Input.Address), tx)
-			evc.FireEvent(types.EventStringNameReg(tx.Name), tx)
+			evc.FireEvent(types.EventStringAccInput(tx.Input.Address), types.EventDataTx{tx, nil, ""})
+			evc.FireEvent(types.EventStringNameReg(tx.Name), types.EventDataTx{tx, nil, ""})
 		}
 
 		return nil
@@ -711,7 +711,7 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 		}
 		if evc != nil {
 			// TODO: fire for all inputs
-			evc.FireEvent(types.EventStringBond(), tx)
+			evc.FireEvent(types.EventStringBond(), types.EventDataTx{tx, nil, ""})
 		}
 		return nil
 
@@ -736,7 +736,7 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 		// Good!
 		_s.unbondValidator(val)
 		if evc != nil {
-			evc.FireEvent(types.EventStringUnbond(), tx)
+			evc.FireEvent(types.EventStringUnbond(), types.EventDataTx{tx, nil, ""})
 		}
 		return nil
 
@@ -764,7 +764,7 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 		// Good!
 		_s.rebondValidator(val)
 		if evc != nil {
-			evc.FireEvent(types.EventStringRebond(), tx)
+			evc.FireEvent(types.EventStringRebond(), types.EventDataTx{tx, nil, ""})
 		}
 		return nil
 
@@ -803,7 +803,7 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 		// Good! (Bad validator!)
 		_s.destroyValidator(accused)
 		if evc != nil {
-			evc.FireEvent(types.EventStringDupeout(), tx)
+			evc.FireEvent(types.EventStringDupeout(), types.EventDataTx{tx, nil, ""})
 		}
 		return nil
 
@@ -894,7 +894,7 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 
 		if evc != nil {
 			evc.FireEvent(types.EventStringAccInput(tx.Input.Address), types.EventDataTx{tx, nil, ""})
-			evc.FireEvent(types.EventStringPermissions(ptypes.PermFlagToString(permFlag)), tx)
+			evc.FireEvent(types.EventStringPermissions(ptypes.PermFlagToString(permFlag)), types.EventDataTx{tx, nil, ""})
 		}
 
 		return nil

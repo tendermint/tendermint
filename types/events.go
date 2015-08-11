@@ -14,6 +14,7 @@ func EventStringAccOutput(addr []byte) string   { return fmt.Sprintf("Acc/%X/Out
 func EventStringAccCall(addr []byte) string     { return fmt.Sprintf("Acc/%X/Call", addr) }
 func EventStringLogEvent(addr []byte) string    { return fmt.Sprintf("Log/%X", addr) }
 func EventStringPermissions(name string) string { return fmt.Sprintf("Permissions/%s", name) }
+func EventStringNameReg(name string) string     { return fmt.Sprintf("NameReg/%s", name) }
 func EventStringBond() string                   { return "Bond" }
 func EventStringUnbond() string                 { return "Unbond" }
 func EventStringRebond() string                 { return "Rebond" }
@@ -31,12 +32,14 @@ const (
 	EventDataTypeLog      = byte(0x05)
 )
 
-type EventData interface{}
+type EventData interface {
+	AssertIsEventData()
+}
 
 var _ = wire.RegisterInterface(
 	struct{ EventData }{},
 	wire.ConcreteType{EventDataNewBlock{}, EventDataTypeNewBlock},
-	// wire.ConcreteType{EventDataNewBlock{}, EventDataTypeFork },
+	// wire.ConcreteType{EventDataFork{}, EventDataTypeFork },
 	wire.ConcreteType{EventDataTx{}, EventDataTypeTx},
 	wire.ConcreteType{EventDataCall{}, EventDataTypeCall},
 	wire.ConcreteType{EventDataLog{}, EventDataTypeLog},
@@ -80,3 +83,8 @@ type EventDataLog struct {
 	Data    []byte    `json:"data"`
 	Height  int64     `json:"height"`
 }
+
+func (_ EventDataNewBlock) AssertIsEventData() {}
+func (_ EventDataTx) AssertIsEventData()       {}
+func (_ EventDataCall) AssertIsEventData()     {}
+func (_ EventDataLog) AssertIsEventData()      {}

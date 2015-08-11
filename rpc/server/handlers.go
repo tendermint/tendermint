@@ -16,6 +16,7 @@ import (
 	"github.com/tendermint/tendermint/events"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	. "github.com/tendermint/tendermint/rpc/types"
+	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/wire"
 )
 
@@ -54,22 +55,22 @@ func NewRPCFunc(f interface{}, args []string) *RPCFunc {
 func funcArgTypes(f interface{}) []reflect.Type {
 	t := reflect.TypeOf(f)
 	n := t.NumIn()
-	types := make([]reflect.Type, n)
+	typez := make([]reflect.Type, n)
 	for i := 0; i < n; i++ {
-		types[i] = t.In(i)
+		typez[i] = t.In(i)
 	}
-	return types
+	return typez
 }
 
 // return a function's return types
 func funcReturnTypes(f interface{}) []reflect.Type {
 	t := reflect.TypeOf(f)
 	n := t.NumOut()
-	types := make([]reflect.Type, n)
+	typez := make([]reflect.Type, n)
 	for i := 0; i < n; i++ {
-		types[i] = t.Out(i)
+		typez[i] = t.Out(i)
 	}
-	return types
+	return typez
 }
 
 // function introspection
@@ -337,7 +338,7 @@ func (wsc *WSConnection) readRoutine() {
 					continue
 				} else {
 					log.Notice("Subscribe to event", "id", wsc.id, "event", event)
-					wsc.evsw.AddListenerForEvent(wsc.id, event, func(msg interface{}) {
+					wsc.evsw.AddListenerForEvent(wsc.id, event, func(msg types.EventData) {
 						// NOTE: RPCResponses of subscribed events have id suffix "#event"
 						wsc.writeRPCResponse(NewRPCResponse(request.Id+"#event", ctypes.ResultEvent{event, msg}, ""))
 					})

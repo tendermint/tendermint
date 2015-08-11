@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/types"
 )
 
 // reactors and other modules should export
@@ -14,7 +15,7 @@ type Eventable interface {
 
 // an event switch or cache implements fireable
 type Fireable interface {
-	FireEvent(event string, msg interface{})
+	FireEvent(event string, data types.EventData)
 }
 
 type EventSwitch struct {
@@ -108,7 +109,7 @@ func (evsw *EventSwitch) RemoveListenerForEvent(event string, listenerId string)
 	}
 }
 
-func (evsw *EventSwitch) FireEvent(event string, msg interface{}) {
+func (evsw *EventSwitch) FireEvent(event string, data types.EventData) {
 	// Get the eventCell
 	evsw.mtx.RLock()
 	eventCell := evsw.eventCells[event]
@@ -119,7 +120,7 @@ func (evsw *EventSwitch) FireEvent(event string, msg interface{}) {
 	}
 
 	// Fire event for all listeners in eventCell
-	eventCell.FireEvent(msg)
+	eventCell.FireEvent(data)
 }
 
 //-----------------------------------------------------------------------------
@@ -150,17 +151,17 @@ func (cell *eventCell) RemoveListener(listenerId string) int {
 	return numListeners
 }
 
-func (cell *eventCell) FireEvent(msg interface{}) {
+func (cell *eventCell) FireEvent(data types.EventData) {
 	cell.mtx.RLock()
 	for _, listener := range cell.listeners {
-		listener(msg)
+		listener(data)
 	}
 	cell.mtx.RUnlock()
 }
 
 //-----------------------------------------------------------------------------
 
-type eventCallback func(msg interface{})
+type eventCallback func(data types.EventData)
 
 type eventListener struct {
 	id string

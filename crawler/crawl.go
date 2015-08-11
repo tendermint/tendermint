@@ -181,7 +181,7 @@ func (c *Crawler) readLoop(node *Node) {
 }
 
 func (c *Crawler) consumeMessage(eventMsg ctypes.ResultEvent, node *Node) error {
-	block := eventMsg.Data.(*types.Block)
+	block := eventMsg.Data.(*types.EventDataNewBlock).Block
 	node.LastSeen = time.Now()
 	node.BlockHeight = block.Height
 	node.BlockHistory[block.Height] = node.LastSeen

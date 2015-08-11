@@ -694,20 +694,18 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 			if !ok {
 				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
-			log := types.EventDataLog{
-				callee.Address,
-				topics,
-				data,
-				vm.params.BlockHeight,
-			}
-			vm.appState.AddLog(log)
 			if vm.evc != nil {
 				eventId := types.EventStringLogEvent(callee.Address.Postfix(20))
 				fmt.Printf("eventId: %s\n", eventId)
+				log := types.EventDataLog{
+					callee.Address,
+					topics,
+					data,
+					vm.params.BlockHeight,
+				}
 				vm.evc.FireEvent(eventId, log)
 			}
-			// Using sol-log for this as well since 'log' will print garbage.
-			dbg.Printf(" => T:%X D:%X\n", log.Topics, log.Data)
+			dbg.Printf(" => T:%X D:%X\n", topics, data)
 
 		case CREATE: // 0xF0
 			if !HasPermission(vm.appState, callee, ptypes.CreateContract) {

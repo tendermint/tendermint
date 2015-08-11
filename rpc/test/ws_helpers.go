@@ -82,7 +82,8 @@ func waitForEvent(t *testing.T, con *websocket.Conn, eventid string, dieOnTimeou
 					errCh <- err
 					break
 				}
-				if response.Result.(*ctypes.ResultEvent).Event == eventid {
+				event, ok := response.Result.(*ctypes.ResultEvent)
+				if ok && event.Event == eventid {
 					goodCh <- p
 					break
 				}
@@ -109,8 +110,8 @@ func waitForEvent(t *testing.T, con *websocket.Conn, eventid string, dieOnTimeou
 			// run the check
 			err := check(eventid, p)
 			if err != nil {
-				panic(err)
 				t.Fatal(err)
+				panic(err) // Show the stack trace.
 			}
 		} else {
 			con.Close()
@@ -118,6 +119,7 @@ func waitForEvent(t *testing.T, con *websocket.Conn, eventid string, dieOnTimeou
 		}
 	case err := <-errCh:
 		t.Fatal(err)
+		panic(err) // Show the stack trace.
 	}
 }
 
@@ -140,15 +142,7 @@ func unmarshalResponseNewBlock(b []byte) (*types.Block, error) {
 
 func unmarshalResponseNameReg(b []byte) (*types.NameTx, error) {
 	// unmarshall and assert somethings
-	var response struct {
-		JSONRPC string `json:"jsonrpc"`
-		Id      string `json:"id"`
-		Result  struct {
-			Event string        `json:"event"`
-			Data  *types.NameTx `json:"data"`
-		} `json:"result"`
-		Error string `json:"error"`
-	}
+	var response ctypes.Response
 	var err error
 	wire.ReadJSON(&response, b, &err)
 	if err != nil {
@@ -157,7 +151,7 @@ func unmarshalResponseNameReg(b []byte) (*types.NameTx, error) {
 	if response.Error != "" {
 		return nil, fmt.Errorf(response.Error)
 	}
-	tx := response.Result.Data
+	tx := response.Result.(*ctypes.ResultEvent).Data.(types.EventDataTx).Tx.(*types.NameTx)
 	return tx, nil
 }
 

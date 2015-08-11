@@ -419,11 +419,14 @@ func writeReflectBinary(rv reflect.Value, rt reflect.Type, opts Options, w io.Wr
 			if !ok {
 				switch crt.Kind() {
 				case reflect.Ptr:
-					*err = errors.New(Fmt("Unexpected pointer type %v. Was it registered as a value receiver rather than as a pointer receiver?", crt))
+					*err = errors.New(Fmt("Unexpected pointer type %v for registered interface %v. "+
+						"Was it registered as a value receiver rather than as a pointer receiver?", crt, rt.Name()))
 				case reflect.Struct:
-					*err = errors.New(Fmt("Unexpected struct type %v. Was it registered as a pointer receiver rather than as a value receiver?", crt))
+					*err = errors.New(Fmt("Unexpected struct type %v for registered interface %v. "+
+						"Was it registered as a pointer receiver rather than as a value receiver?", crt, rt.Name()))
 				default:
-					*err = errors.New(Fmt("Unexpected type %v.", crt))
+					*err = errors.New(Fmt("Unexpected type %v for registered interface %v. "+
+						"If this is intentional, please register it.", crt, rt.Name()))
 				}
 				return
 			}
@@ -819,11 +822,14 @@ func writeReflectJSON(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, 
 			if !ok {
 				switch crt.Kind() {
 				case reflect.Ptr:
-					*err = errors.New(Fmt("Unexpected pointer type %v. Was it registered as a value receiver rather than as a pointer receiver?", crt))
+					*err = errors.New(Fmt("Unexpected pointer type %v for registered interface %v. "+
+						"Was it registered as a value receiver rather than as a pointer receiver?", crt, rt.Name()))
 				case reflect.Struct:
-					*err = errors.New(Fmt("Unexpected struct type %v. Was it registered as a pointer receiver rather than as a value receiver?", crt))
+					*err = errors.New(Fmt("Unexpected struct type %v for registered interface %v. "+
+						"Was it registered as a pointer receiver rather than as a value receiver?", crt, rt.Name()))
 				default:
-					*err = errors.New(Fmt("Unexpected type %v.", crt))
+					*err = errors.New(Fmt("Unexpected type %v for registered interface %v. "+
+						"If this is intentional, please register it.", crt, rt.Name()))
 				}
 				return
 			}

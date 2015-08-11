@@ -12,7 +12,6 @@ type TxCache struct {
 	backend  *BlockCache
 	accounts map[Word256]vmAccountInfo
 	storages map[Tuple256]Word256
-	logs     []types.EventDataLog
 }
 
 func NewTxCache(backend *BlockCache) *TxCache {
@@ -20,7 +19,6 @@ func NewTxCache(backend *BlockCache) *TxCache {
 		backend:  backend,
 		accounts: make(map[Word256]vmAccountInfo),
 		storages: make(map[Tuple256]Word256),
-		logs:     make([]types.EventDataLog, 0),
 	}
 }
 
@@ -136,10 +134,6 @@ func (cache *TxCache) Sync() {
 			cache.backend.UpdateAccount(toStateAccount(acc))
 		}
 	}
-}
-
-func (cache *TxCache) AddLog(log types.EventDataLog) {
-	cache.logs = append(cache.logs, log)
 }
 
 //-----------------------------------------------------------------------------

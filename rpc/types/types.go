@@ -15,9 +15,6 @@ type RPCResponse struct {
 }
 
 func NewRPCResponse(id string, res interface{}, err string) RPCResponse {
-	if res == nil {
-		res = struct{}{}
-	}
 	return RPCResponse{
 		JSONRPC: "2.0",
 		Id:      id,

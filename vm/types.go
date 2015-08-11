@@ -3,7 +3,6 @@ package vm
 import (
 	. "github.com/tendermint/tendermint/common"
 	ptypes "github.com/tendermint/tendermint/permission/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -40,8 +39,6 @@ type AppState interface {
 	GetStorage(Word256, Word256) Word256
 	SetStorage(Word256, Word256, Word256) // Setting to Zero is deleting.
 
-	// Logs
-	AddLog(types.EventDataLog)
 }
 
 type Params struct {
