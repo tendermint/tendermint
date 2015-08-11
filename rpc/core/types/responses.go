@@ -140,13 +140,13 @@ const (
 	ResultTypeListValidators     = byte(0x09)
 	ResultTypeDumpConsensusState = byte(0x0A)
 	ResultTypeListNames          = byte(0x0B)
-	ResultTypeGenPrivAccount     = byte(0x0C) //*acm.PrivAccount
-	ResultTypeGetAccount         = byte(0x0D) //*acm.Account
-	ResultTypeBroadcastTx        = byte(0x0E) //*types.Receipt
-	ResultTypeListUnconfirmedTxs = byte(0x0F) //[]types.Tx
-	ResultTypeGetName            = byte(0x10) // *types.NameRegEntry
-	ResultTypeGenesis            = byte(0x11) // *stypes.GenesisDoc
-	ResultTypeSignTx             = byte(0x12) // Tx >>>> double interface!
+	ResultTypeGenPrivAccount     = byte(0x0C)
+	ResultTypeGetAccount         = byte(0x0D)
+	ResultTypeBroadcastTx        = byte(0x0E)
+	ResultTypeListUnconfirmedTxs = byte(0x0F)
+	ResultTypeGetName            = byte(0x10)
+	ResultTypeGenesis            = byte(0x11)
+	ResultTypeSignTx             = byte(0x12)
 	ResultTypeEvent              = byte(0x13) // so websockets can respond to rpc functions
 )
 

@@ -3,8 +3,9 @@ package core_client
 import (
 	"bytes"
 	"fmt"
-	"github.com/tendermint/tendermint/wire"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/types"
+	"github.com/tendermint/tendermint/wire"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -156,10 +157,21 @@ func argsToURLValues(argNames []string, args ...interface{}) (url.Values, error)
 	return values, nil
 }
 
+func unmarshalCheckResponse(body []byte) (response *ctypes.Response, err error) {
+	response = new(ctypes.Response)
+	wire.ReadJSON(response, body, &err)
+	if err != nil {
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, fmt.Errorf(response.Error)
+	}
+	return response, nil
+}
+
 // import statements we will need for the templates
 
 /*rpc-gen:imports:
-github.com/tendermint/tendermint/wire
 rpctypes github.com/tendermint/tendermint/rpc/types
 net/http
 io/ioutil
@@ -179,20 +191,15 @@ fmt
 	if err != nil{
 		return nil, err
 	}
-	var response struct {
-		Result {{response.0}} `json:"result"`
-		Error  string `json:"error"`
-		Id string `json:"id"`
-		JSONRPC string `json:"jsonrpc"`
-	}
-	wire.ReadJSON(&response, body, &err)
-	if err != nil {
+	response, err := unmarshalCheckResponse(body)
+	if err != nil{
 		return nil, err
 	}
-	if response.Error != ""{
-		return nil, fmt.Errorf(response.Error)
+	result, ok := response.Result.({{response.0}})
+	if !ok{
+		return nil, fmt.Errorf("response result was wrong type")
 	}
-	return response.Result, nil
+	return result, nil
 }*/
 
 /*rpc-gen:template:*ClientHTTP func (c *ClientHTTP) {{name}}({{args.def}}) ({{response}}){
@@ -209,18 +216,13 @@ fmt
 	if err != nil {
 		return nil, err
 	}
-	var response struct {
-		Result {{response.0}} `json:"result"`
-		Error  string `json:"error"`
-		Id string `json:"id"`
-		JSONRPC string `json:"jsonrpc"`
-	}
-	wire.ReadJSON(&response, body, &err)
-	if err != nil {
+	response, err := unmarshalCheckResponse(body)
+	if err != nil{
 		return nil, err
 	}
-	if response.Error != ""{
-		return nil, fmt.Errorf(response.Error)
+	result, ok := response.Result.({{response.0}})
+	if !ok{
+		return nil, fmt.Errorf("response result was wrong type")
 	}
-	return response.Result, nil
+	return result, nil
 }*/
