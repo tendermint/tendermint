@@ -14,6 +14,7 @@ import (
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/gorilla/websocket"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/events"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	. "github.com/tendermint/tendermint/rpc/types"
 	"github.com/tendermint/tendermint/wire"
 )
@@ -338,7 +339,7 @@ func (wsc *WSConnection) readRoutine() {
 					log.Notice("Subscribe to event", "id", wsc.id, "event", event)
 					wsc.evsw.AddListenerForEvent(wsc.id, event, func(msg interface{}) {
 						// NOTE: RPCResponses of subscribed events have id suffix "#event"
-						wsc.writeRPCResponse(NewRPCResponse(request.Id+"#event", RPCEventResult{event, msg}, ""))
+						wsc.writeRPCResponse(NewRPCResponse(request.Id+"#event", ctypes.ResultEvent{event, msg}, ""))
 					})
 					continue
 				}

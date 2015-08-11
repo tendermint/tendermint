@@ -175,9 +175,9 @@ func runVMWaitEvents(t *testing.T, ourVm *VM, caller, callee *Account, subscribe
 	}()
 	msg := <-ch
 	switch ev := msg.(type) {
-	case types.EventMsgTx:
+	case types.EventDataTx:
 		return ev.Exception
-	case types.EventMsgCall:
+	case types.EventDataCall:
 		return ev.Exception
 	case string:
 		return ev

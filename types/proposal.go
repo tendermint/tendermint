@@ -1,4 +1,4 @@
-package consensus
+package types
 
 import (
 	"errors"
@@ -6,9 +6,8 @@ import (
 	"io"
 
 	acm "github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/wire"
 )
 
 var (
@@ -19,12 +18,12 @@ var (
 type Proposal struct {
 	Height           int                  `json:"height"`
 	Round            int                  `json:"round"`
-	BlockPartsHeader types.PartSetHeader  `json:"block_parts_header"`
+	BlockPartsHeader PartSetHeader        `json:"block_parts_header"`
 	POLRound         int                  `json:"pol_round"` // -1 if null.
 	Signature        acm.SignatureEd25519 `json:"signature"`
 }
 
-func NewProposal(height int, round int, blockPartsHeader types.PartSetHeader, polRound int) *Proposal {
+func NewProposal(height int, round int, blockPartsHeader PartSetHeader, polRound int) *Proposal {
 	return &Proposal{
 		Height:           height,
 		Round:            round,

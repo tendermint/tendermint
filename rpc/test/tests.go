@@ -28,7 +28,7 @@ func testGenPriv(t *testing.T, typ string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(privAcc.Address) == 0 {
+	if len(privAcc.PrivAccount.Address) == 0 {
 		t.Fatal("Failed to generate an address")
 	}
 }

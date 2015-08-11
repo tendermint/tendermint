@@ -5,13 +5,12 @@ import (
 	"sync"
 
 	. "github.com/tendermint/tendermint/common"
-	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
 type RoundVoteSet struct {
-	Prevotes   *VoteSet
-	Precommits *VoteSet
+	Prevotes   *types.VoteSet
+	Precommits *types.VoteSet
 }
 
 /*
@@ -28,7 +27,7 @@ peer to prevent abuse.
 */
 type HeightVoteSet struct {
 	height int
-	valSet *sm.ValidatorSet
+	valSet *types.ValidatorSet
 
 	mtx               sync.Mutex
 	round             int                  // max tracked round
@@ -36,7 +35,7 @@ type HeightVoteSet struct {
 	peerCatchupRounds map[string]int       // keys: peer.Key; values: round
 }
 
-func NewHeightVoteSet(height int, valSet *sm.ValidatorSet) *HeightVoteSet {
+func NewHeightVoteSet(height int, valSet *types.ValidatorSet) *HeightVoteSet {
 	hvs := &HeightVoteSet{
 		height:            height,
 		valSet:            valSet,
@@ -79,8 +78,8 @@ func (hvs *HeightVoteSet) addRound(round int) {
 		PanicSanity("addRound() for an existing round")
 	}
 	log.Info("addRound(round)", "round", round)
-	prevotes := NewVoteSet(hvs.height, round, types.VoteTypePrevote, hvs.valSet)
-	precommits := NewVoteSet(hvs.height, round, types.VoteTypePrecommit, hvs.valSet)
+	prevotes := types.NewVoteSet(hvs.height, round, types.VoteTypePrevote, hvs.valSet)
+	precommits := types.NewVoteSet(hvs.height, round, types.VoteTypePrecommit, hvs.valSet)
 	hvs.roundVoteSets[round] = RoundVoteSet{
 		Prevotes:   prevotes,
 		Precommits: precommits,
@@ -109,13 +108,13 @@ func (hvs *HeightVoteSet) AddByAddress(address []byte, vote *types.Vote, peerKey
 	return
 }
 
-func (hvs *HeightVoteSet) Prevotes(round int) *VoteSet {
+func (hvs *HeightVoteSet) Prevotes(round int) *types.VoteSet {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
 	return hvs.getVoteSet(round, types.VoteTypePrevote)
 }
 
-func (hvs *HeightVoteSet) Precommits(round int) *VoteSet {
+func (hvs *HeightVoteSet) Precommits(round int) *types.VoteSet {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
 	return hvs.getVoteSet(round, types.VoteTypePrecommit)
@@ -134,7 +133,7 @@ func (hvs *HeightVoteSet) POLRound() int {
 	return -1
 }
 
-func (hvs *HeightVoteSet) getVoteSet(round int, type_ byte) *VoteSet {
+func (hvs *HeightVoteSet) getVoteSet(round int, type_ byte) *types.VoteSet {
 	log.Info("getVoteSet(round)", "round", round, "type", type_)
 	rvs, ok := hvs.roundVoteSets[round]
 	if !ok {

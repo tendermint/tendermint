@@ -1,27 +1,16 @@
 package state
 
 import (
-	"bytes"
 	"sort"
+	"time"
 
 	acm "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
 	dbm "github.com/tendermint/tendermint/db"
 	ptypes "github.com/tendermint/tendermint/permission/types"
+	. "github.com/tendermint/tendermint/state/types"
 	"github.com/tendermint/tendermint/types"
-
-	"io/ioutil"
-	"os"
-	"time"
 )
-
-func Tempfile(prefix string) (*os.File, string) {
-	file, err := ioutil.TempFile("", prefix)
-	if err != nil {
-		PanicCrisis(err)
-	}
-	return file, file.Name()
-}
 
 func RandAccount(randBalance bool, minBalance int64) (*acm.Account, *acm.PrivAccount) {
 	privAccount := acm.GenPrivAccount()
@@ -39,37 +28,7 @@ func RandAccount(randBalance bool, minBalance int64) (*acm.Account, *acm.PrivAcc
 	return acc, privAccount
 }
 
-func RandValidator(randBonded bool, minBonded int64) (*ValidatorInfo, *Validator, *PrivValidator) {
-	privVal := GenPrivValidator()
-	_, tempFilePath := Tempfile("priv_validator_")
-	privVal.SetFile(tempFilePath)
-	bonded := minBonded
-	if randBonded {
-		bonded += int64(RandUint32())
-	}
-	valInfo := &ValidatorInfo{
-		Address: privVal.Address,
-		PubKey:  privVal.PubKey,
-		UnbondTo: []*types.TxOutput{&types.TxOutput{
-			Amount:  bonded,
-			Address: privVal.Address,
-		}},
-		FirstBondHeight: 0,
-		FirstBondAmount: bonded,
-	}
-	val := &Validator{
-		Address:          valInfo.Address,
-		PubKey:           valInfo.PubKey,
-		BondHeight:       0,
-		UnbondHeight:     0,
-		LastCommitHeight: 0,
-		VotingPower:      valInfo.FirstBondAmount,
-		Accum:            0,
-	}
-	return valInfo, val, privVal
-}
-
-func RandGenesisDoc(numAccounts int, randBalance bool, minBalance int64, numValidators int, randBonded bool, minBonded int64) (*GenesisDoc, []*acm.PrivAccount, []*PrivValidator) {
+func RandGenesisDoc(numAccounts int, randBalance bool, minBalance int64, numValidators int, randBonded bool, minBonded int64) (*GenesisDoc, []*acm.PrivAccount, []*types.PrivValidator) {
 	accounts := make([]GenesisAccount, numAccounts)
 	privAccounts := make([]*acm.PrivAccount, numAccounts)
 	defaultPerms := ptypes.DefaultAccountPermissions
@@ -83,9 +42,9 @@ func RandGenesisDoc(numAccounts int, randBalance bool, minBalance int64, numVali
 		privAccounts[i] = privAccount
 	}
 	validators := make([]GenesisValidator, numValidators)
-	privValidators := make([]*PrivValidator, numValidators)
+	privValidators := make([]*types.PrivValidator, numValidators)
 	for i := 0; i < numValidators; i++ {
-		valInfo, _, privVal := RandValidator(randBonded, minBonded)
+		valInfo, _, privVal := types.RandValidator(randBonded, minBonded)
 		validators[i] = GenesisValidator{
 			PubKey: valInfo.PubKey,
 			Amount: valInfo.FirstBondAmount,
@@ -98,7 +57,7 @@ func RandGenesisDoc(numAccounts int, randBalance bool, minBalance int64, numVali
 		}
 		privValidators[i] = privVal
 	}
-	sort.Sort(PrivValidatorsByAddress(privValidators))
+	sort.Sort(types.PrivValidatorsByAddress(privValidators))
 	return &GenesisDoc{
 		GenesisTime: time.Now(),
 		ChainID:     "tendermint_test",
@@ -108,28 +67,10 @@ func RandGenesisDoc(numAccounts int, randBalance bool, minBalance int64, numVali
 
 }
 
-func RandGenesisState(numAccounts int, randBalance bool, minBalance int64, numValidators int, randBonded bool, minBonded int64) (*State, []*acm.PrivAccount, []*PrivValidator) {
+func RandGenesisState(numAccounts int, randBalance bool, minBalance int64, numValidators int, randBonded bool, minBonded int64) (*State, []*acm.PrivAccount, []*types.PrivValidator) {
 	db := dbm.NewMemDB()
 	genDoc, privAccounts, privValidators := RandGenesisDoc(numAccounts, randBalance, minBalance, numValidators, randBonded, minBonded)
 	s0 := MakeGenesisState(db, genDoc)
 	s0.Save()
 	return s0, privAccounts, privValidators
-}
-
-//-------------------------------------
-
-type PrivValidatorsByAddress []*PrivValidator
-
-func (pvs PrivValidatorsByAddress) Len() int {
-	return len(pvs)
-}
-
-func (pvs PrivValidatorsByAddress) Less(i, j int) bool {
-	return bytes.Compare(pvs[i].Address, pvs[j].Address) == -1
-}
-
-func (pvs PrivValidatorsByAddress) Swap(i, j int) {
-	it := pvs[i]
-	pvs[i] = pvs[j]
-	pvs[j] = it
 }

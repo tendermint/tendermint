@@ -120,7 +120,7 @@ func TestWSCallWait(t *testing.T) {
 		tx := makeDefaultCallTx(t, wsTyp, nil, code, amt, gasLim, fee)
 		receipt := broadcastTx(t, wsTyp, tx)
 		contractAddr = receipt.ContractAddr
-	}, unmarshalValidateCall(amt, returnCode))
+	}, unmarshalValidateTx(amt, returnCode))
 
 	// susbscribe to the new contract
 	amt = int64(10001)
@@ -135,7 +135,7 @@ func TestWSCallWait(t *testing.T) {
 		tx := makeDefaultCallTx(t, wsTyp, contractAddr, data, amt, gasLim, fee)
 		receipt := broadcastTx(t, wsTyp, tx)
 		contractAddr = receipt.ContractAddr
-	}, unmarshalValidateCall(amt, returnVal))
+	}, unmarshalValidateTx(amt, returnVal))
 }
 
 // create a contract and send it a msg without waiting. wait for contract event
@@ -165,7 +165,7 @@ func TestWSCallNoWait(t *testing.T) {
 	waitForEvent(t, con, eid, true, func() {
 		tx := makeDefaultCallTx(t, wsTyp, contractAddr, data, amt, gasLim, fee)
 		broadcastTx(t, wsTyp, tx)
-	}, unmarshalValidateCall(amt, returnVal))
+	}, unmarshalValidateTx(amt, returnVal))
 }
 
 // create two contracts, one of which calls the other
@@ -208,5 +208,5 @@ func TestWSCallCall(t *testing.T) {
 		tx := makeDefaultCallTx(t, wsTyp, contractAddr2, nil, amt, gasLim, fee)
 		broadcastTx(t, wsTyp, tx)
 		*txid = types.TxID(chainID, tx)
-	}, unmarshalValidateCallCall(user[0].Address, returnVal, txid))
+	}, unmarshalValidateCall(user[0].Address, returnVal, txid))
 }

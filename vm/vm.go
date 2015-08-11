@@ -98,7 +98,7 @@ func HasPermission(appState AppState, acc *Account, perm ptypes.PermFlag) bool {
 func (vm *VM) fireCallEvent(exception *string, output *[]byte, caller, callee *Account, input []byte, value int64, gas *int64) {
 	// fire the post call event (including exception if applicable)
 	if vm.evc != nil {
-		vm.evc.FireEvent(types.EventStringAccCall(callee.Address.Postfix(20)), types.EventMsgCall{
+		vm.evc.FireEvent(types.EventStringAccCall(callee.Address.Postfix(20)), types.EventDataCall{
 			&types.CallData{caller.Address.Postfix(20), callee.Address.Postfix(20), input, value, *gas},
 			vm.origin.Postfix(20),
 			vm.txid,
@@ -694,7 +694,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 			if !ok {
 				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
-			log := &Log{
+			log := types.EventDataLog{
 				callee.Address,
 				topics,
 				data,

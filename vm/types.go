@@ -3,6 +3,7 @@ package vm
 import (
 	. "github.com/tendermint/tendermint/common"
 	ptypes "github.com/tendermint/tendermint/permission/types"
+	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -27,15 +28,6 @@ func (acc *Account) String() string {
 		acc.Address, acc.Balance, acc.Code, acc.Nonce)
 }
 
-// NOTE: This is serialized as an event from vm/vm.
-// See: EventStringLogEvent
-type Log struct {
-	Address Word256   `json:"address"`
-	Topics  []Word256 `json:"topics"`
-	Data    []byte    `json:"data"`
-	Height  int64     `json:"height"`
-}
-
 type AppState interface {
 
 	// Accounts
@@ -49,7 +41,7 @@ type AppState interface {
 	SetStorage(Word256, Word256, Word256) // Setting to Zero is deleting.
 
 	// Logs
-	AddLog(*Log)
+	AddLog(types.EventDataLog)
 }
 
 type Params struct {

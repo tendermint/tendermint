@@ -3,15 +3,18 @@ package state
 import (
 	"bytes"
 	"io"
+	"io/ioutil"
 	"time"
 
 	acm "github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
 	dbm "github.com/tendermint/tendermint/db"
 	"github.com/tendermint/tendermint/events"
 	"github.com/tendermint/tendermint/merkle"
+	ptypes "github.com/tendermint/tendermint/permission/types"
+	. "github.com/tendermint/tendermint/state/types"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/wire"
 )
 
 var (
@@ -32,9 +35,9 @@ type State struct {
 	LastBlockHash        []byte
 	LastBlockParts       types.PartSetHeader
 	LastBlockTime        time.Time
-	BondedValidators     *ValidatorSet
-	LastBondedValidators *ValidatorSet
-	UnbondingValidators  *ValidatorSet
+	BondedValidators     *types.ValidatorSet
+	LastBondedValidators *types.ValidatorSet
+	UnbondingValidators  *types.ValidatorSet
 	accounts             merkle.Tree // Shouldn't be accessed directly.
 	validatorInfos       merkle.Tree // Shouldn't be accessed directly.
 	nameReg              merkle.Tree // Shouldn't be accessed directly.
@@ -54,14 +57,14 @@ func LoadState(db dbm.DB) *State {
 		s.LastBlockHash = wire.ReadByteSlice(r, n, err)
 		s.LastBlockParts = wire.ReadBinary(types.PartSetHeader{}, r, n, err).(types.PartSetHeader)
 		s.LastBlockTime = wire.ReadTime(r, n, err)
-		s.BondedValidators = wire.ReadBinary(&ValidatorSet{}, r, n, err).(*ValidatorSet)
-		s.LastBondedValidators = wire.ReadBinary(&ValidatorSet{}, r, n, err).(*ValidatorSet)
-		s.UnbondingValidators = wire.ReadBinary(&ValidatorSet{}, r, n, err).(*ValidatorSet)
+		s.BondedValidators = wire.ReadBinary(&types.ValidatorSet{}, r, n, err).(*types.ValidatorSet)
+		s.LastBondedValidators = wire.ReadBinary(&types.ValidatorSet{}, r, n, err).(*types.ValidatorSet)
+		s.UnbondingValidators = wire.ReadBinary(&types.ValidatorSet{}, r, n, err).(*types.ValidatorSet)
 		accountsHash := wire.ReadByteSlice(r, n, err)
 		s.accounts = merkle.NewIAVLTree(wire.BasicCodec, acm.AccountCodec, defaultAccountsCacheCapacity, db)
 		s.accounts.Load(accountsHash)
 		validatorInfosHash := wire.ReadByteSlice(r, n, err)
-		s.validatorInfos = merkle.NewIAVLTree(wire.BasicCodec, ValidatorInfoCodec, 0, db)
+		s.validatorInfos = merkle.NewIAVLTree(wire.BasicCodec, types.ValidatorInfoCodec, 0, db)
 		s.validatorInfos.Load(validatorInfosHash)
 		nameRegHash := wire.ReadByteSlice(r, n, err)
 		s.nameReg = merkle.NewIAVLTree(wire.BasicCodec, NameRegCodec, 0, db)
@@ -200,18 +203,18 @@ func (s *State) SetAccounts(accounts merkle.Tree) {
 
 // The returned ValidatorInfo is a copy, so mutating it
 // has no side effects.
-func (s *State) GetValidatorInfo(address []byte) *ValidatorInfo {
+func (s *State) GetValidatorInfo(address []byte) *types.ValidatorInfo {
 	_, valInfo := s.validatorInfos.Get(address)
 	if valInfo == nil {
 		return nil
 	}
-	return valInfo.(*ValidatorInfo).Copy()
+	return valInfo.(*types.ValidatorInfo).Copy()
 }
 
 // Returns false if new, true if updated.
 // The valInfo is copied before setting, so mutating it
 // afterwards has no side effects.
-func (s *State) SetValidatorInfo(valInfo *ValidatorInfo) (updated bool) {
+func (s *State) SetValidatorInfo(valInfo *types.ValidatorInfo) (updated bool) {
 	return s.validatorInfos.Set(valInfo.Address, valInfo.Copy())
 }
 
@@ -219,7 +222,7 @@ func (s *State) GetValidatorInfos() merkle.Tree {
 	return s.validatorInfos.Copy()
 }
 
-func (s *State) unbondValidator(val *Validator) {
+func (s *State) unbondValidator(val *types.Validator) {
 	// Move validator to UnbondingValidators
 	val, removed := s.BondedValidators.Remove(val.Address)
 	if !removed {
@@ -232,7 +235,7 @@ func (s *State) unbondValidator(val *Validator) {
 	}
 }
 
-func (s *State) rebondValidator(val *Validator) {
+func (s *State) rebondValidator(val *types.Validator) {
 	// Move validator to BondingValidators
 	val, removed := s.UnbondingValidators.Remove(val.Address)
 	if !removed {
@@ -245,7 +248,7 @@ func (s *State) rebondValidator(val *Validator) {
 	}
 }
 
-func (s *State) releaseValidator(val *Validator) {
+func (s *State) releaseValidator(val *types.Validator) {
 	// Update validatorInfo
 	valInfo := s.GetValidatorInfo(val.Address)
 	if valInfo == nil {
@@ -271,7 +274,7 @@ func (s *State) releaseValidator(val *Validator) {
 	}
 }
 
-func (s *State) destroyValidator(val *Validator) {
+func (s *State) destroyValidator(val *types.Validator) {
 	// Update validatorInfo
 	valInfo := s.GetValidatorInfo(val.Address)
 	if valInfo == nil {
@@ -360,12 +363,114 @@ func (s *State) SetFireable(evc events.Fireable) {
 }
 
 //-----------------------------------------------------------------------------
+// Genesis
 
-type InvalidTxError struct {
-	Tx     types.Tx
-	Reason error
+func MakeGenesisStateFromFile(db dbm.DB, genDocFile string) (*GenesisDoc, *State) {
+	jsonBlob, err := ioutil.ReadFile(genDocFile)
+	if err != nil {
+		Exit(Fmt("Couldn't read GenesisDoc file: %v", err))
+	}
+	genDoc := GenesisDocFromJSON(jsonBlob)
+	return genDoc, MakeGenesisState(db, genDoc)
 }
 
-func (txErr InvalidTxError) Error() string {
-	return Fmt("Invalid tx: [%v] reason: [%v]", txErr.Tx, txErr.Reason)
+func MakeGenesisState(db dbm.DB, genDoc *GenesisDoc) *State {
+	if len(genDoc.Validators) == 0 {
+		Exit(Fmt("The genesis file has no validators"))
+	}
+
+	if genDoc.GenesisTime.IsZero() {
+		genDoc.GenesisTime = time.Now()
+	}
+
+	// Make accounts state tree
+	accounts := merkle.NewIAVLTree(wire.BasicCodec, acm.AccountCodec, defaultAccountsCacheCapacity, db)
+	for _, genAcc := range genDoc.Accounts {
+		perm := ptypes.ZeroAccountPermissions
+		if genAcc.Permissions != nil {
+			perm = *genAcc.Permissions
+		}
+		acc := &acm.Account{
+			Address:     genAcc.Address,
+			PubKey:      nil,
+			Sequence:    0,
+			Balance:     genAcc.Amount,
+			Permissions: perm,
+		}
+		accounts.Set(acc.Address, acc)
+	}
+
+	// global permissions are saved as the 0 address
+	// so they are included in the accounts tree
+	globalPerms := ptypes.DefaultAccountPermissions
+	if genDoc.Params != nil && genDoc.Params.GlobalPermissions != nil {
+		globalPerms = *genDoc.Params.GlobalPermissions
+		// XXX: make sure the set bits are all true
+		// Without it the HasPermission() functions will fail
+		globalPerms.Base.SetBit = ptypes.AllPermFlags
+	}
+
+	permsAcc := &acm.Account{
+		Address:     ptypes.GlobalPermissionsAddress,
+		PubKey:      nil,
+		Sequence:    0,
+		Balance:     1337,
+		Permissions: globalPerms,
+	}
+	accounts.Set(permsAcc.Address, permsAcc)
+
+	// Make validatorInfos state tree && validators slice
+	validatorInfos := merkle.NewIAVLTree(wire.BasicCodec, types.ValidatorInfoCodec, 0, db)
+	validators := make([]*types.Validator, len(genDoc.Validators))
+	for i, val := range genDoc.Validators {
+		pubKey := val.PubKey
+		address := pubKey.Address()
+
+		// Make ValidatorInfo
+		valInfo := &types.ValidatorInfo{
+			Address:         address,
+			PubKey:          pubKey,
+			UnbondTo:        make([]*types.TxOutput, len(val.UnbondTo)),
+			FirstBondHeight: 0,
+			FirstBondAmount: val.Amount,
+		}
+		for i, unbondTo := range val.UnbondTo {
+			valInfo.UnbondTo[i] = &types.TxOutput{
+				Address: unbondTo.Address,
+				Amount:  unbondTo.Amount,
+			}
+		}
+		validatorInfos.Set(address, valInfo)
+
+		// Make validator
+		validators[i] = &types.Validator{
+			Address:     address,
+			PubKey:      pubKey,
+			VotingPower: val.Amount,
+		}
+	}
+
+	// Make namereg tree
+	nameReg := merkle.NewIAVLTree(wire.BasicCodec, NameRegCodec, 0, db)
+	// TODO: add names, contracts to genesis.json
+
+	// IAVLTrees must be persisted before copy operations.
+	accounts.Save()
+	validatorInfos.Save()
+	nameReg.Save()
+
+	return &State{
+		DB:                   db,
+		ChainID:              genDoc.ChainID,
+		LastBlockHeight:      0,
+		LastBlockHash:        nil,
+		LastBlockParts:       types.PartSetHeader{},
+		LastBlockTime:        genDoc.GenesisTime,
+		BondedValidators:     types.NewValidatorSet(validators),
+		LastBondedValidators: types.NewValidatorSet(nil),
+		UnbondingValidators:  types.NewValidatorSet(nil),
+		accounts:             accounts,
+		validatorInfos:       validatorInfos,
+		nameReg:              nameReg,
+	}
 }

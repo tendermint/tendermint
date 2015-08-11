@@ -11,7 +11,6 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	cclient "github.com/tendermint/tendermint/rpc/core_client"
-	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -51,7 +50,7 @@ func makeUsers(n int) []*acm.PrivAccount {
 func newNode(ready chan struct{}) {
 	// Create & start node
 	node = nm.NewNode()
-	l := p2p.NewDefaultListener("tcp", config.GetString("node_laddr"), false)
+	l := p2p.NewDefaultListener("tcp", config.GetString("node_laddr"))
 	node.AddListener(l)
 	node.Start()
 
@@ -69,7 +68,7 @@ func init() {
 	chainID = config.GetString("chain_id")
 
 	// Save new priv_validator file.
-	priv := &state.PrivValidator{
+	priv := &types.PrivValidator{
 		Address: user[0].Address,
 		PubKey:  acm.PubKeyEd25519(user[0].PubKey.(acm.PubKeyEd25519)),
 		PrivKey: acm.PrivKeyEd25519(user[0].PrivKey.(acm.PrivKeyEd25519)),
@@ -126,10 +125,10 @@ func getNonce(t *testing.T, typ string, addr []byte) int {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ac == nil {
+	if ac.Account == nil {
 		return 0
 	}
-	return ac.Sequence
+	return ac.Account.Sequence
 }
 
 // get the account
@@ -139,7 +138,7 @@ func getAccount(t *testing.T, typ string, addr []byte) *acm.Account {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return ac
+	return ac.Account
 }
 
 // sign transaction
@@ -149,22 +148,22 @@ func signTx(t *testing.T, typ string, tx types.Tx, privAcc *acm.PrivAccount) typ
 	if err != nil {
 		t.Fatal(err)
 	}
-	return signedTx
+	return signedTx.Tx
 }
 
 // broadcast transaction
-func broadcastTx(t *testing.T, typ string, tx types.Tx) *ctypes.Receipt {
+func broadcastTx(t *testing.T, typ string, tx types.Tx) ctypes.Receipt {
 	client := clients[typ]
 	rec, err := client.BroadcastTx(tx)
 	if err != nil {
 		t.Fatal(err)
 	}
 	mempoolCount += 1
-	return rec
+	return rec.Receipt
 }
 
 // dump all storage for an account. currently unused
-func dumpStorage(t *testing.T, addr []byte) ctypes.ResponseDumpStorage {
+func dumpStorage(t *testing.T, addr []byte) ctypes.ResultDumpStorage {
 	client := clients["HTTP"]
 	resp, err := client.DumpStorage(addr)
 	if err != nil {
@@ -213,7 +212,7 @@ func getNameRegEntry(t *testing.T, typ string, name string) *types.NameRegEntry 
 	if err != nil {
 		t.Fatal(err)
 	}
-	return entry
+	return entry.Entry
 }
 
 //--------------------------------------------------------------------------------

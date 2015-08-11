@@ -45,7 +45,7 @@ func TestLog4(t *testing.T) {
 	doneChan := make(chan struct{}, 1)
 
 	eventSwitch.AddListenerForEvent("test", eventId, func(event interface{}) {
-		logEvent := event.(*Log)
+		logEvent := event.(types.EventDataLog)
 		// No need to test address as this event would not happen if it wasn't correct
 		if !reflect.DeepEqual(logEvent.Topics, expectedTopics) {
 			t.Errorf("Event topics are wrong. Got: %v. Expected: %v", logEvent.Topics, expectedTopics)

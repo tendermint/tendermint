@@ -9,6 +9,7 @@ import (
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	cclient "github.com/tendermint/tendermint/rpc/core_client"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -75,7 +76,7 @@ func main() {
 	sendTx := makeRandomTransaction(10, rootAccount.Sequence+1, root, 2, accounts)
 	fmt.Println(sendTx)
 
-	wsClient := rpcclient.NewWSClient("ws://" + remote + "/websocket")
+	wsClient := cclient.NewWSClient("ws://" + remote + "/websocket")
 	_, err = wsClient.Start()
 	if err != nil {
 		Exit(Fmt("Failed to establish websocket connection: %v", err))

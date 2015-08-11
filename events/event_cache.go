@@ -1,5 +1,9 @@
 package events
 
+import (
+	"github.com/tendermint/tendermint/types"
+)
+
 const (
 	eventsBufferSize = 1000
 )
@@ -22,20 +26,20 @@ func NewEventCache(evsw Fireable) *EventCache {
 // a cached event
 type eventInfo struct {
 	event string
-	msg   interface{}
+	data  types.EventData
 }
 
 // Cache an event to be fired upon finality.
-func (evc *EventCache) FireEvent(event string, msg interface{}) {
+func (evc *EventCache) FireEvent(event string, data interface{}) {
 	// append to list
-	evc.events = append(evc.events, eventInfo{event, msg})
+	evc.events = append(evc.events, eventInfo{event, data})
 }
 
 // Fire events by running evsw.FireEvent on all cached events. Blocks.
 // Clears cached events
 func (evc *EventCache) Flush() {
 	for _, ei := range evc.events {
-		evc.evsw.FireEvent(ei.event, ei.msg)
+		evc.evsw.FireEvent(ei.event, ei.data)
 	}
 	evc.events = make([]eventInfo, eventsBufferSize)
 }

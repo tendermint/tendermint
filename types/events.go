@@ -2,6 +2,9 @@ package types
 
 import (
 	"fmt"
+
+	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/wire"
 )
 
 // Functions to generate eventId strings
@@ -18,13 +21,48 @@ func EventStringDupeout() string                { return "Dupeout" }
 func EventStringNewBlock() string               { return "NewBlock" }
 func EventStringFork() string                   { return "Fork" }
 
+//----------------------------------------
+
+const (
+	EventDataTypeNewBlock = byte(0x01)
+	EventDataTypeFork     = byte(0x02)
+	EventDataTypeTx       = byte(0x03)
+	EventDataTypeCall     = byte(0x04)
+	EventDataTypeLog      = byte(0x05)
+)
+
+type EventData interface{}
+
+var _ = wire.RegisterInterface(
+	struct{ EventData }{},
+	wire.ConcreteType{EventDataNewBlock{}, EventDataTypeNewBlock},
+	// wire.ConcreteType{EventDataNewBlock{}, EventDataTypeFork },
+	wire.ConcreteType{EventDataTx{}, EventDataTypeTx},
+	wire.ConcreteType{EventDataCall{}, EventDataTypeCall},
+	wire.ConcreteType{EventDataLog{}, EventDataTypeLog},
+)
+
 // Most event messages are basic types (a block, a transaction)
 // but some (an input to a call tx or a receive) are more exotic:
 
-type EventMsgTx struct {
+type EventDataNewBlock struct {
+	Block *Block `json:"block"`
+}
+
+// All txs fire EventDataTx, but only CallTx might have Return or Exception
+type EventDataTx struct {
 	Tx        Tx     `json:"tx"`
 	Return    []byte `json:"return"`
 	Exception string `json:"exception"`
+}
+
+// EventDataCall fires when we call a contract, and when a contract calls another contract
+type EventDataCall struct {
+	CallData  *CallData `json:"call_data"`
+	Origin    []byte    `json:"origin"`
+	TxID      []byte    `json:"tx_id"`
+	Return    []byte    `json:"return"`
+	Exception string    `json:"exception"`
 }
 
 type CallData struct {
@@ -35,10 +73,10 @@ type CallData struct {
 	Gas    int64  `json:"gas"`
 }
 
-type EventMsgCall struct {
-	CallData  *CallData `json:"call_data"`
-	Origin    []byte    `json:"origin"`
-	TxID      []byte    `json:"tx_id"`
-	Return    []byte    `json:"return"`
-	Exception string    `json:"exception"`
+// EventDataLog fires when a contract executes the LOG opcode
+type EventDataLog struct {
+	Address Word256   `json:"address"`
+	Topics  []Word256 `json:"topics"`
+	Data    []byte    `json:"data"`
+	Height  int64     `json:"height"`
 }

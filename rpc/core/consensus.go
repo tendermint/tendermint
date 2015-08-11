@@ -1,32 +1,32 @@
 package core
 
 import (
-	"github.com/tendermint/tendermint/wire"
 	cm "github.com/tendermint/tendermint/consensus"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/wire"
 )
 
-func ListValidators() (*ctypes.ResponseListValidators, error) {
+func ListValidators() (*ctypes.ResultListValidators, error) {
 	var blockHeight int
-	var bondedValidators []*sm.Validator
-	var unbondingValidators []*sm.Validator
+	var bondedValidators []*types.Validator
+	var unbondingValidators []*types.Validator
 
 	state := consensusState.GetState()
 	blockHeight = state.LastBlockHeight
-	state.BondedValidators.Iterate(func(index int, val *sm.Validator) bool {
+	state.BondedValidators.Iterate(func(index int, val *types.Validator) bool {
 		bondedValidators = append(bondedValidators, val)
 		return false
 	})
-	state.UnbondingValidators.Iterate(func(index int, val *sm.Validator) bool {
+	state.UnbondingValidators.Iterate(func(index int, val *types.Validator) bool {
 		unbondingValidators = append(unbondingValidators, val)
 		return false
 	})
 
-	return &ctypes.ResponseListValidators{blockHeight, bondedValidators, unbondingValidators}, nil
+	return &ctypes.ResultListValidators{blockHeight, bondedValidators, unbondingValidators}, nil
 }
 
-func DumpConsensusState() (*ctypes.ResponseDumpConsensusState, error) {
+func DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
 	roundState := consensusState.GetRoundState()
 	peerRoundStates := []string{}
 	for _, peer := range p2pSwitch.Peers().List() {
@@ -36,5 +36,5 @@ func DumpConsensusState() (*ctypes.ResponseDumpConsensusState, error) {
 		peerRoundStateStr := peer.Key + ":" + string(wire.JSONBytes(peerRoundState))
 		peerRoundStates = append(peerRoundStates, peerRoundStateStr)
 	}
-	return &ctypes.ResponseDumpConsensusState{roundState.String(), peerRoundStates}, nil
+	return &ctypes.ResultDumpConsensusState{roundState.String(), peerRoundStates}, nil
 }

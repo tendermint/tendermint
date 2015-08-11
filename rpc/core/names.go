@@ -7,16 +7,16 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func GetName(name string) (*types.NameRegEntry, error) {
+func GetName(name string) (*ctypes.ResultGetName, error) {
 	st := consensusState.GetState() // performs a copy
 	entry := st.GetNameRegEntry(name)
 	if entry == nil {
 		return nil, fmt.Errorf("Name %s not found", name)
 	}
-	return entry, nil
+	return &ctypes.ResultGetName{entry}, nil
 }
 
-func ListNames() (*ctypes.ResponseListNames, error) {
+func ListNames() (*ctypes.ResultListNames, error) {
 	var blockHeight int
 	var names []*types.NameRegEntry
 	state := consensusState.GetState()
@@ -25,5 +25,5 @@ func ListNames() (*ctypes.ResponseListNames, error) {
 		names = append(names, value.(*types.NameRegEntry))
 		return false
 	})
-	return &ctypes.ResponseListNames{blockHeight, names}, nil
+	return &ctypes.ResultListNames{blockHeight, names}, nil
 }

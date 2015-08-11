@@ -71,6 +71,7 @@ func ReadJSONPtr(o interface{}, bytes []byte, err *error) interface{} {
 	return ReadJSONObjectPtr(o, object, err)
 }
 
+// o is the ultimate destination, object is the result of json unmarshal
 func ReadJSONObject(o interface{}, object interface{}, err *error) interface{} {
 	rv, rt := reflect.ValueOf(o), reflect.TypeOf(o)
 	if rv.Kind() == reflect.Ptr {

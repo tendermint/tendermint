@@ -12,7 +12,7 @@ import (
 // cache the genesis state
 var genesisState *sm.State
 
-func Status() (*ctypes.ResponseStatus, error) {
+func Status() (*ctypes.ResultStatus, error) {
 	db := dbm.NewMemDB()
 	if genesisState == nil {
 		genesisState = sm.MakeGenesisState(db, genDoc)
@@ -30,7 +30,7 @@ func Status() (*ctypes.ResponseStatus, error) {
 		latestBlockTime = latestBlockMeta.Header.Time.UnixNano()
 	}
 
-	return &ctypes.ResponseStatus{
+	return &ctypes.ResultStatus{
 		NodeInfo:          p2pSwitch.NodeInfo(),
 		GenesisHash:       genesisHash,
 		PubKey:            privValidator.PubKey,
@@ -41,7 +41,7 @@ func Status() (*ctypes.ResponseStatus, error) {
 
 //-----------------------------------------------------------------------------
 
-func NetInfo() (*ctypes.ResponseNetInfo, error) {
+func NetInfo() (*ctypes.ResultNetInfo, error) {
 	listening := p2pSwitch.IsListening()
 	listeners := []string{}
 	for _, listener := range p2pSwitch.Listeners() {
@@ -54,7 +54,7 @@ func NetInfo() (*ctypes.ResponseNetInfo, error) {
 			IsOutbound: peer.IsOutbound(),
 		})
 	}
-	return &ctypes.ResponseNetInfo{
+	return &ctypes.ResultNetInfo{
 		Listening: listening,
 		Listeners: listeners,
 		Peers:     peers,
@@ -63,6 +63,6 @@ func NetInfo() (*ctypes.ResponseNetInfo, error) {
 
 //-----------------------------------------------------------------------------
 
-func Genesis() (*sm.GenesisDoc, error) {
-	return genDoc, nil
+func Genesis() (*ctypes.ResultGenesis, error) {
+	return &ctypes.ResultGenesis{genDoc}, nil
 }

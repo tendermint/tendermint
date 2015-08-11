@@ -1,4 +1,4 @@
-package state
+package types
 
 import (
 	"github.com/tendermint/tendermint/account"
