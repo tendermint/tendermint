@@ -1,4 +1,4 @@
-package consensus
+package p2p
 
 import (
 	cfg "github.com/tendermint/tendermint/config"

@@ -25,9 +25,3 @@ func NewRPCResponse(id string, res interface{}, err string) RPCResponse {
 		Error:   err,
 	}
 }
-
-// Goes in the Result field of an RPCResponse.
-type RPCEventResult struct {
-	Event string      `json:"event"`
-	Data  interface{} `json:"data"`
-}

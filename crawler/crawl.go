@@ -5,12 +5,9 @@ import (
 	"time"
 
 	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	core "github.com/tendermint/tendermint/rpc/core_client"
-	"github.com/tendermint/tendermint/rpc/types"
+	cclient "github.com/tendermint/tendermint/rpc/core_client"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/wire"
 )
 
 const (
@@ -37,7 +34,7 @@ type Node struct {
 	ChainID      string
 	BlockHeight  int
 	BlockHistory map[int]time.Time // when we saw each block
-	NetInfo      *ctypes.ResponseNetInfo
+	NetInfo      *ctypes.ResultNetInfo
 
 	Validator bool
 
@@ -50,7 +47,7 @@ func (n *Node) Address() string {
 }
 
 // Set the basic status and chain_id info for a node from RPC responses
-func (n *Node) SetInfo(status *ctypes.ResponseStatus, netinfo *ctypes.ResponseNetInfo) {
+func (n *Node) SetInfo(status *ctypes.ResultStatus, netinfo *ctypes.ResultNetInfo) {
 	n.LastSeen = time.Now()
 	n.ChainID = status.NodeInfo.ChainID
 	n.BlockHeight = status.LatestBlockHeight
@@ -60,15 +57,15 @@ func (n *Node) SetInfo(status *ctypes.ResponseStatus, netinfo *ctypes.ResponseNe
 
 // A node client is used to talk to a node over rpc and websockets
 type NodeClient struct {
-	rpc core.Client
-	ws  *rpcclient.WSClient
+	rpc cclient.Client
+	ws  *cclient.WSClient
 }
 
 // Create a new client for the node at the given addr
 func NewNodeClient(addr string) *NodeClient {
 	return &NodeClient{
-		rpc: core.NewClient("http://"+addr, "JSONRPC"),
-		ws:  rpcclient.NewWSClient("ws://" + addr + "/events"),
+		rpc: cclient.NewClient("http://"+addr, "JSONRPC"),
+		ws:  cclient.NewWSClient("ws://" + addr + "/events"),
 	}
 }
 
@@ -183,11 +180,8 @@ func (c *Crawler) readLoop(node *Node) {
 	}
 }
 
-func (c *Crawler) consumeMessage(eventMsg rpctypes.RPCEventResult, node *Node) error {
-	var block *types.Block
-	var err error
-	wire.ReadJSONObject(block, eventMsg.Data, &err)
-
+func (c *Crawler) consumeMessage(eventMsg ctypes.ResultEvent, node *Node) error {
+	block := eventMsg.Data.(*types.Block)
 	node.LastSeen = time.Now()
 	node.BlockHeight = block.Height
 	node.BlockHistory[block.Height] = node.LastSeen

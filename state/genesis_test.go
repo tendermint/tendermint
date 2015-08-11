@@ -8,6 +8,7 @@ import (
 
 	tdb "github.com/tendermint/tendermint/db"
 	ptypes "github.com/tendermint/tendermint/permission/types"
+	. "github.com/tendermint/tendermint/state/types"
 )
 
 var chain_id = "lone_ranger"

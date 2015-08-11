@@ -1,6 +1,7 @@
-package state
+package types
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -8,10 +9,8 @@ import (
 	"sync"
 
 	acm "github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
-	. "github.com/tendermint/tendermint/consensus/types"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/wire"
 
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/tendermint/ed25519"
 )
@@ -23,11 +22,11 @@ const (
 	stepPrecommit = 3
 )
 
-func voteToStep(vote *types.Vote) int8 {
+func voteToStep(vote *Vote) int8 {
 	switch vote.Type {
-	case types.VoteTypePrevote:
+	case VoteTypePrevote:
 		return stepPrevote
-	case types.VoteTypePrecommit:
+	case VoteTypePrecommit:
 		return stepPrecommit
 	default:
 		PanicSanity("Unknown vote type")
@@ -104,7 +103,7 @@ func (privVal *PrivValidator) save() {
 	}
 }
 
-func (privVal *PrivValidator) SignVote(chainID string, vote *types.Vote) error {
+func (privVal *PrivValidator) SignVote(chainID string, vote *Vote) error {
 	privVal.mtx.Lock()
 	defer privVal.mtx.Unlock()
 
@@ -135,7 +134,7 @@ func (privVal *PrivValidator) SignVote(chainID string, vote *types.Vote) error {
 	return nil
 }
 
-func (privVal *PrivValidator) SignVoteUnsafe(chainID string, vote *types.Vote) {
+func (privVal *PrivValidator) SignVoteUnsafe(chainID string, vote *Vote) {
 	vote.Signature = privVal.PrivKey.Sign(acm.SignBytes(chainID, vote)).(acm.SignatureEd25519)
 }
 
@@ -160,7 +159,7 @@ func (privVal *PrivValidator) SignProposal(chainID string, proposal *Proposal) e
 	}
 }
 
-func (privVal *PrivValidator) SignRebondTx(chainID string, rebondTx *types.RebondTx) error {
+func (privVal *PrivValidator) SignRebondTx(chainID string, rebondTx *RebondTx) error {
 	privVal.mtx.Lock()
 	defer privVal.mtx.Unlock()
 	if privVal.LastHeight < rebondTx.Height {
@@ -182,4 +181,22 @@ func (privVal *PrivValidator) SignRebondTx(chainID string, rebondTx *types.Rebon
 
 func (privVal *PrivValidator) String() string {
 	return fmt.Sprintf("PrivValidator{%X LH:%v, LR:%v, LS:%v}", privVal.Address, privVal.LastHeight, privVal.LastRound, privVal.LastStep)
+}
+
+//-------------------------------------
+
+type PrivValidatorsByAddress []*PrivValidator
+
+func (pvs PrivValidatorsByAddress) Len() int {
+	return len(pvs)
+}
+
+func (pvs PrivValidatorsByAddress) Less(i, j int) bool {
+	return bytes.Compare(pvs[i].Address, pvs[j].Address) == -1
+}
+
+func (pvs PrivValidatorsByAddress) Swap(i, j int) {
+	it := pvs[i]
+	pvs[i] = pvs[j]
+	pvs[j] = it
 }

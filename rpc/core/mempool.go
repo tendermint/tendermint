@@ -10,7 +10,7 @@ import (
 //-----------------------------------------------------------------------------
 
 // Note: tx must be signed
-func BroadcastTx(tx types.Tx) (*ctypes.Receipt, error) {
+func BroadcastTx(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	err := mempoolReactor.BroadcastTx(tx)
 	if err != nil {
 		return nil, fmt.Errorf("Error broadcasting transaction: %v", err)
@@ -26,9 +26,9 @@ func BroadcastTx(tx types.Tx) (*ctypes.Receipt, error) {
 			contractAddr = state.NewContractAddress(callTx.Input.Address, callTx.Input.Sequence)
 		}
 	}
-	return &ctypes.Receipt{txHash, createsContract, contractAddr}, nil
+	return &ctypes.ResultBroadcastTx{ctypes.Receipt{txHash, createsContract, contractAddr}}, nil
 }
 
-func ListUnconfirmedTxs() ([]types.Tx, error) {
-	return mempoolReactor.Mempool.GetProposalTxs(), nil
+func ListUnconfirmedTxs() (*ctypes.ResultListUnconfirmedTxs, error) {
+	return &ctypes.ResultListUnconfirmedTxs{mempoolReactor.Mempool.GetProposalTxs()}, nil
 }

@@ -160,7 +160,6 @@ import (
 	acm "github.com/tendermint/tendermint/account"
 	bc "github.com/tendermint/tendermint/blockchain"
 	. "github.com/tendermint/tendermint/common"
-	. "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/events"
 	mempl "github.com/tendermint/tendermint/mempool"
 	sm "github.com/tendermint/tendermint/state"
@@ -231,16 +230,16 @@ type RoundState struct {
 	Step               RoundStepType
 	StartTime          time.Time
 	CommitTime         time.Time // Subjective time when +2/3 precommits for Block at Round were found
-	Validators         *sm.ValidatorSet
-	Proposal           *Proposal
+	Validators         *types.ValidatorSet
+	Proposal           *types.Proposal
 	ProposalBlock      *types.Block
 	ProposalBlockParts *types.PartSet
 	LockedRound        int
 	LockedBlock        *types.Block
 	LockedBlockParts   *types.PartSet
 	Votes              *HeightVoteSet
-	LastCommit         *VoteSet // Last precommits at Height-1
-	LastValidators     *sm.ValidatorSet
+	LastCommit         *types.VoteSet // Last precommits at Height-1
+	LastValidators     *types.ValidatorSet
 }
 
 func (rs *RoundState) String() string {
@@ -288,7 +287,7 @@ type ConsensusState struct {
 
 	blockStore     *bc.BlockStore
 	mempoolReactor *mempl.MempoolReactor
-	privValidator  *sm.PrivValidator
+	privValidator  *types.PrivValidator
 	newStepCh      chan *RoundState
 
 	mtx sync.Mutex
@@ -322,7 +321,7 @@ func (cs *ConsensusState) reconstructLastCommit(state *sm.State) {
 	if state.LastBlockHeight == 0 {
 		return
 	}
-	lastPrecommits := NewVoteSet(state.LastBlockHeight, 0, types.VoteTypePrecommit, state.LastBondedValidators)
+	lastPrecommits := types.NewVoteSet(state.LastBlockHeight, 0, types.VoteTypePrecommit, state.LastBondedValidators)
 	seenValidation := cs.blockStore.LoadSeenValidation(state.LastBlockHeight)
 	for idx, precommit := range seenValidation.Precommits {
 		if precommit == nil {
@@ -408,7 +407,7 @@ func (cs *ConsensusState) updateToState(state *sm.State, contiguous bool) {
 	// Reset fields based on state.
 	validators := state.BondedValidators
 	height := state.LastBlockHeight + 1 // next desired block height
-	lastPrecommits := (*VoteSet)(nil)
+	lastPrecommits := (*types.VoteSet)(nil)
 	if contiguous && cs.Votes != nil {
 		if !cs.Votes.Precommits(cs.Round).HasTwoThirdsMajority() {
 			PanicSanity("updateToState(state, true) called but last Precommit round didn't have +2/3")
@@ -474,7 +473,7 @@ func (cs *ConsensusState) maybeRebond() {
 	}
 }
 
-func (cs *ConsensusState) SetPrivValidator(priv *sm.PrivValidator) {
+func (cs *ConsensusState) SetPrivValidator(priv *types.PrivValidator) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	cs.privValidator = priv
@@ -580,7 +579,7 @@ func (cs *ConsensusState) decideProposal(height int, round int) {
 	}
 
 	// Make proposal
-	proposal := NewProposal(height, round, blockParts.Header(), cs.Votes.POLRound())
+	proposal := types.NewProposal(height, round, blockParts.Header(), cs.Votes.POLRound())
 	err := cs.privValidator.SignProposal(cs.state.ChainID, proposal)
 	if err == nil {
 		log.Notice("Signed and set proposal", "height", height, "round", round, "proposal", proposal)
@@ -971,7 +970,7 @@ func (cs *ConsensusState) FinalizeCommit(height int) {
 
 //-----------------------------------------------------------------------------
 
-func (cs *ConsensusState) SetProposal(proposal *Proposal) error {
+func (cs *ConsensusState) SetProposal(proposal *types.Proposal) error {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 
@@ -1191,7 +1190,7 @@ func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header types.Part
 }
 
 // Save Block, save the +2/3 Commits we've seen
-func (cs *ConsensusState) saveBlock(block *types.Block, blockParts *types.PartSet, commits *VoteSet) {
+func (cs *ConsensusState) saveBlock(block *types.Block, blockParts *types.PartSet, commits *types.VoteSet) {
 
 	// The proposal must be valid.
 	if err := cs.stageBlock(block, blockParts); err != nil {
@@ -1212,7 +1211,7 @@ func (cs *ConsensusState) saveBlock(block *types.Block, blockParts *types.PartSe
 
 	// Fire off event
 	go func(block *types.Block) {
-		cs.evsw.FireEvent(types.EventStringNewBlock(), block)
+		cs.evsw.FireEvent(types.EventStringNewBlock(), types.EventDataNewBlock{block})
 		cs.evc.Flush()
 	}(block)
 

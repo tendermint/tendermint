@@ -64,6 +64,7 @@ func GetConfig(rootDir string) cfg.Config {
 	mapConfig.SetDefault("node_laddr", "0.0.0.0:46656")
 	// mapConfig.SetDefault("seeds", "goldenalchemist.chaintest.net:46656")
 	mapConfig.SetDefault("fast_sync", true)
+	mapConfig.SetDefault("skip_upnp", false)
 	mapConfig.SetDefault("addrbook_file", rootDir+"/addrbook.json")
 	mapConfig.SetDefault("priv_validator_file", rootDir+"/priv_validator.json")
 	mapConfig.SetDefault("db_backend", "leveldb")

@@ -101,8 +101,8 @@ func execBlock(s *State, block *types.Block, blockPartsHeader types.PartSetHeade
 
 	// If any unbonding periods are over,
 	// reward account with bonded coins.
-	toRelease := []*Validator{}
-	s.UnbondingValidators.Iterate(func(index int, val *Validator) bool {
+	toRelease := []*types.Validator{}
+	s.UnbondingValidators.Iterate(func(index int, val *types.Validator) bool {
 		if val.UnbondHeight+unbondingPeriodBlocks < block.Height {
 			toRelease = append(toRelease, val)
 		}
@@ -114,8 +114,8 @@ func execBlock(s *State, block *types.Block, blockPartsHeader types.PartSetHeade
 
 	// If any validators haven't signed in a while,
 	// unbond them, they have timed out.
-	toTimeout := []*Validator{}
-	s.BondedValidators.Iterate(func(index int, val *Validator) bool {
+	toTimeout := []*types.Validator{}
+	s.BondedValidators.Iterate(func(index int, val *types.Validator) bool {
 		lastActivityHeight := MaxInt(val.BondHeight, val.LastCommitHeight)
 		if lastActivityHeight+validatorTimeoutBlocks < block.Height {
 			log.Notice("Validator timeout", "validator", val, "height", block.Height)
@@ -337,11 +337,11 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 		// if the evc is nil, nothing will happen
 		if evc != nil {
 			for _, i := range tx.Inputs {
-				evc.FireEvent(types.EventStringAccInput(i.Address), types.EventMsgTx{tx, nil, ""})
+				evc.FireEvent(types.EventStringAccInput(i.Address), types.EventDataTx{tx, nil, ""})
 			}
 
 			for _, o := range tx.Outputs {
-				evc.FireEvent(types.EventStringAccOutput(o.Address), types.EventMsgTx{tx, nil, ""})
+				evc.FireEvent(types.EventStringAccOutput(o.Address), types.EventDataTx{tx, nil, ""})
 			}
 		}
 		return nil
@@ -494,8 +494,8 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 				if err != nil {
 					exception = err.Error()
 				}
-				evc.FireEvent(types.EventStringAccInput(tx.Input.Address), types.EventMsgTx{tx, ret, exception})
-				evc.FireEvent(types.EventStringAccOutput(tx.Address), types.EventMsgTx{tx, ret, exception})
+				evc.FireEvent(types.EventStringAccInput(tx.Input.Address), types.EventDataTx{tx, ret, exception})
+				evc.FireEvent(types.EventStringAccOutput(tx.Address), types.EventDataTx{tx, ret, exception})
 			}
 		} else {
 			// The mempool does not call txs until
@@ -686,7 +686,7 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 			blockCache.UpdateAccount(acc)
 		}
 		// Add ValidatorInfo
-		_s.SetValidatorInfo(&ValidatorInfo{
+		_s.SetValidatorInfo(&types.ValidatorInfo{
 			Address:         tx.PubKey.Address(),
 			PubKey:          tx.PubKey,
 			UnbondTo:        tx.UnbondTo,
@@ -694,7 +694,7 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 			FirstBondAmount: outTotal,
 		})
 		// Add Validator
-		added := _s.BondedValidators.Add(&Validator{
+		added := _s.BondedValidators.Add(&types.Validator{
 			Address:     tx.PubKey.Address(),
 			PubKey:      tx.PubKey,
 			BondHeight:  _s.LastBlockHeight + 1,
@@ -888,7 +888,7 @@ func ExecTx(blockCache *BlockCache, tx types.Tx, runCall bool, evc events.Fireab
 		}
 
 		if evc != nil {
-			evc.FireEvent(types.EventStringAccInput(tx.Input.Address), types.EventMsgTx{tx, nil, ""})
+			evc.FireEvent(types.EventStringAccInput(tx.Input.Address), types.EventDataTx{tx, nil, ""})
 			evc.FireEvent(types.EventStringPermissions(ptypes.PermFlagToString(permFlag)), tx)
 		}
 
@@ -975,4 +975,15 @@ func hasBondOrSendPermission(state AccountGetter, accs map[string]*acm.Account) 
 		}
 	}
 	return true
+}
+
+//-----------------------------------------------------------------------------
+
+type InvalidTxError struct {
+	Tx     types.Tx
+	Reason error
+}
+
+func (txErr InvalidTxError) Error() string {
+	return Fmt("Invalid tx: [%v] reason: [%v]", txErr.Tx, txErr.Reason)
 }

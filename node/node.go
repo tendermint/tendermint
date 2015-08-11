@@ -21,6 +21,7 @@ import (
 	"github.com/tendermint/tendermint/rpc/core"
 	"github.com/tendermint/tendermint/rpc/server"
 	sm "github.com/tendermint/tendermint/state"
+	stypes "github.com/tendermint/tendermint/state/types"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/wire"
 )
@@ -37,8 +38,8 @@ type Node struct {
 	mempoolReactor   *mempl.MempoolReactor
 	consensusState   *consensus.ConsensusState
 	consensusReactor *consensus.ConsensusReactor
-	privValidator    *sm.PrivValidator
-	genDoc           *sm.GenesisDoc
+	privValidator    *types.PrivValidator
+	genDoc           *stypes.GenesisDoc
 	privKey          acm.PrivKeyEd25519
 }
 
@@ -50,19 +51,19 @@ func NewNode() *Node {
 	// Get State
 	stateDB := dbm.GetDB("state")
 	state := sm.LoadState(stateDB)
-	var genDoc *sm.GenesisDoc
+	var genDoc *stypes.GenesisDoc
 	if state == nil {
 		genDoc, state = sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
 		state.Save()
 		// write the gendoc to db
 		buf, n, err := new(bytes.Buffer), new(int64), new(error)
 		wire.WriteJSON(genDoc, buf, n, err)
-		stateDB.Set(sm.GenDocKey, buf.Bytes())
+		stateDB.Set(stypes.GenDocKey, buf.Bytes())
 		if *err != nil {
 			Exit(Fmt("Unable to write gendoc to db: %v", err))
 		}
 	} else {
-		genDocBytes := stateDB.Get(sm.GenDocKey)
+		genDocBytes := stateDB.Get(stypes.GenDocKey)
 		err := new(error)
 		wire.ReadJSONPtr(&genDoc, genDocBytes, err)
 		if *err != nil {
@@ -73,14 +74,14 @@ func NewNode() *Node {
 	config.Set("chain_id", state.ChainID)
 
 	// Get PrivValidator
-	var privValidator *sm.PrivValidator
+	var privValidator *types.PrivValidator
 	privValidatorFile := config.GetString("priv_validator_file")
 	if _, err := os.Stat(privValidatorFile); err == nil {
-		privValidator = sm.LoadPrivValidator(privValidatorFile)
+		privValidator = types.LoadPrivValidator(privValidatorFile)
 		log.Notice("Loaded PrivValidator",
 			"file", privValidatorFile, "privValidator", privValidator)
 	} else {
-		privValidator = sm.GenPrivValidator()
+		privValidator = types.GenPrivValidator()
 		privValidator.SetFile(privValidatorFile)
 		privValidator.Save()
 		log.Notice("Generated PrivValidator", "file", privValidatorFile)
@@ -281,7 +282,7 @@ func makeNodeInfo(sw *p2p.Switch, privKey acm.PrivKeyEd25519) *types.NodeInfo {
 func RunNode() {
 	// Create & start node
 	n := NewNode()
-	l := p2p.NewDefaultListener("tcp", config.GetString("node_laddr"), false)
+	l := p2p.NewDefaultListener("tcp", config.GetString("node_laddr"))
 	n.AddListener(l)
 	err := n.Start()
 	if err != nil {

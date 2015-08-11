@@ -1,4 +1,4 @@
-package state
+package types
 
 import (
 	"bytes"
@@ -9,7 +9,6 @@ import (
 	"github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/merkle"
-	"github.com/tendermint/tendermint/types"
 )
 
 // ValidatorSet represent a set of *Validator at a given height.
@@ -204,7 +203,7 @@ func (valSet *ValidatorSet) Iterate(fn func(index int, val *Validator) bool) {
 
 // Verify that +2/3 of the set had signed the given signBytes
 func (valSet *ValidatorSet) VerifyValidation(chainID string,
-	hash []byte, parts types.PartSetHeader, height int, v *types.Validation) error {
+	hash []byte, parts PartSetHeader, height int, v *Validation) error {
 	if valSet.Size() != len(v.Precommits) {
 		return fmt.Errorf("Invalid validation -- wrong set size: %v vs %v", valSet.Size(), len(v.Precommits))
 	}
@@ -226,7 +225,7 @@ func (valSet *ValidatorSet) VerifyValidation(chainID string,
 		if precommit.Round != round {
 			return fmt.Errorf("Invalid validation -- wrong round: %v vs %v", round, precommit.Round)
 		}
-		if precommit.Type != types.VoteTypePrecommit {
+		if precommit.Type != VoteTypePrecommit {
 			return fmt.Errorf("Invalid validation -- not precommit @ index %v", idx)
 		}
 		_, val := valSet.GetByIndex(idx)

@@ -1,4 +1,4 @@
-package rpcclient
+package core_client
 
 import (
 	"encoding/json"
@@ -8,27 +8,28 @@ import (
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/gorilla/websocket"
 	. "github.com/tendermint/tendermint/common"
 	_ "github.com/tendermint/tendermint/config/tendermint_test"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/rpc/types"
 )
 
 const wsEventsChannelCapacity = 10
-const wsResponsesChannelCapacity = 10
+const wsResultsChannelCapacity = 10
 
 type WSClient struct {
 	QuitService
 	Address string
 	*websocket.Conn
-	EventsCh    chan rpctypes.RPCEventResult
-	ResponsesCh chan rpctypes.RPCResponse
+	EventsCh  chan ctypes.ResultEvent
+	ResultsCh chan ctypes.Result
 }
 
 // create a new connection
 func NewWSClient(addr string) *WSClient {
 	wsClient := &WSClient{
-		Address:     addr,
-		Conn:        nil,
-		EventsCh:    make(chan rpctypes.RPCEventResult, wsEventsChannelCapacity),
-		ResponsesCh: make(chan rpctypes.RPCResponse, wsResponsesChannelCapacity),
+		Address:   addr,
+		Conn:      nil,
+		EventsCh:  make(chan ctypes.ResultEvent, wsEventsChannelCapacity),
+		ResultsCh: make(chan ctypes.Result, wsResultsChannelCapacity),
 	}
 	wsClient.QuitService = *NewQuitService(log, "WSClient", wsClient)
 	return wsClient
@@ -68,19 +69,16 @@ func (wsc *WSClient) receiveEventsRoutine() {
 			wsc.Stop()
 			break
 		} else {
-			var response rpctypes.RPCResponse
+			var response ctypes.Response
 			if err := json.Unmarshal(data, &response); err != nil {
 				log.Info(Fmt("WSClient failed to parse message: %v", err))
 				wsc.Stop()
 				break
 			}
 			if strings.HasSuffix(response.Id, "#event") {
-				result := response.Result.(map[string]interface{})
-				event := result["event"].(string)
-				data := result["data"]
-				wsc.EventsCh <- rpctypes.RPCEventResult{event, data}
+				wsc.EventsCh <- response.Result.(ctypes.ResultEvent)
 			} else {
-				wsc.ResponsesCh <- response
+				wsc.ResultsCh <- response.Result
 			}
 		}
 	}

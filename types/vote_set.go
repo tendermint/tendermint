@@ -1,4 +1,4 @@
-package consensus
+package types
 
 import (
 	"bytes"
@@ -7,10 +7,8 @@ import (
 	"sync"
 
 	acm "github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
-	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/wire"
 )
 
 // VoteSet helps collect signatures from validators at each height+round
@@ -24,18 +22,18 @@ type VoteSet struct {
 	type_  byte
 
 	mtx           sync.Mutex
-	valSet        *sm.ValidatorSet
-	votes         []*types.Vote    // validator index -> vote
+	valSet        *ValidatorSet
+	votes         []*Vote          // validator index -> vote
 	votesBitArray *BitArray        // validator index -> has vote?
 	votesByBlock  map[string]int64 // string(blockHash)+string(blockParts) -> vote sum.
 	totalVotes    int64
 	maj23Hash     []byte
-	maj23Parts    types.PartSetHeader
+	maj23Parts    PartSetHeader
 	maj23Exists   bool
 }
 
 // Constructs a new VoteSet struct used to accumulate votes for given height/round.
-func NewVoteSet(height int, round int, type_ byte, valSet *sm.ValidatorSet) *VoteSet {
+func NewVoteSet(height int, round int, type_ byte, valSet *ValidatorSet) *VoteSet {
 	if height == 0 {
 		PanicSanity("Cannot make VoteSet for height == 0, doesn't make sense.")
 	}
@@ -44,7 +42,7 @@ func NewVoteSet(height int, round int, type_ byte, valSet *sm.ValidatorSet) *Vot
 		round:         round,
 		type_:         type_,
 		valSet:        valSet,
-		votes:         make([]*types.Vote, valSet.Size()),
+		votes:         make([]*Vote, valSet.Size()),
 		votesBitArray: NewBitArray(valSet.Size()),
 		votesByBlock:  make(map[string]int64),
 		totalVotes:    0,
@@ -87,7 +85,7 @@ func (voteSet *VoteSet) Size() int {
 // Otherwise returns err=ErrVote[UnexpectedStep|InvalidAccount|InvalidSignature|InvalidBlockHash|ConflictingSignature]
 // Duplicate votes return added=false, err=nil.
 // NOTE: vote should not be mutated after adding.
-func (voteSet *VoteSet) AddByIndex(valIndex int, vote *types.Vote) (added bool, index int, err error) {
+func (voteSet *VoteSet) AddByIndex(valIndex int, vote *Vote) (added bool, index int, err error) {
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
 
@@ -98,42 +96,42 @@ func (voteSet *VoteSet) AddByIndex(valIndex int, vote *types.Vote) (added bool, 
 // Otherwise returns err=ErrVote[UnexpectedStep|InvalidAccount|InvalidSignature|InvalidBlockHash|ConflictingSignature]
 // Duplicate votes return added=false, err=nil.
 // NOTE: vote should not be mutated after adding.
-func (voteSet *VoteSet) AddByAddress(address []byte, vote *types.Vote) (added bool, index int, err error) {
+func (voteSet *VoteSet) AddByAddress(address []byte, vote *Vote) (added bool, index int, err error) {
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
 
 	// Ensure that signer is a validator.
 	valIndex, val := voteSet.valSet.GetByAddress(address)
 	if val == nil {
-		return false, 0, types.ErrVoteInvalidAccount
+		return false, 0, ErrVoteInvalidAccount
 	}
 
 	return voteSet.addVote(val, valIndex, vote)
 }
 
-func (voteSet *VoteSet) addByIndex(valIndex int, vote *types.Vote) (bool, int, error) {
+func (voteSet *VoteSet) addByIndex(valIndex int, vote *Vote) (bool, int, error) {
 	// Ensure that signer is a validator.
 	_, val := voteSet.valSet.GetByIndex(valIndex)
 	if val == nil {
-		return false, 0, types.ErrVoteInvalidAccount
+		return false, 0, ErrVoteInvalidAccount
 	}
 
 	return voteSet.addVote(val, valIndex, vote)
 }
 
-func (voteSet *VoteSet) addVote(val *sm.Validator, valIndex int, vote *types.Vote) (bool, int, error) {
+func (voteSet *VoteSet) addVote(val *Validator, valIndex int, vote *Vote) (bool, int, error) {
 
 	// Make sure the step matches. (or that vote is commit && round < voteSet.round)
 	if (vote.Height != voteSet.height) ||
 		(vote.Round != voteSet.round) ||
 		(vote.Type != voteSet.type_) {
-		return false, 0, types.ErrVoteUnexpectedStep
+		return false, 0, ErrVoteUnexpectedStep
 	}
 
 	// Check signature.
 	if !val.PubKey.VerifyBytes(acm.SignBytes(config.GetString("chain_id"), vote), vote.Signature) {
 		// Bad signature.
-		return false, 0, types.ErrVoteInvalidSignature
+		return false, 0, ErrVoteInvalidSignature
 	}
 
 	// If vote already exists, return false.
@@ -141,7 +139,7 @@ func (voteSet *VoteSet) addVote(val *sm.Validator, valIndex int, vote *types.Vot
 		if bytes.Equal(existingVote.BlockHash, vote.BlockHash) {
 			return false, valIndex, nil
 		} else {
-			return false, valIndex, &types.ErrVoteConflictingSignature{
+			return false, valIndex, &ErrVoteConflictingSignature{
 				VoteA: existingVote,
 				VoteB: vote,
 			}
@@ -176,13 +174,13 @@ func (voteSet *VoteSet) BitArray() *BitArray {
 	return voteSet.votesBitArray.Copy()
 }
 
-func (voteSet *VoteSet) GetByIndex(valIndex int) *types.Vote {
+func (voteSet *VoteSet) GetByIndex(valIndex int) *Vote {
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
 	return voteSet.votes[valIndex]
 }
 
-func (voteSet *VoteSet) GetByAddress(address []byte) *types.Vote {
+func (voteSet *VoteSet) GetByAddress(address []byte) *Vote {
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
 	valIndex, val := voteSet.valSet.GetByAddress(address)
@@ -221,13 +219,13 @@ func (voteSet *VoteSet) HasTwoThirdsAny() bool {
 
 // Returns either a blockhash (or nil) that received +2/3 majority.
 // If there exists no such majority, returns (nil, false).
-func (voteSet *VoteSet) TwoThirdsMajority() (hash []byte, parts types.PartSetHeader, ok bool) {
+func (voteSet *VoteSet) TwoThirdsMajority() (hash []byte, parts PartSetHeader, ok bool) {
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
 	if voteSet.maj23Exists {
 		return voteSet.maj23Hash, voteSet.maj23Parts, true
 	} else {
-		return nil, types.PartSetHeader{}, false
+		return nil, PartSetHeader{}, false
 	}
 }
 
@@ -271,17 +269,17 @@ func (voteSet *VoteSet) StringShort() string {
 //--------------------------------------------------------------------------------
 // Validation
 
-func (voteSet *VoteSet) MakeValidation() *types.Validation {
-	if voteSet.type_ != types.VoteTypePrecommit {
-		PanicSanity("Cannot MakeValidation() unless VoteSet.Type is types.VoteTypePrecommit")
+func (voteSet *VoteSet) MakeValidation() *Validation {
+	if voteSet.type_ != VoteTypePrecommit {
+		PanicSanity("Cannot MakeValidation() unless VoteSet.Type is VoteTypePrecommit")
 	}
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
 	if len(voteSet.maj23Hash) == 0 {
 		PanicSanity("Cannot MakeValidation() unless a blockhash has +2/3")
 	}
-	precommits := make([]*types.Vote, voteSet.valSet.Size())
-	voteSet.valSet.Iterate(func(valIndex int, val *sm.Validator) bool {
+	precommits := make([]*Vote, voteSet.valSet.Size())
+	voteSet.valSet.Iterate(func(valIndex int, val *Validator) bool {
 		vote := voteSet.votes[valIndex]
 		if vote == nil {
 			return false
@@ -295,7 +293,40 @@ func (voteSet *VoteSet) MakeValidation() *types.Validation {
 		precommits[valIndex] = vote
 		return false
 	})
-	return &types.Validation{
+	return &Validation{
 		Precommits: precommits,
 	}
+}
+
+//--------------------------------------------------------------------------------
+// For testing...
+
+func RandValidator(randBonded bool, minBonded int64) (*ValidatorInfo, *Validator, *PrivValidator) {
+	privVal := GenPrivValidator()
+	_, tempFilePath := Tempfile("priv_validator_")
+	privVal.SetFile(tempFilePath)
+	bonded := minBonded
+	if randBonded {
+		bonded += int64(RandUint32())
+	}
+	valInfo := &ValidatorInfo{
+		Address: privVal.Address,
+		PubKey:  privVal.PubKey,
+		UnbondTo: []*TxOutput{&TxOutput{
+			Amount:  bonded,
+			Address: privVal.Address,
+		}},
+		FirstBondHeight: 0,
+		FirstBondAmount: bonded,
+	}
+	val := &Validator{
+		Address:          valInfo.Address,
+		PubKey:           valInfo.PubKey,
+		BondHeight:       0,
+		UnbondHeight:     0,
+		LastCommitHeight: 0,
+		VotingPower:      valInfo.FirstBondAmount,
+		Accum:            0,
+	}
+	return valInfo, val, privVal
 }

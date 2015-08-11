@@ -1,4 +1,4 @@
-package consensus
+package types
 
 import (
 	"testing"
@@ -6,14 +6,13 @@ import (
 	acm "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
 	_ "github.com/tendermint/tendermint/config/tendermint_test"
-	"github.com/tendermint/tendermint/types"
 )
 
 func TestProposalSignable(t *testing.T) {
 	proposal := &Proposal{
 		Height:           12345,
 		Round:            23456,
-		BlockPartsHeader: types.PartSetHeader{111, []byte("blockparts")},
+		BlockPartsHeader: PartSetHeader{111, []byte("blockparts")},
 		POLRound:         -1,
 	}
 	signBytes := acm.SignBytes(config.GetString("chain_id"), proposal)

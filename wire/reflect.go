@@ -585,6 +585,7 @@ func readByteJSON(o interface{}) (typeByte byte, rest interface{}, err error) {
 
 // Contract: Caller must ensure that rt is supported
 // (e.g. is recursively composed of supported native types, and structs and slices.)
+// rv and rt refer to the object we're unmarhsaling into, whereas o is the result of naiive json unmarshal (map[string]interface{})
 func readReflectJSON(rv reflect.Value, rt reflect.Type, o interface{}, err *error) {
 
 	// Get typeInfo

@@ -12,6 +12,7 @@ import (
 	dbm "github.com/tendermint/tendermint/db"
 	"github.com/tendermint/tendermint/events"
 	ptypes "github.com/tendermint/tendermint/permission/types"
+	. "github.com/tendermint/tendermint/state/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -1073,9 +1074,9 @@ func execTxWaitEvent(t *testing.T, blockCache *BlockCache, tx types.Tx, eventid 
 	}
 
 	switch ev := msg.(type) {
-	case types.EventMsgTx:
+	case types.EventDataTx:
 		return ev, ev.Exception
-	case types.EventMsgCall:
+	case types.EventDataCall:
 		return ev, ev.Exception
 	case string:
 		return nil, ev
@@ -1118,7 +1119,7 @@ func testSNativeCALL(t *testing.T, expectPass bool, blockCache *BlockCache, doug
 		if exception != "" {
 			t.Fatal("Unexpected exception", exception)
 		}
-		evv := ev.(types.EventMsgCall)
+		evv := ev.(types.EventDataCall)
 		ret := evv.Return
 		if err := f(ret); err != nil {
 			t.Fatal(err)

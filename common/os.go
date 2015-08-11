@@ -198,3 +198,11 @@ func (af *AutoFile) openFile() error {
 	af.file = file
 	return nil
 }
+
+func Tempfile(prefix string) (*os.File, string) {
+	file, err := ioutil.TempFile("", prefix)
+	if err != nil {
+		PanicCrisis(err)
+	}
+	return file, file.Name()
+}

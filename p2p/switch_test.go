@@ -7,9 +7,10 @@ import (
 	"time"
 
 	acm "github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
+	_ "github.com/tendermint/tendermint/config/tendermint_test"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/wire"
 )
 
 type PeerMessage struct {
@@ -97,7 +98,7 @@ func makeSwitchPair(t testing.TB, initSwitch func(*Switch) *Switch) (*Switch, *S
 	s2.Start()
 
 	// Create a listener for s1
-	l := NewDefaultListener("tcp", ":8001", true)
+	l := NewDefaultListener("tcp", ":8001")
 
 	// Dial the listener & add the connection to s2.
 	lAddr := l.ExternalAddress()

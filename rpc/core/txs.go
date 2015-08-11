@@ -24,7 +24,7 @@ func toVMAccount(acc *acm.Account) *vm.Account {
 
 // Run a contract's code on an isolated and unpersisted state
 // Cannot be used to create new contracts
-func Call(fromAddress, toAddress, data []byte) (*ctypes.ResponseCall, error) {
+func Call(fromAddress, toAddress, data []byte) (*ctypes.ResultCall, error) {
 	st := consensusState.GetState() // performs a copy
 	cache := state.NewBlockCache(st)
 	outAcc := cache.GetAccount(toAddress)
@@ -47,12 +47,12 @@ func Call(fromAddress, toAddress, data []byte) (*ctypes.ResponseCall, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ctypes.ResponseCall{Return: ret}, nil
+	return &ctypes.ResultCall{Return: ret}, nil
 }
 
 // Run the given code on an isolated and unpersisted state
 // Cannot be used to create new contracts
-func CallCode(fromAddress, code, data []byte) (*ctypes.ResponseCall, error) {
+func CallCode(fromAddress, code, data []byte) (*ctypes.ResultCall, error) {
 
 	st := consensusState.GetState() // performs a copy
 	cache := mempoolReactor.Mempool.GetCache()
@@ -72,12 +72,12 @@ func CallCode(fromAddress, code, data []byte) (*ctypes.ResponseCall, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ctypes.ResponseCall{Return: ret}, nil
+	return &ctypes.ResultCall{Return: ret}, nil
 }
 
 //-----------------------------------------------------------------------------
 
-func SignTx(tx types.Tx, privAccounts []*acm.PrivAccount) (types.Tx, error) {
+func SignTx(tx types.Tx, privAccounts []*acm.PrivAccount) (*ctypes.ResultSignTx, error) {
 	// more checks?
 
 	for i, privAccount := range privAccounts {
@@ -112,5 +112,5 @@ func SignTx(tx types.Tx, privAccounts []*acm.PrivAccount) (types.Tx, error) {
 		rebondTx := tx.(*types.RebondTx)
 		rebondTx.Signature = privAccounts[0].Sign(config.GetString("chain_id"), rebondTx).(acm.SignatureEd25519)
 	}
-	return tx, nil
+	return &ctypes.ResultSignTx{tx}, nil
 }

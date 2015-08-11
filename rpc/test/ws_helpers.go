@@ -2,7 +2,6 @@ package rpctest
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/gorilla/websocket"
 	_ "github.com/tendermint/tendermint/config/tendermint_test"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/rpc/types"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/wire"
@@ -74,14 +74,14 @@ func waitForEvent(t *testing.T, con *websocket.Conn, eventid string, dieOnTimeou
 			} else {
 				// if the event id isnt what we're waiting on
 				// ignore it
-				var response struct {
-					Result rpctypes.RPCEventResult `json:"result"`
-				}
-				if err := json.Unmarshal(p, &response); err != nil {
+				var response ctypes.Response
+				var err error
+				wire.ReadJSON(&response, p, &err)
+				if err != nil {
 					errCh <- err
 					break
 				}
-				if response.Result.Event == eventid {
+				if response.Result.(*ctypes.ResultEvent).Event == eventid {
 					goodCh <- p
 					break
 				}
@@ -108,6 +108,7 @@ func waitForEvent(t *testing.T, con *websocket.Conn, eventid string, dieOnTimeou
 			// run the check
 			err := check(eventid, p)
 			if err != nil {
+				panic(err)
 				t.Fatal(err)
 			}
 		} else {
@@ -123,15 +124,7 @@ func waitForEvent(t *testing.T, con *websocket.Conn, eventid string, dieOnTimeou
 
 func unmarshalResponseNewBlock(b []byte) (*types.Block, error) {
 	// unmarshall and assert somethings
-	var response struct {
-		JSONRPC string `json:"jsonrpc"`
-		Id      string `json:"id"`
-		Result  struct {
-			Event string       `json:"event"`
-			Data  *types.Block `json:"data"`
-		} `json:"result"`
-		Error string `json:"error"`
-	}
+	var response ctypes.Response
 	var err error
 	wire.ReadJSON(&response, b, &err)
 	if err != nil {
@@ -140,7 +133,7 @@ func unmarshalResponseNewBlock(b []byte) (*types.Block, error) {
 	if response.Error != "" {
 		return nil, fmt.Errorf(response.Error)
 	}
-	block := response.Result.Data
+	block := response.Result.(*ctypes.ResultEvent).Data.(types.EventDataNewBlock).Block
 	return block, nil
 }
 
@@ -168,15 +161,7 @@ func unmarshalValidateBlockchain(t *testing.T, con *websocket.Conn, eid string) 
 func unmarshalValidateSend(amt int64, toAddr []byte) func(string, []byte) error {
 	return func(eid string, b []byte) error {
 		// unmarshal and assert correctness
-		var response struct {
-			JSONRPC string `json:"jsonrpc"`
-			Id      string `json:"id"`
-			Result  struct {
-				Event string           `json:"event"`
-				Data  types.EventMsgTx `json:"data"`
-			} `json:"result"`
-			Error string `json:"error"`
-		}
+		var response ctypes.Response
 		var err error
 		wire.ReadJSON(&response, b, &err)
 		if err != nil {
@@ -185,39 +170,27 @@ func unmarshalValidateSend(amt int64, toAddr []byte) func(string, []byte) error 
 		if response.Error != "" {
 			return fmt.Errorf(response.Error)
 		}
-		if eid != response.Result.Event {
-			return fmt.Errorf("Eventid is not correct. Got %s, expected %s", response.Result.Event, eid)
+		if eid != response.Result.(*ctypes.ResultEvent).Event {
+			return fmt.Errorf("Eventid is not correct. Got %s, expected %s", response.Result.(*ctypes.ResultEvent).Event, eid)
 		}
-		tx := response.Result.Data.Tx.(*types.SendTx)
-		if bytes.Compare(tx.Inputs[0].Address, user[0].Address) != 0 {
+		tx := response.Result.(*ctypes.ResultEvent).Data.(types.EventDataTx).Tx.(*types.SendTx)
+		if !bytes.Equal(tx.Inputs[0].Address, user[0].Address) {
 			return fmt.Errorf("Senders do not match up! Got %x, expected %x", tx.Inputs[0].Address, user[0].Address)
 		}
 		if tx.Inputs[0].Amount != amt {
 			return fmt.Errorf("Amt does not match up! Got %d, expected %d", tx.Inputs[0].Amount, amt)
 		}
-		if bytes.Compare(tx.Outputs[0].Address, toAddr) != 0 {
+		if !bytes.Equal(tx.Outputs[0].Address, toAddr) {
 			return fmt.Errorf("Receivers do not match up! Got %x, expected %x", tx.Outputs[0].Address, user[0].Address)
 		}
 		return nil
 	}
 }
 
-func unmarshalValidateCall(amt int64, returnCode []byte) func(string, []byte) error {
+func unmarshalValidateTx(amt int64, returnCode []byte) func(string, []byte) error {
 	return func(eid string, b []byte) error {
 		// unmarshall and assert somethings
-		var response struct {
-			JSONRPC string `json:"jsonrpc"`
-			Id      string `json:"id"`
-			Result  struct {
-				Event string `json:"event"`
-				Data  struct {
-					Tx        types.CallTx `json:"tx"`
-					Return    []byte       `json:"return"`
-					Exception string       `json:"exception"`
-				} `json:"data"`
-			} `json:"result"`
-			Error string `json:"error"`
-		}
+		var response ctypes.Response
 		var err error
 		wire.ReadJSON(&response, b, &err)
 		if err != nil {
@@ -226,36 +199,31 @@ func unmarshalValidateCall(amt int64, returnCode []byte) func(string, []byte) er
 		if response.Error != "" {
 			return fmt.Errorf(response.Error)
 		}
-		if response.Result.Data.Exception != "" {
-			return fmt.Errorf(response.Result.Data.Exception)
+		var data = response.Result.(*ctypes.ResultEvent).Data.(types.EventDataTx)
+		if data.Exception != "" {
+			return fmt.Errorf(data.Exception)
 		}
-		tx := response.Result.Data.Tx
-		if bytes.Compare(tx.Input.Address, user[0].Address) != 0 {
-			return fmt.Errorf("Senders do not match up! Got %x, expected %x", tx.Input.Address, user[0].Address)
+		tx := data.Tx.(*types.CallTx)
+		if !bytes.Equal(tx.Input.Address, user[0].Address) {
+			return fmt.Errorf("Senders do not match up! Got %x, expected %x",
+				tx.Input.Address, user[0].Address)
 		}
 		if tx.Input.Amount != amt {
-			return fmt.Errorf("Amt does not match up! Got %d, expected %d", tx.Input.Amount, amt)
+			return fmt.Errorf("Amt does not match up! Got %d, expected %d",
+				tx.Input.Amount, amt)
 		}
-		ret := response.Result.Data.Return
-		if bytes.Compare(ret, returnCode) != 0 {
-			return fmt.Errorf("Call did not return correctly. Got %x, expected %x", ret, returnCode)
+		ret := data.Return
+		if !bytes.Equal(ret, returnCode) {
+			return fmt.Errorf("Tx did not return correctly. Got %x, expected %x", ret, returnCode)
 		}
 		return nil
 	}
 }
 
-func unmarshalValidateCallCall(origin, returnCode []byte, txid *[]byte) func(string, []byte) error {
+func unmarshalValidateCall(origin, returnCode []byte, txid *[]byte) func(string, []byte) error {
 	return func(eid string, b []byte) error {
 		// unmarshall and assert somethings
-		var response struct {
-			JSONRPC string `json:"jsonrpc"`
-			Id      string `json:"id"`
-			Result  struct {
-				Event string             `json:"event"`
-				Data  types.EventMsgCall `json:"data"`
-			} `json:"result"`
-			Error string `json:"error"`
-		}
+		var response ctypes.Response
 		var err error
 		wire.ReadJSON(&response, b, &err)
 		if err != nil {
@@ -264,18 +232,21 @@ func unmarshalValidateCallCall(origin, returnCode []byte, txid *[]byte) func(str
 		if response.Error != "" {
 			return fmt.Errorf(response.Error)
 		}
-		if response.Result.Data.Exception != "" {
-			return fmt.Errorf(response.Result.Data.Exception)
+		var data = response.Result.(*ctypes.ResultEvent).Data.(types.EventDataCall)
+		if data.Exception != "" {
+			return fmt.Errorf(data.Exception)
 		}
-		if bytes.Compare(response.Result.Data.Origin, origin) != 0 {
-			return fmt.Errorf("Origin does not match up! Got %x, expected %x", response.Result.Data.Origin, origin)
+		if !bytes.Equal(data.Origin, origin) {
+			return fmt.Errorf("Origin does not match up! Got %x, expected %x",
+				data.Origin, origin)
 		}
-		ret := response.Result.Data.Return
-		if bytes.Compare(ret, returnCode) != 0 {
+		ret := data.Return
+		if !bytes.Equal(ret, returnCode) {
 			return fmt.Errorf("Call did not return correctly. Got %x, expected %x", ret, returnCode)
 		}
-		if bytes.Compare(response.Result.Data.TxID, *txid) != 0 {
-			return fmt.Errorf("TxIDs do not match up! Got %x, expected %x", response.Result.Data.TxID, *txid)
+		if !bytes.Equal(data.TxID, *txid) {
+			return fmt.Errorf("TxIDs do not match up! Got %x, expected %x",
+				data.TxID, *txid)
 		}
 		return nil
 	}

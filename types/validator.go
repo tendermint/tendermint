@@ -1,4 +1,4 @@
-package state
+package types
 
 import (
 	"bytes"
@@ -6,16 +6,15 @@ import (
 	"io"
 
 	acm "github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/wire"
 )
 
 // Persistent (mostly) static data for each Validator
 type ValidatorInfo struct {
 	Address         []byte            `json:"address"`
 	PubKey          acm.PubKeyEd25519 `json:"pub_key"`
-	UnbondTo        []*types.TxOutput `json:"unbond_to"`
+	UnbondTo        []*TxOutput       `json:"unbond_to"`
 	FirstBondHeight int               `json:"first_bond_height"`
 	FirstBondAmount int64             `json:"first_bond_amount"`
 	DestroyedHeight int               `json:"destroyed_height"` // If destroyed

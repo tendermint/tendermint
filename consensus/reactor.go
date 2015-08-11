@@ -10,7 +10,6 @@ import (
 
 	bc "github.com/tendermint/tendermint/blockchain"
 	. "github.com/tendermint/tendermint/common"
-	. "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/events"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
@@ -187,7 +186,7 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 		switch msg := msg.(type) {
 		case *VoteMessage:
 			vote := msg.Vote
-			var validators *sm.ValidatorSet
+			var validators *types.ValidatorSet
 			if rs.Height == vote.Height {
 				validators = rs.Validators
 			} else if rs.Height == vote.Height+1 {
@@ -268,7 +267,7 @@ func (conR *ConsensusReactor) broadcastHasVoteMessage(vote *types.Vote, index in
 }
 
 // Sets our private validator account for signing votes.
-func (conR *ConsensusReactor) SetPrivValidator(priv *sm.PrivValidator) {
+func (conR *ConsensusReactor) SetPrivValidator(priv *types.PrivValidator) {
 	conR.conS.SetPrivValidator(priv)
 }
 
@@ -598,7 +597,7 @@ func (ps *PeerState) GetRoundState() *PeerRoundState {
 	return &prs
 }
 
-func (ps *PeerState) SetHasProposal(proposal *Proposal) {
+func (ps *PeerState) SetHasProposal(proposal *types.Proposal) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
@@ -964,7 +963,7 @@ func (m *CommitStepMessage) String() string {
 //-------------------------------------
 
 type ProposalMessage struct {
-	Proposal *Proposal
+	Proposal *types.Proposal
 }
 
 func (m *ProposalMessage) String() string {

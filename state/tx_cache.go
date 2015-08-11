@@ -4,6 +4,7 @@ import (
 	acm "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
 	ptypes "github.com/tendermint/tendermint/permission/types" // for GlobalPermissionAddress ...
+	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/vm"
 	"github.com/tendermint/tendermint/vm/sha3"
 )
@@ -12,7 +13,7 @@ type TxCache struct {
 	backend  *BlockCache
 	accounts map[Word256]vmAccountInfo
 	storages map[Tuple256]Word256
-	logs     []*vm.Log
+	logs     []types.EventDataLog
 }
 
 func NewTxCache(backend *BlockCache) *TxCache {
@@ -20,7 +21,7 @@ func NewTxCache(backend *BlockCache) *TxCache {
 		backend:  backend,
 		accounts: make(map[Word256]vmAccountInfo),
 		storages: make(map[Tuple256]Word256),
-		logs:     make([]*vm.Log, 0),
+		logs:     make([]types.EventDataLog, 0),
 	}
 }
 
@@ -138,7 +139,7 @@ func (cache *TxCache) Sync() {
 	}
 }
 
-func (cache *TxCache) AddLog(log *vm.Log) {
+func (cache *TxCache) AddLog(log types.EventDataLog) {
 	cache.logs = append(cache.logs, log)
 }
 
