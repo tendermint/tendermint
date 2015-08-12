@@ -89,7 +89,7 @@
       it locks (changes lock to) that block and precommits that block.
     * Else, if the validator had seen +2/3 of prevotes for <nil>, it unlocks and precommits <nil>.
     * Else, if +2/3 of prevotes for a particular block or <nil> is not received on time,
-      it precommits what it's locked on, or <nil>.
+      it precommits <nil>.
   * The Precommit step ends:
     * After +2/3 precommits for a particular block.                  --> goto Commit(H)
     * After +2/3 precommits for <nil>.                               --> goto NewRound(H,R+1)
@@ -298,13 +298,18 @@ type ConsensusState struct {
 
 	evsw events.Fireable
 	evc  *events.EventCache // set in stageBlock and passed into state
+
+	timeoutChan     chan TimeoutEvent // RoundState instead?
+	timeoutQuitChan chan struct{}
 }
 
 func NewConsensusState(state *sm.State, blockStore *bc.BlockStore, mempoolReactor *mempl.MempoolReactor) *ConsensusState {
 	cs := &ConsensusState{
-		blockStore:     blockStore,
-		mempoolReactor: mempoolReactor,
-		newStepCh:      make(chan *RoundState, 10),
+		blockStore:      blockStore,
+		mempoolReactor:  mempoolReactor,
+		newStepCh:       make(chan *RoundState, 10),
+		timeoutChan:     make(chan TimeoutEvent), // XXX: blocks!
+		timeoutQuitChan: make(chan struct{}, 1),
 	}
 	cs.updateToState(state, true)
 	// Don't call scheduleRound0 yet.
@@ -361,12 +366,15 @@ func (cs *ConsensusState) NewStepCh() chan *RoundState {
 
 func (cs *ConsensusState) OnStart() error {
 	cs.BaseService.OnStart()
+	go cs.logTimeouts(cs.timeoutChan, cs.timeoutQuitChan)
 	cs.scheduleRound0(cs.Height)
 	return nil
 }
 
 func (cs *ConsensusState) OnStop() {
 	// It's mostly asynchronous so, there's not much to stop.
+	// just the timeout tracker
+	close(cs.timeoutQuitChan)
 	cs.BaseService.OnStop()
 }
 
@@ -533,22 +541,34 @@ func (cs *ConsensusState) EnterPropose(height int, round int) {
 	}
 	log.Info(Fmt("EnterPropose(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
+	// At this point, we EnterPrevote when the proposal is complete or after timeoutPropose
+	// Use the enteredPrevote channel so we don't EnterPrevote twice
+	var enteredPrevote = make(chan struct{}, 1)
+
 	defer func() {
 		// Done EnterPropose:
 		cs.Round = round
 		cs.Step = RoundStepPropose
-		cs.newStepCh <- cs.getRoundState()
 
 		// If we already have the proposal + POL, then goto Prevote
 		if cs.isProposalComplete() {
+			enteredPrevote <- struct{}{}
+			cs.newStepCh <- cs.getRoundState()
 			go cs.EnterPrevote(height, cs.Round)
 		}
 	}()
 
-	// This step times out after `timeoutPropose`
+	// EnterPrevote after timeoutPropose or do nothing if we've already entered
 	go func() {
-		time.Sleep(timeoutPropose)
-		cs.EnterPrevote(height, round)
+		ticker := time.NewTicker(timeoutPropose)
+		select {
+		case <-ticker.C:
+			cs.timeoutChan <- TimeoutEvent{RoundStepPropose, height, round}
+			cs.newStepCh <- cs.getRoundState()
+			cs.EnterPrevote(height, round)
+		case <-enteredPrevote:
+			return
+		}
 	}()
 
 	// Nothing more to do if we're not a validator
@@ -560,7 +580,7 @@ func (cs *ConsensusState) EnterPropose(height int, round int) {
 		log.Info("EnterPropose: Not our turn to propose", "proposer", cs.Validators.Proposer().Address, "privValidator", cs.privValidator)
 	} else {
 		log.Info("EnterPropose: Our turn to propose", "proposer", cs.Validators.Proposer().Address, "privValidator", cs.privValidator)
-		cs.decideProposal(height, round)
+		cs.decideProposal(height, round) // if this takes longer than timeoutPropose we'll catch it in a later EnterPropose
 	}
 }
 
@@ -583,7 +603,7 @@ func (cs *ConsensusState) decideProposal(height int, round int) {
 	err := cs.privValidator.SignProposal(cs.state.ChainID, proposal)
 	if err == nil {
 		log.Notice("Signed and set proposal", "height", height, "round", round, "proposal", proposal)
-		log.Info(Fmt("Signed and set proposal block: %v", block))
+		log.Debug(Fmt("Signed and set proposal block: %v", block))
 		// Set fields
 		cs.Proposal = proposal
 		cs.ProposalBlock = block
@@ -600,15 +620,19 @@ func (cs *ConsensusState) isProposalComplete() bool {
 	if cs.Proposal == nil || cs.ProposalBlock == nil {
 		return false
 	}
+	// we have the proposal. if there's a POLRound,
+	// make sure we have the prevotes from it too
 	if cs.Proposal.POLRound < 0 {
 		return true
 	} else {
+		// if this is false the proposer is lying or we haven't received the POL yet
 		return cs.Votes.Prevotes(cs.Proposal.POLRound).HasTwoThirdsMajority()
 	}
 }
 
 // Create the next block to propose and return it.
 // NOTE: make it side-effect free for clarity.
+// XXX: where are the side-effects?
 func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts *types.PartSet) {
 	var validation *types.Validation
 	if cs.Height == 1 {
@@ -705,6 +729,8 @@ func (cs *ConsensusState) doPrevote(height int, round int) {
 	}
 
 	// Prevote cs.ProposalBlock
+	// NOTE: the proposal signature is validated when it is received,
+	// and the proposal block parts are validated as they are received (against the merkle hash in the proposal)
 	cs.signAddVote(types.VoteTypePrevote, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
 	return
 }
@@ -729,7 +755,8 @@ func (cs *ConsensusState) EnterPrevoteWait(height int, round int) {
 
 	// After `timeoutPrevote0+timeoutPrevoteDelta*round`, EnterPrecommit()
 	go func() {
-		time.Sleep(timeoutPrevote0 + timeoutPrevote0*time.Duration(round))
+		time.Sleep(timeoutPrevote0 + timeoutPrevoteDelta*time.Duration(round))
+		cs.timeoutChan <- TimeoutEvent{RoundStepPrevote, height, round}
 		cs.EnterPrecommit(height, round)
 	}()
 }
@@ -739,7 +766,8 @@ func (cs *ConsensusState) EnterPrevoteWait(height int, round int) {
 // Enter: any +2/3 precommits for next round.
 // Lock & precommit the ProposalBlock if we have enough prevotes for it,
 // else, unlock an existing lock and precommit nil if +2/3 of prevotes were nil,
-// else, precommit locked block or nil otherwise.
+// else, precommit nil otherwise.
+// NOTE: we don't precommit our locked block (unless theres another POL for it) because it complicates unlocking and accountability
 func (cs *ConsensusState) EnterPrecommit(height int, round int) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
@@ -762,10 +790,10 @@ func (cs *ConsensusState) EnterPrecommit(height int, round int) {
 
 	hash, partsHeader, ok := cs.Votes.Prevotes(round).TwoThirdsMajority()
 
-	// If we don't have two thirds of prevotes, just precommit locked block or nil
+	// If we don't have two thirds of prevotes, just precommit nil
 	if !ok {
 		if cs.LockedBlock != nil {
-			log.Info("EnterPrecommit: No +2/3 prevotes during EnterPrecommit. Precommitting lock.")
+			log.Info("EnterPrecommit: No +2/3 prevotes during EnterPrecommit. Precommitting locked block")
 			cs.signAddVote(types.VoteTypePrecommit, cs.LockedBlock.Hash(), cs.LockedBlockParts.Header())
 		} else {
 			log.Info("EnterPrecommit: No +2/3 prevotes during EnterPrecommit. Precommitting nil.")
@@ -773,6 +801,9 @@ func (cs *ConsensusState) EnterPrecommit(height int, round int) {
 		}
 		return
 	}
+
+	// At this point +2/3 prevoted for a particular block or nil
+	// TODO: set POLRound
 
 	// +2/3 prevoted nil. Unlock and precommit nil.
 	if len(hash) == 0 {
@@ -799,7 +830,7 @@ func (cs *ConsensusState) EnterPrecommit(height int, round int) {
 
 	// If +2/3 prevoted for proposal block, stage and precommit it
 	if cs.ProposalBlock.HashesTo(hash) {
-		log.Info("EnterPrecommit: +2/3 prevoted proposal block.")
+		log.Info("EnterPrecommit: +2/3 prevoted proposal block.", "hash", fmt.Sprintf("%X", hash))
 		// Validate the block.
 		if err := cs.stageBlock(cs.ProposalBlock, cs.ProposalBlockParts); err != nil {
 			PanicConsensus(Fmt("EnterPrecommit: +2/3 prevoted for an invalid block: %v", err))
@@ -849,6 +880,7 @@ func (cs *ConsensusState) EnterPrecommitWait(height int, round int) {
 	// After `timeoutPrecommit0+timeoutPrecommitDelta*round`, EnterNewRound()
 	go func() {
 		time.Sleep(timeoutPrecommit0 + timeoutPrecommitDelta*time.Duration(round))
+		cs.timeoutChan <- TimeoutEvent{RoundStepPrecommit, height, round}
 		// If we have +2/3 of precommits for a particular block (or nil),
 		// we already entered commit (or the next round).
 		// So just try to transition to the next round,
@@ -1030,6 +1062,7 @@ func (cs *ConsensusState) AddProposalBlockPart(height int, part *types.Part) (ad
 		var n int64
 		var err error
 		cs.ProposalBlock = wire.ReadBinary(&types.Block{}, cs.ProposalBlockParts.GetReader(), &n, &err).(*types.Block)
+		// XXX: shouldn't we check error here?! also, this type assertion is gauranteed right
 		log.Info("Received complete proposal", "hash", cs.ProposalBlock.Hash())
 		if cs.Step == RoundStepPropose && cs.isProposalComplete() {
 			// Move onto the next step
@@ -1053,7 +1086,7 @@ func (cs *ConsensusState) AddVote(address []byte, vote *types.Vote, peerKey stri
 //-----------------------------------------------------------------------------
 
 func (cs *ConsensusState) addVote(address []byte, vote *types.Vote, peerKey string) (added bool, index int, err error) {
-	log.Info("addVote", "voteHeight", vote.Height, "voteType", vote.Type, "csHeight", cs.Height)
+	log.Debug("addVote", "voteHeight", vote.Height, "voteType", vote.Type, "csHeight", cs.Height)
 
 	// A precommit for the previous height?
 	if vote.Height+1 == cs.Height && vote.Type == types.VoteTypePrecommit {
@@ -1168,10 +1201,7 @@ func (cs *ConsensusState) stageBlock(block *types.Block, blockParts *types.PartS
 	}
 }
 
-func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header types.PartSetHeader) *types.Vote {
-	if cs.privValidator == nil || !cs.Validators.HasAddress(cs.privValidator.Address) {
-		return nil
-	}
+func (cs *ConsensusState) signVote(type_ byte, hash []byte, header types.PartSetHeader) (*types.Vote, error) {
 	vote := &types.Vote{
 		Height:           cs.Height,
 		Round:            cs.Round,
@@ -1180,6 +1210,14 @@ func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header types.Part
 		BlockPartsHeader: header,
 	}
 	err := cs.privValidator.SignVote(cs.state.ChainID, vote)
+	return vote, err
+}
+
+func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header types.PartSetHeader) *types.Vote {
+	if cs.privValidator == nil || !cs.Validators.HasAddress(cs.privValidator.Address) {
+		return nil
+	}
+	vote, err := cs.signVote(type_, hash, header)
 	if err == nil {
 		_, _, err := cs.addVote(cs.privValidator.Address, vote, "")
 		log.Notice("Signed and added vote", "height", cs.Height, "round", cs.Round, "vote", vote, "error", err)
@@ -1211,10 +1249,12 @@ func (cs *ConsensusState) saveBlock(block *types.Block, blockParts *types.PartSe
 	cs.mempoolReactor.Mempool.ResetForBlockAndState(block, cs.stagedState)
 
 	// Fire off event
-	go func(block *types.Block) {
-		cs.evsw.FireEvent(types.EventStringNewBlock(), types.EventDataNewBlock{block})
-		cs.evc.Flush()
-	}(block)
+	if cs.evsw != nil && cs.evc != nil {
+		go func(block *types.Block) {
+			cs.evsw.FireEvent(types.EventStringNewBlock(), types.EventDataNewBlock{block})
+			cs.evc.Flush()
+		}(block)
+	}
 
 }
 
@@ -1225,4 +1265,27 @@ func (cs *ConsensusState) SetFireable(evsw events.Fireable) {
 
 func (cs *ConsensusState) String() string {
 	return Fmt("ConsensusState(H:%v R:%v S:%v", cs.Height, cs.Round, cs.Step)
+}
+
+//-----------------------------------------------------------------------------
+// timeout tracking
+
+type TimeoutEvent struct {
+	Type   RoundStepType
+	Height int
+	Round  int
+}
+
+func (cs *ConsensusState) logTimeouts(timeoutChan chan TimeoutEvent, quitChan <-chan struct{}) {
+
+	for {
+		select {
+		case timeout := <-timeoutChan:
+			log.Info("Timeout in consensus state", "height", timeout.Height, "round", timeout.Round, "step", timeout.Type.String())
+			timeoutChan <- timeout
+		case <-quitChan:
+			return
+
+		}
+	}
 }
