@@ -20,7 +20,6 @@ var (
 type MempoolReactor struct {
 	p2p.BaseReactor
 
-	sw      *p2p.Switch
 	Mempool *Mempool
 
 	evsw events.Fireable

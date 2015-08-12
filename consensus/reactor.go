@@ -142,7 +142,8 @@ func (conR *ConsensusReactor) Receive(chID byte, peer *p2p.Peer, msgBytes []byte
 	ps := peer.Data.Get(PeerStateKey).(*PeerState)
 	_, msg, err := DecodeMessage(msgBytes)
 	if err != nil {
-		log.Warn("Error decoding message", "channel", chID, "peer", peer, "msg", msg, "error", err, "bytes", msgBytes)
+		log.Warn("Error decoding message", "channel", chId, "peer", peer, "msg", msg, "error", err, "bytes", msgBytes)
+		// TODO punish peer?
 		return
 	}
 	log.Debug("Receive", "channel", chID, "peer", peer, "msg", msg, "rsHeight", rs.Height)
@@ -185,50 +186,29 @@ func (conR *ConsensusReactor) Receive(chID byte, peer *p2p.Peer, msgBytes []byte
 		}
 		switch msg := msg.(type) {
 		case *VoteMessage:
-			vote := msg.Vote
-			var validators *types.ValidatorSet
-			if rs.Height == vote.Height {
-				validators = rs.Validators
-			} else if rs.Height == vote.Height+1 {
-				if !(rs.Step == RoundStepNewHeight && vote.Type == types.VoteTypePrecommit) {
-					return // Wrong height, not a LastCommit straggler commit.
-				}
-				validators = rs.LastValidators
-			} else {
-				return // Wrong height. Not necessarily a bad peer.
+			vote, valIndex := msg.Vote, msg.ValidatorIndex
+
+			// attempt to add the vote and dupeout the validator if its a duplicate signature
+			added, err := conR.conS.TryAddVote(rs, vote, valIndex, peer.Key)
+			if err == ErrAddingVote {
+				// TODO: punish peer
+			} else if err != nil {
+				return
 			}
 
-			// We have vote/validators.  Height may not be rs.Height
-
-			address, _ := validators.GetByIndex(msg.ValidatorIndex)
-			added, index, err := conR.conS.AddVote(address, vote, peer.Key)
-			if err != nil {
-				// If conflicting sig, broadcast evidence tx for slashing. Else punish peer.
-				if errDupe, ok := err.(*types.ErrVoteConflictingSignature); ok {
-					log.Warn("Found conflicting vote. Publish evidence")
-					evidenceTx := &types.DupeoutTx{
-						Address: address,
-						VoteA:   *errDupe.VoteA,
-						VoteB:   *errDupe.VoteB,
-					}
-					conR.conS.mempoolReactor.BroadcastTx(evidenceTx) // shouldn't need to check returned err
-				} else {
-					// Probably an invalid signature. Bad peer.
-					log.Warn("Error attempting to add vote", "error", err)
-					// TODO: punish peer
-				}
-			}
 			ps.EnsureVoteBitArrays(rs.Height, rs.Validators.Size())
 			ps.EnsureVoteBitArrays(rs.Height-1, rs.LastCommit.Size())
-			ps.SetHasVote(vote, index)
+			ps.SetHasVote(vote, valIndex)
+
 			if added {
 				// If rs.Height == vote.Height && rs.Round < vote.Round,
 				// the peer is sending us CatchupCommit precommits.
 				// We could make note of this and help filter in broadcastHasVoteMessage().
-				conR.broadcastHasVoteMessage(vote, index)
+				conR.broadcastHasVoteMessage(vote, valIndex)
 			}
 
 		default:
+			// TODO: should these be punishable?
 			log.Warn(Fmt("Unknown message type %v", reflect.TypeOf(msg)))
 		}
 	default:
