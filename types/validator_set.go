@@ -237,7 +237,7 @@ func (valSet *ValidatorSet) VerifyValidation(chainID string,
 		if !bytes.Equal(precommit.BlockHash, hash) {
 			continue // Not an error, but doesn't count
 		}
-		if !parts.Equals(precommit.BlockParts) {
+		if !parts.Equals(precommit.BlockPartsHeader) {
 			continue // Not an error, but doesn't count
 		}
 		// Good precommit!

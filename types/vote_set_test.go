@@ -53,9 +53,9 @@ func withBlockHash(vote *Vote, blockHash []byte) *Vote {
 }
 
 // Convenience: Return new vote with different blockParts
-func withBlockParts(vote *Vote, blockParts PartSetHeader) *Vote {
+func withBlockPartsHeader(vote *Vote, blockPartsHeader PartSetHeader) *Vote {
 	vote = vote.Copy()
-	vote.BlockParts = blockParts
+	vote.BlockPartsHeader = blockPartsHeader
 	return vote
 }
 
@@ -138,9 +138,9 @@ func Test2_3MajorityRedux(t *testing.T) {
 
 	blockHash := CRandBytes(32)
 	blockPartsTotal := 123
-	blockParts := PartSetHeader{blockPartsTotal, CRandBytes(32)}
+	blockPartsHeader := PartSetHeader{blockPartsTotal, CRandBytes(32)}
 
-	vote := &Vote{Height: height, Round: round, Type: VoteTypePrevote, BlockHash: blockHash, BlockParts: blockParts}
+	vote := &Vote{Height: height, Round: round, Type: VoteTypePrevote, BlockHash: blockHash, BlockPartsHeader: blockPartsHeader}
 
 	// 66 out of 100 voted for nil.
 	for i := 0; i < 66; i++ {
@@ -162,8 +162,8 @@ func Test2_3MajorityRedux(t *testing.T) {
 
 	// 68th validator voted for a different BlockParts PartSetHeader
 	{
-		blockParts := PartSetHeader{blockPartsTotal, CRandBytes(32)}
-		signAddVote(privValidators[67], withBlockParts(vote, blockParts), voteSet)
+		blockPartsHeader := PartSetHeader{blockPartsTotal, CRandBytes(32)}
+		signAddVote(privValidators[67], withBlockPartsHeader(vote, blockPartsHeader), voteSet)
 		hash, header, ok = voteSet.TwoThirdsMajority()
 		if hash != nil || !header.IsZero() || ok {
 			t.Errorf("There should be no 2/3 majority: last vote added had different PartSetHeader Hash")
@@ -172,8 +172,8 @@ func Test2_3MajorityRedux(t *testing.T) {
 
 	// 69th validator voted for different BlockParts Total
 	{
-		blockParts := PartSetHeader{blockPartsTotal + 1, blockParts.Hash}
-		signAddVote(privValidators[68], withBlockParts(vote, blockParts), voteSet)
+		blockPartsHeader := PartSetHeader{blockPartsTotal + 1, blockPartsHeader.Hash}
+		signAddVote(privValidators[68], withBlockPartsHeader(vote, blockPartsHeader), voteSet)
 		hash, header, ok = voteSet.TwoThirdsMajority()
 		if hash != nil || !header.IsZero() || ok {
 			t.Errorf("There should be no 2/3 majority: last vote added had different PartSetHeader Total")
@@ -189,11 +189,11 @@ func Test2_3MajorityRedux(t *testing.T) {
 		}
 	}
 
-	// 71st validator voted for the right BlockHash & BlockParts
+	// 71st validator voted for the right BlockHash & BlockPartsHeader
 	{
 		signAddVote(privValidators[70], vote, voteSet)
 		hash, header, ok = voteSet.TwoThirdsMajority()
-		if !bytes.Equal(hash, blockHash) || !header.Equals(blockParts) || !ok {
+		if !bytes.Equal(hash, blockHash) || !header.Equals(blockPartsHeader) || !ok {
 			t.Errorf("There should be 2/3 majority")
 		}
 	}
@@ -238,10 +238,10 @@ func TestBadVotes(t *testing.T) {
 func TestMakeValidation(t *testing.T) {
 	height, round := 1, 0
 	voteSet, _, privValidators := randVoteSet(height, round, VoteTypePrecommit, 10, 1)
-	blockHash, blockParts := CRandBytes(32), PartSetHeader{123, CRandBytes(32)}
+	blockHash, blockPartsHeader := CRandBytes(32), PartSetHeader{123, CRandBytes(32)}
 
 	vote := &Vote{Height: height, Round: round, Type: VoteTypePrecommit,
-		BlockHash: blockHash, BlockParts: blockParts}
+		BlockHash: blockHash, BlockPartsHeader: blockPartsHeader}
 
 	// 6 out of 10 voted for some block.
 	for i := 0; i < 6; i++ {
@@ -254,7 +254,7 @@ func TestMakeValidation(t *testing.T) {
 	// 7th voted for some other block.
 	{
 		vote := withBlockHash(vote, RandBytes(32))
-		vote = withBlockParts(vote, PartSetHeader{123, RandBytes(32)})
+		vote = withBlockPartsHeader(vote, PartSetHeader{123, RandBytes(32)})
 		signAddVote(privValidators[6], vote, voteSet)
 	}
 

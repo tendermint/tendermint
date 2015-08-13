@@ -21,15 +21,15 @@ type VoteSet struct {
 	round  int
 	type_  byte
 
-	mtx           sync.Mutex
-	valSet        *ValidatorSet
-	votes         []*Vote          // validator index -> vote
-	votesBitArray *BitArray        // validator index -> has vote?
-	votesByBlock  map[string]int64 // string(blockHash)+string(blockParts) -> vote sum.
-	totalVotes    int64
-	maj23Hash     []byte
-	maj23Parts    PartSetHeader
-	maj23Exists   bool
+	mtx              sync.Mutex
+	valSet           *ValidatorSet
+	votes            []*Vote          // validator index -> vote
+	votesBitArray    *BitArray        // validator index -> has vote?
+	votesByBlock     map[string]int64 // string(blockHash)+string(blockParts) -> vote sum.
+	totalVotes       int64
+	maj23Hash        []byte
+	maj23PartsHeader PartSetHeader
+	maj23Exists      bool
 }
 
 // Constructs a new VoteSet struct used to accumulate votes for given height/round.
@@ -149,7 +149,7 @@ func (voteSet *VoteSet) addVote(val *Validator, valIndex int, vote *Vote) (bool,
 	// Add vote.
 	voteSet.votes[valIndex] = vote
 	voteSet.votesBitArray.SetIndex(valIndex, true)
-	blockKey := string(vote.BlockHash) + string(wire.BinaryBytes(vote.BlockParts))
+	blockKey := string(vote.BlockHash) + string(wire.BinaryBytes(vote.BlockPartsHeader))
 	totalBlockHashVotes := voteSet.votesByBlock[blockKey] + val.VotingPower
 	voteSet.votesByBlock[blockKey] = totalBlockHashVotes
 	voteSet.totalVotes += val.VotingPower
@@ -158,7 +158,7 @@ func (voteSet *VoteSet) addVote(val *Validator, valIndex int, vote *Vote) (bool,
 	if totalBlockHashVotes > voteSet.valSet.TotalVotingPower()*2/3 &&
 		(totalBlockHashVotes-val.VotingPower) <= voteSet.valSet.TotalVotingPower()*2/3 {
 		voteSet.maj23Hash = vote.BlockHash
-		voteSet.maj23Parts = vote.BlockParts
+		voteSet.maj23PartsHeader = vote.BlockPartsHeader
 		voteSet.maj23Exists = true
 	}
 
@@ -223,7 +223,7 @@ func (voteSet *VoteSet) TwoThirdsMajority() (hash []byte, parts PartSetHeader, o
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
 	if voteSet.maj23Exists {
-		return voteSet.maj23Hash, voteSet.maj23Parts, true
+		return voteSet.maj23Hash, voteSet.maj23PartsHeader, true
 	} else {
 		return nil, PartSetHeader{}, false
 	}
@@ -287,7 +287,7 @@ func (voteSet *VoteSet) MakeValidation() *Validation {
 		if !bytes.Equal(vote.BlockHash, voteSet.maj23Hash) {
 			return false
 		}
-		if !vote.BlockParts.Equals(voteSet.maj23Parts) {
+		if !vote.BlockPartsHeader.Equals(voteSet.maj23PartsHeader) {
 			return false
 		}
 		precommits[valIndex] = vote

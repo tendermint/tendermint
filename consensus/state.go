@@ -1173,11 +1173,11 @@ func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header types.Part
 		return nil
 	}
 	vote := &types.Vote{
-		Height:     cs.Height,
-		Round:      cs.Round,
-		Type:       type_,
-		BlockHash:  hash,
-		BlockParts: header,
+		Height:           cs.Height,
+		Round:            cs.Round,
+		Type:             type_,
+		BlockHash:        hash,
+		BlockPartsHeader: header,
 	}
 	err := cs.privValidator.SignVote(cs.state.ChainID, vote)
 	if err == nil {
