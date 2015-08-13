@@ -19,12 +19,12 @@ const (
 	numBatchMsgPackets        = 10
 	minReadBufferSize         = 1024
 	minWriteBufferSize        = 1024
-	flushThrottleMS           = 50
 	idleTimeoutMinutes        = 5
 	updateStatsSeconds        = 2
 	pingTimeoutSeconds        = 40
-	defaultSendRate           = 51200 // 5Kb/s
-	defaultRecvRate           = 51200 // 5Kb/s
+	defaultSendRate           = 10240 // 10Kb/s
+	defaultRecvRate           = 10240 // 10Kb/s
+	flushThrottleMS           = 100
 	defaultSendQueueCapacity  = 1
 	defaultRecvBufferCapacity = 4096
 	defaultSendTimeoutSeconds = 10
