@@ -39,7 +39,7 @@ var (
 func makeUsers(n int) []*acm.PrivAccount {
 	accounts := []*acm.PrivAccount{}
 	for i := 0; i < n; i++ {
-		secret := []byte("mysecret" + strconv.Itoa(i))
+		secret := ("mysecret" + strconv.Itoa(i))
 		user := acm.GenPrivAccountFromSecret(secret)
 		accounts = append(accounts, user)
 	}

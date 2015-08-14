@@ -2,8 +2,8 @@ package account
 
 import (
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/tendermint/ed25519"
-	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/tendermint/wire"
 )
 
 type PrivAccount struct {
@@ -47,9 +47,14 @@ func GenPrivAccount() *PrivAccount {
 	}
 }
 
+// Generates 32 priv key bytes from secret
+func GenPrivKeyBytesFromSecret(secret string) []byte {
+	return wire.BinarySha256(secret) // Not Ripemd160 because we want 32 bytes.
+}
+
 // Generates a new account with private key from SHA256 hash of a secret
-func GenPrivAccountFromSecret(secret []byte) *PrivAccount {
-	privKey32 := wire.BinarySha256(secret) // Not Ripemd160 because we want 32 bytes.
+func GenPrivAccountFromSecret(secret string) *PrivAccount {
+	privKey32 := GenPrivKeyBytesFromSecret(secret)
 	privKeyBytes := new([64]byte)
 	copy(privKeyBytes[:32], privKey32)
 	pubKeyBytes := ed25519.MakePublicKey(privKeyBytes)
@@ -62,13 +67,15 @@ func GenPrivAccountFromSecret(secret []byte) *PrivAccount {
 	}
 }
 
-func GenPrivAccountFromPrivKeyBytes(privKeyBytes *[64]byte) *PrivAccount {
+func GenPrivAccountFromPrivKeyBytes(privKeyBytes []byte) *PrivAccount {
 	if len(privKeyBytes) != 64 {
 		PanicSanity(Fmt("Expected 64 bytes but got %v", len(privKeyBytes)))
 	}
-	pubKeyBytes := ed25519.MakePublicKey(privKeyBytes)
+	var privKeyArray [64]byte
+	copy(privKeyArray[:], privKeyBytes)
+	pubKeyBytes := ed25519.MakePublicKey(&privKeyArray)
 	pubKey := PubKeyEd25519(*pubKeyBytes)
-	privKey := PrivKeyEd25519(*privKeyBytes)
+	privKey := PrivKeyEd25519(privKeyArray)
 	return &PrivAccount{
 		Address: pubKey.Address(),
 		PubKey:  pubKey,

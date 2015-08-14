@@ -92,9 +92,7 @@ func TestNameTxSignable(t *testing.T) {
 
 func TestBondTxSignable(t *testing.T) {
 	privKeyBytes := make([]byte, 64)
-	var privKeyArray [64]byte
-	copy(privKeyArray[:], privKeyBytes)
-	privAccount := acm.GenPrivAccountFromPrivKeyBytes(&privKeyArray)
+	privAccount := acm.GenPrivAccountFromPrivKeyBytes(privKeyBytes)
 	bondTx := &BondTx{
 		PubKey: privAccount.PubKey.(acm.PubKeyEd25519),
 		Inputs: []*TxInput{

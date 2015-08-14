@@ -52,6 +52,9 @@ func (c *ClientHTTP) BlockchainInfo(minHeight int, maxHeight int) (*ctypes.Resul
 	if err != nil {
 		return nil, err
 	}
+	if response.Result == nil {
+		return nil, nil
+	}
 	result, ok := response.Result.(*ctypes.ResultBlockchainInfo)
 	if !ok {
 		return nil, fmt.Errorf("response result was wrong type")
@@ -76,6 +79,9 @@ func (c *ClientHTTP) BroadcastTx(tx types.Tx) (*ctypes.ResultBroadcastTx, error)
 	response, err := unmarshalCheckResponse(body)
 	if err != nil {
 		return nil, err
+	}
+	if response.Result == nil {
+		return nil, nil
 	}
 	result, ok := response.Result.(*ctypes.ResultBroadcastTx)
 	if !ok {
@@ -102,6 +108,9 @@ func (c *ClientHTTP) Call(fromAddress []byte, toAddress []byte, data []byte) (*c
 	if err != nil {
 		return nil, err
 	}
+	if response.Result == nil {
+		return nil, nil
+	}
 	result, ok := response.Result.(*ctypes.ResultCall)
 	if !ok {
 		return nil, fmt.Errorf("response result was wrong type")
@@ -126,6 +135,9 @@ func (c *ClientHTTP) CallCode(fromAddress []byte, code []byte, data []byte) (*ct
 	response, err := unmarshalCheckResponse(body)
 	if err != nil {
 		return nil, err
+	}
+	if response.Result == nil {
+		return nil, nil
 	}
 	result, ok := response.Result.(*ctypes.ResultCall)
 	if !ok {
@@ -152,6 +164,9 @@ func (c *ClientHTTP) DumpConsensusState() (*ctypes.ResultDumpConsensusState, err
 	if err != nil {
 		return nil, err
 	}
+	if response.Result == nil {
+		return nil, nil
+	}
 	result, ok := response.Result.(*ctypes.ResultDumpConsensusState)
 	if !ok {
 		return nil, fmt.Errorf("response result was wrong type")
@@ -176,6 +191,9 @@ func (c *ClientHTTP) DumpStorage(address []byte) (*ctypes.ResultDumpStorage, err
 	response, err := unmarshalCheckResponse(body)
 	if err != nil {
 		return nil, err
+	}
+	if response.Result == nil {
+		return nil, nil
 	}
 	result, ok := response.Result.(*ctypes.ResultDumpStorage)
 	if !ok {
@@ -202,6 +220,9 @@ func (c *ClientHTTP) GenPrivAccount() (*ctypes.ResultGenPrivAccount, error) {
 	if err != nil {
 		return nil, err
 	}
+	if response.Result == nil {
+		return nil, nil
+	}
 	result, ok := response.Result.(*ctypes.ResultGenPrivAccount)
 	if !ok {
 		return nil, fmt.Errorf("response result was wrong type")
@@ -226,6 +247,9 @@ func (c *ClientHTTP) Genesis() (*ctypes.ResultGenesis, error) {
 	response, err := unmarshalCheckResponse(body)
 	if err != nil {
 		return nil, err
+	}
+	if response.Result == nil {
+		return nil, nil
 	}
 	result, ok := response.Result.(*ctypes.ResultGenesis)
 	if !ok {
@@ -252,6 +276,9 @@ func (c *ClientHTTP) GetAccount(address []byte) (*ctypes.ResultGetAccount, error
 	if err != nil {
 		return nil, err
 	}
+	if response.Result == nil {
+		return nil, nil
+	}
 	result, ok := response.Result.(*ctypes.ResultGetAccount)
 	if !ok {
 		return nil, fmt.Errorf("response result was wrong type")
@@ -276,6 +303,9 @@ func (c *ClientHTTP) GetBlock(height int) (*ctypes.ResultGetBlock, error) {
 	response, err := unmarshalCheckResponse(body)
 	if err != nil {
 		return nil, err
+	}
+	if response.Result == nil {
+		return nil, nil
 	}
 	result, ok := response.Result.(*ctypes.ResultGetBlock)
 	if !ok {
@@ -302,6 +332,9 @@ func (c *ClientHTTP) GetName(name string) (*ctypes.ResultGetName, error) {
 	if err != nil {
 		return nil, err
 	}
+	if response.Result == nil {
+		return nil, nil
+	}
 	result, ok := response.Result.(*ctypes.ResultGetName)
 	if !ok {
 		return nil, fmt.Errorf("response result was wrong type")
@@ -326,6 +359,9 @@ func (c *ClientHTTP) GetStorage(address []byte, key []byte) (*ctypes.ResultGetSt
 	response, err := unmarshalCheckResponse(body)
 	if err != nil {
 		return nil, err
+	}
+	if response.Result == nil {
+		return nil, nil
 	}
 	result, ok := response.Result.(*ctypes.ResultGetStorage)
 	if !ok {
@@ -352,6 +388,9 @@ func (c *ClientHTTP) ListAccounts() (*ctypes.ResultListAccounts, error) {
 	if err != nil {
 		return nil, err
 	}
+	if response.Result == nil {
+		return nil, nil
+	}
 	result, ok := response.Result.(*ctypes.ResultListAccounts)
 	if !ok {
 		return nil, fmt.Errorf("response result was wrong type")
@@ -376,6 +415,9 @@ func (c *ClientHTTP) ListNames() (*ctypes.ResultListNames, error) {
 	response, err := unmarshalCheckResponse(body)
 	if err != nil {
 		return nil, err
+	}
+	if response.Result == nil {
+		return nil, nil
 	}
 	result, ok := response.Result.(*ctypes.ResultListNames)
 	if !ok {
@@ -402,6 +444,9 @@ func (c *ClientHTTP) ListUnconfirmedTxs() (*ctypes.ResultListUnconfirmedTxs, err
 	if err != nil {
 		return nil, err
 	}
+	if response.Result == nil {
+		return nil, nil
+	}
 	result, ok := response.Result.(*ctypes.ResultListUnconfirmedTxs)
 	if !ok {
 		return nil, fmt.Errorf("response result was wrong type")
@@ -426,6 +471,9 @@ func (c *ClientHTTP) ListValidators() (*ctypes.ResultListValidators, error) {
 	response, err := unmarshalCheckResponse(body)
 	if err != nil {
 		return nil, err
+	}
+	if response.Result == nil {
+		return nil, nil
 	}
 	result, ok := response.Result.(*ctypes.ResultListValidators)
 	if !ok {
@@ -452,6 +500,9 @@ func (c *ClientHTTP) NetInfo() (*ctypes.ResultNetInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+	if response.Result == nil {
+		return nil, nil
+	}
 	result, ok := response.Result.(*ctypes.ResultNetInfo)
 	if !ok {
 		return nil, fmt.Errorf("response result was wrong type")
@@ -476,6 +527,9 @@ func (c *ClientHTTP) SignTx(tx types.Tx, privAccounts []*acm.PrivAccount) (*ctyp
 	response, err := unmarshalCheckResponse(body)
 	if err != nil {
 		return nil, err
+	}
+	if response.Result == nil {
+		return nil, nil
 	}
 	result, ok := response.Result.(*ctypes.ResultSignTx)
 	if !ok {
@@ -502,6 +556,9 @@ func (c *ClientHTTP) Status() (*ctypes.ResultStatus, error) {
 	if err != nil {
 		return nil, err
 	}
+	if response.Result == nil {
+		return nil, nil
+	}
 	result, ok := response.Result.(*ctypes.ResultStatus)
 	if !ok {
 		return nil, fmt.Errorf("response result was wrong type")
@@ -523,6 +580,9 @@ func (c *ClientJSON) BlockchainInfo(minHeight int, maxHeight int) (*ctypes.Resul
 	response, err := unmarshalCheckResponse(body)
 	if err != nil {
 		return nil, err
+	}
+	if response.Result == nil {
+		return nil, nil
 	}
 	result, ok := response.Result.(*ctypes.ResultBlockchainInfo)
 	if !ok {
@@ -546,6 +606,9 @@ func (c *ClientJSON) BroadcastTx(tx types.Tx) (*ctypes.ResultBroadcastTx, error)
 	if err != nil {
 		return nil, err
 	}
+	if response.Result == nil {
+		return nil, nil
+	}
 	result, ok := response.Result.(*ctypes.ResultBroadcastTx)
 	if !ok {
 		return nil, fmt.Errorf("response result was wrong type")
@@ -567,6 +630,9 @@ func (c *ClientJSON) Call(fromAddress []byte, toAddress []byte, data []byte) (*c
 	response, err := unmarshalCheckResponse(body)
 	if err != nil {
 		return nil, err
+	}
+	if response.Result == nil {
+		return nil, nil
 	}
 	result, ok := response.Result.(*ctypes.ResultCall)
 	if !ok {
@@ -590,6 +656,9 @@ func (c *ClientJSON) CallCode(fromAddress []byte, code []byte, data []byte) (*ct
 	if err != nil {
 		return nil, err
 	}
+	if response.Result == nil {
+		return nil, nil
+	}
 	result, ok := response.Result.(*ctypes.ResultCall)
 	if !ok {
 		return nil, fmt.Errorf("response result was wrong type")
@@ -611,6 +680,9 @@ func (c *ClientJSON) DumpConsensusState() (*ctypes.ResultDumpConsensusState, err
 	response, err := unmarshalCheckResponse(body)
 	if err != nil {
 		return nil, err
+	}
+	if response.Result == nil {
+		return nil, nil
 	}
 	result, ok := response.Result.(*ctypes.ResultDumpConsensusState)
 	if !ok {
@@ -634,6 +706,9 @@ func (c *ClientJSON) DumpStorage(address []byte) (*ctypes.ResultDumpStorage, err
 	if err != nil {
 		return nil, err
 	}
+	if response.Result == nil {
+		return nil, nil
+	}
 	result, ok := response.Result.(*ctypes.ResultDumpStorage)
 	if !ok {
 		return nil, fmt.Errorf("response result was wrong type")
@@ -655,6 +730,9 @@ func (c *ClientJSON) GenPrivAccount() (*ctypes.ResultGenPrivAccount, error) {
 	response, err := unmarshalCheckResponse(body)
 	if err != nil {
 		return nil, err
+	}
+	if response.Result == nil {
+		return nil, nil
 	}
 	result, ok := response.Result.(*ctypes.ResultGenPrivAccount)
 	if !ok {
@@ -678,6 +756,9 @@ func (c *ClientJSON) Genesis() (*ctypes.ResultGenesis, error) {
 	if err != nil {
 		return nil, err
 	}
+	if response.Result == nil {
+		return nil, nil
+	}
 	result, ok := response.Result.(*ctypes.ResultGenesis)
 	if !ok {
 		return nil, fmt.Errorf("response result was wrong type")
@@ -699,6 +780,9 @@ func (c *ClientJSON) GetAccount(address []byte) (*ctypes.ResultGetAccount, error
 	response, err := unmarshalCheckResponse(body)
 	if err != nil {
 		return nil, err
+	}
+	if response.Result == nil {
+		return nil, nil
 	}
 	result, ok := response.Result.(*ctypes.ResultGetAccount)
 	if !ok {
@@ -722,6 +806,9 @@ func (c *ClientJSON) GetBlock(height int) (*ctypes.ResultGetBlock, error) {
 	if err != nil {
 		return nil, err
 	}
+	if response.Result == nil {
+		return nil, nil
+	}
 	result, ok := response.Result.(*ctypes.ResultGetBlock)
 	if !ok {
 		return nil, fmt.Errorf("response result was wrong type")
@@ -743,6 +830,9 @@ func (c *ClientJSON) GetName(name string) (*ctypes.ResultGetName, error) {
 	response, err := unmarshalCheckResponse(body)
 	if err != nil {
 		return nil, err
+	}
+	if response.Result == nil {
+		return nil, nil
 	}
 	result, ok := response.Result.(*ctypes.ResultGetName)
 	if !ok {
@@ -766,6 +856,9 @@ func (c *ClientJSON) GetStorage(address []byte, key []byte) (*ctypes.ResultGetSt
 	if err != nil {
 		return nil, err
 	}
+	if response.Result == nil {
+		return nil, nil
+	}
 	result, ok := response.Result.(*ctypes.ResultGetStorage)
 	if !ok {
 		return nil, fmt.Errorf("response result was wrong type")
@@ -787,6 +880,9 @@ func (c *ClientJSON) ListAccounts() (*ctypes.ResultListAccounts, error) {
 	response, err := unmarshalCheckResponse(body)
 	if err != nil {
 		return nil, err
+	}
+	if response.Result == nil {
+		return nil, nil
 	}
 	result, ok := response.Result.(*ctypes.ResultListAccounts)
 	if !ok {
@@ -810,6 +906,9 @@ func (c *ClientJSON) ListNames() (*ctypes.ResultListNames, error) {
 	if err != nil {
 		return nil, err
 	}
+	if response.Result == nil {
+		return nil, nil
+	}
 	result, ok := response.Result.(*ctypes.ResultListNames)
 	if !ok {
 		return nil, fmt.Errorf("response result was wrong type")
@@ -831,6 +930,9 @@ func (c *ClientJSON) ListUnconfirmedTxs() (*ctypes.ResultListUnconfirmedTxs, err
 	response, err := unmarshalCheckResponse(body)
 	if err != nil {
 		return nil, err
+	}
+	if response.Result == nil {
+		return nil, nil
 	}
 	result, ok := response.Result.(*ctypes.ResultListUnconfirmedTxs)
 	if !ok {
@@ -854,6 +956,9 @@ func (c *ClientJSON) ListValidators() (*ctypes.ResultListValidators, error) {
 	if err != nil {
 		return nil, err
 	}
+	if response.Result == nil {
+		return nil, nil
+	}
 	result, ok := response.Result.(*ctypes.ResultListValidators)
 	if !ok {
 		return nil, fmt.Errorf("response result was wrong type")
@@ -875,6 +980,9 @@ func (c *ClientJSON) NetInfo() (*ctypes.ResultNetInfo, error) {
 	response, err := unmarshalCheckResponse(body)
 	if err != nil {
 		return nil, err
+	}
+	if response.Result == nil {
+		return nil, nil
 	}
 	result, ok := response.Result.(*ctypes.ResultNetInfo)
 	if !ok {
@@ -898,6 +1006,9 @@ func (c *ClientJSON) SignTx(tx types.Tx, privAccounts []*acm.PrivAccount) (*ctyp
 	if err != nil {
 		return nil, err
 	}
+	if response.Result == nil {
+		return nil, nil
+	}
 	result, ok := response.Result.(*ctypes.ResultSignTx)
 	if !ok {
 		return nil, fmt.Errorf("response result was wrong type")
@@ -919,6 +1030,9 @@ func (c *ClientJSON) Status() (*ctypes.ResultStatus, error) {
 	response, err := unmarshalCheckResponse(body)
 	if err != nil {
 		return nil, err
+	}
+	if response.Result == nil {
+		return nil, nil
 	}
 	result, ok := response.Result.(*ctypes.ResultStatus)
 	if !ok {

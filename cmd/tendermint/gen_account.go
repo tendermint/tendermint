@@ -10,14 +10,14 @@ import (
 
 func gen_account() {
 
-	seed, err := Prompt(`Enter your desired seed, or just hit <Enter> to generate a random account.
+	secret, err := Prompt(`Enter your desired secret, or just hit <Enter> to generate a random account.
 IMPORTANT: If you don't know what a dictionary attack is, just hit Enter
 > `, "")
 	if err != nil {
 		Exit(Fmt("Not sure what happened: %v", err))
 	}
 
-	if seed == "" {
+	if secret == "" {
 		privAccount := acm.GenPrivAccount()
 		privAccountJSONBytes := wire.JSONBytes(privAccount)
 		fmt.Printf(`Generated a new random account!
@@ -28,14 +28,14 @@ IMPORTANT: If you don't know what a dictionary attack is, just hit Enter
 			string(privAccountJSONBytes),
 		)
 	} else {
-		privAccount := acm.GenPrivAccountFromSecret([]byte(seed))
+		privAccount := acm.GenPrivAccountFromSecret(secret)
 		privAccountJSONBytes := wire.JSONBytes(privAccount)
-		fmt.Printf(`Generated a new account from seed: [%v]!
+		fmt.Printf(`Generated a new account from secret: [%v]!
 
 %v
 
 `,
-			seed,
+			secret,
 			string(privAccountJSONBytes),
 		)
 	}

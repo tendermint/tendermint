@@ -19,7 +19,8 @@ Commands:
     node          Run the tendermint node 
     gen_account   Generate new account keypair
     gen_validator Generate new validator keypair
-    gen_tx        Generate new transaction
+    get_account   Get account balance
+    send_tx       Sign and publish a SendTx
     probe_upnp    Test UPnP functionality
     version       Show version info
 `)
@@ -38,8 +39,10 @@ Commands:
 		gen_account()
 	case "gen_validator":
 		gen_validator()
-	case "gen_tx":
-		gen_tx()
+	case "get_account":
+		get_account()
+	case "send_tx":
+		send_tx()
 	case "probe_upnp":
 		probe_upnp()
 	case "unsafe_reset_priv_validator":

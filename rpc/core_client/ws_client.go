@@ -1,7 +1,6 @@
 package core_client
 
 import (
-	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -10,6 +9,7 @@ import (
 	_ "github.com/tendermint/tendermint/config/tendermint_test"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/rpc/types"
+	"github.com/tendermint/tendermint/wire"
 )
 
 const wsEventsChannelCapacity = 10
@@ -70,13 +70,14 @@ func (wsc *WSClient) receiveEventsRoutine() {
 			break
 		} else {
 			var response ctypes.Response
-			if err := json.Unmarshal(data, &response); err != nil {
+			wire.ReadJSON(&response, data, &err)
+			if err != nil {
 				log.Info(Fmt("WSClient failed to parse message: %v", err))
 				wsc.Stop()
 				break
 			}
 			if strings.HasSuffix(response.Id, "#event") {
-				wsc.EventsCh <- response.Result.(ctypes.ResultEvent)
+				wsc.EventsCh <- *response.Result.(*ctypes.ResultEvent)
 			} else {
 				wsc.ResultsCh <- response.Result
 			}

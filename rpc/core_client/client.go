@@ -76,6 +76,8 @@ func NewClient(addr, typ string) Client {
 		return &ClientHTTP{addr}
 	case "JSONRPC":
 		return &ClientJSON{addr}
+	default:
+		panic("Unknown client type " + typ + ". Select HTTP or JSONRPC")
 	}
 	return nil
 }
@@ -195,6 +197,9 @@ fmt
 	if err != nil{
 		return nil, err
 	}
+	if response.Result == nil {
+		return nil, nil
+	}
 	result, ok := response.Result.({{response.0}})
 	if !ok{
 		return nil, fmt.Errorf("response result was wrong type")
@@ -219,6 +224,9 @@ fmt
 	response, err := unmarshalCheckResponse(body)
 	if err != nil{
 		return nil, err
+	}
+	if response.Result == nil {
+		return nil, nil
 	}
 	result, ok := response.Result.({{response.0}})
 	if !ok{
