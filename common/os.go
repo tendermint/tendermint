@@ -69,7 +69,7 @@ func WriteFile(filePath string, contents []byte) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("File written to %v.\n", filePath)
+	// fmt.Printf("File written to %v.\n", filePath)
 	return nil
 }
 

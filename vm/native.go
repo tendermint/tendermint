@@ -4,8 +4,6 @@ import (
 	"crypto/sha256"
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/code.google.com/p/go.crypto/ripemd160"
 	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/vm/secp256k1"
-	"github.com/tendermint/tendermint/vm/sha3"
 )
 
 var registeredNativeContracts = make(map[Word256]NativeContract)
@@ -15,13 +13,22 @@ func RegisteredNativeContract(addr Word256) bool {
 	return ok
 }
 
+func RegisterNativeContract(addr Word256, fn NativeContract) bool {
+	_, exists := registeredNativeContracts[addr]
+	if exists {
+		return false
+	}
+	registeredNativeContracts[addr] = fn
+	return true
+}
+
 func init() {
 	registerNativeContracts()
 	registerSNativeContracts()
 }
 
 func registerNativeContracts() {
-	registeredNativeContracts[Int64ToWord256(1)] = ecrecoverFunc
+	// registeredNativeContracts[Int64ToWord256(1)] = ecrecoverFunc
 	registeredNativeContracts[Int64ToWord256(2)] = sha256Func
 	registeredNativeContracts[Int64ToWord256(3)] = ripemd160Func
 	registeredNativeContracts[Int64ToWord256(4)] = identityFunc
@@ -31,6 +38,7 @@ func registerNativeContracts() {
 
 type NativeContract func(appState AppState, caller *Account, input []byte, gas *int64) (output []byte, err error)
 
+/* Removed due to C dependency
 func ecrecoverFunc(appState AppState, caller *Account, input []byte, gas *int64) (output []byte, err error) {
 	// Deduct gas
 	gasRequired := GasEcRecover
@@ -51,6 +59,7 @@ func ecrecoverFunc(appState AppState, caller *Account, input []byte, gas *int64)
 	hashed := sha3.Sha3(recovered[1:])
 	return LeftPadBytes(hashed, 32), nil
 }
+*/
 
 func sha256Func(appState AppState, caller *Account, input []byte, gas *int64) (output []byte, err error) {
 	// Deduct gas

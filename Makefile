@@ -11,7 +11,6 @@ install:
 	go install github.com/tendermint/tendermint/cmd/stdinwriter
 	go install github.com/tendermint/tendermint/cmd/logjack
 	go install github.com/tendermint/tendermint/cmd/sim_txs
-	@echo `git rev-parse --verify HEAD` >> $(TMROOT)/revisions
 
 build: 
 	go build -o build/tendermint github.com/tendermint/tendermint/cmd/tendermint
@@ -51,4 +50,4 @@ gen_client:
 	go generate rpc/core_client/*.go
 
 revision:
-	@echo `git rev-parse --verify HEAD` >> $(TMROOT)/revisions
+	-echo `git rev-parse --verify HEAD` >> $(TMROOT)/revisions
