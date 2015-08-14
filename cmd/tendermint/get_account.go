@@ -19,6 +19,9 @@ func get_account() {
 		Exit(Fmt("Address was not hex: %v", addrHex))
 	}
 	res, err := cli.GetAccount(address)
+	if res == nil {
+		Exit(Fmt("Account does not exist: %X", address))
+	}
 	if err != nil {
 		Exit(Fmt("Error fetching account: %v", err))
 	}
