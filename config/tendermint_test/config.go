@@ -35,8 +35,8 @@ func initTMRoot(rootDir string) {
 	// Write default config file if missing.
 	if !FileExists(configFilePath) {
 		// Ask user for moniker
-		moniker := cfg.Prompt("Type hostname: ", "anonymous")
-		MustWriteFile(configFilePath, []byte(defaultConfig(moniker)))
+		// moniker := cfg.Prompt("Type hostname: ", "anonymous")
+		MustWriteFile(configFilePath, []byte(defaultConfig("anonymous")))
 	}
 	if !FileExists(genesisFilePath) {
 		MustWriteFile(genesisFilePath, []byte(defaultGenesis))

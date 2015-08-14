@@ -1,29 +1,9 @@
 package config
 
 import (
-	"bufio"
-	"fmt"
-	"os"
-	"strings"
 	"sync"
 	"time"
 )
-
-func Prompt(prompt string, defaultValue string) string {
-	fmt.Print(prompt)
-	reader := bufio.NewReader(os.Stdin)
-	line, err := reader.ReadString('\n')
-	if err != nil {
-		log.Warn("Error reading stdin", "err", err)
-		return defaultValue
-	} else {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			return defaultValue
-		}
-		return line
-	}
-}
 
 type Config interface {
 	Get(key string) interface{}

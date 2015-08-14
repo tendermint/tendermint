@@ -1,10 +1,12 @@
 package common
 
 import (
+	"bufio"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"time"
 )
@@ -205,4 +207,19 @@ func Tempfile(prefix string) (*os.File, string) {
 		PanicCrisis(err)
 	}
 	return file, file.Name()
+}
+
+func Prompt(prompt string, defaultValue string) (string, error) {
+	fmt.Print(prompt)
+	reader := bufio.NewReader(os.Stdin)
+	line, err := reader.ReadString('\n')
+	if err != nil {
+		return defaultValue, err
+	} else {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			return defaultValue, nil
+		}
+		return line, nil
+	}
 }

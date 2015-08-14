@@ -4,17 +4,39 @@ import (
 	"fmt"
 
 	acm "github.com/tendermint/tendermint/account"
+	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/wire"
 )
 
 func gen_account() {
-	privAccount := acm.GenPrivAccount()
-	privAccountJSONBytes := wire.JSONBytes(privAccount)
-	fmt.Printf(`Generated a new account!
+
+	seed, err := Prompt(`Enter your desired seed, or just hit <Enter> to generate a random account.
+IMPORTANT: If you don't know what a dictionary attack is, just hit Enter
+> `, "")
+	if err != nil {
+		Exit(Fmt("Not sure what happened: %v", err))
+	}
+
+	if seed == "" {
+		privAccount := acm.GenPrivAccount()
+		privAccountJSONBytes := wire.JSONBytes(privAccount)
+		fmt.Printf(`Generated a new random account!
 
 %v
 
 `,
-		string(privAccountJSONBytes),
-	)
+			string(privAccountJSONBytes),
+		)
+	} else {
+		privAccount := acm.GenPrivAccountFromSecret([]byte(seed))
+		privAccountJSONBytes := wire.JSONBytes(privAccount)
+		fmt.Printf(`Generated a new account from seed: [%v]!
+
+%v
+
+`,
+			seed,
+			string(privAccountJSONBytes),
+		)
+	}
 }
