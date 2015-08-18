@@ -55,7 +55,7 @@ func (pexR *PEXReactor) OnStop() {
 func (pexR *PEXReactor) GetChannels() []*ChannelDescriptor {
 	return []*ChannelDescriptor{
 		&ChannelDescriptor{
-			Id:                PexChannel,
+			ID:                PexChannel,
 			Priority:          1,
 			SendQueueCapacity: 10,
 		},
@@ -84,7 +84,7 @@ func (pexR *PEXReactor) RemovePeer(peer *Peer, reason interface{}) {
 
 // Implements Reactor
 // Handles incoming PEX messages.
-func (pexR *PEXReactor) Receive(chId byte, src *Peer, msgBytes []byte) {
+func (pexR *PEXReactor) Receive(chID byte, src *Peer, msgBytes []byte) {
 
 	// decode message
 	_, msg, err := DecodeMessage(msgBytes)

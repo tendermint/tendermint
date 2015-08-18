@@ -692,15 +692,15 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
 			if vm.evc != nil {
-				eventId := types.EventStringLogEvent(callee.Address.Postfix(20))
-				fmt.Printf("eventId: %s\n", eventId)
+				eventID := types.EventStringLogEvent(callee.Address.Postfix(20))
+				fmt.Printf("eventID: %s\n", eventID)
 				log := types.EventDataLog{
 					callee.Address,
 					topics,
 					data,
 					vm.params.BlockHeight,
 				}
-				vm.evc.FireEvent(eventId, log)
+				vm.evc.FireEvent(eventID, log)
 			}
 			dbg.Printf(" => T:%X D:%X\n", topics, data)
 

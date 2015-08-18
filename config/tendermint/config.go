@@ -106,20 +106,28 @@ var defaultGenesis = `{
     "accounts": [
         {
             "address": "9FCBA7F840A0BFEBBE755E853C9947270A912D04",
-            "amount": 2098999998000000
+            "amount": 1997999998000000
         },
-				{
-					  "address": "B9FA4AB462B9C6BF6A62DB4AE77C9E7087209A04",
-						"amount": 1000000000000
-				},
+        {
+            "address": "964B1493BBE3312278B7DEB94C39149F7899A345",
+            "amount": 100000000000000
+        },
+        {
+            "address": "B9FA4AB462B9C6BF6A62DB4AE77C9E7087209A04",
+            "amount": 1000000000000
+        },
+        {
+            "address": "F171824590D69386F709E7B6704B369C5A370D60",
+            "amount": 1000000000000
+        },
         {
             "address": "A88A61069B6660F30F65E8786AFDD4F1D8F625E9",
-						"amount": 1000000
-				},
+            "amount": 1000000
+        },
         {
             "address": "EE2EE9247973B4AFC3867CFE5F415410AC251B61",
-						"amount": 1000000
-				}
+            "amount": 1000000
+        }
     ],
     "validators": [
         {

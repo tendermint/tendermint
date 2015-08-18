@@ -16,15 +16,15 @@ initialization of the connection.
 
 There are two methods for sending messages:
 ```go
-func (m MConnection) Send(chId byte, msg interface{}) bool {}
-func (m MConnection) TrySend(chId byte, msg interface{}) bool {}
+func (m MConnection) Send(chID byte, msg interface{}) bool {}
+func (m MConnection) TrySend(chID byte, msg interface{}) bool {}
 ```
 
-`Send(chId, msg)` is a blocking call that waits until `msg` is successfully queued
-for the channel with the given id byte `chId`.  The message `msg` is serialized
+`Send(chID, msg)` is a blocking call that waits until `msg` is successfully queued
+for the channel with the given id byte `chID`.  The message `msg` is serialized
 using the `tendermint/wire` submodule's `WriteBinary()` reflection routine.
 
-`TrySend(chId, msg)` is a nonblocking call that returns false if the channel's
+`TrySend(chID, msg)` is a nonblocking call that returns false if the channel's
 queue is full.
 
 `Send()` and `TrySend()` are also exposed for each `Peer`.
@@ -37,14 +37,14 @@ or more `Channels`.  So while sending outgoing messages is typically performed o
 incoming messages are received on the reactor.
 
 ```go
-// Declare a MyReactor reactor that handles messages on MyChannelId.
+// Declare a MyReactor reactor that handles messages on MyChannelID.
 type MyReactor struct{}
 
 func (reactor MyReactor) GetChannels() []*ChannelDescriptor {
-    return []*ChannelDescriptor{ChannelDescriptor{Id:MyChannelId, Priority: 1}}
+    return []*ChannelDescriptor{ChannelDescriptor{ID:MyChannelID, Priority: 1}}
 }
 
-func (reactor MyReactor) Receive(chId byte, peer *Peer, msgBytes []byte) {
+func (reactor MyReactor) Receive(chID byte, peer *Peer, msgBytes []byte) {
     r, n, err := bytes.NewBuffer(msgBytes), new(int64), new(error)
     msgString := ReadString(r, n, err)
     fmt.Println(msgString)
@@ -60,7 +60,7 @@ switch := NewSwitch([]Reactor{MyReactor{}})
 // Send a random message to all outbound connections
 for _, peer := range switch.Peers().List() {
     if peer.IsOutbound() {
-        peer.Send(MyChannelId, "Here's a random message")
+        peer.Send(MyChannelID, "Here's a random message")
     }
 }
 ```

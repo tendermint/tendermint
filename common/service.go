@@ -75,15 +75,21 @@ func NewBaseService(log log15.Logger, name string, impl Service) *BaseService {
 func (bs *BaseService) Start() (bool, error) {
 	if atomic.CompareAndSwapUint32(&bs.started, 0, 1) {
 		if atomic.LoadUint32(&bs.stopped) == 1 {
-			bs.log.Warn(Fmt("Not starting %v -- already stopped", bs.name), "impl", bs.impl)
+			if bs.log != nil {
+				bs.log.Warn(Fmt("Not starting %v -- already stopped", bs.name), "impl", bs.impl)
+			}
 			return false, nil
 		} else {
-			bs.log.Notice(Fmt("Starting %v", bs.name), "impl", bs.impl)
+			if bs.log != nil {
+				bs.log.Notice(Fmt("Starting %v", bs.name), "impl", bs.impl)
+			}
 		}
 		err := bs.impl.OnStart()
 		return true, err
 	} else {
-		bs.log.Info(Fmt("Not starting %v -- already started", bs.name), "impl", bs.impl)
+		if bs.log != nil {
+			bs.log.Info(Fmt("Not starting %v -- already started", bs.name), "impl", bs.impl)
+		}
 		return false, nil
 	}
 }
@@ -94,11 +100,15 @@ func (bs *BaseService) OnStart() error { return nil }
 // Implements Service
 func (bs *BaseService) Stop() bool {
 	if atomic.CompareAndSwapUint32(&bs.stopped, 0, 1) {
-		bs.log.Notice(Fmt("Stopping %v", bs.name), "impl", bs.impl)
+		if bs.log != nil {
+			bs.log.Notice(Fmt("Stopping %v", bs.name), "impl", bs.impl)
+		}
 		bs.impl.OnStop()
 		return true
 	} else {
-		bs.log.Notice(Fmt("Not stopping %v", bs.name), "impl", bs.impl)
+		if bs.log != nil {
+			bs.log.Notice(Fmt("Not stopping %v", bs.name), "impl", bs.impl)
+		}
 		return false
 	}
 }
@@ -138,5 +148,7 @@ func (qs *QuitService) OnStart() error {
 
 // NOTE: when overriding OnStop, must call .QuitService.OnStop().
 func (qs *QuitService) OnStop() {
-	close(qs.Quit)
+	if qs.Quit != nil {
+		close(qs.Quit)
+	}
 }

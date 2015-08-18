@@ -123,7 +123,7 @@ type ResultEvent struct {
 
 type Response struct {
 	JSONRPC string `json:"jsonrpc"`
-	Id      string `json:"id"`
+	ID      string `json:"id"`
 	Result  Result `json:"result"`
 	Error   string `json:"error"`
 }

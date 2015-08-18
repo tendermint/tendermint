@@ -22,15 +22,15 @@ const (
 	idleTimeoutMinutes        = 5
 	updateStatsSeconds        = 2
 	pingTimeoutSeconds        = 40
-	defaultSendRate           = 10240 // 10Kb/s
-	defaultRecvRate           = 10240 // 10Kb/s
+	defaultSendRate           = 51200 // 50Kb/s
+	defaultRecvRate           = 51200 // 50Kb/s
 	flushThrottleMS           = 100
 	defaultSendQueueCapacity  = 1
 	defaultRecvBufferCapacity = 4096
 	defaultSendTimeoutSeconds = 10
 )
 
-type receiveCbFunc func(chId byte, msgBytes []byte)
+type receiveCbFunc func(chID byte, msgBytes []byte)
 type errorCbFunc func(interface{})
 
 /*
@@ -45,15 +45,15 @@ The byte id and the relative priorities of each `Channel` are configured upon
 initialization of the connection.
 
 There are two methods for sending messages:
-	func (m MConnection) Send(chId byte, msg interface{}) bool {}
-	func (m MConnection) TrySend(chId byte, msg interface{}) bool {}
+	func (m MConnection) Send(chID byte, msg interface{}) bool {}
+	func (m MConnection) TrySend(chID byte, msg interface{}) bool {}
 
-`Send(chId, msg)` is a blocking call that waits until `msg` is successfully queued
-for the channel with the given id byte `chId`, or until the request times out.
+`Send(chID, msg)` is a blocking call that waits until `msg` is successfully queued
+for the channel with the given id byte `chID`, or until the request times out.
 The message `msg` is serialized using the `tendermint/wire` submodule's
 `WriteBinary()` reflection routine.
 
-`TrySend(chId, msg)` is a nonblocking call that returns false if the channel's
+`TrySend(chID, msg)` is a nonblocking call that returns false if the channel's
 queue is full.
 
 Inbound message bytes are handled with an onReceive callback function.
@@ -185,17 +185,17 @@ func (c *MConnection) stopForError(r interface{}) {
 }
 
 // Queues a message to be sent to channel.
-func (c *MConnection) Send(chId byte, msg interface{}) bool {
+func (c *MConnection) Send(chID byte, msg interface{}) bool {
 	if !c.IsRunning() {
 		return false
 	}
 
-	log.Info("Send", "channel", chId, "conn", c, "msg", msg) //, "bytes", wire.BinaryBytes(msg))
+	log.Info("Send", "channel", chID, "conn", c, "msg", msg) //, "bytes", wire.BinaryBytes(msg))
 
 	// Send message to channel.
-	channel, ok := c.channelsIdx[chId]
+	channel, ok := c.channelsIdx[chID]
 	if !ok {
-		log.Error(Fmt("Cannot send bytes, unknown channel %X", chId))
+		log.Error(Fmt("Cannot send bytes, unknown channel %X", chID))
 		return false
 	}
 
@@ -207,24 +207,24 @@ func (c *MConnection) Send(chId byte, msg interface{}) bool {
 		default:
 		}
 	} else {
-		log.Warn("Send failed", "channel", chId, "conn", c, "msg", msg)
+		log.Warn("Send failed", "channel", chID, "conn", c, "msg", msg)
 	}
 	return success
 }
 
 // Queues a message to be sent to channel.
 // Nonblocking, returns true if successful.
-func (c *MConnection) TrySend(chId byte, msg interface{}) bool {
+func (c *MConnection) TrySend(chID byte, msg interface{}) bool {
 	if !c.IsRunning() {
 		return false
 	}
 
-	log.Info("TrySend", "channel", chId, "conn", c, "msg", msg)
+	log.Info("TrySend", "channel", chID, "conn", c, "msg", msg)
 
 	// Send message to channel.
-	channel, ok := c.channelsIdx[chId]
+	channel, ok := c.channelsIdx[chID]
 	if !ok {
-		log.Error(Fmt("Cannot send bytes, unknown channel %X", chId))
+		log.Error(Fmt("Cannot send bytes, unknown channel %X", chID))
 		return false
 	}
 
@@ -240,14 +240,14 @@ func (c *MConnection) TrySend(chId byte, msg interface{}) bool {
 	return ok
 }
 
-func (c *MConnection) CanSend(chId byte) bool {
+func (c *MConnection) CanSend(chID byte) bool {
 	if !c.IsRunning() {
 		return false
 	}
 
-	channel, ok := c.channelsIdx[chId]
+	channel, ok := c.channelsIdx[chID]
 	if !ok {
-		log.Error(Fmt("Unknown channel %X", chId))
+		log.Error(Fmt("Unknown channel %X", chID))
 		return false
 	}
 	return channel.canSend()
@@ -421,9 +421,9 @@ FOR_LOOP:
 				}
 				break FOR_LOOP
 			}
-			channel, ok := c.channelsIdx[pkt.ChannelId]
+			channel, ok := c.channelsIdx[pkt.ChannelID]
 			if !ok || channel == nil {
-				PanicQ(Fmt("Unknown channel %X", pkt.ChannelId))
+				PanicQ(Fmt("Unknown channel %X", pkt.ChannelID))
 			}
 			msgBytes, err := channel.recvMsgPacket(pkt)
 			if err != nil {
@@ -434,8 +434,8 @@ FOR_LOOP:
 				break FOR_LOOP
 			}
 			if msgBytes != nil {
-				log.Debug("Received bytes", "chId", pkt.ChannelId, "msgBytes", msgBytes)
-				c.onReceive(pkt.ChannelId, msgBytes)
+				log.Debug("Received bytes", "chID", pkt.ChannelID, "msgBytes", msgBytes)
+				c.onReceive(pkt.ChannelID, msgBytes)
 			}
 		default:
 			PanicSanity(Fmt("Unknown message type %X", pktType))
@@ -456,7 +456,7 @@ FOR_LOOP:
 //-----------------------------------------------------------------------------
 
 type ChannelDescriptor struct {
-	Id                 byte
+	ID                 byte
 	Priority           int
 	SendQueueCapacity  int
 	RecvBufferCapacity int
@@ -493,7 +493,7 @@ func newChannel(conn *MConnection, desc *ChannelDescriptor) *Channel {
 	return &Channel{
 		conn:      conn,
 		desc:      desc,
-		id:        desc.Id,
+		id:        desc.ID,
 		sendQueue: make(chan []byte, desc.SendQueueCapacity),
 		recving:   make([]byte, 0, desc.RecvBufferCapacity),
 		priority:  desc.Priority,
@@ -556,7 +556,7 @@ func (ch *Channel) isSendPending() bool {
 // Not goroutine-safe
 func (ch *Channel) nextMsgPacket() msgPacket {
 	packet := msgPacket{}
-	packet.ChannelId = byte(ch.id)
+	packet.ChannelID = byte(ch.id)
 	packet.Bytes = ch.sending[:MinInt(maxMsgPacketSize, len(ch.sending))]
 	if len(ch.sending) <= maxMsgPacketSize {
 		packet.EOF = byte(0x01)
@@ -617,13 +617,13 @@ const (
 
 // Messages in channels are chopped into smaller msgPackets for multiplexing.
 type msgPacket struct {
-	ChannelId byte
+	ChannelID byte
 	EOF       byte // 1 means message ends here.
 	Bytes     []byte
 }
 
 func (p msgPacket) String() string {
-	return fmt.Sprintf("MsgPacket{%X:%X T:%X}", p.ChannelId, p.Bytes, p.EOF)
+	return fmt.Sprintf("MsgPacket{%X:%X T:%X}", p.ChannelID, p.Bytes, p.EOF)
 }
 
 //-----------------------------------------------------------------------------

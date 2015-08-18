@@ -76,7 +76,7 @@ func (wsc *WSClient) receiveEventsRoutine() {
 				wsc.Stop()
 				break
 			}
-			if strings.HasSuffix(response.Id, "#event") {
+			if strings.HasSuffix(response.ID, "#event") {
 				wsc.EventsCh <- *response.Result.(*ctypes.ResultEvent)
 			} else {
 				wsc.ResultsCh <- response.Result
@@ -89,7 +89,7 @@ func (wsc *WSClient) receiveEventsRoutine() {
 func (wsc *WSClient) Subscribe(eventid string) error {
 	err := wsc.WriteJSON(rpctypes.RPCRequest{
 		JSONRPC: "2.0",
-		Id:      "",
+		ID:      "",
 		Method:  "subscribe",
 		Params:  []interface{}{eventid},
 	})
@@ -100,7 +100,7 @@ func (wsc *WSClient) Subscribe(eventid string) error {
 func (wsc *WSClient) Unsubscribe(eventid string) error {
 	err := wsc.WriteJSON(rpctypes.RPCRequest{
 		JSONRPC: "2.0",
-		Id:      "",
+		ID:      "",
 		Method:  "unsubscribe",
 		Params:  []interface{}{eventid},
 	})

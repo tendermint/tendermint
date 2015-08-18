@@ -49,12 +49,12 @@ func peerHandshake(conn net.Conn, ourNodeInfo *types.NodeInfo) (*types.NodeInfo,
 // NOTE: call peerHandshake on conn before calling newPeer().
 func newPeer(conn net.Conn, peerNodeInfo *types.NodeInfo, outbound bool, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor, onPeerError func(*Peer, interface{})) *Peer {
 	var p *Peer
-	onReceive := func(chId byte, msgBytes []byte) {
-		reactor := reactorsByCh[chId]
+	onReceive := func(chID byte, msgBytes []byte) {
+		reactor := reactorsByCh[chID]
 		if reactor == nil {
-			PanicSanity(Fmt("Unknown channel %X", chId))
+			PanicSanity(Fmt("Unknown channel %X", chID))
 		}
-		reactor.Receive(chId, p, msgBytes)
+		reactor.Receive(chID, p, msgBytes)
 	}
 	onError := func(r interface{}) {
 		p.Stop()
@@ -91,25 +91,25 @@ func (p *Peer) IsOutbound() bool {
 	return p.outbound
 }
 
-func (p *Peer) Send(chId byte, msg interface{}) bool {
+func (p *Peer) Send(chID byte, msg interface{}) bool {
 	if !p.IsRunning() {
 		return false
 	}
-	return p.mconn.Send(chId, msg)
+	return p.mconn.Send(chID, msg)
 }
 
-func (p *Peer) TrySend(chId byte, msg interface{}) bool {
+func (p *Peer) TrySend(chID byte, msg interface{}) bool {
 	if !p.IsRunning() {
 		return false
 	}
-	return p.mconn.TrySend(chId, msg)
+	return p.mconn.TrySend(chID, msg)
 }
 
-func (p *Peer) CanSend(chId byte) bool {
+func (p *Peer) CanSend(chID byte) bool {
 	if !p.IsRunning() {
 		return false
 	}
-	return p.mconn.CanSend(chId)
+	return p.mconn.CanSend(chID)
 }
 
 func (p *Peer) WriteTo(w io.Writer) (n int64, err error) {

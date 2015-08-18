@@ -38,7 +38,7 @@ func NewMempoolReactor(mempool *Mempool) *MempoolReactor {
 func (memR *MempoolReactor) GetChannels() []*p2p.ChannelDescriptor {
 	return []*p2p.ChannelDescriptor{
 		&p2p.ChannelDescriptor{
-			Id:       MempoolChannel,
+			ID:       MempoolChannel,
 			Priority: 5,
 		},
 	}
@@ -53,7 +53,7 @@ func (pexR *MempoolReactor) RemovePeer(peer *p2p.Peer, reason interface{}) {
 }
 
 // Implements Reactor
-func (memR *MempoolReactor) Receive(chId byte, src *p2p.Peer, msgBytes []byte) {
+func (memR *MempoolReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte) {
 	_, msg, err := DecodeMessage(msgBytes)
 	if err != nil {
 		log.Warn("Error decoding message", "error", err)

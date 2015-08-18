@@ -95,27 +95,27 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc) http.HandlerFunc {
 			return
 		}
 		if len(r.URL.Path) > 1 {
-			WriteRPCResponse(w, NewRPCResponse(request.Id, nil, fmt.Sprintf("Invalid JSONRPC endpoint %s", r.URL.Path)))
+			WriteRPCResponse(w, NewRPCResponse(request.ID, nil, fmt.Sprintf("Invalid JSONRPC endpoint %s", r.URL.Path)))
 			return
 		}
 		rpcFunc := funcMap[request.Method]
 		if rpcFunc == nil {
-			WriteRPCResponse(w, NewRPCResponse(request.Id, nil, "RPC method unknown: "+request.Method))
+			WriteRPCResponse(w, NewRPCResponse(request.ID, nil, "RPC method unknown: "+request.Method))
 			return
 		}
 		args, err := jsonParamsToArgs(rpcFunc, request.Params)
 		if err != nil {
-			WriteRPCResponse(w, NewRPCResponse(request.Id, nil, err.Error()))
+			WriteRPCResponse(w, NewRPCResponse(request.ID, nil, err.Error()))
 			return
 		}
 		returns := rpcFunc.f.Call(args)
 		log.Info("HTTPJSONRPC", "method", request.Method, "args", args, "returns", returns)
 		result, err := unreflectResult(returns)
 		if err != nil {
-			WriteRPCResponse(w, NewRPCResponse(request.Id, nil, err.Error()))
+			WriteRPCResponse(w, NewRPCResponse(request.ID, nil, err.Error()))
 			return
 		}
-		WriteRPCResponse(w, NewRPCResponse(request.Id, result, ""))
+		WriteRPCResponse(w, NewRPCResponse(request.ID, result, ""))
 	}
 }
 
@@ -324,23 +324,23 @@ func (wsc *WSConnection) readRoutine() {
 			err = json.Unmarshal(in, &request)
 			if err != nil {
 				errStr := fmt.Sprintf("Error unmarshaling data: %s", err.Error())
-				wsc.writeRPCResponse(NewRPCResponse(request.Id, nil, errStr))
+				wsc.writeRPCResponse(NewRPCResponse(request.ID, nil, errStr))
 				continue
 			}
 			switch request.Method {
 			case "subscribe":
 				if len(request.Params) != 1 {
-					wsc.writeRPCResponse(NewRPCResponse(request.Id, nil, "subscribe takes 1 event parameter string"))
+					wsc.writeRPCResponse(NewRPCResponse(request.ID, nil, "subscribe takes 1 event parameter string"))
 					continue
 				}
 				if event, ok := request.Params[0].(string); !ok {
-					wsc.writeRPCResponse(NewRPCResponse(request.Id, nil, "subscribe takes 1 event parameter string"))
+					wsc.writeRPCResponse(NewRPCResponse(request.ID, nil, "subscribe takes 1 event parameter string"))
 					continue
 				} else {
 					log.Notice("Subscribe to event", "id", wsc.id, "event", event)
 					wsc.evsw.AddListenerForEvent(wsc.id, event, func(msg types.EventData) {
 						// NOTE: RPCResponses of subscribed events have id suffix "#event"
-						wsc.writeRPCResponse(NewRPCResponse(request.Id+"#event", ctypes.ResultEvent{event, msg}, ""))
+						wsc.writeRPCResponse(NewRPCResponse(request.ID+"#event", ctypes.ResultEvent{event, msg}, ""))
 					})
 					continue
 				}
@@ -348,41 +348,41 @@ func (wsc *WSConnection) readRoutine() {
 				if len(request.Params) == 0 {
 					log.Notice("Unsubscribe from all events", "id", wsc.id)
 					wsc.evsw.RemoveListener(wsc.id)
-					wsc.writeRPCResponse(NewRPCResponse(request.Id, nil, ""))
+					wsc.writeRPCResponse(NewRPCResponse(request.ID, nil, ""))
 					continue
 				} else if len(request.Params) == 1 {
 					if event, ok := request.Params[0].(string); !ok {
-						wsc.writeRPCResponse(NewRPCResponse(request.Id, nil, "unsubscribe takes 0 or 1 event parameter strings"))
+						wsc.writeRPCResponse(NewRPCResponse(request.ID, nil, "unsubscribe takes 0 or 1 event parameter strings"))
 						continue
 					} else {
 						log.Notice("Unsubscribe from event", "id", wsc.id, "event", event)
 						wsc.evsw.RemoveListenerForEvent(event, wsc.id)
-						wsc.writeRPCResponse(NewRPCResponse(request.Id, nil, ""))
+						wsc.writeRPCResponse(NewRPCResponse(request.ID, nil, ""))
 						continue
 					}
 				} else {
-					wsc.writeRPCResponse(NewRPCResponse(request.Id, nil, "unsubscribe takes 0 or 1 event parameter strings"))
+					wsc.writeRPCResponse(NewRPCResponse(request.ID, nil, "unsubscribe takes 0 or 1 event parameter strings"))
 					continue
 				}
 			default:
 				rpcFunc := wsc.funcMap[request.Method]
 				if rpcFunc == nil {
-					wsc.writeRPCResponse(NewRPCResponse(request.Id, nil, "RPC method unknown: "+request.Method))
+					wsc.writeRPCResponse(NewRPCResponse(request.ID, nil, "RPC method unknown: "+request.Method))
 					continue
 				}
 				args, err := jsonParamsToArgs(rpcFunc, request.Params)
 				if err != nil {
-					wsc.writeRPCResponse(NewRPCResponse(request.Id, nil, err.Error()))
+					wsc.writeRPCResponse(NewRPCResponse(request.ID, nil, err.Error()))
 					continue
 				}
 				returns := rpcFunc.f.Call(args)
 				log.Info("WSJSONRPC", "method", request.Method, "args", args, "returns", returns)
 				result, err := unreflectResult(returns)
 				if err != nil {
-					wsc.writeRPCResponse(NewRPCResponse(request.Id, nil, err.Error()))
+					wsc.writeRPCResponse(NewRPCResponse(request.ID, nil, err.Error()))
 					continue
 				} else {
-					wsc.writeRPCResponse(NewRPCResponse(request.Id, result, ""))
+					wsc.writeRPCResponse(NewRPCResponse(request.ID, result, ""))
 					continue
 				}
 			}

@@ -45,7 +45,7 @@ func (evsw *EventSwitch) OnStop() {
 	evsw.listeners = nil
 }
 
-func (evsw *EventSwitch) AddListenerForEvent(listenerId, event string, cb eventCallback) {
+func (evsw *EventSwitch) AddListenerForEvent(listenerID, event string, cb eventCallback) {
 	// Get/Create eventCell and listener
 	evsw.mtx.Lock()
 	eventCell := evsw.eventCells[event]
@@ -53,23 +53,23 @@ func (evsw *EventSwitch) AddListenerForEvent(listenerId, event string, cb eventC
 		eventCell = newEventCell()
 		evsw.eventCells[event] = eventCell
 	}
-	listener := evsw.listeners[listenerId]
+	listener := evsw.listeners[listenerID]
 	if listener == nil {
-		listener = newEventListener(listenerId)
-		evsw.listeners[listenerId] = listener
+		listener = newEventListener(listenerID)
+		evsw.listeners[listenerID] = listener
 	}
 	evsw.mtx.Unlock()
 
 	// Add event and listener
-	eventCell.AddListener(listenerId, cb)
+	eventCell.AddListener(listenerID, cb)
 	listener.AddEvent(event)
 }
 
-func (evsw *EventSwitch) RemoveListener(listenerId string) {
+func (evsw *EventSwitch) RemoveListener(listenerID string) {
 	// Get and remove listener
 	evsw.mtx.RLock()
-	listener := evsw.listeners[listenerId]
-	delete(evsw.listeners, listenerId)
+	listener := evsw.listeners[listenerID]
+	delete(evsw.listeners, listenerID)
 	evsw.mtx.RUnlock()
 
 	if listener == nil {
@@ -79,11 +79,11 @@ func (evsw *EventSwitch) RemoveListener(listenerId string) {
 	// Remove callback for each event.
 	listener.SetRemoved()
 	for _, event := range listener.GetEvents() {
-		evsw.RemoveListenerForEvent(event, listenerId)
+		evsw.RemoveListenerForEvent(event, listenerID)
 	}
 }
 
-func (evsw *EventSwitch) RemoveListenerForEvent(event string, listenerId string) {
+func (evsw *EventSwitch) RemoveListenerForEvent(event string, listenerID string) {
 	// Get eventCell
 	evsw.mtx.Lock()
 	eventCell := evsw.eventCells[event]
@@ -93,8 +93,8 @@ func (evsw *EventSwitch) RemoveListenerForEvent(event string, listenerId string)
 		return
 	}
 
-	// Remove listenerId from eventCell
-	numListeners := eventCell.RemoveListener(listenerId)
+	// Remove listenerID from eventCell
+	numListeners := eventCell.RemoveListener(listenerID)
 
 	// Maybe garbage collect eventCell.
 	if numListeners == 0 {
@@ -137,15 +137,15 @@ func newEventCell() *eventCell {
 	}
 }
 
-func (cell *eventCell) AddListener(listenerId string, cb eventCallback) {
+func (cell *eventCell) AddListener(listenerID string, cb eventCallback) {
 	cell.mtx.Lock()
-	cell.listeners[listenerId] = cb
+	cell.listeners[listenerID] = cb
 	cell.mtx.Unlock()
 }
 
-func (cell *eventCell) RemoveListener(listenerId string) int {
+func (cell *eventCell) RemoveListener(listenerID string) int {
 	cell.mtx.Lock()
-	delete(cell.listeners, listenerId)
+	delete(cell.listeners, listenerID)
 	numListeners := len(cell.listeners)
 	cell.mtx.Unlock()
 	return numListeners

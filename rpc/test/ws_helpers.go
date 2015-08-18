@@ -34,7 +34,7 @@ func newWSCon(t *testing.T) *websocket.Conn {
 func subscribe(t *testing.T, con *websocket.Conn, eventid string) {
 	err := con.WriteJSON(rpctypes.RPCRequest{
 		JSONRPC: "2.0",
-		Id:      "",
+		ID:      "",
 		Method:  "subscribe",
 		Params:  []interface{}{eventid},
 	})
@@ -47,7 +47,7 @@ func subscribe(t *testing.T, con *websocket.Conn, eventid string) {
 func unsubscribe(t *testing.T, con *websocket.Conn, eventid string) {
 	err := con.WriteJSON(rpctypes.RPCRequest{
 		JSONRPC: "2.0",
-		Id:      "",
+		ID:      "",
 		Method:  "unsubscribe",
 		Params:  []interface{}{eventid},
 	})

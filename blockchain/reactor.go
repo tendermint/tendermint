@@ -27,7 +27,7 @@ const (
 	// ask for best height every 10s
 	statusUpdateIntervalSeconds = 10
 	// check if we should switch to consensus reactor
-	switchToConsensusIntervalSeconds = 10
+	switchToConsensusIntervalSeconds = 1
 )
 
 type consensusReactor interface {
@@ -97,7 +97,7 @@ func (bcR *BlockchainReactor) OnStop() {
 func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 	return []*p2p.ChannelDescriptor{
 		&p2p.ChannelDescriptor{
-			Id:                BlockchainChannel,
+			ID:                BlockchainChannel,
 			Priority:          5,
 			SendQueueCapacity: 100,
 		},
@@ -117,7 +117,7 @@ func (bcR *BlockchainReactor) RemovePeer(peer *p2p.Peer, reason interface{}) {
 }
 
 // Implements Reactor
-func (bcR *BlockchainReactor) Receive(chId byte, src *p2p.Peer, msgBytes []byte) {
+func (bcR *BlockchainReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte) {
 	_, msg, err := DecodeMessage(msgBytes)
 	if err != nil {
 		log.Warn("Error decoding message", "error", err)
@@ -141,7 +141,7 @@ func (bcR *BlockchainReactor) Receive(chId byte, src *p2p.Peer, msgBytes []byte)
 		}
 	case *bcBlockResponseMessage:
 		// Got a block.
-		bcR.pool.AddBlock(msg.Block, src.Key)
+		bcR.pool.AddBlock(src.Key, msg.Block, len(msgBytes))
 	case *bcStatusRequestMessage:
 		// Send peer our state.
 		queued := src.TrySend(BlockchainChannel, &bcStatusResponseMessage{bcR.store.Height()})
@@ -169,21 +169,20 @@ FOR_LOOP:
 	for {
 		select {
 		case request := <-bcR.requestsCh: // chan BlockRequest
-			peer := bcR.Switch.Peers().Get(request.PeerId)
+			peer := bcR.Switch.Peers().Get(request.PeerID)
 			if peer == nil {
-				// We can't assign the request.
-				continue FOR_LOOP
+				continue FOR_LOOP // Peer has since been disconnected.
 			}
 			msg := &bcBlockRequestMessage{request.Height}
 			queued := peer.TrySend(BlockchainChannel, msg)
 			if !queued {
 				// We couldn't make the request, send-queue full.
-				// The pool handles retries, so just let it go.
+				// The pool handles timeouts, just let it go.
 				continue FOR_LOOP
 			}
-		case peerId := <-bcR.timeoutsCh: // chan string
+		case peerID := <-bcR.timeoutsCh: // chan string
 			// Peer timed out.
-			peer := bcR.Switch.Peers().Get(peerId)
+			peer := bcR.Switch.Peers().Get(peerID)
 			if peer != nil {
 				bcR.Switch.StopPeerForError(peer, errors.New("BlockchainReactor Timeout"))
 			}
@@ -191,17 +190,11 @@ FOR_LOOP:
 			// ask for status updates
 			go bcR.BroadcastStatusRequest()
 		case _ = <-switchToConsensusTicker.C:
-			height, numPending, numUnassigned := bcR.pool.GetStatus()
+			height, numPending := bcR.pool.GetStatus()
 			outbound, inbound, _ := bcR.Switch.NumPeers()
-			log.Info("Consensus ticker", "numUnassigned", numUnassigned, "numPending", numPending,
-				"total", len(bcR.pool.requests), "outbound", outbound, "inbound", inbound)
-			// NOTE: this condition is very strict right now. may need to weaken
-			// If all `maxPendingRequests` requests are unassigned
-			// and we have some peers (say >= 3), then we're caught up
-			maxPending := numPending == maxPendingRequests
-			allUnassigned := numPending == numUnassigned
-			enoughPeers := outbound+inbound >= 3
-			if maxPending && allUnassigned && enoughPeers {
+			log.Info("Consensus ticker", "numPending", numPending, "total", len(bcR.pool.requests),
+				"outbound", outbound, "inbound", inbound)
+			if bcR.pool.IsCaughtUp() {
 				log.Notice("Time to switch to consensus reactor!", "height", height)
 				bcR.pool.Stop()
 
@@ -283,11 +276,15 @@ var _ = wire.RegisterInterface(
 	wire.ConcreteType{&bcStatusRequestMessage{}, msgTypeStatusRequest},
 )
 
+// TODO: ensure that bz is completely read.
 func DecodeMessage(bz []byte) (msgType byte, msg BlockchainMessage, err error) {
 	msgType = bz[0]
-	n := new(int64)
+	n := int64(0)
 	r := bytes.NewReader(bz)
-	msg = wire.ReadBinary(struct{ BlockchainMessage }{}, r, n, &err).(struct{ BlockchainMessage }).BlockchainMessage
+	msg = wire.ReadBinary(struct{ BlockchainMessage }{}, r, &n, &err).(struct{ BlockchainMessage }).BlockchainMessage
+	if err != nil && n != int64(len(bz)) {
+		err = errors.New("DecodeMessage() had bytes left over.")
+	}
 	return
 }
 

@@ -82,17 +82,17 @@ func (conR *ConsensusReactor) GetChannels() []*p2p.ChannelDescriptor {
 	// TODO optimize
 	return []*p2p.ChannelDescriptor{
 		&p2p.ChannelDescriptor{
-			Id:                StateChannel,
+			ID:                StateChannel,
 			Priority:          5,
 			SendQueueCapacity: 100,
 		},
 		&p2p.ChannelDescriptor{
-			Id:                DataChannel,
+			ID:                DataChannel,
 			Priority:          5,
 			SendQueueCapacity: 2,
 		},
 		&p2p.ChannelDescriptor{
-			Id:                VoteChannel,
+			ID:                VoteChannel,
 			Priority:          5,
 			SendQueueCapacity: 40,
 		},
@@ -131,9 +131,9 @@ func (conR *ConsensusReactor) RemovePeer(peer *p2p.Peer, reason interface{}) {
 
 // Implements Reactor
 // NOTE: We process these messages even when we're fast_syncing.
-func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte) {
+func (conR *ConsensusReactor) Receive(chID byte, peer *p2p.Peer, msgBytes []byte) {
 	if !conR.IsRunning() {
-		log.Debug("Receive", "channel", chId, "peer", peer, "bytes", msgBytes)
+		log.Debug("Receive", "channel", chID, "peer", peer, "bytes", msgBytes)
 		return
 	}
 
@@ -142,12 +142,12 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 	ps := peer.Data.Get(PeerStateKey).(*PeerState)
 	_, msg, err := DecodeMessage(msgBytes)
 	if err != nil {
-		log.Warn("Error decoding message", "channel", chId, "peer", peer, "msg", msg, "error", err, "bytes", msgBytes)
+		log.Warn("Error decoding message", "channel", chID, "peer", peer, "msg", msg, "error", err, "bytes", msgBytes)
 		return
 	}
-	log.Debug("Receive", "channel", chId, "peer", peer, "msg", msg, "rsHeight", rs.Height)
+	log.Debug("Receive", "channel", chID, "peer", peer, "msg", msg, "rsHeight", rs.Height)
 
-	switch chId {
+	switch chID {
 	case StateChannel:
 		switch msg := msg.(type) {
 		case *NewRoundStepMessage:
@@ -232,7 +232,7 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 			log.Warn(Fmt("Unknown message type %v", reflect.TypeOf(msg)))
 		}
 	default:
-		log.Warn(Fmt("Unknown channel %X", chId))
+		log.Warn(Fmt("Unknown channel %X", chID))
 	}
 
 	if err != nil {
