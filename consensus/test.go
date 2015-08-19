@@ -9,6 +9,7 @@ import (
 	bc "github.com/tendermint/tendermint/blockchain"
 	dbm "github.com/tendermint/tendermint/db"
 	mempl "github.com/tendermint/tendermint/mempool"
+	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -22,9 +23,11 @@ func addVoteToFrom(t *testing.T, voteType byte, to, from *ConsensusState, hash [
 	if err != nil {
 		panic(fmt.Sprintln("Failed to sign vote", err))
 	}
-	fmt.Println("VOTE:", vote)
-	added, _, err := to.addVote(from.privValidator.Address, vote, "")
-	if !added {
+	valIndex, _ := to.Validators.GetByAddress(from.privValidator.Address)
+	added, err := to.TryAddVote(to.GetRoundState(), vote, valIndex, "")
+	if _, ok := err.(*types.ErrVoteConflictingSignature); ok {
+		// let it fly
+	} else if !added {
 		panic("Failed to add vote")
 	} else if err != nil {
 		panic(fmt.Sprintln("Failed to add vote:", err))
@@ -77,7 +80,7 @@ func validatePrecommit(t *testing.T, cs *ConsensusState, thisRound, lockRound in
 			panic("Expected precommit to be for proposal block")
 		}
 		if cs.LockedRound != lockRound || cs.LockedBlock != block {
-			panic("Expected block to be locked")
+			panic(fmt.Sprintf("Expected block to be locked on round %d, got %d. Got locked block %v, expected %v", lockRound, cs.LockedRound, cs.LockedBlock, block))
 		}
 	}
 
@@ -99,6 +102,8 @@ func simpleConsensusState(nValidators int) ([]*ConsensusState, []*types.PrivVali
 		// Make MempoolReactor
 		mempool := mempl.NewMempool(state.Copy())
 		mempoolReactor := mempl.NewMempoolReactor(mempool)
+
+		mempoolReactor.SetSwitch(p2p.NewSwitch())
 
 		// Make ConsensusReactor
 		cs := NewConsensusState(state, blockStore, mempoolReactor)

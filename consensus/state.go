@@ -179,6 +179,7 @@ var (
 var (
 	ErrInvalidProposalSignature = errors.New("Error invalid proposal signature")
 	ErrInvalidProposalPOLRound  = errors.New("Error invalid proposal POL round")
+	ErrAddingVote               = errors.New("Error adding vote")
 )
 
 //-----------------------------------------------------------------------------
@@ -1081,6 +1082,45 @@ func (cs *ConsensusState) AddVote(address []byte, vote *types.Vote, peerKey stri
 	defer cs.mtx.Unlock()
 
 	return cs.addVote(address, vote, peerKey)
+}
+
+// Attempt to add the vote. if its a duplicate signature, dupeout the validator
+func (cs *ConsensusState) TryAddVote(rs *RoundState, vote *types.Vote, valIndex int, peerKey string) (bool, error) {
+	var validators *types.ValidatorSet
+	if rs.Height == vote.Height {
+		validators = rs.Validators
+	} else if rs.Height == vote.Height+1 {
+		if !(rs.Step == RoundStepNewHeight && vote.Type == types.VoteTypePrecommit) {
+			return false, fmt.Errorf("TryAddVote: Wrong height, not a LastCommit straggler commit.")
+		}
+		validators = rs.LastValidators
+	} else {
+		return false, fmt.Errorf("TryAddVote: Wrong height. Not necessarily a bad peer.")
+	}
+
+	// We have vote/validators.  Height may not be rs.Height
+
+	address, _ := validators.GetByIndex(valIndex)
+	added, index, err := cs.AddVote(address, vote, peerKey)
+	_ = index // should be same as valIndex
+	if err != nil {
+		// If conflicting sig, broadcast evidence tx for slashing. Else punish peer.
+		if errDupe, ok := err.(*types.ErrVoteConflictingSignature); ok {
+			log.Warn("Found conflicting vote. Publish evidence")
+			evidenceTx := &types.DupeoutTx{
+				Address: address,
+				VoteA:   *errDupe.VoteA,
+				VoteB:   *errDupe.VoteB,
+			}
+			cs.mempoolReactor.BroadcastTx(evidenceTx) // shouldn't need to check returned err
+			return added, err
+		} else {
+			// Probably an invalid signature. Bad peer.
+			log.Warn("Error attempting to add vote", "error", err)
+			return added, ErrAddingVote
+		}
+	}
+	return added, nil
 }
 
 //-----------------------------------------------------------------------------

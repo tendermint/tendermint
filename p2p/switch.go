@@ -295,7 +295,6 @@ func (sw *Switch) Broadcast(chId byte, msg interface{}) chan bool {
 		}(peer)
 	}
 	return successChan
-
 }
 
 // Returns the count of outbound/inbound and outbound-dialing peers.
