@@ -61,26 +61,30 @@ func validatePrevote(t *testing.T, cs *ConsensusState, round int, privVal *types
 	}
 }
 
-func validatePrecommit(t *testing.T, cs *ConsensusState, thisRound, lockRound int, privVal *types.PrivValidator, block *types.Block) {
+func validatePrecommit(t *testing.T, cs *ConsensusState, thisRound, lockRound int, privVal *types.PrivValidator, votedBlock, lockedBlock *types.Block) {
 	precommits := cs.Votes.Precommits(thisRound)
 	var vote *types.Vote
 	if vote = precommits.GetByAddress(privVal.Address); vote == nil {
 		panic("Failed to find precommit from validator")
 	}
 
-	if block == nil {
+	if votedBlock == nil {
 		if vote.BlockHash != nil {
 			panic("Expected precommit to be for nil")
 		}
-		if cs.LockedRound != lockRound || cs.LockedBlock != nil {
-			panic("Expected to be locked on nil")
-		}
 	} else {
-		if !bytes.Equal(vote.BlockHash, block.Hash()) {
+		if !bytes.Equal(vote.BlockHash, votedBlock.Hash()) {
 			panic("Expected precommit to be for proposal block")
 		}
-		if cs.LockedRound != lockRound || cs.LockedBlock != block {
-			panic(fmt.Sprintf("Expected block to be locked on round %d, got %d. Got locked block %v, expected %v", lockRound, cs.LockedRound, cs.LockedBlock, block))
+	}
+
+	if lockedBlock == nil {
+		if cs.LockedRound != lockRound || cs.LockedBlock != nil {
+			panic(fmt.Sprintf("Expected to be locked on nil. Got %v", cs.LockedBlock))
+		}
+	} else {
+		if cs.LockedRound != lockRound || cs.LockedBlock != lockedBlock {
+			panic(fmt.Sprintf("Expected block to be locked on round %d, got %d. Got locked block %v, expected %v", lockRound, cs.LockedRound, cs.LockedBlock, lockedBlock))
 		}
 	}
 

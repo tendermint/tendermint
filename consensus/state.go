@@ -386,6 +386,7 @@ func (cs *ConsensusState) scheduleRound0(height int) {
 	go func() {
 		if 0 < sleepDuration {
 			time.Sleep(sleepDuration)
+			// TODO: fire on timeoutCh ?
 		}
 		cs.EnterNewRound(height, 0)
 	}()
@@ -542,9 +543,7 @@ func (cs *ConsensusState) EnterPropose(height int, round int) {
 	}
 	log.Info(Fmt("EnterPropose(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
-	// At this point, we EnterPrevote when the proposal is complete or after timeoutPropose
-	// Use the enteredPrevote channel so we don't EnterPrevote twice
-	var enteredPrevote = make(chan struct{}, 1)
+	var enterPrevote = make(chan struct{}, 1)
 
 	defer func() {
 		// Done EnterPropose:
@@ -553,23 +552,20 @@ func (cs *ConsensusState) EnterPropose(height int, round int) {
 
 		// If we already have the proposal + POL, then goto Prevote
 		if cs.isProposalComplete() {
-			enteredPrevote <- struct{}{}
-			cs.newStepCh <- cs.getRoundState()
-			go cs.EnterPrevote(height, cs.Round)
+			enterPrevote <- struct{}{}
 		}
 	}()
 
-	// EnterPrevote after timeoutPropose or do nothing if we've already entered
+	// EnterPrevote after timeoutPropose or if the proposal is complete
 	go func() {
 		ticker := time.NewTicker(timeoutPropose)
 		select {
 		case <-ticker.C:
 			cs.timeoutChan <- TimeoutEvent{RoundStepPropose, height, round}
-			cs.newStepCh <- cs.getRoundState()
-			cs.EnterPrevote(height, round)
-		case <-enteredPrevote:
-			return
+		case <-enterPrevote:
 		}
+		cs.newStepCh <- cs.getRoundState()
+		cs.EnterPrevote(height, round)
 	}()
 
 	// Nothing more to do if we're not a validator
@@ -792,19 +788,20 @@ func (cs *ConsensusState) EnterPrecommit(height int, round int) {
 	hash, partsHeader, ok := cs.Votes.Prevotes(round).TwoThirdsMajority()
 
 	// If we don't have two thirds of prevotes, just precommit nil
+	// NOTE: alternatively, if we have seen a POL since our last precommit,
+	// we could precommit that
 	if !ok {
 		if cs.LockedBlock != nil {
-			log.Info("EnterPrecommit: No +2/3 prevotes during EnterPrecommit. Precommitting locked block")
-			cs.signAddVote(types.VoteTypePrecommit, cs.LockedBlock.Hash(), cs.LockedBlockParts.Header())
+			log.Info("EnterPrecommit: No +2/3 prevotes during EnterPrecommit while we're locked. Precommitting nil")
+			//cs.signAddVote(types.VoteTypePrecommit, cs.LockedBlock.Hash(), cs.LockedBlockParts.Header())
 		} else {
 			log.Info("EnterPrecommit: No +2/3 prevotes during EnterPrecommit. Precommitting nil.")
-			cs.signAddVote(types.VoteTypePrecommit, nil, types.PartSetHeader{})
 		}
+		cs.signAddVote(types.VoteTypePrecommit, nil, types.PartSetHeader{})
 		return
 	}
 
 	// At this point +2/3 prevoted for a particular block or nil
-	// TODO: set POLRound
 
 	// +2/3 prevoted nil. Unlock and precommit nil.
 	if len(hash) == 0 {
@@ -812,7 +809,7 @@ func (cs *ConsensusState) EnterPrecommit(height int, round int) {
 			log.Info("EnterPrecommit: +2/3 prevoted for nil.")
 		} else {
 			log.Info("EnterPrecommit: +2/3 prevoted for nil. Unlocking")
-			cs.LockedRound = 0
+			cs.LockedRound = 0 //XXX: should be this round
 			cs.LockedBlock = nil
 			cs.LockedBlockParts = nil
 		}
@@ -822,9 +819,10 @@ func (cs *ConsensusState) EnterPrecommit(height int, round int) {
 
 	// At this point, +2/3 prevoted for a particular block.
 
-	// If +2/3 prevoted for already locked block, precommit it.
+	// If we're already locked on that block, precommit it, and update the LockedRound
 	if cs.LockedBlock.HashesTo(hash) {
 		log.Info("EnterPrecommit: +2/3 prevoted locked block.")
+		cs.LockedRound = round
 		cs.signAddVote(types.VoteTypePrecommit, hash, partsHeader)
 		return
 	}
@@ -849,7 +847,7 @@ func (cs *ConsensusState) EnterPrecommit(height int, round int) {
 	if cs.Votes.POLRound() < round {
 		PanicSanity(Fmt("This POLRound shold be %v but got %", round, cs.Votes.POLRound()))
 	}
-	cs.LockedRound = 0
+	cs.LockedRound = 0 // XXX: shouldn't we set this to this round
 	cs.LockedBlock = nil
 	cs.LockedBlockParts = nil
 	if !cs.ProposalBlockParts.HasHeader(partsHeader) {
@@ -918,16 +916,19 @@ func (cs *ConsensusState) EnterCommit(height int) {
 	// The Locked* fields no longer matter.
 	// Move them over to ProposalBlock if they match the commit hash,
 	// otherwise they can now be cleared.
+	// XXX: can't we just wait to clear them in updateToState ?
+	// XXX: it's causing a race condition in tests where they get cleared
+	// before we can check the lock!
 	if cs.LockedBlock.HashesTo(hash) {
 		cs.ProposalBlock = cs.LockedBlock
 		cs.ProposalBlockParts = cs.LockedBlockParts
-		cs.LockedRound = 0
+		/*cs.LockedRound = 0
 		cs.LockedBlock = nil
-		cs.LockedBlockParts = nil
+		cs.LockedBlockParts = nil*/
 	} else {
-		cs.LockedRound = 0
+		/*cs.LockedRound = 0
 		cs.LockedBlock = nil
-		cs.LockedBlockParts = nil
+		cs.LockedBlockParts = nil*/
 	}
 
 	// If we don't have the block being committed, set up to get it.
@@ -1063,10 +1064,10 @@ func (cs *ConsensusState) AddProposalBlockPart(height int, part *types.Part) (ad
 		var n int64
 		var err error
 		cs.ProposalBlock = wire.ReadBinary(&types.Block{}, cs.ProposalBlockParts.GetReader(), &n, &err).(*types.Block)
-		// XXX: shouldn't we check error here?! also, this type assertion is gauranteed right
 		log.Info("Received complete proposal", "hash", cs.ProposalBlock.Hash())
 		if cs.Step == RoundStepPropose && cs.isProposalComplete() {
 			// Move onto the next step
+			// XXX: isn't this unecessary since propose will either do this or timeout into it
 			go cs.EnterPrevote(height, cs.Round)
 		} else if cs.Step == RoundStepCommit {
 			// If we're waiting on the proposal block...
@@ -1155,7 +1156,7 @@ func (cs *ConsensusState) addVote(address []byte, vote *types.Vote, peerKey stri
 					hash, _, ok := prevotes.TwoThirdsMajority()
 					if ok && !cs.LockedBlock.HashesTo(hash) {
 						log.Notice("Unlocking because of POL.", "lockedRound", cs.LockedRound, "POLRound", vote.Round)
-						cs.LockedRound = 0
+						cs.LockedRound = 0 // XXX: shouldn't we set this to the current round?
 						cs.LockedBlock = nil
 						cs.LockedBlockParts = nil
 					}
@@ -1175,6 +1176,7 @@ func (cs *ConsensusState) addVote(address []byte, vote *types.Vote, peerKey stri
 					}()
 				} else if cs.Proposal != nil && 0 <= cs.Proposal.POLRound && cs.Proposal.POLRound == vote.Round {
 					// If the proposal is now complete, enter prevote of cs.Round.
+					// XXX: hmph again
 					if cs.isProposalComplete() {
 						go cs.EnterPrevote(height, cs.Round)
 					}

@@ -24,8 +24,8 @@ x * TestLockNoPOL - 2 vals, tests for val 1 getting locked
   * TestNetworkLock - once +1/3 precommits, network should be locked
   * TestNetworkLockPOL - once +1/3 precommits, the block with more recent polka is committed
 SlashingSuite
-  * TestSlashingPrevotes - a validator prevoting twice in a round gets slashed
-  * TestSlashingPrecommits - a validator precomitting twice in a round gets slashed
+x * TestSlashingPrevotes - a validator prevoting twice in a round gets slashed
+x * TestSlashingPrecommits - a validator precomitting twice in a round gets slashed
 CatchupSuite
   * TestCatchup - if we might be behind and we've seen any 2/3 prevotes, round skip to new round, precommit, or prevote
 HaltSuite
@@ -148,7 +148,7 @@ func TestBadProposal(t *testing.T) {
 
 	addVoteToFrom(t, types.VoteTypePrevote, cs1, cs2, propBlock.Hash(), propBlock.MakePartSet().Header())
 	_, _, _ = <-cs1.NewStepCh(), <-cs1.timeoutChan, <-cs1.NewStepCh()
-	validatePrecommit(t, cs1, 0, 0, privVals[0], nil)
+	validatePrecommit(t, cs1, 0, 0, privVals[0], nil, nil)
 	addVoteToFrom(t, types.VoteTypePrecommit, cs1, cs2, propBlock.Hash(), propBlock.MakePartSet().Header())
 }
 
@@ -173,7 +173,7 @@ func TestFullRound1(t *testing.T) {
 	<-cs.NewStepCh()
 
 	// the proposed block should now be locked and our precommit added
-	validatePrecommit(t, cs, 0, 0, privVals[0], cs.ProposalBlock)
+	validatePrecommit(t, cs, 0, 0, privVals[0], cs.ProposalBlock, cs.ProposalBlock)
 }
 
 // nil is proposed, so prevote and precommit nil
@@ -199,7 +199,7 @@ func TestFullRoundNil(t *testing.T) {
 	// wait to finish precommit
 	<-cs.NewStepCh()
 	// we should have precommitted nil
-	validatePrecommit(t, cs, 0, 0, privVals[0], nil)
+	validatePrecommit(t, cs, 0, 0, privVals[0], nil, nil)
 }
 
 // run through propose, prevote, precommit commit with two validators
@@ -227,7 +227,7 @@ func TestFullRound2(t *testing.T) {
 	<-cs1.NewStepCh()
 
 	// the proposed block should now be locked and our precommit added
-	validatePrecommit(t, cs1, 0, 0, privVals[0], cs1.ProposalBlock)
+	validatePrecommit(t, cs1, 0, 0, privVals[0], cs1.ProposalBlock, cs1.ProposalBlock)
 
 	// we should now be stuck in limbo forever, waiting for more precommits
 	ensureNoNewStep(t, cs1)
@@ -272,11 +272,13 @@ func TestLockNoPOL(t *testing.T) {
 	// prevote arrives from cs2:
 	addVoteToFrom(t, types.VoteTypePrevote, cs1, cs2, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header())
 
+	theBlock := cs1.ProposalBlock
+
 	// wait to finish precommit
 	<-cs1.NewStepCh()
 
 	// the proposed block should now be locked and our precommit added
-	validatePrecommit(t, cs1, 0, 0, privVals[0], cs1.ProposalBlock)
+	validatePrecommit(t, cs1, 0, 0, privVals[0], cs1.ProposalBlock, cs1.ProposalBlock)
 
 	// we should now be stuck in limbo forever, waiting for more precommits
 	// lets add one for a different block
@@ -320,8 +322,8 @@ func TestLockNoPOL(t *testing.T) {
 	_, _, _ = <-cs1.NewStepCh(), <-cs1.timeoutChan, <-cs1.NewStepCh()
 
 	// the proposed block should still be locked and our precommit added
-	// TODO: we should actually be precommitting nil
-	validatePrecommit(t, cs1, 1, 0, privVals[0], cs1.ProposalBlock)
+	// we should precommit nil and be locked on the proposal
+	validatePrecommit(t, cs1, 1, 0, privVals[0], nil, theBlock)
 
 	// add conflicting precommit from cs2
 	// NOTE: in practice we should never get to a point where there are precommits for different blocks at the same round
@@ -352,7 +354,7 @@ func TestLockNoPOL(t *testing.T) {
 	// TODO: quick fastforward to new round, set proposer
 	addVoteToFrom(t, types.VoteTypePrevote, cs1, cs2, hash, cs1.ProposalBlockParts.Header())
 	_, _, _ = <-cs1.NewStepCh(), <-cs1.timeoutChan, <-cs1.NewStepCh()
-	validatePrecommit(t, cs1, 2, 0, privVals[0], cs1.LockedBlock)                              // TODO: should be nil
+	validatePrecommit(t, cs1, 2, 0, privVals[0], nil, theBlock)                                // precommit nil but be locked on proposal
 	addVoteToFrom(t, types.VoteTypePrecommit, cs1, cs2, hash, cs1.ProposalBlockParts.Header()) // NOTE: conflicting precommits at same height
 
 	<-cs1.NewStepCh()
@@ -395,7 +397,7 @@ func TestLockNoPOL(t *testing.T) {
 
 	addVoteToFrom(t, types.VoteTypePrevote, cs1, cs2, propBlock.Hash(), propBlock.MakePartSet().Header())
 	_, _, _ = <-cs1.NewStepCh(), <-cs1.timeoutChan, <-cs1.NewStepCh()
-	validatePrecommit(t, cs1, 2, 0, privVals[0], cs1.LockedBlock)                                           // TODO: should be nil
+	validatePrecommit(t, cs1, 2, 0, privVals[0], nil, theBlock)                                             // precommit nil but locked on proposal
 	addVoteToFrom(t, types.VoteTypePrecommit, cs1, cs2, propBlock.Hash(), propBlock.MakePartSet().Header()) // NOTE: conflicting precommits at same height
 }
 
@@ -448,7 +450,7 @@ func TestNetworkLock(t *testing.T) {
 	<-donePrecommits
 
 	// the proposed block should now be locked and our precommit added
-	validatePrecommit(t, cs1, 0, 0, privVals[0], cs1.ProposalBlock)
+	validatePrecommit(t, cs1, 0, 0, privVals[0], cs1.ProposalBlock, cs1.ProposalBlock)
 
 	// add precommits from cs2 and cs4 (we failed to get one from cs3)
 	addVoteToFrom(t, types.VoteTypePrecommit, cs1, cs2, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header())
@@ -473,7 +475,6 @@ func TestNetworkLock(t *testing.T) {
 //------------------------------------------------------------------------------------------
 // SlashingSuite
 
-// slashing requires the
 func TestSlashingPrevotes(t *testing.T) {
 	css, privVals := simpleConsensusState(2)
 	cs1, cs2 := css[0], css[1]
