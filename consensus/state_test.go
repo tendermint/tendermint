@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 
 	_ "github.com/tendermint/tendermint/config/tendermint_test"
@@ -19,8 +20,11 @@ x * TestFullRound1 - 1 val, full successful round
 x * TestFullRoundNil - 1 val, full round of nil
 x * TestFullRound2 - 2 vals, both required for fuill round
 LockSuite
-x * TestLockNoPOL - 2 vals, tests for val 1 getting locked
-  * TestLockPOL - 4 vals, one precommits, other 3 polka at next round, so we unlock and precomit the polka
+x * TestLockNoPOL - 2 vals, 4 rounds. one val locked, precommits nil ever round except first.
+x * TestLockPOLRelock - 4 vals, one precommits, other 3 polka at next round, so we unlock and precomit the polka
+x * TestLockPOLUnlock - 4 vals, one precommits, other 3 polka nil at next round, so we unlock and precomit nil
+x * TestLockPOLSafety1 - 4 vals. We shouldn't change lock based on polka at earlier round
+x * TestLockPOLSafety2 - 4 vals. After unlocking, we shouldn't relock based on polka at earlier round
   * TestNetworkLock - once +1/3 precommits, network should be locked
   * TestNetworkLockPOL - once +1/3 precommits, the block with more recent polka is committed
 SlashingSuite
@@ -146,10 +150,10 @@ func TestBadProposal(t *testing.T) {
 	_, _ = <-cs1.NewStepCh(), <-cs1.NewStepCh()
 	validatePrevote(t, cs1, 0, privVals[0], nil)
 
-	addVoteToFrom(t, types.VoteTypePrevote, cs1, cs2, propBlock.Hash(), propBlock.MakePartSet().Header())
+	signAddVoteToFrom(types.VoteTypePrevote, cs1, cs2, propBlock.Hash(), propBlock.MakePartSet().Header())
 	_, _, _ = <-cs1.NewStepCh(), <-cs1.timeoutChan, <-cs1.NewStepCh()
 	validatePrecommit(t, cs1, 0, 0, privVals[0], nil, nil)
-	addVoteToFrom(t, types.VoteTypePrecommit, cs1, cs2, propBlock.Hash(), propBlock.MakePartSet().Header())
+	signAddVoteToFrom(types.VoteTypePrecommit, cs1, cs2, propBlock.Hash(), propBlock.MakePartSet().Header())
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -168,12 +172,15 @@ func TestFullRound1(t *testing.T) {
 
 	// we should now be in precommit
 	// verify our prevote is there
-	validatePrevote(t, cs, 0, privVals[0], cs.ProposalBlock.Hash())
+	propBlockHash := cs.ProposalBlock.Hash()
+	validatePrevote(t, cs, 0, privVals[0], propBlockHash)
 	// wait to finish precommit
 	<-cs.NewStepCh()
 
 	// the proposed block should now be locked and our precommit added
-	validatePrecommit(t, cs, 0, 0, privVals[0], cs.ProposalBlock, cs.ProposalBlock)
+	cs.mtx.Lock()
+	validatePrecommit(t, cs, 0, 0, privVals[0], propBlockHash, propBlockHash)
+	cs.mtx.Unlock()
 }
 
 // nil is proposed, so prevote and precommit nil
@@ -220,20 +227,22 @@ func TestFullRound2(t *testing.T) {
 	// we should now be stuck in limbo forever, waiting for more prevotes
 	ensureNoNewStep(t, cs1)
 
+	propBlockHash, propPartsHeader := cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header()
+
 	// prevote arrives from cs2:
-	addVoteToFrom(t, types.VoteTypePrevote, cs1, cs2, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header())
+	signAddVoteToFrom(types.VoteTypePrevote, cs1, cs2, propBlockHash, propPartsHeader)
 
 	// wait to finish precommit
 	<-cs1.NewStepCh()
 
 	// the proposed block should now be locked and our precommit added
-	validatePrecommit(t, cs1, 0, 0, privVals[0], cs1.ProposalBlock, cs1.ProposalBlock)
+	validatePrecommit(t, cs1, 0, 0, privVals[0], propBlockHash, propBlockHash)
 
 	// we should now be stuck in limbo forever, waiting for more precommits
 	ensureNoNewStep(t, cs1)
 
 	// precommit arrives from cs2:
-	addVoteToFrom(t, types.VoteTypePrecommit, cs1, cs2, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header())
+	signAddVoteToFrom(types.VoteTypePrecommit, cs1, cs2, propBlockHash, propPartsHeader)
 
 	// wait to finish commit, propose in next height
 	_, rs := <-cs1.NewStepCh(), <-cs1.NewStepCh()
@@ -245,7 +254,9 @@ func TestFullRound2(t *testing.T) {
 //------------------------------------------------------------------------------------------
 // LockSuite
 
-// two validators, a series of rounds in which the first validator is locked
+// two validators, 4 rounds.
+// val1 proposes the first 2 rounds, and is locked in the first.
+// val2 proposes the next two. val1 should precommit nil on all (except first where he locks)
 func TestLockNoPOL(t *testing.T) {
 	css, privVals := simpleConsensusState(2)
 	cs1, cs2 := css[0], css[1]
@@ -270,22 +281,24 @@ func TestLockNoPOL(t *testing.T) {
 
 	// we should now be stuck in limbo forever, waiting for more prevotes
 	// prevote arrives from cs2:
-	addVoteToFrom(t, types.VoteTypePrevote, cs1, cs2, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header())
+	signAddVoteToFrom(types.VoteTypePrevote, cs1, cs2, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header())
 
-	theBlock := cs1.ProposalBlock
+	cs1.mtx.Lock()
+	theBlockHash := cs1.ProposalBlock.Hash()
+	cs1.mtx.Unlock()
 
 	// wait to finish precommit
 	<-cs1.NewStepCh()
 
 	// the proposed block should now be locked and our precommit added
-	validatePrecommit(t, cs1, 0, 0, privVals[0], cs1.ProposalBlock, cs1.ProposalBlock)
+	validatePrecommit(t, cs1, 0, 0, privVals[0], theBlockHash, theBlockHash)
 
 	// we should now be stuck in limbo forever, waiting for more precommits
 	// lets add one for a different block
 	// NOTE: in practice we should never get to a point where there are precommits for different blocks at the same round
 	hash := cs1.ProposalBlock.Hash()
 	hash[0] = byte((hash[0] + 1) % 255)
-	addVoteToFrom(t, types.VoteTypePrecommit, cs1, cs2, hash, cs1.ProposalBlockParts.Header())
+	signAddVoteToFrom(types.VoteTypePrecommit, cs1, cs2, hash, cs1.ProposalBlockParts.Header())
 
 	// (note we're entering precommit for a second time this round)
 	// but with invalid args. then we EnterPrecommitWait, and the timeout to new round
@@ -315,7 +328,7 @@ func TestLockNoPOL(t *testing.T) {
 	validatePrevote(t, cs1, 1, privVals[0], cs1.LockedBlock.Hash())
 
 	// add a conflicting prevote from the other validator
-	addVoteToFrom(t, types.VoteTypePrevote, cs1, cs2, hash, cs1.ProposalBlockParts.Header())
+	signAddVoteToFrom(types.VoteTypePrevote, cs1, cs2, hash, cs1.ProposalBlockParts.Header())
 
 	// now we're going to enter prevote again, but with invalid args
 	// and then prevote wait, which should timeout. then wait for precommit
@@ -323,11 +336,11 @@ func TestLockNoPOL(t *testing.T) {
 
 	// the proposed block should still be locked and our precommit added
 	// we should precommit nil and be locked on the proposal
-	validatePrecommit(t, cs1, 1, 0, privVals[0], nil, theBlock)
+	validatePrecommit(t, cs1, 1, 0, privVals[0], nil, theBlockHash)
 
 	// add conflicting precommit from cs2
 	// NOTE: in practice we should never get to a point where there are precommits for different blocks at the same round
-	addVoteToFrom(t, types.VoteTypePrecommit, cs1, cs2, hash, cs1.ProposalBlockParts.Header())
+	signAddVoteToFrom(types.VoteTypePrecommit, cs1, cs2, hash, cs1.ProposalBlockParts.Header())
 
 	// (note we're entering precommit for a second time this round, but with invalid args
 	// then we EnterPrecommitWait and timeout into NewRound
@@ -352,10 +365,10 @@ func TestLockNoPOL(t *testing.T) {
 	validatePrevote(t, cs1, 0, privVals[0], cs1.LockedBlock.Hash())
 
 	// TODO: quick fastforward to new round, set proposer
-	addVoteToFrom(t, types.VoteTypePrevote, cs1, cs2, hash, cs1.ProposalBlockParts.Header())
+	signAddVoteToFrom(types.VoteTypePrevote, cs1, cs2, hash, cs1.ProposalBlockParts.Header())
 	_, _, _ = <-cs1.NewStepCh(), <-cs1.timeoutChan, <-cs1.NewStepCh()
-	validatePrecommit(t, cs1, 2, 0, privVals[0], nil, theBlock)                                // precommit nil but be locked on proposal
-	addVoteToFrom(t, types.VoteTypePrecommit, cs1, cs2, hash, cs1.ProposalBlockParts.Header()) // NOTE: conflicting precommits at same height
+	validatePrecommit(t, cs1, 2, 0, privVals[0], nil, theBlockHash)                             // precommit nil but be locked on proposal
+	signAddVoteToFrom(types.VoteTypePrecommit, cs1, cs2, hash, cs1.ProposalBlockParts.Header()) // NOTE: conflicting precommits at same height
 
 	<-cs1.NewStepCh()
 
@@ -395,14 +408,14 @@ func TestLockNoPOL(t *testing.T) {
 	_, _ = <-cs1.NewStepCh(), <-cs1.NewStepCh()
 	validatePrevote(t, cs1, 0, privVals[0], cs1.LockedBlock.Hash())
 
-	addVoteToFrom(t, types.VoteTypePrevote, cs1, cs2, propBlock.Hash(), propBlock.MakePartSet().Header())
+	signAddVoteToFrom(types.VoteTypePrevote, cs1, cs2, propBlock.Hash(), propBlock.MakePartSet().Header())
 	_, _, _ = <-cs1.NewStepCh(), <-cs1.timeoutChan, <-cs1.NewStepCh()
-	validatePrecommit(t, cs1, 2, 0, privVals[0], nil, theBlock)                                             // precommit nil but locked on proposal
-	addVoteToFrom(t, types.VoteTypePrecommit, cs1, cs2, propBlock.Hash(), propBlock.MakePartSet().Header()) // NOTE: conflicting precommits at same height
+	validatePrecommit(t, cs1, 2, 0, privVals[0], nil, theBlockHash)                                          // precommit nil but locked on proposal
+	signAddVoteToFrom(types.VoteTypePrecommit, cs1, cs2, propBlock.Hash(), propBlock.MakePartSet().Header()) // NOTE: conflicting precommits at same height
 }
 
-// once +2/3 prevote and +1/3 precommit for a block, the network will forever be locked on it
-func TestNetworkLock(t *testing.T) {
+// 4 vals, one precommits, other 3 polka at next round, so we unlock and precomit the polka
+func TestLockPOLRelock(t *testing.T) {
 	css, privVals := simpleConsensusState(4)
 	cs1, cs2, cs3, cs4 := css[0], css[1], css[2], css[3]
 	cs1.newStepCh = make(chan *RoundState) // so it blocks
@@ -420,56 +433,549 @@ func TestNetworkLock(t *testing.T) {
 		cs1: B
 		cs2: B
 		cs3: B
-		cs4: nil // eg. didn't get proposal
+		cs4: B
 	Precommits:
 		cs1: B
-		cs2: B
-		cs3: _ // eg. we didn't see it
+		cs2: nil // eg. didn't see the 2/3 prevotes
+		cs3: B
 		cs4: nil // eg. didn't see the 2/3 prevotes
-
-	NOTE: now that +1/3 has precommitted for B, the network is locked on B
 	*/
 
 	// start round and wait for propose and prevote
 	cs1.EnterNewRound(cs1.Height, 0)
 	_, _ = <-cs1.NewStepCh(), <-cs1.NewStepCh()
 
+	theBlockHash := cs1.ProposalBlock.Hash()
+
 	// wait to finish precommit after prevotes done
 	// we do this in a go routine with another channel since otherwise
 	// we may get deadlock with EnterPrecommit waiting to send on newStepCh and the final
-	// addVoteToFrom waiting for the cs.mtx.Lock
-	donePrecommits := make(chan struct{})
+	// signAddVoteToFrom waiting for the cs.mtx.Lock
+	donePrecommit := make(chan struct{})
 	go func() {
 		<-cs1.NewStepCh()
-		donePrecommits <- struct{}{}
+		donePrecommit <- struct{}{}
 	}()
-	addVoteToFrom(t, types.VoteTypePrevote, cs1, cs2, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header())
-	addVoteToFrom(t, types.VoteTypePrevote, cs1, cs3, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header())
-	addVoteToFrom(t, types.VoteTypePrevote, cs1, cs4, nil, types.PartSetHeader{})
-
-	<-donePrecommits
+	signAddVoteToFrom(types.VoteTypePrevote, cs1, cs2, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header())
+	signAddVoteToFrom(types.VoteTypePrevote, cs1, cs3, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header())
+	signAddVoteToFrom(types.VoteTypePrevote, cs1, cs4, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header())
+	<-donePrecommit
 
 	// the proposed block should now be locked and our precommit added
-	validatePrecommit(t, cs1, 0, 0, privVals[0], cs1.ProposalBlock, cs1.ProposalBlock)
+	validatePrecommit(t, cs1, 0, 0, privVals[0], theBlockHash, theBlockHash)
 
-	// add precommits from cs2 and cs4 (we failed to get one from cs3)
-	addVoteToFrom(t, types.VoteTypePrecommit, cs1, cs2, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header())
-	addVoteToFrom(t, types.VoteTypePrecommit, cs1, cs4, nil, types.PartSetHeader{})
+	donePrecommitWait := make(chan struct{})
+	go func() {
+		// (note we're entering precommit for a second time this round)
+		// but with invalid args. then we EnterPrecommitWait, twice (?)
+		<-cs1.NewStepCh()
+		donePrecommitWait <- struct{}{}
+	}()
+	// add precommits from the rest
+	signAddVoteToFrom(types.VoteTypePrecommit, cs1, cs2, nil, types.PartSetHeader{})
+	signAddVoteToFrom(types.VoteTypePrecommit, cs1, cs3, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header())
+	signAddVoteToFrom(types.VoteTypePrecommit, cs1, cs4, nil, types.PartSetHeader{})
+	<-donePrecommitWait
 
-	// (note we're entering precommit for a second time this round)
-	// but with invalid args. then we EnterPrecommitWait, and the timeout to new round
-	_, _ = <-cs1.NewStepCh(), <-cs1.timeoutChan
+	// before we time out into new round, set next proposer
+	// and next proposal block
+	_, v1 := cs1.Validators.GetByAddress(privVals[0].Address)
+	v1.VotingPower = 1
+	if updated := cs1.Validators.Update(v1); !updated {
+		t.Fatal("failed to update validator")
+	}
+
+	cs2.decideProposal(cs2.Height, cs2.Round+1)
+	prop, propBlock := cs2.Proposal, cs2.ProposalBlock
+	if prop == nil || propBlock == nil {
+		t.Fatal("Failed to create proposal block with cs2")
+	}
+
+	cs2.Round += 1
+	cs3.Round += 1
+	cs4.Round += 1
+
+	// timeout to new round
+	te := <-cs1.timeoutChan
+	if te.Type != RoundStepPrecommit {
+		t.Fatalf("expected to timeout of precommit into new round. got %v", te.Type)
+	}
 
 	/*Round2
-	Proposer: cs1 reproposes B
+	Proposer: cs2 proposes C
+	Prevotes:
+		cs1: B
+		cs2: C
+		cs3: C
+		cs4: C
+	Precommits:
+		cs1: C // changed lock!
+		cs2: C
+		cs3: C
+		cs4: _ // eg we didn't receive it
+	*/
+
+	// now we're on a new round and not the proposer, so wait for timeout
+	te = <-cs1.timeoutChan
+	if te.Type != RoundStepPropose {
+		t.Fatalf("expected to timeout of propose. got %v", te.Type)
+	}
+	<-cs1.NewStepCh()
+	// set the proposal block
+	cs1.mtx.Lock()
+	cs1.Proposal, cs1.ProposalBlock, cs1.ProposalBlockParts = prop, propBlock, propBlock.MakePartSet()
+	cs1.mtx.Unlock()
+	// go to prevote, prevote for locked block (not proposal)
+	<-cs1.NewStepCh()
+	validatePrevote(t, cs1, 0, privVals[0], cs1.LockedBlock.Hash())
+
+	donePrecommit = make(chan struct{})
+	go func() {
+		rs := <-cs1.NewStepCh() // PrevoteWait or Precommit
+		if rs.Step == RoundStepPrevoteWait {
+			<-cs1.NewStepCh() // Precommit
+		}
+		donePrecommit <- struct{}{}
+	}()
+	// now lets add prevotes from everyone else for the new block
+	signAddVoteToFrom(types.VoteTypePrevote, cs1, cs2, propBlock.Hash(), propBlock.MakePartSet().Header())
+	signAddVoteToFrom(types.VoteTypePrevote, cs1, cs3, propBlock.Hash(), propBlock.MakePartSet().Header())
+	signAddVoteToFrom(types.VoteTypePrevote, cs1, cs4, propBlock.Hash(), propBlock.MakePartSet().Header())
+	<-donePrecommit
+
+	// we should have unlocked and locked on the new block
+	validatePrecommit(t, cs1, 1, 1, privVals[0], propBlock.Hash(), propBlock.Hash())
+
+	donePrecommitWait = make(chan struct{})
+	go func() {
+		// (note we're entering precommit for a second time this round)
+		// but with invalid args. then we EnterPrecommitWait,
+		<-cs1.NewStepCh()
+		donePrecommitWait <- struct{}{}
+	}()
+	signAddVoteToFrom(types.VoteTypePrecommit, cs1, cs2, propBlock.Hash(), propBlock.MakePartSet().Header())
+	signAddVoteToFrom(types.VoteTypePrecommit, cs1, cs3, propBlock.Hash(), propBlock.MakePartSet().Header())
+	<-donePrecommitWait
+
+	rs := <-cs1.NewStepCh()
+	if rs.Height != 2 {
+		t.Fatal("Expected height to increment")
+	}
+
+	if hash, _, ok := rs.LastCommit.TwoThirdsMajority(); !ok || !bytes.Equal(hash, propBlock.Hash()) {
+		t.Fatal("Expected block to get committed")
+	}
+
+}
+
+// 4 vals, one precommits, other 3 polka at next round, so we unlock and precomit the polka
+func TestLockPOLUnlock(t *testing.T) {
+	css, privVals := simpleConsensusState(4)
+	cs1, cs2, cs3, cs4 := css[0], css[1], css[2], css[3]
+	cs1.newStepCh = make(chan *RoundState) // so it blocks
+
+	cs1.SetPrivValidator(privVals[0])
+	cs2.SetPrivValidator(privVals[1])
+	cs3.SetPrivValidator(privVals[2])
+	cs4.SetPrivValidator(privVals[3])
+
+	// everything done from perspective of cs1
+
+	/* Round 1
+	Proposer: cs1 proposes B
 	Prevotes:
 		cs1: B
 		cs2: B
 		cs3: B
+		cs4: B
+	Precommits:
+		cs1: B
+		cs2: nil // eg. didn't see the 2/3 prevotes
+		cs3: B
+		cs4: nil // eg. didn't see the 2/3 prevotes
 	*/
 
-	// TODO: actually test something here ...
+	// start round and wait for propose and prevote
+	cs1.EnterNewRound(cs1.Height, 0)
+	_, _ = <-cs1.NewStepCh(), <-cs1.NewStepCh()
 
+	theBlockHash := cs1.ProposalBlock.Hash()
+
+	donePrecommit := make(chan struct{})
+	go func() {
+		<-cs1.NewStepCh()
+		donePrecommit <- struct{}{}
+	}()
+	signAddVoteToFrom(types.VoteTypePrevote, cs1, cs2, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header())
+	signAddVoteToFrom(types.VoteTypePrevote, cs1, cs3, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header())
+	signAddVoteToFrom(types.VoteTypePrevote, cs1, cs4, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header())
+	<-donePrecommit
+
+	// the proposed block should now be locked and our precommit added
+	validatePrecommit(t, cs1, 0, 0, privVals[0], theBlockHash, theBlockHash)
+
+	donePrecommitWait := make(chan struct{})
+	go func() {
+		<-cs1.NewStepCh()
+		donePrecommitWait <- struct{}{}
+	}()
+	// add precommits from the rest
+	signAddVoteToFrom(types.VoteTypePrecommit, cs1, cs2, nil, types.PartSetHeader{})
+	signAddVoteToFrom(types.VoteTypePrecommit, cs1, cs3, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header())
+	signAddVoteToFrom(types.VoteTypePrecommit, cs1, cs4, nil, types.PartSetHeader{})
+	<-donePrecommitWait
+
+	// before we time out into new round, set next proposer
+	// and next proposal block
+	_, v1 := cs1.Validators.GetByAddress(privVals[0].Address)
+	v1.VotingPower = 1
+	if updated := cs1.Validators.Update(v1); !updated {
+		t.Fatal("failed to update validator")
+	}
+
+	cs2.decideProposal(cs2.Height, cs2.Round+1)
+	prop, propBlock := cs2.Proposal, cs2.ProposalBlock
+	if prop == nil || propBlock == nil {
+		t.Fatal("Failed to create proposal block with cs2")
+	}
+
+	cs2.Round += 1
+	cs3.Round += 1
+	cs4.Round += 1
+
+	// timeout to new round
+	<-cs1.timeoutChan
+
+	/*Round2
+	Proposer: cs2 proposes C
+	Prevotes:
+		cs1: B
+		cs2: nil
+		cs3: nil
+		cs4: nil
+	Precommits:
+		cs1: nil // unlocked lock!
+		cs2: nil
+		cs3: nil
+		cs4: _ // eg we didn't receive it
+	*/
+
+	// now we're on a new round and not the proposer, so wait for timeout
+	<-cs1.timeoutChan
+	// set the proposal block
+	cs1.Proposal, cs1.ProposalBlock, cs1.ProposalBlockParts = prop, propBlock, propBlock.MakePartSet()
+	// go to prevote, prevote for locked block (not proposal)
+	_, _ = <-cs1.NewStepCh(), <-cs1.NewStepCh()
+	validatePrevote(t, cs1, 0, privVals[0], cs1.LockedBlock.Hash())
+
+	donePrecommit = make(chan struct{})
+	go func() {
+		rs := <-cs1.NewStepCh() // PrevoteWait or Precommit
+		if rs.Step == RoundStepPrevoteWait {
+			<-cs1.NewStepCh() // Precommit
+		}
+		donePrecommit <- struct{}{}
+	}()
+	// now lets add prevotes from everyone else for the new block
+	signAddVoteToFrom(types.VoteTypePrevote, cs1, cs2, nil, types.PartSetHeader{})
+	signAddVoteToFrom(types.VoteTypePrevote, cs1, cs3, nil, types.PartSetHeader{})
+	signAddVoteToFrom(types.VoteTypePrevote, cs1, cs4, nil, types.PartSetHeader{})
+	<-donePrecommit
+
+	// we should have unlocked
+	// NOTE: we don't lock on nil, so LockedRound is still 0
+	validatePrecommit(t, cs1, 1, 0, privVals[0], nil, nil)
+
+	donePrecommitWait = make(chan struct{})
+	go func() {
+		// the votes will bring us to new round right away
+		// we should timeut of it and go to prevote
+		<-cs1.timeoutChan
+		<-cs1.NewStepCh()
+		donePrecommitWait <- struct{}{}
+	}()
+	signAddVoteToFrom(types.VoteTypePrecommit, cs1, cs2, nil, types.PartSetHeader{})
+	signAddVoteToFrom(types.VoteTypePrecommit, cs1, cs3, nil, types.PartSetHeader{})
+	<-donePrecommitWait
+
+}
+
+// 4 vals
+// a polka at round 1 but we miss it
+// then a polka at round 2 that we lock on
+// then we see the polka from round 1 but shouldn't unlock
+func TestLockPOLSafety1(t *testing.T) {
+	css, privVals := simpleConsensusState(4)
+	cs1, cs2, cs3, cs4 := css[0], css[1], css[2], css[3]
+	cs1.newStepCh = make(chan *RoundState) // so it blocks
+
+	cs1.SetPrivValidator(privVals[0])
+	cs2.SetPrivValidator(privVals[1])
+	cs3.SetPrivValidator(privVals[2])
+	cs4.SetPrivValidator(privVals[3])
+
+	// start round and wait for propose and prevote
+	cs1.EnterNewRound(cs1.Height, 0)
+	_, _ = <-cs1.NewStepCh(), <-cs1.NewStepCh()
+
+	propBlock := cs1.ProposalBlock
+
+	validatePrevote(t, cs1, 0, privVals[0], cs1.ProposalBlock.Hash())
+
+	// the others sign a polka but we don't see it
+	prevote2 := signVote(cs2, types.VoteTypePrevote, propBlock.Hash(), propBlock.MakePartSet().Header())
+	prevote3 := signVote(cs3, types.VoteTypePrevote, propBlock.Hash(), propBlock.MakePartSet().Header())
+	prevote4 := signVote(cs4, types.VoteTypePrevote, propBlock.Hash(), propBlock.MakePartSet().Header())
+
+	// before we time out into new round, set next proposer
+	// and next proposal block
+	_, v1 := cs1.Validators.GetByAddress(privVals[0].Address)
+	v1.VotingPower = 1
+	if updated := cs1.Validators.Update(v1); !updated {
+		t.Fatal("failed to update validator")
+	}
+
+	log.Warn("old prop", "hash", fmt.Sprintf("%X", propBlock.Hash()))
+
+	// we do see them precommit nil
+	signAddVoteToFrom(types.VoteTypePrecommit, cs1, cs2, nil, types.PartSetHeader{})
+	signAddVoteToFrom(types.VoteTypePrecommit, cs1, cs3, nil, types.PartSetHeader{})
+	signAddVoteToFrom(types.VoteTypePrecommit, cs1, cs4, nil, types.PartSetHeader{})
+
+	cs2.decideProposal(cs2.Height, cs2.Round+1)
+	prop, propBlock := cs2.Proposal, cs2.ProposalBlock
+	if prop == nil || propBlock == nil {
+		t.Fatal("Failed to create proposal block with cs2")
+	}
+
+	cs2.Round += 1
+	cs3.Round += 1
+	cs4.Round += 1
+
+	/*Round2
+	// we timeout and prevote our lock
+	// a polka happened but we didn't see it!
+	*/
+
+	// now we're on a new round and not the proposer, so wait for timeout
+	<-cs1.timeoutChan
+	cs1.Proposal, cs1.ProposalBlock, cs1.ProposalBlockParts = prop, propBlock, propBlock.MakePartSet()
+	if cs1.LockedBlock != nil {
+		t.Fatal("we should not be locked!")
+	}
+	log.Warn("new prop", "hash", fmt.Sprintf("%X", propBlock.Hash()))
+	// go to prevote, prevote for proposal block
+	_, _ = <-cs1.NewStepCh(), <-cs1.NewStepCh()
+	validatePrevote(t, cs1, 1, privVals[0], cs1.ProposalBlock.Hash())
+
+	// now we see the others prevote for it, so we should lock on it
+	donePrecommit := make(chan struct{})
+	go func() {
+		rs := <-cs1.NewStepCh() // PrevoteWait or Precommit
+		if rs.Step == RoundStepPrevoteWait {
+			<-cs1.NewStepCh() // Precommit
+		}
+		donePrecommit <- struct{}{}
+	}()
+	// now lets add prevotes from everyone else for nil
+	signAddVoteToFrom(types.VoteTypePrevote, cs1, cs2, propBlock.Hash(), propBlock.MakePartSet().Header())
+	signAddVoteToFrom(types.VoteTypePrevote, cs1, cs3, propBlock.Hash(), propBlock.MakePartSet().Header())
+	signAddVoteToFrom(types.VoteTypePrevote, cs1, cs4, propBlock.Hash(), propBlock.MakePartSet().Header())
+	<-donePrecommit
+
+	// we should have precommitted
+	validatePrecommit(t, cs1, 1, 1, privVals[0], propBlock.Hash(), propBlock.Hash())
+
+	// now we see precommits for nil
+	donePrecommitWait := make(chan struct{})
+	go func() {
+		// the votes will bring us to new round
+		// we should timeut of it and go to prevote
+		<-cs1.NewStepCh()
+		<-cs1.timeoutChan
+		donePrecommitWait <- struct{}{}
+	}()
+	signAddVoteToFrom(types.VoteTypePrecommit, cs1, cs2, nil, types.PartSetHeader{})
+	signAddVoteToFrom(types.VoteTypePrecommit, cs1, cs3, nil, types.PartSetHeader{})
+	<-donePrecommitWait
+
+	cs2.Round += 1
+	cs3.Round += 1
+	cs4.Round += 1
+
+	/*Round3
+	we see the polka from round 1 but we shouldn't unlock!
+	*/
+
+	// timeout of propose
+	_, _ = <-cs1.timeoutChan, <-cs1.NewStepCh()
+
+	// finish prevote
+	<-cs1.NewStepCh()
+
+	// we should prevote what we're locked on
+	validatePrevote(t, cs1, 2, privVals[0], propBlock.Hash())
+
+	// add prevotes from the earlier round
+	addVoteToFrom(cs1, cs2, prevote2)
+	addVoteToFrom(cs1, cs3, prevote3)
+	addVoteToFrom(cs1, cs4, prevote4)
+
+	log.Warn("Done adding prevotes!")
+
+	ensureNoNewStep(t, cs1)
+}
+
+// 4 vals.
+// polka P1 at R1, P2 at R2, and P3 at R3,
+// we lock on P1 at R1, don't see P2, and unlock using P3 at R3
+// then we should make sure we don't lock using P2
+func TestLockPOLSafety2(t *testing.T) {
+	css, privVals := simpleConsensusState(4)
+	cs1, cs2, cs3, cs4 := css[0], css[1], css[2], css[3]
+	cs1.newStepCh = make(chan *RoundState) // so it blocks
+
+	cs1.SetPrivValidator(privVals[0])
+	cs2.SetPrivValidator(privVals[1])
+	cs3.SetPrivValidator(privVals[2])
+	cs4.SetPrivValidator(privVals[3])
+
+	// start round and wait for propose and prevote
+	cs1.EnterNewRound(cs1.Height, 0)
+	_, _ = <-cs1.NewStepCh(), <-cs1.NewStepCh()
+
+	theBlockHash := cs1.ProposalBlock.Hash()
+
+	donePrecommit := make(chan struct{})
+	go func() {
+		<-cs1.NewStepCh()
+		donePrecommit <- struct{}{}
+	}()
+	signAddVoteToFrom(types.VoteTypePrevote, cs1, cs2, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header())
+	signAddVoteToFrom(types.VoteTypePrevote, cs1, cs3, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header())
+	signAddVoteToFrom(types.VoteTypePrevote, cs1, cs4, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header())
+	<-donePrecommit
+
+	// the proposed block should now be locked and our precommit added
+	validatePrecommit(t, cs1, 0, 0, privVals[0], theBlockHash, theBlockHash)
+
+	donePrecommitWait := make(chan struct{})
+	go func() {
+		<-cs1.NewStepCh()
+		donePrecommitWait <- struct{}{}
+	}()
+	// add precommits from the rest
+	signAddVoteToFrom(types.VoteTypePrecommit, cs1, cs2, nil, types.PartSetHeader{})
+	signAddVoteToFrom(types.VoteTypePrecommit, cs1, cs3, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header())
+	signAddVoteToFrom(types.VoteTypePrecommit, cs1, cs4, nil, types.PartSetHeader{})
+	<-donePrecommitWait
+
+	// before we time out into new round, set next proposer
+	// and next proposal block
+	_, v1 := cs1.Validators.GetByAddress(privVals[0].Address)
+	v1.VotingPower = 1
+	if updated := cs1.Validators.Update(v1); !updated {
+		t.Fatal("failed to update validator")
+	}
+
+	cs2.decideProposal(cs2.Height, cs2.Round+1)
+	prop, propBlock := cs2.Proposal, cs2.ProposalBlock
+	if prop == nil || propBlock == nil {
+		t.Fatal("Failed to create proposal block with cs2")
+	}
+
+	cs2.Round += 1
+	cs3.Round += 1
+	cs4.Round += 1
+
+	// timeout to new round
+	<-cs1.timeoutChan
+
+	/*Round2
+	// we timeout and prevote our lock
+	// a polka happened but we didn't see it!
+	*/
+
+	// now we're on a new round and not the proposer, so wait for timeout
+	<-cs1.timeoutChan
+	// go to prevote, prevote for locked block
+	_, _ = <-cs1.NewStepCh(), <-cs1.NewStepCh()
+	validatePrevote(t, cs1, 0, privVals[0], cs1.LockedBlock.Hash())
+
+	// the others sign a polka but we don't see it
+	prevote2 := signVote(cs2, types.VoteTypePrevote, propBlock.Hash(), propBlock.MakePartSet().Header())
+	prevote3 := signVote(cs3, types.VoteTypePrevote, propBlock.Hash(), propBlock.MakePartSet().Header())
+	prevote4 := signVote(cs4, types.VoteTypePrevote, propBlock.Hash(), propBlock.MakePartSet().Header())
+
+	// once we see prevotes for the next round we'll skip ahead
+
+	cs2.Round += 1
+	cs3.Round += 1
+	cs4.Round += 1
+
+	/*Round3
+	a polka for nil causes us to unlock
+	*/
+
+	// these prevotes will send us straight to precommit at the higher round
+	donePrecommit = make(chan struct{})
+	go func() {
+		rs := <-cs1.NewStepCh() // PrevoteWait or Precommit
+		if rs.Step == RoundStepPrevoteWait {
+			<-cs1.NewStepCh() // Precommit
+		}
+		donePrecommit <- struct{}{}
+	}()
+	// now lets add prevotes from everyone else for nil
+	signAddVoteToFrom(types.VoteTypePrevote, cs1, cs2, nil, types.PartSetHeader{})
+	signAddVoteToFrom(types.VoteTypePrevote, cs1, cs3, nil, types.PartSetHeader{})
+	signAddVoteToFrom(types.VoteTypePrevote, cs1, cs4, nil, types.PartSetHeader{})
+	<-donePrecommit
+
+	// we should have unlocked
+	// NOTE: we don't lock on nil, so LockedRound is still 0
+	validatePrecommit(t, cs1, 2, 0, privVals[0], nil, nil)
+
+	donePrecommitWait = make(chan struct{})
+	go func() {
+		// the votes will bring us to new round right away
+		// we should timeut of it and go to prevote
+		<-cs1.timeoutChan
+		// set the proposal block to be that which got a polka in R2
+		cs1.Proposal, cs1.ProposalBlock, cs1.ProposalBlockParts = prop, propBlock, propBlock.MakePartSet()
+		<-cs1.NewStepCh()
+		donePrecommitWait <- struct{}{}
+	}()
+	signAddVoteToFrom(types.VoteTypePrecommit, cs1, cs2, nil, types.PartSetHeader{})
+	signAddVoteToFrom(types.VoteTypePrecommit, cs1, cs3, nil, types.PartSetHeader{})
+	<-donePrecommitWait
+
+	/*Round4
+	we see the polka from R2
+	make sure we don't lock because of it!
+	*/
+	// new round and not proposer
+	// (we already timed out and stepped into prevote)
+
+	log.Warn("adding prevotes from round 2")
+
+	addVoteToFrom(cs1, cs2, prevote2)
+	addVoteToFrom(cs1, cs3, prevote3)
+	addVoteToFrom(cs1, cs4, prevote4)
+
+	log.Warn("Done adding prevotes!")
+
+	<-cs1.NewStepCh()
+
+	// we should prevote it now
+	validatePrevote(t, cs1, 3, privVals[0], cs1.ProposalBlock.Hash())
+
+	// but we shouldn't precommit it
+	precommits := cs1.Votes.Precommits(3)
+	vote := precommits.GetByIndex(0)
+	if vote != nil {
+		t.Fatal("validator precommitted at round 4 based on an old polka")
+	}
 }
 
 //------------------------------------------------------------------------------------------
@@ -491,7 +997,7 @@ func TestSlashingPrevotes(t *testing.T) {
 	// add one for a different block should cause us to go into prevote wait
 	hash := cs1.ProposalBlock.Hash()
 	hash[0] = byte(hash[0]+1) % 255
-	addVoteToFrom(t, types.VoteTypePrevote, cs1, cs2, hash, cs1.ProposalBlockParts.Header())
+	signAddVoteToFrom(types.VoteTypePrevote, cs1, cs2, hash, cs1.ProposalBlockParts.Header())
 
 	// pass prevote wait
 	<-cs1.NewStepCh()
@@ -500,7 +1006,7 @@ func TestSlashingPrevotes(t *testing.T) {
 	// away and ignore more prevotes (and thus fail to slash!)
 
 	// add the conflicting vote
-	addVoteToFrom(t, types.VoteTypePrevote, cs1, cs2, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header())
+	signAddVoteToFrom(types.VoteTypePrevote, cs1, cs2, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header())
 
 	// conflicting vote should cause us to broadcast dupeout tx on mempool
 	txs := cs1.mempoolReactor.Mempool.GetProposalTxs()
@@ -532,7 +1038,7 @@ func TestSlashingPrecommits(t *testing.T) {
 	_, _ = <-cs1.NewStepCh(), <-cs1.NewStepCh()
 
 	// add prevote from cs2
-	addVoteToFrom(t, types.VoteTypePrevote, cs1, cs2, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header())
+	signAddVoteToFrom(types.VoteTypePrevote, cs1, cs2, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header())
 
 	// wait to finish precommit
 	<-cs1.NewStepCh()
@@ -541,7 +1047,7 @@ func TestSlashingPrecommits(t *testing.T) {
 	// add one for a different block should cause us to go into prevote wait
 	hash := cs1.ProposalBlock.Hash()
 	hash[0] = byte(hash[0]+1) % 255
-	addVoteToFrom(t, types.VoteTypePrecommit, cs1, cs2, hash, cs1.ProposalBlockParts.Header())
+	signAddVoteToFrom(types.VoteTypePrecommit, cs1, cs2, hash, cs1.ProposalBlockParts.Header())
 
 	// pass prevote wait
 	<-cs1.NewStepCh()
@@ -550,7 +1056,7 @@ func TestSlashingPrecommits(t *testing.T) {
 	// away and ignore more prevotes (and thus fail to slash!)
 
 	// add precommit from cs2
-	addVoteToFrom(t, types.VoteTypePrecommit, cs1, cs2, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header())
+	signAddVoteToFrom(types.VoteTypePrecommit, cs1, cs2, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header())
 
 	// conflicting vote should cause us to broadcast dupeout tx on mempool
 	txs := cs1.mempoolReactor.Mempool.GetProposalTxs()

@@ -17,12 +17,7 @@ import (
 //-------------------------------------------------------------------------------
 // utils
 
-// add vote to one cs from another
-func addVoteToFrom(t *testing.T, voteType byte, to, from *ConsensusState, hash []byte, header types.PartSetHeader) {
-	vote, err := from.signVote(voteType, hash, header)
-	if err != nil {
-		panic(fmt.Sprintln("Failed to sign vote", err))
-	}
+func addVoteToFrom(to, from *ConsensusState, vote *types.Vote) {
 	valIndex, _ := to.Validators.GetByAddress(from.privValidator.Address)
 	added, err := to.TryAddVote(to.GetRoundState(), vote, valIndex, "")
 	if _, ok := err.(*types.ErrVoteConflictingSignature); ok {
@@ -34,13 +29,28 @@ func addVoteToFrom(t *testing.T, voteType byte, to, from *ConsensusState, hash [
 	}
 }
 
+func signVote(from *ConsensusState, voteType byte, hash []byte, header types.PartSetHeader) *types.Vote {
+	vote, err := from.signVote(voteType, hash, header)
+	if err != nil {
+		panic(fmt.Sprintln("Failed to sign vote", err))
+	}
+	return vote
+}
+
+// add vote to one cs from another
+func signAddVoteToFrom(voteType byte, to, from *ConsensusState, hash []byte, header types.PartSetHeader) *types.Vote {
+	vote := signVote(from, voteType, hash, header)
+	addVoteToFrom(to, from, vote)
+	return vote
+}
+
 func ensureNoNewStep(t *testing.T, cs *ConsensusState) {
 	timeout := time.NewTicker(2 * time.Second)
 	select {
 	case <-timeout.C:
 		break
 	case <-cs.NewStepCh():
-		t.Fatal("We should be stuck waiting for more prevotes, not moving to the next step")
+		t.Fatal("We should be stuck waiting for more votes, not moving to the next step")
 	}
 }
 
@@ -48,43 +58,43 @@ func validatePrevote(t *testing.T, cs *ConsensusState, round int, privVal *types
 	prevotes := cs.Votes.Prevotes(round)
 	var vote *types.Vote
 	if vote = prevotes.GetByAddress(privVal.Address); vote == nil {
-		t.Fatal("Failed to find prevote from validator")
+		panic("Failed to find prevote from validator")
 	}
 	if blockHash == nil {
 		if vote.BlockHash != nil {
-			t.Fatal("Expected prevote to be for nil")
+			panic(fmt.Sprintf("Expected prevote to be for nil, got %X", vote.BlockHash))
 		}
 	} else {
 		if !bytes.Equal(vote.BlockHash, blockHash) {
-			t.Fatal("Expected prevote to be for proposal block")
+			panic(fmt.Sprintf("Expected prevote to be for %X, got %X", blockHash, vote.BlockHash))
 		}
 	}
 }
 
-func validatePrecommit(t *testing.T, cs *ConsensusState, thisRound, lockRound int, privVal *types.PrivValidator, votedBlock, lockedBlock *types.Block) {
+func validatePrecommit(t *testing.T, cs *ConsensusState, thisRound, lockRound int, privVal *types.PrivValidator, votedBlockHash, lockedBlockHash []byte) {
 	precommits := cs.Votes.Precommits(thisRound)
 	var vote *types.Vote
 	if vote = precommits.GetByAddress(privVal.Address); vote == nil {
 		panic("Failed to find precommit from validator")
 	}
 
-	if votedBlock == nil {
+	if votedBlockHash == nil {
 		if vote.BlockHash != nil {
 			panic("Expected precommit to be for nil")
 		}
 	} else {
-		if !bytes.Equal(vote.BlockHash, votedBlock.Hash()) {
+		if !bytes.Equal(vote.BlockHash, votedBlockHash) {
 			panic("Expected precommit to be for proposal block")
 		}
 	}
 
-	if lockedBlock == nil {
+	if lockedBlockHash == nil {
 		if cs.LockedRound != lockRound || cs.LockedBlock != nil {
-			panic(fmt.Sprintf("Expected to be locked on nil. Got %v", cs.LockedBlock))
+			panic(fmt.Sprintf("Expected to be locked on nil at round %d. Got locked at round %d with block %v", lockRound, cs.LockedRound, cs.LockedBlock))
 		}
 	} else {
-		if cs.LockedRound != lockRound || cs.LockedBlock != lockedBlock {
-			panic(fmt.Sprintf("Expected block to be locked on round %d, got %d. Got locked block %v, expected %v", lockRound, cs.LockedRound, cs.LockedBlock, lockedBlock))
+		if cs.LockedRound != lockRound || !bytes.Equal(cs.LockedBlock.Hash(), lockedBlockHash) {
+			panic(fmt.Sprintf("Expected block to be locked on round %d, got %d. Got locked block %X, expected %X", lockRound, cs.LockedRound, cs.LockedBlock.Hash(), lockedBlockHash))
 		}
 	}
 

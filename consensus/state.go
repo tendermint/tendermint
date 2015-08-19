@@ -549,23 +549,28 @@ func (cs *ConsensusState) EnterPropose(height int, round int) {
 		// Done EnterPropose:
 		cs.Round = round
 		cs.Step = RoundStepPropose
-
-		// If we already have the proposal + POL, then goto Prevote
-		if cs.isProposalComplete() {
-			enterPrevote <- struct{}{}
-		}
+		enterPrevote <- struct{}{}
 	}()
 
 	// EnterPrevote after timeoutPropose or if the proposal is complete
 	go func() {
 		ticker := time.NewTicker(timeoutPropose)
-		select {
-		case <-ticker.C:
-			cs.timeoutChan <- TimeoutEvent{RoundStepPropose, height, round}
-		case <-enterPrevote:
+	LOOP:
+		for {
+			select {
+			case <-ticker.C:
+				enterPrevote <- struct{}{}
+				cs.timeoutChan <- TimeoutEvent{RoundStepPropose, height, round}
+				break LOOP
+			case <-enterPrevote:
+				// If we already have the proposal + POL, then goto Prevote
+				if cs.isProposalComplete() {
+					break LOOP
+				}
+			}
 		}
 		cs.newStepCh <- cs.getRoundState()
-		cs.EnterPrevote(height, round)
+		go cs.EnterPrevote(height, round)
 	}()
 
 	// Nothing more to do if we're not a validator
@@ -1164,7 +1169,11 @@ func (cs *ConsensusState) addVote(address []byte, vote *types.Vote, peerKey stri
 				if cs.Round <= vote.Round && prevotes.HasTwoThirdsAny() {
 					// Round-skip over to PrevoteWait or goto Precommit.
 					go func() {
-						if cs.Round < vote.Round {
+						cs.mtx.Lock()
+						csRound := cs.Round
+						cs.mtx.Unlock()
+
+						if csRound < vote.Round {
 							cs.EnterNewRound(height, vote.Round)
 						}
 						if prevotes.HasTwoThirdsMajority() {
@@ -1176,7 +1185,6 @@ func (cs *ConsensusState) addVote(address []byte, vote *types.Vote, peerKey stri
 					}()
 				} else if cs.Proposal != nil && 0 <= cs.Proposal.POLRound && cs.Proposal.POLRound == vote.Round {
 					// If the proposal is now complete, enter prevote of cs.Round.
-					// XXX: hmph again
 					if cs.isProposalComplete() {
 						go cs.EnterPrevote(height, cs.Round)
 					}
@@ -1186,12 +1194,17 @@ func (cs *ConsensusState) addVote(address []byte, vote *types.Vote, peerKey stri
 				log.Info(Fmt("Added to precommit: %v", precommits.StringShort()))
 				if cs.Round <= vote.Round && precommits.HasTwoThirdsAny() {
 					go func() {
+						cs.mtx.Lock()
+						csRound := cs.Round
+						cs.mtx.Unlock()
 						hash, _, ok := precommits.TwoThirdsMajority()
 						if ok && len(hash) == 0 {
 							cs.EnterNewRound(height, vote.Round+1)
 							return
-						} else if cs.Round < vote.Round {
-							cs.EnterNewRound(height, vote.Round)
+						} else {
+							if csRound < vote.Round {
+								cs.EnterNewRound(height, vote.Round)
+							}
 						}
 						if ok {
 							cs.EnterCommit(height)
