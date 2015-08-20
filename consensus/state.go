@@ -914,7 +914,7 @@ func (cs *ConsensusState) EnterCommit(height int, commitRound int) {
 		cs.newStepCh <- cs.getRoundState()
 
 		// Maybe finalize immediately.
-		cs.tryFinalizeCommit(height)
+		cs.tryFinalizeCommit(height, commitRound)
 	}()
 
 	hash, partsHeader, ok := cs.Votes.Precommits(commitRound).TwoThirdsMajority()
@@ -954,23 +954,25 @@ func (cs *ConsensusState) EnterCommit(height int, commitRound int) {
 }
 
 // If we have the block AND +2/3 commits for it, finalize.
-func (cs *ConsensusState) tryFinalizeCommit(height int) {
+func (cs *ConsensusState) tryFinalizeCommit(height, round int) {
 	if cs.Height != height {
 		PanicSanity(Fmt("tryFinalizeCommit() cs.Height: %v vs height: %v", cs.Height, height))
 	}
 
-	hash, _, ok := cs.Votes.Precommits(cs.Round).TwoThirdsMajority()
+	hash, _, ok := cs.Votes.Precommits(round).TwoThirdsMajority()
 	if !ok || len(hash) == 0 {
-		return // There was no +2/3 majority, or +2/3 was for <nil>.
+		log.Warn("Attempt to finalize failed. There was no +2/3 majority, or +2/3 was for <nil>.")
+		return
 	}
 	if !cs.ProposalBlock.HashesTo(hash) {
-		return // We don't have the commit block.
+		log.Warn("Attempt to finalize failed. We don't have the commit block.")
+		return
 	}
-	go cs.FinalizeCommit(height)
+	go cs.FinalizeCommit(height, round)
 }
 
 // Increment height and goto RoundStepNewHeight
-func (cs *ConsensusState) FinalizeCommit(height int) {
+func (cs *ConsensusState) FinalizeCommit(height, round int) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 
@@ -979,7 +981,7 @@ func (cs *ConsensusState) FinalizeCommit(height int) {
 		return
 	}
 
-	hash, header, ok := cs.Votes.Precommits(cs.Round).TwoThirdsMajority()
+	hash, header, ok := cs.Votes.Precommits(round).TwoThirdsMajority()
 
 	if !ok {
 		PanicSanity(Fmt("Cannot FinalizeCommit, commit does not have two thirds majority"))
@@ -996,9 +998,9 @@ func (cs *ConsensusState) FinalizeCommit(height int) {
 
 	log.Info(Fmt("Finalizing commit of block: %v", cs.ProposalBlock))
 	// We have the block, so stage/save/commit-vote.
-	cs.saveBlock(cs.ProposalBlock, cs.ProposalBlockParts, cs.Votes.Precommits(cs.Round))
+	cs.saveBlock(cs.ProposalBlock, cs.ProposalBlockParts, cs.Votes.Precommits(round))
 	// Increment height.
-	cs.updateToState(cs.stagedState, true)
+	cs.updateToState(cs.stagedState, round == cs.Round)
 	// cs.StartTime is already set.
 	// Schedule Round0 to start soon.
 	go cs.scheduleRound0(height + 1)
@@ -1080,7 +1082,7 @@ func (cs *ConsensusState) AddProposalBlockPart(height int, part *types.Part) (ad
 			go cs.EnterPrevote(height, cs.Round)
 		} else if cs.Step == RoundStepCommit {
 			// If we're waiting on the proposal block...
-			cs.tryFinalizeCommit(height)
+			cs.tryFinalizeCommit(height, cs.Round)
 		}
 		return true, err
 	}

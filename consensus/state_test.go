@@ -1145,5 +1145,13 @@ func TestHalt1(t *testing.T) {
 
 	// receiving that precommit should take us straight to commit
 	ensureNewStep(t, cs1)
+	log.Warn("done enter commit!")
+
+	// update to state
+	ensureNewStep(t, cs1)
+
+	if cs1.Height != 2 {
+		t.Fatal("expected height to increment")
+	}
 
 }
