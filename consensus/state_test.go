@@ -1081,3 +1081,69 @@ func TestSlashingPrecommits(t *testing.T) {
 
 //------------------------------------------------------------------------------------------
 // HaltSuite
+
+// 4 vals.
+// we receive a final precommit after going into next round, but others might have gone to commit already!
+func TestHalt1(t *testing.T) {
+	css, privVals := simpleConsensusState(4)
+	cs1, cs2, cs3, cs4 := css[0], css[1], css[2], css[3]
+	cs1.newStepCh = make(chan *RoundState) // so it blocks
+
+	cs1.SetPrivValidator(privVals[0])
+	cs2.SetPrivValidator(privVals[1])
+	cs3.SetPrivValidator(privVals[2])
+	cs4.SetPrivValidator(privVals[3])
+
+	// start round and wait for propose and prevote
+	cs1.EnterNewRound(cs1.Height, 0)
+	_, _ = <-cs1.NewStepCh(), <-cs1.NewStepCh()
+
+	theBlockHash := cs1.ProposalBlock.Hash()
+
+	donePrecommit := make(chan struct{})
+	go func() {
+		<-cs1.NewStepCh()
+		donePrecommit <- struct{}{}
+	}()
+	signAddVoteToFrom(types.VoteTypePrevote, cs1, cs3, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header())
+	signAddVoteToFrom(types.VoteTypePrevote, cs1, cs4, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header())
+	<-donePrecommit
+
+	// the proposed block should now be locked and our precommit added
+	validatePrecommit(t, cs1, 0, 0, privVals[0], theBlockHash, theBlockHash)
+
+	donePrecommitWait := make(chan struct{})
+	go func() {
+		<-cs1.NewStepCh()
+		donePrecommitWait <- struct{}{}
+	}()
+	// add precommits from the rest
+	signAddVoteToFrom(types.VoteTypePrecommit, cs1, cs2, nil, types.PartSetHeader{}) // didnt receive proposal
+	signAddVoteToFrom(types.VoteTypePrecommit, cs1, cs3, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header())
+	// we receive this later, but cs3 might receive it earlier and with ours will go to commit!
+	precommit4 := signVote(cs4, types.VoteTypePrecommit, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header())
+	<-donePrecommitWait
+
+	cs2.Round += 1
+	cs3.Round += 1
+	cs4.Round += 1
+
+	// timeout to new round
+	<-cs1.timeoutChan
+
+	/*Round2
+	// we timeout and prevote our lock
+	// a polka happened but we didn't see it!
+	*/
+
+	// go to prevote, prevote for locked block
+	_, _ = <-cs1.NewStepCh(), <-cs1.NewStepCh()
+	validatePrevote(t, cs1, 0, privVals[0], cs1.LockedBlock.Hash())
+
+	// now we receive the precommit from the previous round
+	addVoteToFrom(cs1, cs4, precommit4)
+
+	// receiving that precommit should take us straight to commit
+	ensureNewStep(t, cs1)
+
+}

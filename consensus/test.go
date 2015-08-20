@@ -50,7 +50,17 @@ func ensureNoNewStep(t *testing.T, cs *ConsensusState) {
 	case <-timeout.C:
 		break
 	case <-cs.NewStepCh():
-		t.Fatal("We should be stuck waiting for more votes, not moving to the next step")
+		panic("We should be stuck waiting for more votes, not moving to the next step")
+	}
+}
+
+func ensureNewStep(t *testing.T, cs *ConsensusState) {
+	timeout := time.NewTicker(2 * time.Second)
+	select {
+	case <-timeout.C:
+		panic("We should have gone to the next step, not be stuck waiting")
+	case <-cs.NewStepCh():
+		break
 	}
 }
 
