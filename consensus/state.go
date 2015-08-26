@@ -300,7 +300,7 @@ type ConsensusState struct {
 	evsw events.Fireable
 	evc  *events.EventCache // set in stageBlock and passed into state
 
-	timeoutChan     chan TimeoutEvent // RoundState instead?
+	timeoutChan     chan TimeoutEvent // so we can track timeouts
 	timeoutQuitChan chan struct{}
 }
 
@@ -499,7 +499,7 @@ func (cs *ConsensusState) EnterNewRound(height int, round int) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cs.Step != RoundStepNewHeight) {
-		log.Info(Fmt("EnterNewRound(%v/%v): Invalid args. Current step: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
+		log.Debug(Fmt("EnterNewRound(%v/%v): Invalid args. Current step: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 		return
 	}
 	if now := time.Now(); cs.StartTime.After(now) {
@@ -538,7 +538,7 @@ func (cs *ConsensusState) EnterPropose(height int, round int) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	if cs.Height != height || round < cs.Round || (cs.Round == round && RoundStepPropose <= cs.Step) {
-		log.Info(Fmt("EnterPropose(%v/%v): Invalid args. Current step: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
+		log.Debug(Fmt("EnterPropose(%v/%v): Invalid args. Current step: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 		return
 	}
 	log.Info(Fmt("EnterPropose(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
@@ -559,7 +559,6 @@ func (cs *ConsensusState) EnterPropose(height int, round int) {
 		for {
 			select {
 			case <-ticker.C:
-				enterPrevote <- struct{}{}
 				cs.timeoutChan <- TimeoutEvent{RoundStepPropose, height, round}
 				break LOOP
 			case <-enterPrevote:
@@ -688,7 +687,7 @@ func (cs *ConsensusState) EnterPrevote(height int, round int) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	if cs.Height != height || round < cs.Round || (cs.Round == round && RoundStepPrevote <= cs.Step) {
-		log.Info(Fmt("EnterPrevote(%v/%v): Invalid args. Current step: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
+		log.Debug(Fmt("EnterPrevote(%v/%v): Invalid args. Current step: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 		return
 	}
 	log.Info(Fmt("EnterPrevote(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
@@ -742,7 +741,7 @@ func (cs *ConsensusState) EnterPrevoteWait(height int, round int) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	if cs.Height != height || round < cs.Round || (cs.Round == round && RoundStepPrevoteWait <= cs.Step) {
-		log.Info(Fmt("EnterPrevoteWait(%v/%v): Invalid args. Current step: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
+		log.Debug(Fmt("EnterPrevoteWait(%v/%v): Invalid args. Current step: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 		return
 	}
 	if !cs.Votes.Prevotes(round).HasTwoThirdsAny() {
@@ -774,7 +773,7 @@ func (cs *ConsensusState) EnterPrecommit(height int, round int) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	if cs.Height != height || round < cs.Round || (cs.Round == round && RoundStepPrecommit <= cs.Step) {
-		log.Info(Fmt("EnterPrecommit(%v/%v): Invalid args. Current step: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
+		log.Debug(Fmt("EnterPrecommit(%v/%v): Invalid args. Current step: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 		return
 	}
 	log.Info(Fmt("EnterPrecommit(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
@@ -814,7 +813,7 @@ func (cs *ConsensusState) EnterPrecommit(height int, round int) {
 			log.Info("EnterPrecommit: +2/3 prevoted for nil.")
 		} else {
 			log.Info("EnterPrecommit: +2/3 prevoted for nil. Unlocking")
-			cs.LockedRound = 0 //XXX: should be this round
+			cs.LockedRound = 0
 			cs.LockedBlock = nil
 			cs.LockedBlockParts = nil
 		}
@@ -872,7 +871,7 @@ func (cs *ConsensusState) EnterPrecommitWait(height int, round int) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	if cs.Height != height || round < cs.Round || (cs.Round == round && RoundStepPrecommitWait <= cs.Step) {
-		log.Info(Fmt("EnterPrecommitWait(%v/%v): Invalid args. Current step: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
+		log.Debug(Fmt("EnterPrecommitWait(%v/%v): Invalid args. Current step: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 		return
 	}
 	if !cs.Votes.Precommits(round).HasTwoThirdsAny() {
@@ -902,7 +901,7 @@ func (cs *ConsensusState) EnterCommit(height int, commitRound int) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	if cs.Height != height || RoundStepCommit <= cs.Step {
-		log.Info(Fmt("EnterCommit(%v/%v): Invalid args. Current step: %v/%v/%v", height, commitRound, cs.Height, cs.Round, cs.Step))
+		log.Debug(Fmt("EnterCommit(%v/%v): Invalid args. Current step: %v/%v/%v", height, commitRound, cs.Height, cs.Round, cs.Step))
 		return
 	}
 	log.Info(Fmt("EnterCommit(%v/%v). Current: %v/%v/%v", height, commitRound, cs.Height, cs.Round, cs.Step))
@@ -977,7 +976,7 @@ func (cs *ConsensusState) FinalizeCommit(height, round int) {
 	defer cs.mtx.Unlock()
 
 	if cs.Height != height || cs.Step != RoundStepCommit {
-		log.Info(Fmt("FinalizeCommit(%v): Invalid args. Current step: %v/%v/%v", height, cs.Height, cs.Round, cs.Step))
+		log.Debug(Fmt("FinalizeCommit(%v): Invalid args. Current step: %v/%v/%v", height, cs.Height, cs.Round, cs.Step))
 		return
 	}
 
@@ -1167,7 +1166,7 @@ func (cs *ConsensusState) addVote(address []byte, vote *types.Vote, peerKey stri
 					hash, _, ok := prevotes.TwoThirdsMajority()
 					if ok && !cs.LockedBlock.HashesTo(hash) {
 						log.Notice("Unlocking because of POL.", "lockedRound", cs.LockedRound, "POLRound", vote.Round)
-						cs.LockedRound = 0 // XXX: shouldn't we set this to the current round?
+						cs.LockedRound = 0
 						cs.LockedBlock = nil
 						cs.LockedBlockParts = nil
 					}
@@ -1333,7 +1332,6 @@ func (cs *ConsensusState) logTimeouts(timeoutChan chan TimeoutEvent, quitChan <-
 		select {
 		case timeout := <-timeoutChan:
 			log.Info("Timeout in consensus state", "height", timeout.Height, "round", timeout.Round, "step", timeout.Type.String())
-			timeoutChan <- timeout
 		case <-quitChan:
 			return
 
