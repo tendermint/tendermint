@@ -85,7 +85,7 @@ func (voteSet *VoteSet) Size() int {
 // Otherwise returns err=ErrVote[UnexpectedStep|InvalidAccount|InvalidSignature|InvalidBlockHash|ConflictingSignature]
 // Duplicate votes return added=false, err=nil.
 // NOTE: vote should not be mutated after adding.
-func (voteSet *VoteSet) AddByIndex(valIndex int, vote *Vote) (added bool, index int, err error) {
+func (voteSet *VoteSet) AddByIndex(valIndex int, vote *Vote) (added bool, address []byte, err error) {
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
 
@@ -109,14 +109,15 @@ func (voteSet *VoteSet) AddByAddress(address []byte, vote *Vote) (added bool, in
 	return voteSet.addVote(val, valIndex, vote)
 }
 
-func (voteSet *VoteSet) addByIndex(valIndex int, vote *Vote) (bool, int, error) {
+func (voteSet *VoteSet) addByIndex(valIndex int, vote *Vote) (added bool, address []byte, err error) {
 	// Ensure that signer is a validator.
-	_, val := voteSet.valSet.GetByIndex(valIndex)
+	address, val := voteSet.valSet.GetByIndex(valIndex)
 	if val == nil {
-		return false, 0, ErrVoteInvalidAccount
+		return false, nil, ErrVoteInvalidAccount
 	}
 
-	return voteSet.addVote(val, valIndex, vote)
+	added, _, err = voteSet.addVote(val, valIndex, vote)
+	return
 }
 
 func (voteSet *VoteSet) addVote(val *Validator, valIndex int, vote *Vote) (bool, int, error) {

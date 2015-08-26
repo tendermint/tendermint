@@ -17,9 +17,47 @@ import (
 //-------------------------------------------------------------------------------
 // utils
 
+func changeProposer(t *testing.T, perspectiveOf, newProposer *ConsensusState) *types.Block {
+	_, v1 := perspectiveOf.Validators.GetByAddress(perspectiveOf.privValidator.Address)
+	v1.Accum, v1.VotingPower = 0, 0
+	if updated := perspectiveOf.Validators.Update(v1); !updated {
+		t.Fatal("failed to update validator")
+	}
+	_, v2 := perspectiveOf.Validators.GetByAddress(newProposer.privValidator.Address)
+	v2.Accum, v2.VotingPower = 100, 100
+	if updated := perspectiveOf.Validators.Update(v2); !updated {
+		t.Fatal("failed to update validator")
+	}
+
+	// make the proposal
+	propBlock, _ := newProposer.createProposalBlock()
+	if propBlock == nil {
+		t.Fatal("Failed to create proposal block with cs2")
+	}
+	return propBlock
+}
+
+func fixVotingPower(t *testing.T, cs1 *ConsensusState, addr2 []byte) {
+	_, v1 := cs1.Validators.GetByAddress(cs1.privValidator.Address)
+	_, v2 := cs1.Validators.GetByAddress(addr2)
+	v1.Accum, v1.VotingPower = v2.Accum, v2.VotingPower
+	if updated := cs1.Validators.Update(v1); !updated {
+		t.Fatal("failed to update validator")
+	}
+}
+
+func addVoteToFromMany(to *ConsensusState, votes []*types.Vote, froms ...*ConsensusState) {
+	if len(votes) != len(froms) {
+		panic("len(votes) and len(froms) must match")
+	}
+	for i, from := range froms {
+		addVoteToFrom(to, from, votes[i])
+	}
+}
+
 func addVoteToFrom(to, from *ConsensusState, vote *types.Vote) {
 	valIndex, _ := to.Validators.GetByAddress(from.privValidator.Address)
-	added, err := to.TryAddVote(to.GetRoundState(), vote, valIndex, "")
+	added, err := to.TryAddVote(valIndex, vote, "")
 	if _, ok := err.(*types.ErrVoteConflictingSignature); ok {
 		// let it fly
 	} else if !added {
@@ -37,7 +75,22 @@ func signVote(from *ConsensusState, voteType byte, hash []byte, header types.Par
 	return vote
 }
 
+func signVoteMany(voteType byte, hash []byte, header types.PartSetHeader, css ...*ConsensusState) []*types.Vote {
+	votes := make([]*types.Vote, len(css))
+	for i, cs := range css {
+		votes[i] = signVote(cs, voteType, hash, header)
+	}
+	return votes
+}
+
 // add vote to one cs from another
+func signAddVoteToFromMany(voteType byte, to *ConsensusState, hash []byte, header types.PartSetHeader, froms ...*ConsensusState) {
+	for _, from := range froms {
+		vote := signVote(from, voteType, hash, header)
+		addVoteToFrom(to, from, vote)
+	}
+}
+
 func signAddVoteToFrom(voteType byte, to, from *ConsensusState, hash []byte, header types.PartSetHeader) *types.Vote {
 	vote := signVote(from, voteType, hash, header)
 	addVoteToFrom(to, from, vote)
@@ -81,6 +134,12 @@ func validatePrevote(t *testing.T, cs *ConsensusState, round int, privVal *types
 	}
 }
 
+func incrementRound(css ...*ConsensusState) {
+	for _, cs := range css {
+		cs.Round += 1
+	}
+}
+
 func validatePrecommit(t *testing.T, cs *ConsensusState, thisRound, lockRound int, privVal *types.PrivValidator, votedBlockHash, lockedBlockHash []byte) {
 	precommits := cs.Votes.Precommits(thisRound)
 	var vote *types.Vote
@@ -110,6 +169,20 @@ func validatePrecommit(t *testing.T, cs *ConsensusState, thisRound, lockRound in
 
 }
 
+func validatePrevoteAndPrecommit(t *testing.T, cs *ConsensusState, thisRound, lockRound int, privVal *types.PrivValidator, votedBlockHash, lockedBlockHash []byte, f func()) {
+	// verify the prevote
+	validatePrevote(t, cs, thisRound, privVal, votedBlockHash)
+	if f != nil {
+		f()
+	}
+	// wait to finish precommit
+	<-cs.NewStepCh()
+	// verify precommit
+	cs.mtx.Lock()
+	validatePrecommit(t, cs, thisRound, lockRound, privVal, votedBlockHash, lockedBlockHash)
+	cs.mtx.Unlock()
+}
+
 func simpleConsensusState(nValidators int) ([]*ConsensusState, []*types.PrivValidator) {
 	// Get State
 	state, privAccs, privVals := sm.RandGenesisState(10, true, 1000, nValidators, false, 10)
@@ -131,6 +204,7 @@ func simpleConsensusState(nValidators int) ([]*ConsensusState, []*types.PrivVali
 
 		// Make ConsensusReactor
 		cs := NewConsensusState(state, blockStore, mempoolReactor)
+		cs.SetPrivValidator(privVals[i])
 
 		// read off the NewHeightStep
 		<-cs.NewStepCh()
