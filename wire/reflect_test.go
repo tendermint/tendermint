@@ -51,6 +51,7 @@ var _ = RegisterInterface(
 	ConcreteType{&Viper{}, AnimalTypeViper},
 )
 
+// TODO: add assertions here ...
 func TestAnimalInterface(t *testing.T) {
 	var foo Animal
 
@@ -93,6 +94,8 @@ type TestCase struct {
 	Validator
 }
 
+var now = time.Now()
+
 //-------------------------------------
 
 func constructBasic() interface{} {
@@ -100,7 +103,7 @@ func constructBasic() interface{} {
 		SimpleStruct{
 			String: "String",
 			Bytes:  []byte("Bytes"),
-			Time:   time.Unix(123, 0),
+			Time:   now,
 		},
 	}
 	return cat
@@ -118,8 +121,9 @@ func validateBasic(o interface{}, t *testing.T) {
 	if string(cat.Bytes) != "Bytes" {
 		t.Errorf("Expected cat.Bytes == 'Bytes', got %X", cat.Bytes)
 	}
-	if cat.Time.Unix() != 123 {
-		t.Errorf("Expected cat.Time == 'Unix(123)', got %v", cat.Time)
+	// NOTE: stricter than Unix()!
+	if cat.Time.Nanosecond() != now.Nanosecond() {
+		t.Errorf("Expected cat.Time == %v, got %v", now, cat.Time)
 	}
 }
 
