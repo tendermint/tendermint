@@ -1,4 +1,4 @@
-Tendermint Consensus
+Tendermint Consensus version 0.7
 
 Consensus in tendermint happens one block at a time: once a block is committed, it is never reverted.
 
@@ -47,7 +47,7 @@ Tendermint satisfies these properties with the following protocol.
 
 * If a validator precommits for more than one block at a given height/round, they are slashed
 
-* A validator should only submit a precommit for a given block at some height/round if they have seen a Polka for that block at the same or an earlier round, but later than the last round in which they published a precommit. Ie., to change his precommit, a validator should have evidence that since he made the precommit, the network has become ready to commit a different block.
+* A validator should only submit a precommit for a given block at some height/round if they have seen a Polka for that block at the same height. Otherwise, the validator must precommit nil after getting +2/3 prevotes (but not for a particular block, so not a Polka).
 
 ## Locks
 
@@ -63,68 +63,36 @@ Tendermint satisfies these properties with the following protocol.
 
 ## Network Locks
 
-* If +1/3 validators precommits for a given block at a height/round, the network is then locked on the block whose polka is closest to that round. 
+* If +1/3 validators precommits for a given block at a height/round, the network is then locked on the block with a polka from that round.
 
-Proof: Assume +2/3 are non byzantine. Since validators must prevote what they are locked on, if +1/3 validators are locked and prevoting a given block, there will never be a polka for another block. Since there can never be a polka for another block, the network is forced to commit a block for which there has already been a polka. Note, however, that more than one block may get +1/3 of precommits, since validators can make precommits in a round based on polkas from earlier rounds. Example: say there is a polka for B1 in R1, but no validators precommit for B1 in R1. Then in R2, suppose there is a polka for B2. Suppose +1/3 precommit on B2 based on that polka, and another +1/3 precommit on B1 based on the polka in R1. In a future round, those that are locked on B1 will see the polka for B2 and thus be able to switch to B2, since R2 > R1. Hence, once +1/3 are locked, the network is locked on the block with the most recent polka. QED.
+Proof: Assume +2/3 are non byzantine.
+Since validators must prevote what they are locked on, if +1/3 validators are locked and prevoting a given block, there will never be a polka for another block.
+Since there can never be a polka for another block, the network is forced to commit the block in the aformentioned polka.
 
 ## Accountability
 
 * If the blockchain forked, then either +1/3 of the validators double signed or +1/3 of the validators violated the rules of locking (either by precomitting without a valid polka, or prevoting differently from the block they are locked on).
 
-Proof: Consider two blocks B1 and B2 to have been comitted at rounds R1 and R2. We divide the proofs into two cases: R1 = R2 and R1 != R2
+Proof: Consider two blocks B1 and B2 to have been committed at rounds R1 and R2. We divide the proofs into two cases: R1 = R2 and R1 != R2
 
 If R1 = R2 = R, then +2/3 of validators voted for each block in R. But (+2/3) + (+2/3) = (+4/3), which is greater than one. The difference (ie. (+4/3) - 1 = +1/3) must have double signed in R.
 
-Suppose R1 != R2, and let the corresponding polkas for the blocks occur in rounds P1 and P2, where P1 <= R1 and P2 <= R2 (ie a precommit can only come after or in the same round as its polka). Without loss of generality, suppose P1 <= P2. Consider the two cases P1 = P2 and P1 < P2.
+Suppose R1 != R2.  Without loss of generality, suppose R1 &lt; R2.
 
-If P1 = P2, then similar to having two commits at the same round, we have two polkas at the same round, each requiring +2/3 prevotes. This again leaves us with an excess of +1/3, which means +1/3 prevoted for two blocks at the same round, ie. double signed.
+We will construct a proof by contradiction.  Suppose that no +1/3 of the validators had double signed _and_ no +1/3 of the validators had violated the rules of locking, and arrive at a contradiction.
 
-Suppose P1 < P2. Since P1 <= R1 and P1 < P2, we have two cases: either R1 < P2 or R1 >= P2.
+Since no +1/3 of the validators had double signed, no round can have a polka for two different blocks.
 
-If R1 < P2, it means +2/3 prevoted for B2 after +2/3 precommited for B1. This means +1/3 of those who precommited for B1 must have prevoted for B2, hence violating their lock.
+Furthermore, no +1/3 of the validators had violated the rules of locking, so there can be no polka other than for B1, since at least +1/3 of validators are locked on B1 from R1 onwards.
 
-If R1 >= P2, it means +2/3 precommited B1 after +2/3 prevoted B2. This is perfectly acceptable, since we know P1 occured. We must therefore show that R2 required double signing or violates the rules of locking. We already know R2 >= P2, so we must consider two final cases: R2 < R1, and R1 < R2 (again, we've already looked at R1=R2).
-
-If R2 < R1, we have an overal sequence P1 < P2 <= R2 < R1. It means +2/3 precommited on B1 after +2/3 precommited on B2, which implies that +1/3 of those who precommitted on B2 also precommitted on B1 afterwards. This would be okay if R2 < P1 <= R1, however, since P1 < R2, this violates the rules of unlocking.
-
-If R2 > R1, we have an overall sequence P1 < P2 <= R1 < R2. It means +2/3 precommitted on B2 after +2/3 precommitted on B1, which implies that +1/3 of those who precommitted on B1 also precommitted on B2 afterwards. This would be okay if R1 < P2 <= R2, however, since P2 < R1, this violated the rules of unlocking.
+Yet we have a fork, which means that either we had a polka for B2, or +2/3 validators had precommitted B2 without a polka for B2.  Either way we have a contradiction.
 
 QED.
 
-
 ## Recovery
 
-* In the event of a fork (a violation of safety), we necessarily have double signing or violation of locking rules (ie. see above proof). 
+In the event of a fork (a violation of safety), we necessarily have double signing or violation of locking rules (ie. see above proof). 
 The double signers should be slashed on both chains. However, since there are +1/3 byzantine, they may censor the evidence, and so an external recovery protocol must be invoked in which everyone publishes justification of their prevotes (previous precomits) and their precommits (polkas). 
 Anyone without a valid polka for their precommit, or with a prevote that conflicts with their last precommit, may be considered byzantine, and a new blockchain should be started without them.
 
-** Recovery Spec
-
-Assume the blockchain has forked at height H, with blocks B1 and B2 produced at the same round R. We know this means +1/3 validators precommitted two different blocks at the same height/round. Therefore our task is easy: gossip the duplicate signatures, and produce a special block at height H and round Rr > R. The block should be proposed by the appropriate next proposer after removing the offending validators, and it should pass through the normal consensus protocol for being committed, but with the reduced set of validators (to exclude double signers). The block should contain no transactions, but rather a merkle tree of evidence for those that double signed. Once block H is committed, consensus resumes as normal at block H+1 with the reduced validator set. Light clients will have to do the hard work of iterating through the whole tree (processing the whole block) to cofirm how the validator set should be updated. 
-
-Alternatively, we may wish to commit one of B1 or B2. In this case, the special block should be at H+1, and its proposer should include in the proposal B1 or B2. The special block should include validation from the reduced set of validators for B1 or B2.
-
-Assume instead the blockchain has forked at height H, with blocks B1 and B2 produced at rounds R1 and R2, with R1 < R2. We know this means +1/3 validators double signed or violated locking rules, and now we need to figure out who they are. This can only be done through a publishing protocol where each validator publishes the polkas it used as justification for each precommit and/or prevote (if applicable - ie. if prevoting differently from last lock)
-
-Imagine the following example: a polka for B1 is produced at P1, and (2/3+e) precommit for it. 
-Suppose a polka for B2 is then produced at P2 by (1/3-e) not locked and an additional (1/3+f) that are, with f > e.
-Then suppose that motley crew of (2/3+f-e > 2/3) precommits on B2.
-The blockchain has forked and no one has double signed, but the (1/3+f) unjustifiably prevoted B2 when they shouldn't have.
-
-We must determine who the lock violaters are, and start a new chain with out them, again using a special block. 
-Producing this block securely is more difficult, since we must first offer validators a chance to publish their justifications.
-The special block should include a new validator set with +1/2 of the original set.
-The special block should include the conflicting validations for B1 and B2.
-The special block should include every precommit from that height - these may be submitted by any validator.
-The special block should include justification for each validator which precomitted B1 or B2. 
-Justification should include a list of all non nil prevotes, precommits, and polkas, and should saitsfy the following:
-Consider the list of non-nil precommits made by validator V as Cv = {c1, c2, ..., cN}, or as a function Cv(i), with i in [1, N].
-V need not have a precommit at each round, but we assume to know every round for which he did.
-V must publish a corresponding list of polkas Pv = {p1, p2, ..., pN}, or Pv(i), 
-such that for each Cv(i).round there exists a Pv(i) such that Cv(i-1).round < Pv(i).round <= Cv(i).round. 
-In other words, for each non-nil precommit at a round R, there must be a valid polka that happened at or before R, but after the last precommit.
-Consider also the list of prevotes made by validator V as Qv = {q1, q2, ..., qM}. 
-Note the validator may have published a different number of precommits and prevotes (M != N), but we assume to know all of both.
-Now join Qv and Cv and order them according to their rounds. 
-Any continuos sequence of prevotes following a precommit must be for the same block as that in the precommit.
-Validators who cannot satisfy either of these conditions are excluded from the new validator set.
+In a future version of Tendermint, we may modify the definition of a commit to be the full justification set of the +2/3 precommits for a single block at the height/round.  A justification set is a set of votes where all votes can be justified by the votes within the set.  This may simplify the recovery procedure by removing the phase needed to share justifications; rather, the justification sharing would be interleaved with the rounds, and each node would not consider a block to be committed until fully justified.
