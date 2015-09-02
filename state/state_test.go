@@ -1,19 +1,18 @@
 package state
 
 import (
-	"github.com/tendermint/tendermint/account"
-	_ "github.com/tendermint/tendermint/config/tendermint_test"
-	"github.com/tendermint/tendermint/types"
-
 	"bytes"
 	"testing"
 	"time"
+
+	"github.com/tendermint/tendermint/account"
+	_ "github.com/tendermint/tendermint/config/tendermint_test"
+	"github.com/tendermint/tendermint/types"
 )
 
 func execTxWithState(state *State, tx types.Tx, runCall bool) error {
 	cache := NewBlockCache(state)
-	err := ExecTx(cache, tx, runCall, nil)
-	if err != nil {
+	if err := ExecTx(cache, tx, runCall, nil); err != nil {
 		return err
 	} else {
 		cache.Sync()
@@ -567,6 +566,60 @@ proof-of-work chain as proof of what happened while they were gone `
 	}
 
 	// TODO UnbondTx.
+
+}
+
+func TestSuicide(t *testing.T) {
+
+	state, privAccounts, _ := RandGenesisState(3, true, 1000, 1, true, 1000)
+
+	acc0 := state.GetAccount(privAccounts[0].PubKey.Address())
+	acc0PubKey := privAccounts[0].PubKey
+	acc1 := state.GetAccount(privAccounts[1].PubKey.Address())
+	acc2 := state.GetAccount(privAccounts[2].Address)
+	sendingAmount, refundedBalance, oldBalance := int64(1), acc1.Balance, acc2.Balance
+
+	newAcc1 := state.GetAccount(acc1.Address)
+
+	// store 0x1 at 0x1, push an address, then suicide :)
+	contractCode := []byte{0x60, 0x01, 0x60, 0x01, 0x55, 0x73}
+	contractCode = append(contractCode, acc2.Address...)
+	contractCode = append(contractCode, 0xff)
+	newAcc1.Code = contractCode
+	state.UpdateAccount(newAcc1)
+
+	// send call tx with no data, cause suicide
+	tx := types.NewCallTxWithNonce(acc0PubKey, acc1.Address, nil, sendingAmount, 1000, 0, acc0.Sequence+1)
+	tx.Input.Signature = privAccounts[0].Sign(state.ChainID, tx)
+
+	// we use cache instead of execTxWithState so we can run the tx twice
+	cache := NewBlockCache(state)
+	if err := ExecTx(cache, tx, true, nil); err != nil {
+		t.Errorf("Got error in executing call transaction, %v", err)
+	}
+
+	// if we do it again, we won't get an error, but the suicide
+	// shouldn't happen twice and the caller should lose fee
+	tx.Input.Sequence += 1
+	tx.Input.Signature = privAccounts[0].Sign(state.ChainID, tx)
+	if err := ExecTx(cache, tx, true, nil); err != nil {
+		t.Errorf("Got error in executing call transaction, %v", err)
+	}
+
+	// commit the block
+	cache.Sync()
+
+	// acc2 should receive the sent funds and the contracts balance
+	newAcc2 := state.GetAccount(acc2.Address)
+	newBalance := sendingAmount + refundedBalance + oldBalance
+	if newAcc2.Balance != newBalance {
+		t.Errorf("Unexpected newAcc2 balance. Expected %v, got %v",
+			newAcc2.Balance, newBalance)
+	}
+	newAcc1 = state.GetAccount(acc1.Address)
+	if newAcc1 != nil {
+		t.Errorf("Expected account to be removed")
+	}
 
 }
 

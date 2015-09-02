@@ -5,11 +5,11 @@ import (
 	"sort"
 
 	acm "github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/common"
 	dbm "github.com/tendermint/tendermint/db"
 	"github.com/tendermint/tendermint/merkle"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/wire"
 )
 
 func makeStorage(db dbm.DB, root []byte) merkle.Tree {
@@ -177,7 +177,7 @@ func (cache *BlockCache) Sync() {
 		addr, key := Tuple256Split(storageKey)
 		if addr != curAddr || curAcc == nil {
 			acc, storage, removed, _ := cache.accounts[string(addr.Postfix(20))].unpack()
-			if storage == nil {
+			if !removed && storage == nil {
 				storage = makeStorage(cache.db, acc.StorageRoot)
 			}
 			curAddr = addr
@@ -211,7 +211,7 @@ func (cache *BlockCache) Sync() {
 	for _, addrStr := range addrStrs {
 		acc, storage, removed, dirty := cache.accounts[addrStr].unpack()
 		if removed {
-			removed := cache.backend.RemoveAccount(acc.Address)
+			removed := cache.backend.RemoveAccount([]byte(addrStr))
 			if !removed {
 				PanicCrisis(Fmt("Could not remove account to be removed: %X", acc.Address))
 			}
