@@ -137,8 +137,7 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 		return
 	}
 
-	// Get round state
-	rs := conR.conS.GetRoundState()
+	// Get peer states
 	ps := peer.Data.Get(PeerStateKey).(*PeerState)
 	_, msg, err := DecodeMessage(msgBytes)
 	if err != nil {
@@ -146,13 +145,13 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 		// TODO punish peer?
 		return
 	}
-	log.Debug("Receive", "channel", chId, "peer", peer, "msg", msg, "rsHeight", rs.Height)
+	log.Debug("Receive", "channel", chId, "peer", peer, "msg", msg)
 
 	switch chId {
 	case StateChannel:
 		switch msg := msg.(type) {
 		case *NewRoundStepMessage:
-			ps.ApplyNewRoundStepMessage(msg, rs)
+			ps.ApplyNewRoundStepMessage(msg)
 		case *CommitStepMessage:
 			ps.ApplyCommitStepMessage(msg)
 		case *HasVoteMessage:
@@ -189,15 +188,19 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 			vote, valIndex := msg.Vote, msg.ValidatorIndex
 
 			// attempt to add the vote and dupeout the validator if its a duplicate signature
-			added, err := conR.conS.TryAddVote(rs, vote, valIndex, peer.Key)
+			added, err := conR.conS.TryAddVote(valIndex, vote, peer.Key)
 			if err == ErrAddingVote {
 				// TODO: punish peer
 			} else if err != nil {
 				return
 			}
 
-			ps.EnsureVoteBitArrays(rs.Height, rs.Validators.Size())
-			ps.EnsureVoteBitArrays(rs.Height-1, rs.LastCommit.Size())
+			cs := conR.conS
+			cs.mtx.Lock()
+			height, valSize, lastCommitSize := cs.Height, cs.Validators.Size(), cs.LastCommit.Size()
+			cs.mtx.Unlock()
+			ps.EnsureVoteBitArrays(height, valSize)
+			ps.EnsureVoteBitArrays(height-1, lastCommitSize)
 			ps.SetHasVote(vote, valIndex)
 
 			if added {
@@ -208,7 +211,7 @@ func (conR *ConsensusReactor) Receive(chId byte, peer *p2p.Peer, msgBytes []byte
 			}
 
 		default:
-			// TODO: should these be punishable?
+			// don't punish (leave room for soft upgrades)
 			log.Warn(Fmt("Unknown message type %v", reflect.TypeOf(msg)))
 		}
 	default:
@@ -785,7 +788,7 @@ func (ps *PeerState) setHasVote(height int, round int, type_ byte, index int) {
 	}
 }
 
-func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage, rs *RoundState) {
+func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 

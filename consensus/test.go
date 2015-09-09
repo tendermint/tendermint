@@ -57,7 +57,7 @@ func addVoteToFromMany(to *ConsensusState, votes []*types.Vote, froms ...*Consen
 
 func addVoteToFrom(to, from *ConsensusState, vote *types.Vote) {
 	valIndex, _ := to.Validators.GetByAddress(from.privValidator.Address)
-	added, err := to.TryAddVote(to.GetRoundState(), vote, valIndex, "")
+	added, err := to.TryAddVote(valIndex, vote, "")
 	if _, ok := err.(*types.ErrVoteConflictingSignature); ok {
 		// let it fly
 	} else if !added {

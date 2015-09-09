@@ -6,7 +6,6 @@ import (
 
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/gorilla/websocket"
 	. "github.com/tendermint/tendermint/common"
-	_ "github.com/tendermint/tendermint/config/tendermint_test"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/rpc/types"
 	"github.com/tendermint/tendermint/wire"
