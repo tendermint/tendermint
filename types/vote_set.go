@@ -59,7 +59,7 @@ func (voteSet *VoteSet) Height() int {
 
 func (voteSet *VoteSet) Round() int {
 	if voteSet == nil {
-		return 0
+		return -1
 	} else {
 		return voteSet.round
 	}

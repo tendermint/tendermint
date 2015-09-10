@@ -553,19 +553,19 @@ OUTER_LOOP:
 // Read only when returned by PeerState.GetRoundState().
 type PeerRoundState struct {
 	Height                   int                 // Height peer is at
-	Round                    int                 // Round peer is at
+	Round                    int                 // Round peer is at, -1 if unknown.
 	Step                     RoundStepType       // Step peer is at
 	StartTime                time.Time           // Estimated start of round 0 at this height
 	Proposal                 bool                // True if peer has proposal for this round
 	ProposalBlockPartsHeader types.PartSetHeader //
 	ProposalBlockParts       *BitArray           //
-	ProposalPOLRound         int                 // -1 if none
+	ProposalPOLRound         int                 // Proposal's POL round. -1 if none.
 	ProposalPOL              *BitArray           // nil until ProposalPOLMessage received.
 	Prevotes                 *BitArray           // All votes peer has for this round
 	Precommits               *BitArray           // All precommits peer has for this round
-	LastCommitRound          int                 // Round of commit for last height.
+	LastCommitRound          int                 // Round of commit for last height. -1 if none.
 	LastCommit               *BitArray           // All commit precommits of commit for last height.
-	CatchupCommitRound       int                 // Round that we believe commit round is.
+	CatchupCommitRound       int                 // Round that we believe commit round is. -1 if none.
 	CatchupCommit            *BitArray           // All commit precommits peer has for this height
 }
 
@@ -584,7 +584,15 @@ type PeerState struct {
 }
 
 func NewPeerState(peer *p2p.Peer) *PeerState {
-	return &PeerState{Peer: peer}
+	return &PeerState{
+		Peer: peer,
+		PeerRoundState: PeerRoundState{
+			Round:              -1,
+			ProposalPOLRound:   -1,
+			LastCommitRound:    -1,
+			CatchupCommitRound: -1,
+		},
+	}
 }
 
 // Returns an atomic snapshot of the PeerRoundState.
