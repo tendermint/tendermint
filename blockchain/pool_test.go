@@ -25,8 +25,8 @@ func makePeers(numPeers int, minHeight, maxHeight int) map[string]testPeer {
 }
 
 func TestBasic(t *testing.T) {
-	peers := makePeers(10, 0, 1000)
 	start := 42
+	peers := makePeers(10, start+1, 1000)
 	timeoutsCh := make(chan string, 100)
 	requestsCh := make(chan BlockRequest, 100)
 	pool := NewBlockPool(start, requestsCh, timeoutsCh)
@@ -77,12 +77,16 @@ func TestBasic(t *testing.T) {
 }
 
 func TestTimeout(t *testing.T) {
-	peers := makePeers(10, 0, 1000)
 	start := 42
+	peers := makePeers(10, start+1, 1000)
 	timeoutsCh := make(chan string, 100)
 	requestsCh := make(chan BlockRequest, 100)
 	pool := NewBlockPool(start, requestsCh, timeoutsCh)
 	pool.Start()
+
+	for _, peer := range peers {
+		log.Info("Peer", peer.id)
+	}
 
 	// Introduce each peer.
 	go func() {

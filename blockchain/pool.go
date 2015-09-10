@@ -82,12 +82,32 @@ func (pool *BlockPool) makeRequestsRoutine() {
 		if numPending >= maxPendingRequests {
 			// sleep for a bit.
 			time.Sleep(requestIntervalMS * time.Millisecond)
+			// check for timed out peers
+			pool.removeTimedoutPeers()
 		} else if len(pool.requests) >= maxTotalRequests {
 			// sleep for a bit.
 			time.Sleep(requestIntervalMS * time.Millisecond)
+			// check for timed out peers
+			pool.removeTimedoutPeers()
 		} else {
 			// request for more blocks.
 			pool.makeNextRequest()
+		}
+	}
+}
+
+func (pool *BlockPool) removeTimedoutPeers() {
+	for _, peer := range pool.peers {
+		if !peer.didTimeout && peer.numPending > 0 {
+			curRate := peer.recvMonitor.Status().CurRate
+			// XXX remove curRate != 0
+			if curRate != 0 && curRate < minRecvRate {
+				pool.sendTimeout(peer.id)
+				peer.didTimeout = true
+			}
+		}
+		if peer.didTimeout {
+			pool.removePeer(peer.id)
 		}
 	}
 }
@@ -228,6 +248,7 @@ func (pool *BlockPool) pickIncrAvailablePeer(minHeight int) *bpPeer {
 		if peer.isBad() {
 			pool.removePeer(peer.id)
 			continue
+		} else {
 		}
 		if peer.numPending >= maxPendingRequestsPerPeer {
 			continue
@@ -309,7 +330,7 @@ func newBPPeer(pool *BlockPool, peerID string, height int) *bpPeer {
 func (bpp *bpPeer) resetMonitor() {
 	bpp.recvMonitor = flow.New(time.Second, time.Second*40)
 	var initialValue = float64(minRecvRate) * math.E
-	bpp.recvMonitor.Update(int(initialValue))
+	bpp.recvMonitor.SetREMA(initialValue)
 }
 
 func (bpp *bpPeer) resetTimeout() {
@@ -339,20 +360,12 @@ func (bpp *bpPeer) decrPending(recvSize int) {
 }
 
 func (bpp *bpPeer) onTimeout() {
+	bpp.pool.sendTimeout(bpp.id)
 	bpp.didTimeout = true
 }
 
 func (bpp *bpPeer) isBad() bool {
-	if bpp.didTimeout {
-		bpp.pool.sendTimeout(bpp.id)
-		return true
-	}
-	if bpp.numPending == 0 {
-		return false
-	} else {
-		bpp.pool.sendTimeout(bpp.id)
-		return bpp.recvMonitor.Status().CurRate < minRecvRate
-	}
+	return bpp.didTimeout
 }
 
 //-------------------------------------
@@ -426,7 +439,6 @@ func (bpr *bpRequester) redo() {
 func (bpr *bpRequester) requestRoutine() {
 OUTER_LOOP:
 	for {
-
 		// Pick a peer to send request to.
 		var peer *bpPeer = nil
 	PICK_PEER_LOOP:
