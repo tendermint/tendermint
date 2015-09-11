@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+	"time"
 
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/wire"
@@ -22,6 +23,16 @@ func EventStringDupeout() string                { return "Dupeout" }
 func EventStringNewBlock() string               { return "NewBlock" }
 func EventStringFork() string                   { return "Fork" }
 
+func EventStringNewRound() string         { return fmt.Sprintf("NewRound") }
+func EventStringTimeoutPropose() string   { return fmt.Sprintf("TimeoutPropose") }
+func EventStringCompleteProposal() string { return fmt.Sprintf("CompleteProposal") }
+func EventStringPolka() string            { return fmt.Sprintf("Polka") }
+func EventStringUnlock() string           { return fmt.Sprintf("Unlock") }
+func EventStringLock() string             { return fmt.Sprintf("Lock") }
+func EventStringRelock() string           { return fmt.Sprintf("Relock") }
+func EventStringTimeoutWait() string      { return fmt.Sprintf("TimeoutWait") }
+func EventStringVote() string             { return fmt.Sprintf("Vote") }
+
 //----------------------------------------
 
 const (
@@ -30,6 +41,9 @@ const (
 	EventDataTypeTx       = byte(0x03)
 	EventDataTypeCall     = byte(0x04)
 	EventDataTypeLog      = byte(0x05)
+
+	EventDataTypeRoundState = byte(0x11)
+	EventDataTypeVote       = byte(0x12)
 )
 
 type EventData interface {
@@ -43,10 +57,12 @@ var _ = wire.RegisterInterface(
 	wire.ConcreteType{EventDataTx{}, EventDataTypeTx},
 	wire.ConcreteType{EventDataCall{}, EventDataTypeCall},
 	wire.ConcreteType{EventDataLog{}, EventDataTypeLog},
+	wire.ConcreteType{EventDataRoundState{}, EventDataTypeRoundState},
+	wire.ConcreteType{EventDataVote{}, EventDataTypeVote},
 )
 
 // Most event messages are basic types (a block, a transaction)
-// but some (an input to a call tx or a receive) are more exotic:
+// but some (an input to a call tx or a receive) are more exotic
 
 type EventDataNewBlock struct {
 	Block *Block `json:"block"`
@@ -84,7 +100,32 @@ type EventDataLog struct {
 	Height  int64     `json:"height"`
 }
 
-func (_ EventDataNewBlock) AssertIsEventData() {}
-func (_ EventDataTx) AssertIsEventData()       {}
-func (_ EventDataCall) AssertIsEventData()     {}
-func (_ EventDataLog) AssertIsEventData()      {}
+// We fire the most recent round state that led to the event
+// (ie. NewRound will have the previous rounds state)
+type EventDataRoundState struct {
+	CurrentTime time.Time `json:"current_time"`
+
+	Height        int       `json:"height"`
+	Round         int       `json:"round"`
+	Step          string    `json:"step"`
+	StartTime     time.Time `json:"start_time"`
+	CommitTime    time.Time `json:"commit_time"`
+	Proposal      *Proposal `json:"proposal"`
+	ProposalBlock *Block    `json:"proposal_block"`
+	LockedRound   int       `json:"locked_round"`
+	LockedBlock   *Block    `json:"locked_block"`
+	POLRound      int       `json:"pol_round"`
+}
+
+type EventDataVote struct {
+	Index   int
+	Address []byte
+	Vote    *Vote
+}
+
+func (_ EventDataNewBlock) AssertIsEventData()   {}
+func (_ EventDataTx) AssertIsEventData()         {}
+func (_ EventDataCall) AssertIsEventData()       {}
+func (_ EventDataLog) AssertIsEventData()        {}
+func (_ EventDataRoundState) AssertIsEventData() {}
+func (_ EventDataVote) AssertIsEventData()       {}

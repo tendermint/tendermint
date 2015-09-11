@@ -77,7 +77,7 @@ func (hvs *HeightVoteSet) addRound(round int) {
 	if _, ok := hvs.roundVoteSets[round]; ok {
 		PanicSanity("addRound() for an existing round")
 	}
-	log.Info("addRound(round)", "round", round)
+	log.Debug("addRound(round)", "round", round)
 	prevotes := types.NewVoteSet(hvs.height, round, types.VoteTypePrevote, hvs.valSet)
 	precommits := types.NewVoteSet(hvs.height, round, types.VoteTypePrecommit, hvs.valSet)
 	hvs.roundVoteSets[round] = RoundVoteSet{
@@ -88,7 +88,7 @@ func (hvs *HeightVoteSet) addRound(round int) {
 
 // Duplicate votes return added=false, err=nil.
 // By convention, peerKey is "" if origin is self.
-func (hvs *HeightVoteSet) AddByAddress(address []byte, vote *types.Vote, peerKey string) (added bool, index int, err error) {
+func (hvs *HeightVoteSet) AddByIndex(valIndex int, vote *types.Vote, peerKey string) (added bool, address []byte, err error) {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
 	voteSet := hvs.getVoteSet(vote.Round, vote.Type)
@@ -104,7 +104,7 @@ func (hvs *HeightVoteSet) AddByAddress(address []byte, vote *types.Vote, peerKey
 		}
 		return
 	}
-	added, index, err = voteSet.AddByAddress(address, vote)
+	added, address, err = voteSet.AddByIndex(valIndex, vote)
 	return
 }
 
@@ -120,7 +120,7 @@ func (hvs *HeightVoteSet) Precommits(round int) *types.VoteSet {
 	return hvs.getVoteSet(round, types.VoteTypePrecommit)
 }
 
-// Last round that has +2/3 prevotes for a particular block or nik.
+// Last round that has +2/3 prevotes for a particular block or nil.
 // Returns -1 if no such round exists.
 func (hvs *HeightVoteSet) POLRound() int {
 	hvs.mtx.Lock()
@@ -134,7 +134,7 @@ func (hvs *HeightVoteSet) POLRound() int {
 }
 
 func (hvs *HeightVoteSet) getVoteSet(round int, type_ byte) *types.VoteSet {
-	log.Info("getVoteSet(round)", "round", round, "type", type_)
+	log.Debug("getVoteSet(round)", "round", round, "type", type_)
 	rvs, ok := hvs.roundVoteSets[round]
 	if !ok {
 		return nil
