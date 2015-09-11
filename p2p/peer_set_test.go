@@ -73,11 +73,9 @@ func newPeerInIPRange(ipBytes ...string) *Peer {
 	for i, ipByte := range ipBytes {
 		ips[i] = ipByte
 	}
-
 	for i := len(ipBytes); i < 4; i++ {
 		ips[i] = Fmt("%v", rand.Int()%256)
 	}
-
 	ipS := strings.Join(ips, ".")
 	return &Peer{
 		Key: RandStr(12),
@@ -92,19 +90,19 @@ func TestIPRanges(t *testing.T) {
 
 	// test  /8
 	maxPeersPerIPRange = [4]int{2, 2, 2, 2}
-	peer := newPeerInIPRange("54")
+	peer := newPeerInIPRange("54", "1")
 	if err := peerSet.Add(peer); err != nil {
 		t.Errorf("Failed to add new peer")
 	}
-	peer = newPeerInIPRange("54")
+	peer = newPeerInIPRange("54", "2")
 	if err := peerSet.Add(peer); err != nil {
 		t.Errorf("Failed to add new peer")
 	}
-	peer = newPeerInIPRange("54")
+	peer = newPeerInIPRange("54", "3")
 	if err := peerSet.Add(peer); err == nil {
 		t.Errorf("Added peer when we shouldn't have")
 	}
-	peer = newPeerInIPRange("55")
+	peer = newPeerInIPRange("55", "1")
 	if err := peerSet.Add(peer); err != nil {
 		t.Errorf("Failed to add new peer")
 	}
@@ -112,19 +110,19 @@ func TestIPRanges(t *testing.T) {
 	// test  /16
 	peerSet = NewPeerSet()
 	maxPeersPerIPRange = [4]int{3, 2, 1, 1}
-	peer = newPeerInIPRange("54", "112")
+	peer = newPeerInIPRange("54", "112", "1")
 	if err := peerSet.Add(peer); err != nil {
 		t.Errorf("Failed to add new peer")
 	}
-	peer = newPeerInIPRange("54", "112")
+	peer = newPeerInIPRange("54", "112", "2")
 	if err := peerSet.Add(peer); err != nil {
 		t.Errorf("Failed to add new peer")
 	}
-	peer = newPeerInIPRange("54", "112")
+	peer = newPeerInIPRange("54", "112", "3")
 	if err := peerSet.Add(peer); err == nil {
 		t.Errorf("Added peer when we shouldn't have")
 	}
-	peer = newPeerInIPRange("54", "113")
+	peer = newPeerInIPRange("54", "113", "1")
 	if err := peerSet.Add(peer); err != nil {
 		t.Errorf("Failed to add new peer")
 	}
@@ -132,19 +130,19 @@ func TestIPRanges(t *testing.T) {
 	// test  /24
 	peerSet = NewPeerSet()
 	maxPeersPerIPRange = [4]int{5, 3, 2, 1}
-	peer = newPeerInIPRange("54", "112", "11")
+	peer = newPeerInIPRange("54", "112", "11", "1")
 	if err := peerSet.Add(peer); err != nil {
 		t.Errorf("Failed to add new peer")
 	}
-	peer = newPeerInIPRange("54", "112", "11")
+	peer = newPeerInIPRange("54", "112", "11", "2")
 	if err := peerSet.Add(peer); err != nil {
 		t.Errorf("Failed to add new peer")
 	}
-	peer = newPeerInIPRange("54", "112", "11")
+	peer = newPeerInIPRange("54", "112", "11", "3")
 	if err := peerSet.Add(peer); err == nil {
 		t.Errorf("Added peer when we shouldn't have")
 	}
-	peer = newPeerInIPRange("54", "112", "12")
+	peer = newPeerInIPRange("54", "112", "12", "1")
 	if err := peerSet.Add(peer); err != nil {
 		t.Errorf("Failed to add new peer")
 	}

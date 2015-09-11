@@ -107,7 +107,9 @@ func (pool *BlockPool) removeTimedoutPeers() {
 			}
 		}
 		if peer.didTimeout {
+			pool.peersMtx.Lock() // Lock
 			pool.removePeer(peer.id)
+			pool.peersMtx.Unlock()
 		}
 	}
 }
@@ -224,7 +226,7 @@ func (pool *BlockPool) removePeer(peerID string) {
 	for _, request := range pool.requests {
 		if request.getPeerID() == peerID {
 			pool.numPending++
-			request.redo() // pick another peer and ...
+			go request.redo() // pick another peer and ...
 		}
 	}
 	delete(pool.peers, peerID)
@@ -430,6 +432,7 @@ func (bpr *bpRequester) reset() {
 }
 
 // Tells bpRequester to pick another peer and try again.
+// NOTE: blocking
 func (bpr *bpRequester) redo() {
 	bpr.redoCh <- struct{}{}
 }

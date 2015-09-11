@@ -85,7 +85,7 @@ func TestTimeout(t *testing.T) {
 	pool.Start()
 
 	for _, peer := range peers {
-		log.Info("Peer", peer.id)
+		log.Info("Peer", "id", peer.id)
 	}
 
 	// Introduce each peer.
