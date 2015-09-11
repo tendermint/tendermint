@@ -102,7 +102,7 @@ func defaultConfig(moniker string) (defaultConfig string) {
 }
 
 var defaultGenesis = `{
-    "chain_id": "tendermint_testnet_10",
+    "chain_id": "tendermint_testnet_11",
     "accounts": [
         {
             "address": "9FCBA7F840A0BFEBBE755E853C9947270A912D04",
