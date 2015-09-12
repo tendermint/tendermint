@@ -124,7 +124,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte)
 		return
 	}
 
-	log.Notice("Received message", "msg", msg)
+	log.Notice("Received message", "src", src, "chID", chID, "msg", msg)
 
 	switch msg := msg.(type) {
 	case *bcBlockRequestMessage:

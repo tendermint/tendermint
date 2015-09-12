@@ -585,7 +585,7 @@ func (ch *Channel) writeMsgPacketTo(w io.Writer) (n int64, err error) {
 // Handles incoming msgPackets. Returns a msg bytes if msg is complete.
 // Not goroutine-safe
 func (ch *Channel) recvMsgPacket(packet msgPacket) ([]byte, error) {
-	log.Debug("Read Msg Packet", "conn", ch.conn, "packet", packet)
+	// log.Debug("Read Msg Packet", "conn", ch.conn, "packet", packet)
 	if wire.MaxBinaryReadSize < len(ch.recving)+len(packet.Bytes) {
 		return nil, wire.ErrBinaryReadSizeOverflow
 	}

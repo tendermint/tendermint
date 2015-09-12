@@ -119,9 +119,9 @@ func (p *Peer) WriteTo(w io.Writer) (n int64, err error) {
 
 func (p *Peer) String() string {
 	if p.outbound {
-		return fmt.Sprintf("Peer{%v out}", p.Key)
+		return fmt.Sprintf("Peer{%v %v out}", p.mconn, p.Key[:12])
 	} else {
-		return fmt.Sprintf("Peer{%v in}", p.Key)
+		return fmt.Sprintf("Peer{%v %v in}", p.mconn, p.Key[:12])
 	}
 }
 

@@ -14,8 +14,8 @@ const (
 	requestIntervalMS         = 500
 	maxTotalRequests          = 300
 	maxPendingRequests        = maxTotalRequests
-	maxPendingRequestsPerPeer = 30
-	peerTimeoutSeconds        = 10
+	maxPendingRequestsPerPeer = 50
+	peerTimeoutSeconds        = 15
 	minRecvRate               = 10240 // 10Kb/s
 )
 
@@ -103,6 +103,7 @@ func (pool *BlockPool) removeTimedoutPeers() {
 			// XXX remove curRate != 0
 			if curRate != 0 && curRate < minRecvRate {
 				pool.sendTimeout(peer.id)
+				log.Warn("SendTimeout", "peer", peer.id, "reason", "curRate too low")
 				peer.didTimeout = true
 			}
 		}
@@ -363,6 +364,7 @@ func (bpp *bpPeer) decrPending(recvSize int) {
 
 func (bpp *bpPeer) onTimeout() {
 	bpp.pool.sendTimeout(bpp.id)
+	log.Warn("SendTimeout", "peer", bpp.id, "reason", "onTimeout")
 	bpp.didTimeout = true
 }
 
