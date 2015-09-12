@@ -32,6 +32,7 @@ const (
 
 type BlockPool struct {
 	QuitService
+	startTime time.Time
 
 	// block requests
 	mtx        sync.Mutex
@@ -65,6 +66,7 @@ func NewBlockPool(start int, requestsCh chan<- BlockRequest, timeoutsCh chan<- s
 func (pool *BlockPool) OnStart() error {
 	pool.QuitService.OnStart()
 	go pool.makeRequestsRoutine()
+	pool.startTime = time.Now()
 	return nil
 }
 
@@ -136,7 +138,7 @@ func (pool *BlockPool) IsCaughtUp() bool {
 	}
 	pool.peersMtx.Unlock()
 
-	return numPeers >= 3 && height > 0 && height == maxPeerHeight
+	return numPeers >= 3 && (height > 0 || time.Now().Sub(pool.startTime) > 30*time.Second) && (maxPeerHeight == 0 || height == maxPeerHeight)
 }
 
 // We need to see the second block's Validation to validate the first block.
