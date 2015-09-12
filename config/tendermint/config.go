@@ -92,7 +92,7 @@ node_laddr = "0.0.0.0:46656"
 seeds = "goldenalchemist.chaintest.net:46656"
 fast_sync = true
 db_backend = "leveldb"
-log_level = "debug"
+log_level = "notice"
 rpc_laddr = "0.0.0.0:46657"
 `
 
@@ -106,7 +106,7 @@ var defaultGenesis = `{
     "accounts": [
         {
             "address": "9FCBA7F840A0BFEBBE755E853C9947270A912D04",
-            "amount": 1997999998000000
+            "amount": 1995999998000000
         },
         {
             "address": "964B1493BBE3312278B7DEB94C39149F7899A345",
@@ -118,6 +118,14 @@ var defaultGenesis = `{
         },
         {
             "address": "F171824590D69386F709E7B6704B369C5A370D60",
+            "amount": 1000000000000
+        },
+        {
+            "address": "56EFE746A13D9A6054AC89C3E2A361C2DB8B9EAE",
+            "amount": 1000000000000
+        },
+        {
+            "address": "7C2E032D8407EDF66A04D88CF0E1D9B15D98AE2D",
             "amount": 1000000000000
         },
         {
