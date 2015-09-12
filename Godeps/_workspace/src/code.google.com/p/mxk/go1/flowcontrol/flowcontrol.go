@@ -76,6 +76,7 @@ func (m *Monitor) Update(n int) int {
 func (m *Monitor) SetREMA(rEMA float64) {
 	m.mu.Lock()
 	m.rEMA = rEMA
+	m.samples++
 	m.mu.Unlock()
 }
 
