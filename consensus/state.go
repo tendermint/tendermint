@@ -240,6 +240,7 @@ type RoundState struct {
 	LockedBlock        *types.Block
 	LockedBlockParts   *types.PartSet
 	Votes              *HeightVoteSet
+	CommitRound        int            //
 	LastCommit         *types.VoteSet // Last precommits at Height-1
 	LastValidators     *types.ValidatorSet
 }
@@ -324,7 +325,7 @@ func NewConsensusState(state *sm.State, blockStore *bc.BlockStore, mempoolReacto
 		mempoolReactor: mempoolReactor,
 		newStepCh:      make(chan *RoundState, 10),
 	}
-	cs.updateToState(state, true)
+	cs.updateToState(state)
 	// Don't call scheduleRound0 yet.
 	// We do that upon Start().
 	cs.maybeRebond()
@@ -403,8 +404,8 @@ func (cs *ConsensusState) scheduleRound0(height int) {
 
 // Updates ConsensusState and increments height to match that of state.
 // The round becomes 0 and cs.Step becomes RoundStepNewHeight.
-func (cs *ConsensusState) updateToState(state *sm.State, contiguous bool) {
-	if contiguous && 0 < cs.Height && cs.Height != state.LastBlockHeight {
+func (cs *ConsensusState) updateToState(state *sm.State) {
+	if cs.CommitRound > -1 && 0 < cs.Height && cs.Height != state.LastBlockHeight {
 		PanicSanity(Fmt("updateToState() expected state height of %v but found %v",
 			cs.Height, state.LastBlockHeight))
 	}
@@ -427,11 +428,11 @@ func (cs *ConsensusState) updateToState(state *sm.State, contiguous bool) {
 	validators := state.BondedValidators
 	height := state.LastBlockHeight + 1 // next desired block height
 	lastPrecommits := (*types.VoteSet)(nil)
-	if contiguous && cs.Votes != nil {
-		if !cs.Votes.Precommits(cs.Round).HasTwoThirdsMajority() {
-			PanicSanity("updateToState(state, true) called but last Precommit round didn't have +2/3")
+	if cs.CommitRound > -1 && cs.Votes != nil {
+		if !cs.Votes.Precommits(cs.CommitRound).HasTwoThirdsMajority() {
+			PanicSanity("updateToState(state) called but last Precommit round didn't have +2/3")
 		}
-		lastPrecommits = cs.Votes.Precommits(cs.Round)
+		lastPrecommits = cs.Votes.Precommits(cs.CommitRound)
 	}
 
 	// RoundState fields
@@ -457,6 +458,7 @@ func (cs *ConsensusState) updateToState(state *sm.State, contiguous bool) {
 	cs.LockedBlock = nil
 	cs.LockedBlockParts = nil
 	cs.Votes = NewHeightVoteSet(height, validators)
+	cs.CommitRound = -1
 	cs.LastCommit = lastPrecommits
 	cs.LastValidators = state.LastBondedValidators
 
@@ -925,10 +927,11 @@ func (cs *ConsensusState) EnterCommit(height int, commitRound int) {
 		// Done Entercommit:
 		// keep ca.Round the same, it points to the right Precommits set.
 		cs.Step = RoundStepCommit
+		cs.CommitRound = commitRound
 		cs.newStepCh <- cs.getRoundState()
 
 		// Maybe finalize immediately.
-		cs.tryFinalizeCommit(height, commitRound)
+		cs.tryFinalizeCommit(height)
 	}()
 
 	hash, partsHeader, ok := cs.Votes.Precommits(commitRound).TwoThirdsMajority()
@@ -958,12 +961,12 @@ func (cs *ConsensusState) EnterCommit(height int, commitRound int) {
 }
 
 // If we have the block AND +2/3 commits for it, finalize.
-func (cs *ConsensusState) tryFinalizeCommit(height, round int) {
+func (cs *ConsensusState) tryFinalizeCommit(height int) {
 	if cs.Height != height {
 		PanicSanity(Fmt("tryFinalizeCommit() cs.Height: %v vs height: %v", cs.Height, height))
 	}
 
-	hash, _, ok := cs.Votes.Precommits(round).TwoThirdsMajority()
+	hash, _, ok := cs.Votes.Precommits(cs.CommitRound).TwoThirdsMajority()
 	if !ok || len(hash) == 0 {
 		log.Warn("Attempt to finalize failed. There was no +2/3 majority, or +2/3 was for <nil>.")
 		return
@@ -972,11 +975,11 @@ func (cs *ConsensusState) tryFinalizeCommit(height, round int) {
 		log.Warn("Attempt to finalize failed. We don't have the commit block.")
 		return
 	}
-	go cs.FinalizeCommit(height, round)
+	go cs.FinalizeCommit(height)
 }
 
 // Increment height and goto RoundStepNewHeight
-func (cs *ConsensusState) FinalizeCommit(height, round int) {
+func (cs *ConsensusState) FinalizeCommit(height int) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 
@@ -985,7 +988,7 @@ func (cs *ConsensusState) FinalizeCommit(height, round int) {
 		return
 	}
 
-	hash, header, ok := cs.Votes.Precommits(round).TwoThirdsMajority()
+	hash, header, ok := cs.Votes.Precommits(cs.CommitRound).TwoThirdsMajority()
 
 	if !ok {
 		PanicSanity(Fmt("Cannot FinalizeCommit, commit does not have two thirds majority"))
@@ -1002,9 +1005,9 @@ func (cs *ConsensusState) FinalizeCommit(height, round int) {
 
 	log.Info(Fmt("Finalizing commit of block: %v", cs.ProposalBlock))
 	// We have the block, so stage/save/commit-vote.
-	cs.saveBlock(cs.ProposalBlock, cs.ProposalBlockParts, cs.Votes.Precommits(round))
+	cs.saveBlock(cs.ProposalBlock, cs.ProposalBlockParts, cs.Votes.Precommits(cs.CommitRound))
 	// Increment height.
-	cs.updateToState(cs.stagedState, round == cs.Round)
+	cs.updateToState(cs.stagedState)
 	// cs.StartTime is already set.
 	// Schedule Round0 to start soon.
 	go cs.scheduleRound0(height + 1)
@@ -1086,7 +1089,7 @@ func (cs *ConsensusState) AddProposalBlockPart(height int, part *types.Part) (ad
 			go cs.EnterPrevote(height, cs.Round, false)
 		} else if cs.Step == RoundStepCommit {
 			// If we're waiting on the proposal block...
-			cs.tryFinalizeCommit(height, cs.Round)
+			cs.tryFinalizeCommit(height)
 		}
 		return true, err
 	}

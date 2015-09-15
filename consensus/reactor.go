@@ -72,7 +72,7 @@ func (conR *ConsensusReactor) SwitchToConsensus(state *sm.State) {
 	log.Notice("SwitchToConsensus")
 	// NOTE: The line below causes broadcastNewRoundStepRoutine() to
 	// broadcast a NewRoundStepMessage.
-	conR.conS.updateToState(state, false)
+	conR.conS.updateToState(state)
 	conR.fastSync = false
 	conR.conS.Start()
 }
@@ -141,11 +141,11 @@ func (conR *ConsensusReactor) Receive(chID byte, peer *p2p.Peer, msgBytes []byte
 	ps := peer.Data.Get(PeerStateKey).(*PeerState)
 	_, msg, err := DecodeMessage(msgBytes)
 	if err != nil {
-		log.Warn("Error decoding message", "channel", chId, "peer", peer, "msg", msg, "error", err, "bytes", msgBytes)
+		log.Warn("Error decoding message", "channel", chID, "peer", peer, "msg", msg, "error", err, "bytes", msgBytes)
 		// TODO punish peer?
 		return
 	}
-	log.Debug("Receive", "channel", chId, "peer", peer, "msg", msg)
+	log.Debug("Receive", "channel", chID, "peer", peer, "msg", msg)
 
 	switch chID {
 	case StateChannel:
