@@ -18,6 +18,7 @@ import (
 	"github.com/tendermint/tendermint/events"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/rpc"
 	"github.com/tendermint/tendermint/rpc/core"
 	"github.com/tendermint/tendermint/rpc/server"
 	sm "github.com/tendermint/tendermint/state"
@@ -246,12 +247,17 @@ func makeNodeInfo(sw *p2p.Switch, privKey acm.PrivKeyEd25519) *types.NodeInfo {
 		PubKey:  privKey.PubKey().(acm.PubKeyEd25519),
 		Moniker: config.GetString("moniker"),
 		ChainID: config.GetString("chain_id"),
-		Version: config.GetString("version"),
+		Version: types.Versions{
+			Tendermint: Version,
+			P2P:        p2p.Version,
+			RPC:        rpc.Version,
+			Wire:       wire.Version,
+		},
 	}
 
 	// include git hash in the nodeInfo if available
 	if rev, err := ReadFile(config.GetString("revisions_file")); err == nil {
-		nodeInfo.Revision = string(rev)
+		nodeInfo.Version.Revision = string(rev)
 	}
 
 	if !sw.IsListening() {

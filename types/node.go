@@ -7,19 +7,28 @@ import (
 )
 
 type NodeInfo struct {
-	PubKey   acm.PubKeyEd25519 `json:"pub_key"`
-	Moniker  string            `json:"moniker"`
-	ChainID  string            `json:"chain_id"`
-	Version  string            `json:"version"`
-	Revision string            `json:"revision"`
-	Host     string            `json:"host"`
-	P2PPort  uint16            `json:"p2p_port"`
-	RPCPort  uint16            `json:"rpc_port"`
+	PubKey  acm.PubKeyEd25519 `json:"pub_key"`
+	Moniker string            `json:"moniker"`
+	ChainID string            `json:"chain_id"`
+	Host    string            `json:"host"`
+	P2PPort uint16            `json:"p2p_port"`
+	RPCPort uint16            `json:"rpc_port"`
+
+	Version Versions `json:"versions"`
 }
 
+type Versions struct {
+	Revision   string `json:"revision"`
+	Tendermint string `json:"tendermint"`
+	P2P        string `json:"p2p"`
+	RPC        string `json:"rpc"`
+	Wire       string `json:"wire"`
+}
+
+// CONTRACT: two nodes with the same Tendermint major and minor version and with the same ChainID are compatible
 func (ni *NodeInfo) CompatibleWith(no *NodeInfo) error {
-	iM, im, _, ie := splitVersion(ni.Version)
-	oM, om, _, oe := splitVersion(no.Version)
+	iM, im, _, ie := splitVersion(ni.Version.Tendermint)
+	oM, om, _, oe := splitVersion(no.Version.Tendermint)
 
 	// if our own version number is not formatted right, we messed up
 	if ie != nil {

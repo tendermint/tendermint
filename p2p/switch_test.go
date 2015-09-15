@@ -81,7 +81,7 @@ func makeSwitchPair(t testing.TB, initSwitch func(*Switch) *Switch) (*Switch, *S
 		PubKey:  s1PrivKey.PubKey().(acm.PubKeyEd25519),
 		Moniker: "switch1",
 		ChainID: "testing",
-		Version: "123.123.123",
+		Version: types.Versions{Tendermint: "123.123.123"},
 	})
 	s1.SetNodePrivKey(s1PrivKey)
 	s2 := initSwitch(NewSwitch())
@@ -89,7 +89,7 @@ func makeSwitchPair(t testing.TB, initSwitch func(*Switch) *Switch) (*Switch, *S
 		PubKey:  s2PrivKey.PubKey().(acm.PubKeyEd25519),
 		Moniker: "switch2",
 		ChainID: "testing",
-		Version: "123.123.123",
+		Version: types.Versions{Tendermint: "123.123.123"},
 	})
 	s2.SetNodePrivKey(s2PrivKey)
 
