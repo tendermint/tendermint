@@ -12,16 +12,16 @@ var (
 
 	// cost for storing a name for a block is
 	// CostPerBlock*CostPerByte*(len(data) + 32)
-	NameCostPerByte  int64 = 1
-	NameCostPerBlock int64 = 1
+	NameByteCostMultiplier  int64 = 1
+	NameBlockCostMultiplier int64 = 1
 
-	MaxNameLength = 32
+	MaxNameLength = 64
 	MaxDataLength = 1 << 16
 
-	// Name should be alphanum, underscore, slash
+	// Name should be file system lik
 	// Data should be anything permitted in JSON
-	regexpAlphaNum = regexp.MustCompile("^[a-zA-Z0-9._/]*$")
-	regexpJSON     = regexp.MustCompile(`^[a-zA-Z0-9_/ \-"':,\n\t.{}()\[\]]*$`)
+	regexpAlphaNum = regexp.MustCompile("^[a-zA-Z0-9._/-@]*$")
+	regexpJSON     = regexp.MustCompile(`^[a-zA-Z0-9_/ \-+"':,\n\t.{}()\[\]]*$`)
 )
 
 // filter strings
@@ -34,8 +34,12 @@ func validateNameRegEntryData(data string) bool {
 }
 
 // base cost is "effective" number of bytes
-func BaseEntryCost(name, data string) int64 {
+func NameBaseCost(name, data string) int64 {
 	return int64(len(data) + 32)
+}
+
+func NameCostPerBlock(baseCost int64) int64 {
+	return NameBlockCostMultiplier * NameByteCostMultiplier * baseCost
 }
 
 type NameRegEntry struct {

@@ -198,7 +198,7 @@ func testNameReg(t *testing.T, typ string) {
 	data := "if not now, when"
 	fee := int64(1000)
 	numDesiredBlocks := int64(2)
-	amt := fee + numDesiredBlocks*types.NameCostPerByte*types.NameCostPerBlock*types.BaseEntryCost(name, data)
+	amt := fee + numDesiredBlocks*types.NameByteCostMultiplier*types.NameBlockCostMultiplier*types.NameBaseCost(name, data)
 
 	eid := types.EventStringNameReg(name)
 	subscribe(t, con, eid)
@@ -243,7 +243,7 @@ func testNameReg(t *testing.T, typ string) {
 	// update the data as the owner, make sure still there
 	numDesiredBlocks = int64(2)
 	data = "these are amongst the things I wish to bestow upon the youth of generations come: a safe supply of honey, and a better money. For what else shall they need"
-	amt = fee + numDesiredBlocks*types.NameCostPerByte*types.NameCostPerBlock*types.BaseEntryCost(name, data)
+	amt = fee + numDesiredBlocks*types.NameByteCostMultiplier*types.NameBlockCostMultiplier*types.NameBaseCost(name, data)
 	tx = makeDefaultNameTx(t, typ, name, data, amt, fee)
 	broadcastTx(t, typ, tx)
 	// commit block
