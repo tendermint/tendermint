@@ -93,7 +93,8 @@ var (
 )
 
 const (
-	rfc2822 = "Mon Jan 02 15:04:05 -0700 2006"
+	rfc2822_nano = "Mon Jan 02 15:04:05.000000000 -0700 2006" // we support nanoseconds!
+	rfc2822      = "Mon Jan 02 15:04:05 -0700 2006"
 )
 
 // NOTE: do not access typeInfos directly, but call GetTypeInfo()
@@ -731,10 +732,12 @@ func readReflectJSON(rv reflect.Value, rt reflect.Type, o interface{}, err *erro
 				return
 			}
 			log.Info(Fmt("Read time: %v", str))
-			t, err_ := time.Parse(rfc2822, str)
+			t, err_ := time.Parse(rfc2822_nano, str)
 			if err_ != nil {
-				*err = err_
-				return
+				if t, err_ = time.Parse(rfc2822, str); err_ != nil {
+					*err = err_
+					return
+				}
 			}
 			rv.Set(reflect.ValueOf(t))
 		} else {
@@ -909,7 +912,7 @@ func writeReflectJSON(rv reflect.Value, rt reflect.Type, w io.Writer, n *int64, 
 		if rt == timeType {
 			// Special case: time.Time
 			t := rv.Interface().(time.Time)
-			str := t.Format(rfc2822)
+			str := t.Format(rfc2822_nano)
 			jsonBytes, err_ := json.Marshal(str)
 			if err_ != nil {
 				*err = err_
