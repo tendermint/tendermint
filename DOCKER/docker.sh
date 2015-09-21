@@ -2,20 +2,15 @@
 
 # don't build if you're impatient
 if [[ ! $NO_BUILD ]]; then
-	cd $GOPATH/src/github.com/tendermint/tendermint
-	docker build -t mint -f DOCKER/Dockerfile .
+	cd $GOPATH/src/github.com/tendermint/tendermint/DOCKER
+	docker build -t tmbase -f Dockerfile .
 fi
 
 # create the data-only container 
-if [[ ! $VD ]]; then
-	docker run --name mintdata --entrypoint /bin/echo mint Data-only container for mint
-fi
-
-# copy a directory from host to data-only volume
-if [[ $VC ]]; then
-	cd $VC
-	tar cf - . | docker run -i --rm --volumes-from mintdata mint tar xvf - -C /data/tendermint
-fi
+docker run --name tmdata --entrypoint /bin/echo tmbase Data-only container for tmnode
 
 # run tendermint 
-docker run --name mint --volumes-from mintdata -d -p 46656:46656 -p 46657:46657 mint
+docker run name tmnode --volumes-from tmdata -d -p 46656:46656 -p 46657:46657 -e TMCOMMIT="origin/develop" tmbase
+
+# cleanup
+# docker rm -v -f tmdata tmnode; docker rmi -f tmbase

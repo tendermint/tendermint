@@ -1,7 +1,8 @@
 #! /bin/bash
 
-if [[ $BARAK_SEED ]]; then 
-	cat ./cmd/barak/$BARAK_SEED | ./build/barak &
-fi
-
+go get -u github.com/tendermint/tendermint/cmd/tendermint
+cd $GOPATH/src/github.com/tendermint/tendermint
+git fetch -a origin
+git reset --hard $TMHEAD
+make
 tendermint node
