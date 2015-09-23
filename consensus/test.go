@@ -8,6 +8,7 @@ import (
 
 	bc "github.com/tendermint/tendermint/blockchain"
 	dbm "github.com/tendermint/tendermint/db"
+	"github.com/tendermint/tendermint/events"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
@@ -205,6 +206,9 @@ func simpleConsensusState(nValidators int) ([]*ConsensusState, []*types.PrivVali
 		// Make ConsensusReactor
 		cs := NewConsensusState(state, blockStore, mempoolReactor)
 		cs.SetPrivValidator(privVals[i])
+
+		evsw := events.NewEventSwitch()
+		cs.SetFireable(evsw)
 
 		// read off the NewHeightStep
 		<-cs.NewStepCh()
