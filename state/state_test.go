@@ -219,12 +219,12 @@ func TestNameTxs(t *testing.T) {
 	startingBlock := state.LastBlockHeight
 
 	// try some bad names. these should all fail
-	names := []string{"", "\n", "123#$%", "\x00", string([]byte{20, 40, 60, 80}), "baffledbythespectacleinallofthisyouseeehesaidwithouteyes", "no spaces please"}
+	names := []string{"", "\n", "123#$%", "\x00", string([]byte{20, 40, 60, 80}), "baffledbythespectacleinallofthisyouseeehesaidwithouteyessurprised", "no spaces please"}
 	data := "something about all this just doesn't feel right."
 	fee := int64(1000)
 	numDesiredBlocks := 5
 	for _, name := range names {
-		amt := fee + int64(numDesiredBlocks)*types.NameCostPerByte*types.NameCostPerBlock*types.BaseEntryCost(name, data)
+		amt := fee + int64(numDesiredBlocks)*types.NameByteCostMultiplier*types.NameBlockCostMultiplier*types.NameBaseCost(name, data)
 		tx, _ := types.NewNameTx(state, privAccounts[0].PubKey, name, data, amt, fee)
 		tx.Sign(state.ChainID, privAccounts[0])
 
@@ -237,7 +237,7 @@ func TestNameTxs(t *testing.T) {
 	name := "hold_it_chum"
 	datas := []string{"cold&warm", "!@#$%^&*()", "<<<>>>>", "because why would you ever need a ~ or a & or even a % in a json file? make your case and we'll talk"}
 	for _, data := range datas {
-		amt := fee + int64(numDesiredBlocks)*types.NameCostPerByte*types.NameCostPerBlock*types.BaseEntryCost(name, data)
+		amt := fee + int64(numDesiredBlocks)*types.NameByteCostMultiplier*types.NameBlockCostMultiplier*types.NameBaseCost(name, data)
 		tx, _ := types.NewNameTx(state, privAccounts[0].PubKey, name, data, amt, fee)
 		tx.Sign(state.ChainID, privAccounts[0])
 
@@ -266,9 +266,9 @@ func TestNameTxs(t *testing.T) {
 	}
 
 	// try a good one, check data, owner, expiry
-	name = "looking_good/karaoke_bar"
-	data = "on this side of neptune there are 1234567890 people: first is OMNIVORE. Or is it. Ok this is pretty restrictive. No exclamations :(. Faces tho :')"
-	amt := fee + int64(numDesiredBlocks)*types.NameCostPerByte*types.NameCostPerBlock*types.BaseEntryCost(name, data)
+	name = "@looking_good/karaoke_bar.broadband"
+	data = "on this side of neptune there are 1234567890 people: first is OMNIVORE+-3. Or is it. Ok this is pretty restrictive. No exclamations :(. Faces tho :')"
+	amt := fee + int64(numDesiredBlocks)*types.NameByteCostMultiplier*types.NameBlockCostMultiplier*types.NameBaseCost(name, data)
 	tx, _ := types.NewNameTx(state, privAccounts[0].PubKey, name, data, amt, fee)
 	tx.Sign(state.ChainID, privAccounts[0])
 	if err := execTxWithState(state, tx, true); err != nil {
@@ -325,7 +325,7 @@ func TestNameTxs(t *testing.T) {
 	data = "In the beginning there was no thing, not even the beginning. It hadn't been here, no there, nor for that matter anywhere, not especially because it had not to even exist, let alone to not. Nothing especially odd about that."
 	oldCredit := amt - fee
 	numDesiredBlocks = 10
-	amt = fee + (int64(numDesiredBlocks)*types.NameCostPerByte*types.NameCostPerBlock*types.BaseEntryCost(name, data) - oldCredit)
+	amt = fee + (int64(numDesiredBlocks)*types.NameByteCostMultiplier*types.NameBlockCostMultiplier*types.NameBaseCost(name, data) - oldCredit)
 	tx, _ = types.NewNameTx(state, privAccounts[1].PubKey, name, data, amt, fee)
 	tx.Sign(state.ChainID, privAccounts[1])
 	if err := execTxWithState(state, tx, true); err != nil {
@@ -351,7 +351,7 @@ func TestNameTxs(t *testing.T) {
 	// test removal by key1 after expiry
 	name = "looking_good/karaoke_bar"
 	data = "some data"
-	amt = fee + int64(numDesiredBlocks)*types.NameCostPerByte*types.NameCostPerBlock*types.BaseEntryCost(name, data)
+	amt = fee + int64(numDesiredBlocks)*types.NameByteCostMultiplier*types.NameBlockCostMultiplier*types.NameBaseCost(name, data)
 	tx, _ = types.NewNameTx(state, privAccounts[0].PubKey, name, data, amt, fee)
 	tx.Sign(state.ChainID, privAccounts[0])
 	if err := execTxWithState(state, tx, true); err != nil {
@@ -511,7 +511,7 @@ proof-of-work chain as proof of what happened while they were gone `
 		tx.Input.Sequence += 1
 		tx.Input.Signature = privAccounts[0].Sign(state.ChainID, tx)
 		err = execTxWithState(state, tx, true)
-		if err != types.ErrTxInvalidString {
+		if _, ok := err.(types.ErrTxInvalidString); !ok {
 			t.Errorf("Expected invalid string error. Got: %s", err.Error())
 		}
 	}
