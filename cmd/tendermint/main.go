@@ -48,7 +48,7 @@ Commands:
 	case "unsafe_reset_priv_validator":
 		reset_priv_validator()
 	case "version":
-		fmt.Println(config.GetString("version"))
+		fmt.Println(node.Version)
 	default:
 		fmt.Printf("Unknown command %v\n", args[0])
 	}
