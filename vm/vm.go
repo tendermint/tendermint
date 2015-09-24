@@ -36,14 +36,19 @@ func (err ErrPermission) Error() string {
 	return fmt.Sprintf("Contract does not have permission to %s", err.typ)
 }
 
+const (
+	dataStackCapacity = 1024
+	callStackCapacity = 100         // TODO ensure usage.
+	memoryCapacity    = 1024 * 1024 // 1 MB
+)
+
 type Debug bool
 
-const (
-	dataStackCapacity       = 1024
-	callStackCapacity       = 100         // TODO ensure usage.
-	memoryCapacity          = 1024 * 1024 // 1 MB
-	dbg               Debug = true
-)
+var dbg Debug
+
+func SetDebug(d bool) {
+	dbg = Debug(d)
+}
 
 func (d Debug) Printf(s string, a ...interface{}) {
 	if d {

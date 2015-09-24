@@ -54,6 +54,9 @@ func GetConfig(rootDir string) cfg.Config {
 	if mapConfig.IsSet("chain_id") {
 		Exit("Cannot set 'chain_id' via config.toml")
 	}
+	if mapConfig.IsSet("revisions_file") {
+		Exit("Cannot set 'revisions_file' via config.toml. It must match what's in the Makefile")
+	}
 	mapConfig.SetDefault("chain_id", "tendermint_testnet_10")
 	mapConfig.SetDefault("genesis_file", rootDir+"/genesis.json")
 	mapConfig.SetDefault("moniker", "anonymous")
@@ -65,9 +68,12 @@ func GetConfig(rootDir string) cfg.Config {
 	mapConfig.SetDefault("priv_validator_file", rootDir+"/priv_validator.json")
 	mapConfig.SetDefault("db_backend", "leveldb")
 	mapConfig.SetDefault("db_dir", rootDir+"/data")
+	mapConfig.SetDefault("vm_log", true)
 	mapConfig.SetDefault("log_level", "info")
 	mapConfig.SetDefault("rpc_laddr", "0.0.0.0:46657")
-	mapConfig.SetDefault("revisions_file", rootDir+"/revisions")
+	mapConfig.SetDefault("prof_laddr", "")
+	mapConfig.SetDefault("revisions_file", rootDir+"/revision")
+	mapConfig.SetDefault("local_routing", false)
 	return mapConfig
 }
 

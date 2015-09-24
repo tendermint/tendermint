@@ -70,8 +70,11 @@ func GetConfig(rootDir string) cfg.Config {
 	mapConfig.SetDefault("db_backend", "memdb")
 	mapConfig.SetDefault("db_dir", rootDir+"/data")
 	mapConfig.SetDefault("log_level", "debug")
+	mapConfig.SetDefault("vm_log", true)
 	mapConfig.SetDefault("rpc_laddr", "0.0.0.0:36657")
-	mapConfig.SetDefault("revisions_file", rootDir+"/revisions")
+	mapConfig.SetDefault("prof_laddr", "")
+	mapConfig.SetDefault("revisions_file", rootDir+"/revision")
+	mapConfig.SetDefault("local_routing", false)
 	return mapConfig
 }
 
