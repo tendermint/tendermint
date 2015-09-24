@@ -691,18 +691,20 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 			if !ok {
 				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
+			logData := make([]byte, len(data))
+			copy(logData, data)
 			if vm.evc != nil {
 				eventID := types.EventStringLogEvent(callee.Address.Postfix(20))
 				fmt.Printf("eventID: %s\n", eventID)
 				log := types.EventDataLog{
 					callee.Address,
 					topics,
-					data,
+					logData,
 					vm.params.BlockHeight,
 				}
 				vm.evc.FireEvent(eventID, log)
 			}
-			dbg.Printf(" => T:%X D:%X\n", topics, data)
+			dbg.Printf(" => T:%X D:%X\n", topics, logData)
 
 		case CREATE: // 0xF0
 			if !HasPermission(vm.appState, callee, ptypes.CreateContract) {
@@ -723,12 +725,14 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 			// TODO charge for gas to create account _ the code length * GasCreateByte
 
 			newAccount := vm.appState.CreateAccount(callee)
+			inputCopy := make([]byte, len(input))
+			copy(inputCopy, input)
 			// Run the input to get the contract code.
-			ret, err_ := vm.Call(callee, newAccount, input, input, contractValue, gas)
+			ret, err_ := vm.Call(callee, newAccount, inputCopy, inputCopy, contractValue, gas)
 			if err_ != nil {
 				stack.Push(Zero256)
 			} else {
-				newAccount.Code = ret // Set the code
+				copy(newAccount.Code, ret) // set the code
 				stack.Push(newAccount.Address)
 			}
 
@@ -759,9 +763,11 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 			// Begin execution
 			var ret []byte
 			var err error
+			argsCopy := make([]byte, len(args))
+			copy(argsCopy, args)
 			if nativeContract := registeredNativeContracts[addr]; nativeContract != nil {
 				// Native contract
-				ret, err = nativeContract(vm.appState, callee, args, &gasLimit)
+				ret, err = nativeContract(vm.appState, callee, argsCopy, &gasLimit)
 
 				// for now we fire the Call event. maybe later we'll fire more particulars
 				var exception string
@@ -769,7 +775,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 					exception = err.Error()
 				}
 				// NOTE: these fire call events and not particular events for eg name reg or permissions
-				vm.fireCallEvent(&exception, &ret, callee, &Account{Address: addr}, args, value, gas)
+				vm.fireCallEvent(&exception, &ret, callee, &Account{Address: addr}, argsCopy, value, gas)
 			} else {
 				// EVM contract
 				if useGasNegative(gas, GasGetAccount, &err) {
@@ -784,7 +790,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 					if acc == nil {
 						return nil, firstErr(err, ErrUnknownAddress)
 					}
-					ret, err = vm.Call(callee, callee, acc.Code, args, value, gas)
+					ret, err = vm.Call(callee, callee, acc.Code, argsCopy, value, gas)
 				} else {
 					if acc == nil {
 						// nil account means we're sending funds to a new account
@@ -794,10 +800,10 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 						acc = &Account{Address: addr}
 						vm.appState.UpdateAccount(acc)
 						// send funds to new account
-						ret, err = vm.Call(callee, acc, acc.Code, args, value, gas)
+						ret, err = vm.Call(callee, acc, acc.Code, argsCopy, value, gas)
 					} else {
 						// call standard contract
-						ret, err = vm.Call(callee, acc, acc.Code, args, value, gas)
+						ret, err = vm.Call(callee, acc, acc.Code, argsCopy, value, gas)
 					}
 				}
 			}
@@ -826,8 +832,10 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 			if !ok {
 				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
-			dbg.Printf(" => [%v, %v] (%d) 0x%X\n", offset, size, len(ret), ret)
-			return ret, nil
+			retCopy := make([]byte, len(ret))
+			copy(retCopy, ret)
+			dbg.Printf(" => [%v, %v] (%d) 0x%X\n", offset, size, len(retCopy), retCopy)
+			return retCopy, nil
 
 		case SUICIDE: // 0xFF
 			addr := stack.Pop()
