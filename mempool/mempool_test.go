@@ -100,9 +100,7 @@ func TestResetInfo(t *testing.T) {
 	// but all we care about is how the mempool responds after
 	block := makeBlock(mempool)
 
-	mempool.ResetForBlockAndState(block, state)
-
-	ri := mempool.resetInfo
+	ri := mempool.ResetForBlockAndState(block, state)
 
 	if len(ri.Included) != len(TestResetInfoData.Included) {
 		t.Fatalf("invalid number of included ranges. Got %d, expected %d\n", len(ri.Included), len(TestResetInfoData.Included))
@@ -209,9 +207,9 @@ func TestBroadcast(t *testing.T) {
 	fmt.Println("dont broadcast any")
 	addTxs(t, mempool, lastAcc, privAccs)
 	block := makeBlock(mempool)
-	mempool.ResetForBlockAndState(block, state)
-	newBlockChan <- mempool.resetInfo
-	peer.height = mempool.resetInfo.Height
+	ri := mempool.ResetForBlockAndState(block, state)
+	newBlockChan <- ri
+	peer.height = ri.Height
 	tickerChan <- time.Now()
 	pullTxs(t, peer, len(mempool.txs)) // should have sent whatever txs are left (3)
 
@@ -226,9 +224,9 @@ func TestBroadcast(t *testing.T) {
 		tickerChan <- time.Now()
 		pullTxs(t, peer, txsToSendPerCheck) // should have sent N txs
 		block = makeBlock(mempool)
-		mempool.ResetForBlockAndState(block, state)
-		newBlockChan <- mempool.resetInfo
-		peer.height = mempool.resetInfo.Height
+		ri := mempool.ResetForBlockAndState(block, state)
+		newBlockChan <- ri
+		peer.height = ri.Height
 		txsToSendPerCheck = 100
 		tickerChan <- time.Now()
 		left := len(mempool.txs)
