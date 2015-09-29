@@ -128,3 +128,7 @@ func (p *Peer) String() string {
 func (p *Peer) Equals(other *Peer) bool {
 	return p.Key == other.Key
 }
+
+func (p *Peer) Get(key string) interface{} {
+	return p.Data.Get(key)
+}

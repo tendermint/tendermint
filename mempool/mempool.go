@@ -39,6 +39,12 @@ func (mem *Mempool) GetCache() *sm.BlockCache {
 	return mem.cache
 }
 
+func (mem *Mempool) GetHeight() int {
+	mem.mtx.Lock()
+	defer mem.mtx.Unlock()
+	return mem.state.LastBlockHeight
+}
+
 // Apply tx to the state and remember it.
 func (mem *Mempool) AddTx(tx types.Tx) (err error) {
 	mem.mtx.Lock()

@@ -50,7 +50,14 @@ func (memR *MempoolReactor) GetChannels() []*p2p.ChannelDescriptor {
 // Implements Reactor
 func (memR *MempoolReactor) AddPeer(peer *p2p.Peer) {
 	// Each peer gets a go routine on which we broadcast transactions in the same order we applied them to our state.
-	go memR.broadcastTxRoutine(peer)
+	newBlockChan := make(chan ResetInfo)
+	memR.evsw.(*events.EventSwitch).AddListenerForEvent("broadcastRoutine:"+peer.Key, types.EventStringNewBlock(), func(data types.EventData) {
+		// no lock needed because consensus is blocking on this
+		// and the mempool is reset before this event fires
+		newBlockChan <- memR.Mempool.resetInfo
+	})
+	timer := time.NewTicker(time.Millisecond * time.Duration(checkExecutedTxsMilliseconds))
+	go memR.broadcastTxRoutine(timer.C, newBlockChan, peer)
 }
 
 // Implements Reactor
@@ -92,29 +99,28 @@ type PeerState interface {
 	GetHeight() int
 }
 
+type Peer interface {
+	IsRunning() bool
+	Send(byte, interface{}) bool
+	Get(string) interface{}
+}
+
 // send new mempool txs to peer, strictly in order we applied them to our state.
 // new blocks take chunks out of the mempool, but we've already sent some txs to the peer.
 // so we wait to hear that the peer has progressed to the new height, and then continue sending txs from where we left off
-func (memR *MempoolReactor) broadcastTxRoutine(peer *p2p.Peer) {
-	newBlockChan := make(chan ResetInfo)
-	memR.evsw.(*events.EventSwitch).AddListenerForEvent("broadcastRoutine:"+peer.Key, types.EventStringNewBlock(), func(data types.EventData) {
-		// no lock needed because consensus is blocking on this
-		// and the mempool is reset before this event fires
-		newBlockChan <- memR.Mempool.resetInfo
-	})
-	timer := time.NewTicker(time.Millisecond * time.Duration(checkExecutedTxsMilliseconds))
-	currentHeight := memR.Mempool.state.LastBlockHeight
+func (memR *MempoolReactor) broadcastTxRoutine(tickerChan <-chan time.Time, newBlockChan chan ResetInfo, peer Peer) {
+	currentHeight := memR.Mempool.GetHeight()
 	var nTxs, txsSent int
 	var txs []types.Tx
 	for {
 		select {
-		case <-timer.C:
+		case <-tickerChan:
 			if !peer.IsRunning() {
 				return
 			}
 
 			// make sure the peer is up to date
-			peerState := peer.Data.Get(types.PeerStateKey).(PeerState)
+			peerState := peer.Get(types.PeerStateKey).(PeerState)
 			if peerState.GetHeight() < currentHeight {
 				continue
 			}
@@ -137,7 +143,7 @@ func (memR *MempoolReactor) broadcastTxRoutine(peer *p2p.Peer) {
 			}
 			if theseTxsSent > 0 {
 				txsSent += theseTxsSent
-				log.Warn("Sent txs to peer", "ntxs", theseTxsSent, "took", time.Since(start), "total_sent", txsSent, "total_exec", nTxs)
+				log.Info("Sent txs to peer", "ntxs", theseTxsSent, "took", time.Since(start), "total_sent", txsSent, "total_exec", nTxs)
 			}
 
 		case ri := <-newBlockChan:
@@ -180,8 +186,8 @@ func tallyRangesUpTo(ranger []Range, upTo int) int {
 		if r.Start >= upTo {
 			break
 		}
-		if r.Start+r.Length-1 > upTo {
-			totalUpTo += upTo - r.Start - 1
+		if r.Start+r.Length >= upTo {
+			totalUpTo += upTo - r.Start
 			break
 		}
 		totalUpTo += r.Length
