@@ -20,8 +20,6 @@ type Mempool struct {
 	state *sm.State
 	cache *sm.BlockCache
 	txs   []types.Tx // TODO: we need to add a map to facilitate replace-by-fee
-
-	resetInfo ResetInfo // so broadcast routines can respond to mempool flushing
 }
 
 func NewMempool(state *sm.State) *Mempool {
@@ -83,7 +81,7 @@ type Range struct {
 // "state" is the result of state.AppendBlock("block").
 // Txs that are present in "block" are discarded from mempool.
 // Txs that have become invalid in the new "state" are also discarded.
-func (mem *Mempool) ResetForBlockAndState(block *types.Block, state *sm.State) {
+func (mem *Mempool) ResetForBlockAndState(block *types.Block, state *sm.State) ResetInfo {
 	mem.mtx.Lock()
 	defer mem.mtx.Unlock()
 	mem.state = state.Copy()
@@ -127,7 +125,7 @@ func (mem *Mempool) ResetForBlockAndState(block *types.Block, state *sm.State) {
 	// We're done!
 	log.Info("New txs", "txs", validTxs, "oldTxs", mem.txs)
 	mem.txs = validTxs
-	mem.resetInfo = ri
+	return ri
 }
 
 func startRange(start *int, i int) {

@@ -1,5 +1,6 @@
 package types
 
 var (
-	PeerStateKey = "ConsensusReactor.peerState"
+	PeerStateKey     = "ConsensusReactor.peerState"
+	PeerMempoolChKey = "MempoolReactor.peerMempoolCh"
 )

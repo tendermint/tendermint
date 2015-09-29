@@ -2,6 +2,7 @@ package mempool
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"reflect"
 	"time"
@@ -9,6 +10,7 @@ import (
 	. "github.com/tendermint/tendermint/common"
 	"github.com/tendermint/tendermint/events"
 	"github.com/tendermint/tendermint/p2p"
+	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/wire"
 )
@@ -16,8 +18,9 @@ import (
 var (
 	MempoolChannel = byte(0x30)
 
-	checkExecutedTxsMilliseconds = 1  // check for new mempool txs to send to peer
-	txsToSendPerCheck            = 64 // send up to this many txs from the mempool per check
+	checkExecutedTxsMilliseconds = 1   // check for new mempool txs to send to peer
+	txsToSendPerCheck            = 64  // send up to this many txs from the mempool per check
+	newBlockChCapacity           = 100 // queue to process this many ResetInfos per peer
 )
 
 // MempoolReactor handles mempool tx broadcasting amongst peers.
@@ -50,12 +53,8 @@ func (memR *MempoolReactor) GetChannels() []*p2p.ChannelDescriptor {
 // Implements Reactor
 func (memR *MempoolReactor) AddPeer(peer *p2p.Peer) {
 	// Each peer gets a go routine on which we broadcast transactions in the same order we applied them to our state.
-	newBlockChan := make(chan ResetInfo)
-	memR.evsw.(*events.EventSwitch).AddListenerForEvent("broadcastRoutine:"+peer.Key, types.EventStringNewBlock(), func(data types.EventData) {
-		// no lock needed because consensus is blocking on this
-		// and the mempool is reset before this event fires
-		newBlockChan <- memR.Mempool.resetInfo
-	})
+	newBlockChan := make(chan ResetInfo, newBlockChCapacity)
+	peer.Data.Set(types.PeerMempoolChKey, newBlockChan)
 	timer := time.NewTicker(time.Millisecond * time.Duration(checkExecutedTxsMilliseconds))
 	go memR.broadcastTxRoutine(timer.C, newBlockChan, peer)
 }
@@ -87,6 +86,22 @@ func (memR *MempoolReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte) {
 		// broadcasting happens from go routines per peer
 	default:
 		log.Warn(Fmt("Unknown message type %v", reflect.TypeOf(msg)))
+	}
+}
+
+// "block" is the new block being committed.
+// "state" is the result of state.AppendBlock("block").
+// Txs that are present in "block" are discarded from mempool.
+// Txs that have become invalid in the new "state" are also discarded.
+func (memR *MempoolReactor) ResetForBlockAndState(block *types.Block, state *sm.State) {
+	ri := memR.Mempool.ResetForBlockAndState(block, state)
+	for _, peer := range memR.Switch.Peers().List() {
+		peerMempoolCh := peer.Data.Get(types.PeerMempoolChKey).(chan ResetInfo)
+		select {
+		case peerMempoolCh <- ri:
+		default:
+			memR.Switch.StopPeerForError(peer, errors.New("Peer's mempool push channel full"))
+		}
 	}
 }
 
