@@ -95,11 +95,11 @@ func defaultConfig(moniker string) (defaultConfig string) {
 }
 
 var defaultGenesis = `{
-    "chain_id": "tendermint_testnet_11",
+    "chain_id": "tendermint_testnet_11.b",
     "accounts": [
         {
             "address": "9FCBA7F840A0BFEBBE755E853C9947270A912D04",
-            "amount": 1995999998000000
+            "amount": 1993999998000000
         },
         {
             "address": "964B1493BBE3312278B7DEB94C39149F7899A345",
@@ -119,6 +119,14 @@ var defaultGenesis = `{
         },
         {
             "address": "7C2E032D8407EDF66A04D88CF0E1D9B15D98AE2D",
+            "amount": 1000000000000
+        },
+        {
+            "address": "636EF5823E082AD66EBC203FD4DFB1031F0C61CA",
+            "amount": 1000000000000
+        },
+        {
+            "address": "9008419E6351360A59B124E707E4CA2A5BFB9BE6",
             "amount": 1000000000000
         },
         {
