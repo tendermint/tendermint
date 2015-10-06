@@ -54,7 +54,7 @@ func GetConfig(rootDir string) cfg.Config {
 	if mapConfig.IsSet("chain_id") {
 		Exit("Cannot set 'chain_id' via config.toml")
 	}
-	mapConfig.SetDefault("chain_id", "tendermint_testnet_10")
+	mapConfig.SetDefault("chain_id", "tendermint_testnet_11.b")
 	mapConfig.SetDefault("genesis_file", rootDir+"/genesis.json")
 	mapConfig.SetDefault("moniker", "anonymous")
 	mapConfig.SetDefault("node_laddr", "0.0.0.0:46656")
