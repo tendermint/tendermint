@@ -473,3 +473,11 @@ func MakeGenesisState(db dbm.DB, genDoc *GenesisDoc) *State {
 		nameReg:              nameReg,
 	}
 }
+
+func RandGenesisState(numAccounts int, randBalance bool, minBalance int64, numValidators int, randBonded bool, minBonded int64) (*State, []*acm.PrivAccount, []*types.PrivValidator) {
+	db := dbm.NewMemDB()
+	genDoc, privAccounts, privValidators := RandGenesisDoc(numAccounts, randBalance, minBalance, numValidators, randBonded, minBonded)
+	s0 := MakeGenesisState(db, genDoc)
+	s0.Save()
+	return s0, privAccounts, privValidators
+}

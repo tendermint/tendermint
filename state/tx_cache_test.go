@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"testing"
 
+	stypes "github.com/tendermint/tendermint/state/types"
 	"github.com/tendermint/tendermint/wire"
 )
 
 func TestStateToFromVMAccount(t *testing.T) {
-	acmAcc1, _ := RandAccount(true, 456)
+	acmAcc1, _ := stypes.RandAccount(true, 456)
 	vmAcc := toVMAccount(acmAcc1)
 	acmAcc2 := toStateAccount(vmAcc)
 
