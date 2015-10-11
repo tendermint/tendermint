@@ -124,9 +124,9 @@ type Peer interface {
 // new blocks take chunks out of the mempool, but we've already sent some txs to the peer.
 // so we wait to hear that the peer has progressed to the new height, and then continue sending txs from where we left off
 func (memR *MempoolReactor) broadcastTxRoutine(tickerChan <-chan time.Time, newBlockChan chan ResetInfo, peer Peer) {
-	currentHeight := memR.Mempool.GetHeight()
-	var nTxs, txsSent int
-	var txs []types.Tx
+	var height = memR.Mempool.GetHeight()
+	var txsSent int // new txs sent for height. (reset every new height)
+
 	for {
 		select {
 		case <-tickerChan:
@@ -136,33 +136,35 @@ func (memR *MempoolReactor) broadcastTxRoutine(tickerChan <-chan time.Time, newB
 
 			// make sure the peer is up to date
 			peerState := peer.Get(types.PeerStateKey).(PeerState)
-			if peerState.GetHeight() < currentHeight {
+			if peerState.GetHeight() < height {
 				continue
 			}
 
 			// check the mempool for new transactions
-			nTxs, txs = memR.getNewTxs(txsSent, currentHeight)
-
-			theseTxsSent := 0
+			newTxs := memR.getNewTxs(height)
+			txsSentLoop := 0
 			start := time.Now()
+
 		TX_LOOP:
-			for _, tx := range txs {
-				// send tx to peer.
+			for i := txsSent; i < len(newTxs) && txsSentLoop < txsToSendPerCheck; i++ {
+				tx := newTxs[i]
 				msg := &TxMessage{Tx: tx}
 				success := peer.Send(MempoolChannel, msg)
 				if !success {
 					break TX_LOOP
 				} else {
-					theseTxsSent += 1
+					txsSentLoop += 1
 				}
 			}
-			if theseTxsSent > 0 {
-				txsSent += theseTxsSent
-				log.Info("Sent txs to peer", "ntxs", theseTxsSent, "took", time.Since(start), "total_sent", txsSent, "total_exec", nTxs)
+
+			if txsSentLoop > 0 {
+				txsSent += txsSentLoop
+				log.Info("Sent txs to peer", "txsSentLoop", txsSentLoop,
+					"took", time.Since(start), "txsSent", txsSent, "newTxs", len(newTxs))
 			}
 
 		case ri := <-newBlockChan:
-			currentHeight = ri.Height
+			height = ri.Height
 
 			// find out how many txs below what we've sent were included in a block and how many became invalid
 			included := tallyRangesUpTo(ri.Included, txsSent)
@@ -174,7 +176,7 @@ func (memR *MempoolReactor) broadcastTxRoutine(tickerChan <-chan time.Time, newB
 }
 
 // fetch new txs from the mempool
-func (memR *MempoolReactor) getNewTxs(txsSent, height int) (nTxs int, txs []types.Tx) {
+func (memR *MempoolReactor) getNewTxs(height int) (txs []types.Tx) {
 	memR.Mempool.mtx.Lock()
 	defer memR.Mempool.mtx.Unlock()
 
@@ -182,16 +184,7 @@ func (memR *MempoolReactor) getNewTxs(txsSent, height int) (nTxs int, txs []type
 	if memR.Mempool.state.LastBlockHeight != height {
 		return
 	}
-
-	nTxs = len(memR.Mempool.txs)
-	if txsSent < nTxs {
-		if nTxs > txsSent+txsToSendPerCheck {
-			txs = memR.Mempool.txs[txsSent : txsSent+txsToSendPerCheck]
-		} else {
-			txs = memR.Mempool.txs[txsSent:]
-		}
-	}
-	return
+	return memR.Mempool.txs
 }
 
 // return the size of ranges less than upTo
