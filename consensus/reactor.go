@@ -22,8 +22,6 @@ const (
 	DataChannel  = byte(0x21)
 	VoteChannel  = byte(0x22)
 
-	PeerStateKey = "ConsensusReactor.peerState"
-
 	peerGossipSleepDuration = 100 * time.Millisecond // Time to sleep if there's nothing to send.
 )
 
@@ -107,7 +105,7 @@ func (conR *ConsensusReactor) AddPeer(peer *p2p.Peer) {
 
 	// Create peerState for peer
 	peerState := NewPeerState(peer)
-	peer.Data.Set(PeerStateKey, peerState)
+	peer.Data.Set(types.PeerStateKey, peerState)
 
 	// Begin gossip routines for this peer.
 	go conR.gossipDataRoutine(peer, peerState)
@@ -138,7 +136,7 @@ func (conR *ConsensusReactor) Receive(chID byte, peer *p2p.Peer, msgBytes []byte
 	}
 
 	// Get peer states
-	ps := peer.Data.Get(PeerStateKey).(*PeerState)
+	ps := peer.Data.Get(types.PeerStateKey).(*PeerState)
 	_, msg, err := DecodeMessage(msgBytes)
 	if err != nil {
 		log.Warn("Error decoding message", "channel", chID, "peer", peer, "msg", msg, "error", err, "bytes", msgBytes)
@@ -586,6 +584,14 @@ func (ps *PeerState) GetRoundState() *PeerRoundState {
 
 	prs := ps.PeerRoundState // copy
 	return &prs
+}
+
+// Returns an atomic snapshot of the PeerRoundState's height
+// used by the mempool to ensure peers are caught up before broadcasting new txs
+func (ps *PeerState) GetHeight() int {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+	return ps.PeerRoundState.Height
 }
 
 func (ps *PeerState) SetHasProposal(proposal *types.Proposal) {

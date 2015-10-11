@@ -657,6 +657,10 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 		return
 	}
 	txs := cs.mempoolReactor.Mempool.GetProposalTxs()
+	MaxTxsPerBlock := 100 // TODO
+	if len(txs) > MaxTxsPerBlock {
+		txs = txs[:MaxTxsPerBlock]
+	}
 	block = &types.Block{
 		Header: &types.Header{
 			ChainID:        cs.state.ChainID,
@@ -1308,7 +1312,7 @@ func (cs *ConsensusState) saveBlock(block *types.Block, blockParts *types.PartSe
 	cs.stagedState.Save()
 
 	// Update mempool.
-	cs.mempoolReactor.Mempool.ResetForBlockAndState(block, cs.stagedState)
+	cs.mempoolReactor.ResetForBlockAndState(block, cs.stagedState)
 
 	// Fire off event
 	if cs.evsw != nil && cs.evc != nil {

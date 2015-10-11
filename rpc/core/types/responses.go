@@ -98,6 +98,7 @@ type Receipt struct {
 }
 
 type ResultListUnconfirmedTxs struct {
+	N   int        `json:"n_txs"`
 	Txs []types.Tx `json:"txs"`
 }
 

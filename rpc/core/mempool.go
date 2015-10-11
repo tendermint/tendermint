@@ -30,5 +30,6 @@ func BroadcastTx(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 }
 
 func ListUnconfirmedTxs() (*ctypes.ResultListUnconfirmedTxs, error) {
-	return &ctypes.ResultListUnconfirmedTxs{mempoolReactor.Mempool.GetProposalTxs()}, nil
+	txs := mempoolReactor.Mempool.GetProposalTxs()
+	return &ctypes.ResultListUnconfirmedTxs{len(txs), txs}, nil
 }

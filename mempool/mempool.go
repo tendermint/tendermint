@@ -19,7 +19,7 @@ type Mempool struct {
 	mtx   sync.Mutex
 	state *sm.State
 	cache *sm.BlockCache
-	txs   []types.Tx
+	txs   []types.Tx // TODO: we need to add a map to facilitate replace-by-fee
 }
 
 func NewMempool(state *sm.State) *Mempool {
@@ -35,6 +35,12 @@ func (mem *Mempool) GetState() *sm.State {
 
 func (mem *Mempool) GetCache() *sm.BlockCache {
 	return mem.cache
+}
+
+func (mem *Mempool) GetHeight() int {
+	mem.mtx.Lock()
+	defer mem.mtx.Unlock()
+	return mem.state.LastBlockHeight
 }
 
 // Apply tx to the state and remember it.
@@ -59,11 +65,23 @@ func (mem *Mempool) GetProposalTxs() []types.Tx {
 	return mem.txs
 }
 
+// We use this to inform peer routines of how the mempool has been updated
+type ResetInfo struct {
+	Height   int
+	Included []Range
+	Invalid  []Range
+}
+
+type Range struct {
+	Start  int
+	Length int
+}
+
 // "block" is the new block being committed.
 // "state" is the result of state.AppendBlock("block").
 // Txs that are present in "block" are discarded from mempool.
 // Txs that have become invalid in the new "state" are also discarded.
-func (mem *Mempool) ResetForBlockAndState(block *types.Block, state *sm.State) {
+func (mem *Mempool) ResetForBlockAndState(block *types.Block, state *sm.State) ResetInfo {
 	mem.mtx.Lock()
 	defer mem.mtx.Unlock()
 	mem.state = state.Copy()
@@ -75,33 +93,51 @@ func (mem *Mempool) ResetForBlockAndState(block *types.Block, state *sm.State) {
 		blockTxsMap[string(types.TxID(state.ChainID, tx))] = struct{}{}
 	}
 
-	// Next, filter all txs from mem.txs that are in blockTxsMap
-	txs := []types.Tx{}
-	for _, tx := range mem.txs {
+	// Now we filter all txs from mem.txs that are in blockTxsMap,
+	// and ExecTx on what remains. Only valid txs are kept.
+	// We track the ranges of txs included in the block and invalidated by it
+	// so we can tell peer routines
+	var ri = ResetInfo{Height: block.Height}
+	var validTxs []types.Tx
+	includedStart, invalidStart := -1, -1
+	for i, tx := range mem.txs {
 		txID := types.TxID(state.ChainID, tx)
 		if _, ok := blockTxsMap[string(txID)]; ok {
+			startRange(&includedStart, i)           // start counting included txs
+			endRange(&invalidStart, i, &ri.Invalid) // stop counting invalid txs
 			log.Info("Filter out, already committed", "tx", tx, "txID", txID)
-			continue
 		} else {
-			log.Info("Filter in, still new", "tx", tx, "txID", txID)
-			txs = append(txs, tx)
+			endRange(&includedStart, i, &ri.Included) // stop counting included txs
+			err := sm.ExecTx(mem.cache, tx, false, nil)
+			if err != nil {
+				startRange(&invalidStart, i) // start counting invalid txs
+				log.Info("Filter out, no longer valid", "tx", tx, "error", err)
+			} else {
+				endRange(&invalidStart, i, &ri.Invalid) // stop counting invalid txs
+				log.Info("Filter in, new, valid", "tx", tx, "txID", txID)
+				validTxs = append(validTxs, tx)
+			}
 		}
 	}
-
-	// Next, filter all txs that aren't valid given new state.
-	validTxs := []types.Tx{}
-	for _, tx := range txs {
-		err := sm.ExecTx(mem.cache, tx, false, nil)
-		if err == nil {
-			log.Info("Filter in, valid", "tx", tx)
-			validTxs = append(validTxs, tx)
-		} else {
-			// tx is no longer valid.
-			log.Info("Filter out, no longer valid", "tx", tx, "error", err)
-		}
-	}
+	endRange(&includedStart, len(mem.txs)-1, &ri.Included) // stop counting included txs
+	endRange(&invalidStart, len(mem.txs)-1, &ri.Invalid)   // stop counting invalid txs
 
 	// We're done!
 	log.Info("New txs", "txs", validTxs, "oldTxs", mem.txs)
 	mem.txs = validTxs
+	return ri
+}
+
+func startRange(start *int, i int) {
+	if *start < 0 {
+		*start = i
+	}
+}
+
+func endRange(start *int, i int, ranger *[]Range) {
+	if *start >= 0 {
+		length := i - *start
+		*ranger = append(*ranger, Range{*start, length})
+		*start = -1
+	}
 }
