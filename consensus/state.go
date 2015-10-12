@@ -1316,10 +1316,8 @@ func (cs *ConsensusState) saveBlock(block *types.Block, blockParts *types.PartSe
 
 	// Fire off event
 	if cs.evsw != nil && cs.evc != nil {
-		go func(block *types.Block) {
-			cs.evsw.FireEvent(types.EventStringNewBlock(), types.EventDataNewBlock{block})
-			cs.evc.Flush()
-		}(block)
+		cs.evsw.FireEvent(types.EventStringNewBlock(), types.EventDataNewBlock{block})
+		go cs.evc.Flush()
 	}
 
 }
