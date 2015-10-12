@@ -109,6 +109,8 @@ func (vm *VM) fireCallEvent(exception *string, output *[]byte, caller, callee *A
 }
 
 // CONTRACT appState is aware of caller and callee, so we can just mutate them.
+// CONTRACT code and input are not mutated.
+// CONTRACT returned 'ret' is a new compact slice.
 // value: To be transferred from caller to callee. Refunded upon error.
 // gas:   Available gas. No refunds for gas.
 // code: May be nil, since the CALL opcode may be used to send value from contracts to accounts
@@ -691,6 +693,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 			if !ok {
 				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
+			data = copyslice(data)
 			if vm.evc != nil {
 				eventID := types.EventStringLogEvent(callee.Address.Postfix(20))
 				fmt.Printf("eventID: %s\n", eventID)
@@ -724,11 +727,12 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 
 			newAccount := vm.appState.CreateAccount(callee)
 			// Run the input to get the contract code.
+			// NOTE: no need to copy 'input' as per Call contract.
 			ret, err_ := vm.Call(callee, newAccount, input, input, contractValue, gas)
 			if err_ != nil {
 				stack.Push(Zero256)
 			} else {
-				newAccount.Code = ret // Set the code
+				newAccount.Code = ret // Set the code (ret need not be copied as per Call contract)
 				stack.Push(newAccount.Address)
 			}
 
@@ -747,6 +751,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 			if !ok {
 				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
+			args = copyslice(args)
 
 			// Ensure that gasLimit is reasonable
 			if *gas < gasLimit {
@@ -827,7 +832,8 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 				return nil, firstErr(err, ErrMemoryOutOfBounds)
 			}
 			dbg.Printf(" => [%v, %v] (%d) 0x%X\n", offset, size, len(ret), ret)
-			return ret, nil
+			output = copyslice(ret)
+			return output, nil
 
 		case SUICIDE: // 0xFF
 			addr := stack.Pop()
@@ -870,8 +876,13 @@ func subslice(data []byte, offset, length int64) (ret []byte, ok bool) {
 	} else {
 		ret, ok = data[offset:offset+length], true
 	}
-
 	return
+}
+
+func copyslice(src []byte) (dest []byte) {
+	dest = make([]byte, len(src))
+	copy(dest, src)
+	return dest
 }
 
 func rightMostBytes(data []byte, n int) []byte {
