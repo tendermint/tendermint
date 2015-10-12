@@ -24,6 +24,7 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	stypes "github.com/tendermint/tendermint/state/types"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/vm"
 	"github.com/tendermint/tendermint/wire"
 )
 
@@ -126,6 +127,17 @@ func NewNode() *Node {
 	// add the event switch to all services
 	// they should all satisfy events.Eventable
 	SetFireable(eventSwitch, pexReactor, bcReactor, mempoolReactor, consensusReactor)
+
+	// run the profile server
+	profileHost := config.GetString("prof_laddr")
+	if profileHost != "" {
+		go func() {
+			log.Warn("Profile server", "error", http.ListenAndServe(profileHost, nil))
+		}()
+	}
+
+	// set vm log level
+	vm.SetDebug(config.GetBool("vm_log"))
 
 	return &Node{
 		sw:               sw,
@@ -256,7 +268,7 @@ func makeNodeInfo(sw *p2p.Switch, privKey acm.PrivKeyEd25519) *types.NodeInfo {
 	}
 
 	// include git hash in the nodeInfo if available
-	if rev, err := ReadFile(config.GetString("revisions_file")); err == nil {
+	if rev, err := ReadFile(config.GetString("revision_file")); err == nil {
 		nodeInfo.Version.Revision = string(rev)
 	}
 

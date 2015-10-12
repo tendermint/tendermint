@@ -50,4 +50,5 @@ gen_client:
 	go generate rpc/core_client/*.go
 
 revision:
-	-echo `git rev-parse --verify HEAD` >> $(TMROOT)/revisions
+	-echo `git rev-parse --verify HEAD` > $(TMROOT)/revision
+	-echo `git rev-parse --verify HEAD` >> $(TMROOT)/revision_history

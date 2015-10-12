@@ -110,6 +110,10 @@ func (na *NetAddress) DialTimeout(timeout time.Duration) (net.Conn, error) {
 }
 
 func (na *NetAddress) Routable() bool {
+	if config.GetBool("local_routing") {
+		return na.Valid()
+	}
+
 	// TODO(oga) bitcoind doesn't include RFC3849 here, but should we?
 	return na.Valid() && !(na.RFC1918() || na.RFC3927() || na.RFC4862() ||
 		na.RFC4193() || na.RFC4843() || na.Local())
