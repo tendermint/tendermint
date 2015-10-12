@@ -204,6 +204,9 @@ func (voteSet *VoteSet) IsCommit() bool {
 	if voteSet == nil {
 		return false
 	}
+	if voteSet.type_ != VoteTypePrecommit {
+		return false
+	}
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
 	return len(voteSet.maj23Hash) > 0

@@ -453,35 +453,21 @@ OUTER_LOOP:
 				}
 			}
 			// If there are prevotes to send...
-			if rs.Round == prs.Round && prs.Step <= RoundStepPrevote {
-				if ps.PickSendVote(rs.Votes.Prevotes(rs.Round)) {
-					log.Info("Picked rs.Prevotes(rs.Round) to send")
-					continue OUTER_LOOP
-				}
-			}
-			// If there are precommits to send...
-			if rs.Round == prs.Round && prs.Step <= RoundStepPrecommit {
-				if ps.PickSendVote(rs.Votes.Precommits(rs.Round)) {
-					log.Info("Picked rs.Precommits(rs.Round) to send")
-					continue OUTER_LOOP
-				}
-			}
-			// If there are prevotes to send for the last round...
-			if rs.Round == prs.Round+1 && prs.Step <= RoundStepPrevote {
+			if prs.Step <= RoundStepPrevote && prs.Round != -1 && prs.Round <= rs.Round {
 				if ps.PickSendVote(rs.Votes.Prevotes(prs.Round)) {
 					log.Info("Picked rs.Prevotes(prs.Round) to send")
 					continue OUTER_LOOP
 				}
 			}
-			// If there are precommits to send for the last round...
-			if rs.Round == prs.Round+1 && prs.Step <= RoundStepPrecommit {
+			// If there are precommits to send...
+			if prs.Step <= RoundStepPrecommit && prs.Round != -1 && prs.Round <= rs.Round {
 				if ps.PickSendVote(rs.Votes.Precommits(prs.Round)) {
 					log.Info("Picked rs.Precommits(prs.Round) to send")
 					continue OUTER_LOOP
 				}
 			}
 			// If there are POLPrevotes to send...
-			if 0 <= prs.ProposalPOLRound {
+			if prs.ProposalPOLRound != -1 {
 				if polPrevotes := rs.Votes.Prevotes(prs.ProposalPOLRound); polPrevotes != nil {
 					if ps.PickSendVote(polPrevotes) {
 						log.Info("Picked rs.Prevotes(prs.ProposalPOLRound) to send")
@@ -546,8 +532,8 @@ type PeerRoundState struct {
 	Precommits               *BitArray           // All precommits peer has for this round
 	LastCommitRound          int                 // Round of commit for last height. -1 if none.
 	LastCommit               *BitArray           // All commit precommits of commit for last height.
-	CatchupCommitRound       int                 // Round that we believe commit round is. -1 if none.
-	CatchupCommit            *BitArray           // All commit precommits peer has for this height
+	CatchupCommitRound       int                 // Round that we have commit for. Not necessarily unique. -1 if none.
+	CatchupCommit            *BitArray           // All commit precommits peer has for this height & CatchupCommitRound
 }
 
 //-----------------------------------------------------------------------------
@@ -702,14 +688,18 @@ func (ps *PeerState) getVoteBitArray(height, round int, type_ byte) *BitArray {
 	return nil
 }
 
-// NOTE: 'round' is what we know to be the commit round for height.
+// 'round': A round for which we have a +2/3 commit.
 func (ps *PeerState) ensureCatchupCommitRound(height, round int, numValidators int) {
 	if ps.Height != height {
 		return
 	}
-	if ps.CatchupCommitRound != -1 && ps.CatchupCommitRound != round {
-		PanicSanity(Fmt("Conflicting CatchupCommitRound. Height: %v, Orig: %v, New: %v", height, ps.CatchupCommitRound, round))
-	}
+	/*
+		NOTE: This is wrong, 'round' could change.
+		e.g. if orig round is not the same as block LastValidation round.
+		if ps.CatchupCommitRound != -1 && ps.CatchupCommitRound != round {
+			PanicSanity(Fmt("Conflicting CatchupCommitRound. Height: %v, Orig: %v, New: %v", height, ps.CatchupCommitRound, round))
+		}
+	*/
 	if ps.CatchupCommitRound == round {
 		return // Nothing to do!
 	}
