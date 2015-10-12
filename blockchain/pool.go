@@ -162,14 +162,18 @@ func (pool *BlockPool) PopRequest() {
 	pool.mtx.Lock() // Lock
 	defer pool.mtx.Unlock()
 
-	/*  The block can disappear at any time, due to removePeer().
-	if r := pool.requesters[pool.height]; r == nil || r.block == nil {
-		PanicSanity("PopRequest() requires a valid block")
+	if r := pool.requesters[pool.height]; r != nil {
+		/*  The block can disappear at any time, due to removePeer().
+		if r := pool.requesters[pool.height]; r == nil || r.block == nil {
+			PanicSanity("PopRequest() requires a valid block")
+		}
+		*/
+		r.Stop()
+		delete(pool.requesters, pool.height)
+		pool.height++
+	} else {
+		PanicSanity(Fmt("Expected requester to pop, got nothing at height %v", pool.height))
 	}
-	*/
-
-	delete(pool.requesters, pool.height)
-	pool.height++
 }
 
 // Invalidates the block at pool.height,
