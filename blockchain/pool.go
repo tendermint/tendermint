@@ -12,8 +12,8 @@ import (
 
 const (
 	requestIntervalMS         = 250
-	maxTotalRequests          = 300
-	maxPendingRequests        = maxTotalRequests
+	maxTotalRequesters        = 300
+	maxPendingRequests        = maxTotalRequesters
 	maxPendingRequestsPerPeer = 75
 	peerTimeoutSeconds        = 15
 	minRecvRate               = 10240 // 10Kb/s
@@ -36,8 +36,8 @@ type BlockPool struct {
 
 	// block requests
 	mtx        sync.Mutex
-	requests   map[int]*bpRequester
-	height     int   // the lowest key in requests.
+	requesters map[int]*bpRequester
+	height     int   // the lowest key in requesters.
 	numPending int32 // number of requests pending assignment or block response
 
 	// peers
@@ -52,7 +52,7 @@ func NewBlockPool(start int, requestsCh chan<- BlockRequest, timeoutsCh chan<- s
 	bp := &BlockPool{
 		peers: make(map[string]*bpPeer),
 
-		requests:   make(map[int]*bpRequester),
+		requesters: make(map[int]*bpRequester),
 		height:     start,
 		numPending: 0,
 
@@ -65,7 +65,7 @@ func NewBlockPool(start int, requestsCh chan<- BlockRequest, timeoutsCh chan<- s
 
 func (pool *BlockPool) OnStart() error {
 	pool.QuitService.OnStart()
-	go pool.makeRequestsRoutine()
+	go pool.makeRequestersRoutine()
 	pool.startTime = time.Now()
 	return nil
 }
@@ -74,8 +74,8 @@ func (pool *BlockPool) OnStop() {
 	pool.QuitService.OnStop()
 }
 
-// Run spawns requests as needed.
-func (pool *BlockPool) makeRequestsRoutine() {
+// Run spawns requesters as needed.
+func (pool *BlockPool) makeRequestersRoutine() {
 	for {
 		if !pool.IsRunning() {
 			break
@@ -86,14 +86,14 @@ func (pool *BlockPool) makeRequestsRoutine() {
 			time.Sleep(requestIntervalMS * time.Millisecond)
 			// check for timed out peers
 			pool.removeTimedoutPeers()
-		} else if len(pool.requests) >= maxTotalRequests {
+		} else if len(pool.requesters) >= maxTotalRequesters {
 			// sleep for a bit.
 			time.Sleep(requestIntervalMS * time.Millisecond)
 			// check for timed out peers
 			pool.removeTimedoutPeers()
 		} else {
 			// request for more blocks.
-			pool.makeNextRequest()
+			pool.makeNextRequester()
 		}
 	}
 }
@@ -147,10 +147,10 @@ func (pool *BlockPool) PeekTwoBlocks() (first *types.Block, second *types.Block)
 	pool.mtx.Lock() // Lock
 	defer pool.mtx.Unlock()
 
-	if r := pool.requests[pool.height]; r != nil {
+	if r := pool.requesters[pool.height]; r != nil {
 		first = r.getBlock()
 	}
-	if r := pool.requests[pool.height+1]; r != nil {
+	if r := pool.requesters[pool.height+1]; r != nil {
 		second = r.getBlock()
 	}
 	return
@@ -163,12 +163,12 @@ func (pool *BlockPool) PopRequest() {
 	defer pool.mtx.Unlock()
 
 	/*  The block can disappear at any time, due to removePeer().
-	if r := pool.requests[pool.height]; r == nil || r.block == nil {
+	if r := pool.requesters[pool.height]; r == nil || r.block == nil {
 		PanicSanity("PopRequest() requires a valid block")
 	}
 	*/
 
-	delete(pool.requests, pool.height)
+	delete(pool.requesters, pool.height)
 	pool.height++
 }
 
@@ -178,11 +178,11 @@ func (pool *BlockPool) RedoRequest(height int) {
 	pool.mtx.Lock() // Lock
 	defer pool.mtx.Unlock()
 
-	request := pool.requests[height]
+	request := pool.requesters[height]
 	if request.block == nil {
 		PanicSanity("Expected block to be non-nil")
 	}
-	// RemovePeer will redo all requests associated with this peer.
+	// RemovePeer will redo all requesters associated with this peer.
 	// TODO: record this malfeasance
 	pool.RemovePeer(request.peerID) // Lock on peersMtx.
 }
@@ -192,12 +192,12 @@ func (pool *BlockPool) AddBlock(peerID string, block *types.Block, blockSize int
 	pool.mtx.Lock() // Lock
 	defer pool.mtx.Unlock()
 
-	request := pool.requests[block.Height]
-	if request == nil {
+	requester := pool.requesters[block.Height]
+	if requester == nil {
 		return
 	}
 
-	if request.setBlock(block, peerID) {
+	if requester.setBlock(block, peerID) {
 		pool.numPending--
 		peer := pool.getPeer(peerID)
 		peer.decrPending(blockSize)
@@ -228,10 +228,10 @@ func (pool *BlockPool) RemovePeer(peerID string) {
 }
 
 func (pool *BlockPool) removePeer(peerID string) {
-	for _, request := range pool.requests {
-		if request.getPeerID() == peerID {
+	for _, requester := range pool.requesters {
+		if requester.getPeerID() == peerID {
 			pool.numPending++
-			go request.redo() // pick another peer and ...
+			go requester.redo() // pick another peer and ...
 		}
 	}
 	delete(pool.peers, peerID)
@@ -269,14 +269,14 @@ func (pool *BlockPool) pickIncrAvailablePeer(minHeight int) *bpPeer {
 	return nil
 }
 
-func (pool *BlockPool) makeNextRequest() {
+func (pool *BlockPool) makeNextRequester() {
 	pool.mtx.Lock() // Lock
 	defer pool.mtx.Unlock()
 
-	nextHeight := pool.height + len(pool.requests)
+	nextHeight := pool.height + len(pool.requesters)
 	request := newBPRequester(pool, nextHeight)
 
-	pool.requests[nextHeight] = request
+	pool.requesters[nextHeight] = request
 	pool.numPending++
 
 	request.Start()
@@ -301,12 +301,12 @@ func (pool *BlockPool) debug() string {
 	defer pool.mtx.Unlock()
 
 	str := ""
-	for h := pool.height; h < pool.height+len(pool.requests); h++ {
-		if pool.requests[h] == nil {
+	for h := pool.height; h < pool.height+len(pool.requesters); h++ {
+		if pool.requesters[h] == nil {
 			str += Fmt("H(%v):X ", h)
 		} else {
 			str += Fmt("H(%v):", h)
-			str += Fmt("B?(%v) ", pool.requests[h].block != nil)
+			str += Fmt("B?(%v) ", pool.requesters[h].block != nil)
 		}
 	}
 	return str

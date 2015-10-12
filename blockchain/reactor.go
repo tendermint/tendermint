@@ -192,7 +192,7 @@ FOR_LOOP:
 		case _ = <-switchToConsensusTicker.C:
 			height, numPending := bcR.pool.GetStatus()
 			outbound, inbound, _ := bcR.Switch.NumPeers()
-			log.Info("Consensus ticker", "numPending", numPending, "total", len(bcR.pool.requests),
+			log.Info("Consensus ticker", "numPending", numPending, "total", len(bcR.pool.requesters),
 				"outbound", outbound, "inbound", inbound)
 			if bcR.pool.IsCaughtUp() {
 				log.Notice("Time to switch to consensus reactor!", "height", height)
