@@ -57,7 +57,7 @@ func GetConfig(rootDir string) cfg.Config {
 	if mapConfig.IsSet("revision_file") {
 		Exit("Cannot set 'revision_file' via config.toml. It must match what's in the Makefile")
 	}
-	mapConfig.SetDefault("chain_id", "tendermint_testnet_11.b")
+	mapConfig.SetDefault("chain_id", "tendermint_testnet_11.c") // TODO ALSO UPDATE GENESIS BELOW!!!
 	mapConfig.SetDefault("genesis_file", rootDir+"/genesis.json")
 	mapConfig.SetDefault("moniker", "anonymous")
 	mapConfig.SetDefault("node_laddr", "0.0.0.0:46656")
@@ -101,11 +101,11 @@ func defaultConfig(moniker string) (defaultConfig string) {
 }
 
 var defaultGenesis = `{
-    "chain_id": "tendermint_testnet_11.b",
+    "chain_id": "tendermint_testnet_11.c",
     "accounts": [
         {
             "address": "9FCBA7F840A0BFEBBE755E853C9947270A912D04",
-            "amount": 1993999998000000
+            "amount": 1991999998000000
         },
         {
             "address": "964B1493BBE3312278B7DEB94C39149F7899A345",
@@ -133,6 +133,14 @@ var defaultGenesis = `{
         },
         {
             "address": "9008419E6351360A59B124E707E4CA2A5BFB9BE6",
+            "amount": 1000000000000
+        },
+        {
+            "address": "C78F48919B8A4030AD3E5ED643F8D2302E41953D",
+            "amount": 1000000000000
+        },
+        {
+            "address": "5290AC90CE2422DDC3F91F6A246F7E3C542EA51A",
             "amount": 1000000000000
         },
         {
