@@ -11,7 +11,7 @@ mounting it.
 The commands should work from tendermint/tendermint or tendermint/tendermint/DOCKER,
 save the removal of DOCKER from the path.
 
-Get quickly caught up with the testnet: `FAST_SYNC=true ./DOCKER/docker.sh`
+Get quickly caught up with the testnet: `./DOCKER/docker.sh`
 
 Use a pre-existing `~/.tendermint`: `VC=~/.tendermint NO_BUILD=true ./DOCKER/docker.sh`
 
