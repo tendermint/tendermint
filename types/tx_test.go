@@ -155,6 +155,39 @@ func TestRebondTxSignable(t *testing.T) {
 	}
 }
 
+func newVote(type_ byte, hash []byte, header PartSetHeader) Vote {
+	vote := Vote{
+		Height:           1,
+		Round:            2,
+		Type:             type_,
+		BlockHash:        hash,
+		BlockPartsHeader: header,
+	}
+	return vote
+}
+
+func TestDupeoutTxSignable(t *testing.T) {
+	hash1 := []byte("12345678901234567890123456789012")
+	hash2 := []byte("12345678901234567890123456789013")
+	header1 := PartSetHeader{100, hash1}
+	header2 := PartSetHeader{100, hash2}
+	voteA := newVote(VoteTypePrevote, hash1, header1)
+	voteB := newVote(VoteTypePrevote, hash2, header2)
+	dupeoutTx := &DupeoutTx{
+		Address: []byte("address1"),
+		VoteA:   voteA,
+		VoteB:   voteB,
+	}
+	signBytes := acm.SignBytes(chainID, dupeoutTx)
+	signStr := string(signBytes)
+	expected := Fmt(`{"chain_id":"%s","tx":[20,{"address":"6164647265737331"`, config.GetString("chain_id"))
+	expected = Fmt(`%s,"vote_a":{"block_hash":"%X","block_parts_header":PartSet{T:100 %X},"height":1,"round":2,"type":1}`, expected, hash1, Fingerprint(hash1))
+	expected = Fmt(`%s,"vote_b":{"block_hash":"%X","block_parts_header":PartSet{T:100 %X},"height":1,"round":2,"type":1}}]}`, expected, hash2, Fingerprint(hash2))
+	if signStr != expected {
+		t.Errorf("Got unexpected sign string for DupeoutTx.\n%s\n%s\n", signStr, expected)
+	}
+}
+
 func TestPermissionsTxSignable(t *testing.T) {
 	permsTx := &PermissionsTx{
 		Input: &TxInput{

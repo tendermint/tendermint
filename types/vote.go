@@ -43,9 +43,15 @@ const (
 )
 
 func (vote *Vote) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
-	wire.WriteTo([]byte(Fmt(`{"chain_id":"%s"`, chainID)), w, n, err)
-	wire.WriteTo([]byte(Fmt(`,"vote":{"block_hash":"%X","block_parts_header":%v`, vote.BlockHash, vote.BlockPartsHeader)), w, n, err)
-	wire.WriteTo([]byte(Fmt(`,"height":%v,"round":%v,"type":%v}}`, vote.Height, vote.Round, vote.Type)), w, n, err)
+	wire.WriteTo([]byte(Fmt(`{"chain_id":"%s","vote":`, chainID)), w, n, err)
+	vote.writeSignBytes(w, n, err)
+	wire.WriteTo([]byte(`}`), w, n, err)
+}
+
+// makes for a cleaner DupeoutTx.WriteSignBytes
+func (vote *Vote) writeSignBytes(w io.Writer, n *int64, err *error) {
+	wire.WriteTo([]byte(Fmt(`{"block_hash":"%X","block_parts_header":%v`, vote.BlockHash, vote.BlockPartsHeader)), w, n, err)
+	wire.WriteTo([]byte(Fmt(`,"height":%v,"round":%v,"type":%v}`, vote.Height, vote.Round, vote.Type)), w, n, err)
 }
 
 func (vote *Vote) Copy() *Vote {
