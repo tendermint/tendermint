@@ -135,8 +135,12 @@ func (memR *MempoolReactor) broadcastTxRoutine(tickerChan <-chan time.Time, newB
 			}
 
 			// make sure the peer is up to date
-			peerState := peer.Get(types.PeerStateKey).(PeerState)
-			if peerState.GetHeight() < height {
+			if peerState_i := peer.Get(types.PeerStateKey); peerState_i != nil {
+				peerState := peerState_i.(PeerState)
+				if peerState.GetHeight() < height {
+					continue
+				}
+			} else {
 				continue
 			}
 
