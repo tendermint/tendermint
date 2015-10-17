@@ -11,10 +11,10 @@ import (
 	"sync"
 
 	acm "github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/wire"
 	btypes "github.com/tendermint/tendermint/cmd/barak/types"
 	. "github.com/tendermint/tendermint/common"
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/wire"
 )
 
 func remoteNick(remote string) string {
@@ -268,7 +268,6 @@ func cliListProcesses(c *cli.Context) {
 						endTimeStr := proc.EndTime.String()
 						fmt.Printf(", stopped at %v\n", Yellow(endTimeStr))
 					}
-					fmt.Printf("     stdout/stderr goes to %v\n", proc.OutputPath)
 				}
 			}
 		}(remote)

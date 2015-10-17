@@ -5,21 +5,23 @@ package main
 // TODO: Nonrepudiable command log
 
 import (
+	"bytes"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"reflect"
 	"time"
 
-	"github.com/tendermint/tendermint/wire"
 	. "github.com/tendermint/tendermint/cmd/barak/types"
 	. "github.com/tendermint/tendermint/common"
 	cfg "github.com/tendermint/tendermint/config"
 	pcm "github.com/tendermint/tendermint/process"
 	"github.com/tendermint/tendermint/rpc/server"
+	"github.com/tendermint/tendermint/wire"
 )
 
 const BarakVersion = "0.0.1"
@@ -152,8 +154,13 @@ func StartProcess(wait bool, label string, execPath string, args []string, input
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create outputs dir: %v", err)
 	}
+	inFile := bytes.NewReader([]byte(input))
 	outPath := Fmt("%v/outputs/%v_%v.out", barak_.RootDir(), label, time.Now().Format("2006_01_02_15_04_05_MST"))
-	proc, err := pcm.Create(pcm.ProcessModeDaemon, label, execPath, args, input, outPath)
+	outFile, err := OpenAutoFile(outPath)
+	if err != nil {
+		return nil, err
+	}
+	proc, err := pcm.Create(label, execPath, args, inFile, outFile)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +168,14 @@ func StartProcess(wait bool, label string, execPath string, args []string, input
 
 	if wait {
 		<-proc.WaitCh
-		output := pcm.ReadOutput(proc)
+
+		// read output from outPath
+		outputBytes, err := ioutil.ReadFile(outPath)
+		if err != nil {
+			fmt.Sprintf("ERROR READING OUTPUT: %v", err)
+		}
+		output := string(outputBytes)
+
 		// fmt.Println("Read output", output)
 		if proc.ExitState == nil {
 			return &ResponseStartProcess{
@@ -260,7 +274,7 @@ func ServeFileHandler(w http.ResponseWriter, req *http.Request) {
 			http.Error(w, Fmt("Unknown process label: %v", path), 400)
 			return
 		}
-		path = proc.OutputPath
+		path = proc.OutputFile.(*os.File).Name()
 	}
 	file, err := os.Open(path)
 	if err != nil {

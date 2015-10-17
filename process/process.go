@@ -1,15 +1,11 @@
 package process
 
 import (
-	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"time"
-
-	. "github.com/tendermint/tendermint/common"
 )
 
 type Process struct {
@@ -19,39 +15,20 @@ type Process struct {
 	Pid        int
 	StartTime  time.Time
 	EndTime    time.Time
-	OutputPath string
 	Cmd        *exec.Cmd        `json:"-"`
 	ExitState  *os.ProcessState `json:"-"`
-	OutputFile *AutoFile        `json:"-"`
+	InputFile  io.Reader        `json:"-"`
+	OutputFile io.WriteCloser   `json:"-"`
 	WaitCh     chan struct{}    `json:"-"`
 }
 
-const (
-	ProcessModeStd = iota
-	ProcessModeDaemon
-)
-
 // execPath: command name
 // args: args to command. (should not include name)
-func Create(mode int, label string, execPath string, args []string, input string, outPath string) (*Process, error) {
-	outFile, err := OpenAutoFile(outPath)
-	if err != nil {
-		return nil, err
-	}
+func Create(label string, execPath string, args []string, inFile io.Reader, outFile io.WriteCloser) (*Process, error) {
 	cmd := exec.Command(execPath, args...)
-	switch mode {
-	case ProcessModeStd:
-		cmd.Stdout = io.MultiWriter(os.Stdout, outFile)
-		cmd.Stderr = io.MultiWriter(os.Stderr, outFile)
-		cmd.Stdin = nil
-	case ProcessModeDaemon:
-		cmd.Stdout = outFile
-		cmd.Stderr = outFile
-		cmd.Stdin = nil
-	}
-	if input != "" {
-		cmd.Stdin = bytes.NewReader([]byte(input))
-	}
+	cmd.Stdout = outFile
+	cmd.Stderr = outFile
+	cmd.Stdin = inFile
 	if err := cmd.Start(); err != nil {
 		return nil, err
 	}
@@ -61,9 +38,9 @@ func Create(mode int, label string, execPath string, args []string, input string
 		Args:       args,
 		Pid:        cmd.Process.Pid,
 		StartTime:  time.Now(),
-		OutputPath: outPath,
 		Cmd:        cmd,
 		ExitState:  nil,
+		InputFile:  inFile,
 		OutputFile: outFile,
 		WaitCh:     make(chan struct{}),
 	}
@@ -83,14 +60,6 @@ func Create(mode int, label string, execPath string, args []string, input string
 		close(proc.WaitCh)
 	}()
 	return proc, nil
-}
-
-func ReadOutput(proc *Process) string {
-	output, err := ioutil.ReadFile(proc.OutputPath)
-	if err != nil {
-		return fmt.Sprintf("ERROR READING OUTPUT: %v", err)
-	}
-	return string(output)
 }
 
 func Stop(proc *Process, kill bool) error {
