@@ -3,6 +3,8 @@ package wire
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/json"
+
 	"github.com/tendermint/tendermint/Godeps/_workspace/src/code.google.com/p/go.crypto/ripemd160"
 
 	. "github.com/tendermint/tendermint/common"
@@ -24,6 +26,21 @@ func JSONBytes(o interface{}) []byte {
 		PanicSanity(*err)
 	}
 	return w.Bytes()
+}
+
+// NOTE: inefficient
+func JSONBytesPretty(o interface{}) []byte {
+	jsonBytes := JSONBytes(o)
+	var object interface{}
+	err := json.Unmarshal(jsonBytes, &object)
+	if err != nil {
+		PanicSanity(err)
+	}
+	jsonBytes, err = json.MarshalIndent(object, "", "\t")
+	if err != nil {
+		PanicSanity(err)
+	}
+	return jsonBytes
 }
 
 // NOTE: does not care about the type, only the binary representation.
