@@ -53,6 +53,6 @@ Commands:
 	case "version":
 		fmt.Println(node.Version)
 	default:
-		fmt.Printf("Unknown command %v\n", args[0])
+		Exit(Fmt("Unknown command %v\n", args[0]))
 	}
 }

@@ -1,8 +1,9 @@
 #! /bin/bash
 
-go get -u $TMREPO/cmd/tendermint
-cd $GOPATH/src/$TMREPO
-git fetch -a origin
+mkdir -p $GOPATH/src/$TMREPO
+git clone https://$TMREPO.git .
+git fetch
 git reset --hard $TMHEAD
+go get $TMREPO/cmd/tendermint
 make
 tendermint node
