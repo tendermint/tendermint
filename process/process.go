@@ -52,6 +52,7 @@ func Create(label string, execPath string, args []string, inFile io.Reader, outF
 				proc.ExitState = exitError.ProcessState
 			}
 		}
+		proc.ExitState = proc.Cmd.ProcessState
 		proc.EndTime = time.Now() // TODO make this goroutine-safe
 		err = proc.OutputFile.Close()
 		if err != nil {
