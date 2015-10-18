@@ -25,4 +25,6 @@ WARNING: THIS STEP WILL GIVE CONTROL OF THE CURRENT USER TO THE DEV TEAM.
 ### Install/Update Tendermint
 
     go get -u github.com/tendermint/tendermint/cmd/tendermint
-    tendermint node
+    mkdir -p ~/.tendermint
+    cp $GOPATH/src/github.com/tendermint/tendermint/config/tendermint/genesis.json ~/.tendermint/
+    tendermint node --seeds="goldenalchemist.chaintest.net:46656"

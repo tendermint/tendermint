@@ -16,13 +16,14 @@ func main() {
 		fmt.Println(`Tendermint
 
 Commands:
-    node          Run the tendermint node 
-    gen_account   Generate new account keypair
-    gen_validator Generate new validator keypair
-    get_account   Get account balance
-    send_tx       Sign and publish a SendTx
-    probe_upnp    Test UPnP functionality
-    version       Show version info
+    node            Run the tendermint node
+    show_validator  Show this node's validator info
+    gen_account     Generate new account keypair
+    gen_validator   Generate new validator keypair
+    get_account     Get account balance
+    send_tx         Sign and publish a SendTx
+    probe_upnp      Test UPnP functionality
+    version         Show version info
 `)
 		return
 	}
@@ -35,6 +36,8 @@ Commands:
 	switch args[0] {
 	case "node":
 		node.RunNode()
+	case "show_validator":
+		show_validator()
 	case "gen_account":
 		gen_account()
 	case "gen_validator":

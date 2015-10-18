@@ -5,7 +5,6 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -76,18 +75,8 @@ func NewNode() *Node {
 	config.Set("chain_id", state.ChainID)
 
 	// Get PrivValidator
-	var privValidator *types.PrivValidator
 	privValidatorFile := config.GetString("priv_validator_file")
-	if _, err := os.Stat(privValidatorFile); err == nil {
-		privValidator = types.LoadPrivValidator(privValidatorFile)
-		log.Notice("Loaded PrivValidator",
-			"file", privValidatorFile, "privValidator", privValidator)
-	} else {
-		privValidator = types.GenPrivValidator()
-		privValidator.SetFile(privValidatorFile)
-		privValidator.Save()
-		log.Notice("Generated PrivValidator", "file", privValidatorFile)
-	}
+	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
 
 	// Generate node PrivKey
 	privKey := acm.GenPrivKeyEd25519()
@@ -298,6 +287,19 @@ func makeNodeInfo(sw *p2p.Switch, privKey acm.PrivKeyEd25519) *types.NodeInfo {
 //------------------------------------------------------------------------------
 
 func RunNode() {
+
+	// Wait until the genesis doc becomes available
+	genDocFile := config.GetString("genesis_file")
+	if !FileExists(genDocFile) {
+		log.Notice(Fmt("Waiting for genesis file %v...", genDocFile))
+		for {
+			time.Sleep(time.Second)
+			if FileExists(genDocFile) {
+				break
+			}
+		}
+	}
+
 	// Create & start node
 	n := NewNode()
 	l := p2p.NewDefaultListener("tcp", config.GetString("node_laddr"))

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math"
+	"os"
 	"sync"
 
 	acm "github.com/tendermint/tendermint/account"
@@ -77,6 +78,21 @@ func LoadPrivValidator(filePath string) *PrivValidator {
 	}
 	privVal.filePath = filePath
 	return privVal
+}
+
+func LoadOrGenPrivValidator(filePath string) *PrivValidator {
+	var privValidator *PrivValidator
+	if _, err := os.Stat(filePath); err == nil {
+		privValidator = LoadPrivValidator(filePath)
+		log.Notice("Loaded PrivValidator",
+			"file", filePath, "privValidator", privValidator)
+	} else {
+		privValidator = GenPrivValidator()
+		privValidator.SetFile(filePath)
+		privValidator.Save()
+		log.Notice("Generated PrivValidator", "file", filePath)
+	}
+	return privValidator
 }
 
 func (privVal *PrivValidator) SetFile(filePath string) {

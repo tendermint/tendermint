@@ -24,7 +24,7 @@ func parseFlags(config cfg.Config, args []string) {
 	flags.BoolVar(&printHelp, "help", false, "Print this help message.")
 	flags.StringVar(&moniker, "moniker", config.GetString("moniker"), "Node Name")
 	flags.StringVar(&nodeLaddr, "node_laddr", config.GetString("node_laddr"), "Node listen address. (0.0.0.0:0 means any interface, any port)")
-	flags.StringVar(&seeds, "seeds", config.GetString("seeds"), "Comma delimited seed nodes")
+	flags.StringVar(&seeds, "seeds", config.GetString("seeds"), "Comma delimited host:port seed nodes")
 	flags.BoolVar(&fastSync, "fast_sync", config.GetBool("fast_sync"), "Fast blockchain syncing")
 	flags.BoolVar(&skipUPNP, "skip_upnp", config.GetBool("skip_upnp"), "Skip UPNP configuration")
 	flags.StringVar(&rpcLaddr, "rpc_laddr", config.GetString("rpc_laddr"), "RPC listen address. Port required")
