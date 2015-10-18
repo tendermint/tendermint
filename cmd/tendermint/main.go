@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	. "github.com/tendermint/tendermint/common"
 	cfg "github.com/tendermint/tendermint/config"
 	tmcfg "github.com/tendermint/tendermint/config/tendermint"
 	"github.com/tendermint/tendermint/node"
