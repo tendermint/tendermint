@@ -96,7 +96,12 @@ func (memR *MempoolReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte) {
 func (memR *MempoolReactor) ResetForBlockAndState(block *types.Block, state *sm.State) {
 	ri := memR.Mempool.ResetForBlockAndState(block, state)
 	for _, peer := range memR.Switch.Peers().List() {
-		peerMempoolCh := peer.Data.Get(types.PeerMempoolChKey).(chan ResetInfo)
+		peerMempoolChI := peer.Data.Get(types.PeerMempoolChKey)
+		if peerMempoolChI == nil {
+			// peer was added to switch but not yet to the memR
+			continue
+		}
+		peerMempoolCh := peerMempoolChI.(chan ResetInfo)
 		select {
 		case peerMempoolCh <- ri:
 		default:
