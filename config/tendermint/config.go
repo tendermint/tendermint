@@ -1,7 +1,6 @@
 package tendermint
 
 import (
-	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/naoina/toml"
 	"os"
 	"path"
 	"strings"
@@ -38,10 +37,8 @@ func GetConfig(rootDir string) cfg.Config {
 	rootDir = getTMRoot(rootDir)
 	initTMRoot(rootDir)
 
-	var mapConfig = cfg.MapConfig(make(map[string]interface{}))
 	configFilePath := path.Join(rootDir, "config.toml")
-	configFileBytes := MustReadFile(configFilePath)
-	err := toml.Unmarshal(configFileBytes, mapConfig)
+	mapConfig, err := cfg.ReadMapConfigFromFile(configFilePath)
 	if err != nil {
 		Exit(Fmt("Could not read config: %v", err))
 	}
@@ -53,7 +50,7 @@ func GetConfig(rootDir string) cfg.Config {
 	if mapConfig.IsSet("revision_file") {
 		Exit("Cannot set 'revision_file' via config.toml. It must match what's in the Makefile")
 	}
-	mapConfig.SetDefault("chain_id", "tendermint_testnet_11.c") // TODO ALSO UPDATE GENESIS BELOW!!!
+	mapConfig.SetRequired("chain_id") // blows up if you try to use it before setting.
 	mapConfig.SetDefault("genesis_file", rootDir+"/genesis.json")
 	mapConfig.SetDefault("moniker", "anonymous")
 	mapConfig.SetDefault("node_laddr", "0.0.0.0:46656")
@@ -71,12 +68,6 @@ func GetConfig(rootDir string) cfg.Config {
 	mapConfig.SetDefault("revision_file", rootDir+"/revision")
 	mapConfig.SetDefault("local_routing", false)
 	return mapConfig
-}
-
-func ensureDefault(mapConfig cfg.MapConfig, key string, value interface{}) {
-	if !mapConfig.IsSet(key) {
-		mapConfig[key] = value
-	}
 }
 
 var defaultConfigTmpl = `# This is a TOML config file.

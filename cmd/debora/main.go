@@ -35,7 +35,9 @@ func main() {
 	fmt.Printf("New Debora Process (PID: %d)\n", os.Getpid())
 
 	// Apply bare tendermint/* configuration.
-	cfg.ApplyConfig(cfg.MapConfig(map[string]interface{}{"log_level": "notice"}))
+	config := cfg.NewMapConfig(nil)
+	config.Set("log_level", "notice")
+	cfg.ApplyConfig(config)
 
 	rootDir := os.Getenv("DEBROOT")
 	if rootDir == "" {

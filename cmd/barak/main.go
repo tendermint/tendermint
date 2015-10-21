@@ -50,7 +50,9 @@ func main() {
 	fmt.Printf("New Barak Process (PID: %d)\n", os.Getpid())
 
 	// Apply bare tendermint/* configuration.
-	cfg.ApplyConfig(cfg.MapConfig(map[string]interface{}{"log_level": "info"}))
+	config := cfg.NewMapConfig(nil)
+	config.Set("log_level", "info")
+	cfg.ApplyConfig(config)
 
 	// Read options
 	optionsFile := parseFlags()

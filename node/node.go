@@ -2,6 +2,7 @@ package node
 
 import (
 	"bytes"
+	"io/ioutil"
 	"math/rand"
 	"net"
 	"net/http"
@@ -297,6 +298,16 @@ func RunNode() {
 			if FileExists(genDocFile) {
 				break
 			}
+			jsonBlob, err := ioutil.ReadFile(genDocFile)
+			if err != nil {
+				Exit(Fmt("Couldn't read GenesisDoc file: %v", err))
+			}
+			genDoc := stypes.GenesisDocFromJSON(jsonBlob)
+			if genDoc.ChainID == "" {
+				PanicSanity(Fmt("Genesis doc %v must include non-empty chain_id", genDocFile))
+			}
+			config.Set("chain_id", genDoc.ChainID)
+			config.Set("genesis_doc", genDoc)
 		}
 	}
 
