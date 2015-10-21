@@ -38,8 +38,11 @@ func (fs *FooService) OnStop() error {
 */
 package common
 
-import "sync/atomic"
-import "github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/tendermint/log15"
+import (
+	"sync/atomic"
+
+	"github.com/tendermint/log15"
+)
 
 type Service interface {
 	Start() (bool, error)
