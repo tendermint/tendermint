@@ -3,7 +3,7 @@ package logger
 import (
 	"os"
 
-	. "github.com/tendermint/common"
+	. "github.com/tendermint/go-common"
 	"github.com/tendermint/log15"
 )
 
