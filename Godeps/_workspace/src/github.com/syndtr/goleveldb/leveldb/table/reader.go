@@ -14,6 +14,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/syndtr/gosnappy/snappy"
+
 	"github.com/syndtr/goleveldb/leveldb/cache"
 	"github.com/syndtr/goleveldb/leveldb/comparer"
 	"github.com/syndtr/goleveldb/leveldb/errors"
@@ -22,7 +24,6 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/syndtr/goleveldb/leveldb/storage"
 	"github.com/syndtr/goleveldb/leveldb/util"
-	"github.com/syndtr/gosnappy/snappy"
 )
 
 var (

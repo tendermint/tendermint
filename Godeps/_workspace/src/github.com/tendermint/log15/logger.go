@@ -50,7 +50,7 @@ func LvlFromString(lvlString string) (Lvl, error) {
 		return LvlDebug, nil
 	case "info":
 		return LvlInfo, nil
-	case "notice", "note":
+	case "note", "notice":
 		return LvlNotice, nil
 	case "warn":
 		return LvlWarn, nil

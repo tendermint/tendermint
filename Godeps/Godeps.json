@@ -11,11 +11,6 @@
 			"Rev": "69e2a90ed92d03812364aeb947b7068dc42e561e"
 		},
 		{
-			"ImportPath": "code.google.com/p/mxk/go1/flowcontrol",
-			"Comment": "null-12",
-			"Rev": "5ff2502e25566863e8a0136c7aae8838e4c7de39"
-		},
-		{
 			"ImportPath": "github.com/agl/ed25519/edwards25519",
 			"Rev": "d2b94fd789ea21d12fac1a4443dd3a3f79cda72c"
 		},
@@ -71,9 +66,41 @@
 			"Rev": "533fb6548e2071076888eda3c38749d707ba49bc"
 		},
 		{
+			"ImportPath": "github.com/tendermint/flowcontrol",
+			"Rev": "84d9671090430e8ec80e35b339907e0579b999eb"
+		},
+		{
+			"ImportPath": "github.com/tendermint/go-common",
+			"Rev": "6b54e7b8d945347f8fd1bdf83a2e9843561abbc5"
+		},
+		{
+			"ImportPath": "github.com/tendermint/go-config",
+			"Rev": "3b895c7ce4999ee6fff7b7ca6253f0b41d9bf85c"
+		},
+		{
+			"ImportPath": "github.com/tendermint/go-db",
+			"Rev": "28d39f8726c76b163e881c3d05dad227c93200ae"
+		},
+		{
+			"ImportPath": "github.com/tendermint/go-logger",
+			"Rev": "b072ed317354e6b507d6abde4c0cfbb516f31ab5"
+		},
+		{
+			"ImportPath": "github.com/tendermint/go-merkle",
+			"Rev": "8eab4cc2d55f17ff1529151ba2905015ad00e17d"
+		},
+		{
+			"ImportPath": "github.com/tendermint/go-p2p",
+			"Rev": "318a1b353532af2dcc430b9a7db976617fc729b8"
+		},
+		{
+			"ImportPath": "github.com/tendermint/go-wire",
+			"Rev": "4331183eb80dbaaedc9e84ab22e219c2d7d0bbe7"
+		},
+		{
 			"ImportPath": "github.com/tendermint/log15",
-			"Comment": "v2.3-34-gbec7415",
-			"Rev": "bec7415fb62f05ac62298c2bc1a080d45ac3065c"
+			"Comment": "v2.3-36-g6e46075",
+			"Rev": "6e460758f10ef42a4724b8e4a82fee59aaa0e41d"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/curve25519",

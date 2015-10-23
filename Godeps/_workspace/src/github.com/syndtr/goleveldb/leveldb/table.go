@@ -19,8 +19,8 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
-type // tFile holds basic information about a table.
-tFile struct {
+// tFile holds basic information about a table.
+type tFile struct {
 	file       storage.File
 	seekLeft   int32
 	size       uint64

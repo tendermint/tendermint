@@ -27,8 +27,8 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
+// DB is a LevelDB database.
 type DB struct {
-	// DB is a LevelDB database.
 	// Need 64-bit alignment.
 	seq uint64
 
