@@ -4,7 +4,7 @@ import (
 	acm "github.com/tendermint/tendermint/account"
 	stypes "github.com/tendermint/tendermint/state/types"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/wire"
+	"github.com/tendermint/go-wire"
 )
 
 type ResultGetStorage struct {

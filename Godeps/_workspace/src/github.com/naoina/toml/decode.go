@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/naoina/toml/ast"
+	"github.com/naoina/toml/ast"
 )
 
 const (

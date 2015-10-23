@@ -7,12 +7,12 @@ import (
 	"reflect"
 	"time"
 
-	. "github.com/tendermint/tendermint/common"
+	. "github.com/tendermint/go-common"
 	"github.com/tendermint/tendermint/events"
-	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/go-p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/wire"
+	"github.com/tendermint/go-wire"
 )
 
 const (

@@ -1,7 +1,7 @@
 package types
 
 import (
-	cfg "github.com/tendermint/tendermint/config"
+	cfg "github.com/tendermint/go-config"
 )
 
 var config cfg.Config = nil

@@ -12,12 +12,12 @@ import (
 
 	acm "github.com/tendermint/tendermint/account"
 	bc "github.com/tendermint/tendermint/blockchain"
-	. "github.com/tendermint/tendermint/common"
+	. "github.com/tendermint/go-common"
 	"github.com/tendermint/tendermint/consensus"
-	dbm "github.com/tendermint/tendermint/db"
+	dbm "github.com/tendermint/go-db"
 	"github.com/tendermint/tendermint/events"
 	mempl "github.com/tendermint/tendermint/mempool"
-	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/go-p2p"
 	"github.com/tendermint/tendermint/rpc"
 	"github.com/tendermint/tendermint/rpc/core"
 	"github.com/tendermint/tendermint/rpc/server"
@@ -25,7 +25,7 @@ import (
 	stypes "github.com/tendermint/tendermint/state/types"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/vm"
-	"github.com/tendermint/tendermint/wire"
+	"github.com/tendermint/go-wire"
 )
 
 import _ "net/http/pprof"

@@ -4,7 +4,7 @@ import (
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/consensus"
 	mempl "github.com/tendermint/tendermint/mempool"
-	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/go-p2p"
 	stypes "github.com/tendermint/tendermint/state/types"
 	"github.com/tendermint/tendermint/types"
 )

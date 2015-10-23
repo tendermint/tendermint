@@ -2,7 +2,7 @@ package vm
 
 import (
 	"fmt"
-	. "github.com/tendermint/tendermint/common"
+	. "github.com/tendermint/go-common"
 )
 
 // Not goroutine safe

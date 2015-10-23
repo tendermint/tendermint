@@ -1,7 +1,7 @@
 package vm
 
 import (
-	. "github.com/tendermint/tendermint/common"
+	. "github.com/tendermint/go-common"
 	ptypes "github.com/tendermint/tendermint/permission/types"
 )
 

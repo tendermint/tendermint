@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"testing"
 
-	tdb "github.com/tendermint/tendermint/db"
+	tdb "github.com/tendermint/go-db"
 	ptypes "github.com/tendermint/tendermint/permission/types"
 	. "github.com/tendermint/tendermint/state/types"
 )

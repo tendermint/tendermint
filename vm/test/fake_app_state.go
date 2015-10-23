@@ -1,7 +1,7 @@
 package vm
 
 import (
-	. "github.com/tendermint/tendermint/common"
+	. "github.com/tendermint/go-common"
 	. "github.com/tendermint/tendermint/vm"
 	"github.com/tendermint/tendermint/vm/sha3"
 )

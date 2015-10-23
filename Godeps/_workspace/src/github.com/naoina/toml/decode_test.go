@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/naoina/toml"
+	"github.com/naoina/toml"
 )
 
 const (

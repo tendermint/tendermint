@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/tendermint/tendermint/p2p/upnp"
+	"github.com/tendermint/go-p2p/upnp"
 )
 
 func probe_upnp() {

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/tendermint/tendermint/wire"
-	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/merkle"
+	"github.com/tendermint/go-wire"
+	. "github.com/tendermint/go-common"
+	"github.com/tendermint/go-merkle"
 	ptypes "github.com/tendermint/tendermint/permission/types"
 )
 

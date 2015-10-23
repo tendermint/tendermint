@@ -7,10 +7,10 @@ import (
 	"time"
 
 	bc "github.com/tendermint/tendermint/blockchain"
-	dbm "github.com/tendermint/tendermint/db"
+	dbm "github.com/tendermint/go-db"
 	"github.com/tendermint/tendermint/events"
 	mempl "github.com/tendermint/tendermint/mempool"
-	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/go-p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )

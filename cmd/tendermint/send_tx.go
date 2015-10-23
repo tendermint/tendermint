@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	acm "github.com/tendermint/tendermint/account"
-	. "github.com/tendermint/tendermint/common"
+	. "github.com/tendermint/go-common"
 	cclient "github.com/tendermint/tendermint/rpc/core_client"
 	"github.com/tendermint/tendermint/types"
 )

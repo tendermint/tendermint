@@ -26,5 +26,5 @@ WARNING: THIS STEP WILL GIVE CONTROL OF THE CURRENT USER TO THE DEV TEAM.
 
     go get -u github.com/tendermint/tendermint/cmd/tendermint
     mkdir -p ~/.tendermint
-    cp $GOPATH/src/github.com/tendermint/tendermint/config/tendermint/genesis.json ~/.tendermint/
+    cp $GOPATH/src/github.com/tendermint/go-config/tendermint/genesis.json ~/.tendermint/
     tendermint node --seeds="goldenalchemist.chaintest.net:46656"

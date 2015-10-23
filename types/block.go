@@ -8,9 +8,9 @@ import (
 	"time"
 
 	acm "github.com/tendermint/tendermint/account"
-	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/merkle"
-	"github.com/tendermint/tendermint/wire"
+	. "github.com/tendermint/go-common"
+	"github.com/tendermint/go-merkle"
+	"github.com/tendermint/go-wire"
 )
 
 type Block struct {

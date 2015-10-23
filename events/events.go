@@ -3,7 +3,7 @@ package events
 import (
 	"sync"
 
-	. "github.com/tendermint/tendermint/common"
+	. "github.com/tendermint/go-common"
 	"github.com/tendermint/tendermint/types"
 )
 

@@ -1,8 +1,9 @@
+
 package main
 
 import (
 	"fmt"
-	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/codegangsta/cli"
+	"github.com/codegangsta/cli"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -12,9 +13,9 @@ import (
 
 	acm "github.com/tendermint/tendermint/account"
 	btypes "github.com/tendermint/tendermint/cmd/barak/types"
-	. "github.com/tendermint/tendermint/common"
-	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/wire"
+	. "github.com/tendermint/go-common"
+	cfg "github.com/tendermint/go-config"
+	"github.com/tendermint/go-wire"
 )
 
 func remoteNick(remote string) string {

@@ -14,7 +14,7 @@ import (
 	"crypto/subtle"
 	"io"
 
-	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/agl/ed25519/edwards25519"
+	"github.com/agl/ed25519/edwards25519"
 )
 
 const (

@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	stypes "github.com/tendermint/tendermint/state/types"
-	"github.com/tendermint/tendermint/wire"
+	"github.com/tendermint/go-wire"
 )
 
 func TestStateToFromVMAccount(t *testing.T) {

@@ -3,7 +3,7 @@ package cli_test
 import (
 	"os"
 
-	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/codegangsta/cli"
+	"github.com/codegangsta/cli"
 )
 
 func Example() {

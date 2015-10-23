@@ -1,3 +1,4 @@
+
 package main
 
 import (
@@ -10,9 +11,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tendermint/tendermint/wire"
+	"github.com/tendermint/go-wire"
 	. "github.com/tendermint/tendermint/cmd/barak/types"
-	. "github.com/tendermint/tendermint/common"
+	. "github.com/tendermint/go-common"
 	pcm "github.com/tendermint/tendermint/process"
 	"github.com/tendermint/tendermint/rpc/server"
 )

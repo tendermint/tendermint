@@ -7,9 +7,9 @@ import (
 	"os"
 
 	acm "github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/wire"
+	"github.com/tendermint/go-wire"
 	btypes "github.com/tendermint/tendermint/cmd/barak/types"
-	. "github.com/tendermint/tendermint/common"
+	. "github.com/tendermint/go-common"
 	"github.com/tendermint/tendermint/rpc/client"
 	"net/http"
 )

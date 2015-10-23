@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	acm "github.com/tendermint/tendermint/account"
-	. "github.com/tendermint/tendermint/common"
+	. "github.com/tendermint/go-common"
 	nm "github.com/tendermint/tendermint/node"
-	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/go-p2p"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	cclient "github.com/tendermint/tendermint/rpc/core_client"
 	"github.com/tendermint/tendermint/types"

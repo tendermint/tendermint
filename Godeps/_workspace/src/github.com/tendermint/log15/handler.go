@@ -11,7 +11,7 @@ import (
 	"sync/atomic"
 	"unsafe"
 
-	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/inconshreveable/log15/stack"
+	"github.com/inconshreveable/log15/stack"
 )
 
 // A Logger prints its log records by writing to a Handler.

@@ -11,7 +11,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/syndtr/goleveldb/leveldb/util"
+	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
 const typeShift = 3

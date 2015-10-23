@@ -1,7 +1,7 @@
 package core
 
 import (
-	dbm "github.com/tendermint/tendermint/db"
+	dbm "github.com/tendermint/go-db"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"

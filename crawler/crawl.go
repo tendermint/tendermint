@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	. "github.com/tendermint/tendermint/common"
+	. "github.com/tendermint/go-common"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	cclient "github.com/tendermint/tendermint/rpc/core_client"
 	"github.com/tendermint/tendermint/types"

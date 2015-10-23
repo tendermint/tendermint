@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	acm "github.com/tendermint/tendermint/account"
-	. "github.com/tendermint/tendermint/common"
+	. "github.com/tendermint/go-common"
 	_ "github.com/tendermint/tendermint/config/tendermint_test"
 )
 

@@ -1,12 +1,13 @@
+
 package account
 
 import (
 	"bytes"
 	"testing"
 
-	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/tendermint/ed25519"
-	"github.com/tendermint/tendermint/wire"
-	. "github.com/tendermint/tendermint/common"
+	"github.com/tendermint/ed25519"
+	"github.com/tendermint/go-wire"
+	. "github.com/tendermint/go-common"
 )
 
 func TestSignAndValidate(t *testing.T) {

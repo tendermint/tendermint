@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	. "github.com/tendermint/tendermint/common"
+	. "github.com/tendermint/go-common"
 )
 
 const Version = "0.0.1"

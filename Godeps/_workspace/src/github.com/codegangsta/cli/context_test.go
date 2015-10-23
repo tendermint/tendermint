@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/codegangsta/cli"
+	"github.com/codegangsta/cli"
 )
 
 func TestNewContext(t *testing.T) {

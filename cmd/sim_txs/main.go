@@ -1,3 +1,4 @@
+
 package main
 
 import (
@@ -6,7 +7,7 @@ import (
 	"fmt"
 
 	acm "github.com/tendermint/tendermint/account"
-	. "github.com/tendermint/tendermint/common"
+	. "github.com/tendermint/go-common"
 	"github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	cclient "github.com/tendermint/tendermint/rpc/core_client"

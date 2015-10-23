@@ -5,8 +5,8 @@ import (
 	"path"
 	"strings"
 
-	. "github.com/tendermint/tendermint/common"
-	cfg "github.com/tendermint/tendermint/config"
+	. "github.com/tendermint/go-common"
+	cfg "github.com/tendermint/go-config"
 )
 
 func getTMRoot(rootDir string) string {

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	_ "github.com/tendermint/tendermint/config/tendermint_test"
-	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/go-p2p"
 )
 
 func TestNodeStartStop(t *testing.T) {

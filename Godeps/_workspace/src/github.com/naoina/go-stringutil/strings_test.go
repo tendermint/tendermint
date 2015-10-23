@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/naoina/go-stringutil"
+	"github.com/naoina/go-stringutil"
 )
 
 func TestToUpperCamelCase(t *testing.T) {

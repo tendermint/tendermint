@@ -17,11 +17,11 @@ import (
 	"time"
 
 	. "github.com/tendermint/tendermint/cmd/barak/types"
-	. "github.com/tendermint/tendermint/common"
-	cfg "github.com/tendermint/tendermint/config"
+	. "github.com/tendermint/go-common"
+	cfg "github.com/tendermint/go-config"
 	pcm "github.com/tendermint/tendermint/process"
 	"github.com/tendermint/tendermint/rpc/server"
-	"github.com/tendermint/tendermint/wire"
+	"github.com/tendermint/go-wire"
 )
 
 const BarakVersion = "0.0.1"

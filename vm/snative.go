@@ -3,7 +3,7 @@ package vm
 import (
 	"fmt"
 
-	. "github.com/tendermint/tendermint/common"
+	. "github.com/tendermint/go-common"
 	ptypes "github.com/tendermint/tendermint/permission/types"
 )
 

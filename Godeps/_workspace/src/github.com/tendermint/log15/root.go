@@ -3,8 +3,8 @@ package log15
 import (
 	"os"
 
-	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/inconshreveable/log15/term"
-	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/mattn/go-colorable"
+	"github.com/inconshreveable/log15/term"
+	"github.com/mattn/go-colorable"
 )
 
 var (

@@ -3,7 +3,7 @@ package rpctest
 import (
 	"bytes"
 	"fmt"
-	. "github.com/tendermint/tendermint/common"
+	. "github.com/tendermint/go-common"
 	"github.com/tendermint/tendermint/types"
 	"testing"
 )

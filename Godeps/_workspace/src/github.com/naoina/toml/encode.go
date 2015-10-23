@@ -8,7 +8,7 @@ import (
 
 	"go/ast"
 
-	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/naoina/go-stringutil"
+	"github.com/naoina/go-stringutil"
 )
 
 const (

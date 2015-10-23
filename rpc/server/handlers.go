@@ -1,3 +1,4 @@
+
 package rpcserver
 
 import (
@@ -11,13 +12,13 @@ import (
 	"sort"
 	"time"
 
-	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/gorilla/websocket"
-	. "github.com/tendermint/tendermint/common"
+	"github.com/gorilla/websocket"
+	. "github.com/tendermint/go-common"
 	"github.com/tendermint/tendermint/events"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	. "github.com/tendermint/tendermint/rpc/types"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/wire"
+	"github.com/tendermint/go-wire"
 )
 
 func RegisterRPCFuncs(mux *http.ServeMux, funcMap map[string]*RPCFunc) {

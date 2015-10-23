@@ -1,11 +1,12 @@
+
 package config
 
 import (
-	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/naoina/toml"
+	"github.com/naoina/toml"
 	"sync"
 	"time"
 
-	. "github.com/tendermint/tendermint/common"
+	. "github.com/tendermint/go-common"
 )
 
 type Config interface {

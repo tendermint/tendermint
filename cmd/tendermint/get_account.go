@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	. "github.com/tendermint/tendermint/common"
+	. "github.com/tendermint/go-common"
 	cclient "github.com/tendermint/tendermint/rpc/core_client"
 )
 

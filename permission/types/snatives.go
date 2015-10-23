@@ -1,7 +1,7 @@
 package types
 
 import (
-	"github.com/tendermint/tendermint/wire"
+	"github.com/tendermint/go-wire"
 )
 
 //---------------------------------------------------------------------------------------------------

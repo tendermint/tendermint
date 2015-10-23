@@ -7,8 +7,8 @@ import (
 	"sync"
 
 	acm "github.com/tendermint/tendermint/account"
-	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/wire"
+	. "github.com/tendermint/go-common"
+	"github.com/tendermint/go-wire"
 )
 
 // VoteSet helps collect signatures from validators at each height+round

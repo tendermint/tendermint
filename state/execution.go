@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	acm "github.com/tendermint/tendermint/account"
-	. "github.com/tendermint/tendermint/common"
+	. "github.com/tendermint/go-common"
 	"github.com/tendermint/tendermint/events"
 	ptypes "github.com/tendermint/tendermint/permission/types" // for GlobalPermissionAddress ...
 	"github.com/tendermint/tendermint/types"

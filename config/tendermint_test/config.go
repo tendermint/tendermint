@@ -1,3 +1,4 @@
+
 // Import this in all *_test.go files to initialize ~/.tendermint_test.
 
 package tendermint_test
@@ -7,8 +8,8 @@ import (
 	"path"
 	"strings"
 
-	. "github.com/tendermint/tendermint/common"
-	cfg "github.com/tendermint/tendermint/config"
+	. "github.com/tendermint/go-common"
+	cfg "github.com/tendermint/go-config"
 )
 
 func init() {

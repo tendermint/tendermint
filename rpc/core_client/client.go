@@ -5,7 +5,7 @@ import (
 	"fmt"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/types"
-	"github.com/tendermint/tendermint/wire"
+	"github.com/tendermint/go-wire"
 	"io/ioutil"
 	"net/http"
 	"net/url"
