@@ -36,9 +36,14 @@ func NewValidatorSet(vals []*Validator) *ValidatorSet {
 		validators[i] = val.Copy()
 	}
 	sort.Sort(ValidatorsByAddress(validators))
-	return &ValidatorSet{
+	vs := &ValidatorSet{
 		Validators: validators,
 	}
+
+	if vals != nil {
+		vs.IncrementAccum(1)
+	}
+	return vs
 }
 
 // TODO: mind the overflow when times and votingPower shares too large.
