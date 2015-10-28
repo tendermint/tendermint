@@ -14,6 +14,7 @@ import (
 /*
 
 ProposeSuite
+x * TestProposerSelection - round robin ordering
 x * TestEnterProposeNoValidator - timeout into prevote round
 x * TestEnterPropose - finish propose without timing out (we have the proposal)
 x * TestBadProposal - 2 vals, bad proposal (bad block state hash), should prevote and precommit nil
@@ -44,7 +45,77 @@ x * TestHalt1 - if we see +2/3 precommits after timing out into new round, we sh
 
 func init() {
 	fmt.Println("")
-	timeoutPropose = 1000 * time.Millisecond
+	timeoutPropose = 500 * time.Millisecond
+}
+
+func TestProposerSelection(t *testing.T) {
+	css, _ := simpleConsensusState(3) // test needs more work for more than 3 validators
+	cs1 := css[0]
+	cs1.newStepCh = make(chan *RoundState) // so it blocks
+
+	cs1.SetDecideProposalFunc(nilProposal)
+
+	cs1.EnterNewRound(cs1.Height, 0, false)
+
+	// everyone just votes nil. we get a new proposer each round
+	for i := 0; i < len(css); i++ {
+		if i == len(css)-1 {
+			// reset cs1's decideProposal function for later
+			cs1.SetDecideProposalFunc(decideProposal)
+		}
+		prop := cs1.Validators.Proposer()
+		if !bytes.Equal(prop.Address, css[i].privValidator.Address) {
+			t.Fatalf("expected proposer to be validator %d. Got %X", i, prop.Address)
+		}
+		nilRound(t, 0, cs1, css[1:]...)
+		incrementRound(css[1:]...)
+
+	}
+
+	// now we should be back at first validator.
+	// lets commit a block and ensure proposer for the next height is correct
+	height := cs1.Height
+	prop := cs1.Validators.Proposer()
+	if !bytes.Equal(prop.Address, cs1.privValidator.Address) {
+		t.Fatalf("expected proposer to be validator %d. Got %X", 0, prop.Address)
+	}
+	signAddVoteToFromMany(types.VoteTypePrevote, cs1, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header(), css[1:]...)
+	<-cs1.NewStepCh() // prevotes
+	signAddVoteToFromMany(types.VoteTypePrecommit, cs1, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header(), css[1:]...)
+	<-cs1.NewStepCh() //
+	<-cs1.NewStepCh() // go to next round
+	if cs1.Height != height+1 {
+		t.Fatal("Expected height to increment. Got", cs1.Height)
+	}
+
+	prop = cs1.Validators.Proposer()
+	if !bytes.Equal(prop.Address, css[1].privValidator.Address) {
+		t.Fatalf("expected proposer to be validator %d. Got %X", 1, prop.Address)
+	}
+
+	// Now let's do it all again, but starting from round 2 instead of 0
+
+	css, _ = simpleConsensusState(3) // test needs more work for more than 3 validators
+	cs1 = css[0]
+	cs1.newStepCh = make(chan *RoundState) // so it blocks
+
+	cs1.SetDecideProposalFunc(nilProposal)
+
+	// this time we jump in at round 2
+	incrementRound(css[1:]...)
+	incrementRound(css[1:]...)
+	cs1.EnterNewRound(cs1.Height, 2, false)
+
+	// everyone just votes nil. we get a new proposer each round
+	for i := 0; i < len(css); i++ {
+		prop := cs1.Validators.Proposer()
+		if !bytes.Equal(prop.Address, css[(i+2)%len(css)].privValidator.Address) {
+			t.Fatalf("expected proposer to be validator %d. Got %X", (i+2)%len(css), prop.Address)
+		}
+		nilRound(t, 2, cs1, css[1:]...)
+		incrementRound(css[1:]...)
+	}
+
 }
 
 // a non-validator should timeout into the prevote round
@@ -175,7 +246,7 @@ func TestBadProposal(t *testing.T) {
 }
 
 //----------------------------------------------------------------------------------------------------
-// FulLRoundSuite
+// FullRoundSuite
 
 // propose, prevote, and precommit a block
 func TestFullRound1(t *testing.T) {
@@ -202,23 +273,14 @@ func TestFullRoundNil(t *testing.T) {
 	css, privVals := simpleConsensusState(1)
 	cs := css[0]
 	cs.newStepCh = make(chan *RoundState) // so it blocks
-	cs.SetPrivValidator(nil)
 
-	timeoutChan := make(chan struct{})
-	evsw := events.NewEventSwitch()
-	evsw.OnStart()
-	evsw.AddListenerForEvent("tester", types.EventStringTimeoutPropose(), func(data types.EventData) {
-		timeoutChan <- struct{}{}
-	})
-	cs.SetFireable(evsw)
+	cs.SetDecideProposalFunc(nilProposal)
 
 	// starts a go routine for EnterPropose
 	cs.EnterNewRound(cs.Height, 0, false)
 
 	// wait to finish propose (we should time out)
 	<-cs.NewStepCh()
-	cs.SetPrivValidator(privVals[0]) // this might be a race condition (uses the mutex that EnterPropose has just released and EnterPrevote is about to grab)
-	<-timeoutChan
 
 	// wait to finish prevote
 	<-cs.NewStepCh()
@@ -328,12 +390,10 @@ func TestLockNoPOL(t *testing.T) {
 
 	incrementRound(cs2)
 
-	// go to prevote
-	<-cs1.NewStepCh()
-
-	// now we're on a new round and the proposer
-	if cs1.ProposalBlock != cs1.LockedBlock {
-		t.Fatalf("Expected proposal block to be locked block. Got %v, Expected %v", cs1.ProposalBlock, cs1.LockedBlock)
+	// now we're on a new round and not the proposer, so wait for timeout
+	_, _ = <-cs1.NewStepCh(), <-timeoutChan
+	if cs1.ProposalBlock != nil {
+		t.Fatal("Expected proposal block to be nil")
 	}
 
 	// wait to finish prevote
@@ -368,10 +428,11 @@ func TestLockNoPOL(t *testing.T) {
 
 	incrementRound(cs2)
 
-	// now we're on a new round and not the proposer, so wait for timeout
-	_, _ = <-cs1.NewStepCh(), <-timeoutChan
-	if cs1.ProposalBlock != nil {
-		t.Fatal("Expected proposal block to be nil")
+	<-cs1.newStepCh
+
+	// now we're on a new round and are the proposer
+	if cs1.ProposalBlock != cs1.LockedBlock {
+		t.Fatalf("Expected proposal block to be locked block. Got %v, Expected %v", cs1.ProposalBlock, cs1.LockedBlock)
 	}
 
 	// go to prevote, prevote for locked block
@@ -386,14 +447,7 @@ func TestLockNoPOL(t *testing.T) {
 
 	<-cs1.NewStepCh()
 
-	// before we time out into new round, set next proposer
-	// and next proposal block
-	_, v1 := cs1.Validators.GetByAddress(privVals[0].Address)
-	v1.VotingPower = 1
-	if updated := cs1.Validators.Update(v1); !updated {
-		t.Fatal("failed to update validator")
-	}
-
+	// before we time out into new round, set next proposal block
 	cs2.decideProposal(cs2.Height, cs2.Round+1)
 	prop, propBlock := cs2.Proposal, cs2.ProposalBlock
 	if prop == nil || propBlock == nil {
