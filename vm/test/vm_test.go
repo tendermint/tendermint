@@ -69,6 +69,37 @@ func TestVM(t *testing.T) {
 	}
 }
 
+func TestJumpErr(t *testing.T) {
+	ourVm := NewVM(newAppState(), newParams(), Zero256, nil)
+
+	// Create accounts
+	account1 := &Account{
+		Address: Int64ToWord256(100),
+	}
+	account2 := &Account{
+		Address: Int64ToWord256(101),
+	}
+
+	var gas int64 = 100000
+	code := []byte{0x60, 0x10, 0x56} // jump to position 16, a clear failure
+	var output []byte
+	var err error
+	ch := make(chan struct{})
+	go func() {
+		output, err = ourVm.Call(account1, account2, code, []byte{}, 0, &gas)
+		ch <- struct{}{}
+	}()
+	tick := time.NewTicker(time.Second * 2)
+	select {
+	case <-tick.C:
+		t.Fatal("VM ended up in an infinite loop from bad jump dest (it took too long!)")
+	case <-ch:
+		if err == nil {
+			t.Fatal("Expected invalid jump dest err")
+		}
+	}
+}
+
 // Tests the code for a subcurrency contract compiled by serpent
 func TestSubcurrency(t *testing.T) {
 	st := newAppState()

@@ -639,13 +639,17 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value int64, gas
 			dbg.Printf(" {0x%X : 0x%X}\n", loc, data)
 
 		case JUMP: // 0x56
-			err = jump(code, stack.Pop64(), &pc)
+			if err = jump(code, stack.Pop64(), &pc); err != nil {
+				return nil, err
+			}
 			continue
 
 		case JUMPI: // 0x57
 			pos, cond := stack.Pop64(), stack.Pop()
 			if !cond.IsZero() {
-				err = jump(code, pos, &pc)
+				if err = jump(code, pos, &pc); err != nil {
+					return nil, err
+				}
 				continue
 			}
 			dbg.Printf(" ~> false\n")
