@@ -1,38 +1,98 @@
 package vm
 
 import (
+	"encoding/hex"
 	"fmt"
 
 	. "github.com/tendermint/tendermint/common"
 	ptypes "github.com/tendermint/tendermint/permission/types"
 )
 
-// TODO: ABI
 //------------------------------------------------------------------------------------------------
 // Registered SNative contracts
 
+var PermissionsContract = "permissions_contract"
+
 func registerSNativeContracts() {
-	registeredNativeContracts[LeftPadWord256([]byte("has_base"))] = hasBasePerm
-	registeredNativeContracts[LeftPadWord256([]byte("set_base"))] = setBasePerm
-	registeredNativeContracts[LeftPadWord256([]byte("unset_base"))] = unsetBasePerm
-	registeredNativeContracts[LeftPadWord256([]byte("set_global"))] = setGlobalPerm
-	registeredNativeContracts[LeftPadWord256([]byte("has_role"))] = hasRole
-	registeredNativeContracts[LeftPadWord256([]byte("add_role"))] = addRole
-	registeredNativeContracts[LeftPadWord256([]byte("rm_role"))] = rmRole
+	registeredNativeContracts[LeftPadWord256([]byte(PermissionsContract))] = permissionsContract
+
+	/*
+		// we could expose these but we moved permission and args checks into the permissionsContract
+		// so calling them would be unsafe ...
+		registeredNativeContracts[LeftPadWord256([]byte("has_base"))] = has_base
+		registeredNativeContracts[LeftPadWord256([]byte("set_base"))] = set_base
+		registeredNativeContracts[LeftPadWord256([]byte("unset_base"))] = unset_base
+		registeredNativeContracts[LeftPadWord256([]byte("set_global"))] = set_global
+		registeredNativeContracts[LeftPadWord256([]byte("has_role"))] = has_role
+		registeredNativeContracts[LeftPadWord256([]byte("add_role"))] = add_role
+		registeredNativeContracts[LeftPadWord256([]byte("rm_role"))] = rm_role
+	*/
 }
 
 //-----------------------------------------------------------------------------
 // snative are native contracts that can access and modify an account's permissions
 
+type SNativeFuncDescription struct {
+	Name     string
+	NArgs    int
+	PermFlag ptypes.PermFlag
+	F        NativeContract
+}
+
+/* The solidity interface used to generate the abi function ids below
+contract Permissions {
+	function has_base(address addr, int permFlag) constant returns (bool value) {}
+	function set_base(address addr, int permFlag, bool value) constant returns (bool val) {}
+	function unset_base(address addr, int permFlag) constant returns (int pf) {}
+	function set_global(address addr, int permFlag, bool value) constant returns (int pf) {}
+	function has_role(address addr, string role) constant returns (bool val) {}
+	function add_role(address addr, string role) constant returns (bool added) {}
+	function rm_role(address addr, string role) constant returns (bool removed) {}
+}
+*/
+
+// function identifiers from the solidity abi
+var PermsMap = map[string]SNativeFuncDescription{
+	"054556ac": SNativeFuncDescription{"has_role", 2, ptypes.HasRole, has_role},
+	"180d26f2": SNativeFuncDescription{"unset_base", 2, ptypes.UnsetBase, unset_base},
+	"3a3fcc59": SNativeFuncDescription{"set_global", 2, ptypes.SetGlobal, set_global},
+	"9a1c4141": SNativeFuncDescription{"add_role", 2, ptypes.AddRole, add_role},
+	"9ea53314": SNativeFuncDescription{"set_base", 3, ptypes.SetBase, set_base},
+	"bb37737a": SNativeFuncDescription{"has_base", 2, ptypes.HasBase, has_base},
+	"ded3350a": SNativeFuncDescription{"rm_role", 2, ptypes.RmRole, rm_role},
+}
+
+func permissionsContract(appState AppState, caller *Account, args []byte, gas *int64) (output []byte, err error) {
+	if len(args) < 4 {
+		return nil, fmt.Errorf("permissionsContract expects at least a 4-byte function identifier")
+	}
+
+	// map solidity abi function id to snative
+	funcIDbytes := args[:4]
+	args = args[4:]
+	funcID := hex.EncodeToString(funcIDbytes)
+	d, ok := PermsMap[funcID]
+	if !ok {
+		return nil, fmt.Errorf("unknown permissionsContract funcID %s", funcID)
+	}
+
+	// check if we have permission to call this function
+	if !HasPermission(appState, caller, d.PermFlag) {
+		return nil, ErrInvalidPermission{caller.Address, d.Name}
+	}
+
+	// ensure there are enough arguments
+	if len(args) != d.NArgs*32 {
+		return nil, fmt.Errorf("%s() takes %d arguments", d.Name)
+	}
+
+	// call the function
+	return d.F(appState, caller, args, gas)
+}
+
 // TODO: catch errors, log em, return 0s to the vm (should some errors cause exceptions though?)
 
-func hasBasePerm(appState AppState, caller *Account, args []byte, gas *int64) (output []byte, err error) {
-	if !HasPermission(appState, caller, ptypes.HasBase) {
-		return nil, ErrInvalidPermission{caller.Address, "has_base"}
-	}
-	if len(args) != 2*32 {
-		return nil, fmt.Errorf("hasBasePerm() takes two arguments (address, permFlag)")
-	}
+func has_base(appState AppState, caller *Account, args []byte, gas *int64) (output []byte, err error) {
 	addr, permNum := returnTwoArgs(args)
 	vmAcc := appState.GetAccount(addr)
 	if vmAcc == nil {
@@ -42,23 +102,12 @@ func hasBasePerm(appState AppState, caller *Account, args []byte, gas *int64) (o
 	if !ValidPermN(permN) {
 		return nil, ptypes.ErrInvalidPermission(permN)
 	}
-	var permInt byte
-	if HasPermission(appState, vmAcc, permN) {
-		permInt = 0x1
-	} else {
-		permInt = 0x0
-	}
+	permInt := byteFromBool(HasPermission(appState, vmAcc, permN))
 	dbg.Printf("snative.hasBasePerm(0x%X, %b) = %v\n", addr.Postfix(20), permN, permInt)
 	return LeftPadWord256([]byte{permInt}).Bytes(), nil
 }
 
-func setBasePerm(appState AppState, caller *Account, args []byte, gas *int64) (output []byte, err error) {
-	if !HasPermission(appState, caller, ptypes.SetBase) {
-		return nil, ErrInvalidPermission{caller.Address, "set_base"}
-	}
-	if len(args) != 3*32 {
-		return nil, fmt.Errorf("setBase() takes three arguments (address, permFlag, permission value)")
-	}
+func set_base(appState AppState, caller *Account, args []byte, gas *int64) (output []byte, err error) {
 	addr, permNum, perm := returnThreeArgs(args)
 	vmAcc := appState.GetAccount(addr)
 	if vmAcc == nil {
@@ -77,13 +126,7 @@ func setBasePerm(appState AppState, caller *Account, args []byte, gas *int64) (o
 	return perm.Bytes(), nil
 }
 
-func unsetBasePerm(appState AppState, caller *Account, args []byte, gas *int64) (output []byte, err error) {
-	if !HasPermission(appState, caller, ptypes.UnsetBase) {
-		return nil, ErrInvalidPermission{caller.Address, "unset_base"}
-	}
-	if len(args) != 2*32 {
-		return nil, fmt.Errorf("unsetBase() takes two arguments (address, permFlag)")
-	}
+func unset_base(appState AppState, caller *Account, args []byte, gas *int64) (output []byte, err error) {
 	addr, permNum := returnTwoArgs(args)
 	vmAcc := appState.GetAccount(addr)
 	if vmAcc == nil {
@@ -101,13 +144,7 @@ func unsetBasePerm(appState AppState, caller *Account, args []byte, gas *int64) 
 	return permNum.Bytes(), nil
 }
 
-func setGlobalPerm(appState AppState, caller *Account, args []byte, gas *int64) (output []byte, err error) {
-	if !HasPermission(appState, caller, ptypes.SetGlobal) {
-		return nil, ErrInvalidPermission{caller.Address, "set_global"}
-	}
-	if len(args) != 2*32 {
-		return nil, fmt.Errorf("setGlobal() takes two arguments (permFlag, permission value)")
-	}
+func set_global(appState AppState, caller *Account, args []byte, gas *int64) (output []byte, err error) {
 	permNum, perm := returnTwoArgs(args)
 	vmAcc := appState.GetAccount(ptypes.GlobalPermissionsAddress256)
 	if vmAcc == nil {
@@ -126,72 +163,39 @@ func setGlobalPerm(appState AppState, caller *Account, args []byte, gas *int64) 
 	return perm.Bytes(), nil
 }
 
-func hasRole(appState AppState, caller *Account, args []byte, gas *int64) (output []byte, err error) {
-	if !HasPermission(appState, caller, ptypes.HasRole) {
-		return nil, ErrInvalidPermission{caller.Address, "has_role"}
-	}
-	if len(args) != 2*32 {
-		return nil, fmt.Errorf("hasRole() takes two arguments (address, role)")
-	}
+func has_role(appState AppState, caller *Account, args []byte, gas *int64) (output []byte, err error) {
 	addr, role := returnTwoArgs(args)
 	vmAcc := appState.GetAccount(addr)
 	if vmAcc == nil {
 		return nil, fmt.Errorf("Unknown account %X", addr)
 	}
 	roleS := string(role.Bytes())
-	var permInt byte
-	if vmAcc.Permissions.HasRole(roleS) {
-		permInt = 0x1
-	} else {
-		permInt = 0x0
-	}
+	permInt := byteFromBool(vmAcc.Permissions.HasRole(roleS))
 	dbg.Printf("snative.hasRole(0x%X, %s) = %v\n", addr.Postfix(20), roleS, permInt > 0)
 	return LeftPadWord256([]byte{permInt}).Bytes(), nil
 }
 
-func addRole(appState AppState, caller *Account, args []byte, gas *int64) (output []byte, err error) {
-	if !HasPermission(appState, caller, ptypes.AddRole) {
-		return nil, ErrInvalidPermission{caller.Address, "add_role"}
-	}
-	if len(args) != 2*32 {
-		return nil, fmt.Errorf("addRole() takes two arguments (address, role)")
-	}
+func add_role(appState AppState, caller *Account, args []byte, gas *int64) (output []byte, err error) {
 	addr, role := returnTwoArgs(args)
 	vmAcc := appState.GetAccount(addr)
 	if vmAcc == nil {
 		return nil, fmt.Errorf("Unknown account %X", addr)
 	}
 	roleS := string(role.Bytes())
-	var permInt byte
-	if vmAcc.Permissions.AddRole(roleS) {
-		permInt = 0x1
-	} else {
-		permInt = 0x0
-	}
+	permInt := byteFromBool(vmAcc.Permissions.AddRole(roleS))
 	appState.UpdateAccount(vmAcc)
 	dbg.Printf("snative.addRole(0x%X, %s) = %v\n", addr.Postfix(20), roleS, permInt > 0)
 	return LeftPadWord256([]byte{permInt}).Bytes(), nil
 }
 
-func rmRole(appState AppState, caller *Account, args []byte, gas *int64) (output []byte, err error) {
-	if !HasPermission(appState, caller, ptypes.RmRole) {
-		return nil, ErrInvalidPermission{caller.Address, "rm_role"}
-	}
-	if len(args) != 2*32 {
-		return nil, fmt.Errorf("rmRole() takes two arguments (address, role)")
-	}
+func rm_role(appState AppState, caller *Account, args []byte, gas *int64) (output []byte, err error) {
 	addr, role := returnTwoArgs(args)
 	vmAcc := appState.GetAccount(addr)
 	if vmAcc == nil {
 		return nil, fmt.Errorf("Unknown account %X", addr)
 	}
 	roleS := string(role.Bytes())
-	var permInt byte
-	if vmAcc.Permissions.RmRole(roleS) {
-		permInt = 0x1
-	} else {
-		permInt = 0x0
-	}
+	permInt := byteFromBool(vmAcc.Permissions.RmRole(roleS))
 	appState.UpdateAccount(vmAcc)
 	dbg.Printf("snative.rmRole(0x%X, %s) = %v\n", addr.Postfix(20), roleS, permInt > 0)
 	return LeftPadWord256([]byte{permInt}).Bytes(), nil
@@ -230,4 +234,11 @@ func returnThreeArgs(args []byte) (a Word256, b Word256, c Word256) {
 	copy(b[:], args[32:64])
 	copy(c[:], args[64:96])
 	return
+}
+
+func byteFromBool(b bool) byte {
+	if b {
+		return 0x1
+	}
+	return 0x0
 }

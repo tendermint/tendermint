@@ -62,14 +62,14 @@ func NewNode() *Node {
 		wire.WriteJSON(genDoc, buf, n, err)
 		stateDB.Set(stypes.GenDocKey, buf.Bytes())
 		if *err != nil {
-			Exit(Fmt("Unable to write gendoc to db: %v", err))
+			Exit(Fmt("Unable to write gendoc to db: %v", *err))
 		}
 	} else {
 		genDocBytes := stateDB.Get(stypes.GenDocKey)
 		err := new(error)
 		wire.ReadJSONPtr(&genDoc, genDocBytes, err)
 		if *err != nil {
-			Exit(Fmt("Unable to read gendoc from db: %v", err))
+			Exit(Fmt("Unable to read gendoc from db: %v", *err))
 		}
 	}
 	// add the chainid to the global config

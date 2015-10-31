@@ -2,6 +2,7 @@ package state
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"strconv"
 	"testing"
@@ -14,6 +15,7 @@ import (
 	ptypes "github.com/tendermint/tendermint/permission/types"
 	. "github.com/tendermint/tendermint/state/types"
 	"github.com/tendermint/tendermint/types"
+	vm "github.com/tendermint/tendermint/vm"
 )
 
 /*
@@ -868,9 +870,9 @@ func TestSNativeCALL(t *testing.T) {
 
 	fmt.Println("\n#### HasBase")
 	// HasBase
-	snativeAddress, data := snativePermTestInputCALL("has_base", user[3], ptypes.Bond, false)
+	snativeAddress, pF, data := snativePermTestInputCALL("has_base", user[3], ptypes.Bond, false)
 	testSNativeCALLExpectFail(t, blockCache, doug, snativeAddress, data)
-	testSNativeCALLExpectPass(t, blockCache, doug, snativeAddress, data, func(ret []byte) error {
+	testSNativeCALLExpectPass(t, blockCache, doug, pF, snativeAddress, data, func(ret []byte) error {
 		// return value should be true or false as a 32 byte array...
 		if !IsZeros(ret[:31]) || ret[31] != byte(1) {
 			return fmt.Errorf("Expected 1. Got %X", ret)
@@ -880,21 +882,21 @@ func TestSNativeCALL(t *testing.T) {
 
 	fmt.Println("\n#### SetBase")
 	// SetBase
-	snativeAddress, data = snativePermTestInputCALL("set_base", user[3], ptypes.Bond, false)
+	snativeAddress, pF, data = snativePermTestInputCALL("set_base", user[3], ptypes.Bond, false)
 	testSNativeCALLExpectFail(t, blockCache, doug, snativeAddress, data)
-	testSNativeCALLExpectPass(t, blockCache, doug, snativeAddress, data, func(ret []byte) error { return nil })
-	snativeAddress, data = snativePermTestInputCALL("has_base", user[3], ptypes.Bond, false)
-	testSNativeCALLExpectPass(t, blockCache, doug, snativeAddress, data, func(ret []byte) error {
+	testSNativeCALLExpectPass(t, blockCache, doug, pF, snativeAddress, data, func(ret []byte) error { return nil })
+	snativeAddress, pF, data = snativePermTestInputCALL("has_base", user[3], ptypes.Bond, false)
+	testSNativeCALLExpectPass(t, blockCache, doug, pF, snativeAddress, data, func(ret []byte) error {
 		// return value should be true or false as a 32 byte array...
 		if !IsZeros(ret) {
 			return fmt.Errorf("Expected 0. Got %X", ret)
 		}
 		return nil
 	})
-	snativeAddress, data = snativePermTestInputCALL("set_base", user[3], ptypes.CreateContract, true)
-	testSNativeCALLExpectPass(t, blockCache, doug, snativeAddress, data, func(ret []byte) error { return nil })
-	snativeAddress, data = snativePermTestInputCALL("has_base", user[3], ptypes.CreateContract, false)
-	testSNativeCALLExpectPass(t, blockCache, doug, snativeAddress, data, func(ret []byte) error {
+	snativeAddress, pF, data = snativePermTestInputCALL("set_base", user[3], ptypes.CreateContract, true)
+	testSNativeCALLExpectPass(t, blockCache, doug, pF, snativeAddress, data, func(ret []byte) error { return nil })
+	snativeAddress, pF, data = snativePermTestInputCALL("has_base", user[3], ptypes.CreateContract, false)
+	testSNativeCALLExpectPass(t, blockCache, doug, pF, snativeAddress, data, func(ret []byte) error {
 		// return value should be true or false as a 32 byte array...
 		if !IsZeros(ret[:31]) || ret[31] != byte(1) {
 			return fmt.Errorf("Expected 1. Got %X", ret)
@@ -904,11 +906,11 @@ func TestSNativeCALL(t *testing.T) {
 
 	fmt.Println("\n#### UnsetBase")
 	// UnsetBase
-	snativeAddress, data = snativePermTestInputCALL("unset_base", user[3], ptypes.CreateContract, false)
+	snativeAddress, pF, data = snativePermTestInputCALL("unset_base", user[3], ptypes.CreateContract, false)
 	testSNativeCALLExpectFail(t, blockCache, doug, snativeAddress, data)
-	testSNativeCALLExpectPass(t, blockCache, doug, snativeAddress, data, func(ret []byte) error { return nil })
-	snativeAddress, data = snativePermTestInputCALL("has_base", user[3], ptypes.CreateContract, false)
-	testSNativeCALLExpectPass(t, blockCache, doug, snativeAddress, data, func(ret []byte) error {
+	testSNativeCALLExpectPass(t, blockCache, doug, pF, snativeAddress, data, func(ret []byte) error { return nil })
+	snativeAddress, pF, data = snativePermTestInputCALL("has_base", user[3], ptypes.CreateContract, false)
+	testSNativeCALLExpectPass(t, blockCache, doug, pF, snativeAddress, data, func(ret []byte) error {
 		if !IsZeros(ret) {
 			return fmt.Errorf("Expected 0. Got %X", ret)
 		}
@@ -917,11 +919,11 @@ func TestSNativeCALL(t *testing.T) {
 
 	fmt.Println("\n#### SetGlobal")
 	// SetGlobalPerm
-	snativeAddress, data = snativePermTestInputCALL("set_global", user[3], ptypes.CreateContract, true)
+	snativeAddress, pF, data = snativePermTestInputCALL("set_global", user[3], ptypes.CreateContract, true)
 	testSNativeCALLExpectFail(t, blockCache, doug, snativeAddress, data)
-	testSNativeCALLExpectPass(t, blockCache, doug, snativeAddress, data, func(ret []byte) error { return nil })
-	snativeAddress, data = snativePermTestInputCALL("has_base", user[3], ptypes.CreateContract, false)
-	testSNativeCALLExpectPass(t, blockCache, doug, snativeAddress, data, func(ret []byte) error {
+	testSNativeCALLExpectPass(t, blockCache, doug, pF, snativeAddress, data, func(ret []byte) error { return nil })
+	snativeAddress, pF, data = snativePermTestInputCALL("has_base", user[3], ptypes.CreateContract, false)
+	testSNativeCALLExpectPass(t, blockCache, doug, pF, snativeAddress, data, func(ret []byte) error {
 		// return value should be true or false as a 32 byte array...
 		if !IsZeros(ret[:31]) || ret[31] != byte(1) {
 			return fmt.Errorf("Expected 1. Got %X", ret)
@@ -931,9 +933,9 @@ func TestSNativeCALL(t *testing.T) {
 
 	fmt.Println("\n#### HasRole")
 	// HasRole
-	snativeAddress, data = snativeRoleTestInputCALL("has_role", user[3], "bumble")
+	snativeAddress, pF, data = snativeRoleTestInputCALL("has_role", user[3], "bumble")
 	testSNativeCALLExpectFail(t, blockCache, doug, snativeAddress, data)
-	testSNativeCALLExpectPass(t, blockCache, doug, snativeAddress, data, func(ret []byte) error {
+	testSNativeCALLExpectPass(t, blockCache, doug, pF, snativeAddress, data, func(ret []byte) error {
 		if !IsZeros(ret[:31]) || ret[31] != byte(1) {
 			return fmt.Errorf("Expected 1. Got %X", ret)
 		}
@@ -942,18 +944,18 @@ func TestSNativeCALL(t *testing.T) {
 
 	fmt.Println("\n#### AddRole")
 	// AddRole
-	snativeAddress, data = snativeRoleTestInputCALL("has_role", user[3], "chuck")
-	testSNativeCALLExpectPass(t, blockCache, doug, snativeAddress, data, func(ret []byte) error {
+	snativeAddress, pF, data = snativeRoleTestInputCALL("has_role", user[3], "chuck")
+	testSNativeCALLExpectPass(t, blockCache, doug, pF, snativeAddress, data, func(ret []byte) error {
 		if !IsZeros(ret) {
 			return fmt.Errorf("Expected 0. Got %X", ret)
 		}
 		return nil
 	})
-	snativeAddress, data = snativeRoleTestInputCALL("add_role", user[3], "chuck")
+	snativeAddress, pF, data = snativeRoleTestInputCALL("add_role", user[3], "chuck")
 	testSNativeCALLExpectFail(t, blockCache, doug, snativeAddress, data)
-	testSNativeCALLExpectPass(t, blockCache, doug, snativeAddress, data, func(ret []byte) error { return nil })
-	snativeAddress, data = snativeRoleTestInputCALL("has_role", user[3], "chuck")
-	testSNativeCALLExpectPass(t, blockCache, doug, snativeAddress, data, func(ret []byte) error {
+	testSNativeCALLExpectPass(t, blockCache, doug, pF, snativeAddress, data, func(ret []byte) error { return nil })
+	snativeAddress, pF, data = snativeRoleTestInputCALL("has_role", user[3], "chuck")
+	testSNativeCALLExpectPass(t, blockCache, doug, pF, snativeAddress, data, func(ret []byte) error {
 		if !IsZeros(ret[:31]) || ret[31] != byte(1) {
 			return fmt.Errorf("Expected 1. Got %X", ret)
 		}
@@ -962,11 +964,11 @@ func TestSNativeCALL(t *testing.T) {
 
 	fmt.Println("\n#### RmRole")
 	// RmRole
-	snativeAddress, data = snativeRoleTestInputCALL("rm_role", user[3], "chuck")
+	snativeAddress, pF, data = snativeRoleTestInputCALL("rm_role", user[3], "chuck")
 	testSNativeCALLExpectFail(t, blockCache, doug, snativeAddress, data)
-	testSNativeCALLExpectPass(t, blockCache, doug, snativeAddress, data, func(ret []byte) error { return nil })
-	snativeAddress, data = snativeRoleTestInputCALL("has_role", user[3], "chuck")
-	testSNativeCALLExpectPass(t, blockCache, doug, snativeAddress, data, func(ret []byte) error {
+	testSNativeCALLExpectPass(t, blockCache, doug, pF, snativeAddress, data, func(ret []byte) error { return nil })
+	snativeAddress, pF, data = snativeRoleTestInputCALL("has_role", user[3], "chuck")
+	testSNativeCALLExpectPass(t, blockCache, doug, pF, snativeAddress, data, func(ret []byte) error {
 		if !IsZeros(ret) {
 			return fmt.Errorf("Expected 0. Got %X", ret)
 		}
@@ -1087,21 +1089,17 @@ func execTxWaitEvent(t *testing.T, blockCache *BlockCache, tx types.Tx, eventid 
 
 // give a contract perms for an snative, call it, it calls the snative, but shouldn't have permission
 func testSNativeCALLExpectFail(t *testing.T, blockCache *BlockCache, doug *acm.Account, snativeAddress, data []byte) {
-	testSNativeCALL(t, false, blockCache, doug, snativeAddress, data, nil)
+	testSNativeCALL(t, false, blockCache, doug, 0, snativeAddress, data, nil)
 }
 
 // give a contract perms for an snative, call it, it calls the snative, ensure the check funciton (f) succeeds
-func testSNativeCALLExpectPass(t *testing.T, blockCache *BlockCache, doug *acm.Account, snativeAddress, data []byte, f func([]byte) error) {
-	testSNativeCALL(t, true, blockCache, doug, snativeAddress, data, f)
+func testSNativeCALLExpectPass(t *testing.T, blockCache *BlockCache, doug *acm.Account, snativePerm ptypes.PermFlag, snativeAddress, data []byte, f func([]byte) error) {
+	testSNativeCALL(t, true, blockCache, doug, snativePerm, snativeAddress, data, f)
 }
 
-func testSNativeCALL(t *testing.T, expectPass bool, blockCache *BlockCache, doug *acm.Account, snativeAddress, data []byte, f func([]byte) error) {
+func testSNativeCALL(t *testing.T, expectPass bool, blockCache *BlockCache, doug *acm.Account, snativePerm ptypes.PermFlag, snativeAddress, data []byte, f func([]byte) error) {
 	if expectPass {
-		perm, err := ptypes.PermStringToFlag(TrimmedString(snativeAddress))
-		if err != nil {
-			t.Fatal(err)
-		}
-		doug.Permissions.Base.Set(perm, true)
+		doug.Permissions.Base.Set(snativePerm, true)
 	}
 	var addr []byte
 	contractCode := callContractCode(snativeAddress)
@@ -1169,8 +1167,18 @@ func boolToWord256(v bool) Word256 {
 	return LeftPadWord256([]byte{vint})
 }
 
-func snativePermTestInputCALL(name string, user *acm.PrivAccount, perm ptypes.PermFlag, val bool) (addr []byte, data []byte) {
-	addr = LeftPadWord256([]byte(name)).Postfix(20)
+func permNameToFuncID(s string) []byte {
+	for k, v := range vm.PermsMap {
+		if s == v.Name {
+			b, _ := hex.DecodeString(k)
+			return b
+		}
+	}
+	panic("didn't find snative function signature!")
+}
+
+func snativePermTestInputCALL(name string, user *acm.PrivAccount, perm ptypes.PermFlag, val bool) (addr []byte, pF ptypes.PermFlag, data []byte) {
+	addr = LeftPadWord256([]byte(vm.PermissionsContract)).Postfix(20)
 	switch name {
 	case "has_base", "unset_base":
 		data = LeftPadBytes(user.Address, 32)
@@ -1182,6 +1190,11 @@ func snativePermTestInputCALL(name string, user *acm.PrivAccount, perm ptypes.Pe
 	case "set_global":
 		data = Uint64ToWord256(uint64(perm)).Bytes()
 		data = append(data, boolToWord256(val).Bytes()...)
+	}
+	data = append(permNameToFuncID(name), data...)
+	var err error
+	if pF, err = ptypes.PermStringToFlag(name); err != nil {
+		panic(Fmt("failed to convert perm string (%s) to flag", name))
 	}
 	return
 }
@@ -1200,10 +1213,16 @@ func snativePermTestInputTx(name string, user *acm.PrivAccount, perm ptypes.Perm
 	return
 }
 
-func snativeRoleTestInputCALL(name string, user *acm.PrivAccount, role string) (addr []byte, data []byte) {
-	addr = LeftPadWord256([]byte(name)).Postfix(20)
+func snativeRoleTestInputCALL(name string, user *acm.PrivAccount, role string) (addr []byte, pF ptypes.PermFlag, data []byte) {
+	addr = LeftPadWord256([]byte(vm.PermissionsContract)).Postfix(20)
 	data = LeftPadBytes(user.Address, 32)
 	data = append(data, LeftPadBytes([]byte(role), 32)...)
+	data = append(permNameToFuncID(name), data...)
+
+	var err error
+	if pF, err = ptypes.PermStringToFlag(name); err != nil {
+		panic(Fmt("failed to convert perm string (%s) to flag", name))
+	}
 	return
 }
 
