@@ -1,10 +1,10 @@
 package types
 
 import (
-	acm "github.com/tendermint/tendermint/account"
+	"github.com/tendermint/go-crypto"
 )
 
 type Validator struct {
 	VotingPower int64
-	PubKey      acm.PubKey
+	PubKey      crypto.PubKey
 }

@@ -10,7 +10,6 @@ install:
 	go install github.com/tendermint/tendermint/cmd/debora
 	go install github.com/tendermint/tendermint/cmd/stdinwriter
 	go install github.com/tendermint/tendermint/cmd/logjack
-	go install github.com/tendermint/tendermint/cmd/sim_txs
 
 build: 
 	go build -o build/tendermint github.com/tendermint/tendermint/cmd/tendermint
@@ -18,7 +17,6 @@ build:
 	go build -o build/debora github.com/tendermint/tendermint/cmd/debora
 	go build -o build/stdinwriter github.com/tendermint/tendermint/cmd/stdinwriter
 	go build -o build/logjack github.com/tendermint/tendermint/cmd/logjack
-	go build -o build/sim_txs github.com/tendermint/tendermint/cmd/sim_txs
 
 build_race: 
 	go build -race -o build/tendermint github.com/tendermint/tendermint/cmd/tendermint
@@ -26,7 +24,6 @@ build_race:
 	go build -race -o build/debora github.com/tendermint/tendermint/cmd/debora
 	go build -race -o build/stdinwriter github.com/tendermint/tendermint/cmd/stdinwriter
 	go build -race -o build/logjack github.com/tendermint/tendermint/cmd/logjack
-	go build -race -o build/sim_txs github.com/tendermint/tendermint/cmd/sim_txs
 
 test: build
 	-rm -rf ~/.tendermint_test_bak

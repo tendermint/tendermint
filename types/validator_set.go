@@ -6,7 +6,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-merkle"
 )
@@ -230,7 +229,7 @@ func (valSet *ValidatorSet) VerifyValidation(chainID string,
 		}
 		_, val := valSet.GetByIndex(idx)
 		// Validate signature
-		precommitSignBytes := account.SignBytes(chainID, precommit)
+		precommitSignBytes := SignBytes(chainID, precommit)
 		if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
 			return fmt.Errorf("Invalid validation -- invalid signature: %v", precommit)
 		}

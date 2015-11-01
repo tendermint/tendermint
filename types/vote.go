@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	acm "github.com/tendermint/tendermint/account"
+	"github.com/tendermint/go-crypto"
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-wire"
 )
@@ -33,7 +33,7 @@ type Vote struct {
 	Type             byte                 `json:"type"`
 	BlockHash        []byte               `json:"block_hash"`         // empty if vote is nil.
 	BlockPartsHeader PartSetHeader        `json:"block_parts_header"` // zero if vote is nil.
-	Signature        acm.SignatureEd25519 `json:"signature"`
+	Signature        crypto.SignatureEd25519 `json:"signature"`
 }
 
 // Types of votes

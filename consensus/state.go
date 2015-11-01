@@ -1,153 +1,3 @@
-/*
-
-* Terms:
-
-  NewHeight, NewRound, Propose, Prevote, Precommit represent state machine steps. (aka RoundStep).
-
-  To "prevote/precommit" something means to broadcast a prevote/precommit vote for something.
-
-  (H,R) means a particular height H and round R.  A vote "at (H,R)" is a vote signed with (H,R).
-
-* Proposals:
-
-  A proposal is signed and published by the designated proposer at each round.
-  A proposal at (H,R) is composed of a proposed block of height H, and optionally a POL round number.
-  The POL round number R' (where R' < R) is set to the latest POL round known to the proposer.
-  If the proposer is locked on a block, it must include a POL round for the proposal.
-
-* POL and Justification of votes:
-
-  A set of +2/3 of prevotes for a particular block or <nil> at (H,R) is called a POL (proof-of-lock).
-  A POL for <nil> might instead be called a proof-of-unlock, but it's better to have a single terminology for both.
-
-  Each precommit which changes the lock at round R must be justified by a POL
-  where +2/3 prevoted for some block or <nil> at some round, equal to or less than R,
-  but greater than the last round at which the lock was changed.
-
-    POL = Proof-of-Lock = +2/3 prevotes for block B (or +2/3 prevotes for <nil>) at (H,R)
-
-    lastLockChangeRound < POLRound <= newLockChangeRound
-
-  Without the POLRound <= newLockChangeRound condition, an unlock would be possible from a
-  future condition that hasn't happened yet, so it destroys deterministic accountability.
-
-  The point of the above inequality is to ensure that changes in the lock (locking/unlocking/lock-changing)
-  are always justified by something that happened "in the past" by round numbers, so if there is a problem,
-  we can deterministically figure out "when it was caused" and by who.
-
-  If there is a blockchain halt or fork, the blame will fall on +1/3 of Byzantine voting power =
-	who cannot push the blame into earlier rounds. (See lemma 4).
-
-* Block commits:
-
-  The set of +2/3 of precommits at the same round for the same block is called a commit.
-
-  A block contains the last block's commit which is comprised of +2/3 precommit votes at (H-1,R).
-  While all the precommits in the commit are from the same height & round (ordered by validator index),
-  some precommits may be absent (e.g. if the validator's precommit vote didn't reach the proposer in time),
-  or some precommits may be for different blockhashes for the last block hash (which is fine).
-
-* Consensus State Machine Overview:
-
-  During NewHeight/NewRound/Propose/Prevote/Precommit:
-  * Nodes gossip the proposal block proposed by the designated proposer at round.
-  * Nodes gossip prevotes/precommits at rounds [0...currentRound+1] (currentRound+1 to allow round-skipping)
-  * Nodes gossip prevotes for the proposal's POL (proof-of-lock) round if proposed.
-  * Nodes gossip to late nodes (lagging in height) with precommits of the commit round (aka catchup)
-
-  Upon each state transition, the height/round/step is broadcast to neighboring peers.
-
-* NewRound(height:H,round:R):
-  * Set up new round.                                                --> goto Propose(H,R)
-  * NOTE: Not much happens in this step. It exists for clarity.
-
-* Propose(height:H,round:R):
-  * Upon entering Propose:
-    * The designated proposer proposes a block at (H,R).
-  * The Propose step ends:
-    * After `timeoutPropose` after entering Propose.                 --> goto Prevote(H,R)
-    * After receiving proposal block and all POL prevotes.           --> goto Prevote(H,R)
-    * After any +2/3 prevotes received at (H,R+1).                   --> goto Prevote(H,R+1)
-    * After any +2/3 precommits received at (H,R+1).                 --> goto Precommit(H,R+1)
-    * After +2/3 precommits received for a particular block.         --> goto Commit(H)
-
-* Prevote(height:H,round:R):
-  * Upon entering Prevote, each validator broadcasts its prevote vote.
-    * If the validator is locked on a block, it prevotes that.
-    * Else, if the proposed block from Propose(H,R) is good, it prevotes that.
-    * Else, if the proposal is invalid or wasn't received on time, it prevotes <nil>.
-  * The Prevote step ends:
-    * After +2/3 prevotes for a particular block or <nil>.           --> goto Precommit(H,R)
-    * After `timeoutPrevote` after receiving any +2/3 prevotes.      --> goto Precommit(H,R)
-    * After any +2/3 prevotes received at (H,R+1).                   --> goto Prevote(H,R+1)
-    * After any +2/3 precommits received at (H,R+1).                 --> goto Precommit(H,R+1)
-    * After +2/3 precommits received for a particular block.         --> goto Commit(H)
-
-* Precommit(height:H,round:R):
-  * Upon entering Precommit, each validator broadcasts its precommit vote.
-    * If the validator had seen +2/3 of prevotes for a particular block from Prevote(H,R),
-      it locks (changes lock to) that block and precommits that block.
-    * Else, if the validator had seen +2/3 of prevotes for <nil>, it unlocks and precommits <nil>.
-    * Else, if +2/3 of prevotes for a particular block or <nil> is not received on time,
-      it precommits <nil>.
-  * The Precommit step ends:
-    * After +2/3 precommits for a particular block.                  --> goto Commit(H)
-    * After +2/3 precommits for <nil>.                               --> goto NewRound(H,R+1)
-    * After `timeoutPrecommit` after receiving any +2/3 precommits.  --> goto NewRound(H,R+1)
-    * After any +2/3 prevotes received at (H,R+1).                   --> goto Prevote(H,R+1)
-    * After any +2/3 precommits received at (H,R+1).                 --> goto Precommit(H,R+1)
-
-* Commit(height:H):
-  * Set CommitTime = now
-  * Wait until block is received.                                    --> goto NewHeight(H+1)
-
-* NewHeight(height:H):
-  * Move Precommits to LastCommit and increment height.
-  * Set StartTime = CommitTime+timeoutCommit
-  * Wait until `StartTime` to receive straggler commits.             --> goto NewRound(H,0)
-
-* Proof of Safety:
-  If a good validator commits at round R, it's because it saw +2/3 of precommits at round R.
-  This implies that (assuming tolerance bounds) +1/3 of honest nodes are still locked at round R+1.
-  These locked validators will remain locked until they see +2/3 prevote for something
-  else, but this won't happen because +1/3 are locked and honest.
-
-* Proof of Liveness:
-  Lemma 1: If +1/3 good nodes are locked on two different blocks, the proposers' POLRound will
-    eventually cause nodes locked from the earlier round to unlock.
-    -> `timeoutProposalR` increments with round R, while the block.size && POL prevote size
-       are fixed, so eventually we'll be able to "fully gossip" the block & POL.
-    TODO: cap the block.size at something reasonable.
-  Lemma 2: If a good node is at round R, neighboring good nodes will soon catch up to round R.
-  Lemma 3: If a node at (H,R) receives +2/3 prevotes for a block (or +2/3 for <nil>) at (H,R+1),
-    it will enter NewRound(H,R+1).
-  Lemma 4: Terminal conditions imply the existence of deterministic accountability, for
-    a synchronous (fixed-duration) protocol extension (judgement).
-    TODO: define terminal conditions (fork and non-decision).
-    TODO: define new assumptions for the synchronous judgement period.
-
-
-                            +-------------------------------------+
-                            v                                     |(Wait til `CommmitTime+timeoutCommit`)
-                      +-----------+                         +-----+-----+
-         +----------> |  Propose  +--------------+          | NewHeight |
-         |            +-----------+              |          +-----------+
-         |                                       |                ^
-         |(Else, after timeoutPrecommit)         v                |
-   +-----+-----+                           +-----------+          |
-   | Precommit |  <------------------------+  Prevote  |          |
-   +-----+-----+                           +-----------+          |
-         |(When +2/3 Precommits for block found)                  |
-         v                                                        |
-   +--------------------------------------------------------------------+
-   |  Commit                                                            |
-   |                                                                    |
-   |  * Set CommitTime = now;                                           |
-   |  * Wait for block, then stage/save/commit block;                   |
-   +--------------------------------------------------------------------+
-
-*/
-
 package consensus
 
 import (
@@ -157,14 +7,13 @@ import (
 	"sync"
 	"time"
 
-	acm "github.com/tendermint/tendermint/account"
-	bc "github.com/tendermint/tendermint/blockchain"
 	. "github.com/tendermint/go-common"
+	"github.com/tendermint/go-wire"
+	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/events"
 	mempl "github.com/tendermint/tendermint/mempool"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/go-wire"
 )
 
 var (
@@ -328,7 +177,6 @@ func NewConsensusState(state *sm.State, blockStore *bc.BlockStore, mempoolReacto
 	cs.updateToState(state)
 	// Don't call scheduleRound0 yet.
 	// We do that upon Start().
-	cs.maybeRebond()
 	cs.reconstructLastCommit(state)
 	cs.BaseService = *NewBaseService(log, "ConsensusState", cs)
 	return cs
@@ -340,7 +188,7 @@ func (cs *ConsensusState) reconstructLastCommit(state *sm.State) {
 	if state.LastBlockHeight == 0 {
 		return
 	}
-	lastPrecommits := types.NewVoteSet(state.LastBlockHeight, 0, types.VoteTypePrecommit, state.LastBondedValidators)
+	lastPrecommits := types.NewVoteSet(state.LastBlockHeight, 0, types.VoteTypePrecommit, state.LastValidators)
 	seenValidation := cs.blockStore.LoadSeenValidation(state.LastBlockHeight)
 	for idx, precommit := range seenValidation.Precommits {
 		if precommit == nil {
@@ -425,7 +273,7 @@ func (cs *ConsensusState) updateToState(state *sm.State) {
 	}
 
 	// Reset fields based on state.
-	validators := state.BondedValidators
+	validators := state.Validators
 	height := state.LastBlockHeight + 1 // next desired block height
 	lastPrecommits := (*types.VoteSet)(nil)
 	if cs.CommitRound > -1 && cs.Votes != nil {
@@ -460,7 +308,7 @@ func (cs *ConsensusState) updateToState(state *sm.State) {
 	cs.Votes = NewHeightVoteSet(height, validators)
 	cs.CommitRound = -1
 	cs.LastCommit = lastPrecommits
-	cs.LastValidators = state.LastBondedValidators
+	cs.LastValidators = state.LastValidators
 
 	cs.state = state
 	cs.stagedBlock = nil
@@ -468,30 +316,6 @@ func (cs *ConsensusState) updateToState(state *sm.State) {
 
 	// Finally, broadcast RoundState
 	cs.newStepCh <- cs.getRoundState()
-}
-
-// If we're unbonded, broadcast RebondTx.
-func (cs *ConsensusState) maybeRebond() {
-	if cs.privValidator == nil || !cs.state.UnbondingValidators.HasAddress(cs.privValidator.Address) {
-		return
-	}
-	rebondTx := &types.RebondTx{
-		Address: cs.privValidator.Address,
-		Height:  cs.Height,
-	}
-	err := cs.privValidator.SignRebondTx(cs.state.ChainID, rebondTx)
-	if err == nil {
-		err := cs.mempoolReactor.BroadcastTx(rebondTx)
-		if err != nil {
-			log.Error("Failed to broadcast RebondTx",
-				"height", cs.Height, "round", cs.Round, "tx", rebondTx, "error", err)
-		} else {
-			log.Notice("Signed and broadcast RebondTx",
-				"height", cs.Height, "round", cs.Round, "tx", rebondTx)
-		}
-	} else {
-		log.Warn("Error signing RebondTx", "height", cs.Height, "round", cs.Round, "tx", rebondTx, "error", err)
-	}
 }
 
 func (cs *ConsensusState) SetPrivValidator(priv *types.PrivValidator) {
@@ -1011,8 +835,6 @@ func (cs *ConsensusState) FinalizeCommit(height int) {
 	// cs.StartTime is already set.
 	// Schedule Round0 to start soon.
 	go cs.scheduleRound0(height + 1)
-	// If we're unbonded, broadcast RebondTx.
-	cs.maybeRebond()
 
 	// By here,
 	// * cs.Height has been increment to height+1
@@ -1049,7 +871,7 @@ func (cs *ConsensusState) SetProposal(proposal *types.Proposal) error {
 	}
 
 	// Verify signature
-	if !cs.Validators.Proposer().PubKey.VerifyBytes(acm.SignBytes(cs.state.ChainID, proposal), proposal.Signature) {
+	if !cs.Validators.Proposer().PubKey.VerifyBytes(types.SignBytes(cs.state.ChainID, proposal), proposal.Signature) {
 		return ErrInvalidProposalSignature
 	}
 
@@ -1098,21 +920,23 @@ func (cs *ConsensusState) AddProposalBlockPart(height int, part *types.Part) (ad
 
 // Attempt to add the vote. if its a duplicate signature, dupeout the validator
 func (cs *ConsensusState) TryAddVote(valIndex int, vote *types.Vote, peerKey string) (bool, error) {
-	added, address, err := cs.AddVote(valIndex, vote, peerKey)
+	added, _, err := cs.AddVote(valIndex, vote, peerKey)
 	if err != nil {
 		// If the vote height is off, we'll just ignore it,
 		// But if it's a conflicting sig, broadcast evidence tx for slashing.
 		// If it's otherwise invalid, punish peer.
 		if err == ErrVoteHeightMismatch {
 			return added, err
-		} else if errDupe, ok := err.(*types.ErrVoteConflictingSignature); ok {
+		} else if _, ok := err.(*types.ErrVoteConflictingSignature); ok {
 			log.Warn("Found conflicting vote. Publish evidence")
+			/* XXX
 			evidenceTx := &types.DupeoutTx{
 				Address: address,
 				VoteA:   *errDupe.VoteA,
 				VoteB:   *errDupe.VoteB,
 			}
 			cs.mempoolReactor.BroadcastTx(evidenceTx) // shouldn't need to check returned err
+			*/
 			return added, err
 		} else {
 			// Probably an invalid signature. Bad peer.

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/tendermint/log15"
-	acm "github.com/tendermint/tendermint/account"
+	"github.com/tendermint/go-crypto"
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/tendermint/types"
 )
@@ -63,7 +63,7 @@ type Switch struct {
 	peers        *PeerSet
 	dialing      *CMap
 	nodeInfo     *types.NodeInfo    // our node info
-	nodePrivKey  acm.PrivKeyEd25519 // our node privkey
+	nodePrivKey  crypto.PrivKeyEd25519 // our node privkey
 }
 
 var (
@@ -145,10 +145,10 @@ func (sw *Switch) NodeInfo() *types.NodeInfo {
 
 // Not goroutine safe.
 // NOTE: Overwrites sw.nodeInfo.PubKey
-func (sw *Switch) SetNodePrivKey(nodePrivKey acm.PrivKeyEd25519) {
+func (sw *Switch) SetNodePrivKey(nodePrivKey crypto.PrivKeyEd25519) {
 	sw.nodePrivKey = nodePrivKey
 	if sw.nodeInfo != nil {
-		sw.nodeInfo.PubKey = nodePrivKey.PubKey().(acm.PubKeyEd25519)
+		sw.nodeInfo.PubKey = nodePrivKey.PubKey().(crypto.PubKeyEd25519)
 	}
 }
 

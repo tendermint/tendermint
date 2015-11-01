@@ -18,23 +18,17 @@ import (
 type Mempool struct {
 	mtx   sync.Mutex
 	state *sm.State
-	cache *sm.BlockCache
 	txs   []types.Tx // TODO: we need to add a map to facilitate replace-by-fee
 }
 
 func NewMempool(state *sm.State) *Mempool {
 	return &Mempool{
 		state: state,
-		cache: sm.NewBlockCache(state),
 	}
 }
 
 func (mem *Mempool) GetState() *sm.State {
 	return mem.state
-}
-
-func (mem *Mempool) GetCache() *sm.BlockCache {
-	return mem.cache
 }
 
 func (mem *Mempool) GetHeight() int {
@@ -47,7 +41,7 @@ func (mem *Mempool) GetHeight() int {
 func (mem *Mempool) AddTx(tx types.Tx) (err error) {
 	mem.mtx.Lock()
 	defer mem.mtx.Unlock()
-	err = sm.ExecTx(mem.cache, tx, false, nil)
+	err = sm.ExecTx(mem.state, tx, nil)
 	if err != nil {
 		log.Info("AddTx() error", "tx", tx, "error", err)
 		return err
@@ -85,12 +79,11 @@ func (mem *Mempool) ResetForBlockAndState(block *types.Block, state *sm.State) R
 	mem.mtx.Lock()
 	defer mem.mtx.Unlock()
 	mem.state = state.Copy()
-	mem.cache = sm.NewBlockCache(mem.state)
 
 	// First, create a lookup map of txns in new block.
 	blockTxsMap := make(map[string]struct{})
 	for _, tx := range block.Data.Txs {
-		blockTxsMap[string(types.TxID(state.ChainID, tx))] = struct{}{}
+		blockTxsMap[string(tx)] = struct{}{}
 	}
 
 	// Now we filter all txs from mem.txs that are in blockTxsMap,
@@ -101,20 +94,19 @@ func (mem *Mempool) ResetForBlockAndState(block *types.Block, state *sm.State) R
 	var validTxs []types.Tx
 	includedStart, invalidStart := -1, -1
 	for i, tx := range mem.txs {
-		txID := types.TxID(state.ChainID, tx)
-		if _, ok := blockTxsMap[string(txID)]; ok {
+		if _, ok := blockTxsMap[string(tx)]; ok {
 			startRange(&includedStart, i)           // start counting included txs
 			endRange(&invalidStart, i, &ri.Invalid) // stop counting invalid txs
-			log.Info("Filter out, already committed", "tx", tx, "txID", txID)
+			log.Info("Filter out, already committed", "tx", tx)
 		} else {
 			endRange(&includedStart, i, &ri.Included) // stop counting included txs
-			err := sm.ExecTx(mem.cache, tx, false, nil)
+			err := sm.ExecTx(mem.state, tx, nil)
 			if err != nil {
 				startRange(&invalidStart, i) // start counting invalid txs
 				log.Info("Filter out, no longer valid", "tx", tx, "error", err)
 			} else {
 				endRange(&invalidStart, i, &ri.Invalid) // stop counting invalid txs
-				log.Info("Filter in, new, valid", "tx", tx, "txID", txID)
+				log.Info("Filter in, new, valid", "tx", tx)
 				validTxs = append(validTxs, tx)
 			}
 		}

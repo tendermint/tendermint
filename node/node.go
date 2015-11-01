@@ -10,22 +10,20 @@ import (
 	"strings"
 	"time"
 
-	acm "github.com/tendermint/tendermint/account"
-	bc "github.com/tendermint/tendermint/blockchain"
 	. "github.com/tendermint/go-common"
-	"github.com/tendermint/tendermint/consensus"
+	"github.com/tendermint/go-crypto"
 	dbm "github.com/tendermint/go-db"
+	"github.com/tendermint/go-p2p"
+	"github.com/tendermint/go-wire"
+	bc "github.com/tendermint/tendermint/blockchain"
+	"github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/events"
 	mempl "github.com/tendermint/tendermint/mempool"
-	"github.com/tendermint/go-p2p"
 	"github.com/tendermint/tendermint/rpc"
 	"github.com/tendermint/tendermint/rpc/core"
 	"github.com/tendermint/tendermint/rpc/server"
 	sm "github.com/tendermint/tendermint/state"
-	stypes "github.com/tendermint/tendermint/state/types"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/vm"
-	"github.com/tendermint/go-wire"
 )
 
 import _ "net/http/pprof"
@@ -41,8 +39,8 @@ type Node struct {
 	consensusState   *consensus.ConsensusState
 	consensusReactor *consensus.ConsensusReactor
 	privValidator    *types.PrivValidator
-	genDoc           *stypes.GenesisDoc
-	privKey          acm.PrivKeyEd25519
+	genDoc           *types.GenesisDoc
+	privKey          crypto.PrivKeyEd25519
 }
 
 func NewNode() *Node {
@@ -53,19 +51,19 @@ func NewNode() *Node {
 	// Get State
 	stateDB := dbm.GetDB("state")
 	state := sm.LoadState(stateDB)
-	var genDoc *stypes.GenesisDoc
+	var genDoc *types.GenesisDoc
 	if state == nil {
 		genDoc, state = sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
 		state.Save()
 		// write the gendoc to db
 		buf, n, err := new(bytes.Buffer), new(int64), new(error)
 		wire.WriteJSON(genDoc, buf, n, err)
-		stateDB.Set(stypes.GenDocKey, buf.Bytes())
+		stateDB.Set(types.GenDocKey, buf.Bytes())
 		if *err != nil {
 			Exit(Fmt("Unable to write gendoc to db: %v", err))
 		}
 	} else {
-		genDocBytes := stateDB.Get(stypes.GenDocKey)
+		genDocBytes := stateDB.Get(types.GenDocKey)
 		err := new(error)
 		wire.ReadJSONPtr(&genDoc, genDocBytes, err)
 		if *err != nil {
@@ -80,7 +78,7 @@ func NewNode() *Node {
 	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
 
 	// Generate node PrivKey
-	privKey := acm.GenPrivKeyEd25519()
+	privKey := crypto.GenPrivKeyEd25519()
 
 	// Make event switch
 	eventSwitch := events.NewEventSwitch()
@@ -116,7 +114,7 @@ func NewNode() *Node {
 
 	// add the event switch to all services
 	// they should all satisfy events.Eventable
-	SetFireable(eventSwitch, pexReactor, bcReactor, mempoolReactor, consensusReactor)
+	SetFireable(eventSwitch, bcReactor, mempoolReactor, consensusReactor)
 
 	// run the profile server
 	profileHost := config.GetString("prof_laddr")
@@ -125,9 +123,6 @@ func NewNode() *Node {
 			log.Warn("Profile server", "error", http.ListenAndServe(profileHost, nil))
 		}()
 	}
-
-	// set vm log level
-	vm.SetDebug(config.GetBool("vm_log"))
 
 	return &Node{
 		sw:               sw,
@@ -243,23 +238,23 @@ func (n *Node) EventSwitch() *events.EventSwitch {
 	return n.evsw
 }
 
-func makeNodeInfo(sw *p2p.Switch, privKey acm.PrivKeyEd25519) *types.NodeInfo {
+func makeNodeInfo(sw *p2p.Switch, privKey crypto.PrivKeyEd25519) *p2p.NodeInfo {
 
-	nodeInfo := &types.NodeInfo{
-		PubKey:  privKey.PubKey().(acm.PubKeyEd25519),
+	nodeInfo := &p2p.NodeInfo{
+		PubKey:  privKey.PubKey().(crypto.PubKeyEd25519),
 		Moniker: config.GetString("moniker"),
-		ChainID: config.GetString("chain_id"),
-		Version: types.Versions{
-			Tendermint: Version,
-			P2P:        p2p.Version,
-			RPC:        rpc.Version,
-			Wire:       wire.Version,
+		Network: config.GetString("chain_id"),
+		Version: Version,
+		Other: []string{
+			Fmt("p2p_version=%v" + p2p.Version),
+			Fmt("rpc_version=%v" + rpc.Version),
+			Fmt("wire_version=%v" + wire.Version),
 		},
 	}
 
 	// include git hash in the nodeInfo if available
 	if rev, err := ReadFile(config.GetString("revision_file")); err == nil {
-		nodeInfo.Version.Revision = string(rev)
+		nodeInfo.Other = append(nodeInfo.Other, Fmt("revision=%v", string(rev)))
 	}
 
 	if !sw.IsListening() {
@@ -279,9 +274,8 @@ func makeNodeInfo(sw *p2p.Switch, privKey acm.PrivKeyEd25519) *types.NodeInfo {
 	// We assume that the rpcListener has the same ExternalAddress.
 	// This is probably true because both P2P and RPC listeners use UPnP,
 	// except of course if the rpc is only bound to localhost
-	nodeInfo.Host = p2pHost
-	nodeInfo.P2PPort = p2pPort
-	nodeInfo.RPCPort = uint16(rpcPort)
+	nodeInfo.Address = Fmt("%v:%v", p2pHost, p2pPort)
+	nodeInfo.Other = append(nodeInfo.Other, Fmt("rpc_port=%v", rpcPort))
 	return nodeInfo
 }
 
@@ -302,7 +296,7 @@ func RunNode() {
 			if err != nil {
 				Exit(Fmt("Couldn't read GenesisDoc file: %v", err))
 			}
-			genDoc := stypes.GenesisDocFromJSON(jsonBlob)
+			genDoc := types.GenesisDocFromJSON(jsonBlob)
 			if genDoc.ChainID == "" {
 				PanicSanity(Fmt("Genesis doc %v must include non-empty chain_id", genDocFile))
 			}
@@ -313,7 +307,7 @@ func RunNode() {
 
 	// Create & start node
 	n := NewNode()
-	l := p2p.NewDefaultListener("tcp", config.GetString("node_laddr"))
+	l := p2p.NewDefaultListener("tcp", config.GetString("node_laddr"), config.GetBool("skip_upnp"))
 	n.AddListener(l)
 	err := n.Start()
 	if err != nil {

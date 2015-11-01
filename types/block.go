@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	acm "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-merkle"
 	"github.com/tendermint/go-wire"
@@ -322,11 +321,11 @@ type Data struct {
 
 func (data *Data) Hash() []byte {
 	if data.hash == nil {
-		bs := make([]interface{}, len(data.Txs))
+		txs := make([]interface{}, len(data.Txs))
 		for i, tx := range data.Txs {
-			bs[i] = acm.SignBytes(config.GetString("chain_id"), tx)
+			txs[i] = tx
 		}
-		data.hash = merkle.SimpleHashFromBinaries(bs) // NOTE: leaves are TxIDs.
+		data.hash = merkle.SimpleHashFromBinaries(txs) // NOTE: leaves are TxIDs.
 	}
 	return data.hash
 }

@@ -19,10 +19,7 @@ func main() {
 Commands:
     node            Run the tendermint node
     show_validator  Show this node's validator info
-    gen_account     Generate new account keypair
     gen_validator   Generate new validator keypair
-    get_account     Get account balance
-    send_tx         Sign and publish a SendTx
     probe_upnp      Test UPnP functionality
     version         Show version info
 `)
@@ -39,14 +36,8 @@ Commands:
 		node.RunNode()
 	case "show_validator":
 		show_validator()
-	case "gen_account":
-		gen_account()
 	case "gen_validator":
 		gen_validator()
-	case "get_account":
-		get_account()
-	case "send_tx":
-		send_tx()
 	case "probe_upnp":
 		probe_upnp()
 	case "unsafe_reset_priv_validator":

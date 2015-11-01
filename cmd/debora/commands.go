@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"os"
 
-	acm "github.com/tendermint/tendermint/account"
+	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-wire"
 	btypes "github.com/tendermint/tendermint/cmd/barak/types"
 	. "github.com/tendermint/go-common"
@@ -20,57 +20,57 @@ import (
 //  and then it is broadcast).
 // TODO: Implement a reasonable workflow with multiple validators.
 
-func StartProcess(privKey acm.PrivKey, remote string, command btypes.CommandStartProcess) (response btypes.ResponseStartProcess, err error) {
+func StartProcess(privKey crypto.PrivKey, remote string, command btypes.CommandStartProcess) (response btypes.ResponseStartProcess, err error) {
 	nonce, err := GetNonce(remote)
 	if err != nil {
 		return response, err
 	}
 	commandBytes, signature := SignCommand(privKey, nonce+1, command)
-	_, err = RunAuthCommand(remote, commandBytes, []acm.Signature{signature}, &response)
+	_, err = RunAuthCommand(remote, commandBytes, []crypto.Signature{signature}, &response)
 	return response, err
 }
 
-func StopProcess(privKey acm.PrivKey, remote string, command btypes.CommandStopProcess) (response btypes.ResponseStopProcess, err error) {
+func StopProcess(privKey crypto.PrivKey, remote string, command btypes.CommandStopProcess) (response btypes.ResponseStopProcess, err error) {
 	nonce, err := GetNonce(remote)
 	if err != nil {
 		return response, err
 	}
 	commandBytes, signature := SignCommand(privKey, nonce+1, command)
-	_, err = RunAuthCommand(remote, commandBytes, []acm.Signature{signature}, &response)
+	_, err = RunAuthCommand(remote, commandBytes, []crypto.Signature{signature}, &response)
 	return response, err
 }
 
-func ListProcesses(privKey acm.PrivKey, remote string, command btypes.CommandListProcesses) (response btypes.ResponseListProcesses, err error) {
+func ListProcesses(privKey crypto.PrivKey, remote string, command btypes.CommandListProcesses) (response btypes.ResponseListProcesses, err error) {
 	nonce, err := GetNonce(remote)
 	if err != nil {
 		return response, err
 	}
 	commandBytes, signature := SignCommand(privKey, nonce+1, command)
-	_, err = RunAuthCommand(remote, commandBytes, []acm.Signature{signature}, &response)
+	_, err = RunAuthCommand(remote, commandBytes, []crypto.Signature{signature}, &response)
 	return response, err
 }
 
-func OpenListener(privKey acm.PrivKey, remote string, command btypes.CommandOpenListener) (response btypes.ResponseOpenListener, err error) {
+func OpenListener(privKey crypto.PrivKey, remote string, command btypes.CommandOpenListener) (response btypes.ResponseOpenListener, err error) {
 	nonce, err := GetNonce(remote)
 	if err != nil {
 		return response, err
 	}
 	commandBytes, signature := SignCommand(privKey, nonce+1, command)
-	_, err = RunAuthCommand(remote, commandBytes, []acm.Signature{signature}, &response)
+	_, err = RunAuthCommand(remote, commandBytes, []crypto.Signature{signature}, &response)
 	return response, err
 }
 
-func CloseListener(privKey acm.PrivKey, remote string, command btypes.CommandCloseListener) (response btypes.ResponseCloseListener, err error) {
+func CloseListener(privKey crypto.PrivKey, remote string, command btypes.CommandCloseListener) (response btypes.ResponseCloseListener, err error) {
 	nonce, err := GetNonce(remote)
 	if err != nil {
 		return response, err
 	}
 	commandBytes, signature := SignCommand(privKey, nonce+1, command)
-	_, err = RunAuthCommand(remote, commandBytes, []acm.Signature{signature}, &response)
+	_, err = RunAuthCommand(remote, commandBytes, []crypto.Signature{signature}, &response)
 	return response, err
 }
 
-func DownloadFile(privKey acm.PrivKey, remote string, command btypes.CommandServeFile, outPath string) (n int64, err error) {
+func DownloadFile(privKey crypto.PrivKey, remote string, command btypes.CommandServeFile, outPath string) (n int64, err error) {
 	// Create authCommandJSONBytes
 	nonce, err := GetNonce(remote)
 	if err != nil {
@@ -79,7 +79,7 @@ func DownloadFile(privKey acm.PrivKey, remote string, command btypes.CommandServ
 	commandBytes, signature := SignCommand(privKey, nonce+1, command)
 	authCommand := btypes.AuthCommand{
 		CommandJSONStr: string(commandBytes),
-		Signatures:     []acm.Signature{signature},
+		Signatures:     []crypto.Signature{signature},
 	}
 	authCommandJSONBytes := wire.JSONBytes(authCommand)
 	// Make request and write to outPath.
@@ -100,13 +100,13 @@ func DownloadFile(privKey acm.PrivKey, remote string, command btypes.CommandServ
 	return n, nil
 }
 
-func Quit(privKey acm.PrivKey, remote string, command btypes.CommandQuit) (response btypes.ResponseQuit, err error) {
+func Quit(privKey crypto.PrivKey, remote string, command btypes.CommandQuit) (response btypes.ResponseQuit, err error) {
 	nonce, err := GetNonce(remote)
 	if err != nil {
 		return response, err
 	}
 	commandBytes, signature := SignCommand(privKey, nonce+1, command)
-	_, err = RunAuthCommand(remote, commandBytes, []acm.Signature{signature}, &response)
+	_, err = RunAuthCommand(remote, commandBytes, []crypto.Signature{signature}, &response)
 	return response, err
 }
 
@@ -128,7 +128,7 @@ func GetStatus(remote string) (response btypes.ResponseStatus, err error) {
 }
 
 // Each developer runs this
-func SignCommand(privKey acm.PrivKey, nonce int64, command btypes.Command) ([]byte, acm.Signature) {
+func SignCommand(privKey crypto.PrivKey, nonce int64, command btypes.Command) ([]byte, crypto.Signature) {
 	noncedCommand := btypes.NoncedCommand{
 		Nonce:   nonce,
 		Command: command,
@@ -139,7 +139,7 @@ func SignCommand(privKey acm.PrivKey, nonce int64, command btypes.Command) ([]by
 }
 
 // Somebody aggregates the signatures and calls this.
-func RunAuthCommand(remote string, commandJSONBytes []byte, signatures []acm.Signature, dest interface{}) (interface{}, error) {
+func RunAuthCommand(remote string, commandJSONBytes []byte, signatures []crypto.Signature, dest interface{}) (interface{}, error) {
 	authCommand := btypes.AuthCommand{
 		CommandJSONStr: string(commandJSONBytes),
 		Signatures:     signatures,

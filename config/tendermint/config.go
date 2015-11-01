@@ -66,7 +66,6 @@ func GetConfig(rootDir string) cfg.Config {
 	mapConfig.SetDefault("rpc_laddr", "0.0.0.0:46657")
 	mapConfig.SetDefault("prof_laddr", "")
 	mapConfig.SetDefault("revision_file", rootDir+"/revision")
-	mapConfig.SetDefault("local_routing", false)
 	return mapConfig
 }
 

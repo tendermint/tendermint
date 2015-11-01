@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	acm "github.com/tendermint/tendermint/account"
+	"github.com/tendermint/go-crypto"
 	. "github.com/tendermint/go-common"
 	_ "github.com/tendermint/go-config/tendermint_test"
 	"github.com/tendermint/tendermint/types"
@@ -72,13 +72,13 @@ func (tr *TestReactor) Receive(chID byte, peer *Peer, msgBytes []byte) {
 // convenience method for creating two switches connected to each other.
 func makeSwitchPair(t testing.TB, initSwitch func(*Switch) *Switch) (*Switch, *Switch) {
 
-	s1PrivKey := acm.GenPrivKeyEd25519()
-	s2PrivKey := acm.GenPrivKeyEd25519()
+	s1PrivKey := crypto.GenPrivKeyEd25519()
+	s2PrivKey := crypto.GenPrivKeyEd25519()
 
 	// Create two switches that will be interconnected.
 	s1 := initSwitch(NewSwitch())
 	s1.SetNodeInfo(&types.NodeInfo{
-		PubKey:  s1PrivKey.PubKey().(acm.PubKeyEd25519),
+		PubKey:  s1PrivKey.PubKey().(crypto.PubKeyEd25519),
 		Moniker: "switch1",
 		ChainID: "testing",
 		Version: types.Versions{Tendermint: "123.123.123"},
@@ -86,7 +86,7 @@ func makeSwitchPair(t testing.TB, initSwitch func(*Switch) *Switch) (*Switch, *S
 	s1.SetNodePrivKey(s1PrivKey)
 	s2 := initSwitch(NewSwitch())
 	s2.SetNodeInfo(&types.NodeInfo{
-		PubKey:  s2PrivKey.PubKey().(acm.PubKeyEd25519),
+		PubKey:  s2PrivKey.PubKey().(crypto.PubKeyEd25519),
 		Moniker: "switch2",
 		ChainID: "testing",
 		Version: types.Versions{Tendermint: "123.123.123"},

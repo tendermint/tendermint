@@ -1,4 +1,3 @@
-
 package consensus
 
 import (
@@ -1032,21 +1031,7 @@ func TestSlashingPrevotes(t *testing.T) {
 	// add the conflicting vote
 	signAddVoteToFrom(types.VoteTypePrevote, cs1, cs2, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header())
 
-	// conflicting vote should cause us to broadcast dupeout tx on mempool
-	txs := cs1.mempoolReactor.Mempool.GetProposalTxs()
-	if len(txs) != 1 {
-		t.Fatal("expected to find a transaction in the mempool after double signing")
-	}
-	dupeoutTx, ok := txs[0].(*types.DupeoutTx)
-	if !ok {
-		t.Fatal("expected to find DupeoutTx in mempool after double signing")
-	}
-
-	if !bytes.Equal(dupeoutTx.Address, cs2.privValidator.Address) {
-		t.Fatalf("expected DupeoutTx for %X, got %X", cs2.privValidator.Address, dupeoutTx.Address)
-	}
-
-	// TODO: validate the sig
+	// XXX: Check for existence of Dupeout info
 }
 
 func TestSlashingPrecommits(t *testing.T) {
@@ -1079,22 +1064,7 @@ func TestSlashingPrecommits(t *testing.T) {
 	// add precommit from cs2
 	signAddVoteToFrom(types.VoteTypePrecommit, cs1, cs2, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header())
 
-	// conflicting vote should cause us to broadcast dupeout tx on mempool
-	txs := cs1.mempoolReactor.Mempool.GetProposalTxs()
-	if len(txs) != 1 {
-		t.Fatal("expected to find a transaction in the mempool after double signing")
-	}
-	dupeoutTx, ok := txs[0].(*types.DupeoutTx)
-	if !ok {
-		t.Fatal("expected to find DupeoutTx in mempool after double signing")
-	}
-
-	if !bytes.Equal(dupeoutTx.Address, cs2.privValidator.Address) {
-		t.Fatalf("expected DupeoutTx for %X, got %X", cs2.privValidator.Address, dupeoutTx.Address)
-	}
-
-	// TODO: validate the sig
-
+	// XXX: Check for existence of Dupeout info
 }
 
 //------------------------------------------------------------------------------------------

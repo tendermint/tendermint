@@ -8,11 +8,11 @@ import (
 	"time"
 
 	. "github.com/tendermint/go-common"
-	"github.com/tendermint/tendermint/events"
 	"github.com/tendermint/go-p2p"
+	"github.com/tendermint/go-wire"
+	"github.com/tendermint/tendermint/events"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/go-wire"
 )
 
 const (
@@ -217,7 +217,7 @@ FOR_LOOP:
 				firstParts := first.MakePartSet()
 				firstPartsHeader := firstParts.Header()
 				// Finally, verify the first block using the second's validation.
-				err := bcR.state.BondedValidators.VerifyValidation(
+				err := bcR.state.Validators.VerifyValidation(
 					bcR.state.ChainID, first.Hash(), firstPartsHeader, first.Height, second.LastValidation)
 				if err != nil {
 					log.Info("error in validation", "error", err)

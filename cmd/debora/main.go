@@ -11,7 +11,7 @@ import (
 	"strings"
 	"sync"
 
-	acm "github.com/tendermint/tendermint/account"
+	"github.com/tendermint/go-crypto"
 	btypes "github.com/tendermint/tendermint/cmd/barak/types"
 	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
@@ -29,7 +29,7 @@ func remoteNick(remote string) string {
 
 var Config = struct {
 	Remotes []string
-	PrivKey acm.PrivKey
+	PrivKey crypto.PrivKey
 }{}
 
 func main() {

@@ -5,7 +5,7 @@ import (
 	"io"
 	"testing"
 
-	acm "github.com/tendermint/tendermint/account"
+	"github.com/tendermint/go-crypto"
 	. "github.com/tendermint/go-common"
 )
 
@@ -32,10 +32,10 @@ func makeDummyConnPair() (fooConn, barConn dummyConn) {
 
 func makeSecretConnPair(tb testing.TB) (fooSecConn, barSecConn *SecretConnection) {
 	fooConn, barConn := makeDummyConnPair()
-	fooPrvKey := acm.GenPrivKeyEd25519()
-	fooPubKey := fooPrvKey.PubKey().(acm.PubKeyEd25519)
-	barPrvKey := acm.GenPrivKeyEd25519()
-	barPubKey := barPrvKey.PubKey().(acm.PubKeyEd25519)
+	fooPrvKey := crypto.GenPrivKeyEd25519()
+	fooPubKey := fooPrvKey.PubKey().(crypto.PubKeyEd25519)
+	barPrvKey := crypto.GenPrivKeyEd25519()
+	barPubKey := barPrvKey.PubKey().(crypto.PubKeyEd25519)
 
 	Parallel(
 		func() {
@@ -89,7 +89,7 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 	genNodeRunner := func(nodeConn dummyConn, nodeWrites []string, nodeReads *[]string) func() {
 		return func() {
 			// Node handskae
-			nodePrvKey := acm.GenPrivKeyEd25519()
+			nodePrvKey := crypto.GenPrivKeyEd25519()
 			nodeSecretConn, err := MakeSecretConnection(nodeConn, nodePrvKey)
 			if err != nil {
 				t.Errorf("Failed to establish SecretConnection for node: %v", err)

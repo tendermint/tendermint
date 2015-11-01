@@ -15,7 +15,7 @@ func randVoteSet(height int, round int, type_ byte, numValidators int, votingPow
 	vals := make([]*Validator, numValidators)
 	privValidators := make([]*PrivValidator, numValidators)
 	for i := 0; i < numValidators; i++ {
-		_, val, privValidator := RandValidator(false, votingPower)
+		val, privValidator := RandValidator(false, votingPower)
 		vals[i] = val
 		privValidators[i] = privValidator
 	}

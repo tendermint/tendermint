@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	bc "github.com/tendermint/tendermint/blockchain"
 	dbm "github.com/tendermint/go-db"
+	"github.com/tendermint/go-p2p"
+	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/events"
 	mempl "github.com/tendermint/tendermint/mempool"
-	"github.com/tendermint/go-p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -186,10 +186,9 @@ func validatePrevoteAndPrecommit(t *testing.T, cs *ConsensusState, thisRound, lo
 
 func simpleConsensusState(nValidators int) ([]*ConsensusState, []*types.PrivValidator) {
 	// Get State
-	state, privAccs, privVals := sm.RandGenesisState(10, true, 1000, nValidators, false, 10)
-	_, _ = privAccs, privVals
+	state, privVals := sm.RandGenesisState(nValidators, false, 10)
 
-	fmt.Println(state.BondedValidators)
+	fmt.Println(state.Validators)
 
 	css := make([]*ConsensusState, nValidators)
 	for i := 0; i < nValidators; i++ {
@@ -220,7 +219,7 @@ func simpleConsensusState(nValidators int) ([]*ConsensusState, []*types.PrivVali
 }
 
 func randConsensusState() (*ConsensusState, []*types.PrivValidator) {
-	state, _, privValidators := sm.RandGenesisState(20, false, 1000, 10, false, 1000)
+	state, privValidators := sm.RandGenesisState(10, false, 1000)
 	blockStore := bc.NewBlockStore(dbm.NewMemDB())
 	mempool := mempl.NewMempool(state)
 	mempoolReactor := mempl.NewMempoolReactor(mempool)

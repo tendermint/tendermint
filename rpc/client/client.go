@@ -8,8 +8,8 @@ import (
 	"net/http"
 
 	. "github.com/tendermint/go-common"
-	. "github.com/tendermint/tendermint/rpc/types"
 	"github.com/tendermint/go-wire"
+	. "github.com/tendermint/tendermint/rpc/types"
 )
 
 func Call(remote string, method string, params []interface{}, dest interface{}) (interface{}, error) {

@@ -4,14 +4,14 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/tendermint/tendermint/config/tendermint_test"
 	"github.com/tendermint/go-p2p"
+	_ "github.com/tendermint/tendermint/config/tendermint_test"
 )
 
 func TestNodeStartStop(t *testing.T) {
 	// Create & start node
 	n := NewNode()
-	l := p2p.NewDefaultListener("tcp", config.GetString("node_laddr"))
+	l := p2p.NewDefaultListener("tcp", config.GetString("node_laddr"), config.GetBool("skip_upnp"))
 	n.AddListener(l)
 	n.Start()
 	log.Notice("Started node", "nodeInfo", n.sw.NodeInfo())

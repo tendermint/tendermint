@@ -1,4 +1,3 @@
-
 // Import this in all *_test.go files to initialize ~/.tendermint_test.
 
 package tendermint_test
@@ -72,7 +71,6 @@ func GetConfig(rootDir string) cfg.Config {
 	mapConfig.SetDefault("rpc_laddr", "0.0.0.0:36657")
 	mapConfig.SetDefault("prof_laddr", "")
 	mapConfig.SetDefault("revision_file", rootDir+"/revision")
-	mapConfig.SetDefault("local_routing", false)
 	return mapConfig
 }
 

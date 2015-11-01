@@ -1,25 +1,24 @@
 package types
 
 import (
-	"github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/go-common"
+	"github.com/tendermint/go-crypto"
 
 	"bytes"
 	"strings"
 	"testing"
 )
 
-func randPubKey() account.PubKeyEd25519 {
+func randPubKey() crypto.PubKeyEd25519 {
 	var pubKey [32]byte
 	copy(pubKey[:], RandBytes(32))
-	return account.PubKeyEd25519(pubKey)
+	return crypto.PubKeyEd25519(pubKey)
 }
 
 func randValidator_() *Validator {
 	return &Validator{
 		Address:     RandBytes(20),
 		PubKey:      randPubKey(),
-		BondHeight:  RandInt(),
 		VotingPower: RandInt64(),
 		Accum:       RandInt64(),
 	}
@@ -53,21 +52,18 @@ func TestProposerSelection(t *testing.T) {
 		&Validator{
 			Address:     []byte("foo"),
 			PubKey:      randPubKey(),
-			BondHeight:  RandInt(),
 			VotingPower: 1000,
 			Accum:       0,
 		},
 		&Validator{
 			Address:     []byte("bar"),
 			PubKey:      randPubKey(),
-			BondHeight:  RandInt(),
 			VotingPower: 300,
 			Accum:       0,
 		},
 		&Validator{
 			Address:     []byte("baz"),
 			PubKey:      randPubKey(),
-			BondHeight:  RandInt(),
 			VotingPower: 330,
 			Accum:       0,
 		},
@@ -88,10 +84,11 @@ func BenchmarkValidatorSetCopy(b *testing.B) {
 	b.StopTimer()
 	vset := NewValidatorSet([]*Validator{})
 	for i := 0; i < 1000; i++ {
-		privAccount := account.GenPrivAccount()
+		privKey := crypto.GenPrivKeyEd25519()
+		pubKey := privKey.PubKey().(crypto.PubKeyEd25519)
 		val := &Validator{
-			Address: privAccount.Address,
-			PubKey:  privAccount.PubKey.(account.PubKeyEd25519),
+			Address: pubKey.Address(),
+			PubKey:  pubKey,
 		}
 		if !vset.Add(val) {
 			panic("Failed to add validator")

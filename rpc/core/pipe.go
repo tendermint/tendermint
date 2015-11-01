@@ -1,11 +1,10 @@
 package core
 
 import (
+	"github.com/tendermint/go-p2p"
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/consensus"
 	mempl "github.com/tendermint/tendermint/mempool"
-	"github.com/tendermint/go-p2p"
-	stypes "github.com/tendermint/tendermint/state/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -15,7 +14,7 @@ var consensusReactor *consensus.ConsensusReactor
 var mempoolReactor *mempl.MempoolReactor
 var p2pSwitch *p2p.Switch
 var privValidator *types.PrivValidator
-var genDoc *stypes.GenesisDoc // cache the genesis structure
+var genDoc *types.GenesisDoc // cache the genesis structure
 
 func SetBlockStore(bs *bc.BlockStore) {
 	blockStore = bs
@@ -41,6 +40,6 @@ func SetPrivValidator(pv *types.PrivValidator) {
 	privValidator = pv
 }
 
-func SetGenDoc(doc *stypes.GenesisDoc) {
+func SetGenDoc(doc *types.GenesisDoc) {
 	genDoc = doc
 }

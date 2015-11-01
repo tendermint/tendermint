@@ -2,13 +2,13 @@
 package types
 
 import (
-	acm "github.com/tendermint/tendermint/account"
+	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-wire"
 )
 
 type AuthCommand struct {
 	CommandJSONStr string
-	Signatures     []acm.Signature
+	Signatures     []crypto.Signature
 }
 
 type NoncedCommand struct {

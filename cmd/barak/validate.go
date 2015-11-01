@@ -1,11 +1,11 @@
 package main
 
 import (
-	acm "github.com/tendermint/tendermint/account"
+	"github.com/tendermint/go-crypto"
 	. "github.com/tendermint/tendermint/cmd/barak/types"
 )
 
-func validate(signBytes []byte, validators []Validator, signatures []acm.Signature) bool {
+func validate(signBytes []byte, validators []Validator, signatures []crypto.Signature) bool {
 	var signedPower int64
 	var totalPower int64
 	for i, val := range validators {

@@ -1,18 +1,18 @@
 package node
 
 import (
-	acm "github.com/tendermint/tendermint/account"
+	"github.com/tendermint/go-crypto"
 	"time"
 )
 
 type NodeID struct {
 	Name   string
-	PubKey acm.PubKey
+	PubKey crypto.PubKey
 }
 
 type PrivNodeID struct {
 	NodeID
-	PrivKey acm.PrivKey
+	PrivKey crypto.PrivKey
 }
 
 type NodeGreeting struct {
@@ -25,7 +25,7 @@ type NodeGreeting struct {
 
 type SignedNodeGreeting struct {
 	NodeGreeting
-	Signature acm.Signature
+	Signature crypto.Signature
 }
 
 func (pnid *PrivNodeID) SignGreeting() *SignedNodeGreeting {

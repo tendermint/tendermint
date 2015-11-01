@@ -20,7 +20,7 @@ import (
 	"golang.org/x/crypto/nacl/secretbox"
 	"golang.org/x/crypto/ripemd160"
 
-	acm "github.com/tendermint/tendermint/account"
+	"github.com/tendermint/go-crypto"
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-wire"
 )
@@ -38,7 +38,7 @@ type SecretConnection struct {
 	recvBuffer []byte
 	recvNonce  *[24]byte
 	sendNonce  *[24]byte
-	remPubKey  acm.PubKeyEd25519
+	remPubKey  crypto.PubKeyEd25519
 	shrSecret  *[32]byte // shared secret
 }
 
@@ -46,9 +46,9 @@ type SecretConnection struct {
 // Returns nil if error in handshake.
 // Caller should call conn.Close()
 // See docs/sts-final.pdf for more information.
-func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey acm.PrivKeyEd25519) (*SecretConnection, error) {
+func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKeyEd25519) (*SecretConnection, error) {
 
-	locPubKey := locPrivKey.PubKey().(acm.PubKeyEd25519)
+	locPubKey := locPrivKey.PubKey().(crypto.PubKeyEd25519)
 
 	// Generate ephemeral keys for perfect forward secrecy.
 	locEphPub, locEphPriv := genEphKeys()
@@ -101,7 +101,7 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey acm.PrivKeyEd25519
 }
 
 // Returns authenticated remote pubkey
-func (sc *SecretConnection) RemotePubKey() acm.PubKeyEd25519 {
+func (sc *SecretConnection) RemotePubKey() crypto.PubKeyEd25519 {
 	return sc.remPubKey
 }
 
@@ -254,17 +254,17 @@ func genChallenge(loPubKey, hiPubKey *[32]byte) (challenge *[32]byte) {
 	return hash32(append(loPubKey[:], hiPubKey[:]...))
 }
 
-func signChallenge(challenge *[32]byte, locPrivKey acm.PrivKeyEd25519) (signature acm.SignatureEd25519) {
-	signature = locPrivKey.Sign(challenge[:]).(acm.SignatureEd25519)
+func signChallenge(challenge *[32]byte, locPrivKey crypto.PrivKeyEd25519) (signature crypto.SignatureEd25519) {
+	signature = locPrivKey.Sign(challenge[:]).(crypto.SignatureEd25519)
 	return
 }
 
 type authSigMessage struct {
-	Key acm.PubKeyEd25519
-	Sig acm.SignatureEd25519
+	Key crypto.PubKeyEd25519
+	Sig crypto.SignatureEd25519
 }
 
-func shareAuthSignature(sc *SecretConnection, pubKey acm.PubKeyEd25519, signature acm.SignatureEd25519) (*authSigMessage, error) {
+func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKeyEd25519, signature crypto.SignatureEd25519) (*authSigMessage, error) {
 	var recvMsg authSigMessage
 	var err1, err2 error
 
@@ -293,7 +293,7 @@ func shareAuthSignature(sc *SecretConnection, pubKey acm.PubKeyEd25519, signatur
 	return &recvMsg, nil
 }
 
-func verifyChallengeSignature(challenge *[32]byte, remPubKey acm.PubKeyEd25519, remSignature acm.SignatureEd25519) bool {
+func verifyChallengeSignature(challenge *[32]byte, remPubKey crypto.PubKeyEd25519, remSignature crypto.SignatureEd25519) bool {
 	return remPubKey.VerifyBytes(challenge[:], remSignature)
 }
 

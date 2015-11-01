@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"io"
 
-	acm "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/go-common"
+	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-wire"
 )
 
@@ -16,11 +16,11 @@ var (
 )
 
 type Proposal struct {
-	Height           int                  `json:"height"`
-	Round            int                  `json:"round"`
-	BlockPartsHeader PartSetHeader        `json:"block_parts_header"`
-	POLRound         int                  `json:"pol_round"` // -1 if null.
-	Signature        acm.SignatureEd25519 `json:"signature"`
+	Height           int                     `json:"height"`
+	Round            int                     `json:"round"`
+	BlockPartsHeader PartSetHeader           `json:"block_parts_header"`
+	POLRound         int                     `json:"pol_round"` // -1 if null.
+	Signature        crypto.SignatureEd25519 `json:"signature"`
 }
 
 func NewProposal(height int, round int, blockPartsHeader PartSetHeader, polRound int) *Proposal {
