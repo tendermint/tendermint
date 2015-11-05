@@ -63,7 +63,7 @@ func StartProcess(label string, execPath string, args []string, inFile io.Reader
 	return proc, nil
 }
 
-func (proc *Process) StopProcess() error {
+func (proc *Process) StopProcess(kill bool) error {
 	defer proc.OutputFile.Close()
 	if kill {
 		fmt.Printf("Killing process %v\n", proc.Cmd.Process)
