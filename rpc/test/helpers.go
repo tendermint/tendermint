@@ -49,7 +49,7 @@ func makeUsers(n int) []*acm.PrivAccount {
 // create a new node and sleep forever
 func newNode(ready chan struct{}) {
 	// Create & start node
-	node = nm.NewNode()
+	node = nm.NewNodeDefaultPrivVal()
 	l := p2p.NewDefaultListener("tcp", config.GetString("node_laddr"))
 	node.AddListener(l)
 	node.Start()

@@ -45,7 +45,15 @@ type Node struct {
 	privKey          acm.PrivKeyEd25519
 }
 
-func NewNode() *Node {
+func NewNodeDefaultPrivVal() *Node {
+	// Get PrivValidator
+	privValidatorFile := config.GetString("priv_validator_file")
+	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
+
+	return NewNode(privValidator)
+}
+
+func NewNode(privValidator *types.PrivValidator) *Node {
 	// Get BlockStore
 	blockStoreDB := dbm.GetDB("blockstore")
 	blockStore := bc.NewBlockStore(blockStoreDB)
@@ -74,10 +82,6 @@ func NewNode() *Node {
 	}
 	// add the chainid to the global config
 	config.Set("chain_id", state.ChainID)
-
-	// Get PrivValidator
-	privValidatorFile := config.GetString("priv_validator_file")
-	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
 
 	// Generate node PrivKey
 	privKey := acm.GenPrivKeyEd25519()
@@ -312,7 +316,7 @@ func RunNode() {
 	}
 
 	// Create & start node
-	n := NewNode()
+	n := NewNodeDefaultPrivVal()
 	l := p2p.NewDefaultListener("tcp", config.GetString("node_laddr"))
 	n.AddListener(l)
 	err := n.Start()

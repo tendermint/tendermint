@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"sort"
 
+	acm "github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
 	. "github.com/tendermint/tendermint/common/test"
 	_ "github.com/tendermint/tendermint/config/tendermint_test"
@@ -60,7 +61,7 @@ func withBlockPartsHeader(vote *Vote, blockPartsHeader PartSetHeader) *Vote {
 }
 
 func signAddVote(privVal *PrivValidator, vote *Vote, voteSet *VoteSet) (bool, error) {
-	privVal.SignVoteUnsafe(config.GetString("chain_id"), vote)
+	vote.Signature = privVal.signer.Sign(acm.SignBytes(config.GetString("chain_id"), vote))
 	added, _, err := voteSet.AddByAddress(privVal.Address, vote)
 	return added, err
 }

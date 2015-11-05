@@ -72,6 +72,7 @@ func GetConfig(rootDir string) cfg.Config {
 	mapConfig.SetDefault("prof_laddr", "")
 	mapConfig.SetDefault("revision_file", rootDir+"/revision")
 	mapConfig.SetDefault("local_routing", false)
+	mapConfig.SetDefault("signer", "default")
 	return mapConfig
 }
 

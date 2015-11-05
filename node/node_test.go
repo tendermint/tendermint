@@ -10,7 +10,7 @@ import (
 
 func TestNodeStartStop(t *testing.T) {
 	// Create & start node
-	n := NewNode()
+	n := NewNodeDefaultPrivVal()
 	l := p2p.NewDefaultListener("tcp", config.GetString("node_laddr"))
 	n.AddListener(l)
 	n.Start()
