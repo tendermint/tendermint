@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bufio"
 	"fmt"
 	"net"
 	"reflect"
@@ -51,11 +52,12 @@ func StartListener(protoAddr string, app types.Application) (net.Listener, error
 // Read requests from conn and deal with them
 func handleRequests(app types.Application, connClosed chan struct{}, conn net.Conn, responses chan<- types.Response) {
 	var count int
+	var bufReader = bufio.NewReader(conn)
 	for {
 		var n int64
 		var err error
 		var req types.Request
-		wire.ReadBinaryPtr(&req, conn, &n, &err)
+		wire.ReadBinaryPtr(&req, bufReader, &n, &err)
 
 		if err != nil {
 			fmt.Println(err.Error())
@@ -77,6 +79,8 @@ func handleRequest(app types.Application, req types.Request, responses chan<- ty
 	case types.RequestEcho:
 		retCode, msg := app.Echo(req.Message)
 		responses <- types.ResponseEcho{retCode, msg}
+	case types.RequestFlush:
+		responses <- types.ResponseFlush{}
 	case types.RequestAppendTx:
 		retCode := app.AppendTx(req.TxBytes)
 		responses <- types.ResponseAppendTx{retCode}
@@ -116,16 +120,25 @@ func handleRequest(app types.Application, req types.Request, responses chan<- ty
 // Pull responses from 'responses' and write them to conn.
 func handleResponses(connClosed chan struct{}, responses <-chan types.Response, conn net.Conn) {
 	var count int
+	var bufWriter = bufio.NewWriter(conn)
 	for {
 		var res = <-responses
 		var n int64
 		var err error
-		wire.WriteBinary(res, conn, &n, &err)
-
+		wire.WriteBinary(res, bufWriter, &n, &err)
 		if err != nil {
 			fmt.Println(err.Error())
 			connClosed <- struct{}{}
 			return
+		}
+
+		if _, ok := res.(types.ResponseFlush); ok {
+			err = bufWriter.Flush()
+			if err != nil {
+				fmt.Println(err.Error())
+				connClosed <- struct{}{}
+				return
+			}
 		}
 
 		count++
