@@ -16,12 +16,12 @@ import (
 	"reflect"
 	"time"
 
-	. "github.com/tendermint/tendermint/cmd/barak/types"
 	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
-	pcm "github.com/tendermint/tendermint/process"
-	"github.com/tendermint/tendermint/rpc/server"
+	pcm "github.com/tendermint/go-process"
 	"github.com/tendermint/go-wire"
+	. "github.com/tendermint/tendermint/cmd/barak/types"
+	"github.com/tendermint/tendermint/rpc/server"
 )
 
 const BarakVersion = "0.0.1"
@@ -162,7 +162,7 @@ func StartProcess(wait bool, label string, execPath string, args []string, input
 	if err != nil {
 		return nil, err
 	}
-	proc, err := pcm.Create(label, execPath, args, inFile, outFile)
+	proc, err := pcm.StartProcess(label, execPath, args, inFile, outFile)
 	if err != nil {
 		return nil, err
 	}

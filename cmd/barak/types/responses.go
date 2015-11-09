@@ -1,7 +1,7 @@
 package types
 
 import (
-	pcm "github.com/tendermint/tendermint/process"
+	pcm "github.com/tendermint/go-process"
 )
 
 type ResponseStatus struct {

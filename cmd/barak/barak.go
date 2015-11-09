@@ -1,4 +1,3 @@
-
 package main
 
 import (
@@ -11,10 +10,10 @@ import (
 	"sync"
 	"time"
 
+	. "github.com/tendermint/go-common"
+	pcm "github.com/tendermint/go-process"
 	"github.com/tendermint/go-wire"
 	. "github.com/tendermint/tendermint/cmd/barak/types"
-	. "github.com/tendermint/go-common"
-	pcm "github.com/tendermint/tendermint/process"
 	"github.com/tendermint/tendermint/rpc/server"
 )
 
@@ -137,7 +136,7 @@ func (brk *Barak) StopProcess(label string, kill bool) error {
 		return fmt.Errorf("Process does not exist: %v", label)
 	}
 
-	err := pcm.Stop(proc, kill)
+	err := proc.StopProcess(kill)
 	return err
 }
 
