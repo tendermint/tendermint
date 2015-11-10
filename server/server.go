@@ -58,7 +58,7 @@ func handleRequests(app types.Application, connClosed chan struct{}, conn net.Co
 		var req types.Request
 		wire.ReadBinaryPtr(&req, bufReader, &n, &err)
 		if err != nil {
-			fmt.Println(err.Error())
+			fmt.Println("Error in handleRequests:", err.Error())
 			connClosed <- struct{}{}
 			return
 		}
@@ -74,6 +74,9 @@ func handleRequest(app types.Application, req types.Request, responses chan<- ty
 		responses <- types.ResponseEcho{msg}
 	case types.RequestFlush:
 		responses <- types.ResponseFlush{}
+	case types.RequestInfo:
+		data := app.Info()
+		responses <- types.ResponseInfo{data}
 	case types.RequestAppendTx:
 		retCode := app.AppendTx(req.TxBytes)
 		responses <- types.ResponseAppendTx{retCode}
