@@ -65,7 +65,8 @@ const (
 	minGetSelection = 32
 
 	// max addresses returned by GetSelection
-	maxGetSelection = 2500
+	// NOTE: this must match "maxPexMessageSize"
+	maxGetSelection = 250
 
 	// current version of the on-disk format.
 	serializationVersion = 1

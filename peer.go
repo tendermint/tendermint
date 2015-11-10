@@ -28,12 +28,12 @@ func peerHandshake(conn net.Conn, ourNodeInfo *NodeInfo) (*NodeInfo, error) {
 	var err2 error
 	Parallel(
 		func() {
-			var n int64
+			var n int
 			wire.WriteBinary(ourNodeInfo, conn, &n, &err1)
 		},
 		func() {
-			var n int64
-			wire.ReadBinary(peerNodeInfo, conn, &n, &err2)
+			var n int
+			wire.ReadBinary(peerNodeInfo, conn, maxNodeInfoSize, &n, &err2)
 			log.Notice("Peer handshake", "peerNodeInfo", peerNodeInfo)
 		})
 	if err1 != nil {
@@ -112,7 +112,9 @@ func (p *Peer) CanSend(chID byte) bool {
 }
 
 func (p *Peer) WriteTo(w io.Writer) (n int64, err error) {
-	wire.WriteString(p.Key, w, &n, &err)
+	var n_ int
+	wire.WriteString(p.Key, w, &n_, &err)
+	n += int64(n_)
 	return
 }
 

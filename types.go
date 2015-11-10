@@ -9,6 +9,8 @@ import (
 	"github.com/tendermint/go-crypto"
 )
 
+const maxNodeInfoSize = 10240 // 10Kb
+
 type NodeInfo struct {
 	PubKey  crypto.PubKeyEd25519 `json:"pub_key"`
 	Moniker string               `json:"moniker"`

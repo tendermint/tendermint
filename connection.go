@@ -16,18 +16,19 @@ import (
 )
 
 const (
-	numBatchMsgPackets        = 10
-	minReadBufferSize         = 1024
-	minWriteBufferSize        = 1024
-	idleTimeoutMinutes        = 5
-	updateStatsSeconds        = 2
-	pingTimeoutSeconds        = 40
-	defaultSendRate           = 51200 // 50Kb/s
-	defaultRecvRate           = 51200 // 50Kb/s
-	flushThrottleMS           = 100
-	defaultSendQueueCapacity  = 1
-	defaultRecvBufferCapacity = 4096
-	defaultSendTimeoutSeconds = 10
+	numBatchMsgPackets         = 10
+	minReadBufferSize          = 1024
+	minWriteBufferSize         = 1024
+	idleTimeoutMinutes         = 5
+	updateStatsSeconds         = 2
+	pingTimeoutSeconds         = 40
+	defaultSendRate            = 51200 // 50KB/s
+	defaultRecvRate            = 51200 // 50KB/s
+	flushThrottleMS            = 100
+	defaultSendQueueCapacity   = 1
+	defaultRecvBufferCapacity  = 4096
+	defaultRecvMessageCapacity = 22020096 // 21MB
+	defaultSendTimeoutSeconds  = 10
 )
 
 type receiveCbFunc func(chID byte, msgBytes []byte)
@@ -259,7 +260,7 @@ func (c *MConnection) sendRoutine() {
 
 FOR_LOOP:
 	for {
-		var n int64
+		var n int
 		var err error
 		select {
 		case <-c.flushTimer.Ch:
@@ -313,7 +314,7 @@ func (c *MConnection) sendSomeMsgPackets() bool {
 	// Block until .sendMonitor says we can write.
 	// Once we're ready we send more than we asked for,
 	// but amortized it should even out.
-	c.sendMonitor.Limit(maxMsgPacketSize, atomic.LoadInt64(&c.sendRate), true)
+	c.sendMonitor.Limit(maxMsgPacketTotalSize, atomic.LoadInt64(&c.sendRate), true)
 
 	// Now send some msgPackets.
 	for i := 0; i < numBatchMsgPackets; i++ {
@@ -371,7 +372,7 @@ func (c *MConnection) recvRoutine() {
 FOR_LOOP:
 	for {
 		// Block until .recvMonitor says we can read.
-		c.recvMonitor.Limit(maxMsgPacketSize, atomic.LoadInt64(&c.recvRate), true)
+		c.recvMonitor.Limit(maxMsgPacketTotalSize, atomic.LoadInt64(&c.recvRate), true)
 
 		/*
 			// Peek into bufReader for debugging
@@ -389,7 +390,7 @@ FOR_LOOP:
 		*/
 
 		// Read packet type
-		var n int64
+		var n int
 		var err error
 		pktType := wire.ReadByte(c.bufReader, &n, &err)
 		c.recvMonitor.Update(int(n))
@@ -411,8 +412,8 @@ FOR_LOOP:
 			// do nothing
 			log.Info("Receive Pong")
 		case packetTypeMsg:
-			pkt, n, err := msgPacket{}, int64(0), error(nil)
-			wire.ReadBinaryPtr(&pkt, c.bufReader, &n, &err)
+			pkt, n, err := msgPacket{}, int(0), error(nil)
+			wire.ReadBinaryPtr(&pkt, c.bufReader, maxMsgPacketTotalSize, &n, &err)
 			c.recvMonitor.Update(int(n))
 			if err != nil {
 				if c.IsRunning() {
@@ -456,10 +457,11 @@ FOR_LOOP:
 //-----------------------------------------------------------------------------
 
 type ChannelDescriptor struct {
-	ID                 byte
-	Priority           int
-	SendQueueCapacity  int
-	RecvBufferCapacity int
+	ID                  byte
+	Priority            int
+	SendQueueCapacity   int
+	RecvBufferCapacity  int
+	RecvMessageCapacity int
 }
 
 func (chDesc *ChannelDescriptor) FillDefaults() {
@@ -468,6 +470,9 @@ func (chDesc *ChannelDescriptor) FillDefaults() {
 	}
 	if chDesc.RecvBufferCapacity == 0 {
 		chDesc.RecvBufferCapacity = defaultRecvBufferCapacity
+	}
+	if chDesc.RecvMessageCapacity == 0 {
+		chDesc.RecvMessageCapacity = defaultRecvMessageCapacity
 	}
 }
 
@@ -557,27 +562,27 @@ func (ch *Channel) isSendPending() bool {
 func (ch *Channel) nextMsgPacket() msgPacket {
 	packet := msgPacket{}
 	packet.ChannelID = byte(ch.id)
-	packet.Bytes = ch.sending[:MinInt(maxMsgPacketSize, len(ch.sending))]
-	if len(ch.sending) <= maxMsgPacketSize {
+	packet.Bytes = ch.sending[:MinInt(maxMsgPacketPayloadSize, len(ch.sending))]
+	if len(ch.sending) <= maxMsgPacketPayloadSize {
 		packet.EOF = byte(0x01)
 		ch.sending = nil
 		atomic.AddInt32(&ch.sendQueueSize, -1) // decrement sendQueueSize
 	} else {
 		packet.EOF = byte(0x00)
-		ch.sending = ch.sending[MinInt(maxMsgPacketSize, len(ch.sending)):]
+		ch.sending = ch.sending[MinInt(maxMsgPacketPayloadSize, len(ch.sending)):]
 	}
 	return packet
 }
 
 // Writes next msgPacket to w.
 // Not goroutine-safe
-func (ch *Channel) writeMsgPacketTo(w io.Writer) (n int64, err error) {
+func (ch *Channel) writeMsgPacketTo(w io.Writer) (n int, err error) {
 	packet := ch.nextMsgPacket()
 	log.Debug("Write Msg Packet", "conn", ch.conn, "packet", packet)
 	wire.WriteByte(packetTypeMsg, w, &n, &err)
 	wire.WriteBinary(packet, w, &n, &err)
 	if err != nil {
-		ch.recentlySent += n
+		ch.recentlySent += int64(n)
 	}
 	return
 }
@@ -586,7 +591,7 @@ func (ch *Channel) writeMsgPacketTo(w io.Writer) (n int64, err error) {
 // Not goroutine-safe
 func (ch *Channel) recvMsgPacket(packet msgPacket) ([]byte, error) {
 	// log.Debug("Read Msg Packet", "conn", ch.conn, "packet", packet)
-	if wire.MaxBinaryReadSize < len(ch.recving)+len(packet.Bytes) {
+	if ch.desc.RecvMessageCapacity < len(ch.recving)+len(packet.Bytes) {
 		return nil, wire.ErrBinaryReadSizeOverflow
 	}
 	ch.recving = append(ch.recving, packet.Bytes...)
@@ -609,10 +614,12 @@ func (ch *Channel) updateStats() {
 //-----------------------------------------------------------------------------
 
 const (
-	maxMsgPacketSize = 1024
-	packetTypePing   = byte(0x01)
-	packetTypePong   = byte(0x02)
-	packetTypeMsg    = byte(0x03)
+	maxMsgPacketPayloadSize  = 1024
+	maxMsgPacketOverheadSize = 10 // It's actually lower but good enough
+	maxMsgPacketTotalSize    = maxMsgPacketPayloadSize + maxMsgPacketOverheadSize
+	packetTypePing           = byte(0x01)
+	packetTypePong           = byte(0x02)
+	packetTypeMsg            = byte(0x03)
 )
 
 // Messages in channels are chopped into smaller msgPackets for multiplexing.
@@ -624,17 +631,4 @@ type msgPacket struct {
 
 func (p msgPacket) String() string {
 	return fmt.Sprintf("MsgPacket{%X:%X T:%X}", p.ChannelID, p.Bytes, p.EOF)
-}
-
-//-----------------------------------------------------------------------------
-
-// Convenience struct for writing typed messages.
-// Reading requires a custom decoder that switches on the first type byte of a byteslice.
-type TypedMessage struct {
-	Type byte
-	Msg  interface{}
-}
-
-func (tm TypedMessage) String() string {
-	return fmt.Sprintf("TMsg{%X:%v}", tm.Type, tm.Msg)
 }

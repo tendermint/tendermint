@@ -18,6 +18,7 @@ const (
 	PexChannel               = byte(0x00)
 	ensurePeersPeriodSeconds = 30
 	minNumOutboundPeers      = 10
+	maxPexMessageSize        = 1048576 // 1MB
 )
 
 /*
@@ -227,9 +228,9 @@ var _ = wire.RegisterInterface(
 
 func DecodeMessage(bz []byte) (msgType byte, msg PexMessage, err error) {
 	msgType = bz[0]
-	n := new(int64)
+	n := new(int)
 	r := bytes.NewReader(bz)
-	msg = wire.ReadBinary(struct{ PexMessage }{}, r, n, &err).(struct{ PexMessage }).PexMessage
+	msg = wire.ReadBinary(struct{ PexMessage }{}, r, maxPexMessageSize, n, &err).(struct{ PexMessage }).PexMessage
 	return
 }
 

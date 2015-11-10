@@ -279,8 +279,8 @@ func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKeyEd25519, signa
 			if err2 != nil {
 				return
 			}
-			n := int64(0) // not used.
-			recvMsg = wire.ReadBinary(authSigMessage{}, bytes.NewBuffer(readBuffer), &n, &err2).(authSigMessage)
+			n := int(0) // not used.
+			recvMsg = wire.ReadBinary(authSigMessage{}, bytes.NewBuffer(readBuffer), authSigMsgSize, &n, &err2).(authSigMessage)
 		})
 
 	if err1 != nil {
