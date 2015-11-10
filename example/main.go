@@ -11,7 +11,7 @@ import (
 func main() {
 
 	// Start the listener
-	_, err := server.StartListener("tcp://127.0.0.1:8080", &DummyApplication{})
+	_, err := server.StartListener("tcp://127.0.0.1:8080", NewDummyApplication())
 	if err != nil {
 		Exit(err.Error())
 	}
