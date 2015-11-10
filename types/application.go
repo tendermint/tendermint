@@ -3,7 +3,10 @@ package types
 type Application interface {
 
 	// Echo a message
-	Echo(message string) (RetCode, string)
+	Echo(message string) string
+
+	// Return application info
+	Info() []string
 
 	// Append a tx, which may or may not get committed
 	AppendTx(tx []byte) RetCode

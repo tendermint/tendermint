@@ -43,8 +43,12 @@ func NewDummyApplication() *DummyApplication {
 	}
 }
 
-func (dapp *DummyApplication) Echo(message string) (types.RetCode, string) {
-	return 0, message
+func (dapp *DummyApplication) Echo(message string) string {
+	return message
+}
+
+func (dapp *DummyApplication) Info() []string {
+	return []string{Fmt("size:%v", dapp.state.Size())}
 }
 
 func (dapp *DummyApplication) AppendTx(tx []byte) types.RetCode {

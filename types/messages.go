@@ -3,28 +3,32 @@ package types
 import "github.com/tendermint/go-wire"
 
 const (
-	requestTypeEcho          = byte(0x01)
-	requestTypeFlush         = byte(0x02)
-	requestTypeAppendTx      = byte(0x03)
-	requestTypeGetHash       = byte(0x04)
-	requestTypeCommit        = byte(0x05)
-	requestTypeRollback      = byte(0x06)
-	requestTypeSetEventsMode = byte(0x07)
-	requestTypeAddListener   = byte(0x08)
-	requestTypeRemListener   = byte(0x09)
+	requestTypeEcho  = byte(0x01)
+	requestTypeFlush = byte(0x02)
+	requestTypeInfo  = byte(0x03)
 
-	responseTypeEcho          = byte(0x11)
-	responseTypeFlush         = byte(0x12)
-	responseTypeAppendTx      = byte(0x13)
-	responseTypeGetHash       = byte(0x14)
-	responseTypeCommit        = byte(0x15)
-	responseTypeRollback      = byte(0x16)
-	responseTypeSetEventsMode = byte(0x17)
-	responseTypeAddListener   = byte(0x18)
-	responseTypeRemListener   = byte(0x19)
+	responseTypeException = byte(0x10)
+	responseTypeEcho      = byte(0x11)
+	responseTypeFlush     = byte(0x12)
+	responseTypeInfo      = byte(0x13)
 
-	responseTypeException = byte(0x20)
-	responseTypeEvent     = byte(0x21)
+	requestTypeAppendTx      = byte(0x21)
+	requestTypeGetHash       = byte(0x22)
+	requestTypeCommit        = byte(0x23)
+	requestTypeRollback      = byte(0x24)
+	requestTypeSetEventsMode = byte(0x25)
+	requestTypeAddListener   = byte(0x26)
+	requestTypeRemListener   = byte(0x27)
+	// reserved for responseTypeEvent 0x28
+
+	responseTypeAppendTx      = byte(0x31)
+	responseTypeGetHash       = byte(0x32)
+	responseTypeCommit        = byte(0x33)
+	responseTypeRollback      = byte(0x34)
+	responseTypeSetEventsMode = byte(0x35)
+	responseTypeAddListener   = byte(0x36)
+	responseTypeRemListener   = byte(0x37)
+	responseTypeEvent         = byte(0x38)
 )
 
 //----------------------------------------
@@ -34,6 +38,9 @@ type RequestEcho struct {
 }
 
 type RequestFlush struct {
+}
+
+type RequestInfo struct {
 }
 
 type RequestAppendTx struct {
@@ -67,6 +74,7 @@ type Request interface {
 
 func (_ RequestEcho) AssertRequestType()          {}
 func (_ RequestFlush) AssertRequestType()         {}
+func (_ RequestInfo) AssertRequestType()          {}
 func (_ RequestAppendTx) AssertRequestType()      {}
 func (_ RequestGetHash) AssertRequestType()       {}
 func (_ RequestCommit) AssertRequestType()        {}
@@ -79,6 +87,7 @@ var _ = wire.RegisterInterface(
 	struct{ Request }{},
 	wire.ConcreteType{RequestEcho{}, requestTypeEcho},
 	wire.ConcreteType{RequestFlush{}, requestTypeFlush},
+	wire.ConcreteType{RequestInfo{}, requestTypeInfo},
 	wire.ConcreteType{RequestAppendTx{}, requestTypeAppendTx},
 	wire.ConcreteType{RequestGetHash{}, requestTypeGetHash},
 	wire.ConcreteType{RequestCommit{}, requestTypeCommit},
@@ -91,11 +100,14 @@ var _ = wire.RegisterInterface(
 //----------------------------------------
 
 type ResponseEcho struct {
-	RetCode
 	Message string
 }
 
 type ResponseFlush struct {
+}
+
+type ResponseInfo struct {
+	Data []string
 }
 
 type ResponseAppendTx struct {
@@ -141,6 +153,7 @@ type Response interface {
 
 func (_ ResponseEcho) AssertResponseType()          {}
 func (_ ResponseFlush) AssertResponseType()         {}
+func (_ ResponseInfo) AssertResponseType()          {}
 func (_ ResponseAppendTx) AssertResponseType()      {}
 func (_ ResponseGetHash) AssertResponseType()       {}
 func (_ ResponseCommit) AssertResponseType()        {}
@@ -155,6 +168,7 @@ var _ = wire.RegisterInterface(
 	struct{ Response }{},
 	wire.ConcreteType{ResponseEcho{}, responseTypeEcho},
 	wire.ConcreteType{ResponseFlush{}, responseTypeFlush},
+	wire.ConcreteType{ResponseInfo{}, responseTypeInfo},
 	wire.ConcreteType{ResponseAppendTx{}, responseTypeAppendTx},
 	wire.ConcreteType{ResponseGetHash{}, responseTypeGetHash},
 	wire.ConcreteType{ResponseCommit{}, responseTypeCommit},

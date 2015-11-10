@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"net"
-	"reflect"
 	"strings"
 
 	. "github.com/tendermint/go-common"
@@ -58,18 +57,12 @@ func handleRequests(app types.Application, connClosed chan struct{}, conn net.Co
 		var err error
 		var req types.Request
 		wire.ReadBinaryPtr(&req, bufReader, &n, &err)
-
 		if err != nil {
 			fmt.Println(err.Error())
 			connClosed <- struct{}{}
 			return
 		}
-
 		count++
-		if count%1000 == 0 {
-			fmt.Println("Received request", reflect.TypeOf(req), req, n, err, count)
-		}
-
 		handleRequest(app, req, responses)
 	}
 }
@@ -77,8 +70,8 @@ func handleRequests(app types.Application, connClosed chan struct{}, conn net.Co
 func handleRequest(app types.Application, req types.Request, responses chan<- types.Response) {
 	switch req := req.(type) {
 	case types.RequestEcho:
-		retCode, msg := app.Echo(req.Message)
-		responses <- types.ResponseEcho{retCode, msg}
+		msg := app.Echo(req.Message)
+		responses <- types.ResponseEcho{msg}
 	case types.RequestFlush:
 		responses <- types.ResponseFlush{}
 	case types.RequestAppendTx:
@@ -131,7 +124,6 @@ func handleResponses(connClosed chan struct{}, responses <-chan types.Response, 
 			connClosed <- struct{}{}
 			return
 		}
-
 		if _, ok := res.(types.ResponseFlush); ok {
 			err = bufWriter.Flush()
 			if err != nil {
@@ -140,10 +132,6 @@ func handleResponses(connClosed chan struct{}, responses <-chan types.Response, 
 				return
 			}
 		}
-
 		count++
-		if count%1000 == 0 {
-			fmt.Println("Sent response", reflect.TypeOf(res), res, n, err, count)
-		}
 	}
 }
