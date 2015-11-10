@@ -27,10 +27,10 @@ func TestStream(t *testing.T) {
 	// Read response data
 	go func() {
 		for {
-			var n int64
+			var n int
 			var err error
 			var res types.Response
-			wire.ReadBinaryPtr(&res, conn, &n, &err)
+			wire.ReadBinaryPtr(&res, conn, 0, &n, &err)
 			if err != nil {
 				Exit(err.Error())
 			}
@@ -40,7 +40,7 @@ func TestStream(t *testing.T) {
 
 	// Write requests
 	for {
-		var n int64
+		var n int
 		var err error
 		var req types.Request = types.RequestAppendTx{TxBytes: []byte("test")}
 		wire.WriteBinary(req, conn, &n, &err)

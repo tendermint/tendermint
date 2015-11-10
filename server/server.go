@@ -53,10 +53,10 @@ func handleRequests(app types.Application, connClosed chan struct{}, conn net.Co
 	var count int
 	var bufReader = bufio.NewReader(conn)
 	for {
-		var n int64
+		var n int
 		var err error
 		var req types.Request
-		wire.ReadBinaryPtr(&req, bufReader, &n, &err)
+		wire.ReadBinaryPtr(&req, bufReader, 0, &n, &err)
 		if err != nil {
 			fmt.Println("Error in handleRequests:", err.Error())
 			connClosed <- struct{}{}
@@ -119,7 +119,7 @@ func handleResponses(connClosed chan struct{}, responses <-chan types.Response, 
 	var bufWriter = bufio.NewWriter(conn)
 	for {
 		var res = <-responses
-		var n int64
+		var n int
 		var err error
 		wire.WriteBinary(res, bufWriter, &n, &err)
 		if err != nil {

@@ -115,13 +115,13 @@ func cmdRollback(c *cli.Context) {
 //--------------------------------------------------------------------------------
 
 func write(conn net.Conn, req types.Request) (types.Response, error) {
-	var n int64
+	var n int
 	var err error
 	wire.WriteBinary(req, conn, &n, &err)
 	if err != nil {
 		return nil, err
 	}
 	var res types.Response
-	wire.ReadBinaryPtr(&res, conn, &n, &err)
+	wire.ReadBinaryPtr(&res, conn, 0, &n, &err)
 	return res, err
 }
