@@ -1,4 +1,3 @@
-
 package blockchain
 
 import (
@@ -7,9 +6,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/tendermint/go-wire"
 	. "github.com/tendermint/go-common"
 	dbm "github.com/tendermint/go-db"
+	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -54,13 +53,13 @@ func (bs *BlockStore) GetReader(key []byte) io.Reader {
 }
 
 func (bs *BlockStore) LoadBlock(height int) *types.Block {
-	var n int64
+	var n int
 	var err error
 	r := bs.GetReader(calcBlockMetaKey(height))
 	if r == nil {
 		return nil
 	}
-	meta := wire.ReadBinary(&types.BlockMeta{}, r, &n, &err).(*types.BlockMeta)
+	meta := wire.ReadBinary(&types.BlockMeta{}, r, 0, &n, &err).(*types.BlockMeta)
 	if err != nil {
 		PanicCrisis(Fmt("Error reading block meta: %v", err))
 	}
@@ -69,7 +68,7 @@ func (bs *BlockStore) LoadBlock(height int) *types.Block {
 		part := bs.LoadBlockPart(height, i)
 		bytez = append(bytez, part.Bytes...)
 	}
-	block := wire.ReadBinary(&types.Block{}, bytes.NewReader(bytez), &n, &err).(*types.Block)
+	block := wire.ReadBinary(&types.Block{}, bytes.NewReader(bytez), 0, &n, &err).(*types.Block)
 	if err != nil {
 		PanicCrisis(Fmt("Error reading block: %v", err))
 	}
@@ -77,13 +76,13 @@ func (bs *BlockStore) LoadBlock(height int) *types.Block {
 }
 
 func (bs *BlockStore) LoadBlockPart(height int, index int) *types.Part {
-	var n int64
+	var n int
 	var err error
 	r := bs.GetReader(calcBlockPartKey(height, index))
 	if r == nil {
 		return nil
 	}
-	part := wire.ReadBinary(&types.Part{}, r, &n, &err).(*types.Part)
+	part := wire.ReadBinary(&types.Part{}, r, 0, &n, &err).(*types.Part)
 	if err != nil {
 		PanicCrisis(Fmt("Error reading block part: %v", err))
 	}
@@ -91,13 +90,13 @@ func (bs *BlockStore) LoadBlockPart(height int, index int) *types.Part {
 }
 
 func (bs *BlockStore) LoadBlockMeta(height int) *types.BlockMeta {
-	var n int64
+	var n int
 	var err error
 	r := bs.GetReader(calcBlockMetaKey(height))
 	if r == nil {
 		return nil
 	}
-	meta := wire.ReadBinary(&types.BlockMeta{}, r, &n, &err).(*types.BlockMeta)
+	meta := wire.ReadBinary(&types.BlockMeta{}, r, 0, &n, &err).(*types.BlockMeta)
 	if err != nil {
 		PanicCrisis(Fmt("Error reading block meta: %v", err))
 	}
@@ -107,13 +106,13 @@ func (bs *BlockStore) LoadBlockMeta(height int) *types.BlockMeta {
 // The +2/3 and other Precommit-votes for block at `height`.
 // This Validation comes from block.LastValidation for `height+1`.
 func (bs *BlockStore) LoadBlockValidation(height int) *types.Validation {
-	var n int64
+	var n int
 	var err error
 	r := bs.GetReader(calcBlockValidationKey(height))
 	if r == nil {
 		return nil
 	}
-	validation := wire.ReadBinary(&types.Validation{}, r, &n, &err).(*types.Validation)
+	validation := wire.ReadBinary(&types.Validation{}, r, 0, &n, &err).(*types.Validation)
 	if err != nil {
 		PanicCrisis(Fmt("Error reading validation: %v", err))
 	}
@@ -122,13 +121,13 @@ func (bs *BlockStore) LoadBlockValidation(height int) *types.Validation {
 
 // NOTE: the Precommit-vote heights are for the block at `height`
 func (bs *BlockStore) LoadSeenValidation(height int) *types.Validation {
-	var n int64
+	var n int
 	var err error
 	r := bs.GetReader(calcSeenValidationKey(height))
 	if r == nil {
 		return nil
 	}
-	validation := wire.ReadBinary(&types.Validation{}, r, &n, &err).(*types.Validation)
+	validation := wire.ReadBinary(&types.Validation{}, r, 0, &n, &err).(*types.Validation)
 	if err != nil {
 		PanicCrisis(Fmt("Error reading validation: %v", err))
 	}

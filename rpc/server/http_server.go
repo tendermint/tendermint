@@ -10,10 +10,10 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/tendermint/tendermint/alert"
 	. "github.com/tendermint/go-common"
-	. "github.com/tendermint/tendermint/rpc/types"
 	"github.com/tendermint/go-wire"
+	"github.com/tendermint/tendermint/alert"
+	. "github.com/tendermint/tendermint/rpc/types"
 )
 
 func StartHTTPServer(listenAddr string, handler http.Handler) (net.Listener, error) {
@@ -33,7 +33,7 @@ func StartHTTPServer(listenAddr string, handler http.Handler) (net.Listener, err
 }
 
 func WriteRPCResponse(w http.ResponseWriter, res RPCResponse) {
-	buf, n, err := new(bytes.Buffer), int64(0), error(nil)
+	buf, n, err := new(bytes.Buffer), int(0), error(nil)
 	wire.WriteJSON(res, buf, &n, &err)
 	if err != nil {
 		log.Error("Failed to write RPC response", "error", err, "res", res)

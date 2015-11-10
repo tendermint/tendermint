@@ -1,4 +1,3 @@
-
 package rpcserver
 
 import (
@@ -14,11 +13,11 @@ import (
 
 	"github.com/gorilla/websocket"
 	. "github.com/tendermint/go-common"
+	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/events"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	. "github.com/tendermint/tendermint/rpc/types"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/go-wire"
 )
 
 func RegisterRPCFuncs(mux *http.ServeMux, funcMap map[string]*RPCFunc) {
@@ -394,7 +393,7 @@ func (wsc *WSConnection) readRoutine() {
 // receives on a write channel and writes out on the socket
 func (wsc *WSConnection) writeRoutine() {
 	defer wsc.baseConn.Close()
-	var n, err = int64(0), error(nil)
+	var n, err = int(0), error(nil)
 	for {
 		select {
 		case <-wsc.Quit:

@@ -37,7 +37,7 @@ func (p *Proposal) String() string {
 		p.BlockPartsHeader, p.POLRound, p.Signature)
 }
 
-func (p *Proposal) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
+func (p *Proposal) WriteSignBytes(chainID string, w io.Writer, n *int, err *error) {
 	wire.WriteTo([]byte(Fmt(`{"chain_id":"%s"`, chainID)), w, n, err)
 	wire.WriteTo([]byte(`,"proposal":{"block_parts_header":`), w, n, err)
 	p.BlockPartsHeader.WriteSignBytes(w, n, err)

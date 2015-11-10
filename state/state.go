@@ -39,14 +39,14 @@ func LoadState(db dbm.DB) *State {
 	if len(buf) == 0 {
 		return nil
 	} else {
-		r, n, err := bytes.NewReader(buf), new(int64), new(error)
-		s.ChainID = wire.ReadString(r, n, err)
+		r, n, err := bytes.NewReader(buf), new(int), new(error)
+		s.ChainID = wire.ReadString(r, 0, n, err)
 		s.LastBlockHeight = wire.ReadVarint(r, n, err)
-		s.LastBlockHash = wire.ReadByteSlice(r, n, err)
-		s.LastBlockParts = wire.ReadBinary(types.PartSetHeader{}, r, n, err).(types.PartSetHeader)
+		s.LastBlockHash = wire.ReadByteSlice(r, 0, n, err)
+		s.LastBlockParts = wire.ReadBinary(types.PartSetHeader{}, r, 0, n, err).(types.PartSetHeader)
 		s.LastBlockTime = wire.ReadTime(r, n, err)
-		s.Validators = wire.ReadBinary(&types.ValidatorSet{}, r, n, err).(*types.ValidatorSet)
-		s.LastValidators = wire.ReadBinary(&types.ValidatorSet{}, r, n, err).(*types.ValidatorSet)
+		s.Validators = wire.ReadBinary(&types.ValidatorSet{}, r, 0, n, err).(*types.ValidatorSet)
+		s.LastValidators = wire.ReadBinary(&types.ValidatorSet{}, r, 0, n, err).(*types.ValidatorSet)
 		if *err != nil {
 			// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 			Exit(Fmt("Data has been corrupted or its spec has changed: %v\n", *err))
@@ -57,7 +57,7 @@ func LoadState(db dbm.DB) *State {
 }
 
 func (s *State) Save() {
-	buf, n, err := new(bytes.Buffer), new(int64), new(error)
+	buf, n, err := new(bytes.Buffer), new(int), new(error)
 	wire.WriteString(s.ChainID, buf, n, err)
 	wire.WriteVarint(s.LastBlockHeight, buf, n, err)
 	wire.WriteByteSlice(s.LastBlockHash, buf, n, err)

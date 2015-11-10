@@ -56,7 +56,7 @@ func NewNode() *Node {
 		genDoc, state = sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
 		state.Save()
 		// write the gendoc to db
-		buf, n, err := new(bytes.Buffer), new(int64), new(error)
+		buf, n, err := new(bytes.Buffer), new(int), new(error)
 		wire.WriteJSON(genDoc, buf, n, err)
 		stateDB.Set(types.GenDocKey, buf.Bytes())
 		if *err != nil {

@@ -1,4 +1,3 @@
-
 package consensus
 
 import (
@@ -9,13 +8,13 @@ import (
 	"sync"
 	"time"
 
-	bc "github.com/tendermint/tendermint/blockchain"
 	. "github.com/tendermint/go-common"
-	"github.com/tendermint/tendermint/events"
 	"github.com/tendermint/go-p2p"
+	"github.com/tendermint/go-wire"
+	bc "github.com/tendermint/tendermint/blockchain"
+	"github.com/tendermint/tendermint/events"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/go-wire"
 )
 
 const (
@@ -24,6 +23,7 @@ const (
 	VoteChannel  = byte(0x22)
 
 	peerGossipSleepDuration = 100 * time.Millisecond // Time to sleep if there's nothing to send.
+	maxConsensusMessageSize = 1048576                // 1MB; NOTE: keep in sync with types.PartSet sizes.
 )
 
 //-----------------------------------------------------------------------------
@@ -914,9 +914,9 @@ var _ = wire.RegisterInterface(
 // TODO: check for unnecessary extra bytes at the end.
 func DecodeMessage(bz []byte) (msgType byte, msg ConsensusMessage, err error) {
 	msgType = bz[0]
-	n := new(int64)
+	n := new(int)
 	r := bytes.NewReader(bz)
-	msg = wire.ReadBinary(struct{ ConsensusMessage }{}, r, n, &err).(struct{ ConsensusMessage }).ConsensusMessage
+	msg = wire.ReadBinary(struct{ ConsensusMessage }{}, r, maxConsensusMessageSize, n, &err).(struct{ ConsensusMessage }).ConsensusMessage
 	return
 }
 

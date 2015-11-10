@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/tendermint/go-crypto"
 	. "github.com/tendermint/go-common"
+	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-wire"
 )
 
@@ -28,11 +28,11 @@ func (err *ErrVoteConflictingSignature) Error() string {
 
 // Represents a prevote, precommit, or commit vote from validators for consensus.
 type Vote struct {
-	Height           int                  `json:"height"`
-	Round            int                  `json:"round"`
-	Type             byte                 `json:"type"`
-	BlockHash        []byte               `json:"block_hash"`         // empty if vote is nil.
-	BlockPartsHeader PartSetHeader        `json:"block_parts_header"` // zero if vote is nil.
+	Height           int                     `json:"height"`
+	Round            int                     `json:"round"`
+	Type             byte                    `json:"type"`
+	BlockHash        []byte                  `json:"block_hash"`         // empty if vote is nil.
+	BlockPartsHeader PartSetHeader           `json:"block_parts_header"` // zero if vote is nil.
 	Signature        crypto.SignatureEd25519 `json:"signature"`
 }
 
@@ -42,7 +42,7 @@ const (
 	VoteTypePrecommit = byte(0x02)
 )
 
-func (vote *Vote) WriteSignBytes(chainID string, w io.Writer, n *int64, err *error) {
+func (vote *Vote) WriteSignBytes(chainID string, w io.Writer, n *int, err *error) {
 	wire.WriteTo([]byte(Fmt(`{"chain_id":"%s"`, chainID)), w, n, err)
 	wire.WriteTo([]byte(Fmt(`,"vote":{"block_hash":"%X","block_parts_header":%v`, vote.BlockHash, vote.BlockPartsHeader)), w, n, err)
 	wire.WriteTo([]byte(Fmt(`,"height":%v,"round":%v,"type":%v}}`, vote.Height, vote.Round, vote.Type)), w, n, err)

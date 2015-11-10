@@ -902,9 +902,9 @@ func (cs *ConsensusState) AddProposalBlockPart(height int, part *types.Part) (ad
 	}
 	if added && cs.ProposalBlockParts.IsComplete() {
 		// Added and completed!
-		var n int64
+		var n int
 		var err error
-		cs.ProposalBlock = wire.ReadBinary(&types.Block{}, cs.ProposalBlockParts.GetReader(), &n, &err).(*types.Block)
+		cs.ProposalBlock = wire.ReadBinary(&types.Block{}, cs.ProposalBlockParts.GetReader(), types.MaxBlockSize, &n, &err).(*types.Block)
 		log.Info("Received complete proposal", "hash", cs.ProposalBlock.Hash())
 		if cs.Step == RoundStepPropose && cs.isProposalComplete() {
 			// Move onto the next step

@@ -71,12 +71,12 @@ var ValidatorCodec = validatorCodec{}
 
 type validatorCodec struct{}
 
-func (vc validatorCodec) Encode(o interface{}, w io.Writer, n *int64, err *error) {
+func (vc validatorCodec) Encode(o interface{}, w io.Writer, n *int, err *error) {
 	wire.WriteBinary(o.(*Validator), w, n, err)
 }
 
-func (vc validatorCodec) Decode(r io.Reader, n *int64, err *error) interface{} {
-	return wire.ReadBinary(&Validator{}, r, n, err)
+func (vc validatorCodec) Decode(r io.Reader, n *int, err *error) interface{} {
+	return wire.ReadBinary(&Validator{}, r, 0, n, err)
 }
 
 func (vc validatorCodec) Compare(o1 interface{}, o2 interface{}) int {

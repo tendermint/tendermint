@@ -28,6 +28,7 @@ const (
 	statusUpdateIntervalSeconds = 10
 	// check if we should switch to consensus reactor
 	switchToConsensusIntervalSeconds = 1
+	maxBlockchainResponseSize        = types.MaxBlockSize + 2
 )
 
 type consensusReactor interface {
@@ -279,10 +280,10 @@ var _ = wire.RegisterInterface(
 // TODO: ensure that bz is completely read.
 func DecodeMessage(bz []byte) (msgType byte, msg BlockchainMessage, err error) {
 	msgType = bz[0]
-	n := int64(0)
+	n := int(0)
 	r := bytes.NewReader(bz)
-	msg = wire.ReadBinary(struct{ BlockchainMessage }{}, r, &n, &err).(struct{ BlockchainMessage }).BlockchainMessage
-	if err != nil && n != int64(len(bz)) {
+	msg = wire.ReadBinary(struct{ BlockchainMessage }{}, r, maxBlockchainResponseSize, &n, &err).(struct{ BlockchainMessage }).BlockchainMessage
+	if err != nil && n != len(bz) {
 		err = errors.New("DecodeMessage() had bytes left over.")
 	}
 	return
@@ -300,6 +301,7 @@ func (m *bcBlockRequestMessage) String() string {
 
 //-------------------------------------
 
+// NOTE: keep up-to-date with maxBlockchainResponseSize
 type bcBlockResponseMessage struct {
 	Block *types.Block
 }

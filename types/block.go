@@ -12,6 +12,8 @@ import (
 	"github.com/tendermint/go-wire"
 )
 
+const MaxBlockSize = 22020096 // 21MB TODO make it configurable
+
 type Block struct {
 	*Header        `json:"header"`
 	*Data          `json:"data"`

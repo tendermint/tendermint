@@ -8,19 +8,20 @@ import (
 	"time"
 
 	. "github.com/tendermint/go-common"
-	"github.com/tendermint/tendermint/events"
 	"github.com/tendermint/go-p2p"
+	"github.com/tendermint/go-wire"
+	"github.com/tendermint/tendermint/events"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/go-wire"
 )
 
 var (
 	MempoolChannel = byte(0x30)
 
-	checkExecutedTxsMilliseconds = 1   // check for new mempool txs to send to peer
-	txsToSendPerCheck            = 64  // send up to this many txs from the mempool per check
-	newBlockChCapacity           = 100 // queue to process this many ResetInfos per peer
+	checkExecutedTxsMilliseconds = 1       // check for new mempool txs to send to peer
+	txsToSendPerCheck            = 64      // send up to this many txs from the mempool per check
+	newBlockChCapacity           = 100     // queue to process this many ResetInfos per peer
+	maxMempoolMessageSize        = 1048576 // 1MB TODO make it configurable
 )
 
 // MempoolReactor handles mempool tx broadcasting amongst peers.
@@ -228,9 +229,9 @@ var _ = wire.RegisterInterface(
 
 func DecodeMessage(bz []byte) (msgType byte, msg MempoolMessage, err error) {
 	msgType = bz[0]
-	n := new(int64)
+	n := new(int)
 	r := bytes.NewReader(bz)
-	msg = wire.ReadBinary(struct{ MempoolMessage }{}, r, n, &err).(struct{ MempoolMessage }).MempoolMessage
+	msg = wire.ReadBinary(struct{ MempoolMessage }{}, r, maxMempoolMessageSize, n, &err).(struct{ MempoolMessage }).MempoolMessage
 	return
 }
 
