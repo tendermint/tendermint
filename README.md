@@ -38,8 +38,7 @@ TMSP is an asynchronous streaming protocol: message responses are written back a
   * __Arguments__:
     * `EventsMode (int8)`:
       * `EventsModeOff (0)`: Events are not reported. Used for mempool.
-      * `EventsModeCached (1)`: Events are cached.
-      * `EventsModeOn (2)`: Flush cache and report events.
+      * `EventsModeOn (1)`: Report events that are listened on.
   * __Returns__:
     * `RetCode (int8)`
   * __Usage__:<br/>
@@ -60,4 +59,14 @@ TMSP is an asynchronous streaming protocol: message responses are written back a
     * `RetCode (int8)`
   * __Usage__:<br/>
     Remove event listener callback for events with given key.
+
+#### Flush
+  * __Usage__:<br/>
+    Flush the response queue.  Applications that implement `types.Application` need not implement this message -- it's handled by the project.
+
+#### Info
+  * __Returns__:
+    * `Data ([]string)`
+  * __Usage__:<br/>
+    Return an array of strings about the application state.  Application specific.
 

@@ -51,9 +51,9 @@ func (dapp *DummyApplication) Info() []string {
 	return []string{Fmt("size:%v", dapp.state.Size())}
 }
 
-func (dapp *DummyApplication) AppendTx(tx []byte) types.RetCode {
+func (dapp *DummyApplication) AppendTx(tx []byte) ([]types.Event, types.RetCode) {
 	dapp.state.Set(tx, tx)
-	return 0
+	return nil, 0
 }
 
 func (dapp *DummyApplication) GetHash() ([]byte, types.RetCode) {
@@ -81,8 +81,4 @@ func (dapp *DummyApplication) AddListener(key string) types.RetCode {
 
 func (dapp *DummyApplication) RemListener(key string) types.RetCode {
 	return 0
-}
-
-func (dapp *DummyApplication) GetEvents() []types.Event {
-	return nil
 }

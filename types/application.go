@@ -9,7 +9,7 @@ type Application interface {
 	Info() []string
 
 	// Append a tx, which may or may not get committed
-	AppendTx(tx []byte) RetCode
+	AppendTx(tx []byte) ([]Event, RetCode)
 
 	// Return the application Merkle root hash
 	GetHash() ([]byte, RetCode)
@@ -28,7 +28,4 @@ type Application interface {
 
 	// Remove event listener
 	RemListener(key string) RetCode
-
-	// Get all events
-	GetEvents() []Event
 }

@@ -78,9 +78,8 @@ func handleRequest(app types.Application, req types.Request, responses chan<- ty
 		data := app.Info()
 		responses <- types.ResponseInfo{data}
 	case types.RequestAppendTx:
-		retCode := app.AppendTx(req.TxBytes)
+		events, retCode := app.AppendTx(req.TxBytes)
 		responses <- types.ResponseAppendTx{retCode}
-		events := app.GetEvents()
 		for _, event := range events {
 			responses <- types.ResponseEvent{event}
 		}
@@ -96,12 +95,6 @@ func handleRequest(app types.Application, req types.Request, responses chan<- ty
 	case types.RequestSetEventsMode:
 		retCode := app.SetEventsMode(req.EventsMode)
 		responses <- types.ResponseSetEventsMode{retCode}
-		if req.EventsMode == types.EventsModeOn {
-			events := app.GetEvents()
-			for _, event := range events {
-				responses <- types.ResponseEvent{event}
-			}
-		}
 	case types.RequestAddListener:
 		retCode := app.AddListener(req.EventKey)
 		responses <- types.ResponseAddListener{retCode}
