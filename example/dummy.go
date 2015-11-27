@@ -1,29 +1,11 @@
-package main
+package example
 
 import (
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-merkle"
 	"github.com/tendermint/go-wire"
-	"github.com/tendermint/tmsp/server"
 	"github.com/tendermint/tmsp/types"
 )
-
-func main() {
-
-	// Start the listener
-	_, err := server.StartListener("tcp://127.0.0.1:8080", NewDummyApplication())
-	if err != nil {
-		Exit(err.Error())
-	}
-
-	// Wait forever
-	TrapSignal(func() {
-		// Cleanup
-	})
-
-}
-
-//--------------------------------------------------------------------------------
 
 type DummyApplication struct {
 	state           merkle.Tree

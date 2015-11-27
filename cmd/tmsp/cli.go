@@ -121,6 +121,13 @@ func write(conn net.Conn, req types.Request) (types.Response, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// flush!
+	wire.WriteBinary(types.RequestFlush{}, conn, &n, &err)
+	if err != nil {
+		return nil, err
+	}
+
 	var res types.Response
 	wire.ReadBinaryPtr(&res, conn, 0, &n, &err)
 	return res, err
