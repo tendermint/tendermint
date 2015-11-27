@@ -34,16 +34,6 @@ TMSP is an asynchronous streaming protocol: message responses are written back a
   * __Usage__:<br/>
     Roll back to the last commit
 
-#### SetEventsMode
-  * __Arguments__:
-    * `EventsMode (int8)`:
-      * `EventsModeOff (0)`: Events are not reported. Used for mempool.
-      * `EventsModeOn (1)`: Report events that are listened on.
-  * __Returns__:
-    * `RetCode (int8)`
-  * __Usage__:<br/>
-    Set event reporting mode for future transactions
-
 #### AddListener
   * __Arguments__:
     * `EventKey (string)`
@@ -69,4 +59,14 @@ TMSP is an asynchronous streaming protocol: message responses are written back a
     * `Data ([]string)`
   * __Usage__:<br/>
     Return an array of strings about the application state.  Application specific.
+
+#### SetOption
+  * __Arguments__:
+    * `Key (string)`
+    * `Value (string)`
+  * __Returns__:
+    * `RetCode (int8)`
+  * __Usage__:<br/>
+    Set application options.  E.g. Key="mode", Value="mempool" for a mempool connection, or Key="mode", Value="consensus" for a consensus connection.
+    Other options are application specific.
 

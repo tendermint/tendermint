@@ -51,6 +51,10 @@ func (dapp *DummyApplication) Info() []string {
 	return []string{Fmt("size:%v", dapp.state.Size())}
 }
 
+func (dapp *DummyApplication) SetOption(key string, value string) types.RetCode {
+	return 0
+}
+
 func (dapp *DummyApplication) AppendTx(tx []byte) ([]types.Event, types.RetCode) {
 	dapp.state.Set(tx, tx)
 	return nil, 0
@@ -68,10 +72,6 @@ func (dapp *DummyApplication) Commit() types.RetCode {
 
 func (dapp *DummyApplication) Rollback() types.RetCode {
 	dapp.state = dapp.lastCommitState.Copy()
-	return 0
-}
-
-func (dapp *DummyApplication) SetEventsMode(mode types.EventsMode) types.RetCode {
 	return 0
 }
 

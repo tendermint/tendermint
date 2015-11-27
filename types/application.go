@@ -8,6 +8,9 @@ type Application interface {
 	// Return application info
 	Info() []string
 
+	// Set application option (e.g. mode=mempool, mode=consensus)
+	SetOption(key string, value string) RetCode
+
 	// Append a tx, which may or may not get committed
 	AppendTx(tx []byte) ([]Event, RetCode)
 
@@ -19,9 +22,6 @@ type Application interface {
 
 	// Rollback to the latest commit
 	Rollback() RetCode
-
-	// Set events reporting mode
-	SetEventsMode(mode EventsMode) RetCode
 
 	// Add event listener
 	AddListener(key string) RetCode

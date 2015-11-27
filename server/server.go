@@ -77,6 +77,9 @@ func handleRequest(app types.Application, req types.Request, responses chan<- ty
 	case types.RequestInfo:
 		data := app.Info()
 		responses <- types.ResponseInfo{data}
+	case types.RequestSetOption:
+		retCode := app.SetOption(req.Key, req.Value)
+		responses <- types.ResponseSetOption{retCode}
 	case types.RequestAppendTx:
 		events, retCode := app.AppendTx(req.TxBytes)
 		responses <- types.ResponseAppendTx{retCode}
@@ -92,9 +95,6 @@ func handleRequest(app types.Application, req types.Request, responses chan<- ty
 	case types.RequestRollback:
 		retCode := app.Rollback()
 		responses <- types.ResponseRollback{retCode}
-	case types.RequestSetEventsMode:
-		retCode := app.SetEventsMode(req.EventsMode)
-		responses <- types.ResponseSetEventsMode{retCode}
 	case types.RequestAddListener:
 		retCode := app.AddListener(req.EventKey)
 		responses <- types.ResponseAddListener{retCode}
