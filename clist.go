@@ -5,6 +5,8 @@ The purpose of CList is to provide a goroutine-safe linked-list.
 This list can be traversed concurrently by any number of goroutines.
 However, removed CElements cannot be added back.
 NOTE: Not all methods of container/list are (yet) implemented.
+NOTE: Removed elements need to NukePrev or NukeNext consistently
+to ensure garbage collection of removed elements.
 */
 
 import (
@@ -74,31 +76,53 @@ func (e *CElement) Removed() bool {
 	return atomic.LoadUint32(&(e.removed)) > 0
 }
 
+func (e *CElement) DetachNext() {
+	e.setNextAtomic(nil)
+	e.nextWg.Done()
+}
+
+func (e *CElement) DetachPrev() {
+	e.setPrevAtomic(nil)
+	e.prevWg.Done()
+}
+
 func (e *CElement) setNextAtomic(next *CElement) {
-	oldNext := (*CElement)(atomic.LoadPointer(&e.next))
-	if next == nil && oldNext != nil {
-		e.nextWg.Add(1) // NOTE: There is still a race condition for waiters, so we for-loop.
-	}
-	atomic.StorePointer(&(e.next), unsafe.Pointer(next))
-	if next != nil && oldNext == nil {
-		e.nextWg.Done()
+	for {
+		oldNext := atomic.LoadPointer(&e.next)
+		if !atomic.CompareAndSwapPointer(&(e.next), oldNext, unsafe.Pointer(next)) {
+			continue
+		}
+		if next == nil && oldNext != nil { // We for-loop in NextWait() so race is ok
+			e.nextWg.Add(1)
+		}
+		if next != nil && oldNext == nil {
+			e.nextWg.Done()
+		}
+		return
 	}
 }
 
 func (e *CElement) setPrevAtomic(prev *CElement) {
-	oldPrev := (*CElement)(atomic.LoadPointer(&e.prev))
-	if prev == nil && oldPrev != nil {
-		e.prevWg.Add(1) // NOTE: There is still a race condition for waiters, so we for-loop.
-	}
-	atomic.StorePointer(&(e.prev), unsafe.Pointer(prev))
-	if prev != nil && oldPrev == nil {
-		e.prevWg.Done()
+	for {
+		oldPrev := atomic.LoadPointer(&e.prev)
+		if !atomic.CompareAndSwapPointer(&(e.prev), oldPrev, unsafe.Pointer(prev)) {
+			continue
+		}
+		if prev == nil && oldPrev != nil { // We for-loop in PrevWait() so race is ok
+			e.prevWg.Add(1)
+		}
+		if prev != nil && oldPrev == nil {
+			e.prevWg.Done()
+		}
+		return
 	}
 }
 
 func (e *CElement) setRemovedAtomic() {
 	atomic.StoreUint32(&(e.removed), 1)
 }
+
+//--------------------------------------------------------------------------------
 
 // CList represents a linked list.
 // The zero value for CList is an empty list ready to use.
@@ -201,6 +225,7 @@ func (l *CList) PushBack(v interface{}) *CElement {
 	return e
 }
 
+// CONTRACT: Caller must call e.DetachPrev() and/or e.DetachNext() to avoid memory leaks.
 // NOTE: As per the contract of CList, removed elements cannot be added back.
 func (l *CList) Remove(e *CElement) interface{} {
 	l.mtx.Lock()
