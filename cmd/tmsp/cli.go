@@ -66,7 +66,7 @@ func cmdAppendTx(c *cli.Context) {
 	if err != nil {
 		Exit(err.Error())
 	}
-	res, err := write(conn, types.RequestAppendTx{[]byte(args[0])})
+	res, err := makeRequest(conn, types.RequestAppendTx{[]byte(args[0])})
 	if err != nil {
 		Exit(err.Error())
 	}
@@ -79,7 +79,7 @@ func cmdGetHash(c *cli.Context) {
 	if err != nil {
 		Exit(err.Error())
 	}
-	res, err := write(conn, types.RequestGetHash{})
+	res, err := makeRequest(conn, types.RequestGetHash{})
 	if err != nil {
 		Exit(err.Error())
 	}
@@ -92,7 +92,7 @@ func cmdCommit(c *cli.Context) {
 	if err != nil {
 		Exit(err.Error())
 	}
-	_, err = write(conn, types.RequestCommit{})
+	_, err = makeRequest(conn, types.RequestCommit{})
 	if err != nil {
 		Exit(err.Error())
 	}
@@ -105,7 +105,7 @@ func cmdRollback(c *cli.Context) {
 	if err != nil {
 		Exit(err.Error())
 	}
-	_, err = write(conn, types.RequestRollback{})
+	_, err = makeRequest(conn, types.RequestRollback{})
 	if err != nil {
 		Exit(err.Error())
 	}
@@ -114,21 +114,35 @@ func cmdRollback(c *cli.Context) {
 
 //--------------------------------------------------------------------------------
 
-func write(conn net.Conn, req types.Request) (types.Response, error) {
+func makeRequest(conn net.Conn, req types.Request) (types.Response, error) {
 	var n int
 	var err error
+
+	// Write desired request
 	wire.WriteBinary(req, conn, &n, &err)
 	if err != nil {
 		return nil, err
 	}
 
-	// flush!
+	// Write flush request
 	wire.WriteBinary(types.RequestFlush{}, conn, &n, &err)
 	if err != nil {
 		return nil, err
 	}
 
+	// Read desired response
 	var res types.Response
 	wire.ReadBinaryPtr(&res, conn, 0, &n, &err)
-	return res, err
+	if err != nil {
+		return nil, err
+	}
+
+	// Read flush response
+	var resFlush types.ResponseFlush
+	wire.ReadBinaryPtr(&resFlush, conn, 0, &n, &err)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
 }

@@ -1,6 +1,8 @@
 package example
 
 import (
+	"sync"
+
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-merkle"
 	"github.com/tendermint/go-wire"
@@ -8,8 +10,8 @@ import (
 )
 
 type DummyApplication struct {
-	state           merkle.Tree
-	lastCommitState merkle.Tree
+	mtx   sync.Mutex
+	state merkle.Tree
 }
 
 func NewDummyApplication() *DummyApplication {
@@ -19,48 +21,77 @@ func NewDummyApplication() *DummyApplication {
 		0,
 		nil,
 	)
-	return &DummyApplication{
-		state:           state,
-		lastCommitState: state,
+	return &DummyApplication{state: state}
+}
+
+func (dapp *DummyApplication) Open() types.AppContext {
+	dapp.mtx.Lock()
+	defer dapp.mtx.Unlock()
+	return &DummyAppContext{
+		app:   dapp,
+		state: dapp.state.Copy(),
 	}
 }
 
-func (dapp *DummyApplication) Echo(message string) string {
+func (dapp *DummyApplication) commitState(state merkle.Tree) {
+	dapp.mtx.Lock()
+	defer dapp.mtx.Unlock()
+	dapp.state = state.Copy()
+}
+
+func (dapp *DummyApplication) getState() merkle.Tree {
+	dapp.mtx.Lock()
+	defer dapp.mtx.Unlock()
+	return dapp.state.Copy()
+}
+
+//--------------------------------------------------------------------------------
+
+type DummyAppContext struct {
+	app   *DummyApplication
+	state merkle.Tree
+}
+
+func (dac *DummyAppContext) Echo(message string) string {
 	return message
 }
 
-func (dapp *DummyApplication) Info() []string {
-	return []string{Fmt("size:%v", dapp.state.Size())}
+func (dac *DummyAppContext) Info() []string {
+	return []string{Fmt("size:%v", dac.state.Size())}
 }
 
-func (dapp *DummyApplication) SetOption(key string, value string) types.RetCode {
+func (dac *DummyAppContext) SetOption(key string, value string) types.RetCode {
 	return 0
 }
 
-func (dapp *DummyApplication) AppendTx(tx []byte) ([]types.Event, types.RetCode) {
-	dapp.state.Set(tx, tx)
+func (dac *DummyAppContext) AppendTx(tx []byte) ([]types.Event, types.RetCode) {
+	dac.state.Set(tx, tx)
 	return nil, 0
 }
 
-func (dapp *DummyApplication) GetHash() ([]byte, types.RetCode) {
-	hash := dapp.state.Hash()
+func (dac *DummyAppContext) GetHash() ([]byte, types.RetCode) {
+	hash := dac.state.Hash()
 	return hash, 0
 }
 
-func (dapp *DummyApplication) Commit() types.RetCode {
-	dapp.lastCommitState = dapp.state.Copy()
+func (dac *DummyAppContext) Commit() types.RetCode {
+	dac.app.commitState(dac.state)
 	return 0
 }
 
-func (dapp *DummyApplication) Rollback() types.RetCode {
-	dapp.state = dapp.lastCommitState.Copy()
+func (dac *DummyAppContext) Rollback() types.RetCode {
+	dac.state = dac.app.getState()
 	return 0
 }
 
-func (dapp *DummyApplication) AddListener(key string) types.RetCode {
+func (dac *DummyAppContext) AddListener(key string) types.RetCode {
 	return 0
 }
 
-func (dapp *DummyApplication) RemListener(key string) types.RetCode {
+func (dac *DummyAppContext) RemListener(key string) types.RetCode {
 	return 0
+}
+
+func (dac *DummyAppContext) Close() error {
+	return nil
 }

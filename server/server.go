@@ -11,7 +11,7 @@ import (
 	"github.com/tendermint/tmsp/types"
 )
 
-var maxNumberConnections = 2
+// var maxNumberConnections = 2
 
 func StartListener(protoAddr string, app types.Application) (net.Listener, error) {
 	parts := strings.SplitN(protoAddr, "://", 2)
@@ -23,33 +23,51 @@ func StartListener(protoAddr string, app types.Application) (net.Listener, error
 
 	// A goroutine to accept a connection.
 	go func() {
-
-		semaphore := make(chan struct{}, maxNumberConnections)
+		// semaphore := make(chan struct{}, maxNumberConnections)
 
 		for {
-			semaphore <- struct{}{}
+			// semaphore <- struct{}{}
 
 			// Accept a connection
+			fmt.Println("Waiting for new connection...")
 			conn, err := ln.Accept()
 			if err != nil {
 				Exit("Failed to accept connection")
 			} else {
 				fmt.Println("Accepted a new connection")
 			}
-			connClosed := make(chan struct{}, 2)         // Push to signal connection closed
+
+			appContext := app.Open()
+			closeConn := make(chan error, 2)             // Push to signal connection closed
 			responses := make(chan types.Response, 1000) // A channel to buffer responses
 
 			// Read requests from conn and deal with them
-			go handleRequests(app, connClosed, conn, responses)
+			go handleRequests(appContext, closeConn, conn, responses)
 			// Pull responses from 'responses' and write them to conn.
-			go handleResponses(connClosed, responses, conn)
+			go handleResponses(closeConn, responses, conn)
 
 			go func() {
-				// Wait until connection is closed
-				<-connClosed
-				fmt.Println("Connection was closed. Waiting for new connection...")
+				// Wait until signal to close connection
+				errClose := <-closeConn
+				if errClose != nil {
+					fmt.Printf("Connection error: %v\n", errClose)
+				} else {
+					fmt.Println("Connection was closed.")
+				}
 
-				<-semaphore
+				// Close the connection
+				err := conn.Close()
+				if err != nil {
+					fmt.Printf("Error in closing connection: %v\n", err)
+				}
+
+				// Close the AppContext
+				err = appContext.Close()
+				if err != nil {
+					fmt.Printf("Error in closing app context: %v\n", err)
+				}
+
+				// <-semaphore
 			}()
 		}
 
@@ -59,7 +77,7 @@ func StartListener(protoAddr string, app types.Application) (net.Listener, error
 }
 
 // Read requests from conn and deal with them
-func handleRequests(app types.Application, connClosed chan struct{}, conn net.Conn, responses chan<- types.Response) {
+func handleRequests(appC types.AppContext, closeConn chan error, conn net.Conn, responses chan<- types.Response) {
 	var count int
 	var bufReader = bufio.NewReader(conn)
 	for {
@@ -68,48 +86,47 @@ func handleRequests(app types.Application, connClosed chan struct{}, conn net.Co
 		var req types.Request
 		wire.ReadBinaryPtr(&req, bufReader, 0, &n, &err)
 		if err != nil {
-			fmt.Println("Error in handleRequests:", err.Error())
-			connClosed <- struct{}{}
+			closeConn <- fmt.Errorf("Error in handleRequests: %v", err.Error())
 			return
 		}
 		count++
-		handleRequest(app, req, responses)
+		handleRequest(appC, req, responses)
 	}
 }
 
-func handleRequest(app types.Application, req types.Request, responses chan<- types.Response) {
+func handleRequest(appC types.AppContext, req types.Request, responses chan<- types.Response) {
 	switch req := req.(type) {
 	case types.RequestEcho:
-		msg := app.Echo(req.Message)
+		msg := appC.Echo(req.Message)
 		responses <- types.ResponseEcho{msg}
 	case types.RequestFlush:
 		responses <- types.ResponseFlush{}
 	case types.RequestInfo:
-		data := app.Info()
+		data := appC.Info()
 		responses <- types.ResponseInfo{data}
 	case types.RequestSetOption:
-		retCode := app.SetOption(req.Key, req.Value)
+		retCode := appC.SetOption(req.Key, req.Value)
 		responses <- types.ResponseSetOption{retCode}
 	case types.RequestAppendTx:
-		events, retCode := app.AppendTx(req.TxBytes)
+		events, retCode := appC.AppendTx(req.TxBytes)
 		responses <- types.ResponseAppendTx{retCode}
 		for _, event := range events {
 			responses <- types.ResponseEvent{event}
 		}
 	case types.RequestGetHash:
-		hash, retCode := app.GetHash()
+		hash, retCode := appC.GetHash()
 		responses <- types.ResponseGetHash{retCode, hash}
 	case types.RequestCommit:
-		retCode := app.Commit()
+		retCode := appC.Commit()
 		responses <- types.ResponseCommit{retCode}
 	case types.RequestRollback:
-		retCode := app.Rollback()
+		retCode := appC.Rollback()
 		responses <- types.ResponseRollback{retCode}
 	case types.RequestAddListener:
-		retCode := app.AddListener(req.EventKey)
+		retCode := appC.AddListener(req.EventKey)
 		responses <- types.ResponseAddListener{retCode}
 	case types.RequestRemListener:
-		retCode := app.RemListener(req.EventKey)
+		retCode := appC.RemListener(req.EventKey)
 		responses <- types.ResponseRemListener{retCode}
 	default:
 		responses <- types.ResponseException{"Unknown request"}
@@ -117,7 +134,7 @@ func handleRequest(app types.Application, req types.Request, responses chan<- ty
 }
 
 // Pull responses from 'responses' and write them to conn.
-func handleResponses(connClosed chan struct{}, responses <-chan types.Response, conn net.Conn) {
+func handleResponses(closeConn chan error, responses <-chan types.Response, conn net.Conn) {
 	var count int
 	var bufWriter = bufio.NewWriter(conn)
 	for {
@@ -126,15 +143,13 @@ func handleResponses(connClosed chan struct{}, responses <-chan types.Response, 
 		var err error
 		wire.WriteBinary(res, bufWriter, &n, &err)
 		if err != nil {
-			fmt.Println(err.Error())
-			connClosed <- struct{}{}
+			closeConn <- fmt.Errorf("Error in handleResponses: %v", err.Error())
 			return
 		}
 		if _, ok := res.(types.ResponseFlush); ok {
 			err = bufWriter.Flush()
 			if err != nil {
-				fmt.Println(err.Error())
-				connClosed <- struct{}{}
+				closeConn <- fmt.Errorf("Error in handleResponses: %v", err.Error())
 				return
 			}
 		}

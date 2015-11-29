@@ -2,6 +2,12 @@ package types
 
 type Application interface {
 
+	// For new socket connections
+	Open() AppContext
+}
+
+type AppContext interface {
+
 	// Echo a message
 	Echo(message string) string
 
@@ -28,4 +34,7 @@ type Application interface {
 
 	// Remove event listener
 	RemListener(key string) RetCode
+
+	// Close this AppContext
+	Close() error
 }
