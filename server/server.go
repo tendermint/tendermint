@@ -11,6 +11,8 @@ import (
 	"github.com/tendermint/tmsp/types"
 )
 
+var maxNumberConnections = 2
+
 func StartListener(protoAddr string, app types.Application) (net.Listener, error) {
 	parts := strings.SplitN(protoAddr, "://", 2)
 	proto, addr := parts[0], parts[1]
@@ -22,7 +24,11 @@ func StartListener(protoAddr string, app types.Application) (net.Listener, error
 	// A goroutine to accept a connection.
 	go func() {
 
+		semaphore := make(chan struct{}, maxNumberConnections)
+
 		for {
+			semaphore <- struct{}{}
+
 			// Accept a connection
 			conn, err := ln.Accept()
 			if err != nil {
@@ -38,9 +44,13 @@ func StartListener(protoAddr string, app types.Application) (net.Listener, error
 			// Pull responses from 'responses' and write them to conn.
 			go handleResponses(connClosed, responses, conn)
 
-			// Wait until connection is closed
-			<-connClosed
-			fmt.Println("Connection was closed. Waiting for new connection...")
+			go func() {
+				// Wait until connection is closed
+				<-connClosed
+				fmt.Println("Connection was closed. Waiting for new connection...")
+
+				<-semaphore
+			}()
 		}
 
 	}()

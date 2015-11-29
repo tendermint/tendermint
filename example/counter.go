@@ -2,7 +2,6 @@ package example
 
 import (
 	"encoding/binary"
-	"fmt"
 
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/tmsp/types"
@@ -40,7 +39,6 @@ func (dapp *CounterApplication) AppendTx(tx []byte) ([]types.Event, types.RetCod
 }
 
 func (dapp *CounterApplication) GetHash() ([]byte, types.RetCode) {
-	fmt.Println("getting hash!")
 	hash := make([]byte, 32)
 	binary.PutVarint(hash, int64(dapp.hashCount))
 	dapp.hashCount += 1
