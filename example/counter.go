@@ -2,18 +2,16 @@ package example
 
 import (
 	"encoding/binary"
+	"sync"
 
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/tmsp/types"
 )
 
 type CounterApplication struct {
-	hashCount     int
-	lastHashCount int
-
+	mtx         sync.Mutex
+	hashCount   int
 	txCount     int
-	lastTxCount int
-
 	commitCount int
 }
 
@@ -21,47 +19,76 @@ func NewCounterApplication() *CounterApplication {
 	return &CounterApplication{}
 }
 
-func (dapp *CounterApplication) Echo(message string) string {
+func (app *CounterApplication) Open() types.AppContext {
+	return &CounterAppContext{
+		app:         app,
+		hashCount:   app.hashCount,
+		txCount:     app.txCount,
+		commitCount: app.commitCount,
+	}
+}
+
+//--------------------------------------------------------------------------------
+
+type CounterAppContext struct {
+	app         *CounterApplication
+	hashCount   int
+	txCount     int
+	commitCount int
+}
+
+func (appC *CounterAppContext) Echo(message string) string {
 	return message
 }
 
-func (dapp *CounterApplication) Info() []string {
-	return []string{Fmt("hash, tx, commit counts:%d, %d, %d", dapp.hashCount, dapp.txCount, dapp.commitCount)}
+func (appC *CounterAppContext) Info() []string {
+	return []string{Fmt("hash, tx, commit counts:%d, %d, %d", appC.hashCount, appC.txCount, appC.commitCount)}
 }
 
-func (dapp *CounterApplication) SetOption(key string, value string) types.RetCode {
+func (appC *CounterAppContext) SetOption(key string, value string) types.RetCode {
 	return 0
 }
 
-func (dapp *CounterApplication) AppendTx(tx []byte) ([]types.Event, types.RetCode) {
-	dapp.txCount += 1
+func (appC *CounterAppContext) AppendTx(tx []byte) ([]types.Event, types.RetCode) {
+	appC.txCount += 1
 	return nil, 0
 }
 
-func (dapp *CounterApplication) GetHash() ([]byte, types.RetCode) {
+func (appC *CounterAppContext) GetHash() ([]byte, types.RetCode) {
 	hash := make([]byte, 32)
-	binary.PutVarint(hash, int64(dapp.hashCount))
-	dapp.hashCount += 1
+	binary.PutVarint(hash, int64(appC.hashCount))
+	appC.hashCount += 1
 	return hash, 0
 }
 
-func (dapp *CounterApplication) Commit() types.RetCode {
-	dapp.lastHashCount = dapp.hashCount
-	dapp.lastTxCount = dapp.txCount
-	dapp.commitCount += 1
+func (appC *CounterAppContext) Commit() types.RetCode {
+	appC.commitCount += 1
+
+	appC.app.mtx.Lock()
+	appC.app.hashCount = appC.hashCount
+	appC.app.txCount = appC.txCount
+	appC.app.commitCount = appC.commitCount
+	appC.app.mtx.Unlock()
 	return 0
 }
 
-func (dapp *CounterApplication) Rollback() types.RetCode {
-	dapp.hashCount = dapp.lastHashCount
-	dapp.txCount = dapp.lastTxCount
+func (appC *CounterAppContext) Rollback() types.RetCode {
+	appC.app.mtx.Lock()
+	appC.hashCount = appC.app.hashCount
+	appC.txCount = appC.app.txCount
+	appC.commitCount = appC.app.commitCount
+	appC.app.mtx.Unlock()
 	return 0
 }
 
-func (dapp *CounterApplication) AddListener(key string) types.RetCode {
+func (appC *CounterAppContext) AddListener(key string) types.RetCode {
 	return 0
 }
 
-func (dapp *CounterApplication) RemListener(key string) types.RetCode {
+func (appC *CounterAppContext) RemListener(key string) types.RetCode {
 	return 0
+}
+
+func (appC *CounterAppContext) Close() error {
+	return nil
 }
