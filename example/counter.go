@@ -35,6 +35,7 @@ type CounterAppContext struct {
 	hashCount   int
 	txCount     int
 	commitCount int
+	serial      bool
 }
 
 func (appC *CounterAppContext) Echo(message string) string {
@@ -46,10 +47,22 @@ func (appC *CounterAppContext) Info() []string {
 }
 
 func (appC *CounterAppContext) SetOption(key string, value string) types.RetCode {
+	if key == "serial" && value == "on" {
+		appC.serial = true
+	}
 	return 0
 }
 
 func (appC *CounterAppContext) AppendTx(tx []byte) ([]types.Event, types.RetCode) {
+	if appC.serial {
+		txValue, bz := binary.Varint(tx)
+		if bz <= 0 {
+			return nil, types.RetCodeInternalError
+		}
+		if txValue != int64(appC.txCount) {
+			return nil, types.RetCodeInternalError
+		}
+	}
 	appC.txCount += 1
 	return nil, 0
 }
