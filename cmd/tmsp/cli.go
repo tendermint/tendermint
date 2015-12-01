@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/hex"
 	"fmt"
 	"net"
 	"os"
@@ -34,6 +35,20 @@ func main() {
 			Usage: "Start an interactive tmsp console for multiple commands",
 			Action: func(c *cli.Context) {
 				cmdConsole(app, c)
+			},
+		},
+		{
+			Name:  "info",
+			Usage: "Get some info about the application",
+			Action: func(c *cli.Context) {
+				cmdInfo(c)
+			},
+		},
+		{
+			Name:  "set_option",
+			Usage: "Set an option on the application",
+			Action: func(c *cli.Context) {
+				cmdSetOption(c)
 			},
 		},
 		{
@@ -100,14 +115,49 @@ func cmdConsole(app *cli.App, c *cli.Context) {
 	}
 }
 
-// Append a new tx to application
-func cmdAppendTx(c *cli.Context) {
-	args := c.Args() // Args to AppendTx
-	res, err := makeRequest(conn, types.RequestAppendTx{[]byte(args[0])})
+// Get some info from the application
+func cmdInfo(c *cli.Context) {
+	res, err := makeRequest(conn, types.RequestInfo{})
 	if err != nil {
 		Exit(err.Error())
 	}
-	fmt.Println("Sent tx:", args[0], "response:", res)
+	fmt.Println(res)
+}
+
+// Set an option on the application
+func cmdSetOption(c *cli.Context) {
+	args := c.Args()
+	if len(args) != 2 {
+		Exit("set_option takes 2 arguments (key, value)")
+	}
+	_, err := makeRequest(conn, types.RequestSetOption{args[0], args[1]})
+	if err != nil {
+		Exit(err.Error())
+	}
+	fmt.Printf("Set option %s = %s\n", args[0], args[1])
+}
+
+// Append a new tx to application
+func cmdAppendTx(c *cli.Context) {
+	args := c.Args()
+	if len(args) != 1 {
+		Exit("append_tx takes 1 argument")
+	}
+	txString := args[0]
+	tx := []byte(txString)
+	if len(txString) > 2 && strings.HasPrefix(txString, "0x") {
+		var err error
+		tx, err = hex.DecodeString(txString[2:])
+		if err != nil {
+			Exit(err.Error())
+		}
+	}
+
+	res, err := makeRequest(conn, types.RequestAppendTx{tx})
+	if err != nil {
+		Exit(err.Error())
+	}
+	fmt.Println("Sent tx:", txString, "response:", res)
 }
 
 // Get application Merkle root hash
