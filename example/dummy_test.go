@@ -16,13 +16,13 @@ func TestStream(t *testing.T) {
 	numAppendTxs := 200000
 
 	// Start the listener
-	_, err := server.StartListener("tcp://127.0.0.1:8080", NewDummyApplication())
+	_, err := server.StartListener("tcp://127.0.0.1:46658", NewDummyApplication())
 	if err != nil {
 		Exit(err.Error())
 	}
 
 	// Connect to the socket
-	conn, err := Connect("tcp://127.0.0.1:8080")
+	conn, err := Connect("tcp://127.0.0.1:46658")
 	if err != nil {
 		Exit(err.Error())
 	}

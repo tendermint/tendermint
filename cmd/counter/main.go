@@ -9,7 +9,7 @@ import (
 func main() {
 
 	// Start the listener
-	_, err := server.StartListener("tcp://127.0.0.1:8080", example.NewCounterApplication())
+	_, err := server.StartListener("tcp://127.0.0.1:46658", example.NewCounterApplication())
 	if err != nil {
 		Exit(err.Error())
 	}
