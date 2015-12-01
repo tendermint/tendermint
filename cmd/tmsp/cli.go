@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"net"
 	"os"
+	"strings"
 
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-wire"
@@ -11,6 +13,9 @@ import (
 
 	"github.com/codegangsta/cli"
 )
+
+// connection is a global variable so it can be reused by the console
+var conn net.Conn
 
 func main() {
 	app := cli.NewApp()
@@ -24,6 +29,13 @@ func main() {
 		},
 	}
 	app.Commands = []cli.Command{
+		{
+			Name:  "console",
+			Usage: "Start an interactive tmsp console for multiple commands",
+			Action: func(c *cli.Context) {
+				cmdConsole(app, c)
+			},
+		},
 		{
 			Name:  "append_tx",
 			Usage: "Append a new tx to application",
@@ -53,19 +65,44 @@ func main() {
 			},
 		},
 	}
+	app.Before = before
 	app.Run(os.Args)
 
 }
 
+func before(c *cli.Context) error {
+	if conn == nil {
+		var err error
+		conn, err = Connect(c.GlobalString("address"))
+		if err != nil {
+			Exit(err.Error())
+		}
+	}
+	return nil
+}
+
 //--------------------------------------------------------------------------------
+
+func cmdConsole(app *cli.App, c *cli.Context) {
+	for {
+		fmt.Printf("> ")
+		bufReader := bufio.NewReader(os.Stdin)
+		line, more, err := bufReader.ReadLine()
+		if more {
+			Exit("input is too long")
+		} else if err != nil {
+			Exit(err.Error())
+		}
+
+		args := []string{"tmsp"}
+		args = append(args, strings.Split(string(line), " ")...)
+		app.Run(args)
+	}
+}
 
 // Append a new tx to application
 func cmdAppendTx(c *cli.Context) {
 	args := c.Args() // Args to AppendTx
-	conn, err := Connect(c.GlobalString("address"))
-	if err != nil {
-		Exit(err.Error())
-	}
 	res, err := makeRequest(conn, types.RequestAppendTx{[]byte(args[0])})
 	if err != nil {
 		Exit(err.Error())
@@ -75,10 +112,6 @@ func cmdAppendTx(c *cli.Context) {
 
 // Get application Merkle root hash
 func cmdGetHash(c *cli.Context) {
-	conn, err := Connect(c.GlobalString("address"))
-	if err != nil {
-		Exit(err.Error())
-	}
 	res, err := makeRequest(conn, types.RequestGetHash{})
 	if err != nil {
 		Exit(err.Error())
@@ -88,11 +121,7 @@ func cmdGetHash(c *cli.Context) {
 
 // Commit the application state
 func cmdCommit(c *cli.Context) {
-	conn, err := Connect(c.GlobalString("address"))
-	if err != nil {
-		Exit(err.Error())
-	}
-	_, err = makeRequest(conn, types.RequestCommit{})
+	_, err := makeRequest(conn, types.RequestCommit{})
 	if err != nil {
 		Exit(err.Error())
 	}
@@ -101,11 +130,7 @@ func cmdCommit(c *cli.Context) {
 
 // Roll back the application state to the latest commit
 func cmdRollback(c *cli.Context) {
-	conn, err := Connect(c.GlobalString("address"))
-	if err != nil {
-		Exit(err.Error())
-	}
-	_, err = makeRequest(conn, types.RequestRollback{})
+	_, err := makeRequest(conn, types.RequestRollback{})
 	if err != nil {
 		Exit(err.Error())
 	}
