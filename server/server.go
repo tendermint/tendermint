@@ -3,6 +3,7 @@ package server
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"net"
 	"strings"
 
@@ -86,7 +87,11 @@ func handleRequests(appC types.AppContext, closeConn chan error, conn net.Conn, 
 		var req types.Request
 		wire.ReadBinaryPtr(&req, bufReader, 0, &n, &err)
 		if err != nil {
-			closeConn <- fmt.Errorf("Error in handleRequests: %v", err.Error())
+			if err == io.EOF {
+				closeConn <- fmt.Errorf("Connection closed by client")
+			} else {
+				closeConn <- fmt.Errorf("Error in handleRequests: %v", err.Error())
+			}
 			return
 		}
 		count++
