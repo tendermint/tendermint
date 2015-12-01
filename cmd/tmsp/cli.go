@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"strings"
@@ -30,6 +31,13 @@ func main() {
 		},
 	}
 	app.Commands = []cli.Command{
+		{
+			Name:  "batch",
+			Usage: "Run a batch of tmsp commands against an application",
+			Action: func(c *cli.Context) {
+				cmdBatch(app, c)
+			},
+		},
 		{
 			Name:  "console",
 			Usage: "Start an interactive tmsp console for multiple commands",
@@ -98,6 +106,23 @@ func before(c *cli.Context) error {
 
 //--------------------------------------------------------------------------------
 
+func cmdBatch(app *cli.App, c *cli.Context) {
+	bufReader := bufio.NewReader(os.Stdin)
+	for {
+		line, more, err := bufReader.ReadLine()
+		if more {
+			Exit("input line is too long")
+		} else if err == io.EOF {
+			break
+		} else if err != nil {
+			Exit(err.Error())
+		}
+		args := []string{"tmsp"}
+		args = append(args, strings.Split(string(line), " ")...)
+		app.Run(args)
+	}
+}
+
 func cmdConsole(app *cli.App, c *cli.Context) {
 	for {
 		fmt.Printf("> ")
@@ -134,7 +159,7 @@ func cmdSetOption(c *cli.Context) {
 	if err != nil {
 		Exit(err.Error())
 	}
-	fmt.Printf("Set option %s = %s\n", args[0], args[1])
+	fmt.Printf("%s=%s\n", args[0], args[1])
 }
 
 // Append a new tx to application
@@ -166,7 +191,7 @@ func cmdGetHash(c *cli.Context) {
 	if err != nil {
 		Exit(err.Error())
 	}
-	fmt.Println("Got hash:", Fmt("%X", res.(types.ResponseGetHash).Hash))
+	fmt.Printf("%X\n", res.(types.ResponseGetHash).Hash)
 }
 
 // Commit the application state

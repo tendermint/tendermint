@@ -69,7 +69,7 @@ func (appC *CounterAppContext) AppendTx(tx []byte) ([]types.Event, types.RetCode
 
 func (appC *CounterAppContext) GetHash() ([]byte, types.RetCode) {
 	hash := make([]byte, 32)
-	binary.PutVarint(hash, int64(appC.hashCount))
+	binary.PutVarint(hash, int64(appC.txCount))
 	appC.hashCount += 1
 	return hash, 0
 }
