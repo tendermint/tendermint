@@ -52,6 +52,7 @@ func GetConfig(rootDir string) cfg.Config {
 	}
 	mapConfig.SetRequired("chain_id") // blows up if you try to use it before setting.
 	mapConfig.SetDefault("genesis_file", rootDir+"/genesis.json")
+	mapConfig.SetDefault("proxy_app", "tcp://127.0.0.1:46658")
 	mapConfig.SetDefault("moniker", "anonymous")
 	mapConfig.SetDefault("node_laddr", "0.0.0.0:46656")
 	// mapConfig.SetDefault("seeds", "goldenalchemist.chaintest.net:46656")
@@ -72,6 +73,7 @@ func GetConfig(rootDir string) cfg.Config {
 var defaultConfigTmpl = `# This is a TOML config file.
 # For more information, see https://github.com/toml-lang/toml
 
+proxy_app = "tcp://127.0.0.1:46658"
 moniker = "__MONIKER__"
 node_laddr = "0.0.0.0:46656"
 seeds = ""

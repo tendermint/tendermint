@@ -1,37 +1,31 @@
 package types
 
 import (
-	"fmt"
 	"time"
 
-	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-wire"
 )
 
 // Functions to generate eventId strings
 
-func EventStringAccInput(addr []byte) string    { return fmt.Sprintf("Acc/%X/Input", addr) }
-func EventStringAccOutput(addr []byte) string   { return fmt.Sprintf("Acc/%X/Output", addr) }
-func EventStringAccCall(addr []byte) string     { return fmt.Sprintf("Acc/%X/Call", addr) }
-func EventStringLogEvent(addr []byte) string    { return fmt.Sprintf("Log/%X", addr) }
-func EventStringPermissions(name string) string { return fmt.Sprintf("Permissions/%s", name) }
-func EventStringNameReg(name string) string     { return fmt.Sprintf("NameReg/%s", name) }
-func EventStringBond() string                   { return "Bond" }
-func EventStringUnbond() string                 { return "Unbond" }
-func EventStringRebond() string                 { return "Rebond" }
-func EventStringDupeout() string                { return "Dupeout" }
-func EventStringNewBlock() string               { return "NewBlock" }
-func EventStringFork() string                   { return "Fork" }
+// Reserved
+func EventStringBond() string    { return "Bond" }
+func EventStringUnbond() string  { return "Unbond" }
+func EventStringRebond() string  { return "Rebond" }
+func EventStringDupeout() string { return "Dupeout" }
+func EventStringFork() string    { return "Fork" }
 
-func EventStringNewRound() string         { return fmt.Sprintf("NewRound") }
-func EventStringTimeoutPropose() string   { return fmt.Sprintf("TimeoutPropose") }
-func EventStringCompleteProposal() string { return fmt.Sprintf("CompleteProposal") }
-func EventStringPolka() string            { return fmt.Sprintf("Polka") }
-func EventStringUnlock() string           { return fmt.Sprintf("Unlock") }
-func EventStringLock() string             { return fmt.Sprintf("Lock") }
-func EventStringRelock() string           { return fmt.Sprintf("Relock") }
-func EventStringTimeoutWait() string      { return fmt.Sprintf("TimeoutWait") }
-func EventStringVote() string             { return fmt.Sprintf("Vote") }
+func EventStringNewBlock() string         { return "NewBlock" }
+func EventStringNewRound() string         { return "NewRound" }
+func EventStringTimeoutPropose() string   { return "TimeoutPropose" }
+func EventStringCompleteProposal() string { return "CompleteProposal" }
+func EventStringPolka() string            { return "Polka" }
+func EventStringUnlock() string           { return "Unlock" }
+func EventStringLock() string             { return "Lock" }
+func EventStringRelock() string           { return "Relock" }
+func EventStringTimeoutWait() string      { return "TimeoutWait" }
+func EventStringVote() string             { return "Vote" }
+func EventStringApp() string              { return "App" }
 
 //----------------------------------------
 
@@ -39,8 +33,7 @@ const (
 	EventDataTypeNewBlock = byte(0x01)
 	EventDataTypeFork     = byte(0x02)
 	EventDataTypeTx       = byte(0x03)
-	EventDataTypeCall     = byte(0x04)
-	EventDataTypeLog      = byte(0x05)
+	EventDataTypeApp      = byte(0x04) // Custom app event
 
 	EventDataTypeRoundState = byte(0x11)
 	EventDataTypeVote       = byte(0x12)
@@ -55,8 +48,7 @@ var _ = wire.RegisterInterface(
 	wire.ConcreteType{EventDataNewBlock{}, EventDataTypeNewBlock},
 	// wire.ConcreteType{EventDataFork{}, EventDataTypeFork },
 	wire.ConcreteType{EventDataTx{}, EventDataTypeTx},
-	wire.ConcreteType{EventDataCall{}, EventDataTypeCall},
-	wire.ConcreteType{EventDataLog{}, EventDataTypeLog},
+	wire.ConcreteType{EventDataApp{}, EventDataTypeApp},
 	wire.ConcreteType{EventDataRoundState{}, EventDataTypeRoundState},
 	wire.ConcreteType{EventDataVote{}, EventDataTypeVote},
 )
@@ -68,36 +60,16 @@ type EventDataNewBlock struct {
 	Block *Block `json:"block"`
 }
 
-// All txs fire EventDataTx, but only CallTx might have Return or Exception
+// All txs fire EventDataTx
 type EventDataTx struct {
 	Tx        Tx     `json:"tx"`
 	Return    []byte `json:"return"`
 	Exception string `json:"exception"`
 }
 
-// EventDataCall fires when we call a contract, and when a contract calls another contract
-type EventDataCall struct {
-	CallData  *CallData `json:"call_data"`
-	Origin    []byte    `json:"origin"`
-	TxID      []byte    `json:"tx_id"`
-	Return    []byte    `json:"return"`
-	Exception string    `json:"exception"`
-}
-
-type CallData struct {
-	Caller []byte `json:"caller"`
-	Callee []byte `json:"callee"`
-	Data   []byte `json:"data"`
-	Value  int64  `json:"value"`
-	Gas    int64  `json:"gas"`
-}
-
-// EventDataLog fires when a contract executes the LOG opcode
-type EventDataLog struct {
-	Address Word256   `json:"address"`
-	Topics  []Word256 `json:"topics"`
-	Data    []byte    `json:"data"`
-	Height  int64     `json:"height"`
+type EventDataApp struct {
+	Key  string `json:"key"`
+	Data []byte `json:"bytes"`
 }
 
 // We fire the most recent round state that led to the event
@@ -125,7 +97,6 @@ type EventDataVote struct {
 
 func (_ EventDataNewBlock) AssertIsEventData()   {}
 func (_ EventDataTx) AssertIsEventData()         {}
-func (_ EventDataCall) AssertIsEventData()       {}
-func (_ EventDataLog) AssertIsEventData()        {}
+func (_ EventDataApp) AssertIsEventData()        {}
 func (_ EventDataRoundState) AssertIsEventData() {}
 func (_ EventDataVote) AssertIsEventData()       {}

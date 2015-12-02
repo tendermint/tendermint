@@ -4,11 +4,25 @@ import (
 	"testing"
 	"time"
 
+	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-p2p"
 	_ "github.com/tendermint/tendermint/config/tendermint_test"
+	"github.com/tendermint/tmsp/example"
+	"github.com/tendermint/tmsp/server"
 )
 
 func TestNodeStartStop(t *testing.T) {
+
+	// Start a dummy app
+	go func() {
+		_, err := server.StartListener(config.GetString("proxy_app"), example.NewDummyApplication())
+		if err != nil {
+			Exit(err.Error())
+		}
+	}()
+	// wait for the server
+	time.Sleep(time.Second * 2)
+
 	// Create & start node
 	n := NewNode()
 	l := p2p.NewDefaultListener("tcp", config.GetString("node_laddr"), config.GetBool("skip_upnp"))

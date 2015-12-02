@@ -1,23 +1,14 @@
 package core
 
 import (
-	dbm "github.com/tendermint/go-db"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
 //-----------------------------------------------------------------------------
 
-// cache the genesis state
-var genesisState *sm.State
-
+// TODO Move to status.go or node.go
 func Status() (*ctypes.ResultStatus, error) {
-	db := dbm.NewMemDB()
-	if genesisState == nil {
-		genesisState = sm.MakeGenesisState(db, genDoc)
-	}
-	genesisHash := genesisState.Hash()
 	latestHeight := blockStore.Height()
 	var (
 		latestBlockMeta *types.BlockMeta
@@ -32,7 +23,6 @@ func Status() (*ctypes.ResultStatus, error) {
 
 	return &ctypes.ResultStatus{
 		NodeInfo:          p2pSwitch.NodeInfo(),
-		GenesisHash:       genesisHash,
 		PubKey:            privValidator.PubKey,
 		LatestBlockHash:   latestBlockHash,
 		LatestBlockHeight: latestHeight,

@@ -12,6 +12,7 @@ import (
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/events"
 	mempl "github.com/tendermint/tendermint/mempool"
+	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -153,10 +154,11 @@ func (rs *RoundState) StringShort() string {
 type ConsensusState struct {
 	BaseService
 
-	blockStore     *bc.BlockStore
-	mempoolReactor *mempl.MempoolReactor
-	privValidator  *types.PrivValidator
-	newStepCh      chan *RoundState
+	proxyAppCtx      proxy.AppContext
+	blockStore    *bc.BlockStore
+	mempool       *mempl.Mempool
+	privValidator *types.PrivValidator
+	newStepCh     chan *RoundState
 
 	mtx sync.Mutex
 	RoundState
@@ -166,16 +168,14 @@ type ConsensusState struct {
 
 	evsw events.Fireable
 	evc  *events.EventCache // set in stageBlock and passed into state
-
-	decideProposalFunc func(cs *ConsensusState, height int, round int)
 }
 
-func NewConsensusState(state *sm.State, blockStore *bc.BlockStore, mempoolReactor *mempl.MempoolReactor) *ConsensusState {
+func NewConsensusState(state *sm.State, proxyAppCtx proxy.AppContext, blockStore *bc.BlockStore, mempool *mempl.Mempool) *ConsensusState {
 	cs := &ConsensusState{
-		blockStore:         blockStore,
-		mempoolReactor:     mempoolReactor,
-		newStepCh:          make(chan *RoundState, 10),
-		decideProposalFunc: decideProposal,
+		proxyAppCtx:   proxyAppCtx,
+		blockStore: blockStore,
+		mempool:    mempool,
+		newStepCh:  make(chan *RoundState, 10),
 	}
 	cs.updateToState(state)
 	// Don't call scheduleRound0 yet.
@@ -183,10 +183,6 @@ func NewConsensusState(state *sm.State, blockStore *bc.BlockStore, mempoolReacto
 	cs.reconstructLastCommit(state)
 	cs.BaseService = *NewBaseService(log, "ConsensusState", cs)
 	return cs
-}
-
-func (cs *ConsensusState) SetDecideProposalFunc(f func(cs *ConsensusState, height int, round int)) {
-	cs.decideProposalFunc = f
 }
 
 // Reconstruct LastCommit from SeenValidation, which we saved along with the block,
@@ -426,11 +422,6 @@ func (cs *ConsensusState) EnterPropose(height int, round int) {
 }
 
 func (cs *ConsensusState) decideProposal(height, round int) {
-	cs.decideProposalFunc(cs, height, round)
-}
-
-// Decides on the next proposal and sets them onto cs.Proposal*
-func decideProposal(cs *ConsensusState, height, round int) {
 	var block *types.Block
 	var blockParts *types.PartSet
 
@@ -441,6 +432,9 @@ func decideProposal(cs *ConsensusState, height, round int) {
 	} else {
 		// Create a new proposal block from state/txs from the mempool.
 		block, blockParts = cs.createProposalBlock()
+		if block == nil { // on error
+			return
+		}
 	}
 
 	// Make proposal
@@ -476,6 +470,7 @@ func (cs *ConsensusState) isProposalComplete() bool {
 }
 
 // Create the next block to propose and return it.
+// Returns nil block upon error.
 // NOTE: keep it side-effect free for clarity.
 func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts *types.PartSet) {
 	var validation *types.Validation
@@ -491,7 +486,14 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 		log.Error("EnterPropose: Cannot propose anything: No validation for the previous block.")
 		return
 	}
-	txs := cs.mempoolReactor.Mempool.GetProposalTxs()
+
+	// Mempool run transactions and the resulting hash
+	txs, hash, err := cs.mempool.Reap()
+	if err != nil {
+		log.Warn("createProposalBlock: Error getting proposal txs", "error", err)
+		return nil, nil
+	}
+
 	block = &types.Block{
 		Header: &types.Header{
 			ChainID:        cs.state.ChainID,
@@ -501,7 +503,8 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 			NumTxs:         len(txs),
 			LastBlockHash:  cs.state.LastBlockHash,
 			LastBlockParts: cs.state.LastBlockParts,
-			StateHash:      nil, // Will set afterwards.
+			ValidatorsHash: cs.state.Validators.Hash(),
+			AppHash:        hash,
 		},
 		LastValidation: validation,
 		Data: &types.Data{
@@ -509,15 +512,8 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 		},
 	}
 	block.FillHeader()
-
-	// Set the block.Header.StateHash.
-	err := cs.state.ComputeBlockStateHash(block)
-	if err != nil {
-		log.Error("EnterPropose: Error setting state hash", "error", err)
-		return
-	}
-
 	blockParts = block.MakePartSet()
+
 	return block, blockParts
 }
 
@@ -940,13 +936,13 @@ func (cs *ConsensusState) TryAddVote(valIndex int, vote *types.Vote, peerKey str
 			return added, err
 		} else if _, ok := err.(*types.ErrVoteConflictingSignature); ok {
 			log.Warn("Found conflicting vote. Publish evidence")
-			/* XXX
+			/* TODO
 			evidenceTx := &types.DupeoutTx{
 				Address: address,
 				VoteA:   *errDupe.VoteA,
 				VoteB:   *errDupe.VoteB,
 			}
-			cs.mempoolReactor.BroadcastTx(evidenceTx) // shouldn't need to check returned err
+			cs.mempool.BroadcastTx(evidenceTx) // shouldn't need to check returned err
 			*/
 			return added, err
 		} else {
@@ -998,7 +994,7 @@ func (cs *ConsensusState) addVote(valIndex int, vote *types.Vote, peerKey string
 			switch vote.Type {
 			case types.VoteTypePrevote:
 				prevotes := cs.Votes.Prevotes(vote.Round)
-				log.Info(Fmt("Added to prevotes: %v", prevotes.StringShort()))
+				log.Info("Added to prevote", "vote", vote, "prevotes", prevotes.StringShort())
 				// First, unlock if prevotes is a valid POL.
 				// >> lockRound < POLRound <= unlockOrChangeLockRound (see spec)
 				// NOTE: If (lockRound < POLRound) but !(POLRound <= unlockOrChangeLockRound),
@@ -1033,7 +1029,7 @@ func (cs *ConsensusState) addVote(valIndex int, vote *types.Vote, peerKey string
 				}
 			case types.VoteTypePrecommit:
 				precommits := cs.Votes.Precommits(vote.Round)
-				log.Info(Fmt("Added to precommit: %v", precommits.StringShort()))
+				log.Info("Added to precommit", "vote", vote, "precommits", precommits.StringShort())
 				hash, _, ok := precommits.TwoThirdsMajority()
 				if ok {
 					go func() {
@@ -1078,22 +1074,26 @@ func (cs *ConsensusState) stageBlock(block *types.Block, blockParts *types.PartS
 		return nil
 	}
 
+	// Create a new event cache to cache all events.
+	cs.evc = events.NewEventCache(cs.evsw)
+
 	// Create a copy of the state for staging
 	stateCopy := cs.state.Copy()
-	// reset the event cache and pass it into the state
-	cs.evc = events.NewEventCache(cs.evsw)
 	stateCopy.SetFireable(cs.evc)
 
-	// Commit block onto the copied state.
-	// NOTE: Basic validation is done in state.AppendBlock().
-	err := sm.ExecBlock(stateCopy, block, blockParts.Header())
+	// Run the block on the State:
+	// + update validator sets
+	// + first rolls back proxyAppCtx
+	// + run txs on the proxyAppCtx or rollback
+	err := stateCopy.ExecBlock(cs.proxyAppCtx, block, blockParts.Header())
 	if err != nil {
 		return err
-	} else {
-		cs.stagedBlock = block
-		cs.stagedState = stateCopy
-		return nil
 	}
+
+	// Everything looks good!
+	cs.stagedBlock = block
+	cs.stagedState = stateCopy
+	return nil
 }
 
 func (cs *ConsensusState) signVote(type_ byte, hash []byte, header types.PartSetHeader) (*types.Vote, error) {
@@ -1139,11 +1139,18 @@ func (cs *ConsensusState) saveBlock(block *types.Block, blockParts *types.PartSe
 		cs.blockStore.SaveBlock(block, blockParts, seenValidation)
 	}
 
+	// Commit to proxyAppCtx
+	err := cs.stagedState.Commit(cs.proxyAppCtx)
+	if err != nil {
+		// TODO: handle this gracefully.
+		PanicQ(Fmt("Commit failed for applicaiton"))
+	}
+
 	// Save the state.
 	cs.stagedState.Save()
 
 	// Update mempool.
-	cs.mempoolReactor.ResetForBlockAndState(block, cs.stagedState)
+	cs.mempool.Update(block)
 
 	// Fire off event
 	if cs.evsw != nil && cs.evc != nil {
@@ -1160,4 +1167,23 @@ func (cs *ConsensusState) SetFireable(evsw events.Fireable) {
 
 func (cs *ConsensusState) String() string {
 	return Fmt("ConsensusState(H:%v R:%v S:%v", cs.Height, cs.Round, cs.Step)
+}
+
+func CompareHRS(h1, r1 int, s1 RoundStepType, h2, r2 int, s2 RoundStepType) int {
+	if h1 < h2 {
+		return -1
+	} else if h1 > h2 {
+		return 1
+	}
+	if r1 < r2 {
+		return -1
+	} else if r1 > r2 {
+		return 1
+	}
+	if s1 < s2 {
+		return -1
+	} else if s1 > s2 {
+		return 1
+	}
+	return 0
 }

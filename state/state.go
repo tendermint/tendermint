@@ -3,11 +3,11 @@ package state
 import (
 	"bytes"
 	"io/ioutil"
+	"sync"
 	"time"
 
 	. "github.com/tendermint/go-common"
 	dbm "github.com/tendermint/go-db"
-	"github.com/tendermint/go-merkle"
 	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/events"
 	"github.com/tendermint/tendermint/types"
@@ -21,7 +21,9 @@ var (
 
 // NOTE: not goroutine-safe.
 type State struct {
-	DB              dbm.DB
+	mtx             sync.Mutex
+	db              dbm.DB
+	GenesisDoc      *types.GenesisDoc
 	ChainID         string
 	LastBlockHeight int
 	LastBlockHash   []byte
@@ -29,24 +31,19 @@ type State struct {
 	LastBlockTime   time.Time
 	Validators      *types.ValidatorSet
 	LastValidators  *types.ValidatorSet
+	LastAppHash     []byte
 
 	evc events.Fireable // typically an events.EventCache
 }
 
 func LoadState(db dbm.DB) *State {
-	s := &State{DB: db}
+	s := &State{db: db}
 	buf := db.Get(stateKey)
 	if len(buf) == 0 {
 		return nil
 	} else {
 		r, n, err := bytes.NewReader(buf), new(int), new(error)
-		s.ChainID = wire.ReadString(r, 0, n, err)
-		s.LastBlockHeight = wire.ReadVarint(r, n, err)
-		s.LastBlockHash = wire.ReadByteSlice(r, 0, n, err)
-		s.LastBlockParts = wire.ReadBinary(types.PartSetHeader{}, r, 0, n, err).(types.PartSetHeader)
-		s.LastBlockTime = wire.ReadTime(r, n, err)
-		s.Validators = wire.ReadBinary(&types.ValidatorSet{}, r, 0, n, err).(*types.ValidatorSet)
-		s.LastValidators = wire.ReadBinary(&types.ValidatorSet{}, r, 0, n, err).(*types.ValidatorSet)
+		wire.ReadBinaryPtr(&s, r, 0, n, err)
 		if *err != nil {
 			// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 			Exit(Fmt("Data has been corrupted or its spec has changed: %v\n", *err))
@@ -56,77 +53,52 @@ func LoadState(db dbm.DB) *State {
 	return s
 }
 
-func (s *State) Save() {
-	buf, n, err := new(bytes.Buffer), new(int), new(error)
-	wire.WriteString(s.ChainID, buf, n, err)
-	wire.WriteVarint(s.LastBlockHeight, buf, n, err)
-	wire.WriteByteSlice(s.LastBlockHash, buf, n, err)
-	wire.WriteBinary(s.LastBlockParts, buf, n, err)
-	wire.WriteTime(s.LastBlockTime, buf, n, err)
-	wire.WriteBinary(s.Validators, buf, n, err)
-	wire.WriteBinary(s.LastValidators, buf, n, err)
-	if *err != nil {
-		PanicCrisis(*err)
-	}
-	s.DB.Set(stateKey, buf.Bytes())
-}
-
-// CONTRACT:
-// Copy() is a cheap way to take a snapshot,
-// as if State were copied by value.
 func (s *State) Copy() *State {
 	return &State{
-		DB:              s.DB,
+		db:              s.db,
+		GenesisDoc:      s.GenesisDoc,
 		ChainID:         s.ChainID,
 		LastBlockHeight: s.LastBlockHeight,
 		LastBlockHash:   s.LastBlockHash,
 		LastBlockParts:  s.LastBlockParts,
 		LastBlockTime:   s.LastBlockTime,
-		Validators:      s.Validators.Copy(),     // TODO remove need for Copy() here.
-		LastValidators:  s.LastValidators.Copy(), // That is, make updates to the validator set
+		Validators:      s.Validators.Copy(),
+		LastValidators:  s.LastValidators.Copy(),
+		LastAppHash:     s.LastAppHash,
 		evc:             nil,
 	}
 }
 
-// Returns a hash that represents the state data, excluding Last*
-func (s *State) Hash() []byte {
-	return merkle.SimpleHashFromMap(map[string]interface{}{
-		"Validators": s.Validators,
-	})
-}
+func (s *State) Save() {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
 
-// Mutates the block in place and updates it with new state hash.
-func (s *State) ComputeBlockStateHash(block *types.Block) error {
-	sCopy := s.Copy()
-	// sCopy has no event cache in it, so this won't fire events
-	err := execBlock(sCopy, block, types.PartSetHeader{})
-	if err != nil {
-		return err
+	buf, n, err := new(bytes.Buffer), new(int), new(error)
+	wire.WriteBinary(s, buf, n, err)
+	if *err != nil {
+		PanicCrisis(*err)
 	}
-	// Set block.StateHash
-	block.StateHash = sCopy.Hash()
-	return nil
-}
-
-func (s *State) SetDB(db dbm.DB) {
-	s.DB = db
+	s.db.Set(stateKey, buf.Bytes())
 }
 
 // Implements events.Eventable. Typically uses events.EventCache
 func (s *State) SetFireable(evc events.Fireable) {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+
 	s.evc = evc
 }
 
 //-----------------------------------------------------------------------------
 // Genesis
 
-func MakeGenesisStateFromFile(db dbm.DB, genDocFile string) (*types.GenesisDoc, *State) {
-	jsonBlob, err := ioutil.ReadFile(genDocFile)
+func MakeGenesisStateFromFile(db dbm.DB, genDocFile string) *State {
+	genDocJSON, err := ioutil.ReadFile(genDocFile)
 	if err != nil {
 		Exit(Fmt("Couldn't read GenesisDoc file: %v", err))
 	}
-	genDoc := types.GenesisDocFromJSON(jsonBlob)
-	return genDoc, MakeGenesisState(db, genDoc)
+	genDoc := types.GenesisDocFromJSON(genDocJSON)
+	return MakeGenesisState(db, genDoc)
 }
 
 func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) *State {
@@ -137,8 +109,6 @@ func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) *State {
 	if genDoc.GenesisTime.IsZero() {
 		genDoc.GenesisTime = time.Now()
 	}
-
-	// XXX Speak to application, ensure genesis state.
 
 	// Make validators slice
 	validators := make([]*types.Validator, len(genDoc.Validators))
@@ -155,7 +125,8 @@ func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) *State {
 	}
 
 	return &State{
-		DB:              db,
+		db:              db,
+		GenesisDoc:      genDoc,
 		ChainID:         genDoc.ChainID,
 		LastBlockHeight: 0,
 		LastBlockHash:   nil,
@@ -163,13 +134,6 @@ func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) *State {
 		LastBlockTime:   genDoc.GenesisTime,
 		Validators:      types.NewValidatorSet(validators),
 		LastValidators:  types.NewValidatorSet(nil),
+		LastAppHash:     genDoc.AppHash,
 	}
-}
-
-func RandGenesisState(numValidators int, randPower bool, minPower int64) (*State, []*types.PrivValidator) {
-	db := dbm.NewMemDB()
-	genDoc, privValidators := types.RandGenesisDoc(numValidators, randPower, minPower)
-	s0 := MakeGenesisState(db, genDoc)
-	s0.Save()
-	return s0, privValidators
 }

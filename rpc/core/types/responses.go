@@ -19,7 +19,6 @@ type ResultGetBlock struct {
 
 type ResultStatus struct {
 	NodeInfo          *p2p.NodeInfo `json:"node_info"`
-	GenesisHash       []byte        `json:"genesis_hash"`
 	PubKey            crypto.PubKey `json:"pub_key"`
 	LatestBlockHash   []byte        `json:"latest_block_hash"`
 	LatestBlockHeight int           `json:"latest_block_height"`

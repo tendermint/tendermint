@@ -19,6 +19,7 @@ import (
 	"github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/events"
 	mempl "github.com/tendermint/tendermint/mempool"
+	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/rpc"
 	"github.com/tendermint/tendermint/rpc/core"
 	"github.com/tendermint/tendermint/rpc/server"
@@ -39,7 +40,7 @@ type Node struct {
 	consensusState   *consensus.ConsensusState
 	consensusReactor *consensus.ConsensusReactor
 	privValidator    *types.PrivValidator
-	genDoc           *types.GenesisDoc
+	genesisDoc       *types.GenesisDoc
 	privKey          crypto.PrivKeyEd25519
 }
 
@@ -49,27 +50,14 @@ func NewNode() *Node {
 	blockStore := bc.NewBlockStore(blockStoreDB)
 
 	// Get State
-	stateDB := dbm.GetDB("state")
-	state := sm.LoadState(stateDB)
-	var genDoc *types.GenesisDoc
-	if state == nil {
-		genDoc, state = sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
-		state.Save()
-		// write the gendoc to db
-		buf, n, err := new(bytes.Buffer), new(int), new(error)
-		wire.WriteJSON(genDoc, buf, n, err)
-		stateDB.Set(types.GenDocKey, buf.Bytes())
-		if *err != nil {
-			Exit(Fmt("Unable to write gendoc to db: %v", err))
-		}
-	} else {
-		genDocBytes := stateDB.Get(types.GenDocKey)
-		err := new(error)
-		wire.ReadJSONPtr(&genDoc, genDocBytes, err)
-		if *err != nil {
-			Exit(Fmt("Unable to read gendoc from db: %v", err))
-		}
-	}
+	state := getState()
+
+	// Create two proxyAppCtx connections,
+	// one for the consensus and one for the mempool.
+	proxyAddr := config.GetString("proxy_app")
+	proxyAppCtxMempool := getProxyApp(proxyAddr, state.LastAppHash)
+	proxyAppCtxConsensus := getProxyApp(proxyAddr, state.LastAppHash)
+
 	// add the chainid to the global config
 	config.Set("chain_id", state.ChainID)
 
@@ -92,14 +80,14 @@ func NewNode() *Node {
 	pexReactor := p2p.NewPEXReactor(book)
 
 	// Make BlockchainReactor
-	bcReactor := bc.NewBlockchainReactor(state.Copy(), blockStore, config.GetBool("fast_sync"))
+	bcReactor := bc.NewBlockchainReactor(state.Copy(), proxyAppCtxConsensus, blockStore, config.GetBool("fast_sync"))
 
 	// Make MempoolReactor
-	mempool := mempl.NewMempool(state.Copy())
+	mempool := mempl.NewMempool(proxyAppCtxMempool)
 	mempoolReactor := mempl.NewMempoolReactor(mempool)
 
 	// Make ConsensusReactor
-	consensusState := consensus.NewConsensusState(state.Copy(), blockStore, mempoolReactor)
+	consensusState := consensus.NewConsensusState(state.Copy(), proxyAppCtxConsensus, blockStore, mempool)
 	consensusReactor := consensus.NewConsensusReactor(consensusState, blockStore, config.GetBool("fast_sync"))
 	if privValidator != nil {
 		consensusReactor.SetPrivValidator(privValidator)
@@ -135,7 +123,7 @@ func NewNode() *Node {
 		consensusState:   consensusState,
 		consensusReactor: consensusReactor,
 		privValidator:    privValidator,
-		genDoc:           genDoc,
+		genesisDoc:       state.GenesisDoc,
 		privKey:          privKey,
 	}
 }
@@ -207,7 +195,7 @@ func (n *Node) StartRPC() (net.Listener, error) {
 	core.SetMempoolReactor(n.mempoolReactor)
 	core.SetSwitch(n.sw)
 	core.SetPrivValidator(n.privValidator)
-	core.SetGenDoc(n.genDoc)
+	core.SetGenesisDoc(n.genesisDoc)
 
 	listenAddr := config.GetString("rpc_laddr")
 
@@ -289,8 +277,8 @@ func RunNode() {
 		log.Notice(Fmt("Waiting for genesis file %v...", genDocFile))
 		for {
 			time.Sleep(time.Second)
-			if FileExists(genDocFile) {
-				break
+			if !FileExists(genDocFile) {
+				continue
 			}
 			jsonBlob, err := ioutil.ReadFile(genDocFile)
 			if err != nil {
@@ -333,4 +321,39 @@ func RunNode() {
 	TrapSignal(func() {
 		n.Stop()
 	})
+}
+
+// Load the most recent state from "state" db,
+// or create a new one (and save) from genesis.
+func getState() *sm.State {
+	stateDB := dbm.GetDB("state")
+	state := sm.LoadState(stateDB)
+	if state == nil {
+		state = sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
+		state.Save()
+	}
+	return state
+}
+
+// Get a connection to the proxyAppCtx addr.
+// Check the current hash, and panic if it doesn't match.
+func getProxyApp(addr string, hash []byte) proxy.AppContext {
+	proxyConn, err := Connect(addr)
+	if err != nil {
+		Exit(Fmt("Failed to connect to proxy for mempool: %v", err))
+	}
+	proxyAppCtx := proxy.NewRemoteAppContext(proxyConn, 1024)
+
+	proxyAppCtx.Start()
+
+	// Check the hash
+	currentHash, err := proxyAppCtx.GetHashSync()
+	if err != nil {
+		PanicCrisis(Fmt("Error in getting proxyAppCtx hash: %v", err))
+	}
+	if !bytes.Equal(hash, currentHash) {
+		PanicCrisis(Fmt("ProxyApp hash does not match.  Expected %X, got %X", hash, currentHash))
+	}
+
+	return proxyAppCtx
 }

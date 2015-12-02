@@ -23,6 +23,7 @@ type Proposal struct {
 	Signature        crypto.SignatureEd25519 `json:"signature"`
 }
 
+// polRound: -1 if no polRound.
 func NewProposal(height int, round int, blockPartsHeader PartSetHeader, polRound int) *Proposal {
 	return &Proposal{
 		Height:           height,

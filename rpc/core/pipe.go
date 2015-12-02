@@ -40,6 +40,6 @@ func SetPrivValidator(pv *types.PrivValidator) {
 	privValidator = pv
 }
 
-func SetGenDoc(doc *types.GenesisDoc) {
+func SetGenesisDoc(doc *types.GenesisDoc) {
 	genDoc = doc
 }
