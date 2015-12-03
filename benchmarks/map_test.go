@@ -1,4 +1,4 @@
-package main
+package benchmarks
 
 import (
 	. "github.com/tendermint/go-common"
