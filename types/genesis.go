@@ -29,6 +29,12 @@ type GenesisDoc struct {
 	AppHash     []byte             `json:"app_hash"`
 }
 
+// Utility method for saving GenensisDoc as JSON file.
+func (genDoc *GenesisDoc) SaveAs(file string) error {
+	genDocBytes := wire.JSONBytes(genDoc)
+	return WriteFile(file, genDocBytes)
+}
+
 //------------------------------------------------------------
 // Make genesis state from file
 
