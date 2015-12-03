@@ -1,7 +1,7 @@
-# Tendermint Streaming Protocol (TMSP)
+# Tendermint Socket Protocol (TMSP)
 
 **TMSP** is a socket protocol, which means applications can be written in any programming language.
-TMSP is an asynchronous streaming protocol: message responses are written back asynchronously to the platform.
+TMSP is an asynchronous protocol: message responses are written back asynchronously to the platform.
 
 *Applications must be deterministic.*
 
