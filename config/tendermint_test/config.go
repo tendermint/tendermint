@@ -26,7 +26,7 @@ func getTMRoot(rootDir string) string {
 
 func initTMRoot(rootDir string) {
 	rootDir = getTMRoot(rootDir)
-	EnsureDir(rootDir)
+	EnsureDir(rootDir, 0700)
 
 	configFilePath := path.Join(rootDir, "config.toml")
 	genesisFilePath := path.Join(rootDir, "genesis.json")
