@@ -29,7 +29,7 @@ func initTMRoot(rootDir string) {
 	if !FileExists(configFilePath) {
 		// Ask user for moniker
 		// moniker := cfg.Prompt("Type hostname: ", "anonymous")
-		MustWriteFile(configFilePath, []byte(defaultConfig("anonymous")))
+		MustWriteFile(configFilePath, []byte(defaultConfig("anonymous")), 0644)
 	}
 }
 

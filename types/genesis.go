@@ -32,7 +32,7 @@ type GenesisDoc struct {
 // Utility method for saving GenensisDoc as JSON file.
 func (genDoc *GenesisDoc) SaveAs(file string) error {
 	genDocBytes := wire.JSONBytes(genDoc)
-	return WriteFile(file, genDocBytes)
+	return WriteFile(file, genDocBytes, 0644)
 }
 
 //------------------------------------------------------------
