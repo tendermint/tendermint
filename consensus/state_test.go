@@ -192,6 +192,9 @@ func TestBadProposal(t *testing.T) {
 
 	// make the block bad by tampering with statehash
 	stateHash := propBlock.AppHash
+	if len(stateHash) == 0 {
+		stateHash = make([]byte, 32)
+	}
 	stateHash[0] = byte((stateHash[0] + 1) % 255)
 	propBlock.AppHash = stateHash
 	propBlockParts := propBlock.MakePartSet()
