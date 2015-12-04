@@ -36,9 +36,9 @@ func Exit(s string) {
 	os.Exit(1)
 }
 
-func EnsureDir(dir string) error {
+func EnsureDir(dir string, mode os.FileMode) error {
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		err := os.MkdirAll(dir, 0700)
+		err := os.MkdirAll(dir, mode)
 		if err != nil {
 			return fmt.Errorf("Could not create directory %v. %v", dir, err)
 		}
