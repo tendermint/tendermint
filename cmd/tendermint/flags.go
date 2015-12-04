@@ -1,4 +1,3 @@
-
 package main
 
 import (
@@ -18,6 +17,7 @@ func parseFlags(config cfg.Config, args []string) {
 		skipUPNP  bool
 		rpcLaddr  string
 		logLevel  string
+		proxyApp  string
 	)
 
 	// Declare flags
@@ -30,6 +30,7 @@ func parseFlags(config cfg.Config, args []string) {
 	flags.BoolVar(&skipUPNP, "skip_upnp", config.GetBool("skip_upnp"), "Skip UPNP configuration")
 	flags.StringVar(&rpcLaddr, "rpc_laddr", config.GetString("rpc_laddr"), "RPC listen address. Port required")
 	flags.StringVar(&logLevel, "log_level", config.GetString("log_level"), "Log level")
+	flags.StringVar(&proxyApp, "proxy_app", config.GetString("proxy_app"), "Proxy app address")
 	flags.Parse(args)
 	if printHelp {
 		flags.PrintDefaults()
@@ -44,4 +45,5 @@ func parseFlags(config cfg.Config, args []string) {
 	config.Set("skip_upnp", skipUPNP)
 	config.Set("rpc_laddr", rpcLaddr)
 	config.Set("log_level", logLevel)
+	config.Set("proxy_app", proxyApp)
 }
