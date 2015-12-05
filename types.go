@@ -12,12 +12,13 @@ import (
 const maxNodeInfoSize = 10240 // 10Kb
 
 type NodeInfo struct {
-	PubKey  crypto.PubKeyEd25519 `json:"pub_key"`
-	Moniker string               `json:"moniker"`
-	Network string               `json:"network"`
-	Address string               `json:"address"`
-	Version string               `json:"version"` // major.minor.revision
-	Other   []string             `json:"other"`   // other application specific data
+	PubKey     crypto.PubKeyEd25519 `json:"pub_key"`
+	Moniker    string               `json:"moniker"`
+	Network    string               `json:"network"`
+	RemoteAddr string               `json:"remote_addr"`
+	ListenAddr string               `json:"listen_addr"`
+	Version    string               `json:"version"` // major.minor.revision
+	Other      []string             `json:"other"`   // other application specific data
 }
 
 // CONTRACT: two nodes are compactible if the major/minor versions match and network match
@@ -53,13 +54,13 @@ func (info *NodeInfo) CompatibleWith(other *NodeInfo) error {
 	return nil
 }
 
-func (info *NodeInfo) Host() string {
-	host, _, _ := net.SplitHostPort(info.Address)
+func (info *NodeInfo) ListenHost() string {
+	host, _, _ := net.SplitHostPort(info.ListenAddr)
 	return host
 }
 
-func (info *NodeInfo) Port() int {
-	_, port, _ := net.SplitHostPort(info.Address)
+func (info *NodeInfo) ListenPort() int {
+	_, port, _ := net.SplitHostPort(info.ListenAddr)
 	port_i, err := strconv.Atoi(port)
 	if err != nil {
 		return -1

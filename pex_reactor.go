@@ -63,8 +63,9 @@ func (pexR *PEXReactor) GetChannels() []*ChannelDescriptor {
 
 // Implements Reactor
 func (pexR *PEXReactor) AddPeer(peer *Peer) {
+	// XXX Move this into Switch
 	// Add the peer to the address book
-	netAddr := NewNetAddressString(peer.Address)
+	netAddr := NewNetAddressString(peer.ListenAddr)
 	if peer.IsOutbound() {
 		if pexR.book.NeedMoreAddrs() {
 			pexR.RequestPEX(peer)

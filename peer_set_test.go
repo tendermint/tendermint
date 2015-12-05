@@ -2,7 +2,6 @@ package p2p
 
 import (
 	"math/rand"
-	"strings"
 	"testing"
 
 	. "github.com/tendermint/go-common"
@@ -13,7 +12,8 @@ func randPeer() *Peer {
 	return &Peer{
 		Key: RandStr(12),
 		NodeInfo: &NodeInfo{
-			Address: Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256),
+			RemoteAddr: Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256),
+			ListenAddr: Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256),
 		},
 	}
 }
@@ -44,7 +44,6 @@ func TestAddRemoveMany(t *testing.T) {
 
 	peers := []*Peer{}
 	N := 100
-	maxPeersPerIPRange = [4]int{N, N, N, N}
 	for i := 0; i < N; i++ {
 		peer := randPeer()
 		if err := peerSet.Add(peer); err != nil {
@@ -64,105 +63,5 @@ func TestAddRemoveMany(t *testing.T) {
 		if peerSet.Size() != len(peers)-i-1 {
 			t.Errorf("Failed to remove peer and decrement size")
 		}
-	}
-}
-
-func newPeerInIPRange(ipBytes ...string) *Peer {
-	ips := make([]string, 4)
-	for i, ipByte := range ipBytes {
-		ips[i] = ipByte
-	}
-	for i := len(ipBytes); i < 4; i++ {
-		ips[i] = Fmt("%v", rand.Int()%256)
-	}
-	ipS := strings.Join(ips, ".")
-	return &Peer{
-		Key: RandStr(12),
-		NodeInfo: &NodeInfo{
-			Address: ipS + ":46656",
-		},
-	}
-}
-
-func TestIPRanges(t *testing.T) {
-	peerSet := NewPeerSet()
-
-	// test  /8
-	maxPeersPerIPRange = [4]int{2, 2, 2, 2}
-	peer := newPeerInIPRange("54", "1")
-	if err := peerSet.Add(peer); err != nil {
-		t.Errorf("Failed to add new peer")
-	}
-	peer = newPeerInIPRange("54", "2")
-	if err := peerSet.Add(peer); err != nil {
-		t.Errorf("Failed to add new peer")
-	}
-	peer = newPeerInIPRange("54", "3")
-	if err := peerSet.Add(peer); err == nil {
-		t.Errorf("Added peer when we shouldn't have")
-	}
-	peer = newPeerInIPRange("55", "1")
-	if err := peerSet.Add(peer); err != nil {
-		t.Errorf("Failed to add new peer")
-	}
-
-	// test  /16
-	peerSet = NewPeerSet()
-	maxPeersPerIPRange = [4]int{3, 2, 1, 1}
-	peer = newPeerInIPRange("54", "112", "1")
-	if err := peerSet.Add(peer); err != nil {
-		t.Errorf("Failed to add new peer")
-	}
-	peer = newPeerInIPRange("54", "112", "2")
-	if err := peerSet.Add(peer); err != nil {
-		t.Errorf("Failed to add new peer")
-	}
-	peer = newPeerInIPRange("54", "112", "3")
-	if err := peerSet.Add(peer); err == nil {
-		t.Errorf("Added peer when we shouldn't have")
-	}
-	peer = newPeerInIPRange("54", "113", "1")
-	if err := peerSet.Add(peer); err != nil {
-		t.Errorf("Failed to add new peer")
-	}
-
-	// test  /24
-	peerSet = NewPeerSet()
-	maxPeersPerIPRange = [4]int{5, 3, 2, 1}
-	peer = newPeerInIPRange("54", "112", "11", "1")
-	if err := peerSet.Add(peer); err != nil {
-		t.Errorf("Failed to add new peer")
-	}
-	peer = newPeerInIPRange("54", "112", "11", "2")
-	if err := peerSet.Add(peer); err != nil {
-		t.Errorf("Failed to add new peer")
-	}
-	peer = newPeerInIPRange("54", "112", "11", "3")
-	if err := peerSet.Add(peer); err == nil {
-		t.Errorf("Added peer when we shouldn't have")
-	}
-	peer = newPeerInIPRange("54", "112", "12", "1")
-	if err := peerSet.Add(peer); err != nil {
-		t.Errorf("Failed to add new peer")
-	}
-
-	// test  /32
-	peerSet = NewPeerSet()
-	maxPeersPerIPRange = [4]int{11, 7, 5, 2}
-	peer = newPeerInIPRange("54", "112", "11", "10")
-	if err := peerSet.Add(peer); err != nil {
-		t.Errorf("Failed to add new peer")
-	}
-	peer = newPeerInIPRange("54", "112", "11", "10")
-	if err := peerSet.Add(peer); err != nil {
-		t.Errorf("Failed to add new peer")
-	}
-	peer = newPeerInIPRange("54", "112", "11", "10")
-	if err := peerSet.Add(peer); err == nil {
-		t.Errorf("Added peer when we shouldn't have")
-	}
-	peer = newPeerInIPRange("54", "112", "11", "11")
-	if err := peerSet.Add(peer); err != nil {
-		t.Errorf("Failed to add new peer")
 	}
 }

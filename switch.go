@@ -224,10 +224,6 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 		return nil, err
 	}
 
-	// The peerNodeInfo is not verified, so overwrite
-	// the IP, and the port too if we dialed out
-	// Everything else we just have to trust
-	peerNodeInfo.Address = sconn.RemoteAddr().String()
 	peer := newPeer(sconn, peerNodeInfo, outbound, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError)
 
 	// Add the peer to .peers
@@ -348,12 +344,6 @@ func (sw *Switch) listenerRoutine(l Listener) {
 		// ignore connection if we already have enough
 		if maxNumPeers <= sw.peers.Size() {
 			log.Info("Ignoring inbound connection: already have enough peers", "address", inConn.RemoteAddr().String(), "numPeers", sw.peers.Size(), "max", maxNumPeers)
-			continue
-		}
-
-		// Ignore connections from IP ranges for which we have too many
-		if sw.peers.HasMaxForIPRange(inConn) {
-			log.Info("Ignoring inbound connection: already have enough peers for that IP range", "address", inConn.RemoteAddr().String())
 			continue
 		}
 

@@ -42,6 +42,7 @@ func peerHandshake(conn net.Conn, ourNodeInfo *NodeInfo) (*NodeInfo, error) {
 	if err2 != nil {
 		return nil, err2
 	}
+	peerNodeInfo.RemoteAddr = conn.RemoteAddr().String()
 	return peerNodeInfo, nil
 }
 
