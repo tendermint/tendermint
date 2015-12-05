@@ -6,7 +6,6 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -234,9 +233,9 @@ func makeNodeInfo(sw *p2p.Switch, privKey crypto.PrivKeyEd25519) *p2p.NodeInfo {
 		Network: config.GetString("chain_id"),
 		Version: Version,
 		Other: []string{
-			Fmt("p2p_version=%v" + p2p.Version),
-			Fmt("rpc_version=%v" + rpc.Version),
-			Fmt("wire_version=%v" + wire.Version),
+			Fmt("p2p_version=%v", p2p.Version),
+			Fmt("rpc_version=%v", rpc.Version),
+			Fmt("wire_version=%v", wire.Version),
 		},
 	}
 
@@ -253,17 +252,12 @@ func makeNodeInfo(sw *p2p.Switch, privKey crypto.PrivKeyEd25519) *p2p.NodeInfo {
 	p2pHost := p2pListener.ExternalAddress().IP.String()
 	p2pPort := p2pListener.ExternalAddress().Port
 	rpcListenAddr := config.GetString("rpc_laddr")
-	_, rpcPortStr, _ := net.SplitHostPort(rpcListenAddr)
-	rpcPort, err := strconv.Atoi(rpcPortStr)
-	if err != nil {
-		PanicSanity(Fmt("Expected numeric RPC.ListenAddr port but got %v", rpcPortStr))
-	}
 
 	// We assume that the rpcListener has the same ExternalAddress.
 	// This is probably true because both P2P and RPC listeners use UPnP,
 	// except of course if the rpc is only bound to localhost
-	nodeInfo.Address = Fmt("%v:%v", p2pHost, p2pPort)
-	nodeInfo.Other = append(nodeInfo.Other, Fmt("rpc_port=%v", rpcPort))
+	nodeInfo.ListenAddr = Fmt("%v:%v", p2pHost, p2pPort)
+	nodeInfo.Other = append(nodeInfo.Other, Fmt("rpc_addr=%v", rpcListenAddr))
 	return nodeInfo
 }
 
