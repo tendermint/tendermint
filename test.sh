@@ -67,8 +67,8 @@ STDIN`
 # echo $?
 
 HASH1=`echo "$OUTPUT" | tail -n +2 | head -n 1`
-if [[ "${HASH1:0:2}" != "00" ]]; then
-	echo "Expected opening hash to lead with 00. Got $HASH1"	
+if [[ "$HASH1" != "" ]]; then
+	echo "Expected opening hash to be empty. Got $HASH1"
 	exit 1
 fi
 
