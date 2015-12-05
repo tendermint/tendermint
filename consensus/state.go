@@ -150,11 +150,15 @@ func (rs *RoundState) StringShort() string {
 
 //-----------------------------------------------------------------------------
 
+var (
+	msgQueueSize = 1000
+)
+
 // Tracks consensus state across block heights and rounds.
 type ConsensusState struct {
 	BaseService
 
-	proxyAppCtx      proxy.AppContext
+	proxyAppCtx   proxy.AppContext
 	blockStore    *bc.BlockStore
 	mempool       *mempl.Mempool
 	privValidator *types.PrivValidator
@@ -166,16 +170,20 @@ type ConsensusState struct {
 	stagedBlock *types.Block // Cache last staged block.
 	stagedState *sm.State    // Cache result of staged block.
 
+	// for messages which affect the state (proposals, block parts, votes)
+	msgQueue chan msgInfo
+
 	evsw events.Fireable
 	evc  *events.EventCache // set in stageBlock and passed into state
 }
 
 func NewConsensusState(state *sm.State, proxyAppCtx proxy.AppContext, blockStore *bc.BlockStore, mempool *mempl.Mempool) *ConsensusState {
 	cs := &ConsensusState{
-		proxyAppCtx:   proxyAppCtx,
-		blockStore: blockStore,
-		mempool:    mempool,
-		newStepCh:  make(chan *RoundState, 10),
+		proxyAppCtx: proxyAppCtx,
+		blockStore:  blockStore,
+		mempool:     mempool,
+		newStepCh:   make(chan *RoundState, 10),
+		msgQueue:    make(chan msgInfo, msgQueueSize),
 	}
 	cs.updateToState(state)
 	// Don't call scheduleRound0 yet.
@@ -447,6 +455,12 @@ func (cs *ConsensusState) decideProposal(height, round int) {
 		cs.Proposal = proposal
 		cs.ProposalBlock = block
 		cs.ProposalBlockParts = blockParts
+
+		cs.msgQueue <- msgInfo{&ProposalMessage{proposal}, ""}
+		for i := 0; i < blockParts.Total(); i++ {
+			part := blockParts.GetPart(i)
+			cs.msgQueue <- msgInfo{&BlockPartMessage{cs.Height, cs.Round, part}, ""}
+		}
 	} else {
 		log.Warn("EnterPropose: Error signing proposal", "height", height, "round", round, "error", err)
 	}
@@ -1118,6 +1132,8 @@ func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header types.Part
 		valIndex, _ := cs.Validators.GetByAddress(cs.privValidator.Address)
 		_, _, err := cs.addVote(valIndex, vote, "")
 		log.Notice("Signed and added vote", "height", cs.Height, "round", cs.Round, "vote", vote, "error", err)
+		// so we fire events for ourself and can run replays
+		cs.msgQueue <- msgInfo{&VoteMessage{valIndex, vote}, ""}
 		return vote
 	} else {
 		log.Warn("Error signing vote", "height", cs.Height, "round", cs.Round, "vote", vote, "error", err)
