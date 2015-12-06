@@ -21,7 +21,7 @@ const maxResponseSize = 1048576 // 1MB
 // with concurrent callers.
 type remoteAppContext struct {
 	QuitService
-	sync.Mutex
+	sync.Mutex // [EB]: is this even used?
 
 	reqQueue chan *reqRes
 
@@ -65,7 +65,7 @@ func (app *remoteAppContext) SetResponseCallback(resCb Callback) {
 
 func (app *remoteAppContext) StopForError(err error) {
 	app.mtx.Lock()
-	fmt.Println("Stopping remoteAppContext for error:", err)
+	log.Error("Stopping remoteAppContext for error.", "error", err)
 	if app.err == nil {
 		app.err = err
 	}
@@ -89,11 +89,15 @@ func (app *remoteAppContext) sendRequestsRoutine() {
 		case <-app.QuitService.Quit:
 			return
 		case reqres := <-app.reqQueue:
+
+			app.willSendReq(reqres)
+
 			wire.WriteBinary(reqres.Request, app.bufWriter, &n, &err)
 			if err != nil {
 				app.StopForError(err)
 				return
 			}
+			log.Debug("Sent request", "requestType", reflect.TypeOf(reqres.Request), "request", reqres.Request)
 			if _, ok := reqres.Request.(tmsp.RequestFlush); ok {
 				err = app.bufWriter.Flush()
 				if err != nil {
@@ -101,7 +105,6 @@ func (app *remoteAppContext) sendRequestsRoutine() {
 					return
 				}
 			}
-			app.didSendReq(reqres)
 		}
 	}
 }
@@ -121,6 +124,7 @@ func (app *remoteAppContext) recvResponseRoutine() {
 		case tmsp.ResponseException:
 			app.StopForError(errors.New(res.Error))
 		default:
+			log.Debug("Received response", "responseType", reflect.TypeOf(res), "response", res)
 			err := app.didRecvResponse(res)
 			if err != nil {
 				app.StopForError(err)
@@ -129,7 +133,7 @@ func (app *remoteAppContext) recvResponseRoutine() {
 	}
 }
 
-func (app *remoteAppContext) didSendReq(reqres *reqRes) {
+func (app *remoteAppContext) willSendReq(reqres *reqRes) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 	app.reqSent.PushBack(reqres)
