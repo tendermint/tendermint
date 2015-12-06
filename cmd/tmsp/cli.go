@@ -46,6 +46,13 @@ func main() {
 			},
 		},
 		{
+			Name:  "echo",
+			Usage: "Have the application echo a message",
+			Action: func(c *cli.Context) {
+				cmdEcho(c)
+			},
+		},
+		{
 			Name:  "info",
 			Usage: "Get some info about the application",
 			Action: func(c *cli.Context) {
@@ -138,6 +145,19 @@ func cmdConsole(app *cli.App, c *cli.Context) {
 		args = append(args, strings.Split(string(line), " ")...)
 		app.Run(args)
 	}
+}
+
+// Have the application echo a message
+func cmdEcho(c *cli.Context) {
+	args := c.Args()
+	if len(args) != 1 {
+		Exit("echo takes 1 argument")
+	}
+	res, err := makeRequest(conn, types.RequestEcho{args[0]})
+	if err != nil {
+		Exit(err.Error())
+	}
+	fmt.Println(res)
 }
 
 // Get some info from the application
