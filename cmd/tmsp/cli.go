@@ -204,7 +204,7 @@ func cmdAppendTx(c *cli.Context) {
 	if err != nil {
 		Exit(err.Error())
 	}
-	fmt.Println("Sent tx:", txString, "response:", res)
+	fmt.Println("Response:", res)
 }
 
 // Get application Merkle root hash
