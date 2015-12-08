@@ -22,21 +22,24 @@ func main() {
 	// Read a bunch of responses
 	go func() {
 		for {
-			res, ok := <-ws.ResultsCh
+			_, ok := <-ws.ResultsCh
 			if !ok {
 				break
 			}
-			fmt.Println("Received response", res)
+			//fmt.Println("Received response", string(wire.JSONBytes(res)))
 		}
 	}()
 
 	// Make a bunch of requests
-	request := rpctypes.NewRPCRequest("fakeid", "status", nil)
+	request := rpctypes.NewRPCRequest("fakeid", "net_info", nil)
 	for i := 0; ; i++ {
 		reqBytes := wire.JSONBytes(request)
 		err := ws.WriteMessage(websocket.TextMessage, reqBytes)
 		if err != nil {
 			Exit(err.Error())
+		}
+		if i%1000 == 0 {
+			fmt.Println(i)
 		}
 	}
 
