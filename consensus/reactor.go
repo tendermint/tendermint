@@ -56,8 +56,9 @@ func (conR *ConsensusReactor) OnStart() error {
 			return err
 		}
 	}
+	go conR.receiveRoutine() // serializes processing of proposoals, block parts, votes
+	go conR.timeoutRoutine() // fires timeouts into the receive routine
 	go conR.broadcastNewRoundStepRoutine()
-	go conR.msgProcessor()
 	return nil
 }
 
@@ -209,6 +210,131 @@ func (conR *ConsensusReactor) Receive(chID byte, peer *p2p.Peer, msgBytes []byte
 	}
 }
 
+// the state machine sends on tickChan to start a new timer.
+// timers are interupted and replaced by new ticks from later steps
+// timeouts of 0 on the tickChan will be immediately relayed to the tockChan
+func (conR *ConsensusReactor) timeoutRoutine() {
+	ticker := new(time.Ticker)
+	var ti timeoutInfo
+	log.Debug("starting timeout routine!")
+	for {
+		select {
+		case newti := <-conR.conS.tickChan:
+			log.Debug("Received tick", "new_it", newti.String(), "old_ti", ti.String())
+
+			// ignore tickers for old height/round/step
+			if newti.height < ti.height {
+				continue
+			} else if newti.height == ti.height {
+				if newti.round < ti.round {
+					continue
+				} else if newti.round == ti.round {
+					if ti.step > 0 && newti.step <= ti.step {
+						continue
+					}
+				}
+			}
+
+			ticker.Stop()
+			ti = newti
+
+			if ti.duration == time.Duration(0) {
+				// for new rounds with no sleep
+				conR.conS.tockChan <- ti
+			} else {
+				ticker = time.NewTicker(ti.duration)
+			}
+		case <-ticker.C:
+			log.Debug("timed out! firing on tock")
+			ticker.Stop()
+			conR.conS.tockChan <- ti
+		case <-conR.Quit:
+			return
+		}
+	}
+}
+
+// receiveRoutine handles messages which affect the state.
+// it should keep the RoundState and be the only thing that updates it
+// XXX: for incremental dev, we store this RoundState unprotected cs)
+func (conR *ConsensusReactor) receiveRoutine() {
+	cs := conR.conS
+	for {
+		rs := cs.roundState
+		var mi msgInfo
+
+		select {
+		case mi = <-cs.msgQueue:
+			// handles proposals, block parts, votes
+			// may fire on tickChan
+			conR.handleMessage(mi)
+		case ti := <-cs.tockChan:
+			log.Debug("Received tock", "timeout", ti.duration, "height", ti.height, "round", ti.round, "step", ti.step)
+			// timeouts must be for current height, round, step
+			if ti.height == rs.Height+1 && ti.round == 0 && ti.step == RoundStepNewHeight {
+				// legit
+				log.Debug("received tock for next height")
+			} else if ti.height != rs.Height || ti.round < rs.Round || (ti.round == rs.Round && ti.step < rs.Step) {
+				log.Debug("Ignoring tock because we're ahead", "height", rs.Height, "round", rs.Round, "step", rs.Step)
+				continue
+			}
+
+			switch ti.step {
+			case RoundStepPropose:
+				cs.EnterPrevote(ti.height, ti.round, true)
+			case RoundStepPrevote:
+				cs.EnterPrecommit(ti.height, ti.round, true)
+			case RoundStepPrecommit:
+				// If we have +2/3 of precommits for a particular block (or nil),
+				// we already entered commit (or the next round).
+				// So just try to transition to the next round,
+				// which is what we'd do otherwise.
+				cs.EnterNewRound(ti.height, ti.round+1, true)
+			case RoundStepNewRound:
+				// ?
+			case RoundStepNewHeight:
+				/*if ti.round == rs.Round && rs.Step != RoundStepNewHeight {
+					continue
+				}*/
+				cs.EnterNewRound(ti.height, 0, false)
+			}
+
+		case <-conR.Quit:
+			return
+		}
+	}
+}
+
+func (conR *ConsensusReactor) handleMsg(mi messageInfo) {
+	cs := conR.conS
+
+	var err error
+	msg, peerKey := mi.msg, mi.peerKey
+	switch msg := msg.(type) {
+	case *ProposalMessage:
+		err = cs.SetProposal(msg.Proposal)
+	case *BlockPartMessage:
+		_, err = cs.AddProposalBlockPart(msg.Height, msg.Part)
+	case *VoteMessage:
+		// attempt to add the vote and dupeout the validator if its a duplicate signature
+		added, err := cs.TryAddVote(msg.ValidatorIndex, msg.Vote, peerKey)
+		if err == ErrAddingVote {
+			// TODO: punish peer
+		}
+
+		if added {
+			// If rs.Height == vote.Height && rs.Round < vote.Round,
+			// the peer is sending us CatchupCommit precommits.
+			// We could make note of this and help filter in broadcastHasVoteMessage().
+
+			conR.broadcastHasVoteMessage(msg.Vote, msg.ValidatorIndex)
+		}
+	}
+	if err != nil {
+		log.Debug("error with msg", "error", err)
+	}
+}
+
 // Broadcasts HasVoteMessage to peers that care.
 func (conR *ConsensusReactor) broadcastHasVoteMessage(vote *types.Vote, index int) {
 	msg := &HasVoteMessage{
@@ -247,53 +373,6 @@ func (conR *ConsensusReactor) SetFireable(evsw events.Fireable) {
 }
 
 //--------------------------------------
-
-// a message coming in from the reactor
-type msgInfo struct {
-	msg     ConsensusMessage
-	peerKey string
-}
-
-func (conR *ConsensusReactor) msgProcessor() {
-	for {
-		var mi msgInfo
-		var err error
-		select {
-		case mi = <-conR.conS.msgQueue:
-		case <-conR.Quit:
-			return
-		}
-
-		msg, peerKey := mi.msg, mi.peerKey
-		switch msg := msg.(type) {
-		case *ProposalMessage:
-			err = conR.conS.SetProposal(msg.Proposal)
-		case *BlockPartMessage:
-			_, err = conR.conS.AddProposalBlockPart(msg.Height, msg.Part)
-		case *VoteMessage:
-			// attempt to add the vote and dupeout the validator if its a duplicate signature
-			added, err := conR.conS.TryAddVote(msg.ValidatorIndex, msg.Vote, peerKey)
-			if err == ErrAddingVote {
-				// TODO: punish peer
-			}
-
-			if added {
-				// If rs.Height == vote.Height && rs.Round < vote.Round,
-				// the peer is sending us CatchupCommit precommits.
-				// We could make note of this and help filter in broadcastHasVoteMessage().
-				conR.broadcastHasVoteMessage(msg.Vote, msg.ValidatorIndex)
-			}
-
-		}
-		if err != nil {
-			log.Warn("Error in msg processor", "error", err)
-		}
-
-		// TODO: get Proposer into the Data
-		conR.evsw.FireEvent(types.EventStringConsensusMessage(), &types.EventDataConsensusMessage{msg})
-
-	}
-}
 
 func makeRoundStepMessages(rs *RoundState) (nrsMsg *NewRoundStepMessage, csMsg *CommitStepMessage) {
 	nrsMsg = &NewRoundStepMessage{

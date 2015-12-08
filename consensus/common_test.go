@@ -297,6 +297,13 @@ func simpleConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
 	// read off the NewHeightStep
 	<-cs.NewStepCh()
 
+	// start the reactor routines
+	// (we should move these to state but the receive routine needs to be able to "broadcast votes"
+	//  --> add good votes to some buffered chan and have a go routine do the broadcast ...
+	conR := NewConsensusReactor(cs, nil, false)
+	go conR.receiveRoutine() // serializes processing of proposoals, block parts, votes
+	go conR.timeoutRoutine() // fires timeouts into the receive routine
+
 	for i := 0; i < nValidators; i++ {
 		vss[i] = NewValidatorStub(privVals[i])
 	}
