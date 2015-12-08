@@ -9,12 +9,12 @@ import (
 
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-wire"
-	. "github.com/tendermint/tendermint/rpc/types"
+	"github.com/tendermint/tendermint/rpc/types"
 )
 
-func Call(remote string, method string, params []interface{}, dest interface{}) (interface{}, error) {
+func CallHTTP(remote string, method string, params []interface{}, dest interface{}) (interface{}, error) {
 	// Make request and get responseBytes
-	request := RPCRequest{
+	request := rpctypes.RPCRequest{
 		JSONRPC: "2.0",
 		Method:  method,
 		Params:  params,
@@ -35,7 +35,7 @@ func Call(remote string, method string, params []interface{}, dest interface{}) 
 	log.Info(Fmt("RPC response: %v", string(responseBytes)))
 
 	// Parse response into JSONResponse
-	response := RPCResponse{}
+	response := rpctypes.RPCResponse{}
 	err = json.Unmarshal(responseBytes, &response)
 	if err != nil {
 		return dest, err

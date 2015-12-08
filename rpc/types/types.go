@@ -7,6 +7,15 @@ type RPCRequest struct {
 	Params  []interface{} `json:"params"`
 }
 
+func NewRPCRequest(id string, method string, params []interface{}) RPCRequest {
+	return RPCRequest{
+		JSONRPC: "2.0",
+		ID:      id,
+		Method:  method,
+		Params:  params,
+	}
+}
+
 type RPCResponse struct {
 	JSONRPC string      `json:"jsonrpc"`
 	ID      string      `json:"id"`
