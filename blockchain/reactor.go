@@ -42,22 +42,24 @@ type consensusReactor interface {
 type BlockchainReactor struct {
 	p2p.BaseReactor
 
-	sw         *p2p.Switch
-	state      *sm.State
-	proxyAppCtx   proxy.AppContext // same as consensus.proxyAppCtx
-	store      *BlockStore
-	pool       *BlockPool
-	sync       bool
-	requestsCh chan BlockRequest
-	timeoutsCh chan string
-	lastBlock  *types.Block
+	sw          *p2p.Switch
+	state       *sm.State
+	proxyAppCtx proxy.AppContext // same as consensus.proxyAppCtx
+	store       *BlockStore
+	pool        *BlockPool
+	sync        bool
+	requestsCh  chan BlockRequest
+	timeoutsCh  chan string
+	lastBlock   *types.Block
 
 	evsw events.Fireable
 }
 
 func NewBlockchainReactor(state *sm.State, proxyAppCtx proxy.AppContext, store *BlockStore, sync bool) *BlockchainReactor {
-	if state.LastBlockHeight != store.Height() &&
-		state.LastBlockHeight != store.Height()-1 { // XXX double check this logic.
+	if state.LastBlockHeight == store.Height()-1 {
+		store.height -= 1 // XXX HACK, make this better
+	}
+	if state.LastBlockHeight != store.Height() {
 		PanicSanity(Fmt("state (%v) and store (%v) height mismatch", state.LastBlockHeight, store.Height()))
 	}
 	requestsCh := make(chan BlockRequest, defaultChannelCapacity)
@@ -68,13 +70,13 @@ func NewBlockchainReactor(state *sm.State, proxyAppCtx proxy.AppContext, store *
 		timeoutsCh,
 	)
 	bcR := &BlockchainReactor{
-		state:      state,
-		proxyAppCtx:   proxyAppCtx,
-		store:      store,
-		pool:       pool,
-		sync:       sync,
-		requestsCh: requestsCh,
-		timeoutsCh: timeoutsCh,
+		state:       state,
+		proxyAppCtx: proxyAppCtx,
+		store:       store,
+		pool:        pool,
+		sync:        sync,
+		requestsCh:  requestsCh,
+		timeoutsCh:  timeoutsCh,
 	}
 	bcR.BaseReactor = *p2p.NewBaseReactor(log, "BlockchainReactor", bcR)
 	return bcR
