@@ -76,20 +76,20 @@ OUTPUT=`(tmsp batch) <<STDIN
 set_option serial on
 append_tx 0x00
 get_hash
-append_tx 0x02
+append_tx 0x01
 get_hash
 STDIN`
 
 HASH1=`echo "$OUTPUT" | tail -n +3 | head -n 1`
 HASH2=`echo "$OUTPUT" | tail -n +5 | head -n 1`
 
-if [[ "${HASH1:0:2}" != "02" ]]; then
-	echo "Expected hash to lead with 02. Got $HASH1"	
+if [[ "${HASH1:0:2}" != "01" ]]; then
+	echo "Expected hash to lead with 01. Got $HASH1"
 	exit 1
 fi
 
-if [[ "${HASH2:0:2}" != "04" ]]; then
-	echo "Expected hash to lead with 04. Got $HASH2"	
+if [[ "${HASH2:0:2}" != "02" ]]; then
+	echo "Expected hash to lead with 02. Got $HASH2"
 	exit 1
 fi
 

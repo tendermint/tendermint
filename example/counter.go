@@ -57,11 +57,10 @@ func (appC *CounterAppContext) SetOption(key string, value string) types.RetCode
 
 func (appC *CounterAppContext) AppendTx(tx []byte) ([]types.Event, types.RetCode) {
 	if appC.serial {
-		txValue, bz := binary.Varint(tx)
-		if bz <= 0 {
-			return nil, types.RetCodeInternalError
-		}
-		if txValue != int64(appC.txCount) {
+		tx8 := make([]byte, 8)
+		copy(tx8, tx)
+		txValue := binary.LittleEndian.Uint64(tx8)
+		if txValue != uint64(appC.txCount) {
 			return nil, types.RetCodeInternalError
 		}
 	}
@@ -75,7 +74,7 @@ func (appC *CounterAppContext) GetHash() ([]byte, types.RetCode) {
 		return nil, 0
 	} else {
 		hash := make([]byte, 32)
-		binary.PutVarint(hash, int64(appC.txCount))
+		binary.LittleEndian.PutUint64(hash, uint64(appC.txCount))
 		return hash, 0
 	}
 }
