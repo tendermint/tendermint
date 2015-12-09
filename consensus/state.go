@@ -154,7 +154,7 @@ func (rs *RoundState) StringShort() string {
 type ConsensusState struct {
 	BaseService
 
-	proxyAppCtx      proxy.AppContext
+	proxyAppCtx   proxy.AppContext
 	blockStore    *bc.BlockStore
 	mempool       *mempl.Mempool
 	privValidator *types.PrivValidator
@@ -172,10 +172,10 @@ type ConsensusState struct {
 
 func NewConsensusState(state *sm.State, proxyAppCtx proxy.AppContext, blockStore *bc.BlockStore, mempool *mempl.Mempool) *ConsensusState {
 	cs := &ConsensusState{
-		proxyAppCtx:   proxyAppCtx,
-		blockStore: blockStore,
-		mempool:    mempool,
-		newStepCh:  make(chan *RoundState, 10),
+		proxyAppCtx: proxyAppCtx,
+		blockStore:  blockStore,
+		mempool:     mempool,
+		newStepCh:   make(chan *RoundState, 10),
 	}
 	cs.updateToState(state)
 	// Don't call scheduleRound0 yet.
@@ -532,8 +532,10 @@ func (cs *ConsensusState) EnterPrevote(height int, round int, timedOut bool) {
 
 	// fire event for how we got here
 	if timedOut {
+		log.Debug("Propose timed out")
 		cs.evsw.FireEvent(types.EventStringTimeoutPropose(), cs.RoundStateEvent())
 	} else if cs.isProposalComplete() {
+		log.Debug("Propose is complete")
 		cs.evsw.FireEvent(types.EventStringCompleteProposal(), cs.RoundStateEvent())
 	} else {
 		// we received +2/3 prevotes for a future round
