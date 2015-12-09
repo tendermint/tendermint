@@ -13,10 +13,11 @@ type CounterApplication struct {
 	hashCount   int
 	txCount     int
 	commitCount int
+	serial      bool
 }
 
-func NewCounterApplication() *CounterApplication {
-	return &CounterApplication{}
+func NewCounterApplication(serial bool) *CounterApplication {
+	return &CounterApplication{serial: serial}
 }
 
 func (app *CounterApplication) Open() types.AppContext {
@@ -25,6 +26,7 @@ func (app *CounterApplication) Open() types.AppContext {
 		hashCount:   app.hashCount,
 		txCount:     app.txCount,
 		commitCount: app.commitCount,
+		serial:      app.serial,
 	}
 }
 
