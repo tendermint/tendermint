@@ -2,6 +2,7 @@ package mempool
 
 import (
 	"bytes"
+	"container/list"
 	"sync"
 	"sync/atomic"
 
@@ -36,9 +37,9 @@ Garbage collection of old elements from mempool.txs is handlde via
 the DetachPrev() call, which makes old elements not reachable by
 peer broadcastTxRoutine() automatically garbage collected.
 
-
-
 */
+
+const cacheSize = 100000
 
 type Mempool struct {
 	proxyMtx    sync.Mutex
@@ -47,6 +48,11 @@ type Mempool struct {
 	counter     int64           // simple incrementing counter
 	height      int             // the last block Update()'d to
 	expected    *clist.CElement // pointer to .txs for next response
+
+	// Keep a cache of already-seen txs.
+	// This reduces the pressure on the proxyApp.
+	cacheMap  map[string]struct{}
+	cacheList *list.List
 }
 
 func NewMempool(proxyAppCtx proxy.AppContext) *Mempool {
@@ -56,6 +62,9 @@ func NewMempool(proxyAppCtx proxy.AppContext) *Mempool {
 		counter:     0,
 		height:      0,
 		expected:    nil,
+
+		cacheMap:  make(map[string]struct{}, cacheSize),
+		cacheList: list.New(),
 	}
 	proxyAppCtx.SetResponseCallback(mempool.resCb)
 	return mempool
@@ -72,6 +81,20 @@ func (mem *Mempool) TxsFrontWait() *clist.CElement {
 func (mem *Mempool) AppendTx(tx types.Tx) (err error) {
 	mem.proxyMtx.Lock()
 	defer mem.proxyMtx.Unlock()
+
+	// CACHE
+	if _, exists := mem.cacheMap[string(tx)]; exists {
+		return nil
+	}
+	if mem.cacheList.Len() >= cacheSize {
+		popped := mem.cacheList.Front()
+		poppedTx := popped.Value.(types.Tx)
+		delete(mem.cacheMap, string(poppedTx))
+		mem.cacheList.Remove(popped)
+	}
+	mem.cacheMap[string(tx)] = struct{}{}
+	mem.cacheList.PushBack(tx)
+	// END CACHE
 
 	if err = mem.proxyAppCtx.Error(); err != nil {
 		return err
