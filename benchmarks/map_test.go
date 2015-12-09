@@ -11,11 +11,11 @@ func BenchmarkSomething(b *testing.B) {
 	numChecks := 100000
 	keys := make([]string, numItems)
 	for i := 0; i < numItems; i++ {
-		keys[i] = RandStr(32)
+		keys[i] = RandStr(100)
 	}
 	txs := make([]string, numChecks)
 	for i := 0; i < numChecks; i++ {
-		txs[i] = RandStr(32)
+		txs[i] = RandStr(100)
 	}
 	b.StartTimer()
 
@@ -24,11 +24,6 @@ func BenchmarkSomething(b *testing.B) {
 		foo := make(map[string]string)
 		for _, key := range keys {
 			foo[key] = key
-		}
-		for _, tx := range txs {
-			if _, ok := foo[tx]; ok {
-				counter++
-			}
 		}
 		for _, tx := range txs {
 			if _, ok := foo[tx]; ok {

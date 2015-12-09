@@ -40,15 +40,16 @@ func main() {
 		//txBytes := hex.EncodeToString(buf[:n])
 		request := rpctypes.NewRPCRequest("fakeid", "broadcast_tx", Arr(buf[:8]))
 		reqBytes := wire.JSONBytes(request)
-		fmt.Println("!!", string(reqBytes))
+		//fmt.Println("!!", string(reqBytes))
+		fmt.Print(".")
 		err := ws.WriteMessage(websocket.TextMessage, reqBytes)
 		if err != nil {
 			Exit(err.Error())
 		}
-		if i%100 == 0 {
+		if i%1000 == 0 {
 			fmt.Println(i)
 		}
-		time.Sleep(time.Millisecond * 10)
+		time.Sleep(time.Microsecond * 1)
 	}
 
 	ws.Stop()
