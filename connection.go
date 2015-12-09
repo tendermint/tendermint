@@ -22,8 +22,8 @@ const (
 	idleTimeoutMinutes         = 5
 	updateStatsSeconds         = 2
 	pingTimeoutSeconds         = 40
-	defaultSendRate            = 51200 // 50KB/s
-	defaultRecvRate            = 51200 // 50KB/s
+	defaultSendRate            = 512000 // 500KB/s
+	defaultRecvRate            = 512000 // 500KB/s
 	flushThrottleMS            = 100
 	defaultSendQueueCapacity   = 1
 	defaultRecvBufferCapacity  = 4096
@@ -608,7 +608,7 @@ func (ch *Channel) recvMsgPacket(packet msgPacket) ([]byte, error) {
 func (ch *Channel) updateStats() {
 	// Exponential decay of stats.
 	// TODO: optimize.
-	ch.recentlySent = int64(float64(ch.recentlySent) * 0.5)
+	ch.recentlySent = int64(float64(ch.recentlySent) * 0.8)
 }
 
 //-----------------------------------------------------------------------------
