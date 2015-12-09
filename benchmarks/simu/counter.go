@@ -1,6 +1,9 @@
 package main
 
 import (
+	"encoding/binary"
+	"time"
+	//"encoding/hex"
 	"fmt"
 
 	"github.com/gorilla/websocket"
@@ -31,16 +34,21 @@ func main() {
 	}()
 
 	// Make a bunch of requests
-	request := rpctypes.NewRPCRequest("fakeid", "net_info", nil)
+	buf := make([]byte, 32)
 	for i := 0; ; i++ {
+		binary.LittleEndian.PutUint64(buf, uint64(i))
+		//txBytes := hex.EncodeToString(buf[:n])
+		request := rpctypes.NewRPCRequest("fakeid", "broadcast_tx", Arr(buf[:8]))
 		reqBytes := wire.JSONBytes(request)
+		fmt.Println("!!", string(reqBytes))
 		err := ws.WriteMessage(websocket.TextMessage, reqBytes)
 		if err != nil {
 			Exit(err.Error())
 		}
-		if i%1000 == 0 {
+		if i%100 == 0 {
 			fmt.Println(i)
 		}
+		time.Sleep(time.Millisecond * 10)
 	}
 
 	ws.Stop()

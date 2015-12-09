@@ -12,9 +12,8 @@ import (
 
 func TestSerialReap(t *testing.T) {
 
-	app := example.NewCounterApplication()
+	app := example.NewCounterApplication(true)
 	appCtxMempool := app.Open()
-	appCtxMempool.SetOption("serial", "on")
 	proxyAppCtx := proxy.NewLocalAppContext(appCtxMempool)
 	mempool := NewMempool(proxyAppCtx)
 
@@ -28,7 +27,7 @@ func TestSerialReap(t *testing.T) {
 
 			// This will succeed
 			txBytes := make([]byte, 32)
-			_ = binary.PutVarint(txBytes, int64(i))
+			binary.LittleEndian.PutUint64(txBytes, uint64(i))
 			err := mempool.AppendTx(txBytes)
 			if err != nil {
 				t.Fatal("Error after AppendTx: %v", err)
@@ -59,7 +58,7 @@ func TestSerialReap(t *testing.T) {
 		txs := make([]types.Tx, 0)
 		for i := start; i < end; i++ {
 			txBytes := make([]byte, 32)
-			_ = binary.PutVarint(txBytes, int64(i))
+			binary.LittleEndian.PutUint64(txBytes, uint64(i))
 			txs = append(txs, txBytes)
 		}
 		blockHeader := &types.Header{Height: 0}
@@ -75,7 +74,7 @@ func TestSerialReap(t *testing.T) {
 		// Append some txs.
 		for i := start; i < end; i++ {
 			txBytes := make([]byte, 32)
-			_ = binary.PutVarint(txBytes, int64(i))
+			binary.LittleEndian.PutUint64(txBytes, uint64(i))
 			_, retCode := appCtxConsensus.AppendTx(txBytes)
 			if retCode != tmsp.RetCodeOK {
 				t.Error("Error committing tx", retCode)
