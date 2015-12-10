@@ -173,7 +173,7 @@ func (conR *ConsensusReactor) Receive(chID byte, peer *p2p.Peer, msgBytes []byte
 		case *ProposalPOLMessage:
 			ps.ApplyProposalPOLMessage(msg)
 		case *BlockPartMessage:
-			ps.SetHasProposalBlockPart(msg.Height, msg.Round, msg.Part.Proof.Index)
+			ps.SetHasProposalBlockPart(msg.Height, msg.Round, msg.Part.Index)
 			_, err = conR.conS.AddProposalBlockPart(msg.Height, msg.Part)
 		default:
 			log.Warn(Fmt("Unknown message type %v", reflect.TypeOf(msg)))
