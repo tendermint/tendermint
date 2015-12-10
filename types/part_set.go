@@ -49,10 +49,10 @@ func (part *Part) String() string {
 func (part *Part) StringIndented(indent string) string {
 	return fmt.Sprintf(`Part{
 %s  Proof: %v
-%s  Bytes: %X
+%s  Bytes: %X...
 %s}`,
 		indent, part.Proof.StringIndented(indent+"  "),
-		indent, part.Bytes,
+		indent, Fingerprint(part.Bytes),
 		indent)
 }
 

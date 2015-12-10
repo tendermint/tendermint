@@ -49,7 +49,7 @@ func main() {
 		if i%1000 == 0 {
 			fmt.Println(i)
 		}
-		time.Sleep(time.Microsecond * 1)
+		time.Sleep(time.Microsecond * 250)
 	}
 
 	ws.Stop()
