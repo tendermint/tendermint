@@ -21,6 +21,8 @@ import (
 
 var chainID string
 
+var ensureTimeout = time.Duration(2)
+
 func init() {
 	chainID = config.GetString("chain_id")
 }
@@ -76,8 +78,10 @@ func decideProposal(cs1 *ConsensusState, cs2 *validatorStub, height, round int) 
 //-------------------------------------------------------------------------------
 // utils
 
-func nilRound(t *testing.T, startRound int, cs1 *ConsensusState, vss ...*validatorStub) {
+func nilRound(t *testing.T, cs1 *ConsensusState, vss ...*validatorStub) {
+	cs1.mtx.Lock()
 	height, round := cs1.Height, cs1.Round
+	cs1.mtx.Unlock()
 
 	waitFor(t, cs1, height, round, RoundStepPrevote)
 
@@ -132,15 +136,18 @@ func addVoteToFromMany(to *ConsensusState, votes []*types.Vote, froms ...*valida
 
 func addVoteToFrom(to *ConsensusState, from *validatorStub, vote *types.Vote) {
 	valIndex, _ := to.Validators.GetByAddress(from.PrivValidator.Address)
-	added, err := to.TryAddVote(valIndex, vote, "")
-	if _, ok := err.(*types.ErrVoteConflictingSignature); ok {
-		// let it fly
-	} else if !added {
-		fmt.Println("to, from, vote:", to.Height, from.Height, vote.Height)
-		panic(fmt.Sprintln("Failed to add vote. Err:", err))
-	} else if err != nil {
-		panic(fmt.Sprintln("Failed to add vote:", err))
-	}
+
+	to.msgQueue <- msgInfo{msg: &VoteMessage{valIndex, vote}}
+	// added, err := to.TryAddVote(valIndex, vote, "")
+	/*
+		if _, ok := err.(*types.ErrVoteConflictingSignature); ok {
+			// let it fly
+		} else if !added {
+			fmt.Println("to, from, vote:", to.Height, from.Height, vote.Height)
+			panic(fmt.Sprintln("Failed to add vote. Err:", err))
+		} else if err != nil {
+			panic(fmt.Sprintln("Failed to add vote:", err))
+		}*/
 }
 
 func signVoteMany(voteType byte, hash []byte, header types.PartSetHeader, vss ...*validatorStub) []*types.Vote {
@@ -166,7 +173,7 @@ func signAddVoteToFrom(voteType byte, to *ConsensusState, from *validatorStub, h
 }
 
 func ensureNoNewStep(t *testing.T, cs *ConsensusState) {
-	timeout := time.NewTicker(2 * time.Second)
+	timeout := time.NewTicker(ensureTimeout * time.Second)
 	select {
 	case <-timeout.C:
 		break
@@ -176,7 +183,7 @@ func ensureNoNewStep(t *testing.T, cs *ConsensusState) {
 }
 
 func ensureNewStep(t *testing.T, cs *ConsensusState) *RoundState {
-	timeout := time.NewTicker(2 * time.Second)
+	timeout := time.NewTicker(ensureTimeout * time.Second)
 	select {
 	case <-timeout.C:
 		panic("We should have gone to the next step, not be stuck waiting")
@@ -294,15 +301,11 @@ func simpleConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
 	evsw := events.NewEventSwitch()
 	cs.SetFireable(evsw)
 
-	// read off the NewHeightStep
+	// read off the NewHeightStep from updateToState
 	<-cs.NewStepCh()
 
-	// start the reactor routines
-	// (we should move these to state but the receive routine needs to be able to "broadcast votes"
-	//  --> add good votes to some buffered chan and have a go routine do the broadcast ...
-	conR := NewConsensusReactor(cs, nil, false)
-	go conR.receiveRoutine() // serializes processing of proposoals, block parts, votes
-	go conR.timeoutRoutine() // fires timeouts into the receive routine
+	// start the transition routines
+	cs.startRoutines()
 
 	for i := 0; i < nValidators; i++ {
 		vss[i] = NewValidatorStub(privVals[i])

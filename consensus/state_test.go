@@ -55,7 +55,7 @@ func TestProposerSelection0(t *testing.T) {
 	cs1.newStepCh = make(chan *RoundState) // so it blocks
 	height, round := cs1.Height, cs1.Round
 
-	cs1.EnterNewRound(height, round, false)
+	go cs1.EnterNewRound(height, round, false)
 
 	// lets commit a block and ensure proposer for the next height is correct
 	prop := cs1.Validators.Proposer()
@@ -85,10 +85,21 @@ func TestProposerSelection2(t *testing.T) {
 	cs1, vss := simpleConsensusState(3)    // test needs more work for more than 3 validators
 	cs1.newStepCh = make(chan *RoundState) // so it blocks
 
+	// listen for new round
+	ch := make(chan struct{})
+	evsw := events.NewEventSwitch()
+	evsw.OnStart()
+	evsw.AddListenerForEvent("tester", types.EventStringNewRound(), func(data types.EventData) {
+		ch <- struct{}{}
+	})
+	cs1.SetFireable(evsw)
+
 	// this time we jump in at round 2
 	incrementRound(vss[1:]...)
 	incrementRound(vss[1:]...)
-	cs1.EnterNewRound(cs1.Height, 2, false)
+	go cs1.EnterNewRound(cs1.Height, 2, false)
+
+	<-ch // wait for the new round
 
 	// everyone just votes nil. we get a new proposer each round
 	for i := 0; i < len(vss); i++ {
@@ -96,7 +107,9 @@ func TestProposerSelection2(t *testing.T) {
 		if !bytes.Equal(prop.Address, vss[(i+2)%len(vss)].Address) {
 			t.Fatalf("expected proposer to be validator %d. Got %X", (i+2)%len(vss), prop.Address)
 		}
-		nilRound(t, 2, cs1, vss[1:]...)
+		go nilRound(t, cs1, vss[1:]...)
+		<-ch // wait for the new round event each round
+
 		incrementRound(vss[1:]...)
 	}
 
@@ -118,7 +131,7 @@ func TestEnterProposeNoPrivValidator(t *testing.T) {
 	cs.SetFireable(evsw)
 
 	// starts a go routine for EnterPropose
-	cs.EnterNewRound(height, round, false)
+	go cs.EnterNewRound(height, round, false)
 
 	// Wait until the prevote step
 	waitFor(t, cs, height, round, RoundStepPrevote)
@@ -133,7 +146,7 @@ func TestEnterProposeNoPrivValidator(t *testing.T) {
 }
 
 // a validator should not timeout of the prevote round (TODO: unless the block is really big!)
-func TestEnterPropose(t *testing.T) {
+func TestEnterProposeYesPrivValidator(t *testing.T) {
 	cs, _ := simpleConsensusState(1)
 	height, round := cs.Height, cs.Round
 
@@ -146,8 +159,8 @@ func TestEnterPropose(t *testing.T) {
 	})
 	cs.SetFireable(evsw)
 
-	// starts a go routine for EnterPropose
-	cs.EnterNewRound(height, round, false)
+	// starts a go routine for the round
+	go cs.EnterNewRound(height, round, false)
 
 	// Wait until the prevote step
 	waitFor(t, cs, height, round, RoundStepPrevote)
@@ -164,7 +177,7 @@ func TestEnterPropose(t *testing.T) {
 		t.Error("rs.ProposalBlockParts should be set")
 	}
 
-	// if we're not a validator, EnterPropose should timeout
+	// if we're a validator, EnterPropose should not timeout
 	if timeoutEventReceived == true {
 		t.Fatal("Expected EnterPropose not to timeout")
 	}
@@ -204,7 +217,7 @@ func TestBadProposal(t *testing.T) {
 	}
 
 	// start round
-	cs1.EnterNewRound(height, round, false)
+	go cs1.EnterNewRound(height, round, false)
 
 	// now we're on a new round and not the proposer
 	waitFor(t, cs1, height, round, RoundStepPropose)
@@ -241,7 +254,7 @@ func TestFullRound1(t *testing.T) {
 	height, round := cs.Height, cs.Round
 
 	// starts a go routine for EnterPropose
-	cs.EnterNewRound(height, round, false)
+	go cs.EnterNewRound(height, round, false)
 
 	// wait to finish propose and prevote
 	waitFor(t, cs, height, round, RoundStepPrevote)
@@ -259,10 +272,14 @@ func TestFullRound1(t *testing.T) {
 	validatePrevoteAndPrecommit(t, cs, round, round, vss[0], propBlockHash, propBlockHash)
 }
 
+/*
 // nil is proposed, so prevote and precommit nil
 func TestFullRoundNil(t *testing.T) {
 	cs, vss := simpleConsensusState(1)
 	height, round := cs.Height, cs.Round
+
+	// TODO: This is not easy to test now because we need receiveRoutine to start things off
+	// and we want to not be the proposer but still vote ....
 
 	// Skip the propose step
 	cs.EnterPrevote(height, round, true)
@@ -273,6 +290,7 @@ func TestFullRoundNil(t *testing.T) {
 	// should prevote and precommit nil
 	validatePrevoteAndPrecommit(t, cs, round, 0, vss[0], nil, nil)
 }
+*/
 
 // run through propose, prevote, precommit commit with two validators
 // where the first validator has to wait for votes from the second
@@ -283,7 +301,7 @@ func TestFullRound2(t *testing.T) {
 	height, round := cs1.Height, cs1.Round
 
 	// start round and wait for propose and prevote
-	cs1.EnterNewRound(height, round, false)
+	go cs1.EnterNewRound(height, round, false)
 	waitFor(t, cs1, height, round, RoundStepPrevote)
 
 	// we should now be stuck in limbo forever, waiting for more prevotes
@@ -337,8 +355,8 @@ func TestLockNoPOL(t *testing.T) {
 		Round1 (cs1, B) // B B // B B2
 	*/
 
-	// start round and wait for propose and prevote
-	cs1.EnterNewRound(height, 0, false)
+	// start round and wait for prevote
+	go cs1.EnterNewRound(height, 0, false)
 	waitFor(t, cs1, height, 0, RoundStepPrevote)
 
 	// we should now be stuck in limbo forever, waiting for more prevotes
@@ -457,15 +475,19 @@ func TestLockNoPOL(t *testing.T) {
 	*/
 
 	// now we're on a new round and not the proposer
-	waitFor(t, cs1, height, 3, RoundStepPropose)
-
 	// so set the proposal block
 	cs1.mtx.Lock()
 	cs1.Proposal, cs1.ProposalBlock = prop, propBlock
 	cs1.mtx.Unlock()
 
+	// wait for the proposal go ahead
+	waitFor(t, cs1, height, 3, RoundStepPropose)
+
+	//log.Debug("waiting for timeout")
 	// and wait for timeout
-	<-timeoutChan
+	// go func() { <-timeoutChan }()
+
+	log.Debug("waiting for prevote")
 	// go to prevote, prevote for locked block (not proposal)
 	waitFor(t, cs1, height, 3, RoundStepPrevote)
 
@@ -515,7 +537,7 @@ func TestLockPOLRelock(t *testing.T) {
 	*/
 
 	// start round and wait for propose and prevote
-	cs1.EnterNewRound(cs1.Height, 0, false)
+	go cs1.EnterNewRound(cs1.Height, 0, false)
 	_, _, _ = <-cs1.NewStepCh(), <-voteChan, <-cs1.NewStepCh()
 
 	theBlockHash := cs1.ProposalBlock.Hash()
@@ -575,17 +597,13 @@ func TestLockPOLRelock(t *testing.T) {
 	*/
 
 	// now we're on a new round and not the proposer
-	<-cs1.NewStepCh()
-	cs1.mtx.Lock()
 	// so set the proposal block
+	cs1.mtx.Lock()
 	propBlockHash, propBlockParts := propBlock.Hash(), propBlock.MakePartSet()
 	cs1.Proposal, cs1.ProposalBlock, cs1.ProposalBlockParts = prop, propBlock, propBlockParts
 	cs1.mtx.Unlock()
-	// and wait for timeout
-	te = <-timeoutChan
-	if te.Step != RoundStepPropose.String() {
-		t.Fatalf("expected to timeout of propose. got %v", te.Step)
-	}
+	<-cs1.NewStepCh()
+
 	// go to prevote, prevote for locked block (not proposal), move on
 	_, _ = <-voteChan, <-cs1.NewStepCh()
 	validatePrevote(t, cs1, 0, vss[0], theBlockHash)
@@ -663,7 +681,7 @@ func TestLockPOLUnlock(t *testing.T) {
 	*/
 
 	// start round and wait for propose and prevote
-	cs1.EnterNewRound(cs1.Height, 0, false)
+	go cs1.EnterNewRound(cs1.Height, 0, false)
 	_, _, _ = <-cs1.NewStepCh(), <-voteChan, <-cs1.NewStepCh()
 
 	theBlockHash := cs1.ProposalBlock.Hash()
@@ -713,14 +731,12 @@ func TestLockPOLUnlock(t *testing.T) {
 	*/
 
 	// now we're on a new round and not the proposer,
-	<-cs1.NewStepCh()
-	cs1.mtx.Lock()
 	// so set the proposal block
+	cs1.mtx.Lock()
 	cs1.Proposal, cs1.ProposalBlock, cs1.ProposalBlockParts = prop, propBlock, propBlock.MakePartSet()
 	lockedBlockHash := cs1.LockedBlock.Hash()
 	cs1.mtx.Unlock()
-	// and wait for timeout
-	<-timeoutChan
+	<-cs1.NewStepCh()
 
 	// go to prevote, prevote for locked block (not proposal)
 	_, _ = <-voteChan, <-cs1.NewStepCh()
@@ -783,7 +799,7 @@ func TestLockPOLSafety1(t *testing.T) {
 	cs1.SetFireable(evsw)
 
 	// start round and wait for propose and prevote
-	cs1.EnterNewRound(cs1.Height, 0, false)
+	go cs1.EnterNewRound(cs1.Height, 0, false)
 	_, _, _ = <-cs1.NewStepCh(), <-voteChan, <-cs1.NewStepCh()
 
 	propBlock := cs1.ProposalBlock
@@ -817,14 +833,13 @@ func TestLockPOLSafety1(t *testing.T) {
 	*/
 
 	// now we're on a new round and not the proposer,
-	<-cs1.NewStepCh()
 	// so set proposal
 	cs1.mtx.Lock()
 	propBlockHash, propBlockParts := propBlock.Hash(), propBlock.MakePartSet()
 	cs1.Proposal, cs1.ProposalBlock, cs1.ProposalBlockParts = prop, propBlock, propBlockParts
 	cs1.mtx.Unlock()
-	// and wait for timeout
-	<-timeoutChan
+	<-cs1.NewStepCh()
+
 	if cs1.LockedBlock != nil {
 		t.Fatal("we should not be locked!")
 	}
@@ -916,7 +931,7 @@ func TestLockPOLSafety2(t *testing.T) {
 	cs1.SetFireable(evsw)
 
 	// start round and wait for propose and prevote
-	cs1.EnterNewRound(cs1.Height, 0, false)
+	go cs1.EnterNewRound(cs1.Height, 0, false)
 	_, _, _ = <-cs1.NewStepCh(), <-voteChan, <-cs1.NewStepCh()
 
 	theBlockHash := cs1.ProposalBlock.Hash()
@@ -1051,7 +1066,7 @@ func TestSlashingPrevotes(t *testing.T) {
 	cs1.newStepCh = make(chan *RoundState) // so it blocks
 
 	// start round and wait for propose and prevote
-	cs1.EnterNewRound(cs1.Height, 0, false)
+	go cs1.EnterNewRound(cs1.Height, 0, false)
 	_, _ = <-cs1.NewStepCh(), <-cs1.NewStepCh()
 
 	// we should now be stuck in limbo forever, waiting for more prevotes
@@ -1078,7 +1093,7 @@ func TestSlashingPrecommits(t *testing.T) {
 	cs1.newStepCh = make(chan *RoundState) // so it blocks
 
 	// start round and wait for propose and prevote
-	cs1.EnterNewRound(cs1.Height, 0, false)
+	go cs1.EnterNewRound(cs1.Height, 0, false)
 	_, _ = <-cs1.NewStepCh(), <-cs1.NewStepCh()
 
 	// add prevote from cs2
@@ -1127,7 +1142,7 @@ func TestHalt1(t *testing.T) {
 	cs1.SetFireable(evsw)
 
 	// start round and wait for propose and prevote
-	cs1.EnterNewRound(cs1.Height, 0, false)
+	go cs1.EnterNewRound(cs1.Height, 0, false)
 	_, _ = <-cs1.NewStepCh(), <-cs1.NewStepCh()
 
 	theBlockHash := cs1.ProposalBlock.Hash()
