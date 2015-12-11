@@ -171,12 +171,12 @@ func (conR *ConsensusReactor) Receive(chID byte, peer *p2p.Peer, msgBytes []byte
 		switch msg := msg.(type) {
 		case *ProposalMessage:
 			ps.SetHasProposal(msg.Proposal)
-			conR.conS.msgQueue <- msgInfo{msg, peer.Key}
+			conR.conS.peerMsgQueue <- msgInfo{msg, peer.Key}
 		case *ProposalPOLMessage:
 			ps.ApplyProposalPOLMessage(msg)
 		case *BlockPartMessage:
 			ps.SetHasProposalBlockPart(msg.Height, msg.Round, msg.Part.Proof.Index)
-			conR.conS.msgQueue <- msgInfo{msg, peer.Key}
+			conR.conS.peerMsgQueue <- msgInfo{msg, peer.Key}
 		default:
 			log.Warn(Fmt("Unknown message type %v", reflect.TypeOf(msg)))
 		}
@@ -196,7 +196,7 @@ func (conR *ConsensusReactor) Receive(chID byte, peer *p2p.Peer, msgBytes []byte
 			ps.EnsureVoteBitArrays(height-1, lastCommitSize)
 			ps.SetHasVote(msg.Vote, msg.ValidatorIndex)
 
-			conR.conS.msgQueue <- msgInfo{msg, peer.Key}
+			conR.conS.peerMsgQueue <- msgInfo{msg, peer.Key}
 
 		default:
 			// don't punish (leave room for soft upgrades)
