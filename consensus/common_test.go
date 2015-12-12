@@ -137,7 +137,7 @@ func addVoteToFromMany(to *ConsensusState, votes []*types.Vote, froms ...*valida
 func addVoteToFrom(to *ConsensusState, from *validatorStub, vote *types.Vote) {
 	valIndex, _ := to.Validators.GetByAddress(from.PrivValidator.Address)
 
-	to.msgQueue <- msgInfo{msg: &VoteMessage{valIndex, vote}}
+	to.peerMsgQueue <- msgInfo{msg: &VoteMessage{valIndex, vote}}
 	// added, err := to.TryAddVote(valIndex, vote, "")
 	/*
 		if _, ok := err.(*types.ErrVoteConflictingSignature); ok {
@@ -298,14 +298,20 @@ func simpleConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
 	cs := NewConsensusState(state, proxyAppCtxCon, blockStore, mempool)
 	cs.SetPrivValidator(privVals[0])
 
-	evsw := events.NewEventSwitch()
-	cs.SetFireable(evsw)
-
-	// read off the NewHeightStep from updateToState
+	// from the updateToState in NewConsensusState
 	<-cs.NewStepCh()
 
+	evsw := events.NewEventSwitch()
+	cs.SetFireable(evsw)
+	evsw.OnStart()
+	go func() {
+		for {
+			<-cs.NewStepCh()
+		}
+	}()
+
 	// start the transition routines
-	cs.startRoutines()
+	//	cs.startRoutines()
 
 	for i := 0; i < nValidators; i++ {
 		vss[i] = NewValidatorStub(privVals[i])
@@ -314,6 +320,16 @@ func simpleConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
 	incrementHeight(vss[1:]...)
 
 	return cs, vss
+}
+
+func subscribeToEvent(cs *ConsensusState, eventID string) chan interface{} {
+	evsw := cs.evsw.(*events.EventSwitch)
+	// listen for new round
+	ch := make(chan interface{}, 10)
+	evsw.AddListenerForEvent("tester", eventID, func(data types.EventData) {
+		ch <- data
+	})
+	return ch
 }
 
 func randGenesisState(numValidators int, randPower bool, minPower int64) (*sm.State, []*types.PrivValidator) {
@@ -342,4 +358,9 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 		Validators:  validators,
 	}, privValidators
 
+}
+
+func startTestRound(cs *ConsensusState, height, round int) {
+	cs.EnterNewRound(height, round)
+	cs.startRoutines(0)
 }
