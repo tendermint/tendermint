@@ -265,28 +265,30 @@ func (cs *ConsensusState) NewStepCh() chan *RoundState {
 func (cs *ConsensusState) OnStart() error {
 	cs.BaseService.OnStart()
 
-	// first we start the round (no go routines)
+	// first we schedule the round (no go routines)
 	// then we start the timeout and receive routines.
-	// buffered channels means scheduleRound0 will finish. Once it does,
-	// all further access to the RoundState is through the receiveRoutine
+	// tickChan is buffered so scheduleRound0 will finish.
+	// Then all further access to the RoundState is through the receiveRoutine
 	cs.scheduleRound0(cs.Height)
-	cs.startRoutines(0) // start timeout and receive
+	cs.startRoutines(0)
 	return nil
 }
 
+// timeoutRoutine: receive requests for timeouts on tickChan and fire timeouts on tockChan
+// receiveRoutine: serializes processing of proposoals, block parts, votes; coordinates state transitions
 func (cs *ConsensusState) startRoutines(maxSteps int) {
-	go cs.timeoutRoutine()         // receive requests for timeouts on tickChan and fire timeouts on tockChan
-	go cs.receiveRoutine(maxSteps) // serializes processing of proposoals, block parts, votes, and coordinates state transitions
+	go cs.timeoutRoutine()
+	go cs.receiveRoutine(maxSteps)
 }
 
 func (cs *ConsensusState) OnStop() {
 	cs.QuitService.OnStop()
 }
 
-/*
-	The following three functions can be used to send messages into the consensus state
-		which may cause a state transition
-*/
+//------------------------------------------------------------
+// Public interface for passing messages into the consensus state,
+// possibly causing a state transition
+// TODO: should these return anything or let callers just use events?
 
 // May block on send if queue is full.
 func (cs *ConsensusState) AddVote(valIndex int, vote *types.Vote, peerKey string) (added bool, address []byte, err error) {
@@ -335,7 +337,7 @@ func (cs *ConsensusState) SetProposalAndBlock(proposal *types.Proposal, block *t
 	return nil // TODO errors
 }
 
-//----------------------------------------------
+//------------------------------------------------------------
 // internal functions for managing the state
 
 func (cs *ConsensusState) updateHeight(height int) {
@@ -601,17 +603,6 @@ func (cs *ConsensusState) handleMsg(mi msgInfo, rs RoundState) {
 func (cs *ConsensusState) handleTimeout(ti timeoutInfo, rs RoundState) {
 	log.Debug("Received tock", "timeout", ti.duration, "height", ti.height, "round", ti.round, "step", ti.step)
 
-	// if this is a timeout for the new height
-	if ti.height == rs.Height+1 && ti.round == 0 && ti.step == 1 {
-		cs.mtx.Lock()
-		// Increment height.
-		cs.updateToState(cs.stagedState)
-		// event fired from EnterNewRound after some updates
-		cs.EnterNewRound(ti.height, 0)
-		cs.mtx.Unlock()
-		return
-	}
-
 	// timeouts must be for current height, round, step
 	if ti.height != rs.Height || ti.round < rs.Round || (ti.round == rs.Round && ti.step < rs.Step) {
 		log.Debug("Ignoring tock because we're ahead", "height", rs.Height, "round", rs.Round, "step", rs.Step)
@@ -623,6 +614,10 @@ func (cs *ConsensusState) handleTimeout(ti timeoutInfo, rs RoundState) {
 	defer cs.mtx.Unlock()
 
 	switch ti.step {
+	case RoundStepNewHeight:
+		// NewRound event fired from EnterNewRound.
+		// Do we want a timeout event too?
+		cs.EnterNewRound(ti.height, 0)
 	case RoundStepPropose:
 		cs.evsw.FireEvent(types.EventStringTimeoutPropose(), cs.RoundStateEvent())
 		cs.EnterPrevote(ti.height, ti.round)
@@ -1148,7 +1143,8 @@ func (cs *ConsensusState) FinalizeCommit(height int) {
 	// We have the block, so stage/save/commit-vote.
 	cs.saveBlock(cs.ProposalBlock, cs.ProposalBlockParts, cs.Votes.Precommits(cs.CommitRound))
 
-	// call updateToState from handleTimeout
+	// NewHeightStep!
+	cs.updateToState(cs.stagedState)
 
 	// cs.StartTime is already set.
 	// Schedule Round0 to start soon.
