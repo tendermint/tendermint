@@ -300,6 +300,7 @@ func (cs *ConsensusState) AddVote(valIndex int, vote *types.Vote, peerKey string
 	return false, nil, nil
 }
 
+// May block on send if queue is full.
 func (cs *ConsensusState) SetProposal(proposal *types.Proposal, peerKey string) error {
 
 	if peerKey == "" {
@@ -312,6 +313,7 @@ func (cs *ConsensusState) SetProposal(proposal *types.Proposal, peerKey string) 
 	return nil
 }
 
+// May block on send if queue is full.
 func (cs *ConsensusState) AddProposalBlockPart(height, round int, part *types.Part, peerKey string) error {
 
 	if peerKey == "" {
@@ -667,6 +669,8 @@ func (cs *ConsensusState) EnterNewRound(height int, round int) {
 	}
 
 	// Setup new round
+	// we don't fire newStep for this step,
+	// but we fire an event, so update the round step first
 	cs.updateRoundStep(round, RoundStepNewRound)
 	cs.Validators = validators
 	if round == 0 {
@@ -697,6 +701,12 @@ func (cs *ConsensusState) EnterPropose(height int, round int) {
 	}
 	log.Info(Fmt("EnterPropose(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
+	defer func() {
+		// Done EnterPropose:
+		cs.updateRoundStep(round, RoundStepPropose)
+		cs.newStep()
+	}()
+
 	// This step times out after `timeoutPropose`
 	cs.scheduleTimeout(timeoutPropose, height, round, RoundStepPropose)
 
@@ -711,10 +721,6 @@ func (cs *ConsensusState) EnterPropose(height int, round int) {
 		log.Info("EnterPropose: Our turn to propose", "proposer", cs.Validators.Proposer().Address, "privValidator", cs.privValidator)
 		cs.decideProposal(height, round)
 	}
-
-	// Done EnterPropose:
-	cs.updateRoundStep(round, RoundStepPropose)
-	cs.newStep()
 
 	// If we have the whole proposal + POL, then goto Prevote now.
 	// else, we'll EnterPrevote when the rest of the proposal is received (in AddProposalBlockPart),
@@ -842,6 +848,12 @@ func (cs *ConsensusState) EnterPrevote(height int, round int) {
 		return
 	}
 
+	defer func() {
+		// Done EnterPrevote:
+		cs.updateRoundStep(round, RoundStepPrevote)
+		cs.newStep()
+	}()
+
 	// fire event for how we got here
 	if cs.isProposalComplete() {
 		cs.evsw.FireEvent(types.EventStringCompleteProposal(), cs.RoundStateEvent())
@@ -854,16 +866,8 @@ func (cs *ConsensusState) EnterPrevote(height int, round int) {
 
 	log.Info(Fmt("EnterPrevote(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
-	// needs to happen before doPrevote because
-	// addVote will take us to the next step
-	// TODO: should we fire our own votes back through the receive Routine?
-	cs.updateRoundStep(round, RoundStepPrevote)
-
 	// Sign and broadcast vote as necessary
 	cs.doPrevote(height, round)
-
-	// Done EnterPrevote:
-	cs.newStep()
 
 	// Once `addVote` hits any +2/3 prevotes, we will go to PrevoteWait
 	// (so we have more time to try and collect +2/3 prevotes for a single block)
@@ -913,9 +917,11 @@ func (cs *ConsensusState) EnterPrevoteWait(height int, round int) {
 	}
 	log.Info(Fmt("EnterPrevoteWait(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
-	// Done EnterPrevoteWait:
-	cs.updateRoundStep(round, RoundStepPrevoteWait)
-	cs.newStep()
+	defer func() {
+		// Done EnterPrevoteWait:
+		cs.updateRoundStep(round, RoundStepPrevoteWait)
+		cs.newStep()
+	}()
 
 	// After `timeoutPrevote0+timeoutPrevoteDelta*round`, EnterPrecommit()
 	cs.scheduleTimeout(timeoutPrevote0+timeoutPrevoteDelta*time.Duration(round), height, round, RoundStepPrevoteWait)
@@ -939,9 +945,9 @@ func (cs *ConsensusState) EnterPrecommit(height int, round int) {
 
 	log.Info(Fmt("EnterPrecommit(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
-	cs.updateRoundStep(round, RoundStepPrecommit)
 	defer func() {
 		// Done EnterPrecommit:
+		cs.updateRoundStep(round, RoundStepPrecommit)
 		cs.newStep()
 	}()
 
@@ -1036,9 +1042,11 @@ func (cs *ConsensusState) EnterPrecommitWait(height int, round int) {
 	}
 	log.Info(Fmt("EnterPrecommitWait(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
-	// Done EnterPrecommitWait:
-	cs.updateRoundStep(round, RoundStepPrecommitWait)
-	cs.newStep()
+	defer func() {
+		// Done EnterPrecommitWait:
+		cs.updateRoundStep(round, RoundStepPrecommitWait)
+		cs.newStep()
+	}()
 
 	// After `timeoutPrecommit0+timeoutPrecommitDelta*round`, EnterNewRound()
 	cs.scheduleTimeout(timeoutPrecommit0+timeoutPrecommitDelta*time.Duration(round), height, round, RoundStepPrecommitWait)
@@ -1058,7 +1066,7 @@ func (cs *ConsensusState) EnterCommit(height int, commitRound int) {
 	defer func() {
 		// Done Entercommit:
 		// keep ca.Round the same, it points to the right Precommits set.
-		cs.Step = RoundStepCommit
+		cs.updateRoundStep(cs.Round, RoundStepCommit)
 		cs.CommitRound = commitRound
 		cs.newStep()
 
