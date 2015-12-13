@@ -24,8 +24,9 @@ var (
 )
 
 type Part struct {
-	Proof merkle.SimpleProof `json:"proof"`
+	Index int                `json:"index"`
 	Bytes []byte             `json:"bytes"`
+	Proof merkle.SimpleProof `json:"proof"`
 
 	// Cache
 	hash []byte
@@ -47,12 +48,13 @@ func (part *Part) String() string {
 }
 
 func (part *Part) StringIndented(indent string) string {
-	return fmt.Sprintf(`Part{
+	return fmt.Sprintf(`Part{#%v
+%s  Bytes: %X...
 %s  Proof: %v
-%s  Bytes: %X
 %s}`,
+		part.Index,
+		indent, Fingerprint(part.Bytes),
 		indent, part.Proof.StringIndented(indent+"  "),
-		indent, part.Bytes,
 		indent)
 }
 
@@ -101,6 +103,7 @@ func NewPartSetFromData(data []byte) *PartSet {
 	partsBitArray := NewBitArray(total)
 	for i := 0; i < total; i++ {
 		part := &Part{
+			Index: i,
 			Bytes: data[i*partSize : MinInt(len(data), (i+1)*partSize)],
 		}
 		parts[i] = part
@@ -108,13 +111,13 @@ func NewPartSetFromData(data []byte) *PartSet {
 		partsBitArray.SetIndex(i, true)
 	}
 	// Compute merkle proofs
-	proofs := merkle.SimpleProofsFromHashables(parts_)
+	root, proofs := merkle.SimpleProofsFromHashables(parts_)
 	for i := 0; i < total; i++ {
 		parts[i].Proof = *proofs[i]
 	}
 	return &PartSet{
 		total:         total,
-		hash:          proofs[0].RootHash,
+		hash:          root,
 		parts:         parts,
 		partsBitArray: partsBitArray,
 		count:         total,
@@ -190,23 +193,23 @@ func (ps *PartSet) AddPart(part *Part) (bool, error) {
 	defer ps.mtx.Unlock()
 
 	// Invalid part index
-	if part.Proof.Index >= ps.total {
+	if part.Index >= ps.total {
 		return false, ErrPartSetUnexpectedIndex
 	}
 
 	// If part already exists, return false.
-	if ps.parts[part.Proof.Index] != nil {
+	if ps.parts[part.Index] != nil {
 		return false, nil
 	}
 
 	// Check hash proof
-	if !part.Proof.Verify(part.Hash(), ps.Hash()) {
+	if !part.Proof.Verify(part.Index, ps.total, part.Hash(), ps.Hash()) {
 		return false, ErrPartSetInvalidProof
 	}
 
 	// Add part
-	ps.parts[part.Proof.Index] = part
-	ps.partsBitArray.SetIndex(part.Proof.Index, true)
+	ps.parts[part.Index] = part
+	ps.partsBitArray.SetIndex(part.Index, true)
 	ps.count++
 	return true, nil
 }

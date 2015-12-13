@@ -69,7 +69,7 @@ func TestWrongProof(t *testing.T) {
 
 	// Test adding a part with wrong trail.
 	part := partSet.GetPart(0)
-	part.Proof.InnerHashes[0][0] += byte(0x01)
+	part.Proof.Aunts[0][0] += byte(0x01)
 	added, err := partSet2.AddPart(part)
 	if added || err == nil {
 		t.Errorf("Expected to fail adding a part with bad trail.")

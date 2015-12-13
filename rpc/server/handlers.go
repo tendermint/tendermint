@@ -252,11 +252,13 @@ func (wsc *WSConnection) OnStart() error {
 	wsc.readTimeout = time.NewTimer(time.Second * wsReadTimeoutSeconds)
 	wsc.pingTicker = time.NewTicker(time.Second * wsPingTickerSeconds)
 	wsc.baseConn.SetPingHandler(func(m string) error {
-		wsc.baseConn.WriteControl(websocket.PongMessage, []byte(m), time.Now().Add(time.Second*wsWriteTimeoutSeconds))
+		// NOTE: https://github.com/gorilla/websocket/issues/97
+		go wsc.baseConn.WriteControl(websocket.PongMessage, []byte(m), time.Now().Add(time.Second*wsWriteTimeoutSeconds))
 		wsc.readTimeout.Reset(time.Second * wsReadTimeoutSeconds)
 		return nil
 	})
 	wsc.baseConn.SetPongHandler(func(m string) error {
+		// NOTE: https://github.com/gorilla/websocket/issues/97
 		wsc.readTimeout.Reset(time.Second * wsReadTimeoutSeconds)
 		return nil
 	})
@@ -287,13 +289,12 @@ func (wsc *WSConnection) readTimeoutRoutine() {
 	}
 }
 
-// Attempt to write response to writeChan and record failures
+// Block trying to write to writeChan until service stops.
 func (wsc *WSConnection) writeRPCResponse(resp RPCResponse) {
 	select {
+	case <-wsc.Quit:
+		return
 	case wsc.writeChan <- resp:
-	default:
-		log.Notice("Stopping connection due to writeChan overflow", "id", wsc.id)
-		wsc.Stop() // writeChan capacity exceeded, error.
 	}
 }
 
@@ -412,7 +413,8 @@ func (wsc *WSConnection) writeRoutine() {
 				log.Error("Failed to marshal RPCResponse to JSON", "error", err)
 			} else {
 				wsc.baseConn.SetWriteDeadline(time.Now().Add(time.Second * wsWriteTimeoutSeconds))
-				if err = wsc.baseConn.WriteMessage(websocket.TextMessage, buf.Bytes()); err != nil {
+				bufBytes := buf.Bytes()
+				if err = wsc.baseConn.WriteMessage(websocket.TextMessage, bufBytes); err != nil {
 					log.Warn("Failed to write response on websocket", "error", err)
 					wsc.Stop()
 					return

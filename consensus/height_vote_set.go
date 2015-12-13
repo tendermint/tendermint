@@ -134,7 +134,6 @@ func (hvs *HeightVoteSet) POLRound() int {
 }
 
 func (hvs *HeightVoteSet) getVoteSet(round int, type_ byte) *types.VoteSet {
-	log.Debug("getVoteSet(round)", "round", round, "type", type_)
 	rvs, ok := hvs.roundVoteSets[round]
 	if !ok {
 		return nil

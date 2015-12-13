@@ -285,7 +285,7 @@ func simpleConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
 	blockStore := bc.NewBlockStore(blockDB)
 
 	// one for mempool, one for consensus
-	app := example.NewCounterApplication()
+	app := example.NewCounterApplication(false)
 	appCMem := app.Open()
 	appCCon := app.Open()
 	proxyAppCtxMem := proxy.NewLocalAppContext(appCMem)

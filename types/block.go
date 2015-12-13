@@ -343,8 +343,12 @@ func (data *Data) StringIndented(indent string) string {
 	if data == nil {
 		return "nil-Data"
 	}
-	txStrings := make([]string, len(data.Txs))
+	txStrings := make([]string, MinInt(len(data.Txs), 21))
 	for i, tx := range data.Txs {
+		if i == 20 {
+			txStrings[i] = fmt.Sprintf("... (%v total)", len(data.Txs))
+			break
+		}
 		txStrings[i] = fmt.Sprintf("Tx:%v", tx)
 	}
 	return fmt.Sprintf(`Data{

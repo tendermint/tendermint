@@ -1,4 +1,3 @@
-
 package rpcclient
 
 import (

@@ -31,9 +31,7 @@ import _ "net/http/pprof"
 type Node struct {
 	sw               *p2p.Switch
 	evsw             *events.EventSwitch
-	book             *p2p.AddrBook
 	blockStore       *bc.BlockStore
-	pexReactor       *p2p.PEXReactor
 	bcReactor        *bc.BlockchainReactor
 	mempoolReactor   *mempl.MempoolReactor
 	consensusState   *consensus.ConsensusState
@@ -74,10 +72,6 @@ func NewNode() *Node {
 		Exit(Fmt("Failed to start switch: %v", err))
 	}
 
-	// Make PEXReactor
-	book := p2p.NewAddrBook(config.GetString("addrbook_file"))
-	pexReactor := p2p.NewPEXReactor(book)
-
 	// Make BlockchainReactor
 	bcReactor := bc.NewBlockchainReactor(state.Copy(), proxyAppCtxConsensus, blockStore, config.GetBool("fast_sync"))
 
@@ -94,7 +88,6 @@ func NewNode() *Node {
 
 	// Make p2p network switch
 	sw := p2p.NewSwitch()
-	sw.AddReactor("PEX", pexReactor)
 	sw.AddReactor("MEMPOOL", mempoolReactor)
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)
@@ -114,9 +107,7 @@ func NewNode() *Node {
 	return &Node{
 		sw:               sw,
 		evsw:             eventSwitch,
-		book:             book,
 		blockStore:       blockStore,
-		pexReactor:       pexReactor,
 		bcReactor:        bcReactor,
 		mempoolReactor:   mempoolReactor,
 		consensusState:   consensusState,
@@ -129,7 +120,6 @@ func NewNode() *Node {
 
 // Call Start() after adding the listeners.
 func (n *Node) Start() error {
-	n.book.Start()
 	n.sw.SetNodeInfo(makeNodeInfo(n.sw, n.privKey))
 	n.sw.SetNodePrivKey(n.privKey)
 	_, err := n.sw.Start()
@@ -140,7 +130,6 @@ func (n *Node) Stop() {
 	log.Notice("Stopping Node")
 	// TODO: gracefully disconnect from peers.
 	n.sw.Stop()
-	n.book.Stop()
 }
 
 // Add the event switch to reactors, mempool, etc.
@@ -156,7 +145,6 @@ func SetFireable(evsw *events.EventSwitch, eventables ...events.Eventable) {
 func (n *Node) AddListener(l p2p.Listener) {
 	log.Notice(Fmt("Added %v", l))
 	n.sw.AddListener(l)
-	n.book.AddOurAddress(l.ExternalAddress())
 }
 
 // Dial a list of seeds in random order
@@ -179,11 +167,9 @@ func (n *Node) dialSeed(addr *p2p.NetAddress) {
 	peer, err := n.sw.DialPeerWithAddress(addr)
 	if err != nil {
 		log.Error("Error dialing seed", "error", err)
-		//n.book.MarkAttempt(addr)
 		return
 	} else {
 		log.Notice("Connected to seed", "peer", peer)
-		n.book.AddAddress(addr, addr)
 	}
 }
 

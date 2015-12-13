@@ -31,10 +31,7 @@ func (s *State) ExecBlock(proxyAppCtx proxy.AppContext, block *types.Block, bloc
 	nextValSet := valSet.Copy()
 
 	// First, rollback.
-	if err != nil {
-		proxyAppCtx.RollbackSync()
-		return err
-	}
+	proxyAppCtx.RollbackSync()
 
 	// Execute, or rollback. (Does not commit)
 	err = s.execBlockOnProxyApp(proxyAppCtx, block)

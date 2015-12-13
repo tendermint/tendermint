@@ -86,14 +86,16 @@ func (conR *ConsensusReactor) GetChannels() []*p2p.ChannelDescriptor {
 			SendQueueCapacity: 100,
 		},
 		&p2p.ChannelDescriptor{
-			ID:                DataChannel,
-			Priority:          5,
-			SendQueueCapacity: 2,
+			ID:                 DataChannel,
+			Priority:           2,
+			SendQueueCapacity:  50,
+			RecvBufferCapacity: 50 * 4096,
 		},
 		&p2p.ChannelDescriptor{
-			ID:                VoteChannel,
-			Priority:          5,
-			SendQueueCapacity: 40,
+			ID:                 VoteChannel,
+			Priority:           5,
+			SendQueueCapacity:  100,
+			RecvBufferCapacity: 100 * 100,
 		},
 	}
 }
@@ -175,7 +177,7 @@ func (conR *ConsensusReactor) Receive(chID byte, peer *p2p.Peer, msgBytes []byte
 		case *ProposalPOLMessage:
 			ps.ApplyProposalPOLMessage(msg)
 		case *BlockPartMessage:
-			ps.SetHasProposalBlockPart(msg.Height, msg.Round, msg.Part.Proof.Index)
+			ps.SetHasProposalBlockPart(msg.Height, msg.Round, msg.Part.Index)
 			conR.conS.peerMsgQueue <- msgInfo{msg, peer.Key}
 		default:
 			log.Warn(Fmt("Unknown message type %v", reflect.TypeOf(msg)))
@@ -302,7 +304,7 @@ func (conR *ConsensusReactor) sendNewRoundStepMessage(peer *p2p.Peer) {
 }
 
 func (conR *ConsensusReactor) gossipDataRoutine(peer *p2p.Peer, ps *PeerState) {
-	log := log.New("peer", peer.Key)
+	log := log.New("peer", peer)
 
 OUTER_LOOP:
 	for {
@@ -408,7 +410,7 @@ OUTER_LOOP:
 }
 
 func (conR *ConsensusReactor) gossipVotesRoutine(peer *p2p.Peer, ps *PeerState) {
-	log := log.New("peer", peer.Key)
+	log := log.New("peer", peer)
 
 	// Simple hack to throttle logs upon sleep.
 	var sleeping = 0
@@ -430,8 +432,8 @@ OUTER_LOOP:
 			sleeping = 0
 		}
 
-		log.Debug("gossipVotesRoutine", "rsHeight", rs.Height, "rsRound", rs.Round,
-			"prsHeight", prs.Height, "prsRound", prs.Round, "prsStep", prs.Step)
+		//log.Debug("gossipVotesRoutine", "rsHeight", rs.Height, "rsRound", rs.Round,
+		//	"prsHeight", prs.Height, "prsRound", prs.Round, "prsStep", prs.Step)
 
 		// If height matches, then send LastCommit, Prevotes, Precommits.
 		if rs.Height == prs.Height {
@@ -738,7 +740,7 @@ func (ps *PeerState) SetHasVote(vote *types.Vote, index int) {
 }
 
 func (ps *PeerState) setHasVote(height int, round int, type_ byte, index int) {
-	log := log.New("peer", ps.Peer.Key, "peerRound", ps.Round, "height", height, "round", round)
+	log := log.New("peer", ps.Peer, "peerRound", ps.Round, "height", height, "round", round)
 	if type_ != types.VoteTypePrevote && type_ != types.VoteTypePrecommit {
 		PanicSanity("Invalid vote type")
 	}
