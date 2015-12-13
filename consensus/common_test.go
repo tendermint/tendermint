@@ -203,6 +203,18 @@ func waitFor(t *testing.T, cs *ConsensusState, height int, round int, step Round
 	}
 }
 
+func incrementHeight(vss ...*validatorStub) {
+	for _, vs := range vss {
+		vs.Height += 1
+	}
+}
+
+func incrementRound(vss ...*validatorStub) {
+	for _, vs := range vss {
+		vs.Round += 1
+	}
+}
+
 func validatePrevote(t *testing.T, cs *ConsensusState, round int, privVal *validatorStub, blockHash []byte) {
 	prevotes := cs.Votes.Prevotes(round)
 	var vote *types.Vote
@@ -220,15 +232,14 @@ func validatePrevote(t *testing.T, cs *ConsensusState, round int, privVal *valid
 	}
 }
 
-func incrementHeight(vss ...*validatorStub) {
-	for _, vs := range vss {
-		vs.Height += 1
+func validateLastPrecommit(t *testing.T, cs *ConsensusState, privVal *validatorStub, blockHash []byte) {
+	votes := cs.LastCommit
+	var vote *types.Vote
+	if vote = votes.GetByAddress(privVal.Address); vote == nil {
+		panic("Failed to find precommit from validator")
 	}
-}
-
-func incrementRound(vss ...*validatorStub) {
-	for _, vs := range vss {
-		vs.Round += 1
+	if !bytes.Equal(vote.BlockHash, blockHash) {
+		panic(fmt.Sprintf("Expected precommit to be for %X, got %X", blockHash, vote.BlockHash))
 	}
 }
 
@@ -330,6 +341,23 @@ func subscribeToEvent(cs *ConsensusState, eventID string) chan interface{} {
 		ch <- data
 	})
 	return ch
+}
+
+func subscribeToVoter(cs *ConsensusState, addr []byte) chan interface{} {
+
+	voteCh0 := subscribeToEvent(cs, types.EventStringVote())
+	voteCh := make(chan interface{})
+	go func() {
+		for {
+			v := <-voteCh0
+			vote := v.(*types.EventDataVote)
+			// we only fire for our own votes
+			if bytes.Equal(addr, vote.Address) {
+				voteCh <- v
+			}
+		}
+	}()
+	return voteCh
 }
 
 func randGenesisState(numValidators int, randPower bool, minPower int64) (*sm.State, []*types.PrivValidator) {

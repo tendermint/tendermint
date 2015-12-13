@@ -332,7 +332,7 @@ func (cs *ConsensusState) SetProposalAndBlock(proposal *types.Proposal, block *t
 	cs.SetProposal(proposal, peerKey)
 	for i := 0; i < parts.Total(); i++ {
 		part := parts.GetPart(i)
-		cs.AddProposalBlockPart(cs.Height, cs.Round, part, peerKey)
+		cs.AddProposalBlockPart(proposal.Height, proposal.Round, part, peerKey)
 	}
 	return nil // TODO errors
 }
@@ -1219,7 +1219,7 @@ func (cs *ConsensusState) addProposalBlockPart(height int, part *types.Part) (ad
 		var n int
 		var err error
 		cs.ProposalBlock = wire.ReadBinary(&types.Block{}, cs.ProposalBlockParts.GetReader(), types.MaxBlockSize, &n, &err).(*types.Block)
-		log.Info("Received complete proposal", "hash", cs.ProposalBlock.Hash())
+		log.Info("Received complete proposal", "hash", cs.ProposalBlock.Hash(), "round", cs.Proposal.Round)
 		if cs.Step == RoundStepPropose && cs.isProposalComplete() {
 			// Move onto the next step
 			cs.EnterPrevote(height, cs.Round)
