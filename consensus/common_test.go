@@ -78,6 +78,7 @@ func decideProposal(cs1 *ConsensusState, cs2 *validatorStub, height, round int) 
 //-------------------------------------------------------------------------------
 // utils
 
+/*
 func nilRound(t *testing.T, cs1 *ConsensusState, vss ...*validatorStub) {
 	cs1.mtx.Lock()
 	height, round := cs1.Height, cs1.Round
@@ -93,6 +94,7 @@ func nilRound(t *testing.T, cs1 *ConsensusState, vss ...*validatorStub) {
 
 	waitFor(t, cs1, height, round+1, RoundStepNewRound)
 }
+*/
 
 // NOTE: this switches the propser as far as `perspectiveOf` is concerned,
 // but for simplicity we return a block it generated.
@@ -172,6 +174,17 @@ func signAddVoteToFrom(voteType byte, to *ConsensusState, from *validatorStub, h
 	return vote
 }
 
+func ensureNoNewStep(stepCh chan interface{}) {
+	timeout := time.NewTicker(ensureTimeout * time.Second)
+	select {
+	case <-timeout.C:
+		break
+	case <-stepCh:
+		panic("We should be stuck waiting for more votes, not moving to the next step")
+	}
+}
+
+/*
 func ensureNoNewStep(t *testing.T, cs *ConsensusState) {
 	timeout := time.NewTicker(ensureTimeout * time.Second)
 	select {
@@ -202,6 +215,7 @@ func waitFor(t *testing.T, cs *ConsensusState, height int, round int, step Round
 		}
 	}
 }
+*/
 
 func incrementHeight(vss ...*validatorStub) {
 	for _, vs := range vss {
@@ -309,17 +323,9 @@ func simpleConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
 	cs := NewConsensusState(state, proxyAppCtxCon, blockStore, mempool)
 	cs.SetPrivValidator(privVals[0])
 
-	// from the updateToState in NewConsensusState
-	<-cs.NewStepCh()
-
 	evsw := events.NewEventSwitch()
 	cs.SetFireable(evsw)
 	evsw.OnStart()
-	go func() {
-		for {
-			<-cs.NewStepCh()
-		}
-	}()
 
 	// start the transition routines
 	//	cs.startRoutines()

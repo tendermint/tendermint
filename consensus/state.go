@@ -98,18 +98,26 @@ type RoundState struct {
 }
 
 func (rs *RoundState) RoundStateEvent() *types.EventDataRoundState {
+	var header types.PartSetHeader
+	var parts *BitArray
+	if rs.ProposalBlockParts != nil {
+		header = rs.ProposalBlockParts.Header()
+		parts = rs.ProposalBlockParts.BitArray()
+	}
 	return &types.EventDataRoundState{
-		CurrentTime:   time.Now(),
-		Height:        rs.Height,
-		Round:         rs.Round,
-		Step:          rs.Step.String(),
-		StartTime:     rs.StartTime,
-		CommitTime:    rs.CommitTime,
-		Proposal:      rs.Proposal,
-		ProposalBlock: rs.ProposalBlock,
-		LockedRound:   rs.LockedRound,
-		LockedBlock:   rs.LockedBlock,
-		POLRound:      rs.Votes.POLRound(),
+		CurrentTime:      time.Now(),
+		Height:           rs.Height,
+		Round:            rs.Round,
+		Step:             int(rs.Step),
+		StartTime:        rs.StartTime,
+		CommitTime:       rs.CommitTime,
+		Proposal:         rs.Proposal,
+		ProposalBlock:    rs.ProposalBlock,
+		LockedRound:      rs.LockedRound,
+		LockedBlock:      rs.LockedBlock,
+		POLRound:         rs.Votes.POLRound(),
+		BlockPartsHeader: header,
+		BlockParts:       parts,
 	}
 }
 
@@ -183,7 +191,6 @@ type ConsensusState struct {
 	blockStore    *bc.BlockStore
 	mempool       *mempl.Mempool
 	privValidator *types.PrivValidator
-	newStepCh     chan *RoundState
 
 	mtx sync.Mutex
 	RoundState
@@ -208,7 +215,6 @@ func NewConsensusState(state *sm.State, proxyAppCtx proxy.AppContext, blockStore
 		proxyAppCtx:      proxyAppCtx,
 		blockStore:       blockStore,
 		mempool:          mempool,
-		newStepCh:        make(chan *RoundState, 10),
 		peerMsgQueue:     make(chan msgInfo, msgQueueSize),
 		internalMsgQueue: make(chan msgInfo, msgQueueSize),
 		timeoutTicker:    new(time.Ticker),
@@ -256,10 +262,6 @@ func (cs *ConsensusState) SetPrivValidator(priv *types.PrivValidator) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	cs.privValidator = priv
-}
-
-func (cs *ConsensusState) NewStepCh() chan *RoundState {
-	return cs.newStepCh
 }
 
 func (cs *ConsensusState) OnStart() error {
@@ -466,7 +468,10 @@ func (cs *ConsensusState) updateToState(state *sm.State) {
 
 func (cs *ConsensusState) newStep() {
 	cs.nSteps += 1
-	cs.newStepCh <- cs.getRoundState()
+	// newStep is called by updateToStep in NewConsensusState before the evsw is set!
+	if cs.evsw != nil {
+		cs.evsw.FireEvent(types.EventStringNewRoundStep(), cs.RoundStateEvent())
+	}
 }
 
 //-----------------------------------------
@@ -529,7 +534,7 @@ func (cs *ConsensusState) stopTimer() {
 // receiveRoutine handles messages which may cause state transitions.
 // it's argument (n) is the number of messages to process before exiting - use 0 to run forever
 // It keeps the RoundState and is the only thing that updates it.
-// Updates happen on timeouts, complete proposals, and 2/3 majorities
+// Updates (state transitions) happen on timeouts, complete proposals, and 2/3 majorities
 func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 	for {
 		if maxSteps > 0 {
@@ -579,19 +584,17 @@ func (cs *ConsensusState) handleMsg(mi msgInfo, rs RoundState) {
 	case *VoteMessage:
 		// attempt to add the vote and dupeout the validator if its a duplicate signature
 		// if the vote gives us a 2/3-any or 2/3-one, we transition
-		added, err := cs.tryAddVote(msg.ValidatorIndex, msg.Vote, peerKey)
+		err := cs.tryAddVote(msg.ValidatorIndex, msg.Vote, peerKey)
 		if err == ErrAddingVote {
 			// TODO: punish peer
 		}
 
-		if added {
-			// If rs.Height == vote.Height && rs.Round < vote.Round,
-			// the peer is sending us CatchupCommit precommits.
-			// We could make note of this and help filter in broadcastHasVoteMessage().
+		// NOTE: the vote is broadcast to peers by the reactor listening
+		// for vote events
 
-			// XXX TODO: do this
-			// conR.broadcastHasVoteMessage(msg.Vote, msg.ValidatorIndex)
-		}
+		// TODO: If rs.Height == vote.Height && rs.Round < vote.Round,
+		// the peer is sending us CatchupCommit precommits.
+		// We could make note of this and help filter in broadcastHasVoteMessage().
 	default:
 		log.Warn("Unknown msg type", reflect.TypeOf(msg))
 	}
@@ -1233,14 +1236,14 @@ func (cs *ConsensusState) addProposalBlockPart(height int, part *types.Part) (ad
 }
 
 // Attempt to add the vote. if its a duplicate signature, dupeout the validator
-func (cs *ConsensusState) tryAddVote(valIndex int, vote *types.Vote, peerKey string) (bool, error) {
-	added, _, err := cs.addVote(valIndex, vote, peerKey)
+func (cs *ConsensusState) tryAddVote(valIndex int, vote *types.Vote, peerKey string) error {
+	_, _, err := cs.addVote(valIndex, vote, peerKey)
 	if err != nil {
 		// If the vote height is off, we'll just ignore it,
 		// But if it's a conflicting sig, broadcast evidence tx for slashing.
 		// If it's otherwise invalid, punish peer.
 		if err == ErrVoteHeightMismatch {
-			return added, err
+			return err
 		} else if _, ok := err.(*types.ErrVoteConflictingSignature); ok {
 			log.Warn("Found conflicting vote. Publish evidence")
 			/* TODO
@@ -1251,14 +1254,14 @@ func (cs *ConsensusState) tryAddVote(valIndex int, vote *types.Vote, peerKey str
 			}
 			cs.mempool.BroadcastTx(evidenceTx) // shouldn't need to check returned err
 			*/
-			return added, err
+			return err
 		} else {
 			// Probably an invalid signature. Bad peer.
 			log.Warn("Error attempting to add vote", "error", err)
-			return added, ErrAddingVote
+			return ErrAddingVote
 		}
 	}
-	return added, nil
+	return nil
 }
 
 //-----------------------------------------------------------------------------
@@ -1408,9 +1411,8 @@ func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header types.Part
 	}
 	vote, err := cs.signVote(type_, hash, header)
 	if err == nil {
-		// NOTE: store our index in the cs so we don't have to do this every time
+		// TODO: store our index in the cs so we don't have to do this every time
 		valIndex, _ := cs.Validators.GetByAddress(cs.privValidator.Address)
-		// _, _, err := cs.addVote(valIndex, vote, "")
 		cs.sendInternalMessage(msgInfo{&VoteMessage{valIndex, vote}, ""})
 		log.Notice("Signed and pushed vote", "height", cs.Height, "round", cs.Round, "vote", vote, "error", err)
 		return vote

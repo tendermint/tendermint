@@ -3,6 +3,7 @@ package types
 import (
 	"time"
 
+	"github.com/tendermint/go-common"
 	"github.com/tendermint/go-wire"
 )
 
@@ -17,6 +18,7 @@ func EventStringFork() string    { return "Fork" }
 
 func EventStringNewBlock() string         { return "NewBlock" }
 func EventStringNewRound() string         { return "NewRound" }
+func EventStringNewRoundStep() string     { return "NewRoundStep" }
 func EventStringTimeoutPropose() string   { return "TimeoutPropose" }
 func EventStringCompleteProposal() string { return "CompleteProposal" }
 func EventStringPolka() string            { return "Polka" }
@@ -77,16 +79,20 @@ type EventDataApp struct {
 type EventDataRoundState struct {
 	CurrentTime time.Time `json:"current_time"`
 
-	Height        int       `json:"height"`
-	Round         int       `json:"round"`
-	Step          string    `json:"step"`
-	StartTime     time.Time `json:"start_time"`
-	CommitTime    time.Time `json:"commit_time"`
-	Proposal      *Proposal `json:"proposal"`
-	ProposalBlock *Block    `json:"proposal_block"`
-	LockedRound   int       `json:"locked_round"`
-	LockedBlock   *Block    `json:"locked_block"`
-	POLRound      int       `json:"pol_round"`
+	Height          int       `json:"height"`
+	Round           int       `json:"round"`
+	Step            int       `json:"step"`
+	LastCommitRound int       `json:"last_commit_round"`
+	StartTime       time.Time `json:"start_time"`
+	CommitTime      time.Time `json:"commit_time"`
+	Proposal        *Proposal `json:"proposal"`
+	ProposalBlock   *Block    `json:"proposal_block"`
+	LockedRound     int       `json:"locked_round"`
+	LockedBlock     *Block    `json:"locked_block"`
+	POLRound        int       `json:"pol_round"`
+
+	BlockPartsHeader PartSetHeader    `json:"block_parts_header"`
+	BlockParts       *common.BitArray `json:"block_parts"`
 }
 
 type EventDataVote struct {

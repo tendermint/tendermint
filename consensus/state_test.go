@@ -316,8 +316,7 @@ func TestFullRound2(t *testing.T) {
 // LockSuite
 
 // two validators, 4 rounds.
-// val1 proposes the first 2 rounds, and is locked in the first.
-// val2 proposes the next two. val1 should precommit nil on all (except first where he locks)
+// two vals take turns proposing. val1 locks on first one, precommits nil on everything else
 func TestLockNoPOL(t *testing.T) {
 	cs1, vss := simpleConsensusState(2)
 	cs2 := vss[1]
@@ -431,10 +430,8 @@ func TestLockNoPOL(t *testing.T) {
 
 	<-voteCh // prevote
 
-	// TODO: is the round right?!
-	validatePrevote(t, cs1, 0, vss[0], rs.LockedBlock.Hash())
+	validatePrevote(t, cs1, 2, vss[0], rs.LockedBlock.Hash())
 
-	// TODO: quick fastforward to new round, set proposer
 	signAddVoteToFrom(types.VoteTypePrevote, cs1, cs2, hash, rs.ProposalBlock.MakePartSet().Header())
 	<-voteCh
 
@@ -783,14 +780,14 @@ func TestLockPOLSafety1(t *testing.T) {
 	// we should prevote what we're locked on
 	validatePrevote(t, cs1, 2, vss[0], propBlockHash)
 
+	newStepCh := subscribeToEvent(cs1, types.EventStringNewRoundStep())
+
 	// add prevotes from the earlier round
 	addVoteToFromMany(cs1, prevotes, cs2, cs3, cs4)
 
 	log.Warn("Done adding prevotes!")
 
-	// ensureNoNewStep(t, cs1)
-	// TODO: subscribe to NewStep ...
-
+	ensureNoNewStep(newStepCh)
 }
 
 // 4 vals.
