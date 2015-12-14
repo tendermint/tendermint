@@ -77,9 +77,9 @@ class TMSPServer():
 		    	ret_code = res
 			res = None
 
+		    print "called", req_type, "ret code:", ret_code
 		    if ret_code != 0:
 			    print "non-zero retcode:", ret_code
-			    return
 
 		    if req_type in ("echo", "info"): # these dont return a ret code
 		    	response += bytearray([resTypeByte]) + encode(res)

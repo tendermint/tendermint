@@ -38,9 +38,12 @@ class CounterAppContext():
 
 	def append_tx(self, txBytes):
 		if self.serial:
-			txValue = decode_big_endian(BytesReader(txBytes), len(txBytes))
+			txByteArray = bytearray(txBytes)
+			if len(txBytes) >= 2 and txBytes[:2] == "0x":
+				txByteArray = hex2bytes(txBytes[2:])
+			txValue = decode_big_endian(BytesReader(txByteArray), len(txBytes))
 			if txValue != self.txCount:
-				return [], 1
+				return None, 1
 		self.txCount += 1
 		return None, 0
 
@@ -48,7 +51,9 @@ class CounterAppContext():
 		self.hashCount += 1
 		if self.txCount == 0:
 			return "", 0
-		return str(encode_big_endian(self.txCount, 8)), 0
+		h = encode_big_endian(self.txCount, 8)
+		h.reverse()
+		return str(h), 0
 
 	def commit(self):
 		return 0 

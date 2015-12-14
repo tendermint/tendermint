@@ -6,6 +6,7 @@ class BytesReader():
 
 	def read(self, n):
 		if len(self.buf) < n:
+			print "reader err: buf less than n"
 			# TODO: exception
 			return
 		r = self.buf[:n]

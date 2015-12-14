@@ -2,6 +2,9 @@
 # the decoder works off a reader
 # the encoder returns bytearray
 
+def hex2bytes(h):
+	return bytearray(h.decode('hex'))
+
 def bytes2hex(b):
 	if type(b) in (str, unicode):
 		return "".join([hex(ord(c))[2:].zfill(2) for c in b])

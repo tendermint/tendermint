@@ -121,6 +121,8 @@ func cmdBatch(app *cli.App, c *cli.Context) {
 			Exit("input line is too long")
 		} else if err == io.EOF {
 			break
+		} else if len(line) == 0 {
+			continue
 		} else if err != nil {
 			Exit(err.Error())
 		}
