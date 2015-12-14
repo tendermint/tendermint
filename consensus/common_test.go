@@ -78,6 +78,7 @@ func decideProposal(cs1 *ConsensusState, cs2 *validatorStub, height, round int) 
 //-------------------------------------------------------------------------------
 // utils
 
+/*
 func nilRound(t *testing.T, cs1 *ConsensusState, vss ...*validatorStub) {
 	cs1.mtx.Lock()
 	height, round := cs1.Height, cs1.Round
@@ -93,6 +94,7 @@ func nilRound(t *testing.T, cs1 *ConsensusState, vss ...*validatorStub) {
 
 	waitFor(t, cs1, height, round+1, RoundStepNewRound)
 }
+*/
 
 // NOTE: this switches the propser as far as `perspectiveOf` is concerned,
 // but for simplicity we return a block it generated.
@@ -172,6 +174,17 @@ func signAddVoteToFrom(voteType byte, to *ConsensusState, from *validatorStub, h
 	return vote
 }
 
+func ensureNoNewStep(stepCh chan interface{}) {
+	timeout := time.NewTicker(ensureTimeout * time.Second)
+	select {
+	case <-timeout.C:
+		break
+	case <-stepCh:
+		panic("We should be stuck waiting for more votes, not moving to the next step")
+	}
+}
+
+/*
 func ensureNoNewStep(t *testing.T, cs *ConsensusState) {
 	timeout := time.NewTicker(ensureTimeout * time.Second)
 	select {
@@ -202,6 +215,19 @@ func waitFor(t *testing.T, cs *ConsensusState, height int, round int, step Round
 		}
 	}
 }
+*/
+
+func incrementHeight(vss ...*validatorStub) {
+	for _, vs := range vss {
+		vs.Height += 1
+	}
+}
+
+func incrementRound(vss ...*validatorStub) {
+	for _, vs := range vss {
+		vs.Round += 1
+	}
+}
 
 func validatePrevote(t *testing.T, cs *ConsensusState, round int, privVal *validatorStub, blockHash []byte) {
 	prevotes := cs.Votes.Prevotes(round)
@@ -220,15 +246,14 @@ func validatePrevote(t *testing.T, cs *ConsensusState, round int, privVal *valid
 	}
 }
 
-func incrementHeight(vss ...*validatorStub) {
-	for _, vs := range vss {
-		vs.Height += 1
+func validateLastPrecommit(t *testing.T, cs *ConsensusState, privVal *validatorStub, blockHash []byte) {
+	votes := cs.LastCommit
+	var vote *types.Vote
+	if vote = votes.GetByAddress(privVal.Address); vote == nil {
+		panic("Failed to find precommit from validator")
 	}
-}
-
-func incrementRound(vss ...*validatorStub) {
-	for _, vs := range vss {
-		vs.Round += 1
+	if !bytes.Equal(vote.BlockHash, blockHash) {
+		panic(fmt.Sprintf("Expected precommit to be for %X, got %X", blockHash, vote.BlockHash))
 	}
 }
 
@@ -298,17 +323,9 @@ func simpleConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
 	cs := NewConsensusState(state, proxyAppCtxCon, blockStore, mempool)
 	cs.SetPrivValidator(privVals[0])
 
-	// from the updateToState in NewConsensusState
-	<-cs.NewStepCh()
-
 	evsw := events.NewEventSwitch()
-	cs.SetFireable(evsw)
-	evsw.OnStart()
-	go func() {
-		for {
-			<-cs.NewStepCh()
-		}
-	}()
+	cs.SetEventSwitch(evsw)
+	evsw.Start()
 
 	// start the transition routines
 	//	cs.startRoutines()
@@ -322,14 +339,20 @@ func simpleConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
 	return cs, vss
 }
 
-func subscribeToEvent(cs *ConsensusState, eventID string) chan interface{} {
-	evsw := cs.evsw.(*events.EventSwitch)
-	// listen for new round
-	ch := make(chan interface{}, 10)
-	evsw.AddListenerForEvent("tester", eventID, func(data types.EventData) {
-		ch <- data
-	})
-	return ch
+func subscribeToVoter(cs *ConsensusState, addr []byte) chan interface{} {
+	voteCh0 := cs.evsw.SubscribeToEvent("tester", types.EventStringVote(), 0)
+	voteCh := make(chan interface{})
+	go func() {
+		for {
+			v := <-voteCh0
+			vote := v.(*types.EventDataVote)
+			// we only fire for our own votes
+			if bytes.Equal(addr, vote.Address) {
+				voteCh <- v
+			}
+		}
+	}()
+	return voteCh
 }
 
 func randGenesisState(numValidators int, randPower bool, minPower int64) (*sm.State, []*types.PrivValidator) {
@@ -361,6 +384,6 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 }
 
 func startTestRound(cs *ConsensusState, height, round int) {
-	cs.EnterNewRound(height, round)
+	cs.enterNewRound(height, round)
 	cs.startRoutines(0)
 }

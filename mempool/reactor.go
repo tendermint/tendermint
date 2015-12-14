@@ -25,7 +25,7 @@ const (
 type MempoolReactor struct {
 	p2p.BaseReactor
 	Mempool *Mempool // TODO: un-expose
-	evsw    events.Fireable
+	evsw    *events.EventSwitch
 }
 
 func NewMempoolReactor(mempool *Mempool) *MempoolReactor {
@@ -135,7 +135,7 @@ func (memR *MempoolReactor) broadcastTxRoutine(peer Peer) {
 }
 
 // implements events.Eventable
-func (memR *MempoolReactor) SetFireable(evsw events.Fireable) {
+func (memR *MempoolReactor) SetEventSwitch(evsw *events.EventSwitch) {
 	memR.evsw = evsw
 }
 

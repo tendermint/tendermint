@@ -62,8 +62,12 @@ func (b *Block) ValidateBasic(chainID string, lastBlockHeight int, lastBlockHash
 }
 
 func (b *Block) FillHeader() {
-	b.LastValidationHash = b.LastValidation.Hash()
-	b.DataHash = b.Data.Hash()
+	if b.LastValidationHash == nil {
+		b.LastValidationHash = b.LastValidation.Hash()
+	}
+	if b.DataHash == nil {
+		b.DataHash = b.Data.Hash()
+	}
 }
 
 // Computes and returns the block hash.

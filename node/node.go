@@ -94,7 +94,7 @@ func NewNode() *Node {
 
 	// add the event switch to all services
 	// they should all satisfy events.Eventable
-	SetFireable(eventSwitch, bcReactor, mempoolReactor, consensusReactor)
+	SetEventSwitch(eventSwitch, bcReactor, mempoolReactor, consensusReactor)
 
 	// run the profile server
 	profileHost := config.GetString("prof_laddr")
@@ -133,9 +133,9 @@ func (n *Node) Stop() {
 }
 
 // Add the event switch to reactors, mempool, etc.
-func SetFireable(evsw *events.EventSwitch, eventables ...events.Eventable) {
+func SetEventSwitch(evsw *events.EventSwitch, eventables ...events.Eventable) {
 	for _, e := range eventables {
-		e.SetFireable(evsw)
+		e.SetEventSwitch(evsw)
 	}
 }
 

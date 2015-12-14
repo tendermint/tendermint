@@ -206,7 +206,7 @@ func _jsonStringToArg(ty reflect.Type, arg string) (reflect.Value, error) {
 // rpc.websocket
 
 const (
-	writeChanCapacity     = 20
+	writeChanCapacity     = 1000
 	wsWriteTimeoutSeconds = 30 // each write times out after this
 	wsReadTimeoutSeconds  = 30 // connection times out if we haven't received *anything* in this long, not even pings.
 	wsPingTickerSeconds   = 10 // send a ping every PingTickerSeconds.
@@ -289,12 +289,24 @@ func (wsc *WSConnection) readTimeoutRoutine() {
 	}
 }
 
-// Block trying to write to writeChan until service stops.
+// Blocking write to writeChan until service stops.
 func (wsc *WSConnection) writeRPCResponse(resp RPCResponse) {
 	select {
 	case <-wsc.Quit:
 		return
 	case wsc.writeChan <- resp:
+	}
+}
+
+// Nonblocking write.
+func (wsc *WSConnection) tryWriteRPCResponse(resp RPCResponse) bool {
+	select {
+	case <-wsc.Quit:
+		return false
+	case wsc.writeChan <- resp:
+		return true
+	default:
+		return false
 	}
 }
 
@@ -340,8 +352,9 @@ func (wsc *WSConnection) readRoutine() {
 				} else {
 					log.Notice("Subscribe to event", "id", wsc.id, "event", event)
 					wsc.evsw.AddListenerForEvent(wsc.id, event, func(msg types.EventData) {
+						// NOTE: EventSwitch callbacks must be nonblocking
 						// NOTE: RPCResponses of subscribed events have id suffix "#event"
-						wsc.writeRPCResponse(NewRPCResponse(request.ID+"#event", ctypes.ResultEvent{event, msg}, ""))
+						wsc.tryWriteRPCResponse(NewRPCResponse(request.ID+"#event", ctypes.ResultEvent{event, msg}, ""))
 					})
 					continue
 				}

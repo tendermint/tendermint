@@ -10,7 +10,7 @@ import (
 // reactors and other modules should export
 // this interface to become eventable
 type Eventable interface {
-	SetFireable(Fireable)
+	SetEventSwitch(evsw *EventSwitch)
 }
 
 // an event switch or cache implements fireable
@@ -121,6 +121,16 @@ func (evsw *EventSwitch) FireEvent(event string, data types.EventData) {
 
 	// Fire event for all listeners in eventCell
 	eventCell.FireEvent(data)
+}
+
+func (evsw *EventSwitch) SubscribeToEvent(receiver, eventID string, chanCap int) chan interface{} {
+	// listen for new round
+	ch := make(chan interface{}, chanCap)
+	evsw.AddListenerForEvent(receiver, eventID, func(data types.EventData) {
+		// NOTE: in production, evsw callbacks should be nonblocking.
+		ch <- data
+	})
+	return ch
 }
 
 //-----------------------------------------------------------------------------
