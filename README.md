@@ -1,6 +1,9 @@
 # Tendermint Socket Protocol (TMSP)
 
-**TMSP** is a socket protocol, which means applications can be written in any programming language.
+**TMSP** is a socket protocol enabling a consensus engine, running in one process,
+to manage an application state, running in another.
+Thus the applications can be written in any programming language.
+
 TMSP is an asynchronous protocol: message responses are written back asynchronously to the platform.
 
 *Applications must be deterministic.*
