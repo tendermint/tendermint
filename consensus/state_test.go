@@ -8,7 +8,7 @@ import (
 
 	_ "github.com/tendermint/tendermint/config/tendermint_test"
 	//"github.com/tendermint/tendermint/events"
-	//	"github.com/tendermint/tendermint/events"
+	"github.com/tendermint/tendermint/events"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -54,8 +54,9 @@ func TestProposerSelection0(t *testing.T) {
 	cs1, vss := simpleConsensusState(4)
 	height, round := cs1.Height, cs1.Round
 
-	newRoundCh := subscribeToEvent(cs1, types.EventStringNewRound())
-	proposalCh := subscribeToEvent(cs1, types.EventStringCompleteProposal())
+	evsw := cs1.evsw.(*events.EventSwitch)
+	newRoundCh := evsw.SubscribeToEvent(types.EventStringNewRound(), 1)
+	proposalCh := evsw.SubscribeToEvent(types.EventStringCompleteProposal(), 0)
 
 	startTestRound(cs1, height, round)
 
@@ -87,7 +88,8 @@ func TestProposerSelection0(t *testing.T) {
 func TestProposerSelection2(t *testing.T) {
 	cs1, vss := simpleConsensusState(4) // test needs more work for more than 3 validators
 
-	newRoundCh := subscribeToEvent(cs1, types.EventStringNewRound())
+	evsw := cs1.evsw.(*events.EventSwitch)
+	newRoundCh := evsw.SubscribeToEvent(types.EventStringNewRound(), 1)
 
 	// this time we jump in at round 2
 	incrementRound(vss[1:]...)
@@ -118,8 +120,9 @@ func TestEnterProposeNoPrivValidator(t *testing.T) {
 	cs.SetPrivValidator(nil)
 	height, round := cs.Height, cs.Round
 
+	evsw := cs.evsw.(*events.EventSwitch)
 	// Listen for propose timeout event
-	timeoutCh := subscribeToEvent(cs, types.EventStringTimeoutPropose())
+	timeoutCh := evsw.SubscribeToEvent(types.EventStringTimeoutPropose(), 0)
 
 	startTestRound(cs, height, round)
 
@@ -143,11 +146,11 @@ func TestEnterProposeYesPrivValidator(t *testing.T) {
 	height, round := cs.Height, cs.Round
 
 	// Listen for propose timeout event
-	timeoutCh := subscribeToEvent(cs, types.EventStringTimeoutPropose())
-	proposalCh := subscribeToEvent(cs, types.EventStringCompleteProposal())
+	evsw := cs.evsw.(*events.EventSwitch)
+	timeoutCh := evsw.SubscribeToEvent(types.EventStringTimeoutPropose(), 0)
+	proposalCh := evsw.SubscribeToEvent(types.EventStringCompleteProposal(), 0)
 
-	//startTestRound(cs, height, round)
-	cs.EnterNewRound(height, round)
+	cs.enterNewRound(height, round)
 	cs.startRoutines(3)
 
 	<-proposalCh
@@ -164,7 +167,7 @@ func TestEnterProposeYesPrivValidator(t *testing.T) {
 		t.Error("rs.ProposalBlockParts should be set")
 	}
 
-	// if we're a validator, EnterPropose should not timeout
+	// if we're a validator, enterPropose should not timeout
 	ticker := time.NewTicker(timeoutPropose * 2)
 	select {
 	case <-timeoutCh:
@@ -179,8 +182,9 @@ func TestBadProposal(t *testing.T) {
 	height, round := cs1.Height, cs1.Round
 	cs2 := vss[1]
 
-	proposalCh := subscribeToEvent(cs1, types.EventStringCompleteProposal())
-	voteCh := subscribeToEvent(cs1, types.EventStringVote())
+	evsw := cs1.evsw.(*events.EventSwitch)
+	proposalCh := evsw.SubscribeToEvent(types.EventStringCompleteProposal(), 0)
+	voteCh := evsw.SubscribeToEvent(types.EventStringVote(), 0)
 
 	propBlock, _ := cs1.createProposalBlock() //changeProposer(t, cs1, cs2)
 
@@ -234,9 +238,10 @@ func TestFullRound1(t *testing.T) {
 	cs, vss := simpleConsensusState(1)
 	height, round := cs.Height, cs.Round
 
-	voteCh := subscribeToEvent(cs, types.EventStringVote())
-	propCh := subscribeToEvent(cs, types.EventStringCompleteProposal())
-	newRoundCh := subscribeToEvent(cs, types.EventStringNewRound())
+	evsw := cs.evsw.(*events.EventSwitch)
+	voteCh := evsw.SubscribeToEvent(types.EventStringVote(), 0)
+	propCh := evsw.SubscribeToEvent(types.EventStringCompleteProposal(), 0)
+	newRoundCh := evsw.SubscribeToEvent(types.EventStringNewRound(), 1)
 
 	startTestRound(cs, height, round)
 
@@ -262,9 +267,10 @@ func TestFullRoundNil(t *testing.T) {
 	cs, vss := simpleConsensusState(1)
 	height, round := cs.Height, cs.Round
 
-	voteCh := subscribeToEvent(cs, types.EventStringVote())
+	evsw := cs.evsw.(*events.EventSwitch)
+	voteCh := evsw.SubscribeToEvent(types.EventStringVote(), 0)
 
-	cs.EnterPrevote(height, round)
+	cs.enterPrevote(height, round)
 	cs.startRoutines(4)
 
 	<-voteCh // prevote
@@ -281,8 +287,9 @@ func TestFullRound2(t *testing.T) {
 	cs2 := vss[1]
 	height, round := cs1.Height, cs1.Round
 
-	voteCh := subscribeToEvent(cs1, types.EventStringVote())
-	newBlockCh := subscribeToEvent(cs1, types.EventStringNewBlock())
+	evsw := cs1.evsw.(*events.EventSwitch)
+	voteCh := evsw.SubscribeToEvent(types.EventStringVote(), 0)
+	newBlockCh := evsw.SubscribeToEvent(types.EventStringNewBlock(), 0)
 
 	// start round and wait for propose and prevote
 	startTestRound(cs1, height, round)
@@ -322,18 +329,19 @@ func TestLockNoPOL(t *testing.T) {
 	cs2 := vss[1]
 	height := cs1.Height
 
-	timeoutProposeCh := subscribeToEvent(cs1, types.EventStringTimeoutPropose())
-	timeoutWaitCh := subscribeToEvent(cs1, types.EventStringTimeoutWait())
-	voteCh := subscribeToEvent(cs1, types.EventStringVote())
-	proposalCh := subscribeToEvent(cs1, types.EventStringCompleteProposal())
-	newRoundCh := subscribeToEvent(cs1, types.EventStringNewRound())
+	evsw := cs1.evsw.(*events.EventSwitch)
+	timeoutProposeCh := evsw.SubscribeToEvent(types.EventStringTimeoutPropose(), 0)
+	timeoutWaitCh := evsw.SubscribeToEvent(types.EventStringTimeoutWait(), 0)
+	voteCh := evsw.SubscribeToEvent(types.EventStringVote(), 0)
+	proposalCh := evsw.SubscribeToEvent(types.EventStringCompleteProposal(), 0)
+	newRoundCh := evsw.SubscribeToEvent(types.EventStringNewRound(), 1)
 
 	/*
 		Round1 (cs1, B) // B B // B B2
 	*/
 
 	// start round and wait for prevote
-	cs1.EnterNewRound(height, 0)
+	cs1.enterNewRound(height, 0)
 	cs1.startRoutines(0)
 
 	re := <-proposalCh
@@ -362,7 +370,7 @@ func TestLockNoPOL(t *testing.T) {
 	<-voteCh // precommit
 
 	// (note we're entering precommit for a second time this round)
-	// but with invalid args. then we EnterPrecommitWait, and the timeout to new round
+	// but with invalid args. then we enterPrecommitWait, and the timeout to new round
 	<-timeoutWaitCh
 
 	///
@@ -409,7 +417,7 @@ func TestLockNoPOL(t *testing.T) {
 	<-voteCh
 
 	// (note we're entering precommit for a second time this round, but with invalid args
-	// then we EnterPrecommitWait and timeout into NewRound
+	// then we enterPrecommitWait and timeout into NewRound
 	<-timeoutWaitCh
 
 	<-newRoundCh
@@ -462,6 +470,7 @@ func TestLockNoPOL(t *testing.T) {
 	// so set the proposal block
 	cs1.SetProposalAndBlock(prop, propBlock, propBlock.MakePartSet(), "")
 
+	<-proposalCh
 	<-voteCh // prevote
 
 	// prevote for locked block (not proposal)
@@ -483,12 +492,13 @@ func TestLockPOLRelock(t *testing.T) {
 	cs1, vss := simpleConsensusState(4)
 	cs2, cs3, cs4 := vss[1], vss[2], vss[3]
 
-	timeoutProposeCh := subscribeToEvent(cs1, types.EventStringTimeoutPropose())
-	timeoutWaitCh := subscribeToEvent(cs1, types.EventStringTimeoutWait())
-	proposalCh := subscribeToEvent(cs1, types.EventStringCompleteProposal())
-	voteCh := subscribeToEvent(cs1, types.EventStringVote())
-	newRoundCh := subscribeToEvent(cs1, types.EventStringNewRound())
-	newBlockCh := subscribeToEvent(cs1, types.EventStringNewBlock())
+	evsw := cs1.evsw.(*events.EventSwitch)
+	timeoutProposeCh := evsw.SubscribeToEvent(types.EventStringTimeoutPropose(), 0)
+	timeoutWaitCh := evsw.SubscribeToEvent(types.EventStringTimeoutWait(), 0)
+	proposalCh := evsw.SubscribeToEvent(types.EventStringCompleteProposal(), 0)
+	voteCh := evsw.SubscribeToEvent(types.EventStringVote(), 0)
+	newRoundCh := evsw.SubscribeToEvent(types.EventStringNewRound(), 1)
+	newBlockCh := evsw.SubscribeToEvent(types.EventStringNewBlock(), 0)
 
 	log.Debug("cs2 last round", "lr", cs2.PrivValidator.LastRound)
 
@@ -591,11 +601,12 @@ func TestLockPOLUnlock(t *testing.T) {
 	cs1, vss := simpleConsensusState(4)
 	cs2, cs3, cs4 := vss[1], vss[2], vss[3]
 
-	proposalCh := subscribeToEvent(cs1, types.EventStringCompleteProposal())
-	timeoutProposeCh := subscribeToEvent(cs1, types.EventStringTimeoutPropose())
-	timeoutWaitCh := subscribeToEvent(cs1, types.EventStringTimeoutWait())
-	newRoundCh := subscribeToEvent(cs1, types.EventStringNewRound())
-	unlockCh := subscribeToEvent(cs1, types.EventStringUnlock())
+	evsw := cs1.evsw.(*events.EventSwitch)
+	proposalCh := evsw.SubscribeToEvent(types.EventStringCompleteProposal(), 0)
+	timeoutProposeCh := evsw.SubscribeToEvent(types.EventStringTimeoutPropose(), 0)
+	timeoutWaitCh := evsw.SubscribeToEvent(types.EventStringTimeoutWait(), 0)
+	newRoundCh := evsw.SubscribeToEvent(types.EventStringNewRound(), 1)
+	unlockCh := evsw.SubscribeToEvent(types.EventStringUnlock(), 0)
 	voteCh := subscribeToVoter(cs1, cs1.privValidator.Address)
 
 	// everything done from perspective of cs1
@@ -682,10 +693,11 @@ func TestLockPOLSafety1(t *testing.T) {
 	cs1, vss := simpleConsensusState(4)
 	cs2, cs3, cs4 := vss[1], vss[2], vss[3]
 
-	proposalCh := subscribeToEvent(cs1, types.EventStringCompleteProposal())
-	timeoutProposeCh := subscribeToEvent(cs1, types.EventStringTimeoutPropose())
-	timeoutWaitCh := subscribeToEvent(cs1, types.EventStringTimeoutWait())
-	newRoundCh := subscribeToEvent(cs1, types.EventStringNewRound())
+	evsw := cs1.evsw.(*events.EventSwitch)
+	proposalCh := evsw.SubscribeToEvent(types.EventStringCompleteProposal(), 0)
+	timeoutProposeCh := evsw.SubscribeToEvent(types.EventStringTimeoutPropose(), 0)
+	timeoutWaitCh := evsw.SubscribeToEvent(types.EventStringTimeoutWait(), 0)
+	newRoundCh := evsw.SubscribeToEvent(types.EventStringNewRound(), 1)
 	voteCh := subscribeToVoter(cs1, cs1.privValidator.Address)
 
 	// start round and wait for propose and prevote
@@ -780,7 +792,7 @@ func TestLockPOLSafety1(t *testing.T) {
 	// we should prevote what we're locked on
 	validatePrevote(t, cs1, 2, vss[0], propBlockHash)
 
-	newStepCh := subscribeToEvent(cs1, types.EventStringNewRoundStep())
+	newStepCh := evsw.SubscribeToEvent(types.EventStringNewRoundStep(), 0)
 
 	// add prevotes from the earlier round
 	addVoteToFromMany(cs1, prevotes, cs2, cs3, cs4)
@@ -801,11 +813,12 @@ func TestLockPOLSafety2(t *testing.T) {
 	cs1, vss := simpleConsensusState(4)
 	cs2, cs3, cs4 := vss[1], vss[2], vss[3]
 
-	proposalCh := subscribeToEvent(cs1, types.EventStringCompleteProposal())
-	timeoutProposeCh := subscribeToEvent(cs1, types.EventStringTimeoutPropose())
-	timeoutWaitCh := subscribeToEvent(cs1, types.EventStringTimeoutWait())
-	newRoundCh := subscribeToEvent(cs1, types.EventStringNewRound())
-	unlockCh := subscribeToEvent(cs1, types.EventStringUnlock())
+	evsw := cs1.evsw.(*events.EventSwitch)
+	proposalCh := evsw.SubscribeToEvent(types.EventStringCompleteProposal(), 0)
+	timeoutProposeCh := evsw.SubscribeToEvent(types.EventStringTimeoutPropose(), 0)
+	timeoutWaitCh := evsw.SubscribeToEvent(types.EventStringTimeoutWait(), 0)
+	newRoundCh := evsw.SubscribeToEvent(types.EventStringNewRound(), 1)
+	unlockCh := evsw.SubscribeToEvent(types.EventStringUnlock(), 0)
 	voteCh := subscribeToVoter(cs1, cs1.privValidator.Address)
 
 	// the block for R0: gets polkad but we miss it
@@ -891,9 +904,10 @@ func TestSlashingPrevotes(t *testing.T) {
 	cs1, vss := simpleConsensusState(2)
 	cs2 := vss[1]
 
-	proposalCh := subscribeToEvent(cs1, types.EventStringCompleteProposal())
-	timeoutWaitCh := subscribeToEvent(cs1, types.EventStringTimeoutWait())
-	newRoundCh := subscribeToEvent(cs1, types.EventStringNewRound())
+	evsw := cs1.evsw.(*events.EventSwitch)
+	proposalCh := evsw.SubscribeToEvent(types.EventStringCompleteProposal() , 0)
+	timeoutWaitCh := evsw.SubscribeToEvent(types.EventStringTimeoutWait() , 0)
+	newRoundCh := evsw.SubscribeToEvent(types.EventStringNewRound() , 1)
 	voteCh := subscribeToVoter(cs1, cs1.privValidator.Address)
 
 	// start round and wait for propose and prevote
@@ -925,9 +939,10 @@ func TestSlashingPrecommits(t *testing.T) {
 	cs1, vss := simpleConsensusState(2)
 	cs2 := vss[1]
 
-	proposalCh := subscribeToEvent(cs1, types.EventStringCompleteProposal())
-	timeoutWaitCh := subscribeToEvent(cs1, types.EventStringTimeoutWait())
-	newRoundCh := subscribeToEvent(cs1, types.EventStringNewRound())
+	evsw := cs1.evsw.(*events.EventSwitch)
+	proposalCh := evsw.SubscribeToEvent(types.EventStringCompleteProposal() , 0)
+	timeoutWaitCh := evsw.SubscribeToEvent(types.EventStringTimeoutWait() , 0)
+	newRoundCh := evsw.SubscribeToEvent(types.EventStringNewRound() , 1)
 	voteCh := subscribeToVoter(cs1, cs1.privValidator.Address)
 
 	// start round and wait for propose and prevote
@@ -969,10 +984,11 @@ func TestHalt1(t *testing.T) {
 	cs1, vss := simpleConsensusState(4)
 	cs2, cs3, cs4 := vss[1], vss[2], vss[3]
 
-	proposalCh := subscribeToEvent(cs1, types.EventStringCompleteProposal())
-	timeoutWaitCh := subscribeToEvent(cs1, types.EventStringTimeoutWait())
-	newRoundCh := subscribeToEvent(cs1, types.EventStringNewRound())
-	newBlockCh := subscribeToEvent(cs1, types.EventStringNewBlock())
+	evsw := cs1.evsw.(*events.EventSwitch)
+	proposalCh := evsw.SubscribeToEvent(types.EventStringCompleteProposal(), 0)
+	timeoutWaitCh := evsw.SubscribeToEvent(types.EventStringTimeoutWait(), 0)
+	newRoundCh := evsw.SubscribeToEvent(types.EventStringNewRound(), 1)
+	newBlockCh := evsw.SubscribeToEvent(types.EventStringNewBlock(), 0)
 	voteCh := subscribeToVoter(cs1, cs1.privValidator.Address)
 
 	// start round and wait for propose and prevote

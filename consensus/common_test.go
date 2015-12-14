@@ -325,7 +325,7 @@ func simpleConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
 
 	evsw := events.NewEventSwitch()
 	cs.SetFireable(evsw)
-	evsw.OnStart()
+	evsw.Start()
 
 	// start the transition routines
 	//	cs.startRoutines()
@@ -339,19 +339,8 @@ func simpleConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
 	return cs, vss
 }
 
-func subscribeToEvent(cs *ConsensusState, eventID string) chan interface{} {
-	evsw := cs.evsw.(*events.EventSwitch)
-	// listen for new round
-	ch := make(chan interface{}, 10)
-	evsw.AddListenerForEvent("tester", eventID, func(data types.EventData) {
-		ch <- data
-	})
-	return ch
-}
-
 func subscribeToVoter(cs *ConsensusState, addr []byte) chan interface{} {
-
-	voteCh0 := subscribeToEvent(cs, types.EventStringVote())
+	voteCh0 := cs.evsw.(*events.EventSwitch).SubscribeToEvent(types.EventStringVote(), 0)
 	voteCh := make(chan interface{})
 	go func() {
 		for {
@@ -395,6 +384,6 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 }
 
 func startTestRound(cs *ConsensusState, height, round int) {
-	cs.EnterNewRound(height, round)
+	cs.enterNewRound(height, round)
 	cs.startRoutines(0)
 }
