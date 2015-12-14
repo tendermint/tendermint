@@ -324,7 +324,7 @@ func simpleConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
 	cs.SetPrivValidator(privVals[0])
 
 	evsw := events.NewEventSwitch()
-	cs.SetFireable(evsw)
+	cs.SetEventSwitch(evsw)
 	evsw.Start()
 
 	// start the transition routines
@@ -340,7 +340,7 @@ func simpleConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
 }
 
 func subscribeToVoter(cs *ConsensusState, addr []byte) chan interface{} {
-	voteCh0 := cs.evsw.(*events.EventSwitch).SubscribeToEvent(types.EventStringVote(), 0)
+	voteCh0 := cs.evsw.SubscribeToEvent("tester", types.EventStringVote(), 0)
 	voteCh := make(chan interface{})
 	go func() {
 		for {

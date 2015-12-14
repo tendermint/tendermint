@@ -98,27 +98,13 @@ type RoundState struct {
 }
 
 func (rs *RoundState) RoundStateEvent() *types.EventDataRoundState {
-	var header types.PartSetHeader
-	var parts *BitArray
-	if rs.ProposalBlockParts != nil {
-		header = rs.ProposalBlockParts.Header()
-		parts = rs.ProposalBlockParts.BitArray()
+	edrs := &types.EventDataRoundState{
+		Height: rs.Height,
+		Round:  rs.Round,
+		Step:   rs.Step.String(),
 	}
-	return &types.EventDataRoundState{
-		CurrentTime:      time.Now(),
-		Height:           rs.Height,
-		Round:            rs.Round,
-		Step:             int(rs.Step),
-		StartTime:        rs.StartTime,
-		CommitTime:       rs.CommitTime,
-		Proposal:         rs.Proposal,
-		ProposalBlock:    rs.ProposalBlock,
-		LockedRound:      rs.LockedRound,
-		LockedBlock:      rs.LockedBlock,
-		POLRound:         rs.Votes.POLRound(),
-		BlockPartsHeader: header,
-		BlockParts:       parts,
-	}
+	edrs.SetRoundState(rs)
+	return edrs
 }
 
 func (rs *RoundState) String() string {
@@ -204,7 +190,7 @@ type ConsensusState struct {
 	tickChan         chan timeoutInfo // start the timeoutTicker in the timeoutRoutine
 	tockChan         chan timeoutInfo // timeouts are relayed on tockChan to the receiveRoutine
 
-	evsw events.Fireable
+	evsw *events.EventSwitch
 	evc  *events.EventCache // set in stageBlock and passed into state
 
 	nSteps int // used for testing to limit the number of transitions the state makes
@@ -233,7 +219,7 @@ func NewConsensusState(state *sm.State, proxyAppCtx proxy.AppContext, blockStore
 // Public interface
 
 // implements events.Eventable
-func (cs *ConsensusState) SetFireable(evsw events.Fireable) {
+func (cs *ConsensusState) SetEventSwitch(evsw *events.EventSwitch) {
 	cs.evsw = evsw
 }
 
@@ -641,9 +627,7 @@ func (cs *ConsensusState) handleTimeout(ti timeoutInfo, rs RoundState) {
 
 //-----------------------------------------------------------------------------
 // State functions
-// Many of these functions are capitalized but are not really meant to be used
-// by external code as it will cause race conditions with running timeout/receiveRoutine.
-// Use AddVote, SetProposal, AddProposalBlockPart instead
+// Used internally by handleTimeout and handleMsg to make state transitions
 
 // Enter: +2/3 precommits for nil at (height,round-1)
 // Enter: `timeoutPrecommits` after any +2/3 precommits from (height,round-1)
@@ -706,6 +690,13 @@ func (cs *ConsensusState) enterPropose(height int, round int) {
 		// Done enterPropose:
 		cs.updateRoundStep(round, RoundStepPropose)
 		cs.newStep()
+
+		// If we have the whole proposal + POL, then goto Prevote now.
+		// else, we'll enterPrevote when the rest of the proposal is received (in AddProposalBlockPart),
+		// or else after timeoutPropose
+		if cs.isProposalComplete() {
+			cs.enterPrevote(height, cs.Round)
+		}
 	}()
 
 	// This step times out after `timeoutPropose`
@@ -723,12 +714,6 @@ func (cs *ConsensusState) enterPropose(height int, round int) {
 		cs.decideProposal(height, round)
 	}
 
-	// If we have the whole proposal + POL, then goto Prevote now.
-	// else, we'll enterPrevote when the rest of the proposal is received (in AddProposalBlockPart),
-	// or else after timeoutPropose
-	if cs.isProposalComplete() {
-		cs.enterPrevote(height, cs.Round)
-	}
 }
 
 func (cs *ConsensusState) decideProposal(height, round int) {
@@ -1117,29 +1102,29 @@ func (cs *ConsensusState) tryFinalizeCommit(height int) {
 		return
 	}
 	//	go
-	cs.FinalizeCommit(height)
+	cs.finalizeCommit(height)
 }
 
 // Increment height and goto RoundStepNewHeight
-func (cs *ConsensusState) FinalizeCommit(height int) {
+func (cs *ConsensusState) finalizeCommit(height int) {
 	//cs.mtx.Lock()
 	//defer cs.mtx.Unlock()
 
 	if cs.Height != height || cs.Step != RoundStepCommit {
-		log.Debug(Fmt("FinalizeCommit(%v): Invalid args. Current step: %v/%v/%v", height, cs.Height, cs.Round, cs.Step))
+		log.Debug(Fmt("finalizeCommit(%v): Invalid args. Current step: %v/%v/%v", height, cs.Height, cs.Round, cs.Step))
 		return
 	}
 
 	hash, header, ok := cs.Votes.Precommits(cs.CommitRound).TwoThirdsMajority()
 
 	if !ok {
-		PanicSanity(Fmt("Cannot FinalizeCommit, commit does not have two thirds majority"))
+		PanicSanity(Fmt("Cannot finalizeCommit, commit does not have two thirds majority"))
 	}
 	if !cs.ProposalBlockParts.HasHeader(header) {
 		PanicSanity(Fmt("Expected ProposalBlockParts header to be commit header"))
 	}
 	if !cs.ProposalBlock.HashesTo(hash) {
-		PanicSanity(Fmt("Cannot FinalizeCommit, ProposalBlock does not hash to commit hash"))
+		PanicSanity(Fmt("Cannot finalizeCommit, ProposalBlock does not hash to commit hash"))
 	}
 	if err := cs.stageBlock(cs.ProposalBlock, cs.ProposalBlockParts); err != nil {
 		PanicConsensus(Fmt("+2/3 committed an invalid block: %v", err))
@@ -1378,7 +1363,7 @@ func (cs *ConsensusState) stageBlock(block *types.Block, blockParts *types.PartS
 
 	// Create a copy of the state for staging
 	stateCopy := cs.state.Copy()
-	stateCopy.SetFireable(cs.evc)
+	stateCopy.SetEventCache(cs.evc)
 
 	// Run the block on the State:
 	// + update validator sets

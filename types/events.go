@@ -1,9 +1,6 @@
 package types
 
 import (
-	"time"
-
-	"github.com/tendermint/go-common"
 	"github.com/tendermint/go-wire"
 )
 
@@ -74,25 +71,21 @@ type EventDataApp struct {
 	Data []byte `json:"bytes"`
 }
 
-// We fire the most recent round state that led to the event
-// (ie. NewRound will have the previous rounds state)
 type EventDataRoundState struct {
-	CurrentTime time.Time `json:"current_time"`
+	Height int    `json:"height"`
+	Round  int    `json:"round"`
+	Step   string `json:"step"`
 
-	Height          int       `json:"height"`
-	Round           int       `json:"round"`
-	Step            int       `json:"step"`
-	LastCommitRound int       `json:"last_commit_round"`
-	StartTime       time.Time `json:"start_time"`
-	CommitTime      time.Time `json:"commit_time"`
-	Proposal        *Proposal `json:"proposal"`
-	ProposalBlock   *Block    `json:"proposal_block"`
-	LockedRound     int       `json:"locked_round"`
-	LockedBlock     *Block    `json:"locked_block"`
-	POLRound        int       `json:"pol_round"`
+	// private, not exposed to websockets
+	rs interface{}
+}
 
-	BlockPartsHeader PartSetHeader    `json:"block_parts_header"`
-	BlockParts       *common.BitArray `json:"block_parts"`
+func (edrs *EventDataRoundState) RoundState() interface{} {
+	return edrs.rs
+}
+
+func (edrs *EventDataRoundState) SetRoundState(rs interface{}) {
+	edrs.rs = rs
 }
 
 type EventDataVote struct {

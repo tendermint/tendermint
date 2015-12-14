@@ -33,7 +33,7 @@ type State struct {
 	LastValidators  *types.ValidatorSet
 	LastAppHash     []byte
 
-	evc events.Fireable // typically an events.EventCache
+	evc *events.EventCache
 }
 
 func LoadState(db dbm.DB) *State {
@@ -81,8 +81,7 @@ func (s *State) Save() {
 	s.db.Set(stateKey, buf.Bytes())
 }
 
-// Implements events.Eventable. Typically uses events.EventCache
-func (s *State) SetFireable(evc events.Fireable) {
+func (s *State) SetEventCache(evc *events.EventCache) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 

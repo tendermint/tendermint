@@ -34,7 +34,7 @@ type ConsensusReactor struct {
 	blockStore *bc.BlockStore
 	conS       *ConsensusState
 	fastSync   bool
-	evsw       events.Fireable
+	evsw       *events.EventSwitch
 }
 
 func NewConsensusReactor(consensusState *ConsensusState, blockStore *bc.BlockStore, fastSync bool) *ConsensusReactor {
@@ -221,9 +221,9 @@ func (conR *ConsensusReactor) SetPrivValidator(priv *types.PrivValidator) {
 }
 
 // implements events.Eventable
-func (conR *ConsensusReactor) SetFireable(evsw events.Fireable) {
+func (conR *ConsensusReactor) SetEventSwitch(evsw *events.EventSwitch) {
 	conR.evsw = evsw
-	conR.conS.SetFireable(evsw)
+	conR.conS.SetEventSwitch(evsw)
 }
 
 //--------------------------------------
@@ -231,21 +231,19 @@ func (conR *ConsensusReactor) SetFireable(evsw events.Fireable) {
 // Listens for new steps and votes,
 // broadcasting the result to peers
 func (conR *ConsensusReactor) registerEventCallbacks() {
-	// XXX: should we change SetFireable to just use EventSwitch so we don't need these assertions?
-	evsw := conR.evsw.(*events.EventSwitch)
 
-	evsw.AddListenerForEvent("conR", types.EventStringNewRoundStep(), func(data types.EventData) {
-		rs := data.(*types.EventDataRoundState)
+	conR.evsw.AddListenerForEvent("conR", types.EventStringNewRoundStep(), func(data types.EventData) {
+		rs := data.(*types.EventDataRoundState).RoundState().(*RoundState)
 		conR.broadcastNewRoundStep(rs)
 	})
 
-	evsw.AddListenerForEvent("conR", types.EventStringVote(), func(data types.EventData) {
+	conR.evsw.AddListenerForEvent("conR", types.EventStringVote(), func(data types.EventData) {
 		edv := data.(*types.EventDataVote)
 		conR.broadcastHasVoteMessage(edv.Vote, edv.Index)
 	})
 }
 
-func (conR *ConsensusReactor) broadcastNewRoundStep(rs *types.EventDataRoundState) {
+func (conR *ConsensusReactor) broadcastNewRoundStep(rs *RoundState) {
 
 	nrsMsg, csMsg := makeRoundStepMessages(rs)
 	if nrsMsg != nil {
@@ -282,20 +280,20 @@ func (conR *ConsensusReactor) broadcastHasVoteMessage(vote *types.Vote, index in
 	*/
 }
 
-func makeRoundStepMessages(rs *types.EventDataRoundState) (nrsMsg *NewRoundStepMessage, csMsg *CommitStepMessage) {
+func makeRoundStepMessages(rs *RoundState) (nrsMsg *NewRoundStepMessage, csMsg *CommitStepMessage) {
 	step := RoundStepType(rs.Step)
 	nrsMsg = &NewRoundStepMessage{
 		Height: rs.Height,
 		Round:  rs.Round,
 		Step:   step,
 		SecondsSinceStartTime: int(time.Now().Sub(rs.StartTime).Seconds()),
-		LastCommitRound:       rs.LastCommitRound,
+		LastCommitRound:       rs.LastCommit.Round(),
 	}
 	if step == RoundStepCommit {
 		csMsg = &CommitStepMessage{
 			Height:           rs.Height,
-			BlockPartsHeader: rs.BlockPartsHeader,
-			BlockParts:       rs.BlockParts,
+			BlockPartsHeader: rs.ProposalBlockParts.Header(),
+			BlockParts:       rs.ProposalBlockParts.BitArray(),
 		}
 	}
 	return
@@ -303,7 +301,7 @@ func makeRoundStepMessages(rs *types.EventDataRoundState) (nrsMsg *NewRoundStepM
 
 func (conR *ConsensusReactor) sendNewRoundStepMessage(peer *p2p.Peer) {
 	rs := conR.conS.GetRoundState()
-	nrsMsg, csMsg := makeRoundStepMessages(rs.RoundStateEvent())
+	nrsMsg, csMsg := makeRoundStepMessages(rs)
 	if nrsMsg != nil {
 		peer.Send(StateChannel, nrsMsg)
 	}
