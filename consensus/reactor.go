@@ -283,15 +283,14 @@ func (conR *ConsensusReactor) broadcastHasVoteMessage(vote *types.Vote, index in
 }
 
 func makeRoundStepMessages(rs *RoundState) (nrsMsg *NewRoundStepMessage, csMsg *CommitStepMessage) {
-	step := RoundStepType(rs.Step)
 	nrsMsg = &NewRoundStepMessage{
 		Height: rs.Height,
 		Round:  rs.Round,
-		Step:   step,
+		Step:   rs.Step,
 		SecondsSinceStartTime: int(time.Now().Sub(rs.StartTime).Seconds()),
 		LastCommitRound:       rs.LastCommit.Round(),
 	}
-	if step == RoundStepCommit {
+	if rs.Step == RoundStepCommit {
 		csMsg = &CommitStepMessage{
 			Height:           rs.Height,
 			BlockPartsHeader: rs.ProposalBlockParts.Header(),

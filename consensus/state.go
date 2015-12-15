@@ -316,6 +316,7 @@ func (cs *ConsensusState) AddProposalBlockPart(height, round int, part *types.Pa
 	return nil
 }
 
+// May block on send if queue is full.
 func (cs *ConsensusState) SetProposalAndBlock(proposal *types.Proposal, block *types.Block, parts *types.PartSet, peerKey string) error {
 	cs.SetProposal(proposal, peerKey)
 	for i := 0; i < parts.Total(); i++ {
@@ -341,6 +342,9 @@ func (cs *ConsensusState) updateRoundStep(round int, step RoundStepType) {
 func (cs *ConsensusState) scheduleRound0(height int) {
 	//log.Info("scheduleRound0", "now", time.Now(), "startTime", cs.StartTime)
 	sleepDuration := cs.StartTime.Sub(time.Now())
+	if sleepDuration < time.Duration(0) {
+		sleepDuration = time.Duration(0)
+	}
 	cs.scheduleTimeout(sleepDuration, height, 0, RoundStepNewHeight)
 }
 
@@ -749,7 +753,7 @@ func (cs *ConsensusState) decideProposal(height, round int) {
 			part := blockParts.GetPart(i)
 			cs.sendInternalMessage(msgInfo{&BlockPartMessage{cs.Height, cs.Round, part}, ""})
 		}
-		log.Notice("Signed and sent proposal", "height", height, "round", round, "proposal", proposal)
+		log.Info("Signed and sent proposal", "height", height, "round", round, "proposal", proposal)
 		log.Debug(Fmt("Signed and sent proposal block: %v", block))
 	} else {
 		log.Warn("enterPropose: Error signing proposal", "height", height, "round", round, "error", err)
@@ -1130,7 +1134,8 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 		PanicConsensus(Fmt("+2/3 committed an invalid block: %v", err))
 	}
 
-	log.Info(Fmt("Finalizing commit of block: %v", cs.ProposalBlock))
+	log.Notice("Finalizing commit of block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
+	log.Info(Fmt("%v", cs.ProposalBlock))
 	// We have the block, so stage/save/commit-vote.
 	cs.saveBlock(cs.ProposalBlock, cs.ProposalBlockParts, cs.Votes.Precommits(cs.CommitRound))
 
@@ -1402,7 +1407,7 @@ func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header types.Part
 		// TODO: store our index in the cs so we don't have to do this every time
 		valIndex, _ := cs.Validators.GetByAddress(cs.privValidator.Address)
 		cs.sendInternalMessage(msgInfo{&VoteMessage{valIndex, vote}, ""})
-		log.Notice("Signed and pushed vote", "height", cs.Height, "round", cs.Round, "vote", vote, "error", err)
+		log.Info("Signed and pushed vote", "height", cs.Height, "round", cs.Round, "vote", vote, "error", err)
 		return vote
 	} else {
 		log.Warn("Error signing vote", "height", cs.Height, "round", cs.Round, "vote", vote, "error", err)
