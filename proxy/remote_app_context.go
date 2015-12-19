@@ -92,6 +92,7 @@ func (app *remoteAppContext) sendRequestsRoutine() {
 
 			app.willSendReq(reqres)
 
+			wire.WriteBinary(wire.BinarySize(reqres.Request, &err), app.bufWriter, &n, &err)
 			wire.WriteBinary(reqres.Request, app.bufWriter, &n, &err)
 			if err != nil {
 				app.StopForError(err)
@@ -115,10 +116,15 @@ func (app *remoteAppContext) recvResponseRoutine() {
 		var res tmsp.Response
 		var n int
 		var err error
+		var size int
+		wire.ReadBinaryPtr(&size, r, maxResponseSize, &n, &err)
 		wire.ReadBinaryPtr(&res, r, maxResponseSize, &n, &err)
 		if err != nil {
 			app.StopForError(err)
 			return
+		}
+		if size != wire.BinarySize(res, &err) {
+			app.StopForError(fmt.Errorf("prefixed length not equal to actual length"))
 		}
 		switch res := res.(type) {
 		case tmsp.ResponseException:
