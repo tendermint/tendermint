@@ -7,7 +7,7 @@ import (
 
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-logio"
-	example "github.com/tendermint/tmsp/example"
+	"github.com/tendermint/tmsp/example/golang"
 	"github.com/tendermint/tmsp/server"
 )
 

@@ -16,7 +16,7 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 
-	"github.com/tendermint/tmsp/example"
+	"github.com/tendermint/tmsp/example/golang"
 )
 
 var chainID string

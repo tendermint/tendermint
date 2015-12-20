@@ -6,7 +6,7 @@ import (
 
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tmsp/example"
+	"github.com/tendermint/tmsp/example/golang"
 	tmsp "github.com/tendermint/tmsp/types"
 )
 
