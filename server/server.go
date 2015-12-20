@@ -85,7 +85,7 @@ func handleRequests(appC types.AppContext, closeConn chan error, conn net.Conn, 
 		var n int
 		var err error
 		var req types.Request
-		wire.ReadBinaryPtr(&req, bufReader, 0, &n, &err)
+		wire.ReadBinaryPtrLengthPrefixed(&req, bufReader, 0, &n, &err)
 		if err != nil {
 			if err == io.EOF {
 				closeConn <- fmt.Errorf("Connection closed by client")
@@ -146,7 +146,7 @@ func handleResponses(closeConn chan error, responses <-chan types.Response, conn
 		var res = <-responses
 		var n int
 		var err error
-		wire.WriteBinary(res, bufWriter, &n, &err)
+		wire.WriteBinaryLengthPrefixed(res, bufWriter, &n, &err)
 		if err != nil {
 			closeConn <- fmt.Errorf("Error in handleResponses: %v", err.Error())
 			return

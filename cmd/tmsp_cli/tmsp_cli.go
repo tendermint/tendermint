@@ -241,27 +241,27 @@ func makeRequest(conn net.Conn, req types.Request) (types.Response, error) {
 	var err error
 
 	// Write desired request
-	wire.WriteBinary(req, conn, &n, &err)
+	wire.WriteBinaryLengthPrefixed(req, conn, &n, &err)
 	if err != nil {
 		return nil, err
 	}
 
 	// Write flush request
-	wire.WriteBinary(types.RequestFlush{}, conn, &n, &err)
+	wire.WriteBinaryLengthPrefixed(types.RequestFlush{}, conn, &n, &err)
 	if err != nil {
 		return nil, err
 	}
 
 	// Read desired response
 	var res types.Response
-	wire.ReadBinaryPtr(&res, conn, 0, &n, &err)
+	wire.ReadBinaryPtrLengthPrefixed(&res, conn, 0, &n, &err)
 	if err != nil {
 		return nil, err
 	}
 
 	// Read flush response
 	var resFlush types.ResponseFlush
-	wire.ReadBinaryPtr(&resFlush, conn, 0, &n, &err)
+	wire.ReadBinaryPtrLengthPrefixed(&resFlush, conn, 0, &n, &err)
 	if err != nil {
 		return nil, err
 	}

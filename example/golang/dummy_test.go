@@ -35,6 +35,7 @@ func TestStream(t *testing.T) {
 			var n int
 			var err error
 			var res types.Response
+			wire.ReadVarint(conn, &n, &err) // ignore
 			wire.ReadBinaryPtr(&res, conn, 0, &n, &err)
 			if err != nil {
 				Exit(err.Error())
@@ -71,7 +72,7 @@ func TestStream(t *testing.T) {
 		var n int
 		var err error
 		var req types.Request = types.RequestAppendTx{TxBytes: []byte("test")}
-		wire.WriteBinary(req, conn, &n, &err)
+		wire.WriteBinaryLengthPrefixed(req, conn, &n, &err)
 		if err != nil {
 			t.Fatal(err.Error())
 		}
@@ -79,7 +80,7 @@ func TestStream(t *testing.T) {
 		// Sometimes send flush messages
 		if counter%123 == 0 {
 			t.Log("flush")
-			wire.WriteBinary(types.RequestFlush{}, conn, &n, &err)
+			wire.WriteBinaryLengthPrefixed(types.RequestFlush{}, conn, &n, &err)
 			if err != nil {
 				t.Fatal(err.Error())
 			}
@@ -88,7 +89,7 @@ func TestStream(t *testing.T) {
 
 	// Send final flush message
 	var n int
-	wire.WriteBinary(types.RequestFlush{}, conn, &n, &err)
+	wire.WriteBinaryLengthPrefixed(types.RequestFlush{}, conn, &n, &err)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
