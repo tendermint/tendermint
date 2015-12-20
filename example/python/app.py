@@ -41,7 +41,7 @@ class CounterAppContext():
 			txByteArray = bytearray(txBytes)
 			if len(txBytes) >= 2 and txBytes[:2] == "0x":
 				txByteArray = hex2bytes(txBytes[2:])
-			txValue = decode_big_endian(BytesReader(txByteArray), len(txBytes))
+			txValue = decode_big_endian(BytesBuffer(txByteArray), len(txBytes))
 			if txValue != self.txCount:
 				return None, 1
 		self.txCount += 1
