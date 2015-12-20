@@ -2,7 +2,6 @@ package proxy
 
 import (
 	"bufio"
-	"bytes"
 	"container/list"
 	"errors"
 	"fmt"
@@ -84,7 +83,7 @@ func (app *remoteAppContext) Error() error {
 
 func (app *remoteAppContext) sendRequestsRoutine() {
 	for {
-		var n, n2 int
+		var n int
 		var err error
 		select {
 		case <-app.QuitService.Quit:
@@ -93,10 +92,7 @@ func (app *remoteAppContext) sendRequestsRoutine() {
 
 			app.willSendReq(reqres)
 
-			buf := new(bytes.Buffer)
-			wire.WriteBinary(reqres.Request, buf, &n2, &err) // Length prefix
-			wire.WriteVarint(buf.Len(), app.bufWriter, &n, &err)
-			wire.WriteTo(buf.Bytes(), app.bufWriter, &n, &err)
+			wire.WriteBinaryLengthPrefixed(reqres.Request, app.bufWriter, &n, &err) // Length prefix
 			if err != nil {
 				app.StopForError(err)
 				return
@@ -117,16 +113,12 @@ func (app *remoteAppContext) recvResponseRoutine() {
 	r := bufio.NewReader(app.conn) // Buffer reads
 	for {
 		var res tmsp.Response
-		var n, n2 int
+		var n int
 		var err error
-		size := wire.ReadVarint(r, &n2, &err)
-		wire.ReadBinaryPtr(&res, r, maxResponseSize, &n, &err)
+		wire.ReadBinaryPtrLengthPrefixed(&res, r, maxResponseSize, &n, &err)
 		if err != nil {
 			app.StopForError(err)
 			return
-		}
-		if size != n {
-			app.StopForError(fmt.Errorf("Prefixed length not equal to actual length. %v vs %v", size, n))
 		}
 		switch res := res.(type) {
 		case tmsp.ResponseException:
