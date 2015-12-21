@@ -56,7 +56,7 @@ func GetConfig(rootDir string) cfg.Config {
 	mapConfig.SetDefault("moniker", "anonymous")
 	mapConfig.SetDefault("node_laddr", "0.0.0.0:46656")
 	// mapConfig.SetDefault("seeds", "goldenalchemist.chaintest.net:46656")
-	mapConfig.SetDefault("fast_sync", true)
+	mapConfig.SetDefault("fast_sync", false)
 	mapConfig.SetDefault("skip_upnp", false)
 	mapConfig.SetDefault("addrbook_file", rootDir+"/addrbook.json")
 	mapConfig.SetDefault("priv_validator_file", rootDir+"/priv_validator.json")
@@ -77,7 +77,7 @@ proxy_app = "tcp://127.0.0.1:46658"
 moniker = "__MONIKER__"
 node_laddr = "0.0.0.0:46656"
 seeds = ""
-fast_sync = true
+fast_sync = false
 db_backend = "leveldb"
 log_level = "notice"
 rpc_laddr = "0.0.0.0:46657"

@@ -34,6 +34,8 @@ Commands:
 	switch args[0] {
 	case "node":
 		node.RunNode()
+	case "init":
+		init_files()
 	case "show_validator":
 		show_validator()
 	case "gen_validator":
