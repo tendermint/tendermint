@@ -1245,7 +1245,7 @@ func (cs *ConsensusState) tryAddVote(valIndex int, vote *types.Vote, peerKey str
 				VoteA:   *errDupe.VoteA,
 				VoteB:   *errDupe.VoteB,
 			}
-			cs.mempool.BroadcastTx(evidenceTx) // shouldn't need to check returned err
+			cs.mempool.BroadcastTx(struct{???}{evidenceTx}) // shouldn't need to check returned err
 			*/
 			return err
 		} else {

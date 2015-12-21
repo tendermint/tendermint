@@ -249,10 +249,10 @@ func (conR *ConsensusReactor) broadcastNewRoundStep(rs *RoundState) {
 
 	nrsMsg, csMsg := makeRoundStepMessages(rs)
 	if nrsMsg != nil {
-		conR.Switch.Broadcast(StateChannel, nrsMsg)
+		conR.Switch.Broadcast(StateChannel, struct{ ConsensusMessage }{nrsMsg})
 	}
 	if csMsg != nil {
-		conR.Switch.Broadcast(StateChannel, csMsg)
+		conR.Switch.Broadcast(StateChannel, struct{ ConsensusMessage }{csMsg})
 	}
 }
 
@@ -264,7 +264,7 @@ func (conR *ConsensusReactor) broadcastHasVoteMessage(vote *types.Vote, index in
 		Type:   vote.Type,
 		Index:  index,
 	}
-	conR.Switch.Broadcast(StateChannel, msg)
+	conR.Switch.Broadcast(StateChannel, struct{ ConsensusMessage }{msg})
 	/*
 		// TODO: Make this broadcast more selective.
 		for _, peer := range conR.Switch.Peers().List() {
