@@ -17,9 +17,9 @@ var GenDocKey = []byte("GenDocKey")
 // core types for a genesis definition
 
 type GenesisValidator struct {
-	PubKey crypto.PubKeyEd25519 `json:"pub_key"`
-	Amount int64                `json:"amount"`
-	Name   string               `json:"name"`
+	PubKey crypto.PubKey `json:"pub_key"`
+	Amount int64         `json:"amount"`
+	Name   string        `json:"name"`
 }
 
 type GenesisDoc struct {

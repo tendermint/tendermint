@@ -272,7 +272,7 @@ func (conR *ConsensusReactor) broadcastHasVoteMessage(vote *types.Vote, index in
 			prs := ps.GetRoundState()
 			if prs.Height == vote.Height {
 				// TODO: Also filter on round?
-				peer.TrySend(StateChannel, msg)
+				peer.TrySend(StateChannel, struct{ ConsensusMessage }{msg})
 			} else {
 				// Height doesn't match
 				// TODO: check a field, maybe CatchupCommitRound?
@@ -304,10 +304,10 @@ func (conR *ConsensusReactor) sendNewRoundStepMessage(peer *p2p.Peer) {
 	rs := conR.conS.GetRoundState()
 	nrsMsg, csMsg := makeRoundStepMessages(rs)
 	if nrsMsg != nil {
-		peer.Send(StateChannel, nrsMsg)
+		peer.Send(StateChannel, struct{ ConsensusMessage }{nrsMsg})
 	}
 	if csMsg != nil {
-		peer.Send(StateChannel, csMsg)
+		peer.Send(StateChannel, struct{ ConsensusMessage }{csMsg})
 	}
 }
 
@@ -334,7 +334,7 @@ OUTER_LOOP:
 					Round:  rs.Round,  // This tells peer that this part applies to us.
 					Part:   part,
 				}
-				peer.Send(DataChannel, msg)
+				peer.Send(DataChannel, struct{ ConsensusMessage }{msg})
 				ps.SetHasProposalBlockPart(prs.Height, prs.Round, index)
 				continue OUTER_LOOP
 			}
@@ -366,7 +366,7 @@ OUTER_LOOP:
 					Round:  prs.Round,  // Not our height, so it doesn't matter.
 					Part:   part,
 				}
-				peer.Send(DataChannel, msg)
+				peer.Send(DataChannel, struct{ ConsensusMessage }{msg})
 				ps.SetHasProposalBlockPart(prs.Height, prs.Round, index)
 				continue OUTER_LOOP
 			} else {
@@ -393,7 +393,7 @@ OUTER_LOOP:
 			// Proposal
 			{
 				msg := &ProposalMessage{Proposal: rs.Proposal}
-				peer.Send(DataChannel, msg)
+				peer.Send(DataChannel, struct{ ConsensusMessage }{msg})
 				ps.SetHasProposal(rs.Proposal)
 			}
 			// ProposalPOL.
@@ -406,7 +406,7 @@ OUTER_LOOP:
 					ProposalPOLRound: rs.Proposal.POLRound,
 					ProposalPOL:      rs.Votes.Prevotes(rs.Proposal.POLRound).BitArray(),
 				}
-				peer.Send(DataChannel, msg)
+				peer.Send(DataChannel, struct{ ConsensusMessage }{msg})
 			}
 			continue OUTER_LOOP
 		}
@@ -614,7 +614,7 @@ func (ps *PeerState) SetHasProposalBlockPart(height int, round int, index int) {
 func (ps *PeerState) PickSendVote(votes types.VoteSetReader) (ok bool) {
 	if index, vote, ok := ps.PickVoteToSend(votes); ok {
 		msg := &VoteMessage{index, vote}
-		ps.Peer.Send(VoteChannel, msg)
+		ps.Peer.Send(VoteChannel, struct{ ConsensusMessage }{msg})
 		return true
 	}
 	return false

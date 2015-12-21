@@ -92,7 +92,7 @@ func (app *remoteAppContext) sendRequestsRoutine() {
 
 			app.willSendReq(reqres)
 
-			wire.WriteBinaryLengthPrefixed(reqres.Request, app.bufWriter, &n, &err) // Length prefix
+			wire.WriteBinaryLengthPrefixed(struct{ tmsp.Request }{reqres.Request}, app.bufWriter, &n, &err) // Length prefix
 			if err != nil {
 				app.StopForError(err)
 				return

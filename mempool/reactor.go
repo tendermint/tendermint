@@ -123,7 +123,7 @@ func (memR *MempoolReactor) broadcastTxRoutine(peer Peer) {
 		}
 		// send memTx
 		msg := &TxMessage{Tx: memTx.tx}
-		success := peer.Send(MempoolChannel, msg)
+		success := peer.Send(MempoolChannel, struct{ MempoolMessage }{msg})
 		if !success {
 			time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
 			continue

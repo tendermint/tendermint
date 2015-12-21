@@ -14,11 +14,11 @@ import (
 // Also persisted with the state, but fields change
 // every height|round so they don't go in merkle.Tree
 type Validator struct {
-	Address          []byte               `json:"address"`
-	PubKey           crypto.PubKeyEd25519 `json:"pub_key"`
-	LastCommitHeight int                  `json:"last_commit_height"`
-	VotingPower      int64                `json:"voting_power"`
-	Accum            int64                `json:"accum"`
+	Address          []byte        `json:"address"`
+	PubKey           crypto.PubKey `json:"pub_key"`
+	LastCommitHeight int           `json:"last_commit_height"`
+	VotingPower      int64         `json:"voting_power"`
+	Accum            int64         `json:"accum"`
 }
 
 // Creates a new copy of the validator so we can mutate accum.

@@ -113,7 +113,7 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 // Implements Reactor
 func (bcR *BlockchainReactor) AddPeer(peer *p2p.Peer) {
 	// Send peer our state.
-	peer.Send(BlockchainChannel, &bcStatusResponseMessage{bcR.store.Height()})
+	peer.Send(BlockchainChannel, struct{ BlockchainMessage }{&bcStatusResponseMessage{bcR.store.Height()}})
 }
 
 // Implements Reactor
@@ -138,7 +138,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte)
 		block := bcR.store.LoadBlock(msg.Height)
 		if block != nil {
 			msg := &bcBlockResponseMessage{Block: block}
-			queued := src.TrySend(BlockchainChannel, msg)
+			queued := src.TrySend(BlockchainChannel, struct{ BlockchainMessage }{msg})
 			if !queued {
 				// queue is full, just ignore.
 			}
@@ -150,7 +150,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte)
 		bcR.pool.AddBlock(src.Key, msg.Block, len(msgBytes))
 	case *bcStatusRequestMessage:
 		// Send peer our state.
-		queued := src.TrySend(BlockchainChannel, &bcStatusResponseMessage{bcR.store.Height()})
+		queued := src.TrySend(BlockchainChannel, struct{ BlockchainMessage }{&bcStatusResponseMessage{bcR.store.Height()}})
 		if !queued {
 			// sorry
 		}
@@ -180,7 +180,7 @@ FOR_LOOP:
 				continue FOR_LOOP // Peer has since been disconnected.
 			}
 			msg := &bcBlockRequestMessage{request.Height}
-			queued := peer.TrySend(BlockchainChannel, msg)
+			queued := peer.TrySend(BlockchainChannel, struct{ BlockchainMessage }{msg})
 			if !queued {
 				// We couldn't make the request, send-queue full.
 				// The pool handles timeouts, just let it go.
