@@ -36,13 +36,13 @@ CounterAppContext.prototype.set_option = function(key, value){
 
 CounterAppContext.prototype.append_tx = function(txBytes){
 	if (this.serial) {
-		txByteArray = txBytes
-		if (txByte.length >= 2 && txBytes.slice(0, 2) == "0x") {
+		txByteArray = new Buffer(txBytes)
+		if (txBytes.length >= 2 && txBytes.slice(0, 2) == "0x") {
 			txByteArray = wire.hex2bytes(txBytes.slice(2));
 		}	
-		r = new wire.BytesReader(txByteArray)
-		txValue = decode_big_endian(r, txBytes.length)
-		if (txValue != this.txcount){
+		r = new msg.buffer(txByteArray)
+		txValue = wire.decode_big_endian(r, txBytes.length)
+		if (txValue != this.txCount){
 			return {"ret_code":1}
 		}
 	}

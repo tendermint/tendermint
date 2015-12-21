@@ -3,6 +3,7 @@ math = require("math")
 module.exports = {
 	decode_string: decode_string,
 	decode_varint: decode_varint,
+	decode_big_endian: decode_big_endian,
 	encode_big_endian: encode_big_endian,
 	encode: encode,
 	reverse: reverse,

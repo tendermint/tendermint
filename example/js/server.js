@@ -88,13 +88,11 @@ AppServer.prototype.createServer = function(){
 			// done decoding
 			conn.msgLength = 0
 
-			// NOTE: this throws of the "this"'s in app.js
-			//reqFunc = appCtx[reqType]; 
 			var res = function(){
 				if (args == null){
 					return appCtx[reqType]();
 				} else if (Array.isArray(args)){
-					return appCtx[reqType].apply(this, args);
+					return appCtx[reqType].apply(appCtx, args);
 				} else {
 					return appCtx[reqType](args)
 				}
