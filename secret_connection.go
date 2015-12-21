@@ -96,7 +96,7 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKeyEd25
 	}
 
 	// We've authorized.
-	sc.remPubKey = remPubKey
+	sc.remPubKey = remPubKey.(crypto.PubKeyEd25519)
 	return sc, nil
 }
 
@@ -260,8 +260,8 @@ func signChallenge(challenge *[32]byte, locPrivKey crypto.PrivKeyEd25519) (signa
 }
 
 type authSigMessage struct {
-	Key crypto.PubKeyEd25519
-	Sig crypto.SignatureEd25519
+	Key crypto.PubKey
+	Sig crypto.Signature
 }
 
 func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKeyEd25519, signature crypto.SignatureEd25519) (*authSigMessage, error) {

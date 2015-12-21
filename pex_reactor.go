@@ -114,11 +114,11 @@ func (pexR *PEXReactor) Receive(chID byte, src *Peer, msgBytes []byte) {
 
 // Asks peer for more addresses.
 func (pexR *PEXReactor) RequestPEX(peer *Peer) {
-	peer.Send(PexChannel, &pexRequestMessage{})
+	peer.Send(PexChannel, struct{ PexMessage }{&pexRequestMessage{}})
 }
 
 func (pexR *PEXReactor) SendAddrs(peer *Peer, addrs []*NetAddress) {
-	peer.Send(PexChannel, &pexAddrsMessage{Addrs: addrs})
+	peer.Send(PexChannel, struct{ PexMessage }{&pexAddrsMessage{Addrs: addrs}})
 }
 
 // Ensures that sufficient peers are connected. (continuous)
