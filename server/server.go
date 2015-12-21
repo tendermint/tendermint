@@ -146,7 +146,7 @@ func handleResponses(closeConn chan error, responses <-chan types.Response, conn
 		var res = <-responses
 		var n int
 		var err error
-		wire.WriteBinaryLengthPrefixed(res, bufWriter, &n, &err)
+		wire.WriteBinaryLengthPrefixed(struct{ types.Response }{res}, bufWriter, &n, &err)
 		if err != nil {
 			closeConn <- fmt.Errorf("Error in handleResponses: %v", err.Error())
 			return

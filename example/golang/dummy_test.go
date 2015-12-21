@@ -72,7 +72,7 @@ func TestStream(t *testing.T) {
 		var n int
 		var err error
 		var req types.Request = types.RequestAppendTx{TxBytes: []byte("test")}
-		wire.WriteBinaryLengthPrefixed(req, conn, &n, &err)
+		wire.WriteBinaryLengthPrefixed(struct{ types.Request }{req}, conn, &n, &err)
 		if err != nil {
 			t.Fatal(err.Error())
 		}
@@ -80,7 +80,7 @@ func TestStream(t *testing.T) {
 		// Sometimes send flush messages
 		if counter%123 == 0 {
 			t.Log("flush")
-			wire.WriteBinaryLengthPrefixed(types.RequestFlush{}, conn, &n, &err)
+			wire.WriteBinaryLengthPrefixed(struct{ types.Request }{types.RequestFlush{}}, conn, &n, &err)
 			if err != nil {
 				t.Fatal(err.Error())
 			}
@@ -89,7 +89,7 @@ func TestStream(t *testing.T) {
 
 	// Send final flush message
 	var n int
-	wire.WriteBinaryLengthPrefixed(types.RequestFlush{}, conn, &n, &err)
+	wire.WriteBinaryLengthPrefixed(struct{ types.Request }{types.RequestFlush{}}, conn, &n, &err)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
