@@ -56,6 +56,7 @@ class CounterAppContext():
 		return str(h), 0
 
 	def commit(self):
+		self.commitCount += 1
 		return 0 
 
 	def rollback(self):
