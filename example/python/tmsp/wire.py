@@ -25,7 +25,7 @@ def uvarint_size(i):
 def encode_big_endian(i, size):
 	if size == 0:
 		return bytearray()
-	return  encode_big_endian(i/256, size-1) + bytearray([i%256])
+	return encode_big_endian(i/256, size-1) + bytearray([i%256])
 
 def decode_big_endian(reader, size):
 	if size == 0:
@@ -36,14 +36,14 @@ def decode_big_endian(reader, size):
 # ints are max 16 bytes long
 def encode_varint(i):
 	negate = False
-	if i < 0: 
+	if i < 0:
 		negate = True
 		i = -i
 	size = uvarint_size(i)
 	if size == 0:
 		return bytearray([0])
 	big_end = encode_big_endian(i, size)
-	if negate: 
+	if negate:
 		size += 0xF0
 	return bytearray([size]) + big_end
 
@@ -57,7 +57,7 @@ def decode_varint(reader):
 	if negate: size = size -0xF0
 	i = decode_big_endian(reader, size)
 	if negate: i = i*(-1)
-	return i 
+	return i
 	
 def encode_string(s):
 	size = encode_varint(len(s))
