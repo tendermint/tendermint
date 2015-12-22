@@ -52,7 +52,7 @@ var _ = wire.RegisterInterface(
 	// wire.ConcreteType{EventDataFork{}, EventDataTypeFork },
 	wire.ConcreteType{EventDataTx{}, EventDataTypeTx},
 	wire.ConcreteType{EventDataApp{}, EventDataTypeApp},
-	wire.ConcreteType{EventDataRoundState{}, EventDataTypeRoundState},
+	wire.ConcreteType{&EventDataRoundState{}, EventDataTypeRoundState}, // a pointer because we use it internally
 	wire.ConcreteType{EventDataVote{}, EventDataTypeVote},
 )
 

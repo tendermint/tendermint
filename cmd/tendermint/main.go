@@ -34,6 +34,8 @@ Commands:
 	switch args[0] {
 	case "node":
 		node.RunNode()
+	case "replay":
+		node.RunReplay()
 	case "init":
 		init_files()
 	case "show_validator":

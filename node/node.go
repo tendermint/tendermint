@@ -84,6 +84,9 @@ func NewNode(privValidator *types.PrivValidator) *Node {
 		consensusReactor.SetPrivValidator(privValidator)
 	}
 
+	// deterministic accountability
+	consensusState.OpenFileForMessageLog(config.GetString("cs_msg_log"))
+
 	// Make p2p network switch
 	sw := p2p.NewSwitch()
 	sw.AddReactor("MEMPOOL", mempoolReactor)
@@ -306,6 +309,47 @@ func RunNode() {
 	TrapSignal(func() {
 		n.Stop()
 	})
+}
+
+func RunReplay() {
+	msgLogFile := config.GetString("cs_msg_log")
+	if msgLogFile == "" {
+		Exit("cs_msg_log file name not set in tendermint config")
+	}
+
+	// Get BlockStore
+	blockStoreDB := dbm.GetDB("blockstore")
+	blockStore := bc.NewBlockStore(blockStoreDB)
+
+	// Get State
+	stateDB := dbm.GetDB("state")
+	state := sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
+
+	// Create two proxyAppCtx connections,
+	// one for the consensus and one for the mempool.
+	proxyAddr := config.GetString("proxy_app")
+	proxyAppCtxMempool := getProxyApp(proxyAddr, state.LastAppHash)
+	proxyAppCtxConsensus := getProxyApp(proxyAddr, state.LastAppHash)
+
+	// add the chainid to the global config
+	config.Set("chain_id", state.ChainID)
+
+	// Make event switch
+	eventSwitch := events.NewEventSwitch()
+	_, err := eventSwitch.Start()
+	if err != nil {
+		Exit(Fmt("Failed to start event switch: %v", err))
+	}
+
+	mempool := mempl.NewMempool(proxyAppCtxMempool)
+
+	consensusState := consensus.NewConsensusState(state.Copy(), proxyAppCtxConsensus, blockStore, mempool)
+	consensusState.SetEventSwitch(eventSwitch)
+
+	if err := consensusState.ReplayMessagesFromFile(msgLogFile); err != nil {
+		Exit(Fmt("Error during consensus replay: %v", err))
+	}
+	log.Notice("Replay run successfully")
 }
 
 // Load the most recent state from "state" db,
