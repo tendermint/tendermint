@@ -21,6 +21,7 @@ type ResultStatus struct {
 	NodeInfo          *p2p.NodeInfo `json:"node_info"`
 	PubKey            crypto.PubKey `json:"pub_key"`
 	LatestBlockHash   []byte        `json:"latest_block_hash"`
+	LatestAppHash     []byte        `json:"latest_app_hash"`
 	LatestBlockHeight int           `json:"latest_block_height"`
 	LatestBlockTime   int64         `json:"latest_block_time"` // nano
 }

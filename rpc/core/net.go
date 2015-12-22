@@ -2,32 +2,7 @@ package core
 
 import (
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	"github.com/tendermint/tendermint/types"
 )
-
-//-----------------------------------------------------------------------------
-
-// TODO Move to status.go or node.go
-func Status() (*ctypes.ResultStatus, error) {
-	latestHeight := blockStore.Height()
-	var (
-		latestBlockMeta *types.BlockMeta
-		latestBlockHash []byte
-		latestBlockTime int64
-	)
-	if latestHeight != 0 {
-		latestBlockMeta = blockStore.LoadBlockMeta(latestHeight)
-		latestBlockHash = latestBlockMeta.Hash
-		latestBlockTime = latestBlockMeta.Header.Time.UnixNano()
-	}
-
-	return &ctypes.ResultStatus{
-		NodeInfo:          p2pSwitch.NodeInfo(),
-		PubKey:            privValidator.PubKey,
-		LatestBlockHash:   latestBlockHash,
-		LatestBlockHeight: latestHeight,
-		LatestBlockTime:   latestBlockTime}, nil
-}
 
 //-----------------------------------------------------------------------------
 
