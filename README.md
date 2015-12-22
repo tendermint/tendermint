@@ -8,6 +8,8 @@ TMSP is an asynchronous protocol: message responses are written back asynchronou
 
 *Applications must be deterministic.*
 
+For more information on TMSP, motivations, and tutorials, please visit [our blog post](http://tendermint.com/posts/tendermint-socket-protocol/) that explains it all.
+
 ## Message types
 
 #### AppendTx
