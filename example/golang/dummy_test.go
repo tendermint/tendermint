@@ -35,8 +35,7 @@ func TestStream(t *testing.T) {
 			var n int
 			var err error
 			var res types.Response
-			wire.ReadVarint(conn, &n, &err) // ignore
-			wire.ReadBinaryPtr(&res, conn, 0, &n, &err)
+			wire.ReadBinaryPtrLengthPrefixed(&res, conn, 0, &n, &err)
 			if err != nil {
 				Exit(err.Error())
 			}

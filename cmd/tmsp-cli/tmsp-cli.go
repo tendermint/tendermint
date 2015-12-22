@@ -3,10 +3,12 @@ package main
 import (
 	"bufio"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"net"
 	"os"
+	"reflect"
 	"strings"
 
 	. "github.com/tendermint/go-common"
@@ -241,13 +243,13 @@ func makeRequest(conn net.Conn, req types.Request) (types.Response, error) {
 	var err error
 
 	// Write desired request
-	wire.WriteBinaryLengthPrefixed(req, conn, &n, &err)
+	wire.WriteBinaryLengthPrefixed(struct{ types.Request }{req}, conn, &n, &err)
 	if err != nil {
 		return nil, err
 	}
 
 	// Write flush request
-	wire.WriteBinaryLengthPrefixed(types.RequestFlush{}, conn, &n, &err)
+	wire.WriteBinaryLengthPrefixed(struct{ types.Request }{types.RequestFlush{}}, conn, &n, &err)
 	if err != nil {
 		return nil, err
 	}
@@ -260,10 +262,13 @@ func makeRequest(conn net.Conn, req types.Request) (types.Response, error) {
 	}
 
 	// Read flush response
-	var resFlush types.ResponseFlush
+	var resFlush types.Response
 	wire.ReadBinaryPtrLengthPrefixed(&resFlush, conn, 0, &n, &err)
 	if err != nil {
 		return nil, err
+	}
+	if _, ok := resFlush.(types.ResponseFlush); !ok {
+		return nil, errors.New(Fmt("Expected types.ResponseFlush but got %v instead", reflect.TypeOf(resFlush)))
 	}
 
 	return res, nil
