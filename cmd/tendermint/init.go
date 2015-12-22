@@ -1,6 +1,7 @@
 package main
 
 import (
+	. "github.com/tendermint/go-common"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -9,13 +10,12 @@ func init_files() {
 	privValidator.SetFile(config.GetString("priv_validator_file"))
 	privValidator.Save()
 
-	//TODO: chainID
 	genDoc := types.GenesisDoc{
-		ChainID: "hi",
+		ChainID: Fmt("test-chain-%v", RandStr(6)),
 	}
 	genDoc.Validators = []types.GenesisValidator{types.GenesisValidator{
 		PubKey: privValidator.PubKey,
-		Amount: 10000,
+		Amount: 10,
 	}}
 
 	genDoc.SaveAs(config.GetString("genesis_file"))
