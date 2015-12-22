@@ -11,7 +11,7 @@ $COUNTER_APP &> /dev/null &
 PID=`echo $!`
 
 if [[ "$?" != 0 ]]; then
-	echo "Error running tmsp command"
+	echo "Error running tmsp app"
 	echo $OUTPUT
 	exit 1
 fi
@@ -24,7 +24,7 @@ append_tx abc
 STDIN`
 
 if [[ "$?" != 0 ]]; then
-	echo "Error running tmsp command"
+	echo "Error running tmsp batch command"
 	echo $OUTPUT
 	exit 1
 fi
