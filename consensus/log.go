@@ -4,8 +4,9 @@ import (
 	"github.com/tendermint/go-logger"
 )
 
-var log = logger.NewBypass("module", "consensus")
+var log = logger.New("module", "consensus")
 
+/*
 func init() {
 	log.SetHandler(
 		logger.LvlFilterHandler(
@@ -14,3 +15,4 @@ func init() {
 		),
 	)
 }
+*/
