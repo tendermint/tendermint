@@ -292,6 +292,9 @@ func (sw *Switch) DialPeerWithAddress(addr *NetAddress) (*Peer, error) {
 		log.Info("Failed dialing address", "address", addr, "error", err)
 		return nil, err
 	}
+	if sw.config.GetBool(configFuzzEnable) {
+		conn = FuzzConn(sw.config, conn)
+	}
 	peer, err := sw.AddPeerWithConnection(conn, true)
 	if err != nil {
 		log.Info("Failed adding peer", "address", addr, "conn", conn, "error", err)
@@ -381,6 +384,10 @@ func (sw *Switch) listenerRoutine(l Listener) {
 		if maxPeers <= sw.peers.Size() {
 			log.Info("Ignoring inbound connection: already have enough peers", "address", inConn.RemoteAddr().String(), "numPeers", sw.peers.Size(), "max", maxPeers)
 			continue
+		}
+
+		if sw.config.GetBool(configFuzzEnable) {
+			inConn = FuzzConn(sw.config, inConn)
 		}
 
 		// New inbound connection!
