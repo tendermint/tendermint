@@ -1,7 +1,6 @@
 package consensus
 
 import (
-	"bufio"
 	"bytes"
 	"errors"
 	"fmt"
@@ -275,68 +274,6 @@ func (cs *ConsensusState) OnStop() {
 	if cs.msgLogFP != nil {
 		cs.msgLogFP.Close()
 	}
-}
-
-func (cs *ConsensusState) OpenFileForMessageLog(file string) (err error) {
-	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
-	cs.msgLogFP, err = os.OpenFile(file, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
-	return err
-}
-
-// Playback with tests
-func (cs ConsensusState) ReplayMessagesFromFile(file string) error {
-	if cs.IsRunning() {
-		return errors.New("cs is already running, cannot replay")
-	}
-
-	cs.BaseService.OnStart()
-	cs.startRoutines(0)
-
-	if cs.msgLogFP != nil {
-		cs.msgLogFP.Close()
-		cs.msgLogFP = nil
-	}
-
-	// we ensure all new step events are regenerated as expected
-	newStepCh := cs.evsw.SubscribeToEvent("replay-test", types.EventStringNewRoundStep(), 1)
-
-	fp, err := os.OpenFile(file, os.O_RDONLY, 0666)
-	if err != nil {
-		return err
-	}
-	defer fp.Close()
-	scanner := bufio.NewScanner(fp)
-	for scanner.Scan() {
-		var err error
-		var msg ConsensusLogMessage
-		wire.ReadJSON(&msg, scanner.Bytes(), &err)
-		if err != nil {
-			return fmt.Errorf("Error reading json data: %v", err)
-		}
-		log.Notice("Replaying message", "type", reflect.TypeOf(msg.Msg), "msg", msg.Msg)
-		switch m := msg.Msg.(type) {
-		case *types.EventDataRoundState:
-			// these are playback checks
-			mi := <-newStepCh
-			m2 := mi.(*types.EventDataRoundState)
-			if m.Height != m2.Height || m.Round != m2.Round || m.Step != m2.Step {
-				return fmt.Errorf("RoundState mismatch. Got %v; Expected %v", m2, m)
-			}
-		case msgInfo:
-			// internal or from peer
-			if m.PeerKey == "" {
-				cs.internalMsgQueue <- m
-			} else {
-				cs.peerMsgQueue <- m
-			}
-		case timeoutInfo:
-			cs.tockChan <- m
-		default:
-			return fmt.Errorf("Unknown ConsensusLogMessage type: %v", reflect.TypeOf(msg.Msg))
-		}
-	}
-	return nil
 }
 
 //------------------------------------------------------------
@@ -1522,31 +1459,6 @@ func (cs *ConsensusState) saveBlock(block *types.Block, blockParts *types.PartSe
 	}
 
 }
-
-func (cs *ConsensusState) saveMsg(msg ConsensusLogMessageInterface) {
-	if cs.msgLogFP != nil {
-		var n int
-		var err error
-		wire.WriteJSON(ConsensusLogMessage{msg}, cs.msgLogFP, &n, &err)
-		wire.WriteTo([]byte("\n"), cs.msgLogFP, &n, &err) // one message per line
-		if err != nil {
-			log.Error("Error writing to consensus message log file", "err", err, "msg", msg)
-		}
-	}
-}
-
-type ConsensusLogMessage struct {
-	Msg ConsensusLogMessageInterface `json:"msg"`
-}
-
-type ConsensusLogMessageInterface interface{}
-
-var _ = wire.RegisterInterface(
-	struct{ ConsensusLogMessageInterface }{},
-	wire.ConcreteType{&types.EventDataRoundState{}, 0x01},
-	wire.ConcreteType{msgInfo{}, 0x02},
-	wire.ConcreteType{timeoutInfo{}, 0x03},
-)
 
 //---------------------------------------------------------
 

@@ -35,7 +35,11 @@ Commands:
 	case "node":
 		node.RunNode()
 	case "replay":
-		node.RunReplay()
+		if len(args) > 1 && args[1] == "console" {
+			node.RunReplayConsole()
+		} else {
+			node.RunReplay()
+		}
 	case "init":
 		init_files()
 	case "show_validator":

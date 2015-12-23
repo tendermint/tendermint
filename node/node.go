@@ -311,12 +311,7 @@ func RunNode() {
 	})
 }
 
-func RunReplay() {
-	msgLogFile := config.GetString("cs_msg_log")
-	if msgLogFile == "" {
-		Exit("cs_msg_log file name not set in tendermint config")
-	}
-
+func newConsensusState() *consensus.ConsensusState {
 	// Get BlockStore
 	blockStoreDB := dbm.GetDB("blockstore")
 	blockStore := bc.NewBlockStore(blockStoreDB)
@@ -345,8 +340,31 @@ func RunReplay() {
 
 	consensusState := consensus.NewConsensusState(state.Copy(), proxyAppCtxConsensus, blockStore, mempool)
 	consensusState.SetEventSwitch(eventSwitch)
+	return consensusState
+}
 
-	if err := consensusState.ReplayMessagesFromFile(msgLogFile); err != nil {
+func RunReplayConsole() {
+	msgLogFile := config.GetString("cs_msg_log")
+	if msgLogFile == "" {
+		Exit("cs_msg_log file name not set in tendermint config")
+	}
+
+	consensusState := newConsensusState()
+
+	if err := consensusState.ReplayConsole(msgLogFile); err != nil {
+		Exit(Fmt("Error during consensus replay: %v", err))
+	}
+}
+
+func RunReplay() {
+	msgLogFile := config.GetString("cs_msg_log")
+	if msgLogFile == "" {
+		Exit("cs_msg_log file name not set in tendermint config")
+	}
+
+	consensusState := newConsensusState()
+
+	if err := consensusState.ReplayMessages(msgLogFile); err != nil {
 		Exit(Fmt("Error during consensus replay: %v", err))
 	}
 	log.Notice("Replay run successfully")
