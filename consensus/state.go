@@ -378,8 +378,8 @@ func (cs *ConsensusState) reconstructLastCommit(state *sm.State) {
 	if state.LastBlockHeight == 0 {
 		return
 	}
-	lastPrecommits := types.NewVoteSet(state.LastBlockHeight, 0, types.VoteTypePrecommit, state.LastValidators)
 	seenValidation := cs.blockStore.LoadSeenValidation(state.LastBlockHeight)
+	lastPrecommits := types.NewVoteSet(state.LastBlockHeight, seenValidation.Round(), types.VoteTypePrecommit, state.LastValidators)
 	for idx, precommit := range seenValidation.Precommits {
 		if precommit == nil {
 			continue
@@ -1258,7 +1258,8 @@ func (cs *ConsensusState) addProposalBlockPart(height int, part *types.Part) (ad
 		var n int
 		var err error
 		cs.ProposalBlock = wire.ReadBinary(&types.Block{}, cs.ProposalBlockParts.GetReader(), types.MaxBlockSize, &n, &err).(*types.Block)
-		log.Info("Received complete proposal", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
+		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
+		log.Info("Received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
 		if cs.Step == RoundStepPropose && cs.isProposalComplete() {
 			// Move onto the next step
 			cs.enterPrevote(height, cs.Round)

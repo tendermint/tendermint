@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/tendermint/go-common"
-	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/tendermint/go-wire"
+	. "github.com/tendermint/go-common"
+	"github.com/tendermint/go-wire"
 
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
