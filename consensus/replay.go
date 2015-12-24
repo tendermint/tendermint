@@ -88,6 +88,7 @@ func newPlayback(file string, fp *os.File, cs *ConsensusState, ch chan interface
 	}
 }
 
+// reset the state and run (pb.count - count) steps
 func (pb *playback) replayReset(count int) error {
 
 	pb.cs.Stop()
@@ -98,8 +99,7 @@ func (pb *playback) replayReset(count int) error {
 	// we ensure all new step events are regenerated as expected
 	pb.newStepCh = newCs.evsw.SubscribeToEvent("replay-test", types.EventStringNewRoundStep(), 1)
 
-	newCs.BaseService.OnStart()
-	newCs.startRoutines(0)
+	newCs.startForReplay()
 
 	pb.fp.Close()
 	fp, err := os.OpenFile(pb.file, os.O_RDONLY, 0666)
@@ -121,13 +121,28 @@ func (pb *playback) replayReset(count int) error {
 	return nil
 }
 
+func (cs *ConsensusState) startForReplay() {
+	cs.BaseService.OnStart()
+	go cs.receiveRoutine(0)
+	// since we replay tocks we just ignore ticks
+	go func() {
+		for {
+			select {
+			case <-cs.tickChan:
+			case <-cs.Quit:
+				return
+			}
+		}
+	}()
+}
+
+// replay all msgs or start the console
 func (cs *ConsensusState) replay(file string, console bool) error {
 	if cs.IsRunning() {
 		return errors.New("cs is already running, cannot replay")
 	}
 
-	cs.BaseService.OnStart()
-	cs.startRoutines(0)
+	cs.startForReplay()
 
 	if cs.msgLogFP != nil {
 		cs.msgLogFP.Close()
@@ -245,6 +260,8 @@ func (pb *playback) replayConsoleLoop() int {
 					fmt.Println("Unknown option", tokens[1])
 				}
 			}
+		case "n":
+			fmt.Println(pb.count)
 		}
 	}
 	return 0
