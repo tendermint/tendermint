@@ -140,7 +140,7 @@ func addVoteToFromMany(to *ConsensusState, votes []*types.Vote, froms ...*valida
 func addVoteToFrom(to *ConsensusState, from *validatorStub, vote *types.Vote) {
 	valIndex, _ := to.Validators.GetByAddress(from.PrivValidator.Address)
 
-	to.peerMsgQueue <- msgInfo{msg: &VoteMessage{valIndex, vote}}
+	to.peerMsgQueue <- msgInfo{Msg: &VoteMessage{valIndex, vote}}
 	// added, err := to.TryAddVote(valIndex, vote, "")
 	/*
 		if _, ok := err.(*types.ErrVoteConflictingSignature); ok {
@@ -344,7 +344,7 @@ func subscribeToVoter(cs *ConsensusState, addr []byte) chan interface{} {
 	go func() {
 		for {
 			v := <-voteCh0
-			vote := v.(*types.EventDataVote)
+			vote := v.(types.EventDataVote)
 			// we only fire for our own votes
 			if bytes.Equal(addr, vote.Address) {
 				voteCh <- v

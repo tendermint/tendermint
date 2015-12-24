@@ -46,7 +46,8 @@ x * TestHalt1 - if we see +2/3 precommits after timing out into new round, we sh
 
 func init() {
 	fmt.Println("")
-	timeoutPropose = 500 * time.Millisecond
+	timeoutPropose0 = 100 * time.Millisecond
+	timeoutProposeDelta = 1 * time.Millisecond
 }
 
 func TestProposerSelection0(t *testing.T) {
@@ -123,7 +124,7 @@ func TestEnterProposeNoPrivValidator(t *testing.T) {
 	startTestRound(cs, height, round)
 
 	// if we're not a validator, EnterPropose should timeout
-	ticker := time.NewTicker(timeoutPropose * 2)
+	ticker := time.NewTicker(timeoutPropose0 * 2)
 	select {
 	case <-timeoutCh:
 	case <-ticker.C:
@@ -164,7 +165,7 @@ func TestEnterProposeYesPrivValidator(t *testing.T) {
 	}
 
 	// if we're a validator, enterPropose should not timeout
-	ticker := time.NewTicker(timeoutPropose * 2)
+	ticker := time.NewTicker(timeoutPropose0 * 2)
 	select {
 	case <-timeoutCh:
 		t.Fatal("Expected EnterPropose not to timeout")
