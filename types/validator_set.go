@@ -309,3 +309,19 @@ type accumComparable int64
 func (ac accumComparable) Less(o interface{}) bool {
 	return int64(ac) > int64(o.(accumComparable))
 }
+
+//----------------------------------------
+// For testing
+
+func RandValidatorSet(numValidators int, votingPower int64) (*ValidatorSet, []*PrivValidator) {
+	vals := make([]*Validator, numValidators)
+	privValidators := make([]*PrivValidator, numValidators)
+	for i := 0; i < numValidators; i++ {
+		val, privValidator := RandValidator(false, votingPower)
+		vals[i] = val
+		privValidators[i] = privValidator
+	}
+	valSet := NewValidatorSet(vals)
+	sort.Sort(PrivValidatorsByAddress(privValidators))
+	return valSet, privValidators
+}

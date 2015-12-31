@@ -2,7 +2,6 @@ package types
 
 import (
 	"bytes"
-	"sort"
 
 	. "github.com/tendermint/go-common"
 	. "github.com/tendermint/go-common/test"
@@ -11,16 +10,9 @@ import (
 	"testing"
 )
 
+// Move it out?
 func randVoteSet(height int, round int, type_ byte, numValidators int, votingPower int64) (*VoteSet, *ValidatorSet, []*PrivValidator) {
-	vals := make([]*Validator, numValidators)
-	privValidators := make([]*PrivValidator, numValidators)
-	for i := 0; i < numValidators; i++ {
-		val, privValidator := RandValidator(false, votingPower)
-		vals[i] = val
-		privValidators[i] = privValidator
-	}
-	valSet := NewValidatorSet(vals)
-	sort.Sort(PrivValidatorsByAddress(privValidators))
+	valSet, privValidators := RandValidatorSet(numValidators, votingPower)
 	return NewVoteSet(height, round, type_, valSet), valSet, privValidators
 }
 

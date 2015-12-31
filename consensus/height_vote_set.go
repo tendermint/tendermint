@@ -95,14 +95,15 @@ func (hvs *HeightVoteSet) AddByIndex(valIndex int, vote *types.Vote, peerKey str
 	if voteSet == nil {
 		if _, ok := hvs.peerCatchupRounds[peerKey]; !ok {
 			hvs.addRound(vote.Round)
+			voteSet = hvs.getVoteSet(vote.Round, vote.Type)
 			hvs.peerCatchupRounds[peerKey] = vote.Round
 		} else {
 			// Peer has sent a vote that does not match our round,
 			// for more than one round.  Bad peer!
 			// TODO punish peer.
 			log.Warn("Deal with peer giving votes from unwanted rounds")
+			return
 		}
-		return
 	}
 	added, address, err = voteSet.AddByIndex(valIndex, vote)
 	return

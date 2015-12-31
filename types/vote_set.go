@@ -300,24 +300,3 @@ func (voteSet *VoteSet) MakeValidation() *Validation {
 		Precommits: precommits,
 	}
 }
-
-//--------------------------------------------------------------------------------
-// For testing...
-
-func RandValidator(randPower bool, minPower int64) (*Validator, *PrivValidator) {
-	privVal := GenPrivValidator()
-	_, tempFilePath := Tempfile("priv_validator_")
-	privVal.SetFile(tempFilePath)
-	votePower := minPower
-	if randPower {
-		votePower += int64(RandUint32())
-	}
-	val := &Validator{
-		Address:          privVal.Address,
-		PubKey:           privVal.PubKey,
-		LastCommitHeight: 0,
-		VotingPower:      votePower,
-		Accum:            0,
-	}
-	return val, privVal
-}
