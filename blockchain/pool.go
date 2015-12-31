@@ -131,14 +131,13 @@ func (pool *BlockPool) IsCaughtUp() bool {
 	pool.mtx.Unlock()
 
 	pool.peersMtx.Lock()
-	numPeers := len(pool.peers)
 	maxPeerHeight := 0
 	for _, peer := range pool.peers {
 		maxPeerHeight = MaxInt(maxPeerHeight, peer.height)
 	}
 	pool.peersMtx.Unlock()
 
-	return numPeers >= 3 && (height > 0 || time.Now().Sub(pool.startTime) > 30*time.Second) && (maxPeerHeight == 0 || height == maxPeerHeight)
+	return (height > 0 || time.Now().Sub(pool.startTime) > 5*time.Second) && (maxPeerHeight == 0 || height == maxPeerHeight)
 }
 
 // We need to see the second block's Validation to validate the first block.
