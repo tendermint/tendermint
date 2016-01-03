@@ -454,6 +454,30 @@ FOR_LOOP:
 	}
 }
 
+func (c *MConnection) Status() interface{} {
+	status := make(map[string]interface{})
+	status["sendMonitor"] = c.sendMonitor.Status()
+	status["recvMonitor"] = c.recvMonitor.Status()
+
+	type channelStatus struct {
+		SendQueueCapacity int
+		SendQueueSize     int
+		Priority          int
+		RecentlySent      int64
+	}
+
+	for _, channel := range c.channels {
+		status[Fmt("ch[%X]", channel.id)] = channelStatus{
+			SendQueueCapacity: cap(channel.sendQueue),
+			SendQueueSize:     int(channel.sendQueueSize), // TODO use atomic
+			Priority:          channel.priority,
+			RecentlySent:      channel.recentlySent,
+		}
+	}
+
+	return status
+}
+
 //-----------------------------------------------------------------------------
 
 type ChannelDescriptor struct {
