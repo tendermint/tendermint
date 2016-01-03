@@ -10,7 +10,7 @@ import (
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/rpc/client"
-	// ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	_ "github.com/tendermint/tendermint/rpc/core/types" // Register RPCResponse > Result types
 	"github.com/tendermint/tendermint/rpc/types"
 )
 
@@ -49,7 +49,7 @@ func main() {
 		if i%1000 == 0 {
 			fmt.Println(i)
 		}
-		time.Sleep(time.Microsecond * 250)
+		time.Sleep(time.Microsecond * 1000)
 	}
 
 	ws.Stop()

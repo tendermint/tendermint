@@ -2,18 +2,15 @@ package rpcclient
 
 import (
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-wire"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/rpc/types"
 )
 
 const (
-	wsEventsChannelCapacity  = 10
 	wsResultsChannelCapacity = 10
 	wsWriteTimeoutSeconds    = 10
 )
@@ -22,8 +19,7 @@ type WSClient struct {
 	QuitService
 	Address string
 	*websocket.Conn
-	EventsCh  chan ctypes.ResultEvent // closes upon WSClient.Stop()
-	ResultsCh chan ctypes.Result      // closes upon WSClient.Stop()
+	ResultsCh chan rpctypes.Result // closes upon WSClient.Stop()
 }
 
 // create a new connection
@@ -31,8 +27,7 @@ func NewWSClient(addr string) *WSClient {
 	wsClient := &WSClient{
 		Address:   addr,
 		Conn:      nil,
-		EventsCh:  make(chan ctypes.ResultEvent, wsEventsChannelCapacity),
-		ResultsCh: make(chan ctypes.Result, wsResultsChannelCapacity),
+		ResultsCh: make(chan rpctypes.Result, wsResultsChannelCapacity),
 	}
 	wsClient.QuitService = *NewQuitService(log, "WSClient", wsClient)
 	return wsClient
@@ -72,7 +67,7 @@ func (wsc *WSClient) dial() error {
 
 func (wsc *WSClient) OnStop() {
 	wsc.QuitService.OnStop()
-	// EventsCh and ResultsCh are closed in receiveEventsRoutine.
+	// ResultsCh is closed in receiveEventsRoutine.
 }
 
 func (wsc *WSClient) receiveEventsRoutine() {
@@ -83,23 +78,18 @@ func (wsc *WSClient) receiveEventsRoutine() {
 			wsc.Stop()
 			break
 		} else {
-			var response ctypes.Response
+			var response rpctypes.RPCResponse
 			wire.ReadJSON(&response, data, &err)
 			if err != nil {
 				log.Info("WSClient failed to parse message", "error", err)
 				wsc.Stop()
 				break
 			}
-			if strings.HasSuffix(response.ID, "#event") {
-				wsc.EventsCh <- *response.Result.(*ctypes.ResultEvent)
-			} else {
-				wsc.ResultsCh <- response.Result
-			}
+			wsc.ResultsCh <- response.Result
 		}
 	}
 
 	// Cleanup
-	close(wsc.EventsCh)
 	close(wsc.ResultsCh)
 }
 

@@ -6,6 +6,8 @@ import (
 
 // TODO: eliminate redundancy between here and reading code from core/
 var Routes = map[string]*rpc.RPCFunc{
+	"subscribe":            rpc.NewWSRPCFunc(Subscribe, []string{"event"}),
+	"unsubscribe":          rpc.NewWSRPCFunc(Unsubscribe, []string{"event"}),
 	"status":               rpc.NewRPCFunc(Status, []string{}),
 	"net_info":             rpc.NewRPCFunc(NetInfo, []string{}),
 	"blockchain":           rpc.NewRPCFunc(BlockchainInfo, []string{"minHeight", "maxHeight"}),

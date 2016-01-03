@@ -32,7 +32,7 @@ func StartHTTPServer(listenAddr string, handler http.Handler) (net.Listener, err
 	return listener, nil
 }
 
-func WriteRPCResponse(w http.ResponseWriter, res RPCResponse) {
+func WriteRPCResponseHTTP(w http.ResponseWriter, res RPCResponse) {
 	buf, n, err := new(bytes.Buffer), int(0), error(nil)
 	wire.WriteJSON(res, buf, &n, &err)
 	if err != nil {
@@ -70,12 +70,12 @@ func RecoverAndLogHandler(handler http.Handler) http.Handler {
 
 				// If RPCResponse
 				if res, ok := e.(RPCResponse); ok {
-					WriteRPCResponse(rww, res)
+					WriteRPCResponseHTTP(rww, res)
 				} else {
 					// For the rest,
 					log.Error("Panic in RPC HTTP handler", "error", e, "stack", string(debug.Stack()))
 					rww.WriteHeader(http.StatusInternalServerError)
-					WriteRPCResponse(rww, NewRPCResponse("", nil, Fmt("Internal Server Error: %v", e)))
+					WriteRPCResponseHTTP(rww, NewRPCResponse("", nil, Fmt("Internal Server Error: %v", e)))
 				}
 			}
 

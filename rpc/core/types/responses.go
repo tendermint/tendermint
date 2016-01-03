@@ -4,12 +4,17 @@ import (
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-p2p"
 	"github.com/tendermint/go-wire"
+	"github.com/tendermint/tendermint/rpc/types"
 	"github.com/tendermint/tendermint/types"
 )
 
 type ResultBlockchainInfo struct {
 	LastHeight int                `json:"last_height"`
 	BlockMetas []*types.BlockMeta `json:"block_metas"`
+}
+
+type ResultGenesis struct {
+	Genesis *types.GenesisDoc `json:"genesis"`
 }
 
 type ResultGetBlock struct {
@@ -55,8 +60,10 @@ type ResultListUnconfirmedTxs struct {
 	Txs []types.Tx `json:"txs"`
 }
 
-type ResultGenesis struct {
-	Genesis *types.GenesisDoc `json:"genesis"`
+type ResultSubscribe struct {
+}
+
+type ResultUnsubscribe struct {
 }
 
 type ResultEvent struct {
@@ -67,31 +74,25 @@ type ResultEvent struct {
 //----------------------------------------
 // response & result types
 
-type Response struct {
-	JSONRPC string `json:"jsonrpc"`
-	ID      string `json:"id"`
-	Result  Result `json:"result"`
-	Error   string `json:"error"`
-}
-
 const (
-	ResultTypeBlockchainInfo     = byte(0x05)
-	ResultTypeGetBlock           = byte(0x06)
-	ResultTypeStatus             = byte(0x07)
-	ResultTypeNetInfo            = byte(0x08)
-	ResultTypeListValidators     = byte(0x09)
-	ResultTypeDumpConsensusState = byte(0x0A)
-	ResultTypeBroadcastTx        = byte(0x0E)
-	ResultTypeListUnconfirmedTxs = byte(0x0F)
-	ResultTypeGenesis            = byte(0x11)
-	ResultTypeEvent              = byte(0x13) // so websockets can respond to rpc functions
+	ResultTypeGenesis            = byte(0x01)
+	ResultTypeBlockchainInfo     = byte(0x02)
+	ResultTypeGetBlock           = byte(0x03)
+	ResultTypeStatus             = byte(0x04)
+	ResultTypeNetInfo            = byte(0x05)
+	ResultTypeListValidators     = byte(0x06)
+	ResultTypeDumpConsensusState = byte(0x07)
+	ResultTypeBroadcastTx        = byte(0x08)
+	ResultTypeListUnconfirmedTxs = byte(0x09)
+	ResultTypeSubscribe          = byte(0x0A)
+	ResultTypeUnsubscribe        = byte(0x0B)
+	ResultTypeEvent              = byte(0x0C)
 )
-
-type Result interface{}
 
 // for wire.readReflect
 var _ = wire.RegisterInterface(
-	struct{ Result }{},
+	struct{ rpctypes.Result }{},
+	wire.ConcreteType{&ResultGenesis{}, ResultTypeGenesis},
 	wire.ConcreteType{&ResultBlockchainInfo{}, ResultTypeBlockchainInfo},
 	wire.ConcreteType{&ResultGetBlock{}, ResultTypeGetBlock},
 	wire.ConcreteType{&ResultStatus{}, ResultTypeStatus},
@@ -100,6 +101,7 @@ var _ = wire.RegisterInterface(
 	wire.ConcreteType{&ResultDumpConsensusState{}, ResultTypeDumpConsensusState},
 	wire.ConcreteType{&ResultBroadcastTx{}, ResultTypeBroadcastTx},
 	wire.ConcreteType{&ResultListUnconfirmedTxs{}, ResultTypeListUnconfirmedTxs},
-	wire.ConcreteType{&ResultGenesis{}, ResultTypeGenesis},
+	wire.ConcreteType{&ResultSubscribe{}, ResultTypeSubscribe},
+	wire.ConcreteType{&ResultUnsubscribe{}, ResultTypeUnsubscribe},
 	wire.ConcreteType{&ResultEvent{}, ResultTypeEvent},
 )
