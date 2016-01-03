@@ -130,6 +130,11 @@ func (pool *BlockPool) IsCaughtUp() bool {
 	height := pool.height
 	pool.mtx.Unlock()
 
+	// Need at least 1 peer to be considered caught up.
+	if len(pool.peers) == 0 {
+		return false
+	}
+
 	pool.peersMtx.Lock()
 	maxPeerHeight := 0
 	for _, peer := range pool.peers {
