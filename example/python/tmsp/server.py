@@ -184,7 +184,6 @@ class TMSPServer():
                 if (r == self.listener):
                     try:
                         self.handle_new_connection(r)
-
                         # undo adding to read list ...
                     except NameError as e:
                         print "Could not connect due to NameError:", e
@@ -201,6 +200,6 @@ class TMSPServer():
         for w in self.write_list:
             try:
                 w.close()
-            except:
-                pass
+            except Exception as e:
+                print(e)  # TODO: add logging
         self.shutdown = True
