@@ -3,7 +3,6 @@ package rpcserver
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"net"
 	"net/http"
@@ -33,15 +32,10 @@ func StartHTTPServer(listenAddr string, handler http.Handler) (net.Listener, err
 }
 
 func WriteRPCResponseHTTP(w http.ResponseWriter, res RPCResponse) {
-	buf, n, err := new(bytes.Buffer), int(0), error(nil)
-	wire.WriteJSON(res, buf, &n, &err)
-	if err != nil {
-		log.Error("Failed to write RPC response", "error", err, "res", res)
-	}
-
+	jsonBytes := wire.JSONBytesPretty(res)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
-	w.Write(buf.Bytes())
+	w.Write(jsonBytes)
 }
 
 //-----------------------------------------------------------------------------
