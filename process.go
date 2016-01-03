@@ -47,7 +47,7 @@ func StartProcess(label string, execPath string, args []string, inFile io.Reader
 	go func() {
 		err := proc.Cmd.Wait()
 		if err != nil {
-			fmt.Printf("Process exit: %v\n", err)
+			// fmt.Printf("Process exit: %v\n", err)
 			if exitError, ok := err.(*exec.ExitError); ok {
 				proc.ExitState = exitError.ProcessState
 			}
@@ -66,10 +66,10 @@ func StartProcess(label string, execPath string, args []string, inFile io.Reader
 func (proc *Process) StopProcess(kill bool) error {
 	defer proc.OutputFile.Close()
 	if kill {
-		fmt.Printf("Killing process %v\n", proc.Cmd.Process)
+		// fmt.Printf("Killing process %v\n", proc.Cmd.Process)
 		return proc.Cmd.Process.Kill()
 	} else {
-		fmt.Printf("Stopping process %v\n", proc.Cmd.Process)
+		// fmt.Printf("Stopping process %v\n", proc.Cmd.Process)
 		return proc.Cmd.Process.Signal(os.Interrupt)
 	}
 }
