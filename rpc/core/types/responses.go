@@ -38,8 +38,9 @@ type ResultNetInfo struct {
 }
 
 type Peer struct {
-	p2p.NodeInfo `json:"node_info"`
-	IsOutbound   bool `json:"is_outbound"`
+	p2p.NodeInfo     `json:"node_info"`
+	IsOutbound       bool                 `json:"is_outbound"`
+	ConnectionStatus p2p.ConnectionStatus `json:"connection_status"`
 }
 
 type ResultListValidators struct {
