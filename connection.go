@@ -454,27 +454,34 @@ FOR_LOOP:
 	}
 }
 
-func (c *MConnection) Status() interface{} {
-	status := make(map[string]interface{})
-	status["sendMonitor"] = c.sendMonitor.Status()
-	status["recvMonitor"] = c.recvMonitor.Status()
+type ConnectionStatus struct {
+	SendMonitor flow.Status
+	RecvMonitor flow.Status
+	Channels    []ChannelStatus
+}
 
-	type channelStatus struct {
-		SendQueueCapacity int
-		SendQueueSize     int
-		Priority          int
-		RecentlySent      int64
-	}
+type ChannelStatus struct {
+	ID                byte
+	SendQueueCapacity int
+	SendQueueSize     int
+	Priority          int
+	RecentlySent      int64
+}
 
-	for _, channel := range c.channels {
-		status[Fmt("ch[%X]", channel.id)] = channelStatus{
+func (c *MConnection) Status() ConnectionStatus {
+	var status ConnectionStatus
+	status.SendMonitor = c.sendMonitor.Status()
+	status.RecvMonitor = c.recvMonitor.Status()
+	status.Channels = make([]ChannelStatus, len(c.channels))
+	for i, channel := range c.channels {
+		status.Channels[i] = ChannelStatus{
+			ID:                channel.id,
 			SendQueueCapacity: cap(channel.sendQueue),
 			SendQueueSize:     int(channel.sendQueueSize), // TODO use atomic
 			Priority:          channel.priority,
 			RecentlySent:      channel.recentlySent,
 		}
 	}
-
 	return status
 }
 
@@ -605,7 +612,7 @@ func (ch *Channel) writeMsgPacketTo(w io.Writer) (n int, err error) {
 	log.Debug("Write Msg Packet", "conn", ch.conn, "packet", packet)
 	wire.WriteByte(packetTypeMsg, w, &n, &err)
 	wire.WriteBinary(packet, w, &n, &err)
-	if err != nil {
+	if err == nil {
 		ch.recentlySent += int64(n)
 	}
 	return
