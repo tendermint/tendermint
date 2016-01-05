@@ -111,6 +111,7 @@ class TMSPServer():
                     # messages are length prefixed
                     conn.resBuf.write(encode(1))
                     conn.resBuf.write([resTypeByte])
+                    conn.fd.send(str(conn.resBuf.buf))
                     conn.msgLength = 0
                     conn.inProgress = False
                     conn.resBuf = BytesBuffer(bytearray())

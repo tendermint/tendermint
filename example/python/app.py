@@ -1,8 +1,8 @@
 import sys
 
-from wire import hex2bytes, decode_big_endian, encode_big_endian
-from server import TMSPServer
-from reader import BytesBuffer
+from tmsp.wire import hex2bytes, decode_big_endian, encode_big_endian
+from tmsp.server import TMSPServer
+from tmsp.reader import BytesBuffer
 
 
 class CounterApplication():
