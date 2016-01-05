@@ -9,3 +9,4 @@ rpc/test/.tendermint
 .tendermint
 remote_dump
 .revision
+vendor
