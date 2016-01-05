@@ -56,7 +56,7 @@ class CounterAppContext():
             return "", 0
         h = encode_big_endian(self.txCount, 8)
         h.reverse()
-        return str(h), 0
+        return h.decode(), 0
 
     def commit(self):
         self.commitCount += 1

@@ -29,7 +29,7 @@ def uvarint_size(i):
 def encode_big_endian(i, size):
     if size == 0:
         return bytearray()
-    return encode_big_endian(i / 256, size - 1) + bytearray([i % 256])
+    return encode_big_endian(i // 256, size - 1) + bytearray([i % 256])
 
 
 def decode_big_endian(reader, size):

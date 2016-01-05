@@ -165,9 +165,7 @@ class TMSPServer():
                 self.handle_conn_closed(r)
                 return
             except Exception as e:
-                import sys
-                print(sys.exc_info()[0])
-                print("error reading from connection", str(e))
+                logger.exception("error reading from connection")
                 self.handle_conn_closed(r)
                 return
 
