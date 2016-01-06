@@ -1,5 +1,5 @@
-hash: 2d07b63b255fce7a06beb977ecf72ee2aeddd7ad236f92a4e46dcafc90750426
-updated: 2016-01-05T13:08:20.335534917-08:00
+hash: 3a6f5e164fee64da0e1cc9f6617851fb11c7741159d906cc981cd2fc19bb0396
+updated: 2016-01-06T12:53:34.83503023-08:00
 imports:
 - name: github.com/codegangsta/cli
   version: c31a7975863e7810c92e2e288a9ab074f9a88f29
@@ -23,10 +23,8 @@ imports:
   version: 751171607256bb66e64c9f0220c00662420c38e9
 - name: github.com/onsi/ginkgo
   version: e43390e35a4a88f3f95d5ddf9055efb7a1170469
-  repo: https://github.com/onsi/ginkgo
 - name: github.com/onsi/gomega
   version: 0fe204460da2c8fa1babcaac196e694de8f1aaa1
-  repo: https://github.com/onsi/gomega
 - name: github.com/sfreiberg/gotwilio
   version: b7230c284bd0c1614c94d00b9998c49f9a2737d8
 - name: github.com/spf13/pflag
@@ -49,6 +47,8 @@ imports:
   version: 28d39f8726c76b163e881c3d05dad227c93200ae
 - name: github.com/tendermint/go-logger
   version: 980f02a5001b46f02ab3fbb036531d4ea789d2bf
+- name: github.com/tendermint/go-logio
+  version: 04f3aa0a3b38d06dcadefbafd988c8b85e499225
 - name: github.com/tendermint/go-merkle
   version: 0df23fe1f8e5d82baeeea02e902b2d3abd6bece4
 - name: github.com/tendermint/go-p2p

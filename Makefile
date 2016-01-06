@@ -18,6 +18,11 @@ test: build
 	-mv ~/.tendermint_test ~/.tendermint_test_bak && true
 	go test github.com/tendermint/tendermint/...
 
+test_novendor: build
+	-rm -rf ~/.tendermint_test_bak
+	-mv ~/.tendermint_test ~/.tendermint_test_bak && true
+	go test $$(glide novendor)
+
 draw_deps:
 	# requires brew install graphviz
 	go get github.com/hirokidaichi/goviz
