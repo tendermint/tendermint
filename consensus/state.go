@@ -277,6 +277,14 @@ func (cs *ConsensusState) OnStop() {
 	}
 }
 
+// Open file to log all consensus messages and timeouts for deterministic accountability
+func (cs *ConsensusState) OpenFileForMessageLog(file string) (err error) {
+	cs.mtx.Lock()
+	defer cs.mtx.Unlock()
+	cs.msgLogFP, err = os.OpenFile(file, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+	return err
+}
+
 //------------------------------------------------------------
 // Public interface for passing messages into the consensus state,
 // possibly causing a state transition
