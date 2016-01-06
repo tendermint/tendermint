@@ -17,12 +17,18 @@ import (
 const maxResponseSize = 1048576 // 1MB
 const flushThrottleMS = 20      // Don't wait longer than...
 
+// For resetting the proxyAppConn atomically across services
+type ResetProxy struct {
+	ProxyApp AppConn
+	Wg       *sync.WaitGroup
+	Done     chan struct{}
+}
+
 // This is goroutine-safe, but users should beware that
 // the application in general is not meant to be interfaced
 // with concurrent callers.
 type remoteAppConn struct {
 	QuitService
-	sync.Mutex // [EB]: is this even used?
 
 	reqQueue   chan *reqRes
 	flushTimer *ThrottleTimer
@@ -33,19 +39,20 @@ type remoteAppConn struct {
 	err       error
 	reqSent   *list.List
 	resCb     func(tmsp.Request, tmsp.Response)
+	name      string
 }
 
-func NewRemoteAppConn(conn net.Conn, bufferSize int) *remoteAppConn {
+func NewRemoteAppConn(conn net.Conn, bufferSize int, name string) *remoteAppConn {
 	app := &remoteAppConn{
 		reqQueue:   make(chan *reqRes, bufferSize),
 		flushTimer: NewThrottleTimer("remoteAppConn", flushThrottleMS),
-
-		conn:      conn,
-		bufWriter: bufio.NewWriter(conn),
-		reqSent:   list.New(),
-		resCb:     nil,
+		conn:       conn,
+		bufWriter:  bufio.NewWriter(conn),
+		reqSent:    list.New(),
+		resCb:      nil,
+		name:       name,
 	}
-	app.QuitService = *NewQuitService(nil, "remoteAppConn", app)
+	app.QuitService = *NewQuitService(nil, "remoteAppConn-"+name, app)
 	return app
 }
 
@@ -59,6 +66,7 @@ func (app *remoteAppConn) OnStart() error {
 func (app *remoteAppConn) OnStop() {
 	app.QuitService.OnStop()
 	app.conn.Close()
+	app.flushQueue()
 }
 
 // NOTE: callback may get internally generated flush responses.
@@ -69,8 +77,12 @@ func (app *remoteAppConn) SetResponseCallback(resCb Callback) {
 }
 
 func (app *remoteAppConn) StopForError(err error) {
+	if !app.IsRunning() {
+		return
+	}
+
 	app.mtx.Lock()
-	log.Error("Stopping remoteAppConn for error.", "error", err)
+	log.Error("Stopping remoteAppConn for error.", "error", err, "name", app.name)
 	if app.err == nil {
 		app.err = err
 	}
@@ -227,7 +239,11 @@ func (app *remoteAppConn) InfoSync() (info []string, err error) {
 }
 
 func (app *remoteAppConn) FlushSync() error {
-	app.queueRequest(tmsp.RequestFlush{}).Wait()
+	reqRes := app.queueRequest(tmsp.RequestFlush{})
+	if reqRes == nil {
+		return fmt.Errorf("Remote app not running")
+	}
+	reqRes.Wait()
 	return app.err
 }
 
@@ -243,6 +259,9 @@ func (app *remoteAppConn) GetHashSync() (hash []byte, err error) {
 //----------------------------------------
 
 func (app *remoteAppConn) queueRequest(req tmsp.Request) *reqRes {
+	if !app.IsRunning() {
+		return nil
+	}
 	reqres := newReqRes(req)
 	// TODO: set app.err if reqQueue times out
 	app.reqQueue <- reqres
@@ -256,6 +275,18 @@ func (app *remoteAppConn) queueRequest(req tmsp.Request) *reqRes {
 	}
 
 	return reqres
+}
+
+func (app *remoteAppConn) flushQueue() {
+LOOP:
+	for {
+		select {
+		case reqres := <-app.reqQueue:
+			reqres.Done()
+		default:
+			break LOOP
+		}
+	}
 }
 
 //----------------------------------------

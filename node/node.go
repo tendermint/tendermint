@@ -2,6 +2,7 @@ package node
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"net"
@@ -54,8 +55,8 @@ func NewNode(privValidator *types.PrivValidator) *Node {
 	// Create two proxyAppConn connections,
 	// one for the consensus and one for the mempool.
 	proxyAddr := config.GetString("proxy_app")
-	proxyAppConnMempool := getProxyApp(proxyAddr, state.AppHash)
-	proxyAppConnConsensus := getProxyApp(proxyAddr, state.AppHash)
+	proxyAppConnMempool := getProxyApp(proxyAddr, state.AppHash, "mempool")
+	proxyAppConnConsensus := getProxyApp(proxyAddr, state.AppHash, "consensus")
 
 	// add the chainid to the global config
 	config.Set("chain_id", state.ChainID)
@@ -83,6 +84,9 @@ func NewNode(privValidator *types.PrivValidator) *Node {
 	if privValidator != nil {
 		consensusReactor.SetPrivValidator(privValidator)
 	}
+
+	// run reconnect routine for proxy conns
+	go reconnectRoutine(proxyAddr, proxyAppConnMempool, proxyAppConnConsensus, mempool, consensusState, bcReactor)
 
 	// Make p2p network switch
 	sw := p2p.NewSwitch()
@@ -322,7 +326,20 @@ func getState() *sm.State {
 
 // Get a connection to the proxyAppConn addr.
 // Check the current hash, and panic if it doesn't match.
-func getProxyApp(addr string, hash []byte) (proxyAppConn proxy.AppConn) {
+func getProxyApp(addr string, hash []byte, name string) proxy.AppConn {
+	proxyAppConn, err := connectProxyApp(addr, name)
+	if err != nil {
+		PanicCrisis(err)
+	}
+	// Check the hash
+	if err := checkProxyAppHash(proxyAppConn, hash); err != nil {
+		PanicCrisis(err)
+	}
+	return proxyAppConn
+}
+
+func connectProxyApp(addr string, name string) (proxy.AppConn, error) {
+	var proxyAppConn proxy.AppConn
 	// use local app (for testing)
 	if addr == "local" {
 		app := example.NewCounterApplication(true)
@@ -331,22 +348,87 @@ func getProxyApp(addr string, hash []byte) (proxyAppConn proxy.AppConn) {
 	} else {
 		proxyConn, err := Connect(addr)
 		if err != nil {
-			Exit(Fmt("Failed to connect to proxy for mempool: %v", err))
+			return nil, fmt.Errorf("Failed to connect to proxy for %s: %v", name, err)
 		}
-		remoteApp := proxy.NewRemoteAppConn(proxyConn, 1024)
+		remoteApp := proxy.NewRemoteAppConn(proxyConn, 1024, name)
 		remoteApp.Start()
 
 		proxyAppConn = remoteApp
 	}
+	return proxyAppConn, nil
+}
 
-	// Check the hash
+func checkProxyAppHash(proxyAppConn proxy.AppConn, latestHash []byte) error {
 	currentHash, err := proxyAppConn.GetHashSync()
 	if err != nil {
-		PanicCrisis(Fmt("Error in getting proxyAppConn hash: %v", err))
+		return fmt.Errorf("Error in getting proxyAppConn hash: %v", err)
 	}
-	if !bytes.Equal(hash, currentHash) {
-		PanicCrisis(Fmt("ProxyApp hash does not match.  Expected %X, got %X", hash, currentHash))
+	if !bytes.Equal(latestHash, currentHash) {
+		return fmt.Errorf("ProxyApp hash does not match.  Expected %X, got %X", latestHash, currentHash)
 	}
+	return nil
+}
 
-	return proxyAppConn
+func reconnectRoutine(proxyAddr string, appConnMem, appConnConsensus proxy.AppConn,
+	mempool *mempl.Mempool, cs *consensus.ConsensusState, bcR *bc.BlockchainReactor) {
+
+	// check if the app is running
+	ticker := time.NewTicker(time.Second * 5)
+	for {
+		select {
+		case <-ticker.C:
+			if appConnMem.IsRunning() {
+				continue
+			}
+			log.Info("Mempool proxyAppConn not running")
+			// if mem stops first, we need to stop consensus
+			if appConnConsensus.IsRunning() {
+				appConnConsensus.Stop()
+			}
+
+			// attempt reconnect
+			log.Info("Begin attempt reconnect loop")
+			ticker := time.NewTicker(time.Second * 2)
+			for {
+				select {
+				case <-ticker.C:
+					log.Notice("Attempt reconnect", "addr", proxyAddr)
+					appMem, err := connectProxyApp(proxyAddr, "mempool")
+					if err != nil {
+						log.Debug("Reconnect failed", "err", err)
+						continue
+					}
+
+					appCon, err := connectProxyApp(proxyAddr, "mempool")
+					if err != nil {
+						PanicCrisis(err)
+					}
+
+					// we reset the proxy app atomically on mempool, consensus state, and blockchain
+					done := make(chan struct{})
+					wg := new(sync.WaitGroup)
+					wg.Add(3)
+					go mempool.ResetProxyApp(appMem, wg, done)
+					go cs.ResetProxyApp(appCon, wg, done)
+					go bcR.ResetProxyApp(appCon, wg, done)
+					wg.Wait()
+					close(done)
+
+					lastAppHash := cs.GetState().AppHash
+					if err := checkProxyAppHash(appCon, lastAppHash); err != nil {
+						PanicCrisis(err)
+					}
+
+					log.Notice("Proxy app connection successfully reset")
+					// run the reconnect routine for the new connections
+					go reconnectRoutine(proxyAddr, appMem, appCon, mempool, cs, bcR)
+					return
+				case <-cs.Quit:
+					return
+				}
+			}
+		case <-cs.Quit:
+			return
+		}
+	}
 }

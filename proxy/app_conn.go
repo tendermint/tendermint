@@ -7,6 +7,8 @@ import (
 type Callback func(tmsp.Request, tmsp.Response)
 
 type AppConn interface {
+	Stop() bool
+	IsRunning() bool
 	SetResponseCallback(Callback)
 	Error() error
 

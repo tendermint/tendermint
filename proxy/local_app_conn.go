@@ -18,6 +18,14 @@ func NewLocalAppConn(mtx *sync.Mutex, app tmsp.Application) *localAppConn {
 	}
 }
 
+func (app *localAppConn) IsRunning() bool {
+	return true
+}
+
+func (app *localAppConn) Stop() bool {
+	return false
+}
+
 func (app *localAppConn) SetResponseCallback(cb Callback) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
