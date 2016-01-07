@@ -42,20 +42,20 @@ type consensusReactor interface {
 type BlockchainReactor struct {
 	p2p.BaseReactor
 
-	sw          *p2p.Switch
-	state       *sm.State
-	proxyAppCtx proxy.AppContext // same as consensus.proxyAppCtx
-	store       *BlockStore
-	pool        *BlockPool
-	sync        bool
-	requestsCh  chan BlockRequest
-	timeoutsCh  chan string
-	lastBlock   *types.Block
+	sw           *p2p.Switch
+	state        *sm.State
+	proxyAppConn proxy.AppConn // same as consensus.proxyAppConn
+	store        *BlockStore
+	pool         *BlockPool
+	sync         bool
+	requestsCh   chan BlockRequest
+	timeoutsCh   chan string
+	lastBlock    *types.Block
 
 	evsw *events.EventSwitch
 }
 
-func NewBlockchainReactor(state *sm.State, proxyAppCtx proxy.AppContext, store *BlockStore, sync bool) *BlockchainReactor {
+func NewBlockchainReactor(state *sm.State, proxyAppConn proxy.AppConn, store *BlockStore, sync bool) *BlockchainReactor {
 	if state.LastBlockHeight == store.Height()-1 {
 		store.height -= 1 // XXX HACK, make this better
 	}
@@ -70,13 +70,13 @@ func NewBlockchainReactor(state *sm.State, proxyAppCtx proxy.AppContext, store *
 		timeoutsCh,
 	)
 	bcR := &BlockchainReactor{
-		state:       state,
-		proxyAppCtx: proxyAppCtx,
-		store:       store,
-		pool:        pool,
-		sync:        sync,
-		requestsCh:  requestsCh,
-		timeoutsCh:  timeoutsCh,
+		state:        state,
+		proxyAppConn: proxyAppConn,
+		store:        store,
+		pool:         pool,
+		sync:         sync,
+		requestsCh:   requestsCh,
+		timeoutsCh:   timeoutsCh,
 	}
 	bcR.BaseReactor = *p2p.NewBaseReactor(log, "BlockchainReactor", bcR)
 	return bcR
@@ -231,16 +231,18 @@ FOR_LOOP:
 					break SYNC_LOOP
 				} else {
 					bcR.pool.PopRequest()
-					err := bcR.state.ExecBlock(bcR.proxyAppCtx, first, firstPartsHeader)
+					err := bcR.state.ExecBlock(bcR.evsw, bcR.proxyAppConn, first, firstPartsHeader)
 					if err != nil {
 						// TODO This is bad, are we zombie?
 						PanicQ(Fmt("Failed to process committed block: %v", err))
 					}
-					err = bcR.state.Commit(bcR.proxyAppCtx)
-					if err != nil {
-						// TODO Handle gracefully.
-						PanicQ(Fmt("Failed to commit block at application: %v", err))
-					}
+					/*
+						err = bcR.proxyAppConn.CommitSync()
+						if err != nil {
+							// TODO Handle gracefully.
+							PanicQ(Fmt("Failed to commit block at application: %v", err))
+						}
+					*/
 					bcR.store.SaveBlock(first, firstParts, second.LastValidation)
 					bcR.state.Save()
 				}

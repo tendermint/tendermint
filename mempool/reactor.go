@@ -67,7 +67,7 @@ func (memR *MempoolReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte) {
 
 	switch msg := msg.(type) {
 	case *TxMessage:
-		err := memR.Mempool.AppendTx(msg.Tx)
+		err := memR.Mempool.CheckTx(msg.Tx)
 		if err != nil {
 			// Bad, seen, or conflicting tx.
 			log.Info("Could not add tx", "tx", msg.Tx)
@@ -81,9 +81,9 @@ func (memR *MempoolReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte) {
 	}
 }
 
-// Just an alias for AppendTx since broadcasting happens in peer routines
+// Just an alias for CheckTx since broadcasting happens in peer routines
 func (memR *MempoolReactor) BroadcastTx(tx types.Tx) error {
-	return memR.Mempool.AppendTx(tx)
+	return memR.Mempool.CheckTx(tx)
 }
 
 type PeerState interface {

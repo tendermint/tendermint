@@ -173,16 +173,14 @@ func (ti *timeoutInfo) String() string {
 type ConsensusState struct {
 	QuitService
 
-	proxyAppCtx   proxy.AppContext
+	proxyAppConn  proxy.AppConn
 	blockStore    *bc.BlockStore
 	mempool       *mempl.Mempool
 	privValidator *types.PrivValidator
 
 	mtx sync.Mutex
 	RoundState
-	state       *sm.State    // State until height-1.
-	stagedBlock *types.Block // Cache last staged block.
-	stagedState *sm.State    // Cache result of staged block.
+	state *sm.State // State until height-1.
 
 	peerMsgQueue     chan msgInfo     // serializes msgs affecting state (proposals, block parts, votes)
 	internalMsgQueue chan msgInfo     // like peerMsgQueue but for our own proposals, parts, votes
@@ -191,14 +189,13 @@ type ConsensusState struct {
 	tockChan         chan timeoutInfo // timeouts are relayed on tockChan to the receiveRoutine
 
 	evsw *events.EventSwitch
-	evc  *events.EventCache // set in stageBlock and passed into state
 
 	nSteps int // used for testing to limit the number of transitions the state makes
 }
 
-func NewConsensusState(state *sm.State, proxyAppCtx proxy.AppContext, blockStore *bc.BlockStore, mempool *mempl.Mempool) *ConsensusState {
+func NewConsensusState(state *sm.State, proxyAppConn proxy.AppConn, blockStore *bc.BlockStore, mempool *mempl.Mempool) *ConsensusState {
 	cs := &ConsensusState{
-		proxyAppCtx:      proxyAppCtx,
+		proxyAppConn:     proxyAppConn,
 		blockStore:       blockStore,
 		mempool:          mempool,
 		peerMsgQueue:     make(chan msgInfo, msgQueueSize),
@@ -416,7 +413,7 @@ func (cs *ConsensusState) updateToState(state *sm.State) {
 
 	// Reset fields based on state.
 	validators := state.Validators
-	height := state.LastBlockHeight + 1 // next desired block height
+	height := state.LastBlockHeight + 1 // Next desired block height
 	lastPrecommits := (*types.VoteSet)(nil)
 	if cs.CommitRound > -1 && cs.Votes != nil {
 		if !cs.Votes.Precommits(cs.CommitRound).HasTwoThirdsMajority() {
@@ -452,8 +449,6 @@ func (cs *ConsensusState) updateToState(state *sm.State) {
 	cs.LastValidators = state.LastValidators
 
 	cs.state = state
-	cs.stagedBlock = nil
-	cs.stagedState = nil
 
 	// Finally, broadcast RoundState
 	cs.newStep()
@@ -795,8 +790,8 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 		return
 	}
 
-	// Mempool run transactions and the resulting hash
-	txs, hash, err := cs.mempool.Reap()
+	// Mempool validated transactions
+	txs, err := cs.mempool.Reap()
 	if err != nil {
 		log.Warn("createProposalBlock: Error getting proposal txs", "error", err)
 		return nil, nil
@@ -812,7 +807,7 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 			LastBlockHash:  cs.state.LastBlockHash,
 			LastBlockParts: cs.state.LastBlockParts,
 			ValidatorsHash: cs.state.Validators.Hash(),
-			AppHash:        hash,
+			AppHash:        cs.state.AppHash,
 		},
 		LastValidation: validation,
 		Data: &types.Data{
@@ -878,8 +873,8 @@ func (cs *ConsensusState) doPrevote(height int, round int) {
 		return
 	}
 
-	// Try staging cs.ProposalBlock
-	err := cs.stageBlock(cs.ProposalBlock, cs.ProposalBlockParts)
+	// Valdiate proposal block
+	err := cs.state.ValidateBlock(cs.ProposalBlock)
 	if err != nil {
 		// ProposalBlock is invalid, prevote nil.
 		log.Warn("enterPrevote: ProposalBlock is invalid", "error", err)
@@ -992,7 +987,7 @@ func (cs *ConsensusState) enterPrecommit(height int, round int) {
 	if cs.ProposalBlock.HashesTo(hash) {
 		log.Info("enterPrecommit: +2/3 prevoted proposal block. Locking", "hash", hash)
 		// Validate the block.
-		if err := cs.stageBlock(cs.ProposalBlock, cs.ProposalBlockParts); err != nil {
+		if err := cs.state.ValidateBlock(cs.ProposalBlock); err != nil {
 			PanicConsensus(Fmt("enterPrecommit: +2/3 prevoted for an invalid block: %v", err))
 		}
 		cs.LockedRound = round
@@ -1120,27 +1115,64 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	}
 
 	hash, header, ok := cs.Votes.Precommits(cs.CommitRound).TwoThirdsMajority()
+	block, blockParts := cs.ProposalBlock, cs.ProposalBlockParts
 
 	if !ok {
 		PanicSanity(Fmt("Cannot finalizeCommit, commit does not have two thirds majority"))
 	}
-	if !cs.ProposalBlockParts.HasHeader(header) {
+	if !blockParts.HasHeader(header) {
 		PanicSanity(Fmt("Expected ProposalBlockParts header to be commit header"))
 	}
-	if !cs.ProposalBlock.HashesTo(hash) {
+	if !block.HashesTo(hash) {
 		PanicSanity(Fmt("Cannot finalizeCommit, ProposalBlock does not hash to commit hash"))
 	}
-	if err := cs.stageBlock(cs.ProposalBlock, cs.ProposalBlockParts); err != nil {
+	if err := cs.state.ValidateBlock(block); err != nil {
 		PanicConsensus(Fmt("+2/3 committed an invalid block: %v", err))
 	}
 
-	log.Notice("Finalizing commit of block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
-	log.Info(Fmt("%v", cs.ProposalBlock))
-	// We have the block, so stage/save/commit-vote.
-	cs.saveBlock(cs.ProposalBlock, cs.ProposalBlockParts, cs.Votes.Precommits(cs.CommitRound))
+	log.Notice("Finalizing commit of block", "height", block.Height, "hash", block.Hash())
+	log.Info(Fmt("%v", block))
+
+	// Fire off event for new block.
+	cs.evsw.FireEvent(types.EventStringNewBlock(), types.EventDataNewBlock{block})
+
+	// Create a copy of the state for staging
+	stateCopy := cs.state.Copy()
+
+	// Run the block on the State:
+	// + update validator sets
+	// + first rolls back proxyAppConn
+	// + run txs on the proxyAppConn
+	err := stateCopy.ExecBlock(cs.evsw, cs.proxyAppConn, block, blockParts.Header())
+	if err != nil {
+		// TODO: handle this gracefully.
+		PanicQ(Fmt("Exec failed for application"))
+	}
+
+	// Save to blockStore.
+	if cs.blockStore.Height() < block.Height {
+		commits := cs.Votes.Precommits(cs.CommitRound)
+		seenValidation := commits.MakeValidation()
+		cs.blockStore.SaveBlock(block, blockParts, seenValidation)
+	}
+
+	/*
+		// Commit to proxyAppConn
+		err = cs.proxyAppConn.CommitSync()
+		if err != nil {
+			// TODO: handle this gracefully.
+			PanicQ(Fmt("Commit failed for application"))
+		}
+	*/
+
+	// Save the state.
+	stateCopy.Save()
+
+	// Update mempool.
+	cs.mempool.Update(block.Height, block.Txs)
 
 	// NewHeightStep!
-	cs.updateToState(cs.stagedState)
+	cs.updateToState(stateCopy)
 
 	// cs.StartTime is already set.
 	// Schedule Round0 to start soon.
@@ -1352,39 +1384,6 @@ func (cs *ConsensusState) addVote(valIndex int, vote *types.Vote, peerKey string
 	return
 }
 
-func (cs *ConsensusState) stageBlock(block *types.Block, blockParts *types.PartSet) error {
-	if block == nil {
-		PanicSanity("Cannot stage nil block")
-	}
-
-	// Already staged?
-	blockHash := block.Hash()
-	if cs.stagedBlock != nil && len(blockHash) != 0 && bytes.Equal(cs.stagedBlock.Hash(), blockHash) {
-		return nil
-	}
-
-	// Create a new event cache to cache all events.
-	cs.evc = events.NewEventCache(cs.evsw)
-
-	// Create a copy of the state for staging
-	stateCopy := cs.state.Copy()
-	stateCopy.SetEventCache(cs.evc)
-
-	// Run the block on the State:
-	// + update validator sets
-	// + first rolls back proxyAppCtx
-	// + run txs on the proxyAppCtx or rollback
-	err := stateCopy.ExecBlock(cs.proxyAppCtx, block, blockParts.Header())
-	if err != nil {
-		return err
-	}
-
-	// Everything looks good!
-	cs.stagedBlock = block
-	cs.stagedState = stateCopy
-	return nil
-}
-
 func (cs *ConsensusState) signVote(type_ byte, hash []byte, header types.PartSetHeader) (*types.Vote, error) {
 	vote := &types.Vote{
 		Height:           cs.Height,
@@ -1413,41 +1412,6 @@ func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header types.Part
 		log.Warn("Error signing vote", "height", cs.Height, "round", cs.Round, "vote", vote, "error", err)
 		return nil
 	}
-}
-
-// Save Block, save the +2/3 Commits we've seen
-func (cs *ConsensusState) saveBlock(block *types.Block, blockParts *types.PartSet, commits *types.VoteSet) {
-
-	// The proposal must be valid.
-	if err := cs.stageBlock(block, blockParts); err != nil {
-		PanicSanity(Fmt("saveBlock() an invalid block: %v", err))
-	}
-
-	// Save to blockStore.
-	if cs.blockStore.Height() < block.Height {
-		seenValidation := commits.MakeValidation()
-		cs.blockStore.SaveBlock(block, blockParts, seenValidation)
-	}
-
-	// Commit to proxyAppCtx
-	err := cs.stagedState.Commit(cs.proxyAppCtx)
-	if err != nil {
-		// TODO: handle this gracefully.
-		PanicQ(Fmt("Commit failed for applicaiton"))
-	}
-
-	// Save the state.
-	cs.stagedState.Save()
-
-	// Update mempool.
-	cs.mempool.Update(block)
-
-	// Fire off event
-	if cs.evsw != nil && cs.evc != nil {
-		cs.evsw.FireEvent(types.EventStringNewBlock(), types.EventDataNewBlock{block})
-		go cs.evc.Flush()
-	}
-
 }
 
 //---------------------------------------------------------

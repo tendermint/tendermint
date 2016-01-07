@@ -26,7 +26,7 @@ func TestEcho(t *testing.T) {
 
 	logBuffer := bytes.NewBuffer(nil)
 	logConn := logio.NewLoggedConn(conn, logBuffer)
-	proxy := NewRemoteAppContext(logConn, 10)
+	proxy := NewRemoteAppConn(logConn, 10)
 	proxy.SetResponseCallback(nil)
 	proxy.Start()
 
@@ -56,7 +56,7 @@ func BenchmarkEcho(b *testing.B) {
 		b.Log("Connected")
 	}
 
-	proxy := NewRemoteAppContext(conn, 10)
+	proxy := NewRemoteAppConn(conn, 10)
 	proxy.Start()
 	echoString := strings.Repeat(" ", 200)
 	b.StartTimer() // Start benchmarking tests
@@ -86,7 +86,7 @@ func TestInfo(t *testing.T) {
 
 	logBuffer := bytes.NewBuffer(nil)
 	logConn := logio.NewLoggedConn(conn, logBuffer)
-	proxy := NewRemoteAppContext(logConn, 10)
+	proxy := NewRemoteAppConn(logConn, 10)
 	proxy.Start()
 	data, err := proxy.InfoSync()
 	if err != nil {

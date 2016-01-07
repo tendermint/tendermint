@@ -18,6 +18,6 @@ func BroadcastTx(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 }
 
 func ListUnconfirmedTxs() (*ctypes.ResultListUnconfirmedTxs, error) {
-	txs, _, err := mempoolReactor.Mempool.Reap()
+	txs, err := mempoolReactor.Mempool.Reap()
 	return &ctypes.ResultListUnconfirmedTxs{len(txs), txs}, err
 }

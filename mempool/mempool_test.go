@@ -2,6 +2,7 @@ package mempool
 
 import (
 	"encoding/binary"
+	"sync"
 	"testing"
 
 	"github.com/tendermint/tendermint/proxy"
@@ -13,13 +14,11 @@ import (
 func TestSerialReap(t *testing.T) {
 
 	app := example.NewCounterApplication(true)
-	appCtxMempool := app.Open()
-	proxyAppCtx := proxy.NewLocalAppContext(appCtxMempool)
-	mempool := NewMempool(proxyAppCtx)
-
-	// Create another AppContext for committing.
-	appCtxConsensus := app.Open()
-	appCtxConsensus.SetOption("serial", "on")
+	app.SetOption("serial", "on")
+	mtx := new(sync.Mutex)
+	appConnMem := proxy.NewLocalAppConn(mtx, app)
+	appConnCon := proxy.NewLocalAppConn(mtx, app)
+	mempool := NewMempool(appConnMem)
 
 	appendTxsRange := func(start, end int) {
 		// Append some txs.
@@ -28,24 +27,24 @@ func TestSerialReap(t *testing.T) {
 			// This will succeed
 			txBytes := make([]byte, 32)
 			binary.LittleEndian.PutUint64(txBytes, uint64(i))
-			err := mempool.AppendTx(txBytes)
+			err := mempool.CheckTx(txBytes)
 			if err != nil {
-				t.Fatal("Error after AppendTx: %v", err)
+				t.Fatal("Error after CheckTx: %v", err)
 			}
 
 			// This will fail because not serial (incrementing)
 			// However, error should still be nil.
 			// It just won't show up on Reap().
-			err = mempool.AppendTx(txBytes)
+			err = mempool.CheckTx(txBytes)
 			if err != nil {
-				t.Fatal("Error after AppendTx: %v", err)
+				t.Fatal("Error after CheckTx: %v", err)
 			}
 
 		}
 	}
 
 	reapCheck := func(exp int) {
-		txs, _, err := mempool.Reap()
+		txs, err := mempool.Reap()
 		if err != nil {
 			t.Error("Error in mempool.Reap()", err)
 		}
@@ -61,10 +60,7 @@ func TestSerialReap(t *testing.T) {
 			binary.LittleEndian.PutUint64(txBytes, uint64(i))
 			txs = append(txs, txBytes)
 		}
-		blockHeader := &types.Header{Height: 0}
-		blockData := &types.Data{Txs: txs}
-		block := &types.Block{Header: blockHeader, Data: blockData}
-		err := mempool.Update(block)
+		err := mempool.Update(0, txs)
 		if err != nil {
 			t.Error("Error in mempool.Update()", err)
 		}
@@ -75,12 +71,12 @@ func TestSerialReap(t *testing.T) {
 		for i := start; i < end; i++ {
 			txBytes := make([]byte, 32)
 			binary.LittleEndian.PutUint64(txBytes, uint64(i))
-			_, retCode := appCtxConsensus.AppendTx(txBytes)
+			_, retCode := appConnCon.AppendTx(txBytes)
 			if retCode != tmsp.RetCodeOK {
 				t.Error("Error committing tx", retCode)
 			}
 		}
-		retCode := appCtxConsensus.Commit()
+		_, retCode := appConnCon.GetHash()
 		if retCode != tmsp.RetCodeOK {
 			t.Error("Error committing range", retCode)
 		}
@@ -97,7 +93,7 @@ func TestSerialReap(t *testing.T) {
 	// Reap again.  We should get the same amount
 	reapCheck(100)
 
-	// Append 0 to 999, we should reap 900 txs
+	// Append 0 to 999, we should reap 900 new txs
 	// because 100 were already counted.
 	appendTxsRange(0, 1000)
 
@@ -107,11 +103,16 @@ func TestSerialReap(t *testing.T) {
 	// Reap again.  We should get the same amount
 	reapCheck(1000)
 
-	// Commit from the conensus AppContext
+	// Commit from the conensus AppConn
 	commitRange(0, 500)
 	updateRange(0, 500)
 
 	// We should have 500 left.
 	reapCheck(500)
 
+	// Append 100 invalid txs and 100 valid txs
+	appendTxsRange(900, 1100)
+
+	// We should have 600 now.
+	reapCheck(600)
 }

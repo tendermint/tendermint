@@ -49,11 +49,11 @@ func NewNode() *Node {
 	// Get State
 	state := getState()
 
-	// Create two proxyAppCtx connections,
+	// Create two proxyAppConn connections,
 	// one for the consensus and one for the mempool.
 	proxyAddr := config.GetString("proxy_app")
-	proxyAppCtxMempool := getProxyApp(proxyAddr, state.LastAppHash)
-	proxyAppCtxConsensus := getProxyApp(proxyAddr, state.LastAppHash)
+	proxyAppConnMempool := getProxyApp(proxyAddr, state.AppHash)
+	proxyAppConnConsensus := getProxyApp(proxyAddr, state.AppHash)
 
 	// add the chainid to the global config
 	config.Set("chain_id", state.ChainID)
@@ -73,14 +73,14 @@ func NewNode() *Node {
 	}
 
 	// Make BlockchainReactor
-	bcReactor := bc.NewBlockchainReactor(state.Copy(), proxyAppCtxConsensus, blockStore, config.GetBool("fast_sync"))
+	bcReactor := bc.NewBlockchainReactor(state.Copy(), proxyAppConnConsensus, blockStore, config.GetBool("fast_sync"))
 
 	// Make MempoolReactor
-	mempool := mempl.NewMempool(proxyAppCtxMempool)
+	mempool := mempl.NewMempool(proxyAppConnMempool)
 	mempoolReactor := mempl.NewMempoolReactor(mempool)
 
 	// Make ConsensusReactor
-	consensusState := consensus.NewConsensusState(state.Copy(), proxyAppCtxConsensus, blockStore, mempool)
+	consensusState := consensus.NewConsensusState(state.Copy(), proxyAppConnConsensus, blockStore, mempool)
 	consensusReactor := consensus.NewConsensusReactor(consensusState, blockStore, config.GetBool("fast_sync"))
 	if privValidator != nil {
 		consensusReactor.SetPrivValidator(privValidator)
@@ -315,25 +315,25 @@ func getState() *sm.State {
 	return state
 }
 
-// Get a connection to the proxyAppCtx addr.
+// Get a connection to the proxyAppConn addr.
 // Check the current hash, and panic if it doesn't match.
-func getProxyApp(addr string, hash []byte) proxy.AppContext {
+func getProxyApp(addr string, hash []byte) proxy.AppConn {
 	proxyConn, err := Connect(addr)
 	if err != nil {
 		Exit(Fmt("Failed to connect to proxy for mempool: %v", err))
 	}
-	proxyAppCtx := proxy.NewRemoteAppContext(proxyConn, 1024)
+	proxyAppConn := proxy.NewRemoteAppConn(proxyConn, 1024)
 
-	proxyAppCtx.Start()
+	proxyAppConn.Start()
 
 	// Check the hash
-	currentHash, err := proxyAppCtx.GetHashSync()
+	currentHash, err := proxyAppConn.GetHashSync()
 	if err != nil {
-		PanicCrisis(Fmt("Error in getting proxyAppCtx hash: %v", err))
+		PanicCrisis(Fmt("Error in getting proxyAppConn hash: %v", err))
 	}
 	if !bytes.Equal(hash, currentHash) {
 		PanicCrisis(Fmt("ProxyApp hash does not match.  Expected %X, got %X", hash, currentHash))
 	}
 
-	return proxyAppCtx
+	return proxyAppConn
 }

@@ -19,7 +19,7 @@ const maxResponseSize = 1048576 // 1MB
 // This is goroutine-safe, but users should beware that
 // the application in general is not meant to be interfaced
 // with concurrent callers.
-type remoteAppContext struct {
+type remoteAppConn struct {
 	QuitService
 	sync.Mutex // [EB]: is this even used?
 
@@ -33,39 +33,39 @@ type remoteAppContext struct {
 	resCb     func(tmsp.Request, tmsp.Response)
 }
 
-func NewRemoteAppContext(conn net.Conn, bufferSize int) *remoteAppContext {
-	app := &remoteAppContext{
+func NewRemoteAppConn(conn net.Conn, bufferSize int) *remoteAppConn {
+	app := &remoteAppConn{
 		reqQueue:  make(chan *reqRes, bufferSize),
 		conn:      conn,
 		bufWriter: bufio.NewWriter(conn),
 		reqSent:   list.New(),
 		resCb:     nil,
 	}
-	app.QuitService = *NewQuitService(nil, "remoteAppContext", app)
+	app.QuitService = *NewQuitService(nil, "remoteAppConn", app)
 	return app
 }
 
-func (app *remoteAppContext) OnStart() error {
+func (app *remoteAppConn) OnStart() error {
 	app.QuitService.OnStart()
 	go app.sendRequestsRoutine()
 	go app.recvResponseRoutine()
 	return nil
 }
 
-func (app *remoteAppContext) OnStop() {
+func (app *remoteAppConn) OnStop() {
 	app.QuitService.OnStop()
 	app.conn.Close()
 }
 
-func (app *remoteAppContext) SetResponseCallback(resCb Callback) {
+func (app *remoteAppConn) SetResponseCallback(resCb Callback) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 	app.resCb = resCb
 }
 
-func (app *remoteAppContext) StopForError(err error) {
+func (app *remoteAppConn) StopForError(err error) {
 	app.mtx.Lock()
-	log.Error("Stopping remoteAppContext for error.", "error", err)
+	log.Error("Stopping remoteAppConn for error.", "error", err)
 	if app.err == nil {
 		app.err = err
 	}
@@ -73,7 +73,7 @@ func (app *remoteAppContext) StopForError(err error) {
 	app.Stop()
 }
 
-func (app *remoteAppContext) Error() error {
+func (app *remoteAppConn) Error() error {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 	return app.err
@@ -81,7 +81,7 @@ func (app *remoteAppContext) Error() error {
 
 //----------------------------------------
 
-func (app *remoteAppContext) sendRequestsRoutine() {
+func (app *remoteAppConn) sendRequestsRoutine() {
 	for {
 		var n int
 		var err error
@@ -109,7 +109,7 @@ func (app *remoteAppContext) sendRequestsRoutine() {
 	}
 }
 
-func (app *remoteAppContext) recvResponseRoutine() {
+func (app *remoteAppConn) recvResponseRoutine() {
 	r := bufio.NewReader(app.conn) // Buffer reads
 	for {
 		var res tmsp.Response
@@ -133,13 +133,13 @@ func (app *remoteAppContext) recvResponseRoutine() {
 	}
 }
 
-func (app *remoteAppContext) willSendReq(reqres *reqRes) {
+func (app *remoteAppConn) willSendReq(reqres *reqRes) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 	app.reqSent.PushBack(reqres)
 }
 
-func (app *remoteAppContext) didRecvResponse(res tmsp.Response) error {
+func (app *remoteAppConn) didRecvResponse(res tmsp.Response) error {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -174,45 +174,41 @@ func (app *remoteAppContext) didRecvResponse(res tmsp.Response) error {
 
 //----------------------------------------
 
-func (app *remoteAppContext) EchoAsync(msg string) {
+func (app *remoteAppConn) EchoAsync(msg string) {
 	app.queueRequest(tmsp.RequestEcho{msg})
 }
 
-func (app *remoteAppContext) FlushAsync() {
+func (app *remoteAppConn) FlushAsync() {
 	app.queueRequest(tmsp.RequestFlush{})
 }
 
-func (app *remoteAppContext) SetOptionAsync(key string, value string) {
+func (app *remoteAppConn) SetOptionAsync(key string, value string) {
 	app.queueRequest(tmsp.RequestSetOption{key, value})
 }
 
-func (app *remoteAppContext) AppendTxAsync(tx []byte) {
+func (app *remoteAppConn) AppendTxAsync(tx []byte) {
 	app.queueRequest(tmsp.RequestAppendTx{tx})
 }
 
-func (app *remoteAppContext) GetHashAsync() {
+func (app *remoteAppConn) CheckTxAsync(tx []byte) {
+	app.queueRequest(tmsp.RequestCheckTx{tx})
+}
+
+func (app *remoteAppConn) GetHashAsync() {
 	app.queueRequest(tmsp.RequestGetHash{})
 }
 
-func (app *remoteAppContext) CommitAsync() {
-	app.queueRequest(tmsp.RequestCommit{})
-}
-
-func (app *remoteAppContext) RollbackAsync() {
-	app.queueRequest(tmsp.RequestRollback{})
-}
-
-func (app *remoteAppContext) AddListenerAsync(key string) {
+func (app *remoteAppConn) AddListenerAsync(key string) {
 	app.queueRequest(tmsp.RequestAddListener{key})
 }
 
-func (app *remoteAppContext) RemListenerAsync(key string) {
+func (app *remoteAppConn) RemListenerAsync(key string) {
 	app.queueRequest(tmsp.RequestRemListener{key})
 }
 
 //----------------------------------------
 
-func (app *remoteAppContext) InfoSync() (info []string, err error) {
+func (app *remoteAppConn) InfoSync() (info []string, err error) {
 	reqres := app.queueRequest(tmsp.RequestInfo{})
 	app.FlushSync()
 	if app.err != nil {
@@ -221,12 +217,12 @@ func (app *remoteAppContext) InfoSync() (info []string, err error) {
 	return reqres.Response.(tmsp.ResponseInfo).Data, nil
 }
 
-func (app *remoteAppContext) FlushSync() error {
+func (app *remoteAppConn) FlushSync() error {
 	app.queueRequest(tmsp.RequestFlush{}).Wait()
 	return app.err
 }
 
-func (app *remoteAppContext) GetHashSync() (hash []byte, err error) {
+func (app *remoteAppConn) GetHashSync() (hash []byte, err error) {
 	reqres := app.queueRequest(tmsp.RequestGetHash{})
 	app.FlushSync()
 	if app.err != nil {
@@ -235,24 +231,9 @@ func (app *remoteAppContext) GetHashSync() (hash []byte, err error) {
 	return reqres.Response.(tmsp.ResponseGetHash).Hash, nil
 }
 
-// Commits or error
-func (app *remoteAppContext) CommitSync() (err error) {
-	app.queueRequest(tmsp.RequestCommit{})
-	app.FlushSync()
-	return app.err
-}
-
-// Rollback or error
-// Clears internal buffers
-func (app *remoteAppContext) RollbackSync() (err error) {
-	app.queueRequest(tmsp.RequestRollback{})
-	app.FlushSync()
-	return app.err
-}
-
 //----------------------------------------
 
-func (app *remoteAppContext) queueRequest(req tmsp.Request) *reqRes {
+func (app *remoteAppConn) queueRequest(req tmsp.Request) *reqRes {
 	reqres := NewreqRes(req)
 	// TODO: set app.err if reqQueue times out
 	app.reqQueue <- reqres
@@ -273,12 +254,10 @@ func resMatchesReq(req tmsp.Request, res tmsp.Response) (ok bool) {
 		_, ok = res.(tmsp.ResponseSetOption)
 	case tmsp.RequestAppendTx:
 		_, ok = res.(tmsp.ResponseAppendTx)
+	case tmsp.RequestCheckTx:
+		_, ok = res.(tmsp.ResponseCheckTx)
 	case tmsp.RequestGetHash:
 		_, ok = res.(tmsp.ResponseGetHash)
-	case tmsp.RequestCommit:
-		_, ok = res.(tmsp.ResponseCommit)
-	case tmsp.RequestRollback:
-		_, ok = res.(tmsp.ResponseRollback)
 	case tmsp.RequestAddListener:
 		_, ok = res.(tmsp.ResponseAddListener)
 	case tmsp.RequestRemListener:

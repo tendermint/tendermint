@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"sort"
+	"sync"
 	"testing"
 	"time"
 
@@ -310,17 +311,15 @@ func simpleConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
 	blockStore := bc.NewBlockStore(blockDB)
 
 	// one for mempool, one for consensus
-	app := example.NewCounterApplication(false)
-	appCMem := app.Open()
-	appCCon := app.Open()
-	proxyAppCtxMem := proxy.NewLocalAppContext(appCMem)
-	proxyAppCtxCon := proxy.NewLocalAppContext(appCCon)
+	mtx, app := new(sync.Mutex), example.NewCounterApplication(false)
+	proxyAppConnMem := proxy.NewLocalAppConn(mtx, app)
+	proxyAppConnCon := proxy.NewLocalAppConn(mtx, app)
 
 	// Make Mempool
-	mempool := mempl.NewMempool(proxyAppCtxMem)
+	mempool := mempl.NewMempool(proxyAppConnMem)
 
 	// Make ConsensusReactor
-	cs := NewConsensusState(state, proxyAppCtxCon, blockStore, mempool)
+	cs := NewConsensusState(state, proxyAppConnCon, blockStore, mempool)
 	cs.SetPrivValidator(privVals[0])
 
 	evsw := events.NewEventSwitch()

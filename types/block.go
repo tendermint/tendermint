@@ -22,7 +22,7 @@ type Block struct {
 
 // Basic validation that doesn't involve state data.
 func (b *Block) ValidateBasic(chainID string, lastBlockHeight int, lastBlockHash []byte,
-	lastBlockParts PartSetHeader, lastBlockTime time.Time) error {
+	lastBlockParts PartSetHeader, lastBlockTime time.Time, appHash []byte) error {
 	if b.ChainID != chainID {
 		return errors.New(Fmt("Wrong Block.Header.ChainID. Expected %v, got %v", chainID, b.ChainID))
 	}
@@ -56,6 +56,9 @@ func (b *Block) ValidateBasic(chainID string, lastBlockHeight int, lastBlockHash
 	}
 	if !bytes.Equal(b.DataHash, b.Data.Hash()) {
 		return errors.New(Fmt("Wrong Block.Header.DataHash.  Expected %X, got %X", b.DataHash, b.Data.Hash()))
+	}
+	if !bytes.Equal(b.AppHash, appHash) {
+		return errors.New(Fmt("Wrong Block.Header.AppHash.  Expected %X, got %X", appHash, b.AppHash))
 	}
 	// NOTE: the AppHash and ValidatorsHash are validated later.
 	return nil
@@ -169,7 +172,7 @@ func (h *Header) StringIndented(indent string) string {
 %s  Height:         %v
 %s  Time:           %v
 %s  Fees:           %v
-%s  NumTxs:         %v
+%s  NumTxs:  %v
 %s  LastBlock:      %X
 %s  LastBlockParts: %v
 %s  LastValidation: %X
@@ -326,6 +329,10 @@ func (v *Validation) StringIndented(indent string) string {
 //-----------------------------------------------------------------------------
 
 type Data struct {
+
+	// Txs that will be applied by state @ block.Height+1.
+	// NOTE: not all txs here are valid.  We're just agreeing on the order first.
+	// This means that block.AppHash does not include these txs.
 	Txs []Tx `json:"txs"`
 
 	// Volatile

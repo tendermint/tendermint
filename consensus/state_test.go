@@ -209,7 +209,7 @@ func TestBadProposal(t *testing.T) {
 	// wait for proposal
 	<-proposalCh
 
-	//wait for prevote
+	// wait for prevote
 	<-voteCh
 
 	validatePrevote(t, cs1, round, vss[0], nil)

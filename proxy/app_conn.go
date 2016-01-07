@@ -6,16 +6,15 @@ import (
 
 type Callback func(tmsp.Request, tmsp.Response)
 
-type AppContext interface {
+type AppConn interface {
 	SetResponseCallback(Callback)
 	Error() error
 
 	EchoAsync(msg string)
 	FlushAsync()
 	AppendTxAsync(tx []byte)
+	CheckTxAsync(tx []byte)
 	GetHashAsync()
-	CommitAsync()
-	RollbackAsync()
 	SetOptionAsync(key string, value string)
 	AddListenerAsync(key string)
 	RemListenerAsync(key string)
@@ -23,6 +22,4 @@ type AppContext interface {
 	InfoSync() (info []string, err error)
 	FlushSync() error
 	GetHashSync() (hash []byte, err error)
-	CommitSync() error
-	RollbackSync() error
 }

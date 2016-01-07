@@ -1,21 +1,24 @@
 package state
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 
 	. "github.com/tendermint/go-common"
+	"github.com/tendermint/tendermint/events"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 	tmsp "github.com/tendermint/tmsp/types"
 )
 
+// Validate block
+func (s *State) ValidateBlock(block *types.Block) error {
+	return s.validateBlock(block)
+}
+
 // Execute the block to mutate State.
-// Also, execute txs on the proxyAppCtx and validate apphash
-// Rolls back before executing transactions.
-// Rolls back if invalid, but never commits.
-func (s *State) ExecBlock(proxyAppCtx proxy.AppContext, block *types.Block, blockPartsHeader types.PartSetHeader) error {
+// Validates block and then executes Data.Txs in the block.
+func (s *State) ExecBlock(evsw *events.EventSwitch, proxyAppConn proxy.AppConn, block *types.Block, blockPartsHeader types.PartSetHeader) error {
 
 	// Validate the block.
 	err := s.validateBlock(block)
@@ -30,81 +33,74 @@ func (s *State) ExecBlock(proxyAppCtx proxy.AppContext, block *types.Block, bloc
 	// TODO: Update the validator set (e.g. block.Data.ValidatorUpdates?)
 	nextValSet := valSet.Copy()
 
-	// First, rollback.
-	proxyAppCtx.RollbackSync()
-
-	// Execute, or rollback. (Does not commit)
-	err = s.execBlockOnProxyApp(proxyAppCtx, block)
+	// Execute the block txs
+	err = s.execBlockOnProxyApp(evsw, proxyAppConn, block)
 	if err != nil {
-		proxyAppCtx.RollbackSync()
+		// There was some error in proxyApp
+		// TODO Report error and wait for proxyApp to be available.
 		return err
 	}
 
 	// All good!
 	nextValSet.IncrementAccum(1)
-	s.Validators = nextValSet
-	s.LastValidators = valSet
-	s.LastAppHash = block.AppHash
 	s.LastBlockHeight = block.Height
 	s.LastBlockHash = block.Hash()
 	s.LastBlockParts = blockPartsHeader
 	s.LastBlockTime = block.Time
+	s.Validators = nextValSet
+	s.LastValidators = valSet
 
 	return nil
 }
 
-// Commits block on proxyAppCtx.
-func (s *State) Commit(proxyAppCtx proxy.AppContext) error {
-	err := proxyAppCtx.CommitSync()
-	return err
-}
+// Executes block's transactions on proxyAppConn.
+// TODO: Generate a bitmap or otherwise store tx validity in state.
+func (s *State) execBlockOnProxyApp(evsw *events.EventSwitch, proxyAppConn proxy.AppConn, block *types.Block) error {
 
-// Executes transactions on proxyAppCtx.
-func (s *State) execBlockOnProxyApp(proxyAppCtx proxy.AppContext, block *types.Block) error {
+	var validTxs, invalidTxs = 0, 0
+
 	// Execute transactions and get hash
-	var invalidTxErr error
 	proxyCb := func(req tmsp.Request, res tmsp.Response) {
 		switch res := res.(type) {
 		case tmsp.ResponseAppendTx:
-			reqAppendTx := req.(tmsp.RequestAppendTx)
-			if res.RetCode != tmsp.RetCodeOK {
-				if invalidTxErr == nil {
-					invalidTxErr = InvalidTxError{reqAppendTx.TxBytes, res.RetCode}
-				}
+			// TODO: make use of this info
+			// Blocks may include invalid txs.
+			// reqAppendTx := req.(tmsp.RequestAppendTx)
+			if res.RetCode == tmsp.RetCodeOK {
+				validTxs += 1
+			} else {
+				invalidTxs += 1
 			}
 		case tmsp.ResponseEvent:
-			s.evc.FireEvent(types.EventStringApp(), types.EventDataApp{res.Key, res.Data})
+			// TODO: some events should get stored in the blockchain.
+			evsw.FireEvent(types.EventStringApp(), types.EventDataApp{res.Key, res.Data})
 		}
 	}
-	proxyAppCtx.SetResponseCallback(proxyCb)
-	for _, tx := range block.Data.Txs {
-		proxyAppCtx.AppendTxAsync(tx)
-		if err := proxyAppCtx.Error(); err != nil {
+	proxyAppConn.SetResponseCallback(proxyCb)
+
+	// Run next txs in the block and get new AppHash
+	for _, tx := range block.Txs {
+		proxyAppConn.AppendTxAsync(tx)
+		if err := proxyAppConn.Error(); err != nil {
 			return err
 		}
 	}
-	hash, err := proxyAppCtx.GetHashSync()
+	hash, err := proxyAppConn.GetHashSync()
 	if err != nil {
-		log.Warn("Error computing proxyAppCtx hash", "error", err)
+		log.Warn("Error computing proxyAppConn hash", "error", err)
 		return err
 	}
-	if invalidTxErr != nil {
-		log.Warn("Invalid transaction in block")
-		return invalidTxErr
-	}
+	log.Info("ExecBlock got %v valid txs and %v invalid txs", validTxs, invalidTxs)
 
-	// Check that appHash matches
-	if !bytes.Equal(block.AppHash, hash) {
-		log.Warn(Fmt("App hash in proposal was %X, computed %X instead", block.AppHash, hash))
-		return InvalidAppHashError{block.AppHash, hash}
-	}
+	// Set the state's new AppHash
+	s.AppHash = hash
 
 	return nil
 }
 
 func (s *State) validateBlock(block *types.Block) error {
 	// Basic block validation.
-	err := block.ValidateBasic(s.ChainID, s.LastBlockHeight, s.LastBlockHash, s.LastBlockParts, s.LastBlockTime)
+	err := block.ValidateBasic(s.ChainID, s.LastBlockHeight, s.LastBlockHash, s.LastBlockParts, s.LastBlockTime, s.AppHash)
 	if err != nil {
 		return err
 	}
@@ -130,7 +126,7 @@ func (s *State) validateBlock(block *types.Block) error {
 }
 
 // Updates the LastCommitHeight of the validators in valSet, in place.
-// Assumes that lastValSet matches the valset of block.LastValidators
+// Assumes that lastValSet matches the valset of block.LastValidation
 // CONTRACT: lastValSet is not mutated.
 func updateValidatorsWithBlock(lastValSet *types.ValidatorSet, valSet *types.ValidatorSet, block *types.Block) {
 
@@ -166,13 +162,4 @@ type InvalidTxError struct {
 
 func (txErr InvalidTxError) Error() string {
 	return Fmt("Invalid tx: [%v] code: [%v]", txErr.Tx, txErr.RetCode)
-}
-
-type InvalidAppHashError struct {
-	Expected []byte
-	Got      []byte
-}
-
-func (hashErr InvalidAppHashError) Error() string {
-	return Fmt("Invalid hash: [%X] got: [%X]", hashErr.Expected, hashErr.Got)
 }

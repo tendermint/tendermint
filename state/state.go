@@ -9,7 +9,6 @@ import (
 	. "github.com/tendermint/go-common"
 	dbm "github.com/tendermint/go-db"
 	"github.com/tendermint/go-wire"
-	"github.com/tendermint/tendermint/events"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -25,15 +24,13 @@ type State struct {
 	db              dbm.DB
 	GenesisDoc      *types.GenesisDoc
 	ChainID         string
-	LastBlockHeight int
+	LastBlockHeight int // Genesis state has this set to 0.  So, Block(H=0) does not exist.
 	LastBlockHash   []byte
 	LastBlockParts  types.PartSetHeader
 	LastBlockTime   time.Time
 	Validators      *types.ValidatorSet
 	LastValidators  *types.ValidatorSet
-	LastAppHash     []byte
-
-	evc *events.EventCache
+	AppHash         []byte
 }
 
 func LoadState(db dbm.DB) *State {
@@ -64,8 +61,7 @@ func (s *State) Copy() *State {
 		LastBlockTime:   s.LastBlockTime,
 		Validators:      s.Validators.Copy(),
 		LastValidators:  s.LastValidators.Copy(),
-		LastAppHash:     s.LastAppHash,
-		evc:             nil,
+		AppHash:         s.AppHash,
 	}
 }
 
@@ -79,13 +75,6 @@ func (s *State) Save() {
 		PanicCrisis(*err)
 	}
 	s.db.Set(stateKey, buf.Bytes())
-}
-
-func (s *State) SetEventCache(evc *events.EventCache) {
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-
-	s.evc = evc
 }
 
 //-----------------------------------------------------------------------------
@@ -133,6 +122,6 @@ func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) *State {
 		LastBlockTime:   genDoc.GenesisTime,
 		Validators:      types.NewValidatorSet(validators),
 		LastValidators:  types.NewValidatorSet(nil),
-		LastAppHash:     genDoc.AppHash,
+		AppHash:         genDoc.AppHash,
 	}
 }
