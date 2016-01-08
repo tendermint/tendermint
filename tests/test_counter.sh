@@ -17,7 +17,7 @@ if [[ "$?" != 0 ]]; then
 fi
 
 sleep 1
-OUTPUT=`(tmsp batch) <<STDIN 
+OUTPUT=`(tmsp-cli batch) <<STDIN 
 set_option serial on
 get_hash
 append_tx abc
@@ -38,7 +38,7 @@ if [[ "${HASH1}" != "" ]]; then
 	exit 1
 fi
 
-OUTPUT=`(tmsp batch) <<STDIN 
+OUTPUT=`(tmsp-cli batch) <<STDIN 
 set_option serial on
 append_tx 0x00
 get_hash
