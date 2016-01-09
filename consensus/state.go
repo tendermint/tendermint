@@ -807,7 +807,7 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 			LastBlockHash:  cs.state.LastBlockHash,
 			LastBlockParts: cs.state.LastBlockParts,
 			ValidatorsHash: cs.state.Validators.Hash(),
-			AppHash:        cs.state.AppHash,
+			AppHash:        cs.state.AppHash, // state merkle root of txs from the previous block.
 		},
 		LastValidation: validation,
 		Data: &types.Data{
@@ -1134,6 +1134,7 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	log.Info(Fmt("%v", block))
 
 	// Fire off event for new block.
+	// TODO: Handle app failure.  See #177
 	cs.evsw.FireEvent(types.EventStringNewBlock(), types.EventDataNewBlock{block})
 
 	// Create a copy of the state for staging
@@ -1141,7 +1142,6 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 
 	// Run the block on the State:
 	// + update validator sets
-	// + first rolls back proxyAppConn
 	// + run txs on the proxyAppConn
 	err := stateCopy.ExecBlock(cs.evsw, cs.proxyAppConn, block, blockParts.Header())
 	if err != nil {

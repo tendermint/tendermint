@@ -140,7 +140,7 @@ type Header struct {
 	LastValidationHash []byte        `json:"last_validation_hash"`
 	DataHash           []byte        `json:"data_hash"`
 	ValidatorsHash     []byte        `json:"validators_hash"`
-	AppHash            []byte        `json:"app_hash"`
+	AppHash            []byte        `json:"app_hash"` // state merkle root of txs from the previous block
 }
 
 // NOTE: hash is nil if required fields are missing.
