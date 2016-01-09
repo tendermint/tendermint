@@ -17,20 +17,18 @@ const (
 	// reserved for GetOption = byte(0x15)
 
 	requestTypeAppendTx    = byte(0x21)
-	requestTypeGetHash     = byte(0x22)
-	requestTypeCommit      = byte(0x23)
-	requestTypeRollback    = byte(0x24)
-	requestTypeAddListener = byte(0x25)
-	requestTypeRemListener = byte(0x26)
-	// reserved for responseTypeEvent 0x27
+	requestTypeCheckTx     = byte(0x22)
+	requestTypeGetHash     = byte(0x23)
+	requestTypeAddListener = byte(0x24)
+	requestTypeRemListener = byte(0x25)
+	// reserved for responseTypeEvent 0x26
 
 	responseTypeAppendTx    = byte(0x31)
-	responseTypeGetHash     = byte(0x32)
-	responseTypeCommit      = byte(0x33)
-	responseTypeRollback    = byte(0x34)
-	responseTypeAddListener = byte(0x35)
-	responseTypeRemListener = byte(0x36)
-	responseTypeEvent       = byte(0x37)
+	responseTypeCheckTx     = byte(0x32)
+	responseTypeGetHash     = byte(0x33)
+	responseTypeAddListener = byte(0x34)
+	responseTypeRemListener = byte(0x35)
+	responseTypeEvent       = byte(0x36)
 )
 
 //----------------------------------------
@@ -54,13 +52,11 @@ type RequestAppendTx struct {
 	TxBytes []byte
 }
 
+type RequestCheckTx struct {
+	TxBytes []byte
+}
+
 type RequestGetHash struct {
-}
-
-type RequestCommit struct {
-}
-
-type RequestRollback struct {
 }
 
 type RequestAddListener struct {
@@ -80,9 +76,8 @@ func (_ RequestFlush) AssertRequestType()       {}
 func (_ RequestInfo) AssertRequestType()        {}
 func (_ RequestSetOption) AssertRequestType()   {}
 func (_ RequestAppendTx) AssertRequestType()    {}
+func (_ RequestCheckTx) AssertRequestType()     {}
 func (_ RequestGetHash) AssertRequestType()     {}
-func (_ RequestCommit) AssertRequestType()      {}
-func (_ RequestRollback) AssertRequestType()    {}
 func (_ RequestAddListener) AssertRequestType() {}
 func (_ RequestRemListener) AssertRequestType() {}
 
@@ -93,9 +88,8 @@ var _ = wire.RegisterInterface(
 	wire.ConcreteType{RequestInfo{}, requestTypeInfo},
 	wire.ConcreteType{RequestSetOption{}, requestTypeSetOption},
 	wire.ConcreteType{RequestAppendTx{}, requestTypeAppendTx},
+	wire.ConcreteType{RequestCheckTx{}, requestTypeCheckTx},
 	wire.ConcreteType{RequestGetHash{}, requestTypeGetHash},
-	wire.ConcreteType{RequestCommit{}, requestTypeCommit},
-	wire.ConcreteType{RequestRollback{}, requestTypeRollback},
 	wire.ConcreteType{RequestAddListener{}, requestTypeAddListener},
 	wire.ConcreteType{RequestRemListener{}, requestTypeRemListener},
 )
@@ -121,17 +115,13 @@ type ResponseAppendTx struct {
 	RetCode
 }
 
+type ResponseCheckTx struct {
+	RetCode
+}
+
 type ResponseGetHash struct {
 	RetCode
 	Hash []byte
-}
-
-type ResponseCommit struct {
-	RetCode
-}
-
-type ResponseRollback struct {
-	RetCode
 }
 
 type ResponseAddListener struct {
@@ -159,9 +149,8 @@ func (_ ResponseFlush) AssertResponseType()       {}
 func (_ ResponseInfo) AssertResponseType()        {}
 func (_ ResponseSetOption) AssertResponseType()   {}
 func (_ ResponseAppendTx) AssertResponseType()    {}
+func (_ ResponseCheckTx) AssertResponseType()     {}
 func (_ ResponseGetHash) AssertResponseType()     {}
-func (_ ResponseCommit) AssertResponseType()      {}
-func (_ ResponseRollback) AssertResponseType()    {}
 func (_ ResponseAddListener) AssertResponseType() {}
 func (_ ResponseRemListener) AssertResponseType() {}
 func (_ ResponseException) AssertResponseType()   {}
@@ -174,9 +163,8 @@ var _ = wire.RegisterInterface(
 	wire.ConcreteType{ResponseInfo{}, responseTypeInfo},
 	wire.ConcreteType{ResponseSetOption{}, responseTypeSetOption},
 	wire.ConcreteType{ResponseAppendTx{}, responseTypeAppendTx},
+	wire.ConcreteType{ResponseCheckTx{}, responseTypeCheckTx},
 	wire.ConcreteType{ResponseGetHash{}, responseTypeGetHash},
-	wire.ConcreteType{ResponseCommit{}, responseTypeCommit},
-	wire.ConcreteType{ResponseRollback{}, responseTypeRollback},
 	wire.ConcreteType{ResponseAddListener{}, responseTypeAddListener},
 	wire.ConcreteType{ResponseRemListener{}, responseTypeRemListener},
 	wire.ConcreteType{ResponseException{}, responseTypeException},

@@ -10,28 +10,13 @@ class CounterApplication():
     def __init__(self):
         self.hashCount = 0
         self.txCount = 0
-        self.commitCount = 0
-
-    def open(self):
-        return CounterAppContext(self)
-
-
-class CounterAppContext():
-
-    def __init__(self, app):
-        self.app = app
-        self.hashCount = app.hashCount
-        self.txCount = app.txCount
-        self.commitCount = app.commitCount
         self.serial = False
 
     def echo(self, msg):
         return msg, 0
 
     def info(self):
-        return ["hash, tx, commit counts:%d, %d, %d" % (self.hashCount,
-                                                        self.txCount,
-                                                        self.commitCount)], 0
+        return ["hashes:%d, txs:%d" % (self.hashCount, self.txCount)], 0
 
     def set_option(self, key, value):
         if key == "serial" and value == "on":
@@ -50,6 +35,17 @@ class CounterAppContext():
         self.txCount += 1
         return None, 0
 
+    def check_tx(self, txBytes):
+        if self.serial:
+            txByteArray = bytearray(txBytes)
+            if len(txBytes) >= 2 and txBytes[:2] == "0x":
+                txByteArray = hex2bytes(txBytes[2:])
+            txValue = decode_big_endian(
+                BytesBuffer(txByteArray), len(txBytes))
+            if txValue < self.txCount:
+                return 1
+        return 0
+
     def get_hash(self):
         self.hashCount += 1
         if self.txCount == 0:
@@ -57,13 +53,6 @@ class CounterAppContext():
         h = encode_big_endian(self.txCount, 8)
         h.reverse()
         return h.decode(), 0
-
-    def commit(self):
-        self.commitCount += 1
-        return 0
-
-    def rollback(self):
-        return 0
 
     def add_listener(self):
         return 0

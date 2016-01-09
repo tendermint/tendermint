@@ -12,12 +12,11 @@ from .msg import RequestDecoder, message_types
 
 logger = logging.getLogger(__name__)
 
-
 class Connection():
 
-    def __init__(self, fd, appCtx):
+    def __init__(self, fd, app):
         self.fd = fd
-        self.appCtx = appCtx
+        self.app = app
         self.recBuf = BytesBuffer(bytearray())
         self.resBuf = BytesBuffer(bytearray())
         self.msgLength = 0
@@ -32,12 +31,11 @@ class Connection():
 
 # TMSP server responds to messges by calling methods on the app
 
-
 class TMSPServer():
 
     def __init__(self, app, port=5410):
         self.app = app
-        # map conn file descriptors to (appContext, reqBuf, resBuf, msgDecoder)
+        # map conn file descriptors to (app, reqBuf, resBuf, msgDecoder)
         self.appMap = {}
 
         self.port = port
@@ -62,8 +60,7 @@ class TMSPServer():
         self.write_list.append(new_fd)
         print('new connection to', new_addr)
 
-        appContext = self.app.open()
-        self.appMap[new_fd] = Connection(new_fd, appContext)
+        self.appMap[new_fd] = Connection(new_fd, self.app)
 
     def handle_conn_closed(self, r):
         self.read_list.remove(r)
@@ -72,7 +69,7 @@ class TMSPServer():
         print("connection closed")
 
     def handle_recv(self, r):
-        #  appCtx, recBuf, resBuf, conn
+        #  app, recBuf, resBuf, conn
         conn = self.appMap[r]
         while True:
             try:
@@ -129,7 +126,7 @@ class TMSPServer():
                 conn.msgLength = 0
                 conn.inProgress = False
 
-                req_f = getattr(conn.appCtx, req_type)
+                req_f = getattr(conn.app, req_type)
                 if req_args is None:
                     res = req_f()
                 elif isinstance(req_args, tuple):

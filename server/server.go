@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"strings"
+	"sync"
 
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-wire"
@@ -15,6 +16,7 @@ import (
 // var maxNumberConnections = 2
 
 func StartListener(protoAddr string, app types.Application) (net.Listener, error) {
+	var mtx sync.Mutex // global mutex
 	parts := strings.SplitN(protoAddr, "://", 2)
 	proto, addr := parts[0], parts[1]
 	ln, err := net.Listen(proto, addr)
@@ -38,12 +40,11 @@ func StartListener(protoAddr string, app types.Application) (net.Listener, error
 				fmt.Println("Accepted a new connection")
 			}
 
-			appContext := app.Open()
 			closeConn := make(chan error, 2)             // Push to signal connection closed
 			responses := make(chan types.Response, 1000) // A channel to buffer responses
 
 			// Read requests from conn and deal with them
-			go handleRequests(appContext, closeConn, conn, responses)
+			go handleRequests(&mtx, app, closeConn, conn, responses)
 			// Pull responses from 'responses' and write them to conn.
 			go handleResponses(closeConn, responses, conn)
 
@@ -62,12 +63,6 @@ func StartListener(protoAddr string, app types.Application) (net.Listener, error
 					fmt.Printf("Error in closing connection: %v\n", err)
 				}
 
-				// Close the AppContext
-				err = appContext.Close()
-				if err != nil {
-					fmt.Printf("Error in closing app context: %v\n", err)
-				}
-
 				// <-semaphore
 			}()
 		}
@@ -78,7 +73,7 @@ func StartListener(protoAddr string, app types.Application) (net.Listener, error
 }
 
 // Read requests from conn and deal with them
-func handleRequests(appC types.AppContext, closeConn chan error, conn net.Conn, responses chan<- types.Response) {
+func handleRequests(mtx *sync.Mutex, app types.Application, closeConn chan error, conn net.Conn, responses chan<- types.Response) {
 	var count int
 	var bufReader = bufio.NewReader(conn)
 	for {
@@ -94,44 +89,43 @@ func handleRequests(appC types.AppContext, closeConn chan error, conn net.Conn, 
 			}
 			return
 		}
+		mtx.Lock()
 		count++
-		handleRequest(appC, req, responses)
+		handleRequest(app, req, responses)
+		mtx.Unlock()
 	}
 }
 
-func handleRequest(appC types.AppContext, req types.Request, responses chan<- types.Response) {
+func handleRequest(app types.Application, req types.Request, responses chan<- types.Response) {
 	switch req := req.(type) {
 	case types.RequestEcho:
-		msg := appC.Echo(req.Message)
+		msg := app.Echo(req.Message)
 		responses <- types.ResponseEcho{msg}
 	case types.RequestFlush:
 		responses <- types.ResponseFlush{}
 	case types.RequestInfo:
-		data := appC.Info()
+		data := app.Info()
 		responses <- types.ResponseInfo{data}
 	case types.RequestSetOption:
-		retCode := appC.SetOption(req.Key, req.Value)
+		retCode := app.SetOption(req.Key, req.Value)
 		responses <- types.ResponseSetOption{retCode}
 	case types.RequestAppendTx:
-		events, retCode := appC.AppendTx(req.TxBytes)
+		events, retCode := app.AppendTx(req.TxBytes)
 		responses <- types.ResponseAppendTx{retCode}
 		for _, event := range events {
 			responses <- types.ResponseEvent{event}
 		}
+	case types.RequestCheckTx:
+		retCode := app.CheckTx(req.TxBytes)
+		responses <- types.ResponseCheckTx{retCode}
 	case types.RequestGetHash:
-		hash, retCode := appC.GetHash()
+		hash, retCode := app.GetHash()
 		responses <- types.ResponseGetHash{retCode, hash}
-	case types.RequestCommit:
-		retCode := appC.Commit()
-		responses <- types.ResponseCommit{retCode}
-	case types.RequestRollback:
-		retCode := appC.Rollback()
-		responses <- types.ResponseRollback{retCode}
 	case types.RequestAddListener:
-		retCode := appC.AddListener(req.EventKey)
+		retCode := app.AddListener(req.EventKey)
 		responses <- types.ResponseAddListener{retCode}
 	case types.RequestRemListener:
-		retCode := appC.RemListener(req.EventKey)
+		retCode := app.RemListener(req.EventKey)
 		responses <- types.ResponseRemListener{retCode}
 	default:
 		responses <- types.ResponseException{"Unknown request"}

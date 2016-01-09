@@ -76,24 +76,17 @@ func main() {
 			},
 		},
 		{
+			Name:  "check_tx",
+			Usage: "Validate a tx",
+			Action: func(c *cli.Context) {
+				cmdCheckTx(c)
+			},
+		},
+		{
 			Name:  "get_hash",
 			Usage: "Get application Merkle root hash",
 			Action: func(c *cli.Context) {
 				cmdGetHash(c)
-			},
-		},
-		{
-			Name:  "commit",
-			Usage: "Commit the application state",
-			Action: func(c *cli.Context) {
-				cmdCommit(c)
-			},
-		},
-		{
-			Name:  "rollback",
-			Usage: "Roll back the application state to the latest commit",
-			Action: func(c *cli.Context) {
-				cmdRollback(c)
 			},
 		},
 	}
@@ -209,6 +202,29 @@ func cmdAppendTx(c *cli.Context) {
 	fmt.Println("Response:", res)
 }
 
+// Validate a tx
+func cmdCheckTx(c *cli.Context) {
+	args := c.Args()
+	if len(args) != 1 {
+		Exit("append_tx takes 1 argument")
+	}
+	txString := args[0]
+	tx := []byte(txString)
+	if len(txString) > 2 && strings.HasPrefix(txString, "0x") {
+		var err error
+		tx, err = hex.DecodeString(txString[2:])
+		if err != nil {
+			Exit(err.Error())
+		}
+	}
+
+	res, err := makeRequest(conn, types.RequestCheckTx{tx})
+	if err != nil {
+		Exit(err.Error())
+	}
+	fmt.Println("Response:", res)
+}
+
 // Get application Merkle root hash
 func cmdGetHash(c *cli.Context) {
 	res, err := makeRequest(conn, types.RequestGetHash{})
@@ -216,24 +232,6 @@ func cmdGetHash(c *cli.Context) {
 		Exit(err.Error())
 	}
 	fmt.Printf("%X\n", res.(types.ResponseGetHash).Hash)
-}
-
-// Commit the application state
-func cmdCommit(c *cli.Context) {
-	_, err := makeRequest(conn, types.RequestCommit{})
-	if err != nil {
-		Exit(err.Error())
-	}
-	fmt.Println("Committed.")
-}
-
-// Roll back the application state to the latest commit
-func cmdRollback(c *cli.Context) {
-	_, err := makeRequest(conn, types.RequestRollback{})
-	if err != nil {
-		Exit(err.Error())
-	}
-	fmt.Println("Rolled back.")
 }
 
 //--------------------------------------------------------------------------------

@@ -27,8 +27,6 @@ AppServer.prototype.createServer = function(){
 		  socket.name = socket.remoteAddress + ":" + socket.remotePort 
 		  console.log("new connection from", socket.name)
 
-		  appCtx = app.open()
-
 		  var conn = { 
 			  recBuf: new msg.buffer(new Buffer(0)),
 			  resBuf: new msg.buffer(new Buffer(0)),
@@ -90,11 +88,11 @@ AppServer.prototype.createServer = function(){
 
 			var res = function(){
 				if (args == null){
-					return appCtx[reqType]();
+					return app[reqType]();
 				} else if (Array.isArray(args)){
-					return appCtx[reqType].apply(appCtx, args);
+					return app[reqType].apply(app, args);
 				} else {
-					return appCtx[reqType](args)
+					return app[reqType](args)
 				}
 			}()
 

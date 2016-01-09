@@ -13,17 +13,16 @@ fi
 echo "... Pass!"
 echo ""
 
-# Add a tx, get hash, commit, get hash
+# Add a tx, get hash, get hash
 # hashes should be non-empty and identical
 echo "Dummy batch test ..."
 OUTPUT=`(tmsp-cli batch) <<STDIN 
 append_tx abc
 get_hash
-commit
 get_hash
 STDIN`
 
-HASH1=`echo "$OUTPUT" | tail -n 3 | head -n 1`
+HASH1=`echo "$OUTPUT" | tail -n 2 | head -n 1`
 HASH2=`echo "$OUTPUT" | tail -n 1`
 
 if [[ "$HASH1" == "" ]]; then
@@ -37,7 +36,7 @@ if [[ "$HASH1" == "EOF" ]]; then
 fi
 
 if [[ "$HASH1" != "$HASH2" ]]; then
-	echo "Expected hashes before and after commit to match: $HASH1, $HASH2"
+	echo "Expected first and second hashes to match: $HASH1, $HASH2"
 	exit 1
 fi
 echo "... Pass!"

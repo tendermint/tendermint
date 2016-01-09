@@ -5,36 +5,25 @@ util = require("util")
 function CounterApp(){
 	this.hashCount = 0;
 	this.txCount = 0;
-	this.commitCount = 0;
+  this.serial = false;
 };
 
-CounterApp.prototype.open = function(){
-	return new CounterAppContext(this);
-}
-
-function CounterAppContext(app) {
-	this.hashCount = app.hashCount;
-	this.txCount = app.txCount;
-	this.commitCount = app.commitCount;
-	this.serial = false;
-}
-
-CounterAppContext.prototype.echo = function(msg){
+CounterApp.prototype.echo = function(msg){
 	return {"response": msg, "ret_code":0}
 }
 
-CounterAppContext.prototype.info = function(){
-	return {"response": [util.format("hash, tx, commit counts: %d, %d, %d", this.hashCount, this.txCount, this.commitCount)]}
+CounterApp.prototype.info = function(){
+	return {"response": [util.format("hashes:%d, txs:%d", this.hashCount, this.txCount)]}
 }
 
-CounterAppContext.prototype.set_option = function(key, value){
+CounterApp.prototype.set_option = function(key, value){
 	if (key == "serial" && value == "on"){
 		this.serial = true;
 	}
 	return {"ret_code":0}
 }
 
-CounterAppContext.prototype.append_tx = function(txBytes){
+CounterApp.prototype.append_tx = function(txBytes){
 	if (this.serial) {
 		txByteArray = new Buffer(txBytes)
 		if (txBytes.length >= 2 && txBytes.slice(0, 2) == "0x") {
@@ -50,7 +39,22 @@ CounterAppContext.prototype.append_tx = function(txBytes){
 	return {"ret_code":0} // TODO: return events
 }
 
-CounterAppContext.prototype.get_hash = function(){
+CounterApp.prototype.check_tx = function(txBytes){
+	if (this.serial) {
+		txByteArray = new Buffer(txBytes)
+		if (txBytes.length >= 2 && txBytes.slice(0, 2) == "0x") {
+			txByteArray = wire.hex2bytes(txBytes.slice(2));
+		}	
+		r = new msg.buffer(txByteArray)
+		txValue = wire.decode_big_endian(r, txBytes.length)
+		if (txValue < this.txCount){
+			return {"ret_code":1}
+		}
+	}
+	return {"ret_code":0}
+}
+
+CounterApp.prototype.get_hash = function(){
 	this.hashCount += 1;
 	if (this.txCount == 0){
 		return {"response": "", "ret_code":0}
@@ -60,24 +64,15 @@ CounterAppContext.prototype.get_hash = function(){
 	return {"response": h.toString(), "ret_code":0}
 }
 
-CounterAppContext.prototype.commit = function(){
-	this.commitCount += 1;
+CounterApp.prototype.add_listener = function(){
 	return {"ret_code":0}
 }
 
-CounterAppContext.prototype.rollback = function(){
+CounterApp.prototype.rm_listener = function(){
 	return {"ret_code":0}
 }
 
-CounterAppContext.prototype.add_listener = function(){
-	return {"ret_code":0}
-}
-
-CounterAppContext.prototype.rm_listener = function(){
-	return {"ret_code":0}
-}
-
-CounterAppContext.prototype.event = function(){
+CounterApp.prototype.event = function(){
 }
 
 console.log("Counter app in Javascript")
