@@ -1,10 +1,10 @@
 .PHONY: get_deps build all list_deps install
 
-all: install
+all: test install
 
 TMROOT = $${TMROOT:-$$HOME/.tendermint}
 
-install: 
+install: get_deps
 	go install github.com/tendermint/tendermint/cmd/tendermint
 
 build: 
@@ -32,7 +32,7 @@ list_deps:
 	go list -f '{{join .Deps "\n"}}' github.com/tendermint/tendermint/... |  xargs go list -f '{{if not .Standard}}{{.ImportPath}}{{end}}'
 
 get_deps:
-	go get github.com/tendermint/tendermint/...
+	go get -d github.com/tendermint/tendermint/...
 
 revision:
 	-echo `git rev-parse --verify HEAD` > $(TMROOT)/revision
