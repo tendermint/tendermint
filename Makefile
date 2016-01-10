@@ -1,8 +1,8 @@
 .PHONY: all test get_deps
 
-all: test get_deps install
+all: test install
 
-install:
+install: get_deps
 	go install github.com/tendermint/tmsp/cmd/...
 
 test:
