@@ -153,7 +153,7 @@ func jsonParamsToArgs(rpcFunc *RPCFunc, params []interface{}) ([]reflect.Value, 
 
 // Same as above, but with the first param the websocket connection
 func jsonParamsToArgsWS(rpcFunc *RPCFunc, params []interface{}, wsCtx WSRPCContext) ([]reflect.Value, error) {
-	if len(rpcFunc.argNames)-1 != len(params) {
+	if len(rpcFunc.argNames) != len(params) {
 		return nil, errors.New(fmt.Sprintf("Expected %v parameters (%v), got %v (%v)",
 			len(rpcFunc.argNames)-1, rpcFunc.argNames[1:], len(params), params))
 	}

@@ -24,6 +24,7 @@ import (
 	"github.com/tendermint/tendermint/rpc/server"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tmsp/example/golang"
 )
 
 import _ "net/http/pprof"
@@ -320,14 +321,22 @@ func getState() *sm.State {
 
 // Get a connection to the proxyAppConn addr.
 // Check the current hash, and panic if it doesn't match.
-func getProxyApp(addr string, hash []byte) proxy.AppConn {
-	proxyConn, err := Connect(addr)
-	if err != nil {
-		Exit(Fmt("Failed to connect to proxy for mempool: %v", err))
-	}
-	proxyAppConn := proxy.NewRemoteAppConn(proxyConn, 1024)
+func getProxyApp(addr string, hash []byte) (proxyAppCtx proxy.AppContext) {
+	// use local app (for testing)
+	if addr == "local" {
+		app := example.NewCounterApplication(true)
+		appCtx := app.Open()
+		proxyAppCtx = proxy.NewLocalAppContext(appCtx)
+	} else {
+		proxyConn, err := Connect(addr)
+		if err != nil {
+			Exit(Fmt("Failed to connect to proxy for mempool: %v", err))
+		}
+		proxyAppCtx := proxy.NewRemoteAppContext(proxyConn, 1024)
 
-	proxyAppConn.Start()
+		proxyAppCtx.Start()
+
+	}
 
 	// Check the hash
 	currentHash, err := proxyAppConn.GetHashSync()
