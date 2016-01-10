@@ -271,9 +271,11 @@ func (pb *playback) readReplayMessage() error {
 	if err != nil {
 		return fmt.Errorf("Error reading json data: %v", err)
 	}
-	log.Notice("Replaying message", "type", reflect.TypeOf(msg.Msg), "msg", msg.Msg)
+
+	// for logging
 	switch m := msg.Msg.(type) {
 	case *types.EventDataRoundState:
+		log.Notice("New Step", "height", m.Height, "round", m.Round, "step", m.Step)
 		// these are playback checks
 		ticker := time.After(time.Second * 2)
 		select {
@@ -286,6 +288,22 @@ func (pb *playback) readReplayMessage() error {
 			return fmt.Errorf("Failed to read off newStepCh")
 		}
 	case msgInfo:
+		peerKey := m.PeerKey
+		if peerKey == "" {
+			peerKey = "local"
+		}
+		switch msg := m.Msg.(type) {
+		case *ProposalMessage:
+			p := msg.Proposal
+			log.Notice("Proposal", "height", p.Height, "round", p.Round, "header",
+				p.BlockPartsHeader, "pol", p.POLRound, "peer", peerKey)
+		case *BlockPartMessage:
+			log.Notice("BlockPart", "height", msg.Height, "round", msg.Round, "peer", peerKey)
+		case *VoteMessage:
+			v := msg.Vote
+			log.Notice("Vote", "height", v.Height, "round", v.Round, "type", v.Type,
+				"hash", v.BlockHash, "header", v.BlockPartsHeader, "peer", peerKey)
+		}
 		// internal or from peer
 		if m.PeerKey == "" {
 			pb.cs.internalMsgQueue <- m
@@ -293,6 +311,7 @@ func (pb *playback) readReplayMessage() error {
 			pb.cs.peerMsgQueue <- m
 		}
 	case timeoutInfo:
+		log.Notice("Timeout", "height", m.Height, "round", m.Round, "step", m.Step, "dur", m.Duration)
 		pb.cs.tockChan <- m
 	default:
 		return fmt.Errorf("Unknown ConsensusLogMessage type: %v", reflect.TypeOf(msg.Msg))
