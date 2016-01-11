@@ -2,8 +2,10 @@ package consensus
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"reflect"
 	"strconv"
@@ -14,6 +16,7 @@ import (
 	"github.com/tendermint/go-wire"
 
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/tailseek"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -60,6 +63,74 @@ func (cs ConsensusState) ReplayMessages(file string) error {
 	return cs.replay(file, false)
 }
 
+func (cs *ConsensusState) catchupReplay(height int) error {
+	if !cs.msgLogExists {
+		return nil
+	}
+
+	if cs.msgLogFP == nil {
+		log.Warn("consensus msg log is nil")
+		return nil
+	}
+
+	log.Notice("Catchup by replaying consensus messages")
+	f := cs.msgLogFP
+
+	n, err := seek.SeekFromEndOfFile(f, func(lineBytes []byte) bool {
+		var err error
+		var msg ConsensusLogMessage
+		wire.ReadJSON(&msg, lineBytes, &err)
+		if err != nil {
+			panic(Fmt("Failed to read cs_msg_log json: %v", err))
+		}
+		m, ok := msg.Msg.(*types.EventDataRoundState)
+		if ok && m.Step == RoundStepNewHeight.String() {
+			r, err := f.Seek(0, 1)
+			// TODO: ensure the height matches
+			return true
+		}
+		return false
+	})
+
+	if err != nil {
+		return err
+	}
+
+	// we found it, now we can replay everything
+	pb := newPlayback("", cs.msgLogFP, cs, nil, cs.state.Copy())
+
+	reader := bufio.NewReader(cs.msgLogFP)
+	i := 0
+	for {
+		i += 1
+		msgBytes, err := reader.ReadBytes('\n')
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return err
+		} else if len(msgBytes) == 0 {
+			continue
+		}
+		// the first msg is the NewHeight event, so we can ignore it
+		if i == 1 {
+			continue
+		}
+
+		// NOTE: since the priv key is set when the msgs are received
+		// it will attempt to eg double sign but we can just ignore it
+		// since the votes will be replayed and we'll get to the next step
+		if err := pb.readReplayMessage(msgBytes); err != nil {
+			return err
+
+		}
+		if i >= n {
+			break
+		}
+	}
+	return nil
+
+}
+
 // replay all msgs or start the console
 func (cs *ConsensusState) replay(file string, console bool) error {
 	if cs.IsRunning() {
@@ -91,7 +162,7 @@ func (cs *ConsensusState) replay(file string, console bool) error {
 			nextN = pb.replayConsoleLoop()
 		}
 
-		if err := pb.readReplayMessage(); err != nil {
+		if err := pb.readReplayMessage(pb.scanner.Bytes()); err != nil {
 			return err
 		}
 
@@ -152,7 +223,7 @@ func (pb *playback) replayReset(count int) error {
 	pb.count = 0
 	pb.cs = newCs
 	for i := 0; pb.scanner.Scan() && i < count; i++ {
-		if err := pb.readReplayMessage(); err != nil {
+		if err := pb.readReplayMessage(pb.scanner.Bytes()); err != nil {
 			return err
 		}
 		pb.count += 1
@@ -264,10 +335,10 @@ func (pb *playback) replayConsoleLoop() int {
 	return 0
 }
 
-func (pb *playback) readReplayMessage() error {
+func (pb *playback) readReplayMessage(msgBytes []byte) error {
 	var err error
 	var msg ConsensusLogMessage
-	wire.ReadJSON(&msg, pb.scanner.Bytes(), &err)
+	wire.ReadJSON(&msg, msgBytes, &err)
 	if err != nil {
 		return fmt.Errorf("Error reading json data: %v", err)
 	}
@@ -278,14 +349,16 @@ func (pb *playback) readReplayMessage() error {
 		log.Notice("New Step", "height", m.Height, "round", m.Round, "step", m.Step)
 		// these are playback checks
 		ticker := time.After(time.Second * 2)
-		select {
-		case mi := <-pb.newStepCh:
-			m2 := mi.(*types.EventDataRoundState)
-			if m.Height != m2.Height || m.Round != m2.Round || m.Step != m2.Step {
-				return fmt.Errorf("RoundState mismatch. Got %v; Expected %v", m2, m)
+		if pb.newStepCh != nil {
+			select {
+			case mi := <-pb.newStepCh:
+				m2 := mi.(*types.EventDataRoundState)
+				if m.Height != m2.Height || m.Round != m2.Round || m.Step != m2.Step {
+					return fmt.Errorf("RoundState mismatch. Got %v; Expected %v", m2, m)
+				}
+			case <-ticker:
+				return fmt.Errorf("Failed to read off newStepCh")
 			}
-		case <-ticker:
-			return fmt.Errorf("Failed to read off newStepCh")
 		}
 	case msgInfo:
 		peerKey := m.PeerKey
@@ -317,4 +390,47 @@ func (pb *playback) readReplayMessage() error {
 		return fmt.Errorf("Unknown ConsensusLogMessage type: %v", reflect.TypeOf(msg.Msg))
 	}
 	return nil
+}
+
+// Read lines starting from the end of the file until we read a line that causes found to return true
+func SeekFromEndOfFile(f *os.File, found func([]byte) bool) (nLines int, err error) {
+	var current int64
+	// start at the end
+	current, err = f.Seek(0, 2)
+	if err != nil {
+		fmt.Println("1")
+		return
+	}
+
+	// backup until we find the the right line
+	for {
+		current -= 1
+		if current < 0 {
+			return
+		}
+		// backup one and read a new byte
+		if _, err = f.Seek(current, 0); err != nil {
+			fmt.Println("2", current)
+			return
+		}
+		b := make([]byte, 1)
+		if _, err = f.Read(b); err != nil {
+			return
+		}
+		if b[0] == '\n' || len(b) == 0 {
+			nLines += 1
+
+			// read a full line
+			reader := bufio.NewReader(f)
+			lineBytes, _ := reader.ReadBytes('\n')
+			if len(lineBytes) == 0 {
+				continue
+			}
+
+			if found(lineBytes) {
+				f.Seek(current, 0)
+				return
+			}
+		}
+	}
 }

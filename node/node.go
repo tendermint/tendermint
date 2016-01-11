@@ -85,7 +85,10 @@ func NewNode(privValidator *types.PrivValidator) *Node {
 	}
 
 	// deterministic accountability
-	consensusState.OpenFileForMessageLog(config.GetString("cs_msg_log"))
+	err = consensusState.OpenFileForMessageLog(config.GetString("cs_msg_log"))
+	if err != nil {
+		log.Error("Failed to open cs_msg_log", "error", err.Error())
+	}
 
 	// Make p2p network switch
 	sw := p2p.NewSwitch()

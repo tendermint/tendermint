@@ -192,7 +192,9 @@ type ConsensusState struct {
 
 	evsw *events.EventSwitch
 
-	msgLogFP *os.File // file we write all msgs and timeouts to, in order (for deterministic replay)
+	msgLogFP     *os.File      // file we write all msgs and timeouts to, in order (for deterministic replay)
+	msgLogExists bool          // if the file already existed (restarted process)
+	done         chan struct{} // used to wait until the receiveRoutine quits so we can close the file
 
 	nSteps int // used for testing to limit the number of transitions the state makes
 }
@@ -207,6 +209,7 @@ func NewConsensusState(state *sm.State, proxyAppConn proxy.AppConn, blockStore *
 		timeoutTicker:    new(time.Ticker),
 		tickChan:         make(chan timeoutInfo, tickTockBufferSize),
 		tockChan:         make(chan timeoutInfo, tickTockBufferSize),
+		done:             make(chan struct{}),
 	}
 	cs.updateToState(state)
 	// Don't call scheduleRound0 yet.
@@ -252,14 +255,21 @@ func (cs *ConsensusState) SetPrivValidator(priv *types.PrivValidator) {
 }
 
 func (cs *ConsensusState) OnStart() error {
-	cs.BaseService.OnStart()
+	cs.QuitService.OnStart()
 
-	// first we schedule the round (no go routines)
-	// then we start the timeout and receive routines.
-	// tickChan is buffered so scheduleRound0 will finish.
-	// Then all further access to the RoundState is through the receiveRoutine
-	cs.scheduleRound0(cs.Height)
+	// start timeout and receive routines
 	cs.startRoutines(0)
+
+	// we may have lost some votes if the process crashed
+	// reload from consensus log to catchup
+	if err := cs.catchupReplay(cs.Height); err != nil {
+		log.Error("Error on catchup replay", "error", err.Error())
+		// let's go for it anyways, maybe we're fine
+	}
+
+	// schedule the first round!
+	cs.scheduleRound0(cs.Height)
+
 	return nil
 }
 
@@ -272,6 +282,9 @@ func (cs *ConsensusState) startRoutines(maxSteps int) {
 
 func (cs *ConsensusState) OnStop() {
 	cs.QuitService.OnStop()
+
+	// wait to quit the receiveRoutine
+	<-cs.done
 	if cs.msgLogFP != nil {
 		cs.msgLogFP.Close()
 	}
@@ -281,7 +294,10 @@ func (cs *ConsensusState) OnStop() {
 func (cs *ConsensusState) OpenFileForMessageLog(file string) (err error) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
-	cs.msgLogFP, err = os.OpenFile(file, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+	if _, err := os.Stat(file); err == nil {
+		cs.msgLogExists = true
+	}
+	cs.msgLogFP, err = os.OpenFile(file, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0666)
 	return err
 }
 
@@ -568,6 +584,7 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 			// go to the next step
 			cs.handleTimeout(ti, rs)
 		case <-cs.Quit:
+			close(cs.done)
 			return
 		}
 	}
