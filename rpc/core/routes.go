@@ -1,7 +1,7 @@
 package core
 
 import (
-	rpc "github.com/tendermint/tendermint/rpc/server"
+	rpc "github.com/tendermint/go-rpc/server"
 )
 
 // TODO: eliminate redundancy between here and reading code from core/

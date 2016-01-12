@@ -7,7 +7,7 @@ import (
 	"time"
 
 	_ "github.com/tendermint/tendermint/config/tendermint_test"
-	//"github.com/tendermint/tendermint/events"
+	//"github.com/tendermint/go-events"
 	"github.com/tendermint/tendermint/types"
 )
 

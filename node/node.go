@@ -12,16 +12,16 @@ import (
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-crypto"
 	dbm "github.com/tendermint/go-db"
+	"github.com/tendermint/go-events"
 	"github.com/tendermint/go-p2p"
+	"github.com/tendermint/go-rpc"
+	"github.com/tendermint/go-rpc/server"
 	"github.com/tendermint/go-wire"
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/consensus"
-	"github.com/tendermint/tendermint/events"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
-	"github.com/tendermint/tendermint/rpc"
 	"github.com/tendermint/tendermint/rpc/core"
-	"github.com/tendermint/tendermint/rpc/server"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tmsp/example/golang"
@@ -332,10 +332,10 @@ func getProxyApp(addr string, hash []byte) (proxyAppCtx proxy.AppContext) {
 		if err != nil {
 			Exit(Fmt("Failed to connect to proxy for mempool: %v", err))
 		}
-		proxyAppCtx := proxy.NewRemoteAppContext(proxyConn, 1024)
+		remoteApp := proxy.NewRemoteAppContext(proxyConn, 1024)
+		remoteApp.Start()
 
-		proxyAppCtx.Start()
-
+		proxyAppCtx = remoteApp
 	}
 
 	// Check the hash

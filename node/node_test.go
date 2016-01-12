@@ -4,29 +4,11 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-p2p"
 	_ "github.com/tendermint/tendermint/config/tendermint_test"
-	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tmsp/example/golang"
-	"github.com/tendermint/tmsp/server"
 )
 
 func TestNodeStartStop(t *testing.T) {
-
-	// Start a dummy app
-	go func() {
-		_, err := server.StartListener(config.GetString("proxy_app"), example.NewDummyApplication())
-		if err != nil {
-			Exit(err.Error())
-		}
-	}()
-	// wait for the server
-	time.Sleep(time.Second * 2)
-
-	// Get PrivValidator
-	privValidatorFile := config.GetString("priv_validator_file")
-	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
 
 	// Create & start node
 	n := NewNode(privValidator)

@@ -11,7 +11,7 @@ import (
 	dbm "github.com/tendermint/go-db"
 	bc "github.com/tendermint/tendermint/blockchain"
 	_ "github.com/tendermint/tendermint/config/tendermint_test"
-	"github.com/tendermint/tendermint/events"
+	"github.com/tendermint/go-events"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"

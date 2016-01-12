@@ -8,10 +8,10 @@ import (
 
 	"github.com/gorilla/websocket"
 	. "github.com/tendermint/go-common"
+	"github.com/tendermint/go-rpc/client"
+	"github.com/tendermint/go-rpc/types"
 	"github.com/tendermint/go-wire"
-	"github.com/tendermint/tendermint/rpc/client"
 	_ "github.com/tendermint/tendermint/rpc/core/types" // Register RPCResponse > Result types
-	"github.com/tendermint/tendermint/rpc/types"
 )
 
 func main() {

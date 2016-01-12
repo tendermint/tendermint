@@ -9,10 +9,10 @@ import (
 	"time"
 
 	. "github.com/tendermint/go-common"
+	"github.com/tendermint/go-events"
 	"github.com/tendermint/go-p2p"
 	"github.com/tendermint/go-wire"
 	bc "github.com/tendermint/tendermint/blockchain"
-	"github.com/tendermint/tendermint/events"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -234,12 +234,12 @@ func (conR *ConsensusReactor) SetEventSwitch(evsw *events.EventSwitch) {
 // broadcasting the result to peers
 func (conR *ConsensusReactor) registerEventCallbacks() {
 
-	conR.evsw.AddListenerForEvent("conR", types.EventStringNewRoundStep(), func(data types.EventData) {
+	conR.evsw.AddListenerForEvent("conR", types.EventStringNewRoundStep(), func(data events.EventData) {
 		rs := data.(*types.EventDataRoundState).RoundState().(*RoundState)
 		conR.broadcastNewRoundStep(rs)
 	})
 
-	conR.evsw.AddListenerForEvent("conR", types.EventStringVote(), func(data types.EventData) {
+	conR.evsw.AddListenerForEvent("conR", types.EventStringVote(), func(data events.EventData) {
 		edv := data.(*types.EventDataVote)
 		conR.broadcastHasVoteMessage(edv.Vote, edv.Index)
 	})

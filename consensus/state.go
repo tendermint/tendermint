@@ -9,9 +9,9 @@ import (
 	"time"
 
 	. "github.com/tendermint/go-common"
+	"github.com/tendermint/go-events"
 	"github.com/tendermint/go-wire"
 	bc "github.com/tendermint/tendermint/blockchain"
-	"github.com/tendermint/tendermint/events"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"

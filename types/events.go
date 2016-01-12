@@ -1,6 +1,8 @@
 package types
 
 import (
+	// for registering EventData
+	"github.com/tendermint/go-events"
 	"github.com/tendermint/go-wire"
 )
 
@@ -38,12 +40,8 @@ const (
 	EventDataTypeVote       = byte(0x12)
 )
 
-type EventData interface {
-	AssertIsEventData()
-}
-
 var _ = wire.RegisterInterface(
-	struct{ EventData }{},
+	struct{ events.EventData }{},
 	wire.ConcreteType{EventDataNewBlock{}, EventDataTypeNewBlock},
 	// wire.ConcreteType{EventDataFork{}, EventDataTypeFork },
 	wire.ConcreteType{EventDataTx{}, EventDataTypeTx},

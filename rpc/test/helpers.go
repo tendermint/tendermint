@@ -11,29 +11,47 @@ import (
 	"github.com/tendermint/go-p2p"
 	"github.com/tendermint/go-wire"
 
+	client "github.com/tendermint/go-rpc/client"
+	"github.com/tendermint/go-rpc/types"
 	_ "github.com/tendermint/tendermint/config/tendermint_test"
 	nm "github.com/tendermint/tendermint/node"
-	client "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	"github.com/tendermint/tendermint/rpc/types"
 	"github.com/tendermint/tendermint/types"
 )
 
 // global variables for use across all tests
 var (
-	rpcAddr       = "127.0.0.1:36657" // Not 46657
-	requestAddr   = "http://" + rpcAddr
-	websocketAddr = "ws://" + rpcAddr + "/websocket"
-
 	node *nm.Node
 
 	mempoolCount = 0
 
 	chainID string
 
-	clientURI  = client.NewClientURI(requestAddr)
-	clientJSON = client.NewClientJSONRPC(requestAddr)
+	rpcAddr, requestAddr, websocketAddr string
+
+	clientURI  *client.ClientURI
+	clientJSON *client.ClientJSONRPC
 )
+
+// initialize config and create new node
+func init() {
+	initConfig()
+
+	chainID = config.GetString("chain_id")
+	rpcAddr = config.GetString("rpc_laddr")
+	requestAddr = "http://" + rpcAddr
+	websocketAddr = "ws://" + rpcAddr + "/websocket"
+
+	clientURI = client.NewClientURI(requestAddr)
+	clientJSON = client.NewClientJSONRPC(requestAddr)
+
+	// TODO: change consensus/state.go timeouts to be shorter
+
+	// start a node
+	ready := make(chan struct{})
+	go newNode(ready)
+	<-ready
+}
 
 // create a new node and sleep forever
 func newNode(ready chan struct{}) {
@@ -50,19 +68,6 @@ func newNode(ready chan struct{}) {
 	// Sleep forever
 	ch := make(chan struct{})
 	<-ch
-}
-
-// initialize config and create new node
-func init() {
-	initConfig()
-	chainID = config.GetString("chain_id")
-
-	// TODO: change consensus/state.go timeouts to be shorter
-
-	// start a node
-	ready := make(chan struct{})
-	go newNode(ready)
-	<-ready
 }
 
 //--------------------------------------------------------------------------------
@@ -192,7 +197,7 @@ func unmarshalResponseNewBlock(b []byte) (*types.Block, error) {
 
 func unmarshalValidateBlockchain(t *testing.T, con *websocket.Conn, eid string) {
 	var initBlockN int
-	for i := 0; i < 2; i++ {
+	for i := 0; i < 3; i++ {
 		waitForEvent(t, con, eid, true, func() {}, func(eid string, b []byte) error {
 			block, err := unmarshalResponseNewBlock(b)
 			if err != nil {
