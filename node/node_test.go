@@ -24,7 +24,7 @@ func TestNodeStartStop(t *testing.T) {
 	time.Sleep(time.Second * 2)
 
 	// Create & start node
-	n := NewNode()
+	n := NewNodeDefaultPrivVal()
 	l := p2p.NewDefaultListener("tcp", config.GetString("node_laddr"), config.GetBool("skip_upnp"))
 	n.AddListener(l)
 	n.Start()

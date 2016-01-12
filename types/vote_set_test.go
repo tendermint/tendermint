@@ -5,6 +5,7 @@ import (
 
 	. "github.com/tendermint/go-common"
 	. "github.com/tendermint/go-common/test"
+	"github.com/tendermint/go-crypto"
 	_ "github.com/tendermint/tendermint/config/tendermint_test"
 
 	"testing"
@@ -52,7 +53,7 @@ func withBlockPartsHeader(vote *Vote, blockPartsHeader PartSetHeader) *Vote {
 }
 
 func signAddVote(privVal *PrivValidator, vote *Vote, voteSet *VoteSet) (bool, error) {
-	privVal.SignVoteUnsafe(config.GetString("chain_id"), vote)
+	vote.Signature = privVal.Sign(SignBytes(config.GetString("chain_id"), vote)).(crypto.SignatureEd25519)
 	added, _, err := voteSet.AddByAddress(privVal.Address, vote)
 	return added, err
 }

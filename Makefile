@@ -3,6 +3,10 @@
 all: test install
 
 TMROOT = $${TMROOT:-$$HOME/.tendermint}
+define NEWLINE
+
+
+endef
 
 install: get_deps
 	go install github.com/tendermint/tendermint/cmd/tendermint
@@ -29,10 +33,11 @@ draw_deps:
 	goviz -i github.com/tendermint/tendermint/cmd/tendermint | dot -Tpng -o huge.png
 
 list_deps:
-	go list -f '{{join .Deps "\n"}}' github.com/tendermint/tendermint/... |  xargs go list -f '{{if not .Standard}}{{.ImportPath}}{{end}}'
+	go list -f '{{join .Deps "\n"}}' github.com/tendermint/tendermint/... |  sort | uniq | xargs go list -f '{{if not .Standard}}{{.ImportPath}}{{end}}'
 
 get_deps:
 	go get -d github.com/tendermint/tendermint/...
+	go list -f '{{join .TestImports "\n"}}' github.com/tendermint/tendermint/... | sort | uniq | xargs go get
 
 revision:
 	-echo `git rev-parse --verify HEAD` > $(TMROOT)/revision

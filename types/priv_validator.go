@@ -35,17 +35,46 @@ func voteToStep(vote *Vote) int8 {
 }
 
 type PrivValidator struct {
-	Address    []byte         `json:"address"`
-	PubKey     crypto.PubKey  `json:"pub_key"`
-	PrivKey    crypto.PrivKey `json:"priv_key"`
-	LastHeight int            `json:"last_height"`
-	LastRound  int            `json:"last_round"`
-	LastStep   int8           `json:"last_step"`
+	Address    []byte        `json:"address"`
+	PubKey     crypto.PubKey `json:"pub_key"`
+	LastHeight int           `json:"last_height"`
+	LastRound  int           `json:"last_round"`
+	LastStep   int8          `json:"last_step"`
+
+	// PrivKey should be empty if a Signer other than the default is being used.
+	PrivKey crypto.PrivKey `json:"priv_key"`
+	Signer
 
 	// For persistence.
 	// Overloaded for testing.
 	filePath string
 	mtx      sync.Mutex
+}
+
+// This is used to sign votes.
+// It is the caller's duty to verify the msg before calling Sign,
+// eg. to avoid double signing.
+// Currently, the only callers are SignVote and SignProposal
+type Signer interface {
+	Sign(msg []byte) crypto.Signature
+}
+
+// Implements Signer
+type DefaultSigner struct {
+	priv crypto.PrivKey
+}
+
+func NewDefaultSigner(priv crypto.PrivKey) *DefaultSigner {
+	return &DefaultSigner{priv: priv}
+}
+
+// Implements Signer
+func (ds *DefaultSigner) Sign(msg []byte) crypto.Signature {
+	return ds.priv.Sign(msg)
+}
+
+func (privVal *PrivValidator) SetSigner(s Signer) {
+	privVal.Signer = s
 }
 
 // Generates a new validator with private key.
@@ -63,6 +92,7 @@ func GenPrivValidator() *PrivValidator {
 		LastRound:  0,
 		LastStep:   stepNone,
 		filePath:   "",
+		Signer:     NewDefaultSigner(privKey),
 	}
 }
 
@@ -76,6 +106,7 @@ func LoadPrivValidator(filePath string) *PrivValidator {
 		Exit(Fmt("Error reading PrivValidator from %v: %v\n", filePath, err))
 	}
 	privVal.filePath = filePath
+	privVal.Signer = NewDefaultSigner(privVal.PrivKey)
 	return privVal
 }
 
@@ -145,12 +176,8 @@ func (privVal *PrivValidator) SignVote(chainID string, vote *Vote) error {
 	privVal.save()
 
 	// Sign
-	privVal.SignVoteUnsafe(chainID, vote)
+	vote.Signature = privVal.Sign(SignBytes(chainID, vote)).(crypto.SignatureEd25519)
 	return nil
-}
-
-func (privVal *PrivValidator) SignVoteUnsafe(chainID string, vote *Vote) {
-	vote.Signature = privVal.PrivKey.Sign(SignBytes(chainID, vote)).(crypto.SignatureEd25519)
 }
 
 func (privVal *PrivValidator) SignProposal(chainID string, proposal *Proposal) error {
@@ -167,7 +194,7 @@ func (privVal *PrivValidator) SignProposal(chainID string, proposal *Proposal) e
 		privVal.save()
 
 		// Sign
-		proposal.Signature = privVal.PrivKey.Sign(SignBytes(chainID, proposal)).(crypto.SignatureEd25519)
+		proposal.Signature = privVal.Sign(SignBytes(chainID, proposal)).(crypto.SignatureEd25519)
 		return nil
 	} else {
 		return errors.New(fmt.Sprintf("Attempt of duplicate signing of proposal: Height %v, Round %v", proposal.Height, proposal.Round))
