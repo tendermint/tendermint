@@ -16,12 +16,14 @@ import (
 	"github.com/tendermint/go-p2p"
 	"github.com/tendermint/go-rpc"
 	"github.com/tendermint/go-rpc/server"
+	"github.com/tendermint/go-rpc/types"
 	"github.com/tendermint/go-wire"
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/consensus"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/rpc/core"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tmsp/example/golang"
@@ -180,6 +182,14 @@ func (n *Node) StartRPC() (net.Listener, error) {
 	core.SetGenesisDoc(n.genesisDoc)
 
 	listenAddr := config.GetString("rpc_laddr")
+
+	// register the result objects with wire
+	// so consumers of tendermint rpc will not have
+	// conflicts with their own rpc
+	wire.RegisterInterface(
+		struct{ rpctypes.Result }{},
+		wire.ConcreteType{&ctypes.TendermintResult{}, 0x1},
+	)
 
 	mux := http.NewServeMux()
 	wm := rpcserver.NewWebsocketManager(core.Routes, n.evsw)

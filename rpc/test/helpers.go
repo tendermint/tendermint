@@ -137,7 +137,7 @@ func waitForEvent(t *testing.T, con *websocket.Conn, eventid string, dieOnTimeou
 					errCh <- err
 					break
 				}
-				event, ok := response.Result.(*ctypes.ResultEvent)
+				event, ok := response.Result.(*ctypes.TendermintResult).Result.(*ctypes.ResultEvent)
 				if ok && event.Event == eventid {
 					goodCh <- p
 					break
@@ -191,7 +191,7 @@ func unmarshalResponseNewBlock(b []byte) (*types.Block, error) {
 	if response.Error != "" {
 		return nil, fmt.Errorf(response.Error)
 	}
-	block := response.Result.(*ctypes.ResultEvent).Data.(types.EventDataNewBlock).Block
+	block := response.Result.(*ctypes.TendermintResult).Result.(*ctypes.ResultEvent).Data.(types.EventDataNewBlock).Block
 	return block, nil
 }
 

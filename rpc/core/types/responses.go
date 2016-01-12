@@ -4,7 +4,6 @@ import (
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-events"
 	"github.com/tendermint/go-p2p"
-	"github.com/tendermint/go-rpc/types"
 	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/types"
 )
@@ -92,9 +91,16 @@ const (
 	ResultTypeEvent              = byte(0x0C)
 )
 
+type TendermintResultInterface interface{}
+
+// NOTE: up to the application to register this as rpctypes.Result
+type TendermintResult struct {
+	Result TendermintResultInterface
+}
+
 // for wire.readReflect
 var _ = wire.RegisterInterface(
-	struct{ rpctypes.Result }{},
+	struct{ TendermintResultInterface }{},
 	wire.ConcreteType{&ResultGenesis{}, ResultTypeGenesis},
 	wire.ConcreteType{&ResultBlockchainInfo{}, ResultTypeBlockchainInfo},
 	wire.ConcreteType{&ResultGetBlock{}, ResultTypeGetBlock},

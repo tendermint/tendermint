@@ -29,7 +29,7 @@ func TestJSONStatus(t *testing.T) {
 }
 
 func testStatus(t *testing.T, result interface{}) {
-	status := result.(*ctypes.ResultStatus)
+	status := result.(*ctypes.TendermintResult).Result.(*ctypes.ResultStatus)
 	if status.NodeInfo.Network != chainID {
 		t.Fatal(fmt.Errorf("ChainID mismatch: got %s expected %s",
 			status.NodeInfo.Network, chainID))

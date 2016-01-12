@@ -11,7 +11,7 @@ func Subscribe(wsCtx rpctypes.WSRPCContext, event string) (*ctypes.ResultSubscri
 	wsCtx.GetEventSwitch().AddListenerForEvent(wsCtx.GetRemoteAddr(), event, func(msg events.EventData) {
 		// NOTE: EventSwitch callbacks must be nonblocking
 		// NOTE: RPCResponses of subscribed events have id suffix "#event"
-		wsCtx.TryWriteRPCResponse(rpctypes.NewRPCResponse(wsCtx.Request.ID+"#event", &ctypes.ResultEvent{event, msg}, ""))
+		wsCtx.TryWriteRPCResponse(rpctypes.NewRPCResponse(wsCtx.Request.ID+"#event", &ctypes.TendermintResult{&ctypes.ResultEvent{event, msg}}, ""))
 	})
 	return &ctypes.ResultSubscribe{}, nil
 }
@@ -21,7 +21,7 @@ func Unsubscribe(wsCtx rpctypes.WSRPCContext, event string) (*ctypes.ResultUnsub
 	wsCtx.GetEventSwitch().AddListenerForEvent(wsCtx.GetRemoteAddr(), event, func(msg events.EventData) {
 		// NOTE: EventSwitch callbacks must be nonblocking
 		// NOTE: RPCResponses of subscribed events have id suffix "#event"
-		wsCtx.TryWriteRPCResponse(rpctypes.NewRPCResponse(wsCtx.Request.ID+"#event", &ctypes.ResultEvent{event, msg}, ""))
+		wsCtx.TryWriteRPCResponse(rpctypes.NewRPCResponse(wsCtx.Request.ID+"#event", &ctypes.TendermintResult{&ctypes.ResultEvent{event, msg}}, ""))
 	})
 	return &ctypes.ResultUnsubscribe{}, nil
 }
