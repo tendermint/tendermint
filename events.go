@@ -12,6 +12,11 @@ type EventData interface {
 	AssertIsEventData()
 }
 
+type EventResult struct {
+	Event string    `json:"event"`
+	Data  EventData `json:"data"`
+}
+
 // reactors and other modules should export
 // this interface to become eventable
 type Eventable interface {
