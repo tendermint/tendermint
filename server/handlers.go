@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"reflect"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -41,23 +42,26 @@ type RPCFunc struct {
 }
 
 // wraps a function for quicker introspection
-func NewRPCFunc(f interface{}, args []string) *RPCFunc {
-	return &RPCFunc{
-		f:        reflect.ValueOf(f),
-		args:     funcArgTypes(f),
-		returns:  funcReturnTypes(f),
-		argNames: args,
-		ws:       false,
-	}
+// f is the function, args are comma separated argument names
+func NewRPCFunc(f interface{}, args string) *RPCFunc {
+	return newRPCFunc(f, args, false)
 }
 
-func NewWSRPCFunc(f interface{}, args []string) *RPCFunc {
+func NewWSRPCFunc(f interface{}, args string) *RPCFunc {
+	return newRPCFunc(f, args, true)
+}
+
+func newRPCFunc(f interface{}, args string, ws bool) *RPCFunc {
+	var argNames []string
+	if args != "" {
+		argNames = strings.Split(args, ",")
+	}
 	return &RPCFunc{
 		f:        reflect.ValueOf(f),
 		args:     funcArgTypes(f),
 		returns:  funcReturnTypes(f),
-		argNames: args,
-		ws:       true,
+		argNames: argNames,
+		ws:       ws,
 	}
 }
 

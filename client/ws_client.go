@@ -54,12 +54,10 @@ func (wsc *WSClient) dial() error {
 	// Set the ping/pong handlers
 	con.SetPingHandler(func(m string) error {
 		// NOTE: https://github.com/gorilla/websocket/issues/97
-		log.Debug("Client received ping, writing pong")
 		go con.WriteControl(websocket.PongMessage, []byte(m), time.Now().Add(time.Second*wsWriteTimeoutSeconds))
 		return nil
 	})
 	con.SetPongHandler(func(m string) error {
-		log.Debug("Client received pong")
 		// NOTE: https://github.com/gorilla/websocket/issues/97
 		return nil
 	})
@@ -74,7 +72,6 @@ func (wsc *WSClient) OnStop() {
 
 func (wsc *WSClient) receiveEventsRoutine() {
 	for {
-		log.Notice("Waiting for wsc message ...")
 		_, data, err := wsc.ReadMessage()
 		if err != nil {
 			log.Info("WSClient failed to read message", "error", err, "data", string(data))
