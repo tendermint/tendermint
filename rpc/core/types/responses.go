@@ -2,7 +2,6 @@ package core_types
 
 import (
 	"github.com/tendermint/go-crypto"
-	"github.com/tendermint/go-events"
 	"github.com/tendermint/go-p2p"
 	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/types"
@@ -67,12 +66,6 @@ type ResultSubscribe struct {
 type ResultUnsubscribe struct {
 }
 
-// TODO: something about this
-type ResultEvent struct {
-	Event string           `json:"event"`
-	Data  events.EventData `json:"data"`
-}
-
 //----------------------------------------
 // response & result types
 
@@ -88,7 +81,6 @@ const (
 	ResultTypeListUnconfirmedTxs = byte(0x09)
 	ResultTypeSubscribe          = byte(0x0A)
 	ResultTypeUnsubscribe        = byte(0x0B)
-	ResultTypeEvent              = byte(0x0C)
 )
 
 type TendermintResultInterface interface{}
@@ -112,5 +104,4 @@ var _ = wire.RegisterInterface(
 	wire.ConcreteType{&ResultListUnconfirmedTxs{}, ResultTypeListUnconfirmedTxs},
 	wire.ConcreteType{&ResultSubscribe{}, ResultTypeSubscribe},
 	wire.ConcreteType{&ResultUnsubscribe{}, ResultTypeUnsubscribe},
-	wire.ConcreteType{&ResultEvent{}, ResultTypeEvent},
 )

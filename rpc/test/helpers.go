@@ -11,11 +11,11 @@ import (
 	"github.com/tendermint/go-p2p"
 	"github.com/tendermint/go-wire"
 
+	"github.com/tendermint/go-events"
 	client "github.com/tendermint/go-rpc/client"
 	"github.com/tendermint/go-rpc/types"
 	_ "github.com/tendermint/tendermint/config/tendermint_test"
 	nm "github.com/tendermint/tendermint/node"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -137,7 +137,7 @@ func waitForEvent(t *testing.T, con *websocket.Conn, eventid string, dieOnTimeou
 					errCh <- err
 					break
 				}
-				event, ok := response.Result.(*ctypes.TendermintResult).Result.(*ctypes.ResultEvent)
+				event, ok := response.Result.(*events.EventResult)
 				if ok && event.Event == eventid {
 					goodCh <- p
 					break
@@ -191,7 +191,7 @@ func unmarshalResponseNewBlock(b []byte) (*types.Block, error) {
 	if response.Error != "" {
 		return nil, fmt.Errorf(response.Error)
 	}
-	block := response.Result.(*ctypes.TendermintResult).Result.(*ctypes.ResultEvent).Data.(types.EventDataNewBlock).Block
+	block := response.Result.(*events.EventResult).Data.(types.EventDataNewBlock).Block
 	return block, nil
 }
 

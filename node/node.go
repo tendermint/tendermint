@@ -188,7 +188,8 @@ func (n *Node) StartRPC() (net.Listener, error) {
 	// conflicts with their own rpc
 	wire.RegisterInterface(
 		struct{ rpctypes.Result }{},
-		wire.ConcreteType{&ctypes.TendermintResult{}, 0x1},
+		wire.ConcreteType{&events.EventResult{}, 0x1},
+		wire.ConcreteType{&ctypes.TendermintResult{}, 0x2},
 	)
 
 	mux := http.NewServeMux()
