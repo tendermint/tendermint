@@ -4,12 +4,12 @@ package types
 
 import "fmt"
 
-const _RetCode_name = "RetCodeOKRetCodeInternalErrorRetCodeUnauthorizedRetCodeInsufficientFeesRetCodeUnknownRequestRetCodeEncodingError"
+const _RetCode_name = "RetCodeOKRetCodeInternalErrorRetCodeUnauthorizedRetCodeInsufficientFeesRetCodeUnknownRequestRetCodeEncodingErrorRetCodeInvalidNonce"
 
-var _RetCode_index = [...]uint8{0, 9, 29, 48, 71, 92, 112}
+var _RetCode_index = [...]uint8{0, 9, 29, 48, 71, 92, 112, 131}
 
 func (i RetCode) String() string {
-	if i < 0 || i+1 >= RetCode(len(_RetCode_index)) {
+	if i < 0 || i >= RetCode(len(_RetCode_index)-1) {
 		return fmt.Sprintf("RetCode(%d)", i)
 	}
 	return _RetCode_name[_RetCode_index[i]:_RetCode_index[i+1]]

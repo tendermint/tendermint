@@ -31,7 +31,7 @@ class CounterApplication():
             txValue = decode_big_endian(
                 BytesBuffer(txByteArray), len(txBytes))
             if txValue != self.txCount:
-                return None, 1
+                return None, 6
         self.txCount += 1
         return None, 0
 
@@ -43,7 +43,7 @@ class CounterApplication():
             txValue = decode_big_endian(
                 BytesBuffer(txByteArray), len(txBytes))
             if txValue < self.txCount:
-                return 1
+                return 6
         return 0
 
     def get_hash(self):

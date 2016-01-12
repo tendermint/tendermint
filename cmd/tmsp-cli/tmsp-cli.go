@@ -129,7 +129,7 @@ func cmdBatch(app *cli.App, c *cli.Context) {
 
 func cmdConsole(app *cli.App, c *cli.Context) {
 	for {
-		fmt.Printf("> ")
+		fmt.Printf("\n> ")
 		bufReader := bufio.NewReader(os.Stdin)
 		line, more, err := bufReader.ReadLine()
 		if more {
@@ -154,7 +154,7 @@ func cmdEcho(c *cli.Context) {
 	if err != nil {
 		Exit(err.Error())
 	}
-	fmt.Println(res)
+	fmt.Println("->", res)
 }
 
 // Get some info from the application
@@ -163,7 +163,7 @@ func cmdInfo(c *cli.Context) {
 	if err != nil {
 		Exit(err.Error())
 	}
-	fmt.Println(res)
+	fmt.Println("->", res)
 }
 
 // Set an option on the application
@@ -176,7 +176,7 @@ func cmdSetOption(c *cli.Context) {
 	if err != nil {
 		Exit(err.Error())
 	}
-	fmt.Printf("%s=%s\n", args[0], args[1])
+	fmt.Println("->", Fmt("%s=%s", args[0], args[1]))
 }
 
 // Append a new tx to application
@@ -199,7 +199,7 @@ func cmdAppendTx(c *cli.Context) {
 	if err != nil {
 		Exit(err.Error())
 	}
-	fmt.Println("Response:", res)
+	fmt.Println("->", res)
 }
 
 // Validate a tx
@@ -222,7 +222,7 @@ func cmdCheckTx(c *cli.Context) {
 	if err != nil {
 		Exit(err.Error())
 	}
-	fmt.Println("Response:", res)
+	fmt.Println("->", res)
 }
 
 // Get application Merkle root hash

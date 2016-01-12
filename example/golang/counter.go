@@ -38,7 +38,7 @@ func (app *CounterApplication) AppendTx(tx []byte) ([]types.Event, types.RetCode
 		copy(tx8, tx)
 		txValue := binary.LittleEndian.Uint64(tx8)
 		if txValue != uint64(app.txCount) {
-			return nil, types.RetCodeInternalError
+			return nil, types.RetCodeBadNonce
 		}
 	}
 	app.txCount += 1
@@ -51,7 +51,7 @@ func (app *CounterApplication) CheckTx(tx []byte) types.RetCode {
 		copy(tx8, tx)
 		txValue := binary.LittleEndian.Uint64(tx8)
 		if txValue < uint64(app.txCount) {
-			return types.RetCodeInternalError
+			return types.RetCodeBadNonce
 		}
 	}
 	return 0

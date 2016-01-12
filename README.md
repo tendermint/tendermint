@@ -69,6 +69,10 @@ For more information on TMSP, motivations, and tutorials, please visit [our blog
 
 ## Changelog
 
+### Jan 12th, 2016
+
+* Added "RetCodeBadNonce = 0x06" return code
+
 ### Jan 8th, 2016
 
 Tendermint/TMSP now comes to consensus on the order first before AppendTx.
@@ -79,4 +83,3 @@ In the future, we can include a bitarray or merkle structure in the block so any
 To prevent spam, applications can implement their “CheckTx” messages to deduct some balance, so at least spam txs will cost something.  This isn’t any more work that what we already needed to do, so it’s not any worse.
 You can see the new changes in the tendermint/tendermint “order_first” branch, and tendermint/tmsp “order_first” branch.  If you your TMSP apps to me I can help with the transition.
 Please take a look at how the examples in TMSP changed, e.g. how AppContext was removed, CheckTx was added, how the TMSP msg bytes changed, and how commit/rollback messages were removed.
-

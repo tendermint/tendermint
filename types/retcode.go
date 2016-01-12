@@ -14,6 +14,7 @@ const (
 	RetCodeInsufficientFees RetCode = 3
 	RetCodeUnknownRequest   RetCode = 4
 	RetCodeEncodingError    RetCode = 5
+	RetCodeBadNonce         RetCode = 6
 )
 
 func (r RetCode) Error() error {

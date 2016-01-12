@@ -32,7 +32,7 @@ CounterApp.prototype.append_tx = function(txBytes){
 		r = new msg.buffer(txByteArray)
 		txValue = wire.decode_big_endian(r, txBytes.length)
 		if (txValue != this.txCount){
-			return {"ret_code":1}
+			return {"ret_code":6}
 		}
 	}
 	this.txCount += 1;
@@ -48,7 +48,7 @@ CounterApp.prototype.check_tx = function(txBytes){
 		r = new msg.buffer(txByteArray)
 		txValue = wire.decode_big_endian(r, txBytes.length)
 		if (txValue < this.txCount){
-			return {"ret_code":1}
+			return {"ret_code":6}
 		}
 	}
 	return {"ret_code":0}
