@@ -1,2 +1,2 @@
 # go-events
-PubSub in Go
+PubSub in Go with event caching.
