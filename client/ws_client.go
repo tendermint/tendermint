@@ -1,0 +1,119 @@
+package rpcclient
+
+import (
+	"net/http"
+	"time"
+
+	"github.com/gorilla/websocket"
+	. "github.com/tendermint/go-common"
+	"github.com/tendermint/go-rpc/types"
+	"github.com/tendermint/go-wire"
+)
+
+const (
+	wsResultsChannelCapacity = 10
+	wsWriteTimeoutSeconds    = 10
+)
+
+type WSClient struct {
+	QuitService
+	Address string
+	*websocket.Conn
+	ResultsCh chan rpctypes.Result // closes upon WSClient.Stop()
+}
+
+// create a new connection
+func NewWSClient(addr string) *WSClient {
+	wsClient := &WSClient{
+		Address:   addr,
+		Conn:      nil,
+		ResultsCh: make(chan rpctypes.Result, wsResultsChannelCapacity),
+	}
+	wsClient.QuitService = *NewQuitService(log, "WSClient", wsClient)
+	return wsClient
+}
+
+func (wsc *WSClient) OnStart() error {
+	wsc.QuitService.OnStart()
+	err := wsc.dial()
+	if err != nil {
+		return err
+	}
+	go wsc.receiveEventsRoutine()
+	return nil
+}
+
+func (wsc *WSClient) dial() error {
+	// Dial
+	dialer := websocket.DefaultDialer
+	rHeader := http.Header{}
+	con, _, err := dialer.Dial(wsc.Address, rHeader)
+	if err != nil {
+		return err
+	}
+	// Set the ping/pong handlers
+	con.SetPingHandler(func(m string) error {
+		// NOTE: https://github.com/gorilla/websocket/issues/97
+		log.Debug("Client received ping, writing pong")
+		go con.WriteControl(websocket.PongMessage, []byte(m), time.Now().Add(time.Second*wsWriteTimeoutSeconds))
+		return nil
+	})
+	con.SetPongHandler(func(m string) error {
+		log.Debug("Client received pong")
+		// NOTE: https://github.com/gorilla/websocket/issues/97
+		return nil
+	})
+	wsc.Conn = con
+	return nil
+}
+
+func (wsc *WSClient) OnStop() {
+	wsc.QuitService.OnStop()
+	// ResultsCh is closed in receiveEventsRoutine.
+}
+
+func (wsc *WSClient) receiveEventsRoutine() {
+	for {
+		log.Notice("Waiting for wsc message ...")
+		_, data, err := wsc.ReadMessage()
+		if err != nil {
+			log.Info("WSClient failed to read message", "error", err, "data", string(data))
+			wsc.Stop()
+			break
+		} else {
+			var response rpctypes.RPCResponse
+			wire.ReadJSON(&response, data, &err)
+			if err != nil {
+				log.Info("WSClient failed to parse message", "error", err, "data", string(data))
+				wsc.Stop()
+				break
+			}
+			wsc.ResultsCh <- response.Result
+		}
+	}
+
+	// Cleanup
+	close(wsc.ResultsCh)
+}
+
+// subscribe to an event
+func (wsc *WSClient) Subscribe(eventid string) error {
+	err := wsc.WriteJSON(rpctypes.RPCRequest{
+		JSONRPC: "2.0",
+		ID:      "",
+		Method:  "subscribe",
+		Params:  []interface{}{eventid},
+	})
+	return err
+}
+
+// unsubscribe from an event
+func (wsc *WSClient) Unsubscribe(eventid string) error {
+	err := wsc.WriteJSON(rpctypes.RPCRequest{
+		JSONRPC: "2.0",
+		ID:      "",
+		Method:  "unsubscribe",
+		Params:  []interface{}{eventid},
+	})
+	return err
+}
