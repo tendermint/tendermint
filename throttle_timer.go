@@ -47,6 +47,7 @@ func (t *ThrottleTimer) Set() {
 }
 
 func (t *ThrottleTimer) Unset() {
+	atomic.StoreUint32(&t.isSet, 0)
 	t.timer.Stop()
 }
 
