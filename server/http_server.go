@@ -3,6 +3,7 @@ package rpcserver
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -12,7 +13,7 @@ import (
 	"github.com/tendermint/go-alert"
 	. "github.com/tendermint/go-common"
 	. "github.com/tendermint/go-rpc/types"
-	"github.com/tendermint/go-wire"
+	//"github.com/tendermint/go-wire"
 )
 
 func StartHTTPServer(listenAddr string, handler http.Handler) (net.Listener, error) {
@@ -32,7 +33,11 @@ func StartHTTPServer(listenAddr string, handler http.Handler) (net.Listener, err
 }
 
 func WriteRPCResponseHTTP(w http.ResponseWriter, res RPCResponse) {
-	jsonBytes := wire.JSONBytesPretty(res)
+	// jsonBytes := wire.JSONBytesPretty(res)
+	jsonBytes, err := json.Marshal(res)
+	if err != nil {
+		panic(err)
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 	w.Write(jsonBytes)

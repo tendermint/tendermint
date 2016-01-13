@@ -1,7 +1,10 @@
 package rpctypes
 
 import (
+	"encoding/json"
+
 	"github.com/tendermint/go-events"
+	"github.com/tendermint/go-wire"
 )
 
 type RPCRequest struct {
@@ -39,17 +42,18 @@ type Result interface {
 //----------------------------------------
 
 type RPCResponse struct {
-	JSONRPC string `json:"jsonrpc"`
-	ID      string `json:"id"`
-	Result  Result `json:"result"`
-	Error   string `json:"error"`
+	JSONRPC string           `json:"jsonrpc"`
+	ID      string           `json:"id"`
+	Result  *json.RawMessage `json:"result"`
+	Error   string           `json:"error"`
 }
 
-func NewRPCResponse(id string, res Result, err string) RPCResponse {
+func NewRPCResponse(id string, res interface{}, err string) RPCResponse {
+	raw := json.RawMessage(wire.JSONBytes(res))
 	return RPCResponse{
 		JSONRPC: "2.0",
 		ID:      id,
-		Result:  res,
+		Result:  &raw,
 		Error:   err,
 	}
 }

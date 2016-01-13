@@ -1,13 +1,13 @@
 package rpcclient
 
 import (
+	"encoding/json"
 	"net/http"
 	"time"
 
 	"github.com/gorilla/websocket"
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-rpc/types"
-	"github.com/tendermint/go-wire"
 )
 
 const (
@@ -79,7 +79,7 @@ func (wsc *WSClient) receiveEventsRoutine() {
 			break
 		} else {
 			var response rpctypes.RPCResponse
-			wire.ReadJSON(&response, data, &err)
+			err := json.Unmarshal(data, &response)
 			if err != nil {
 				log.Info("WSClient failed to parse message", "error", err, "data", string(data))
 				wsc.Stop()

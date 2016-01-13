@@ -19,6 +19,8 @@ import (
 	"github.com/tendermint/go-wire"
 )
 
+// Adds a route for each function in the funcMap, as well as general jsonrpc and websocket handlers for all functions.
+// "result" is the interface on which the result objects are registered, and is popualted with every RPCResponse
 func RegisterRPCFuncs(mux *http.ServeMux, funcMap map[string]*RPCFunc) {
 	// HTTP endpoints
 	for funcName, rpcFunc := range funcMap {
@@ -433,7 +435,6 @@ func (wsc *wsConnection) readRoutine() {
 // receives on a write channel and writes out on the socket
 func (wsc *wsConnection) writeRoutine() {
 	defer wsc.baseConn.Close()
-	var n, err = int(0), error(nil)
 	for {
 		select {
 		case <-wsc.Quit:
@@ -446,14 +447,12 @@ func (wsc *wsConnection) writeRoutine() {
 				return
 			}
 		case msg := <-wsc.writeChan:
-			buf := new(bytes.Buffer)
-			wire.WriteJSON(msg, buf, &n, &err)
+			jsonBytes, err := json.Marshal(msg)
 			if err != nil {
 				log.Error("Failed to marshal RPCResponse to JSON", "error", err)
 			} else {
 				wsc.baseConn.SetWriteDeadline(time.Now().Add(time.Second * wsWriteTimeoutSeconds))
-				bufBytes := buf.Bytes()
-				if err = wsc.baseConn.WriteMessage(websocket.TextMessage, bufBytes); err != nil {
+				if err = wsc.baseConn.WriteMessage(websocket.TextMessage, jsonBytes); err != nil {
 					log.Warn("Failed to write response on websocket", "error", err)
 					wsc.Stop()
 					return
@@ -507,13 +506,18 @@ func (wm *WebsocketManager) WebsocketHandler(w http.ResponseWriter, r *http.Requ
 // rpc.websocket
 //-----------------------------------------------------------------------------
 
-// returns is result struct and error. If error is not nil, return it
+// NOTE: assume returns is result struct and error. If error is not nil, return it
 func unreflectResult(returns []reflect.Value) (interface{}, error) {
 	errV := returns[1]
 	if errV.Interface() != nil {
 		return nil, fmt.Errorf("%v", errV.Interface())
 	}
-	return returns[0].Interface(), nil
+	rv := returns[0]
+	// the result is a registered interface,
+	// we need a pointer to it so we can marshal with type byte
+	rvp := reflect.New(rv.Type())
+	rvp.Elem().Set(rv)
+	return rvp.Interface(), nil
 }
 
 // writes a list of available rpc endpoints as an html page
