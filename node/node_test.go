@@ -6,9 +6,14 @@ import (
 
 	"github.com/tendermint/go-p2p"
 	_ "github.com/tendermint/tendermint/config/tendermint_test"
+	"github.com/tendermint/tendermint/types"
 )
 
 func TestNodeStartStop(t *testing.T) {
+
+	// Get PrivValidator
+	privValidatorFile := config.GetString("priv_validator_file")
+	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
 
 	// Create & start node
 	n := NewNode(privValidator)

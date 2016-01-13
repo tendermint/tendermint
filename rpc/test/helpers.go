@@ -56,7 +56,9 @@ func init() {
 // create a new node and sleep forever
 func newNode(ready chan struct{}) {
 	// Create & start node
-	node = nm.NewNode()
+	privValidatorFile := config.GetString("priv_validator_file")
+	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
+	node = nm.NewNode(privValidator)
 	l := p2p.NewDefaultListener("tcp", config.GetString("node_laddr"), true)
 	node.AddListener(l)
 	node.Start()

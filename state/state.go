@@ -8,7 +8,6 @@ import (
 
 	. "github.com/tendermint/go-common"
 	dbm "github.com/tendermint/go-db"
-	"github.com/tendermint/go-events"
 	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/types"
 )

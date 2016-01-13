@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	. "github.com/tendermint/go-common"
@@ -332,21 +333,21 @@ func getState() *sm.State {
 
 // Get a connection to the proxyAppConn addr.
 // Check the current hash, and panic if it doesn't match.
-func getProxyApp(addr string, hash []byte) (proxyAppCtx proxy.AppContext) {
+func getProxyApp(addr string, hash []byte) (proxyAppConn proxy.AppConn) {
 	// use local app (for testing)
 	if addr == "local" {
 		app := example.NewCounterApplication(true)
-		appCtx := app.Open()
-		proxyAppCtx = proxy.NewLocalAppContext(appCtx)
+		mtx := new(sync.Mutex)
+		proxyAppConn = proxy.NewLocalAppConn(mtx, app)
 	} else {
 		proxyConn, err := Connect(addr)
 		if err != nil {
 			Exit(Fmt("Failed to connect to proxy for mempool: %v", err))
 		}
-		remoteApp := proxy.NewRemoteAppContext(proxyConn, 1024)
+		remoteApp := proxy.NewRemoteAppConn(proxyConn, 1024)
 		remoteApp.Start()
 
-		proxyAppCtx = remoteApp
+		proxyAppConn = remoteApp
 	}
 
 	// Check the hash
