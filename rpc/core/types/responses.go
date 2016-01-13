@@ -3,6 +3,7 @@ package core_types
 import (
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-p2p"
+	"github.com/tendermint/go-rpc/types"
 	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/types"
 )
@@ -66,6 +67,11 @@ type ResultSubscribe struct {
 type ResultUnsubscribe struct {
 }
 
+type ResultEvent struct {
+	Name string            `json:"name"`
+	Data types.TMEventData `json:"data"`
+}
+
 //----------------------------------------
 // response & result types
 
@@ -81,18 +87,16 @@ const (
 	ResultTypeListUnconfirmedTxs = byte(0x09)
 	ResultTypeSubscribe          = byte(0x0A)
 	ResultTypeUnsubscribe        = byte(0x0B)
+	ResultTypeEvent              = byte(0x0C)
 )
 
-type TendermintResultInterface interface{}
-
-// NOTE: up to the application to register this as rpctypes.Result
-type TendermintResult struct {
-	Result TendermintResultInterface
+type TMResult interface {
+	rpctypes.Result
 }
 
 // for wire.readReflect
 var _ = wire.RegisterInterface(
-	struct{ TendermintResultInterface }{},
+	struct{ TMResult }{},
 	wire.ConcreteType{&ResultGenesis{}, ResultTypeGenesis},
 	wire.ConcreteType{&ResultBlockchainInfo{}, ResultTypeBlockchainInfo},
 	wire.ConcreteType{&ResultGetBlock{}, ResultTypeGetBlock},
@@ -104,4 +108,5 @@ var _ = wire.RegisterInterface(
 	wire.ConcreteType{&ResultListUnconfirmedTxs{}, ResultTypeListUnconfirmedTxs},
 	wire.ConcreteType{&ResultSubscribe{}, ResultTypeSubscribe},
 	wire.ConcreteType{&ResultUnsubscribe{}, ResultTypeUnsubscribe},
+	wire.ConcreteType{&ResultEvent{}, ResultTypeEvent},
 )

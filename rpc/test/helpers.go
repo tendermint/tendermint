@@ -1,6 +1,7 @@
 package rpctest
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
@@ -11,11 +12,11 @@ import (
 	"github.com/tendermint/go-p2p"
 	"github.com/tendermint/go-wire"
 
-	"github.com/tendermint/go-events"
 	client "github.com/tendermint/go-rpc/client"
 	"github.com/tendermint/go-rpc/types"
 	_ "github.com/tendermint/tendermint/config/tendermint_test"
 	nm "github.com/tendermint/tendermint/node"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -133,14 +134,24 @@ func waitForEvent(t *testing.T, con *websocket.Conn, eventid string, dieOnTimeou
 				// if the event id isnt what we're waiting on
 				// ignore it
 				var response rpctypes.RPCResponse
-				var err error
-				wire.ReadJSON(&response, p, &err)
+				if err := json.Unmarshal(p, &response); err != nil {
+					errCh <- err
+					break
+				}
+				if response.Error != "" {
+					errCh <- fmt.Errorf(response.Error)
+					break
+				}
+
+				result := new(ctypes.TMResult)
+				fmt.Println("RESULT:", string(*response.Result))
+				wire.ReadJSONPtr(result, *response.Result, &err)
 				if err != nil {
 					errCh <- err
 					break
 				}
-				event, ok := response.Result.(*events.EventResult)
-				if ok && event.Event == eventid {
+				event, ok := (*result).(*ctypes.ResultEvent)
+				if ok && event.Name == eventid {
 					goodCh <- p
 					break
 				}
@@ -186,14 +197,18 @@ func unmarshalResponseNewBlock(b []byte) (*types.Block, error) {
 	// unmarshall and assert somethings
 	var response rpctypes.RPCResponse
 	var err error
-	wire.ReadJSON(&response, b, &err)
-	if err != nil {
+	if err := json.Unmarshal(b, &response); err != nil {
 		return nil, err
 	}
 	if response.Error != "" {
 		return nil, fmt.Errorf(response.Error)
 	}
-	block := response.Result.(*events.EventResult).Data.(types.EventDataNewBlock).Block
+	var result ctypes.TMResult
+	wire.ReadJSONPtr(&result, *response.Result, &err)
+	if err != nil {
+		return nil, err
+	}
+	block := result.(*ctypes.ResultEvent).Data.(types.EventDataNewBlock).Block
 	return block, nil
 }
 

@@ -1,7 +1,7 @@
 package types
 
 import (
-	// for registering EventData
+	// for registering TMEventData as events.EventData
 	"github.com/tendermint/go-events"
 	"github.com/tendermint/go-wire"
 )
@@ -30,6 +30,12 @@ func EventStringApp() string              { return "App" }
 
 //----------------------------------------
 
+// implements events.EventData
+type TMEventData interface {
+	events.EventData
+	//	AssertIsTMEventData()
+}
+
 const (
 	EventDataTypeNewBlock = byte(0x01)
 	EventDataTypeFork     = byte(0x02)
@@ -41,7 +47,7 @@ const (
 )
 
 var _ = wire.RegisterInterface(
-	struct{ events.EventData }{},
+	struct{ TMEventData }{},
 	wire.ConcreteType{EventDataNewBlock{}, EventDataTypeNewBlock},
 	// wire.ConcreteType{EventDataFork{}, EventDataTypeFork },
 	wire.ConcreteType{EventDataTx{}, EventDataTypeTx},
@@ -92,8 +98,8 @@ type EventDataVote struct {
 	Vote    *Vote
 }
 
-func (_ EventDataNewBlock) AssertIsEventData()   {}
-func (_ EventDataTx) AssertIsEventData()         {}
-func (_ EventDataApp) AssertIsEventData()        {}
-func (_ EventDataRoundState) AssertIsEventData() {}
-func (_ EventDataVote) AssertIsEventData()       {}
+func (_ EventDataNewBlock) AssertIsTMEventData()   {}
+func (_ EventDataTx) AssertIsTMEventData()         {}
+func (_ EventDataApp) AssertIsTMEventData()        {}
+func (_ EventDataRoundState) AssertIsTMEventData() {}
+func (_ EventDataVote) AssertIsTMEventData()       {}

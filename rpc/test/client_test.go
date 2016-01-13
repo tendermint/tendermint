@@ -13,23 +13,26 @@ import (
 // Test the HTTP client
 
 func TestURIStatus(t *testing.T) {
-	result, err := clientURI.Call("status", map[string]interface{}{})
+	tmResult := new(ctypes.TMResult)
+	_, err := clientURI.Call("status", map[string]interface{}{}, tmResult)
 	if err != nil {
 		t.Fatal(err)
 	}
-	testStatus(t, result)
+	testStatus(t, tmResult)
 }
 
 func TestJSONStatus(t *testing.T) {
-	result, err := clientJSON.Call("status", []interface{}{})
+	tmResult := new(ctypes.TMResult)
+	_, err := clientJSON.Call("status", []interface{}{}, tmResult)
 	if err != nil {
 		t.Fatal(err)
 	}
-	testStatus(t, result)
+	testStatus(t, tmResult)
 }
 
-func testStatus(t *testing.T, result interface{}) {
-	status := result.(*ctypes.TendermintResult).Result.(*ctypes.ResultStatus)
+func testStatus(t *testing.T, statusI interface{}) {
+	tmRes := statusI.(*ctypes.TMResult)
+	status := (*tmRes).(*ctypes.ResultStatus)
 	if status.NodeInfo.Network != chainID {
 		t.Fatal(fmt.Errorf("ChainID mismatch: got %s expected %s",
 			status.NodeInfo.Network, chainID))

@@ -22,90 +22,90 @@ var Routes = map[string]*rpc.RPCFunc{
 	// subscribe/unsubscribe are reserved for websocket events.
 }
 
-func SubscribeResult(wsCtx rpctypes.WSRPCContext, event string) (*ctypes.TendermintResult, error) {
+func SubscribeResult(wsCtx rpctypes.WSRPCContext, event string) (ctypes.TMResult, error) {
 	if r, err := Subscribe(wsCtx, event); err != nil {
 		return nil, err
 	} else {
-		return &ctypes.TendermintResult{r}, nil
+		return r, nil
 	}
 }
 
-func UnsubscribeResult(wsCtx rpctypes.WSRPCContext, event string) (*ctypes.TendermintResult, error) {
+func UnsubscribeResult(wsCtx rpctypes.WSRPCContext, event string) (ctypes.TMResult, error) {
 	if r, err := Unsubscribe(wsCtx, event); err != nil {
 		return nil, err
 	} else {
-		return &ctypes.TendermintResult{r}, nil
+		return r, nil
 	}
 }
 
-func StatusResult() (*ctypes.TendermintResult, error) {
+func StatusResult() (ctypes.TMResult, error) {
 	if r, err := Status(); err != nil {
 		return nil, err
 	} else {
-		return &ctypes.TendermintResult{r}, nil
+		return r, nil
 	}
 }
 
-func NetInfoResult() (*ctypes.TendermintResult, error) {
+func NetInfoResult() (ctypes.TMResult, error) {
 	if r, err := NetInfo(); err != nil {
 		return nil, err
 	} else {
-		return &ctypes.TendermintResult{r}, nil
+		return r, nil
 	}
 }
 
-func BlockchainInfoResult(min, max int) (*ctypes.TendermintResult, error) {
+func BlockchainInfoResult(min, max int) (ctypes.TMResult, error) {
 	if r, err := BlockchainInfo(min, max); err != nil {
 		return nil, err
 	} else {
-		return &ctypes.TendermintResult{r}, nil
+		return r, nil
 	}
 }
 
-func GenesisResult() (*ctypes.TendermintResult, error) {
+func GenesisResult() (ctypes.TMResult, error) {
 	if r, err := Genesis(); err != nil {
 		return nil, err
 	} else {
-		return &ctypes.TendermintResult{r}, nil
+		return r, nil
 	}
 }
 
-func GetBlockResult(height int) (*ctypes.TendermintResult, error) {
+func GetBlockResult(height int) (ctypes.TMResult, error) {
 	if r, err := GetBlock(height); err != nil {
 		return nil, err
 	} else {
-		return &ctypes.TendermintResult{r}, nil
+		return r, nil
 	}
 }
 
-func ListValidatorsResult() (*ctypes.TendermintResult, error) {
+func ListValidatorsResult() (ctypes.TMResult, error) {
 	if r, err := ListValidators(); err != nil {
 		return nil, err
 	} else {
-		return &ctypes.TendermintResult{r}, nil
+		return r, nil
 	}
 }
 
-func DumpConsensusStateResult() (*ctypes.TendermintResult, error) {
+func DumpConsensusStateResult() (ctypes.TMResult, error) {
 	if r, err := DumpConsensusState(); err != nil {
 		return nil, err
 	} else {
-		return &ctypes.TendermintResult{r}, nil
+		return r, nil
 	}
 }
 
-func ListUnconfirmedTxsResult() (*ctypes.TendermintResult, error) {
+func ListUnconfirmedTxsResult() (ctypes.TMResult, error) {
 	if r, err := ListUnconfirmedTxs(); err != nil {
 		return nil, err
 	} else {
-		return &ctypes.TendermintResult{r}, nil
+		return r, nil
 	}
 }
 
-func BroadcastTxResult(tx []byte) (*ctypes.TendermintResult, error) {
+func BroadcastTxResult(tx []byte) (ctypes.TMResult, error) {
 	if r, err := BroadcastTx(tx); err != nil {
 		return nil, err
 	} else {
-		return &ctypes.TendermintResult{r}, nil
+		return r, nil
 	}
 }
