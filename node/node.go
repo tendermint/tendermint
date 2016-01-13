@@ -41,14 +41,6 @@ type Node struct {
 	privKey          crypto.PrivKeyEd25519
 }
 
-func NewNodeDefaultPrivVal() *Node {
-	// Get PrivValidator
-	privValidatorFile := config.GetString("priv_validator_file")
-	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
-
-	return NewNode(privValidator)
-}
-
 func NewNode(privValidator *types.PrivValidator) *Node {
 	// Get BlockStore
 	blockStoreDB := dbm.GetDB("blockstore")
@@ -280,8 +272,12 @@ func RunNode() {
 		}
 	}
 
+	// Get PrivValidator
+	privValidatorFile := config.GetString("priv_validator_file")
+	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
+
 	// Create & start node
-	n := NewNodeDefaultPrivVal()
+	n := NewNode(privValidator)
 	l := p2p.NewDefaultListener("tcp", config.GetString("node_laddr"), config.GetBool("skip_upnp"))
 	n.AddListener(l)
 	err := n.Start()

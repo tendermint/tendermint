@@ -7,6 +7,7 @@ import (
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-p2p"
 	_ "github.com/tendermint/tendermint/config/tendermint_test"
+	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tmsp/example/golang"
 	"github.com/tendermint/tmsp/server"
 )
@@ -23,8 +24,12 @@ func TestNodeStartStop(t *testing.T) {
 	// wait for the server
 	time.Sleep(time.Second * 2)
 
+	// Get PrivValidator
+	privValidatorFile := config.GetString("priv_validator_file")
+	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
+
 	// Create & start node
-	n := NewNodeDefaultPrivVal()
+	n := NewNode(privValidator)
 	l := p2p.NewDefaultListener("tcp", config.GetString("node_laddr"), config.GetBool("skip_upnp"))
 	n.AddListener(l)
 	n.Start()
