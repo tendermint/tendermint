@@ -43,7 +43,7 @@ type PrivValidator struct {
 
 	// PrivKey should be empty if a Signer other than the default is being used.
 	PrivKey crypto.PrivKey `json:"priv_key"`
-	Signer
+	Signer  `json:"-"`
 
 	// For persistence.
 	// Overloaded for testing.
