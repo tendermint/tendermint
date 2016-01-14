@@ -9,12 +9,7 @@ import (
 // Generic event data can be typed and registered with tendermint/go-wire
 // via concrete implementation of this interface
 type EventData interface {
-	AssertIsEventData()
-}
-
-type EventResult struct {
-	Event string    `json:"event"`
-	Data  EventData `json:"data"`
+	//AssertIsEventData()
 }
 
 // reactors and other modules should export
