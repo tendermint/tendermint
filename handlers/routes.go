@@ -22,56 +22,31 @@ func Routes(network *TendermintNetwork) map[string]*rpc.RPCFunc {
 }
 
 func StatusResult(network *TendermintNetwork) interface{} {
-	return func() (*NetMonResult, error) {
-		r, err := network.Status()
-		if err != nil {
-			return nil, err
-		} else {
-			return &NetMonResult{r}, nil
-		}
+	return func() (NetMonResult, error) {
+		return network.Status()
 	}
 }
 
 func GetChainResult(network *TendermintNetwork) interface{} {
-	return func(chain string) (*NetMonResult, error) {
-		r, err := network.GetChain(chain)
-		if err != nil {
-			return nil, err
-		} else {
-			return &NetMonResult{r}, nil
-		}
+	return func(chain string) (NetMonResult, error) {
+		return network.GetChain(chain)
 	}
 }
 
 func GetValidatorSetResult(network *TendermintNetwork) interface{} {
-	return func(valSetID string) (*NetMonResult, error) {
-		r, err := network.GetValidatorSet(valSetID)
-		if err != nil {
-			return nil, err
-		} else {
-			return &NetMonResult{r}, nil
-		}
+	return func(valSetID string) (NetMonResult, error) {
+		return network.GetValidatorSet(valSetID)
 	}
 }
 
 func GetValidatorResult(network *TendermintNetwork) interface{} {
-	return func(valSetID, valID string) (*NetMonResult, error) {
-		r, err := network.GetValidator(valSetID, valID)
-		if err != nil {
-			return nil, err
-		} else {
-			return &NetMonResult{r}, nil
-		}
+	return func(valSetID, valID string) (NetMonResult, error) {
+		return network.GetValidator(valSetID, valID)
 	}
 }
 
 func GetMeterResult(network *TendermintNetwork) interface{} {
-	return func(chainID, valID, eventID string) (*NetMonResult, error) {
-		r, err := network.GetMeter(chainID, valID, eventID)
-		if err != nil {
-			return nil, err
-		} else {
-			return &NetMonResult{r}, nil
-		}
+	return func(chainID, valID, eventID string) (NetMonResult, error) {
+		return network.GetMeter(chainID, valID, eventID)
 	}
 }

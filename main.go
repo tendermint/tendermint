@@ -20,10 +20,7 @@ import (
 	"github.com/tendermint/go-events"
 	pcm "github.com/tendermint/go-process"
 	"github.com/tendermint/go-rpc/server"
-	"github.com/tendermint/go-rpc/types"
-	"github.com/tendermint/go-wire"
 	tmcfg "github.com/tendermint/tendermint/config/tendermint"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	tmtypes "github.com/tendermint/tendermint/types"
 )
 
@@ -85,7 +82,7 @@ func cmdMonitor(c *cli.Context) {
 		if err := v.NewEventMeter(); err != nil {
 			Exit(err.Error())
 		}
-		if err := v.EventMeter().Subscribe(tmtypes.EventStringNewBlock(), func(metric *eventmeter.EventMetric, data interface{}) {
+		if err := v.EventMeter().Subscribe(tmtypes.EventStringNewBlock(), func(metric *eventmeter.EventMetric, data events.EventData) {
 			// TODO: update chain status with block and metric
 			// chainStatus.NewBlock(data.(tmtypes.EventDataNewBlock).Block)
 		}); err != nil {
@@ -100,13 +97,6 @@ func cmdMonitor(c *cli.Context) {
 	// the routes are functions on the network object
 	routes := handlers.Routes(network)
 
-	// register the result objects with wire
-	wire.RegisterInterface(
-		struct{ rpctypes.Result }{},
-		wire.ConcreteType{&events.EventResult{}, 0x1},
-		wire.ConcreteType{&ctypes.TendermintResult{}, 0x2},
-		wire.ConcreteType{&handlers.NetMonResult{}, 0x3},
-	)
 	// serve http and ws
 	mux := http.NewServeMux()
 	wm := rpcserver.NewWebsocketManager(routes, nil) // TODO: evsw

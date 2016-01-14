@@ -11,15 +11,12 @@ import (
 	"github.com/tendermint/netmon/types"
 )
 
-type NetMonResultInterface interface{}
-
-type NetMonResult struct {
-	Result NetMonResultInterface
+type NetMonResult interface {
 }
 
 // for wire.readReflect
 var _ = wire.RegisterInterface(
-	struct{ NetMonResultInterface }{},
+	struct{ NetMonResult }{},
 	wire.ConcreteType{&types.ChainAndValidatorIDs{}, 0x01},
 	wire.ConcreteType{&types.ChainStatus{}, 0x02},
 	wire.ConcreteType{&types.Validator{}, 0x03},
@@ -81,6 +78,7 @@ func (tn *TendermintNetwork) GetChain(chainID string) (*types.ChainStatus, error
 	if !ok {
 		return nil, fmt.Errorf("Unknown chain %s", chainID)
 	}
+	fmt.Println("CHAIN:", chain)
 	return chain, nil
 }
 

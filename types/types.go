@@ -1,11 +1,16 @@
 package types
 
 import (
+	"encoding/json"
 	"fmt"
+	"reflect"
 	"sync"
 
-	"github.com/tendermint/go-event-meter"
 	"github.com/tendermint/go-crypto"
+	"github.com/tendermint/go-event-meter"
+	"github.com/tendermint/go-events"
+	"github.com/tendermint/go-wire"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 )
 
 //---------------------------------------------
@@ -59,24 +64,39 @@ type BlockchainStatus struct {
 	mtx sync.Mutex
 
 	Height        int     `json:"height"`
-	MeanBlockTime float64 `json:"mean_block_time"`
-	TxThroughput  float64 `json:"tx_throughput"`
+	MeanBlockTime float64 `json:"mean_block_time" wire:"unsafe"`
+	TxThroughput  float64 `json:"tx_throughput" wire:"unsafe"`
 
 	BlockchainSize int64 `json:"blockchain_size"` // how might we get StateSize ?
 }
 
 // validator on a chain
 type ChainValidator struct {
-	*Validator
-	Addr  string `json:"addr"` // do we want multiple addrs?
-	Index int    `json:"index"`
+	*Validator `json:"validator"`
+	Addr       string `json:"addr"` // do we want multiple addrs?
+	Index      int    `json:"index"`
 
 	em      *eventmeter.EventMeter // holds a ws connection to the val
-	Latency float64                `json:"latency,omitempty"`
+	Latency float64                `json:"latency,omitempty" wire:"unsafe"`
+}
+
+func unmarshalEvent(b json.RawMessage) (string, events.EventData, error) {
+	var err error
+	result := new(ctypes.TMResult)
+	wire.ReadJSONPtr(result, b, &err)
+	if err != nil {
+		return "", nil, err
+	}
+	event, ok := (*result).(*ctypes.ResultEvent)
+	if !ok {
+		return "", nil, fmt.Errorf("Result is not type *ctypes.ResultEvent. Got %v", reflect.TypeOf(*result))
+	}
+	return event.Name, event.Data, nil
+
 }
 
 func (cv *ChainValidator) NewEventMeter() error {
-	em := eventmeter.NewEventMeter(fmt.Sprintf("ws://%s/websocket", cv.Addr))
+	em := eventmeter.NewEventMeter(fmt.Sprintf("ws://%s/websocket", cv.Addr), unmarshalEvent)
 	if err := em.Start(); err != nil {
 		return err
 	}
