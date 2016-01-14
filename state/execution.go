@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	. "github.com/tendermint/go-common"
-	"github.com/tendermint/tendermint/events"
+	"github.com/tendermint/go-events"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 	tmsp "github.com/tendermint/tmsp/types"
@@ -90,7 +90,7 @@ func (s *State) execBlockOnProxyApp(evsw *events.EventSwitch, proxyAppConn proxy
 		log.Warn("Error computing proxyAppConn hash", "error", err)
 		return err
 	}
-	log.Info("ExecBlock got %v valid txs and %v invalid txs", validTxs, invalidTxs)
+	log.Info(Fmt("ExecBlock got %v valid txs and %v invalid txs", validTxs, invalidTxs))
 
 	// Set the state's new AppHash
 	s.AppHash = hash

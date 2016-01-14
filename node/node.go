@@ -7,23 +7,25 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-crypto"
 	dbm "github.com/tendermint/go-db"
+	"github.com/tendermint/go-events"
 	"github.com/tendermint/go-p2p"
+	"github.com/tendermint/go-rpc"
+	"github.com/tendermint/go-rpc/server"
 	"github.com/tendermint/go-wire"
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/consensus"
-	"github.com/tendermint/tendermint/events"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
-	"github.com/tendermint/tendermint/rpc"
 	"github.com/tendermint/tendermint/rpc/core"
-	"github.com/tendermint/tendermint/rpc/server"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tmsp/example/golang"
 )
 
 import _ "net/http/pprof"
@@ -320,14 +322,22 @@ func getState() *sm.State {
 
 // Get a connection to the proxyAppConn addr.
 // Check the current hash, and panic if it doesn't match.
-func getProxyApp(addr string, hash []byte) proxy.AppConn {
-	proxyConn, err := Connect(addr)
-	if err != nil {
-		Exit(Fmt("Failed to connect to proxy for mempool: %v", err))
-	}
-	proxyAppConn := proxy.NewRemoteAppConn(proxyConn, 1024)
+func getProxyApp(addr string, hash []byte) (proxyAppConn proxy.AppConn) {
+	// use local app (for testing)
+	if addr == "local" {
+		app := example.NewCounterApplication(true)
+		mtx := new(sync.Mutex)
+		proxyAppConn = proxy.NewLocalAppConn(mtx, app)
+	} else {
+		proxyConn, err := Connect(addr)
+		if err != nil {
+			Exit(Fmt("Failed to connect to proxy for mempool: %v", err))
+		}
+		remoteApp := proxy.NewRemoteAppConn(proxyConn, 1024)
+		remoteApp.Start()
 
-	proxyAppConn.Start()
+		proxyAppConn = remoteApp
+	}
 
 	// Check the hash
 	currentHash, err := proxyAppConn.GetHashSync()

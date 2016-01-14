@@ -3,8 +3,8 @@ package core_types
 import (
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-p2p"
+	"github.com/tendermint/go-rpc/types"
 	"github.com/tendermint/go-wire"
-	"github.com/tendermint/tendermint/rpc/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -68,8 +68,8 @@ type ResultUnsubscribe struct {
 }
 
 type ResultEvent struct {
-	Event string          `json:"event"`
-	Data  types.EventData `json:"data"`
+	Name string            `json:"name"`
+	Data types.TMEventData `json:"data"`
 }
 
 //----------------------------------------
@@ -90,9 +90,13 @@ const (
 	ResultTypeEvent              = byte(0x0C)
 )
 
+type TMResult interface {
+	rpctypes.Result
+}
+
 // for wire.readReflect
 var _ = wire.RegisterInterface(
-	struct{ rpctypes.Result }{},
+	struct{ TMResult }{},
 	wire.ConcreteType{&ResultGenesis{}, ResultTypeGenesis},
 	wire.ConcreteType{&ResultBlockchainInfo{}, ResultTypeBlockchainInfo},
 	wire.ConcreteType{&ResultGetBlock{}, ResultTypeGetBlock},

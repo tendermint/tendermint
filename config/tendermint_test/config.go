@@ -30,6 +30,7 @@ func initTMRoot(rootDir string) {
 
 	configFilePath := path.Join(rootDir, "config.toml")
 	genesisFilePath := path.Join(rootDir, "genesis.json")
+	privFilePath := path.Join(rootDir, "priv_validator.json")
 
 	// Write default config file if missing.
 	if !FileExists(configFilePath) {
@@ -39,6 +40,9 @@ func initTMRoot(rootDir string) {
 	}
 	if !FileExists(genesisFilePath) {
 		MustWriteFile(genesisFilePath, []byte(defaultGenesis), 0644)
+	}
+	if !FileExists(privFilePath) {
+		MustWriteFile(privFilePath, []byte(defaultPrivValidator), 0644)
 	}
 }
 
@@ -58,7 +62,7 @@ func GetConfig(rootDir string) cfg.Config {
 	}
 	mapConfig.SetDefault("chain_id", "tendermint_test")
 	mapConfig.SetDefault("genesis_file", rootDir+"/genesis.json")
-	mapConfig.SetDefault("proxy_app", "tcp://127.0.0.1:36658")
+	mapConfig.SetDefault("proxy_app", "local")
 	mapConfig.SetDefault("moniker", "anonymous")
 	mapConfig.SetDefault("node_laddr", "0.0.0.0:36656")
 	mapConfig.SetDefault("fast_sync", false)
@@ -78,7 +82,7 @@ func GetConfig(rootDir string) cfg.Config {
 var defaultConfigTmpl = `# This is a TOML config file.
 # For more information, see https://github.com/toml-lang/toml
 
-proxy_app = "tcp://127.0.0.1:36658"
+proxy_app = "local"
 moniker = "__MONIKER__"
 node_laddr = "0.0.0.0:36656"
 seeds = ""
@@ -93,50 +97,33 @@ func defaultConfig(moniker string) (defaultConfig string) {
 	return
 }
 
-// priv keys generated deterministically eg rpc/tests/helpers.go
 var defaultGenesis = `{
-  "chain_id" : "tendermint_test",
-  "accounts": [
-    {
-	    "address": "E9B5D87313356465FAE33C406CE2C2979DE60BCB",
-	    "amount": 200000000
-    },
-    {
-	    "address": "DFE4AFFA4CEE17CD01CB9E061D77C3ECED29BD88",
-	    "amount": 200000000
-    },
-    {
-	    "address": "F60D30722E7B497FA532FB3207C3FB29C31B1992",
-	    "amount": 200000000
-    },
-    {
-	    "address": "336CB40A5EB92E496E19B74FDFF2BA017C877FD6",
-	    "amount": 200000000
-    },
-    {
-	    "address": "D218F0F439BF0384F6F5EF8D0F8B398D941BD1DC",
-	    "amount": 200000000
-    }
-  ],
+  "genesis_time": "0001-01-01T00:00:00.000Z",
+  "chain_id": "tendermint_test",
   "validators": [
     {
-      "pub_key": [1, "583779C3BFA3F6C7E23C7D830A9C3D023A216B55079AD38BFED1207B94A19548"],
-      "amount": 1000000,
-      "unbond_to": [
-        {
-          "address": "E9B5D87313356465FAE33C406CE2C2979DE60BCB",
-          "amount":  100000
-        }
-      ]
+      "pub_key": [
+        1,
+        "3B3069C422E19688B45CBFAE7BB009FC0FA1B1EA86593519318B7214853803C8"
+      ],
+      "amount": 10,
+      "name": ""
     }
-  ]
+  ],
+  "app_hash": ""
 }`
 
 var defaultPrivValidator = `{
-  "address": "1D7A91CB32F758A02EBB9BE1FB6F8DEE56F90D42",
-	"pub_key": [1,"06FBAC4E285285D1D91FCBC7E91C780ADA11516F67462340B3980CE2B94940E8"],
-	"priv_key": [1,"C453604BD6480D5538B4C6FD2E3E314B5BCE518D75ADE4DA3DA85AB8ADFD819606FBAC4E285285D1D91FCBC7E91C780ADA11516F67462340B3980CE2B94940E8"],
-	"last_height":0,
-	"last_round":0,
-	"last_step":0
+  "address": "D028C9981F7A87F3093672BF0D5B0E2A1B3ED456",
+  "pub_key": [
+    1,
+    "3B3069C422E19688B45CBFAE7BB009FC0FA1B1EA86593519318B7214853803C8"
+  ],
+  "priv_key": [
+    1,
+    "27F82582AEFAE7AB151CFB01C48BB6C1A0DA78F9BDDA979A9F70A84D074EB07D3B3069C422E19688B45CBFAE7BB009FC0FA1B1EA86593519318B7214853803C8"
+  ],
+  "last_height": 0,
+  "last_round": 0,
+  "last_step": 0
 }`
