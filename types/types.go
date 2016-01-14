@@ -49,11 +49,15 @@ type RPCResponse struct {
 }
 
 func NewRPCResponse(id string, res interface{}, err string) RPCResponse {
-	raw := json.RawMessage(wire.JSONBytes(res))
+	var raw *json.RawMessage
+	if res != nil {
+		rawMsg := json.RawMessage(wire.JSONBytes(res))
+		raw = &rawMsg
+	}
 	return RPCResponse{
 		JSONRPC: "2.0",
 		ID:      id,
-		Result:  &raw,
+		Result:  raw,
 		Error:   err,
 	}
 }
