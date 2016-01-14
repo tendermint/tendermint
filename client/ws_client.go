@@ -2,6 +2,7 @@ package rpcclient
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 
 const (
 	wsResultsChannelCapacity = 10
+	wsErrorsChannelCapacity  = 1
 	wsWriteTimeoutSeconds    = 10
 )
 
@@ -19,7 +21,8 @@ type WSClient struct {
 	QuitService
 	Address string
 	*websocket.Conn
-	ResultsCh chan rpctypes.Result // closes upon WSClient.Stop()
+	ResultsCh chan json.RawMessage // closes upon WSClient.Stop()
+	ErrorsCh  chan error           // closes upon WSClient.Stop()
 }
 
 // create a new connection
@@ -27,7 +30,8 @@ func NewWSClient(addr string) *WSClient {
 	wsClient := &WSClient{
 		Address:   addr,
 		Conn:      nil,
-		ResultsCh: make(chan rpctypes.Result, wsResultsChannelCapacity),
+		ResultsCh: make(chan json.RawMessage, wsResultsChannelCapacity),
+		ErrorsCh:  make(chan error, wsErrorsChannelCapacity),
 	}
 	wsClient.QuitService = *NewQuitService(log, "WSClient", wsClient)
 	return wsClient
@@ -67,7 +71,7 @@ func (wsc *WSClient) dial() error {
 
 func (wsc *WSClient) OnStop() {
 	wsc.QuitService.OnStop()
-	// ResultsCh is closed in receiveEventsRoutine.
+	// ResultsCh/ErrorsCh is closed in receiveEventsRoutine.
 }
 
 func (wsc *WSClient) receiveEventsRoutine() {
@@ -82,15 +86,20 @@ func (wsc *WSClient) receiveEventsRoutine() {
 			err := json.Unmarshal(data, &response)
 			if err != nil {
 				log.Info("WSClient failed to parse message", "error", err, "data", string(data))
-				wsc.Stop()
-				break
+				wsc.ErrorsCh <- err
+				continue
 			}
-			wsc.ResultsCh <- response.Result
+			if response.Error != "" {
+				wsc.ErrorsCh <- fmt.Errorf(err.Error())
+				continue
+			}
+			wsc.ResultsCh <- *response.Result
 		}
 	}
 
 	// Cleanup
 	close(wsc.ResultsCh)
+	close(wsc.ErrorsCh)
 }
 
 // subscribe to an event
