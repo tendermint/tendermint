@@ -73,6 +73,14 @@ func (mem *Mempool) TxsFrontWait() *clist.CElement {
 	return mem.txs.FrontWait()
 }
 
+func (mem *Mempool) ResetProxyApp(proxyApp proxy.AppConn, wg *sync.WaitGroup, done chan struct{}) {
+	mem.proxyMtx.Lock()
+	defer mem.proxyMtx.Unlock()
+	mem.proxyAppConn = proxyApp
+	wg.Done()
+	<-done
+}
+
 // Try a new transaction in the mempool.
 // Potentially blocking if we're blocking on Update() or Reap().
 func (mem *Mempool) CheckTx(tx types.Tx) (err error) {

@@ -18,6 +18,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+// TODO configurable!
 var (
 	timeoutPropose        = 3000 * time.Millisecond // Maximum duration of RoundStepPropose
 	timeoutPrevote0       = 1000 * time.Millisecond // After any +2/3 prevotes received, wait this long for stragglers.
@@ -173,7 +174,9 @@ func (ti *timeoutInfo) String() string {
 type ConsensusState struct {
 	QuitService
 
-	proxyAppConn  proxy.AppConn
+	proxyAppConn     proxy.AppConn
+	proxyAppUpdateCh chan proxy.ResetProxy
+
 	blockStore    *bc.BlockStore
 	mempool       *mempl.Mempool
 	privValidator *types.PrivValidator
@@ -196,6 +199,7 @@ type ConsensusState struct {
 func NewConsensusState(state *sm.State, proxyAppConn proxy.AppConn, blockStore *bc.BlockStore, mempool *mempl.Mempool) *ConsensusState {
 	cs := &ConsensusState{
 		proxyAppConn:     proxyAppConn,
+		proxyAppUpdateCh: make(chan proxy.ResetProxy, 1),
 		blockStore:       blockStore,
 		mempool:          mempool,
 		peerMsgQueue:     make(chan msgInfo, msgQueueSize),
@@ -214,6 +218,10 @@ func NewConsensusState(state *sm.State, proxyAppConn proxy.AppConn, blockStore *
 
 //----------------------------------------
 // Public interface
+
+func (cs *ConsensusState) ResetProxyApp(proxyApp proxy.AppConn, wg *sync.WaitGroup, done chan struct{}) {
+	cs.proxyAppUpdateCh <- proxy.ResetProxy{proxyApp, wg, done}
+}
 
 // implements events.Eventable
 func (cs *ConsensusState) SetEventSwitch(evsw *events.EventSwitch) {
@@ -753,7 +761,6 @@ func (cs *ConsensusState) decideProposal(height, round int) {
 	} else {
 		log.Warn("enterPropose: Error signing proposal", "height", height, "round", round, "error", err)
 	}
-
 }
 
 // Returns true if the proposal block is complete &&
@@ -1145,8 +1152,15 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	// + run txs on the proxyAppConn
 	err := stateCopy.ExecBlock(cs.evsw, cs.proxyAppConn, block, blockParts.Header())
 	if err != nil {
-		// TODO: handle this gracefully.
-		PanicQ(Fmt("Exec failed for application"))
+		// when proxyAppConn is reset, we will try again
+		log.Error("Exec failed for application", "error", err)
+		log.Notice("Waiting for proxyApp reset to retry commit")
+		resetProxy := <-cs.proxyAppUpdateCh
+		cs.proxyAppConn = resetProxy.ProxyApp
+		resetProxy.Wg.Done()
+		<-resetProxy.Done
+		cs.finalizeCommit(height)
+		return
 	}
 
 	// Save to blockStore.
@@ -1225,8 +1239,6 @@ func (cs *ConsensusState) setProposal(proposal *types.Proposal) error {
 // NOTE: block is not necessarily valid.
 // This can trigger us to go into enterPrevote asynchronously (before we timeout of propose) or to attempt to commit
 func (cs *ConsensusState) addProposalBlockPart(height int, part *types.Part) (added bool, err error) {
-	//cs.mtx.Lock()
-	//defer cs.mtx.Unlock()
 
 	// Blocks might be reused, so round mismatch is OK
 	if cs.Height != height {

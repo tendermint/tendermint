@@ -5,12 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sync"
 	"time"
 
 	. "github.com/tendermint/go-common"
+	"github.com/tendermint/go-events"
 	"github.com/tendermint/go-p2p"
 	"github.com/tendermint/go-wire"
-	"github.com/tendermint/go-events"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -42,15 +43,17 @@ type consensusReactor interface {
 type BlockchainReactor struct {
 	p2p.BaseReactor
 
-	sw           *p2p.Switch
-	state        *sm.State
-	proxyAppConn proxy.AppConn // same as consensus.proxyAppConn
-	store        *BlockStore
-	pool         *BlockPool
-	sync         bool
-	requestsCh   chan BlockRequest
-	timeoutsCh   chan string
-	lastBlock    *types.Block
+	sw         *p2p.Switch
+	state      *sm.State
+	store      *BlockStore
+	pool       *BlockPool
+	sync       bool
+	requestsCh chan BlockRequest
+	timeoutsCh chan string
+	lastBlock  *types.Block
+
+	proxyAppConn     proxy.AppConn         // same as consensus.proxyAppConn
+	updateProxyAppCh chan proxy.ResetProxy // update the proxyApp through the main routine
 
 	evsw *events.EventSwitch
 }
@@ -70,13 +73,14 @@ func NewBlockchainReactor(state *sm.State, proxyAppConn proxy.AppConn, store *Bl
 		timeoutsCh,
 	)
 	bcR := &BlockchainReactor{
-		state:        state,
-		proxyAppConn: proxyAppConn,
-		store:        store,
-		pool:         pool,
-		sync:         sync,
-		requestsCh:   requestsCh,
-		timeoutsCh:   timeoutsCh,
+		state:            state,
+		store:            store,
+		pool:             pool,
+		sync:             sync,
+		requestsCh:       requestsCh,
+		timeoutsCh:       timeoutsCh,
+		proxyAppConn:     proxyAppConn,
+		updateProxyAppCh: make(chan proxy.ResetProxy, 1),
 	}
 	bcR.BaseReactor = *p2p.NewBaseReactor(log, "BlockchainReactor", bcR)
 	return bcR
@@ -174,6 +178,10 @@ func (bcR *BlockchainReactor) poolRoutine() {
 FOR_LOOP:
 	for {
 		select {
+		case resetProxy := <-bcR.updateProxyAppCh:
+			bcR.proxyAppConn = resetProxy.ProxyApp
+			resetProxy.Wg.Done()
+			<-resetProxy.Done
 		case request := <-bcR.requestsCh: // chan BlockRequest
 			peer := bcR.Switch.Peers().Get(request.PeerID)
 			if peer == nil {
@@ -267,6 +275,16 @@ func (bcR *BlockchainReactor) BroadcastStatusRequest() error {
 // implements events.Eventable
 func (bcR *BlockchainReactor) SetEventSwitch(evsw *events.EventSwitch) {
 	bcR.evsw = evsw
+}
+
+func (bcR *BlockchainReactor) ResetProxyApp(proxyApp proxy.AppConn, wg *sync.WaitGroup, done chan struct{}) {
+	if bcR.sync {
+		bcR.updateProxyAppCh <- proxy.ResetProxy{proxyApp, wg, done}
+	} else {
+		bcR.proxyAppConn = proxyApp
+		wg.Done()
+		<-done
+	}
 }
 
 //-----------------------------------------------------------------------------
