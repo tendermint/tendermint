@@ -81,15 +81,7 @@ type EventDataRoundState struct {
 	Step   string `json:"step"`
 
 	// private, not exposed to websockets
-	rs interface{}
-}
-
-func (edrs *EventDataRoundState) RoundState() interface{} {
-	return edrs.rs
-}
-
-func (edrs *EventDataRoundState) SetRoundState(rs interface{}) {
-	edrs.rs = rs
+	RoundState interface{} `json:"-"`
 }
 
 type EventDataVote struct {

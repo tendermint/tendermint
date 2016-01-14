@@ -99,11 +99,11 @@ type RoundState struct {
 
 func (rs *RoundState) RoundStateEvent() *types.EventDataRoundState {
 	edrs := &types.EventDataRoundState{
-		Height: rs.Height,
-		Round:  rs.Round,
-		Step:   rs.Step.String(),
+		Height:     rs.Height,
+		Round:      rs.Round,
+		Step:       rs.Step.String(),
+		RoundState: rs,
 	}
-	edrs.SetRoundState(rs)
 	return edrs
 }
 
