@@ -82,21 +82,21 @@ var wsTyp = "JSONRPC"
 
 // make a simple connection to the server
 func TestWSConnect(t *testing.T) {
-	con := newWSCon(t)
-	con.Close()
+	wsc := newWSClient(t)
+	wsc.Stop()
 }
 
 // receive a new block message
 func TestWSNewBlock(t *testing.T) {
-	con := newWSCon(t)
+	wsc := newWSClient(t)
 	eid := types.EventStringNewBlock()
-	subscribe(t, con, eid)
+	subscribe(t, wsc, eid)
 	defer func() {
-		unsubscribe(t, con, eid)
-		con.Close()
+		unsubscribe(t, wsc, eid)
+		wsc.Stop()
 	}()
-	waitForEvent(t, con, eid, true, func() {}, func(eid string, b []byte) error {
-		fmt.Println("Check:", string(b))
+	waitForEvent(t, wsc, eid, true, func() {}, func(eid string, b interface{}) error {
+		fmt.Println("Check:", b)
 		return nil
 	})
 }
@@ -106,15 +106,31 @@ func TestWSBlockchainGrowth(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")
 	}
-	con := newWSCon(t)
+	wsc := newWSClient(t)
 	eid := types.EventStringNewBlock()
-	subscribe(t, con, eid)
+	subscribe(t, wsc, eid)
 	defer func() {
-		unsubscribe(t, con, eid)
-		con.Close()
+		unsubscribe(t, wsc, eid)
+		wsc.Stop()
 	}()
+
 	// listen for NewBlock, ensure height increases by 1
-	unmarshalValidateBlockchain(t, con, eid)
+
+	var initBlockN int
+	for i := 0; i < 3; i++ {
+		waitForEvent(t, wsc, eid, true, func() {}, func(eid string, eventData interface{}) error {
+			block := eventData.(types.EventDataNewBlock).Block
+			if i == 0 {
+				initBlockN = block.Header.Height
+			} else {
+				if block.Header.Height != initBlockN+i {
+					return fmt.Errorf("Expected block %d, got block %d", initBlockN+i, block.Header.Height)
+				}
+			}
+
+			return nil
+		})
+	}
 }
 
 /* TODO: this with dummy app..
