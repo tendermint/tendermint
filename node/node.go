@@ -323,11 +323,11 @@ func newConsensusState() *consensus.ConsensusState {
 	stateDB := dbm.GetDB("state")
 	state := sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
 
-	// Create two proxyAppCtx connections,
+	// Create two proxyAppConn connections,
 	// one for the consensus and one for the mempool.
 	proxyAddr := config.GetString("proxy_app")
-	proxyAppCtxMempool := getProxyApp(proxyAddr, state.LastAppHash)
-	proxyAppCtxConsensus := getProxyApp(proxyAddr, state.LastAppHash)
+	proxyAppConnMempool := getProxyApp(proxyAddr, state.AppHash)
+	proxyAppConnConsensus := getProxyApp(proxyAddr, state.AppHash)
 
 	// add the chainid to the global config
 	config.Set("chain_id", state.ChainID)
@@ -339,9 +339,9 @@ func newConsensusState() *consensus.ConsensusState {
 		Exit(Fmt("Failed to start event switch: %v", err))
 	}
 
-	mempool := mempl.NewMempool(proxyAppCtxMempool)
+	mempool := mempl.NewMempool(proxyAppConnMempool)
 
-	consensusState := consensus.NewConsensusState(state.Copy(), proxyAppCtxConsensus, blockStore, mempool)
+	consensusState := consensus.NewConsensusState(state.Copy(), proxyAppConnConsensus, blockStore, mempool)
 	consensusState.SetEventSwitch(eventSwitch)
 	return consensusState
 }

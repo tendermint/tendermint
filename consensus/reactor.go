@@ -239,7 +239,7 @@ func (conR *ConsensusReactor) registerEventCallbacks() {
 		conR.broadcastNewRoundStep(rs)
 	})
 
-	conR.evsw.AddListenerForEvent("conR", types.EventStringVote(), func(data types.EventData) {
+	conR.evsw.AddListenerForEvent("conR", types.EventStringVote(), func(data events.EventData) {
 		edv := data.(types.EventDataVote)
 		conR.broadcastHasVoteMessage(edv.Vote, edv.Index)
 	})

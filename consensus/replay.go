@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"bufio"
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -85,7 +84,7 @@ func (cs *ConsensusState) catchupReplay(height int) error {
 		}
 		m, ok := msg.Msg.(*types.EventDataRoundState)
 		if ok && m.Step == RoundStepNewHeight.String() {
-			r, err := f.Seek(0, 1)
+			f.Seek(0, 1)
 			// TODO: ensure the height matches
 			return true
 		}
@@ -203,7 +202,7 @@ func (pb *playback) replayReset(count int) error {
 
 	pb.cs.Stop()
 
-	newCs := NewConsensusState(pb.genesisState.Copy(), pb.cs.proxyAppCtx, pb.cs.blockStore, pb.cs.mempool)
+	newCs := NewConsensusState(pb.genesisState.Copy(), pb.cs.proxyAppConn, pb.cs.blockStore, pb.cs.mempool)
 	newCs.SetEventSwitch(pb.cs.evsw)
 
 	// ensure all new step events are regenerated as expected

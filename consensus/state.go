@@ -1430,41 +1430,6 @@ func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header types.Part
 	}
 }
 
-// Save Block, save the +2/3 Commits we've seen
-func (cs *ConsensusState) saveBlock(block *types.Block, blockParts *types.PartSet, commits *types.VoteSet) {
-
-	// The proposal must be valid.
-	if err := cs.stageBlock(block, blockParts); err != nil {
-		PanicSanity(Fmt("saveBlock() an invalid block: %v", err))
-	}
-
-	// Save to blockStore.
-	if cs.blockStore.Height() < block.Height {
-		seenValidation := commits.MakeValidation()
-		cs.blockStore.SaveBlock(block, blockParts, seenValidation)
-	}
-
-	// Commit to proxyAppCtx
-	err := cs.stagedState.Commit(cs.proxyAppCtx)
-	if err != nil {
-		// TODO: handle this gracefully.
-		PanicQ(Fmt("Commit failed for applicaiton"))
-	}
-
-	// Save the state.
-	cs.stagedState.Save()
-
-	// Update mempool.
-	cs.mempool.Update(block)
-
-	// Fire off event
-	if cs.evsw != nil && cs.evc != nil {
-		cs.evsw.FireEvent(types.EventStringNewBlock(), types.EventDataNewBlock{block})
-		go cs.evc.Flush()
-	}
-
-}
-
 //---------------------------------------------------------
 
 func CompareHRS(h1, r1 int, s1 RoundStepType, h2, r2 int, s2 RoundStepType) int {

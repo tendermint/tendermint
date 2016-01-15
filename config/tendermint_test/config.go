@@ -41,9 +41,8 @@ func initTMRoot(rootDir string) {
 	if !FileExists(genesisFilePath) {
 		MustWriteFile(genesisFilePath, []byte(defaultGenesis), 0644)
 	}
-	if !FileExists(privFilePath) {
-		MustWriteFile(privFilePath, []byte(defaultPrivValidator), 0644)
-	}
+	// we always overwrite the priv val
+	MustWriteFile(privFilePath, []byte(defaultPrivValidator), 0644)
 }
 
 func GetConfig(rootDir string) cfg.Config {
