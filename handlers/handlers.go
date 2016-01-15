@@ -18,7 +18,7 @@ type NetMonResult interface {
 var _ = wire.RegisterInterface(
 	struct{ NetMonResult }{},
 	wire.ConcreteType{&types.ChainAndValidatorIDs{}, 0x01},
-	wire.ConcreteType{&types.ChainStatus{}, 0x02},
+	wire.ConcreteType{&types.ChainState{}, 0x02},
 	wire.ConcreteType{&types.Validator{}, 0x03},
 	wire.ConcreteType{&eventmeter.EventMetric{}, 0x04},
 )
@@ -28,20 +28,33 @@ var _ = wire.RegisterInterface(
 
 type TendermintNetwork struct {
 	mtx     sync.Mutex
-	Chains  map[string]*types.ChainStatus  `json:"blockchains"`
+	Chains  map[string]*types.ChainState   `json:"blockchains"`
 	ValSets map[string]*types.ValidatorSet `json:"validator_sets"`
 }
 
 // TODO: populate validator sets
-func NewTendermintNetwork(chains ...*types.ChainStatus) *TendermintNetwork {
+func NewTendermintNetwork(chains ...*types.ChainState) *TendermintNetwork {
 	network := &TendermintNetwork{
-		Chains:  make(map[string]*types.ChainStatus),
+		Chains:  make(map[string]*types.ChainState),
 		ValSets: make(map[string]*types.ValidatorSet),
 	}
 	for _, chain := range chains {
 		network.Chains[chain.Config.ID] = chain
 	}
 	return network
+}
+
+//------------
+// Public Methods
+
+func (tn *TendermintNetwork) RegisterChain(chain *types.ChainState) {
+	tn.mtx.Lock()
+	defer tn.mtx.Unlock()
+	tn.Chains[chain.Config.ID] = chain
+}
+
+func (tn *TendermintNetwork) Stop() {
+	// TODO: for each chain, stop each validator
 }
 
 //------------
@@ -71,7 +84,7 @@ func (tn *TendermintNetwork) Status() (*types.ChainAndValidatorIDs, error) {
 
 }
 
-func (tn *TendermintNetwork) GetChain(chainID string) (*types.ChainStatus, error) {
+func (tn *TendermintNetwork) GetChain(chainID string) (*types.ChainState, error) {
 	tn.mtx.Lock()
 	defer tn.mtx.Unlock()
 	chain, ok := tn.Chains[chainID]

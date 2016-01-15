@@ -3,13 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
-
-	"github.com/tendermint/go-event-meter"
 
 	"github.com/tendermint/netmon/handlers"
 	"github.com/tendermint/netmon/types"
@@ -17,11 +14,9 @@ import (
 	"github.com/codegangsta/cli"
 	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
-	"github.com/tendermint/go-events"
 	pcm "github.com/tendermint/go-process"
 	"github.com/tendermint/go-rpc/server"
 	tmcfg "github.com/tendermint/tendermint/config/tendermint"
-	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 func init() {
@@ -61,38 +56,16 @@ func cmdMonitor(c *cli.Context) {
 	if len(args) != 1 {
 		Exit("monitor expectes 1 arg")
 	}
-	configFile := args[0]
+	chainConfigFile := args[0]
 
-	b, err := ioutil.ReadFile(configFile)
+	chainState, err := types.LoadChainFromFile(chainConfigFile)
 	if err != nil {
 		Exit(err.Error())
 	}
 
-	// for now we start with one blockchain;
-	// eventually more can be uploaded or created through endpoints
-	chainConfig := new(types.BlockchainConfig)
-	if err := json.Unmarshal(b, chainConfig); err != nil {
-		Exit(err.Error())
-	}
-
-	chainStatus := &types.ChainStatus{Config: chainConfig}
-
-	// start the event meter and listen for new blocks on each validator
-	for _, v := range chainConfig.Validators {
-		if err := v.NewEventMeter(); err != nil {
-			Exit(err.Error())
-		}
-		if err := v.EventMeter().Subscribe(tmtypes.EventStringNewBlock(), func(metric *eventmeter.EventMetric, data events.EventData) {
-			// TODO: update chain status with block and metric
-			// chainStatus.NewBlock(data.(tmtypes.EventDataNewBlock).Block)
-		}); err != nil {
-			Exit(err.Error())
-		}
-
-	}
-
 	// the main object that watches for changes and serves the rpc requests
-	network := handlers.NewTendermintNetwork(chainStatus)
+	network := handlers.NewTendermintNetwork()
+	network.RegisterChain(chainState)
 
 	// the routes are functions on the network object
 	routes := handlers.Routes(network)
@@ -108,9 +81,7 @@ func cmdMonitor(c *cli.Context) {
 
 	TrapSignal(func() {
 		// TODO: clean shutdown server, maybe persist last state
-		for _, v := range chainConfig.Validators {
-			v.EventMeter().Stop()
-		}
+		network.Stop()
 	})
 
 }

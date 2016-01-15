@@ -1,0 +1,14 @@
+{
+  "id": "mychain",
+  "val_set_id": "myvalset",
+  "validators": [
+    {
+      "validator": {
+        "id": "local",
+        "chains": ["mychain"]
+      },
+      "addr": "localhost:46657",
+      "index": 0
+    }
+  ]
+}
