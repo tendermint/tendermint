@@ -58,14 +58,14 @@ func cmdMonitor(c *cli.Context) {
 	}
 	chainConfigFile := args[0]
 
-	chainState, err := types.LoadChainFromFile(chainConfigFile)
+	chainConfig, err := types.LoadChainFromFile(chainConfigFile)
 	if err != nil {
 		Exit(err.Error())
 	}
 
 	// the main object that watches for changes and serves the rpc requests
 	network := handlers.NewTendermintNetwork()
-	network.RegisterChain(chainState)
+	network.RegisterChain(chainConfig)
 
 	// the routes are functions on the network object
 	routes := handlers.Routes(network)
@@ -80,7 +80,6 @@ func cmdMonitor(c *cli.Context) {
 	}
 
 	TrapSignal(func() {
-		// TODO: clean shutdown server, maybe persist last state
 		network.Stop()
 	})
 

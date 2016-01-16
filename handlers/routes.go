@@ -2,6 +2,7 @@ package handlers
 
 import (
 	rpc "github.com/tendermint/go-rpc/server"
+	"github.com/tendermint/netmon/types"
 )
 
 func Routes(network *TendermintNetwork) map[string]*rpc.RPCFunc {
@@ -10,10 +11,11 @@ func Routes(network *TendermintNetwork) map[string]*rpc.RPCFunc {
 		//	"subscribe":   rpc.NewWSRPCFunc(Subscribe, []string{"event"}),
 		//	"unsubscribe": rpc.NewWSRPCFunc(Unsubscribe, []string{"event"}),
 
-		"status":        rpc.NewRPCFunc(StatusResult(network), ""),
-		"blockchain":    rpc.NewRPCFunc(GetChainResult(network), "chain"),
-		"validator_set": rpc.NewRPCFunc(GetValidatorSetResult(network), "valsetID"),
-		"validator":     rpc.NewRPCFunc(GetValidatorResult(network), "valSetID,valID"),
+		"status":         rpc.NewRPCFunc(StatusResult(network), ""),
+		"blockchain":     rpc.NewRPCFunc(GetChainResult(network), "chain"),
+		"register_chain": rpc.NewRPCFunc(RegisterChainResult(network), "chainConfig"),
+		"validator_set":  rpc.NewRPCFunc(GetValidatorSetResult(network), "valsetID"),
+		"validator":      rpc.NewRPCFunc(GetValidatorResult(network), "valSetID,valID"),
 
 		"start_meter": rpc.NewRPCFunc(network.StartMeter, "chainID,valID,event"),
 		"stop_meter":  rpc.NewRPCFunc(network.StopMeter, "chainID,valID,event"),
@@ -30,6 +32,12 @@ func StatusResult(network *TendermintNetwork) interface{} {
 func GetChainResult(network *TendermintNetwork) interface{} {
 	return func(chain string) (NetMonResult, error) {
 		return network.GetChain(chain)
+	}
+}
+
+func RegisterChainResult(network *TendermintNetwork) interface{} {
+	return func(chainConfig *types.BlockchainConfig) (NetMonResult, error) {
+		return network.RegisterChain(chainConfig)
 	}
 }
 

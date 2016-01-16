@@ -16,6 +16,27 @@ import (
 //------------------------------------------------
 // validator types
 
+// validator set (independent of chains)
+type ValidatorSet struct {
+	Validators []*Validator `json:"validators"`
+}
+
+func (vs *ValidatorSet) Validator(valID string) (*Validator, error) {
+	for _, v := range vs.Validators {
+		if v.ID == valID {
+			return v, nil
+		}
+	}
+	return nil, fmt.Errorf("Unknwon validator %s", valID)
+}
+
+// validator (independent of chain)
+type Validator struct {
+	ID     string        `json:"id"`
+	PubKey crypto.PubKey `json:"pub_key"`
+	Chains []string      `json:"chains"`
+}
+
 // Validator on a chain
 // Responsible for communication with the validator
 // Returned over RPC but also used to manage state
@@ -24,9 +45,12 @@ type ChainValidator struct {
 	Addr      string     `json:"addr"` // do we want multiple addrs?
 	Index     int        `json:"index"`
 
-	em      *eventmeter.EventMeter // holds a ws connection to the val
-	client  *client.ClientURI      // rpc client
-	Latency float64                `json:"latency" wire:"unsafe"`
+	Latency     float64 `json:"latency" wire:"unsafe"`
+	BlockHeight int     `json:"block_height"`
+
+	em     *eventmeter.EventMeter // holds a ws connection to the val
+	client *client.ClientURI      // rpc client
+
 }
 
 // Start a new event meter, including the websocket connection
