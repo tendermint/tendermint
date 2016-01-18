@@ -3,7 +3,6 @@ package example
 import (
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-merkle"
-	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tmsp/types"
 )
 
@@ -13,8 +12,6 @@ type DummyApplication struct {
 
 func NewDummyApplication() *DummyApplication {
 	state := merkle.NewIAVLTree(
-		wire.BasicCodec,
-		wire.BasicCodec,
 		0,
 		nil,
 	)
