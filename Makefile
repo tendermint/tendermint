@@ -18,13 +18,9 @@ build_race:
 	go build -race -o build/tendermint github.com/tendermint/tendermint/cmd/tendermint
 
 test: build
-	-rm -rf ~/.tendermint_test_bak
-	-mv ~/.tendermint_test ~/.tendermint_test_bak && true
 	go test github.com/tendermint/tendermint/...
 
 test_novendor: build
-	-rm -rf ~/.tendermint_test_bak
-	-mv ~/.tendermint_test ~/.tendermint_test_bak && true
 	go test $$(glide novendor)
 
 draw_deps:

@@ -31,8 +31,6 @@ var (
 
 // initialize config and create new node
 func init() {
-	initConfig()
-
 	chainID = config.GetString("chain_id")
 	rpcAddr = config.GetString("rpc_laddr")
 	requestAddr = "http://" + rpcAddr

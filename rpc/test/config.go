@@ -1,18 +1,13 @@
 package rpctest
 
 import (
-	cfg "github.com/tendermint/tendermint/config"
-	tmcfg "github.com/tendermint/tendermint/config/tendermint_test"
+	cfg "github.com/tendermint/go-config"
 )
 
 var config cfg.Config = nil
 
-func initConfig() {
-
+func init() {
 	cfg.OnConfig(func(newConfig cfg.Config) {
 		config = newConfig
 	})
-
-	c := tmcfg.GetConfig("")
-	cfg.ApplyConfig(c) // Notify modules of new config
 }

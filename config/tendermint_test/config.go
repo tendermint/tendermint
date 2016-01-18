@@ -26,6 +26,18 @@ func getTMRoot(rootDir string) string {
 
 func initTMRoot(rootDir string) {
 	rootDir = getTMRoot(rootDir)
+
+	// Remove ~/.tendermint_test_bak
+	err := os.RemoveAll(rootDir + "_bak")
+	if err != nil {
+		PanicSanity(err.Error())
+	}
+	// Move ~/.tendermint_test to ~/.tendermint_test_bak
+	err = os.Rename(rootDir, rootDir+"_bak")
+	if err != nil {
+		PanicSanity(err.Error())
+	}
+	// Create new dir
 	EnsureDir(rootDir, 0700)
 
 	configFilePath := path.Join(rootDir, "config.toml")
