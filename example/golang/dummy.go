@@ -27,27 +27,31 @@ func (app *DummyApplication) Info() []string {
 }
 
 func (app *DummyApplication) SetOption(key string, value string) types.RetCode {
-	return 0
+	return types.RetCodeOK
 }
 
 func (app *DummyApplication) AppendTx(tx []byte) ([]types.Event, types.RetCode) {
 	app.state.Set(tx, tx)
-	return nil, 0
+	return nil, types.RetCodeOK
 }
 
 func (app *DummyApplication) CheckTx(tx []byte) types.RetCode {
-	return 0 // all txs are valid
+	return types.RetCodeOK // all txs are valid
 }
 
 func (app *DummyApplication) GetHash() ([]byte, types.RetCode) {
 	hash := app.state.Hash()
-	return hash, 0
+	return hash, types.RetCodeOK
 }
 
 func (app *DummyApplication) AddListener(key string) types.RetCode {
-	return 0
+	return types.RetCodeOK
 }
 
 func (app *DummyApplication) RemListener(key string) types.RetCode {
-	return 0
+	return types.RetCodeOK
+}
+
+func (app *DummyApplication) Query(query []byte) (types.RetCode, []byte) {
+	return types.RetCodeOK, nil
 }

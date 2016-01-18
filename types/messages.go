@@ -3,32 +3,34 @@ package types
 import "github.com/tendermint/go-wire"
 
 const (
-	requestTypeEcho      = byte(0x01)
-	requestTypeFlush     = byte(0x02)
-	requestTypeInfo      = byte(0x03)
-	requestTypeSetOption = byte(0x04)
+	RequestTypeEcho      = byte(0x01)
+	RequestTypeFlush     = byte(0x02)
+	RequestTypeInfo      = byte(0x03)
+	RequestTypeSetOption = byte(0x04)
 	// reserved for GetOption = byte(0x05)
 
-	responseTypeException = byte(0x10)
-	responseTypeEcho      = byte(0x11)
-	responseTypeFlush     = byte(0x12)
-	responseTypeInfo      = byte(0x13)
-	responseTypeSetOption = byte(0x14)
+	ResponseTypeException = byte(0x10)
+	ResponseTypeEcho      = byte(0x11)
+	ResponseTypeFlush     = byte(0x12)
+	ResponseTypeInfo      = byte(0x13)
+	ResponseTypeSetOption = byte(0x14)
 	// reserved for GetOption = byte(0x15)
 
-	requestTypeAppendTx    = byte(0x21)
-	requestTypeCheckTx     = byte(0x22)
-	requestTypeGetHash     = byte(0x23)
-	requestTypeAddListener = byte(0x24)
-	requestTypeRemListener = byte(0x25)
-	// reserved for responseTypeEvent 0x26
+	RequestTypeAppendTx    = byte(0x21)
+	RequestTypeCheckTx     = byte(0x22)
+	RequestTypeGetHash     = byte(0x23)
+	RequestTypeAddListener = byte(0x24)
+	RequestTypeRemListener = byte(0x25)
+	// reserved for ResponseTypeEvent 0x26
+	RequestTypeQuery = byte(0x27)
 
-	responseTypeAppendTx    = byte(0x31)
-	responseTypeCheckTx     = byte(0x32)
-	responseTypeGetHash     = byte(0x33)
-	responseTypeAddListener = byte(0x34)
-	responseTypeRemListener = byte(0x35)
-	responseTypeEvent       = byte(0x36)
+	ResponseTypeAppendTx    = byte(0x31)
+	ResponseTypeCheckTx     = byte(0x32)
+	ResponseTypeGetHash     = byte(0x33)
+	ResponseTypeAddListener = byte(0x34)
+	ResponseTypeRemListener = byte(0x35)
+	ResponseTypeEvent       = byte(0x36)
+	ResponseTypeQuery       = byte(0x37)
 )
 
 //----------------------------------------
@@ -67,6 +69,10 @@ type RequestRemListener struct {
 	EventKey string
 }
 
+type RequestQuery struct {
+	QueryBytes []byte
+}
+
 type Request interface {
 	AssertRequestType()
 }
@@ -80,18 +86,20 @@ func (_ RequestCheckTx) AssertRequestType()     {}
 func (_ RequestGetHash) AssertRequestType()     {}
 func (_ RequestAddListener) AssertRequestType() {}
 func (_ RequestRemListener) AssertRequestType() {}
+func (_ RequestQuery) AssertRequestType()       {}
 
 var _ = wire.RegisterInterface(
 	struct{ Request }{},
-	wire.ConcreteType{RequestEcho{}, requestTypeEcho},
-	wire.ConcreteType{RequestFlush{}, requestTypeFlush},
-	wire.ConcreteType{RequestInfo{}, requestTypeInfo},
-	wire.ConcreteType{RequestSetOption{}, requestTypeSetOption},
-	wire.ConcreteType{RequestAppendTx{}, requestTypeAppendTx},
-	wire.ConcreteType{RequestCheckTx{}, requestTypeCheckTx},
-	wire.ConcreteType{RequestGetHash{}, requestTypeGetHash},
-	wire.ConcreteType{RequestAddListener{}, requestTypeAddListener},
-	wire.ConcreteType{RequestRemListener{}, requestTypeRemListener},
+	wire.ConcreteType{RequestEcho{}, RequestTypeEcho},
+	wire.ConcreteType{RequestFlush{}, RequestTypeFlush},
+	wire.ConcreteType{RequestInfo{}, RequestTypeInfo},
+	wire.ConcreteType{RequestSetOption{}, RequestTypeSetOption},
+	wire.ConcreteType{RequestAppendTx{}, RequestTypeAppendTx},
+	wire.ConcreteType{RequestCheckTx{}, RequestTypeCheckTx},
+	wire.ConcreteType{RequestGetHash{}, RequestTypeGetHash},
+	wire.ConcreteType{RequestAddListener{}, RequestTypeAddListener},
+	wire.ConcreteType{RequestRemListener{}, RequestTypeRemListener},
+	wire.ConcreteType{RequestQuery{}, RequestTypeQuery},
 )
 
 //----------------------------------------
@@ -140,6 +148,11 @@ type ResponseEvent struct {
 	Event
 }
 
+type ResponseQuery struct {
+	RetCode
+	Result []byte
+}
+
 type Response interface {
 	AssertResponseType()
 }
@@ -155,18 +168,20 @@ func (_ ResponseAddListener) AssertResponseType() {}
 func (_ ResponseRemListener) AssertResponseType() {}
 func (_ ResponseException) AssertResponseType()   {}
 func (_ ResponseEvent) AssertResponseType()       {}
+func (_ ResponseQuery) AssertResponseType()       {}
 
 var _ = wire.RegisterInterface(
 	struct{ Response }{},
-	wire.ConcreteType{ResponseEcho{}, responseTypeEcho},
-	wire.ConcreteType{ResponseFlush{}, responseTypeFlush},
-	wire.ConcreteType{ResponseInfo{}, responseTypeInfo},
-	wire.ConcreteType{ResponseSetOption{}, responseTypeSetOption},
-	wire.ConcreteType{ResponseAppendTx{}, responseTypeAppendTx},
-	wire.ConcreteType{ResponseCheckTx{}, responseTypeCheckTx},
-	wire.ConcreteType{ResponseGetHash{}, responseTypeGetHash},
-	wire.ConcreteType{ResponseAddListener{}, responseTypeAddListener},
-	wire.ConcreteType{ResponseRemListener{}, responseTypeRemListener},
-	wire.ConcreteType{ResponseException{}, responseTypeException},
-	wire.ConcreteType{ResponseEvent{}, responseTypeEvent},
+	wire.ConcreteType{ResponseEcho{}, ResponseTypeEcho},
+	wire.ConcreteType{ResponseFlush{}, ResponseTypeFlush},
+	wire.ConcreteType{ResponseInfo{}, ResponseTypeInfo},
+	wire.ConcreteType{ResponseSetOption{}, ResponseTypeSetOption},
+	wire.ConcreteType{ResponseAppendTx{}, ResponseTypeAppendTx},
+	wire.ConcreteType{ResponseCheckTx{}, ResponseTypeCheckTx},
+	wire.ConcreteType{ResponseGetHash{}, ResponseTypeGetHash},
+	wire.ConcreteType{ResponseAddListener{}, ResponseTypeAddListener},
+	wire.ConcreteType{ResponseRemListener{}, ResponseTypeRemListener},
+	wire.ConcreteType{ResponseException{}, ResponseTypeException},
+	wire.ConcreteType{ResponseEvent{}, ResponseTypeEvent},
+	wire.ConcreteType{ResponseQuery{}, ResponseTypeQuery},
 )

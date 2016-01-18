@@ -25,4 +25,7 @@ type Application interface {
 
 	// Remove event listener
 	RemListener(key string) RetCode
+
+	// Query for state
+	Query(query []byte) (RetCode, []byte)
 }
