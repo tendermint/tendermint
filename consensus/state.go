@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"os"
 	"reflect"
 	"sync"
 	"time"
@@ -192,9 +191,7 @@ type ConsensusState struct {
 
 	evsw *events.EventSwitch
 
-	msgLogFP     *os.File      // file we write all msgs and timeouts to, in order (for deterministic replay)
-	msgLogExists bool          // if the file already existed (restarted process)
-	done         chan struct{} // used to wait until the receiveRoutine quits so we can close the file
+	wal *WAL
 
 	nSteps int // used for testing to limit the number of transitions the state makes
 }
@@ -209,7 +206,6 @@ func NewConsensusState(state *sm.State, proxyAppConn proxy.AppConn, blockStore *
 		timeoutTicker:    new(time.Ticker),
 		tickChan:         make(chan timeoutInfo, tickTockBufferSize),
 		tockChan:         make(chan timeoutInfo, tickTockBufferSize),
-		done:             make(chan struct{}),
 	}
 	cs.updateToState(state)
 	// Don't call scheduleRound0 yet.
@@ -282,23 +278,18 @@ func (cs *ConsensusState) startRoutines(maxSteps int) {
 
 func (cs *ConsensusState) OnStop() {
 	cs.QuitService.OnStop()
-
-	// wait to quit the receiveRoutine
-	<-cs.done
-	if cs.msgLogFP != nil {
-		cs.msgLogFP.Close()
-	}
 }
 
 // Open file to log all consensus messages and timeouts for deterministic accountability
-func (cs *ConsensusState) OpenFileForMessageLog(file string) (err error) {
+func (cs *ConsensusState) OpenWAL(file string) (err error) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
-	if _, err := os.Stat(file); err == nil {
-		cs.msgLogExists = true
+	wal, err := NewWAL(file)
+	if err != nil {
+		return err
 	}
-	cs.msgLogFP, err = os.OpenFile(file, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0666)
-	return err
+	cs.wal = wal
+	return nil
 }
 
 //------------------------------------------------------------
@@ -487,7 +478,7 @@ func (cs *ConsensusState) updateToState(state *sm.State) {
 
 func (cs *ConsensusState) newStep() {
 	rs := cs.RoundStateEvent()
-	cs.saveMsg(rs)
+	cs.wal.Save(rs)
 	cs.nSteps += 1
 	// newStep is called by updateToStep in NewConsensusState before the evsw is set!
 	if cs.evsw != nil {
@@ -570,21 +561,24 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 
 		select {
 		case mi = <-cs.peerMsgQueue:
-			cs.saveMsg(mi)
+			cs.wal.Save(mi)
 			// handles proposals, block parts, votes
 			// may generate internal events (votes, complete proposals, 2/3 majorities)
 			cs.handleMsg(mi, rs)
 		case mi = <-cs.internalMsgQueue:
-			cs.saveMsg(mi)
+			cs.wal.Save(mi)
 			// handles proposals, block parts, votes
 			cs.handleMsg(mi, rs)
 		case ti := <-cs.tockChan:
-			cs.saveMsg(ti)
+			cs.wal.Save(ti)
 			// if the timeout is relevant to the rs
 			// go to the next step
 			cs.handleTimeout(ti, rs)
 		case <-cs.Quit:
-			close(cs.done)
+			// close wal now that we're done writing to it
+			if cs.wal != nil {
+				cs.wal.Close()
+			}
 			return
 		}
 	}

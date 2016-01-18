@@ -85,9 +85,9 @@ func NewNode(privValidator *types.PrivValidator) *Node {
 	}
 
 	// deterministic accountability
-	err = consensusState.OpenFileForMessageLog(config.GetString("cs_msg_log"))
+	err = consensusState.OpenWAL(config.GetString("cswal"))
 	if err != nil {
-		log.Error("Failed to open cs_msg_log", "error", err.Error())
+		log.Error("Failed to open cswal", "error", err.Error())
 	}
 
 	// Make p2p network switch
@@ -251,6 +251,49 @@ func makeNodeInfo(sw *p2p.Switch, privKey crypto.PrivKeyEd25519) *p2p.NodeInfo {
 	return nodeInfo
 }
 
+// Get a connection to the proxyAppConn addr.
+// Check the current hash, and panic if it doesn't match.
+func getProxyApp(addr string, hash []byte) (proxyAppConn proxy.AppConn) {
+	// use local app (for testing)
+	if addr == "local" {
+		app := example.NewCounterApplication(true)
+		mtx := new(sync.Mutex)
+		proxyAppConn = proxy.NewLocalAppConn(mtx, app)
+	} else {
+		proxyConn, err := Connect(addr)
+		if err != nil {
+			Exit(Fmt("Failed to connect to proxy for mempool: %v", err))
+		}
+		remoteApp := proxy.NewRemoteAppConn(proxyConn, 1024)
+		remoteApp.Start()
+
+		proxyAppConn = remoteApp
+	}
+
+	// Check the hash
+	currentHash, err := proxyAppConn.GetHashSync()
+	if err != nil {
+		PanicCrisis(Fmt("Error in getting proxyAppConn hash: %v", err))
+	}
+	if !bytes.Equal(hash, currentHash) {
+		PanicCrisis(Fmt("ProxyApp hash does not match.  Expected %X, got %X", hash, currentHash))
+	}
+
+	return proxyAppConn
+}
+
+// Load the most recent state from "state" db,
+// or create a new one (and save) from genesis.
+func getState() *sm.State {
+	stateDB := dbm.GetDB("state")
+	state := sm.LoadState(stateDB)
+	if state == nil {
+		state = sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
+		state.Save()
+	}
+	return state
+}
+
 //------------------------------------------------------------------------------
 
 // Users wishing to use an external signer for their validators
@@ -314,6 +357,10 @@ func RunNode() {
 	})
 }
 
+//------------------------------------------------------------------------------
+// replay
+
+// convenience for replay mode
 func newConsensusState() *consensus.ConsensusState {
 	// Get BlockStore
 	blockStoreDB := dbm.GetDB("blockstore")
@@ -347,71 +394,28 @@ func newConsensusState() *consensus.ConsensusState {
 }
 
 func RunReplayConsole() {
-	msgLogFile := config.GetString("cs_msg_log")
-	if msgLogFile == "" {
-		Exit("cs_msg_log file name not set in tendermint config")
+	walFile := config.GetString("cswal")
+	if walFile == "" {
+		Exit("cswal file name not set in tendermint config")
 	}
 
 	consensusState := newConsensusState()
 
-	if err := consensusState.ReplayConsole(msgLogFile); err != nil {
+	if err := consensusState.ReplayConsole(walFile); err != nil {
 		Exit(Fmt("Error during consensus replay: %v", err))
 	}
 }
 
 func RunReplay() {
-	msgLogFile := config.GetString("cs_msg_log")
-	if msgLogFile == "" {
-		Exit("cs_msg_log file name not set in tendermint config")
+	walFile := config.GetString("cswal")
+	if walFile == "" {
+		Exit("cswal file name not set in tendermint config")
 	}
 
 	consensusState := newConsensusState()
 
-	if err := consensusState.ReplayMessages(msgLogFile); err != nil {
+	if err := consensusState.ReplayMessages(walFile); err != nil {
 		Exit(Fmt("Error during consensus replay: %v", err))
 	}
 	log.Notice("Replay run successfully")
-}
-
-// Load the most recent state from "state" db,
-// or create a new one (and save) from genesis.
-func getState() *sm.State {
-	stateDB := dbm.GetDB("state")
-	state := sm.LoadState(stateDB)
-	if state == nil {
-		state = sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
-		state.Save()
-	}
-	return state
-}
-
-// Get a connection to the proxyAppConn addr.
-// Check the current hash, and panic if it doesn't match.
-func getProxyApp(addr string, hash []byte) (proxyAppConn proxy.AppConn) {
-	// use local app (for testing)
-	if addr == "local" {
-		app := example.NewCounterApplication(true)
-		mtx := new(sync.Mutex)
-		proxyAppConn = proxy.NewLocalAppConn(mtx, app)
-	} else {
-		proxyConn, err := Connect(addr)
-		if err != nil {
-			Exit(Fmt("Failed to connect to proxy for mempool: %v", err))
-		}
-		remoteApp := proxy.NewRemoteAppConn(proxyConn, 1024)
-		remoteApp.Start()
-
-		proxyAppConn = remoteApp
-	}
-
-	// Check the hash
-	currentHash, err := proxyAppConn.GetHashSync()
-	if err != nil {
-		PanicCrisis(Fmt("Error in getting proxyAppConn hash: %v", err))
-	}
-	if !bytes.Equal(hash, currentHash) {
-		PanicCrisis(Fmt("ProxyApp hash does not match.  Expected %X, got %X", hash, currentHash))
-	}
-
-	return proxyAppConn
 }
