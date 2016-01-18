@@ -9,9 +9,9 @@ import (
 	"time"
 
 	dbm "github.com/tendermint/go-db"
+	"github.com/tendermint/go-events"
 	bc "github.com/tendermint/tendermint/blockchain"
 	_ "github.com/tendermint/tendermint/config/tendermint_test"
-	"github.com/tendermint/go-events"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
@@ -339,7 +339,7 @@ func simpleConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
 }
 
 func subscribeToVoter(cs *ConsensusState, addr []byte) chan interface{} {
-	voteCh0 := cs.evsw.SubscribeToEvent("tester", types.EventStringVote(), 0)
+	voteCh0 := subscribeToEvent(cs.evsw, "tester", types.EventStringVote(), 1)
 	voteCh := make(chan interface{})
 	go func() {
 		for {
@@ -385,4 +385,14 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 func startTestRound(cs *ConsensusState, height, round int) {
 	cs.enterNewRound(height, round)
 	cs.startRoutines(0)
+}
+
+// NOTE: this is blocking
+func subscribeToEvent(evsw *events.EventSwitch, receiver, eventID string, chanCap int) chan interface{} {
+	// listen for new round
+	ch := make(chan interface{}, chanCap)
+	evsw.AddListenerForEvent(receiver, eventID, func(data events.EventData) {
+		ch <- data
+	})
+	return ch
 }
