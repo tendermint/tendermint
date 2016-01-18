@@ -9,9 +9,9 @@ import (
 	"time"
 
 	dbm "github.com/tendermint/go-db"
+	"github.com/tendermint/go-events"
 	bc "github.com/tendermint/tendermint/blockchain"
 	_ "github.com/tendermint/tendermint/config/tendermint_test"
-	"github.com/tendermint/go-events"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
@@ -296,16 +296,16 @@ func validatePrevoteAndPrecommit(t *testing.T, cs *ConsensusState, thisRound, lo
 	cs.mtx.Unlock()
 }
 
-func simpleConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
-	// Get State
-	state, privVals := randGenesisState(nValidators, false, 10)
+func fixedConsensusState() *ConsensusState {
+	stateDB := dbm.NewMemDB()
+	state := sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
+	privValidatorFile := config.GetString("priv_validator_file")
+	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
+	return newConsensusState(state, privValidator)
 
-	// fmt.Println(state.Validators)
+}
 
-	vss := make([]*validatorStub, nValidators)
-
-	// make consensus state for lead validator
-
+func newConsensusState(state *sm.State, pv *types.PrivValidator) *ConsensusState {
 	// Get BlockStore
 	blockDB := dbm.NewMemDB()
 	blockStore := bc.NewBlockStore(blockDB)
@@ -320,14 +320,21 @@ func simpleConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
 
 	// Make ConsensusReactor
 	cs := NewConsensusState(state, proxyAppConnCon, blockStore, mempool)
-	cs.SetPrivValidator(privVals[0])
+	cs.SetPrivValidator(pv)
 
 	evsw := events.NewEventSwitch()
 	cs.SetEventSwitch(evsw)
 	evsw.Start()
+	return cs
+}
 
-	// start the transition routines
-	//	cs.startRoutines()
+func randConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
+	// Get State
+	state, privVals := randGenesisState(nValidators, false, 10)
+
+	vss := make([]*validatorStub, nValidators)
+
+	cs := newConsensusState(state, privVals[0])
 
 	for i := 0; i < nValidators; i++ {
 		vss[i] = NewValidatorStub(privVals[i])

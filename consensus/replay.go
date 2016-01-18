@@ -24,6 +24,7 @@ func (cs *ConsensusState) readReplayMessage(msgBytes []byte, newStepCh chan inte
 	var msg ConsensusLogMessage
 	wire.ReadJSON(&msg, msgBytes, &err)
 	if err != nil {
+		fmt.Println(string(msgBytes))
 		return fmt.Errorf("Error reading json data: %v", err)
 	}
 
@@ -87,8 +88,6 @@ func (cs *ConsensusState) catchupReplay(height int) error {
 		return nil
 	}
 
-	log.Notice("Catchup by replaying consensus messages")
-
 	// starting from end of file,
 	// read messages until a new height is found
 	nLines, err := cs.wal.SeekFromEnd(func(lineBytes []byte) bool {
@@ -110,6 +109,13 @@ func (cs *ConsensusState) catchupReplay(height int) error {
 		return err
 	}
 
+	var beginning bool // if we had to go back to the beginning
+	if c, _ := cs.wal.fp.Seek(0, 1); c == 0 {
+		beginning = true
+	}
+
+	log.Notice("Catchup by replaying consensus messages", "n", nLines)
+
 	// now we can replay the latest nLines on consensus state
 	// note we can't use scan because we've already been reading from the file
 	reader := bufio.NewReader(cs.wal.fp)
@@ -122,8 +128,8 @@ func (cs *ConsensusState) catchupReplay(height int) error {
 		} else if len(msgBytes) == 0 {
 			continue
 		}
-		// the first msg is the NewHeight event, so we can ignore it
-		if i == 1 {
+		// the first msg is (usually) the NewHeight event, so we can ignore it
+		if !beginning && i == 1 {
 			continue
 		}
 
@@ -134,6 +140,7 @@ func (cs *ConsensusState) catchupReplay(height int) error {
 			return err
 		}
 	}
+	log.Info("Done catchup replay")
 	return nil
 }
 

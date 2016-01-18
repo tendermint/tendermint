@@ -32,6 +32,8 @@ var _ = wire.RegisterInterface(
 
 // Write ahead logger writes msgs to disk before they are processed.
 // Can be used for crash-recovery and deterministic replay
+// TODO: currently the wal is overwritten during replay catchup
+//   give it a mode so it's either reading or appending - must read to end to start appending again
 type WAL struct {
 	fp     *os.File
 	exists bool // if the file already existed (restarted process)
@@ -81,9 +83,11 @@ func (wal *WAL) SeekFromEnd(found func([]byte) bool) (nLines int, err error) {
 	}
 
 	// backup until we find the the right line
+	// current is how far we are from the beginning
 	for {
 		current -= 1
 		if current < 0 {
+			wal.fp.Seek(0, 0) // back to beginning
 			return
 		}
 		// backup one and read a new byte
@@ -95,6 +99,7 @@ func (wal *WAL) SeekFromEnd(found func([]byte) bool) (nLines int, err error) {
 			return
 		}
 		if b[0] == '\n' || len(b) == 0 {
+			nLines += 1
 			// read a full line
 			reader := bufio.NewReader(wal.fp)
 			lineBytes, _ := reader.ReadBytes('\n')
@@ -102,7 +107,6 @@ func (wal *WAL) SeekFromEnd(found func([]byte) bool) (nLines int, err error) {
 				continue
 			}
 
-			nLines += 1
 			if found(lineBytes) {
 				wal.fp.Seek(0, 1) // (?)
 				wal.fp.Seek(current, 0)
