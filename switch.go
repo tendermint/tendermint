@@ -3,6 +3,7 @@ package p2p
 import (
 	"errors"
 	"fmt"
+	"math/rand"
 	"net"
 	"time"
 
@@ -247,6 +248,32 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 func (sw *Switch) startInitPeer(peer *Peer) {
 	peer.Start()               // spawn send/recv routines
 	sw.addPeerToReactors(peer) // run AddPeer on each reactor
+}
+
+// Dial a list of seeds in random order
+// Spawns a go routine for each dial
+func (sw *Switch) DialSeeds(seeds []string) {
+	// permute the list, dial them in random order.
+	perm := rand.Perm(len(seeds))
+	for i := 0; i < len(perm); i++ {
+		go func(i int) {
+			time.Sleep(time.Duration(rand.Int63n(3000)) * time.Millisecond)
+			j := perm[i]
+			addr := NewNetAddressString(seeds[j])
+
+			sw.dialSeed(addr)
+		}(i)
+	}
+}
+
+func (sw *Switch) dialSeed(addr *NetAddress) {
+	peer, err := sw.DialPeerWithAddress(addr)
+	if err != nil {
+		log.Error("Error dialing seed", "error", err)
+		return
+	} else {
+		log.Notice("Connected to seed", "peer", peer)
+	}
 }
 
 func (sw *Switch) DialPeerWithAddress(addr *NetAddress) (*Peer, error) {
