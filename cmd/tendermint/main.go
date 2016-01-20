@@ -8,6 +8,7 @@ import (
 	cfg "github.com/tendermint/go-config"
 	tmcfg "github.com/tendermint/tendermint/config/tendermint"
 	"github.com/tendermint/tendermint/node"
+	"github.com/tendermint/tendermint/version"
 )
 
 func main() {
@@ -45,7 +46,7 @@ Commands:
 	case "unsafe_reset_priv_validator":
 		reset_priv_validator()
 	case "version":
-		fmt.Println(node.Version)
+		fmt.Println(version.Version)
 	default:
 		Exit(Fmt("Unknown command %v\n", args[0]))
 	}

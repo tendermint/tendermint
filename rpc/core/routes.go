@@ -12,6 +12,7 @@ var Routes = map[string]*rpc.RPCFunc{
 	"unsubscribe":          rpc.NewWSRPCFunc(UnsubscribeResult, "event"),
 	"status":               rpc.NewRPCFunc(StatusResult, ""),
 	"net_info":             rpc.NewRPCFunc(NetInfoResult, ""),
+	"dial_seeds":           rpc.NewRPCFunc(DialSeedsResult, "seeds"),
 	"blockchain":           rpc.NewRPCFunc(BlockchainInfoResult, "minHeight,maxHeight"),
 	"genesis":              rpc.NewRPCFunc(GenesisResult, ""),
 	"get_block":            rpc.NewRPCFunc(GetBlockResult, "height"),
@@ -48,6 +49,14 @@ func StatusResult() (ctypes.TMResult, error) {
 
 func NetInfoResult() (ctypes.TMResult, error) {
 	if r, err := NetInfo(); err != nil {
+		return nil, err
+	} else {
+		return r, nil
+	}
+}
+
+func DialSeedsResult(seeds []string) (ctypes.TMResult, error) {
+	if r, err := DialSeeds(seeds); err != nil {
 		return nil, err
 	} else {
 		return r, nil

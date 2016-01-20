@@ -1097,6 +1097,7 @@ func (cs *ConsensusState) tryFinalizeCommit(height int) {
 		return
 	}
 	if !cs.ProposalBlock.HashesTo(hash) {
+		// TODO: this happens every time if we're not a validator (ugly logs)
 		log.Warn("Attempt to finalize failed. We don't have the commit block.")
 		return
 	}

@@ -37,6 +37,9 @@ type ResultNetInfo struct {
 	Peers     []Peer   `json:"peers"`
 }
 
+type ResultDialSeeds struct {
+}
+
 type Peer struct {
 	p2p.NodeInfo     `json:"node_info"`
 	IsOutbound       bool                 `json:"is_outbound"`
@@ -76,18 +79,28 @@ type ResultEvent struct {
 // response & result types
 
 const (
-	ResultTypeGenesis            = byte(0x01)
-	ResultTypeBlockchainInfo     = byte(0x02)
-	ResultTypeGetBlock           = byte(0x03)
-	ResultTypeStatus             = byte(0x04)
-	ResultTypeNetInfo            = byte(0x05)
-	ResultTypeListValidators     = byte(0x06)
-	ResultTypeDumpConsensusState = byte(0x07)
-	ResultTypeBroadcastTx        = byte(0x08)
-	ResultTypeListUnconfirmedTxs = byte(0x09)
-	ResultTypeSubscribe          = byte(0x0A)
-	ResultTypeUnsubscribe        = byte(0x0B)
-	ResultTypeEvent              = byte(0x0C)
+	// 0x0 bytes are for the blockchain
+	ResultTypeGenesis        = byte(0x01)
+	ResultTypeBlockchainInfo = byte(0x02)
+	ResultTypeGetBlock       = byte(0x03)
+
+	// 0x2 bytes are for the network
+	ResultTypeStatus    = byte(0x20)
+	ResultTypeNetInfo   = byte(0x21)
+	ResultTypeDialSeeds = byte(0x22)
+
+	// 0x4 bytes are for the consensus
+	ResultTypeListValidators     = byte(0x40)
+	ResultTypeDumpConsensusState = byte(0x41)
+
+	// 0x6 bytes are for txs / the application
+	ResultTypeBroadcastTx        = byte(0x60)
+	ResultTypeListUnconfirmedTxs = byte(0x61)
+
+	// 0x8 bytes are for events
+	ResultTypeSubscribe   = byte(0x80)
+	ResultTypeUnsubscribe = byte(0x81)
+	ResultTypeEvent       = byte(0x82)
 )
 
 type TMResult interface {
@@ -102,6 +115,7 @@ var _ = wire.RegisterInterface(
 	wire.ConcreteType{&ResultGetBlock{}, ResultTypeGetBlock},
 	wire.ConcreteType{&ResultStatus{}, ResultTypeStatus},
 	wire.ConcreteType{&ResultNetInfo{}, ResultTypeNetInfo},
+	wire.ConcreteType{&ResultDialSeeds{}, ResultTypeDialSeeds},
 	wire.ConcreteType{&ResultListValidators{}, ResultTypeListValidators},
 	wire.ConcreteType{&ResultDumpConsensusState{}, ResultTypeDumpConsensusState},
 	wire.ConcreteType{&ResultBroadcastTx{}, ResultTypeBroadcastTx},

@@ -3,7 +3,6 @@ package node
 import (
 	"bytes"
 	"io/ioutil"
-	"math/rand"
 	"net"
 	"net/http"
 	"strings"
@@ -22,9 +21,10 @@ import (
 	"github.com/tendermint/tendermint/consensus"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
-	"github.com/tendermint/tendermint/rpc/core"
+	rpccore "github.com/tendermint/tendermint/rpc/core"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/version"
 	"github.com/tendermint/tmsp/example/golang"
 )
 
@@ -145,47 +145,21 @@ func (n *Node) AddListener(l p2p.Listener) {
 	n.sw.AddListener(l)
 }
 
-// Dial a list of seeds in random order
-// Spawns a go routine for each dial
-func (n *Node) DialSeed() {
-	// permute the list, dial them in random order.
-	seeds := strings.Split(config.GetString("seeds"), ",")
-	perm := rand.Perm(len(seeds))
-	for i := 0; i < len(perm); i++ {
-		go func(i int) {
-			time.Sleep(time.Duration(rand.Int63n(3000)) * time.Millisecond)
-			j := perm[i]
-			addr := p2p.NewNetAddressString(seeds[j])
-			n.dialSeed(addr)
-		}(i)
-	}
-}
-
-func (n *Node) dialSeed(addr *p2p.NetAddress) {
-	peer, err := n.sw.DialPeerWithAddress(addr)
-	if err != nil {
-		log.Error("Error dialing seed", "error", err)
-		return
-	} else {
-		log.Notice("Connected to seed", "peer", peer)
-	}
-}
-
 func (n *Node) StartRPC() (net.Listener, error) {
-	core.SetBlockStore(n.blockStore)
-	core.SetConsensusState(n.consensusState)
-	core.SetConsensusReactor(n.consensusReactor)
-	core.SetMempoolReactor(n.mempoolReactor)
-	core.SetSwitch(n.sw)
-	core.SetPrivValidator(n.privValidator)
-	core.SetGenesisDoc(n.genesisDoc)
+	rpccore.SetBlockStore(n.blockStore)
+	rpccore.SetConsensusState(n.consensusState)
+	rpccore.SetConsensusReactor(n.consensusReactor)
+	rpccore.SetMempoolReactor(n.mempoolReactor)
+	rpccore.SetSwitch(n.sw)
+	rpccore.SetPrivValidator(n.privValidator)
+	rpccore.SetGenesisDoc(n.genesisDoc)
 
 	listenAddr := config.GetString("rpc_laddr")
 
 	mux := http.NewServeMux()
-	wm := rpcserver.NewWebsocketManager(core.Routes, n.evsw)
+	wm := rpcserver.NewWebsocketManager(rpccore.Routes, n.evsw)
 	mux.HandleFunc("/websocket", wm.WebsocketHandler)
-	rpcserver.RegisterRPCFuncs(mux, core.Routes)
+	rpcserver.RegisterRPCFuncs(mux, rpccore.Routes)
 	return rpcserver.StartHTTPServer(listenAddr, mux)
 }
 
@@ -215,11 +189,11 @@ func makeNodeInfo(sw *p2p.Switch, privKey crypto.PrivKeyEd25519) *p2p.NodeInfo {
 		PubKey:  privKey.PubKey().(crypto.PubKeyEd25519),
 		Moniker: config.GetString("moniker"),
 		Network: config.GetString("chain_id"),
-		Version: Version,
+		Version: version.Version,
 		Other: []string{
-			Fmt("p2p_version=%v", p2p.Version),
-			Fmt("rpc_version=%v", rpc.Version),
 			Fmt("wire_version=%v", wire.Version),
+			Fmt("p2p_version=%v", p2p.Version),
+			Fmt("rpc_version=%v/%v", rpc.Version, rpccore.Version),
 		},
 	}
 
@@ -291,7 +265,8 @@ func RunNode() {
 
 	// If seedNode is provided by config, dial out.
 	if config.GetString("seeds") != "" {
-		n.DialSeed()
+		seeds := strings.Split(config.GetString("seeds"), ",")
+		n.sw.DialSeeds(seeds)
 	}
 
 	// Run the RPC server.
