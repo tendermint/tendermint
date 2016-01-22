@@ -53,7 +53,7 @@ func CallHTTP_JSONRPC(remote string, method string, params []interface{}, result
 	}
 	requestBytes := wire.JSONBytes(request)
 	requestBuf := bytes.NewBuffer(requestBytes)
-	log.Info(Fmt("RPC request to %v: %v", remote, string(requestBytes)))
+	log.Info(Fmt("RPC request to %v (%v): %v", remote, method, string(requestBytes)))
 	httpResponse, err := http.Post(remote, "text/json", requestBuf)
 	if err != nil {
 		return nil, err
@@ -72,7 +72,7 @@ func CallHTTP_URI(remote string, method string, params map[string]interface{}, r
 	if err != nil {
 		return nil, err
 	}
-	log.Info(Fmt("URI request to %v: %v", remote, values))
+	log.Info(Fmt("URI request to %v (%v): %v", remote, method, values))
 	resp, err := http.PostForm(remote+method, values)
 	if err != nil {
 		return nil, err
