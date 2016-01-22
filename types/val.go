@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/tendermint/go-crypto"
-	"github.com/tendermint/go-event-meter"
-	"github.com/tendermint/go-events"
-	client "github.com/tendermint/go-rpc/client"
-	"github.com/tendermint/go-wire"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/go-crypto"
+	"github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/go-event-meter"
+	"github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/go-events"
+	client "github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/go-rpc/client"
+	"github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/go-wire"
+	ctypes "github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/tendermint/rpc/core/types"
 )
 
 //------------------------------------------------

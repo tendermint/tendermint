@@ -13,13 +13,13 @@ import (
 	"github.com/tendermint/netmon/handlers"
 	"github.com/tendermint/netmon/types"
 
-	"github.com/codegangsta/cli"
-	. "github.com/tendermint/go-common"
-	cfg "github.com/tendermint/go-config"
-	pcm "github.com/tendermint/go-process"
-	"github.com/tendermint/go-rpc/server"
-	"github.com/tendermint/go-wire"
-	tmcfg "github.com/tendermint/tendermint/config/tendermint"
+	"github.com/tendermint/netmon/Godeps/_workspace/src/github.com/codegangsta/cli"
+	. "github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/go-common"
+	cfg "github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/go-config"
+	pcm "github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/go-process"
+	"github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/go-rpc/server"
+	"github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/go-wire"
+	tmcfg "github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/tendermint/config/tendermint"
 )
 
 func init() {

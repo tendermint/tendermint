@@ -6,8 +6,8 @@ import (
 	"io/ioutil"
 	"sync"
 
-	"github.com/rcrowley/go-metrics"
-	tmtypes "github.com/tendermint/tendermint/types"
+	"github.com/tendermint/netmon/Godeps/_workspace/src/github.com/rcrowley/go-metrics"
+	tmtypes "github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/tendermint/types"
 )
 
 //------------------------------------------------

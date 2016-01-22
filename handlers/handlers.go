@@ -5,11 +5,11 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/tendermint/go-event-meter"
-	"github.com/tendermint/go-wire"
+	"github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/go-event-meter"
+	"github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/go-wire"
 
+	tmtypes "github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/tendermint/types"
 	"github.com/tendermint/netmon/types"
-	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 type NetMonResult interface {

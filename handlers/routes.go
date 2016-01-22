@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	rpc "github.com/tendermint/go-rpc/server"
+	rpc "github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/go-rpc/server"
 	"github.com/tendermint/netmon/types"
 )
 

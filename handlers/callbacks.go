@@ -1,10 +1,10 @@
 package handlers
 
 import (
-	"github.com/tendermint/go-event-meter"
-	"github.com/tendermint/go-events"
+	"github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/go-event-meter"
+	"github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/go-events"
 
-	tmtypes "github.com/tendermint/tendermint/types"
+	tmtypes "github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/tendermint/types"
 )
 
 // implements eventmeter.EventCallbackFunc
