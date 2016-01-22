@@ -23,8 +23,8 @@ var conn net.Conn
 
 func main() {
 	app := cli.NewApp()
-	app.Name = "cli"
-	app.Usage = "cli [command] [args...]"
+	app.Name = "tmsp-cli"
+	app.Usage = "tmsp-cli [command] [args...]"
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "address",
@@ -87,6 +87,13 @@ func main() {
 			Usage: "Get application Merkle root hash",
 			Action: func(c *cli.Context) {
 				cmdGetHash(c)
+			},
+		},
+		{
+			Name:  "query",
+			Usage: "Query application state",
+			Action: func(c *cli.Context) {
+				cmdQuery(c)
 			},
 		},
 	}
@@ -232,6 +239,29 @@ func cmdGetHash(c *cli.Context) {
 		Exit(err.Error())
 	}
 	fmt.Printf("%X\n", res.(types.ResponseGetHash).Hash)
+}
+
+// Query application state
+func cmdQuery(c *cli.Context) {
+	args := c.Args()
+	if len(args) != 1 {
+		Exit("append_tx takes 1 argument")
+	}
+	queryString := args[0]
+	query := []byte(queryString)
+	if len(queryString) > 2 && strings.HasPrefix(queryString, "0x") {
+		var err error
+		query, err = hex.DecodeString(queryString[2:])
+		if err != nil {
+			Exit(err.Error())
+		}
+	}
+
+	res, err := makeRequest(conn, types.RequestQuery{query})
+	if err != nil {
+		Exit(err.Error())
+	}
+	fmt.Println("->", res)
 }
 
 //--------------------------------------------------------------------------------
