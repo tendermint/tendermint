@@ -1,13 +1,11 @@
 package proxy
 
 import (
-	tmsp "github.com/tendermint/tmsp/types"
+	tmspcli "github.com/tendermint/tmsp/client/golang"
 )
 
-type Callback func(tmsp.Request, tmsp.Response)
-
 type AppConn interface {
-	SetResponseCallback(Callback)
+	SetResponseCallback(tmspcli.Callback)
 	Error() error
 
 	EchoAsync(msg string)

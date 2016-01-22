@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	tmspcli "github.com/tendermint/tmsp/client/golang"
 	tmsp "github.com/tendermint/tmsp/types"
 	"sync"
 )
@@ -8,7 +9,7 @@ import (
 type localAppConn struct {
 	mtx *sync.Mutex
 	tmsp.Application
-	Callback
+	tmspcli.Callback
 }
 
 func NewLocalAppConn(mtx *sync.Mutex, app tmsp.Application) *localAppConn {
@@ -18,7 +19,7 @@ func NewLocalAppConn(mtx *sync.Mutex, app tmsp.Application) *localAppConn {
 	}
 }
 
-func (app *localAppConn) SetResponseCallback(cb Callback) {
+func (app *localAppConn) SetResponseCallback(cb tmspcli.Callback) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 	app.Callback = cb
