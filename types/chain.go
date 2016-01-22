@@ -62,6 +62,13 @@ type ChainState struct {
 	Status *BlockchainStatus `json:"status"`
 }
 
+// chain config without ValidatorState
+type BlockchainBaseConfig struct {
+	ID         string             `json:"id"`
+	ValSetID   string             `json:"val_set_id"`
+	Validators []*ValidatorConfig `json:"validators"`
+}
+
 // basic chain config
 // threadsafe
 type BlockchainConfig struct {
@@ -69,7 +76,7 @@ type BlockchainConfig struct {
 	ValSetID string `json:"val_set_id"`
 
 	mtx        sync.Mutex
-	Validators []*ChainValidator `json:"validators"`
+	Validators []*ValidatorState `json:"validators"` // TODO: this should be ValidatorConfig and the state in BlockchainStatus
 	valIDMap   map[string]int    // map IDs to indices
 }
 
@@ -79,11 +86,11 @@ func (bc *BlockchainConfig) PopulateValIDMap() {
 	defer bc.mtx.Unlock()
 	bc.valIDMap = make(map[string]int)
 	for i, v := range bc.Validators {
-		bc.valIDMap[v.Validator.ID] = i
+		bc.valIDMap[v.Config.Validator.ID] = i
 	}
 }
 
-func (bc *BlockchainConfig) GetValidatorByID(valID string) (*ChainValidator, error) {
+func (bc *BlockchainConfig) GetValidatorByID(valID string) (*ValidatorState, error) {
 	bc.mtx.Lock()
 	defer bc.mtx.Unlock()
 	valIndex, ok := bc.valIDMap[valID]

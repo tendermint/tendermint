@@ -110,12 +110,13 @@ func (tn *TendermintNetwork) RegisterChain(chainConfig *types.BlockchainConfig) 
 
 	// start the event meter and listen for new blocks on each validator
 	for _, v := range chainConfig.Validators {
+		v.Status = &types.ValidatorStatus{}
 
 		if err := v.Start(); err != nil {
 			return nil, err
 		}
-		v.EventMeter().RegisterLatencyCallback(tn.latencyCallback(chainConfig.ID, v.Validator.ID))
-		err := v.EventMeter().Subscribe(tmtypes.EventStringNewBlock(), tn.newBlockCallback(chainConfig.ID, v.Validator.ID))
+		v.EventMeter().RegisterLatencyCallback(tn.latencyCallback(chainConfig.ID, v.Config.Validator.ID))
+		err := v.EventMeter().Subscribe(tmtypes.EventStringNewBlock(), tn.newBlockCallback(chainConfig.ID, v.Config.Validator.ID))
 		if err != nil {
 			return nil, err
 		}
@@ -134,6 +135,13 @@ func (tn *TendermintNetwork) GetValidatorSet(valSetID string) (*types.ValidatorS
 	if !ok {
 		return nil, fmt.Errorf("Unknown validator set %s", valSetID)
 	}
+	return valSet, nil
+}
+
+func (tn *TendermintNetwork) RegisterValidatorSet(valSet *types.ValidatorSet) (*types.ValidatorSet, error) {
+	tn.mtx.Lock()
+	defer tn.mtx.Unlock()
+	tn.ValSets[valSet.ID] = valSet
 	return valSet, nil
 }
 
@@ -182,7 +190,7 @@ func (tn *TendermintNetwork) GetMeter(chainID, valID, eventID string) (*eventmet
 	return val.EventMeter().GetMetric(eventID)
 }
 
-func (tn *TendermintNetwork) getChainVal(chainID, valID string) (*types.ChainValidator, error) {
+func (tn *TendermintNetwork) getChainVal(chainID, valID string) (*types.ValidatorState, error) {
 	chain, ok := tn.Chains[chainID]
 	if !ok {
 		return nil, fmt.Errorf("Unknown chain %s", chainID)

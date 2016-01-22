@@ -20,7 +20,7 @@ func (tn *TendermintNetwork) newBlockCallback(chainID, valID string) eventmeter.
 		val, _ := chain.Config.GetValidatorByID(valID)
 
 		// update height for validator
-		val.BlockHeight = block.Header.Height
+		val.Status.BlockHeight = block.Header.Height
 
 		// possibly update height and mean block time for chain
 		if block.Header.Height > chain.Status.Height {
@@ -42,8 +42,8 @@ func (tn *TendermintNetwork) latencyCallback(chainID, valID string) eventmeter.L
 
 		// update latency for this validator and avg latency for chain
 		mean := chain.Status.MeanLatency * float64(chain.Status.NumValidators)
-		mean = (mean - val.Latency + latency) / float64(chain.Status.NumValidators)
-		val.Latency = latency
+		mean = (mean - val.Status.Latency + latency) / float64(chain.Status.NumValidators)
+		val.Status.Latency = latency
 		chain.Status.MeanLatency = mean
 
 		// TODO: possibly update active nodes and uptime for chain
