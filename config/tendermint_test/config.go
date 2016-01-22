@@ -35,7 +35,7 @@ func initTMRoot(rootDir string) {
 		}
 	}
 	// Move ~/.tendermint_test to ~/.tendermint_test_bak
-	if FileExists(rootDir + "_bak") {
+	if FileExists(rootDir) {
 		err := os.Rename(rootDir, rootDir+"_bak")
 		if err != nil {
 			PanicSanity(err.Error())
