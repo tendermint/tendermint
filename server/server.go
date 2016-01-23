@@ -128,7 +128,7 @@ func handleRequest(app types.Application, req types.Request, responses chan<- ty
 		retCode := app.RemListener(req.EventKey)
 		responses <- types.ResponseRemListener{retCode}
 	case types.RequestQuery:
-		retCode, result := app.Query(req.QueryBytes)
+		result, retCode := app.Query(req.QueryBytes)
 		responses <- types.ResponseQuery{retCode, result}
 	default:
 		responses <- types.ResponseException{"Unknown request"}

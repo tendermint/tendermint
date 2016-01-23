@@ -27,5 +27,5 @@ type Application interface {
 	RemListener(key string) RetCode
 
 	// Query for state
-	Query(query []byte) (RetCode, []byte)
+	Query(query []byte) ([]byte, RetCode)
 }

@@ -77,6 +77,6 @@ func (app *CounterApplication) RemListener(key string) types.RetCode {
 	return types.RetCodeOK
 }
 
-func (app *CounterApplication) Query(query []byte) (types.RetCode, []byte) {
-	return types.RetCodeOK, nil
+func (app *CounterApplication) Query(query []byte) ([]byte, types.RetCode) {
+	return nil, types.RetCodeOK
 }

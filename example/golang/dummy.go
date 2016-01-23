@@ -52,6 +52,6 @@ func (app *DummyApplication) RemListener(key string) types.RetCode {
 	return types.RetCodeOK
 }
 
-func (app *DummyApplication) Query(query []byte) (types.RetCode, []byte) {
-	return types.RetCodeOK, nil
+func (app *DummyApplication) Query(query []byte) ([]byte, types.RetCode) {
+	return nil, types.RetCodeOK
 }
