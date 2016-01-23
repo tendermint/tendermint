@@ -48,6 +48,7 @@ func NewTMSPClient(conn net.Conn, bufferSize int) *TMSPClient {
 		resCb:     nil,
 	}
 	cli.QuitService = *NewQuitService(nil, "TMSPClient", cli)
+	cli.Start() // Just start it, it's confusing for callers to remember to start.
 	return cli
 }
 
