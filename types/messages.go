@@ -16,21 +16,15 @@ const (
 	ResponseTypeSetOption = byte(0x14)
 	// reserved for GetOption = byte(0x15)
 
-	RequestTypeAppendTx    = byte(0x21)
-	RequestTypeCheckTx     = byte(0x22)
-	RequestTypeGetHash     = byte(0x23)
-	RequestTypeAddListener = byte(0x24)
-	RequestTypeRemListener = byte(0x25)
-	// reserved for ResponseTypeEvent 0x26
-	RequestTypeQuery = byte(0x27)
+	RequestTypeAppendTx = byte(0x21)
+	RequestTypeCheckTx  = byte(0x22)
+	RequestTypeGetHash  = byte(0x23)
+	RequestTypeQuery    = byte(0x24)
 
-	ResponseTypeAppendTx    = byte(0x31)
-	ResponseTypeCheckTx     = byte(0x32)
-	ResponseTypeGetHash     = byte(0x33)
-	ResponseTypeAddListener = byte(0x34)
-	ResponseTypeRemListener = byte(0x35)
-	ResponseTypeEvent       = byte(0x36)
-	ResponseTypeQuery       = byte(0x37)
+	ResponseTypeAppendTx = byte(0x31)
+	ResponseTypeCheckTx  = byte(0x32)
+	ResponseTypeGetHash  = byte(0x33)
+	ResponseTypeQuery    = byte(0x34)
 )
 
 //----------------------------------------
@@ -61,14 +55,6 @@ type RequestCheckTx struct {
 type RequestGetHash struct {
 }
 
-type RequestAddListener struct {
-	EventKey string
-}
-
-type RequestRemListener struct {
-	EventKey string
-}
-
 type RequestQuery struct {
 	QueryBytes []byte
 }
@@ -77,16 +63,14 @@ type Request interface {
 	AssertRequestType()
 }
 
-func (_ RequestEcho) AssertRequestType()        {}
-func (_ RequestFlush) AssertRequestType()       {}
-func (_ RequestInfo) AssertRequestType()        {}
-func (_ RequestSetOption) AssertRequestType()   {}
-func (_ RequestAppendTx) AssertRequestType()    {}
-func (_ RequestCheckTx) AssertRequestType()     {}
-func (_ RequestGetHash) AssertRequestType()     {}
-func (_ RequestAddListener) AssertRequestType() {}
-func (_ RequestRemListener) AssertRequestType() {}
-func (_ RequestQuery) AssertRequestType()       {}
+func (_ RequestEcho) AssertRequestType()      {}
+func (_ RequestFlush) AssertRequestType()     {}
+func (_ RequestInfo) AssertRequestType()      {}
+func (_ RequestSetOption) AssertRequestType() {}
+func (_ RequestAppendTx) AssertRequestType()  {}
+func (_ RequestCheckTx) AssertRequestType()   {}
+func (_ RequestGetHash) AssertRequestType()   {}
+func (_ RequestQuery) AssertRequestType()     {}
 
 var _ = wire.RegisterInterface(
 	struct{ Request }{},
@@ -97,12 +81,19 @@ var _ = wire.RegisterInterface(
 	wire.ConcreteType{RequestAppendTx{}, RequestTypeAppendTx},
 	wire.ConcreteType{RequestCheckTx{}, RequestTypeCheckTx},
 	wire.ConcreteType{RequestGetHash{}, RequestTypeGetHash},
-	wire.ConcreteType{RequestAddListener{}, RequestTypeAddListener},
-	wire.ConcreteType{RequestRemListener{}, RequestTypeRemListener},
 	wire.ConcreteType{RequestQuery{}, RequestTypeQuery},
 )
 
 //----------------------------------------
+
+type KVPair struct {
+	Key   []byte
+	Value []byte
+}
+
+type ResponseException struct {
+	Error string
+}
 
 type ResponseEcho struct {
 	Message string
@@ -116,59 +107,43 @@ type ResponseInfo struct {
 }
 
 type ResponseSetOption struct {
-	RetCode
+	Error string
 }
 
 type ResponseAppendTx struct {
 	RetCode
+	RetData []KVPair
+	Error   string
 }
 
 type ResponseCheckTx struct {
 	RetCode
+	RetData []KVPair
+	Error   string
 }
 
 type ResponseGetHash struct {
-	RetCode
 	Hash []byte
 }
 
-type ResponseAddListener struct {
-	RetCode
-}
-
-type ResponseRemListener struct {
-	RetCode
-}
-
-type ResponseException struct {
-	Error string
-}
-
-type ResponseEvent struct {
-	Event
-}
-
 type ResponseQuery struct {
-	RetCode
 	Result []byte
+	Error  string
 }
 
 type Response interface {
 	AssertResponseType()
 }
 
-func (_ ResponseEcho) AssertResponseType()        {}
-func (_ ResponseFlush) AssertResponseType()       {}
-func (_ ResponseInfo) AssertResponseType()        {}
-func (_ ResponseSetOption) AssertResponseType()   {}
-func (_ ResponseAppendTx) AssertResponseType()    {}
-func (_ ResponseCheckTx) AssertResponseType()     {}
-func (_ ResponseGetHash) AssertResponseType()     {}
-func (_ ResponseAddListener) AssertResponseType() {}
-func (_ ResponseRemListener) AssertResponseType() {}
-func (_ ResponseException) AssertResponseType()   {}
-func (_ ResponseEvent) AssertResponseType()       {}
-func (_ ResponseQuery) AssertResponseType()       {}
+func (_ ResponseEcho) AssertResponseType()      {}
+func (_ ResponseFlush) AssertResponseType()     {}
+func (_ ResponseInfo) AssertResponseType()      {}
+func (_ ResponseSetOption) AssertResponseType() {}
+func (_ ResponseAppendTx) AssertResponseType()  {}
+func (_ ResponseCheckTx) AssertResponseType()   {}
+func (_ ResponseGetHash) AssertResponseType()   {}
+func (_ ResponseException) AssertResponseType() {}
+func (_ ResponseQuery) AssertResponseType()     {}
 
 var _ = wire.RegisterInterface(
 	struct{ Response }{},
@@ -179,9 +154,6 @@ var _ = wire.RegisterInterface(
 	wire.ConcreteType{ResponseAppendTx{}, ResponseTypeAppendTx},
 	wire.ConcreteType{ResponseCheckTx{}, ResponseTypeCheckTx},
 	wire.ConcreteType{ResponseGetHash{}, ResponseTypeGetHash},
-	wire.ConcreteType{ResponseAddListener{}, ResponseTypeAddListener},
-	wire.ConcreteType{ResponseRemListener{}, ResponseTypeRemListener},
 	wire.ConcreteType{ResponseException{}, ResponseTypeException},
-	wire.ConcreteType{ResponseEvent{}, ResponseTypeEvent},
 	wire.ConcreteType{ResponseQuery{}, ResponseTypeQuery},
 )

@@ -13,6 +13,8 @@ For more information on TMSP, motivations, and tutorials, please visit [our blog
     * `TxBytes ([]byte)`
   * __Returns__:
     * `RetCode (int8)`
+    * `RetData ([]KVPair)`
+    * `Error (string)`
   * __Usage__:<br/>
     Append and run a transaction.  The transaction may or may not be final.
 
@@ -21,31 +23,16 @@ For more information on TMSP, motivations, and tutorials, please visit [our blog
     * `TxBytes ([]byte)`
   * __Returns__:
     * `RetCode (int8)`
+    * `RetData ([]KVPair)`
+    * `Error (string)`
   * __Usage__:<br/>
     Validate a transaction.  This message should not mutate the state.
 
 #### GetHash
   * __Returns__:
-    * `RetCode (int8)`
     * `Hash ([]byte)`
   * __Usage__:<br/>
     Return a Merkle root hash of the application state
-
-#### AddListener
-  * __Arguments__:
-    * `EventKey (string)`
-  * __Returns__:
-    * `RetCode (int8)`
-  * __Usage__:<br/>
-    Add event listener callback for events with given key.
-
-#### RemoveListener
-  * __Arguments__:
-    * `EventKey (string)`
-  * __Returns__:
-    * `RetCode (int8)`
-  * __Usage__:<br/>
-    Remove event listener callback for events with given key.
 
 #### Flush
   * __Usage__:<br/>
@@ -62,12 +49,19 @@ For more information on TMSP, motivations, and tutorials, please visit [our blog
     * `Key (string)`
     * `Value (string)`
   * __Returns__:
-    * `RetCode (int8)`
+    * `Error (string)`
   * __Usage__:<br/>
     Set application options.  E.g. Key="mode", Value="mempool" for a mempool connection, or Key="mode", Value="consensus" for a consensus connection.
     Other options are application specific.
 
 ## Changelog
+
+### Jan 23th, 2016
+
+* Added CheckTx/Query TMSP message types
+* Added RetData/Error fields to AppendTx/CheckTx/SetOption
+* Removed Listener messages
+* Removed RetCode from ResponseSetOption and ResponseGetHash
 
 ### Jan 12th, 2016
 
