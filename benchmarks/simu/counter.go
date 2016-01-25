@@ -36,7 +36,7 @@ func main() {
 	// Make a bunch of requests
 	buf := make([]byte, 32)
 	for i := 0; ; i++ {
-		binary.LittleEndian.PutUint64(buf, uint64(i))
+		binary.BigEndian.PutUint64(buf, uint64(i))
 		//txBytes := hex.EncodeToString(buf[:n])
 		request := rpctypes.NewRPCRequest("fakeid", "broadcast_tx", Arr(buf[:8]))
 		reqBytes := wire.JSONBytes(request)

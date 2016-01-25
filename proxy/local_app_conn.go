@@ -1,7 +1,7 @@
 package proxy
 
 import (
-	tmspcli "github.com/tendermint/tmsp/client/golang"
+	tmspcli "github.com/tendermint/tmsp/client"
 	tmsp "github.com/tendermint/tmsp/types"
 	"sync"
 )
@@ -31,12 +31,9 @@ func (app *localAppConn) Error() error {
 }
 
 func (app *localAppConn) EchoAsync(msg string) {
-	app.mtx.Lock()
-	msg2 := app.Application.Echo(msg)
-	app.mtx.Unlock()
 	app.Callback(
 		tmsp.RequestEcho{msg},
-		tmsp.ResponseEcho{msg2},
+		tmsp.ResponseEcho{msg},
 	)
 }
 
@@ -46,71 +43,45 @@ func (app *localAppConn) FlushAsync() {
 
 func (app *localAppConn) SetOptionAsync(key string, value string) {
 	app.mtx.Lock()
-	retCode := app.Application.SetOption(key, value)
+	log := app.Application.SetOption(key, value)
 	app.mtx.Unlock()
 	app.Callback(
 		tmsp.RequestSetOption{key, value},
-		tmsp.ResponseSetOption{retCode},
+		tmsp.ResponseSetOption{log},
 	)
 }
 
 func (app *localAppConn) AppendTxAsync(tx []byte) {
 	app.mtx.Lock()
-	events, retCode := app.Application.AppendTx(tx)
+	code, result, log := app.Application.AppendTx(tx)
 	app.mtx.Unlock()
 	app.Callback(
 		tmsp.RequestAppendTx{tx},
-		tmsp.ResponseAppendTx{retCode},
+		tmsp.ResponseAppendTx{code, result, log},
 	)
-	for _, event := range events {
-		app.Callback(
-			nil,
-			tmsp.ResponseEvent{event},
-		)
-	}
 }
 
 func (app *localAppConn) CheckTxAsync(tx []byte) {
 	app.mtx.Lock()
-	retCode := app.Application.CheckTx(tx)
+	code, result, log := app.Application.CheckTx(tx)
 	app.mtx.Unlock()
 	app.Callback(
 		tmsp.RequestCheckTx{tx},
-		tmsp.ResponseCheckTx{retCode},
+		tmsp.ResponseCheckTx{code, result, log},
 	)
 }
 
 func (app *localAppConn) GetHashAsync() {
 	app.mtx.Lock()
-	hash, retCode := app.Application.GetHash()
+	hash, log := app.Application.GetHash()
 	app.mtx.Unlock()
 	app.Callback(
 		tmsp.RequestGetHash{},
-		tmsp.ResponseGetHash{retCode, hash},
+		tmsp.ResponseGetHash{hash, log},
 	)
 }
 
-func (app *localAppConn) AddListenerAsync(key string) {
-	app.mtx.Lock()
-	retCode := app.Application.AddListener(key)
-	app.mtx.Unlock()
-	app.Callback(
-		tmsp.RequestAddListener{key},
-		tmsp.ResponseAddListener{retCode},
-	)
-}
-
-func (app *localAppConn) RemListenerAsync(key string) {
-	app.mtx.Lock()
-	retCode := app.Application.RemListener(key)
-	app.mtx.Unlock()
-	app.Callback(
-		tmsp.RequestRemListener{key},
-		tmsp.ResponseRemListener{retCode},
-	)
-}
-
-func (app *localAppConn) InfoSync() (info []string, err error) {
+func (app *localAppConn) InfoSync() (info string, err error) {
 	app.mtx.Lock()
 	info = app.Application.Info()
 	app.mtx.Unlock()
@@ -121,9 +92,9 @@ func (app *localAppConn) FlushSync() error {
 	return nil
 }
 
-func (app *localAppConn) GetHashSync() (hash []byte, err error) {
+func (app *localAppConn) GetHashSync() (hash []byte, log string, err error) {
 	app.mtx.Lock()
-	hash, retCode := app.Application.GetHash()
+	hash, log = app.Application.GetHash()
 	app.mtx.Unlock()
-	return hash, retCode.Error()
+	return hash, log, nil
 }

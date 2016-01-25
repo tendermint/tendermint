@@ -63,17 +63,15 @@ func (s *State) execBlockOnProxyApp(evsw *events.EventSwitch, proxyAppConn proxy
 	proxyCb := func(req tmsp.Request, res tmsp.Response) {
 		switch res := res.(type) {
 		case tmsp.ResponseAppendTx:
+			// TODO: make use of res.Log
 			// TODO: make use of this info
 			// Blocks may include invalid txs.
 			// reqAppendTx := req.(tmsp.RequestAppendTx)
-			if res.RetCode == tmsp.RetCodeOK {
+			if res.Code == tmsp.RetCodeOK {
 				validTxs += 1
 			} else {
 				invalidTxs += 1
 			}
-		case tmsp.ResponseEvent:
-			// TODO: some events should get stored in the blockchain.
-			evsw.FireEvent(types.EventStringApp(), types.EventDataApp{res.Key, res.Data})
 		}
 	}
 	proxyAppConn.SetResponseCallback(proxyCb)
@@ -85,10 +83,13 @@ func (s *State) execBlockOnProxyApp(evsw *events.EventSwitch, proxyAppConn proxy
 			return err
 		}
 	}
-	hash, err := proxyAppConn.GetHashSync()
+	hash, logStr, err := proxyAppConn.GetHashSync()
 	if err != nil {
 		log.Warn("Error computing proxyAppConn hash", "error", err)
 		return err
+	}
+	if logStr != "" {
+		log.Debug("GetHash.Log: " + logStr)
 	}
 	log.Info(Fmt("ExecBlock got %v valid txs and %v invalid txs", validTxs, invalidTxs))
 
@@ -156,10 +157,10 @@ func updateValidatorsWithBlock(lastValSet *types.ValidatorSet, valSet *types.Val
 //-----------------------------------------------------------------------------
 
 type InvalidTxError struct {
-	Tx types.Tx
-	tmsp.RetCode
+	Tx   types.Tx
+	Code tmsp.RetCode
 }
 
 func (txErr InvalidTxError) Error() string {
-	return Fmt("Invalid tx: [%v] code: [%v]", txErr.Tx, txErr.RetCode)
+	return Fmt("Invalid tx: [%v] code: [%v]", txErr.Tx, txErr.Code)
 }

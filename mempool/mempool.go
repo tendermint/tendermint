@@ -105,7 +105,7 @@ func (mem *Mempool) resCb(req tmsp.Request, res tmsp.Response) {
 	switch res := res.(type) {
 	case tmsp.ResponseCheckTx:
 		reqCheckTx := req.(tmsp.RequestCheckTx)
-		if res.RetCode == tmsp.RetCodeOK {
+		if res.Code == tmsp.RetCodeOK {
 			mem.counter++
 			memTx := &mempoolTx{
 				counter: mem.counter,
