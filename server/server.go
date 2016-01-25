@@ -106,20 +106,20 @@ func handleRequest(app types.Application, req types.Request, responses chan<- ty
 		data := app.Info()
 		responses <- types.ResponseInfo{data}
 	case types.RequestSetOption:
-		logstr := app.SetOption(req.Key, req.Value)
-		responses <- types.ResponseSetOption{logstr}
+		logStr := app.SetOption(req.Key, req.Value)
+		responses <- types.ResponseSetOption{logStr}
 	case types.RequestAppendTx:
-		code, result, logstr := app.AppendTx(req.TxBytes)
-		responses <- types.ResponseAppendTx{code, result, logstr}
+		code, result, logStr := app.AppendTx(req.TxBytes)
+		responses <- types.ResponseAppendTx{code, result, logStr}
 	case types.RequestCheckTx:
-		code, result, logstr := app.CheckTx(req.TxBytes)
-		responses <- types.ResponseCheckTx{code, result, logstr}
+		code, result, logStr := app.CheckTx(req.TxBytes)
+		responses <- types.ResponseCheckTx{code, result, logStr}
 	case types.RequestGetHash:
-		hash, logstr := app.GetHash()
-		responses <- types.ResponseGetHash{hash, logstr}
+		hash, logStr := app.GetHash()
+		responses <- types.ResponseGetHash{hash, logStr}
 	case types.RequestQuery:
-		result, logstr := app.Query(req.QueryBytes)
-		responses <- types.ResponseQuery{result, logstr}
+		result, logStr := app.Query(req.QueryBytes)
+		responses <- types.ResponseQuery{result, logStr}
 	default:
 		responses <- types.ResponseException{"Unknown request"}
 	}
