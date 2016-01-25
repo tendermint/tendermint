@@ -4,9 +4,9 @@ package types
 
 import "fmt"
 
-const _RetCode_name = "RetCodeOKRetCodeInternalErrorRetCodeUnauthorizedRetCodeInsufficientFeesRetCodeUnknownRequestRetCodeEncodingErrorRetCodeInvalidNonce"
+const _RetCode_name = "RetCodeOKRetCodeInternalErrorRetCodeUnauthorizedRetCodeInsufficientFeesRetCodeUnknownRequestRetCodeEncodingErrorRetCodeBadNonce"
 
-var _RetCode_index = [...]uint8{0, 9, 29, 48, 71, 92, 112, 131}
+var _RetCode_index = [...]uint8{0, 9, 29, 48, 71, 92, 112, 127}
 
 func (i RetCode) String() string {
 	if i < 0 || i >= RetCode(len(_RetCode_index)-1) {

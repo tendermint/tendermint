@@ -1,9 +1,5 @@
 package types
 
-import (
-	"errors"
-)
-
 type RetCode int
 
 // Reserved return codes
@@ -16,15 +12,6 @@ const (
 	RetCodeEncodingError    RetCode = 5
 	RetCodeBadNonce         RetCode = 6
 )
-
-func (r RetCode) Error() error {
-	switch r {
-	case RetCodeOK:
-		return nil
-	default:
-		return errors.New(r.String())
-	}
-}
 
 //go:generate stringer -type=RetCode
 

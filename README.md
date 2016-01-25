@@ -12,9 +12,9 @@ For more information on TMSP, motivations, and tutorials, please visit [our blog
   * __Arguments__:
     * `TxBytes ([]byte)`
   * __Returns__:
-    * `RetCode (int8)`
-    * `RetData ([]KVPair)`
-    * `Error (string)`
+    * `Code (int8)`
+    * `Result ([]byte)`
+    * `Log (string)`
   * __Usage__:<br/>
     Append and run a transaction.  The transaction may or may not be final.
 
@@ -22,15 +22,16 @@ For more information on TMSP, motivations, and tutorials, please visit [our blog
   * __Arguments__:
     * `TxBytes ([]byte)`
   * __Returns__:
-    * `RetCode (int8)`
-    * `RetData ([]KVPair)`
-    * `Error (string)`
+    * `Code (int8)`
+    * `Result ([]byte)`
+    * `Log (string)`
   * __Usage__:<br/>
     Validate a transaction.  This message should not mutate the state.
 
 #### GetHash
   * __Returns__:
     * `Hash ([]byte)`
+    * `Log (string)`
   * __Usage__:<br/>
     Return a Merkle root hash of the application state
 
@@ -49,7 +50,7 @@ For more information on TMSP, motivations, and tutorials, please visit [our blog
     * `Key (string)`
     * `Value (string)`
   * __Returns__:
-    * `Error (string)`
+    * `Log (string)`
   * __Usage__:<br/>
     Set application options.  E.g. Key="mode", Value="mempool" for a mempool connection, or Key="mode", Value="consensus" for a consensus connection.
     Other options are application specific.
@@ -59,9 +60,10 @@ For more information on TMSP, motivations, and tutorials, please visit [our blog
 ### Jan 23th, 2016
 
 * Added CheckTx/Query TMSP message types
-* Added RetData/Error fields to AppendTx/CheckTx/SetOption
+* Added Result/Log fields to AppendTx/CheckTx/SetOption
 * Removed Listener messages
-* Removed RetCode from ResponseSetOption and ResponseGetHash
+* Removed Code from ResponseSetOption and ResponseGetHash
+* Made examples BigEndian
 
 ### Jan 12th, 2016
 

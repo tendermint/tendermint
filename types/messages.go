@@ -86,11 +86,6 @@ var _ = wire.RegisterInterface(
 
 //----------------------------------------
 
-type KVPair struct {
-	Key   []byte
-	Value []byte
-}
-
 type ResponseException struct {
 	Error string
 }
@@ -103,32 +98,33 @@ type ResponseFlush struct {
 }
 
 type ResponseInfo struct {
-	Data []string
+	Info string
 }
 
 type ResponseSetOption struct {
-	Error string
+	Log string
 }
 
 type ResponseAppendTx struct {
-	RetCode
-	RetData []KVPair
-	Error   string
+	Code   RetCode
+	Result []byte
+	Log    string
 }
 
 type ResponseCheckTx struct {
-	RetCode
-	RetData []KVPair
-	Error   string
+	Code   RetCode
+	Result []byte
+	Log    string
 }
 
 type ResponseGetHash struct {
 	Hash []byte
+	Log  string
 }
 
 type ResponseQuery struct {
 	Result []byte
-	Error  string
+	Log    string
 }
 
 type Response interface {

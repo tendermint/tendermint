@@ -1,0 +1,27 @@
+module.exports = {
+  RetCodeOK:                0,
+  RetCodeInternalError:     1,
+  RetCodeUnauthorized:      2,
+  RetCodeInsufficientFees:  3,
+  RetCodeUnknownRequest:    4,
+  RetCodeEncodingError:     5,
+  RetCodeNonce:             6,
+
+  RequestTypeEcho:          0x01,
+  RequestTypeFlush:         0x02,
+  RequestTypeInfo:          0x03,
+  RequestTypeSetOption:     0x04,
+  RequestTypeAppendTx:      0x21,
+  RequestTypeCheckTx:       0x22,
+  RequestTypeGetHash:       0x23,
+  RequestTypeQuery:         0x24,
+
+  ResponseTypeEcho:         0x11,
+  ResponseTypeFlush:        0x12,
+  ResponseTypeInfo:         0x13,
+  ResponseTypeSetOption:    0x14,
+  ResponseTypeAppendTx:     0x31,
+  ResponseTypeCheckTx:      0x32,
+  ResponseTypeGetHash:      0x33,
+  ResponseTypeQuery:        0x34,
+};

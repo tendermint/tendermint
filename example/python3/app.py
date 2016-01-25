@@ -8,6 +8,7 @@ from tmsp.reader import BytesBuffer
 class CounterApplication():
 
     def __init__(self):
+        sys.exit("The python example is out of date.  Upgrading the Python examples is currently left as an exercise to you.")
         self.hashCount = 0
         self.txCount = 0
         self.serial = False

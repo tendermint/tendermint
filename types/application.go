@@ -2,30 +2,21 @@ package types
 
 type Application interface {
 
-	// Echo a message
-	Echo(message string) string
-
 	// Return application info
-	Info() []string
+	Info() (info string)
 
 	// Set application option (e.g. mode=mempool, mode=consensus)
-	SetOption(key string, value string) RetCode
+	SetOption(key string, value string) (log string)
 
 	// Append a tx
-	AppendTx(tx []byte) ([]Event, RetCode)
+	AppendTx(tx []byte) (code RetCode, result []byte, log string)
 
 	// Validate a tx for the mempool
-	CheckTx(tx []byte) RetCode
+	CheckTx(tx []byte) (code RetCode, result []byte, log string)
 
 	// Return the application Merkle root hash
-	GetHash() ([]byte, RetCode)
-
-	// Add event listener
-	AddListener(key string) RetCode
-
-	// Remove event listener
-	RemListener(key string) RetCode
+	GetHash() (hash []byte, log string)
 
 	// Query for state
-	Query(query []byte) ([]byte, RetCode)
+	Query(query []byte) (result []byte, log string)
 }

@@ -99,37 +99,27 @@ func handleRequests(mtx *sync.Mutex, app types.Application, closeConn chan error
 func handleRequest(app types.Application, req types.Request, responses chan<- types.Response) {
 	switch req := req.(type) {
 	case types.RequestEcho:
-		msg := app.Echo(req.Message)
-		responses <- types.ResponseEcho{msg}
+		responses <- types.ResponseEcho{req.Message}
 	case types.RequestFlush:
 		responses <- types.ResponseFlush{}
 	case types.RequestInfo:
 		data := app.Info()
 		responses <- types.ResponseInfo{data}
 	case types.RequestSetOption:
-		retCode := app.SetOption(req.Key, req.Value)
-		responses <- types.ResponseSetOption{retCode}
+		logstr := app.SetOption(req.Key, req.Value)
+		responses <- types.ResponseSetOption{logstr}
 	case types.RequestAppendTx:
-		events, retCode := app.AppendTx(req.TxBytes)
-		responses <- types.ResponseAppendTx{retCode}
-		for _, event := range events {
-			responses <- types.ResponseEvent{event}
-		}
+		code, result, logstr := app.AppendTx(req.TxBytes)
+		responses <- types.ResponseAppendTx{code, result, logstr}
 	case types.RequestCheckTx:
-		retCode := app.CheckTx(req.TxBytes)
-		responses <- types.ResponseCheckTx{retCode}
+		code, result, logstr := app.CheckTx(req.TxBytes)
+		responses <- types.ResponseCheckTx{code, result, logstr}
 	case types.RequestGetHash:
-		hash, retCode := app.GetHash()
-		responses <- types.ResponseGetHash{retCode, hash}
-	case types.RequestAddListener:
-		retCode := app.AddListener(req.EventKey)
-		responses <- types.ResponseAddListener{retCode}
-	case types.RequestRemListener:
-		retCode := app.RemListener(req.EventKey)
-		responses <- types.ResponseRemListener{retCode}
+		hash, logstr := app.GetHash()
+		responses <- types.ResponseGetHash{hash, logstr}
 	case types.RequestQuery:
-		result, retCode := app.Query(req.QueryBytes)
-		responses <- types.ResponseQuery{retCode, result}
+		result, logstr := app.Query(req.QueryBytes)
+		responses <- types.ResponseQuery{result, logstr}
 	default:
 		responses <- types.ResponseException{"Unknown request"}
 	}

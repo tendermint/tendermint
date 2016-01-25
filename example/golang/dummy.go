@@ -18,40 +18,28 @@ func NewDummyApplication() *DummyApplication {
 	return &DummyApplication{state: state}
 }
 
-func (app *DummyApplication) Echo(message string) string {
-	return message
+func (app *DummyApplication) Info() string {
+	return Fmt("size:%v", app.state.Size())
 }
 
-func (app *DummyApplication) Info() []string {
-	return []string{Fmt("size:%v", app.state.Size())}
+func (app *DummyApplication) SetOption(key string, value string) (log string) {
+	return ""
 }
 
-func (app *DummyApplication) SetOption(key string, value string) types.RetCode {
-	return types.RetCodeOK
-}
-
-func (app *DummyApplication) AppendTx(tx []byte) ([]types.Event, types.RetCode) {
+func (app *DummyApplication) AppendTx(tx []byte) (code types.RetCode, result []byte, log string) {
 	app.state.Set(tx, tx)
-	return nil, types.RetCodeOK
+	return types.RetCodeOK, nil, ""
 }
 
-func (app *DummyApplication) CheckTx(tx []byte) types.RetCode {
-	return types.RetCodeOK // all txs are valid
+func (app *DummyApplication) CheckTx(tx []byte) (code types.RetCode, result []byte, log string) {
+	return types.RetCodeOK, nil, ""
 }
 
-func (app *DummyApplication) GetHash() ([]byte, types.RetCode) {
-	hash := app.state.Hash()
-	return hash, types.RetCodeOK
+func (app *DummyApplication) GetHash() (hash []byte, log string) {
+	hash = app.state.Hash()
+	return hash, ""
 }
 
-func (app *DummyApplication) AddListener(key string) types.RetCode {
-	return types.RetCodeOK
-}
-
-func (app *DummyApplication) RemListener(key string) types.RetCode {
-	return types.RetCodeOK
-}
-
-func (app *DummyApplication) Query(query []byte) ([]byte, types.RetCode) {
-	return nil, types.RetCodeOK
+func (app *DummyApplication) Query(query []byte) (result []byte, log string) {
+	return nil, "Query not supported"
 }

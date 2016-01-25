@@ -2,6 +2,7 @@ package example
 
 import (
 	"encoding/binary"
+	"fmt"
 
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/tmsp/types"
@@ -17,66 +18,54 @@ func NewCounterApplication(serial bool) *CounterApplication {
 	return &CounterApplication{serial: serial}
 }
 
-func (app *CounterApplication) Echo(message string) string {
-	return message
+func (app *CounterApplication) Info() string {
+	return Fmt("hashes:%v, txs:%v", app.hashCount, app.txCount)
 }
 
-func (app *CounterApplication) Info() []string {
-	return []string{Fmt("hashes:%v, txs:%v", app.hashCount, app.txCount)}
-}
-
-func (app *CounterApplication) SetOption(key string, value string) types.RetCode {
+func (app *CounterApplication) SetOption(key string, value string) (log string) {
 	if key == "serial" && value == "on" {
 		app.serial = true
 	}
-	return types.RetCodeOK
+	return ""
 }
 
-func (app *CounterApplication) AppendTx(tx []byte) ([]types.Event, types.RetCode) {
+func (app *CounterApplication) AppendTx(tx []byte) (code types.RetCode, result []byte, log string) {
 	if app.serial {
 		tx8 := make([]byte, 8)
-		copy(tx8, tx)
-		txValue := binary.LittleEndian.Uint64(tx8)
+		copy(tx8[len(tx8)-len(tx):], tx)
+		txValue := binary.BigEndian.Uint64(tx8)
 		if txValue != uint64(app.txCount) {
-			return nil, types.RetCodeBadNonce
+			return types.RetCodeBadNonce, nil, fmt.Sprintf("Invalid nonce. Expected %v, got %v", app.txCount, txValue)
 		}
 	}
 	app.txCount += 1
-	return nil, types.RetCodeOK
+	return types.RetCodeOK, nil, ""
 }
 
-func (app *CounterApplication) CheckTx(tx []byte) types.RetCode {
+func (app *CounterApplication) CheckTx(tx []byte) (code types.RetCode, result []byte, log string) {
 	if app.serial {
 		tx8 := make([]byte, 8)
-		copy(tx8, tx)
-		txValue := binary.LittleEndian.Uint64(tx8)
+		copy(tx8[len(tx8)-len(tx):], tx)
+		txValue := binary.BigEndian.Uint64(tx8)
 		if txValue < uint64(app.txCount) {
-			return types.RetCodeBadNonce
+			return types.RetCodeBadNonce, nil, fmt.Sprintf("Invalid nonce. Expected >= %v, got %v", app.txCount, txValue)
 		}
 	}
-	return types.RetCodeOK
+	return types.RetCodeOK, nil, ""
 }
 
-func (app *CounterApplication) GetHash() ([]byte, types.RetCode) {
+func (app *CounterApplication) GetHash() (hash []byte, log string) {
 	app.hashCount += 1
 
 	if app.txCount == 0 {
-		return nil, types.RetCodeOK
+		return nil, ""
 	} else {
-		hash := make([]byte, 32)
-		binary.LittleEndian.PutUint64(hash, uint64(app.txCount))
-		return hash, types.RetCodeOK
+		hash := make([]byte, 8)
+		binary.BigEndian.PutUint64(hash, uint64(app.txCount))
+		return hash, ""
 	}
 }
 
-func (app *CounterApplication) AddListener(key string) types.RetCode {
-	return types.RetCodeOK
-}
-
-func (app *CounterApplication) RemListener(key string) types.RetCode {
-	return types.RetCodeOK
-}
-
-func (app *CounterApplication) Query(query []byte) ([]byte, types.RetCode) {
-	return nil, types.RetCodeOK
+func (app *CounterApplication) Query(query []byte) (result []byte, log string) {
+	return nil, fmt.Sprintf("Query is not supported")
 }

@@ -44,8 +44,8 @@ func TestStream(t *testing.T) {
 			switch res := res.(type) {
 			case types.ResponseAppendTx:
 				counter += 1
-				if res.RetCode != types.RetCodeOK {
-					t.Error("AppendTx failed with ret_code", res.RetCode)
+				if res.Code != types.RetCodeOK {
+					t.Error("AppendTx failed with ret_code", res.Code)
 				}
 				if counter > numAppendTxs {
 					t.Fatal("Too many AppendTx responses")

@@ -1,6 +1,9 @@
-server = require("./server")
-wire = require("./wire")
-util = require("util")
+var server = require("./server");
+var wire = require("js-wire");
+var util = require("util");
+var msg = require("./msgs");
+var types = require("./types");
+
 
 function CounterApp(){
 	this.hashCount = 0;
@@ -8,75 +11,65 @@ function CounterApp(){
   this.serial = false;
 };
 
-CounterApp.prototype.echo = function(msg){
-	return {"response": msg, "ret_code":0}
+CounterApp.prototype.info = function(cb) {
+  return cb(util.format("hashes:%d, txs:%d", this.hashCount, this.txCount));
 }
 
-CounterApp.prototype.info = function(){
-	return {"response": [util.format("hashes:%d, txs:%d", this.hashCount, this.txCount)]}
-}
-
-CounterApp.prototype.set_option = function(key, value){
-	if (key == "serial" && value == "on"){
+CounterApp.prototype.set_option = function(cb, key, value) {
+	if (key == "serial" && value == "on") {
 		this.serial = true;
 	}
-	return {"ret_code":0}
+  return cb("");
 }
 
-CounterApp.prototype.append_tx = function(txBytes){
+CounterApp.prototype.append_tx = function(cb, txBytes) {
 	if (this.serial) {
-		txByteArray = new Buffer(txBytes)
 		if (txBytes.length >= 2 && txBytes.slice(0, 2) == "0x") {
-			txByteArray = wire.hex2bytes(txBytes.slice(2));
+      var hexString = txBytes.toString("ascii", 2);
+      var hexBytes = new Buffer(hexString, "hex");
+      txBytes = hexBytes;
 		}	
-		r = new msg.buffer(txByteArray)
-		txValue = wire.decode_big_endian(r, txBytes.length)
+    var txValue = txBytes.readIntBE(0, txBytes.length);
 		if (txValue != this.txCount){
-			return {"ret_code":6}
+      return cb(types.RetCodeInvalidNonce, "", "Nonce is invalid");
 		}
 	}
 	this.txCount += 1;
-	return {"ret_code":0} // TODO: return events
+	return cb(types.RetCodeOK, "", "");
 }
 
-CounterApp.prototype.check_tx = function(txBytes){
+CounterApp.prototype.check_tx = function(cb, txBytes) {
 	if (this.serial) {
-		txByteArray = new Buffer(txBytes)
 		if (txBytes.length >= 2 && txBytes.slice(0, 2) == "0x") {
-			txByteArray = wire.hex2bytes(txBytes.slice(2));
+      var hexString = txBytes.toString("ascii", 2);
+      var hexBytes = new Buffer(hexString, "hex");
+      txBytes = hexBytes;
 		}	
-		r = new msg.buffer(txByteArray)
-		txValue = wire.decode_big_endian(r, txBytes.length)
+    var txValue = txBytes.readIntBE(0, txBytes.length);
 		if (txValue < this.txCount){
-			return {"ret_code":6}
+      return cb(types.RetCodeInvalidNonce, "", "Nonce is too low");
 		}
 	}
-	return {"ret_code":0}
+	this.txCount += 1;
+	return cb(types.RetCodeOK, "", "");
 }
 
-CounterApp.prototype.get_hash = function(){
+CounterApp.prototype.get_hash = function(cb) {
 	this.hashCount += 1;
 	if (this.txCount == 0){
-		return {"response": "", "ret_code":0}
+    return cb("", "Zero tx count; hash is empth");
 	}
-	h = wire.encode_big_endian(this.txCount, 8);
-	h = wire.reverse(h); // TODO
-	return {"response": h.toString(), "ret_code":0}
+  var buf = new Buffer(8);
+  buf.writeIntBE(this.txCount, 0, 8);
+  cb(buf, "");
 }
 
-CounterApp.prototype.add_listener = function(){
-	return {"ret_code":0}
+CounterApp.prototype.query = function(cb) {
+  return cb("", "Query not yet supporrted");
 }
 
-CounterApp.prototype.rm_listener = function(){
-	return {"ret_code":0}
-}
-
-CounterApp.prototype.event = function(){
-}
-
-console.log("Counter app in Javascript")
+console.log("Counter app in Javascript");
 
 var app = new CounterApp();
 var appServer = new server.AppServer(app);
-appServer.server.listen(46658)
+appServer.server.listen(46658);

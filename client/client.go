@@ -134,6 +134,7 @@ func (cli *TMSPClient) recvResponseRoutine() {
 		}
 		switch res := res.(type) {
 		case tmsp.ResponseException:
+			// XXX After setting cli.err, release waiters (e.g. reqres.Done())
 			cli.StopForError(errors.New(res.Error))
 		default:
 			// log.Debug("Received response", "responseType", reflect.TypeOf(res), "response", res)
@@ -154,12 +155,6 @@ func (cli *TMSPClient) willSendReq(reqres *reqRes) {
 func (cli *TMSPClient) didRecvResponse(res tmsp.Response) error {
 	cli.mtx.Lock()
 	defer cli.mtx.Unlock()
-
-	// Special logic for events which have no corresponding requests.
-	if _, ok := res.(tmsp.ResponseEvent); ok && cli.resCb != nil {
-		cli.resCb(nil, res)
-		return nil
-	}
 
 	// Get the first reqRes
 	next := cli.reqSent.Front()
@@ -210,27 +205,19 @@ func (cli *TMSPClient) GetHashAsync() {
 	cli.queueRequest(tmsp.RequestGetHash{})
 }
 
-func (cli *TMSPClient) AddListenerAsync(key string) {
-	cli.queueRequest(tmsp.RequestAddListener{key})
-}
-
-func (cli *TMSPClient) RemListenerAsync(key string) {
-	cli.queueRequest(tmsp.RequestRemListener{key})
-}
-
 func (cli *TMSPClient) QueryAsync(query []byte) {
 	cli.queueRequest(tmsp.RequestQuery{query})
 }
 
 //----------------------------------------
 
-func (cli *TMSPClient) InfoSync() (info []string, err error) {
+func (cli *TMSPClient) InfoSync() (info string, err error) {
 	reqres := cli.queueRequest(tmsp.RequestInfo{})
 	cli.FlushSync()
 	if cli.err != nil {
-		return nil, cli.err
+		return "", cli.err
 	}
-	return reqres.Response.(tmsp.ResponseInfo).Data, nil
+	return reqres.Response.(tmsp.ResponseInfo).Info, nil
 }
 
 func (cli *TMSPClient) FlushSync() error {
@@ -238,34 +225,44 @@ func (cli *TMSPClient) FlushSync() error {
 	return cli.err
 }
 
-func (cli *TMSPClient) AppendTxSync(tx []byte) error {
+func (cli *TMSPClient) AppendTxSync(tx []byte) (code tmsp.RetCode, result []byte, log string, err error) {
 	reqres := cli.queueRequest(tmsp.RequestAppendTx{tx})
 	cli.FlushSync()
 	if cli.err != nil {
-		return cli.err
+		return tmsp.RetCodeInternalError, nil, "", cli.err
 	}
 	res := reqres.Response.(tmsp.ResponseAppendTx)
-	return res.RetCode.Error()
+	return res.Code, res.Result, res.Log, nil
 }
 
-func (cli *TMSPClient) GetHashSync() (hash []byte, err error) {
+func (cli *TMSPClient) CheckTxSync(tx []byte) (code tmsp.RetCode, result []byte, log string, err error) {
+	reqres := cli.queueRequest(tmsp.RequestCheckTx{tx})
+	cli.FlushSync()
+	if cli.err != nil {
+		return tmsp.RetCodeInternalError, nil, "", cli.err
+	}
+	res := reqres.Response.(tmsp.ResponseCheckTx)
+	return res.Code, res.Result, res.Log, nil
+}
+
+func (cli *TMSPClient) GetHashSync() (hash []byte, log string, err error) {
 	reqres := cli.queueRequest(tmsp.RequestGetHash{})
 	cli.FlushSync()
 	if cli.err != nil {
-		return nil, cli.err
+		return nil, "", cli.err
 	}
 	res := reqres.Response.(tmsp.ResponseGetHash)
-	return res.Hash, res.RetCode.Error()
+	return res.Hash, res.Log, nil
 }
 
-func (cli *TMSPClient) QuerySync(query []byte) (result []byte, err error) {
+func (cli *TMSPClient) QuerySync(query []byte) (result []byte, log string, err error) {
 	reqres := cli.queueRequest(tmsp.RequestQuery{query})
 	cli.FlushSync()
 	if cli.err != nil {
-		return nil, cli.err
+		return nil, "", cli.err
 	}
 	res := reqres.Response.(tmsp.ResponseQuery)
-	return res.Result, res.RetCode.Error()
+	return res.Result, res.Log, nil
 }
 
 //----------------------------------------
@@ -304,10 +301,6 @@ func resMatchesReq(req tmsp.Request, res tmsp.Response) (ok bool) {
 		_, ok = res.(tmsp.ResponseCheckTx)
 	case tmsp.RequestGetHash:
 		_, ok = res.(tmsp.ResponseGetHash)
-	case tmsp.RequestAddListener:
-		_, ok = res.(tmsp.ResponseAddListener)
-	case tmsp.RequestRemListener:
-		_, ok = res.(tmsp.ResponseRemListener)
 	case tmsp.RequestQuery:
 		_, ok = res.(tmsp.ResponseQuery)
 	default:

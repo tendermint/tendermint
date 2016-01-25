@@ -1,3 +1,12 @@
+#! /bin/bash
+function finish {
+  echo "Cleaning up..."
+  ps -p $PID > /dev/null
+  if [[ "$?" == "0" ]]; then
+    kill -9 $PID
+  fi
+}
+trap finish EXIT
 
 # so we can test other languages
 if [[ "$COUNTER_APP" == "" ]]; then
@@ -55,21 +64,15 @@ fi
 HASH1=`echo "$OUTPUT" | tail -n +3 | head -n 1`
 HASH2=`echo "$OUTPUT" | tail -n +5 | head -n 1`
 
-if [[ "${HASH1:0:2}" != "01" ]]; then
+if [[ "${HASH1: -2}" != "01" ]]; then
 	echo "Expected hash to lead with 01. Got $HASH1"	
 	exit 1
 fi
 
-if [[ "${HASH2:0:2}" != "02" ]]; then
+if [[ "${HASH2: -2}" != "02" ]]; then
 	echo "Expected hash to lead with 02. Got $HASH2"	
 	exit 1
 fi
 
 echo "... Pass!"
 echo ""
-
-ps -p $PID > /dev/null
-if [[ "$?" == "0" ]]; then
-	kill -9 $PID
-fi
-

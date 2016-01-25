@@ -1,0 +1,10 @@
+{
+  "name": "example",
+  "version": "0.0.1",
+  "description": "Example javascript TMSP application",
+  "main": "index.js",
+  "dependencies": {
+    "js-wire": "0.0.2"
+  }
+}
+

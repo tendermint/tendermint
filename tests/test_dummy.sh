@@ -1,4 +1,12 @@
 #! /bin/bash
+function finish {
+  echo "Cleaning up..."
+  ps -p $PID > /dev/null
+  if [[ "$?" == "0" ]]; then
+    kill -9 $PID
+  fi
+}
+trap finish EXIT
 
 # Make sure the tmsp cli can connect to the dummy
 echo "Dummy test ..."
@@ -51,7 +59,3 @@ if [[ "$HASH1" != "$RESULT_HASH" ]]; then
 fi
 echo "... Pass!"
 echo ""
-
-
-kill $PID
-sleep 1
