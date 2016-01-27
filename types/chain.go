@@ -83,8 +83,8 @@ type BlockchainStatus struct {
 	// Blockchain Info
 	Height         int     `json:"height"`
 	BlockchainSize int64   `json:"blockchain_size"`
-	MeanBlockTime  float64 `json:"mean_block_time" wire:"unsafe"`
-	TxThroughput   float64 `json:"tx_throughput" wire:"unsafe"`
+	MeanBlockTime  float64 `json:"mean_block_time" wire:"unsafe"` // ms
+	TxThroughput   float64 `json:"tx_throughput" wire:"unsafe"`   // tx/s
 
 	blockTimeMeter    metrics.Meter
 	txThroughputMeter metrics.Meter
@@ -93,7 +93,7 @@ type BlockchainStatus struct {
 	NumValidators    int     `json:"num_validators"`
 	ActiveValidators int     `json:"active_validators"`
 	ActiveNodes      int     `json:"active_nodes"`
-	MeanLatency      float64 `json:"mean_latency" wire:"unsafe"`
+	MeanLatency      float64 `json:"mean_latency" wire:"unsafe"` // ms
 	Uptime           float64 `json:"uptime" wire:"unsafe"`
 
 	// What else can we get / do we want?
@@ -114,7 +114,7 @@ func (s *BlockchainStatus) NewBlock(block *tmtypes.Block) {
 		s.Height = block.Header.Height
 		s.blockTimeMeter.Mark(1)
 		s.txThroughputMeter.Mark(int64(block.Header.NumTxs))
-		s.MeanBlockTime = 1 / s.blockTimeMeter.RateMean()
+		s.MeanBlockTime = (1 / s.blockTimeMeter.RateMean()) * 1000 // 1/s to ms
 		s.TxThroughput = s.txThroughputMeter.RateMean()
 	}
 }

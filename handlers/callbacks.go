@@ -35,6 +35,7 @@ func (tn *TendermintNetwork) newBlockCallback(chainState *types.ChainState, val 
 // implements eventmeter.EventLatencyFunc
 func (tn *TendermintNetwork) latencyCallback(chain *types.ChainState, val *types.ValidatorState) eventmeter.LatencyCallbackFunc {
 	return func(latency float64) {
+		latency = latency / 1000000.0 // ns to ms
 		oldLatency := val.UpdateLatency(latency)
 		chain.UpdateLatency(oldLatency, latency)
 	}
