@@ -1,9 +1,7 @@
 package types
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"sync"
 
 	"github.com/tendermint/netmon/Godeps/_workspace/src/github.com/rcrowley/go-metrics"
@@ -12,75 +10,50 @@ import (
 
 //------------------------------------------------
 // blockchain types
+//------------------------------------------------
 
 // Known chain and validator set IDs (from which anything else can be found)
+// Returned by the Status RPC
 type ChainAndValidatorSetIDs struct {
 	ChainIDs        []string `json:"chain_ids"`
 	ValidatorSetIDs []string `json:"validator_set_ids"`
 }
 
-// Basic chain and network metrics
-type BlockchainStatus struct {
-	// Blockchain Info
-	Height         int     `json:"height"`
-	BlockchainSize int64   `json:"blockchain_size"` // how might we get StateSize ?
-	MeanBlockTime  float64 `json:"mean_block_time" wire:"unsafe"`
-	TxThroughput   float64 `json:"tx_throughput" wire:"unsafe"`
-
-	blockTimeMeter    metrics.Meter
-	txThroughputMeter metrics.Meter
-
-	// Network Info
-	NumValidators    int     `json:"num_validators"`
-	ActiveValidators int     `json:"active_validators"`
-	ActiveNodes      int     `json:"active_nodes"`
-	MeanLatency      float64 `json:"mean_latency" wire:"unsafe"`
-	Uptime           float64 `json:"uptime" wire:"unsafe"`
-
-	// TODO: charts for block time, latency (websockets/event-meter ?)
-}
-
-func NewBlockchainStatus() *BlockchainStatus {
-	return &BlockchainStatus{
-		blockTimeMeter:    metrics.NewMeter(),
-		txThroughputMeter: metrics.NewMeter(),
-	}
-}
-
-func (s *BlockchainStatus) NewBlock(block *tmtypes.Block) {
-	s.Height = block.Header.Height
-	s.blockTimeMeter.Mark(1)
-	s.txThroughputMeter.Mark(int64(block.Header.NumTxs))
-	s.MeanBlockTime = 1 / s.blockTimeMeter.RateMean()
-	s.TxThroughput = s.txThroughputMeter.RateMean()
-}
+//------------------------------------------------
+// chain state
 
 // Main chain state
-// Returned over RPC but also used to manage state
+// Returned over RPC; also used to manage state
 type ChainState struct {
 	Config *BlockchainConfig `json:"config"`
 	Status *BlockchainStatus `json:"status"`
 }
 
-// chain config without ValidatorState
-type BlockchainBaseConfig struct {
-	ID         string             `json:"id"`
-	ValSetID   string             `json:"val_set_id"`
-	Validators []*ValidatorConfig `json:"validators"`
+func (cs *ChainState) NewBlock(block *tmtypes.Block) {
+	cs.Status.NewBlock(block)
 }
 
-// basic chain config
-// threadsafe
-type BlockchainConfig struct {
-	ID       string `json:"id"`
-	ValSetID string `json:"val_set_id"`
+func (cs *ChainState) UpdateLatency(oldLatency, newLatency float64) {
+	cs.Status.UpdateLatency(oldLatency, newLatency)
+}
 
+//------------------------------------------------
+// Blockchain Config: id, validator config
+
+// Chain Config
+type BlockchainConfig struct {
+	// should be fixed for life of chain
+	ID       string `json:"id"`
+	ValSetID string `json:"val_set_id"` // NOTE: do we really commit to one val set per chain?
+
+	// handles live validator states (latency, last block, etc)
+	// and validator set changes
 	mtx        sync.Mutex
 	Validators []*ValidatorState `json:"validators"` // TODO: this should be ValidatorConfig and the state in BlockchainStatus
 	valIDMap   map[string]int    // map IDs to indices
 }
 
-// So we can fetch validator by id
+// So we can fetch validator by id rather than index
 func (bc *BlockchainConfig) PopulateValIDMap() {
 	bc.mtx.Lock()
 	defer bc.mtx.Unlock()
@@ -100,19 +73,61 @@ func (bc *BlockchainConfig) GetValidatorByID(valID string) (*ValidatorState, err
 	return bc.Validators[valIndex], nil
 }
 
-func LoadChainFromFile(configFile string) (*BlockchainConfig, error) {
+//------------------------------------------------
+// BlockchainStatus
 
-	b, err := ioutil.ReadFile(configFile)
-	if err != nil {
-		return nil, err
+// Basic blockchain metrics
+type BlockchainStatus struct {
+	mtx sync.Mutex
+
+	// Blockchain Info
+	Height         int     `json:"height"`
+	BlockchainSize int64   `json:"blockchain_size"`
+	MeanBlockTime  float64 `json:"mean_block_time" wire:"unsafe"`
+	TxThroughput   float64 `json:"tx_throughput" wire:"unsafe"`
+
+	blockTimeMeter    metrics.Meter
+	txThroughputMeter metrics.Meter
+
+	// Network Info
+	NumValidators    int     `json:"num_validators"`
+	ActiveValidators int     `json:"active_validators"`
+	ActiveNodes      int     `json:"active_nodes"`
+	MeanLatency      float64 `json:"mean_latency" wire:"unsafe"`
+	Uptime           float64 `json:"uptime" wire:"unsafe"`
+
+	// What else can we get / do we want?
+	// TODO: charts for block time, latency (websockets/event-meter ?)
+}
+
+func NewBlockchainStatus() *BlockchainStatus {
+	return &BlockchainStatus{
+		blockTimeMeter:    metrics.NewMeter(),
+		txThroughputMeter: metrics.NewMeter(),
 	}
+}
 
-	// for now we start with one blockchain loaded from file;
-	// eventually more can be uploaded or created through endpoints
-	chainConfig := new(BlockchainConfig)
-	if err := json.Unmarshal(b, chainConfig); err != nil {
-		return nil, err
+func (s *BlockchainStatus) NewBlock(block *tmtypes.Block) {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+	if block.Header.Height > s.Height {
+		s.Height = block.Header.Height
+		s.blockTimeMeter.Mark(1)
+		s.txThroughputMeter.Mark(int64(block.Header.NumTxs))
+		s.MeanBlockTime = 1 / s.blockTimeMeter.RateMean()
+		s.TxThroughput = s.txThroughputMeter.RateMean()
 	}
+}
 
-	return chainConfig, nil
+func (s *BlockchainStatus) UpdateLatency(oldLatency, newLatency float64) {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+
+	// update latency for this validator and avg latency for chain
+	mean := s.MeanLatency * float64(s.NumValidators)
+	mean = (mean - oldLatency + newLatency) / float64(s.NumValidators)
+	s.MeanLatency = mean
+
+	// TODO: possibly update active nodes and uptime for chain
+	s.ActiveValidators = s.NumValidators // XXX
 }

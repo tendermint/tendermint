@@ -3,7 +3,7 @@ package types
 import (
 	"encoding/json"
 	"fmt"
-	"reflect"
+	"sync"
 
 	"github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/go-crypto"
 	"github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/go-event-meter"
@@ -11,10 +11,15 @@ import (
 	client "github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/go-rpc/client"
 	"github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/go-wire"
 	ctypes "github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/tendermint/rpc/core/types"
+	tmtypes "github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/tendermint/types"
 )
 
 //------------------------------------------------
 // validator types
+//------------------------------------------------
+
+//------------------------------------------------
+// simple validator set and validator (just crypto, no network)
 
 // validator set (independent of chains)
 type ValidatorSet struct {
@@ -38,25 +43,19 @@ type Validator struct {
 	Chains []string      `json:"chains,omitempty"` // TODO: put this elsewhere (?)
 }
 
-type ValidatorConfig struct {
-	Validator *Validator `json:"validator"`
-	P2PAddr   string     `json:"p2p_addr"`
-	RPCAddr   string     `json:"rpc_addr"`
-	Index     int        `json:"index,omitempty"`
-}
-
-type ValidatorStatus struct {
-	Latency     float64 `json:"latency" wire:"unsafe"`
-	BlockHeight int     `json:"block_height"`
-}
+//------------------------------------------------
+// Live validator on a chain
 
 // Validator on a chain
-// Responsible for communication with the validator
 // Returned over RPC but also used to manage state
+// Responsible for communication with the validator
 type ValidatorState struct {
 	Config *ValidatorConfig `json:"config"`
 	Status *ValidatorStatus `json:"status"`
 
+	// Currently we get IPs and dial,
+	// but should reverse so the nodes dial the netmon,
+	// both for node privacy and easier reconfig (validators changing ip/port)
 	em     *eventmeter.EventMeter // holds a ws connection to the val
 	client *client.ClientURI      // rpc client
 }
@@ -81,8 +80,23 @@ func (vs *ValidatorState) EventMeter() *eventmeter.EventMeter {
 	return vs.em
 }
 
+func (vs *ValidatorState) NewBlock(block *tmtypes.Block) {
+	vs.Status.mtx.Lock()
+	defer vs.Status.mtx.Unlock()
+	vs.Status.BlockHeight = block.Header.Height
+}
+
+func (vs *ValidatorState) UpdateLatency(latency float64) float64 {
+	vs.Status.mtx.Lock()
+	defer vs.Status.mtx.Unlock()
+	old := vs.Status.Latency
+	vs.Status.Latency = latency
+	return old
+}
+
 // Return the validators pubkey. If it's not yet set, get it from the node
 // TODO: proof that it's the node's key
+// XXX: Is this necessary? Why would it not be set
 func (vs *ValidatorState) PubKey() crypto.PubKey {
 	if vs.Config.Validator.PubKey != nil {
 		return vs.Config.Validator.PubKey
@@ -99,6 +113,20 @@ func (vs *ValidatorState) PubKey() crypto.PubKey {
 	return vs.Config.Validator.PubKey
 }
 
+type ValidatorConfig struct {
+	mtx       sync.Mutex
+	Validator *Validator `json:"validator"`
+	P2PAddr   string     `json:"p2p_addr"`
+	RPCAddr   string     `json:"rpc_addr"`
+	Index     int        `json:"index,omitempty"`
+}
+
+type ValidatorStatus struct {
+	mtx         sync.Mutex
+	Latency     float64 `json:"latency" wire:"unsafe"`
+	BlockHeight int     `json:"block_height"`
+}
+
 //---------------------------------------------------
 // utilities
 
@@ -112,7 +140,8 @@ func UnmarshalEvent(b json.RawMessage) (string, events.EventData, error) {
 	}
 	event, ok := (*result).(*ctypes.ResultEvent)
 	if !ok {
-		return "", nil, fmt.Errorf("Result is not type *ctypes.ResultEvent. Got %v", reflect.TypeOf(*result))
+		return "", nil, nil // TODO: handle non-event messages (ie. return from subscribe/unsubscribe)
+		// fmt.Errorf("Result is not type *ctypes.ResultEvent. Got %v", reflect.TypeOf(*result))
 	}
 	return event.Name, event.Data, nil
 

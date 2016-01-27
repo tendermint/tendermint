@@ -20,8 +20,9 @@ var _ = wire.RegisterInterface(
 	struct{ NetMonResult }{},
 	wire.ConcreteType{&types.ChainAndValidatorSetIDs{}, 0x01},
 	wire.ConcreteType{&types.ChainState{}, 0x02},
-	wire.ConcreteType{&types.Validator{}, 0x03},
-	wire.ConcreteType{&eventmeter.EventMetric{}, 0x04},
+	wire.ConcreteType{&types.ValidatorSet{}, 0x10},
+	wire.ConcreteType{&types.Validator{}, 0x11},
+	wire.ConcreteType{&eventmeter.EventMetric{}, 0x20},
 )
 
 //---------------------------------------------
@@ -33,14 +34,10 @@ type TendermintNetwork struct {
 	ValSets map[string]*types.ValidatorSet `json:"validator_sets"`
 }
 
-// TODO: populate validator sets
-func NewTendermintNetwork(chains ...*types.ChainState) *TendermintNetwork {
+func NewTendermintNetwork() *TendermintNetwork {
 	network := &TendermintNetwork{
 		Chains:  make(map[string]*types.ChainState),
 		ValSets: make(map[string]*types.ValidatorSet),
-	}
-	for _, chain := range chains {
-		network.Chains[chain.Config.ID] = chain
 	}
 	return network
 }
@@ -58,8 +55,12 @@ func (tn *TendermintNetwork) Stop() {
 	}
 }
 
-//------------
+//-----------------------------------------------------------
 // RPC funcs
+//-----------------------------------------------------------
+
+//------------------
+// Status
 
 // Returns sorted lists of all chains and validator sets
 func (tn *TendermintNetwork) Status() (*types.ChainAndValidatorSetIDs, error) {
@@ -86,6 +87,11 @@ func (tn *TendermintNetwork) Status() (*types.ChainAndValidatorSetIDs, error) {
 
 }
 
+// NOTE: returned values should not be manipulated by callers as they are pointers to the state!
+//------------------
+// Blockchains
+
+// Get the current state of a chain
 func (tn *TendermintNetwork) GetChain(chainID string) (*types.ChainState, error) {
 	tn.mtx.Lock()
 	defer tn.mtx.Unlock()
@@ -96,9 +102,10 @@ func (tn *TendermintNetwork) GetChain(chainID string) (*types.ChainState, error)
 	return chain, nil
 }
 
+// Register a new chain on the network.
+// For each validator, start a websocket connection to listen for new block events and record latency
 func (tn *TendermintNetwork) RegisterChain(chainConfig *types.BlockchainConfig) (*types.ChainState, error) {
-	tn.mtx.Lock()
-	defer tn.mtx.Unlock()
+	// Don't bother locking until we touch the TendermintNetwork object
 
 	chainState := &types.ChainState{
 		Config: chainConfig,
@@ -106,6 +113,7 @@ func (tn *TendermintNetwork) RegisterChain(chainConfig *types.BlockchainConfig) 
 	}
 	chainState.Status.NumValidators = len(chainConfig.Validators)
 
+	// so we can easily lookup validators by id rather than index
 	chainState.Config.PopulateValIDMap()
 
 	// start the event meter and listen for new blocks on each validator
@@ -115,18 +123,26 @@ func (tn *TendermintNetwork) RegisterChain(chainConfig *types.BlockchainConfig) 
 		if err := v.Start(); err != nil {
 			return nil, err
 		}
-		v.EventMeter().RegisterLatencyCallback(tn.latencyCallback(chainConfig.ID, v.Config.Validator.ID))
-		err := v.EventMeter().Subscribe(tmtypes.EventStringNewBlock(), tn.newBlockCallback(chainConfig.ID, v.Config.Validator.ID))
+
+		v.EventMeter().RegisterLatencyCallback(tn.latencyCallback(chainState, v))
+		err := v.EventMeter().Subscribe(tmtypes.EventStringNewBlock(), tn.newBlockCallback(chainState, v))
 		if err != nil {
 			return nil, err
 		}
 
 		// get/set the validator's pub key
+		// TODO: possibly remove? why should we depend on this here?
 		v.PubKey()
 	}
+
+	tn.mtx.Lock()
+	defer tn.mtx.Unlock()
 	tn.Chains[chainState.Config.ID] = chainState
 	return chainState, nil
 }
+
+//------------------
+// Validators
 
 func (tn *TendermintNetwork) GetValidatorSet(valSetID string) (*types.ValidatorSet, error) {
 	tn.mtx.Lock()
@@ -159,6 +175,9 @@ func (tn *TendermintNetwork) GetValidator(valSetID, valID string) (*types.Valida
 	return val, nil
 }
 
+//------------------
+// Event metering
+
 func (tn *TendermintNetwork) StartMeter(chainID, valID, eventID string) error {
 	tn.mtx.Lock()
 	defer tn.mtx.Unlock()
@@ -190,6 +209,7 @@ func (tn *TendermintNetwork) GetMeter(chainID, valID, eventID string) (*eventmet
 	return val.EventMeter().GetMetric(eventID)
 }
 
+// assumes lock is held
 func (tn *TendermintNetwork) getChainVal(chainID, valID string) (*types.ValidatorState, error) {
 	chain, ok := tn.Chains[chainID]
 	if !ok {

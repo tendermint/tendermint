@@ -4,50 +4,38 @@ import (
 	"github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/go-event-meter"
 	"github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/go-events"
 
+	"github.com/tendermint/netmon/types"
+
 	tmtypes "github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/tendermint/types"
 )
 
+/*
+	Each chain-validator gets an eventmeter which maintains the websocket
+	Certain pre-defined events may update the netmon state: latency pongs, new blocks
+	TODO: config changes for new validators and changing ip/port
+*/
+
 // implements eventmeter.EventCallbackFunc
-func (tn *TendermintNetwork) newBlockCallback(chainID, valID string) eventmeter.EventCallbackFunc {
+// updates validator and possibly chain with new block
+func (tn *TendermintNetwork) newBlockCallback(chainState *types.ChainState, val *types.ValidatorState) eventmeter.EventCallbackFunc {
 	return func(metric *eventmeter.EventMetric, data events.EventData) {
 		block := data.(tmtypes.EventDataNewBlock).Block
 
-		tn.mtx.Lock()
-		defer tn.mtx.Unlock()
-
-		// grab chain and validator
-		chain := tn.Chains[chainID]
-		val, _ := chain.Config.GetValidatorByID(valID)
+		// these functions are thread safe
+		// we should run them concurrently
 
 		// update height for validator
-		val.Status.BlockHeight = block.Header.Height
+		val.NewBlock(block)
 
 		// possibly update height and mean block time for chain
-		if block.Header.Height > chain.Status.Height {
-			chain.Status.NewBlock(block)
-		}
-
+		chainState.NewBlock(block)
 	}
 }
 
 // implements eventmeter.EventLatencyFunc
-func (tn *TendermintNetwork) latencyCallback(chainID, valID string) eventmeter.LatencyCallbackFunc {
+func (tn *TendermintNetwork) latencyCallback(chain *types.ChainState, val *types.ValidatorState) eventmeter.LatencyCallbackFunc {
 	return func(latency float64) {
-		tn.mtx.Lock()
-		defer tn.mtx.Unlock()
-
-		// grab chain and validator
-		chain := tn.Chains[chainID]
-		val, _ := chain.Config.GetValidatorByID(valID)
-
-		// update latency for this validator and avg latency for chain
-		mean := chain.Status.MeanLatency * float64(chain.Status.NumValidators)
-		mean = (mean - val.Status.Latency + latency) / float64(chain.Status.NumValidators)
-		val.Status.Latency = latency
-		chain.Status.MeanLatency = mean
-
-		// TODO: possibly update active nodes and uptime for chain
-		chain.Status.ActiveValidators = chain.Status.NumValidators // XXX
-
+		oldLatency := val.UpdateLatency(latency)
+		chain.UpdateLatency(oldLatency, latency)
 	}
 }
