@@ -97,8 +97,8 @@ type RoundState struct {
 	LastValidators     *types.ValidatorSet
 }
 
-func (rs *RoundState) RoundStateEvent() *types.EventDataRoundState {
-	edrs := &types.EventDataRoundState{
+func (rs *RoundState) RoundStateEvent() types.EventDataRoundState {
+	edrs := types.EventDataRoundState{
 		Height:     rs.Height,
 		Round:      rs.Round,
 		Step:       rs.Step.String(),

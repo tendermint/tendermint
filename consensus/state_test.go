@@ -243,7 +243,7 @@ func TestFullRound1(t *testing.T) {
 
 	// grab proposal
 	re := <-propCh
-	propBlockHash := re.(*types.EventDataRoundState).RoundState.(*RoundState).ProposalBlock.Hash()
+	propBlockHash := re.(types.EventDataRoundState).RoundState.(*RoundState).ProposalBlock.Hash()
 
 	<-voteCh // wait for prevote
 	validatePrevote(t, cs, round, vss[0], propBlockHash)
@@ -336,7 +336,7 @@ func TestLockNoPOL(t *testing.T) {
 	cs1.startRoutines(0)
 
 	re := <-proposalCh
-	rs := re.(*types.EventDataRoundState).RoundState.(*RoundState)
+	rs := re.(types.EventDataRoundState).RoundState.(*RoundState)
 	theBlockHash := rs.ProposalBlock.Hash()
 
 	<-voteCh // prevote
@@ -376,7 +376,7 @@ func TestLockNoPOL(t *testing.T) {
 
 	// now we're on a new round and not the proposer, so wait for timeout
 	re = <-timeoutProposeCh
-	rs = re.(*types.EventDataRoundState).RoundState.(*RoundState)
+	rs = re.(types.EventDataRoundState).RoundState.(*RoundState)
 
 	if rs.ProposalBlock != nil {
 		t.Fatal("Expected proposal block to be nil")
@@ -420,7 +420,7 @@ func TestLockNoPOL(t *testing.T) {
 	incrementRound(cs2)
 
 	re = <-proposalCh
-	rs = re.(*types.EventDataRoundState).RoundState.(*RoundState)
+	rs = re.(types.EventDataRoundState).RoundState.(*RoundState)
 
 	// now we're on a new round and are the proposer
 	if !bytes.Equal(rs.ProposalBlock.Hash(), rs.LockedBlock.Hash()) {
@@ -505,7 +505,7 @@ func TestLockPOLRelock(t *testing.T) {
 
 	<-newRoundCh
 	re := <-proposalCh
-	rs := re.(*types.EventDataRoundState).RoundState.(*RoundState)
+	rs := re.(types.EventDataRoundState).RoundState.(*RoundState)
 	theBlockHash := rs.ProposalBlock.Hash()
 
 	<-voteCh // prevote
@@ -576,7 +576,7 @@ func TestLockPOLRelock(t *testing.T) {
 	be := <-newBlockCh
 	b := be.(types.EventDataNewBlock)
 	re = <-newRoundCh
-	rs = re.(*types.EventDataRoundState).RoundState.(*RoundState)
+	rs = re.(types.EventDataRoundState).RoundState.(*RoundState)
 	if rs.Height != 2 {
 		t.Fatal("Expected height to increment")
 	}
@@ -610,7 +610,7 @@ func TestLockPOLUnlock(t *testing.T) {
 	startTestRound(cs1, cs1.Height, 0)
 	<-newRoundCh
 	re := <-proposalCh
-	rs := re.(*types.EventDataRoundState).RoundState.(*RoundState)
+	rs := re.(types.EventDataRoundState).RoundState.(*RoundState)
 	theBlockHash := rs.ProposalBlock.Hash()
 
 	<-voteCh // prevote
@@ -634,7 +634,7 @@ func TestLockPOLUnlock(t *testing.T) {
 
 	// timeout to new round
 	re = <-timeoutWaitCh
-	rs = re.(*types.EventDataRoundState).RoundState.(*RoundState)
+	rs = re.(types.EventDataRoundState).RoundState.(*RoundState)
 	lockedBlockHash := rs.LockedBlock.Hash()
 
 	//XXX: this isnt gauranteed to get there before the timeoutPropose ...
@@ -692,7 +692,7 @@ func TestLockPOLSafety1(t *testing.T) {
 	startTestRound(cs1, cs1.Height, 0)
 	<-newRoundCh
 	re := <-proposalCh
-	rs := re.(*types.EventDataRoundState).RoundState.(*RoundState)
+	rs := re.(types.EventDataRoundState).RoundState.(*RoundState)
 	propBlock := rs.ProposalBlock
 
 	<-voteCh // prevote
@@ -740,7 +740,7 @@ func TestLockPOLSafety1(t *testing.T) {
 		re = <-proposalCh
 	}
 
-	rs = re.(*types.EventDataRoundState).RoundState.(*RoundState)
+	rs = re.(types.EventDataRoundState).RoundState.(*RoundState)
 
 	if rs.LockedBlock != nil {
 		t.Fatal("we should not be locked!")
@@ -903,7 +903,7 @@ func TestSlashingPrevotes(t *testing.T) {
 	re := <-proposalCh
 	<-voteCh // prevote
 
-	rs := re.(*types.EventDataRoundState).RoundState.(*RoundState)
+	rs := re.(types.EventDataRoundState).RoundState.(*RoundState)
 
 	// we should now be stuck in limbo forever, waiting for more prevotes
 	// add one for a different block should cause us to go into prevote wait
@@ -981,7 +981,7 @@ func TestHalt1(t *testing.T) {
 	startTestRound(cs1, cs1.Height, 0)
 	<-newRoundCh
 	re := <-proposalCh
-	rs := re.(*types.EventDataRoundState).RoundState.(*RoundState)
+	rs := re.(types.EventDataRoundState).RoundState.(*RoundState)
 	propBlock := rs.ProposalBlock
 	propBlockParts := propBlock.MakePartSet()
 
@@ -1004,7 +1004,7 @@ func TestHalt1(t *testing.T) {
 	// timeout to new round
 	<-timeoutWaitCh
 	re = <-newRoundCh
-	rs = re.(*types.EventDataRoundState).RoundState.(*RoundState)
+	rs = re.(types.EventDataRoundState).RoundState.(*RoundState)
 
 	log.Notice("### ONTO ROUND 1")
 	/*Round2
@@ -1022,7 +1022,7 @@ func TestHalt1(t *testing.T) {
 	// receiving that precommit should take us straight to commit
 	<-newBlockCh
 	re = <-newRoundCh
-	rs = re.(*types.EventDataRoundState).RoundState.(*RoundState)
+	rs = re.(types.EventDataRoundState).RoundState.(*RoundState)
 
 	if rs.Height != 2 {
 		t.Fatal("expected height to increment")

@@ -235,7 +235,7 @@ func (conR *ConsensusReactor) SetEventSwitch(evsw *events.EventSwitch) {
 func (conR *ConsensusReactor) registerEventCallbacks() {
 
 	conR.evsw.AddListenerForEvent("conR", types.EventStringNewRoundStep(), func(data events.EventData) {
-		rs := data.(*types.EventDataRoundState).RoundState.(*RoundState)
+		rs := data.(types.EventDataRoundState).RoundState.(*RoundState)
 		conR.broadcastNewRoundStep(rs)
 	})
 
