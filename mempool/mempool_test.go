@@ -25,8 +25,8 @@ func TestSerialReap(t *testing.T) {
 		for i := start; i < end; i++ {
 
 			// This will succeed
-			txBytes := make([]byte, 32)
-			binary.LittleEndian.PutUint64(txBytes, uint64(i))
+			txBytes := make([]byte, 8)
+			binary.BigEndian.PutUint64(txBytes, uint64(i))
 			err := mempool.CheckTx(txBytes)
 			if err != nil {
 				t.Fatal("Error after CheckTx: %v", err)
@@ -56,8 +56,8 @@ func TestSerialReap(t *testing.T) {
 	updateRange := func(start, end int) {
 		txs := make([]types.Tx, 0)
 		for i := start; i < end; i++ {
-			txBytes := make([]byte, 32)
-			binary.LittleEndian.PutUint64(txBytes, uint64(i))
+			txBytes := make([]byte, 8)
+			binary.BigEndian.PutUint64(txBytes, uint64(i))
 			txs = append(txs, txBytes)
 		}
 		err := mempool.Update(0, txs)
@@ -69,16 +69,17 @@ func TestSerialReap(t *testing.T) {
 	commitRange := func(start, end int) {
 		// Append some txs.
 		for i := start; i < end; i++ {
-			txBytes := make([]byte, 32)
-			binary.LittleEndian.PutUint64(txBytes, uint64(i))
-			_, retCode := appConnCon.AppendTx(txBytes)
-			if retCode != tmsp.RetCodeOK {
-				t.Error("Error committing tx", retCode)
+			txBytes := make([]byte, 8)
+			binary.BigEndian.PutUint64(txBytes, uint64(i))
+			code, result, logStr := appConnCon.AppendTx(txBytes)
+			if code != tmsp.RetCodeOK {
+				t.Errorf("Error committing tx. Code:%v result:%X log:%v",
+					code, result, logStr)
 			}
 		}
-		_, retCode := appConnCon.GetHash()
-		if retCode != tmsp.RetCodeOK {
-			t.Error("Error committing range", retCode)
+		hash, log := appConnCon.GetHash()
+		if len(hash) != 8 {
+			t.Errorf("Error getting hash. Hash:%X log:%v", hash, log)
 		}
 	}
 

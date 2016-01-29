@@ -26,7 +26,6 @@ func EventStringLock() string             { return "Lock" }
 func EventStringRelock() string           { return "Relock" }
 func EventStringTimeoutWait() string      { return "TimeoutWait" }
 func EventStringVote() string             { return "Vote" }
-func EventStringApp() string              { return "App" }
 
 //----------------------------------------
 
@@ -40,7 +39,6 @@ const (
 	EventDataTypeNewBlock = byte(0x01)
 	EventDataTypeFork     = byte(0x02)
 	EventDataTypeTx       = byte(0x03)
-	EventDataTypeApp      = byte(0x04) // Custom app event
 
 	EventDataTypeRoundState = byte(0x11)
 	EventDataTypeVote       = byte(0x12)
@@ -51,7 +49,6 @@ var _ = wire.RegisterInterface(
 	wire.ConcreteType{EventDataNewBlock{}, EventDataTypeNewBlock},
 	// wire.ConcreteType{EventDataFork{}, EventDataTypeFork },
 	wire.ConcreteType{EventDataTx{}, EventDataTypeTx},
-	wire.ConcreteType{EventDataApp{}, EventDataTypeApp},
 	wire.ConcreteType{EventDataRoundState{}, EventDataTypeRoundState},
 	wire.ConcreteType{EventDataVote{}, EventDataTypeVote},
 )
@@ -65,14 +62,10 @@ type EventDataNewBlock struct {
 
 // All txs fire EventDataTx
 type EventDataTx struct {
-	Tx        Tx     `json:"tx"`
-	Return    []byte `json:"return"`
-	Exception string `json:"exception"`
-}
-
-type EventDataApp struct {
-	Key  string `json:"key"`
-	Data []byte `json:"bytes"`
+	Tx     Tx     `json:"tx"`
+	Result []byte `json:"result"`
+	Log    string `json:"log"`
+	Error  string `json:"error"`
 }
 
 // NOTE: This goes into the replay WAL
@@ -93,6 +86,5 @@ type EventDataVote struct {
 
 func (_ EventDataNewBlock) AssertIsTMEventData()   {}
 func (_ EventDataTx) AssertIsTMEventData()         {}
-func (_ EventDataApp) AssertIsTMEventData()        {}
 func (_ EventDataRoundState) AssertIsTMEventData() {}
 func (_ EventDataVote) AssertIsTMEventData()       {}

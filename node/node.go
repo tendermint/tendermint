@@ -245,7 +245,7 @@ func getProxyApp(addr string, hash []byte) (proxyAppConn proxy.AppConn) {
 	}
 
 	// Check the hash
-	currentHash, err := proxyAppConn.GetHashSync()
+	currentHash, _, err := proxyAppConn.GetHashSync()
 	if err != nil {
 		PanicCrisis(Fmt("Error in getting proxyAppConn hash: %v", err))
 	}

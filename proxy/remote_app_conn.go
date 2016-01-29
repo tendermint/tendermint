@@ -3,7 +3,7 @@ package proxy
 import (
 	"net"
 
-	tmspcli "github.com/tendermint/tmsp/client/golang"
+	tmspcli "github.com/tendermint/tmsp/client"
 )
 
 // This is goroutine-safe, but users should beware that
