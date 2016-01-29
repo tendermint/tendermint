@@ -46,11 +46,12 @@ x * TestHalt1 - if we see +2/3 precommits after timing out into new round, we sh
 
 func init() {
 	fmt.Println("")
-	timeoutPropose = 500 * time.Millisecond
+	timeoutPropose0 = 100 * time.Millisecond
+	timeoutProposeDelta = 1 * time.Millisecond
 }
 
 func TestProposerSelection0(t *testing.T) {
-	cs1, vss := simpleConsensusState(4)
+	cs1, vss := randConsensusState(4)
 	height, round := cs1.Height, cs1.Round
 
 	newRoundCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringNewRound(), 1)
@@ -84,7 +85,7 @@ func TestProposerSelection0(t *testing.T) {
 
 // Now let's do it all again, but starting from round 2 instead of 0
 func TestProposerSelection2(t *testing.T) {
-	cs1, vss := simpleConsensusState(4) // test needs more work for more than 3 validators
+	cs1, vss := randConsensusState(4) // test needs more work for more than 3 validators
 
 	newRoundCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringNewRound(), 1)
 
@@ -113,7 +114,7 @@ func TestProposerSelection2(t *testing.T) {
 
 // a non-validator should timeout into the prevote round
 func TestEnterProposeNoPrivValidator(t *testing.T) {
-	cs, _ := simpleConsensusState(1)
+	cs, _ := randConsensusState(1)
 	cs.SetPrivValidator(nil)
 	height, round := cs.Height, cs.Round
 
@@ -123,7 +124,7 @@ func TestEnterProposeNoPrivValidator(t *testing.T) {
 	startTestRound(cs, height, round)
 
 	// if we're not a validator, EnterPropose should timeout
-	ticker := time.NewTicker(timeoutPropose * 2)
+	ticker := time.NewTicker(timeoutPropose0 * 2)
 	select {
 	case <-timeoutCh:
 	case <-ticker.C:
@@ -138,7 +139,7 @@ func TestEnterProposeNoPrivValidator(t *testing.T) {
 
 // a validator should not timeout of the prevote round (TODO: unless the block is really big!)
 func TestEnterProposeYesPrivValidator(t *testing.T) {
-	cs, _ := simpleConsensusState(1)
+	cs, _ := randConsensusState(1)
 	height, round := cs.Height, cs.Round
 
 	// Listen for propose timeout event
@@ -164,7 +165,7 @@ func TestEnterProposeYesPrivValidator(t *testing.T) {
 	}
 
 	// if we're a validator, enterPropose should not timeout
-	ticker := time.NewTicker(timeoutPropose * 2)
+	ticker := time.NewTicker(timeoutPropose0 * 2)
 	select {
 	case <-timeoutCh:
 		t.Fatal("Expected EnterPropose not to timeout")
@@ -174,7 +175,7 @@ func TestEnterProposeYesPrivValidator(t *testing.T) {
 }
 
 func TestBadProposal(t *testing.T) {
-	cs1, vss := simpleConsensusState(2)
+	cs1, vss := randConsensusState(2)
 	height, round := cs1.Height, cs1.Round
 	cs2 := vss[1]
 
@@ -230,7 +231,7 @@ func TestBadProposal(t *testing.T) {
 
 // propose, prevote, and precommit a block
 func TestFullRound1(t *testing.T) {
-	cs, vss := simpleConsensusState(1)
+	cs, vss := randConsensusState(1)
 	height, round := cs.Height, cs.Round
 
 	voteCh := subscribeToEvent(cs.evsw, "tester", types.EventStringVote(), 1)
@@ -258,7 +259,7 @@ func TestFullRound1(t *testing.T) {
 
 // nil is proposed, so prevote and precommit nil
 func TestFullRoundNil(t *testing.T) {
-	cs, vss := simpleConsensusState(1)
+	cs, vss := randConsensusState(1)
 	height, round := cs.Height, cs.Round
 
 	voteCh := subscribeToEvent(cs.evsw, "tester", types.EventStringVote(), 1)
@@ -276,7 +277,7 @@ func TestFullRoundNil(t *testing.T) {
 // run through propose, prevote, precommit commit with two validators
 // where the first validator has to wait for votes from the second
 func TestFullRound2(t *testing.T) {
-	cs1, vss := simpleConsensusState(2)
+	cs1, vss := randConsensusState(2)
 	cs2 := vss[1]
 	height, round := cs1.Height, cs1.Round
 
@@ -317,7 +318,7 @@ func TestFullRound2(t *testing.T) {
 // two validators, 4 rounds.
 // two vals take turns proposing. val1 locks on first one, precommits nil on everything else
 func TestLockNoPOL(t *testing.T) {
-	cs1, vss := simpleConsensusState(2)
+	cs1, vss := randConsensusState(2)
 	cs2 := vss[1]
 	height := cs1.Height
 
@@ -480,7 +481,7 @@ func TestLockNoPOL(t *testing.T) {
 
 // 4 vals, one precommits, other 3 polka at next round, so we unlock and precomit the polka
 func TestLockPOLRelock(t *testing.T) {
-	cs1, vss := simpleConsensusState(4)
+	cs1, vss := randConsensusState(4)
 	cs2, cs3, cs4 := vss[1], vss[2], vss[3]
 
 	timeoutProposeCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringTimeoutPropose(), 1)
@@ -588,7 +589,7 @@ func TestLockPOLRelock(t *testing.T) {
 
 // 4 vals, one precommits, other 3 polka at next round, so we unlock and precomit the polka
 func TestLockPOLUnlock(t *testing.T) {
-	cs1, vss := simpleConsensusState(4)
+	cs1, vss := randConsensusState(4)
 	cs2, cs3, cs4 := vss[1], vss[2], vss[3]
 
 	proposalCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringCompleteProposal(), 1)
@@ -679,7 +680,7 @@ func TestLockPOLUnlock(t *testing.T) {
 // then a polka at round 2 that we lock on
 // then we see the polka from round 1 but shouldn't unlock
 func TestLockPOLSafety1(t *testing.T) {
-	cs1, vss := simpleConsensusState(4)
+	cs1, vss := randConsensusState(4)
 	cs2, cs3, cs4 := vss[1], vss[2], vss[3]
 
 	proposalCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringCompleteProposal(), 1)
@@ -798,7 +799,7 @@ func TestLockPOLSafety1(t *testing.T) {
 // What we want:
 // dont see P0, lock on P1 at R1, dont unlock using P0 at R2
 func TestLockPOLSafety2(t *testing.T) {
-	cs1, vss := simpleConsensusState(4)
+	cs1, vss := randConsensusState(4)
 	cs2, cs3, cs4 := vss[1], vss[2], vss[3]
 
 	proposalCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringCompleteProposal(), 1)
@@ -888,7 +889,7 @@ func TestLockPOLSafety2(t *testing.T) {
 
 /*
 func TestSlashingPrevotes(t *testing.T) {
-	cs1, vss := simpleConsensusState(2)
+	cs1, vss := randConsensusState(2)
 	cs2 := vss[1]
 
 
@@ -923,7 +924,7 @@ func TestSlashingPrevotes(t *testing.T) {
 }
 
 func TestSlashingPrecommits(t *testing.T) {
-	cs1, vss := simpleConsensusState(2)
+	cs1, vss := randConsensusState(2)
 	cs2 := vss[1]
 
 
@@ -968,7 +969,7 @@ func TestSlashingPrecommits(t *testing.T) {
 // 4 vals.
 // we receive a final precommit after going into next round, but others might have gone to commit already!
 func TestHalt1(t *testing.T) {
-	cs1, vss := simpleConsensusState(4)
+	cs1, vss := randConsensusState(4)
 	cs2, cs3, cs4 := vss[1], vss[2], vss[3]
 
 	proposalCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringCompleteProposal(), 1)

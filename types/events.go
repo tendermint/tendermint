@@ -75,6 +75,7 @@ type EventDataApp struct {
 	Data []byte `json:"bytes"`
 }
 
+// NOTE: This goes into the replay WAL
 type EventDataRoundState struct {
 	Height int    `json:"height"`
 	Round  int    `json:"round"`

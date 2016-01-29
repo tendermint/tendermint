@@ -140,7 +140,7 @@ func addVoteToFromMany(to *ConsensusState, votes []*types.Vote, froms ...*valida
 func addVoteToFrom(to *ConsensusState, from *validatorStub, vote *types.Vote) {
 	valIndex, _ := to.Validators.GetByAddress(from.PrivValidator.Address)
 
-	to.peerMsgQueue <- msgInfo{msg: &VoteMessage{valIndex, vote}}
+	to.peerMsgQueue <- msgInfo{Msg: &VoteMessage{valIndex, vote}}
 	// added, err := to.TryAddVote(valIndex, vote, "")
 	/*
 		if _, ok := err.(*types.ErrVoteConflictingSignature); ok {
@@ -296,16 +296,16 @@ func validatePrevoteAndPrecommit(t *testing.T, cs *ConsensusState, thisRound, lo
 	cs.mtx.Unlock()
 }
 
-func simpleConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
-	// Get State
-	state, privVals := randGenesisState(nValidators, false, 10)
+func fixedConsensusState() *ConsensusState {
+	stateDB := dbm.NewMemDB()
+	state := sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
+	privValidatorFile := config.GetString("priv_validator_file")
+	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
+	return newConsensusState(state, privValidator)
 
-	// fmt.Println(state.Validators)
+}
 
-	vss := make([]*validatorStub, nValidators)
-
-	// make consensus state for lead validator
-
+func newConsensusState(state *sm.State, pv *types.PrivValidator) *ConsensusState {
 	// Get BlockStore
 	blockDB := dbm.NewMemDB()
 	blockStore := bc.NewBlockStore(blockDB)
@@ -320,14 +320,21 @@ func simpleConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
 
 	// Make ConsensusReactor
 	cs := NewConsensusState(state, proxyAppConnCon, blockStore, mempool)
-	cs.SetPrivValidator(privVals[0])
+	cs.SetPrivValidator(pv)
 
 	evsw := events.NewEventSwitch()
 	cs.SetEventSwitch(evsw)
 	evsw.Start()
+	return cs
+}
 
-	// start the transition routines
-	//	cs.startRoutines()
+func randConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
+	// Get State
+	state, privVals := randGenesisState(nValidators, false, 10)
+
+	vss := make([]*validatorStub, nValidators)
+
+	cs := newConsensusState(state, privVals[0])
 
 	for i := 0; i < nValidators; i++ {
 		vss[i] = NewValidatorStub(privVals[i])
@@ -344,7 +351,7 @@ func subscribeToVoter(cs *ConsensusState, addr []byte) chan interface{} {
 	go func() {
 		for {
 			v := <-voteCh0
-			vote := v.(*types.EventDataVote)
+			vote := v.(types.EventDataVote)
 			// we only fire for our own votes
 			if bytes.Equal(addr, vote.Address) {
 				voteCh <- v
@@ -385,14 +392,4 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 func startTestRound(cs *ConsensusState, height, round int) {
 	cs.enterNewRound(height, round)
 	cs.startRoutines(0)
-}
-
-// NOTE: this is blocking
-func subscribeToEvent(evsw *events.EventSwitch, receiver, eventID string, chanCap int) chan interface{} {
-	// listen for new round
-	ch := make(chan interface{}, chanCap)
-	evsw.AddListenerForEvent(receiver, eventID, func(data events.EventData) {
-		ch <- data
-	})
-	return ch
 }

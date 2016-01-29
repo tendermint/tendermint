@@ -57,9 +57,8 @@ func initTMRoot(rootDir string) {
 	if !FileExists(genesisFilePath) {
 		MustWriteFile(genesisFilePath, []byte(defaultGenesis), 0644)
 	}
-	if !FileExists(privFilePath) {
-		MustWriteFile(privFilePath, []byte(defaultPrivValidator), 0644)
-	}
+	// we always overwrite the priv val
+	MustWriteFile(privFilePath, []byte(defaultPrivValidator), 0644)
 }
 
 func GetConfig(rootDir string) cfg.Config {
@@ -92,6 +91,7 @@ func GetConfig(rootDir string) cfg.Config {
 	mapConfig.SetDefault("rpc_laddr", "0.0.0.0:36657")
 	mapConfig.SetDefault("prof_laddr", "")
 	mapConfig.SetDefault("revision_file", rootDir+"/revision")
+	mapConfig.SetDefault("cswal", rootDir+"/cswal")
 	return mapConfig
 }
 
