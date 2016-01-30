@@ -120,13 +120,15 @@ func cmdBatch(app *cli.App, c *cli.Context) {
 	for {
 		line, more, err := bufReader.ReadLine()
 		if more {
-			Exit("input line is too long")
+			fmt.Println("input line is too long")
+			return
 		} else if err == io.EOF {
 			break
 		} else if len(line) == 0 {
 			continue
 		} else if err != nil {
-			Exit(err.Error())
+			fmt.Println(err.Error())
+			return
 		}
 		args := []string{"tmsp"}
 		args = append(args, strings.Split(string(line), " ")...)
@@ -140,9 +142,11 @@ func cmdConsole(app *cli.App, c *cli.Context) {
 		bufReader := bufio.NewReader(os.Stdin)
 		line, more, err := bufReader.ReadLine()
 		if more {
-			Exit("input is too long")
+			fmt.Println("input is too long")
+			return
 		} else if err != nil {
-			Exit(err.Error())
+			fmt.Println(err.Error())
+			return
 		}
 
 		args := []string{"tmsp"}
@@ -155,11 +159,13 @@ func cmdConsole(app *cli.App, c *cli.Context) {
 func cmdEcho(c *cli.Context) {
 	args := c.Args()
 	if len(args) != 1 {
-		Exit("echo takes 1 argument")
+		fmt.Println("echo takes 1 argument")
+		return
 	}
 	res, err := makeRequest(conn, types.RequestEcho{args[0]})
 	if err != nil {
-		Exit(err.Error())
+		fmt.Println(err.Error())
+		return
 	}
 	fmt.Println("->", res)
 }
@@ -168,7 +174,8 @@ func cmdEcho(c *cli.Context) {
 func cmdInfo(c *cli.Context) {
 	res, err := makeRequest(conn, types.RequestInfo{})
 	if err != nil {
-		Exit(err.Error())
+		fmt.Println(err.Error())
+		return
 	}
 	fmt.Println("->", res)
 }
@@ -177,11 +184,13 @@ func cmdInfo(c *cli.Context) {
 func cmdSetOption(c *cli.Context) {
 	args := c.Args()
 	if len(args) != 2 {
-		Exit("set_option takes 2 arguments (key, value)")
+		fmt.Println("set_option takes 2 arguments (key, value)")
+		return
 	}
 	_, err := makeRequest(conn, types.RequestSetOption{args[0], args[1]})
 	if err != nil {
-		Exit(err.Error())
+		fmt.Println(err.Error())
+		return
 	}
 	fmt.Println("->", Fmt("%s=%s", args[0], args[1]))
 }
@@ -190,7 +199,8 @@ func cmdSetOption(c *cli.Context) {
 func cmdAppendTx(c *cli.Context) {
 	args := c.Args()
 	if len(args) != 1 {
-		Exit("append_tx takes 1 argument")
+		fmt.Println("append_tx takes 1 argument")
+		return
 	}
 	txString := args[0]
 	tx := []byte(txString)
@@ -198,13 +208,15 @@ func cmdAppendTx(c *cli.Context) {
 		var err error
 		tx, err = hex.DecodeString(txString[2:])
 		if err != nil {
-			Exit(err.Error())
+			fmt.Println(err.Error())
+			return
 		}
 	}
 
 	res, err := makeRequest(conn, types.RequestAppendTx{tx})
 	if err != nil {
-		Exit(err.Error())
+		fmt.Println(err.Error())
+		return
 	}
 	fmt.Println("->", res)
 }
@@ -213,7 +225,8 @@ func cmdAppendTx(c *cli.Context) {
 func cmdCheckTx(c *cli.Context) {
 	args := c.Args()
 	if len(args) != 1 {
-		Exit("append_tx takes 1 argument")
+		fmt.Println("append_tx takes 1 argument")
+		return
 	}
 	txString := args[0]
 	tx := []byte(txString)
@@ -221,13 +234,15 @@ func cmdCheckTx(c *cli.Context) {
 		var err error
 		tx, err = hex.DecodeString(txString[2:])
 		if err != nil {
-			Exit(err.Error())
+			fmt.Println(err.Error())
+			return
 		}
 	}
 
 	res, err := makeRequest(conn, types.RequestCheckTx{tx})
 	if err != nil {
-		Exit(err.Error())
+		fmt.Println(err.Error())
+		return
 	}
 	fmt.Println("->", res)
 }
@@ -236,7 +251,8 @@ func cmdCheckTx(c *cli.Context) {
 func cmdGetHash(c *cli.Context) {
 	res, err := makeRequest(conn, types.RequestGetHash{})
 	if err != nil {
-		Exit(err.Error())
+		fmt.Println(err.Error())
+		return
 	}
 	fmt.Printf("%X\n", res.(types.ResponseGetHash).Hash)
 }
@@ -245,7 +261,8 @@ func cmdGetHash(c *cli.Context) {
 func cmdQuery(c *cli.Context) {
 	args := c.Args()
 	if len(args) != 1 {
-		Exit("append_tx takes 1 argument")
+		fmt.Println("append_tx takes 1 argument")
+		return
 	}
 	queryString := args[0]
 	query := []byte(queryString)
@@ -253,13 +270,15 @@ func cmdQuery(c *cli.Context) {
 		var err error
 		query, err = hex.DecodeString(queryString[2:])
 		if err != nil {
-			Exit(err.Error())
+			fmt.Println(err.Error())
+			return
 		}
 	}
 
 	res, err := makeRequest(conn, types.RequestQuery{query})
 	if err != nil {
-		Exit(err.Error())
+		fmt.Println(err.Error())
+		return
 	}
 	fmt.Println("->", res)
 }
