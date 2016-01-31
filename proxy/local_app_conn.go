@@ -32,8 +32,8 @@ func (app *localAppConn) Error() error {
 
 func (app *localAppConn) EchoAsync(msg string) {
 	app.Callback(
-		tmsp.RequestEcho{msg},
-		tmsp.ResponseEcho{msg},
+		tmsp.RequestEcho(msg),
+		tmsp.ResponseEcho(msg),
 	)
 }
 
@@ -46,8 +46,8 @@ func (app *localAppConn) SetOptionAsync(key string, value string) {
 	log := app.Application.SetOption(key, value)
 	app.mtx.Unlock()
 	app.Callback(
-		tmsp.RequestSetOption{key, value},
-		tmsp.ResponseSetOption{log},
+		tmsp.RequestSetOption(key, value),
+		tmsp.ResponseSetOption(log),
 	)
 }
 
@@ -56,8 +56,8 @@ func (app *localAppConn) AppendTxAsync(tx []byte) {
 	code, result, log := app.Application.AppendTx(tx)
 	app.mtx.Unlock()
 	app.Callback(
-		tmsp.RequestAppendTx{tx},
-		tmsp.ResponseAppendTx{code, result, log},
+		tmsp.RequestAppendTx(tx),
+		tmsp.ResponseAppendTx(code, result, log),
 	)
 }
 
@@ -66,8 +66,8 @@ func (app *localAppConn) CheckTxAsync(tx []byte) {
 	code, result, log := app.Application.CheckTx(tx)
 	app.mtx.Unlock()
 	app.Callback(
-		tmsp.RequestCheckTx{tx},
-		tmsp.ResponseCheckTx{code, result, log},
+		tmsp.RequestCheckTx(tx),
+		tmsp.ResponseCheckTx(code, result, log),
 	)
 }
 
@@ -76,8 +76,8 @@ func (app *localAppConn) GetHashAsync() {
 	hash, log := app.Application.GetHash()
 	app.mtx.Unlock()
 	app.Callback(
-		tmsp.RequestGetHash{},
-		tmsp.ResponseGetHash{hash, log},
+		tmsp.RequestGetHash(),
+		tmsp.ResponseGetHash(hash, log),
 	)
 }
 

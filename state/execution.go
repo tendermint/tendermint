@@ -60,14 +60,14 @@ func (s *State) execBlockOnProxyApp(evsw *events.EventSwitch, proxyAppConn proxy
 	var validTxs, invalidTxs = 0, 0
 
 	// Execute transactions and get hash
-	proxyCb := func(req tmsp.Request, res tmsp.Response) {
-		switch res := res.(type) {
-		case tmsp.ResponseAppendTx:
+	proxyCb := func(req *tmsp.Request, res *tmsp.Response) {
+		switch res.Type {
+		case tmsp.ResponseTypeAppendTx:
 			// TODO: make use of res.Log
 			// TODO: make use of this info
 			// Blocks may include invalid txs.
 			// reqAppendTx := req.(tmsp.RequestAppendTx)
-			if res.Code == tmsp.RetCodeOK {
+			if tmsp.RetCode(res.Code) == tmsp.RetCodeOK {
 				validTxs += 1
 			} else {
 				log.Debug("Invalid tx", "code", res.Code, "log", res.Log)

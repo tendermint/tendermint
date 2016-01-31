@@ -101,16 +101,15 @@ func (mem *Mempool) CheckTx(tx types.Tx) (err error) {
 }
 
 // TMSP callback function
-func (mem *Mempool) resCb(req tmsp.Request, res tmsp.Response) {
-	switch res := res.(type) {
-	case tmsp.ResponseCheckTx:
-		reqCheckTx := req.(tmsp.RequestCheckTx)
-		if res.Code == tmsp.RetCodeOK {
+func (mem *Mempool) resCb(req *tmsp.Request, res *tmsp.Response) {
+	switch res.Type {
+	case tmsp.ResponseTypeCheckTx:
+		if tmsp.RetCode(res.Code) == tmsp.RetCodeOK {
 			mem.counter++
 			memTx := &mempoolTx{
 				counter: mem.counter,
 				height:  int64(mem.height),
-				tx:      reqCheckTx.TxBytes,
+				tx:      req.Data,
 			}
 			mem.txs.PushBack(memTx)
 		} else {
