@@ -1,6 +1,6 @@
 package types
 
-type RetCode int
+type RetCode uint
 
 // Reserved return codes
 const (

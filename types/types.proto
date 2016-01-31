@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package types;
+
+//----------------------------------------
+// Message types
+
+/*
+  RequestTypeEcho       = 0x01;
+  RequestTypeFlush      = 0x02;
+  RequestTypeInfo       = 0x03;
+  RequestTypeSetOption  = 0x04;
+  RequestTypeAppendTx   = 0x21;
+  RequestTypeCheckTx    = 0x22;
+  RequestTypeGetHash    = 0x23;
+  RequestTypeQuery      = 0x24;
+
+  ResponseTypeEcho      = 0x11;
+  ResponseTypeFlush     = 0x12;
+  ResponseTypeInfo      = 0x13;
+  ResponseTypeSetOption = 0x14;
+  ResponseTypeAppendTx  = 0x31;
+  ResponseTypeCheckTx   = 0x32;
+  ResponseTypeGetHash   = 0x33;
+  ResponseTypeQuery     = 0x34;
+*/
+
+//----------------------------------------
+// Request types
+
+message Request {
+            uint32            type        = 1;
+            bytes             data        = 2;
+            string            key         = 3;
+            string            value       = 4;
+}
+
+//----------------------------------------
+// Response types
+
+message Response {
+            uint32            type        = 1;
+            bytes             data        = 2;
+            uint32            code        = 3;
+            string            error       = 4;
+            string            log         = 5;
+}

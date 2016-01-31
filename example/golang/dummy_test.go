@@ -1,12 +1,10 @@
 package example
 
 import (
-	"reflect"
 	"testing"
 	"time"
 
 	. "github.com/tendermint/go-common"
-	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tmsp/server"
 	"github.com/tendermint/tmsp/types"
 )
@@ -32,19 +30,18 @@ func TestStream(t *testing.T) {
 	go func() {
 		counter := 0
 		for {
-			var n int
-			var err error
-			var res types.Response
-			wire.ReadBinaryPtrLengthPrefixed(&res, conn, 0, &n, &err)
+
+			var res = &types.Response{}
+			err := types.ReadMessage(conn, res)
 			if err != nil {
 				Exit(err.Error())
 			}
 
 			// Process response
-			switch res := res.(type) {
-			case types.ResponseAppendTx:
+			switch res.Type {
+			case types.ResponseTypeAppendTx:
 				counter += 1
-				if res.Code != types.RetCodeOK {
+				if types.RetCode(res.Code) != types.RetCodeOK {
 					t.Error("AppendTx failed with ret_code", res.Code)
 				}
 				if counter > numAppendTxs {
@@ -57,10 +54,10 @@ func TestStream(t *testing.T) {
 						close(done)
 					}()
 				}
-			case types.ResponseFlush:
+			case types.ResponseTypeFlush:
 				// ignore
 			default:
-				t.Error("Unexpected response type", reflect.TypeOf(res))
+				t.Error("Unexpected response type", res.Type)
 			}
 		}
 	}()
@@ -68,10 +65,8 @@ func TestStream(t *testing.T) {
 	// Write requests
 	for counter := 0; counter < numAppendTxs; counter++ {
 		// Send request
-		var n int
-		var err error
-		var req types.Request = types.RequestAppendTx{TxBytes: []byte("test")}
-		wire.WriteBinaryLengthPrefixed(struct{ types.Request }{req}, conn, &n, &err)
+		var req = types.RequestAppendTx([]byte("test"))
+		err := types.WriteMessage(req, conn)
 		if err != nil {
 			t.Fatal(err.Error())
 		}
@@ -79,7 +74,7 @@ func TestStream(t *testing.T) {
 		// Sometimes send flush messages
 		if counter%123 == 0 {
 			t.Log("flush")
-			wire.WriteBinaryLengthPrefixed(struct{ types.Request }{types.RequestFlush{}}, conn, &n, &err)
+			err := types.WriteMessage(types.RequestFlush(), conn)
 			if err != nil {
 				t.Fatal(err.Error())
 			}
@@ -87,8 +82,7 @@ func TestStream(t *testing.T) {
 	}
 
 	// Send final flush message
-	var n int
-	wire.WriteBinaryLengthPrefixed(struct{ types.Request }{types.RequestFlush{}}, conn, &n, &err)
+	err = types.WriteMessage(types.RequestFlush(), conn)
 	if err != nil {
 		t.Fatal(err.Error())
 	}

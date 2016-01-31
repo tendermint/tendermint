@@ -6,18 +6,16 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"reflect"
 	"sync"
 
 	. "github.com/tendermint/go-common"
-	"github.com/tendermint/go-wire"
-	tmsp "github.com/tendermint/tmsp/types"
+	"github.com/tendermint/tmsp/types"
 )
 
 const maxResponseSize = 1048576 // 1MB TODO make configurable
 const flushThrottleMS = 20      // Don't wait longer than...
 
-type Callback func(tmsp.Request, tmsp.Response)
+type Callback func(*types.Request, *types.Response)
 
 // This is goroutine-safe, but users should beware that
 // the application in general is not meant to be interfaced
@@ -34,7 +32,7 @@ type TMSPClient struct {
 	bufWriter *bufio.Writer
 	err       error
 	reqSent   *list.List
-	resCb     func(tmsp.Request, tmsp.Response)
+	resCb     func(*types.Request, *types.Response)
 }
 
 func NewTMSPClient(conn net.Conn, bufferSize int) *TMSPClient {
@@ -91,12 +89,10 @@ func (cli *TMSPClient) Error() error {
 
 func (cli *TMSPClient) sendRequestsRoutine() {
 	for {
-		var n int
-		var err error
 		select {
 		case <-cli.flushTimer.Ch:
 			select {
-			case cli.reqQueue <- newReqRes(tmsp.RequestFlush{}):
+			case cli.reqQueue <- newReqRes(types.RequestFlush()):
 			default:
 				// Probably will fill the buffer, or retry later.
 			}
@@ -104,13 +100,13 @@ func (cli *TMSPClient) sendRequestsRoutine() {
 			return
 		case reqres := <-cli.reqQueue:
 			cli.willSendReq(reqres)
-			wire.WriteBinaryLengthPrefixed(struct{ tmsp.Request }{reqres.Request}, cli.bufWriter, &n, &err) // Length prefix
+			err := types.WriteMessage(reqres.Request, cli.bufWriter)
 			if err != nil {
 				cli.StopForError(err)
 				return
 			}
 			// log.Debug("Sent request", "requestType", reflect.TypeOf(reqres.Request), "request", reqres.Request)
-			if _, ok := reqres.Request.(tmsp.RequestFlush); ok {
+			if reqres.Request.Type == types.RequestTypeFlush {
 				err = cli.bufWriter.Flush()
 				if err != nil {
 					cli.StopForError(err)
@@ -124,16 +120,14 @@ func (cli *TMSPClient) sendRequestsRoutine() {
 func (cli *TMSPClient) recvResponseRoutine() {
 	r := bufio.NewReader(cli.conn) // Buffer reads
 	for {
-		var res tmsp.Response
-		var n int
-		var err error
-		wire.ReadBinaryPtrLengthPrefixed(&res, r, maxResponseSize, &n, &err)
+		var res = &types.Response{}
+		err := types.ReadMessage(r, res)
 		if err != nil {
 			cli.StopForError(err)
 			return
 		}
-		switch res := res.(type) {
-		case tmsp.ResponseException:
+		switch res.Type {
+		case types.ResponseTypeException:
 			// XXX After setting cli.err, release waiters (e.g. reqres.Done())
 			cli.StopForError(errors.New(res.Error))
 		default:
@@ -152,19 +146,19 @@ func (cli *TMSPClient) willSendReq(reqres *reqRes) {
 	cli.reqSent.PushBack(reqres)
 }
 
-func (cli *TMSPClient) didRecvResponse(res tmsp.Response) error {
+func (cli *TMSPClient) didRecvResponse(res *types.Response) error {
 	cli.mtx.Lock()
 	defer cli.mtx.Unlock()
 
 	// Get the first reqRes
 	next := cli.reqSent.Front()
 	if next == nil {
-		return fmt.Errorf("Unexpected result type %v when nothing expected", reflect.TypeOf(res))
+		return fmt.Errorf("Unexpected result type %v when nothing expected", res.Type)
 	}
 	reqres := next.Value.(*reqRes)
 	if !resMatchesReq(reqres.Request, res) {
 		return fmt.Errorf("Unexpected result type %v when response to %v expected",
-			reflect.TypeOf(res), reflect.TypeOf(reqres.Request))
+			res.Type, reqres.Request.Type)
 	}
 
 	reqres.Response = res    // Set response
@@ -182,99 +176,99 @@ func (cli *TMSPClient) didRecvResponse(res tmsp.Response) error {
 //----------------------------------------
 
 func (cli *TMSPClient) EchoAsync(msg string) {
-	cli.queueRequest(tmsp.RequestEcho{msg})
+	cli.queueRequest(types.RequestEcho(msg))
 }
 
 func (cli *TMSPClient) FlushAsync() {
-	cli.queueRequest(tmsp.RequestFlush{})
+	cli.queueRequest(types.RequestFlush())
 }
 
 func (cli *TMSPClient) SetOptionAsync(key string, value string) {
-	cli.queueRequest(tmsp.RequestSetOption{key, value})
+	cli.queueRequest(types.RequestSetOption(key, value))
 }
 
 func (cli *TMSPClient) AppendTxAsync(tx []byte) {
-	cli.queueRequest(tmsp.RequestAppendTx{tx})
+	cli.queueRequest(types.RequestAppendTx(tx))
 }
 
 func (cli *TMSPClient) CheckTxAsync(tx []byte) {
-	cli.queueRequest(tmsp.RequestCheckTx{tx})
+	cli.queueRequest(types.RequestCheckTx(tx))
 }
 
 func (cli *TMSPClient) GetHashAsync() {
-	cli.queueRequest(tmsp.RequestGetHash{})
+	cli.queueRequest(types.RequestGetHash())
 }
 
 func (cli *TMSPClient) QueryAsync(query []byte) {
-	cli.queueRequest(tmsp.RequestQuery{query})
+	cli.queueRequest(types.RequestQuery(query))
 }
 
 //----------------------------------------
 
 func (cli *TMSPClient) InfoSync() (info string, err error) {
-	reqres := cli.queueRequest(tmsp.RequestInfo{})
+	reqres := cli.queueRequest(types.RequestInfo())
 	cli.FlushSync()
 	if cli.err != nil {
 		return "", cli.err
 	}
-	return reqres.Response.(tmsp.ResponseInfo).Info, nil
+	return string(reqres.Response.Data), nil
 }
 
 func (cli *TMSPClient) FlushSync() error {
-	cli.queueRequest(tmsp.RequestFlush{}).Wait()
+	cli.queueRequest(types.RequestFlush()).Wait()
 	return cli.err
 }
 
-func (cli *TMSPClient) AppendTxSync(tx []byte) (code tmsp.RetCode, result []byte, log string, err error) {
-	reqres := cli.queueRequest(tmsp.RequestAppendTx{tx})
+func (cli *TMSPClient) AppendTxSync(tx []byte) (code types.RetCode, result []byte, log string, err error) {
+	reqres := cli.queueRequest(types.RequestAppendTx(tx))
 	cli.FlushSync()
 	if cli.err != nil {
-		return tmsp.RetCodeInternalError, nil, "", cli.err
+		return types.RetCodeInternalError, nil, "", cli.err
 	}
-	res := reqres.Response.(tmsp.ResponseAppendTx)
-	return res.Code, res.Result, res.Log, nil
+	res := reqres.Response
+	return types.RetCode(res.Code), res.Data, res.Log, nil
 }
 
-func (cli *TMSPClient) CheckTxSync(tx []byte) (code tmsp.RetCode, result []byte, log string, err error) {
-	reqres := cli.queueRequest(tmsp.RequestCheckTx{tx})
+func (cli *TMSPClient) CheckTxSync(tx []byte) (code types.RetCode, result []byte, log string, err error) {
+	reqres := cli.queueRequest(types.RequestCheckTx(tx))
 	cli.FlushSync()
 	if cli.err != nil {
-		return tmsp.RetCodeInternalError, nil, "", cli.err
+		return types.RetCodeInternalError, nil, "", cli.err
 	}
-	res := reqres.Response.(tmsp.ResponseCheckTx)
-	return res.Code, res.Result, res.Log, nil
+	res := reqres.Response
+	return types.RetCode(res.Code), res.Data, res.Log, nil
 }
 
 func (cli *TMSPClient) GetHashSync() (hash []byte, log string, err error) {
-	reqres := cli.queueRequest(tmsp.RequestGetHash{})
+	reqres := cli.queueRequest(types.RequestGetHash())
 	cli.FlushSync()
 	if cli.err != nil {
 		return nil, "", cli.err
 	}
-	res := reqres.Response.(tmsp.ResponseGetHash)
-	return res.Hash, res.Log, nil
+	res := reqres.Response
+	return res.Data, res.Log, nil
 }
 
 func (cli *TMSPClient) QuerySync(query []byte) (result []byte, log string, err error) {
-	reqres := cli.queueRequest(tmsp.RequestQuery{query})
+	reqres := cli.queueRequest(types.RequestQuery(query))
 	cli.FlushSync()
 	if cli.err != nil {
 		return nil, "", cli.err
 	}
-	res := reqres.Response.(tmsp.ResponseQuery)
-	return res.Result, res.Log, nil
+	res := reqres.Response
+	return res.Data, res.Log, nil
 }
 
 //----------------------------------------
 
-func (cli *TMSPClient) queueRequest(req tmsp.Request) *reqRes {
+func (cli *TMSPClient) queueRequest(req *types.Request) *reqRes {
 	reqres := newReqRes(req)
 	// TODO: set cli.err if reqQueue times out
 	cli.reqQueue <- reqres
 
 	// Maybe auto-flush, or unset auto-flush
-	switch req.(type) {
-	case tmsp.RequestFlush:
+	switch req.Type {
+	case types.RequestTypeFlush:
 		cli.flushTimer.Unset()
 	default:
 		cli.flushTimer.Set()
@@ -285,37 +279,17 @@ func (cli *TMSPClient) queueRequest(req tmsp.Request) *reqRes {
 
 //----------------------------------------
 
-func resMatchesReq(req tmsp.Request, res tmsp.Response) (ok bool) {
-	switch req.(type) {
-	case tmsp.RequestEcho:
-		_, ok = res.(tmsp.ResponseEcho)
-	case tmsp.RequestFlush:
-		_, ok = res.(tmsp.ResponseFlush)
-	case tmsp.RequestInfo:
-		_, ok = res.(tmsp.ResponseInfo)
-	case tmsp.RequestSetOption:
-		_, ok = res.(tmsp.ResponseSetOption)
-	case tmsp.RequestAppendTx:
-		_, ok = res.(tmsp.ResponseAppendTx)
-	case tmsp.RequestCheckTx:
-		_, ok = res.(tmsp.ResponseCheckTx)
-	case tmsp.RequestGetHash:
-		_, ok = res.(tmsp.ResponseGetHash)
-	case tmsp.RequestQuery:
-		_, ok = res.(tmsp.ResponseQuery)
-	default:
-		return false
-	}
-	return
+func resMatchesReq(req *types.Request, res *types.Response) (ok bool) {
+	return req.Type+0x10 == res.Type
 }
 
 type reqRes struct {
-	tmsp.Request
+	*types.Request
 	*sync.WaitGroup
-	tmsp.Response // Not set atomically, so be sure to use WaitGroup.
+	*types.Response // Not set atomically, so be sure to use WaitGroup.
 }
 
-func newReqRes(req tmsp.Request) *reqRes {
+func newReqRes(req *types.Request) *reqRes {
 	return &reqRes{
 		Request:   req,
 		WaitGroup: waitGroup1(),

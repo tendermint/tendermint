@@ -8,14 +8,11 @@ import (
 	"io"
 	"net"
 	"os"
-	"reflect"
 	"strings"
 
-	. "github.com/tendermint/go-common"
-	"github.com/tendermint/go-wire"
-	"github.com/tendermint/tmsp/types"
-
 	"github.com/codegangsta/cli"
+	. "github.com/tendermint/go-common"
+	"github.com/tendermint/tmsp/types"
 )
 
 // connection is a global variable so it can be reused by the console
@@ -162,7 +159,7 @@ func cmdEcho(c *cli.Context) {
 		fmt.Println("echo takes 1 argument")
 		return
 	}
-	res, err := makeRequest(conn, types.RequestEcho{args[0]})
+	res, err := makeRequest(conn, types.RequestEcho(args[0]))
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -172,7 +169,7 @@ func cmdEcho(c *cli.Context) {
 
 // Get some info from the application
 func cmdInfo(c *cli.Context) {
-	res, err := makeRequest(conn, types.RequestInfo{})
+	res, err := makeRequest(conn, types.RequestInfo())
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -187,7 +184,7 @@ func cmdSetOption(c *cli.Context) {
 		fmt.Println("set_option takes 2 arguments (key, value)")
 		return
 	}
-	_, err := makeRequest(conn, types.RequestSetOption{args[0], args[1]})
+	_, err := makeRequest(conn, types.RequestSetOption(args[0], args[1]))
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -213,7 +210,7 @@ func cmdAppendTx(c *cli.Context) {
 		}
 	}
 
-	res, err := makeRequest(conn, types.RequestAppendTx{tx})
+	res, err := makeRequest(conn, types.RequestAppendTx(tx))
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -239,7 +236,7 @@ func cmdCheckTx(c *cli.Context) {
 		}
 	}
 
-	res, err := makeRequest(conn, types.RequestCheckTx{tx})
+	res, err := makeRequest(conn, types.RequestCheckTx(tx))
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -249,12 +246,12 @@ func cmdCheckTx(c *cli.Context) {
 
 // Get application Merkle root hash
 func cmdGetHash(c *cli.Context) {
-	res, err := makeRequest(conn, types.RequestGetHash{})
+	res, err := makeRequest(conn, types.RequestGetHash())
 	if err != nil {
 		fmt.Println(err.Error())
 		return
 	}
-	fmt.Printf("%X\n", res.(types.ResponseGetHash).Hash)
+	fmt.Printf("%X\n", res.Data)
 }
 
 // Query application state
@@ -275,7 +272,7 @@ func cmdQuery(c *cli.Context) {
 		}
 	}
 
-	res, err := makeRequest(conn, types.RequestQuery{query})
+	res, err := makeRequest(conn, types.RequestQuery(query))
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -285,37 +282,35 @@ func cmdQuery(c *cli.Context) {
 
 //--------------------------------------------------------------------------------
 
-func makeRequest(conn net.Conn, req types.Request) (types.Response, error) {
-	var n int
-	var err error
+func makeRequest(conn net.Conn, req *types.Request) (*types.Response, error) {
 
 	// Write desired request
-	wire.WriteBinaryLengthPrefixed(struct{ types.Request }{req}, conn, &n, &err)
+	err := types.WriteMessage(req, conn)
 	if err != nil {
 		return nil, err
 	}
 
 	// Write flush request
-	wire.WriteBinaryLengthPrefixed(struct{ types.Request }{types.RequestFlush{}}, conn, &n, &err)
+	err = types.WriteMessage(types.RequestFlush(), conn)
 	if err != nil {
 		return nil, err
 	}
 
 	// Read desired response
-	var res types.Response
-	wire.ReadBinaryPtrLengthPrefixed(&res, conn, 0, &n, &err)
+	var res = &types.Response{}
+	err = types.ReadMessage(conn, res)
 	if err != nil {
 		return nil, err
 	}
 
 	// Read flush response
-	var resFlush types.Response
-	wire.ReadBinaryPtrLengthPrefixed(&resFlush, conn, 0, &n, &err)
+	var resFlush = &types.Response{}
+	err = types.ReadMessage(conn, resFlush)
 	if err != nil {
 		return nil, err
 	}
-	if _, ok := resFlush.(types.ResponseFlush); !ok {
-		return nil, errors.New(Fmt("Expected types.ResponseFlush but got %v instead", reflect.TypeOf(resFlush)))
+	if resFlush.Type != types.ResponseTypeFlush {
+		return nil, errors.New(Fmt("Expected types.ResponseTypesFlush but got %v instead", resFlush.Type))
 	}
 
 	return res, nil

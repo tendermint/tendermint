@@ -9,7 +9,6 @@ import (
 	"sync"
 
 	. "github.com/tendermint/go-common"
-	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tmsp/types"
 )
 
@@ -40,8 +39,8 @@ func StartListener(protoAddr string, app types.Application) (net.Listener, error
 				fmt.Println("Accepted a new connection")
 			}
 
-			closeConn := make(chan error, 2)             // Push to signal connection closed
-			responses := make(chan types.Response, 1000) // A channel to buffer responses
+			closeConn := make(chan error, 2)              // Push to signal connection closed
+			responses := make(chan *types.Response, 1000) // A channel to buffer responses
 
 			// Read requests from conn and deal with them
 			go handleRequests(&mtx, app, closeConn, conn, responses)
@@ -73,14 +72,13 @@ func StartListener(protoAddr string, app types.Application) (net.Listener, error
 }
 
 // Read requests from conn and deal with them
-func handleRequests(mtx *sync.Mutex, app types.Application, closeConn chan error, conn net.Conn, responses chan<- types.Response) {
+func handleRequests(mtx *sync.Mutex, app types.Application, closeConn chan error, conn net.Conn, responses chan<- *types.Response) {
 	var count int
 	var bufReader = bufio.NewReader(conn)
 	for {
-		var n int
-		var err error
-		var req types.Request
-		wire.ReadBinaryPtrLengthPrefixed(&req, bufReader, 0, &n, &err)
+
+		var req = &types.Request{}
+		err := types.ReadMessage(bufReader, req)
 		if err != nil {
 			if err == io.EOF {
 				closeConn <- fmt.Errorf("Connection closed by client")
@@ -96,49 +94,47 @@ func handleRequests(mtx *sync.Mutex, app types.Application, closeConn chan error
 	}
 }
 
-func handleRequest(app types.Application, req types.Request, responses chan<- types.Response) {
-	switch req := req.(type) {
-	case types.RequestEcho:
-		responses <- types.ResponseEcho{req.Message}
-	case types.RequestFlush:
-		responses <- types.ResponseFlush{}
-	case types.RequestInfo:
+func handleRequest(app types.Application, req *types.Request, responses chan<- *types.Response) {
+	switch req.Type {
+	case types.RequestTypeEcho:
+		responses <- types.ResponseEcho(string(req.Data))
+	case types.RequestTypeFlush:
+		responses <- types.ResponseFlush()
+	case types.RequestTypeInfo:
 		data := app.Info()
-		responses <- types.ResponseInfo{data}
-	case types.RequestSetOption:
+		responses <- types.ResponseInfo(data)
+	case types.RequestTypeSetOption:
 		logStr := app.SetOption(req.Key, req.Value)
-		responses <- types.ResponseSetOption{logStr}
-	case types.RequestAppendTx:
-		code, result, logStr := app.AppendTx(req.TxBytes)
-		responses <- types.ResponseAppendTx{code, result, logStr}
-	case types.RequestCheckTx:
-		code, result, logStr := app.CheckTx(req.TxBytes)
-		responses <- types.ResponseCheckTx{code, result, logStr}
-	case types.RequestGetHash:
+		responses <- types.ResponseSetOption(logStr)
+	case types.RequestTypeAppendTx:
+		code, result, logStr := app.AppendTx(req.Data)
+		responses <- types.ResponseAppendTx(code, result, logStr)
+	case types.RequestTypeCheckTx:
+		code, result, logStr := app.CheckTx(req.Data)
+		responses <- types.ResponseCheckTx(code, result, logStr)
+	case types.RequestTypeGetHash:
 		hash, logStr := app.GetHash()
-		responses <- types.ResponseGetHash{hash, logStr}
-	case types.RequestQuery:
-		result, logStr := app.Query(req.QueryBytes)
-		responses <- types.ResponseQuery{result, logStr}
+		responses <- types.ResponseGetHash(hash, logStr)
+	case types.RequestTypeQuery:
+		result, logStr := app.Query(req.Data)
+		responses <- types.ResponseQuery(result, logStr)
 	default:
-		responses <- types.ResponseException{"Unknown request"}
+		responses <- types.ResponseException("Unknown request")
 	}
 }
 
 // Pull responses from 'responses' and write them to conn.
-func handleResponses(closeConn chan error, responses <-chan types.Response, conn net.Conn) {
+func handleResponses(closeConn chan error, responses <-chan *types.Response, conn net.Conn) {
 	var count int
 	var bufWriter = bufio.NewWriter(conn)
 	for {
 		var res = <-responses
-		var n int
-		var err error
-		wire.WriteBinaryLengthPrefixed(struct{ types.Response }{res}, bufWriter, &n, &err)
+		err := types.WriteMessage(res, bufWriter)
 		if err != nil {
 			closeConn <- fmt.Errorf("Error in handleResponses: %v", err.Error())
 			return
 		}
-		if _, ok := res.(types.ResponseFlush); ok {
+		if res.Type == types.ResponseTypeFlush {
 			err = bufWriter.Flush()
 			if err != nil {
 				closeConn <- fmt.Errorf("Error in handleResponses: %v", err.Error())

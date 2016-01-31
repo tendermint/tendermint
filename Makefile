@@ -1,6 +1,9 @@
 .PHONY: all test get_deps
 
-all: test install
+all: protoc test install
+
+protoc:
+	protoc --go_out=. types/*.proto
 
 install: get_deps
 	go install github.com/tendermint/tmsp/cmd/...
