@@ -1,6 +1,8 @@
 package main
 
 import (
+	"flag"
+
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/tmsp/example/golang"
 	"github.com/tendermint/tmsp/server"
@@ -8,8 +10,11 @@ import (
 
 func main() {
 
+	addrPtr := flag.String("addr", "tcp://0.0.0.0:46658", "Listen address")
+	flag.Parse()
+
 	// Start the listener
-	_, err := server.StartListener("tcp://0.0.0.0:46658", example.NewDummyApplication())
+	_, err := server.StartListener(*addrPtr, example.NewDummyApplication())
 	if err != nil {
 		Exit(err.Error())
 	}

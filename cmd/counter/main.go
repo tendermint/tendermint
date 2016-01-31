@@ -10,12 +10,13 @@ import (
 
 func main() {
 
+	addrPtr := flag.String("addr", "tcp://0.0.0.0:46658", "Listen address")
 	serialPtr := flag.Bool("serial", false, "Enforce incrementing (serial) txs")
 	flag.Parse()
 	app := example.NewCounterApplication(*serialPtr)
 
 	// Start the listener
-	_, err := server.StartListener("tcp://0.0.0.0:46658", app)
+	_, err := server.StartListener(*addrPtr, app)
 	if err != nil {
 		Exit(err.Error())
 	}

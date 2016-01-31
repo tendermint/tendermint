@@ -45,6 +45,10 @@ func makeRequest(conn net.Conn, req *types.Request) (*types.Response, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = bufWriter.Flush()
+	if err != nil {
+		return nil, err
+	}
 
 	// Read desired response
 	var res = &types.Response{}
