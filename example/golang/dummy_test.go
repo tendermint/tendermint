@@ -39,7 +39,7 @@ func TestStream(t *testing.T) {
 
 			// Process response
 			switch res.Type {
-			case types.ResponseTypeAppendTx:
+			case types.MessageType_AppendTx:
 				counter += 1
 				if types.RetCode(res.Code) != types.RetCodeOK {
 					t.Error("AppendTx failed with ret_code", res.Code)
@@ -54,7 +54,7 @@ func TestStream(t *testing.T) {
 						close(done)
 					}()
 				}
-			case types.ResponseTypeFlush:
+			case types.MessageType_Flush:
 				// ignore
 			default:
 				t.Error("Unexpected response type", res.Type)

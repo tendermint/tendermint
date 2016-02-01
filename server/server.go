@@ -96,26 +96,26 @@ func handleRequests(mtx *sync.Mutex, app types.Application, closeConn chan error
 
 func handleRequest(app types.Application, req *types.Request, responses chan<- *types.Response) {
 	switch req.Type {
-	case types.RequestTypeEcho:
+	case types.MessageType_Echo:
 		responses <- types.ResponseEcho(string(req.Data))
-	case types.RequestTypeFlush:
+	case types.MessageType_Flush:
 		responses <- types.ResponseFlush()
-	case types.RequestTypeInfo:
+	case types.MessageType_Info:
 		data := app.Info()
 		responses <- types.ResponseInfo(data)
-	case types.RequestTypeSetOption:
+	case types.MessageType_SetOption:
 		logStr := app.SetOption(req.Key, req.Value)
 		responses <- types.ResponseSetOption(logStr)
-	case types.RequestTypeAppendTx:
+	case types.MessageType_AppendTx:
 		code, result, logStr := app.AppendTx(req.Data)
 		responses <- types.ResponseAppendTx(code, result, logStr)
-	case types.RequestTypeCheckTx:
+	case types.MessageType_CheckTx:
 		code, result, logStr := app.CheckTx(req.Data)
 		responses <- types.ResponseCheckTx(code, result, logStr)
-	case types.RequestTypeGetHash:
+	case types.MessageType_GetHash:
 		hash, logStr := app.GetHash()
 		responses <- types.ResponseGetHash(hash, logStr)
-	case types.RequestTypeQuery:
+	case types.MessageType_Query:
 		code, result, logStr := app.Query(req.Data)
 		responses <- types.ResponseQuery(code, result, logStr)
 	default:
@@ -134,7 +134,7 @@ func handleResponses(closeConn chan error, responses <-chan *types.Response, con
 			closeConn <- fmt.Errorf("Error in handleResponses: %v", err.Error())
 			return
 		}
-		if res.Type == types.ResponseTypeFlush {
+		if res.Type == types.MessageType_Flush {
 			err = bufWriter.Flush()
 			if err != nil {
 				closeConn <- fmt.Errorf("Error in handleResponses: %v", err.Error())

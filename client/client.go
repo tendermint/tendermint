@@ -106,7 +106,7 @@ func (cli *TMSPClient) sendRequestsRoutine() {
 				return
 			}
 			// log.Debug("Sent request", "requestType", reflect.TypeOf(reqres.Request), "request", reqres.Request)
-			if reqres.Request.Type == types.RequestTypeFlush {
+			if reqres.Request.Type == types.MessageType_Flush {
 				err = cli.bufWriter.Flush()
 				if err != nil {
 					cli.StopForError(err)
@@ -127,7 +127,7 @@ func (cli *TMSPClient) recvResponseRoutine() {
 			return
 		}
 		switch res.Type {
-		case types.ResponseTypeException:
+		case types.MessageType_Exception:
 			// XXX After setting cli.err, release waiters (e.g. reqres.Done())
 			cli.StopForError(errors.New(res.Error))
 		default:
@@ -268,7 +268,7 @@ func (cli *TMSPClient) queueRequest(req *types.Request) *reqRes {
 
 	// Maybe auto-flush, or unset auto-flush
 	switch req.Type {
-	case types.RequestTypeFlush:
+	case types.MessageType_Flush:
 		cli.flushTimer.Unset()
 	default:
 		cli.flushTimer.Set()
@@ -280,7 +280,7 @@ func (cli *TMSPClient) queueRequest(req *types.Request) *reqRes {
 //----------------------------------------
 
 func resMatchesReq(req *types.Request, res *types.Response) (ok bool) {
-	return req.Type+0x10 == res.Type
+	return req.Type == res.Type
 }
 
 type reqRes struct {

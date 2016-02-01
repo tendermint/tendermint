@@ -1,35 +1,30 @@
 syntax = "proto3";
-
 package types;
+
+// This file is copied from http://github.com/tendermint/tmsp
 
 //----------------------------------------
 // Message types
 
-/*
-  RequestTypeEcho       = 0x01;
-  RequestTypeFlush      = 0x02;
-  RequestTypeInfo       = 0x03;
-  RequestTypeSetOption  = 0x04;
-  RequestTypeAppendTx   = 0x21;
-  RequestTypeCheckTx    = 0x22;
-  RequestTypeGetHash    = 0x23;
-  RequestTypeQuery      = 0x24;
+enum MessageType {
+  NullMessage = 0x00;
 
-  ResponseTypeEcho      = 0x11;
-  ResponseTypeFlush     = 0x12;
-  ResponseTypeInfo      = 0x13;
-  ResponseTypeSetOption = 0x14;
-  ResponseTypeAppendTx  = 0x31;
-  ResponseTypeCheckTx   = 0x32;
-  ResponseTypeGetHash   = 0x33;
-  ResponseTypeQuery     = 0x34;
-*/
+  Echo       = 0x01;
+  Flush      = 0x02;
+  Info       = 0x03;
+  SetOption  = 0x04;
+  Exception  = 0x05;
+  AppendTx   = 0x11;
+  CheckTx    = 0x12;
+  GetHash    = 0x13;
+  Query      = 0x14;
+}
 
 //----------------------------------------
 // Request types
 
 message Request {
-            uint32            type        = 1;
+            MessageType       type        = 1;
             bytes             data        = 2;
             string            key         = 3;
             string            value       = 4;
@@ -39,9 +34,10 @@ message Request {
 // Response types
 
 message Response {
-            uint32            type        = 1;
+            MessageType       type        = 1;
             bytes             data        = 2;
             uint32            code        = 3;
             string            error       = 4;
             string            log         = 5;
 }
+

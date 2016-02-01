@@ -309,8 +309,8 @@ func makeRequest(conn net.Conn, req *types.Request) (*types.Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	if resFlush.Type != types.ResponseTypeFlush {
-		return nil, errors.New(Fmt("Expected types.ResponseTypesFlush but got %v instead", resFlush.Type))
+	if resFlush.Type != types.MessageType_Flush {
+		return nil, errors.New(Fmt("Expected types.MessageType_Flush but got %v instead", resFlush.Type))
 	}
 
 	return res, nil
