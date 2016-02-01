@@ -26,13 +26,13 @@ func (app *DummyApplication) SetOption(key string, value string) (log string) {
 	return ""
 }
 
-func (app *DummyApplication) AppendTx(tx []byte) (code types.RetCode, result []byte, log string) {
+func (app *DummyApplication) AppendTx(tx []byte) (code types.CodeType, result []byte, log string) {
 	app.state.Set(tx, tx)
-	return types.RetCodeOK, nil, ""
+	return types.CodeType_OK, nil, ""
 }
 
-func (app *DummyApplication) CheckTx(tx []byte) (code types.RetCode, result []byte, log string) {
-	return types.RetCodeOK, nil, ""
+func (app *DummyApplication) CheckTx(tx []byte) (code types.CodeType, result []byte, log string) {
+	return types.CodeType_OK, nil, ""
 }
 
 func (app *DummyApplication) GetHash() (hash []byte, log string) {
@@ -40,6 +40,6 @@ func (app *DummyApplication) GetHash() (hash []byte, log string) {
 	return hash, ""
 }
 
-func (app *DummyApplication) Query(query []byte) (code types.RetCode, result []byte, log string) {
-	return types.RetCodeOK, nil, "Query not supported"
+func (app *DummyApplication) Query(query []byte) (code types.CodeType, result []byte, log string) {
+	return types.CodeType_OK, nil, "Query not supported"
 }

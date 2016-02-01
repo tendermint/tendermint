@@ -41,7 +41,7 @@ func TestStream(t *testing.T) {
 			switch res.Type {
 			case types.MessageType_AppendTx:
 				counter += 1
-				if types.RetCode(res.Code) != types.RetCodeOK {
+				if res.Code != types.CodeType_OK {
 					t.Error("AppendTx failed with ret_code", res.Code)
 				}
 				if counter > numAppendTxs {

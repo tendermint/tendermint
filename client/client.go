@@ -219,24 +219,24 @@ func (cli *TMSPClient) FlushSync() error {
 	return cli.err
 }
 
-func (cli *TMSPClient) AppendTxSync(tx []byte) (code types.RetCode, result []byte, log string, err error) {
+func (cli *TMSPClient) AppendTxSync(tx []byte) (code types.CodeType, result []byte, log string, err error) {
 	reqres := cli.queueRequest(types.RequestAppendTx(tx))
 	cli.FlushSync()
 	if cli.err != nil {
-		return types.RetCodeInternalError, nil, "", cli.err
+		return types.CodeType_InternalError, nil, "", cli.err
 	}
 	res := reqres.Response
-	return types.RetCode(res.Code), res.Data, res.Log, nil
+	return res.Code, res.Data, res.Log, nil
 }
 
-func (cli *TMSPClient) CheckTxSync(tx []byte) (code types.RetCode, result []byte, log string, err error) {
+func (cli *TMSPClient) CheckTxSync(tx []byte) (code types.CodeType, result []byte, log string, err error) {
 	reqres := cli.queueRequest(types.RequestCheckTx(tx))
 	cli.FlushSync()
 	if cli.err != nil {
-		return types.RetCodeInternalError, nil, "", cli.err
+		return types.CodeType_InternalError, nil, "", cli.err
 	}
 	res := reqres.Response
-	return types.RetCode(res.Code), res.Data, res.Log, nil
+	return res.Code, res.Data, res.Log, nil
 }
 
 func (cli *TMSPClient) GetHashSync() (hash []byte, log string, err error) {
@@ -249,14 +249,14 @@ func (cli *TMSPClient) GetHashSync() (hash []byte, log string, err error) {
 	return res.Data, res.Log, nil
 }
 
-func (cli *TMSPClient) QuerySync(query []byte) (code types.RetCode, result []byte, log string, err error) {
+func (cli *TMSPClient) QuerySync(query []byte) (code types.CodeType, result []byte, log string, err error) {
 	reqres := cli.queueRequest(types.RequestQuery(query))
 	cli.FlushSync()
 	if cli.err != nil {
-		return types.RetCodeInternalError, nil, "", cli.err
+		return types.CodeType_InternalError, nil, "", cli.err
 	}
 	res := reqres.Response
-	return types.RetCode(res.Code), res.Data, res.Log, nil
+	return res.Code, res.Data, res.Log, nil
 }
 
 //----------------------------------------

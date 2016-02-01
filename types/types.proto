@@ -21,6 +21,19 @@ enum MessageType {
 }
 
 //----------------------------------------
+// Code types
+
+enum CodeType {
+  OK                  = 0;
+  InternalError       = 1;
+  Unauthorized        = 2;
+  InsufficientFees    = 3;
+  UnknownRequest      = 4;
+  EncodingError       = 5;
+  BadNonce            = 6;
+}
+
+//----------------------------------------
 // Request types
 
 message Request {
@@ -36,7 +49,7 @@ message Request {
 message Response {
             MessageType       type        = 1;
             bytes             data        = 2;
-            uint32            code        = 3;
+            CodeType          code        = 3;
             string            error       = 4;
             string            log         = 5;
 }

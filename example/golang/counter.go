@@ -29,29 +29,29 @@ func (app *CounterApplication) SetOption(key string, value string) (log string) 
 	return ""
 }
 
-func (app *CounterApplication) AppendTx(tx []byte) (code types.RetCode, result []byte, log string) {
+func (app *CounterApplication) AppendTx(tx []byte) (code types.CodeType, result []byte, log string) {
 	if app.serial {
 		tx8 := make([]byte, 8)
 		copy(tx8[len(tx8)-len(tx):], tx)
 		txValue := binary.BigEndian.Uint64(tx8)
 		if txValue != uint64(app.txCount) {
-			return types.RetCodeBadNonce, nil, fmt.Sprintf("Invalid nonce. Expected %v, got %v", app.txCount, txValue)
+			return types.CodeType_BadNonce, nil, fmt.Sprintf("Invalid nonce. Expected %v, got %v", app.txCount, txValue)
 		}
 	}
 	app.txCount += 1
-	return types.RetCodeOK, nil, ""
+	return types.CodeType_OK, nil, ""
 }
 
-func (app *CounterApplication) CheckTx(tx []byte) (code types.RetCode, result []byte, log string) {
+func (app *CounterApplication) CheckTx(tx []byte) (code types.CodeType, result []byte, log string) {
 	if app.serial {
 		tx8 := make([]byte, 8)
 		copy(tx8[len(tx8)-len(tx):], tx)
 		txValue := binary.BigEndian.Uint64(tx8)
 		if txValue < uint64(app.txCount) {
-			return types.RetCodeBadNonce, nil, fmt.Sprintf("Invalid nonce. Expected >= %v, got %v", app.txCount, txValue)
+			return types.CodeType_BadNonce, nil, fmt.Sprintf("Invalid nonce. Expected >= %v, got %v", app.txCount, txValue)
 		}
 	}
-	return types.RetCodeOK, nil, ""
+	return types.CodeType_OK, nil, ""
 }
 
 func (app *CounterApplication) GetHash() (hash []byte, log string) {
@@ -66,6 +66,6 @@ func (app *CounterApplication) GetHash() (hash []byte, log string) {
 	}
 }
 
-func (app *CounterApplication) Query(query []byte) (code types.RetCode, result []byte, log string) {
-	return types.RetCodeOK, nil, fmt.Sprintf("Query is not supported")
+func (app *CounterApplication) Query(query []byte) (code types.CodeType, result []byte, log string) {
+	return types.CodeType_OK, nil, fmt.Sprintf("Query is not supported")
 }
