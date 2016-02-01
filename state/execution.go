@@ -70,6 +70,7 @@ func (s *State) execBlockOnProxyApp(evsw *events.EventSwitch, proxyAppConn proxy
 			if res.Code == tmsp.RetCodeOK {
 				validTxs += 1
 			} else {
+				log.Debug("Invalid tx", "code", res.Code, "log", res.Log)
 				invalidTxs += 1
 			}
 		}

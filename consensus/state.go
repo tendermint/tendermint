@@ -1146,7 +1146,7 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 		PanicConsensus(Fmt("+2/3 committed an invalid block: %v", err))
 	}
 
-	log.Notice("Finalizing commit of block", "height", block.Height, "hash", block.Hash())
+	log.Notice(Fmt("Finalizing commit of block with %d txs", block.NumTxs), "height", block.Height, "hash", block.Hash())
 	log.Info(Fmt("%v", block))
 
 	// Fire off event for new block.
