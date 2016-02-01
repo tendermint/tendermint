@@ -66,6 +66,6 @@ func (app *CounterApplication) GetHash() (hash []byte, log string) {
 	}
 }
 
-func (app *CounterApplication) Query(query []byte) (result []byte, log string) {
-	return nil, fmt.Sprintf("Query is not supported")
+func (app *CounterApplication) Query(query []byte) (code types.RetCode, result []byte, log string) {
+	return types.RetCodeOK, nil, fmt.Sprintf("Query is not supported")
 }

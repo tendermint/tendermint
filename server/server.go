@@ -116,8 +116,8 @@ func handleRequest(app types.Application, req *types.Request, responses chan<- *
 		hash, logStr := app.GetHash()
 		responses <- types.ResponseGetHash(hash, logStr)
 	case types.RequestTypeQuery:
-		result, logStr := app.Query(req.Data)
-		responses <- types.ResponseQuery(result, logStr)
+		code, result, logStr := app.Query(req.Data)
+		responses <- types.ResponseQuery(code, result, logStr)
 	default:
 		responses <- types.ResponseException("Unknown request")
 	}

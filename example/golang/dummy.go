@@ -40,6 +40,6 @@ func (app *DummyApplication) GetHash() (hash []byte, log string) {
 	return hash, ""
 }
 
-func (app *DummyApplication) Query(query []byte) (result []byte, log string) {
-	return nil, "Query not supported"
+func (app *DummyApplication) Query(query []byte) (code types.RetCode, result []byte, log string) {
+	return types.RetCodeOK, nil, "Query not supported"
 }

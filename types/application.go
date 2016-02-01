@@ -18,5 +18,5 @@ type Application interface {
 	GetHash() (hash []byte, log string)
 
 	// Query for state
-	Query(query []byte) (result []byte, log string)
+	Query(query []byte) (code RetCode, result []byte, log string)
 }

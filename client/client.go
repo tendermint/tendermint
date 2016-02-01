@@ -249,14 +249,14 @@ func (cli *TMSPClient) GetHashSync() (hash []byte, log string, err error) {
 	return res.Data, res.Log, nil
 }
 
-func (cli *TMSPClient) QuerySync(query []byte) (result []byte, log string, err error) {
+func (cli *TMSPClient) QuerySync(query []byte) (code types.RetCode, result []byte, log string, err error) {
 	reqres := cli.queueRequest(types.RequestQuery(query))
 	cli.FlushSync()
 	if cli.err != nil {
-		return nil, "", cli.err
+		return types.RetCodeInternalError, nil, "", cli.err
 	}
 	res := reqres.Response
-	return res.Data, res.Log, nil
+	return types.RetCode(res.Code), res.Data, res.Log, nil
 }
 
 //----------------------------------------

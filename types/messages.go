@@ -125,6 +125,7 @@ func ResponseSetOption(log string) *Response {
 func ResponseAppendTx(code RetCode, result []byte, log string) *Response {
 	return &Response{
 		Type: ResponseTypeAppendTx,
+		Code: uint32(code),
 		Data: result,
 		Log:  log,
 	}
@@ -133,6 +134,7 @@ func ResponseAppendTx(code RetCode, result []byte, log string) *Response {
 func ResponseCheckTx(code RetCode, result []byte, log string) *Response {
 	return &Response{
 		Type: ResponseTypeCheckTx,
+		Code: uint32(code),
 		Data: result,
 		Log:  log,
 	}
@@ -146,9 +148,10 @@ func ResponseGetHash(hash []byte, log string) *Response {
 	}
 }
 
-func ResponseQuery(result []byte, log string) *Response {
+func ResponseQuery(code RetCode, result []byte, log string) *Response {
 	return &Response{
 		Type: ResponseTypeQuery,
+		Code: uint32(code),
 		Data: result,
 		Log:  log,
 	}
