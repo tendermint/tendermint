@@ -103,7 +103,7 @@ func (mem *Mempool) CheckTx(tx types.Tx) (err error) {
 // TMSP callback function
 func (mem *Mempool) resCb(req *tmsp.Request, res *tmsp.Response) {
 	switch res.Type {
-	case tmsp.ResponseTypeCheckTx:
+	case tmsp.MessageType_CheckTx:
 		if tmsp.RetCode(res.Code) == tmsp.RetCodeOK {
 			mem.counter++
 			memTx := &mempoolTx{

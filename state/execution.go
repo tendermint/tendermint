@@ -62,7 +62,7 @@ func (s *State) execBlockOnProxyApp(evsw *events.EventSwitch, proxyAppConn proxy
 	// Execute transactions and get hash
 	proxyCb := func(req *tmsp.Request, res *tmsp.Response) {
 		switch res.Type {
-		case tmsp.ResponseTypeAppendTx:
+		case tmsp.MessageType_AppendTx:
 			// TODO: make use of res.Log
 			// TODO: make use of this info
 			// Blocks may include invalid txs.
