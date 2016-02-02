@@ -1,12 +1,12 @@
 package handlers
 
 import (
-	"github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/go-event-meter"
-	"github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/go-events"
+	"github.com/tendermint/go-event-meter"
+	"github.com/tendermint/go-events"
 
 	"github.com/tendermint/netmon/types"
 
-	tmtypes "github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/tendermint/types"
+	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 /*
@@ -38,5 +38,16 @@ func (tn *TendermintNetwork) latencyCallback(chain *types.ChainState, val *types
 		latency = latency / 1000000.0 // ns to ms
 		oldLatency := val.UpdateLatency(latency)
 		chain.UpdateLatency(oldLatency, latency)
+	}
+}
+
+// implements eventmeter.DisconnectCallbackFunc
+func (tn *TendermintNetwork) disconnectCallback(chain *types.ChainState, val *types.ValidatorState) eventmeter.DisconnectCallbackFunc {
+	return func() {
+		// Validator is down!
+		chain.SetOnline(val, false)
+
+		// Start reconnect routine
+		go chain.ReconnectValidator(val)
 	}
 }

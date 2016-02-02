@@ -5,11 +5,11 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/go-event-meter"
-	"github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/go-wire"
+	"github.com/tendermint/go-event-meter"
+	"github.com/tendermint/go-wire"
 
-	tmtypes "github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/tendermint/types"
 	"github.com/tendermint/netmon/types"
+	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 type NetMonResult interface {
@@ -99,6 +99,7 @@ func (tn *TendermintNetwork) GetChain(chainID string) (*types.ChainState, error)
 	if !ok {
 		return nil, fmt.Errorf("Unknown chain %s", chainID)
 	}
+	chain.Status.RealTimeUpdates()
 	return chain, nil
 }
 
@@ -125,10 +126,14 @@ func (tn *TendermintNetwork) RegisterChain(chainConfig *types.BlockchainConfig) 
 		}
 
 		v.EventMeter().RegisterLatencyCallback(tn.latencyCallback(chainState, v))
+		v.EventMeter().RegisterDisconnectCallback(tn.disconnectCallback(chainState, v))
 		err := v.EventMeter().Subscribe(tmtypes.EventStringNewBlock(), tn.newBlockCallback(chainState, v))
 		if err != nil {
 			return nil, err
 		}
+
+		// the DisconnectCallback will set us offline and start a reconnect routine
+		chainState.Status.SetOnline(v, true)
 
 		// get/set the validator's pub key
 		// TODO: possibly remove? why should we depend on this here?

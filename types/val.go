@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/go-crypto"
-	"github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/go-event-meter"
-	"github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/go-events"
-	client "github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/go-rpc/client"
-	"github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/go-wire"
-	ctypes "github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/tendermint/rpc/core/types"
-	tmtypes "github.com/tendermint/netmon/Godeps/_workspace/src/github.com/tendermint/tendermint/types"
+	"github.com/tendermint/go-crypto"
+	"github.com/tendermint/go-event-meter"
+	"github.com/tendermint/go-events"
+	client "github.com/tendermint/go-rpc/client"
+	"github.com/tendermint/go-wire"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 //------------------------------------------------
@@ -94,6 +94,12 @@ func (vs *ValidatorState) UpdateLatency(latency float64) float64 {
 	return old
 }
 
+func (vs *ValidatorState) SetOnline(isOnline bool) {
+	vs.Status.mtx.Lock()
+	defer vs.Status.mtx.Unlock()
+	vs.Status.Online = isOnline
+}
+
 // Return the validators pubkey. If it's not yet set, get it from the node
 // TODO: proof that it's the node's key
 // XXX: Is this necessary? Why would it not be set
@@ -123,6 +129,7 @@ type ValidatorConfig struct {
 
 type ValidatorStatus struct {
 	mtx         sync.Mutex
+	Online      bool    `json:"online"`
 	Latency     float64 `json:"latency" wire:"unsafe"`
 	BlockHeight int     `json:"block_height"`
 }
