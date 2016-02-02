@@ -110,7 +110,7 @@ func (bs *BaseService) Stop() bool {
 		return true
 	} else {
 		if bs.log != nil {
-			bs.log.Notice(Fmt("Stopping %v (ignoring: already stopped)", bs.name), "impl", bs.impl)
+			bs.log.Debug(Fmt("Stopping %v (ignoring: already stopped)", bs.name), "impl", bs.impl)
 		}
 		return false
 	}
