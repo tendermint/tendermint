@@ -31,6 +31,8 @@ enum CodeType {
   UnknownRequest      = 4;
   EncodingError       = 5;
   BadNonce            = 6;
+  UnknownAccount      = 7;
+  InsufficientFunds   = 8;
 }
 
 //----------------------------------------
