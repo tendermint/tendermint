@@ -49,11 +49,17 @@ func NewTendermintNetwork() *TendermintNetwork {
 func (tn *TendermintNetwork) Stop() {
 	tn.mtx.Lock()
 	defer tn.mtx.Unlock()
+	wg := new(sync.WaitGroup)
 	for _, c := range tn.Chains {
 		for _, v := range c.Config.Validators {
-			v.Stop()
+			wg.Add(1)
+			go func(val *types.ValidatorState) {
+				val.Stop()
+				wg.Done()
+			}(v)
 		}
 	}
+	wg.Wait()
 }
 
 //-----------------------------------------------------------

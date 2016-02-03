@@ -37,3 +37,11 @@ The chain's rpc can be found at http://localhost:46657.
 The netmon expects a config file with a list of chains/validators to get started. A default one for a local chain is provided as local-chain.json. `netmon config` can be used to create a config file for a chain deployed with `mintnet`.
 
 The API is available as GET requests with URI encoded parameters, or as JSONRPC POST requests. The JSONRPC methods are also exposed over websocket.
+
+# TODO
+
+- log metrics for charts
+- mintnet rpc commands
+- chain size
+- val set changes
+- more efficient locking / refactor for a big select loop
