@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"time"
+
 	"github.com/tendermint/go-event-meter"
 	"github.com/tendermint/go-events"
 
@@ -12,8 +14,15 @@ import (
 /*
 	Each chain-validator gets an eventmeter which maintains the websocket
 	Certain pre-defined events may update the netmon state: latency pongs, new blocks
+	All callbacks are called in a go-routine by the event-meter
 	TODO: config changes for new validators and changing ip/port
 */
+
+func (tn *TendermintNetwork) registerCallbacks(chainState *types.ChainState, v *types.ValidatorState) error {
+	v.EventMeter().RegisterLatencyCallback(tn.latencyCallback(chainState, v))
+	v.EventMeter().RegisterDisconnectCallback(tn.disconnectCallback(chainState, v))
+	return v.EventMeter().Subscribe(tmtypes.EventStringNewBlock(), tn.newBlockCallback(chainState, v))
+}
 
 // implements eventmeter.EventCallbackFunc
 // updates validator and possibly chain with new block
@@ -47,7 +56,23 @@ func (tn *TendermintNetwork) disconnectCallback(chain *types.ChainState, val *ty
 		// Validator is down!
 		chain.SetOnline(val, false)
 
-		// Start reconnect routine
-		go chain.ReconnectValidator(val)
+		// reconnect
+		// TODO: stop trying eventually ...
+		for {
+			time.Sleep(time.Second)
+
+			if err := val.Start(); err != nil {
+				log.Debug("Can't connect to validator", "valID", val.Config.Validator.ID)
+			} else {
+				// register callbacks for the validator
+				tn.registerCallbacks(chain, val)
+
+				chain.SetOnline(val, true)
+
+				// TODO: authenticate pubkey
+
+				return
+			}
+		}
 	}
 }

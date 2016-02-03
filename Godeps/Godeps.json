@@ -86,7 +86,7 @@
 		},
 		{
 			"ImportPath": "github.com/tendermint/go-event-meter",
-			"Rev": "1d455b3fc1930f0d12609342b668aed385655ed8"
+			"Rev": "48308fb1a262b55db2fce92eb5cd55c5316217c1"
 		},
 		{
 			"ImportPath": "github.com/tendermint/go-events",

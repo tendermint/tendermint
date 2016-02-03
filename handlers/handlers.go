@@ -9,7 +9,6 @@ import (
 	"github.com/tendermint/go-wire"
 
 	"github.com/tendermint/netmon/types"
-	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 type NetMonResult interface {
@@ -22,12 +21,14 @@ var _ = wire.RegisterInterface(
 	wire.ConcreteType{&types.ChainState{}, 0x02},
 	wire.ConcreteType{&types.ValidatorSet{}, 0x10},
 	wire.ConcreteType{&types.Validator{}, 0x11},
+	wire.ConcreteType{&types.ValidatorConfig{}, 0x12},
 	wire.ConcreteType{&eventmeter.EventMetric{}, 0x20},
 )
 
 //---------------------------------------------
 // global state and backend functions
 
+// TODO: relax the locking (use RWMutex, reduce scope)
 type TendermintNetwork struct {
 	mtx     sync.Mutex
 	Chains  map[string]*types.ChainState   `json:"blockchains"`
@@ -125,18 +126,14 @@ func (tn *TendermintNetwork) RegisterChain(chainConfig *types.BlockchainConfig) 
 			return nil, err
 		}
 
-		v.EventMeter().RegisterLatencyCallback(tn.latencyCallback(chainState, v))
-		v.EventMeter().RegisterDisconnectCallback(tn.disconnectCallback(chainState, v))
-		err := v.EventMeter().Subscribe(tmtypes.EventStringNewBlock(), tn.newBlockCallback(chainState, v))
-		if err != nil {
-			return nil, err
-		}
+		// register callbacks for the validator
+		tn.registerCallbacks(chainState, v)
 
 		// the DisconnectCallback will set us offline and start a reconnect routine
 		chainState.Status.SetOnline(v, true)
 
 		// get/set the validator's pub key
-		// TODO: possibly remove? why should we depend on this here?
+		// TODO: make this authenticate...
 		v.PubKey()
 	}
 
@@ -178,6 +175,20 @@ func (tn *TendermintNetwork) GetValidator(valSetID, valID string) (*types.Valida
 		return nil, err
 	}
 	return val, nil
+}
+
+// Update the validator's rpc address (for now its the only thing that can be updated!)
+func (tn *TendermintNetwork) UpdateValidator(chainID, valID, rpcAddr string) (*types.ValidatorConfig, error) {
+	tn.mtx.Lock()
+	defer tn.mtx.Unlock()
+	val, err := tn.getChainVal(chainID, valID)
+	if err != nil {
+		return nil, err
+	}
+
+	val.Config.UpdateRPCAddress(rpcAddr)
+	log.Debug("Update validator rpc address", "chain", chainID, "val", valID, "rpcAddr", rpcAddr)
+	return val.Config, nil
 }
 
 //------------------

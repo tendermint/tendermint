@@ -46,10 +46,6 @@ func (cs *ChainState) SetOnline(val *ValidatorState, isOnline bool) {
 	cs.Status.SetOnline(val, isOnline)
 }
 
-func (cs *ChainState) ReconnectValidator(val *ValidatorState) {
-	cs.Status.ReconnectValidator(val)
-}
-
 //------------------------------------------------
 // Blockchain Config: id, validator config
 
@@ -227,13 +223,6 @@ func (s *BlockchainStatus) SetOnline(val *ValidatorState, isOnline bool) {
 	// so long as we receive blocks, we'll know we're still healthy
 	if s.ActiveValidators != s.NumValidators {
 		s.FullHealth = false
-	}
-}
-
-// called in a go routine
-func (s *BlockchainStatus) ReconnectValidator(val *ValidatorState) {
-	for {
-
 	}
 }
 

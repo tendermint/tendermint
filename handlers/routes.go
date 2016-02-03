@@ -12,11 +12,12 @@ func Routes(network *TendermintNetwork) map[string]*rpc.RPCFunc {
 		//	"unsubscribe": rpc.NewWSRPCFunc(Unsubscribe, []string{"event"}),
 
 		"status":                 rpc.NewRPCFunc(StatusResult(network), ""),
-		"blockchain":             rpc.NewRPCFunc(GetChainResult(network), "chain"),
+		"get_chain":              rpc.NewRPCFunc(GetChainResult(network), "chainID"),
 		"register_chain":         rpc.NewRPCFunc(RegisterChainResult(network), "chainConfig"),
 		"validator_set":          rpc.NewRPCFunc(GetValidatorSetResult(network), "valsetID"),
-		"register_validator_set": rpc.NewRPCFunc(RegisterValidatorSetResult(network), "valSet"),
+		"register_validator_set": rpc.NewRPCFunc(RegisterValidatorSetResult(network), "valSetID"),
 		"validator":              rpc.NewRPCFunc(GetValidatorResult(network), "valSetID,valID"),
+		"update_validator":       rpc.NewRPCFunc(UpdateValidatorResult(network), "chainID,valID,rpcAddr"),
 
 		"start_meter": rpc.NewRPCFunc(network.StartMeter, "chainID,valID,event"),
 		"stop_meter":  rpc.NewRPCFunc(network.StopMeter, "chainID,valID,event"),
@@ -57,6 +58,12 @@ func RegisterValidatorSetResult(network *TendermintNetwork) interface{} {
 func GetValidatorResult(network *TendermintNetwork) interface{} {
 	return func(valSetID, valID string) (NetMonResult, error) {
 		return network.GetValidator(valSetID, valID)
+	}
+}
+
+func UpdateValidatorResult(network *TendermintNetwork) interface{} {
+	return func(chainID, valID, rpcAddr string) (NetMonResult, error) {
+		return network.UpdateValidator(chainID, valID, rpcAddr)
 	}
 }
 

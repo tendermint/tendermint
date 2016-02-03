@@ -63,12 +63,17 @@ type ValidatorState struct {
 // Start a new event meter, including the websocket connection
 // Also create the http rpc client for convenienve
 func (vs *ValidatorState) Start() error {
-	em := eventmeter.NewEventMeter(fmt.Sprintf("ws://%s/websocket", vs.Config.RPCAddr), UnmarshalEvent)
+	// we need the lock because RPCAddr can be updated concurrently
+	vs.Config.mtx.Lock()
+	rpcAddr := vs.Config.RPCAddr
+	vs.Config.mtx.Unlock()
+
+	em := eventmeter.NewEventMeter(fmt.Sprintf("ws://%s/websocket", rpcAddr), UnmarshalEvent)
 	if err := em.Start(); err != nil {
 		return err
 	}
 	vs.em = em
-	vs.client = client.NewClientURI(fmt.Sprintf("http://%s", vs.Config.RPCAddr))
+	vs.client = client.NewClientURI(fmt.Sprintf("http://%s", rpcAddr))
 	return nil
 }
 
@@ -125,6 +130,14 @@ type ValidatorConfig struct {
 	P2PAddr   string     `json:"p2p_addr"`
 	RPCAddr   string     `json:"rpc_addr"`
 	Index     int        `json:"index,omitempty"`
+}
+
+// TODO: update p2p address
+
+func (vc *ValidatorConfig) UpdateRPCAddress(rpcAddr string) {
+	vc.mtx.Lock()
+	defer vc.mtx.Unlock()
+	vc.RPCAddr = rpcAddr
 }
 
 type ValidatorStatus struct {

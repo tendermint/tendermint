@@ -78,8 +78,6 @@ type DisconnectCallbackFunc func()
 
 // Each node gets an event meter to track events for that node
 type EventMeter struct {
-	QuitService // inherits from the wsc
-
 	wsc *client.WSClient
 
 	mtx    sync.Mutex
@@ -103,12 +101,11 @@ func NewEventMeter(addr string, unmarshalEvent EventUnmarshalFunc) *EventMeter {
 		receivedPong:   true,
 		unmarshalEvent: unmarshalEvent,
 	}
-	em.QuitService = em.wsc.QuitService
 	return em
 }
 
 func (em *EventMeter) Start() error {
-	if err := em.wsc.OnStart(); err != nil {
+	if _, err := em.wsc.Start(); err != nil {
 		return err
 	}
 
@@ -128,7 +125,7 @@ func (em *EventMeter) Start() error {
 }
 
 func (em *EventMeter) Stop() {
-	em.wsc.OnStop()
+	em.wsc.Stop()
 	if em.disconnectCallback != nil {
 		em.disconnectCallback()
 	}
@@ -217,6 +214,11 @@ func (em *EventMeter) receiveRoutine() {
 				return
 			}
 		case r := <-em.wsc.ResultsCh:
+			if r == nil {
+				// we might receive the closed ResultsCh before the Quit
+				em.Stop() // call stop to trigger the disconnect callback
+				return
+			}
 			eventID, data, err := em.unmarshalEvent(r)
 			if err != nil {
 				log.Error(err.Error())
@@ -225,8 +227,9 @@ func (em *EventMeter) receiveRoutine() {
 			if eventID != "" {
 				em.updateMetric(eventID, data)
 			}
-		case <-em.Quit:
-			break
+		case <-em.wsc.Quit:
+			em.Stop() // call stop to trigger the disconnect callback
+			return
 		}
 
 	}
