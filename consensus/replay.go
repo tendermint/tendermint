@@ -24,7 +24,7 @@ func (cs *ConsensusState) readReplayMessage(msgBytes []byte, newStepCh chan inte
 	var msg ConsensusLogMessage
 	wire.ReadJSON(&msg, msgBytes, &err)
 	if err != nil {
-		fmt.Println(string(msgBytes))
+		fmt.Println("MsgBytes:", msgBytes, string(msgBytes))
 		return fmt.Errorf("Error reading json data: %v", err)
 	}
 
@@ -126,6 +126,8 @@ func (cs *ConsensusState) catchupReplay(height int) error {
 		} else if err != nil {
 			return err
 		} else if len(msgBytes) == 0 {
+			continue
+		} else if len(msgBytes) == 1 && msgBytes[0] == '\n' {
 			continue
 		}
 		// the first msg is (usually) the NewHeight event, so we can ignore it
