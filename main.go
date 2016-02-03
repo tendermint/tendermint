@@ -173,7 +173,7 @@ func cmdMonitor(c *cli.Context) {
 		// Register validator set
 		_, err := network.RegisterValidatorSet(valSetCfg)
 		if err != nil {
-			Exit(err.Error())
+			Exit("Register validator set error: " + err.Error())
 		}
 	}
 
@@ -181,7 +181,7 @@ func cmdMonitor(c *cli.Context) {
 		// Register blockchain
 		_, err := network.RegisterChain(chainCfg)
 		if err != nil {
-			Exit(err.Error())
+			Exit(Fmt("Register chain error for chain %s: %v", chainCfg.ID, err))
 		}
 	}
 

@@ -123,7 +123,7 @@ func (tn *TendermintNetwork) RegisterChain(chainConfig *types.BlockchainConfig) 
 		v.Status = &types.ValidatorStatus{}
 
 		if err := v.Start(); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("Error starting validator %s: %v", v.Config.Validator.ID, err)
 		}
 
 		// register callbacks for the validator

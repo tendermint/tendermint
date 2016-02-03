@@ -70,7 +70,7 @@
 		},
 		{
 			"ImportPath": "github.com/tendermint/go-common",
-			"Rev": "19f5a93cffe6df6734c3e7cf3896ba3cea546348"
+			"Rev": "02022e356aab724d17b8cc2e4e035ef49b6099af"
 		},
 		{
 			"ImportPath": "github.com/tendermint/go-config",
