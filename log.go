@@ -15,14 +15,11 @@ func init() {
 	Reset()
 }
 
-// You might want to call this after resetting tendermint/go-config.
-func Reset() {
+func SetLogLevel(logLevel string) {
+	resetWithLogLevel(logLevel)
+}
 
-	var logLevel string = "debug"
-	if config != nil {
-		logLevel = config.GetString("log_level")
-	}
-
+func resetWithLogLevel(logLevel string) {
 	// main handler
 	//handlers := []log15.Handler{}
 	mainHandler = log15.LvlFilterHandler(
@@ -40,6 +37,17 @@ func Reset() {
 
 	// By setting handlers on the root, we handle events from all loggers.
 	log15.Root().SetHandler(mainHandler)
+}
+
+// You might want to call this after resetting tendermint/go-config.
+func Reset() {
+
+	var logLevel string = "debug"
+	if config != nil {
+		logLevel = config.GetString("log_level")
+	}
+
+	resetWithLogLevel(logLevel)
 }
 
 // See go-wire/log for an example of usage.
