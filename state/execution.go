@@ -67,7 +67,7 @@ func (s *State) execBlockOnProxyApp(evsw *events.EventSwitch, proxyAppConn proxy
 			// TODO: make use of this info
 			// Blocks may include invalid txs.
 			// reqAppendTx := req.(tmsp.RequestAppendTx)
-			if tmsp.RetCode(res.Code) == tmsp.RetCodeOK {
+			if res.Code == tmsp.CodeType_OK {
 				validTxs += 1
 			} else {
 				log.Debug("Invalid tx", "code", res.Code, "log", res.Log)
@@ -159,7 +159,7 @@ func updateValidatorsWithBlock(lastValSet *types.ValidatorSet, valSet *types.Val
 
 type InvalidTxError struct {
 	Tx   types.Tx
-	Code tmsp.RetCode
+	Code tmsp.CodeType
 }
 
 func (txErr InvalidTxError) Error() string {

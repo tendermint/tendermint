@@ -72,7 +72,7 @@ func TestSerialReap(t *testing.T) {
 			txBytes := make([]byte, 8)
 			binary.BigEndian.PutUint64(txBytes, uint64(i))
 			code, result, logStr := appConnCon.AppendTx(txBytes)
-			if code != tmsp.RetCodeOK {
+			if code != tmsp.CodeType_OK {
 				t.Errorf("Error committing tx. Code:%v result:%X log:%v",
 					code, result, logStr)
 			}
