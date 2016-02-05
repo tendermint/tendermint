@@ -25,6 +25,13 @@ RUN apt-get update && \
     git && \
   rm -rf /var/lib/apt/lists/*
 
+# grab deps (node)
+RUN curl -sL https://deb.nodesource.com/setup_5.x | bash -
+RUN apt-get update && \
+  apt-get install -y --no-install-recommends \
+    nodejs && \
+  rm -rf /var/lib/apt/lists/*
+
 # copy run.sh
 COPY ./run.sh $DATA_ROOT/run.sh
 RUN chmod +x $DATA_ROOT/run.sh
