@@ -4,9 +4,9 @@ set -e
 # assumes machines already created
 N_MACHINES=4
 
-MACH_PREFIX=mach
+MACH_PREFIX=netmon
 
-TESTNET_DIR=~/testnets_mach
+TESTNET_DIR=~/testnets_netmon
 CHAINS_AND_VALS=$TESTNET_DIR/chains_and_vals.json
 CHAINS_DIR=$TESTNET_DIR/chains
 VALS_DIR=$TESTNET_DIR/validators

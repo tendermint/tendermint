@@ -78,6 +78,7 @@ type DisconnectCallbackFunc func()
 
 // Each node gets an event meter to track events for that node
 type EventMeter struct {
+	QuitService
 	wsc *client.WSClient
 
 	mtx    sync.Mutex
@@ -91,6 +92,8 @@ type EventMeter struct {
 	disconnectCallback DisconnectCallbackFunc
 
 	unmarshalEvent EventUnmarshalFunc
+
+	done chan struct{} // clean shutdown
 }
 
 func NewEventMeter(addr string, unmarshalEvent EventUnmarshalFunc) *EventMeter {
@@ -100,11 +103,19 @@ func NewEventMeter(addr string, unmarshalEvent EventUnmarshalFunc) *EventMeter {
 		timer:          metrics.NewTimer(),
 		receivedPong:   true,
 		unmarshalEvent: unmarshalEvent,
+		done:           make(chan struct{}),
 	}
+	em.QuitService = *NewQuitService(log, "EventMeter", em)
 	return em
 }
 
-func (em *EventMeter) Start() error {
+func (em *EventMeter) String() string {
+	return em.wsc.Address
+}
+
+func (em *EventMeter) OnStart() error {
+	em.QuitService.OnStart()
+
 	if _, err := em.wsc.Start(); err != nil {
 		return err
 	}
@@ -124,10 +135,21 @@ func (em *EventMeter) Start() error {
 	return nil
 }
 
-func (em *EventMeter) Stop() {
+func (em *EventMeter) OnStop() {
+	em.QuitService.OnStop()
+	<-em.done
+
+	em.RegisterDisconnectCallback(nil) // so we don't try and reconnect
+	em.wsc.Stop()                      // close(wsc.Quit)
+}
+
+func (em *EventMeter) StopAndReconnect() {
 	em.wsc.Stop()
+
+	em.mtx.Lock()
+	defer em.mtx.Unlock()
 	if em.disconnectCallback != nil {
-		em.disconnectCallback()
+		go em.disconnectCallback()
 	}
 }
 
@@ -206,17 +228,16 @@ func (em *EventMeter) receiveRoutine() {
 		case <-pingTicker.C:
 			if pingAttempts, err = em.pingForLatency(pingAttempts); err != nil {
 				log.Error("Failed to write ping message on websocket", err)
-				em.Stop()
+				em.StopAndReconnect()
 				return
 			} else if pingAttempts >= maxPingsPerPong {
 				log.Error(Fmt("Have not received a pong in %v", time.Duration(pingAttempts)*pingTime))
-				em.Stop()
+				em.StopAndReconnect()
 				return
 			}
 		case r := <-em.wsc.ResultsCh:
 			if r == nil {
-				// we might receive the closed ResultsCh before the Quit
-				em.Stop() // call stop to trigger the disconnect callback
+				em.StopAndReconnect()
 				return
 			}
 			eventID, data, err := em.unmarshalEvent(r)
@@ -228,10 +249,12 @@ func (em *EventMeter) receiveRoutine() {
 				em.updateMetric(eventID, data)
 			}
 		case <-em.wsc.Quit:
-			em.Stop() // call stop to trigger the disconnect callback
+			em.StopAndReconnect()
+			return
+		case <-em.Quit:
+			close(em.done)
 			return
 		}
-
 	}
 }
 
