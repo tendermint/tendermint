@@ -19,12 +19,7 @@
 			"Rev": "234959944d9cf05229b02e8b386e5cffe1e4e04a"
 		},
 		{
-			"ImportPath": "github.com/inconshreveable/log15/stack",
-			"Comment": "v2.3-48-g210d6fd",
-			"Rev": "210d6fdc4d979ef6579778f1b6ed84571454abb4"
-		},
-		{
-			"ImportPath": "github.com/inconshreveable/log15/term",
+			"ImportPath": "github.com/inconshreveable/log15",
 			"Comment": "v2.3-48-g210d6fd",
 			"Rev": "210d6fdc4d979ef6579778f1b6ed84571454abb4"
 		},
@@ -45,12 +40,26 @@
 			"Rev": "751171607256bb66e64c9f0220c00662420c38e9"
 		},
 		{
+			"ImportPath": "github.com/onsi/ginkgo",
+			"Comment": "v1.2.0-42-g07d85e6",
+			"Rev": "07d85e6b10c4289c7d612f9b13f45ba36f66d55b"
+		},
+		{
+			"ImportPath": "github.com/onsi/gomega",
+			"Comment": "v1.0-81-gad93e46",
+			"Rev": "ad93e463829d54602c66e94813bc1eb9b10d454c"
+		},
+		{
 			"ImportPath": "github.com/rcrowley/go-metrics",
 			"Rev": "51425a2415d21afadfd55cd93432c0bc69e9598d"
 		},
 		{
 			"ImportPath": "github.com/sfreiberg/gotwilio",
 			"Rev": "f024bbefe80fdb7bcc8c43b6add05dae97744e0e"
+		},
+		{
+			"ImportPath": "github.com/stathat/go",
+			"Rev": "cf69b0bcb80478755dc0ea1120b36000e35dcbbb"
 		},
 		{
 			"ImportPath": "github.com/syndtr/goleveldb/leveldb",
@@ -132,18 +141,18 @@
 		},
 		{
 			"ImportPath": "github.com/tendermint/tendermint/config/tendermint",
-			"Comment": "0.2-114-gc0024cc",
-			"Rev": "c0024cc7b209e022630e47782e787bec3640af30"
+			"Comment": "0.2-116-g85f6db2",
+			"Rev": "85f6db2435393a7426c6be2cbfb658f98932b52d"
 		},
 		{
 			"ImportPath": "github.com/tendermint/tendermint/rpc/core/types",
-			"Comment": "0.2-114-gc0024cc",
-			"Rev": "c0024cc7b209e022630e47782e787bec3640af30"
+			"Comment": "0.2-116-g85f6db2",
+			"Rev": "85f6db2435393a7426c6be2cbfb658f98932b52d"
 		},
 		{
 			"ImportPath": "github.com/tendermint/tendermint/types",
-			"Comment": "0.2-114-gc0024cc",
-			"Rev": "c0024cc7b209e022630e47782e787bec3640af30"
+			"Comment": "0.2-116-g85f6db2",
+			"Rev": "85f6db2435393a7426c6be2cbfb658f98932b52d"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/curve25519",

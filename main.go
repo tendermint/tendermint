@@ -98,10 +98,11 @@ func cmdAddChain(c *cli.Context) {
 	}
 
 	// load new chain
-	chainCfg := new(types.BlockchainConfig)
-	if err := ReadJSONFile(chainCfg, path.Join(chainDir, "chain_config.json")); err != nil {
+	chainCfg_ := new(BlockchainConfig)
+	if err := ReadJSONFile(chainCfg_, path.Join(chainDir, "chain_config.json")); err != nil {
 		Exit(err.Error())
 	}
+	chainCfg := convertMintnetBlockchain(chainCfg_)
 
 	// append new chain
 	chainsAndVals.Blockchains = append(chainsAndVals.Blockchains, chainCfg)
@@ -287,13 +288,32 @@ func LoadChainsAndValsFromFile(configFile string) (*ChainsAndValidators, error) 
 		return nil, err
 	}
 
-	// for now we start with one blockchain loaded from file;
-	// eventually more can be uploaded or created through endpoints
-	chainsAndVals := new(ChainsAndValidators)
-	wire.ReadJSON(chainsAndVals, b, &err)
+	chainsAndVals_ := new(ChainsAndValidators)
+	wire.ReadJSON(chainsAndVals_, b, &err)
 	if err != nil {
 		return nil, err
 	}
 
-	return chainsAndVals, nil
+	return chainsAndVals_, nil
+}
+
+// because types are duplicated in mintnet
+type BlockchainConfig struct {
+	ID         string                   `json:"id"`
+	ValSetID   string                   `json:"val_set_id"`
+	Validators []*types.ValidatorConfig `json:"validators"`
+}
+
+func convertMintnetBlockchain(b *BlockchainConfig) *types.BlockchainConfig {
+	vals := make([]*types.ValidatorState, len(b.Validators))
+	for j, v := range b.Validators {
+		vals[j] = new(types.ValidatorState)
+		vals[j].Config = v
+	}
+	return &types.BlockchainConfig{
+		ID:         b.ID,
+		ValSetID:   b.ValSetID,
+		Validators: vals,
+	}
+
 }

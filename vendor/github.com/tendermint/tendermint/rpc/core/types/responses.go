@@ -1,7 +1,10 @@
 package core_types
 
 import (
+	"encoding/json"
+
 	"github.com/tendermint/go-crypto"
+	"github.com/tendermint/go-events"
 	"github.com/tendermint/go-p2p"
 	"github.com/tendermint/go-rpc/types"
 	"github.com/tendermint/go-wire"
@@ -124,3 +127,22 @@ var _ = wire.RegisterInterface(
 	wire.ConcreteType{&ResultUnsubscribe{}, ResultTypeUnsubscribe},
 	wire.ConcreteType{&ResultEvent{}, ResultTypeEvent},
 )
+
+//---------------------------------------------------
+// utilities
+
+// Unmarshal a json event
+func UnmarshalEvent(b json.RawMessage) (string, events.EventData, error) {
+	var err error
+	result := new(TMResult)
+	wire.ReadJSONPtr(result, b, &err)
+	if err != nil {
+		return "", nil, err
+	}
+	event, ok := (*result).(*ResultEvent)
+	if !ok {
+		return "", nil, nil // TODO: handle non-event messages (ie. return from subscribe/unsubscribe)
+		// fmt.Errorf("Result is not type *ctypes.ResultEvent. Got %v", reflect.TypeOf(*result))
+	}
+	return event.Name, event.Data, nil
+}

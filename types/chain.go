@@ -15,6 +15,7 @@ const newBlockTimeoutSeconds = 5
 
 //------------------------------------------------
 // blockchain types
+// NOTE: mintnet duplicates some types from here and val.go
 //------------------------------------------------
 
 // Known chain and validator set IDs (from which anything else can be found)
