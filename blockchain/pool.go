@@ -132,6 +132,7 @@ func (pool *BlockPool) IsCaughtUp() bool {
 
 	// Need at least 1 peer to be considered caught up.
 	if len(pool.peers) == 0 {
+		log.Debug("Blockpool has no peers")
 		return false
 	}
 
@@ -142,7 +143,9 @@ func (pool *BlockPool) IsCaughtUp() bool {
 	}
 	pool.peersMtx.Unlock()
 
-	return (height > 0 || time.Now().Sub(pool.startTime) > 5*time.Second) && (maxPeerHeight == 0 || height == maxPeerHeight)
+	isCaughtUp := (height > 0 || time.Now().Sub(pool.startTime) > 5*time.Second) && (maxPeerHeight == 0 || height >= maxPeerHeight)
+	log.Notice(Fmt("IsCaughtUp: %v", isCaughtUp), "height", height, "maxPeerHeight", maxPeerHeight)
+	return isCaughtUp
 }
 
 // We need to see the second block's Validation to validate the first block.

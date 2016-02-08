@@ -49,6 +49,8 @@ Commands:
 		gen_validator()
 	case "probe_upnp":
 		probe_upnp()
+	case "unsafe_reset_all":
+		reset_all()
 	case "unsafe_reset_priv_validator":
 		reset_priv_validator()
 	case "version":

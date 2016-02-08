@@ -8,6 +8,14 @@ import (
 
 // NOTE: this is totally unsafe.
 // it's only suitable for testnets.
+func reset_all() {
+	reset_priv_validator()
+	os.RemoveAll(config.GetString("db_dir"))
+	os.Remove(config.GetString("cswal"))
+}
+
+// NOTE: this is totally unsafe.
+// it's only suitable for testnets.
 func reset_priv_validator() {
 	// Get PrivValidator
 	var privValidator *types.PrivValidator

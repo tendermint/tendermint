@@ -73,6 +73,7 @@ func (conR *ConsensusReactor) OnStop() {
 // reset the state, turn off fast_sync, start the consensus-state-machine
 func (conR *ConsensusReactor) SwitchToConsensus(state *sm.State) {
 	log.Notice("SwitchToConsensus")
+	conR.conS.reconstructLastCommit(state)
 	// NOTE: The line below causes broadcastNewRoundStepRoutine() to
 	// broadcast a NewRoundStepMessage.
 	conR.conS.updateToState(state)

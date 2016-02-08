@@ -618,7 +618,7 @@ func (cs *ConsensusState) handleMsg(mi msgInfo, rs RoundState) {
 		log.Warn("Unknown msg type", reflect.TypeOf(msg))
 	}
 	if err != nil {
-		log.Error("error with msg", "error", err)
+		log.Error("Error with msg", "type", reflect.TypeOf(msg), "error", err, "msg", msg)
 	}
 }
 
@@ -1281,7 +1281,11 @@ func (cs *ConsensusState) tryAddVote(valIndex int, vote *types.Vote, peerKey str
 		if err == ErrVoteHeightMismatch {
 			return err
 		} else if _, ok := err.(*types.ErrVoteConflictingSignature); ok {
-			log.Warn("Found conflicting vote. Publish evidence")
+			if peerKey == "" {
+				log.Warn("Found conflicting vote from ourselves. Did you unsafe_reset a validator?", "height", vote.Height, "round", vote.Round, "type", vote.Type)
+				return err
+			}
+			log.Warn("Found conflicting vote. Publish evidence (TODO)")
 			/* TODO
 			evidenceTx := &types.DupeoutTx{
 				Address: address,
