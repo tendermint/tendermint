@@ -84,10 +84,12 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*tmsp.Response)) (err error) {
 
 	// CACHE
 	if _, exists := mem.cacheMap[string(tx)]; exists {
-		cb(&tmsp.Response{
-			Code: tmsp.CodeType_BadNonce, // TODO or duplicate tx
-			Log:  "Duplicate transaction (ignored)",
-		})
+		if cb != nil {
+			cb(&tmsp.Response{
+				Code: tmsp.CodeType_BadNonce, // TODO or duplicate tx
+				Log:  "Duplicate transaction (ignored)",
+			})
+		}
 		return nil
 	}
 	if mem.cacheList.Len() >= cacheSize {
