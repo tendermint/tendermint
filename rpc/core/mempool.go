@@ -20,7 +20,7 @@ func BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 
 // Note: tx must be signed
 func BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
-	resCh := make(chan *tmsp.Response)
+	resCh := make(chan *tmsp.Response, 1)
 	err := mempoolReactor.BroadcastTx(tx, func(res *tmsp.Response) {
 		resCh <- res
 	})
