@@ -347,6 +347,7 @@ func (wsc *wsConnection) GetEventSwitch() *events.EventSwitch {
 
 // Implements WSRPCConnection
 // Blocking write to writeChan until service stops.
+// Goroutine-safe
 func (wsc *wsConnection) WriteRPCResponse(resp RPCResponse) {
 	select {
 	case <-wsc.Quit:
@@ -357,6 +358,7 @@ func (wsc *wsConnection) WriteRPCResponse(resp RPCResponse) {
 
 // Implements WSRPCConnection
 // Nonblocking write.
+// Goroutine-safe
 func (wsc *wsConnection) TryWriteRPCResponse(resp RPCResponse) bool {
 	select {
 	case <-wsc.Quit:
