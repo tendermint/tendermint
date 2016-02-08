@@ -1,6 +1,6 @@
 .PHONY: get_deps build all list_deps install
 
-all: test install
+all: get_deps install test
 
 TMROOT = $${TMROOT:-$$HOME/.tendermint}
 define NEWLINE

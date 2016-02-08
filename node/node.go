@@ -234,13 +234,10 @@ func getProxyApp(addr string, hash []byte) (proxyAppConn proxy.AppConn) {
 		mtx := new(sync.Mutex)
 		proxyAppConn = proxy.NewLocalAppConn(mtx, app)
 	} else {
-		proxyConn, err := Connect(addr)
+		remoteApp, err := proxy.NewRemoteAppConn(addr)
 		if err != nil {
 			Exit(Fmt("Failed to connect to proxy for mempool: %v", err))
 		}
-		remoteApp := proxy.NewRemoteAppConn(proxyConn, 1024)
-		remoteApp.Start()
-
 		proxyAppConn = remoteApp
 	}
 
@@ -274,7 +271,6 @@ func getState() *sm.State {
 // should fork tendermint/tendermint and implement RunNode to
 // load their custom priv validator and call NewNode(privVal)
 func RunNode() {
-
 	// Wait until the genesis doc becomes available
 	genDocFile := config.GetString("genesis_file")
 	if !FileExists(genDocFile) {

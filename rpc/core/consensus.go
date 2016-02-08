@@ -7,7 +7,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func ListValidators() (*ctypes.ResultListValidators, error) {
+func Validators() (*ctypes.ResultValidators, error) {
 	var blockHeight int
 	var validators []*types.Validator
 
@@ -18,7 +18,7 @@ func ListValidators() (*ctypes.ResultListValidators, error) {
 		return false
 	})
 
-	return &ctypes.ResultListValidators{blockHeight, validators}, nil
+	return &ctypes.ResultValidators{blockHeight, validators}, nil
 }
 
 func DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {

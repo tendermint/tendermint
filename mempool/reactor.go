@@ -8,10 +8,11 @@ import (
 
 	"github.com/tendermint/go-clist"
 	. "github.com/tendermint/go-common"
+	"github.com/tendermint/go-events"
 	"github.com/tendermint/go-p2p"
 	"github.com/tendermint/go-wire"
-	"github.com/tendermint/go-events"
 	"github.com/tendermint/tendermint/types"
+	tmsp "github.com/tendermint/tmsp/types"
 )
 
 const (
@@ -67,7 +68,7 @@ func (memR *MempoolReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte) {
 
 	switch msg := msg.(type) {
 	case *TxMessage:
-		err := memR.Mempool.CheckTx(msg.Tx)
+		err := memR.Mempool.CheckTx(msg.Tx, nil)
 		if err != nil {
 			// Bad, seen, or conflicting tx.
 			log.Info("Could not add tx", "tx", msg.Tx)
@@ -82,8 +83,8 @@ func (memR *MempoolReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte) {
 }
 
 // Just an alias for CheckTx since broadcasting happens in peer routines
-func (memR *MempoolReactor) BroadcastTx(tx types.Tx) error {
-	return memR.Mempool.CheckTx(tx)
+func (memR *MempoolReactor) BroadcastTx(tx types.Tx, cb func(*tmsp.Response)) error {
+	return memR.Mempool.CheckTx(tx, cb)
 }
 
 type PeerState interface {
