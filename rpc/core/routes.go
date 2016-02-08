@@ -19,7 +19,7 @@ var Routes = map[string]*rpc.RPCFunc{
 	"validators":           rpc.NewRPCFunc(ValidatorsResult, ""),
 	"dump_consensus_state": rpc.NewRPCFunc(DumpConsensusStateResult, ""),
 	"broadcast_tx_sync":    rpc.NewRPCFunc(BroadcastTxSyncResult, "tx"),
-	"broadcast_tx_asyn":    rpc.NewRPCFunc(BroadcastTxAsyncResult, "tx"),
+	"broadcast_tx_async":   rpc.NewRPCFunc(BroadcastTxAsyncResult, "tx"),
 	"unconfirmed_txs":      rpc.NewRPCFunc(UnconfirmedTxsResult, ""),
 	// subscribe/unsubscribe are reserved for websocket events.
 }
