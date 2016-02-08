@@ -94,7 +94,7 @@ func (wsc *WSClient) receiveEventsRoutine() {
 				continue
 			}
 			if response.Error != "" {
-				wsc.ErrorsCh <- fmt.Errorf(err.Error())
+				wsc.ErrorsCh <- fmt.Errorf(response.Error)
 				continue
 			}
 			wsc.ResultsCh <- *response.Result
