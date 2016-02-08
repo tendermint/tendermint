@@ -1,8 +1,6 @@
 package proxy
 
 import (
-	"net"
-
 	tmspcli "github.com/tendermint/tmsp/client"
 )
 
@@ -13,9 +11,13 @@ type remoteAppConn struct {
 	*tmspcli.TMSPClient
 }
 
-func NewRemoteAppConn(conn net.Conn, bufferSize int) *remoteAppConn {
-	app := &remoteAppConn{
-		TMSPClient: tmspcli.NewTMSPClient(conn, bufferSize),
+func NewRemoteAppConn(addr string) (*remoteAppConn, error) {
+	client, err := tmspcli.NewTMSPClient(addr)
+	if err != nil {
+		return nil, err
 	}
-	return app
+	appConn := &remoteAppConn{
+		TMSPClient: client,
+	}
+	return appConn, nil
 }

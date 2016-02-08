@@ -27,7 +27,7 @@ func TestSerialReap(t *testing.T) {
 			// This will succeed
 			txBytes := make([]byte, 8)
 			binary.BigEndian.PutUint64(txBytes, uint64(i))
-			err := mempool.CheckTx(txBytes)
+			err := mempool.CheckTx(txBytes, nil)
 			if err != nil {
 				t.Fatal("Error after CheckTx: %v", err)
 			}
@@ -35,7 +35,7 @@ func TestSerialReap(t *testing.T) {
 			// This will fail because not serial (incrementing)
 			// However, error should still be nil.
 			// It just won't show up on Reap().
-			err = mempool.CheckTx(txBytes)
+			err = mempool.CheckTx(txBytes, nil)
 			if err != nil {
 				t.Fatal("Error after CheckTx: %v", err)
 			}

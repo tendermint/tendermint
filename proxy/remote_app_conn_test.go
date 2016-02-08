@@ -1,63 +1,51 @@
 package proxy
 
 import (
-	"bytes"
 	"strings"
 	"testing"
 
 	. "github.com/tendermint/go-common"
-	"github.com/tendermint/go-logio"
 	"github.com/tendermint/tmsp/example/golang"
 	"github.com/tendermint/tmsp/server"
 )
 
 func TestEcho(t *testing.T) {
 	sockPath := Fmt("unix:///tmp/echo_%v.sock", RandStr(6))
+
+	// Start server
 	_, err := server.StartListener(sockPath, example.NewDummyApplication())
 	if err != nil {
 		Exit(err.Error())
 	}
-	conn, err := Connect(sockPath)
+	// Start client
+	proxy, err := NewRemoteAppConn(sockPath)
 	if err != nil {
 		Exit(err.Error())
 	} else {
 		t.Log("Connected")
 	}
 
-	logBuffer := bytes.NewBuffer(nil)
-	logConn := logio.NewLoggedConn(conn, logBuffer)
-	proxy := NewRemoteAppConn(logConn, 10)
-	proxy.SetResponseCallback(nil)
-	proxy.Start()
-
 	for i := 0; i < 1000; i++ {
 		proxy.EchoAsync(Fmt("echo-%v", i))
 	}
 	proxy.FlushSync()
-
-	/*
-		if t.Failed() {
-			logio.PrintReader(logBuffer)
-		}
-	*/
 }
 
 func BenchmarkEcho(b *testing.B) {
 	b.StopTimer() // Initialize
 	sockPath := Fmt("unix:///tmp/echo_%v.sock", RandStr(6))
+	// Start server
 	_, err := server.StartListener(sockPath, example.NewDummyApplication())
 	if err != nil {
 		Exit(err.Error())
 	}
-	conn, err := Connect(sockPath)
+	// Start client
+	proxy, err := NewRemoteAppConn(sockPath)
 	if err != nil {
 		Exit(err.Error())
 	} else {
 		b.Log("Connected")
 	}
-
-	proxy := NewRemoteAppConn(conn, 10)
-	proxy.Start()
 	echoString := strings.Repeat(" ", 200)
 	b.StartTimer() // Start benchmarking tests
 
@@ -73,20 +61,18 @@ func BenchmarkEcho(b *testing.B) {
 
 func TestInfo(t *testing.T) {
 	sockPath := Fmt("unix:///tmp/echo_%v.sock", RandStr(6))
+	// Start server
 	_, err := server.StartListener(sockPath, example.NewDummyApplication())
 	if err != nil {
 		Exit(err.Error())
 	}
-	conn, err := Connect(sockPath)
+	// Start client
+	proxy, err := NewRemoteAppConn(sockPath)
 	if err != nil {
 		Exit(err.Error())
 	} else {
 		t.Log("Connected")
 	}
-
-	logBuffer := bytes.NewBuffer(nil)
-	logConn := logio.NewLoggedConn(conn, logBuffer)
-	proxy := NewRemoteAppConn(logConn, 10)
 	proxy.Start()
 	data, err := proxy.InfoSync()
 	if err != nil {

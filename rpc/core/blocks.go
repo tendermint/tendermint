@@ -31,7 +31,7 @@ func BlockchainInfo(minHeight, maxHeight int) (*ctypes.ResultBlockchainInfo, err
 
 //-----------------------------------------------------------------------------
 
-func GetBlock(height int) (*ctypes.ResultGetBlock, error) {
+func Block(height int) (*ctypes.ResultBlock, error) {
 	if height == 0 {
 		return nil, fmt.Errorf("Height must be greater than 0")
 	}
@@ -41,5 +41,5 @@ func GetBlock(height int) (*ctypes.ResultGetBlock, error) {
 
 	blockMeta := blockStore.LoadBlockMeta(height)
 	block := blockStore.LoadBlock(height)
-	return &ctypes.ResultGetBlock{blockMeta, block}, nil
+	return &ctypes.ResultBlock{blockMeta, block}, nil
 }

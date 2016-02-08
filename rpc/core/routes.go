@@ -15,11 +15,12 @@ var Routes = map[string]*rpc.RPCFunc{
 	"dial_seeds":           rpc.NewRPCFunc(DialSeedsResult, "seeds"),
 	"blockchain":           rpc.NewRPCFunc(BlockchainInfoResult, "minHeight,maxHeight"),
 	"genesis":              rpc.NewRPCFunc(GenesisResult, ""),
-	"get_block":            rpc.NewRPCFunc(GetBlockResult, "height"),
-	"list_validators":      rpc.NewRPCFunc(ListValidatorsResult, ""),
+	"block":                rpc.NewRPCFunc(BlockResult, "height"),
+	"validators":           rpc.NewRPCFunc(ValidatorsResult, ""),
 	"dump_consensus_state": rpc.NewRPCFunc(DumpConsensusStateResult, ""),
-	"broadcast_tx":         rpc.NewRPCFunc(BroadcastTxResult, "tx"),
-	"list_unconfirmed_txs": rpc.NewRPCFunc(ListUnconfirmedTxsResult, ""),
+	"broadcast_tx_sync":    rpc.NewRPCFunc(BroadcastTxSyncResult, "tx"),
+	"broadcast_tx_asyn":    rpc.NewRPCFunc(BroadcastTxAsyncResult, "tx"),
+	"unconfirmed_txs":      rpc.NewRPCFunc(UnconfirmedTxsResult, ""),
 	// subscribe/unsubscribe are reserved for websocket events.
 }
 
@@ -79,16 +80,16 @@ func GenesisResult() (ctypes.TMResult, error) {
 	}
 }
 
-func GetBlockResult(height int) (ctypes.TMResult, error) {
-	if r, err := GetBlock(height); err != nil {
+func BlockResult(height int) (ctypes.TMResult, error) {
+	if r, err := Block(height); err != nil {
 		return nil, err
 	} else {
 		return r, nil
 	}
 }
 
-func ListValidatorsResult() (ctypes.TMResult, error) {
-	if r, err := ListValidators(); err != nil {
+func ValidatorsResult() (ctypes.TMResult, error) {
+	if r, err := Validators(); err != nil {
 		return nil, err
 	} else {
 		return r, nil
@@ -103,16 +104,24 @@ func DumpConsensusStateResult() (ctypes.TMResult, error) {
 	}
 }
 
-func ListUnconfirmedTxsResult() (ctypes.TMResult, error) {
-	if r, err := ListUnconfirmedTxs(); err != nil {
+func UnconfirmedTxsResult() (ctypes.TMResult, error) {
+	if r, err := UnconfirmedTxs(); err != nil {
 		return nil, err
 	} else {
 		return r, nil
 	}
 }
 
-func BroadcastTxResult(tx []byte) (ctypes.TMResult, error) {
-	if r, err := BroadcastTx(tx); err != nil {
+func BroadcastTxSyncResult(tx []byte) (ctypes.TMResult, error) {
+	if r, err := BroadcastTxSync(tx); err != nil {
+		return nil, err
+	} else {
+		return r, nil
+	}
+}
+
+func BroadcastTxAsyncResult(tx []byte) (ctypes.TMResult, error) {
+	if r, err := BroadcastTxAsync(tx); err != nil {
 		return nil, err
 	} else {
 		return r, nil

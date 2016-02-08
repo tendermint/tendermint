@@ -75,7 +75,9 @@ func (mem *Mempool) TxsFrontWait() *clist.CElement {
 
 // Try a new transaction in the mempool.
 // Potentially blocking if we're blocking on Update() or Reap().
-func (mem *Mempool) CheckTx(tx types.Tx) (err error) {
+// cb: A callback from the CheckTx command.
+//     It gets called from another goroutine.
+func (mem *Mempool) CheckTx(tx types.Tx, cb func(*tmsp.Response)) (err error) {
 	mem.proxyMtx.Lock()
 	defer mem.proxyMtx.Unlock()
 
@@ -96,7 +98,11 @@ func (mem *Mempool) CheckTx(tx types.Tx) (err error) {
 	if err = mem.proxyAppConn.Error(); err != nil {
 		return err
 	}
-	mem.proxyAppConn.CheckTxAsync(tx)
+	reqRes := mem.proxyAppConn.CheckTxAsync(tx)
+	if cb != nil {
+		reqRes.SetCallback(cb)
+	}
+
 	return nil
 }
 
