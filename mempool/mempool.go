@@ -77,12 +77,17 @@ func (mem *Mempool) TxsFrontWait() *clist.CElement {
 // Potentially blocking if we're blocking on Update() or Reap().
 // cb: A callback from the CheckTx command.
 //     It gets called from another goroutine.
+// CONTRACT: Either cb will get called, or err returned.
 func (mem *Mempool) CheckTx(tx types.Tx, cb func(*tmsp.Response)) (err error) {
 	mem.proxyMtx.Lock()
 	defer mem.proxyMtx.Unlock()
 
 	// CACHE
 	if _, exists := mem.cacheMap[string(tx)]; exists {
+		cb(&tmsp.Response{
+			Code: tmsp.CodeType_BadNonce, // TODO or duplicate tx
+			Log:  "Duplicate transaction (ignored)",
+		})
 		return nil
 	}
 	if mem.cacheList.Len() >= cacheSize {
