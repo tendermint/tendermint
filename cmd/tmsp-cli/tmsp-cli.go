@@ -164,7 +164,7 @@ func cmdEcho(c *cli.Context) {
 		fmt.Println(err.Error())
 		return
 	}
-	fmt.Println("->", res)
+	printResponse(res, string(res.Data))
 }
 
 // Get some info from the application
@@ -174,7 +174,7 @@ func cmdInfo(c *cli.Context) {
 		fmt.Println(err.Error())
 		return
 	}
-	fmt.Println("->", res)
+	printResponse(res, string(res.Data))
 }
 
 // Set an option on the application
@@ -184,12 +184,12 @@ func cmdSetOption(c *cli.Context) {
 		fmt.Println("set_option takes 2 arguments (key, value)")
 		return
 	}
-	_, err := makeRequest(conn, types.RequestSetOption(args[0], args[1]))
+	res, err := makeRequest(conn, types.RequestSetOption(args[0], args[1]))
 	if err != nil {
 		fmt.Println(err.Error())
 		return
 	}
-	fmt.Println("->", Fmt("%s=%s", args[0], args[1]))
+	printResponse(res, Fmt("%s=%s", args[0], args[1]))
 }
 
 // Append a new tx to application
@@ -215,7 +215,7 @@ func cmdAppendTx(c *cli.Context) {
 		fmt.Println(err.Error())
 		return
 	}
-	fmt.Println("->", res)
+	printResponse(res, string(res.Data))
 }
 
 // Validate a tx
@@ -241,7 +241,7 @@ func cmdCheckTx(c *cli.Context) {
 		fmt.Println(err.Error())
 		return
 	}
-	fmt.Println("->", res)
+	printResponse(res, string(res.Data))
 }
 
 // Get application Merkle root hash
@@ -251,7 +251,7 @@ func cmdGetHash(c *cli.Context) {
 		fmt.Println(err.Error())
 		return
 	}
-	fmt.Printf("%X\n", res.Data)
+	printResponse(res, Fmt("%X", res.Data))
 }
 
 // Query application state
@@ -277,10 +277,28 @@ func cmdQuery(c *cli.Context) {
 		fmt.Println(err.Error())
 		return
 	}
-	fmt.Println("->", res)
+	printResponse(res, string(res.Data))
 }
 
 //--------------------------------------------------------------------------------
+
+func printResponse(res *types.Response, s string) {
+	fmt.Printf("-> ")
+	if res.Error != "" {
+		fmt.Printf("error: %s\t", res.Error)
+	}
+	if res.Code > 0 {
+		fmt.Printf("code: %s", res.Code.String())
+	}
+	if s != "" {
+		fmt.Printf("data: {%s}", s)
+	}
+	fmt.Printf("\n")
+}
+
+func responseString(res *types.Response) string {
+	return Fmt("type: %v\tdata: %v\tcode: %v", res.Type, res.Data, res.Code)
+}
 
 func makeRequest(conn net.Conn, req *types.Request) (*types.Response, error) {
 
