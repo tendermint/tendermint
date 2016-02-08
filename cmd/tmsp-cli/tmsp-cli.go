@@ -222,7 +222,7 @@ func cmdAppendTx(c *cli.Context) {
 func cmdCheckTx(c *cli.Context) {
 	args := c.Args()
 	if len(args) != 1 {
-		fmt.Println("append_tx takes 1 argument")
+		fmt.Println("check_tx takes 1 argument")
 		return
 	}
 	txString := args[0]
@@ -258,7 +258,7 @@ func cmdGetHash(c *cli.Context) {
 func cmdQuery(c *cli.Context) {
 	args := c.Args()
 	if len(args) != 1 {
-		fmt.Println("append_tx takes 1 argument")
+		fmt.Println("query takes 1 argument")
 		return
 	}
 	queryString := args[0]
@@ -287,11 +287,14 @@ func printResponse(res *types.Response, s string) {
 	if res.Error != "" {
 		fmt.Printf("error: %s\t", res.Error)
 	}
-	if res.Code > 0 {
+	if res.Code != types.CodeType_OK {
 		fmt.Printf("code: %s", res.Code.String())
 	}
 	if s != "" {
 		fmt.Printf("data: {%s}", s)
+	}
+	if res.Log != "" {
+		fmt.Printf("log: %s", res.Log)
 	}
 	fmt.Printf("\n")
 }

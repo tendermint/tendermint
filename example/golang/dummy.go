@@ -1,6 +1,8 @@
 package example
 
 import (
+	"strings"
+
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-merkle"
 	"github.com/tendermint/tmsp/types"
@@ -27,7 +29,12 @@ func (app *DummyApplication) SetOption(key string, value string) (log string) {
 }
 
 func (app *DummyApplication) AppendTx(tx []byte) (code types.CodeType, result []byte, log string) {
-	app.state.Set(tx, tx)
+	parts := strings.Split(string(tx), "=")
+	if len(parts) == 2 {
+		app.state.Set([]byte(parts[0]), []byte(parts[1]))
+	} else {
+		app.state.Set(tx, tx)
+	}
 	return types.CodeType_OK, nil, ""
 }
 
@@ -41,5 +48,7 @@ func (app *DummyApplication) GetHash() (hash []byte, log string) {
 }
 
 func (app *DummyApplication) Query(query []byte) (code types.CodeType, result []byte, log string) {
-	return types.CodeType_OK, nil, "Query not supported"
+	index, value, exists := app.state.Get(query)
+	resStr := Fmt("Index=%v value=%v exists=%v", index, string(value), exists)
+	return types.CodeType_OK, []byte(resStr), ""
 }
