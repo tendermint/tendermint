@@ -48,9 +48,9 @@ func RequestCheckTx(txBytes []byte) *Request {
 	}
 }
 
-func RequestGetHash() *Request {
+func RequestCommit() *Request {
 	return &Request{
-		Type: MessageType_GetHash,
+		Type: MessageType_Commit,
 	}
 }
 
@@ -115,9 +115,9 @@ func ResponseCheckTx(code CodeType, result []byte, log string) *Response {
 	}
 }
 
-func ResponseGetHash(hash []byte, log string) *Response {
+func ResponseCommit(hash []byte, log string) *Response {
 	return &Response{
-		Type: MessageType_GetHash,
+		Type: MessageType_Commit,
 		Data: hash,
 		Log:  log,
 	}

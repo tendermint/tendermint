@@ -16,7 +16,7 @@ enum MessageType {
   Exception  = 0x05;
   AppendTx   = 0x11;
   CheckTx    = 0x12;
-  GetHash    = 0x13;
+  Commit     = 0x13;
   Query      = 0x14;
 }
 

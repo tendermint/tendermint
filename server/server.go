@@ -112,9 +112,9 @@ func handleRequest(app types.Application, req *types.Request, responses chan<- *
 	case types.MessageType_CheckTx:
 		code, result, logStr := app.CheckTx(req.Data)
 		responses <- types.ResponseCheckTx(code, result, logStr)
-	case types.MessageType_GetHash:
-		hash, logStr := app.GetHash()
-		responses <- types.ResponseGetHash(hash, logStr)
+	case types.MessageType_Commit:
+		hash, logStr := app.Commit()
+		responses <- types.ResponseCommit(hash, logStr)
 	case types.MessageType_Query:
 		code, result, logStr := app.Query(req.Data)
 		responses <- types.ResponseQuery(code, result, logStr)

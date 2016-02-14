@@ -54,7 +54,7 @@ func (app *CounterApplication) CheckTx(tx []byte) (code types.CodeType, result [
 	return types.CodeType_OK, nil, ""
 }
 
-func (app *CounterApplication) GetHash() (hash []byte, log string) {
+func (app *CounterApplication) Commit() (hash []byte, log string) {
 	app.hashCount += 1
 
 	if app.txCount == 0 {

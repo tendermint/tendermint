@@ -83,7 +83,7 @@ func main() {
 			Name:  "get_hash",
 			Usage: "Get application Merkle root hash",
 			Action: func(c *cli.Context) {
-				cmdGetHash(c)
+				cmdCommit(c)
 			},
 		},
 		{
@@ -245,8 +245,8 @@ func cmdCheckTx(c *cli.Context) {
 }
 
 // Get application Merkle root hash
-func cmdGetHash(c *cli.Context) {
-	res, err := makeRequest(conn, types.RequestGetHash())
+func cmdCommit(c *cli.Context) {
+	res, err := makeRequest(conn, types.RequestCommit())
 	if err != nil {
 		fmt.Println(err.Error())
 		return
