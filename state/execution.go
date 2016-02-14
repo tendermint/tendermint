@@ -84,13 +84,13 @@ func (s *State) execBlockOnProxyApp(evsw *events.EventSwitch, proxyAppConn proxy
 			return err
 		}
 	}
-	hash, logStr, err := proxyAppConn.GetHashSync()
+	hash, logStr, err := proxyAppConn.CommitSync()
 	if err != nil {
 		log.Warn("Error computing proxyAppConn hash", "error", err)
 		return err
 	}
 	if logStr != "" {
-		log.Debug("GetHash.Log: " + logStr)
+		log.Debug("Commit.Log: " + logStr)
 	}
 	log.Info(Fmt("ExecBlock got %v valid txs and %v invalid txs", validTxs, invalidTxs))
 

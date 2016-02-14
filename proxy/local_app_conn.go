@@ -76,13 +76,13 @@ func (app *localAppConn) CheckTxAsync(tx []byte) *tmspcli.ReqRes {
 	return nil // TODO maybe create a ReqRes
 }
 
-func (app *localAppConn) GetHashAsync() *tmspcli.ReqRes {
+func (app *localAppConn) CommitAsync() *tmspcli.ReqRes {
 	app.mtx.Lock()
-	hash, log := app.Application.GetHash()
+	hash, log := app.Application.Commit()
 	app.mtx.Unlock()
 	app.Callback(
-		tmsp.RequestGetHash(),
-		tmsp.ResponseGetHash(hash, log),
+		tmsp.RequestCommit(),
+		tmsp.ResponseCommit(hash, log),
 	)
 	return nil // TODO maybe create a ReqRes
 }
@@ -98,9 +98,9 @@ func (app *localAppConn) FlushSync() error {
 	return nil
 }
 
-func (app *localAppConn) GetHashSync() (hash []byte, log string, err error) {
+func (app *localAppConn) CommitSync() (hash []byte, log string, err error) {
 	app.mtx.Lock()
-	hash, log = app.Application.GetHash()
+	hash, log = app.Application.Commit()
 	app.mtx.Unlock()
 	return hash, log, nil
 }
