@@ -1,4 +1,4 @@
-package example
+package counter
 
 import (
 	"encoding/binary"

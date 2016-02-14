@@ -2,17 +2,8 @@
 ROOT=$GOPATH/src/github.com/tendermint/tmsp
 cd $ROOT
 
-# test golang dummy
-bash tests/test_dummy.sh
-
 # test golang counter
-bash tests/test_counter.sh
+COUNTER_APP="counter" go run $ROOT/tests/test_counter.go
 
-# test js counter
-cd example/js
-COUNTER_APP="node app.js" bash $ROOT/tests/test_counter.sh
-
-# test python counter
-cd ../python
-COUNTER_APP="python app.py" bash $ROOT/tests/test_counter.sh
-
+# test nodejs counter
+COUNTER_APP="node ../js-tmsp/example/app.js" go run $ROOT/tests/test_counter.go

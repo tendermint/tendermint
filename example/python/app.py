@@ -47,7 +47,7 @@ class CounterApplication():
                 return 6
         return 0
 
-    def get_hash(self):
+    def commit(self):
         self.hashCount += 1
         if self.txCount == 0:
             return "", 0

@@ -8,7 +8,7 @@ message_types = {
     0x04: "set_option",
     0x21: "append_tx",
     0x22: "check_tx",
-    0x23: "get_hash",
+    0x23: "commit",
     0x24: "add_listener",
     0x25: "rm_listener",
 }
@@ -38,7 +38,7 @@ class RequestDecoder():
     def check_tx(self):
         return decode_string(self.reader)
 
-    def get_hash(self):
+    def commit(self):
         return
 
     def add_listener(self):

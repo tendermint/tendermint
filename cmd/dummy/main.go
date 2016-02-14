@@ -4,7 +4,7 @@ import (
 	"flag"
 
 	. "github.com/tendermint/go-common"
-	"github.com/tendermint/tmsp/example/golang"
+	"github.com/tendermint/tmsp/example/dummy"
 	"github.com/tendermint/tmsp/server"
 )
 
@@ -14,7 +14,7 @@ func main() {
 	flag.Parse()
 
 	// Start the listener
-	_, err := server.StartListener(*addrPtr, example.NewDummyApplication())
+	_, err := server.StartListener(*addrPtr, dummy.NewDummyApplication())
 	if err != nil {
 		Exit(err.Error())
 	}

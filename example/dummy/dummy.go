@@ -1,4 +1,4 @@
-package example
+package dummy
 
 import (
 	"strings"

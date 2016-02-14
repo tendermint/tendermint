@@ -217,6 +217,11 @@ func (cli *TMSPClient) QueryAsync(query []byte) *ReqRes {
 
 //----------------------------------------
 
+func (cli *TMSPClient) FlushSync() error {
+	cli.queueRequest(types.RequestFlush()).Wait()
+	return cli.err
+}
+
 func (cli *TMSPClient) InfoSync() (info string, err error) {
 	reqres := cli.queueRequest(types.RequestInfo())
 	cli.FlushSync()
@@ -226,9 +231,13 @@ func (cli *TMSPClient) InfoSync() (info string, err error) {
 	return string(reqres.Response.Data), nil
 }
 
-func (cli *TMSPClient) FlushSync() error {
-	cli.queueRequest(types.RequestFlush()).Wait()
-	return cli.err
+func (cli *TMSPClient) SetOptionSync(key string, value string) (log string, err error) {
+	reqres := cli.queueRequest(types.RequestSetOption(key, value))
+	cli.FlushSync()
+	if cli.err != nil {
+		return "", cli.err
+	}
+	return reqres.Response.Log, nil
 }
 
 func (cli *TMSPClient) AppendTxSync(tx []byte) (code types.CodeType, result []byte, log string, err error) {
