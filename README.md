@@ -8,32 +8,44 @@ For more information on TMSP, motivations, and tutorials, please visit [our blog
 
 ## Message types
 
+TMSP requests/responses are simple Protobuf messages.  Check out the [schema file](https://github.com/tendermint/tmsp/blob/master/types/types.proto).
+
 #### AppendTx
   * __Arguments__:
-    * `TxBytes ([]byte)`
+    * `Data ([]byte)`: The request transaction bytes
   * __Returns__:
-    * `Code (int8)`
-    * `Result ([]byte)`
-    * `Log (string)`
+    * `Code (uint)`: Response code
+    * `Data ([]byte)`: Result bytes, if any
+    * `Log (string)`: Debug or error message
   * __Usage__:<br/>
-    Append and run a transaction.  The transaction may or may not be final.
+    Append and run a transaction.  If the transaction is valid, returns CodeType.OK
 
 #### CheckTx
   * __Arguments__:
-    * `TxBytes ([]byte)`
+    * `Data ([]byte)`: The request transaction bytes
   * __Returns__:
-    * `Code (int8)`
-    * `Result ([]byte)`
-    * `Log (string)`
+    * `Code (uint)`: Response code
+    * `Data ([]byte)`: Result bytes, if any
+    * `Log (string)`: Debug or error message
   * __Usage__:<br/>
     Validate a transaction.  This message should not mutate the state.
+    Transactions are first run through CheckTx before broadcast to peers in the mempool layer.
+    You can make CheckTx semi-stateful and clear the state upon `Commit`, to ensure that all txs in the blockchain are valid.
 
-#### GetHash
+#### Commit 
   * __Returns__:
-    * `Hash ([]byte)`
-    * `Log (string)`
+    * `Data ([]byte)`: The Merkle root hash
+    * `Log (string)`: Debug or error message
   * __Usage__:<br/>
-    Return a Merkle root hash of the application state
+    Return a Merkle root hash of the application state.
+
+#### Query
+  * __Arguments__:
+    * `Data ([]byte)`: The query request bytes
+  * __Returns__:
+    * `Code (uint)`: Response code
+    * `Data ([]byte)`: The query response bytes
+    * `Log (string)`: Debug or error message
 
 #### Flush
   * __Usage__:<br/>
@@ -41,21 +53,26 @@ For more information on TMSP, motivations, and tutorials, please visit [our blog
 
 #### Info
   * __Returns__:
-    * `Data ([]string)`
+    * `Data ([]byte)`: The info bytes
   * __Usage__:<br/>
-    Return an array of strings about the application state.  Application specific.
+    Return information about the application state.  Application specific.
 
 #### SetOption
   * __Arguments__:
-    * `Key (string)`
-    * `Value (string)`
+    * `Key (string)`: Key to set
+    * `Value (string)`: Value to set for key
   * __Returns__:
-    * `Log (string)`
+    * `Log (string)`: Debug or error message
   * __Usage__:<br/>
     Set application options.  E.g. Key="mode", Value="mempool" for a mempool connection, or Key="mode", Value="consensus" for a consensus connection.
     Other options are application specific.
 
 ## Changelog
+
+### Feb 14th, 2016
+
+* s/GetHash/Commit/g
+* Document Protobuf request/response fields
 
 ### Jan 23th, 2016
 
