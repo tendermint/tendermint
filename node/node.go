@@ -25,7 +25,7 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
-	"github.com/tendermint/tmsp/example/golang"
+	"github.com/tendermint/tmsp/example/dummy"
 )
 
 import _ "net/http/pprof"
@@ -230,7 +230,7 @@ func makeNodeInfo(sw *p2p.Switch, privKey crypto.PrivKeyEd25519) *p2p.NodeInfo {
 func getProxyApp(addr string, hash []byte) (proxyAppConn proxy.AppConn) {
 	// use local app (for testing)
 	if addr == "local" {
-		app := example.NewDummyApplication()
+		app := dummy.NewDummyApplication()
 		mtx := new(sync.Mutex)
 		proxyAppConn = proxy.NewLocalAppConn(mtx, app)
 	} else {

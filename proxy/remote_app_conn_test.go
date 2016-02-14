@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	. "github.com/tendermint/go-common"
-	"github.com/tendermint/tmsp/example/golang"
+	"github.com/tendermint/tmsp/example/dummy"
 	"github.com/tendermint/tmsp/server"
 )
 
@@ -13,7 +13,7 @@ func TestEcho(t *testing.T) {
 	sockPath := Fmt("unix:///tmp/echo_%v.sock", RandStr(6))
 
 	// Start server
-	_, err := server.StartListener(sockPath, example.NewDummyApplication())
+	_, err := server.StartListener(sockPath, dummy.NewDummyApplication())
 	if err != nil {
 		Exit(err.Error())
 	}
@@ -35,7 +35,7 @@ func BenchmarkEcho(b *testing.B) {
 	b.StopTimer() // Initialize
 	sockPath := Fmt("unix:///tmp/echo_%v.sock", RandStr(6))
 	// Start server
-	_, err := server.StartListener(sockPath, example.NewDummyApplication())
+	_, err := server.StartListener(sockPath, dummy.NewDummyApplication())
 	if err != nil {
 		Exit(err.Error())
 	}
@@ -62,7 +62,7 @@ func BenchmarkEcho(b *testing.B) {
 func TestInfo(t *testing.T) {
 	sockPath := Fmt("unix:///tmp/echo_%v.sock", RandStr(6))
 	// Start server
-	_, err := server.StartListener(sockPath, example.NewDummyApplication())
+	_, err := server.StartListener(sockPath, dummy.NewDummyApplication())
 	if err != nil {
 		Exit(err.Error())
 	}

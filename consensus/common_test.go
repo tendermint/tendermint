@@ -17,7 +17,7 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 
-	"github.com/tendermint/tmsp/example/golang"
+	"github.com/tendermint/tmsp/example/counter"
 )
 
 var chainID string
@@ -311,7 +311,7 @@ func newConsensusState(state *sm.State, pv *types.PrivValidator) *ConsensusState
 	blockStore := bc.NewBlockStore(blockDB)
 
 	// one for mempool, one for consensus
-	mtx, app := new(sync.Mutex), example.NewCounterApplication(false)
+	mtx, app := new(sync.Mutex), counter.NewCounterApplication(false)
 	proxyAppConnMem := proxy.NewLocalAppConn(mtx, app)
 	proxyAppConnCon := proxy.NewLocalAppConn(mtx, app)
 

@@ -7,13 +7,13 @@ import (
 
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tmsp/example/golang"
+	"github.com/tendermint/tmsp/example/counter"
 	tmsp "github.com/tendermint/tmsp/types"
 )
 
 func TestSerialReap(t *testing.T) {
 
-	app := example.NewCounterApplication(true)
+	app := counter.NewCounterApplication(true)
 	app.SetOption("serial", "on")
 	mtx := new(sync.Mutex)
 	appConnMem := proxy.NewLocalAppConn(mtx, app)
