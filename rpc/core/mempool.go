@@ -36,6 +36,6 @@ func BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 }
 
 func UnconfirmedTxs() (*ctypes.ResultUnconfirmedTxs, error) {
-	txs, err := mempoolReactor.Mempool.Reap()
-	return &ctypes.ResultUnconfirmedTxs{len(txs), txs}, err
+	txs := mempoolReactor.Mempool.Reap()
+	return &ctypes.ResultUnconfirmedTxs{len(txs), txs}, nil
 }

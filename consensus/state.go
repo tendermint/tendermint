@@ -819,11 +819,7 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 	}
 
 	// Mempool validated transactions
-	txs, err := cs.mempool.Reap()
-	if err != nil {
-		log.Warn("createProposalBlock: Error getting proposal txs", "error", err)
-		return nil, nil
-	}
+	txs := cs.mempool.Reap()
 
 	block = &types.Block{
 		Header: &types.Header{

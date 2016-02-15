@@ -44,10 +44,7 @@ func TestSerialReap(t *testing.T) {
 	}
 
 	reapCheck := func(exp int) {
-		txs, err := mempool.Reap()
-		if err != nil {
-			t.Error("Error in mempool.Reap()", err)
-		}
+		txs := mempool.Reap()
 		if len(txs) != exp {
 			t.Fatalf("Expected to reap %v txs but got %v", exp, len(txs))
 		}
@@ -60,10 +57,7 @@ func TestSerialReap(t *testing.T) {
 			binary.BigEndian.PutUint64(txBytes, uint64(i))
 			txs = append(txs, txBytes)
 		}
-		err := mempool.Update(0, txs)
-		if err != nil {
-			t.Error("Error in mempool.Update()", err)
-		}
+		mempool.Update(0, txs)
 	}
 
 	commitRange := func(start, end int) {
