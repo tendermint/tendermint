@@ -35,6 +35,9 @@ get_deps:
 	go get -d github.com/tendermint/tendermint/...
 	go list -f '{{join .TestImports "\n"}}' github.com/tendermint/tendermint/... | sort | uniq | xargs go get
 
+update_deps:
+	go get -d -u github.com/tendermint/tendermint/...
+
 revision:
 	-echo `git rev-parse --verify HEAD` > $(TMROOT)/revision
 	-echo `git rev-parse --verify HEAD` >> $(TMROOT)/revision_history
