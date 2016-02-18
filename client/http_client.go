@@ -5,45 +5,63 @@ import (
 	"encoding/json"
 	"errors"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
-	"strings"
 
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-rpc/types"
 	"github.com/tendermint/go-wire"
 )
 
+// Set the net.Dial manually so we can do http over tcp or unix.
+// Get/Post require a dummyDomain but it's over written by the Transport
+var dummyDomain = "http://dummyDomain/"
+
+func unixDial(remote string) func(string, string) (net.Conn, error) {
+	return func(proto, addr string) (conn net.Conn, err error) {
+		return net.Dial("unix", remote)
+	}
+}
+
+func tcpDial(remote string) func(string, string) (net.Conn, error) {
+	return func(proto, addr string) (conn net.Conn, err error) {
+		return net.Dial("tcp", remote)
+	}
+}
+
+func socketTransport(remote string) *http.Transport {
+	if rpctypes.SocketType(remote) == "unix" {
+		return &http.Transport{
+			Dial: unixDial(remote),
+		}
+	} else {
+		return &http.Transport{
+			Dial: tcpDial(remote),
+		}
+	}
+}
+
+//------------------------------------------------------------------------------------
+
 // JSON rpc takes params as a slice
 type ClientJSONRPC struct {
 	remote string
+	client *http.Client
 }
 
 func NewClientJSONRPC(remote string) *ClientJSONRPC {
-	return &ClientJSONRPC{remote}
+	return &ClientJSONRPC{
+		remote: remote,
+		client: &http.Client{Transport: socketTransport(remote)},
+	}
 }
 
 func (c *ClientJSONRPC) Call(method string, params []interface{}, result interface{}) (interface{}, error) {
-	return CallHTTP_JSONRPC(c.remote, method, params, result)
+	return c.call(method, params, result)
 }
 
-// URI takes params as a map
-type ClientURI struct {
-	remote string
-}
-
-func NewClientURI(remote string) *ClientURI {
-	if !strings.HasSuffix(remote, "/") {
-		remote = remote + "/"
-	}
-	return &ClientURI{remote}
-}
-
-func (c *ClientURI) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
-	return CallHTTP_URI(c.remote, method, params, result)
-}
-
-func CallHTTP_JSONRPC(remote string, method string, params []interface{}, result interface{}) (interface{}, error) {
+func (c *ClientJSONRPC) call(method string, params []interface{}, result interface{}) (interface{}, error) {
 	// Make request and get responseBytes
 	request := rpctypes.RPCRequest{
 		JSONRPC: "2.0",
@@ -53,8 +71,8 @@ func CallHTTP_JSONRPC(remote string, method string, params []interface{}, result
 	}
 	requestBytes := wire.JSONBytes(request)
 	requestBuf := bytes.NewBuffer(requestBytes)
-	log.Info(Fmt("RPC request to %v (%v): %v", remote, method, string(requestBytes)))
-	httpResponse, err := http.Post(remote, "text/json", requestBuf)
+	log.Info(Fmt("RPC request to %v (%v): %v", c.remote, method, string(requestBytes)))
+	httpResponse, err := c.client.Post(dummyDomain, "text/json", requestBuf)
 	if err != nil {
 		return nil, err
 	}
@@ -63,17 +81,36 @@ func CallHTTP_JSONRPC(remote string, method string, params []interface{}, result
 	if err != nil {
 		return nil, err
 	}
-	log.Info(Fmt("RPC response: %v", string(responseBytes)))
+	// 	log.Info(Fmt("RPC response: %v", string(responseBytes)))
 	return unmarshalResponseBytes(responseBytes, result)
 }
 
-func CallHTTP_URI(remote string, method string, params map[string]interface{}, result interface{}) (interface{}, error) {
+//-------------------------------------------------------------
+
+// URI takes params as a map
+type ClientURI struct {
+	remote string
+	client *http.Client
+}
+
+func NewClientURI(remote string) *ClientURI {
+	return &ClientURI{
+		remote: remote,
+		client: &http.Client{Transport: socketTransport(remote)},
+	}
+}
+
+func (c *ClientURI) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
+	return c.call(method, params, result)
+}
+
+func (c *ClientURI) call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
 	values, err := argsToURLValues(params)
 	if err != nil {
 		return nil, err
 	}
-	log.Info(Fmt("URI request to %v (%v): %v", remote, method, values))
-	resp, err := http.PostForm(remote+method, values)
+	log.Info(Fmt("URI request to %v (%v): %v", c.remote, method, values))
+	resp, err := c.client.PostForm(dummyDomain+method, values)
 	if err != nil {
 		return nil, err
 	}

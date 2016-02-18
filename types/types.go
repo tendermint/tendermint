@@ -2,6 +2,7 @@ package rpctypes
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/tendermint/go-events"
 	"github.com/tendermint/go-wire"
@@ -76,4 +77,17 @@ type WSRPCConnection interface {
 type WSRPCContext struct {
 	Request RPCRequest
 	WSRPCConnection
+}
+
+//----------------------------------------
+// sockets
+//
+// Determine if its a unix or tcp socket.
+// If tcp, must specify the port; `0.0.0.0` will return incorrectly as "unix" since there's no port
+func SocketType(listenAddr string) string {
+	socketType := "unix"
+	if len(strings.Split(listenAddr, ":")) == 2 {
+		socketType = "tcp"
+	}
+	return socketType
 }

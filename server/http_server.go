@@ -17,11 +17,14 @@ import (
 )
 
 func StartHTTPServer(listenAddr string, handler http.Handler) (net.Listener, error) {
-	log.Notice(Fmt("Starting RPC HTTP server on %v", listenAddr))
-	listener, err := net.Listen("tcp", listenAddr)
+	// listenAddr is `IP:PORT` or /path/to/socket
+	socketType := SocketType(listenAddr)
+	log.Notice(Fmt("Starting RPC HTTP server on %s socket %v", socketType, listenAddr))
+	listener, err := net.Listen(socketType, listenAddr)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to listen to %v", listenAddr)
+		return nil, fmt.Errorf("Failed to listen to %v: %v", listenAddr, err)
 	}
+
 	go func() {
 		res := http.Serve(
 			listener,
