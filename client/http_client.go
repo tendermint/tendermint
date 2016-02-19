@@ -18,26 +18,21 @@ import (
 // Get/Post require a dummyDomain but it's over written by the Transport
 var dummyDomain = "http://dummyDomain/"
 
-func unixDial(remote string) func(string, string) (net.Conn, error) {
+func dialFunc(sockType, remote string) func(string, string) (net.Conn, error) {
 	return func(proto, addr string) (conn net.Conn, err error) {
-		return net.Dial("unix", remote)
+		return net.Dial(sockType, remote)
 	}
 }
 
-func tcpDial(remote string) func(string, string) (net.Conn, error) {
-	return func(proto, addr string) (conn net.Conn, err error) {
-		return net.Dial("tcp", remote)
-	}
-}
-
+// remote is IP:PORT or /path/to/socket
 func socketTransport(remote string) *http.Transport {
 	if rpctypes.SocketType(remote) == "unix" {
 		return &http.Transport{
-			Dial: unixDial(remote),
+			Dial: dialFunc("unix", remote),
 		}
 	} else {
 		return &http.Transport{
-			Dial: tcpDial(remote),
+			Dial: dialFunc("tcp", remote),
 		}
 	}
 }
