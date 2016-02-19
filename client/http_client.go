@@ -16,24 +16,18 @@ import (
 
 // Set the net.Dial manually so we can do http over tcp or unix.
 // Get/Post require a dummyDomain but it's over written by the Transport
-var dummyDomain = "http://dummyDomain/"
+var dummyDomain = "http://dummyDomain"
 
-func dialFunc(sockType, remote string) func(string, string) (net.Conn, error) {
+func dialer(remote string) func(string, string) (net.Conn, error) {
 	return func(proto, addr string) (conn net.Conn, err error) {
-		return net.Dial(sockType, remote)
+		return net.Dial(rpctypes.SocketType(remote), remote)
 	}
 }
 
 // remote is IP:PORT or /path/to/socket
 func socketTransport(remote string) *http.Transport {
-	if rpctypes.SocketType(remote) == "unix" {
-		return &http.Transport{
-			Dial: dialFunc("unix", remote),
-		}
-	} else {
-		return &http.Transport{
-			Dial: dialFunc("tcp", remote),
-		}
+	return &http.Transport{
+		Dial: dialer(remote),
 	}
 }
 
@@ -105,7 +99,7 @@ func (c *ClientURI) call(method string, params map[string]interface{}, result in
 		return nil, err
 	}
 	log.Info(Fmt("URI request to %v (%v): %v", c.remote, method, values))
-	resp, err := c.client.PostForm(dummyDomain+method, values)
+	resp, err := c.client.PostForm(dummyDomain+"/"+method, values)
 	if err != nil {
 		return nil, err
 	}

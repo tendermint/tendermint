@@ -7,6 +7,7 @@ import (
 
 	"github.com/tendermint/go-rpc/client"
 	"github.com/tendermint/go-rpc/server"
+	"github.com/tendermint/go-rpc/types"
 	"github.com/tendermint/go-wire"
 )
 
@@ -14,6 +15,8 @@ import (
 var (
 	tcpAddr  = "0.0.0.0:46657"
 	unixAddr = "/tmp/go-rpc.sock" // NOTE: must remove file for test to run again
+
+	websocketEndpoint = "/websocket/endpoint"
 )
 
 // Define a type for results and register concrete versions
@@ -42,6 +45,8 @@ func StatusResult(v string) (Result, error) {
 func init() {
 	mux := http.NewServeMux()
 	rpcserver.RegisterRPCFuncs(mux, Routes)
+	wm := rpcserver.NewWebsocketManager(Routes, nil)
+	mux.HandleFunc(websocketEndpoint, wm.WebsocketHandler)
 	go func() {
 		_, err := rpcserver.StartHTTPServer(tcpAddr, mux)
 		if err != nil {
@@ -51,6 +56,8 @@ func init() {
 
 	mux = http.NewServeMux()
 	rpcserver.RegisterRPCFuncs(mux, Routes)
+	wm = rpcserver.NewWebsocketManager(Routes, nil)
+	mux.HandleFunc(websocketEndpoint, wm.WebsocketHandler)
 	go func() {
 		_, err := rpcserver.StartHTTPServer(unixAddr, mux)
 		if err != nil {
@@ -93,6 +100,33 @@ func testJSONRPC(t *testing.T, cl *rpcclient.ClientJSONRPC) {
 	}
 }
 
+func testWS(t *testing.T, cl *rpcclient.WSClient) {
+	val := "acbd"
+	params := []interface{}{val}
+	err := cl.WriteJSON(rpctypes.RPCRequest{
+		JSONRPC: "2.0",
+		ID:      "",
+		Method:  "status",
+		Params:  params,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	msg := <-cl.ResultsCh
+	result := new(Result)
+	wire.ReadJSONPtr(result, msg, &err)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := (*result).(*ResultStatus).Value
+	if got != val {
+		t.Fatalf("Got: %v   ....   Expected: %v \n", got, val)
+	}
+}
+
+//-------------
+
 func TestURI_TCP(t *testing.T) {
 	cl := rpcclient.NewClientURI(tcpAddr)
 	testURI(t, cl)
@@ -111,4 +145,22 @@ func TestJSONRPC_TCP(t *testing.T) {
 func TestJSONRPC_UNIX(t *testing.T) {
 	cl := rpcclient.NewClientJSONRPC(unixAddr)
 	testJSONRPC(t, cl)
+}
+
+func TestWS_TCP(t *testing.T) {
+	cl := rpcclient.NewWSClient(tcpAddr, websocketEndpoint)
+	_, err := cl.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+	testWS(t, cl)
+}
+
+func TestWS_UNIX(t *testing.T) {
+	cl := rpcclient.NewWSClient(unixAddr, websocketEndpoint)
+	_, err := cl.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+	testWS(t, cl)
 }

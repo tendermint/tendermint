@@ -19,16 +19,18 @@ const (
 
 type WSClient struct {
 	QuitService
-	Address string
+	Address  string // IP:PORT or /path/to/socket
+	Endpoint string // /websocket/url/endpoint
 	*websocket.Conn
 	ResultsCh chan json.RawMessage // closes upon WSClient.Stop()
 	ErrorsCh  chan error           // closes upon WSClient.Stop()
 }
 
 // create a new connection
-func NewWSClient(addr string) *WSClient {
+func NewWSClient(addr, endpoint string) *WSClient {
 	wsClient := &WSClient{
 		Address:   addr,
+		Endpoint:  endpoint,
 		Conn:      nil,
 		ResultsCh: make(chan json.RawMessage, wsResultsChannelCapacity),
 		ErrorsCh:  make(chan error, wsErrorsChannelCapacity),
@@ -38,7 +40,7 @@ func NewWSClient(addr string) *WSClient {
 }
 
 func (wsc *WSClient) String() string {
-	return wsc.Address
+	return wsc.Address + ", " + wsc.Endpoint
 }
 
 func (wsc *WSClient) OnStart() error {
@@ -52,10 +54,14 @@ func (wsc *WSClient) OnStart() error {
 }
 
 func (wsc *WSClient) dial() error {
+
 	// Dial
-	dialer := websocket.DefaultDialer
+	dialer := &websocket.Dialer{
+		NetDial: dialer(wsc.Address),
+		Proxy:   http.ProxyFromEnvironment,
+	}
 	rHeader := http.Header{}
-	con, _, err := dialer.Dial(wsc.Address, rHeader)
+	con, _, err := dialer.Dial("ws://"+dummyDomain+wsc.Endpoint, rHeader)
 	if err != nil {
 		return err
 	}
