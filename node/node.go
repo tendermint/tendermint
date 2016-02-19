@@ -151,7 +151,7 @@ func (n *Node) AddListener(l p2p.Listener) {
 	n.sw.AddListener(l)
 }
 
-func (n *Node) StartRPC() (net.Listener, error) {
+func (n *Node) StartRPC() ([]net.Listener, error) {
 	rpccore.SetBlockStore(n.blockStore)
 	rpccore.SetConsensusState(n.consensusState)
 	rpccore.SetConsensusReactor(n.consensusReactor)
@@ -160,13 +160,22 @@ func (n *Node) StartRPC() (net.Listener, error) {
 	rpccore.SetPrivValidator(n.privValidator)
 	rpccore.SetGenesisDoc(n.genesisDoc)
 
-	listenAddr := config.GetString("rpc_laddr")
+	listenAddrs := strings.Split(config.GetString("rpc_laddr"), ",")
 
-	mux := http.NewServeMux()
-	wm := rpcserver.NewWebsocketManager(rpccore.Routes, n.evsw)
-	mux.HandleFunc("/websocket", wm.WebsocketHandler)
-	rpcserver.RegisterRPCFuncs(mux, rpccore.Routes)
-	return rpcserver.StartHTTPServer(listenAddr, mux)
+	// we may expose the rpc over both a unix and tcp socket
+	listeners := make([]net.Listener, len(listenAddrs))
+	for i, listenAddr := range listenAddrs {
+		mux := http.NewServeMux()
+		wm := rpcserver.NewWebsocketManager(rpccore.Routes, n.evsw)
+		mux.HandleFunc("/websocket", wm.WebsocketHandler)
+		rpcserver.RegisterRPCFuncs(mux, rpccore.Routes)
+		listener, err := rpcserver.StartHTTPServer(listenAddr, mux)
+		if err != nil {
+			return nil, err
+		}
+		listeners[i] = listener
+	}
+	return listeners, nil
 }
 
 func (n *Node) Switch() *p2p.Switch {
