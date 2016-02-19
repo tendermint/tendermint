@@ -6,7 +6,6 @@ import (
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 )
 
-// TODO: eliminate redundancy between here and reading code from core/
 var Routes = map[string]*rpc.RPCFunc{
 	"subscribe":            rpc.NewWSRPCFunc(SubscribeResult, "event"),
 	"unsubscribe":          rpc.NewWSRPCFunc(UnsubscribeResult, "event"),

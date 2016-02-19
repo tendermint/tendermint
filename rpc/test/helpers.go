@@ -23,7 +23,7 @@ var (
 
 	chainID string
 
-	rpcAddr, requestAddr, websocketAddr string
+	rpcAddr, requestAddr, websocketAddr, websocketEndpoint string
 
 	clientURI  *client.ClientURI
 	clientJSON *client.ClientJSONRPC
@@ -33,8 +33,9 @@ var (
 func init() {
 	chainID = config.GetString("chain_id")
 	rpcAddr = config.GetString("rpc_laddr")
-	requestAddr = "http://" + rpcAddr
-	websocketAddr = "ws://" + rpcAddr + "/websocket"
+	requestAddr = rpcAddr
+	websocketAddr = rpcAddr
+	websocketEndpoint = "/websocket"
 
 	clientURI = client.NewClientURI(requestAddr)
 	clientJSON = client.NewClientJSONRPC(requestAddr)
@@ -71,7 +72,7 @@ func newNode(ready chan struct{}) {
 
 // create a new connection
 func newWSClient(t *testing.T) *client.WSClient {
-	wsc := client.NewWSClient(websocketAddr)
+	wsc := client.NewWSClient(websocketAddr, websocketEndpoint)
 	if _, err := wsc.Start(); err != nil {
 		t.Fatal(err)
 	}
