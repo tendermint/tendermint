@@ -1,6 +1,7 @@
 package common
 
 import (
+	"bytes"
 	"testing"
 )
 
@@ -117,4 +118,33 @@ func TestPickRandom(t *testing.T) {
 			t.Fatalf("Expected to pick element at %v but got wrong index", idx)
 		}
 	}
+}
+
+func TestBytes(t *testing.T) {
+	bA := NewBitArray(4)
+	bA.SetIndex(0, true)
+	check := func(bA *BitArray, bz []byte) {
+		if !bytes.Equal(bA.Bytes(), bz) {
+			panic(Fmt("Expected %X but got %X", bz, bA.Bytes()))
+		}
+	}
+	check(bA, []byte{0x01})
+	bA.SetIndex(3, true)
+	check(bA, []byte{0x09})
+
+	bA = NewBitArray(9)
+	check(bA, []byte{0x00, 0x00})
+	bA.SetIndex(7, true)
+	check(bA, []byte{0x80, 0x00})
+	bA.SetIndex(8, true)
+	check(bA, []byte{0x80, 0x01})
+
+	bA = NewBitArray(16)
+	check(bA, []byte{0x00, 0x00})
+	bA.SetIndex(7, true)
+	check(bA, []byte{0x80, 0x00})
+	bA.SetIndex(8, true)
+	check(bA, []byte{0x80, 0x01})
+	bA.SetIndex(9, true)
+	check(bA, []byte{0x80, 0x03})
 }

@@ -1,6 +1,7 @@
 package common
 
 import (
+	"encoding/binary"
 	"fmt"
 	"math/rand"
 	"strings"
@@ -272,4 +273,18 @@ func (bA *BitArray) stringIndented(indent string) string {
 		lines = append(lines, bits)
 	}
 	return fmt.Sprintf("BA{%v:%v}", bA.Bits, strings.Join(lines, indent))
+}
+
+func (bA *BitArray) Bytes() []byte {
+	bA.mtx.Lock()
+	defer bA.mtx.Unlock()
+
+	numBytes := (bA.Bits + 7) / 8
+	bytes := make([]byte, numBytes)
+	for i := 0; i < len(bA.Elems); i++ {
+		elemBytes := [8]byte{}
+		binary.LittleEndian.PutUint64(elemBytes[:], bA.Elems[i])
+		copy(bytes[i*8:], elemBytes[:])
+	}
+	return bytes
 }
