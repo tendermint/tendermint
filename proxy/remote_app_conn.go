@@ -8,16 +8,16 @@ import (
 // the application in general is not meant to be interfaced
 // with concurrent callers.
 type remoteAppConn struct {
-	*tmspcli.TMSPClient
+	*tmspcli.Client
 }
 
 func NewRemoteAppConn(addr string) (*remoteAppConn, error) {
-	client, err := tmspcli.NewTMSPClient(addr)
+	client, err := tmspcli.NewClient(addr)
 	if err != nil {
 		return nil, err
 	}
 	appConn := &remoteAppConn{
-		TMSPClient: client,
+		Client: client,
 	}
 	return appConn, nil
 }
