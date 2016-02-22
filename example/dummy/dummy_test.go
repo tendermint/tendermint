@@ -14,7 +14,7 @@ func TestStream(t *testing.T) {
 	numAppendTxs := 200000
 
 	// Start the listener
-	_, err := server.StartListener("tcp://127.0.0.1:46658", NewDummyApplication())
+	_, err := server.NewServer("tcp://127.0.0.1:46658", NewDummyApplication())
 	if err != nil {
 		Exit(err.Error())
 	}

@@ -16,7 +16,7 @@ func main() {
 	app := counter.NewCounterApplication(*serialPtr)
 
 	// Start the listener
-	_, err := server.StartListener(*addrPtr, app)
+	_, err := server.NewServer(*addrPtr, app)
 	if err != nil {
 		Exit(err.Error())
 	}

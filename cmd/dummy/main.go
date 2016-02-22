@@ -14,7 +14,7 @@ func main() {
 	flag.Parse()
 
 	// Start the listener
-	_, err := server.StartListener(*addrPtr, dummy.NewDummyApplication())
+	_, err := server.NewServer(*addrPtr, dummy.NewDummyApplication())
 	if err != nil {
 		Exit(err.Error())
 	}
