@@ -68,23 +68,23 @@ func startApp() *process.Process {
 	return proc
 }
 
-func startClient() *tmspcli.TMSPClient {
+func startClient() *tmspcli.Client {
 	// Start client
-	client, err := tmspcli.NewTMSPClient("tcp://127.0.0.1:46658")
+	client, err := tmspcli.NewClient("tcp://127.0.0.1:46658")
 	if err != nil {
 		panic("connecting to counter_app: " + err.Error())
 	}
 	return client
 }
 
-func setOption(client *tmspcli.TMSPClient, key, value string) {
+func setOption(client *tmspcli.Client, key, value string) {
 	log, err := client.SetOptionSync(key, value)
 	if err != nil {
 		panic(Fmt("setting %v=%v: %v\nlog: %v", key, value, err, log))
 	}
 }
 
-func commit(client *tmspcli.TMSPClient, hashExp []byte) {
+func commit(client *tmspcli.Client, hashExp []byte) {
 	hash, log, err := client.CommitSync()
 	if err != nil {
 		panic(Fmt("committing %v\nlog: %v", err, log))
@@ -95,7 +95,7 @@ func commit(client *tmspcli.TMSPClient, hashExp []byte) {
 	}
 }
 
-func appendTx(client *tmspcli.TMSPClient, txBytes []byte, codeExp types.CodeType, dataExp []byte) {
+func appendTx(client *tmspcli.Client, txBytes []byte, codeExp types.CodeType, dataExp []byte) {
 	code, data, log, err := client.AppendTxSync(txBytes)
 	if err != nil {
 		panic(Fmt("appending tx %X: %v\nlog: %v", txBytes, err, log))
@@ -110,7 +110,7 @@ func appendTx(client *tmspcli.TMSPClient, txBytes []byte, codeExp types.CodeType
 	}
 }
 
-func checkTx(client *tmspcli.TMSPClient, txBytes []byte, codeExp types.CodeType, dataExp []byte) {
+func checkTx(client *tmspcli.Client, txBytes []byte, codeExp types.CodeType, dataExp []byte) {
 	code, data, log, err := client.CheckTxSync(txBytes)
 	if err != nil {
 		panic(Fmt("checking tx %X: %v\nlog: %v", txBytes, err, log))
