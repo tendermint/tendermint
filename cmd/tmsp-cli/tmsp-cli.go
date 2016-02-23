@@ -80,8 +80,8 @@ func main() {
 			},
 		},
 		{
-			Name:  "get_hash",
-			Usage: "Get application Merkle root hash",
+			Name:  "commit",
+			Usage: "Commit the application state and return the Merkle root hash",
 			Action: func(c *cli.Context) {
 				cmdCommit(c)
 			},
@@ -283,20 +283,20 @@ func cmdQuery(c *cli.Context) {
 //--------------------------------------------------------------------------------
 
 func printResponse(res *types.Response, s string) {
-	fmt.Printf("-> ")
-	if res.Error != "" {
-		fmt.Printf("error: %s\t", res.Error)
+	switch res.Type {
+	case types.MessageType_AppendTx, types.MessageType_CheckTx, types.MessageType_Query:
+		fmt.Printf("-> code: %s\n", res.Code.String())
 	}
-	if res.Code != types.CodeType_OK {
-		fmt.Printf("code: %s", res.Code.String())
+	if res.Error != "" {
+		fmt.Printf("-> error: %s\n", res.Error)
 	}
 	if s != "" {
-		fmt.Printf("data: {%s}", s)
+		fmt.Printf("-> data: {%s}\n", s)
 	}
 	if res.Log != "" {
-		fmt.Printf("log: %s", res.Log)
+		fmt.Printf("-> log: %s\n", res.Log)
 	}
-	fmt.Printf("\n")
+
 }
 
 func responseString(res *types.Response) string {
