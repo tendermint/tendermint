@@ -25,6 +25,7 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
+	"github.com/tendermint/tmsp/example/dummy"
 	"github.com/tendermint/tmsp/example/nil"
 )
 
@@ -238,11 +239,16 @@ func makeNodeInfo(sw *p2p.Switch, privKey crypto.PrivKeyEd25519) *p2p.NodeInfo {
 // Check the current hash, and panic if it doesn't match.
 func getProxyApp(addr string, hash []byte) (proxyAppConn proxy.AppConn) {
 	// use local app (for testing)
-	if addr == "local" {
+	switch addr {
+	case "nilapp":
 		app := nilapp.NewNilApplication()
 		mtx := new(sync.Mutex)
 		proxyAppConn = proxy.NewLocalAppConn(mtx, app)
-	} else {
+	case "dummy":
+		app := dummy.NewDummyApplication()
+		mtx := new(sync.Mutex)
+		proxyAppConn = proxy.NewLocalAppConn(mtx, app)
+	default:
 		remoteApp, err := proxy.NewRemoteAppConn(addr)
 		if err != nil {
 			Exit(Fmt("Failed to connect to proxy for mempool: %v", err))

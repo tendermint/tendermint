@@ -77,7 +77,7 @@ func GetConfig(rootDir string) cfg.Config {
 	}
 	mapConfig.SetDefault("chain_id", "tendermint_test")
 	mapConfig.SetDefault("genesis_file", rootDir+"/genesis.json")
-	mapConfig.SetDefault("proxy_app", "local")
+	mapConfig.SetDefault("proxy_app", "dummy")
 	mapConfig.SetDefault("moniker", "anonymous")
 	mapConfig.SetDefault("node_laddr", "0.0.0.0:36656")
 	mapConfig.SetDefault("fast_sync", false)
@@ -98,7 +98,7 @@ func GetConfig(rootDir string) cfg.Config {
 var defaultConfigTmpl = `# This is a TOML config file.
 # For more information, see https://github.com/toml-lang/toml
 
-proxy_app = "local"
+proxy_app = "dummy"
 moniker = "__MONIKER__"
 node_laddr = "0.0.0.0:36656"
 seeds = ""
