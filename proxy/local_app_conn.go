@@ -31,60 +31,55 @@ func (app *localAppConn) Error() error {
 }
 
 func (app *localAppConn) EchoAsync(msg string) *tmspcli.ReqRes {
-	app.Callback(
+	return app.callback(
 		tmsp.RequestEcho(msg),
 		tmsp.ResponseEcho(msg),
 	)
-	return nil // TODO maybe create a ReqRes
 }
 
 func (app *localAppConn) FlushAsync() *tmspcli.ReqRes {
 	// Do nothing
-	return nil // TODO maybe create a ReqRes
+	return NewReqRes(tmsp.RequestFlush(), nil)
 }
 
 func (app *localAppConn) SetOptionAsync(key string, value string) *tmspcli.ReqRes {
 	app.mtx.Lock()
 	log := app.Application.SetOption(key, value)
 	app.mtx.Unlock()
-	app.Callback(
+	return app.callback(
 		tmsp.RequestSetOption(key, value),
 		tmsp.ResponseSetOption(log),
 	)
-	return nil // TODO maybe create a ReqRes
 }
 
 func (app *localAppConn) AppendTxAsync(tx []byte) *tmspcli.ReqRes {
 	app.mtx.Lock()
 	code, result, log := app.Application.AppendTx(tx)
 	app.mtx.Unlock()
-	app.Callback(
+	return app.callback(
 		tmsp.RequestAppendTx(tx),
 		tmsp.ResponseAppendTx(code, result, log),
 	)
-	return nil // TODO maybe create a ReqRes
 }
 
 func (app *localAppConn) CheckTxAsync(tx []byte) *tmspcli.ReqRes {
 	app.mtx.Lock()
 	code, result, log := app.Application.CheckTx(tx)
 	app.mtx.Unlock()
-	app.Callback(
+	return app.callback(
 		tmsp.RequestCheckTx(tx),
 		tmsp.ResponseCheckTx(code, result, log),
 	)
-	return nil // TODO maybe create a ReqRes
 }
 
 func (app *localAppConn) CommitAsync() *tmspcli.ReqRes {
 	app.mtx.Lock()
 	hash, log := app.Application.Commit()
 	app.mtx.Unlock()
-	app.Callback(
+	return app.callback(
 		tmsp.RequestCommit(),
 		tmsp.ResponseCommit(hash, log),
 	)
-	return nil // TODO maybe create a ReqRes
 }
 
 func (app *localAppConn) InfoSync() (info string, err error) {
@@ -103,4 +98,18 @@ func (app *localAppConn) CommitSync() (hash []byte, log string, err error) {
 	hash, log = app.Application.Commit()
 	app.mtx.Unlock()
 	return hash, log, nil
+}
+
+//-------------------------------------------------------
+
+func (app *localAppConn) callback(req *tmsp.Request, res *tmsp.Response) *tmspcli.ReqRes {
+	app.Callback(req, res)
+	return NewReqRes(req, res)
+}
+
+func NewReqRes(req *tmsp.Request, res *tmsp.Response) *tmspcli.ReqRes {
+	reqRes := tmspcli.NewReqRes(req)
+	reqRes.Response = res
+	reqRes.SetDone()
+	return reqRes
 }
