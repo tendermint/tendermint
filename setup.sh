@@ -6,6 +6,8 @@ N_MACHINES=4
 
 MACH_PREFIX=netmon
 
+APP_INIT_SCRIPT=$GOPATH/src/github.com/tendermint/mintnet/examples/counter/app/init.sh 
+
 TESTNET_DIR=~/testnets_netmon
 CHAINS_AND_VALS=$TESTNET_DIR/chains_and_vals.json
 CHAINS_DIR=$TESTNET_DIR/chains
@@ -32,7 +34,7 @@ echo "Make some blockchains"
 # make some blockchains with each validator set
 for i in ${!CHAINS[@]}; do
 	valset=$(($i % ${#VALSETS[@]}))
-        mintnet init --machines "${MACH_PREFIX}[1-4]" chain --validator-set $VALS_DIR/${VALSETS[$valset]} $CHAINS_DIR/${CHAINS[$i]}
+        mintnet init --machines "${MACH_PREFIX}[1-4]" chain --app $APP_INIT_SCRIPT --validator-set $VALS_DIR/${VALSETS[$valset]} $CHAINS_DIR/${CHAINS[$i]}
 done
 
 
