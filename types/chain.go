@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+	"os/exec"
 	"sync"
 	"time"
 
@@ -114,6 +115,61 @@ type BlockchainStatus struct {
 
 	// What else can we get / do we want?
 	// TODO: charts for block time, latency (websockets/event-meter ?)
+
+	// for benchmark runs
+	benchResults *BenchmarkResults
+}
+
+func (bc *BlockchainStatus) Benchmark(done chan *BenchmarkResults, nTxs int, args []string) {
+	bc.benchResults = &BenchmarkResults{
+		StartTime: time.Now(),
+		NumTxs:    nTxs,
+		done:      done,
+	}
+
+	// TODO: capture output to file
+	cmd := exec.Command(args[0], args[1:]...)
+	go cmd.Run()
+}
+
+type Block struct {
+	Time   time.Time `json:time"`
+	Height int       `json:"height"`
+	NumTxs int       `json:"num_txs"`
+}
+
+type BenchmarkResults struct {
+	StartTime      time.Time `json:"start_time"`
+	TotalTime      float64   `json:"total_time"` // seconds
+	NumBlocks      int       `json:"num_blocks"`
+	NumTxs         int       `json:"num_txs`
+	Blocks         []*Block  `json:"blocks"`
+	MeanLatency    float64   `json:"latency"`    // seconds per block
+	MeanThroughput float64   `json:"throughput"` // txs per second
+
+	done chan *BenchmarkResults
+}
+
+// Return the total time to commit all txs, in seconds
+func (br *BenchmarkResults) ElapsedTime() float64 {
+	return float64(br.Blocks[br.NumBlocks].Time.Sub(br.StartTime)) / float64(1000000000)
+}
+
+// Return the avg seconds/block
+func (br *BenchmarkResults) Latency() float64 {
+	return br.ElapsedTime() / float64(br.NumBlocks)
+}
+
+// Return the avg txs/second
+func (br *BenchmarkResults) Throughput() float64 {
+	return float64(br.NumTxs) / br.ElapsedTime()
+}
+
+func (br *BenchmarkResults) Done() {
+	br.TotalTime = br.ElapsedTime()
+	br.MeanThroughput = br.Throughput()
+	br.MeanLatency = br.Latency()
+	br.done <- br
 }
 
 type UptimeData struct {
@@ -147,6 +203,18 @@ func (s *BlockchainStatus) NewBlock(block *tmtypes.Block) {
 		s.txThroughputMeter.Mark(int64(block.Header.NumTxs))
 		s.MeanBlockTime = (1 / s.blockTimeMeter.Rate1()) * 1000 // 1/s to ms
 		s.TxThroughput = s.txThroughputMeter.Rate1()
+
+		if s.benchResults != nil {
+			s.benchResults.Blocks = append(s.benchResults.Blocks, &Block{
+				Time:   time.Now(),
+				Height: s.Height,
+				NumTxs: block.Header.NumTxs,
+			})
+			if s.txThroughputMeter.Count() >= int64(s.benchResults.NumTxs) {
+				// XXX: do we need to be more careful than just counting?!
+				s.benchResults.Done()
+			}
+		}
 
 		// if we're making blocks, we're healthy
 		if !s.Healthy {

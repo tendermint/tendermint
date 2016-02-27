@@ -76,6 +76,14 @@ func main() {
 				cmdMonitor(c)
 			},
 		},
+		{
+			Name:      "bench",
+			Usage:     "Benchmark a chain's tx throughput and latency",
+			ArgsUsage: "[config file] [results dir] [n txs] -- [command to fire n txs]",
+			Action: func(c *cli.Context) {
+				cmdBench(c)
+			},
+		},
 	}
 	app.Run(os.Args)
 }
@@ -167,6 +175,55 @@ func cmdMonitor(c *cli.Context) {
 		Exit(err.Error())
 	}
 
+	network := registerNetwork(chainsAndVals)
+	startRPC(network)
+
+	TrapSignal(func() {
+		network.Stop()
+	})
+}
+
+func cmdBench(c *cli.Context) {
+	args := c.Args()
+	if len(args) < 4 {
+		Exit("bench expectes at least 4 args")
+	}
+	chainsAndValsFile := args[0]
+	resultsDir := args[1]
+	nTxS := args[2]
+	args = args[3:]
+
+	nTxs, err := strconv.Atoi(nTxS)
+	if err != nil {
+		Exit(err.Error())
+	}
+
+	chainsAndVals, err := LoadChainsAndValsFromFile(chainsAndValsFile)
+	if err != nil {
+		Exit(err.Error())
+	}
+
+	network := registerNetwork(chainsAndVals)
+	startRPC(network)
+
+	// benchmark txs
+	done := make(chan *types.BenchmarkResults)
+
+	// we should only have one chain for a benchmark run
+	chAndValIDs, _ := network.Status()
+	chain, _ := network.GetChain(chAndValIDs.ChainIDs[0])
+	chain.Status.Benchmark(done, nTxs, args)
+
+	results := <-done
+
+	b, _ := json.Marshal(results)
+	if err := ioutil.WriteFile(path.Join(resultsDir, "results.dat"), b, 0600); err != nil {
+		Exit(err.Error())
+	}
+	fmt.Println(results)
+}
+
+func registerNetwork(chainsAndVals *ChainsAndValidators) *handlers.TendermintNetwork {
 	// the main object that watches for changes and serves the rpc requests
 	network := handlers.NewTendermintNetwork()
 
@@ -186,6 +243,10 @@ func cmdMonitor(c *cli.Context) {
 		}
 	}
 
+	return network
+}
+
+func startRPC(network *handlers.TendermintNetwork) {
 	// the routes are functions on the network object
 	routes := handlers.Routes(network)
 
@@ -197,10 +258,6 @@ func cmdMonitor(c *cli.Context) {
 	if _, err := rpcserver.StartHTTPServer("0.0.0.0:46670", mux); err != nil {
 		Exit(err.Error())
 	}
-
-	TrapSignal(func() {
-		network.Stop()
-	})
 
 }
 
