@@ -99,7 +99,7 @@ func (cli *Client) sendRequestsRoutine() {
 		select {
 		case <-cli.flushTimer.Ch:
 			select {
-			case cli.reqQueue <- newReqRes(types.RequestFlush()):
+			case cli.reqQueue <- NewReqRes(types.RequestFlush()):
 			default:
 				// Probably will fill the buffer, or retry later.
 			}
@@ -283,7 +283,7 @@ func (cli *Client) QuerySync(query []byte) (code types.CodeType, result []byte, 
 //----------------------------------------
 
 func (cli *Client) queueRequest(req *types.Request) *ReqRes {
-	reqres := newReqRes(req)
+	reqres := NewReqRes(req)
 	// TODO: set cli.err if reqQueue times out
 	cli.reqQueue <- reqres
 
@@ -314,7 +314,7 @@ type ReqRes struct {
 	cb   func(*types.Response) // A single callback that may be set.
 }
 
-func newReqRes(req *types.Request) *ReqRes {
+func NewReqRes(req *types.Request) *ReqRes {
 	return &ReqRes{
 		Request:   req,
 		WaitGroup: waitGroup1(),
