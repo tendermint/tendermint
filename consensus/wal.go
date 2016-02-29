@@ -37,6 +37,8 @@ var _ = wire.RegisterInterface(
 type WAL struct {
 	fp     *os.File
 	exists bool // if the file already existed (restarted process)
+
+	done chan struct{}
 }
 
 func NewWAL(file string) (*WAL, error) {
@@ -51,6 +53,7 @@ func NewWAL(file string) (*WAL, error) {
 	return &WAL{
 		fp:     fp,
 		exists: walExists,
+		done:   make(chan struct{}),
 	}, nil
 }
 
@@ -72,6 +75,11 @@ func (wal *WAL) Close() {
 	if wal != nil {
 		wal.fp.Close()
 	}
+	wal.done <- struct{}{}
+}
+
+func (wal *WAL) Wait() {
+	<-wal.done
 }
 
 func (wal *WAL) SeekFromEnd(found func([]byte) bool) (nLines int, err error) {

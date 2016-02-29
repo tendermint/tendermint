@@ -319,6 +319,9 @@ func (cs *ConsensusState) startRoutines(maxSteps int) {
 
 func (cs *ConsensusState) OnStop() {
 	cs.QuitService.OnStop()
+	if cs.wal != nil {
+		cs.wal.Wait()
+	}
 }
 
 // Open file to log all consensus messages and timeouts for deterministic accountability
@@ -616,6 +619,19 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 			// go to the next step
 			cs.handleTimeout(ti, rs)
 		case <-cs.Quit:
+
+			// drain the internalMsgQueue in case we eg. signed a proposal but it didn't hit the wal
+		FLUSH:
+			for {
+				select {
+				case mi = <-cs.internalMsgQueue:
+					cs.wal.Save(mi)
+					cs.handleMsg(mi, rs)
+				default:
+					break FLUSH
+				}
+			}
+
 			// close wal now that we're done writing to it
 			if cs.wal != nil {
 				cs.wal.Close()
