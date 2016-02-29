@@ -67,7 +67,23 @@ TMSP requests/responses are simple Protobuf messages.  Check out the [schema fil
     Set application options.  E.g. Key="mode", Value="mempool" for a mempool connection, or Key="mode", Value="consensus" for a consensus connection.
     Other options are application specific.
 
+#### InitValidators
+  * __Arguments__:
+    * `Validators ([]Validator)`: Initial genesis validators
+  * __Usage__:<br/>
+    Called once upon genesis, to inform the app about the initial validators.
+
+#### SyncValidators
+  * __Returns__:
+    * `Validators ([]Validator)`: Changed validators with new voting powers (0 to remove)
+  * __Usage__:<br/>
+    Called prior to each Commit to get validator updates from the application.
+
 ## Changelog
+
+### Feb 28th, 2016
+
+* Added InitValidators, SyncValidators
 
 ### Feb 14th, 2016
 
