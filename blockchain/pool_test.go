@@ -1,4 +1,3 @@
-
 package blockchain
 
 import (
@@ -9,6 +8,10 @@ import (
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/tendermint/types"
 )
+
+func init() {
+	peerTimeoutSeconds = time.Duration(2)
+}
 
 type testPeer struct {
 	id     string

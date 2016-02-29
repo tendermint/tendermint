@@ -18,16 +18,55 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-var (
-	timeoutPropose0       = 3000 * time.Millisecond // Wait this long for a proposal
-	timeoutProposeDelta   = 0500 * time.Millisecond // timeoutProposeN is timeoutPropose0 + timeoutProposeDelta*N
-	timeoutPrevote0       = 1000 * time.Millisecond // After any +2/3 prevotes received, wait this long for stragglers.
-	timeoutPrevoteDelta   = 0500 * time.Millisecond // timeoutPrevoteN is timeoutPrevote0 + timeoutPrevoteDelta*N
-	timeoutPrecommit0     = 1000 * time.Millisecond // After any +2/3 precommits received, wait this long for stragglers.
-	timeoutPrecommitDelta = 0500 * time.Millisecond // timeoutPrecommitN is timeoutPrecommit0 + timeoutPrecommitDelta*N
-	timeoutCommit         = 1000 * time.Millisecond // After +2/3 commits received for committed block, wait this long for stragglers in the next height's RoundStepNewHeight.
+//-----------------------------------------------------------------------------
+// Timeout Parameters
 
-)
+// All in milliseconds
+type TimeoutParams struct {
+	Propose0       int
+	ProposeDelta   int
+	Prevote0       int
+	PrevoteDelta   int
+	Precommit0     int
+	PrecommitDelta int
+	Commit0        int
+}
+
+// Wait this long for a proposal
+func (tp *TimeoutParams) Propose(round int) time.Duration {
+	return time.Duration(tp.Propose0+tp.ProposeDelta*round) * time.Millisecond
+}
+
+// After receiving any +2/3 prevote, wait this long for stragglers
+func (tp *TimeoutParams) Prevote(round int) time.Duration {
+	return time.Duration(tp.Prevote0+tp.PrevoteDelta*round) * time.Millisecond
+}
+
+// After receiving any +2/3 precommits, wait this long for stragglers
+func (tp *TimeoutParams) Precommit(round int) time.Duration {
+	return time.Duration(tp.Precommit0+tp.PrecommitDelta*round) * time.Millisecond
+}
+
+// After receiving +2/3 precommits for a single block (a commit), wait this long for stragglers in the next height's RoundStepNewHeight
+func (tp *TimeoutParams) Commit(t time.Time) time.Time {
+	return t.Add(time.Duration(tp.Commit0) * time.Millisecond)
+}
+
+// Initialize parameters from config file
+func InitTimeoutParamsFromConfig() *TimeoutParams {
+	return &TimeoutParams{
+		Propose0:       config.GetInt("timeout_propose"),
+		ProposeDelta:   config.GetInt("timeout_propose_delta"),
+		Prevote0:       config.GetInt("timeout_prevote"),
+		PrevoteDelta:   config.GetInt("timeout_prevote_delta"),
+		Precommit0:     config.GetInt("timeout_precommit"),
+		PrecommitDelta: config.GetInt("timeout_precommit_delta"),
+		Commit0:        config.GetInt("timeout_commit"),
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Errors
 
 var (
 	ErrInvalidProposalSignature = errors.New("Error invalid proposal signature")
@@ -188,6 +227,7 @@ type ConsensusState struct {
 	timeoutTicker    *time.Ticker     // ticker for timeouts
 	tickChan         chan timeoutInfo // start the timeoutTicker in the timeoutRoutine
 	tockChan         chan timeoutInfo // timeouts are relayed on tockChan to the receiveRoutine
+	timeoutParams    *TimeoutParams   // parameters and functions for timeout intervals
 
 	evsw *events.EventSwitch
 
@@ -206,6 +246,7 @@ func NewConsensusState(state *sm.State, proxyAppConn proxy.AppConn, blockStore *
 		timeoutTicker:    new(time.Ticker),
 		tickChan:         make(chan timeoutInfo, tickTockBufferSize),
 		tockChan:         make(chan timeoutInfo, tickTockBufferSize),
+		timeoutParams:    InitTimeoutParamsFromConfig(),
 	}
 	cs.updateToState(state)
 	// Don't call scheduleRound0 yet.
@@ -453,9 +494,9 @@ func (cs *ConsensusState) updateToState(state *sm.State) {
 		// to be gathered for the first block.
 		// And alternative solution that relies on clocks:
 		//  cs.StartTime = state.LastBlockTime.Add(timeoutCommit)
-		cs.StartTime = time.Now().Add(timeoutCommit)
+		cs.StartTime = cs.timeoutParams.Commit(time.Now())
 	} else {
-		cs.StartTime = cs.CommitTime.Add(timeoutCommit)
+		cs.StartTime = cs.timeoutParams.Commit(cs.CommitTime)
 	}
 	cs.CommitTime = time.Time{}
 	cs.Validators = validators
@@ -726,8 +767,8 @@ func (cs *ConsensusState) enterPropose(height int, round int) {
 		}
 	}()
 
-	// This step times out after `timeoutPropose`
-	cs.scheduleTimeout(timeoutPropose0+timeoutProposeDelta*time.Duration(round), height, round, RoundStepPropose)
+	// If we don't get the proposal and all block parts quick enough, enterPrevote
+	cs.scheduleTimeout(cs.timeoutParams.Propose(round), height, round, RoundStepPropose)
 
 	// Nothing more to do if we're not a validator
 	if cs.privValidator == nil {
@@ -820,6 +861,12 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 
 	// Mempool validated transactions
 	txs := cs.mempool.Reap()
+
+	// Cap the number of txs in a block
+	maxBlockSize := config.GetInt("block_size")
+	if maxBlockSize > 0 && maxBlockSize < len(txs) {
+		txs = txs[:maxBlockSize]
+	}
 
 	block = &types.Block{
 		Header: &types.Header{
@@ -928,8 +975,8 @@ func (cs *ConsensusState) enterPrevoteWait(height int, round int) {
 		cs.newStep()
 	}()
 
-	// After `timeoutPrevote0+timeoutPrevoteDelta*round`, enterPrecommit()
-	cs.scheduleTimeout(timeoutPrevote0+timeoutPrevoteDelta*time.Duration(round), height, round, RoundStepPrevoteWait)
+	// Wait for some more prevotes; enterPrecommit
+	cs.scheduleTimeout(cs.timeoutParams.Prevote(round), height, round, RoundStepPrevoteWait)
 }
 
 // Enter: +2/3 precomits for block or nil.
@@ -1049,8 +1096,8 @@ func (cs *ConsensusState) enterPrecommitWait(height int, round int) {
 		cs.newStep()
 	}()
 
-	// After `timeoutPrecommit0+timeoutPrecommitDelta*round`, enterNewRound()
-	cs.scheduleTimeout(timeoutPrecommit0+timeoutPrecommitDelta*time.Duration(round), height, round, RoundStepPrecommitWait)
+	// Wait for some more precommits; enterNewRound
+	cs.scheduleTimeout(cs.timeoutParams.Precommit(round), height, round, RoundStepPrecommitWait)
 
 }
 

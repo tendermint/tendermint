@@ -87,11 +87,21 @@ func GetConfig(rootDir string) cfg.Config {
 	mapConfig.SetDefault("db_backend", "memdb")
 	mapConfig.SetDefault("db_dir", rootDir+"/data")
 	mapConfig.SetDefault("log_level", "debug")
-	mapConfig.SetDefault("vm_log", true)
 	mapConfig.SetDefault("rpc_laddr", "0.0.0.0:36657")
 	mapConfig.SetDefault("prof_laddr", "")
 	mapConfig.SetDefault("revision_file", rootDir+"/revision")
-	mapConfig.SetDefault("cswal", rootDir+"/cswal")
+	mapConfig.SetDefault("cswal", rootDir+"/data/cswal")
+
+	mapConfig.SetDefault("block_size", 10000)
+	mapConfig.SetDefault("timeout_propose", 100)
+	mapConfig.SetDefault("timeout_propose_delta", 1)
+	mapConfig.SetDefault("timeout_prevote", 1)
+	mapConfig.SetDefault("timeout_prevote_delta", 1)
+	mapConfig.SetDefault("timeout_precommit", 1)
+	mapConfig.SetDefault("timeout_precommit_delta", 1)
+	mapConfig.SetDefault("timeout_commit", 1)
+	mapConfig.SetDefault("mempool_recheck", true)
+
 	return mapConfig
 }
 
