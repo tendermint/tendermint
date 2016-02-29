@@ -1,5 +1,6 @@
 package types
 
+// Applications
 type Application interface {
 
 	// Return application info
@@ -19,4 +20,14 @@ type Application interface {
 
 	// Query for state
 	Query(query []byte) (code CodeType, result []byte, log string)
+}
+
+// Some applications can choose to implement ValidatorAware
+type ValidatorAware interface {
+
+	// Give app initial list of validators upon genesis
+	InitValidators([]*Validator)
+
+	// Receive updates to validators from app, prior to commit
+	SyncValidators() []*Validator
 }

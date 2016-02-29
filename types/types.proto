@@ -18,8 +18,8 @@ enum MessageType {
   CheckTx         = 0x12;
   Commit          = 0x13;
   Query           = 0x14;
-  InitValdiators  = 0x15;
-  SyncValdiators  = 0x16;
+  InitValidators  = 0x15;
+  SyncValidators  = 0x16;
 }
 
 //----------------------------------------

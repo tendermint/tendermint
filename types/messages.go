@@ -61,6 +61,19 @@ func RequestQuery(queryBytes []byte) *Request {
 	}
 }
 
+func RequestInitValidators(validators []*Validator) *Request {
+	return &Request{
+		Type:       MessageType_InitValidators,
+		Validators: validators,
+	}
+}
+
+func RequestSyncValidators() *Request {
+	return &Request{
+		Type: MessageType_SyncValidators,
+	}
+}
+
 //----------------------------------------
 
 func ResponseException(errStr string) *Response {
@@ -129,6 +142,19 @@ func ResponseQuery(code CodeType, result []byte, log string) *Response {
 		Code: code,
 		Data: result,
 		Log:  log,
+	}
+}
+
+func ResponseInitValidators() *Response {
+	return &Response{
+		Type: MessageType_InitValidators,
+	}
+}
+
+func ResponseSyncValidators(validators []*Validator) *Response {
+	return &Response{
+		Type:       MessageType_SyncValidators,
+		Validators: validators,
 	}
 }
 
