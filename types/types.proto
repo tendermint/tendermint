@@ -9,15 +9,17 @@ package types;
 enum MessageType {
   NullMessage = 0x00;
 
-  Echo       = 0x01;
-  Flush      = 0x02;
-  Info       = 0x03;
-  SetOption  = 0x04;
-  Exception  = 0x05;
-  AppendTx   = 0x11;
-  CheckTx    = 0x12;
-  Commit     = 0x13;
-  Query      = 0x14;
+  Echo            = 0x01;
+  Flush           = 0x02;
+  Info            = 0x03;
+  SetOption       = 0x04;
+  Exception       = 0x05;
+  AppendTx        = 0x11;
+  CheckTx         = 0x12;
+  Commit          = 0x13;
+  Query           = 0x14;
+  InitValidators  = 0x15;
+  SyncValidators  = 0x16;
 }
 
 //----------------------------------------
@@ -43,6 +45,7 @@ message Request {
             bytes             data        = 2;
             string            key         = 3;
             string            value       = 4;
+  repeated  Validator         validators  = 5;
 }
 
 //----------------------------------------
@@ -54,5 +57,13 @@ message Response {
             CodeType          code        = 3;
             string            error       = 4;
             string            log         = 5;
+  repeated  Validator         validators  = 6;
 }
 
+//----------------------------------------
+// Misc types
+
+message Validator {
+            bytes             pubKey      = 1;
+            uint64            power       = 2;
+}

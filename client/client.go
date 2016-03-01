@@ -215,6 +215,14 @@ func (cli *Client) QueryAsync(query []byte) *ReqRes {
 	return cli.queueRequest(types.RequestQuery(query))
 }
 
+func (cli *Client) InitValidatorsAsync(validators []*types.Validator) *ReqRes {
+	return cli.queueRequest(types.RequestInitValidators(validators))
+}
+
+func (cli *Client) SyncValidatorsAsync() *ReqRes {
+	return cli.queueRequest(types.RequestSyncValidators())
+}
+
 //----------------------------------------
 
 func (cli *Client) FlushSync() error {
@@ -278,6 +286,24 @@ func (cli *Client) QuerySync(query []byte) (code types.CodeType, result []byte, 
 	}
 	res := reqres.Response
 	return res.Code, res.Data, res.Log, nil
+}
+
+func (cli *Client) InitValidatorsSync(validators []*types.Validator) (err error) {
+	cli.queueRequest(types.RequestInitValidators(validators))
+	cli.FlushSync()
+	if cli.err != nil {
+		return cli.err
+	}
+	return nil
+}
+
+func (cli *Client) SyncValidatorsSync() (validators []*types.Validator, err error) {
+	reqres := cli.queueRequest(types.RequestSyncValidators())
+	cli.FlushSync()
+	if cli.err != nil {
+		return nil, cli.err
+	}
+	return reqres.Response.Validators, nil
 }
 
 //----------------------------------------
