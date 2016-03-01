@@ -39,9 +39,11 @@ type WAL struct {
 	exists bool // if the file already existed (restarted process)
 
 	done chan struct{}
+
+	light bool // ignore block parts
 }
 
-func NewWAL(file string) (*WAL, error) {
+func NewWAL(file string, light bool) (*WAL, error) {
 	var walExists bool
 	if _, err := os.Stat(file); err == nil {
 		walExists = true
@@ -54,12 +56,20 @@ func NewWAL(file string) (*WAL, error) {
 		fp:     fp,
 		exists: walExists,
 		done:   make(chan struct{}),
+		light:  light,
 	}, nil
 }
 
 // called in newStep and for each pass in receiveRoutine
 func (wal *WAL) Save(msg ConsensusLogMessageInterface) {
 	if wal != nil {
+		if wal.light {
+			if m, ok := msg.(msgInfo); ok {
+				if _, ok := m.Msg.(*BlockPartMessage); ok {
+					return
+				}
+			}
+		}
 		var n int
 		var err error
 		wire.WriteJSON(ConsensusLogMessage{time.Now(), msg}, wal.fp, &n, &err)

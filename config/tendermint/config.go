@@ -67,6 +67,7 @@ func GetConfig(rootDir string) cfg.Config {
 	mapConfig.SetDefault("prof_laddr", "")
 	mapConfig.SetDefault("revision_file", rootDir+"/revision")
 	mapConfig.SetDefault("cswal", rootDir+"/data/cswal")
+	mapConfig.SetDefault("cswal_light", false)
 
 	mapConfig.SetDefault("block_size", 10000)
 	mapConfig.SetDefault("timeout_propose", 3000)
@@ -77,6 +78,8 @@ func GetConfig(rootDir string) cfg.Config {
 	mapConfig.SetDefault("timeout_precommit_delta", 500)
 	mapConfig.SetDefault("timeout_commit", 1000)
 	mapConfig.SetDefault("mempool_recheck", true)
+	mapConfig.SetDefault("mempool_broadcast", true)
+	mapConfig.SetDefault("mempool_reap", true)
 
 	return mapConfig
 }

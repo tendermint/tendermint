@@ -20,6 +20,7 @@ var Routes = map[string]*rpc.RPCFunc{
 	"broadcast_tx_sync":    rpc.NewRPCFunc(BroadcastTxSyncResult, "tx"),
 	"broadcast_tx_async":   rpc.NewRPCFunc(BroadcastTxAsyncResult, "tx"),
 	"unconfirmed_txs":      rpc.NewRPCFunc(UnconfirmedTxsResult, ""),
+	"test_start_mempool":   rpc.NewRPCFunc(TestStartMempoolResult, ""), // move to test server ?
 	// subscribe/unsubscribe are reserved for websocket events.
 }
 
@@ -121,6 +122,14 @@ func BroadcastTxSyncResult(tx []byte) (ctypes.TMResult, error) {
 
 func BroadcastTxAsyncResult(tx []byte) (ctypes.TMResult, error) {
 	if r, err := BroadcastTxAsync(tx); err != nil {
+		return nil, err
+	} else {
+		return r, nil
+	}
+}
+
+func TestStartMempoolResult() (ctypes.TMResult, error) {
+	if r, err := TestStartMempool(); err != nil {
 		return nil, err
 	} else {
 		return r, nil

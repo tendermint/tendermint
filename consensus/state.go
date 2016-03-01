@@ -328,7 +328,7 @@ func (cs *ConsensusState) OnStop() {
 func (cs *ConsensusState) OpenWAL(file string) (err error) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
-	wal, err := NewWAL(file)
+	wal, err := NewWAL(file, config.GetBool("cswal_light"))
 	if err != nil {
 		return err
 	}
@@ -655,7 +655,6 @@ func (cs *ConsensusState) handleMsg(mi msgInfo, rs RoundState) {
 		err = cs.setProposal(msg.Proposal)
 	case *BlockPartMessage:
 		// if the proposal is complete, we'll enterPrevote or tryFinalizeCommit
-		// if we're the only validator, the enterPrevote may take us through to the next round
 		_, err = cs.addProposalBlockPart(msg.Height, msg.Part)
 	case *VoteMessage:
 		// attempt to add the vote and dupeout the validator if its a duplicate signature
@@ -675,7 +674,7 @@ func (cs *ConsensusState) handleMsg(mi msgInfo, rs RoundState) {
 		log.Warn("Unknown msg type", reflect.TypeOf(msg))
 	}
 	if err != nil {
-		log.Error("Error with msg", "type", reflect.TypeOf(msg), "error", err, "msg", msg)
+		log.Error("Error with msg", "type", reflect.TypeOf(msg), "peer", peerKey, "error", err, "msg", msg)
 	}
 }
 
