@@ -656,6 +656,9 @@ func (cs *ConsensusState) handleMsg(mi msgInfo, rs RoundState) {
 	case *BlockPartMessage:
 		// if the proposal is complete, we'll enterPrevote or tryFinalizeCommit
 		_, err = cs.addProposalBlockPart(msg.Height, msg.Part)
+		if err != nil && msg.Round != cs.Round {
+			err = nil
+		}
 	case *VoteMessage:
 		// attempt to add the vote and dupeout the validator if its a duplicate signature
 		// if the vote gives us a 2/3-any or 2/3-one, we transition
@@ -1040,9 +1043,9 @@ func (cs *ConsensusState) enterPrecommit(height int, round int) {
 	// +2/3 prevoted nil. Unlock and precommit nil.
 	if len(hash) == 0 {
 		if cs.LockedBlock == nil {
-			log.Info("enterPrecommit: +2/3 prevoted for nil.")
+			log.Notice("enterPrecommit: +2/3 prevoted for nil.")
 		} else {
-			log.Info("enterPrecommit: +2/3 prevoted for nil. Unlocking")
+			log.Notice("enterPrecommit: +2/3 prevoted for nil. Unlocking")
 			cs.LockedRound = 0
 			cs.LockedBlock = nil
 			cs.LockedBlockParts = nil
@@ -1056,7 +1059,7 @@ func (cs *ConsensusState) enterPrecommit(height int, round int) {
 
 	// If we're already locked on that block, precommit it, and update the LockedRound
 	if cs.LockedBlock.HashesTo(hash) {
-		log.Info("enterPrecommit: +2/3 prevoted locked block. Relocking")
+		log.Notice("enterPrecommit: +2/3 prevoted locked block. Relocking")
 		cs.LockedRound = round
 		cs.evsw.FireEvent(types.EventStringRelock(), cs.RoundStateEvent())
 		cs.signAddVote(types.VoteTypePrecommit, hash, partsHeader)
@@ -1065,7 +1068,7 @@ func (cs *ConsensusState) enterPrecommit(height int, round int) {
 
 	// If +2/3 prevoted for proposal block, stage and precommit it
 	if cs.ProposalBlock.HashesTo(hash) {
-		log.Info("enterPrecommit: +2/3 prevoted proposal block. Locking", "hash", hash)
+		log.Notice("enterPrecommit: +2/3 prevoted proposal block. Locking", "hash", hash)
 		// Validate the block.
 		if err := cs.state.ValidateBlock(cs.ProposalBlock); err != nil {
 			PanicConsensus(Fmt("enterPrecommit: +2/3 prevoted for an invalid block: %v", err))
@@ -1294,7 +1297,7 @@ func (cs *ConsensusState) setProposal(proposal *types.Proposal) error {
 }
 
 // NOTE: block is not necessarily valid.
-// This can trigger us to go into enterPrevote asynchronously (before we timeout of propose) or to attempt to commit
+// Asynchronously triggers either enterPrevote (before we timeout of propose) or tryFinalizeCommit, once we have the full block.
 func (cs *ConsensusState) addProposalBlockPart(height int, part *types.Part) (added bool, err error) {
 	// Blocks might be reused, so round mismatch is OK
 	if cs.Height != height {
