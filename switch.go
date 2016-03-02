@@ -70,10 +70,11 @@ var (
 	ErrSwitchMaxPeersPerIPRange = errors.New("IP range has too many peers")
 )
 
+// config keys
 const (
-	peerDialTimeoutSeconds  = 3  // TODO make this configurable
-	handshakeTimeoutSeconds = 20 // TODO make this configurable
-	maxNumPeers             = 50 // TODO make this configurable
+	dialTimeoutKey      = "p2p_dial_timeout_seconds"
+	handshakeTimeoutKey = "p2p_handshake_timeout_seconds"
+	maxNumPeersKey      = "p2p_max_num_peers"
 )
 
 func NewSwitch() *Switch {
@@ -194,7 +195,7 @@ func (sw *Switch) OnStop() {
 // CONTRACT: Iff error is returned, peer is nil, and conn is immediately closed.
 func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, error) {
 	// Set deadline for handshake so we don't block forever on conn.ReadFull
-	conn.SetDeadline(time.Now().Add(handshakeTimeoutSeconds * time.Second))
+	conn.SetDeadline(time.Now().Add(time.Duration(config.GetInt(handshakeTimeoutKey)) * time.Second))
 
 	// First, encrypt the connection.
 	sconn, err := MakeSecretConnection(conn, sw.nodePrivKey)
@@ -279,7 +280,7 @@ func (sw *Switch) dialSeed(addr *NetAddress) {
 func (sw *Switch) DialPeerWithAddress(addr *NetAddress) (*Peer, error) {
 	log.Info("Dialing address", "address", addr)
 	sw.dialing.Set(addr.IP.String(), addr)
-	conn, err := addr.DialTimeout(peerDialTimeoutSeconds * time.Second)
+	conn, err := addr.DialTimeout(time.Duration(config.GetInt(dialTimeoutKey)) * time.Second)
 	sw.dialing.Delete(addr.IP.String())
 	if err != nil {
 		log.Info("Failed dialing address", "address", addr, "error", err)
@@ -370,8 +371,9 @@ func (sw *Switch) listenerRoutine(l Listener) {
 		}
 
 		// ignore connection if we already have enough
-		if maxNumPeers <= sw.peers.Size() {
-			log.Info("Ignoring inbound connection: already have enough peers", "address", inConn.RemoteAddr().String(), "numPeers", sw.peers.Size(), "max", maxNumPeers)
+		maxPeers := config.GetInt(maxNumPeersKey)
+		if maxPeers <= sw.peers.Size() {
+			log.Info("Ignoring inbound connection: already have enough peers", "address", inConn.RemoteAddr().String(), "numPeers", sw.peers.Size(), "max", maxPeers)
 			continue
 		}
 
