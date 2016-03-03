@@ -80,7 +80,7 @@ func (wal *WAL) Save(msg ConsensusLogMessageInterface) {
 	}
 }
 
-// Must not be called concurrently.
+// Must not be called concurrently with a write.
 func (wal *WAL) Close() {
 	if wal != nil {
 		wal.fp.Close()

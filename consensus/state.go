@@ -319,7 +319,7 @@ func (cs *ConsensusState) startRoutines(maxSteps int) {
 
 func (cs *ConsensusState) OnStop() {
 	cs.QuitService.OnStop()
-	if cs.wal != nil {
+	if cs.wal != nil && cs.IsRunning() {
 		cs.wal.Wait()
 	}
 }
