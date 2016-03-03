@@ -68,7 +68,7 @@ type ResultUnconfirmedTxs struct {
 	Txs []types.Tx `json:"txs"`
 }
 
-type ResultTestStartMempool struct{}
+type ResultUnsafeSetConfig struct{}
 
 type ResultSubscribe struct {
 }
@@ -109,7 +109,7 @@ const (
 	ResultTypeEvent       = byte(0x82)
 
 	// 0xa bytes for testing
-	ResultTypeTestStartMempool = byte(0xa0)
+	ResultTypeUnsafeSetConfig = byte(0xa0)
 )
 
 type TMResult interface {
@@ -132,5 +132,5 @@ var _ = wire.RegisterInterface(
 	wire.ConcreteType{&ResultSubscribe{}, ResultTypeSubscribe},
 	wire.ConcreteType{&ResultUnsubscribe{}, ResultTypeUnsubscribe},
 	wire.ConcreteType{&ResultEvent{}, ResultTypeEvent},
-	wire.ConcreteType{&ResultTestStartMempool{}, ResultTypeTestStartMempool},
+	wire.ConcreteType{&ResultUnsafeSetConfig{}, ResultTypeUnsafeSetConfig},
 )

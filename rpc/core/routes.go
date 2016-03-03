@@ -7,8 +7,10 @@ import (
 )
 
 var Routes = map[string]*rpc.RPCFunc{
-	"subscribe":            rpc.NewWSRPCFunc(SubscribeResult, "event"),
-	"unsubscribe":          rpc.NewWSRPCFunc(UnsubscribeResult, "event"),
+	// subscribe/unsubscribe are reserved for websocket events.
+	"subscribe":   rpc.NewWSRPCFunc(SubscribeResult, "event"),
+	"unsubscribe": rpc.NewWSRPCFunc(UnsubscribeResult, "event"),
+
 	"status":               rpc.NewRPCFunc(StatusResult, ""),
 	"net_info":             rpc.NewRPCFunc(NetInfoResult, ""),
 	"dial_seeds":           rpc.NewRPCFunc(DialSeedsResult, "seeds"),
@@ -20,8 +22,8 @@ var Routes = map[string]*rpc.RPCFunc{
 	"broadcast_tx_sync":    rpc.NewRPCFunc(BroadcastTxSyncResult, "tx"),
 	"broadcast_tx_async":   rpc.NewRPCFunc(BroadcastTxAsyncResult, "tx"),
 	"unconfirmed_txs":      rpc.NewRPCFunc(UnconfirmedTxsResult, ""),
-	"test_start_mempool":   rpc.NewRPCFunc(TestStartMempoolResult, ""), // move to test server ?
-	// subscribe/unsubscribe are reserved for websocket events.
+
+	"unsafe_set_config": rpc.NewRPCFunc(UnsafeSetConfigResult, "type,key,value"),
 }
 
 func SubscribeResult(wsCtx rpctypes.WSRPCContext, event string) (ctypes.TMResult, error) {
@@ -128,8 +130,8 @@ func BroadcastTxAsyncResult(tx []byte) (ctypes.TMResult, error) {
 	}
 }
 
-func TestStartMempoolResult() (ctypes.TMResult, error) {
-	if r, err := TestStartMempool(); err != nil {
+func UnsafeSetConfigResult(typ, key, value string) (ctypes.TMResult, error) {
+	if r, err := UnsafeSetConfig(typ, key, value); err != nil {
 		return nil, err
 	} else {
 		return r, nil

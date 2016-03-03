@@ -39,8 +39,3 @@ func UnconfirmedTxs() (*ctypes.ResultUnconfirmedTxs, error) {
 	txs := mempoolReactor.Mempool.Reap()
 	return &ctypes.ResultUnconfirmedTxs{len(txs), txs}, nil
 }
-
-func TestStartMempool() (*ctypes.ResultTestStartMempool, error) {
-	config.Set("mempool_reap", true)
-	return &ctypes.ResultTestStartMempool{}, nil
-}
