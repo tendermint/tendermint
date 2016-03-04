@@ -184,10 +184,6 @@ func (mem *Mempool) resCbRecheck(req *tmsp.Request, res *tmsp.Response) {
 
 // Get the valid transactions remaining
 func (mem *Mempool) Reap() []types.Tx {
-	if !config.GetBool("mempool_reap") {
-		return []types.Tx{}
-	}
-
 	mem.proxyMtx.Lock()
 	defer mem.proxyMtx.Unlock()
 

@@ -103,7 +103,6 @@ func GetConfig(rootDir string) cfg.Config {
 	mapConfig.SetDefault("timeout_commit", 1)
 	mapConfig.SetDefault("mempool_recheck", true)
 	mapConfig.SetDefault("mempool_broadcast", true)
-	mapConfig.SetDefault("mempool_reap", true)
 
 	return mapConfig
 }
