@@ -797,8 +797,8 @@ func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
-	// Ignore duplicate messages.
-	if ps.Height == msg.Height && ps.Round == msg.Round && ps.Step == msg.Step {
+	// Ignore duplicates or decreases
+	if CompareHRS(msg.Height, msg.Round, msg.Step, ps.Height, ps.Round, ps.Step) <= 0 {
 		return
 	}
 

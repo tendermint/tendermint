@@ -1134,7 +1134,7 @@ func (cs *ConsensusState) enterCommit(height int, commitRound int) {
 
 	defer func() {
 		// Done enterCommit:
-		// keep ca.Round the same, it points to the right Precommits set.
+		// keep cs.Round the same, commitRound points to the right Precommits set.
 		cs.updateRoundStep(cs.Round, RoundStepCommit)
 		cs.CommitRound = commitRound
 		cs.newStep()
