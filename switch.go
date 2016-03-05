@@ -301,6 +301,7 @@ func (sw *Switch) IsDialing(addr *NetAddress) bool {
 // Broadcast runs a go routine for each attempted send, which will block
 // trying to send for defaultSendTimeoutSeconds. Returns a channel
 // which receives success values for each attempted send (false if times out)
+// NOTE: Broadcast uses goroutines, so order of broadcast may not be preserved.
 func (sw *Switch) Broadcast(chID byte, msg interface{}) chan bool {
 	successChan := make(chan bool, len(sw.peers.List()))
 	log.Info("Broadcast", "channel", chID, "msg", msg)
