@@ -100,6 +100,33 @@ func (app *localAppConn) CommitSync() (hash []byte, log string, err error) {
 	return hash, log, nil
 }
 
+func (app *localAppConn) InitChainSync(validators []*tmsp.Validator) (err error) {
+	app.mtx.Lock()
+	if bcApp, ok := app.Application.(tmsp.BlockchainAware); ok {
+		bcApp.InitChain(validators)
+	}
+	app.mtx.Unlock()
+	return nil
+}
+
+func (app *localAppConn) BeginBlockSync(height uint64) (err error) {
+	app.mtx.Lock()
+	if bcApp, ok := app.Application.(tmsp.BlockchainAware); ok {
+		bcApp.BeginBlock(height)
+	}
+	app.mtx.Unlock()
+	return nil
+}
+
+func (app *localAppConn) EndBlockSync() (changedValidators []*tmsp.Validator, err error) {
+	app.mtx.Lock()
+	if bcApp, ok := app.Application.(tmsp.BlockchainAware); ok {
+		changedValidators = bcApp.EndBlock()
+	}
+	app.mtx.Unlock()
+	return changedValidators, nil
+}
+
 //-------------------------------------------------------
 
 func (app *localAppConn) callback(req *tmsp.Request, res *tmsp.Response) *tmspcli.ReqRes {

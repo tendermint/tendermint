@@ -77,16 +77,34 @@ func (s *State) execBlockOnProxyApp(evsw *events.EventSwitch, proxyAppConn proxy
 	}
 	proxyAppConn.SetResponseCallback(proxyCb)
 
-	// Run next txs in the block and get new AppHash
+	// Begin block
+	err := proxyAppConn.BeginBlockSync(uint64(block.Height))
+	if err != nil {
+		log.Warn("Error in proxyAppConn.BeginBlock", "error", err)
+		return err
+	}
+
+	// Run txs of block
 	for _, tx := range block.Txs {
 		proxyAppConn.AppendTxAsync(tx)
 		if err := proxyAppConn.Error(); err != nil {
 			return err
 		}
 	}
+
+	// End block
+	changedValidators, err := proxyAppConn.EndBlockSync()
+	if err != nil {
+		log.Warn("Error in proxyAppConn.EndBlock", "error", err)
+		return err
+	}
+	// TODO: Do something with changedValidators
+	log.Info("TODO: Do something with changedValidators", changedValidators)
+
+	// Commit block, get hash back
 	hash, logStr, err := proxyAppConn.CommitSync()
 	if err != nil {
-		log.Warn("Error computing proxyAppConn hash", "error", err)
+		log.Warn("Error in proxyAppConn.CommitSync", "error", err)
 		return err
 	}
 	if logStr != "" {

@@ -2,6 +2,7 @@ package proxy
 
 import (
 	tmspcli "github.com/tendermint/tmsp/client"
+	tmsp "github.com/tendermint/tmsp/types"
 )
 
 type AppConn interface {
@@ -18,4 +19,7 @@ type AppConn interface {
 	InfoSync() (info string, err error)
 	FlushSync() error
 	CommitSync() (hash []byte, log string, err error)
+	InitChainSync(validators []*tmsp.Validator) (err error)
+	BeginBlockSync(height uint64) (err error)
+	EndBlockSync() (changedValidators []*tmsp.Validator, err error)
 }
