@@ -43,7 +43,7 @@ func resetWithLogLevel(logLevel string) {
 func Reset() {
 
 	var logLevel string = "debug"
-	if config != nil {
+	if config != nil && config.IsSet("log_level") {
 		logLevel = config.GetString("log_level")
 	}
 
