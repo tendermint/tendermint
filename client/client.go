@@ -215,12 +215,16 @@ func (cli *Client) QueryAsync(query []byte) *ReqRes {
 	return cli.queueRequest(types.RequestQuery(query))
 }
 
-func (cli *Client) InitValidatorsAsync(validators []*types.Validator) *ReqRes {
-	return cli.queueRequest(types.RequestInitValidators(validators))
+func (cli *Client) InitChainAsync(validators []*types.Validator) *ReqRes {
+	return cli.queueRequest(types.RequestInitChain(validators))
 }
 
-func (cli *Client) SyncValidatorsAsync() *ReqRes {
-	return cli.queueRequest(types.RequestSyncValidators())
+func (cli *Client) BeginBlockAsync(height uint64) *ReqRes {
+	return cli.queueRequest(types.RequestBeginBlock(height))
+}
+
+func (cli *Client) EndBlockAsync() *ReqRes {
+	return cli.queueRequest(types.RequestEndBlock())
 }
 
 //----------------------------------------
@@ -288,8 +292,8 @@ func (cli *Client) QuerySync(query []byte) (code types.CodeType, result []byte, 
 	return res.Code, res.Data, res.Log, nil
 }
 
-func (cli *Client) InitValidatorsSync(validators []*types.Validator) (err error) {
-	cli.queueRequest(types.RequestInitValidators(validators))
+func (cli *Client) InitChainSync(validators []*types.Validator) (err error) {
+	cli.queueRequest(types.RequestInitChain(validators))
 	cli.FlushSync()
 	if cli.err != nil {
 		return cli.err
@@ -297,8 +301,17 @@ func (cli *Client) InitValidatorsSync(validators []*types.Validator) (err error)
 	return nil
 }
 
-func (cli *Client) SyncValidatorsSync() (validators []*types.Validator, err error) {
-	reqres := cli.queueRequest(types.RequestSyncValidators())
+func (cli *Client) BeginBlockSync(height uint64) (err error) {
+	cli.queueRequest(types.RequestBeginBlock(height))
+	cli.FlushSync()
+	if cli.err != nil {
+		return cli.err
+	}
+	return nil
+}
+
+func (cli *Client) EndBlockSync() (validators []*types.Validator, err error) {
+	reqres := cli.queueRequest(types.RequestEndBlock())
 	cli.FlushSync()
 	if cli.err != nil {
 		return nil, cli.err

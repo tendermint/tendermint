@@ -61,16 +61,23 @@ func RequestQuery(queryBytes []byte) *Request {
 	}
 }
 
-func RequestInitValidators(validators []*Validator) *Request {
+func RequestInitChain(validators []*Validator) *Request {
 	return &Request{
-		Type:       MessageType_InitValidators,
+		Type:       MessageType_InitChain,
 		Validators: validators,
 	}
 }
 
-func RequestSyncValidators() *Request {
+func RequestBeginBlock(height uint64) *Request {
 	return &Request{
-		Type: MessageType_SyncValidators,
+		Type:   MessageType_BeginBlock,
+		Height: height,
+	}
+}
+
+func RequestEndBlock() *Request {
+	return &Request{
+		Type: MessageType_EndBlock,
 	}
 }
 
@@ -145,15 +152,21 @@ func ResponseQuery(code CodeType, result []byte, log string) *Response {
 	}
 }
 
-func ResponseInitValidators() *Response {
+func ResponseInitChain() *Response {
 	return &Response{
-		Type: MessageType_InitValidators,
+		Type: MessageType_InitChain,
 	}
 }
 
-func ResponseSyncValidators(validators []*Validator) *Response {
+func ResponseBeginBlock() *Response {
 	return &Response{
-		Type:       MessageType_SyncValidators,
+		Type: MessageType_BeginBlock,
+	}
+}
+
+func ResponseEndBlock(validators []*Validator) *Response {
+	return &Response{
+		Type:       MessageType_EndBlock,
 		Validators: validators,
 	}
 }

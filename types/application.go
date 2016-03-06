@@ -22,12 +22,17 @@ type Application interface {
 	Query(query []byte) (code CodeType, result []byte, log string)
 }
 
-// Some applications can choose to implement ValidatorAware
-type ValidatorAware interface {
+// Some applications can choose to implement BlockchainAware
+type BlockchainAware interface {
 
-	// Give app initial list of validators upon genesis
-	InitValidators([]*Validator)
+	// Initialize blockchain
+	// validators: genesis validators from TendermintCore
+	InitChain(validators []*Validator)
 
-	// Receive updates to validators from app, prior to commit
-	SyncValidators() []*Validator
+	// Signals the beginning of a block
+	BeginBlock(height uint64)
+
+	// Signals the end of a block
+	// validators: changed validators from app to TendermintCore
+	EndBlock() (validators []*Validator)
 }

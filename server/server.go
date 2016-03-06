@@ -148,19 +148,19 @@ func (s *Server) handleRequest(req *types.Request, responses chan<- *types.Respo
 	case types.MessageType_Query:
 		code, result, logStr := s.app.Query(req.Data)
 		responses <- types.ResponseQuery(code, result, logStr)
-	case types.MessageType_InitValidators:
-		if app, ok := s.app.(types.ValidatorAware); ok {
-			app.InitValidators(req.Validators)
-			responses <- types.ResponseInitValidators()
+	case types.MessageType_InitChain:
+		if app, ok := s.app.(types.BlockchainAware); ok {
+			app.InitChain(req.Validators)
+			responses <- types.ResponseInitChain()
 		} else {
-			responses <- types.ResponseInitValidators()
+			responses <- types.ResponseInitChain()
 		}
-	case types.MessageType_SyncValidators:
-		if app, ok := s.app.(types.ValidatorAware); ok {
-			validators := app.SyncValidators()
-			responses <- types.ResponseSyncValidators(validators)
+	case types.MessageType_EndBlock:
+		if app, ok := s.app.(types.BlockchainAware); ok {
+			validators := app.EndBlock()
+			responses <- types.ResponseEndBlock(validators)
 		} else {
-			responses <- types.ResponseSyncValidators(nil)
+			responses <- types.ResponseEndBlock(nil)
 		}
 	default:
 		responses <- types.ResponseException("Unknown request")

@@ -18,23 +18,45 @@ enum MessageType {
   CheckTx         = 0x12;
   Commit          = 0x13;
   Query           = 0x14;
-  InitValidators  = 0x15;
-  SyncValidators  = 0x16;
+  InitChain       = 0x15;
+  BeginBlock      = 0x16;
+  EndBlock        = 0x17;
 }
 
 //----------------------------------------
 // Code types
 
 enum CodeType {
-  OK                  = 0;
-  InternalError       = 1;
-  Unauthorized        = 2;
-  InsufficientFees    = 3;
-  UnknownRequest      = 4;
-  EncodingError       = 5;
-  BadNonce            = 6;
-  UnknownAccount      = 7;
-  InsufficientFunds   = 8;
+  OK                    = 0;
+
+  // General response codes, 0 ~ 99
+  InternalError         = 1;
+  EncodingError         = 2;
+  BadNonce              = 3;
+  Unauthorized          = 4;
+  InsufficientFunds     = 5;
+  UnknownRequest        = 6;
+
+  // Reserved for basecoin, 100 ~ 199
+  BaseEncodingError     = 101;
+  BaseBadNonce          = 102;
+  BaseUnknownAccount    = 103;
+  BaseUnauthorized      = 104;
+  BaseInsufficientFunds = 105;
+  BaseInsufficientFees  = 106;
+
+  // Reserved for governance, 200 ~ 299
+  GovUnknownEntity      = 201;
+  GovUnknownGroup       = 202;
+  GovUnknownMember      = 203;
+  GovUnknownProposal    = 204;
+  GovDuplicateEntity    = 205;
+  GovDuplicateGroup     = 206;
+  GovDuplicateMember    = 207;
+  GovDuplicateProposal  = 208;
+  GovDuplicateVote      = 209;
+  GovInvalidVotingPower = 210;
+
 }
 
 //----------------------------------------
@@ -46,6 +68,7 @@ message Request {
             string            key         = 3;
             string            value       = 4;
   repeated  Validator         validators  = 5;
+            uint64            height      = 6;
 }
 
 //----------------------------------------

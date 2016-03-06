@@ -14,7 +14,7 @@ TMSP requests/responses are simple Protobuf messages.  Check out the [schema fil
   * __Arguments__:
     * `Data ([]byte)`: The request transaction bytes
   * __Returns__:
-    * `Code (uint)`: Response code
+    * `Code (uint32)`: Response code
     * `Data ([]byte)`: Result bytes, if any
     * `Log (string)`: Debug or error message
   * __Usage__:<br/>
@@ -24,7 +24,7 @@ TMSP requests/responses are simple Protobuf messages.  Check out the [schema fil
   * __Arguments__:
     * `Data ([]byte)`: The request transaction bytes
   * __Returns__:
-    * `Code (uint)`: Response code
+    * `Code (uint32)`: Response code
     * `Data ([]byte)`: Result bytes, if any
     * `Log (string)`: Debug or error message
   * __Usage__:<br/>
@@ -43,7 +43,7 @@ TMSP requests/responses are simple Protobuf messages.  Check out the [schema fil
   * __Arguments__:
     * `Data ([]byte)`: The query request bytes
   * __Returns__:
-    * `Code (uint)`: Response code
+    * `Code (uint32)`: Response code
     * `Data ([]byte)`: The query response bytes
     * `Log (string)`: Debug or error message
 
@@ -67,23 +67,29 @@ TMSP requests/responses are simple Protobuf messages.  Check out the [schema fil
     Set application options.  E.g. Key="mode", Value="mempool" for a mempool connection, or Key="mode", Value="consensus" for a consensus connection.
     Other options are application specific.
 
-#### InitValidators
+#### InitChain
   * __Arguments__:
     * `Validators ([]Validator)`: Initial genesis validators
   * __Usage__:<br/>
-    Called once upon genesis, to inform the app about the initial validators.
+    Called once upon genesis
 
-#### SyncValidators
+#### BeginBlock
+  * __Arguments__:
+    * `Height (uint64)`: Block number
+  * __Usage__:<br/>
+    Signals the beginning of a block
+
+#### EndBlock
   * __Returns__:
     * `Validators ([]Validator)`: Changed validators with new voting powers (0 to remove)
   * __Usage__:<br/>
-    Called prior to each Commit to get validator updates from the application.
+    Signals the end of a block.  Called prior to each Commit after all transactions
 
 ## Changelog
 
 ### Feb 28th, 2016
 
-* Added InitValidators, SyncValidators
+* Added InitChain, BeginBlock, EndBlock
 
 ### Feb 14th, 2016
 
