@@ -22,6 +22,7 @@ var Routes = map[string]*rpc.RPCFunc{
 	"broadcast_tx_sync":    rpc.NewRPCFunc(BroadcastTxSyncResult, "tx"),
 	"broadcast_tx_async":   rpc.NewRPCFunc(BroadcastTxAsyncResult, "tx"),
 	"unconfirmed_txs":      rpc.NewRPCFunc(UnconfirmedTxsResult, ""),
+	"num_unconfirmed_txs":  rpc.NewRPCFunc(NumUnconfirmedTxsResult, ""),
 
 	"unsafe_set_config": rpc.NewRPCFunc(UnsafeSetConfigResult, "type,key,value"),
 }
@@ -108,6 +109,14 @@ func DumpConsensusStateResult() (ctypes.TMResult, error) {
 
 func UnconfirmedTxsResult() (ctypes.TMResult, error) {
 	if r, err := UnconfirmedTxs(); err != nil {
+		return nil, err
+	} else {
+		return r, nil
+	}
+}
+
+func NumUnconfirmedTxsResult() (ctypes.TMResult, error) {
+	if r, err := NumUnconfirmedTxs(); err != nil {
 		return nil, err
 	} else {
 		return r, nil
