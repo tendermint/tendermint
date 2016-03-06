@@ -101,6 +101,10 @@ type Peer interface {
 // TODO: Handle mempool or reactor shutdown?
 // As is this routine may block forever if no new txs come in.
 func (memR *MempoolReactor) broadcastTxRoutine(peer Peer) {
+	if !config.GetBool("mempool_broadcast") {
+		return
+	}
+
 	var next *clist.CElement
 	for {
 		if !memR.IsRunning() {

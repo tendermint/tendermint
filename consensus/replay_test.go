@@ -63,7 +63,7 @@ func TestReplayCatchup(t *testing.T) {
 
 func openWAL(t *testing.T, cs *ConsensusState, file string) {
 	// open the wal
-	wal, err := NewWAL(file)
+	wal, err := NewWAL(file, config.GetBool("cswal_light"))
 	if err != nil {
 		t.Fatal(err)
 	}

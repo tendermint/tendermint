@@ -30,7 +30,7 @@ func TestSeek(t *testing.T) {
 	}
 	f.Close()
 
-	wal, err := NewWAL(path.Join(os.TempDir(), name))
+	wal, err := NewWAL(path.Join(os.TempDir(), name), config.GetBool("cswal_light"))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -15,9 +15,10 @@ const (
 	maxTotalRequesters        = 300
 	maxPendingRequests        = maxTotalRequesters
 	maxPendingRequestsPerPeer = 75
-	peerTimeoutSeconds        = 15
 	minRecvRate               = 10240 // 10Kb/s
 )
+
+var peerTimeoutSeconds = time.Duration(15) // not const so we can override with tests
 
 /*
 	Peers self report their heights when we join the block pool.

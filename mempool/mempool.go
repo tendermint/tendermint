@@ -223,12 +223,12 @@ func (mem *Mempool) Update(height int, txs []types.Tx) {
 	// Remove transactions that are already in txs.
 	goodTxs := mem.filterTxs(txsMap)
 	// Recheck mempool txs
-	// TODO: make optional
-	mem.recheckTxs(goodTxs)
-
-	// At this point, mem.txs are being rechecked.
-	// mem.recheckCursor re-scans mem.txs and possibly removes some txs.
-	// Before mem.Reap(), we should wait for mem.recheckCursor to be nil.
+	if config.GetBool("mempool_recheck") {
+		mem.recheckTxs(goodTxs)
+		// At this point, mem.txs are being rechecked.
+		// mem.recheckCursor re-scans mem.txs and possibly removes some txs.
+		// Before mem.Reap(), we should wait for mem.recheckCursor to be nil.
+	}
 }
 
 func (mem *Mempool) filterTxs(blockTxsMap map[string]struct{}) []types.Tx {

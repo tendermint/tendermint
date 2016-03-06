@@ -62,12 +62,24 @@ func GetConfig(rootDir string) cfg.Config {
 	mapConfig.SetDefault("priv_validator_file", rootDir+"/priv_validator.json")
 	mapConfig.SetDefault("db_backend", "leveldb")
 	mapConfig.SetDefault("db_dir", rootDir+"/data")
-	mapConfig.SetDefault("vm_log", true)
 	mapConfig.SetDefault("log_level", "info")
 	mapConfig.SetDefault("rpc_laddr", "0.0.0.0:46657")
 	mapConfig.SetDefault("prof_laddr", "")
 	mapConfig.SetDefault("revision_file", rootDir+"/revision")
-	mapConfig.SetDefault("cswal", rootDir+"/cswal")
+	mapConfig.SetDefault("cswal", rootDir+"/data/cswal")
+	mapConfig.SetDefault("cswal_light", false)
+
+	mapConfig.SetDefault("block_size", 10000)
+	mapConfig.SetDefault("timeout_propose", 3000)
+	mapConfig.SetDefault("timeout_propose_delta", 500)
+	mapConfig.SetDefault("timeout_prevote", 1000)
+	mapConfig.SetDefault("timeout_prevote_delta", 500)
+	mapConfig.SetDefault("timeout_precommit", 1000)
+	mapConfig.SetDefault("timeout_precommit_delta", 500)
+	mapConfig.SetDefault("timeout_commit", 1000)
+	mapConfig.SetDefault("mempool_recheck", true)
+	mapConfig.SetDefault("mempool_broadcast", true)
+
 	return mapConfig
 }
 

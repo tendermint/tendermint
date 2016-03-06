@@ -58,8 +58,9 @@ func NewNode(privValidator *types.PrivValidator) *Node {
 	proxyAppConnMempool := getProxyApp(proxyAddr, state.AppHash)
 	proxyAppConnConsensus := getProxyApp(proxyAddr, state.AppHash)
 
-	// add the chainid to the global config
+	// add the chainid and number of validators to the global config
 	config.Set("chain_id", state.ChainID)
+	config.Set("num_vals", state.Validators.Size())
 
 	// Generate node PrivKey
 	privKey := crypto.GenPrivKeyEd25519()

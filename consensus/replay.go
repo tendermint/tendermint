@@ -130,7 +130,7 @@ func (cs *ConsensusState) catchupReplay(height int) error {
 		} else if len(msgBytes) == 1 && msgBytes[0] == '\n' {
 			continue
 		}
-		// the first msg is (usually) the NewHeight event, so we can ignore it
+		// the first msg is the NewHeight event (if we're not at the beginning), so we can ignore it
 		if !beginning && i == 1 {
 			continue
 		}
