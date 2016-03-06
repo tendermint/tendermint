@@ -4,10 +4,15 @@ import (
 	"fmt"
 	"testing"
 
-	_ "github.com/tendermint/tendermint/config/tendermint_test"
+	"github.com/tendermint/tendermint/config/tendermint_test"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 )
+
+func init() {
+	tendermint_test.ResetConfig("rpc_test_client_test")
+	initGlobalVariables()
+}
 
 //--------------------------------------------------------------------------------
 // Test the HTTP client

@@ -6,10 +6,14 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/tendermint/tendermint/config/tendermint_test"
+	"github.com/tendermint/tendermint/config/tendermint_test"
 	//"github.com/tendermint/go-events"
 	"github.com/tendermint/tendermint/types"
 )
+
+func init() {
+	tendermint_test.ResetConfig("consensus_state_test")
+}
 
 func (tp *TimeoutParams) ensureProposeTimeout() time.Duration {
 	return time.Duration(tp.Propose0*2) * time.Millisecond

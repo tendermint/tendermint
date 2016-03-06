@@ -9,7 +9,6 @@ import (
 	"github.com/tendermint/go-wire"
 
 	client "github.com/tendermint/go-rpc/client"
-	_ "github.com/tendermint/tendermint/config/tendermint_test"
 	nm "github.com/tendermint/tendermint/node"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
@@ -17,20 +16,19 @@ import (
 
 // global variables for use across all tests
 var (
-	node *nm.Node
-
-	mempoolCount = 0
-
-	chainID string
-
-	rpcAddr, requestAddr, websocketAddr, websocketEndpoint string
-
-	clientURI  *client.ClientURI
-	clientJSON *client.ClientJSONRPC
+	node              *nm.Node
+	mempoolCount      = 0
+	chainID           string
+	rpcAddr           string
+	requestAddr       string
+	websocketAddr     string
+	websocketEndpoint string
+	clientURI         *client.ClientURI
+	clientJSON        *client.ClientJSONRPC
 )
 
 // initialize config and create new node
-func init() {
+func initGlobalVariables() {
 	chainID = config.GetString("chain_id")
 	rpcAddr = config.GetString("rpc_laddr")
 	requestAddr = rpcAddr

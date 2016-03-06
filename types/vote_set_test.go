@@ -6,10 +6,14 @@ import (
 	. "github.com/tendermint/go-common"
 	. "github.com/tendermint/go-common/test"
 	"github.com/tendermint/go-crypto"
-	_ "github.com/tendermint/tendermint/config/tendermint_test"
+	"github.com/tendermint/tendermint/config/tendermint_test"
 
 	"testing"
 )
+
+func init() {
+	tendermint_test.ResetConfig("types_vote_set_test")
+}
 
 // Move it out?
 func randVoteSet(height int, round int, type_ byte, numValidators int, votingPower int64) (*VoteSet, *ValidatorSet, []*PrivValidator) {

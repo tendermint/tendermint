@@ -11,7 +11,7 @@ import (
 	dbm "github.com/tendermint/go-db"
 	"github.com/tendermint/go-events"
 	bc "github.com/tendermint/tendermint/blockchain"
-	_ "github.com/tendermint/tendermint/config/tendermint_test"
+	"github.com/tendermint/tendermint/config/tendermint_test"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
@@ -25,6 +25,7 @@ var chainID string
 var ensureTimeout = time.Duration(2)
 
 func init() {
+	tendermint_test.ResetConfig("consensus_common_test")
 	chainID = config.GetString("chain_id")
 }
 

@@ -5,9 +5,13 @@ import (
 	"time"
 
 	"github.com/tendermint/go-p2p"
-	_ "github.com/tendermint/tendermint/config/tendermint_test"
+	"github.com/tendermint/tendermint/config/tendermint_test"
 	"github.com/tendermint/tendermint/types"
 )
+
+func init() {
+	tendermint_test.ResetConfig("node_node_test")
+}
 
 func TestNodeStartStop(t *testing.T) {
 

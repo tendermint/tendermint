@@ -1,11 +1,15 @@
 package consensus
 
 import (
-	_ "github.com/tendermint/tendermint/config/tendermint_test"
+	"github.com/tendermint/tendermint/config/tendermint_test"
 	"github.com/tendermint/tendermint/types"
 
 	"testing"
 )
+
+func init() {
+	tendermint_test.ResetConfig("consensus_height_vote_set_test")
+}
 
 func TestPeerCatchupRounds(t *testing.T) {
 	valSet, privVals := types.RandValidatorSet(10, 1)

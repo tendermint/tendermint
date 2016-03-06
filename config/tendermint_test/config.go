@@ -12,21 +12,16 @@ import (
 )
 
 func init() {
-	// Creates ~/.tendermint_test/*
-	config := GetConfig("")
-	cfg.ApplyConfig(config)
+	// Creates ~/.tendermint_test
+	EnsureDir(os.Getenv("HOME")+"/.tendermint_test", 0700)
 }
 
-func getTMRoot(rootDir string) string {
-	if rootDir == "" {
-		rootDir = os.Getenv("HOME") + "/.tendermint_test"
-	}
-	return rootDir
+func ResetConfig(path string) {
+	rootDir := os.Getenv("HOME") + "/.tendermint_test/" + path
+	cfg.ApplyConfig(GetConfig(rootDir))
 }
 
 func initTMRoot(rootDir string) {
-	rootDir = getTMRoot(rootDir)
-
 	// Remove ~/.tendermint_test_bak
 	if FileExists(rootDir + "_bak") {
 		err := os.RemoveAll(rootDir + "_bak")
@@ -62,7 +57,6 @@ func initTMRoot(rootDir string) {
 }
 
 func GetConfig(rootDir string) cfg.Config {
-	rootDir = getTMRoot(rootDir)
 	initTMRoot(rootDir)
 
 	configFilePath := path.Join(rootDir, "config.toml")

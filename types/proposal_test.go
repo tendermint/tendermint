@@ -4,8 +4,12 @@ import (
 	"testing"
 
 	. "github.com/tendermint/go-common"
-	_ "github.com/tendermint/tendermint/config/tendermint_test"
+	"github.com/tendermint/tendermint/config/tendermint_test"
 )
+
+func init() {
+	tendermint_test.ResetConfig("types_proposal_test")
+}
 
 func TestProposalSignable(t *testing.T) {
 	proposal := &Proposal{

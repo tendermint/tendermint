@@ -5,12 +5,16 @@ import (
 	"sync"
 	"testing"
 
-	_ "github.com/tendermint/tendermint/config/tendermint_test"
+	"github.com/tendermint/tendermint/config/tendermint_test"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tmsp/example/counter"
 	tmsp "github.com/tendermint/tmsp/types"
 )
+
+func init() {
+	tendermint_test.ResetConfig("mempool_mempool_test")
+}
 
 func TestSerialReap(t *testing.T) {
 

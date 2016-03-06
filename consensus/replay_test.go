@@ -50,8 +50,6 @@ func TestReplayCatchup(t *testing.T) {
 		t.Fatalf("Error on catchup replay %v", err)
 	}
 
-	cs.enterNewRound(cs.Height, cs.Round)
-
 	after := time.After(time.Second * 2)
 	select {
 	case <-newBlockCh:
