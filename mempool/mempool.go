@@ -183,7 +183,8 @@ func (mem *Mempool) resCbRecheck(req *tmsp.Request, res *tmsp.Response) {
 }
 
 // Get the valid transactions remaining
-func (mem *Mempool) Reap() []types.Tx {
+// If maxTxs is 0, there is no cap.
+func (mem *Mempool) Reap(maxTxs int) []types.Tx {
 	mem.proxyMtx.Lock()
 	defer mem.proxyMtx.Unlock()
 
@@ -192,13 +193,17 @@ func (mem *Mempool) Reap() []types.Tx {
 		time.Sleep(time.Millisecond * 10)
 	}
 
-	txs := mem.collectTxs()
+	txs := mem.collectTxs(maxTxs)
 	return txs
 }
 
-func (mem *Mempool) collectTxs() []types.Tx {
-	txs := make([]types.Tx, 0, mem.txs.Len())
-	for e := mem.txs.Front(); e != nil; e = e.Next() {
+// maxTxs: 0 means uncapped
+func (mem *Mempool) collectTxs(maxTxs int) []types.Tx {
+	if maxTxs == 0 {
+		maxTxs = mem.txs.Len()
+	}
+	txs := make([]types.Tx, 0, MinInt(mem.txs.Len(), maxTxs))
+	for e := mem.txs.Front(); e != nil && len(txs) < maxTxs; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
 		txs = append(txs, memTx.tx)
 	}

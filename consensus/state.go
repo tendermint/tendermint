@@ -877,19 +877,8 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 		return
 	}
 
-	maxBlockSize := config.GetInt("block_size")
-
 	// Mempool validated transactions
-	// if block_size < 0, no txs will be included
-	var txs []types.Tx
-	if maxBlockSize >= 0 {
-		txs = cs.mempool.Reap()
-	}
-
-	// Cap the number of txs in a block
-	if maxBlockSize > 0 && maxBlockSize < len(txs) {
-		txs = txs[:maxBlockSize]
-	}
+	txs := cs.mempool.Reap(config.GetInt("block_size"))
 
 	block = &types.Block{
 		Header: &types.Header{

@@ -49,7 +49,7 @@ func TestSerialReap(t *testing.T) {
 	}
 
 	reapCheck := func(exp int) {
-		txs := mempool.Reap()
+		txs := mempool.Reap(0)
 		if len(txs) != exp {
 			t.Fatalf("Expected to reap %v txs but got %v", exp, len(txs))
 		}
