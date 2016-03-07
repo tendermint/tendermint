@@ -77,6 +77,10 @@ func NewMempool(proxyAppConn proxy.AppConn) *Mempool {
 	return mempool
 }
 
+func (mem *Mempool) Size() int {
+	return mem.txs.Len()
+}
+
 // Return the first element of mem.txs for peer goroutines to call .NextWait() on.
 // Blocks until txs has elements.
 func (mem *Mempool) TxsFrontWait() *clist.CElement {

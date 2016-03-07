@@ -41,6 +41,5 @@ func UnconfirmedTxs() (*ctypes.ResultUnconfirmedTxs, error) {
 }
 
 func NumUnconfirmedTxs() (*ctypes.ResultUnconfirmedTxs, error) {
-	txs := mempoolReactor.Mempool.Reap()
-	return &ctypes.ResultUnconfirmedTxs{len(txs), txs[:0]}, nil
+	return &ctypes.ResultUnconfirmedTxs{N: mempoolReactor.Mempool.Size()}, nil
 }

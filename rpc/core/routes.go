@@ -24,7 +24,9 @@ var Routes = map[string]*rpc.RPCFunc{
 	"unconfirmed_txs":      rpc.NewRPCFunc(UnconfirmedTxsResult, ""),
 	"num_unconfirmed_txs":  rpc.NewRPCFunc(NumUnconfirmedTxsResult, ""),
 
-	"unsafe_set_config": rpc.NewRPCFunc(UnsafeSetConfigResult, "type,key,value"),
+	"unsafe_set_config":         rpc.NewRPCFunc(UnsafeSetConfigResult, "type,key,value"),
+	"unsafe_start_cpu_profiler": rpc.NewRPCFunc(UnsafeStartCPUProfilerResult, "filename"),
+	"unsafe_stop_cpu_profiler":  rpc.NewRPCFunc(UnsafeStopCPUProfilerResult, ""),
 }
 
 func SubscribeResult(wsCtx rpctypes.WSRPCContext, event string) (ctypes.TMResult, error) {
@@ -141,6 +143,22 @@ func BroadcastTxAsyncResult(tx []byte) (ctypes.TMResult, error) {
 
 func UnsafeSetConfigResult(typ, key, value string) (ctypes.TMResult, error) {
 	if r, err := UnsafeSetConfig(typ, key, value); err != nil {
+		return nil, err
+	} else {
+		return r, nil
+	}
+}
+
+func UnsafeStartCPUProfilerResult(filename string) (ctypes.TMResult, error) {
+	if r, err := UnsafeStartCPUProfiler(filename); err != nil {
+		return nil, err
+	} else {
+		return r, nil
+	}
+}
+
+func UnsafeStopCPUProfilerResult() (ctypes.TMResult, error) {
+	if r, err := UnsafeStopCPUProfiler(); err != nil {
 		return nil, err
 	} else {
 		return r, nil
