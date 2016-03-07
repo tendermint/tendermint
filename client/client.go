@@ -219,12 +219,8 @@ func (cli *Client) InitChainAsync(validators []*types.Validator) *ReqRes {
 	return cli.queueRequest(types.RequestInitChain(validators))
 }
 
-func (cli *Client) BeginBlockAsync(height uint64) *ReqRes {
-	return cli.queueRequest(types.RequestBeginBlock(height))
-}
-
-func (cli *Client) EndBlockAsync() *ReqRes {
-	return cli.queueRequest(types.RequestEndBlock())
+func (cli *Client) EndBlockAsync(height uint64) *ReqRes {
+	return cli.queueRequest(types.RequestEndBlock(height))
 }
 
 //----------------------------------------
@@ -301,17 +297,8 @@ func (cli *Client) InitChainSync(validators []*types.Validator) (err error) {
 	return nil
 }
 
-func (cli *Client) BeginBlockSync(height uint64) (err error) {
-	cli.queueRequest(types.RequestBeginBlock(height))
-	cli.FlushSync()
-	if cli.err != nil {
-		return cli.err
-	}
-	return nil
-}
-
-func (cli *Client) EndBlockSync() (validators []*types.Validator, err error) {
-	reqres := cli.queueRequest(types.RequestEndBlock())
+func (cli *Client) EndBlockSync(height uint64) (validators []*types.Validator, err error) {
+	reqres := cli.queueRequest(types.RequestEndBlock(height))
 	cli.FlushSync()
 	if cli.err != nil {
 		return nil, cli.err

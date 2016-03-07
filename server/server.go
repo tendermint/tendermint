@@ -157,7 +157,7 @@ func (s *Server) handleRequest(req *types.Request, responses chan<- *types.Respo
 		}
 	case types.MessageType_EndBlock:
 		if app, ok := s.app.(types.BlockchainAware); ok {
-			validators := app.EndBlock()
+			validators := app.EndBlock(req.Height)
 			responses <- types.ResponseEndBlock(validators)
 		} else {
 			responses <- types.ResponseEndBlock(nil)

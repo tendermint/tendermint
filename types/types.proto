@@ -19,7 +19,7 @@ enum MessageType {
   Commit          = 0x13;
   Query           = 0x14;
   InitChain       = 0x15;
-  BeginBlock      = 0x16;
+  // BeginBlock   = 0x16; NOT USED
   EndBlock        = 0x17;
 }
 

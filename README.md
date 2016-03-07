@@ -73,13 +73,9 @@ TMSP requests/responses are simple Protobuf messages.  Check out the [schema fil
   * __Usage__:<br/>
     Called once upon genesis
 
-#### BeginBlock
-  * __Arguments__:
-    * `Height (uint64)`: Block number
-  * __Usage__:<br/>
-    Signals the beginning of a block
-
 #### EndBlock
+  * __Arguments__:
+    * `Height (uint64)`: The block height that ended
   * __Returns__:
     * `Validators ([]Validator)`: Changed validators with new voting powers (0 to remove)
   * __Usage__:<br/>
@@ -87,9 +83,9 @@ TMSP requests/responses are simple Protobuf messages.  Check out the [schema fil
 
 ## Changelog
 
-### Feb 28th, 2016
+### Mar 6th, 2016
 
-* Added InitChain, BeginBlock, EndBlock
+* Added InitChain, EndBlock
 
 ### Feb 14th, 2016
 
