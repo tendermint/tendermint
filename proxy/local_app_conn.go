@@ -109,19 +109,10 @@ func (app *localAppConn) InitChainSync(validators []*tmsp.Validator) (err error)
 	return nil
 }
 
-func (app *localAppConn) BeginBlockSync(height uint64) (err error) {
+func (app *localAppConn) EndBlockSync(height uint64) (changedValidators []*tmsp.Validator, err error) {
 	app.mtx.Lock()
 	if bcApp, ok := app.Application.(tmsp.BlockchainAware); ok {
-		bcApp.BeginBlock(height)
-	}
-	app.mtx.Unlock()
-	return nil
-}
-
-func (app *localAppConn) EndBlockSync() (changedValidators []*tmsp.Validator, err error) {
-	app.mtx.Lock()
-	if bcApp, ok := app.Application.(tmsp.BlockchainAware); ok {
-		changedValidators = bcApp.EndBlock()
+		changedValidators = bcApp.EndBlock(height)
 	}
 	app.mtx.Unlock()
 	return changedValidators, nil
