@@ -201,10 +201,12 @@ func (mem *Mempool) Reap(maxTxs int) []types.Tx {
 	return txs
 }
 
-// maxTxs: 0 means uncapped
+// maxTxs: 0 means uncapped, -1 means none
 func (mem *Mempool) collectTxs(maxTxs int) []types.Tx {
 	if maxTxs == 0 {
 		maxTxs = mem.txs.Len()
+	} else if maxTxs < 0 {
+		return []types.Tx{}
 	}
 	txs := make([]types.Tx, 0, MinInt(mem.txs.Len(), maxTxs))
 	for e := mem.txs.Front(); e != nil && len(txs) < maxTxs; e = e.Next() {
