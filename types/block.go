@@ -336,6 +336,10 @@ type Data struct {
 }
 
 func (data *Data) Hash() []byte {
+	if config.GetBool("disable_data_hash") {
+		data.hash = []byte{}
+		return data.hash
+	}
 	if data.hash == nil {
 		txs := make([]interface{}, len(data.Txs))
 		for i, tx := range data.Txs {
