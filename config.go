@@ -14,6 +14,8 @@ func init() {
 	initConfigureable(recvRateKey, 512000) // 500KB/s
 	initConfigureable(maxPayloadSizeKey, 1024)
 
+	initConfigureable(authEncKey, true)
+
 	cfg.OnConfig(func(newConfig cfg.Config) {
 		config = newConfig
 

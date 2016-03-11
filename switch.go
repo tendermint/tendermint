@@ -75,6 +75,7 @@ const (
 	dialTimeoutKey      = "p2p_dial_timeout_seconds"
 	handshakeTimeoutKey = "p2p_handshake_timeout_seconds"
 	maxNumPeersKey      = "p2p_max_num_peers"
+	authEncKey          = "p2p_authenticated_encryption"
 )
 
 func NewSwitch() *Switch {
@@ -198,10 +199,14 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 	conn.SetDeadline(time.Now().Add(time.Duration(config.GetInt(handshakeTimeoutKey)) * time.Second))
 
 	// First, encrypt the connection.
-	sconn, err := MakeSecretConnection(conn, sw.nodePrivKey)
-	if err != nil {
-		conn.Close()
-		return nil, err
+	var sconn net.Conn = conn
+	if config.GetBool(authEncKey) {
+		var err error
+		sconn, err = MakeSecretConnection(conn, sw.nodePrivKey)
+		if err != nil {
+			conn.Close()
+			return nil, err
+		}
 	}
 	// Then, perform node handshake
 	peerNodeInfo, err := peerHandshake(sconn, sw.nodeInfo)
@@ -209,11 +214,13 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 		sconn.Close()
 		return nil, err
 	}
-	// Check that the professed PubKey matches the sconn's.
-	if !peerNodeInfo.PubKey.Equals(sconn.RemotePubKey()) {
-		sconn.Close()
-		return nil, fmt.Errorf("Ignoring connection with unmatching pubkey: %v vs %v",
-			peerNodeInfo.PubKey, sconn.RemotePubKey())
+	if config.GetBool("p2p_authenticated_encryption") {
+		// Check that the professed PubKey matches the sconn's.
+		if !peerNodeInfo.PubKey.Equals(sconn.(*SecretConnection).RemotePubKey()) {
+			sconn.Close()
+			return nil, fmt.Errorf("Ignoring connection with unmatching pubkey: %v vs %v",
+				peerNodeInfo.PubKey, sconn.(*SecretConnection).RemotePubKey())
+		}
 	}
 	// Avoid self
 	if peerNodeInfo.PubKey.Equals(sw.nodeInfo.PubKey) {
