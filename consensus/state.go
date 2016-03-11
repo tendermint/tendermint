@@ -835,8 +835,8 @@ func (cs *ConsensusState) decideProposal(height, round int) {
 			part := blockParts.GetPart(i)
 			cs.sendInternalMessage(msgInfo{&BlockPartMessage{cs.Height, cs.Round, part}, ""})
 		}
-		log.Info("Signed and sent proposal", "height", height, "round", round, "proposal", proposal)
-		log.Debug(Fmt("Signed and sent proposal block: %v", block))
+		log.Info("Signed proposal", "height", height, "round", round, "proposal", proposal)
+		log.Debug(Fmt("Signed proposal block: %v", block))
 	} else {
 		log.Warn("enterPropose: Error signing proposal", "height", height, "round", round, "error", err)
 	}

@@ -337,6 +337,7 @@ type Data struct {
 
 func (data *Data) Hash() []byte {
 	if config.GetBool("disable_data_hash") {
+		// we could use the part_set hash instead
 		data.hash = []byte{}
 		return data.hash
 	}
