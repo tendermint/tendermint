@@ -230,11 +230,48 @@ func (ps *PartSet) GetReader() io.Reader {
 	if !ps.IsComplete() {
 		PanicSanity("Cannot GetReader() on incomplete PartSet")
 	}
+	return NewPartSetReader(ps.parts)
+
 	buf := []byte{}
 	for _, part := range ps.parts {
 		buf = append(buf, part.Bytes...)
 	}
 	return bytes.NewReader(buf)
+}
+
+type PartSetReader struct {
+	i      int
+	parts  []*Part
+	reader *bytes.Reader
+}
+
+func NewPartSetReader(parts []*Part) *PartSetReader {
+	return &PartSetReader{
+		i:      0,
+		parts:  parts,
+		reader: bytes.NewReader(parts[0].Bytes),
+	}
+}
+
+func (psr *PartSetReader) Read(p []byte) (n int, err error) {
+	readerLen := psr.reader.Len()
+	if readerLen >= len(p) {
+		return psr.reader.Read(p)
+	} else if readerLen > 0 {
+		n1, err := psr.Read(p[:readerLen])
+		if err != nil {
+			return n1, err
+		}
+		n2, err := psr.Read(p[readerLen:])
+		return n1 + n2, err
+	}
+
+	psr.i += 1
+	if psr.i >= len(psr.parts) {
+		return 0, fmt.Errorf("Attempt to read from PartSet but no parts left")
+	}
+	psr.reader = bytes.NewReader(psr.parts[psr.i].Bytes)
+	return psr.Read(p)
 }
 
 func (ps *PartSet) StringShort() string {
