@@ -329,7 +329,7 @@ type Data struct {
 	// Txs that will be applied by state @ block.Height+1.
 	// NOTE: not all txs here are valid.  We're just agreeing on the order first.
 	// This means that block.AppHash does not include these txs.
-	Txs []Tx `json:"txs"`
+	Txs Txs `json:"txs"`
 
 	// Volatile
 	hash []byte
@@ -342,11 +342,7 @@ func (data *Data) Hash() []byte {
 		return data.hash
 	}
 	if data.hash == nil {
-		txs := make([]interface{}, len(data.Txs))
-		for i, tx := range data.Txs {
-			txs[i] = tx
-		}
-		data.hash = merkle.SimpleHashFromBinaries(txs) // NOTE: leaves are TxIDs.
+		data.hash = data.Txs.Hash() // NOTE: leaves of merkle tree are TxIDs
 	}
 	return data.hash
 }
