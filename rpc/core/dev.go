@@ -36,7 +36,7 @@ func UnsafeSetConfig(typ, key, value string) (*ctypes.ResultUnsafeSetConfig, err
 
 var profFile *os.File
 
-func UnsafeStartCPUProfiler(filename string) (*ctypes.ResultUnsafeCPUProfiler, error) {
+func UnsafeStartCPUProfiler(filename string) (*ctypes.ResultUnsafeProfile, error) {
 	var err error
 	profFile, err = os.Create(filename)
 	if err != nil {
@@ -46,11 +46,22 @@ func UnsafeStartCPUProfiler(filename string) (*ctypes.ResultUnsafeCPUProfiler, e
 	if err != nil {
 		return nil, err
 	}
-	return &ctypes.ResultUnsafeCPUProfiler{}, nil
+	return &ctypes.ResultUnsafeProfile{}, nil
 }
 
-func UnsafeStopCPUProfiler() (*ctypes.ResultUnsafeCPUProfiler, error) {
+func UnsafeStopCPUProfiler() (*ctypes.ResultUnsafeProfile, error) {
 	pprof.StopCPUProfile()
 	profFile.Close()
-	return &ctypes.ResultUnsafeCPUProfiler{}, nil
+	return &ctypes.ResultUnsafeProfile{}, nil
+}
+
+func UnsafeWriteHeapProfile(filename string) (*ctypes.ResultUnsafeProfile, error) {
+	memProfFile, err := os.Create(filename)
+	if err != nil {
+		return nil, err
+	}
+	pprof.WriteHeapProfile(memProfFile)
+	memProfFile.Close()
+
+	return &ctypes.ResultUnsafeProfile{}, nil
 }

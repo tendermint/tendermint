@@ -27,6 +27,7 @@ var Routes = map[string]*rpc.RPCFunc{
 	"unsafe_set_config":         rpc.NewRPCFunc(UnsafeSetConfigResult, "type,key,value"),
 	"unsafe_start_cpu_profiler": rpc.NewRPCFunc(UnsafeStartCPUProfilerResult, "filename"),
 	"unsafe_stop_cpu_profiler":  rpc.NewRPCFunc(UnsafeStopCPUProfilerResult, ""),
+	"unsafe_write_heap_profile": rpc.NewRPCFunc(UnsafeWriteHeapProfileResult, "filename"),
 }
 
 func SubscribeResult(wsCtx rpctypes.WSRPCContext, event string) (ctypes.TMResult, error) {
@@ -159,6 +160,14 @@ func UnsafeStartCPUProfilerResult(filename string) (ctypes.TMResult, error) {
 
 func UnsafeStopCPUProfilerResult() (ctypes.TMResult, error) {
 	if r, err := UnsafeStopCPUProfiler(); err != nil {
+		return nil, err
+	} else {
+		return r, nil
+	}
+}
+
+func UnsafeWriteHeapProfileResult(filename string) (ctypes.TMResult, error) {
+	if r, err := UnsafeWriteHeapProfile(filename); err != nil {
 		return nil, err
 	} else {
 		return r, nil
