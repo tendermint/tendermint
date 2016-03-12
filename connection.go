@@ -18,7 +18,7 @@ import (
 const (
 	numBatchMsgPackets         = 10
 	minReadBufferSize          = 1024
-	minWriteBufferSize         = 1024
+	minWriteBufferSize         = 65536
 	idleTimeoutMinutes         = 5
 	updateStatsSeconds         = 2
 	pingTimeoutSeconds         = 40
@@ -634,7 +634,11 @@ func (ch *Channel) recvMsgPacket(packet msgPacket) ([]byte, error) {
 	ch.recving = append(ch.recving, packet.Bytes...)
 	if packet.EOF == byte(0x01) {
 		msgBytes := ch.recving
-		ch.recving = make([]byte, 0, defaultRecvBufferCapacity)
+		// clear the slice without re-allocating.
+		// http://stackoverflow.com/questions/16971741/how-do-you-clear-a-slice-in-go
+		//   suggests this could be a memory leak, but we might as well keep the memory for the channel until it closes,
+		//	at which point the recving slice stops being used and should be garbage collected
+		ch.recving = ch.recving[:0] // make([]byte, 0, ch.desc.RecvBufferCapacity)
 		return msgBytes, nil
 	}
 	return nil, nil
