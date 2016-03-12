@@ -188,7 +188,7 @@ func (ps *PartSet) Total() int {
 	return ps.total
 }
 
-func (ps *PartSet) AddPart(part *Part) (bool, error) {
+func (ps *PartSet) AddPart(part *Part, verify bool) (bool, error) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
@@ -203,9 +203,10 @@ func (ps *PartSet) AddPart(part *Part) (bool, error) {
 	}
 
 	// Check hash proof
-	// TODO: minor gains for not checking part sets we made
-	if !part.Proof.Verify(part.Index, ps.total, part.Hash(), ps.Hash()) {
-		return false, ErrPartSetInvalidProof
+	if verify {
+		if !part.Proof.Verify(part.Index, ps.total, part.Hash(), ps.Hash()) {
+			return false, ErrPartSetInvalidProof
+		}
 	}
 
 	// Add part
