@@ -2,7 +2,6 @@ package common
 
 import (
 	crand "crypto/rand"
-	"encoding/hex"
 	"math/rand"
 	"time"
 )
@@ -12,8 +11,7 @@ const (
 )
 
 func init() {
-	// Seed math/rand with "secure" int64
-	b := CRandBytes(8)
+	b := cRandBytes(8)
 	var seed uint64
 	for i := 0; i < 8; i++ {
 		seed |= uint64(b[i])
@@ -127,19 +125,14 @@ func RandBytes(n int) []byte {
 	return bs
 }
 
-//-----------------------------------------------------------------------------
-// CRand* methods are crypto safe.
-
-func CRandBytes(numBytes int) []byte {
+// NOTE: This relies on the os's random number generator.
+// For real security, we should salt that with some seed.
+// See github.com/tendermint/go-crypto for a more secure reader.
+func cRandBytes(numBytes int) []byte {
 	b := make([]byte, numBytes)
 	_, err := crand.Read(b)
 	if err != nil {
 		PanicCrisis(err)
 	}
 	return b
-}
-
-// RandHex(24) gives 96 bits of randomness, strong enough for most purposes.
-func CRandHex(numDigits int) string {
-	return hex.EncodeToString(CRandBytes(numDigits / 2))
 }
