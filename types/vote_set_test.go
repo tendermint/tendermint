@@ -133,9 +133,9 @@ func Test2_3MajorityRedux(t *testing.T) {
 	height, round := 1, 0
 	voteSet, _, privValidators := randVoteSet(height, round, VoteTypePrevote, 100, 1)
 
-	blockHash := CRandBytes(32)
+	blockHash := crypto.CRandBytes(32)
 	blockPartsTotal := 123
-	blockPartsHeader := PartSetHeader{blockPartsTotal, CRandBytes(32)}
+	blockPartsHeader := PartSetHeader{blockPartsTotal, crypto.CRandBytes(32)}
 
 	vote := &Vote{Height: height, Round: round, Type: VoteTypePrevote, BlockHash: blockHash, BlockPartsHeader: blockPartsHeader}
 
@@ -159,7 +159,7 @@ func Test2_3MajorityRedux(t *testing.T) {
 
 	// 68th validator voted for a different BlockParts PartSetHeader
 	{
-		blockPartsHeader := PartSetHeader{blockPartsTotal, CRandBytes(32)}
+		blockPartsHeader := PartSetHeader{blockPartsTotal, crypto.CRandBytes(32)}
 		signAddVote(privValidators[67], withBlockPartsHeader(vote, blockPartsHeader), voteSet)
 		hash, header, ok = voteSet.TwoThirdsMajority()
 		if hash != nil || !header.IsZero() || ok {
@@ -235,7 +235,7 @@ func TestBadVotes(t *testing.T) {
 func TestMakeValidation(t *testing.T) {
 	height, round := 1, 0
 	voteSet, _, privValidators := randVoteSet(height, round, VoteTypePrecommit, 10, 1)
-	blockHash, blockPartsHeader := CRandBytes(32), PartSetHeader{123, CRandBytes(32)}
+	blockHash, blockPartsHeader := crypto.CRandBytes(32), PartSetHeader{123, crypto.CRandBytes(32)}
 
 	vote := &Vote{Height: height, Round: round, Type: VoteTypePrecommit,
 		BlockHash: blockHash, BlockPartsHeader: blockPartsHeader}
