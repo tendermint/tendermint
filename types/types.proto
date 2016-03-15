@@ -48,13 +48,13 @@ enum CodeType {
   // Reserved for governance, 200 ~ 299
   GovUnknownEntity      = 201;
   GovUnknownGroup       = 202;
-  GovUnknownMember      = 203;
-  GovUnknownProposal    = 204;
-  GovDuplicateEntity    = 205;
-  GovDuplicateGroup     = 206;
-  GovDuplicateMember    = 207;
-  GovDuplicateProposal  = 208;
-  GovDuplicateVote      = 209;
+  GovUnknownProposal    = 203;
+  GovDuplicateGroup     = 204;
+  GovDuplicateMember    = 205;
+  GovDuplicateProposal  = 206;
+  GovDuplicateVote      = 207;
+  GovInvalidMember      = 208;
+  GovInvalidVote        = 209;
   GovInvalidVotingPower = 210;
 
 }
