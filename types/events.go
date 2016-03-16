@@ -57,7 +57,11 @@ var _ = wire.RegisterInterface(
 // but some (an input to a call tx or a receive) are more exotic
 
 type EventDataNewBlock struct {
-	Block *Block `json:"block"`
+	// we drop block data but keep the form the same
+	Block *BlockHeader `json:"block"`
+}
+type BlockHeader struct {
+	Header *Header `json:"header"`
 }
 
 // All txs fire EventDataTx

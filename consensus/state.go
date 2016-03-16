@@ -1205,7 +1205,7 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 
 	// Fire off event for new block.
 	// TODO: Handle app failure.  See #177
-	cs.evsw.FireEvent(types.EventStringNewBlock(), types.EventDataNewBlock{block})
+	cs.evsw.FireEvent(types.EventStringNewBlock(), types.EventDataNewBlock{&types.BlockHeader{block.Header}})
 
 	// Create a copy of the state for staging
 	stateCopy := cs.state.Copy()
