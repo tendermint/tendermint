@@ -1,18 +1,18 @@
 hash: f3eab3f91c9d2c07574e8ec6f2f5d56bd946af1b061533a0baf9db8765f97a51
-updated: 2016-03-12T13:07:06.8783023-05:00
+updated: 2016-03-18T02:38:49.170573737-04:00
 imports:
 - name: github.com/gogo/protobuf
-  version: 5dbe2a9482b48e988cadb27b8e06448688fc2f25
+  version: d5d4941acc4490628827091cafee2168f8c4bc67
   subpackages:
   - proto
 - name: github.com/golang/protobuf
-  version: 0fd8c908d872c921af513ef5091964bbd2e0d904
+  version: 62e4364d64b32762febb61f2c88c0a29bc49a225
   subpackages:
   - proto
 - name: github.com/golang/snappy
   version: 5f1c01d9f64b941dd9582c638279d046eda6ca31
 - name: github.com/gorilla/websocket
-  version: a622679ebd7a3b813862379232f645f8e690e43f
+  version: e2e3d8414d0fbae04004f151979f4e27c6747fe7
 - name: github.com/inconshreveable/log15
   version: 210d6fdc4d979ef6579778f1b6ed84571454abb4
   subpackages:
@@ -59,11 +59,11 @@ imports:
 - name: github.com/tendermint/go-clist
   version: 634527f5b60fd7c71ca811262493df2ad65ee0ca
 - name: github.com/tendermint/go-common
-  version: 1559ae1ac90c88b1373ff114c409399c5a1cedac
+  version: dcfa46af1341d03b80d32e4901019d1668b978b9
 - name: github.com/tendermint/go-config
   version: c47b67203b070d8bea835a928d50cb739972c48a
 - name: github.com/tendermint/go-crypto
-  version: 76ba23e4c0c627b8c66d1f97b6a18dc77f4f0297
+  version: 8152c18c355bb17e38292d9473e71d7998a72a43
 - name: github.com/tendermint/go-db
   version: a7878f1d0d8eaebf15f87bc2df15f7a1088cce7f
 - name: github.com/tendermint/go-events
@@ -75,7 +75,7 @@ imports:
 - name: github.com/tendermint/go-merkle
   version: 05042c6ab9cad51d12e4cecf717ae68e3b1409a8
 - name: github.com/tendermint/go-p2p
-  version: dda17bf1f666ea692fa5ead79a5d35ce06daea9c
+  version: 69c7ae5e3fd5fb9a3bf26d4b93f9ea8d6b921b44
   subpackages:
   - upnp
 - name: github.com/tendermint/go-rpc
@@ -85,27 +85,29 @@ imports:
   - types
   - server
 - name: github.com/tendermint/go-wire
-  version: d9da1ad5fe838fbf89e64aabc68e5cf97007c02d
+  version: 39ed90899108c7bdd66482447f40a1e72f88a9da
 - name: github.com/tendermint/log15
   version: 6e460758f10ef42a4724b8e4a82fee59aaa0e41d
 - name: github.com/tendermint/tmsp
-  version: 61c34ade0d480b8f23d6cdcd8fe7fea0dfec3279
+  version: 29a6d511b48e5c2dc3feff0c57237062baa83f33
   subpackages:
   - types
   - example/dummy
   - example/nil
   - client
 - name: golang.org/x/crypto
-  version: de93d05161db39bcbd84d3da2e54c4a18f37f0b1
+  version: 6025851c7c2bf210daf74d22300c699b16541847
   subpackages:
   - ripemd160
   - nacl/box
   - nacl/secretbox
+  - openpgp/armor
   - curve25519
   - salsa20/salsa
   - poly1305
+  - openpgp/errors
 - name: golang.org/x/sys
-  version: 7a56174f0086b32866ebd746a794417edbc678a1
+  version: 9d4e42a20653790449273b3c85e67d6d8bae6e2e
   subpackages:
   - unix
 devImports: []
