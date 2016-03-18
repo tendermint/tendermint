@@ -148,3 +148,19 @@ func TestBytes(t *testing.T) {
 	bA.SetIndex(9, true)
 	check(bA, []byte{0x80, 0x03})
 }
+
+func TestEmptyFull(t *testing.T) {
+	ns := []int{47, 123}
+	for _, n := range ns {
+		bA := NewBitArray(n)
+		if !bA.IsEmpty() {
+			t.Fatal("Expected bit array to be empty")
+		}
+		for i := 0; i < n; i++ {
+			bA.SetIndex(i, true)
+		}
+		if !bA.IsFull() {
+			t.Fatal("Expected bit array to be full")
+		}
+	}
+}

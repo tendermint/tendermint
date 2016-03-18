@@ -167,6 +167,20 @@ func (bA *BitArray) Sub(o *BitArray) *BitArray {
 	}
 }
 
+func (bA *BitArray) IsEmpty() bool {
+	if bA == nil {
+		return true // should this be opposite?
+	}
+	bA.mtx.Lock()
+	defer bA.mtx.Unlock()
+	for _, e := range bA.Elems {
+		if e > 0 {
+			return false
+		}
+	}
+	return true
+}
+
 func (bA *BitArray) IsFull() bool {
 	if bA == nil {
 		return true
