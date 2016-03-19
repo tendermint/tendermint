@@ -141,7 +141,7 @@ func (privVal *PrivValidator) save() {
 	if privVal.filePath == "" {
 		PanicSanity("Cannot save PrivValidator: filePath not set")
 	}
-	jsonBytes := wire.JSONBytes(privVal)
+	jsonBytes := wire.JSONBytesPretty(privVal)
 	err := WriteFileAtomic(privVal.filePath, jsonBytes, 0600)
 	if err != nil {
 		// `@; BOOM!!!
