@@ -35,8 +35,8 @@ func NewServer(protoAddr string, app types.Application) (*Server, error) {
 		app:      app,
 	}
 	s.QuitService = *NewQuitService(nil, "TMSPServer", s)
-	s.Start() // Just start it
-	return s, nil
+	_, err := s.Start() // Just start it
+	return s, err
 }
 
 func (s *Server) OnStart() error {
