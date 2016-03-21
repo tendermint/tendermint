@@ -83,6 +83,18 @@ func main() {
 			Action: func(c *cli.Context) {
 				cmdBench(c)
 			},
+			Flags: []cli.Flag{
+				cli.IntFlag{
+					Name:  "n_txs",
+					Value: 0,
+					Usage: "run benchmark until this many txs have been committed",
+				},
+				cli.IntFlag{
+					Name:  "n_blocks",
+					Value: 0,
+					Usage: "run benchmark until this many blocks have been committed",
+				},
+			},
 		},
 	}
 	app.Run(os.Args)
@@ -185,17 +197,16 @@ func cmdMonitor(c *cli.Context) {
 
 func cmdBench(c *cli.Context) {
 	args := c.Args()
-	if len(args) < 4 {
-		Exit("bench expectes at least 4 args")
+	if len(args) < 2 {
+		Exit("bench expects at least 2 args")
 	}
 	chainsAndValsFile := args[0]
 	resultsDir := args[1]
-	nTxS := args[2]
-	args = args[3:]
-
-	nTxs, err := strconv.Atoi(nTxS)
-	if err != nil {
-		Exit(err.Error())
+	// extra args are a program to run locally
+	if len(args) > 2 {
+		args = args[2:]
+	} else {
+		args = args[:0]
 	}
 
 	chainsAndVals, err := LoadChainsAndValsFromFile(chainsAndValsFile)
@@ -212,15 +223,29 @@ func cmdBench(c *cli.Context) {
 	// we should only have one chain for a benchmark run
 	chAndValIDs, _ := network.Status()
 	chain, _ := network.GetChain(chAndValIDs.ChainIDs[0])
-	chain.Status.Benchmark(done, nTxs, args)
 
+	// setup benchresults struct and fire txs
+	if nTxs := c.Int("n_txs"); nTxs != 0 {
+		chain.Status.BenchmarkTxs(done, nTxs, args)
+	} else if nBlocks := c.Int("n_blocks"); nBlocks != 0 {
+		chain.Status.BenchmarkBlocks(done, nBlocks, args)
+	} else {
+		Exit("Must specify one of n_txs or n_blocks")
+	}
 	results := <-done
 
-	b, _ := json.Marshal(results)
-	if err := ioutil.WriteFile(path.Join(resultsDir, "results.dat"), b, 0600); err != nil {
+	b, err := json.Marshal(results)
+	if err != nil {
 		Exit(err.Error())
 	}
-	fmt.Println(results)
+	fmt.Println(string(b))
+	if err := ioutil.WriteFile(path.Join(resultsDir, "netmon.log"), b, 0600); err != nil {
+		Exit(err.Error())
+	}
+	finalResults := fmt.Sprintf("%f,%f\n", results.MeanLatency, results.MeanThroughput)
+	if err := ioutil.WriteFile(path.Join(resultsDir, "final_results"), []byte(finalResults), 0600); err != nil {
+		Exit(err.Error())
+	}
 }
 
 func registerNetwork(chainsAndVals *ChainsAndValidators) *handlers.TendermintNetwork {

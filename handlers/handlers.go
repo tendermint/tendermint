@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/tendermint/go-event-meter"
 	"github.com/tendermint/go-wire"
@@ -128,7 +129,15 @@ func (tn *TendermintNetwork) RegisterChain(chainConfig *types.BlockchainConfig) 
 	for _, v := range chainConfig.Validators {
 		v.Status = &types.ValidatorStatus{}
 
-		if err := v.Start(); err != nil {
+		var err error
+	RETRYLOOP:
+		for i := 0; i < 10; i++ {
+			if err = v.Start(); err == nil {
+				break RETRYLOOP
+			}
+			time.Sleep(time.Second)
+		}
+		if err != nil {
 			return nil, fmt.Errorf("Error starting validator %s: %v", v.Config.Validator.ID, err)
 		}
 

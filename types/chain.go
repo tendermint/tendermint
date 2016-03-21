@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"sync"
 	"time"
@@ -120,16 +121,38 @@ type BlockchainStatus struct {
 	benchResults *BenchmarkResults
 }
 
-func (bc *BlockchainStatus) Benchmark(done chan *BenchmarkResults, nTxs int, args []string) {
+func (bc *BlockchainStatus) BenchmarkTxs(results chan *BenchmarkResults, nTxs int, args []string) {
+	log.Notice("Running benchmark", "ntxs", nTxs)
 	bc.benchResults = &BenchmarkResults{
 		StartTime: time.Now(),
-		NumTxs:    nTxs,
-		done:      done,
+		nTxs:      nTxs,
+		results:   results,
 	}
 
-	// TODO: capture output to file
-	cmd := exec.Command(args[0], args[1:]...)
-	go cmd.Run()
+	if len(args) > 0 {
+		// TODO: capture output to file
+		cmd := exec.Command(args[0], args[1:]...)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		go cmd.Run()
+	}
+}
+
+func (bc *BlockchainStatus) BenchmarkBlocks(results chan *BenchmarkResults, nBlocks int, args []string) {
+	log.Notice("Running benchmark", "nblocks", nBlocks)
+	bc.benchResults = &BenchmarkResults{
+		StartTime: time.Now(),
+		nBlocks:   nBlocks,
+		results:   results,
+	}
+
+	if len(args) > 0 {
+		// TODO: capture output to file
+		cmd := exec.Command(args[0], args[1:]...)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		go cmd.Run()
+	}
 }
 
 type Block struct {
@@ -140,19 +163,25 @@ type Block struct {
 
 type BenchmarkResults struct {
 	StartTime      time.Time `json:"start_time"`
+	StartBlock     int       `json:"start_block"`
 	TotalTime      float64   `json:"total_time"` // seconds
+	Blocks         []*Block  `json:"blocks"`
 	NumBlocks      int       `json:"num_blocks"`
 	NumTxs         int       `json:"num_txs`
-	Blocks         []*Block  `json:"blocks"`
 	MeanLatency    float64   `json:"latency"`    // seconds per block
 	MeanThroughput float64   `json:"throughput"` // txs per second
 
-	done chan *BenchmarkResults
+	// either we wait for n blocks or n txs
+	nBlocks int
+	nTxs    int
+
+	done    bool
+	results chan *BenchmarkResults
 }
 
 // Return the total time to commit all txs, in seconds
 func (br *BenchmarkResults) ElapsedTime() float64 {
-	return float64(br.Blocks[br.NumBlocks].Time.Sub(br.StartTime)) / float64(1000000000)
+	return float64(br.Blocks[br.NumBlocks-1].Time.Sub(br.StartTime)) / float64(1000000000)
 }
 
 // Return the avg seconds/block
@@ -166,10 +195,12 @@ func (br *BenchmarkResults) Throughput() float64 {
 }
 
 func (br *BenchmarkResults) Done() {
+	log.Info("Done benchmark", "num blocks", br.NumBlocks, "block len", len(br.Blocks))
+	br.done = true
 	br.TotalTime = br.ElapsedTime()
 	br.MeanThroughput = br.Throughput()
 	br.MeanLatency = br.Latency()
-	br.done <- br
+	br.results <- br
 }
 
 type UptimeData struct {
@@ -198,20 +229,28 @@ func (s *BlockchainStatus) NewBlock(block *tmtypes.Block) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 	if block.Header.Height > s.Height {
+		numTxs := block.Header.NumTxs
 		s.Height = block.Header.Height
 		s.blockTimeMeter.Mark(1)
-		s.txThroughputMeter.Mark(int64(block.Header.NumTxs))
-		s.MeanBlockTime = (1 / s.blockTimeMeter.Rate1()) * 1000 // 1/s to ms
+		s.txThroughputMeter.Mark(int64(numTxs))
+		s.MeanBlockTime = (1.0 / s.blockTimeMeter.Rate1()) * 1000 // 1/s to ms
 		s.TxThroughput = s.txThroughputMeter.Rate1()
 
-		if s.benchResults != nil {
+		log.Debug("New Block", "height", s.Height, "ntxs", numTxs)
+		if s.benchResults != nil && !s.benchResults.done {
+			if s.benchResults.StartBlock == 0 && numTxs > 0 {
+				s.benchResults.StartBlock = s.Height
+			}
 			s.benchResults.Blocks = append(s.benchResults.Blocks, &Block{
 				Time:   time.Now(),
 				Height: s.Height,
-				NumTxs: block.Header.NumTxs,
+				NumTxs: numTxs,
 			})
-			if s.txThroughputMeter.Count() >= int64(s.benchResults.NumTxs) {
-				// XXX: do we need to be more careful than just counting?!
+			s.benchResults.NumTxs += numTxs
+			s.benchResults.NumBlocks += 1
+			if s.benchResults.nTxs > 0 && s.benchResults.NumTxs >= s.benchResults.nTxs {
+				s.benchResults.Done()
+			} else if s.benchResults.nBlocks > 0 && s.benchResults.NumBlocks >= s.benchResults.nBlocks {
 				s.benchResults.Done()
 			}
 		}
