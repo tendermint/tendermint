@@ -80,19 +80,20 @@ func TestReplayCatchup(t *testing.T) {
 	// start timeout and receive routines
 	cs.startRoutines(0)
 
+	// 	cs.scheduleRound0(cs.Height)
+
 	// open wal and run catchup messages
 	openWAL(t, cs, name)
 	if err := cs.catchupReplay(cs.Height); err != nil {
 		t.Fatalf("Error on catchup replay %v", err)
 	}
 
-	after := time.After(time.Second * 2)
+	after := time.After(time.Second * 15)
 	select {
 	case <-newBlockCh:
 	case <-after:
 		t.Fatal("Timed out waiting for new block")
 	}
-
 }
 
 func openWAL(t *testing.T, cs *ConsensusState, file string) {

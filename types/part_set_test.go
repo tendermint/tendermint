@@ -30,7 +30,7 @@ func TestBasicPartSet(t *testing.T) {
 	for i := 0; i < partSet.Total(); i++ {
 		part := partSet.GetPart(i)
 		//t.Logf("\n%v", part)
-		added, err := partSet2.AddPart(part)
+		added, err := partSet2.AddPart(part, true)
 		if !added || err != nil {
 			t.Errorf("Failed to add part %v, error: %v", i, err)
 		}
@@ -70,7 +70,7 @@ func TestWrongProof(t *testing.T) {
 	// Test adding a part with wrong trail.
 	part := partSet.GetPart(0)
 	part.Proof.Aunts[0][0] += byte(0x01)
-	added, err := partSet2.AddPart(part)
+	added, err := partSet2.AddPart(part, true)
 	if added || err == nil {
 		t.Errorf("Expected to fail adding a part with bad trail.")
 	}
@@ -78,7 +78,7 @@ func TestWrongProof(t *testing.T) {
 	// Test adding a part with wrong bytes.
 	part = partSet.GetPart(1)
 	part.Bytes[0] += byte(0x01)
-	added, err = partSet2.AddPart(part)
+	added, err = partSet2.AddPart(part, true)
 	if added || err == nil {
 		t.Errorf("Expected to fail adding a part with bad bytes.")
 	}

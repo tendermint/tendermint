@@ -268,7 +268,7 @@ func (psr *PartSetReader) Read(p []byte) (n int, err error) {
 
 	psr.i += 1
 	if psr.i >= len(psr.parts) {
-		return 0, fmt.Errorf("Attempt to read from PartSet but no parts left")
+		return 0, io.EOF
 	}
 	psr.reader = bytes.NewReader(psr.parts[psr.i].Bytes)
 	return psr.Read(p)

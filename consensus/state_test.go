@@ -584,7 +584,7 @@ func TestLockPOLRelock(t *testing.T) {
 		t.Fatal("Expected height to increment")
 	}
 
-	if !bytes.Equal(b.Block.Hash(), propBlockHash) {
+	if !bytes.Equal(b.Block.Header.Hash(), propBlockHash) {
 		t.Fatal("Expected new block to be proposal block")
 	}
 }

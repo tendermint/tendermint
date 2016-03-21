@@ -64,9 +64,12 @@ func NewWAL(file string, light bool) (*WAL, error) {
 func (wal *WAL) Save(clm ConsensusLogMessageInterface) {
 	if wal != nil {
 		if wal.light {
-			// in light mode we only write new steps and timeouts (no votes, proposals, block parts)
-			if _, ok := clm.(msgInfo); ok {
-				return
+			// in light mode we only write new steps, timeouts, and our own votes (no proposals, block parts)
+			if mi, ok := clm.(msgInfo); ok {
+				_ = mi
+				if mi.PeerKey != "" {
+					return
+				}
 			}
 		}
 		var n int
