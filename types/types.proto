@@ -38,12 +38,17 @@ enum CodeType {
   UnknownRequest        = 6;
 
   // Reserved for basecoin, 100 ~ 199
-  BaseEncodingError     = 101;
-  BaseBadNonce          = 102;
-  BaseUnknownAccount    = 103;
-  BaseUnauthorized      = 104;
-  BaseInsufficientFunds = 105;
-  BaseInsufficientFees  = 106;
+  BaseDuplicateAddress  = 101;
+  BaseEncodingError     = 102;
+  BaseInsufficientFees  = 103;
+  BaseInsufficientFunds = 104;
+  BaseInsufficientGasPrice = 105;
+  BaseInvalidAddress    = 106;
+  BaseInvalidAmount     = 107;
+  BaseInvalidPubKey     = 108;
+  BaseInvalidSequence   = 109;
+  BaseInvalidSignature  = 110;
+  BaseUnknownPubKey     = 111;
 
   // Reserved for governance, 200 ~ 299
   GovUnknownEntity      = 201;

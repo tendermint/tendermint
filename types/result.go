@@ -26,6 +26,38 @@ func (res Result) Error() string {
 	return fmt.Sprintf("TMSP error code:%v, data:%X, log:%v", res.Code, res.Data, res.Log)
 }
 
+func (res Result) PrependLog(log string) Result {
+	return Result{
+		Code: res.Code,
+		Data: res.Data,
+		Log:  log + ";" + res.Log,
+	}
+}
+
+func (res Result) AppendLog(log string) Result {
+	return Result{
+		Code: res.Code,
+		Data: res.Data,
+		Log:  res.Log + ";" + log,
+	}
+}
+
+func (res Result) SetLog(log string) Result {
+	return Result{
+		Code: res.Code,
+		Data: res.Data,
+		Log:  log,
+	}
+}
+
+func (res Result) SetData(data []byte) Result {
+	return Result{
+		Code: res.Code,
+		Data: data,
+		Log:  res.Log,
+	}
+}
+
 //----------------------------------------
 
 func NewResultOK(data []byte, log string) Result {
