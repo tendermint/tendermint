@@ -54,21 +54,21 @@ func (app *localAppConn) SetOptionAsync(key string, value string) *tmspcli.ReqRe
 
 func (app *localAppConn) AppendTxAsync(tx []byte) *tmspcli.ReqRes {
 	app.mtx.Lock()
-	code, result, log := app.Application.AppendTx(tx)
+	res := app.Application.AppendTx(tx)
 	app.mtx.Unlock()
 	return app.callback(
 		tmsp.RequestAppendTx(tx),
-		tmsp.ResponseAppendTx(code, result, log),
+		tmsp.ResponseAppendTx(res.Code, res.Data, res.Log),
 	)
 }
 
 func (app *localAppConn) CheckTxAsync(tx []byte) *tmspcli.ReqRes {
 	app.mtx.Lock()
-	code, result, log := app.Application.CheckTx(tx)
+	res := app.Application.CheckTx(tx)
 	app.mtx.Unlock()
 	return app.callback(
 		tmsp.RequestCheckTx(tx),
-		tmsp.ResponseCheckTx(code, result, log),
+		tmsp.ResponseCheckTx(res.Code, res.Data, res.Log),
 	)
 }
 

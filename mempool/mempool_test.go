@@ -9,7 +9,6 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tmsp/example/counter"
-	tmsp "github.com/tendermint/tmsp/types"
 )
 
 func init() {
@@ -70,10 +69,10 @@ func TestSerialReap(t *testing.T) {
 		for i := start; i < end; i++ {
 			txBytes := make([]byte, 8)
 			binary.BigEndian.PutUint64(txBytes, uint64(i))
-			code, result, logStr := appConnCon.AppendTx(txBytes)
-			if code != tmsp.CodeType_OK {
+			res := appConnCon.AppendTx(txBytes)
+			if !res.IsOK() {
 				t.Errorf("Error committing tx. Code:%v result:%X log:%v",
-					code, result, logStr)
+					res.Code, res.Data, res.Log)
 			}
 		}
 		hash, log := appConnCon.Commit()
