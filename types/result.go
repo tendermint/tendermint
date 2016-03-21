@@ -35,3 +35,10 @@ func NewResultOK(data []byte, log string) Result {
 		Log:  log,
 	}
 }
+
+func NewError(code CodeType, log string) Result {
+	return Result{
+		Code: code,
+		Log:  log,
+	}
+}
