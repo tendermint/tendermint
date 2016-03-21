@@ -10,16 +10,16 @@ type Application interface {
 	SetOption(key string, value string) (log string)
 
 	// Append a tx
-	AppendTx(tx []byte) (code CodeType, result []byte, log string)
+	AppendTx(tx []byte) Result
 
 	// Validate a tx for the mempool
-	CheckTx(tx []byte) (code CodeType, result []byte, log string)
+	CheckTx(tx []byte) Result
 
 	// Return the application Merkle root hash
 	Commit() (hash []byte, log string)
 
 	// Query for state
-	Query(query []byte) (code CodeType, result []byte, log string)
+	Query(query []byte) Result
 }
 
 // Some applications can choose to implement BlockchainAware

@@ -137,17 +137,17 @@ func (s *Server) handleRequest(req *types.Request, responses chan<- *types.Respo
 		logStr := s.app.SetOption(req.Key, req.Value)
 		responses <- types.ResponseSetOption(logStr)
 	case types.MessageType_AppendTx:
-		code, result, logStr := s.app.AppendTx(req.Data)
-		responses <- types.ResponseAppendTx(code, result, logStr)
+		res := s.app.AppendTx(req.Data)
+		responses <- types.ResponseAppendTx(res.Code, res.Data, res.Log)
 	case types.MessageType_CheckTx:
-		code, result, logStr := s.app.CheckTx(req.Data)
-		responses <- types.ResponseCheckTx(code, result, logStr)
+		res := s.app.CheckTx(req.Data)
+		responses <- types.ResponseCheckTx(res.Code, res.Data, res.Log)
 	case types.MessageType_Commit:
 		hash, logStr := s.app.Commit()
 		responses <- types.ResponseCommit(hash, logStr)
 	case types.MessageType_Query:
-		code, result, logStr := s.app.Query(req.Data)
-		responses <- types.ResponseQuery(code, result, logStr)
+		res := s.app.Query(req.Data)
+		responses <- types.ResponseQuery(res.Code, res.Data, res.Log)
 	case types.MessageType_InitChain:
 		if app, ok := s.app.(types.BlockchainAware); ok {
 			app.InitChain(req.Validators)

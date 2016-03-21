@@ -28,18 +28,18 @@ func (app *DummyApplication) SetOption(key string, value string) (log string) {
 	return ""
 }
 
-func (app *DummyApplication) AppendTx(tx []byte) (code types.CodeType, result []byte, log string) {
+func (app *DummyApplication) AppendTx(tx []byte) types.Result {
 	parts := strings.Split(string(tx), "=")
 	if len(parts) == 2 {
 		app.state.Set([]byte(parts[0]), []byte(parts[1]))
 	} else {
 		app.state.Set(tx, tx)
 	}
-	return types.CodeType_OK, nil, ""
+	return types.NewResultOK(nil, "")
 }
 
-func (app *DummyApplication) CheckTx(tx []byte) (code types.CodeType, result []byte, log string) {
-	return types.CodeType_OK, nil, ""
+func (app *DummyApplication) CheckTx(tx []byte) types.Result {
+	return types.NewResultOK(nil, "")
 }
 
 func (app *DummyApplication) Commit() (hash []byte, log string) {
@@ -47,8 +47,8 @@ func (app *DummyApplication) Commit() (hash []byte, log string) {
 	return hash, ""
 }
 
-func (app *DummyApplication) Query(query []byte) (code types.CodeType, result []byte, log string) {
+func (app *DummyApplication) Query(query []byte) types.Result {
 	index, value, exists := app.state.Get(query)
 	resStr := Fmt("Index=%v value=%v exists=%v", index, string(value), exists)
-	return types.CodeType_OK, []byte(resStr), ""
+	return types.NewResultOK([]byte(resStr), "")
 }
