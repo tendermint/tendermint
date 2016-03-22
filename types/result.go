@@ -4,6 +4,7 @@ import (
 	"fmt"
 )
 
+// CONTRACT: a zero Result is OK.
 type Result struct {
 	Code CodeType
 	Data []byte
@@ -60,6 +61,7 @@ func (res Result) SetData(data []byte) Result {
 
 //----------------------------------------
 
+// NOTE: if data == nil and log == "", same as zero Result.
 func NewResultOK(data []byte, log string) Result {
 	return Result{
 		Code: CodeType_OK,

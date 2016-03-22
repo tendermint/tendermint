@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/codegangsta/cli"
 	. "github.com/tendermint/go-common"
+	"github.com/tendermint/go-wire/expr"
 	"github.com/tendermint/tmsp/types"
 )
 
@@ -199,18 +199,14 @@ func cmdAppendTx(c *cli.Context) {
 		fmt.Println("append_tx takes 1 argument")
 		return
 	}
-	txString := args[0]
-	tx := []byte(txString)
-	if len(txString) > 2 && strings.HasPrefix(txString, "0x") {
-		var err error
-		tx, err = hex.DecodeString(txString[2:])
-		if err != nil {
-			fmt.Println(err.Error())
-			return
-		}
+	txExprString := c.Args()[0]
+	txBytes, err := expr.Compile(txExprString)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
 	}
 
-	res, err := makeRequest(conn, types.RequestAppendTx(tx))
+	res, err := makeRequest(conn, types.RequestAppendTx(txBytes))
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -225,18 +221,14 @@ func cmdCheckTx(c *cli.Context) {
 		fmt.Println("check_tx takes 1 argument")
 		return
 	}
-	txString := args[0]
-	tx := []byte(txString)
-	if len(txString) > 2 && strings.HasPrefix(txString, "0x") {
-		var err error
-		tx, err = hex.DecodeString(txString[2:])
-		if err != nil {
-			fmt.Println(err.Error())
-			return
-		}
+	txExprString := c.Args()[0]
+	txBytes, err := expr.Compile(txExprString)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
 	}
 
-	res, err := makeRequest(conn, types.RequestCheckTx(tx))
+	res, err := makeRequest(conn, types.RequestCheckTx(txBytes))
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -261,18 +253,14 @@ func cmdQuery(c *cli.Context) {
 		fmt.Println("query takes 1 argument")
 		return
 	}
-	queryString := args[0]
-	query := []byte(queryString)
-	if len(queryString) > 2 && strings.HasPrefix(queryString, "0x") {
-		var err error
-		query, err = hex.DecodeString(queryString[2:])
-		if err != nil {
-			fmt.Println(err.Error())
-			return
-		}
+	queryExprString := args[0]
+	queryBytes, err := expr.Compile(queryExprString)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
 	}
 
-	res, err := makeRequest(conn, types.RequestQuery(query))
+	res, err := makeRequest(conn, types.RequestQuery(queryBytes))
 	if err != nil {
 		fmt.Println(err.Error())
 		return
