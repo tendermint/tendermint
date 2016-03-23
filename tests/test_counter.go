@@ -85,20 +85,22 @@ func setOption(client *tmspcli.Client, key, value string) {
 }
 
 func commit(client *tmspcli.Client, hashExp []byte) {
-	hash, log, err := client.CommitSync()
-	if err != nil {
-		panic(Fmt("committing %v\nlog: %v", err, log))
+	res := client.CommitSync()
+	_, data, log := res.Code, res.Data, res.Log
+	if res.IsErr() {
+		panic(Fmt("committing %v\nlog: %v", log))
 	}
-	if !bytes.Equal(hash, hashExp) {
+	if !bytes.Equal(res.Data, hashExp) {
 		panic(Fmt("Commit hash was unexpected. Got %X expected %X",
-			hash, hashExp))
+			data, hashExp))
 	}
 }
 
 func appendTx(client *tmspcli.Client, txBytes []byte, codeExp types.CodeType, dataExp []byte) {
-	code, data, log, err := client.AppendTxSync(txBytes)
-	if err != nil {
-		panic(Fmt("appending tx %X: %v\nlog: %v", txBytes, err, log))
+	res := client.AppendTxSync(txBytes)
+	code, data, log := res.Code, res.Data, res.Log
+	if res.IsErr() {
+		panic(Fmt("appending tx %X: %v\nlog: %v", txBytes, log))
 	}
 	if code != codeExp {
 		panic(Fmt("AppendTx response code was unexpected. Got %v expected %v. Log: %v",
@@ -111,9 +113,10 @@ func appendTx(client *tmspcli.Client, txBytes []byte, codeExp types.CodeType, da
 }
 
 func checkTx(client *tmspcli.Client, txBytes []byte, codeExp types.CodeType, dataExp []byte) {
-	code, data, log, err := client.CheckTxSync(txBytes)
-	if err != nil {
-		panic(Fmt("checking tx %X: %v\nlog: %v", txBytes, err, log))
+	res := client.CheckTxSync(txBytes)
+	code, data, log := res.Code, res.Data, res.Log
+	if res.IsErr() {
+		panic(Fmt("checking tx %X: %v\nlog: %v", txBytes, log))
 	}
 	if code != codeExp {
 		panic(Fmt("CheckTx response code was unexpected. Got %v expected %v. Log: %v",

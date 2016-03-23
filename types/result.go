@@ -23,6 +23,10 @@ func (res Result) IsOK() bool {
 	return res.Code == CodeType_OK
 }
 
+func (res Result) IsErr() bool {
+	return res.Code != CodeType_OK
+}
+
 func (res Result) Error() string {
 	return fmt.Sprintf("TMSP error code:%v, data:%X, log:%v", res.Code, res.Data, res.Log)
 }

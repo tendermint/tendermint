@@ -16,7 +16,7 @@ type Application interface {
 	CheckTx(tx []byte) Result
 
 	// Return the application Merkle root hash
-	Commit() (hash []byte, log string)
+	Commit() Result
 
 	// Query for state
 	Query(query []byte) Result

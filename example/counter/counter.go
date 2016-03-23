@@ -43,7 +43,7 @@ func (app *CounterApplication) AppendTx(tx []byte) types.Result {
 		}
 	}
 	app.txCount += 1
-	return types.NewResultOK(nil, "")
+	return types.OK
 }
 
 func (app *CounterApplication) CheckTx(tx []byte) types.Result {
@@ -59,18 +59,18 @@ func (app *CounterApplication) CheckTx(tx []byte) types.Result {
 			}
 		}
 	}
-	return types.NewResultOK(nil, "")
+	return types.OK
 }
 
-func (app *CounterApplication) Commit() (hash []byte, log string) {
+func (app *CounterApplication) Commit() types.Result {
 	app.hashCount += 1
 
 	if app.txCount == 0 {
-		return nil, ""
+		return types.OK
 	} else {
 		hash := make([]byte, 8)
 		binary.BigEndian.PutUint64(hash, uint64(app.txCount))
-		return hash, ""
+		return types.NewResultOK(hash, "")
 	}
 }
 

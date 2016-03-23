@@ -111,37 +111,38 @@ func ResponseSetOption(log string) *Response {
 	}
 }
 
-func ResponseAppendTx(code CodeType, result []byte, log string) *Response {
+func ResponseAppendTx(code CodeType, data []byte, log string) *Response {
 	return &Response{
 		Type: MessageType_AppendTx,
 		Code: code,
-		Data: result,
+		Data: data,
 		Log:  log,
 	}
 }
 
-func ResponseCheckTx(code CodeType, result []byte, log string) *Response {
+func ResponseCheckTx(code CodeType, data []byte, log string) *Response {
 	return &Response{
 		Type: MessageType_CheckTx,
 		Code: code,
-		Data: result,
+		Data: data,
 		Log:  log,
 	}
 }
 
-func ResponseCommit(hash []byte, log string) *Response {
+func ResponseCommit(code CodeType, data []byte, log string) *Response {
 	return &Response{
 		Type: MessageType_Commit,
-		Data: hash,
+		Code: code,
+		Data: data,
 		Log:  log,
 	}
 }
 
-func ResponseQuery(code CodeType, result []byte, log string) *Response {
+func ResponseQuery(code CodeType, data []byte, log string) *Response {
 	return &Response{
 		Type: MessageType_Query,
 		Code: code,
-		Data: result,
+		Data: data,
 		Log:  log,
 	}
 }

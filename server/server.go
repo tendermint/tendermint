@@ -143,8 +143,8 @@ func (s *Server) handleRequest(req *types.Request, responses chan<- *types.Respo
 		res := s.app.CheckTx(req.Data)
 		responses <- types.ResponseCheckTx(res.Code, res.Data, res.Log)
 	case types.MessageType_Commit:
-		hash, logStr := s.app.Commit()
-		responses <- types.ResponseCommit(hash, logStr)
+		res := s.app.Commit()
+		responses <- types.ResponseCommit(res.Code, res.Data, res.Log)
 	case types.MessageType_Query:
 		res := s.app.Query(req.Data)
 		responses <- types.ResponseQuery(res.Code, res.Data, res.Log)

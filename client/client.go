@@ -248,44 +248,44 @@ func (cli *Client) SetOptionSync(key string, value string) (log string, err erro
 	return reqres.Response.Log, nil
 }
 
-func (cli *Client) AppendTxSync(tx []byte) (code types.CodeType, result []byte, log string, err error) {
+func (cli *Client) AppendTxSync(tx []byte) (res types.Result) {
 	reqres := cli.queueRequest(types.RequestAppendTx(tx))
 	cli.FlushSync()
 	if cli.err != nil {
-		return types.CodeType_InternalError, nil, "", cli.err
+		return types.ErrInternalError.SetLog(cli.err.Error())
 	}
-	res := reqres.Response
-	return res.Code, res.Data, res.Log, nil
+	resp := reqres.Response
+	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
 }
 
-func (cli *Client) CheckTxSync(tx []byte) (code types.CodeType, result []byte, log string, err error) {
+func (cli *Client) CheckTxSync(tx []byte) (res types.Result) {
 	reqres := cli.queueRequest(types.RequestCheckTx(tx))
 	cli.FlushSync()
 	if cli.err != nil {
-		return types.CodeType_InternalError, nil, "", cli.err
+		return types.ErrInternalError.SetLog(cli.err.Error())
 	}
-	res := reqres.Response
-	return res.Code, res.Data, res.Log, nil
+	resp := reqres.Response
+	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
 }
 
-func (cli *Client) CommitSync() (hash []byte, log string, err error) {
+func (cli *Client) CommitSync() (res types.Result) {
 	reqres := cli.queueRequest(types.RequestCommit())
 	cli.FlushSync()
 	if cli.err != nil {
-		return nil, "", cli.err
+		return types.ErrInternalError.SetLog(cli.err.Error())
 	}
-	res := reqres.Response
-	return res.Data, res.Log, nil
+	resp := reqres.Response
+	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
 }
 
-func (cli *Client) QuerySync(query []byte) (code types.CodeType, result []byte, log string, err error) {
+func (cli *Client) QuerySync(query []byte) (res types.Result) {
 	reqres := cli.queueRequest(types.RequestQuery(query))
 	cli.FlushSync()
 	if cli.err != nil {
-		return types.CodeType_InternalError, nil, "", cli.err
+		return types.ErrInternalError.SetLog(cli.err.Error())
 	}
-	res := reqres.Response
-	return res.Code, res.Data, res.Log, nil
+	resp := reqres.Response
+	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
 }
 
 func (cli *Client) InitChainSync(validators []*types.Validator) (err error) {

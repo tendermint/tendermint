@@ -27,8 +27,8 @@ func (app *NilApplication) CheckTx(tx []byte) types.Result {
 	return types.NewResultOK(nil, "")
 }
 
-func (app *NilApplication) Commit() (hash []byte, log string) {
-	return []byte("nil"), ""
+func (app *NilApplication) Commit() types.Result {
+	return types.NewResultOK([]byte("nil"), "")
 }
 
 func (app *NilApplication) Query(query []byte) types.Result {

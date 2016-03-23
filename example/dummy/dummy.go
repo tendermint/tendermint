@@ -35,16 +35,16 @@ func (app *DummyApplication) AppendTx(tx []byte) types.Result {
 	} else {
 		app.state.Set(tx, tx)
 	}
-	return types.NewResultOK(nil, "")
+	return types.OK
 }
 
 func (app *DummyApplication) CheckTx(tx []byte) types.Result {
-	return types.NewResultOK(nil, "")
+	return types.OK
 }
 
-func (app *DummyApplication) Commit() (hash []byte, log string) {
-	hash = app.state.Hash()
-	return hash, ""
+func (app *DummyApplication) Commit() types.Result {
+	hash := app.state.Hash()
+	return types.NewResultOK(hash, "")
 }
 
 func (app *DummyApplication) Query(query []byte) types.Result {
