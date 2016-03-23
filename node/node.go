@@ -258,12 +258,12 @@ func getProxyApp(addr string, hash []byte) (proxyAppConn proxy.AppConn) {
 	}
 
 	// Check the hash
-	currentHash, _, err := proxyAppConn.CommitSync()
-	if err != nil {
-		PanicCrisis(Fmt("Error in getting proxyAppConn hash: %v", err))
+	res := proxyAppConn.CommitSync()
+	if res.IsErr() {
+		PanicCrisis(Fmt("Error in getting proxyAppConn hash: %v", res))
 	}
-	if !bytes.Equal(hash, currentHash) {
-		PanicCrisis(Fmt("ProxyApp hash does not match.  Expected %X, got %X", hash, currentHash))
+	if !bytes.Equal(hash, res.Data) {
+		PanicCrisis(Fmt("ProxyApp hash does not match.  Expected %X, got %X", hash, res.Data))
 	}
 
 	return proxyAppConn

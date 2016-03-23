@@ -75,9 +75,9 @@ func TestSerialReap(t *testing.T) {
 					res.Code, res.Data, res.Log)
 			}
 		}
-		hash, log := appConnCon.Commit()
-		if len(hash) != 8 {
-			t.Errorf("Error committing. Hash:%X log:%v", hash, log)
+		res := appConnCon.Commit()
+		if len(res.Data) != 8 {
+			t.Errorf("Error committing. Hash:%X log:%v", res.Data, res.Log)
 		}
 	}
 

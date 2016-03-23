@@ -74,11 +74,11 @@ func (app *localAppConn) CheckTxAsync(tx []byte) *tmspcli.ReqRes {
 
 func (app *localAppConn) CommitAsync() *tmspcli.ReqRes {
 	app.mtx.Lock()
-	hash, log := app.Application.Commit()
+	res := app.Application.Commit()
 	app.mtx.Unlock()
 	return app.callback(
 		tmsp.RequestCommit(),
-		tmsp.ResponseCommit(hash, log),
+		tmsp.ResponseCommit(res.Code, res.Data, res.Log),
 	)
 }
 
@@ -93,11 +93,11 @@ func (app *localAppConn) FlushSync() error {
 	return nil
 }
 
-func (app *localAppConn) CommitSync() (hash []byte, log string, err error) {
+func (app *localAppConn) CommitSync() (res tmsp.Result) {
 	app.mtx.Lock()
-	hash, log = app.Application.Commit()
+	res = app.Application.Commit()
 	app.mtx.Unlock()
-	return hash, log, nil
+	return res
 }
 
 func (app *localAppConn) InitChainSync(validators []*tmsp.Validator) (err error) {

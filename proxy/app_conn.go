@@ -18,7 +18,7 @@ type AppConn interface {
 
 	InfoSync() (info string, err error)
 	FlushSync() error
-	CommitSync() (hash []byte, log string, err error)
+	CommitSync() (res tmsp.Result)
 	InitChainSync(validators []*tmsp.Validator) (err error)
 	EndBlockSync(height uint64) (changedValidators []*tmsp.Validator, err error)
 }
