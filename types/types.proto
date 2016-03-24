@@ -48,7 +48,8 @@ enum CodeType {
   BaseInvalidPubKey     = 108;
   BaseInvalidSequence   = 109;
   BaseInvalidSignature  = 110;
-  BaseUnknownPubKey     = 111;
+  BaseUnknownAddress    = 111;
+  BaseUnknownPubKey     = 112;
 
   // Reserved for governance, 200 ~ 299
   GovUnknownEntity      = 201;
