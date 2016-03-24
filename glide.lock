@@ -1,12 +1,12 @@
 hash: f3eab3f91c9d2c07574e8ec6f2f5d56bd946af1b061533a0baf9db8765f97a51
-updated: 2016-03-18T02:38:49.170573737-04:00
+updated: 2016-03-24T16:39:27.330201414-04:00
 imports:
 - name: github.com/gogo/protobuf
-  version: d5d4941acc4490628827091cafee2168f8c4bc67
+  version: 4168943e65a2802828518e95310aeeed6d84c4e5
   subpackages:
   - proto
 - name: github.com/golang/protobuf
-  version: 62e4364d64b32762febb61f2c88c0a29bc49a225
+  version: 8d92cf5fc15a4382f8964b08e1f42a75c0591aa3
   subpackages:
   - proto
 - name: github.com/golang/snappy
@@ -63,7 +63,7 @@ imports:
 - name: github.com/tendermint/go-config
   version: c47b67203b070d8bea835a928d50cb739972c48a
 - name: github.com/tendermint/go-crypto
-  version: 8152c18c355bb17e38292d9473e71d7998a72a43
+  version: 3f0d9b3f29f30e5d0cbc2cef04fa45e5a606c622
 - name: github.com/tendermint/go-db
   version: a7878f1d0d8eaebf15f87bc2df15f7a1088cce7f
 - name: github.com/tendermint/go-events
@@ -75,7 +75,7 @@ imports:
 - name: github.com/tendermint/go-merkle
   version: 05042c6ab9cad51d12e4cecf717ae68e3b1409a8
 - name: github.com/tendermint/go-p2p
-  version: 69c7ae5e3fd5fb9a3bf26d4b93f9ea8d6b921b44
+  version: 10619248c665dee6b8f81455f7f27ab93d5ec366
   subpackages:
   - upnp
 - name: github.com/tendermint/go-rpc
@@ -85,18 +85,18 @@ imports:
   - types
   - server
 - name: github.com/tendermint/go-wire
-  version: 39ed90899108c7bdd66482447f40a1e72f88a9da
+  version: 7a15dd53dfdecc0f967676edcd6b335c59344c83
 - name: github.com/tendermint/log15
   version: 6e460758f10ef42a4724b8e4a82fee59aaa0e41d
 - name: github.com/tendermint/tmsp
-  version: 29a6d511b48e5c2dc3feff0c57237062baa83f33
+  version: 1dfc6950dddf47ff397e670a67d405d25da138ea
   subpackages:
   - types
+  - client
   - example/dummy
   - example/nil
-  - client
 - name: golang.org/x/crypto
-  version: 6025851c7c2bf210daf74d22300c699b16541847
+  version: c197bcf24cde29d3f73c7b4ac6fd41f4384e8af6
   subpackages:
   - ripemd160
   - nacl/box
@@ -107,7 +107,7 @@ imports:
   - poly1305
   - openpgp/errors
 - name: golang.org/x/sys
-  version: 9d4e42a20653790449273b3c85e67d6d8bae6e2e
+  version: afce3de5756ca82699128ebae46ac95ad59d6297
   subpackages:
   - unix
 devImports: []
