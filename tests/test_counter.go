@@ -70,7 +70,7 @@ func startApp() *process.Process {
 
 func startClient() *tmspcli.Client {
 	// Start client
-	client, err := tmspcli.NewClient("tcp://127.0.0.1:46658")
+	client, err := tmspcli.NewClient("tcp://127.0.0.1:46658", true)
 	if err != nil {
 		panic("connecting to counter_app: " + err.Error())
 	}
