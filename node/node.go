@@ -250,6 +250,7 @@ func getProxyApp(addr string, hash []byte) (proxyAppConn proxy.AppConn) {
 		mtx := new(sync.Mutex)
 		proxyAppConn = proxy.NewLocalAppConn(mtx, app)
 	default:
+		// Run forever in a loop
 		remoteApp, err := proxy.NewRemoteAppConn(addr)
 		if err != nil {
 			Exit(Fmt("Failed to connect to proxy for mempool: %v", err))
@@ -263,7 +264,7 @@ func getProxyApp(addr string, hash []byte) (proxyAppConn proxy.AppConn) {
 		PanicCrisis(Fmt("Error in getting proxyAppConn hash: %v", res))
 	}
 	if !bytes.Equal(hash, res.Data) {
-		PanicCrisis(Fmt("ProxyApp hash does not match.  Expected %X, got %X", hash, res.Data))
+		log.Warn(Fmt("ProxyApp hash does not match.  Expected %X, got %X", hash, res.Data))
 	}
 
 	return proxyAppConn

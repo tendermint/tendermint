@@ -12,7 +12,7 @@ type remoteAppConn struct {
 }
 
 func NewRemoteAppConn(addr string) (*remoteAppConn, error) {
-	client, err := tmspcli.NewClient(addr)
+	client, err := tmspcli.NewClient(addr, false)
 	if err != nil {
 		return nil, err
 	}
