@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/tendermint/tendermint/config/tendermint_test"
-	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
+	tmspcli "github.com/tendermint/tmsp/client"
 	"github.com/tendermint/tmsp/example/counter"
 )
 
@@ -20,8 +20,8 @@ func TestSerialReap(t *testing.T) {
 	app := counter.NewCounterApplication(true)
 	app.SetOption("serial", "on")
 	mtx := new(sync.Mutex)
-	appConnMem := proxy.NewLocalAppConn(mtx, app)
-	appConnCon := proxy.NewLocalAppConn(mtx, app)
+	appConnMem := tmspcli.NewLocalClient(mtx, app)
+	appConnCon := tmspcli.NewLocalClient(mtx, app)
 	mempool := NewMempool(appConnMem)
 
 	appendTxsRange := func(start, end int) {

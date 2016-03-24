@@ -30,7 +30,8 @@ func parseFlags(config cfg.Config, args []string) {
 	flags.BoolVar(&skipUPNP, "skip_upnp", config.GetBool("skip_upnp"), "Skip UPNP configuration")
 	flags.StringVar(&rpcLaddr, "rpc_laddr", config.GetString("rpc_laddr"), "RPC listen address. Port required")
 	flags.StringVar(&logLevel, "log_level", config.GetString("log_level"), "Log level")
-	flags.StringVar(&proxyApp, "proxy_app", config.GetString("proxy_app"), "Proxy app address")
+	flags.StringVar(&proxyApp, "proxy_app", config.GetString("proxy_app"),
+		"Proxy app address, or 'nilapp' or 'dummy' for local testing.")
 	flags.Parse(args)
 	if printHelp {
 		flags.PrintDefaults()

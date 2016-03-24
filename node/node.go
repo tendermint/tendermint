@@ -25,6 +25,7 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
+	tmspcli "github.com/tendermint/tmsp/client"
 	"github.com/tendermint/tmsp/example/dummy"
 	"github.com/tendermint/tmsp/example/nil"
 )
@@ -244,11 +245,11 @@ func getProxyApp(addr string, hash []byte) (proxyAppConn proxy.AppConn) {
 	case "nilapp":
 		app := nilapp.NewNilApplication()
 		mtx := new(sync.Mutex)
-		proxyAppConn = proxy.NewLocalAppConn(mtx, app)
+		proxyAppConn = tmspcli.NewLocalClient(mtx, app)
 	case "dummy":
 		app := dummy.NewDummyApplication()
 		mtx := new(sync.Mutex)
-		proxyAppConn = proxy.NewLocalAppConn(mtx, app)
+		proxyAppConn = tmspcli.NewLocalClient(mtx, app)
 	default:
 		// Run forever in a loop
 		remoteApp, err := proxy.NewRemoteAppConn(addr)

@@ -76,12 +76,11 @@ func TestInfo(t *testing.T) {
 	} else {
 		t.Log("Connected")
 	}
-	proxy.Start()
-	data, err := proxy.InfoSync()
-	if err != nil {
+	res := proxy.InfoSync()
+	if res.IsErr() {
 		t.Errorf("Unexpected error: %v", err)
 	}
-	if data != "size:0" {
+	if string(res.Data) != "size:0" {
 		t.Error("Expected ResponseInfo with one element 'size:0' but got something else")
 	}
 }

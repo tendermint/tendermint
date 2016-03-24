@@ -13,9 +13,9 @@ import (
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/config/tendermint_test"
 	mempl "github.com/tendermint/tendermint/mempool"
-	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	tmspcli "github.com/tendermint/tmsp/client"
 
 	"github.com/tendermint/tmsp/example/counter"
 )
@@ -313,8 +313,8 @@ func newConsensusState(state *sm.State, pv *types.PrivValidator) *ConsensusState
 
 	// one for mempool, one for consensus
 	mtx, app := new(sync.Mutex), counter.NewCounterApplication(false)
-	proxyAppConnMem := proxy.NewLocalAppConn(mtx, app)
-	proxyAppConnCon := proxy.NewLocalAppConn(mtx, app)
+	proxyAppConnMem := tmspcli.NewLocalClient(mtx, app)
+	proxyAppConnCon := tmspcli.NewLocalClient(mtx, app)
 
 	// Make Mempool
 	mempool := mempl.NewMempool(proxyAppConnMem)
