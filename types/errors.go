@@ -21,5 +21,6 @@ var (
 	ErrBaseInvalidSequence      = NewError(CodeType_BaseInvalidSequence, "Error (base) invalid sequence")
 	ErrBaseInvalidSignature     = NewError(CodeType_BaseInvalidSignature, "Error (base) invalid signature")
 	ErrBaseUnknownAddress       = NewError(CodeType_BaseUnknownAddress, "Error (base) unknown address")
+	ErrBaseUnknownPlugin        = NewError(CodeType_BaseUnknownPlugin, "Error (base) unknown plugin")
 	ErrBaseUnknownPubKey        = NewError(CodeType_BaseUnknownPubKey, "Error (base) unknown pubkey")
 )

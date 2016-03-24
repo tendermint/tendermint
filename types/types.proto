@@ -50,6 +50,7 @@ enum CodeType {
   BaseInvalidSignature  = 110;
   BaseUnknownAddress    = 111;
   BaseUnknownPubKey     = 112;
+  BaseUnknownPlugin     = 113;
 
   // Reserved for governance, 200 ~ 299
   GovUnknownEntity      = 201;
