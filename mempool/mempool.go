@@ -216,6 +216,7 @@ func (mem *Mempool) collectTxs(maxTxs int) []types.Tx {
 func (mem *Mempool) Update(height int, txs []types.Tx) {
 	mem.proxyMtx.Lock()
 	defer mem.proxyMtx.Unlock()
+	mem.proxyAppConn.FlushSync() // To flush async resCb calls e.g. from CheckTx
 
 	// First, create a lookup map of txns in new txs.
 	txsMap := make(map[string]struct{})
