@@ -73,8 +73,18 @@ func NewNode(privValidator *types.PrivValidator) *Node {
 		Exit(Fmt("Failed to start switch: %v", err))
 	}
 
+	// Decide whether to fast-sync or not
+	// We don't fast-sync when the only validator is us.
+	fastSync := config.GetBool("fast_sync")
+	if state.Validators.Size() == 1 {
+		addr, _ := state.Validators.GetByIndex(0)
+		if bytes.Equal(privValidator.Address, addr) {
+			fastSync = false
+		}
+	}
+
 	// Make BlockchainReactor
-	bcReactor := bc.NewBlockchainReactor(state.Copy(), proxyAppConnConsensus, blockStore, config.GetBool("fast_sync"))
+	bcReactor := bc.NewBlockchainReactor(state.Copy(), proxyAppConnConsensus, blockStore, fastSync)
 
 	// Make MempoolReactor
 	mempool := mempl.NewMempool(proxyAppConnMempool)
@@ -82,7 +92,7 @@ func NewNode(privValidator *types.PrivValidator) *Node {
 
 	// Make ConsensusReactor
 	consensusState := consensus.NewConsensusState(state.Copy(), proxyAppConnConsensus, blockStore, mempool)
-	consensusReactor := consensus.NewConsensusReactor(consensusState, blockStore, config.GetBool("fast_sync"))
+	consensusReactor := consensus.NewConsensusReactor(consensusState, blockStore, fastSync)
 	if privValidator != nil {
 		consensusReactor.SetPrivValidator(privValidator)
 	}

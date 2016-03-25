@@ -47,7 +47,7 @@ type BlockchainReactor struct {
 	proxyAppConn proxy.AppConn // same as consensus.proxyAppConn
 	store        *BlockStore
 	pool         *BlockPool
-	sync         bool
+	fastSync     bool
 	requestsCh   chan BlockRequest
 	timeoutsCh   chan string
 	lastBlock    *types.Block
@@ -55,7 +55,7 @@ type BlockchainReactor struct {
 	evsw *events.EventSwitch
 }
 
-func NewBlockchainReactor(state *sm.State, proxyAppConn proxy.AppConn, store *BlockStore, sync bool) *BlockchainReactor {
+func NewBlockchainReactor(state *sm.State, proxyAppConn proxy.AppConn, store *BlockStore, fastSync bool) *BlockchainReactor {
 	if state.LastBlockHeight == store.Height()-1 {
 		store.height -= 1 // XXX HACK, make this better
 	}
@@ -74,7 +74,7 @@ func NewBlockchainReactor(state *sm.State, proxyAppConn proxy.AppConn, store *Bl
 		proxyAppConn: proxyAppConn,
 		store:        store,
 		pool:         pool,
-		sync:         sync,
+		fastSync:     fastSync,
 		requestsCh:   requestsCh,
 		timeoutsCh:   timeoutsCh,
 	}
@@ -84,7 +84,7 @@ func NewBlockchainReactor(state *sm.State, proxyAppConn proxy.AppConn, store *Bl
 
 func (bcR *BlockchainReactor) OnStart() error {
 	bcR.BaseReactor.OnStart()
-	if bcR.sync {
+	if bcR.fastSync {
 		_, err := bcR.pool.Start()
 		if err != nil {
 			return err
