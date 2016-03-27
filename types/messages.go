@@ -68,6 +68,13 @@ func RequestInitChain(validators []*Validator) *Request {
 	}
 }
 
+func RequestBeginBlock(height uint64) *Request {
+	return &Request{
+		Type:   MessageType_BeginBlock,
+		Height: height,
+	}
+}
+
 func RequestEndBlock(height uint64) *Request {
 	return &Request{
 		Type:   MessageType_EndBlock,
@@ -150,6 +157,12 @@ func ResponseQuery(code CodeType, data []byte, log string) *Response {
 func ResponseInitChain() *Response {
 	return &Response{
 		Type: MessageType_InitChain,
+	}
+}
+
+func ResponseBeginBlock() *Response {
+	return &Response{
+		Type: MessageType_BeginBlock,
 	}
 }
 

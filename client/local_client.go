@@ -108,6 +108,44 @@ func (app *localClient) CommitAsync() *ReqRes {
 	)
 }
 
+func (app *localClient) InitChainAsync(validators []*types.Validator) *ReqRes {
+	app.mtx.Lock()
+	if bcApp, ok := app.Application.(types.BlockchainAware); ok {
+		bcApp.InitChain(validators)
+	}
+	reqRes := app.callback(
+		types.RequestInitChain(validators),
+		types.ResponseInitChain(),
+	)
+	app.mtx.Unlock()
+	return reqRes
+}
+
+func (app *localClient) BeginBlockAsync(height uint64) *ReqRes {
+	app.mtx.Lock()
+	if bcApp, ok := app.Application.(types.BlockchainAware); ok {
+		bcApp.BeginBlock(height)
+	}
+	app.mtx.Unlock()
+	return app.callback(
+		types.RequestBeginBlock(height),
+		types.ResponseBeginBlock(),
+	)
+}
+
+func (app *localClient) EndBlockAsync(height uint64) *ReqRes {
+	app.mtx.Lock()
+	var validators []*types.Validator
+	if bcApp, ok := app.Application.(types.BlockchainAware); ok {
+		validators = bcApp.EndBlock(height)
+	}
+	app.mtx.Unlock()
+	return app.callback(
+		types.RequestEndBlock(height),
+		types.ResponseEndBlock(validators),
+	)
+}
+
 //-------------------------------------------------------
 
 func (app *localClient) FlushSync() error {
@@ -164,6 +202,15 @@ func (app *localClient) InitChainSync(validators []*types.Validator) (err error)
 	app.mtx.Lock()
 	if bcApp, ok := app.Application.(types.BlockchainAware); ok {
 		bcApp.InitChain(validators)
+	}
+	app.mtx.Unlock()
+	return nil
+}
+
+func (app *localClient) BeginBlockSync(height uint64) (err error) {
+	app.mtx.Lock()
+	if bcApp, ok := app.Application.(types.BlockchainAware); ok {
+		bcApp.BeginBlock(height)
 	}
 	app.mtx.Unlock()
 	return nil

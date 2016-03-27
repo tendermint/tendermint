@@ -29,6 +29,9 @@ type BlockchainAware interface {
 	// validators: genesis validators from TendermintCore
 	InitChain(validators []*Validator)
 
+	// Signals the beginning of a block
+	BeginBlock(height uint64)
+
 	// Signals the end of a block
 	// validators: changed validators from app to TendermintCore
 	EndBlock(height uint64) (validators []*Validator)

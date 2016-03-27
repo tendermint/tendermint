@@ -30,7 +30,8 @@ TMSP requests/responses are simple Protobuf messages.  Check out the [schema fil
   * __Usage__:<br/>
     Validate a transaction.  This message should not mutate the state.
     Transactions are first run through CheckTx before broadcast to peers in the mempool layer.
-    You can make CheckTx semi-stateful and clear the state upon `Commit`, to ensure that all txs in the blockchain are valid.
+    You can make CheckTx semi-stateful and clear the state upon `Commit` or `BeginBlock`,
+    to allow for dependent sequences of transactions in the same block.
 
 #### Commit 
   * __Returns__:
@@ -73,6 +74,12 @@ TMSP requests/responses are simple Protobuf messages.  Check out the [schema fil
   * __Usage__:<br/>
     Called once upon genesis
 
+#### BeginBlock
+  * __Arguments__:
+    * `Height (uint64)`: The block height that is starting
+  * __Usage__:<br/>
+    Signals the beginning of a new block. Called prior to any AppendTxs.
+
 #### EndBlock
   * __Arguments__:
     * `Height (uint64)`: The block height that ended
@@ -81,18 +88,21 @@ TMSP requests/responses are simple Protobuf messages.  Check out the [schema fil
   * __Usage__:<br/>
     Signals the end of a block.  Called prior to each Commit after all transactions
 
-## Changelog
+### Changelog
 
-### Mar 6th, 2016
+#### Mar 26h, 2016
+* Introduce BeginBlock
+
+#### Mar 6th, 2016
 
 * Added InitChain, EndBlock
 
-### Feb 14th, 2016
+#### Feb 14th, 2016
 
 * s/GetHash/Commit/g
 * Document Protobuf request/response fields
 
-### Jan 23th, 2016
+#### Jan 23th, 2016
 
 * Added CheckTx/Query TMSP message types
 * Added Result/Log fields to AppendTx/CheckTx/SetOption
@@ -100,17 +110,10 @@ TMSP requests/responses are simple Protobuf messages.  Check out the [schema fil
 * Removed Code from ResponseSetOption and ResponseGetHash
 * Made examples BigEndian
 
-### Jan 12th, 2016
+#### Jan 12th, 2016
 
 * Added "RetCodeBadNonce = 0x06" return code
 
-### Jan 8th, 2016
+#### Jan 8th, 2016
 
-Tendermint/TMSP now comes to consensus on the order first before AppendTx.
-This means that we no longer need the Commit/Rollback TMSP messages.
-Instead, there’s a “CheckTx” message for mempool to check the validity of a message.
-One consequence is that txs in blocks now may include invalid txs that are ignored.
-In the future, we can include a bitarray or merkle structure in the block so anyone can see which txs were valid.
-To prevent spam, applications can implement their “CheckTx” messages to deduct some balance, so at least spam txs will cost something.  This isn’t any more work that what we already needed to do, so it’s not any worse.
-You can see the new changes in the tendermint/tendermint “order_first” branch, and tendermint/tmsp “order_first” branch.  If you your TMSP apps to me I can help with the transition.
-Please take a look at how the examples in TMSP changed, e.g. how AppContext was removed, CheckTx was added, how the TMSP msg bytes changed, and how commit/rollback messages were removed.
+* Tendermint/TMSP now comes to consensus on the order first before AppendTx.

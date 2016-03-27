@@ -28,7 +28,12 @@ type Client interface {
 	QuerySync(tx []byte) (res types.Result)
 	CommitSync() (res types.Result)
 
+	InitChainAsync(validators []*types.Validator) *ReqRes
+	BeginBlockAsync(height uint64) *ReqRes
+	EndBlockAsync(height uint64) *ReqRes
+
 	InitChainSync(validators []*types.Validator) (err error)
+	BeginBlockSync(height uint64) (err error)
 	EndBlockSync(height uint64) (changedValidators []*types.Validator, err error)
 }
 

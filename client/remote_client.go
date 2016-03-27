@@ -246,6 +246,10 @@ func (cli *remoteClient) InitChainAsync(validators []*types.Validator) *ReqRes {
 	return cli.queueRequest(types.RequestInitChain(validators))
 }
 
+func (cli *remoteClient) BeginBlockAsync(height uint64) *ReqRes {
+	return cli.queueRequest(types.RequestBeginBlock(height))
+}
+
 func (cli *remoteClient) EndBlockAsync(height uint64) *ReqRes {
 	return cli.queueRequest(types.RequestEndBlock(height))
 }
@@ -329,6 +333,15 @@ func (cli *remoteClient) CommitSync() (res types.Result) {
 
 func (cli *remoteClient) InitChainSync(validators []*types.Validator) (err error) {
 	cli.queueRequest(types.RequestInitChain(validators))
+	cli.FlushSync()
+	if cli.err != nil {
+		return cli.err
+	}
+	return nil
+}
+
+func (cli *remoteClient) BeginBlockSync(height uint64) (err error) {
+	cli.queueRequest(types.RequestBeginBlock(height))
 	cli.FlushSync()
 	if cli.err != nil {
 		return cli.err
