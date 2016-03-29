@@ -500,6 +500,16 @@ OUTER_LOOP:
 			}
 		}
 
+		// if the peer lags by one, but it has all the pieces,
+		// there may have been a double signing,
+		// so send a random vote from last commit
+		if prs.Height != 0 && rs.Height == prs.Height+1 {
+			if ps.PickSendVoteAny(rs.LastCommit) {
+				log.Info("Picked random rs.LastCommit to send because peer still lags but has all votes")
+			}
+			// don't continue OUTER_LOOP
+		}
+
 		if sleeping == 0 {
 			// We sent nothing. Sleep...
 			sleeping = 1
@@ -613,7 +623,16 @@ func (ps *PeerState) SetHasProposalBlockPart(height int, round int, index int) {
 // Convenience function to send vote to peer.
 // Returns true if vote was sent.
 func (ps *PeerState) PickSendVote(votes types.VoteSetReader) (ok bool) {
-	if index, vote, ok := ps.PickVoteToSend(votes); ok {
+	if index, vote, ok := ps.PickVoteToSend(votes, false); ok {
+		msg := &VoteMessage{index, vote}
+		ps.Peer.Send(VoteChannel, struct{ ConsensusMessage }{msg})
+		return true
+	}
+	return false
+}
+
+func (ps *PeerState) PickSendVoteAny(votes types.VoteSetReader) (ok bool) {
+	if index, vote, ok := ps.PickVoteToSend(votes, true); ok {
 		msg := &VoteMessage{index, vote}
 		ps.Peer.Send(VoteChannel, struct{ ConsensusMessage }{msg})
 		return true
@@ -622,7 +641,7 @@ func (ps *PeerState) PickSendVote(votes types.VoteSetReader) (ok bool) {
 }
 
 // votes: Must be the correct Size() for the Height().
-func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (index int, vote *types.Vote, ok bool) {
+func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader, any bool) (index int, vote *types.Vote, ok bool) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
@@ -645,6 +664,14 @@ func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (index int, vote 
 	if index, ok := votes.BitArray().Sub(psVotes).PickRandom(); ok {
 		ps.setHasVote(height, round, type_, index)
 		return index, votes.GetByIndex(index), true
+	}
+	if any {
+		// if no vote to send, pick a random one
+		// helps us handle double signing
+		if index, ok := votes.BitArray().PickRandom(); ok {
+			ps.setHasVote(height, round, type_, index)
+			return index, votes.GetByIndex(index), true
+		}
 	}
 	return 0, nil, false
 }
