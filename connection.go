@@ -196,7 +196,7 @@ func (c *MConnection) Send(chID byte, msg interface{}) bool {
 		return false
 	}
 
-	log.Info("Send", "channel", chID, "conn", c, "msg", msg) //, "bytes", wire.BinaryBytes(msg))
+	log.Debug("Send", "channel", chID, "conn", c, "msg", msg) //, "bytes", wire.BinaryBytes(msg))
 
 	// Send message to channel.
 	channel, ok := c.channelsIdx[chID]
@@ -225,7 +225,7 @@ func (c *MConnection) TrySend(chID byte, msg interface{}) bool {
 		return false
 	}
 
-	log.Info("TrySend", "channel", chID, "conn", c, "msg", msg)
+	log.Debug("TrySend", "channel", chID, "conn", c, "msg", msg)
 
 	// Send message to channel.
 	channel, ok := c.channelsIdx[chID]
@@ -277,12 +277,12 @@ FOR_LOOP:
 				channel.updateStats()
 			}
 		case <-c.pingTimer.Ch:
-			log.Info("Send Ping")
+			log.Debug("Send Ping")
 			wire.WriteByte(packetTypePing, c.bufWriter, &n, &err)
 			c.sendMonitor.Update(int(n))
 			c.flush()
 		case <-c.pong:
-			log.Info("Send Pong")
+			log.Debug("Send Pong")
 			wire.WriteByte(packetTypePong, c.bufWriter, &n, &err)
 			c.sendMonitor.Update(int(n))
 			c.flush()
@@ -411,11 +411,11 @@ FOR_LOOP:
 		switch pktType {
 		case packetTypePing:
 			// TODO: prevent abuse, as they cause flush()'s.
-			log.Info("Receive Ping")
+			log.Debug("Receive Ping")
 			c.pong <- struct{}{}
 		case packetTypePong:
 			// do nothing
-			log.Info("Receive Pong")
+			log.Debug("Receive Pong")
 		case packetTypeMsg:
 			pkt, n, err := msgPacket{}, int(0), error(nil)
 			wire.ReadBinaryPtr(&pkt, c.bufReader, maxMsgPacketTotalSize(), &n, &err)

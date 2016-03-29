@@ -312,7 +312,7 @@ func (sw *Switch) IsDialing(addr *NetAddress) bool {
 // NOTE: Broadcast uses goroutines, so order of broadcast may not be preserved.
 func (sw *Switch) Broadcast(chID byte, msg interface{}) chan bool {
 	successChan := make(chan bool, len(sw.peers.List()))
-	log.Info("Broadcast", "channel", chID, "msg", msg)
+	log.Debug("Broadcast", "channel", chID, "msg", msg)
 	for _, peer := range sw.peers.List() {
 		go func(peer *Peer) {
 			success := peer.Send(chID, msg)
