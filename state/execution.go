@@ -118,18 +118,18 @@ func (s *State) validateBlock(block *types.Block) error {
 		return err
 	}
 
-	// Validate block LastValidation.
+	// Validate block LastCommit.
 	if block.Height == 1 {
-		if len(block.LastValidation.Precommits) != 0 {
-			return errors.New("Block at height 1 (first block) should have no LastValidation precommits")
+		if len(block.LastCommit.Precommits) != 0 {
+			return errors.New("Block at height 1 (first block) should have no LastCommit precommits")
 		}
 	} else {
-		if len(block.LastValidation.Precommits) != s.LastValidators.Size() {
-			return fmt.Errorf("Invalid block validation size. Expected %v, got %v",
-				s.LastValidators.Size(), len(block.LastValidation.Precommits))
+		if len(block.LastCommit.Precommits) != s.LastValidators.Size() {
+			return fmt.Errorf("Invalid block commit size. Expected %v, got %v",
+				s.LastValidators.Size(), len(block.LastCommit.Precommits))
 		}
-		err := s.LastValidators.VerifyValidation(
-			s.ChainID, s.LastBlockHash, s.LastBlockParts, block.Height-1, block.LastValidation)
+		err := s.LastValidators.VerifyCommit(
+			s.ChainID, s.LastBlockHash, s.LastBlockParts, block.Height-1, block.LastCommit)
 		if err != nil {
 			return err
 		}
@@ -139,11 +139,11 @@ func (s *State) validateBlock(block *types.Block) error {
 }
 
 // Updates the LastCommitHeight of the validators in valSet, in place.
-// Assumes that lastValSet matches the valset of block.LastValidation
+// Assumes that lastValSet matches the valset of block.LastCommit
 // CONTRACT: lastValSet is not mutated.
 func updateValidatorsWithBlock(lastValSet *types.ValidatorSet, valSet *types.ValidatorSet, block *types.Block) {
 
-	for i, precommit := range block.LastValidation.Precommits {
+	for i, precommit := range block.LastCommit.Precommits {
 		if precommit == nil {
 			continue
 		}

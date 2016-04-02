@@ -232,7 +232,7 @@ func TestBadVotes(t *testing.T) {
 	}
 }
 
-func TestMakeValidation(t *testing.T) {
+func TestMakeCommit(t *testing.T) {
 	height, round := 1, 0
 	voteSet, _, privValidators := randVoteSet(height, round, VoteTypePrecommit, 10, 1)
 	blockHash, blockPartsHeader := crypto.CRandBytes(32), PartSetHeader{123, crypto.CRandBytes(32)}
@@ -245,8 +245,8 @@ func TestMakeValidation(t *testing.T) {
 		signAddVote(privValidators[i], vote, voteSet)
 	}
 
-	// MakeValidation should fail.
-	AssertPanics(t, "Doesn't have +2/3 majority", func() { voteSet.MakeValidation() })
+	// MakeCommit should fail.
+	AssertPanics(t, "Doesn't have +2/3 majority", func() { voteSet.MakeCommit() })
 
 	// 7th voted for some other block.
 	{
@@ -260,16 +260,16 @@ func TestMakeValidation(t *testing.T) {
 		signAddVote(privValidators[7], vote, voteSet)
 	}
 
-	validation := voteSet.MakeValidation()
+	commit := voteSet.MakeCommit()
 
-	// Validation should have 10 elements
-	if len(validation.Precommits) != 10 {
-		t.Errorf("Validation Precommits should have the same number of precommits as validators")
+	// Commit should have 10 elements
+	if len(commit.Precommits) != 10 {
+		t.Errorf("Commit Precommits should have the same number of precommits as validators")
 	}
 
-	// Ensure that Validation precommits are ordered.
-	if err := validation.ValidateBasic(); err != nil {
-		t.Errorf("Error in Validation.ValidateBasic(): %v", err)
+	// Ensure that Commit precommits are ordered.
+	if err := commit.ValidateBasic(); err != nil {
+		t.Errorf("Error in Commit.ValidateBasic(): %v", err)
 	}
 
 }

@@ -432,15 +432,15 @@ func (cs *ConsensusState) sendInternalMessage(mi msgInfo) {
 	}
 }
 
-// Reconstruct LastCommit from SeenValidation, which we saved along with the block,
+// Reconstruct LastCommit from SeenCommit, which we saved along with the block,
 // (which happens even before saving the state)
 func (cs *ConsensusState) reconstructLastCommit(state *sm.State) {
 	if state.LastBlockHeight == 0 {
 		return
 	}
-	seenValidation := cs.blockStore.LoadSeenValidation(state.LastBlockHeight)
-	lastPrecommits := types.NewVoteSet(state.LastBlockHeight, seenValidation.Round(), types.VoteTypePrecommit, state.LastValidators)
-	for idx, precommit := range seenValidation.Precommits {
+	seenCommit := cs.blockStore.LoadSeenCommit(state.LastBlockHeight)
+	lastPrecommits := types.NewVoteSet(state.LastBlockHeight, seenCommit.Round(), types.VoteTypePrecommit, state.LastValidators)
+	for idx, precommit := range seenCommit.Precommits {
 		if precommit == nil {
 			continue
 		}
@@ -863,17 +863,17 @@ func (cs *ConsensusState) isProposalComplete() bool {
 // Returns nil block upon error.
 // NOTE: keep it side-effect free for clarity.
 func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts *types.PartSet) {
-	var validation *types.Validation
+	var commit *types.Commit
 	if cs.Height == 1 {
 		// We're creating a proposal for the first block.
-		// The validation is empty, but not nil.
-		validation = &types.Validation{}
+		// The commit is empty, but not nil.
+		commit = &types.Commit{}
 	} else if cs.LastCommit.HasTwoThirdsMajority() {
-		// Make the validation from LastCommit
-		validation = cs.LastCommit.MakeValidation()
+		// Make the commit from LastCommit
+		commit = cs.LastCommit.MakeCommit()
 	} else {
 		// This shouldn't happen.
-		log.Error("enterPropose: Cannot propose anything: No validation for the previous block.")
+		log.Error("enterPropose: Cannot propose anything: No commit for the previous block.")
 		return
 	}
 
@@ -892,7 +892,7 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 			ValidatorsHash: cs.state.Validators.Hash(),
 			AppHash:        cs.state.AppHash, // state merkle root of txs from the previous block.
 		},
-		LastValidation: validation,
+		LastCommit: commit,
 		Data: &types.Data{
 			Txs: txs,
 		},
@@ -1222,9 +1222,9 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 
 	// Save to blockStore.
 	if cs.blockStore.Height() < block.Height {
-		commits := cs.Votes.Precommits(cs.CommitRound)
-		seenValidation := commits.MakeValidation()
-		cs.blockStore.SaveBlock(block, blockParts, seenValidation)
+		precommits := cs.Votes.Precommits(cs.CommitRound)
+		seenCommit := precommits.MakeCommit()
+		cs.blockStore.SaveBlock(block, blockParts, seenCommit)
 	}
 
 	/*

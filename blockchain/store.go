@@ -18,11 +18,11 @@ Simple low level store for blocks.
 There are three types of information stored:
  - BlockMeta:   Meta information about each block
  - Block part:  Parts of each block, aggregated w/ PartSet
- - Validation:  The Validation part of each block, for gossiping precommit votes
+ - Commit:      The commit part of each block, for gossiping precommit votes
 
 Currently the precommit signatures are duplicated in the Block parts as
-well as the Validation.  In the future this may change, perhaps by moving
-the Validation data outside the Block.
+well as the Commit.  In the future this may change, perhaps by moving
+the Commit data outside the Block.
 
 Panics indicate probable corruption in the data
 */
@@ -104,42 +104,42 @@ func (bs *BlockStore) LoadBlockMeta(height int) *types.BlockMeta {
 }
 
 // The +2/3 and other Precommit-votes for block at `height`.
-// This Validation comes from block.LastValidation for `height+1`.
-func (bs *BlockStore) LoadBlockValidation(height int) *types.Validation {
+// This Commit comes from block.LastCommit for `height+1`.
+func (bs *BlockStore) LoadBlockCommit(height int) *types.Commit {
 	var n int
 	var err error
-	r := bs.GetReader(calcBlockValidationKey(height))
+	r := bs.GetReader(calcBlockCommitKey(height))
 	if r == nil {
 		return nil
 	}
-	validation := wire.ReadBinary(&types.Validation{}, r, 0, &n, &err).(*types.Validation)
+	commit := wire.ReadBinary(&types.Commit{}, r, 0, &n, &err).(*types.Commit)
 	if err != nil {
-		PanicCrisis(Fmt("Error reading validation: %v", err))
+		PanicCrisis(Fmt("Error reading commit: %v", err))
 	}
-	return validation
+	return commit
 }
 
 // NOTE: the Precommit-vote heights are for the block at `height`
-func (bs *BlockStore) LoadSeenValidation(height int) *types.Validation {
+func (bs *BlockStore) LoadSeenCommit(height int) *types.Commit {
 	var n int
 	var err error
-	r := bs.GetReader(calcSeenValidationKey(height))
+	r := bs.GetReader(calcSeenCommitKey(height))
 	if r == nil {
 		return nil
 	}
-	validation := wire.ReadBinary(&types.Validation{}, r, 0, &n, &err).(*types.Validation)
+	commit := wire.ReadBinary(&types.Commit{}, r, 0, &n, &err).(*types.Commit)
 	if err != nil {
-		PanicCrisis(Fmt("Error reading validation: %v", err))
+		PanicCrisis(Fmt("Error reading commit: %v", err))
 	}
-	return validation
+	return commit
 }
 
-// blockParts:     Must be parts of the block
-// seenValidation: The +2/3 precommits that were seen which committed at height.
-//                 If all the nodes restart after committing a block,
-//                 we need this to reload the precommits to catch-up nodes to the
-//                 most recent height.  Otherwise they'd stall at H-1.
-func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, seenValidation *types.Validation) {
+// blockParts: Must be parts of the block
+// seenCommit: The +2/3 precommits that were seen which committed at height.
+//             If all the nodes restart after committing a block,
+//             we need this to reload the precommits to catch-up nodes to the
+//             most recent height.  Otherwise they'd stall at H-1.
+func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit) {
 	height := block.Height
 	if height != bs.height+1 {
 		PanicSanity(Fmt("BlockStore can only save contiguous blocks. Wanted %v, got %v", bs.height+1, height))
@@ -158,13 +158,13 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 		bs.saveBlockPart(height, i, blockParts.GetPart(i))
 	}
 
-	// Save block validation (duplicate and separate from the Block)
-	blockValidationBytes := wire.BinaryBytes(block.LastValidation)
-	bs.db.Set(calcBlockValidationKey(height-1), blockValidationBytes)
+	// Save block commit (duplicate and separate from the Block)
+	blockCommitBytes := wire.BinaryBytes(block.LastCommit)
+	bs.db.Set(calcBlockCommitKey(height-1), blockCommitBytes)
 
-	// Save seen validation (seen +2/3 precommits for block)
-	seenValidationBytes := wire.BinaryBytes(seenValidation)
-	bs.db.Set(calcSeenValidationKey(height), seenValidationBytes)
+	// Save seen commit (seen +2/3 precommits for block)
+	seenCommitBytes := wire.BinaryBytes(seenCommit)
+	bs.db.Set(calcSeenCommitKey(height), seenCommitBytes)
 
 	// Save new BlockStoreStateJSON descriptor
 	BlockStoreStateJSON{Height: height}.Save(bs.db)
@@ -191,12 +191,12 @@ func calcBlockPartKey(height int, partIndex int) []byte {
 	return []byte(fmt.Sprintf("P:%v:%v", height, partIndex))
 }
 
-func calcBlockValidationKey(height int) []byte {
-	return []byte(fmt.Sprintf("V:%v", height))
+func calcBlockCommitKey(height int) []byte {
+	return []byte(fmt.Sprintf("C:%v", height))
 }
 
-func calcSeenValidationKey(height int) []byte {
-	return []byte(fmt.Sprintf("SV:%v", height))
+func calcSeenCommitKey(height int) []byte {
+	return []byte(fmt.Sprintf("SC:%v", height))
 }
 
 //-----------------------------------------------------------------------------

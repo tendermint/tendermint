@@ -222,9 +222,9 @@ FOR_LOOP:
 				}
 				firstParts := first.MakePartSet()
 				firstPartsHeader := firstParts.Header()
-				// Finally, verify the first block using the second's validation.
-				err := bcR.state.Validators.VerifyValidation(
-					bcR.state.ChainID, first.Hash(), firstPartsHeader, first.Height, second.LastValidation)
+				// Finally, verify the first block using the second's commit
+				err := bcR.state.Validators.VerifyCommit(
+					bcR.state.ChainID, first.Hash(), firstPartsHeader, first.Height, second.LastCommit)
 				if err != nil {
 					log.Info("error in validation", "error", err)
 					bcR.pool.RedoRequest(first.Height)
@@ -243,7 +243,7 @@ FOR_LOOP:
 							PanicQ(Fmt("Failed to commit block at application: %v", err))
 						}
 					*/
-					bcR.store.SaveBlock(first, firstParts, second.LastValidation)
+					bcR.store.SaveBlock(first, firstParts, second.LastCommit)
 					bcR.state.Save()
 				}
 			}

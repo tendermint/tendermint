@@ -270,16 +270,16 @@ func (voteSet *VoteSet) StringShort() string {
 }
 
 //--------------------------------------------------------------------------------
-// Validation
+// Commit
 
-func (voteSet *VoteSet) MakeValidation() *Validation {
+func (voteSet *VoteSet) MakeCommit() *Commit {
 	if voteSet.type_ != VoteTypePrecommit {
-		PanicSanity("Cannot MakeValidation() unless VoteSet.Type is VoteTypePrecommit")
+		PanicSanity("Cannot MakeCommit() unless VoteSet.Type is VoteTypePrecommit")
 	}
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
 	if len(voteSet.maj23Hash) == 0 {
-		PanicSanity("Cannot MakeValidation() unless a blockhash has +2/3")
+		PanicSanity("Cannot MakeCommit() unless a blockhash has +2/3")
 	}
 	precommits := make([]*Vote, voteSet.valSet.Size())
 	voteSet.valSet.Iterate(func(valIndex int, val *Validator) bool {
@@ -296,7 +296,7 @@ func (voteSet *VoteSet) MakeValidation() *Validation {
 		precommits[valIndex] = vote
 		return false
 	})
-	return &Validation{
+	return &Commit{
 		Precommits: precommits,
 	}
 }

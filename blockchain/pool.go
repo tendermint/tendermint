@@ -149,8 +149,9 @@ func (pool *BlockPool) IsCaughtUp() bool {
 	return isCaughtUp
 }
 
-// We need to see the second block's Validation to validate the first block.
+// We need to see the second block's Commit to validate the first block.
 // So we peek two blocks at a time.
+// The caller will verify the commit.
 func (pool *BlockPool) PeekTwoBlocks() (first *types.Block, second *types.Block) {
 	pool.mtx.Lock() // Lock
 	defer pool.mtx.Unlock()
@@ -165,7 +166,7 @@ func (pool *BlockPool) PeekTwoBlocks() (first *types.Block, second *types.Block)
 }
 
 // Pop the first block at pool.height
-// It must have been validated by 'second'.Validation from PeekTwoBlocks().
+// It must have been validated by 'second'.Commit from PeekTwoBlocks().
 func (pool *BlockPool) PopRequest() {
 	pool.mtx.Lock() // Lock
 	defer pool.mtx.Unlock()

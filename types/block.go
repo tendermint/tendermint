@@ -15,9 +15,9 @@ import (
 const MaxBlockSize = 22020096 // 21MB TODO make it configurable
 
 type Block struct {
-	*Header        `json:"header"`
-	*Data          `json:"data"`
-	LastValidation *Validation `json:"last_validation"`
+	*Header    `json:"header"`
+	*Data      `json:"data"`
+	LastCommit *Commit `json:"last_commit"`
 }
 
 // Basic validation that doesn't involve state data.
@@ -46,11 +46,11 @@ func (b *Block) ValidateBasic(chainID string, lastBlockHeight int, lastBlockHash
 	if !b.LastBlockParts.Equals(lastBlockParts) {
 		return errors.New(Fmt("Wrong Block.Header.LastBlockParts. Expected %v, got %v", lastBlockParts, b.LastBlockParts))
 	}
-	if !bytes.Equal(b.LastValidationHash, b.LastValidation.Hash()) {
-		return errors.New(Fmt("Wrong Block.Header.LastValidationHash.  Expected %X, got %X", b.LastValidationHash, b.LastValidation.Hash()))
+	if !bytes.Equal(b.LastCommitHash, b.LastCommit.Hash()) {
+		return errors.New(Fmt("Wrong Block.Header.LastCommitHash.  Expected %X, got %X", b.LastCommitHash, b.LastCommit.Hash()))
 	}
 	if b.Header.Height != 1 {
-		if err := b.LastValidation.ValidateBasic(); err != nil {
+		if err := b.LastCommit.ValidateBasic(); err != nil {
 			return err
 		}
 	}
@@ -65,8 +65,8 @@ func (b *Block) ValidateBasic(chainID string, lastBlockHeight int, lastBlockHash
 }
 
 func (b *Block) FillHeader() {
-	if b.LastValidationHash == nil {
-		b.LastValidationHash = b.LastValidation.Hash()
+	if b.LastCommitHash == nil {
+		b.LastCommitHash = b.LastCommit.Hash()
 	}
 	if b.DataHash == nil {
 		b.DataHash = b.Data.Hash()
@@ -76,7 +76,7 @@ func (b *Block) FillHeader() {
 // Computes and returns the block hash.
 // If the block is incomplete, block hash is nil for safety.
 func (b *Block) Hash() []byte {
-	if b.Header == nil || b.Data == nil || b.LastValidation == nil {
+	if b.Header == nil || b.Data == nil || b.LastCommit == nil {
 		return nil
 	}
 	b.FillHeader()
@@ -115,7 +115,7 @@ func (b *Block) StringIndented(indent string) string {
 %s}#%X`,
 		indent, b.Header.StringIndented(indent+"  "),
 		indent, b.Data.StringIndented(indent+"  "),
-		indent, b.LastValidation.StringIndented(indent+"  "),
+		indent, b.LastCommit.StringIndented(indent+"  "),
 		indent, b.Hash())
 }
 
@@ -130,17 +130,17 @@ func (b *Block) StringShort() string {
 //-----------------------------------------------------------------------------
 
 type Header struct {
-	ChainID            string        `json:"chain_id"`
-	Height             int           `json:"height"`
-	Time               time.Time     `json:"time"`
-	Fees               int64         `json:"fees"`
-	NumTxs             int           `json:"num_txs"`
-	LastBlockHash      []byte        `json:"last_block_hash"`
-	LastBlockParts     PartSetHeader `json:"last_block_parts"`
-	LastValidationHash []byte        `json:"last_validation_hash"`
-	DataHash           []byte        `json:"data_hash"`
-	ValidatorsHash     []byte        `json:"validators_hash"`
-	AppHash            []byte        `json:"app_hash"` // state merkle root of txs from the previous block
+	ChainID        string        `json:"chain_id"`
+	Height         int           `json:"height"`
+	Time           time.Time     `json:"time"`
+	Fees           int64         `json:"fees"`
+	NumTxs         int           `json:"num_txs"`
+	LastBlockHash  []byte        `json:"last_block_hash"`
+	LastBlockParts PartSetHeader `json:"last_block_parts"`
+	LastCommitHash []byte        `json:"last_commit_hash"`
+	DataHash       []byte        `json:"data_hash"`
+	ValidatorsHash []byte        `json:"validators_hash"`
+	AppHash        []byte        `json:"app_hash"` // state merkle root of txs from the previous block
 }
 
 // NOTE: hash is nil if required fields are missing.
@@ -156,7 +156,7 @@ func (h *Header) Hash() []byte {
 		"NumTxs":         h.NumTxs,
 		"LastBlock":      h.LastBlockHash,
 		"LastBlockParts": h.LastBlockParts,
-		"LastValidation": h.LastValidationHash,
+		"LastCommit":     h.LastCommitHash,
 		"Data":           h.DataHash,
 		"Validators":     h.ValidatorsHash,
 		"App":            h.AppHash,
@@ -172,10 +172,10 @@ func (h *Header) StringIndented(indent string) string {
 %s  Height:         %v
 %s  Time:           %v
 %s  Fees:           %v
-%s  NumTxs:  %v
+%s  NumTxs:         %v
 %s  LastBlock:      %X
 %s  LastBlockParts: %v
-%s  LastValidation: %X
+%s  LastCommit:     %X
 %s  Data:           %X
 %s  Validators:     %X
 %s  App:            %X
@@ -187,7 +187,7 @@ func (h *Header) StringIndented(indent string) string {
 		indent, h.NumTxs,
 		indent, h.LastBlockHash,
 		indent, h.LastBlockParts,
-		indent, h.LastValidationHash,
+		indent, h.LastCommitHash,
 		indent, h.DataHash,
 		indent, h.ValidatorsHash,
 		indent, h.AppHash,
@@ -196,8 +196,8 @@ func (h *Header) StringIndented(indent string) string {
 
 //-------------------------------------
 
-// NOTE: Validation is empty for height 1, but never nil.
-type Validation struct {
+// NOTE: Commit is empty for height 1, but never nil.
+type Commit struct {
 	// NOTE: The Precommits are in order of address to preserve the bonded ValidatorSet order.
 	// Any peer with a block can gossip precommits by index with a peer without recalculating the
 	// active ValidatorSet.
@@ -209,121 +209,121 @@ type Validation struct {
 	bitArray       *BitArray
 }
 
-func (v *Validation) FirstPrecommit() *Vote {
-	if len(v.Precommits) == 0 {
+func (commit *Commit) FirstPrecommit() *Vote {
+	if len(commit.Precommits) == 0 {
 		return nil
 	}
-	if v.firstPrecommit != nil {
-		return v.firstPrecommit
+	if commit.firstPrecommit != nil {
+		return commit.firstPrecommit
 	}
-	for _, precommit := range v.Precommits {
+	for _, precommit := range commit.Precommits {
 		if precommit != nil {
-			v.firstPrecommit = precommit
+			commit.firstPrecommit = precommit
 			return precommit
 		}
 	}
 	return nil
 }
 
-func (v *Validation) Height() int {
-	if len(v.Precommits) == 0 {
+func (commit *Commit) Height() int {
+	if len(commit.Precommits) == 0 {
 		return 0
 	}
-	return v.FirstPrecommit().Height
+	return commit.FirstPrecommit().Height
 }
 
-func (v *Validation) Round() int {
-	if len(v.Precommits) == 0 {
+func (commit *Commit) Round() int {
+	if len(commit.Precommits) == 0 {
 		return 0
 	}
-	return v.FirstPrecommit().Round
+	return commit.FirstPrecommit().Round
 }
 
-func (v *Validation) Type() byte {
+func (commit *Commit) Type() byte {
 	return VoteTypePrecommit
 }
 
-func (v *Validation) Size() int {
-	if v == nil {
+func (commit *Commit) Size() int {
+	if commit == nil {
 		return 0
 	}
-	return len(v.Precommits)
+	return len(commit.Precommits)
 }
 
-func (v *Validation) BitArray() *BitArray {
-	if v.bitArray == nil {
-		v.bitArray = NewBitArray(len(v.Precommits))
-		for i, precommit := range v.Precommits {
-			v.bitArray.SetIndex(i, precommit != nil)
+func (commit *Commit) BitArray() *BitArray {
+	if commit.bitArray == nil {
+		commit.bitArray = NewBitArray(len(commit.Precommits))
+		for i, precommit := range commit.Precommits {
+			commit.bitArray.SetIndex(i, precommit != nil)
 		}
 	}
-	return v.bitArray
+	return commit.bitArray
 }
 
-func (v *Validation) GetByIndex(index int) *Vote {
-	return v.Precommits[index]
+func (commit *Commit) GetByIndex(index int) *Vote {
+	return commit.Precommits[index]
 }
 
-func (v *Validation) IsCommit() bool {
-	if len(v.Precommits) == 0 {
+func (commit *Commit) IsCommit() bool {
+	if len(commit.Precommits) == 0 {
 		return false
 	}
 	return true
 }
 
-func (v *Validation) ValidateBasic() error {
-	if len(v.Precommits) == 0 {
-		return errors.New("No precommits in validation")
+func (commit *Commit) ValidateBasic() error {
+	if len(commit.Precommits) == 0 {
+		return errors.New("No precommits in commit")
 	}
-	height, round := v.Height(), v.Round()
-	for _, precommit := range v.Precommits {
+	height, round := commit.Height(), commit.Round()
+	for _, precommit := range commit.Precommits {
 		// It's OK for precommits to be missing.
 		if precommit == nil {
 			continue
 		}
 		// Ensure that all votes are precommits
 		if precommit.Type != VoteTypePrecommit {
-			return fmt.Errorf("Invalid validation vote. Expected precommit, got %v",
+			return fmt.Errorf("Invalid commit vote. Expected precommit, got %v",
 				precommit.Type)
 		}
 		// Ensure that all heights are the same
 		if precommit.Height != height {
-			return fmt.Errorf("Invalid validation precommit height. Expected %v, got %v",
+			return fmt.Errorf("Invalid commit precommit height. Expected %v, got %v",
 				height, precommit.Height)
 		}
 		// Ensure that all rounds are the same
 		if precommit.Round != round {
-			return fmt.Errorf("Invalid validation precommit round. Expected %v, got %v",
+			return fmt.Errorf("Invalid commit precommit round. Expected %v, got %v",
 				round, precommit.Round)
 		}
 	}
 	return nil
 }
 
-func (v *Validation) Hash() []byte {
-	if v.hash == nil {
-		bs := make([]interface{}, len(v.Precommits))
-		for i, precommit := range v.Precommits {
+func (commit *Commit) Hash() []byte {
+	if commit.hash == nil {
+		bs := make([]interface{}, len(commit.Precommits))
+		for i, precommit := range commit.Precommits {
 			bs[i] = precommit
 		}
-		v.hash = merkle.SimpleHashFromBinaries(bs)
+		commit.hash = merkle.SimpleHashFromBinaries(bs)
 	}
-	return v.hash
+	return commit.hash
 }
 
-func (v *Validation) StringIndented(indent string) string {
-	if v == nil {
-		return "nil-Validation"
+func (commit *Commit) StringIndented(indent string) string {
+	if commit == nil {
+		return "nil-Commit"
 	}
-	precommitStrings := make([]string, len(v.Precommits))
-	for i, precommit := range v.Precommits {
+	precommitStrings := make([]string, len(commit.Precommits))
+	for i, precommit := range commit.Precommits {
 		precommitStrings[i] = precommit.String()
 	}
-	return fmt.Sprintf(`Validation{
+	return fmt.Sprintf(`Commit{
 %s  Precommits: %v
 %s}#%X`,
 		indent, strings.Join(precommitStrings, "\n"+indent+"  "),
-		indent, v.hash)
+		indent, commit.hash)
 }
 
 //-----------------------------------------------------------------------------

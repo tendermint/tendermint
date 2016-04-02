@@ -206,37 +206,37 @@ func (valSet *ValidatorSet) Iterate(fn func(index int, val *Validator) bool) {
 }
 
 // Verify that +2/3 of the set had signed the given signBytes
-func (valSet *ValidatorSet) VerifyValidation(chainID string,
-	hash []byte, parts PartSetHeader, height int, v *Validation) error {
-	if valSet.Size() != len(v.Precommits) {
-		return fmt.Errorf("Invalid validation -- wrong set size: %v vs %v", valSet.Size(), len(v.Precommits))
+func (valSet *ValidatorSet) VerifyCommit(chainID string,
+	hash []byte, parts PartSetHeader, height int, commit *Commit) error {
+	if valSet.Size() != len(commit.Precommits) {
+		return fmt.Errorf("Invalid commit -- wrong set size: %v vs %v", valSet.Size(), len(commit.Precommits))
 	}
-	if height != v.Height() {
-		return fmt.Errorf("Invalid validation -- wrong height: %v vs %v", height, v.Height())
+	if height != commit.Height() {
+		return fmt.Errorf("Invalid commit -- wrong height: %v vs %v", height, commit.Height())
 	}
 
 	talliedVotingPower := int64(0)
-	round := v.Round()
+	round := commit.Round()
 
-	for idx, precommit := range v.Precommits {
+	for idx, precommit := range commit.Precommits {
 		// may be nil if validator skipped.
 		if precommit == nil {
 			continue
 		}
 		if precommit.Height != height {
-			return fmt.Errorf("Invalid validation -- wrong height: %v vs %v", height, precommit.Height)
+			return fmt.Errorf("Invalid commit -- wrong height: %v vs %v", height, precommit.Height)
 		}
 		if precommit.Round != round {
-			return fmt.Errorf("Invalid validation -- wrong round: %v vs %v", round, precommit.Round)
+			return fmt.Errorf("Invalid commit -- wrong round: %v vs %v", round, precommit.Round)
 		}
 		if precommit.Type != VoteTypePrecommit {
-			return fmt.Errorf("Invalid validation -- not precommit @ index %v", idx)
+			return fmt.Errorf("Invalid commit -- not precommit @ index %v", idx)
 		}
 		_, val := valSet.GetByIndex(idx)
 		// Validate signature
 		precommitSignBytes := SignBytes(chainID, precommit)
 		if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
-			return fmt.Errorf("Invalid validation -- invalid signature: %v", precommit)
+			return fmt.Errorf("Invalid commit -- invalid signature: %v", precommit)
 		}
 		if !bytes.Equal(precommit.BlockHash, hash) {
 			continue // Not an error, but doesn't count
@@ -251,7 +251,7 @@ func (valSet *ValidatorSet) VerifyValidation(chainID string,
 	if talliedVotingPower > valSet.TotalVotingPower()*2/3 {
 		return nil
 	} else {
-		return fmt.Errorf("Invalid validation -- insufficient voting power: got %v, needed %v",
+		return fmt.Errorf("Invalid commit -- insufficient voting power: got %v, needed %v",
 			talliedVotingPower, (valSet.TotalVotingPower()*2/3 + 1))
 	}
 }

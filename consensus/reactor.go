@@ -488,14 +488,14 @@ OUTER_LOOP:
 		}
 
 		// Catchup logic
-		// If peer is lagging by more than 1, send Validation.
+		// If peer is lagging by more than 1, send Commit.
 		if prs.Height != 0 && rs.Height >= prs.Height+2 {
-			// Load the block validation for prs.Height,
+			// Load the block commit for prs.Height,
 			// which contains precommit signatures for prs.Height.
-			validation := conR.blockStore.LoadBlockValidation(prs.Height)
-			log.Info("Loaded BlockValidation for catch-up", "height", prs.Height, "validation", validation)
-			if ps.PickSendVote(validation) {
-				log.Info("Picked Catchup validation to send")
+			commit := conR.blockStore.LoadBlockCommit(prs.Height)
+			log.Info("Loaded BlockCommit for catch-up", "height", prs.Height, "commit", commit)
+			if ps.PickSendVote(commit) {
+				log.Info("Picked Catchup commit to send")
 				continue OUTER_LOOP
 			}
 		}
@@ -696,7 +696,7 @@ func (ps *PeerState) ensureCatchupCommitRound(height, round int, numValidators i
 	}
 	/*
 		NOTE: This is wrong, 'round' could change.
-		e.g. if orig round is not the same as block LastValidation round.
+		e.g. if orig round is not the same as block LastCommit round.
 		if ps.CatchupCommitRound != -1 && ps.CatchupCommitRound != round {
 			PanicSanity(Fmt("Conflicting CatchupCommitRound. Height: %v, Orig: %v, New: %v", height, ps.CatchupCommitRound, round))
 		}

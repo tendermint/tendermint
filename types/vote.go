@@ -71,9 +71,9 @@ func (vote *Vote) String() string {
 }
 
 //--------------------------------------------------------------------------------
-// TODO: Move blocks/Validation to here?
+// TODO: Move blocks/Commit to here?
 
-// Common interface between *consensus.VoteSet and types.Validation
+// Common interface between *consensus.VoteSet and types.Commit
 type VoteSetReader interface {
 	Height() int
 	Round() int
