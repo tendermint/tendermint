@@ -36,7 +36,6 @@ func (b *Block) ValidateBasic(chainID string, lastBlockHeight int, lastBlockHash
 			return errors.New("Invalid Block.Header.Time")
 		}
 	*/
-	// TODO: validate Fees
 	if b.NumTxs != len(b.Data.Txs) {
 		return errors.New(Fmt("Wrong Block.Header.NumTxs. Expected %v, got %v", len(b.Data.Txs), b.NumTxs))
 	}
@@ -76,6 +75,7 @@ func (b *Block) FillHeader() {
 // Computes and returns the block hash.
 // If the block is incomplete, block hash is nil for safety.
 func (b *Block) Hash() []byte {
+	fmt.Println(">>", b.Data)
 	if b.Header == nil || b.Data == nil || b.LastCommit == nil {
 		return nil
 	}
@@ -133,7 +133,6 @@ type Header struct {
 	ChainID        string        `json:"chain_id"`
 	Height         int           `json:"height"`
 	Time           time.Time     `json:"time"`
-	Fees           int64         `json:"fees"`
 	NumTxs         int           `json:"num_txs"`
 	LastBlockHash  []byte        `json:"last_block_hash"`
 	LastBlockParts PartSetHeader `json:"last_block_parts"`
@@ -152,7 +151,6 @@ func (h *Header) Hash() []byte {
 		"ChainID":        h.ChainID,
 		"Height":         h.Height,
 		"Time":           h.Time,
-		"Fees":           h.Fees,
 		"NumTxs":         h.NumTxs,
 		"LastBlock":      h.LastBlockHash,
 		"LastBlockParts": h.LastBlockParts,
@@ -171,7 +169,6 @@ func (h *Header) StringIndented(indent string) string {
 %s  ChainID:        %v
 %s  Height:         %v
 %s  Time:           %v
-%s  Fees:           %v
 %s  NumTxs:         %v
 %s  LastBlock:      %X
 %s  LastBlockParts: %v
@@ -183,7 +180,6 @@ func (h *Header) StringIndented(indent string) string {
 		indent, h.ChainID,
 		indent, h.Height,
 		indent, h.Time,
-		indent, h.Fees,
 		indent, h.NumTxs,
 		indent, h.LastBlockHash,
 		indent, h.LastBlockParts,

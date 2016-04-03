@@ -885,7 +885,6 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 			ChainID:        cs.state.ChainID,
 			Height:         cs.Height,
 			Time:           time.Now(),
-			Fees:           0, // TODO fees
 			NumTxs:         len(txs),
 			LastBlockHash:  cs.state.LastBlockHash,
 			LastBlockParts: cs.state.LastBlockParts,
