@@ -1,0 +1,68 @@
+hash: 699d7609d2a9b90576d9839bad41ae3e41cf93274ff507a4cade2466b6dc1ade
+updated: 2016-04-06T16:51:54.760236876-05:00
+imports:
+- name: github.com/codegangsta/cli
+  version: 71f57d300dd6a780ac1856c005c4b518cfd498ec
+- name: github.com/golang/snappy
+  version: 857ad66e003f466b64f9055849bab122efd4c87a
+- name: github.com/gorilla/websocket
+  version: e2e3d8414d0fbae04004f151979f4e27c6747fe7
+- name: github.com/inconshreveable/log15
+  version: 57a084d014d4150152b19e4e531399a7145d1540
+  subpackages:
+  - stack
+  - term
+- name: github.com/mattn/go-colorable
+  version: 9cbef7c35391cca05f15f8181dc0b18bc9736dbb
+- name: github.com/mattn/go-isatty
+  version: 56b76bdf51f7708750eac80fa38b952bb9f32639
+- name: github.com/naoina/go-stringutil
+  version: 6b638e95a32d0c1131db0e7fe83775cbea4a0d0b
+- name: github.com/naoina/toml
+  version: 751171607256bb66e64c9f0220c00662420c38e9
+  subpackages:
+  - ast
+- name: github.com/sfreiberg/gotwilio
+  version: f024bbefe80fdb7bcc8c43b6add05dae97744e0e
+- name: github.com/spf13/pflag
+  version: 7f60f83a2c81bc3c3c0d5297f61ddfa68da9d3b7
+- name: github.com/syndtr/goleveldb
+  version: 93fc893f2dadb96ffde441c7546cc67ea290a3a8
+  subpackages:
+  - leveldb
+  - leveldb/errors
+  - leveldb/opt
+  - leveldb/cache
+  - leveldb/comparer
+  - leveldb/filter
+  - leveldb/iterator
+  - leveldb/journal
+  - leveldb/memdb
+  - leveldb/storage
+  - leveldb/table
+  - leveldb/util
+- name: github.com/tendermint/ed25519
+  version: fdac6641497281ed1cc368687ec6377e96e02b24
+  subpackages:
+  - extra25519
+  - edwards25519
+- name: github.com/tendermint/flowcontrol
+  version: 84d9671090430e8ec80e35b339907e0579b999eb
+- name: github.com/tendermint/log15
+  version: 6e460758f10ef42a4724b8e4a82fee59aaa0e41d
+- name: golang.org/x/crypto
+  version: b8a0f4bb4040f8d884435cff35b9691e362cf00c
+  subpackages:
+  - nacl/box
+  - nacl/secretbox
+  - ripemd160
+  - curve25519
+  - salsa20/salsa
+  - poly1305
+- name: golang.org/x/sys
+  version: 042a8f53ce82bbe081222da955159491e32146a0
+  subpackages:
+  - unix
+- name: gopkg.in/fatih/set.v0
+  version: 27c40922c40b43fe04554d8223a402af3ea333f3
+devImports: []

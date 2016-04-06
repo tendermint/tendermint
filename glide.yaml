@@ -1,0 +1,23 @@
+package: github.com/eris-ltd/tendermint
+import:
+- package: github.com/codegangsta/cli
+- package: github.com/gorilla/websocket
+- package: github.com/naoina/toml
+- package: github.com/sfreiberg/gotwilio
+- package: github.com/spf13/pflag
+- package: github.com/syndtr/goleveldb
+  subpackages:
+  - leveldb
+  - leveldb/errors
+  - leveldb/opt
+- package: github.com/tendermint/ed25519
+  subpackages:
+  - extra25519
+- package: github.com/tendermint/flowcontrol
+- package: github.com/tendermint/log15
+- package: golang.org/x/crypto
+  subpackages:
+  - nacl/box
+  - nacl/secretbox
+  - ripemd160
+- package: gopkg.in/fatih/set.v0
