@@ -4,10 +4,10 @@ package core_client
 
 import (
 	"fmt"
-	acm "github.com/tendermint/tendermint/account"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	rpctypes "github.com/tendermint/tendermint/rpc/types"
-	"github.com/tendermint/tendermint/types"
+	acm "github.com/eris-ltd/tendermint/account"
+	ctypes "github.com/eris-ltd/tendermint/rpc/core/types"
+	rpctypes "github.com/eris-ltd/tendermint/rpc/types"
+	"github.com/eris-ltd/tendermint/types"
 	"io/ioutil"
 	"net/http"
 )

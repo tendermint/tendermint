@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/gorilla/websocket"
-	_ "github.com/tendermint/tendermint/config/tendermint_test"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	"github.com/tendermint/tendermint/rpc/types"
-	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/wire"
+	"github.com/gorilla/websocket"
+	_ "github.com/eris-ltd/tendermint/config/tendermint_test"
+	ctypes "github.com/eris-ltd/tendermint/rpc/core/types"
+	"github.com/eris-ltd/tendermint/rpc/types"
+	"github.com/eris-ltd/tendermint/types"
+	"github.com/eris-ltd/tendermint/wire"
 )
 
 //--------------------------------------------------------------------------------

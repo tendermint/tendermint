@@ -1,7 +1,7 @@
 package events
 
 import (
-	"github.com/tendermint/tendermint/types"
+	"github.com/eris-ltd/tendermint/types"
 )
 
 const (

@@ -29,10 +29,10 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/tendermint/tendermint/Godeps/_workspace/src/code.google.com/p/go.crypto/ripemd160"
+	"golang.org/x/crypto/ripemd160"
 
-	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/wire"
+	. "github.com/eris-ltd/tendermint/common"
+	"github.com/eris-ltd/tendermint/wire"
 )
 
 func SimpleHashFromTwoHashes(left []byte, right []byte) []byte {

@@ -6,7 +6,7 @@ import (
 	"io"
 	"reflect"
 
-	. "github.com/tendermint/tendermint/common"
+	. "github.com/eris-ltd/tendermint/common"
 )
 
 // TODO document and maybe make it configurable.

@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/tendermint/tendermint/config/tendermint_test"
-	"github.com/tendermint/tendermint/events"
-	"github.com/tendermint/tendermint/types"
+	_ "github.com/eris-ltd/tendermint/config/tendermint_test"
+	"github.com/eris-ltd/tendermint/events"
+	"github.com/eris-ltd/tendermint/types"
 )
 
 /*

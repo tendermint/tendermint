@@ -8,13 +8,13 @@ import (
 	"sync"
 	"time"
 
-	bc "github.com/tendermint/tendermint/blockchain"
-	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/events"
-	"github.com/tendermint/tendermint/p2p"
-	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/wire"
+	bc "github.com/eris-ltd/tendermint/blockchain"
+	. "github.com/eris-ltd/tendermint/common"
+	"github.com/eris-ltd/tendermint/events"
+	"github.com/eris-ltd/tendermint/p2p"
+	sm "github.com/eris-ltd/tendermint/state"
+	"github.com/eris-ltd/tendermint/types"
+	"github.com/eris-ltd/tendermint/wire"
 )
 
 const (

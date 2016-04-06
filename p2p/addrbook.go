@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	. "github.com/tendermint/tendermint/common"
+	. "github.com/eris-ltd/tendermint/common"
 )
 
 const (

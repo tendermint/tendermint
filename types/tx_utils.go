@@ -2,8 +2,8 @@ package types
 
 import (
 	"fmt"
-	acm "github.com/tendermint/tendermint/account"
-	ptypes "github.com/tendermint/tendermint/permission/types"
+	acm "github.com/eris-ltd/tendermint/account"
+	ptypes "github.com/eris-ltd/tendermint/permission/types"
 )
 
 type AccountGetter interface {

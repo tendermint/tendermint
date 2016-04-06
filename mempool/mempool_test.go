@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	acm "github.com/tendermint/tendermint/account"
-	_ "github.com/tendermint/tendermint/config/tendermint_test"
-	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
+	acm "github.com/eris-ltd/tendermint/account"
+	_ "github.com/eris-ltd/tendermint/config/tendermint_test"
+	sm "github.com/eris-ltd/tendermint/state"
+	"github.com/eris-ltd/tendermint/types"
 )
 
 var someAddr = []byte("ABCDEFGHIJABCDEFGHIJ")

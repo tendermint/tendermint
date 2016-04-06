@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/tendermint/tendermint/types"
+	"github.com/eris-ltd/tendermint/types"
 )
 
 // NOTE: this is totally unsafe.

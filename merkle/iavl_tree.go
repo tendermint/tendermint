@@ -5,9 +5,9 @@ import (
 	"container/list"
 	"sync"
 
-	"github.com/tendermint/tendermint/wire"
-	. "github.com/tendermint/tendermint/common"
-	dbm "github.com/tendermint/tendermint/db"
+	"github.com/eris-ltd/tendermint/wire"
+	. "github.com/eris-ltd/tendermint/common"
+	dbm "github.com/eris-ltd/tendermint/db"
 )
 
 /*

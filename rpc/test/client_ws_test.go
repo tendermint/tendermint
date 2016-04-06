@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	_ "github.com/tendermint/tendermint/config/tendermint_test"
-	"github.com/tendermint/tendermint/types"
+	_ "github.com/eris-ltd/tendermint/config/tendermint_test"
+	"github.com/eris-ltd/tendermint/types"
 )
 
 var wsTyp = "JSONRPC"

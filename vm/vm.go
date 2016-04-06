@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"math/big"
 
-	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/events"
-	ptypes "github.com/tendermint/tendermint/permission/types"
-	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/vm/sha3"
+	. "github.com/eris-ltd/tendermint/common"
+	"github.com/eris-ltd/tendermint/events"
+	ptypes "github.com/eris-ltd/tendermint/permission/types"
+	"github.com/eris-ltd/tendermint/types"
+	"github.com/eris-ltd/tendermint/vm/sha3"
 )
 
 var (

@@ -10,10 +10,10 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/tendermint/tendermint/alert"
-	. "github.com/tendermint/tendermint/common"
-	. "github.com/tendermint/tendermint/rpc/types"
-	"github.com/tendermint/tendermint/wire"
+	"github.com/eris-ltd/tendermint/alert"
+	. "github.com/eris-ltd/tendermint/common"
+	. "github.com/eris-ltd/tendermint/rpc/types"
+	"github.com/eris-ltd/tendermint/wire"
 )
 
 func StartHTTPServer(listenAddr string, handler http.Handler) (net.Listener, error) {

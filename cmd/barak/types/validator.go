@@ -1,7 +1,7 @@
 package types
 
 import (
-	acm "github.com/tendermint/tendermint/account"
+	acm "github.com/eris-ltd/tendermint/account"
 )
 
 type Validator struct {

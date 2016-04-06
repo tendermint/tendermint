@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/codegangsta/cli"
+	"github.com/codegangsta/cli"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -10,11 +10,11 @@ import (
 	"strings"
 	"sync"
 
-	acm "github.com/tendermint/tendermint/account"
-	btypes "github.com/tendermint/tendermint/cmd/barak/types"
-	. "github.com/tendermint/tendermint/common"
-	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/wire"
+	acm "github.com/eris-ltd/tendermint/account"
+	btypes "github.com/eris-ltd/tendermint/cmd/barak/types"
+	. "github.com/eris-ltd/tendermint/common"
+	cfg "github.com/eris-ltd/tendermint/config"
+	"github.com/eris-ltd/tendermint/wire"
 )
 
 func remoteNick(remote string) string {

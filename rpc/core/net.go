@@ -1,10 +1,10 @@
 package core
 
 import (
-	dbm "github.com/tendermint/tendermint/db"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
+	dbm "github.com/eris-ltd/tendermint/db"
+	ctypes "github.com/eris-ltd/tendermint/rpc/core/types"
+	sm "github.com/eris-ltd/tendermint/state"
+	"github.com/eris-ltd/tendermint/types"
 )
 
 //-----------------------------------------------------------------------------

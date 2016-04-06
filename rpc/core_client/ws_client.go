@@ -5,11 +5,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/gorilla/websocket"
-	. "github.com/tendermint/tendermint/common"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	"github.com/tendermint/tendermint/rpc/types"
-	"github.com/tendermint/tendermint/wire"
+	"github.com/gorilla/websocket"
+	. "github.com/eris-ltd/tendermint/common"
+	ctypes "github.com/eris-ltd/tendermint/rpc/core/types"
+	"github.com/eris-ltd/tendermint/rpc/types"
+	"github.com/eris-ltd/tendermint/wire"
 )
 
 const (

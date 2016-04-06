@@ -4,11 +4,11 @@ import (
 	"sort"
 	"time"
 
-	acm "github.com/tendermint/tendermint/account"
-	. "github.com/tendermint/tendermint/common"
-	ptypes "github.com/tendermint/tendermint/permission/types"
-	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/wire"
+	acm "github.com/eris-ltd/tendermint/account"
+	. "github.com/eris-ltd/tendermint/common"
+	ptypes "github.com/eris-ltd/tendermint/permission/types"
+	"github.com/eris-ltd/tendermint/types"
+	"github.com/eris-ltd/tendermint/wire"
 )
 
 //------------------------------------------------------------

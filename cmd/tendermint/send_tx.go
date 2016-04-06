@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strconv"
 
-	acm "github.com/tendermint/tendermint/account"
-	. "github.com/tendermint/tendermint/common"
-	cclient "github.com/tendermint/tendermint/rpc/core_client"
-	"github.com/tendermint/tendermint/types"
+	acm "github.com/eris-ltd/tendermint/account"
+	. "github.com/eris-ltd/tendermint/common"
+	cclient "github.com/eris-ltd/tendermint/rpc/core_client"
+	"github.com/eris-ltd/tendermint/types"
 )
 
 func getString(prompt string) string {

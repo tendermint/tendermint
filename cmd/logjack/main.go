@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/tendermint/tendermint/common"
+	. "github.com/eris-ltd/tendermint/common"
 )
 
 const Version = "0.0.1"

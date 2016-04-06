@@ -3,7 +3,7 @@ package wire
 import (
 	"io"
 
-	. "github.com/tendermint/tendermint/common"
+	. "github.com/eris-ltd/tendermint/common"
 )
 
 func WriteByteSlice(bz []byte, w io.Writer, n *int64, err *error) {

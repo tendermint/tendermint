@@ -3,7 +3,7 @@ package db
 import (
 	"path"
 
-	. "github.com/tendermint/tendermint/common"
+	. "github.com/eris-ltd/tendermint/common"
 )
 
 type DB interface {

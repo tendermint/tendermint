@@ -1,7 +1,7 @@
 package p2p
 
 import (
-	cfg "github.com/tendermint/tendermint/config"
+	cfg "github.com/eris-ltd/tendermint/config"
 )
 
 var config cfg.Config = nil

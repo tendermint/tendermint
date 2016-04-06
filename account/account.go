@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/tendermint/tendermint/wire"
-	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/merkle"
-	ptypes "github.com/tendermint/tendermint/permission/types"
+	"github.com/eris-ltd/tendermint/wire"
+	. "github.com/eris-ltd/tendermint/common"
+	"github.com/eris-ltd/tendermint/merkle"
+	ptypes "github.com/eris-ltd/tendermint/permission/types"
 )
 
 // Signable is an interface for all signable things.

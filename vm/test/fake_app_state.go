@@ -1,9 +1,9 @@
 package vm
 
 import (
-	. "github.com/tendermint/tendermint/common"
-	. "github.com/tendermint/tendermint/vm"
-	"github.com/tendermint/tendermint/vm/sha3"
+	. "github.com/eris-ltd/tendermint/common"
+	. "github.com/eris-ltd/tendermint/vm"
+	"github.com/eris-ltd/tendermint/vm/sha3"
 )
 
 type FakeAppState struct {

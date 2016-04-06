@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/tendermint/tendermint/wire"
-	. "github.com/tendermint/tendermint/common"
-	. "github.com/tendermint/tendermint/common/test"
-	"github.com/tendermint/tendermint/db"
+	"github.com/eris-ltd/tendermint/wire"
+	. "github.com/eris-ltd/tendermint/common"
+	. "github.com/eris-ltd/tendermint/common/test"
+	"github.com/eris-ltd/tendermint/db"
 
 	"runtime"
 	"testing"

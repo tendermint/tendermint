@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	acm "github.com/tendermint/tendermint/account"
-	. "github.com/tendermint/tendermint/common"
-	_ "github.com/tendermint/tendermint/config/tendermint_test"
-	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/wire"
+	acm "github.com/eris-ltd/tendermint/account"
+	. "github.com/eris-ltd/tendermint/common"
+	_ "github.com/eris-ltd/tendermint/config/tendermint_test"
+	"github.com/eris-ltd/tendermint/types"
+	"github.com/eris-ltd/tendermint/wire"
 )
 
 type PeerMessage struct {

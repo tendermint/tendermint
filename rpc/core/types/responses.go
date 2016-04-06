@@ -1,10 +1,10 @@
 package core_types
 
 import (
-	acm "github.com/tendermint/tendermint/account"
-	stypes "github.com/tendermint/tendermint/state/types"
-	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/wire"
+	acm "github.com/eris-ltd/tendermint/account"
+	stypes "github.com/eris-ltd/tendermint/state/types"
+	"github.com/eris-ltd/tendermint/types"
+	"github.com/eris-ltd/tendermint/wire"
 )
 
 type ResultGetStorage struct {

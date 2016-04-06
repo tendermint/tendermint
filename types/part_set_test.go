@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"testing"
 
-	. "github.com/tendermint/tendermint/common"
+	. "github.com/eris-ltd/tendermint/common"
 )
 
 func TestBasicPartSet(t *testing.T) {

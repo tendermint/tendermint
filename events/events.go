@@ -3,8 +3,8 @@ package events
 import (
 	"sync"
 
-	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/types"
+	. "github.com/eris-ltd/tendermint/common"
+	"github.com/eris-ltd/tendermint/types"
 )
 
 // reactors and other modules should export

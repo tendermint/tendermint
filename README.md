@@ -3,15 +3,15 @@ Byzantine Blockchain Consensus
 
 ### Install Tendermint
 
-* See: https://github.com/tendermint/tendermint/tree/master/INSTALL
+* See: https://github.com/eris-ltd/tendermint/tree/master/INSTALL
 
 ### Fork Tendermint/Testnet
 
-* See: https://github.com/tendermint/tendermint/blob/develop/INSTALL/FORK_TESTNET.md
+* See: https://github.com/eris-ltd/tendermint/blob/develop/INSTALL/FORK_TESTNET.md
 
 ### Docker 
 
-* See: https://github.com/tendermint/tendermint/tree/master/DOCKER
+* See: https://github.com/eris-ltd/tendermint/tree/master/DOCKER
 
 ### Coding style
 

@@ -5,13 +5,13 @@ import (
 	"strconv"
 	"testing"
 
-	acm "github.com/tendermint/tendermint/account"
-	. "github.com/tendermint/tendermint/common"
-	nm "github.com/tendermint/tendermint/node"
-	"github.com/tendermint/tendermint/p2p"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	cclient "github.com/tendermint/tendermint/rpc/core_client"
-	"github.com/tendermint/tendermint/types"
+	acm "github.com/eris-ltd/tendermint/account"
+	. "github.com/eris-ltd/tendermint/common"
+	nm "github.com/eris-ltd/tendermint/node"
+	"github.com/eris-ltd/tendermint/p2p"
+	ctypes "github.com/eris-ltd/tendermint/rpc/core/types"
+	cclient "github.com/eris-ltd/tendermint/rpc/core_client"
+	"github.com/eris-ltd/tendermint/types"
 )
 
 // global variables for use across all tests

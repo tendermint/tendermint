@@ -8,14 +8,14 @@ import (
 	"testing"
 	"time"
 
-	acm "github.com/tendermint/tendermint/account"
-	. "github.com/tendermint/tendermint/common"
-	dbm "github.com/tendermint/tendermint/db"
-	"github.com/tendermint/tendermint/events"
-	ptypes "github.com/tendermint/tendermint/permission/types"
-	. "github.com/tendermint/tendermint/state/types"
-	"github.com/tendermint/tendermint/types"
-	vm "github.com/tendermint/tendermint/vm"
+	acm "github.com/eris-ltd/tendermint/account"
+	. "github.com/eris-ltd/tendermint/common"
+	dbm "github.com/eris-ltd/tendermint/db"
+	"github.com/eris-ltd/tendermint/events"
+	ptypes "github.com/eris-ltd/tendermint/permission/types"
+	. "github.com/eris-ltd/tendermint/state/types"
+	"github.com/eris-ltd/tendermint/types"
+	vm "github.com/eris-ltd/tendermint/vm"
 )
 
 /*

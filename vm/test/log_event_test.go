@@ -5,10 +5,10 @@ import (
 	"reflect"
 	"testing"
 
-	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/events"
-	"github.com/tendermint/tendermint/types"
-	. "github.com/tendermint/tendermint/vm"
+	. "github.com/eris-ltd/tendermint/common"
+	"github.com/eris-ltd/tendermint/events"
+	"github.com/eris-ltd/tendermint/types"
+	. "github.com/eris-ltd/tendermint/vm"
 )
 
 var expectedData = []byte{0x10}

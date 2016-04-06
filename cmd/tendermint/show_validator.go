@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/wire"
+	"github.com/eris-ltd/tendermint/types"
+	"github.com/eris-ltd/tendermint/wire"
 )
 
 func show_validator() {

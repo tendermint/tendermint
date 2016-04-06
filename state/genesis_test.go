@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"testing"
 
-	tdb "github.com/tendermint/tendermint/db"
-	ptypes "github.com/tendermint/tendermint/permission/types"
-	. "github.com/tendermint/tendermint/state/types"
+	tdb "github.com/eris-ltd/tendermint/db"
+	ptypes "github.com/eris-ltd/tendermint/permission/types"
+	. "github.com/eris-ltd/tendermint/state/types"
 )
 
 var chain_id = "lone_ranger"

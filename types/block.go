@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	acm "github.com/tendermint/tendermint/account"
-	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/merkle"
-	"github.com/tendermint/tendermint/wire"
+	acm "github.com/eris-ltd/tendermint/account"
+	. "github.com/eris-ltd/tendermint/common"
+	"github.com/eris-ltd/tendermint/merkle"
+	"github.com/eris-ltd/tendermint/wire"
 )
 
 type Block struct {

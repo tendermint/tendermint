@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/tendermint/tendermint/config/tendermint_test"
-	"github.com/tendermint/tendermint/p2p"
+	_ "github.com/eris-ltd/tendermint/config/tendermint_test"
+	"github.com/eris-ltd/tendermint/p2p"
 )
 
 func TestNodeStartStop(t *testing.T) {

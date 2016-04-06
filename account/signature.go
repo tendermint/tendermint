@@ -3,8 +3,8 @@ package account
 import (
 	"fmt"
 
-	"github.com/tendermint/tendermint/wire"
-	. "github.com/tendermint/tendermint/common"
+	"github.com/eris-ltd/tendermint/wire"
+	. "github.com/eris-ltd/tendermint/common"
 )
 
 // Signature is a part of Txs and consensus Votes.

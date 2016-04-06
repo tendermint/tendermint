@@ -1,10 +1,10 @@
 package core
 
 import (
-	cm "github.com/tendermint/tendermint/consensus"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/wire"
+	cm "github.com/eris-ltd/tendermint/consensus"
+	ctypes "github.com/eris-ltd/tendermint/rpc/core/types"
+	"github.com/eris-ltd/tendermint/types"
+	"github.com/eris-ltd/tendermint/wire"
 )
 
 func ListValidators() (*ctypes.ResultListValidators, error) {

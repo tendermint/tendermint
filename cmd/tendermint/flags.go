@@ -1,10 +1,10 @@
 package main
 
 import (
-	flag "github.com/tendermint/tendermint/Godeps/_workspace/src/github.com/spf13/pflag"
+	flag "github.com/spf13/pflag"
 	"os"
 
-	cfg "github.com/tendermint/tendermint/config"
+	cfg "github.com/eris-ltd/tendermint/config"
 )
 
 func parseFlags(config cfg.Config, args []string) {

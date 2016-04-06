@@ -1,8 +1,8 @@
 package main
 
 import (
-	acm "github.com/tendermint/tendermint/account"
-	. "github.com/tendermint/tendermint/cmd/barak/types"
+	acm "github.com/eris-ltd/tendermint/account"
+	. "github.com/eris-ltd/tendermint/cmd/barak/types"
 )
 
 func validate(signBytes []byte, validators []Validator, signatures []acm.Signature) bool {

@@ -5,8 +5,8 @@ import (
 	"io"
 	"testing"
 
-	acm "github.com/tendermint/tendermint/account"
-	. "github.com/tendermint/tendermint/common"
+	acm "github.com/eris-ltd/tendermint/account"
+	. "github.com/eris-ltd/tendermint/common"
 )
 
 type dummyConn struct {

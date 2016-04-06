@@ -2,7 +2,7 @@ package types
 
 import (
 	"fmt"
-	acm "github.com/tendermint/tendermint/account"
+	acm "github.com/eris-ltd/tendermint/account"
 	"strings"
 )
 

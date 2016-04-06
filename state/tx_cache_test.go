@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"testing"
 
-	stypes "github.com/tendermint/tendermint/state/types"
-	"github.com/tendermint/tendermint/wire"
+	stypes "github.com/eris-ltd/tendermint/state/types"
+	"github.com/eris-ltd/tendermint/wire"
 )
 
 func TestStateToFromVMAccount(t *testing.T) {

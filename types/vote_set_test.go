@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"sort"
 
-	acm "github.com/tendermint/tendermint/account"
-	. "github.com/tendermint/tendermint/common"
-	. "github.com/tendermint/tendermint/common/test"
-	_ "github.com/tendermint/tendermint/config/tendermint_test"
+	acm "github.com/eris-ltd/tendermint/account"
+	. "github.com/eris-ltd/tendermint/common"
+	. "github.com/eris-ltd/tendermint/common/test"
+	_ "github.com/eris-ltd/tendermint/config/tendermint_test"
 
 	"testing"
 )

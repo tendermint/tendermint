@@ -4,8 +4,8 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	. "github.com/tendermint/tendermint/common"
-	cclient "github.com/tendermint/tendermint/rpc/core_client"
+	. "github.com/eris-ltd/tendermint/common"
+	cclient "github.com/eris-ltd/tendermint/rpc/core_client"
 )
 
 func get_account() {

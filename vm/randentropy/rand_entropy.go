@@ -2,7 +2,7 @@ package randentropy
 
 import (
 	crand "crypto/rand"
-	"github.com/tendermint/tendermint/vm/sha3"
+	"github.com/eris-ltd/tendermint/vm/sha3"
 	"io"
 )
 

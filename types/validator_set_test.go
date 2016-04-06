@@ -1,8 +1,8 @@
 package types
 
 import (
-	"github.com/tendermint/tendermint/account"
-	. "github.com/tendermint/tendermint/common"
+	"github.com/eris-ltd/tendermint/account"
+	. "github.com/eris-ltd/tendermint/common"
 
 	"bytes"
 	"strings"

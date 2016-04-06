@@ -3,9 +3,9 @@ package core_client
 import (
 	"bytes"
 	"fmt"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	rpctypes "github.com/tendermint/tendermint/rpc/types"
-	"github.com/tendermint/tendermint/wire"
+	ctypes "github.com/eris-ltd/tendermint/rpc/core/types"
+	rpctypes "github.com/eris-ltd/tendermint/rpc/types"
+	"github.com/eris-ltd/tendermint/wire"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -174,7 +174,7 @@ func unmarshalCheckResponse(body []byte) (response *ctypes.Response, err error) 
 // import statements we will need for the templates
 
 /*rpc-gen:imports:
-rpctypes github.com/tendermint/tendermint/rpc/types
+rpctypes github.com/eris-ltd/tendermint/rpc/types
 net/http
 io/ioutil
 fmt

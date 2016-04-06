@@ -7,8 +7,8 @@ import (
 	"path"
 	"strings"
 
-	. "github.com/tendermint/tendermint/common"
-	cfg "github.com/tendermint/tendermint/config"
+	. "github.com/eris-ltd/tendermint/common"
+	cfg "github.com/eris-ltd/tendermint/config"
 )
 
 func init() {

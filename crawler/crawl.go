@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	. "github.com/tendermint/tendermint/common"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	cclient "github.com/tendermint/tendermint/rpc/core_client"
-	"github.com/tendermint/tendermint/types"
+	. "github.com/eris-ltd/tendermint/common"
+	ctypes "github.com/eris-ltd/tendermint/rpc/core/types"
+	cclient "github.com/eris-ltd/tendermint/rpc/core_client"
+	"github.com/eris-ltd/tendermint/types"
 )
 
 const (

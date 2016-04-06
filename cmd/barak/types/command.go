@@ -1,8 +1,8 @@
 package types
 
 import (
-	acm "github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/wire"
+	acm "github.com/eris-ltd/tendermint/account"
+	"github.com/eris-ltd/tendermint/wire"
 )
 
 type AuthCommand struct {

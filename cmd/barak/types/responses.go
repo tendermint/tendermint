@@ -1,7 +1,7 @@
 package types
 
 import (
-	pcm "github.com/tendermint/tendermint/process"
+	pcm "github.com/eris-ltd/tendermint/process"
 )
 
 type ResponseStatus struct {

@@ -1,8 +1,8 @@
 package vm
 
 import (
-	. "github.com/tendermint/tendermint/common"
-	ptypes "github.com/tendermint/tendermint/permission/types"
+	. "github.com/eris-ltd/tendermint/common"
+	ptypes "github.com/eris-ltd/tendermint/permission/types"
 )
 
 const (

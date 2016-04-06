@@ -10,11 +10,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tendermint/tendermint/wire"
-	. "github.com/tendermint/tendermint/cmd/barak/types"
-	. "github.com/tendermint/tendermint/common"
-	pcm "github.com/tendermint/tendermint/process"
-	"github.com/tendermint/tendermint/rpc/server"
+	"github.com/eris-ltd/tendermint/wire"
+	. "github.com/eris-ltd/tendermint/cmd/barak/types"
+	. "github.com/eris-ltd/tendermint/common"
+	pcm "github.com/eris-ltd/tendermint/process"
+	"github.com/eris-ltd/tendermint/rpc/server"
 )
 
 type BarakOptions struct {

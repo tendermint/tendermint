@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/account"
-	_ "github.com/tendermint/tendermint/config/tendermint_test"
-	"github.com/tendermint/tendermint/types"
+	"github.com/eris-ltd/tendermint/account"
+	_ "github.com/eris-ltd/tendermint/config/tendermint_test"
+	"github.com/eris-ltd/tendermint/types"
 )
 
 func execTxWithState(state *State, tx types.Tx, runCall bool) error {

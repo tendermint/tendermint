@@ -6,11 +6,11 @@ import (
 	"net/url"
 	"os"
 
-	acm "github.com/tendermint/tendermint/account"
-	"github.com/tendermint/tendermint/wire"
-	btypes "github.com/tendermint/tendermint/cmd/barak/types"
-	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/rpc/client"
+	acm "github.com/eris-ltd/tendermint/account"
+	"github.com/eris-ltd/tendermint/wire"
+	btypes "github.com/eris-ltd/tendermint/cmd/barak/types"
+	. "github.com/eris-ltd/tendermint/common"
+	"github.com/eris-ltd/tendermint/rpc/client"
 	"net/http"
 )
 

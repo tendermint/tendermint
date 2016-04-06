@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	. "github.com/tendermint/tendermint/common"
-	"github.com/tendermint/tendermint/wire"
+	. "github.com/eris-ltd/tendermint/common"
+	"github.com/eris-ltd/tendermint/wire"
 )
 
 // Functions to generate eventId strings

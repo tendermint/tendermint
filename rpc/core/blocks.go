@@ -2,9 +2,9 @@ package core
 
 import (
 	"fmt"
-	. "github.com/tendermint/tendermint/common"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	"github.com/tendermint/tendermint/types"
+	. "github.com/eris-ltd/tendermint/common"
+	ctypes "github.com/eris-ltd/tendermint/rpc/core/types"
+	"github.com/eris-ltd/tendermint/types"
 )
 
 //-----------------------------------------------------------------------------

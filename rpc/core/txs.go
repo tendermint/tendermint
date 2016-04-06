@@ -2,12 +2,12 @@ package core
 
 import (
 	"fmt"
-	acm "github.com/tendermint/tendermint/account"
-	. "github.com/tendermint/tendermint/common"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	"github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/vm"
+	acm "github.com/eris-ltd/tendermint/account"
+	. "github.com/eris-ltd/tendermint/common"
+	ctypes "github.com/eris-ltd/tendermint/rpc/core/types"
+	"github.com/eris-ltd/tendermint/state"
+	"github.com/eris-ltd/tendermint/types"
+	"github.com/eris-ltd/tendermint/vm"
 )
 
 func toVMAccount(acc *acm.Account) *vm.Account {
