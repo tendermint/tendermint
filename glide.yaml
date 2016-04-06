@@ -21,3 +21,11 @@ import:
   - nacl/secretbox
   - ripemd160
 - package: gopkg.in/fatih/set.v0
+- package: gopkg.in/yaml.v2
+- package: github.com/onsi/ginkgo
+  subpackages:
+  - config
+- package: github.com/onsi/gomega
+- package: github.com/golang/protobuf
+  subpackages:
+  - proto

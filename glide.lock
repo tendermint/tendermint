@@ -1,8 +1,12 @@
-hash: 699d7609d2a9b90576d9839bad41ae3e41cf93274ff507a4cade2466b6dc1ade
-updated: 2016-04-06T16:51:54.760236876-05:00
+hash: 65d9369cddaaa63953d5878143233fb6f20e90c1c65d509f23f1efeafb1412b6
+updated: 2016-04-06T17:28:13.659388905-05:00
 imports:
 - name: github.com/codegangsta/cli
   version: 71f57d300dd6a780ac1856c005c4b518cfd498ec
+- name: github.com/golang/protobuf
+  version: dda510ac0fd43b39770f22ac6260eb91d377bce3
+  subpackages:
+  - proto
 - name: github.com/golang/snappy
   version: 857ad66e003f466b64f9055849bab122efd4c87a
 - name: github.com/gorilla/websocket
@@ -22,6 +26,12 @@ imports:
   version: 751171607256bb66e64c9f0220c00662420c38e9
   subpackages:
   - ast
+- name: github.com/onsi/ginkgo
+  version: 105b4823ee2cbebc2b5c562d9ac50694ecc2c689
+  subpackages:
+  - config
+- name: github.com/onsi/gomega
+  version: 7ce781ea776b2fd506491011353bded2e40c8467
 - name: github.com/sfreiberg/gotwilio
   version: f024bbefe80fdb7bcc8c43b6add05dae97744e0e
 - name: github.com/spf13/pflag
@@ -65,4 +75,6 @@ imports:
   - unix
 - name: gopkg.in/fatih/set.v0
   version: 27c40922c40b43fe04554d8223a402af3ea333f3
+- name: gopkg.in/yaml.v2
+  version: a83829b6f1293c91addabc89d0571c246397bbf4
 devImports: []
