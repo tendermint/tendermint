@@ -1217,7 +1217,14 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	err := stateCopy.ExecBlock(cs.evsw, cs.proxyAppConn, block, blockParts.Header())
 	if err != nil {
 		// TODO: handle this gracefully.
-		PanicQ(Fmt("Exec failed for application"))
+		PanicQ(Fmt("Exec failed for application: %v", err))
+	}
+
+	// lock mempool, commit state, update mempoool
+	err = cs.commitStateUpdateMempool(stateCopy, block)
+	if err != nil {
+		// TODO: handle this gracefully.
+		PanicQ(Fmt("Commit failed for application: %v", err))
 	}
 
 	// Save to blockStore.
@@ -1227,20 +1234,8 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 		cs.blockStore.SaveBlock(block, blockParts, seenCommit)
 	}
 
-	/*
-		// Commit to proxyAppConn
-		err = cs.proxyAppConn.CommitSync()
-		if err != nil {
-			// TODO: handle this gracefully.
-			PanicQ(Fmt("Commit failed for application"))
-		}
-	*/
-
 	// Save the state.
 	stateCopy.Save()
-
-	// Update mempool.
-	cs.mempool.Update(block.Height, block.Txs)
 
 	// NewHeightStep!
 	cs.updateToState(stateCopy)
@@ -1254,6 +1249,32 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	// * cs.Step is now RoundStepNewHeight
 	// * cs.StartTime is set to when we will start round0.
 	return
+}
+
+// mempool must be locked during commit and update
+// because state is typically reset on Commit and old txs must be replayed
+// against committed state before new txs are run in the mempool, lest they be invalid
+func (cs *ConsensusState) commitStateUpdateMempool(s *sm.State, block *types.Block) error {
+	cs.mempool.Lock()
+	defer cs.mempool.Unlock()
+
+	// Commit block, get hash back
+	res := cs.proxyAppConn.CommitSync()
+	if res.IsErr() {
+		log.Warn("Error in proxyAppConn.CommitSync", "error", res)
+		return res
+	}
+	if res.Log != "" {
+		log.Debug("Commit.Log: " + res.Log)
+	}
+
+	// Set the state's new AppHash
+	s.AppHash = res.Data
+
+	// Update mempool.
+	cs.mempool.Update(block.Height, block.Txs)
+
+	return nil
 }
 
 //-----------------------------------------------------------------------------
