@@ -16,6 +16,7 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	tmspcli "github.com/tendermint/tmsp/client"
+	tmsp "github.com/tendermint/tmsp/types"
 
 	"github.com/tendermint/tmsp/example/counter"
 )
@@ -302,17 +303,17 @@ func fixedConsensusState() *ConsensusState {
 	state := sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
 	privValidatorFile := config.GetString("priv_validator_file")
 	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
-	return newConsensusState(state, privValidator)
+	return newConsensusState(state, privValidator, counter.NewCounterApplication(true))
 
 }
 
-func newConsensusState(state *sm.State, pv *types.PrivValidator) *ConsensusState {
+func newConsensusState(state *sm.State, pv *types.PrivValidator, app tmsp.Application) *ConsensusState {
 	// Get BlockStore
 	blockDB := dbm.NewMemDB()
 	blockStore := bc.NewBlockStore(blockDB)
 
 	// one for mempool, one for consensus
-	mtx, app := new(sync.Mutex), counter.NewCounterApplication(false)
+	mtx := new(sync.Mutex)
 	proxyAppConnMem := tmspcli.NewLocalClient(mtx, app)
 	proxyAppConnCon := tmspcli.NewLocalClient(mtx, app)
 
@@ -335,7 +336,7 @@ func randConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
 
 	vss := make([]*validatorStub, nValidators)
 
-	cs := newConsensusState(state, privVals[0])
+	cs := newConsensusState(state, privVals[0], counter.NewCounterApplication(true))
 
 	for i := 0; i < nValidators; i++ {
 		vss[i] = NewValidatorStub(privVals[i])
