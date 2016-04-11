@@ -94,20 +94,7 @@ func (s *State) execBlockOnProxyApp(evsw *events.EventSwitch, proxyAppConn proxy
 	// TODO: Do something with changedValidators
 	log.Info("TODO: Do something with changedValidators", changedValidators)
 
-	// Commit block, get hash back
-	res := proxyAppConn.CommitSync()
-	if res.IsErr() {
-		log.Warn("Error in proxyAppConn.CommitSync", "error", res)
-		return res
-	}
-	if res.Log != "" {
-		log.Debug("Commit.Log: " + res.Log)
-	}
 	log.Info(Fmt("ExecBlock got %v valid txs and %v invalid txs", validTxs, invalidTxs))
-
-	// Set the state's new AppHash
-	s.AppHash = res.Data
-
 	return nil
 }
 

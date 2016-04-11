@@ -77,6 +77,14 @@ func NewMempool(proxyAppConn proxy.AppConn) *Mempool {
 	return mempool
 }
 
+func (mem *Mempool) Lock() {
+	mem.proxyMtx.Lock()
+}
+
+func (mem *Mempool) Unlock() {
+	mem.proxyMtx.Unlock()
+}
+
 func (mem *Mempool) Size() int {
 	return mem.txs.Len()
 }
@@ -219,9 +227,10 @@ func (mem *Mempool) collectTxs(maxTxs int) []types.Tx {
 // Tell mempool that these txs were committed.
 // Mempool will discard these txs.
 // NOTE: this should be called *after* block is committed by consensus.
+// NOTE: unsafe; Lock/Unlock must be managed by caller
 func (mem *Mempool) Update(height int, txs []types.Tx) {
-	mem.proxyMtx.Lock()
-	defer mem.proxyMtx.Unlock()
+	//	mem.proxyMtx.Lock()
+	//	defer mem.proxyMtx.Unlock()
 	mem.proxyAppConn.FlushSync() // To flush async resCb calls e.g. from CheckTx
 
 	// First, create a lookup map of txns in new txs.
