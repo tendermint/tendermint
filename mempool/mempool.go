@@ -157,6 +157,7 @@ func (mem *Mempool) resCbNormal(req *tmsp.Request, res *tmsp.Response) {
 			}
 			mem.txs.PushBack(memTx)
 		} else {
+			log.Info("Bad Transaction", "res", res)
 			// ignore bad transaction
 			// TODO: handle other retcodes
 		}
@@ -188,6 +189,7 @@ func (mem *Mempool) resCbRecheck(req *tmsp.Request, res *tmsp.Response) {
 		if mem.recheckCursor == nil {
 			// Done!
 			atomic.StoreInt32(&mem.rechecking, 0)
+			log.Info("Done rechecking txs")
 		}
 	default:
 		// ignore other messages
@@ -245,6 +247,7 @@ func (mem *Mempool) Update(height int, txs []types.Tx) {
 	goodTxs := mem.filterTxs(txsMap)
 	// Recheck mempool txs
 	if config.GetBool("mempool_recheck") {
+		log.Info("Recheck txs", "numtxs", len(goodTxs))
 		mem.recheckTxs(goodTxs)
 		// At this point, mem.txs are being rechecked.
 		// mem.recheckCursor re-scans mem.txs and possibly removes some txs.
