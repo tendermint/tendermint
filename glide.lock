@@ -1,20 +1,20 @@
 hash: f3eab3f91c9d2c07574e8ec6f2f5d56bd946af1b061533a0baf9db8765f97a51
-updated: 2016-03-24T16:39:27.330201414-04:00
+updated: 2016-04-11T19:42:00.993267284-04:00
 imports:
 - name: github.com/gogo/protobuf
-  version: 4168943e65a2802828518e95310aeeed6d84c4e5
+  version: 74b6e9deaff6ba6da1389ec97351d337f0d08b06
   subpackages:
   - proto
 - name: github.com/golang/protobuf
-  version: 8d92cf5fc15a4382f8964b08e1f42a75c0591aa3
+  version: dda510ac0fd43b39770f22ac6260eb91d377bce3
   subpackages:
   - proto
 - name: github.com/golang/snappy
-  version: 5f1c01d9f64b941dd9582c638279d046eda6ca31
+  version: ef80b33e873821cff33038ae16c444717218cdb1
 - name: github.com/gorilla/websocket
   version: e2e3d8414d0fbae04004f151979f4e27c6747fe7
 - name: github.com/inconshreveable/log15
-  version: 210d6fdc4d979ef6579778f1b6ed84571454abb4
+  version: 57a084d014d4150152b19e4e531399a7145d1540
   subpackages:
   - stack
   - term
@@ -31,9 +31,9 @@ imports:
 - name: github.com/sfreiberg/gotwilio
   version: f024bbefe80fdb7bcc8c43b6add05dae97744e0e
 - name: github.com/spf13/pflag
-  version: 7f60f83a2c81bc3c3c0d5297f61ddfa68da9d3b7
+  version: 1f296710f879815ad9e6d39d947c828c3e4b4c3d
 - name: github.com/syndtr/goleveldb
-  version: 917f41c560270110ceb73c5b38be2a9127387071
+  version: 93fc893f2dadb96ffde441c7546cc67ea290a3a8
   subpackages:
   - leveldb
   - leveldb/errors
@@ -75,7 +75,7 @@ imports:
 - name: github.com/tendermint/go-merkle
   version: 05042c6ab9cad51d12e4cecf717ae68e3b1409a8
 - name: github.com/tendermint/go-p2p
-  version: 10619248c665dee6b8f81455f7f27ab93d5ec366
+  version: 78c9d526c31d5ae06d5793b865d25a9407b635dc
   subpackages:
   - upnp
 - name: github.com/tendermint/go-rpc
@@ -85,18 +85,18 @@ imports:
   - types
   - server
 - name: github.com/tendermint/go-wire
-  version: 7a15dd53dfdecc0f967676edcd6b335c59344c83
+  version: 3b0adbc86ed8425eaed98516165b6788d9f4de7a
 - name: github.com/tendermint/log15
   version: 6e460758f10ef42a4724b8e4a82fee59aaa0e41d
 - name: github.com/tendermint/tmsp
-  version: 1dfc6950dddf47ff397e670a67d405d25da138ea
+  version: 82a411fca58b3b1e2ac8fc3a6784a17579012d68
   subpackages:
   - types
   - client
   - example/dummy
   - example/nil
 - name: golang.org/x/crypto
-  version: c197bcf24cde29d3f73c7b4ac6fd41f4384e8af6
+  version: 3fbbcd23f1cb824e69491a5930cfeff09b12f4d2
   subpackages:
   - ripemd160
   - nacl/box
@@ -107,7 +107,7 @@ imports:
   - poly1305
   - openpgp/errors
 - name: golang.org/x/sys
-  version: afce3de5756ca82699128ebae46ac95ad59d6297
+  version: 9eef40adf05b951699605195b829612bd7b69952
   subpackages:
   - unix
 devImports: []
