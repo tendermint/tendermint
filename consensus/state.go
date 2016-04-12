@@ -1258,6 +1258,9 @@ func (cs *ConsensusState) commitStateUpdateMempool(s *sm.State, block *types.Blo
 	cs.mempool.Lock()
 	defer cs.mempool.Unlock()
 
+	// flush out any CheckTx that have already started
+	cs.proxyAppConn.FlushSync()
+
 	// Commit block, get hash back
 	res := cs.proxyAppConn.CommitSync()
 	if res.IsErr() {
