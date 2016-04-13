@@ -45,7 +45,10 @@ type Node struct {
 	privKey          crypto.PrivKeyEd25519
 }
 
-func NewNode(privValidator *types.PrivValidator) *Node {
+func NewNode(privValidator *types.PrivValidator, getProxyApp func(proxyAddr string, appHash []byte) proxy.AppConn) *Node {
+
+	EnsureDir(config.GetString("db_dir"), 0700) // incase we use memdb, cswal still gets written here
+
 	// Get BlockStore
 	blockStoreDB := dbm.GetDB("blockstore")
 	blockStore := bc.NewBlockStore(blockStoreDB)
@@ -249,7 +252,7 @@ func makeNodeInfo(sw *p2p.Switch, privKey crypto.PrivKeyEd25519) *p2p.NodeInfo {
 
 // Get a connection to the proxyAppConn addr.
 // Check the current hash, and panic if it doesn't match.
-func getProxyApp(addr string, hash []byte) (proxyAppConn proxy.AppConn) {
+func GetProxyApp(addr string, hash []byte) (proxyAppConn proxy.AppConn) {
 	// use local app (for testing)
 	switch addr {
 	case "nilapp":
@@ -297,7 +300,7 @@ func getState() *sm.State {
 
 // Users wishing to use an external signer for their validators
 // should fork tendermint/tendermint and implement RunNode to
-// load their custom priv validator and call NewNode(privVal)
+// load their custom priv validator and call NewNode(privVal, getProxyFunc)
 func RunNode() {
 	// Wait until the genesis doc becomes available
 	genDocFile := config.GetString("genesis_file")
@@ -326,7 +329,7 @@ func RunNode() {
 	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
 
 	// Create & start node
-	n := NewNode(privValidator)
+	n := NewNode(privValidator, GetProxyApp)
 	l := p2p.NewDefaultListener("tcp", config.GetString("node_laddr"), config.GetBool("skip_upnp"))
 	n.AddListener(l)
 	err := n.Start()
@@ -356,6 +359,14 @@ func RunNode() {
 	})
 }
 
+func (n *Node) NodeInfo() *p2p.NodeInfo {
+	return n.sw.NodeInfo()
+}
+
+func (n *Node) DialSeeds(seeds []string) {
+	n.sw.DialSeeds(seeds)
+}
+
 //------------------------------------------------------------------------------
 // replay
 
@@ -372,8 +383,8 @@ func newConsensusState() *consensus.ConsensusState {
 	// Create two proxyAppConn connections,
 	// one for the consensus and one for the mempool.
 	proxyAddr := config.GetString("proxy_app")
-	proxyAppConnMempool := getProxyApp(proxyAddr, state.AppHash)
-	proxyAppConnConsensus := getProxyApp(proxyAddr, state.AppHash)
+	proxyAppConnMempool := GetProxyApp(proxyAddr, state.AppHash)
+	proxyAppConnConsensus := GetProxyApp(proxyAddr, state.AppHash)
 
 	// add the chainid to the global config
 	config.Set("chain_id", state.ChainID)
