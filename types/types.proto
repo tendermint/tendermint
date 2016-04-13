@@ -43,8 +43,8 @@ enum CodeType {
   BaseInsufficientFees  = 103;
   BaseInsufficientFunds = 104;
   BaseInsufficientGasPrice = 105;
-  BaseInvalidAddress    = 106;
-  BaseInvalidAmount     = 107;
+  BaseInvalidInput      = 106;
+  BaseInvalidOutput     = 107;
   BaseInvalidPubKey     = 108;
   BaseInvalidSequence   = 109;
   BaseInvalidSignature  = 110;
