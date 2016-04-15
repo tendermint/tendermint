@@ -6,6 +6,10 @@ to manage a blockchain application state, running in another.
 
 For more information on TMSP, motivations, and tutorials, please visit [our blog post](http://tendermint.com/posts/tendermint-socket-protocol/).
 
+Other implementations:
+* [cpp-tmsp](https://github.com/mdyring/cpp-tmsp) by Martin Dyring-Andersen
+* [js-tmsp](https://github.com/tendermint/js-tmsp)
+
 ## Message types
 
 TMSP requests/responses are simple Protobuf messages.  Check out the [schema file](https://github.com/tendermint/tmsp/blob/master/types/types.proto).
