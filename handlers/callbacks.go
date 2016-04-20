@@ -21,14 +21,14 @@ import (
 func (tn *TendermintNetwork) registerCallbacks(chainState *types.ChainState, v *types.ValidatorState) error {
 	v.EventMeter().RegisterLatencyCallback(tn.latencyCallback(chainState, v))
 	v.EventMeter().RegisterDisconnectCallback(tn.disconnectCallback(chainState, v))
-	return v.EventMeter().Subscribe(tmtypes.EventStringNewBlock(), tn.newBlockCallback(chainState, v))
+	return v.EventMeter().Subscribe(tmtypes.EventStringNewBlockHeader(), tn.newBlockCallback(chainState, v))
 }
 
 // implements eventmeter.EventCallbackFunc
 // updates validator and possibly chain with new block
 func (tn *TendermintNetwork) newBlockCallback(chainState *types.ChainState, val *types.ValidatorState) eventmeter.EventCallbackFunc {
 	return func(metric *eventmeter.EventMetric, data events.EventData) {
-		block := data.(tmtypes.EventDataNewBlock).Block
+		block := data.(tmtypes.EventDataNewBlockHeader).Header
 
 		// these functions are thread safe
 		// we should run them concurrently

@@ -1,12 +1,15 @@
 package types
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync"
 
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-event-meter"
+	"github.com/tendermint/go-events"
 	client "github.com/tendermint/go-rpc/client"
+	"github.com/tendermint/go-wire"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	tmtypes "github.com/tendermint/tendermint/types"
 )
@@ -65,7 +68,7 @@ func (vs *ValidatorState) Start() error {
 	rpcAddr := vs.Config.RPCAddr
 	vs.Config.mtx.Unlock()
 
-	em := eventmeter.NewEventMeter(fmt.Sprintf("ws://%s/websocket", rpcAddr), ctypes.UnmarshalEvent)
+	em := eventmeter.NewEventMeter(fmt.Sprintf("ws://%s/websocket", rpcAddr), UnmarshalEvent)
 	if _, err := em.Start(); err != nil {
 		return err
 	}
@@ -82,10 +85,10 @@ func (vs *ValidatorState) EventMeter() *eventmeter.EventMeter {
 	return vs.em
 }
 
-func (vs *ValidatorState) NewBlock(block *tmtypes.Block) {
+func (vs *ValidatorState) NewBlock(block *tmtypes.Header) {
 	vs.Status.mtx.Lock()
 	defer vs.Status.mtx.Unlock()
-	vs.Status.BlockHeight = block.Header.Height
+	vs.Status.BlockHeight = block.Height
 }
 
 func (vs *ValidatorState) UpdateLatency(latency float64) float64 {
@@ -142,4 +145,23 @@ type ValidatorStatus struct {
 	Online      bool    `json:"online"`
 	Latency     float64 `json:"latency" wire:"unsafe"`
 	BlockHeight int     `json:"block_height"`
+}
+
+//------------------------------------------------------------
+// utility
+
+// Unmarshal a json event
+func UnmarshalEvent(b json.RawMessage) (string, events.EventData, error) {
+	var err error
+	result := new(ctypes.TMResult)
+	wire.ReadJSONPtr(result, b, &err)
+	if err != nil {
+		return "", nil, err
+	}
+	event, ok := (*result).(*ctypes.ResultEvent)
+	if !ok {
+		return "", nil, nil // TODO: handle non-event messages (ie. return from subscribe/unsubscribe)
+		// fmt.Errorf("Result is not type *ctypes.ResultEvent. Got %v", reflect.TypeOf(*result))
+	}
+	return event.Name, event.Data, nil
 }

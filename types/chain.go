@@ -37,7 +37,7 @@ type ChainState struct {
 	Status *BlockchainStatus `json:"status"`
 }
 
-func (cs *ChainState) NewBlock(block *tmtypes.Block) {
+func (cs *ChainState) NewBlock(block *tmtypes.Header) {
 	cs.Status.NewBlock(block)
 }
 
@@ -225,12 +225,12 @@ func NewBlockchainStatus() *BlockchainStatus {
 	}
 }
 
-func (s *BlockchainStatus) NewBlock(block *tmtypes.Block) {
+func (s *BlockchainStatus) NewBlock(block *tmtypes.Header) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
-	if block.Header.Height > s.Height {
-		numTxs := block.Header.NumTxs
-		s.Height = block.Header.Height
+	if block.Height > s.Height {
+		numTxs := block.NumTxs
+		s.Height = block.Height
 		s.blockTimeMeter.Mark(1)
 		s.txThroughputMeter.Mark(int64(numTxs))
 		s.MeanBlockTime = (1.0 / s.blockTimeMeter.Rate1()) * 1000 // 1/s to ms
