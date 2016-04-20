@@ -97,6 +97,7 @@ func GetConfig(rootDir string) cfg.Config {
 	mapConfig.SetDefault("timeout_precommit_delta", 1)
 	mapConfig.SetDefault("timeout_commit", 1)
 	mapConfig.SetDefault("mempool_recheck", true)
+	mapConfig.SetDefault("mempool_recheck_empty", true)
 	mapConfig.SetDefault("mempool_broadcast", true)
 
 	return mapConfig

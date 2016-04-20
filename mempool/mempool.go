@@ -245,8 +245,11 @@ func (mem *Mempool) Update(height int, txs []types.Tx) {
 	mem.height = height
 	// Remove transactions that are already in txs.
 	goodTxs := mem.filterTxs(txsMap)
-	// Recheck mempool txs
-	if config.GetBool("mempool_recheck") {
+	// Recheck mempool txs if any txs were committed in the block
+	// NOTE/XXX: in some apps a tx could be invalidated due to EndBlock,
+	//	so we really still do need to recheck, but this is for debugging
+	if config.GetBool("mempool_recheck") &&
+		(config.GetBool("mempool_recheck_empty") || len(txs) > 0) {
 		log.Info("Recheck txs", "numtxs", len(goodTxs))
 		mem.recheckTxs(goodTxs)
 		// At this point, mem.txs are being rechecked.
