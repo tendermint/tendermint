@@ -231,12 +231,6 @@ func (ps *PartSet) GetReader() io.Reader {
 		PanicSanity("Cannot GetReader() on incomplete PartSet")
 	}
 	return NewPartSetReader(ps.parts)
-
-	buf := []byte{}
-	for _, part := range ps.parts {
-		buf = append(buf, part.Bytes...)
-	}
-	return bytes.NewReader(buf)
 }
 
 type PartSetReader struct {

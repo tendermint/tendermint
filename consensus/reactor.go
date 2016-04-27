@@ -92,7 +92,7 @@ func (conR *ConsensusReactor) GetChannels() []*p2p.ChannelDescriptor {
 		},
 		&p2p.ChannelDescriptor{
 			ID:                 DataChannel, // maybe split between gossiping current block and catchup stuff
-			Priority:           200,         // once we gossip the whole block there's nothing left to send until next height or round
+			Priority:           10,          // once we gossip the whole block there's nothing left to send until next height or round
 			SendQueueCapacity:  100,
 			RecvBufferCapacity: 50 * 4096,
 		},

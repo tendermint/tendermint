@@ -15,7 +15,7 @@ func (txs Txs) Hash() []byte {
 	case 0:
 		return nil
 	case 1:
-		return txs[0]
+		return merkle.SimpleHashFromBinary(txs[0])
 	default:
 		left := Txs(txs[:(len(txs)+1)/2]).Hash()
 		right := Txs(txs[(len(txs)+1)/2:]).Hash()

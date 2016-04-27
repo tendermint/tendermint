@@ -80,8 +80,6 @@ func TestReplayCatchup(t *testing.T) {
 	// start timeout and receive routines
 	cs.startRoutines(0)
 
-	// 	cs.scheduleRound0(cs.Height)
-
 	// open wal and run catchup messages
 	openWAL(t, cs, name)
 	if err := cs.catchupReplay(cs.Height); err != nil {
