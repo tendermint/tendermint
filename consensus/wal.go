@@ -61,21 +61,23 @@ func NewWAL(file string, light bool) (*WAL, error) {
 }
 
 // called in newStep and for each pass in receiveRoutine
-func (wal *WAL) Save(msg ConsensusLogMessageInterface) {
+func (wal *WAL) Save(clm ConsensusLogMessageInterface) {
 	if wal != nil {
 		if wal.light {
-			if m, ok := msg.(msgInfo); ok {
-				if _, ok := m.Msg.(*BlockPartMessage); ok {
+			// in light mode we only write new steps, timeouts, and our own votes (no proposals, block parts)
+			if mi, ok := clm.(msgInfo); ok {
+				_ = mi
+				if mi.PeerKey != "" {
 					return
 				}
 			}
 		}
 		var n int
 		var err error
-		wire.WriteJSON(ConsensusLogMessage{time.Now(), msg}, wal.fp, &n, &err)
+		wire.WriteJSON(ConsensusLogMessage{time.Now(), clm}, wal.fp, &n, &err)
 		wire.WriteTo([]byte("\n"), wal.fp, &n, &err) // one message per line
 		if err != nil {
-			PanicQ(Fmt("Error writing msg to consensus wal. Error: %v \n\nMessage: %v", err, msg))
+			PanicQ(Fmt("Error writing msg to consensus wal. Error: %v \n\nMessage: %v", err, clm))
 		}
 	}
 }

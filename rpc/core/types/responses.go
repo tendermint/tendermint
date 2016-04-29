@@ -70,6 +70,8 @@ type ResultUnconfirmedTxs struct {
 
 type ResultUnsafeSetConfig struct{}
 
+type ResultUnsafeProfile struct{}
+
 type ResultSubscribe struct {
 }
 
@@ -109,7 +111,10 @@ const (
 	ResultTypeEvent       = byte(0x82)
 
 	// 0xa bytes for testing
-	ResultTypeUnsafeSetConfig = byte(0xa0)
+	ResultTypeUnsafeSetConfig        = byte(0xa0)
+	ResultTypeUnsafeStartCPUProfiler = byte(0xa1)
+	ResultTypeUnsafeStopCPUProfiler  = byte(0xa2)
+	ResultTypeUnsafeWriteHeapProfile = byte(0xa3)
 )
 
 type TMResult interface {
@@ -133,4 +138,7 @@ var _ = wire.RegisterInterface(
 	wire.ConcreteType{&ResultUnsubscribe{}, ResultTypeUnsubscribe},
 	wire.ConcreteType{&ResultEvent{}, ResultTypeEvent},
 	wire.ConcreteType{&ResultUnsafeSetConfig{}, ResultTypeUnsafeSetConfig},
+	wire.ConcreteType{&ResultUnsafeProfile{}, ResultTypeUnsafeStartCPUProfiler},
+	wire.ConcreteType{&ResultUnsafeProfile{}, ResultTypeUnsafeStopCPUProfiler},
+	wire.ConcreteType{&ResultUnsafeProfile{}, ResultTypeUnsafeWriteHeapProfile},
 )

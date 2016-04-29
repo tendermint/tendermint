@@ -224,6 +224,7 @@ func makeNodeInfo(sw *p2p.Switch, privKey crypto.PrivKeyEd25519) *p2p.NodeInfo {
 		Other: []string{
 			Fmt("wire_version=%v", wire.Version),
 			Fmt("p2p_version=%v", p2p.Version),
+			Fmt("consensus_version=%v", consensus.Version),
 			Fmt("rpc_version=%v/%v", rpc.Version, rpccore.Version),
 		},
 	}

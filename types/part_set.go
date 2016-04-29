@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	partSize = 4096 // 4KB
+	partSize = 65536 // 64KB ...  4096 // 4KB
 )
 
 var (
@@ -188,7 +188,7 @@ func (ps *PartSet) Total() int {
 	return ps.total
 }
 
-func (ps *PartSet) AddPart(part *Part) (bool, error) {
+func (ps *PartSet) AddPart(part *Part, verify bool) (bool, error) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
@@ -203,8 +203,10 @@ func (ps *PartSet) AddPart(part *Part) (bool, error) {
 	}
 
 	// Check hash proof
-	if !part.Proof.Verify(part.Index, ps.total, part.Hash(), ps.Hash()) {
-		return false, ErrPartSetInvalidProof
+	if verify {
+		if !part.Proof.Verify(part.Index, ps.total, part.Hash(), ps.Hash()) {
+			return false, ErrPartSetInvalidProof
+		}
 	}
 
 	// Add part
@@ -228,11 +230,42 @@ func (ps *PartSet) GetReader() io.Reader {
 	if !ps.IsComplete() {
 		PanicSanity("Cannot GetReader() on incomplete PartSet")
 	}
-	buf := []byte{}
-	for _, part := range ps.parts {
-		buf = append(buf, part.Bytes...)
+	return NewPartSetReader(ps.parts)
+}
+
+type PartSetReader struct {
+	i      int
+	parts  []*Part
+	reader *bytes.Reader
+}
+
+func NewPartSetReader(parts []*Part) *PartSetReader {
+	return &PartSetReader{
+		i:      0,
+		parts:  parts,
+		reader: bytes.NewReader(parts[0].Bytes),
 	}
-	return bytes.NewReader(buf)
+}
+
+func (psr *PartSetReader) Read(p []byte) (n int, err error) {
+	readerLen := psr.reader.Len()
+	if readerLen >= len(p) {
+		return psr.reader.Read(p)
+	} else if readerLen > 0 {
+		n1, err := psr.Read(p[:readerLen])
+		if err != nil {
+			return n1, err
+		}
+		n2, err := psr.Read(p[readerLen:])
+		return n1 + n2, err
+	}
+
+	psr.i += 1
+	if psr.i >= len(psr.parts) {
+		return 0, io.EOF
+	}
+	psr.reader = bytes.NewReader(psr.parts[psr.i].Bytes)
+	return psr.Read(p)
 }
 
 func (ps *PartSet) StringShort() string {

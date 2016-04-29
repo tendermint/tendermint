@@ -77,6 +77,10 @@ func NewMempool(proxyAppConn proxy.AppConn) *Mempool {
 	return mempool
 }
 
+func (mem *Mempool) Size() int {
+	return mem.txs.Len()
+}
+
 // Return the first element of mem.txs for peer goroutines to call .NextWait() on.
 // Blocks until txs has elements.
 func (mem *Mempool) TxsFrontWait() *clist.CElement {
@@ -197,9 +201,11 @@ func (mem *Mempool) Reap(maxTxs int) []types.Tx {
 	return txs
 }
 
-// maxTxs: 0 means uncapped
+// maxTxs: -1 means uncapped, 0 means none
 func (mem *Mempool) collectTxs(maxTxs int) []types.Tx {
 	if maxTxs == 0 {
+		return []types.Tx{}
+	} else if maxTxs < 0 {
 		maxTxs = mem.txs.Len()
 	}
 	txs := make([]types.Tx, 0, MinInt(mem.txs.Len(), maxTxs))

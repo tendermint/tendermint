@@ -22,8 +22,12 @@ var Routes = map[string]*rpc.RPCFunc{
 	"broadcast_tx_sync":    rpc.NewRPCFunc(BroadcastTxSyncResult, "tx"),
 	"broadcast_tx_async":   rpc.NewRPCFunc(BroadcastTxAsyncResult, "tx"),
 	"unconfirmed_txs":      rpc.NewRPCFunc(UnconfirmedTxsResult, ""),
+	"num_unconfirmed_txs":  rpc.NewRPCFunc(NumUnconfirmedTxsResult, ""),
 
-	"unsafe_set_config": rpc.NewRPCFunc(UnsafeSetConfigResult, "type,key,value"),
+	"unsafe_set_config":         rpc.NewRPCFunc(UnsafeSetConfigResult, "type,key,value"),
+	"unsafe_start_cpu_profiler": rpc.NewRPCFunc(UnsafeStartCPUProfilerResult, "filename"),
+	"unsafe_stop_cpu_profiler":  rpc.NewRPCFunc(UnsafeStopCPUProfilerResult, ""),
+	"unsafe_write_heap_profile": rpc.NewRPCFunc(UnsafeWriteHeapProfileResult, "filename"),
 }
 
 func SubscribeResult(wsCtx rpctypes.WSRPCContext, event string) (ctypes.TMResult, error) {
@@ -114,6 +118,14 @@ func UnconfirmedTxsResult() (ctypes.TMResult, error) {
 	}
 }
 
+func NumUnconfirmedTxsResult() (ctypes.TMResult, error) {
+	if r, err := NumUnconfirmedTxs(); err != nil {
+		return nil, err
+	} else {
+		return r, nil
+	}
+}
+
 func BroadcastTxSyncResult(tx []byte) (ctypes.TMResult, error) {
 	if r, err := BroadcastTxSync(tx); err != nil {
 		return nil, err
@@ -132,6 +144,30 @@ func BroadcastTxAsyncResult(tx []byte) (ctypes.TMResult, error) {
 
 func UnsafeSetConfigResult(typ, key, value string) (ctypes.TMResult, error) {
 	if r, err := UnsafeSetConfig(typ, key, value); err != nil {
+		return nil, err
+	} else {
+		return r, nil
+	}
+}
+
+func UnsafeStartCPUProfilerResult(filename string) (ctypes.TMResult, error) {
+	if r, err := UnsafeStartCPUProfiler(filename); err != nil {
+		return nil, err
+	} else {
+		return r, nil
+	}
+}
+
+func UnsafeStopCPUProfilerResult() (ctypes.TMResult, error) {
+	if r, err := UnsafeStopCPUProfiler(); err != nil {
+		return nil, err
+	} else {
+		return r, nil
+	}
+}
+
+func UnsafeWriteHeapProfileResult(filename string) (ctypes.TMResult, error) {
+	if r, err := UnsafeWriteHeapProfile(filename); err != nil {
 		return nil, err
 	} else {
 		return r, nil

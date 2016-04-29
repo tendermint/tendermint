@@ -128,22 +128,27 @@ func (voteSet *VoteSet) addVote(val *Validator, valIndex int, vote *Vote) (bool,
 		return false, 0, ErrVoteUnexpectedStep
 	}
 
-	// Check signature.
-	if !val.PubKey.VerifyBytes(SignBytes(config.GetString("chain_id"), vote), vote.Signature) {
-		// Bad signature.
-		return false, 0, ErrVoteInvalidSignature
-	}
-
 	// If vote already exists, return false.
 	if existingVote := voteSet.votes[valIndex]; existingVote != nil {
 		if bytes.Equal(existingVote.BlockHash, vote.BlockHash) {
 			return false, valIndex, nil
 		} else {
+			// Check signature.
+			if !val.PubKey.VerifyBytes(SignBytes(config.GetString("chain_id"), vote), vote.Signature) {
+				// Bad signature.
+				return false, 0, ErrVoteInvalidSignature
+			}
 			return false, valIndex, &ErrVoteConflictingSignature{
 				VoteA: existingVote,
 				VoteB: vote,
 			}
 		}
+	}
+
+	// Check signature.
+	if !val.PubKey.VerifyBytes(SignBytes(config.GetString("chain_id"), vote), vote.Signature) {
+		// Bad signature.
+		return false, 0, ErrVoteInvalidSignature
 	}
 
 	// Add vote.

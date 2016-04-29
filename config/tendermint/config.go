@@ -70,6 +70,7 @@ func GetConfig(rootDir string) cfg.Config {
 	mapConfig.SetDefault("cswal_light", false)
 
 	mapConfig.SetDefault("block_size", 10000)
+	mapConfig.SetDefault("disable_data_hash", false)
 	mapConfig.SetDefault("timeout_propose", 3000)
 	mapConfig.SetDefault("timeout_propose_delta", 500)
 	mapConfig.SetDefault("timeout_prevote", 1000)

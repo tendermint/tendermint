@@ -16,6 +16,7 @@ func EventStringDupeout() string { return "Dupeout" }
 func EventStringFork() string    { return "Fork" }
 
 func EventStringNewBlock() string         { return "NewBlock" }
+func EventStringNewBlockHeader() string   { return "NewBlockHeader" }
 func EventStringNewRound() string         { return "NewRound" }
 func EventStringNewRoundStep() string     { return "NewRoundStep" }
 func EventStringTimeoutPropose() string   { return "TimeoutPropose" }
@@ -36,9 +37,10 @@ type TMEventData interface {
 }
 
 const (
-	EventDataTypeNewBlock = byte(0x01)
-	EventDataTypeFork     = byte(0x02)
-	EventDataTypeTx       = byte(0x03)
+	EventDataTypeNewBlock       = byte(0x01)
+	EventDataTypeFork           = byte(0x02)
+	EventDataTypeTx             = byte(0x03)
+	EventDataTypeNewBlockHeader = byte(0x04)
 
 	EventDataTypeRoundState = byte(0x11)
 	EventDataTypeVote       = byte(0x12)
@@ -47,6 +49,7 @@ const (
 var _ = wire.RegisterInterface(
 	struct{ TMEventData }{},
 	wire.ConcreteType{EventDataNewBlock{}, EventDataTypeNewBlock},
+	wire.ConcreteType{EventDataNewBlockHeader{}, EventDataTypeNewBlockHeader},
 	// wire.ConcreteType{EventDataFork{}, EventDataTypeFork },
 	wire.ConcreteType{EventDataTx{}, EventDataTypeTx},
 	wire.ConcreteType{EventDataRoundState{}, EventDataTypeRoundState},
@@ -58,6 +61,11 @@ var _ = wire.RegisterInterface(
 
 type EventDataNewBlock struct {
 	Block *Block `json:"block"`
+}
+
+// light weight event for benchmarking
+type EventDataNewBlockHeader struct {
+	Header *Header `json:"header"`
 }
 
 // All txs fire EventDataTx
@@ -84,7 +92,8 @@ type EventDataVote struct {
 	Vote    *Vote
 }
 
-func (_ EventDataNewBlock) AssertIsTMEventData()   {}
-func (_ EventDataTx) AssertIsTMEventData()         {}
-func (_ EventDataRoundState) AssertIsTMEventData() {}
-func (_ EventDataVote) AssertIsTMEventData()       {}
+func (_ EventDataNewBlock) AssertIsTMEventData()       {}
+func (_ EventDataNewBlockHeader) AssertIsTMEventData() {}
+func (_ EventDataTx) AssertIsTMEventData()             {}
+func (_ EventDataRoundState) AssertIsTMEventData()     {}
+func (_ EventDataVote) AssertIsTMEventData()           {}

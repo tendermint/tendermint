@@ -1,18 +1,18 @@
 hash: f3eab3f91c9d2c07574e8ec6f2f5d56bd946af1b061533a0baf9db8765f97a51
-updated: 2016-03-05T17:20:40.721925401-05:00
+updated: 2016-03-24T16:39:27.330201414-04:00
 imports:
 - name: github.com/gogo/protobuf
-  version: f4cc07910fc38f5b6b8d6e75d7457cf504157b6c
+  version: 4168943e65a2802828518e95310aeeed6d84c4e5
   subpackages:
   - proto
 - name: github.com/golang/protobuf
-  version: c75fbf01dc6cb73649c4cd4326182c3e44aa9dbb
+  version: 8d92cf5fc15a4382f8964b08e1f42a75c0591aa3
   subpackages:
   - proto
 - name: github.com/golang/snappy
   version: 5f1c01d9f64b941dd9582c638279d046eda6ca31
 - name: github.com/gorilla/websocket
-  version: c45a635370221f34fea2d5163fd156fcb4e38e8a
+  version: e2e3d8414d0fbae04004f151979f4e27c6747fe7
 - name: github.com/inconshreveable/log15
   version: 210d6fdc4d979ef6579778f1b6ed84571454abb4
   subpackages:
@@ -33,7 +33,7 @@ imports:
 - name: github.com/spf13/pflag
   version: 7f60f83a2c81bc3c3c0d5297f61ddfa68da9d3b7
 - name: github.com/syndtr/goleveldb
-  version: ad0d8b2ab58a55ed5c58073aa46451d5e1ca1280
+  version: 917f41c560270110ceb73c5b38be2a9127387071
   subpackages:
   - leveldb
   - leveldb/errors
@@ -59,23 +59,23 @@ imports:
 - name: github.com/tendermint/go-clist
   version: 634527f5b60fd7c71ca811262493df2ad65ee0ca
 - name: github.com/tendermint/go-common
-  version: 1559ae1ac90c88b1373ff114c409399c5a1cedac
+  version: dcfa46af1341d03b80d32e4901019d1668b978b9
 - name: github.com/tendermint/go-config
-  version: c077af2c1ecf584fb797fd1956758545b25d952b
+  version: c47b67203b070d8bea835a928d50cb739972c48a
 - name: github.com/tendermint/go-crypto
-  version: 76ba23e4c0c627b8c66d1f97b6a18dc77f4f0297
+  version: 3f0d9b3f29f30e5d0cbc2cef04fa45e5a606c622
 - name: github.com/tendermint/go-db
   version: a7878f1d0d8eaebf15f87bc2df15f7a1088cce7f
 - name: github.com/tendermint/go-events
   version: 7b75ca7bb55aa25e9ef765eb8c0b69486b227357
 - name: github.com/tendermint/go-logger
-  version: 4901b71ade2b834ca0f4c2ca69edb96792dca05b
+  version: 84391b36d3f5960e691c688d06b768708f0fa2f3
 - name: github.com/tendermint/go-logio
   version: 04f3aa0a3b38d06dcadefbafd988c8b85e499225
 - name: github.com/tendermint/go-merkle
-  version: 67b535ce9633be7df575dc3a7833fa2301020c25
+  version: 05042c6ab9cad51d12e4cecf717ae68e3b1409a8
 - name: github.com/tendermint/go-p2p
-  version: 7f6aad20fbad6ef1a132d5a8bebd18f3521fff1a
+  version: 10619248c665dee6b8f81455f7f27ab93d5ec366
   subpackages:
   - upnp
 - name: github.com/tendermint/go-rpc
@@ -85,27 +85,29 @@ imports:
   - types
   - server
 - name: github.com/tendermint/go-wire
-  version: 9acb294893c790427e2b9abf2877e69690cd5b6c
+  version: 7a15dd53dfdecc0f967676edcd6b335c59344c83
 - name: github.com/tendermint/log15
   version: 6e460758f10ef42a4724b8e4a82fee59aaa0e41d
 - name: github.com/tendermint/tmsp
-  version: 72540f9cac4840989cb05b147cc89be8cd91f043
+  version: 1dfc6950dddf47ff397e670a67d405d25da138ea
   subpackages:
   - types
+  - client
   - example/dummy
   - example/nil
-  - client
 - name: golang.org/x/crypto
-  version: 5dc8cb4b8a8eb076cbb5a06bc3b8682c15bdbbd3
+  version: c197bcf24cde29d3f73c7b4ac6fd41f4384e8af6
   subpackages:
   - ripemd160
   - nacl/box
   - nacl/secretbox
+  - openpgp/armor
   - curve25519
   - salsa20/salsa
   - poly1305
+  - openpgp/errors
 - name: golang.org/x/sys
-  version: 7a56174f0086b32866ebd746a794417edbc678a1
+  version: afce3de5756ca82699128ebae46ac95ad59d6297
   subpackages:
   - unix
 devImports: []

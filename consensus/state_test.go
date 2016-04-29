@@ -491,7 +491,7 @@ func TestLockPOLRelock(t *testing.T) {
 	proposalCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringCompleteProposal(), 1)
 	voteCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringVote(), 1)
 	newRoundCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringNewRound(), 1)
-	newBlockCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringNewBlock(), 1)
+	newBlockCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringNewBlockHeader(), 1)
 
 	log.Debug("cs2 last round", "lr", cs2.PrivValidator.LastRound)
 
@@ -577,14 +577,14 @@ func TestLockPOLRelock(t *testing.T) {
 	_, _ = <-voteCh, <-voteCh
 
 	be := <-newBlockCh
-	b := be.(types.EventDataNewBlock)
+	b := be.(types.EventDataNewBlockHeader)
 	re = <-newRoundCh
 	rs = re.(types.EventDataRoundState).RoundState.(*RoundState)
 	if rs.Height != 2 {
 		t.Fatal("Expected height to increment")
 	}
 
-	if !bytes.Equal(b.Block.Hash(), propBlockHash) {
+	if !bytes.Equal(b.Header.Hash(), propBlockHash) {
 		t.Fatal("Expected new block to be proposal block")
 	}
 }
