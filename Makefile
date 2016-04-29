@@ -20,6 +20,9 @@ build_race:
 test: build
 	go test github.com/tendermint/tendermint/...
 
+test100: build
+	for i in {1..100}; do make test; done
+
 test_novendor: build
 	go test $$(glide novendor)
 
