@@ -3,15 +3,24 @@ Simple, Secure, Scalable Blockchain Platform
 
 [![Build Status](https://drone.io/github.com/tendermint/tendermint/status.png)](https://drone.io/github.com/tendermint/tendermint/latest)
 
-### Resources
+#### Resources
 
-* [wiki](https://github.com/tendermint/tendermint/wiki)
-* [TMSP](http://tendermint.com/posts/tendermint-socket-protocol/)
+### Tendermint Core
 
-### Coding style
+- [Introduction](https://github.com/tendermint/tendermint/wiki/Introduction)
+- [Validators](https://github.com/tendermint/tendermint/wiki/Validators)
+- [Byzantine Consensus Algorithm](https://github.com/tendermint/tendermint/wiki/Byzantine-Consensus-Algorithm)
+- [Block Structure](https://github.com/tendermint/tendermint/wiki/Block-Structure)
+- [RPC](https://github.com/tendermint/tendermint/wiki/RPC)
+- [Genesis](https://github.com/tendermint/tendermint/wiki/Genesis)
+- [Configuration](https://github.com/tendermint/tendermint/wiki/Configuration)
+- [Light Client Protocol](https://github.com/tendermint/tendermint/wiki/Light-Client-Protocol)
+- [Roadmap for V2](https://github.com/tendermint/tendermint/wiki/Roadmap-for-V2)
 
-* Go
-  * Use gofmt. Consider vim-go or gosublime.
-  * Write godoc. 
-  * Write tests.
-  * Tabs, not spaces
+### Sub-projects
+
+* [TMSP](http://github.com/tendermint/tmsp)
+* [Mintnet](http://github.com/tendermint/mintnet)
+* [Go-Wire](http://github.com/tendermint/go-wire)
+* [Go-P2P](http://github.com/tendermint/go-p2p)
+* [Go-Merkle](http://github.com/tendermint/go-merkle)
