@@ -3,7 +3,7 @@ Simple, Secure, Scalable Blockchain Platform
 
 [![Build Status](https://drone.io/github.com/tendermint/tendermint/status.png)](https://drone.io/github.com/tendermint/tendermint/latest)
 
-#### Resources
+## Resources
 
 ### Tendermint Core
 
