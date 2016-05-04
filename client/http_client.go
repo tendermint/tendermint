@@ -33,6 +33,11 @@ func socketTransport(remote string) *http.Transport {
 
 //------------------------------------------------------------------------------------
 
+type Client interface {
+}
+
+//------------------------------------------------------------------------------------
+
 // JSON rpc takes params as a slice
 type ClientJSONRPC struct {
 	remote string
@@ -60,7 +65,7 @@ func (c *ClientJSONRPC) call(method string, params []interface{}, result interfa
 	}
 	requestBytes := wire.JSONBytes(request)
 	requestBuf := bytes.NewBuffer(requestBytes)
-	log.Info(Fmt("RPC request to %v (%v): %v", c.remote, method, string(requestBytes)))
+	// log.Info(Fmt("RPC request to %v (%v): %v", c.remote, method, string(requestBytes)))
 	httpResponse, err := c.client.Post(dummyDomain, "text/json", requestBuf)
 	if err != nil {
 		return nil, err

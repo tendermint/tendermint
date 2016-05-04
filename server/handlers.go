@@ -387,7 +387,7 @@ func (wsc *wsConnection) readRoutine() {
 			// We use `readTimeout` to handle read timeouts.
 			_, in, err := wsc.baseConn.ReadMessage()
 			if err != nil {
-				log.Notice("Failed to read from connection", "remote", wsc.remoteAddr)
+				log.Notice("Failed to read from connection", "remote", wsc.remoteAddr, "err", err.Error())
 				// an error reading the connection,
 				// kill the connection
 				wsc.Stop()
