@@ -10,6 +10,12 @@ Other implementations:
 * [cpp-tmsp](https://github.com/mdyring/cpp-tmsp) by Martin Dyring-Andersen
 * [js-tmsp](https://github.com/tendermint/js-tmsp)
 
+## Message format
+
+Since this is a streaming protocol, all messages are encoded with a length-prefix followed by the message encoded in Protobuf3.  Protobuf3 doesn't have an official length-prefix standard, so we use our own.  The first byte represents the length of the big-endian encoded length.
+
+For example, if the Protobuf3 encoded TMSP message is `0xDEADBEEF` (4 bytes), the length-prefixed message is `0x0104DEADBEEF`.  If the Protobuf3 encoded TMSP message is 65535 bytes long, the length-prefixed message would be like `0x02FFFF...`.
+
 ## Message types
 
 TMSP requests/responses are simple Protobuf messages.  Check out the [schema file](https://github.com/tendermint/tmsp/blob/master/types/types.proto).
@@ -92,21 +98,21 @@ TMSP requests/responses are simple Protobuf messages.  Check out the [schema fil
   * __Usage__:<br/>
     Signals the end of a block.  Called prior to each Commit after all transactions
 
-### Changelog
+## Changelog
 
-#### Mar 26h, 2016
+##### Mar 26h, 2016
 * Introduce BeginBlock
 
-#### Mar 6th, 2016
+##### Mar 6th, 2016
 
 * Added InitChain, EndBlock
 
-#### Feb 14th, 2016
+##### Feb 14th, 2016
 
 * s/GetHash/Commit/g
 * Document Protobuf request/response fields
 
-#### Jan 23th, 2016
+##### Jan 23th, 2016
 
 * Added CheckTx/Query TMSP message types
 * Added Result/Log fields to AppendTx/CheckTx/SetOption
@@ -114,10 +120,10 @@ TMSP requests/responses are simple Protobuf messages.  Check out the [schema fil
 * Removed Code from ResponseSetOption and ResponseGetHash
 * Made examples BigEndian
 
-#### Jan 12th, 2016
+##### Jan 12th, 2016
 
 * Added "RetCodeBadNonce = 0x06" return code
 
-#### Jan 8th, 2016
+##### Jan 8th, 2016
 
 * Tendermint/TMSP now comes to consensus on the order first before AppendTx.
