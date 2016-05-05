@@ -33,69 +33,72 @@ func main() {
 		{
 			Name:  "batch",
 			Usage: "Run a batch of tmsp commands against an application",
-			Action: func(c *cli.Context) {
-				cmdBatch(app, c)
+			Action: func(c *cli.Context) error {
+				return cmdBatch(app, c)
 			},
 		},
 		{
 			Name:  "console",
 			Usage: "Start an interactive tmsp console for multiple commands",
-			Action: func(c *cli.Context) {
-				cmdConsole(app, c)
+			Action: func(c *cli.Context) error {
+				return cmdConsole(app, c)
 			},
 		},
 		{
 			Name:  "echo",
 			Usage: "Have the application echo a message",
-			Action: func(c *cli.Context) {
-				cmdEcho(c)
+			Action: func(c *cli.Context) error {
+				return cmdEcho(c)
 			},
 		},
 		{
 			Name:  "info",
 			Usage: "Get some info about the application",
-			Action: func(c *cli.Context) {
-				cmdInfo(c)
+			Action: func(c *cli.Context) error {
+				return cmdInfo(c)
 			},
 		},
 		{
 			Name:  "set_option",
 			Usage: "Set an option on the application",
-			Action: func(c *cli.Context) {
-				cmdSetOption(c)
+			Action: func(c *cli.Context) error {
+				return cmdSetOption(c)
 			},
 		},
 		{
 			Name:  "append_tx",
 			Usage: "Append a new tx to application",
-			Action: func(c *cli.Context) {
-				cmdAppendTx(c)
+			Action: func(c *cli.Context) error {
+				return cmdAppendTx(c)
 			},
 		},
 		{
 			Name:  "check_tx",
 			Usage: "Validate a tx",
-			Action: func(c *cli.Context) {
-				cmdCheckTx(c)
+			Action: func(c *cli.Context) error {
+				return cmdCheckTx(c)
 			},
 		},
 		{
 			Name:  "commit",
 			Usage: "Commit the application state and return the Merkle root hash",
-			Action: func(c *cli.Context) {
-				cmdCommit(c)
+			Action: func(c *cli.Context) error {
+				return cmdCommit(c)
 			},
 		},
 		{
 			Name:  "query",
 			Usage: "Query application state",
-			Action: func(c *cli.Context) {
-				cmdQuery(c)
+			Action: func(c *cli.Context) error {
+				return cmdQuery(c)
 			},
 		},
 	}
 	app.Before = before
-	app.Run(os.Args)
+	err := app.Run(os.Args)
+	if err != nil {
+		Exit(err.Error())
+	}
 
 }
 
@@ -112,160 +115,150 @@ func before(c *cli.Context) error {
 
 //--------------------------------------------------------------------------------
 
-func cmdBatch(app *cli.App, c *cli.Context) {
+func cmdBatch(app *cli.App, c *cli.Context) error {
 	bufReader := bufio.NewReader(os.Stdin)
 	for {
 		line, more, err := bufReader.ReadLine()
 		if more {
-			fmt.Println("input line is too long")
-			return
+			return errors.New("Input line is too long")
 		} else if err == io.EOF {
 			break
 		} else if len(line) == 0 {
 			continue
 		} else if err != nil {
-			fmt.Println(err.Error())
-			return
+			return err
 		}
 		args := []string{"tmsp"}
 		args = append(args, strings.Split(string(line), " ")...)
 		app.Run(args)
 	}
+	return nil
 }
 
-func cmdConsole(app *cli.App, c *cli.Context) {
+func cmdConsole(app *cli.App, c *cli.Context) error {
 	for {
 		fmt.Printf("\n> ")
 		bufReader := bufio.NewReader(os.Stdin)
 		line, more, err := bufReader.ReadLine()
 		if more {
-			fmt.Println("input is too long")
-			return
+			return errors.New("Input is too long")
 		} else if err != nil {
-			fmt.Println(err.Error())
-			return
+			return err
 		}
 
 		args := []string{"tmsp"}
 		args = append(args, strings.Split(string(line), " ")...)
 		app.Run(args)
 	}
+	return nil
 }
 
 // Have the application echo a message
-func cmdEcho(c *cli.Context) {
+func cmdEcho(c *cli.Context) error {
 	args := c.Args()
 	if len(args) != 1 {
-		fmt.Println("echo takes 1 argument")
-		return
+		return errors.New("Command echo takes 1 argument")
 	}
 	res, err := makeRequest(conn, types.RequestEcho(args[0]))
 	if err != nil {
-		fmt.Println(err.Error())
-		return
+		return err
 	}
 	printResponse(res, string(res.Data))
+	return nil
 }
 
 // Get some info from the application
-func cmdInfo(c *cli.Context) {
+func cmdInfo(c *cli.Context) error {
 	res, err := makeRequest(conn, types.RequestInfo())
 	if err != nil {
-		fmt.Println(err.Error())
-		return
+		return err
 	}
 	printResponse(res, string(res.Data))
+	return nil
 }
 
 // Set an option on the application
-func cmdSetOption(c *cli.Context) {
+func cmdSetOption(c *cli.Context) error {
 	args := c.Args()
 	if len(args) != 2 {
-		fmt.Println("set_option takes 2 arguments (key, value)")
-		return
+		return errors.New("Command set_option takes 2 arguments (key, value)")
 	}
 	res, err := makeRequest(conn, types.RequestSetOption(args[0], args[1]))
 	if err != nil {
-		fmt.Println(err.Error())
-		return
+		return err
 	}
 	printResponse(res, Fmt("%s=%s", args[0], args[1]))
+	return nil
 }
 
 // Append a new tx to application
-func cmdAppendTx(c *cli.Context) {
+func cmdAppendTx(c *cli.Context) error {
 	args := c.Args()
 	if len(args) != 1 {
-		fmt.Println("append_tx takes 1 argument")
-		return
+		return errors.New("Command append_tx takes 1 argument")
 	}
 	txExprString := c.Args()[0]
 	txBytes, err := expr.Compile(txExprString)
 	if err != nil {
-		fmt.Println(err.Error())
-		return
+		return err
 	}
 
 	res, err := makeRequest(conn, types.RequestAppendTx(txBytes))
 	if err != nil {
-		fmt.Println(err.Error())
-		return
+		return err
 	}
 	printResponse(res, string(res.Data))
+	return nil
 }
 
 // Validate a tx
-func cmdCheckTx(c *cli.Context) {
+func cmdCheckTx(c *cli.Context) error {
 	args := c.Args()
 	if len(args) != 1 {
-		fmt.Println("check_tx takes 1 argument")
-		return
+		return errors.New("Command check_tx takes 1 argument")
 	}
 	txExprString := c.Args()[0]
 	txBytes, err := expr.Compile(txExprString)
 	if err != nil {
-		fmt.Println(err.Error())
-		return
+		return err
 	}
 
 	res, err := makeRequest(conn, types.RequestCheckTx(txBytes))
 	if err != nil {
-		fmt.Println(err.Error())
-		return
+		return err
 	}
 	printResponse(res, string(res.Data))
+	return nil
 }
 
 // Get application Merkle root hash
-func cmdCommit(c *cli.Context) {
+func cmdCommit(c *cli.Context) error {
 	res, err := makeRequest(conn, types.RequestCommit())
 	if err != nil {
-		fmt.Println(err.Error())
-		return
+		return err
 	}
 	printResponse(res, Fmt("%X", res.Data))
+	return nil
 }
 
 // Query application state
-func cmdQuery(c *cli.Context) {
+func cmdQuery(c *cli.Context) error {
 	args := c.Args()
 	if len(args) != 1 {
-		fmt.Println("query takes 1 argument")
-		return
+		return errors.New("Command query takes 1 argument")
 	}
 	queryExprString := args[0]
 	queryBytes, err := expr.Compile(queryExprString)
 	if err != nil {
-		fmt.Println(err.Error())
-		return
+		return err
 	}
 
 	res, err := makeRequest(conn, types.RequestQuery(queryBytes))
 	if err != nil {
-		fmt.Println(err.Error())
-		return
+		return err
 	}
 	printResponse(res, string(res.Data))
+	return nil
 }
 
 //--------------------------------------------------------------------------------
