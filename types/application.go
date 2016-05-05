@@ -15,11 +15,11 @@ type Application interface {
 	// Validate a tx for the mempool
 	CheckTx(tx []byte) Result
 
-	// Return the application Merkle root hash
-	Commit() Result
-
 	// Query for state
 	Query(query []byte) Result
+
+	// Return the application Merkle root hash
+	Commit() Result
 }
 
 // Some applications can choose to implement BlockchainAware
@@ -33,6 +33,6 @@ type BlockchainAware interface {
 	BeginBlock(height uint64)
 
 	// Signals the end of a block
-	// validators: changed validators from app to TendermintCore
-	EndBlock(height uint64) (validators []*Validator)
+	// diffs: changed validators from app to TendermintCore
+	EndBlock(height uint64) (diffs []*Validator)
 }
