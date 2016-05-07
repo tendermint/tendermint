@@ -128,20 +128,29 @@ func (voteSet *VoteSet) addVote(val *Validator, valIndex int, vote *Vote) (bool,
 		return false, 0, ErrVoteUnexpectedStep
 	}
 
+	var doubleSign bool
 	// If vote already exists, return false.
 	if existingVote := voteSet.votes[valIndex]; existingVote != nil {
 		if bytes.Equal(existingVote.BlockHash, vote.BlockHash) {
 			return false, valIndex, nil
 		} else {
-			// Check signature.
-			if !val.PubKey.VerifyBytes(SignBytes(config.GetString("chain_id"), vote), vote.Signature) {
-				// Bad signature.
-				return false, 0, ErrVoteInvalidSignature
+			doubleSign = true
+			log.Warn("Double sign detected!", "height", vote.Height, "round", vote.Round, "type", vote.Type, "index", valIndex)
+
+			// if its a preovte, or we already have a majority, return the double sign error.
+			// else, we may need to replace the vote if its part of a commit
+			// so we let it fall through
+			if vote.Type == VoteTypePrevote || voteSet.maj23Exists {
+				return false, valIndex, &ErrVoteConflictingSignature{
+					VoteA: existingVote,
+					VoteB: vote,
+				}
 			}
-			return false, valIndex, &ErrVoteConflictingSignature{
-				VoteA: existingVote,
-				VoteB: vote,
-			}
+
+			// subtract voting power from the existing vote
+			blockKey := string(existingVote.BlockHash) + string(wire.BinaryBytes(existingVote.BlockPartsHeader))
+			totalBlockHashVotes := voteSet.votesByBlock[blockKey] - val.VotingPower
+			voteSet.votesByBlock[blockKey] = totalBlockHashVotes
 		}
 	}
 
@@ -157,7 +166,9 @@ func (voteSet *VoteSet) addVote(val *Validator, valIndex int, vote *Vote) (bool,
 	blockKey := string(vote.BlockHash) + string(wire.BinaryBytes(vote.BlockPartsHeader))
 	totalBlockHashVotes := voteSet.votesByBlock[blockKey] + val.VotingPower
 	voteSet.votesByBlock[blockKey] = totalBlockHashVotes
-	voteSet.totalVotes += val.VotingPower
+	if !doubleSign {
+		voteSet.totalVotes += val.VotingPower
+	}
 
 	// If we just nudged it up to two thirds majority, add it.
 	if totalBlockHashVotes > voteSet.valSet.TotalVotingPower()*2/3 &&
@@ -165,6 +176,14 @@ func (voteSet *VoteSet) addVote(val *Validator, valIndex int, vote *Vote) (bool,
 		voteSet.maj23Hash = vote.BlockHash
 		voteSet.maj23PartsHeader = vote.BlockPartsHeader
 		voteSet.maj23Exists = true
+	}
+
+	if doubleSign {
+		/*
+			return true, valIndex, &ErrVoteConflictingSignature{
+				VoteA: existingVote,
+				VoteB: vote,
+			}*/
 	}
 
 	return true, valIndex, nil
