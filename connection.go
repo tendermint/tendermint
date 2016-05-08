@@ -12,28 +12,23 @@ import (
 
 	flow "github.com/tendermint/flowcontrol"
 	. "github.com/tendermint/go-common"
+	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-wire" //"github.com/tendermint/log15"
 )
 
 const (
-	numBatchMsgPackets         = 10
-	minReadBufferSize          = 1024
-	minWriteBufferSize         = 65536
-	idleTimeoutMinutes         = 5
-	updateStatsSeconds         = 2
-	pingTimeoutSeconds         = 40
-	flushThrottleMS            = 100
+	numBatchMsgPackets = 10
+	minReadBufferSize  = 1024
+	minWriteBufferSize = 65536
+	idleTimeoutMinutes = 5
+	updateStatsSeconds = 2
+	pingTimeoutSeconds = 40
+	flushThrottleMS    = 100
+
 	defaultSendQueueCapacity   = 1
 	defaultRecvBufferCapacity  = 4096
 	defaultRecvMessageCapacity = 22020096 // 21MB
 	defaultSendTimeoutSeconds  = 10
-)
-
-// config keys
-const (
-	sendRateKey       = "p2p_send_rate"
-	recvRateKey       = "p2p_recv_rate"
-	maxPayloadSizeKey = "p2p_max_msg_packet_payload_size"
 )
 
 type receiveCbFunc func(chID byte, msgBytes []byte)
@@ -91,7 +86,8 @@ type MConnection struct {
 	RemoteAddress *NetAddress
 }
 
-func NewMConnection(conn net.Conn, chDescs []*ChannelDescriptor, onReceive receiveCbFunc, onError errorCbFunc) *MConnection {
+func NewMConnection(config cfg.Config, conn net.Conn, chDescs []*ChannelDescriptor, onReceive receiveCbFunc, onError errorCbFunc) *MConnection {
+	setConfigDefaults(config)
 
 	mconn := &MConnection{
 		conn:        conn,
@@ -99,8 +95,8 @@ func NewMConnection(conn net.Conn, chDescs []*ChannelDescriptor, onReceive recei
 		bufWriter:   bufio.NewWriterSize(conn, minWriteBufferSize),
 		sendMonitor: flow.New(0, 0),
 		recvMonitor: flow.New(0, 0),
-		sendRate:    int64(config.GetInt(sendRateKey)),
-		recvRate:    int64(config.GetInt(recvRateKey)),
+		sendRate:    int64(config.GetInt(configKeySendRate)),
+		recvRate:    int64(config.GetInt(configKeyRecvRate)),
 		send:        make(chan struct{}, 1),
 		pong:        make(chan struct{}),
 		onReceive:   onReceive,
@@ -319,7 +315,7 @@ func (c *MConnection) sendSomeMsgPackets() bool {
 	// Block until .sendMonitor says we can write.
 	// Once we're ready we send more than we asked for,
 	// but amortized it should even out.
-	c.sendMonitor.Limit(maxMsgPacketTotalSize(), atomic.LoadInt64(&c.sendRate), true)
+	c.sendMonitor.Limit(maxMsgPacketTotalSize, atomic.LoadInt64(&c.sendRate), true)
 
 	// Now send some msgPackets.
 	for i := 0; i < numBatchMsgPackets; i++ {
@@ -377,7 +373,7 @@ func (c *MConnection) recvRoutine() {
 FOR_LOOP:
 	for {
 		// Block until .recvMonitor says we can read.
-		c.recvMonitor.Limit(maxMsgPacketTotalSize(), atomic.LoadInt64(&c.recvRate), true)
+		c.recvMonitor.Limit(maxMsgPacketTotalSize, atomic.LoadInt64(&c.recvRate), true)
 
 		/*
 			// Peek into bufReader for debugging
@@ -418,7 +414,7 @@ FOR_LOOP:
 			log.Debug("Receive Pong")
 		case packetTypeMsg:
 			pkt, n, err := msgPacket{}, int(0), error(nil)
-			wire.ReadBinaryPtr(&pkt, c.bufReader, maxMsgPacketTotalSize(), &n, &err)
+			wire.ReadBinaryPtr(&pkt, c.bufReader, maxMsgPacketTotalSize, &n, &err)
 			c.recvMonitor.Update(int(n))
 			if err != nil {
 				if c.IsRunning() {
@@ -598,15 +594,14 @@ func (ch *Channel) isSendPending() bool {
 func (ch *Channel) nextMsgPacket() msgPacket {
 	packet := msgPacket{}
 	packet.ChannelID = byte(ch.id)
-	maxPayloadSize := config.GetInt(maxPayloadSizeKey)
-	packet.Bytes = ch.sending[:MinInt(maxPayloadSize, len(ch.sending))]
-	if len(ch.sending) <= maxPayloadSize {
+	packet.Bytes = ch.sending[:MinInt(maxMsgPacketPayloadSize, len(ch.sending))]
+	if len(ch.sending) <= maxMsgPacketPayloadSize {
 		packet.EOF = byte(0x01)
 		ch.sending = nil
 		atomic.AddInt32(&ch.sendQueueSize, -1) // decrement sendQueueSize
 	} else {
 		packet.EOF = byte(0x00)
-		ch.sending = ch.sending[MinInt(maxPayloadSize, len(ch.sending)):]
+		ch.sending = ch.sending[MinInt(maxMsgPacketPayloadSize, len(ch.sending)):]
 	}
 	return packet
 }
@@ -654,12 +649,10 @@ func (ch *Channel) updateStats() {
 
 //-----------------------------------------------------------------------------
 
-func maxMsgPacketTotalSize() int {
-	return config.GetInt(maxPayloadSizeKey) + maxMsgPacketOverheadSize
-}
-
 const (
+	maxMsgPacketPayloadSize  = 1024
 	maxMsgPacketOverheadSize = 10 // It's actually lower but good enough
+	maxMsgPacketTotalSize    = maxMsgPacketPayloadSize + maxMsgPacketOverheadSize
 	packetTypePing           = byte(0x01)
 	packetTypePong           = byte(0x02)
 	packetTypeMsg            = byte(0x03)

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	. "github.com/tendermint/go-common"
+	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/log15"
 )
@@ -55,6 +56,7 @@ incoming messages are received on the reactor.
 type Switch struct {
 	BaseService
 
+	config       cfg.Config
 	listeners    []Listener
 	reactors     map[string]Reactor
 	chDescs      []*ChannelDescriptor
@@ -70,16 +72,11 @@ var (
 	ErrSwitchMaxPeersPerIPRange = errors.New("IP range has too many peers")
 )
 
-// config keys
-const (
-	dialTimeoutKey      = "p2p_dial_timeout_seconds"
-	handshakeTimeoutKey = "p2p_handshake_timeout_seconds"
-	maxNumPeersKey      = "p2p_max_num_peers"
-	authEncKey          = "p2p_authenticated_encryption"
-)
+func NewSwitch(config cfg.Config) *Switch {
+	setConfigDefaults(config)
 
-func NewSwitch() *Switch {
 	sw := &Switch{
+		config:       config,
 		reactors:     make(map[string]Reactor),
 		chDescs:      make([]*ChannelDescriptor, 0),
 		reactorsByCh: make(map[byte]Reactor),
@@ -196,11 +193,12 @@ func (sw *Switch) OnStop() {
 // CONTRACT: Iff error is returned, peer is nil, and conn is immediately closed.
 func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, error) {
 	// Set deadline for handshake so we don't block forever on conn.ReadFull
-	conn.SetDeadline(time.Now().Add(time.Duration(config.GetInt(handshakeTimeoutKey)) * time.Second))
+	conn.SetDeadline(time.Now().Add(
+		time.Duration(sw.config.GetInt(configKeyHandshakeTimeoutSeconds)) * time.Second))
 
 	// First, encrypt the connection.
 	var sconn net.Conn = conn
-	if config.GetBool(authEncKey) {
+	if sw.config.GetBool(configKeyAuthEnc) {
 		var err error
 		sconn, err = MakeSecretConnection(conn, sw.nodePrivKey)
 		if err != nil {
@@ -214,7 +212,7 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 		sconn.Close()
 		return nil, err
 	}
-	if config.GetBool("p2p_authenticated_encryption") {
+	if sw.config.GetBool(configKeyAuthEnc) {
 		// Check that the professed PubKey matches the sconn's.
 		if !peerNodeInfo.PubKey.Equals(sconn.(*SecretConnection).RemotePubKey()) {
 			sconn.Close()
@@ -233,7 +231,7 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 		return nil, err
 	}
 
-	peer := newPeer(sconn, peerNodeInfo, outbound, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError)
+	peer := newPeer(sw.config, sconn, peerNodeInfo, outbound, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError)
 
 	// Add the peer to .peers
 	// ignore if duplicate or if we already have too many for that IP range
@@ -287,7 +285,8 @@ func (sw *Switch) dialSeed(addr *NetAddress) {
 func (sw *Switch) DialPeerWithAddress(addr *NetAddress) (*Peer, error) {
 	log.Info("Dialing address", "address", addr)
 	sw.dialing.Set(addr.IP.String(), addr)
-	conn, err := addr.DialTimeout(time.Duration(config.GetInt(dialTimeoutKey)) * time.Second)
+	conn, err := addr.DialTimeout(time.Duration(
+		sw.config.GetInt(configKeyDialTimeoutSeconds)) * time.Second)
 	sw.dialing.Delete(addr.IP.String())
 	if err != nil {
 		log.Info("Failed dialing address", "address", addr, "error", err)
@@ -378,7 +377,7 @@ func (sw *Switch) listenerRoutine(l Listener) {
 		}
 
 		// ignore connection if we already have enough
-		maxPeers := config.GetInt(maxNumPeersKey)
+		maxPeers := sw.config.GetInt(configKeyMaxNumPeers)
 		if maxPeers <= sw.peers.Size() {
 			log.Info("Ignoring inbound connection: already have enough peers", "address", inConn.RemoteAddr().String(), "numPeers", sw.peers.Size(), "max", maxPeers)
 			continue

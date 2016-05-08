@@ -6,6 +6,7 @@ import (
 	"net"
 
 	. "github.com/tendermint/go-common"
+	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-wire"
 )
 
@@ -47,7 +48,7 @@ func peerHandshake(conn net.Conn, ourNodeInfo *NodeInfo) (*NodeInfo, error) {
 }
 
 // NOTE: call peerHandshake on conn before calling newPeer().
-func newPeer(conn net.Conn, peerNodeInfo *NodeInfo, outbound bool, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor, onPeerError func(*Peer, interface{})) *Peer {
+func newPeer(config cfg.Config, conn net.Conn, peerNodeInfo *NodeInfo, outbound bool, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor, onPeerError func(*Peer, interface{})) *Peer {
 	var p *Peer
 	onReceive := func(chID byte, msgBytes []byte) {
 		reactor := reactorsByCh[chID]
@@ -60,7 +61,7 @@ func newPeer(conn net.Conn, peerNodeInfo *NodeInfo, outbound bool, reactorsByCh 
 		p.Stop()
 		onPeerError(p, r)
 	}
-	mconn := NewMConnection(conn, chDescs, onReceive, onError)
+	mconn := NewMConnection(config, conn, chDescs, onReceive, onError)
 	p = &Peer{
 		outbound: outbound,
 		mconn:    mconn,

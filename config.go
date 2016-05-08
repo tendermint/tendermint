@@ -4,31 +4,26 @@ import (
 	cfg "github.com/tendermint/go-config"
 )
 
-var config cfg.Config = nil
+const (
+	// Switch config keys
+	configKeyDialTimeoutSeconds      = "p2p_dial_timeout_seconds"
+	configKeyHandshakeTimeoutSeconds = "p2p_handshake_timeout_seconds"
+	configKeyMaxNumPeers             = "p2p_max_num_peers"
+	configKeyAuthEnc                 = "p2p_authenticated_encryption"
 
-func init() {
-	initConfigureable(dialTimeoutKey, 3)
-	initConfigureable(handshakeTimeoutKey, 20)
-	initConfigureable(maxNumPeersKey, 50)
-	initConfigureable(sendRateKey, 512000) // 500KB/s
-	initConfigureable(recvRateKey, 512000) // 500KB/s
-	initConfigureable(maxPayloadSizeKey, 1024)
+	// MConnection config keys
+	configKeySendRate = "p2p_send_rate"
+	configKeyRecvRate = "p2p_recv_rate"
+)
 
-	initConfigureable(authEncKey, true)
+func setConfigDefaults(config cfg.Config) {
+	// Switch default config
+	config.SetDefault(configKeyDialTimeoutSeconds, 3)
+	config.SetDefault(configKeyHandshakeTimeoutSeconds, 20)
+	config.SetDefault(configKeyMaxNumPeers, 50)
+	config.SetDefault(configKeyAuthEnc, true)
 
-	cfg.OnConfig(func(newConfig cfg.Config) {
-		config = newConfig
-
-		// fill in any config values that might be missing
-		for key, value := range defaultConfigValues {
-			config.SetDefault(key, value)
-		}
-	})
-}
-
-// default config map
-var defaultConfigValues = make(map[string]interface{})
-
-func initConfigureable(key string, value interface{}) {
-	defaultConfigValues[key] = value
+	// MConnection default config
+	config.SetDefault(configKeySendRate, 512000) // 500KB/s
+	config.SetDefault(configKeyRecvRate, 512000) // 500KB/s
 }
