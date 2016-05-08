@@ -24,27 +24,19 @@ type DB interface {
 const DBBackendMemDB = "memdb"
 const DBBackendLevelDB = "leveldb"
 
-var dbs = NewCMap()
-
-func GetDB(name string) DB {
-	db := dbs.Get(name)
-	if db != nil {
-		return db.(DB)
-	}
-	switch config.GetString("db_backend") {
+func NewDB(name string, backend string, dir string) DB {
+	switch backend {
 	case DBBackendMemDB:
 		db := NewMemDB()
-		dbs.Set(name, db)
 		return db
 	case DBBackendLevelDB:
-		db, err := NewLevelDB(path.Join(config.GetString("db_dir"), name+".db"))
+		db, err := NewLevelDB(path.Join(dir, name+".db"))
 		if err != nil {
 			PanicCrisis(err)
 		}
-		dbs.Set(name, db)
 		return db
 	default:
-		PanicSanity(Fmt("Unknown DB backend: %v", config.GetString("db_backend")))
+		PanicSanity(Fmt("Unknown DB backend: %v", backend))
 	}
 	return nil
 }
