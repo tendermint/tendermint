@@ -7,12 +7,11 @@ import (
 	"github.com/tendermint/log15"
 )
 
-//var rootHandler log15.Handler
 var mainHandler log15.Handler
 var bypassHandler log15.Handler
 
 func init() {
-	Reset()
+	resetWithLogLevel("debug")
 }
 
 func SetLogLevel(logLevel string) {
@@ -32,22 +31,8 @@ func resetWithLogLevel(logLevel string) {
 	bypassHandler = log15.StreamHandler(os.Stdout, log15.TerminalFormat())
 	//handlers = append(handlers, bypassHandler)
 
-	// Set rootHandler.
-	//rootHandler = log15.MultiHandler(handlers...)
-
 	// By setting handlers on the root, we handle events from all loggers.
 	log15.Root().SetHandler(mainHandler)
-}
-
-// You might want to call this after resetting tendermint/go-config.
-func Reset() {
-
-	var logLevel string = "debug"
-	if config != nil && config.IsSet("log_level") {
-		logLevel = config.GetString("log_level")
-	}
-
-	resetWithLogLevel(logLevel)
 }
 
 // See go-wire/log for an example of usage.
