@@ -11,6 +11,8 @@ import (
 	"github.com/tendermint/tendermint/version"
 )
 
+var config cfg.Config
+
 func main() {
 
 	args := os.Args[1:]
@@ -28,18 +30,17 @@ Commands:
 	}
 
 	// Get configuration
-	config := tmcfg.GetConfig("")
+	config = tmcfg.GetConfig("")
 	parseFlags(config, args[1:]) // Command line overrides
-	cfg.ApplyConfig(config)      // Notify modules of new config
 
 	switch args[0] {
 	case "node":
-		node.RunNode()
+		node.RunNode(config)
 	case "replay":
 		if len(args) > 1 && args[1] == "console" {
-			node.RunReplayConsole()
+			node.RunReplayConsole(config)
 		} else {
-			node.RunReplay()
+			node.RunReplay(config)
 		}
 	case "init":
 		init_files()

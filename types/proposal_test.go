@@ -2,14 +2,7 @@ package types
 
 import (
 	"testing"
-
-	. "github.com/tendermint/go-common"
-	"github.com/tendermint/tendermint/config/tendermint_test"
 )
-
-func init() {
-	tendermint_test.ResetConfig("types_proposal_test")
-}
 
 func TestProposalSignable(t *testing.T) {
 	proposal := &Proposal{
@@ -18,11 +11,10 @@ func TestProposalSignable(t *testing.T) {
 		BlockPartsHeader: PartSetHeader{111, []byte("blockparts")},
 		POLRound:         -1,
 	}
-	signBytes := SignBytes(config.GetString("chain_id"), proposal)
+	signBytes := SignBytes("test_chain_id", proposal)
 	signStr := string(signBytes)
 
-	expected := Fmt(`{"chain_id":"%s","proposal":{"block_parts_header":{"hash":"626C6F636B7061727473","total":111},"height":12345,"pol_round":-1,"round":23456}}`,
-		config.GetString("chain_id"))
+	expected := `{"chain_id":"test_chain_id","proposal":{"block_parts_header":{"hash":"626C6F636B7061727473","total":111},"height":12345,"pol_round":-1,"round":23456}}`
 	if signStr != expected {
 		t.Errorf("Got unexpected sign string for SendTx. Expected:\n%v\nGot:\n%v", expected, signStr)
 	}

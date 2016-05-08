@@ -6,19 +6,14 @@ import (
 	. "github.com/tendermint/go-common"
 	. "github.com/tendermint/go-common/test"
 	"github.com/tendermint/go-crypto"
-	"github.com/tendermint/tendermint/config/tendermint_test"
 
 	"testing"
 )
 
-func init() {
-	tendermint_test.ResetConfig("types_vote_set_test")
-}
-
 // Move it out?
 func randVoteSet(height int, round int, type_ byte, numValidators int, votingPower int64) (*VoteSet, *ValidatorSet, []*PrivValidator) {
 	valSet, privValidators := RandValidatorSet(numValidators, votingPower)
-	return NewVoteSet(height, round, type_, valSet), valSet, privValidators
+	return NewVoteSet("test_chain_id", height, round, type_, valSet), valSet, privValidators
 }
 
 // Convenience: Return new vote with different height
@@ -57,7 +52,7 @@ func withBlockPartsHeader(vote *Vote, blockPartsHeader PartSetHeader) *Vote {
 }
 
 func signAddVote(privVal *PrivValidator, vote *Vote, voteSet *VoteSet) (bool, error) {
-	vote.Signature = privVal.Sign(SignBytes(config.GetString("chain_id"), vote)).(crypto.SignatureEd25519)
+	vote.Signature = privVal.Sign(SignBytes(voteSet.ChainID(), vote)).(crypto.SignatureEd25519)
 	added, _, err := voteSet.AddByAddress(privVal.Address, vote)
 	return added, err
 }

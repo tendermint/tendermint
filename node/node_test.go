@@ -9,18 +9,15 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func init() {
-	tendermint_test.ResetConfig("node_node_test")
-}
-
 func TestNodeStartStop(t *testing.T) {
+	config := tendermint_test.ResetConfig("node_node_test")
 
 	// Get PrivValidator
 	privValidatorFile := config.GetString("priv_validator_file")
 	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
 
 	// Create & start node
-	n := NewNode(privValidator, GetProxyApp)
+	n := NewNode(config, privValidator, GetProxyApp)
 	l := p2p.NewDefaultListener("tcp", config.GetString("node_laddr"), config.GetBool("skip_upnp"))
 	n.AddListener(l)
 	n.Start()

@@ -8,6 +8,7 @@ import (
 
 	"github.com/tendermint/go-clist"
 	. "github.com/tendermint/go-common"
+	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-events"
 	"github.com/tendermint/go-p2p"
 	"github.com/tendermint/go-wire"
@@ -25,12 +26,14 @@ const (
 // MempoolReactor handles mempool tx broadcasting amongst peers.
 type MempoolReactor struct {
 	p2p.BaseReactor
-	Mempool *Mempool // TODO: un-expose
+	config  cfg.Config
+	Mempool *Mempool
 	evsw    *events.EventSwitch
 }
 
-func NewMempoolReactor(mempool *Mempool) *MempoolReactor {
+func NewMempoolReactor(config cfg.Config, mempool *Mempool) *MempoolReactor {
 	memR := &MempoolReactor{
+		config:  config,
 		Mempool: mempool,
 	}
 	memR.BaseReactor = *p2p.NewBaseReactor(log, "MempoolReactor", memR)
@@ -101,7 +104,7 @@ type Peer interface {
 // TODO: Handle mempool or reactor shutdown?
 // As is this routine may block forever if no new txs come in.
 func (memR *MempoolReactor) broadcastTxRoutine(peer Peer) {
-	if !config.GetBool("mempool_broadcast") {
+	if !memR.config.GetBool("mempool_broadcast") {
 		return
 	}
 

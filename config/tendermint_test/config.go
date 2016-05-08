@@ -16,11 +16,6 @@ func init() {
 	EnsureDir(os.Getenv("HOME")+"/.tendermint_test", 0700)
 }
 
-func ResetConfig(path string) {
-	rootDir := os.Getenv("HOME") + "/.tendermint_test/" + path
-	cfg.ApplyConfig(GetConfig(rootDir))
-}
-
 func initTMRoot(rootDir string) {
 	// Remove ~/.tendermint_test_bak
 	if FileExists(rootDir + "_bak") {
@@ -56,7 +51,8 @@ func initTMRoot(rootDir string) {
 	MustWriteFile(privFilePath, []byte(defaultPrivValidator), 0644)
 }
 
-func GetConfig(rootDir string) cfg.Config {
+func ResetConfig(localPath string) cfg.Config {
+	rootDir := os.Getenv("HOME") + "/.tendermint_test/" + localPath
 	initTMRoot(rootDir)
 
 	configFilePath := path.Join(rootDir, "config.toml")

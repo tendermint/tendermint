@@ -10,6 +10,7 @@ import (
 	"time"
 
 	. "github.com/tendermint/go-common"
+	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-crypto"
 	dbm "github.com/tendermint/go-db"
 	"github.com/tendermint/go-events"
@@ -33,6 +34,7 @@ import (
 import _ "net/http/pprof"
 
 type Node struct {
+	config           cfg.Config
 	sw               *p2p.Switch
 	evsw             *events.EventSwitch
 	blockStore       *bc.BlockStore
@@ -45,16 +47,19 @@ type Node struct {
 	privKey          crypto.PrivKeyEd25519
 }
 
-func NewNode(privValidator *types.PrivValidator, getProxyApp func(proxyAddr string, appHash []byte) proxy.AppConn) *Node {
+func NewNode(config cfg.Config, privValidator *types.PrivValidator, getProxyApp func(proxyAddr string, appHash []byte) proxy.AppConn) *Node {
 
 	EnsureDir(config.GetString("db_dir"), 0700) // incase we use memdb, cswal still gets written here
 
 	// Get BlockStore
-	blockStoreDB := dbm.GetDB("blockstore")
+	blockStoreDB := dbm.NewDB("blockstore", config.GetString("db_backend"), config.GetString("db_dir"))
 	blockStore := bc.NewBlockStore(blockStoreDB)
 
+	// Get State db
+	stateDB := dbm.NewDB("state", config.GetString("db_backend"), config.GetString("db_dir"))
+
 	// Get State
-	state := getState()
+	state := getState(config, stateDB)
 
 	// Create two proxyAppConn connections,
 	// one for the consensus and one for the mempool.
@@ -90,11 +95,11 @@ func NewNode(privValidator *types.PrivValidator, getProxyApp func(proxyAddr stri
 	bcReactor := bc.NewBlockchainReactor(state.Copy(), proxyAppConnConsensus, blockStore, fastSync)
 
 	// Make MempoolReactor
-	mempool := mempl.NewMempool(proxyAppConnMempool)
-	mempoolReactor := mempl.NewMempoolReactor(mempool)
+	mempool := mempl.NewMempool(config, proxyAppConnMempool)
+	mempoolReactor := mempl.NewMempoolReactor(config, mempool)
 
 	// Make ConsensusReactor
-	consensusState := consensus.NewConsensusState(state.Copy(), proxyAppConnConsensus, blockStore, mempool)
+	consensusState := consensus.NewConsensusState(config, state.Copy(), proxyAppConnConsensus, blockStore, mempool)
 	consensusReactor := consensus.NewConsensusReactor(consensusState, blockStore, fastSync)
 	if privValidator != nil {
 		consensusReactor.SetPrivValidator(privValidator)
@@ -107,7 +112,7 @@ func NewNode(privValidator *types.PrivValidator, getProxyApp func(proxyAddr stri
 	}
 
 	// Make p2p network switch
-	sw := p2p.NewSwitch()
+	sw := p2p.NewSwitch(config)
 	sw.AddReactor("MEMPOOL", mempoolReactor)
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)
@@ -125,6 +130,7 @@ func NewNode(privValidator *types.PrivValidator, getProxyApp func(proxyAddr stri
 	}
 
 	return &Node{
+		config:           config,
 		sw:               sw,
 		evsw:             eventSwitch,
 		blockStore:       blockStore,
@@ -140,7 +146,7 @@ func NewNode(privValidator *types.PrivValidator, getProxyApp func(proxyAddr stri
 
 // Call Start() after adding the listeners.
 func (n *Node) Start() error {
-	n.sw.SetNodeInfo(makeNodeInfo(n.sw, n.privKey))
+	n.sw.SetNodeInfo(makeNodeInfo(n.config, n.sw, n.privKey))
 	n.sw.SetNodePrivKey(n.privKey)
 	_, err := n.sw.Start()
 	return err
@@ -176,7 +182,7 @@ func (n *Node) StartRPC() ([]net.Listener, error) {
 	rpccore.SetPrivValidator(n.privValidator)
 	rpccore.SetGenesisDoc(n.genesisDoc)
 
-	listenAddrs := strings.Split(config.GetString("rpc_laddr"), ",")
+	listenAddrs := strings.Split(n.config.GetString("rpc_laddr"), ",")
 
 	// we may expose the rpc over both a unix and tcp socket
 	listeners := make([]net.Listener, len(listenAddrs))
@@ -214,7 +220,7 @@ func (n *Node) EventSwitch() *events.EventSwitch {
 	return n.evsw
 }
 
-func makeNodeInfo(sw *p2p.Switch, privKey crypto.PrivKeyEd25519) *p2p.NodeInfo {
+func makeNodeInfo(config cfg.Config, sw *p2p.Switch, privKey crypto.PrivKeyEd25519) *p2p.NodeInfo {
 
 	nodeInfo := &p2p.NodeInfo{
 		PubKey:  privKey.PubKey().(crypto.PubKeyEd25519),
@@ -287,8 +293,7 @@ func GetProxyApp(addr string, hash []byte) (proxyAppConn proxy.AppConn) {
 
 // Load the most recent state from "state" db,
 // or create a new one (and save) from genesis.
-func getState() *sm.State {
-	stateDB := dbm.GetDB("state")
+func getState(config cfg.Config, stateDB dbm.DB) *sm.State {
 	state := sm.LoadState(stateDB)
 	if state == nil {
 		state = sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
@@ -302,7 +307,7 @@ func getState() *sm.State {
 // Users wishing to use an external signer for their validators
 // should fork tendermint/tendermint and implement RunNode to
 // load their custom priv validator and call NewNode(privVal, getProxyFunc)
-func RunNode() {
+func RunNode(config cfg.Config) {
 	// Wait until the genesis doc becomes available
 	genDocFile := config.GetString("genesis_file")
 	if !FileExists(genDocFile) {
@@ -330,7 +335,7 @@ func RunNode() {
 	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
 
 	// Create & start node
-	n := NewNode(privValidator, GetProxyApp)
+	n := NewNode(config, privValidator, GetProxyApp)
 	l := p2p.NewDefaultListener("tcp", config.GetString("node_laddr"), config.GetBool("skip_upnp"))
 	n.AddListener(l)
 	err := n.Start()
@@ -372,13 +377,13 @@ func (n *Node) DialSeeds(seeds []string) {
 // replay
 
 // convenience for replay mode
-func newConsensusState() *consensus.ConsensusState {
+func newConsensusState(config cfg.Config) *consensus.ConsensusState {
 	// Get BlockStore
-	blockStoreDB := dbm.GetDB("blockstore")
+	blockStoreDB := dbm.NewDB("blockstore", config.GetString("db_backend"), config.GetString("db_dir"))
 	blockStore := bc.NewBlockStore(blockStoreDB)
 
 	// Get State
-	stateDB := dbm.GetDB("state")
+	stateDB := dbm.NewDB("state", config.GetString("db_backend"), config.GetString("db_dir"))
 	state := sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
 
 	// Create two proxyAppConn connections,
@@ -397,33 +402,33 @@ func newConsensusState() *consensus.ConsensusState {
 		Exit(Fmt("Failed to start event switch: %v", err))
 	}
 
-	mempool := mempl.NewMempool(proxyAppConnMempool)
+	mempool := mempl.NewMempool(config, proxyAppConnMempool)
 
-	consensusState := consensus.NewConsensusState(state.Copy(), proxyAppConnConsensus, blockStore, mempool)
+	consensusState := consensus.NewConsensusState(config, state.Copy(), proxyAppConnConsensus, blockStore, mempool)
 	consensusState.SetEventSwitch(eventSwitch)
 	return consensusState
 }
 
-func RunReplayConsole() {
+func RunReplayConsole(config cfg.Config) {
 	walFile := config.GetString("cswal")
 	if walFile == "" {
 		Exit("cswal file name not set in tendermint config")
 	}
 
-	consensusState := newConsensusState()
+	consensusState := newConsensusState(config)
 
 	if err := consensusState.ReplayConsole(walFile); err != nil {
 		Exit(Fmt("Error during consensus replay: %v", err))
 	}
 }
 
-func RunReplay() {
+func RunReplay(config cfg.Config) {
 	walFile := config.GetString("cswal")
 	if walFile == "" {
 		Exit("cswal file name not set in tendermint config")
 	}
 
-	consensusState := newConsensusState()
+	consensusState := newConsensusState(config)
 
 	if err := consensusState.ReplayMessages(walFile); err != nil {
 		Exit(Fmt("Error during consensus replay: %v", err))

@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
+	cfg "github.com/tendermint/go-config"
 	dbm "github.com/tendermint/go-db"
 	"github.com/tendermint/go-events"
 	bc "github.com/tendermint/tendermint/blockchain"
-	"github.com/tendermint/tendermint/config/tendermint_test"
 	mempl "github.com/tendermint/tendermint/mempool"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -21,14 +21,8 @@ import (
 	"github.com/tendermint/tmsp/example/counter"
 )
 
-var chainID string
-
+var config cfg.Config // NOTE: must be reset for each _test.go file
 var ensureTimeout = time.Duration(2)
-
-func init() {
-	tendermint_test.ResetConfig("consensus_common_test")
-	chainID = config.GetString("chain_id")
-}
 
 type validatorStub struct {
 	Height int
@@ -50,7 +44,7 @@ func (vs *validatorStub) signVote(voteType byte, hash []byte, header types.PartS
 		BlockHash:        hash,
 		BlockPartsHeader: header,
 	}
-	err := vs.PrivValidator.SignVote(chainID, vote)
+	err := vs.PrivValidator.SignVote(config.GetString("chain_id"), vote)
 	return vote, err
 }
 
@@ -72,7 +66,7 @@ func decideProposal(cs1 *ConsensusState, cs2 *validatorStub, height, round int) 
 
 	// Make proposal
 	proposal = types.NewProposal(height, round, blockParts.Header(), cs1.Votes.POLRound())
-	if err := cs2.SignProposal(chainID, proposal); err != nil {
+	if err := cs2.SignProposal(config.GetString("chain_id"), proposal); err != nil {
 		panic(err)
 	}
 	return
@@ -318,10 +312,10 @@ func newConsensusState(state *sm.State, pv *types.PrivValidator, app tmsp.Applic
 	proxyAppConnCon := tmspcli.NewLocalClient(mtx, app)
 
 	// Make Mempool
-	mempool := mempl.NewMempool(proxyAppConnMem)
+	mempool := mempl.NewMempool(config, proxyAppConnMem)
 
 	// Make ConsensusReactor
-	cs := NewConsensusState(state, proxyAppConnCon, blockStore, mempool)
+	cs := NewConsensusState(config, state, proxyAppConnCon, blockStore, mempool)
 	cs.SetPrivValidator(pv)
 
 	evsw := events.NewEventSwitch()

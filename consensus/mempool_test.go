@@ -14,7 +14,7 @@ import (
 )
 
 func init() {
-	tendermint_test.ResetConfig("consensus_mempool_test")
+	config = tendermint_test.ResetConfig("consensus_mempool_test")
 }
 
 func TestTxConcurrentWithCommit(t *testing.T) {

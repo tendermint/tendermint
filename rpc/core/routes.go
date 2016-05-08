@@ -24,7 +24,6 @@ var Routes = map[string]*rpc.RPCFunc{
 	"unconfirmed_txs":      rpc.NewRPCFunc(UnconfirmedTxsResult, ""),
 	"num_unconfirmed_txs":  rpc.NewRPCFunc(NumUnconfirmedTxsResult, ""),
 
-	"unsafe_set_config":         rpc.NewRPCFunc(UnsafeSetConfigResult, "type,key,value"),
 	"unsafe_start_cpu_profiler": rpc.NewRPCFunc(UnsafeStartCPUProfilerResult, "filename"),
 	"unsafe_stop_cpu_profiler":  rpc.NewRPCFunc(UnsafeStopCPUProfilerResult, ""),
 	"unsafe_write_heap_profile": rpc.NewRPCFunc(UnsafeWriteHeapProfileResult, "filename"),
@@ -136,14 +135,6 @@ func BroadcastTxSyncResult(tx []byte) (ctypes.TMResult, error) {
 
 func BroadcastTxAsyncResult(tx []byte) (ctypes.TMResult, error) {
 	if r, err := BroadcastTxAsync(tx); err != nil {
-		return nil, err
-	} else {
-		return r, nil
-	}
-}
-
-func UnsafeSetConfigResult(typ, key, value string) (ctypes.TMResult, error) {
-	if r, err := UnsafeSetConfig(typ, key, value); err != nil {
 		return nil, err
 	} else {
 		return r, nil

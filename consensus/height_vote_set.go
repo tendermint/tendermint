@@ -26,8 +26,9 @@ we create a new entry in roundVoteSets but also remember the
 peer to prevent abuse.
 */
 type HeightVoteSet struct {
-	height int
-	valSet *types.ValidatorSet
+	chainID string
+	height  int
+	valSet  *types.ValidatorSet
 
 	mtx               sync.Mutex
 	round             int                  // max tracked round
@@ -35,8 +36,9 @@ type HeightVoteSet struct {
 	peerCatchupRounds map[string]int       // keys: peer.Key; values: round
 }
 
-func NewHeightVoteSet(height int, valSet *types.ValidatorSet) *HeightVoteSet {
+func NewHeightVoteSet(chainID string, height int, valSet *types.ValidatorSet) *HeightVoteSet {
 	hvs := &HeightVoteSet{
+		chainID:           chainID,
 		height:            height,
 		valSet:            valSet,
 		roundVoteSets:     make(map[int]RoundVoteSet),
@@ -78,8 +80,8 @@ func (hvs *HeightVoteSet) addRound(round int) {
 		PanicSanity("addRound() for an existing round")
 	}
 	log.Debug("addRound(round)", "round", round)
-	prevotes := types.NewVoteSet(hvs.height, round, types.VoteTypePrevote, hvs.valSet)
-	precommits := types.NewVoteSet(hvs.height, round, types.VoteTypePrecommit, hvs.valSet)
+	prevotes := types.NewVoteSet(hvs.chainID, hvs.height, round, types.VoteTypePrevote, hvs.valSet)
+	precommits := types.NewVoteSet(hvs.chainID, hvs.height, round, types.VoteTypePrecommit, hvs.valSet)
 	hvs.roundVoteSets[round] = RoundVoteSet{
 		Prevotes:   prevotes,
 		Precommits: precommits,

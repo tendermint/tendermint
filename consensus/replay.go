@@ -230,10 +230,9 @@ func (pb *playback) replayReset(count int, newStepCh chan interface{}) error {
 
 	pb.cs.Stop()
 
-	newCs := NewConsensusState(pb.genesisState.Copy(), pb.cs.proxyAppConn, pb.cs.blockStore, pb.cs.mempool)
-	newCs.SetEventSwitch(pb.cs.evsw)
-
-	newCs.startForReplay()
+	newCS := NewConsensusState(pb.cs.config, pb.genesisState.Copy(), pb.cs.proxyAppConn, pb.cs.blockStore, pb.cs.mempool)
+	newCS.SetEventSwitch(pb.cs.evsw)
+	newCS.startForReplay()
 
 	pb.fp.Close()
 	fp, err := os.OpenFile(pb.fileName, os.O_RDONLY, 0666)
@@ -245,7 +244,7 @@ func (pb *playback) replayReset(count int, newStepCh chan interface{}) error {
 	count = pb.count - count
 	log.Notice(Fmt("Reseting from %d to %d", pb.count, count))
 	pb.count = 0
-	pb.cs = newCs
+	pb.cs = newCS
 	for i := 0; pb.scanner.Scan() && i < count; i++ {
 		if err := pb.cs.readReplayMessage(pb.scanner.Bytes(), newStepCh); err != nil {
 			return err

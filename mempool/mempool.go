@@ -9,6 +9,7 @@ import (
 
 	"github.com/tendermint/go-clist"
 	. "github.com/tendermint/go-common"
+	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 	tmsp "github.com/tendermint/tmsp/types"
@@ -45,6 +46,8 @@ TODO: Better handle tmsp client errors. (make it automatically handle connection
 const cacheSize = 100000
 
 type Mempool struct {
+	config cfg.Config
+
 	proxyMtx      sync.Mutex
 	proxyAppConn  proxy.AppConn
 	txs           *clist.CList    // concurrent linked-list of good txs
@@ -60,8 +63,9 @@ type Mempool struct {
 	cacheList *list.List
 }
 
-func NewMempool(proxyAppConn proxy.AppConn) *Mempool {
+func NewMempool(config cfg.Config, proxyAppConn proxy.AppConn) *Mempool {
 	mempool := &Mempool{
+		config:        config,
 		proxyAppConn:  proxyAppConn,
 		txs:           clist.New(),
 		counter:       0,
@@ -248,8 +252,8 @@ func (mem *Mempool) Update(height int, txs []types.Tx) {
 	// Recheck mempool txs if any txs were committed in the block
 	// NOTE/XXX: in some apps a tx could be invalidated due to EndBlock,
 	//	so we really still do need to recheck, but this is for debugging
-	if config.GetBool("mempool_recheck") &&
-		(config.GetBool("mempool_recheck_empty") || len(txs) > 0) {
+	if mem.config.GetBool("mempool_recheck") &&
+		(mem.config.GetBool("mempool_recheck_empty") || len(txs) > 0) {
 		log.Info("Recheck txs", "numtxs", len(goodTxs))
 		mem.recheckTxs(goodTxs)
 		// At this point, mem.txs are being rechecked.

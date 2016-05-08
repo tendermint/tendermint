@@ -8,13 +8,13 @@ import (
 )
 
 func init() {
-	tendermint_test.ResetConfig("consensus_height_vote_set_test")
+	config = tendermint_test.ResetConfig("consensus_height_vote_set_test")
 }
 
 func TestPeerCatchupRounds(t *testing.T) {
 	valSet, privVals := types.RandValidatorSet(10, 1)
 
-	hvs := NewHeightVoteSet(1, valSet)
+	hvs := NewHeightVoteSet(config.GetString("chain_id"), 1, valSet)
 
 	vote999_0 := makeVoteHR(t, 1, 999, privVals[0])
 	added, _, err := hvs.AddByIndex(0, vote999_0, "peer1")

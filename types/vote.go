@@ -69,17 +69,3 @@ func (vote *Vote) String() string {
 
 	return fmt.Sprintf("Vote{%v/%02d/%v(%v) %X#%v %v}", vote.Height, vote.Round, vote.Type, typeString, Fingerprint(vote.BlockHash), vote.BlockPartsHeader, vote.Signature)
 }
-
-//--------------------------------------------------------------------------------
-// TODO: Move blocks/Commit to here?
-
-// Common interface between *consensus.VoteSet and types.Commit
-type VoteSetReader interface {
-	Height() int
-	Round() int
-	Type() byte
-	Size() int
-	BitArray() *BitArray
-	GetByIndex(int) *Vote
-	IsCommit() bool
-}

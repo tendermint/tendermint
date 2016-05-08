@@ -9,6 +9,7 @@ import (
 	"time"
 
 	. "github.com/tendermint/go-common"
+	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-events"
 	"github.com/tendermint/go-wire"
 	bc "github.com/tendermint/tendermint/blockchain"
@@ -52,8 +53,8 @@ func (tp *TimeoutParams) Commit(t time.Time) time.Time {
 	return t.Add(time.Duration(tp.Commit0) * time.Millisecond)
 }
 
-// Initialize parameters from config file
-func InitTimeoutParamsFromConfig() *TimeoutParams {
+// Initialize parameters from config
+func InitTimeoutParamsFromConfig(config cfg.Config) *TimeoutParams {
 	return &TimeoutParams{
 		Propose0:       config.GetInt("timeout_propose"),
 		ProposeDelta:   config.GetInt("timeout_propose_delta"),
@@ -213,6 +214,7 @@ func (ti *timeoutInfo) String() string {
 type ConsensusState struct {
 	QuitService
 
+	config        cfg.Config
 	proxyAppConn  proxy.AppConn
 	blockStore    *bc.BlockStore
 	mempool       *mempl.Mempool
@@ -236,8 +238,9 @@ type ConsensusState struct {
 	nSteps int // used for testing to limit the number of transitions the state makes
 }
 
-func NewConsensusState(state *sm.State, proxyAppConn proxy.AppConn, blockStore *bc.BlockStore, mempool *mempl.Mempool) *ConsensusState {
+func NewConsensusState(config cfg.Config, state *sm.State, proxyAppConn proxy.AppConn, blockStore *bc.BlockStore, mempool *mempl.Mempool) *ConsensusState {
 	cs := &ConsensusState{
+		config:           config,
 		proxyAppConn:     proxyAppConn,
 		blockStore:       blockStore,
 		mempool:          mempool,
@@ -246,7 +249,7 @@ func NewConsensusState(state *sm.State, proxyAppConn proxy.AppConn, blockStore *
 		timeoutTicker:    new(time.Ticker),
 		tickChan:         make(chan timeoutInfo, tickTockBufferSize),
 		tockChan:         make(chan timeoutInfo, tickTockBufferSize),
-		timeoutParams:    InitTimeoutParamsFromConfig(),
+		timeoutParams:    InitTimeoutParamsFromConfig(config),
 	}
 	cs.updateToState(state)
 	// Don't call scheduleRound0 yet.
@@ -328,7 +331,7 @@ func (cs *ConsensusState) OnStop() {
 func (cs *ConsensusState) OpenWAL(file string) (err error) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
-	wal, err := NewWAL(file, config.GetBool("cswal_light"))
+	wal, err := NewWAL(file, cs.config.GetBool("cswal_light"))
 	if err != nil {
 		return err
 	}
@@ -439,7 +442,7 @@ func (cs *ConsensusState) reconstructLastCommit(state *sm.State) {
 		return
 	}
 	seenCommit := cs.blockStore.LoadSeenCommit(state.LastBlockHeight)
-	lastPrecommits := types.NewVoteSet(state.LastBlockHeight, seenCommit.Round(), types.VoteTypePrecommit, state.LastValidators)
+	lastPrecommits := types.NewVoteSet(cs.config.GetString("chain_id"), state.LastBlockHeight, seenCommit.Round(), types.VoteTypePrecommit, state.LastValidators)
 	for idx, precommit := range seenCommit.Precommits {
 		if precommit == nil {
 			continue
@@ -509,7 +512,7 @@ func (cs *ConsensusState) updateToState(state *sm.State) {
 	cs.LockedRound = 0
 	cs.LockedBlock = nil
 	cs.LockedBlockParts = nil
-	cs.Votes = NewHeightVoteSet(height, validators)
+	cs.Votes = NewHeightVoteSet(cs.config.GetString("chain_id"), height, validators)
 	cs.CommitRound = -1
 	cs.LastCommit = lastPrecommits
 	cs.LastValidators = state.LastValidators
@@ -878,7 +881,7 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 	}
 
 	// Mempool validated transactions
-	txs := cs.mempool.Reap(config.GetInt("block_size"))
+	txs := cs.mempool.Reap(cs.config.GetInt("block_size"))
 
 	block = &types.Block{
 		Header: &types.Header{

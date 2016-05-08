@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	tendermint_test.ResetConfig("consensus_state_test")
+	config = tendermint_test.ResetConfig("consensus_state_test")
 }
 
 func (tp *TimeoutParams) ensureProposeTimeout() time.Duration {
@@ -199,7 +199,7 @@ func TestBadProposal(t *testing.T) {
 	propBlock.AppHash = stateHash
 	propBlockParts := propBlock.MakePartSet()
 	proposal := types.NewProposal(cs2.Height, round, propBlockParts.Header(), -1)
-	if err := cs2.SignProposal(chainID, proposal); err != nil {
+	if err := cs2.SignProposal(config.GetString("chain_id"), proposal); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 
@@ -857,7 +857,7 @@ func TestLockPOLSafety2(t *testing.T) {
 
 	// in round 2 we see the polkad block from round 0
 	newProp := types.NewProposal(height, 2, propBlockParts0.Header(), 0)
-	if err := cs3.SignProposal(chainID, newProp); err != nil {
+	if err := cs3.SignProposal(config.GetString("chain_id"), newProp); err != nil {
 		t.Fatal(err)
 	}
 	cs1.SetProposalAndBlock(newProp, propBlock0, propBlockParts0, "some peer")

@@ -75,7 +75,7 @@ func (b *Block) FillHeader() {
 // Computes and returns the block hash.
 // If the block is incomplete, block hash is nil for safety.
 func (b *Block) Hash() []byte {
-	fmt.Println(">>", b.Data)
+	// fmt.Println(">>", b.Data)
 	if b.Header == nil || b.Data == nil || b.LastCommit == nil {
 		return nil
 	}
@@ -336,11 +336,6 @@ type Data struct {
 }
 
 func (data *Data) Hash() []byte {
-	if config.GetBool("disable_data_hash") {
-		// we could use the part_set hash instead
-		data.hash = []byte{}
-		return data.hash
-	}
 	if data.hash == nil {
 		data.hash = data.Txs.Hash() // NOTE: leaves of merkle tree are TxIDs
 	}

@@ -5,10 +5,12 @@ import (
 	"time"
 
 	. "github.com/tendermint/go-common"
+	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-p2p"
 	"github.com/tendermint/go-wire"
 
 	client "github.com/tendermint/go-rpc/client"
+	"github.com/tendermint/tendermint/config/tendermint_test"
 	nm "github.com/tendermint/tendermint/node"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
@@ -16,6 +18,7 @@ import (
 
 // global variables for use across all tests
 var (
+	config            cfg.Config
 	node              *nm.Node
 	mempoolCount      = 0
 	chainID           string
@@ -28,7 +31,8 @@ var (
 )
 
 // initialize config and create new node
-func initGlobalVariables() {
+func init() {
+	config = tendermint_test.ResetConfig("rpc_test_client_test")
 	chainID = config.GetString("chain_id")
 	rpcAddr = config.GetString("rpc_laddr")
 	requestAddr = rpcAddr
@@ -51,7 +55,7 @@ func newNode(ready chan struct{}) {
 	// Create & start node
 	privValidatorFile := config.GetString("priv_validator_file")
 	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
-	node = nm.NewNode(privValidator, nm.GetProxyApp)
+	node = nm.NewNode(config, privValidator, nm.GetProxyApp)
 	l := p2p.NewDefaultListener("tcp", config.GetString("node_laddr"), true)
 	node.AddListener(l)
 	node.Start()

@@ -16,9 +16,10 @@ import (
 // A commit of prior rounds can be added added in lieu of votes/precommits.
 // NOTE: Assumes that the sum total of voting power does not exceed MaxUInt64.
 type VoteSet struct {
-	height int
-	round  int
-	type_  byte
+	chainID string
+	height  int
+	round   int
+	type_   byte
 
 	mtx              sync.Mutex
 	valSet           *ValidatorSet
@@ -32,11 +33,12 @@ type VoteSet struct {
 }
 
 // Constructs a new VoteSet struct used to accumulate votes for given height/round.
-func NewVoteSet(height int, round int, type_ byte, valSet *ValidatorSet) *VoteSet {
+func NewVoteSet(chainID string, height int, round int, type_ byte, valSet *ValidatorSet) *VoteSet {
 	if height == 0 {
 		PanicSanity("Cannot make VoteSet for height == 0, doesn't make sense.")
 	}
 	return &VoteSet{
+		chainID:       chainID,
 		height:        height,
 		round:         round,
 		type_:         type_,
@@ -46,6 +48,10 @@ func NewVoteSet(height int, round int, type_ byte, valSet *ValidatorSet) *VoteSe
 		votesByBlock:  make(map[string]int64),
 		totalVotes:    0,
 	}
+}
+
+func (voteSet *VoteSet) ChainID() string {
+	return voteSet.chainID
 }
 
 func (voteSet *VoteSet) Height() int {
@@ -134,7 +140,7 @@ func (voteSet *VoteSet) addVote(val *Validator, valIndex int, vote *Vote) (bool,
 			return false, valIndex, nil
 		} else {
 			// Check signature.
-			if !val.PubKey.VerifyBytes(SignBytes(config.GetString("chain_id"), vote), vote.Signature) {
+			if !val.PubKey.VerifyBytes(SignBytes(voteSet.chainID, vote), vote.Signature) {
 				// Bad signature.
 				return false, 0, ErrVoteInvalidSignature
 			}
@@ -146,7 +152,7 @@ func (voteSet *VoteSet) addVote(val *Validator, valIndex int, vote *Vote) (bool,
 	}
 
 	// Check signature.
-	if !val.PubKey.VerifyBytes(SignBytes(config.GetString("chain_id"), vote), vote.Signature) {
+	if !val.PubKey.VerifyBytes(SignBytes(voteSet.chainID, vote), vote.Signature) {
 		// Bad signature.
 		return false, 0, ErrVoteInvalidSignature
 	}
@@ -304,4 +310,16 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 	return &Commit{
 		Precommits: precommits,
 	}
+}
+
+//----------------------------------------
+// Common interface between *consensus.VoteSet and types.Commit
+type VoteSetReader interface {
+	Height() int
+	Round() int
+	Type() byte
+	Size() int
+	BitArray() *BitArray
+	GetByIndex(int) *Vote
+	IsCommit() bool
 }

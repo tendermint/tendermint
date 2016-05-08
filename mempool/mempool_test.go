@@ -11,18 +11,15 @@ import (
 	"github.com/tendermint/tmsp/example/counter"
 )
 
-func init() {
-	tendermint_test.ResetConfig("mempool_mempool_test")
-}
-
 func TestSerialReap(t *testing.T) {
+	config := tendermint_test.ResetConfig("mempool_mempool_test")
 
 	app := counter.NewCounterApplication(true)
 	app.SetOption("serial", "on")
 	mtx := new(sync.Mutex)
 	appConnMem := tmspcli.NewLocalClient(mtx, app)
 	appConnCon := tmspcli.NewLocalClient(mtx, app)
-	mempool := NewMempool(appConnMem)
+	mempool := NewMempool(config, appConnMem)
 
 	appendTxsRange := func(start, end int) {
 		// Append some txs.

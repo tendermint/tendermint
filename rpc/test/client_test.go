@@ -4,15 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/tendermint/tendermint/config/tendermint_test"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 )
-
-func init() {
-	tendermint_test.ResetConfig("rpc_test_client_test")
-	initGlobalVariables()
-}
 
 //--------------------------------------------------------------------------------
 // Test the HTTP client
@@ -47,71 +41,6 @@ func testStatus(t *testing.T, statusI interface{}) {
 			status.NodeInfo.Network, chainID))
 	}
 }
-
-//--------------------------------------------------------------------------------
-// unsafe_set_config
-
-var stringVal = "my string"
-var intVal = 987654321
-var boolVal = true
-
-// don't change these
-var testCasesUnsafeSetConfig = [][]string{
-	[]string{"string", "key1", stringVal},
-	[]string{"int", "key2", fmt.Sprintf("%v", intVal)},
-	[]string{"bool", "key3", fmt.Sprintf("%v", boolVal)},
-}
-
-func TestURIUnsafeSetConfig(t *testing.T) {
-	for _, testCase := range testCasesUnsafeSetConfig {
-		tmResult := new(ctypes.TMResult)
-		_, err := clientURI.Call("unsafe_set_config", map[string]interface{}{
-			"type":  testCase[0],
-			"key":   testCase[1],
-			"value": testCase[2],
-		}, tmResult)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-	testUnsafeSetConfig(t)
-}
-
-func TestJSONUnsafeSetConfig(t *testing.T) {
-	for _, testCase := range testCasesUnsafeSetConfig {
-		tmResult := new(ctypes.TMResult)
-		_, err := clientJSON.Call("unsafe_set_config", []interface{}{testCase[0], testCase[1], testCase[2]}, tmResult)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-	testUnsafeSetConfig(t)
-}
-
-func testUnsafeSetConfig(t *testing.T) {
-	s := config.GetString("key1")
-	if s != stringVal {
-		t.Fatalf("got %v, expected %v", s, stringVal)
-	}
-
-	i := config.GetInt("key2")
-	if i != intVal {
-		t.Fatalf("got %v, expected %v", i, intVal)
-	}
-
-	b := config.GetBool("key3")
-	if b != boolVal {
-		t.Fatalf("got %v, expected %v", b, boolVal)
-	}
-}
-
-/*func TestURIBroadcastTx(t *testing.T) {
-	testBroadcastTx(t, "HTTP")
-}*/
-
-/*func TestJSONBroadcastTx(t *testing.T) {
-	testBroadcastTx(t, "JSONRPC")
-}*/
 
 // TODO
 /*
