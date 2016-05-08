@@ -10,7 +10,6 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/tendermint/go-alert"
 	. "github.com/tendermint/go-common"
 	. "github.com/tendermint/go-rpc/types"
 	//"github.com/tendermint/go-wire"
@@ -111,13 +110,4 @@ func (w *ResponseWriterWrapper) WriteHeader(status int) {
 // implements http.Hijacker
 func (w *ResponseWriterWrapper) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return w.ResponseWriter.(http.Hijacker).Hijack()
-}
-
-// Stick it as a deferred statement in gouroutines to prevent the program from crashing.
-func Recover(daemonName string) {
-	if e := recover(); e != nil {
-		stack := string(debug.Stack())
-		errorString := fmt.Sprintf("[%s] %s\n%s", daemonName, e, stack)
-		alert.Alert(errorString)
-	}
 }
