@@ -212,12 +212,21 @@ func (n *Node) ConsensusState() *consensus.ConsensusState {
 	return n.consensusState
 }
 
+func (n *Node) ConsensusReactor() *consensus.ConsensusReactor {
+	return n.consensusReactor
+}
+
 func (n *Node) MempoolReactor() *mempl.MempoolReactor {
 	return n.mempoolReactor
 }
 
 func (n *Node) EventSwitch() *events.EventSwitch {
 	return n.evsw
+}
+
+// XXX: for convenience
+func (n *Node) PrivValidator() *types.PrivValidator {
+	return n.privValidator
 }
 
 func makeNodeInfo(config cfg.Config, sw *p2p.Switch, privKey crypto.PrivKeyEd25519) *p2p.NodeInfo {
@@ -326,7 +335,6 @@ func RunNode(config cfg.Config) {
 				PanicSanity(Fmt("Genesis doc %v must include non-empty chain_id", genDocFile))
 			}
 			config.Set("chain_id", genDoc.ChainID)
-			config.Set("genesis_doc", genDoc)
 		}
 	}
 

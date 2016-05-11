@@ -55,6 +55,7 @@ func GetConfig(rootDir string) cfg.Config {
 	mapConfig.SetDefault("proxy_app", "tcp://127.0.0.1:46658")
 	mapConfig.SetDefault("moniker", "anonymous")
 	mapConfig.SetDefault("node_laddr", "0.0.0.0:46656")
+	mapConfig.SetDefault("seeds", "")
 	// mapConfig.SetDefault("seeds", "goldenalchemist.chaintest.net:46656")
 	mapConfig.SetDefault("fast_sync", true)
 	mapConfig.SetDefault("skip_upnp", false)
