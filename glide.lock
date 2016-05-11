@@ -1,39 +1,39 @@
-hash: f3eab3f91c9d2c07574e8ec6f2f5d56bd946af1b061533a0baf9db8765f97a51
-updated: 2016-04-11T19:42:00.993267284-04:00
+hash: d87a1fe0061d41c1e6ec78d405d54ae321e75f4bff22b38d19d3255bbd17f21e
+updated: 2016-05-10T19:02:37.179772191-07:00
 imports:
+- name: github.com/btcsuite/btcd
+  version: 2554caee5919958c0d4b41db8035f0e12ce6f624
+  subpackages:
+  - btcec
+- name: github.com/btcsuite/fastsha256
+  version: 302ad4db268b46f9ebda3078f6f7397f96047735
+- name: github.com/BurntSushi/toml
+  version: f0aeabca5a127c4078abb8c8d64298b147264b55
 - name: github.com/gogo/protobuf
-  version: 74b6e9deaff6ba6da1389ec97351d337f0d08b06
+  version: 43a2e0b1c32252bfbbdf81f7faa7a88fb3fa4028
   subpackages:
   - proto
 - name: github.com/golang/protobuf
-  version: dda510ac0fd43b39770f22ac6260eb91d377bce3
+  version: 7cc19b78d562895b13596ddce7aafb59dd789318
   subpackages:
   - proto
 - name: github.com/golang/snappy
-  version: ef80b33e873821cff33038ae16c444717218cdb1
+  version: d7b1e156f50d3c4664f683603af70e3e47fa0aa2
 - name: github.com/gorilla/websocket
-  version: e2e3d8414d0fbae04004f151979f4e27c6747fe7
+  version: 1f512fc3f05332ba7117626cdfb4e07474e58e60
 - name: github.com/inconshreveable/log15
   version: 57a084d014d4150152b19e4e531399a7145d1540
   subpackages:
   - stack
   - term
 - name: github.com/mattn/go-colorable
-  version: 9cbef7c35391cca05f15f8181dc0b18bc9736dbb
+  version: 45ce6a6f60010487dd0dbab368b5fbbed1c14ef0
 - name: github.com/mattn/go-isatty
   version: 56b76bdf51f7708750eac80fa38b952bb9f32639
-- name: github.com/naoina/go-stringutil
-  version: 6b638e95a32d0c1131db0e7fe83775cbea4a0d0b
-- name: github.com/naoina/toml
-  version: 751171607256bb66e64c9f0220c00662420c38e9
-  subpackages:
-  - ast
-- name: github.com/sfreiberg/gotwilio
-  version: f024bbefe80fdb7bcc8c43b6add05dae97744e0e
 - name: github.com/spf13/pflag
-  version: 1f296710f879815ad9e6d39d947c828c3e4b4c3d
+  version: cb88ea77998c3f024757528e3305022ab50b43be
 - name: github.com/syndtr/goleveldb
-  version: 93fc893f2dadb96ffde441c7546cc67ea290a3a8
+  version: cfa635847112c5dc4782e128fa7e0d05fdbfb394
   subpackages:
   - leveldb
   - leveldb/errors
@@ -54,49 +54,45 @@ imports:
   - edwards25519
 - name: github.com/tendermint/flowcontrol
   version: 84d9671090430e8ec80e35b339907e0579b999eb
-- name: github.com/tendermint/go-alert
-  version: b824a5721dd8bdda6e5f3033ea35df3d82e4516d
 - name: github.com/tendermint/go-clist
   version: 634527f5b60fd7c71ca811262493df2ad65ee0ca
 - name: github.com/tendermint/go-common
   version: dcfa46af1341d03b80d32e4901019d1668b978b9
 - name: github.com/tendermint/go-config
-  version: c47b67203b070d8bea835a928d50cb739972c48a
+  version: 2d53a767e86786e610f90171e455c98a9927ad60
 - name: github.com/tendermint/go-crypto
-  version: 3f0d9b3f29f30e5d0cbc2cef04fa45e5a606c622
+  version: 41cfb7b677f4e16cdfd22b6ce0946c89919fbc7b
 - name: github.com/tendermint/go-db
-  version: a7878f1d0d8eaebf15f87bc2df15f7a1088cce7f
+  version: 31fdd21c7eaeed53e0ea7ca597fb1e960e2988a5
 - name: github.com/tendermint/go-events
   version: 7b75ca7bb55aa25e9ef765eb8c0b69486b227357
 - name: github.com/tendermint/go-logger
-  version: 84391b36d3f5960e691c688d06b768708f0fa2f3
-- name: github.com/tendermint/go-logio
-  version: 04f3aa0a3b38d06dcadefbafd988c8b85e499225
+  version: 529efe50eab1a8a9c111d55f4de4ecd95f482761
 - name: github.com/tendermint/go-merkle
   version: 05042c6ab9cad51d12e4cecf717ae68e3b1409a8
 - name: github.com/tendermint/go-p2p
-  version: 78c9d526c31d5ae06d5793b865d25a9407b635dc
+  version: 7d997ca8e658731a22de53f11efaedee0c764b8d
   subpackages:
   - upnp
 - name: github.com/tendermint/go-rpc
-  version: 1410693eae5400a50efbbac3f23b9e3e94b7d6c8
+  version: 1d9e89812adc202811b7fb8e9e0837e73adadb43
   subpackages:
   - client
-  - types
   - server
+  - types
 - name: github.com/tendermint/go-wire
   version: 3b0adbc86ed8425eaed98516165b6788d9f4de7a
 - name: github.com/tendermint/log15
   version: 6e460758f10ef42a4724b8e4a82fee59aaa0e41d
 - name: github.com/tendermint/tmsp
-  version: 82a411fca58b3b1e2ac8fc3a6784a17579012d68
+  version: 7ffd2899092f47110a5ffebe20247a9b7f80f4ad
   subpackages:
-  - types
   - client
   - example/dummy
   - example/nil
+  - types
 - name: golang.org/x/crypto
-  version: 3fbbcd23f1cb824e69491a5930cfeff09b12f4d2
+  version: b76c864ef1dca1d8f271f917c290cddcce3d9e0d
   subpackages:
   - ripemd160
   - nacl/box
@@ -107,7 +103,7 @@ imports:
   - poly1305
   - openpgp/errors
 - name: golang.org/x/sys
-  version: 9eef40adf05b951699605195b829612bd7b69952
+  version: b776ec39b3e54652e09028aaaaac9757f4f8211a
   subpackages:
   - unix
 devImports: []
