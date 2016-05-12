@@ -113,7 +113,7 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, getProxyApp 
 	}
 
 	// Make p2p network switch
-	sw := p2p.NewSwitch(config)
+	sw := p2p.NewSwitch(config.GetConfig("p2p"))
 	sw.AddReactor("MEMPOOL", mempoolReactor)
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)
