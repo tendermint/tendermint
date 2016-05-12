@@ -7,9 +7,20 @@ import (
 	"time"
 
 	. "github.com/tendermint/go-common"
+	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-wire"
 )
+
+var (
+	config cfg.Config
+)
+
+func init() {
+	config = cfg.NewMapConfig(nil)
+	setConfigDefaults(config)
+
+}
 
 type PeerMessage struct {
 	PeerKey string
@@ -74,7 +85,7 @@ func makeSwitchPair(t testing.TB, initSwitch func(*Switch) *Switch) (*Switch, *S
 	s2PrivKey := crypto.GenPrivKeyEd25519()
 
 	// Create two switches that will be interconnected.
-	s1 := initSwitch(NewSwitch())
+	s1 := initSwitch(NewSwitch(config))
 	s1.SetNodeInfo(&NodeInfo{
 		PubKey:  s1PrivKey.PubKey().(crypto.PubKeyEd25519),
 		Moniker: "switch1",
@@ -82,7 +93,7 @@ func makeSwitchPair(t testing.TB, initSwitch func(*Switch) *Switch) (*Switch, *S
 		Version: "123.123.123",
 	})
 	s1.SetNodePrivKey(s1PrivKey)
-	s2 := initSwitch(NewSwitch())
+	s2 := initSwitch(NewSwitch(config))
 	s2.SetNodeInfo(&NodeInfo{
 		PubKey:  s2PrivKey.PubKey().(crypto.PubKeyEd25519),
 		Moniker: "switch2",
