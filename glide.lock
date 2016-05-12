@@ -1,5 +1,5 @@
 hash: d87a1fe0061d41c1e6ec78d405d54ae321e75f4bff22b38d19d3255bbd17f21e
-updated: 2016-05-10T19:02:37.179772191-07:00
+updated: 2016-05-12T00:16:48.115223395-04:00
 imports:
 - name: github.com/btcsuite/btcd
   version: 2554caee5919958c0d4b41db8035f0e12ce6f624
@@ -10,7 +10,7 @@ imports:
 - name: github.com/BurntSushi/toml
   version: f0aeabca5a127c4078abb8c8d64298b147264b55
 - name: github.com/gogo/protobuf
-  version: 43a2e0b1c32252bfbbdf81f7faa7a88fb3fa4028
+  version: c18eea6ad611eecf94a9ba38471f59706199409e
   subpackages:
   - proto
 - name: github.com/golang/protobuf
@@ -27,7 +27,7 @@ imports:
   - stack
   - term
 - name: github.com/mattn/go-colorable
-  version: 45ce6a6f60010487dd0dbab368b5fbbed1c14ef0
+  version: e8a10ddc7d2a7fe255f6fd7f501070a4cb62c183
 - name: github.com/mattn/go-isatty
   version: 56b76bdf51f7708750eac80fa38b952bb9f32639
 - name: github.com/spf13/pflag
@@ -59,7 +59,7 @@ imports:
 - name: github.com/tendermint/go-common
   version: dcfa46af1341d03b80d32e4901019d1668b978b9
 - name: github.com/tendermint/go-config
-  version: 2d53a767e86786e610f90171e455c98a9927ad60
+  version: cfcef384d64b94e50909596e39b32ffb3cc20573
 - name: github.com/tendermint/go-crypto
   version: 41cfb7b677f4e16cdfd22b6ce0946c89919fbc7b
 - name: github.com/tendermint/go-db
@@ -71,7 +71,7 @@ imports:
 - name: github.com/tendermint/go-merkle
   version: 05042c6ab9cad51d12e4cecf717ae68e3b1409a8
 - name: github.com/tendermint/go-p2p
-  version: 7d997ca8e658731a22de53f11efaedee0c764b8d
+  version: 5bd7692323ec60d6461678f09b5024a952164151
   subpackages:
   - upnp
 - name: github.com/tendermint/go-rpc
@@ -103,7 +103,7 @@ imports:
   - poly1305
   - openpgp/errors
 - name: golang.org/x/sys
-  version: b776ec39b3e54652e09028aaaaac9757f4f8211a
+  version: e82cb4d7dffc35bcec7bc8bf9e402377e0ecf3f4
   subpackages:
   - unix
 devImports: []
