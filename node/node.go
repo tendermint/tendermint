@@ -175,6 +175,8 @@ func (n *Node) AddListener(l p2p.Listener) {
 }
 
 func (n *Node) StartRPC() ([]net.Listener, error) {
+	rpccore.SetConfig(n.config)
+
 	rpccore.SetBlockStore(n.blockStore)
 	rpccore.SetConsensusState(n.consensusState)
 	rpccore.SetConsensusReactor(n.consensusReactor)
