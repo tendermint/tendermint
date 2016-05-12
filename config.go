@@ -6,14 +6,14 @@ import (
 
 const (
 	// Switch config keys
-	configKeyDialTimeoutSeconds      = "p2p_dial_timeout_seconds"
-	configKeyHandshakeTimeoutSeconds = "p2p_handshake_timeout_seconds"
-	configKeyMaxNumPeers             = "p2p_max_num_peers"
-	configKeyAuthEnc                 = "p2p_authenticated_encryption"
+	configKeyDialTimeoutSeconds      = "dial_timeout_seconds"
+	configKeyHandshakeTimeoutSeconds = "handshake_timeout_seconds"
+	configKeyMaxNumPeers             = "max_num_peers"
+	configKeyAuthEnc                 = "authenticated_encryption"
 
 	// MConnection config keys
-	configKeySendRate = "p2p_send_rate"
-	configKeyRecvRate = "p2p_recv_rate"
+	configKeySendRate = "send_rate"
+	configKeyRecvRate = "recv_rate"
 )
 
 func setConfigDefaults(config cfg.Config) {
