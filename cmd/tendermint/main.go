@@ -6,6 +6,7 @@ import (
 
 	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
+	"github.com/tendermint/go-logger"
 	tmcfg "github.com/tendermint/tendermint/config/tendermint"
 	"github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/version"
@@ -32,6 +33,9 @@ Commands:
 	// Get configuration
 	config = tmcfg.GetConfig("")
 	parseFlags(config, args[1:]) // Command line overrides
+
+	// set the log level
+	logger.SetLogLevel(config.GetString("log_level"))
 
 	switch args[0] {
 	case "node":

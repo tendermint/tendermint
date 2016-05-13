@@ -112,7 +112,7 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, getProxyApp 
 	}
 
 	// Make p2p network switch
-	sw := p2p.NewSwitch(config)
+	sw := p2p.NewSwitch(config.GetConfig("p2p"))
 	sw.AddReactor("MEMPOOL", mempoolReactor)
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)
@@ -174,6 +174,8 @@ func (n *Node) AddListener(l p2p.Listener) {
 }
 
 func (n *Node) StartRPC() ([]net.Listener, error) {
+	rpccore.SetConfig(n.config)
+
 	rpccore.SetBlockStore(n.blockStore)
 	rpccore.SetConsensusState(n.consensusState)
 	rpccore.SetConsensusReactor(n.consensusReactor)

@@ -1,7 +1,9 @@
 package core
 
 import (
+	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-p2p"
+
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/consensus"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -15,6 +17,12 @@ var mempoolReactor *mempl.MempoolReactor
 var p2pSwitch *p2p.Switch
 var privValidator *types.PrivValidator
 var genDoc *types.GenesisDoc // cache the genesis structure
+
+var config cfg.Config = nil
+
+func SetConfig(c cfg.Config) {
+	config = c
+}
 
 func SetBlockStore(bs *bc.BlockStore) {
 	blockStore = bs
