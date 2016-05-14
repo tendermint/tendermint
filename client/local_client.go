@@ -38,13 +38,13 @@ func (app *localClient) Stop() bool {
 
 func (app *localClient) FlushAsync() *ReqRes {
 	// Do nothing
-	return newLocalReqRes(types.RequestFlush(), nil)
+	return newLocalReqRes(types.ToRequestFlush(), nil)
 }
 
 func (app *localClient) EchoAsync(msg string) *ReqRes {
 	return app.callback(
-		types.RequestEcho(msg),
-		types.ResponseEcho(msg),
+		types.ToRequestEcho(msg),
+		types.ToResponseEcho(msg),
 	)
 }
 
@@ -53,8 +53,8 @@ func (app *localClient) InfoAsync() *ReqRes {
 	info := app.Application.Info()
 	app.mtx.Unlock()
 	return app.callback(
-		types.RequestInfo(),
-		types.ResponseInfo(info),
+		types.ToRequestInfo(),
+		types.ToResponseInfo(info),
 	)
 }
 
@@ -63,8 +63,8 @@ func (app *localClient) SetOptionAsync(key string, value string) *ReqRes {
 	log := app.Application.SetOption(key, value)
 	app.mtx.Unlock()
 	return app.callback(
-		types.RequestSetOption(key, value),
-		types.ResponseSetOption(log),
+		types.ToRequestSetOption(key, value),
+		types.ToResponseSetOption(log),
 	)
 }
 
@@ -73,8 +73,8 @@ func (app *localClient) AppendTxAsync(tx []byte) *ReqRes {
 	res := app.Application.AppendTx(tx)
 	app.mtx.Unlock()
 	return app.callback(
-		types.RequestAppendTx(tx),
-		types.ResponseAppendTx(res.Code, res.Data, res.Log),
+		types.ToRequestAppendTx(tx),
+		types.ToResponseAppendTx(res.Code, res.Data, res.Log),
 	)
 }
 
@@ -83,8 +83,8 @@ func (app *localClient) CheckTxAsync(tx []byte) *ReqRes {
 	res := app.Application.CheckTx(tx)
 	app.mtx.Unlock()
 	return app.callback(
-		types.RequestCheckTx(tx),
-		types.ResponseCheckTx(res.Code, res.Data, res.Log),
+		types.ToRequestCheckTx(tx),
+		types.ToResponseCheckTx(res.Code, res.Data, res.Log),
 	)
 }
 
@@ -93,8 +93,8 @@ func (app *localClient) QueryAsync(tx []byte) *ReqRes {
 	res := app.Application.Query(tx)
 	app.mtx.Unlock()
 	return app.callback(
-		types.RequestQuery(tx),
-		types.ResponseQuery(res.Code, res.Data, res.Log),
+		types.ToRequestQuery(tx),
+		types.ToResponseQuery(res.Code, res.Data, res.Log),
 	)
 }
 
@@ -103,8 +103,8 @@ func (app *localClient) CommitAsync() *ReqRes {
 	res := app.Application.Commit()
 	app.mtx.Unlock()
 	return app.callback(
-		types.RequestCommit(),
-		types.ResponseCommit(res.Code, res.Data, res.Log),
+		types.ToRequestCommit(),
+		types.ToResponseCommit(res.Code, res.Data, res.Log),
 	)
 }
 
@@ -114,8 +114,8 @@ func (app *localClient) InitChainAsync(validators []*types.Validator) *ReqRes {
 		bcApp.InitChain(validators)
 	}
 	reqRes := app.callback(
-		types.RequestInitChain(validators),
-		types.ResponseInitChain(),
+		types.ToRequestInitChain(validators),
+		types.ToResponseInitChain(),
 	)
 	app.mtx.Unlock()
 	return reqRes
@@ -128,8 +128,8 @@ func (app *localClient) BeginBlockAsync(height uint64) *ReqRes {
 	}
 	app.mtx.Unlock()
 	return app.callback(
-		types.RequestBeginBlock(height),
-		types.ResponseBeginBlock(),
+		types.ToRequestBeginBlock(height),
+		types.ToResponseBeginBlock(),
 	)
 }
 
@@ -141,8 +141,8 @@ func (app *localClient) EndBlockAsync(height uint64) *ReqRes {
 	}
 	app.mtx.Unlock()
 	return app.callback(
-		types.RequestEndBlock(height),
-		types.ResponseEndBlock(validators),
+		types.ToRequestEndBlock(height),
+		types.ToResponseEndBlock(validators),
 	)
 }
 

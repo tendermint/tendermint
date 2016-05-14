@@ -125,45 +125,46 @@ func (s *Server) handleRequests(closeConn chan error, conn net.Conn, responses c
 }
 
 func (s *Server) handleRequest(req *types.Request, responses chan<- *types.Response) {
-	switch req.Type {
-	case types.MessageType_Echo:
-		responses <- types.ResponseEcho(string(req.Data))
-	case types.MessageType_Flush:
-		responses <- types.ResponseFlush()
-	case types.MessageType_Info:
+	switch r := req.Requests.(type) {
+	case *types.Request_Echo:
+		responses <- types.ToResponseEcho(r.Echo.Message)
+	case *types.Request_Flush:
+		responses <- types.ToResponseFlush()
+	case *types.Request_Info:
 		data := s.app.Info()
-		responses <- types.ResponseInfo(data)
-	case types.MessageType_SetOption:
-		logStr := s.app.SetOption(req.Key, req.Value)
-		responses <- types.ResponseSetOption(logStr)
-	case types.MessageType_AppendTx:
-		res := s.app.AppendTx(req.Data)
-		responses <- types.ResponseAppendTx(res.Code, res.Data, res.Log)
-	case types.MessageType_CheckTx:
-		res := s.app.CheckTx(req.Data)
-		responses <- types.ResponseCheckTx(res.Code, res.Data, res.Log)
-	case types.MessageType_Commit:
+		responses <- types.ToResponseInfo(data)
+	case *types.Request_SetOption:
+		so := r.SetOption
+		logStr := s.app.SetOption(so.Key, so.Value)
+		responses <- types.ToResponseSetOption(logStr)
+	case *types.Request_AppendTx:
+		res := s.app.AppendTx(r.AppendTx.Tx)
+		responses <- types.ToResponseAppendTx(res.Code, res.Data, res.Log)
+	case *types.Request_CheckTx:
+		res := s.app.CheckTx(r.CheckTx.Tx)
+		responses <- types.ToResponseCheckTx(res.Code, res.Data, res.Log)
+	case *types.Request_Commit:
 		res := s.app.Commit()
-		responses <- types.ResponseCommit(res.Code, res.Data, res.Log)
-	case types.MessageType_Query:
-		res := s.app.Query(req.Data)
-		responses <- types.ResponseQuery(res.Code, res.Data, res.Log)
-	case types.MessageType_InitChain:
+		responses <- types.ToResponseCommit(res.Code, res.Data, res.Log)
+	case *types.Request_Query:
+		res := s.app.Query(r.Query.Query)
+		responses <- types.ToResponseQuery(res.Code, res.Data, res.Log)
+	case *types.Request_InitChain:
 		if app, ok := s.app.(types.BlockchainAware); ok {
-			app.InitChain(req.Validators)
-			responses <- types.ResponseInitChain()
+			app.InitChain(r.InitChain.Validators)
+			responses <- types.ToResponseInitChain()
 		} else {
-			responses <- types.ResponseInitChain()
+			responses <- types.ToResponseInitChain()
 		}
-	case types.MessageType_EndBlock:
+	case *types.Request_EndBlock:
 		if app, ok := s.app.(types.BlockchainAware); ok {
-			validators := app.EndBlock(req.Height)
-			responses <- types.ResponseEndBlock(validators)
+			validators := app.EndBlock(r.EndBlock.Height)
+			responses <- types.ToResponseEndBlock(validators)
 		} else {
-			responses <- types.ResponseEndBlock(nil)
+			responses <- types.ToResponseEndBlock(nil)
 		}
 	default:
-		responses <- types.ResponseException("Unknown request")
+		responses <- types.ToResponseException("Unknown request")
 	}
 }
 
@@ -178,7 +179,7 @@ func (s *Server) handleResponses(closeConn chan error, responses <-chan *types.R
 			closeConn <- fmt.Errorf("Error in handleResponses: %v", err.Error())
 			return
 		}
-		if res.Type == types.MessageType_Flush {
+		if _, ok := res.Responses.(*types.Response_Flush); ok {
 			err = bufWriter.Flush()
 			if err != nil {
 				closeConn <- fmt.Errorf("Error in handleResponses: %v", err.Error())

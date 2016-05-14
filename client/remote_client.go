@@ -6,11 +6,17 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"reflect"
 	"sync"
 	"time"
 
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/tmsp/types"
+)
+
+const (
+	OK  = types.CodeType_OK
+	LOG = ""
 )
 
 const reqQueueSize = 256        // TODO make configurable
@@ -122,7 +128,7 @@ func (cli *remoteClient) sendRequestsRoutine(conn net.Conn) {
 		select {
 		case <-cli.flushTimer.Ch:
 			select {
-			case cli.reqQueue <- NewReqRes(types.RequestFlush()):
+			case cli.reqQueue <- NewReqRes(types.ToRequestFlush()):
 			default:
 				// Probably will fill the buffer, or retry later.
 			}
@@ -136,7 +142,7 @@ func (cli *remoteClient) sendRequestsRoutine(conn net.Conn) {
 				return
 			}
 			// log.Debug("Sent request", "requestType", reflect.TypeOf(reqres.Request), "request", reqres.Request)
-			if reqres.Request.Type == types.MessageType_Flush {
+			if _, ok := reqres.Request.Requests.(*types.Request_Flush); ok {
 				err = w.Flush()
 				if err != nil {
 					cli.StopForError(err)
@@ -156,10 +162,10 @@ func (cli *remoteClient) recvResponseRoutine(conn net.Conn) {
 			cli.StopForError(err)
 			return
 		}
-		switch res.Type {
-		case types.MessageType_Exception:
+		switch r := res.Responses.(type) {
+		case *types.Response_Exception:
 			// XXX After setting cli.err, release waiters (e.g. reqres.Done())
-			cli.StopForError(errors.New(res.Error))
+			cli.StopForError(errors.New(r.Exception.Error))
 		default:
 			// log.Debug("Received response", "responseType", reflect.TypeOf(res), "response", res)
 			err := cli.didRecvResponse(res)
@@ -183,12 +189,12 @@ func (cli *remoteClient) didRecvResponse(res *types.Response) error {
 	// Get the first ReqRes
 	next := cli.reqSent.Front()
 	if next == nil {
-		return fmt.Errorf("Unexpected result type %v when nothing expected", res.Type)
+		return fmt.Errorf("Unexpected result type %v when nothing expected", reflect.TypeOf(res.Responses))
 	}
 	reqres := next.Value.(*ReqRes)
 	if !resMatchesReq(reqres.Request, res) {
 		return fmt.Errorf("Unexpected result type %v when response to %v expected",
-			res.Type, reqres.Request.Type)
+			reflect.TypeOf(res.Responses), reflect.TypeOf(reqres.Request.Requests))
 	}
 
 	reqres.Response = res    // Set response
@@ -211,128 +217,128 @@ func (cli *remoteClient) didRecvResponse(res *types.Response) error {
 //----------------------------------------
 
 func (cli *remoteClient) EchoAsync(msg string) *ReqRes {
-	return cli.queueRequest(types.RequestEcho(msg))
+	return cli.queueRequest(types.ToRequestEcho(msg))
 }
 
 func (cli *remoteClient) FlushAsync() *ReqRes {
-	return cli.queueRequest(types.RequestFlush())
+	return cli.queueRequest(types.ToRequestFlush())
 }
 
 func (cli *remoteClient) InfoAsync() *ReqRes {
-	return cli.queueRequest(types.RequestInfo())
+	return cli.queueRequest(types.ToRequestInfo())
 }
 
 func (cli *remoteClient) SetOptionAsync(key string, value string) *ReqRes {
-	return cli.queueRequest(types.RequestSetOption(key, value))
+	return cli.queueRequest(types.ToRequestSetOption(key, value))
 }
 
 func (cli *remoteClient) AppendTxAsync(tx []byte) *ReqRes {
-	return cli.queueRequest(types.RequestAppendTx(tx))
+	return cli.queueRequest(types.ToRequestAppendTx(tx))
 }
 
 func (cli *remoteClient) CheckTxAsync(tx []byte) *ReqRes {
-	return cli.queueRequest(types.RequestCheckTx(tx))
+	return cli.queueRequest(types.ToRequestCheckTx(tx))
 }
 
 func (cli *remoteClient) QueryAsync(query []byte) *ReqRes {
-	return cli.queueRequest(types.RequestQuery(query))
+	return cli.queueRequest(types.ToRequestQuery(query))
 }
 
 func (cli *remoteClient) CommitAsync() *ReqRes {
-	return cli.queueRequest(types.RequestCommit())
+	return cli.queueRequest(types.ToRequestCommit())
 }
 
 func (cli *remoteClient) InitChainAsync(validators []*types.Validator) *ReqRes {
-	return cli.queueRequest(types.RequestInitChain(validators))
+	return cli.queueRequest(types.ToRequestInitChain(validators))
 }
 
 func (cli *remoteClient) BeginBlockAsync(height uint64) *ReqRes {
-	return cli.queueRequest(types.RequestBeginBlock(height))
+	return cli.queueRequest(types.ToRequestBeginBlock(height))
 }
 
 func (cli *remoteClient) EndBlockAsync(height uint64) *ReqRes {
-	return cli.queueRequest(types.RequestEndBlock(height))
+	return cli.queueRequest(types.ToRequestEndBlock(height))
 }
 
 //----------------------------------------
 
 func (cli *remoteClient) EchoSync(msg string) (res types.Result) {
-	reqres := cli.queueRequest(types.RequestEcho(msg))
+	reqres := cli.queueRequest(types.ToRequestEcho(msg))
 	cli.FlushSync()
 	if cli.err != nil {
 		return types.ErrInternalError.SetLog(cli.err.Error())
 	}
-	resp := reqres.Response
-	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
+	resp := reqres.Response.GetEcho()
+	return types.Result{Code: OK, Data: []byte(resp.Message), Log: LOG}
 }
 
 func (cli *remoteClient) FlushSync() error {
-	cli.queueRequest(types.RequestFlush()).Wait()
+	cli.queueRequest(types.ToRequestFlush()).Wait()
 	return cli.err
 }
 
 func (cli *remoteClient) InfoSync() (res types.Result) {
-	reqres := cli.queueRequest(types.RequestInfo())
+	reqres := cli.queueRequest(types.ToRequestInfo())
 	cli.FlushSync()
 	if cli.err != nil {
 		return types.ErrInternalError.SetLog(cli.err.Error())
 	}
-	resp := reqres.Response
-	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
+	resp := reqres.Response.GetInfo()
+	return types.Result{Code: OK, Data: []byte(resp.Info), Log: LOG}
 }
 
 func (cli *remoteClient) SetOptionSync(key string, value string) (res types.Result) {
-	reqres := cli.queueRequest(types.RequestSetOption(key, value))
+	reqres := cli.queueRequest(types.ToRequestSetOption(key, value))
 	cli.FlushSync()
 	if cli.err != nil {
 		return types.ErrInternalError.SetLog(cli.err.Error())
 	}
-	resp := reqres.Response
-	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
+	resp := reqres.Response.GetSetOption()
+	return types.Result{Code: OK, Data: nil, Log: resp.Log}
 }
 
 func (cli *remoteClient) AppendTxSync(tx []byte) (res types.Result) {
-	reqres := cli.queueRequest(types.RequestAppendTx(tx))
+	reqres := cli.queueRequest(types.ToRequestAppendTx(tx))
 	cli.FlushSync()
 	if cli.err != nil {
 		return types.ErrInternalError.SetLog(cli.err.Error())
 	}
-	resp := reqres.Response
+	resp := reqres.Response.GetAppendTx()
 	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
 }
 
 func (cli *remoteClient) CheckTxSync(tx []byte) (res types.Result) {
-	reqres := cli.queueRequest(types.RequestCheckTx(tx))
+	reqres := cli.queueRequest(types.ToRequestCheckTx(tx))
 	cli.FlushSync()
 	if cli.err != nil {
 		return types.ErrInternalError.SetLog(cli.err.Error())
 	}
-	resp := reqres.Response
+	resp := reqres.Response.GetCheckTx()
 	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
 }
 
 func (cli *remoteClient) QuerySync(query []byte) (res types.Result) {
-	reqres := cli.queueRequest(types.RequestQuery(query))
+	reqres := cli.queueRequest(types.ToRequestQuery(query))
 	cli.FlushSync()
 	if cli.err != nil {
 		return types.ErrInternalError.SetLog(cli.err.Error())
 	}
-	resp := reqres.Response
+	resp := reqres.Response.GetQuery()
 	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
 }
 
 func (cli *remoteClient) CommitSync() (res types.Result) {
-	reqres := cli.queueRequest(types.RequestCommit())
+	reqres := cli.queueRequest(types.ToRequestCommit())
 	cli.FlushSync()
 	if cli.err != nil {
 		return types.ErrInternalError.SetLog(cli.err.Error())
 	}
-	resp := reqres.Response
+	resp := reqres.Response.GetCommit()
 	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
 }
 
 func (cli *remoteClient) InitChainSync(validators []*types.Validator) (err error) {
-	cli.queueRequest(types.RequestInitChain(validators))
+	cli.queueRequest(types.ToRequestInitChain(validators))
 	cli.FlushSync()
 	if cli.err != nil {
 		return cli.err
@@ -341,7 +347,7 @@ func (cli *remoteClient) InitChainSync(validators []*types.Validator) (err error
 }
 
 func (cli *remoteClient) BeginBlockSync(height uint64) (err error) {
-	cli.queueRequest(types.RequestBeginBlock(height))
+	cli.queueRequest(types.ToRequestBeginBlock(height))
 	cli.FlushSync()
 	if cli.err != nil {
 		return cli.err
@@ -350,12 +356,12 @@ func (cli *remoteClient) BeginBlockSync(height uint64) (err error) {
 }
 
 func (cli *remoteClient) EndBlockSync(height uint64) (validators []*types.Validator, err error) {
-	reqres := cli.queueRequest(types.RequestEndBlock(height))
+	reqres := cli.queueRequest(types.ToRequestEndBlock(height))
 	cli.FlushSync()
 	if cli.err != nil {
 		return nil, cli.err
 	}
-	return reqres.Response.Validators, nil
+	return reqres.Response.GetEndBlock().Diffs, nil
 }
 
 //----------------------------------------
@@ -366,8 +372,8 @@ func (cli *remoteClient) queueRequest(req *types.Request) *ReqRes {
 	cli.reqQueue <- reqres
 
 	// Maybe auto-flush, or unset auto-flush
-	switch req.Type {
-	case types.MessageType_Flush:
+	switch req.Requests.(type) {
+	case *types.Request_Flush:
 		cli.flushTimer.Unset()
 	default:
 		cli.flushTimer.Set()
@@ -379,5 +385,27 @@ func (cli *remoteClient) queueRequest(req *types.Request) *ReqRes {
 //----------------------------------------
 
 func resMatchesReq(req *types.Request, res *types.Response) (ok bool) {
-	return req.Type == res.Type
+	switch req.Requests.(type) {
+	case *types.Request_Echo:
+		_, ok = res.Responses.(*types.Response_Echo)
+	case *types.Request_Flush:
+		_, ok = res.Responses.(*types.Response_Flush)
+	case *types.Request_Info:
+		_, ok = res.Responses.(*types.Response_Info)
+	case *types.Request_SetOption:
+		_, ok = res.Responses.(*types.Response_SetOption)
+	case *types.Request_AppendTx:
+		_, ok = res.Responses.(*types.Response_AppendTx)
+	case *types.Request_CheckTx:
+		_, ok = res.Responses.(*types.Response_CheckTx)
+	case *types.Request_Commit:
+		_, ok = res.Responses.(*types.Response_Commit)
+	case *types.Request_Query:
+		_, ok = res.Responses.(*types.Response_Query)
+	case *types.Request_InitChain:
+		_, ok = res.Responses.(*types.Response_InitChain)
+	case *types.Request_EndBlock:
+		_, ok = res.Responses.(*types.Response_EndBlock)
+	}
+	return ok
 }

@@ -7,169 +7,143 @@ import (
 	"github.com/tendermint/go-wire"
 )
 
-func RequestEcho(message string) *Request {
+func ToRequestEcho(message string) *Request {
 	return &Request{
-		Type: MessageType_Echo,
-		Data: []byte(message),
+		Requests: &Request_Echo{&RequestEcho{}},
 	}
 }
 
-func RequestFlush() *Request {
+func ToRequestFlush() *Request {
 	return &Request{
-		Type: MessageType_Flush,
+		Requests: &Request_Flush{&RequestFlush{}},
 	}
 }
 
-func RequestInfo() *Request {
+func ToRequestInfo() *Request {
 	return &Request{
-		Type: MessageType_Info,
+		Requests: &Request_Info{&RequestInfo{}},
 	}
 }
 
-func RequestSetOption(key string, value string) *Request {
+func ToRequestSetOption(key string, value string) *Request {
 	return &Request{
-		Type:  MessageType_SetOption,
-		Key:   key,
-		Value: value,
+		Requests: &Request_SetOption{&RequestSetOption{key, value}},
 	}
 }
 
-func RequestAppendTx(txBytes []byte) *Request {
+func ToRequestAppendTx(txBytes []byte) *Request {
 	return &Request{
-		Type: MessageType_AppendTx,
-		Data: txBytes,
+		Requests: &Request_AppendTx{&RequestAppendTx{txBytes}},
 	}
 }
 
-func RequestCheckTx(txBytes []byte) *Request {
+func ToRequestCheckTx(txBytes []byte) *Request {
 	return &Request{
-		Type: MessageType_CheckTx,
-		Data: txBytes,
+		Requests: &Request_CheckTx{&RequestCheckTx{txBytes}},
 	}
 }
 
-func RequestCommit() *Request {
+func ToRequestCommit() *Request {
 	return &Request{
-		Type: MessageType_Commit,
+		Requests: &Request_Commit{&RequestCommit{}},
 	}
 }
 
-func RequestQuery(queryBytes []byte) *Request {
+func ToRequestQuery(queryBytes []byte) *Request {
 	return &Request{
-		Type: MessageType_Query,
-		Data: queryBytes,
+		Requests: &Request_Query{&RequestQuery{queryBytes}},
 	}
 }
 
-func RequestInitChain(validators []*Validator) *Request {
+func ToRequestInitChain(validators []*Validator) *Request {
 	return &Request{
-		Type:       MessageType_InitChain,
-		Validators: validators,
+		Requests: &Request_InitChain{&RequestInitChain{validators}},
 	}
 }
 
-func RequestBeginBlock(height uint64) *Request {
+func ToRequestBeginBlock(height uint64) *Request {
 	return &Request{
-		Type:   MessageType_BeginBlock,
-		Height: height,
+		Requests: &Request_BeginBlock{&RequestBeginBlock{height}},
 	}
 }
 
-func RequestEndBlock(height uint64) *Request {
+func ToRequestEndBlock(height uint64) *Request {
 	return &Request{
-		Type:   MessageType_EndBlock,
-		Height: height,
+		Requests: &Request_EndBlock{&RequestEndBlock{height}},
 	}
 }
 
 //----------------------------------------
 
-func ResponseException(errStr string) *Response {
+func ToResponseException(errStr string) *Response {
 	return &Response{
-		Type:  MessageType_Exception,
-		Error: errStr,
+		Responses: &Response_Exception{&ResponseException{errStr}},
 	}
 }
 
-func ResponseEcho(message string) *Response {
+func ToResponseEcho(message string) *Response {
 	return &Response{
-		Type: MessageType_Echo,
-		Data: []byte(message),
+		Responses: &Response_Echo{&ResponseEcho{message}},
 	}
 }
 
-func ResponseFlush() *Response {
+func ToResponseFlush() *Response {
 	return &Response{
-		Type: MessageType_Flush,
+		Responses: &Response_Flush{&ResponseFlush{}},
 	}
 }
 
-func ResponseInfo(info string) *Response {
+func ToResponseInfo(info string) *Response {
 	return &Response{
-		Type: MessageType_Info,
-		Data: []byte(info),
+		Responses: &Response_Info{&ResponseInfo{info}},
 	}
 }
 
-func ResponseSetOption(log string) *Response {
+func ToResponseSetOption(log string) *Response {
 	return &Response{
-		Type: MessageType_SetOption,
-		Log:  log,
+		Responses: &Response_SetOption{&ResponseSetOption{log}},
 	}
 }
 
-func ResponseAppendTx(code CodeType, data []byte, log string) *Response {
+func ToResponseAppendTx(code CodeType, data []byte, log string) *Response {
 	return &Response{
-		Type: MessageType_AppendTx,
-		Code: code,
-		Data: data,
-		Log:  log,
+		Responses: &Response_AppendTx{&ResponseAppendTx{code, data, log}},
 	}
 }
 
-func ResponseCheckTx(code CodeType, data []byte, log string) *Response {
+func ToResponseCheckTx(code CodeType, data []byte, log string) *Response {
 	return &Response{
-		Type: MessageType_CheckTx,
-		Code: code,
-		Data: data,
-		Log:  log,
+		Responses: &Response_CheckTx{&ResponseCheckTx{code, data, log}},
 	}
 }
 
-func ResponseCommit(code CodeType, data []byte, log string) *Response {
+func ToResponseCommit(code CodeType, data []byte, log string) *Response {
 	return &Response{
-		Type: MessageType_Commit,
-		Code: code,
-		Data: data,
-		Log:  log,
+		Responses: &Response_Commit{&ResponseCommit{code, data, log}},
 	}
 }
 
-func ResponseQuery(code CodeType, data []byte, log string) *Response {
+func ToResponseQuery(code CodeType, data []byte, log string) *Response {
 	return &Response{
-		Type: MessageType_Query,
-		Code: code,
-		Data: data,
-		Log:  log,
+		Responses: &Response_Query{&ResponseQuery{code, data, log}},
 	}
 }
 
-func ResponseInitChain() *Response {
+func ToResponseInitChain() *Response {
 	return &Response{
-		Type: MessageType_InitChain,
+		Responses: &Response_InitChain{&ResponseInitChain{}},
 	}
 }
 
-func ResponseBeginBlock() *Response {
+func ToResponseBeginBlock() *Response {
 	return &Response{
-		Type: MessageType_BeginBlock,
+		Responses: &Response_BeginBlock{&ResponseBeginBlock{}},
 	}
 }
 
-func ResponseEndBlock(validators []*Validator) *Response {
+func ToResponseEndBlock(validators []*Validator) *Response {
 	return &Response{
-		Type:       MessageType_EndBlock,
-		Validators: validators,
+		Responses: &Response_EndBlock{&ResponseEndBlock{validators}},
 	}
 }
 
