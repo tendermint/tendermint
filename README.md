@@ -46,7 +46,7 @@ glide install
 go install ./cmd/tendermint
 ```
 
-Initialize a sample tendermint directory with an example genesis file (in `~/.tendermint):
+Initialize a sample tendermint directory with an example genesis file (in `~/.tendermint`):
 
 ```
 tendermint init
