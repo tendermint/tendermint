@@ -24,3 +24,36 @@ Simple, Secure, Scalable Blockchain Platform
 * [Go-Wire](http://github.com/tendermint/go-wire)
 * [Go-P2P](http://github.com/tendermint/go-p2p)
 * [Go-Merkle](http://github.com/tendermint/go-merkle)
+* 
+
+### Install
+
+Make sure you have installed Go and [set the GOPATH](https://github.com/tendermint/tendermint/wiki/Setting-GOPATH).
+
+Install `glide`, used for dependency management:
+
+```
+go get https://github.com/Masterminds/glide
+```
+
+Install tendermint:
+
+```
+mkdir -p $GOPATH/src/github.com/tendermint
+git clone https://github.com/tendermint/tendermint $GOPATH/src/github.com/tendermint/tendermint
+cd $GOPATH/src/github.com/tendermint/tendermint
+glide install
+go install ./cmd/tendermint
+```
+
+Initialize a sample tendermint directory with an example genesis file (in `~/.tendermint):
+
+```
+tendermint init
+```
+
+Now run the tendermint node:
+
+```
+tendermint node --proxy_app=dummy
+```
