@@ -112,8 +112,12 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*tmsp.Response)) (err error) {
 	if _, exists := mem.cacheMap[string(tx)]; exists {
 		if cb != nil {
 			cb(&tmsp.Response{
-				Code: tmsp.CodeType_BadNonce, // TODO or duplicate tx
-				Log:  "Duplicate transaction (ignored)",
+				Value: &tmsp.Response_CheckTx{
+					&tmsp.ResponseCheckTx{
+						Code: tmsp.CodeType_BadNonce, // TODO or duplicate tx
+						Log:  "Duplicate transaction (ignored)",
+					},
+				},
 			})
 		}
 		return nil
@@ -150,18 +154,18 @@ func (mem *Mempool) resCb(req *tmsp.Request, res *tmsp.Response) {
 }
 
 func (mem *Mempool) resCbNormal(req *tmsp.Request, res *tmsp.Response) {
-	switch res.Type {
-	case tmsp.MessageType_CheckTx:
-		if res.Code == tmsp.CodeType_OK {
+	switch r := res.Value.(type) {
+	case *tmsp.Response_CheckTx:
+		if r.CheckTx.Code == tmsp.CodeType_OK {
 			mem.counter++
 			memTx := &mempoolTx{
 				counter: mem.counter,
 				height:  int64(mem.height),
-				tx:      req.Data,
+				tx:      req.GetCheckTx().Tx,
 			}
 			mem.txs.PushBack(memTx)
 		} else {
-			log.Info("Bad Transaction", "res", res)
+			log.Info("Bad Transaction", "res", r)
 			// ignore bad transaction
 			// TODO: handle other retcodes
 		}
@@ -171,14 +175,14 @@ func (mem *Mempool) resCbNormal(req *tmsp.Request, res *tmsp.Response) {
 }
 
 func (mem *Mempool) resCbRecheck(req *tmsp.Request, res *tmsp.Response) {
-	switch res.Type {
-	case tmsp.MessageType_CheckTx:
+	switch r := res.Value.(type) {
+	case *tmsp.Response_CheckTx:
 		memTx := mem.recheckCursor.Value.(*mempoolTx)
-		if !bytes.Equal(req.Data, memTx.tx) {
+		if !bytes.Equal(req.GetCheckTx().Tx, memTx.tx) {
 			PanicSanity(Fmt("Unexpected tx response from proxy during recheck\n"+
-				"Expected %X, got %X", req.Data, memTx.tx))
+				"Expected %X, got %X", r.CheckTx.Data, memTx.tx))
 		}
-		if res.Code == tmsp.CodeType_OK {
+		if r.CheckTx.Code == tmsp.CodeType_OK {
 			// Good, nothing to do.
 		} else {
 			// Tx became invalidated due to newly committed block.
