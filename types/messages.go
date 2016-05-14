@@ -9,7 +9,7 @@ import (
 
 func ToRequestEcho(message string) *Request {
 	return &Request{
-		Requests: &Request_Echo{&RequestEcho{}},
+		Requests: &Request_Echo{&RequestEcho{message}},
 	}
 }
 

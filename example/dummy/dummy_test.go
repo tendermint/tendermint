@@ -1,6 +1,7 @@
 package dummy
 
 import (
+	"reflect"
 	"testing"
 	"time"
 
@@ -39,11 +40,11 @@ func TestStream(t *testing.T) {
 			}
 
 			// Process response
-			switch res.Type {
-			case types.MessageType_AppendTx:
+			switch r := res.Responses.(type) {
+			case *types.Response_AppendTx:
 				counter += 1
-				if res.Code != types.CodeType_OK {
-					t.Error("AppendTx failed with ret_code", res.Code)
+				if r.AppendTx.Code != types.CodeType_OK {
+					t.Error("AppendTx failed with ret_code", r.AppendTx.Code)
 				}
 				if counter > numAppendTxs {
 					t.Fatal("Too many AppendTx responses")
@@ -55,10 +56,10 @@ func TestStream(t *testing.T) {
 						close(done)
 					}()
 				}
-			case types.MessageType_Flush:
+			case *types.Response_Flush:
 				// ignore
 			default:
-				t.Error("Unexpected response type", res.Type)
+				t.Error("Unexpected response type", reflect.TypeOf(res.Responses))
 			}
 		}
 	}()
@@ -66,7 +67,7 @@ func TestStream(t *testing.T) {
 	// Write requests
 	for counter := 0; counter < numAppendTxs; counter++ {
 		// Send request
-		var req = types.RequestAppendTx([]byte("test"))
+		var req = types.ToRequestAppendTx([]byte("test"))
 		err := types.WriteMessage(req, conn)
 		if err != nil {
 			t.Fatal(err.Error())
@@ -75,7 +76,7 @@ func TestStream(t *testing.T) {
 		// Sometimes send flush messages
 		if counter%123 == 0 {
 			t.Log("flush")
-			err := types.WriteMessage(types.RequestFlush(), conn)
+			err := types.WriteMessage(types.ToRequestFlush(), conn)
 			if err != nil {
 				t.Fatal(err.Error())
 			}
@@ -83,7 +84,7 @@ func TestStream(t *testing.T) {
 	}
 
 	// Send final flush message
-	err = types.WriteMessage(types.RequestFlush(), conn)
+	err = types.WriteMessage(types.ToRequestFlush(), conn)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
