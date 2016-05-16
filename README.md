@@ -57,3 +57,6 @@ Now run the tendermint node:
 ```
 tendermint node --proxy_app=dummy
 ```
+
+For tutorials on running other applications with Tendermint, and for launching test networks,
+see http://tendermint.com/guide/
