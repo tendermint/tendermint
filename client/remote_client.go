@@ -42,7 +42,7 @@ type remoteClient struct {
 	resCb   func(*types.Request, *types.Response) // listens to all callbacks
 }
 
-func NewClient(addr string, mustConnect bool) (*remoteClient, error) {
+func NewSocketClient(addr string, mustConnect bool) (*remoteClient, error) {
 	cli := &remoteClient{
 		reqQueue:    make(chan *ReqRes, reqQueueSize),
 		flushTimer:  NewThrottleTimer("remoteClient", flushThrottleMS),
@@ -129,7 +129,7 @@ func (cli *remoteClient) sendValueRoutine(conn net.Conn) {
 		select {
 		case <-cli.flushTimer.Ch:
 			select {
-			case cli.reqQueue <- NewReqRes(types.ToRequestFlush()):
+			case cli.reqQueue <- NewReqRes(types.ToRequestFlush()): // cant this block ?
 			default:
 				// Probably will fill the buffer, or retry later.
 			}
@@ -369,6 +369,7 @@ func (cli *remoteClient) EndBlockSync(height uint64) (validators []*types.Valida
 
 func (cli *remoteClient) queueRequest(req *types.Request) *ReqRes {
 	reqres := NewReqRes(req)
+
 	// TODO: set cli.err if reqQueue times out
 	cli.reqQueue <- reqres
 

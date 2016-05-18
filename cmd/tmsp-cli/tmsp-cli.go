@@ -29,6 +29,13 @@ func main() {
 			Usage: "address of application socket",
 		},
 	}
+	app.Flags = []cli.Flag{
+		cli.StringFlag{
+			Name:  "tmsp",
+			Value: "socket",
+			Usage: "socket or grpc",
+		},
+	}
 	app.Commands = []cli.Command{
 		{
 			Name:  "batch",
@@ -105,7 +112,7 @@ func main() {
 func before(c *cli.Context) error {
 	if client == nil {
 		var err error
-		client, err = tmspcli.NewClient(c.GlobalString("address"), false)
+		client, err = tmspcli.NewClient(c.GlobalString("address"), c.GlobalString("tmsp"), false)
 		if err != nil {
 			Exit(err.Error())
 		}

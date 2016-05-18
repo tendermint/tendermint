@@ -19,7 +19,7 @@ func TestStream(t *testing.T) {
 	numAppendTxs := 200000
 
 	// Start the listener
-	server, err := server.NewServer("unix://test.sock", NewNilApplication())
+	server, err := server.NewSocketServer("unix://test.sock", NewNilApplication())
 	if err != nil {
 		Exit(err.Error())
 	}

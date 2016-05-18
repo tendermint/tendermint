@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"os"
 	"time"
@@ -12,7 +13,10 @@ import (
 	"github.com/tendermint/tmsp/types"
 )
 
+var tmspPtr = flag.String("tmsp", "socket", "socket or grpc")
+
 func main() {
+	flag.Parse()
 
 	// Run tests
 	testBasic()
@@ -70,7 +74,7 @@ func startApp() *process.Process {
 
 func startClient() tmspcli.Client {
 	// Start client
-	client, err := tmspcli.NewClient("tcp://127.0.0.1:46658", true)
+	client, err := tmspcli.NewClient("tcp://127.0.0.1:46658", *tmspPtr, true)
 	if err != nil {
 		panic("connecting to counter_app: " + err.Error())
 	}
