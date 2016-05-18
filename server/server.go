@@ -25,7 +25,7 @@ type Server struct {
 	app    types.Application
 }
 
-func NewServer(protoAddr string, app types.Application) (*Server, error) {
+func NewServer(protoAddr string, app types.Application) (Service, error) {
 	parts := strings.SplitN(protoAddr, "://", 2)
 	proto, addr := parts[0], parts[1]
 	s := &Server{

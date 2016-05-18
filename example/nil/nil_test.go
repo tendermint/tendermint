@@ -1,9 +1,13 @@
 package nilapp
 
 import (
+	"net"
 	"reflect"
 	"testing"
 	"time"
+
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/tmsp/server"
@@ -90,4 +94,55 @@ func TestStream(t *testing.T) {
 	}
 
 	<-done
+}
+
+//-------------------------
+// test grpc
+
+func dialerFunc(addr string, timeout time.Duration) (net.Conn, error) {
+	return Connect(addr)
+}
+
+func TestGRPCSync(t *testing.T) {
+
+	numAppendTxs := 2000
+
+	// Start the listener
+	server, err := server.NewGRPCServer("unix://test.sock", types.NewGRPCApplication(NewNilApplication()))
+	if err != nil {
+		Exit(err.Error())
+	}
+	defer server.Stop()
+
+	// Connect to the socket
+	conn, err := grpc.Dial("unix://test.sock", grpc.WithInsecure(), grpc.WithDialer(dialerFunc))
+	if err != nil {
+		Exit(err.Error())
+	}
+	defer conn.Close()
+
+	client := types.NewTMSPApplicationClient(conn)
+
+	// Write requests
+	for counter := 0; counter < numAppendTxs; counter++ {
+		// Send request
+		response, err := client.AppendTx(context.Background(), &types.RequestAppendTx{[]byte("test")})
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+		counter += 1
+		if response.Code != types.CodeType_OK {
+			t.Error("AppendTx failed with ret_code", response.Code)
+		}
+		if counter > numAppendTxs {
+			t.Fatal("Too many AppendTx responses")
+		}
+		t.Log("response", counter)
+		if counter == numAppendTxs {
+			go func() {
+				time.Sleep(time.Second * 2) // Wait for a bit to allow counter overflow
+			}()
+		}
+
+	}
 }
