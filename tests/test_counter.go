@@ -100,9 +100,6 @@ func commit(client tmspcli.Client, hashExp []byte) {
 func appendTx(client tmspcli.Client, txBytes []byte, codeExp types.CodeType, dataExp []byte) {
 	res := client.AppendTxSync(txBytes)
 	code, data, log := res.Code, res.Data, res.Log
-	if res.IsErr() {
-		panic(Fmt("appending tx %X: %v\nlog: %v", txBytes, log))
-	}
 	if code != codeExp {
 		panic(Fmt("AppendTx response code was unexpected. Got %v expected %v. Log: %v",
 			code, codeExp, log))

@@ -54,6 +54,7 @@ func NewClient(addr string, mustConnect bool) (*remoteClient, error) {
 	}
 	cli.QuitService = *NewQuitService(nil, "remoteClient", cli)
 	_, err := cli.Start() // Just start it, it's confusing for callers to remember to start.
+	return cli, err
 	if mustConnect {
 		return nil, err
 	} else {
