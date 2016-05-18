@@ -113,7 +113,7 @@ func (s *Server) handleRequests(closeConn chan error, conn net.Conn, responses c
 			if err == io.EOF {
 				closeConn <- fmt.Errorf("Connection closed by client")
 			} else {
-				closeConn <- fmt.Errorf("Error in handleRequests: %v", err.Error())
+				closeConn <- fmt.Errorf("Error in handleValue: %v", err.Error())
 			}
 			return
 		}
@@ -125,7 +125,7 @@ func (s *Server) handleRequests(closeConn chan error, conn net.Conn, responses c
 }
 
 func (s *Server) handleRequest(req *types.Request, responses chan<- *types.Response) {
-	switch r := req.Requests.(type) {
+	switch r := req.Value.(type) {
 	case *types.Request_Echo:
 		responses <- types.ToResponseEcho(r.Echo.Message)
 	case *types.Request_Flush:
@@ -176,13 +176,13 @@ func (s *Server) handleResponses(closeConn chan error, responses <-chan *types.R
 		var res = <-responses
 		err := types.WriteMessage(res, bufWriter)
 		if err != nil {
-			closeConn <- fmt.Errorf("Error in handleResponses: %v", err.Error())
+			closeConn <- fmt.Errorf("Error in handleValue: %v", err.Error())
 			return
 		}
-		if _, ok := res.Responses.(*types.Response_Flush); ok {
+		if _, ok := res.Value.(*types.Response_Flush); ok {
 			err = bufWriter.Flush()
 			if err != nil {
-				closeConn <- fmt.Errorf("Error in handleResponses: %v", err.Error())
+				closeConn <- fmt.Errorf("Error in handleValue: %v", err.Error())
 				return
 			}
 		}

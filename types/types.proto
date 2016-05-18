@@ -6,6 +6,10 @@ package types;
 //----------------------------------------
 // Message types
 
+// Not being used 
+// Could be added to request/response
+// so we don't have to type switch
+// (would be twice as fast, but we're talking about 15ns)
 enum MessageType {
   NullMessage = 0x00;
 
@@ -70,7 +74,7 @@ enum CodeType {
 // Request types
 
 message Request {
-	oneof requests{
+	oneof value{
 		RequestEcho echo = 1;
 		RequestFlush flush = 2;
 		RequestInfo info = 3;
@@ -132,7 +136,7 @@ message RequestEndBlock{
 
 
 message Response {
-	oneof responses{
+	oneof value{
 		ResponseException exception = 1;
 		ResponseEcho echo = 2;
 		ResponseFlush flush = 3;

@@ -9,67 +9,67 @@ import (
 
 func ToRequestEcho(message string) *Request {
 	return &Request{
-		Requests: &Request_Echo{&RequestEcho{message}},
+		Value: &Request_Echo{&RequestEcho{message}},
 	}
 }
 
 func ToRequestFlush() *Request {
 	return &Request{
-		Requests: &Request_Flush{&RequestFlush{}},
+		Value: &Request_Flush{&RequestFlush{}},
 	}
 }
 
 func ToRequestInfo() *Request {
 	return &Request{
-		Requests: &Request_Info{&RequestInfo{}},
+		Value: &Request_Info{&RequestInfo{}},
 	}
 }
 
 func ToRequestSetOption(key string, value string) *Request {
 	return &Request{
-		Requests: &Request_SetOption{&RequestSetOption{key, value}},
+		Value: &Request_SetOption{&RequestSetOption{key, value}},
 	}
 }
 
 func ToRequestAppendTx(txBytes []byte) *Request {
 	return &Request{
-		Requests: &Request_AppendTx{&RequestAppendTx{txBytes}},
+		Value: &Request_AppendTx{&RequestAppendTx{txBytes}},
 	}
 }
 
 func ToRequestCheckTx(txBytes []byte) *Request {
 	return &Request{
-		Requests: &Request_CheckTx{&RequestCheckTx{txBytes}},
+		Value: &Request_CheckTx{&RequestCheckTx{txBytes}},
 	}
 }
 
 func ToRequestCommit() *Request {
 	return &Request{
-		Requests: &Request_Commit{&RequestCommit{}},
+		Value: &Request_Commit{&RequestCommit{}},
 	}
 }
 
 func ToRequestQuery(queryBytes []byte) *Request {
 	return &Request{
-		Requests: &Request_Query{&RequestQuery{queryBytes}},
+		Value: &Request_Query{&RequestQuery{queryBytes}},
 	}
 }
 
 func ToRequestInitChain(validators []*Validator) *Request {
 	return &Request{
-		Requests: &Request_InitChain{&RequestInitChain{validators}},
+		Value: &Request_InitChain{&RequestInitChain{validators}},
 	}
 }
 
 func ToRequestBeginBlock(height uint64) *Request {
 	return &Request{
-		Requests: &Request_BeginBlock{&RequestBeginBlock{height}},
+		Value: &Request_BeginBlock{&RequestBeginBlock{height}},
 	}
 }
 
 func ToRequestEndBlock(height uint64) *Request {
 	return &Request{
-		Requests: &Request_EndBlock{&RequestEndBlock{height}},
+		Value: &Request_EndBlock{&RequestEndBlock{height}},
 	}
 }
 
@@ -77,73 +77,73 @@ func ToRequestEndBlock(height uint64) *Request {
 
 func ToResponseException(errStr string) *Response {
 	return &Response{
-		Responses: &Response_Exception{&ResponseException{errStr}},
+		Value: &Response_Exception{&ResponseException{errStr}},
 	}
 }
 
 func ToResponseEcho(message string) *Response {
 	return &Response{
-		Responses: &Response_Echo{&ResponseEcho{message}},
+		Value: &Response_Echo{&ResponseEcho{message}},
 	}
 }
 
 func ToResponseFlush() *Response {
 	return &Response{
-		Responses: &Response_Flush{&ResponseFlush{}},
+		Value: &Response_Flush{&ResponseFlush{}},
 	}
 }
 
 func ToResponseInfo(info string) *Response {
 	return &Response{
-		Responses: &Response_Info{&ResponseInfo{info}},
+		Value: &Response_Info{&ResponseInfo{info}},
 	}
 }
 
 func ToResponseSetOption(log string) *Response {
 	return &Response{
-		Responses: &Response_SetOption{&ResponseSetOption{log}},
+		Value: &Response_SetOption{&ResponseSetOption{log}},
 	}
 }
 
 func ToResponseAppendTx(code CodeType, data []byte, log string) *Response {
 	return &Response{
-		Responses: &Response_AppendTx{&ResponseAppendTx{code, data, log}},
+		Value: &Response_AppendTx{&ResponseAppendTx{code, data, log}},
 	}
 }
 
 func ToResponseCheckTx(code CodeType, data []byte, log string) *Response {
 	return &Response{
-		Responses: &Response_CheckTx{&ResponseCheckTx{code, data, log}},
+		Value: &Response_CheckTx{&ResponseCheckTx{code, data, log}},
 	}
 }
 
 func ToResponseCommit(code CodeType, data []byte, log string) *Response {
 	return &Response{
-		Responses: &Response_Commit{&ResponseCommit{code, data, log}},
+		Value: &Response_Commit{&ResponseCommit{code, data, log}},
 	}
 }
 
 func ToResponseQuery(code CodeType, data []byte, log string) *Response {
 	return &Response{
-		Responses: &Response_Query{&ResponseQuery{code, data, log}},
+		Value: &Response_Query{&ResponseQuery{code, data, log}},
 	}
 }
 
 func ToResponseInitChain() *Response {
 	return &Response{
-		Responses: &Response_InitChain{&ResponseInitChain{}},
+		Value: &Response_InitChain{&ResponseInitChain{}},
 	}
 }
 
 func ToResponseBeginBlock() *Response {
 	return &Response{
-		Responses: &Response_BeginBlock{&ResponseBeginBlock{}},
+		Value: &Response_BeginBlock{&ResponseBeginBlock{}},
 	}
 }
 
 func ToResponseEndBlock(validators []*Validator) *Response {
 	return &Response{
-		Responses: &Response_EndBlock{&ResponseEndBlock{validators}},
+		Value: &Response_EndBlock{&ResponseEndBlock{validators}},
 	}
 }
 

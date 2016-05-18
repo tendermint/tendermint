@@ -40,7 +40,7 @@ func TestStream(t *testing.T) {
 			}
 
 			// Process response
-			switch r := res.Responses.(type) {
+			switch r := res.Value.(type) {
 			case *types.Response_AppendTx:
 				counter += 1
 				if r.AppendTx.Code != types.CodeType_OK {
@@ -59,7 +59,7 @@ func TestStream(t *testing.T) {
 			case *types.Response_Flush:
 				// ignore
 			default:
-				t.Error("Unexpected response type", reflect.TypeOf(res.Responses))
+				t.Error("Unexpected response type", reflect.TypeOf(res.Value))
 			}
 		}
 	}()

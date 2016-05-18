@@ -79,7 +79,7 @@ func (cli *remoteClient) OnStart() (err error) {
 					continue RETRY_LOOP
 				}
 			}
-			go cli.sendRequestsRoutine(conn)
+			go cli.sendValueRoutine(conn)
 			go cli.recvResponseRoutine(conn)
 			close(doneCh) // OnStart() will return no error.
 			return
@@ -122,7 +122,7 @@ func (cli *remoteClient) Error() error {
 
 //----------------------------------------
 
-func (cli *remoteClient) sendRequestsRoutine(conn net.Conn) {
+func (cli *remoteClient) sendValueRoutine(conn net.Conn) {
 	w := bufio.NewWriter(conn)
 	for {
 		select {
@@ -142,7 +142,7 @@ func (cli *remoteClient) sendRequestsRoutine(conn net.Conn) {
 				return
 			}
 			// log.Debug("Sent request", "requestType", reflect.TypeOf(reqres.Request), "request", reqres.Request)
-			if _, ok := reqres.Request.Requests.(*types.Request_Flush); ok {
+			if _, ok := reqres.Request.Value.(*types.Request_Flush); ok {
 				err = w.Flush()
 				if err != nil {
 					cli.StopForError(err)
@@ -162,7 +162,7 @@ func (cli *remoteClient) recvResponseRoutine(conn net.Conn) {
 			cli.StopForError(err)
 			return
 		}
-		switch r := res.Responses.(type) {
+		switch r := res.Value.(type) {
 		case *types.Response_Exception:
 			// XXX After setting cli.err, release waiters (e.g. reqres.Done())
 			cli.StopForError(errors.New(r.Exception.Error))
@@ -189,12 +189,12 @@ func (cli *remoteClient) didRecvResponse(res *types.Response) error {
 	// Get the first ReqRes
 	next := cli.reqSent.Front()
 	if next == nil {
-		return fmt.Errorf("Unexpected result type %v when nothing expected", reflect.TypeOf(res.Responses))
+		return fmt.Errorf("Unexpected result type %v when nothing expected", reflect.TypeOf(res.Value))
 	}
 	reqres := next.Value.(*ReqRes)
 	if !resMatchesReq(reqres.Request, res) {
 		return fmt.Errorf("Unexpected result type %v when response to %v expected",
-			reflect.TypeOf(res.Responses), reflect.TypeOf(reqres.Request.Requests))
+			reflect.TypeOf(res.Value), reflect.TypeOf(reqres.Request.Value))
 	}
 
 	reqres.Response = res    // Set response
@@ -372,7 +372,7 @@ func (cli *remoteClient) queueRequest(req *types.Request) *ReqRes {
 	cli.reqQueue <- reqres
 
 	// Maybe auto-flush, or unset auto-flush
-	switch req.Requests.(type) {
+	switch req.Value.(type) {
 	case *types.Request_Flush:
 		cli.flushTimer.Unset()
 	default:
@@ -385,27 +385,27 @@ func (cli *remoteClient) queueRequest(req *types.Request) *ReqRes {
 //----------------------------------------
 
 func resMatchesReq(req *types.Request, res *types.Response) (ok bool) {
-	switch req.Requests.(type) {
+	switch req.Value.(type) {
 	case *types.Request_Echo:
-		_, ok = res.Responses.(*types.Response_Echo)
+		_, ok = res.Value.(*types.Response_Echo)
 	case *types.Request_Flush:
-		_, ok = res.Responses.(*types.Response_Flush)
+		_, ok = res.Value.(*types.Response_Flush)
 	case *types.Request_Info:
-		_, ok = res.Responses.(*types.Response_Info)
+		_, ok = res.Value.(*types.Response_Info)
 	case *types.Request_SetOption:
-		_, ok = res.Responses.(*types.Response_SetOption)
+		_, ok = res.Value.(*types.Response_SetOption)
 	case *types.Request_AppendTx:
-		_, ok = res.Responses.(*types.Response_AppendTx)
+		_, ok = res.Value.(*types.Response_AppendTx)
 	case *types.Request_CheckTx:
-		_, ok = res.Responses.(*types.Response_CheckTx)
+		_, ok = res.Value.(*types.Response_CheckTx)
 	case *types.Request_Commit:
-		_, ok = res.Responses.(*types.Response_Commit)
+		_, ok = res.Value.(*types.Response_Commit)
 	case *types.Request_Query:
-		_, ok = res.Responses.(*types.Response_Query)
+		_, ok = res.Value.(*types.Response_Query)
 	case *types.Request_InitChain:
-		_, ok = res.Responses.(*types.Response_InitChain)
+		_, ok = res.Value.(*types.Response_InitChain)
 	case *types.Request_EndBlock:
-		_, ok = res.Responses.(*types.Response_EndBlock)
+		_, ok = res.Value.(*types.Response_EndBlock)
 	}
 	return ok
 }

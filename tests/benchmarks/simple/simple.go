@@ -62,7 +62,7 @@ func makeRequest(conn net.Conn, req *types.Request) (*types.Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	if _, ok := resFlush.Responses.(*types.Response_Flush); !ok {
+	if _, ok := resFlush.Value.(*types.Response_Flush); !ok {
 		return nil, errors.New(Fmt("Expected flush response but got something else: %v", reflect.TypeOf(resFlush)))
 	}
 
