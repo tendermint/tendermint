@@ -80,7 +80,7 @@ imports:
 - name: github.com/tendermint/go-wire
   version: 3b0adbc86ed8425eaed98516165b6788d9f4de7a
 - name: github.com/tendermint/log15
-  version: 0fd8546b632b2c4401e13f92b6b0f7aaf70feee2
+  version: a36450f4378275a02e1259eb5a868879019bcd41
   subpackages:
   - term
 - name: github.com/tendermint/tmsp
