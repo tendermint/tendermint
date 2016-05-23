@@ -47,7 +47,7 @@ type Node struct {
 	privKey          crypto.PrivKeyEd25519
 }
 
-func NewNode(config cfg.Config, privValidator *types.PrivValidator, getProxyApp func(proxyAddr string, appHash []byte) proxy.AppConn) *Node {
+func NewNode(config cfg.Config, privValidator *types.PrivValidator, getProxyApp func(proxyAddr, transport string, appHash []byte) proxy.AppConn) *Node {
 
 	EnsureDir(config.GetString("db_dir"), 0700) // incase we use memdb, cswal still gets written here
 
@@ -64,8 +64,9 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, getProxyApp 
 	// Create two proxyAppConn connections,
 	// one for the consensus and one for the mempool.
 	proxyAddr := config.GetString("proxy_app")
-	proxyAppConnMempool := getProxyApp(proxyAddr, state.AppHash)
-	proxyAppConnConsensus := getProxyApp(proxyAddr, state.AppHash)
+	transport := config.GetString("tmsp")
+	proxyAppConnMempool := getProxyApp(proxyAddr, transport, state.AppHash)
+	proxyAppConnConsensus := getProxyApp(proxyAddr, transport, state.AppHash)
 
 	// add the chainid and number of validators to the global config
 	config.Set("chain_id", state.ChainID)
@@ -268,7 +269,7 @@ func makeNodeInfo(config cfg.Config, sw *p2p.Switch, privKey crypto.PrivKeyEd255
 
 // Get a connection to the proxyAppConn addr.
 // Check the current hash, and panic if it doesn't match.
-func GetProxyApp(addr string, hash []byte) (proxyAppConn proxy.AppConn) {
+func GetProxyApp(addr, transport string, hash []byte) (proxyAppConn proxy.AppConn) {
 	// use local app (for testing)
 	switch addr {
 	case "nilapp":
@@ -281,7 +282,7 @@ func GetProxyApp(addr string, hash []byte) (proxyAppConn proxy.AppConn) {
 		proxyAppConn = tmspcli.NewLocalClient(mtx, app)
 	default:
 		// Run forever in a loop
-		remoteApp, err := proxy.NewRemoteAppConn(addr)
+		remoteApp, err := proxy.NewRemoteAppConn(addr, transport)
 		if err != nil {
 			Exit(Fmt("Failed to connect to proxy for mempool: %v", err))
 		}
@@ -397,8 +398,9 @@ func newConsensusState(config cfg.Config) *consensus.ConsensusState {
 	// Create two proxyAppConn connections,
 	// one for the consensus and one for the mempool.
 	proxyAddr := config.GetString("proxy_app")
-	proxyAppConnMempool := GetProxyApp(proxyAddr, state.AppHash)
-	proxyAppConnConsensus := GetProxyApp(proxyAddr, state.AppHash)
+	transport := config.GetString("tmsp")
+	proxyAppConnMempool := GetProxyApp(proxyAddr, transport, state.AppHash)
+	proxyAppConnConsensus := GetProxyApp(proxyAddr, transport, state.AppHash)
 
 	// add the chainid to the global config
 	config.Set("chain_id", state.ChainID)
