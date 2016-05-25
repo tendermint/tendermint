@@ -13,9 +13,8 @@ import (
 	"github.com/tendermint/tmsp/types"
 )
 
-// This is goroutine-safe, but users should beware that
-// the application in general is not meant to be interfaced
-// with concurrent callers.
+// A stripped copy of the remoteClient that makes
+// synchronous calls using grpc
 type grpcClient struct {
 	QuitService
 	mustConnect bool
@@ -42,15 +41,14 @@ func dialerFunc(addr string, timeout time.Duration) (net.Conn, error) {
 	return Connect(addr)
 }
 
-func (cli *grpcClient) OnStart() (err error) {
+func (cli *grpcClient) OnStart() error {
 	cli.QuitService.OnStart()
 RETRY_LOOP:
 	for {
-		conn, err_ := grpc.Dial(cli.addr, grpc.WithInsecure(), grpc.WithDialer(dialerFunc))
-		if err_ != nil {
+		conn, err := grpc.Dial(cli.addr, grpc.WithInsecure(), grpc.WithDialer(dialerFunc))
+		if err != nil {
 			if cli.mustConnect {
-				err = err_ // OnStart() will return this.
-				return
+				return err
 			} else {
 				fmt.Printf("tmsp.grpcClient failed to connect to %v.  Retrying...\n", cli.addr)
 				time.Sleep(time.Second * 3)
@@ -58,13 +56,13 @@ RETRY_LOOP:
 			}
 		}
 		cli.client = types.NewTMSPApplicationClient(conn)
-		return
+		return nil
 	}
 }
 
 func (cli *grpcClient) OnStop() {
 	cli.QuitService.OnStop()
-	// TODO: close client (?)
+	// TODO: how to close when TMSPApplicationClient interface doesn't expose Close ?
 }
 
 // Set listener for all responses
@@ -95,23 +93,6 @@ func (cli *grpcClient) Error() error {
 // async calls are really sync.
 // maybe one day, if people really want it, we use grpc streams,
 // but hopefully not :D
-
-func (cli *grpcClient) finishAsyncCall(req *types.Request, res *types.Response) *ReqRes {
-	reqres := NewReqRes(req)
-	reqres.Response = res // Set response
-	reqres.Done()         // Release waiters
-
-	// Notify reqRes listener if set
-	if cb := reqres.GetCallback(); cb != nil {
-		cb(res)
-	}
-
-	// Notify client listener if set
-	if cli.resCb != nil {
-		cli.resCb(reqres.Request, res)
-	}
-	return reqres
-}
 
 func (cli *grpcClient) EchoAsync(msg string) *ReqRes {
 	req := types.ToRequestEcho(msg)
@@ -210,6 +191,23 @@ func (cli *grpcClient) EndBlockAsync(height uint64) *ReqRes {
 		cli.err = err
 	}
 	return cli.finishAsyncCall(req, &types.Response{&types.Response_EndBlock{res}})
+}
+
+func (cli *grpcClient) finishAsyncCall(req *types.Request, res *types.Response) *ReqRes {
+	reqres := NewReqRes(req)
+	reqres.Response = res // Set response
+	reqres.Done()         // Release waiters
+
+	// Notify reqRes listener if set
+	if cb := reqres.GetCallback(); cb != nil {
+		cb(res)
+	}
+
+	// Notify client listener if set
+	if cli.resCb != nil {
+		cli.resCb(reqres.Request, res)
+	}
+	return reqres
 }
 
 //----------------------------------------

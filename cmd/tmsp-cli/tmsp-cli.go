@@ -15,7 +15,7 @@ import (
 	"github.com/tendermint/tmsp/types"
 )
 
-// clientection is a global variable so it can be reused by the console
+// client is a global variable so it can be reused by the console
 var client tmspcli.Client
 
 func main() {
@@ -28,8 +28,6 @@ func main() {
 			Value: "tcp://127.0.0.1:46658",
 			Usage: "address of application socket",
 		},
-	}
-	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "tmsp",
 			Value: "socket",

@@ -217,8 +217,6 @@ message Validator {
 //----------------------------------------
 // Service Definition
 
-// NOTE: we may want to make CheckTx and AppendTx two way streams.
-// we should be able to drop Flush for sync calls
 service TMSPApplication {
 	rpc Echo(RequestEcho) returns (ResponseEcho) ;
 	rpc Flush(RequestFlush) returns (ResponseFlush);

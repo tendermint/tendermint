@@ -55,39 +55,27 @@ func NewSocketClient(addr string, mustConnect bool) (*remoteClient, error) {
 	cli.QuitService = *NewQuitService(nil, "remoteClient", cli)
 	_, err := cli.Start() // Just start it, it's confusing for callers to remember to start.
 	return cli, err
-	if mustConnect {
-		return nil, err
-	} else {
-		return cli, nil
-	}
 }
 
-func (cli *remoteClient) OnStart() (err error) {
+func (cli *remoteClient) OnStart() error {
 	cli.QuitService.OnStart()
-	doneCh := make(chan struct{})
-	go func() {
-	RETRY_LOOP:
-		for {
-			conn, err_ := Connect(cli.addr)
-			if err_ != nil {
-				if cli.mustConnect {
-					err = err_ // OnStart() will return this.
-					close(doneCh)
-					return
-				} else {
-					fmt.Printf("tmsp.remoteClient failed to connect to %v.  Retrying...\n", cli.addr)
-					time.Sleep(time.Second * 3)
-					continue RETRY_LOOP
-				}
+RETRY_LOOP:
+	for {
+		conn, err := Connect(cli.addr)
+		if err != nil {
+			if cli.mustConnect {
+				return err
+			} else {
+				fmt.Printf("tmsp.remoteClient failed to connect to %v.  Retrying...\n", cli.addr)
+				time.Sleep(time.Second * 3)
+				continue RETRY_LOOP
 			}
-			go cli.sendValueRoutine(conn)
-			go cli.recvResponseRoutine(conn)
-			close(doneCh) // OnStart() will return no error.
-			return
 		}
-	}()
-	<-doneCh
-	return // err
+		go cli.sendRequestsRoutine(conn)
+		go cli.recvResponseRoutine(conn)
+		return err
+	}
+	return nil // never happens
 }
 
 func (cli *remoteClient) OnStop() {
@@ -123,7 +111,7 @@ func (cli *remoteClient) Error() error {
 
 //----------------------------------------
 
-func (cli *remoteClient) sendValueRoutine(conn net.Conn) {
+func (cli *remoteClient) sendRequestsRoutine(conn net.Conn) {
 	w := bufio.NewWriter(conn)
 	for {
 		select {
