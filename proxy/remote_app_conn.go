@@ -11,8 +11,8 @@ type remoteAppConn struct {
 	tmspcli.Client
 }
 
-func NewRemoteAppConn(addr string) (*remoteAppConn, error) {
-	client, err := tmspcli.NewClient(addr, false)
+func NewRemoteAppConn(addr, transport string) (*remoteAppConn, error) {
+	client, err := tmspcli.NewClient(addr, transport, false)
 	if err != nil {
 		return nil, err
 	}

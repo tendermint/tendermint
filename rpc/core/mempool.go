@@ -28,10 +28,11 @@ func BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 		return nil, fmt.Errorf("Error broadcasting transaction: %v", err)
 	}
 	res := <-resCh
+	r := res.GetCheckTx()
 	return &ctypes.ResultBroadcastTx{
-		Code: res.Code,
-		Data: res.Data,
-		Log:  res.Log,
+		Code: r.Code,
+		Data: r.Data,
+		Log:  r.Log,
 	}, nil
 }
 

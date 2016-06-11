@@ -9,17 +9,19 @@ import (
 	"github.com/tendermint/tmsp/server"
 )
 
+var SOCKET = "socket"
+
 func TestEcho(t *testing.T) {
 	sockPath := Fmt("unix:///tmp/echo_%v.sock", RandStr(6))
 
 	// Start server
-	s, err := server.NewServer(sockPath, dummy.NewDummyApplication())
+	s, err := server.NewSocketServer(sockPath, dummy.NewDummyApplication())
 	if err != nil {
 		Exit(err.Error())
 	}
 	defer s.Stop()
 	// Start client
-	proxy, err := NewRemoteAppConn(sockPath)
+	proxy, err := NewRemoteAppConn(sockPath, SOCKET)
 	if err != nil {
 		Exit(err.Error())
 	} else {
@@ -36,13 +38,13 @@ func BenchmarkEcho(b *testing.B) {
 	b.StopTimer() // Initialize
 	sockPath := Fmt("unix:///tmp/echo_%v.sock", RandStr(6))
 	// Start server
-	s, err := server.NewServer(sockPath, dummy.NewDummyApplication())
+	s, err := server.NewSocketServer(sockPath, dummy.NewDummyApplication())
 	if err != nil {
 		Exit(err.Error())
 	}
 	defer s.Stop()
 	// Start client
-	proxy, err := NewRemoteAppConn(sockPath)
+	proxy, err := NewRemoteAppConn(sockPath, SOCKET)
 	if err != nil {
 		Exit(err.Error())
 	} else {
@@ -64,13 +66,13 @@ func BenchmarkEcho(b *testing.B) {
 func TestInfo(t *testing.T) {
 	sockPath := Fmt("unix:///tmp/echo_%v.sock", RandStr(6))
 	// Start server
-	s, err := server.NewServer(sockPath, dummy.NewDummyApplication())
+	s, err := server.NewSocketServer(sockPath, dummy.NewDummyApplication())
 	if err != nil {
 		Exit(err.Error())
 	}
 	defer s.Stop()
 	// Start client
-	proxy, err := NewRemoteAppConn(sockPath)
+	proxy, err := NewRemoteAppConn(sockPath, SOCKET)
 	if err != nil {
 		Exit(err.Error())
 	} else {

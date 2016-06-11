@@ -9,15 +9,16 @@ import (
 
 func parseFlags(config cfg.Config, args []string) {
 	var (
-		printHelp bool
-		moniker   string
-		nodeLaddr string
-		seeds     string
-		fastSync  bool
-		skipUPNP  bool
-		rpcLaddr  string
-		logLevel  string
-		proxyApp  string
+		printHelp     bool
+		moniker       string
+		nodeLaddr     string
+		seeds         string
+		fastSync      bool
+		skipUPNP      bool
+		rpcLaddr      string
+		logLevel      string
+		proxyApp      string
+		tmspTransport string
 	)
 
 	// Declare flags
@@ -32,6 +33,7 @@ func parseFlags(config cfg.Config, args []string) {
 	flags.StringVar(&logLevel, "log_level", config.GetString("log_level"), "Log level")
 	flags.StringVar(&proxyApp, "proxy_app", config.GetString("proxy_app"),
 		"Proxy app address, or 'nilapp' or 'dummy' for local testing.")
+	flags.StringVar(&tmspTransport, "tmsp", config.GetString("tmsp"), "Specify tmsp transport (socket | grpc)")
 	flags.Parse(args)
 	if printHelp {
 		flags.PrintDefaults()
@@ -47,4 +49,5 @@ func parseFlags(config cfg.Config, args []string) {
 	config.Set("rpc_laddr", rpcLaddr)
 	config.Set("log_level", logLevel)
 	config.Set("proxy_app", proxyApp)
+	config.Set("tmsp", tmspTransport)
 }
