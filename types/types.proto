@@ -6,6 +6,10 @@ package types;
 //----------------------------------------
 // Message types
 
+// Not being used 
+// Could be added to request/response
+// so we don't have to type switch
+// (would be twice as fast, but we're talking about 15ns)
 enum MessageType {
   NullMessage = 0x00;
 
@@ -70,24 +74,136 @@ enum CodeType {
 // Request types
 
 message Request {
-            MessageType       type        = 1;
-            bytes             data        = 2;
-            string            key         = 3;
-            string            value       = 4;
-  repeated  Validator         validators  = 5;
-            uint64            height      = 6;
+	oneof value{
+		RequestEcho echo = 1;
+		RequestFlush flush = 2;
+		RequestInfo info = 3;
+		RequestSetOption set_option = 4;
+		RequestAppendTx append_tx = 5;
+		RequestCheckTx check_tx = 6;
+		RequestCommit commit = 7;
+		RequestQuery query = 8;
+		RequestInitChain init_chain = 9;
+		RequestBeginBlock begin_block = 10;
+		RequestEndBlock end_block = 11;
+	}
+}
+
+message RequestEcho {
+	string message = 1;
+}
+
+message RequestFlush {
+}
+
+message RequestInfo {
+}
+
+message RequestSetOption{
+	string key = 1;
+	string value = 2;
+}
+
+message RequestAppendTx{
+	bytes tx	 = 1;
+}
+
+message RequestCheckTx{
+	bytes tx	 = 1;
+}
+
+message RequestQuery{
+	bytes query	 = 1;
+}
+
+message RequestCommit{
+}
+
+message RequestInitChain{
+	repeated Validator validators = 1;
+}
+
+message RequestBeginBlock{
+	uint64 height = 1;
+}
+
+message RequestEndBlock{
+	uint64 height = 1;
 }
 
 //----------------------------------------
 // Response types
 
+
 message Response {
-            MessageType       type        = 1;
-            bytes             data        = 2;
-            CodeType          code        = 3;
-            string            error       = 4;
-            string            log         = 5;
-  repeated  Validator         validators  = 6;
+	oneof value{
+		ResponseException exception = 1;
+		ResponseEcho echo = 2;
+		ResponseFlush flush = 3;
+		ResponseInfo info = 4;
+		ResponseSetOption set_option = 5;
+		ResponseAppendTx append_tx = 6;
+		ResponseCheckTx check_tx = 7;
+		ResponseCommit commit = 8;
+		ResponseQuery query = 9;
+		ResponseInitChain init_chain = 10;
+		ResponseBeginBlock begin_block = 11;
+		ResponseEndBlock end_block = 12;
+	}
+}
+
+message ResponseException{
+	string error = 1;
+}
+
+message ResponseEcho {
+	string message = 1;
+}
+
+message ResponseFlush{
+}
+
+message ResponseInfo {
+	string info = 1;
+}
+
+message ResponseSetOption{
+	string log = 1;
+}
+
+message ResponseAppendTx{
+	CodeType          code        = 1;
+	bytes             data        = 2;
+	string            log         = 3;
+}
+
+message ResponseCheckTx{
+	CodeType          code        = 1;
+	bytes             data        = 2;
+	string            log         = 3;
+}
+
+message ResponseQuery{
+	CodeType          code        = 1;
+	bytes             data        = 2;
+	string            log         = 3;
+}
+
+message ResponseCommit{
+	CodeType          code        = 1;
+	bytes             data        = 2;
+	string            log         = 3;
+}
+
+
+message ResponseInitChain{
+}
+
+message ResponseBeginBlock{
+}
+
+message ResponseEndBlock{
+	repeated Validator diffs = 4;
 }
 
 //----------------------------------------
@@ -96,4 +212,21 @@ message Response {
 message Validator {
             bytes             pubKey      = 1;
             uint64            power       = 2;
+}
+
+//----------------------------------------
+// Service Definition
+
+service TMSPApplication {
+	rpc Echo(RequestEcho) returns (ResponseEcho) ;
+	rpc Flush(RequestFlush) returns (ResponseFlush);
+	rpc Info(RequestInfo) returns (ResponseInfo);
+	rpc SetOption(RequestSetOption) returns (ResponseSetOption);
+	rpc AppendTx(RequestAppendTx) returns (ResponseAppendTx);
+	rpc CheckTx(RequestCheckTx) returns (ResponseCheckTx);
+	rpc Query(RequestQuery) returns (ResponseQuery);
+	rpc Commit(RequestCommit) returns (ResponseCommit);
+	rpc InitChain(RequestInitChain) returns (ResponseInitChain);
+	rpc BeginBlock(RequestBeginBlock) returns (ResponseBeginBlock);
+	rpc EndBlock(RequestEndBlock) returns (ResponseEndBlock);
 }

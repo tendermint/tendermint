@@ -5,18 +5,18 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"os"
 	"strings"
 
 	"github.com/codegangsta/cli"
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-wire/expr"
+	"github.com/tendermint/tmsp/client"
 	"github.com/tendermint/tmsp/types"
 )
 
-// connection is a global variable so it can be reused by the console
-var conn net.Conn
+// client is a global variable so it can be reused by the console
+var client tmspcli.Client
 
 func main() {
 	app := cli.NewApp()
@@ -27,6 +27,11 @@ func main() {
 			Name:  "address",
 			Value: "tcp://127.0.0.1:46658",
 			Usage: "address of application socket",
+		},
+		cli.StringFlag{
+			Name:  "tmsp",
+			Value: "socket",
+			Usage: "socket or grpc",
 		},
 	}
 	app.Commands = []cli.Command{
@@ -103,9 +108,9 @@ func main() {
 }
 
 func before(c *cli.Context) error {
-	if conn == nil {
+	if client == nil {
 		var err error
-		conn, err = Connect(c.GlobalString("address"))
+		client, err = tmspcli.NewClient(c.GlobalString("address"), c.GlobalString("tmsp"), false)
 		if err != nil {
 			Exit(err.Error())
 		}
@@ -148,7 +153,9 @@ func cmdConsole(app *cli.App, c *cli.Context) error {
 
 		args := []string{"tmsp"}
 		args = append(args, strings.Split(string(line), " ")...)
-		app.Run(args)
+		if err := app.Run(args); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -159,21 +166,15 @@ func cmdEcho(c *cli.Context) error {
 	if len(args) != 1 {
 		return errors.New("Command echo takes 1 argument")
 	}
-	res, err := makeRequest(conn, types.RequestEcho(args[0]))
-	if err != nil {
-		return err
-	}
-	printResponse(res, string(res.Data))
+	res := client.EchoSync(args[0])
+	printResponse(res, string(res.Data), false)
 	return nil
 }
 
 // Get some info from the application
 func cmdInfo(c *cli.Context) error {
-	res, err := makeRequest(conn, types.RequestInfo())
-	if err != nil {
-		return err
-	}
-	printResponse(res, string(res.Data))
+	res := client.InfoSync()
+	printResponse(res, string(res.Data), false)
 	return nil
 }
 
@@ -183,11 +184,8 @@ func cmdSetOption(c *cli.Context) error {
 	if len(args) != 2 {
 		return errors.New("Command set_option takes 2 arguments (key, value)")
 	}
-	res, err := makeRequest(conn, types.RequestSetOption(args[0], args[1]))
-	if err != nil {
-		return err
-	}
-	printResponse(res, Fmt("%s=%s", args[0], args[1]))
+	res := client.SetOptionSync(args[0], args[1])
+	printResponse(res, Fmt("%s=%s", args[0], args[1]), false)
 	return nil
 }
 
@@ -203,11 +201,8 @@ func cmdAppendTx(c *cli.Context) error {
 		return err
 	}
 
-	res, err := makeRequest(conn, types.RequestAppendTx(txBytes))
-	if err != nil {
-		return err
-	}
-	printResponse(res, string(res.Data))
+	res := client.AppendTxSync(txBytes)
+	printResponse(res, string(res.Data), true)
 	return nil
 }
 
@@ -223,21 +218,15 @@ func cmdCheckTx(c *cli.Context) error {
 		return err
 	}
 
-	res, err := makeRequest(conn, types.RequestCheckTx(txBytes))
-	if err != nil {
-		return err
-	}
-	printResponse(res, string(res.Data))
+	res := client.CheckTxSync(txBytes)
+	printResponse(res, string(res.Data), true)
 	return nil
 }
 
 // Get application Merkle root hash
 func cmdCommit(c *cli.Context) error {
-	res, err := makeRequest(conn, types.RequestCommit())
-	if err != nil {
-		return err
-	}
-	printResponse(res, Fmt("%X", res.Data))
+	res := client.CommitSync()
+	printResponse(res, Fmt("%X", res.Data), false)
 	return nil
 }
 
@@ -253,24 +242,20 @@ func cmdQuery(c *cli.Context) error {
 		return err
 	}
 
-	res, err := makeRequest(conn, types.RequestQuery(queryBytes))
-	if err != nil {
-		return err
-	}
-	printResponse(res, string(res.Data))
+	res := client.QuerySync(queryBytes)
+	printResponse(res, string(res.Data), true)
 	return nil
 }
 
 //--------------------------------------------------------------------------------
 
-func printResponse(res *types.Response, s string) {
-	switch res.Type {
-	case types.MessageType_AppendTx, types.MessageType_CheckTx, types.MessageType_Query:
+func printResponse(res types.Result, s string, printCode bool) {
+	if printCode {
 		fmt.Printf("-> code: %s\n", res.Code.String())
 	}
-	if res.Error != "" {
+	/*if res.Error != "" {
 		fmt.Printf("-> error: %s\n", res.Error)
-	}
+	}*/
 	if s != "" {
 		fmt.Printf("-> data: {%s}\n", s)
 	}
@@ -278,42 +263,4 @@ func printResponse(res *types.Response, s string) {
 		fmt.Printf("-> log: %s\n", res.Log)
 	}
 
-}
-
-func responseString(res *types.Response) string {
-	return Fmt("type: %v\tdata: %v\tcode: %v", res.Type, res.Data, res.Code)
-}
-
-func makeRequest(conn net.Conn, req *types.Request) (*types.Response, error) {
-
-	// Write desired request
-	err := types.WriteMessage(req, conn)
-	if err != nil {
-		return nil, err
-	}
-
-	// Write flush request
-	err = types.WriteMessage(types.RequestFlush(), conn)
-	if err != nil {
-		return nil, err
-	}
-
-	// Read desired response
-	var res = &types.Response{}
-	err = types.ReadMessage(conn, res)
-	if err != nil {
-		return nil, err
-	}
-
-	// Read flush response
-	var resFlush = &types.Response{}
-	err = types.ReadMessage(conn, resFlush)
-	if err != nil {
-		return nil, err
-	}
-	if resFlush.Type != types.MessageType_Flush {
-		return nil, errors.New(Fmt("Expected types.MessageType_Flush but got %v instead", resFlush.Type))
-	}
-
-	return res, nil
 }

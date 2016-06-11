@@ -1,8 +1,13 @@
 package nilapp
 
 import (
+	"net"
+	"reflect"
 	"testing"
 	"time"
+
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/tmsp/server"
@@ -14,7 +19,7 @@ func TestStream(t *testing.T) {
 	numAppendTxs := 200000
 
 	// Start the listener
-	server, err := server.NewServer("unix://test.sock", NewNilApplication())
+	server, err := server.NewSocketServer("unix://test.sock", NewNilApplication())
 	if err != nil {
 		Exit(err.Error())
 	}
@@ -39,11 +44,11 @@ func TestStream(t *testing.T) {
 			}
 
 			// Process response
-			switch res.Type {
-			case types.MessageType_AppendTx:
+			switch r := res.Value.(type) {
+			case *types.Response_AppendTx:
 				counter += 1
-				if res.Code != types.CodeType_OK {
-					t.Error("AppendTx failed with ret_code", res.Code)
+				if r.AppendTx.Code != types.CodeType_OK {
+					t.Error("AppendTx failed with ret_code", r.AppendTx.Code)
 				}
 				if counter > numAppendTxs {
 					t.Fatal("Too many AppendTx responses")
@@ -55,10 +60,10 @@ func TestStream(t *testing.T) {
 						close(done)
 					}()
 				}
-			case types.MessageType_Flush:
+			case *types.Response_Flush:
 				// ignore
 			default:
-				t.Error("Unexpected response type", res.Type)
+				t.Error("Unexpected response type", reflect.TypeOf(res.Value))
 			}
 		}
 	}()
@@ -66,7 +71,7 @@ func TestStream(t *testing.T) {
 	// Write requests
 	for counter := 0; counter < numAppendTxs; counter++ {
 		// Send request
-		var req = types.RequestAppendTx([]byte("test"))
+		var req = types.ToRequestAppendTx([]byte("test"))
 		err := types.WriteMessage(req, conn)
 		if err != nil {
 			t.Fatal(err.Error())
@@ -75,7 +80,7 @@ func TestStream(t *testing.T) {
 		// Sometimes send flush messages
 		if counter%123 == 0 {
 			t.Log("flush")
-			err := types.WriteMessage(types.RequestFlush(), conn)
+			err := types.WriteMessage(types.ToRequestFlush(), conn)
 			if err != nil {
 				t.Fatal(err.Error())
 			}
@@ -83,10 +88,61 @@ func TestStream(t *testing.T) {
 	}
 
 	// Send final flush message
-	err = types.WriteMessage(types.RequestFlush(), conn)
+	err = types.WriteMessage(types.ToRequestFlush(), conn)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
 	<-done
+}
+
+//-------------------------
+// test grpc
+
+func dialerFunc(addr string, timeout time.Duration) (net.Conn, error) {
+	return Connect(addr)
+}
+
+func TestGRPCSync(t *testing.T) {
+
+	numAppendTxs := 2000
+
+	// Start the listener
+	server, err := server.NewGRPCServer("unix://test.sock", types.NewGRPCApplication(NewNilApplication()))
+	if err != nil {
+		Exit(err.Error())
+	}
+	defer server.Stop()
+
+	// Connect to the socket
+	conn, err := grpc.Dial("unix://test.sock", grpc.WithInsecure(), grpc.WithDialer(dialerFunc))
+	if err != nil {
+		Exit(err.Error())
+	}
+	defer conn.Close()
+
+	client := types.NewTMSPApplicationClient(conn)
+
+	// Write requests
+	for counter := 0; counter < numAppendTxs; counter++ {
+		// Send request
+		response, err := client.AppendTx(context.Background(), &types.RequestAppendTx{[]byte("test")})
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+		counter += 1
+		if response.Code != types.CodeType_OK {
+			t.Error("AppendTx failed with ret_code", response.Code)
+		}
+		if counter > numAppendTxs {
+			t.Fatal("Too many AppendTx responses")
+		}
+		t.Log("response", counter)
+		if counter == numAppendTxs {
+			go func() {
+				time.Sleep(time.Second * 2) // Wait for a bit to allow counter overflow
+			}()
+		}
+
+	}
 }

@@ -1,8 +1,10 @@
 package tmspcli
 
 import (
-	"github.com/tendermint/tmsp/types"
+	"fmt"
 	"sync"
+
+	"github.com/tendermint/tmsp/types"
 )
 
 type Client interface {
@@ -35,6 +37,21 @@ type Client interface {
 	InitChainSync(validators []*types.Validator) (err error)
 	BeginBlockSync(height uint64) (err error)
 	EndBlockSync(height uint64) (changedValidators []*types.Validator, err error)
+}
+
+//----------------------------------------
+
+func NewClient(addr, transport string, mustConnect bool) (client Client, err error) {
+	switch transport {
+	case "socket":
+		client, err = NewSocketClient(addr, mustConnect)
+	case "grpc":
+		client, err = NewGRPCClient(addr, mustConnect)
+	default:
+		err = fmt.Errorf("Unknown tmsp transport %s", transport)
+
+	}
+	return
 }
 
 //----------------------------------------
