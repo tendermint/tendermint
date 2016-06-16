@@ -1,7 +1,7 @@
 # Tendermint
 Simple, Secure, Scalable Blockchain Platform
 
-[![Build Status](https://drone.io/github.com/tendermint/tendermint/status.png)](https://drone.io/github.com/tendermint/tendermint/latest)
+[![CircleCI](https://circleci.com/gh/tendermint/tendermint.svg?style=svg)](https://circleci.com/gh/tendermint/tendermint)
 
 ## Resources
 
