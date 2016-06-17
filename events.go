@@ -74,12 +74,14 @@ func (evsw *EventSwitch) RemoveListener(listenerID string) {
 	// Get and remove listener
 	evsw.mtx.RLock()
 	listener := evsw.listeners[listenerID]
-	delete(evsw.listeners, listenerID)
 	evsw.mtx.RUnlock()
-
 	if listener == nil {
 		return
 	}
+
+	evsw.mtx.Lock()
+	delete(evsw.listeners, listenerID)
+	evsw.mtx.Unlock()
 
 	// Remove callback for each event.
 	listener.SetRemoved()
