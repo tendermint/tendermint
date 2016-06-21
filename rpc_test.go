@@ -54,12 +54,12 @@ func init() {
 		}
 	}()
 
-	mux = http.NewServeMux()
-	rpcserver.RegisterRPCFuncs(mux, Routes)
+	mux2 := http.NewServeMux()
+	rpcserver.RegisterRPCFuncs(mux2, Routes)
 	wm = rpcserver.NewWebsocketManager(Routes, nil)
-	mux.HandleFunc(websocketEndpoint, wm.WebsocketHandler)
+	mux2.HandleFunc(websocketEndpoint, wm.WebsocketHandler)
 	go func() {
-		_, err := rpcserver.StartHTTPServer(unixAddr, mux)
+		_, err := rpcserver.StartHTTPServer(unixAddr, mux2)
 		if err != nil {
 			panic(err)
 		}
