@@ -1,8 +1,11 @@
 package rpctest
 
 import (
+	"net"
 	"testing"
 	"time"
+
+	grpc "google.golang.org/grpc"
 
 	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
@@ -13,6 +16,7 @@ import (
 	"github.com/tendermint/tendermint/config/tendermint_test"
 	nm "github.com/tendermint/tendermint/node"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tendermint/rpc/grpc"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -26,8 +30,10 @@ var (
 	requestAddr       string
 	websocketAddr     string
 	websocketEndpoint string
+	grpcAddr          string
 	clientURI         *client.ClientURI
 	clientJSON        *client.ClientJSONRPC
+	clientGRPC        core_grpc.BroadcastAPIClient
 )
 
 // initialize config and create new node
@@ -35,6 +41,7 @@ func init() {
 	config = tendermint_test.ResetConfig("rpc_test_client_test")
 	chainID = config.GetString("chain_id")
 	rpcAddr = config.GetString("rpc_laddr")
+	grpcAddr = config.GetString("grpc_laddr")
 	requestAddr = rpcAddr
 	websocketAddr = rpcAddr
 	websocketEndpoint = "/websocket"
@@ -50,6 +57,10 @@ func init() {
 	<-ready
 }
 
+func dialerFunc(addr string, timeout time.Duration) (net.Conn, error) {
+	return Connect(addr)
+}
+
 // create a new node and sleep forever
 func newNode(ready chan struct{}) {
 	// Create & start node
@@ -62,6 +73,14 @@ func newNode(ready chan struct{}) {
 
 	// Run the RPC server.
 	node.StartRPC()
+	time.Sleep(time.Second)
+
+	conn, err := grpc.Dial(grpcAddr, grpc.WithInsecure(), grpc.WithDialer(dialerFunc))
+	if err != nil {
+		panic(err)
+	}
+	clientGRPC = core_grpc.NewBroadcastAPIClient(conn)
+
 	ready <- struct{}{}
 
 	// Sleep forever

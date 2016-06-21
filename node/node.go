@@ -23,6 +23,7 @@ import (
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
 	rpccore "github.com/tendermint/tendermint/rpc/core"
+	grpccore "github.com/tendermint/tendermint/rpc/grpc"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
@@ -200,6 +201,15 @@ func (n *Node) StartRPC() ([]net.Listener, error) {
 		}
 		listeners[i] = listener
 	}
+
+	listenAddr := n.config.GetString("grpc_laddr")
+	if listenAddr != "" {
+		_, err := grpccore.NewGRPCServer(listenAddr)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return listeners, nil
 }
 
