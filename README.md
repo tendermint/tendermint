@@ -1,5 +1,7 @@
 # `tendermint/go-p2p`
 
+[![CircleCI](https://circleci.com/gh/tendermint/go-p2p.svg?style=svg)](https://circleci.com/gh/tendermint/go-p2p)
+
 `tendermint/go-p2p` provides an abstraction around peer-to-peer communication.<br/>
 
 ## Peer/MConnection/Channel
