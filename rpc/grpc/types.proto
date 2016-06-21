@@ -1,0 +1,41 @@
+syntax = "proto3";
+package core_grpc;
+
+//----------------------------------------
+// Message types
+
+//----------------------------------------
+// Request types
+
+message Request {
+	oneof value{
+		RequestBroadcastTx broadcast_tx = 1;
+	}
+}
+
+message RequestBroadcastTx {
+	bytes tx = 1;
+}
+
+//----------------------------------------
+// Response types
+
+
+message Response {
+	oneof value{
+		ResponseBroadcastTx broadcast_tx = 1;
+	}
+}
+
+message ResponseBroadcastTx{
+	uint64 		  code        = 1; // TODO: import tmsp ...
+	bytes             data        = 2;
+	string            log         = 3;
+}
+
+//----------------------------------------
+// Service Definition
+
+service BroadcastAPI {
+	rpc BroadcastTx(RequestBroadcastTx) returns (ResponseBroadcastTx) ;
+}

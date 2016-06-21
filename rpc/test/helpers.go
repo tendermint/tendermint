@@ -13,6 +13,8 @@ import (
 	"github.com/tendermint/tendermint/config/tendermint_test"
 	nm "github.com/tendermint/tendermint/node"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tendermint/rpc/grpc"
+	"github.com/tendermint/tendermint/types"
 )
 
 // global variables for use across all tests
@@ -24,8 +26,10 @@ var (
 	requestAddr       string
 	websocketAddr     string
 	websocketEndpoint string
+	grpcAddr          string
 	clientURI         *client.ClientURI
 	clientJSON        *client.ClientJSONRPC
+	clientGRPC        core_grpc.BroadcastAPIClient
 )
 
 // initialize config and create new node
@@ -33,12 +37,14 @@ func init() {
 	config = tendermint_test.ResetConfig("rpc_test_client_test")
 	chainID = config.GetString("chain_id")
 	rpcAddr = config.GetString("rpc_laddr")
+	grpcAddr = config.GetString("grpc_laddr")
 	requestAddr = rpcAddr
 	websocketAddr = rpcAddr
 	websocketEndpoint = "/websocket"
 
 	clientURI = client.NewClientURI(requestAddr)
 	clientJSON = client.NewClientJSONRPC(requestAddr)
+	clientGRPC = core_grpc.StartGRPCClient(grpcAddr)
 
 	// TODO: change consensus/state.go timeouts to be shorter
 
@@ -59,6 +65,8 @@ func newNode(ready chan struct{}) {
 
 	// Run the RPC server.
 	node.StartRPC()
+	time.Sleep(time.Second)
+
 	ready <- struct{}{}
 
 	// Sleep forever
