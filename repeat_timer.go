@@ -15,6 +15,7 @@ type RepeatTimer struct {
 	name   string
 	ticker *time.Ticker
 	quit   chan struct{}
+	done   chan struct{}
 	dur    time.Duration
 }
 
@@ -23,6 +24,7 @@ func NewRepeatTimer(name string, dur time.Duration) *RepeatTimer {
 		Ch:     make(chan time.Time),
 		ticker: time.NewTicker(dur),
 		quit:   make(chan struct{}),
+		done:   make(chan struct{}),
 		name:   name,
 		dur:    dur,
 	}
@@ -36,6 +38,8 @@ func (t *RepeatTimer) fireRoutine(ticker *time.Ticker) {
 		case t_ := <-ticker.C:
 			t.Ch <- t_
 		case <-t.quit:
+			// needed so we know when we can reset t.quit
+			t.done <- struct{}{}
 			return
 		}
 	}
@@ -64,9 +68,10 @@ func (t *RepeatTimer) Stop() bool {
 
 	exists := t.ticker != nil
 	if exists {
-		t.ticker.Stop()
-		t.ticker = nil
+		t.ticker.Stop() // does not close the channel
 		close(t.quit)
+		<-t.done
+		t.ticker = nil
 	}
 	return exists
 }
