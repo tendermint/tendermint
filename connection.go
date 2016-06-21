@@ -87,8 +87,6 @@ type MConnection struct {
 }
 
 func NewMConnection(config cfg.Config, conn net.Conn, chDescs []*ChannelDescriptor, onReceive receiveCbFunc, onError errorCbFunc) *MConnection {
-	setConfigDefaults(config)
-
 	mconn := &MConnection{
 		conn:        conn,
 		bufReader:   bufio.NewReaderSize(conn, minReadBufferSize),

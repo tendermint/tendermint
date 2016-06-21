@@ -76,6 +76,12 @@ func (tr *TestReactor) Receive(chID byte, peer *Peer, msgBytes []byte) {
 	}
 }
 
+func (tr *TestReactor) getMsgs(chID byte) []PeerMessage {
+	tr.mtx.Lock()
+	defer tr.mtx.Unlock()
+	return tr.msgsReceived[chID]
+}
+
 //-----------------------------------------------------------------------------
 
 // convenience method for creating two switches connected to each other.
@@ -170,7 +176,7 @@ func TestSwitches(t *testing.T) {
 	time.Sleep(5000 * time.Millisecond)
 
 	// Check message on ch0
-	ch0Msgs := s2.Reactor("foo").(*TestReactor).msgsReceived[byte(0x00)]
+	ch0Msgs := s2.Reactor("foo").(*TestReactor).getMsgs(byte(0x00))
 	if len(ch0Msgs) != 1 {
 		t.Errorf("Expected to have received 1 message in ch0")
 	}
@@ -179,7 +185,7 @@ func TestSwitches(t *testing.T) {
 	}
 
 	// Check message on ch1
-	ch1Msgs := s2.Reactor("foo").(*TestReactor).msgsReceived[byte(0x01)]
+	ch1Msgs := s2.Reactor("foo").(*TestReactor).getMsgs(byte(0x01))
 	if len(ch1Msgs) != 1 {
 		t.Errorf("Expected to have received 1 message in ch1")
 	}
@@ -188,7 +194,7 @@ func TestSwitches(t *testing.T) {
 	}
 
 	// Check message on ch2
-	ch2Msgs := s2.Reactor("bar").(*TestReactor).msgsReceived[byte(0x02)]
+	ch2Msgs := s2.Reactor("bar").(*TestReactor).getMsgs(byte(0x02))
 	if len(ch2Msgs) != 1 {
 		t.Errorf("Expected to have received 1 message in ch2")
 	}

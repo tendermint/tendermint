@@ -181,8 +181,8 @@ func (sw *Switch) OnStop() {
 	// Stop peers
 	for _, peer := range sw.peers.List() {
 		peer.Stop()
+		sw.peers.Remove(peer)
 	}
-	sw.peers = NewPeerSet()
 	// Stop reactors
 	for _, reactor := range sw.reactors {
 		reactor.Stop()
