@@ -197,6 +197,7 @@ func (cli *grpcClient) finishAsyncCall(req *types.Request, res *types.Response) 
 	reqres := NewReqRes(req)
 	reqres.Response = res // Set response
 	reqres.Done()         // Release waiters
+	reqres.SetDone()      // so reqRes.SetCallback will run the callback
 
 	// Notify reqRes listener if set
 	if cb := reqres.GetCallback(); cb != nil {
