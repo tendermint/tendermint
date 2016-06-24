@@ -1,5 +1,5 @@
 hash: d87a1fe0061d41c1e6ec78d405d54ae321e75f4bff22b38d19d3255bbd17f21e
-updated: 2016-06-24T15:38:36.960099681-04:00
+updated: 2016-06-24T16:19:11.886984338-04:00
 imports:
 - name: github.com/btcsuite/btcd
   version: ff4ada0b0e1ebffa3f9c15cadc96ab0d08a11034
@@ -12,7 +12,7 @@ imports:
 - name: github.com/go-stack/stack
   version: 100eb0c0a9c5b306ca2fb4f165df21d80ada4b82
 - name: github.com/gogo/protobuf
-  version: 318371cbef6bab80e8d1c69b470fffa79eebfb54
+  version: 2752d97bbd91927dd1c43296dbf8700e50e2708c
   subpackages:
   - proto
 - name: github.com/golang/protobuf
