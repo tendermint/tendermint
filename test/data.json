@@ -1,0 +1,6 @@
+{
+	"jsonrpc":"2.0",
+	"id":"",
+	"method":"hello_world",
+	"params":["my_world", 5]
+}
