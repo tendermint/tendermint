@@ -39,7 +39,7 @@ As a POST request, we use JSONRPC. For instance, the same request would have thi
 }
 ```
 
-Note the `params` does not currently support key-value pairs (#1), so order matters (you can get the order from making a 
+Note the `params` does not currently support key-value pairs (https://github.com/tendermint/go-rpc/issues/1), so order matters (you can get the order from making a 
 GET request to `/`)
 
 With the above saved in file `data.json`, we can make the request with
