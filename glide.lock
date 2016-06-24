@@ -1,5 +1,5 @@
 hash: d87a1fe0061d41c1e6ec78d405d54ae321e75f4bff22b38d19d3255bbd17f21e
-updated: 2016-06-11T18:38:47.019992204-07:00
+updated: 2016-06-24T15:38:36.960099681-04:00
 imports:
 - name: github.com/btcsuite/btcd
   version: ff4ada0b0e1ebffa3f9c15cadc96ab0d08a11034
@@ -55,6 +55,8 @@ imports:
   version: 634527f5b60fd7c71ca811262493df2ad65ee0ca
 - name: github.com/tendermint/go-common
   version: dcfa46af1341d03b80d32e4901019d1668b978b9
+  subpackages:
+  - test
 - name: github.com/tendermint/go-config
   version: cfcef384d64b94e50909596e39b32ffb3cc20573
 - name: github.com/tendermint/go-crypto
@@ -84,12 +86,14 @@ imports:
   subpackages:
   - term
 - name: github.com/tendermint/tmsp
-  version: f41bc5f11969e22b357d94b4247403fd62d40445
+  version: 2c21c7be894c187b3cdb884f5d22fe4f9da85377
   subpackages:
   - client
   - example/dummy
   - example/nil
   - types
+  - example/counter
+  - server
 - name: golang.org/x/crypto
   version: 77f4136a99ffb5ecdbdd0226bd5cb146cf56bc0e
   subpackages:
@@ -115,7 +119,7 @@ imports:
   subpackages:
   - unix
 - name: google.golang.org/grpc
-  version: 88aeffff979aa77aa502cb011423d0a08fa12c5a
+  version: 69420784d409f9ff88b424436f52001b26144e20
   subpackages:
   - codes
   - credentials
@@ -125,4 +129,4 @@ imports:
   - naming
   - transport
   - peer
-devImports: []
+testImports: []
