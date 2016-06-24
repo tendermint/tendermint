@@ -144,6 +144,13 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*tmsp.Response)) (err error) {
 	return nil
 }
 
+func (mem *Mempool) removeTxFromCacheMap(tx []byte) {
+	mem.proxyMtx.Lock()
+	delete(mem.cacheMap, string(tx))
+	mem.proxyMtx.Unlock()
+
+}
+
 // TMSP callback function
 func (mem *Mempool) resCb(req *tmsp.Request, res *tmsp.Response) {
 	if mem.recheckCursor == nil {
@@ -165,8 +172,12 @@ func (mem *Mempool) resCbNormal(req *tmsp.Request, res *tmsp.Response) {
 			}
 			mem.txs.PushBack(memTx)
 		} else {
-			log.Info("Bad Transaction", "res", r)
 			// ignore bad transaction
+			log.Info("Bad Transaction", "res", r)
+
+			// remove from cache (it might be good later)
+			mem.removeTxFromCacheMap(req.GetCheckTx().Tx)
+
 			// TODO: handle other retcodes
 		}
 	default:
@@ -188,6 +199,9 @@ func (mem *Mempool) resCbRecheck(req *tmsp.Request, res *tmsp.Response) {
 			// Tx became invalidated due to newly committed block.
 			mem.txs.Remove(mem.recheckCursor)
 			mem.recheckCursor.DetachPrev()
+
+			// remove from cache (it might be good later)
+			mem.removeTxFromCacheMap(req.GetCheckTx().Tx)
 		}
 		if mem.recheckCursor == mem.recheckEnd {
 			mem.recheckCursor = nil
@@ -270,10 +284,19 @@ func (mem *Mempool) filterTxs(blockTxsMap map[string]struct{}) []types.Tx {
 	goodTxs := make([]types.Tx, 0, mem.txs.Len())
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
+		// Remove the tx if its alredy in a block.
 		if _, ok := blockTxsMap[string(memTx.tx)]; ok {
-			// Remove the tx since already in block.
+			// remove from clist
 			mem.txs.Remove(e)
 			e.DetachPrev()
+
+			// remove from mempool cache
+			// we only enforce "at-least once" semantics and
+			// leave it to the application to implement "only-once"
+			// via eg. sequence numbers, utxos, etc.
+			// NOTE: expects caller of filterTxs to hold the lock
+			// (so we can't use mem.removeTxFromCacheMap)
+			delete(mem.cacheMap, string(memTx.tx))
 			continue
 		}
 		// Good tx!
