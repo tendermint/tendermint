@@ -20,6 +20,9 @@ build_race:
 
 test: build
 	go test `${NOVENDOR}`
+	
+test_race: build
+	go test -race `${NOVENDOR}`
 
 test100: build
 	for i in {1..100}; do make test; done
