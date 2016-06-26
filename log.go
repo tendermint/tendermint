@@ -72,5 +72,6 @@ func getLevel(lvlString string) log15.Lvl {
 var LvlFilterHandler = log15.LvlFilterHandler
 var LvlDebug = log15.LvlDebug
 var LvlInfo = log15.LvlInfo
+var LvlNotice = log15.LvlNotice
 var LvlWarn = log15.LvlWarn
 var LvlError = log15.LvlError
