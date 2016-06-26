@@ -209,6 +209,12 @@ func (ti *timeoutInfo) String() string {
 	return fmt.Sprintf("%v ; %d/%d %v", ti.Duration, ti.Height, ti.Round, ti.Step)
 }
 
+type PrivValidator interface {
+	GetAddress() []byte
+	SignVote(chainID string, vote *types.Vote) error
+	SignProposal(chainID string, proposal *types.Proposal) error
+}
+
 // Tracks consensus state across block heights and rounds.
 type ConsensusState struct {
 	BaseService
@@ -217,7 +223,7 @@ type ConsensusState struct {
 	proxyAppConn  proxy.AppConnConsensus
 	blockStore    *bc.BlockStore
 	mempool       *mempl.Mempool
-	privValidator *types.PrivValidator
+	privValidator PrivValidator
 
 	mtx sync.Mutex
 	RoundState
@@ -236,6 +242,11 @@ type ConsensusState struct {
 	replayMode bool // so we don't log signing errors during replay
 
 	nSteps int // used for testing to limit the number of transitions the state makes
+
+	// allow certain function to be overwritten for testing
+	decideProposal func(height, round int)
+	doPrevote      func(height, round int)
+	setProposal    func(proposal *types.Proposal) error
 }
 
 func NewConsensusState(config cfg.Config, state *sm.State, proxyAppConn proxy.AppConnConsensus, blockStore *bc.BlockStore, mempool *mempl.Mempool) *ConsensusState {
@@ -251,6 +262,11 @@ func NewConsensusState(config cfg.Config, state *sm.State, proxyAppConn proxy.Ap
 		tockChan:         make(chan timeoutInfo, tickTockBufferSize),
 		timeoutParams:    InitTimeoutParamsFromConfig(config),
 	}
+	// set function defaults (may be overwritten before calling Start)
+	cs.decideProposal = cs.defaultDecideProposal
+	cs.doPrevote = cs.defaultDoPrevote
+	cs.setProposal = cs.defaultSetProposal
+
 	cs.updateToState(state)
 	// Don't call scheduleRound0 yet.
 	// We do that upon Start().
@@ -295,7 +311,7 @@ func (cs *ConsensusState) GetValidators() (int, []*types.Validator) {
 	return cs.state.LastBlockHeight, cs.state.Validators.Copy().Validators
 }
 
-func (cs *ConsensusState) SetPrivValidator(priv *types.PrivValidator) {
+func (cs *ConsensusState) SetPrivValidator(priv PrivValidator) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	cs.privValidator = priv
@@ -825,16 +841,16 @@ func (cs *ConsensusState) enterPropose(height int, round int) {
 		return
 	}
 
-	if !bytes.Equal(cs.Validators.Proposer().Address, cs.privValidator.Address) {
+	if !bytes.Equal(cs.Validators.Proposer().Address, cs.privValidator.GetAddress()) {
 		log.Info("enterPropose: Not our turn to propose", "proposer", cs.Validators.Proposer().Address, "privValidator", cs.privValidator)
 	} else {
 		log.Info("enterPropose: Our turn to propose", "proposer", cs.Validators.Proposer().Address, "privValidator", cs.privValidator)
 		cs.decideProposal(height, round)
-	}
 
+	}
 }
 
-func (cs *ConsensusState) decideProposal(height, round int) {
+func (cs *ConsensusState) defaultDecideProposal(height, round int) {
 	var block *types.Block
 	var blockParts *types.PartSet
 
@@ -875,7 +891,6 @@ func (cs *ConsensusState) decideProposal(height, round int) {
 			log.Warn("enterPropose: Error signing proposal", "height", height, "round", round, "error", err)
 		}
 	}
-
 }
 
 // Returns true if the proposal block is complete &&
@@ -972,10 +987,10 @@ func (cs *ConsensusState) enterPrevote(height int, round int) {
 	// (so we have more time to try and collect +2/3 prevotes for a single block)
 }
 
-func (cs *ConsensusState) doPrevote(height int, round int) {
+func (cs *ConsensusState) defaultDoPrevote(height int, round int) {
 	// If a block is locked, prevote that.
 	if cs.LockedBlock != nil {
-		log.Info("enterPrevote: Block was locked")
+		log.Notice("enterPrevote: Block was locked")
 		cs.signAddVote(types.VoteTypePrevote, cs.LockedBlock.Hash(), cs.LockedBlockParts.Header())
 		return
 	}
@@ -1051,9 +1066,9 @@ func (cs *ConsensusState) enterPrecommit(height int, round int) {
 	// If we don't have a polka, we must precommit nil
 	if !ok {
 		if cs.LockedBlock != nil {
-			log.Info("enterPrecommit: No +2/3 prevotes during enterPrecommit while we're locked. Precommitting nil")
+			log.Notice("enterPrecommit: No +2/3 prevotes during enterPrecommit while we're locked. Precommitting nil")
 		} else {
-			log.Info("enterPrecommit: No +2/3 prevotes during enterPrecommit. Precommitting nil.")
+			log.Notice("enterPrecommit: No +2/3 prevotes during enterPrecommit. Precommitting nil.")
 		}
 		cs.signAddVote(types.VoteTypePrecommit, nil, types.PartSetHeader{})
 		return
@@ -1322,8 +1337,9 @@ func (cs *ConsensusState) commitStateUpdateMempool(s *sm.State, block *types.Blo
 
 //-----------------------------------------------------------------------------
 
-func (cs *ConsensusState) setProposal(proposal *types.Proposal) error {
+func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
 	// Already have one
+	// TODO: possibly catch double proposals
 	if cs.Proposal != nil {
 		return nil
 	}
@@ -1519,9 +1535,10 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerKey string) (added bool,
 
 func (cs *ConsensusState) signVote(type_ byte, hash []byte, header types.PartSetHeader) (*types.Vote, error) {
 	// TODO: store our index in the cs so we don't have to do this every time
-	valIndex, _ := cs.Validators.GetByAddress(cs.privValidator.Address)
+	addr := cs.privValidator.GetAddress()
+	valIndex, _ := cs.Validators.GetByAddress(addr)
 	vote := &types.Vote{
-		ValidatorAddress: cs.privValidator.Address,
+		ValidatorAddress: addr,
 		ValidatorIndex:   valIndex,
 		Height:           cs.Height,
 		Round:            cs.Round,
@@ -1534,8 +1551,7 @@ func (cs *ConsensusState) signVote(type_ byte, hash []byte, header types.PartSet
 
 // sign the vote and publish on internalMsgQueue
 func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header types.PartSetHeader) *types.Vote {
-
-	if cs.privValidator == nil || !cs.Validators.HasAddress(cs.privValidator.Address) {
+	if cs.privValidator == nil || !cs.Validators.HasAddress(cs.privValidator.GetAddress()) {
 		return nil
 	}
 	vote, err := cs.signVote(type_, hash, header)
@@ -1544,9 +1560,9 @@ func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header types.Part
 		log.Info("Signed and pushed vote", "height", cs.Height, "round", cs.Round, "vote", vote, "error", err)
 		return vote
 	} else {
-		if !cs.replayMode {
-			log.Warn("Error signing vote", "height", cs.Height, "round", cs.Round, "vote", vote, "error", err)
-		}
+		//if !cs.replayMode {
+		log.Warn("Error signing vote", "height", cs.Height, "round", cs.Round, "vote", vote, "error", err)
+		//}
 		return nil
 	}
 }

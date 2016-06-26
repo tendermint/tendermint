@@ -271,7 +271,7 @@ func (conR *ConsensusReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte)
 }
 
 // Sets our private validator account for signing votes.
-func (conR *ConsensusReactor) SetPrivValidator(priv *types.PrivValidator) {
+func (conR *ConsensusReactor) SetPrivValidator(priv PrivValidator) {
 	conR.conS.SetPrivValidator(priv)
 }
 
@@ -399,7 +399,11 @@ OUTER_LOOP:
 			if index, ok := prs.ProposalBlockParts.Not().PickRandom(); ok {
 				// Ensure that the peer's PartSetHeader is correct
 				blockMeta := conR.blockStore.LoadBlockMeta(prs.Height)
-				if !blockMeta.PartsHeader.Equals(prs.ProposalBlockPartsHeader) {
+				if blockMeta == nil {
+					log.Warn("Failed to load block meta", "peer height", prs.Height, "our height", rs.Height)
+					time.Sleep(peerGossipSleepDuration)
+					continue OUTER_LOOP
+				} else if !blockMeta.PartsHeader.Equals(prs.ProposalBlockPartsHeader) {
 					log.Info("Peer ProposalBlockPartsHeader mismatch, sleeping",
 						"peerHeight", prs.Height, "blockPartsHeader", blockMeta.PartsHeader, "peerBlockPartsHeader", prs.ProposalBlockPartsHeader)
 					time.Sleep(peerGossipSleepDuration)

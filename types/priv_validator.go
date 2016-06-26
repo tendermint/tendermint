@@ -163,6 +163,10 @@ func (privVal *PrivValidator) Reset() {
 	privVal.Save()
 }
 
+func (privVal *PrivValidator) GetAddress() []byte {
+	return privVal.Address
+}
+
 func (privVal *PrivValidator) SignVote(chainID string, vote *Vote) error {
 	privVal.mtx.Lock()
 	defer privVal.mtx.Unlock()
@@ -231,6 +235,7 @@ func (privVal *PrivValidator) signBytesHRS(height, round int, step int8, signByt
 	privVal.save()
 
 	return signature, nil
+
 }
 
 func (privVal *PrivValidator) String() string {
