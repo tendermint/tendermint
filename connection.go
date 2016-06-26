@@ -115,7 +115,8 @@ func NewMConnection(config cfg.Config, conn net.Conn, chDescs []*ChannelDescript
 	var channels = []*Channel{}
 
 	for _, desc := range chDescs {
-		channel := newChannel(mconn, desc)
+		descCopy := *desc // copy the desc else unsafe access across connections
+		channel := newChannel(mconn, &descCopy)
 		channelsIdx[channel.id] = channel
 		channels = append(channels, channel)
 	}
