@@ -2,13 +2,13 @@ package p2p
 
 import (
 	"bytes"
+	"net"
 	"sync"
 	"testing"
 	"time"
 
 	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
-	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-wire"
 )
 
@@ -85,63 +85,15 @@ func (tr *TestReactor) getMsgs(chID byte) []PeerMessage {
 //-----------------------------------------------------------------------------
 
 // convenience method for creating two switches connected to each other.
-func makeSwitchPair(t testing.TB, initSwitch func(*Switch) *Switch) (*Switch, *Switch) {
-
-	s1PrivKey := crypto.GenPrivKeyEd25519()
-	s2PrivKey := crypto.GenPrivKeyEd25519()
-
+// XXX: note this uses net.Pipe and not a proper TCP conn
+func makeSwitchPair(t testing.TB, initSwitch func(int, *Switch) *Switch) (*Switch, *Switch) {
 	// Create two switches that will be interconnected.
-	s1 := initSwitch(NewSwitch(config))
-	s1.SetNodeInfo(&NodeInfo{
-		PubKey:  s1PrivKey.PubKey().(crypto.PubKeyEd25519),
-		Moniker: "switch1",
-		Network: "testing",
-		Version: "123.123.123",
-	})
-	s1.SetNodePrivKey(s1PrivKey)
-	s2 := initSwitch(NewSwitch(config))
-	s2.SetNodeInfo(&NodeInfo{
-		PubKey:  s2PrivKey.PubKey().(crypto.PubKeyEd25519),
-		Moniker: "switch2",
-		Network: "testing",
-		Version: "123.123.123",
-	})
-	s2.SetNodePrivKey(s2PrivKey)
-
-	// Start switches and reactors
-	s1.Start()
-	s2.Start()
-
-	// Create a listener for s1
-	l := NewDefaultListener("tcp", ":8001", true)
-
-	// Dial the listener & add the connection to s2.
-	lAddr := l.ExternalAddress()
-	connOut, err := lAddr.Dial()
-	if err != nil {
-		t.Fatalf("Could not connect to listener address %v", lAddr)
-	} else {
-		t.Logf("Created a connection to listener address %v", lAddr)
-	}
-	connIn, ok := <-l.Connections()
-	if !ok {
-		t.Fatalf("Could not get inbound connection from listener")
-	}
-
-	go s1.AddPeerWithConnection(connIn, false) // AddPeer is blocking, requires handshake.
-	s2.AddPeerWithConnection(connOut, true)
-
-	// Wait for things to happen, peers to get added...
-	time.Sleep(100 * time.Millisecond)
-
-	// Close the server, no longer needed.
-	l.Stop()
-
-	return s1, s2
+	switches := MakeConnectedSwitches(2, initSwitch, net.Pipe)
+	return switches[0], switches[1]
 }
 
 func TestSwitches(t *testing.T) {
-	s1, s2 := makeSwitchPair(t, func(sw *Switch) *Switch {
+	s1, s2 := makeSwitchPair(t, func(i int, sw *Switch) *Switch {
 		// Make two reactors of two channels each
 		sw.AddReactor("foo", NewTestReactor([]*ChannelDescriptor{
 			&ChannelDescriptor{ID: byte(0x00), Priority: 10},
@@ -208,7 +160,7 @@ func BenchmarkSwitches(b *testing.B) {
 
 	b.StopTimer()
 
-	s1, s2 := makeSwitchPair(b, func(sw *Switch) *Switch {
+	s1, s2 := makeSwitchPair(b, func(i int, sw *Switch) *Switch {
 		// Make bar reactors of bar channels each
 		sw.AddReactor("foo", NewTestReactor([]*ChannelDescriptor{
 			&ChannelDescriptor{ID: byte(0x00), Priority: 10},

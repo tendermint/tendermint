@@ -5,7 +5,6 @@
 package p2p
 
 import (
-	"fmt"
 	"net"
 	"strconv"
 	"time"
@@ -23,7 +22,11 @@ type NetAddress struct {
 func NewNetAddress(addr net.Addr) *NetAddress {
 	tcpAddr, ok := addr.(*net.TCPAddr)
 	if !ok {
-		PanicSanity(fmt.Sprintf("Only TCPAddrs are supported. Got: %v", addr))
+		log.Warn(`Only TCPAddrs are supported. If used for anything but testing,
+			may result in undefined behaviour!`, "addr", addr)
+		return NewNetAddressIPPort(net.IP("0.0.0.0"), 0)
+		// NOTE: it would be nice to only not panic if we're in testing ...
+		// PanicSanity(Fmt("Only TCPAddrs are supported. Got: %v", addr))
 	}
 	ip := tcpAddr.IP
 	port := uint16(tcpAddr.Port)
