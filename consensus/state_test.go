@@ -30,7 +30,7 @@ x * TestBadProposal - 2 vals, bad proposal (bad block state hash), should prevot
 FullRoundSuite
 x * TestFullRound1 - 1 val, full successful round
 x * TestFullRoundNil - 1 val, full round of nil
-x * TestFullRound2 - 2 vals, both required for fuill round
+x * TestFullRound2 - 2 vals, both required for full round
 LockSuite
 x * TestLockNoPOL - 2 vals, 4 rounds. one val locked, precommits nil every round except first.
 x * TestLockPOLRelock - 4 vals, one precommits, other 3 polka at next round, so we unlock and precomit the polka

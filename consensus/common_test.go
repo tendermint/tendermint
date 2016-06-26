@@ -246,6 +246,18 @@ func randConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
 	return cs, vss
 }
 
+func randConsensusNet(nValidators int) []*ConsensusState {
+	genDoc, privVals := randGenesisDoc(nValidators, false, 10)
+	css := make([]*ConsensusState, nValidators)
+	for i := 0; i < nValidators; i++ {
+		db := dbm.NewMemDB() // each state needs its own db
+		state := sm.MakeGenesisState(db, genDoc)
+		state.Save()
+		css[i] = newConsensusState(state, privVals[i], counter.NewCounterApplication(true))
+	}
+	return css
+}
+
 func subscribeToVoter(cs *ConsensusState, addr []byte) chan interface{} {
 	voteCh0 := subscribeToEvent(cs.evsw, "tester", types.EventStringVote(), 1)
 	voteCh := make(chan interface{})
@@ -274,8 +286,8 @@ func readVotes(ch chan interface{}, reads int) chan struct{} {
 }
 
 func randGenesisState(numValidators int, randPower bool, minPower int64) (*sm.State, []*types.PrivValidator) {
-	db := dbm.NewMemDB()
 	genDoc, privValidators := randGenesisDoc(numValidators, randPower, minPower)
+	db := dbm.NewMemDB()
 	s0 := sm.MakeGenesisState(db, genDoc)
 	s0.Save()
 	return s0, privValidators
