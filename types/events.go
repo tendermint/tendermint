@@ -2,6 +2,7 @@ package types
 
 import (
 	// for registering TMEventData as events.EventData
+	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-events"
 	"github.com/tendermint/go-wire"
 )
@@ -14,6 +15,7 @@ func EventStringUnbond() string  { return "Unbond" }
 func EventStringRebond() string  { return "Rebond" }
 func EventStringDupeout() string { return "Dupeout" }
 func EventStringFork() string    { return "Fork" }
+func EventStringTx(tx Tx) string { return Fmt("Tx:%X", tx.Hash()) }
 
 func EventStringNewBlock() string         { return "NewBlock" }
 func EventStringNewBlockHeader() string   { return "NewBlockHeader" }

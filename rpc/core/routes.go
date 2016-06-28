@@ -19,6 +19,7 @@ var Routes = map[string]*rpc.RPCFunc{
 	"block":                rpc.NewRPCFunc(BlockResult, "height"),
 	"validators":           rpc.NewRPCFunc(ValidatorsResult, ""),
 	"dump_consensus_state": rpc.NewRPCFunc(DumpConsensusStateResult, ""),
+	"broadcast_tx_commit":  rpc.NewRPCFunc(BroadcastTxCommitResult, "tx"),
 	"broadcast_tx_sync":    rpc.NewRPCFunc(BroadcastTxSyncResult, "tx"),
 	"broadcast_tx_async":   rpc.NewRPCFunc(BroadcastTxAsyncResult, "tx"),
 	"unconfirmed_txs":      rpc.NewRPCFunc(UnconfirmedTxsResult, ""),
@@ -120,6 +121,14 @@ func UnconfirmedTxsResult() (ctypes.TMResult, error) {
 
 func NumUnconfirmedTxsResult() (ctypes.TMResult, error) {
 	if r, err := NumUnconfirmedTxs(); err != nil {
+		return nil, err
+	} else {
+		return r, nil
+	}
+}
+
+func BroadcastTxCommitResult(tx []byte) (ctypes.TMResult, error) {
+	if r, err := BroadcastTxCommit(tx); err != nil {
 		return nil, err
 	} else {
 		return r, nil

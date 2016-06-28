@@ -57,6 +57,8 @@ func (s *State) ExecBlock(evsw *events.EventSwitch, proxyAppConn proxy.AppConn, 
 // TODO: Generate a bitmap or otherwise store tx validity in state.
 func (s *State) execBlockOnProxyApp(evsw *events.EventSwitch, proxyAppConn proxy.AppConn, block *types.Block) error {
 
+	eventCache := events.NewEventCache(evsw)
+
 	var validTxs, invalidTxs = 0, 0
 
 	// Execute transactions and get hash
@@ -73,6 +75,9 @@ func (s *State) execBlockOnProxyApp(evsw *events.EventSwitch, proxyAppConn proxy
 				log.Debug("Invalid tx", "code", r.AppendTx.Code, "log", r.AppendTx.Log)
 				invalidTxs += 1
 			}
+			// NOTE: if we count we can access the tx from the block instead of
+			// pulling it from the req
+			eventCache.FireEvent(types.EventStringTx(req.GetAppendTx().Tx), res)
 		}
 	}
 	proxyAppConn.SetResponseCallback(proxyCb)
@@ -95,6 +100,9 @@ func (s *State) execBlockOnProxyApp(evsw *events.EventSwitch, proxyAppConn proxy
 	log.Info("TODO: Do something with changedValidators", changedValidators)
 
 	log.Info(Fmt("ExecBlock got %v valid txs and %v invalid txs", validTxs, invalidTxs))
+
+	// fire events
+	eventCache.Flush()
 	return nil
 }
 
