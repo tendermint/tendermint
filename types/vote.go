@@ -11,10 +11,11 @@ import (
 )
 
 var (
-	ErrVoteUnexpectedStep   = errors.New("Unexpected step")
-	ErrVoteInvalidAccount   = errors.New("Invalid round vote account")
-	ErrVoteInvalidSignature = errors.New("Invalid round vote signature")
-	ErrVoteInvalidBlockHash = errors.New("Invalid block hash")
+	ErrVoteUnexpectedStep          = errors.New("Unexpected step")
+	ErrVoteInvalidValidatorIndex   = errors.New("Invalid round vote validator index")
+	ErrVoteInvalidValidatorAddress = errors.New("Invalid round vote validator address")
+	ErrVoteInvalidSignature        = errors.New("Invalid round vote signature")
+	ErrVoteInvalidBlockHash        = errors.New("Invalid block hash")
 )
 
 type ErrVoteConflictingSignature struct {
@@ -28,6 +29,8 @@ func (err *ErrVoteConflictingSignature) Error() string {
 
 // Represents a prevote, precommit, or commit vote from validators for consensus.
 type Vote struct {
+	ValidatorAddress []byte                  `json:"validator_address"`
+	ValidatorIndex   int                     `json:"validator_index"`
 	Height           int                     `json:"height"`
 	Round            int                     `json:"round"`
 	Type             byte                    `json:"type"`
@@ -67,5 +70,8 @@ func (vote *Vote) String() string {
 		PanicSanity("Unknown vote type")
 	}
 
-	return fmt.Sprintf("Vote{%v/%02d/%v(%v) %X#%v %v}", vote.Height, vote.Round, vote.Type, typeString, Fingerprint(vote.BlockHash), vote.BlockPartsHeader, vote.Signature)
+	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %v}",
+		vote.ValidatorIndex, Fingerprint(vote.ValidatorAddress),
+		vote.Height, vote.Round, vote.Type, typeString,
+		Fingerprint(vote.BlockHash), vote.Signature)
 }

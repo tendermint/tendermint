@@ -45,14 +45,14 @@ import (
 	```
 */
 
-var testLog = `{"time":"2016-04-03T11:23:54.387Z","msg":[3,{"duration":972835254,"height":1,"round":0,"step":1}]}
-{"time":"2016-04-03T11:23:54.388Z","msg":[1,{"height":1,"round":0,"step":"RoundStepPropose"}]}
-{"time":"2016-04-03T11:23:54.388Z","msg":[2,{"msg":[17,{"Proposal":{"height":1,"round":0,"block_parts_header":{"total":1,"hash":"3BA1E90CB868DA6B4FD7F3589826EC461E9EB4EF"},"pol_round":-1,"signature":"3A2ECD5023B21EC144EC16CFF1B992A4321317B83EEDD8969FDFEA6EB7BF4389F38DDA3E7BB109D63A07491C16277A197B241CF1F05F5E485C59882ECACD9E07"}}],"peer_key":""}]}
-{"time":"2016-04-03T11:23:54.389Z","msg":[2,{"msg":[19,{"Height":1,"Round":0,"Part":{"index":0,"bytes":"0101010F74656E6465726D696E745F7465737401011441D59F4B718AC00000000000000114C4B01D3810579550997AC5641E759E20D99B51C10001000100","proof":{"aunts":[]}}}],"peer_key":""}]}
-{"time":"2016-04-03T11:23:54.390Z","msg":[1,{"height":1,"round":0,"step":"RoundStepPrevote"}]}
-{"time":"2016-04-03T11:23:54.390Z","msg":[2,{"msg":[20,{"ValidatorIndex":0,"Vote":{"height":1,"round":0,"type":1,"block_hash":"4291966B8A9DFBA00AEC7C700F2718E61DF4331D","block_parts_header":{"total":1,"hash":"3BA1E90CB868DA6B4FD7F3589826EC461E9EB4EF"},"signature":"47D2A75A4E2F15DB1F0D1B656AC0637AF9AADDFEB6A156874F6553C73895E5D5DC948DBAEF15E61276C5342D0E638DFCB77C971CD282096EA8735A564A90F008"}}],"peer_key":""}]}
-{"time":"2016-04-03T11:23:54.392Z","msg":[1,{"height":1,"round":0,"step":"RoundStepPrecommit"}]}
-{"time":"2016-04-03T11:23:54.392Z","msg":[2,{"msg":[20,{"ValidatorIndex":0,"Vote":{"height":1,"round":0,"type":2,"block_hash":"4291966B8A9DFBA00AEC7C700F2718E61DF4331D","block_parts_header":{"total":1,"hash":"3BA1E90CB868DA6B4FD7F3589826EC461E9EB4EF"},"signature":"39147DA595F08B73CF8C899967C8403B5872FD9042FFA4E239159E0B6C5D9665C9CA81D766EACA2AE658872F94C2FCD1E34BF51859CD5B274DA8512BACE4B50D"}}],"peer_key":""}]}
+var testLog = `{"time":"2016-07-01T21:44:23.626Z","msg":[3,{"duration":0,"height":1,"round":0,"step":1}]}
+{"time":"2016-07-01T21:44:23.631Z","msg":[1,{"height":1,"round":0,"step":"RoundStepPropose"}]}
+{"time":"2016-07-01T21:44:23.631Z","msg":[2,{"msg":[17,{"Proposal":{"height":1,"round":0,"block_parts_header":{"total":1,"hash":"108807E7DC79BC7716CCC93217AC2B81BB8C9508"},"pol_round":-1,"signature":"1B22E998F5F4C426CB29F8AADFB012E364780B3FFDABA3B68498903EDBACECF152F45E3E3CD53A9476577E7043122E506494F4581ACDC73FE9643A791F977A07"}}],"peer_key":""}]}
+{"time":"2016-07-01T21:44:23.632Z","msg":[2,{"msg":[19,{"Height":1,"Round":0,"Part":{"index":0,"bytes":"0101010F74656E6465726D696E745F746573740101145D4921EB88A8C00000000000000114C4B01D3810579550997AC5641E759E20D99B51C10001000100","proof":{"aunts":[]}}}],"peer_key":""}]}
+{"time":"2016-07-01T21:44:23.633Z","msg":[1,{"height":1,"round":0,"step":"RoundStepPrevote"}]}
+{"time":"2016-07-01T21:44:23.633Z","msg":[2,{"msg":[20,{"Vote":{"validator_address":"D028C9981F7A87F3093672BF0D5B0E2A1B3ED456","validator_index":0,"height":1,"round":0,"type":1,"block_hash":"C421180ECD00F7FEFF8D720AE8CE891B02E85EA3","block_parts_header":{"total":1,"hash":"108807E7DC79BC7716CCC93217AC2B81BB8C9508"},"signature":"816DEAB87DB1BCA284EAEC7968B9EAE057025478D3176E174E0696C74CB2DD58EA402A3E144CA2292CCF05741097395E42EB8DA492EC73CAE8AB7C4486F99609"}}],"peer_key":""}]}
+{"time":"2016-07-01T21:44:23.636Z","msg":[1,{"height":1,"round":0,"step":"RoundStepPrecommit"}]}
+{"time":"2016-07-01T21:44:23.636Z","msg":[2,{"msg":[20,{"Vote":{"validator_address":"D028C9981F7A87F3093672BF0D5B0E2A1B3ED456","validator_index":0,"height":1,"round":0,"type":2,"block_hash":"C421180ECD00F7FEFF8D720AE8CE891B02E85EA3","block_parts_header":{"total":1,"hash":"108807E7DC79BC7716CCC93217AC2B81BB8C9508"},"signature":"BCF879FD579D03282ACF8B5C633DE9548BD93457AC7D0E69A3B13C4BF0E5581BBA20D29DF89FA20AF01F3DD39D65934AABB3B31B5E749B9EA3E4C11935E7610F"}}],"peer_key":""}]}
 `
 
 func TestReplayCatchup(t *testing.T) {

@@ -313,6 +313,7 @@ func (ac accumComparable) Less(o interface{}) bool {
 //----------------------------------------
 // For testing
 
+// NOTE: PrivValidator are in order.
 func RandValidatorSet(numValidators int, votingPower int64) (*ValidatorSet, []*PrivValidator) {
 	vals := make([]*Validator, numValidators)
 	privValidators := make([]*PrivValidator, numValidators)
