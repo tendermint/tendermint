@@ -25,19 +25,23 @@ var config cfg.Config // NOTE: must be reset for each _test.go file
 var ensureTimeout = time.Duration(2)
 
 type validatorStub struct {
+	Index  int // Validator index. NOTE: we don't assume validator set changes.
 	Height int
 	Round  int
 	*types.PrivValidator
 }
 
-func NewValidatorStub(privValidator *types.PrivValidator) *validatorStub {
+func NewValidatorStub(privValidator *types.PrivValidator, valIndex int) *validatorStub {
 	return &validatorStub{
+		Index:         valIndex,
 		PrivValidator: privValidator,
 	}
 }
 
 func (vs *validatorStub) signVote(voteType byte, hash []byte, header types.PartSetHeader) (*types.Vote, error) {
 	vote := &types.Vote{
+		ValidatorIndex:   vs.Index,
+		ValidatorAddress: vs.PrivValidator.Address,
 		Height:           vs.Height,
 		Round:            vs.Round,
 		Type:             voteType,
@@ -48,7 +52,10 @@ func (vs *validatorStub) signVote(voteType byte, hash []byte, header types.PartS
 	return vote, err
 }
 
-// convenienve function for testing
+//-------------------------------------------------------------------------------
+// Convenience functions
+
+// Sign vote for type/hash/header
 func signVote(vs *validatorStub, voteType byte, hash []byte, header types.PartSetHeader) *types.Vote {
 	v, err := vs.signVote(voteType, hash, header)
 	if err != nil {
@@ -57,8 +64,8 @@ func signVote(vs *validatorStub, voteType byte, hash []byte, header types.PartSe
 	return v
 }
 
-// create proposal block from cs1 but sign it with vs
-func decideProposal(cs1 *ConsensusState, cs2 *validatorStub, height, round int) (proposal *types.Proposal, block *types.Block) {
+// Create proposal block from cs1 but sign it with vs
+func decideProposal(cs1 *ConsensusState, vs *validatorStub, height, round int) (proposal *types.Proposal, block *types.Block) {
 	block, blockParts := cs1.createProposalBlock()
 	if block == nil { // on error
 		panic("error creating proposal block")
@@ -66,93 +73,19 @@ func decideProposal(cs1 *ConsensusState, cs2 *validatorStub, height, round int) 
 
 	// Make proposal
 	proposal = types.NewProposal(height, round, blockParts.Header(), cs1.Votes.POLRound())
-	if err := cs2.SignProposal(config.GetString("chain_id"), proposal); err != nil {
+	if err := vs.SignProposal(config.GetString("chain_id"), proposal); err != nil {
 		panic(err)
 	}
 	return
 }
 
-//-------------------------------------------------------------------------------
-// utils
-
-/*
-func nilRound(t *testing.T, cs1 *ConsensusState, vss ...*validatorStub) {
-	cs1.mtx.Lock()
-	height, round := cs1.Height, cs1.Round
-	cs1.mtx.Unlock()
-
-	waitFor(t, cs1, height, round, RoundStepPrevote)
-
-	signAddVoteToFromMany(types.VoteTypePrevote, cs1, nil, cs1.ProposalBlockParts.Header(), vss...)
-
-	waitFor(t, cs1, height, round, RoundStepPrecommit)
-
-	signAddVoteToFromMany(types.VoteTypePrecommit, cs1, nil, cs1.ProposalBlockParts.Header(), vss...)
-
-	waitFor(t, cs1, height, round+1, RoundStepNewRound)
-}
-*/
-
-// NOTE: this switches the propser as far as `perspectiveOf` is concerned,
-// but for simplicity we return a block it generated.
-func changeProposer(t *testing.T, perspectiveOf *ConsensusState, newProposer *validatorStub) *types.Block {
-	_, v1 := perspectiveOf.Validators.GetByAddress(perspectiveOf.privValidator.Address)
-	v1.Accum, v1.VotingPower = 0, 0
-	if updated := perspectiveOf.Validators.Update(v1); !updated {
-		panic("failed to update validator")
-	}
-	_, v2 := perspectiveOf.Validators.GetByAddress(newProposer.Address)
-	v2.Accum, v2.VotingPower = 100, 100
-	if updated := perspectiveOf.Validators.Update(v2); !updated {
-		panic("failed to update validator")
-	}
-
-	// make the proposal
-	propBlock, _ := perspectiveOf.createProposalBlock()
-	if propBlock == nil {
-		panic("Failed to create proposal block with cs2")
-	}
-	return propBlock
-}
-
-func fixVotingPower(t *testing.T, cs1 *ConsensusState, addr2 []byte) {
-	_, v1 := cs1.Validators.GetByAddress(cs1.privValidator.Address)
-	_, v2 := cs1.Validators.GetByAddress(addr2)
-	v1.Accum, v1.VotingPower = v2.Accum, v2.VotingPower
-	if updated := cs1.Validators.Update(v1); !updated {
-		panic("failed to update validator")
+func addVotes(to *ConsensusState, votes ...*types.Vote) {
+	for _, vote := range votes {
+		to.peerMsgQueue <- msgInfo{Msg: &VoteMessage{vote}}
 	}
 }
 
-func addVoteToFromMany(to *ConsensusState, votes []*types.Vote, froms ...*validatorStub) {
-	if len(votes) != len(froms) {
-		panic("len(votes) and len(froms) must match")
-	}
-
-	for i, from := range froms {
-		addVoteToFrom(to, from, votes[i])
-	}
-}
-
-func addVoteToFrom(to *ConsensusState, from *validatorStub, vote *types.Vote) {
-	to.mtx.Lock() // NOTE: wont need this when the vote comes with the index!
-	valIndex, _ := to.Validators.GetByAddress(from.PrivValidator.Address)
-	to.mtx.Unlock()
-
-	to.peerMsgQueue <- msgInfo{Msg: &VoteMessage{valIndex, vote}}
-	// added, err := to.TryAddVote(valIndex, vote, "")
-	/*
-		if _, ok := err.(*types.ErrVoteConflictingSignature); ok {
-			// let it fly
-		} else if !added {
-			fmt.Println("to, from, vote:", to.Height, from.Height, vote.Height)
-			panic(fmt.Sprintln("Failed to add vote. Err:", err))
-		} else if err != nil {
-			panic(fmt.Sprintln("Failed to add vote:", err))
-		}*/
-}
-
-func signVoteMany(voteType byte, hash []byte, header types.PartSetHeader, vss ...*validatorStub) []*types.Vote {
+func signVotes(voteType byte, hash []byte, header types.PartSetHeader, vss ...*validatorStub) []*types.Vote {
 	votes := make([]*types.Vote, len(vss))
 	for i, vs := range vss {
 		votes[i] = signVote(vs, voteType, hash, header)
@@ -160,34 +93,9 @@ func signVoteMany(voteType byte, hash []byte, header types.PartSetHeader, vss ..
 	return votes
 }
 
-// add vote to one cs from another
-// if voteCh is not nil, read all votes
-func signAddVoteToFromMany(voteType byte, to *ConsensusState, hash []byte, header types.PartSetHeader, voteCh chan interface{}, froms ...*validatorStub) {
-	var wg chan struct{} // when done reading all votes
-	if voteCh != nil {
-		wg = readVotes(voteCh, len(froms))
-	}
-	for _, from := range froms {
-		vote := signVote(from, voteType, hash, header)
-		addVoteToFrom(to, from, vote)
-	}
-
-	if voteCh != nil {
-		<-wg
-	}
-}
-
-func signAddVoteToFrom(voteType byte, to *ConsensusState, from *validatorStub, hash []byte, header types.PartSetHeader, voteCh chan interface{}) *types.Vote {
-	var wg chan struct{} // when done reading all votes
-	if voteCh != nil {
-		wg = readVotes(voteCh, 1)
-	}
-	vote := signVote(from, voteType, hash, header)
-	addVoteToFrom(to, from, vote)
-	if voteCh != nil {
-		<-wg
-	}
-	return vote
+func signAddVotes(to *ConsensusState, voteType byte, hash []byte, header types.PartSetHeader, vss ...*validatorStub) {
+	votes := signVotes(voteType, hash, header, vss...)
+	addVotes(to, votes...)
 }
 
 func ensureNoNewStep(stepCh chan interface{}) {
@@ -199,39 +107,6 @@ func ensureNoNewStep(stepCh chan interface{}) {
 		panic("We should be stuck waiting for more votes, not moving to the next step")
 	}
 }
-
-/*
-func ensureNoNewStep(t *testing.T, cs *ConsensusState) {
-	timeout := time.NewTicker(ensureTimeout * time.Second)
-	select {
-	case <-timeout.C:
-		break
-	case <-cs.NewStepCh():
-		panic("We should be stuck waiting for more votes, not moving to the next step")
-	}
-}
-
-func ensureNewStep(t *testing.T, cs *ConsensusState) *RoundState {
-	timeout := time.NewTicker(ensureTimeout * time.Second)
-	select {
-	case <-timeout.C:
-		panic("We should have gone to the next step, not be stuck waiting")
-	case rs := <-cs.NewStepCh():
-		return rs
-	}
-}
-
-func waitFor(t *testing.T, cs *ConsensusState, height int, round int, step RoundStepType) {
-	for {
-		rs := ensureNewStep(t, cs)
-		if CompareHRS(rs.Height, rs.Round, rs.Step, height, round, step) < 0 {
-			continue
-		} else {
-			break
-		}
-	}
-}
-*/
 
 func incrementHeight(vss ...*validatorStub) {
 	for _, vs := range vss {
@@ -363,7 +238,7 @@ func randConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
 	cs := newConsensusState(state, privVals[0], counter.NewCounterApplication(true))
 
 	for i := 0; i < nValidators; i++ {
-		vss[i] = NewValidatorStub(privVals[i])
+		vss[i] = NewValidatorStub(privVals[i], i)
 	}
 	// since cs1 starts at 1
 	incrementHeight(vss[1:]...)
@@ -379,7 +254,7 @@ func subscribeToVoter(cs *ConsensusState, addr []byte) chan interface{} {
 			v := <-voteCh0
 			vote := v.(types.EventDataVote)
 			// we only fire for our own votes
-			if bytes.Equal(addr, vote.Address) {
+			if bytes.Equal(addr, vote.Vote.ValidatorAddress) {
 				voteCh <- v
 			}
 		}

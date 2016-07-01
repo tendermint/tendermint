@@ -374,15 +374,15 @@ func (cs *ConsensusState) OpenWAL(walDir string) (err error) {
 // TODO: should these return anything or let callers just use events?
 
 // May block on send if queue is full.
-func (cs *ConsensusState) AddVote(valIndex int, vote *types.Vote, peerKey string) (added bool, address []byte, err error) {
+func (cs *ConsensusState) AddVote(vote *types.Vote, peerKey string) (added bool, err error) {
 	if peerKey == "" {
-		cs.internalMsgQueue <- msgInfo{&VoteMessage{valIndex, vote}, ""}
+		cs.internalMsgQueue <- msgInfo{&VoteMessage{vote}, ""}
 	} else {
-		cs.peerMsgQueue <- msgInfo{&VoteMessage{valIndex, vote}, peerKey}
+		cs.peerMsgQueue <- msgInfo{&VoteMessage{vote}, peerKey}
 	}
 
 	// TODO: wait for event?!
-	return false, nil, nil
+	return false, nil
 }
 
 // May block on send if queue is full.
@@ -472,11 +472,13 @@ func (cs *ConsensusState) reconstructLastCommit(state *sm.State) {
 	}
 	seenCommit := cs.blockStore.LoadSeenCommit(state.LastBlockHeight)
 	lastPrecommits := types.NewVoteSet(cs.config.GetString("chain_id"), state.LastBlockHeight, seenCommit.Round(), types.VoteTypePrecommit, state.LastValidators)
-	for idx, precommit := range seenCommit.Precommits {
+	for _, precommit := range seenCommit.Precommits {
 		if precommit == nil {
 			continue
 		}
-		added, _, err := lastPrecommits.AddByIndex(idx, precommit)
+		// XXXX reconstruct Vote from precommit after changing precommit to simpler
+		// structure.
+		added, err := lastPrecommits.AddVote(precommit)
 		if !added || err != nil {
 			PanicCrisis(Fmt("Failed to reconstruct LastCommit: %v", err))
 		}
@@ -694,7 +696,7 @@ func (cs *ConsensusState) handleMsg(mi msgInfo, rs RoundState) {
 	case *VoteMessage:
 		// attempt to add the vote and dupeout the validator if its a duplicate signature
 		// if the vote gives us a 2/3-any or 2/3-one, we transition
-		err := cs.tryAddVote(msg.ValidatorIndex, msg.Vote, peerKey)
+		err := cs.tryAddVote(msg.Vote, peerKey)
 		if err == ErrAddingVote {
 			// TODO: punish peer
 		}
@@ -1390,8 +1392,8 @@ func (cs *ConsensusState) addProposalBlockPart(height int, part *types.Part, ver
 }
 
 // Attempt to add the vote. if its a duplicate signature, dupeout the validator
-func (cs *ConsensusState) tryAddVote(valIndex int, vote *types.Vote, peerKey string) error {
-	_, _, err := cs.addVote(valIndex, vote, peerKey)
+func (cs *ConsensusState) tryAddVote(vote *types.Vote, peerKey string) error {
+	_, err := cs.addVote(vote, peerKey)
 	if err != nil {
 		// If the vote height is off, we'll just ignore it,
 		// But if it's a conflicting sig, broadcast evidence tx for slashing.
@@ -1424,7 +1426,7 @@ func (cs *ConsensusState) tryAddVote(valIndex int, vote *types.Vote, peerKey str
 
 //-----------------------------------------------------------------------------
 
-func (cs *ConsensusState) addVote(valIndex int, vote *types.Vote, peerKey string) (added bool, address []byte, err error) {
+func (cs *ConsensusState) addVote(vote *types.Vote, peerKey string) (added bool, err error) {
 	log.Debug("addVote", "voteHeight", vote.Height, "voteType", vote.Type, "csHeight", cs.Height)
 
 	// A precommit for the previous height?
@@ -1432,13 +1434,12 @@ func (cs *ConsensusState) addVote(valIndex int, vote *types.Vote, peerKey string
 		if !(cs.Step == RoundStepNewHeight && vote.Type == types.VoteTypePrecommit) {
 			// TODO: give the reason ..
 			// fmt.Errorf("tryAddVote: Wrong height, not a LastCommit straggler commit.")
-			return added, nil, ErrVoteHeightMismatch
+			return added, ErrVoteHeightMismatch
 		}
-		added, address, err = cs.LastCommit.AddByIndex(valIndex, vote)
+		added, err = cs.LastCommit.AddVote(vote)
 		if added {
 			log.Info(Fmt("Added to lastPrecommits: %v", cs.LastCommit.StringShort()))
-			types.FireEventVote(cs.evsw, types.EventDataVote{valIndex, address, vote})
-
+			types.FireEventVote(cs.evsw, types.EventDataVote{vote})
 		}
 		return
 	}
@@ -1446,9 +1447,9 @@ func (cs *ConsensusState) addVote(valIndex int, vote *types.Vote, peerKey string
 	// A prevote/precommit for this height?
 	if vote.Height == cs.Height {
 		height := cs.Height
-		added, address, err = cs.Votes.AddByIndex(valIndex, vote, peerKey)
+		added, err = cs.Votes.AddVote(vote, peerKey)
 		if added {
-			types.FireEventVote(cs.evsw, types.EventDataVote{valIndex, address, vote})
+			types.FireEventVote(cs.evsw, types.EventDataVote{vote})
 
 			switch vote.Type {
 			case types.VoteTypePrevote:
@@ -1518,7 +1519,11 @@ func (cs *ConsensusState) addVote(valIndex int, vote *types.Vote, peerKey string
 }
 
 func (cs *ConsensusState) signVote(type_ byte, hash []byte, header types.PartSetHeader) (*types.Vote, error) {
+	// TODO: store our index in the cs so we don't have to do this every time
+	valIndex, _ := cs.Validators.GetByAddress(cs.privValidator.Address)
 	vote := &types.Vote{
+		ValidatorAddress: cs.privValidator.Address,
+		ValidatorIndex:   valIndex,
 		Height:           cs.Height,
 		Round:            cs.Round,
 		Type:             type_,
@@ -1537,9 +1542,7 @@ func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header types.Part
 	}
 	vote, err := cs.signVote(type_, hash, header)
 	if err == nil {
-		// TODO: store our index in the cs so we don't have to do this every time
-		valIndex, _ := cs.Validators.GetByAddress(cs.privValidator.Address)
-		cs.sendInternalMessage(msgInfo{&VoteMessage{valIndex, vote}, ""})
+		cs.sendInternalMessage(msgInfo{&VoteMessage{vote}, ""})
 		log.Info("Signed and pushed vote", "height", cs.Height, "round", cs.Round, "vote", vote, "error", err)
 		return vote
 	} else {

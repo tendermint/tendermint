@@ -201,7 +201,7 @@ func (conR *ConsensusReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte)
 			cs.mtx.Unlock()
 			ps.EnsureVoteBitArrays(height, valSize)
 			ps.EnsureVoteBitArrays(height-1, lastCommitSize)
-			ps.SetHasVote(msg.Vote, msg.ValidatorIndex)
+			ps.SetHasVote(msg.Vote)
 
 			conR.conS.peerMsgQueue <- msgInfo{msg, src.Key}
 
@@ -242,7 +242,7 @@ func (conR *ConsensusReactor) registerEventCallbacks() {
 
 	types.AddListenerForEvent(conR.evsw, "conR", types.EventStringVote(), func(data types.TMEventData) {
 		edv := data.(types.EventDataVote)
-		conR.broadcastHasVoteMessage(edv.Vote, edv.Index)
+		conR.broadcastHasVoteMessage(edv.Vote)
 	})
 }
 
@@ -258,12 +258,12 @@ func (conR *ConsensusReactor) broadcastNewRoundStep(rs *RoundState) {
 }
 
 // Broadcasts HasVoteMessage to peers that care.
-func (conR *ConsensusReactor) broadcastHasVoteMessage(vote *types.Vote, index int) {
+func (conR *ConsensusReactor) broadcastHasVoteMessage(vote *types.Vote) {
 	msg := &HasVoteMessage{
 		Height: vote.Height,
 		Round:  vote.Round,
 		Type:   vote.Type,
-		Index:  index,
+		Index:  vote.ValidatorIndex,
 	}
 	conR.Switch.Broadcast(StateChannel, struct{ ConsensusMessage }{msg})
 	/*
@@ -613,8 +613,8 @@ func (ps *PeerState) SetHasProposalBlockPart(height int, round int, index int) {
 // Convenience function to send vote to peer.
 // Returns true if vote was sent.
 func (ps *PeerState) PickSendVote(votes types.VoteSetReader) (ok bool) {
-	if index, vote, ok := ps.PickVoteToSend(votes); ok {
-		msg := &VoteMessage{index, vote}
+	if vote, ok := ps.PickVoteToSend(votes); ok {
+		msg := &VoteMessage{vote}
 		ps.Peer.Send(VoteChannel, struct{ ConsensusMessage }{msg})
 		return true
 	}
@@ -622,12 +622,12 @@ func (ps *PeerState) PickSendVote(votes types.VoteSetReader) (ok bool) {
 }
 
 // votes: Must be the correct Size() for the Height().
-func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (index int, vote *types.Vote, ok bool) {
+func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (vote *types.Vote, ok bool) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
 	if votes.Size() == 0 {
-		return 0, nil, false
+		return nil, false
 	}
 
 	height, round, type_, size := votes.Height(), votes.Round(), votes.Type(), votes.Size()
@@ -640,13 +640,13 @@ func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (index int, vote 
 
 	psVotes := ps.getVoteBitArray(height, round, type_)
 	if psVotes == nil {
-		return 0, nil, false // Not something worth sending
+		return nil, false // Not something worth sending
 	}
 	if index, ok := votes.BitArray().Sub(psVotes).PickRandom(); ok {
 		ps.setHasVote(height, round, type_, index)
-		return index, votes.GetByIndex(index), true
+		return votes.GetByIndex(index), true
 	}
-	return 0, nil, false
+	return nil, false
 }
 
 func (ps *PeerState) getVoteBitArray(height, round int, type_ byte) *BitArray {
@@ -741,11 +741,11 @@ func (ps *PeerState) ensureVoteBitArrays(height int, numValidators int) {
 	}
 }
 
-func (ps *PeerState) SetHasVote(vote *types.Vote, index int) {
+func (ps *PeerState) SetHasVote(vote *types.Vote) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
-	ps.setHasVote(vote.Height, vote.Round, vote.Type, index)
+	ps.setHasVote(vote.Height, vote.Round, vote.Type, vote.ValidatorIndex)
 }
 
 func (ps *PeerState) setHasVote(height int, round int, type_ byte, index int) {
@@ -985,12 +985,11 @@ func (m *BlockPartMessage) String() string {
 //-------------------------------------
 
 type VoteMessage struct {
-	ValidatorIndex int
-	Vote           *types.Vote
+	Vote *types.Vote
 }
 
 func (m *VoteMessage) String() string {
-	return fmt.Sprintf("[Vote VI:%v V:%v VI:%v]", m.ValidatorIndex, m.Vote, m.ValidatorIndex)
+	return fmt.Sprintf("[Vote %v]", m.Vote)
 }
 
 //-------------------------------------

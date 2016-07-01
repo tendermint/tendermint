@@ -86,65 +86,55 @@ func (voteSet *VoteSet) Size() int {
 	}
 }
 
-// Returns added=true, index if vote was added
-// Otherwise returns err=ErrVote[UnexpectedStep|InvalidAccount|InvalidSignature|InvalidBlockHash|ConflictingSignature]
+// Returns added=true
+// Otherwise returns err=ErrVote[UnexpectedStep|InvalidIndex|InvalidAddress|InvalidSignature|InvalidBlockHash|ConflictingSignature]
 // Duplicate votes return added=false, err=nil.
 // NOTE: vote should not be mutated after adding.
-func (voteSet *VoteSet) AddByIndex(valIndex int, vote *Vote) (added bool, address []byte, err error) {
+func (voteSet *VoteSet) AddVote(vote *Vote) (added bool, err error) {
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
 
-	return voteSet.addByIndex(valIndex, vote)
+	return voteSet.addVote(vote)
 }
 
-// Returns added=true, index if vote was added
-// Otherwise returns err=ErrVote[UnexpectedStep|InvalidAccount|InvalidSignature|InvalidBlockHash|ConflictingSignature]
-// Duplicate votes return added=false, err=nil.
-// NOTE: vote should not be mutated after adding.
-func (voteSet *VoteSet) AddByAddress(address []byte, vote *Vote) (added bool, index int, err error) {
-	voteSet.mtx.Lock()
-	defer voteSet.mtx.Unlock()
+func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
+	valIndex := vote.ValidatorIndex
+	valAddr := vote.ValidatorAddress
 
-	// Ensure that signer is a validator.
-	valIndex, val := voteSet.valSet.GetByAddress(address)
-	if val == nil {
-		return false, 0, ErrVoteInvalidAccount
+	// Ensure thta validator index was set
+	if valIndex < 0 || len(valAddr) == 0 {
+		panic("Validator index or address was not set in vote.")
 	}
-
-	return voteSet.addVote(val, valIndex, vote)
-}
-
-func (voteSet *VoteSet) addByIndex(valIndex int, vote *Vote) (added bool, address []byte, err error) {
-	// Ensure that signer is a validator.
-	address, val := voteSet.valSet.GetByIndex(valIndex)
-	if val == nil {
-		return false, nil, ErrVoteInvalidAccount
-	}
-
-	added, _, err = voteSet.addVote(val, valIndex, vote)
-	return
-}
-
-func (voteSet *VoteSet) addVote(val *Validator, valIndex int, vote *Vote) (bool, int, error) {
 
 	// Make sure the step matches. (or that vote is commit && round < voteSet.round)
 	if (vote.Height != voteSet.height) ||
 		(vote.Round != voteSet.round) ||
 		(vote.Type != voteSet.type_) {
-		return false, 0, ErrVoteUnexpectedStep
+		return false, ErrVoteUnexpectedStep
+	}
+
+	// Ensure that signer is a validator.
+	lookupAddr, val := voteSet.valSet.GetByIndex(valIndex)
+	if val == nil {
+		return false, ErrVoteInvalidValidatorIndex
+	}
+
+	// Ensure that the signer has the right address
+	if !bytes.Equal(valAddr, lookupAddr) {
+		return false, ErrVoteInvalidValidatorAddress
 	}
 
 	// If vote already exists, return false.
 	if existingVote := voteSet.votes[valIndex]; existingVote != nil {
 		if bytes.Equal(existingVote.BlockHash, vote.BlockHash) {
-			return false, valIndex, nil
+			return false, nil
 		} else {
 			// Check signature.
 			if !val.PubKey.VerifyBytes(SignBytes(voteSet.chainID, vote), vote.Signature) {
 				// Bad signature.
-				return false, 0, ErrVoteInvalidSignature
+				return false, ErrVoteInvalidSignature
 			}
-			return false, valIndex, &ErrVoteConflictingSignature{
+			return false, &ErrVoteConflictingSignature{
 				VoteA: existingVote,
 				VoteB: vote,
 			}
@@ -154,7 +144,7 @@ func (voteSet *VoteSet) addVote(val *Validator, valIndex int, vote *Vote) (bool,
 	// Check signature.
 	if !val.PubKey.VerifyBytes(SignBytes(voteSet.chainID, vote), vote.Signature) {
 		// Bad signature.
-		return false, 0, ErrVoteInvalidSignature
+		return false, ErrVoteInvalidSignature
 	}
 
 	// Add vote.
@@ -173,7 +163,7 @@ func (voteSet *VoteSet) addVote(val *Validator, valIndex int, vote *Vote) (bool,
 		voteSet.maj23Exists = true
 	}
 
-	return true, valIndex, nil
+	return true, nil
 }
 
 func (voteSet *VoteSet) BitArray() *BitArray {

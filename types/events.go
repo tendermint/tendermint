@@ -91,9 +91,7 @@ type EventDataRoundState struct {
 }
 
 type EventDataVote struct {
-	Index   int
-	Address []byte
-	Vote    *Vote
+	Vote *Vote
 }
 
 func (_ EventDataNewBlock) AssertIsTMEventData()       {}
