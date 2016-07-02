@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/codegangsta/cli"
 	. "github.com/tendermint/go-common"
-	"github.com/tendermint/go-wire/expr"
 	"github.com/tendermint/tmsp/client"
 	"github.com/tendermint/tmsp/types"
 )
@@ -195,12 +195,7 @@ func cmdAppendTx(c *cli.Context) error {
 	if len(args) != 1 {
 		return errors.New("Command append_tx takes 1 argument")
 	}
-	txExprString := c.Args()[0]
-	txBytes, err := expr.Compile(txExprString)
-	if err != nil {
-		return err
-	}
-
+	txBytes := stringOrHexToBytes(c.Args()[0])
 	res := client.AppendTxSync(txBytes)
 	printResponse(res, string(res.Data), true)
 	return nil
@@ -212,12 +207,7 @@ func cmdCheckTx(c *cli.Context) error {
 	if len(args) != 1 {
 		return errors.New("Command check_tx takes 1 argument")
 	}
-	txExprString := c.Args()[0]
-	txBytes, err := expr.Compile(txExprString)
-	if err != nil {
-		return err
-	}
-
+	txBytes := stringOrHexToBytes(c.Args()[0])
 	res := client.CheckTxSync(txBytes)
 	printResponse(res, string(res.Data), true)
 	return nil
@@ -236,12 +226,7 @@ func cmdQuery(c *cli.Context) error {
 	if len(args) != 1 {
 		return errors.New("Command query takes 1 argument")
 	}
-	queryExprString := args[0]
-	queryBytes, err := expr.Compile(queryExprString)
-	if err != nil {
-		return err
-	}
-
+	queryBytes := stringOrHexToBytes(c.Args()[0])
 	res := client.QuerySync(queryBytes)
 	printResponse(res, string(res.Data), true)
 	return nil
@@ -263,4 +248,16 @@ func printResponse(res types.Result, s string, printCode bool) {
 		fmt.Printf("-> log: %s\n", res.Log)
 	}
 
+}
+
+// NOTE: s is interpreted as a string unless prefixed with 0x
+func stringOrHexToBytes(s string) []byte {
+	if len(s) > 2 && s[:2] == "0x" {
+		b, err := hex.DecodeString(s[2:])
+		if err != nil {
+			fmt.Println("Error decoding hex argument:", err.Error())
+		}
+		return b
+	}
+	return []byte(s)
 }
