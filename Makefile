@@ -43,6 +43,10 @@ get_deps:
 		grep -v /vendor/ | sort | uniq | \
 		xargs go get
 
+get_vendor_deps:
+	go get github.com/Masterminds/glide
+	glide install
+
 update_deps:
 	go get -d -u github.com/tendermint/tendermint/...
 
