@@ -46,7 +46,7 @@ func BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 // Else, block until the tx is included in a block,
 //	and return the result of AppendTx (with no error).
 // Even if AppendTx fails, so long as the tx is included in a block this function
-//	will not return an error.
+//	will not return an error - it is the caller's responsibility to check res.Code.
 // The function times out after five minutes and returns the result of CheckTx and an error.
 // TODO: smarter timeout logic or someway to cancel (tx not getting committed is a sign of a larger problem!)
 func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {

@@ -1,11 +1,13 @@
 package rpctest
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
+	tmsp "github.com/tendermint/tmsp/types"
 )
 
 //--------------------------------------------------------------------------------
@@ -42,33 +44,84 @@ func testStatus(t *testing.T, statusI interface{}) {
 	}
 }
 
-// TODO
-/*
-func testBroadcastTx(t *testing.T, typ string) {
-	amt := int64(100)
-	toAddr := user[1].Address
-	tx := makeDefaultSendTxSigned(t, typ, toAddr, amt)
-	receipt := broadcastTx(t, typ, tx)
-	if receipt.CreatesContract > 0 {
-		t.Fatal("This tx does not create a contract")
+//--------------------------------------------------------------------------------
+// broadcast tx sync
+
+var testTx = []byte{0x1, 0x2, 0x3, 0x4, 0x5}
+
+func TestURIBroadcastTxSync(t *testing.T) {
+	config.Set("block_size", 0)
+	defer config.Set("block_size", -1)
+	tmResult := new(ctypes.TMResult)
+	_, err := clientURI.Call("broadcast_tx_sync", map[string]interface{}{"tx": testTx}, tmResult)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if len(receipt.TxHash) == 0 {
-		t.Fatal("Failed to compute tx hash")
+	testBroadcastTxSync(t, tmResult)
+}
+
+func TestJSONBroadcastTxSync(t *testing.T) {
+	config.Set("block_size", 0)
+	defer config.Set("block_size", -1)
+	tmResult := new(ctypes.TMResult)
+	_, err := clientJSON.Call("broadcast_tx_sync", []interface{}{testTx}, tmResult)
+	if err != nil {
+		t.Fatal(err)
 	}
-	pool := node.MempoolReactor().Mempool
-	txs := pool.GetProposalTxs()
-	if len(txs) != mempoolCount {
-		t.Fatalf("The mem pool has %d txs. Expected %d", len(txs), mempoolCount)
+	testBroadcastTxSync(t, tmResult)
+}
+
+func testBroadcastTxSync(t *testing.T, resI interface{}) {
+	tmRes := resI.(*ctypes.TMResult)
+	res := (*tmRes).(*ctypes.ResultBroadcastTx)
+	if res.Code != tmsp.CodeType_OK {
+		t.Fatalf("BroadcastTxSync got non-zero exit code: %v. %X; %s", res.Code, res.Data, res.Log)
 	}
-	tx2 := txs[mempoolCount-1].(*types.SendTx)
-	n, err := new(int64), new(error)
-	buf1, buf2 := new(bytes.Buffer), new(bytes.Buffer)
-	tx.WriteSignBytes(chainID, buf1, n, err)
-	tx2.WriteSignBytes(chainID, buf2, n, err)
-	if bytes.Compare(buf1.Bytes(), buf2.Bytes()) != 0 {
-		t.Fatal("inconsistent hashes for mempool tx and sent tx")
+	mem := node.MempoolReactor().Mempool
+	if mem.Size() != 1 {
+		t.Fatalf("Mempool size should have been 1. Got %d", mem.Size())
 	}
-}*/
+
+	txs := mem.Reap(1)
+	if !bytes.Equal(txs[0], testTx) {
+		t.Fatalf("Tx in mempool does not match test tx. Got %X, expected %X", txs[0], testTx)
+	}
+
+	mem.Flush()
+}
+
+//--------------------------------------------------------------------------------
+// broadcast tx commit
+
+func TestURIBroadcastTxCommit(t *testing.T) {
+	tmResult := new(ctypes.TMResult)
+	_, err := clientURI.Call("broadcast_tx_commit", map[string]interface{}{"tx": testTx}, tmResult)
+	if err != nil {
+		t.Fatal(err)
+	}
+	testBroadcastTxCommit(t, tmResult)
+}
+
+func TestJSONBroadcastTxCommit(t *testing.T) {
+	tmResult := new(ctypes.TMResult)
+	_, err := clientJSON.Call("broadcast_tx_commit", []interface{}{testTx}, tmResult)
+	if err != nil {
+		t.Fatal(err)
+	}
+	testBroadcastTxCommit(t, tmResult)
+}
+
+func testBroadcastTxCommit(t *testing.T, resI interface{}) {
+	tmRes := resI.(*ctypes.TMResult)
+	res := (*tmRes).(*ctypes.ResultBroadcastTx)
+	if res.Code != tmsp.CodeType_OK {
+		t.Fatalf("BroadcastTxCommit got non-zero exit code: %v. %X; %s", res.Code, res.Data, res.Log)
+	}
+	mem := node.MempoolReactor().Mempool
+	if mem.Size() != 0 {
+		t.Fatalf("Mempool size should have been 0. Got %s", mem.Size())
+	}
+}
 
 //--------------------------------------------------------------------------------
 // Test the websocket service

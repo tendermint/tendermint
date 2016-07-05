@@ -20,7 +20,6 @@ import (
 var (
 	config            cfg.Config
 	node              *nm.Node
-	mempoolCount      = 0
 	chainID           string
 	rpcAddr           string
 	requestAddr       string
