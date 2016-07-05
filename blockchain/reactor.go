@@ -196,7 +196,7 @@ FOR_LOOP:
 			// ask for status updates
 			go bcR.BroadcastStatusRequest()
 		case _ = <-switchToConsensusTicker.C:
-			height, numPending := bcR.pool.GetStatus()
+			height, numPending, _ := bcR.pool.GetStatus()
 			outbound, inbound, _ := bcR.Switch.NumPeers()
 			log.Info("Consensus ticker", "numPending", numPending, "total", len(bcR.pool.requesters),
 				"outbound", outbound, "inbound", inbound)
