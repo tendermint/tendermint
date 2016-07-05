@@ -1214,10 +1214,13 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	// Create a copy of the state for staging
 	stateCopy := cs.state.Copy()
 
+	// event cache for txs
+	eventCache := events.NewEventCache(cs.evsw)
+
 	// Run the block on the State:
 	// + update validator sets
 	// + run txs on the proxyAppConn
-	err := stateCopy.ExecBlock(cs.evsw, cs.proxyAppConn, block, blockParts.Header())
+	err := stateCopy.ExecBlock(eventCache, cs.proxyAppConn, block, blockParts.Header())
 	if err != nil {
 		// TODO: handle this gracefully.
 		PanicQ(Fmt("Exec failed for application: %v", err))
@@ -1229,6 +1232,9 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 		// TODO: handle this gracefully.
 		PanicQ(Fmt("Commit failed for application: %v", err))
 	}
+
+	// txs committed and removed from mempool, fire events
+	eventCache.Flush()
 
 	// Save to blockStore.
 	if cs.blockStore.Height() < block.Height {

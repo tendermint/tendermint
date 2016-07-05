@@ -167,7 +167,6 @@ func (mem *Mempool) removeTxFromCacheMap(tx []byte) {
 	// NOTE tx not removed from cacheList
 	delete(mem.cacheMap, string(tx))
 	mem.proxyMtx.Unlock()
-
 }
 
 // TMSP callback function

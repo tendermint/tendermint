@@ -119,7 +119,7 @@ func testBroadcastTxCommit(t *testing.T, resI interface{}) {
 	}
 	mem := node.MempoolReactor().Mempool
 	if mem.Size() != 0 {
-		t.Fatalf("Mempool size should have been 0. Got %s", mem.Size())
+		t.Fatalf("Mempool size should have been 0. Got %d", mem.Size())
 	}
 }
 
