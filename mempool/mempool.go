@@ -194,6 +194,8 @@ func (mem *Mempool) resCbNormal(req *tmsp.Request, res *tmsp.Response) {
 			log.Info("Bad Transaction", "res", r)
 
 			// remove from cache (it might be good later)
+			// note this is an async callback,
+			// so we need to grab the lock in removeTxFromCacheMap
 			mem.removeTxFromCacheMap(req.GetCheckTx().Tx)
 
 			// TODO: handle other retcodes

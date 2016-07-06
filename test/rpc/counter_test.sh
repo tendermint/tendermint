@@ -13,9 +13,6 @@ function sendTx() {
 	CODE=`echo $RESPONSE | jq .result[1].code`
 	ERROR=`echo $RESPONSE | jq .error`
 	ERROR=$(echo "$ERROR" | tr -d '"') # remove surrounding quotes
-	echo "ERROR: $ERROR"
-	echo "CODE: $CODE"
-	echo ""
 }
 
 # 0 should pass once and get in block, with no error
