@@ -206,13 +206,11 @@ func (cli *grpcClient) finishAsyncCall(req *types.Request, res *types.Response) 
 	go func() {
 		// Notify reqRes listener if set
 		if cb := reqres.GetCallback(); cb != nil {
-			fmt.Println("CALLING reqres CB")
 			cb(res)
 		}
 
 		// Notify client listener if set
 		if cli.resCb != nil {
-			fmt.Println("CALLING client CB")
 			cli.resCb(reqres.Request, res)
 		}
 	}()

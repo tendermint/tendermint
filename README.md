@@ -1,5 +1,7 @@
 # Tendermint Socket Protocol (TMSP)
 
+[![CircleCI](https://circleci.com/gh/tendermint/tmsp.svg?style=svg)](https://circleci.com/gh/tendermint/tmsp)
+
 Blockchains are a system for creating shared multi-master application state. 
 **TMSP** is a socket protocol enabling a blockchain consensus engine, running in one process,
 to manage a blockchain application state, running in another.
