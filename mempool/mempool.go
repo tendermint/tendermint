@@ -304,19 +304,13 @@ func (mem *Mempool) filterTxs(blockTxsMap map[string]struct{}) []types.Tx {
 	goodTxs := make([]types.Tx, 0, mem.txs.Len())
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
-		// Remove the tx if its alredy in a block.
+		// Remove the tx if it's alredy in a block.
 		if _, ok := blockTxsMap[string(memTx.tx)]; ok {
 			// remove from clist
 			mem.txs.Remove(e)
 			e.DetachPrev()
 
-			// remove from mempool cache
-			// we only enforce "at-least once" semantics and
-			// leave it to the application to implement "only-once"
-			// via eg. sequence numbers, utxos, etc.
-			// NOTE: expects caller of filterTxs to hold the lock
-			// (so we can't use mem.removeTxFromCacheMap)
-			delete(mem.cacheMap, string(memTx.tx))
+			// NOTE: we don't remove committed txs from the cache.
 			continue
 		}
 		// Good tx!
