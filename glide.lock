@@ -54,7 +54,7 @@ imports:
 - name: github.com/tendermint/go-clist
   version: 634527f5b60fd7c71ca811262493df2ad65ee0ca
 - name: github.com/tendermint/go-common
-  version: dcfa46af1341d03b80d32e4901019d1668b978b9
+  version: dee6622bf7f811d3ba8638a3f5ffaf8d679aa9d9
 - name: github.com/tendermint/go-config
   version: e64b424499acd0eb9856b88e10c0dff41628c0d6
 - name: github.com/tendermint/go-crypto
