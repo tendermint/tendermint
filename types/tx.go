@@ -8,7 +8,8 @@ type Tx []byte
 
 // NOTE: this is the hash of the go-wire encoded Tx.
 // Tx has no types at this level, so just length-prefixed.
-// Maybe it should just be the hash of the bytes tho?
+// Alternatively, it may make sense to add types here and let
+// []byte be type 0x1 so we can have versioned txs if need be in the future.
 func (tx Tx) Hash() []byte {
 	return merkle.SimpleHashFromBinary(tx)
 }

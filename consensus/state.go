@@ -1235,7 +1235,7 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 		PanicQ(Fmt("Commit failed for application: %v", err))
 	}
 
-	// txs committed and removed from mempool, fire events
+	// txs committed, bad ones removed from mepool; fire events
 	eventCache.Flush()
 
 	// Save to blockStore.
