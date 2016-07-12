@@ -128,13 +128,16 @@ func addVoteToFromMany(to *ConsensusState, votes []*types.Vote, froms ...*valida
 	if len(votes) != len(froms) {
 		panic("len(votes) and len(froms) must match")
 	}
+
 	for i, from := range froms {
 		addVoteToFrom(to, from, votes[i])
 	}
 }
 
 func addVoteToFrom(to *ConsensusState, from *validatorStub, vote *types.Vote) {
+	to.mtx.Lock() // NOTE: wont need this when the vote comes with the index!
 	valIndex, _ := to.Validators.GetByAddress(from.PrivValidator.Address)
+	to.mtx.Unlock()
 
 	to.peerMsgQueue <- msgInfo{Msg: &VoteMessage{valIndex, vote}}
 	// added, err := to.TryAddVote(valIndex, vote, "")
@@ -158,16 +161,32 @@ func signVoteMany(voteType byte, hash []byte, header types.PartSetHeader, vss ..
 }
 
 // add vote to one cs from another
-func signAddVoteToFromMany(voteType byte, to *ConsensusState, hash []byte, header types.PartSetHeader, froms ...*validatorStub) {
+// if voteCh is not nil, read all votes
+func signAddVoteToFromMany(voteType byte, to *ConsensusState, hash []byte, header types.PartSetHeader, voteCh chan interface{}, froms ...*validatorStub) {
+	var wg chan struct{} // when done reading all votes
+	if voteCh != nil {
+		wg = readVotes(voteCh, len(froms))
+	}
 	for _, from := range froms {
 		vote := signVote(from, voteType, hash, header)
 		addVoteToFrom(to, from, vote)
 	}
+
+	if voteCh != nil {
+		<-wg
+	}
 }
 
-func signAddVoteToFrom(voteType byte, to *ConsensusState, from *validatorStub, hash []byte, header types.PartSetHeader) *types.Vote {
+func signAddVoteToFrom(voteType byte, to *ConsensusState, from *validatorStub, hash []byte, header types.PartSetHeader, voteCh chan interface{}) *types.Vote {
+	var wg chan struct{} // when done reading all votes
+	if voteCh != nil {
+		wg = readVotes(voteCh, 1)
+	}
 	vote := signVote(from, voteType, hash, header)
 	addVoteToFrom(to, from, vote)
+	if voteCh != nil {
+		<-wg
+	}
 	return vote
 }
 
@@ -355,6 +374,17 @@ func subscribeToVoter(cs *ConsensusState, addr []byte) chan interface{} {
 		}
 	}()
 	return voteCh
+}
+
+func readVotes(ch chan interface{}, reads int) chan struct{} {
+	wg := make(chan struct{})
+	go func() {
+		for i := 0; i < reads; i++ {
+			<-ch // read the precommit event
+		}
+		close(wg)
+	}()
+	return wg
 }
 
 func randGenesisState(numValidators int, randPower bool, minPower int64) (*sm.State, []*types.PrivValidator) {
