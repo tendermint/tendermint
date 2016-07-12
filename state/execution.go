@@ -18,7 +18,7 @@ func (s *State) ValidateBlock(block *types.Block) error {
 
 // Execute the block to mutate State.
 // Validates block and then executes Data.Txs in the block.
-func (s *State) ExecBlock(evsw *events.EventSwitch, proxyAppConn proxy.AppConn, block *types.Block, blockPartsHeader types.PartSetHeader) error {
+func (s *State) ExecBlock(eventCache events.Fireable, proxyAppConn proxy.AppConn, block *types.Block, blockPartsHeader types.PartSetHeader) error {
 
 	// Validate the block.
 	err := s.validateBlock(block)
@@ -34,7 +34,7 @@ func (s *State) ExecBlock(evsw *events.EventSwitch, proxyAppConn proxy.AppConn, 
 	nextValSet := valSet.Copy()
 
 	// Execute the block txs
-	err = s.execBlockOnProxyApp(evsw, proxyAppConn, block)
+	err = s.execBlockOnProxyApp(eventCache, proxyAppConn, block)
 	if err != nil {
 		// There was some error in proxyApp
 		// TODO Report error and wait for proxyApp to be available.
@@ -55,7 +55,7 @@ func (s *State) ExecBlock(evsw *events.EventSwitch, proxyAppConn proxy.AppConn, 
 
 // Executes block's transactions on proxyAppConn.
 // TODO: Generate a bitmap or otherwise store tx validity in state.
-func (s *State) execBlockOnProxyApp(evsw *events.EventSwitch, proxyAppConn proxy.AppConn, block *types.Block) error {
+func (s *State) execBlockOnProxyApp(eventCache events.Fireable, proxyAppConn proxy.AppConn, block *types.Block) error {
 
 	var validTxs, invalidTxs = 0, 0
 
@@ -73,6 +73,9 @@ func (s *State) execBlockOnProxyApp(evsw *events.EventSwitch, proxyAppConn proxy
 				log.Debug("Invalid tx", "code", r.AppendTx.Code, "log", r.AppendTx.Log)
 				invalidTxs += 1
 			}
+			// NOTE: if we count we can access the tx from the block instead of
+			// pulling it from the req
+			eventCache.FireEvent(types.EventStringTx(req.GetAppendTx().Tx), res)
 		}
 	}
 	proxyAppConn.SetResponseCallback(proxyCb)

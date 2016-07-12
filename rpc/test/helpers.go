@@ -20,7 +20,6 @@ import (
 var (
 	config            cfg.Config
 	node              *nm.Node
-	mempoolCount      = 0
 	chainID           string
 	rpcAddr           string
 	requestAddr       string
@@ -76,7 +75,7 @@ func newNode(ready chan struct{}) {
 func newWSClient(t *testing.T) *client.WSClient {
 	wsc := client.NewWSClient(websocketAddr, websocketEndpoint)
 	if _, err := wsc.Start(); err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
 	return wsc
 }
@@ -84,14 +83,14 @@ func newWSClient(t *testing.T) *client.WSClient {
 // subscribe to an event
 func subscribe(t *testing.T, wsc *client.WSClient, eventid string) {
 	if err := wsc.Subscribe(eventid); err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
 }
 
 // unsubscribe from an event
 func unsubscribe(t *testing.T, wsc *client.WSClient, eventid string) {
 	if err := wsc.Unsubscribe(eventid); err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
 }
 
@@ -138,7 +137,7 @@ func waitForEvent(t *testing.T, wsc *client.WSClient, eventid string, dieOnTimeo
 	case <-timeout.C:
 		if dieOnTimeout {
 			wsc.Stop()
-			t.Fatalf("%s event was not received in time", eventid)
+			panic(Fmt("%s event was not received in time", eventid))
 		}
 		// else that's great, we didn't hear the event
 		// and we shouldn't have
@@ -147,14 +146,13 @@ func waitForEvent(t *testing.T, wsc *client.WSClient, eventid string, dieOnTimeo
 			// message was received and expected
 			// run the check
 			if err := check(eventid, eventData); err != nil {
-				t.Fatal(err) // Show the stack trace.
+				panic(err) // Show the stack trace.
 			}
 		} else {
 			wsc.Stop()
-			t.Fatalf("%s event was not expected", eventid)
+			panic(Fmt("%s event was not expected", eventid))
 		}
 	case err := <-errCh:
-		t.Fatal(err)
 		panic(err) // Show the stack trace.
 
 	}

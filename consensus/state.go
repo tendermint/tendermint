@@ -268,7 +268,8 @@ func (cs *ConsensusState) SetEventSwitch(evsw *events.EventSwitch) {
 }
 
 func (cs *ConsensusState) String() string {
-	return Fmt("ConsensusState(H:%v R:%v S:%v", cs.Height, cs.Round, cs.Step)
+	// better not to access shared variables
+	return Fmt("ConsensusState") //(H:%v R:%v S:%v", cs.Height, cs.Round, cs.Step)
 }
 
 func (cs *ConsensusState) GetState() *sm.State {
@@ -322,6 +323,7 @@ func (cs *ConsensusState) startRoutines(maxSteps int) {
 
 func (cs *ConsensusState) OnStop() {
 	cs.QuitService.OnStop()
+
 	if cs.wal != nil && cs.IsRunning() {
 		cs.wal.Wait()
 	}
@@ -1214,10 +1216,13 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	// Create a copy of the state for staging
 	stateCopy := cs.state.Copy()
 
+	// event cache for txs
+	eventCache := events.NewEventCache(cs.evsw)
+
 	// Run the block on the State:
 	// + update validator sets
 	// + run txs on the proxyAppConn
-	err := stateCopy.ExecBlock(cs.evsw, cs.proxyAppConn, block, blockParts.Header())
+	err := stateCopy.ExecBlock(eventCache, cs.proxyAppConn, block, blockParts.Header())
 	if err != nil {
 		// TODO: handle this gracefully.
 		PanicQ(Fmt("Exec failed for application: %v", err))
@@ -1229,6 +1234,9 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 		// TODO: handle this gracefully.
 		PanicQ(Fmt("Commit failed for application: %v", err))
 	}
+
+	// txs committed, bad ones removed from mepool; fire events
+	eventCache.Flush()
 
 	// Save to blockStore.
 	if cs.blockStore.Height() < block.Height {

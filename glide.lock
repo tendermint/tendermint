@@ -54,9 +54,9 @@ imports:
 - name: github.com/tendermint/go-clist
   version: 634527f5b60fd7c71ca811262493df2ad65ee0ca
 - name: github.com/tendermint/go-common
-  version: dcfa46af1341d03b80d32e4901019d1668b978b9
+  version: dee6622bf7f811d3ba8638a3f5ffaf8d679aa9d9
 - name: github.com/tendermint/go-config
-  version: cfcef384d64b94e50909596e39b32ffb3cc20573
+  version: e64b424499acd0eb9856b88e10c0dff41628c0d6
 - name: github.com/tendermint/go-crypto
   version: 41cfb7b677f4e16cdfd22b6ce0946c89919fbc7b
 - name: github.com/tendermint/go-db
@@ -68,7 +68,7 @@ imports:
 - name: github.com/tendermint/go-merkle
   version: 05042c6ab9cad51d12e4cecf717ae68e3b1409a8
 - name: github.com/tendermint/go-p2p
-  version: 5bd7692323ec60d6461678f09b5024a952164151
+  version: 929cf433b9c8e987af5f7f3ca3ce717e1e3eda53
   subpackages:
   - upnp
 - name: github.com/tendermint/go-rpc
@@ -84,7 +84,7 @@ imports:
   subpackages:
   - term
 - name: github.com/tendermint/tmsp
-  version: f41bc5f11969e22b357d94b4247403fd62d40445
+  version: 49a67aee8a7984a68eabe2c45ff6eb0ff51e31f9
   subpackages:
   - client
   - example/dummy
@@ -115,7 +115,7 @@ imports:
   subpackages:
   - unix
 - name: google.golang.org/grpc
-  version: 88aeffff979aa77aa502cb011423d0a08fa12c5a
+  version: daeb9cc0f2607997cce611a1458e71b981ce5986
   subpackages:
   - codes
   - credentials

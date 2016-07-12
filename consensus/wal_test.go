@@ -6,6 +6,8 @@ import (
 	"path"
 	"strings"
 	"testing"
+
+	. "github.com/tendermint/go-common"
 )
 
 var testTxt = `{"time":"2016-01-16T04:42:00.390Z","msg":[1,{"height":28219,"round":0,"step":"RoundStepPrevote"}]}
@@ -18,7 +20,7 @@ var testTxt = `{"time":"2016-01-16T04:42:00.390Z","msg":[1,{"height":28219,"roun
 func TestSeek(t *testing.T) {
 	f, err := ioutil.TempFile(os.TempDir(), "seek_test_")
 	if err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
 
 	stat, _ := f.Stat()
@@ -26,13 +28,13 @@ func TestSeek(t *testing.T) {
 
 	_, err = f.WriteString(testTxt)
 	if err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
 	f.Close()
 
 	wal, err := NewWAL(path.Join(os.TempDir(), name), config.GetBool("cswal_light"))
 	if err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
 
 	keyWord := "Precommit"
@@ -43,7 +45,7 @@ func TestSeek(t *testing.T) {
 		return false
 	})
 	if err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
 
 	// confirm n
@@ -58,18 +60,18 @@ func TestSeek(t *testing.T) {
 	// n is lines from the end.
 	spl = spl[i:]
 	if n != len(spl) {
-		t.Fatalf("Wrong nLines. Got %d, expected %d", n, len(spl))
+		panic(Fmt("Wrong nLines. Got %d, expected %d", n, len(spl)))
 	}
 
 	b, err := ioutil.ReadAll(wal.fp)
 	if err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
 	// first char is a \n
 	spl2 := strings.Split(strings.Trim(string(b), "\n"), "\n")
 	for i, s := range spl {
 		if s != spl2[i] {
-			t.Fatalf("Mismatch. Got %s, expected %s", spl2[i], s)
+			panic(Fmt("Mismatch. Got %s, expected %s", spl2[i], s))
 		}
 	}
 
