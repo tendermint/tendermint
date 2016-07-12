@@ -68,6 +68,8 @@ type ResultUnconfirmedTxs struct {
 	Txs []types.Tx `json:"txs"`
 }
 
+type ResultUnsafeFlushMempool struct{}
+
 type ResultUnsafeSetConfig struct{}
 
 type ResultUnsafeProfile struct{}
@@ -115,6 +117,7 @@ const (
 	ResultTypeUnsafeStartCPUProfiler = byte(0xa1)
 	ResultTypeUnsafeStopCPUProfiler  = byte(0xa2)
 	ResultTypeUnsafeWriteHeapProfile = byte(0xa3)
+	ResultTypeUnsafeFlushMempool     = byte(0xa4)
 )
 
 type TMResult interface {
@@ -141,4 +144,5 @@ var _ = wire.RegisterInterface(
 	wire.ConcreteType{&ResultUnsafeProfile{}, ResultTypeUnsafeStartCPUProfiler},
 	wire.ConcreteType{&ResultUnsafeProfile{}, ResultTypeUnsafeStopCPUProfiler},
 	wire.ConcreteType{&ResultUnsafeProfile{}, ResultTypeUnsafeWriteHeapProfile},
+	wire.ConcreteType{&ResultUnsafeFlushMempool{}, ResultTypeUnsafeFlushMempool},
 )

@@ -103,7 +103,7 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 }
 
 func UnconfirmedTxs() (*ctypes.ResultUnconfirmedTxs, error) {
-	txs := mempoolReactor.Mempool.Reap(0)
+	txs := mempoolReactor.Mempool.Reap(-1)
 	return &ctypes.ResultUnconfirmedTxs{len(txs), txs}, nil
 }
 
