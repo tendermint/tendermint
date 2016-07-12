@@ -31,7 +31,7 @@ func TestTxConcurrentWithCommit(t *testing.T) {
 			binary.BigEndian.PutUint64(txBytes, uint64(i))
 			err := cs.mempool.CheckTx(txBytes, nil)
 			if err != nil {
-				t.Fatal("Error after CheckTx: %v", err)
+				panic(Fmt("Error after CheckTx: %v", err))
 			}
 			//	time.Sleep(time.Microsecond * time.Duration(rand.Int63n(3000)))
 		}
@@ -47,7 +47,7 @@ func TestTxConcurrentWithCommit(t *testing.T) {
 		case b := <-newBlockCh:
 			nTxs += b.(types.EventDataNewBlock).Block.Header.NumTxs
 		case <-ticker.C:
-			t.Fatal("Timed out waiting to commit blocks with transactions")
+			panic("Timed out waiting to commit blocks with transactions")
 		}
 	}
 }

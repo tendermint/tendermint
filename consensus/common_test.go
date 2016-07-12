@@ -99,18 +99,18 @@ func changeProposer(t *testing.T, perspectiveOf *ConsensusState, newProposer *va
 	_, v1 := perspectiveOf.Validators.GetByAddress(perspectiveOf.privValidator.Address)
 	v1.Accum, v1.VotingPower = 0, 0
 	if updated := perspectiveOf.Validators.Update(v1); !updated {
-		t.Fatal("failed to update validator")
+		panic("failed to update validator")
 	}
 	_, v2 := perspectiveOf.Validators.GetByAddress(newProposer.Address)
 	v2.Accum, v2.VotingPower = 100, 100
 	if updated := perspectiveOf.Validators.Update(v2); !updated {
-		t.Fatal("failed to update validator")
+		panic("failed to update validator")
 	}
 
 	// make the proposal
 	propBlock, _ := perspectiveOf.createProposalBlock()
 	if propBlock == nil {
-		t.Fatal("Failed to create proposal block with cs2")
+		panic("Failed to create proposal block with cs2")
 	}
 	return propBlock
 }
@@ -120,7 +120,7 @@ func fixVotingPower(t *testing.T, cs1 *ConsensusState, addr2 []byte) {
 	_, v2 := cs1.Validators.GetByAddress(addr2)
 	v1.Accum, v1.VotingPower = v2.Accum, v2.VotingPower
 	if updated := cs1.Validators.Update(v1); !updated {
-		t.Fatal("failed to update validator")
+		panic("failed to update validator")
 	}
 }
 

@@ -8,6 +8,7 @@ import (
 
 	"github.com/tendermint/tendermint/config/tendermint_test"
 	//"github.com/tendermint/go-events"
+	. "github.com/tendermint/go-common"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -67,7 +68,7 @@ func TestProposerSelection0(t *testing.T) {
 	// lets commit a block and ensure proposer for the next height is correct
 	prop := cs1.GetRoundState().Validators.Proposer()
 	if !bytes.Equal(prop.Address, cs1.privValidator.Address) {
-		t.Fatalf("expected proposer to be validator %d. Got %X", 0, prop.Address)
+		panic(Fmt("expected proposer to be validator %d. Got %X", 0, prop.Address))
 	}
 
 	// wait for complete proposal
@@ -81,7 +82,7 @@ func TestProposerSelection0(t *testing.T) {
 
 	prop = cs1.GetRoundState().Validators.Proposer()
 	if !bytes.Equal(prop.Address, vss[1].Address) {
-		t.Fatalf("expected proposer to be validator %d. Got %X", 1, prop.Address)
+		panic(Fmt("expected proposer to be validator %d. Got %X", 1, prop.Address))
 	}
 }
 
@@ -102,7 +103,7 @@ func TestProposerSelection2(t *testing.T) {
 	for i := 0; i < len(vss); i++ {
 		prop := cs1.GetRoundState().Validators.Proposer()
 		if !bytes.Equal(prop.Address, vss[(i+2)%len(vss)].Address) {
-			t.Fatalf("expected proposer to be validator %d. Got %X", (i+2)%len(vss), prop.Address)
+			panic(Fmt("expected proposer to be validator %d. Got %X", (i+2)%len(vss), prop.Address))
 		}
 
 		rs := cs1.GetRoundState()
@@ -130,7 +131,7 @@ func TestEnterProposeNoPrivValidator(t *testing.T) {
 	select {
 	case <-timeoutCh:
 	case <-ticker.C:
-		t.Fatal("Expected EnterPropose to timeout")
+		panic("Expected EnterPropose to timeout")
 
 	}
 
@@ -170,7 +171,7 @@ func TestEnterProposeYesPrivValidator(t *testing.T) {
 	ticker := time.NewTicker(cs.timeoutParams.ensureProposeTimeout())
 	select {
 	case <-timeoutCh:
-		t.Fatal("Expected EnterPropose not to timeout")
+		panic("Expected EnterPropose not to timeout")
 	case <-ticker.C:
 
 	}
@@ -200,7 +201,7 @@ func TestBadProposal(t *testing.T) {
 	propBlockParts := propBlock.MakePartSet()
 	proposal := types.NewProposal(cs2.Height, round, propBlockParts.Header(), -1)
 	if err := cs2.SignProposal(config.GetString("chain_id"), proposal); err != nil {
-		t.Fatal("failed to sign bad proposal", err)
+		panic("failed to sign bad proposal: " + err.Error())
 	}
 
 	// set the proposal block
@@ -377,7 +378,7 @@ func TestLockNoPOL(t *testing.T) {
 	rs = re.(types.EventDataRoundState).RoundState.(*RoundState)
 
 	if rs.ProposalBlock != nil {
-		t.Fatal("Expected proposal block to be nil")
+		panic("Expected proposal block to be nil")
 	}
 
 	// wait to finish prevote
@@ -420,7 +421,7 @@ func TestLockNoPOL(t *testing.T) {
 
 	// now we're on a new round and are the proposer
 	if !bytes.Equal(rs.ProposalBlock.Hash(), rs.LockedBlock.Hash()) {
-		t.Fatalf("Expected proposal block to be locked block. Got %v, Expected %v", rs.ProposalBlock, rs.LockedBlock)
+		panic(Fmt("Expected proposal block to be locked block. Got %v, Expected %v", rs.ProposalBlock, rs.LockedBlock))
 	}
 
 	<-voteCh // prevote
@@ -440,7 +441,7 @@ func TestLockNoPOL(t *testing.T) {
 	// before we time out into new round, set next proposal block
 	prop, propBlock := decideProposal(cs1, cs2, cs2.Height, cs2.Round+1)
 	if prop == nil || propBlock == nil {
-		t.Fatal("Failed to create proposal block with cs2")
+		panic("Failed to create proposal block with cs2")
 	}
 
 	incrementRound(cs2)
@@ -567,11 +568,11 @@ func TestLockPOLRelock(t *testing.T) {
 	re = <-newRoundCh
 	rs = re.(types.EventDataRoundState).RoundState.(*RoundState)
 	if rs.Height != 2 {
-		t.Fatal("Expected height to increment")
+		panic("Expected height to increment")
 	}
 
 	if !bytes.Equal(b.Header.Hash(), propBlockHash) {
-		t.Fatal("Expected new block to be proposal block")
+		panic("Expected new block to be proposal block")
 	}
 }
 
@@ -699,7 +700,7 @@ func TestLockPOLSafety1(t *testing.T) {
 		_, v1 := cs1.Validators.GetByAddress(vss[0].Address)
 		v1.VotingPower = 1
 		if updated := cs1.Validators.Update(v1); !updated {
-			t.Fatal("failed to update validator")
+			panic("failed to update validator")
 		}*/
 
 	log.Warn("old prop", "hash", fmt.Sprintf("%X", propBlock.Hash()))
@@ -734,7 +735,7 @@ func TestLockPOLSafety1(t *testing.T) {
 	rs = re.(types.EventDataRoundState).RoundState.(*RoundState)
 
 	if rs.LockedBlock != nil {
-		t.Fatal("we should not be locked!")
+		panic("we should not be locked!")
 	}
 	log.Warn("new prop", "hash", fmt.Sprintf("%X", propBlockHash))
 	// go to prevote, prevote for proposal block
@@ -846,7 +847,7 @@ func TestLockPOLSafety2(t *testing.T) {
 	// in round 2 we see the polkad block from round 0
 	newProp := types.NewProposal(height, 2, propBlockParts0.Header(), 0)
 	if err := cs3.SignProposal(config.GetString("chain_id"), newProp); err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
 	cs1.SetProposalAndBlock(newProp, propBlock0, propBlockParts0, "some peer")
 	addVoteToFromMany(cs1, prevotes, cs2, cs3, cs4) // add the pol votes
@@ -865,7 +866,7 @@ func TestLockPOLSafety2(t *testing.T) {
 
 	select {
 	case <-unlockCh:
-		t.Fatal("validator unlocked using an old polka")
+		panic("validator unlocked using an old polka")
 	case <-voteCh:
 		// prevote our locked block
 	}
@@ -1016,6 +1017,6 @@ func TestHalt1(t *testing.T) {
 	rs = re.(types.EventDataRoundState).RoundState.(*RoundState)
 
 	if rs.Height != 2 {
-		t.Fatal("expected height to increment")
+		panic("expected height to increment")
 	}
 }
