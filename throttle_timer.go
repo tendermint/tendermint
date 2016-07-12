@@ -1,7 +1,7 @@
 package common
 
 import (
-	"sync/atomic"
+	"sync"
 	"time"
 )
 
@@ -12,12 +12,14 @@ If a long continuous burst of .Set() calls happens, ThrottleTimer fires
 at most once every "dur".
 */
 type ThrottleTimer struct {
-	Name  string
-	Ch    chan struct{}
-	quit  chan struct{}
-	dur   time.Duration
+	Name string
+	Ch   chan struct{}
+	quit chan struct{}
+	dur  time.Duration
+
+	mtx   sync.Mutex
 	timer *time.Timer
-	isSet uint32
+	isSet bool
 }
 
 func NewThrottleTimer(name string, dur time.Duration) *ThrottleTimer {
@@ -30,9 +32,11 @@ func NewThrottleTimer(name string, dur time.Duration) *ThrottleTimer {
 }
 
 func (t *ThrottleTimer) fireRoutine() {
+	t.mtx.Lock()
+	defer t.mtx.Unlock()
 	select {
 	case t.Ch <- struct{}{}:
-		atomic.StoreUint32(&t.isSet, 0)
+		t.isSet = false
 	case <-t.quit:
 		// do nothing
 	default:
@@ -41,13 +45,18 @@ func (t *ThrottleTimer) fireRoutine() {
 }
 
 func (t *ThrottleTimer) Set() {
-	if atomic.CompareAndSwapUint32(&t.isSet, 0, 1) {
+	t.mtx.Lock()
+	defer t.mtx.Unlock()
+	if !t.isSet {
+		t.isSet = true
 		t.timer.Reset(t.dur)
 	}
 }
 
 func (t *ThrottleTimer) Unset() {
-	atomic.StoreUint32(&t.isSet, 0)
+	t.mtx.Lock()
+	defer t.mtx.Unlock()
+	t.isSet = false
 	t.timer.Stop()
 }
 
@@ -58,5 +67,7 @@ func (t *ThrottleTimer) Stop() bool {
 		return false
 	}
 	close(t.quit)
+	t.mtx.Lock()
+	defer t.mtx.Unlock()
 	return t.timer.Stop()
 }
