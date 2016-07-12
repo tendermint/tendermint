@@ -41,7 +41,7 @@ func TestTxConcurrentWithCommit(t *testing.T) {
 	go appendTxsRange(0, NTxs)
 
 	startTestRound(cs, height, round)
-	ticker := time.NewTicker(time.Second * 5)
+	ticker := time.NewTicker(time.Second * 20)
 	for nTxs := 0; nTxs < NTxs; {
 		select {
 		case b := <-newBlockCh:
