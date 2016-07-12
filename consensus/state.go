@@ -321,7 +321,10 @@ func (cs *ConsensusState) startRoutines(maxSteps int) {
 }
 
 func (cs *ConsensusState) OnStop() {
+	cs.mtx.Lock() // NOTE: OnStop prints the cs.Height, which might be concurrently updated ...
 	cs.QuitService.OnStop()
+	cs.mtx.Unlock()
+
 	if cs.wal != nil && cs.IsRunning() {
 		cs.wal.Wait()
 	}
