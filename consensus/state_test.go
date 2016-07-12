@@ -554,6 +554,8 @@ func TestLockPOLRelock(t *testing.T) {
 	// now either we go to PrevoteWait or Precommit
 	select {
 	case <-timeoutWaitCh: // we're in PrevoteWait, go to Precommit
+		// XXX: there's no guarantee we see the polka, this might be a precommit for nil,
+		// in which case the test fails!
 		<-voteCh
 	case <-voteCh: // we went straight to Precommit
 	}
