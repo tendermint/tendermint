@@ -268,7 +268,8 @@ func (cs *ConsensusState) SetEventSwitch(evsw *events.EventSwitch) {
 }
 
 func (cs *ConsensusState) String() string {
-	return Fmt("ConsensusState(H:%v R:%v S:%v", cs.Height, cs.Round, cs.Step)
+	// better not to access shared variables
+	return Fmt("ConsensusState") //(H:%v R:%v S:%v", cs.Height, cs.Round, cs.Step)
 }
 
 func (cs *ConsensusState) GetState() *sm.State {
@@ -321,9 +322,7 @@ func (cs *ConsensusState) startRoutines(maxSteps int) {
 }
 
 func (cs *ConsensusState) OnStop() {
-	cs.mtx.Lock() // NOTE: OnStop prints the cs.Height, which might be concurrently updated ...
 	cs.QuitService.OnStop()
-	cs.mtx.Unlock()
 
 	if cs.wal != nil && cs.IsRunning() {
 		cs.wal.Wait()
