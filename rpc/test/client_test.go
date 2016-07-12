@@ -2,9 +2,11 @@ package rpctest
 
 import (
 	"bytes"
+	"crypto/rand"
 	"fmt"
 	"testing"
 
+	. "github.com/tendermint/go-common"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 	tmsp "github.com/tendermint/tmsp/types"
@@ -21,7 +23,7 @@ func TestURIStatus(t *testing.T) {
 	tmResult := new(ctypes.TMResult)
 	_, err := clientURI.Call("status", map[string]interface{}{}, tmResult)
 	if err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
 	testStatus(t, tmResult)
 }
@@ -30,7 +32,7 @@ func TestJSONStatus(t *testing.T) {
 	tmResult := new(ctypes.TMResult)
 	_, err := clientJSON.Call("status", []interface{}{}, tmResult)
 	if err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
 	testStatus(t, tmResult)
 }
@@ -39,7 +41,7 @@ func testStatus(t *testing.T, statusI interface{}) {
 	tmRes := statusI.(*ctypes.TMResult)
 	status := (*tmRes).(*ctypes.ResultStatus)
 	if status.NodeInfo.Network != chainID {
-		t.Fatal(fmt.Errorf("ChainID mismatch: got %s expected %s",
+		panic(Fmt("ChainID mismatch: got %s expected %s",
 			status.NodeInfo.Network, chainID))
 	}
 }
@@ -47,44 +49,53 @@ func testStatus(t *testing.T, statusI interface{}) {
 //--------------------------------------------------------------------------------
 // broadcast tx sync
 
-var testTx = []byte{0x1, 0x2, 0x3, 0x4, 0x5}
+func testTx() []byte {
+	buf := make([]byte, 16)
+	_, err := rand.Read(buf)
+	if err != nil {
+		panic(err)
+	}
+	return buf
+}
 
 func TestURIBroadcastTxSync(t *testing.T) {
 	config.Set("block_size", 0)
 	defer config.Set("block_size", -1)
 	tmResult := new(ctypes.TMResult)
-	_, err := clientURI.Call("broadcast_tx_sync", map[string]interface{}{"tx": testTx}, tmResult)
+	tx := testTx()
+	_, err := clientURI.Call("broadcast_tx_sync", map[string]interface{}{"tx": tx}, tmResult)
 	if err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
-	testBroadcastTxSync(t, tmResult)
+	testBroadcastTxSync(t, tmResult, tx)
 }
 
 func TestJSONBroadcastTxSync(t *testing.T) {
 	config.Set("block_size", 0)
 	defer config.Set("block_size", -1)
 	tmResult := new(ctypes.TMResult)
-	_, err := clientJSON.Call("broadcast_tx_sync", []interface{}{testTx}, tmResult)
+	tx := testTx()
+	_, err := clientJSON.Call("broadcast_tx_sync", []interface{}{tx}, tmResult)
 	if err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
-	testBroadcastTxSync(t, tmResult)
+	testBroadcastTxSync(t, tmResult, tx)
 }
 
-func testBroadcastTxSync(t *testing.T, resI interface{}) {
+func testBroadcastTxSync(t *testing.T, resI interface{}, tx []byte) {
 	tmRes := resI.(*ctypes.TMResult)
 	res := (*tmRes).(*ctypes.ResultBroadcastTx)
 	if res.Code != tmsp.CodeType_OK {
-		t.Fatalf("BroadcastTxSync got non-zero exit code: %v. %X; %s", res.Code, res.Data, res.Log)
+		panic(Fmt("BroadcastTxSync got non-zero exit code: %v. %X; %s", res.Code, res.Data, res.Log))
 	}
 	mem := node.MempoolReactor().Mempool
 	if mem.Size() != 1 {
-		t.Fatalf("Mempool size should have been 1. Got %d", mem.Size())
+		panic(Fmt("Mempool size should have been 1. Got %d", mem.Size()))
 	}
 
 	txs := mem.Reap(1)
-	if !bytes.Equal(txs[0], testTx) {
-		t.Fatalf("Tx in mempool does not match test tx. Got %X, expected %X", txs[0], testTx)
+	if !bytes.Equal(txs[0], tx) {
+		panic(Fmt("Tx in mempool does not match test tx. Got %X, expected %X", txs[0], testTx))
 	}
 
 	mem.Flush()
@@ -95,32 +106,36 @@ func testBroadcastTxSync(t *testing.T, resI interface{}) {
 
 func TestURIBroadcastTxCommit(t *testing.T) {
 	tmResult := new(ctypes.TMResult)
-	_, err := clientURI.Call("broadcast_tx_commit", map[string]interface{}{"tx": testTx}, tmResult)
+	tx := testTx()
+	_, err := clientURI.Call("broadcast_tx_commit", map[string]interface{}{"tx": tx}, tmResult)
 	if err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
-	testBroadcastTxCommit(t, tmResult)
+	testBroadcastTxCommit(t, tmResult, tx)
 }
 
 func TestJSONBroadcastTxCommit(t *testing.T) {
 	tmResult := new(ctypes.TMResult)
-	_, err := clientJSON.Call("broadcast_tx_commit", []interface{}{testTx}, tmResult)
+	tx := testTx()
+	_, err := clientJSON.Call("broadcast_tx_commit", []interface{}{tx}, tmResult)
 	if err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
-	testBroadcastTxCommit(t, tmResult)
+	testBroadcastTxCommit(t, tmResult, tx)
 }
 
-func testBroadcastTxCommit(t *testing.T, resI interface{}) {
+func testBroadcastTxCommit(t *testing.T, resI interface{}, tx []byte) {
 	tmRes := resI.(*ctypes.TMResult)
 	res := (*tmRes).(*ctypes.ResultBroadcastTx)
 	if res.Code != tmsp.CodeType_OK {
-		t.Fatalf("BroadcastTxCommit got non-zero exit code: %v. %X; %s", res.Code, res.Data, res.Log)
+		panic(Fmt("BroadcastTxCommit got non-zero exit code: %v. %X; %s", res.Code, res.Data, res.Log))
 	}
 	mem := node.MempoolReactor().Mempool
 	if mem.Size() != 0 {
-		t.Fatalf("Mempool size should have been 0. Got %d", mem.Size())
+		panic(Fmt("Mempool size should have been 0. Got %d", mem.Size()))
 	}
+
+	// TODO: find tx in block
 }
 
 //--------------------------------------------------------------------------------
@@ -232,7 +247,7 @@ func TestURIUnsafeSetConfig(t *testing.T) {
 			"value": testCase[2],
 		}, tmResult)
 		if err != nil {
-			t.Fatal(err)
+			panic(err)
 		}
 	}
 	testUnsafeSetConfig(t)
@@ -243,7 +258,7 @@ func TestJSONUnsafeSetConfig(t *testing.T) {
 		tmResult := new(ctypes.TMResult)
 		_, err := clientJSON.Call("unsafe_set_config", []interface{}{testCase[0], testCase[1], testCase[2]}, tmResult)
 		if err != nil {
-			t.Fatal(err)
+			panic(err)
 		}
 	}
 	testUnsafeSetConfig(t)
@@ -252,16 +267,16 @@ func TestJSONUnsafeSetConfig(t *testing.T) {
 func testUnsafeSetConfig(t *testing.T) {
 	s := config.GetString("key1")
 	if s != stringVal {
-		t.Fatalf("got %v, expected %v", s, stringVal)
+		panic(Fmt("got %v, expected %v", s, stringVal))
 	}
 
 	i := config.GetInt("key2")
 	if i != intVal {
-		t.Fatalf("got %v, expected %v", i, intVal)
+		panic(Fmt("got %v, expected %v", i, intVal))
 	}
 
 	b := config.GetBool("key3")
 	if b != boolVal {
-		t.Fatalf("got %v, expected %v", b, boolVal)
+		panic(Fmt("got %v, expected %v", b, boolVal))
 	}
 }
