@@ -132,7 +132,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc) http.HandlerFunc {
 		log.Info("HTTPJSONRPC", "method", request.Method, "args", args, "returns", returns)
 		result, err := unreflectResult(returns)
 		if err != nil {
-			WriteRPCResponseHTTP(w, NewRPCResponse(request.ID, nil, err.Error()))
+			WriteRPCResponseHTTP(w, NewRPCResponse(request.ID, result, err.Error()))
 			return
 		}
 		WriteRPCResponseHTTP(w, NewRPCResponse(request.ID, result, ""))
