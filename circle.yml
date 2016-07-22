@@ -20,5 +20,4 @@ dependencies:
 
 test:
   override:
-    - "cd $REPO && go test ./..."
-    - "cd $REPO && bash tests/test_counter/test.sh"
+    - "cd $REPO && make test"

@@ -10,4 +10,5 @@ COUNTER_APP="counter" go run test_counter.go
 COUNTER_APP="counter -tmsp=grpc" go run test_counter.go -tmsp=grpc
 
 # test nodejs counter
+# TODO: fix node app
 #COUNTER_APP="node $GOPATH/src/github.com/tendermint/js-tmsp/example/app.js" go run test_counter.go
