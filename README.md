@@ -18,7 +18,7 @@ This repository holds a number of important pieces:
 
 - `types/types.proto`
 	- the protobuf file definig TMSP message types, and the optional grpc interface. 
-	- use `protoc --go_out=plugins=grpc:./types types/types.proto` to generate the `types/types.pb.go` file
+	- use `protoc --go_out=plugins=grpc:. types.proto` to from the `types` dir to generate the `types/types.pb.go` file
 	- see `protoc --help` and [the grpc docs](www.grpc.io/docs) for examples and details of other languages
 
 - golang implementation of TMSP client and server
@@ -29,6 +29,7 @@ This repository holds a number of important pieces:
 
 - `cmd/tmsp-cli`
 	- command line tool wrapping the client for probing/testing a TMSP application
+	- use `tmsp-cli --version` to get the TMSP version
 
 - examples:
 	- the `cmd/counter` application, which illustrates nonce checking in txs
