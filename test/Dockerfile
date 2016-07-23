@@ -1,8 +1,7 @@
 # Pull base image.
-FROM golang:1.5
+FROM golang:1.6
 
-COPY test/test_libs.sh /
-COPY glide.lock /glide.lock
-
-ENV GLIDE /glide.lock
-
+ENV TENDERMINT_ORG $GOPATH/src/github.com/tendermint/
+RUN mkdir -p $TENDERMINT_ORG
+COPY . $TENDERMINT_ORG/tendermint
+WORKDIR $TENDERMINT_ORG/tendermint

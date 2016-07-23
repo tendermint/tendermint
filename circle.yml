@@ -20,11 +20,9 @@ dependencies:
     - sudo service docker start
     - go version
     - docker version
-    - "cd $REPO && make get_vendor_deps"
 
 test:
   override:
-    - "cd $REPO && make test_race"
     - "cd $REPO && make test_integrations"
   post:
     - bash <(curl -s https://codecov.io/bash)

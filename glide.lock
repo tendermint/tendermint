@@ -45,7 +45,7 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/ed25519
-  version: fdac6641497281ed1cc368687ec6377e96e02b24
+  version: 1f52c6f8b8a5c7908aff4497c186af344b428925
   subpackages:
   - extra25519
   - edwards25519

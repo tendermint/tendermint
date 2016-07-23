@@ -24,7 +24,7 @@ test: build
 test_race: build
 	go test -race `${NOVENDOR}`
 
-test_integrations:
+test_integrations: 
 	bash ./test/test.sh
 
 test100: build
