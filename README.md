@@ -17,13 +17,14 @@ Other implementations:
 This repository holds a number of important pieces:
 
 - `types/types.proto`
-	- the protobuf file definig TMSP message types, and the optional grpc interface. 
-	- use `protoc --go_out=plugins=grpc:. types.proto` to from the `types` dir to generate the `types/types.pb.go` file
-	- see `protoc --help` and [the grpc docs](www.grpc.io/docs) for examples and details of other languages
+	- the protobuf file defining TMSP message types, and the optional grpc interface. 
+	- run `protoc --go_out=plugins=grpc:. types.proto` in the `types` dir to generate the `types/types.pb.go` file
+	- see `protoc --help` and [the grpc docs](https://www.grpc.io/docs) for examples and details of other languages
 
 - golang implementation of TMSP client and server
 	- two implementations:
-		- asynchronous, ordered message passing over unix or tcp
+		- asynchronous, ordered message passing over unix or tcp; 
+			- messages are serialized using protobuf and length prefixed
 		- grpc 
 	- TendermintCore runs a client, and the application runs a server
 
@@ -41,6 +42,8 @@ This repository holds a number of important pieces:
 Since this is a streaming protocol, all messages are encoded with a length-prefix followed by the message encoded in Protobuf3.  Protobuf3 doesn't have an official length-prefix standard, so we use our own.  The first byte represents the length of the big-endian encoded length.
 
 For example, if the Protobuf3 encoded TMSP message is `0xDEADBEEF` (4 bytes), the length-prefixed message is `0x0104DEADBEEF`.  If the Protobuf3 encoded TMSP message is 65535 bytes long, the length-prefixed message would be like `0x02FFFF...`.
+
+Note this prefixing does not apply for grpc.
 
 ## Message types
 
