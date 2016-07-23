@@ -2,6 +2,7 @@
 Simple, Secure, Scalable Blockchain Platform
 
 [![CircleCI](https://circleci.com/gh/tendermint/tendermint.svg?style=svg)](https://circleci.com/gh/tendermint/tendermint)
+[![codecov](https://codecov.io/gh/tendermint/tendermint/branch/develop/graph/badge.svg)](https://codecov.io/gh/tendermint/tendermint)
 
 _NOTE: This is yet pre-alpha non-production-quality software._
 
