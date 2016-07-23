@@ -22,6 +22,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "tmsp-cli"
 	app.Usage = "tmsp-cli [command] [args...]"
+	app.Version = "0.2"
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "address",
@@ -32,6 +33,10 @@ func main() {
 			Name:  "tmsp",
 			Value: "socket",
 			Usage: "socket or grpc",
+		},
+		cli.BoolFlag{
+			Name:  "verbose",
+			Usage: "print the command and results as if it were a console session",
 		},
 	}
 	app.Commands = []cli.Command{
@@ -133,7 +138,10 @@ func cmdBatch(app *cli.App, c *cli.Context) error {
 		} else if err != nil {
 			return err
 		}
-		args := []string{"tmsp"}
+		args := []string{"tmsp-cli"}
+		if c.GlobalBool("verbose") {
+			args = append(args, "--verbose")
+		}
 		args = append(args, strings.Split(string(line), " ")...)
 		app.Run(args)
 	}
@@ -151,7 +159,7 @@ func cmdConsole(app *cli.App, c *cli.Context) error {
 			return err
 		}
 
-		args := []string{"tmsp"}
+		args := []string{"tmsp-cli"}
 		args = append(args, strings.Split(string(line), " ")...)
 		if err := app.Run(args); err != nil {
 			return err
@@ -167,14 +175,14 @@ func cmdEcho(c *cli.Context) error {
 		return errors.New("Command echo takes 1 argument")
 	}
 	res := client.EchoSync(args[0])
-	printResponse(res, string(res.Data), false)
+	printResponse(c, res, string(res.Data), false)
 	return nil
 }
 
 // Get some info from the application
 func cmdInfo(c *cli.Context) error {
 	res := client.InfoSync()
-	printResponse(res, string(res.Data), false)
+	printResponse(c, res, string(res.Data), false)
 	return nil
 }
 
@@ -185,7 +193,7 @@ func cmdSetOption(c *cli.Context) error {
 		return errors.New("Command set_option takes 2 arguments (key, value)")
 	}
 	res := client.SetOptionSync(args[0], args[1])
-	printResponse(res, Fmt("%s=%s", args[0], args[1]), false)
+	printResponse(c, res, Fmt("%s=%s", args[0], args[1]), false)
 	return nil
 }
 
@@ -197,7 +205,7 @@ func cmdAppendTx(c *cli.Context) error {
 	}
 	txBytes := stringOrHexToBytes(c.Args()[0])
 	res := client.AppendTxSync(txBytes)
-	printResponse(res, string(res.Data), true)
+	printResponse(c, res, string(res.Data), true)
 	return nil
 }
 
@@ -209,14 +217,14 @@ func cmdCheckTx(c *cli.Context) error {
 	}
 	txBytes := stringOrHexToBytes(c.Args()[0])
 	res := client.CheckTxSync(txBytes)
-	printResponse(res, string(res.Data), true)
+	printResponse(c, res, string(res.Data), true)
 	return nil
 }
 
 // Get application Merkle root hash
 func cmdCommit(c *cli.Context) error {
 	res := client.CommitSync()
-	printResponse(res, Fmt("%X", res.Data), false)
+	printResponse(c, res, Fmt("%X", res.Data), false)
 	return nil
 }
 
@@ -228,13 +236,17 @@ func cmdQuery(c *cli.Context) error {
 	}
 	queryBytes := stringOrHexToBytes(c.Args()[0])
 	res := client.QuerySync(queryBytes)
-	printResponse(res, string(res.Data), true)
+	printResponse(c, res, string(res.Data), true)
 	return nil
 }
 
 //--------------------------------------------------------------------------------
 
-func printResponse(res types.Result, s string, printCode bool) {
+func printResponse(c *cli.Context, res types.Result, s string, printCode bool) {
+	if c.GlobalBool("verbose") {
+		fmt.Println(">", c.Command.Name, strings.Join(c.Args(), " "))
+	}
+
 	if printCode {
 		fmt.Printf("-> code: %s\n", res.Code.String())
 	}
@@ -246,6 +258,10 @@ func printResponse(res types.Result, s string, printCode bool) {
 	}
 	if res.Log != "" {
 		fmt.Printf("-> log: %s\n", res.Log)
+	}
+
+	if c.GlobalBool("verbose") {
+		fmt.Println("")
 	}
 
 }

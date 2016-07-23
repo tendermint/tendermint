@@ -12,6 +12,29 @@ Other implementations:
 * [cpp-tmsp](https://github.com/mdyring/cpp-tmsp) by Martin Dyring-Andersen
 * [js-tmsp](https://github.com/tendermint/js-tmsp)
 
+## Contents
+
+This repository holds a number of important pieces:
+
+- `types/types.proto`
+	- the protobuf file definig TMSP message types, and the optional grpc interface. 
+	- use `protoc --go_out=plugins=grpc:./types types/types.proto` to generate the `types/types.pb.go` file
+	- see `protoc --help` and [the grpc docs](www.grpc.io/docs) for examples and details of other languages
+
+- golang implementation of TMSP client and server
+	- two implementations:
+		- asynchronous, ordered message passing over unix or tcp
+		- grpc 
+	- TendermintCore runs a client, and the application runs a server
+
+- `cmd/tmsp-cli`
+	- command line tool wrapping the client for probing/testing a TMSP application
+
+- examples:
+	- the `cmd/counter` application, which illustrates nonce checking in txs
+	- the `cmd/dummy` application, which illustrates a simple key-value merkle tree
+
+
 ## Message format
 
 Since this is a streaming protocol, all messages are encoded with a length-prefix followed by the message encoded in Protobuf3.  Protobuf3 doesn't have an official length-prefix standard, so we use our own.  The first byte represents the length of the big-endian encoded length.
