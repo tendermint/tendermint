@@ -1,5 +1,7 @@
 # Tendermint Socket Protocol (TMSP)
 
+[![CircleCI](https://circleci.com/gh/tendermint/tmsp.svg?style=svg)](https://circleci.com/gh/tendermint/tmsp)
+
 Blockchains are a system for creating shared multi-master application state. 
 **TMSP** is a socket protocol enabling a blockchain consensus engine, running in one process,
 to manage a blockchain application state, running in another.
@@ -10,11 +12,38 @@ Other implementations:
 * [cpp-tmsp](https://github.com/mdyring/cpp-tmsp) by Martin Dyring-Andersen
 * [js-tmsp](https://github.com/tendermint/js-tmsp)
 
+## Contents
+
+This repository holds a number of important pieces:
+
+- `types/types.proto`
+	- the protobuf file defining TMSP message types, and the optional grpc interface. 
+	- run `protoc --go_out=plugins=grpc:. types.proto` in the `types` dir to generate the `types/types.pb.go` file
+	- see `protoc --help` and [the grpc docs](https://www.grpc.io/docs) for examples and details of other languages
+
+- golang implementation of TMSP client and server
+	- two implementations:
+		- asynchronous, ordered message passing over unix or tcp; 
+			- messages are serialized using protobuf and length prefixed
+		- grpc 
+	- TendermintCore runs a client, and the application runs a server
+
+- `cmd/tmsp-cli`
+	- command line tool wrapping the client for probing/testing a TMSP application
+	- use `tmsp-cli --version` to get the TMSP version
+
+- examples:
+	- the `cmd/counter` application, which illustrates nonce checking in txs
+	- the `cmd/dummy` application, which illustrates a simple key-value merkle tree
+
+
 ## Message format
 
 Since this is a streaming protocol, all messages are encoded with a length-prefix followed by the message encoded in Protobuf3.  Protobuf3 doesn't have an official length-prefix standard, so we use our own.  The first byte represents the length of the big-endian encoded length.
 
 For example, if the Protobuf3 encoded TMSP message is `0xDEADBEEF` (4 bytes), the length-prefixed message is `0x0104DEADBEEF`.  If the Protobuf3 encoded TMSP message is 65535 bytes long, the length-prefixed message would be like `0x02FFFF...`.
+
+Note this prefixing does not apply for grpc.
 
 ## Message types
 

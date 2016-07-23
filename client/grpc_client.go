@@ -90,7 +90,10 @@ func (cli *grpcClient) Error() error {
 }
 
 //----------------------------------------
-// async calls are really sync.
+// GRPC calls are synchronous, but some callbacks expect to be called asynchronously
+// (eg. the mempool expects to be able to lock to remove bad txs from cache).
+// To accomodate, we finish each call in its own go-routine,
+// which is expensive, but easy - if you want something better, use the socket protocol!
 // maybe one day, if people really want it, we use grpc streams,
 // but hopefully not :D
 
@@ -199,15 +202,18 @@ func (cli *grpcClient) finishAsyncCall(req *types.Request, res *types.Response) 
 	reqres.Done()         // Release waiters
 	reqres.SetDone()      // so reqRes.SetCallback will run the callback
 
-	// Notify reqRes listener if set
-	if cb := reqres.GetCallback(); cb != nil {
-		cb(res)
-	}
+	// go routine for callbacks
+	go func() {
+		// Notify reqRes listener if set
+		if cb := reqres.GetCallback(); cb != nil {
+			cb(res)
+		}
 
-	// Notify client listener if set
-	if cli.resCb != nil {
-		cli.resCb(reqres.Request, res)
-	}
+		// Notify client listener if set
+		if cli.resCb != nil {
+			cli.resCb(reqres.Request, res)
+		}
+	}()
 	return reqres
 }
 

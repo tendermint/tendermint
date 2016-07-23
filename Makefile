@@ -10,6 +10,7 @@ install: get_deps
 
 test:
 	go test github.com/tendermint/tmsp/...
+	bash tests/test.sh
 
 get_deps:
 	go get -d github.com/tendermint/tmsp/...

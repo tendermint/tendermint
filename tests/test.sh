@@ -1,12 +1,8 @@
+#! /bin/bash
 
-ROOT=$GOPATH/src/github.com/tendermint/tmsp
-cd $ROOT
+# test the counter using a go test script
+bash tests/test_app/test.sh
 
-# test golang counter
-COUNTER_APP="counter" go run $ROOT/tests/test_counter.go
+# test the cli against the examples in the tutorial at tendermint.com
+bash tests/test_cli/test.sh
 
-# test golang counter via grpc
-COUNTER_APP="counter -tmsp=grpc" go run $ROOT/tests/test_counter.go -tmsp=grpc
-
-# test nodejs counter
-COUNTER_APP="node ../js-tmsp/example/app.js" go run $ROOT/tests/test_counter.go

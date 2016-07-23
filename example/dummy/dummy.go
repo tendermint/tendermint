@@ -28,6 +28,7 @@ func (app *DummyApplication) SetOption(key string, value string) (log string) {
 	return ""
 }
 
+// tx is either "key=value" or just arbitrary bytes
 func (app *DummyApplication) AppendTx(tx []byte) types.Result {
 	parts := strings.Split(string(tx), "=")
 	if len(parts) == 2 {

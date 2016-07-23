@@ -1,0 +1,10 @@
+echo hello
+info
+commit
+append_tx abc
+info
+commit
+query abc
+append_tx def=xyz
+commit
+query def

@@ -1,0 +1,31 @@
+> echo hello
+-> data: {hello}
+
+> info 
+-> data: {size:0}
+
+> commit 
+
+> append_tx abc
+-> code: OK
+
+> info 
+-> data: {size:1}
+
+> commit 
+-> data: {750502FC7E84BBD788ED589624F06CFA871845D1}
+
+> query abc
+-> code: OK
+-> data: {Index=0 value=abc exists=true}
+
+> append_tx def=xyz
+-> code: OK
+
+> commit 
+-> data: {76393B8A182E450286B0694C629ECB51B286EFD5}
+
+> query def
+-> code: OK
+-> data: {Index=1 value=xyz exists=true}
+
