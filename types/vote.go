@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -18,13 +19,13 @@ var (
 	ErrVoteInvalidBlockHash        = errors.New("Invalid block hash")
 )
 
-type ErrVoteConflictingSignature struct {
+type ErrVoteConflictingVotes struct {
 	VoteA *Vote
 	VoteB *Vote
 }
 
-func (err *ErrVoteConflictingSignature) Error() string {
-	return "Conflicting round vote signature"
+func (err *ErrVoteConflictingVotes) Error() string {
+	return "Conflicting votes"
 }
 
 // Represents a prevote, precommit, or commit vote from validators for consensus.
@@ -74,4 +75,11 @@ func (vote *Vote) String() string {
 		vote.ValidatorIndex, Fingerprint(vote.ValidatorAddress),
 		vote.Height, vote.Round, vote.Type, typeString,
 		Fingerprint(vote.BlockHash), vote.Signature)
+}
+
+// Does not check signature, but checks for equality of block
+// NOTE: May be from different validators, and signature may be incorrect.
+func (vote *Vote) SameBlockAs(other *Vote) bool {
+	return bytes.Equal(vote.BlockHash, other.BlockHash) &&
+		vote.BlockPartsHeader.Equals(other.BlockPartsHeader)
 }
