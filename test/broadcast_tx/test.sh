@@ -8,36 +8,58 @@ set -e
 
 # TODO: install everything
 
-function dummy_over_socket(){
-	dummy > /dev/null &
-	tendermint node > tendermint.log &
-	sleep 3
+export TMROOT=$HOME/.tendermint_broadcast_tx
 
+function dummy_over_socket(){
+	rm -rf $TMROOT
+	tendermint init
+	echo "Starting dummy and tendermint"
+	dummy > /dev/null &
+	pid_dummy=$!
+	tendermint node > tendermint.log &
+	pid_tendermint=$!
+	sleep 5
+
+	echo "running test"
 	bash dummy_test.sh "Dummy over Socket"
 
-	killall dummy tendermint
+	kill -9 $pid_dummy $pid_tendermint
 }
 
 
 function counter_over_socket() {
+	rm -rf $TMROOT
+	tendermint init
+	echo "Starting counter and tendermint"
 	counter --serial > /dev/null &
+	pid_counter=$!
 	tendermint node > tendermint.log &
-	sleep 3
+	pid_tendermint=$!
+	sleep 5
 
+	echo "running test"
 	bash counter_test.sh "Counter over Socket"
 
-	killall counter tendermint
+	kill -9 $pid_counter $pid_tendermint
 }
 
 function counter_over_grpc() {
+	rm -rf $TMROOT
+	tendermint init
+	echo "Starting counter and tendermint"
 	counter --serial --tmsp grpc > /dev/null &
+	pid_counter=$!
 	tendermint node --tmsp grpc > tendermint.log &
-	sleep 3
+	pid_tendermint=$!
+	sleep 5
 
+	echo "running test"
 	bash counter_test.sh "Counter over GRPC"
 
-	killall counter tendermint
+	kill -9 $pid_counter $pid_tendermint
 }
+
+cd $GOPATH/src/github.com/tendermint/tendermint/test/broadcast_tx
 
 case "$1" in 
 	"dummy_over_socket")
@@ -50,8 +72,11 @@ case "$1" in
 		counter_over_grpc
 		;;
 	*)
+		echo "Running all"
 		dummy_over_socket
+		echo ""
 		counter_over_socket
+		echo ""
 		counter_over_grpc
 esac
 

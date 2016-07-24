@@ -7,12 +7,7 @@ IFS=$'\n\t'
 GLIDE=$1
 LIB=$2
 
-# get vendored commit for given lib
-function parseGlide() {
-	cat $1 | grep -A1 $2 | grep -v $2 | awk '{print $2}'
-}
-
-OLD_COMMIT=`parseGlide $GLIDE $LIB`
+OLD_COMMIT=`bash scripts/glide/parse.sh $GLIDE $LIB`
 
 PWD=`pwd`
 cd $GOPATH/src/github.com/tendermint/$LIB

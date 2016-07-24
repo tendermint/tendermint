@@ -1236,6 +1236,7 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	}
 
 	// txs committed, bad ones removed from mepool; fire events
+	// NOTE: the block.AppHash wont reflect these txs until the next block
 	eventCache.Flush()
 
 	// Save to blockStore.
