@@ -1400,7 +1400,7 @@ func (cs *ConsensusState) tryAddVote(vote *types.Vote, peerKey string) error {
 		// If it's otherwise invalid, punish peer.
 		if err == ErrVoteHeightMismatch {
 			return err
-		} else if _, ok := err.(*types.ErrVoteConflictingSignature); ok {
+		} else if _, ok := err.(*types.ErrVoteConflictingVotes); ok {
 			if peerKey == "" {
 				log.Warn("Found conflicting vote from ourselves. Did you unsafe_reset a validator?", "height", vote.Height, "round", vote.Round, "type", vote.Type)
 				return err
