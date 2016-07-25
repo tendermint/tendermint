@@ -90,7 +90,7 @@ func (hvs *HeightVoteSet) addRound(round int) {
 
 // Duplicate votes return added=false, err=nil.
 // By convention, peerKey is "" if origin is self.
-func (hvs *HeightVoteSet) AddByIndex(valIndex int, vote *types.Vote, peerKey string) (added bool, address []byte, err error) {
+func (hvs *HeightVoteSet) AddVote(vote *types.Vote, peerKey string) (added bool, err error) {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
 	voteSet := hvs.getVoteSet(vote.Round, vote.Type)
@@ -107,7 +107,7 @@ func (hvs *HeightVoteSet) AddByIndex(valIndex int, vote *types.Vote, peerKey str
 			return
 		}
 	}
-	added, address, err = voteSet.AddByIndex(valIndex, vote)
+	added, err = voteSet.AddVote(vote)
 	return
 }
 
