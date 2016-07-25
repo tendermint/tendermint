@@ -257,7 +257,7 @@ func TestBadVotes(t *testing.T) {
 		vote := withValidator(voteProto, privValidators[0].Address, 0)
 		added, err := signAddVote(privValidators[0], withBlockHash(vote, RandBytes(32)), voteSet)
 		if added || err == nil {
-			t.Errorf("Expected VoteSet.Add to fail, dupeout.")
+			t.Errorf("Expected VoteSet.Add to fail, conflicting vote.")
 		}
 	}
 
@@ -287,6 +287,135 @@ func TestBadVotes(t *testing.T) {
 			t.Errorf("Expected VoteSet.Add to fail, wrong type")
 		}
 	}
+}
+
+func TestConflicts(t *testing.T) {
+	height, round := 1, 0
+	voteSet, _, privValidators := randVoteSet(height, round, VoteTypePrevote, 4, 1)
+	blockHash1 := RandBytes(32)
+	blockHash2 := RandBytes(32)
+
+	voteProto := &Vote{
+		ValidatorAddress: nil,
+		ValidatorIndex:   -1,
+		Height:           height,
+		Round:            round,
+		Type:             VoteTypePrevote,
+		BlockHash:        nil,
+	}
+
+	// val0 votes for nil.
+	{
+		vote := withValidator(voteProto, privValidators[0].Address, 0)
+		added, err := signAddVote(privValidators[0], vote, voteSet)
+		if !added || err != nil {
+			t.Errorf("Expected VoteSet.Add to succeed")
+		}
+	}
+
+	// val0 votes again for blockHash1.
+	{
+		vote := withValidator(voteProto, privValidators[0].Address, 0)
+		added, err := signAddVote(privValidators[0], withBlockHash(vote, blockHash1), voteSet)
+		if added {
+			t.Errorf("Expected VoteSet.Add to fail, conflicting vote.")
+		}
+		if err == nil {
+			t.Errorf("Expected VoteSet.Add to return error, conflicting vote.")
+		}
+	}
+
+	// start tracking blockHash1
+	voteSet.SetPeerMaj23("peerA", blockHash1, PartSetHeader{})
+
+	// val0 votes again for blockHash1.
+	{
+		vote := withValidator(voteProto, privValidators[0].Address, 0)
+		added, err := signAddVote(privValidators[0], withBlockHash(vote, blockHash1), voteSet)
+		if !added {
+			t.Errorf("Expected VoteSet.Add to succeed, called SetPeerMaj23().")
+		}
+		if err == nil {
+			t.Errorf("Expected VoteSet.Add to return error, conflicting vote.")
+		}
+	}
+
+	// attempt tracking blockHash2, should fail because already set for peerA.
+	voteSet.SetPeerMaj23("peerA", blockHash2, PartSetHeader{})
+
+	// val0 votes again for blockHash1.
+	{
+		vote := withValidator(voteProto, privValidators[0].Address, 0)
+		added, err := signAddVote(privValidators[0], withBlockHash(vote, blockHash2), voteSet)
+		if added {
+			t.Errorf("Expected VoteSet.Add to fail, duplicate SetPeerMaj23() from peerA")
+		}
+		if err == nil {
+			t.Errorf("Expected VoteSet.Add to return error, conflicting vote.")
+		}
+	}
+
+	// val1 votes for blockHash1.
+	{
+		vote := withValidator(voteProto, privValidators[1].Address, 1)
+		added, err := signAddVote(privValidators[1], withBlockHash(vote, blockHash1), voteSet)
+		if !added || err != nil {
+			t.Errorf("Expected VoteSet.Add to succeed")
+		}
+	}
+
+	// check
+	if voteSet.HasTwoThirdsMajority() {
+		t.Errorf("We shouldn't have 2/3 majority yet")
+	}
+	if voteSet.HasTwoThirdsAny() {
+		t.Errorf("We shouldn't have 2/3 if any votes yet")
+	}
+
+	// val2 votes for blockHash2.
+	{
+		vote := withValidator(voteProto, privValidators[2].Address, 2)
+		added, err := signAddVote(privValidators[2], withBlockHash(vote, blockHash2), voteSet)
+		if !added || err != nil {
+			t.Errorf("Expected VoteSet.Add to succeed")
+		}
+	}
+
+	// check
+	if voteSet.HasTwoThirdsMajority() {
+		t.Errorf("We shouldn't have 2/3 majority yet")
+	}
+	if !voteSet.HasTwoThirdsAny() {
+		t.Errorf("We should have 2/3 if any votes")
+	}
+
+	// now attempt tracking blockHash1
+	voteSet.SetPeerMaj23("peerB", blockHash1, PartSetHeader{})
+
+	// val2 votes for blockHash1.
+	{
+		vote := withValidator(voteProto, privValidators[2].Address, 2)
+		added, err := signAddVote(privValidators[2], withBlockHash(vote, blockHash1), voteSet)
+		if !added {
+			t.Errorf("Expected VoteSet.Add to succeed")
+		}
+		if err == nil {
+			t.Errorf("Expected VoteSet.Add to return error, conflicting vote")
+		}
+	}
+
+	// check
+	if !voteSet.HasTwoThirdsMajority() {
+		t.Errorf("We should have 2/3 majority for blockHash1")
+	}
+	blockHash23maj, _, _ := voteSet.TwoThirdsMajority()
+	if !bytes.Equal(blockHash23maj, blockHash1) {
+		t.Errorf("Got the wrong 2/3 majority blockhash")
+	}
+	if !voteSet.HasTwoThirdsAny() {
+		t.Errorf("We should have 2/3 if any votes")
+	}
+
 }
 
 func TestMakeCommit(t *testing.T) {
