@@ -68,7 +68,7 @@ func (vs *ValidatorState) Start() error {
 	rpcAddr := vs.Config.RPCAddr
 	vs.Config.mtx.Unlock()
 
-	em := eventmeter.NewEventMeter(fmt.Sprintf("ws://%s/websocket", rpcAddr), UnmarshalEvent)
+	em := eventmeter.NewEventMeter(rpcAddr, UnmarshalEvent)
 	if _, err := em.Start(); err != nil {
 		return err
 	}

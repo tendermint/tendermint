@@ -15,18 +15,14 @@ import (
 
 	"github.com/codegangsta/cli"
 	. "github.com/tendermint/go-common"
-	cfg "github.com/tendermint/go-config"
+	"github.com/tendermint/go-logger"
 	pcm "github.com/tendermint/go-process"
 	"github.com/tendermint/go-rpc/server"
 	"github.com/tendermint/go-wire"
-	tmcfg "github.com/tendermint/tendermint/config/tendermint"
 )
 
 func init() {
-
-	config := tmcfg.GetConfig("")
-	config.Set("log_level", "debug")
-	cfg.ApplyConfig(config) // Notify modules of new config
+	logger.SetLogLevel("debug")
 }
 
 func main() {
