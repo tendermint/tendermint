@@ -8,7 +8,7 @@ set -e
 
 # TODO: install everything
 
-export TMROOT=$HOME/.tendermint_broadcast_tx
+export TMROOT=$HOME/.tendermint_app
 
 function dummy_over_socket(){
 	rm -rf $TMROOT
@@ -59,7 +59,7 @@ function counter_over_grpc() {
 	kill -9 $pid_counter $pid_tendermint
 }
 
-cd $GOPATH/src/github.com/tendermint/tendermint/test/broadcast_tx
+cd $GOPATH/src/github.com/tendermint/tendermint/test/app
 
 case "$1" in 
 	"dummy_over_socket")

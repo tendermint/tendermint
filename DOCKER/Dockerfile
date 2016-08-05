@@ -1,5 +1,5 @@
 # Pull base image.
-FROM golang:1.4
+FROM golang:1.6
 
 ENV USER tmuser
 ENV DATA_ROOT /data/tendermint
