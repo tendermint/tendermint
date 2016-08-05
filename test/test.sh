@@ -26,5 +26,5 @@ BRANCH=`git rev-parse --abbrev-ref HEAD`
 if [[ "$BRANCH" == "master" || $(echo "$BRANCH" | grep "release-") != "" ]]; then
 	echo ""
 	echo "* branch $BRANCH; running mintnet/netmon throughput benchmark"
-	bash tests/net/test.sh
+	bash test/net/test.sh
 fi
