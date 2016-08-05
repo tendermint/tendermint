@@ -23,7 +23,7 @@ echo "* running basic peer tests"
 bash test/p2p/test.sh tester
 
 BRANCH=`git rev-parse --abbrev-ref HEAD`
-if [[ "$BRANCH" == "master" || "$BRANCH" == "staging" ]]; then
+if [[ "$BRANCH" == "master" || $(echo "$BRANCH" | grep "release-") != "" ]]; then
 	echo ""
 	echo "* branch $BRANCH; running mintnet/netmon throughput benchmark"
 	bash tests/net/test.sh
