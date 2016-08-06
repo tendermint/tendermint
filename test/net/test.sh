@@ -33,4 +33,10 @@ go get github.com/tendermint/netmon
 cd $GOPATH/src/github.com/tendermint/network_testing
 bash experiments/exp_throughput.sh $DATACENTER $VALSETSIZE $BLOCKSIZE $TX_SIZE $NTXS $MACH_PREFIX $RESULTSDIR $CLOUD_PROVIDER
 
-# TODO echo result!
+# TODO: publish result!
+
+# cleanup
+
+mintnet destroy --machines $MACH_PREFIX[1-$VALSETSIZE] 
+
+
