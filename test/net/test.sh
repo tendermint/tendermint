@@ -17,6 +17,14 @@ export TM_IMAGE="tendermint/tmbase"
 set +e
 go get github.com/tendermint/network_testing
 set -e
+
+# install mintnet, netmon
+# TODO: specify branch
+
+go get github.com/tendermint/mintnet
+go get github.com/tendermint/netmon
+
+
 cd $GOPATH/src/github.com/tendermint/network_testing
 bash experiments/exp_throughput.sh $DATACENTER $VALSETSIZE $BLOCKSIZE $TX_SIZE $NTXS $MACH_PREFIX $RESULTSDIR $CLOUD_PROVIDER
 
