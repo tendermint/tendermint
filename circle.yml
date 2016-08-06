@@ -28,6 +28,7 @@ dependencies:
 
 test:
   override:
-    - "cd $REPO && make test_integrations"
+    - "cd $REPO && bash test/net/test.sh"
+    #- "cd $REPO && make test_integrations"
   post:
     - bash <(curl -s https://codecov.io/bash)
