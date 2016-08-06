@@ -6,9 +6,14 @@ VALSETSIZE=4
 BLOCKSIZE=8092
 TX_SIZE=200
 NTXS=$((BLOCKSIZE*4))
-MACH_PREFIX=mach
 RESULTSDIR=results
 CLOUD_PROVIDER=digitalocean
+
+set +u
+if [[ "$MACH_PREFIX" == "" ]]; then
+	MACH_PREFIX=mach
+fi
+set -u
 
 export TMHEAD=`git rev-parse --abbrev-ref HEAD`
 export TM_IMAGE="tendermint/tmbase"
