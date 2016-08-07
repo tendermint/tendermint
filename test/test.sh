@@ -1,19 +1,14 @@
 #! /bin/bash
 
-# integrations test
-# this is the script run by eg CircleCI.
-# It creates a docker container,
-# installs the dependencies,
-# and runs the tests.
-# If we pushed to STAGING or MASTER,
-# it will also run the tests for all dependencies
+# Top Level Testing Script
+# See the github.com/tendermint/tendermint/test/README.md
 
 echo ""
 echo "* building docker file"
 docker build -t tester -f ./test/Dockerfile .
 
 echo ""
-echo "* running go tests and broadcast tests"
+echo "* running go tests and app tests"
 docker run -t tester bash test/run_test.sh
 
 # test basic network connectivity
@@ -22,9 +17,10 @@ echo ""
 echo "* running basic peer tests"
 bash test/p2p/test.sh tester
 
+# only run the cloud benchmark for releases
 BRANCH=`git rev-parse --abbrev-ref HEAD`
-if [[ "$BRANCH" == "master" || "$BRANCH" == "staging" ]]; then
+if [[ $(echo "$BRANCH" | grep "release-") != "" ]]; then
 	echo ""
 	echo "* branch $BRANCH; running mintnet/netmon throughput benchmark"
-	bash tests/net/test.sh
+	bash test/net/test.sh
 fi
