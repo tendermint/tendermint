@@ -6,6 +6,16 @@ Simple, Secure, Scalable Blockchain Platform
 
 _NOTE: This is yet pre-alpha non-production-quality software._
 
+## App Developers
+
+Tendermint Core is Byzantine Fault Tolerant (BFT) middleware that takes an application, written in any programming language,
+and replicates it (ie. the latest state) on many machines.
+See the [application developers guide](guide://github.com/tendermint/tendermint/wiki/Application-Developers) to get started.
+
+## Contributing
+
+Yay open source! Please see our [contributing guidelines](https://github.com/tendermint/tendermint/wiki/Contributing).
+
 ## Resources
 
 ### Tendermint Core
@@ -29,37 +39,8 @@ _NOTE: This is yet pre-alpha non-production-quality software._
 * [Go-Merkle](http://github.com/tendermint/go-merkle)
 * 
 
-### Install
+## Install
 
-Make sure you have installed Go and [set the GOPATH](https://github.com/tendermint/tendermint/wiki/Setting-GOPATH).
+`go get -u github.com/tendermint/tendermint/cmd/tendermint`
 
-Install `glide`, used for dependency management:
-
-```
-go get https://github.com/Masterminds/glide
-```
-
-Install tendermint:
-
-```
-mkdir -p $GOPATH/src/github.com/tendermint
-git clone https://github.com/tendermint/tendermint $GOPATH/src/github.com/tendermint/tendermint
-cd $GOPATH/src/github.com/tendermint/tendermint
-glide install
-go install ./cmd/tendermint
-```
-
-Initialize a sample tendermint directory with an example genesis file (in `~/.tendermint`):
-
-```
-tendermint init
-```
-
-Now run the tendermint node:
-
-```
-tendermint node --proxy_app=dummy
-```
-
-For tutorials on running other applications with Tendermint, and for launching test networks,
-see http://tendermint.com/guide/
+For more details, see the [install guide](https://github.com/tendermint/tendermint/wiki/Installation).

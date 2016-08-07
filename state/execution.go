@@ -80,6 +80,8 @@ func (s *State) execBlockOnProxyApp(eventCache events.Fireable, proxyAppConn pro
 	}
 	proxyAppConn.SetResponseCallback(proxyCb)
 
+	// TODO: BeginBlock
+
 	// Run txs of block
 	for _, tx := range block.Txs {
 		proxyAppConn.AppendTxAsync(tx)
