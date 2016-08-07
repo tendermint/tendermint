@@ -6,11 +6,9 @@ Simple, Secure, Scalable Blockchain Platform
 
 _NOTE: This is yet pre-alpha non-production-quality software._
 
-## App Developers
-
-Tendermint Core is Byzantine Fault Tolerant (BFT) middleware that takes an application, written in any programming language,
-and replicates it (ie. the latest state) on many machines.
-See the [application developers guide](guide://github.com/tendermint/tendermint/wiki/Application-Developers) to get started.
+Tendermint Core is Byzantine Fault Tolerant (BFT) middleware that takes a state transition machine, written in any programming language,
+and replicates it on many machines.
+See the [application developers guide](https://github.com/tendermint/tendermint/wiki/Application-Developers) to get started.
 
 ## Contributing
 
@@ -37,7 +35,6 @@ Yay open source! Please see our [contributing guidelines](https://github.com/ten
 * [Go-Wire](http://github.com/tendermint/go-wire)
 * [Go-P2P](http://github.com/tendermint/go-p2p)
 * [Go-Merkle](http://github.com/tendermint/go-merkle)
-* 
 
 ## Install
 
