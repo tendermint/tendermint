@@ -1,10 +1,17 @@
 machine:
   environment:
+    MACH_PREFIX: tendermint-test-mach
     GOPATH: /home/ubuntu/.go_workspace
     REPO: $GOPATH/src/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME
+    DOCKER_VERSION: 1.10.0
+    DOCKER_MACHINE_VERSION: 0.6.0
   hosts:
     circlehost: 127.0.0.1
     localhost: 127.0.0.1
+  pre:
+    - curl -sSL https://s3.amazonaws.com/circle-downloads/install-circleci-docker.sh | sudo bash -s -- $DOCKER_VERSION
+  services:
+    - docker
 
 checkout:
   post:
@@ -16,8 +23,13 @@ checkout:
 
 dependencies:
   override:
-    - "cd $REPO && make get_deps"
+    - sudo curl -sSL -o /usr/bin/docker-machine https://github.com/docker/machine/releases/download/v$DOCKER_MACHINE_VERSION/docker-machine-linux-x86_64; sudo chmod 0755 /usr/bin/docker-machine
+    - go version
+    - docker version
+    - docker-machine version
 
 test:
   override:
-    - "cd $REPO && make test"
+    - "cd $REPO && make test_integrations"
+  post:
+    - bash <(curl -s https://codecov.io/bash)

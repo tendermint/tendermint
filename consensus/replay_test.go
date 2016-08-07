@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	. "github.com/tendermint/go-common"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -59,12 +60,12 @@ func TestReplayCatchup(t *testing.T) {
 	// write the needed wal to file
 	f, err := ioutil.TempFile(os.TempDir(), "replay_test_")
 	if err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
 	name := f.Name()
 	_, err = f.WriteString(testLog)
 	if err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
 	f.Close()
 
@@ -83,14 +84,14 @@ func TestReplayCatchup(t *testing.T) {
 	// open wal and run catchup messages
 	openWAL(t, cs, name)
 	if err := cs.catchupReplay(cs.Height); err != nil {
-		t.Fatalf("Error on catchup replay %v", err)
+		panic(Fmt("Error on catchup replay %v", err))
 	}
 
 	after := time.After(time.Second * 15)
 	select {
 	case <-newBlockCh:
 	case <-after:
-		t.Fatal("Timed out waiting for new block")
+		panic("Timed out waiting for new block")
 	}
 }
 
@@ -98,7 +99,7 @@ func openWAL(t *testing.T, cs *ConsensusState, file string) {
 	// open the wal
 	wal, err := NewWAL(file, config.GetBool("cswal_light"))
 	if err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
 	wal.exists = true
 	cs.wal = wal

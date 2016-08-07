@@ -20,6 +20,12 @@ build_race:
 
 test: build
 	go test `${NOVENDOR}`
+	
+test_race: build
+	go test -race `${NOVENDOR}`
+
+test_integrations: 
+	bash ./test/test.sh
 
 test100: build
 	for i in {1..100}; do make test; done
@@ -39,6 +45,10 @@ get_deps:
 	go list -f '{{join .TestImports "\n"}}' github.com/tendermint/tendermint/... | \
 		grep -v /vendor/ | sort | uniq | \
 		xargs go get
+
+get_vendor_deps:
+	go get github.com/Masterminds/glide
+	glide install
 
 update_deps:
 	go get -d -u github.com/tendermint/tendermint/...

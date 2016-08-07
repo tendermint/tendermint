@@ -45,34 +45,34 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/ed25519
-  version: fdac6641497281ed1cc368687ec6377e96e02b24
+  version: 1f52c6f8b8a5c7908aff4497c186af344b428925
   subpackages:
   - extra25519
   - edwards25519
 - name: github.com/tendermint/flowcontrol
   version: 84d9671090430e8ec80e35b339907e0579b999eb
 - name: github.com/tendermint/go-clist
-  version: 634527f5b60fd7c71ca811262493df2ad65ee0ca
+  version: 3baa390bbaf7634251c42ad69a8682e7e3990552
 - name: github.com/tendermint/go-common
-  version: dcfa46af1341d03b80d32e4901019d1668b978b9
+  version: dee6622bf7f811d3ba8638a3f5ffaf8d679aa9d9
 - name: github.com/tendermint/go-config
-  version: cfcef384d64b94e50909596e39b32ffb3cc20573
+  version: e64b424499acd0eb9856b88e10c0dff41628c0d6
 - name: github.com/tendermint/go-crypto
   version: 41cfb7b677f4e16cdfd22b6ce0946c89919fbc7b
 - name: github.com/tendermint/go-db
   version: 31fdd21c7eaeed53e0ea7ca597fb1e960e2988a5
 - name: github.com/tendermint/go-events
-  version: 7b75ca7bb55aa25e9ef765eb8c0b69486b227357
+  version: 48fa21511b259278b871a37b6951da2d5bef698d
 - name: github.com/tendermint/go-logger
-  version: 529efe50eab1a8a9c111d55f4de4ecd95f482761
+  version: cefb3a45c0bf3c493a04e9bcd9b1540528be59f2
 - name: github.com/tendermint/go-merkle
   version: 05042c6ab9cad51d12e4cecf717ae68e3b1409a8
 - name: github.com/tendermint/go-p2p
-  version: 5bd7692323ec60d6461678f09b5024a952164151
+  version: 929cf433b9c8e987af5f7f3ca3ce717e1e3eda53
   subpackages:
   - upnp
 - name: github.com/tendermint/go-rpc
-  version: 1d9e89812adc202811b7fb8e9e0837e73adadb43
+  version: dea910cd3e71bbfaf1973fd7ba295f0ee515a25f
   subpackages:
   - client
   - server
@@ -84,7 +84,7 @@ imports:
   subpackages:
   - term
 - name: github.com/tendermint/tmsp
-  version: f41bc5f11969e22b357d94b4247403fd62d40445
+  version: ba11348508939e9d273cdc1cc476c5c611e14e66
   subpackages:
   - client
   - example/dummy
@@ -115,7 +115,7 @@ imports:
   subpackages:
   - unix
 - name: google.golang.org/grpc
-  version: 88aeffff979aa77aa502cb011423d0a08fa12c5a
+  version: daeb9cc0f2607997cce611a1458e71b981ce5986
   subpackages:
   - codes
   - credentials

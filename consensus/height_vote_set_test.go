@@ -1,10 +1,11 @@
 package consensus
 
 import (
+	"testing"
+
+	. "github.com/tendermint/go-common"
 	"github.com/tendermint/tendermint/config/tendermint_test"
 	"github.com/tendermint/tendermint/types"
-
-	"testing"
 )
 
 func init() {
@@ -45,7 +46,7 @@ func makeVoteHR(t *testing.T, height, round int, privVal *types.PrivValidator) *
 	chainID := config.GetString("chain_id")
 	err := privVal.SignVote(chainID, vote)
 	if err != nil {
-		t.Fatalf("Error signing vote: %v", err)
+		panic(Fmt("Error signing vote: %v", err))
 		return nil
 	}
 	return vote

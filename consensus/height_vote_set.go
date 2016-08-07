@@ -38,18 +38,28 @@ type HeightVoteSet struct {
 
 func NewHeightVoteSet(chainID string, height int, valSet *types.ValidatorSet) *HeightVoteSet {
 	hvs := &HeightVoteSet{
-		chainID:           chainID,
-		height:            height,
-		valSet:            valSet,
-		roundVoteSets:     make(map[int]RoundVoteSet),
-		peerCatchupRounds: make(map[string]int),
+		chainID: chainID,
 	}
-	hvs.addRound(0)
-	hvs.round = 0
+	hvs.Reset(height, valSet)
 	return hvs
 }
 
+func (hvs *HeightVoteSet) Reset(height int, valSet *types.ValidatorSet) {
+	hvs.mtx.Lock()
+	defer hvs.mtx.Unlock()
+
+	hvs.height = height
+	hvs.valSet = valSet
+	hvs.roundVoteSets = make(map[int]RoundVoteSet)
+	hvs.peerCatchupRounds = make(map[string]int)
+
+	hvs.addRound(0)
+	hvs.round = 0
+}
+
 func (hvs *HeightVoteSet) Height() int {
+	hvs.mtx.Lock()
+	defer hvs.mtx.Unlock()
 	return hvs.height
 }
 

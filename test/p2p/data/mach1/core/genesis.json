@@ -1,0 +1,39 @@
+{
+	"app_hash": "",
+	"chain_id": "chain-9ujDWI",
+	"genesis_time": "2016-06-24T20:01:19.322Z",
+	"validators": [
+		{
+			"amount": 1,
+			"name": "mach1",
+			"pub_key": [
+				1,
+				"BE8933DFF1600C026E34718F1785A4CDEAB90C35698B394E38B6947AE91DE116"
+			]
+		},
+		{
+			"amount": 1,
+			"name": "mach2",
+			"pub_key": [
+				1,
+				"6DC534465323126587D2A2A93B59D689B717073B1DE968A25A6EF13D595318AD"
+			]
+		},
+		{
+			"amount": 1,
+			"name": "mach3",
+			"pub_key": [
+				1,
+				"AE67AC697D135AA0B4601EA57EAAB3FEBF4BAA4F229C45A598C2985B12FCD1A1"
+			]
+		},
+		{
+			"amount": 1,
+			"name": "mach4",
+			"pub_key": [
+				1,
+				"9EBC8F58CED4B46DCD5AB8ABA591DD253CD7CB5037273FDA32BC0B6461C4EFD9"
+			]
+		}
+	]
+}

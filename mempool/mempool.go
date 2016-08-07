@@ -60,7 +60,7 @@ type Mempool struct {
 	// Keep a cache of already-seen txs.
 	// This reduces the pressure on the proxyApp.
 	cacheMap  map[string]struct{}
-	cacheList *list.List
+	cacheList *list.List // to remove oldest tx when cache gets too big
 }
 
 func NewMempool(config cfg.Config, proxyAppConn proxy.AppConn) *Mempool {
@@ -81,6 +81,7 @@ func NewMempool(config cfg.Config, proxyAppConn proxy.AppConn) *Mempool {
 	return mempool
 }
 
+// consensus must be able to hold lock to safely update
 func (mem *Mempool) Lock() {
 	mem.proxyMtx.Lock()
 }
@@ -89,8 +90,23 @@ func (mem *Mempool) Unlock() {
 	mem.proxyMtx.Unlock()
 }
 
+// Number of transactions in the mempool clist
 func (mem *Mempool) Size() int {
 	return mem.txs.Len()
+}
+
+// Remove all transactions from mempool and cache
+func (mem *Mempool) Flush() {
+	mem.proxyMtx.Lock()
+	defer mem.proxyMtx.Unlock()
+
+	mem.cacheMap = make(map[string]struct{}, cacheSize)
+	mem.cacheList.Init()
+
+	for e := mem.txs.Front(); e != nil; e = e.Next() {
+		mem.txs.Remove(e)
+		e.DetachPrev()
+	}
 }
 
 // Return the first element of mem.txs for peer goroutines to call .NextWait() on.
@@ -125,6 +141,8 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*tmsp.Response)) (err error) {
 	if mem.cacheList.Len() >= cacheSize {
 		popped := mem.cacheList.Front()
 		poppedTx := popped.Value.(types.Tx)
+		// NOTE: the tx may have already been removed from the map
+		// but deleting a non-existant element is fine
 		delete(mem.cacheMap, string(poppedTx))
 		mem.cacheList.Remove(popped)
 	}
@@ -142,6 +160,13 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*tmsp.Response)) (err error) {
 	}
 
 	return nil
+}
+
+func (mem *Mempool) removeTxFromCacheMap(tx []byte) {
+	mem.proxyMtx.Lock()
+	// NOTE tx not removed from cacheList
+	delete(mem.cacheMap, string(tx))
+	mem.proxyMtx.Unlock()
 }
 
 // TMSP callback function
@@ -165,8 +190,14 @@ func (mem *Mempool) resCbNormal(req *tmsp.Request, res *tmsp.Response) {
 			}
 			mem.txs.PushBack(memTx)
 		} else {
-			log.Info("Bad Transaction", "res", r)
 			// ignore bad transaction
+			log.Info("Bad Transaction", "res", r)
+
+			// remove from cache (it might be good later)
+			// note this is an async callback,
+			// so we need to grab the lock in removeTxFromCacheMap
+			mem.removeTxFromCacheMap(req.GetCheckTx().Tx)
+
 			// TODO: handle other retcodes
 		}
 	default:
@@ -188,6 +219,9 @@ func (mem *Mempool) resCbRecheck(req *tmsp.Request, res *tmsp.Response) {
 			// Tx became invalidated due to newly committed block.
 			mem.txs.Remove(mem.recheckCursor)
 			mem.recheckCursor.DetachPrev()
+
+			// remove from cache (it might be good later)
+			mem.removeTxFromCacheMap(req.GetCheckTx().Tx)
 		}
 		if mem.recheckCursor == mem.recheckEnd {
 			mem.recheckCursor = nil
@@ -270,10 +304,13 @@ func (mem *Mempool) filterTxs(blockTxsMap map[string]struct{}) []types.Tx {
 	goodTxs := make([]types.Tx, 0, mem.txs.Len())
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
+		// Remove the tx if it's alredy in a block.
 		if _, ok := blockTxsMap[string(memTx.tx)]; ok {
-			// Remove the tx since already in block.
+			// remove from clist
 			mem.txs.Remove(e)
 			e.DetachPrev()
+
+			// NOTE: we don't remove committed txs from the cache.
 			continue
 		}
 		// Good tx!
