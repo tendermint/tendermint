@@ -7,6 +7,8 @@ import (
 	"time"
 
 	. "github.com/tendermint/go-common"
+	"github.com/tendermint/go-events"
+	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -46,24 +48,83 @@ import (
 	```
 */
 
-var testLog = `{"time":"2016-04-03T11:23:54.387Z","msg":[3,{"duration":972835254,"height":1,"round":0,"step":1}]}
+var testLog1 = `{"time":"2016-04-03T11:23:54.387Z","msg":[3,{"duration":972835254,"height":1,"round":0,"step":1}]}
 {"time":"2016-04-03T11:23:54.388Z","msg":[1,{"height":1,"round":0,"step":"RoundStepPropose"}]}
 {"time":"2016-04-03T11:23:54.388Z","msg":[2,{"msg":[17,{"Proposal":{"height":1,"round":0,"block_parts_header":{"total":1,"hash":"3BA1E90CB868DA6B4FD7F3589826EC461E9EB4EF"},"pol_round":-1,"signature":"3A2ECD5023B21EC144EC16CFF1B992A4321317B83EEDD8969FDFEA6EB7BF4389F38DDA3E7BB109D63A07491C16277A197B241CF1F05F5E485C59882ECACD9E07"}}],"peer_key":""}]}
 {"time":"2016-04-03T11:23:54.389Z","msg":[2,{"msg":[19,{"Height":1,"Round":0,"Part":{"index":0,"bytes":"0101010F74656E6465726D696E745F7465737401011441D59F4B718AC00000000000000114C4B01D3810579550997AC5641E759E20D99B51C10001000100","proof":{"aunts":[]}}}],"peer_key":""}]}
 {"time":"2016-04-03T11:23:54.390Z","msg":[1,{"height":1,"round":0,"step":"RoundStepPrevote"}]}
-{"time":"2016-04-03T11:23:54.390Z","msg":[2,{"msg":[20,{"ValidatorIndex":0,"Vote":{"height":1,"round":0,"type":1,"block_hash":"4291966B8A9DFBA00AEC7C700F2718E61DF4331D","block_parts_header":{"total":1,"hash":"3BA1E90CB868DA6B4FD7F3589826EC461E9EB4EF"},"signature":"47D2A75A4E2F15DB1F0D1B656AC0637AF9AADDFEB6A156874F6553C73895E5D5DC948DBAEF15E61276C5342D0E638DFCB77C971CD282096EA8735A564A90F008"}}],"peer_key":""}]}
-{"time":"2016-04-03T11:23:54.392Z","msg":[1,{"height":1,"round":0,"step":"RoundStepPrecommit"}]}
+`
+
+// continuation; splitting allows us to test saving the privVal.LastSignature
+// ... to test the case when we sign but crash before writing to the wal,
+// we only run replay on testLog1 but stick this signature in the privVal.LastSignature after the proposal
+var testLog2 = `{"time":"2016-04-03T11:23:54.390Z","msg":[2,{"msg":[20,{"ValidatorIndex":0,"Vote":{"height":1,"round":0,"type":1,"block_hash":"4291966B8A9DFBA00AEC7C700F2718E61DF4331D","block_parts_header":{"total":1,"hash":"3BA1E90CB868DA6B4FD7F3589826EC461E9EB4EF"},"signature":"47D2A75A4E2F15DB1F0D1B656AC0637AF9AADDFEB6A156874F6553C73895E5D5DC948DBAEF15E61276C5342D0E638DFCB77C971CD282096EA8735A564A90F008"}}],"peer_key":""}]}
+`
+
+// continuation; splitting allows us to test saving the privVal.LastSignature
+var testLog3 = `{"time":"2016-04-03T11:23:54.392Z","msg":[1,{"height":1,"round":0,"step":"RoundStepPrecommit"}]}
 {"time":"2016-04-03T11:23:54.392Z","msg":[2,{"msg":[20,{"ValidatorIndex":0,"Vote":{"height":1,"round":0,"type":2,"block_hash":"4291966B8A9DFBA00AEC7C700F2718E61DF4331D","block_parts_header":{"total":1,"hash":"3BA1E90CB868DA6B4FD7F3589826EC461E9EB4EF"},"signature":"39147DA595F08B73CF8C899967C8403B5872FD9042FFA4E239159E0B6C5D9665C9CA81D766EACA2AE658872F94C2FCD1E34BF51859CD5B274DA8512BACE4B50D"}}],"peer_key":""}]}
 `
 
-func TestReplayCatchup(t *testing.T) {
+func TestReplayWithoutSig(t *testing.T) {
 	// write the needed wal to file
 	f, err := ioutil.TempFile(os.TempDir(), "replay_test_")
 	if err != nil {
 		panic(err)
 	}
-	name := f.Name()
-	_, err = f.WriteString(testLog)
+	_, err = f.WriteString(testLog1)
+	if err != nil {
+		panic(err)
+	}
+	f.Close()
+
+	cs := fixedConsensusState()
+
+	// we've already precommitted on the first block
+	// without replay catchup we would be halted here forever
+	cs.privValidator.LastHeight = 1 // first block
+	cs.privValidator.LastStep = 2   // prevote
+
+	newBlockCh := subscribeToEvent(cs.evsw, "tester", types.EventStringNewBlock(), 0)
+	cs.evsw.AddListenerForEvent("tester", types.EventStringCompleteProposal(), func(data events.EventData) {
+		// Set LastSig
+
+		// unmarshal log2
+		var err error
+		var msg ConsensusLogMessage
+		wire.ReadJSON(&msg, []byte(testLog2), &err)
+		vote := msg.Msg.(msgInfo).Msg.(*VoteMessage)
+		if err != nil {
+			t.Fatalf("Error reading json data: %v", err)
+		}
+
+		cs.privValidator.LastSignature = vote.Vote.Signature
+	})
+
+	// start timeout and receive routines
+	cs.startRoutines(0)
+
+	// open wal and run catchup messages
+	openWAL(t, cs, f.Name())
+	if err := cs.catchupReplay(cs.Height); err != nil {
+		panic(Fmt("Error on catchup replay %v", err))
+	}
+
+	after := time.After(time.Second * 15)
+	select {
+	case <-newBlockCh:
+	case <-after:
+		panic("Timed out waiting for new block")
+	}
+}
+
+func TestReplayWithSig(t *testing.T) {
+	// write the needed wal to file
+	f, err := ioutil.TempFile(os.TempDir(), "replay_test_")
+	if err != nil {
+		panic(err)
+	}
+	_, err = f.WriteString(testLog1 + testLog2 + testLog3)
 	if err != nil {
 		panic(err)
 	}
@@ -82,7 +143,7 @@ func TestReplayCatchup(t *testing.T) {
 	cs.startRoutines(0)
 
 	// open wal and run catchup messages
-	openWAL(t, cs, name)
+	openWAL(t, cs, f.Name())
 	if err := cs.catchupReplay(cs.Height); err != nil {
 		panic(Fmt("Error on catchup replay %v", err))
 	}
