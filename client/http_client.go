@@ -8,26 +8,40 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-rpc/types"
 	"github.com/tendermint/go-wire"
 )
 
-// Set the net.Dial manually so we can do http over tcp or unix.
-// Get/Post require a dummyDomain but it's over written by the Transport
-var dummyDomain = "http://dummyDomain"
+// TODO: Deprecate support for IP:PORT or /path/to/socket
+func makeHTTPDialer(remoteAddr string) (string, func(string, string) (net.Conn, error)) {
 
-func dialer(remote string) func(string, string) (net.Conn, error) {
-	return func(proto, addr string) (conn net.Conn, err error) {
-		return net.Dial(rpctypes.SocketType(remote), remote)
+	parts := strings.SplitN(remoteAddr, "://", 2)
+	var protocol, address string
+	if len(parts) != 2 {
+		log.Warn("WARNING (go-rpc): Please use fully formed listening addresses, including the tcp:// or unix:// prefix")
+		protocol = rpctypes.SocketType(remoteAddr)
+		address = remoteAddr
+	} else {
+		protocol, address = parts[0], parts[1]
+	}
+
+	trimmedAddress := strings.Replace(address, "/", ".", -1) // replace / with . for http requests (dummy domain)
+	return trimmedAddress, func(proto, addr string) (net.Conn, error) {
+		return net.Dial(protocol, address)
 	}
 }
 
-// remote is IP:PORT or /path/to/socket
-func socketTransport(remote string) *http.Transport {
-	return &http.Transport{
-		Dial: dialer(remote),
+// We overwrite the http.Client.Dial so we can do http over tcp or unix.
+// remoteAddr should be fully featured (eg. with tcp:// or unix://)
+func makeHTTPClient(remoteAddr string) (string, *http.Client) {
+	address, dialer := makeHTTPDialer(remoteAddr)
+	return "http://" + address, &http.Client{
+		Transport: &http.Transport{
+			Dial: dialer,
+		},
 	}
 }
 
@@ -40,14 +54,15 @@ type Client interface {
 
 // JSON rpc takes params as a slice
 type ClientJSONRPC struct {
-	remote string
-	client *http.Client
+	address string
+	client  *http.Client
 }
 
 func NewClientJSONRPC(remote string) *ClientJSONRPC {
+	address, client := makeHTTPClient(remote)
 	return &ClientJSONRPC{
-		remote: remote,
-		client: &http.Client{Transport: socketTransport(remote)},
+		address: address,
+		client:  client,
 	}
 }
 
@@ -66,7 +81,7 @@ func (c *ClientJSONRPC) call(method string, params []interface{}, result interfa
 	requestBytes := wire.JSONBytes(request)
 	requestBuf := bytes.NewBuffer(requestBytes)
 	// log.Info(Fmt("RPC request to %v (%v): %v", c.remote, method, string(requestBytes)))
-	httpResponse, err := c.client.Post(dummyDomain, "text/json", requestBuf)
+	httpResponse, err := c.client.Post(c.address, "text/json", requestBuf)
 	if err != nil {
 		return nil, err
 	}
@@ -83,14 +98,15 @@ func (c *ClientJSONRPC) call(method string, params []interface{}, result interfa
 
 // URI takes params as a map
 type ClientURI struct {
-	remote string
-	client *http.Client
+	address string
+	client  *http.Client
 }
 
 func NewClientURI(remote string) *ClientURI {
+	address, client := makeHTTPClient(remote)
 	return &ClientURI{
-		remote: remote,
-		client: &http.Client{Transport: socketTransport(remote)},
+		address: address,
+		client:  client,
 	}
 }
 
@@ -103,8 +119,8 @@ func (c *ClientURI) call(method string, params map[string]interface{}, result in
 	if err != nil {
 		return nil, err
 	}
-	log.Info(Fmt("URI request to %v (%v): %v", c.remote, method, values))
-	resp, err := c.client.PostForm(dummyDomain+"/"+method, values)
+	log.Info(Fmt("URI request to %v (%v): %v", c.address, method, values))
+	resp, err := c.client.PostForm(c.address+"/"+method, values)
 	if err != nil {
 		return nil, err
 	}

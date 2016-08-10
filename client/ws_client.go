@@ -3,6 +3,7 @@ package rpcclient
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"time"
 
@@ -21,15 +22,18 @@ type WSClient struct {
 	QuitService
 	Address  string // IP:PORT or /path/to/socket
 	Endpoint string // /websocket/url/endpoint
+	Dialer   func(string, string) (net.Conn, error)
 	*websocket.Conn
 	ResultsCh chan json.RawMessage // closes upon WSClient.Stop()
 	ErrorsCh  chan error           // closes upon WSClient.Stop()
 }
 
 // create a new connection
-func NewWSClient(addr, endpoint string) *WSClient {
+func NewWSClient(remoteAddr, endpoint string) *WSClient {
+	addr, dialer := makeHTTPDialer(remoteAddr)
 	wsClient := &WSClient{
 		Address:   addr,
+		Dialer:    dialer,
 		Endpoint:  endpoint,
 		Conn:      nil,
 		ResultsCh: make(chan json.RawMessage, wsResultsChannelCapacity),
@@ -57,11 +61,11 @@ func (wsc *WSClient) dial() error {
 
 	// Dial
 	dialer := &websocket.Dialer{
-		NetDial: dialer(wsc.Address),
+		NetDial: wsc.Dialer,
 		Proxy:   http.ProxyFromEnvironment,
 	}
 	rHeader := http.Header{}
-	con, _, err := dialer.Dial("ws://"+dummyDomain+wsc.Endpoint, rHeader)
+	con, _, err := dialer.Dial("ws://"+wsc.Address+wsc.Endpoint, rHeader)
 	if err != nil {
 		return err
 	}

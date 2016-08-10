@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"runtime/debug"
+	"strings"
 	"time"
 
 	. "github.com/tendermint/go-common"
@@ -15,11 +16,23 @@ import (
 	//"github.com/tendermint/go-wire"
 )
 
-func StartHTTPServer(listenAddr string, handler http.Handler) (net.Listener, error) {
-	// listenAddr is `IP:PORT` or /path/to/socket
-	socketType := SocketType(listenAddr)
-	log.Notice(Fmt("Starting RPC HTTP server on %s socket %v", socketType, listenAddr))
-	listener, err := net.Listen(socketType, listenAddr)
+func StartHTTPServer(listenAddr string, handler http.Handler) (listener net.Listener, err error) {
+	// listenAddr should be fully formed including tcp:// or unix:// prefix
+	var proto, addr string
+	parts := strings.SplitN(listenAddr, "://", 2)
+	if len(parts) != 2 {
+		log.Warn("WARNING (go-rpc): Please use fully formed listening addresses, including the tcp:// or unix:// prefix")
+		// we used to allow addrs without tcp/unix prefix by checking for a colon
+		// TODO: Deprecate
+		proto = SocketType(listenAddr)
+		addr = listenAddr
+		// return nil, fmt.Errorf("Invalid listener address %s", lisenAddr)
+	} else {
+		proto, addr = parts[0], parts[1]
+	}
+
+	log.Notice(Fmt("Starting RPC HTTP server on %s socket %v", proto, addr))
+	listener, err = net.Listen(proto, addr)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to listen to %v: %v", listenAddr, err)
 	}

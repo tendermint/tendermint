@@ -13,8 +13,8 @@ import (
 
 // Client and Server should work over tcp or unix sockets
 var (
-	tcpAddr  = "0.0.0.0:46657"
-	unixAddr = "/tmp/go-rpc.sock" // NOTE: must remove file for test to run again
+	tcpAddr  = "tcp://0.0.0.0:46657"
+	unixAddr = "unix:///tmp/go-rpc.sock" // NOTE: must remove file for test to run again
 
 	websocketEndpoint = "/websocket/endpoint"
 )
