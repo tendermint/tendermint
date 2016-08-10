@@ -1,11 +1,14 @@
 package tmspcli
 
 import (
-	types "github.com/tendermint/tmsp/types"
 	"sync"
+
+	. "github.com/tendermint/go-common"
+	types "github.com/tendermint/tmsp/types"
 )
 
 type localClient struct {
+	*BaseService
 	mtx *sync.Mutex
 	types.Application
 	Callback
@@ -15,10 +18,12 @@ func NewLocalClient(mtx *sync.Mutex, app types.Application) *localClient {
 	if mtx == nil {
 		mtx = new(sync.Mutex)
 	}
-	return &localClient{
+	cli := &localClient{
 		mtx:         mtx,
 		Application: app,
 	}
+	cli.BaseService = NewBaseService(log, "localClient", cli)
+	return cli
 }
 
 func (app *localClient) SetResponseCallback(cb Callback) {
@@ -30,10 +35,6 @@ func (app *localClient) SetResponseCallback(cb Callback) {
 // TODO: change types.Application to include Error()?
 func (app *localClient) Error() error {
 	return nil
-}
-
-func (app *localClient) Stop() bool {
-	return true
 }
 
 func (app *localClient) FlushAsync() *ReqRes {

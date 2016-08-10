@@ -9,7 +9,7 @@ function testExample() {
 	$APP &> /dev/null &
 	sleep 2
 	tmsp-cli --verbose batch < $INPUT > "${INPUT}.out.new"
-	killall "$APP" > /dev/null
+	killall "$APP" &> /dev/null
 
 	pre=`shasum < "${INPUT}.out"`
 	post=`shasum < "${INPUT}.out.new"`

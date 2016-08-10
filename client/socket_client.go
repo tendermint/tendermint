@@ -28,7 +28,6 @@ const flushThrottleMS = 20      // Don't wait longer than...
 // with concurrent callers.
 type socketClient struct {
 	QuitService
-	sync.Mutex // [EB]: is this even used?
 
 	reqQueue    chan *ReqRes
 	flushTimer  *ThrottleTimer
@@ -40,6 +39,7 @@ type socketClient struct {
 	err     error
 	reqSent *list.List
 	resCb   func(*types.Request, *types.Response) // listens to all callbacks
+
 }
 
 func NewSocketClient(addr string, mustConnect bool) (*socketClient, error) {
@@ -53,49 +53,70 @@ func NewSocketClient(addr string, mustConnect bool) (*socketClient, error) {
 		resCb:   nil,
 	}
 	cli.QuitService = *NewQuitService(nil, "socketClient", cli)
+
 	_, err := cli.Start() // Just start it, it's confusing for callers to remember to start.
 	return cli, err
 }
 
 func (cli *socketClient) OnStart() error {
 	cli.QuitService.OnStart()
+
+	var err error
+	var conn net.Conn
 RETRY_LOOP:
 	for {
-		conn, err := Connect(cli.addr)
+		conn, err = Connect(cli.addr)
 		if err != nil {
 			if cli.mustConnect {
 				return err
 			} else {
-				log.Warn(Fmt("tmsp.socketClient failed to connect to %v.  Retrying...\n", cli.addr))
+				log.Warn(Fmt("tmsp.socketClient failed to connect to %v.  Retrying...", cli.addr))
 				time.Sleep(time.Second * 3)
 				continue RETRY_LOOP
 			}
 		}
+		cli.conn = conn
+
 		go cli.sendRequestsRoutine(conn)
 		go cli.recvResponseRoutine(conn)
-		return err
+
+		return nil
 	}
 	return nil // never happens
 }
 
 func (cli *socketClient) OnStop() {
 	cli.QuitService.OnStop()
+
+	cli.mtx.Lock()
+	defer cli.mtx.Unlock()
 	if cli.conn != nil {
 		cli.conn.Close()
 	}
+
 	cli.flushQueue()
 }
 
-func (cli *socketClient) flushQueue() {
-LOOP:
-	for {
-		select {
-		case reqres := <-cli.reqQueue:
-			reqres.Done()
-		default:
-			break LOOP
-		}
+// Stop the client and set the error
+func (cli *socketClient) StopForError(err error) {
+	cli.mtx.Lock()
+	if !cli.IsRunning() {
+		return
 	}
+
+	if cli.err == nil {
+		cli.err = err
+	}
+	cli.mtx.Unlock()
+
+	log.Warn(Fmt("Stopping tmsp.socketClient for error: %v", err.Error()))
+	cli.Stop()
+}
+
+func (cli *socketClient) Error() error {
+	cli.mtx.Lock()
+	defer cli.mtx.Unlock()
+	return cli.err
 }
 
 // Set listener for all responses
@@ -106,29 +127,10 @@ func (cli *socketClient) SetResponseCallback(resCb Callback) {
 	cli.resCb = resCb
 }
 
-func (cli *socketClient) StopForError(err error) {
-	if !cli.IsRunning() {
-		return
-	}
-
-	cli.mtx.Lock()
-	log.Warn(Fmt("Stopping tmsp.socketClient for error: %v\n", err.Error()))
-	if cli.err == nil {
-		cli.err = err
-	}
-	cli.mtx.Unlock()
-	cli.Stop()
-}
-
-func (cli *socketClient) Error() error {
-	cli.mtx.Lock()
-	defer cli.mtx.Unlock()
-	return cli.err
-}
-
 //----------------------------------------
 
 func (cli *socketClient) sendRequestsRoutine(conn net.Conn) {
+
 	w := bufio.NewWriter(conn)
 	for {
 		select {
@@ -144,14 +146,14 @@ func (cli *socketClient) sendRequestsRoutine(conn net.Conn) {
 			cli.willSendReq(reqres)
 			err := types.WriteMessage(reqres.Request, w)
 			if err != nil {
-				cli.StopForError(err)
+				cli.StopForError(fmt.Errorf("Error writing msg: %v", err))
 				return
 			}
 			// log.Debug("Sent request", "requestType", reflect.TypeOf(reqres.Request), "request", reqres.Request)
 			if _, ok := reqres.Request.Value.(*types.Request_Flush); ok {
 				err = w.Flush()
 				if err != nil {
-					cli.StopForError(err)
+					cli.StopForError(fmt.Errorf("Error flushing writer: %v", err))
 					return
 				}
 			}
@@ -160,6 +162,7 @@ func (cli *socketClient) sendRequestsRoutine(conn net.Conn) {
 }
 
 func (cli *socketClient) recvResponseRoutine(conn net.Conn) {
+
 	r := bufio.NewReader(conn) // Buffer reads
 	for {
 		var res = &types.Response{}
@@ -172,11 +175,13 @@ func (cli *socketClient) recvResponseRoutine(conn net.Conn) {
 		case *types.Response_Exception:
 			// XXX After setting cli.err, release waiters (e.g. reqres.Done())
 			cli.StopForError(errors.New(r.Exception.Error))
+			return
 		default:
 			// log.Debug("Received response", "responseType", reflect.TypeOf(res), "response", res)
 			err := cli.didRecvResponse(res)
 			if err != nil {
 				cli.StopForError(err)
+				return
 			}
 		}
 	}
@@ -280,9 +285,8 @@ func (cli *socketClient) EchoSync(msg string) (res types.Result) {
 
 func (cli *socketClient) FlushSync() error {
 	reqRes := cli.queueRequest(types.ToRequestFlush())
-	if reqRes == nil {
-		return fmt.Errorf("Remote app is not running")
-
+	if cli.err != nil {
+		return types.ErrInternalError.SetLog(cli.err.Error())
 	}
 	reqRes.Wait() // NOTE: if we don't flush the queue, its possible to get stuck here
 	return cli.err
@@ -378,10 +382,6 @@ func (cli *socketClient) EndBlockSync(height uint64) (validators []*types.Valida
 //----------------------------------------
 
 func (cli *socketClient) queueRequest(req *types.Request) *ReqRes {
-	if !cli.IsRunning() {
-		return nil
-	}
-
 	reqres := NewReqRes(req)
 
 	// TODO: set cli.err if reqQueue times out
@@ -396,6 +396,18 @@ func (cli *socketClient) queueRequest(req *types.Request) *ReqRes {
 	}
 
 	return reqres
+}
+
+func (cli *socketClient) flushQueue() {
+LOOP:
+	for {
+		select {
+		case reqres := <-cli.reqQueue:
+			reqres.Done()
+		default:
+			break LOOP
+		}
+	}
 }
 
 //----------------------------------------
