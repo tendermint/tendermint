@@ -1,7 +1,6 @@
 package tmspcli
 
 import (
-	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -50,7 +49,7 @@ RETRY_LOOP:
 			if cli.mustConnect {
 				return err
 			} else {
-				fmt.Printf("tmsp.grpcClient failed to connect to %v.  Retrying...\n", cli.addr)
+				log.Warn(Fmt("tmsp.grpcClient failed to connect to %v.  Retrying...\n", cli.addr))
 				time.Sleep(time.Second * 3)
 				continue RETRY_LOOP
 			}
@@ -75,7 +74,7 @@ func (cli *grpcClient) SetResponseCallback(resCb Callback) {
 
 func (cli *grpcClient) StopForError(err error) {
 	cli.mtx.Lock()
-	fmt.Printf("Stopping tmsp.grpcClient for error: %v\n", err.Error())
+	log.Warn(Fmt("Stopping tmsp.grpcClient for error: %v\n", err.Error()))
 	if cli.err == nil {
 		cli.err = err
 	}
