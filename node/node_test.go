@@ -18,7 +18,8 @@ func TestNodeStartStop(t *testing.T) {
 
 	// Create & start node
 	n := NewNode(config, privValidator, GetProxyApp)
-	l := p2p.NewDefaultListener("tcp", config.GetString("node_laddr"), config.GetBool("skip_upnp"))
+	protocol, address := ProtocolAndAddress(config.GetString("node_laddr"))
+	l := p2p.NewDefaultListener(protocol, address, config.GetBool("skip_upnp"))
 	n.AddListener(l)
 	n.Start()
 	log.Notice("Started node", "nodeInfo", n.sw.NodeInfo())

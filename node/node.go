@@ -348,7 +348,9 @@ func RunNode(config cfg.Config) {
 
 	// Create & start node
 	n := NewNode(config, privValidator, GetProxyApp)
-	l := p2p.NewDefaultListener("tcp", config.GetString("node_laddr"), config.GetBool("skip_upnp"))
+
+	protocol, address := ProtocolAndAddress(config.GetString("node_laddr"))
+	l := p2p.NewDefaultListener(protocol, address, config.GetBool("skip_upnp"))
 	n.AddListener(l)
 	err := n.Start()
 	if err != nil {
@@ -447,4 +449,14 @@ func RunReplay(config cfg.Config) {
 		Exit(Fmt("Error during consensus replay: %v", err))
 	}
 	log.Notice("Replay run successfully")
+}
+
+// Defaults to tcp
+func ProtocolAndAddress(listenAddr string) (string, string) {
+	protocol, address := "tcp", listenAddr
+	parts := strings.SplitN(address, "://", 2)
+	if len(parts) == 2 {
+		protocol, address = parts[0], parts[1]
+	}
+	return protocol, address
 }

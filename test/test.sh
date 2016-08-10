@@ -1,4 +1,5 @@
 #! /bin/bash
+set -eu
 
 # Top Level Testing Script
 # See the github.com/tendermint/tendermint/test/README.md
