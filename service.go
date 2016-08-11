@@ -1,12 +1,13 @@
 /*
 
 Classical-inheritance-style service declarations.
-Services can be started, then stopped.
+Services can be started, then stopped, then optionally restarted.
 Users can override the OnStart/OnStop methods.
-These methods are guaranteed to be called at most once.
+By default, these methods are guaranteed to be called at most once.
+A call to Reset will panic, unless OnReset is overwritten, allowing OnStart/OnStop to be called again.
 Caller must ensure that Start() and Stop() are not called concurrently.
 It is ok to call Stop() without calling Start() first.
-Services cannot be re-started unless otherwise documented.
+Services cannot be re-started unless OnReset is overwritten to allow it.
 
 Typical usage:
 
@@ -50,6 +51,9 @@ type Service interface {
 
 	Stop() bool
 	OnStop()
+
+	Reset() (bool, error)
+	OnReset() error
 
 	IsRunning() bool
 
@@ -118,6 +122,29 @@ func (bs *BaseService) Stop() bool {
 
 // Implements Service
 func (bs *BaseService) OnStop() {}
+
+// Implements Service
+func (bs *BaseService) Reset() (bool, error) {
+	if atomic.CompareAndSwapUint32(&bs.stopped, 1, 0) {
+		// whether or not we've started, we can reset
+		atomic.CompareAndSwapUint32(&bs.started, 1, 0)
+
+		return true, bs.impl.OnReset()
+	} else {
+		if bs.log != nil {
+			bs.log.Debug(Fmt("Can't reset %v. Not stopped", bs.name), "impl", bs.impl)
+		}
+		return false, nil
+	}
+	// never happens
+	return false, nil
+}
+
+// Implements Service
+func (bs *BaseService) OnReset() error {
+	PanicSanity("The service cannot be reset")
+	return nil
+}
 
 // Implements Service
 func (bs *BaseService) IsRunning() bool {
