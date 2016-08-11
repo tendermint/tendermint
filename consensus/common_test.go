@@ -11,14 +11,17 @@ import (
 	cfg "github.com/tendermint/go-config"
 	dbm "github.com/tendermint/go-db"
 	"github.com/tendermint/go-events"
+	p2p "github.com/tendermint/go-p2p"
 	bc "github.com/tendermint/tendermint/blockchain"
 	mempl "github.com/tendermint/tendermint/mempool"
+	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	tmspcli "github.com/tendermint/tmsp/client"
 	tmsp "github.com/tendermint/tmsp/types"
 
 	"github.com/tendermint/tmsp/example/counter"
+	"github.com/tendermint/tmsp/example/dummy"
 )
 
 var config cfg.Config // NOTE: must be reset for each _test.go file
@@ -311,13 +314,24 @@ func validatePrevoteAndPrecommit(t *testing.T, cs *ConsensusState, thisRound, lo
 	cs.mtx.Unlock()
 }
 
-func fixedConsensusState() *ConsensusState {
+func fixedState() (*sm.State, *types.PrivValidator) {
 	stateDB := dbm.NewMemDB()
 	state := sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
 	privValidatorFile := config.GetString("priv_validator_file")
 	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
-	return newConsensusState(state, privValidator, counter.NewCounterApplication(true))
+	return state, privValidator
+}
 
+func fixedConsensusState() *ConsensusState {
+	state, privValidator := fixedState()
+	return newConsensusState(state, privValidator, counter.NewCounterApplication(true))
+}
+
+// TODO: clean this
+func getProxyAppLocalFunc(mtx *sync.Mutex, app tmsp.Application) proxy.GetProxyApp {
+	return func(config cfg.Config) (proxy.AppConn, error) {
+		return tmspcli.NewLocalClient(mtx, app), nil
+	}
 }
 
 func newConsensusState(state *sm.State, pv *types.PrivValidator, app tmsp.Application) *ConsensusState {
@@ -325,22 +339,59 @@ func newConsensusState(state *sm.State, pv *types.PrivValidator, app tmsp.Applic
 	blockDB := dbm.NewMemDB()
 	blockStore := bc.NewBlockStore(blockDB)
 
-	// one for mempool, one for consensus
+	// mtx is shared between tmsp cli/app conns, for mempool and consensus
 	mtx := new(sync.Mutex)
-	proxyAppConnMem := tmspcli.NewLocalClient(mtx, app)
-	proxyAppConnCon := tmspcli.NewLocalClient(mtx, app)
+
+	proxyAppConnMempool, _ := getProxyAppLocalFunc(mtx, app)(config)
+	proxyAppConnConsensus, _ := getProxyAppLocalFunc(mtx, app)(config)
 
 	// Make Mempool
-	mempool := mempl.NewMempool(config, proxyAppConnMem)
+	mempool := mempl.NewMempool(config, proxyAppConnMempool)
 
 	// Make ConsensusReactor
-	cs := NewConsensusState(config, state, proxyAppConnCon, blockStore, mempool)
+	cs := NewConsensusState(config, getProxyAppLocalFunc(mtx, app), state, blockStore, mempool)
 	cs.SetPrivValidator(pv)
+	cs.proxyAppConn = proxyAppConnConsensus
 
 	evsw := events.NewEventSwitch()
 	cs.SetEventSwitch(evsw)
 	evsw.Start()
 	return cs
+}
+
+func getProxyAppRemoteFunc(proxyAddr, transport string) proxy.GetProxyApp {
+	return func(config cfg.Config) (proxy.AppConn, error) {
+		return proxy.NewRemoteAppConn(proxyAddr, transport)
+	}
+}
+
+func newConsensusReactorProxyApp(state *sm.State, pv *types.PrivValidator, proxyAddr, transport string) (*ConsensusReactor, error) {
+	// Get BlockStore
+	blockDB := dbm.NewMemDB()
+	blockStore := bc.NewBlockStore(blockDB)
+
+	// Make Mempool
+	mtx := new(sync.Mutex)
+	proxyAppConnMem := tmspcli.NewLocalClient(mtx, dummy.NewDummyApplication())
+	mempoolReactor := mempl.NewMempoolReactor(config, func(config cfg.Config) (proxy.AppConn, error) {
+		return proxyAppConnMem, nil
+	})
+
+	// remote proxy app for consensus
+	getProxyApp := getProxyAppRemoteFunc(proxyAddr, transport)
+
+	// Make ConsensusReactor
+	fastSync := false
+	conR := NewConsensusReactor(config, getProxyApp, state, blockStore, mempoolReactor, fastSync)
+	conR.SetPrivValidator(pv)
+
+	evsw := events.NewEventSwitch()
+	conR.SetEventSwitch(evsw)
+	evsw.Start()
+
+	sw := p2p.NewSwitch(config.GetConfig("p2p"))
+	sw.AddReactor("CONSENSUS", conR)
+	return conR, nil
 }
 
 func randConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {

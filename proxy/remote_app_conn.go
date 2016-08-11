@@ -12,7 +12,8 @@ type remoteAppConn struct {
 }
 
 func NewRemoteAppConn(addr, transport string) (*remoteAppConn, error) {
-	client, err := tmspcli.NewClient(addr, transport, false)
+	mustConnect := false // force reconnect attempts
+	client, err := tmspcli.NewClient(addr, transport, mustConnect)
 	if err != nil {
 		return nil, err
 	}

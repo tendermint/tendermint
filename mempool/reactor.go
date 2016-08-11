@@ -12,6 +12,7 @@ import (
 	"github.com/tendermint/go-events"
 	"github.com/tendermint/go-p2p"
 	"github.com/tendermint/go-wire"
+	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 	tmsp "github.com/tendermint/tmsp/types"
 )
@@ -31,13 +32,29 @@ type MempoolReactor struct {
 	evsw    *events.EventSwitch
 }
 
-func NewMempoolReactor(config cfg.Config, mempool *Mempool) *MempoolReactor {
+func NewMempoolReactor(config cfg.Config, getProxyApp proxy.GetProxyApp) *MempoolReactor {
+	proxyAppConn, _ := getProxyApp(config) // XXX
+	mempool := NewMempool(config, proxyAppConn)
 	memR := &MempoolReactor{
 		config:  config,
 		Mempool: mempool,
 	}
 	memR.BaseReactor = *p2p.NewBaseReactor(log, "MempoolReactor", memR)
 	return memR
+}
+
+func (memR *MempoolReactor) OnStart() error {
+	memR.BaseReactor.OnStart()
+	_, err := memR.Mempool.Start()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (memR *MempoolReactor) OnStop() {
+	memR.BaseReactor.OnStop()
+	memR.Mempool.Stop()
 }
 
 // Implements Reactor
@@ -74,7 +91,7 @@ func (memR *MempoolReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte) {
 		err := memR.Mempool.CheckTx(msg.Tx, nil)
 		if err != nil {
 			// Bad, seen, or conflicting tx.
-			log.Info("Could not add tx", "tx", msg.Tx)
+			log.Info("Could not add tx", "err", err, "tx", msg.Tx)
 			return
 		} else {
 			log.Info("Added valid tx", "tx", msg.Tx)

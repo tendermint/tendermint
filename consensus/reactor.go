@@ -9,10 +9,13 @@ import (
 	"time"
 
 	. "github.com/tendermint/go-common"
+	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-events"
 	"github.com/tendermint/go-p2p"
 	"github.com/tendermint/go-wire"
 	bc "github.com/tendermint/tendermint/blockchain"
+	mempl "github.com/tendermint/tendermint/mempool"
+	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -31,19 +34,30 @@ const (
 type ConsensusReactor struct {
 	p2p.BaseReactor // QuitService + p2p.Switch
 
+	config cfg.Config
+
 	blockStore *bc.BlockStore
-	conS       *ConsensusState
 	fastSync   bool
 	evsw       *events.EventSwitch
+
+	mtx  sync.Mutex
+	conS *ConsensusState
+
+	mempoolReactor *mempl.MempoolReactor
 }
 
-func NewConsensusReactor(consensusState *ConsensusState, blockStore *bc.BlockStore, fastSync bool) *ConsensusReactor {
+func NewConsensusReactor(config cfg.Config, getProxyApp proxy.GetProxyApp,
+	state *sm.State, blockStore *bc.BlockStore, mempoolReactor *mempl.MempoolReactor,
+	fastSync bool) *ConsensusReactor {
+
 	conR := &ConsensusReactor{
-		blockStore: blockStore,
-		conS:       consensusState,
-		fastSync:   fastSync,
+		config:         config,
+		blockStore:     blockStore,
+		fastSync:       fastSync,
+		mempoolReactor: mempoolReactor,
 	}
 	conR.BaseReactor = *p2p.NewBaseReactor(log, "ConsensusReactor", conR)
+	conR.conS = NewConsensusState(config, getProxyApp, state, blockStore, mempoolReactor.Mempool)
 	return conR
 }
 
@@ -60,8 +74,53 @@ func (conR *ConsensusReactor) OnStart() error {
 		if err != nil {
 			return err
 		}
+
+		go conR.consensusStateRoutine(conR.conS.getProxyApp)
 	}
 	return nil
+}
+
+// when the consensus state quits, start a new one
+func (conR *ConsensusReactor) consensusStateRoutine(getProxyApp proxy.GetProxyApp) {
+	for {
+		select {
+		case <-conR.conS.Quit:
+			if !conR.IsRunning() {
+				return
+			}
+			if err := conR.StartNewConsensusState(getProxyApp); err != nil {
+				log.Error("Error creating new consensus state. You may need to restart tendermint", "error", err)
+			}
+		}
+	}
+}
+
+func (conR *ConsensusReactor) applyMsgToConsensusState(msg msgInfo) {
+	conR.mtx.Lock()
+	defer conR.mtx.Unlock()
+	conR.conS.peerMsgQueue <- msg
+}
+
+// Stop the old consensus state, create a new one, and start it
+func (conR *ConsensusReactor) StartNewConsensusState(getProxyApp proxy.GetProxyApp) error {
+	conR.mtx.Lock()
+	defer conR.mtx.Unlock()
+
+	conR.conS.Stop() // ensure stopped
+	// TODO: wait ?
+
+	// new consensus state
+	conS := NewConsensusState(conR.config, getProxyApp, conR.conS.GetState(),
+		conR.blockStore, conR.mempoolReactor.Mempool)
+	conS.SetEventSwitch(conR.evsw)
+	conS.SetPrivValidator(conR.conS.privValidator)
+
+	// copy the peerMsgQueue so we don't lose any msgs
+	conS.peerMsgQueue = conR.conS.peerMsgQueue
+
+	conR.conS = conS
+	_, err := conR.conS.Start()
+	return err
 }
 
 func (conR *ConsensusReactor) OnStop() {
@@ -71,6 +130,7 @@ func (conR *ConsensusReactor) OnStop() {
 
 // Switch from the fast_sync to the consensus:
 // reset the state, turn off fast_sync, start the consensus-state-machine
+// TODO: handle replay/catchup
 func (conR *ConsensusReactor) SwitchToConsensus(state *sm.State) {
 	log.Notice("SwitchToConsensus")
 	conR.conS.reconstructLastCommit(state)
@@ -79,6 +139,7 @@ func (conR *ConsensusReactor) SwitchToConsensus(state *sm.State) {
 	conR.conS.updateToState(state)
 	conR.fastSync = false
 	conR.conS.Start()
+	go conR.consensusStateRoutine(conR.conS.getProxyApp) // assumes routine has not been started
 }
 
 // Implements Reactor
@@ -178,12 +239,12 @@ func (conR *ConsensusReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte)
 		switch msg := msg.(type) {
 		case *ProposalMessage:
 			ps.SetHasProposal(msg.Proposal)
-			conR.conS.peerMsgQueue <- msgInfo{msg, src.Key}
+			conR.applyMsgToConsensusState(msgInfo{msg, src.Key})
 		case *ProposalPOLMessage:
 			ps.ApplyProposalPOLMessage(msg)
 		case *BlockPartMessage:
 			ps.SetHasProposalBlockPart(msg.Height, msg.Round, msg.Part.Index)
-			conR.conS.peerMsgQueue <- msgInfo{msg, src.Key}
+			conR.applyMsgToConsensusState(msgInfo{msg, src.Key})
 		default:
 			log.Warn(Fmt("Unknown message type %v", reflect.TypeOf(msg)))
 		}
@@ -195,16 +256,13 @@ func (conR *ConsensusReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte)
 		}
 		switch msg := msg.(type) {
 		case *VoteMessage:
-			cs := conR.conS
-			cs.mtx.Lock()
-			height, valSize, lastCommitSize := cs.Height, cs.Validators.Size(), cs.LastCommit.Size()
-			cs.mtx.Unlock()
+			height, valSize, lastCommitSize := conR.ensureVoteBitArraysData()
+
 			ps.EnsureVoteBitArrays(height, valSize)
 			ps.EnsureVoteBitArrays(height-1, lastCommitSize)
 			ps.SetHasVote(msg.Vote, msg.ValidatorIndex)
 
-			conR.conS.peerMsgQueue <- msgInfo{msg, src.Key}
-
+			conR.applyMsgToConsensusState(msgInfo{msg, src.Key})
 		default:
 			// don't punish (leave room for soft upgrades)
 			log.Warn(Fmt("Unknown message type %v", reflect.TypeOf(msg)))
@@ -218,13 +276,27 @@ func (conR *ConsensusReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte)
 	}
 }
 
+func (conR *ConsensusReactor) ensureVoteBitArraysData() (int, int, int) {
+	conR.mtx.Lock()
+	defer conR.mtx.Unlock()
+	cs := conR.conS
+
+	cs.mtx.Lock()
+	defer cs.mtx.Unlock()
+	return cs.Height, cs.Validators.Size(), cs.LastCommit.Size()
+}
+
 // Sets our private validator account for signing votes.
 func (conR *ConsensusReactor) SetPrivValidator(priv *types.PrivValidator) {
+	conR.mtx.Lock()
+	defer conR.mtx.Unlock()
 	conR.conS.SetPrivValidator(priv)
 }
 
 // implements events.Eventable
 func (conR *ConsensusReactor) SetEventSwitch(evsw *events.EventSwitch) {
+	conR.mtx.Lock()
+	defer conR.mtx.Unlock()
 	conR.evsw = evsw
 	conR.conS.SetEventSwitch(evsw)
 }
@@ -301,8 +373,14 @@ func makeRoundStepMessages(rs *RoundState) (nrsMsg *NewRoundStepMessage, csMsg *
 	return
 }
 
+func (conR *ConsensusReactor) GetRoundState() *RoundState {
+	conR.mtx.Lock()
+	defer conR.mtx.Unlock()
+	return conR.conS.GetRoundState()
+}
+
 func (conR *ConsensusReactor) sendNewRoundStepMessage(peer *p2p.Peer) {
-	rs := conR.conS.GetRoundState()
+	rs := conR.GetRoundState()
 	nrsMsg, csMsg := makeRoundStepMessages(rs)
 	if nrsMsg != nil {
 		peer.Send(StateChannel, struct{ ConsensusMessage }{nrsMsg})
@@ -322,7 +400,7 @@ OUTER_LOOP:
 			log.Notice(Fmt("Stopping gossipDataRoutine for %v.", peer))
 			return
 		}
-		rs := conR.conS.GetRoundState()
+		rs := conR.GetRoundState()
 		prs := ps.GetRoundState()
 
 		// Send proposal Block parts?
@@ -431,7 +509,7 @@ OUTER_LOOP:
 			log.Notice(Fmt("Stopping gossipVotesRoutine for %v.", peer))
 			return
 		}
-		rs := conR.conS.GetRoundState()
+		rs := conR.GetRoundState()
 		prs := ps.GetRoundState()
 
 		switch sleeping {

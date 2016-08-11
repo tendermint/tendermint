@@ -80,11 +80,11 @@ func (cs *ConsensusState) readReplayMessage(msgBytes []byte, newStepCh chan inte
 // replay only those messages since the last block
 func (cs *ConsensusState) catchupReplay(height int) error {
 	if cs.wal == nil {
-		log.Warn("consensus msg log is nil")
+		log.Warn("WAL is nil")
 		return nil
 	}
 	if !cs.wal.exists {
-		// new wal, nothing to catchup on
+		log.Warn("New WAL, nothing to catchup on")
 		return nil
 	}
 
@@ -230,7 +230,7 @@ func (pb *playback) replayReset(count int, newStepCh chan interface{}) error {
 
 	pb.cs.Stop()
 
-	newCS := NewConsensusState(pb.cs.config, pb.genesisState.Copy(), pb.cs.proxyAppConn, pb.cs.blockStore, pb.cs.mempool)
+	newCS := NewConsensusState(pb.cs.config, pb.cs.getProxyApp, pb.genesisState.Copy(), pb.cs.blockStore, pb.cs.mempool)
 	newCS.SetEventSwitch(pb.cs.evsw)
 	newCS.startForReplay()
 
