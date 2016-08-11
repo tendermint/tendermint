@@ -3,6 +3,8 @@ package mempool
 import (
 	"bytes"
 	"container/list"
+	"fmt"
+	"io"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -46,6 +48,8 @@ TODO: Better handle tmsp client errors. (make it automatically handle connection
 const cacheSize = 100000
 
 type Mempool struct {
+	QuitService
+
 	config cfg.Config
 
 	proxyMtx      sync.Mutex
@@ -79,7 +83,14 @@ func NewMempool(config cfg.Config, proxyAppConn proxy.AppConn) *Mempool {
 		cacheList: list.New(),
 	}
 	proxyAppConn.SetResponseCallback(mempool.resCb)
+	mempool.QuitService = *NewQuitService(log, "Mempool", mempool)
 	return mempool
+}
+
+// Allow mempool to be restarted
+func (mem *Mempool) OnReset() error {
+	mem.Flush()
+	return nil
 }
 
 // consensus must be able to hold lock to safely update
@@ -121,9 +132,12 @@ func (mem *Mempool) TxsFrontWait() *clist.CElement {
 // cb: A callback from the CheckTx command.
 //     It gets called from another goroutine.
 // CONTRACT: Either cb will get called, or err returned.
-// TODO: write-ahead log
-// TODO: buffer transactions received while the proxyApp is down and replay when its back up
+// TODO: write-ahead log. it should also record txs received while the proxyApp is down
 func (mem *Mempool) CheckTx(tx types.Tx, cb func(*tmsp.Response)) (err error) {
+	if !mem.IsRunning() {
+		return fmt.Errorf("Mempool is not running")
+	}
+
 	mem.proxyMtx.Lock()
 	defer mem.proxyMtx.Unlock()
 
@@ -156,6 +170,10 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*tmsp.Response)) (err error) {
 	// NOTE: proxyAppConn may error if tx buffer is full
 	// or if the connection died
 	if err = mem.proxyAppConn.Error(); err != nil {
+		if err == io.EOF {
+			mem.Stop()
+			mem.Reset()
+		}
 		return err
 	}
 	reqRes := mem.proxyAppConn.CheckTxAsync(tx)

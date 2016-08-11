@@ -106,23 +106,9 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, getProxyApp 
 		consensusReactor.SetPrivValidator(privValidator)
 	}
 
-	// Enable consensus state to restart on tmsp client reconnect.
-	// Mempool isn't a service - will work again as soon as proxyApp reconnects
-	go func() {
-		ch := proxyAppConnConsensus.WaitForConnection()
-		for {
-			select {
-			case err := <-ch:
-				// err == nil so long as tmspcli.mustConnect == false
-				if err != nil {
-					log.Error(Fmt("Error reconnecting to proxyApp. Restart Tendermint when the app is available. %v"), err)
-					return
-				} else {
-					consensusState.Start()
-				}
-			}
-		}
-	}()
+	// Enable consensus state and mempool to restart on tmsp client reconnect.
+	go restartOnReconnect(proxyAppConnConsensus, consensusState)
+	go restartOnReconnect(proxyAppConnMempool, mempool)
 
 	// deterministic accountability
 	err = consensusState.OpenWAL(config.GetString("cswal"))
@@ -178,7 +164,7 @@ func (n *Node) Stop() {
 
 	// TODO: stop rpc listeners
 	// TODO: close tmsp connections
-	// TODO: exit the consensus state restart loop
+	// TODO: exit any restartOnReconnect routines
 }
 
 // Add the event switch to reactors, mempool, etc.
@@ -335,6 +321,23 @@ func getState(config cfg.Config, stateDB dbm.DB) *sm.State {
 		state.Save()
 	}
 	return state
+}
+
+// should be run in a go-routine
+func restartOnReconnect(proxyApp proxy.AppConn, service Service) {
+	ch := proxyApp.WaitForConnection()
+	for {
+		select {
+		case err := <-ch:
+			// err == nil so long as tmspcli.mustConnect == false
+			if err != nil {
+				log.Error(Fmt("Error reconnecting to proxyApp. Restart Tendermint when the app is available. %v"), err)
+				return
+			} else {
+				service.Start()
+			}
+		}
+	}
 }
 
 //------------------------------------------------------------------------------
