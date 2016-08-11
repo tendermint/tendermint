@@ -106,6 +106,24 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, getProxyApp 
 		consensusReactor.SetPrivValidator(privValidator)
 	}
 
+	// Enable consensus state to restart on tmsp client reconnect.
+	// Mempool isn't a service - will work again as soon as proxyApp reconnects
+	go func() {
+		ch := proxyAppConnConsensus.WaitForConnection()
+		for {
+			select {
+			case err := <-ch:
+				// err == nil so long as tmspcli.mustConnect == false
+				if err != nil {
+					log.Error(Fmt("Error reconnecting to proxyApp. Restart Tendermint when the app is available. %v"), err)
+					return
+				} else {
+					consensusState.Start()
+				}
+			}
+		}
+	}()
+
 	// deterministic accountability
 	err = consensusState.OpenWAL(config.GetString("cswal"))
 	if err != nil {
@@ -157,6 +175,10 @@ func (n *Node) Stop() {
 	log.Notice("Stopping Node")
 	// TODO: gracefully disconnect from peers.
 	n.sw.Stop()
+
+	// TODO: stop rpc listeners
+	// TODO: close tmsp connections
+	// TODO: exit the consensus state restart loop
 }
 
 // Add the event switch to reactors, mempool, etc.

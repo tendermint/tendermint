@@ -61,6 +61,7 @@ type Mempool struct {
 	// This reduces the pressure on the proxyApp.
 	cacheMap  map[string]struct{}
 	cacheList *list.List // to remove oldest tx when cache gets too big
+
 }
 
 func NewMempool(config cfg.Config, proxyAppConn proxy.AppConn) *Mempool {
@@ -120,6 +121,8 @@ func (mem *Mempool) TxsFrontWait() *clist.CElement {
 // cb: A callback from the CheckTx command.
 //     It gets called from another goroutine.
 // CONTRACT: Either cb will get called, or err returned.
+// TODO: write-ahead log
+// TODO: buffer transactions received while the proxyApp is down and replay when its back up
 func (mem *Mempool) CheckTx(tx types.Tx, cb func(*tmsp.Response)) (err error) {
 	mem.proxyMtx.Lock()
 	defer mem.proxyMtx.Unlock()
@@ -151,6 +154,7 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*tmsp.Response)) (err error) {
 	// END CACHE
 
 	// NOTE: proxyAppConn may error if tx buffer is full
+	// or if the connection died
 	if err = mem.proxyAppConn.Error(); err != nil {
 		return err
 	}

@@ -329,6 +329,12 @@ func (cs *ConsensusState) OnStop() {
 	}
 }
 
+// Allow it to be Reset
+func (cs *ConsensusState) OnReset() error {
+	log.Notice("Resetting consensus state base service")
+	return nil
+}
+
 // Open file to log all consensus messages and timeouts for deterministic accountability
 func (cs *ConsensusState) OpenWAL(file string) (err error) {
 	cs.mtx.Lock()
@@ -1138,7 +1144,7 @@ func (cs *ConsensusState) enterCommit(height int, commitRound int) {
 
 	hash, partsHeader, ok := cs.Votes.Precommits(commitRound).TwoThirdsMajority()
 	if !ok {
-		PanicSanity("RunActionCommit() expects +2/3 precommits")
+		PanicSanity("enterCommit() expects +2/3 precommits")
 	}
 
 	// The Locked* fields no longer matter.
@@ -1224,8 +1230,11 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	// + run txs on the proxyAppConn
 	err := stateCopy.ExecBlock(eventCache, cs.proxyAppConn, block, blockParts.Header())
 	if err != nil {
-		// TODO: handle this gracefully.
-		PanicQ(Fmt("Exec failed for application: %v", err))
+		// stop the consensus state and let it be restarted
+		log.Warn(Fmt("Exec failed for application: %v", err))
+		cs.Stop()
+		cs.Reset() // allow it to be restart when the app comes back online
+		return
 	}
 
 	// lock mempool, commit state, update mempoool
