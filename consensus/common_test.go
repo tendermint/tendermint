@@ -13,12 +13,14 @@ import (
 	"github.com/tendermint/go-events"
 	bc "github.com/tendermint/tendermint/blockchain"
 	mempl "github.com/tendermint/tendermint/mempool"
+	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	tmspcli "github.com/tendermint/tmsp/client"
 	tmsp "github.com/tendermint/tmsp/types"
 
 	"github.com/tendermint/tmsp/example/counter"
+	"github.com/tendermint/tmsp/example/dummy"
 )
 
 var config cfg.Config // NOTE: must be reset for each _test.go file
@@ -311,11 +313,16 @@ func validatePrevoteAndPrecommit(t *testing.T, cs *ConsensusState, thisRound, lo
 	cs.mtx.Unlock()
 }
 
-func fixedConsensusState() *ConsensusState {
+func fixedState() (*sm.State, *types.PrivValidator) {
 	stateDB := dbm.NewMemDB()
 	state := sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
 	privValidatorFile := config.GetString("priv_validator_file")
 	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
+	return state, privValidator
+}
+
+func fixedConsensusState() *ConsensusState {
+	state, privValidator := fixedState()
 	return newConsensusState(state, privValidator, counter.NewCounterApplication(true))
 }
 
@@ -340,6 +347,41 @@ func newConsensusState(state *sm.State, pv *types.PrivValidator, app tmsp.Applic
 	cs.SetEventSwitch(evsw)
 	evsw.Start()
 	return cs
+}
+
+func newConsensusStateProxyApp(state *sm.State, pv *types.PrivValidator, proxyAddr, transport string) (*ConsensusState, error) {
+	// Get BlockStore
+	blockDB := dbm.NewMemDB()
+	blockStore := bc.NewBlockStore(blockDB)
+
+	// one for mempool, one for consensus
+	/*proxyAppConnMem, err := proxy.NewRemoteAppConn(proxyAddr, transport)
+	if err != nil {
+		return nil, err
+	}*/
+	proxyAppConnCon, err := proxy.NewRemoteAppConn(proxyAddr, transport)
+	if err != nil {
+		return nil, err
+	}
+
+	// Make Mempool
+	mtx := new(sync.Mutex)
+	proxyAppConnMem := tmspcli.NewLocalClient(mtx, dummy.NewDummyApplication())
+	mempool := mempl.NewMempool(config, proxyAppConnMem)
+
+	// Make ConsensusReactor
+	cs := NewConsensusState(config, state, proxyAppConnCon, blockStore, mempool)
+	cs.SetPrivValidator(pv)
+
+	// restart the consensus state on app reconnect
+	proxyAppConnCon.SetConnectCallback(func(err error) {
+		cs.Start()
+	})
+
+	evsw := events.NewEventSwitch()
+	cs.SetEventSwitch(evsw)
+	evsw.Start()
+	return cs, nil
 }
 
 func randConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {

@@ -63,6 +63,7 @@ func NewWAL(file string, light bool) (*WAL, error) {
 // called in newStep and for each pass in receiveRoutine
 func (wal *WAL) Save(clm ConsensusLogMessageInterface) {
 	if wal != nil {
+		wal.exists = true
 		if wal.light {
 			// in light mode we only write new steps, timeouts, and our own votes (no proposals, block parts)
 			if mi, ok := clm.(msgInfo); ok {
@@ -86,12 +87,14 @@ func (wal *WAL) Save(clm ConsensusLogMessageInterface) {
 func (wal *WAL) Close() {
 	if wal != nil {
 		wal.fp.Close()
+		wal.done <- struct{}{}
 	}
-	wal.done <- struct{}{}
 }
 
 func (wal *WAL) Wait() {
-	<-wal.done
+	if wal != nil {
+		<-wal.done
+	}
 }
 
 func (wal *WAL) SeekFromEnd(found func([]byte) bool) (nLines int, err error) {

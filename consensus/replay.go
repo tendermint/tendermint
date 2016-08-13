@@ -80,11 +80,11 @@ func (cs *ConsensusState) readReplayMessage(msgBytes []byte, newStepCh chan inte
 // replay only those messages since the last block
 func (cs *ConsensusState) catchupReplay(height int) error {
 	if cs.wal == nil {
-		log.Warn("consensus msg log is nil")
+		log.Warn("WAL is nil")
 		return nil
 	}
 	if !cs.wal.exists {
-		// new wal, nothing to catchup on
+		log.Warn("New WAL, nothing to catchup on")
 		return nil
 	}
 
