@@ -298,8 +298,17 @@ func (cs *ConsensusState) SetPrivValidator(priv *types.PrivValidator) {
 func (cs *ConsensusState) OnStart() error {
 	cs.QuitService.OnStart()
 
-	// start timeout and receive routines
-	cs.startRoutines(0)
+	err := cs.OpenWAL(cs.config.GetString("cswal"))
+	if err != nil {
+		return err
+	}
+
+	// start timeout routine
+	// NOTE: we dont start receiveRoutine until after replay
+	// so we dont re-write events, and so we dont process
+	// peer msgs before replay on app restarts.
+	// timeoutRoutine needed to read off tickChan during replay
+	go cs.timeoutRoutine()
 
 	// we may have lost some votes if the process crashed
 	// reload from consensus log to catchup
@@ -307,6 +316,9 @@ func (cs *ConsensusState) OnStart() error {
 		log.Error("Error on catchup replay", "error", err.Error())
 		// let's go for it anyways, maybe we're fine
 	}
+
+	// start
+	go cs.receiveRoutine(0)
 
 	// schedule the first round!
 	cs.scheduleRound0(cs.Height)

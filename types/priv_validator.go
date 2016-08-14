@@ -41,6 +41,7 @@ type PrivValidator struct {
 	LastRound     int              `json:"last_round"`
 	LastStep      int8             `json:"last_step"`
 	LastSignature crypto.Signature `json:"last_signature"` // so we dont lose signatures
+	LastSignBytes []byte           `json:"last_signbytes"` // so we dont lose signatures
 
 	// PrivKey should be empty if a Signer other than the default is being used.
 	PrivKey crypto.PrivKey `json:"priv_key"`
@@ -93,6 +94,7 @@ func GenPrivValidator() *PrivValidator {
 		LastRound:     0,
 		LastStep:      stepNone,
 		LastSignature: nil,
+		LastSignBytes: nil,
 		filePath:      "",
 		Signer:        NewDefaultSigner(privKey),
 	}
@@ -151,6 +153,16 @@ func (privVal *PrivValidator) save() {
 	}
 }
 
+// NOTE: Unsafe!
+func (privVal *PrivValidator) Reset() {
+	privVal.LastHeight = 0
+	privVal.LastRound = 0
+	privVal.LastStep = 0
+	privVal.LastSignature = nil
+	privVal.LastSignBytes = nil
+	privVal.Save()
+}
+
 func (privVal *PrivValidator) SignVote(chainID string, vote *Vote) error {
 	privVal.mtx.Lock()
 	defer privVal.mtx.Unlock()
@@ -190,9 +202,19 @@ func (privVal *PrivValidator) signBytesHRS(height, round int, step int8, signByt
 			if privVal.LastStep > step {
 				return nil, errors.New("Step regression")
 			} else if privVal.LastStep == step {
-				if privVal.LastSignature != nil {
-					return privVal.LastSignature, nil
+				if privVal.LastSignBytes != nil {
+					if privVal.LastSignature == nil {
+						PanicSanity("privVal: LastSignature is nil but LastSignBytes is not!")
+					}
+					// so we dont sign a conflicting vote or proposal
+					// NOTE: proposals are non-deterministic (include time),
+					// so we can actually lose them, but will still never sign conflicting ones
+					if bytes.Equal(privVal.LastSignBytes, signBytes) {
+						log.Notice("Using privVal.LastSignature", "sig", privVal.LastSignature)
+						return privVal.LastSignature, nil
+					}
 				}
+				return nil, errors.New("Step regression")
 			}
 		}
 	}
@@ -205,6 +227,7 @@ func (privVal *PrivValidator) signBytesHRS(height, round int, step int8, signByt
 	privVal.LastRound = round
 	privVal.LastStep = step
 	privVal.LastSignature = signature
+	privVal.LastSignBytes = signBytes
 	privVal.save()
 
 	return signature, nil
