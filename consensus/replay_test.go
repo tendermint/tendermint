@@ -10,9 +10,12 @@ import (
 )
 
 /*
-	The easiest way to generate this data is to copy ~/.tendermint_test/somedir/* to ~/.tendermint
+	The easiest way to generate this data is to rm ~/.tendermint,
+	copy ~/.tendermint_test/somedir/* to ~/.tendermint,
+	run `tendermint unsafe_reset_all`,
+	set ~/.tendermint/config.toml to use "leveldb" (to create a cswal in data/),
+	run `make install`,
 	and to run a local node.
-	Be sure to set the db to "leveldb" to create a cswal file in ~/.tendermint/data/cswal.
 
 	If you need to change the signatures, you can use a script as follows:
 	The privBytes comes from config/tendermint_test/...
@@ -45,14 +48,15 @@ import (
 	```
 */
 
-var testLog = `{"time":"2016-07-01T21:44:23.626Z","msg":[3,{"duration":0,"height":1,"round":0,"step":1}]}
-{"time":"2016-07-01T21:44:23.631Z","msg":[1,{"height":1,"round":0,"step":"RoundStepPropose"}]}
-{"time":"2016-07-01T21:44:23.631Z","msg":[2,{"msg":[17,{"Proposal":{"height":1,"round":0,"block_parts_header":{"total":1,"hash":"108807E7DC79BC7716CCC93217AC2B81BB8C9508"},"pol_round":-1,"signature":"1B22E998F5F4C426CB29F8AADFB012E364780B3FFDABA3B68498903EDBACECF152F45E3E3CD53A9476577E7043122E506494F4581ACDC73FE9643A791F977A07"}}],"peer_key":""}]}
-{"time":"2016-07-01T21:44:23.632Z","msg":[2,{"msg":[19,{"Height":1,"Round":0,"Part":{"index":0,"bytes":"0101010F74656E6465726D696E745F746573740101145D4921EB88A8C00000000000000114C4B01D3810579550997AC5641E759E20D99B51C10001000100","proof":{"aunts":[]}}}],"peer_key":""}]}
-{"time":"2016-07-01T21:44:23.633Z","msg":[1,{"height":1,"round":0,"step":"RoundStepPrevote"}]}
-{"time":"2016-07-01T21:44:23.633Z","msg":[2,{"msg":[20,{"Vote":{"validator_address":"D028C9981F7A87F3093672BF0D5B0E2A1B3ED456","validator_index":0,"height":1,"round":0,"type":1,"block_hash":"C421180ECD00F7FEFF8D720AE8CE891B02E85EA3","block_parts_header":{"total":1,"hash":"108807E7DC79BC7716CCC93217AC2B81BB8C9508"},"signature":"816DEAB87DB1BCA284EAEC7968B9EAE057025478D3176E174E0696C74CB2DD58EA402A3E144CA2292CCF05741097395E42EB8DA492EC73CAE8AB7C4486F99609"}}],"peer_key":""}]}
-{"time":"2016-07-01T21:44:23.636Z","msg":[1,{"height":1,"round":0,"step":"RoundStepPrecommit"}]}
-{"time":"2016-07-01T21:44:23.636Z","msg":[2,{"msg":[20,{"Vote":{"validator_address":"D028C9981F7A87F3093672BF0D5B0E2A1B3ED456","validator_index":0,"height":1,"round":0,"type":2,"block_hash":"C421180ECD00F7FEFF8D720AE8CE891B02E85EA3","block_parts_header":{"total":1,"hash":"108807E7DC79BC7716CCC93217AC2B81BB8C9508"},"signature":"BCF879FD579D03282ACF8B5C633DE9548BD93457AC7D0E69A3B13C4BF0E5581BBA20D29DF89FA20AF01F3DD39D65934AABB3B31B5E749B9EA3E4C11935E7610F"}}],"peer_key":""}]}
+var testLog = `
+{"time":"2016-08-20T00:59:04.481Z","msg":[3,{"duration":0,"height":1,"round":0,"step":1}]}
+{"time":"2016-08-20T00:59:04.483Z","msg":[1,{"height":1,"round":0,"step":"RoundStepPropose"}]}
+{"time":"2016-08-20T00:59:04.484Z","msg":[2,{"msg":[17,{"Proposal":{"height":1,"round":0,"block_parts_header":{"total":1,"hash":"9226C78A68841731B0E853461A084D329849D73F"},"pol_round":-1,"signature":"09D241E7A02B230D06D77267979D25DE54AA67A509B07DC1023A6C6523B20B1086D83CB8E56DAC67DE7117105F57029BE84E02ACC20C1F476346C4F338803E06"}}],"peer_key":""}]}
+{"time":"2016-08-20T00:59:04.484Z","msg":[2,{"msg":[19,{"Height":1,"Round":0,"Part":{"index":0,"bytes":"0101010F74656E6465726D696E745F746573740101146C5E3164DE2C800000000000000114C4B01D3810579550997AC5641E759E20D99B51C10001000100","proof":{"aunts":[]}}}],"peer_key":""}]}
+{"time":"2016-08-20T00:59:04.485Z","msg":[1,{"height":1,"round":0,"step":"RoundStepPrevote"}]}
+{"time":"2016-08-20T00:59:04.485Z","msg":[2,{"msg":[20,{"Vote":{"validator_address":"D028C9981F7A87F3093672BF0D5B0E2A1B3ED456","validator_index":0,"height":1,"round":0,"type":1,"block_id":{"hash":"BE09462F8C590F3C32CEA0B50E4B65B04851BF41","parts":{"total":1,"hash":"9226C78A68841731B0E853461A084D329849D73F"}},"signature":"E1592D8A9C85347479DBB3C4F600196828C33C982C049A6083BC7574E4E0AB868D97E573619C23CEA470D9B1E15D89930FBD1FBCF3181CF2364B3C3155931009"}}],"peer_key":""}]}
+{"time":"2016-08-20T00:59:04.487Z","msg":[1,{"height":1,"round":0,"step":"RoundStepPrecommit"}]}
+{"time":"2016-08-20T00:59:04.487Z","msg":[2,{"msg":[20,{"Vote":{"validator_address":"D028C9981F7A87F3093672BF0D5B0E2A1B3ED456","validator_index":0,"height":1,"round":0,"type":2,"block_id":{"hash":"BE09462F8C590F3C32CEA0B50E4B65B04851BF41","parts":{"total":1,"hash":"9226C78A68841731B0E853461A084D329849D73F"}},"signature":"EA525B9570A98DF620755A96B3540B84267BF00011B496D0576413A921005C678FEDC3823010ECF096EDA9BC0D2044F61802341CA0396C3C9DD6FF53FEE9F30E"}}],"peer_key":""}]}
 `
 
 func TestReplayCatchup(t *testing.T) {

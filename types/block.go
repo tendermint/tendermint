@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
@@ -21,8 +22,8 @@ type Block struct {
 }
 
 // Basic validation that doesn't involve state data.
-func (b *Block) ValidateBasic(chainID string, lastBlockHeight int, lastBlockHash []byte,
-	lastBlockParts PartSetHeader, lastBlockTime time.Time, appHash []byte) error {
+func (b *Block) ValidateBasic(chainID string, lastBlockHeight int, lastBlockID BlockID,
+	lastBlockTime time.Time, appHash []byte) error {
 	if b.ChainID != chainID {
 		return errors.New(Fmt("Wrong Block.Header.ChainID. Expected %v, got %v", chainID, b.ChainID))
 	}
@@ -39,11 +40,8 @@ func (b *Block) ValidateBasic(chainID string, lastBlockHeight int, lastBlockHash
 	if b.NumTxs != len(b.Data.Txs) {
 		return errors.New(Fmt("Wrong Block.Header.NumTxs. Expected %v, got %v", len(b.Data.Txs), b.NumTxs))
 	}
-	if !bytes.Equal(b.LastBlockHash, lastBlockHash) {
-		return errors.New(Fmt("Wrong Block.Header.LastBlockHash.  Expected %X, got %X", lastBlockHash, b.LastBlockHash))
-	}
-	if !b.LastBlockParts.Equals(lastBlockParts) {
-		return errors.New(Fmt("Wrong Block.Header.LastBlockParts. Expected %v, got %v", lastBlockParts, b.LastBlockParts))
+	if !b.LastBlockID.Equals(lastBlockID) {
+		return errors.New(Fmt("Wrong Block.Header.LastBlockID.  Expected %v, got %v", lastBlockID, b.LastBlockID))
 	}
 	if !bytes.Equal(b.LastCommitHash, b.LastCommit.Hash()) {
 		return errors.New(Fmt("Wrong Block.Header.LastCommitHash.  Expected %X, got %X", b.LastCommitHash, b.LastCommit.Hash()))
@@ -130,16 +128,15 @@ func (b *Block) StringShort() string {
 //-----------------------------------------------------------------------------
 
 type Header struct {
-	ChainID        string        `json:"chain_id"`
-	Height         int           `json:"height"`
-	Time           time.Time     `json:"time"`
-	NumTxs         int           `json:"num_txs"`
-	LastBlockHash  []byte        `json:"last_block_hash"`
-	LastBlockParts PartSetHeader `json:"last_block_parts"`
-	LastCommitHash []byte        `json:"last_commit_hash"`
-	DataHash       []byte        `json:"data_hash"`
-	ValidatorsHash []byte        `json:"validators_hash"`
-	AppHash        []byte        `json:"app_hash"` // state merkle root of txs from the previous block
+	ChainID        string    `json:"chain_id"`
+	Height         int       `json:"height"`
+	Time           time.Time `json:"time"`
+	NumTxs         int       `json:"num_txs"`
+	LastBlockID    BlockID   `json:"last_block_id"`
+	LastCommitHash []byte    `json:"last_commit_hash"`
+	DataHash       []byte    `json:"data_hash"`
+	ValidatorsHash []byte    `json:"validators_hash"`
+	AppHash        []byte    `json:"app_hash"` // state merkle root of txs from the previous block
 }
 
 // NOTE: hash is nil if required fields are missing.
@@ -148,16 +145,15 @@ func (h *Header) Hash() []byte {
 		return nil
 	}
 	return merkle.SimpleHashFromMap(map[string]interface{}{
-		"ChainID":        h.ChainID,
-		"Height":         h.Height,
-		"Time":           h.Time,
-		"NumTxs":         h.NumTxs,
-		"LastBlock":      h.LastBlockHash,
-		"LastBlockParts": h.LastBlockParts,
-		"LastCommit":     h.LastCommitHash,
-		"Data":           h.DataHash,
-		"Validators":     h.ValidatorsHash,
-		"App":            h.AppHash,
+		"ChainID":     h.ChainID,
+		"Height":      h.Height,
+		"Time":        h.Time,
+		"NumTxs":      h.NumTxs,
+		"LastBlockID": h.LastBlockID,
+		"LastCommit":  h.LastCommitHash,
+		"Data":        h.DataHash,
+		"Validators":  h.ValidatorsHash,
+		"App":         h.AppHash,
 	})
 }
 
@@ -170,8 +166,7 @@ func (h *Header) StringIndented(indent string) string {
 %s  Height:         %v
 %s  Time:           %v
 %s  NumTxs:         %v
-%s  LastBlock:      %X
-%s  LastBlockParts: %v
+%s  LastBlockID:    %v
 %s  LastCommit:     %X
 %s  Data:           %X
 %s  Validators:     %X
@@ -181,8 +176,7 @@ func (h *Header) StringIndented(indent string) string {
 		indent, h.Height,
 		indent, h.Time,
 		indent, h.NumTxs,
-		indent, h.LastBlockHash,
-		indent, h.LastBlockParts,
+		indent, h.LastBlockID,
 		indent, h.LastCommitHash,
 		indent, h.DataHash,
 		indent, h.ValidatorsHash,
@@ -359,4 +353,34 @@ func (data *Data) StringIndented(indent string) string {
 %s}#%X`,
 		indent, strings.Join(txStrings, "\n"+indent+"  "),
 		indent, data.hash)
+}
+
+//--------------------------------------------------------------------------------
+
+type BlockID struct {
+	Hash        []byte        `json:"hash"`
+	PartsHeader PartSetHeader `json:"parts"`
+}
+
+func (blockID BlockID) IsZero() bool {
+	return len(blockID.Hash) == 0 && blockID.PartsHeader.IsZero()
+}
+
+func (blockID BlockID) Equals(other BlockID) bool {
+	return bytes.Equal(blockID.Hash, other.Hash) &&
+		blockID.PartsHeader.Equals(other.PartsHeader)
+}
+
+func (blockID BlockID) Key() string {
+	return string(blockID.Hash) + string(wire.BinaryBytes(blockID.PartsHeader))
+}
+
+func (blockID BlockID) WriteSignBytes(w io.Writer, n *int, err *error) {
+	wire.WriteTo([]byte(Fmt(`{"hash":"%X","parts":`, blockID.Hash)), w, n, err)
+	blockID.PartsHeader.WriteSignBytes(w, n, err)
+	wire.WriteTo([]byte("}"), w, n, err)
+}
+
+func (blockID BlockID) String() string {
+	return fmt.Sprintf(`%X:%v`, blockID.Hash, blockID.PartsHeader)
 }

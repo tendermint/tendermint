@@ -60,7 +60,7 @@ func (cs *ConsensusState) readReplayMessage(msgBytes []byte, newStepCh chan inte
 		case *VoteMessage:
 			v := msg.Vote
 			log.Notice("Vote", "height", v.Height, "round", v.Round, "type", v.Type,
-				"hash", v.BlockHash, "header", v.BlockPartsHeader, "peer", peerKey)
+				"blockID", v.BlockID, "peer", peerKey)
 		}
 		// internal or from peer
 		if m.PeerKey == "" {

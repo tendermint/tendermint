@@ -25,8 +25,7 @@ type State struct {
 	GenesisDoc      *types.GenesisDoc
 	ChainID         string
 	LastBlockHeight int // Genesis state has this set to 0.  So, Block(H=0) does not exist.
-	LastBlockHash   []byte
-	LastBlockParts  types.PartSetHeader
+	LastBlockID     types.BlockID
 	LastBlockTime   time.Time
 	Validators      *types.ValidatorSet
 	LastValidators  *types.ValidatorSet
@@ -56,8 +55,7 @@ func (s *State) Copy() *State {
 		GenesisDoc:      s.GenesisDoc,
 		ChainID:         s.ChainID,
 		LastBlockHeight: s.LastBlockHeight,
-		LastBlockHash:   s.LastBlockHash,
-		LastBlockParts:  s.LastBlockParts,
+		LastBlockID:     s.LastBlockID,
 		LastBlockTime:   s.LastBlockTime,
 		Validators:      s.Validators.Copy(),
 		LastValidators:  s.LastValidators.Copy(),
@@ -117,8 +115,7 @@ func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) *State {
 		GenesisDoc:      genDoc,
 		ChainID:         genDoc.ChainID,
 		LastBlockHeight: 0,
-		LastBlockHash:   nil,
-		LastBlockParts:  types.PartSetHeader{},
+		LastBlockID:     types.BlockID{},
 		LastBlockTime:   genDoc.GenesisTime,
 		Validators:      types.NewValidatorSet(validators),
 		LastValidators:  types.NewValidatorSet(nil),

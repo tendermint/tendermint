@@ -45,8 +45,7 @@ func (vs *validatorStub) signVote(voteType byte, hash []byte, header types.PartS
 		Height:           vs.Height,
 		Round:            vs.Round,
 		Type:             voteType,
-		BlockHash:        hash,
-		BlockPartsHeader: header,
+		BlockID:          types.BlockID{hash, header},
 	}
 	err := vs.PrivValidator.SignVote(config.GetString("chain_id"), vote)
 	return vote, err
@@ -127,12 +126,12 @@ func validatePrevote(t *testing.T, cs *ConsensusState, round int, privVal *valid
 		panic("Failed to find prevote from validator")
 	}
 	if blockHash == nil {
-		if vote.BlockHash != nil {
-			panic(fmt.Sprintf("Expected prevote to be for nil, got %X", vote.BlockHash))
+		if vote.BlockID.Hash != nil {
+			panic(fmt.Sprintf("Expected prevote to be for nil, got %X", vote.BlockID.Hash))
 		}
 	} else {
-		if !bytes.Equal(vote.BlockHash, blockHash) {
-			panic(fmt.Sprintf("Expected prevote to be for %X, got %X", blockHash, vote.BlockHash))
+		if !bytes.Equal(vote.BlockID.Hash, blockHash) {
+			panic(fmt.Sprintf("Expected prevote to be for %X, got %X", blockHash, vote.BlockID.Hash))
 		}
 	}
 }
@@ -143,8 +142,8 @@ func validateLastPrecommit(t *testing.T, cs *ConsensusState, privVal *validatorS
 	if vote = votes.GetByAddress(privVal.Address); vote == nil {
 		panic("Failed to find precommit from validator")
 	}
-	if !bytes.Equal(vote.BlockHash, blockHash) {
-		panic(fmt.Sprintf("Expected precommit to be for %X, got %X", blockHash, vote.BlockHash))
+	if !bytes.Equal(vote.BlockID.Hash, blockHash) {
+		panic(fmt.Sprintf("Expected precommit to be for %X, got %X", blockHash, vote.BlockID.Hash))
 	}
 }
 
@@ -156,11 +155,11 @@ func validatePrecommit(t *testing.T, cs *ConsensusState, thisRound, lockRound in
 	}
 
 	if votedBlockHash == nil {
-		if vote.BlockHash != nil {
+		if vote.BlockID.Hash != nil {
 			panic("Expected precommit to be for nil")
 		}
 	} else {
-		if !bytes.Equal(vote.BlockHash, votedBlockHash) {
+		if !bytes.Equal(vote.BlockID.Hash, votedBlockHash) {
 			panic("Expected precommit to be for proposal block")
 		}
 	}
