@@ -66,7 +66,7 @@ type PartSetHeader struct {
 }
 
 func (psh PartSetHeader) String() string {
-	return fmt.Sprintf("PartSet{T:%v %X}", psh.Total, Fingerprint(psh.Hash))
+	return fmt.Sprintf("%v:%X", psh.Total, Fingerprint(psh.Hash))
 }
 
 func (psh PartSetHeader) IsZero() bool {

@@ -1,7 +1,6 @@
 package types
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -35,8 +34,7 @@ type Vote struct {
 	Height           int                     `json:"height"`
 	Round            int                     `json:"round"`
 	Type             byte                    `json:"type"`
-	BlockHash        []byte                  `json:"block_hash"`         // empty if vote is nil.
-	BlockPartsHeader PartSetHeader           `json:"block_parts_header"` // zero if vote is nil.
+	BlockID          BlockID                 `json:"block_id"` // zero if vote is nil.
 	Signature        crypto.SignatureEd25519 `json:"signature"`
 }
 
@@ -48,7 +46,8 @@ const (
 
 func (vote *Vote) WriteSignBytes(chainID string, w io.Writer, n *int, err *error) {
 	wire.WriteTo([]byte(Fmt(`{"chain_id":"%s"`, chainID)), w, n, err)
-	wire.WriteTo([]byte(Fmt(`,"vote":{"block_hash":"%X","block_parts_header":%v`, vote.BlockHash, vote.BlockPartsHeader)), w, n, err)
+	wire.WriteTo([]byte(`,"vote":{"block_id":`), w, n, err)
+	vote.BlockID.WriteSignBytes(w, n, err)
 	wire.WriteTo([]byte(Fmt(`,"height":%v,"round":%v,"type":%v}}`, vote.Height, vote.Round, vote.Type)), w, n, err)
 }
 
@@ -74,12 +73,5 @@ func (vote *Vote) String() string {
 	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %v}",
 		vote.ValidatorIndex, Fingerprint(vote.ValidatorAddress),
 		vote.Height, vote.Round, vote.Type, typeString,
-		Fingerprint(vote.BlockHash), vote.Signature)
-}
-
-// Does not check signature, but checks for equality of block
-// NOTE: May be from different validators, and signature may be incorrect.
-func (vote *Vote) SameBlockAs(other *Vote) bool {
-	return bytes.Equal(vote.BlockHash, other.BlockHash) &&
-		vote.BlockPartsHeader.Equals(other.BlockPartsHeader)
+		Fingerprint(vote.BlockID.Hash), vote.Signature)
 }
