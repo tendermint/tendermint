@@ -40,6 +40,20 @@ func NewMempoolReactor(config cfg.Config, mempool *Mempool) *MempoolReactor {
 	return memR
 }
 
+func (memR *MempoolReactor) OnStart() error {
+	memR.BaseReactor.OnStart()
+	_, err := memR.Mempool.Start()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (memR *MempoolReactor) OnStop() {
+	memR.BaseReactor.OnStop()
+	memR.Mempool.Stop()
+}
+
 // Implements Reactor
 func (memR *MempoolReactor) GetChannels() []*p2p.ChannelDescriptor {
 	return []*p2p.ChannelDescriptor{
@@ -74,7 +88,7 @@ func (memR *MempoolReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte) {
 		err := memR.Mempool.CheckTx(msg.Tx, nil)
 		if err != nil {
 			// Bad, seen, or conflicting tx.
-			log.Info("Could not add tx", "tx", msg.Tx)
+			log.Info("Could not add tx", "err", err, "tx", msg.Tx)
 			return
 		} else {
 			log.Info("Added valid tx", "tx", msg.Tx)

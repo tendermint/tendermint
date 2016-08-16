@@ -106,11 +106,9 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, getProxyApp 
 		consensusReactor.SetPrivValidator(privValidator)
 	}
 
-	// deterministic accountability
-	err = consensusState.OpenWAL(config.GetString("cswal"))
-	if err != nil {
-		log.Error("Failed to open cswal", "error", err.Error())
-	}
+	// Enable consensus state and mempool to restart on tmsp client reconnect.
+	setConnectCallback(proxyAppConnConsensus, consensusState)
+	setConnectCallback(proxyAppConnMempool, mempool)
 
 	// Make p2p network switch
 	sw := p2p.NewSwitch(config.GetConfig("p2p"))
@@ -157,6 +155,9 @@ func (n *Node) Stop() {
 	log.Notice("Stopping Node")
 	// TODO: gracefully disconnect from peers.
 	n.sw.Stop()
+
+	// TODO: stop rpc listeners
+	// TODO: close tmsp connections
 }
 
 // Add the event switch to reactors, mempool, etc.
@@ -313,6 +314,18 @@ func getState(config cfg.Config, stateDB dbm.DB) *sm.State {
 		state.Save()
 	}
 	return state
+}
+
+func setConnectCallback(proxyApp proxy.AppConn, service Service) {
+	proxyApp.SetConnectCallback(func(err error) {
+		// err == nil so long as tmspcli.mustConnect == false
+		if err != nil {
+			log.Error(Fmt("Error reconnecting to proxyApp. Restart Tendermint when the app is available. %v"), err)
+			return
+		} else {
+			service.Start()
+		}
+	})
 }
 
 //------------------------------------------------------------------------------
