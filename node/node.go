@@ -40,14 +40,13 @@ type Node struct {
 	blockStore       *bc.BlockStore
 	bcReactor        *bc.BlockchainReactor
 	mempoolReactor   *mempl.MempoolReactor
-	consensusState   *consensus.ConsensusState
 	consensusReactor *consensus.ConsensusReactor
 	privValidator    *types.PrivValidator
 	genesisDoc       *types.GenesisDoc
 	privKey          crypto.PrivKeyEd25519
 }
 
-func NewNode(config cfg.Config, privValidator *types.PrivValidator, getProxyApp func(proxyAddr, transport string, appHash []byte) proxy.AppConn) *Node {
+func NewNode(config cfg.Config, privValidator *types.PrivValidator, getProxyApp proxy.GetProxyApp) *Node {
 
 	EnsureDir(config.GetString("db_dir"), 0700) // incase we use memdb, cswal still gets written here
 
@@ -61,18 +60,11 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, getProxyApp 
 	// Get State
 	state := getState(config, stateDB)
 
-	// Create two proxyAppConn connections,
-	// one for the consensus and one for the mempool.
-	proxyAddr := config.GetString("proxy_app")
-	transport := config.GetString("tmsp")
-	proxyAppConnMempool := getProxyApp(proxyAddr, transport, state.AppHash)
-	proxyAppConnConsensus := getProxyApp(proxyAddr, transport, state.AppHash)
-
 	// add the chainid and number of validators to the global config
 	config.Set("chain_id", state.ChainID)
 	config.Set("num_vals", state.Validators.Size())
 
-	// Generate node PrivKey
+	// Generate p2p node PrivKey
 	privKey := crypto.GenPrivKeyEd25519()
 
 	// Make event switch
@@ -84,6 +76,7 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, getProxyApp 
 
 	// Decide whether to fast-sync or not
 	// We don't fast-sync when the only validator is us.
+	// NOTE: we could use the config instead of passing the bool
 	fastSync := config.GetBool("fast_sync")
 	if state.Validators.Size() == 1 {
 		addr, _ := state.Validators.GetByIndex(0)
@@ -93,23 +86,15 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, getProxyApp 
 	}
 
 	// Make BlockchainReactor
-	bcReactor := bc.NewBlockchainReactor(state.Copy(), proxyAppConnConsensus, blockStore, fastSync)
+	bcReactor := bc.NewBlockchainReactor(config, getProxyApp, state.Copy(), blockStore, fastSync)
 
 	// Make MempoolReactor
-	mempool := mempl.NewMempool(config, proxyAppConnMempool)
-	mempoolReactor := mempl.NewMempoolReactor(config, mempool)
+	mempoolReactor := mempl.NewMempoolReactor(config, getProxyApp)
 
 	// Make ConsensusReactor
-	consensusState := consensus.NewConsensusState(config, state.Copy(), proxyAppConnConsensus, blockStore, mempool)
-	consensusReactor := consensus.NewConsensusReactor(consensusState, blockStore, fastSync)
+	consensusReactor := consensus.NewConsensusReactor(config, getProxyApp, state.Copy(), blockStore, mempoolReactor, fastSync)
 	if privValidator != nil {
 		consensusReactor.SetPrivValidator(privValidator)
-	}
-
-	// deterministic accountability
-	err = consensusState.OpenWAL(config.GetString("cswal"))
-	if err != nil {
-		log.Error("Failed to open cswal", "error", err.Error())
 	}
 
 	// Make p2p network switch
@@ -137,7 +122,6 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, getProxyApp 
 		blockStore:       blockStore,
 		bcReactor:        bcReactor,
 		mempoolReactor:   mempoolReactor,
-		consensusState:   consensusState,
 		consensusReactor: consensusReactor,
 		privValidator:    privValidator,
 		genesisDoc:       state.GenesisDoc,
@@ -157,6 +141,9 @@ func (n *Node) Stop() {
 	log.Notice("Stopping Node")
 	// TODO: gracefully disconnect from peers.
 	n.sw.Stop()
+
+	// TODO: stop rpc listeners
+	// TODO: close tmsp connections
 }
 
 // Add the event switch to reactors, mempool, etc.
@@ -179,7 +166,6 @@ func (n *Node) StartRPC() ([]net.Listener, error) {
 
 	rpccore.SetEventSwitch(n.evsw)
 	rpccore.SetBlockStore(n.blockStore)
-	rpccore.SetConsensusState(n.consensusState)
 	rpccore.SetConsensusReactor(n.consensusReactor)
 	rpccore.SetMempoolReactor(n.mempoolReactor)
 	rpccore.SetSwitch(n.sw)
@@ -210,10 +196,6 @@ func (n *Node) Switch() *p2p.Switch {
 
 func (n *Node) BlockStore() *bc.BlockStore {
 	return n.blockStore
-}
-
-func (n *Node) ConsensusState() *consensus.ConsensusState {
-	return n.consensusState
 }
 
 func (n *Node) ConsensusReactor() *consensus.ConsensusReactor {
@@ -272,7 +254,10 @@ func makeNodeInfo(config cfg.Config, sw *p2p.Switch, privKey crypto.PrivKeyEd255
 
 // Get a connection to the proxyAppConn addr.
 // Check the current hash, and panic if it doesn't match.
-func GetProxyApp(addr, transport string, hash []byte) (proxyAppConn proxy.AppConn) {
+func GetProxyApp(config cfg.Config) (proxyAppConn proxy.AppConn, err error) {
+	addr := config.GetString("proxy_app")
+	transport := config.GetString("tmsp")
+
 	// use local app (for testing)
 	switch addr {
 	case "nilapp":
@@ -284,24 +269,24 @@ func GetProxyApp(addr, transport string, hash []byte) (proxyAppConn proxy.AppCon
 		mtx := new(sync.Mutex)
 		proxyAppConn = tmspcli.NewLocalClient(mtx, app)
 	default:
-		// Run forever in a loop
-		remoteApp, err := proxy.NewRemoteAppConn(addr, transport)
-		if err != nil {
-			Exit(Fmt("Failed to connect to proxy for mempool: %v", err))
+		proxyAppConn, err = proxy.NewRemoteAppConn(addr, transport)
+	}
+
+	// TODO: more intelligent handshake
+	// pass in a handshake params
+	/*
+		appHash := config.GetString("app_hash")
+		res := proxyAppConn.CommitSync()
+		if res.IsErr() {
+			// TODO: dont panic
+			PanicCrisis(Fmt("Error in getting proxyAppConn hash: %v", res))
 		}
-		proxyAppConn = remoteApp
-	}
+		if !bytes.Equal(appHash, res.Data) {
+			log.Warn(Fmt("ProxyApp hash does not match.  Expected %X, got %X", appHash, res.Data))
+		}
+	*/
 
-	// Check the hash
-	res := proxyAppConn.CommitSync()
-	if res.IsErr() {
-		PanicCrisis(Fmt("Error in getting proxyAppConn hash: %v", res))
-	}
-	if !bytes.Equal(hash, res.Data) {
-		log.Warn(Fmt("ProxyApp hash does not match.  Expected %X, got %X", hash, res.Data))
-	}
-
-	return proxyAppConn
+	return proxyAppConn, err
 }
 
 // Load the most recent state from "state" db,
@@ -402,10 +387,8 @@ func newConsensusState(config cfg.Config) *consensus.ConsensusState {
 
 	// Create two proxyAppConn connections,
 	// one for the consensus and one for the mempool.
-	proxyAddr := config.GetString("proxy_app")
-	transport := config.GetString("tmsp")
-	proxyAppConnMempool := GetProxyApp(proxyAddr, transport, state.AppHash)
-	proxyAppConnConsensus := GetProxyApp(proxyAddr, transport, state.AppHash)
+	proxyAppConnMempool, _ := GetProxyApp(config) // XXX:
+	// proxyAppConnConsensus, _ := GetProxyApp(config)
 
 	// add the chainid to the global config
 	config.Set("chain_id", state.ChainID)
@@ -419,7 +402,7 @@ func newConsensusState(config cfg.Config) *consensus.ConsensusState {
 
 	mempool := mempl.NewMempool(config, proxyAppConnMempool)
 
-	consensusState := consensus.NewConsensusState(config, state.Copy(), proxyAppConnConsensus, blockStore, mempool)
+	consensusState := consensus.NewConsensusState(config, GetProxyApp, state.Copy(), blockStore, mempool)
 	consensusState.SetEventSwitch(eventSwitch)
 	return consensusState
 }

@@ -82,6 +82,7 @@ func (s *State) execBlockOnProxyApp(eventCache events.Fireable, proxyAppConn pro
 
 	// TODO: BeginBlock
 
+	log.Info(Fmt("AppendTx (%d)", len(block.Txs)))
 	// Run txs of block
 	for _, tx := range block.Txs {
 		proxyAppConn.AppendTxAsync(tx)
@@ -90,10 +91,11 @@ func (s *State) execBlockOnProxyApp(eventCache events.Fireable, proxyAppConn pro
 		}
 	}
 
+	log.Info("EndBlock")
 	// End block
 	changedValidators, err := proxyAppConn.EndBlockSync(uint64(block.Height))
 	if err != nil {
-		log.Warn("Error in proxyAppConn.EndBlock", "error", err)
+		log.Error("Error in proxyAppConn.EndBlock", "error", err)
 		return err
 	}
 	// TODO: Do something with changedValidators

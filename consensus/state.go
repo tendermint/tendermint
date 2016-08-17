@@ -20,6 +20,17 @@ import (
 )
 
 //-----------------------------------------------------------------------------
+// Errors
+
+type ErrProxyApp struct {
+	err error
+}
+
+func (err ErrProxyApp) Error() string {
+	return err.err.Error()
+}
+
+//-----------------------------------------------------------------------------
 // Timeout Parameters
 
 // All in milliseconds
@@ -216,6 +227,7 @@ type ConsensusState struct {
 
 	config        cfg.Config
 	proxyAppConn  proxy.AppConn
+	getProxyApp   proxy.GetProxyApp
 	blockStore    *bc.BlockStore
 	mempool       *mempl.Mempool
 	privValidator *types.PrivValidator
@@ -238,10 +250,12 @@ type ConsensusState struct {
 	nSteps int // used for testing to limit the number of transitions the state makes
 }
 
-func NewConsensusState(config cfg.Config, state *sm.State, proxyAppConn proxy.AppConn, blockStore *bc.BlockStore, mempool *mempl.Mempool) *ConsensusState {
+func NewConsensusState(config cfg.Config, getProxyApp proxy.GetProxyApp,
+	state *sm.State, blockStore *bc.BlockStore, mempool *mempl.Mempool) *ConsensusState {
+
 	cs := &ConsensusState{
 		config:           config,
-		proxyAppConn:     proxyAppConn,
+		getProxyApp:      getProxyApp,
 		blockStore:       blockStore,
 		mempool:          mempool,
 		peerMsgQueue:     make(chan msgInfo, msgQueueSize),
@@ -251,9 +265,10 @@ func NewConsensusState(config cfg.Config, state *sm.State, proxyAppConn proxy.Ap
 		tockChan:         make(chan timeoutInfo, tickTockBufferSize),
 		timeoutParams:    InitTimeoutParamsFromConfig(config),
 	}
-	cs.updateToState(state)
+
 	// Don't call scheduleRound0 yet.
 	// We do that upon Start().
+	cs.updateToState(state)
 	cs.reconstructLastCommit(state)
 	cs.QuitService = *NewQuitService(log, "ConsensusState", cs)
 	return cs
@@ -298,8 +313,20 @@ func (cs *ConsensusState) SetPrivValidator(priv *types.PrivValidator) {
 func (cs *ConsensusState) OnStart() error {
 	cs.QuitService.OnStart()
 
-	// start timeout and receive routines
-	cs.startRoutines(0)
+	err := cs.OpenWAL(cs.config.GetString("cswal"))
+	if err != nil {
+		return err
+	}
+
+	// connect to the app if not already
+	if cs.proxyAppConn == nil {
+		cs.proxyAppConn, err = cs.getProxyApp(cs.config)
+		if err != nil {
+			return err
+		}
+	}
+
+	go cs.timeoutRoutine()
 
 	// we may have lost some votes if the process crashed
 	// reload from consensus log to catchup
@@ -307,6 +334,8 @@ func (cs *ConsensusState) OnStart() error {
 		log.Error("Error on catchup replay", "error", err.Error())
 		// let's go for it anyways, maybe we're fine
 	}
+
+	go cs.receiveRoutine(0)
 
 	// schedule the first round!
 	cs.scheduleRound0(cs.Height)
@@ -324,7 +353,8 @@ func (cs *ConsensusState) startRoutines(maxSteps int) {
 func (cs *ConsensusState) OnStop() {
 	cs.QuitService.OnStop()
 
-	if cs.wal != nil && cs.IsRunning() {
+	// TODO: this is never true here ...
+	if cs.IsRunning() {
 		cs.wal.Wait()
 	}
 }
@@ -483,8 +513,17 @@ func (cs *ConsensusState) updateToState(state *sm.State) {
 	}
 
 	// Reset fields based on state.
-	validators := state.Validators
 	height := state.LastBlockHeight + 1 // Next desired block height
+
+	cs.resetRoundState(height, state)
+
+	cs.state = state
+
+	// Finally, broadcast RoundState
+	cs.newStep()
+}
+
+func (cs *ConsensusState) lastPrecommits() *types.VoteSet {
 	lastPrecommits := (*types.VoteSet)(nil)
 	if cs.CommitRound > -1 && cs.Votes != nil {
 		if !cs.Votes.Precommits(cs.CommitRound).HasTwoThirdsMajority() {
@@ -492,6 +531,12 @@ func (cs *ConsensusState) updateToState(state *sm.State) {
 		}
 		lastPrecommits = cs.Votes.Precommits(cs.CommitRound)
 	}
+	return lastPrecommits
+}
+
+func (cs *ConsensusState) resetRoundState(height int, state *sm.State) {
+	lastPrecommits := cs.lastPrecommits()
+	validators := state.Validators
 
 	// RoundState fields
 	cs.updateHeight(height)
@@ -506,23 +551,20 @@ func (cs *ConsensusState) updateToState(state *sm.State) {
 	} else {
 		cs.StartTime = cs.timeoutParams.Commit(cs.CommitTime)
 	}
-	cs.CommitTime = time.Time{}
-	cs.Validators = validators
+
 	cs.Proposal = nil
 	cs.ProposalBlock = nil
 	cs.ProposalBlockParts = nil
 	cs.LockedRound = 0
 	cs.LockedBlock = nil
 	cs.LockedBlockParts = nil
-	cs.Votes = NewHeightVoteSet(cs.config.GetString("chain_id"), height, validators)
 	cs.CommitRound = -1
+
+	cs.CommitTime = time.Time{}
+	cs.Validators = validators
+	cs.Votes = NewHeightVoteSet(cs.config.GetString("chain_id"), height, validators)
 	cs.LastCommit = lastPrecommits
 	cs.LastValidators = state.LastValidators
-
-	cs.state = state
-
-	// Finally, broadcast RoundState
-	cs.newStep()
 }
 
 func (cs *ConsensusState) newStep() {
@@ -607,17 +649,18 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 		}
 		rs := cs.RoundState
 		var mi msgInfo
+		var err error
 
 		select {
 		case mi = <-cs.peerMsgQueue:
 			cs.wal.Save(mi)
 			// handles proposals, block parts, votes
 			// may generate internal events (votes, complete proposals, 2/3 majorities)
-			cs.handleMsg(mi, rs)
+			err = cs.handleMsg(mi, rs)
 		case mi = <-cs.internalMsgQueue:
 			cs.wal.Save(mi)
 			// handles proposals, block parts, votes
-			cs.handleMsg(mi, rs)
+			err = cs.handleMsg(mi, rs)
 		case ti := <-cs.tockChan:
 			cs.wal.Save(ti)
 			// if the timeout is relevant to the rs
@@ -626,6 +669,7 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 		case <-cs.Quit:
 
 			// drain the internalMsgQueue in case we eg. signed a proposal but it didn't hit the wal
+			// (unnecessary now that we write LastSignBytes/LastSignature, but better)
 		FLUSH:
 			for {
 				select {
@@ -638,16 +682,20 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 			}
 
 			// close wal now that we're done writing to it
-			if cs.wal != nil {
-				cs.wal.Close()
-			}
+			cs.wal.Close()
 			return
+		}
+
+		if _, ok := err.(ErrProxyApp); ok {
+			// Proxy app failed.
+			// This will close the Quit chan and trigger the reactor to make a new one
+			cs.Stop()
 		}
 	}
 }
 
 // state transitions on complete-proposal, 2/3-any, 2/3-one
-func (cs *ConsensusState) handleMsg(mi msgInfo, rs RoundState) {
+func (cs *ConsensusState) handleMsg(mi msgInfo, rs RoundState) error {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 
@@ -667,7 +715,7 @@ func (cs *ConsensusState) handleMsg(mi msgInfo, rs RoundState) {
 	case *VoteMessage:
 		// attempt to add the vote and dupeout the validator if its a duplicate signature
 		// if the vote gives us a 2/3-any or 2/3-one, we transition
-		err := cs.tryAddVote(msg.ValidatorIndex, msg.Vote, peerKey)
+		err = cs.tryAddVote(msg.ValidatorIndex, msg.Vote, peerKey)
 		if err == ErrAddingVote {
 			// TODO: punish peer
 		}
@@ -681,9 +729,12 @@ func (cs *ConsensusState) handleMsg(mi msgInfo, rs RoundState) {
 	default:
 		log.Warn("Unknown msg type", reflect.TypeOf(msg))
 	}
-	if err != nil {
+	if _, ok := err.(ErrProxyApp); ok {
+		// ...
+	} else if err != nil {
 		log.Error("Error with msg", "type", reflect.TypeOf(msg), "peer", peerKey, "error", err, "msg", msg)
 	}
+	return err
 }
 
 func (cs *ConsensusState) handleTimeout(ti timeoutInfo, rs RoundState) {
@@ -1118,7 +1169,7 @@ func (cs *ConsensusState) enterPrecommitWait(height int, round int) {
 }
 
 // Enter: +2/3 precommits for block
-func (cs *ConsensusState) enterCommit(height int, commitRound int) {
+func (cs *ConsensusState) enterCommit(height int, commitRound int) (err error) {
 	if cs.Height != height || RoundStepCommit <= cs.Step {
 		log.Debug(Fmt("enterCommit(%v/%v): Invalid args. Current step: %v/%v/%v", height, commitRound, cs.Height, cs.Round, cs.Step))
 		return
@@ -1133,12 +1184,12 @@ func (cs *ConsensusState) enterCommit(height int, commitRound int) {
 		cs.newStep()
 
 		// Maybe finalize immediately.
-		cs.tryFinalizeCommit(height)
+		err = cs.tryFinalizeCommit(height)
 	}()
 
 	hash, partsHeader, ok := cs.Votes.Precommits(commitRound).TwoThirdsMajority()
 	if !ok {
-		PanicSanity("RunActionCommit() expects +2/3 precommits")
+		PanicSanity("enterCommit() expects +2/3 precommits")
 	}
 
 	// The Locked* fields no longer matter.
@@ -1160,10 +1211,11 @@ func (cs *ConsensusState) enterCommit(height int, commitRound int) {
 			// We just need to keep waiting.
 		}
 	}
+	return
 }
 
 // If we have the block AND +2/3 commits for it, finalize.
-func (cs *ConsensusState) tryFinalizeCommit(height int) {
+func (cs *ConsensusState) tryFinalizeCommit(height int) error {
 	if cs.Height != height {
 		PanicSanity(Fmt("tryFinalizeCommit() cs.Height: %v vs height: %v", cs.Height, height))
 	}
@@ -1171,22 +1223,21 @@ func (cs *ConsensusState) tryFinalizeCommit(height int) {
 	hash, _, ok := cs.Votes.Precommits(cs.CommitRound).TwoThirdsMajority()
 	if !ok || len(hash) == 0 {
 		log.Warn("Attempt to finalize failed. There was no +2/3 majority, or +2/3 was for <nil>.")
-		return
+		return nil
 	}
 	if !cs.ProposalBlock.HashesTo(hash) {
 		// TODO: this happens every time if we're not a validator (ugly logs)
 		log.Warn("Attempt to finalize failed. We don't have the commit block.")
-		return
+		return nil
 	}
-	//	go
-	cs.finalizeCommit(height)
+	return cs.finalizeCommit(height)
 }
 
 // Increment height and goto RoundStepNewHeight
-func (cs *ConsensusState) finalizeCommit(height int) {
+func (cs *ConsensusState) finalizeCommit(height int) error {
 	if cs.Height != height || cs.Step != RoundStepCommit {
 		log.Debug(Fmt("finalizeCommit(%v): Invalid args. Current step: %v/%v/%v", height, cs.Height, cs.Round, cs.Step))
-		return
+		return nil
 	}
 
 	hash, header, ok := cs.Votes.Precommits(cs.CommitRound).TwoThirdsMajority()
@@ -1208,11 +1259,6 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	log.Notice(Fmt("Finalizing commit of block with %d txs", block.NumTxs), "height", block.Height, "hash", block.Hash())
 	log.Info(Fmt("%v", block))
 
-	// Fire off event for new block.
-	// TODO: Handle app failure.  See #177
-	cs.evsw.FireEvent(types.EventStringNewBlock(), types.EventDataNewBlock{block})
-	cs.evsw.FireEvent(types.EventStringNewBlockHeader(), types.EventDataNewBlockHeader{block.Header})
-
 	// Create a copy of the state for staging
 	stateCopy := cs.state.Copy()
 
@@ -1224,16 +1270,23 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	// + run txs on the proxyAppConn
 	err := stateCopy.ExecBlock(eventCache, cs.proxyAppConn, block, blockParts.Header())
 	if err != nil {
-		// TODO: handle this gracefully.
-		PanicQ(Fmt("Exec failed for application: %v", err))
+		// stop the consensus state and let it be restarted
+		log.Error("Exec failed for application", "error", err)
+		return ErrProxyApp{err}
 	}
 
 	// lock mempool, commit state, update mempoool
 	err = cs.commitStateUpdateMempool(stateCopy, block)
 	if err != nil {
-		// TODO: handle this gracefully.
-		PanicQ(Fmt("Commit failed for application: %v", err))
+		// stop the consensus state and let it be restarted
+		log.Error("Commit failed for application", "error", err)
+		return ErrProxyApp{err}
 	}
+
+	// Fire off event for new block.
+	// TODO: Handle app failure.  See #177
+	cs.evsw.FireEvent(types.EventStringNewBlock(), types.EventDataNewBlock{block})
+	cs.evsw.FireEvent(types.EventStringNewBlockHeader(), types.EventDataNewBlockHeader{block.Header})
 
 	// txs committed, bad ones removed from mepool; fire events
 	// NOTE: the block.AppHash wont reflect these txs until the next block
@@ -1260,7 +1313,7 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	// * cs.Height has been increment to height+1
 	// * cs.Step is now RoundStepNewHeight
 	// * cs.StartTime is set to when we will start round0.
-	return
+	return nil
 }
 
 // mempool must be locked during commit and update
@@ -1271,6 +1324,7 @@ func (cs *ConsensusState) commitStateUpdateMempool(s *sm.State, block *types.Blo
 	defer cs.mempool.Unlock()
 
 	// flush out any CheckTx that have already started
+	// XXX: ? (there should be no CheckTx on this conn)
 	cs.proxyAppConn.FlushSync()
 
 	// Commit block, get hash back
@@ -1355,7 +1409,7 @@ func (cs *ConsensusState) addProposalBlockPart(height int, part *types.Part, ver
 			cs.enterPrevote(height, cs.Round)
 		} else if cs.Step == RoundStepCommit {
 			// If we're waiting on the proposal block...
-			cs.tryFinalizeCommit(height)
+			err = cs.tryFinalizeCommit(height)
 		}
 		return true, err
 	}
@@ -1385,6 +1439,8 @@ func (cs *ConsensusState) tryAddVote(valIndex int, vote *types.Vote, peerKey str
 			}
 			cs.mempool.BroadcastTx(struct{???}{evidenceTx}) // shouldn't need to check returned err
 			*/
+			return err
+		} else if _, ok := err.(ErrProxyApp); ok {
 			return err
 		} else {
 			// Probably an invalid signature. Bad peer.
@@ -1467,7 +1523,7 @@ func (cs *ConsensusState) addVote(valIndex int, vote *types.Vote, peerKey string
 					} else {
 						cs.enterNewRound(height, vote.Round)
 						cs.enterPrecommit(height, vote.Round)
-						cs.enterCommit(height, vote.Round)
+						err = cs.enterCommit(height, vote.Round)
 					}
 				} else if cs.Round <= vote.Round && precommits.HasTwoThirdsAny() {
 					cs.enterNewRound(height, vote.Round)
@@ -1479,7 +1535,8 @@ func (cs *ConsensusState) addVote(valIndex int, vote *types.Vote, peerKey string
 				PanicSanity(Fmt("Unexpected vote type %X", vote.Type)) // Should not happen.
 			}
 		}
-		// Either duplicate, or error upon cs.Votes.AddByIndex()
+		// Either duplicate, error upon cs.Votes.AddByIndex(),
+		// or ErrProxyApp from failed enterCommit
 		return
 	} else {
 		err = ErrVoteHeightMismatch

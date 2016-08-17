@@ -8,6 +8,7 @@ import (
 	"time"
 
 	. "github.com/tendermint/go-common"
+	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-events"
 	"github.com/tendermint/go-p2p"
 	"github.com/tendermint/go-wire"
@@ -55,7 +56,8 @@ type BlockchainReactor struct {
 	evsw *events.EventSwitch
 }
 
-func NewBlockchainReactor(state *sm.State, proxyAppConn proxy.AppConn, store *BlockStore, fastSync bool) *BlockchainReactor {
+func NewBlockchainReactor(config cfg.Config, getProxyApp proxy.GetProxyApp, state *sm.State, store *BlockStore, fastSync bool) *BlockchainReactor {
+	proxyAppConn, _ := getProxyApp(config) // XXX
 	if state.LastBlockHeight == store.Height()-1 {
 		store.height -= 1 // XXX HACK, make this better
 	}
