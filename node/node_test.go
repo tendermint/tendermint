@@ -17,7 +17,7 @@ func TestNodeStartStop(t *testing.T) {
 	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
 
 	// Create & start node
-	n := NewNode(config, privValidator, GetProxyApp)
+	n := NewNode(config, privValidator)
 	protocol, address := ProtocolAndAddress(config.GetString("node_laddr"))
 	l := p2p.NewDefaultListener(protocol, address, config.GetBool("skip_upnp"))
 	n.AddListener(l)

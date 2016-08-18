@@ -215,7 +215,7 @@ type ConsensusState struct {
 	QuitService
 
 	config        cfg.Config
-	proxyAppConn  proxy.AppConn
+	proxyAppConn  proxy.AppConnConsensus
 	blockStore    *bc.BlockStore
 	mempool       *mempl.Mempool
 	privValidator *types.PrivValidator
@@ -238,7 +238,7 @@ type ConsensusState struct {
 	nSteps int // used for testing to limit the number of transitions the state makes
 }
 
-func NewConsensusState(config cfg.Config, state *sm.State, proxyAppConn proxy.AppConn, blockStore *bc.BlockStore, mempool *mempl.Mempool) *ConsensusState {
+func NewConsensusState(config cfg.Config, state *sm.State, proxyAppConn proxy.AppConnConsensus, blockStore *bc.BlockStore, mempool *mempl.Mempool) *ConsensusState {
 	cs := &ConsensusState{
 		config:           config,
 		proxyAppConn:     proxyAppConn,
@@ -1283,7 +1283,7 @@ func (cs *ConsensusState) commitStateUpdateMempool(s *sm.State, block *types.Blo
 	defer cs.mempool.Unlock()
 
 	// flush out any CheckTx that have already started
-	cs.proxyAppConn.FlushSync()
+	// cs.proxyAppConn.FlushSync() // ?! XXX
 
 	// Commit block, get hash back
 	res := cs.proxyAppConn.CommitSync()
