@@ -78,12 +78,7 @@ func (cs *ConsensusState) readReplayMessage(msgBytes []byte, newStepCh chan inte
 // replay only those messages since the last block.
 // timeoutRoutine should run concurrently to read off tickChan
 func (cs *ConsensusState) catchupReplay(height int) error {
-	if cs.wal == nil {
-		log.Warn("consensus msg log is nil")
-		return nil
-	}
-	if !cs.wal.exists {
-		// new wal, nothing to catchup on
+	if !cs.wal.Exists() {
 		return nil
 	}
 
@@ -254,8 +249,9 @@ func (pb *playback) replayReset(count int, newStepCh chan interface{}) error {
 }
 
 func (cs *ConsensusState) startForReplay() {
+	// don't want to start full cs
 	cs.BaseService.OnStart()
-	go cs.receiveRoutine(0)
+
 	// since we replay tocks we just ignore ticks
 	go func() {
 		for {

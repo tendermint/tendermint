@@ -317,7 +317,8 @@ func fixedConsensusState() *ConsensusState {
 	privValidatorFile := config.GetString("priv_validator_file")
 	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
 	privValidator.Reset()
-	return newConsensusState(state, privValidator, counter.NewCounterApplication(true))
+	cs := newConsensusState(state, privValidator, counter.NewCounterApplication(true))
+	return cs
 }
 
 func newConsensusState(state *sm.State, pv *types.PrivValidator, app tmsp.Application) *ConsensusState {

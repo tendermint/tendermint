@@ -99,16 +99,11 @@ func waitForBlock(newBlockCh chan interface{}) {
 }
 
 func runReplayTest(t *testing.T, cs *ConsensusState, fileName string, newBlockCh chan interface{}) {
-	// open wal and run catchup messages
-	openWAL(t, cs, fileName)
-	go cs.timeoutRoutine()
-	if err := cs.catchupReplay(cs.Height); err != nil {
-		panic(Fmt("Error on catchup replay %v", err))
-	}
-	go cs.receiveRoutine(0)
+	cs.config.Set("cswal", fileName)
+	cs.Start()
 	// wait to make a new block
 	waitForBlock(newBlockCh)
-	cs.QuitService.OnStop()
+	cs.Stop()
 }
 
 func setupReplayTest(nLines int, crashAfter bool) (*ConsensusState, chan interface{}, string, string) {
@@ -127,10 +122,8 @@ func setupReplayTest(nLines int, crashAfter bool) (*ConsensusState, chan interfa
 	fileName := writeWAL(strings.Join(split[:nLines], "\n") + "\n")
 
 	cs := fixedConsensusState()
-	cs.QuitService.OnStart()
 
-	// we've already precommitted on the first block
-	// without replay catchup we would be halted here forever
+	// set the last step according to when we crashed vs the wal
 	cs.privValidator.LastHeight = 1 // first block
 	cs.privValidator.LastStep = mapPrivValStep[lineStep]
 
@@ -139,16 +132,6 @@ func setupReplayTest(nLines int, crashAfter bool) (*ConsensusState, chan interfa
 	newBlockCh := subscribeToEvent(cs.evsw, "tester", types.EventStringNewBlock(), 1)
 
 	return cs, newBlockCh, lastMsg, fileName
-}
-
-func openWAL(t *testing.T, cs *ConsensusState, file string) {
-	// open the wal
-	wal, err := NewWAL(file, config.GetBool("cswal_light"))
-	if err != nil {
-		panic(err)
-	}
-	wal.exists = true
-	cs.wal = wal
 }
 
 //-----------------------------------------------
