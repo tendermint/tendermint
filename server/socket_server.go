@@ -120,7 +120,6 @@ func (s *SocketServer) acceptConnectionsRoutine() {
 			errClose := <-closeConn
 			if err == io.EOF {
 				log.Warn("Connection was closed by client")
-				return // is this correct? the conn is closed?
 			} else if errClose != nil {
 				log.Warn("Connection error", "error", errClose)
 			} else {

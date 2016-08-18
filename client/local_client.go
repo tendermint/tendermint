@@ -8,7 +8,7 @@ import (
 )
 
 type localClient struct {
-	*BaseService
+	BaseService
 	mtx *sync.Mutex
 	types.Application
 	Callback
@@ -22,7 +22,7 @@ func NewLocalClient(mtx *sync.Mutex, app types.Application) *localClient {
 		mtx:         mtx,
 		Application: app,
 	}
-	cli.BaseService = NewBaseService(log, "localClient", cli)
+	cli.BaseService = *NewBaseService(log, "localClient", cli)
 	return cli
 }
 
