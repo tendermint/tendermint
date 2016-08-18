@@ -54,7 +54,7 @@ func newNode(ready chan struct{}) {
 	// Create & start node
 	privValidatorFile := config.GetString("priv_validator_file")
 	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
-	node = nm.NewNode(config, privValidator, nm.GetProxyApp)
+	node = nm.NewNode(config, privValidator)
 	protocol, address := nm.ProtocolAndAddress(config.GetString("node_laddr"))
 	l := p2p.NewDefaultListener(protocol, address, true)
 	node.AddListener(l)

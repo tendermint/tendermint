@@ -44,7 +44,7 @@ type BlockchainReactor struct {
 
 	sw           *p2p.Switch
 	state        *sm.State
-	proxyAppConn proxy.AppConn // same as consensus.proxyAppConn
+	proxyAppConn proxy.AppConnConsensus // same as consensus.proxyAppConn
 	store        *BlockStore
 	pool         *BlockPool
 	fastSync     bool
@@ -55,7 +55,7 @@ type BlockchainReactor struct {
 	evsw *events.EventSwitch
 }
 
-func NewBlockchainReactor(state *sm.State, proxyAppConn proxy.AppConn, store *BlockStore, fastSync bool) *BlockchainReactor {
+func NewBlockchainReactor(state *sm.State, proxyAppConn proxy.AppConnConsensus, store *BlockStore, fastSync bool) *BlockchainReactor {
 	if state.LastBlockHeight == store.Height()-1 {
 		store.height -= 1 // XXX HACK, make this better
 	}

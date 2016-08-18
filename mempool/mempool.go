@@ -49,7 +49,7 @@ type Mempool struct {
 	config cfg.Config
 
 	proxyMtx      sync.Mutex
-	proxyAppConn  proxy.AppConn
+	proxyAppConn  proxy.AppConnMempool
 	txs           *clist.CList    // concurrent linked-list of good txs
 	counter       int64           // simple incrementing counter
 	height        int             // the last block Update()'d to
@@ -63,7 +63,7 @@ type Mempool struct {
 	cacheList *list.List // to remove oldest tx when cache gets too big
 }
 
-func NewMempool(config cfg.Config, proxyAppConn proxy.AppConn) *Mempool {
+func NewMempool(config cfg.Config, proxyAppConn proxy.AppConnMempool) *Mempool {
 	mempool := &Mempool{
 		config:        config,
 		proxyAppConn:  proxyAppConn,
