@@ -133,17 +133,19 @@ func (hvs *HeightVoteSet) Precommits(round int) *types.VoteSet {
 	return hvs.getVoteSet(round, types.VoteTypePrecommit)
 }
 
-// Last round that has +2/3 prevotes for a particular block or nil.
+// Last round and blockID that has +2/3 prevotes for a particular block or nil.
 // Returns -1 if no such round exists.
-func (hvs *HeightVoteSet) POLRound() int {
+func (hvs *HeightVoteSet) POLInfo() (polRound int, polBlockID types.BlockID) {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
 	for r := hvs.round; r >= 0; r-- {
-		if hvs.getVoteSet(r, types.VoteTypePrevote).HasTwoThirdsMajority() {
-			return r
+		rvs := hvs.getVoteSet(r, types.VoteTypePrevote)
+		polBlockID, ok := rvs.TwoThirdsMajority()
+		if ok {
+			return r, polBlockID
 		}
 	}
-	return -1
+	return -1, types.BlockID{}
 }
 
 func (hvs *HeightVoteSet) getVoteSet(round int, type_ byte) *types.VoteSet {

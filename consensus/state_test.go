@@ -198,7 +198,7 @@ func TestBadProposal(t *testing.T) {
 	stateHash[0] = byte((stateHash[0] + 1) % 255)
 	propBlock.AppHash = stateHash
 	propBlockParts := propBlock.MakePartSet()
-	proposal := types.NewProposal(vs2.Height, round, propBlockParts.Header(), -1)
+	proposal := types.NewProposal(vs2.Height, round, propBlockParts.Header(), -1, types.BlockID{})
 	if err := vs2.SignProposal(config.GetString("chain_id"), proposal); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
@@ -832,6 +832,7 @@ func TestLockPOLSafety2(t *testing.T) {
 	prop1, propBlock1 := decideProposal(cs1, vs2, vs2.Height, vs2.Round+1)
 	propBlockHash1 := propBlock1.Hash()
 	propBlockParts1 := propBlock1.MakePartSet()
+	propBlockID1 := types.BlockID{propBlockHash1, propBlockParts1.Header()}
 
 	incrementRound(vs2, vs3, vs4)
 
@@ -864,7 +865,7 @@ func TestLockPOLSafety2(t *testing.T) {
 	<-timeoutWaitCh
 
 	// in round 2 we see the polkad block from round 0
-	newProp := types.NewProposal(height, 2, propBlockParts0.Header(), 0)
+	newProp := types.NewProposal(height, 2, propBlockParts0.Header(), 0, propBlockID1)
 	if err := vs3.SignProposal(config.GetString("chain_id"), newProp); err != nil {
 		t.Fatal(err)
 	}
