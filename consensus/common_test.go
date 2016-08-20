@@ -71,7 +71,8 @@ func decideProposal(cs1 *ConsensusState, vs *validatorStub, height, round int) (
 	}
 
 	// Make proposal
-	proposal = types.NewProposal(height, round, blockParts.Header(), cs1.Votes.POLRound())
+	polRound, polBlockID := cs1.Votes.POLInfo()
+	proposal = types.NewProposal(height, round, blockParts.Header(), polRound, polBlockID)
 	if err := vs.SignProposal(config.GetString("chain_id"), proposal); err != nil {
 		panic(err)
 	}

@@ -391,13 +391,13 @@ OUTER_LOOP:
 
 		// Send Proposal && ProposalPOL BitArray?
 		if rs.Proposal != nil && !prs.Proposal {
-			// Proposal
+			// Proposal: share the proposal metadata with peer.
 			{
 				msg := &ProposalMessage{Proposal: rs.Proposal}
 				peer.Send(DataChannel, struct{ ConsensusMessage }{msg})
 				ps.SetHasProposal(rs.Proposal)
 			}
-			// ProposalPOL.
+			// ProposalPOL: lets peer know which POL votes we have so far.
 			// Peer must receive ProposalMessage first.
 			// rs.Proposal was validated, so rs.Proposal.POLRound <= rs.Round,
 			// so we definitely have rs.Votes.Prevotes(rs.Proposal.POLRound).

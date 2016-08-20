@@ -824,7 +824,8 @@ func (cs *ConsensusState) decideProposal(height, round int) {
 	}
 
 	// Make proposal
-	proposal := types.NewProposal(height, round, blockParts.Header(), cs.Votes.POLRound())
+	polRound, polBlockID := cs.Votes.POLInfo()
+	proposal := types.NewProposal(height, round, blockParts.Header(), polRound, polBlockID)
 	err := cs.privValidator.SignProposal(cs.state.ChainID, proposal)
 	if err == nil {
 		// Set fields
@@ -1033,8 +1034,9 @@ func (cs *ConsensusState) enterPrecommit(height int, round int) {
 	cs.evsw.FireEvent(types.EventStringPolka(), cs.RoundStateEvent())
 
 	// the latest POLRound should be this round
-	if cs.Votes.POLRound() < round {
-		PanicSanity(Fmt("This POLRound should be %v but got %", round, cs.Votes.POLRound()))
+	polRound, _ := cs.Votes.POLInfo()
+	if polRound < round {
+		PanicSanity(Fmt("This POLRound should be %v but got %", round, polRound))
 	}
 
 	// +2/3 prevoted nil. Unlock and precommit nil.
