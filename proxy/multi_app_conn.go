@@ -52,6 +52,16 @@ func Handshake(config cfg.Config, state State, blockStore BlockStore) {
 
 //---------
 
+type AppConns interface {
+	Mempool() AppConnMempool
+	Consensus() AppConnConsensus
+	Query() AppConnQuery
+}
+
+func NewAppConns(config cfg.Config, state State, blockStore BlockStore) AppConns {
+	return NewMultiAppConn(config, state, blockStore)
+}
+
 // a multiAppConn is made of a few appConns (mempool, consensus)
 // and manages their underlying tmsp clients, ensuring they reboot together
 type multiAppConn struct {
@@ -64,6 +74,7 @@ type multiAppConn struct {
 
 	mempoolConn   *appConnMempool
 	consensusConn *appConnConsensus
+	queryConn     *appConnQuery
 }
 
 // Make all necessary tmsp connections to the application
@@ -88,18 +99,31 @@ func (app *multiAppConn) Consensus() AppConnConsensus {
 	return app.consensusConn
 }
 
+func (app *multiAppConn) Query() AppConnQuery {
+	return app.queryConn
+}
+
 func (app *multiAppConn) OnStart() error {
 	app.QuitService.OnStart()
 
 	addr := app.config.GetString("proxy_app")
 	transport := app.config.GetString("tmsp")
 
+	// query connection
+	querycli, err := NewTMSPClient(addr, transport)
+	if err != nil {
+		return err
+	}
+	app.queryConn = NewAppConnMempool(querycli)
+
+	// mempool connection
 	memcli, err := NewTMSPClient(addr, transport)
 	if err != nil {
 		return err
 	}
 	app.mempoolConn = NewAppConnMempool(memcli)
 
+	// consensus connection
 	concli, err := NewTMSPClient(addr, transport)
 	if err != nil {
 		return err

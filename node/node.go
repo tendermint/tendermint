@@ -41,6 +41,7 @@ type Node struct {
 	privValidator    *types.PrivValidator
 	genesisDoc       *types.GenesisDoc
 	privKey          crypto.PrivKeyEd25519
+	proxyApp         proxy.AppConns
 }
 
 func NewNode(config cfg.Config, privValidator *types.PrivValidator) *Node {
@@ -59,7 +60,7 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator) *Node {
 
 	// Create the proxyApp, which houses two connections,
 	// one for the consensus and one for the mempool.
-	proxyApp := proxy.NewMultiAppConn(config, state, blockStore)
+	proxyApp := proxy.NewAppConns(config, state, blockStore)
 
 	// add the chainid and number of validators to the global config
 	config.Set("chain_id", state.ChainID)
@@ -136,6 +137,7 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator) *Node {
 		privValidator:    privValidator,
 		genesisDoc:       state.GenesisDoc,
 		privKey:          privKey,
+		proxyApp:         proxyApp,
 	}
 }
 
@@ -362,7 +364,7 @@ func newConsensusState(config cfg.Config) *consensus.ConsensusState {
 
 	// Create two proxyAppConn connections,
 	// one for the consensus and one for the mempool.
-	proxyApp := proxy.NewMultiAppConn(config, state, blockStore)
+	proxyApp := proxy.NewAppConns(config, state, blockStore)
 
 	// add the chainid to the global config
 	config.Set("chain_id", state.ChainID)
