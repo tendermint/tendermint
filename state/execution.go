@@ -81,6 +81,11 @@ func (s *State) execBlockOnProxyApp(eventCache events.Fireable, proxyAppConn pro
 	proxyAppConn.SetResponseCallback(proxyCb)
 
 	// TODO: BeginBlock
+	err := proxyAppConn.BeginBlockSync(types.TM2PB.Header(block.Header))
+	if err != nil {
+		log.Warn("Error in proxyAppConn.BeginBlock", "error", err)
+		return err
+	}
 
 	// Run txs of block
 	for _, tx := range block.Txs {
