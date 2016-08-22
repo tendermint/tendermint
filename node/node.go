@@ -209,6 +209,7 @@ func (n *Node) StartRPC() ([]net.Listener, error) {
 	rpccore.SetSwitch(n.sw)
 	rpccore.SetPrivValidator(n.privValidator)
 	rpccore.SetGenesisDoc(n.genesisDoc)
+	rpccore.SetProxyAppQuery(n.proxyApp.Query())
 
 	listenAddrs := strings.Split(n.config.GetString("rpc_laddr"), ",")
 

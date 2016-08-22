@@ -2,9 +2,12 @@ package rpctest
 
 import (
 	"bytes"
-	"crypto/rand"
+	crand "crypto/rand"
 	"fmt"
+	"math/rand"
+	"strings"
 	"testing"
+	"time"
 
 	. "github.com/tendermint/go-common"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -14,6 +17,7 @@ import (
 
 //--------------------------------------------------------------------------------
 // Test the HTTP client
+// These tests assume the dummy app
 //--------------------------------------------------------------------------------
 
 //--------------------------------------------------------------------------------
@@ -49,20 +53,22 @@ func testStatus(t *testing.T, statusI interface{}) {
 //--------------------------------------------------------------------------------
 // broadcast tx sync
 
-func testTx() []byte {
-	buf := make([]byte, 16)
-	_, err := rand.Read(buf)
+// random bytes (excluding byte('='))
+func randBytes() []byte {
+	n := rand.Intn(10) + 2
+	buf := make([]byte, n)
+	_, err := crand.Read(buf)
 	if err != nil {
 		panic(err)
 	}
-	return buf
+	return bytes.Replace(buf, []byte("="), []byte{100}, -1)
 }
 
 func TestURIBroadcastTxSync(t *testing.T) {
 	config.Set("block_size", 0)
 	defer config.Set("block_size", -1)
 	tmResult := new(ctypes.TMResult)
-	tx := testTx()
+	tx := randBytes()
 	_, err := clientURI.Call("broadcast_tx_sync", map[string]interface{}{"tx": tx}, tmResult)
 	if err != nil {
 		panic(err)
@@ -74,7 +80,7 @@ func TestJSONBroadcastTxSync(t *testing.T) {
 	config.Set("block_size", 0)
 	defer config.Set("block_size", -1)
 	tmResult := new(ctypes.TMResult)
-	tx := testTx()
+	tx := randBytes()
 	_, err := clientJSON.Call("broadcast_tx_sync", []interface{}{tx}, tmResult)
 	if err != nil {
 		panic(err)
@@ -95,10 +101,65 @@ func testBroadcastTxSync(t *testing.T, resI interface{}, tx []byte) {
 
 	txs := mem.Reap(1)
 	if !bytes.Equal(txs[0], tx) {
-		panic(Fmt("Tx in mempool does not match test tx. Got %X, expected %X", txs[0], testTx))
+		panic(Fmt("Tx in mempool does not match test tx. Got %X, expected %X", txs[0], tx))
 	}
 
 	mem.Flush()
+}
+
+//--------------------------------------------------------------------------------
+// query
+
+func testTxKV() ([]byte, []byte, []byte) {
+	k := randBytes()
+	v := randBytes()
+	return k, v, []byte(Fmt("%s=%s", k, v))
+}
+
+func sendTx() ([]byte, []byte) {
+	tmResult := new(ctypes.TMResult)
+	k, v, tx := testTxKV()
+	_, err := clientJSON.Call("broadcast_tx_commit", []interface{}{tx}, tmResult)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("SENT TX", tx)
+	fmt.Printf("SENT TX %X\n", tx)
+	fmt.Printf("k %X; v %X", k, v)
+	return k, v
+}
+
+func TestURITMSPQuery(t *testing.T) {
+	k, v := sendTx()
+	time.Sleep(time.Second)
+	tmResult := new(ctypes.TMResult)
+	_, err := clientURI.Call("tmsp_query", map[string]interface{}{"query": Fmt("%X", k)}, tmResult)
+	if err != nil {
+		panic(err)
+	}
+	testTMSPQuery(t, tmResult, v)
+}
+
+func TestJSONTMSPQuery(t *testing.T) {
+	k, v := sendTx()
+	tmResult := new(ctypes.TMResult)
+	_, err := clientJSON.Call("tmsp_query", []interface{}{Fmt("%X", k)}, tmResult)
+	if err != nil {
+		panic(err)
+	}
+	testTMSPQuery(t, tmResult, v)
+}
+
+func testTMSPQuery(t *testing.T, statusI interface{}, value []byte) {
+	tmRes := statusI.(*ctypes.TMResult)
+	query := (*tmRes).(*ctypes.ResultTMSPQuery)
+	if query.Result.IsErr() {
+		panic(Fmt("Query returned an err: %v", query))
+	}
+	// XXX: specific to value returned by the dummy
+	if !strings.Contains(string(query.Result.Data), "exists=true") {
+		panic(Fmt("Query error. Expected to find 'exists=true'. Got: %s", query.Result.Data))
+	}
 }
 
 //--------------------------------------------------------------------------------
@@ -106,7 +167,7 @@ func testBroadcastTxSync(t *testing.T, resI interface{}, tx []byte) {
 
 func TestURIBroadcastTxCommit(t *testing.T) {
 	tmResult := new(ctypes.TMResult)
-	tx := testTx()
+	tx := randBytes()
 	_, err := clientURI.Call("broadcast_tx_commit", map[string]interface{}{"tx": tx}, tmResult)
 	if err != nil {
 		panic(err)
@@ -116,7 +177,7 @@ func TestURIBroadcastTxCommit(t *testing.T) {
 
 func TestJSONBroadcastTxCommit(t *testing.T) {
 	tmResult := new(ctypes.TMResult)
-	tx := testTx()
+	tx := randBytes()
 	_, err := clientJSON.Call("broadcast_tx_commit", []interface{}{tx}, tmResult)
 	if err != nil {
 		panic(err)
