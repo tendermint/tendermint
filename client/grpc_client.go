@@ -200,8 +200,8 @@ func (cli *grpcClient) InitChainAsync(validators []*types.Validator) *ReqRes {
 	return cli.finishAsyncCall(req, &types.Response{&types.Response_InitChain{res}})
 }
 
-func (cli *grpcClient) BeginBlockAsync(height uint64) *ReqRes {
-	req := types.ToRequestBeginBlock(height)
+func (cli *grpcClient) BeginBlockAsync(header *types.Header) *ReqRes {
+	req := types.ToRequestBeginBlock(header)
 	res, err := cli.client.BeginBlock(context.Background(), req.GetBeginBlock(), grpc.FailFast(true))
 	if err != nil {
 		cli.StopForError(err)
@@ -262,13 +262,13 @@ func (cli *grpcClient) FlushSync() error {
 	return nil
 }
 
-func (cli *grpcClient) InfoSync() (res types.Result) {
+func (cli *grpcClient) InfoSync() (types.Result, *types.TMSPInfo, *types.LastBlockInfo, *types.ConfigInfo) {
 	reqres := cli.InfoAsync()
 	if res := cli.checkErrGetResult(); res.IsErr() {
 		return res
 	}
 	resp := reqres.Response.GetInfo()
-	return types.NewResultOK([]byte(resp.Info), LOG)
+	return types.NewResultOK([]byte(resp.Info), LOG), r.TmspInfo, r.LastBlock, r.Config
 }
 
 func (cli *grpcClient) SetOptionSync(key string, value string) (res types.Result) {
@@ -321,8 +321,8 @@ func (cli *grpcClient) InitChainSync(validators []*types.Validator) (err error) 
 	return cli.Error()
 }
 
-func (cli *grpcClient) BeginBlockSync(height uint64) (err error) {
-	cli.BeginBlockAsync(height)
+func (cli *grpcClient) BeginBlockSync(header *types.Header) (err error) {
+	cli.BeginBlockAsync(header)
 	return cli.Error()
 }
 

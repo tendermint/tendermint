@@ -25,7 +25,7 @@ type Client interface {
 
 	FlushSync() error
 	EchoSync(msg string) (res types.Result)
-	InfoSync() (res types.Result)
+	InfoSync() (types.Result, *types.TMSPInfo, *types.LastBlockInfo, *types.ConfigInfo)
 	SetOptionSync(key string, value string) (res types.Result)
 	AppendTxSync(tx []byte) (res types.Result)
 	CheckTxSync(tx []byte) (res types.Result)
@@ -33,11 +33,11 @@ type Client interface {
 	CommitSync() (res types.Result)
 
 	InitChainAsync(validators []*types.Validator) *ReqRes
-	BeginBlockAsync(height uint64) *ReqRes
+	BeginBlockAsync(header *types.Header) *ReqRes
 	EndBlockAsync(height uint64) *ReqRes
 
 	InitChainSync(validators []*types.Validator) (err error)
-	BeginBlockSync(height uint64) (err error)
+	BeginBlockSync(header *types.Header) (err error)
 	EndBlockSync(height uint64) (changedValidators []*types.Validator, err error)
 }
 

@@ -51,11 +51,11 @@ func (app *localClient) EchoAsync(msg string) *ReqRes {
 
 func (app *localClient) InfoAsync() *ReqRes {
 	app.mtx.Lock()
-	info := app.Application.Info()
+	info, tmspInfo, blockInfo, configInfo := app.Application.Info()
 	app.mtx.Unlock()
 	return app.callback(
 		types.ToRequestInfo(),
-		types.ToResponseInfo(info),
+		types.ToResponseInfo(info, tmspInfo, blockInfo, configInfo),
 	)
 }
 
@@ -122,14 +122,14 @@ func (app *localClient) InitChainAsync(validators []*types.Validator) *ReqRes {
 	return reqRes
 }
 
-func (app *localClient) BeginBlockAsync(height uint64) *ReqRes {
+func (app *localClient) BeginBlockAsync(header *types.Header) *ReqRes {
 	app.mtx.Lock()
 	if bcApp, ok := app.Application.(types.BlockchainAware); ok {
-		bcApp.BeginBlock(height)
+		bcApp.BeginBlock(header)
 	}
 	app.mtx.Unlock()
 	return app.callback(
-		types.ToRequestBeginBlock(height),
+		types.ToRequestBeginBlock(header),
 		types.ToResponseBeginBlock(),
 	)
 }
@@ -157,11 +157,11 @@ func (app *localClient) EchoSync(msg string) (res types.Result) {
 	return types.OK.SetData([]byte(msg))
 }
 
-func (app *localClient) InfoSync() (res types.Result) {
+func (app *localClient) InfoSync() (types.Result, *types.TMSPInfo, *types.LastBlockInfo, *types.ConfigInfo) {
 	app.mtx.Lock()
-	info := app.Application.Info()
-	app.mtx.Unlock()
-	return types.OK.SetData([]byte(info))
+	defer app.mtx.Unlock()
+	info, tmspInfo, blockInfo, configInfo := app.Application.Info()
+	return types.OK.SetData([]byte(info)), tmspInfo, blockInfo, configInfo
 }
 
 func (app *localClient) SetOptionSync(key string, value string) (res types.Result) {
@@ -208,10 +208,10 @@ func (app *localClient) InitChainSync(validators []*types.Validator) (err error)
 	return nil
 }
 
-func (app *localClient) BeginBlockSync(height uint64) (err error) {
+func (app *localClient) BeginBlockSync(header *types.Header) (err error) {
 	app.mtx.Lock()
 	if bcApp, ok := app.Application.(types.BlockchainAware); ok {
-		bcApp.BeginBlock(height)
+		bcApp.BeginBlock(header)
 	}
 	app.mtx.Unlock()
 	return nil

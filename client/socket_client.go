@@ -263,8 +263,8 @@ func (cli *socketClient) InitChainAsync(validators []*types.Validator) *ReqRes {
 	return cli.queueRequest(types.ToRequestInitChain(validators))
 }
 
-func (cli *socketClient) BeginBlockAsync(height uint64) *ReqRes {
-	return cli.queueRequest(types.ToRequestBeginBlock(height))
+func (cli *socketClient) BeginBlockAsync(header *types.Header) *ReqRes {
+	return cli.queueRequest(types.ToRequestBeginBlock(header))
 }
 
 func (cli *socketClient) EndBlockAsync(height uint64) *ReqRes {
@@ -292,14 +292,14 @@ func (cli *socketClient) FlushSync() error {
 	return cli.Error()
 }
 
-func (cli *socketClient) InfoSync() (res types.Result) {
+func (cli *socketClient) InfoSync() (types.Result, *types.TMSPInfo, *types.LastBlockInfo, *types.ConfigInfo) {
 	reqres := cli.queueRequest(types.ToRequestInfo())
 	cli.FlushSync()
 	if err := cli.Error(); err != nil {
-		return types.ErrInternalError.SetLog(err.Error())
+		return types.ErrInternalError.SetLog(err.Error()), nil, nil, nil
 	}
 	resp := reqres.Response.GetInfo()
-	return types.Result{Code: OK, Data: []byte(resp.Info), Log: LOG}
+	return types.Result{Code: OK, Data: []byte(resp.Info), Log: LOG}, resp.TmspInfo, resp.LastBlock, resp.Config
 }
 
 func (cli *socketClient) SetOptionSync(key string, value string) (res types.Result) {
@@ -361,8 +361,8 @@ func (cli *socketClient) InitChainSync(validators []*types.Validator) (err error
 	return nil
 }
 
-func (cli *socketClient) BeginBlockSync(height uint64) (err error) {
-	cli.queueRequest(types.ToRequestBeginBlock(height))
+func (cli *socketClient) BeginBlockSync(header *types.Header) (err error) {
+	cli.queueRequest(types.ToRequestBeginBlock(header))
 	cli.FlushSync()
 	if err := cli.Error(); err != nil {
 		return err

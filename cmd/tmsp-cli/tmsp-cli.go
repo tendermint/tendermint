@@ -191,7 +191,7 @@ func cmdEcho(c *cli.Context) error {
 
 // Get some info from the application
 func cmdInfo(c *cli.Context) error {
-	res := client.InfoSync()
+	res, _, _, _ := client.InfoSync()
 	printResponse(c, res, string(res.Data), false)
 	return nil
 }

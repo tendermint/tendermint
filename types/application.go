@@ -8,7 +8,7 @@ import (
 type Application interface {
 
 	// Return application info
-	Info() (info string)
+	Info() (string, *TMSPInfo, *LastBlockInfo, *ConfigInfo)
 
 	// Set application option (e.g. mode=mempool, mode=consensus)
 	SetOption(key string, value string) (log string)
@@ -34,7 +34,7 @@ type BlockchainAware interface {
 	InitChain(validators []*Validator)
 
 	// Signals the beginning of a block
-	BeginBlock(height uint64)
+	BeginBlock(header *Header)
 
 	// Signals the end of a block
 	// diffs: changed validators from app to TendermintCore
@@ -59,7 +59,8 @@ func (app *GRPCApplication) Flush(ctx context.Context, req *RequestFlush) (*Resp
 }
 
 func (app *GRPCApplication) Info(ctx context.Context, req *RequestInfo) (*ResponseInfo, error) {
-	return &ResponseInfo{app.app.Info()}, nil
+	info, tmspInfo, blockInfo, configInfo := app.app.Info()
+	return &ResponseInfo{info, tmspInfo, blockInfo, configInfo}, nil
 }
 
 func (app *GRPCApplication) SetOption(ctx context.Context, req *RequestSetOption) (*ResponseSetOption, error) {
@@ -95,7 +96,7 @@ func (app *GRPCApplication) InitChain(ctx context.Context, req *RequestInitChain
 
 func (app *GRPCApplication) BeginBlock(ctx context.Context, req *RequestBeginBlock) (*ResponseBeginBlock, error) {
 	if chainAware, ok := app.app.(BlockchainAware); ok {
-		chainAware.BeginBlock(req.Height)
+		chainAware.BeginBlock(req.Header)
 	}
 	return &ResponseBeginBlock{}, nil
 }

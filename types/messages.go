@@ -61,9 +61,9 @@ func ToRequestInitChain(validators []*Validator) *Request {
 	}
 }
 
-func ToRequestBeginBlock(height uint64) *Request {
+func ToRequestBeginBlock(header *Header) *Request {
 	return &Request{
-		Value: &Request_BeginBlock{&RequestBeginBlock{height}},
+		Value: &Request_BeginBlock{&RequestBeginBlock{header}},
 	}
 }
 
@@ -93,9 +93,9 @@ func ToResponseFlush() *Response {
 	}
 }
 
-func ToResponseInfo(info string) *Response {
+func ToResponseInfo(info string, tmspInfo *TMSPInfo, blockInfo *LastBlockInfo, configInfo *ConfigInfo) *Response {
 	return &Response{
-		Value: &Response_Info{&ResponseInfo{info}},
+		Value: &Response_Info{&ResponseInfo{info, tmspInfo, blockInfo, configInfo}},
 	}
 }
 
