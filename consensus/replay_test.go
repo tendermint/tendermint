@@ -101,7 +101,10 @@ func waitForBlock(newBlockCh chan interface{}) {
 func runReplayTest(t *testing.T, cs *ConsensusState, fileName string, newBlockCh chan interface{}) {
 	cs.config.Set("cswal", fileName)
 	cs.Start()
-	// wait to make a new block
+	// Wait to make a new block.
+	// This is just a signal that we haven't halted; its not something contained in the WAL itself.
+	// Assuming the consensus state is running, replay of any WAL, including the empty one,
+	// should eventually be followed by a new block, or else something is wrong
 	waitForBlock(newBlockCh)
 	cs.Stop()
 }
