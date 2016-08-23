@@ -22,10 +22,7 @@ func reset_priv_validator() {
 	privValidatorFile := config.GetString("priv_validator_file")
 	if _, err := os.Stat(privValidatorFile); err == nil {
 		privValidator = types.LoadPrivValidator(privValidatorFile)
-		privValidator.LastHeight = 0
-		privValidator.LastRound = 0
-		privValidator.LastStep = 0
-		privValidator.Save()
+		privValidator.Reset()
 		log.Notice("Reset PrivValidator", "file", privValidatorFile)
 	} else {
 		privValidator = types.GenPrivValidator()
