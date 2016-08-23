@@ -18,6 +18,7 @@ type GRPCServer struct {
 	proto    string
 	addr     string
 	listener net.Listener
+	server   *grpc.Server
 
 	app types.TMSPApplicationServer
 }
@@ -43,13 +44,13 @@ func (s *GRPCServer) OnStart() error {
 		return err
 	}
 	s.listener = ln
-	grpcServer := grpc.NewServer()
-	types.RegisterTMSPApplicationServer(grpcServer, s.app)
-	go grpcServer.Serve(ln)
+	s.server = grpc.NewServer()
+	types.RegisterTMSPApplicationServer(s.server, s.app)
+	go s.server.Serve(s.listener)
 	return nil
 }
 
 func (s *GRPCServer) OnStop() {
 	s.QuitService.OnStop()
-	s.listener.Close()
+	s.server.Stop()
 }
