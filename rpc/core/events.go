@@ -20,6 +20,6 @@ func Subscribe(wsCtx rpctypes.WSRPCContext, event string) (*ctypes.ResultSubscri
 
 func Unsubscribe(wsCtx rpctypes.WSRPCContext, event string) (*ctypes.ResultUnsubscribe, error) {
 	log.Notice("Unsubscribe to event", "remote", wsCtx.GetRemoteAddr(), "event", event)
-	wsCtx.GetEventSwitch().RemoveListener(event)
+	wsCtx.GetEventSwitch().RemoveListenerForEvent(event, wsCtx.GetRemoteAddr())
 	return &ctypes.ResultUnsubscribe{}, nil
 }
