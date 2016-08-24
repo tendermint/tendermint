@@ -1,9 +1,15 @@
 package proxy
 
+import (
+	"github.com/tendermint/tendermint/types"
+)
+
 type State interface {
-	// TODO
+	ReplayBlocks(*types.Header, types.PartSetHeader, AppConnConsensus, BlockStore) error
 }
 
 type BlockStore interface {
-	// TODO
+	Height() int
+	LoadBlockMeta(height int) *types.BlockMeta
+	LoadBlock(height int) *types.Block
 }

@@ -56,15 +56,19 @@ func NewAppConnConsensus(appConn tmspcli.Client) *appConnConsensus {
 func (app *appConnConsensus) SetResponseCallback(cb tmspcli.Callback) {
 	app.appConn.SetResponseCallback(cb)
 }
+
 func (app *appConnConsensus) Error() error {
 	return app.appConn.Error()
 }
+
 func (app *appConnConsensus) InitChainSync(validators []*types.Validator) (err error) {
 	return app.appConn.InitChainSync(validators)
 }
+
 func (app *appConnConsensus) BeginBlockSync(header *types.Header) (err error) {
 	return app.appConn.BeginBlockSync(header)
 }
+
 func (app *appConnConsensus) AppendTxAsync(tx []byte) *tmspcli.ReqRes {
 	return app.appConn.AppendTxAsync(tx)
 }

@@ -68,13 +68,34 @@ func (s *State) Copy() *State {
 func (s *State) Save() {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
+	s.db.Set(stateKey, s.Bytes())
+}
 
+func (s *State) Equals(s2 *State) bool {
+	return bytes.Equal(s.Bytes(), s2.Bytes())
+}
+
+func (s *State) Bytes() []byte {
 	buf, n, err := new(bytes.Buffer), new(int), new(error)
 	wire.WriteBinary(s, buf, n, err)
 	if *err != nil {
 		PanicCrisis(*err)
 	}
-	s.db.Set(stateKey, buf.Bytes())
+	return buf.Bytes()
+}
+
+// Mutate state variables to match block and validators
+func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader types.PartSetHeader, prevValSet, nextValSet *types.ValidatorSet) {
+	s.LastBlockHeight = header.Height
+	s.LastBlockHash = header.Hash()
+	s.LastBlockParts = blockPartsHeader
+	s.LastBlockTime = header.Time
+	s.Validators = nextValSet
+	s.LastValidators = prevValSet
+}
+
+func (s *State) GetValidators() (*types.ValidatorSet, *types.ValidatorSet) {
+	return s.LastValidators, s.Validators
 }
 
 //-----------------------------------------------------------------------------

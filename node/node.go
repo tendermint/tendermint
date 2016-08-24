@@ -65,9 +65,12 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreato
 	// Get State
 	state := getState(config, stateDB)
 
-	// Create the proxyApp, which houses three connections:
-	// query, consensus, and mempool
+	// Create the proxyApp, which manages connections (consensus, mempool, query)
 	proxyApp := proxy.NewAppConns(config, clientCreator, state, blockStore)
+	_, err := proxyApp.Start()
+	if err != nil {
+		Exit(Fmt("Error starting proxy app conns: %v", err))
+	}
 
 	// add the chainid and number of validators to the global config
 	config.Set("chain_id", state.ChainID)
@@ -78,7 +81,7 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreato
 
 	// Make event switch
 	eventSwitch := events.NewEventSwitch()
-	_, err := eventSwitch.Start()
+	_, err = eventSwitch.Start()
 	if err != nil {
 		Exit(Fmt("Failed to start switch: %v", err))
 	}
@@ -390,16 +393,19 @@ func newConsensusState(config cfg.Config) *consensus.ConsensusState {
 	stateDB := dbm.NewDB("state", config.GetString("db_backend"), config.GetString("db_dir"))
 	state := sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
 
-	// Create two proxyAppConn connections,
-	// one for the consensus and one for the mempool.
+	// Create proxyAppConn connection (consensus, mempool, query)
 	proxyApp := proxy.NewAppConns(config, proxy.DefaultClientCreator(config), state, blockStore)
+	_, err := proxyApp.Start()
+	if err != nil {
+		Exit(Fmt("Error starting proxy app conns: %v", err))
+	}
 
 	// add the chainid to the global config
 	config.Set("chain_id", state.ChainID)
 
 	// Make event switch
 	eventSwitch := events.NewEventSwitch()
-	_, err := eventSwitch.Start()
+	_, err = eventSwitch.Start()
 	if err != nil {
 		Exit(Fmt("Failed to start event switch: %v", err))
 	}
