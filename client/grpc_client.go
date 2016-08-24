@@ -265,10 +265,10 @@ func (cli *grpcClient) FlushSync() error {
 func (cli *grpcClient) InfoSync() (types.Result, *types.TMSPInfo, *types.LastBlockInfo, *types.ConfigInfo) {
 	reqres := cli.InfoAsync()
 	if res := cli.checkErrGetResult(); res.IsErr() {
-		return res
+		return res, nil, nil, nil
 	}
 	resp := reqres.Response.GetInfo()
-	return types.NewResultOK([]byte(resp.Info), LOG), r.TmspInfo, r.LastBlock, r.Config
+	return types.NewResultOK([]byte(resp.Info), LOG), resp.TmspInfo, resp.LastBlock, resp.Config
 }
 
 func (cli *grpcClient) SetOptionSync(key string, value string) (res types.Result) {

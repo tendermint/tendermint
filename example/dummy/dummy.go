@@ -50,6 +50,7 @@ func (app *DummyApplication) Commit() types.Result {
 
 func (app *DummyApplication) Query(query []byte) types.Result {
 	index, value, exists := app.state.Get(query)
+
 	resStr := Fmt("Index=%v value=%v exists=%v", index, string(value), exists)
 	return types.NewResultOK([]byte(resStr), "")
 }
