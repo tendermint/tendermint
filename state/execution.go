@@ -41,12 +41,9 @@ func (s *State) ExecBlock(eventCache types.Fireable, proxyAppConn proxy.AppConnC
 	}
 
 	// All good!
+	// Update validator accums and set state variables
 	nextValSet.IncrementAccum(1)
-	s.LastBlockHeight = block.Height
-	s.LastBlockID = types.BlockID{block.Hash(), blockPartsHeader}
-	s.LastBlockTime = block.Time
-	s.Validators = nextValSet
-	s.LastValidators = valSet
+	s.SetBlockAndValidators(block.Header, blockPartsHeader, valSet, nextValSet)
 
 	return nil
 }
@@ -89,7 +86,7 @@ func (s *State) execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn prox
 	proxyAppConn.SetResponseCallback(proxyCb)
 
 	// Begin block
-	err := proxyAppConn.BeginBlockSync(uint64(block.Height))
+	err := proxyAppConn.BeginBlockSync(types.TM2PB.Header(block.Header))
 	if err != nil {
 		log.Warn("Error in proxyAppConn.BeginBlock", "error", err)
 		return err
@@ -180,4 +177,61 @@ type InvalidTxError struct {
 
 func (txErr InvalidTxError) Error() string {
 	return Fmt("Invalid tx: [%v] code: [%v]", txErr.Tx, txErr.Code)
+}
+
+//-----------------------------------------------------------------------------
+
+// Replay all blocks after blockHeight and ensure the result matches the current state
+func (s *State) ReplayBlocks(header *types.Header, partsHeader types.PartSetHeader,
+	appConnConsensus proxy.AppConnConsensus, blockStore proxy.BlockStore) error {
+
+	// fresh state to work on
+	stateCopy := s.Copy()
+
+	// reset to this height (do nothing if its 0)
+	var blockHeight int
+	if header != nil {
+		blockHeight = header.Height
+		// TODO: put validators in iavl tree so we can set the state with an older validator set
+		lastVals, nextVals := stateCopy.GetValidators()
+		stateCopy.SetBlockAndValidators(header, partsHeader, lastVals, nextVals)
+	}
+
+	// replay all blocks starting with blockHeight+1
+	for i := blockHeight + 1; i <= blockStore.Height(); i++ {
+		blockMeta := blockStore.LoadBlockMeta(i)
+		if blockMeta == nil {
+			PanicSanity(Fmt("Nil blockMeta at height %d when blockStore height is %d", i, blockStore.Height()))
+		}
+
+		block := blockStore.LoadBlock(i)
+		if block == nil {
+			PanicSanity(Fmt("Nil block at height %d when blockStore height is %d", i, blockStore.Height()))
+		}
+
+		// run the transactions
+		var eventCache events.Fireable // nil
+		err := stateCopy.ExecBlock(eventCache, appConnConsensus, block, blockMeta.PartsHeader)
+		if err != nil {
+			return fmt.Errorf("Error on ExecBlock: %v", err)
+		}
+
+		// commit the block (app should save the state)
+		res := appConnConsensus.CommitSync()
+		if res.IsErr() {
+			return fmt.Errorf("Error on Commit: %v", res)
+		}
+		if res.Log != "" {
+			log.Debug("Commit.Log: " + res.Log)
+		}
+
+		// update the state hash
+		stateCopy.AppHash = res.Data
+	}
+
+	// The computed state and the previously set state should be identical
+	if !s.Equals(stateCopy) {
+		return fmt.Errorf("State after replay does not match saved state. Got ----\n%v\nExpected ----\n%v\n", stateCopy, s)
+	}
+	return nil
 }
