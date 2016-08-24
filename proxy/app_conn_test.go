@@ -16,7 +16,7 @@ import (
 type AppConnTest interface {
 	EchoAsync(string) *tmspcli.ReqRes
 	FlushSync() error
-	InfoSync() (res types.Result)
+	InfoSync() (types.Result, *types.TMSPInfo, *types.LastBlockInfo, *types.ConfigInfo)
 }
 
 type appConnTest struct {
@@ -35,7 +35,7 @@ func (app *appConnTest) FlushSync() error {
 	return app.appConn.FlushSync()
 }
 
-func (app *appConnTest) InfoSync() types.Result {
+func (app *appConnTest) InfoSync() (types.Result, *types.TMSPInfo, *types.LastBlockInfo, *types.ConfigInfo) {
 	return app.appConn.InfoSync()
 }
 
@@ -114,7 +114,7 @@ func TestInfo(t *testing.T) {
 	proxy := NewAppConnTest(cli)
 	t.Log("Connected")
 
-	res := proxy.InfoSync()
+	res, _, _, _ := proxy.InfoSync()
 	if res.IsErr() {
 		t.Errorf("Unexpected error: %v", err)
 	}
