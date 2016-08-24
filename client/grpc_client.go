@@ -1,7 +1,6 @@
 package tmspcli
 
 import (
-	"errors"
 	"net"
 	"sync"
 	"time"
@@ -245,7 +244,7 @@ func (cli *grpcClient) checkErrGetResult() types.Result {
 		cli.StopForError(cli.err)
 		return types.ErrInternalError.SetLog(cli.err.Error())
 	}
-	return nil
+	return types.Result{}
 }
 
 func (cli *grpcClient) checkGetErr() error {
