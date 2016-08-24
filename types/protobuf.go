@@ -19,6 +19,7 @@ func (tm2pb) Header(header *Header) *types.Header {
 		LastBlockParts: TM2PB.PartSetHeader(header.LastBlockParts),
 		LastCommitHash: header.LastCommitHash,
 		DataHash:       header.DataHash,
+		AppHash:        header.AppHash,
 	}
 }
 
