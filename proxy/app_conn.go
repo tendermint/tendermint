@@ -127,6 +127,10 @@ func (app *appConnQuery) Error() error {
 	return app.appConn.Error()
 }
 
+func (app *appConnQuery) EchoSync(msg string) (res types.Result) {
+	return app.appConn.EchoSync(msg)
+}
+
 func (app *appConnQuery) InfoSync() (res types.Result) {
 	return app.appConn.InfoSync()
 }

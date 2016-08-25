@@ -114,7 +114,7 @@ func (app *multiAppConn) OnStart() error {
 	if err != nil {
 		return err
 	}
-	app.queryConn = NewAppConnMempool(querycli)
+	app.queryConn = NewAppConnQuery(querycli)
 
 	// mempool connection
 	memcli, err := NewTMSPClient(addr, transport)
