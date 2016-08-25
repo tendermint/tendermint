@@ -28,6 +28,9 @@ func NewAppConns(config cfg.Config, clientCreator ClientCreator, state State, bl
 	return NewMultiAppConn(config, clientCreator, state, blockStore)
 }
 
+//-----------------------------
+// multiAppConn implements AppConns
+
 // a multiAppConn is made of a few appConns (mempool, consensus, query)
 // and manages their underlying tmsp clients, including the handshake
 // which ensures the app and tendermint are synced.
@@ -103,8 +106,9 @@ func (app *multiAppConn) OnStart() error {
 }
 
 // TODO: retry the handshake once if it fails the first time
+// ... let Info take an argument determining its behaviour
 func (app *multiAppConn) Handshake() error {
-	// handshake is done on the query conn
+	// handshake is done via info request on the query conn
 	res, tmspInfo, blockInfo, configInfo := app.queryConn.InfoSync()
 	if res.IsErr() {
 		return fmt.Errorf("Error calling Info. Code: %v; Data: %X; Log: %s", res.Code, res.Data, res.Log)
@@ -127,12 +131,12 @@ func (app *multiAppConn) Handshake() error {
 		_ = tmspInfo
 	}
 
-	// of the last block (nil if we starting from 0)
+	// last block (nil if we starting from 0)
 	var header *types.Header
 	var partsHeader types.PartSetHeader
 
-	// check block
-	// if the blockHeight == 0, we will replay everything
+	// replay all blocks after blockHeight
+	// if blockHeight == 0, we will replay everything
 	if blockHeight != 0 {
 		blockMeta := app.blockStore.LoadBlockMeta(blockHeight)
 		if blockMeta == nil {
@@ -176,7 +180,6 @@ func NewTMSPClient(addr, transport string) (tmspcli.Client, error) {
 	var client tmspcli.Client
 
 	// use local app (for testing)
-	// TODO: local proxy app conn
 	switch addr {
 	case "nilapp":
 		app := nilapp.NewNilApplication()
