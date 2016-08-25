@@ -60,7 +60,7 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreato
 	stateDB := dbm.NewDB("state", config.GetString("db_backend"), config.GetString("db_dir"))
 
 	// Get State
-	state := getState(config, stateDB)
+	state := sm.GetState(config, stateDB)
 
 	// Create the proxyApp, which manages connections (consensus, mempool, query)
 	proxyApp := proxy.NewAppConns(config, clientCreator, state, blockStore)
@@ -293,17 +293,6 @@ func makeNodeInfo(config cfg.Config, sw *p2p.Switch, privKey crypto.PrivKeyEd255
 	nodeInfo.ListenAddr = Fmt("%v:%v", p2pHost, p2pPort)
 	nodeInfo.Other = append(nodeInfo.Other, Fmt("rpc_addr=%v", rpcListenAddr))
 	return nodeInfo
-}
-
-// Load the most recent state from "state" db,
-// or create a new one (and save) from genesis.
-func getState(config cfg.Config, stateDB dbm.DB) *sm.State {
-	state := sm.LoadState(stateDB)
-	if state == nil {
-		state = sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
-		state.Save()
-	}
-	return state
 }
 
 //------------------------------------------------------------------------------

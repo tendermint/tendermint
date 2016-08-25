@@ -181,7 +181,58 @@ func (txErr InvalidTxError) Error() string {
 
 //-----------------------------------------------------------------------------
 
-// Replay all blocks after blockHeight and ensure the result matches the current state
+// mempool must be locked during commit and update
+// because state is typically reset on Commit and old txs must be replayed
+// against committed state before new txs are run in the mempool, lest they be invalid
+func (s *State) CommitStateUpdateMempool(proxyAppConn proxy.AppConnConsensus, block *types.Block, mempool Mempool) error {
+	mempool.Lock()
+	defer mempool.Unlock()
+
+	// flush out any CheckTx that have already started
+	// cs.proxyAppConn.FlushSync() // ?! XXX
+
+	// Commit block, get hash back
+	res := proxyAppConn.CommitSync()
+	if res.IsErr() {
+		log.Warn("Error in proxyAppConn.CommitSync", "error", res)
+		return res
+	}
+	if res.Log != "" {
+		log.Debug("Commit.Log: " + res.Log)
+	}
+
+	// Set the state's new AppHash
+	s.AppHash = res.Data
+
+	// Update mempool.
+	mempool.Update(block.Height, block.Txs)
+
+	return nil
+}
+
+// Execute and commit block against app, save block and state
+func (s *State) ApplyBlock(eventCache events.Fireable, proxyAppConn proxy.AppConnConsensus,
+	block *types.Block, partsHeader types.PartSetHeader, mempool Mempool) {
+
+	// Run the block on the State:
+	// + update validator sets
+	// + run txs on the proxyAppConn
+	err := s.ExecBlock(eventCache, proxyAppConn, block, partsHeader)
+	if err != nil {
+		// TODO: handle this gracefully.
+		PanicQ(Fmt("Exec failed for application: %v", err))
+	}
+
+	// lock mempool, commit state, update mempoool
+	err = s.CommitStateUpdateMempool(proxyAppConn, block, mempool)
+	if err != nil {
+		// TODO: handle this gracefully.
+		PanicQ(Fmt("Commit failed for application: %v", err))
+	}
+}
+
+// Replay all blocks after blockHeight and ensure the result matches the current state.
+// XXX: blockStore must guarantee to have blocks for height <= blockStore.Height()
 func (s *State) ReplayBlocks(header *types.Header, partsHeader types.PartSetHeader,
 	appConnConsensus proxy.AppConnConsensus, blockStore proxy.BlockStore) error {
 
@@ -197,36 +248,16 @@ func (s *State) ReplayBlocks(header *types.Header, partsHeader types.PartSetHead
 		stateCopy.SetBlockAndValidators(header, partsHeader, lastVals, nextVals)
 	}
 
+	// run the transactions
+	var eventCache events.Fireable // nil
+
 	// replay all blocks starting with blockHeight+1
 	for i := blockHeight + 1; i <= blockStore.Height(); i++ {
 		blockMeta := blockStore.LoadBlockMeta(i)
-		if blockMeta == nil {
-			PanicSanity(Fmt("Nil blockMeta at height %d when blockStore height is %d", i, blockStore.Height()))
-		}
-
 		block := blockStore.LoadBlock(i)
-		if block == nil {
-			PanicSanity(Fmt("Nil block at height %d when blockStore height is %d", i, blockStore.Height()))
-		}
+		panicOnNilBlock(i, blockStore.Height(), block, blockMeta) // XXX
 
-		// run the transactions
-		var eventCache events.Fireable // nil
-		err := stateCopy.ExecBlock(eventCache, appConnConsensus, block, blockMeta.PartsHeader)
-		if err != nil {
-			return fmt.Errorf("Error on ExecBlock: %v", err)
-		}
-
-		// commit the block (app should save the state)
-		res := appConnConsensus.CommitSync()
-		if res.IsErr() {
-			return fmt.Errorf("Error on Commit: %v", res)
-		}
-		if res.Log != "" {
-			log.Debug("Commit.Log: " + res.Log)
-		}
-
-		// update the state hash
-		stateCopy.AppHash = res.Data
+		stateCopy.ApplyBlock(eventCache, appConnConsensus, block, blockMeta.PartsHeader, mockMempool{})
 	}
 
 	// The computed state and the previously set state should be identical
@@ -235,3 +266,32 @@ func (s *State) ReplayBlocks(header *types.Header, partsHeader types.PartSetHead
 	}
 	return nil
 }
+
+func panicOnNilBlock(height, bsHeight int, block *types.Block, blockMeta *types.BlockMeta) {
+	if block == nil || blockMeta == nil {
+		// Sanity?
+		PanicCrisis(Fmt(`
+block/blockMeta is nil for height <= blockStore.Height() (%d <= %d).
+Block: %v,
+BlockMeta: %v
+`, height, bsHeight, block, blockMeta))
+
+	}
+}
+
+//------------------------------------------------
+// Updates to the mempool need to be synchronized with committing a block
+// so apps can reset their transient state on Commit
+
+type Mempool interface {
+	Lock()
+	Unlock()
+	Update(height int, txs []types.Tx)
+}
+
+type mockMempool struct {
+}
+
+func (m mockMempool) Lock()                             {}
+func (m mockMempool) Unlock()                           {}
+func (m mockMempool) Update(height int, txs []types.Tx) {}

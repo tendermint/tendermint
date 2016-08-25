@@ -1265,21 +1265,9 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	// event cache for txs
 	eventCache := types.NewEventCache(cs.evsw)
 
-	// Run the block on the State:
-	// + update validator sets
-	// + run txs on the proxyAppConn
-	err := stateCopy.ExecBlock(eventCache, cs.proxyAppConn, block, blockParts.Header())
-	if err != nil {
-		// TODO: handle this gracefully.
-		PanicQ(Fmt("Exec failed for application: %v", err))
-	}
-
-	// lock mempool, commit state, update mempoool
-	err = cs.commitStateUpdateMempool(stateCopy, block)
-	if err != nil {
-		// TODO: handle this gracefully.
-		PanicQ(Fmt("Commit failed for application: %v", err))
-	}
+	// Execute and commit the block
+	// NOTE: All calls to the proxyAppConn should come here
+	stateCopy.ApplyBlock(eventCache, cs.proxyAppConn, block, blockParts.Header(), cs.mempool)
 
 	// txs committed, bad ones removed from mepool; fire events
 	// NOTE: the block.AppHash wont reflect these txs until the next block
@@ -1307,32 +1295,6 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	// * cs.Step is now RoundStepNewHeight
 	// * cs.StartTime is set to when we will start round0.
 	return
-}
-
-// mempool must be locked during commit and update
-// because state is typically reset on Commit and old txs must be replayed
-// against committed state before new txs are run in the mempool, lest they be invalid
-func (cs *ConsensusState) commitStateUpdateMempool(s *sm.State, block *types.Block) error {
-	cs.mempool.Lock()
-	defer cs.mempool.Unlock()
-
-	// Commit block, get hash back
-	res := cs.proxyAppConn.CommitSync()
-	if res.IsErr() {
-		log.Warn("Error in proxyAppConn.CommitSync", "error", res)
-		return res
-	}
-	if res.Log != "" {
-		log.Debug("Commit.Log: " + res.Log)
-	}
-
-	// Set the state's new AppHash
-	s.AppHash = res.Data
-
-	// Update mempool.
-	cs.mempool.Update(block.Height, block.Txs)
-
-	return nil
 }
 
 //-----------------------------------------------------------------------------
