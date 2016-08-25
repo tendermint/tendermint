@@ -6,7 +6,6 @@ import (
 	"net"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 
 	. "github.com/tendermint/go-common"
@@ -26,9 +25,6 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
-	tmspcli "github.com/tendermint/tmsp/client"
-	"github.com/tendermint/tmsp/example/dummy"
-	"github.com/tendermint/tmsp/example/nil"
 )
 
 import _ "net/http/pprof"
@@ -47,7 +43,7 @@ type Node struct {
 	privKey          crypto.PrivKeyEd25519
 }
 
-func NewNode(config cfg.Config, privValidator *types.PrivValidator, getProxyApp func(proxyAddr, transport string, appHash []byte) proxy.AppConn) *Node {
+func NewNode(config cfg.Config, privValidator *types.PrivValidator) *Node {
 
 	EnsureDir(config.GetString("db_dir"), 0700) // incase we use memdb, cswal still gets written here
 
@@ -61,12 +57,9 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, getProxyApp 
 	// Get State
 	state := getState(config, stateDB)
 
-	// Create two proxyAppConn connections,
+	// Create the proxyApp, which houses two connections,
 	// one for the consensus and one for the mempool.
-	proxyAddr := config.GetString("proxy_app")
-	transport := config.GetString("tmsp")
-	proxyAppConnMempool := getProxyApp(proxyAddr, transport, state.AppHash)
-	proxyAppConnConsensus := getProxyApp(proxyAddr, transport, state.AppHash)
+	proxyApp := proxy.NewMultiAppConn(config, state, blockStore)
 
 	// add the chainid and number of validators to the global config
 	config.Set("chain_id", state.ChainID)
@@ -93,14 +86,14 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, getProxyApp 
 	}
 
 	// Make BlockchainReactor
-	bcReactor := bc.NewBlockchainReactor(state.Copy(), proxyAppConnConsensus, blockStore, fastSync)
+	bcReactor := bc.NewBlockchainReactor(state.Copy(), proxyApp.Consensus(), blockStore, fastSync)
 
 	// Make MempoolReactor
-	mempool := mempl.NewMempool(config, proxyAppConnMempool)
+	mempool := mempl.NewMempool(config, proxyApp.Mempool())
 	mempoolReactor := mempl.NewMempoolReactor(config, mempool)
 
 	// Make ConsensusReactor
-	consensusState := consensus.NewConsensusState(config, state.Copy(), proxyAppConnConsensus, blockStore, mempool)
+	consensusState := consensus.NewConsensusState(config, state.Copy(), proxyApp.Consensus(), blockStore, mempool)
 	consensusReactor := consensus.NewConsensusReactor(consensusState, blockStore, fastSync)
 	if privValidator != nil {
 		consensusReactor.SetPrivValidator(privValidator)
@@ -125,6 +118,7 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, getProxyApp 
 	// run the profile server
 	profileHost := config.GetString("prof_laddr")
 	if profileHost != "" {
+
 		go func() {
 			log.Warn("Profile server", "error", http.ListenAndServe(profileHost, nil))
 		}()
@@ -270,40 +264,6 @@ func makeNodeInfo(config cfg.Config, sw *p2p.Switch, privKey crypto.PrivKeyEd255
 	return nodeInfo
 }
 
-// Get a connection to the proxyAppConn addr.
-// Check the current hash, and panic if it doesn't match.
-func GetProxyApp(addr, transport string, hash []byte) (proxyAppConn proxy.AppConn) {
-	// use local app (for testing)
-	switch addr {
-	case "nilapp":
-		app := nilapp.NewNilApplication()
-		mtx := new(sync.Mutex)
-		proxyAppConn = tmspcli.NewLocalClient(mtx, app)
-	case "dummy":
-		app := dummy.NewDummyApplication()
-		mtx := new(sync.Mutex)
-		proxyAppConn = tmspcli.NewLocalClient(mtx, app)
-	default:
-		// Run forever in a loop
-		remoteApp, err := proxy.NewRemoteAppConn(addr, transport)
-		if err != nil {
-			Exit(Fmt("Failed to connect to proxy for mempool: %v", err))
-		}
-		proxyAppConn = remoteApp
-	}
-
-	// Check the hash
-	res := proxyAppConn.CommitSync()
-	if res.IsErr() {
-		PanicCrisis(Fmt("Error in getting proxyAppConn hash: %v", res))
-	}
-	if !bytes.Equal(hash, res.Data) {
-		log.Warn(Fmt("ProxyApp hash does not match.  Expected %X, got %X", hash, res.Data))
-	}
-
-	return proxyAppConn
-}
-
 // Load the most recent state from "state" db,
 // or create a new one (and save) from genesis.
 func getState(config cfg.Config, stateDB dbm.DB) *sm.State {
@@ -319,7 +279,7 @@ func getState(config cfg.Config, stateDB dbm.DB) *sm.State {
 
 // Users wishing to use an external signer for their validators
 // should fork tendermint/tendermint and implement RunNode to
-// load their custom priv validator and call NewNode(privVal, getProxyFunc)
+// load their custom priv validator and call NewNode
 func RunNode(config cfg.Config) {
 	// Wait until the genesis doc becomes available
 	genDocFile := config.GetString("genesis_file")
@@ -347,7 +307,7 @@ func RunNode(config cfg.Config) {
 	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
 
 	// Create & start node
-	n := NewNode(config, privValidator, GetProxyApp)
+	n := NewNode(config, privValidator)
 
 	protocol, address := ProtocolAndAddress(config.GetString("node_laddr"))
 	l := p2p.NewDefaultListener(protocol, address, config.GetBool("skip_upnp"))
@@ -402,10 +362,7 @@ func newConsensusState(config cfg.Config) *consensus.ConsensusState {
 
 	// Create two proxyAppConn connections,
 	// one for the consensus and one for the mempool.
-	proxyAddr := config.GetString("proxy_app")
-	transport := config.GetString("tmsp")
-	proxyAppConnMempool := GetProxyApp(proxyAddr, transport, state.AppHash)
-	proxyAppConnConsensus := GetProxyApp(proxyAddr, transport, state.AppHash)
+	proxyApp := proxy.NewMultiAppConn(config, state, blockStore)
 
 	// add the chainid to the global config
 	config.Set("chain_id", state.ChainID)
@@ -417,9 +374,9 @@ func newConsensusState(config cfg.Config) *consensus.ConsensusState {
 		Exit(Fmt("Failed to start event switch: %v", err))
 	}
 
-	mempool := mempl.NewMempool(config, proxyAppConnMempool)
+	mempool := mempl.NewMempool(config, proxyApp.Mempool())
 
-	consensusState := consensus.NewConsensusState(config, state.Copy(), proxyAppConnConsensus, blockStore, mempool)
+	consensusState := consensus.NewConsensusState(config, state.Copy(), proxyApp.Consensus(), blockStore, mempool)
 	consensusState.SetEventSwitch(eventSwitch)
 	return consensusState
 }
