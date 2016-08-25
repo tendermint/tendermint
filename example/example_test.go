@@ -1,4 +1,4 @@
-package nilapp
+package example
 
 import (
 	"fmt"
