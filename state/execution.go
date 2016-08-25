@@ -246,6 +246,7 @@ func (s *State) ReplayBlocks(header *types.Header, partsHeader types.PartSetHead
 		// TODO: put validators in iavl tree so we can set the state with an older validator set
 		lastVals, nextVals := stateCopy.GetValidators()
 		stateCopy.SetBlockAndValidators(header, partsHeader, lastVals, nextVals)
+		stateCopy.AppHash = header.AppHash
 	}
 
 	// run the transactions

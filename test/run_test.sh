@@ -11,6 +11,9 @@ bash test/test_cover.sh
 # run the app tests
 bash test/app/test.sh
 
+# run the persistence test
+bash test/persist.test.sh
+
 if [[ "$BRANCH" == "master" || $(echo "$BRANCH" | grep "release-") != "" ]]; then
 	echo ""
 	echo "* branch $BRANCH; testing libs"
