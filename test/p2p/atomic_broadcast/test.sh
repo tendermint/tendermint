@@ -1,9 +1,20 @@
 #! /bin/bash
 
+###################################################################
+# wait for all peers to come online
+# for each peer:
+# 	wait to have 3 peers
+#	wait to be at height > 1
+#	send a tx, wait for commit
+#	assert app hash on every peer reflects the post tx state
+###################################################################
+
+N=4
+
 # wait for everyone to come online
 echo "Waiting for nodes to come online"
-for i in `seq 1 4`; do
-	addr="172.57.0.$((100+$i)):46657"
+for i in `seq 1 $N`; do
+	addr=$(test/p2p/ip.sh $i):46657
 	curl -s $addr/status > /dev/null
 	ERR=$?
 	while [ "$ERR" != 0 ]; do
@@ -16,8 +27,8 @@ done
 
 echo ""
 # run the test on each of them
-for i in `seq 1 4`; do
-	addr="172.57.0.$((100+$i)):46657"
+for i in `seq 1 $N`; do
+	addr=$(test/p2p/ip.sh $i):46657
 
 	# - assert everyone has 3 other peers
 	N_PEERS=`curl -s $addr/net_info | jq '.result[1].peers | length'`
@@ -61,9 +72,10 @@ for i in `seq 1 4`; do
 	fi
 
 	# check we get the same new hash on all other nodes
-	for j in `seq 1 4`; do
+	for j in `seq 1 $N`; do
 		if [[ "$i" != "$j" ]]; then
-			HASH3=`curl -s 172.57.0.$((100+$j)):46657/status | jq .result[1].latest_app_hash`
+			addrJ=$(test/p2p/ip.sh $j):46657
+			HASH3=`curl -s $addrJ/status | jq .result[1].latest_app_hash`
 			
 			if [[ "$HASH2" != "$HASH3" ]]; then
 				echo "App hash for node $j doesn't match. Got $HASH3, expected $HASH2"
@@ -77,3 +89,4 @@ done
 
 echo ""
 echo "PASS"
+echo ""

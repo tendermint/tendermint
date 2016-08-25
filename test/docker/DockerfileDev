@@ -1,0 +1,3 @@
+FROM tester
+
+VOLUME /go/bin
