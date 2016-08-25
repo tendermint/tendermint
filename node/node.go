@@ -112,6 +112,23 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator) *Node {
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)
 
+	// filter peers by addr or pubkey
+	// NOTE: query format subject to change
+	sw.SetAddrFilter(func(addr net.Addr) error {
+		res := proxyApp.Query().QuerySync([]byte(Fmt("p2p/filter/addr/%s", addr.String())))
+		if res.IsOK() {
+			return nil
+		}
+		return res
+	})
+	sw.SetPubKeyFilter(func(pubkey crypto.PubKeyEd25519) error {
+		res := proxyApp.Query().QuerySync([]byte(Fmt("p2p/filter/pubkey/%X", pubkey.Bytes())))
+		if res.IsOK() {
+			return nil
+		}
+		return res
+	})
+
 	// add the event switch to all services
 	// they should all satisfy events.Eventable
 	SetEventSwitch(eventSwitch, bcReactor, mempoolReactor, consensusReactor)
