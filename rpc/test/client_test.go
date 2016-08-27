@@ -193,9 +193,14 @@ func TestJSONBroadcastTxCommit(t *testing.T) {
 
 func testBroadcastTxCommit(t *testing.T, resI interface{}, tx []byte) {
 	tmRes := resI.(*ctypes.TMResult)
-	res := (*tmRes).(*ctypes.ResultBroadcastTx)
-	if res.Code != tmsp.CodeType_OK {
-		panic(Fmt("BroadcastTxCommit got non-zero exit code: %v. %X; %s", res.Code, res.Data, res.Log))
+	res := (*tmRes).(*ctypes.ResultBroadcastTxCommit)
+	checkTx := res.CheckTx
+	if checkTx.Code != tmsp.CodeType_OK {
+		panic(Fmt("BroadcastTxCommit got non-zero exit code from CheckTx: %v. %X; %s", checkTx.Code, checkTx.Data, checkTx.Log))
+	}
+	appendTx := res.AppendTx
+	if appendTx.Code != tmsp.CodeType_OK {
+		panic(Fmt("BroadcastTxCommit got non-zero exit code from CheckTx: %v. %X; %s", appendTx.Code, appendTx.Data, appendTx.Log))
 	}
 	mem := node.MempoolReactor().Mempool
 	if mem.Size() != 0 {

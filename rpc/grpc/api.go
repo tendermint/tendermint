@@ -11,8 +11,8 @@ type broadcastAPI struct {
 
 func (bapi *broadcastAPI) BroadcastTx(ctx context.Context, req *RequestBroadcastTx) (*ResponseBroadcastTx, error) {
 	res, err := core.BroadcastTxCommit(req.Tx)
-	if res == nil {
+	if err != nil {
 		return nil, err
 	}
-	return &ResponseBroadcastTx{uint64(res.Code), res.Data, res.Log}, err
+	return &ResponseBroadcastTx{res.CheckTx, res.AppendTx}, nil
 }

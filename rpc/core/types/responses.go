@@ -63,6 +63,11 @@ type ResultBroadcastTx struct {
 	Log  string        `json:"log"`
 }
 
+type ResultBroadcastTxCommit struct {
+	CheckTx  *tmsp.ResponseCheckTx  `json:"check_tx"`
+	AppendTx *tmsp.ResponseAppendTx `json:"append_tx"`
+}
+
 type ResultUnconfirmedTxs struct {
 	N   int        `json:"n_txs"`
 	Txs []types.Tx `json:"txs"`
@@ -115,8 +120,9 @@ const (
 	ResultTypeDumpConsensusState = byte(0x41)
 
 	// 0x6 bytes are for txs / the application
-	ResultTypeBroadcastTx    = byte(0x60)
-	ResultTypeUnconfirmedTxs = byte(0x61)
+	ResultTypeBroadcastTx       = byte(0x60)
+	ResultTypeUnconfirmedTxs    = byte(0x61)
+	ResultTypeBroadcastTxCommit = byte(0x62)
 
 	// 0x7 bytes are for querying the application
 	ResultTypeTMSPQuery = byte(0x70)
@@ -151,6 +157,7 @@ var _ = wire.RegisterInterface(
 	wire.ConcreteType{&ResultValidators{}, ResultTypeValidators},
 	wire.ConcreteType{&ResultDumpConsensusState{}, ResultTypeDumpConsensusState},
 	wire.ConcreteType{&ResultBroadcastTx{}, ResultTypeBroadcastTx},
+	wire.ConcreteType{&ResultBroadcastTxCommit{}, ResultTypeBroadcastTxCommit},
 	wire.ConcreteType{&ResultUnconfirmedTxs{}, ResultTypeUnconfirmedTxs},
 	wire.ConcreteType{&ResultSubscribe{}, ResultTypeSubscribe},
 	wire.ConcreteType{&ResultUnsubscribe{}, ResultTypeUnsubscribe},
