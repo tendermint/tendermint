@@ -1,17 +1,13 @@
 syntax = "proto3";
 package core_grpc;
 
+import "github.com/tendermint/tmsp/types/types.proto";
+
 //----------------------------------------
 // Message types
 
 //----------------------------------------
 // Request types
-
-message Request {
-	oneof value{
-		RequestBroadcastTx broadcast_tx = 1;
-	}
-}
 
 message RequestBroadcastTx {
 	bytes tx = 1;
@@ -20,17 +16,9 @@ message RequestBroadcastTx {
 //----------------------------------------
 // Response types
 
-
-message Response {
-	oneof value{
-		ResponseBroadcastTx broadcast_tx = 1;
-	}
-}
-
 message ResponseBroadcastTx{
-	uint64 		  code        = 1; // TODO: import tmsp ...
-	bytes             data        = 2;
-	string            log         = 3;
+	types.ResponseCheckTx check_tx = 1;
+	types.ResponseAppendTx append_tx = 2;
 }
 
 //----------------------------------------

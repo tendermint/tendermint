@@ -15,7 +15,10 @@ func TestBroadcastTx(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Code != 0 {
-		t.Fatalf("Non-zero code: %d", res.Code)
+	if res.CheckTx.Code != 0 {
+		t.Fatalf("Non-zero check tx code: %d", res.CheckTx.Code)
+	}
+	if res.AppendTx.Code != 0 {
+		t.Fatalf("Non-zero append tx code: %d", res.AppendTx.Code)
 	}
 }
