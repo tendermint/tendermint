@@ -103,6 +103,9 @@ func (hvs *HeightVoteSet) addRound(round int) {
 func (hvs *HeightVoteSet) AddVote(vote *types.Vote, peerKey string) (added bool, err error) {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
+	if !types.IsVoteTypeValid(vote.Type) {
+		return
+	}
 	voteSet := hvs.getVoteSet(vote.Round, vote.Type)
 	if voteSet == nil {
 		if _, ok := hvs.peerCatchupRounds[peerKey]; !ok {
@@ -195,4 +198,21 @@ func (hvs *HeightVoteSet) StringIndented(indent string) string {
 		hvs.height, hvs.round,
 		indent, strings.Join(vsStrings, "\n"+indent+"  "),
 		indent)
+}
+
+// If a peer claims that it has 2/3 majority for given blockKey, call this.
+// NOTE: if there are too many peers, or too much peer churn,
+// this can cause memory issues.
+// TODO: implement ability to remove peers too
+func (hvs *HeightVoteSet) SetPeerMaj23(round int, type_ byte, peerID string, blockID types.BlockID) {
+	hvs.mtx.Lock()
+	defer hvs.mtx.Unlock()
+	if !types.IsVoteTypeValid(type_) {
+		return
+	}
+	voteSet := hvs.getVoteSet(round, type_)
+	if voteSet == nil {
+		return
+	}
+	voteSet.SetPeerMaj23(peerID, blockID)
 }

@@ -317,6 +317,19 @@ func (voteSet *VoteSet) BitArray() *BitArray {
 	return voteSet.votesBitArray.Copy()
 }
 
+func (voteSet *VoteSet) BitArrayByBlockID(blockID BlockID) *BitArray {
+	if voteSet == nil {
+		return nil
+	}
+	voteSet.mtx.Lock()
+	defer voteSet.mtx.Unlock()
+	votesByBlock, ok := voteSet.votesByBlock[blockID.Key()]
+	if ok {
+		return votesByBlock.bitArray
+	}
+	return nil
+}
+
 // NOTE: if validator has conflicting votes, picks random.
 func (voteSet *VoteSet) GetByIndex(valIndex int) *Vote {
 	voteSet.mtx.Lock()
@@ -429,9 +442,11 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 	}
 
 	// For every validator, get the precommit
-	maj23Votes := voteSet.votesByBlock[voteSet.maj23.Key()]
+	votesCopy := make([]*Vote, len(voteSet.votes))
+	copy(votesCopy, voteSet.votes)
 	return &Commit{
-		Precommits: maj23Votes.votes,
+		BlockID:    *voteSet.maj23,
+		Precommits: votesCopy,
 	}
 }
 
