@@ -191,6 +191,7 @@ type Commit struct {
 	// NOTE: The Precommits are in order of address to preserve the bonded ValidatorSet order.
 	// Any peer with a block can gossip precommits by index with a peer without recalculating the
 	// active ValidatorSet.
+	BlockID    BlockID `json:"blockID"`
 	Precommits []*Vote `json:"precommits"`
 
 	// Volatile
@@ -262,6 +263,9 @@ func (commit *Commit) IsCommit() bool {
 }
 
 func (commit *Commit) ValidateBasic() error {
+	if commit.BlockID.IsZero() {
+		return errors.New("Commit cannot be for nil block")
+	}
 	if len(commit.Precommits) == 0 {
 		return errors.New("No precommits in commit")
 	}
@@ -310,8 +314,10 @@ func (commit *Commit) StringIndented(indent string) string {
 		precommitStrings[i] = precommit.String()
 	}
 	return fmt.Sprintf(`Commit{
+%s  BlockID:    %v
 %s  Precommits: %v
 %s}#%X`,
+		indent, commit.BlockID,
 		indent, strings.Join(precommitStrings, "\n"+indent+"  "),
 		indent, commit.hash)
 }

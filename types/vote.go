@@ -27,6 +27,24 @@ func (err *ErrVoteConflictingVotes) Error() string {
 	return "Conflicting votes"
 }
 
+// Types of votes
+// TODO Make a new type "VoteType"
+const (
+	VoteTypePrevote   = byte(0x01)
+	VoteTypePrecommit = byte(0x02)
+)
+
+func IsVoteTypeValid(type_ byte) bool {
+	switch type_ {
+	case VoteTypePrevote:
+		return true
+	case VoteTypePrecommit:
+		return true
+	default:
+		return false
+	}
+}
+
 // Represents a prevote, precommit, or commit vote from validators for consensus.
 type Vote struct {
 	ValidatorAddress []byte                  `json:"validator_address"`
@@ -37,12 +55,6 @@ type Vote struct {
 	BlockID          BlockID                 `json:"block_id"` // zero if vote is nil.
 	Signature        crypto.SignatureEd25519 `json:"signature"`
 }
-
-// Types of votes
-const (
-	VoteTypePrevote   = byte(0x01)
-	VoteTypePrecommit = byte(0x02)
-)
 
 func (vote *Vote) WriteSignBytes(chainID string, w io.Writer, n *int, err *error) {
 	wire.WriteTo([]byte(Fmt(`{"chain_id":"%s"`, chainID)), w, n, err)
