@@ -140,7 +140,7 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 		panic("Validator index or address was not set in vote.")
 	}
 
-	// Make sure the step matches. (or that vote is commit && round < voteSet.round)
+	// Make sure the step matches.
 	if (vote.Height != voteSet.height) ||
 		(vote.Round != voteSet.round) ||
 		(vote.Type != voteSet.type_) {
@@ -330,7 +330,7 @@ func (voteSet *VoteSet) BitArrayByBlockID(blockID BlockID) *BitArray {
 	return nil
 }
 
-// NOTE: if validator has conflicting votes, picks random.
+// NOTE: if validator has conflicting votes, returns "canonical" vote
 func (voteSet *VoteSet) GetByIndex(valIndex int) *Vote {
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()

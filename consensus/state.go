@@ -476,8 +476,6 @@ func (cs *ConsensusState) reconstructLastCommit(state *sm.State) {
 		if precommit == nil {
 			continue
 		}
-		// XXX reconstruct Vote from precommit after changing precommit to simpler
-		// structure.
 		added, err := lastPrecommits.AddVote(precommit)
 		if !added || err != nil {
 			PanicCrisis(Fmt("Failed to reconstruct LastCommit: %v", err))
