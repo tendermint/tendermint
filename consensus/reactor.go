@@ -637,7 +637,6 @@ OUTER_LOOP:
 
 		// Maybe send Height/CatchupCommitRound/CatchupCommit.
 		{
-			rs := conR.conS.GetRoundState()
 			prs := ps.GetRoundState()
 			if prs.CatchupCommitRound != -1 {
 				commit := conR.blockStore.LoadBlockCommit(prs.Height)
