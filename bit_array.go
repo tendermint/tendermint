@@ -302,3 +302,16 @@ func (bA *BitArray) Bytes() []byte {
 	}
 	return bytes
 }
+
+// NOTE: other bitarray o is not locked when reading,
+// so if necessary, caller must copy or lock o prior to calling Update.
+// If bA is nil, does nothing.
+func (bA *BitArray) Update(o *BitArray) {
+	if bA == nil {
+		return
+	}
+	bA.mtx.Lock()
+	defer bA.mtx.Unlock()
+
+	copy(bA.Elems, o.Elems)
+}
