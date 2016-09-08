@@ -82,6 +82,10 @@ func (cs *ConsensusState) catchupReplay(height int) error {
 		return nil
 	}
 
+	// set replayMode
+	cs.replayMode = true
+	defer func() { cs.replayMode = false }()
+
 	// starting from end of file,
 	// read messages until a new height is found
 	nLines, err := cs.wal.SeekFromEnd(func(lineBytes []byte) bool {
