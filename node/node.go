@@ -58,8 +58,8 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator) *Node {
 	// Get State
 	state := getState(config, stateDB)
 
-	// Create the proxyApp, which houses two connections,
-	// one for the consensus and one for the mempool.
+	// Create the proxyApp, which houses three connections:
+	// query, consensus, and mempool
 	proxyApp := proxy.NewAppConns(config, state, blockStore)
 
 	// add the chainid and number of validators to the global config
@@ -112,22 +112,25 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator) *Node {
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)
 
-	// filter peers by addr or pubkey
-	// NOTE: query format subject to change
-	sw.SetAddrFilter(func(addr net.Addr) error {
-		res := proxyApp.Query().QuerySync([]byte(Fmt("p2p/filter/addr/%s", addr.String())))
-		if res.IsOK() {
-			return nil
-		}
-		return res
-	})
-	sw.SetPubKeyFilter(func(pubkey crypto.PubKeyEd25519) error {
-		res := proxyApp.Query().QuerySync([]byte(Fmt("p2p/filter/pubkey/%X", pubkey.Bytes())))
-		if res.IsOK() {
-			return nil
-		}
-		return res
-	})
+	// filter peers by addr or pubkey with a tmsp query.
+	// if the query return code is OK, add peer
+	// XXX: query format subject to change
+	if config.GetBool("filter_peers") {
+		sw.SetAddrFilter(func(addr net.Addr) error {
+			res := proxyApp.Query().QuerySync([]byte(Fmt("p2p/filter/addr/%s", addr.String())))
+			if res.IsOK() {
+				return nil
+			}
+			return res
+		})
+		sw.SetPubKeyFilter(func(pubkey crypto.PubKeyEd25519) error {
+			res := proxyApp.Query().QuerySync([]byte(Fmt("p2p/filter/pubkey/%X", pubkey.Bytes())))
+			if res.IsOK() {
+				return nil
+			}
+			return res
+		})
+	}
 
 	// add the event switch to all services
 	// they should all satisfy events.Eventable

@@ -11,7 +11,7 @@ import (
 	nilapp "github.com/tendermint/tmsp/example/nil"
 )
 
-// Get a connected tmsp client and perform handshake
+// Get a connected tmsp client
 func NewTMSPClient(addr, transport string) (tmspcli.Client, error) {
 	var client tmspcli.Client
 
@@ -36,18 +36,6 @@ func NewTMSPClient(addr, transport string) (tmspcli.Client, error) {
 		client = remoteApp
 	}
 	return client, nil
-}
-
-// TODO
-func Handshake(config cfg.Config, state State, blockStore BlockStore) {
-	// XXX: Handshake
-	/*res := client.CommitSync()
-	if res.IsErr() {
-		PanicCrisis(Fmt("Error in getting multiAppConnConn hash: %v", res))
-	}
-	if !bytes.Equal(hash, res.Data) {
-		log.Warn(Fmt("ProxyApp hash does not match.  Expected %X, got %X", hash, res.Data))
-	}*/
 }
 
 //---------
