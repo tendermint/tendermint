@@ -65,6 +65,9 @@ type Switch struct {
 	dialing      *CMap
 	nodeInfo     *NodeInfo             // our node info
 	nodePrivKey  crypto.PrivKeyEd25519 // our node privkey
+
+	filterConnByAddr   func(net.Addr) error
+	filterConnByPubKey func(crypto.PubKeyEd25519) error
 }
 
 var (
@@ -192,6 +195,11 @@ func (sw *Switch) OnStop() {
 // NOTE: This performs a blocking handshake before the peer is added.
 // CONTRACT: Iff error is returned, peer is nil, and conn is immediately closed.
 func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, error) {
+	// Filter by ip
+	if err := sw.FilterConnByAddr(conn.RemoteAddr()); err != nil {
+		return nil, err
+	}
+
 	// Set deadline for handshake so we don't block forever on conn.ReadFull
 	conn.SetDeadline(time.Now().Add(
 		time.Duration(sw.config.GetInt(configKeyHandshakeTimeoutSeconds)) * time.Second))
@@ -206,6 +214,12 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 			return nil, err
 		}
 	}
+
+	// Filter by p2p-key
+	if err := sw.FilterConnByPubKey(sconn.(*SecretConnection).RemotePubKey()); err != nil {
+		return nil, err
+	}
+
 	// Then, perform node handshake
 	peerNodeInfo, err := peerHandshake(sconn, sw.nodeInfo)
 	if err != nil {
@@ -249,6 +263,29 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 
 	log.Notice("Added peer", "peer", peer)
 	return peer, nil
+}
+
+func (sw *Switch) FilterConnByAddr(addr net.Addr) error {
+	if sw.filterConnByAddr != nil {
+		return sw.filterConnByAddr(addr)
+	}
+	return nil
+}
+
+func (sw *Switch) FilterConnByPubKey(pubkey crypto.PubKeyEd25519) error {
+	if sw.filterConnByPubKey != nil {
+		return sw.filterConnByPubKey(pubkey)
+	}
+	return nil
+
+}
+
+func (sw *Switch) SetAddrFilter(f func(net.Addr) error) {
+	sw.filterConnByAddr = f
+}
+
+func (sw *Switch) SetPubKeyFilter(f func(crypto.PubKeyEd25519) error) {
+	sw.filterConnByPubKey = f
 }
 
 func (sw *Switch) startInitPeer(peer *Peer) {
