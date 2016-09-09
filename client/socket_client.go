@@ -276,8 +276,8 @@ func (cli *socketClient) EndBlockAsync(height uint64) *ReqRes {
 func (cli *socketClient) EchoSync(msg string) (res types.Result) {
 	reqres := cli.queueRequest(types.ToRequestEcho(msg))
 	cli.FlushSync()
-	if cli.err != nil {
-		return types.ErrInternalError.SetLog(cli.err.Error())
+	if err := cli.Error(); err != nil {
+		return types.ErrInternalError.SetLog(err.Error())
 	}
 	resp := reqres.Response.GetEcho()
 	return types.Result{Code: OK, Data: []byte(resp.Message), Log: LOG}
@@ -285,18 +285,18 @@ func (cli *socketClient) EchoSync(msg string) (res types.Result) {
 
 func (cli *socketClient) FlushSync() error {
 	reqRes := cli.queueRequest(types.ToRequestFlush())
-	if cli.err != nil {
-		return types.ErrInternalError.SetLog(cli.err.Error())
+	if err := cli.Error(); err != nil {
+		return types.ErrInternalError.SetLog(err.Error())
 	}
 	reqRes.Wait() // NOTE: if we don't flush the queue, its possible to get stuck here
-	return cli.err
+	return cli.Error()
 }
 
 func (cli *socketClient) InfoSync() (res types.Result) {
 	reqres := cli.queueRequest(types.ToRequestInfo())
 	cli.FlushSync()
-	if cli.err != nil {
-		return types.ErrInternalError.SetLog(cli.err.Error())
+	if err := cli.Error(); err != nil {
+		return types.ErrInternalError.SetLog(err.Error())
 	}
 	resp := reqres.Response.GetInfo()
 	return types.Result{Code: OK, Data: []byte(resp.Info), Log: LOG}
@@ -305,8 +305,8 @@ func (cli *socketClient) InfoSync() (res types.Result) {
 func (cli *socketClient) SetOptionSync(key string, value string) (res types.Result) {
 	reqres := cli.queueRequest(types.ToRequestSetOption(key, value))
 	cli.FlushSync()
-	if cli.err != nil {
-		return types.ErrInternalError.SetLog(cli.err.Error())
+	if err := cli.Error(); err != nil {
+		return types.ErrInternalError.SetLog(err.Error())
 	}
 	resp := reqres.Response.GetSetOption()
 	return types.Result{Code: OK, Data: nil, Log: resp.Log}
@@ -315,8 +315,8 @@ func (cli *socketClient) SetOptionSync(key string, value string) (res types.Resu
 func (cli *socketClient) AppendTxSync(tx []byte) (res types.Result) {
 	reqres := cli.queueRequest(types.ToRequestAppendTx(tx))
 	cli.FlushSync()
-	if cli.err != nil {
-		return types.ErrInternalError.SetLog(cli.err.Error())
+	if err := cli.Error(); err != nil {
+		return types.ErrInternalError.SetLog(err.Error())
 	}
 	resp := reqres.Response.GetAppendTx()
 	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
@@ -325,8 +325,8 @@ func (cli *socketClient) AppendTxSync(tx []byte) (res types.Result) {
 func (cli *socketClient) CheckTxSync(tx []byte) (res types.Result) {
 	reqres := cli.queueRequest(types.ToRequestCheckTx(tx))
 	cli.FlushSync()
-	if cli.err != nil {
-		return types.ErrInternalError.SetLog(cli.err.Error())
+	if err := cli.Error(); err != nil {
+		return types.ErrInternalError.SetLog(err.Error())
 	}
 	resp := reqres.Response.GetCheckTx()
 	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
@@ -335,8 +335,8 @@ func (cli *socketClient) CheckTxSync(tx []byte) (res types.Result) {
 func (cli *socketClient) QuerySync(query []byte) (res types.Result) {
 	reqres := cli.queueRequest(types.ToRequestQuery(query))
 	cli.FlushSync()
-	if cli.err != nil {
-		return types.ErrInternalError.SetLog(cli.err.Error())
+	if err := cli.Error(); err != nil {
+		return types.ErrInternalError.SetLog(err.Error())
 	}
 	resp := reqres.Response.GetQuery()
 	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
@@ -345,8 +345,8 @@ func (cli *socketClient) QuerySync(query []byte) (res types.Result) {
 func (cli *socketClient) CommitSync() (res types.Result) {
 	reqres := cli.queueRequest(types.ToRequestCommit())
 	cli.FlushSync()
-	if cli.err != nil {
-		return types.ErrInternalError.SetLog(cli.err.Error())
+	if err := cli.Error(); err != nil {
+		return types.ErrInternalError.SetLog(err.Error())
 	}
 	resp := reqres.Response.GetCommit()
 	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
@@ -355,8 +355,8 @@ func (cli *socketClient) CommitSync() (res types.Result) {
 func (cli *socketClient) InitChainSync(validators []*types.Validator) (err error) {
 	cli.queueRequest(types.ToRequestInitChain(validators))
 	cli.FlushSync()
-	if cli.err != nil {
-		return cli.err
+	if err := cli.Error(); err != nil {
+		return err
 	}
 	return nil
 }
@@ -364,8 +364,8 @@ func (cli *socketClient) InitChainSync(validators []*types.Validator) (err error
 func (cli *socketClient) BeginBlockSync(height uint64) (err error) {
 	cli.queueRequest(types.ToRequestBeginBlock(height))
 	cli.FlushSync()
-	if cli.err != nil {
-		return cli.err
+	if err := cli.Error(); err != nil {
+		return err
 	}
 	return nil
 }
@@ -373,8 +373,8 @@ func (cli *socketClient) BeginBlockSync(height uint64) (err error) {
 func (cli *socketClient) EndBlockSync(height uint64) (validators []*types.Validator, err error) {
 	reqres := cli.queueRequest(types.ToRequestEndBlock(height))
 	cli.FlushSync()
-	if cli.err != nil {
-		return nil, cli.err
+	if err := cli.Error(); err != nil {
+		return nil, err
 	}
 	return reqres.Response.GetEndBlock().Diffs, nil
 }

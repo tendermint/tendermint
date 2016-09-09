@@ -123,7 +123,7 @@ func (cli *grpcClient) EchoAsync(msg string) *ReqRes {
 	req := types.ToRequestEcho(msg)
 	res, err := cli.client.Echo(context.Background(), req.GetEcho(), grpc.FailFast(true))
 	if err != nil {
-		cli.err = err
+		cli.StopForError(err)
 	}
 	return cli.finishAsyncCall(req, &types.Response{&types.Response_Echo{res}})
 }
@@ -132,7 +132,7 @@ func (cli *grpcClient) FlushAsync() *ReqRes {
 	req := types.ToRequestFlush()
 	res, err := cli.client.Flush(context.Background(), req.GetFlush(), grpc.FailFast(true))
 	if err != nil {
-		cli.err = err
+		cli.StopForError(err)
 	}
 	return cli.finishAsyncCall(req, &types.Response{&types.Response_Flush{res}})
 }
@@ -141,7 +141,7 @@ func (cli *grpcClient) InfoAsync() *ReqRes {
 	req := types.ToRequestInfo()
 	res, err := cli.client.Info(context.Background(), req.GetInfo(), grpc.FailFast(true))
 	if err != nil {
-		cli.err = err
+		cli.StopForError(err)
 	}
 	return cli.finishAsyncCall(req, &types.Response{&types.Response_Info{res}})
 }
@@ -150,7 +150,7 @@ func (cli *grpcClient) SetOptionAsync(key string, value string) *ReqRes {
 	req := types.ToRequestSetOption(key, value)
 	res, err := cli.client.SetOption(context.Background(), req.GetSetOption(), grpc.FailFast(true))
 	if err != nil {
-		cli.err = err
+		cli.StopForError(err)
 	}
 	return cli.finishAsyncCall(req, &types.Response{&types.Response_SetOption{res}})
 }
@@ -159,7 +159,7 @@ func (cli *grpcClient) AppendTxAsync(tx []byte) *ReqRes {
 	req := types.ToRequestAppendTx(tx)
 	res, err := cli.client.AppendTx(context.Background(), req.GetAppendTx(), grpc.FailFast(true))
 	if err != nil {
-		cli.err = err
+		cli.StopForError(err)
 	}
 	return cli.finishAsyncCall(req, &types.Response{&types.Response_AppendTx{res}})
 }
@@ -168,7 +168,7 @@ func (cli *grpcClient) CheckTxAsync(tx []byte) *ReqRes {
 	req := types.ToRequestCheckTx(tx)
 	res, err := cli.client.CheckTx(context.Background(), req.GetCheckTx(), grpc.FailFast(true))
 	if err != nil {
-		cli.err = err
+		cli.StopForError(err)
 	}
 	return cli.finishAsyncCall(req, &types.Response{&types.Response_CheckTx{res}})
 }
@@ -177,7 +177,7 @@ func (cli *grpcClient) QueryAsync(query []byte) *ReqRes {
 	req := types.ToRequestQuery(query)
 	res, err := cli.client.Query(context.Background(), req.GetQuery(), grpc.FailFast(true))
 	if err != nil {
-		cli.err = err
+		cli.StopForError(err)
 	}
 	return cli.finishAsyncCall(req, &types.Response{&types.Response_Query{res}})
 }
@@ -186,7 +186,7 @@ func (cli *grpcClient) CommitAsync() *ReqRes {
 	req := types.ToRequestCommit()
 	res, err := cli.client.Commit(context.Background(), req.GetCommit(), grpc.FailFast(true))
 	if err != nil {
-		cli.err = err
+		cli.StopForError(err)
 	}
 	return cli.finishAsyncCall(req, &types.Response{&types.Response_Commit{res}})
 }
@@ -195,7 +195,7 @@ func (cli *grpcClient) InitChainAsync(validators []*types.Validator) *ReqRes {
 	req := types.ToRequestInitChain(validators)
 	res, err := cli.client.InitChain(context.Background(), req.GetInitChain(), grpc.FailFast(true))
 	if err != nil {
-		cli.err = err
+		cli.StopForError(err)
 	}
 	return cli.finishAsyncCall(req, &types.Response{&types.Response_InitChain{res}})
 }
@@ -204,7 +204,7 @@ func (cli *grpcClient) BeginBlockAsync(height uint64) *ReqRes {
 	req := types.ToRequestBeginBlock(height)
 	res, err := cli.client.BeginBlock(context.Background(), req.GetBeginBlock(), grpc.FailFast(true))
 	if err != nil {
-		cli.err = err
+		cli.StopForError(err)
 	}
 	return cli.finishAsyncCall(req, &types.Response{&types.Response_BeginBlock{res}})
 }
@@ -213,7 +213,7 @@ func (cli *grpcClient) EndBlockAsync(height uint64) *ReqRes {
 	req := types.ToRequestEndBlock(height)
 	res, err := cli.client.EndBlock(context.Background(), req.GetEndBlock(), grpc.FailFast(true))
 	if err != nil {
-		cli.err = err
+		cli.StopForError(err)
 	}
 	return cli.finishAsyncCall(req, &types.Response{&types.Response_EndBlock{res}})
 }
@@ -240,19 +240,11 @@ func (cli *grpcClient) finishAsyncCall(req *types.Request, res *types.Response) 
 }
 
 func (cli *grpcClient) checkErrGetResult() types.Result {
-	if cli.err != nil {
-		cli.StopForError(cli.err)
-		return types.ErrInternalError.SetLog(cli.err.Error())
+	if err := cli.Error(); err != nil {
+		// StopForError should already have been called if error is set
+		return types.ErrInternalError.SetLog(err.Error())
 	}
 	return types.Result{}
-}
-
-func (cli *grpcClient) checkGetErr() error {
-	if cli.err != nil {
-		cli.StopForError(cli.err)
-		return cli.err
-	}
-	return nil
 }
 
 //----------------------------------------
@@ -326,23 +318,17 @@ func (cli *grpcClient) CommitSync() (res types.Result) {
 
 func (cli *grpcClient) InitChainSync(validators []*types.Validator) (err error) {
 	cli.InitChainAsync(validators)
-	if err := cli.checkGetErr(); err != nil {
-		return err
-	}
-	return nil
+	return cli.Error()
 }
 
 func (cli *grpcClient) BeginBlockSync(height uint64) (err error) {
 	cli.BeginBlockAsync(height)
-	if err := cli.checkGetErr(); err != nil {
-		return err
-	}
-	return nil
+	return cli.Error()
 }
 
 func (cli *grpcClient) EndBlockSync(height uint64) (validators []*types.Validator, err error) {
 	reqres := cli.EndBlockAsync(height)
-	if err := cli.checkGetErr(); err != nil {
+	if err := cli.Error(); err != nil {
 		return nil, err
 	}
 	return reqres.Response.GetEndBlock().Diffs, nil
