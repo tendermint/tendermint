@@ -231,19 +231,22 @@ FOR_LOOP:
 					break SYNC_LOOP
 				} else {
 					bcR.pool.PopRequest()
+					// TODO: use ApplyBlock instead of Exec/Commit/SetAppHash/Save
 					err := bcR.state.ExecBlock(bcR.evsw, bcR.proxyAppConn, first, firstPartsHeader)
 					if err != nil {
 						// TODO This is bad, are we zombie?
-						PanicQ(Fmt("Failed to process committed block: %v", err))
+						PanicQ(Fmt("Failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
 					}
-					/*
-						err = bcR.proxyAppConn.CommitSync()
-						if err != nil {
-							// TODO Handle gracefully.
-							PanicQ(Fmt("Failed to commit block at application: %v", err))
-						}
-					*/
+					// NOTE: we could improve performance if we
+					// didn't make the app commit to disk every block
+					// ... but we would need a way to get the hash without it persisting
+					res := bcR.proxyAppConn.CommitSync()
+					if res.IsErr() {
+						// TODO Handle gracefully.
+						PanicQ(Fmt("Failed to commit block at application: %v", res))
+					}
 					bcR.store.SaveBlock(first, firstParts, second.LastCommit)
+					bcR.state.AppHash = res.Data
 					bcR.state.Save()
 				}
 			}

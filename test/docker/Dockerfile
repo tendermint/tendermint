@@ -14,10 +14,9 @@ WORKDIR $TENDERMINT_ORG/tendermint
 
 RUN make get_vendor_deps
 
+
 RUN go install ./cmd/tendermint
-
 RUN bash scripts/install_tmsp_apps.sh
-
 
 EXPOSE 46656
 EXPOSE 46657

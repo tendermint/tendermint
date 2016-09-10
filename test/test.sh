@@ -5,17 +5,17 @@ set -eu
 # See the github.com/tendermint/tendermint/test/README.md
 
 echo ""
-echo "* building docker file"
-docker build -t tester -f ./test/Dockerfile .
+echo "* building docker image"
+bash ./test/docker/build.sh
 
 echo ""
-echo "* running go tests and app tests"
+echo "* running go tests and app tests in docker container"
 docker run -t tester bash test/run_test.sh
 
 # test basic network connectivity
 # by starting a local testnet and checking peers connect and make blocks
 echo ""
-echo "* running basic peer tests"
+echo "* running p2p tests on a local docker network"
 bash test/p2p/test.sh tester
 
 # only run the cloud benchmark for releases

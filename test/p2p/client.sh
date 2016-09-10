@@ -3,14 +3,16 @@ set -eu
 
 DOCKER_IMAGE=$1
 NETWORK_NAME=$2
-CMD=$3
+ID=$3
+CMD=$4
 
+echo "starting test client container with CMD=$CMD"
 # run the test container on the local network
 docker run -t \
-	--rm \
 	-v $GOPATH/src/github.com/tendermint/tendermint/test/p2p/:/go/src/github.com/tendermint/tendermint/test/p2p \
 	--net=$NETWORK_NAME \
-	--ip=172.57.0.99 \
-	--name test_container \
+	--ip=$(test/p2p/ip.sh "-1") \
+	--name test_container_$ID \
 	--entrypoint bash \
 	$DOCKER_IMAGE $CMD
+

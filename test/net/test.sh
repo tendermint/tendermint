@@ -1,6 +1,8 @@
 #! /bin/bash
 set -eu
 
+# start a testnet and benchmark throughput using mintnet+netmon via the network_testing repo
+
 DATACENTER=single
 VALSETSIZE=4
 BLOCKSIZE=8092
