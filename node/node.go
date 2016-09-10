@@ -44,7 +44,14 @@ type Node struct {
 	proxyApp         proxy.AppConns
 }
 
-func NewNode(config cfg.Config, privValidator *types.PrivValidator) *Node {
+func NewNodeDefault(config cfg.Config) *Node {
+	// Get PrivValidator
+	privValidatorFile := config.GetString("priv_validator_file")
+	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
+	return NewNode(config, privValidator, proxy.DefaultClientCreator(config))
+}
+
+func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreator proxy.ClientCreator) *Node {
 
 	EnsureDir(config.GetString("db_dir"), 0700) // incase we use memdb, cswal still gets written here
 
@@ -60,7 +67,7 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator) *Node {
 
 	// Create the proxyApp, which houses three connections:
 	// query, consensus, and mempool
-	proxyApp := proxy.NewAppConns(config, state, blockStore)
+	proxyApp := proxy.NewAppConns(config, clientCreator, state, blockStore)
 
 	// add the chainid and number of validators to the global config
 	config.Set("chain_id", state.ChainID)
@@ -116,6 +123,7 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator) *Node {
 	// if the query return code is OK, add peer
 	// XXX: query format subject to change
 	if config.GetBool("filter_peers") {
+		// NOTE: addr is ip:port
 		sw.SetAddrFilter(func(addr net.Addr) error {
 			res := proxyApp.Query().QuerySync([]byte(Fmt("p2p/filter/addr/%s", addr.String())))
 			if res.IsOK() {
@@ -201,6 +209,7 @@ func (n *Node) StartRPC() ([]net.Listener, error) {
 	rpccore.SetSwitch(n.sw)
 	rpccore.SetPrivValidator(n.privValidator)
 	rpccore.SetGenesisDoc(n.genesisDoc)
+	rpccore.SetProxyAppQuery(n.proxyApp.Query())
 
 	listenAddrs := strings.Split(n.config.GetString("rpc_laddr"), ",")
 
@@ -299,9 +308,12 @@ func getState(config cfg.Config, stateDB dbm.DB) *sm.State {
 
 //------------------------------------------------------------------------------
 
-// Users wishing to use an external signer for their validators
+// Users wishing to:
+//	* use an external signer for their validators
+//	* supply an in-proc tmsp app
 // should fork tendermint/tendermint and implement RunNode to
-// load their custom priv validator and call NewNode
+// call NewNode with their custom priv validator and/or custom
+// proxy.ClientCreator interface
 func RunNode(config cfg.Config) {
 	// Wait until the genesis doc becomes available
 	genDocFile := config.GetString("genesis_file")
@@ -324,12 +336,8 @@ func RunNode(config cfg.Config) {
 		}
 	}
 
-	// Get PrivValidator
-	privValidatorFile := config.GetString("priv_validator_file")
-	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
-
 	// Create & start node
-	n := NewNode(config, privValidator)
+	n := NewNodeDefault(config)
 
 	protocol, address := ProtocolAndAddress(config.GetString("node_laddr"))
 	l := p2p.NewDefaultListener(protocol, address, config.GetBool("skip_upnp"))
@@ -384,7 +392,7 @@ func newConsensusState(config cfg.Config) *consensus.ConsensusState {
 
 	// Create two proxyAppConn connections,
 	// one for the consensus and one for the mempool.
-	proxyApp := proxy.NewAppConns(config, state, blockStore)
+	proxyApp := proxy.NewAppConns(config, proxy.DefaultClientCreator(config), state, blockStore)
 
 	// add the chainid to the global config
 	config.Set("chain_id", state.ChainID)

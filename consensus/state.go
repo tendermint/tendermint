@@ -318,12 +318,12 @@ func (cs *ConsensusState) OnStart() error {
 		// let's go for it anyways, maybe we're fine
 	}
 
-	// schedule the first round!
-	cs.scheduleRound0(cs.Height)
-
-	// start the receiveRoutine last
-	// to avoid races (catchupReplay may have queued tocks/messages)
+	// now start the receiveRoutine
 	go cs.receiveRoutine(0)
+
+	// schedule the first round!
+	// use GetRoundState so we don't race the receiveRoutine for access
+	cs.scheduleRound0(cs.GetRoundState())
 
 	return nil
 }
@@ -421,13 +421,13 @@ func (cs *ConsensusState) updateRoundStep(round int, step RoundStepType) {
 }
 
 // enterNewRound(height, 0) at cs.StartTime.
-func (cs *ConsensusState) scheduleRound0(height int) {
+func (cs *ConsensusState) scheduleRound0(rs *RoundState) {
 	//log.Info("scheduleRound0", "now", time.Now(), "startTime", cs.StartTime)
-	sleepDuration := cs.StartTime.Sub(time.Now())
+	sleepDuration := rs.StartTime.Sub(time.Now())
 	if sleepDuration < time.Duration(0) {
 		sleepDuration = time.Duration(0)
 	}
-	cs.scheduleTimeout(sleepDuration, height, 0, RoundStepNewHeight)
+	cs.scheduleTimeout(sleepDuration, rs.Height, 0, RoundStepNewHeight)
 }
 
 // Attempt to schedule a timeout by sending timeoutInfo on the tickChan.
@@ -1270,7 +1270,7 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 
 	// cs.StartTime is already set.
 	// Schedule Round0 to start soon.
-	cs.scheduleRound0(height + 1)
+	cs.scheduleRound0(&cs.RoundState)
 
 	// By here,
 	// * cs.Height has been increment to height+1
@@ -1285,9 +1285,6 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 func (cs *ConsensusState) commitStateUpdateMempool(s *sm.State, block *types.Block) error {
 	cs.mempool.Lock()
 	defer cs.mempool.Unlock()
-
-	// flush out any CheckTx that have already started
-	// cs.proxyAppConn.FlushSync() // ?! XXX
 
 	// Commit block, get hash back
 	res := cs.proxyAppConn.CommitSync()

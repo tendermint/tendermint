@@ -1,56 +1,22 @@
 package proxy
 
 import (
-	"fmt"
-	"sync"
-
 	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
-	tmspcli "github.com/tendermint/tmsp/client"
-	"github.com/tendermint/tmsp/example/dummy"
-	nilapp "github.com/tendermint/tmsp/example/nil"
 )
 
-// Get a connected tmsp client
-func NewTMSPClient(addr, transport string) (tmspcli.Client, error) {
-	var client tmspcli.Client
-
-	// use local app (for testing)
-	// TODO: local proxy app conn
-	switch addr {
-	case "nilapp":
-		app := nilapp.NewNilApplication()
-		mtx := new(sync.Mutex) // TODO
-		client = tmspcli.NewLocalClient(mtx, app)
-	case "dummy":
-		app := dummy.NewDummyApplication()
-		mtx := new(sync.Mutex) // TODO
-		client = tmspcli.NewLocalClient(mtx, app)
-	default:
-		// Run forever in a loop
-		mustConnect := false
-		remoteApp, err := tmspcli.NewClient(addr, transport, mustConnect)
-		if err != nil {
-			return nil, fmt.Errorf("Failed to connect to proxy for mempool: %v", err)
-		}
-		client = remoteApp
-	}
-	return client, nil
-}
-
-//---------
-
+// Tendermint's interface to the application consists of multiple connections
 type AppConns interface {
 	Mempool() AppConnMempool
 	Consensus() AppConnConsensus
 	Query() AppConnQuery
 }
 
-func NewAppConns(config cfg.Config, state State, blockStore BlockStore) AppConns {
-	return NewMultiAppConn(config, state, blockStore)
+func NewAppConns(config cfg.Config, clientCreator ClientCreator, state State, blockStore BlockStore) AppConns {
+	return NewMultiAppConn(config, clientCreator, state, blockStore)
 }
 
-// a multiAppConn is made of a few appConns (mempool, consensus)
+// a multiAppConn is made of a few appConns (mempool, consensus, query)
 // and manages their underlying tmsp clients, ensuring they reboot together
 type multiAppConn struct {
 	QuitService
@@ -63,14 +29,17 @@ type multiAppConn struct {
 	mempoolConn   *appConnMempool
 	consensusConn *appConnConsensus
 	queryConn     *appConnQuery
+
+	clientCreator ClientCreator
 }
 
 // Make all necessary tmsp connections to the application
-func NewMultiAppConn(config cfg.Config, state State, blockStore BlockStore) *multiAppConn {
+func NewMultiAppConn(config cfg.Config, clientCreator ClientCreator, state State, blockStore BlockStore) *multiAppConn {
 	multiAppConn := &multiAppConn{
-		config:     config,
-		state:      state,
-		blockStore: blockStore,
+		config:        config,
+		state:         state,
+		blockStore:    blockStore,
+		clientCreator: clientCreator,
 	}
 	multiAppConn.QuitService = *NewQuitService(log, "multiAppConn", multiAppConn)
 	multiAppConn.Start()
@@ -94,25 +63,22 @@ func (app *multiAppConn) Query() AppConnQuery {
 func (app *multiAppConn) OnStart() error {
 	app.QuitService.OnStart()
 
-	addr := app.config.GetString("proxy_app")
-	transport := app.config.GetString("tmsp")
-
 	// query connection
-	querycli, err := NewTMSPClient(addr, transport)
+	querycli, err := app.clientCreator.NewTMSPClient()
 	if err != nil {
 		return err
 	}
 	app.queryConn = NewAppConnQuery(querycli)
 
 	// mempool connection
-	memcli, err := NewTMSPClient(addr, transport)
+	memcli, err := app.clientCreator.NewTMSPClient()
 	if err != nil {
 		return err
 	}
 	app.mempoolConn = NewAppConnMempool(memcli)
 
 	// consensus connection
-	concli, err := NewTMSPClient(addr, transport)
+	concli, err := app.clientCreator.NewTMSPClient()
 	if err != nil {
 		return err
 	}

@@ -8,6 +8,7 @@ import (
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/consensus"
 	mempl "github.com/tendermint/tendermint/mempool"
+	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -19,6 +20,7 @@ var mempoolReactor *mempl.MempoolReactor
 var p2pSwitch *p2p.Switch
 var privValidator *types.PrivValidator
 var genDoc *types.GenesisDoc // cache the genesis structure
+var proxyAppQuery proxy.AppConnQuery
 
 var config cfg.Config = nil
 
@@ -56,4 +58,8 @@ func SetPrivValidator(pv *types.PrivValidator) {
 
 func SetGenesisDoc(doc *types.GenesisDoc) {
 	genDoc = doc
+}
+
+func SetProxyAppQuery(appConn proxy.AppConnQuery) {
+	proxyAppQuery = appConn
 }
