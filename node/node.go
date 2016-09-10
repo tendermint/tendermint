@@ -123,6 +123,7 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, newTMSPClien
 	// if the query return code is OK, add peer
 	// XXX: query format subject to change
 	if config.GetBool("filter_peers") {
+		// NOTE: addr is ip:port
 		sw.SetAddrFilter(func(addr net.Addr) error {
 			res := proxyApp.Query().QuerySync([]byte(Fmt("p2p/filter/addr/%s", addr.String())))
 			if res.IsOK() {
