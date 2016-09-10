@@ -1,10 +1,10 @@
 # Pull base image.
 FROM golang:1.6
 
-# Grab deps (jq, hexdump)
+# Grab deps (jq, hexdump, xxd)
 RUN apt-get update && \
   apt-get install -y --no-install-recommends \
-    jq bsdmainutils && \
+  jq bsdmainutils vim-common && \ 
   rm -rf /var/lib/apt/lists/*
 
 ENV TENDERMINT_ORG $GOPATH/src/github.com/tendermint/
