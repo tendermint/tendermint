@@ -48,10 +48,10 @@ func NewNodeDefault(config cfg.Config) *Node {
 	// Get PrivValidator
 	privValidatorFile := config.GetString("priv_validator_file")
 	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
-	return NewNode(config, privValidator, proxy.NewTMSPClientDefault)
+	return NewNode(config, privValidator, proxy.DefaultClientCreator(config))
 }
 
-func NewNode(config cfg.Config, privValidator *types.PrivValidator, newTMSPClient proxy.NewTMSPClient) *Node {
+func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreator proxy.ClientCreator) *Node {
 
 	EnsureDir(config.GetString("db_dir"), 0700) // incase we use memdb, cswal still gets written here
 
@@ -67,7 +67,7 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, newTMSPClien
 
 	// Create the proxyApp, which houses three connections:
 	// query, consensus, and mempool
-	proxyApp := proxy.NewAppConns(config, newTMSPClient, state, blockStore)
+	proxyApp := proxy.NewAppConns(config, clientCreator, state, blockStore)
 
 	// add the chainid and number of validators to the global config
 	config.Set("chain_id", state.ChainID)
@@ -313,7 +313,7 @@ func getState(config cfg.Config, stateDB dbm.DB) *sm.State {
 //	* supply an in-proc tmsp app
 // should fork tendermint/tendermint and implement RunNode to
 // call NewNode with their custom priv validator and/or custom
-// proxy.NewTMSPClient function.
+// proxy.ClientCreator interface
 func RunNode(config cfg.Config) {
 	// Wait until the genesis doc becomes available
 	genDocFile := config.GetString("genesis_file")
@@ -392,7 +392,7 @@ func newConsensusState(config cfg.Config) *consensus.ConsensusState {
 
 	// Create two proxyAppConn connections,
 	// one for the consensus and one for the mempool.
-	proxyApp := proxy.NewAppConns(config, proxy.NewTMSPClientDefault, state, blockStore)
+	proxyApp := proxy.NewAppConns(config, proxy.DefaultClientCreator(config), state, blockStore)
 
 	// add the chainid to the global config
 	config.Set("chain_id", state.ChainID)

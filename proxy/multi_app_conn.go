@@ -12,8 +12,8 @@ type AppConns interface {
 	Query() AppConnQuery
 }
 
-func NewAppConns(config cfg.Config, newTMSPClient NewTMSPClient, state State, blockStore BlockStore) AppConns {
-	return NewMultiAppConn(config, newTMSPClient, state, blockStore)
+func NewAppConns(config cfg.Config, clientCreator ClientCreator, state State, blockStore BlockStore) AppConns {
+	return NewMultiAppConn(config, clientCreator, state, blockStore)
 }
 
 // a multiAppConn is made of a few appConns (mempool, consensus, query)
@@ -30,16 +30,16 @@ type multiAppConn struct {
 	consensusConn *appConnConsensus
 	queryConn     *appConnQuery
 
-	newTMSPClient NewTMSPClient
+	clientCreator ClientCreator
 }
 
 // Make all necessary tmsp connections to the application
-func NewMultiAppConn(config cfg.Config, newTMSPClient NewTMSPClient, state State, blockStore BlockStore) *multiAppConn {
+func NewMultiAppConn(config cfg.Config, clientCreator ClientCreator, state State, blockStore BlockStore) *multiAppConn {
 	multiAppConn := &multiAppConn{
 		config:        config,
 		state:         state,
 		blockStore:    blockStore,
-		newTMSPClient: newTMSPClient,
+		clientCreator: clientCreator,
 	}
 	multiAppConn.QuitService = *NewQuitService(log, "multiAppConn", multiAppConn)
 	multiAppConn.Start()
@@ -63,25 +63,22 @@ func (app *multiAppConn) Query() AppConnQuery {
 func (app *multiAppConn) OnStart() error {
 	app.QuitService.OnStart()
 
-	addr := app.config.GetString("proxy_app")
-	transport := app.config.GetString("tmsp")
-
 	// query connection
-	querycli, err := app.newTMSPClient(addr, transport)
+	querycli, err := app.clientCreator.NewTMSPClient()
 	if err != nil {
 		return err
 	}
 	app.queryConn = NewAppConnQuery(querycli)
 
 	// mempool connection
-	memcli, err := app.newTMSPClient(addr, transport)
+	memcli, err := app.clientCreator.NewTMSPClient()
 	if err != nil {
 		return err
 	}
 	app.mempoolConn = NewAppConnMempool(memcli)
 
 	// consensus connection
-	concli, err := app.newTMSPClient(addr, transport)
+	concli, err := app.clientCreator.NewTMSPClient()
 	if err != nil {
 		return err
 	}

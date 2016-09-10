@@ -45,6 +45,7 @@ var SOCKET = "socket"
 
 func TestEcho(t *testing.T) {
 	sockPath := Fmt("unix:///tmp/echo_%v.sock", RandStr(6))
+	clientCreator := NewRemoteClientCreator(sockPath, SOCKET, true)
 
 	// Start server
 	s, err := server.NewSocketServer(sockPath, dummy.NewDummyApplication())
@@ -53,7 +54,7 @@ func TestEcho(t *testing.T) {
 	}
 	defer s.Stop()
 	// Start client
-	cli, err := NewTMSPClientDefault(sockPath, SOCKET)
+	cli, err := clientCreator.NewTMSPClient()
 	if err != nil {
 		Exit(err.Error())
 	}
@@ -69,6 +70,7 @@ func TestEcho(t *testing.T) {
 func BenchmarkEcho(b *testing.B) {
 	b.StopTimer() // Initialize
 	sockPath := Fmt("unix:///tmp/echo_%v.sock", RandStr(6))
+	clientCreator := NewRemoteClientCreator(sockPath, SOCKET, true)
 	// Start server
 	s, err := server.NewSocketServer(sockPath, dummy.NewDummyApplication())
 	if err != nil {
@@ -76,7 +78,7 @@ func BenchmarkEcho(b *testing.B) {
 	}
 	defer s.Stop()
 	// Start client
-	cli, err := NewTMSPClientDefault(sockPath, SOCKET)
+	cli, err := clientCreator.NewTMSPClient()
 	if err != nil {
 		Exit(err.Error())
 	}
@@ -97,6 +99,7 @@ func BenchmarkEcho(b *testing.B) {
 
 func TestInfo(t *testing.T) {
 	sockPath := Fmt("unix:///tmp/echo_%v.sock", RandStr(6))
+	clientCreator := NewRemoteClientCreator(sockPath, SOCKET, true)
 	// Start server
 	s, err := server.NewSocketServer(sockPath, dummy.NewDummyApplication())
 	if err != nil {
@@ -104,7 +107,7 @@ func TestInfo(t *testing.T) {
 	}
 	defer s.Stop()
 	// Start client
-	cli, err := NewTMSPClientDefault(sockPath, SOCKET)
+	cli, err := clientCreator.NewTMSPClient()
 	if err != nil {
 		Exit(err.Error())
 	}
