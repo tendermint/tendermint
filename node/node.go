@@ -44,7 +44,14 @@ type Node struct {
 	proxyApp         proxy.AppConns
 }
 
-func NewNode(config cfg.Config, privValidator *types.PrivValidator) *Node {
+func NewNodeDefault(config cfg.Config) *Node {
+	// Get PrivValidator
+	privValidatorFile := config.GetString("priv_validator_file")
+	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
+	return NewNode(config, privValidator, proxy.NewTMSPClientDefault)
+}
+
+func NewNode(config cfg.Config, privValidator *types.PrivValidator, newTMSPClient proxy.NewTMSPClient) *Node {
 
 	EnsureDir(config.GetString("db_dir"), 0700) // incase we use memdb, cswal still gets written here
 
@@ -60,7 +67,7 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator) *Node {
 
 	// Create the proxyApp, which houses three connections:
 	// query, consensus, and mempool
-	proxyApp := proxy.NewAppConns(config, state, blockStore)
+	proxyApp := proxy.NewAppConns(config, newTMSPClient, state, blockStore)
 
 	// add the chainid and number of validators to the global config
 	config.Set("chain_id", state.ChainID)
@@ -299,9 +306,12 @@ func getState(config cfg.Config, stateDB dbm.DB) *sm.State {
 
 //------------------------------------------------------------------------------
 
-// Users wishing to use an external signer for their validators
+// Users wishing to:
+//	* use an external signer for their validators
+//	* supply an in-proc tmsp app
 // should fork tendermint/tendermint and implement RunNode to
-// load their custom priv validator and call NewNode
+// call NewNode with their custom priv validator and/or custom
+// proxy.NewTMSPClient function.
 func RunNode(config cfg.Config) {
 	// Wait until the genesis doc becomes available
 	genDocFile := config.GetString("genesis_file")
@@ -324,12 +334,8 @@ func RunNode(config cfg.Config) {
 		}
 	}
 
-	// Get PrivValidator
-	privValidatorFile := config.GetString("priv_validator_file")
-	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
-
 	// Create & start node
-	n := NewNode(config, privValidator)
+	n := NewNodeDefault(config)
 
 	protocol, address := ProtocolAndAddress(config.GetString("node_laddr"))
 	l := p2p.NewDefaultListener(protocol, address, config.GetBool("skip_upnp"))
@@ -384,7 +390,7 @@ func newConsensusState(config cfg.Config) *consensus.ConsensusState {
 
 	// Create two proxyAppConn connections,
 	// one for the consensus and one for the mempool.
-	proxyApp := proxy.NewAppConns(config, state, blockStore)
+	proxyApp := proxy.NewAppConns(config, proxy.NewTMSPClientDefault, state, blockStore)
 
 	// add the chainid to the global config
 	config.Set("chain_id", state.ChainID)

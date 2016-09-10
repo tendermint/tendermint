@@ -53,7 +53,7 @@ func TestEcho(t *testing.T) {
 	}
 	defer s.Stop()
 	// Start client
-	cli, err := NewTMSPClient(sockPath, SOCKET)
+	cli, err := NewTMSPClientDefault(sockPath, SOCKET)
 	if err != nil {
 		Exit(err.Error())
 	}
@@ -76,7 +76,7 @@ func BenchmarkEcho(b *testing.B) {
 	}
 	defer s.Stop()
 	// Start client
-	cli, err := NewTMSPClient(sockPath, SOCKET)
+	cli, err := NewTMSPClientDefault(sockPath, SOCKET)
 	if err != nil {
 		Exit(err.Error())
 	}
@@ -104,7 +104,7 @@ func TestInfo(t *testing.T) {
 	}
 	defer s.Stop()
 	// Start client
-	cli, err := NewTMSPClient(sockPath, SOCKET)
+	cli, err := NewTMSPClientDefault(sockPath, SOCKET)
 	if err != nil {
 		Exit(err.Error())
 	}
