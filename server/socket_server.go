@@ -21,6 +21,10 @@ type SocketServer struct {
 	addr     string
 	listener net.Listener
 
+	connsMtx   sync.Mutex
+	conns      map[int]net.Conn
+	nextConnID int
+
 	appMtx sync.Mutex
 	app    types.Application
 }
@@ -33,6 +37,7 @@ func NewSocketServer(protoAddr string, app types.Application) (Service, error) {
 		addr:     addr,
 		listener: nil,
 		app:      app,
+		conns:    make(map[int]net.Conn),
 	}
 	s.QuitService = *NewQuitService(nil, "TMSPServer", s)
 	_, err := s.Start() // Just start it
@@ -53,6 +58,33 @@ func (s *SocketServer) OnStart() error {
 func (s *SocketServer) OnStop() {
 	s.QuitService.OnStop()
 	s.listener.Close()
+
+	s.connsMtx.Lock()
+	for id, conn := range s.conns {
+		delete(s.conns, id)
+		conn.Close()
+	}
+	s.connsMtx.Unlock()
+}
+
+func (s *SocketServer) addConn(conn net.Conn) int {
+	s.connsMtx.Lock()
+	defer s.connsMtx.Unlock()
+
+	connID := s.nextConnID
+	s.nextConnID += 1
+	s.conns[connID] = conn
+
+	return connID
+}
+
+// deletes conn even if close errs
+func (s *SocketServer) rmConn(connID int, conn net.Conn) error {
+	s.connsMtx.Lock()
+	defer s.connsMtx.Unlock()
+
+	delete(s.conns, connID)
+	return conn.Close()
 }
 
 func (s *SocketServer) acceptConnectionsRoutine() {
@@ -62,7 +94,7 @@ func (s *SocketServer) acceptConnectionsRoutine() {
 		// semaphore <- struct{}{}
 
 		// Accept a connection
-		fmt.Println("Waiting for new connection...")
+		log.Notice("Waiting for new connection...")
 		conn, err := s.listener.Accept()
 		if err != nil {
 			if !s.IsRunning() {
@@ -70,8 +102,10 @@ func (s *SocketServer) acceptConnectionsRoutine() {
 			}
 			Exit("Failed to accept connection: " + err.Error())
 		} else {
-			fmt.Println("Accepted a new connection")
+			log.Notice("Accepted a new connection")
 		}
+
+		connID := s.addConn(conn)
 
 		closeConn := make(chan error, 2)              // Push to signal connection closed
 		responses := make(chan *types.Response, 1000) // A channel to buffer responses
@@ -84,16 +118,19 @@ func (s *SocketServer) acceptConnectionsRoutine() {
 		go func() {
 			// Wait until signal to close connection
 			errClose := <-closeConn
-			if errClose != nil {
-				fmt.Printf("Connection error: %v\n", errClose)
+			if err == io.EOF {
+				log.Warn("Connection was closed by client")
+			} else if errClose != nil {
+				log.Warn("Connection error", "error", errClose)
 			} else {
-				fmt.Println("Connection was closed.")
+				// never happens
+				log.Warn("Connection was closed.")
 			}
 
 			// Close the connection
-			err := conn.Close()
+			err := s.rmConn(connID, conn)
 			if err != nil {
-				fmt.Printf("Error in closing connection: %v\n", err)
+				log.Warn("Error in closing connection", "error", err)
 			}
 
 			// <-semaphore
@@ -111,9 +148,9 @@ func (s *SocketServer) handleRequests(closeConn chan error, conn net.Conn, respo
 		err := types.ReadMessage(bufReader, req)
 		if err != nil {
 			if err == io.EOF {
-				closeConn <- fmt.Errorf("Connection closed by client")
+				closeConn <- err
 			} else {
-				closeConn <- fmt.Errorf("Error in handleValue: %v", err.Error())
+				closeConn <- fmt.Errorf("Error reading message: %v", err.Error())
 			}
 			return
 		}
@@ -176,13 +213,13 @@ func (s *SocketServer) handleResponses(closeConn chan error, responses <-chan *t
 		var res = <-responses
 		err := types.WriteMessage(res, bufWriter)
 		if err != nil {
-			closeConn <- fmt.Errorf("Error in handleValue: %v", err.Error())
+			closeConn <- fmt.Errorf("Error writing message: %v", err.Error())
 			return
 		}
 		if _, ok := res.Value.(*types.Response_Flush); ok {
 			err = bufWriter.Flush()
 			if err != nil {
-				closeConn <- fmt.Errorf("Error in handleValue: %v", err.Error())
+				closeConn <- fmt.Errorf("Error flushing write buffer: %v", err.Error())
 				return
 			}
 		}

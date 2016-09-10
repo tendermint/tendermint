@@ -4,13 +4,15 @@ import (
 	"fmt"
 	"sync"
 
+	. "github.com/tendermint/go-common"
 	"github.com/tendermint/tmsp/types"
 )
 
 type Client interface {
+	Service
+
 	SetResponseCallback(Callback)
 	Error() error
-	Stop() bool
 
 	FlushAsync() *ReqRes
 	EchoAsync(msg string) *ReqRes

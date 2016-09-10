@@ -26,9 +26,8 @@ const flushThrottleMS = 20      // Don't wait longer than...
 // This is goroutine-safe, but users should beware that
 // the application in general is not meant to be interfaced
 // with concurrent callers.
-type remoteClient struct {
+type socketClient struct {
 	QuitService
-	sync.Mutex // [EB]: is this even used?
 
 	reqQueue    chan *ReqRes
 	flushTimer  *ThrottleTimer
@@ -40,84 +39,104 @@ type remoteClient struct {
 	err     error
 	reqSent *list.List
 	resCb   func(*types.Request, *types.Response) // listens to all callbacks
+
 }
 
-func NewSocketClient(addr string, mustConnect bool) (*remoteClient, error) {
-	cli := &remoteClient{
+func NewSocketClient(addr string, mustConnect bool) (*socketClient, error) {
+	cli := &socketClient{
 		reqQueue:    make(chan *ReqRes, reqQueueSize),
-		flushTimer:  NewThrottleTimer("remoteClient", flushThrottleMS),
+		flushTimer:  NewThrottleTimer("socketClient", flushThrottleMS),
 		mustConnect: mustConnect,
 
 		addr:    addr,
 		reqSent: list.New(),
 		resCb:   nil,
 	}
-	cli.QuitService = *NewQuitService(nil, "remoteClient", cli)
+	cli.QuitService = *NewQuitService(nil, "socketClient", cli)
+
 	_, err := cli.Start() // Just start it, it's confusing for callers to remember to start.
 	return cli, err
 }
 
-func (cli *remoteClient) OnStart() error {
+func (cli *socketClient) OnStart() error {
 	cli.QuitService.OnStart()
+
+	var err error
+	var conn net.Conn
 RETRY_LOOP:
 	for {
-		conn, err := Connect(cli.addr)
+		conn, err = Connect(cli.addr)
 		if err != nil {
 			if cli.mustConnect {
 				return err
 			} else {
-				fmt.Printf("tmsp.remoteClient failed to connect to %v.  Retrying...\n", cli.addr)
+				log.Warn(Fmt("tmsp.socketClient failed to connect to %v.  Retrying...", cli.addr))
 				time.Sleep(time.Second * 3)
 				continue RETRY_LOOP
 			}
 		}
+		cli.conn = conn
+
 		go cli.sendRequestsRoutine(conn)
 		go cli.recvResponseRoutine(conn)
-		return err
+
+		return nil
 	}
 	return nil // never happens
 }
 
-func (cli *remoteClient) OnStop() {
+func (cli *socketClient) OnStop() {
 	cli.QuitService.OnStop()
+
+	cli.mtx.Lock()
+	defer cli.mtx.Unlock()
 	if cli.conn != nil {
 		cli.conn.Close()
 	}
+
+	cli.flushQueue()
 }
 
-// Set listener for all responses
-// NOTE: callback may get internally generated flush responses.
-func (cli *remoteClient) SetResponseCallback(resCb Callback) {
+// Stop the client and set the error
+func (cli *socketClient) StopForError(err error) {
 	cli.mtx.Lock()
-	defer cli.mtx.Unlock()
-	cli.resCb = resCb
-}
+	if !cli.IsRunning() {
+		return
+	}
 
-func (cli *remoteClient) StopForError(err error) {
-	cli.mtx.Lock()
-	fmt.Printf("Stopping tmsp.remoteClient for error: %v\n", err.Error())
 	if cli.err == nil {
 		cli.err = err
 	}
 	cli.mtx.Unlock()
+
+	log.Warn(Fmt("Stopping tmsp.socketClient for error: %v", err.Error()))
 	cli.Stop()
 }
 
-func (cli *remoteClient) Error() error {
+func (cli *socketClient) Error() error {
 	cli.mtx.Lock()
 	defer cli.mtx.Unlock()
 	return cli.err
 }
 
+// Set listener for all responses
+// NOTE: callback may get internally generated flush responses.
+func (cli *socketClient) SetResponseCallback(resCb Callback) {
+	cli.mtx.Lock()
+	defer cli.mtx.Unlock()
+	cli.resCb = resCb
+}
+
 //----------------------------------------
 
-func (cli *remoteClient) sendRequestsRoutine(conn net.Conn) {
+func (cli *socketClient) sendRequestsRoutine(conn net.Conn) {
+
 	w := bufio.NewWriter(conn)
 	for {
 		select {
 		case <-cli.flushTimer.Ch:
 			select {
-			case cli.reqQueue <- NewReqRes(types.ToRequestFlush()): // cant this block ?
+			case cli.reqQueue <- NewReqRes(types.ToRequestFlush()):
 			default:
 				// Probably will fill the buffer, or retry later.
 			}
@@ -127,14 +146,14 @@ func (cli *remoteClient) sendRequestsRoutine(conn net.Conn) {
 			cli.willSendReq(reqres)
 			err := types.WriteMessage(reqres.Request, w)
 			if err != nil {
-				cli.StopForError(err)
+				cli.StopForError(fmt.Errorf("Error writing msg: %v", err))
 				return
 			}
 			// log.Debug("Sent request", "requestType", reflect.TypeOf(reqres.Request), "request", reqres.Request)
 			if _, ok := reqres.Request.Value.(*types.Request_Flush); ok {
 				err = w.Flush()
 				if err != nil {
-					cli.StopForError(err)
+					cli.StopForError(fmt.Errorf("Error flushing writer: %v", err))
 					return
 				}
 			}
@@ -142,7 +161,8 @@ func (cli *remoteClient) sendRequestsRoutine(conn net.Conn) {
 	}
 }
 
-func (cli *remoteClient) recvResponseRoutine(conn net.Conn) {
+func (cli *socketClient) recvResponseRoutine(conn net.Conn) {
+
 	r := bufio.NewReader(conn) // Buffer reads
 	for {
 		var res = &types.Response{}
@@ -155,23 +175,25 @@ func (cli *remoteClient) recvResponseRoutine(conn net.Conn) {
 		case *types.Response_Exception:
 			// XXX After setting cli.err, release waiters (e.g. reqres.Done())
 			cli.StopForError(errors.New(r.Exception.Error))
+			return
 		default:
 			// log.Debug("Received response", "responseType", reflect.TypeOf(res), "response", res)
 			err := cli.didRecvResponse(res)
 			if err != nil {
 				cli.StopForError(err)
+				return
 			}
 		}
 	}
 }
 
-func (cli *remoteClient) willSendReq(reqres *ReqRes) {
+func (cli *socketClient) willSendReq(reqres *ReqRes) {
 	cli.mtx.Lock()
 	defer cli.mtx.Unlock()
 	cli.reqSent.PushBack(reqres)
 }
 
-func (cli *remoteClient) didRecvResponse(res *types.Response) error {
+func (cli *socketClient) didRecvResponse(res *types.Response) error {
 	cli.mtx.Lock()
 	defer cli.mtx.Unlock()
 
@@ -205,157 +227,161 @@ func (cli *remoteClient) didRecvResponse(res *types.Response) error {
 
 //----------------------------------------
 
-func (cli *remoteClient) EchoAsync(msg string) *ReqRes {
+func (cli *socketClient) EchoAsync(msg string) *ReqRes {
 	return cli.queueRequest(types.ToRequestEcho(msg))
 }
 
-func (cli *remoteClient) FlushAsync() *ReqRes {
+func (cli *socketClient) FlushAsync() *ReqRes {
 	return cli.queueRequest(types.ToRequestFlush())
 }
 
-func (cli *remoteClient) InfoAsync() *ReqRes {
+func (cli *socketClient) InfoAsync() *ReqRes {
 	return cli.queueRequest(types.ToRequestInfo())
 }
 
-func (cli *remoteClient) SetOptionAsync(key string, value string) *ReqRes {
+func (cli *socketClient) SetOptionAsync(key string, value string) *ReqRes {
 	return cli.queueRequest(types.ToRequestSetOption(key, value))
 }
 
-func (cli *remoteClient) AppendTxAsync(tx []byte) *ReqRes {
+func (cli *socketClient) AppendTxAsync(tx []byte) *ReqRes {
 	return cli.queueRequest(types.ToRequestAppendTx(tx))
 }
 
-func (cli *remoteClient) CheckTxAsync(tx []byte) *ReqRes {
+func (cli *socketClient) CheckTxAsync(tx []byte) *ReqRes {
 	return cli.queueRequest(types.ToRequestCheckTx(tx))
 }
 
-func (cli *remoteClient) QueryAsync(query []byte) *ReqRes {
+func (cli *socketClient) QueryAsync(query []byte) *ReqRes {
 	return cli.queueRequest(types.ToRequestQuery(query))
 }
 
-func (cli *remoteClient) CommitAsync() *ReqRes {
+func (cli *socketClient) CommitAsync() *ReqRes {
 	return cli.queueRequest(types.ToRequestCommit())
 }
 
-func (cli *remoteClient) InitChainAsync(validators []*types.Validator) *ReqRes {
+func (cli *socketClient) InitChainAsync(validators []*types.Validator) *ReqRes {
 	return cli.queueRequest(types.ToRequestInitChain(validators))
 }
 
-func (cli *remoteClient) BeginBlockAsync(height uint64) *ReqRes {
+func (cli *socketClient) BeginBlockAsync(height uint64) *ReqRes {
 	return cli.queueRequest(types.ToRequestBeginBlock(height))
 }
 
-func (cli *remoteClient) EndBlockAsync(height uint64) *ReqRes {
+func (cli *socketClient) EndBlockAsync(height uint64) *ReqRes {
 	return cli.queueRequest(types.ToRequestEndBlock(height))
 }
 
 //----------------------------------------
 
-func (cli *remoteClient) EchoSync(msg string) (res types.Result) {
+func (cli *socketClient) EchoSync(msg string) (res types.Result) {
 	reqres := cli.queueRequest(types.ToRequestEcho(msg))
 	cli.FlushSync()
-	if cli.err != nil {
-		return types.ErrInternalError.SetLog(cli.err.Error())
+	if err := cli.Error(); err != nil {
+		return types.ErrInternalError.SetLog(err.Error())
 	}
 	resp := reqres.Response.GetEcho()
 	return types.Result{Code: OK, Data: []byte(resp.Message), Log: LOG}
 }
 
-func (cli *remoteClient) FlushSync() error {
-	cli.queueRequest(types.ToRequestFlush()).Wait()
-	return cli.err
+func (cli *socketClient) FlushSync() error {
+	reqRes := cli.queueRequest(types.ToRequestFlush())
+	if err := cli.Error(); err != nil {
+		return types.ErrInternalError.SetLog(err.Error())
+	}
+	reqRes.Wait() // NOTE: if we don't flush the queue, its possible to get stuck here
+	return cli.Error()
 }
 
-func (cli *remoteClient) InfoSync() (res types.Result) {
+func (cli *socketClient) InfoSync() (res types.Result) {
 	reqres := cli.queueRequest(types.ToRequestInfo())
 	cli.FlushSync()
-	if cli.err != nil {
-		return types.ErrInternalError.SetLog(cli.err.Error())
+	if err := cli.Error(); err != nil {
+		return types.ErrInternalError.SetLog(err.Error())
 	}
 	resp := reqres.Response.GetInfo()
 	return types.Result{Code: OK, Data: []byte(resp.Info), Log: LOG}
 }
 
-func (cli *remoteClient) SetOptionSync(key string, value string) (res types.Result) {
+func (cli *socketClient) SetOptionSync(key string, value string) (res types.Result) {
 	reqres := cli.queueRequest(types.ToRequestSetOption(key, value))
 	cli.FlushSync()
-	if cli.err != nil {
-		return types.ErrInternalError.SetLog(cli.err.Error())
+	if err := cli.Error(); err != nil {
+		return types.ErrInternalError.SetLog(err.Error())
 	}
 	resp := reqres.Response.GetSetOption()
 	return types.Result{Code: OK, Data: nil, Log: resp.Log}
 }
 
-func (cli *remoteClient) AppendTxSync(tx []byte) (res types.Result) {
+func (cli *socketClient) AppendTxSync(tx []byte) (res types.Result) {
 	reqres := cli.queueRequest(types.ToRequestAppendTx(tx))
 	cli.FlushSync()
-	if cli.err != nil {
-		return types.ErrInternalError.SetLog(cli.err.Error())
+	if err := cli.Error(); err != nil {
+		return types.ErrInternalError.SetLog(err.Error())
 	}
 	resp := reqres.Response.GetAppendTx()
 	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
 }
 
-func (cli *remoteClient) CheckTxSync(tx []byte) (res types.Result) {
+func (cli *socketClient) CheckTxSync(tx []byte) (res types.Result) {
 	reqres := cli.queueRequest(types.ToRequestCheckTx(tx))
 	cli.FlushSync()
-	if cli.err != nil {
-		return types.ErrInternalError.SetLog(cli.err.Error())
+	if err := cli.Error(); err != nil {
+		return types.ErrInternalError.SetLog(err.Error())
 	}
 	resp := reqres.Response.GetCheckTx()
 	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
 }
 
-func (cli *remoteClient) QuerySync(query []byte) (res types.Result) {
+func (cli *socketClient) QuerySync(query []byte) (res types.Result) {
 	reqres := cli.queueRequest(types.ToRequestQuery(query))
 	cli.FlushSync()
-	if cli.err != nil {
-		return types.ErrInternalError.SetLog(cli.err.Error())
+	if err := cli.Error(); err != nil {
+		return types.ErrInternalError.SetLog(err.Error())
 	}
 	resp := reqres.Response.GetQuery()
 	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
 }
 
-func (cli *remoteClient) CommitSync() (res types.Result) {
+func (cli *socketClient) CommitSync() (res types.Result) {
 	reqres := cli.queueRequest(types.ToRequestCommit())
 	cli.FlushSync()
-	if cli.err != nil {
-		return types.ErrInternalError.SetLog(cli.err.Error())
+	if err := cli.Error(); err != nil {
+		return types.ErrInternalError.SetLog(err.Error())
 	}
 	resp := reqres.Response.GetCommit()
 	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
 }
 
-func (cli *remoteClient) InitChainSync(validators []*types.Validator) (err error) {
+func (cli *socketClient) InitChainSync(validators []*types.Validator) (err error) {
 	cli.queueRequest(types.ToRequestInitChain(validators))
 	cli.FlushSync()
-	if cli.err != nil {
-		return cli.err
+	if err := cli.Error(); err != nil {
+		return err
 	}
 	return nil
 }
 
-func (cli *remoteClient) BeginBlockSync(height uint64) (err error) {
+func (cli *socketClient) BeginBlockSync(height uint64) (err error) {
 	cli.queueRequest(types.ToRequestBeginBlock(height))
 	cli.FlushSync()
-	if cli.err != nil {
-		return cli.err
+	if err := cli.Error(); err != nil {
+		return err
 	}
 	return nil
 }
 
-func (cli *remoteClient) EndBlockSync(height uint64) (validators []*types.Validator, err error) {
+func (cli *socketClient) EndBlockSync(height uint64) (validators []*types.Validator, err error) {
 	reqres := cli.queueRequest(types.ToRequestEndBlock(height))
 	cli.FlushSync()
-	if cli.err != nil {
-		return nil, cli.err
+	if err := cli.Error(); err != nil {
+		return nil, err
 	}
 	return reqres.Response.GetEndBlock().Diffs, nil
 }
 
 //----------------------------------------
 
-func (cli *remoteClient) queueRequest(req *types.Request) *ReqRes {
+func (cli *socketClient) queueRequest(req *types.Request) *ReqRes {
 	reqres := NewReqRes(req)
 
 	// TODO: set cli.err if reqQueue times out
@@ -370,6 +396,18 @@ func (cli *remoteClient) queueRequest(req *types.Request) *ReqRes {
 	}
 
 	return reqres
+}
+
+func (cli *socketClient) flushQueue() {
+LOOP:
+	for {
+		select {
+		case reqres := <-cli.reqQueue:
+			reqres.Done()
+		default:
+			break LOOP
+		}
+	}
 }
 
 //----------------------------------------
