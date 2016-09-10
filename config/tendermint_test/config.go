@@ -83,6 +83,7 @@ func ResetConfig(localPath string) cfg.Config {
 	mapConfig.SetDefault("revision_file", rootDir+"/revision")
 	mapConfig.SetDefault("cswal", rootDir+"/data/cswal")
 	mapConfig.SetDefault("cswal_light", false)
+	mapConfig.SetDefault("filter_peers", false)
 
 	mapConfig.SetDefault("block_size", 10000)
 	mapConfig.SetDefault("disable_data_hash", false)
