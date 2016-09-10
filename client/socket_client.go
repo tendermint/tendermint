@@ -263,8 +263,8 @@ func (cli *socketClient) InitChainAsync(validators []*types.Validator) *ReqRes {
 	return cli.queueRequest(types.ToRequestInitChain(validators))
 }
 
-func (cli *socketClient) BeginBlockAsync(header *types.Header) *ReqRes {
-	return cli.queueRequest(types.ToRequestBeginBlock(header))
+func (cli *socketClient) BeginBlockAsync(hash []byte, header *types.Header) *ReqRes {
+	return cli.queueRequest(types.ToRequestBeginBlock(hash, header))
 }
 
 func (cli *socketClient) EndBlockAsync(height uint64) *ReqRes {
@@ -361,8 +361,8 @@ func (cli *socketClient) InitChainSync(validators []*types.Validator) (err error
 	return nil
 }
 
-func (cli *socketClient) BeginBlockSync(header *types.Header) (err error) {
-	cli.queueRequest(types.ToRequestBeginBlock(header))
+func (cli *socketClient) BeginBlockSync(hash []byte, header *types.Header) (err error) {
+	cli.queueRequest(types.ToRequestBeginBlock(hash, header))
 	cli.FlushSync()
 	if err := cli.Error(); err != nil {
 		return err

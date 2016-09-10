@@ -192,7 +192,7 @@ func (s *SocketServer) handleRequest(req *types.Request, responses chan<- *types
 		responses <- types.ToResponseInitChain()
 	case *types.Request_BeginBlock:
 		if app, ok := s.app.(types.BlockchainAware); ok {
-			app.BeginBlock(r.BeginBlock.Header)
+			app.BeginBlock(r.BeginBlock.Hash, r.BeginBlock.Header)
 		}
 		responses <- types.ToResponseBeginBlock()
 	case *types.Request_EndBlock:

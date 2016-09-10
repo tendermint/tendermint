@@ -122,14 +122,14 @@ func (app *localClient) InitChainAsync(validators []*types.Validator) *ReqRes {
 	return reqRes
 }
 
-func (app *localClient) BeginBlockAsync(header *types.Header) *ReqRes {
+func (app *localClient) BeginBlockAsync(hash []byte, header *types.Header) *ReqRes {
 	app.mtx.Lock()
 	if bcApp, ok := app.Application.(types.BlockchainAware); ok {
-		bcApp.BeginBlock(header)
+		bcApp.BeginBlock(hash, header)
 	}
 	app.mtx.Unlock()
 	return app.callback(
-		types.ToRequestBeginBlock(header),
+		types.ToRequestBeginBlock(hash, header),
 		types.ToResponseBeginBlock(),
 	)
 }
@@ -208,10 +208,10 @@ func (app *localClient) InitChainSync(validators []*types.Validator) (err error)
 	return nil
 }
 
-func (app *localClient) BeginBlockSync(header *types.Header) (err error) {
+func (app *localClient) BeginBlockSync(hash []byte, header *types.Header) (err error) {
 	app.mtx.Lock()
 	if bcApp, ok := app.Application.(types.BlockchainAware); ok {
-		bcApp.BeginBlock(header)
+		bcApp.BeginBlock(hash, header)
 	}
 	app.mtx.Unlock()
 	return nil

@@ -33,11 +33,11 @@ type Client interface {
 	CommitSync() (res types.Result)
 
 	InitChainAsync(validators []*types.Validator) *ReqRes
-	BeginBlockAsync(header *types.Header) *ReqRes
+	BeginBlockAsync(hash []byte, header *types.Header) *ReqRes
 	EndBlockAsync(height uint64) *ReqRes
 
 	InitChainSync(validators []*types.Validator) (err error)
-	BeginBlockSync(header *types.Header) (err error)
+	BeginBlockSync(hash []byte, header *types.Header) (err error)
 	EndBlockSync(height uint64) (changedValidators []*types.Validator, err error)
 }
 

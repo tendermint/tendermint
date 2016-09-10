@@ -34,7 +34,7 @@ type BlockchainAware interface {
 	InitChain(validators []*Validator)
 
 	// Signals the beginning of a block
-	BeginBlock(header *Header)
+	BeginBlock(hash []byte, header *Header)
 
 	// Signals the end of a block
 	// diffs: changed validators from app to TendermintCore
@@ -96,7 +96,7 @@ func (app *GRPCApplication) InitChain(ctx context.Context, req *RequestInitChain
 
 func (app *GRPCApplication) BeginBlock(ctx context.Context, req *RequestBeginBlock) (*ResponseBeginBlock, error) {
 	if chainAware, ok := app.app.(BlockchainAware); ok {
-		chainAware.BeginBlock(req.Header)
+		chainAware.BeginBlock(req.Hash, req.Header)
 	}
 	return &ResponseBeginBlock{}, nil
 }

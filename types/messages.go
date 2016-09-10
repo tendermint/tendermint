@@ -61,9 +61,9 @@ func ToRequestInitChain(validators []*Validator) *Request {
 	}
 }
 
-func ToRequestBeginBlock(header *Header) *Request {
+func ToRequestBeginBlock(hash []byte, header *Header) *Request {
 	return &Request{
-		Value: &Request_BeginBlock{&RequestBeginBlock{header}},
+		Value: &Request_BeginBlock{&RequestBeginBlock{hash, header}},
 	}
 }
 

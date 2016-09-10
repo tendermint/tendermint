@@ -124,7 +124,8 @@ message RequestInitChain{
 }
 
 message RequestBeginBlock{
-	Header header = 1;
+	bytes hash = 1;
+	Header header = 2;
 }
 
 message RequestEndBlock{

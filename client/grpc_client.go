@@ -200,8 +200,8 @@ func (cli *grpcClient) InitChainAsync(validators []*types.Validator) *ReqRes {
 	return cli.finishAsyncCall(req, &types.Response{&types.Response_InitChain{res}})
 }
 
-func (cli *grpcClient) BeginBlockAsync(header *types.Header) *ReqRes {
-	req := types.ToRequestBeginBlock(header)
+func (cli *grpcClient) BeginBlockAsync(hash []byte, header *types.Header) *ReqRes {
+	req := types.ToRequestBeginBlock(hash, header)
 	res, err := cli.client.BeginBlock(context.Background(), req.GetBeginBlock(), grpc.FailFast(true))
 	if err != nil {
 		cli.StopForError(err)
@@ -321,8 +321,8 @@ func (cli *grpcClient) InitChainSync(validators []*types.Validator) (err error) 
 	return cli.Error()
 }
 
-func (cli *grpcClient) BeginBlockSync(header *types.Header) (err error) {
-	cli.BeginBlockAsync(header)
+func (cli *grpcClient) BeginBlockSync(hash []byte, header *types.Header) (err error) {
+	cli.BeginBlockAsync(hash, header)
 	return cli.Error()
 }
 

@@ -47,6 +47,10 @@ func SaveLastBlock(db dbm.DB, lastBlock types.LastBlockInfo) {
 type PersistentDummyApplication struct {
 	app *DummyApplication
 	db  dbm.DB
+
+	// latest received
+	blockHash   []byte
+	blockHeader *types.Header
 }
 
 func NewPersistentDummyApplication(dbDir string) *PersistentDummyApplication {
@@ -88,9 +92,16 @@ func (app *PersistentDummyApplication) CheckTx(tx []byte) types.Result {
 
 func (app *PersistentDummyApplication) Commit() types.Result {
 	// Save
-	hash := app.app.state.Save()
-	log.Info("Saved state", "root", hash)
-	return types.NewResultOK(hash, "")
+	appHash := app.app.state.Save()
+	log.Info("Saved state", "root", appHash)
+
+	lastBlock := types.LastBlockInfo{
+		BlockHeight: app.blockHeader.Height,
+		BlockHash:   app.blockHash,
+		AppHash:     appHash, // this hash will be in the next block header
+	}
+	SaveLastBlock(app.db, lastBlock)
+	return types.NewResultOK(appHash, "")
 }
 
 func (app *PersistentDummyApplication) Query(query []byte) types.Result {
@@ -101,15 +112,9 @@ func (app *PersistentDummyApplication) InitChain(validators []*types.Validator) 
 	return
 }
 
-func (app *PersistentDummyApplication) BeginBlock(header *types.Header) {
-	// we commit the previous block state on BeginBlock because thats
-	// when we get the prev block hash and the app hash
-	lastBlock := types.LastBlockInfo{
-		BlockHeight: header.Height - 1,
-		BlockHash:   header.LastBlockHash,
-		AppHash:     header.AppHash,
-	}
-	SaveLastBlock(app.db, lastBlock)
+func (app *PersistentDummyApplication) BeginBlock(hash []byte, header *types.Header) {
+	app.blockHash = hash
+	app.blockHeader = header
 }
 
 func (app *PersistentDummyApplication) EndBlock(height uint64) (diffs []*types.Validator) {
