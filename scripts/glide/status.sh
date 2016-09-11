@@ -8,6 +8,7 @@ GLIDE=$GOPATH/src/github.com/tendermint/tendermint/glide.lock
 LIBS=($(grep "github.com/tendermint" $GLIDE  | awk '{print $3}'))
 
 
+UPTODATE=true
 for lib in "${LIBS[@]}"; do
 	# get vendored commit
 	VENDORED=`grep -A1 $lib $GLIDE | grep -v $lib | awk '{print $2}'`
@@ -18,6 +19,7 @@ for lib in "${LIBS[@]}"; do
 	cd $PWD
 	
 	if [[ "$VENDORED" != "$MASTER" ]]; then
+		UPTODATE=false
 		echo ""
 		if [[ "$VENDORED" != "$HEAD" ]]; then
 			echo "Vendored version of $lib differs from origin/master and HEAD"
@@ -31,4 +33,8 @@ for lib in "${LIBS[@]}"; do
 		fi
 	fi
 done
+
+if [[ "$UPTODATE" == "true" ]]; then
+	echo "All vendored versions up to date"
+fi
 
