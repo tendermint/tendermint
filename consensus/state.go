@@ -1255,32 +1255,33 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 		"height", block.Height, "hash", block.Hash(), "root", block.AppHash)
 	log.Info(Fmt("%v", block))
 
-	// Fire off event for new block.
-	// TODO: Handle app failure.  See #177
-	types.FireEventNewBlock(cs.evsw, types.EventDataNewBlock{block})
-	types.FireEventNewBlockHeader(cs.evsw, types.EventDataNewBlockHeader{block.Header})
-
-	// Create a copy of the state for staging
-	stateCopy := cs.state.Copy()
-
-	// event cache for txs
-	eventCache := types.NewEventCache(cs.evsw)
-
-	// Execute and commit the block
-	// NOTE: All calls to the proxyAppConn should come here
-	stateCopy.ApplyBlock(eventCache, cs.proxyAppConn, block, blockParts.Header(), cs.mempool)
-
-	// txs committed, bad ones removed from mepool; fire events
-	// NOTE: the block.AppHash wont reflect these txs until the next block
-	eventCache.Flush()
-
 	// Save to blockStore.
 	if cs.blockStore.Height() < block.Height {
 		precommits := cs.Votes.Precommits(cs.CommitRound)
 		seenCommit := precommits.MakeCommit()
 		log.Notice("save block", "height", block.Height)
 		cs.blockStore.SaveBlock(block, blockParts, seenCommit)
+	} else {
+		log.Warn("Why are we finalizeCommitting a block height we already have?", "height", block.Height)
 	}
+
+	// Create a copy of the state for staging
+	// and an event cache for txs
+	stateCopy := cs.state.Copy()
+
+	// event cache for txs
+	eventCache := types.NewEventCache(cs.evsw)
+
+	// Execute and commit the block, and update the mempool.
+	// All calls to the proxyAppConn should come here.
+	// NOTE: the block.AppHash wont reflect these txs until the next block
+	stateCopy.ApplyBlock(eventCache, cs.proxyAppConn, block, blockParts.Header(), cs.mempool)
+
+	// Fire off event for new block.
+	// TODO: Handle app failure.  See #177
+	types.FireEventNewBlock(cs.evsw, types.EventDataNewBlock{block})
+	types.FireEventNewBlockHeader(cs.evsw, types.EventDataNewBlockHeader{block.Header})
+	eventCache.Flush()
 
 	// Save the state.
 	log.Notice("save state", "height", stateCopy.LastBlockHeight, "hash", stateCopy.AppHash)

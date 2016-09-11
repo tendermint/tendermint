@@ -21,16 +21,25 @@ var (
 
 // NOTE: not goroutine-safe.
 type State struct {
-	mtx             sync.Mutex
-	db              dbm.DB
-	GenesisDoc      *types.GenesisDoc
-	ChainID         string
+	// mtx for writing to db
+	mtx sync.Mutex
+	db  dbm.DB
+
+	// should not change
+	GenesisDoc *types.GenesisDoc
+	ChainID    string
+
+	// updated at end of ExecBlock
 	LastBlockHeight int // Genesis state has this set to 0.  So, Block(H=0) does not exist.
 	LastBlockID     types.BlockID
 	LastBlockTime   time.Time
 	Validators      *types.ValidatorSet
 	LastValidators  *types.ValidatorSet
-	AppHash         []byte
+
+	// AppHash is updated after Commit;
+	// it's stale after ExecBlock and before Commit
+	Stale   bool
+	AppHash []byte
 }
 
 func LoadState(db dbm.DB) *State {
@@ -60,6 +69,7 @@ func (s *State) Copy() *State {
 		LastBlockTime:   s.LastBlockTime,
 		Validators:      s.Validators.Copy(),
 		LastValidators:  s.LastValidators.Copy(),
+		Stale:           s.Stale, // but really state shouldnt be copied while its stale
 		AppHash:         s.AppHash,
 	}
 }
@@ -84,12 +94,15 @@ func (s *State) Bytes() []byte {
 }
 
 // Mutate state variables to match block and validators
+// Since we don't have the AppHash yet, it becomes stale
 func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader types.PartSetHeader, prevValSet, nextValSet *types.ValidatorSet) {
 	s.LastBlockHeight = header.Height
 	s.LastBlockID = types.BlockID{block.Hash(), blockPartsHeader}
 	s.LastBlockTime = header.Time
 	s.Validators = nextValSet
 	s.LastValidators = prevValSet
+
+	s.Stale = true
 }
 
 func (s *State) GetValidators() (*types.ValidatorSet, *types.ValidatorSet) {
