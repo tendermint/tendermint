@@ -1278,10 +1278,12 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	if cs.blockStore.Height() < block.Height {
 		precommits := cs.Votes.Precommits(cs.CommitRound)
 		seenCommit := precommits.MakeCommit()
+		log.Notice("save block", "height", block.Height)
 		cs.blockStore.SaveBlock(block, blockParts, seenCommit)
 	}
 
 	// Save the state.
+	log.Notice("save state", "height", stateCopy.LastBlockHeight, "hash", stateCopy.AppHash)
 	stateCopy.Save()
 
 	// NewHeightStep!

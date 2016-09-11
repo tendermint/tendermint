@@ -12,7 +12,7 @@ bash test/test_cover.sh
 bash test/app/test.sh
 
 # run the persistence test
-bash test/persist.test.sh
+bash test/persist/test.sh
 
 if [[ "$BRANCH" == "master" || $(echo "$BRANCH" | grep "release-") != "" ]]; then
 	echo ""

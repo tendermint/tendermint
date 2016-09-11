@@ -3,14 +3,10 @@ package proxy
 import (
 	"bytes"
 	"fmt"
-	"sync"
 
 	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
-	"github.com/tendermint/tendermint/types" // ...
-	tmspcli "github.com/tendermint/tmsp/client"
-	"github.com/tendermint/tmsp/example/dummy"
-	nilapp "github.com/tendermint/tmsp/example/nil"
+	"github.com/tendermint/tendermint/types"
 )
 
 //-----------------------------
@@ -148,10 +144,11 @@ func (app *multiAppConn) Handshake() error {
 			return fmt.Errorf("Handshake error. Block hash at height %d does not match. Got %X, expected %X", blockHeight, blockHash, blockMeta.Hash)
 		}
 
+		// NOTE: app hash should be in the next block ...
 		// check app hash
-		if !bytes.Equal(blockMeta.Header.AppHash, appHash) {
+		/*if !bytes.Equal(blockMeta.Header.AppHash, appHash) {
 			return fmt.Errorf("Handshake error. App hash at height %d does not match. Got %X, expected %X", blockHeight, appHash, blockMeta.Header.AppHash)
-		}
+		}*/
 
 		header = blockMeta.Header
 		partsHeader = blockMeta.PartsHeader
@@ -163,7 +160,7 @@ func (app *multiAppConn) Handshake() error {
 	}
 
 	// replay blocks up to the latest in the blockstore
-	err := app.state.ReplayBlocks(header, partsHeader, app.consensusConn, app.blockStore)
+	err := app.state.ReplayBlocks(appHash, header, partsHeader, app.consensusConn, app.blockStore)
 	if err != nil {
 		return fmt.Errorf("Error on replay: %v", err)
 	}
@@ -171,32 +168,4 @@ func (app *multiAppConn) Handshake() error {
 	// TODO: (on restart) replay mempool
 
 	return nil
-}
-
-//--------------------------------
-
-// Get a connected tmsp client
-func NewTMSPClient(addr, transport string) (tmspcli.Client, error) {
-	var client tmspcli.Client
-
-	// use local app (for testing)
-	switch addr {
-	case "nilapp":
-		app := nilapp.NewNilApplication()
-		mtx := new(sync.Mutex) // TODO
-		client = tmspcli.NewLocalClient(mtx, app)
-	case "dummy":
-		app := dummy.NewDummyApplication()
-		mtx := new(sync.Mutex) // TODO
-		client = tmspcli.NewLocalClient(mtx, app)
-	default:
-		// Run forever in a loop
-		mustConnect := false
-		remoteApp, err := tmspcli.NewClient(addr, transport, mustConnect)
-		if err != nil {
-			return nil, fmt.Errorf("Failed to connect to proxy for mempool: %v", err)
-		}
-		client = remoteApp
-	}
-	return client, nil
 }

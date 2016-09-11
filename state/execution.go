@@ -86,7 +86,7 @@ func (s *State) execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn prox
 	proxyAppConn.SetResponseCallback(proxyCb)
 
 	// Begin block
-	err := proxyAppConn.BeginBlockSync(types.TM2PB.Header(block.Header))
+	err := proxyAppConn.BeginBlockSync(block.Hash(), types.TM2PB.Header(block.Header))
 	if err != nil {
 		log.Warn("Error in proxyAppConn.BeginBlock", "error", err)
 		return err
@@ -233,8 +233,13 @@ func (s *State) ApplyBlock(eventCache events.Fireable, proxyAppConn proxy.AppCon
 
 // Replay all blocks after blockHeight and ensure the result matches the current state.
 // XXX: blockStore must guarantee to have blocks for height <= blockStore.Height()
-func (s *State) ReplayBlocks(header *types.Header, partsHeader types.PartSetHeader,
+func (s *State) ReplayBlocks(appHash []byte, header *types.Header, partsHeader types.PartSetHeader,
 	appConnConsensus proxy.AppConnConsensus, blockStore proxy.BlockStore) error {
+
+	// NOTE/TODO: tendermint may crash after the app commits
+	// but before it can save the new state root.
+	// it should save all eg. valset changes before calling Commit.
+	// then, if tm state is behind app state, the only thing missing can be app hash
 
 	// fresh state to work on
 	stateCopy := s.Copy()
@@ -246,7 +251,7 @@ func (s *State) ReplayBlocks(header *types.Header, partsHeader types.PartSetHead
 		// TODO: put validators in iavl tree so we can set the state with an older validator set
 		lastVals, nextVals := stateCopy.GetValidators()
 		stateCopy.SetBlockAndValidators(header, partsHeader, lastVals, nextVals)
-		stateCopy.AppHash = header.AppHash
+		stateCopy.AppHash = appHash
 	}
 
 	// run the transactions

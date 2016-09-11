@@ -5,7 +5,7 @@ import (
 )
 
 type State interface {
-	ReplayBlocks(*types.Header, types.PartSetHeader, AppConnConsensus, BlockStore) error
+	ReplayBlocks([]byte, *types.Header, types.PartSetHeader, AppConnConsensus, BlockStore) error
 }
 
 type BlockStore interface {
