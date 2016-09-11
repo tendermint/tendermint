@@ -24,13 +24,13 @@ function kill_procs(){
 function send_txs(){
 	# send a bunch of txs over a few blocks
 	echo "Sending txs"
-#	for i in `seq 1 5`; do
-#		for j in `seq 1 100`; do
+	for i in `seq 1 5`; do
+		for j in `seq 1 100`; do
 			tx=`head -c 8 /dev/urandom | hexdump -ve '1/1 "%.2X"'`
 			curl -s 127.0.0.1:46657/broadcast_tx_async?tx=\"$tx\" &> /dev/null
-#		done
+		done
 		sleep 1
-#	done
+	done
 }
 
 

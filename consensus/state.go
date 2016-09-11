@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ebuchman/fail-test"
+
 	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-events"
@@ -1225,15 +1227,18 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 		"height", block.Height, "hash", block.Hash(), "root", block.AppHash)
 	log.Info(Fmt("%v", block))
 
+	fail.Fail() // XXX
+
 	// Save to blockStore.
 	if cs.blockStore.Height() < block.Height {
 		precommits := cs.Votes.Precommits(cs.CommitRound)
 		seenCommit := precommits.MakeCommit()
-		log.Notice("save block", "height", block.Height)
 		cs.blockStore.SaveBlock(block, blockParts, seenCommit)
 	} else {
 		log.Warn("Why are we finalizeCommitting a block height we already have?", "height", block.Height)
 	}
+
+	fail.Fail() // XXX
 
 	// Create a copy of the state for staging
 	// and an event cache for txs
@@ -1245,6 +1250,8 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	// NOTE: the block.AppHash wont reflect these txs until the next block
 	stateCopy.ApplyBlock(eventCache, cs.proxyAppConn, block, blockParts.Header(), cs.mempool)
 
+	fail.Fail() // XXX
+
 	// Fire off event for new block.
 	// TODO: Handle app failure.  See #177
 	cs.evsw.FireEvent(types.EventStringNewBlock(), types.EventDataNewBlock{block})
@@ -1252,8 +1259,9 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	eventCache.Flush()
 
 	// Save the state.
-	log.Notice("save state", "height", stateCopy.LastBlockHeight, "hash", stateCopy.AppHash)
 	stateCopy.Save()
+
+	fail.Fail() // XXX
 
 	// NewHeightStep!
 	cs.updateToState(stateCopy)

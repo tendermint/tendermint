@@ -1,7 +1,10 @@
 package state
 
 import (
+	"bytes"
 	"errors"
+
+	"github.com/ebuchman/fail-test"
 
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-events"
@@ -91,13 +94,18 @@ func (s *State) execBlockOnProxyApp(eventCache events.Fireable, proxyAppConn pro
 		return err
 	}
 
+	fail.Fail() // XXX
+
 	// Run txs of block
 	for _, tx := range block.Txs {
+		fail.FailRand(len(block.Txs)) // XXX
 		proxyAppConn.AppendTxAsync(tx)
 		if err := proxyAppConn.Error(); err != nil {
 			return err
 		}
 	}
+
+	fail.Fail() // XXX
 
 	// End block
 	changedValidators, err := proxyAppConn.EndBlockSync(uint64(block.Height))
@@ -105,6 +113,9 @@ func (s *State) execBlockOnProxyApp(eventCache events.Fireable, proxyAppConn pro
 		log.Warn("Error in proxyAppConn.EndBlock", "error", err)
 		return err
 	}
+
+	fail.Fail() // XXX
+
 	// TODO: Do something with changedValidators
 	log.Info("TODO: Do something with changedValidators", changedValidators)
 
@@ -241,6 +252,8 @@ func (m mockMempool) Update(height int, txs []types.Tx) {}
 //----------------------------------------------------------------
 // Replay blocks to sync app to latest state of core
 
+type ErrReplay error
+
 type ErrAppBlockHeightTooHigh struct {
 	coreHeight int
 	appHeight  int
@@ -248,6 +261,16 @@ type ErrAppBlockHeightTooHigh struct {
 
 func (e ErrAppBlockHeightTooHigh) Error() string {
 	return Fmt("App block height (%d) is higher than core (%d)", e.appHeight, e.coreHeight)
+}
+
+type ErrLastStateMismatch struct {
+	height int
+	core   []byte
+	app    []byte
+}
+
+func (e ErrLastStateMismatch) Error() string {
+	return Fmt("Latest tendermint block (%d) LastAppHash (%X) does not match app's AppHash (%X)", e.height, e.core, e.app)
 }
 
 type ErrStateMismatch struct {
@@ -282,34 +305,61 @@ func (s *State) ReplayBlocks(appHash []byte, header *types.Header, partsHeader t
 	appBlockHeight := stateCopy.LastBlockHeight
 	coreBlockHeight := blockStore.Height()
 	if coreBlockHeight < appBlockHeight {
+		// if the app is ahead, there's nothing we can do
 		return ErrAppBlockHeightTooHigh{coreBlockHeight, appBlockHeight}
 
 	} else if coreBlockHeight == appBlockHeight {
 		// if we crashed between Commit and SaveState,
-		// the state's app hash is stale
+		// the state's app hash is stale.
+		// otherwise we're synced
 		if s.Stale {
 			s.Stale = false
 			s.AppHash = appHash
 		}
+		return checkState(s, stateCopy)
+
+	} else if s.LastBlockHeight == appBlockHeight {
+		// core is ahead of app but core's state height is at apps height
+		// this happens if we crashed after saving the block,
+		// but before committing it. We should be 1 ahead
+		if coreBlockHeight != appBlockHeight+1 {
+			PanicSanity(Fmt("core.state.height == app.height but core.height (%d) > app.height+1 (%d)", coreBlockHeight, appBlockHeight+1))
+		}
+
+		// check that the blocks last apphash is the states apphash
+		blockMeta := blockStore.LoadBlockMeta(coreBlockHeight)
+		if !bytes.Equal(blockMeta.Header.AppHash, appHash) {
+			return ErrLastStateMismatch{coreBlockHeight, blockMeta.Header.AppHash, appHash}
+		}
+
+		// replay the block against the actual tendermint state (not the copy)
+		return loadApplyBlock(coreBlockHeight, s, blockStore, appConnConsensus)
 
 	} else {
-		// the app is behind.
+		// either we're caught up or there's blocks to replay
 		// replay all blocks starting with appBlockHeight+1
 		for i := appBlockHeight + 1; i <= coreBlockHeight; i++ {
-			blockMeta := blockStore.LoadBlockMeta(i)
-			block := blockStore.LoadBlock(i)
-			panicOnNilBlock(i, coreBlockHeight, block, blockMeta) // XXX
-
-			var eventCache events.Fireable // nil
-			stateCopy.ApplyBlock(eventCache, appConnConsensus, block, blockMeta.PartsHeader, mockMempool{})
+			loadApplyBlock(i, stateCopy, blockStore, appConnConsensus)
 		}
+		return checkState(s, stateCopy)
 	}
+}
 
+func checkState(s, stateCopy *State) error {
 	// The computed state and the previously set state should be identical
 	if !s.Equals(stateCopy) {
 		return ErrStateMismatch{stateCopy, s}
 	}
 	return nil
+}
+
+func loadApplyBlock(blockIndex int, s *State, blockStore proxy.BlockStore, appConnConsensus proxy.AppConnConsensus) error {
+	blockMeta := blockStore.LoadBlockMeta(blockIndex)
+	block := blockStore.LoadBlock(blockIndex)
+	panicOnNilBlock(blockIndex, blockStore.Height(), block, blockMeta) // XXX
+
+	var eventCache events.Fireable // nil
+	return s.ApplyBlock(eventCache, appConnConsensus, block, blockMeta.PartsHeader, mockMempool{})
 }
 
 func panicOnNilBlock(height, bsHeight int, block *types.Block, blockMeta *types.BlockMeta) {
