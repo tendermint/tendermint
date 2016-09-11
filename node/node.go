@@ -68,6 +68,9 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreato
 	// Create the proxyApp, which houses three connections:
 	// query, consensus, and mempool
 	proxyApp := proxy.NewAppConns(config, clientCreator, state, blockStore)
+	if _, err := proxyApp.Start(); err != nil {
+		Exit(Fmt("Error starting proxy app connections: %v", err))
+	}
 
 	// add the chainid and number of validators to the global config
 	config.Set("chain_id", state.ChainID)
