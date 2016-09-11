@@ -54,7 +54,6 @@ func NewRemoteClientCreator(addr, transport string, mustConnect bool) ClientCrea
 
 func (r *remoteClientCreator) NewTMSPClient() (tmspcli.Client, error) {
 	// Run forever in a loop
-	fmt.Println("ADDR", r.addr, r.transport)
 	remoteApp, err := tmspcli.NewClient(r.addr, r.transport, r.mustConnect)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to connect to proxy: %v", err)

@@ -14,7 +14,7 @@ type AppConnConsensus interface {
 
 	InitChainSync(validators []*types.Validator) (err error)
 
-	BeginBlockSync(header *types.Header) (err error)
+	BeginBlockSync(hash []byte, header *types.Header) (err error)
 	AppendTxAsync(tx []byte) *tmspcli.ReqRes
 	EndBlockSync(height uint64) (changedValidators []*types.Validator, err error)
 	CommitSync() (res types.Result)
@@ -65,8 +65,8 @@ func (app *appConnConsensus) InitChainSync(validators []*types.Validator) (err e
 	return app.appConn.InitChainSync(validators)
 }
 
-func (app *appConnConsensus) BeginBlockSync(header *types.Header) (err error) {
-	return app.appConn.BeginBlockSync(header)
+func (app *appConnConsensus) BeginBlockSync(hash []byte, header *types.Header) (err error) {
+	return app.appConn.BeginBlockSync(hash, header)
 }
 
 func (app *appConnConsensus) AppendTxAsync(tx []byte) *tmspcli.ReqRes {
