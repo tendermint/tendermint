@@ -8,10 +8,6 @@ machine:
   hosts:
     circlehost: 127.0.0.1
     localhost: 127.0.0.1
-  pre:
-    - curl -sSL https://s3.amazonaws.com/circle-downloads/install-circleci-docker.sh | sudo bash -s -- $DOCKER_VERSION
-  services:
-    - docker
 
 checkout:
   post:
@@ -23,7 +19,10 @@ checkout:
 
 dependencies:
   override:
+    - echo $MACH_PREFIX $GOPATH $REPO $DOCKER_VERSION $DOCKER_MACHINE_VERSION
+    - curl -sSL https://s3.amazonaws.com/circle-downloads/install-circleci-docker.sh | sudo bash -s -- $DOCKER_VERSION
     - sudo curl -sSL -o /usr/bin/docker-machine https://github.com/docker/machine/releases/download/v$DOCKER_MACHINE_VERSION/docker-machine-linux-x86_64; sudo chmod 0755 /usr/bin/docker-machine
+    - sudo start docker
     - go version
     - docker version
     - docker-machine version

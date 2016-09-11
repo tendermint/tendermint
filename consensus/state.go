@@ -215,7 +215,7 @@ type ConsensusState struct {
 	QuitService
 
 	config        cfg.Config
-	proxyAppConn  proxy.AppConn
+	proxyAppConn  proxy.AppConnConsensus
 	blockStore    *bc.BlockStore
 	mempool       *mempl.Mempool
 	privValidator *types.PrivValidator
@@ -233,12 +233,13 @@ type ConsensusState struct {
 
 	evsw *events.EventSwitch
 
-	wal *WAL
+	wal        *WAL
+	replayMode bool // so we don't log signing errors during replay
 
 	nSteps int // used for testing to limit the number of transitions the state makes
 }
 
-func NewConsensusState(config cfg.Config, state *sm.State, proxyAppConn proxy.AppConn, blockStore *bc.BlockStore, mempool *mempl.Mempool) *ConsensusState {
+func NewConsensusState(config cfg.Config, state *sm.State, proxyAppConn proxy.AppConnConsensus, blockStore *bc.BlockStore, mempool *mempl.Mempool) *ConsensusState {
 	cs := &ConsensusState{
 		config:           config,
 		proxyAppConn:     proxyAppConn,
@@ -298,8 +299,17 @@ func (cs *ConsensusState) SetPrivValidator(priv *types.PrivValidator) {
 func (cs *ConsensusState) OnStart() error {
 	cs.QuitService.OnStart()
 
-	// start timeout and receive routines
-	cs.startRoutines(0)
+	err := cs.OpenWAL(cs.config.GetString("cswal"))
+	if err != nil {
+		return err
+	}
+
+	// we need the timeoutRoutine for replay so
+	//  we don't block on the tick chan.
+	// NOTE: we will get a build up of garbage go routines
+	//  firing on the tockChan until the receiveRoutine is started
+	//  to deal with them (by that point, at most one will be valid)
+	go cs.timeoutRoutine()
 
 	// we may have lost some votes if the process crashed
 	// reload from consensus log to catchup
@@ -308,8 +318,12 @@ func (cs *ConsensusState) OnStart() error {
 		// let's go for it anyways, maybe we're fine
 	}
 
+	// now start the receiveRoutine
+	go cs.receiveRoutine(0)
+
 	// schedule the first round!
-	cs.scheduleRound0(cs.Height)
+	// use GetRoundState so we don't race the receiveRoutine for access
+	cs.scheduleRound0(cs.GetRoundState())
 
 	return nil
 }
@@ -407,13 +421,13 @@ func (cs *ConsensusState) updateRoundStep(round int, step RoundStepType) {
 }
 
 // enterNewRound(height, 0) at cs.StartTime.
-func (cs *ConsensusState) scheduleRound0(height int) {
+func (cs *ConsensusState) scheduleRound0(rs *RoundState) {
 	//log.Info("scheduleRound0", "now", time.Now(), "startTime", cs.StartTime)
-	sleepDuration := cs.StartTime.Sub(time.Now())
+	sleepDuration := rs.StartTime.Sub(time.Now())
 	if sleepDuration < time.Duration(0) {
 		sleepDuration = time.Duration(0)
 	}
-	cs.scheduleTimeout(sleepDuration, height, 0, RoundStepNewHeight)
+	cs.scheduleTimeout(sleepDuration, rs.Height, 0, RoundStepNewHeight)
 }
 
 // Attempt to schedule a timeout by sending timeoutInfo on the tickChan.
@@ -432,7 +446,7 @@ func (cs *ConsensusState) sendInternalMessage(mi msgInfo) {
 		// be processed out of order.
 		// TODO: use CList here for strict determinism and
 		// attempt push to internalMsgQueue in receiveRoutine
-		log.Debug("Internal msg queue is full. Using a go-routine")
+		log.Warn("Internal msg queue is full. Using a go-routine")
 		go func() { cs.internalMsgQueue <- mi }()
 	}
 }
@@ -843,7 +857,9 @@ func (cs *ConsensusState) decideProposal(height, round int) {
 		log.Info("Signed proposal", "height", height, "round", round, "proposal", proposal)
 		log.Debug(Fmt("Signed proposal block: %v", block))
 	} else {
-		log.Warn("enterPropose: Error signing proposal", "height", height, "round", round, "error", err)
+		if !cs.replayMode {
+			log.Warn("enterPropose: Error signing proposal", "height", height, "round", round, "error", err)
+		}
 	}
 
 }
@@ -1254,7 +1270,7 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 
 	// cs.StartTime is already set.
 	// Schedule Round0 to start soon.
-	cs.scheduleRound0(height + 1)
+	cs.scheduleRound0(&cs.RoundState)
 
 	// By here,
 	// * cs.Height has been increment to height+1
@@ -1269,9 +1285,6 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 func (cs *ConsensusState) commitStateUpdateMempool(s *sm.State, block *types.Block) error {
 	cs.mempool.Lock()
 	defer cs.mempool.Unlock()
-
-	// flush out any CheckTx that have already started
-	cs.proxyAppConn.FlushSync()
 
 	// Commit block, get hash back
 	res := cs.proxyAppConn.CommitSync()
@@ -1502,8 +1515,9 @@ func (cs *ConsensusState) signVote(type_ byte, hash []byte, header types.PartSet
 	return vote, err
 }
 
-// signs the vote, publishes on internalMsgQueue
+// sign the vote and publish on internalMsgQueue
 func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header types.PartSetHeader) *types.Vote {
+
 	if cs.privValidator == nil || !cs.Validators.HasAddress(cs.privValidator.Address) {
 		return nil
 	}
@@ -1515,7 +1529,9 @@ func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header types.Part
 		log.Info("Signed and pushed vote", "height", cs.Height, "round", cs.Round, "vote", vote, "error", err)
 		return vote
 	} else {
-		log.Warn("Error signing vote", "height", cs.Height, "round", cs.Round, "vote", vote, "error", err)
+		if !cs.replayMode {
+			log.Warn("Error signing vote", "height", cs.Height, "round", cs.Round, "vote", vote, "error", err)
+		}
 		return nil
 	}
 }

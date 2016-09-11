@@ -70,7 +70,7 @@ func ResetConfig(localPath string) cfg.Config {
 	mapConfig.SetDefault("proxy_app", "dummy")
 	mapConfig.SetDefault("tmsp", "socket")
 	mapConfig.SetDefault("moniker", "anonymous")
-	mapConfig.SetDefault("node_laddr", "0.0.0.0:36656")
+	mapConfig.SetDefault("node_laddr", "tcp://0.0.0.0:36656")
 	mapConfig.SetDefault("fast_sync", false)
 	mapConfig.SetDefault("skip_upnp", true)
 	mapConfig.SetDefault("addrbook_file", rootDir+"/addrbook.json")
@@ -78,21 +78,22 @@ func ResetConfig(localPath string) cfg.Config {
 	mapConfig.SetDefault("db_backend", "memdb")
 	mapConfig.SetDefault("db_dir", rootDir+"/data")
 	mapConfig.SetDefault("log_level", "debug")
-	mapConfig.SetDefault("rpc_laddr", "0.0.0.0:36657")
+	mapConfig.SetDefault("rpc_laddr", "tcp://0.0.0.0:36657")
 	mapConfig.SetDefault("prof_laddr", "")
 	mapConfig.SetDefault("revision_file", rootDir+"/revision")
 	mapConfig.SetDefault("cswal", rootDir+"/data/cswal")
 	mapConfig.SetDefault("cswal_light", false)
+	mapConfig.SetDefault("filter_peers", false)
 
 	mapConfig.SetDefault("block_size", 10000)
 	mapConfig.SetDefault("disable_data_hash", false)
-	mapConfig.SetDefault("timeout_propose", 3000)
-	mapConfig.SetDefault("timeout_propose_delta", 1000)
-	mapConfig.SetDefault("timeout_prevote", 2000)
-	mapConfig.SetDefault("timeout_prevote_delta", 1000)
-	mapConfig.SetDefault("timeout_precommit", 2000)
-	mapConfig.SetDefault("timeout_precommit_delta", 1000)
-	mapConfig.SetDefault("timeout_commit", 1000)
+	mapConfig.SetDefault("timeout_propose", 2000)
+	mapConfig.SetDefault("timeout_propose_delta", 500)
+	mapConfig.SetDefault("timeout_prevote", 1000)
+	mapConfig.SetDefault("timeout_prevote_delta", 500)
+	mapConfig.SetDefault("timeout_precommit", 1000)
+	mapConfig.SetDefault("timeout_precommit_delta", 500)
+	mapConfig.SetDefault("timeout_commit", 100)
 	mapConfig.SetDefault("mempool_recheck", true)
 	mapConfig.SetDefault("mempool_recheck_empty", true)
 	mapConfig.SetDefault("mempool_broadcast", true)
@@ -105,12 +106,12 @@ var defaultConfigTmpl = `# This is a TOML config file.
 
 proxy_app = "dummy"
 moniker = "__MONIKER__"
-node_laddr = "0.0.0.0:36656"
+node_laddr = "tcp://0.0.0.0:36656"
 seeds = ""
 fast_sync = false
 db_backend = "memdb"
 log_level = "debug"
-rpc_laddr = "0.0.0.0:36657"
+rpc_laddr = "tcp://0.0.0.0:36657"
 `
 
 func defaultConfig(moniker string) (defaultConfig string) {

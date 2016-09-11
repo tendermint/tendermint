@@ -60,6 +60,14 @@ func NewWAL(file string, light bool) (*WAL, error) {
 	}, nil
 }
 
+func (wal *WAL) Exists() bool {
+	if wal == nil {
+		log.Warn("consensus msg log is nil")
+		return false
+	}
+	return wal.exists
+}
+
 // called in newStep and for each pass in receiveRoutine
 func (wal *WAL) Save(clm ConsensusLogMessageInterface) {
 	if wal != nil {

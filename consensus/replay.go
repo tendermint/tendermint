@@ -19,6 +19,8 @@ import (
 )
 
 // unmarshal and apply a single message to the consensus state
+// as if it were received in receiveRoutine
+// NOTE: receiveRoutine should not be running
 func (cs *ConsensusState) readReplayMessage(msgBytes []byte, newStepCh chan interface{}) error {
 	var err error
 	var msg ConsensusLogMessage
@@ -31,7 +33,7 @@ func (cs *ConsensusState) readReplayMessage(msgBytes []byte, newStepCh chan inte
 	// for logging
 	switch m := msg.Msg.(type) {
 	case types.EventDataRoundState:
-		log.Notice("New Step", "height", m.Height, "round", m.Round, "step", m.Step)
+		log.Notice("Replay: New Step", "height", m.Height, "round", m.Round, "step", m.Step)
 		// these are playback checks
 		ticker := time.After(time.Second * 2)
 		if newStepCh != nil {
@@ -53,40 +55,36 @@ func (cs *ConsensusState) readReplayMessage(msgBytes []byte, newStepCh chan inte
 		switch msg := m.Msg.(type) {
 		case *ProposalMessage:
 			p := msg.Proposal
-			log.Notice("Proposal", "height", p.Height, "round", p.Round, "header",
+			log.Notice("Replay: Proposal", "height", p.Height, "round", p.Round, "header",
 				p.BlockPartsHeader, "pol", p.POLRound, "peer", peerKey)
 		case *BlockPartMessage:
-			log.Notice("BlockPart", "height", msg.Height, "round", msg.Round, "peer", peerKey)
+			log.Notice("Replay: BlockPart", "height", msg.Height, "round", msg.Round, "peer", peerKey)
 		case *VoteMessage:
 			v := msg.Vote
-			log.Notice("Vote", "height", v.Height, "round", v.Round, "type", v.Type,
+			log.Notice("Replay: Vote", "height", v.Height, "round", v.Round, "type", v.Type,
 				"hash", v.BlockHash, "header", v.BlockPartsHeader, "peer", peerKey)
 		}
-		// internal or from peer
-		if m.PeerKey == "" {
-			cs.internalMsgQueue <- m
-		} else {
-			cs.peerMsgQueue <- m
-		}
+
+		cs.handleMsg(m, cs.RoundState)
 	case timeoutInfo:
-		log.Notice("Timeout", "height", m.Height, "round", m.Round, "step", m.Step, "dur", m.Duration)
-		cs.tockChan <- m
+		log.Notice("Replay: Timeout", "height", m.Height, "round", m.Round, "step", m.Step, "dur", m.Duration)
+		cs.handleTimeout(m, cs.RoundState)
 	default:
-		return fmt.Errorf("Unknown ConsensusLogMessage type: %v", reflect.TypeOf(msg.Msg))
+		return fmt.Errorf("Replay: Unknown ConsensusLogMessage type: %v", reflect.TypeOf(msg.Msg))
 	}
 	return nil
 }
 
-// replay only those messages since the last block
+// replay only those messages since the last block.
+// timeoutRoutine should run concurrently to read off tickChan
 func (cs *ConsensusState) catchupReplay(height int) error {
-	if cs.wal == nil {
-		log.Warn("consensus msg log is nil")
+	if !cs.wal.Exists() {
 		return nil
 	}
-	if !cs.wal.exists {
-		// new wal, nothing to catchup on
-		return nil
-	}
+
+	// set replayMode
+	cs.replayMode = true
+	defer func() { cs.replayMode = false }()
 
 	// starting from end of file,
 	// read messages until a new height is found
@@ -142,7 +140,7 @@ func (cs *ConsensusState) catchupReplay(height int) error {
 			return err
 		}
 	}
-	log.Info("Done catchup replay")
+	log.Notice("Done catchup replay")
 	return nil
 }
 
@@ -255,8 +253,9 @@ func (pb *playback) replayReset(count int, newStepCh chan interface{}) error {
 }
 
 func (cs *ConsensusState) startForReplay() {
+	// don't want to start full cs
 	cs.BaseService.OnStart()
-	go cs.receiveRoutine(0)
+
 	// since we replay tocks we just ignore ticks
 	go func() {
 		for {

@@ -4,10 +4,11 @@ IFS=$'\n\t'
 
 # script to update the given dependency in the glide.lock file with the checked out branch on the local host
 
-GLIDE=$1
-LIB=$2
+LIB=$1
 
-OLD_COMMIT=`bash scripts/glide/parse.sh $GLIDE $LIB`
+GLIDE=$GOPATH/src/github.com/tendermint/tendermint/glide.lock
+
+OLD_COMMIT=`bash scripts/glide/parse.sh $LIB`
 
 PWD=`pwd`
 cd $GOPATH/src/github.com/tendermint/$LIB

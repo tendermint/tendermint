@@ -13,7 +13,6 @@ import (
 	"github.com/tendermint/tendermint/config/tendermint_test"
 	nm "github.com/tendermint/tendermint/node"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 // global variables for use across all tests
@@ -52,10 +51,9 @@ func init() {
 // create a new node and sleep forever
 func newNode(ready chan struct{}) {
 	// Create & start node
-	privValidatorFile := config.GetString("priv_validator_file")
-	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
-	node = nm.NewNode(config, privValidator, nm.GetProxyApp)
-	l := p2p.NewDefaultListener("tcp", config.GetString("node_laddr"), true)
+	node = nm.NewNodeDefault(config)
+	protocol, address := nm.ProtocolAndAddress(config.GetString("node_laddr"))
+	l := p2p.NewDefaultListener(protocol, address, true)
 	node.AddListener(l)
 	node.Start()
 

@@ -55,7 +55,7 @@ func GetConfig(rootDir string) cfg.Config {
 	mapConfig.SetDefault("proxy_app", "tcp://127.0.0.1:46658")
 	mapConfig.SetDefault("tmsp", "socket")
 	mapConfig.SetDefault("moniker", "anonymous")
-	mapConfig.SetDefault("node_laddr", "0.0.0.0:46656")
+	mapConfig.SetDefault("node_laddr", "tcp://0.0.0.0:46656")
 	mapConfig.SetDefault("seeds", "")
 	// mapConfig.SetDefault("seeds", "goldenalchemist.chaintest.net:46656")
 	mapConfig.SetDefault("fast_sync", true)
@@ -65,11 +65,12 @@ func GetConfig(rootDir string) cfg.Config {
 	mapConfig.SetDefault("db_backend", "leveldb")
 	mapConfig.SetDefault("db_dir", rootDir+"/data")
 	mapConfig.SetDefault("log_level", "info")
-	mapConfig.SetDefault("rpc_laddr", "0.0.0.0:46657")
+	mapConfig.SetDefault("rpc_laddr", "tcp://0.0.0.0:46657")
 	mapConfig.SetDefault("prof_laddr", "")
 	mapConfig.SetDefault("revision_file", rootDir+"/revision")
 	mapConfig.SetDefault("cswal", rootDir+"/data/cswal")
 	mapConfig.SetDefault("cswal_light", false)
+	mapConfig.SetDefault("filter_peers", false)
 
 	mapConfig.SetDefault("block_size", 10000)
 	mapConfig.SetDefault("disable_data_hash", false)
@@ -92,12 +93,12 @@ var defaultConfigTmpl = `# This is a TOML config file.
 
 proxy_app = "tcp://127.0.0.1:46658"
 moniker = "__MONIKER__"
-node_laddr = "0.0.0.0:46656"
+node_laddr = "tcp://0.0.0.0:46656"
 seeds = ""
 fast_sync = true
 db_backend = "leveldb"
 log_level = "notice"
-rpc_laddr = "0.0.0.0:46657"
+rpc_laddr = "tcp://0.0.0.0:46657"
 `
 
 func defaultConfig(moniker string) (defaultConfig string) {
