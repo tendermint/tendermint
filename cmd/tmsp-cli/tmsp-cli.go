@@ -22,7 +22,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "tmsp-cli"
 	app.Usage = "tmsp-cli [command] [args...]"
-	app.Version = "0.2"
+	app.Version = "0.2.1" // better error handling in console
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "address",
