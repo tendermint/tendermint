@@ -8,7 +8,7 @@ LIB=$1
 
 GLIDE=$GOPATH/src/github.com/tendermint/tendermint/glide.lock
 
-OLD_COMMIT=`bash scripts/glide/parse.sh $GLIDE $LIB`
+OLD_COMMIT=`bash scripts/glide/parse.sh $LIB`
 
 PWD=`pwd`
 cd $GOPATH/src/github.com/tendermint/$LIB

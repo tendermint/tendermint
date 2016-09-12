@@ -7,6 +7,8 @@ import (
 
 // Tendermint's interface to the application consists of multiple connections
 type AppConns interface {
+	Service
+
 	Mempool() AppConnMempool
 	Consensus() AppConnConsensus
 	Query() AppConnQuery
@@ -42,7 +44,6 @@ func NewMultiAppConn(config cfg.Config, clientCreator ClientCreator, state State
 		clientCreator: clientCreator,
 	}
 	multiAppConn.QuitService = *NewQuitService(log, "multiAppConn", multiAppConn)
-	multiAppConn.Start()
 	return multiAppConn
 }
 

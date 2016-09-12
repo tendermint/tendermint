@@ -71,10 +71,10 @@ func DefaultClientCreator(config cfg.Config) ClientCreator {
 	switch addr {
 	case "dummy":
 		return NewLocalClientCreator(dummy.NewDummyApplication())
-	case "nil":
+	case "nilapp":
 		return NewLocalClientCreator(nilapp.NewNilApplication())
 	default:
-		mustConnect := true
+		mustConnect := false // loop retrying
 		return NewRemoteClientCreator(addr, transport, mustConnect)
 	}
 }

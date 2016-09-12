@@ -1,22 +1,22 @@
 hash: d87a1fe0061d41c1e6ec78d405d54ae321e75f4bff22b38d19d3255bbd17f21e
-updated: 2016-08-10T01:41:31.374647528-04:00
+updated: 2016-09-10T18:02:24.023038691-04:00
 imports:
 - name: github.com/btcsuite/btcd
-  version: bd4e64d1d43bad445dd8e6577907c0c265cd83c2
+  version: 2ef82e7db35dc8c499fa9091d768dc99bbaff893
   subpackages:
   - btcec
 - name: github.com/btcsuite/fastsha256
-  version: 302ad4db268b46f9ebda3078f6f7397f96047735
+  version: 637e656429416087660c84436a2a035d69d54e2e
 - name: github.com/BurntSushi/toml
   version: 99064174e013895bbd9b025c31100bd1d9b590ca
 - name: github.com/go-stack/stack
   version: 100eb0c0a9c5b306ca2fb4f165df21d80ada4b82
 - name: github.com/gogo/protobuf
-  version: a4cceea7a401a73fefafd1a21fedbd4694124a82
+  version: a11c89fbb0ad4acfa8abc4a4d5f7e27c477169b1
   subpackages:
   - proto
 - name: github.com/golang/protobuf
-  version: 2c1988e8c18d14b142c0b472624f71647cf39adb
+  version: 1f49d83d9aa00e6ce4fc8258c71cc7786aec968a
   subpackages:
   - proto
 - name: github.com/golang/snappy
@@ -28,33 +28,33 @@ imports:
 - name: github.com/mattn/go-isatty
   version: 66b8e73f3f5cda9f96b69efd03dd3d7fc4a5cdb8
 - name: github.com/spf13/pflag
-  version: f676131e2660dc8cd88de99f7486d34aa8172635
+  version: 6fd2ff4ff8dfcdf5556fbdc0ac0284408274b1a7
 - name: github.com/syndtr/goleveldb
-  version: ab8b5dcf1042e818ab68e770d465112a899b668e
+  version: 6ae1797c0b42b9323fc27ff7dcf568df88f2f33d
   subpackages:
   - leveldb
-  - leveldb/errors
-  - leveldb/opt
   - leveldb/cache
   - leveldb/comparer
+  - leveldb/errors
   - leveldb/filter
   - leveldb/iterator
   - leveldb/journal
   - leveldb/memdb
+  - leveldb/opt
   - leveldb/storage
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/ed25519
   version: 1f52c6f8b8a5c7908aff4497c186af344b428925
   subpackages:
-  - extra25519
   - edwards25519
+  - extra25519
 - name: github.com/tendermint/flowcontrol
   version: 84d9671090430e8ec80e35b339907e0579b999eb
 - name: github.com/tendermint/go-clist
   version: 3baa390bbaf7634251c42ad69a8682e7e3990552
 - name: github.com/tendermint/go-common
-  version: 3dabf304a16e42ce2db6a456ef508a75cdf17679
+  version: 47e06734f6ee488cc2e61550a38642025e1d4227
   subpackages:
   - test
 - name: github.com/tendermint/go-config
@@ -70,7 +70,7 @@ imports:
 - name: github.com/tendermint/go-merkle
   version: 05042c6ab9cad51d12e4cecf717ae68e3b1409a8
 - name: github.com/tendermint/go-p2p
-  version: 642901d5aae311368d91ebfb888a4f6877de9614
+  version: f508f3f20b5bb36f03d3bc83647b7a92425139d1
   subpackages:
   - upnp
 - name: github.com/tendermint/go-rpc
@@ -86,40 +86,40 @@ imports:
   subpackages:
   - term
 - name: github.com/tendermint/tmsp
-  version: 58bacfb04e36cf4babae25da3b9068ae91dc662b
+  version: ead192adbbbf85ac581cf775b18ae70d59f86457
   subpackages:
   - client
+  - example/counter
   - example/dummy
   - example/nil
-  - types
-  - example/counter
   - server
+  - types
 - name: golang.org/x/crypto
-  version: e0d166c33c321d0ff863f459a5882096e334f508
+  version: aa2481cbfe81d911eb62b642b7a6b5ec58bbea71
   subpackages:
-  - ripemd160
+  - curve25519
   - nacl/box
   - nacl/secretbox
   - openpgp/armor
-  - curve25519
-  - salsa20/salsa
-  - poly1305
   - openpgp/errors
+  - poly1305
+  - ripemd160
+  - salsa20/salsa
 - name: golang.org/x/net
-  version: 075e191f18186a8ff2becaf64478e30f4545cdad
+  version: cfe3c2a7525b50c3d707256e371c90938cfef98a
   subpackages:
   - context
   - http2
-  - trace
   - http2/hpack
-  - lex/httplex
   - internal/timeseries
+  - lex/httplex
+  - trace
 - name: golang.org/x/sys
-  version: a646d33e2ee3172a661fc09bca23bb4889a41bc8
+  version: 30de6d19a3bd89a5f38ae4028e23aaa5582648af
   subpackages:
   - unix
 - name: google.golang.org/grpc
-  version: 6140c2e83cbed8b448f28a16c1bda2947f1d7ba3
+  version: 28707e14b1d2b2f5da81474dea2790d71e526987
   subpackages:
   - codes
   - credentials
@@ -127,6 +127,6 @@ imports:
   - internal
   - metadata
   - naming
-  - transport
   - peer
+  - transport
 testImports: []

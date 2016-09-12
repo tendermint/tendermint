@@ -26,6 +26,24 @@ function dummy_over_socket(){
 	kill -9 $pid_dummy $pid_tendermint
 }
 
+# start tendermint first
+function dummy_over_socket_reorder(){
+	rm -rf $TMROOT
+	tendermint init
+	echo "Starting tendermint and dummy"
+	tendermint node > tendermint.log &
+	pid_tendermint=$!
+	sleep 2
+	dummy > /dev/null &
+	pid_dummy=$!
+	sleep 5
+
+	echo "running test"
+	bash dummy_test.sh "Dummy over Socket"
+
+	kill -9 $pid_dummy $pid_tendermint
+}
+
 
 function counter_over_socket() {
 	rm -rf $TMROOT
@@ -65,6 +83,9 @@ case "$1" in
 	"dummy_over_socket")
 		dummy_over_socket
 		;;
+	"dummy_over_socket_reorder")
+		dummy_over_socket_reorder
+		;;
 	"counter_over_socket")
 		counter_over_socket
 		;;
@@ -74,6 +95,8 @@ case "$1" in
 	*)
 		echo "Running all"
 		dummy_over_socket
+		echo ""
+		dummy_over_socket_reorder
 		echo ""
 		counter_over_socket
 		echo ""
