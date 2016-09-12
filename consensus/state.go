@@ -1224,11 +1224,6 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	log.Notice(Fmt("Finalizing commit of block with %d txs", block.NumTxs), "height", block.Height, "hash", block.Hash())
 	log.Info(Fmt("%v", block))
 
-	// Fire off event for new block.
-	// TODO: Handle app failure.  See #177
-	cs.evsw.FireEvent(types.EventStringNewBlock(), types.EventDataNewBlock{block})
-	cs.evsw.FireEvent(types.EventStringNewBlockHeader(), types.EventDataNewBlockHeader{block.Header})
-
 	// Create a copy of the state for staging
 	stateCopy := cs.state.Copy()
 
@@ -1264,6 +1259,11 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 
 	// Save the state.
 	stateCopy.Save()
+
+	// Fire off event for new block.
+	// TODO: Handle app failure.  See #177
+	cs.evsw.FireEvent(types.EventStringNewBlock(), types.EventDataNewBlock{block})
+	cs.evsw.FireEvent(types.EventStringNewBlockHeader(), types.EventDataNewBlockHeader{block.Header})
 
 	// NewHeightStep!
 	cs.updateToState(stateCopy)
