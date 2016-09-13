@@ -623,7 +623,7 @@ OUTER_LOOP:
 		{
 			rs := conR.conS.GetRoundState()
 			prs := ps.GetRoundState()
-			if rs.Height == prs.Height {
+			if rs.Height == prs.Height && prs.ProposalPOLRound >= 0 {
 				if maj23, ok := rs.Votes.Prevotes(prs.ProposalPOLRound).TwoThirdsMajority(); ok {
 					peer.TrySend(DataChannel, struct{ ConsensusMessage }{&VoteSetMaj23Message{
 						Height:  prs.Height,
