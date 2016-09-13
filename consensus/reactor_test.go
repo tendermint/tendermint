@@ -35,7 +35,7 @@ func resetConfigTimeouts() {
 	//	config.Set("timeout_commit", 1000)
 }
 
-func _TestReactor(t *testing.T) {
+func TestReactor(t *testing.T) {
 	resetConfigTimeouts()
 	N := 4
 	css := randConsensusNet(N)
@@ -85,7 +85,7 @@ func _TestReactor(t *testing.T) {
 	}
 }
 
-func _TestByzantine(t *testing.T) {
+func TestByzantine(t *testing.T) {
 	resetConfigTimeouts()
 	N := 4
 	css := randConsensusNet(N)

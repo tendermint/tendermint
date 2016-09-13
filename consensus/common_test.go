@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
 	dbm "github.com/tendermint/go-db"
 	bc "github.com/tendermint/tendermint/blockchain"
@@ -255,6 +256,11 @@ func randConsensusNet(nValidators int) []*ConsensusState {
 		state.Save()
 		css[i] = newConsensusState(state, privVals[i], counter.NewCounterApplication(true))
 	}
+
+	// we use memdb, but need a dir for the cswal.
+	// in this case they all write to the same one but we dont care
+	// NOTE: they all share a pointer to the same config object!
+	EnsureDir(css[0].config.GetString("db_dir"), 0700)
 	return css
 }
 
