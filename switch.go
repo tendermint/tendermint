@@ -195,7 +195,7 @@ func (sw *Switch) OnStop() {
 // NOTE: This performs a blocking handshake before the peer is added.
 // CONTRACT: Iff error is returned, peer is nil, and conn is immediately closed.
 func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, error) {
-	// Filter by ip
+	// Filter by addr (ie. ip:port)
 	if err := sw.FilterConnByAddr(conn.RemoteAddr()); err != nil {
 		return nil, err
 	}
@@ -456,27 +456,50 @@ type SwitchEventDonePeer struct {
 //------------------------------------------------------------------
 // Switches connected via arbitrary net.Conn; useful for testing
 
-// Returns n fully connected switches.
+// Returns n switches, connected according to the connect func.
+// If connect==Connect2Switches, the switches will be fully connected.
 // initSwitch defines how the ith switch should be initialized (ie. with what reactors).
-func MakeConnectedSwitches(n int, initSwitch func(int, *Switch) *Switch, connPipe func() (net.Conn, net.Conn)) []*Switch {
+// NOTE: panics if any switch fails to start.
+func MakeConnectedSwitches(n int, initSwitch func(int, *Switch) *Switch, connect func([]*Switch, int, int)) []*Switch {
 	switches := make([]*Switch, n)
 	for i := 0; i < n; i++ {
 		switches[i] = makeSwitch(i, "testing", "123.123.123", initSwitch)
 	}
 
 	for i := 0; i < n; i++ {
-		switchI := switches[i]
 		for j := i; j < n; j++ {
-			switchJ := switches[j]
-			c1, c2 := connPipe()
-			go switchI.AddPeerWithConnection(c1, false) // AddPeer is blocking, requires handshake.
-			go switchJ.AddPeerWithConnection(c2, true)
+			connect(switches, i, j)
 		}
 	}
 	// Wait for things to happen, peers to get added...
+	// TODO: better
 	time.Sleep(100 * time.Millisecond * time.Duration(n*n))
 
+	if err := StartSwitches(switches); err != nil {
+		panic(err)
+	}
+
 	return switches
+}
+
+// Will connect switches i and j via net.Pipe()
+// NOTE: caller ensures i and j are within bounds
+func Connect2Switches(switches []*Switch, i, j int) {
+	switchI := switches[i]
+	switchJ := switches[j]
+	c1, c2 := net.Pipe()
+	go switchI.AddPeerWithConnection(c1, false) // AddPeer is blocking, requires handshake.
+	go switchJ.AddPeerWithConnection(c2, true)
+}
+
+func StartSwitches(switches []*Switch) error {
+	for _, s := range switches {
+		_, err := s.Start() // start switch and reactors
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func makeSwitch(i int, network, version string, initSwitch func(int, *Switch) *Switch) *Switch {
@@ -491,6 +514,5 @@ func makeSwitch(i int, network, version string, initSwitch func(int, *Switch) *S
 		Version: version,
 	})
 	s.SetNodePrivKey(privKey)
-	s.Start() // start switch and reactors
 	return s
 }
