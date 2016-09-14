@@ -400,7 +400,7 @@ OUTER_LOOP:
 				// Ensure that the peer's PartSetHeader is correct
 				blockMeta := conR.blockStore.LoadBlockMeta(prs.Height)
 				if blockMeta == nil {
-					log.Warn("Failed to load block meta", "peer height", prs.Height, "our height", rs.Height)
+					log.Warn("Failed to load block meta", "peer height", prs.Height, "our height", rs.Height, "blockstore height", conR.blockStore.Height(), "pv", conR.conS.privValidator)
 					time.Sleep(peerGossipSleepDuration)
 					continue OUTER_LOOP
 				} else if !blockMeta.PartsHeader.Equals(prs.ProposalBlockPartsHeader) {
