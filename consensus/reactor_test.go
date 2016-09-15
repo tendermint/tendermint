@@ -11,11 +11,9 @@ import (
 	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-crypto"
-	dbm "github.com/tendermint/go-db"
 	"github.com/tendermint/go-events"
 	"github.com/tendermint/go-logger"
 	"github.com/tendermint/go-p2p"
-	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -42,9 +40,7 @@ func TestReactor(t *testing.T) {
 	reactors := make([]*ConsensusReactor, N)
 	eventChans := make([]chan interface{}, N)
 	for i := 0; i < N; i++ {
-		blockStoreDB := dbm.NewDB(Fmt("blockstore%d", i), config.GetString("db_backend"), config.GetString("db_dir"))
-		blockStore := bc.NewBlockStore(blockStoreDB)
-		reactors[i] = NewConsensusReactor(css[i], blockStore, false)
+		reactors[i] = NewConsensusReactor(css[i], false)
 		reactors[i].SetPrivValidator(css[i].privValidator)
 
 		eventSwitch := events.NewEventSwitch()
@@ -71,6 +67,7 @@ func TestReactor(t *testing.T) {
 		}(i)
 	}
 
+	// Make wait into a channel
 	done := make(chan struct{})
 	go func() {
 		wg.Wait()
@@ -104,9 +101,6 @@ func TestByzantine(t *testing.T) {
 	reactors := make([]p2p.Reactor, N)
 	eventChans := make([]chan interface{}, N)
 	for i := 0; i < N; i++ {
-		blockStoreDB := dbm.NewDB(Fmt("blockstore%d", i), config.GetString("db_backend"), config.GetString("db_dir"))
-		blockStore := bc.NewBlockStore(blockStoreDB)
-
 		var privVal PrivValidator
 		privVal = css[i].privValidator
 		if i == 0 {
@@ -127,7 +121,7 @@ func TestByzantine(t *testing.T) {
 		}
 		eventChans[i] = subscribeToEvent(eventSwitch, "tester", types.EventStringNewBlock(), 1)
 
-		conR := NewConsensusReactor(css[i], blockStore, false)
+		conR := NewConsensusReactor(css[i], false)
 		conR.SetPrivValidator(privVal)
 		conR.SetEventSwitch(eventSwitch)
 
@@ -195,6 +189,10 @@ func TestByzantine(t *testing.T) {
 	select {
 	case <-done:
 	case <-tick.C:
+		for i, reactor := range reactors {
+			t.Log(Fmt("Consensus Reactor %v", i))
+			t.Log(Fmt("%v", reactor))
+		}
 		t.Fatalf("Timed out waiting for all validators to commit first block")
 	}
 }
