@@ -14,10 +14,6 @@ import (
 	"github.com/tendermint/go-wire"
 )
 
-const (
-	partSize = 65536 // 64KB ...  4096 // 4KB
-)
-
 var (
 	ErrPartSetUnexpectedIndex = errors.New("Error part set unexpected index")
 	ErrPartSetInvalidProof    = errors.New("Error part set invalid proof")
@@ -95,7 +91,7 @@ type PartSet struct {
 
 // Returns an immutable, full PartSet from the data bytes.
 // The data bytes are split into "partSize" chunks, and merkle tree computed.
-func NewPartSetFromData(data []byte) *PartSet {
+func NewPartSetFromData(data []byte, partSize int) *PartSet {
 	// divide data into 4kb parts.
 	total := (len(data) + partSize - 1) / partSize
 	parts := make([]*Part, total)

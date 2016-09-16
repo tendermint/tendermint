@@ -33,6 +33,7 @@ var _ = wire.RegisterInterface(
 // Can be used for crash-recovery and deterministic replay
 // TODO: currently the wal is overwritten during replay catchup
 //   give it a mode so it's either reading or appending - must read to end to start appending again
+// TODO: #HEIGHT 1 is never printed ...
 type WAL struct {
 	BaseService
 

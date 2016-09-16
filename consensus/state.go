@@ -946,7 +946,7 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 		},
 	}
 	block.FillHeader()
-	blockParts = block.MakePartSet()
+	blockParts = block.MakePartSet(cs.config.GetInt("block_part_size"))
 
 	return block, blockParts
 }

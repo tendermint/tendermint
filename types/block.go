@@ -81,8 +81,8 @@ func (b *Block) Hash() []byte {
 	return b.Header.Hash()
 }
 
-func (b *Block) MakePartSet() *PartSet {
-	return NewPartSetFromData(wire.BinaryBytes(b))
+func (b *Block) MakePartSet(partSize int) *PartSet {
+	return NewPartSetFromData(wire.BinaryBytes(b), partSize)
 }
 
 // Convenience.

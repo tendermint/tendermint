@@ -260,7 +260,7 @@ func randConsensusNet(nValidators int) []*ConsensusState {
 		state := sm.MakeGenesisState(db, genDoc)
 		state.Save()
 		thisConfig := tendermint_test.ResetConfig(Fmt("consensus_reactor_test_%d", i))
-		EnsureDir(thisConfig.GetString("db_dir"), 0700) // dir for wal
+		EnsureDir(thisConfig.GetString("cs_wal_dir"), 0700) // dir for wal
 		css[i] = newConsensusStateWithConfig(thisConfig, state, privVals[i], counter.NewCounterApplication(true))
 	}
 	return css

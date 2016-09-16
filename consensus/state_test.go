@@ -181,6 +181,8 @@ func TestBadProposal(t *testing.T) {
 	height, round := cs1.Height, cs1.Round
 	vs2 := vss[1]
 
+	partSize := config.GetInt("block_part_size")
+
 	proposalCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringCompleteProposal(), 1)
 	voteCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringVote(), 1)
 
@@ -197,7 +199,7 @@ func TestBadProposal(t *testing.T) {
 	}
 	stateHash[0] = byte((stateHash[0] + 1) % 255)
 	propBlock.AppHash = stateHash
-	propBlockParts := propBlock.MakePartSet()
+	propBlockParts := propBlock.MakePartSet(partSize)
 	proposal := types.NewProposal(vs2.Height, round, propBlockParts.Header(), -1, types.BlockID{})
 	if err := vs2.SignProposal(config.GetString("chain_id"), proposal); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
@@ -218,14 +220,14 @@ func TestBadProposal(t *testing.T) {
 	validatePrevote(t, cs1, round, vss[0], nil)
 
 	// add bad prevote from vs2 and wait for it
-	signAddVotes(cs1, types.VoteTypePrevote, propBlock.Hash(), propBlock.MakePartSet().Header(), vs2)
+	signAddVotes(cs1, types.VoteTypePrevote, propBlock.Hash(), propBlock.MakePartSet(partSize).Header(), vs2)
 	<-voteCh
 
 	// wait for precommit
 	<-voteCh
 
 	validatePrecommit(t, cs1, round, 0, vss[0], nil, nil)
-	signAddVotes(cs1, types.VoteTypePrecommit, propBlock.Hash(), propBlock.MakePartSet().Header(), vs2)
+	signAddVotes(cs1, types.VoteTypePrecommit, propBlock.Hash(), propBlock.MakePartSet(partSize).Header(), vs2)
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -326,6 +328,8 @@ func TestLockNoPOL(t *testing.T) {
 	vs2 := vss[1]
 	height := cs1.Height
 
+	partSize := config.GetInt("block_part_size")
+
 	timeoutProposeCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringTimeoutPropose(), 1)
 	timeoutWaitCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringTimeoutWait(), 1)
 	voteCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringVote(), 1)
@@ -362,7 +366,7 @@ func TestLockNoPOL(t *testing.T) {
 	hash := make([]byte, len(theBlockHash))
 	copy(hash, theBlockHash)
 	hash[0] = byte((hash[0] + 1) % 255)
-	signAddVotes(cs1, types.VoteTypePrecommit, hash, rs.ProposalBlock.MakePartSet().Header(), vs2)
+	signAddVotes(cs1, types.VoteTypePrecommit, hash, rs.ProposalBlock.MakePartSet(partSize).Header(), vs2)
 	<-voteCh // precommit
 
 	// (note we're entering precommit for a second time this round)
@@ -394,7 +398,7 @@ func TestLockNoPOL(t *testing.T) {
 	validatePrevote(t, cs1, 1, vss[0], rs.LockedBlock.Hash())
 
 	// add a conflicting prevote from the other validator
-	signAddVotes(cs1, types.VoteTypePrevote, hash, rs.ProposalBlock.MakePartSet().Header(), vs2)
+	signAddVotes(cs1, types.VoteTypePrevote, hash, rs.ProposalBlock.MakePartSet(partSize).Header(), vs2)
 	<-voteCh
 
 	// now we're going to enter prevote again, but with invalid args
@@ -409,7 +413,7 @@ func TestLockNoPOL(t *testing.T) {
 
 	// add conflicting precommit from vs2
 	// NOTE: in practice we should never get to a point where there are precommits for different blocks at the same round
-	signAddVotes(cs1, types.VoteTypePrecommit, hash, rs.ProposalBlock.MakePartSet().Header(), vs2)
+	signAddVotes(cs1, types.VoteTypePrecommit, hash, rs.ProposalBlock.MakePartSet(partSize).Header(), vs2)
 	<-voteCh
 
 	// (note we're entering precommit for a second time this round, but with invalid args
@@ -436,7 +440,7 @@ func TestLockNoPOL(t *testing.T) {
 
 	validatePrevote(t, cs1, 2, vss[0], rs.LockedBlock.Hash())
 
-	signAddVotes(cs1, types.VoteTypePrevote, hash, rs.ProposalBlock.MakePartSet().Header(), vs2)
+	signAddVotes(cs1, types.VoteTypePrevote, hash, rs.ProposalBlock.MakePartSet(partSize).Header(), vs2)
 	<-voteCh
 
 	<-timeoutWaitCh // prevote wait
@@ -444,7 +448,7 @@ func TestLockNoPOL(t *testing.T) {
 
 	validatePrecommit(t, cs1, 2, 0, vss[0], nil, theBlockHash) // precommit nil but be locked on proposal
 
-	signAddVotes(cs1, types.VoteTypePrecommit, hash, rs.ProposalBlock.MakePartSet().Header(), vs2) // NOTE: conflicting precommits at same height
+	signAddVotes(cs1, types.VoteTypePrecommit, hash, rs.ProposalBlock.MakePartSet(partSize).Header(), vs2) // NOTE: conflicting precommits at same height
 	<-voteCh
 
 	<-timeoutWaitCh
@@ -465,7 +469,7 @@ func TestLockNoPOL(t *testing.T) {
 
 	// now we're on a new round and not the proposer
 	// so set the proposal block
-	cs1.SetProposalAndBlock(prop, propBlock, propBlock.MakePartSet(), "")
+	cs1.SetProposalAndBlock(prop, propBlock, propBlock.MakePartSet(partSize), "")
 
 	<-proposalCh
 	<-voteCh // prevote
@@ -473,7 +477,7 @@ func TestLockNoPOL(t *testing.T) {
 	// prevote for locked block (not proposal)
 	validatePrevote(t, cs1, 0, vss[0], cs1.LockedBlock.Hash())
 
-	signAddVotes(cs1, types.VoteTypePrevote, propBlock.Hash(), propBlock.MakePartSet().Header(), vs2)
+	signAddVotes(cs1, types.VoteTypePrevote, propBlock.Hash(), propBlock.MakePartSet(partSize).Header(), vs2)
 	<-voteCh
 
 	<-timeoutWaitCh
@@ -481,7 +485,7 @@ func TestLockNoPOL(t *testing.T) {
 
 	validatePrecommit(t, cs1, 2, 0, vss[0], nil, theBlockHash) // precommit nil but locked on proposal
 
-	signAddVotes(cs1, types.VoteTypePrecommit, propBlock.Hash(), propBlock.MakePartSet().Header(), vs2) // NOTE: conflicting precommits at same height
+	signAddVotes(cs1, types.VoteTypePrecommit, propBlock.Hash(), propBlock.MakePartSet(partSize).Header(), vs2) // NOTE: conflicting precommits at same height
 	<-voteCh
 }
 
@@ -489,6 +493,8 @@ func TestLockNoPOL(t *testing.T) {
 func TestLockPOLRelock(t *testing.T) {
 	cs1, vss := randConsensusState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
+
+	partSize := config.GetInt("block_part_size")
 
 	timeoutProposeCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringTimeoutPropose(), 1)
 	timeoutWaitCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringTimeoutWait(), 1)
@@ -531,7 +537,7 @@ func TestLockPOLRelock(t *testing.T) {
 
 	// before we timeout to the new round set the new proposal
 	prop, propBlock := decideProposal(cs1, vs2, vs2.Height, vs2.Round+1)
-	propBlockParts := propBlock.MakePartSet()
+	propBlockParts := propBlock.MakePartSet(partSize)
 	propBlockHash := propBlock.Hash()
 
 	incrementRound(vs2, vs3, vs4)
@@ -600,6 +606,8 @@ func TestLockPOLUnlock(t *testing.T) {
 	cs1, vss := randConsensusState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 
+	partSize := config.GetInt("block_part_size")
+
 	proposalCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringCompleteProposal(), 1)
 	timeoutProposeCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringTimeoutPropose(), 1)
 	timeoutWaitCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringTimeoutWait(), 1)
@@ -639,7 +647,7 @@ func TestLockPOLUnlock(t *testing.T) {
 
 	// before we time out into new round, set next proposal block
 	prop, propBlock := decideProposal(cs1, vs2, vs2.Height, vs2.Round+1)
-	propBlockParts := propBlock.MakePartSet()
+	propBlockParts := propBlock.MakePartSet(partSize)
 
 	incrementRound(vs2, vs3, vs4)
 
@@ -693,6 +701,8 @@ func TestLockPOLSafety1(t *testing.T) {
 	cs1, vss := randConsensusState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 
+	partSize := config.GetInt("block_part_size")
+
 	proposalCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringCompleteProposal(), 1)
 	timeoutProposeCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringTimeoutPropose(), 1)
 	timeoutWaitCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringTimeoutWait(), 1)
@@ -711,7 +721,7 @@ func TestLockPOLSafety1(t *testing.T) {
 	validatePrevote(t, cs1, 0, vss[0], propBlock.Hash())
 
 	// the others sign a polka but we don't see it
-	prevotes := signVotes(types.VoteTypePrevote, propBlock.Hash(), propBlock.MakePartSet().Header(), vs2, vs3, vs4)
+	prevotes := signVotes(types.VoteTypePrevote, propBlock.Hash(), propBlock.MakePartSet(partSize).Header(), vs2, vs3, vs4)
 
 	// before we time out into new round, set next proposer
 	// and next proposal block
@@ -729,7 +739,7 @@ func TestLockPOLSafety1(t *testing.T) {
 
 	prop, propBlock := decideProposal(cs1, vs2, vs2.Height, vs2.Round+1)
 	propBlockHash := propBlock.Hash()
-	propBlockParts := propBlock.MakePartSet()
+	propBlockParts := propBlock.MakePartSet(partSize)
 
 	incrementRound(vs2, vs3, vs4)
 
@@ -812,6 +822,8 @@ func TestLockPOLSafety2(t *testing.T) {
 	cs1, vss := randConsensusState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 
+	partSize := config.GetInt("block_part_size")
+
 	proposalCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringCompleteProposal(), 1)
 	timeoutProposeCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringTimeoutPropose(), 1)
 	timeoutWaitCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringTimeoutWait(), 1)
@@ -823,7 +835,7 @@ func TestLockPOLSafety2(t *testing.T) {
 	// (even though we signed it, shhh)
 	_, propBlock0 := decideProposal(cs1, vss[0], cs1.Height, cs1.Round)
 	propBlockHash0 := propBlock0.Hash()
-	propBlockParts0 := propBlock0.MakePartSet()
+	propBlockParts0 := propBlock0.MakePartSet(partSize)
 
 	// the others sign a polka but we don't see it
 	prevotes := signVotes(types.VoteTypePrevote, propBlockHash0, propBlockParts0.Header(), vs2, vs3, vs4)
@@ -831,7 +843,7 @@ func TestLockPOLSafety2(t *testing.T) {
 	// the block for round 1
 	prop1, propBlock1 := decideProposal(cs1, vs2, vs2.Height, vs2.Round+1)
 	propBlockHash1 := propBlock1.Hash()
-	propBlockParts1 := propBlock1.MakePartSet()
+	propBlockParts1 := propBlock1.MakePartSet(partSize)
 	propBlockID1 := types.BlockID{propBlockHash1, propBlockParts1.Header()}
 
 	incrementRound(vs2, vs3, vs4)
@@ -985,6 +997,8 @@ func TestHalt1(t *testing.T) {
 	cs1, vss := randConsensusState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 
+	partSize := config.GetInt("block_part_size")
+
 	proposalCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringCompleteProposal(), 1)
 	timeoutWaitCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringTimeoutWait(), 1)
 	newRoundCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringNewRound(), 1)
@@ -997,7 +1011,7 @@ func TestHalt1(t *testing.T) {
 	re := <-proposalCh
 	rs := re.(types.EventDataRoundState).RoundState.(*RoundState)
 	propBlock := rs.ProposalBlock
-	propBlockParts := propBlock.MakePartSet()
+	propBlockParts := propBlock.MakePartSet(partSize)
 
 	<-voteCh // prevote
 
