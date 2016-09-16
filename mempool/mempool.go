@@ -239,7 +239,7 @@ func (mem *Mempool) resCbRecheck(req *tmsp.Request, res *tmsp.Response) {
 }
 
 // Get the valid transactions remaining
-// If maxTxs is 0, there is no cap.
+// If maxTxs is -1, there is no cap on returned transactions.
 func (mem *Mempool) Reap(maxTxs int) []types.Tx {
 	mem.proxyMtx.Lock()
 	defer mem.proxyMtx.Unlock()
