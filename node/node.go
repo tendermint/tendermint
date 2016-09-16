@@ -102,7 +102,7 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreato
 
 	// Make ConsensusReactor
 	consensusState := consensus.NewConsensusState(config, state.Copy(), proxyApp.Consensus(), blockStore, mempool)
-	consensusReactor := consensus.NewConsensusReactor(consensusState, blockStore, fastSync)
+	consensusReactor := consensus.NewConsensusReactor(consensusState, fastSync)
 	if privValidator != nil {
 		consensusReactor.SetPrivValidator(privValidator)
 	}

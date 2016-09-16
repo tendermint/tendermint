@@ -24,6 +24,8 @@ but which round is not known in advance, so when a peer
 provides a precommit for a round greater than mtx.round,
 we create a new entry in roundVoteSets but also remember the
 peer to prevent abuse.
+We let each peer provide us with up to 2 unexpected "catchup" rounds.
+One for their LastCommit round, and another for the official commit round.
 */
 type HeightVoteSet struct {
 	chainID string
@@ -33,7 +35,7 @@ type HeightVoteSet struct {
 	mtx               sync.Mutex
 	round             int                  // max tracked round
 	roundVoteSets     map[int]RoundVoteSet // keys: [0...round]
-	peerCatchupRounds map[string]int       // keys: peer.Key; values: round
+	peerCatchupRounds map[string][]int     // keys: peer.Key; values: at most 2 rounds
 }
 
 func NewHeightVoteSet(chainID string, height int, valSet *types.ValidatorSet) *HeightVoteSet {
@@ -51,7 +53,7 @@ func (hvs *HeightVoteSet) Reset(height int, valSet *types.ValidatorSet) {
 	hvs.height = height
 	hvs.valSet = valSet
 	hvs.roundVoteSets = make(map[int]RoundVoteSet)
-	hvs.peerCatchupRounds = make(map[string]int)
+	hvs.peerCatchupRounds = make(map[string][]int)
 
 	hvs.addRound(0)
 	hvs.round = 0
@@ -108,10 +110,10 @@ func (hvs *HeightVoteSet) AddVote(vote *types.Vote, peerKey string) (added bool,
 	}
 	voteSet := hvs.getVoteSet(vote.Round, vote.Type)
 	if voteSet == nil {
-		if _, ok := hvs.peerCatchupRounds[peerKey]; !ok {
+		if rndz := hvs.peerCatchupRounds[peerKey]; len(rndz) < 2 {
 			hvs.addRound(vote.Round)
 			voteSet = hvs.getVoteSet(vote.Round, vote.Type)
-			hvs.peerCatchupRounds[peerKey] = vote.Round
+			hvs.peerCatchupRounds[peerKey] = append(rndz, vote.Round)
 		} else {
 			// Peer has sent a vote that does not match our round,
 			// for more than one round.  Bad peer!

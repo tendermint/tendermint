@@ -409,10 +409,12 @@ func (voteSet *VoteSet) StringIndented(indent string) string {
 %s  H:%v R:%v T:%v
 %s  %v
 %s  %v
+%s  %v
 %s}`,
 		indent, voteSet.height, voteSet.round, voteSet.type_,
 		indent, strings.Join(voteStrings, "\n"+indent+"  "),
 		indent, voteSet.votesBitArray,
+		indent, voteSet.peerMaj23s,
 		indent)
 }
 
@@ -422,8 +424,8 @@ func (voteSet *VoteSet) StringShort() string {
 	}
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
-	return fmt.Sprintf(`VoteSet{H:%v R:%v T:%v +2/3:%v %v}`,
-		voteSet.height, voteSet.round, voteSet.type_, voteSet.maj23, voteSet.votesBitArray)
+	return fmt.Sprintf(`VoteSet{H:%v R:%v T:%v +2/3:%v %v %v}`,
+		voteSet.height, voteSet.round, voteSet.type_, voteSet.maj23, voteSet.votesBitArray, voteSet.peerMaj23s)
 }
 
 //--------------------------------------------------------------------------------
