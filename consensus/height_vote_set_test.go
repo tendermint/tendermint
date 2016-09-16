@@ -25,11 +25,17 @@ func TestPeerCatchupRounds(t *testing.T) {
 
 	vote1000_0 := makeVoteHR(t, 1, 1000, privVals, 0)
 	added, err = hvs.AddVote(vote1000_0, "peer1")
+	if !added || err != nil {
+		t.Error("Expected to successfully add vote from peer", added, err)
+	}
+
+	vote1001_0 := makeVoteHR(t, 1, 1001, privVals, 0)
+	added, err = hvs.AddVote(vote1001_0, "peer1")
 	if added {
 		t.Error("Expected to *not* add vote from peer, too many catchup rounds.")
 	}
 
-	added, err = hvs.AddVote(vote1000_0, "peer2")
+	added, err = hvs.AddVote(vote1001_0, "peer2")
 	if !added || err != nil {
 		t.Error("Expected to successfully add vote from another peer")
 	}
