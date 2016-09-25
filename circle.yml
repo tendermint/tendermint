@@ -31,4 +31,6 @@ test:
   override:
     - "cd $REPO && make test_integrations"
   post:
-    - bash <(curl -s https://codecov.io/bash)
+    - "cd $REPO && bash <(curl -s https://codecov.io/bash)"
+
+

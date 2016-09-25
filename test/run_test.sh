@@ -6,8 +6,7 @@ echo `pwd`
 BRANCH=`git rev-parse --abbrev-ref HEAD`
 echo "Current branch: $BRANCH"
 
-# go test --race github.com/tendermint/tendermint/...
-make test_race
+bash test/test_cover.sh
 
 # run the app tests
 bash test/app/test.sh
