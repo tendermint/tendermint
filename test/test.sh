@@ -10,7 +10,10 @@ bash ./test/docker/build.sh
 
 echo ""
 echo "* running go tests and app tests in docker container"
-docker run -t tester bash test/run_test.sh
+docker run --name run_test -t tester bash test/run_test.sh
+
+# copy the coverage results out of docker container
+docker cp run_test:/go/src/github.com/tendermint/tendermint/coverage.txt .
 
 # test basic network connectivity
 # by starting a local testnet and checking peers connect and make blocks
