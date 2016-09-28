@@ -11,6 +11,7 @@ For more information on TMSP, motivations, and tutorials, please visit [our blog
 Other implementations:
 * [cpp-tmsp](https://github.com/mdyring/cpp-tmsp) by Martin Dyring-Andersen
 * [js-tmsp](https://github.com/tendermint/js-tmsp)
+* [jTMSP](https://github.com/jTMSP/) for Java
 
 ## Contents
 
