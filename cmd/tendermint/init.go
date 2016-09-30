@@ -20,4 +20,5 @@ func init_files() {
 
 	genDoc.SaveAs(config.GetString("genesis_file"))
 
+	log.Notice("Initialized tendermint", "genesis", config.GetString("genesis_file"), "priv_validator", config.GetString("priv_validator_file"))
 }
