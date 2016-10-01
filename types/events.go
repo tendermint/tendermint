@@ -5,6 +5,7 @@ import (
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-events"
 	"github.com/tendermint/go-wire"
+	tmsp "github.com/tendermint/tmsp/types"
 )
 
 // Functions to generate eventId strings
@@ -72,10 +73,11 @@ type EventDataNewBlockHeader struct {
 
 // All txs fire EventDataTx
 type EventDataTx struct {
-	Tx     Tx     `json:"tx"`
-	Result []byte `json:"result"`
-	Log    string `json:"log"`
-	Error  string `json:"error"`
+	Tx     Tx            `json:"tx"`
+	Result []byte        `json:"result"`
+	Log    string        `json:"log"`
+	Code   tmsp.CodeType `json:"code"`
+	Error  string        `json:"error"`
 }
 
 // NOTE: This goes into the replay WAL
