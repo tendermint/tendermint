@@ -67,15 +67,25 @@ func (s *State) execBlockOnProxyApp(eventCache events.Fireable, proxyAppConn pro
 			// TODO: make use of this info
 			// Blocks may include invalid txs.
 			// reqAppendTx := req.(tmsp.RequestAppendTx)
-			if r.AppendTx.Code == tmsp.CodeType_OK {
+			txError := ""
+			apTx := r.AppendTx
+			if apTx.Code == tmsp.CodeType_OK {
 				validTxs += 1
 			} else {
 				log.Debug("Invalid tx", "code", r.AppendTx.Code, "log", r.AppendTx.Log)
 				invalidTxs += 1
+				txError = tmsp.CodeType_name[int32(apTx.Code)] // TODO
 			}
 			// NOTE: if we count we can access the tx from the block instead of
 			// pulling it from the req
-			eventCache.FireEvent(types.EventStringTx(req.GetAppendTx().Tx), res)
+			event := types.EventDataTx{
+				Tx:     req.GetAppendTx().Tx,
+				Result: apTx.Data,
+				Code:   apTx.Code,
+				Log:    apTx.Log,
+				Error:  txError,
+			}
+			eventCache.FireEvent(types.EventStringTx(req.GetAppendTx().Tx), event)
 		}
 	}
 	proxyAppConn.SetResponseCallback(proxyCb)
