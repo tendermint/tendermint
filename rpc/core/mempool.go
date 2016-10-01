@@ -52,9 +52,9 @@ func BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 
 	// subscribe to tx being committed in block
-	appendTxResCh := make(chan *tmsp.Response, 1)
+	appendTxResCh := make(chan types.EventDataTx, 1)
 	eventSwitch.AddListenerForEvent("rpc", types.EventStringTx(tx), func(data events.EventData) {
-		appendTxResCh <- data.(*tmsp.Response)
+		appendTxResCh <- data.(types.EventDataTx)
 	})
 
 	// broadcast the tx and register checktx callback
@@ -84,11 +84,10 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 		// The tx was included in a block.
 		// NOTE we don't return an error regardless of the AppendTx code;
 		// 	clients must check this to see if they need to send a new tx!
-		r := appendTxRes.GetAppendTx()
 		return &ctypes.ResultBroadcastTx{
-			Code: r.Code,
-			Data: r.Data,
-			Log:  r.Log,
+			Code: appendTxRes.Code,
+			Data: appendTxRes.Result,
+			Log:  appendTxRes.Log,
 		}, nil
 	case <-timer.C:
 		r := checkTxR
