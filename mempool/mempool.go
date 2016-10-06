@@ -196,7 +196,7 @@ func (mem *Mempool) resCbNormal(req *tmsp.Request, res *tmsp.Response) {
 			// remove from cache (it might be good later)
 			// note this is an async callback,
 			// so we need to grab the lock in removeTxFromCacheMap
-			mem.removeTxFromCacheMap(req.GetCheckTx().Tx)
+			go mem.removeTxFromCacheMap(req.GetCheckTx().Tx)
 
 			// TODO: handle other retcodes
 		}
@@ -221,7 +221,7 @@ func (mem *Mempool) resCbRecheck(req *tmsp.Request, res *tmsp.Response) {
 			mem.recheckCursor.DetachPrev()
 
 			// remove from cache (it might be good later)
-			mem.removeTxFromCacheMap(req.GetCheckTx().Tx)
+			go mem.removeTxFromCacheMap(req.GetCheckTx().Tx)
 		}
 		if mem.recheckCursor == mem.recheckEnd {
 			mem.recheckCursor = nil
