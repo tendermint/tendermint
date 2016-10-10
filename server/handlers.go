@@ -107,7 +107,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc) http.HandlerFunc {
 		var request RPCRequest
 		err := json.Unmarshal(b, &request)
 		if err != nil {
-			WriteRPCResponseHTTP(w, NewRPCResponse("", nil, err.Error()))
+			WriteRPCResponseHTTP(w, NewRPCResponse("", nil, fmt.Sprintf("Error unmarshalling request: %v", err.Error())))
 			return
 		}
 		if len(r.URL.Path) > 1 {
@@ -125,14 +125,14 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc) http.HandlerFunc {
 		}
 		args, err := jsonParamsToArgs(rpcFunc, request.Params)
 		if err != nil {
-			WriteRPCResponseHTTP(w, NewRPCResponse(request.ID, nil, err.Error()))
+			WriteRPCResponseHTTP(w, NewRPCResponse(request.ID, nil, fmt.Sprintf("Error converting json params to arguments: %v", err.Error())))
 			return
 		}
 		returns := rpcFunc.f.Call(args)
 		log.Info("HTTPJSONRPC", "method", request.Method, "args", args, "returns", returns)
 		result, err := unreflectResult(returns)
 		if err != nil {
-			WriteRPCResponseHTTP(w, NewRPCResponse(request.ID, result, err.Error()))
+			WriteRPCResponseHTTP(w, NewRPCResponse(request.ID, result, fmt.Sprintf("Error unreflecting result: %v", err.Error())))
 			return
 		}
 		WriteRPCResponseHTTP(w, NewRPCResponse(request.ID, result, ""))
@@ -201,16 +201,17 @@ func makeHTTPHandler(rpcFunc *RPCFunc) func(http.ResponseWriter, *http.Request) 
 	}
 	// All other endpoints
 	return func(w http.ResponseWriter, r *http.Request) {
+		log.Debug("HTTP HANDLER", "req", r)
 		args, err := httpParamsToArgs(rpcFunc, r)
 		if err != nil {
-			WriteRPCResponseHTTP(w, NewRPCResponse("", nil, err.Error()))
+			WriteRPCResponseHTTP(w, NewRPCResponse("", nil, fmt.Sprintf("Error converting http params to args: %v", err.Error())))
 			return
 		}
 		returns := rpcFunc.f.Call(args)
 		log.Info("HTTPRestRPC", "method", r.URL.Path, "args", args, "returns", returns)
 		result, err := unreflectResult(returns)
 		if err != nil {
-			WriteRPCResponseHTTP(w, NewRPCResponse("", nil, err.Error()))
+			WriteRPCResponseHTTP(w, NewRPCResponse("", nil, fmt.Sprintf("Error unreflecting result: %v", err.Error())))
 			return
 		}
 		WriteRPCResponseHTTP(w, NewRPCResponse("", result, ""))
@@ -228,6 +229,7 @@ func httpParamsToArgs(rpcFunc *RPCFunc, r *http.Request) ([]reflect.Value, error
 	for i, name := range argNames {
 		ty := argTypes[i]
 		arg := GetParam(r, name)
+		//log.Notice("param to arg", "ty", ty, "name", name, "arg", arg)
 		values[i], err = _jsonStringToArg(ty, arg)
 		if err != nil {
 			return nil, err
@@ -271,11 +273,11 @@ type wsConnection struct {
 	pingTicker  *time.Ticker
 
 	funcMap map[string]*RPCFunc
-	evsw    *events.EventSwitch
+	evsw    events.EventSwitch
 }
 
 // new websocket connection wrapper
-func NewWSConnection(baseConn *websocket.Conn, funcMap map[string]*RPCFunc, evsw *events.EventSwitch) *wsConnection {
+func NewWSConnection(baseConn *websocket.Conn, funcMap map[string]*RPCFunc, evsw events.EventSwitch) *wsConnection {
 	wsc := &wsConnection{
 		remoteAddr: baseConn.RemoteAddr().String(),
 		baseConn:   baseConn,
@@ -341,7 +343,7 @@ func (wsc *wsConnection) GetRemoteAddr() string {
 }
 
 // Implements WSRPCConnection
-func (wsc *wsConnection) GetEventSwitch() *events.EventSwitch {
+func (wsc *wsConnection) GetEventSwitch() events.EventSwitch {
 	return wsc.evsw
 }
 
@@ -472,10 +474,10 @@ func (wsc *wsConnection) writeRoutine() {
 type WebsocketManager struct {
 	websocket.Upgrader
 	funcMap map[string]*RPCFunc
-	evsw    *events.EventSwitch
+	evsw    events.EventSwitch
 }
 
-func NewWebsocketManager(funcMap map[string]*RPCFunc, evsw *events.EventSwitch) *WebsocketManager {
+func NewWebsocketManager(funcMap map[string]*RPCFunc, evsw events.EventSwitch) *WebsocketManager {
 	return &WebsocketManager{
 		funcMap: funcMap,
 		evsw:    evsw,
