@@ -16,4 +16,4 @@ cd $GOPATH/src/github.com/tendermint/$LIB
 NEW_COMMIT=$(git rev-parse HEAD)
 
 cd $PWD
-sed -i "s/$OLD_COMMIT/$NEW_COMMIT/g" $GLIDE
+sed -i "" "s/$OLD_COMMIT/$NEW_COMMIT/g" $GLIDE

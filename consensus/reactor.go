@@ -9,7 +9,6 @@ import (
 	"time"
 
 	. "github.com/tendermint/go-common"
-	"github.com/tendermint/go-events"
 	"github.com/tendermint/go-p2p"
 	"github.com/tendermint/go-wire"
 	bc "github.com/tendermint/tendermint/blockchain"
@@ -34,7 +33,7 @@ type ConsensusReactor struct {
 	blockStore *bc.BlockStore
 	conS       *ConsensusState
 	fastSync   bool
-	evsw       *events.EventSwitch
+	evsw       types.EventSwitch
 }
 
 func NewConsensusReactor(consensusState *ConsensusState, blockStore *bc.BlockStore, fastSync bool) *ConsensusReactor {
@@ -225,7 +224,7 @@ func (conR *ConsensusReactor) SetPrivValidator(priv *types.PrivValidator) {
 }
 
 // implements events.Eventable
-func (conR *ConsensusReactor) SetEventSwitch(evsw *events.EventSwitch) {
+func (conR *ConsensusReactor) SetEventSwitch(evsw types.EventSwitch) {
 	conR.evsw = evsw
 	conR.conS.SetEventSwitch(evsw)
 }
@@ -236,12 +235,12 @@ func (conR *ConsensusReactor) SetEventSwitch(evsw *events.EventSwitch) {
 // broadcasting the result to peers
 func (conR *ConsensusReactor) registerEventCallbacks() {
 
-	conR.evsw.AddListenerForEvent("conR", types.EventStringNewRoundStep(), func(data events.EventData) {
+	types.AddListenerForEvent(conR.evsw, "conR", types.EventStringNewRoundStep(), func(data types.TMEventData) {
 		rs := data.(types.EventDataRoundState).RoundState.(*RoundState)
 		conR.broadcastNewRoundStep(rs)
 	})
 
-	conR.evsw.AddListenerForEvent("conR", types.EventStringVote(), func(data events.EventData) {
+	types.AddListenerForEvent(conR.evsw, "conR", types.EventStringVote(), func(data types.TMEventData) {
 		edv := data.(types.EventDataVote)
 		conR.broadcastHasVoteMessage(edv.Vote, edv.Index)
 	})

@@ -12,7 +12,6 @@ import (
 	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-crypto"
 	dbm "github.com/tendermint/go-db"
-	"github.com/tendermint/go-events"
 	"github.com/tendermint/go-p2p"
 	"github.com/tendermint/go-rpc"
 	"github.com/tendermint/go-rpc/server"
@@ -32,7 +31,7 @@ import _ "net/http/pprof"
 type Node struct {
 	config           cfg.Config
 	sw               *p2p.Switch
-	evsw             *events.EventSwitch
+	evsw             types.EventSwitch
 	blockStore       *bc.BlockStore
 	bcReactor        *bc.BlockchainReactor
 	mempoolReactor   *mempl.MempoolReactor
@@ -80,7 +79,7 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreato
 	privKey := crypto.GenPrivKeyEd25519()
 
 	// Make event switch
-	eventSwitch := events.NewEventSwitch()
+	eventSwitch := types.NewEventSwitch()
 	_, err := eventSwitch.Start()
 	if err != nil {
 		Exit(Fmt("Failed to start switch: %v", err))
@@ -187,7 +186,7 @@ func (n *Node) Stop() {
 }
 
 // Add the event switch to reactors, mempool, etc.
-func SetEventSwitch(evsw *events.EventSwitch, eventables ...events.Eventable) {
+func SetEventSwitch(evsw types.EventSwitch, eventables ...types.Eventable) {
 	for _, e := range eventables {
 		e.SetEventSwitch(evsw)
 	}
@@ -252,7 +251,7 @@ func (n *Node) MempoolReactor() *mempl.MempoolReactor {
 	return n.mempoolReactor
 }
 
-func (n *Node) EventSwitch() *events.EventSwitch {
+func (n *Node) EventSwitch() types.EventSwitch {
 	return n.evsw
 }
 
@@ -401,7 +400,7 @@ func newConsensusState(config cfg.Config) *consensus.ConsensusState {
 	config.Set("chain_id", state.ChainID)
 
 	// Make event switch
-	eventSwitch := events.NewEventSwitch()
+	eventSwitch := types.NewEventSwitch()
 	_, err := eventSwitch.Start()
 	if err != nil {
 		Exit(Fmt("Failed to start event switch: %v", err))

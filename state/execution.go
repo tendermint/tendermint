@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	. "github.com/tendermint/go-common"
-	"github.com/tendermint/go-events"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 	tmsp "github.com/tendermint/tmsp/types"
@@ -18,7 +17,7 @@ func (s *State) ValidateBlock(block *types.Block) error {
 
 // Execute the block to mutate State.
 // Validates block and then executes Data.Txs in the block.
-func (s *State) ExecBlock(eventCache events.Fireable, proxyAppConn proxy.AppConnConsensus, block *types.Block, blockPartsHeader types.PartSetHeader) error {
+func (s *State) ExecBlock(eventCache types.Fireable, proxyAppConn proxy.AppConnConsensus, block *types.Block, blockPartsHeader types.PartSetHeader) error {
 
 	// Validate the block.
 	err := s.validateBlock(block)
@@ -55,7 +54,7 @@ func (s *State) ExecBlock(eventCache events.Fireable, proxyAppConn proxy.AppConn
 
 // Executes block's transactions on proxyAppConn.
 // TODO: Generate a bitmap or otherwise store tx validity in state.
-func (s *State) execBlockOnProxyApp(eventCache events.Fireable, proxyAppConn proxy.AppConnConsensus, block *types.Block) error {
+func (s *State) execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn proxy.AppConnConsensus, block *types.Block) error {
 
 	var validTxs, invalidTxs = 0, 0
 
@@ -67,15 +66,25 @@ func (s *State) execBlockOnProxyApp(eventCache events.Fireable, proxyAppConn pro
 			// TODO: make use of this info
 			// Blocks may include invalid txs.
 			// reqAppendTx := req.(tmsp.RequestAppendTx)
-			if r.AppendTx.Code == tmsp.CodeType_OK {
+			txError := ""
+			apTx := r.AppendTx
+			if apTx.Code == tmsp.CodeType_OK {
 				validTxs += 1
 			} else {
 				log.Debug("Invalid tx", "code", r.AppendTx.Code, "log", r.AppendTx.Log)
 				invalidTxs += 1
+				txError = apTx.Code.String()
 			}
 			// NOTE: if we count we can access the tx from the block instead of
 			// pulling it from the req
-			eventCache.FireEvent(types.EventStringTx(req.GetAppendTx().Tx), res)
+			event := types.EventDataTx{
+				Tx:     req.GetAppendTx().Tx,
+				Result: apTx.Data,
+				Code:   apTx.Code,
+				Log:    apTx.Log,
+				Error:  txError,
+			}
+			types.FireEventTx(eventCache, event)
 		}
 	}
 	proxyAppConn.SetResponseCallback(proxyCb)

@@ -4,7 +4,6 @@ import (
 	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-p2p"
 
-	"github.com/tendermint/go-events"
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/consensus"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -12,7 +11,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-var eventSwitch *events.EventSwitch
+var eventSwitch types.EventSwitch
 var blockStore *bc.BlockStore
 var consensusState *consensus.ConsensusState
 var consensusReactor *consensus.ConsensusReactor
@@ -28,7 +27,7 @@ func SetConfig(c cfg.Config) {
 	config = c
 }
 
-func SetEventSwitch(evsw *events.EventSwitch) {
+func SetEventSwitch(evsw types.EventSwitch) {
 	eventSwitch = evsw
 }
 

@@ -9,7 +9,6 @@ import (
 	"github.com/tendermint/go-clist"
 	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
-	"github.com/tendermint/go-events"
 	"github.com/tendermint/go-p2p"
 	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/types"
@@ -28,7 +27,7 @@ type MempoolReactor struct {
 	p2p.BaseReactor
 	config  cfg.Config
 	Mempool *Mempool
-	evsw    *events.EventSwitch
+	evsw    types.EventSwitch
 }
 
 func NewMempoolReactor(config cfg.Config, mempool *Mempool) *MempoolReactor {
@@ -143,7 +142,7 @@ func (memR *MempoolReactor) broadcastTxRoutine(peer Peer) {
 }
 
 // implements events.Eventable
-func (memR *MempoolReactor) SetEventSwitch(evsw *events.EventSwitch) {
+func (memR *MempoolReactor) SetEventSwitch(evsw types.EventSwitch) {
 	memR.evsw = evsw
 }
 
