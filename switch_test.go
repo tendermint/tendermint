@@ -90,7 +90,7 @@ func (tr *TestReactor) getMsgs(chID byte) []PeerMessage {
 // XXX: note this uses net.Pipe and not a proper TCP conn
 func makeSwitchPair(t testing.TB, initSwitch func(int, *Switch) *Switch) (*Switch, *Switch) {
 	// Create two switches that will be interconnected.
-	switches := MakeConnectedSwitches(2, initSwitch, net.Pipe)
+	switches := MakeConnectedSwitches(2, initSwitch, Connect2Switches)
 	return switches[0], switches[1]
 }
 
