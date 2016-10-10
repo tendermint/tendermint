@@ -257,6 +257,40 @@ func TestWSBlockchainGrowth(t *testing.T) {
 	}
 }
 
+func TestWSTxEvent(t *testing.T) {
+	wsc := newWSClient(t)
+	tx := randBytes()
+
+	// listen for the tx I am about to submit
+	eid := types.EventStringTx(types.Tx(tx))
+	subscribe(t, wsc, eid)
+	defer func() {
+		unsubscribe(t, wsc, eid)
+		wsc.Stop()
+	}()
+
+	// send an tx
+	tmResult := new(ctypes.TMResult)
+	_, err := clientJSON.Call("broadcast_tx_sync", []interface{}{tx}, tmResult)
+	if err != nil {
+		t.Fatal("Error submitting event")
+	}
+
+	waitForEvent(t, wsc, eid, true, func() {}, func(eid string, b interface{}) error {
+		evt, ok := b.(types.EventDataTx)
+		if !ok {
+			t.Fatal("Got wrong event type", b)
+		}
+		if bytes.Compare([]byte(evt.Tx), tx) != 0 {
+			t.Error("Event returned different tx")
+		}
+		if evt.Code != tmsp.CodeType_OK {
+			t.Error("Event returned tx error code", evt.Code)
+		}
+		return nil
+	})
+}
+
 /* TODO: this with dummy app..
 func TestWSDoubleFire(t *testing.T) {
 	if testing.Short() {
