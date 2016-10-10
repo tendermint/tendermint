@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"encoding/binary"
-	//	"math/rand"
 	"testing"
 	"time"
 
@@ -52,6 +51,67 @@ func TestTxConcurrentWithCommit(t *testing.T) {
 	}
 }
 
+func TestRmBadTx(t *testing.T) {
+	state, privVals := randGenesisState(1, false, 10)
+	app := NewCounterApplication()
+	cs := newConsensusState(state, privVals[0], app)
+
+	// increment the counter by 1
+	txBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(txBytes, uint64(0))
+	app.AppendTx(txBytes)
+	app.Commit()
+
+	ch := make(chan struct{})
+	cbCh := make(chan struct{})
+	go func() {
+		// Try to send the tx through the mempool.
+		// CheckTx should not err, but the app should return a bad tmsp code
+		// and the tx should get removed from the pool
+		err := cs.mempool.CheckTx(txBytes, func(r *tmsp.Response) {
+			if r.GetCheckTx().Code != tmsp.CodeType_BadNonce {
+				t.Fatalf("expected checktx to return bad nonce, got %v", r)
+			}
+			cbCh <- struct{}{}
+		})
+		if err != nil {
+			t.Fatal("Error after CheckTx: %v", err)
+		}
+
+		// check for the tx
+		for {
+			time.Sleep(time.Second)
+			select {
+			case <-ch:
+			default:
+				txs := cs.mempool.Reap(1)
+				if len(txs) == 0 {
+					ch <- struct{}{}
+				}
+
+			}
+		}
+	}()
+
+	// Wait until the tx returns
+	ticker := time.After(time.Second * 5)
+	select {
+	case <-cbCh:
+		// success
+	case <-ticker:
+		t.Fatalf("Timed out waiting for tx to return")
+	}
+
+	// Wait until the tx is removed
+	ticker = time.After(time.Second * 5)
+	select {
+	case <-ch:
+		// success
+	case <-ticker:
+		t.Fatalf("Timed out waiting for tx to be removed")
+	}
+}
+
 // CounterApplication that maintains a mempool state and resets it upon commit
 type CounterApplication struct {
 	txCount        int
@@ -84,11 +144,7 @@ func runTx(tx []byte, countPtr *int) tmsp.Result {
 	copy(tx8[len(tx8)-len(tx):], tx)
 	txValue := binary.BigEndian.Uint64(tx8)
 	if txValue != uint64(count) {
-		return tmsp.Result{
-			Code: tmsp.CodeType_BadNonce,
-			Data: nil,
-			Log:  Fmt("Invalid nonce. Expected %v, got %v", count, txValue),
-		}
+		return tmsp.ErrBadNonce.AppendLog(Fmt("Invalid nonce. Expected %v, got %v", count, txValue))
 	}
 	*countPtr += 1
 	return tmsp.OK

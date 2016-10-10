@@ -2,12 +2,11 @@ package mempool
 
 import (
 	"encoding/binary"
-	"sync"
 	"testing"
 
 	"github.com/tendermint/tendermint/config/tendermint_test"
+	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
-	tmspcli "github.com/tendermint/tmsp/client"
 	"github.com/tendermint/tmsp/example/counter"
 )
 
@@ -16,9 +15,9 @@ func TestSerialReap(t *testing.T) {
 
 	app := counter.NewCounterApplication(true)
 	app.SetOption("serial", "on")
-	mtx := new(sync.Mutex)
-	appConnMem := tmspcli.NewLocalClient(mtx, app)
-	appConnCon := tmspcli.NewLocalClient(mtx, app)
+	cc := proxy.NewLocalClientCreator(app)
+	appConnMem, _ := cc.NewTMSPClient()
+	appConnCon, _ := cc.NewTMSPClient()
 	mempool := NewMempool(config, appConnMem)
 
 	appendTxsRange := func(start, end int) {
@@ -66,13 +65,13 @@ func TestSerialReap(t *testing.T) {
 		for i := start; i < end; i++ {
 			txBytes := make([]byte, 8)
 			binary.BigEndian.PutUint64(txBytes, uint64(i))
-			res := appConnCon.AppendTx(txBytes)
+			res := appConnCon.AppendTxSync(txBytes)
 			if !res.IsOK() {
 				t.Errorf("Error committing tx. Code:%v result:%X log:%v",
 					res.Code, res.Data, res.Log)
 			}
 		}
-		res := appConnCon.Commit()
+		res := appConnCon.CommitSync()
 		if len(res.Data) != 8 {
 			t.Errorf("Error committing. Hash:%X log:%v", res.Data, res.Log)
 		}
