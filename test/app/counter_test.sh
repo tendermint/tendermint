@@ -9,10 +9,37 @@ TESTNAME=$1
 
 function sendTx() {
 	TX=$1
-	RESPONSE=`curl -s localhost:46657/broadcast_tx_commit?tx=\"$TX\"`
-	CODE=`echo $RESPONSE | jq .result[1].code`
-	ERROR=`echo $RESPONSE | jq .error`
-	ERROR=$(echo "$ERROR" | tr -d '"') # remove surrounding quotes
+	if [[ "$GRPC_BROADCAST_TX" == "" ]]; then
+		RESPONSE=`curl -s localhost:46657/broadcast_tx_commit?tx=\"$TX\"`
+		CODE=`echo $RESPONSE | jq .result[1].code`
+		ERROR=`echo $RESPONSE | jq .error`
+		ERROR=$(echo "$ERROR" | tr -d '"') # remove surrounding quotes
+	else
+		RESPONSE=`go run grpc_client.go $TX`
+		echo $RESPONSE | jq . &> /dev/null
+		IS_JSON=$?
+		if [[ "$IS_JSON" != "0" ]]; then
+			ERROR="$RESPONSE"
+		else
+			ERROR="" # reset
+		fi
+
+		if [[ "$RESPONSE" == "{}" ]]; then
+			# protobuf auto adds `omitempty` to everything so code OK and empty data/log
+			# will not even show when marshalled into json
+			# apparently we can use github.com/golang/protobuf/jsonpb to do the marshalling ...
+			CODE=0
+		else
+			# this wont actually work if theres an error ...
+			CODE=`echo $RESPONSE | jq .code` 
+		fi 
+		#echo "-------"
+		#echo "TX $TX"
+		#echo "RESPONSE $RESPONSE"
+		#echo "CODE $CODE"
+		#echo "ERROR $ERROR"
+		#echo "----"
+	fi
 }
 
 # 0 should pass once and get in block, with no error
