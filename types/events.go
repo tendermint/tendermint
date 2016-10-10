@@ -36,7 +36,7 @@ func EventStringVote() string             { return "Vote" }
 // implements events.EventData
 type TMEventData interface {
 	events.EventData
-	//	AssertIsTMEventData()
+	AssertIsTMEventData()
 }
 
 const (
@@ -101,3 +101,99 @@ func (_ EventDataNewBlockHeader) AssertIsTMEventData() {}
 func (_ EventDataTx) AssertIsTMEventData()             {}
 func (_ EventDataRoundState) AssertIsTMEventData()     {}
 func (_ EventDataVote) AssertIsTMEventData()           {}
+
+//----------------------------------------
+// Wrappers for type safety
+
+type Fireable interface {
+	events.Fireable
+}
+
+type Eventable interface {
+	SetEventSwitch(EventSwitch)
+}
+
+type EventSwitch interface {
+	events.EventSwitch
+}
+
+type EventCache interface {
+	Fireable
+	Flush()
+}
+
+func NewEventSwitch() EventSwitch {
+	return events.NewEventSwitch()
+}
+
+func NewEventCache(evsw EventSwitch) EventCache {
+	return events.NewEventCache(evsw)
+}
+
+// All events should be based on this FireEvent to ensure they are TMEventData
+func fireEvent(fireable events.Fireable, event string, data TMEventData) {
+	fireable.FireEvent(event, data)
+}
+
+func AddListenerForEvent(evsw EventSwitch, id, event string, cb func(data TMEventData)) {
+	evsw.AddListenerForEvent(id, event, func(data events.EventData) {
+		cb(data.(TMEventData))
+	})
+
+}
+
+//--- block, tx, and vote events
+
+func FireEventNewBlock(fireable events.Fireable, block EventDataNewBlock) {
+	fireEvent(fireable, EventStringNewBlock(), block)
+}
+
+func FireEventNewBlockHeader(fireable events.Fireable, header EventDataNewBlockHeader) {
+	fireEvent(fireable, EventStringNewBlockHeader(), header)
+}
+
+func FireEventVote(fireable events.Fireable, vote EventDataVote) {
+	fireEvent(fireable, EventStringVote(), vote)
+}
+
+func FireEventTx(fireable events.Fireable, tx EventDataTx) {
+	fireEvent(fireable, EventStringTx(tx.Tx), tx)
+}
+
+//--- EventDataRoundState events
+
+func FireEventNewRoundStep(fireable events.Fireable, rs EventDataRoundState) {
+	fireEvent(fireable, EventStringNewRoundStep(), rs)
+}
+
+func FireEventTimeoutPropose(fireable events.Fireable, rs EventDataRoundState) {
+	fireEvent(fireable, EventStringTimeoutPropose(), rs)
+}
+
+func FireEventTimeoutWait(fireable events.Fireable, rs EventDataRoundState) {
+	fireEvent(fireable, EventStringTimeoutWait(), rs)
+}
+
+func FireEventNewRound(fireable events.Fireable, rs EventDataRoundState) {
+	fireEvent(fireable, EventStringNewRound(), rs)
+}
+
+func FireEventCompleteProposal(fireable events.Fireable, rs EventDataRoundState) {
+	fireEvent(fireable, EventStringCompleteProposal(), rs)
+}
+
+func FireEventPolka(fireable events.Fireable, rs EventDataRoundState) {
+	fireEvent(fireable, EventStringPolka(), rs)
+}
+
+func FireEventUnlock(fireable events.Fireable, rs EventDataRoundState) {
+	fireEvent(fireable, EventStringUnlock(), rs)
+}
+
+func FireEventRelock(fireable events.Fireable, rs EventDataRoundState) {
+	fireEvent(fireable, EventStringRelock(), rs)
+}
+
+func FireEventLock(fireable events.Fireable, rs EventDataRoundState) {
+	fireEvent(fireable, EventStringLock(), rs)
+}

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tendermint/go-events"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 	tmsp "github.com/tendermint/tmsp/types"
@@ -53,7 +52,7 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 
 	// subscribe to tx being committed in block
 	appendTxResCh := make(chan types.EventDataTx, 1)
-	eventSwitch.AddListenerForEvent("rpc", types.EventStringTx(tx), func(data events.EventData) {
+	types.AddListenerForEvent(eventSwitch, "rpc", types.EventStringTx(tx), func(data types.TMEventData) {
 		appendTxResCh <- data.(types.EventDataTx)
 	})
 

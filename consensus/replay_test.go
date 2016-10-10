@@ -9,7 +9,6 @@ import (
 	"time"
 
 	. "github.com/tendermint/go-common"
-	"github.com/tendermint/go-events"
 	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/types"
 )
@@ -170,7 +169,7 @@ func TestReplayCrashBeforeWritePropose(t *testing.T) {
 
 func TestReplayCrashBeforeWritePrevote(t *testing.T) {
 	cs, newBlockCh, voteMsg, f := setupReplayTest(5, false) // prevote
-	cs.evsw.AddListenerForEvent("tester", types.EventStringCompleteProposal(), func(data events.EventData) {
+	types.AddListenerForEvent(cs.evsw, "tester", types.EventStringCompleteProposal(), func(data types.TMEventData) {
 		// Set LastSig
 		var err error
 		var msg ConsensusLogMessage
@@ -187,7 +186,7 @@ func TestReplayCrashBeforeWritePrevote(t *testing.T) {
 
 func TestReplayCrashBeforeWritePrecommit(t *testing.T) {
 	cs, newBlockCh, voteMsg, f := setupReplayTest(7, false) // precommit
-	cs.evsw.AddListenerForEvent("tester", types.EventStringPolka(), func(data events.EventData) {
+	types.AddListenerForEvent(cs.evsw, "tester", types.EventStringPolka(), func(data types.TMEventData) {
 		// Set LastSig
 		var err error
 		var msg ConsensusLogMessage

@@ -10,7 +10,6 @@ import (
 
 	cfg "github.com/tendermint/go-config"
 	dbm "github.com/tendermint/go-db"
-	"github.com/tendermint/go-events"
 	bc "github.com/tendermint/tendermint/blockchain"
 	mempl "github.com/tendermint/tendermint/mempool"
 	sm "github.com/tendermint/tendermint/state"
@@ -338,7 +337,7 @@ func newConsensusState(state *sm.State, pv *types.PrivValidator, app tmsp.Applic
 	cs := NewConsensusState(config, state, proxyAppConnCon, blockStore, mempool)
 	cs.SetPrivValidator(pv)
 
-	evsw := events.NewEventSwitch()
+	evsw := types.NewEventSwitch()
 	cs.SetEventSwitch(evsw)
 	evsw.Start()
 	return cs

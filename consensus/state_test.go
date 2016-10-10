@@ -6,9 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/config/tendermint_test"
-	//"github.com/tendermint/go-events"
 	. "github.com/tendermint/go-common"
+	"github.com/tendermint/tendermint/config/tendermint_test"
 	"github.com/tendermint/tendermint/types"
 )
 
