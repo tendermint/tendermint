@@ -79,6 +79,7 @@ func ResetConfig(localPath string) cfg.Config {
 	mapConfig.SetDefault("db_dir", rootDir+"/data")
 	mapConfig.SetDefault("log_level", "debug")
 	mapConfig.SetDefault("rpc_laddr", "tcp://0.0.0.0:36657")
+	mapConfig.SetDefault("grpc_laddr", "tcp://0.0.0.0:36658")
 	mapConfig.SetDefault("prof_laddr", "")
 	mapConfig.SetDefault("revision_file", rootDir+"/revision")
 	mapConfig.SetDefault("cswal", rootDir+"/data/cswal")

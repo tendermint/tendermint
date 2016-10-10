@@ -40,16 +40,9 @@ func BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	}, nil
 }
 
-// CONTRACT: returns error==nil iff the tx is included in a block.
-//
-// If CheckTx fails, return with the response from CheckTx AND an error.
-// Else, block until the tx is included in a block,
-//	and return the result of AppendTx (with no error).
-// Even if AppendTx fails, so long as the tx is included in a block this function
-//	will not return an error - it is the caller's responsibility to check res.Code.
-// The function times out after five minutes and returns the result of CheckTx and an error.
-// TODO: smarter timeout logic or someway to cancel (tx not getting committed is a sign of a larger problem!)
-func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
+// CONTRACT: only returns error if mempool.BroadcastTx errs (ie. problem with the app)
+// or if we timeout waiting for tx to commit
+func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 
 	// subscribe to tx being committed in block
 	appendTxResCh := make(chan *tmsp.Response, 1)
@@ -67,13 +60,12 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	}
 	checkTxRes := <-checkTxResCh
 	checkTxR := checkTxRes.GetCheckTx()
-	if r := checkTxR; r.Code != tmsp.CodeType_OK {
+	if checkTxR.Code != tmsp.CodeType_OK {
 		// CheckTx failed!
-		return &ctypes.ResultBroadcastTx{
-			Code: r.Code,
-			Data: r.Data,
-			Log:  r.Log,
-		}, fmt.Errorf("Check tx failed with non-zero code: %s. Data: %X; Log: %s", r.Code.String(), r.Data, r.Log)
+		return &ctypes.ResultBroadcastTxCommit{
+			CheckTx:  checkTxR,
+			AppendTx: nil,
+		}, nil
 	}
 
 	// Wait for the tx to be included in a block,
@@ -82,20 +74,15 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	select {
 	case appendTxRes := <-appendTxResCh:
 		// The tx was included in a block.
-		// NOTE we don't return an error regardless of the AppendTx code;
-		// 	clients must check this to see if they need to send a new tx!
-		r := appendTxRes.GetAppendTx()
-		return &ctypes.ResultBroadcastTx{
-			Code: r.Code,
-			Data: r.Data,
-			Log:  r.Log,
+		appendTxR := appendTxRes.GetAppendTx()
+		return &ctypes.ResultBroadcastTxCommit{
+			CheckTx:  checkTxR,
+			AppendTx: appendTxR,
 		}, nil
 	case <-timer.C:
-		r := checkTxR
-		return &ctypes.ResultBroadcastTx{
-			Code: r.Code,
-			Data: r.Data,
-			Log:  r.Log,
+		return &ctypes.ResultBroadcastTxCommit{
+			CheckTx:  checkTxR,
+			AppendTx: nil,
 		}, fmt.Errorf("Timed out waiting for transaction to be included in a block")
 	}
 

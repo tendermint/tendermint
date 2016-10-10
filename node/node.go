@@ -22,9 +22,14 @@ import (
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
 	rpccore "github.com/tendermint/tendermint/rpc/core"
+	grpccore "github.com/tendermint/tendermint/rpc/grpc"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
+	tmspcli "github.com/tendermint/tmsp/client"
+	"github.com/tendermint/tmsp/example/counter"
+	"github.com/tendermint/tmsp/example/dummy"
+	"github.com/tendermint/tmsp/example/nil"
 )
 
 import _ "net/http/pprof"
@@ -229,6 +234,17 @@ func (n *Node) StartRPC() ([]net.Listener, error) {
 		}
 		listeners[i] = listener
 	}
+
+	// we expose a simplified api over grpc for convenience to app devs
+	grpcListenAddr := n.config.GetString("grpc_laddr")
+	if grpcListenAddr != "" {
+		listener, err := grpccore.StartGRPCServer(grpcListenAddr)
+		if err != nil {
+			return nil, err
+		}
+		listeners = append(listeners, listener)
+	}
+
 	return listeners, nil
 }
 
@@ -296,6 +312,44 @@ func makeNodeInfo(config cfg.Config, sw *p2p.Switch, privKey crypto.PrivKeyEd255
 	nodeInfo.ListenAddr = Fmt("%v:%v", p2pHost, p2pPort)
 	nodeInfo.Other = append(nodeInfo.Other, Fmt("rpc_addr=%v", rpcListenAddr))
 	return nodeInfo
+}
+
+// Get a connection to the proxyAppConn addr.
+// Check the current hash, and panic if it doesn't match.
+func GetProxyApp(addr, transport string, hash []byte) (proxyAppConn proxy.AppConn) {
+	// use local app (for testing)
+	switch addr {
+	case "nilapp":
+		app := nilapp.NewNilApplication()
+		mtx := new(sync.Mutex)
+		proxyAppConn = tmspcli.NewLocalClient(mtx, app)
+	case "dummy":
+		app := dummy.NewDummyApplication()
+		mtx := new(sync.Mutex)
+		proxyAppConn = tmspcli.NewLocalClient(mtx, app)
+	case "counter":
+		app := counter.NewCounterApplication(true)
+		mtx := new(sync.Mutex)
+		proxyAppConn = tmspcli.NewLocalClient(mtx, app)
+	default:
+		// Run forever in a loop
+		remoteApp, err := proxy.NewRemoteAppConn(addr, transport)
+		if err != nil {
+			Exit(Fmt("Failed to connect to proxy for mempool: %v", err))
+		}
+		proxyAppConn = remoteApp
+	}
+
+	// Check the hash
+	res := proxyAppConn.CommitSync()
+	if res.IsErr() {
+		PanicCrisis(Fmt("Error in getting proxyAppConn hash: %v", res))
+	}
+	if !bytes.Equal(hash, res.Data) {
+		log.Warn(Fmt("ProxyApp hash does not match.  Expected %X, got %X", hash, res.Data))
+	}
+
+	return proxyAppConn
 }
 
 // Load the most recent state from "state" db,
