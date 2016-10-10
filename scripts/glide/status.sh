@@ -31,6 +31,11 @@ for lib in "${LIBS[@]}"; do
 			echo "Vendored: $VENDORED"
 			echo "Master: $MASTER"
 		fi
+	elif [[ "$VENDORED" != "$HEAD" ]]; then
+			echo ""
+			echo "Vendored version of $lib matches origin/master but differs from HEAD"
+			echo "Vendored: $VENDORED"
+			echo "Head: $HEAD"
 	fi
 done
 
