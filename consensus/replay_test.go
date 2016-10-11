@@ -14,42 +14,53 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-var data_dir = "test_data" // TODO
+var data_dir = path.Join(GoPath, "src/github.com/tendermint/tendermint/consensus", "test_data")
+
+// the priv validator changes step at these lines for a block with 1 val and 1 part
+var baseStepChanges = []int{2, 5, 7}
+
+// test recovery from each line in each testCase
+var testCases = []*testCase{
+	newTestCase("empty_block", baseStepChanges),  // empty block (has 1 block part)
+	newTestCase("small_block1", baseStepChanges), // small block with txs in 1 block part
+	newTestCase("small_block2", []int{2, 7, 9}),  // small block with txs across 3 smaller block parts
+}
 
 type testCase struct {
 	name    string
 	log     string       //full cswal
 	stepMap map[int]int8 // map lines of log to privval step
+
+	proposeLine   int
+	prevoteLine   int
+	precommitLine int
 }
 
-// mapping for one validator and blocks with one part
-var baseStepMap = map[int]int8{
-	0: 0,
-	1: 0,
-	2: 1,
-	3: 1,
-	4: 1,
-	5: 2,
-	6: 2,
-	7: 3,
-}
-
-var testCases = []*testCase{
-	&testCase{
-		name:    "empty_block",
-		stepMap: baseStepMap,
-	},
-	&testCase{
-		name:    "small_block",
-		stepMap: baseStepMap,
-	},
-}
-
-// populate test logs by reading files
-func init() {
-	for _, c := range testCases {
-		c.log = readWAL(path.Join(data_dir, c.name+".cswal"))
+func newTestCase(name string, stepChanges []int) *testCase {
+	if len(stepChanges) != 3 {
+		panic(Fmt("a full wal has 3 step changes! Got array %v", stepChanges))
 	}
+	return &testCase{
+		name:    name,
+		log:     readWAL(path.Join(data_dir, name+".cswal")),
+		stepMap: newMapFromChanges(stepChanges),
+
+		proposeLine:   stepChanges[0],
+		prevoteLine:   stepChanges[1],
+		precommitLine: stepChanges[2],
+	}
+}
+
+func newMapFromChanges(changes []int) map[int]int8 {
+	changes = append(changes, changes[2]+1) // so we add the last step change to the map
+	m := make(map[int]int8)
+	var count int
+	for changeNum, nextChange := range changes {
+		for ; count < nextChange; count++ {
+			m[count] = int8(changeNum)
+		}
+	}
+	return m
 }
 
 func readWAL(p string) string {
@@ -147,7 +158,7 @@ func TestReplayCrashAfterWrite(t *testing.T) {
 
 func TestReplayCrashBeforeWritePropose(t *testing.T) {
 	for _, thisCase := range testCases {
-		lineNum := 2
+		lineNum := thisCase.proposeLine
 		cs, newBlockCh, proposalMsg, f := setupReplayTest(thisCase, lineNum, false) // propose
 		// Set LastSig
 		var err error
@@ -165,7 +176,7 @@ func TestReplayCrashBeforeWritePropose(t *testing.T) {
 
 func TestReplayCrashBeforeWritePrevote(t *testing.T) {
 	for _, thisCase := range testCases {
-		lineNum := 5
+		lineNum := thisCase.prevoteLine
 		cs, newBlockCh, voteMsg, f := setupReplayTest(thisCase, lineNum, false) // prevote
 		types.AddListenerForEvent(cs.evsw, "tester", types.EventStringCompleteProposal(), func(data types.TMEventData) {
 			// Set LastSig
@@ -185,7 +196,7 @@ func TestReplayCrashBeforeWritePrevote(t *testing.T) {
 
 func TestReplayCrashBeforeWritePrecommit(t *testing.T) {
 	for _, thisCase := range testCases {
-		lineNum := 7
+		lineNum := thisCase.precommitLine
 		cs, newBlockCh, voteMsg, f := setupReplayTest(thisCase, lineNum, false) // precommit
 		types.AddListenerForEvent(cs.evsw, "tester", types.EventStringPolka(), func(data types.TMEventData) {
 			// Set LastSig
