@@ -1498,7 +1498,7 @@ func (cs *ConsensusState) addVote(valIndex int, vote *types.Vote, peerKey string
 	}
 
 	// Height mismatch, bad peer?
-	log.Info("Vote ignored and not added", "voteHeight", vote.Height, "csHeight", cs.Height)
+	log.Info("Vote ignored and not added", "voteHeight", vote.Height, "csHeight", cs.Height, "err", err)
 	return
 }
 
