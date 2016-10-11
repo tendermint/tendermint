@@ -116,20 +116,26 @@ func (cs *ConsensusState) catchupReplay(height int) error {
 
 	// now we can replay the latest nLines on consensus state
 	// note we can't use scan because we've already been reading from the file
-	reader := bufio.NewReader(cs.wal.fp)
+	// XXX: if a msg is too big we need to find out why or increase this for that case ...
+	maxMsgSize := 1000000
+	reader := bufio.NewReaderSize(cs.wal.fp, maxMsgSize)
 	for i := 0; i < nLines; i++ {
 		msgBytes, err := reader.ReadBytes('\n')
 		if err == io.EOF {
+			log.Warn("Replay: EOF", "bytes", string(msgBytes))
 			break
 		} else if err != nil {
 			return err
 		} else if len(msgBytes) == 0 {
+			log.Warn("Replay: msg bytes is 0")
 			continue
 		} else if len(msgBytes) == 1 && msgBytes[0] == '\n' {
+			log.Warn("Replay: new line")
 			continue
 		}
 		// the first msg is the NewHeight event (if we're not at the beginning), so we can ignore it
 		if !beginning && i == 1 {
+			log.Warn("Replay: not beginning and 1")
 			continue
 		}
 
@@ -140,7 +146,7 @@ func (cs *ConsensusState) catchupReplay(height int) error {
 			return err
 		}
 	}
-	log.Notice("Done catchup replay")
+	log.Notice("Replay: Done")
 	return nil
 }
 

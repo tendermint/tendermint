@@ -114,7 +114,7 @@ func setupReplayTest(thisCase *testCase, nLines int, crashAfter bool) (*Consensu
 	// we write those lines up to (not including) one with the signature
 	fileName := writeWAL(strings.Join(split[:nLines], "\n") + "\n")
 
-	cs := fixedConsensusState()
+	cs := fixedConsensusStateDummy()
 
 	// set the last step according to when we crashed vs the wal
 	cs.privValidator.LastHeight = 1 // first block
