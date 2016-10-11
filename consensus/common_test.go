@@ -18,6 +18,7 @@ import (
 	tmsp "github.com/tendermint/tmsp/types"
 
 	"github.com/tendermint/tmsp/example/counter"
+	"github.com/tendermint/tmsp/example/dummy"
 )
 
 var config cfg.Config // NOTE: must be reset for each _test.go file
@@ -317,6 +318,16 @@ func fixedConsensusState() *ConsensusState {
 	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
 	privValidator.Reset()
 	cs := newConsensusState(state, privValidator, counter.NewCounterApplication(true))
+	return cs
+}
+
+func fixedConsensusStateDummy() *ConsensusState {
+	stateDB := dbm.NewMemDB()
+	state := sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
+	privValidatorFile := config.GetString("priv_validator_file")
+	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
+	privValidator.Reset()
+	cs := newConsensusState(state, privValidator, dummy.NewDummyApplication())
 	return cs
 }
 
