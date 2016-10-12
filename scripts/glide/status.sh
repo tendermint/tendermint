@@ -2,7 +2,9 @@
 
 # for every github.com/tendermint dependency, warn is if its not synced with origin/master
 
-GLIDE=$GOPATH/src/github.com/tendermint/tendermint/glide.lock
+if [[ "$GLIDE" == "" ]]; then
+	GLIDE=$GOPATH/src/github.com/tendermint/tendermint/glide.lock
+fi
 
 # make list of libs
 LIBS=($(grep "github.com/tendermint" $GLIDE  | awk '{print $3}'))

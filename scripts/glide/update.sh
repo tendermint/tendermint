@@ -6,9 +6,12 @@ IFS=$'\n\t'
 
 LIB=$1
 
-GLIDE=$GOPATH/src/github.com/tendermint/tendermint/glide.lock
+TMCORE=$GOPATH/src/github.com/tendermint/tendermint
+if [[ "$GLIDE" == "" ]]; then
+	GLIDE=$TMCORE/glide.lock
+fi
 
-OLD_COMMIT=`bash scripts/glide/parse.sh $LIB`
+OLD_COMMIT=`bash $TMCORE/scripts/glide/parse.sh $LIB`
 
 PWD=`pwd`
 cd $GOPATH/src/github.com/tendermint/$LIB
@@ -16,4 +19,12 @@ cd $GOPATH/src/github.com/tendermint/$LIB
 NEW_COMMIT=$(git rev-parse HEAD)
 
 cd $PWD
-sed -i "" "s/$OLD_COMMIT/$NEW_COMMIT/g" $GLIDE
+
+uname -a | grep Linux > /dev/null
+if [[ "$?" == 0 ]]; then
+	# linux
+	sed -i "s/$OLD_COMMIT/$NEW_COMMIT/g" $GLIDE
+else 
+	# mac 
+	sed -i "" "s/$OLD_COMMIT/$NEW_COMMIT/g" $GLIDE
+fi
