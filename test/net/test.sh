@@ -20,17 +20,20 @@ set -u
 export TMHEAD=`git rev-parse --abbrev-ref HEAD`
 export TM_IMAGE="tendermint/tmbase"
 
-# not a go repo
+# grab network monitor, install mintnet, netmon
 set +e
 go get github.com/tendermint/network_testing
-set -e
-
-# install mintnet, netmon
-# TODO: specify branch
-
 go get github.com/tendermint/mintnet
 go get github.com/tendermint/netmon
+set -e
 
+# install vendored deps
+cd $GOPATH/src/github.com/tendermint/mintnet
+glide install
+go install
+cd $GOPATH/src/github.com/tendermint/netmon
+glide install
+go install
 
 cd $GOPATH/src/github.com/tendermint/network_testing
 bash experiments/exp_throughput.sh $DATACENTER $VALSETSIZE $BLOCKSIZE $TX_SIZE $NTXS $MACH_PREFIX $RESULTSDIR $CLOUD_PROVIDER

@@ -6,27 +6,6 @@ if [[ "$GLIDE" == "" ]]; then
 fi
 
 # get vendored commit for given lib
-function parseGlide() {
-	cat $1 | grep -A1 $2 | grep -v $2 | awk '{print $2}'
-}
-
-# fetch and checkout vendored dep
-function getDep() {
-	lib=$1
-	echo "----------------------------------"
-	echo "Getting $lib ..."
-	go get -t github.com/tendermint/$lib/...
-
-	VENDORED=$(parseGlide $GLIDE $lib) 
-	cd $GOPATH/src/github.com/tendermint/$lib
-	MASTER=$(git rev-parse origin/master)
-
-	if [[ "$VENDORED" != "$MASTER" ]]; then
-		echo "... VENDORED != MASTER ($VENDORED != $MASTER)"
-		echo "... Checking out commit $VENDORED"
-		git checkout $VENDORED &> /dev/null
-	fi
-}
 
 ####################
 # libs we depend on
@@ -36,7 +15,9 @@ LIBS_GO_TEST=(go-clist go-common go-config go-crypto go-db go-events go-merkle g
 LIBS_MAKE_TEST=(go-rpc go-wire tmsp)
 
 for lib in "${LIBS_GO_TEST[@]}"; do
-	getDep $lib
+
+	# checkout vendored version of lib
+	bash scripts/glide/checkout.sh $GLIDE $lib
 
 	echo "Testing $lib ..."
 	go test --race github.com/tendermint/$lib/...
@@ -45,7 +26,6 @@ for lib in "${LIBS_GO_TEST[@]}"; do
 		exit 1
 	fi
 done
-
 
 for lib in "${LIBS_MAKE_TEST[@]}"; do
 	getDep $lib
