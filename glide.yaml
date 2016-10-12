@@ -1,0 +1,21 @@
+package: github.com/tendermint/netmon
+import:
+- package: github.com/codegangsta/cli
+- package: github.com/rcrowley/go-metrics
+- package: github.com/tendermint/go-common
+- package: github.com/tendermint/go-config
+- package: github.com/tendermint/go-crypto
+- package: github.com/tendermint/go-event-meter
+- package: github.com/tendermint/go-events
+- package: github.com/tendermint/go-logger
+- package: github.com/tendermint/go-process
+- package: github.com/tendermint/go-rpc
+  subpackages:
+  - client
+  - server
+- package: github.com/tendermint/go-wire
+- package: github.com/tendermint/tendermint
+  subpackages:
+  - config/tendermint
+  - rpc/core/types
+  - types
