@@ -206,10 +206,9 @@ func (n *Node) StartRPC() ([]net.Listener, error) {
 	rpccore.SetEventSwitch(n.evsw)
 	rpccore.SetBlockStore(n.blockStore)
 	rpccore.SetConsensusState(n.consensusState)
-	rpccore.SetConsensusReactor(n.consensusReactor)
-	rpccore.SetMempoolReactor(n.mempoolReactor)
+	rpccore.SetMempool(n.mempoolReactor.Mempool)
 	rpccore.SetSwitch(n.sw)
-	rpccore.SetPrivValidator(n.privValidator)
+	rpccore.SetPubKey(n.privValidator.PubKey)
 	rpccore.SetGenesisDoc(n.genesisDoc)
 	rpccore.SetProxyAppQuery(n.proxyApp.Query())
 
@@ -258,6 +257,14 @@ func (n *Node) EventSwitch() types.EventSwitch {
 // XXX: for convenience
 func (n *Node) PrivValidator() *types.PrivValidator {
 	return n.privValidator
+}
+
+func (n *Node) GenesisDoc() *types.GenesisDoc {
+	return n.genesisDoc
+}
+
+func (n *Node) ProxyApp() proxy.AppConns {
+	return n.proxyApp
 }
 
 func makeNodeInfo(config cfg.Config, sw *p2p.Switch, privKey crypto.PrivKeyEd25519) *p2p.NodeInfo {

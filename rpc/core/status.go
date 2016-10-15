@@ -22,7 +22,7 @@ func Status() (*ctypes.ResultStatus, error) {
 
 	return &ctypes.ResultStatus{
 		NodeInfo:          p2pSwitch.NodeInfo(),
-		PubKey:            privValidator.PubKey,
+		PubKey:            pubKey,
 		LatestBlockHash:   latestBlockHash,
 		LatestAppHash:     latestAppHash,
 		LatestBlockHeight: latestHeight,

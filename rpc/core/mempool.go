@@ -14,7 +14,7 @@ import (
 
 // Returns right away, with no response
 func BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
-	err := mempoolReactor.BroadcastTx(tx, nil)
+	err := mempool.CheckTx(tx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("Error broadcasting transaction: %v", err)
 	}
@@ -24,7 +24,7 @@ func BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 // Returns with the response from CheckTx
 func BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	resCh := make(chan *tmsp.Response, 1)
-	err := mempoolReactor.BroadcastTx(tx, func(res *tmsp.Response) {
+	err := mempool.CheckTx(tx, func(res *tmsp.Response) {
 		resCh <- res
 	})
 	if err != nil {
@@ -58,7 +58,7 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 
 	// broadcast the tx and register checktx callback
 	checkTxResCh := make(chan *tmsp.Response, 1)
-	err := mempoolReactor.BroadcastTx(tx, func(res *tmsp.Response) {
+	err := mempool.CheckTx(tx, func(res *tmsp.Response) {
 		checkTxResCh <- res
 	})
 	if err != nil {
@@ -101,10 +101,10 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 }
 
 func UnconfirmedTxs() (*ctypes.ResultUnconfirmedTxs, error) {
-	txs := mempoolReactor.Mempool.Reap(-1)
+	txs := mempool.Reap(-1)
 	return &ctypes.ResultUnconfirmedTxs{len(txs), txs}, nil
 }
 
 func NumUnconfirmedTxs() (*ctypes.ResultUnconfirmedTxs, error) {
-	return &ctypes.ResultUnconfirmedTxs{N: mempoolReactor.Mempool.Size()}, nil
+	return &ctypes.ResultUnconfirmedTxs{N: mempool.Size()}, nil
 }

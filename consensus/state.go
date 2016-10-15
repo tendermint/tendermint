@@ -289,6 +289,12 @@ func (cs *ConsensusState) getRoundState() *RoundState {
 	return &rs
 }
 
+func (cs *ConsensusState) GetValidators() (int, []*types.Validator) {
+	cs.mtx.Lock()
+	defer cs.mtx.Unlock()
+	return cs.state.LastBlockHeight, cs.state.Validators.Copy().Validators
+}
+
 func (cs *ConsensusState) SetPrivValidator(priv *types.PrivValidator) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
