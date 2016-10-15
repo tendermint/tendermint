@@ -66,7 +66,7 @@ func (memR *MempoolReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte) {
 		log.Warn("Error decoding message", "error", err)
 		return
 	}
-	log.Info("Receive", "src", src, "chId", chID, "msg", msg)
+	log.Debug("Receive", "src", src, "chId", chID, "msg", msg)
 
 	switch msg := msg.(type) {
 	case *TxMessage:
