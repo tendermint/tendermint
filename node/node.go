@@ -109,12 +109,6 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreato
 		consensusReactor.SetPrivValidator(privValidator)
 	}
 
-	// deterministic accountability
-	err = consensusState.OpenWAL(config.GetString("cswal"))
-	if err != nil {
-		log.Error("Failed to open cswal", "error", err.Error())
-	}
-
 	// Make p2p network switch
 	sw := p2p.NewSwitch(config.GetConfig("p2p"))
 	sw.AddReactor("MEMPOOL", mempoolReactor)
