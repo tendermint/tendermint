@@ -109,7 +109,7 @@ func (memR *MempoolReactor) broadcastTxRoutine(peer Peer) {
 
 	var next *clist.CElement
 	for {
-		if !memR.IsRunning() {
+		if !memR.IsRunning() || !peer.IsRunning() {
 			return // Quit!
 		}
 		if next == nil {
