@@ -97,6 +97,7 @@ func ResetConfig(localPath string) cfg.Config {
 	mapConfig.SetDefault("mempool_recheck", true)
 	mapConfig.SetDefault("mempool_recheck_empty", true)
 	mapConfig.SetDefault("mempool_broadcast", true)
+	mapConfig.SetDefault("mempool_wal", "")
 
 	return mapConfig
 }

@@ -60,6 +60,9 @@ type Mempool struct {
 	// Keep a cache of already-seen txs.
 	// This reduces the pressure on the proxyApp.
 	cache *txCache
+
+	// A log of mempool txs
+	wal *AutoFile
 }
 
 func NewMempool(config cfg.Config, proxyAppConn proxy.AppConnMempool) *Mempool {
@@ -75,8 +78,20 @@ func NewMempool(config cfg.Config, proxyAppConn proxy.AppConnMempool) *Mempool {
 
 		cache: newTxCache(cacheSize),
 	}
+	mempool.initWAL()
 	proxyAppConn.SetResponseCallback(mempool.resCb)
 	return mempool
+}
+
+func (mem *Mempool) initWAL() {
+	walFileName := mem.config.GetString("mempool_wal")
+	if walFileName != "" {
+		af, err := OpenAutoFile(walFileName)
+		if err != nil {
+			PanicSanity(err)
+		}
+		mem.wal = af
+	}
 }
 
 // consensus must be able to hold lock to safely update
@@ -137,6 +152,14 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*tmsp.Response)) (err error) {
 	}
 	mem.cache.Push(tx)
 	// END CACHE
+
+	// WAL
+	if mem.wal != nil {
+		// TODO: Notify administrators when WAL fails
+		mem.wal.Write([]byte(tx))
+		mem.wal.Write([]byte("\n"))
+	}
+	// END WAL
 
 	// NOTE: proxyAppConn may error if tx buffer is full
 	if err = mem.proxyAppConn.Error(); err != nil {
