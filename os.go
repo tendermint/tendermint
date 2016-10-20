@@ -8,12 +8,17 @@ import (
 	"os/signal"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 )
 
 var (
 	GoPath = os.Getenv("GOPATH")
 )
+
+func init() {
+	initAFSIGHUPWatcher()
+}
 
 func TrapSignal(cb func()) {
 	c := make(chan os.Signal, 1)
@@ -134,6 +139,7 @@ const autoFileOpenDuration = 1000 * time.Millisecond
 // Automatically closes and re-opens file for writing.
 // This is useful for using a log file with the logrotate tool.
 type AutoFile struct {
+	ID     string
 	Path   string
 	ticker *time.Ticker
 	mtx    sync.Mutex
@@ -142,6 +148,7 @@ type AutoFile struct {
 
 func OpenAutoFile(path string) (af *AutoFile, err error) {
 	af = &AutoFile{
+		ID:     RandStr(12) + ":" + path,
 		Path:   path,
 		ticker: time.NewTicker(autoFileOpenDuration),
 	}
@@ -149,14 +156,14 @@ func OpenAutoFile(path string) (af *AutoFile, err error) {
 		return
 	}
 	go af.processTicks()
+	autoFileWatchers.addAutoFile(af)
 	return
 }
 
 func (af *AutoFile) Close() error {
 	af.ticker.Stop()
-	af.mtx.Lock()
 	err := af.closeFile()
-	af.mtx.Unlock()
+	autoFileWatchers.removeAutoFile(af)
 	return err
 }
 
@@ -166,13 +173,14 @@ func (af *AutoFile) processTicks() {
 		if !ok {
 			return // Done.
 		}
-		af.mtx.Lock()
 		af.closeFile()
-		af.mtx.Unlock()
 	}
 }
 
 func (af *AutoFile) closeFile() (err error) {
+	af.mtx.Lock()
+	defer af.mtx.Unlock()
+
 	file := af.file
 	if file == nil {
 		return nil
@@ -201,6 +209,56 @@ func (af *AutoFile) openFile() error {
 	return nil
 }
 
+//--------------------------------------------------------------------------------
+
+var autoFileWatchers *afSIGHUPWatcher
+
+func initAFSIGHUPWatcher() {
+	autoFileWatchers = newAFSIGHUPWatcher()
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGHUP)
+
+	go func() {
+		for _ = range c {
+			autoFileWatchers.closeAll()
+		}
+	}()
+}
+
+type afSIGHUPWatcher struct {
+	mtx       sync.Mutex
+	autoFiles map[string]*AutoFile
+}
+
+func newAFSIGHUPWatcher() *afSIGHUPWatcher {
+	return &afSIGHUPWatcher{
+		autoFiles: make(map[string]*AutoFile, 10),
+	}
+}
+
+func (afw *afSIGHUPWatcher) addAutoFile(af *AutoFile) {
+	afw.mtx.Lock()
+	afw.autoFiles[af.ID] = af
+	afw.mtx.Unlock()
+}
+
+func (afw *afSIGHUPWatcher) removeAutoFile(af *AutoFile) {
+	afw.mtx.Lock()
+	delete(afw.autoFiles, af.ID)
+	afw.mtx.Unlock()
+}
+
+func (afw *afSIGHUPWatcher) closeAll() {
+	afw.mtx.Lock()
+	for _, af := range afw.autoFiles {
+		af.closeFile()
+	}
+	afw.mtx.Unlock()
+}
+
+//--------------------------------------------------------------------------------
+
 func Tempfile(prefix string) (*os.File, string) {
 	file, err := ioutil.TempFile("", prefix)
 	if err != nil {
@@ -208,6 +266,8 @@ func Tempfile(prefix string) (*os.File, string) {
 	}
 	return file, file.Name()
 }
+
+//--------------------------------------------------------------------------------
 
 func Prompt(prompt string, defaultValue string) (string, error) {
 	fmt.Print(prompt)
