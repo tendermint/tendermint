@@ -15,7 +15,7 @@ type EventData interface {
 // reactors and other modules should export
 // this interface to become eventable
 type Eventable interface {
-	SetEventSwitch(evsw *EventSwitch)
+	SetEventSwitch(evsw EventSwitch)
 }
 
 // an event switch or cache implements fireable
@@ -23,7 +23,16 @@ type Fireable interface {
 	FireEvent(event string, data EventData)
 }
 
-type EventSwitch struct {
+type EventSwitch interface {
+	Service
+	Fireable
+
+	AddListenerForEvent(listenerID, event string, cb EventCallback)
+	RemoveListenerForEvent(event string, listenerID string)
+	RemoveListener(listenerID string)
+}
+
+type eventSwitch struct {
 	BaseService
 
 	mtx        sync.RWMutex
@@ -31,26 +40,26 @@ type EventSwitch struct {
 	listeners  map[string]*eventListener
 }
 
-func NewEventSwitch() *EventSwitch {
-	evsw := &EventSwitch{}
+func NewEventSwitch() EventSwitch {
+	evsw := &eventSwitch{}
 	evsw.BaseService = *NewBaseService(log, "EventSwitch", evsw)
 	return evsw
 }
 
-func (evsw *EventSwitch) OnStart() error {
+func (evsw *eventSwitch) OnStart() error {
 	evsw.BaseService.OnStart()
 	evsw.eventCells = make(map[string]*eventCell)
 	evsw.listeners = make(map[string]*eventListener)
 	return nil
 }
 
-func (evsw *EventSwitch) OnStop() {
+func (evsw *eventSwitch) OnStop() {
 	evsw.BaseService.OnStop()
 	evsw.eventCells = nil
 	evsw.listeners = nil
 }
 
-func (evsw *EventSwitch) AddListenerForEvent(listenerID, event string, cb eventCallback) {
+func (evsw *eventSwitch) AddListenerForEvent(listenerID, event string, cb EventCallback) {
 	// Get/Create eventCell and listener
 	evsw.mtx.Lock()
 	eventCell := evsw.eventCells[event]
@@ -70,7 +79,7 @@ func (evsw *EventSwitch) AddListenerForEvent(listenerID, event string, cb eventC
 	listener.AddEvent(event)
 }
 
-func (evsw *EventSwitch) RemoveListener(listenerID string) {
+func (evsw *eventSwitch) RemoveListener(listenerID string) {
 	// Get and remove listener
 	evsw.mtx.RLock()
 	listener := evsw.listeners[listenerID]
@@ -90,7 +99,7 @@ func (evsw *EventSwitch) RemoveListener(listenerID string) {
 	}
 }
 
-func (evsw *EventSwitch) RemoveListenerForEvent(event string, listenerID string) {
+func (evsw *eventSwitch) RemoveListenerForEvent(event string, listenerID string) {
 	// Get eventCell
 	evsw.mtx.Lock()
 	eventCell := evsw.eventCells[event]
@@ -116,7 +125,7 @@ func (evsw *EventSwitch) RemoveListenerForEvent(event string, listenerID string)
 	}
 }
 
-func (evsw *EventSwitch) FireEvent(event string, data EventData) {
+func (evsw *eventSwitch) FireEvent(event string, data EventData) {
 	// Get the eventCell
 	evsw.mtx.RLock()
 	eventCell := evsw.eventCells[event]
@@ -135,16 +144,16 @@ func (evsw *EventSwitch) FireEvent(event string, data EventData) {
 // eventCell handles keeping track of listener callbacks for a given event.
 type eventCell struct {
 	mtx       sync.RWMutex
-	listeners map[string]eventCallback
+	listeners map[string]EventCallback
 }
 
 func newEventCell() *eventCell {
 	return &eventCell{
-		listeners: make(map[string]eventCallback),
+		listeners: make(map[string]EventCallback),
 	}
 }
 
-func (cell *eventCell) AddListener(listenerID string, cb eventCallback) {
+func (cell *eventCell) AddListener(listenerID string, cb EventCallback) {
 	cell.mtx.Lock()
 	cell.listeners[listenerID] = cb
 	cell.mtx.Unlock()
@@ -168,7 +177,7 @@ func (cell *eventCell) FireEvent(data EventData) {
 
 //-----------------------------------------------------------------------------
 
-type eventCallback func(data EventData)
+type EventCallback func(data EventData)
 
 type eventListener struct {
 	id string
