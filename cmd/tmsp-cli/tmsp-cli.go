@@ -9,10 +9,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/codegangsta/cli"
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/tmsp/client"
 	"github.com/tendermint/tmsp/types"
+	"github.com/urfave/cli"
 )
 
 // client is a global variable so it can be reused by the console
