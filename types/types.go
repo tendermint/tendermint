@@ -68,7 +68,7 @@ func NewRPCResponse(id string, res interface{}, err string) RPCResponse {
 // *wsConnection implements this interface.
 type WSRPCConnection interface {
 	GetRemoteAddr() string
-	GetEventSwitch() *events.EventSwitch
+	GetEventSwitch() events.EventSwitch
 	WriteRPCResponse(resp RPCResponse)
 	TryWriteRPCResponse(resp RPCResponse) bool
 }
