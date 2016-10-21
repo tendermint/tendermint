@@ -8,18 +8,7 @@ import (
 )
 
 func Validators() (*ctypes.ResultValidators, error) {
-	var blockHeight int
-	var validators []*types.Validator
-
-	// XXX: this is racy.
-	// Either use state.LoadState(db) or make state atomic (see #165)
-	state := consensusState.GetState()
-	blockHeight = state.LastBlockHeight
-	state.Validators.Iterate(func(index int, val *types.Validator) bool {
-		validators = append(validators, val)
-		return false
-	})
-
+	blockHeight, validators := consensusState.GetValidators()
 	return &ctypes.ResultValidators{blockHeight, validators}, nil
 }
 

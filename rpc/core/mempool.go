@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tendermint/go-events"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 	tmsp "github.com/tendermint/tmsp/types"
@@ -15,7 +14,7 @@ import (
 
 // Returns right away, with no response
 func BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
-	err := mempoolReactor.BroadcastTx(tx, nil)
+	err := mempool.CheckTx(tx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("Error broadcasting transaction: %v", err)
 	}
@@ -25,7 +24,7 @@ func BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 // Returns with the response from CheckTx
 func BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	resCh := make(chan *tmsp.Response, 1)
-	err := mempoolReactor.BroadcastTx(tx, func(res *tmsp.Response) {
+	err := mempool.CheckTx(tx, func(res *tmsp.Response) {
 		resCh <- res
 	})
 	if err != nil {
@@ -52,14 +51,14 @@ func BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 
 	// subscribe to tx being committed in block
-	appendTxResCh := make(chan *tmsp.Response, 1)
-	eventSwitch.AddListenerForEvent("rpc", types.EventStringTx(tx), func(data events.EventData) {
-		appendTxResCh <- data.(*tmsp.Response)
+	appendTxResCh := make(chan types.EventDataTx, 1)
+	types.AddListenerForEvent(eventSwitch, "rpc", types.EventStringTx(tx), func(data types.TMEventData) {
+		appendTxResCh <- data.(types.EventDataTx)
 	})
 
 	// broadcast the tx and register checktx callback
 	checkTxResCh := make(chan *tmsp.Response, 1)
-	err := mempoolReactor.BroadcastTx(tx, func(res *tmsp.Response) {
+	err := mempool.CheckTx(tx, func(res *tmsp.Response) {
 		checkTxResCh <- res
 	})
 	if err != nil {
@@ -84,11 +83,10 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 		// The tx was included in a block.
 		// NOTE we don't return an error regardless of the AppendTx code;
 		// 	clients must check this to see if they need to send a new tx!
-		r := appendTxRes.GetAppendTx()
 		return &ctypes.ResultBroadcastTx{
-			Code: r.Code,
-			Data: r.Data,
-			Log:  r.Log,
+			Code: appendTxRes.Code,
+			Data: appendTxRes.Result,
+			Log:  appendTxRes.Log,
 		}, nil
 	case <-timer.C:
 		r := checkTxR
@@ -103,10 +101,10 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 }
 
 func UnconfirmedTxs() (*ctypes.ResultUnconfirmedTxs, error) {
-	txs := mempoolReactor.Mempool.Reap(-1)
+	txs := mempool.Reap(-1)
 	return &ctypes.ResultUnconfirmedTxs{len(txs), txs}, nil
 }
 
 func NumUnconfirmedTxs() (*ctypes.ResultUnconfirmedTxs, error) {
-	return &ctypes.ResultUnconfirmedTxs{N: mempoolReactor.Mempool.Size()}, nil
+	return &ctypes.ResultUnconfirmedTxs{N: mempool.Size()}, nil
 }

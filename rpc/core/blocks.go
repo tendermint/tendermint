@@ -18,7 +18,7 @@ func BlockchainInfo(minHeight, maxHeight int) (*ctypes.ResultBlockchainInfo, err
 	if minHeight == 0 {
 		minHeight = MaxInt(1, maxHeight-20)
 	}
-	log.Info("BlockchainInfoHandler", "maxHeight", maxHeight, "minHeight", minHeight)
+	log.Debug("BlockchainInfoHandler", "maxHeight", maxHeight, "minHeight", minHeight)
 
 	blockMetas := []*types.BlockMeta{}
 	for height := maxHeight; height >= minHeight; height-- {

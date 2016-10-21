@@ -167,6 +167,8 @@ func (hvs *HeightVoteSet) String() string {
 }
 
 func (hvs *HeightVoteSet) StringIndented(indent string) string {
+	hvs.mtx.Lock()
+	defer hvs.mtx.Unlock()
 	vsStrings := make([]string, 0, (len(hvs.roundVoteSets)+1)*2)
 	// rounds 0 ~ hvs.round inclusive
 	for round := 0; round <= hvs.round; round++ {

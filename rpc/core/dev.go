@@ -10,7 +10,7 @@ import (
 )
 
 func UnsafeFlushMempool() (*ctypes.ResultUnsafeFlushMempool, error) {
-	mempoolReactor.Mempool.Flush()
+	mempool.Flush()
 	return &ctypes.ResultUnsafeFlushMempool{}, nil
 }
 

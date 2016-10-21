@@ -10,7 +10,6 @@ import (
 
 	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
-	"github.com/tendermint/go-events"
 	"github.com/tendermint/go-wire"
 	bc "github.com/tendermint/tendermint/blockchain"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -231,7 +230,7 @@ type ConsensusState struct {
 	tockChan         chan timeoutInfo // timeouts are relayed on tockChan to the receiveRoutine
 	timeoutParams    *TimeoutParams   // parameters and functions for timeout intervals
 
-	evsw *events.EventSwitch
+	evsw types.EventSwitch
 
 	wal        *WAL
 	replayMode bool // so we don't log signing errors during replay
@@ -264,7 +263,7 @@ func NewConsensusState(config cfg.Config, state *sm.State, proxyAppConn proxy.Ap
 // Public interface
 
 // implements events.Eventable
-func (cs *ConsensusState) SetEventSwitch(evsw *events.EventSwitch) {
+func (cs *ConsensusState) SetEventSwitch(evsw types.EventSwitch) {
 	cs.evsw = evsw
 }
 
@@ -288,6 +287,12 @@ func (cs *ConsensusState) GetRoundState() *RoundState {
 func (cs *ConsensusState) getRoundState() *RoundState {
 	rs := cs.RoundState // copy
 	return &rs
+}
+
+func (cs *ConsensusState) GetValidators() (int, []*types.Validator) {
+	cs.mtx.Lock()
+	defer cs.mtx.Unlock()
+	return cs.state.LastBlockHeight, cs.state.Validators.Copy().Validators
 }
 
 func (cs *ConsensusState) SetPrivValidator(priv *types.PrivValidator) {
@@ -545,7 +550,7 @@ func (cs *ConsensusState) newStep() {
 	cs.nSteps += 1
 	// newStep is called by updateToStep in NewConsensusState before the evsw is set!
 	if cs.evsw != nil {
-		cs.evsw.FireEvent(types.EventStringNewRoundStep(), rs)
+		types.FireEventNewRoundStep(cs.evsw, rs)
 	}
 }
 
@@ -719,13 +724,13 @@ func (cs *ConsensusState) handleTimeout(ti timeoutInfo, rs RoundState) {
 		// XXX: should we fire timeout here?
 		cs.enterNewRound(ti.Height, 0)
 	case RoundStepPropose:
-		cs.evsw.FireEvent(types.EventStringTimeoutPropose(), cs.RoundStateEvent())
+		types.FireEventTimeoutPropose(cs.evsw, cs.RoundStateEvent())
 		cs.enterPrevote(ti.Height, ti.Round)
 	case RoundStepPrevoteWait:
-		cs.evsw.FireEvent(types.EventStringTimeoutWait(), cs.RoundStateEvent())
+		types.FireEventTimeoutWait(cs.evsw, cs.RoundStateEvent())
 		cs.enterPrecommit(ti.Height, ti.Round)
 	case RoundStepPrecommitWait:
-		cs.evsw.FireEvent(types.EventStringTimeoutWait(), cs.RoundStateEvent())
+		types.FireEventTimeoutWait(cs.evsw, cs.RoundStateEvent())
 		cs.enterNewRound(ti.Height, ti.Round+1)
 	default:
 		panic(Fmt("Invalid timeout step: %v", ti.Step))
@@ -777,7 +782,7 @@ func (cs *ConsensusState) enterNewRound(height int, round int) {
 	}
 	cs.Votes.SetRound(round + 1) // also track next round (round+1) to allow round-skipping
 
-	cs.evsw.FireEvent(types.EventStringNewRound(), cs.RoundStateEvent())
+	types.FireEventNewRound(cs.evsw, cs.RoundStateEvent())
 
 	// Immediately go to enterPropose.
 	cs.enterPropose(height, round)
@@ -942,7 +947,7 @@ func (cs *ConsensusState) enterPrevote(height int, round int) {
 
 	// fire event for how we got here
 	if cs.isProposalComplete() {
-		cs.evsw.FireEvent(types.EventStringCompleteProposal(), cs.RoundStateEvent())
+		types.FireEventCompleteProposal(cs.evsw, cs.RoundStateEvent())
 	} else {
 		// we received +2/3 prevotes for a future round
 		// TODO: catchup event?
@@ -1047,7 +1052,7 @@ func (cs *ConsensusState) enterPrecommit(height int, round int) {
 	}
 
 	// At this point +2/3 prevoted for a particular block or nil
-	cs.evsw.FireEvent(types.EventStringPolka(), cs.RoundStateEvent())
+	types.FireEventPolka(cs.evsw, cs.RoundStateEvent())
 
 	// the latest POLRound should be this round
 	if cs.Votes.POLRound() < round {
@@ -1063,7 +1068,7 @@ func (cs *ConsensusState) enterPrecommit(height int, round int) {
 			cs.LockedRound = 0
 			cs.LockedBlock = nil
 			cs.LockedBlockParts = nil
-			cs.evsw.FireEvent(types.EventStringUnlock(), cs.RoundStateEvent())
+			types.FireEventUnlock(cs.evsw, cs.RoundStateEvent())
 		}
 		cs.signAddVote(types.VoteTypePrecommit, nil, types.PartSetHeader{})
 		return
@@ -1075,7 +1080,7 @@ func (cs *ConsensusState) enterPrecommit(height int, round int) {
 	if cs.LockedBlock.HashesTo(hash) {
 		log.Notice("enterPrecommit: +2/3 prevoted locked block. Relocking")
 		cs.LockedRound = round
-		cs.evsw.FireEvent(types.EventStringRelock(), cs.RoundStateEvent())
+		types.FireEventRelock(cs.evsw, cs.RoundStateEvent())
 		cs.signAddVote(types.VoteTypePrecommit, hash, partsHeader)
 		return
 	}
@@ -1090,7 +1095,7 @@ func (cs *ConsensusState) enterPrecommit(height int, round int) {
 		cs.LockedRound = round
 		cs.LockedBlock = cs.ProposalBlock
 		cs.LockedBlockParts = cs.ProposalBlockParts
-		cs.evsw.FireEvent(types.EventStringLock(), cs.RoundStateEvent())
+		types.FireEventLock(cs.evsw, cs.RoundStateEvent())
 		cs.signAddVote(types.VoteTypePrecommit, hash, partsHeader)
 		return
 	}
@@ -1106,7 +1111,7 @@ func (cs *ConsensusState) enterPrecommit(height int, round int) {
 		cs.ProposalBlock = nil
 		cs.ProposalBlockParts = types.NewPartSetFromHeader(partsHeader)
 	}
-	cs.evsw.FireEvent(types.EventStringUnlock(), cs.RoundStateEvent())
+	types.FireEventUnlock(cs.evsw, cs.RoundStateEvent())
 	cs.signAddVote(types.VoteTypePrecommit, nil, types.PartSetHeader{})
 	return
 }
@@ -1191,6 +1196,7 @@ func (cs *ConsensusState) tryFinalizeCommit(height int) {
 	}
 	if !cs.ProposalBlock.HashesTo(hash) {
 		// TODO: this happens every time if we're not a validator (ugly logs)
+		// TODO: ^^ wait, why does it matter that we're a validator?
 		log.Warn("Attempt to finalize failed. We don't have the commit block.")
 		return
 	}
@@ -1226,14 +1232,14 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 
 	// Fire off event for new block.
 	// TODO: Handle app failure.  See #177
-	cs.evsw.FireEvent(types.EventStringNewBlock(), types.EventDataNewBlock{block})
-	cs.evsw.FireEvent(types.EventStringNewBlockHeader(), types.EventDataNewBlockHeader{block.Header})
+	types.FireEventNewBlock(cs.evsw, types.EventDataNewBlock{block})
+	types.FireEventNewBlockHeader(cs.evsw, types.EventDataNewBlockHeader{block.Header})
 
 	// Create a copy of the state for staging
 	stateCopy := cs.state.Copy()
 
 	// event cache for txs
-	eventCache := events.NewEventCache(cs.evsw)
+	eventCache := types.NewEventCache(cs.evsw)
 
 	// Run the block on the State:
 	// + update validator sets
@@ -1423,7 +1429,7 @@ func (cs *ConsensusState) addVote(valIndex int, vote *types.Vote, peerKey string
 		added, address, err = cs.LastCommit.AddByIndex(valIndex, vote)
 		if added {
 			log.Info(Fmt("Added to lastPrecommits: %v", cs.LastCommit.StringShort()))
-			cs.evsw.FireEvent(types.EventStringVote(), types.EventDataVote{valIndex, address, vote})
+			types.FireEventVote(cs.evsw, types.EventDataVote{valIndex, address, vote})
 
 		}
 		return
@@ -1434,7 +1440,7 @@ func (cs *ConsensusState) addVote(valIndex int, vote *types.Vote, peerKey string
 		height := cs.Height
 		added, address, err = cs.Votes.AddByIndex(valIndex, vote, peerKey)
 		if added {
-			cs.evsw.FireEvent(types.EventStringVote(), types.EventDataVote{valIndex, address, vote})
+			types.FireEventVote(cs.evsw, types.EventDataVote{valIndex, address, vote})
 
 			switch vote.Type {
 			case types.VoteTypePrevote:
@@ -1452,7 +1458,7 @@ func (cs *ConsensusState) addVote(valIndex int, vote *types.Vote, peerKey string
 						cs.LockedRound = 0
 						cs.LockedBlock = nil
 						cs.LockedBlockParts = nil
-						cs.evsw.FireEvent(types.EventStringUnlock(), cs.RoundStateEvent())
+						types.FireEventUnlock(cs.evsw, cs.RoundStateEvent())
 					}
 				}
 				if cs.Round <= vote.Round && prevotes.HasTwoThirdsAny() {
@@ -1499,7 +1505,7 @@ func (cs *ConsensusState) addVote(valIndex int, vote *types.Vote, peerKey string
 	}
 
 	// Height mismatch, bad peer?
-	log.Info("Vote ignored and not added", "voteHeight", vote.Height, "csHeight", cs.Height)
+	log.Info("Vote ignored and not added", "voteHeight", vote.Height, "csHeight", cs.Height, "err", err)
 	return
 }
 

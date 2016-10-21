@@ -10,7 +10,6 @@ import (
 
 	cfg "github.com/tendermint/go-config"
 	dbm "github.com/tendermint/go-db"
-	"github.com/tendermint/go-events"
 	bc "github.com/tendermint/tendermint/blockchain"
 	mempl "github.com/tendermint/tendermint/mempool"
 	sm "github.com/tendermint/tendermint/state"
@@ -19,6 +18,7 @@ import (
 	tmsp "github.com/tendermint/tmsp/types"
 
 	"github.com/tendermint/tmsp/example/counter"
+	"github.com/tendermint/tmsp/example/dummy"
 )
 
 var config cfg.Config // NOTE: must be reset for each _test.go file
@@ -321,6 +321,16 @@ func fixedConsensusState() *ConsensusState {
 	return cs
 }
 
+func fixedConsensusStateDummy() *ConsensusState {
+	stateDB := dbm.NewMemDB()
+	state := sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
+	privValidatorFile := config.GetString("priv_validator_file")
+	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
+	privValidator.Reset()
+	cs := newConsensusState(state, privValidator, dummy.NewDummyApplication())
+	return cs
+}
+
 func newConsensusState(state *sm.State, pv *types.PrivValidator, app tmsp.Application) *ConsensusState {
 	// Get BlockStore
 	blockDB := dbm.NewMemDB()
@@ -338,7 +348,7 @@ func newConsensusState(state *sm.State, pv *types.PrivValidator, app tmsp.Applic
 	cs := NewConsensusState(config, state, proxyAppConnCon, blockStore, mempool)
 	cs.SetPrivValidator(pv)
 
-	evsw := events.NewEventSwitch()
+	evsw := types.NewEventSwitch()
 	cs.SetEventSwitch(evsw)
 	evsw.Start()
 	return cs

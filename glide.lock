@@ -64,17 +64,17 @@ imports:
 - name: github.com/tendermint/go-db
   version: 31fdd21c7eaeed53e0ea7ca597fb1e960e2988a5
 - name: github.com/tendermint/go-events
-  version: 48fa21511b259278b871a37b6951da2d5bef698d
+  version: 1652dc8b3f7780079aa98c3ce20a83ee90b9758b
 - name: github.com/tendermint/go-logger
   version: cefb3a45c0bf3c493a04e9bcd9b1540528be59f2
 - name: github.com/tendermint/go-merkle
   version: 05042c6ab9cad51d12e4cecf717ae68e3b1409a8
 - name: github.com/tendermint/go-p2p
-  version: f508f3f20b5bb36f03d3bc83647b7a92425139d1
+  version: 1eb390680d33299ba0e3334490eca587efd18414
   subpackages:
   - upnp
 - name: github.com/tendermint/go-rpc
-  version: 479510be0e80dd9e5d6b1f941adad168df0af85f
+  version: 855255d73eecd25097288be70f3fb208a5817d80
   subpackages:
   - client
   - server
@@ -86,7 +86,7 @@ imports:
   subpackages:
   - term
 - name: github.com/tendermint/tmsp
-  version: ead192adbbbf85ac581cf775b18ae70d59f86457
+  version: 5d3eb0328a615ba55b580ce871033e605aa8b97d
   subpackages:
   - client
   - example/counter

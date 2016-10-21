@@ -8,7 +8,6 @@ import (
 	"time"
 
 	. "github.com/tendermint/go-common"
-	"github.com/tendermint/go-events"
 	"github.com/tendermint/go-p2p"
 	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/proxy"
@@ -52,7 +51,7 @@ type BlockchainReactor struct {
 	timeoutsCh   chan string
 	lastBlock    *types.Block
 
-	evsw *events.EventSwitch
+	evsw types.EventSwitch
 }
 
 func NewBlockchainReactor(state *sm.State, proxyAppConn proxy.AppConnConsensus, store *BlockStore, fastSync bool) *BlockchainReactor {
@@ -130,7 +129,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte)
 		return
 	}
 
-	log.Notice("Receive", "src", src, "chID", chID, "msg", msg)
+	log.Debug("Receive", "src", src, "chID", chID, "msg", msg)
 
 	switch msg := msg.(type) {
 	case *bcBlockRequestMessage:
@@ -268,7 +267,7 @@ func (bcR *BlockchainReactor) BroadcastStatusRequest() error {
 }
 
 // implements events.Eventable
-func (bcR *BlockchainReactor) SetEventSwitch(evsw *events.EventSwitch) {
+func (bcR *BlockchainReactor) SetEventSwitch(evsw types.EventSwitch) {
 	bcR.evsw = evsw
 }
 
