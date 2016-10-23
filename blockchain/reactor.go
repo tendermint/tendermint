@@ -52,7 +52,7 @@ type BlockchainReactor struct {
 	timeoutsCh   chan string
 	lastBlock    *types.Block
 
-	evsw *events.EventSwitch
+	evsw events.EventSwitch
 }
 
 func NewBlockchainReactor(state *sm.State, proxyAppConn proxy.AppConnConsensus, store *BlockStore, fastSync bool) *BlockchainReactor {
@@ -268,7 +268,7 @@ func (bcR *BlockchainReactor) BroadcastStatusRequest() error {
 }
 
 // implements events.Eventable
-func (bcR *BlockchainReactor) SetEventSwitch(evsw *events.EventSwitch) {
+func (bcR *BlockchainReactor) SetEventSwitch(evsw events.EventSwitch) {
 	bcR.evsw = evsw
 }
 

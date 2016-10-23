@@ -233,7 +233,7 @@ type ConsensusState struct {
 	tockChan         chan timeoutInfo // timeouts are relayed on tockChan to the receiveRoutine
 	timeoutParams    *TimeoutParams   // parameters and functions for timeout intervals
 
-	evsw *events.EventSwitch
+	evsw events.EventSwitch
 
 	wal        *WAL
 	replayMode bool // so we don't log signing errors during replay
@@ -266,7 +266,7 @@ func NewConsensusState(config cfg.Config, state *sm.State, proxyAppConn proxy.Ap
 // Public interface
 
 // implements events.Eventable
-func (cs *ConsensusState) SetEventSwitch(evsw *events.EventSwitch) {
+func (cs *ConsensusState) SetEventSwitch(evsw events.EventSwitch) {
 	cs.evsw = evsw
 }
 

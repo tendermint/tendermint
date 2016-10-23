@@ -12,7 +12,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-var eventSwitch *events.EventSwitch
+var eventSwitch events.EventSwitch
 var blockStore *bc.BlockStore
 var consensusState *consensus.ConsensusState
 var consensusReactor *consensus.ConsensusReactor
@@ -28,7 +28,7 @@ func SetConfig(c cfg.Config) {
 	config = c
 }
 
-func SetEventSwitch(evsw *events.EventSwitch) {
+func SetEventSwitch(evsw events.EventSwitch) {
 	eventSwitch = evsw
 }
 
