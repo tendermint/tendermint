@@ -34,7 +34,7 @@ type ConsensusReactor struct {
 	blockStore *bc.BlockStore
 	conS       *ConsensusState
 	fastSync   bool
-	evsw       *events.EventSwitch
+	evsw       events.EventSwitch
 }
 
 func NewConsensusReactor(consensusState *ConsensusState, blockStore *bc.BlockStore, fastSync bool) *ConsensusReactor {
@@ -225,7 +225,7 @@ func (conR *ConsensusReactor) SetPrivValidator(priv *types.PrivValidator) {
 }
 
 // implements events.Eventable
-func (conR *ConsensusReactor) SetEventSwitch(evsw *events.EventSwitch) {
+func (conR *ConsensusReactor) SetEventSwitch(evsw events.EventSwitch) {
 	conR.evsw = evsw
 	conR.conS.SetEventSwitch(evsw)
 }

@@ -32,7 +32,7 @@ import _ "net/http/pprof"
 type Node struct {
 	config           cfg.Config
 	sw               *p2p.Switch
-	evsw             *events.EventSwitch
+	evsw             events.EventSwitch
 	blockStore       *bc.BlockStore
 	bcReactor        *bc.BlockchainReactor
 	mempoolReactor   *mempl.MempoolReactor
@@ -187,7 +187,7 @@ func (n *Node) Stop() {
 }
 
 // Add the event switch to reactors, mempool, etc.
-func SetEventSwitch(evsw *events.EventSwitch, eventables ...events.Eventable) {
+func SetEventSwitch(evsw events.EventSwitch, eventables ...events.Eventable) {
 	for _, e := range eventables {
 		e.SetEventSwitch(evsw)
 	}
@@ -252,7 +252,7 @@ func (n *Node) MempoolReactor() *mempl.MempoolReactor {
 	return n.mempoolReactor
 }
 
-func (n *Node) EventSwitch() *events.EventSwitch {
+func (n *Node) EventSwitch() events.EventSwitch {
 	return n.evsw
 }
 
