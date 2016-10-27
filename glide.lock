@@ -1,5 +1,5 @@
 hash: d87a1fe0061d41c1e6ec78d405d54ae321e75f4bff22b38d19d3255bbd17f21e
-updated: 2016-09-10T18:02:24.023038691-04:00
+updated: 2016-10-26T21:54:29.806660971-07:00
 imports:
 - name: github.com/btcsuite/btcd
   version: 2ef82e7db35dc8c499fa9091d768dc99bbaff893
@@ -51,10 +51,12 @@ imports:
   - extra25519
 - name: github.com/tendermint/flowcontrol
   version: 84d9671090430e8ec80e35b339907e0579b999eb
+- name: github.com/tendermint/go-autofile
+  version: c26b857900009ac81c78c1bc03f85e0c8e47818a
 - name: github.com/tendermint/go-clist
   version: 3baa390bbaf7634251c42ad69a8682e7e3990552
 - name: github.com/tendermint/go-common
-  version: 47e06734f6ee488cc2e61550a38642025e1d4227
+  version: 44f2818a3d6c0174da7c16c97387cb97fe6c63af
   subpackages:
   - test
 - name: github.com/tendermint/go-config
