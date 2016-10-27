@@ -24,6 +24,7 @@ with respect to the Group's Head (the AutoFile being appended to)
 */
 
 const groupCheckDuration = 1000 * time.Millisecond
+const defaultHeadSizeLimit = 10 * 1024 * 1024 // 10MB
 
 type Group struct {
 	ID             string
@@ -33,17 +34,25 @@ type Group struct {
 	mtx            sync.Mutex
 	headSizeLimit  int64
 	totalSizeLimit int64
+	minIndex       int // Includes head
+	maxIndex       int // Includes head, where Head will move to
 }
 
 func OpenGroup(head *AutoFile) (g *Group, err error) {
 	dir := path.Dir(head.Path)
 
 	g = &Group{
-		ID:     "group:" + head.ID,
-		Head:   head,
-		Dir:    dir,
-		ticker: time.NewTicker(groupCheckDuration),
+		ID:            "group:" + head.ID,
+		Head:          head,
+		Dir:           dir,
+		ticker:        time.NewTicker(groupCheckDuration),
+		headSizeLimit: defaultHeadSizeLimit,
+		minIndex:      0,
+		maxIndex:      0,
 	}
+	gInfo := g.readGroupInfo()
+	g.minIndex = gInfo.MinIndex
+	g.maxIndex = gInfo.MaxIndex
 	go g.processTicks()
 	return
 }
@@ -72,6 +81,12 @@ func (g *Group) TotalSizeLimit() int64 {
 	return g.totalSizeLimit
 }
 
+func (g *Group) MaxIndex() int {
+	g.mtx.Lock()
+	defer g.mtx.Unlock()
+	return g.maxIndex
+}
+
 func (g *Group) Close() error {
 	g.ticker.Stop()
 	return nil
@@ -83,8 +98,8 @@ func (g *Group) processTicks() {
 		if !ok {
 			return // Done.
 		}
-		// TODO Check head size limit
-		// TODO check total size limit
+		g.checkHeadSizeLimit()
+		g.checkTotalSizeLimit()
 	}
 }
 
@@ -112,8 +127,7 @@ func (g *Group) RotateFile() {
 	g.mtx.Lock()
 	defer g.mtx.Unlock()
 
-	gInfo := g.readGroupInfo()
-	dstPath := filePathForIndex(g.Head.Path, gInfo.MaxIndex+1)
+	dstPath := filePathForIndex(g.Head.Path, g.maxIndex)
 	err := os.Rename(g.Head.Path, dstPath)
 	if err != nil {
 		panic(err)
@@ -122,6 +136,7 @@ func (g *Group) RotateFile() {
 	if err != nil {
 		panic(err)
 	}
+	g.maxIndex += 1
 }
 
 func (g *Group) NewReader(index int) *GroupReader {
@@ -135,23 +150,29 @@ type SearchFunc func(line string) (int, error)
 
 // Searches for the right file in Group,
 // then returns a GroupReader to start streaming lines
+// Returns true if an exact match was found, otherwise returns
+// the next greater line that starts with prefix.
 // CONTRACT: caller is responsible for closing GroupReader.
-func (g *Group) Search(prefix string, cmp SearchFunc) (*GroupReader, error) {
-	gInfo := g.ReadGroupInfo()
-	minIndex, maxIndex := gInfo.MinIndex, gInfo.MaxIndex
-	curIndex := (minIndex + maxIndex + 1) / 2
+func (g *Group) Search(prefix string, cmp SearchFunc) (*GroupReader, bool, error) {
+	g.mtx.Lock()
+	minIndex, maxIndex := g.minIndex, g.maxIndex
+	g.mtx.Unlock()
+	// Now minIndex/maxIndex may change meanwhile,
+	// but it shouldn't be a big deal
+	// (maybe we'll want to limit scanUntil though)
 
 	for {
+		curIndex := (minIndex + maxIndex + 1) / 2
 
 		// Base case, when there's only 1 choice left.
 		if minIndex == maxIndex {
 			r := g.NewReader(maxIndex)
-			err := scanUntil(r, prefix, cmp)
+			match, err := scanUntil(r, prefix, cmp)
 			if err != nil {
 				r.Close()
-				return nil, err
+				return nil, false, err
 			} else {
-				return r, err
+				return r, match, err
 			}
 		}
 
@@ -161,13 +182,13 @@ func (g *Group) Search(prefix string, cmp SearchFunc) (*GroupReader, error) {
 		foundIndex, line, err := scanFirst(r, prefix)
 		r.Close()
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 
 		// Compare this line to our search query.
 		val, err := cmp(line)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		if val < 0 {
 			// Line will come later
@@ -175,12 +196,15 @@ func (g *Group) Search(prefix string, cmp SearchFunc) (*GroupReader, error) {
 		} else if val == 0 {
 			// Stroke of luck, found the line
 			r := g.NewReader(foundIndex)
-			err := scanUntil(r, prefix, cmp)
+			match, err := scanUntil(r, prefix, cmp)
+			if !match {
+				panic("Expected match to be true")
+			}
 			if err != nil {
 				r.Close()
-				return nil, err
+				return nil, false, err
 			} else {
-				return r, err
+				return r, true, err
 			}
 		} else {
 			// We passed it
@@ -205,24 +229,28 @@ func scanFirst(r *GroupReader, prefix string) (int, string, error) {
 	}
 }
 
-func scanUntil(r *GroupReader, prefix string, cmp SearchFunc) error {
+// Returns true iff an exact match was found.
+func scanUntil(r *GroupReader, prefix string, cmp SearchFunc) (bool, error) {
 	for {
 		line, err := r.ReadLine()
 		if err != nil {
-			return err
+			return false, err
 		}
 		if !strings.HasPrefix(line, prefix) {
 			continue
 		}
 		val, err := cmp(line)
 		if err != nil {
-			return err
+			return false, err
 		}
 		if val < 0 {
 			continue
+		} else if val == 0 {
+			r.PushLine(line)
+			return true, nil
 		} else {
 			r.PushLine(line)
-			return nil
+			return false, nil
 		}
 	}
 }
@@ -241,6 +269,7 @@ func (g *Group) ReadGroupInfo() GroupInfo {
 	return g.readGroupInfo()
 }
 
+// Index includes the head.
 // CONTRACT: caller should have called g.mtx.Lock
 func (g *Group) readGroupInfo() GroupInfo {
 	groupDir := filepath.Dir(g.Head.Path)
@@ -285,6 +314,15 @@ func (g *Group) readGroupInfo() GroupInfo {
 		}
 	}
 
+	// Now account for the head.
+	if minIndex == -1 {
+		// If there were no numbered files,
+		// then the head is index 0.
+		minIndex, maxIndex = 0, 0
+	} else {
+		// Otherwise, the head file is 1 greater
+		maxIndex += 1
+	}
 	return GroupInfo{minIndex, maxIndex, totalSize, headSize}
 }
 
@@ -306,27 +344,43 @@ type GroupReader struct {
 func newGroupReader(g *Group) *GroupReader {
 	return &GroupReader{
 		Group:     g,
-		curIndex:  -1,
+		curIndex:  0,
 		curFile:   nil,
 		curReader: nil,
 		curLine:   nil,
 	}
 }
 
-func (g *GroupReader) ReadLine() (string, error) {
-	g.mtx.Lock()
-	defer g.mtx.Unlock()
+func (gr *GroupReader) Close() error {
+	gr.mtx.Lock()
+	defer gr.mtx.Unlock()
+
+	if gr.curReader != nil {
+		err := gr.curFile.Close()
+		gr.curIndex = 0
+		gr.curReader = nil
+		gr.curFile = nil
+		gr.curLine = nil
+		return err
+	} else {
+		return nil
+	}
+}
+
+func (gr *GroupReader) ReadLine() (string, error) {
+	gr.mtx.Lock()
+	defer gr.mtx.Unlock()
 
 	// From PushLine
-	if g.curLine != nil {
-		line := string(g.curLine)
-		g.curLine = nil
+	if gr.curLine != nil {
+		line := string(gr.curLine)
+		gr.curLine = nil
 		return line, nil
 	}
 
 	// Open file if not open yet
-	if g.curReader == nil {
-		err := g.openFile(0)
+	if gr.curReader == nil {
+		err := gr.openFile(gr.curIndex)
 		if err != nil {
 			return "", err
 		}
@@ -334,63 +388,74 @@ func (g *GroupReader) ReadLine() (string, error) {
 
 	// Iterate over files until line is found
 	for {
-		bytes, err := g.curReader.ReadBytes('\n')
+		bytes, err := gr.curReader.ReadBytes('\n')
 		if err != nil {
 			if err != io.EOF {
 				return string(bytes), err
 			} else {
 				// Open the next file
-				err := g.openFile(g.curIndex + 1)
+				err := gr.openFile(gr.curIndex + 1)
 				if err != nil {
 					return "", err
 				}
+				continue
 			}
 		}
+		return string(bytes), nil
 	}
 }
 
-// CONTRACT: caller should hold g.mtx
-func (g *GroupReader) openFile(index int) error {
+// IF index > gr.Group.maxIndex, returns io.EOF
+// CONTRACT: caller should hold gr.mtx
+func (gr *GroupReader) openFile(index int) error {
 
 	// Lock on Group to ensure that head doesn't move in the meanwhile.
-	g.Group.mtx.Lock()
-	defer g.Group.mtx.Unlock()
+	gr.Group.mtx.Lock()
+	defer gr.Group.mtx.Unlock()
 
-	curFilePath := filePathForIndex(g.Head.Path, index)
+	var curFilePath string
+	if index == gr.Group.maxIndex {
+		curFilePath = gr.Head.Path
+	} else if index > gr.Group.maxIndex {
+		return io.EOF
+	} else {
+		curFilePath = filePathForIndex(gr.Head.Path, index)
+	}
+
 	curFile, err := os.Open(curFilePath)
 	if err != nil {
 		return err
 	}
 	curReader := bufio.NewReader(curFile)
 
-	// Update g.cur*
-	g.curIndex = index
-	g.curFile = curFile
-	g.curReader = curReader
-	g.curLine = nil
+	// Update gr.cur*
+	gr.curIndex = index
+	gr.curFile = curFile
+	gr.curReader = curReader
+	gr.curLine = nil
 	return nil
 }
 
-func (g *GroupReader) PushLine(line string) {
-	g.mtx.Lock()
-	defer g.mtx.Unlock()
+func (gr *GroupReader) PushLine(line string) {
+	gr.mtx.Lock()
+	defer gr.mtx.Unlock()
 
-	if g.curLine == nil {
-		g.curLine = []byte(line)
+	if gr.curLine == nil {
+		gr.curLine = []byte(line)
 	} else {
 		panic("PushLine failed, already have line")
 	}
 }
 
 // Cursor's file index.
-func (g *GroupReader) CurIndex() int {
-	g.mtx.Lock()
-	defer g.mtx.Unlock()
-	return g.curIndex
+func (gr *GroupReader) CurIndex() int {
+	gr.mtx.Lock()
+	defer gr.mtx.Unlock()
+	return gr.curIndex
 }
 
-func (g *GroupReader) SetIndex(index int) {
-	g.mtx.Lock()
-	defer g.mtx.Unlock()
-	g.openFile(index)
+func (gr *GroupReader) SetIndex(index int) {
+	gr.mtx.Lock()
+	defer gr.mtx.Unlock()
+	gr.openFile(index)
 }
