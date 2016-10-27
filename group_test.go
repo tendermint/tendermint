@@ -230,6 +230,10 @@ func TestSearch(t *testing.T) {
 		if !strings.HasPrefix(line, "INFO 0 ") {
 			t.Error("Failed to fetch correct line, which is the earliest INFO")
 		}
+		err = gr.Close()
+		if err != nil {
+			t.Error("Failed to close GroupReader", err)
+		}
 	}
 
 	// Now search for something that is too large.

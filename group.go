@@ -19,8 +19,28 @@ You can open a Group to keep restrictions on an AutoFile, like
 the maximum size of each chunk, and/or the total amount of bytes
 stored in the group.
 
-The Group can also be used to binary-search, and to read atomically
-with respect to the Group's Head (the AutoFile being appended to)
+The first file to be written in the Group.Dir is the head file.
+
+  Dir/
+  - <HeadPath>
+
+Once the Head file reaches the size limit, it will be rotated.
+
+  Dir/
+  - <HeadPath>.000   // First rolled file
+  - <HeadPath>       // New head path, starts empty.
+                     // The implicit index is 001.
+
+As more files are written, the index numbers grow...
+
+  Dir/
+  - <HeadPath>.000   // First rolled file
+  - <HeadPath>.001   // Second rolled file
+  - ...
+  - <HeadPath>       // New head path
+
+The Group can also be used to binary-search for some line,
+assuming that marker lines are written occasionally.
 */
 
 const groupCheckDuration = 1000 * time.Millisecond
