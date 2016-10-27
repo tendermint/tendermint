@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"bufio"
-	"io"
 	"os"
 	"time"
 
@@ -103,10 +102,17 @@ func (wal *WAL) Wait() {
 	<-wal.done
 }
 
+// TODO: remove once we stop supporting older golang version
+const (
+	ioSeekStart   = 0
+	ioSeekCurrent = 1
+	ioSeekEnd     = 2
+)
+
 func (wal *WAL) SeekFromEnd(found func([]byte) bool) (nLines int, err error) {
 	var current int64
 	// start at the end
-	current, err = wal.fp.Seek(0, io.SeekEnd)
+	current, err = wal.fp.Seek(0, ioSeekEnd)
 	if err != nil {
 		return
 	}
@@ -116,11 +122,11 @@ func (wal *WAL) SeekFromEnd(found func([]byte) bool) (nLines int, err error) {
 	for {
 		current -= 1
 		if current < 0 {
-			wal.fp.Seek(0, io.SeekStart) // back to beginning
+			wal.fp.Seek(0, ioSeekStart) // back to beginning
 			return
 		}
 		// backup one and read a new byte
-		if _, err = wal.fp.Seek(current, io.SeekStart); err != nil {
+		if _, err = wal.fp.Seek(current, ioSeekStart); err != nil {
 			return
 		}
 		b := make([]byte, 1)
@@ -137,8 +143,8 @@ func (wal *WAL) SeekFromEnd(found func([]byte) bool) (nLines int, err error) {
 			}
 
 			if found(lineBytes) {
-				wal.fp.Seek(0, io.SeekCurrent) // (?)
-				wal.fp.Seek(current, io.SeekStart)
+				wal.fp.Seek(0, ioSeekCurrent) // (?)
+				wal.fp.Seek(current, ioSeekStart)
 				return
 			}
 		}
