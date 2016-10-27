@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	auto "github.com/tendermint/go-autofile"
 	"github.com/tendermint/go-clist"
 	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
@@ -62,7 +63,7 @@ type Mempool struct {
 	cache *txCache
 
 	// A log of mempool txs
-	wal *AutoFile
+	wal *auto.AutoFile
 }
 
 func NewMempool(config cfg.Config, proxyAppConn proxy.AppConnMempool) *Mempool {
@@ -86,7 +87,7 @@ func NewMempool(config cfg.Config, proxyAppConn proxy.AppConnMempool) *Mempool {
 func (mem *Mempool) initWAL() {
 	walFileName := mem.config.GetString("mempool_wal")
 	if walFileName != "" {
-		af, err := OpenAutoFile(walFileName)
+		af, err := auto.OpenAutoFile(walFileName)
 		if err != nil {
 			PanicSanity(err)
 		}

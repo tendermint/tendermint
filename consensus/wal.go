@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"bufio"
+	"io"
 	"os"
 	"time"
 
@@ -80,10 +81,10 @@ func (wal *WAL) Save(clm ConsensusLogMessageInterface) {
 				}
 			}
 		}
+		var clmBytes = wire.JSONBytes(ConsensusLogMessage{time.Now(), clm})
 		var n int
 		var err error
-		wire.WriteJSON(ConsensusLogMessage{time.Now(), clm}, wal.fp, &n, &err)
-		wire.WriteTo([]byte("\n"), wal.fp, &n, &err) // one message per line
+		wire.WriteTo(append(clmBytes, byte('\n')), wal.fp, &n, &err) // one message per line
 		if err != nil {
 			PanicQ(Fmt("Error writing msg to consensus wal. Error: %v \n\nMessage: %v", err, clm))
 		}
@@ -105,7 +106,7 @@ func (wal *WAL) Wait() {
 func (wal *WAL) SeekFromEnd(found func([]byte) bool) (nLines int, err error) {
 	var current int64
 	// start at the end
-	current, err = wal.fp.Seek(0, 2)
+	current, err = wal.fp.Seek(0, io.SeekEnd)
 	if err != nil {
 		return
 	}
@@ -115,11 +116,11 @@ func (wal *WAL) SeekFromEnd(found func([]byte) bool) (nLines int, err error) {
 	for {
 		current -= 1
 		if current < 0 {
-			wal.fp.Seek(0, 0) // back to beginning
+			wal.fp.Seek(0, io.SeekStart) // back to beginning
 			return
 		}
 		// backup one and read a new byte
-		if _, err = wal.fp.Seek(current, 0); err != nil {
+		if _, err = wal.fp.Seek(current, io.SeekStart); err != nil {
 			return
 		}
 		b := make([]byte, 1)
@@ -136,8 +137,8 @@ func (wal *WAL) SeekFromEnd(found func([]byte) bool) (nLines int, err error) {
 			}
 
 			if found(lineBytes) {
-				wal.fp.Seek(0, 1) // (?)
-				wal.fp.Seek(current, 0)
+				wal.fp.Seek(0, io.SeekCurrent) // (?)
+				wal.fp.Seek(current, io.SeekStart)
 				return
 			}
 		}
