@@ -141,6 +141,7 @@ func (g *Group) checkHeadSizeLimit() {
 
 func (g *Group) checkTotalSizeLimit() {
 	// TODO enforce total size limit
+	// CHALLENGE
 }
 
 func (g *Group) RotateFile() {
