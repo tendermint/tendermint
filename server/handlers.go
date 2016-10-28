@@ -264,7 +264,7 @@ const (
 // contains listener id, underlying ws connection,
 // and the event switch for subscribing to events
 type wsConnection struct {
-	QuitService
+	BaseService
 
 	remoteAddr  string
 	baseConn    *websocket.Conn
@@ -285,13 +285,13 @@ func NewWSConnection(baseConn *websocket.Conn, funcMap map[string]*RPCFunc, evsw
 		funcMap:    funcMap,
 		evsw:       evsw,
 	}
-	wsc.QuitService = *NewQuitService(log, "wsConnection", wsc)
+	wsc.BaseService = *NewBaseService(log, "wsConnection", wsc)
 	return wsc
 }
 
 // wsc.Start() blocks until the connection closes.
 func (wsc *wsConnection) OnStart() error {
-	wsc.QuitService.OnStart()
+	wsc.BaseService.OnStart()
 
 	// Read subscriptions/unsubscriptions to events
 	go wsc.readRoutine()
@@ -318,7 +318,7 @@ func (wsc *wsConnection) OnStart() error {
 }
 
 func (wsc *wsConnection) OnStop() {
-	wsc.QuitService.OnStop()
+	wsc.BaseService.OnStop()
 	wsc.evsw.RemoveListener(wsc.remoteAddr)
 	wsc.readTimeout.Stop()
 	wsc.pingTicker.Stop()
