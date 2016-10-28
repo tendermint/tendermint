@@ -70,23 +70,24 @@ func (wal *WAL) Exists() bool {
 
 // called in newStep and for each pass in receiveRoutine
 func (wal *WAL) Save(clm ConsensusLogMessageInterface) {
-	if wal != nil {
-		if wal.light {
-			// in light mode we only write new steps, timeouts, and our own votes (no proposals, block parts)
-			if mi, ok := clm.(msgInfo); ok {
-				_ = mi
-				if mi.PeerKey != "" {
-					return
-				}
+	if wal == nil {
+		return
+	}
+	if wal.light {
+		// in light mode we only write new steps, timeouts, and our own votes (no proposals, block parts)
+		if mi, ok := clm.(msgInfo); ok {
+			_ = mi
+			if mi.PeerKey != "" {
+				return
 			}
 		}
-		var clmBytes = wire.JSONBytes(ConsensusLogMessage{time.Now(), clm})
-		var n int
-		var err error
-		wire.WriteTo(append(clmBytes, byte('\n')), wal.fp, &n, &err) // one message per line
-		if err != nil {
-			PanicQ(Fmt("Error writing msg to consensus wal. Error: %v \n\nMessage: %v", err, clm))
-		}
+	}
+	var clmBytes = wire.JSONBytes(ConsensusLogMessage{time.Now(), clm})
+	var n int
+	var err error
+	wire.WriteTo(append(clmBytes, byte('\n')), wal.fp, &n, &err) // one message per line
+	if err != nil {
+		PanicQ(Fmt("Error writing msg to consensus wal. Error: %v \n\nMessage: %v", err, clm))
 	}
 }
 
