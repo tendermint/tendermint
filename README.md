@@ -68,7 +68,11 @@ TMSP requests/responses are simple Protobuf messages.  Check out the [schema fil
     * `Data ([]byte)`: Result bytes, if any
     * `Log (string)`: Debug or error message
   * __Usage__:<br/>
-    Validate a transaction.  This message should not mutate the state.
+    Validate a mempool transaction, prior to broadcasting or proposing.  This message should not mutate the main state, but application
+    developers may want to keep a separate CheckTx state that gets reset upon Commit.
+
+    CheckTx can happen interspersed with AppendTx, but they happen on different connections - CheckTx from the mempool connection, and AppendTx from the consensus connection.  During Commit, the mempool is locked, so you can reset the mempool state to the latest state after running all those appendtxs, and then the mempool will re run whatever txs it has against that latest mempool stte
+
     Transactions are first run through CheckTx before broadcast to peers in the mempool layer.
     You can make CheckTx semi-stateful and clear the state upon `Commit` or `BeginBlock`,
     to allow for dependent sequences of transactions in the same block.

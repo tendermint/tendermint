@@ -15,7 +15,7 @@ import (
 // A stripped copy of the remoteClient that makes
 // synchronous calls using grpc
 type grpcClient struct {
-	QuitService
+	BaseService
 	mustConnect bool
 
 	client types.TMSPApplicationClient
@@ -31,7 +31,7 @@ func NewGRPCClient(addr string, mustConnect bool) (*grpcClient, error) {
 		addr:        addr,
 		mustConnect: mustConnect,
 	}
-	cli.QuitService = *NewQuitService(nil, "grpcClient", cli)
+	cli.BaseService = *NewBaseService(nil, "grpcClient", cli)
 	_, err := cli.Start() // Just start it, it's confusing for callers to remember to start.
 	return cli, err
 }
@@ -41,7 +41,7 @@ func dialerFunc(addr string, timeout time.Duration) (net.Conn, error) {
 }
 
 func (cli *grpcClient) OnStart() error {
-	cli.QuitService.OnStart()
+	cli.BaseService.OnStart()
 RETRY_LOOP:
 
 	for {
@@ -73,7 +73,7 @@ RETRY_LOOP:
 }
 
 func (cli *grpcClient) OnStop() {
-	cli.QuitService.OnStop()
+	cli.BaseService.OnStop()
 	cli.mtx.Lock()
 	defer cli.mtx.Unlock()
 	// TODO: how to close conn? its not a net.Conn and grpc doesn't expose a Close()

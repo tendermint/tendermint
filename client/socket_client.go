@@ -27,7 +27,7 @@ const flushThrottleMS = 20      // Don't wait longer than...
 // the application in general is not meant to be interfaced
 // with concurrent callers.
 type socketClient struct {
-	QuitService
+	BaseService
 
 	reqQueue    chan *ReqRes
 	flushTimer  *ThrottleTimer
@@ -52,14 +52,14 @@ func NewSocketClient(addr string, mustConnect bool) (*socketClient, error) {
 		reqSent: list.New(),
 		resCb:   nil,
 	}
-	cli.QuitService = *NewQuitService(nil, "socketClient", cli)
+	cli.BaseService = *NewBaseService(nil, "socketClient", cli)
 
 	_, err := cli.Start() // Just start it, it's confusing for callers to remember to start.
 	return cli, err
 }
 
 func (cli *socketClient) OnStart() error {
-	cli.QuitService.OnStart()
+	cli.BaseService.OnStart()
 
 	var err error
 	var conn net.Conn
@@ -86,7 +86,7 @@ RETRY_LOOP:
 }
 
 func (cli *socketClient) OnStop() {
-	cli.QuitService.OnStop()
+	cli.BaseService.OnStop()
 
 	cli.mtx.Lock()
 	defer cli.mtx.Unlock()
@@ -140,7 +140,7 @@ func (cli *socketClient) sendRequestsRoutine(conn net.Conn) {
 			default:
 				// Probably will fill the buffer, or retry later.
 			}
-		case <-cli.QuitService.Quit:
+		case <-cli.BaseService.Quit:
 			return
 		case reqres := <-cli.reqQueue:
 			cli.willSendReq(reqres)

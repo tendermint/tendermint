@@ -13,7 +13,7 @@ import (
 // var maxNumberConnections = 2
 
 type GRPCServer struct {
-	QuitService
+	BaseService
 
 	proto    string
 	addr     string
@@ -32,13 +32,13 @@ func NewGRPCServer(protoAddr string, app types.TMSPApplicationServer) (Service, 
 		listener: nil,
 		app:      app,
 	}
-	s.QuitService = *NewQuitService(nil, "TMSPServer", s)
+	s.BaseService = *NewBaseService(nil, "TMSPServer", s)
 	_, err := s.Start() // Just start it
 	return s, err
 }
 
 func (s *GRPCServer) OnStart() error {
-	s.QuitService.OnStart()
+	s.BaseService.OnStart()
 	ln, err := net.Listen(s.proto, s.addr)
 	if err != nil {
 		return err
@@ -51,6 +51,6 @@ func (s *GRPCServer) OnStart() error {
 }
 
 func (s *GRPCServer) OnStop() {
-	s.QuitService.OnStop()
+	s.BaseService.OnStop()
 	s.server.Stop()
 }
