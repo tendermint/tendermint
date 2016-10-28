@@ -158,7 +158,7 @@ func (bs *BaseService) IsRunning() bool {
 	return atomic.LoadUint32(&bs.started) == 1 && atomic.LoadUint32(&bs.stopped) == 0
 }
 
-func (bs *QuitService) Wait() {
+func (bs *BaseService) Wait() {
 	<-bs.Quit
 }
 
