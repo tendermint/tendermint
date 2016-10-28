@@ -21,7 +21,7 @@ func NewAppConns(config cfg.Config, clientCreator ClientCreator, state State, bl
 // a multiAppConn is made of a few appConns (mempool, consensus, query)
 // and manages their underlying tmsp clients, ensuring they reboot together
 type multiAppConn struct {
-	QuitService
+	BaseService
 
 	config cfg.Config
 
@@ -43,7 +43,7 @@ func NewMultiAppConn(config cfg.Config, clientCreator ClientCreator, state State
 		blockStore:    blockStore,
 		clientCreator: clientCreator,
 	}
-	multiAppConn.QuitService = *NewQuitService(log, "multiAppConn", multiAppConn)
+	multiAppConn.BaseService = *NewBaseService(log, "multiAppConn", multiAppConn)
 	return multiAppConn
 }
 
@@ -62,7 +62,7 @@ func (app *multiAppConn) Query() AppConnQuery {
 }
 
 func (app *multiAppConn) OnStart() error {
-	app.QuitService.OnStart()
+	app.BaseService.OnStart()
 
 	// query connection
 	querycli, err := app.clientCreator.NewTMSPClient()

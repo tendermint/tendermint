@@ -211,7 +211,7 @@ func (ti *timeoutInfo) String() string {
 
 // Tracks consensus state across block heights and rounds.
 type ConsensusState struct {
-	QuitService
+	BaseService
 
 	config        cfg.Config
 	proxyAppConn  proxy.AppConnConsensus
@@ -255,7 +255,7 @@ func NewConsensusState(config cfg.Config, state *sm.State, proxyAppConn proxy.Ap
 	// Don't call scheduleRound0 yet.
 	// We do that upon Start().
 	cs.reconstructLastCommit(state)
-	cs.QuitService = *NewQuitService(log, "ConsensusState", cs)
+	cs.BaseService = *NewBaseService(log, "ConsensusState", cs)
 	return cs
 }
 
@@ -302,7 +302,7 @@ func (cs *ConsensusState) SetPrivValidator(priv *types.PrivValidator) {
 }
 
 func (cs *ConsensusState) OnStart() error {
-	cs.QuitService.OnStart()
+	cs.BaseService.OnStart()
 
 	err := cs.OpenWAL(cs.config.GetString("cswal"))
 	if err != nil {
@@ -341,7 +341,7 @@ func (cs *ConsensusState) startRoutines(maxSteps int) {
 }
 
 func (cs *ConsensusState) OnStop() {
-	cs.QuitService.OnStop()
+	cs.BaseService.OnStop()
 
 	if cs.wal != nil && cs.IsRunning() {
 		cs.wal.Wait()

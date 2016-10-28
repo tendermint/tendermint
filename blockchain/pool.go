@@ -32,7 +32,7 @@ var peerTimeoutSeconds = time.Duration(15) // not const so we can override with 
 */
 
 type BlockPool struct {
-	QuitService
+	BaseService
 	startTime time.Time
 
 	mtx sync.Mutex
@@ -58,19 +58,19 @@ func NewBlockPool(start int, requestsCh chan<- BlockRequest, timeoutsCh chan<- s
 		requestsCh: requestsCh,
 		timeoutsCh: timeoutsCh,
 	}
-	bp.QuitService = *NewQuitService(log, "BlockPool", bp)
+	bp.BaseService = *NewBaseService(log, "BlockPool", bp)
 	return bp
 }
 
 func (pool *BlockPool) OnStart() error {
-	pool.QuitService.OnStart()
+	pool.BaseService.OnStart()
 	go pool.makeRequestersRoutine()
 	pool.startTime = time.Now()
 	return nil
 }
 
 func (pool *BlockPool) OnStop() {
-	pool.QuitService.OnStop()
+	pool.BaseService.OnStop()
 }
 
 // Run spawns requesters as needed.
@@ -383,7 +383,7 @@ func (peer *bpPeer) onTimeout() {
 //-------------------------------------
 
 type bpRequester struct {
-	QuitService
+	BaseService
 	pool       *BlockPool
 	height     int
 	gotBlockCh chan struct{}
@@ -404,12 +404,12 @@ func newBPRequester(pool *BlockPool, height int) *bpRequester {
 		peerID: "",
 		block:  nil,
 	}
-	bpr.QuitService = *NewQuitService(nil, "bpRequester", bpr)
+	bpr.BaseService = *NewBaseService(nil, "bpRequester", bpr)
 	return bpr
 }
 
 func (bpr *bpRequester) OnStart() error {
-	bpr.QuitService.OnStart()
+	bpr.BaseService.OnStart()
 	go bpr.requestRoutine()
 	return nil
 }

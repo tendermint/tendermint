@@ -56,7 +56,7 @@ imports:
 - name: github.com/tendermint/go-clist
   version: 3baa390bbaf7634251c42ad69a8682e7e3990552
 - name: github.com/tendermint/go-common
-  version: 44f2818a3d6c0174da7c16c97387cb97fe6c63af
+  version: fa3daa7abc253264c916c12fecce3effa01a1287
   subpackages:
   - test
 - name: github.com/tendermint/go-config
@@ -72,11 +72,11 @@ imports:
 - name: github.com/tendermint/go-merkle
   version: 05042c6ab9cad51d12e4cecf717ae68e3b1409a8
 - name: github.com/tendermint/go-p2p
-  version: 1eb390680d33299ba0e3334490eca587efd18414
+  version: 3e6deb4f9b2f5ea07e4ec5d57559d403291bf485
   subpackages:
   - upnp
 - name: github.com/tendermint/go-rpc
-  version: 855255d73eecd25097288be70f3fb208a5817d80
+  version: 161e36fd56c2f95ad133dd03ddb33db0363ca742
   subpackages:
   - client
   - server
@@ -88,7 +88,7 @@ imports:
   subpackages:
   - term
 - name: github.com/tendermint/tmsp
-  version: 5d3eb0328a615ba55b580ce871033e605aa8b97d
+  version: 940f46278380a8a76da310ec05e925ff05a42635
   subpackages:
   - client
   - example/counter

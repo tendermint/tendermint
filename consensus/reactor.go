@@ -28,7 +28,7 @@ const (
 //-----------------------------------------------------------------------------
 
 type ConsensusReactor struct {
-	p2p.BaseReactor // QuitService + p2p.Switch
+	p2p.BaseReactor // BaseService + p2p.Switch
 
 	blockStore *bc.BlockStore
 	conS       *ConsensusState
