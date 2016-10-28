@@ -343,6 +343,7 @@ func (cs *ConsensusState) startRoutines(maxSteps int) {
 func (cs *ConsensusState) OnStop() {
 	cs.BaseService.OnStop()
 
+	// Make BaseService.Wait() wait until cs.wal.Wait()
 	if cs.wal != nil && cs.IsRunning() {
 		cs.wal.Wait()
 	}
@@ -658,7 +659,7 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 
 			// close wal now that we're done writing to it
 			if cs.wal != nil {
-				cs.wal.Close()
+				cs.wal.Stop()
 			}
 			return
 		}

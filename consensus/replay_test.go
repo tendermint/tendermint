@@ -17,13 +17,13 @@ import (
 var data_dir = path.Join(GoPath, "src/github.com/tendermint/tendermint/consensus", "test_data")
 
 // the priv validator changes step at these lines for a block with 1 val and 1 part
-var baseStepChanges = []int{2, 5, 7}
+var baseStepChanges = []int{3, 6, 8}
 
 // test recovery from each line in each testCase
 var testCases = []*testCase{
 	newTestCase("empty_block", baseStepChanges),  // empty block (has 1 block part)
 	newTestCase("small_block1", baseStepChanges), // small block with txs in 1 block part
-	newTestCase("small_block2", []int{2, 7, 9}),  // small block with txs across 3 smaller block parts
+	newTestCase("small_block2", []int{3, 8, 10}), // small block with txs across 3 smaller block parts
 }
 
 type testCase struct {
@@ -108,6 +108,7 @@ func runReplayTest(t *testing.T, cs *ConsensusState, fileName string, newBlockCh
 	// should eventually be followed by a new block, or else something is wrong
 	waitForBlock(newBlockCh, thisCase, i)
 	cs.Stop()
+	cs.Wait()
 }
 
 func setupReplayTest(thisCase *testCase, nLines int, crashAfter bool) (*ConsensusState, chan interface{}, string, string) {
@@ -162,7 +163,7 @@ func TestReplayCrashBeforeWritePropose(t *testing.T) {
 		cs, newBlockCh, proposalMsg, f := setupReplayTest(thisCase, lineNum, false) // propose
 		// Set LastSig
 		var err error
-		var msg ConsensusLogMessage
+		var msg TimedWALMessage
 		wire.ReadJSON(&msg, []byte(proposalMsg), &err)
 		proposal := msg.Msg.(msgInfo).Msg.(*ProposalMessage)
 		if err != nil {
@@ -181,7 +182,7 @@ func TestReplayCrashBeforeWritePrevote(t *testing.T) {
 		types.AddListenerForEvent(cs.evsw, "tester", types.EventStringCompleteProposal(), func(data types.TMEventData) {
 			// Set LastSig
 			var err error
-			var msg ConsensusLogMessage
+			var msg TimedWALMessage
 			wire.ReadJSON(&msg, []byte(voteMsg), &err)
 			vote := msg.Msg.(msgInfo).Msg.(*VoteMessage)
 			if err != nil {
@@ -201,7 +202,7 @@ func TestReplayCrashBeforeWritePrecommit(t *testing.T) {
 		types.AddListenerForEvent(cs.evsw, "tester", types.EventStringPolka(), func(data types.TMEventData) {
 			// Set LastSig
 			var err error
-			var msg ConsensusLogMessage
+			var msg TimedWALMessage
 			wire.ReadJSON(&msg, []byte(voteMsg), &err)
 			vote := msg.Msg.(msgInfo).Msg.(*VoteMessage)
 			if err != nil {
