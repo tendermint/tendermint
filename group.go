@@ -107,6 +107,14 @@ func (g *Group) MaxIndex() int {
 	return g.maxIndex
 }
 
+// Auto appends "\n"
+// TODO: Make it halt if space is unavailable
+func (g *Group) WriteLine(line string) error {
+	_, err := g.Head.Write([]byte(line + "\n"))
+	return err
+}
+
+// NOTE: g.Head must be closed separately
 func (g *Group) Close() error {
 	g.ticker.Stop()
 	return nil
