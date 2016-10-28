@@ -75,7 +75,7 @@ const (
 
 /* AddrBook - concurrency safe peer address manager */
 type AddrBook struct {
-	QuitService
+	BaseService
 
 	mtx               sync.Mutex
 	filePath          string
@@ -106,7 +106,7 @@ func NewAddrBook(filePath string, routabilityStrict bool) *AddrBook {
 		routabilityStrict: routabilityStrict,
 	}
 	am.init()
-	am.QuitService = *NewQuitService(log, "AddrBook", am)
+	am.BaseService = *NewBaseService(log, "AddrBook", am)
 	return am
 }
 
@@ -126,7 +126,7 @@ func (a *AddrBook) init() {
 }
 
 func (a *AddrBook) OnStart() error {
-	a.QuitService.OnStart()
+	a.BaseService.OnStart()
 	a.loadFromFile(a.filePath)
 	a.wg.Add(1)
 	go a.saveRoutine()
@@ -134,7 +134,7 @@ func (a *AddrBook) OnStart() error {
 }
 
 func (a *AddrBook) OnStop() {
-	a.QuitService.OnStop()
+	a.BaseService.OnStop()
 	a.wg.Wait()
 }
 

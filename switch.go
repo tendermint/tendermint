@@ -26,13 +26,13 @@ type Reactor interface {
 //--------------------------------------
 
 type BaseReactor struct {
-	QuitService // Provides Start, Stop, .Quit
+	BaseService // Provides Start, Stop, .Quit
 	Switch      *Switch
 }
 
 func NewBaseReactor(log log15.Logger, name string, impl Reactor) *BaseReactor {
 	return &BaseReactor{
-		QuitService: *NewQuitService(log, name, impl),
+		BaseService: *NewBaseService(log, name, impl),
 		Switch:      nil,
 	}
 }
