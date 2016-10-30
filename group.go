@@ -168,10 +168,16 @@ func (g *Group) RotateFile() {
 	g.maxIndex += 1
 }
 
-func (g *Group) NewReader(index int) *GroupReader {
+// NOTE: if error, returns no GroupReader.
+// CONTRACT: Caller must close the returned GroupReader
+func (g *Group) NewReader(index int) (*GroupReader, error) {
 	r := newGroupReader(g)
-	r.SetIndex(index)
-	return r
+	err := r.SetIndex(index)
+	if err != nil {
+		return nil, err
+	} else {
+		return r, nil
+	}
 }
 
 // Returns -1 if line comes after, 0 if found, 1 if line comes before.
@@ -181,7 +187,7 @@ type SearchFunc func(line string) (int, error)
 // then returns a GroupReader to start streaming lines
 // Returns true if an exact match was found, otherwise returns
 // the next greater line that starts with prefix.
-// CONTRACT: caller is responsible for closing GroupReader.
+// CONTRACT: Caller must close the returned GroupReader
 func (g *Group) Search(prefix string, cmp SearchFunc) (*GroupReader, bool, error) {
 	g.mtx.Lock()
 	minIndex, maxIndex := g.minIndex, g.maxIndex
@@ -195,7 +201,10 @@ func (g *Group) Search(prefix string, cmp SearchFunc) (*GroupReader, bool, error
 
 		// Base case, when there's only 1 choice left.
 		if minIndex == maxIndex {
-			r := g.NewReader(maxIndex)
+			r, err := g.NewReader(maxIndex)
+			if err != nil {
+				return nil, false, err
+			}
 			match, err := scanUntil(r, prefix, cmp)
 			if err != nil {
 				r.Close()
@@ -207,8 +216,11 @@ func (g *Group) Search(prefix string, cmp SearchFunc) (*GroupReader, bool, error
 
 		// Read starting roughly at the middle file,
 		// until we find line that has prefix.
-		r := g.NewReader(curIndex)
-		foundIndex, line, err := scanFirst(r, prefix)
+		r, err := g.NewReader(curIndex)
+		if err != nil {
+			return nil, false, err
+		}
+		foundIndex, line, err := scanNext(r, prefix)
 		r.Close()
 		if err != nil {
 			return nil, false, err
@@ -224,7 +236,10 @@ func (g *Group) Search(prefix string, cmp SearchFunc) (*GroupReader, bool, error
 			minIndex = foundIndex
 		} else if val == 0 {
 			// Stroke of luck, found the line
-			r := g.NewReader(foundIndex)
+			r, err := g.NewReader(foundIndex)
+			if err != nil {
+				return nil, false, err
+			}
 			match, err := scanUntil(r, prefix, cmp)
 			if !match {
 				panic("Expected match to be true")
@@ -244,7 +259,8 @@ func (g *Group) Search(prefix string, cmp SearchFunc) (*GroupReader, bool, error
 }
 
 // Scans and returns the first line that starts with 'prefix'
-func scanFirst(r *GroupReader, prefix string) (int, string, error) {
+// Consumes line and returns it.
+func scanNext(r *GroupReader, prefix string) (int, string, error) {
 	for {
 		line, err := r.ReadLine()
 		if err != nil {
@@ -259,6 +275,7 @@ func scanFirst(r *GroupReader, prefix string) (int, string, error) {
 }
 
 // Returns true iff an exact match was found.
+// Pushes line, does not consume it.
 func scanUntil(r *GroupReader, prefix string, cmp SearchFunc) (bool, error) {
 	for {
 		line, err := r.ReadLine()
@@ -282,6 +299,47 @@ func scanUntil(r *GroupReader, prefix string, cmp SearchFunc) (bool, error) {
 			return false, nil
 		}
 	}
+}
+
+// Searches for the last line in Group with prefix.
+func (g *Group) FindLast(prefix string) (match string, found bool, err error) {
+	g.mtx.Lock()
+	minIndex, maxIndex := g.minIndex, g.maxIndex
+	g.mtx.Unlock()
+
+	r, err := g.NewReader(maxIndex)
+	if err != nil {
+		return "", false, err
+	}
+	defer r.Close()
+
+	// Open files from the back and read
+GROUP_LOOP:
+	for i := maxIndex; i >= minIndex; i-- {
+		err := r.SetIndex(i)
+		if err != nil {
+			return "", false, err
+		}
+		// Scan each line and test whether line matches
+		for {
+			line, err := r.ReadLineInCurrent()
+			if err == io.EOF {
+				if found {
+					return match, found, nil
+				} else {
+					continue GROUP_LOOP
+				}
+			} else if err != nil {
+				return "", false, err
+			}
+			if strings.HasPrefix(line, prefix) {
+				match = line
+				found = true
+			}
+		}
+	}
+
+	return
 }
 
 type GroupInfo struct {
@@ -399,6 +457,18 @@ func (gr *GroupReader) Close() error {
 func (gr *GroupReader) ReadLine() (string, error) {
 	gr.mtx.Lock()
 	defer gr.mtx.Unlock()
+	return gr.readLineWithOptions(false)
+}
+
+func (gr *GroupReader) ReadLineInCurrent() (string, error) {
+	gr.mtx.Lock()
+	defer gr.mtx.Unlock()
+	return gr.readLineWithOptions(true)
+}
+
+// curFileOnly: if True, do not open new files,
+// just return io.EOF if no new lines found.
+func (gr *GroupReader) readLineWithOptions(curFileOnly bool) (string, error) {
 
 	// From PushLine
 	if gr.curLine != nil {
@@ -420,7 +490,9 @@ func (gr *GroupReader) ReadLine() (string, error) {
 		bytes, err := gr.curReader.ReadBytes('\n')
 		if err != nil {
 			if err != io.EOF {
-				return string(bytes), err
+				return "", err
+			} else if curFileOnly {
+				return "", err
 			} else {
 				// Open the next file
 				err := gr.openFile(gr.curIndex + 1)
@@ -483,8 +555,8 @@ func (gr *GroupReader) CurIndex() int {
 	return gr.curIndex
 }
 
-func (gr *GroupReader) SetIndex(index int) {
+func (gr *GroupReader) SetIndex(index int) error {
 	gr.mtx.Lock()
 	defer gr.mtx.Unlock()
-	gr.openFile(index)
+	return gr.openFile(index)
 }

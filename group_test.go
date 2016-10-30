@@ -3,6 +3,7 @@ package autofile
 import (
 	"errors"
 	"io"
+	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -30,6 +31,10 @@ func createTestGroup(t *testing.T, headSizeLimit int64) *Group {
 	}
 	g.SetHeadSizeLimit(headSizeLimit)
 	g.stopTicker()
+
+	if g == nil {
+		t.Fatal("Failed to create Group")
+	}
 	return g
 }
 
@@ -57,16 +62,13 @@ func assertGroupInfo(t *testing.T, gInfo GroupInfo, minIndex, maxIndex int, tota
 
 func TestCheckHeadSizeLimit(t *testing.T) {
 	g := createTestGroup(t, 1000*1000)
-	if g == nil {
-		t.Error("Failed to create Group")
-	}
 
 	// At first, there are no files.
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 0, 0, 0)
 
 	// Write 1000 bytes 999 times.
 	for i := 0; i < 999; i++ {
-		_, err := g.Head.Write([]byte(RandStr(999) + "\n"))
+		err := g.WriteLine(RandStr(999))
 		if err != nil {
 			t.Fatal("Error appending to head", err)
 		}
@@ -78,7 +80,7 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 0, 999000, 999000)
 
 	// Write 1000 more bytes.
-	_, err := g.Head.Write([]byte(RandStr(999) + "\n"))
+	err := g.WriteLine(RandStr(999))
 	if err != nil {
 		t.Fatal("Error appending to head", err)
 	}
@@ -88,7 +90,7 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 1, 1000000, 0)
 
 	// Write 1000 more bytes.
-	_, err = g.Head.Write([]byte(RandStr(999) + "\n"))
+	err = g.WriteLine(RandStr(999))
 	if err != nil {
 		t.Fatal("Error appending to head", err)
 	}
@@ -99,7 +101,7 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 
 	// Write 1000 bytes 999 times.
 	for i := 0; i < 999; i++ {
-		_, err := g.Head.Write([]byte(RandStr(999) + "\n"))
+		err := g.WriteLine(RandStr(999))
 		if err != nil {
 			t.Fatal("Error appending to head", err)
 		}
@@ -127,9 +129,6 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 
 func TestSearch(t *testing.T) {
 	g := createTestGroup(t, 10*1000)
-	if g == nil {
-		t.Error("Failed to create Group")
-	}
 
 	// Create some files in the group that have several INFO lines in them.
 	// Try to put the INFO lines in various spots.
@@ -246,6 +245,148 @@ func TestSearch(t *testing.T) {
 		if gr != nil {
 			t.Error("Expected to get nil GroupReader")
 		}
+	}
+
+	// Cleanup
+	destroyTestGroup(t, g)
+}
+
+func TestRotateFile(t *testing.T) {
+	g := createTestGroup(t, 0)
+	g.WriteLine("Line 1")
+	g.WriteLine("Line 2")
+	g.WriteLine("Line 3")
+	g.RotateFile()
+	g.WriteLine("Line 4")
+	g.WriteLine("Line 5")
+	g.WriteLine("Line 6")
+
+	// Read g.Head.Path+"000"
+	body1, err := ioutil.ReadFile(g.Head.Path + ".000")
+	if err != nil {
+		t.Error("Failed to read first rolled file")
+	}
+	if string(body1) != "Line 1\nLine 2\nLine 3\n" {
+		t.Errorf("Got unexpected contents: [%v]", string(body1))
+	}
+
+	// Read g.Head.Path
+	body2, err := ioutil.ReadFile(g.Head.Path)
+	if err != nil {
+		t.Error("Failed to read first rolled file")
+	}
+	if string(body2) != "Line 4\nLine 5\nLine 6\n" {
+		t.Errorf("Got unexpected contents: [%v]", string(body2))
+	}
+
+	// Cleanup
+	destroyTestGroup(t, g)
+}
+
+func TestFindLast1(t *testing.T) {
+	g := createTestGroup(t, 0)
+
+	g.WriteLine("Line 1")
+	g.WriteLine("Line 2")
+	g.WriteLine("# a")
+	g.WriteLine("Line 3")
+	g.RotateFile()
+	g.WriteLine("Line 4")
+	g.WriteLine("Line 5")
+	g.WriteLine("Line 6")
+	g.WriteLine("# b")
+
+	match, found, err := g.FindLast("#")
+	if err != nil {
+		t.Error("Unexpected error", err)
+	}
+	if !found {
+		t.Error("Expected found=True")
+	}
+	if match != "# b\n" {
+		t.Errorf("Unexpected match: [%v]", match)
+	}
+
+	// Cleanup
+	destroyTestGroup(t, g)
+}
+
+func TestFindLast2(t *testing.T) {
+	g := createTestGroup(t, 0)
+
+	g.WriteLine("Line 1")
+	g.WriteLine("Line 2")
+	g.WriteLine("Line 3")
+	g.RotateFile()
+	g.WriteLine("# a")
+	g.WriteLine("Line 4")
+	g.WriteLine("Line 5")
+	g.WriteLine("# b")
+	g.WriteLine("Line 6")
+
+	match, found, err := g.FindLast("#")
+	if err != nil {
+		t.Error("Unexpected error", err)
+	}
+	if !found {
+		t.Error("Expected found=True")
+	}
+	if match != "# b\n" {
+		t.Errorf("Unexpected match: [%v]", match)
+	}
+
+	// Cleanup
+	destroyTestGroup(t, g)
+}
+
+func TestFindLast3(t *testing.T) {
+	g := createTestGroup(t, 0)
+
+	g.WriteLine("Line 1")
+	g.WriteLine("# a")
+	g.WriteLine("Line 2")
+	g.WriteLine("# b")
+	g.WriteLine("Line 3")
+	g.RotateFile()
+	g.WriteLine("Line 4")
+	g.WriteLine("Line 5")
+	g.WriteLine("Line 6")
+
+	match, found, err := g.FindLast("#")
+	if err != nil {
+		t.Error("Unexpected error", err)
+	}
+	if !found {
+		t.Error("Expected found=True")
+	}
+	if match != "# b\n" {
+		t.Errorf("Unexpected match: [%v]", match)
+	}
+
+	// Cleanup
+	destroyTestGroup(t, g)
+}
+
+func TestFindLast4(t *testing.T) {
+	g := createTestGroup(t, 0)
+
+	g.WriteLine("Line 1")
+	g.WriteLine("Line 2")
+	g.WriteLine("Line 3")
+	g.RotateFile()
+	g.WriteLine("Line 4")
+	g.WriteLine("Line 5")
+	g.WriteLine("Line 6")
+
+	match, found, err := g.FindLast("#")
+	if err != nil {
+		t.Error("Unexpected error", err)
+	}
+	if found {
+		t.Error("Expected found=False")
+	}
+	if match != "" {
+		t.Errorf("Unexpected match: [%v]", match)
 	}
 
 	// Cleanup
