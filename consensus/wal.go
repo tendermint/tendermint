@@ -40,8 +40,8 @@ type WAL struct {
 	light bool // ignore block parts
 }
 
-func NewWAL(path string, light bool) (*WAL, error) {
-	head, err := auto.OpenAutoFile(path)
+func NewWAL(walDir string, light bool) (*WAL, error) {
+	head, err := auto.OpenAutoFile(walDir + "/wal")
 	if err != nil {
 		return nil, err
 	}

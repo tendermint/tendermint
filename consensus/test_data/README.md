@@ -2,7 +2,6 @@
 
 The easiest way to generate this data is to copy `~/.tendermint_test/somedir/*` to `~/.tendermint`
 and to run a local node.
-Be sure to set the db to "leveldb" to create a cswal file in `~/.tendermint/data/cswal`.
 
 If you need to change the signatures, you can use a script as follows:
 The privBytes comes from `config/tendermint_test/...`:

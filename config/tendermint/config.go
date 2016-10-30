@@ -22,6 +22,7 @@ func getTMRoot(rootDir string) string {
 func initTMRoot(rootDir string) {
 	rootDir = getTMRoot(rootDir)
 	EnsureDir(rootDir, 0700)
+	EnsureDir(rootDir+"/data", 0700)
 
 	configFilePath := path.Join(rootDir, "config.toml")
 
@@ -68,8 +69,8 @@ func GetConfig(rootDir string) cfg.Config {
 	mapConfig.SetDefault("rpc_laddr", "tcp://0.0.0.0:46657")
 	mapConfig.SetDefault("prof_laddr", "")
 	mapConfig.SetDefault("revision_file", rootDir+"/revision")
-	mapConfig.SetDefault("cswal", rootDir+"/data/cswal")
-	mapConfig.SetDefault("cswal_light", false)
+	mapConfig.SetDefault("cs_wal_dir", rootDir+"/data/cs.wal")
+	mapConfig.SetDefault("cs_wal_light", false)
 	mapConfig.SetDefault("filter_peers", false)
 
 	mapConfig.SetDefault("block_size", 10000)
@@ -84,7 +85,7 @@ func GetConfig(rootDir string) cfg.Config {
 	mapConfig.SetDefault("mempool_recheck", true)
 	mapConfig.SetDefault("mempool_recheck_empty", true)
 	mapConfig.SetDefault("mempool_broadcast", true)
-	mapConfig.SetDefault("mempool_wal", rootDir+"/data/mempool_wal")
+	mapConfig.SetDefault("mempool_wal_dir", rootDir+"/data/mempool.wal")
 
 	return mapConfig
 }

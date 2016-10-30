@@ -304,7 +304,7 @@ func (cs *ConsensusState) SetPrivValidator(priv *types.PrivValidator) {
 func (cs *ConsensusState) OnStart() error {
 	cs.BaseService.OnStart()
 
-	err := cs.OpenWAL(cs.config.GetString("cswal"))
+	err := cs.OpenWAL(cs.config.GetString("cs_wal_dir"))
 	if err != nil {
 		return err
 	}
@@ -350,10 +350,10 @@ func (cs *ConsensusState) OnStop() {
 }
 
 // Open file to log all consensus messages and timeouts for deterministic accountability
-func (cs *ConsensusState) OpenWAL(file string) (err error) {
+func (cs *ConsensusState) OpenWAL(walDir string) (err error) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
-	wal, err := NewWAL(file, cs.config.GetBool("cswal_light"))
+	wal, err := NewWAL(walDir, cs.config.GetBool("cs_wal_light"))
 	if err != nil {
 		return err
 	}

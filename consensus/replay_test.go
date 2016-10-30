@@ -28,7 +28,7 @@ var testCases = []*testCase{
 
 type testCase struct {
 	name    string
-	log     string       //full cswal
+	log     string       //full cs wal
 	stepMap map[int]int8 // map lines of log to privval step
 
 	proposeLine   int
@@ -71,21 +71,20 @@ func readWAL(p string) string {
 	return string(b)
 }
 
-func writeWAL(log string) string {
-	fmt.Println("writing", log)
-	// write the needed wal to file
-	f, err := ioutil.TempFile(os.TempDir(), "replay_test_")
+func writeWAL(walMsgs string) string {
+	tempDir := os.TempDir()
+	walDir := tempDir + "/wal" + RandStr(12)
+	// Create WAL directory
+	err := EnsureDir(walDir, 0700)
 	if err != nil {
 		panic(err)
 	}
-
-	_, err = f.WriteString(log)
+	// Write the needed WAL to file
+	err = WriteFile(walDir+"/wal", []byte(walMsgs), 0600)
 	if err != nil {
 		panic(err)
 	}
-	name := f.Name()
-	f.Close()
-	return name
+	return walDir
 }
 
 func waitForBlock(newBlockCh chan interface{}, thisCase *testCase, i int) {
@@ -97,10 +96,10 @@ func waitForBlock(newBlockCh chan interface{}, thisCase *testCase, i int) {
 	}
 }
 
-func runReplayTest(t *testing.T, cs *ConsensusState, fileName string, newBlockCh chan interface{},
+func runReplayTest(t *testing.T, cs *ConsensusState, walDir string, newBlockCh chan interface{},
 	thisCase *testCase, i int) {
 
-	cs.config.Set("cswal", fileName)
+	cs.config.Set("cs_wal_dir", walDir)
 	cs.Start()
 	// Wait to make a new block.
 	// This is just a signal that we haven't halted; its not something contained in the WAL itself.
@@ -124,7 +123,7 @@ func setupReplayTest(thisCase *testCase, nLines int, crashAfter bool) (*Consensu
 	lastMsg := split[nLines]
 
 	// we write those lines up to (not including) one with the signature
-	fileName := writeWAL(strings.Join(split[:nLines], "\n") + "\n")
+	walDir := writeWAL(strings.Join(split[:nLines], "\n") + "\n")
 
 	cs := fixedConsensusStateDummy()
 
@@ -136,7 +135,7 @@ func setupReplayTest(thisCase *testCase, nLines int, crashAfter bool) (*Consensu
 
 	newBlockCh := subscribeToEvent(cs.evsw, "tester", types.EventStringNewBlock(), 1)
 
-	return cs, newBlockCh, lastMsg, fileName
+	return cs, newBlockCh, lastMsg, walDir
 }
 
 //-----------------------------------------------
@@ -147,8 +146,8 @@ func TestReplayCrashAfterWrite(t *testing.T) {
 	for _, thisCase := range testCases {
 		split := strings.Split(thisCase.log, "\n")
 		for i := 0; i < len(split)-1; i++ {
-			cs, newBlockCh, _, f := setupReplayTest(thisCase, i+1, true)
-			runReplayTest(t, cs, f, newBlockCh, thisCase, i+1)
+			cs, newBlockCh, _, walDir := setupReplayTest(thisCase, i+1, true)
+			runReplayTest(t, cs, walDir, newBlockCh, thisCase, i+1)
 		}
 	}
 }
@@ -160,7 +159,7 @@ func TestReplayCrashAfterWrite(t *testing.T) {
 func TestReplayCrashBeforeWritePropose(t *testing.T) {
 	for _, thisCase := range testCases {
 		lineNum := thisCase.proposeLine
-		cs, newBlockCh, proposalMsg, f := setupReplayTest(thisCase, lineNum, false) // propose
+		cs, newBlockCh, proposalMsg, walDir := setupReplayTest(thisCase, lineNum, false) // propose
 		// Set LastSig
 		var err error
 		var msg TimedWALMessage
@@ -171,14 +170,14 @@ func TestReplayCrashBeforeWritePropose(t *testing.T) {
 		}
 		cs.privValidator.LastSignBytes = types.SignBytes(cs.state.ChainID, proposal.Proposal)
 		cs.privValidator.LastSignature = proposal.Proposal.Signature
-		runReplayTest(t, cs, f, newBlockCh, thisCase, lineNum)
+		runReplayTest(t, cs, walDir, newBlockCh, thisCase, lineNum)
 	}
 }
 
 func TestReplayCrashBeforeWritePrevote(t *testing.T) {
 	for _, thisCase := range testCases {
 		lineNum := thisCase.prevoteLine
-		cs, newBlockCh, voteMsg, f := setupReplayTest(thisCase, lineNum, false) // prevote
+		cs, newBlockCh, voteMsg, walDir := setupReplayTest(thisCase, lineNum, false) // prevote
 		types.AddListenerForEvent(cs.evsw, "tester", types.EventStringCompleteProposal(), func(data types.TMEventData) {
 			// Set LastSig
 			var err error
@@ -191,14 +190,14 @@ func TestReplayCrashBeforeWritePrevote(t *testing.T) {
 			cs.privValidator.LastSignBytes = types.SignBytes(cs.state.ChainID, vote.Vote)
 			cs.privValidator.LastSignature = vote.Vote.Signature
 		})
-		runReplayTest(t, cs, f, newBlockCh, thisCase, lineNum)
+		runReplayTest(t, cs, walDir, newBlockCh, thisCase, lineNum)
 	}
 }
 
 func TestReplayCrashBeforeWritePrecommit(t *testing.T) {
 	for _, thisCase := range testCases {
 		lineNum := thisCase.precommitLine
-		cs, newBlockCh, voteMsg, f := setupReplayTest(thisCase, lineNum, false) // precommit
+		cs, newBlockCh, voteMsg, walDir := setupReplayTest(thisCase, lineNum, false) // precommit
 		types.AddListenerForEvent(cs.evsw, "tester", types.EventStringPolka(), func(data types.TMEventData) {
 			// Set LastSig
 			var err error
@@ -211,6 +210,6 @@ func TestReplayCrashBeforeWritePrecommit(t *testing.T) {
 			cs.privValidator.LastSignBytes = types.SignBytes(cs.state.ChainID, vote.Vote)
 			cs.privValidator.LastSignature = vote.Vote.Signature
 		})
-		runReplayTest(t, cs, f, newBlockCh, thisCase, lineNum)
+		runReplayTest(t, cs, walDir, newBlockCh, thisCase, lineNum)
 	}
 }
