@@ -1,5 +1,5 @@
 # Pull base image.
-FROM golang:1.6
+FROM golang
 
 ENV USER tmuser
 ENV DATA_ROOT /data/tendermint
@@ -31,7 +31,7 @@ RUN apt-get update && \
   rm -rf /var/lib/apt/lists/*
 
 # Grab deps (node)
-RUN curl -sL https://deb.nodesource.com/setup_5.x | bash -
+RUN curl -sL https://deb.nodesource.com/setup_7.x | bash -
 RUN apt-get update && \
   apt-get install -y --no-install-recommends \
     nodejs && \
