@@ -193,6 +193,13 @@ func (s *SocketServer) handleRequest(req *types.Request, responses chan<- *types
 		} else {
 			responses <- types.ToResponseInitChain()
 		}
+	case *types.Request_BeginBlock:
+		if app, ok := s.app.(types.BlockchainAware); ok {
+			app.BeginBlock(r.BeginBlock.Height)
+			responses <- types.ToResponseBeginBlock()
+		} else {
+			responses <- types.ToResponseBeginBlock()
+		}
 	case *types.Request_EndBlock:
 		if app, ok := s.app.(types.BlockchainAware); ok {
 			validators := app.EndBlock(r.EndBlock.Height)
