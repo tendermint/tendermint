@@ -111,7 +111,7 @@ func (s *State) execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn prox
 		return err
 	}
 	// TODO: Do something with changedValidators
-	log.Info("TODO: Do something with changedValidators", "changedValidators", changedValidators)
+	log.Debug("TODO: Do something with changedValidators", "changedValidators", changedValidators)
 
 	log.Info(Fmt("ExecBlock got %v valid txs and %v invalid txs", validTxs, invalidTxs))
 	return nil
