@@ -1,7 +1,6 @@
 package dummy
 
 import (
-	"fmt"
 	"strings"
 
 	. "github.com/tendermint/go-common"
