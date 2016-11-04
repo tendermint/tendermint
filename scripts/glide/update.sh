@@ -7,9 +7,11 @@ IFS=$'\n\t'
 LIB=$1
 
 TMCORE=$GOPATH/src/github.com/tendermint/tendermint
+set +u
 if [[ "$GLIDE" == "" ]]; then
 	GLIDE=$TMCORE/glide.lock
 fi
+set -u
 
 OLD_COMMIT=`bash $TMCORE/scripts/glide/parse.sh $LIB`
 

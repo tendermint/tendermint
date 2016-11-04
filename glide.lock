@@ -88,7 +88,7 @@ imports:
   subpackages:
   - term
 - name: github.com/tendermint/tmsp
-  version: 940f46278380a8a76da310ec05e925ff05a42635
+  version: 1201837ec13fc8b1b215434128a2426dfe0c9cd9
   subpackages:
   - client
   - example/counter
