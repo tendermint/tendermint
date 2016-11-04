@@ -49,8 +49,8 @@ imports:
   subpackages:
   - edwards25519
   - extra25519
-- name: github.com/tendermint/flowcontrol
-  version: 84d9671090430e8ec80e35b339907e0579b999eb
+- name: github.com/tendermint/go-flowrate
+  version: a20c98e61957faa93b4014fbd902f20ab9317a6a
 - name: github.com/tendermint/go-autofile
   version: c26b857900009ac81c78c1bc03f85e0c8e47818a
 - name: github.com/tendermint/go-clist
@@ -72,7 +72,7 @@ imports:
 - name: github.com/tendermint/go-merkle
   version: 05042c6ab9cad51d12e4cecf717ae68e3b1409a8
 - name: github.com/tendermint/go-p2p
-  version: 3e6deb4f9b2f5ea07e4ec5d57559d403291bf485
+  version: 62b37014a89b5eddff74844846979d30911cffda
   subpackages:
   - upnp
 - name: github.com/tendermint/go-rpc
@@ -88,7 +88,7 @@ imports:
   subpackages:
   - term
 - name: github.com/tendermint/tmsp
-  version: 1201837ec13fc8b1b215434128a2426dfe0c9cd9
+  version: c0b0ef482085ac3332169b655b767c9ef0d29204
   subpackages:
   - client
   - example/counter
