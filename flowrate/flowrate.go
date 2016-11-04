@@ -72,6 +72,14 @@ func (m *Monitor) Update(n int) int {
 	return n
 }
 
+// Hack to set the current rEMA.
+func (m *Monitor) SetREMA(rEMA float64) {
+	m.mu.Lock()
+	m.rEMA = rEMA
+	m.samples++
+	m.mu.Unlock()
+}
+
 // IO is a convenience method intended to wrap io.Reader and io.Writer method
 // execution. It calls m.Update(n) and then returns (n, err) unmodified.
 func (m *Monitor) IO(n int, err error) (int, error) {
