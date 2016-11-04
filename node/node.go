@@ -391,8 +391,7 @@ func newConsensusState(config cfg.Config) *consensus.ConsensusState {
 
 	// Make event switch
 	eventSwitch := types.NewEventSwitch()
-	_, err := eventSwitch.Start()
-	if err != nil {
+	if _, err := eventSwitch.Start(); err != nil {
 		Exit(Fmt("Failed to start event switch: %v", err))
 	}
 

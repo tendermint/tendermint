@@ -196,7 +196,7 @@ func (s *State) validateBlock(block *types.Block) error {
 // ApplyBlock executes the block, then commits and updates the mempool atomically
 
 // Execute and commit block against app, save block and state
-func (s *State) ApplyBlock(eventCache events.Fireable, proxyAppConn proxy.AppConnConsensus,
+func (s *State) ApplyBlock(eventCache types.Fireable, proxyAppConn proxy.AppConnConsensus,
 	block *types.Block, partsHeader types.PartSetHeader, mempool Mempool) error {
 
 	// Run the block on the State:
@@ -365,7 +365,7 @@ func loadApplyBlock(blockIndex int, s *State, blockStore proxy.BlockStore, appCo
 	block := blockStore.LoadBlock(blockIndex)
 	panicOnNilBlock(blockIndex, blockStore.Height(), block, blockMeta) // XXX
 
-	var eventCache events.Fireable // nil
+	var eventCache types.Fireable // nil
 	return s.ApplyBlock(eventCache, appConnConsensus, block, blockMeta.PartsHeader, mockMempool{})
 }
 
