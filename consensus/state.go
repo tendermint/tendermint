@@ -304,8 +304,15 @@ func (cs *ConsensusState) SetPrivValidator(priv *types.PrivValidator) {
 func (cs *ConsensusState) OnStart() error {
 	cs.BaseService.OnStart()
 
-	err := cs.OpenWAL(cs.config.GetString("cs_wal_dir"))
+	walDir := cs.config.GetString("cs_wal_dir")
+	err := EnsureDir(walDir, 0700)
 	if err != nil {
+		log.Error("Error ensuring ConsensusState wal dir", "error", err.Error())
+		return err
+	}
+	err = cs.OpenWAL(walDir)
+	if err != nil {
+		log.Error("Error loading ConsensusState wal", "error", err.Error())
 		return err
 	}
 
