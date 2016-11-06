@@ -219,7 +219,7 @@ message TMSPInfo {
 }
 
 message LastBlockInfo {
-	uint64 block_height = 1;
+	int32 block_height = 1;
 	bytes block_hash = 2;
 	bytes app_hash = 3;
 }

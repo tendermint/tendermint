@@ -11,38 +11,6 @@ import (
 )
 
 //-----------------------------------------
-// persist the last block info
-
-var lastBlockKey = []byte("lastblock")
-
-// Get the last block from the db
-func LoadLastBlock(db dbm.DB) (lastBlock types.LastBlockInfo) {
-	buf := db.Get(lastBlockKey)
-	if len(buf) != 0 {
-		r, n, err := bytes.NewReader(buf), new(int), new(error)
-		wire.ReadBinaryPtr(&lastBlock, r, 0, n, err)
-		if *err != nil {
-			// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
-			Exit(Fmt("Data has been corrupted or its spec has changed: %v\n", *err))
-		}
-		// TODO: ensure that buf is completely read.
-	}
-
-	return lastBlock
-}
-
-func SaveLastBlock(db dbm.DB, lastBlock types.LastBlockInfo) {
-	log.Notice("Saving block", "height", lastBlock.BlockHeight, "hash", lastBlock.BlockHash, "root", lastBlock.AppHash)
-	buf, n, err := new(bytes.Buffer), new(int), new(error)
-	wire.WriteBinary(lastBlock, buf, n, err)
-	if *err != nil {
-		// TODO
-		PanicCrisis(*err)
-	}
-	db.Set(lastBlockKey, buf.Bytes())
-}
-
-//-----------------------------------------
 
 type PersistentDummyApplication struct {
 	app *DummyApplication
@@ -119,4 +87,36 @@ func (app *PersistentDummyApplication) BeginBlock(hash []byte, header *types.Hea
 
 func (app *PersistentDummyApplication) EndBlock(height uint64) (diffs []*types.Validator) {
 	return nil
+}
+
+//-----------------------------------------
+// persist the last block info
+
+var lastBlockKey = []byte("lastblock")
+
+// Get the last block from the db
+func LoadLastBlock(db dbm.DB) (lastBlock types.LastBlockInfo) {
+	buf := db.Get(lastBlockKey)
+	if len(buf) != 0 {
+		r, n, err := bytes.NewReader(buf), new(int), new(error)
+		wire.ReadBinaryPtr(&lastBlock, r, 0, n, err)
+		if *err != nil {
+			// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
+			Exit(Fmt("Data has been corrupted or its spec has changed: %v\n", *err))
+		}
+		// TODO: ensure that buf is completely read.
+	}
+
+	return lastBlock
+}
+
+func SaveLastBlock(db dbm.DB, lastBlock types.LastBlockInfo) {
+	log.Notice("Saving block", "height", lastBlock.BlockHeight, "hash", lastBlock.BlockHash, "root", lastBlock.AppHash)
+	buf, n, err := new(bytes.Buffer), new(int), new(error)
+	wire.WriteBinary(lastBlock, buf, n, err)
+	if *err != nil {
+		// TODO
+		PanicCrisis(*err)
+	}
+	db.Set(lastBlockKey, buf.Bytes())
 }
