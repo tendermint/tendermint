@@ -95,6 +95,10 @@ func (af *AutoFile) Write(b []byte) (n int, err error) {
 	return af.file.Write(b)
 }
 
+func (af *AutoFile) Sync() error {
+	return af.file.Sync()
+}
+
 func (af *AutoFile) openFile() error {
 	file, err := os.OpenFile(af.Path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
 	if err != nil {

@@ -2,6 +2,7 @@ package autofile
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -12,6 +13,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	. "github.com/tendermint/go-common"
 )
 
 /*
@@ -56,6 +59,9 @@ type Group struct {
 	totalSizeLimit int64
 	minIndex       int // Includes head
 	maxIndex       int // Includes head, where Head will move to
+
+	// TODO: When we start deleting files, we need to start tracking GroupReaders
+	// and their dependencies.
 }
 
 func OpenGroup(head *AutoFile) (g *Group, err error) {
@@ -183,10 +189,10 @@ func (g *Group) NewReader(index int) (*GroupReader, error) {
 // Returns -1 if line comes after, 0 if found, 1 if line comes before.
 type SearchFunc func(line string) (int, error)
 
-// Searches for the right file in Group,
-// then returns a GroupReader to start streaming lines
-// Returns true if an exact match was found, otherwise returns
-// the next greater line that starts with prefix.
+// Searches for the right file in Group, then returns a GroupReader to start
+// streaming lines.
+// Returns true if an exact match was found, otherwise returns the next greater
+// line that starts with prefix.
 // CONTRACT: Caller must close the returned GroupReader
 func (g *Group) Search(prefix string, cmp SearchFunc) (*GroupReader, bool, error) {
 	g.mtx.Lock()
@@ -301,7 +307,8 @@ func scanUntil(r *GroupReader, prefix string, cmp SearchFunc) (bool, error) {
 	}
 }
 
-// Searches for the last line in Group with prefix.
+// Searches backwards for the last line in Group with prefix.
+// Scans each file forward until the end to find the last match.
 func (g *Group) FindLast(prefix string) (match string, found bool, err error) {
 	g.mtx.Lock()
 	minIndex, maxIndex := g.minIndex, g.maxIndex
@@ -559,4 +566,33 @@ func (gr *GroupReader) SetIndex(index int) error {
 	gr.mtx.Lock()
 	defer gr.mtx.Unlock()
 	return gr.openFile(index)
+}
+
+//--------------------------------------------------------------------------------
+
+// A simple SearchFunc that assumes that the marker is of form
+// <prefix><number>.
+// For example, if prefix is '#HEIGHT:', the markers of expected to be of the form:
+//
+// #HEIGHT:1
+// ...
+// #HEIGHT:2
+// ...
+func MakeSimpleSearchFunc(prefix string, target int) SearchFunc {
+	return func(line string) (int, error) {
+		if !strings.HasPrefix(line, prefix) {
+			return -1, errors.New(Fmt("Marker line did not have prefix: %v", prefix))
+		}
+		i, err := strconv.Atoi(line[len(prefix):])
+		if err != nil {
+			return -1, errors.New(Fmt("Failed to parse marker line: %v", err.Error()))
+		}
+		if target < i {
+			return 1, nil
+		} else if target == i {
+			return 0, nil
+		} else {
+			return -1, nil
+		}
+	}
 }
