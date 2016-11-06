@@ -21,6 +21,27 @@ type Block struct {
 	LastCommit *Commit `json:"last_commit"`
 }
 
+func MakeBlock(height int, chainID string, txs []Tx, commit *Commit,
+	prevBlockID BlockID, valHash, appHash []byte) (*Block, *PartSet) {
+	block := &Block{
+		Header: &Header{
+			ChainID:        chainID,
+			Height:         height,
+			Time:           time.Now(),
+			NumTxs:         len(txs),
+			LastBlockID:    prevBlockID,
+			ValidatorsHash: valHash,
+			AppHash:        appHash, // state merkle root of txs from the previous block.
+		},
+		LastCommit: commit,
+		Data: &Data{
+			Txs: txs,
+		},
+	}
+	block.FillHeader()
+	return block, block.MakePartSet()
+}
+
 // Basic validation that doesn't involve state data.
 func (b *Block) ValidateBasic(chainID string, lastBlockHeight int, lastBlockID BlockID,
 	lastBlockTime time.Time, appHash []byte) error {

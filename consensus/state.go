@@ -932,25 +932,8 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 	// Mempool validated transactions
 	txs := cs.mempool.Reap(cs.config.GetInt("block_size"))
 
-	block = &types.Block{
-		Header: &types.Header{
-			ChainID:        cs.state.ChainID,
-			Height:         cs.Height,
-			Time:           time.Now(),
-			NumTxs:         len(txs),
-			LastBlockID:    cs.state.LastBlockID,
-			ValidatorsHash: cs.state.Validators.Hash(),
-			AppHash:        cs.state.AppHash, // state merkle root of txs from the previous block.
-		},
-		LastCommit: commit,
-		Data: &types.Data{
-			Txs: txs,
-		},
-	}
-	block.FillHeader()
-	blockParts = block.MakePartSet(cs.config.GetInt("block_part_size"))
-
-	return block, blockParts
+	return types.MakeBlock(cs.Height, cs.state.ChainID, txs, commit,
+		cs.state.LastBlockID, cs.state.Validators.Hash(), cs.state.AppHash)
 }
 
 // Enter: `timeoutPropose` after entering Propose.
@@ -1273,8 +1256,6 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	// Create a copy of the state for staging
 	// and an event cache for txs
 	stateCopy := cs.state.Copy()
-
-	// event cache for txs
 	eventCache := types.NewEventCache(cs.evsw)
 
 	// Execute and commit the block, and update the mempool.

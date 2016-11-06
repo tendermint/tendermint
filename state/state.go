@@ -69,7 +69,7 @@ func (s *State) Copy() *State {
 		LastBlockTime:   s.LastBlockTime,
 		Validators:      s.Validators.Copy(),
 		LastValidators:  s.LastValidators.Copy(),
-		Stale:           s.Stale, // but really state shouldnt be copied while its stale
+		Stale:           s.Stale, // XXX: but really state shouldnt be copied while its stale
 		AppHash:         s.AppHash,
 	}
 }
@@ -94,7 +94,7 @@ func (s *State) Bytes() []byte {
 }
 
 // Mutate state variables to match block and validators
-// Since we don't have the AppHash yet, it becomes stale
+// Since we don't have the new AppHash yet, we set s.Stale=true
 func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader types.PartSetHeader, prevValSet, nextValSet *types.ValidatorSet) {
 	s.LastBlockHeight = header.Height
 	s.LastBlockID = types.BlockID{block.Hash(), blockPartsHeader}
