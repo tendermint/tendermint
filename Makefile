@@ -2,15 +2,23 @@
 
 all: protoc test install
 
+NOVENDOR = go list github.com/tendermint/tmsp/... | grep -v /vendor/
+
 protoc:
 	protoc --go_out=. types/*.proto
 
-install: get_deps
+install:
 	go install github.com/tendermint/tmsp/cmd/...
 
 test:
-	go test github.com/tendermint/tmsp/...
+	go test `${NOVENDOR}`
 	bash tests/test.sh
 
+test_integrations: get_vendor_deps install test
+
 get_deps:
-	go get -d github.com/tendermint/tmsp/...
+	go get -d `${NOVENDOR}`
+
+get_vendor_deps:
+	go get github.com/Masterminds/glide
+	glide install
