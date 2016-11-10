@@ -2,6 +2,7 @@ machine:
   environment:
     GOPATH: /home/ubuntu/.go_workspace
     REPO: $GOPATH/src/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME
+    GO15VENDOREXPERIMENT: 1
   hosts:
     circlehost: 127.0.0.1
     localhost: 127.0.0.1
@@ -14,10 +15,7 @@ checkout:
     # - git submodule sync
     # - git submodule update --init # use submodules
 
-dependencies:
-  override:
-    - "cd $REPO && go get -t ./..."
-
 test:
   override:
-    - "cd $REPO && make test"
+    - "go version"
+    - "cd $REPO && make test_integrations"

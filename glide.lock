@@ -1,0 +1,98 @@
+hash: 65769cd1c6d94a9733e9109e1bd7004f31b8df60c6d2cd47d9d8aecb9a94ffc2
+updated: 2016-11-10T00:51:46.9785435Z
+imports:
+- name: github.com/btcsuite/btcd
+  version: df33d4340e921eb9195225c67eed8b65071d40a5
+  subpackages:
+  - btcec
+- name: github.com/btcsuite/fastsha256
+  version: 637e656429416087660c84436a2a035d69d54e2e
+- name: github.com/go-stack/stack
+  version: 100eb0c0a9c5b306ca2fb4f165df21d80ada4b82
+- name: github.com/golang/protobuf
+  version: 1f49d83d9aa00e6ce4fc8258c71cc7786aec968a
+  subpackages:
+  - proto
+- name: github.com/golang/snappy
+  version: d9eb7a3d35ec988b8585d4a0068e462c27d28380
+- name: github.com/mattn/go-colorable
+  version: d228849504861217f796da67fae4f6e347643f15
+- name: github.com/mattn/go-isatty
+  version: 66b8e73f3f5cda9f96b69efd03dd3d7fc4a5cdb8
+- name: github.com/syndtr/goleveldb
+  version: 6b4daa5362b502898ddf367c5c11deb9e7a5c727
+  subpackages:
+  - leveldb
+  - leveldb/errors
+  - leveldb/opt
+  - leveldb/cache
+  - leveldb/comparer
+  - leveldb/filter
+  - leveldb/iterator
+  - leveldb/journal
+  - leveldb/memdb
+  - leveldb/storage
+  - leveldb/table
+  - leveldb/util
+- name: github.com/tendermint/ed25519
+  version: 1f52c6f8b8a5c7908aff4497c186af344b428925
+  subpackages:
+  - extra25519
+  - edwards25519
+- name: github.com/tendermint/go-common
+  version: 1c62bb6dadc6269aeecad5f9e7b153d950a54362
+- name: github.com/tendermint/go-crypto
+  version: 4b11d62bdb324027ea01554e5767b71174680ba0
+- name: github.com/tendermint/go-db
+  version: 31fdd21c7eaeed53e0ea7ca597fb1e960e2988a5
+- name: github.com/tendermint/go-logger
+  version: cefb3a45c0bf3c493a04e9bcd9b1540528be59f2
+- name: github.com/tendermint/go-merkle
+  version: 05042c6ab9cad51d12e4cecf717ae68e3b1409a8
+- name: github.com/tendermint/go-process
+  version: ba01cfbb58d446673beff17e72883cb49c835fb9
+- name: github.com/tendermint/go-wire
+  version: 287d8caeae91d21686340f5f87170560531681e6
+- name: github.com/tendermint/log15
+  version: ae0f3d6450da9eac7074b439c8e1c3cabf0d5ce6
+  subpackages:
+  - term
+- name: github.com/urfave/cli
+  version: d86a009f5e13f83df65d0d6cee9a2e3f1445f0da
+- name: golang.org/x/crypto
+  version: 9477e0b78b9ac3d0b03822fd95422e2fe07627cd
+  subpackages:
+  - ripemd160
+  - nacl/secretbox
+  - openpgp/armor
+  - poly1305
+  - salsa20/salsa
+  - openpgp/errors
+- name: golang.org/x/net
+  version: 9ef22118a4b25863aa94546daffbc0a18feaafb3
+  subpackages:
+  - context
+  - http2
+  - trace
+  - http2/hpack
+  - idna
+  - lex/httplex
+  - internal/timeseries
+- name: golang.org/x/sys
+  version: 9a2e24c3733eddc63871eda99f253e2db29bd3b9
+  subpackages:
+  - unix
+- name: google.golang.org/grpc
+  version: 28707e14b1d2b2f5da81474dea2790d71e526987
+  subpackages:
+  - codes
+  - credentials
+  - grpclog
+  - internal
+  - metadata
+  - naming
+  - stats
+  - tap
+  - transport
+  - peer
+devImports: []
