@@ -1,8 +1,8 @@
-hash: d87a1fe0061d41c1e6ec78d405d54ae321e75f4bff22b38d19d3255bbd17f21e
-updated: 2016-10-26T21:54:29.806660971-07:00
+hash: 20cb38481a78b73ba3a42af08e34cd825ddb7c826833d67cc61e45c1b3a4c484
+updated: 2016-11-15T15:54:25.75591193-05:00
 imports:
 - name: github.com/btcsuite/btcd
-  version: 2ef82e7db35dc8c499fa9091d768dc99bbaff893
+  version: d9a674e1b7bc09d0830d6986c71cf5f535d753c3
   subpackages:
   - btcec
 - name: github.com/btcsuite/fastsha256
@@ -12,25 +12,25 @@ imports:
 - name: github.com/go-stack/stack
   version: 100eb0c0a9c5b306ca2fb4f165df21d80ada4b82
 - name: github.com/gogo/protobuf
-  version: a11c89fbb0ad4acfa8abc4a4d5f7e27c477169b1
+  version: 8d70fb3182befc465c4a1eac8ad4d38ff49778e2
   subpackages:
   - proto
 - name: github.com/golang/protobuf
-  version: 1f49d83d9aa00e6ce4fc8258c71cc7786aec968a
+  version: da116c3771bf4a398a43f44e069195ef1c9688ef
   subpackages:
   - proto
 - name: github.com/golang/snappy
   version: d9eb7a3d35ec988b8585d4a0068e462c27d28380
 - name: github.com/gorilla/websocket
-  version: a69d25be2fe2923a97c2af6849b2f52426f68fc0
+  version: e8f0f8aaa98dfb6586cbdf2978d511e3199a960a
 - name: github.com/mattn/go-colorable
-  version: ed8eb9e318d7a84ce5915b495b7d35e0cfe7b5a8
+  version: d228849504861217f796da67fae4f6e347643f15
 - name: github.com/mattn/go-isatty
   version: 66b8e73f3f5cda9f96b69efd03dd3d7fc4a5cdb8
 - name: github.com/spf13/pflag
-  version: 6fd2ff4ff8dfcdf5556fbdc0ac0284408274b1a7
+  version: 5ccb023bc27df288a957c5e994cd44fd19619465
 - name: github.com/syndtr/goleveldb
-  version: 6ae1797c0b42b9323fc27ff7dcf568df88f2f33d
+  version: 6b4daa5362b502898ddf367c5c11deb9e7a5c727
   subpackages:
   - leveldb
   - leveldb/cache
@@ -49,10 +49,10 @@ imports:
   subpackages:
   - edwards25519
   - extra25519
-- name: github.com/tendermint/go-flowrate
-  version: a20c98e61957faa93b4014fbd902f20ab9317a6a
+- name: github.com/tendermint/flowcontrol
+  version: 925bee8f392c28190889746f3943fe3793fb4256
 - name: github.com/tendermint/go-autofile
-  version: 916f3d789b6afaf7bfe161aeec391c8a35e354a8
+  version: dc8fa06e642c53339987acfd90154c81c1ab4c6d
 - name: github.com/tendermint/go-clist
   version: 3baa390bbaf7634251c42ad69a8682e7e3990552
 - name: github.com/tendermint/go-common
@@ -66,7 +66,11 @@ imports:
 - name: github.com/tendermint/go-db
   version: 31fdd21c7eaeed53e0ea7ca597fb1e960e2988a5
 - name: github.com/tendermint/go-events
-  version: 1652dc8b3f7780079aa98c3ce20a83ee90b9758b
+  version: 1c85cb98a4e8ca9e92fe585bc9687fd69b98f841
+- name: github.com/tendermint/go-flowrate
+  version: a20c98e61957faa93b4014fbd902f20ab9317a6a
+  subpackages:
+  - flowrate
 - name: github.com/tendermint/go-logger
   version: cefb3a45c0bf3c493a04e9bcd9b1540528be59f2
 - name: github.com/tendermint/go-merkle
@@ -82,13 +86,13 @@ imports:
   - server
   - types
 - name: github.com/tendermint/go-wire
-  version: 3b0adbc86ed8425eaed98516165b6788d9f4de7a
+  version: 287d8caeae91d21686340f5f87170560531681e6
 - name: github.com/tendermint/log15
-  version: 9545b249b3aacafa97f79e0838b02b274adc6f5f
+  version: ae0f3d6450da9eac7074b439c8e1c3cabf0d5ce6
   subpackages:
   - term
 - name: github.com/tendermint/tmsp
-  version: c0b0ef482085ac3332169b655b767c9ef0d29204
+  version: eece35eeebacee1ab94b8338e77e0d1c2d880ecc
   subpackages:
   - client
   - example/counter
@@ -97,7 +101,7 @@ imports:
   - server
   - types
 - name: golang.org/x/crypto
-  version: aa2481cbfe81d911eb62b642b7a6b5ec58bbea71
+  version: 9477e0b78b9ac3d0b03822fd95422e2fe07627cd
   subpackages:
   - curve25519
   - nacl/box
@@ -108,20 +112,21 @@ imports:
   - ripemd160
   - salsa20/salsa
 - name: golang.org/x/net
-  version: cfe3c2a7525b50c3d707256e371c90938cfef98a
+  version: cac22060de4e495155959e69adcb4b45763ccb10
   subpackages:
   - context
   - http2
   - http2/hpack
+  - idna
   - internal/timeseries
   - lex/httplex
   - trace
 - name: golang.org/x/sys
-  version: 30de6d19a3bd89a5f38ae4028e23aaa5582648af
+  version: b699b7032584f0953262cb2788a0ca19bb494703
   subpackages:
   - unix
 - name: google.golang.org/grpc
-  version: 28707e14b1d2b2f5da81474dea2790d71e526987
+  version: 0d9891286aca15aeb2b0a73be9f5946c3cfefa85
   subpackages:
   - codes
   - credentials
@@ -130,5 +135,7 @@ imports:
   - metadata
   - naming
   - peer
+  - stats
+  - tap
   - transport
 testImports: []

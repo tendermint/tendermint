@@ -10,6 +10,7 @@ import:
 - package: github.com/tendermint/go-autofile
 - package: github.com/tendermint/go-clist
 - package: github.com/tendermint/go-common
+  version: develop
 - package: github.com/tendermint/go-config
 - package: github.com/tendermint/go-crypto
 - package: github.com/tendermint/go-db
@@ -17,9 +18,11 @@ import:
 - package: github.com/tendermint/go-logger
 - package: github.com/tendermint/go-merkle
 - package: github.com/tendermint/go-p2p
+  version: develop
   subpackages:
   - upnp
 - package: github.com/tendermint/go-rpc
+  version: develop
   subpackages:
   - client
   - server
@@ -27,6 +30,7 @@ import:
 - package: github.com/tendermint/go-wire
 - package: github.com/tendermint/log15
 - package: github.com/tendermint/tmsp
+  version: develop
   subpackages:
   - client
   - example/dummy
