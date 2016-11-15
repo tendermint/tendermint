@@ -19,7 +19,7 @@ This repository holds a number of important pieces:
 
 - `types/types.proto`
 	- the protobuf file defining TMSP message types, and the optional grpc interface. 
-	- run `protoc --go_out=plugins=grpc:. types.proto` in the `types` dir to generate the `types/types.pb.go` file
+        - to build, run `make protoc`
 	- see `protoc --help` and [the grpc docs](https://www.grpc.io/docs) for examples and details of other languages
 
 - golang implementation of TMSP client and server

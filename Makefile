@@ -5,7 +5,7 @@ all: protoc test install
 NOVENDOR = go list github.com/tendermint/tmsp/... | grep -v /vendor/
 
 protoc:
-	protoc --go_out=. types/*.proto
+	protoc --go_out=plugins=grpc:. types/*.proto
 
 install:
 	go install github.com/tendermint/tmsp/cmd/...

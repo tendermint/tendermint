@@ -1,8 +1,8 @@
 hash: 65769cd1c6d94a9733e9109e1bd7004f31b8df60c6d2cd47d9d8aecb9a94ffc2
-updated: 2016-11-10T00:51:46.9785435Z
+updated: 2016-11-15T14:05:15.057591061-05:00
 imports:
 - name: github.com/btcsuite/btcd
-  version: df33d4340e921eb9195225c67eed8b65071d40a5
+  version: d9a674e1b7bc09d0830d6986c71cf5f535d753c3
   subpackages:
   - btcec
 - name: github.com/btcsuite/fastsha256
@@ -10,7 +10,7 @@ imports:
 - name: github.com/go-stack/stack
   version: 100eb0c0a9c5b306ca2fb4f165df21d80ada4b82
 - name: github.com/golang/protobuf
-  version: 1f49d83d9aa00e6ce4fc8258c71cc7786aec968a
+  version: da116c3771bf4a398a43f44e069195ef1c9688ef
   subpackages:
   - proto
 - name: github.com/golang/snappy
@@ -23,22 +23,22 @@ imports:
   version: 6b4daa5362b502898ddf367c5c11deb9e7a5c727
   subpackages:
   - leveldb
-  - leveldb/errors
-  - leveldb/opt
   - leveldb/cache
   - leveldb/comparer
+  - leveldb/errors
   - leveldb/filter
   - leveldb/iterator
   - leveldb/journal
   - leveldb/memdb
+  - leveldb/opt
   - leveldb/storage
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/ed25519
   version: 1f52c6f8b8a5c7908aff4497c186af344b428925
   subpackages:
-  - extra25519
   - edwards25519
+  - extra25519
 - name: github.com/tendermint/go-common
   version: 1c62bb6dadc6269aeecad5f9e7b153d950a54362
 - name: github.com/tendermint/go-crypto
@@ -58,32 +58,32 @@ imports:
   subpackages:
   - term
 - name: github.com/urfave/cli
-  version: d86a009f5e13f83df65d0d6cee9a2e3f1445f0da
+  version: b4f4786f378c0c1d3336b5bb798094b166edf5a9
 - name: golang.org/x/crypto
   version: 9477e0b78b9ac3d0b03822fd95422e2fe07627cd
   subpackages:
-  - ripemd160
   - nacl/secretbox
   - openpgp/armor
-  - poly1305
-  - salsa20/salsa
   - openpgp/errors
+  - poly1305
+  - ripemd160
+  - salsa20/salsa
 - name: golang.org/x/net
-  version: 9ef22118a4b25863aa94546daffbc0a18feaafb3
+  version: cac22060de4e495155959e69adcb4b45763ccb10
   subpackages:
   - context
   - http2
-  - trace
   - http2/hpack
   - idna
-  - lex/httplex
   - internal/timeseries
+  - lex/httplex
+  - trace
 - name: golang.org/x/sys
-  version: 9a2e24c3733eddc63871eda99f253e2db29bd3b9
+  version: b699b7032584f0953262cb2788a0ca19bb494703
   subpackages:
   - unix
 - name: google.golang.org/grpc
-  version: 28707e14b1d2b2f5da81474dea2790d71e526987
+  version: 0d9891286aca15aeb2b0a73be9f5946c3cfefa85
   subpackages:
   - codes
   - credentials
@@ -91,8 +91,8 @@ imports:
   - internal
   - metadata
   - naming
+  - peer
   - stats
   - tap
   - transport
-  - peer
-devImports: []
+testImports: []
