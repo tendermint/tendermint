@@ -1,10 +1,9 @@
 package consensus
 
 import (
-	"bufio"
-	"os"
 	"time"
 
+	auto "github.com/tendermint/go-autofile"
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/types"
@@ -13,15 +12,15 @@ import (
 //--------------------------------------------------------
 // types and functions for savings consensus messages
 
-type ConsensusLogMessage struct {
-	Time time.Time                    `json:"time"`
-	Msg  ConsensusLogMessageInterface `json:"msg"`
+type TimedWALMessage struct {
+	Time time.Time  `json:"time"`
+	Msg  WALMessage `json:"msg"`
 }
 
-type ConsensusLogMessageInterface interface{}
+type WALMessage interface{}
 
 var _ = wire.RegisterInterface(
-	struct{ ConsensusLogMessageInterface }{},
+	struct{ WALMessage }{},
 	wire.ConcreteType{types.EventDataRoundState{}, 0x01},
 	wire.ConcreteType{msgInfo{}, 0x02},
 	wire.ConcreteType{timeoutInfo{}, 0x03},
@@ -35,119 +34,59 @@ var _ = wire.RegisterInterface(
 // TODO: currently the wal is overwritten during replay catchup
 //   give it a mode so it's either reading or appending - must read to end to start appending again
 type WAL struct {
-	fp     *os.File
-	exists bool // if the file already existed (restarted process)
+	BaseService
 
-	done chan struct{}
-
+	group *auto.Group
 	light bool // ignore block parts
 }
 
-func NewWAL(file string, light bool) (*WAL, error) {
-	var walExists bool
-	if _, err := os.Stat(file); err == nil {
-		walExists = true
-	}
-	fp, err := os.OpenFile(file, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0600)
+func NewWAL(walDir string, light bool) (*WAL, error) {
+	head, err := auto.OpenAutoFile(walDir + "/wal")
 	if err != nil {
 		return nil, err
 	}
-	return &WAL{
-		fp:     fp,
-		exists: walExists,
-		done:   make(chan struct{}),
-		light:  light,
-	}, nil
+	group, err := auto.OpenGroup(head)
+	if err != nil {
+		return nil, err
+	}
+	wal := &WAL{
+		group: group,
+		light: light,
+	}
+	wal.BaseService = *NewBaseService(log, "WAL", wal)
+	return wal, nil
 }
 
-func (wal *WAL) Exists() bool {
-	if wal == nil {
-		log.Warn("consensus msg log is nil")
-		return false
-	}
-	return wal.exists
+func (wal *WAL) OnStop() {
+	wal.BaseService.OnStop()
+	wal.group.Head.Close()
+	wal.group.Close()
 }
 
 // called in newStep and for each pass in receiveRoutine
-func (wal *WAL) Save(clm ConsensusLogMessageInterface) {
+func (wal *WAL) Save(wmsg WALMessage) {
 	if wal == nil {
 		return
 	}
 	if wal.light {
 		// in light mode we only write new steps, timeouts, and our own votes (no proposals, block parts)
-		if mi, ok := clm.(msgInfo); ok {
+		if mi, ok := wmsg.(msgInfo); ok {
 			_ = mi
 			if mi.PeerKey != "" {
 				return
 			}
 		}
 	}
-	var clmBytes = wire.JSONBytes(ConsensusLogMessage{time.Now(), clm})
-	var n int
-	var err error
-	wire.WriteTo(append(clmBytes, byte('\n')), wal.fp, &n, &err) // one message per line
+	// Write #HEIGHT: XYZ if new height
+	if edrs, ok := wmsg.(types.EventDataRoundState); ok {
+		if edrs.Step == RoundStepNewHeight.String() {
+			wal.group.WriteLine(Fmt("#HEIGHT: %v", edrs.Height))
+		}
+	}
+	// Write the wal message
+	var wmsgBytes = wire.JSONBytes(TimedWALMessage{time.Now(), wmsg})
+	err := wal.group.WriteLine(string(wmsgBytes))
 	if err != nil {
-		PanicQ(Fmt("Error writing msg to consensus wal. Error: %v \n\nMessage: %v", err, clm))
-	}
-}
-
-// Must not be called concurrently with a write.
-func (wal *WAL) Close() {
-	if wal != nil {
-		wal.fp.Close()
-	}
-	wal.done <- struct{}{}
-}
-
-func (wal *WAL) Wait() {
-	<-wal.done
-}
-
-// TODO: remove once we stop supporting older golang version
-const (
-	ioSeekStart   = 0
-	ioSeekCurrent = 1
-	ioSeekEnd     = 2
-)
-
-func (wal *WAL) SeekFromEnd(found func([]byte) bool) (nLines int, err error) {
-	var current int64
-	// start at the end
-	current, err = wal.fp.Seek(0, ioSeekEnd)
-	if err != nil {
-		return
-	}
-
-	// backup until we find the the right line
-	// current is how far we are from the beginning
-	for {
-		current -= 1
-		if current < 0 {
-			wal.fp.Seek(0, ioSeekStart) // back to beginning
-			return
-		}
-		// backup one and read a new byte
-		if _, err = wal.fp.Seek(current, ioSeekStart); err != nil {
-			return
-		}
-		b := make([]byte, 1)
-		if _, err = wal.fp.Read(b); err != nil {
-			return
-		}
-		if b[0] == '\n' || len(b) == 0 {
-			nLines += 1
-			// read a full line
-			reader := bufio.NewReader(wal.fp)
-			lineBytes, _ := reader.ReadBytes('\n')
-			if len(lineBytes) == 0 {
-				continue
-			}
-
-			if found(lineBytes) {
-				wal.fp.Seek(0, ioSeekCurrent) // (?)
-				wal.fp.Seek(current, ioSeekStart)
-				return
-			}
-		}
+		PanicQ(Fmt("Error writing msg to consensus wal. Error: %v \n\nMessage: %v", err, wmsg))
 	}
 }

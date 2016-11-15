@@ -52,8 +52,6 @@ func NewNodeDefault(config cfg.Config) *Node {
 
 func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreator proxy.ClientCreator) *Node {
 
-	EnsureDir(config.GetString("db_dir"), 0700) // incase we use memdb, cswal still gets written here
-
 	// Get BlockStore
 	blockStoreDB := dbm.NewDB("blockstore", config.GetString("db_backend"), config.GetString("db_dir"))
 	blockStore := bc.NewBlockStore(blockStoreDB)
@@ -414,12 +412,7 @@ func newConsensusState(config cfg.Config) *consensus.ConsensusState {
 	return consensusState
 }
 
-func RunReplayConsole(config cfg.Config) {
-	walFile := config.GetString("cswal")
-	if walFile == "" {
-		Exit("cswal file name not set in tendermint config")
-	}
-
+func RunReplayConsole(config cfg.Config, walFile string) {
 	consensusState := newConsensusState(config)
 
 	if err := consensusState.ReplayConsole(walFile); err != nil {
@@ -427,12 +420,7 @@ func RunReplayConsole(config cfg.Config) {
 	}
 }
 
-func RunReplay(config cfg.Config) {
-	walFile := config.GetString("cswal")
-	if walFile == "" {
-		Exit("cswal file name not set in tendermint config")
-	}
-
+func RunReplay(config cfg.Config, walFile string) {
 	consensusState := newConsensusState(config)
 
 	if err := consensusState.ReplayMessages(walFile); err != nil {

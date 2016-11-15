@@ -52,7 +52,7 @@ imports:
 - name: github.com/tendermint/go-flowrate
   version: a20c98e61957faa93b4014fbd902f20ab9317a6a
 - name: github.com/tendermint/go-autofile
-  version: c26b857900009ac81c78c1bc03f85e0c8e47818a
+  version: 916f3d789b6afaf7bfe161aeec391c8a35e354a8
 - name: github.com/tendermint/go-clist
   version: 3baa390bbaf7634251c42ad69a8682e7e3990552
 - name: github.com/tendermint/go-common

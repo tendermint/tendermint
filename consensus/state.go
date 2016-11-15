@@ -304,8 +304,15 @@ func (cs *ConsensusState) SetPrivValidator(priv *types.PrivValidator) {
 func (cs *ConsensusState) OnStart() error {
 	cs.BaseService.OnStart()
 
-	err := cs.OpenWAL(cs.config.GetString("cswal"))
+	walDir := cs.config.GetString("cs_wal_dir")
+	err := EnsureDir(walDir, 0700)
 	if err != nil {
+		log.Error("Error ensuring ConsensusState wal dir", "error", err.Error())
+		return err
+	}
+	err = cs.OpenWAL(walDir)
+	if err != nil {
+		log.Error("Error loading ConsensusState wal", "error", err.Error())
 		return err
 	}
 
@@ -343,16 +350,17 @@ func (cs *ConsensusState) startRoutines(maxSteps int) {
 func (cs *ConsensusState) OnStop() {
 	cs.BaseService.OnStop()
 
+	// Make BaseService.Wait() wait until cs.wal.Wait()
 	if cs.wal != nil && cs.IsRunning() {
 		cs.wal.Wait()
 	}
 }
 
 // Open file to log all consensus messages and timeouts for deterministic accountability
-func (cs *ConsensusState) OpenWAL(file string) (err error) {
+func (cs *ConsensusState) OpenWAL(walDir string) (err error) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
-	wal, err := NewWAL(file, cs.config.GetBool("cswal_light"))
+	wal, err := NewWAL(walDir, cs.config.GetBool("cs_wal_light"))
 	if err != nil {
 		return err
 	}
@@ -658,7 +666,7 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 
 			// close wal now that we're done writing to it
 			if cs.wal != nil {
-				cs.wal.Close()
+				cs.wal.Stop()
 			}
 			return
 		}

@@ -85,10 +85,16 @@ func NewMempool(config cfg.Config, proxyAppConn proxy.AppConnMempool) *Mempool {
 }
 
 func (mem *Mempool) initWAL() {
-	walFileName := mem.config.GetString("mempool_wal")
-	if walFileName != "" {
-		af, err := auto.OpenAutoFile(walFileName)
+	walDir := mem.config.GetString("mempool_wal_dir")
+	if walDir != "" {
+		err := EnsureDir(walDir, 0700)
 		if err != nil {
+			log.Error("Error ensuring Mempool wal dir", "error", err)
+			PanicSanity(err)
+		}
+		af, err := auto.OpenAutoFile(walDir + "/wal")
+		if err != nil {
+			log.Error("Error opening Mempool wal file", "error", err)
 			PanicSanity(err)
 		}
 		mem.wal = af
