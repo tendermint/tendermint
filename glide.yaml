@@ -4,6 +4,7 @@ import:
   subpackages:
   - proto
 - package: github.com/tendermint/go-common
+  version: develop
 - package: github.com/tendermint/go-crypto
 - package: github.com/tendermint/go-logger
 - package: github.com/tendermint/go-merkle
