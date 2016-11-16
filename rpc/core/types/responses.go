@@ -69,7 +69,10 @@ type ResultUnconfirmedTxs struct {
 }
 
 type ResultTMSPInfo struct {
-	Result tmsp.Result `json:"result"`
+	Result        tmsp.Result         `json:"result"`
+	TMSPInfo      *tmsp.TMSPInfo      `json:"tmsp_info"`
+	LastBlockInfo *tmsp.LastBlockInfo `json:"last_block_info"`
+	ConfigInfo    *tmsp.ConfigInfo    `json:"config_info"`
 }
 
 type ResultTMSPQuery struct {

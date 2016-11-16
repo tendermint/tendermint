@@ -130,7 +130,9 @@ func NewEventCache(evsw EventSwitch) EventCache {
 
 // All events should be based on this FireEvent to ensure they are TMEventData
 func fireEvent(fireable events.Fireable, event string, data TMEventData) {
-	fireable.FireEvent(event, data)
+	if fireable != nil {
+		fireable.FireEvent(event, data)
+	}
 }
 
 func AddListenerForEvent(evsw EventSwitch, id, event string, cb func(data TMEventData)) {

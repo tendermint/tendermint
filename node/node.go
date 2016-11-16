@@ -60,11 +60,10 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreato
 	stateDB := dbm.NewDB("state", config.GetString("db_backend"), config.GetString("db_dir"))
 
 	// Get State
-	state := getState(config, stateDB)
+	state := sm.GetState(config, stateDB)
 
-	// Create the proxyApp, which houses three connections:
-	// query, consensus, and mempool
-	proxyApp := proxy.NewAppConns(config, clientCreator, state, blockStore)
+	// Create the proxyApp, which manages connections (consensus, mempool, query)
+	proxyApp := proxy.NewAppConns(config, clientCreator, sm.NewHandshaker(config, state, blockStore))
 	if _, err := proxyApp.Start(); err != nil {
 		Exit(Fmt("Error starting proxy app connections: %v", err))
 	}
@@ -296,17 +295,6 @@ func makeNodeInfo(config cfg.Config, sw *p2p.Switch, privKey crypto.PrivKeyEd255
 	return nodeInfo
 }
 
-// Load the most recent state from "state" db,
-// or create a new one (and save) from genesis.
-func getState(config cfg.Config, stateDB dbm.DB) *sm.State {
-	state := sm.LoadState(stateDB)
-	if state == nil {
-		state = sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
-		state.Save()
-	}
-	return state
-}
-
 //------------------------------------------------------------------------------
 
 // Users wishing to:
@@ -391,17 +379,19 @@ func newConsensusState(config cfg.Config) *consensus.ConsensusState {
 	stateDB := dbm.NewDB("state", config.GetString("db_backend"), config.GetString("db_dir"))
 	state := sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
 
-	// Create two proxyAppConn connections,
-	// one for the consensus and one for the mempool.
-	proxyApp := proxy.NewAppConns(config, proxy.DefaultClientCreator(config), state, blockStore)
+	// Create proxyAppConn connection (consensus, mempool, query)
+	proxyApp := proxy.NewAppConns(config, proxy.DefaultClientCreator(config), sm.NewHandshaker(config, state, blockStore))
+	_, err := proxyApp.Start()
+	if err != nil {
+		Exit(Fmt("Error starting proxy app conns: %v", err))
+	}
 
 	// add the chainid to the global config
 	config.Set("chain_id", state.ChainID)
 
 	// Make event switch
 	eventSwitch := types.NewEventSwitch()
-	_, err := eventSwitch.Start()
-	if err != nil {
+	if _, err := eventSwitch.Start(); err != nil {
 		Exit(Fmt("Failed to start event switch: %v", err))
 	}
 

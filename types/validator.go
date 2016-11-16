@@ -11,8 +11,9 @@ import (
 )
 
 // Volatile state for each Validator
-// Also persisted with the state, but fields change
-// every height|round so they don't go in merkle.Tree
+// TODO: make non-volatile identity
+// 	- Remove LastCommitHeight, send bitarray of vals that signed in BeginBlock
+// 	- Remove Accum - it can be computed, and now valset becomes identifying
 type Validator struct {
 	Address          []byte        `json:"address"`
 	PubKey           crypto.PubKey `json:"pub_key"`

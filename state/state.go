@@ -7,6 +7,7 @@ import (
 	"time"
 
 	. "github.com/tendermint/go-common"
+	cfg "github.com/tendermint/go-config"
 	dbm "github.com/tendermint/go-db"
 	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/types"
@@ -20,16 +21,25 @@ var (
 
 // NOTE: not goroutine-safe.
 type State struct {
-	mtx             sync.Mutex
-	db              dbm.DB
-	GenesisDoc      *types.GenesisDoc
-	ChainID         string
+	// mtx for writing to db
+	mtx sync.Mutex
+	db  dbm.DB
+
+	// should not change
+	GenesisDoc *types.GenesisDoc
+	ChainID    string
+
+	// updated at end of ExecBlock
 	LastBlockHeight int // Genesis state has this set to 0.  So, Block(H=0) does not exist.
 	LastBlockID     types.BlockID
 	LastBlockTime   time.Time
 	Validators      *types.ValidatorSet
 	LastValidators  *types.ValidatorSet
-	AppHash         []byte
+
+	// AppHash is updated after Commit;
+	// it's stale after ExecBlock and before Commit
+	Stale   bool
+	AppHash []byte
 }
 
 func LoadState(db dbm.DB) *State {
@@ -59,6 +69,7 @@ func (s *State) Copy() *State {
 		LastBlockTime:   s.LastBlockTime,
 		Validators:      s.Validators.Copy(),
 		LastValidators:  s.LastValidators.Copy(),
+		Stale:           s.Stale, // XXX: but really state shouldnt be copied while its stale
 		AppHash:         s.AppHash,
 	}
 }
@@ -66,13 +77,47 @@ func (s *State) Copy() *State {
 func (s *State) Save() {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
+	s.db.Set(stateKey, s.Bytes())
+}
 
+func (s *State) Equals(s2 *State) bool {
+	return bytes.Equal(s.Bytes(), s2.Bytes())
+}
+
+func (s *State) Bytes() []byte {
 	buf, n, err := new(bytes.Buffer), new(int), new(error)
 	wire.WriteBinary(s, buf, n, err)
 	if *err != nil {
 		PanicCrisis(*err)
 	}
-	s.db.Set(stateKey, buf.Bytes())
+	return buf.Bytes()
+}
+
+// Mutate state variables to match block and validators
+// Since we don't have the new AppHash yet, we set s.Stale=true
+func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader types.PartSetHeader, prevValSet, nextValSet *types.ValidatorSet) {
+	s.LastBlockHeight = header.Height
+	s.LastBlockID = types.BlockID{header.Hash(), blockPartsHeader}
+	s.LastBlockTime = header.Time
+	s.Validators = nextValSet
+	s.LastValidators = prevValSet
+
+	s.Stale = true
+}
+
+func (s *State) GetValidators() (*types.ValidatorSet, *types.ValidatorSet) {
+	return s.LastValidators, s.Validators
+}
+
+// Load the most recent state from "state" db,
+// or create a new one (and save) from genesis.
+func GetState(config cfg.Config, stateDB dbm.DB) *State {
+	state := LoadState(stateDB)
+	if state == nil {
+		state = MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
+		state.Save()
+	}
+	return state
 }
 
 //-----------------------------------------------------------------------------

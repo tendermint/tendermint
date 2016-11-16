@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ebuchman/fail-test"
+
 	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-wire"
@@ -315,6 +317,15 @@ func (cs *ConsensusState) SetPrivValidator(priv PrivValidator) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	cs.privValidator = priv
+}
+
+func (cs *ConsensusState) LoadCommit(height int) *types.Commit {
+	cs.mtx.Lock()
+	defer cs.mtx.Unlock()
+	if height == cs.blockStore.Height() {
+		return cs.blockStore.LoadSeenCommit(height)
+	}
+	return cs.blockStore.LoadBlockCommit(height)
 }
 
 func (cs *ConsensusState) OnStart() error {
@@ -930,25 +941,8 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 	// Mempool validated transactions
 	txs := cs.mempool.Reap(cs.config.GetInt("block_size"))
 
-	block = &types.Block{
-		Header: &types.Header{
-			ChainID:        cs.state.ChainID,
-			Height:         cs.Height,
-			Time:           time.Now(),
-			NumTxs:         len(txs),
-			LastBlockID:    cs.state.LastBlockID,
-			ValidatorsHash: cs.state.Validators.Hash(),
-			AppHash:        cs.state.AppHash, // state merkle root of txs from the previous block.
-		},
-		LastCommit: commit,
-		Data: &types.Data{
-			Txs: txs,
-		},
-	}
-	block.FillHeader()
-	blockParts = block.MakePartSet(cs.config.GetInt("block_part_size"))
-
-	return block, blockParts
+	return types.MakeBlock(cs.Height, cs.state.ChainID, txs, commit,
+		cs.state.LastBlockID, cs.state.Validators.Hash(), cs.state.AppHash, cs.config.GetInt("block_part_size"))
 }
 
 // Enter: `timeoutPropose` after entering Propose.
@@ -1251,49 +1245,45 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 		PanicConsensus(Fmt("+2/3 committed an invalid block: %v", err))
 	}
 
-	log.Notice(Fmt("Finalizing commit of block with %d txs", block.NumTxs), "height", block.Height, "hash", block.Hash())
+	log.Notice(Fmt("Finalizing commit of block with %d txs", block.NumTxs),
+		"height", block.Height, "hash", block.Hash(), "root", block.AppHash)
 	log.Info(Fmt("%v", block))
 
-	// Fire off event for new block.
-	// TODO: Handle app failure.  See #177
-	types.FireEventNewBlock(cs.evsw, types.EventDataNewBlock{block})
-	types.FireEventNewBlockHeader(cs.evsw, types.EventDataNewBlockHeader{block.Header})
-
-	// Create a copy of the state for staging
-	stateCopy := cs.state.Copy()
-
-	// event cache for txs
-	eventCache := types.NewEventCache(cs.evsw)
-
-	// Run the block on the State:
-	// + update validator sets
-	// + run txs on the proxyAppConn
-	err := stateCopy.ExecBlock(eventCache, cs.proxyAppConn, block, blockParts.Header())
-	if err != nil {
-		// TODO: handle this gracefully.
-		PanicQ(Fmt("Exec failed for application: %v", err))
-	}
-
-	// lock mempool, commit state, update mempoool
-	err = cs.commitStateUpdateMempool(stateCopy, block)
-	if err != nil {
-		// TODO: handle this gracefully.
-		PanicQ(Fmt("Commit failed for application: %v", err))
-	}
-
-	// txs committed, bad ones removed from mepool; fire events
-	// NOTE: the block.AppHash wont reflect these txs until the next block
-	eventCache.Flush()
+	fail.Fail() // XXX
 
 	// Save to blockStore.
 	if cs.blockStore.Height() < block.Height {
 		precommits := cs.Votes.Precommits(cs.CommitRound)
 		seenCommit := precommits.MakeCommit()
 		cs.blockStore.SaveBlock(block, blockParts, seenCommit)
+	} else {
+		log.Warn("Why are we finalizeCommitting a block height we already have?", "height", block.Height)
 	}
+
+	fail.Fail() // XXX
+
+	// Create a copy of the state for staging
+	// and an event cache for txs
+	stateCopy := cs.state.Copy()
+	eventCache := types.NewEventCache(cs.evsw)
+
+	// Execute and commit the block, and update the mempool.
+	// All calls to the proxyAppConn should come here.
+	// NOTE: the block.AppHash wont reflect these txs until the next block
+	stateCopy.ApplyBlock(eventCache, cs.proxyAppConn, block, blockParts.Header(), cs.mempool)
+
+	fail.Fail() // XXX
+
+	// Fire off event for new block.
+	// TODO: Handle app failure.  See #177
+	types.FireEventNewBlock(cs.evsw, types.EventDataNewBlock{block})
+	types.FireEventNewBlockHeader(cs.evsw, types.EventDataNewBlockHeader{block.Header})
+	eventCache.Flush()
 
 	// Save the state.
 	stateCopy.Save()
+
+	fail.Fail() // XXX
 
 	// NewHeightStep!
 	cs.updateToState(stateCopy)
@@ -1307,32 +1297,6 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	// * cs.Step is now RoundStepNewHeight
 	// * cs.StartTime is set to when we will start round0.
 	return
-}
-
-// mempool must be locked during commit and update
-// because state is typically reset on Commit and old txs must be replayed
-// against committed state before new txs are run in the mempool, lest they be invalid
-func (cs *ConsensusState) commitStateUpdateMempool(s *sm.State, block *types.Block) error {
-	cs.mempool.Lock()
-	defer cs.mempool.Unlock()
-
-	// Commit block, get hash back
-	res := cs.proxyAppConn.CommitSync()
-	if res.IsErr() {
-		log.Warn("Error in proxyAppConn.CommitSync", "error", res)
-		return res
-	}
-	if res.Log != "" {
-		log.Debug("Commit.Log: " + res.Log)
-	}
-
-	// Set the state's new AppHash
-	s.AppHash = res.Data
-
-	// Update mempool.
-	cs.mempool.Update(block.Height, block.Txs)
-
-	return nil
 }
 
 //-----------------------------------------------------------------------------
