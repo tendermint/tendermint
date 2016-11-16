@@ -1,14 +1,16 @@
 hash: 20cb38481a78b73ba3a42af08e34cd825ddb7c826833d67cc61e45c1b3a4c484
-updated: 2016-11-15T15:54:25.75591193-05:00
+updated: 2016-11-16T16:25:10.693961906-05:00
 imports:
 - name: github.com/btcsuite/btcd
-  version: d9a674e1b7bc09d0830d6986c71cf5f535d753c3
+  version: b134beb3b7809de6370a93cc5f6a684d6942e2e8
   subpackages:
   - btcec
 - name: github.com/btcsuite/fastsha256
   version: 637e656429416087660c84436a2a035d69d54e2e
 - name: github.com/BurntSushi/toml
   version: 99064174e013895bbd9b025c31100bd1d9b590ca
+- name: github.com/ebuchman/fail-test
+  version: c1eddaa09da2b4017351245b0d43234955276798
 - name: github.com/go-stack/stack
   version: 100eb0c0a9c5b306ca2fb4f165df21d80ada4b82
 - name: github.com/gogo/protobuf
@@ -16,7 +18,7 @@ imports:
   subpackages:
   - proto
 - name: github.com/golang/protobuf
-  version: da116c3771bf4a398a43f44e069195ef1c9688ef
+  version: 224aaba33b1ac32a92a165f27489409fb8133d08
   subpackages:
   - proto
 - name: github.com/golang/snappy
@@ -92,7 +94,7 @@ imports:
   subpackages:
   - term
 - name: github.com/tendermint/tmsp
-  version: 60e0842ef9a87c840d0bf95eea7b54a1e3d312b3
+  version: 0bdb3b887e70b1ef16d32eece0248ec071fd8490
   subpackages:
   - client
   - example/counter
@@ -112,7 +114,7 @@ imports:
   - ripemd160
   - salsa20/salsa
 - name: golang.org/x/net
-  version: cac22060de4e495155959e69adcb4b45763ccb10
+  version: 4971afdc2f162e82d185353533d3cf16188a9f4e
   subpackages:
   - context
   - http2
@@ -126,7 +128,7 @@ imports:
   subpackages:
   - unix
 - name: google.golang.org/grpc
-  version: 0d9891286aca15aeb2b0a73be9f5946c3cfefa85
+  version: 941cc894cea3c87a12943fd12b594964541b6d28
   subpackages:
   - codes
   - credentials
