@@ -124,7 +124,8 @@ message RequestInitChain{
 }
 
 message RequestBeginBlock{
-	uint64 height = 1;
+	bytes hash = 1;
+	Header header = 2;
 }
 
 message RequestEndBlock{
@@ -164,7 +165,11 @@ message ResponseFlush{
 }
 
 message ResponseInfo {
-	string info = 1;
+	string info = 1; // backwards compatible
+
+	TMSPInfo tmsp_info = 2;
+	LastBlockInfo last_block = 3;
+	ConfigInfo config = 4;
 }
 
 message ResponseSetOption{
@@ -207,7 +212,46 @@ message ResponseEndBlock{
 }
 
 //----------------------------------------
-// Misc types
+// Info types 
+
+message TMSPInfo {
+	string Version = 1;
+}
+
+message LastBlockInfo {
+	int32 block_height = 1;
+	bytes block_hash = 2;
+	bytes app_hash = 3;
+}
+
+message ConfigInfo {
+	uint64 max_block_size = 1;
+}
+
+//----------------------------------------
+// Blockchain Types
+
+message Header {
+	string chain_id = 1;
+	int32 height = 2;
+	uint64 time = 3;
+	uint64 num_txs = 4;
+	BlockID last_block_id = 5;
+	bytes last_commit_hash = 6;
+	bytes data_hash = 7;
+	bytes validators_hash = 8;
+	bytes app_hash = 9; 
+}
+
+message BlockID {
+	bytes hash = 1;
+	PartSetHeader parts = 2;
+}
+
+message PartSetHeader {
+	uint64 total = 1;
+	bytes hash = 2;
+}
 
 message Validator {
             bytes             pubKey      = 1;

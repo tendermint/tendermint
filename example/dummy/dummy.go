@@ -20,8 +20,8 @@ func NewDummyApplication() *DummyApplication {
 	return &DummyApplication{state: state}
 }
 
-func (app *DummyApplication) Info() string {
-	return Fmt("size:%v", app.state.Size())
+func (app *DummyApplication) Info() (string, *types.TMSPInfo, *types.LastBlockInfo, *types.ConfigInfo) {
+	return Fmt("size:%v", app.state.Size()), nil, nil, nil
 }
 
 func (app *DummyApplication) SetOption(key string, value string) (log string) {
@@ -50,6 +50,7 @@ func (app *DummyApplication) Commit() types.Result {
 
 func (app *DummyApplication) Query(query []byte) types.Result {
 	index, value, exists := app.state.Get(query)
+
 	resStr := Fmt("Index=%v value=%v exists=%v", index, string(value), exists)
 	return types.NewResultOK([]byte(resStr), "")
 }

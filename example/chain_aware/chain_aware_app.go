@@ -36,8 +36,8 @@ func NewChainAwareApplication() *ChainAwareApplication {
 	return &ChainAwareApplication{}
 }
 
-func (app *ChainAwareApplication) Info() string {
-	return "nil"
+func (app *ChainAwareApplication) Info() (string, *types.TMSPInfo, *types.LastBlockInfo, *types.ConfigInfo) {
+	return "nil", nil, nil, nil
 }
 
 func (app *ChainAwareApplication) SetOption(key string, value string) (log string) {
@@ -60,7 +60,7 @@ func (app *ChainAwareApplication) Query(query []byte) types.Result {
 	return types.NewResultOK([]byte(Fmt("%d,%d", app.beginCount, app.endCount)), "")
 }
 
-func (app *ChainAwareApplication) BeginBlock(height uint64) {
+func (app *ChainAwareApplication) BeginBlock(hash []byte, header *types.Header) {
 	app.beginCount += 1
 	return
 }

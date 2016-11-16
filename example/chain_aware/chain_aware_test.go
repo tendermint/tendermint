@@ -8,6 +8,7 @@ import (
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/tmsp/client"
 	"github.com/tendermint/tmsp/server"
+	"github.com/tendermint/tmsp/types"
 )
 
 func TestChainAware(t *testing.T) {
@@ -29,8 +30,10 @@ func TestChainAware(t *testing.T) {
 	defer client.Stop()
 
 	n := uint64(5)
+	hash := []byte("fake block hash")
+	header := &types.Header{}
 	for i := uint64(0); i < n; i++ {
-		client.BeginBlockSync(i)
+		client.BeginBlockSync(hash, header)
 		client.EndBlockSync(i)
 		client.CommitSync()
 	}
