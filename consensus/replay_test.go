@@ -21,9 +21,9 @@ var baseStepChanges = []int{3, 6, 8}
 
 // test recovery from each line in each testCase
 var testCases = []*testCase{
-	newTestCase("empty_block", baseStepChanges),  // empty block (has 1 block part)
-	newTestCase("small_block1", baseStepChanges), // small block with txs in 1 block part
-	newTestCase("small_block2", []int{3, 8, 10}), // small block with txs across 3 smaller block parts
+	newTestCase("empty_block", baseStepChanges),   // empty block (has 1 block part)
+	newTestCase("small_block1", baseStepChanges),  // small block with txs in 1 block part
+	newTestCase("small_block2", []int{3, 10, 12}), // small block with txs across 5 smaller block parts
 }
 
 type testCase struct {
@@ -110,9 +110,13 @@ func runReplayTest(t *testing.T, cs *ConsensusState, walDir string, newBlockCh c
 	cs.Wait()
 }
 
+func toPV(pv PrivValidator) *types.PrivValidator {
+	return pv.(*types.PrivValidator)
+}
+
 func setupReplayTest(thisCase *testCase, nLines int, crashAfter bool) (*ConsensusState, chan interface{}, string, string) {
 	fmt.Println("-------------------------------------")
-	log.Notice(Fmt("Starting replay test of %d lines of WAL (crash before write)", nLines))
+	log.Notice(Fmt("Starting replay test of %d lines of WAL. Crash after = %v", nLines, crashAfter))
 
 	lineStep := nLines
 	if crashAfter {
@@ -128,10 +132,10 @@ func setupReplayTest(thisCase *testCase, nLines int, crashAfter bool) (*Consensu
 	cs := fixedConsensusStateDummy()
 
 	// set the last step according to when we crashed vs the wal
-	cs.privValidator.LastHeight = 1 // first block
-	cs.privValidator.LastStep = thisCase.stepMap[lineStep]
+	toPV(cs.privValidator).LastHeight = 1 // first block
+	toPV(cs.privValidator).LastStep = thisCase.stepMap[lineStep]
 
-	fmt.Println("LAST STEP", cs.privValidator.LastStep)
+	log.Warn("setupReplayTest", "LastStep", toPV(cs.privValidator).LastStep)
 
 	newBlockCh := subscribeToEvent(cs.evsw, "tester", types.EventStringNewBlock(), 1)
 
@@ -168,8 +172,8 @@ func TestReplayCrashBeforeWritePropose(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Error reading json data: %v", err)
 		}
-		cs.privValidator.LastSignBytes = types.SignBytes(cs.state.ChainID, proposal.Proposal)
-		cs.privValidator.LastSignature = proposal.Proposal.Signature
+		toPV(cs.privValidator).LastSignBytes = types.SignBytes(cs.state.ChainID, proposal.Proposal)
+		toPV(cs.privValidator).LastSignature = proposal.Proposal.Signature
 		runReplayTest(t, cs, walDir, newBlockCh, thisCase, lineNum)
 	}
 }
@@ -187,8 +191,8 @@ func TestReplayCrashBeforeWritePrevote(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Error reading json data: %v", err)
 			}
-			cs.privValidator.LastSignBytes = types.SignBytes(cs.state.ChainID, vote.Vote)
-			cs.privValidator.LastSignature = vote.Vote.Signature
+			toPV(cs.privValidator).LastSignBytes = types.SignBytes(cs.state.ChainID, vote.Vote)
+			toPV(cs.privValidator).LastSignature = vote.Vote.Signature
 		})
 		runReplayTest(t, cs, walDir, newBlockCh, thisCase, lineNum)
 	}
@@ -207,8 +211,8 @@ func TestReplayCrashBeforeWritePrecommit(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Error reading json data: %v", err)
 			}
-			cs.privValidator.LastSignBytes = types.SignBytes(cs.state.ChainID, vote.Vote)
-			cs.privValidator.LastSignature = vote.Vote.Signature
+			toPV(cs.privValidator).LastSignBytes = types.SignBytes(cs.state.ChainID, vote.Vote)
+			toPV(cs.privValidator).LastSignature = vote.Vote.Signature
 		})
 		runReplayTest(t, cs, walDir, newBlockCh, thisCase, lineNum)
 	}

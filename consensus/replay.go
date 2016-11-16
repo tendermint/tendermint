@@ -68,7 +68,7 @@ func (cs *ConsensusState) readReplayMessage(msgBytes []byte, newStepCh chan inte
 		case *VoteMessage:
 			v := msg.Vote
 			log.Notice("Replay: Vote", "height", v.Height, "round", v.Round, "type", v.Type,
-				"hash", v.BlockHash, "header", v.BlockPartsHeader, "peer", peerKey)
+				"blockID", v.BlockID, "peer", peerKey)
 		}
 
 		cs.handleMsg(m, cs.RoundState)

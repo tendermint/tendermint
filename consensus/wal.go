@@ -54,7 +54,19 @@ func NewWAL(walDir string, light bool) (*WAL, error) {
 		light: light,
 	}
 	wal.BaseService = *NewBaseService(log, "WAL", wal)
-	return wal, nil
+	_, err = wal.Start()
+	return wal, err
+}
+
+func (wal *WAL) OnStart() error {
+	wal.BaseService.OnStart()
+	size, err := wal.group.Head.Size()
+	if err != nil {
+		return err
+	} else if size == 0 {
+		wal.writeHeight(1)
+	}
+	return nil
 }
 
 func (wal *WAL) OnStop() {
@@ -80,7 +92,7 @@ func (wal *WAL) Save(wmsg WALMessage) {
 	// Write #HEIGHT: XYZ if new height
 	if edrs, ok := wmsg.(types.EventDataRoundState); ok {
 		if edrs.Step == RoundStepNewHeight.String() {
-			wal.group.WriteLine(Fmt("#HEIGHT: %v", edrs.Height))
+			wal.writeHeight(edrs.Height)
 		}
 	}
 	// Write the wal message
@@ -89,4 +101,8 @@ func (wal *WAL) Save(wmsg WALMessage) {
 	if err != nil {
 		PanicQ(Fmt("Error writing msg to consensus wal. Error: %v \n\nMessage: %v", err, wmsg))
 	}
+}
+
+func (wal *WAL) writeHeight(height int) {
+	wal.group.WriteLine(Fmt("#HEIGHT: %v", height))
 }

@@ -73,7 +73,8 @@ func GetConfig(rootDir string) cfg.Config {
 	mapConfig.SetDefault("cs_wal_light", false)
 	mapConfig.SetDefault("filter_peers", false)
 
-	mapConfig.SetDefault("block_size", 10000)
+	mapConfig.SetDefault("block_size", 10000)      // max number of txs
+	mapConfig.SetDefault("block_part_size", 65536) // part size 64K
 	mapConfig.SetDefault("disable_data_hash", false)
 	mapConfig.SetDefault("timeout_propose", 3000)
 	mapConfig.SetDefault("timeout_propose_delta", 500)

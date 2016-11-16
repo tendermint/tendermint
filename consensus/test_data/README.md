@@ -1,7 +1,18 @@
 # Generating test data
 
+TODO: automate this process.
+
 The easiest way to generate this data is to copy `~/.tendermint_test/somedir/*` to `~/.tendermint`
-and to run a local node.
+and to run a local node. Note the tests expect a wal for block 1.
+
+For `empty_block.cswal`, run the node and don't send any transactions.
+
+For `small_block1.cswal` and `small_block2.cswal`,
+use the `scripts/txs/random.sh 1000 36657` to start sending transactions before starting the node.
+`small_block1.cswal` uses the default large block part size, so the block should have one big part.
+For `small_block2.cswal`, set `block_part_size = 512` in the config.toml.
+
+Make sure to adjust the stepChanges in the testCases if the number of messages changes
 
 If you need to change the signatures, you can use a script as follows:
 The privBytes comes from `config/tendermint_test/...`:
