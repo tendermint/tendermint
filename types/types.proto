@@ -233,15 +233,19 @@ message ConfigInfo {
 
 message Header {
 	string chain_id = 1;
-	uint64 height = 2;
+	int32 height = 2;
 	uint64 time = 3;
 	uint64 num_txs = 4;
-	bytes last_block_hash = 5;
-	PartSetHeader last_block_parts = 6;
-	bytes last_commit_hash = 7;
-	bytes data_hash = 8;
-	bytes validators_hash = 9;
-	bytes app_hash = 10; 
+	BlockID last_block_id = 5;
+	bytes last_commit_hash = 6;
+	bytes data_hash = 7;
+	bytes validators_hash = 8;
+	bytes app_hash = 9; 
+}
+
+message BlockID {
+	bytes hash = 1;
+	PartSetHeader parts = 2;
 }
 
 message PartSetHeader {
