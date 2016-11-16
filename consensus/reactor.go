@@ -658,12 +658,7 @@ OUTER_LOOP:
 		{
 			prs := ps.GetRoundState()
 			if prs.CatchupCommitRound != -1 && 0 < prs.Height && prs.Height <= conR.conS.blockStore.Height() {
-				var commit *types.Commit
-				if prs.Height == conR.conS.blockStore.Height() {
-					commit = conR.conS.blockStore.LoadSeenCommit(prs.Height)
-				} else {
-					commit = conR.conS.blockStore.LoadBlockCommit(prs.Height)
-				}
+				commit := conR.conS.LoadCommit(prs.Height)
 				peer.TrySend(StateChannel, struct{ ConsensusMessage }{&VoteSetMaj23Message{
 					Height:  prs.Height,
 					Round:   commit.Round(),

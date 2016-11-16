@@ -319,6 +319,15 @@ func (cs *ConsensusState) SetPrivValidator(priv PrivValidator) {
 	cs.privValidator = priv
 }
 
+func (cs *ConsensusState) LoadCommit(height int) *types.Commit {
+	cs.mtx.Lock()
+	defer cs.mtx.Unlock()
+	if height == cs.blockStore.Height() {
+		return cs.blockStore.LoadSeenCommit(height)
+	}
+	return cs.blockStore.LoadBlockCommit(height)
+}
+
 func (cs *ConsensusState) OnStart() error {
 	cs.BaseService.OnStart()
 
