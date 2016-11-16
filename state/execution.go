@@ -7,6 +7,7 @@ import (
 	"github.com/ebuchman/fail-test"
 
 	. "github.com/tendermint/go-common"
+	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 	tmsp "github.com/tendermint/tmsp/types"
@@ -261,14 +262,15 @@ type BlockStore interface {
 }
 
 type Handshaker struct {
-	state *State
-	store BlockStore
+	config cfg.Config
+	state  *State
+	store  BlockStore
 
 	nBlocks int // number of blocks applied to the state
 }
 
-func NewHandshaker(state *State, store BlockStore) *Handshaker {
-	return &Handshaker{state, store, 0}
+func NewHandshaker(config cfg.Config, state *State, store BlockStore) *Handshaker {
+	return &Handshaker{config, state, store, 0}
 }
 
 // TODO: retry the handshake once if it fails the first time
@@ -320,7 +322,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 		}*/
 
 		header = block.Header
-		partsHeader = block.MakePartSet().Header()
+		partsHeader = block.MakePartSet(h.config.GetInt("block_part_size")).Header()
 	}
 
 	if configInfo != nil {
@@ -355,8 +357,7 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, header *types.Header, partsHea
 	lastVals, nextVals := stateCopy.GetValidators()
 	if header == nil {
 		stateCopy.LastBlockHeight = 0
-		stateCopy.LastBlockHash = nil
-		stateCopy.LastBlockParts = types.PartSetHeader{}
+		stateCopy.LastBlockID = types.BlockID{}
 		// stateCopy.LastBlockTime = ... doesnt matter
 		stateCopy.Validators = nextVals
 		stateCopy.LastValidators = lastVals
@@ -422,7 +423,7 @@ func (h *Handshaker) loadApplyBlock(blockIndex int, state *State, appConnConsens
 	block := h.store.LoadBlock(blockIndex)
 	panicOnNilBlock(blockIndex, h.store.Height(), block) // XXX
 	var eventCache types.Fireable                        // nil
-	return state.ApplyBlock(eventCache, appConnConsensus, block, block.MakePartSet().Header(), mockMempool{})
+	return state.ApplyBlock(eventCache, appConnConsensus, block, block.MakePartSet(h.config.GetInt("block_part_size")).Header(), mockMempool{})
 }
 
 func panicOnNilBlock(height, bsHeight int, block *types.Block) {

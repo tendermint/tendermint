@@ -2,7 +2,7 @@ package state
 
 import (
 	"bytes"
-	//"fmt"
+	"fmt"
 	"path"
 	"testing"
 
@@ -16,10 +16,11 @@ import (
 )
 
 var (
-	privKey = crypto.GenPrivKeyEd25519FromSecret([]byte("handshake_test"))
-	chainID = "handshake_chain"
-	nBlocks = 5
-	mempool = mockMempool{}
+	privKey      = crypto.GenPrivKeyEd25519FromSecret([]byte("handshake_test"))
+	chainID      = "handshake_chain"
+	nBlocks      = 5
+	mempool      = mockMempool{}
+	testPartSize = 65536
 )
 
 func TestExecBlock(t *testing.T) {
@@ -53,7 +54,7 @@ func testHandshakeReplay(t *testing.T, n int) {
 	state, store := stateAndStore()
 	clientCreator := proxy.NewLocalClientCreator(dummy.NewPersistentDummyApplication(path.Join(config.GetString("db_dir"), "1")))
 	clientCreator2 := proxy.NewLocalClientCreator(dummy.NewPersistentDummyApplication(path.Join(config.GetString("db_dir"), "2")))
-	proxyApp := proxy.NewAppConns(config, clientCreator, NewHandshaker(state, store))
+	proxyApp := proxy.NewAppConns(config, clientCreator, NewHandshaker(config, state, store))
 	if _, err := proxyApp.Start(); err != nil {
 		t.Fatalf("Error starting proxy app connections: %v", err)
 	}
@@ -71,7 +72,7 @@ func testHandshakeReplay(t *testing.T, n int) {
 		state2, _ := stateAndStore()
 		for i := 0; i < n; i++ {
 			block := chain[i]
-			err := state2.ApplyBlock(nil, proxyApp.Consensus(), block, block.MakePartSet().Header(), mempool)
+			err := state2.ApplyBlock(nil, proxyApp.Consensus(), block, block.MakePartSet(testPartSize).Header(), mempool)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -80,7 +81,7 @@ func testHandshakeReplay(t *testing.T, n int) {
 	}
 
 	// now start it with the handshake
-	handshaker := NewHandshaker(state, store)
+	handshaker := NewHandshaker(config, state, store)
 	proxyApp = proxy.NewAppConns(config, clientCreator2, handshaker)
 	if _, err := proxyApp.Start(); err != nil {
 		t.Fatalf("Error starting proxy app connections: %v", err)
@@ -116,11 +117,12 @@ func txsFunc(blockNum int) (txs []types.Tx) {
 // sign a commit vote
 func signCommit(height, round int, hash []byte, header types.PartSetHeader) *types.Vote {
 	vote := &types.Vote{
+		ValidatorIndex:   0,
+		ValidatorAddress: privKey.PubKey().Address(),
 		Height:           height,
 		Round:            round,
 		Type:             types.VoteTypePrecommit,
-		BlockHash:        hash,
-		BlockPartsHeader: header,
+		BlockID:          types.BlockID{hash, header},
 	}
 
 	sig := privKey.Sign(types.SignBytes(chainID, vote))
@@ -131,22 +133,26 @@ func signCommit(height, round int, hash []byte, header types.PartSetHeader) *typ
 // make a blockchain with one validator
 func makeBlockchain(t *testing.T, proxyApp proxy.AppConns, state *State) (blockchain []*types.Block) {
 
-	prevHash := state.LastBlockHash
+	prevHash := state.LastBlockID.Hash
 	lastCommit := new(types.Commit)
 	prevParts := types.PartSetHeader{}
 	valHash := state.Validators.Hash()
+	prevBlockID := types.BlockID{prevHash, prevParts}
 
 	for i := 1; i < nBlocks+1; i++ {
 		block, parts := types.MakeBlock(i, chainID, txsFunc(i), lastCommit,
-			prevParts, prevHash, valHash, state.AppHash)
-		err := state.ApplyBlock(nil, proxyApp.Consensus(), block, block.MakePartSet().Header(), mempool)
+			prevBlockID, valHash, state.AppHash, testPartSize)
+		fmt.Println(i)
+		fmt.Println(prevBlockID)
+		fmt.Println(block.LastBlockID)
+		err := state.ApplyBlock(nil, proxyApp.Consensus(), block, block.MakePartSet(testPartSize).Header(), mempool)
 		if err != nil {
 			t.Fatal(i, err)
 		}
 
 		voteSet := types.NewVoteSet(chainID, i, 0, types.VoteTypePrecommit, state.Validators)
 		vote := signCommit(i, 0, block.Hash(), parts.Header())
-		_, _, err = voteSet.AddByIndex(0, vote)
+		_, err = voteSet.AddVote(vote)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -155,6 +161,7 @@ func makeBlockchain(t *testing.T, proxyApp proxy.AppConns, state *State) (blockc
 		prevHash = block.Hash()
 		prevParts = parts.Header()
 		lastCommit = voteSet.MakeCommit()
+		prevBlockID = types.BlockID{prevHash, prevParts}
 	}
 	return blockchain
 }

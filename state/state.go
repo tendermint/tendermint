@@ -97,7 +97,7 @@ func (s *State) Bytes() []byte {
 // Since we don't have the new AppHash yet, we set s.Stale=true
 func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader types.PartSetHeader, prevValSet, nextValSet *types.ValidatorSet) {
 	s.LastBlockHeight = header.Height
-	s.LastBlockID = types.BlockID{block.Hash(), blockPartsHeader}
+	s.LastBlockID = types.BlockID{header.Hash(), blockPartsHeader}
 	s.LastBlockTime = header.Time
 	s.Validators = nextValSet
 	s.LastValidators = prevValSet

@@ -22,7 +22,7 @@ type Block struct {
 }
 
 func MakeBlock(height int, chainID string, txs []Tx, commit *Commit,
-	prevBlockID BlockID, valHash, appHash []byte) (*Block, *PartSet) {
+	prevBlockID BlockID, valHash, appHash []byte, partSize int) (*Block, *PartSet) {
 	block := &Block{
 		Header: &Header{
 			ChainID:        chainID,
@@ -39,7 +39,7 @@ func MakeBlock(height int, chainID string, txs []Tx, commit *Commit,
 		},
 	}
 	block.FillHeader()
-	return block, block.MakePartSet()
+	return block, block.MakePartSet(partSize)
 }
 
 // Basic validation that doesn't involve state data.
