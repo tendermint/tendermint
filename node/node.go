@@ -101,10 +101,17 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreato
 
 	// Make ConsensusReactor
 	consensusState := consensus.NewConsensusState(config, state.Copy(), proxyApp.Consensus(), blockStore, mempool)
-	consensusReactor := consensus.NewConsensusReactor(consensusState, fastSync)
 	if privValidator != nil {
-		consensusReactor.SetPrivValidator(privValidator)
+		consensusState.SetPrivValidator(privValidator)
+		// TODO: just return -1 for not found
+		valIdx, val := state.Validators.GetByAddress(privValidator.GetAddress())
+		if val == nil {
+			consensusState.SetPrivValidatorIndex(-1)
+		} else {
+			consensusState.SetPrivValidatorIndex(valIdx)
+		}
 	}
+	consensusReactor := consensus.NewConsensusReactor(consensusState, fastSync)
 
 	// Make p2p network switch
 	sw := p2p.NewSwitch(config.GetConfig("p2p"))

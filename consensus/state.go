@@ -221,11 +221,13 @@ type PrivValidator interface {
 type ConsensusState struct {
 	BaseService
 
-	config        cfg.Config
-	proxyAppConn  proxy.AppConnConsensus
-	blockStore    *bc.BlockStore
-	mempool       *mempl.Mempool
-	privValidator PrivValidator
+	config       cfg.Config
+	proxyAppConn proxy.AppConnConsensus
+	blockStore   *bc.BlockStore
+	mempool      *mempl.Mempool
+
+	privValidator      PrivValidator
+	privValidatorIndex int // TODO: update if validator set changes
 
 	mtx sync.Mutex
 	RoundState
@@ -313,10 +315,18 @@ func (cs *ConsensusState) GetValidators() (int, []*types.Validator) {
 	return cs.state.LastBlockHeight, cs.state.Validators.Copy().Validators
 }
 
+// Sets our private validator account for signing votes.
 func (cs *ConsensusState) SetPrivValidator(priv PrivValidator) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	cs.privValidator = priv
+}
+
+// Caches the index of our privValidator in the validator set to use when voting
+func (cs *ConsensusState) SetPrivValidatorIndex(index int) {
+	cs.mtx.Lock()
+	defer cs.mtx.Unlock()
+	cs.privValidatorIndex = index
 }
 
 func (cs *ConsensusState) LoadCommit(height int) *types.Commit {
@@ -1498,12 +1508,9 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerKey string) (added bool,
 }
 
 func (cs *ConsensusState) signVote(type_ byte, hash []byte, header types.PartSetHeader) (*types.Vote, error) {
-	// TODO: store our index in the cs so we don't have to do this every time
-	addr := cs.privValidator.GetAddress()
-	valIndex, _ := cs.Validators.GetByAddress(addr)
 	vote := &types.Vote{
-		ValidatorAddress: addr,
-		ValidatorIndex:   valIndex,
+		ValidatorAddress: cs.privValidator.GetAddress(),
+		ValidatorIndex:   cs.privValidatorIndex,
 		Height:           cs.Height,
 		Round:            cs.Round,
 		Type:             type_,

@@ -41,7 +41,6 @@ func TestReactor(t *testing.T) {
 	eventChans := make([]chan interface{}, N)
 	for i := 0; i < N; i++ {
 		reactors[i] = NewConsensusReactor(css[i], false)
-		reactors[i].SetPrivValidator(css[i].privValidator)
 
 		eventSwitch := events.NewEventSwitch()
 		_, err := eventSwitch.Start()
@@ -101,10 +100,8 @@ func TestByzantine(t *testing.T) {
 	reactors := make([]p2p.Reactor, N)
 	eventChans := make([]chan interface{}, N)
 	for i := 0; i < N; i++ {
-		var privVal PrivValidator
-		privVal = css[i].privValidator
 		if i == 0 {
-			privVal = NewByzantinePrivValidator(privVal.(*types.PrivValidator))
+			css[i].privValidator = NewByzantinePrivValidator(css[i].privValidator.(*types.PrivValidator))
 			// make byzantine
 			css[i].decideProposal = func(j int) func(int, int) {
 				return func(height, round int) {
@@ -122,7 +119,6 @@ func TestByzantine(t *testing.T) {
 		eventChans[i] = subscribeToEvent(eventSwitch, "tester", types.EventStringNewBlock(), 1)
 
 		conR := NewConsensusReactor(css[i], false)
-		conR.SetPrivValidator(privVal)
 		conR.SetEventSwitch(eventSwitch)
 
 		var conRI p2p.Reactor

@@ -262,6 +262,7 @@ func randConsensusNet(nValidators int) []*ConsensusState {
 		thisConfig := tendermint_test.ResetConfig(Fmt("consensus_reactor_test_%d", i))
 		EnsureDir(thisConfig.GetString("cs_wal_dir"), 0700) // dir for wal
 		css[i] = newConsensusStateWithConfig(thisConfig, state, privVals[i], counter.NewCounterApplication(true))
+		css[i].SetPrivValidatorIndex(i)
 	}
 	return css
 }

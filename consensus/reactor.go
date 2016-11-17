@@ -287,11 +287,6 @@ func (conR *ConsensusReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte)
 	}
 }
 
-// Sets our private validator account for signing votes.
-func (conR *ConsensusReactor) SetPrivValidator(priv PrivValidator) {
-	conR.conS.SetPrivValidator(priv)
-}
-
 // implements events.Eventable
 func (conR *ConsensusReactor) SetEventSwitch(evsw types.EventSwitch) {
 	conR.evsw = evsw
