@@ -29,7 +29,9 @@ func (s *State) ExecBlock(eventCache types.Fireable, proxyAppConn proxy.AppConnC
 	// Update the validator set
 	valSet := s.Validators.Copy()
 	// Update valSet with signatures from block.
-	updateValidatorsWithBlock(s.LastValidators, valSet, block)
+	signed := commitBitArrayFromBlock(block)
+	_ = signed // TODO
+
 	// TODO: Update the validator set (e.g. block.Data.ValidatorUpdates?)
 	nextValSet := valSet.Copy()
 
@@ -126,32 +128,17 @@ func (s *State) execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn prox
 	return nil
 }
 
-// Updates the LastCommitHeight of the validators in valSet, in place.
-// Assumes that lastValSet matches the valset of block.LastCommit
-// CONTRACT: lastValSet is not mutated.
-func updateValidatorsWithBlock(lastValSet *types.ValidatorSet, valSet *types.ValidatorSet, block *types.Block) {
-
+// return a bit array of validators that signed the last commit
+// NOTE: assumes commits have already been authenticated
+func commitBitArrayFromBlock(block *types.Block) *BitArray {
+	signed := NewBitArray(len(block.LastCommit.Precommits))
 	for i, precommit := range block.LastCommit.Precommits {
 		if precommit == nil {
 			continue
 		}
-		_, val := lastValSet.GetByIndex(i)
-		if val == nil {
-			PanicCrisis(Fmt("Failed to fetch validator at index %v", i))
-		}
-		if _, val_ := valSet.GetByAddress(val.Address); val_ != nil {
-			val_.LastCommitHeight = block.Height - 1
-			updated := valSet.Update(val_)
-			if !updated {
-				PanicCrisis("Failed to update validator LastCommitHeight")
-			}
-		} else {
-			// XXX This is not an error if validator was removed.
-			// But, we don't mutate validators yet so go ahead and panic.
-			PanicCrisis("Could not find validator")
-		}
+		signed.SetIndex(i, true) // val_.LastCommitHeight = block.Height - 1
 	}
-
+	return signed
 }
 
 //-----------------------------------------------------

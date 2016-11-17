@@ -1522,7 +1522,8 @@ func (cs *ConsensusState) signVote(type_ byte, hash []byte, header types.PartSet
 
 // sign the vote and publish on internalMsgQueue
 func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header types.PartSetHeader) *types.Vote {
-	if cs.privValidator == nil || !cs.Validators.HasAddress(cs.privValidator.GetAddress()) {
+	// if we don't have a key or we're not in the validator set, do nothing
+	if cs.privValidator == nil || cs.privValidatorIndex < 0 {
 		return nil
 	}
 	vote, err := cs.signVote(type_, hash, header)
