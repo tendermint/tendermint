@@ -16,12 +16,9 @@ func randPubKey() crypto.PubKeyEd25519 {
 }
 
 func randValidator_() *Validator {
-	return &Validator{
-		Address:     RandBytes(20),
-		PubKey:      randPubKey(),
-		VotingPower: RandInt64(),
-		Accum:       RandInt64(),
-	}
+	val := NewValidator(randPubKey(), RandInt64())
+	val.Accum = RandInt64()
+	return val
 }
 
 func randValidatorSet(numValidators int) *ValidatorSet {
@@ -147,10 +144,7 @@ func BenchmarkValidatorSetCopy(b *testing.B) {
 	for i := 0; i < 1000; i++ {
 		privKey := crypto.GenPrivKeyEd25519()
 		pubKey := privKey.PubKey().(crypto.PubKeyEd25519)
-		val := &Validator{
-			Address: pubKey.Address(),
-			PubKey:  pubKey,
-		}
+		val := NewValidator(pubKey, 0)
 		if !vset.Add(val) {
 			panic("Failed to add validator")
 		}

@@ -588,12 +588,14 @@ func (cs *ConsensusState) updateToState(state *sm.State) {
 }
 
 func (cs *ConsensusState) setPrivValidatorIndex() {
-	// TODO: just return -1 for not found
-	valIdx, val := cs.state.Validators.GetByAddress(cs.privValidator.GetAddress())
-	if val == nil {
-		cs.privValidatorIndex = -1
-	} else {
-		cs.privValidatorIndex = valIdx
+	if cs.privValidator != nil {
+		// TODO: just return -1 for not found
+		valIdx, val := cs.state.Validators.GetByAddress(cs.privValidator.GetAddress())
+		if val == nil {
+			cs.privValidatorIndex = -1
+		} else {
+			cs.privValidatorIndex = valIdx
+		}
 	}
 }
 
