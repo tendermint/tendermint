@@ -155,8 +155,8 @@ type Header struct {
 	NumTxs         int       `json:"num_txs"`
 	LastBlockID    BlockID   `json:"last_block_id"`
 	LastCommitHash []byte    `json:"last_commit_hash"` // commit from validators from the last block
-	ValidatorsHash []byte    `json:"validators_hash"`  // validators for the current block
 	DataHash       []byte    `json:"data_hash"`        // transactions
+	ValidatorsHash []byte    `json:"validators_hash"`  // validators for the current block
 	AppHash        []byte    `json:"app_hash"`         // state after txs from the previous block
 }
 

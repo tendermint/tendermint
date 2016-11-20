@@ -43,7 +43,8 @@ func (s *State) ExecBlock(eventCache types.Fireable, proxyAppConn proxy.AppConnC
 	}
 
 	// update the validator set
-	if err := updateValidators(nextValSet, changedValidators); err != nil {
+	s.valAddedOrRemoved, err = updateValidators(nextValSet, changedValidators)
+	if err != nil {
 		log.Warn("Error changing validator set", "error", err)
 		// TODO: err or carry on?
 	}
@@ -131,20 +132,22 @@ func execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn proxy.AppConnCo
 	return changedValidators, nil
 }
 
-func updateValidators(validators *types.ValidatorSet, changedValidators []*tmsp.Validator) error {
+func updateValidators(validators *types.ValidatorSet, changedValidators []*tmsp.Validator) (bool, error) {
 	// TODO: prevent change of 1/3+ at once
+
+	var addedOrRemoved bool
 
 	for _, v := range changedValidators {
 		pubkey, err := crypto.PubKeyFromBytes(v.PubKey) // NOTE: expects go-wire encoded pubkey
 		if err != nil {
-			return err
+			return false, err
 		}
 
 		address := pubkey.Address()
 		power := int64(v.Power)
 		// mind the overflow from uint64
 		if power < 0 {
-			return errors.New(Fmt("Power (%d) overflows int64", v.Power))
+			return false, errors.New(Fmt("Power (%d) overflows int64", v.Power))
 		}
 
 		_, val := validators.GetByAddress(address)
@@ -152,24 +155,26 @@ func updateValidators(validators *types.ValidatorSet, changedValidators []*tmsp.
 			// add val
 			added := validators.Add(types.NewValidator(pubkey, power))
 			if !added {
-				return errors.New(Fmt("Failed to add new validator %X with voting power %d", address, power))
+				return false, errors.New(Fmt("Failed to add new validator %X with voting power %d", address, power))
 			}
+			addedOrRemoved = true
 		} else if v.Power == 0 {
 			// remove val
 			_, removed := validators.Remove(address)
 			if !removed {
-				return errors.New(Fmt("Failed to remove validator %X)"))
+				return false, errors.New(Fmt("Failed to remove validator %X)"))
 			}
+			addedOrRemoved = true
 		} else {
 			// update val
 			val.VotingPower = power
 			updated := validators.Update(val)
 			if !updated {
-				return errors.New(Fmt("Failed to update validator %X with voting power %d", address, power))
+				return false, errors.New(Fmt("Failed to update validator %X with voting power %d", address, power))
 			}
 		}
 	}
-	return nil
+	return addedOrRemoved, nil
 }
 
 // return a bit array of validators that signed the last commit

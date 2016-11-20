@@ -103,13 +103,6 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreato
 	consensusState := consensus.NewConsensusState(config, state.Copy(), proxyApp.Consensus(), blockStore, mempool)
 	if privValidator != nil {
 		consensusState.SetPrivValidator(privValidator)
-		// TODO: just return -1 for not found
-		valIdx, val := state.Validators.GetByAddress(privValidator.GetAddress())
-		if val == nil {
-			consensusState.SetPrivValidatorIndex(-1)
-		} else {
-			consensusState.SetPrivValidatorIndex(valIdx)
-		}
 	}
 	consensusReactor := consensus.NewConsensusReactor(consensusState, fastSync)
 

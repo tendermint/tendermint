@@ -40,6 +40,8 @@ type State struct {
 	// it's stale after ExecBlock and before Commit
 	Stale   bool
 	AppHash []byte
+
+	valAddedOrRemoved bool // true if a validator was added or removed
 }
 
 func LoadState(db dbm.DB) *State {
@@ -103,6 +105,10 @@ func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader typ
 	s.LastValidators = prevValSet
 
 	s.Stale = true
+}
+
+func (s *State) ValidatorAddedOrRemoved() bool {
+	return s.valAddedOrRemoved
 }
 
 func (s *State) GetValidators() (*types.ValidatorSet, *types.ValidatorSet) {

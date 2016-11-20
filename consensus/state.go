@@ -226,8 +226,8 @@ type ConsensusState struct {
 	blockStore   *bc.BlockStore
 	mempool      *mempl.Mempool
 
-	privValidator      PrivValidator
-	privValidatorIndex int // TODO: update if validator set changes
+	privValidator      PrivValidator // for signing votes
+	privValidatorIndex int           // cached index; updated if validators added/removed to validator set
 
 	mtx sync.Mutex
 	RoundState
@@ -320,13 +320,7 @@ func (cs *ConsensusState) SetPrivValidator(priv PrivValidator) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	cs.privValidator = priv
-}
-
-// Caches the index of our privValidator in the validator set to use when voting
-func (cs *ConsensusState) SetPrivValidatorIndex(index int) {
-	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
-	cs.privValidatorIndex = index
+	cs.setPrivValidatorIndex()
 }
 
 func (cs *ConsensusState) LoadCommit(height int) *types.Commit {
@@ -585,8 +579,22 @@ func (cs *ConsensusState) updateToState(state *sm.State) {
 
 	cs.state = state
 
+	if cs.state.ValidatorAddedOrRemoved() {
+		cs.setPrivValidatorIndex()
+	}
+
 	// Finally, broadcast RoundState
 	cs.newStep()
+}
+
+func (cs *ConsensusState) setPrivValidatorIndex() {
+	// TODO: just return -1 for not found
+	valIdx, val := cs.state.Validators.GetByAddress(cs.privValidator.GetAddress())
+	if val == nil {
+		cs.privValidatorIndex = -1
+	} else {
+		cs.privValidatorIndex = valIdx
+	}
 }
 
 func (cs *ConsensusState) newStep() {
