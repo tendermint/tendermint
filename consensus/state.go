@@ -1263,6 +1263,8 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 
 	// Save to blockStore.
 	if cs.blockStore.Height() < block.Height {
+		// NOTE: the seenCommit is local justification to commit this block,
+		// but may differ from the LastCommit included in the next block
 		precommits := cs.Votes.Precommits(cs.CommitRound)
 		seenCommit := precommits.MakeCommit()
 		cs.blockStore.SaveBlock(block, blockParts, seenCommit)

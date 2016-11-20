@@ -34,7 +34,7 @@ type State struct {
 	LastBlockID     types.BlockID
 	LastBlockTime   time.Time
 	Validators      *types.ValidatorSet
-	LastValidators  *types.ValidatorSet
+	LastValidators  *types.ValidatorSet // block.LastCommit validated against this
 
 	// AppHash is updated after Commit;
 	// it's stale after ExecBlock and before Commit

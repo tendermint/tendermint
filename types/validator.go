@@ -20,6 +20,15 @@ type Validator struct {
 	Accum       int64         `json:"accum"`
 }
 
+func NewValidator(pubKey crypto.PubKey, votingPower int64) *Validator {
+	return &Validator{
+		Address:     pubKey.Address(),
+		PubKey:      pubKey,
+		VotingPower: votingPower,
+		Accum:       0,
+	}
+}
+
 // Creates a new copy of the validator so we can mutate accum.
 // Panics if the validator is nil.
 func (v *Validator) Copy() *Validator {

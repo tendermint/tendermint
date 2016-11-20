@@ -236,6 +236,7 @@ FOR_LOOP:
 				} else {
 					bcR.pool.PopRequest()
 					// TODO: use ApplyBlock instead of Exec/Commit/SetAppHash/Save
+					// TODO: should we be firing events? need to fire NewBlock events manually ...
 					err := bcR.state.ExecBlock(bcR.evsw, bcR.proxyAppConn, first, firstPartsHeader)
 					if err != nil {
 						// TODO This is bad, are we zombie?

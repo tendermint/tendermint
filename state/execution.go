@@ -8,6 +8,7 @@ import (
 
 	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
+	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 	tmsp "github.com/tendermint/tmsp/types"
@@ -21,26 +22,30 @@ import (
 func (s *State) ExecBlock(eventCache types.Fireable, proxyAppConn proxy.AppConnConsensus, block *types.Block, blockPartsHeader types.PartSetHeader) error {
 
 	// Validate the block.
-	err := s.validateBlock(block)
-	if err != nil {
+	if err := s.validateBlock(block); err != nil {
 		return ErrInvalidBlock(err)
 	}
 
-	// Update the validator set
-	valSet := s.Validators.Copy()
-	// Update valSet with signatures from block.
+	// compute bitarray of validators that signed
 	signed := commitBitArrayFromBlock(block)
-	_ = signed // TODO
+	_ = signed // TODO send on begin block
 
-	// TODO: Update the validator set (e.g. block.Data.ValidatorUpdates?)
+	// copy the valset
+	valSet := s.Validators.Copy()
 	nextValSet := valSet.Copy()
 
 	// Execute the block txs
-	err = s.execBlockOnProxyApp(eventCache, proxyAppConn, block)
+	changedValidators, err := execBlockOnProxyApp(eventCache, proxyAppConn, block)
 	if err != nil {
 		// There was some error in proxyApp
 		// TODO Report error and wait for proxyApp to be available.
 		return ErrProxyAppConn(err)
+	}
+
+	// update the validator set
+	if err := updateValidators(nextValSet, changedValidators); err != nil {
+		log.Warn("Error changing validator set", "error", err)
+		// TODO: err or carry on?
 	}
 
 	// All good!
@@ -56,8 +61,9 @@ func (s *State) ExecBlock(eventCache types.Fireable, proxyAppConn proxy.AppConnC
 }
 
 // Executes block's transactions on proxyAppConn.
+// Returns a list of updates to the validator set
 // TODO: Generate a bitmap or otherwise store tx validity in state.
-func (s *State) execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn proxy.AppConnConsensus, block *types.Block) error {
+func execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn proxy.AppConnConsensus, block *types.Block) ([]*tmsp.Validator, error) {
 
 	var validTxs, invalidTxs = 0, 0
 
@@ -96,7 +102,7 @@ func (s *State) execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn prox
 	err := proxyAppConn.BeginBlockSync(block.Hash(), types.TM2PB.Header(block.Header))
 	if err != nil {
 		log.Warn("Error in proxyAppConn.BeginBlock", "error", err)
-		return err
+		return nil, err
 	}
 
 	fail.Fail() // XXX
@@ -106,7 +112,7 @@ func (s *State) execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn prox
 		fail.FailRand(len(block.Txs)) // XXX
 		proxyAppConn.AppendTxAsync(tx)
 		if err := proxyAppConn.Error(); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
@@ -116,15 +122,53 @@ func (s *State) execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn prox
 	changedValidators, err := proxyAppConn.EndBlockSync(uint64(block.Height))
 	if err != nil {
 		log.Warn("Error in proxyAppConn.EndBlock", "error", err)
-		return err
+		return nil, err
 	}
 
 	fail.Fail() // XXX
 
-	// TODO: Do something with changedValidators
-	log.Debug("TODO: Do something with changedValidators", "changedValidators", changedValidators)
-
 	log.Info(Fmt("ExecBlock got %v valid txs and %v invalid txs", validTxs, invalidTxs))
+	return changedValidators, nil
+}
+
+func updateValidators(validators *types.ValidatorSet, changedValidators []*tmsp.Validator) error {
+	// TODO: prevent change of 1/3+ at once
+
+	for _, v := range changedValidators {
+		pubkey, err := crypto.PubKeyFromBytes(v.PubKey) // NOTE: expects go-wire encoded pubkey
+		if err != nil {
+			return err
+		}
+
+		address := pubkey.Address()
+		power := int64(v.Power)
+		// mind the overflow from uint64
+		if power < 0 {
+			return errors.New(Fmt("Power (%d) overflows int64", v.Power))
+		}
+
+		_, val := validators.GetByAddress(address)
+		if val == nil {
+			// add val
+			added := validators.Add(types.NewValidator(pubkey, power))
+			if !added {
+				return errors.New(Fmt("Failed to add new validator %X with voting power %d", address, power))
+			}
+		} else if v.Power == 0 {
+			// remove val
+			_, removed := validators.Remove(address)
+			if !removed {
+				return errors.New(Fmt("Failed to remove validator %X)"))
+			}
+		} else {
+			// update val
+			val.VotingPower = power
+			updated := validators.Update(val)
+			if !updated {
+				return errors.New(Fmt("Failed to update validator %X with voting power %d", address, power))
+			}
+		}
+	}
 	return nil
 }
 
