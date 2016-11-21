@@ -1,10 +1,11 @@
 package autofile
 
 import (
-	. "github.com/tendermint/go-common"
 	"os"
 	"sync"
 	"time"
+
+	. "github.com/tendermint/go-common"
 )
 
 /* AutoFile usage
@@ -87,12 +88,15 @@ func (af *AutoFile) closeFile() (err error) {
 func (af *AutoFile) Write(b []byte) (n int, err error) {
 	af.mtx.Lock()
 	defer af.mtx.Unlock()
+
 	if af.file == nil {
 		if err = af.openFile(); err != nil {
 			return
 		}
 	}
-	return af.file.Write(b)
+
+	n, err = af.file.Write(b)
+	return
 }
 
 func (af *AutoFile) Sync() error {

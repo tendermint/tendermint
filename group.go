@@ -3,7 +3,6 @@ package autofile
 import (
 	"bufio"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"path"
@@ -52,7 +51,8 @@ const defaultHeadSizeLimit = 10 * 1024 * 1024 // 10MB
 type Group struct {
 	ID             string
 	Head           *AutoFile // The head AutoFile to write to
-	Dir            string    // Directory that contains .Head
+	headBuf        *bufio.Writer
+	Dir            string // Directory that contains .Head
 	ticker         *time.Ticker
 	mtx            sync.Mutex
 	headSizeLimit  int64
@@ -70,6 +70,7 @@ func OpenGroup(head *AutoFile) (g *Group, err error) {
 	g = &Group{
 		ID:            "group:" + head.ID,
 		Head:          head,
+		headBuf:       bufio.NewWriterSize(head, 4096*10),
 		Dir:           dir,
 		ticker:        time.NewTicker(groupCheckDuration),
 		headSizeLimit: defaultHeadSizeLimit,
@@ -114,9 +115,10 @@ func (g *Group) MaxIndex() int {
 }
 
 // Auto appends "\n"
+// NOTE: Writes are buffered so they don't write synchronously
 // TODO: Make it halt if space is unavailable
 func (g *Group) WriteLine(line string) error {
-	_, err := g.Head.Write([]byte(line + "\n"))
+	_, err := g.headBuf.Write([]byte(line + "\n"))
 	return err
 }
 
@@ -329,7 +331,7 @@ GROUP_LOOP:
 		}
 		// Scan each line and test whether line matches
 		for {
-			line, err := r.ReadLineInCurrent()
+			line, err := r.ReadLine()
 			if err == io.EOF {
 				if found {
 					return match, found, nil
@@ -342,6 +344,13 @@ GROUP_LOOP:
 			if strings.HasPrefix(line, prefix) {
 				match = line
 				found = true
+			}
+			if r.CurIndex() > i {
+				if found {
+					return match, found, nil
+				} else {
+					continue GROUP_LOOP
+				}
 			}
 		}
 	}
@@ -461,21 +470,11 @@ func (gr *GroupReader) Close() error {
 	}
 }
 
+// Reads a line (without delimiter)
+// just return io.EOF if no new lines found.
 func (gr *GroupReader) ReadLine() (string, error) {
 	gr.mtx.Lock()
 	defer gr.mtx.Unlock()
-	return gr.readLineWithOptions(false)
-}
-
-func (gr *GroupReader) ReadLineInCurrent() (string, error) {
-	gr.mtx.Lock()
-	defer gr.mtx.Unlock()
-	return gr.readLineWithOptions(true)
-}
-
-// curFileOnly: if True, do not open new files,
-// just return io.EOF if no new lines found.
-func (gr *GroupReader) readLineWithOptions(curFileOnly bool) (string, error) {
 
 	// From PushLine
 	if gr.curLine != nil {
@@ -493,23 +492,25 @@ func (gr *GroupReader) readLineWithOptions(curFileOnly bool) (string, error) {
 	}
 
 	// Iterate over files until line is found
+	var linePrefix string
 	for {
-		bytes, err := gr.curReader.ReadBytes('\n')
-		if err != nil {
-			if err != io.EOF {
+		bytesRead, err := gr.curReader.ReadBytes('\n')
+		if err == io.EOF {
+			// Open the next file
+			err := gr.openFile(gr.curIndex + 1)
+			if err != nil {
 				return "", err
-			} else if curFileOnly {
-				return "", err
+			}
+			if len(bytesRead) > 0 && bytesRead[len(bytesRead)-1] == byte('\n') {
+				return linePrefix + string(bytesRead[:len(bytesRead)-1]), nil
 			} else {
-				// Open the next file
-				err := gr.openFile(gr.curIndex + 1)
-				if err != nil {
-					return "", err
-				}
+				linePrefix += string(bytesRead)
 				continue
 			}
+		} else if err != nil {
+			return "", err
 		}
-		return string(bytes), nil
+		return linePrefix + string(bytesRead[:len(bytesRead)-1]), nil
 	}
 }
 
