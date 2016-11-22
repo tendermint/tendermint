@@ -54,7 +54,7 @@ imports:
 - name: github.com/tendermint/flowcontrol
   version: 925bee8f392c28190889746f3943fe3793fb4256
 - name: github.com/tendermint/go-autofile
-  version: 2a306419c88d10fab038f19dcbe4535e740b0aa0
+  version: 63186e34b33d78ae47fb0d25e5717b307fdf3603
 - name: github.com/tendermint/go-clist
   version: 3baa390bbaf7634251c42ad69a8682e7e3990552
 - name: github.com/tendermint/go-common
