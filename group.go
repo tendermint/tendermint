@@ -196,7 +196,6 @@ func (g *Group) checkTotalSizeLimit() {
 	gInfo := g.readGroupInfo()
 	totalSize := gInfo.TotalSize
 	for i := 0; i < maxFilesToRemove; i++ {
-		fmt.Println(">>", gInfo, totalSize, i)
 		index := gInfo.MinIndex + i
 		if totalSize < limit {
 			return
