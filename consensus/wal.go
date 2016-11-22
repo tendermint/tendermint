@@ -41,11 +41,7 @@ type WAL struct {
 }
 
 func NewWAL(walDir string, light bool) (*WAL, error) {
-	head, err := auto.OpenAutoFile(walDir + "/wal")
-	if err != nil {
-		return nil, err
-	}
-	group, err := auto.OpenGroup(head)
+	group, err := auto.OpenGroup(walDir + "/wal")
 	if err != nil {
 		return nil, err
 	}
@@ -66,13 +62,13 @@ func (wal *WAL) OnStart() error {
 	} else if size == 0 {
 		wal.writeHeight(1)
 	}
-	return nil
+	_, err = wal.group.Start()
+	return err
 }
 
 func (wal *WAL) OnStop() {
 	wal.BaseService.OnStop()
-	wal.group.Head.Close()
-	wal.group.Close()
+	wal.group.Stop()
 }
 
 // called in newStep and for each pass in receiveRoutine
