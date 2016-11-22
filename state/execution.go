@@ -128,7 +128,10 @@ func execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn proxy.AppConnCo
 
 	fail.Fail() // XXX
 
-	log.Info(Fmt("ExecBlock got %v valid txs and %v invalid txs", validTxs, invalidTxs))
+	log.Info("Executed block", "height", block.Height, "valid txs", validTxs, "invalid txs", invalidTxs)
+	if len(changedValidators) > 0 {
+		log.Info("Update to validator set", "updates", changedValidators)
+	}
 	return changedValidators, nil
 }
 
@@ -182,10 +185,9 @@ func updateValidators(validators *types.ValidatorSet, changedValidators []*tmsp.
 func commitBitArrayFromBlock(block *types.Block) *BitArray {
 	signed := NewBitArray(len(block.LastCommit.Precommits))
 	for i, precommit := range block.LastCommit.Precommits {
-		if precommit == nil {
-			continue
+		if precommit != nil {
+			signed.SetIndex(i, true) // val_.LastCommitHeight = block.Height - 1
 		}
-		signed.SetIndex(i, true) // val_.LastCommitHeight = block.Height - 1
 	}
 	return signed
 }
@@ -295,6 +297,7 @@ func (m mockMempool) Update(height int, txs []types.Tx) {}
 type BlockStore interface {
 	Height() int
 	LoadBlock(height int) *types.Block
+	LoadBlockMeta(height int) *types.BlockMeta
 }
 
 type Handshaker struct {
@@ -309,8 +312,7 @@ func NewHandshaker(config cfg.Config, state *State, store BlockStore) *Handshake
 	return &Handshaker{config, state, store, 0}
 }
 
-// TODO: retry the handshake once if it fails the first time
-// ... let Info take an argument determining its behaviour
+// TODO: retry the handshake/replay if it fails ?
 func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	// handshake is done via info request on the query conn
 	res, tmspInfo, blockInfo, configInfo := proxyApp.Query().InfoSync()
@@ -325,40 +327,12 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 
 	log.Notice("TMSP Handshake", "height", blockInfo.BlockHeight, "block_hash", blockInfo.BlockHash, "app_hash", blockInfo.AppHash)
 
-	blockHeight := int(blockInfo.BlockHeight) // safe, should be an int32
-	blockHash := blockInfo.BlockHash
+	blockHeight := int(blockInfo.BlockHeight) // XXX: beware overflow
 	appHash := blockInfo.AppHash
 
 	if tmspInfo != nil {
 		// TODO: check tmsp version (or do this in the tmspcli?)
 		_ = tmspInfo
-	}
-
-	// last block (nil if we starting from 0)
-	var header *types.Header
-	var partsHeader types.PartSetHeader
-
-	// replay all blocks after blockHeight
-	// if blockHeight == 0, we will replay everything
-	if blockHeight != 0 {
-		block := h.store.LoadBlock(blockHeight)
-		if block == nil {
-			return ErrUnknownBlock{blockHeight}
-		}
-
-		// check block hash
-		if !bytes.Equal(block.Hash(), blockHash) {
-			return ErrBlockHashMismatch{block.Hash(), blockHash, blockHeight}
-		}
-
-		// NOTE: app hash should be in the next block ...
-		// check app hash
-		/*if !bytes.Equal(block.Header.AppHash, appHash) {
-			return fmt.Errorf("Handshake error. App hash at height %d does not match. Got %X, expected %X", blockHeight, appHash, block.Header.AppHash)
-		}*/
-
-		header = block.Header
-		partsHeader = block.MakePartSet(h.config.GetInt("block_part_size")).Header()
 	}
 
 	if configInfo != nil {
@@ -367,7 +341,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	}
 
 	// replay blocks up to the latest in the blockstore
-	err := h.ReplayBlocks(appHash, header, partsHeader, proxyApp.Consensus())
+	err := h.ReplayBlocks(appHash, blockHeight, proxyApp.Consensus())
 	if err != nil {
 		return errors.New(Fmt("Error on replay: %v", err))
 	}
@@ -378,27 +352,16 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 }
 
 // Replay all blocks after blockHeight and ensure the result matches the current state.
-func (h *Handshaker) ReplayBlocks(appHash []byte, header *types.Header, partsHeader types.PartSetHeader,
-	appConnConsensus proxy.AppConnConsensus) error {
+func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, appConnConsensus proxy.AppConnConsensus) error {
 
-	// NOTE/TODO: tendermint may crash after the app commits
-	// but before it can save the new state root.
-	// it should save all eg. valset changes before calling Commit.
-	// then, if tm state is behind app state, the only thing missing can be app hash
-
-	var appBlockHeight int
-	if header != nil {
-		appBlockHeight = header.Height
-	}
-
-	coreBlockHeight := h.store.Height()
-	if coreBlockHeight < appBlockHeight {
+	storeBlockHeight := h.store.Height()
+	if storeBlockHeight < appBlockHeight {
 		// if the app is ahead, there's nothing we can do
-		return ErrAppBlockHeightTooHigh{coreBlockHeight, appBlockHeight}
+		return ErrAppBlockHeightTooHigh{storeBlockHeight, appBlockHeight}
 
-	} else if coreBlockHeight == appBlockHeight {
+	} else if storeBlockHeight == appBlockHeight {
 		// if we crashed between Commit and SaveState,
-		// the state's app hash is stale.
+		// the state's app hash is stale
 		// otherwise we're synced
 		if h.state.Stale {
 			h.state.Stale = false
@@ -407,36 +370,39 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, header *types.Header, partsHea
 		return nil
 
 	} else if h.state.LastBlockHeight == appBlockHeight {
-		// core is ahead of app but core's state height is at apps height
+		// store is ahead of app but core's state height is at apps height
 		// this happens if we crashed after saving the block,
 		// but before committing it. We should be 1 ahead
-		if coreBlockHeight != appBlockHeight+1 {
-			PanicSanity(Fmt("core.state.height == app.height but core.height (%d) > app.height+1 (%d)", coreBlockHeight, appBlockHeight+1))
+		if storeBlockHeight != appBlockHeight+1 {
+			PanicSanity(Fmt("core.state.height == app.height but store.height (%d) > app.height+1 (%d)", storeBlockHeight, appBlockHeight+1))
 		}
 
 		// check that the blocks last apphash is the states apphash
-		block := h.store.LoadBlock(coreBlockHeight)
+		block := h.store.LoadBlock(storeBlockHeight)
 		if !bytes.Equal(block.Header.AppHash, appHash) {
-			return ErrLastStateMismatch{coreBlockHeight, block.Header.AppHash, appHash}
+			return ErrLastStateMismatch{storeBlockHeight, block.Header.AppHash, appHash}
 		}
+
+		blockMeta := h.store.LoadBlockMeta(storeBlockHeight)
 
 		h.nBlocks += 1
 		var eventCache types.Fireable // nil
 
 		// replay the block against the actual tendermint state
-		return h.state.ApplyBlock(eventCache, appConnConsensus, block, block.MakePartSet(h.config.GetInt("block_part_size")).Header(), mockMempool{})
+		return h.state.ApplyBlock(eventCache, appConnConsensus, block, blockMeta.PartsHeader, mockMempool{})
 
 	} else {
 		// either we're caught up or there's blocks to replay
 		// replay all blocks starting with appBlockHeight+1
 		var eventCache types.Fireable // nil
 		var appHash []byte
-		for i := appBlockHeight + 1; i <= coreBlockHeight; i++ {
+		for i := appBlockHeight + 1; i <= storeBlockHeight; i++ {
 			h.nBlocks += 1
 			block := h.store.LoadBlock(i)
 			_, err := execBlockOnProxyApp(eventCache, appConnConsensus, block)
 			if err != nil {
-				// ...
+				log.Warn("Error executing block on proxy app", "height", i, "err", err)
+				return err
 			}
 			// Commit block, get hash back
 			res := appConnConsensus.CommitSync()
@@ -452,6 +418,6 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, header *types.Header, partsHea
 		if !bytes.Equal(h.state.AppHash, appHash) {
 			return errors.New(Fmt("Tendermint state.AppHash does not match AppHash after replay", "expected", h.state.AppHash, "got", appHash))
 		}
+		return nil
 	}
-	return nil // should never happen
 }
