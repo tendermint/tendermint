@@ -206,7 +206,7 @@ func (g *Group) checkTotalSizeLimit() {
 			log.Println("WARNING: Group's head " + g.Head.Path + "may grow without bound")
 			return
 		}
-		pathToRemove := filePathForIndex(g.Head.Path, gInfo.MinIndex, gInfo.MaxIndex)
+		pathToRemove := filePathForIndex(g.Head.Path, index, gInfo.MaxIndex)
 		fileInfo, err := os.Stat(pathToRemove)
 		if err != nil {
 			log.Println("WARNING: Failed to fetch info for file @" + pathToRemove)
