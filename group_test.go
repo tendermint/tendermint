@@ -21,11 +21,7 @@ func createTestGroup(t *testing.T, headSizeLimit int64) *Group {
 		t.Fatal("Error creating dir", err)
 	}
 	headPath := testDir + "/myfile"
-	autofile, err := OpenAutoFile(headPath)
-	if err != nil {
-		t.Fatal("Error opening AutoFile", headPath, err)
-	}
-	g, err := OpenGroup(autofile)
+	g, err := OpenGroup(headPath)
 	if err != nil {
 		t.Fatal("Error opening Group", err)
 	}
@@ -73,6 +69,7 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 			t.Fatal("Error appending to head", err)
 		}
 	}
+	g.Flush()
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 0, 999000, 999000)
 
 	// Even calling checkHeadSizeLimit manually won't rotate it.
@@ -84,6 +81,7 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 	if err != nil {
 		t.Fatal("Error appending to head", err)
 	}
+	g.Flush()
 
 	// Calling checkHeadSizeLimit this time rolls it.
 	g.checkHeadSizeLimit()
@@ -94,6 +92,7 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 	if err != nil {
 		t.Fatal("Error appending to head", err)
 	}
+	g.Flush()
 
 	// Calling checkHeadSizeLimit does nothing.
 	g.checkHeadSizeLimit()
@@ -106,6 +105,7 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 			t.Fatal("Error appending to head", err)
 		}
 	}
+	g.Flush()
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 1, 2000000, 1000000)
 
 	// Calling checkHeadSizeLimit rolls it again.
@@ -117,6 +117,7 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 	if err != nil {
 		t.Fatal("Error appending to head", err)
 	}
+	g.Flush()
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 2, 2001000, 1000)
 
 	// Calling checkHeadSizeLimit does nothing.
@@ -256,10 +257,12 @@ func TestRotateFile(t *testing.T) {
 	g.WriteLine("Line 1")
 	g.WriteLine("Line 2")
 	g.WriteLine("Line 3")
+	g.Flush()
 	g.RotateFile()
 	g.WriteLine("Line 4")
 	g.WriteLine("Line 5")
 	g.WriteLine("Line 6")
+	g.Flush()
 
 	// Read g.Head.Path+"000"
 	body1, err := ioutil.ReadFile(g.Head.Path + ".000")
@@ -290,11 +293,13 @@ func TestFindLast1(t *testing.T) {
 	g.WriteLine("Line 2")
 	g.WriteLine("# a")
 	g.WriteLine("Line 3")
+	g.Flush()
 	g.RotateFile()
 	g.WriteLine("Line 4")
 	g.WriteLine("Line 5")
 	g.WriteLine("Line 6")
 	g.WriteLine("# b")
+	g.Flush()
 
 	match, found, err := g.FindLast("#")
 	if err != nil {
@@ -303,7 +308,7 @@ func TestFindLast1(t *testing.T) {
 	if !found {
 		t.Error("Expected found=True")
 	}
-	if match != "# b\n" {
+	if match != "# b" {
 		t.Errorf("Unexpected match: [%v]", match)
 	}
 
@@ -317,12 +322,14 @@ func TestFindLast2(t *testing.T) {
 	g.WriteLine("Line 1")
 	g.WriteLine("Line 2")
 	g.WriteLine("Line 3")
+	g.Flush()
 	g.RotateFile()
 	g.WriteLine("# a")
 	g.WriteLine("Line 4")
 	g.WriteLine("Line 5")
 	g.WriteLine("# b")
 	g.WriteLine("Line 6")
+	g.Flush()
 
 	match, found, err := g.FindLast("#")
 	if err != nil {
@@ -331,7 +338,7 @@ func TestFindLast2(t *testing.T) {
 	if !found {
 		t.Error("Expected found=True")
 	}
-	if match != "# b\n" {
+	if match != "# b" {
 		t.Errorf("Unexpected match: [%v]", match)
 	}
 
@@ -347,10 +354,12 @@ func TestFindLast3(t *testing.T) {
 	g.WriteLine("Line 2")
 	g.WriteLine("# b")
 	g.WriteLine("Line 3")
+	g.Flush()
 	g.RotateFile()
 	g.WriteLine("Line 4")
 	g.WriteLine("Line 5")
 	g.WriteLine("Line 6")
+	g.Flush()
 
 	match, found, err := g.FindLast("#")
 	if err != nil {
@@ -359,7 +368,7 @@ func TestFindLast3(t *testing.T) {
 	if !found {
 		t.Error("Expected found=True")
 	}
-	if match != "# b\n" {
+	if match != "# b" {
 		t.Errorf("Unexpected match: [%v]", match)
 	}
 
@@ -373,10 +382,12 @@ func TestFindLast4(t *testing.T) {
 	g.WriteLine("Line 1")
 	g.WriteLine("Line 2")
 	g.WriteLine("Line 3")
+	g.Flush()
 	g.RotateFile()
 	g.WriteLine("Line 4")
 	g.WriteLine("Line 5")
 	g.WriteLine("Line 6")
+	g.Flush()
 
 	match, found, err := g.FindLast("#")
 	if err != nil {
