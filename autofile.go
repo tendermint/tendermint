@@ -100,6 +100,9 @@ func (af *AutoFile) Write(b []byte) (n int, err error) {
 }
 
 func (af *AutoFile) Sync() error {
+	af.mtx.Lock()
+	defer af.mtx.Unlock()
+
 	return af.file.Sync()
 }
 
@@ -115,6 +118,7 @@ func (af *AutoFile) openFile() error {
 func (af *AutoFile) Size() (int64, error) {
 	af.mtx.Lock()
 	defer af.mtx.Unlock()
+
 	if af.file == nil {
 		err := af.openFile()
 		if err != nil {
