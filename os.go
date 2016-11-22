@@ -113,6 +113,19 @@ func Tempfile(prefix string) (*os.File, string) {
 	return file, file.Name()
 }
 
+func Tempdir(prefix string) (*os.File, string) {
+	tempDir := os.TempDir() + "/" + prefix + RandStr(12)
+	err := EnsureDir(tempDir, 0700)
+	if err != nil {
+		panic(Fmt("Error creating temp dir: %v", err))
+	}
+	dir, err := os.Open(tempDir)
+	if err != nil {
+		panic(Fmt("Error opening temp dir: %v", err))
+	}
+	return dir, tempDir
+}
+
 //--------------------------------------------------------------------------------
 
 func Prompt(prompt string, defaultValue string) (string, error) {
