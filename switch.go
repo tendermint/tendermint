@@ -195,8 +195,10 @@ func (sw *Switch) OnStop() {
 // NOTE: This performs a blocking handshake before the peer is added.
 // CONTRACT: Iff error is returned, peer is nil, and conn is immediately closed.
 func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, error) {
+
 	// Filter by addr (ie. ip:port)
 	if err := sw.FilterConnByAddr(conn.RemoteAddr()); err != nil {
+		conn.Close()
 		return nil, err
 	}
 
@@ -217,6 +219,7 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, er
 
 	// Filter by p2p-key
 	if err := sw.FilterConnByPubKey(sconn.(*SecretConnection).RemotePubKey()); err != nil {
+		sconn.Close()
 		return nil, err
 	}
 
@@ -466,17 +469,14 @@ func MakeConnectedSwitches(n int, initSwitch func(int, *Switch) *Switch, connect
 		switches[i] = makeSwitch(i, "testing", "123.123.123", initSwitch)
 	}
 
+	if err := StartSwitches(switches); err != nil {
+		panic(err)
+	}
+
 	for i := 0; i < n; i++ {
 		for j := i; j < n; j++ {
 			connect(switches, i, j)
 		}
-	}
-	// Wait for things to happen, peers to get added...
-	// TODO: better
-	time.Sleep(100 * time.Millisecond * time.Duration(n*n))
-
-	if err := StartSwitches(switches); err != nil {
-		panic(err)
 	}
 
 	return switches

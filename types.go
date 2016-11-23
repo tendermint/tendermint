@@ -21,7 +21,7 @@ type NodeInfo struct {
 	Other      []string             `json:"other"`   // other application specific data
 }
 
-// CONTRACT: two nodes are compactible if the major/minor versions match and network match
+// CONTRACT: two nodes are compatible if the major/minor versions match and network match
 func (info *NodeInfo) CompatibleWith(other *NodeInfo) error {
 	iMajor, iMinor, _, iErr := splitVersion(info.Version)
 	oMajor, oMinor, _, oErr := splitVersion(other.Version)
