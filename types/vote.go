@@ -60,23 +60,35 @@ func (vote *Vote) WriteSignBytes(chainID string, w io.Writer, n *int, err *error
 
 	wire.WriteJSON(
 		struct {
-			ChainID          string           `json:"chain_id"`
-			BlockID          BlockID          `json:"block_id"`
-			Height           int              `json:"height"`
-			Round            int              `json:"round"`
-			Signature        crypto.Signature `json:"signature"`
-			Type             byte             `json:"type"`
-			ValidatorAddress []byte           `json:"validator_address"`
-			ValidatorIndex   int              `json:"validator_index"`
+			ChainID string `json:"chain_id"`
+			Vote    struct {
+				BlockID          BlockID          `json:"block_id"`
+				Height           int              `json:"height"`
+				Round            int              `json:"round"`
+				Signature        crypto.Signature `json:"signature"`
+				Type             byte             `json:"type"`
+				ValidatorAddress []byte           `json:"validator_address"`
+				ValidatorIndex   int              `json:"validator_index"`
+			} `json: "vote"`
 		}{
 			chainID,
-			vote.BlockID,
-			vote.Height,
-			vote.Round,
-			vote.Signature,
-			vote.Type,
-			vote.ValidatorAddress,
-			vote.ValidatorIndex,
+			struct {
+				BlockID          BlockID          `json:"block_id"`
+				Height           int              `json:"height"`
+				Round            int              `json:"round"`
+				Signature        crypto.Signature `json:"signature"`
+				Type             byte             `json:"type"`
+				ValidatorAddress []byte           `json:"validator_address"`
+				ValidatorIndex   int              `json:"validator_index"`
+			}{
+				vote.BlockID,
+				vote.Height,
+				vote.Round,
+				vote.Signature,
+				vote.Type,
+				vote.ValidatorAddress,
+				vote.ValidatorIndex,
+			},
 		},
 		w, n, err)
 }
