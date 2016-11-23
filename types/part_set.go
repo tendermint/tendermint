@@ -74,7 +74,15 @@ func (psh PartSetHeader) Equals(other PartSetHeader) bool {
 }
 
 func (psh PartSetHeader) WriteSignBytes(w io.Writer, n *int, err *error) {
-	wire.WriteBinary(psh, w, n, err)
+	wire.WriteJSON(
+		struct {
+			Hash  []byte `json:"hash"`
+			Total int    `json:"total"`
+		}{
+			psh.Hash,
+			psh.Total,
+		},
+		w, n, err)
 }
 
 //-------------------------------------

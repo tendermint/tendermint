@@ -41,8 +41,22 @@ func (p *Proposal) String() string {
 }
 
 func (p *Proposal) WriteSignBytes(chainID string, w io.Writer, n *int, err *error) {
-	prop := *p
-	prop.Signature = nil
-	wire.WriteString(chainID, w, n, err)
-	wire.WriteBinary(prop, w, n, err)
+
+	wire.WriteJSON(
+		struct {
+			ChainID          string        `json:"chain_id"`
+			BlockPartsHeader PartSetHeader `json:"block_parts_header"`
+			Height           int           `json:"height"`
+			POLBlockID       BlockID       `json:"pol_block_id"`
+			POLRound         int           `json:"pol_round"`
+			Round            int           `json:"round"`
+		}{
+			chainID,
+			p.BlockPartsHeader,
+			p.Height,
+			p.POLBlockID,
+			p.POLRound,
+			p.Round,
+		},
+		w, n, err)
 }
