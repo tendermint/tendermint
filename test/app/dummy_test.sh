@@ -26,7 +26,7 @@ echo ""
 RESPONSE=`tmsp-cli query $KEY`
 
 set +e
-A=`echo $RESPONSE | grep exists=true`
+A=`echo $RESPONSE | grep '"exists":true'`
 if [[ $? != 0 ]]; then
 	echo "Failed to find 'exists=true' for $KEY. Response:"
 	echo "$RESPONSE"
@@ -37,7 +37,7 @@ set -e
 # we should not be able to look up the value
 RESPONSE=`tmsp-cli query $VALUE`
 set +e
-A=`echo $RESPONSE | grep exists=true`
+A=`echo $RESPONSE | grep '"exists":true'`
 if [[ $? == 0 ]]; then
 	echo "Found 'exists=true' for $VALUE when we should not have. Response:"
 	echo "$RESPONSE"
@@ -54,7 +54,7 @@ RESPONSE=`curl -s 127.0.0.1:46657/tmsp_query?query=\"$(toHex $KEY)\"`
 RESPONSE=`echo $RESPONSE | jq .result[1].result.Data | xxd -r -p`
 
 set +e
-A=`echo $RESPONSE | grep exists=true`
+A=`echo $RESPONSE | grep '"exists":true'`
 if [[ $? != 0 ]]; then
 	echo "Failed to find 'exists=true' for $KEY. Response:"
 	echo "$RESPONSE"
@@ -66,7 +66,7 @@ set -e
 RESPONSE=`curl -s 127.0.0.1:46657/tmsp_query?query=\"$(toHex $VALUE)\"`
 RESPONSE=`echo $RESPONSE | jq .result[1].result.Data | xxd -r -p`
 set +e
-A=`echo $RESPONSE | grep exists=true`
+A=`echo $RESPONSE | grep '"exists":true'`
 if [[ $? == 0 ]]; then
 	echo "Found 'exists=true' for $VALUE when we should not have. Response:"
 	echo "$RESPONSE"
