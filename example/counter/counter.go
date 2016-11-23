@@ -30,6 +30,9 @@ func (app *CounterApplication) SetOption(key string, value string) (log string) 
 
 func (app *CounterApplication) AppendTx(tx []byte) types.Result {
 	if app.serial {
+		if len(tx) > 8 {
+			return types.ErrEncodingError.SetLog(Fmt("Max tx size is 8 bytes, got %d", len(tx)))
+		}
 		tx8 := make([]byte, 8)
 		copy(tx8[len(tx8)-len(tx):], tx)
 		txValue := binary.BigEndian.Uint64(tx8)
@@ -43,6 +46,9 @@ func (app *CounterApplication) AppendTx(tx []byte) types.Result {
 
 func (app *CounterApplication) CheckTx(tx []byte) types.Result {
 	if app.serial {
+		if len(tx) > 8 {
+			return types.ErrEncodingError.SetLog(Fmt("Max tx size is 8 bytes, got %d", len(tx)))
+		}
 		tx8 := make([]byte, 8)
 		copy(tx8[len(tx8)-len(tx):], tx)
 		txValue := binary.BigEndian.Uint64(tx8)
