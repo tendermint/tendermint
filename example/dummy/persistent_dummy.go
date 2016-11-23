@@ -25,7 +25,6 @@ type PersistentDummyApplication struct {
 
 	// latest received
 	// TODO: move to merkle tree?
-	blockHash   []byte
 	blockHeader *types.Header
 
 	// validator set
@@ -82,7 +81,6 @@ func (app *PersistentDummyApplication) Commit() types.Result {
 
 	lastBlock := types.LastBlockInfo{
 		BlockHeight: app.blockHeader.Height,
-		BlockHash:   app.blockHash,
 		AppHash:     appHash, // this hash will be in the next block header
 	}
 	SaveLastBlock(app.db, lastBlock)
@@ -106,7 +104,6 @@ func (app *PersistentDummyApplication) InitChain(validators []*types.Validator) 
 // Track the block hash and header information
 func (app *PersistentDummyApplication) BeginBlock(hash []byte, header *types.Header) {
 	// update latest block info
-	app.blockHash = hash
 	app.blockHeader = header
 
 	// reset valset changes
@@ -140,7 +137,7 @@ func LoadLastBlock(db dbm.DB) (lastBlock types.LastBlockInfo) {
 }
 
 func SaveLastBlock(db dbm.DB, lastBlock types.LastBlockInfo) {
-	log.Notice("Saving block", "height", lastBlock.BlockHeight, "hash", lastBlock.BlockHash, "root", lastBlock.AppHash)
+	log.Notice("Saving block", "height", lastBlock.BlockHeight, "root", lastBlock.AppHash)
 	buf, n, err := new(bytes.Buffer), new(int), new(error)
 	wire.WriteBinary(lastBlock, buf, n, err)
 	if *err != nil {

@@ -220,12 +220,13 @@ message TMSPInfo {
 
 message LastBlockInfo {
 	uint64 block_height = 1;
-	bytes block_hash = 2;
-	bytes app_hash = 3;
+	bytes app_hash = 2;
 }
 
 message ConfigInfo {
-	uint64 max_block_size = 1;
+	uint64 max_block_size_bytes = 1;
+	uint64 max_block_size_txs = 2;
+	uint64 max_tx_size = 3;
 }
 
 //----------------------------------------
