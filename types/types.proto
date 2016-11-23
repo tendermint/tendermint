@@ -219,7 +219,7 @@ message TMSPInfo {
 }
 
 message LastBlockInfo {
-	int32 block_height = 1;
+	uint64 block_height = 1;
 	bytes block_hash = 2;
 	bytes app_hash = 3;
 }
@@ -233,7 +233,7 @@ message ConfigInfo {
 
 message Header {
 	string chain_id = 1;
-	int32 height = 2;
+	uint64 height = 2;
 	uint64 time = 3;
 	uint64 num_txs = 4;
 	BlockID last_block_id = 5;

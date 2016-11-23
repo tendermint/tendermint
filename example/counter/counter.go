@@ -2,7 +2,6 @@ package counter
 
 import (
 	"encoding/binary"
-	"fmt"
 
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/tmsp/types"
@@ -35,11 +34,7 @@ func (app *CounterApplication) AppendTx(tx []byte) types.Result {
 		copy(tx8[len(tx8)-len(tx):], tx)
 		txValue := binary.BigEndian.Uint64(tx8)
 		if txValue != uint64(app.txCount) {
-			return types.Result{
-				Code: types.CodeType_BadNonce,
-				Data: nil,
-				Log:  fmt.Sprintf("Invalid nonce. Expected %v, got %v", app.txCount, txValue),
-			}
+			return types.ErrBadNonce.SetLog(Fmt("Invalid nonce. Expected %v, got %v", app.txCount, txValue))
 		}
 	}
 	app.txCount += 1
@@ -52,11 +47,7 @@ func (app *CounterApplication) CheckTx(tx []byte) types.Result {
 		copy(tx8[len(tx8)-len(tx):], tx)
 		txValue := binary.BigEndian.Uint64(tx8)
 		if txValue < uint64(app.txCount) {
-			return types.Result{
-				Code: types.CodeType_BadNonce,
-				Data: nil,
-				Log:  fmt.Sprintf("Invalid nonce. Expected >= %v, got %v", app.txCount, txValue),
-			}
+			return types.ErrBadNonce.SetLog(Fmt("Invalid nonce. Expected >= %v, got %v", app.txCount, txValue))
 		}
 	}
 	return types.OK
@@ -75,5 +66,5 @@ func (app *CounterApplication) Commit() types.Result {
 }
 
 func (app *CounterApplication) Query(query []byte) types.Result {
-	return types.NewResultOK(nil, fmt.Sprintf("Query is not supported"))
+	return types.NewResultOK(nil, Fmt("Query is not supported"))
 }
