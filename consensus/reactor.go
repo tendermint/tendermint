@@ -111,6 +111,7 @@ func (conR *ConsensusReactor) GetChannels() []*p2p.ChannelDescriptor {
 
 // Implements Reactor
 func (conR *ConsensusReactor) AddPeer(peer *p2p.Peer) {
+	log.Info("ADDING PEER")
 	if !conR.IsRunning() {
 		return
 	}
@@ -949,7 +950,7 @@ func (ps *PeerState) SetHasVote(vote *types.Vote) {
 
 func (ps *PeerState) setHasVote(height int, round int, type_ byte, index int) {
 	log := log.New("peer", ps.Peer, "peerRound", ps.Round, "height", height, "round", round)
-	log.Info("setHasVote(LastCommit)", "lastCommit", ps.LastCommit, "index", index)
+	log.Debug("setHasVote(LastCommit)", "lastCommit", ps.LastCommit, "index", index)
 
 	// NOTE: some may be nil BitArrays -> no side effects.
 	ps.getVoteBitArray(height, round, type_).SetIndex(index, true)

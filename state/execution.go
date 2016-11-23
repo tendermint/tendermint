@@ -130,7 +130,7 @@ func execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn proxy.AppConnCo
 
 	log.Info("Executed block", "height", block.Height, "valid txs", validTxs, "invalid txs", invalidTxs)
 	if len(changedValidators) > 0 {
-		log.Info("Update to validator set", "updates", changedValidators)
+		log.Info("Update to validator set", "updates", tmsp.ValidatorsString(changedValidators))
 	}
 	return changedValidators, nil
 }
@@ -325,7 +325,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 		return nil
 	}
 
-	log.Notice("TMSP Handshake", "height", blockInfo.BlockHeight, "block_hash", blockInfo.BlockHash, "app_hash", blockInfo.AppHash)
+	log.Notice("TMSP Handshake", "height", blockInfo.BlockHeight, "app_hash", blockInfo.AppHash)
 
 	blockHeight := int(blockInfo.BlockHeight) // XXX: beware overflow
 	appHash := blockInfo.AppHash

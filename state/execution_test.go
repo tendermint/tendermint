@@ -24,9 +24,15 @@ var (
 	testPartSize = 65536
 )
 
+//---------------------------------------
+// Test block execution
+
 func TestExecBlock(t *testing.T) {
 	// TODO
 }
+
+//---------------------------------------
+// Test handshake/replay
 
 // Sync from scratch
 func TestHandshakeReplayAll(t *testing.T) {
@@ -106,6 +112,7 @@ func testHandshakeReplay(t *testing.T, n int) {
 }
 
 //--------------------------
+// utils for making blocks
 
 // make some bogus txs
 func txsFunc(blockNum int) (txs []types.Tx) {
