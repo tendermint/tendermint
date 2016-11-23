@@ -1,8 +1,8 @@
 hash: 603c43870dfc63a3113a3d13ae799038206bd77889e2e9596a860d3644b8fb67
-updated: 2016-11-15T14:46:00.011667442-05:00
+updated: 2016-11-22T20:57:55.984772241-05:00
 imports:
 - name: github.com/btcsuite/btcd
-  version: d9a674e1b7bc09d0830d6986c71cf5f535d753c3
+  version: afec1bd1245a4a19e6dfe1306974b733e7cbb9b8
   subpackages:
   - btcec
 - name: github.com/btcsuite/fastsha256
@@ -10,7 +10,7 @@ imports:
 - name: github.com/go-stack/stack
   version: 100eb0c0a9c5b306ca2fb4f165df21d80ada4b82
 - name: github.com/golang/protobuf
-  version: da116c3771bf4a398a43f44e069195ef1c9688ef
+  version: 8ee79997227bf9b34611aee7946ae64735e6fd93
   subpackages:
   - proto
 - name: github.com/golang/snappy
@@ -39,8 +39,10 @@ imports:
   subpackages:
   - edwards25519
   - extra25519
+- name: github.com/tendermint/go-autofile
+  version: 63186e34b33d78ae47fb0d25e5717b307fdf3603
 - name: github.com/tendermint/go-common
-  version: fa3daa7abc253264c916c12fecce3effa01a1287
+  version: 6b4160f2a57487f277c42bf06fd280195dfdb278
 - name: github.com/tendermint/go-crypto
   version: 4b11d62bdb324027ea01554e5767b71174680ba0
 - name: github.com/tendermint/go-db
@@ -48,7 +50,7 @@ imports:
 - name: github.com/tendermint/go-logger
   version: cefb3a45c0bf3c493a04e9bcd9b1540528be59f2
 - name: github.com/tendermint/go-merkle
-  version: 05042c6ab9cad51d12e4cecf717ae68e3b1409a8
+  version: bfc4afe28c7a50045d4d1eb043e67460f8a51a4f
 - name: github.com/tendermint/go-process
   version: ba01cfbb58d446673beff17e72883cb49c835fb9
 - name: github.com/tendermint/go-wire
@@ -58,9 +60,9 @@ imports:
   subpackages:
   - term
 - name: github.com/urfave/cli
-  version: b4f4786f378c0c1d3336b5bb798094b166edf5a9
+  version: 0bdeddeeb0f650497d603c4ad7b20cfe685682f6
 - name: golang.org/x/crypto
-  version: 9477e0b78b9ac3d0b03822fd95422e2fe07627cd
+  version: ede567c8e044a5913dad1d1af3696d9da953104c
   subpackages:
   - nacl/secretbox
   - openpgp/armor
@@ -69,7 +71,7 @@ imports:
   - ripemd160
   - salsa20/salsa
 - name: golang.org/x/net
-  version: cac22060de4e495155959e69adcb4b45763ccb10
+  version: 4971afdc2f162e82d185353533d3cf16188a9f4e
   subpackages:
   - context
   - http2
@@ -79,11 +81,11 @@ imports:
   - lex/httplex
   - trace
 - name: golang.org/x/sys
-  version: b699b7032584f0953262cb2788a0ca19bb494703
+  version: 30237cf4eefd639b184d1f2cb77a581ea0be8947
   subpackages:
   - unix
 - name: google.golang.org/grpc
-  version: 0d9891286aca15aeb2b0a73be9f5946c3cfefa85
+  version: 63bd55dfbf781b183216d2dd4433a659c947648a
   subpackages:
   - codes
   - credentials
