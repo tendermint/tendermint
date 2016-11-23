@@ -5,13 +5,14 @@ import (
 	crand "crypto/rand"
 	"fmt"
 	"math/rand"
-	"strings"
 	"testing"
 	"time"
 
 	. "github.com/tendermint/go-common"
+	"github.com/tendermint/go-wire"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tmsp/example/dummy"
 	tmsp "github.com/tendermint/tmsp/types"
 )
 
@@ -156,9 +157,14 @@ func testTMSPQuery(t *testing.T, statusI interface{}, value []byte) {
 	if query.Result.IsErr() {
 		panic(Fmt("Query returned an err: %v", query))
 	}
+
+	qResult := new(dummy.QueryResult)
+	if err := wire.ReadJSONBytes(query.Result.Data, qResult); err != nil {
+		t.Fatal(err)
+	}
 	// XXX: specific to value returned by the dummy
-	if !strings.Contains(string(query.Result.Data), "exists=true") {
-		panic(Fmt("Query error. Expected to find 'exists=true'. Got: %s", query.Result.Data))
+	if qResult.Exists != true {
+		panic(Fmt("Query error. Expected to find 'exists=true'. Got: %v", qResult))
 	}
 }
 
