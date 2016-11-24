@@ -1,5 +1,5 @@
 hash: 20cb38481a78b73ba3a42af08e34cd825ddb7c826833d67cc61e45c1b3a4c484
-updated: 2016-11-22T21:27:18.770358866-05:00
+updated: 2016-11-23T18:28:52.925584919-05:00
 imports:
 - name: github.com/btcsuite/btcd
   version: afec1bd1245a4a19e6dfe1306974b733e7cbb9b8
@@ -28,7 +28,7 @@ imports:
 - name: github.com/mattn/go-colorable
   version: d228849504861217f796da67fae4f6e347643f15
 - name: github.com/mattn/go-isatty
-  version: 66b8e73f3f5cda9f96b69efd03dd3d7fc4a5cdb8
+  version: 30a891c33c7cde7b02a981314b4228ec99380cca
 - name: github.com/spf13/pflag
   version: 5ccb023bc27df288a957c5e994cd44fd19619465
 - name: github.com/syndtr/goleveldb
@@ -78,7 +78,7 @@ imports:
 - name: github.com/tendermint/go-merkle
   version: bfc4afe28c7a50045d4d1eb043e67460f8a51a4f
 - name: github.com/tendermint/go-p2p
-  version: 62b37014a89b5eddff74844846979d30911cffda
+  version: f173a17ed3e9b341d480b36e5041819c8a5b8350
   subpackages:
   - upnp
 - name: github.com/tendermint/go-rpc
@@ -94,7 +94,7 @@ imports:
   subpackages:
   - term
 - name: github.com/tendermint/tmsp
-  version: f4e97a5db1e45d2943d07b906677ad8765d0f19d
+  version: 3742e35e6db5dcd7596aac9f661b46f5699ebec8
   subpackages:
   - client
   - example/counter
@@ -128,7 +128,7 @@ imports:
   subpackages:
   - unix
 - name: google.golang.org/grpc
-  version: 63bd55dfbf781b183216d2dd4433a659c947648a
+  version: eca2ad68af4d7bf894ada6bd263133f069a441d5
   subpackages:
   - codes
   - credentials
