@@ -3,15 +3,20 @@ package state
 import (
 	"bytes"
 	"fmt"
+	"math/rand"
 	"path"
 	"testing"
 
-	"github.com/tendermint/tendermint/config/tendermint_test"
-	//	. "github.com/tendermint/go-common"
+	// . "github.com/tendermint/go-common"
 	"github.com/tendermint/go-crypto"
 	dbm "github.com/tendermint/go-db"
+	"github.com/tendermint/go-events"
+	"github.com/tendermint/tendermint/config/tendermint_test"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
+	tmsp "github.com/tendermint/tmsp/types"
+
+	"github.com/tendermint/tmsp/example/counter"
 	"github.com/tendermint/tmsp/example/dummy"
 )
 
@@ -23,8 +28,124 @@ var (
 	testPartSize = 65536
 )
 
+// Copied from consensus package - should eventually move this to a more central package
+func subscribeToEvent(evsw types.EventSwitch, receiver, eventID string, chanCap int) chan interface{} {
+	// listen for event
+	ch := make(chan interface{}, chanCap)
+	types.AddListenerForEvent(evsw, receiver, eventID, func(data types.TMEventData) {
+		ch <- data
+	})
+	return ch
+}
+
+// Attempt to test ExecBlock func in execution.go
 func TestExecBlock(t *testing.T) {
-	// TODO
+	config := tendermint_test.ResetConfig("proxy_test_") // test name?
+	state, store := stateAndStore()
+
+	// Using counter app so we can test valid and invalid transactions
+	clientCreator := proxy.NewLocalClientCreator(counter.NewCounterApplication(true))
+	proxyApp := proxy.NewAppConns(config, clientCreator, NewHandshaker(config, state, store))
+	// Throw error if unable to start
+	if _, err := proxyApp.Start(); err != nil {
+		t.Fatalf("Error starting proxy app connections: %v", err)
+	}
+
+	// kick off a blockchain
+	prevHash := state.LastBlockID.Hash
+	lastCommit := new(types.Commit)
+	prevParts := types.PartSetHeader{}
+	valHash := state.Validators.Hash()
+	prevBlockID := types.BlockID{prevHash, prevParts}
+
+	blockCount := 10 // arbitrary, was nBlocks+1
+	n := 0
+	// Count valid/invalid txns sent:
+	valtxns := 0
+	invtxns := 0
+	// Count valid/invalid txns registered from events:
+	valregs := 0
+	invregs := 0
+	for i := 1; i <= blockCount; i++ {
+		var txs []types.Tx
+		var txdata types.Tx
+
+		// Create txs/txdata based on whether we want txn to be valid/invalid
+		if valtxns == 0 || rand.Intn(100) < 70 { // 70% valid txns
+			txdata = types.Tx([]byte{byte(0), byte(valtxns)})
+			txs = append(txs, txdata)
+			valtxns++
+		} else {
+			txdata = types.Tx([]byte{byte(0), byte(0)})
+			txs = append(txs, txdata)
+			invtxns++
+		}
+
+		// Create an event switch to listen for the newly inserted txn
+		eventSwitch := events.NewEventSwitch()
+		_, err := eventSwitch.Start()
+		if err != nil {
+			t.Fatalf("Failed to start switch: %v", err)
+		}
+		eventChannel := subscribeToEvent(eventSwitch, "tester", types.EventStringTx(txdata), 2500)
+
+		// Create the block using the txs
+		block, parts := types.MakeBlock(i, chainID, txs, lastCommit, prevBlockID, valHash, state.AppHash, testPartSize)
+		fmt.Println("i =", i)
+		fmt.Println("BlockID:", prevBlockID)
+
+		err2 := state.ApplyBlock(eventSwitch, proxyApp.Consensus(), block, block.MakePartSet(testPartSize).Header(), mempool)
+		if err2 != nil {
+			t.Fatal(i, err2)
+		}
+
+		voteSet := types.NewVoteSet(chainID, i, 0, types.VoteTypePrecommit, state.Validators)
+		vote := signCommit(i, 0, block.Hash(), parts.Header())
+		_, err = voteSet.AddVote(vote)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		prevHash = block.Hash()
+		prevParts = parts.Header()
+		lastCommit = voteSet.MakeCommit()
+		prevBlockID = types.BlockID{prevHash, prevParts}
+
+		select {
+		case res := <-eventChannel:
+			{
+				fmt.Println("Got result: ", res.(types.EventDataTx).Log)
+				if res.(types.EventDataTx).Code == tmsp.CodeType_OK {
+					fmt.Println("Registered a valid transaction.")
+					valregs++
+				} else {
+					fmt.Println("Registered an invalid transaction.")
+					invregs++
+				}
+			}
+		}
+
+		n = i
+	}
+
+	// Potential errors
+	if n < blockCount {
+		t.Errorf("********************* saved %d blocks, expected %d **************", n, blockCount)
+	} else {
+		fmt.Println("********************* saved", n, "blocks out of", blockCount, "**************")
+	}
+
+	// Valid vs Invalid txns
+	fmt.Println("Issued", valtxns, "valid transactions, ", invtxns, "invalid transactions.")
+	fmt.Println("Registered", valregs, "valid transactions, ", invtxns, "invalid transactions.")
+	if valtxns != valregs {
+		t.Errorf("Registered valid transactions not equal to issued valid transactions.")
+	}
+	if invtxns != invregs {
+		t.Errorf("Registered invalid transactions not equal to issued invalid transactions.")
+	}
+
+	proxyApp.Stop()
 }
 
 // Sync from scratch
