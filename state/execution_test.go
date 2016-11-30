@@ -43,9 +43,9 @@ func TestExecBlock(t *testing.T) {
 	valHash := state.Validators.Hash()
 	prevBlockID := types.BlockID{prevHash, prevParts}
 
-	blockCount := 15   // 15 arbitrary, was nBlocks+1
+	blockCount := 15 // 15 arbitrary, was nBlocks+1
 	n := 0
-	for i:=1 ; i <= blockCount ; i++ {
+	for i := 1; i <= blockCount; i++ {
 		block, parts := types.MakeBlock(i, chainID, txsFunc(i), lastCommit,
 			prevBlockID, valHash, state.AppHash, testPartSize)
 		fmt.Println(i)
