@@ -13,9 +13,16 @@ type DB interface {
 	Delete([]byte)
 	DeleteSync([]byte)
 	Close()
+	NewBatch() Batch
 
 	// For debugging
 	Print()
+}
+
+type Batch interface {
+	Set(key, value []byte)
+	Delete(key []byte)
+	Write()
 }
 
 //-----------------------------------------------------------------------------
@@ -23,6 +30,7 @@ type DB interface {
 // Database types
 const DBBackendMemDB = "memdb"
 const DBBackendLevelDB = "leveldb"
+const DBBackendLevelDB2 = "leveldb2"
 
 func NewDB(name string, backend string, dir string) DB {
 	switch backend {
@@ -31,6 +39,12 @@ func NewDB(name string, backend string, dir string) DB {
 		return db
 	case DBBackendLevelDB:
 		db, err := NewLevelDB(path.Join(dir, name+".db"))
+		if err != nil {
+			PanicCrisis(err)
+		}
+		return db
+	case DBBackendLevelDB2:
+		db, err := NewLevelDB2(path.Join(dir, name+".db"))
 		if err != nil {
 			PanicCrisis(err)
 		}

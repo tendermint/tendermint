@@ -81,3 +81,30 @@ func (db *LevelDB) Print() {
 		fmt.Printf("[%X]:\t[%X]\n", key, value)
 	}
 }
+
+func (db *LevelDB) NewBatch() Batch {
+	batch := new(leveldb.Batch)
+	return &levelDBBatch{db, batch}
+}
+
+//--------------------------------------------------------------------------------
+
+type levelDBBatch struct {
+	db    *LevelDB
+	batch *leveldb.Batch
+}
+
+func (mBatch *levelDBBatch) Set(key, value []byte) {
+	mBatch.batch.Put(key, value)
+}
+
+func (mBatch *levelDBBatch) Delete(key []byte) {
+	mBatch.batch.Delete(key)
+}
+
+func (mBatch *levelDBBatch) Write() {
+	err := mBatch.db.db.Write(mBatch.batch, nil)
+	if err != nil {
+		PanicCrisis(err)
+	}
+}
