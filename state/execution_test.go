@@ -23,8 +23,63 @@ var (
 	testPartSize = 65536
 )
 
+// Attempt to test ExecBlock func in execution.go
 func TestExecBlock(t *testing.T) {
-	// TODO
+	config := tendermint_test.ResetConfig("proxy_test_")
+
+	// initialize proxy
+	state, store := stateAndStore()
+	clientCreator := proxy.NewLocalClientCreator(dummy.NewPersistentDummyApplication(path.Join(config.GetString("db_dir"), "1")))
+	proxyApp := proxy.NewAppConns(config, clientCreator, NewHandshaker(config, state, store))
+	// Throw error if unable to start
+	if _, err := proxyApp.Start(); err != nil {
+		t.Fatalf("Error starting proxy app connections: %v", err)
+	}
+
+	// kick off a blockchain
+	prevHash := state.LastBlockID.Hash
+	lastCommit := new(types.Commit)
+	prevParts := types.PartSetHeader{}
+	valHash := state.Validators.Hash()
+	prevBlockID := types.BlockID{prevHash, prevParts}
+
+	blockCount := 15   // 15 arbitrary, was nBlocks+1
+	n := 0
+	for i:=1 ; i <= blockCount ; i++ {
+		block, parts := types.MakeBlock(i, chainID, txsFunc(i), lastCommit,
+			prevBlockID, valHash, state.AppHash, testPartSize)
+		fmt.Println(i)
+		fmt.Println(prevBlockID)
+		fmt.Println(block.LastBlockID)
+		err := state.ApplyBlock(nil, proxyApp.Consensus(), block, block.MakePartSet(testPartSize).Header(), mempool)
+		if err != nil {
+			t.Fatal(i, err)
+		}
+
+		voteSet := types.NewVoteSet(chainID, i, 0, types.VoteTypePrecommit, state.Validators)
+		vote := signCommit(i, 0, block.Hash(), parts.Header())
+		_, err = voteSet.AddVote(vote)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		//blockchain = append(blockchain, block)
+		prevHash = block.Hash()
+		prevParts = parts.Header()
+		lastCommit = voteSet.MakeCommit()
+		prevBlockID = types.BlockID{prevHash, prevParts}
+
+		n = i
+	}
+
+	// Potential errors
+	if n < blockCount {
+		t.Errorf("********************* saved %d blocks, expected %d **************", n, blockCount)
+	} else {
+		fmt.Println("********************* saved", n, "blocks out of", blockCount, "**************")
+	}
+
+	proxyApp.Stop()
 }
 
 // Sync from scratch
