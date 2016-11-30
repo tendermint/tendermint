@@ -1274,7 +1274,10 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	// Execute and commit the block, and update the mempool.
 	// All calls to the proxyAppConn should come here.
 	// NOTE: the block.AppHash wont reflect these txs until the next block
-	stateCopy.ApplyBlock(eventCache, cs.proxyAppConn, block, blockParts.Header(), cs.mempool)
+	err := stateCopy.ApplyBlock(eventCache, cs.proxyAppConn, block, blockParts.Header(), cs.mempool)
+	if err != nil {
+		// TODO!
+	}
 
 	fail.Fail() // XXX
 

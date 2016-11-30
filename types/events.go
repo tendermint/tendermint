@@ -73,11 +73,11 @@ type EventDataNewBlockHeader struct {
 
 // All txs fire EventDataTx
 type EventDataTx struct {
-	Tx     Tx            `json:"tx"`
-	Result []byte        `json:"result"`
-	Log    string        `json:"log"`
-	Code   tmsp.CodeType `json:"code"`
-	Error  string        `json:"error"`
+	Tx    Tx            `json:"tx"`
+	Data  []byte        `json:"data"`
+	Log   string        `json:"log"`
+	Code  tmsp.CodeType `json:"code"`
+	Error string        `json:"error"` // this is redundant information for now
 }
 
 // NOTE: This goes into the replay WAL

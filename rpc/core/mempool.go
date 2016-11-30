@@ -40,7 +40,9 @@ func BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 }
 
 // CONTRACT: only returns error if mempool.BroadcastTx errs (ie. problem with the app)
-// or if we timeout waiting for tx to commit
+// or if we timeout waiting for tx to commit.
+// If CheckTx or AppendTx fail, no error will be returned, but the returned result
+// will contain a non-OK TMSP code.
 func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 
 	// subscribe to tx being committed in block
@@ -55,6 +57,7 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 		checkTxResCh <- res
 	})
 	if err != nil {
+		log.Error("err", "err", err)
 		return nil, fmt.Errorf("Error broadcasting transaction: %v", err)
 	}
 	checkTxRes := <-checkTxResCh
@@ -69,16 +72,23 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 
 	// Wait for the tx to be included in a block,
 	// timeout after something reasonable.
-	timer := time.NewTimer(60 * 5 * time.Second)
+	// TODO: configureable?
+	timer := time.NewTimer(60 * 2 * time.Second)
 	select {
 	case appendTxRes := <-appendTxResCh:
 		// The tx was included in a block.
-		appendTxR := appendTxRes.GetAppendTx()
+		appendTxR := &tmsp.ResponseAppendTx{
+			Code: appendTxRes.Code,
+			Data: appendTxRes.Data,
+			Log:  appendTxRes.Log,
+		}
+		log.Error("appendtx passed ", "r", appendTxR)
 		return &ctypes.ResultBroadcastTxCommit{
 			CheckTx:  checkTxR,
 			AppendTx: appendTxR,
 		}, nil
 	case <-timer.C:
+		log.Error("failed to include tx")
 		return &ctypes.ResultBroadcastTxCommit{
 			CheckTx:  checkTxR,
 			AppendTx: nil,

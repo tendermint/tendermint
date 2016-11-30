@@ -83,6 +83,7 @@ function counter_over_grpc_grpc() {
 	echo "Starting counter and tendermint"
 	counter --serial --tmsp grpc > /dev/null &
 	pid_counter=$!
+	sleep 1
 	GRPC_PORT=36656
 	tendermint node --tmsp grpc --grpc_laddr tcp://localhost:$GRPC_PORT > tendermint.log &
 	pid_tendermint=$!

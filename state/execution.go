@@ -88,11 +88,11 @@ func execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn proxy.AppConnCo
 			// NOTE: if we count we can access the tx from the block instead of
 			// pulling it from the req
 			event := types.EventDataTx{
-				Tx:     req.GetAppendTx().Tx,
-				Result: apTx.Data,
-				Code:   apTx.Code,
-				Log:    apTx.Log,
-				Error:  txError,
+				Tx:    req.GetAppendTx().Tx,
+				Data:  apTx.Data,
+				Code:  apTx.Code,
+				Log:   apTx.Log,
+				Error: txError,
 			}
 			types.FireEventTx(eventCache, event)
 		}
