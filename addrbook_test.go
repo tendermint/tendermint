@@ -7,6 +7,8 @@ import (
 	"testing"
 )
 
+const addrBookStrict = true
+
 func createTempFileName(prefix string) string {
 	f, err := ioutil.TempFile("", prefix)
 	if err != nil {
@@ -25,10 +27,10 @@ func TestEmpty(t *testing.T) {
 	// t.Logf("New tempfile name: %v", fname)
 
 	// Save an empty book & load it
-	book := NewAddrBook(fname)
+	book := NewAddrBook(fname, addrBookStrict)
 	book.saveToFile(fname)
 
-	book = NewAddrBook(fname)
+	book = NewAddrBook(fname, addrBookStrict)
 	book.loadFromFile(fname)
 
 	if book.Size() != 0 {
@@ -74,7 +76,7 @@ func TestSaveAddresses(t *testing.T) {
 	}
 
 	// Create the book & populate & save
-	book := NewAddrBook(fname)
+	book := NewAddrBook(fname, addrBookStrict)
 	for _, addrSrc := range randAddrs {
 		book.AddAddress(addrSrc.addr, addrSrc.src)
 	}
@@ -84,7 +86,7 @@ func TestSaveAddresses(t *testing.T) {
 	book.saveToFile(fname)
 
 	// Reload the book
-	book = NewAddrBook(fname)
+	book = NewAddrBook(fname, addrBookStrict)
 	book.loadFromFile(fname)
 
 	// Test ...
@@ -128,7 +130,7 @@ func TestPromoteToOld(t *testing.T) {
 	}
 
 	// Create the book & populate & save
-	book := NewAddrBook(fname)
+	book := NewAddrBook(fname, addrBookStrict)
 	for _, addrSrc := range randAddrs {
 		book.AddAddress(addrSrc.addr, addrSrc.src)
 	}
@@ -145,7 +147,7 @@ func TestPromoteToOld(t *testing.T) {
 	book.saveToFile(fname)
 
 	// Reload the book
-	book = NewAddrBook(fname)
+	book = NewAddrBook(fname, addrBookStrict)
 	book.loadFromFile(fname)
 
 	// Test ...

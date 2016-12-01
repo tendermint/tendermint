@@ -77,17 +77,18 @@ const (
 type AddrBook struct {
 	QuitService
 
-	mtx        sync.Mutex
-	filePath   string
-	rand       *rand.Rand
-	key        string
-	ourAddrs   map[string]*NetAddress
-	addrLookup map[string]*knownAddress // new & old
-	addrNew    []map[string]*knownAddress
-	addrOld    []map[string]*knownAddress
-	wg         sync.WaitGroup
-	nOld       int
-	nNew       int
+	mtx               sync.Mutex
+	filePath          string
+	routabilityStrict bool
+	rand              *rand.Rand
+	key               string
+	ourAddrs          map[string]*NetAddress
+	addrLookup        map[string]*knownAddress // new & old
+	addrNew           []map[string]*knownAddress
+	addrOld           []map[string]*knownAddress
+	wg                sync.WaitGroup
+	nOld              int
+	nNew              int
 }
 
 const (
@@ -96,12 +97,13 @@ const (
 )
 
 // Use Start to begin processing asynchronous address updates.
-func NewAddrBook(filePath string) *AddrBook {
+func NewAddrBook(filePath string, routabilityStrict bool) *AddrBook {
 	am := &AddrBook{
-		rand:       rand.New(rand.NewSource(time.Now().UnixNano())),
-		ourAddrs:   make(map[string]*NetAddress),
-		addrLookup: make(map[string]*knownAddress),
-		filePath:   filePath,
+		rand:              rand.New(rand.NewSource(time.Now().UnixNano())),
+		ourAddrs:          make(map[string]*NetAddress),
+		addrLookup:        make(map[string]*knownAddress),
+		filePath:          filePath,
+		routabilityStrict: routabilityStrict,
 	}
 	am.init()
 	am.QuitService = *NewQuitService(log, "AddrBook", am)
@@ -513,7 +515,7 @@ func (a *AddrBook) pickOldest(bucketType byte, bucketIdx int) *knownAddress {
 }
 
 func (a *AddrBook) addAddress(addr, src *NetAddress) {
-	if !addr.Routable() {
+	if a.routabilityStrict && !addr.Routable() {
 		log.Warn(Fmt("Cannot add non-routable address %v", addr))
 		return
 	}
@@ -616,8 +618,8 @@ func (a *AddrBook) moveToOld(ka *knownAddress) {
 func (a *AddrBook) calcNewBucket(addr, src *NetAddress) int {
 	data1 := []byte{}
 	data1 = append(data1, []byte(a.key)...)
-	data1 = append(data1, []byte(groupKey(addr))...)
-	data1 = append(data1, []byte(groupKey(src))...)
+	data1 = append(data1, []byte(a.groupKey(addr))...)
+	data1 = append(data1, []byte(a.groupKey(src))...)
 	hash1 := doubleSha256(data1)
 	hash64 := binary.BigEndian.Uint64(hash1)
 	hash64 %= newBucketsPerGroup
@@ -625,7 +627,7 @@ func (a *AddrBook) calcNewBucket(addr, src *NetAddress) int {
 	binary.BigEndian.PutUint64(hashbuf[:], hash64)
 	data2 := []byte{}
 	data2 = append(data2, []byte(a.key)...)
-	data2 = append(data2, groupKey(src)...)
+	data2 = append(data2, a.groupKey(src)...)
 	data2 = append(data2, hashbuf[:]...)
 
 	hash2 := doubleSha256(data2)
@@ -645,7 +647,7 @@ func (a *AddrBook) calcOldBucket(addr *NetAddress) int {
 	binary.BigEndian.PutUint64(hashbuf[:], hash64)
 	data2 := []byte{}
 	data2 = append(data2, []byte(a.key)...)
-	data2 = append(data2, groupKey(addr)...)
+	data2 = append(data2, a.groupKey(addr)...)
 	data2 = append(data2, hashbuf[:]...)
 
 	hash2 := doubleSha256(data2)
@@ -656,11 +658,11 @@ func (a *AddrBook) calcOldBucket(addr *NetAddress) int {
 // This is the /16 for IPv6, the /32 (/36 for he.net) for IPv6, the string
 // "local" for a local address and the string "unroutable for an unroutable
 // address.
-func groupKey(na *NetAddress) string {
-	if na.Local() {
+func (a *AddrBook) groupKey(na *NetAddress) string {
+	if a.routabilityStrict && na.Local() {
 		return "local"
 	}
-	if !na.Routable() {
+	if a.routabilityStrict && !na.Routable() {
 		return "unroutable"
 	}
 
