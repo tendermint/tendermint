@@ -1,10 +1,6 @@
 package db
 
-import (
-	"path"
-
-	. "github.com/tendermint/go-common"
-)
+import . "github.com/tendermint/go-common"
 
 type DB interface {
 	Get([]byte) []byte
@@ -27,30 +23,28 @@ type Batch interface {
 
 //-----------------------------------------------------------------------------
 
-// Database types
-const DBBackendMemDB = "memdb"
-const DBBackendLevelDB = "leveldb"
-const DBBackendLevelDB2 = "leveldb2"
+const (
+	CLevelDBBackendStr  = "goleveldb"
+	GoLevelDBBackendStr = "cleveldb"
+	MemDBBackendStr     = "memdb"
+)
+
+type dbCreator func(name string, dir string) (DB, error)
+
+var backends map[string]dbCreator
+
+func registerDBCreator(backend string, creator dbCreator, force bool) {
+	_, ok := backends[backend]
+	if !force && ok {
+		return
+	}
+	backends[backend] = creator
+}
 
 func NewDB(name string, backend string, dir string) DB {
-	switch backend {
-	case DBBackendMemDB:
-		db := NewMemDB()
-		return db
-	case DBBackendLevelDB:
-		db, err := NewLevelDB(path.Join(dir, name+".db"))
-		if err != nil {
-			PanicCrisis(err)
-		}
-		return db
-	case DBBackendLevelDB2:
-		db, err := NewLevelDB2(path.Join(dir, name+".db"))
-		if err != nil {
-			PanicCrisis(err)
-		}
-		return db
-	default:
-		PanicSanity(Fmt("Unknown DB backend: %v", backend))
+	db, err := backends[backend](name, dir)
+	if err != nil {
+		PanicSanity(Fmt("Error initializing DB: %v", err))
 	}
-	return nil
+	return db
 }

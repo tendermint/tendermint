@@ -5,6 +5,12 @@ import (
 	"sync"
 )
 
+func init() {
+	registerDBCreator(MemDBBackendStr, func(name string, dir string) (DB, error) {
+		return NewMemDB(), nil
+	}, false)
+}
+
 type MemDB struct {
 	mtx sync.Mutex
 	db  map[string][]byte

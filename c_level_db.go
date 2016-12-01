@@ -1,3 +1,5 @@
+// +build gcc
+
 package db
 
 import (
@@ -9,15 +11,21 @@ import (
 	. "github.com/tendermint/go-common"
 )
 
-type LevelDB2 struct {
+func init() {
+	registerDBCreator(CLevelDBBackendStr, func(name string, dir string) (DB, error) {
+		return NewCLevelDB(name, dir)
+	}, false)
+}
+
+type CLevelDB struct {
 	db     *levigo.DB
 	ro     *levigo.ReadOptions
 	wo     *levigo.WriteOptions
 	woSync *levigo.WriteOptions
 }
 
-func NewLevelDB2(name string) (*LevelDB2, error) {
-	dbPath := path.Join(name)
+func NewCLevelDB(name string, dir string) (*CLevelDB, error) {
+	dbPath := path.Join(dir, name+".db")
 
 	opts := levigo.NewOptions()
 	opts.SetCache(levigo.NewLRUCache(1 << 30))
@@ -30,7 +38,7 @@ func NewLevelDB2(name string) (*LevelDB2, error) {
 	wo := levigo.NewWriteOptions()
 	woSync := levigo.NewWriteOptions()
 	woSync.SetSync(true)
-	database := &LevelDB2{
+	database := &CLevelDB{
 		db:     db,
 		ro:     ro,
 		wo:     wo,
@@ -39,7 +47,7 @@ func NewLevelDB2(name string) (*LevelDB2, error) {
 	return database, nil
 }
 
-func (db *LevelDB2) Get(key []byte) []byte {
+func (db *CLevelDB) Get(key []byte) []byte {
 	res, err := db.db.Get(db.ro, key)
 	if err != nil {
 		PanicCrisis(err)
@@ -47,46 +55,46 @@ func (db *LevelDB2) Get(key []byte) []byte {
 	return res
 }
 
-func (db *LevelDB2) Set(key []byte, value []byte) {
+func (db *CLevelDB) Set(key []byte, value []byte) {
 	err := db.db.Put(db.wo, key, value)
 	if err != nil {
 		PanicCrisis(err)
 	}
 }
 
-func (db *LevelDB2) SetSync(key []byte, value []byte) {
+func (db *CLevelDB) SetSync(key []byte, value []byte) {
 	err := db.db.Put(db.woSync, key, value)
 	if err != nil {
 		PanicCrisis(err)
 	}
 }
 
-func (db *LevelDB2) Delete(key []byte) {
+func (db *CLevelDB) Delete(key []byte) {
 	err := db.db.Delete(db.wo, key)
 	if err != nil {
 		PanicCrisis(err)
 	}
 }
 
-func (db *LevelDB2) DeleteSync(key []byte) {
+func (db *CLevelDB) DeleteSync(key []byte) {
 	err := db.db.Delete(db.woSync, key)
 	if err != nil {
 		PanicCrisis(err)
 	}
 }
 
-func (db *LevelDB2) DB() *levigo.DB {
+func (db *CLevelDB) DB() *levigo.DB {
 	return db.db
 }
 
-func (db *LevelDB2) Close() {
+func (db *CLevelDB) Close() {
 	db.db.Close()
 	db.ro.Close()
 	db.wo.Close()
 	db.woSync.Close()
 }
 
-func (db *LevelDB2) Print() {
+func (db *CLevelDB) Print() {
 	iter := db.db.NewIterator(db.ro)
 	defer iter.Close()
 	for iter.Seek(nil); iter.Valid(); iter.Next() {
@@ -96,27 +104,27 @@ func (db *LevelDB2) Print() {
 	}
 }
 
-func (db *LevelDB2) NewBatch() Batch {
+func (db *CLevelDB) NewBatch() Batch {
 	batch := levigo.NewWriteBatch()
-	return &levelDB2Batch{db, batch}
+	return &cLevelDBBatch{db, batch}
 }
 
 //--------------------------------------------------------------------------------
 
-type levelDB2Batch struct {
-	db    *LevelDB2
+type cLevelDBBatch struct {
+	db    *CLevelDB
 	batch *levigo.WriteBatch
 }
 
-func (mBatch *levelDB2Batch) Set(key, value []byte) {
+func (mBatch *cLevelDBBatch) Set(key, value []byte) {
 	mBatch.batch.Put(key, value)
 }
 
-func (mBatch *levelDB2Batch) Delete(key []byte) {
+func (mBatch *cLevelDBBatch) Delete(key []byte) {
 	mBatch.batch.Delete(key)
 }
 
-func (mBatch *levelDB2Batch) Write() {
+func (mBatch *cLevelDBBatch) Write() {
 	err := mBatch.db.db.Write(mBatch.db.wo, mBatch.batch)
 	if err != nil {
 		PanicCrisis(err)

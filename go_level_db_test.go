@@ -2,13 +2,14 @@ package db
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	"testing"
 
 	. "github.com/tendermint/go-common"
 )
 
-func BenchmarkRandomReadsWrites2(b *testing.B) {
+func BenchmarkRandomReadsWrites(b *testing.B) {
 	b.StopTimer()
 
 	numItems := int64(1000000)
@@ -16,7 +17,7 @@ func BenchmarkRandomReadsWrites2(b *testing.B) {
 	for i := 0; i < int(numItems); i++ {
 		internal[int64(i)] = int64(0)
 	}
-	db, err := NewLevelDB2(Fmt("test_%x", RandStr(12)))
+	db, err := NewCLevelDB(Fmt("test_%x", RandStr(12)))
 	if err != nil {
 		b.Fatal(err.Error())
 		return
@@ -71,7 +72,6 @@ func BenchmarkRandomReadsWrites2(b *testing.B) {
 	db.Close()
 }
 
-/*
 func int642Bytes(i int64) []byte {
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, uint64(i))
@@ -81,4 +81,3 @@ func int642Bytes(i int64) []byte {
 func bytes2Int64(buf []byte) int64 {
 	return int64(binary.BigEndian.Uint64(buf))
 }
-*/
