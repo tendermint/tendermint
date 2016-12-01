@@ -12,9 +12,11 @@ import (
 )
 
 func init() {
-	registerDBCreator(CLevelDBBackendStr, func(name string, dir string) (DB, error) {
+	dbCreator := func(name string, dir string) (DB, error) {
 		return NewCLevelDB(name, dir)
-	}, false)
+	}
+	registerDBCreator(LevelDBBackendStr, dbCreator, true)
+	registerDBCreator(CLevelDBBackendStr, dbCreator, false)
 }
 
 type CLevelDB struct {

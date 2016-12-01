@@ -24,6 +24,7 @@ type Batch interface {
 //-----------------------------------------------------------------------------
 
 const (
+	LevelDBBackendStr   = "leveldb" // legacy, defaults to goleveldb.
 	CLevelDBBackendStr  = "goleveldb"
 	GoLevelDBBackendStr = "cleveldb"
 	MemDBBackendStr     = "memdb"
@@ -31,7 +32,7 @@ const (
 
 type dbCreator func(name string, dir string) (DB, error)
 
-var backends map[string]dbCreator
+var backends = map[string]dbCreator{}
 
 func registerDBCreator(backend string, creator dbCreator, force bool) {
 	_, ok := backends[backend]

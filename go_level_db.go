@@ -12,9 +12,11 @@ import (
 )
 
 func init() {
-	registerDBCreator(GoLevelDBBackendStr, func(name string, dir string) (DB, error) {
+	dbCreator := func(name string, dir string) (DB, error) {
 		return NewGoLevelDB(name, dir)
-	}, false)
+	}
+	registerDBCreator(LevelDBBackendStr, dbCreator, false)
+	registerDBCreator(GoLevelDBBackendStr, dbCreator, false)
 }
 
 type GoLevelDB struct {
