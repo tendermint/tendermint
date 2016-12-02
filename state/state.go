@@ -38,10 +38,8 @@ type State struct {
 
 	// AppHash is updated after Commit;
 	// it's stale after ExecBlock and before Commit
-	Stale   bool
-	AppHash []byte
-
-	valAddedOrRemoved bool // true if a validator was added or removed
+	AppHashIsStale bool
+	AppHash        []byte
 }
 
 func LoadState(db dbm.DB) *State {
@@ -62,6 +60,9 @@ func LoadState(db dbm.DB) *State {
 }
 
 func (s *State) Copy() *State {
+	if s.AppHashIsStale {
+		PanicSanity(Fmt("App hash is stale: %v", s))
+	}
 	return &State{
 		db:              s.db,
 		GenesisDoc:      s.GenesisDoc,
@@ -71,7 +72,7 @@ func (s *State) Copy() *State {
 		LastBlockTime:   s.LastBlockTime,
 		Validators:      s.Validators.Copy(),
 		LastValidators:  s.LastValidators.Copy(),
-		Stale:           s.Stale, // XXX: but really state shouldnt be copied while its stale
+		AppHashIsStale:  false,
 		AppHash:         s.AppHash,
 	}
 }
@@ -96,7 +97,7 @@ func (s *State) Bytes() []byte {
 }
 
 // Mutate state variables to match block and validators
-// Since we don't have the new AppHash yet, we set s.Stale=true
+// Since we don't have the new AppHash yet, we set s.AppHashIsStale=true
 func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader types.PartSetHeader, prevValSet, nextValSet *types.ValidatorSet) {
 	s.LastBlockHeight = header.Height
 	s.LastBlockID = types.BlockID{header.Hash(), blockPartsHeader}
@@ -104,11 +105,7 @@ func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader typ
 	s.Validators = nextValSet
 	s.LastValidators = prevValSet
 
-	s.Stale = true
-}
-
-func (s *State) ValidatorAddedOrRemoved() bool {
-	return s.valAddedOrRemoved
+	s.AppHashIsStale = true
 }
 
 func (s *State) GetValidators() (*types.ValidatorSet, *types.ValidatorSet) {

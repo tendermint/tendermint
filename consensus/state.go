@@ -226,8 +226,7 @@ type ConsensusState struct {
 	blockStore   *bc.BlockStore
 	mempool      *mempl.Mempool
 
-	privValidator      PrivValidator // for signing votes
-	privValidatorIndex int           // cached index; updated if validators added/removed to validator set
+	privValidator PrivValidator // for signing votes
 
 	mtx sync.Mutex
 	RoundState
@@ -320,7 +319,6 @@ func (cs *ConsensusState) SetPrivValidator(priv PrivValidator) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	cs.privValidator = priv
-	cs.setPrivValidatorIndex()
 }
 
 func (cs *ConsensusState) LoadCommit(height int) *types.Commit {
@@ -579,24 +577,8 @@ func (cs *ConsensusState) updateToState(state *sm.State) {
 
 	cs.state = state
 
-	if cs.state.ValidatorAddedOrRemoved() {
-		cs.setPrivValidatorIndex()
-	}
-
 	// Finally, broadcast RoundState
 	cs.newStep()
-}
-
-func (cs *ConsensusState) setPrivValidatorIndex() {
-	if cs.privValidator != nil {
-		// TODO: just return -1 for not found
-		valIdx, val := cs.state.Validators.GetByAddress(cs.privValidator.GetAddress())
-		if val == nil {
-			cs.privValidatorIndex = -1
-		} else {
-			cs.privValidatorIndex = valIdx
-		}
-	}
 }
 
 func (cs *ConsensusState) newStep() {
@@ -1520,9 +1502,11 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerKey string) (added bool,
 }
 
 func (cs *ConsensusState) signVote(type_ byte, hash []byte, header types.PartSetHeader) (*types.Vote, error) {
+	addr := cs.privValidator.GetAddress()
+	valIndex, _ := cs.Validators.GetByAddress(addr)
 	vote := &types.Vote{
-		ValidatorAddress: cs.privValidator.GetAddress(),
-		ValidatorIndex:   cs.privValidatorIndex,
+		ValidatorAddress: addr,
+		ValidatorIndex:   valIndex,
 		Height:           cs.Height,
 		Round:            cs.Round,
 		Type:             type_,
@@ -1535,7 +1519,7 @@ func (cs *ConsensusState) signVote(type_ byte, hash []byte, header types.PartSet
 // sign the vote and publish on internalMsgQueue
 func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header types.PartSetHeader) *types.Vote {
 	// if we don't have a key or we're not in the validator set, do nothing
-	if cs.privValidator == nil || cs.privValidatorIndex < 0 {
+	if cs.privValidator == nil || !cs.Validators.HasAddress(cs.privValidator.GetAddress()) {
 		return nil
 	}
 	vote, err := cs.signVote(type_, hash, header)
