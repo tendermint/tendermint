@@ -1,8 +1,8 @@
 hash: 20cb38481a78b73ba3a42af08e34cd825ddb7c826833d67cc61e45c1b3a4c484
-updated: 2016-11-16T16:25:10.693961906-05:00
+updated: 2016-11-23T18:28:52.925584919-05:00
 imports:
 - name: github.com/btcsuite/btcd
-  version: b134beb3b7809de6370a93cc5f6a684d6942e2e8
+  version: afec1bd1245a4a19e6dfe1306974b733e7cbb9b8
   subpackages:
   - btcec
 - name: github.com/btcsuite/fastsha256
@@ -18,7 +18,7 @@ imports:
   subpackages:
   - proto
 - name: github.com/golang/protobuf
-  version: 224aaba33b1ac32a92a165f27489409fb8133d08
+  version: 8ee79997227bf9b34611aee7946ae64735e6fd93
   subpackages:
   - proto
 - name: github.com/golang/snappy
@@ -28,7 +28,7 @@ imports:
 - name: github.com/mattn/go-colorable
   version: d228849504861217f796da67fae4f6e347643f15
 - name: github.com/mattn/go-isatty
-  version: 66b8e73f3f5cda9f96b69efd03dd3d7fc4a5cdb8
+  version: 30a891c33c7cde7b02a981314b4228ec99380cca
 - name: github.com/spf13/pflag
   version: 5ccb023bc27df288a957c5e994cd44fd19619465
 - name: github.com/syndtr/goleveldb
@@ -58,7 +58,7 @@ imports:
 - name: github.com/tendermint/go-clist
   version: 3baa390bbaf7634251c42ad69a8682e7e3990552
 - name: github.com/tendermint/go-common
-  version: fa3daa7abc253264c916c12fecce3effa01a1287
+  version: 6b4160f2a57487f277c42bf06fd280195dfdb278
   subpackages:
   - test
 - name: github.com/tendermint/go-config
@@ -76,9 +76,9 @@ imports:
 - name: github.com/tendermint/go-logger
   version: cefb3a45c0bf3c493a04e9bcd9b1540528be59f2
 - name: github.com/tendermint/go-merkle
-  version: 05042c6ab9cad51d12e4cecf717ae68e3b1409a8
+  version: bfc4afe28c7a50045d4d1eb043e67460f8a51a4f
 - name: github.com/tendermint/go-p2p
-  version: 62b37014a89b5eddff74844846979d30911cffda
+  version: f173a17ed3e9b341d480b36e5041819c8a5b8350
   subpackages:
   - upnp
 - name: github.com/tendermint/go-rpc
@@ -94,7 +94,7 @@ imports:
   subpackages:
   - term
 - name: github.com/tendermint/tmsp
-  version: 0bdb3b887e70b1ef16d32eece0248ec071fd8490
+  version: 3742e35e6db5dcd7596aac9f661b46f5699ebec8
   subpackages:
   - client
   - example/counter
@@ -103,7 +103,7 @@ imports:
   - server
   - types
 - name: golang.org/x/crypto
-  version: 9477e0b78b9ac3d0b03822fd95422e2fe07627cd
+  version: ede567c8e044a5913dad1d1af3696d9da953104c
   subpackages:
   - curve25519
   - nacl/box
@@ -124,11 +124,11 @@ imports:
   - lex/httplex
   - trace
 - name: golang.org/x/sys
-  version: b699b7032584f0953262cb2788a0ca19bb494703
+  version: 30237cf4eefd639b184d1f2cb77a581ea0be8947
   subpackages:
   - unix
 - name: google.golang.org/grpc
-  version: 941cc894cea3c87a12943fd12b594964541b6d28
+  version: eca2ad68af4d7bf894ada6bd263133f069a441d5
   subpackages:
   - codes
   - credentials

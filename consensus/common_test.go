@@ -3,6 +3,7 @@ package consensus
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"sort"
 	"sync"
 	"testing"
@@ -11,6 +12,7 @@ import (
 	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
 	dbm "github.com/tendermint/go-db"
+	"github.com/tendermint/go-p2p"
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/config/tendermint_test"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -32,6 +34,8 @@ type validatorStub struct {
 	Round  int
 	*types.PrivValidator
 }
+
+var testMinPower = 10
 
 func NewValidatorStub(privValidator *types.PrivValidator, valIndex int) *validatorStub {
 	return &validatorStub{
@@ -266,6 +270,31 @@ func randConsensusNet(nValidators int) []*ConsensusState {
 	return css
 }
 
+// nPeers = nValidators + nNotValidator
+func randConsensusNetWithPeers(nValidators int, nPeers int) []*ConsensusState {
+	genDoc, privVals := randGenesisDoc(nValidators, false, int64(testMinPower))
+	css := make([]*ConsensusState, nPeers)
+	for i := 0; i < nPeers; i++ {
+		db := dbm.NewMemDB() // each state needs its own db
+		state := sm.MakeGenesisState(db, genDoc)
+		state.Save()
+		thisConfig := tendermint_test.ResetConfig(Fmt("consensus_reactor_test_%d", i))
+		EnsureDir(thisConfig.GetString("cs_wal_dir"), 0700) // dir for wal
+		var privVal *types.PrivValidator
+		if i < nValidators {
+			privVal = privVals[i]
+		} else {
+			privVal = types.GenPrivValidator()
+			_, tempFilePath := Tempfile("priv_validator_")
+			privVal.SetFile(tempFilePath)
+		}
+
+		dir, _ := ioutil.TempDir("/tmp", "persistent-dummy")
+		css[i] = newConsensusStateWithConfig(thisConfig, state, privVal, dummy.NewPersistentDummyApplication(dir))
+	}
+	return css
+}
+
 func subscribeToVoter(cs *ConsensusState, addr []byte) chan interface{} {
 	voteCh0 := subscribeToEvent(cs.evsw, "tester", types.EventStringVote(), 1)
 	voteCh := make(chan interface{})
@@ -324,4 +353,17 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 func startTestRound(cs *ConsensusState, height, round int) {
 	cs.enterNewRound(height, round)
 	cs.startRoutines(0)
+}
+
+//--------------------------------
+// reactor stuff
+
+func getSwitchIndex(switches []*p2p.Switch, peer *p2p.Peer) int {
+	for i, s := range switches {
+		if bytes.Equal(peer.NodeInfo.PubKey.Address(), s.NodeInfo().PubKey.Address()) {
+			return i
+		}
+	}
+	panic("didnt find peer in switches")
+	return -1
 }

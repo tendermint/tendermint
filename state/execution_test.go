@@ -8,6 +8,7 @@ import (
 
 	"github.com/tendermint/tendermint/config/tendermint_test"
 	//	. "github.com/tendermint/go-common"
+	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-crypto"
 	dbm "github.com/tendermint/go-db"
 	"github.com/tendermint/tendermint/proxy"
@@ -23,9 +24,15 @@ var (
 	testPartSize = 65536
 )
 
+//---------------------------------------
+// Test block execution
+
 func TestExecBlock(t *testing.T) {
 	// TODO
 }
+
+//---------------------------------------
+// Test handshake/replay
 
 // Sync from scratch
 func TestHandshakeReplayAll(t *testing.T) {
@@ -51,7 +58,7 @@ func TestHandshakeReplayNone(t *testing.T) {
 func testHandshakeReplay(t *testing.T, n int) {
 	config := tendermint_test.ResetConfig("proxy_test_")
 
-	state, store := stateAndStore()
+	state, store := stateAndStore(config)
 	clientCreator := proxy.NewLocalClientCreator(dummy.NewPersistentDummyApplication(path.Join(config.GetString("db_dir"), "1")))
 	clientCreator2 := proxy.NewLocalClientCreator(dummy.NewPersistentDummyApplication(path.Join(config.GetString("db_dir"), "2")))
 	proxyApp := proxy.NewAppConns(config, clientCreator, NewHandshaker(config, state, store))
@@ -69,7 +76,7 @@ func testHandshakeReplay(t *testing.T, n int) {
 		if _, err := proxyApp.Start(); err != nil {
 			t.Fatalf("Error starting proxy app connections: %v", err)
 		}
-		state2, _ := stateAndStore()
+		state2, _ := stateAndStore(config)
 		for i := 0; i < n; i++ {
 			block := chain[i]
 			err := state2.ApplyBlock(nil, proxyApp.Consensus(), block, block.MakePartSet(testPartSize).Header(), mempool)
@@ -105,6 +112,7 @@ func testHandshakeReplay(t *testing.T, n int) {
 }
 
 //--------------------------
+// utils for making blocks
 
 // make some bogus txs
 func txsFunc(blockNum int) (txs []types.Tx) {
@@ -167,7 +175,7 @@ func makeBlockchain(t *testing.T, proxyApp proxy.AppConns, state *State) (blockc
 }
 
 // fresh state and mock store
-func stateAndStore() (*State, *mockBlockStore) {
+func stateAndStore(config cfg.Config) (*State, *mockBlockStore) {
 	stateDB := dbm.NewMemDB()
 	return MakeGenesisState(stateDB, &types.GenesisDoc{
 		ChainID: chainID,
@@ -175,19 +183,28 @@ func stateAndStore() (*State, *mockBlockStore) {
 			types.GenesisValidator{privKey.PubKey(), 10000, "test"},
 		},
 		AppHash: nil,
-	}), NewMockBlockStore(nil)
+	}), NewMockBlockStore(config, nil)
 }
 
 //----------------------------------
 // mock block store
 
 type mockBlockStore struct {
-	chain []*types.Block
+	config cfg.Config
+	chain  []*types.Block
 }
 
-func NewMockBlockStore(chain []*types.Block) *mockBlockStore {
-	return &mockBlockStore{chain}
+func NewMockBlockStore(config cfg.Config, chain []*types.Block) *mockBlockStore {
+	return &mockBlockStore{config, chain}
 }
 
 func (bs *mockBlockStore) Height() int                       { return len(bs.chain) }
 func (bs *mockBlockStore) LoadBlock(height int) *types.Block { return bs.chain[height-1] }
+func (bs *mockBlockStore) LoadBlockMeta(height int) *types.BlockMeta {
+	block := bs.chain[height-1]
+	return &types.BlockMeta{
+		Hash:        block.Hash(),
+		Header:      block.Header,
+		PartsHeader: block.MakePartSet(bs.config.GetInt("block_part_size")).Header(),
+	}
+}

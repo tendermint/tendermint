@@ -21,6 +21,7 @@ type Block struct {
 	LastCommit *Commit `json:"last_commit"`
 }
 
+// TODO: version
 func MakeBlock(height int, chainID string, txs []Tx, commit *Commit,
 	prevBlockID BlockID, valHash, appHash []byte, partSize int) (*Block, *PartSet) {
 	block := &Block{
@@ -150,14 +151,15 @@ func (b *Block) StringShort() string {
 
 type Header struct {
 	ChainID        string    `json:"chain_id"`
+	Version        string    `json:"version"` // TODO:
 	Height         int       `json:"height"`
 	Time           time.Time `json:"time"`
-	NumTxs         int       `json:"num_txs"`
+	NumTxs         int       `json:"num_txs"` // XXX: Can we get rid of this?
 	LastBlockID    BlockID   `json:"last_block_id"`
-	LastCommitHash []byte    `json:"last_commit_hash"`
-	DataHash       []byte    `json:"data_hash"`
-	ValidatorsHash []byte    `json:"validators_hash"`
-	AppHash        []byte    `json:"app_hash"` // state merkle root of txs from the previous block
+	LastCommitHash []byte    `json:"last_commit_hash"` // commit from validators from the last block
+	DataHash       []byte    `json:"data_hash"`        // transactions
+	ValidatorsHash []byte    `json:"validators_hash"`  // validators for the current block
+	AppHash        []byte    `json:"app_hash"`         // state after txs from the previous block
 }
 
 // NOTE: hash is nil if required fields are missing.
@@ -291,6 +293,8 @@ func (commit *Commit) ValidateBasic() error {
 		return errors.New("No precommits in commit")
 	}
 	height, round := commit.Height(), commit.Round()
+
+	// validate the precommits
 	for _, precommit := range commit.Precommits {
 		// It's OK for precommits to be missing.
 		if precommit == nil {
