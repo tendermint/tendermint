@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"math/rand"
-	crand "crypto/rand"
 	"path"
 	"testing"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/tendermint/tendermint/config/tendermint_test"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
+	tmsp "github.com/tendermint/tmsp/types"
 
 	"github.com/tendermint/tmsp/example/counter"
 	"github.com/tendermint/tmsp/example/dummy"
@@ -28,16 +28,7 @@ var (
 	testPartSize = 65536
 )
 
-func randBytes() []byte {
-	n := rand.Intn(10) + 2
-	buf := make([]byte, n)
-	_, err := crand.Read(buf)
-	if err != nil {
-		panic(err)
-	}
-	return bytes.Replace(buf, []byte("="), []byte{100}, -1)
-}
-
+// Copied from consensus package - should eventually move this to a more central package
 func subscribeToEvent(evsw types.EventSwitch, receiver, eventID string, chanCap int) chan interface{} {
 	// listen for event
 	ch := make(chan interface{}, chanCap)
@@ -84,35 +75,44 @@ func TestExecBlock(t *testing.T) {
 
 	blockCount := 10 // arbitrary, was nBlocks+1
 	n := 0
+	// Count valid/invalid txns sent:
 	valtxns := 0
 	invtxns := 0
+	// Count valid/invalid txns registered from events:
+	valregs := 0
+	invregs := 0
 	for i := 1; i <= blockCount; i++ {
 		var txs []types.Tx
+		var txdata types.Tx
+
+		// Create txs/txdata based on whether we want txn to be valid/invalid
 		if valtxns == 0 || rand.Intn(100) < 70 { // 70% valid txns
-			txs = append(txs, types.Tx([]byte{byte(0), byte(valtxns)}))
+			txdata = types.Tx([]byte{byte(0), byte(valtxns)})
+			txs = append(txs, txdata)
 			valtxns++
 		} else {
-			txs = append(txs, types.Tx([]byte{byte(0), byte(0)}))
+			txdata = types.Tx([]byte{byte(0), byte(0)})
+			txs = append(txs, txdata)
 			invtxns++
 		}
-		block, parts := types.MakeBlock(i, chainID, txs, lastCommit, prevBlockID, valHash, state.AppHash, testPartSize)
-		fmt.Println("i =", i)
-		fmt.Println("BlockID:", prevBlockID)
+
 		// Create an event switch to listen for the newly inserted txn
 		eventSwitch := events.NewEventSwitch()
 		_, err := eventSwitch.Start()
 		if err != nil {
 			t.Fatalf("Failed to start switch: %v", err)
 		}
-		//tx := randBytes()
-		eventChannel := subscribeToEvent(eventSwitch, "tester", types.EventStringTx(types.Tx(txs)), 2500)
-		fmt.Println("here01")
+		eventChannel := subscribeToEvent(eventSwitch, "tester", types.EventStringTx(txdata), 2500)
+
+		// Create the block using the txs
+		block, parts := types.MakeBlock(i, chainID, txs, lastCommit, prevBlockID, valHash, state.AppHash, testPartSize)
+		fmt.Println("i =", i)
+		fmt.Println("BlockID:", prevBlockID)
+
 		err2 := state.ApplyBlock(eventSwitch, proxyApp.Consensus(), block, block.MakePartSet(testPartSize).Header(), mempool)
-		fmt.Println("here02")
 		if err2 != nil {
 			t.Fatal(i, err2)
 		}
-		fmt.Println("here03")
 
 		voteSet := types.NewVoteSet(chainID, i, 0, types.VoteTypePrecommit, state.Validators)
 		vote := signCommit(i, 0, block.Hash(), parts.Header())
@@ -120,17 +120,24 @@ func TestExecBlock(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		fmt.Println("here04")
 
-		//blockchain = append(blockchain, block)
 		prevHash = block.Hash()
 		prevParts = parts.Header()
 		lastCommit = voteSet.MakeCommit()
 		prevBlockID = types.BlockID{prevHash, prevParts}
-		fmt.Println("here05")
 
 		select {
-			case <-eventChannel:
+		case res := <-eventChannel:
+			{
+				fmt.Println("Got result: ", res.(types.EventDataTx).Log)
+				if res.(types.EventDataTx).Code == tmsp.CodeType_OK {
+					fmt.Println("Registered a valid transaction.")
+					valregs++
+				} else {
+					fmt.Println("Registered an invalid transaction.")
+					invregs++
+				}
+			}
 		}
 
 		n = i
@@ -145,6 +152,13 @@ func TestExecBlock(t *testing.T) {
 
 	// Valid vs Invalid txns
 	fmt.Println("Issued", valtxns, "valid transactions, ", invtxns, "invalid transactions.")
+	fmt.Println("Registered", valregs, "valid transactions, ", invtxns, "invalid transactions.")
+	if valtxns != valregs {
+		t.Errorf("Registered valid transactions not equal to issued valid transactions.")
+	}
+	if invtxns != invregs {
+		t.Errorf("Registered invalid transactions not equal to issued invalid transactions.")
+	}
 
 	proxyApp.Stop()
 }
