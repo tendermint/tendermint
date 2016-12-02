@@ -92,7 +92,10 @@ func TestAddVote(t *testing.T) {
 		Type:             VoteTypePrevote,
 		BlockID:          BlockID{nil, PartSetHeader{}},
 	}
-	signAddVote(val0, vote, voteSet)
+	_, err := signAddVote(val0, vote, voteSet)
+	if err != nil {
+		t.Error(err)
+	}
 
 	if voteSet.GetByAddress(val0.Address) == nil {
 		t.Errorf("Expected GetByAddress(val0.Address) to be present")
