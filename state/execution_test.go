@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"math/rand"
+	crand "crypto/rand"
 	"path"
 	"testing"
 
-	// . "github.com/tendermint/common"
+	// . "github.com/tendermint/go-common"
 	"github.com/tendermint/go-crypto"
 	dbm "github.com/tendermint/go-db"
 	"github.com/tendermint/go-events"
@@ -26,6 +27,16 @@ var (
 	mempool      = mockMempool{}
 	testPartSize = 65536
 )
+
+func randBytes() []byte {
+	n := rand.Intn(10) + 2
+	buf := make([]byte, n)
+	_, err := crand.Read(buf)
+	if err != nil {
+		panic(err)
+	}
+	return bytes.Replace(buf, []byte("="), []byte{100}, -1)
+}
 
 func subscribeToEvent(evsw types.EventSwitch, receiver, eventID string, chanCap int) chan interface{} {
 	// listen for event
@@ -93,7 +104,8 @@ func TestExecBlock(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to start switch: %v", err)
 		}
-		eventChannel := subscribeToEvent(eventSwitch, "tester", types.EventStringNewBlock(), 1)
+		//tx := randBytes()
+		eventChannel := subscribeToEvent(eventSwitch, "tester", types.EventStringTx(types.Tx(txs)), 2500)
 		fmt.Println("here01")
 		err2 := state.ApplyBlock(eventSwitch, proxyApp.Consensus(), block, block.MakePartSet(testPartSize).Header(), mempool)
 		fmt.Println("here02")
@@ -101,7 +113,6 @@ func TestExecBlock(t *testing.T) {
 			t.Fatal(i, err2)
 		}
 		fmt.Println("here03")
-		<-eventChannel
 
 		voteSet := types.NewVoteSet(chainID, i, 0, types.VoteTypePrecommit, state.Validators)
 		vote := signCommit(i, 0, block.Hash(), parts.Header())
@@ -109,12 +120,18 @@ func TestExecBlock(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		fmt.Println("here04")
 
 		//blockchain = append(blockchain, block)
 		prevHash = block.Hash()
 		prevParts = parts.Header()
 		lastCommit = voteSet.MakeCommit()
 		prevBlockID = types.BlockID{prevHash, prevParts}
+		fmt.Println("here05")
+
+		select {
+			case <-eventChannel:
+		}
 
 		n = i
 	}
