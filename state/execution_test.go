@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path"
 	"testing"
+	"math/rand"
 
 	"github.com/tendermint/tendermint/config/tendermint_test"
 	//	. "github.com/tendermint/go-common"
@@ -12,7 +13,9 @@ import (
 	dbm "github.com/tendermint/go-db"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
+
 	"github.com/tendermint/tmsp/example/dummy"
+	"github.com/tendermint/tmsp/example/counter"
 )
 
 var (
@@ -23,13 +26,28 @@ var (
 	testPartSize = 65536
 )
 
+// make some valid & invalid txs for TestExecBlock to use
+func txValidFunc(blockNum int) (txs []types.Tx) {
+	iters := 5
+	for i := 0; i < iters; i++ {
+		// Make sure the txn nonce increments accordingly
+		if rand.Intn(100) < 75 {   // 75% valid txns
+			txs = append(txs, types.Tx([]byte{byte(0), byte((iters*(blockNum-1))+i)}))
+		} else {
+			txs = append(txs, types.Tx([]byte{byte(0), byte(0)}))
+		}
+		//fmt.Println(byte(blockNum+i), " --- ", byte(i))
+	}
+	return txs
+}
+
 // Attempt to test ExecBlock func in execution.go
 func TestExecBlock(t *testing.T) {
-	config := tendermint_test.ResetConfig("proxy_test_")
-
-	// initialize proxy
+	config := tendermint_test.ResetConfig("proxy_test_")   // test name?
 	state, store := stateAndStore()
-	clientCreator := proxy.NewLocalClientCreator(dummy.NewPersistentDummyApplication(path.Join(config.GetString("db_dir"), "1")))
+
+	// Using counter app so we can test valid and invalid transactions
+	clientCreator := proxy.NewLocalClientCreator(counter.NewCounterApplication(true))
 	proxyApp := proxy.NewAppConns(config, clientCreator, NewHandshaker(config, state, store))
 	// Throw error if unable to start
 	if _, err := proxyApp.Start(); err != nil {
@@ -43,14 +61,22 @@ func TestExecBlock(t *testing.T) {
 	valHash := state.Validators.Hash()
 	prevBlockID := types.BlockID{prevHash, prevParts}
 
-	blockCount := 15 // 15 arbitrary, was nBlocks+1
+	blockCount := 10 // arbitrary, was nBlocks+1
 	n := 0
+	valtxns := 0
+	invtxns := 0
 	for i := 1; i <= blockCount; i++ {
-		block, parts := types.MakeBlock(i, chainID, txsFunc(i), lastCommit,
-			prevBlockID, valHash, state.AppHash, testPartSize)
-		fmt.Println(i)
-		fmt.Println(prevBlockID)
-		fmt.Println(block.LastBlockID)
+		var txs []types.Tx
+		if valtxns == 0 || rand.Intn(100) < 70 {   // 70% valid txns
+			txs = append(txs, types.Tx([]byte{byte(0), byte(valtxns)}))
+			valtxns++
+		} else {
+			txs = append(txs, types.Tx([]byte{byte(0), byte(0)}))
+			invtxns++
+		}
+		block, parts := types.MakeBlock(i, chainID, txs, lastCommit, prevBlockID, valHash, state.AppHash, testPartSize)
+		fmt.Println("i =", i)
+		fmt.Println("BlockID:", prevBlockID)
 		err := state.ApplyBlock(nil, proxyApp.Consensus(), block, block.MakePartSet(testPartSize).Header(), mempool)
 		if err != nil {
 			t.Fatal(i, err)
@@ -78,6 +104,9 @@ func TestExecBlock(t *testing.T) {
 	} else {
 		fmt.Println("********************* saved", n, "blocks out of", blockCount, "**************")
 	}
+
+	// Valid vs Invalid txns
+	fmt.Println("Issued", valtxns, "valid transactions, ", invtxns, "invalid transactions.")
 
 	proxyApp.Stop()
 }
