@@ -7,7 +7,7 @@ import (
 	"path"
 	"testing"
 
-	//. "github.com/tendermint/go-common"
+	// . "github.com/tendermint/common"
 	"github.com/tendermint/go-crypto"
 	dbm "github.com/tendermint/go-db"
 	"github.com/tendermint/go-events"
@@ -26,6 +26,15 @@ var (
 	mempool      = mockMempool{}
 	testPartSize = 65536
 )
+
+func subscribeToEvent(evsw types.EventSwitch, receiver, eventID string, chanCap int) chan interface{} {
+	// listen for event
+	ch := make(chan interface{}, chanCap)
+	types.AddListenerForEvent(evsw, receiver, eventID, func(data types.TMEventData) {
+		ch <- data
+	})
+	return ch
+}
 
 // make some valid & invalid txs for TestExecBlock to use
 func txValidFunc(blockNum int) (txs []types.Tx) {
@@ -85,10 +94,14 @@ func TestExecBlock(t *testing.T) {
 			t.Fatalf("Failed to start switch: %v", err)
 		}
 		eventChannel := subscribeToEvent(eventSwitch, "tester", types.EventStringNewBlock(), 1)
+		fmt.Println("here01")
 		err2 := state.ApplyBlock(eventSwitch, proxyApp.Consensus(), block, block.MakePartSet(testPartSize).Header(), mempool)
+		fmt.Println("here02")
 		if err2 != nil {
 			t.Fatal(i, err2)
 		}
+		fmt.Println("here03")
+		<-eventChannel
 
 		voteSet := types.NewVoteSet(chainID, i, 0, types.VoteTypePrecommit, state.Validators)
 		vote := signCommit(i, 0, block.Hash(), parts.Header())
