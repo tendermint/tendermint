@@ -3,9 +3,9 @@ package state
 import (
 	"bytes"
 	"fmt"
+	"math/rand"
 	"path"
 	"testing"
-	"math/rand"
 
 	"github.com/tendermint/tendermint/config/tendermint_test"
 	//	. "github.com/tendermint/go-common"
@@ -14,8 +14,8 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 
-	"github.com/tendermint/tmsp/example/dummy"
 	"github.com/tendermint/tmsp/example/counter"
+	"github.com/tendermint/tmsp/example/dummy"
 )
 
 var (
@@ -31,8 +31,8 @@ func txValidFunc(blockNum int) (txs []types.Tx) {
 	iters := 5
 	for i := 0; i < iters; i++ {
 		// Make sure the txn nonce increments accordingly
-		if rand.Intn(100) < 75 {   // 75% valid txns
-			txs = append(txs, types.Tx([]byte{byte(0), byte((iters*(blockNum-1))+i)}))
+		if rand.Intn(100) < 75 { // 75% valid txns
+			txs = append(txs, types.Tx([]byte{byte(0), byte((iters * (blockNum - 1)) + i)}))
 		} else {
 			txs = append(txs, types.Tx([]byte{byte(0), byte(0)}))
 		}
@@ -43,7 +43,7 @@ func txValidFunc(blockNum int) (txs []types.Tx) {
 
 // Attempt to test ExecBlock func in execution.go
 func TestExecBlock(t *testing.T) {
-	config := tendermint_test.ResetConfig("proxy_test_")   // test name?
+	config := tendermint_test.ResetConfig("proxy_test_") // test name?
 	state, store := stateAndStore()
 
 	// Using counter app so we can test valid and invalid transactions
@@ -67,7 +67,7 @@ func TestExecBlock(t *testing.T) {
 	invtxns := 0
 	for i := 1; i <= blockCount; i++ {
 		var txs []types.Tx
-		if valtxns == 0 || rand.Intn(100) < 70 {   // 70% valid txns
+		if valtxns == 0 || rand.Intn(100) < 70 { // 70% valid txns
 			txs = append(txs, types.Tx([]byte{byte(0), byte(valtxns)}))
 			valtxns++
 		} else {
