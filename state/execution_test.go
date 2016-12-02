@@ -7,10 +7,11 @@ import (
 	"path"
 	"testing"
 
-	"github.com/tendermint/tendermint/config/tendermint_test"
-	//	. "github.com/tendermint/go-common"
+	//. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-crypto"
 	dbm "github.com/tendermint/go-db"
+	"github.com/tendermint/go-events"
+	"github.com/tendermint/tendermint/config/tendermint_test"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 
@@ -77,9 +78,16 @@ func TestExecBlock(t *testing.T) {
 		block, parts := types.MakeBlock(i, chainID, txs, lastCommit, prevBlockID, valHash, state.AppHash, testPartSize)
 		fmt.Println("i =", i)
 		fmt.Println("BlockID:", prevBlockID)
-		err := state.ApplyBlock(nil, proxyApp.Consensus(), block, block.MakePartSet(testPartSize).Header(), mempool)
+		// Create an event switch to listen for the newly inserted txn
+		eventSwitch := events.NewEventSwitch()
+		_, err := eventSwitch.Start()
 		if err != nil {
-			t.Fatal(i, err)
+			t.Fatalf("Failed to start switch: %v", err)
+		}
+		eventChannel := subscribeToEvent(eventSwitch, "tester", types.EventStringNewBlock(), 1)
+		err2 := state.ApplyBlock(eventSwitch, proxyApp.Consensus(), block, block.MakePartSet(testPartSize).Header(), mempool)
+		if err2 != nil {
+			t.Fatal(i, err2)
 		}
 
 		voteSet := types.NewVoteSet(chainID, i, 0, types.VoteTypePrecommit, state.Validators)
