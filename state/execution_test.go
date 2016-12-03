@@ -38,21 +38,6 @@ func subscribeToEvent(evsw types.EventSwitch, receiver, eventID string, chanCap 
 	return ch
 }
 
-// make some valid & invalid txs for TestExecBlock to use
-func txValidFunc(blockNum int) (txs []types.Tx) {
-	iters := 5
-	for i := 0; i < iters; i++ {
-		// Make sure the txn nonce increments accordingly
-		if rand.Intn(100) < 75 { // 75% valid txns
-			txs = append(txs, types.Tx([]byte{byte(0), byte((iters * (blockNum - 1)) + i)}))
-		} else {
-			txs = append(txs, types.Tx([]byte{byte(0), byte(0)}))
-		}
-		//fmt.Println(byte(blockNum+i), " --- ", byte(i))
-	}
-	return txs
-}
-
 // Attempt to test ExecBlock func in execution.go
 func TestExecBlock(t *testing.T) {
 	config := tendermint_test.ResetConfig("proxy_test_") // test name?
