@@ -10,9 +10,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	flow "github.com/tendermint/flowcontrol"
 	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
+	flow "github.com/tendermint/go-flowrate/flowrate"
 	"github.com/tendermint/go-wire" //"github.com/tendermint/log15"
 )
 
