@@ -163,6 +163,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	bs.db.Set(calcBlockCommitKey(height-1), blockCommitBytes)
 
 	// Save seen commit (seen +2/3 precommits for block)
+	// NOTE: we can delete this at a later height
 	seenCommitBytes := wire.BinaryBytes(seenCommit)
 	bs.db.Set(calcSeenCommitKey(height), seenCommitBytes)
 

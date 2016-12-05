@@ -12,14 +12,21 @@ import (
 
 // Volatile state for each Validator
 // TODO: make non-volatile identity
-// 	- Remove LastCommitHeight, send bitarray of vals that signed in BeginBlock
 // 	- Remove Accum - it can be computed, and now valset becomes identifying
 type Validator struct {
-	Address          []byte        `json:"address"`
-	PubKey           crypto.PubKey `json:"pub_key"`
-	LastCommitHeight int           `json:"last_commit_height"`
-	VotingPower      int64         `json:"voting_power"`
-	Accum            int64         `json:"accum"`
+	Address     []byte        `json:"address"`
+	PubKey      crypto.PubKey `json:"pub_key"`
+	VotingPower int64         `json:"voting_power"`
+	Accum       int64         `json:"accum"`
+}
+
+func NewValidator(pubKey crypto.PubKey, votingPower int64) *Validator {
+	return &Validator{
+		Address:     pubKey.Address(),
+		PubKey:      pubKey,
+		VotingPower: votingPower,
+		Accum:       0,
+	}
 }
 
 // Creates a new copy of the validator so we can mutate accum.
@@ -57,7 +64,6 @@ func (v *Validator) String() string {
 	return fmt.Sprintf("Validator{%X %v %v VP:%v A:%v}",
 		v.Address,
 		v.PubKey,
-		v.LastCommitHeight,
 		v.VotingPower,
 		v.Accum)
 }
@@ -96,12 +102,6 @@ func RandValidator(randPower bool, minPower int64) (*Validator, *PrivValidator) 
 	if randPower {
 		votePower += int64(RandUint32())
 	}
-	val := &Validator{
-		Address:          privVal.Address,
-		PubKey:           privVal.PubKey,
-		LastCommitHeight: 0,
-		VotingPower:      votePower,
-		Accum:            0,
-	}
+	val := NewValidator(privVal.PubKey, votePower)
 	return val, privVal
 }

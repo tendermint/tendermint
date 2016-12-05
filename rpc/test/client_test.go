@@ -5,13 +5,14 @@ import (
 	crand "crypto/rand"
 	"fmt"
 	"math/rand"
-	"strings"
 	"testing"
 	"time"
 
 	. "github.com/tendermint/go-common"
+	"github.com/tendermint/go-wire"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tmsp/example/dummy"
 	tmsp "github.com/tendermint/tmsp/types"
 )
 
@@ -156,9 +157,14 @@ func testTMSPQuery(t *testing.T, statusI interface{}, value []byte) {
 	if query.Result.IsErr() {
 		panic(Fmt("Query returned an err: %v", query))
 	}
+
+	qResult := new(dummy.QueryResult)
+	if err := wire.ReadJSONBytes(query.Result.Data, qResult); err != nil {
+		t.Fatal(err)
+	}
 	// XXX: specific to value returned by the dummy
-	if !strings.Contains(string(query.Result.Data), "exists=true") {
-		panic(Fmt("Query error. Expected to find 'exists=true'. Got: %s", query.Result.Data))
+	if qResult.Exists != true {
+		panic(Fmt("Query error. Expected to find 'exists=true'. Got: %v", qResult))
 	}
 }
 
@@ -187,9 +193,14 @@ func TestJSONBroadcastTxCommit(t *testing.T) {
 
 func testBroadcastTxCommit(t *testing.T, resI interface{}, tx []byte) {
 	tmRes := resI.(*ctypes.TMResult)
-	res := (*tmRes).(*ctypes.ResultBroadcastTx)
-	if res.Code != tmsp.CodeType_OK {
-		panic(Fmt("BroadcastTxCommit got non-zero exit code: %v. %X; %s", res.Code, res.Data, res.Log))
+	res := (*tmRes).(*ctypes.ResultBroadcastTxCommit)
+	checkTx := res.CheckTx
+	if checkTx.Code != tmsp.CodeType_OK {
+		panic(Fmt("BroadcastTxCommit got non-zero exit code from CheckTx: %v. %X; %s", checkTx.Code, checkTx.Data, checkTx.Log))
+	}
+	appendTx := res.AppendTx
+	if appendTx.Code != tmsp.CodeType_OK {
+		panic(Fmt("BroadcastTxCommit got non-zero exit code from CheckTx: %v. %X; %s", appendTx.Code, appendTx.Data, appendTx.Log))
 	}
 	mem := node.MempoolReactor().Mempool
 	if mem.Size() != 0 {

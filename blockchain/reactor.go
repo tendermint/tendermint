@@ -221,7 +221,7 @@ FOR_LOOP:
 					// We need both to sync the first block.
 					break SYNC_LOOP
 				}
-				firstParts := first.MakePartSet(bcR.config.GetInt("block_part_size"))
+				firstParts := first.MakePartSet(bcR.config.GetInt("block_part_size")) // TODO: put part size in parts header?
 				firstPartsHeader := firstParts.Header()
 				// Finally, verify the first block using the second's commit
 				// NOTE: we can probably make this more efficient, but note that calling
@@ -236,6 +236,7 @@ FOR_LOOP:
 				} else {
 					bcR.pool.PopRequest()
 					// TODO: use ApplyBlock instead of Exec/Commit/SetAppHash/Save
+					// TODO: should we be firing events? need to fire NewBlock events manually ...
 					err := bcR.state.ExecBlock(bcR.evsw, bcR.proxyAppConn, first, firstPartsHeader)
 					if err != nil {
 						// TODO This is bad, are we zombie?

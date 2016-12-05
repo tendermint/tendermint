@@ -21,6 +21,7 @@ import (
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
 	rpccore "github.com/tendermint/tendermint/rpc/core"
+	grpccore "github.com/tendermint/tendermint/rpc/grpc"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
@@ -101,10 +102,10 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreato
 
 	// Make ConsensusReactor
 	consensusState := consensus.NewConsensusState(config, state.Copy(), proxyApp.Consensus(), blockStore, mempool)
-	consensusReactor := consensus.NewConsensusReactor(consensusState, fastSync)
 	if privValidator != nil {
-		consensusReactor.SetPrivValidator(privValidator)
+		consensusState.SetPrivValidator(privValidator)
 	}
+	consensusReactor := consensus.NewConsensusReactor(consensusState, fastSync)
 
 	// Make p2p network switch
 	sw := p2p.NewSwitch(config.GetConfig("p2p"))
@@ -218,6 +219,17 @@ func (n *Node) StartRPC() ([]net.Listener, error) {
 		}
 		listeners[i] = listener
 	}
+
+	// we expose a simplified api over grpc for convenience to app devs
+	grpcListenAddr := n.config.GetString("grpc_laddr")
+	if grpcListenAddr != "" {
+		listener, err := grpccore.StartGRPCServer(grpcListenAddr)
+		if err != nil {
+			return nil, err
+		}
+		listeners = append(listeners, listener)
+	}
+
 	return listeners, nil
 }
 

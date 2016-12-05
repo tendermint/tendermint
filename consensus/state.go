@@ -221,11 +221,12 @@ type PrivValidator interface {
 type ConsensusState struct {
 	BaseService
 
-	config        cfg.Config
-	proxyAppConn  proxy.AppConnConsensus
-	blockStore    *bc.BlockStore
-	mempool       *mempl.Mempool
-	privValidator PrivValidator
+	config       cfg.Config
+	proxyAppConn proxy.AppConnConsensus
+	blockStore   *bc.BlockStore
+	mempool      *mempl.Mempool
+
+	privValidator PrivValidator // for signing votes
 
 	mtx sync.Mutex
 	RoundState
@@ -313,6 +314,7 @@ func (cs *ConsensusState) GetValidators() (int, []*types.Validator) {
 	return cs.state.LastBlockHeight, cs.state.Validators.Copy().Validators
 }
 
+// Sets our private validator account for signing votes.
 func (cs *ConsensusState) SetPrivValidator(priv PrivValidator) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
@@ -1253,6 +1255,8 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 
 	// Save to blockStore.
 	if cs.blockStore.Height() < block.Height {
+		// NOTE: the seenCommit is local justification to commit this block,
+		// but may differ from the LastCommit included in the next block
 		precommits := cs.Votes.Precommits(cs.CommitRound)
 		seenCommit := precommits.MakeCommit()
 		cs.blockStore.SaveBlock(block, blockParts, seenCommit)
@@ -1270,7 +1274,10 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	// Execute and commit the block, and update the mempool.
 	// All calls to the proxyAppConn should come here.
 	// NOTE: the block.AppHash wont reflect these txs until the next block
-	stateCopy.ApplyBlock(eventCache, cs.proxyAppConn, block, blockParts.Header(), cs.mempool)
+	err := stateCopy.ApplyBlock(eventCache, cs.proxyAppConn, block, blockParts.Header(), cs.mempool)
+	if err != nil {
+		// TODO!
+	}
 
 	fail.Fail() // XXX
 
@@ -1498,7 +1505,6 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerKey string) (added bool,
 }
 
 func (cs *ConsensusState) signVote(type_ byte, hash []byte, header types.PartSetHeader) (*types.Vote, error) {
-	// TODO: store our index in the cs so we don't have to do this every time
 	addr := cs.privValidator.GetAddress()
 	valIndex, _ := cs.Validators.GetByAddress(addr)
 	vote := &types.Vote{
@@ -1515,6 +1521,7 @@ func (cs *ConsensusState) signVote(type_ byte, hash []byte, header types.PartSet
 
 // sign the vote and publish on internalMsgQueue
 func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header types.PartSetHeader) *types.Vote {
+	// if we don't have a key or we're not in the validator set, do nothing
 	if cs.privValidator == nil || !cs.Validators.HasAddress(cs.privValidator.GetAddress()) {
 		return nil
 	}

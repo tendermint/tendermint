@@ -77,6 +77,24 @@ function counter_over_grpc() {
 	kill -9 $pid_counter $pid_tendermint
 }
 
+function counter_over_grpc_grpc() {
+	rm -rf $TMROOT
+	tendermint init
+	echo "Starting counter and tendermint"
+	counter --serial --tmsp grpc > /dev/null &
+	pid_counter=$!
+	sleep 1
+	GRPC_PORT=36656
+	tendermint node --tmsp grpc --grpc_laddr tcp://localhost:$GRPC_PORT > tendermint.log &
+	pid_tendermint=$!
+	sleep 5
+
+	echo "running test"
+	GRPC_BROADCAST_TX=true bash counter_test.sh "Counter over GRPC via GRPC BroadcastTx"
+
+	kill -9 $pid_counter $pid_tendermint
+}
+
 cd $GOPATH/src/github.com/tendermint/tendermint/test/app
 
 case "$1" in 
@@ -92,6 +110,9 @@ case "$1" in
 	"counter_over_grpc")
 		counter_over_grpc
 		;;
+	"counter_over_grpc_grpc")
+		counter_over_grpc_grpc
+		;;
 	*)
 		echo "Running all"
 		dummy_over_socket
@@ -101,5 +122,7 @@ case "$1" in
 		counter_over_socket
 		echo ""
 		counter_over_grpc
+		echo ""
+		counter_over_grpc_grpc
 esac
 
