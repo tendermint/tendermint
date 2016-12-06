@@ -52,11 +52,11 @@ imports:
   - edwards25519
   - extra25519
 - name: github.com/tendermint/go-autofile
-  version: 63186e34b33d78ae47fb0d25e5717b307fdf3603
+  version: 0416e0aa9c68205aa44844096f9f151ada9d0405
 - name: github.com/tendermint/go-clist
   version: 3baa390bbaf7634251c42ad69a8682e7e3990552
 - name: github.com/tendermint/go-common
-  version: 6b4160f2a57487f277c42bf06fd280195dfdb278
+  version: 70e694ee76f09058ea38c9ba81b4aa621bd54df1
   subpackages:
   - test
 - name: github.com/tendermint/go-config
@@ -72,7 +72,7 @@ imports:
 - name: github.com/tendermint/go-logger
   version: cefb3a45c0bf3c493a04e9bcd9b1540528be59f2
 - name: github.com/tendermint/go-merkle
-  version: bfc4afe28c7a50045d4d1eb043e67460f8a51a4f
+  version: 8bbe6968f21c1c8a3dcdd2f1ca2a87009a9ec912
 - name: github.com/tendermint/go-p2p
   version: 67963ab800a72e91fecfb954e489b21aa906171a
   subpackages:
