@@ -29,8 +29,8 @@ dependencies:
 
 test:
   override:
-    - "cd $REPO && make test_integrations"
-      timeout: 1200
+    - "cd $REPO && make test_integrations":
+        timeout: 1200
   post:
     - "cd $REPO && bash <(curl -s https://codecov.io/bash)"
 
