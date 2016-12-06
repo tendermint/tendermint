@@ -51,8 +51,6 @@ imports:
   subpackages:
   - edwards25519
   - extra25519
-- name: github.com/tendermint/flowcontrol
-  version: 925bee8f392c28190889746f3943fe3793fb4256
 - name: github.com/tendermint/go-autofile
   version: 63186e34b33d78ae47fb0d25e5717b307fdf3603
 - name: github.com/tendermint/go-clist
@@ -71,8 +69,6 @@ imports:
   version: 1c85cb98a4e8ca9e92fe585bc9687fd69b98f841
 - name: github.com/tendermint/go-flowrate
   version: a20c98e61957faa93b4014fbd902f20ab9317a6a
-  subpackages:
-  - flowrate
 - name: github.com/tendermint/go-logger
   version: cefb3a45c0bf3c493a04e9bcd9b1540528be59f2
 - name: github.com/tendermint/go-merkle

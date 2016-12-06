@@ -6,7 +6,7 @@ import:
 - package: github.com/gorilla/websocket
 - package: github.com/spf13/pflag
 - package: github.com/tendermint/ed25519
-- package: github.com/tendermint/flowcontrol
+- package: github.com/tendermint/go-flowrate
 - package: github.com/tendermint/go-autofile
 - package: github.com/tendermint/go-clist
 - package: github.com/tendermint/go-common
