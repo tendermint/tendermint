@@ -17,7 +17,7 @@
 
 > query abc
 -> code: OK
--> data: {{"index":0,"value":"abc","exists":true}}
+-> data: {Index=0 value=abc exists=true}
 
 > append_tx def=xyz
 -> code: OK
@@ -27,5 +27,5 @@
 
 > query def
 -> code: OK
--> data: {{"index":1,"value":"xyz","exists":true}}
+-> data: {Index=1 value=xyz exists=true}
 

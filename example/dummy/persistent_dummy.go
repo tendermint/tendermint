@@ -35,7 +35,7 @@ func NewPersistentDummyApplication(dbDir string) *PersistentDummyApplication {
 	db := dbm.NewDB("dummy", "leveldb", dbDir)
 	lastBlock := LoadLastBlock(db)
 
-	stateTree := merkle.NewIAVLTree(0, ".", db)
+	stateTree := merkle.NewIAVLTree(0, db)
 	stateTree.Load(lastBlock.AppHash)
 
 	log.Notice("Loaded state", "block", lastBlock.BlockHeight, "root", stateTree.Hash())

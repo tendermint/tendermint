@@ -14,7 +14,7 @@ type DummyApplication struct {
 }
 
 func NewDummyApplication() *DummyApplication {
-	state := merkle.NewIAVLTree(0, ".", nil)
+	state := merkle.NewIAVLTree(0, nil)
 	return &DummyApplication{state: state}
 }
 

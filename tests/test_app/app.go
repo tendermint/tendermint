@@ -17,6 +17,7 @@ func StartApp(tmspApp string) *process.Process {
 	// Start the app
 	//outBuf := NewBufferCloser(nil)
 	proc, err := process.StartProcess("tmsp_app",
+		"",
 		"bash",
 		[]string{"-c", tmspApp},
 		nil,
