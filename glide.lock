@@ -64,7 +64,7 @@ imports:
 - name: github.com/tendermint/go-crypto
   version: 4b11d62bdb324027ea01554e5767b71174680ba0
 - name: github.com/tendermint/go-db
-  version: 31fdd21c7eaeed53e0ea7ca597fb1e960e2988a5
+  version: 5e2a1d3e300743380a329499804dde6bfb0af7d5
 - name: github.com/tendermint/go-events
   version: 1c85cb98a4e8ca9e92fe585bc9687fd69b98f841
 - name: github.com/tendermint/go-flowrate
@@ -90,7 +90,7 @@ imports:
   subpackages:
   - term
 - name: github.com/tendermint/tmsp
-  version: 40448a3897dc870cc8e57a41a1e2872e976de539
+  version: 5e83e481bf4583f432e89805bd7486ef63f3d08f
   subpackages:
   - client
   - example/counter
