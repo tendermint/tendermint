@@ -19,7 +19,7 @@ func NewDummyApplication() *DummyApplication {
 }
 
 func (app *DummyApplication) Info() (string, *types.TMSPInfo, *types.LastBlockInfo, *types.ConfigInfo) {
-	return Fmt("size:%v", app.state.Size()), nil, nil, nil
+	return Fmt("{\"size\":%v}", app.state.Size()), nil, nil, nil
 }
 
 func (app *DummyApplication) SetOption(key string, value string) (log string) {

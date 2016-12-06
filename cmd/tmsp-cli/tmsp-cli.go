@@ -234,7 +234,7 @@ func cmdCheckTx(c *cli.Context) error {
 // Get application Merkle root hash
 func cmdCommit(c *cli.Context) error {
 	res := client.CommitSync()
-	printResponse(c, res, Fmt("%X", res.Data), false)
+	printResponse(c, res, Fmt("0x%X", res.Data), false)
 	return nil
 }
 
@@ -264,7 +264,7 @@ func printResponse(c *cli.Context, res types.Result, s string, printCode bool) {
 		fmt.Printf("-> error: %s\n", res.Error)
 	}*/
 	if s != "" {
-		fmt.Printf("-> data: {%s}\n", s)
+		fmt.Printf("-> data: %s\n", s)
 	}
 	if res.Log != "" {
 		fmt.Printf("-> log: %s\n", res.Log)

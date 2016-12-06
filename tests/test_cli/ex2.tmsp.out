@@ -1,5 +1,5 @@
 > set_option serial on
--> data: {serial=on}
+-> data: serial=on
 
 > check_tx 0x00
 -> code: OK
@@ -22,5 +22,5 @@
 -> log: Invalid nonce. Expected 2, got 4
 
 > info 
--> data: {hashes:0, txs:2}
+-> data: {"hashes":0,"txs":2}
 
