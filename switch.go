@@ -483,13 +483,23 @@ func MakeConnectedSwitches(n int, initSwitch func(int, *Switch) *Switch, connect
 }
 
 // Will connect switches i and j via net.Pipe()
+// Blocks until a conection is established.
 // NOTE: caller ensures i and j are within bounds
 func Connect2Switches(switches []*Switch, i, j int) {
 	switchI := switches[i]
 	switchJ := switches[j]
 	c1, c2 := net.Pipe()
-	go switchI.AddPeerWithConnection(c1, false) // AddPeer is blocking, requires handshake.
-	go switchJ.AddPeerWithConnection(c2, true)
+	doneCh := make(chan struct{})
+	go func() {
+		switchI.AddPeerWithConnection(c1, false) // AddPeer is blocking, requires handshake.
+		doneCh <- struct{}{}
+	}()
+	go func() {
+		switchJ.AddPeerWithConnection(c2, true)
+		doneCh <- struct{}{}
+	}()
+	<-doneCh
+	<-doneCh
 }
 
 func StartSwitches(switches []*Switch) error {
