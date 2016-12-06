@@ -264,6 +264,7 @@ func (s *State) CommitStateUpdateMempool(proxyAppConn proxy.AppConnConsensus, bl
 
 	// Set the state's new AppHash
 	s.AppHash = res.Data
+	s.AppHashIsStale = false
 
 	// Update mempool.
 	mempool.Update(block.Height, block.Txs)

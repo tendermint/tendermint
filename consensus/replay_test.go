@@ -116,7 +116,7 @@ func toPV(pv PrivValidator) *types.PrivValidator {
 
 func setupReplayTest(thisCase *testCase, nLines int, crashAfter bool) (*ConsensusState, chan interface{}, string, string) {
 	fmt.Println("-------------------------------------")
-	log.Notice(Fmt("Starting replay test of %d lines of WAL. Crash after = %v", nLines, crashAfter))
+	log.Notice(Fmt("Starting replay test %v (of %d lines of WAL). Crash after = %v", thisCase.name, nLines, crashAfter))
 
 	lineStep := nLines
 	if crashAfter {

@@ -151,7 +151,6 @@ func (b *Block) StringShort() string {
 
 type Header struct {
 	ChainID        string    `json:"chain_id"`
-	Version        string    `json:"version"` // TODO:
 	Height         int       `json:"height"`
 	Time           time.Time `json:"time"`
 	NumTxs         int       `json:"num_txs"` // XXX: Can we get rid of this?

@@ -78,7 +78,7 @@ imports:
 - name: github.com/tendermint/go-merkle
   version: bfc4afe28c7a50045d4d1eb043e67460f8a51a4f
 - name: github.com/tendermint/go-p2p
-  version: f173a17ed3e9b341d480b36e5041819c8a5b8350
+  version: 67963ab800a72e91fecfb954e489b21aa906171a
   subpackages:
   - upnp
 - name: github.com/tendermint/go-rpc
@@ -94,7 +94,7 @@ imports:
   subpackages:
   - term
 - name: github.com/tendermint/tmsp
-  version: 3742e35e6db5dcd7596aac9f661b46f5699ebec8
+  version: 40448a3897dc870cc8e57a41a1e2872e976de539
   subpackages:
   - client
   - example/counter
