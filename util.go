@@ -5,9 +5,9 @@ import (
 )
 
 // Runs a command and gets the result.
-func Run(command string, args []string) (string, bool, error) {
+func Run(dir string, command string, args []string) (string, bool, error) {
 	outFile := NewBufferCloser(nil)
-	proc, err := StartProcess("", command, args, nil, outFile)
+	proc, err := StartProcess("", dir, command, args, nil, outFile)
 	if err != nil {
 		return "", false, err
 	}

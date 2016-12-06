@@ -24,8 +24,9 @@ type Process struct {
 
 // execPath: command name
 // args: args to command. (should not include name)
-func StartProcess(label string, execPath string, args []string, inFile io.Reader, outFile io.WriteCloser) (*Process, error) {
+func StartProcess(label string, dir string, execPath string, args []string, inFile io.Reader, outFile io.WriteCloser) (*Process, error) {
 	cmd := exec.Command(execPath, args...)
+	cmd.Dir = dir
 	cmd.Stdout = outFile
 	cmd.Stderr = outFile
 	cmd.Stdin = inFile
