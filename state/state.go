@@ -80,7 +80,7 @@ func (s *State) Copy() *State {
 func (s *State) Save() {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
-	s.db.Set(stateKey, s.Bytes())
+	s.db.SetSync(stateKey, s.Bytes())
 }
 
 func (s *State) Equals(s2 *State) bool {
