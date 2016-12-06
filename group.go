@@ -444,6 +444,7 @@ func (g *Group) readGroupInfo() GroupInfo {
 	if err != nil {
 		panic(err)
 	}
+	defer dir.Close()
 	fiz, err := dir.Readdir(0)
 	if err != nil {
 		panic(err)
@@ -598,6 +599,9 @@ func (gr *GroupReader) openFile(index int) error {
 	curReader := bufio.NewReader(curFile)
 
 	// Update gr.cur*
+	if gr.curFile != nil {
+		gr.curFile.Close() // TODO return error?
+	}
 	gr.curIndex = index
 	gr.curFile = curFile
 	gr.curReader = curReader
