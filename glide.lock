@@ -1,5 +1,5 @@
-hash: 20cb38481a78b73ba3a42af08e34cd825ddb7c826833d67cc61e45c1b3a4c484
-updated: 2016-11-23T18:28:52.925584919-05:00
+hash: 2c623322ed0ff7136db54be910e62e679af6e989b18804bb2e6c457fa79533ff
+updated: 2016-12-06T03:58:35.623612916-08:00
 imports:
 - name: github.com/btcsuite/btcd
   version: afec1bd1245a4a19e6dfe1306974b733e7cbb9b8
@@ -24,11 +24,13 @@ imports:
 - name: github.com/golang/snappy
   version: d9eb7a3d35ec988b8585d4a0068e462c27d28380
 - name: github.com/gorilla/websocket
-  version: e8f0f8aaa98dfb6586cbdf2978d511e3199a960a
+  version: 0b847f2facc24ec406130a05bb1bb72d41993b05
+- name: github.com/jmhodges/levigo
+  version: c42d9e0ca023e2198120196f842701bb4c55d7b9
 - name: github.com/mattn/go-colorable
   version: d228849504861217f796da67fae4f6e347643f15
 - name: github.com/mattn/go-isatty
-  version: 30a891c33c7cde7b02a981314b4228ec99380cca
+  version: 66b8e73f3f5cda9f96b69efd03dd3d7fc4a5cdb8
 - name: github.com/spf13/pflag
   version: 5ccb023bc27df288a957c5e994cd44fd19619465
 - name: github.com/syndtr/goleveldb
@@ -69,6 +71,8 @@ imports:
   version: 1c85cb98a4e8ca9e92fe585bc9687fd69b98f841
 - name: github.com/tendermint/go-flowrate
   version: a20c98e61957faa93b4014fbd902f20ab9317a6a
+  subpackages:
+  - flowrate
 - name: github.com/tendermint/go-logger
   version: cefb3a45c0bf3c493a04e9bcd9b1540528be59f2
 - name: github.com/tendermint/go-merkle
@@ -90,7 +94,7 @@ imports:
   subpackages:
   - term
 - name: github.com/tendermint/tmsp
-  version: 5e83e481bf4583f432e89805bd7486ef63f3d08f
+  version: c5f008d60fe9213482debdac4685e973c05b71fc
   subpackages:
   - client
   - example/counter
@@ -124,7 +128,7 @@ imports:
   subpackages:
   - unix
 - name: google.golang.org/grpc
-  version: eca2ad68af4d7bf894ada6bd263133f069a441d5
+  version: 63bd55dfbf781b183216d2dd4433a659c947648a
   subpackages:
   - codes
   - credentials

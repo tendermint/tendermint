@@ -8,34 +8,28 @@ import:
 - package: github.com/tendermint/ed25519
 - package: github.com/tendermint/go-flowrate
 - package: github.com/tendermint/go-autofile
+  version: develop
 - package: github.com/tendermint/go-clist
 - package: github.com/tendermint/go-common
   version: develop
 - package: github.com/tendermint/go-config
 - package: github.com/tendermint/go-crypto
 - package: github.com/tendermint/go-db
+  version: develop
 - package: github.com/tendermint/go-events
+  version: develop
 - package: github.com/tendermint/go-logger
 - package: github.com/tendermint/go-merkle
+  version: develop
 - package: github.com/tendermint/go-p2p
   version: develop
-  subpackages:
-  - upnp
 - package: github.com/tendermint/go-rpc
   version: develop
-  subpackages:
-  - client
-  - server
-  - types
 - package: github.com/tendermint/go-wire
+  version: develop
 - package: github.com/tendermint/log15
 - package: github.com/tendermint/tmsp
   version: develop
-  subpackages:
-  - client
-  - example/dummy
-  - example/nil
-  - types
 - package: golang.org/x/crypto
   subpackages:
   - ripemd160
