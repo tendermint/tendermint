@@ -9,7 +9,6 @@ import (
 	"github.com/tendermint/tendermint/config/tendermint_test"
 
 	"github.com/tendermint/go-events"
-	"github.com/tendermint/go-logger"
 	"github.com/tendermint/go-p2p"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tmsp/example/dummy"
@@ -19,24 +18,11 @@ func init() {
 	config = tendermint_test.ResetConfig("consensus_reactor_test")
 }
 
-func resetConfigTimeouts() {
-	logger.SetLogLevel("info")
-	//config.Set("log_level", "notice")
-	config.Set("timeout_propose", 2000)
-	//	config.Set("timeout_propose_delta", 500)
-	//	config.Set("timeout_prevote", 1000)
-	//	config.Set("timeout_prevote_delta", 500)
-	//	config.Set("timeout_precommit", 1000)
-	//	config.Set("timeout_precommit_delta", 500)
-	config.Set("timeout_commit", 1000)
-}
-
 //----------------------------------------------
 // in-process testnets
 
 // Ensure a testnet makes blocks
 func TestReactor(t *testing.T) {
-	resetConfigTimeouts()
 	N := 4
 	css := randConsensusNet(N)
 	reactors := make([]*ConsensusReactor, N)
@@ -70,7 +56,6 @@ func TestReactor(t *testing.T) {
 // ensure we can make blocks despite cycling a validator set
 
 func TestValidatorSetChanges(t *testing.T) {
-	resetConfigTimeouts()
 	nPeers := 8
 	nVals := 4
 	css := randConsensusNetWithPeers(nVals, nPeers)

@@ -12,6 +12,7 @@ import (
 	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
 	dbm "github.com/tendermint/go-db"
+	"github.com/tendermint/go-logger"
 	"github.com/tendermint/go-p2p"
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/config/tendermint_test"
@@ -264,6 +265,7 @@ func randConsensusNet(nValidators int) []*ConsensusState {
 		state := sm.MakeGenesisState(db, genDoc)
 		state.Save()
 		thisConfig := tendermint_test.ResetConfig(Fmt("consensus_reactor_test_%d", i))
+		resetConfigTimeouts(thisConfig)
 		EnsureDir(thisConfig.GetString("cs_wal_dir"), 0700) // dir for wal
 		css[i] = newConsensusStateWithConfig(thisConfig, state, privVals[i], counter.NewCounterApplication(true))
 	}
@@ -279,6 +281,7 @@ func randConsensusNetWithPeers(nValidators int, nPeers int) []*ConsensusState {
 		state := sm.MakeGenesisState(db, genDoc)
 		state.Save()
 		thisConfig := tendermint_test.ResetConfig(Fmt("consensus_reactor_test_%d", i))
+		resetConfigTimeouts(thisConfig)
 		EnsureDir(thisConfig.GetString("cs_wal_dir"), 0700) // dir for wal
 		var privVal *types.PrivValidator
 		if i < nValidators {
@@ -366,4 +369,19 @@ func getSwitchIndex(switches []*p2p.Switch, peer *p2p.Peer) int {
 	}
 	panic("didnt find peer in switches")
 	return -1
+}
+
+// so we dont violate synchrony assumptions
+// TODO: make tests more robust to this instead (handle round changes)
+// XXX: especially a problem when running the race detector
+func resetConfigTimeouts(config cfg.Config) {
+	logger.SetLogLevel("info")
+	//config.Set("log_level", "notice")
+	config.Set("timeout_propose", 10000) // TODO
+	//	config.Set("timeout_propose_delta", 500)
+	//	config.Set("timeout_prevote", 1000)
+	//	config.Set("timeout_prevote_delta", 500)
+	//	config.Set("timeout_precommit", 1000)
+	//	config.Set("timeout_precommit_delta", 500)
+	config.Set("timeout_commit", 1000)
 }
