@@ -37,6 +37,7 @@ function send_txs(){
 start_procs 1
 send_txs
 kill_procs
+
 start_procs 2
 
 # wait for node to handshake and make a new block
@@ -64,5 +65,6 @@ while [ "$h2" == "$h1" ]; do
 done
 
 kill_procs
+sleep 2
 
 echo "Passed Test: Persistence"
