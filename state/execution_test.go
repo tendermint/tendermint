@@ -20,7 +20,7 @@ var (
 	privKey      = crypto.GenPrivKeyEd25519FromSecret([]byte("handshake_test"))
 	chainID      = "handshake_chain"
 	nBlocks      = 5
-	mempool      = mockMempool{}
+	mempool      = MockMempool{}
 	testPartSize = 65536
 )
 

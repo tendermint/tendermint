@@ -235,23 +235,18 @@ FOR_LOOP:
 					break SYNC_LOOP
 				} else {
 					bcR.pool.PopRequest()
-					// TODO: use ApplyBlock instead of Exec/Commit/SetAppHash/Save
+
+					bcR.store.SaveBlock(first, firstParts, second.LastCommit)
+
 					// TODO: should we be firing events? need to fire NewBlock events manually ...
-					err := bcR.state.ExecBlock(bcR.evsw, bcR.proxyAppConn, first, firstPartsHeader)
+					// NOTE: we could improve performance if we
+					// didn't make the app commit to disk every block
+					// ... but we would need a way to get the hash without it persisting
+					err := bcR.state.ApplyBlock(bcR.evsw, bcR.proxyAppConn, first, firstPartsHeader, sm.MockMempool{})
 					if err != nil {
 						// TODO This is bad, are we zombie?
 						PanicQ(Fmt("Failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
 					}
-					// NOTE: we could improve performance if we
-					// didn't make the app commit to disk every block
-					// ... but we would need a way to get the hash without it persisting
-					res := bcR.proxyAppConn.CommitSync()
-					if res.IsErr() {
-						// TODO Handle gracefully.
-						PanicQ(Fmt("Failed to commit block at application: %v", res))
-					}
-					bcR.store.SaveBlock(first, firstParts, second.LastCommit)
-					bcR.state.AppHash = res.Data
 					bcR.state.Save()
 				}
 			}

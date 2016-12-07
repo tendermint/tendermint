@@ -280,12 +280,12 @@ type Mempool interface {
 	Update(height int, txs []types.Tx)
 }
 
-type mockMempool struct {
+type MockMempool struct {
 }
 
-func (m mockMempool) Lock()                             {}
-func (m mockMempool) Unlock()                           {}
-func (m mockMempool) Update(height int, txs []types.Tx) {}
+func (m MockMempool) Lock()                             {}
+func (m MockMempool) Unlock()                           {}
+func (m MockMempool) Update(height int, txs []types.Tx) {}
 
 //----------------------------------------------------------------
 // Handshake with app to sync to latest state of core by replaying blocks
@@ -386,7 +386,7 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, appConnCon
 		var eventCache types.Fireable // nil
 
 		// replay the block against the actual tendermint state
-		return h.state.ApplyBlock(eventCache, appConnConsensus, block, blockMeta.PartsHeader, mockMempool{})
+		return h.state.ApplyBlock(eventCache, appConnConsensus, block, blockMeta.PartsHeader, MockMempool{})
 
 	} else {
 		// either we're caught up or there's blocks to replay
