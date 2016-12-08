@@ -373,11 +373,11 @@ func getSwitchIndex(switches []*p2p.Switch, peer *p2p.Peer) int {
 
 // so we dont violate synchrony assumptions
 // TODO: make tests more robust to this instead (handle round changes)
-// XXX: especially a problem when running the race detector
+// XXX: especially a problem when running the race detector on circle
 func resetConfigTimeouts(config cfg.Config) {
 	logger.SetLogLevel("info")
 	//config.Set("log_level", "notice")
-	config.Set("timeout_propose", 10000) // TODO
+	config.Set("timeout_propose", 110000) // TODO: crank it to eleventy
 	//	config.Set("timeout_propose_delta", 500)
 	//	config.Set("timeout_prevote", 1000)
 	//	config.Set("timeout_prevote_delta", 500)
