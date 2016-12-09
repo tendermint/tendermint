@@ -49,8 +49,8 @@ imports:
   subpackages:
   - edwards25519
   - extra25519
-- name: github.com/tendermint/flowcontrol
-  version: 84d9671090430e8ec80e35b339907e0579b999eb
+- name: github.com/tendermint/go-flowrate
+  version: a20c98e61957faa93b4014fbd902f20ab9317a6a
 - name: github.com/tendermint/go-clist
   version: 3baa390bbaf7634251c42ad69a8682e7e3990552
 - name: github.com/tendermint/go-common
@@ -70,7 +70,7 @@ imports:
 - name: github.com/tendermint/go-merkle
   version: 05042c6ab9cad51d12e4cecf717ae68e3b1409a8
 - name: github.com/tendermint/go-p2p
-  version: 2cee3646927182964268e63c4248db3def69ac4e
+  version: eab2baa363de01b052b88c559e803776cd2c7dd6
   subpackages:
   - upnp
 - name: github.com/tendermint/go-rpc
