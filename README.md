@@ -1,5 +1,8 @@
 # Tendermint
-Simple, Secure, Scalable Blockchain Platform
+
+[Byzantine-Fault Tolerant](https://en.wikipedia.org/wiki/Byzantine_fault_tolerance)
+[State Machine Replication](https://en.wikipedia.org/wiki/State_machine_replication). 
+Or [Blockchain](https://en.wikipedia.org/wiki/Blockchain_(database)) for short.
 
 [![version](https://img.shields.io/github/tag/tendermint/tendermint.svg)](https://github.com/tendermint/tendermint/releases/latest)
 [![API Reference](
@@ -16,37 +19,44 @@ master    | [![CircleCI](https://circleci.com/gh/tendermint/tendermint/tree/mast
 _NOTE: This is yet pre-alpha non-production-quality software._
 
 Tendermint Core is Byzantine Fault Tolerant (BFT) middleware that takes a state transition machine, written in any programming language,
-and replicates it on many machines.
-See the [application developers guide](https://github.com/tendermint/tendermint/wiki/Application-Developers) to get started.
+and securely replicates it on many machines.
 
-## Contributing
+For more background, see the [introduction](https://tendermint.com/intro).
 
-Yay open source! Please see our [contributing guidelines](https://github.com/tendermint/tendermint/wiki/Contributing).
-
-## Resources
-
-### Tendermint Core
-
-- [Introduction](https://github.com/tendermint/tendermint/wiki/Introduction)
-- [Validators](https://github.com/tendermint/tendermint/wiki/Validators)
-- [Byzantine Consensus Algorithm](https://github.com/tendermint/tendermint/wiki/Byzantine-Consensus-Algorithm)
-- [Block Structure](https://github.com/tendermint/tendermint/wiki/Block-Structure)
-- [RPC](https://github.com/tendermint/tendermint/wiki/RPC)
-- [Genesis](https://github.com/tendermint/tendermint/wiki/Genesis)
-- [Configuration](https://github.com/tendermint/tendermint/wiki/Configuration)
-- [Light Client Protocol](https://github.com/tendermint/tendermint/wiki/Light-Client-Protocol)
-- [Roadmap for V2](https://github.com/tendermint/tendermint/wiki/Roadmap-for-V2)
-
-### Sub-projects
-
-* [TMSP](http://github.com/tendermint/tmsp)
-* [Mintnet](http://github.com/tendermint/mintnet)
-* [Go-Wire](http://github.com/tendermint/go-wire)
-* [Go-P2P](http://github.com/tendermint/go-p2p)
-* [Go-Merkle](http://github.com/tendermint/go-merkle)
+To get started developing applications, see the [application developers guide](https://tendermint.com/docs/guides/app-development).
 
 ## Install
 
 `go get -u github.com/tendermint/tendermint/cmd/tendermint`
 
-For more details, see the [install guide](https://github.com/tendermint/tendermint/wiki/Installation).
+For more details (or if it fails), see the [install guide](https://tendermint.com/intro/getting-started/install).
+
+## Contributing
+
+Yay open source! Please see our [contributing guidelines](https://tendermint.com/guides/contributing).
+
+## Resources
+
+### Tendermint Core
+
+- [Introduction](https://tendermint.com/intro)
+- [Docs](https://tendermint.com/docs)
+- [Software using Tendermint](https://tendermint.com/ecosystem)
+
+### Sub-projects
+
+* [TMSP](http://github.com/tendermint/tmsp)
+* [Ethermint](http://github.com/tendermint/ethermint)
+* [Basecoin](http://github.com/tendermint/basecoin)
+* [Mintnet](http://github.com/tendermint/mintnet)
+* [Go-Wire](http://github.com/tendermint/go-wire)
+* [Go-P2P](http://github.com/tendermint/go-p2p)
+* [Go-Merkle](http://github.com/tendermint/go-merkle)
+
+### More
+
+* [Tendermint Blog](https://tendermint.com/blog)
+* [Cosmos Blog](https://cosmos.network/blog)
+* [Original Whitepaper (out-of-date)](http://www.the-blockchain.com/docs/Tendermint%20Consensus%20without%20Mining.pdf)
+* [Master's Thesis on Tendermint](https://atrium.lib.uoguelph.ca/xmlui/handle/10214/9769)
+
