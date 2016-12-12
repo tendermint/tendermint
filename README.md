@@ -46,14 +46,17 @@ Yay open source! Please see our [contributing guidelines](https://tendermint.com
 ### Sub-projects
 
 * [TMSP](http://github.com/tendermint/tmsp)
-* [Ethermint](http://github.com/tendermint/ethermint)
-* [Basecoin](http://github.com/tendermint/basecoin)
 * [Mintnet](http://github.com/tendermint/mintnet)
 * [Go-Wire](http://github.com/tendermint/go-wire)
 * [Go-P2P](http://github.com/tendermint/go-p2p)
 * [Go-Merkle](http://github.com/tendermint/go-merkle)
 
-### More
+### Applications
+
+* [Ethermint](http://github.com/tendermint/ethermint)
+* [Basecoin](http://github.com/tendermint/basecoin)
+
+### More 
 
 * [Tendermint Blog](https://tendermint.com/blog)
 * [Cosmos Blog](https://cosmos.network/blog)
