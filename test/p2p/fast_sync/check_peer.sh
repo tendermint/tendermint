@@ -2,14 +2,13 @@
 set -eu
 set -o pipefail
 
-###############################################################
-# for each peer:
-# 	kill peer
-# 	bring it back online via fast sync
-# 	check app hash
-###############################################################
-
 ID=$1
+
+###########################################
+#
+# Wait for peer to catchup to other peers
+#
+###########################################
 
 addr=$(test/p2p/ip.sh $ID):46657
 peerID=$(( $(($ID % 4)) + 1  )) # 1->2 ... 3->4 ... 4->1
