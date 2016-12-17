@@ -24,7 +24,7 @@ func init() {
 // Ensure a testnet makes blocks
 func TestReactor(t *testing.T) {
 	N := 4
-	css := randConsensusNet(N)
+	css := randConsensusNet(N, "consensus_reactor_test", crankTimeoutPropose)
 	reactors := make([]*ConsensusReactor, N)
 	eventChans := make([]chan interface{}, N)
 	for i := 0; i < N; i++ {
@@ -58,7 +58,7 @@ func TestReactor(t *testing.T) {
 func TestValidatorSetChanges(t *testing.T) {
 	nPeers := 8
 	nVals := 4
-	css := randConsensusNetWithPeers(nVals, nPeers)
+	css := randConsensusNetWithPeers(nVals, nPeers, "consensus_val_set_changes_test", crankTimeoutPropose)
 	reactors := make([]*ConsensusReactor, nPeers)
 	eventChans := make([]chan interface{}, nPeers)
 	for i := 0; i < nPeers; i++ {
@@ -119,8 +119,10 @@ func TestValidatorSetChanges(t *testing.T) {
 
 func waitForAndValidateBlock(t *testing.T, n int, activeVals map[string]struct{}, eventChans []chan interface{}, css []*ConsensusState, txs ...[]byte) {
 	timeoutWaitGroup(t, n, func(wg *sync.WaitGroup, j int) {
-		newBlock := <-eventChans[j]
-		err := validateBlock(newBlock.(types.EventDataNewBlock).Block, activeVals)
+		newBlockI := <-eventChans[j]
+		newBlock := newBlockI.(types.EventDataNewBlock).Block
+		log.Info("Got block", "height", newBlock.Height, "validator", j)
+		err := validateBlock(newBlock, activeVals)
 		if err != nil {
 			t.Fatal(err)
 		}

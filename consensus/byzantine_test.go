@@ -30,7 +30,7 @@ func init() {
 // Heal partition and ensure A sees the commit
 func TestByzantine(t *testing.T) {
 	N := 4
-	css := randConsensusNet(N)
+	css := randConsensusNet(N, "consensus_byzantine_test", crankTimeoutPropose)
 
 	switches := make([]*p2p.Switch, N)
 	for i := 0; i < N; i++ {

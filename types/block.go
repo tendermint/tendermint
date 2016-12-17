@@ -270,7 +270,7 @@ func (commit *Commit) BitArray() *BitArray {
 			commit.bitArray.SetIndex(i, precommit != nil)
 		}
 	}
-	return commit.bitArray.Copy()
+	return commit.bitArray
 }
 
 func (commit *Commit) GetByIndex(index int) *Vote {

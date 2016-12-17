@@ -257,15 +257,15 @@ func randConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
 	return cs, vss
 }
 
-func randConsensusNet(nValidators int) []*ConsensusState {
+func randConsensusNet(nValidators int, testName string, updateConfig func(cfg.Config)) []*ConsensusState {
 	genDoc, privVals := randGenesisDoc(nValidators, false, 10)
 	css := make([]*ConsensusState, nValidators)
 	for i := 0; i < nValidators; i++ {
 		db := dbm.NewMemDB() // each state needs its own db
 		state := sm.MakeGenesisState(db, genDoc)
 		state.Save()
-		thisConfig := tendermint_test.ResetConfig(Fmt("consensus_reactor_test_%d", i))
-		resetConfigTimeouts(thisConfig)
+		thisConfig := tendermint_test.ResetConfig(Fmt("%s_%d", testName, i))
+		updateConfig(thisConfig)
 		EnsureDir(thisConfig.GetString("cs_wal_dir"), 0700) // dir for wal
 		css[i] = newConsensusStateWithConfig(thisConfig, state, privVals[i], counter.NewCounterApplication(true))
 	}
@@ -273,15 +273,15 @@ func randConsensusNet(nValidators int) []*ConsensusState {
 }
 
 // nPeers = nValidators + nNotValidator
-func randConsensusNetWithPeers(nValidators int, nPeers int) []*ConsensusState {
+func randConsensusNetWithPeers(nValidators, nPeers int, testName string, updateConfig func(cfg.Config)) []*ConsensusState {
 	genDoc, privVals := randGenesisDoc(nValidators, false, int64(testMinPower))
 	css := make([]*ConsensusState, nPeers)
 	for i := 0; i < nPeers; i++ {
 		db := dbm.NewMemDB() // each state needs its own db
 		state := sm.MakeGenesisState(db, genDoc)
 		state.Save()
-		thisConfig := tendermint_test.ResetConfig(Fmt("consensus_reactor_test_%d", i))
-		resetConfigTimeouts(thisConfig)
+		thisConfig := tendermint_test.ResetConfig(Fmt("%s_%d", testName, i))
+		updateConfig(thisConfig)
 		EnsureDir(thisConfig.GetString("cs_wal_dir"), 0700) // dir for wal
 		var privVal *types.PrivValidator
 		if i < nValidators {
@@ -374,14 +374,8 @@ func getSwitchIndex(switches []*p2p.Switch, peer *p2p.Peer) int {
 // so we dont violate synchrony assumptions
 // TODO: make tests more robust to this instead (handle round changes)
 // XXX: especially a problem when running the race detector on circle
-func resetConfigTimeouts(config cfg.Config) {
+func crankTimeoutPropose(config cfg.Config) {
 	logger.SetLogLevel("info")
-	//config.Set("log_level", "notice")
 	config.Set("timeout_propose", 110000) // TODO: crank it to eleventy
-	//	config.Set("timeout_propose_delta", 500)
-	//	config.Set("timeout_prevote", 1000)
-	//	config.Set("timeout_prevote_delta", 500)
-	//	config.Set("timeout_precommit", 1000)
-	//	config.Set("timeout_precommit_delta", 500)
 	config.Set("timeout_commit", 1000)
 }
