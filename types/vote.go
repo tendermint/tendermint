@@ -57,10 +57,10 @@ type Vote struct {
 }
 
 func (vote *Vote) WriteSignBytes(chainID string, w io.Writer, n *int, err *error) {
-	wire.WriteTo([]byte(Fmt(`{"chain_id":"%s"`, chainID)), w, n, err)
-	wire.WriteTo([]byte(`,"vote":{"block_id":`), w, n, err)
-	vote.BlockID.WriteSignBytes(w, n, err)
-	wire.WriteTo([]byte(Fmt(`,"height":%v,"round":%v,"type":%v}}`, vote.Height, vote.Round, vote.Type)), w, n, err)
+	wire.WriteJSON(CanonicalJSONOnceVote{
+		chainID,
+		CanonicalVote(vote),
+	}, w, n, err)
 }
 
 func (vote *Vote) Copy() *Vote {
