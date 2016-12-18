@@ -325,7 +325,7 @@ func (voteSet *VoteSet) BitArrayByBlockID(blockID BlockID) *BitArray {
 	defer voteSet.mtx.Unlock()
 	votesByBlock, ok := voteSet.votesByBlock[blockID.Key()]
 	if ok {
-		return votesByBlock.bitArray
+		return votesByBlock.bitArray.Copy()
 	}
 	return nil
 }

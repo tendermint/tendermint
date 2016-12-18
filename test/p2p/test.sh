@@ -3,36 +3,21 @@ set -eu
 
 DOCKER_IMAGE=$1
 NETWORK_NAME=local_testnet
+N=4
 
 cd $GOPATH/src/github.com/tendermint/tendermint
 
 # start the testnet on a local network
-bash test/p2p/local_testnet.sh $DOCKER_IMAGE $NETWORK_NAME
+bash test/p2p/local_testnet.sh $DOCKER_IMAGE $NETWORK_NAME $N
 
-# test atomic broadcast
-bash test/p2p/client.sh $DOCKER_IMAGE $NETWORK_NAME ab test/p2p/atomic_broadcast/test.sh
+# test basic connectivity and consensus
+# start client container and check the num peers and height for all nodes
+bash test/p2p/client.sh $DOCKER_IMAGE $NETWORK_NAME basic "test/p2p/basic/test.sh $N"
 
-# test fast sync (from current state of network)
-# run it on each of them
-N=4
-for i in `seq 1 $N`; do
-	echo "Testing fasysync on node $i"
+# test atomic broadcast:
+# start client container and test sending a tx to each node
+bash test/p2p/client.sh $DOCKER_IMAGE $NETWORK_NAME ab "test/p2p/atomic_broadcast/test.sh $N"
 
-	# kill peer 
-	set +e # circle sigh :(
-	docker rm -vf local_testnet_$i
-	set -e 
-
-	# restart peer - should have an empty blockchain
-	SEEDS="$(test/p2p/ip.sh 1):46656"
-	for j in `seq 2 $N`; do
-		SEEDS="$SEEDS,$(test/p2p/ip.sh $j):46656"
-	done
-	bash test/p2p/peer.sh $DOCKER_IMAGE $NETWORK_NAME $i $SEEDS
-
-	bash test/p2p/client.sh $DOCKER_IMAGE $NETWORK_NAME fs_$i "test/p2p/fast_sync/test.sh $i"
-done
-echo ""
-echo "PASS"
-echo ""
-
+# test fast sync (from current state of network):
+# for each node, kill it and readd via fast sync
+bash test/p2p/fast_sync/test.sh $DOCKER_IMAGE $NETWORK_NAME $N

@@ -1,4 +1,9 @@
 #! /bin/bash
+
+if [[ "$GRPC_BROADCAST_TX" == "" ]]; then
+	GRPC_BROADCAST_TX=""
+fi
+
 set -u
 
 #####################
@@ -25,34 +30,40 @@ function sendTx() {
 	TX=$1
 	if [[ "$GRPC_BROADCAST_TX" == "" ]]; then
 		RESPONSE=`curl -s localhost:46657/broadcast_tx_commit?tx=\"$TX\"`
-		CODE=`echo $RESPONSE | jq .result[1].code`
 		ERROR=`echo $RESPONSE | jq .error`
 		ERROR=$(echo "$ERROR" | tr -d '"') # remove surrounding quotes
+
+		RESPONSE=`echo $RESPONSE | jq .result[1]`
 	else
 	 	if [ ! -f grpc_client ]; then
  			go build -o grpc_client grpc_client.go 
 	     	fi
 		RESPONSE=`./grpc_client $TX`
-		echo $RESPONSE | jq . &> /dev/null
-		IS_JSON=$?
-		if [[ "$IS_JSON" != "0" ]]; then
-			ERROR="$RESPONSE"
-		else
-			ERROR="" # reset
-		fi
-		APPEND_TX_RESPONSE=`echo $RESPONSE | jq .append_tx`
-		APPEND_TX_CODE=`getCode "$APPEND_TX_RESPONSE"`
-		CHECK_TX_RESPONSE=`echo $RESPONSE | jq .check_tx`
-		CHECK_TX_CODE=`getCode "$CHECK_TX_RESPONSE"`
+		ERROR=""
+	fi
 
-		echo "-------"
-		echo "TX $TX"
-		echo "RESPONSE $RESPONSE"
-		echo "CHECK_TX_RESPONSE $CHECK_TX_RESPONSE"
-		echo "APPEND_TX_RESPONSE $APPEND_TX_RESPONSE"
-		echo "CHECK_TX_CODE $CHECK_TX_CODE"
-		echo "APPEND_TX_CODE $APPEND_TX_CODE"
-		echo "----"
+	echo "RESPONSE"
+	echo $RESPONSE
+
+	echo $RESPONSE | jq . &> /dev/null
+	IS_JSON=$?
+	if [[ "$IS_JSON" != "0" ]]; then
+		ERROR="$RESPONSE"
+	fi
+	APPEND_TX_RESPONSE=`echo $RESPONSE | jq .append_tx`
+	APPEND_TX_CODE=`getCode "$APPEND_TX_RESPONSE"`
+	CHECK_TX_RESPONSE=`echo $RESPONSE | jq .check_tx`
+	CHECK_TX_CODE=`getCode "$CHECK_TX_RESPONSE"`
+
+	echo "-------"
+	echo "TX $TX"
+	echo "RESPONSE $RESPONSE"
+	echo "ERROR $ERROR"
+	echo "----"
+
+	if [[ "$ERROR" != "" ]]; then
+		echo "Unexpected error sending tx ($TX): $ERROR"
+		exit 1
 	fi
 }
 
@@ -66,10 +77,6 @@ if [[ $APPEND_TX_CODE != 0 ]]; then
 	exit 1
 fi
 
-if [[ "$GRPC_BROADCAST_TX" == "" && "$ERROR" != "" ]]; then
-	echo "Unexpected error. Tx $TX should have been included in a block. $ERROR"
-	exit 1
-fi
 
 echo "... sending tx. expect error"
 
@@ -78,11 +85,6 @@ sendTx $TX
 echo "CHECKTX CODE: $CHECK_TX_CODE"
 if [[ "$CHECK_TX_CODE" == 0 ]]; then
 	echo "Got zero exit code for $TX. Expected tx to be rejected by mempool. $RESPONSE"
-	exit 1
-fi
-if [[ "$GRPC_BROADCAST_TX" == "" && "$ERROR" == "" ]]; then
-	echo "Expected to get an error - tx $TX should have been rejected from mempool"
-	echo "$RESPONSE"
 	exit 1
 fi
 
@@ -94,10 +96,6 @@ TX=01
 sendTx $TX
 if [[ $APPEND_TX_CODE != 0 ]]; then
 	echo "Got non-zero exit code for $TX. $RESPONSE"
-	exit 1
-fi
-if [[ "$GRPC_BROADCAST_TX" == "" && "$ERROR" != "" ]]; then
-	echo "Unexpected error. Tx $TX should have been accepted in block. $ERROR"
 	exit 1
 fi
 
@@ -112,10 +110,6 @@ if [[ "$CHECK_TX_CODE" != 0 ]]; then
 fi
 if [[ $APPEND_TX_CODE == 0 ]]; then
 	echo "Got zero exit code for $TX. Should have been bad nonce. $RESPONSE"
-	exit 1
-fi
-if [[ "$GRPC_BROADCAST_TX" == "" && "$ERROR" != "" ]]; then
-	echo "Unexpected error. Tx $TX should have been included in a block. $ERROR"
 	exit 1
 fi
 

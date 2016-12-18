@@ -29,9 +29,8 @@ func init() {
 // Byzantine validator refuses to prevote.
 // Heal partition and ensure A sees the commit
 func TestByzantine(t *testing.T) {
-	resetConfigTimeouts()
 	N := 4
-	css := randConsensusNet(N)
+	css := randConsensusNet(N, "consensus_byzantine_test", crankTimeoutPropose)
 
 	switches := make([]*p2p.Switch, N)
 	for i := 0; i < N; i++ {
