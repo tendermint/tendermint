@@ -9,7 +9,6 @@ import (
 
 	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
-	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-events"
 	"github.com/tendermint/go-p2p"
 	"github.com/tendermint/tendermint/types"
@@ -259,7 +258,7 @@ func (privVal *ByzantinePrivValidator) SignVote(chainID string, vote *types.Vote
 	defer privVal.mtx.Unlock()
 
 	// Sign
-	vote.Signature = privVal.Sign(types.SignBytes(chainID, vote)).(crypto.SignatureEd25519)
+	vote.Signature = privVal.Sign(types.SignBytes(chainID, vote))
 	return nil
 }
 
@@ -268,7 +267,7 @@ func (privVal *ByzantinePrivValidator) SignProposal(chainID string, proposal *ty
 	defer privVal.mtx.Unlock()
 
 	// Sign
-	proposal.Signature = privVal.Sign(types.SignBytes(chainID, proposal)).(crypto.SignatureEd25519)
+	proposal.Signature = privVal.Sign(types.SignBytes(chainID, proposal))
 	return nil
 }
 

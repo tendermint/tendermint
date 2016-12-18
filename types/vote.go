@@ -47,13 +47,13 @@ func IsVoteTypeValid(type_ byte) bool {
 
 // Represents a prevote, precommit, or commit vote from validators for consensus.
 type Vote struct {
-	ValidatorAddress []byte                  `json:"validator_address"`
-	ValidatorIndex   int                     `json:"validator_index"`
-	Height           int                     `json:"height"`
-	Round            int                     `json:"round"`
-	Type             byte                    `json:"type"`
-	BlockID          BlockID                 `json:"block_id"` // zero if vote is nil.
-	Signature        crypto.SignatureEd25519 `json:"signature"`
+	ValidatorAddress []byte           `json:"validator_address"`
+	ValidatorIndex   int              `json:"validator_index"`
+	Height           int              `json:"height"`
+	Round            int              `json:"round"`
+	Type             byte             `json:"type"`
+	BlockID          BlockID          `json:"block_id"` // zero if vote is nil.
+	Signature        crypto.Signature `json:"signature"`
 }
 
 func (vote *Vote) WriteSignBytes(chainID string, w io.Writer, n *int, err *error) {

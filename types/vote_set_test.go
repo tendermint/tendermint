@@ -61,7 +61,7 @@ func withBlockPartsHeader(vote *Vote, blockPartsHeader PartSetHeader) *Vote {
 }
 
 func signAddVote(privVal *PrivValidator, vote *Vote, voteSet *VoteSet) (bool, error) {
-	vote.Signature = privVal.Sign(SignBytes(voteSet.ChainID(), vote)).(crypto.SignatureEd25519)
+	vote.Signature = privVal.Sign(SignBytes(voteSet.ChainID(), vote))
 	added, err := voteSet.AddVote(vote)
 	return added, err
 }
