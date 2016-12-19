@@ -134,7 +134,7 @@ func signCommit(height, round int, hash []byte, header types.PartSetHeader) *typ
 	}
 
 	sig := privKey.Sign(types.SignBytes(chainID, vote))
-	vote.Signature = sig.(crypto.SignatureEd25519)
+	vote.Signature = sig
 	return vote
 }
 

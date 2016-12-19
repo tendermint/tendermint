@@ -174,7 +174,7 @@ func (privVal *PrivValidator) SignVote(chainID string, vote *Vote) error {
 	if err != nil {
 		return errors.New(Fmt("Error signing vote: %v", err))
 	}
-	vote.Signature = signature.(crypto.SignatureEd25519)
+	vote.Signature = signature
 	return nil
 }
 
@@ -185,7 +185,7 @@ func (privVal *PrivValidator) SignProposal(chainID string, proposal *Proposal) e
 	if err != nil {
 		return errors.New(Fmt("Error signing proposal: %v", err))
 	}
-	proposal.Signature = signature.(crypto.SignatureEd25519)
+	proposal.Signature = signature
 	return nil
 }
 

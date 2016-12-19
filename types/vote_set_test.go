@@ -61,7 +61,7 @@ func withBlockPartsHeader(vote *Vote, blockPartsHeader PartSetHeader) *Vote {
 }
 
 func signAddVote(privVal *PrivValidator, vote *Vote, voteSet *VoteSet) (bool, error) {
-	vote.Signature = privVal.Sign(SignBytes(voteSet.ChainID(), vote)).(crypto.SignatureEd25519)
+	vote.Signature = privVal.Sign(SignBytes(voteSet.ChainID(), vote))
 	added, err := voteSet.AddVote(vote)
 	return added, err
 }
@@ -92,7 +92,10 @@ func TestAddVote(t *testing.T) {
 		Type:             VoteTypePrevote,
 		BlockID:          BlockID{nil, PartSetHeader{}},
 	}
-	signAddVote(val0, vote, voteSet)
+	_, err := signAddVote(val0, vote, voteSet)
+	if err != nil {
+		t.Error(err)
+	}
 
 	if voteSet.GetByAddress(val0.Address) == nil {
 		t.Errorf("Expected GetByAddress(val0.Address) to be present")

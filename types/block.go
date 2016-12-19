@@ -409,10 +409,9 @@ func (blockID BlockID) WriteSignBytes(w io.Writer, n *int, err *error) {
 	if blockID.IsZero() {
 		wire.WriteTo([]byte("null"), w, n, err)
 	} else {
-		wire.WriteTo([]byte(Fmt(`{"hash":"%X","parts":`, blockID.Hash)), w, n, err)
-		blockID.PartsHeader.WriteSignBytes(w, n, err)
-		wire.WriteTo([]byte("}"), w, n, err)
+		wire.WriteJSON(CanonicalBlockID(blockID), w, n, err)
 	}
+
 }
 
 func (blockID BlockID) String() string {

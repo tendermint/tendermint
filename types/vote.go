@@ -47,20 +47,20 @@ func IsVoteTypeValid(type_ byte) bool {
 
 // Represents a prevote, precommit, or commit vote from validators for consensus.
 type Vote struct {
-	ValidatorAddress []byte                  `json:"validator_address"`
-	ValidatorIndex   int                     `json:"validator_index"`
-	Height           int                     `json:"height"`
-	Round            int                     `json:"round"`
-	Type             byte                    `json:"type"`
-	BlockID          BlockID                 `json:"block_id"` // zero if vote is nil.
-	Signature        crypto.SignatureEd25519 `json:"signature"`
+	ValidatorAddress []byte           `json:"validator_address"`
+	ValidatorIndex   int              `json:"validator_index"`
+	Height           int              `json:"height"`
+	Round            int              `json:"round"`
+	Type             byte             `json:"type"`
+	BlockID          BlockID          `json:"block_id"` // zero if vote is nil.
+	Signature        crypto.Signature `json:"signature"`
 }
 
 func (vote *Vote) WriteSignBytes(chainID string, w io.Writer, n *int, err *error) {
-	wire.WriteTo([]byte(Fmt(`{"chain_id":"%s"`, chainID)), w, n, err)
-	wire.WriteTo([]byte(`,"vote":{"block_id":`), w, n, err)
-	vote.BlockID.WriteSignBytes(w, n, err)
-	wire.WriteTo([]byte(Fmt(`,"height":%v,"round":%v,"type":%v}}`, vote.Height, vote.Round, vote.Type)), w, n, err)
+	wire.WriteJSON(CanonicalJSONOnceVote{
+		chainID,
+		CanonicalVote(vote),
+	}, w, n, err)
 }
 
 func (vote *Vote) Copy() *Vote {
