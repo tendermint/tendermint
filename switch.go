@@ -491,11 +491,17 @@ func Connect2Switches(switches []*Switch, i, j int) {
 	c1, c2 := net.Pipe()
 	doneCh := make(chan struct{})
 	go func() {
-		switchI.AddPeerWithConnection(c1, false) // AddPeer is blocking, requires handshake.
+		_, err := switchI.AddPeerWithConnection(c1, false) // AddPeer is blocking, requires handshake.
+		if err != nil {
+			panic(err)
+		}
 		doneCh <- struct{}{}
 	}()
 	go func() {
-		switchJ.AddPeerWithConnection(c2, true)
+		_, err := switchJ.AddPeerWithConnection(c2, true)
+		if err != nil {
+			panic(err)
+		}
 		doneCh <- struct{}{}
 	}()
 	<-doneCh
