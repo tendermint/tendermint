@@ -655,10 +655,10 @@ func (cs *ConsensusState) timeoutRoutine() {
 					if ti.Step > 0 && newti.Step <= ti.Step {
 						// if we got here because we have all the votes,
 						// fire the tock now instead of waiting for the timeout
-						if skipTimeoutCommit(newti) {
+						/*if skipTimeoutCommit(newti) {
 							cs.timeoutTicker.Stop()
 							go func(t timeoutInfo) { cs.tockChan <- t }(newti)
-						}
+						}*/
 						continue
 					}
 				}
@@ -1471,7 +1471,8 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerKey string) (added bool,
 				// if we have all the votes now,
 				// schedule the timeoutCommit to happen right away
 				// NOTE: this won't apply if only one validator
-				cs.scheduleTimeout(time.Duration(0), cs.Height, 0, RoundStepNewHeight)
+				// cs.scheduleTimeout(time.Duration(0), cs.Height, 0, RoundStepNewHeight)
+				cs.enterNewRound(cs.Height, 0)
 			}
 		}
 
