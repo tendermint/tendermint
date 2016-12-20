@@ -19,5 +19,6 @@ docker run -d \
 	--ip=$(test/p2p/ip.sh $ID) \
 	--name local_testnet_$ID \
 	--entrypoint tendermint \
+  -v $GOPATH/src/github.com/tendermint/tendermint/test/p2p/:/go/src/github.com/tendermint/tendermint/test/p2p \
 	-e TMROOT=/go/src/github.com/tendermint/tendermint/test/p2p/data/mach$ID/core \
 	$DOCKER_IMAGE node $SEEDS --proxy_app=dummy

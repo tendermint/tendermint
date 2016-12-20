@@ -26,3 +26,6 @@ bash test/p2p/client.sh $DOCKER_IMAGE $NETWORK_NAME ab "test/p2p/atomic_broadcas
 # test fast sync (from current state of network):
 # for each node, kill it and readd via fast sync
 bash test/p2p/fast_sync/test.sh $DOCKER_IMAGE $NETWORK_NAME $N
+
+# test killing all peers
+bash test/p2p/kill_all/test.sh $DOCKER_IMAGE $NETWORK_NAME $N 3
