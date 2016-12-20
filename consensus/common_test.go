@@ -387,40 +387,44 @@ func crankTimeoutPropose(config cfg.Config) {
 func newMockTickerFunc(onlyOnce bool) func() TimeoutTicker {
 	return func() TimeoutTicker {
 		return &mockTicker{
-			c:        make(chan time.Time, 10),
+			c:        make(chan timeoutInfo, 10),
 			onlyOnce: onlyOnce,
 		}
 	}
 }
 
-// mock ticker only fires for NewStepRound (timeout commit),
+// mock ticker only fires once
 // and only once if onlyOnce=true
 type mockTicker struct {
-	c chan time.Time
+	c chan timeoutInfo
 
+	mtx      sync.Mutex
 	onlyOnce bool
 	fired    bool
 }
 
-func (m *mockTicker) Stop() {
+func (m *mockTicker) Start() (bool, error) {
+	return true, nil
 }
 
-func (m *mockTicker) Reset(ti timeoutInfo) {
+func (m *mockTicker) Stop() bool {
+	return true
+}
+
+func (m *mockTicker) ScheduleTimeout(ti timeoutInfo) {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
 	if m.onlyOnce && m.fired {
 		return
 	}
 	if ti.Step == RoundStepNewHeight {
-		m.Fire()
+		m.c <- ti
 		m.fired = true
 	}
 }
 
-func (m *mockTicker) Chan() <-chan time.Time {
+func (m *mockTicker) Chan() <-chan timeoutInfo {
 	return m.c
-}
-
-func (m *mockTicker) Fire() {
-	m.c <- time.Now()
 }
 
 //------------------------------------

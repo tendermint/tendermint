@@ -246,15 +246,17 @@ func (cs *ConsensusState) startForReplay() {
 	cs.BaseService.OnStart()
 
 	// since we replay tocks we just ignore ticks
-	go func() {
-		for {
-			select {
-			case <-cs.tickChan:
-			case <-cs.Quit:
-				return
+	// TODO:!
+	/*
+		go func() {
+			for {
+				select {
+				case <-cs.tickChan:
+				case <-cs.Quit:
+					return
+				}
 			}
-		}
-	}()
+		}()*/
 }
 
 // console function for parsing input and running commands
