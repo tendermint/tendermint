@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sync"
 
 	. "github.com/tendermint/go-common"
 	dbm "github.com/tendermint/go-db"
@@ -27,8 +28,10 @@ the Commit data outside the Block.
 Panics indicate probable corruption in the data
 */
 type BlockStore struct {
+	db dbm.DB
+
+	mtx    sync.Mutex
 	height int
-	db     dbm.DB
 }
 
 func NewBlockStore(db dbm.DB) *BlockStore {
@@ -41,6 +44,8 @@ func NewBlockStore(db dbm.DB) *BlockStore {
 
 // Height() returns the last known contiguous block height.
 func (bs *BlockStore) Height() int {
+	bs.mtx.Lock()
+	defer bs.mtx.Unlock()
 	return bs.height
 }
 
@@ -141,8 +146,9 @@ func (bs *BlockStore) LoadSeenCommit(height int) *types.Commit {
 //             most recent height.  Otherwise they'd stall at H-1.
 func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit) {
 	height := block.Height
-	if height != bs.height+1 {
-		PanicSanity(Fmt("BlockStore can only save contiguous blocks. Wanted %v, got %v", bs.height+1, height))
+	bsHeight := bs.Height()
+	if height != bsHeight+1 {
+		PanicSanity(Fmt("BlockStore can only save contiguous blocks. Wanted %v, got %v", bsHeight+1, height))
 	}
 	if !blockParts.IsComplete() {
 		PanicSanity(Fmt("BlockStore can only save complete block part sets"))
@@ -155,7 +161,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 
 	// Save block parts
 	for i := 0; i < blockParts.Total(); i++ {
-		bs.saveBlockPart(height, i, blockParts.GetPart(i))
+		bs.saveBlockPart(height, bsHeight, i, blockParts.GetPart(i))
 	}
 
 	// Save block commit (duplicate and separate from the Block)
@@ -171,15 +177,17 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	BlockStoreStateJSON{Height: height}.Save(bs.db)
 
 	// Done!
+	bs.mtx.Lock()
 	bs.height = height
+	bs.mtx.Unlock()
 
 	// Flush
 	bs.db.SetSync(nil, nil)
 }
 
-func (bs *BlockStore) saveBlockPart(height int, index int, part *types.Part) {
-	if height != bs.height+1 {
-		PanicSanity(Fmt("BlockStore can only save contiguous blocks. Wanted %v, got %v", bs.height+1, height))
+func (bs *BlockStore) saveBlockPart(height, bsHeight int, index int, part *types.Part) {
+	if height != bsHeight+1 {
+		PanicSanity(Fmt("BlockStore can only save contiguous blocks. Wanted %v, got %v", bsHeight+1, height))
 	}
 	partBytes := wire.BinaryBytes(part)
 	bs.db.Set(calcBlockPartKey(height, index), partBytes)
