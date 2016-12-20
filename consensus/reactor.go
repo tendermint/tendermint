@@ -671,7 +671,8 @@ OUTER_LOOP:
 }
 
 func (conR *ConsensusReactor) String() string {
-	return conR.StringIndented("")
+	// better not to access shared variables
+	return Fmt("ConsensusReactor") // conR.StringIndented("")
 }
 
 func (conR *ConsensusReactor) StringIndented(indent string) string {
