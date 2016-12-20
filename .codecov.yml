@@ -14,9 +14,6 @@ coverage:
     project: 
       default:
         threshold: 1% # allow this much decrease on project
-    patch: 
-      default:
-        threshold: 50% # allow this much decrease on patch
     changes: false
 
 comment:
