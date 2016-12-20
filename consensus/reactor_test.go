@@ -62,7 +62,7 @@ func TestValidatorSetChanges(t *testing.T) {
 	reactors := make([]*ConsensusReactor, nPeers)
 	eventChans := make([]chan interface{}, nPeers)
 	for i := 0; i < nPeers; i++ {
-		reactors[i] = NewConsensusReactor(css[i], false)
+		reactors[i] = NewConsensusReactor(css[i], true) // so we dont start the consensus states
 
 		eventSwitch := events.NewEventSwitch()
 		_, err := eventSwitch.Start()
@@ -77,6 +77,14 @@ func TestValidatorSetChanges(t *testing.T) {
 		s.AddReactor("CONSENSUS", reactors[i])
 		return s
 	}, p2p.Connect2Switches)
+
+	// now that everyone is connected,  start the state machines
+	// (otherwise, we could block forever in firing new block while a peer is trying to
+	// access state info for AddPeer)
+	for i := 0; i < nPeers; i++ {
+		s := reactors[i].conS.GetState()
+		reactors[i].SwitchToConsensus(s)
+	}
 
 	// map of active validators
 	activeVals := make(map[string]struct{})
