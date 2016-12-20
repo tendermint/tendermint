@@ -14,12 +14,12 @@ N=$4
 ###############################################################
 
 
-echo "Testing fasysync on node $COUNT"
+echo "Testing fastsync on node $COUNT"
 
-# kill peer 
+# kill peer
 set +e # circle sigh :(
 docker rm -vf local_testnet_$COUNT
-set -e 
+set -e
 
 # restart peer - should have an empty blockchain
 SEEDS="$(test/p2p/ip.sh 1):46656"
