@@ -33,7 +33,7 @@ For more details (or if it fails), see the [install guide](https://tendermint.co
 
 ## Contributing
 
-Yay open source! Please see our [contributing guidelines](https://tendermint.com/guides/contributing).
+Yay open source! Please see our [contributing guidelines](https://tendermint.com/docs/guides/contributing).
 
 ## Resources
 
