@@ -15,6 +15,9 @@ cd "$GOPATH/src/github.com/tendermint/tendermint"
 ###############################################################
 
 for i in $(seq 1 "$NUM_OF_CRASHES"); do
+  echo ""
+  echo "Restarting all peers! Take $i ..."
+
   # restart all peers
   for i in $(seq 1 "$NUM_OF_PEERS"); do
     docker stop "local_testnet_$i"

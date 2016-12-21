@@ -4,6 +4,7 @@ set -eu
 DOCKER_IMAGE=$1
 NETWORK_NAME=local_testnet
 N=4
+PROXY_APP=persistent_dummy
 
 cd $GOPATH/src/github.com/tendermint/tendermint
 
@@ -13,7 +14,8 @@ bash test/p2p/local_testnet_stop.sh $NETWORK_NAME $N
 set -e
 
 # start the testnet on a local network
-bash test/p2p/local_testnet_start.sh $DOCKER_IMAGE $NETWORK_NAME $N
+# NOTE we re-use the same network for all tests
+bash test/p2p/local_testnet_start.sh $DOCKER_IMAGE $NETWORK_NAME $N $PROXY_APP
 
 # test basic connectivity and consensus
 # start client container and check the num peers and height for all nodes
@@ -25,7 +27,7 @@ bash test/p2p/client.sh $DOCKER_IMAGE $NETWORK_NAME ab "test/p2p/atomic_broadcas
 
 # test fast sync (from current state of network):
 # for each node, kill it and readd via fast sync
-bash test/p2p/fast_sync/test.sh $DOCKER_IMAGE $NETWORK_NAME $N
+bash test/p2p/fast_sync/test.sh $DOCKER_IMAGE $NETWORK_NAME $N $PROXY_APP
 
 # test killing all peers
 bash test/p2p/kill_all/test.sh $DOCKER_IMAGE $NETWORK_NAME $N 3
