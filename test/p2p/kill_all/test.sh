@@ -18,7 +18,7 @@ cd "$GOPATH/src/github.com/tendermint/tendermint"
 for i in $(seq 1 "$NUM_OF_CRASHES"); do
   # kill all peers
   for i in $(seq 1 "$NUM_OF_PEERS"); do
-    docker rm -vf "local_testnet_$i"
+    docker rm -f "local_testnet_$i"
   done
 
   # restart all peers
