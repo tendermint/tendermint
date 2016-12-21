@@ -8,7 +8,7 @@ CMD=$4
 
 echo "starting test client container with CMD=$CMD"
 # run the test container on the local network
-docker run -t \
+docker run -t --rm \
 	-v $GOPATH/src/github.com/tendermint/tendermint/test/p2p/:/go/src/github.com/tendermint/tendermint/test/p2p \
 	--net=$NETWORK_NAME \
 	--ip=$(test/p2p/ip.sh "-1") \

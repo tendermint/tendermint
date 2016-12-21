@@ -4,6 +4,7 @@ set -eu
 DOCKER_IMAGE=$1
 NETWORK_NAME=$2
 N=$3
+APP_PROXY=$4
 
 cd $GOPATH/src/github.com/tendermint/tendermint
 
@@ -17,5 +18,5 @@ done
 echo "Seeds: $seeds"
 
 for i in `seq 1 $N`; do
-	bash test/p2p/peer.sh $DOCKER_IMAGE $NETWORK_NAME $i $seeds
+	bash test/p2p/peer.sh $DOCKER_IMAGE $NETWORK_NAME $i $APP_PROXY $seeds
 done
