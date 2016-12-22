@@ -25,8 +25,8 @@ type Batch interface {
 
 const (
 	LevelDBBackendStr   = "leveldb" // legacy, defaults to goleveldb.
-	CLevelDBBackendStr  = "goleveldb"
-	GoLevelDBBackendStr = "cleveldb"
+	CLevelDBBackendStr  = "cleveldb"
+	GoLevelDBBackendStr = "goleveldb"
 	MemDBBackendStr     = "memdb"
 )
 
