@@ -56,7 +56,9 @@ func (s *State) ExecBlock(eventCache types.Fireable, proxyAppConn proxy.AppConnC
 
 	// save state with updated height/blockhash/validators
 	// but stale apphash, in case we fail between Commit and Save
-	s.Save()
+	s.SaveIntermediate()
+
+	fail.Fail() // XXX
 
 	return nil
 }
@@ -264,7 +266,6 @@ func (s *State) CommitStateUpdateMempool(proxyAppConn proxy.AppConnConsensus, bl
 
 	// Set the state's new AppHash
 	s.AppHash = res.Data
-	s.AppHashIsStale = false
 
 	// Update mempool.
 	mempool.Update(block.Height, block.Txs)
@@ -322,7 +323,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 		return nil
 	}
 
-	log.Notice("TMSP Handshake", "height", blockInfo.BlockHeight, "app_hash", blockInfo.AppHash)
+	log.Notice("TMSP Handshake", "appHeight", blockInfo.BlockHeight, "appHash", blockInfo.AppHash)
 
 	blockHeight := int(blockInfo.BlockHeight) // XXX: beware overflow
 	appHash := blockInfo.AppHash
@@ -352,29 +353,46 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, appConnConsensus proxy.AppConnConsensus) error {
 
 	storeBlockHeight := h.store.Height()
-	if storeBlockHeight < appBlockHeight {
+	stateBlockHeight := h.state.LastBlockHeight
+	log.Notice("TMSP Replay Blocks", "appHeight", appBlockHeight, "storeHeight", storeBlockHeight, "stateHeight", stateBlockHeight)
+
+	if storeBlockHeight == 0 {
+		return nil
+	} else if storeBlockHeight < appBlockHeight {
 		// if the app is ahead, there's nothing we can do
 		return ErrAppBlockHeightTooHigh{storeBlockHeight, appBlockHeight}
 
 	} else if storeBlockHeight == appBlockHeight {
-		// if we crashed between Commit and SaveState,
-		// the state's app hash is stale
-		// otherwise we're synced
-		if h.state.AppHashIsStale {
-			h.state.AppHashIsStale = false
+		// We ran Commit, but if we crashed before state.Save(),
+		// load the intermediate state and update the state.AppHash.
+		// NOTE: If TMSP allowed rollbacks, we could just replay the
+		// block even though it's been committed
+		stateAppHash := h.state.AppHash
+		lastBlockAppHash := h.store.LoadBlock(storeBlockHeight).AppHash
+
+		if bytes.Equal(stateAppHash, appHash) {
+			// we're all synced up
+			log.Debug("TMSP RelpayBlocks: Already synced")
+		} else if bytes.Equal(stateAppHash, lastBlockAppHash) {
+			// we crashed after commit and before saving state,
+			// so load the intermediate state and update the hash
+			h.state.LoadIntermediate()
 			h.state.AppHash = appHash
+			h.state.Save()
+			log.Debug("TMSP RelpayBlocks: Loaded intermediate state and updated state.AppHash")
+		} else {
+			PanicSanity(Fmt("Unexpected state.AppHash: state.AppHash %X; app.AppHash %X, lastBlock.AppHash %X", stateAppHash, appHash, lastBlockAppHash))
+
 		}
 		return nil
 
-	} else if h.state.LastBlockHeight == appBlockHeight {
-		// store is ahead of app but core's state height is at apps height
-		// this happens if we crashed after saving the block,
-		// but before committing it. We should be 1 ahead
-		if storeBlockHeight != appBlockHeight+1 {
-			PanicSanity(Fmt("core.state.height == app.height but store.height (%d) > app.height+1 (%d)", storeBlockHeight, appBlockHeight+1))
-		}
+	} else if storeBlockHeight == appBlockHeight+1 &&
+		storeBlockHeight == stateBlockHeight+1 {
+		// We crashed after saving the block
+		// but before Commit (both the state and app are behind),
+		// so just replay the block
 
-		// check that the blocks last apphash is the states apphash
+		// check that the lastBlock.AppHash matches the state apphash
 		block := h.store.LoadBlock(storeBlockHeight)
 		if !bytes.Equal(block.Header.AppHash, appHash) {
 			return ErrLastStateMismatch{storeBlockHeight, block.Header.AppHash, appHash}
@@ -385,13 +403,19 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, appConnCon
 		h.nBlocks += 1
 		var eventCache types.Fireable // nil
 
-		// replay the block against the actual tendermint state
+		// replay the latest block
 		return h.state.ApplyBlock(eventCache, appConnConsensus, block, blockMeta.PartsHeader, MockMempool{})
-
+	} else if storeBlockHeight != stateBlockHeight {
+		// unless we failed before committing or saving state (previous 2 case),
+		// the store and state should be at the same height!
+		PanicSanity(Fmt("Expected storeHeight (%d) and stateHeight (%d) to match.", storeBlockHeight, stateBlockHeight))
 	} else {
-		// either we're caught up or there's blocks to replay
+		// store is more than one ahead,
+		// so app wants to replay many blocks
+
 		// replay all blocks starting with appBlockHeight+1
 		var eventCache types.Fireable // nil
+
 		var appHash []byte
 		for i := appBlockHeight + 1; i <= storeBlockHeight; i++ {
 			h.nBlocks += 1
@@ -413,8 +437,10 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, appConnCon
 			appHash = res.Data
 		}
 		if !bytes.Equal(h.state.AppHash, appHash) {
-			return errors.New(Fmt("Tendermint state.AppHash does not match AppHash after replay", "expected", h.state.AppHash, "got", appHash))
+			return errors.New(Fmt("Tendermint state.AppHash does not match AppHash after replay. Got %X, expected %X", appHash, h.state.AppHash))
 		}
 		return nil
 	}
+
+	return nil
 }

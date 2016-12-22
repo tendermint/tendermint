@@ -14,7 +14,7 @@ function start_procs(){
 	PID_DUMMY=$!
 	if [[ "$indexToFail" == "" ]]; then
 		# run in background, dont fail
-		tendermint node &> tendermint_${name}.log &
+		tendermint node --log_level=debug &> tendermint_${name}.log &
 		PID_TENDERMINT=$!
 	else
 		# run in foreground, fail
