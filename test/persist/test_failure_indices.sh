@@ -18,7 +18,7 @@ function start_procs(){
 		PID_TENDERMINT=$!
 	else
 		# run in foreground, fail
-		FAIL_TEST_INDEX=$indexToFail tendermint node &> tendermint_${name}.log
+		FAIL_TEST_INDEX=$indexToFail tendermint node --log_level=debug &> tendermint_${name}.log
 		PID_TENDERMINT=$!
 	fi
 }

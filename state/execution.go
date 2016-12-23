@@ -344,6 +344,9 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 		return errors.New(Fmt("Error on replay: %v", err))
 	}
 
+	// Save the state
+	h.state.Save()
+
 	// TODO: (on restart) replay mempool
 
 	return nil
@@ -378,7 +381,6 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, appConnCon
 			// so load the intermediate state and update the hash
 			h.state.LoadIntermediate()
 			h.state.AppHash = appHash
-			h.state.Save()
 			log.Debug("TMSP RelpayBlocks: Loaded intermediate state and updated state.AppHash")
 		} else {
 			PanicSanity(Fmt("Unexpected state.AppHash: state.AppHash %X; app.AppHash %X, lastBlock.AppHash %X", stateAppHash, appHash, lastBlockAppHash))

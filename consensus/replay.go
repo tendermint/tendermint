@@ -101,6 +101,7 @@ func (cs *ConsensusState) catchupReplay(csHeight int) error {
 	// Search for height marker
 	gr, found, err = cs.wal.group.Search("#HEIGHT: ", makeHeightSearchFunc(csHeight))
 	if err == io.EOF {
+		log.Warn("Replay: wal.group.Search returned EOF", "height", csHeight)
 		return nil
 	} else if err != nil {
 		return err

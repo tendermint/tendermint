@@ -362,6 +362,14 @@ func (cs *ConsensusState) OnStart() error {
 		// let's go for it anyways, maybe we're fine
 	}
 
+	// If the latest block was applied in the tmsp handshake,
+	// we may not have written the current height to the wal,
+	// so write it here in case
+	if cs.Step == RoundStepNewHeight {
+		log.Warn("wal.writeHeight", "height", cs.Height)
+		cs.wal.writeHeight(cs.Height)
+	}
+
 	// now start the receiveRoutine
 	go cs.receiveRoutine(0)
 
