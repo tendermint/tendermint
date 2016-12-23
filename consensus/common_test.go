@@ -393,7 +393,7 @@ func newMockTickerFunc(onlyOnce bool) func() TimeoutTicker {
 	}
 }
 
-// mock ticker only fires once
+// mock ticker only fires on RoundStepNewHeight
 // and only once if onlyOnce=true
 type mockTicker struct {
 	c chan timeoutInfo

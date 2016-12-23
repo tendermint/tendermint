@@ -15,9 +15,10 @@ import (
 )
 
 // TODO: these tests ensure we can always recover from any state of the wal,
-// assuming a related state of the priv val
-// it would be better to verify explicitly which states we can recover from without the wal
-// and which ones we need the wal for
+// assuming it comes with a correct related state for the priv_validator.json.
+// It would be better to verify explicitly which states we can recover from without the wal
+// and which ones we need the wal for - then we'd also be able to only flush the
+// wal writer when we need to, instead of with every message.
 
 var data_dir = path.Join(GoPath, "src/github.com/tendermint/tendermint/consensus", "test_data")
 
@@ -147,7 +148,7 @@ func setupReplayTest(thisCase *testCase, nLines int, crashAfter bool) (*Consensu
 	return cs, newBlockCh, lastMsg, walDir
 }
 
-func readJSON(t *testing.T, walMsg string) TimedWALMessage {
+func readTimedWALMessage(t *testing.T, walMsg string) TimedWALMessage {
 	var err error
 	var msg TimedWALMessage
 	wire.ReadJSON(&msg, []byte(walMsg), &err)
@@ -178,8 +179,9 @@ func TestReplayCrashAfterWrite(t *testing.T) {
 func TestReplayCrashBeforeWritePropose(t *testing.T) {
 	for _, thisCase := range testCases {
 		lineNum := thisCase.proposeLine
-		cs, newBlockCh, proposalMsg, walDir := setupReplayTest(thisCase, lineNum, false) // propose
-		msg := readJSON(t, proposalMsg)
+		// setup replay test where last message is a proposal
+		cs, newBlockCh, proposalMsg, walDir := setupReplayTest(thisCase, lineNum, false)
+		msg := readTimedWALMessage(t, proposalMsg)
 		proposal := msg.Msg.(msgInfo).Msg.(*ProposalMessage)
 		// Set LastSig
 		toPV(cs.privValidator).LastSignBytes = types.SignBytes(cs.state.ChainID, proposal.Proposal)
@@ -201,9 +203,10 @@ func TestReplayCrashBeforeWritePrecommit(t *testing.T) {
 }
 
 func testReplayCrashBeforeWriteVote(t *testing.T, thisCase *testCase, lineNum int, eventString string) {
-	cs, newBlockCh, voteMsg, walDir := setupReplayTest(thisCase, lineNum, false) // prevote
+	// setup replay test where last message is a vote
+	cs, newBlockCh, voteMsg, walDir := setupReplayTest(thisCase, lineNum, false)
 	types.AddListenerForEvent(cs.evsw, "tester", eventString, func(data types.TMEventData) {
-		msg := readJSON(t, voteMsg)
+		msg := readTimedWALMessage(t, voteMsg)
 		vote := msg.Msg.(msgInfo).Msg.(*VoteMessage)
 		// Set LastSig
 		toPV(cs.privValidator).LastSignBytes = types.SignBytes(cs.state.ChainID, vote.Vote)

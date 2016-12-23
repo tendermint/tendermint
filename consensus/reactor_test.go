@@ -79,8 +79,8 @@ func TestValidatorSetChanges(t *testing.T) {
 	}, p2p.Connect2Switches)
 
 	// now that everyone is connected,  start the state machines
-	// (otherwise, we could block forever in firing new block while a peer is trying to
-	// access state info for AddPeer)
+	// If we started the state machines before everyone was connected,
+	// we'd block when the cs fires NewBlockEvent and the peers are trying to start their reactors
 	for i := 0; i < nPeers; i++ {
 		s := reactors[i].conS.GetState()
 		reactors[i].SwitchToConsensus(s)
