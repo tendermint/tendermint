@@ -189,8 +189,7 @@ func (rs *RoundState) StringShort() string {
 //-----------------------------------------------------------------------------
 
 var (
-	msgQueueSize       = 1000
-	tickTockBufferSize = 10
+	msgQueueSize = 1000
 )
 
 // msgs from the reactor which may update the state

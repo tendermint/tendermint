@@ -6,6 +6,10 @@ import (
 	. "github.com/tendermint/go-common"
 )
 
+var (
+	tickTockBufferSize = 10
+)
+
 type TimeoutTicker interface {
 	Start() (bool, error)
 	Stop() bool
