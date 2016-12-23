@@ -12,7 +12,6 @@ import (
 	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
 	dbm "github.com/tendermint/go-db"
-	"github.com/tendermint/go-logger"
 	"github.com/tendermint/go-p2p"
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/config/tendermint_test"
@@ -257,7 +256,7 @@ func randConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
 	return cs, vss
 }
 
-func randConsensusNet(nValidators int, testName string, updateConfig func(cfg.Config), tickerFunc func() TimeoutTicker) []*ConsensusState {
+func randConsensusNet(nValidators int, testName string, tickerFunc func() TimeoutTicker) []*ConsensusState {
 	genDoc, privVals := randGenesisDoc(nValidators, false, 10)
 	css := make([]*ConsensusState, nValidators)
 	for i := 0; i < nValidators; i++ {
@@ -265,7 +264,6 @@ func randConsensusNet(nValidators int, testName string, updateConfig func(cfg.Co
 		state := sm.MakeGenesisState(db, genDoc)
 		state.Save()
 		thisConfig := tendermint_test.ResetConfig(Fmt("%s_%d", testName, i))
-		updateConfig(thisConfig)
 		EnsureDir(thisConfig.GetString("cs_wal_dir"), 0700) // dir for wal
 		css[i] = newConsensusStateWithConfig(thisConfig, state, privVals[i], counter.NewCounterApplication(true))
 		css[i].SetTimeoutTicker(tickerFunc())
@@ -274,7 +272,7 @@ func randConsensusNet(nValidators int, testName string, updateConfig func(cfg.Co
 }
 
 // nPeers = nValidators + nNotValidator
-func randConsensusNetWithPeers(nValidators, nPeers int, testName string, updateConfig func(cfg.Config), tickerFunc func() TimeoutTicker) []*ConsensusState {
+func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerFunc func() TimeoutTicker) []*ConsensusState {
 	genDoc, privVals := randGenesisDoc(nValidators, false, int64(testMinPower))
 	css := make([]*ConsensusState, nPeers)
 	for i := 0; i < nPeers; i++ {
@@ -282,7 +280,6 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, updateC
 		state := sm.MakeGenesisState(db, genDoc)
 		state.Save()
 		thisConfig := tendermint_test.ResetConfig(Fmt("%s_%d", testName, i))
-		updateConfig(thisConfig)
 		EnsureDir(thisConfig.GetString("cs_wal_dir"), 0700) // dir for wal
 		var privVal *types.PrivValidator
 		if i < nValidators {
@@ -371,15 +368,6 @@ func getSwitchIndex(switches []*p2p.Switch, peer *p2p.Peer) int {
 	}
 	panic("didnt find peer in switches")
 	return -1
-}
-
-// so we dont violate synchrony assumptions
-// TODO: make tests more robust to this instead (handle round changes)
-// XXX: especially a problem when running the race detector on circle
-func crankTimeoutPropose(config cfg.Config) {
-	logger.SetLogLevel("info")
-	config.Set("timeout_propose", 110000) // TODO: crank it to eleventy
-	config.Set("timeout_commit", 1000)
 }
 
 //------------------------------------

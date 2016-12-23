@@ -24,11 +24,11 @@ func init() {
 // Ensure a testnet makes blocks
 func TestReactor(t *testing.T) {
 	N := 4
-	css := randConsensusNet(N, "consensus_reactor_test", crankTimeoutPropose, newMockTickerFunc(true))
+	css := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true))
 	reactors := make([]*ConsensusReactor, N)
 	eventChans := make([]chan interface{}, N)
 	for i := 0; i < N; i++ {
-		reactors[i] = NewConsensusReactor(css[i], false)
+		reactors[i] = NewConsensusReactor(css[i], true) // so we dont start the consensus states
 
 		eventSwitch := events.NewEventSwitch()
 		_, err := eventSwitch.Start()
@@ -45,6 +45,12 @@ func TestReactor(t *testing.T) {
 		return s
 	}, p2p.Connect2Switches)
 
+	// start the state machines
+	for i := 0; i < N; i++ {
+		s := reactors[i].conS.GetState()
+		reactors[i].SwitchToConsensus(s)
+	}
+
 	// wait till everyone makes the first new block
 	timeoutWaitGroup(t, N, func(wg *sync.WaitGroup, j int) {
 		<-eventChans[j]
@@ -58,7 +64,7 @@ func TestReactor(t *testing.T) {
 func TestValidatorSetChanges(t *testing.T) {
 	nPeers := 8
 	nVals := 4
-	css := randConsensusNetWithPeers(nVals, nPeers, "consensus_val_set_changes_test", crankTimeoutPropose, newMockTickerFunc(true))
+	css := randConsensusNetWithPeers(nVals, nPeers, "consensus_val_set_changes_test", newMockTickerFunc(true))
 	reactors := make([]*ConsensusReactor, nPeers)
 	eventChans := make([]chan interface{}, nPeers)
 	for i := 0; i < nPeers; i++ {

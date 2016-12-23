@@ -29,7 +29,7 @@ func init() {
 // Heal partition and ensure A sees the commit
 func TestByzantine(t *testing.T) {
 	N := 4
-	css := randConsensusNet(N, "consensus_byzantine_test", crankTimeoutPropose, newMockTickerFunc(false))
+	css := randConsensusNet(N, "consensus_byzantine_test", newMockTickerFunc(false))
 
 	// give the byzantine validator a normal ticker
 	css[0].SetTimeoutTicker(NewTimeoutTicker())
@@ -60,7 +60,7 @@ func TestByzantine(t *testing.T) {
 		}
 		eventChans[i] = subscribeToEvent(eventSwitch, "tester", types.EventStringNewBlock(), 1)
 
-		conR := NewConsensusReactor(css[i], false)
+		conR := NewConsensusReactor(css[i], true) // so we dont start the consensus states
 		conR.SetEventSwitch(eventSwitch)
 
 		var conRI p2p.Reactor
@@ -82,6 +82,15 @@ func TestByzantine(t *testing.T) {
 		}
 		p2p.Connect2Switches(sws, i, j)
 	})
+
+	// start the state machines
+	byzR := reactors[0].(*ByzantineReactor)
+	s := byzR.reactor.conS.GetState()
+	byzR.reactor.SwitchToConsensus(s)
+	for i := 1; i < N; i++ {
+		cr := reactors[i].(*ConsensusReactor)
+		cr.SwitchToConsensus(cr.conS.GetState())
+	}
 
 	// byz proposer sends one block to peers[0]
 	// and the other block to peers[1] and peers[2].
