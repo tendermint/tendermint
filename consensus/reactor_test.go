@@ -105,13 +105,16 @@ func TestValidatorSetChanges(t *testing.T) {
 		wg.Done()
 	})
 
-	newValidatorPubKey := css[nVals].privValidator.(*types.PrivValidator).PubKey
-	newValidatorTx := dummy.MakeValSetChangeTx(newValidatorPubKey.Bytes(), uint64(testMinPower))
+	//---------------------------------------------------------------------------
+	// Adding one validator
+
+	newValidatorPubKey1 := css[nVals].privValidator.(*types.PrivValidator).PubKey
+	newValidatorTx1 := dummy.MakeValSetChangeTx(newValidatorPubKey1.Bytes(), uint64(testMinPower))
 
 	// wait till everyone makes block 2
 	// ensure the commit includes all validators
 	// send newValTx to change vals in block 3
-	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, newValidatorTx)
+	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, newValidatorTx1)
 
 	// wait till everyone makes block 3.
 	// it includes the commit for block 2, which is by the original validator set
@@ -122,13 +125,55 @@ func TestValidatorSetChanges(t *testing.T) {
 	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css)
 
 	// the commits for block 4 should be with the updated validator set
-	activeVals[string(newValidatorPubKey.Address())] = struct{}{}
+	activeVals[string(newValidatorPubKey1.Address())] = struct{}{}
 
 	// wait till everyone makes block 5
 	// it includes the commit for block 4, which should have the updated validator set
 	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css)
 
-	// TODO: test more changes!
+	//---------------------------------------------------------------------------
+	// Changing the voting power of one validator
+
+	updateValidatorTx1 := dummy.MakeValSetChangeTx(newValidatorPubKey1.Bytes(), 25)
+	previousTotalVotingPower := css[nVals].LastValidators.TotalVotingPower()
+
+	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, updateValidatorTx1)
+	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css)
+	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css)
+	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css)
+	if css[nVals].LastValidators.TotalVotingPower() == previousTotalVotingPower {
+		t.Errorf("expected voting power to change (before: %d, after: %d)", previousTotalVotingPower, css[nVals].LastValidators.TotalVotingPower())
+	}
+
+	//---------------------------------------------------------------------------
+	// Adding two validators at once
+
+	newValidatorPubKey2 := css[nVals+1].privValidator.(*types.PrivValidator).PubKey
+	newValidatorTx2 := dummy.MakeValSetChangeTx(newValidatorPubKey2.Bytes(), uint64(testMinPower))
+
+	newValidatorPubKey3 := css[nVals+2].privValidator.(*types.PrivValidator).PubKey
+	newValidatorTx3 := dummy.MakeValSetChangeTx(newValidatorPubKey3.Bytes(), uint64(testMinPower))
+
+	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, newValidatorTx2, newValidatorTx3)
+	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css)
+	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css)
+	activeVals[string(newValidatorPubKey2.Address())] = struct{}{}
+	activeVals[string(newValidatorPubKey3.Address())] = struct{}{}
+	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css)
+
+	//---------------------------------------------------------------------------
+	// Removing two validators at once
+
+	removeValidatorTx2 := dummy.MakeValSetChangeTx(newValidatorPubKey2.Bytes(), 0)
+	removeValidatorTx3 := dummy.MakeValSetChangeTx(newValidatorPubKey3.Bytes(), 0)
+
+	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, removeValidatorTx2, removeValidatorTx3)
+	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css)
+	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css)
+	delete(activeVals, string(newValidatorPubKey2.Address()))
+	delete(activeVals, string(newValidatorPubKey3.Address()))
+	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css)
+
 }
 
 func waitForAndValidateBlock(t *testing.T, n int, activeVals map[string]struct{}, eventChans []chan interface{}, css []*ConsensusState, txs ...[]byte) {
