@@ -19,6 +19,10 @@ import (
 var client tmspcli.Client
 
 func main() {
+
+	//workaround for the cli library (https://github.com/urfave/cli/issues/565)
+	cli.OsExiter = func(_ int) {}
+
 	app := cli.NewApp()
 	app.Name = "tmsp-cli"
 	app.Usage = "tmsp-cli [command] [args...]"
@@ -171,10 +175,7 @@ func cmdConsole(app *cli.App, c *cli.Context) error {
 
 		args := []string{"tmsp-cli"}
 		args = append(args, strings.Split(string(line), " ")...)
-		if err := app.Run(args); err != nil {
-			// if the command doesn't succeed, inform the user without exiting
-			fmt.Println("Error:", err.Error())
-		}
+		app.Run(args) //cli already prints error within its func call
 	}
 }
 
