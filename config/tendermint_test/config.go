@@ -9,6 +9,7 @@ import (
 
 	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
+	"github.com/tendermint/go-logger"
 )
 
 func init() {
@@ -78,7 +79,7 @@ func ResetConfig(localPath string) cfg.Config {
 	mapConfig.SetDefault("priv_validator_file", rootDir+"/priv_validator.json")
 	mapConfig.SetDefault("db_backend", "memdb")
 	mapConfig.SetDefault("db_dir", rootDir+"/data")
-	mapConfig.SetDefault("log_level", "debug")
+	mapConfig.SetDefault("log_level", "info")
 	mapConfig.SetDefault("rpc_laddr", "tcp://0.0.0.0:36657")
 	mapConfig.SetDefault("grpc_laddr", "tcp://0.0.0.0:36658")
 	mapConfig.SetDefault("prof_laddr", "")
@@ -102,6 +103,8 @@ func ResetConfig(localPath string) cfg.Config {
 	mapConfig.SetDefault("mempool_broadcast", true)
 	mapConfig.SetDefault("mempool_wal_dir", "")
 
+	logger.SetLogLevel(mapConfig.GetString("log_level"))
+
 	return mapConfig
 }
 
@@ -114,7 +117,7 @@ node_laddr = "tcp://0.0.0.0:36656"
 seeds = ""
 fast_sync = false
 db_backend = "memdb"
-log_level = "debug"
+log_level = "info"
 rpc_laddr = "tcp://0.0.0.0:36657"
 `
 
