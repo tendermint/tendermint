@@ -106,7 +106,7 @@ func TestValidatorSetChanges(t *testing.T) {
 	})
 
 	//---------------------------------------------------------------------------
-	// Adding one validator
+	log.Info("Testing adding one validator")
 
 	newValidatorPubKey1 := css[nVals].privValidator.(*types.PrivValidator).PubKey
 	newValidatorTx1 := dummy.MakeValSetChangeTx(newValidatorPubKey1.Bytes(), uint64(testMinPower))
@@ -132,7 +132,7 @@ func TestValidatorSetChanges(t *testing.T) {
 	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css)
 
 	//---------------------------------------------------------------------------
-	// Changing the voting power of one validator
+	log.Info("Testing changing the voting power of one validator")
 
 	updateValidatorTx1 := dummy.MakeValSetChangeTx(newValidatorPubKey1.Bytes(), 25)
 	previousTotalVotingPower := css[nVals].LastValidators.TotalVotingPower()
@@ -146,7 +146,7 @@ func TestValidatorSetChanges(t *testing.T) {
 	}
 
 	//---------------------------------------------------------------------------
-	// Adding two validators at once
+	log.Info("Testing adding two validators at once")
 
 	newValidatorPubKey2 := css[nVals+1].privValidator.(*types.PrivValidator).PubKey
 	newValidatorTx2 := dummy.MakeValSetChangeTx(newValidatorPubKey2.Bytes(), uint64(testMinPower))
@@ -162,7 +162,7 @@ func TestValidatorSetChanges(t *testing.T) {
 	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css)
 
 	//---------------------------------------------------------------------------
-	// Removing two validators at once
+	log.Info("Testing removing two validators at once")
 
 	removeValidatorTx2 := dummy.MakeValSetChangeTx(newValidatorPubKey2.Bytes(), 0)
 	removeValidatorTx3 := dummy.MakeValSetChangeTx(newValidatorPubKey3.Bytes(), 0)
@@ -215,17 +215,15 @@ func timeoutWaitGroup(t *testing.T, n int, f func(*sync.WaitGroup, int)) {
 		go f(wg, i)
 	}
 
-	// Make wait into a channel
 	done := make(chan struct{})
 	go func() {
 		wg.Wait()
 		close(done)
 	}()
 
-	tick := time.NewTicker(time.Second * 3)
 	select {
 	case <-done:
-	case <-tick.C:
+	case <-time.After(time.Second * 3):
 		t.Fatalf("Timed out waiting for all validators to commit a block")
 	}
 }
