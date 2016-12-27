@@ -51,11 +51,11 @@ func (app *localClient) EchoAsync(msg string) *ReqRes {
 
 func (app *localClient) InfoAsync() *ReqRes {
 	app.mtx.Lock()
-	info, tmspInfo, blockInfo, configInfo := app.Application.Info()
+	resInfo := app.Application.Info()
 	app.mtx.Unlock()
 	return app.callback(
 		types.ToRequestInfo(),
-		types.ToResponseInfo(info, tmspInfo, blockInfo, configInfo),
+		types.ToResponseInfo(resInfo),
 	)
 }
 
@@ -157,11 +157,11 @@ func (app *localClient) EchoSync(msg string) (res types.Result) {
 	return types.OK.SetData([]byte(msg))
 }
 
-func (app *localClient) InfoSync() (types.Result, *types.TMSPInfo, *types.LastBlockInfo, *types.ConfigInfo) {
+func (app *localClient) InfoSync() (resInfo types.ResponseInfo, err error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
-	info, tmspInfo, blockInfo, configInfo := app.Application.Info()
-	return types.OK.SetData([]byte(info)), tmspInfo, blockInfo, configInfo
+	resInfo = app.Application.Info()
+	return resInfo, nil
 }
 
 func (app *localClient) SetOptionSync(key string, value string) (res types.Result) {

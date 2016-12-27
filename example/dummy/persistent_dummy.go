@@ -38,7 +38,7 @@ func NewPersistentDummyApplication(dbDir string) *PersistentDummyApplication {
 	stateTree := merkle.NewIAVLTree(0, db)
 	stateTree.Load(lastBlock.AppHash)
 
-	log.Notice("Loaded state", "block", lastBlock.BlockHeight, "root", stateTree.Hash())
+	log.Notice("Loaded state", "block", lastBlock.Height, "root", stateTree.Hash())
 
 	return &PersistentDummyApplication{
 		app: &DummyApplication{state: stateTree},
@@ -46,10 +46,12 @@ func NewPersistentDummyApplication(dbDir string) *PersistentDummyApplication {
 	}
 }
 
-func (app *PersistentDummyApplication) Info() (string, *types.TMSPInfo, *types.LastBlockInfo, *types.ConfigInfo) {
-	s, _, _, _ := app.app.Info()
+func (app *PersistentDummyApplication) Info() (resInfo types.ResponseInfo) {
+	resInfo = app.app.Info()
 	lastBlock := LoadLastBlock(app.db)
-	return s, nil, &lastBlock, nil
+	resInfo.LastBlockHeight = lastBlock.Height
+	resInfo.LastBlockAppHash = lastBlock.AppHash
+	return resInfo
 }
 
 func (app *PersistentDummyApplication) SetOption(key string, value string) (log string) {
@@ -79,9 +81,9 @@ func (app *PersistentDummyApplication) Commit() types.Result {
 	appHash := app.app.state.Save()
 	log.Info("Saved state", "root", appHash)
 
-	lastBlock := types.LastBlockInfo{
-		BlockHeight: app.blockHeader.Height,
-		AppHash:     appHash, // this hash will be in the next block header
+	lastBlock := LastBlockInfo{
+		Height:  app.blockHeader.Height,
+		AppHash: appHash, // this hash will be in the next block header
 	}
 	SaveLastBlock(app.db, lastBlock)
 	return types.NewResultOK(appHash, "")
@@ -120,8 +122,13 @@ func (app *PersistentDummyApplication) EndBlock(height uint64) (diffs []*types.V
 
 var lastBlockKey = []byte("lastblock")
 
+type LastBlockInfo struct {
+	Height  uint64
+	AppHash []byte
+}
+
 // Get the last block from the db
-func LoadLastBlock(db dbm.DB) (lastBlock types.LastBlockInfo) {
+func LoadLastBlock(db dbm.DB) (lastBlock LastBlockInfo) {
 	buf := db.Get(lastBlockKey)
 	if len(buf) != 0 {
 		r, n, err := bytes.NewReader(buf), new(int), new(error)
@@ -136,8 +143,8 @@ func LoadLastBlock(db dbm.DB) (lastBlock types.LastBlockInfo) {
 	return lastBlock
 }
 
-func SaveLastBlock(db dbm.DB, lastBlock types.LastBlockInfo) {
-	log.Notice("Saving block", "height", lastBlock.BlockHeight, "root", lastBlock.AppHash)
+func SaveLastBlock(db dbm.DB, lastBlock LastBlockInfo) {
+	log.Notice("Saving block", "height", lastBlock.Height, "root", lastBlock.AppHash)
 	buf, n, err := new(bytes.Buffer), new(int), new(error)
 	wire.WriteBinary(lastBlock, buf, n, err)
 	if *err != nil {

@@ -59,8 +59,8 @@ func (app *GRPCApplication) Flush(ctx context.Context, req *RequestFlush) (*Resp
 }
 
 func (app *GRPCApplication) Info(ctx context.Context, req *RequestInfo) (*ResponseInfo, error) {
-	info, tmspInfo, blockInfo, configInfo := app.app.Info()
-	return &ResponseInfo{info, tmspInfo, blockInfo, configInfo}, nil
+	resInfo := app.app.Info()
+	return &resInfo, nil
 }
 
 func (app *GRPCApplication) SetOption(ctx context.Context, req *RequestSetOption) (*ResponseSetOption, error) {

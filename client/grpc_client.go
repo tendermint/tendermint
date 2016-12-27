@@ -262,13 +262,16 @@ func (cli *grpcClient) FlushSync() error {
 	return nil
 }
 
-func (cli *grpcClient) InfoSync() (types.Result, *types.TMSPInfo, *types.LastBlockInfo, *types.ConfigInfo) {
+func (cli *grpcClient) InfoSync() (resInfo types.ResponseInfo, err error) {
 	reqres := cli.InfoAsync()
-	if res := cli.checkErrGetResult(); res.IsErr() {
-		return res, nil, nil, nil
+	if err = cli.Error(); err != nil {
+		return resInfo, err
 	}
-	resp := reqres.Response.GetInfo()
-	return types.NewResultOK([]byte(resp.Info), LOG), resp.TmspInfo, resp.LastBlock, resp.Config
+	if resInfo_ := reqres.Response.GetInfo(); resInfo_ != nil {
+		return *resInfo_, nil
+	} else {
+		return resInfo, nil
+	}
 }
 
 func (cli *grpcClient) SetOptionSync(key string, value string) (res types.Result) {

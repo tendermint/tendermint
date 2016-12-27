@@ -72,9 +72,9 @@ func TestPersistentDummyInfo(t *testing.T) {
 	dummy := NewPersistentDummyApplication(dir)
 	height := uint64(0)
 
-	_, _, lastBlockInfo, _ := dummy.Info()
-	if lastBlockInfo.BlockHeight != height {
-		t.Fatalf("expected height of %d, got %d", height, lastBlockInfo.BlockHeight)
+	resInfo := dummy.Info()
+	if resInfo.LastBlockHeight != height {
+		t.Fatalf("expected height of %d, got %d", height, resInfo.LastBlockHeight)
 	}
 
 	// make and apply block
@@ -87,9 +87,9 @@ func TestPersistentDummyInfo(t *testing.T) {
 	dummy.EndBlock(height)
 	dummy.Commit()
 
-	_, _, lastBlockInfo, _ = dummy.Info()
-	if lastBlockInfo.BlockHeight != height {
-		t.Fatalf("expected height of %d, got %d", height, lastBlockInfo.BlockHeight)
+	resInfo = dummy.Info()
+	if resInfo.LastBlockHeight != height {
+		t.Fatalf("expected height of %d, got %d", height, resInfo.LastBlockHeight)
 	}
 
 }

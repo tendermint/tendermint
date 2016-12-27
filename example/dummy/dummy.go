@@ -19,8 +19,8 @@ func NewDummyApplication() *DummyApplication {
 	return &DummyApplication{state: state}
 }
 
-func (app *DummyApplication) Info() (string, *types.TMSPInfo, *types.LastBlockInfo, *types.ConfigInfo) {
-	return Fmt("{\"size\":%v}", app.state.Size()), nil, nil, nil
+func (app *DummyApplication) Info() (resInfo types.ResponseInfo) {
+	return types.ResponseInfo{Data: Fmt("{\"size\":%v}", app.state.Size())}
 }
 
 func (app *DummyApplication) SetOption(key string, value string) (log string) {

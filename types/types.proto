@@ -165,7 +165,7 @@ message ResponseFlush{
 }
 
 message ResponseInfo {
-	string info = 1;
+	string data = 1;
 	string version = 2;
 	uint64 last_block_height = 3;
 	bytes last_block_app_hash = 4;
