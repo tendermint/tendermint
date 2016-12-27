@@ -165,11 +165,10 @@ message ResponseFlush{
 }
 
 message ResponseInfo {
-	string info = 1; // backwards compatible
-
-	TMSPInfo tmsp_info = 2;
-	LastBlockInfo last_block = 3;
-	ConfigInfo config = 4;
+	string info = 1;
+	string version = 2;
+	uint64 last_block_height = 3;
+	bytes last_block_app_hash = 4;
 }
 
 message ResponseSetOption{
@@ -209,24 +208,6 @@ message ResponseBeginBlock{
 
 message ResponseEndBlock{
 	repeated Validator diffs = 4;
-}
-
-//----------------------------------------
-// Info types 
-
-message TMSPInfo {
-	string Version = 1;
-}
-
-message LastBlockInfo {
-	uint64 block_height = 1;
-	bytes app_hash = 2;
-}
-
-message ConfigInfo {
-	uint64 max_block_size_bytes = 1;
-	uint64 max_block_size_txs = 2;
-	uint64 max_tx_size = 3;
 }
 
 //----------------------------------------
