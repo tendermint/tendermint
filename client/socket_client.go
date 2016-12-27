@@ -373,13 +373,17 @@ func (cli *socketClient) BeginBlockSync(hash []byte, header *types.Header) (err 
 	return nil
 }
 
-func (cli *socketClient) EndBlockSync(height uint64) (validators []*types.Validator, err error) {
+func (cli *socketClient) EndBlockSync(height uint64) (resEndBlock types.ResponseEndBlock, err error) {
 	reqres := cli.queueRequest(types.ToRequestEndBlock(height))
 	cli.FlushSync()
 	if err := cli.Error(); err != nil {
-		return nil, err
+		return resEndBlock, err
 	}
-	return reqres.Response.GetEndBlock().Diffs, nil
+	if resEndBlock_ := reqres.Response.GetEndBlock(); resEndBlock_ != nil {
+		return *resEndBlock_, nil
+	} else {
+		return resEndBlock, nil
+	}
 }
 
 //----------------------------------------

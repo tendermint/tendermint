@@ -142,9 +142,10 @@ func ToResponseBeginBlock() *Response {
 	}
 }
 
-func ToResponseEndBlock(validators []*Validator) *Response {
+func ToResponseEndBlock(resEndBlock ResponseEndBlock) *Response {
+	resEndBlockCopy := resEndBlock
 	return &Response{
-		Value: &Response_EndBlock{&ResponseEndBlock{validators}},
+		Value: &Response_EndBlock{&resEndBlockCopy},
 	}
 }
 

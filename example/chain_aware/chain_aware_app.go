@@ -15,7 +15,7 @@ func main() {
 	flag.Parse()
 
 	// Start the listener
-	_, err := server.NewServer(*addrPtr, *tmspPtr, NewChainAwareApplication())
+	srv, err := server.NewServer(*addrPtr, *tmspPtr, NewChainAwareApplication())
 	if err != nil {
 		Exit(err.Error())
 	}
@@ -23,6 +23,7 @@ func main() {
 	// Wait forever
 	TrapSignal(func() {
 		// Cleanup
+		srv.Stop()
 	})
 
 }
@@ -65,9 +66,9 @@ func (app *ChainAwareApplication) BeginBlock(hash []byte, header *types.Header) 
 	return
 }
 
-func (app *ChainAwareApplication) EndBlock(height uint64) []*types.Validator {
+func (app *ChainAwareApplication) EndBlock(height uint64) (resEndBlock types.ResponseEndBlock) {
 	app.endCount += 1
-	return nil
+	return
 }
 
 func (app *ChainAwareApplication) InitChain(vals []*types.Validator) {

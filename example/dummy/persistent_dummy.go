@@ -113,8 +113,8 @@ func (app *PersistentDummyApplication) BeginBlock(hash []byte, header *types.Hea
 }
 
 // Update the validator set
-func (app *PersistentDummyApplication) EndBlock(height uint64) (diffs []*types.Validator) {
-	return app.changes
+func (app *PersistentDummyApplication) EndBlock(height uint64) (resEndBlock types.ResponseEndBlock) {
+	return types.ResponseEndBlock{Diffs: app.changes}
 }
 
 //-----------------------------------------

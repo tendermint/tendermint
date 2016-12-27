@@ -179,10 +179,10 @@ func makeApplyBlock(t *testing.T, dummy types.Application, heightInt int, diff [
 			t.Fatal(r)
 		}
 	}
-	diff2 := dummyChain.EndBlock(height)
+	resEndBlock := dummyChain.EndBlock(height)
 	dummy.Commit()
 
-	valsEqual(t, diff, diff2)
+	valsEqual(t, diff, resEndBlock.Diffs)
 
 }
 

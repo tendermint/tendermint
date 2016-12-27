@@ -38,7 +38,7 @@ type BlockchainAware interface {
 
 	// Signals the end of a block
 	// diffs: changed validators from app to TendermintCore
-	EndBlock(height uint64) (diffs []*Validator)
+	EndBlock(height uint64) ResponseEndBlock
 }
 
 //------------------------------------
@@ -103,8 +103,8 @@ func (app *GRPCApplication) BeginBlock(ctx context.Context, req *RequestBeginBlo
 
 func (app *GRPCApplication) EndBlock(ctx context.Context, req *RequestEndBlock) (*ResponseEndBlock, error) {
 	if chainAware, ok := app.app.(BlockchainAware); ok {
-		diffs := chainAware.EndBlock(req.Height)
-		return &ResponseEndBlock{diffs}, nil
+		resEndBlock := chainAware.EndBlock(req.Height)
+		return &resEndBlock, nil
 	}
 	return &ResponseEndBlock{}, nil
 }

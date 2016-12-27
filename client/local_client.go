@@ -136,14 +136,14 @@ func (app *localClient) BeginBlockAsync(hash []byte, header *types.Header) *ReqR
 
 func (app *localClient) EndBlockAsync(height uint64) *ReqRes {
 	app.mtx.Lock()
-	var validators []*types.Validator
+	var resEndBlock types.ResponseEndBlock
 	if bcApp, ok := app.Application.(types.BlockchainAware); ok {
-		validators = bcApp.EndBlock(height)
+		resEndBlock = bcApp.EndBlock(height)
 	}
 	app.mtx.Unlock()
 	return app.callback(
 		types.ToRequestEndBlock(height),
-		types.ToResponseEndBlock(validators),
+		types.ToResponseEndBlock(resEndBlock),
 	)
 }
 
@@ -217,13 +217,13 @@ func (app *localClient) BeginBlockSync(hash []byte, header *types.Header) (err e
 	return nil
 }
 
-func (app *localClient) EndBlockSync(height uint64) (changedValidators []*types.Validator, err error) {
+func (app *localClient) EndBlockSync(height uint64) (resEndBlock types.ResponseEndBlock, err error) {
 	app.mtx.Lock()
 	if bcApp, ok := app.Application.(types.BlockchainAware); ok {
-		changedValidators = bcApp.EndBlock(height)
+		resEndBlock = bcApp.EndBlock(height)
 	}
 	app.mtx.Unlock()
-	return changedValidators, nil
+	return resEndBlock, nil
 }
 
 //-------------------------------------------------------

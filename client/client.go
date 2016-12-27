@@ -38,7 +38,7 @@ type Client interface {
 
 	InitChainSync(validators []*types.Validator) (err error)
 	BeginBlockSync(hash []byte, header *types.Header) (err error)
-	EndBlockSync(height uint64) (changedValidators []*types.Validator, err error)
+	EndBlockSync(height uint64) (resEndBlock types.ResponseEndBlock, err error)
 }
 
 //----------------------------------------
