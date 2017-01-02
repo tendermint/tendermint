@@ -2,6 +2,7 @@ package rpcserver
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -229,7 +230,35 @@ func httpParamsToArgs(rpcFunc *RPCFunc, r *http.Request) ([]reflect.Value, error
 	for i, name := range argNames {
 		ty := argTypes[i]
 		arg := GetParam(r, name)
-		//log.Notice("param to arg", "ty", ty, "name", name, "arg", arg)
+		// log.Notice("param to arg", "ty", ty, "name", name, "arg", arg)
+
+		// Handle quoted strings
+		if strings.HasPrefix(arg, "\"") && strings.HasSuffix(arg, "\"") {
+			data := arg[1 : len(arg)-1]
+			if ty.Kind() == reflect.String {
+				values[i] = reflect.ValueOf(string(data))
+			} else {
+				values[i] = reflect.ValueOf(data)
+			}
+			continue
+		}
+
+		// Handle hex strings
+		if strings.HasPrefix(strings.ToLower(arg), "0x") {
+			var value []byte
+			value, err = hex.DecodeString(arg[2:])
+			if err != nil {
+				return nil, err
+			}
+			if ty.Kind() == reflect.String {
+				values[i] = reflect.ValueOf(string(value))
+			} else {
+				values[i] = reflect.ValueOf(value)
+			}
+			continue
+		}
+
+		// Pass values to go-wire
 		values[i], err = _jsonStringToArg(ty, arg)
 		if err != nil {
 			return nil, err
