@@ -6,7 +6,7 @@ Blockchains are a system for creating shared multi-master application state.
 **TMSP** is a socket protocol enabling a blockchain consensus engine, running in one process,
 to manage a blockchain application state, running in another.
 
-For more information on TMSP, motivations, and tutorials, please visit [our blog post](http://tendermint.com/posts/tendermint-socket-protocol/).
+For more information on TMSP, motivations, and tutorials, please visit [our blog post](https://tendermint.com/blog/tmsp-the-tendermint-socket-protocol).
 
 Other implementations:
 * [cpp-tmsp](https://github.com/mdyring/cpp-tmsp) by Martin Dyring-Andersen
