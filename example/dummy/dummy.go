@@ -1,6 +1,7 @@
 package dummy
 
 import (
+	"encoding/hex"
 	"strings"
 
 	. "github.com/tendermint/go-common"
@@ -48,8 +49,7 @@ func (app *DummyApplication) Commit() types.Result {
 
 func (app *DummyApplication) Query(query []byte) types.Result {
 	index, value, exists := app.state.Get(query)
-
-	queryResult := QueryResult{index, string(value), exists}
+	queryResult := QueryResult{index, hex.EncodeToString(value), exists}
 	return types.NewResultOK(wire.JSONBytes(queryResult), "")
 }
 
