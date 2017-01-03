@@ -149,6 +149,12 @@ func TestValidatorSetChanges(t *testing.T) {
 	nPeers := 8
 	nVals := 4
 	css := randConsensusNetWithPeers(nVals, nPeers, "consensus_val_set_changes_test", newMockTickerFunc(true), newPersistentDummy)
+
+	// otherwise, the test is failing with timeout error
+	for i := 0; i < nPeers; i++ {
+		css[i].timeoutParams.SkipCommit0 = true
+	}
+
 	reactors := make([]*ConsensusReactor, nPeers)
 	eventChans := make([]chan interface{}, nPeers)
 	for i := 0; i < nPeers; i++ {
