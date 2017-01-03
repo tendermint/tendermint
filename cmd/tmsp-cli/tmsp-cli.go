@@ -290,8 +290,6 @@ func printResponse(c *cli.Context, res types.Result, s string, printCode bool) {
 
 // NOTE: s is interpreted as a string unless prefixed with 0x
 func stringOrHexToBytes(s string) ([]byte, error) {
-	fmt.Printf("string: %s %x\n", s, []byte(s))
-
 	if len(s) > 2 && strings.ToLower(s[:2]) == "0x" {
 		b, err := hex.DecodeString(s[2:])
 		if err != nil {
