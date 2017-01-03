@@ -285,5 +285,13 @@ func stringOrHexToBytes(s string) []byte {
 		}
 		return b
 	}
+
+	if !strings.HasPrefix(s, "\"") || !strings.HasSuffix(s, "\"") {
+		fmt.Printf("Invalid string arg: \"%s\". Must be quoted or a \"0x\"-prefixed hex string\n", s)
+		return []byte{}
+	}
+
+	// TODO: return errors
+
 	return []byte(s)
 }
