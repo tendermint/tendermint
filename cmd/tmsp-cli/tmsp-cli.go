@@ -215,8 +215,7 @@ func cmdAppendTx(c *cli.Context) error {
 	}
 	txBytes, err := stringOrHexToBytes(c.Args()[0])
 	if err != nil {
-		fmt.Println(err.Error())
-		return nil
+		return err
 	}
 	res := client.AppendTxSync(txBytes)
 	printResponse(c, res, string(res.Data), true)
@@ -231,8 +230,7 @@ func cmdCheckTx(c *cli.Context) error {
 	}
 	txBytes, err := stringOrHexToBytes(c.Args()[0])
 	if err != nil {
-		fmt.Println(err.Error())
-		return nil
+		return err
 	}
 	res := client.CheckTxSync(txBytes)
 	printResponse(c, res, string(res.Data), true)
@@ -254,8 +252,7 @@ func cmdQuery(c *cli.Context) error {
 	}
 	queryBytes, err := stringOrHexToBytes(c.Args()[0])
 	if err != nil {
-		fmt.Println(err.Error())
-		return nil
+		return err
 	}
 	res := client.QuerySync(queryBytes)
 	printResponse(c, res, string(res.Data), true)
