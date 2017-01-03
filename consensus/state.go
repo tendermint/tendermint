@@ -23,15 +23,17 @@ import (
 //-----------------------------------------------------------------------------
 // Timeout Parameters
 
-// All in milliseconds
+// TimeoutParams holds timeouts and deltas for each round step.
+// All timeouts and deltas in milliseconds.
 type TimeoutParams struct {
-	Propose0       int
-	ProposeDelta   int
-	Prevote0       int
-	PrevoteDelta   int
-	Precommit0     int
-	PrecommitDelta int
-	Commit0        int
+	Propose0          int
+	ProposeDelta      int
+	Prevote0          int
+	PrevoteDelta      int
+	Precommit0        int
+	PrecommitDelta    int
+	Commit0           int
+	SkipTimeoutCommit bool
 }
 
 // Wait this long for a proposal
@@ -54,16 +56,17 @@ func (tp *TimeoutParams) Commit(t time.Time) time.Time {
 	return t.Add(time.Duration(tp.Commit0) * time.Millisecond)
 }
 
-// Initialize parameters from config
+// InitTimeoutParamsFromConfig initializes parameters from config
 func InitTimeoutParamsFromConfig(config cfg.Config) *TimeoutParams {
 	return &TimeoutParams{
-		Propose0:       config.GetInt("timeout_propose"),
-		ProposeDelta:   config.GetInt("timeout_propose_delta"),
-		Prevote0:       config.GetInt("timeout_prevote"),
-		PrevoteDelta:   config.GetInt("timeout_prevote_delta"),
-		Precommit0:     config.GetInt("timeout_precommit"),
-		PrecommitDelta: config.GetInt("timeout_precommit_delta"),
-		Commit0:        config.GetInt("timeout_commit"),
+		Propose0:          config.GetInt("timeout_propose"),
+		ProposeDelta:      config.GetInt("timeout_propose_delta"),
+		Prevote0:          config.GetInt("timeout_prevote"),
+		PrevoteDelta:      config.GetInt("timeout_prevote_delta"),
+		Precommit0:        config.GetInt("timeout_precommit"),
+		PrecommitDelta:    config.GetInt("timeout_precommit_delta"),
+		Commit0:           config.GetInt("timeout_commit"),
+		SkipTimeoutCommit: config.GetBool("skip_timeout_commit"),
 	}
 }
 
@@ -1373,8 +1376,8 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerKey string) (added bool,
 			log.Info(Fmt("Added to lastPrecommits: %v", cs.LastCommit.StringShort()))
 			types.FireEventVote(cs.evsw, types.EventDataVote{vote})
 
-			if cs.LastCommit.HasAll() {
-				// if we have all the votes now,
+			// if we can skip timeoutCommit and have all the votes now,
+			if cs.timeoutParams.SkipTimeoutCommit && cs.LastCommit.HasAll() {
 				// schedule the timeoutCommit to happen right away
 				// NOTE: this won't apply if only one validator
 				// cs.scheduleTimeout(time.Duration(0), cs.Height, 0, RoundStepNewHeight)
