@@ -213,7 +213,11 @@ func cmdAppendTx(c *cli.Context) error {
 	if len(args) != 1 {
 		return errors.New("Command append_tx takes 1 argument")
 	}
-	txBytes := stringOrHexToBytes(c.Args()[0])
+	txBytes, err := stringOrHexToBytes(c.Args()[0])
+	if err != nil {
+		fmt.Println(err.Error())
+		return nil
+	}
 	res := client.AppendTxSync(txBytes)
 	printResponse(c, res, string(res.Data), true)
 	return nil
@@ -225,7 +229,11 @@ func cmdCheckTx(c *cli.Context) error {
 	if len(args) != 1 {
 		return errors.New("Command check_tx takes 1 argument")
 	}
-	txBytes := stringOrHexToBytes(c.Args()[0])
+	txBytes, err := stringOrHexToBytes(c.Args()[0])
+	if err != nil {
+		fmt.Println(err.Error())
+		return nil
+	}
 	res := client.CheckTxSync(txBytes)
 	printResponse(c, res, string(res.Data), true)
 	return nil
@@ -244,7 +252,11 @@ func cmdQuery(c *cli.Context) error {
 	if len(args) != 1 {
 		return errors.New("Command query takes 1 argument")
 	}
-	queryBytes := stringOrHexToBytes(c.Args()[0])
+	queryBytes, err := stringOrHexToBytes(c.Args()[0])
+	if err != nil {
+		fmt.Println(err.Error())
+		return nil
+	}
 	res := client.QuerySync(queryBytes)
 	printResponse(c, res, string(res.Data), true)
 	return nil
@@ -277,21 +289,22 @@ func printResponse(c *cli.Context, res types.Result, s string, printCode bool) {
 }
 
 // NOTE: s is interpreted as a string unless prefixed with 0x
-func stringOrHexToBytes(s string) []byte {
-	if len(s) > 2 && s[:2] == "0x" {
+func stringOrHexToBytes(s string) ([]byte, error) {
+	fmt.Printf("string: %s %x\n", s, []byte(s))
+
+	if len(s) > 2 && strings.ToLower(s[:2]) == "0x" {
 		b, err := hex.DecodeString(s[2:])
 		if err != nil {
-			fmt.Println("Error decoding hex argument:", err.Error())
+			err = fmt.Errorf("Error decoding hex argument: %s", err.Error())
+			return nil, err
 		}
-		return b
+		return b, nil
 	}
 
 	if !strings.HasPrefix(s, "\"") || !strings.HasSuffix(s, "\"") {
-		fmt.Printf("Invalid string arg: \"%s\". Must be quoted or a \"0x\"-prefixed hex string\n", s)
-		return []byte{}
+		err := fmt.Errorf("Invalid string arg: \"%s\". Must be quoted or a \"0x\"-prefixed hex string", s)
+		return nil, err
 	}
 
-	// TODO: return errors
-
-	return []byte(s)
+	return []byte(s[1 : len(s)-1]), nil
 }
