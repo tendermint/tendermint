@@ -49,12 +49,13 @@ func (app *DummyApplication) Commit() types.Result {
 
 func (app *DummyApplication) Query(query []byte) types.Result {
 	index, value, exists := app.state.Get(query)
-	queryResult := QueryResult{index, hex.EncodeToString(value), exists}
+	queryResult := QueryResult{index, string(value), hex.EncodeToString(value), exists}
 	return types.NewResultOK(wire.JSONBytes(queryResult), "")
 }
 
 type QueryResult struct {
-	Index  int    `json:"index"`
-	Value  string `json:"value"`
-	Exists bool   `json:"exists"`
+	Index    int    `json:"index"`
+	Value    string `json:"value"`
+	ValueHex string `json:"valueHex"`
+	Exists   bool   `json:"exists"`
 }
