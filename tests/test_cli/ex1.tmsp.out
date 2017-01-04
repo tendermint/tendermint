@@ -7,7 +7,7 @@
 > commit 
 -> data: 0x
 
-> append_tx abc
+> append_tx "abc"
 -> code: OK
 
 > info 
@@ -16,17 +16,17 @@
 > commit 
 -> data: 0x750502FC7E84BBD788ED589624F06CFA871845D1
 
-> query abc
+> query "abc"
 -> code: OK
--> data: {"index":0,"value":"abc","exists":true}
+-> data: {"index":0,"value":"abc","valueHex":"616263","exists":true}
 
-> append_tx def=xyz
+> append_tx "def=xyz"
 -> code: OK
 
 > commit 
 -> data: 0x76393B8A182E450286B0694C629ECB51B286EFD5
 
-> query def
+> query "def"
 -> code: OK
--> data: {"index":1,"value":"xyz","exists":true}
+-> data: {"index":1,"value":"xyz","valueHex":"78797a","exists":true}
 
