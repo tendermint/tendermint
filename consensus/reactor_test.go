@@ -262,6 +262,49 @@ func TestValidatorSetChanges(t *testing.T) {
 	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css)
 }
 
+// Check we can make blocks with skip_timeout_commit=false
+func TestReactorWithTimeoutCommit(t *testing.T) {
+	N := 4
+	css := randConsensusNet(N, "consensus_reactor_with_timeout_commit_test", newMockTickerFunc(false))
+
+	// override default SkipTimeoutCommit == true for tests
+	for i := 0; i < N; i++ {
+		css[i].timeoutParams.SkipTimeoutCommit = false
+	}
+
+	reactors := make([]*ConsensusReactor, N-1)
+	eventChans := make([]chan interface{}, N-1)
+	for i := 0; i < N-1; i++ {
+		reactors[i] = NewConsensusReactor(css[i], true) // so we dont start the consensus states
+
+		eventSwitch := events.NewEventSwitch()
+		_, err := eventSwitch.Start()
+		if err != nil {
+			t.Fatalf("Failed to start switch: %v", err)
+		}
+
+		reactors[i].SetEventSwitch(eventSwitch)
+		eventChans[i] = subscribeToEvent(eventSwitch, "tester", types.EventStringNewBlock(), 1)
+	}
+	// make connected switches and start all reactors
+	p2p.MakeConnectedSwitches(N-1, func(i int, s *p2p.Switch) *p2p.Switch {
+		s.AddReactor("CONSENSUS", reactors[i])
+		return s
+	}, p2p.Connect2Switches)
+
+	// start the state machines
+	for i := 0; i < N-1; i++ {
+		s := reactors[i].conS.GetState()
+		reactors[i].SwitchToConsensus(s)
+	}
+
+	// wait till everyone makes the first new block
+	timeoutWaitGroup(t, N-1, func(wg *sync.WaitGroup, j int) {
+		<-eventChans[j]
+		wg.Done()
+	})
+}
+
 func waitForAndValidateBlock(t *testing.T, n int, activeVals map[string]struct{}, eventChans []chan interface{}, css []*ConsensusState, txs ...[]byte) {
 	timeoutWaitGroup(t, n, func(wg *sync.WaitGroup, j int) {
 		newBlockI := <-eventChans[j]
