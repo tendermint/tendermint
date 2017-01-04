@@ -98,7 +98,7 @@ func ResetConfig(localPath string) cfg.Config {
 	mapConfig.SetDefault("timeout_precommit", 10)
 	mapConfig.SetDefault("timeout_precommit_delta", 1)
 	mapConfig.SetDefault("timeout_commit", 10)
-	mapConfig.SetDefault("skip_timeout_commit", false)
+	mapConfig.SetDefault("skip_timeout_commit", true)
 	mapConfig.SetDefault("mempool_recheck", true)
 	mapConfig.SetDefault("mempool_recheck_empty", true)
 	mapConfig.SetDefault("mempool_broadcast", true)
