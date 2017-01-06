@@ -14,7 +14,8 @@ import (
 )
 
 var (
-	stateKey = []byte("stateKey")
+	stateKey             = []byte("stateKey")
+	stateIntermediateKey = []byte("stateIntermediateKey")
 )
 
 //-----------------------------------------------------------------------------
@@ -36,15 +37,17 @@ type State struct {
 	Validators      *types.ValidatorSet
 	LastValidators  *types.ValidatorSet // block.LastCommit validated against this
 
-	// AppHash is updated after Commit;
-	// it's stale after ExecBlock and before Commit
-	AppHashIsStale bool
-	AppHash        []byte
+	// AppHash is updated after Commit
+	AppHash []byte
 }
 
 func LoadState(db dbm.DB) *State {
+	return loadState(db, stateKey)
+}
+
+func loadState(db dbm.DB, key []byte) *State {
 	s := &State{db: db}
-	buf := db.Get(stateKey)
+	buf := db.Get(key)
 	if len(buf) == 0 {
 		return nil
 	} else {
@@ -60,9 +63,6 @@ func LoadState(db dbm.DB) *State {
 }
 
 func (s *State) Copy() *State {
-	if s.AppHashIsStale {
-		PanicSanity(Fmt("App hash is stale: %v", s))
-	}
 	return &State{
 		db:              s.db,
 		GenesisDoc:      s.GenesisDoc,
@@ -72,7 +72,6 @@ func (s *State) Copy() *State {
 		LastBlockTime:   s.LastBlockTime,
 		Validators:      s.Validators.Copy(),
 		LastValidators:  s.LastValidators.Copy(),
-		AppHashIsStale:  false,
 		AppHash:         s.AppHash,
 	}
 }
@@ -81,6 +80,35 @@ func (s *State) Save() {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 	s.db.SetSync(stateKey, s.Bytes())
+}
+
+func (s *State) SaveIntermediate() {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+	s.db.SetSync(stateIntermediateKey, s.Bytes())
+}
+
+// Load the intermediate state into the current state
+// and do some sanity checks
+func (s *State) LoadIntermediate() {
+	s2 := loadState(s.db, stateIntermediateKey)
+	if s.ChainID != s2.ChainID {
+		PanicSanity(Fmt("State mismatch for ChainID. Got %v, Expected %v", s2.ChainID, s.ChainID))
+	}
+
+	if s.LastBlockHeight+1 != s2.LastBlockHeight {
+		PanicSanity(Fmt("State mismatch for LastBlockHeight. Got %v, Expected %v", s2.LastBlockHeight, s.LastBlockHeight+1))
+	}
+
+	if !bytes.Equal(s.Validators.Hash(), s2.LastValidators.Hash()) {
+		PanicSanity(Fmt("State mismatch for LastValidators. Got %X, Expected %X", s2.LastValidators.Hash(), s.Validators.Hash()))
+	}
+
+	if !bytes.Equal(s.AppHash, s2.AppHash) {
+		PanicSanity(Fmt("State mismatch for AppHash. Got %X, Expected %X", s2.AppHash, s.AppHash))
+	}
+
+	s.setBlockAndValidators(s2.LastBlockHeight, s2.LastBlockID, s2.LastBlockTime, s2.Validators.Copy(), s2.LastValidators.Copy())
 }
 
 func (s *State) Equals(s2 *State) bool {
@@ -97,15 +125,22 @@ func (s *State) Bytes() []byte {
 }
 
 // Mutate state variables to match block and validators
-// Since we don't have the new AppHash yet, we set s.AppHashIsStale=true
+// after running EndBlock
 func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader types.PartSetHeader, prevValSet, nextValSet *types.ValidatorSet) {
-	s.LastBlockHeight = header.Height
-	s.LastBlockID = types.BlockID{header.Hash(), blockPartsHeader}
-	s.LastBlockTime = header.Time
+	s.setBlockAndValidators(header.Height,
+		types.BlockID{header.Hash(), blockPartsHeader}, header.Time,
+		prevValSet, nextValSet)
+}
+
+func (s *State) setBlockAndValidators(
+	height int, blockID types.BlockID, blockTime time.Time,
+	prevValSet, nextValSet *types.ValidatorSet) {
+
+	s.LastBlockHeight = height
+	s.LastBlockID = blockID
+	s.LastBlockTime = blockTime
 	s.Validators = nextValSet
 	s.LastValidators = prevValSet
-
-	s.AppHashIsStale = true
 }
 
 func (s *State) GetValidators() (*types.ValidatorSet, *types.ValidatorSet) {

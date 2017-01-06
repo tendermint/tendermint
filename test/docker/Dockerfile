@@ -21,5 +21,8 @@ COPY . $REPO
 RUN go install ./cmd/tendermint
 RUN bash scripts/install_tmsp_apps.sh
 
+# expose the volume for debugging
+VOLUME $REPO
+
 EXPOSE 46656
 EXPOSE 46657

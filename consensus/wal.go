@@ -104,4 +104,9 @@ func (wal *WAL) Save(wmsg WALMessage) {
 
 func (wal *WAL) writeHeight(height int) {
 	wal.group.WriteLine(Fmt("#HEIGHT: %v", height))
+
+	// TODO: only flush when necessary
+	if err := wal.group.Flush(); err != nil {
+		PanicQ(Fmt("Error flushing consensus wal buf to file. Error: %v \n", err))
+	}
 }

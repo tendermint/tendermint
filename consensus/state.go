@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"reflect"
 	"sync"
 	"time"
@@ -345,6 +346,23 @@ func (cs *ConsensusState) OnStart() error {
 	if err != nil {
 		log.Error("Error loading ConsensusState wal", "error", err.Error())
 		return err
+	}
+
+	// If the latest block was applied in the tmsp handshake,
+	// we may not have written the current height to the wal,
+	// so check here and write it if not found.
+	// TODO: remove this and run the handhsake/replay
+	// through the consensus state with a mock app
+	gr, found, err := cs.wal.group.Search("#HEIGHT: ", makeHeightSearchFunc(cs.Height))
+	if (err == io.EOF || !found) && cs.Step == RoundStepNewHeight {
+		log.Warn("Height not found in wal. Writing new height", "height", cs.Height)
+		rs := cs.RoundStateEvent()
+		cs.wal.Save(rs)
+	} else if err != nil {
+		return err
+	}
+	if gr != nil {
+		gr.Close()
 	}
 
 	// we need the timeoutRoutine for replay so

@@ -71,6 +71,8 @@ func DefaultClientCreator(config cfg.Config) ClientCreator {
 	switch addr {
 	case "dummy":
 		return NewLocalClientCreator(dummy.NewDummyApplication())
+	case "persistent_dummy":
+		return NewLocalClientCreator(dummy.NewPersistentDummyApplication(config.GetString("db_dir")))
 	case "nilapp":
 		return NewLocalClientCreator(nilapp.NewNilApplication())
 	default:
