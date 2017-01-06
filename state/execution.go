@@ -418,6 +418,9 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, appConnCon
 		// replay all blocks starting with appBlockHeight+1
 		var eventCache types.Fireable // nil
 
+		// TODO: use stateBlockHeight instead and let the consensus state
+		// do the replay
+
 		var appHash []byte
 		for i := appBlockHeight + 1; i <= storeBlockHeight; i++ {
 			h.nBlocks += 1
@@ -443,6 +446,5 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, appConnCon
 		}
 		return nil
 	}
-
 	return nil
 }

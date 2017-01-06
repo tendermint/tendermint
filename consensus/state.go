@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"reflect"
 	"sync"
 	"time"
@@ -348,6 +349,23 @@ func (cs *ConsensusState) OnStart() error {
 		return err
 	}
 
+	// If the latest block was applied in the tmsp handshake,
+	// we may not have written the current height to the wal,
+	// so check here and write it if not found.
+	// TODO: remove this and run the handhsake/replay
+	// through the consensus state with a mock app
+	gr, found, err := cs.wal.group.Search("#HEIGHT: ", makeHeightSearchFunc(cs.Height))
+	if (err == io.EOF || !found) && cs.Step == RoundStepNewHeight {
+		log.Warn("Height not found in wal. Writing new height", "height", cs.Height)
+		rs := cs.RoundStateEvent()
+		cs.wal.Save(rs)
+	} else if err != nil {
+		return err
+	}
+	if gr != nil {
+		gr.Close()
+	}
+
 	// we need the timeoutRoutine for replay so
 	//  we don't block on the tick chan.
 	// NOTE: we will get a build up of garbage go routines
@@ -360,14 +378,6 @@ func (cs *ConsensusState) OnStart() error {
 	if err := cs.catchupReplay(cs.Height); err != nil {
 		log.Error("Error on catchup replay", "error", err.Error())
 		// let's go for it anyways, maybe we're fine
-	}
-
-	// If the latest block was applied in the tmsp handshake,
-	// we may not have written the current height to the wal,
-	// so write it here in case
-	if cs.Step == RoundStepNewHeight {
-		log.Warn("wal.writeHeight", "height", cs.Height)
-		cs.wal.writeHeight(cs.Height)
 	}
 
 	// now start the receiveRoutine
