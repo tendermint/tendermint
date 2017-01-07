@@ -6,7 +6,7 @@ go build -o server main.go
 PID=$!
 sleep 2
 
-# simple JSONRPC request
+# simple request
 R1=`curl -s 'http://localhost:8008/hello_world?name="my_world"&num=5'`
 R2=`curl -s --data @data.json http://localhost:8008`
 if [[ "$R1" != "$R2" ]]; then
@@ -42,4 +42,16 @@ else
 	echo "Success"
 fi
 
-kill -9 $PID
+# request with string type when expecting number arg
+R1=`curl -s 'http://localhost:8008/hello_world?name="abcd"&num=0xabcd'`
+R2="{\"jsonrpc\":\"2.0\",\"id\":\"\",\"result\":null,\"error\":\"Error converting http params to args: Got a 'hex string' arg, but expected 'int'\"}"
+if [[ "$R1" != "$R2" ]]; then
+	echo "responses are not identical:"
+	echo "R1: $R1"
+	echo "R2: $R2"
+	exit 1
+else
+	echo "Success"
+fi
+
+kill -9 $PID || exit 0
