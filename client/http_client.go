@@ -121,7 +121,7 @@ func (c *ClientURI) call(method string, params map[string]interface{}, result in
 	if err != nil {
 		return nil, err
 	}
-	log.Info(Fmt("URI request to %v (%v): %v", c.address, method, values))
+	// log.Info(Fmt("URI request to %v (%v): %v", c.address, method, values))
 	resp, err := c.client.PostForm(c.address+"/"+method, values)
 	if err != nil {
 		return nil, err
@@ -178,13 +178,6 @@ func argsToJson(args map[string]interface{}) error {
 	var n int
 	var err error
 	for k, v := range args {
-		// Convert strings to "0x"-prefixed hex
-		str, isString := reflect.ValueOf(v).Interface().(string)
-		if isString {
-			args[k] = fmt.Sprintf("0x%X", str)
-			continue
-		}
-
 		// Convert byte slices to "0x"-prefixed hex
 		byteSlice, isByteSlice := reflect.ValueOf(v).Interface().([]byte)
 		if isByteSlice {

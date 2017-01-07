@@ -225,36 +225,18 @@ func httpParamsToArgs(rpcFunc *RPCFunc, r *http.Request) ([]reflect.Value, error
 	argTypes := rpcFunc.args
 	argNames := rpcFunc.argNames
 
-	var err error
 	values := make([]reflect.Value, len(argNames))
 	for i, name := range argNames {
 		ty := argTypes[i]
 		arg := GetParam(r, name)
 		// log.Notice("param to arg", "ty", ty, "name", name, "arg", arg)
 
-		// Handle quoted strings
-		if strings.HasPrefix(arg, "\"") && strings.HasSuffix(arg, "\"") {
-			data := arg[1 : len(arg)-1]
-			if ty.Kind() == reflect.String {
-				values[i] = reflect.ValueOf(string(data))
-			} else {
-				values[i] = reflect.ValueOf(data)
-			}
-			continue
+		v, err, ok := nonJsonToArg(ty, arg)
+		if err != nil {
+			return nil, err
 		}
-
-		// Handle hex strings
-		if strings.HasPrefix(strings.ToLower(arg), "0x") {
-			var value []byte
-			value, err = hex.DecodeString(arg[2:])
-			if err != nil {
-				return nil, err
-			}
-			if ty.Kind() == reflect.String {
-				values[i] = reflect.ValueOf(string(value))
-			} else {
-				values[i] = reflect.ValueOf(value)
-			}
+		if ok {
+			values[i] = v
 			continue
 		}
 
@@ -276,6 +258,44 @@ func _jsonStringToArg(ty reflect.Type, arg string) (reflect.Value, error) {
 	}
 	v = v.Elem()
 	return v, nil
+}
+
+func nonJsonToArg(ty reflect.Type, arg string) (reflect.Value, error, bool) {
+	isQuotedString := strings.HasPrefix(arg, `"`) && strings.HasSuffix(arg, `"`)
+	isHexString := strings.HasPrefix(strings.ToLower(arg), "0x")
+	expectingString := ty.Kind() == reflect.String
+	expectingByteSlice := ty.Kind() == reflect.Slice && ty.Elem().Kind() == reflect.Uint8
+
+	if isHexString {
+		if !expectingString && !expectingByteSlice {
+			err := fmt.Errorf("Got a hex string arg, but expected '%s'",
+				ty.Kind().String())
+			return reflect.ValueOf(nil), err, false
+		}
+
+		var value []byte
+		value, err := hex.DecodeString(arg[2:])
+		if err != nil {
+			return reflect.ValueOf(nil), err, false
+		}
+		if ty.Kind() == reflect.String {
+			return reflect.ValueOf(string(value)), nil, true
+		}
+		return reflect.ValueOf([]byte(value)), nil, true
+	}
+
+	if isQuotedString && expectingByteSlice {
+		var err error
+		v := reflect.New(reflect.TypeOf(""))
+		wire.ReadJSONPtr(v.Interface(), []byte(arg), &err)
+		if err != nil {
+			return reflect.ValueOf(nil), err, false
+		}
+		v = v.Elem()
+		return reflect.ValueOf([]byte(v.String())), nil, true
+	}
+
+	return reflect.ValueOf(nil), nil, false
 }
 
 // rpc.http
