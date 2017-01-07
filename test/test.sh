@@ -13,6 +13,7 @@ if [[ "$R1" != "$R2" ]]; then
 	echo "responses are not identical:"
 	echo "R1: $R1"
 	echo "R2: $R2"
+	exit 1
 else
 	echo "Success"
 fi
@@ -24,6 +25,7 @@ if [[ "$R1" != "$R2" ]]; then
 	echo "responses are not identical:"
 	echo "R1: $R1"
 	echo "R2: $R2"
+	exit 1
 else
 	echo "Success"
 fi
@@ -35,6 +37,7 @@ if [[ "$R1" != "$R2" ]]; then
 	echo "responses are not identical:"
 	echo "R1: $R1"
 	echo "R2: $R2"
+	exit 1
 else
 	echo "Success"
 fi
