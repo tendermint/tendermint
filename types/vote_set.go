@@ -53,7 +53,7 @@ type VoteSet struct {
 	valSet        *ValidatorSet
 	votesBitArray *BitArray
 	votes         []*Vote                // Primary votes to share
-	sum           int64                  // Sum of voting power for seen votes, discounting conflicts
+	sum           uint64                 // Sum of voting power for seen votes, discounting conflicts
 	maj23         *BlockID               // First 2/3 majority seen
 	votesByBlock  map[string]*blockVotes // string(blockHash|blockParts) -> blockVotes
 	peerMaj23s    map[string]BlockID     // Maj23 for each peer
@@ -202,7 +202,7 @@ func (voteSet *VoteSet) getVote(valIndex int, blockKey string) (vote *Vote, ok b
 
 // Assumes signature is valid.
 // If conflicting vote exists, returns it.
-func (voteSet *VoteSet) addVerifiedVote(vote *Vote, blockKey string, votingPower int64) (added bool, conflicting *Vote) {
+func (voteSet *VoteSet) addVerifiedVote(vote *Vote, blockKey string, votingPower uint64) (added bool, conflicting *Vote) {
 	valIndex := vote.ValidatorIndex
 
 	// Already exists in voteSet.votes?
@@ -468,7 +468,7 @@ type blockVotes struct {
 	peerMaj23 bool      // peer claims to have maj23
 	bitArray  *BitArray // valIndex -> hasVote?
 	votes     []*Vote   // valIndex -> *Vote
-	sum       int64     // vote sum
+	sum       uint64    // vote sum
 }
 
 func newBlockVotes(peerMaj23 bool, numValidators int) *blockVotes {
@@ -480,7 +480,7 @@ func newBlockVotes(peerMaj23 bool, numValidators int) *blockVotes {
 	}
 }
 
-func (vs *blockVotes) addVerifiedVote(vote *Vote, votingPower int64) {
+func (vs *blockVotes) addVerifiedVote(vote *Vote, votingPower uint64) {
 	valIndex := vote.ValidatorIndex
 	if existing := vs.votes[valIndex]; existing == nil {
 		vs.bitArray.SetIndex(valIndex, true)

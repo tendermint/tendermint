@@ -16,8 +16,8 @@ func randPubKey() crypto.PubKeyEd25519 {
 }
 
 func randValidator_() *Validator {
-	val := NewValidator(randPubKey(), RandInt64())
-	val.Accum = RandInt64()
+	val := NewValidator(randPubKey(), RandUint64())
+	val.Accum = RandUint64()
 	return val
 }
 
@@ -62,7 +62,7 @@ func TestProposerSelection(t *testing.T) {
 	}
 }
 
-func newValidator(address []byte, power int64) *Validator {
+func newValidator(address []byte, power uint64) *Validator {
 	return &Validator{Address: address, VotingPower: power}
 }
 

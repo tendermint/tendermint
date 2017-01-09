@@ -18,7 +18,7 @@ var GenDocKey = []byte("GenDocKey")
 
 type GenesisValidator struct {
 	PubKey crypto.PubKey `json:"pub_key"`
-	Amount int64         `json:"amount"`
+	Amount uint64        `json:"amount"`
 	Name   string        `json:"name"`
 }
 

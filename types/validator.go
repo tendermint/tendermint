@@ -16,11 +16,11 @@ import (
 type Validator struct {
 	Address     []byte        `json:"address"`
 	PubKey      crypto.PubKey `json:"pub_key"`
-	VotingPower int64         `json:"voting_power"`
-	Accum       int64         `json:"accum"`
+	VotingPower uint64        `json:"voting_power"`
+	Accum       uint64        `json:"accum"`
 }
 
-func NewValidator(pubKey crypto.PubKey, votingPower int64) *Validator {
+func NewValidator(pubKey crypto.PubKey, votingPower uint64) *Validator {
 	return &Validator{
 		Address:     pubKey.Address(),
 		PubKey:      pubKey,
@@ -94,13 +94,13 @@ func (vc validatorCodec) Compare(o1 interface{}, o2 interface{}) int {
 //--------------------------------------------------------------------------------
 // For testing...
 
-func RandValidator(randPower bool, minPower int64) (*Validator, *PrivValidator) {
+func RandValidator(randPower bool, minPower uint64) (*Validator, *PrivValidator) {
 	privVal := GenPrivValidator()
 	_, tempFilePath := Tempfile("priv_validator_")
 	privVal.SetFile(tempFilePath)
 	votePower := minPower
 	if randPower {
-		votePower += int64(RandUint32())
+		votePower += RandUint64()
 	}
 	val := NewValidator(privVal.PubKey, votePower)
 	return val, privVal
