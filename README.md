@@ -100,7 +100,8 @@ ABCI requests/responses are simple Protobuf messages.  Check out the [schema fil
     * `Data ([]byte)`: The query response bytes
     * `Log (string)`: Debug or error message
   * __Usage__:<br/>
-    Return a Merkle proof from the key/value pair back to the application hash.
+    Return a Merkle proof from the key/value pair back to the application hash.<br/>
+    *Please note* The current implementation of go-merkle doesn't support querying proofs from past blocks, so for the present moment, any height other than 0 will return an error.  Hopefully this will be improved soon(ish)
 
 #### Flush
   * __Usage__:<br/>

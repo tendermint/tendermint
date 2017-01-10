@@ -2,7 +2,6 @@ package dummy
 
 import (
 	"encoding/hex"
-	"fmt"
 	"strings"
 
 	"github.com/tendermint/abci/types"
@@ -50,18 +49,21 @@ func (app *DummyApplication) Commit() types.Result {
 
 func (app *DummyApplication) Query(query []byte) types.Result {
 	index, value, exists := app.state.Get(query)
+
 	queryResult := QueryResult{index, string(value), hex.EncodeToString(value), exists}
 	return types.NewResultOK(wire.JSONBytes(queryResult), "")
 }
 
 func (app *DummyApplication) Proof(key []byte, blockHeight int64) types.Result {
+	// TODO: when go-merkle supports querying older blocks without possible panics,
+	// we should store a cache and allow a query.  But for now it is impossible.
+	// And this is just a Dummy application anyway, what do you expect? ;)
 	if blockHeight != 0 {
 		return types.ErrUnknownRequest
 	}
 	proof, exists := app.state.Proof(key)
 	if !exists {
-		fmt.Println("Didn't find nothing")
-		return types.NewResultOK(nil, "")
+		return types.NewResultOK(nil, Fmt("Cannot find key = %v", key))
 	}
 	return types.NewResultOK(proof, "Found the key")
 }
