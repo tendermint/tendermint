@@ -8,12 +8,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/tendermint/abci/example/dummy"
+	abci "github.com/tendermint/abci/types"
 	. "github.com/tendermint/go-common"
+	merkle "github.com/tendermint/go-merkle"
 	"github.com/tendermint/go-wire"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/abci/example/dummy"
-	abci "github.com/tendermint/abci/types"
 )
 
 //--------------------------------------------------------------------------------
@@ -124,9 +127,7 @@ func sendTx() ([]byte, []byte) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("SENT TX", tx)
 	fmt.Printf("SENT TX %X\n", tx)
-	fmt.Printf("k %X; v %X", k, v)
 	return k, v
 }
 
@@ -166,6 +167,44 @@ func testABCIQuery(t *testing.T, statusI interface{}, value []byte) {
 	if qResult.Exists != true {
 		panic(Fmt("Query error. Expected to find 'exists=true'. Got: %v", qResult))
 	}
+}
+
+// Proof -----
+
+func TestURITMSPProof(t *testing.T) {
+	k, v := sendTx()
+	time.Sleep(time.Second)
+	tmResult := new(ctypes.TMResult)
+	_, err := clientURI.Call("abci_proof", map[string]interface{}{"key": k, "height": 0}, tmResult)
+	if err != nil {
+		panic(err)
+	}
+	testTMSPProof(t, tmResult, k, v)
+}
+
+func TestJSONTMSPProof(t *testing.T) {
+	k, v := sendTx()
+	time.Sleep(time.Second)
+	tmResult := new(ctypes.TMResult)
+	_, err := clientJSON.Call("abci_proof", []interface{}{Fmt("%X", k), 0}, tmResult)
+	if err != nil {
+		panic(err)
+	}
+	testTMSPProof(t, tmResult, k, v)
+}
+
+func testTMSPProof(t *testing.T, statusI interface{}, key, value []byte) {
+	tmRes := statusI.(*ctypes.TMResult)
+	proof := (*tmRes).(*ctypes.ResultABCIProof)
+	if proof.Result.IsErr() {
+		panic(Fmt("Proof returned an err: %v", proof))
+	}
+
+	p, err := merkle.LoadProof(proof.Result.Data)
+	require.Nil(t, err)
+	require.True(t, p.Valid())
+	assert.Equal(t, []byte(key), p.Key())
+	assert.Equal(t, []byte(value), p.Value())
 }
 
 //--------------------------------------------------------------------------------

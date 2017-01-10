@@ -33,6 +33,11 @@ imports:
   version: 66b8e73f3f5cda9f96b69efd03dd3d7fc4a5cdb8
 - name: github.com/spf13/pflag
   version: 25f8b5b07aece3207895bf19f7ab517eb3b22a40
+- name: github.com/stretchr/testify
+  version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
+  subpackages:
+  - assert
+  - require
 - name: github.com/syndtr/goleveldb
   version: 6ae1797c0b42b9323fc27ff7dcf568df88f2f33d
   subpackages:

@@ -6,6 +6,7 @@ import (
 
 	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
+	logger "github.com/tendermint/go-logger"
 	"github.com/tendermint/go-p2p"
 	"github.com/tendermint/go-wire"
 
@@ -31,9 +32,12 @@ var (
 	clientGRPC        core_grpc.BroadcastAPIClient
 )
 
+const tmLogLevel = "error"
+
 // initialize config and create new node
 func init() {
 	config = tendermint_test.ResetConfig("rpc_test_client_test")
+	logger.SetLogLevel(tmLogLevel)
 	chainID = config.GetString("chain_id")
 	rpcAddr = config.GetString("rpc_laddr")
 	grpcAddr = config.GetString("grpc_laddr")
