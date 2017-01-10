@@ -164,3 +164,7 @@ func (app *CounterApplication) Commit() tmsp.Result {
 func (app *CounterApplication) Query(query []byte) tmsp.Result {
 	return tmsp.NewResultOK(nil, Fmt("Query is not supported"))
 }
+
+func (app *CounterApplication) Proof(key []byte, blockHeight int64) tmsp.Result {
+	return tmsp.NewResultOK(nil, Fmt("Proof is not supported"))
+}

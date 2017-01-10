@@ -1,5 +1,5 @@
-hash: 2c623322ed0ff7136db54be910e62e679af6e989b18804bb2e6c457fa79533ff
-updated: 2017-01-11T23:24:18.92373144-05:00
+hash: 7a3755a3ce2ecc6a72592dda73656da8010c48442fee620920472aa1bffc9315
+updated: 2017-01-12T12:41:41.352721192+01:00
 imports:
 - name: github.com/btcsuite/btcd
   version: afec1bd1245a4a19e6dfe1306974b733e7cbb9b8
@@ -94,7 +94,7 @@ imports:
   subpackages:
   - term
 - name: github.com/tendermint/tmsp
-  version: c9b6b6e591c8e49154cd11bca4b8dde92ae5e341
+  version: b209492ca4afb2053f339786475ee601f6bc82d3
   subpackages:
   - client
   - example/counter

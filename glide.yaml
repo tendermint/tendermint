@@ -29,7 +29,7 @@ import:
   version: develop
 - package: github.com/tendermint/log15
 - package: github.com/tendermint/tmsp
-  version: develop
+  version: tmsp_proof
 - package: golang.org/x/crypto
   subpackages:
   - ripemd160

@@ -84,6 +84,10 @@ type ResultTMSPQuery struct {
 	Result tmsp.Result `json:"result"`
 }
 
+type ResultTMSPProof struct {
+	Result tmsp.Result `json:"proof"`
+}
+
 type ResultUnsafeFlushMempool struct{}
 
 type ResultUnsafeSetConfig struct{}
