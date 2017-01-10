@@ -99,6 +99,16 @@ func (app *localClient) QueryAsync(tx []byte) *ReqRes {
 	)
 }
 
+func (app *localClient) ProofAsync(key []byte) *ReqRes {
+	app.mtx.Lock()
+	res := app.Application.Proof(key)
+	app.mtx.Unlock()
+	return app.callback(
+		types.ToRequestProof(key),
+		types.ToResponseQuery(res.Code, res.Data, res.Log),
+	)
+}
+
 func (app *localClient) CommitAsync() *ReqRes {
 	app.mtx.Lock()
 	res := app.Application.Commit()
@@ -188,6 +198,13 @@ func (app *localClient) CheckTxSync(tx []byte) (res types.Result) {
 func (app *localClient) QuerySync(query []byte) (res types.Result) {
 	app.mtx.Lock()
 	res = app.Application.Query(query)
+	app.mtx.Unlock()
+	return res
+}
+
+func (app *localClient) ProofSync(key []byte) (res types.Result) {
+	app.mtx.Lock()
+	res = app.Application.Proof(key)
 	app.mtx.Unlock()
 	return res
 }

@@ -131,6 +131,13 @@ func main() {
 				return cmdQuery(c)
 			},
 		},
+		{
+			Name:  "proof",
+			Usage: "Get proof for a key",
+			Action: func(c *cli.Context) error {
+				return cmdProof(c)
+			},
+		},
 	}
 	app.Before = before
 	err := app.Run(os.Args)
@@ -302,6 +309,18 @@ func cmdQuery(c *cli.Context) error {
 	res := client.QuerySync(queryBytes)
 	rsp := newResponse(res, string(res.Data), true)
 	printResponse(c, rsp)
+	return nil
+}
+
+// Prove application state
+func cmdProof(c *cli.Context) error {
+	args := c.Args()
+	if len(args) != 1 {
+		return errors.New("Command proof takes 1 argument")
+	}
+	keyBytes := stringOrHexToBytes(c.Args()[0])
+	res := client.ProofSync(keyBytes)
+	printResponse(c, res, string(res.Data), true)
 	return nil
 }
 

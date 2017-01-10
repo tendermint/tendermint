@@ -22,6 +22,9 @@ type Application interface {
 	// Query for state
 	Query(query []byte) Result
 
+	// Get proof for state
+	Proof(key []byte, blockHeight int) Result
+
 	// Return the application Merkle root hash
 	Commit() Result
 }
@@ -80,6 +83,11 @@ func (app *GRPCApplication) CheckTx(ctx context.Context, req *RequestCheckTx) (*
 func (app *GRPCApplication) Query(ctx context.Context, req *RequestQuery) (*ResponseQuery, error) {
 	r := app.app.Query(req.Query)
 	return &ResponseQuery{r.Code, r.Data, r.Log}, nil
+}
+
+func (app *GRPCApplication) Proof(ctx context.Context, req *RequestProof) (*ResponseQuery, error) {
+	r := app.app.Proof(req.Key, req.Height)
+	return &ResponseProof{r.Code, r.Data, r.Log}, nil
 }
 
 func (app *GRPCApplication) Commit(ctx context.Context, req *RequestCommit) (*ResponseCommit, error) {

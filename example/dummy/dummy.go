@@ -53,6 +53,10 @@ func (app *DummyApplication) Query(query []byte) types.Result {
 	return types.NewResultOK(wire.JSONBytes(queryResult), "")
 }
 
+func (app *DummyApplication) Proof(key []byte) types.Result {
+	return types.NewResultOK(nil, Fmt("TODO: support proof!"))
+}
+
 type QueryResult struct {
 	Index    int    `json:"index"`
 	Value    string `json:"value"`

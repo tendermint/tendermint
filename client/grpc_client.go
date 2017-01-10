@@ -182,6 +182,15 @@ func (cli *grpcClient) QueryAsync(query []byte) *ReqRes {
 	return cli.finishAsyncCall(req, &types.Response{&types.Response_Query{res}})
 }
 
+func (cli *grpcClient) ProofAsync(key []byte) *ReqRes {
+	req := types.ToRequestProof(key)
+	res, err := cli.client.Proof(context.Background(), req.GetProof(), grpc.FailFast(true))
+	if err != nil {
+		cli.StopForError(err)
+	}
+	return cli.finishAsyncCall(req, &types.Response{&types.Response_Proof{res}})
+}
+
 func (cli *grpcClient) CommitAsync() *ReqRes {
 	req := types.ToRequestCommit()
 	res, err := cli.client.Commit(context.Background(), req.GetCommit(), grpc.FailFast(true))
@@ -298,6 +307,15 @@ func (cli *grpcClient) CheckTxSync(tx []byte) (res types.Result) {
 		return res
 	}
 	resp := reqres.Response.GetCheckTx()
+	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
+}
+
+func (cli *grpcClient) ProofSync(key []byte) (res types.Result) {
+	reqres := cli.ProofAsync(key)
+	if res := cli.checkErrGetResult(); res.IsErr() {
+		return res
+	}
+	resp := reqres.Response.GetProof()
 	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
 }
 

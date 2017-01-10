@@ -6,7 +6,7 @@ package types;
 //----------------------------------------
 // Message types
 
-// Not being used 
+// Not being used
 // Could be added to request/response
 // so we don't have to type switch
 // (would be twice as fast, but we're talking about 15ns)
@@ -25,6 +25,7 @@ enum MessageType {
   InitChain       = 0x15;
   BeginBlock      = 0x16;
   EndBlock        = 0x17;
+  Proof           = 0x18;
 }
 
 //----------------------------------------
@@ -116,6 +117,12 @@ message RequestQuery{
 	bytes query	 = 1;
 }
 
+message RequestProof{
+  bytes key  = 1;
+  int64 height  = 2;
+}
+
+
 message RequestCommit{
 }
 
@@ -150,6 +157,7 @@ message Response {
 		ResponseInitChain init_chain = 10;
 		ResponseBeginBlock begin_block = 11;
 		ResponseEndBlock end_block = 12;
+    ResponseProof proof = 13;
 	}
 }
 
@@ -193,6 +201,12 @@ message ResponseQuery{
 	string            log         = 3;
 }
 
+message ResponseProof{
+  CodeType          code        = 1;
+  bytes             data        = 2;
+  string            log         = 3;
+}
+
 message ResponseCommit{
 	CodeType          code        = 1;
 	bytes             data        = 2;
@@ -222,7 +236,7 @@ message Header {
 	bytes last_commit_hash = 6;
 	bytes data_hash = 7;
 	bytes validators_hash = 8;
-	bytes app_hash = 9; 
+	bytes app_hash = 9;
 }
 
 message BlockID {
@@ -251,6 +265,7 @@ service ABCIApplication {
 	rpc DeliverTx(RequestDeliverTx) returns (ResponseDeliverTx);
 	rpc CheckTx(RequestCheckTx) returns (ResponseCheckTx);
 	rpc Query(RequestQuery) returns (ResponseQuery);
+  rpc Proof(RequestProof) returns (ResponseProof);
 	rpc Commit(RequestCommit) returns (ResponseCommit);
 	rpc InitChain(RequestInitChain) returns (ResponseInitChain);
 	rpc BeginBlock(RequestBeginBlock) returns (ResponseBeginBlock);

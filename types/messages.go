@@ -55,6 +55,12 @@ func ToRequestQuery(queryBytes []byte) *Request {
 	}
 }
 
+func ToRequestProof(key []byte, blockHeight int) *Request {
+	return &Request{
+		Value: &Request_Proof{&RequestProof{key, blockHeight}},
+	}
+}
+
 func ToRequestInitChain(validators []*Validator) *Request {
 	return &Request{
 		Value: &Request_InitChain{&RequestInitChain{validators}},
@@ -126,6 +132,12 @@ func ToResponseCommit(code CodeType, data []byte, log string) *Response {
 func ToResponseQuery(code CodeType, data []byte, log string) *Response {
 	return &Response{
 		Value: &Response_Query{&ResponseQuery{code, data, log}},
+	}
+}
+
+func ToResponseProof(code CodeType, data []byte, log string) *Response {
+	return &Response{
+		Value: &Response_Proof{&ResponseProof{code, data, log}},
 	}
 }
 
