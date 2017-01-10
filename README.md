@@ -2,9 +2,8 @@
 
 [![CircleCI](https://circleci.com/gh/tendermint/abci.svg?style=svg)](https://circleci.com/gh/tendermint/abci)
 
-Blockchains are a system for creating shared multi-master application state. 
+Blockchains are a system for creating shared multi-master application state.
 **ABCI** is a socket protocol enabling a blockchain consensus engine, running in one process,
-to manage a blockchain application state, running in another.
 
 For more information on ABCI, motivations, and tutorials, please visit [our blog post](https://tendermint.com/blog/abci-the-tendermint-socket-protocol).
 
@@ -18,15 +17,15 @@ Other implementations:
 This repository holds a number of important pieces:
 
 - `types/types.proto`
-	- the protobuf file defining ABCI message types, and the optional grpc interface. 
+	- the protobuf file defining ABCI message types, and the optional grpc interface.
         - to build, run `make protoc`
 	- see `protoc --help` and [the grpc docs](https://www.grpc.io/docs) for examples and details of other languages
 
 - golang implementation of ABCI client and server
 	- two implementations:
-		- asynchronous, ordered message passing over unix or tcp; 
+		- asynchronous, ordered message passing over unix or tcp;
 			- messages are serialized using protobuf and length prefixed
-		- grpc 
+		- grpc
 	- TendermintCore runs a client, and the application runs a server
 
 - `cmd/abci-cli`
@@ -77,7 +76,7 @@ ABCI requests/responses are simple Protobuf messages.  Check out the [schema fil
     You can make CheckTx semi-stateful and clear the state upon `Commit` or `BeginBlock`,
     to allow for dependent sequences of transactions in the same block.
 
-#### Commit 
+#### Commit
   * __Returns__:
     * `Data ([]byte)`: The Merkle root hash
     * `Log (string)`: Debug or error message
@@ -91,6 +90,17 @@ ABCI requests/responses are simple Protobuf messages.  Check out the [schema fil
     * `Code (uint32)`: Response code
     * `Data ([]byte)`: The query response bytes
     * `Log (string)`: Debug or error message
+
+#### Proof
+  * __Arguments__:
+    * `Key ([]byte)`: The key whose data you want to verifiably query
+    * `Height (int64)`: The block height for which you want the proof (default=0 returns the proof for last committed block)
+  * __Returns__:
+    * `Code (uint32)`: Response code
+    * `Data ([]byte)`: The query response bytes
+    * `Log (string)`: Debug or error message
+  * __Usage__:<br/>
+    Return a Merkle proof from the key/value pair back to the application hash.
 
 #### Flush
   * __Usage__:<br/>
