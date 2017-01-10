@@ -11,7 +11,8 @@ install:
 	go install github.com/tendermint/abci/cmd/...
 
 test:
-	go test `${NOVENDOR}`
+	find . -name test.sock -exec rm {} \;
+	go test -p 1 `${NOVENDOR}`
 	bash tests/test.sh
 
 test_integrations: get_vendor_deps install test
