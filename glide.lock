@@ -49,7 +49,7 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/abci
-  version: 6526ab2137fadd0f4d2e25002bbfc1784b4f3c27
+  version: e0309007ad431ddd126e2ec0d36bd2adbede1aed
   subpackages:
   - client
   - example/counter

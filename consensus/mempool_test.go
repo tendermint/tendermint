@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
+	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config/tendermint_test"
 	"github.com/tendermint/tendermint/types"
-	abci "github.com/tendermint/abci/types"
 
 	. "github.com/tendermint/go-common"
 )
@@ -163,4 +163,8 @@ func (app *CounterApplication) Commit() abci.Result {
 
 func (app *CounterApplication) Query(query []byte) abci.Result {
 	return abci.NewResultOK(nil, Fmt("Query is not supported"))
+}
+
+func (app *CounterApplication) Proof(key []byte, blockHeight int64) abci.Result {
+	return abci.NewResultOK(nil, Fmt("Proof is not supported"))
 }
