@@ -53,7 +53,7 @@ func (app *DummyApplication) Query(query []byte) types.Result {
 	return types.NewResultOK(wire.JSONBytes(queryResult), "")
 }
 
-func (app *DummyApplication) Proof(key []byte) types.Result {
+func (app *DummyApplication) Proof(key []byte, blockHeight int64) types.Result {
 	return types.NewResultOK(nil, Fmt("TODO: support proof!"))
 }
 

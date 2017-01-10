@@ -35,6 +35,6 @@ func (app *NilApplication) Query(query []byte) types.Result {
 	return types.NewResultOK(nil, "")
 }
 
-func (app *NilApplication) Proof(key []byte) types.Result {
+func (app *NilApplication) Proof(key []byte, blockHeight int64) types.Result {
 	return types.NewResultOK(nil, "")
 }

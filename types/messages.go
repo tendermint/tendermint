@@ -55,7 +55,7 @@ func ToRequestQuery(queryBytes []byte) *Request {
 	}
 }
 
-func ToRequestProof(key []byte, blockHeight int) *Request {
+func ToRequestProof(key []byte, blockHeight int64) *Request {
 	return &Request{
 		Value: &Request_Proof{&RequestProof{key, blockHeight}},
 	}

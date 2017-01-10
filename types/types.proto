@@ -87,6 +87,7 @@ message Request {
 		RequestInitChain init_chain = 9;
 		RequestBeginBlock begin_block = 10;
 		RequestEndBlock end_block = 11;
+    RequestProof proof = 12;
 	}
 }
 
@@ -121,7 +122,6 @@ message RequestProof{
   bytes key  = 1;
   int64 height  = 2;
 }
-
 
 message RequestCommit{
 }

@@ -84,6 +84,6 @@ func (app *CounterApplication) Query(query []byte) types.Result {
 	return types.ErrUnknownRequest.SetLog(Fmt("Invalid nonce. Expected hash or tx, got %v", queryStr))
 }
 
-func (app *CounterApplication) Proof(key []byte) types.Result {
+func (app *CounterApplication) Proof(key []byte, blockHeight int64) types.Result {
 	return types.NewResultOK(nil, Fmt("Proof is not supported"))
 }
