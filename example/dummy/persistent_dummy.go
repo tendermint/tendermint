@@ -94,7 +94,7 @@ func (app *PersistentDummyApplication) Query(query []byte) types.Result {
 }
 
 func (app *PersistentDummyApplication) Proof(key []byte, blockHeight int64) types.Result {
-	return types.NewResultOK(nil, Fmt("TODO: support proof!"))
+	return app.app.Proof(key, blockHeight)
 }
 
 // Save the validators in the merkle tree

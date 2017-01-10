@@ -2,6 +2,7 @@ package dummy
 
 import (
 	"encoding/hex"
+	"fmt"
 	"strings"
 
 	"github.com/tendermint/abci/types"
@@ -54,7 +55,15 @@ func (app *DummyApplication) Query(query []byte) types.Result {
 }
 
 func (app *DummyApplication) Proof(key []byte, blockHeight int64) types.Result {
-	return types.NewResultOK(nil, Fmt("TODO: support proof!"))
+	if blockHeight != 0 {
+		return types.ErrUnknownRequest
+	}
+	proof, exists := app.state.Proof(key)
+	if !exists {
+		fmt.Println("Didn't find nothing")
+		return types.NewResultOK(nil, "")
+	}
+	return types.NewResultOK(proof, "Found the key")
 }
 
 type QueryResult struct {

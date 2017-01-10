@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/tendermint/abci/client"
@@ -315,12 +316,21 @@ func cmdQuery(c *cli.Context) error {
 // Prove application state
 func cmdProof(c *cli.Context) error {
 	args := c.Args()
-	if len(args) != 1 {
-		return errors.New("Command proof takes 1 argument")
+	if len(args) < 1 {
+		return errors.New("Command proof takes 1 or 2 arguments")
 	}
-	keyBytes := stringOrHexToBytes(c.Args()[0])
-	res := client.ProofSync(keyBytes)
-	printResponse(c, res, string(res.Data), true)
+	keyBytes, err := stringOrHexToBytes(c.Args()[0])
+	if err != nil {
+		return err
+	}
+
+	var height int64
+	if len(args) == 2 {
+		height, _ = strconv.ParseInt(args[1], 10, 0)
+	}
+	res := client.ProofSync(keyBytes, height)
+	rsp := newResponse(res, string(res.Data), true)
+	printResponse(c, rsp)
 	return nil
 }
 

@@ -21,7 +21,7 @@ type Client interface {
 	DeliverTxAsync(tx []byte) *ReqRes
 	CheckTxAsync(tx []byte) *ReqRes
 	QueryAsync(tx []byte) *ReqRes
-	ProofAsync(tx []byte) *ReqRes
+	ProofAsync(key []byte, blockHeight int64) *ReqRes
 	CommitAsync() *ReqRes
 
 	FlushSync() error
@@ -31,7 +31,7 @@ type Client interface {
 	DeliverTxSync(tx []byte) (res types.Result)
 	CheckTxSync(tx []byte) (res types.Result)
 	QuerySync(tx []byte) (res types.Result)
-	ProofSync(tx []byte) (res types.Result)
+	ProofSync(key []byte, blockHeight int64) (res types.Result)
 	CommitSync() (res types.Result)
 
 	InitChainAsync(validators []*types.Validator) *ReqRes

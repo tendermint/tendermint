@@ -8,6 +8,7 @@ import (
 
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-crypto"
+	merkle "github.com/tendermint/go-merkle"
 	"github.com/tendermint/go-wire"
 	"github.com/tendermint/abci/types"
 )
@@ -34,6 +35,27 @@ func testDummy(t *testing.T, dummy types.Application, tx []byte, key, value stri
 		t.Fatalf("Got %s, expected %s", q.Value, value)
 	}
 
+	rp := dummy.Proof([]byte(key), 0)
+	if rp.IsErr() {
+		t.Fatal(rp)
+	}
+
+	p, err := merkle.LoadProof(rp.Data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !p.Valid() {
+		t.Fatal("Invalid proof")
+	}
+
+	if !bytes.Equal([]byte(key), p.Key()) {
+		t.Fatalf("Invalid key: %s", p.Key())
+	}
+
+	if !bytes.Equal([]byte(value), p.Value()) {
+		t.Fatalf("Invalid key: %s", p.Value())
+	}
 }
 
 func TestDummyKV(t *testing.T) {
