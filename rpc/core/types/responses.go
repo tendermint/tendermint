@@ -131,6 +131,7 @@ const (
 	// 0x7 bytes are for querying the application
 	ResultTypeTMSPQuery = byte(0x70)
 	ResultTypeTMSPInfo  = byte(0x71)
+	ResultTypeTMSPProof = byte(0x72)
 
 	// 0x8 bytes are for events
 	ResultTypeSubscribe   = byte(0x80)
@@ -172,5 +173,6 @@ var _ = wire.RegisterInterface(
 	wire.ConcreteType{&ResultUnsafeProfile{}, ResultTypeUnsafeWriteHeapProfile},
 	wire.ConcreteType{&ResultUnsafeFlushMempool{}, ResultTypeUnsafeFlushMempool},
 	wire.ConcreteType{&ResultTMSPQuery{}, ResultTypeTMSPQuery},
+	wire.ConcreteType{&ResultTMSPProof{}, ResultTypeTMSPProof},
 	wire.ConcreteType{&ResultTMSPInfo{}, ResultTypeTMSPInfo},
 )
