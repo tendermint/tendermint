@@ -2,7 +2,6 @@ package p2p
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"math/rand"
 	"reflect"
@@ -11,8 +10,6 @@ import (
 	. "github.com/tendermint/go-common"
 	wire "github.com/tendermint/go-wire"
 )
-
-var pexErrInvalidMessage = errors.New("Invalid PEX message")
 
 const (
 	PexChannel               = byte(0x00)
