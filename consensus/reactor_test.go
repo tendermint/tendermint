@@ -265,7 +265,7 @@ func TestValidatorSetChanges(t *testing.T) {
 // Check we can make blocks with skip_timeout_commit=false
 func TestReactorWithTimeoutCommit(t *testing.T) {
 	N := 4
-	css := randConsensusNet(N, "consensus_reactor_with_timeout_commit_test", newMockTickerFunc(false))
+	css := randConsensusNet(N, "consensus_reactor_with_timeout_commit_test", newMockTickerFunc(false), newCounter)
 
 	// override default SkipTimeoutCommit == true for tests
 	for i := 0; i < N; i++ {
@@ -302,7 +302,7 @@ func TestReactorWithTimeoutCommit(t *testing.T) {
 	timeoutWaitGroup(t, N-1, func(wg *sync.WaitGroup, j int) {
 		<-eventChans[j]
 		wg.Done()
-	})
+	}, css)
 }
 
 func waitForAndValidateBlock(t *testing.T, n int, activeVals map[string]struct{}, eventChans []chan interface{}, css []*ConsensusState, txs ...[]byte) {

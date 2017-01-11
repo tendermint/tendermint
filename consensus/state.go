@@ -1455,7 +1455,7 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerKey string) (added bool,
 						cs.enterPrecommit(height, vote.Round)
 						cs.enterCommit(height, vote.Round)
 
-						if cs.timeoutParams.SkipTimeoutCommit && cs.LastCommit.HasAll() {
+						if cs.timeoutParams.SkipTimeoutCommit && precommits.HasAll() {
 							// if we have all the votes now,
 							// go straight to new round (skip timeout commit)
 							// cs.scheduleTimeout(time.Duration(0), cs.Height, 0, RoundStepNewHeight)
