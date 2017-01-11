@@ -12,19 +12,19 @@ NOVENDOR = go list github.com/tendermint/tendermint/... | grep -v /vendor/
 install: get_deps
 	go install github.com/tendermint/tendermint/cmd/tendermint
 
-build: 
+build:
 	go build -o build/tendermint github.com/tendermint/tendermint/cmd/tendermint
 
-build_race: 
+build_race:
 	go build -race -o build/tendermint github.com/tendermint/tendermint/cmd/tendermint
 
 test: build
 	go test `${NOVENDOR}`
-	
+
 test_race: build
 	go test -race `${NOVENDOR}`
 
-test_integrations: 
+test_integrations:
 	bash ./test/test.sh
 
 test100: build
@@ -48,6 +48,7 @@ get_deps:
 
 get_vendor_deps:
 	go get github.com/Masterminds/glide
+	rm -rf vendor/
 	glide install
 
 update_deps:

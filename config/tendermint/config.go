@@ -84,6 +84,8 @@ func GetConfig(rootDir string) cfg.Config {
 	mapConfig.SetDefault("timeout_precommit", 1000)
 	mapConfig.SetDefault("timeout_precommit_delta", 500)
 	mapConfig.SetDefault("timeout_commit", 1000)
+	// make progress asap (no `timeout_commit`) on full precommit votes
+	mapConfig.SetDefault("skip_timeout_commit", false)
 	mapConfig.SetDefault("mempool_recheck", true)
 	mapConfig.SetDefault("mempool_recheck_empty", true)
 	mapConfig.SetDefault("mempool_broadcast", true)
