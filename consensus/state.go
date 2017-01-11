@@ -1390,8 +1390,7 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerKey string) (added bool,
 
 			if cs.LastCommit.HasAll() {
 				// if we have all the votes now,
-				// schedule the timeoutCommit to happen right away
-				// NOTE: this won't apply if only one validator
+				// go straight to new round (skip timeout commit)
 				// cs.scheduleTimeout(time.Duration(0), cs.Height, 0, RoundStepNewHeight)
 				cs.enterNewRound(cs.Height, 0)
 			}
@@ -1452,6 +1451,14 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerKey string) (added bool,
 						cs.enterNewRound(height, vote.Round)
 						cs.enterPrecommit(height, vote.Round)
 						cs.enterCommit(height, vote.Round)
+
+						if precommits.HasAll() {
+							// if we have all the votes now,
+							// go straight to new round (skip timeout commit)
+							// cs.scheduleTimeout(time.Duration(0), cs.Height, 0, RoundStepNewHeight)
+							cs.enterNewRound(cs.Height, 0)
+						}
+
 					}
 				} else if cs.Round <= vote.Round && precommits.HasTwoThirdsAny() {
 					cs.enterNewRound(height, vote.Round)

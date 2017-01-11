@@ -256,7 +256,7 @@ func randConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
 	return cs, vss
 }
 
-func randConsensusNet(nValidators int, testName string, tickerFunc func() TimeoutTicker) []*ConsensusState {
+func randConsensusNet(nValidators int, testName string, tickerFunc func() TimeoutTicker, appFunc func() tmsp.Application) []*ConsensusState {
 	genDoc, privVals := randGenesisDoc(nValidators, false, 10)
 	css := make([]*ConsensusState, nValidators)
 	for i := 0; i < nValidators; i++ {
@@ -265,14 +265,14 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 		state.Save()
 		thisConfig := tendermint_test.ResetConfig(Fmt("%s_%d", testName, i))
 		EnsureDir(thisConfig.GetString("cs_wal_dir"), 0700) // dir for wal
-		css[i] = newConsensusStateWithConfig(thisConfig, state, privVals[i], counter.NewCounterApplication(true))
+		css[i] = newConsensusStateWithConfig(thisConfig, state, privVals[i], appFunc())
 		css[i].SetTimeoutTicker(tickerFunc())
 	}
 	return css
 }
 
 // nPeers = nValidators + nNotValidator
-func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerFunc func() TimeoutTicker) []*ConsensusState {
+func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerFunc func() TimeoutTicker, appFunc func() tmsp.Application) []*ConsensusState {
 	genDoc, privVals := randGenesisDoc(nValidators, false, int64(testMinPower))
 	css := make([]*ConsensusState, nPeers)
 	for i := 0; i < nPeers; i++ {
@@ -290,8 +290,7 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 			privVal.SetFile(tempFilePath)
 		}
 
-		dir, _ := ioutil.TempDir("/tmp", "persistent-dummy")
-		css[i] = newConsensusStateWithConfig(thisConfig, state, privVal, dummy.NewPersistentDummyApplication(dir))
+		css[i] = newConsensusStateWithConfig(thisConfig, state, privVal, appFunc())
 		css[i].SetTimeoutTicker(tickerFunc())
 	}
 	return css
@@ -416,3 +415,12 @@ func (m *mockTicker) Chan() <-chan timeoutInfo {
 }
 
 //------------------------------------
+
+func newCounter() tmsp.Application {
+	return counter.NewCounterApplication(true)
+}
+
+func newPersistentDummy() tmsp.Application {
+	dir, _ := ioutil.TempDir("/tmp", "persistent-dummy")
+	return dummy.NewPersistentDummyApplication(dir)
+}
