@@ -22,6 +22,9 @@ tendermint node --proxy_app=dummy &> /dev/null &
 sleep 5
 killall tendermint
 
+# /q would print up to and including the match, then quit. 
+# /Q doesn't include the match. 
+# http://unix.stackexchange.com/questions/11305/grep-show-all-the-file-up-to-the-match
 sed '/HEIGHT: 2/Q' ~/.tendermint/data/cs.wal/wal  > consensus/test_data/empty_block.cswal
 
 reset

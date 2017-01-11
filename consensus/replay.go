@@ -246,9 +246,9 @@ func (cs *ConsensusState) startForReplay() {
 	// don't want to start full cs
 	cs.BaseService.OnStart()
 
+	log.Warn("Replay commands are disabled until someone updates them and writes tests")
+	/* TODO:!
 	// since we replay tocks we just ignore ticks
-	// TODO:!
-	/*
 		go func() {
 			for {
 				select {

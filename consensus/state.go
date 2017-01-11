@@ -488,9 +488,6 @@ func (cs *ConsensusState) updateRoundStep(round int, step RoundStepType) {
 func (cs *ConsensusState) scheduleRound0(rs *RoundState) {
 	//log.Info("scheduleRound0", "now", time.Now(), "startTime", cs.StartTime)
 	sleepDuration := rs.StartTime.Sub(time.Now())
-	if sleepDuration < time.Duration(0) {
-		sleepDuration = time.Duration(0)
-	}
 	cs.scheduleTimeout(sleepDuration, rs.Height, 0, RoundStepNewHeight)
 }
 

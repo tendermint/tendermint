@@ -10,6 +10,9 @@ var (
 	tickTockBufferSize = 10
 )
 
+// TimeoutTicker is a timer that schedules timeouts
+// conditional on the height/round/step in the timeoutInfo.
+// The timeoutInfo.Duration may be non-positive.
 type TimeoutTicker interface {
 	Start() (bool, error)
 	Stop() bool
@@ -17,6 +20,11 @@ type TimeoutTicker interface {
 	ScheduleTimeout(ti timeoutInfo) // reset the timer
 }
 
+// timeoutTicker wraps time.Timer,
+// scheduling timeouts only for greater height/round/step
+// than what it's already seen.
+// Timeouts are scheduled along the tickChan,
+// and fired on the tockChan.
 type timeoutTicker struct {
 	BaseService
 
@@ -31,9 +39,7 @@ func NewTimeoutTicker() TimeoutTicker {
 		tickChan: make(chan timeoutInfo, tickTockBufferSize),
 		tockChan: make(chan timeoutInfo, tickTockBufferSize),
 	}
-	if !tt.timer.Stop() {
-		<-tt.timer.C
-	}
+	tt.stopTimer() // don't want to fire until the first scheduled timeout
 	tt.BaseService = *NewBaseService(log, "TimeoutTicker", tt)
 	return tt
 }
@@ -48,6 +54,7 @@ func (t *timeoutTicker) OnStart() error {
 
 func (t *timeoutTicker) OnStop() {
 	t.BaseService.OnStop()
+	t.stopTimer()
 }
 
 func (t *timeoutTicker) Chan() <-chan timeoutInfo {
@@ -58,6 +65,20 @@ func (t *timeoutTicker) Chan() <-chan timeoutInfo {
 // The scheduling may fail if the timeoutRoutine has already scheduled a timeout for a later height/round/step.
 func (t *timeoutTicker) ScheduleTimeout(ti timeoutInfo) {
 	t.tickChan <- ti
+}
+
+//-------------------------------------------------------------
+
+// stop the timer and drain if necessary
+func (t *timeoutTicker) stopTimer() {
+	// Stop() returns false if it was already fired or was stopped
+	if !t.timer.Stop() {
+		select {
+		case <-t.timer.C:
+		default:
+			log.Debug("Timer already stopped")
+		}
+	}
 }
 
 // send on tickChan to start a new timer.
@@ -84,22 +105,14 @@ func (t *timeoutTicker) timeoutRoutine() {
 				}
 			}
 
+			// stop the last timer
+			t.stopTimer()
+
+			// update timeoutInfo and reset timer
+			// NOTE time.Timer allows duration to be non-positive
 			ti = newti
-
-			// if the newti has duration == 0, we relay to the tockChan immediately (no timeout)
-			if ti.Duration == time.Duration(0) {
-				go func(toi timeoutInfo) { t.tockChan <- toi }(ti)
-				continue
-			}
-
-			log.Debug("Scheduling timeout", "dur", ti.Duration, "height", ti.Height, "round", ti.Round, "step", ti.Step)
-			if !t.timer.Stop() {
-				select {
-				case <-t.timer.C:
-				default:
-				}
-			}
 			t.timer.Reset(ti.Duration)
+			log.Debug("Scheduled timeout", "dur", ti.Duration, "height", ti.Height, "round", ti.Round, "step", ti.Step)
 		case <-t.timer.C:
 			log.Info("Timed out", "dur", ti.Duration, "height", ti.Height, "round", ti.Round, "step", ti.Step)
 			// go routine here gaurantees timeoutRoutine doesn't block.
