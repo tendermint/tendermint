@@ -584,6 +584,8 @@ OUTER_LOOP:
 	}
 }
 
+// NOTE: `queryMaj23Routine` has a simple crude design since it only comes
+// into play for liveness when there's a signature DDoS attack happening.
 func (conR *ConsensusReactor) queryMaj23Routine(peer *p2p.Peer, ps *PeerState) {
 	log := log.New("peer", peer)
 
