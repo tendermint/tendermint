@@ -29,7 +29,7 @@ func init() {
 // Heal partition and ensure A sees the commit
 func TestByzantine(t *testing.T) {
 	N := 4
-	css := randConsensusNet(N, "consensus_byzantine_test", newMockTickerFunc(false))
+	css := randConsensusNet(N, "consensus_byzantine_test", newMockTickerFunc(false), newCounter)
 
 	// give the byzantine validator a normal ticker
 	css[0].SetTimeoutTicker(NewTimeoutTicker())

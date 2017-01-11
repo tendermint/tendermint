@@ -61,7 +61,7 @@ func (v *Validator) String() string {
 	if v == nil {
 		return "nil-Validator"
 	}
-	return fmt.Sprintf("Validator{%X %v %v VP:%v A:%v}",
+	return fmt.Sprintf("Validator{%X %v VP:%v A:%v}",
 		v.Address,
 		v.PubKey,
 		v.VotingPower,
