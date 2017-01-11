@@ -531,10 +531,12 @@ func makeSwitch(i int, network, version string, initSwitch func(int, *Switch) *S
 	// TODO: let the config be passed in?
 	s := initSwitch(i, NewSwitch(cfg.NewMapConfig(nil)))
 	s.SetNodeInfo(&NodeInfo{
-		PubKey:  privKey.PubKey().(crypto.PubKeyEd25519),
-		Moniker: Fmt("switch%d", i),
-		Network: network,
-		Version: version,
+		PubKey:     privKey.PubKey().(crypto.PubKeyEd25519),
+		Moniker:    Fmt("switch%d", i),
+		Network:    network,
+		Version:    version,
+		RemoteAddr: Fmt("%v:%v", network, rand.Intn(64512)+1023),
+		ListenAddr: Fmt("%v:%v", network, rand.Intn(64512)+1023),
 	})
 	s.SetNodePrivKey(privKey)
 	return s

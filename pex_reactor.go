@@ -13,7 +13,7 @@ import (
 
 const (
 	PexChannel               = byte(0x00)
-	ensurePeersPeriodSeconds = 30
+	defaultEnsurePeersPeriod = 30 * time.Second
 	minNumOutboundPeers      = 10
 	maxPexMessageSize        = 1048576 // 1MB
 )
@@ -23,13 +23,15 @@ const (
 type PEXReactor struct {
 	BaseReactor
 
-	sw   *Switch
-	book *AddrBook
+	sw                *Switch
+	book              *AddrBook
+	ensurePeersPeriod time.Duration
 }
 
 func NewPEXReactor(b *AddrBook) *PEXReactor {
 	r := &PEXReactor{
-		book: b,
+		book:              b,
+		ensurePeersPeriod: defaultEnsurePeersPeriod,
 	}
 	r.BaseReactor = *NewBaseReactor(log, "PEXReactor", r)
 	return r
@@ -125,16 +127,22 @@ func (r *PEXReactor) SendAddrs(p *Peer, addrs []*NetAddress) {
 	p.Send(PexChannel, struct{ PexMessage }{&pexAddrsMessage{Addrs: addrs}})
 }
 
+// SetEnsurePeersPeriod sets period to ensure peers connected.
+func (r *PEXReactor) SetEnsurePeersPeriod(d time.Duration) {
+	r.ensurePeersPeriod = d
+}
+
 // Ensures that sufficient peers are connected. (continuous)
 func (r *PEXReactor) ensurePeersRoutine() {
 	// Randomize when routine starts
-	time.Sleep(time.Duration(rand.Int63n(500*ensurePeersPeriodSeconds)) * time.Millisecond)
+	ensurePeersPeriodMs := r.ensurePeersPeriod.Nanoseconds() / 1e6
+	time.Sleep(time.Duration(rand.Int63n(ensurePeersPeriodMs)) * time.Millisecond)
 
 	// fire once immediately.
 	r.ensurePeers()
 
 	// fire periodically
-	timer := NewRepeatTimer("pex", ensurePeersPeriodSeconds*time.Second)
+	timer := NewRepeatTimer("pex", r.ensurePeersPeriod)
 FOR_LOOP:
 	for {
 		select {
@@ -149,7 +157,7 @@ FOR_LOOP:
 	timer.Stop()
 }
 
-// Ensures that sufficient peers are connected. (once)
+// ensurePeers ensures that sufficient peers are connected. (once)
 func (r *PEXReactor) ensurePeers() {
 	numOutPeers, _, numDialing := r.Switch.NumPeers()
 	numToDial := minNumOutboundPeers - (numOutPeers + numDialing)
