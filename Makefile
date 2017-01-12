@@ -14,7 +14,8 @@ protoc:
 install:
 	go install github.com/tendermint/abci/cmd/...
 
-test:
+# test.sh requires that we run the installed cmds, must not be out of date
+test: install
 	find . -name test.sock -exec rm {} \;
 	go test -p 1 `${NOVENDOR}`
 	bash tests/test.sh
