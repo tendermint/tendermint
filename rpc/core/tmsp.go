@@ -12,6 +12,14 @@ func TMSPQuery(query []byte) (*ctypes.ResultTMSPQuery, error) {
 }
 
 func TMSPInfo() (*ctypes.ResultTMSPInfo, error) {
-	res, tmspInfo, lastBlockInfo, configInfo := proxyAppQuery.InfoSync()
-	return &ctypes.ResultTMSPInfo{res, tmspInfo, lastBlockInfo, configInfo}, nil
+	res, err := proxyAppQuery.InfoSync()
+	if err != nil {
+		return nil, err
+	}
+	return &ctypes.ResultTMSPInfo{
+		Data:             res.Data,
+		Version:          res.Version,
+		LastBlockHeight:  res.LastBlockHeight,
+		LastBlockAppHash: res.LastBlockAppHash,
+	}, nil
 }

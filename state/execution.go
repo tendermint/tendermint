@@ -122,7 +122,7 @@ func execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn proxy.AppConnCo
 	fail.Fail() // XXX
 
 	// End block
-	changedValidators, err := proxyAppConn.EndBlockSync(uint64(block.Height))
+	respEndBlock, err := proxyAppConn.EndBlockSync(uint64(block.Height))
 	if err != nil {
 		log.Warn("Error in proxyAppConn.EndBlock", "error", err)
 		return nil, err
@@ -131,10 +131,10 @@ func execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn proxy.AppConnCo
 	fail.Fail() // XXX
 
 	log.Info("Executed block", "height", block.Height, "valid txs", validTxs, "invalid txs", invalidTxs)
-	if len(changedValidators) > 0 {
-		log.Info("Update to validator set", "updates", tmsp.ValidatorsString(changedValidators))
+	if len(respEndBlock.Diffs) > 0 {
+		log.Info("Update to validator set", "updates", tmsp.ValidatorsString(respEndBlock.Diffs))
 	}
-	return changedValidators, nil
+	return respEndBlock.Diffs, nil
 }
 
 func updateValidators(validators *types.ValidatorSet, changedValidators []*tmsp.Validator) error {
@@ -313,33 +313,20 @@ func NewHandshaker(config cfg.Config, state *State, store BlockStore) *Handshake
 // TODO: retry the handshake/replay if it fails ?
 func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	// handshake is done via info request on the query conn
-	res, tmspInfo, blockInfo, configInfo := proxyApp.Query().InfoSync()
-	if res.IsErr() {
-		return errors.New(Fmt("Error calling Info. Code: %v; Data: %X; Log: %s", res.Code, res.Data, res.Log))
+	res, err := proxyApp.Query().InfoSync()
+	if err != nil {
+		return errors.New(Fmt("Error calling Info: %v", err))
 	}
 
-	if blockInfo == nil {
-		log.Warn("blockInfo is nil, aborting handshake")
-		return nil
-	}
+	blockHeight := int(res.LastBlockHeight) // XXX: beware overflow
+	appHash := res.LastBlockAppHash
 
-	log.Notice("TMSP Handshake", "appHeight", blockInfo.BlockHeight, "appHash", blockInfo.AppHash)
+	log.Notice("TMSP Handshake", "appHeight", blockHeight, "appHash", appHash)
 
-	blockHeight := int(blockInfo.BlockHeight) // XXX: beware overflow
-	appHash := blockInfo.AppHash
-
-	if tmspInfo != nil {
-		// TODO: check tmsp version (or do this in the tmspcli?)
-		_ = tmspInfo
-	}
-
-	if configInfo != nil {
-		// TODO: set config info
-		_ = configInfo
-	}
+	// TODO: check version
 
 	// replay blocks up to the latest in the blockstore
-	err := h.ReplayBlocks(appHash, blockHeight, proxyApp.Consensus())
+	err = h.ReplayBlocks(appHash, blockHeight, proxyApp.Consensus())
 	if err != nil {
 		return errors.New(Fmt("Error on replay: %v", err))
 	}

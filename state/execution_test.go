@@ -95,14 +95,14 @@ func testHandshakeReplay(t *testing.T, n int) {
 	}
 
 	// get the latest app hash from the app
-	r, _, blockInfo, _ := proxyApp.Query().InfoSync()
-	if r.IsErr() {
-		t.Fatal(r)
+	res, err := proxyApp.Query().InfoSync()
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	// the app hash should be synced up
-	if !bytes.Equal(latestAppHash, blockInfo.AppHash) {
-		t.Fatalf("Expected app hashes to match after handshake/replay. got %X, expected %X", blockInfo.AppHash, latestAppHash)
+	if !bytes.Equal(latestAppHash, res.LastBlockAppHash) {
+		t.Fatalf("Expected app hashes to match after handshake/replay. got %X, expected %X", res.LastBlockAppHash, latestAppHash)
 	}
 
 	if handshaker.nBlocks != nBlocks-n {
