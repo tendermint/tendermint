@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"path"
 	"sort"
 	"sync"
 	"testing"
@@ -27,6 +28,9 @@ import (
 
 var config cfg.Config // NOTE: must be reset for each _test.go file
 var ensureTimeout = time.Duration(2)
+
+//-------------------------------------------------------------------------------
+// validator stub (a dummy consensus peer we control)
 
 type validatorStub struct {
 	Index  int // Validator index. NOTE: we don't assume validator set changes.
@@ -57,9 +61,6 @@ func (vs *validatorStub) signVote(voteType byte, hash []byte, header types.PartS
 	return vote, err
 }
 
-//-------------------------------------------------------------------------------
-// Convenience functions
-
 // Sign vote for type/hash/header
 func signVote(vs *validatorStub, voteType byte, hash []byte, header types.PartSetHeader) *types.Vote {
 	v, err := vs.signVote(voteType, hash, header)
@@ -67,6 +68,34 @@ func signVote(vs *validatorStub, voteType byte, hash []byte, header types.PartSe
 		panic(fmt.Errorf("failed to sign vote: %v", err))
 	}
 	return v
+}
+
+func signVotes(voteType byte, hash []byte, header types.PartSetHeader, vss ...*validatorStub) []*types.Vote {
+	votes := make([]*types.Vote, len(vss))
+	for i, vs := range vss {
+		votes[i] = signVote(vs, voteType, hash, header)
+	}
+	return votes
+}
+
+func incrementHeight(vss ...*validatorStub) {
+	for _, vs := range vss {
+		vs.Height += 1
+	}
+}
+
+func incrementRound(vss ...*validatorStub) {
+	for _, vs := range vss {
+		vs.Round += 1
+	}
+}
+
+//-------------------------------------------------------------------------------
+// Functions for transitioning the consensus state
+
+func startTestRound(cs *ConsensusState, height, round int) {
+	cs.enterNewRound(height, round)
+	cs.startRoutines(0)
 }
 
 // Create proposal block from cs1 but sign it with vs
@@ -91,39 +120,9 @@ func addVotes(to *ConsensusState, votes ...*types.Vote) {
 	}
 }
 
-func signVotes(voteType byte, hash []byte, header types.PartSetHeader, vss ...*validatorStub) []*types.Vote {
-	votes := make([]*types.Vote, len(vss))
-	for i, vs := range vss {
-		votes[i] = signVote(vs, voteType, hash, header)
-	}
-	return votes
-}
-
 func signAddVotes(to *ConsensusState, voteType byte, hash []byte, header types.PartSetHeader, vss ...*validatorStub) {
 	votes := signVotes(voteType, hash, header, vss...)
 	addVotes(to, votes...)
-}
-
-func ensureNoNewStep(stepCh chan interface{}) {
-	timeout := time.NewTicker(ensureTimeout * time.Second)
-	select {
-	case <-timeout.C:
-		break
-	case <-stepCh:
-		panic("We should be stuck waiting for more votes, not moving to the next step")
-	}
-}
-
-func incrementHeight(vss ...*validatorStub) {
-	for _, vs := range vss {
-		vs.Height += 1
-	}
-}
-
-func incrementRound(vss ...*validatorStub) {
-	for _, vs := range vss {
-		vs.Round += 1
-	}
 }
 
 func validatePrevote(t *testing.T, cs *ConsensusState, round int, privVal *validatorStub, blockHash []byte) {
@@ -192,24 +191,39 @@ func validatePrevoteAndPrecommit(t *testing.T, cs *ConsensusState, thisRound, lo
 	cs.mtx.Unlock()
 }
 
-func fixedConsensusState() *ConsensusState {
-	stateDB := dbm.NewMemDB()
-	state := sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
-	privValidatorFile := config.GetString("priv_validator_file")
-	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
-	privValidator.Reset()
-	cs := newConsensusState(state, privValidator, counter.NewCounterApplication(true))
-	return cs
+// genesis
+func subscribeToVoter(cs *ConsensusState, addr []byte) chan interface{} {
+	voteCh0 := subscribeToEvent(cs.evsw, "tester", types.EventStringVote(), 1)
+	voteCh := make(chan interface{})
+	go func() {
+		for {
+			v := <-voteCh0
+			vote := v.(types.EventDataVote)
+			// we only fire for our own votes
+			if bytes.Equal(addr, vote.Vote.ValidatorAddress) {
+				voteCh <- v
+			}
+		}
+	}()
+	return voteCh
 }
 
-func fixedConsensusStateDummy() *ConsensusState {
-	stateDB := dbm.NewMemDB()
-	state := sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
-	privValidatorFile := config.GetString("priv_validator_file")
-	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
-	privValidator.Reset()
-	cs := newConsensusState(state, privValidator, dummy.NewDummyApplication())
-	return cs
+func readVotes(ch chan interface{}, reads int) chan struct{} {
+	wg := make(chan struct{})
+	go func() {
+		for i := 0; i < reads; i++ {
+			<-ch // read the precommit event
+		}
+		close(wg)
+	}()
+	return wg
+}
+
+//-------------------------------------------------------------------------------
+// consensus states
+
+func newConsensusState(state *sm.State, pv *types.PrivValidator, app tmsp.Application) *ConsensusState {
+	return newConsensusStateWithConfig(config, state, pv, app)
 }
 
 func newConsensusStateWithConfig(thisConfig cfg.Config, state *sm.State, pv *types.PrivValidator, app tmsp.Application) *ConsensusState {
@@ -235,8 +249,28 @@ func newConsensusStateWithConfig(thisConfig cfg.Config, state *sm.State, pv *typ
 	return cs
 }
 
-func newConsensusState(state *sm.State, pv *types.PrivValidator, app tmsp.Application) *ConsensusState {
-	return newConsensusStateWithConfig(config, state, pv, app)
+func loadPrivValidator(config cfg.Config) *types.PrivValidator {
+	privValidatorFile := config.GetString("priv_validator_file")
+	EnsureDir(path.Dir(privValidatorFile), 0700)
+	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
+	privValidator.Reset()
+	return privValidator
+}
+
+func fixedConsensusState() *ConsensusState {
+	stateDB := dbm.NewMemDB()
+	state := sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
+	privValidator := loadPrivValidator(config)
+	cs := newConsensusState(state, privValidator, counter.NewCounterApplication(true))
+	return cs
+}
+
+func fixedConsensusStateDummy() *ConsensusState {
+	stateDB := dbm.NewMemDB()
+	state := sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
+	privValidator := loadPrivValidator(config)
+	cs := newConsensusState(state, privValidator, dummy.NewDummyApplication())
+	return cs
 }
 
 func randConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
@@ -255,6 +289,21 @@ func randConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
 
 	return cs, vss
 }
+
+//-------------------------------------------------------------------------------
+
+func ensureNoNewStep(stepCh chan interface{}) {
+	timeout := time.NewTicker(ensureTimeout * time.Second)
+	select {
+	case <-timeout.C:
+		break
+	case <-stepCh:
+		panic("We should be stuck waiting for more votes, not moving to the next step")
+	}
+}
+
+//-------------------------------------------------------------------------------
+// consensus nets
 
 func randConsensusNet(nValidators int, testName string, tickerFunc func() TimeoutTicker, appFunc func() tmsp.Application) []*ConsensusState {
 	genDoc, privVals := randGenesisDoc(nValidators, false, 10)
@@ -296,40 +345,18 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 	return css
 }
 
-func subscribeToVoter(cs *ConsensusState, addr []byte) chan interface{} {
-	voteCh0 := subscribeToEvent(cs.evsw, "tester", types.EventStringVote(), 1)
-	voteCh := make(chan interface{})
-	go func() {
-		for {
-			v := <-voteCh0
-			vote := v.(types.EventDataVote)
-			// we only fire for our own votes
-			if bytes.Equal(addr, vote.Vote.ValidatorAddress) {
-				voteCh <- v
-			}
+func getSwitchIndex(switches []*p2p.Switch, peer *p2p.Peer) int {
+	for i, s := range switches {
+		if bytes.Equal(peer.NodeInfo.PubKey.Address(), s.NodeInfo().PubKey.Address()) {
+			return i
 		}
-	}()
-	return voteCh
+	}
+	panic("didnt find peer in switches")
+	return -1
 }
 
-func readVotes(ch chan interface{}, reads int) chan struct{} {
-	wg := make(chan struct{})
-	go func() {
-		for i := 0; i < reads; i++ {
-			<-ch // read the precommit event
-		}
-		close(wg)
-	}()
-	return wg
-}
-
-func randGenesisState(numValidators int, randPower bool, minPower int64) (*sm.State, []*types.PrivValidator) {
-	genDoc, privValidators := randGenesisDoc(numValidators, randPower, minPower)
-	db := dbm.NewMemDB()
-	s0 := sm.MakeGenesisState(db, genDoc)
-	s0.Save()
-	return s0, privValidators
-}
+//-------------------------------------------------------------------------------
+// genesis
 
 func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.GenesisDoc, []*types.PrivValidator) {
 	validators := make([]types.GenesisValidator, numValidators)
@@ -348,28 +375,18 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 		ChainID:     config.GetString("chain_id"),
 		Validators:  validators,
 	}, privValidators
-
 }
 
-func startTestRound(cs *ConsensusState, height, round int) {
-	cs.enterNewRound(height, round)
-	cs.startRoutines(0)
-}
-
-//--------------------------------
-// reactor stuff
-
-func getSwitchIndex(switches []*p2p.Switch, peer *p2p.Peer) int {
-	for i, s := range switches {
-		if bytes.Equal(peer.NodeInfo.PubKey.Address(), s.NodeInfo().PubKey.Address()) {
-			return i
-		}
-	}
-	panic("didnt find peer in switches")
-	return -1
+func randGenesisState(numValidators int, randPower bool, minPower int64) (*sm.State, []*types.PrivValidator) {
+	genDoc, privValidators := randGenesisDoc(numValidators, randPower, minPower)
+	db := dbm.NewMemDB()
+	s0 := sm.MakeGenesisState(db, genDoc)
+	s0.Save()
+	return s0, privValidators
 }
 
 //------------------------------------
+// mock ticker
 
 func newMockTickerFunc(onlyOnce bool) func() TimeoutTicker {
 	return func() TimeoutTicker {
