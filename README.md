@@ -39,7 +39,7 @@ Yay open source! Please see our [contributing guidelines](https://github.com/ten
 
 ### Sub-projects
 
-* [TMSP](http://github.com/tendermint/tmsp)
+* [ABCI](http://github.com/tendermint/abci)
 * [Mintnet](http://github.com/tendermint/mintnet)
 * [Go-Wire](http://github.com/tendermint/go-wire)
 * [Go-P2P](http://github.com/tendermint/go-p2p)

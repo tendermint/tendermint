@@ -28,8 +28,9 @@ import:
 - package: github.com/tendermint/go-wire
   version: develop
 - package: github.com/tendermint/log15
-- package: github.com/tendermint/tmsp
-  version: develop
+- package: github.com/tendermint/abci
+  version: rename
+  repo: https://github.com/tendermint/tmsp
 - package: golang.org/x/crypto
   subpackages:
   - ripemd160

@@ -113,7 +113,7 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreato
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)
 
-	// filter peers by addr or pubkey with a tmsp query.
+	// filter peers by addr or pubkey with a abci query.
 	// if the query return code is OK, add peer
 	// XXX: query format subject to change
 	if config.GetBool("filter_peers") {
@@ -311,7 +311,7 @@ func makeNodeInfo(config cfg.Config, sw *p2p.Switch, privKey crypto.PrivKeyEd255
 
 // Users wishing to:
 //	* use an external signer for their validators
-//	* supply an in-proc tmsp app
+//	* supply an in-proc abci app
 // should fork tendermint/tendermint and implement RunNode to
 // call NewNode with their custom priv validator and/or custom
 // proxy.ClientCreator interface

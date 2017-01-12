@@ -54,7 +54,7 @@ func GetConfig(rootDir string) cfg.Config {
 	mapConfig.SetRequired("chain_id") // blows up if you try to use it before setting.
 	mapConfig.SetDefault("genesis_file", rootDir+"/genesis.json")
 	mapConfig.SetDefault("proxy_app", "tcp://127.0.0.1:46658")
-	mapConfig.SetDefault("tmsp", "socket")
+	mapConfig.SetDefault("abci", "socket")
 	mapConfig.SetDefault("moniker", "anonymous")
 	mapConfig.SetDefault("node_laddr", "tcp://0.0.0.0:46656")
 	mapConfig.SetDefault("seeds", "")

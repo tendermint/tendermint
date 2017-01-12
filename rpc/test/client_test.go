@@ -12,8 +12,8 @@ import (
 	"github.com/tendermint/go-wire"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tmsp/example/dummy"
-	tmsp "github.com/tendermint/tmsp/types"
+	"github.com/tendermint/abci/example/dummy"
+	abci "github.com/tendermint/abci/types"
 )
 
 //--------------------------------------------------------------------------------
@@ -92,7 +92,7 @@ func TestJSONBroadcastTxSync(t *testing.T) {
 func testBroadcastTxSync(t *testing.T, resI interface{}, tx []byte) {
 	tmRes := resI.(*ctypes.TMResult)
 	res := (*tmRes).(*ctypes.ResultBroadcastTx)
-	if res.Code != tmsp.CodeType_OK {
+	if res.Code != abci.CodeType_OK {
 		panic(Fmt("BroadcastTxSync got non-zero exit code: %v. %X; %s", res.Code, res.Data, res.Log))
 	}
 	mem := node.MempoolReactor().Mempool
@@ -130,30 +130,30 @@ func sendTx() ([]byte, []byte) {
 	return k, v
 }
 
-func TestURITMSPQuery(t *testing.T) {
+func TestURIABCIQuery(t *testing.T) {
 	k, v := sendTx()
 	time.Sleep(time.Second)
 	tmResult := new(ctypes.TMResult)
-	_, err := clientURI.Call("tmsp_query", map[string]interface{}{"query": k}, tmResult)
+	_, err := clientURI.Call("abci_query", map[string]interface{}{"query": k}, tmResult)
 	if err != nil {
 		panic(err)
 	}
-	testTMSPQuery(t, tmResult, v)
+	testABCIQuery(t, tmResult, v)
 }
 
-func TestJSONTMSPQuery(t *testing.T) {
+func TestJSONABCIQuery(t *testing.T) {
 	k, v := sendTx()
 	tmResult := new(ctypes.TMResult)
-	_, err := clientJSON.Call("tmsp_query", []interface{}{k}, tmResult)
+	_, err := clientJSON.Call("abci_query", []interface{}{k}, tmResult)
 	if err != nil {
 		panic(err)
 	}
-	testTMSPQuery(t, tmResult, v)
+	testABCIQuery(t, tmResult, v)
 }
 
-func testTMSPQuery(t *testing.T, statusI interface{}, value []byte) {
+func testABCIQuery(t *testing.T, statusI interface{}, value []byte) {
 	tmRes := statusI.(*ctypes.TMResult)
-	query := (*tmRes).(*ctypes.ResultTMSPQuery)
+	query := (*tmRes).(*ctypes.ResultABCIQuery)
 	if query.Result.IsErr() {
 		panic(Fmt("Query returned an err: %v", query))
 	}
@@ -195,11 +195,11 @@ func testBroadcastTxCommit(t *testing.T, resI interface{}, tx []byte) {
 	tmRes := resI.(*ctypes.TMResult)
 	res := (*tmRes).(*ctypes.ResultBroadcastTxCommit)
 	checkTx := res.CheckTx
-	if checkTx.Code != tmsp.CodeType_OK {
+	if checkTx.Code != abci.CodeType_OK {
 		panic(Fmt("BroadcastTxCommit got non-zero exit code from CheckTx: %v. %X; %s", checkTx.Code, checkTx.Data, checkTx.Log))
 	}
 	appendTx := res.AppendTx
-	if appendTx.Code != tmsp.CodeType_OK {
+	if appendTx.Code != abci.CodeType_OK {
 		panic(Fmt("BroadcastTxCommit got non-zero exit code from CheckTx: %v. %X; %s", appendTx.Code, appendTx.Data, appendTx.Log))
 	}
 	mem := node.MempoolReactor().Mempool
@@ -295,7 +295,7 @@ func TestWSTxEvent(t *testing.T) {
 		if bytes.Compare([]byte(evt.Tx), tx) != 0 {
 			t.Error("Event returned different tx")
 		}
-		if evt.Code != tmsp.CodeType_OK {
+		if evt.Code != abci.CodeType_OK {
 			t.Error("Event returned tx error code", evt.Code)
 		}
 		return nil

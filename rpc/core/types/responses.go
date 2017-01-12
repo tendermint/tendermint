@@ -6,7 +6,7 @@ import (
 	"github.com/tendermint/go-rpc/types"
 	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/types"
-	tmsp "github.com/tendermint/tmsp/types"
+	abci "github.com/tendermint/abci/types"
 )
 
 type ResultBlockchainInfo struct {
@@ -58,14 +58,14 @@ type ResultDumpConsensusState struct {
 }
 
 type ResultBroadcastTx struct {
-	Code tmsp.CodeType `json:"code"`
+	Code abci.CodeType `json:"code"`
 	Data []byte        `json:"data"`
 	Log  string        `json:"log"`
 }
 
 type ResultBroadcastTxCommit struct {
-	CheckTx  *tmsp.ResponseCheckTx  `json:"check_tx"`
-	AppendTx *tmsp.ResponseAppendTx `json:"append_tx"`
+	CheckTx  *abci.ResponseCheckTx  `json:"check_tx"`
+	AppendTx *abci.ResponseAppendTx `json:"append_tx"`
 }
 
 type ResultUnconfirmedTxs struct {
@@ -73,15 +73,15 @@ type ResultUnconfirmedTxs struct {
 	Txs []types.Tx `json:"txs"`
 }
 
-type ResultTMSPInfo struct {
+type ResultABCIInfo struct {
 	Data             string `json:"data"`
 	Version          string `json:"version"`
 	LastBlockHeight  uint64 `json:"last_block_height"`
 	LastBlockAppHash []byte `json:"last_block_app_hash"`
 }
 
-type ResultTMSPQuery struct {
-	Result tmsp.Result `json:"result"`
+type ResultABCIQuery struct {
+	Result abci.Result `json:"result"`
 }
 
 type ResultUnsafeFlushMempool struct{}
@@ -125,8 +125,8 @@ const (
 	ResultTypeBroadcastTxCommit = byte(0x62)
 
 	// 0x7 bytes are for querying the application
-	ResultTypeTMSPQuery = byte(0x70)
-	ResultTypeTMSPInfo  = byte(0x71)
+	ResultTypeABCIQuery = byte(0x70)
+	ResultTypeABCIInfo  = byte(0x71)
 
 	// 0x8 bytes are for events
 	ResultTypeSubscribe   = byte(0x80)
@@ -167,6 +167,6 @@ var _ = wire.RegisterInterface(
 	wire.ConcreteType{&ResultUnsafeProfile{}, ResultTypeUnsafeStopCPUProfiler},
 	wire.ConcreteType{&ResultUnsafeProfile{}, ResultTypeUnsafeWriteHeapProfile},
 	wire.ConcreteType{&ResultUnsafeFlushMempool{}, ResultTypeUnsafeFlushMempool},
-	wire.ConcreteType{&ResultTMSPQuery{}, ResultTypeTMSPQuery},
-	wire.ConcreteType{&ResultTMSPInfo{}, ResultTypeTMSPInfo},
+	wire.ConcreteType{&ResultABCIQuery{}, ResultTypeABCIQuery},
+	wire.ConcreteType{&ResultABCIInfo{}, ResultTypeABCIInfo},
 )

@@ -25,8 +25,8 @@ var Routes = map[string]*rpc.RPCFunc{
 	"unconfirmed_txs":      rpc.NewRPCFunc(UnconfirmedTxsResult, ""),
 	"num_unconfirmed_txs":  rpc.NewRPCFunc(NumUnconfirmedTxsResult, ""),
 
-	"tmsp_query": rpc.NewRPCFunc(TMSPQueryResult, "query"),
-	"tmsp_info":  rpc.NewRPCFunc(TMSPInfoResult, ""),
+	"abci_query": rpc.NewRPCFunc(ABCIQueryResult, "query"),
+	"abci_info":  rpc.NewRPCFunc(ABCIInfoResult, ""),
 
 	"unsafe_flush_mempool":      rpc.NewRPCFunc(UnsafeFlushMempool, ""),
 	"unsafe_set_config":         rpc.NewRPCFunc(UnsafeSetConfigResult, "type,key,value"),
@@ -155,16 +155,16 @@ func BroadcastTxAsyncResult(tx []byte) (ctypes.TMResult, error) {
 	}
 }
 
-func TMSPQueryResult(query []byte) (ctypes.TMResult, error) {
-	if r, err := TMSPQuery(query); err != nil {
+func ABCIQueryResult(query []byte) (ctypes.TMResult, error) {
+	if r, err := ABCIQuery(query); err != nil {
 		return nil, err
 	} else {
 		return r, nil
 	}
 }
 
-func TMSPInfoResult() (ctypes.TMResult, error) {
-	if r, err := TMSPInfo(); err != nil {
+func ABCIInfoResult() (ctypes.TMResult, error) {
+	if r, err := ABCIInfo(); err != nil {
 		return nil, err
 	} else {
 		return r, nil

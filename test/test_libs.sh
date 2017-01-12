@@ -12,7 +12,7 @@ fi
 ####################
 
 LIBS_GO_TEST=(go-clist go-common go-config go-crypto go-db go-events go-merkle go-p2p)
-LIBS_MAKE_TEST=(go-rpc go-wire tmsp)
+LIBS_MAKE_TEST=(go-rpc go-wire abci)
 
 for lib in "${LIBS_GO_TEST[@]}"; do
 

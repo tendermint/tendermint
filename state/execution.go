@@ -11,7 +11,7 @@ import (
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
-	tmsp "github.com/tendermint/tmsp/types"
+	abci "github.com/tendermint/abci/types"
 )
 
 //--------------------------------------------------
@@ -66,21 +66,21 @@ func (s *State) ExecBlock(eventCache types.Fireable, proxyAppConn proxy.AppConnC
 // Executes block's transactions on proxyAppConn.
 // Returns a list of updates to the validator set
 // TODO: Generate a bitmap or otherwise store tx validity in state.
-func execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn proxy.AppConnConsensus, block *types.Block) ([]*tmsp.Validator, error) {
+func execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn proxy.AppConnConsensus, block *types.Block) ([]*abci.Validator, error) {
 
 	var validTxs, invalidTxs = 0, 0
 
 	// Execute transactions and get hash
-	proxyCb := func(req *tmsp.Request, res *tmsp.Response) {
+	proxyCb := func(req *abci.Request, res *abci.Response) {
 		switch r := res.Value.(type) {
-		case *tmsp.Response_AppendTx:
+		case *abci.Response_AppendTx:
 			// TODO: make use of res.Log
 			// TODO: make use of this info
 			// Blocks may include invalid txs.
-			// reqAppendTx := req.(tmsp.RequestAppendTx)
+			// reqAppendTx := req.(abci.RequestAppendTx)
 			txError := ""
 			apTx := r.AppendTx
-			if apTx.Code == tmsp.CodeType_OK {
+			if apTx.Code == abci.CodeType_OK {
 				validTxs += 1
 			} else {
 				log.Debug("Invalid tx", "code", r.AppendTx.Code, "log", r.AppendTx.Log)
@@ -132,12 +132,12 @@ func execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn proxy.AppConnCo
 
 	log.Info("Executed block", "height", block.Height, "valid txs", validTxs, "invalid txs", invalidTxs)
 	if len(respEndBlock.Diffs) > 0 {
-		log.Info("Update to validator set", "updates", tmsp.ValidatorsString(respEndBlock.Diffs))
+		log.Info("Update to validator set", "updates", abci.ValidatorsString(respEndBlock.Diffs))
 	}
 	return respEndBlock.Diffs, nil
 }
 
-func updateValidators(validators *types.ValidatorSet, changedValidators []*tmsp.Validator) error {
+func updateValidators(validators *types.ValidatorSet, changedValidators []*abci.Validator) error {
 	// TODO: prevent change of 1/3+ at once
 
 	for _, v := range changedValidators {
@@ -321,7 +321,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	blockHeight := int(res.LastBlockHeight) // XXX: beware overflow
 	appHash := res.LastBlockAppHash
 
-	log.Notice("TMSP Handshake", "appHeight", blockHeight, "appHash", appHash)
+	log.Notice("ABCI Handshake", "appHeight", blockHeight, "appHash", appHash)
 
 	// TODO: check version
 
@@ -344,7 +344,7 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, appConnCon
 
 	storeBlockHeight := h.store.Height()
 	stateBlockHeight := h.state.LastBlockHeight
-	log.Notice("TMSP Replay Blocks", "appHeight", appBlockHeight, "storeHeight", storeBlockHeight, "stateHeight", stateBlockHeight)
+	log.Notice("ABCI Replay Blocks", "appHeight", appBlockHeight, "storeHeight", storeBlockHeight, "stateHeight", stateBlockHeight)
 
 	if storeBlockHeight == 0 {
 		return nil
@@ -355,20 +355,20 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, appConnCon
 	} else if storeBlockHeight == appBlockHeight {
 		// We ran Commit, but if we crashed before state.Save(),
 		// load the intermediate state and update the state.AppHash.
-		// NOTE: If TMSP allowed rollbacks, we could just replay the
+		// NOTE: If ABCI allowed rollbacks, we could just replay the
 		// block even though it's been committed
 		stateAppHash := h.state.AppHash
 		lastBlockAppHash := h.store.LoadBlock(storeBlockHeight).AppHash
 
 		if bytes.Equal(stateAppHash, appHash) {
 			// we're all synced up
-			log.Debug("TMSP RelpayBlocks: Already synced")
+			log.Debug("ABCI RelpayBlocks: Already synced")
 		} else if bytes.Equal(stateAppHash, lastBlockAppHash) {
 			// we crashed after commit and before saving state,
 			// so load the intermediate state and update the hash
 			h.state.LoadIntermediate()
 			h.state.AppHash = appHash
-			log.Debug("TMSP RelpayBlocks: Loaded intermediate state and updated state.AppHash")
+			log.Debug("ABCI RelpayBlocks: Loaded intermediate state and updated state.AppHash")
 		} else {
 			PanicSanity(Fmt("Unexpected state.AppHash: state.AppHash %X; app.AppHash %X, lastBlock.AppHash %X", stateAppHash, appHash, lastBlockAppHash))
 

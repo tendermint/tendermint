@@ -12,7 +12,7 @@ import (
 	"github.com/tendermint/go-p2p"
 	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/types"
-	tmsp "github.com/tendermint/tmsp/types"
+	abci "github.com/tendermint/abci/types"
 )
 
 const (
@@ -85,7 +85,7 @@ func (memR *MempoolReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte) {
 }
 
 // Just an alias for CheckTx since broadcasting happens in peer routines
-func (memR *MempoolReactor) BroadcastTx(tx types.Tx, cb func(*tmsp.Response)) error {
+func (memR *MempoolReactor) BroadcastTx(tx types.Tx, cb func(*abci.Response)) error {
 	return memR.Mempool.CheckTx(tx, cb)
 }
 

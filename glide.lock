@@ -1,5 +1,5 @@
-hash: 8e2e970c04c55b02740daa62647bb637964504a65c45cf274ffed5b0b1930ae4
-updated: 2017-01-12T14:56:02.152843341-05:00
+hash: 25681f005f0b9b1816cd5c5f0a0fd013395a7477c656c6010bb570b5aebd2d0a
+updated: 2017-01-12T15:52:43.856786013-05:00
 imports:
 - name: github.com/btcsuite/btcd
   version: afec1bd1245a4a19e6dfe1306974b733e7cbb9b8
@@ -48,6 +48,16 @@ imports:
   - leveldb/storage
   - leveldb/table
   - leveldb/util
+- name: github.com/tendermint/abci
+  version: 3a5e63e987a50cf74a16fe0a5e18e74eb82b2031
+  repo: https://github.com/tendermint/tmsp
+  subpackages:
+  - client
+  - example/counter
+  - example/dummy
+  - example/nil
+  - server
+  - types
 - name: github.com/tendermint/ed25519
   version: 1f52c6f8b8a5c7908aff4497c186af344b428925
   subpackages:
@@ -93,15 +103,6 @@ imports:
   version: ae0f3d6450da9eac7074b439c8e1c3cabf0d5ce6
   subpackages:
   - term
-- name: github.com/tendermint/tmsp
-  version: f8167872d8ddd3a2362452ef1414991b5afa8862
-  subpackages:
-  - client
-  - example/counter
-  - example/dummy
-  - example/nil
-  - server
-  - types
 - name: golang.org/x/crypto
   version: ede567c8e044a5913dad1d1af3696d9da953104c
   subpackages:

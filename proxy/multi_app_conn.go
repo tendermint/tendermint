@@ -28,7 +28,7 @@ type Handshaker interface {
 }
 
 // a multiAppConn is made of a few appConns (mempool, consensus, query)
-// and manages their underlying tmsp clients, including the handshake
+// and manages their underlying abci clients, including the handshake
 // which ensures the app and tendermint are synced.
 // TODO: on app restart, clients must reboot together
 type multiAppConn struct {
@@ -45,7 +45,7 @@ type multiAppConn struct {
 	clientCreator ClientCreator
 }
 
-// Make all necessary tmsp connections to the application
+// Make all necessary abci connections to the application
 func NewMultiAppConn(config cfg.Config, clientCreator ClientCreator, handshaker Handshaker) *multiAppConn {
 	multiAppConn := &multiAppConn{
 		config:        config,
@@ -75,21 +75,21 @@ func (app *multiAppConn) OnStart() error {
 	app.BaseService.OnStart()
 
 	// query connection
-	querycli, err := app.clientCreator.NewTMSPClient()
+	querycli, err := app.clientCreator.NewABCIClient()
 	if err != nil {
 		return err
 	}
 	app.queryConn = NewAppConnQuery(querycli)
 
 	// mempool connection
-	memcli, err := app.clientCreator.NewTMSPClient()
+	memcli, err := app.clientCreator.NewABCIClient()
 	if err != nil {
 		return err
 	}
 	app.mempoolConn = NewAppConnMempool(memcli)
 
 	// consensus connection
-	concli, err := app.clientCreator.NewTMSPClient()
+	concli, err := app.clientCreator.NewABCIClient()
 	if err != nil {
 		return err
 	}

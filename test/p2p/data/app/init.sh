@@ -1,5 +1,5 @@
 #! /bin/bash
-# This is a sample bash script for a TMSP application
+# This is a sample bash script for a ABCI application
 
 cd app/
 git clone https://github.com/tendermint/nomnomcoin.git

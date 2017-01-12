@@ -354,7 +354,7 @@ func (cs *ConsensusState) OnStart() error {
 		return err
 	}
 
-	// If the latest block was applied in the tmsp handshake,
+	// If the latest block was applied in the abci handshake,
 	// we may not have written the current height to the wal,
 	// so check here and write it if not found.
 	// TODO: remove this and run the handhsake/replay
