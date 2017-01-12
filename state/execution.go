@@ -73,24 +73,24 @@ func execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn proxy.AppConnCo
 	// Execute transactions and get hash
 	proxyCb := func(req *abci.Request, res *abci.Response) {
 		switch r := res.Value.(type) {
-		case *abci.Response_AppendTx:
+		case *abci.Response_DeliverTx:
 			// TODO: make use of res.Log
 			// TODO: make use of this info
 			// Blocks may include invalid txs.
-			// reqAppendTx := req.(abci.RequestAppendTx)
+			// reqDeliverTx := req.(abci.RequestDeliverTx)
 			txError := ""
-			apTx := r.AppendTx
+			apTx := r.DeliverTx
 			if apTx.Code == abci.CodeType_OK {
 				validTxs += 1
 			} else {
-				log.Debug("Invalid tx", "code", r.AppendTx.Code, "log", r.AppendTx.Log)
+				log.Debug("Invalid tx", "code", r.DeliverTx.Code, "log", r.DeliverTx.Log)
 				invalidTxs += 1
 				txError = apTx.Code.String()
 			}
 			// NOTE: if we count we can access the tx from the block instead of
 			// pulling it from the req
 			event := types.EventDataTx{
-				Tx:    req.GetAppendTx().Tx,
+				Tx:    req.GetDeliverTx().Tx,
 				Data:  apTx.Data,
 				Code:  apTx.Code,
 				Log:   apTx.Log,
@@ -113,7 +113,7 @@ func execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn proxy.AppConnCo
 	// Run txs of block
 	for _, tx := range block.Txs {
 		fail.FailRand(len(block.Txs)) // XXX
-		proxyAppConn.AppendTxAsync(tx)
+		proxyAppConn.DeliverTxAsync(tx)
 		if err := proxyAppConn.Error(); err != nil {
 			return nil, err
 		}

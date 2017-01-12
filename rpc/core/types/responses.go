@@ -65,7 +65,7 @@ type ResultBroadcastTx struct {
 
 type ResultBroadcastTxCommit struct {
 	CheckTx  *abci.ResponseCheckTx  `json:"check_tx"`
-	AppendTx *abci.ResponseAppendTx `json:"append_tx"`
+	DeliverTx *abci.ResponseDeliverTx `json:"deliver_tx"`
 }
 
 type ResultUnconfirmedTxs struct {

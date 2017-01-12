@@ -14,5 +14,5 @@ func (bapi *broadcastAPI) BroadcastTx(ctx context.Context, req *RequestBroadcast
 	if err != nil {
 		return nil, err
 	}
-	return &ResponseBroadcastTx{res.CheckTx, res.AppendTx}, nil
+	return &ResponseBroadcastTx{res.CheckTx, res.DeliverTx}, nil
 }

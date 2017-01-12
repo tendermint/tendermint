@@ -198,9 +198,9 @@ func testBroadcastTxCommit(t *testing.T, resI interface{}, tx []byte) {
 	if checkTx.Code != abci.CodeType_OK {
 		panic(Fmt("BroadcastTxCommit got non-zero exit code from CheckTx: %v. %X; %s", checkTx.Code, checkTx.Data, checkTx.Log))
 	}
-	appendTx := res.AppendTx
-	if appendTx.Code != abci.CodeType_OK {
-		panic(Fmt("BroadcastTxCommit got non-zero exit code from CheckTx: %v. %X; %s", appendTx.Code, appendTx.Data, appendTx.Log))
+	deliverTx := res.DeliverTx
+	if deliverTx.Code != abci.CodeType_OK {
+		panic(Fmt("BroadcastTxCommit got non-zero exit code from CheckTx: %v. %X; %s", deliverTx.Code, deliverTx.Data, deliverTx.Log))
 	}
 	mem := node.MempoolReactor().Mempool
 	if mem.Size() != 0 {
