@@ -122,8 +122,8 @@ func NewCounterApplication() *CounterApplication {
 	return &CounterApplication{}
 }
 
-func (app *CounterApplication) Info() (string, *tmsp.TMSPInfo, *tmsp.LastBlockInfo, *tmsp.ConfigInfo) {
-	return Fmt("txs:%v", app.txCount), nil, nil, nil
+func (app *CounterApplication) Info() tmsp.ResponseInfo {
+	return tmsp.ResponseInfo{Data: Fmt("txs:%v", app.txCount)}
 }
 
 func (app *CounterApplication) SetOption(key string, value string) (log string) {

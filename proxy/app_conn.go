@@ -16,7 +16,7 @@ type AppConnConsensus interface {
 
 	BeginBlockSync(hash []byte, header *types.Header) (err error)
 	AppendTxAsync(tx []byte) *tmspcli.ReqRes
-	EndBlockSync(height uint64) (changedValidators []*types.Validator, err error)
+	EndBlockSync(height uint64) (types.ResponseEndBlock, error)
 	CommitSync() (res types.Result)
 }
 
@@ -34,7 +34,7 @@ type AppConnQuery interface {
 	Error() error
 
 	EchoSync(string) (res types.Result)
-	InfoSync() (types.Result, *types.TMSPInfo, *types.LastBlockInfo, *types.ConfigInfo)
+	InfoSync() (types.ResponseInfo, error)
 	QuerySync(tx []byte) (res types.Result)
 
 	//	SetOptionSync(key string, value string) (res types.Result)
@@ -73,7 +73,7 @@ func (app *appConnConsensus) AppendTxAsync(tx []byte) *tmspcli.ReqRes {
 	return app.appConn.AppendTxAsync(tx)
 }
 
-func (app *appConnConsensus) EndBlockSync(height uint64) (changedValidators []*types.Validator, err error) {
+func (app *appConnConsensus) EndBlockSync(height uint64) (types.ResponseEndBlock, error) {
 	return app.appConn.EndBlockSync(height)
 }
 
@@ -135,7 +135,7 @@ func (app *appConnQuery) EchoSync(msg string) (res types.Result) {
 	return app.appConn.EchoSync(msg)
 }
 
-func (app *appConnQuery) InfoSync() (types.Result, *types.TMSPInfo, *types.LastBlockInfo, *types.ConfigInfo) {
+func (app *appConnQuery) InfoSync() (types.ResponseInfo, error) {
 	return app.appConn.InfoSync()
 }
 
