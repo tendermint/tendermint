@@ -251,6 +251,8 @@ type ConsensusState struct {
 	decideProposal func(height, round int)
 	doPrevote      func(height, round int)
 	setProposal    func(proposal *types.Proposal) error
+
+	done chan struct{}
 }
 
 func NewConsensusState(config cfg.Config, state *sm.State, proxyAppConn proxy.AppConnConsensus, blockStore *bc.BlockStore, mempool *mempl.Mempool) *ConsensusState {
@@ -263,6 +265,7 @@ func NewConsensusState(config cfg.Config, state *sm.State, proxyAppConn proxy.Ap
 		internalMsgQueue: make(chan msgInfo, msgQueueSize),
 		timeoutTicker:    NewTimeoutTicker(),
 		timeoutParams:    InitTimeoutParamsFromConfig(config),
+		done:             make(chan struct{}),
 	}
 	// set function defaults (may be overwritten before calling Start)
 	cs.decideProposal = cs.defaultDecideProposal
@@ -408,6 +411,12 @@ func (cs *ConsensusState) OnStop() {
 	if cs.wal != nil && cs.IsRunning() {
 		cs.wal.Wait()
 	}
+}
+
+// NOTE: be sure to Stop() the event switch and drain
+// any event channels or this may deadlock
+func (cs *ConsensusState) Wait() {
+	<-cs.done
 }
 
 // Open file to log all consensus messages and timeouts for deterministic accountability
@@ -659,6 +668,8 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 			if cs.wal != nil {
 				cs.wal.Stop()
 			}
+
+			close(cs.done)
 			return
 		}
 	}

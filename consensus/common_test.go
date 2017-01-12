@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path"
 	"sort"
 	"sync"
@@ -28,6 +29,12 @@ import (
 
 var config cfg.Config // NOTE: must be reset for each _test.go file
 var ensureTimeout = time.Duration(2)
+
+func ensureDir(dir string, mode os.FileMode) {
+	if err := EnsureDir(dir, mode); err != nil {
+		panic(err)
+	}
+}
 
 //-------------------------------------------------------------------------------
 // validator stub (a dummy consensus peer we control)
@@ -249,9 +256,9 @@ func newConsensusStateWithConfig(thisConfig cfg.Config, state *sm.State, pv *typ
 	return cs
 }
 
-func loadPrivValidator(config cfg.Config) *types.PrivValidator {
-	privValidatorFile := config.GetString("priv_validator_file")
-	EnsureDir(path.Dir(privValidatorFile), 0700)
+func loadPrivValidator(conf cfg.Config) *types.PrivValidator {
+	privValidatorFile := conf.GetString("priv_validator_file")
+	ensureDir(path.Dir(privValidatorFile), 0700)
 	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
 	privValidator.Reset()
 	return privValidator
@@ -313,7 +320,7 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 		state := sm.MakeGenesisState(db, genDoc)
 		state.Save()
 		thisConfig := tendermint_test.ResetConfig(Fmt("%s_%d", testName, i))
-		EnsureDir(thisConfig.GetString("cs_wal_dir"), 0700) // dir for wal
+		ensureDir(thisConfig.GetString("cs_wal_dir"), 0700) // dir for wal
 		css[i] = newConsensusStateWithConfig(thisConfig, state, privVals[i], appFunc())
 		css[i].SetTimeoutTicker(tickerFunc())
 	}
@@ -329,7 +336,7 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 		state := sm.MakeGenesisState(db, genDoc)
 		state.Save()
 		thisConfig := tendermint_test.ResetConfig(Fmt("%s_%d", testName, i))
-		EnsureDir(thisConfig.GetString("cs_wal_dir"), 0700) // dir for wal
+		ensureDir(thisConfig.GetString("cs_wal_dir"), 0700) // dir for wal
 		var privVal *types.PrivValidator
 		if i < nValidators {
 			privVal = privVals[i]

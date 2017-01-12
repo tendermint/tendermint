@@ -118,7 +118,16 @@ func runReplayTest(t *testing.T, cs *ConsensusState, walDir string, newBlockCh c
 	// Assuming the consensus state is running, replay of any WAL, including the empty one,
 	// should eventually be followed by a new block, or else something is wrong
 	waitForBlock(newBlockCh, thisCase, i)
+	cs.evsw.Stop()
 	cs.Stop()
+LOOP:
+	for {
+		select {
+		case <-newBlockCh:
+		default:
+			break LOOP
+		}
+	}
 	cs.Wait()
 }
 
