@@ -1,5 +1,5 @@
-hash: 2c623322ed0ff7136db54be910e62e679af6e989b18804bb2e6c457fa79533ff
-updated: 2017-01-11T23:24:18.92373144-05:00
+hash: 1bc8d51a8d872f9ad67ff63c9e1d0bcfdc89a3e81173bf14a3994970d5528d96
+updated: 2017-01-10T18:58:05.483331081+01:00
 imports:
 - name: github.com/btcsuite/btcd
   version: afec1bd1245a4a19e6dfe1306974b733e7cbb9b8
@@ -33,6 +33,11 @@ imports:
   version: 66b8e73f3f5cda9f96b69efd03dd3d7fc4a5cdb8
 - name: github.com/spf13/pflag
   version: 5ccb023bc27df288a957c5e994cd44fd19619465
+- name: github.com/stretchr/testify
+  version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
+  subpackages:
+  - assert
+  - require
 - name: github.com/syndtr/goleveldb
   version: 6b4daa5362b502898ddf367c5c11deb9e7a5c727
   subpackages:
@@ -94,7 +99,7 @@ imports:
   subpackages:
   - term
 - name: github.com/tendermint/tmsp
-  version: c9b6b6e591c8e49154cd11bca4b8dde92ae5e341
+  version: b209492ca4afb2053f339786475ee601f6bc82d3
   subpackages:
   - client
   - example/counter

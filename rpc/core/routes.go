@@ -26,6 +26,7 @@ var Routes = map[string]*rpc.RPCFunc{
 	"num_unconfirmed_txs":  rpc.NewRPCFunc(NumUnconfirmedTxsResult, ""),
 
 	"tmsp_query": rpc.NewRPCFunc(TMSPQueryResult, "query"),
+	"tmsp_proof": rpc.NewRPCFunc(TMSPProofResult, "key,height"),
 	"tmsp_info":  rpc.NewRPCFunc(TMSPInfoResult, ""),
 
 	"unsafe_flush_mempool":      rpc.NewRPCFunc(UnsafeFlushMempool, ""),
@@ -157,6 +158,14 @@ func BroadcastTxAsyncResult(tx []byte) (ctypes.TMResult, error) {
 
 func TMSPQueryResult(query []byte) (ctypes.TMResult, error) {
 	if r, err := TMSPQuery(query); err != nil {
+		return nil, err
+	} else {
+		return r, nil
+	}
+}
+
+func TMSPProofResult(key []byte, height int64) (ctypes.TMResult, error) {
+	if r, err := TMSPProof(key, height); err != nil {
 		return nil, err
 	} else {
 		return r, nil
