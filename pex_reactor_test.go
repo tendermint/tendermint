@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	. "github.com/tendermint/go-common"
+	wire "github.com/tendermint/go-wire"
 )
 
 func TestPEXReactorBasic(t *testing.T) {
@@ -85,13 +86,30 @@ func TestPEXReactorRunning(t *testing.T) {
 	}
 }
 
+func TestPEXReactorReceive(t *testing.T) {
+	book := NewAddrBook(createTempFileName("addrbook"), true)
+	r := NewPEXReactor(book)
+
+	peer := createRandomPeer(false)
+
+	size := book.Size()
+	addrs := []*NetAddress{NewNetAddressString(peer.ListenAddr)}
+	msg := wire.BinaryBytes(struct{ PexMessage }{&pexAddrsMessage{Addrs: addrs}})
+	r.Receive(PexChannel, peer, msg)
+	assert.Equal(t, size+1, book.Size())
+
+	msg = wire.BinaryBytes(struct{ PexMessage }{&pexRequestMessage{}})
+	r.Receive(PexChannel, peer, msg)
+}
+
 func createRandomPeer(outbound bool) *Peer {
+	addr := Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256)
 	return &Peer{
 		Key: RandStr(12),
 		NodeInfo: &NodeInfo{
-			RemoteAddr: Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256),
-			ListenAddr: Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256),
+			ListenAddr: addr,
 		},
 		outbound: outbound,
+		mconn:    &MConnection{RemoteAddress: NewNetAddressString(addr)},
 	}
 }
