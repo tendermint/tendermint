@@ -16,10 +16,11 @@ func TestChainAware(t *testing.T) {
 	app := NewChainAwareApplication()
 
 	// Start the listener
-	_, err := server.NewServer("unix://test.sock", "socket", app)
+	srv, err := server.NewServer("unix://test.sock", "socket", app)
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer srv.Stop()
 
 	// Connect to the socket
 	client, err := tmspcli.NewSocketClient("unix://test.sock", false)

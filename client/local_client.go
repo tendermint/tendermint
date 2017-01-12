@@ -51,11 +51,11 @@ func (app *localClient) EchoAsync(msg string) *ReqRes {
 
 func (app *localClient) InfoAsync() *ReqRes {
 	app.mtx.Lock()
-	info, tmspInfo, blockInfo, configInfo := app.Application.Info()
+	resInfo := app.Application.Info()
 	app.mtx.Unlock()
 	return app.callback(
 		types.ToRequestInfo(),
-		types.ToResponseInfo(info, tmspInfo, blockInfo, configInfo),
+		types.ToResponseInfo(resInfo),
 	)
 }
 
@@ -136,14 +136,14 @@ func (app *localClient) BeginBlockAsync(hash []byte, header *types.Header) *ReqR
 
 func (app *localClient) EndBlockAsync(height uint64) *ReqRes {
 	app.mtx.Lock()
-	var validators []*types.Validator
+	var resEndBlock types.ResponseEndBlock
 	if bcApp, ok := app.Application.(types.BlockchainAware); ok {
-		validators = bcApp.EndBlock(height)
+		resEndBlock = bcApp.EndBlock(height)
 	}
 	app.mtx.Unlock()
 	return app.callback(
 		types.ToRequestEndBlock(height),
-		types.ToResponseEndBlock(validators),
+		types.ToResponseEndBlock(resEndBlock),
 	)
 }
 
@@ -157,11 +157,11 @@ func (app *localClient) EchoSync(msg string) (res types.Result) {
 	return types.OK.SetData([]byte(msg))
 }
 
-func (app *localClient) InfoSync() (types.Result, *types.TMSPInfo, *types.LastBlockInfo, *types.ConfigInfo) {
+func (app *localClient) InfoSync() (resInfo types.ResponseInfo, err error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
-	info, tmspInfo, blockInfo, configInfo := app.Application.Info()
-	return types.OK.SetData([]byte(info)), tmspInfo, blockInfo, configInfo
+	resInfo = app.Application.Info()
+	return resInfo, nil
 }
 
 func (app *localClient) SetOptionSync(key string, value string) (res types.Result) {
@@ -217,13 +217,13 @@ func (app *localClient) BeginBlockSync(hash []byte, header *types.Header) (err e
 	return nil
 }
 
-func (app *localClient) EndBlockSync(height uint64) (changedValidators []*types.Validator, err error) {
+func (app *localClient) EndBlockSync(height uint64) (resEndBlock types.ResponseEndBlock, err error) {
 	app.mtx.Lock()
 	if bcApp, ok := app.Application.(types.BlockchainAware); ok {
-		changedValidators = bcApp.EndBlock(height)
+		resEndBlock = bcApp.EndBlock(height)
 	}
 	app.mtx.Unlock()
-	return changedValidators, nil
+	return resEndBlock, nil
 }
 
 //-------------------------------------------------------

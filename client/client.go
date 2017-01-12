@@ -25,7 +25,7 @@ type Client interface {
 
 	FlushSync() error
 	EchoSync(msg string) (res types.Result)
-	InfoSync() (types.Result, *types.TMSPInfo, *types.LastBlockInfo, *types.ConfigInfo)
+	InfoSync() (resInfo types.ResponseInfo, err error)
 	SetOptionSync(key string, value string) (res types.Result)
 	AppendTxSync(tx []byte) (res types.Result)
 	CheckTxSync(tx []byte) (res types.Result)
@@ -38,7 +38,7 @@ type Client interface {
 
 	InitChainSync(validators []*types.Validator) (err error)
 	BeginBlockSync(hash []byte, header *types.Header) (err error)
-	EndBlockSync(height uint64) (changedValidators []*types.Validator, err error)
+	EndBlockSync(height uint64) (resEndBlock types.ResponseEndBlock, err error)
 }
 
 //----------------------------------------

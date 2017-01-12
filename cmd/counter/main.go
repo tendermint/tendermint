@@ -17,7 +17,7 @@ func main() {
 	app := counter.NewCounterApplication(*serialPtr)
 
 	// Start the listener
-	_, err := server.NewServer(*addrPtr, *tmspPtr, app)
+	srv, err := server.NewServer(*addrPtr, *tmspPtr, app)
 	if err != nil {
 		Exit(err.Error())
 	}
@@ -25,6 +25,7 @@ func main() {
 	// Wait forever
 	TrapSignal(func() {
 		// Cleanup
+		srv.Stop()
 	})
 
 }

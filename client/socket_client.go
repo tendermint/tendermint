@@ -292,14 +292,17 @@ func (cli *socketClient) FlushSync() error {
 	return cli.Error()
 }
 
-func (cli *socketClient) InfoSync() (types.Result, *types.TMSPInfo, *types.LastBlockInfo, *types.ConfigInfo) {
+func (cli *socketClient) InfoSync() (resInfo types.ResponseInfo, err error) {
 	reqres := cli.queueRequest(types.ToRequestInfo())
 	cli.FlushSync()
 	if err := cli.Error(); err != nil {
-		return types.ErrInternalError.SetLog(err.Error()), nil, nil, nil
+		return resInfo, err
 	}
-	resp := reqres.Response.GetInfo()
-	return types.Result{Code: OK, Data: []byte(resp.Info), Log: LOG}, resp.TmspInfo, resp.LastBlock, resp.Config
+	if resInfo_ := reqres.Response.GetInfo(); resInfo_ != nil {
+		return *resInfo_, nil
+	} else {
+		return resInfo, nil
+	}
 }
 
 func (cli *socketClient) SetOptionSync(key string, value string) (res types.Result) {
@@ -370,13 +373,17 @@ func (cli *socketClient) BeginBlockSync(hash []byte, header *types.Header) (err 
 	return nil
 }
 
-func (cli *socketClient) EndBlockSync(height uint64) (validators []*types.Validator, err error) {
+func (cli *socketClient) EndBlockSync(height uint64) (resEndBlock types.ResponseEndBlock, err error) {
 	reqres := cli.queueRequest(types.ToRequestEndBlock(height))
 	cli.FlushSync()
 	if err := cli.Error(); err != nil {
-		return nil, err
+		return resEndBlock, err
 	}
-	return reqres.Response.GetEndBlock().Diffs, nil
+	if resEndBlock_ := reqres.Response.GetEndBlock(); resEndBlock_ != nil {
+		return *resEndBlock_, nil
+	} else {
+		return resEndBlock, nil
+	}
 }
 
 //----------------------------------------
