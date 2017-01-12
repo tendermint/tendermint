@@ -134,7 +134,7 @@ func TestURITMSPQuery(t *testing.T) {
 	k, v := sendTx()
 	time.Sleep(time.Second)
 	tmResult := new(ctypes.TMResult)
-	_, err := clientURI.Call("tmsp_query", map[string]interface{}{"query": Fmt("%X", k)}, tmResult)
+	_, err := clientURI.Call("tmsp_query", map[string]interface{}{"query": k}, tmResult)
 	if err != nil {
 		panic(err)
 	}
@@ -144,7 +144,7 @@ func TestURITMSPQuery(t *testing.T) {
 func TestJSONTMSPQuery(t *testing.T) {
 	k, v := sendTx()
 	tmResult := new(ctypes.TMResult)
-	_, err := clientJSON.Call("tmsp_query", []interface{}{Fmt("%X", k)}, tmResult)
+	_, err := clientJSON.Call("tmsp_query", []interface{}{k}, tmResult)
 	if err != nil {
 		panic(err)
 	}
