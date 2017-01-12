@@ -40,6 +40,15 @@ func TestByzantine(t *testing.T) {
 	}
 
 	reactors := make([]p2p.Reactor, N)
+	defer func() {
+		for _, r := range reactors {
+			if rr, ok := r.(*ByzantineReactor); ok {
+				rr.reactor.Switch.Stop()
+			} else {
+				r.(*ConsensusReactor).Switch.Stop()
+			}
+		}
+	}()
 	eventChans := make([]chan interface{}, N)
 	for i := 0; i < N; i++ {
 		if i == 0 {
