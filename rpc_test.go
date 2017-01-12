@@ -164,3 +164,39 @@ func TestWS_UNIX(t *testing.T) {
 	}
 	testWS(t, cl)
 }
+
+func TestHexStringArg(t *testing.T) {
+	cl := rpcclient.NewClientURI(tcpAddr)
+	// should NOT be handled as hex
+	val := "0xabc"
+	params := map[string]interface{}{
+		"arg": val,
+	}
+	var result Result
+	_, err := cl.Call("status", params, &result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := result.(*ResultStatus).Value
+	if got != val {
+		t.Fatalf("Got: %v   ....   Expected: %v \n", got, val)
+	}
+}
+
+func TestQuotedStringArg(t *testing.T) {
+	cl := rpcclient.NewClientURI(tcpAddr)
+	// should NOT be unquoted
+	val := "\"abc\""
+	params := map[string]interface{}{
+		"arg": val,
+	}
+	var result Result
+	_, err := cl.Call("status", params, &result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := result.(*ResultStatus).Value
+	if got != val {
+		t.Fatalf("Got: %v   ....   Expected: %v \n", got, val)
+	}
+}
