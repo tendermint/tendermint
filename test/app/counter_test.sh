@@ -35,9 +35,11 @@ function sendTx() {
 
 		RESPONSE=`echo $RESPONSE | jq .result[1]`
 	else
-	 	if [ ! -f grpc_client ]; then
- 			go build -o grpc_client grpc_client.go 
+	 	if [  -f grpc_client ]; then
+			rm grpc_client
 	     	fi
+		echo "... building grpc_client"
+		go build -o grpc_client grpc_client.go 
 		RESPONSE=`./grpc_client $TX`
 		ERROR=""
 	fi
