@@ -102,6 +102,21 @@ func TestPEXReactorReceive(t *testing.T) {
 	r.Receive(PexChannel, peer, msg)
 }
 
+func TestPEXReactorAbuseFromPeer(t *testing.T) {
+	book := NewAddrBook(createTempFileName("addrbook"), true)
+	r := NewPEXReactor(book)
+	r.SetMaxMsgCountByPeer(5)
+
+	peer := createRandomPeer(false)
+
+	msg := wire.BinaryBytes(struct{ PexMessage }{&pexRequestMessage{}})
+	for i := 0; i < 10; i++ {
+		r.Receive(PexChannel, peer, msg)
+	}
+
+	assert.True(t, r.ReachedMaxMsgCountForPeer(peer.ListenAddr))
+}
+
 func createRandomPeer(outbound bool) *Peer {
 	addr := Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256)
 	return &Peer{
