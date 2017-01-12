@@ -191,30 +191,27 @@ func (r *PEXReactor) ensurePeers() {
 	if numToDial <= 0 {
 		return
 	}
-	toDial := NewCMap()
+
+	toDial := make(map[string]*NetAddress)
 
 	// Try to pick numToDial addresses to dial.
-	// TODO: improve logic.
 	for i := 0; i < numToDial; i++ {
-		newBias := MinInt(numOutPeers, 8)*10 + 10
 		var picked *NetAddress
 		// Try to fetch a new peer 3 times.
 		// This caps the maximum number of tries to 3 * numToDial.
 		for j := 0; j < 3; j++ {
-			try := r.book.PickAddress(newBias)
+			// NOTE always picking from the new group because old one stores already
+			// connected peers.
+			try := r.book.PickAddress(100)
 			if try == nil {
 				break
 			}
-			alreadySelected := toDial.Has(try.IP.String())
+			_, alreadySelected := toDial[try.IP.String()]
 			alreadyDialing := r.Switch.IsDialing(try)
-			alreadyConnected := r.Switch.Peers().Has(try.IP.String())
-			if alreadySelected || alreadyDialing || alreadyConnected {
-				/*
-					log.Info("Cannot dial address", "addr", try,
-						"alreadySelected", alreadySelected,
-						"alreadyDialing", alreadyDialing,
-						"alreadyConnected", alreadyConnected)
-				*/
+			if alreadySelected || alreadyDialing {
+				// log.Info("Cannot dial address", "addr", try,
+				// 	"alreadySelected", alreadySelected,
+				// 	"alreadyDialing", alreadyDialing)
 				continue
 			} else {
 				log.Info("Will dial address", "addr", try)
@@ -225,17 +222,20 @@ func (r *PEXReactor) ensurePeers() {
 		if picked == nil {
 			continue
 		}
-		toDial.Set(picked.IP.String(), picked)
+		toDial[picked.IP.String()] = picked
 	}
 
 	// Dial picked addresses
-	for _, item := range toDial.Values() {
+	for _, item := range toDial {
 		go func(picked *NetAddress) {
 			_, err := r.Switch.DialPeerWithAddress(picked, false)
 			if err != nil {
 				r.book.MarkAttempt(picked)
+			} else {
+				// move address to the old group
+				r.book.MarkGood(picked)
 			}
-		}(item.(*NetAddress))
+		}(item)
 	}
 
 	// If we need more addresses, pick a random peer and ask for more.
