@@ -72,5 +72,14 @@ func (app *CounterApplication) Commit() types.Result {
 }
 
 func (app *CounterApplication) Query(query []byte) types.Result {
-	return types.NewResultOK(nil, Fmt("Query is not supported"))
+	queryStr := string(query)
+
+	switch queryStr {
+	case "hash":
+		return types.NewResultOK(nil, Fmt("%v", app.hashCount))
+	case "tx":
+		return types.NewResultOK(nil, Fmt("%v", app.txCount))
+	}
+
+	return types.ErrUnknownRequest.SetLog(Fmt("Invalid nonce. Expected hash or tx, got %v", queryStr))
 }
