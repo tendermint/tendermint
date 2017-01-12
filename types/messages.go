@@ -94,9 +94,8 @@ func ToResponseFlush() *Response {
 }
 
 func ToResponseInfo(resInfo ResponseInfo) *Response {
-	resInfoCopy := resInfo
 	return &Response{
-		Value: &Response_Info{&resInfoCopy},
+		Value: &Response_Info{&resInfo},
 	}
 }
 
@@ -143,9 +142,8 @@ func ToResponseBeginBlock() *Response {
 }
 
 func ToResponseEndBlock(resEndBlock ResponseEndBlock) *Response {
-	resEndBlockCopy := resEndBlock
 	return &Response{
-		Value: &Response_EndBlock{&resEndBlockCopy},
+		Value: &Response_EndBlock{&resEndBlock},
 	}
 }
 
