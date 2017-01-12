@@ -9,10 +9,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tendermint/tendermint/config/tendermint_test"
+
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/types"
 )
+
+func init() {
+	config = tendermint_test.ResetConfig("consensus_replay_test")
+}
 
 // TODO: these tests ensure we can always recover from any state of the wal,
 // assuming it comes with a correct related state for the priv_validator.json.

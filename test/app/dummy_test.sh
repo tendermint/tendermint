@@ -2,7 +2,8 @@
 set -e
 
 function toHex() {
-	echo -n $1 | hexdump -ve '1/1 "%.2X"'
+	echo -n $1 | hexdump -ve '1/1 "%.2X"' | awk '{print "0x" $0}' 
+
 }
 
 #####################
@@ -13,7 +14,8 @@ TESTNAME=$1
 # store key value pair
 KEY="abcd"
 VALUE="dcba"
-curl -s 127.0.0.1:46657/broadcast_tx_commit?tx=\"$(toHex $KEY=$VALUE)\"
+echo $(toHex $KEY=$VALUE)
+curl -s 127.0.0.1:46657/broadcast_tx_commit?tx=$(toHex $KEY=$VALUE)
 echo $?
 echo ""
 
@@ -22,8 +24,10 @@ echo ""
 # test using the tmsp-cli
 ###########################
 
+echo "... testing query with tmsp-cli"
+
 # we should be able to look up the key
-RESPONSE=`tmsp-cli query $KEY`
+RESPONSE=`tmsp-cli query \"$KEY\"`
 
 set +e
 A=`echo $RESPONSE | grep '"exists":true'`
@@ -35,7 +39,7 @@ fi
 set -e
 
 # we should not be able to look up the value
-RESPONSE=`tmsp-cli query $VALUE`
+RESPONSE=`tmsp-cli query \"$VALUE\"`
 set +e
 A=`echo $RESPONSE | grep '"exists":true'`
 if [[ $? == 0 ]]; then
@@ -49,8 +53,10 @@ set -e
 # test using the /tmsp_query
 #############################
 
+echo "... testing query with /tmsp_query"
+
 # we should be able to look up the key
-RESPONSE=`curl -s 127.0.0.1:46657/tmsp_query?query=\"$(toHex $KEY)\"`
+RESPONSE=`curl -s 127.0.0.1:46657/tmsp_query?query=$(toHex $KEY)`
 RESPONSE=`echo $RESPONSE | jq .result[1].result.Data | xxd -r -p`
 
 set +e

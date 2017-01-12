@@ -29,7 +29,7 @@ function getCode() {
 function sendTx() {
 	TX=$1
 	if [[ "$GRPC_BROADCAST_TX" == "" ]]; then
-		RESPONSE=`curl -s localhost:46657/broadcast_tx_commit?tx=\"$TX\"`
+		RESPONSE=`curl -s localhost:46657/broadcast_tx_commit?tx=0x$TX`
 		ERROR=`echo $RESPONSE | jq .error`
 		ERROR=$(echo "$ERROR" | tr -d '"') # remove surrounding quotes
 

@@ -82,7 +82,7 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 			Data: appendTxRes.Data,
 			Log:  appendTxRes.Log,
 		}
-		log.Error("appendtx passed ", "r", appendTxR)
+		log.Notice("AppendTx passed ", "tx", []byte(tx), "response", appendTxR)
 		return &ctypes.ResultBroadcastTxCommit{
 			CheckTx:  checkTxR,
 			AppendTx: appendTxR,

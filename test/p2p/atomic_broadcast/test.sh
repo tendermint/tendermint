@@ -20,9 +20,9 @@ for i in `seq 1 $N`; do
 	HASH1=`curl -s $addr/status | jq .result[1].latest_app_hash`
 	
 	# - send a tx
-	TX=\"aadeadbeefbeefbeef0$i\"
+	TX=aadeadbeefbeefbeef0$i
 	echo "Broadcast Tx $TX"
-	curl -s $addr/broadcast_tx_commit?tx=$TX
+	curl -s $addr/broadcast_tx_commit?tx=0x$TX
 	echo ""
 
 	# we need to wait another block to get the new app_hash
