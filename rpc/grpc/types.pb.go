@@ -17,7 +17,7 @@ package core_grpc
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import types "github.com/tendermint/tmsp/types"
+import types "github.com/tendermint/abci/types"
 
 import (
 	context "golang.org/x/net/context"
@@ -53,7 +53,7 @@ func (m *RequestBroadcastTx) GetTx() []byte {
 
 type ResponseBroadcastTx struct {
 	CheckTx  *types.ResponseCheckTx  `protobuf:"bytes,1,opt,name=check_tx,json=checkTx" json:"check_tx,omitempty"`
-	AppendTx *types.ResponseAppendTx `protobuf:"bytes,2,opt,name=append_tx,json=appendTx" json:"append_tx,omitempty"`
+	DeliverTx *types.ResponseDeliverTx `protobuf:"bytes,2,opt,name=deliver_tx,json=deliverTx" json:"deliver_tx,omitempty"`
 }
 
 func (m *ResponseBroadcastTx) Reset()                    { *m = ResponseBroadcastTx{} }
@@ -68,9 +68,9 @@ func (m *ResponseBroadcastTx) GetCheckTx() *types.ResponseCheckTx {
 	return nil
 }
 
-func (m *ResponseBroadcastTx) GetAppendTx() *types.ResponseAppendTx {
+func (m *ResponseBroadcastTx) GetDeliverTx() *types.ResponseDeliverTx {
 	if m != nil {
-		return m.AppendTx
+		return m.DeliverTx
 	}
 	return nil
 }

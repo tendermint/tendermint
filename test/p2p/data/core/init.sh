@@ -8,7 +8,7 @@ BRANCH="master"
 
 go get -d $TMREPO/cmd/tendermint
 ### DEPENDENCIES (example)
-# cd $GOPATH/src/github.com/tendermint/tmsp
+# cd $GOPATH/src/github.com/tendermint/abci
 # git fetch origin $BRANCH
 # git checkout $BRANCH
 ### DEPENDENCIES END

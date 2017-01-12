@@ -1,7 +1,7 @@
 package types
 
 import (
-	"github.com/tendermint/tmsp/types"
+	"github.com/tendermint/abci/types"
 )
 
 // Convert tendermint types to protobuf types

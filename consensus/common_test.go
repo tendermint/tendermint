@@ -20,11 +20,11 @@ import (
 	mempl "github.com/tendermint/tendermint/mempool"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	tmspcli "github.com/tendermint/tmsp/client"
-	tmsp "github.com/tendermint/tmsp/types"
+	abcicli "github.com/tendermint/abci/client"
+	abci "github.com/tendermint/abci/types"
 
-	"github.com/tendermint/tmsp/example/counter"
-	"github.com/tendermint/tmsp/example/dummy"
+	"github.com/tendermint/abci/example/counter"
+	"github.com/tendermint/abci/example/dummy"
 )
 
 var config cfg.Config // NOTE: must be reset for each _test.go file
@@ -229,19 +229,19 @@ func readVotes(ch chan interface{}, reads int) chan struct{} {
 //-------------------------------------------------------------------------------
 // consensus states
 
-func newConsensusState(state *sm.State, pv *types.PrivValidator, app tmsp.Application) *ConsensusState {
+func newConsensusState(state *sm.State, pv *types.PrivValidator, app abci.Application) *ConsensusState {
 	return newConsensusStateWithConfig(config, state, pv, app)
 }
 
-func newConsensusStateWithConfig(thisConfig cfg.Config, state *sm.State, pv *types.PrivValidator, app tmsp.Application) *ConsensusState {
+func newConsensusStateWithConfig(thisConfig cfg.Config, state *sm.State, pv *types.PrivValidator, app abci.Application) *ConsensusState {
 	// Get BlockStore
 	blockDB := dbm.NewMemDB()
 	blockStore := bc.NewBlockStore(blockDB)
 
 	// one for mempool, one for consensus
 	mtx := new(sync.Mutex)
-	proxyAppConnMem := tmspcli.NewLocalClient(mtx, app)
-	proxyAppConnCon := tmspcli.NewLocalClient(mtx, app)
+	proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
+	proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
 
 	// Make Mempool
 	mempool := mempl.NewMempool(thisConfig, proxyAppConnMem)
@@ -312,7 +312,7 @@ func ensureNoNewStep(stepCh chan interface{}) {
 //-------------------------------------------------------------------------------
 // consensus nets
 
-func randConsensusNet(nValidators int, testName string, tickerFunc func() TimeoutTicker, appFunc func() tmsp.Application) []*ConsensusState {
+func randConsensusNet(nValidators int, testName string, tickerFunc func() TimeoutTicker, appFunc func() abci.Application) []*ConsensusState {
 	genDoc, privVals := randGenesisDoc(nValidators, false, 10)
 	css := make([]*ConsensusState, nValidators)
 	for i := 0; i < nValidators; i++ {
@@ -328,7 +328,7 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 }
 
 // nPeers = nValidators + nNotValidator
-func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerFunc func() TimeoutTicker, appFunc func() tmsp.Application) []*ConsensusState {
+func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerFunc func() TimeoutTicker, appFunc func() abci.Application) []*ConsensusState {
 	genDoc, privVals := randGenesisDoc(nValidators, false, int64(testMinPower))
 	css := make([]*ConsensusState, nPeers)
 	for i := 0; i < nPeers; i++ {
@@ -440,11 +440,11 @@ func (m *mockTicker) Chan() <-chan timeoutInfo {
 
 //------------------------------------
 
-func newCounter() tmsp.Application {
+func newCounter() abci.Application {
 	return counter.NewCounterApplication(true)
 }
 
-func newPersistentDummy() tmsp.Application {
+func newPersistentDummy() abci.Application {
 	dir, _ := ioutil.TempDir("/tmp", "persistent-dummy")
 	return dummy.NewPersistentDummyApplication(dir)
 }

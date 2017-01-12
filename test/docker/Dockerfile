@@ -19,7 +19,7 @@ RUN make get_vendor_deps
 COPY . $REPO
 
 RUN go install ./cmd/tendermint
-RUN bash scripts/install_tmsp_apps.sh
+RUN bash scripts/install_abci_apps.sh
 
 # expose the volume for debugging
 VOLUME $REPO

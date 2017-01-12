@@ -6,17 +6,17 @@ import (
 
 //-----------------------------------------------------------------------------
 
-func TMSPQuery(query []byte) (*ctypes.ResultTMSPQuery, error) {
+func ABCIQuery(query []byte) (*ctypes.ResultABCIQuery, error) {
 	res := proxyAppQuery.QuerySync(query)
-	return &ctypes.ResultTMSPQuery{res}, nil
+	return &ctypes.ResultABCIQuery{res}, nil
 }
 
-func TMSPInfo() (*ctypes.ResultTMSPInfo, error) {
+func ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	res, err := proxyAppQuery.InfoSync()
 	if err != nil {
 		return nil, err
 	}
-	return &ctypes.ResultTMSPInfo{
+	return &ctypes.ResultABCIInfo{
 		Data:             res.Data,
 		Version:          res.Version,
 		LastBlockHeight:  res.LastBlockHeight,

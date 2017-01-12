@@ -65,9 +65,9 @@ function counter_over_grpc() {
 	rm -rf $TMROOT
 	tendermint init
 	echo "Starting counter_over_grpc"
-	counter --serial --tmsp grpc > /dev/null &
+	counter --serial --abci grpc > /dev/null &
 	pid_counter=$!
-	tendermint node --tmsp grpc > tendermint.log &
+	tendermint node --abci grpc > tendermint.log &
 	pid_tendermint=$!
 	sleep 5
 
@@ -81,11 +81,11 @@ function counter_over_grpc_grpc() {
 	rm -rf $TMROOT
 	tendermint init
 	echo "Starting counter_over_grpc_grpc (ie. with grpc broadcast_tx)"
-	counter --serial --tmsp grpc > /dev/null &
+	counter --serial --abci grpc > /dev/null &
 	pid_counter=$!
 	sleep 1
 	GRPC_PORT=36656
-	tendermint node --tmsp grpc --grpc_laddr tcp://localhost:$GRPC_PORT > tendermint.log &
+	tendermint node --abci grpc --grpc_laddr tcp://localhost:$GRPC_PORT > tendermint.log &
 	pid_tendermint=$!
 	sleep 5
 

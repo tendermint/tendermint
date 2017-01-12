@@ -1,7 +1,7 @@
 syntax = "proto3";
 package core_grpc;
 
-import "github.com/tendermint/tmsp/types/types.proto";
+import "github.com/tendermint/abci/types/types.proto";
 
 //----------------------------------------
 // Message types
@@ -18,7 +18,7 @@ message RequestBroadcastTx {
 
 message ResponseBroadcastTx{
 	types.ResponseCheckTx check_tx = 1;
-	types.ResponseAppendTx append_tx = 2;
+	types.ResponseDeliverTx deliver_tx = 2;
 }
 
 //----------------------------------------

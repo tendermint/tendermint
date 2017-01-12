@@ -50,7 +50,7 @@ function sendTx() {
 	if [[ "$IS_JSON" != "0" ]]; then
 		ERROR="$RESPONSE"
 	fi
-	APPEND_TX_RESPONSE=`echo $RESPONSE | jq .append_tx`
+	APPEND_TX_RESPONSE=`echo $RESPONSE | jq .deliver_tx`
 	APPEND_TX_CODE=`getCode "$APPEND_TX_RESPONSE"`
 	CHECK_TX_RESPONSE=`echo $RESPONSE | jq .check_tx`
 	CHECK_TX_CODE=`getCode "$CHECK_TX_RESPONSE"`

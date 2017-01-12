@@ -11,7 +11,7 @@ import (
 	"github.com/tendermint/go-events"
 	"github.com/tendermint/go-p2p"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tmsp/example/dummy"
+	"github.com/tendermint/abci/example/dummy"
 )
 
 func init() {

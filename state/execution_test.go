@@ -13,7 +13,7 @@ import (
 	dbm "github.com/tendermint/go-db"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tmsp/example/dummy"
+	"github.com/tendermint/abci/example/dummy"
 )
 
 var (

@@ -70,7 +70,7 @@ func ResetConfig(localPath string) cfg.Config {
 	mapConfig.SetDefault("chain_id", "tendermint_test")
 	mapConfig.SetDefault("genesis_file", rootDir+"/genesis.json")
 	mapConfig.SetDefault("proxy_app", "dummy")
-	mapConfig.SetDefault("tmsp", "socket")
+	mapConfig.SetDefault("abci", "socket")
 	mapConfig.SetDefault("moniker", "anonymous")
 	mapConfig.SetDefault("node_laddr", "tcp://0.0.0.0:36656")
 	mapConfig.SetDefault("fast_sync", false)

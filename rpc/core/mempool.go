@@ -6,7 +6,7 @@ import (
 
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
-	tmsp "github.com/tendermint/tmsp/types"
+	abci "github.com/tendermint/abci/types"
 )
 
 //-----------------------------------------------------------------------------
@@ -23,8 +23,8 @@ func BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 
 // Returns with the response from CheckTx
 func BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
-	resCh := make(chan *tmsp.Response, 1)
-	err := mempool.CheckTx(tx, func(res *tmsp.Response) {
+	resCh := make(chan *abci.Response, 1)
+	err := mempool.CheckTx(tx, func(res *abci.Response) {
 		resCh <- res
 	})
 	if err != nil {
@@ -41,19 +41,19 @@ func BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 
 // CONTRACT: only returns error if mempool.BroadcastTx errs (ie. problem with the app)
 // or if we timeout waiting for tx to commit.
-// If CheckTx or AppendTx fail, no error will be returned, but the returned result
-// will contain a non-OK TMSP code.
+// If CheckTx or DeliverTx fail, no error will be returned, but the returned result
+// will contain a non-OK ABCI code.
 func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 
 	// subscribe to tx being committed in block
-	appendTxResCh := make(chan types.EventDataTx, 1)
+	deliverTxResCh := make(chan types.EventDataTx, 1)
 	types.AddListenerForEvent(eventSwitch, "rpc", types.EventStringTx(tx), func(data types.TMEventData) {
-		appendTxResCh <- data.(types.EventDataTx)
+		deliverTxResCh <- data.(types.EventDataTx)
 	})
 
 	// broadcast the tx and register checktx callback
-	checkTxResCh := make(chan *tmsp.Response, 1)
-	err := mempool.CheckTx(tx, func(res *tmsp.Response) {
+	checkTxResCh := make(chan *abci.Response, 1)
+	err := mempool.CheckTx(tx, func(res *abci.Response) {
 		checkTxResCh <- res
 	})
 	if err != nil {
@@ -62,11 +62,11 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	}
 	checkTxRes := <-checkTxResCh
 	checkTxR := checkTxRes.GetCheckTx()
-	if checkTxR.Code != tmsp.CodeType_OK {
+	if checkTxR.Code != abci.CodeType_OK {
 		// CheckTx failed!
 		return &ctypes.ResultBroadcastTxCommit{
 			CheckTx:  checkTxR,
-			AppendTx: nil,
+			DeliverTx: nil,
 		}, nil
 	}
 
@@ -75,23 +75,23 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	// TODO: configureable?
 	timer := time.NewTimer(60 * 2 * time.Second)
 	select {
-	case appendTxRes := <-appendTxResCh:
+	case deliverTxRes := <-deliverTxResCh:
 		// The tx was included in a block.
-		appendTxR := &tmsp.ResponseAppendTx{
-			Code: appendTxRes.Code,
-			Data: appendTxRes.Data,
-			Log:  appendTxRes.Log,
+		deliverTxR := &abci.ResponseDeliverTx{
+			Code: deliverTxRes.Code,
+			Data: deliverTxRes.Data,
+			Log:  deliverTxRes.Log,
 		}
-		log.Notice("AppendTx passed ", "tx", []byte(tx), "response", appendTxR)
+		log.Notice("DeliverTx passed ", "tx", []byte(tx), "response", deliverTxR)
 		return &ctypes.ResultBroadcastTxCommit{
 			CheckTx:  checkTxR,
-			AppendTx: appendTxR,
+			DeliverTx: deliverTxR,
 		}, nil
 	case <-timer.C:
 		log.Error("failed to include tx")
 		return &ctypes.ResultBroadcastTxCommit{
 			CheckTx:  checkTxR,
-			AppendTx: nil,
+			DeliverTx: nil,
 		}, fmt.Errorf("Timed out waiting for transaction to be included in a block")
 	}
 

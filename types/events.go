@@ -5,7 +5,7 @@ import (
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-events"
 	"github.com/tendermint/go-wire"
-	tmsp "github.com/tendermint/tmsp/types"
+	abci "github.com/tendermint/abci/types"
 )
 
 // Functions to generate eventId strings
@@ -76,7 +76,7 @@ type EventDataTx struct {
 	Tx    Tx            `json:"tx"`
 	Data  []byte        `json:"data"`
 	Log   string        `json:"log"`
-	Code  tmsp.CodeType `json:"code"`
+	Code  abci.CodeType `json:"code"`
 	Error string        `json:"error"` // this is redundant information for now
 }
 

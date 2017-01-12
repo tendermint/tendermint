@@ -7,7 +7,7 @@ import (
 	"github.com/tendermint/tendermint/config/tendermint_test"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tmsp/example/counter"
+	"github.com/tendermint/abci/example/counter"
 )
 
 func TestSerialReap(t *testing.T) {
@@ -16,12 +16,12 @@ func TestSerialReap(t *testing.T) {
 	app := counter.NewCounterApplication(true)
 	app.SetOption("serial", "on")
 	cc := proxy.NewLocalClientCreator(app)
-	appConnMem, _ := cc.NewTMSPClient()
-	appConnCon, _ := cc.NewTMSPClient()
+	appConnMem, _ := cc.NewABCIClient()
+	appConnCon, _ := cc.NewABCIClient()
 	mempool := NewMempool(config, appConnMem)
 
-	appendTxsRange := func(start, end int) {
-		// Append some txs.
+	deliverTxsRange := func(start, end int) {
+		// Deliver some txs.
 		for i := start; i < end; i++ {
 
 			// This will succeed
@@ -61,11 +61,11 @@ func TestSerialReap(t *testing.T) {
 	}
 
 	commitRange := func(start, end int) {
-		// Append some txs.
+		// Deliver some txs.
 		for i := start; i < end; i++ {
 			txBytes := make([]byte, 8)
 			binary.BigEndian.PutUint64(txBytes, uint64(i))
-			res := appConnCon.AppendTxSync(txBytes)
+			res := appConnCon.DeliverTxSync(txBytes)
 			if !res.IsOK() {
 				t.Errorf("Error committing tx. Code:%v result:%X log:%v",
 					res.Code, res.Data, res.Log)
@@ -79,8 +79,8 @@ func TestSerialReap(t *testing.T) {
 
 	//----------------------------------------
 
-	// Append some txs.
-	appendTxsRange(0, 100)
+	// Deliver some txs.
+	deliverTxsRange(0, 100)
 
 	// Reap the txs.
 	reapCheck(100)
@@ -88,9 +88,9 @@ func TestSerialReap(t *testing.T) {
 	// Reap again.  We should get the same amount
 	reapCheck(100)
 
-	// Append 0 to 999, we should reap 900 new txs
+	// Deliver 0 to 999, we should reap 900 new txs
 	// because 100 were already counted.
-	appendTxsRange(0, 1000)
+	deliverTxsRange(0, 1000)
 
 	// Reap the txs.
 	reapCheck(1000)
@@ -105,8 +105,8 @@ func TestSerialReap(t *testing.T) {
 	// We should have 500 left.
 	reapCheck(500)
 
-	// Append 100 invalid txs and 100 valid txs
-	appendTxsRange(900, 1100)
+	// Deliver 100 invalid txs and 100 valid txs
+	deliverTxsRange(900, 1100)
 
 	// We should have 600 now.
 	reapCheck(600)
