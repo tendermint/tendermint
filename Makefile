@@ -2,13 +2,13 @@
 
 all: protoc test install
 
-NOVENDOR = go list github.com/tendermint/tmsp/... | grep -v /vendor/
+NOVENDOR = go list github.com/tendermint/abci/... | grep -v /vendor/
 
 protoc:
 	protoc --go_out=plugins=grpc:. types/*.proto
 
 install:
-	go install github.com/tendermint/tmsp/cmd/...
+	go install github.com/tendermint/abci/cmd/...
 
 test:
 	go test `${NOVENDOR}`

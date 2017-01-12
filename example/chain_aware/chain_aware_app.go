@@ -4,18 +4,18 @@ import (
 	"flag"
 
 	. "github.com/tendermint/go-common"
-	"github.com/tendermint/tmsp/server"
-	"github.com/tendermint/tmsp/types"
+	"github.com/tendermint/abci/server"
+	"github.com/tendermint/abci/types"
 )
 
 func main() {
 
 	addrPtr := flag.String("addr", "tcp://0.0.0.0:46658", "Listen address")
-	tmspPtr := flag.String("tmsp", "socket", "socket | grpc")
+	abciPtr := flag.String("abci", "socket", "socket | grpc")
 	flag.Parse()
 
 	// Start the listener
-	srv, err := server.NewServer(*addrPtr, *tmspPtr, NewChainAwareApplication())
+	srv, err := server.NewServer(*addrPtr, *abciPtr, NewChainAwareApplication())
 	if err != nil {
 		Exit(err.Error())
 	}

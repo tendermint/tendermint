@@ -9,7 +9,7 @@ import (
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-wire"
-	"github.com/tendermint/tmsp/types"
+	"github.com/tendermint/abci/types"
 )
 
 func testDummy(t *testing.T, dummy types.Application, tx []byte, key, value string) {
@@ -49,7 +49,7 @@ func TestDummyKV(t *testing.T) {
 }
 
 func TestPersistentDummyKV(t *testing.T) {
-	dir, err := ioutil.TempDir("/tmp", "tmsp-dummy-test") // TODO
+	dir, err := ioutil.TempDir("/tmp", "abci-dummy-test") // TODO
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +65,7 @@ func TestPersistentDummyKV(t *testing.T) {
 }
 
 func TestPersistentDummyInfo(t *testing.T) {
-	dir, err := ioutil.TempDir("/tmp", "tmsp-dummy-test") // TODO
+	dir, err := ioutil.TempDir("/tmp", "abci-dummy-test") // TODO
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func TestPersistentDummyInfo(t *testing.T) {
 
 // add a validator, remove a validator, update a validator
 func TestValSetChanges(t *testing.T) {
-	dir, err := ioutil.TempDir("/tmp", "tmsp-dummy-test") // TODO
+	dir, err := ioutil.TempDir("/tmp", "abci-dummy-test") // TODO
 	if err != nil {
 		t.Fatal(err)
 	}

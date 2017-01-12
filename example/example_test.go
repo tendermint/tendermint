@@ -11,11 +11,11 @@ import (
 	"google.golang.org/grpc"
 
 	. "github.com/tendermint/go-common"
-	"github.com/tendermint/tmsp/client"
-	"github.com/tendermint/tmsp/example/dummy"
-	nilapp "github.com/tendermint/tmsp/example/nil"
-	"github.com/tendermint/tmsp/server"
-	"github.com/tendermint/tmsp/types"
+	"github.com/tendermint/abci/client"
+	"github.com/tendermint/abci/example/dummy"
+	nilapp "github.com/tendermint/abci/example/nil"
+	"github.com/tendermint/abci/server"
+	"github.com/tendermint/abci/types"
 )
 
 func TestDummy(t *testing.T) {
@@ -45,7 +45,7 @@ func testStream(t *testing.T, app types.Application) {
 	defer server.Stop()
 
 	// Connect to the socket
-	client, err := tmspcli.NewSocketClient("unix://test.sock", false)
+	client, err := abcicli.NewSocketClient("unix://test.sock", false)
 	if err != nil {
 		Exit(Fmt("Error starting socket client: %v", err.Error()))
 	}
@@ -124,7 +124,7 @@ func testGRPCSync(t *testing.T, app *types.GRPCApplication) {
 	}
 	defer conn.Close()
 
-	client := types.NewTMSPApplicationClient(conn)
+	client := types.NewABCIApplicationClient(conn)
 
 	// Write requests
 	for counter := 0; counter < numDeliverTxs; counter++ {

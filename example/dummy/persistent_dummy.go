@@ -10,7 +10,7 @@ import (
 	dbm "github.com/tendermint/go-db"
 	"github.com/tendermint/go-merkle"
 	"github.com/tendermint/go-wire"
-	"github.com/tendermint/tmsp/types"
+	"github.com/tendermint/abci/types"
 )
 
 const (

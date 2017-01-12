@@ -1,4 +1,4 @@
-package tmspcli
+package abcicli
 
 import (
 	"net"
@@ -9,7 +9,7 @@ import (
 	grpc "google.golang.org/grpc"
 
 	. "github.com/tendermint/go-common"
-	"github.com/tendermint/tmsp/types"
+	"github.com/tendermint/abci/types"
 )
 
 // A stripped copy of the remoteClient that makes
@@ -18,7 +18,7 @@ type grpcClient struct {
 	BaseService
 	mustConnect bool
 
-	client types.TMSPApplicationClient
+	client types.ABCIApplicationClient
 
 	mtx   sync.Mutex
 	addr  string
@@ -50,13 +50,13 @@ RETRY_LOOP:
 			if cli.mustConnect {
 				return err
 			} else {
-				log.Warn(Fmt("tmsp.grpcClient failed to connect to %v.  Retrying...\n", cli.addr))
+				log.Warn(Fmt("abci.grpcClient failed to connect to %v.  Retrying...\n", cli.addr))
 				time.Sleep(time.Second * 3)
 				continue RETRY_LOOP
 			}
 		}
 
-		client := types.NewTMSPApplicationClient(conn)
+		client := types.NewABCIApplicationClient(conn)
 
 	ENSURE_CONNECTED:
 		for {
@@ -93,7 +93,7 @@ func (cli *grpcClient) StopForError(err error) {
 	}
 	cli.mtx.Unlock()
 
-	log.Warn(Fmt("Stopping tmsp.grpcClient for error: %v", err.Error()))
+	log.Warn(Fmt("Stopping abci.grpcClient for error: %v", err.Error()))
 	cli.Stop()
 }
 

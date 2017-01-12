@@ -1,4 +1,4 @@
-from .wire import decode_string
+from wire import decode_string
 
 # map type_byte to message name
 message_types = {
@@ -13,7 +13,7 @@ message_types = {
     0x25: "rm_listener",
 }
 
-# return the decoded arguments of tmsp messages
+# return the decoded arguments of abci messages
 
 class RequestDecoder():
 

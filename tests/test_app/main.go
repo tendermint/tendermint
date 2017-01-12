@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/tendermint/tmsp/types"
+	"github.com/tendermint/abci/types"
 )
 
-var tmspType string
+var abciType string
 
 func init() {
-	tmspType = os.Getenv("TMSP")
-	if tmspType == "" {
-		tmspType = "socket"
+	abciType = os.Getenv("ABCI")
+	if abciType == "" {
+		abciType = "socket"
 	}
 }
 
@@ -21,15 +21,15 @@ func main() {
 }
 
 func testCounter() {
-	tmspApp := os.Getenv("TMSP_APP")
-	if tmspApp == "" {
-		panic("No TMSP_APP specified")
+	abciApp := os.Getenv("ABCI_APP")
+	if abciApp == "" {
+		panic("No ABCI_APP specified")
 	}
 
-	fmt.Printf("Running %s test with tmsp=%s\n", tmspApp, tmspType)
-	appProc := StartApp(tmspApp)
+	fmt.Printf("Running %s test with abci=%s\n", abciApp, abciType)
+	appProc := StartApp(abciApp)
 	defer appProc.StopProcess(true)
-	client := StartClient(tmspType)
+	client := StartClient(abciType)
 	defer client.Stop()
 
 	SetOption(client, "serial", "on")

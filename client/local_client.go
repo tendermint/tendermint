@@ -1,10 +1,10 @@
-package tmspcli
+package abcicli
 
 import (
 	"sync"
 
 	. "github.com/tendermint/go-common"
-	types "github.com/tendermint/tmsp/types"
+	types "github.com/tendermint/abci/types"
 )
 
 type localClient struct {

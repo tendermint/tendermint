@@ -1,4 +1,4 @@
-package tmspcli
+package abcicli
 
 import (
 	"bufio"
@@ -11,7 +11,7 @@ import (
 	"time"
 
 	. "github.com/tendermint/go-common"
-	"github.com/tendermint/tmsp/types"
+	"github.com/tendermint/abci/types"
 )
 
 const (
@@ -70,7 +70,7 @@ RETRY_LOOP:
 			if cli.mustConnect {
 				return err
 			} else {
-				log.Warn(Fmt("tmsp.socketClient failed to connect to %v.  Retrying...", cli.addr))
+				log.Warn(Fmt("abci.socketClient failed to connect to %v.  Retrying...", cli.addr))
 				time.Sleep(time.Second * 3)
 				continue RETRY_LOOP
 			}
@@ -109,7 +109,7 @@ func (cli *socketClient) StopForError(err error) {
 	}
 	cli.mtx.Unlock()
 
-	log.Warn(Fmt("Stopping tmsp.socketClient for error: %v", err.Error()))
+	log.Warn(Fmt("Stopping abci.socketClient for error: %v", err.Error()))
 	cli.Stop()
 }
 

@@ -1,8 +1,8 @@
 import sys
 
-from tmsp.wire import hex2bytes, decode_big_endian, encode_big_endian
-from tmsp.server import TMSPServer
-from tmsp.reader import BytesBuffer
+from abci.wire import hex2bytes, decode_big_endian, encode_big_endian
+from abci.server import ABCIServer
+from abci.reader import BytesBuffer
 
 
 class CounterApplication():
@@ -75,8 +75,8 @@ if __name__ == '__main__':
         print "too many arguments"
         quit()
 
-    print 'TMSP Demo APP (Python)'
+    print 'ABCI Demo APP (Python)'
 
     app = CounterApplication()
-    server = TMSPServer(app, port)
+    server = ABCIServer(app, port)
     server.main_loop()

@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	. "github.com/tendermint/go-common"
-	"github.com/tendermint/tmsp/types"
+	"github.com/tendermint/abci/types"
 )
 
 // var maxNumberConnections = 2
@@ -39,7 +39,7 @@ func NewSocketServer(protoAddr string, app types.Application) (Service, error) {
 		app:      app,
 		conns:    make(map[int]net.Conn),
 	}
-	s.BaseService = *NewBaseService(nil, "TMSPServer", s)
+	s.BaseService = *NewBaseService(nil, "ABCIServer", s)
 	_, err := s.Start() // Just start it
 	return s, err
 }

@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	. "github.com/tendermint/go-common"
-	"github.com/tendermint/tmsp/client"
-	"github.com/tendermint/tmsp/server"
-	"github.com/tendermint/tmsp/types"
+	"github.com/tendermint/abci/client"
+	"github.com/tendermint/abci/server"
+	"github.com/tendermint/abci/types"
 )
 
 func TestChainAware(t *testing.T) {
@@ -23,7 +23,7 @@ func TestChainAware(t *testing.T) {
 	defer srv.Stop()
 
 	// Connect to the socket
-	client, err := tmspcli.NewSocketClient("unix://test.sock", false)
+	client, err := abcicli.NewSocketClient("unix://test.sock", false)
 	if err != nil {
 		Exit(Fmt("Error starting socket client: %v", err.Error()))
 	}
