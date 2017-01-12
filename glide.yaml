@@ -1,4 +1,4 @@
-package: github.com/tendermint/tmsp
+package: github.com/tendermint/abci
 import:
 - package: github.com/golang/protobuf
   subpackages:

@@ -14,7 +14,7 @@ The app has no replay protection (other than what the mempool provides).
 The PersistentDummyApplication wraps the DummyApplication
 and provides two additional features:
 
-1) persistence of state across app restarts (using Tendermint's TMSP-Handshake mechanism)
+1) persistence of state across app restarts (using Tendermint's ABCI-Handshake mechanism)
 2) validator set changes
 
 The state is persisted in leveldb along with the last block committed,

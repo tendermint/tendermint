@@ -4,15 +4,15 @@ import (
 	"flag"
 
 	. "github.com/tendermint/go-common"
-	"github.com/tendermint/tmsp/example/dummy"
-	"github.com/tendermint/tmsp/server"
-	"github.com/tendermint/tmsp/types"
+	"github.com/tendermint/abci/example/dummy"
+	"github.com/tendermint/abci/server"
+	"github.com/tendermint/abci/types"
 )
 
 func main() {
 
 	addrPtr := flag.String("addr", "tcp://0.0.0.0:46658", "Listen address")
-	tmspPtr := flag.String("tmsp", "socket", "socket | grpc")
+	abciPtr := flag.String("abci", "socket", "socket | grpc")
 	persistencePtr := flag.String("persist", "", "directory to use for a database")
 	flag.Parse()
 
@@ -25,7 +25,7 @@ func main() {
 	}
 
 	// Start the listener
-	srv, err := server.NewServer(*addrPtr, *tmspPtr, app)
+	srv, err := server.NewServer(*addrPtr, *abciPtr, app)
 	if err != nil {
 		Exit(err.Error())
 	}

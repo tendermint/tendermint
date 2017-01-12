@@ -10,7 +10,7 @@ import (
 	dbm "github.com/tendermint/go-db"
 	"github.com/tendermint/go-merkle"
 	"github.com/tendermint/go-wire"
-	"github.com/tendermint/tmsp/types"
+	"github.com/tendermint/abci/types"
 )
 
 const (
@@ -59,7 +59,7 @@ func (app *PersistentDummyApplication) SetOption(key string, value string) (log 
 }
 
 // tx is either "key=value" or just arbitrary bytes
-func (app *PersistentDummyApplication) AppendTx(tx []byte) types.Result {
+func (app *PersistentDummyApplication) DeliverTx(tx []byte) types.Result {
 	// if it starts with "val:", update the validator set
 	// format is "val:pubkey/power"
 	if isValidatorTx(tx) {
@@ -69,7 +69,7 @@ func (app *PersistentDummyApplication) AppendTx(tx []byte) types.Result {
 	}
 
 	// otherwise, update the key-value store
-	return app.app.AppendTx(tx)
+	return app.app.DeliverTx(tx)
 }
 
 func (app *PersistentDummyApplication) CheckTx(tx []byte) types.Result {

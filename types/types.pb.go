@@ -14,7 +14,7 @@ It has these top-level messages:
 	RequestFlush
 	RequestInfo
 	RequestSetOption
-	RequestAppendTx
+	RequestDeliverTx
 	RequestCheckTx
 	RequestQuery
 	RequestCommit
@@ -27,7 +27,7 @@ It has these top-level messages:
 	ResponseFlush
 	ResponseInfo
 	ResponseSetOption
-	ResponseAppendTx
+	ResponseDeliverTx
 	ResponseCheckTx
 	ResponseQuery
 	ResponseCommit
@@ -74,7 +74,7 @@ const (
 	MessageType_Info        MessageType = 3
 	MessageType_SetOption   MessageType = 4
 	MessageType_Exception   MessageType = 5
-	MessageType_AppendTx    MessageType = 17
+	MessageType_DeliverTx    MessageType = 17
 	MessageType_CheckTx     MessageType = 18
 	MessageType_Commit      MessageType = 19
 	MessageType_Query       MessageType = 20
@@ -90,7 +90,7 @@ var MessageType_name = map[int32]string{
 	3:  "Info",
 	4:  "SetOption",
 	5:  "Exception",
-	17: "AppendTx",
+	17: "DeliverTx",
 	18: "CheckTx",
 	19: "Commit",
 	20: "Query",
@@ -105,7 +105,7 @@ var MessageType_value = map[string]int32{
 	"Info":        3,
 	"SetOption":   4,
 	"Exception":   5,
-	"AppendTx":    17,
+	"DeliverTx":    17,
 	"CheckTx":     18,
 	"Commit":      19,
 	"Query":       20,
@@ -233,7 +233,7 @@ type Request struct {
 	//	*Request_Flush
 	//	*Request_Info
 	//	*Request_SetOption
-	//	*Request_AppendTx
+	//	*Request_DeliverTx
 	//	*Request_CheckTx
 	//	*Request_Commit
 	//	*Request_Query
@@ -264,8 +264,8 @@ type Request_Info struct {
 type Request_SetOption struct {
 	SetOption *RequestSetOption `protobuf:"bytes,4,opt,name=set_option,json=setOption,oneof"`
 }
-type Request_AppendTx struct {
-	AppendTx *RequestAppendTx `protobuf:"bytes,5,opt,name=append_tx,json=appendTx,oneof"`
+type Request_DeliverTx struct {
+	DeliverTx *RequestDeliverTx `protobuf:"bytes,5,opt,name=deliver_tx,json=deliverTx,oneof"`
 }
 type Request_CheckTx struct {
 	CheckTx *RequestCheckTx `protobuf:"bytes,6,opt,name=check_tx,json=checkTx,oneof"`
@@ -290,7 +290,7 @@ func (*Request_Echo) isRequest_Value()       {}
 func (*Request_Flush) isRequest_Value()      {}
 func (*Request_Info) isRequest_Value()       {}
 func (*Request_SetOption) isRequest_Value()  {}
-func (*Request_AppendTx) isRequest_Value()   {}
+func (*Request_DeliverTx) isRequest_Value()   {}
 func (*Request_CheckTx) isRequest_Value()    {}
 func (*Request_Commit) isRequest_Value()     {}
 func (*Request_Query) isRequest_Value()      {}
@@ -333,9 +333,9 @@ func (m *Request) GetSetOption() *RequestSetOption {
 	return nil
 }
 
-func (m *Request) GetAppendTx() *RequestAppendTx {
-	if x, ok := m.GetValue().(*Request_AppendTx); ok {
-		return x.AppendTx
+func (m *Request) GetDeliverTx() *RequestDeliverTx {
+	if x, ok := m.GetValue().(*Request_DeliverTx); ok {
+		return x.DeliverTx
 	}
 	return nil
 }
@@ -389,7 +389,7 @@ func (*Request) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error
 		(*Request_Flush)(nil),
 		(*Request_Info)(nil),
 		(*Request_SetOption)(nil),
-		(*Request_AppendTx)(nil),
+		(*Request_DeliverTx)(nil),
 		(*Request_CheckTx)(nil),
 		(*Request_Commit)(nil),
 		(*Request_Query)(nil),
@@ -423,9 +423,9 @@ func _Request_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
 		if err := b.EncodeMessage(x.SetOption); err != nil {
 			return err
 		}
-	case *Request_AppendTx:
+	case *Request_DeliverTx:
 		b.EncodeVarint(5<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.AppendTx); err != nil {
+		if err := b.EncodeMessage(x.DeliverTx); err != nil {
 			return err
 		}
 	case *Request_CheckTx:
@@ -500,13 +500,13 @@ func _Request_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer
 		err := b.DecodeMessage(msg)
 		m.Value = &Request_SetOption{msg}
 		return true, err
-	case 5: // value.append_tx
+	case 5: // value.deliver_tx
 		if wire != proto.WireBytes {
 			return true, proto.ErrInternalBadWireType
 		}
-		msg := new(RequestAppendTx)
+		msg := new(RequestDeliverTx)
 		err := b.DecodeMessage(msg)
-		m.Value = &Request_AppendTx{msg}
+		m.Value = &Request_DeliverTx{msg}
 		return true, err
 	case 6: // value.check_tx
 		if wire != proto.WireBytes {
@@ -585,8 +585,8 @@ func _Request_OneofSizer(msg proto.Message) (n int) {
 		n += proto.SizeVarint(4<<3 | proto.WireBytes)
 		n += proto.SizeVarint(uint64(s))
 		n += s
-	case *Request_AppendTx:
-		s := proto.Size(x.AppendTx)
+	case *Request_DeliverTx:
+		s := proto.Size(x.DeliverTx)
 		n += proto.SizeVarint(5<<3 | proto.WireBytes)
 		n += proto.SizeVarint(uint64(s))
 		n += s
@@ -683,16 +683,16 @@ func (m *RequestSetOption) GetValue() string {
 	return ""
 }
 
-type RequestAppendTx struct {
+type RequestDeliverTx struct {
 	Tx []byte `protobuf:"bytes,1,opt,name=tx,proto3" json:"tx,omitempty"`
 }
 
-func (m *RequestAppendTx) Reset()                    { *m = RequestAppendTx{} }
-func (m *RequestAppendTx) String() string            { return proto.CompactTextString(m) }
-func (*RequestAppendTx) ProtoMessage()               {}
-func (*RequestAppendTx) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
+func (m *RequestDeliverTx) Reset()                    { *m = RequestDeliverTx{} }
+func (m *RequestDeliverTx) String() string            { return proto.CompactTextString(m) }
+func (*RequestDeliverTx) ProtoMessage()               {}
+func (*RequestDeliverTx) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
 
-func (m *RequestAppendTx) GetTx() []byte {
+func (m *RequestDeliverTx) GetTx() []byte {
 	if m != nil {
 		return m.Tx
 	}
@@ -802,7 +802,7 @@ type Response struct {
 	//	*Response_Flush
 	//	*Response_Info
 	//	*Response_SetOption
-	//	*Response_AppendTx
+	//	*Response_DeliverTx
 	//	*Response_CheckTx
 	//	*Response_Commit
 	//	*Response_Query
@@ -836,8 +836,8 @@ type Response_Info struct {
 type Response_SetOption struct {
 	SetOption *ResponseSetOption `protobuf:"bytes,5,opt,name=set_option,json=setOption,oneof"`
 }
-type Response_AppendTx struct {
-	AppendTx *ResponseAppendTx `protobuf:"bytes,6,opt,name=append_tx,json=appendTx,oneof"`
+type Response_DeliverTx struct {
+	DeliverTx *ResponseDeliverTx `protobuf:"bytes,6,opt,name=deliver_tx,json=deliverTx,oneof"`
 }
 type Response_CheckTx struct {
 	CheckTx *ResponseCheckTx `protobuf:"bytes,7,opt,name=check_tx,json=checkTx,oneof"`
@@ -863,7 +863,7 @@ func (*Response_Echo) isResponse_Value()       {}
 func (*Response_Flush) isResponse_Value()      {}
 func (*Response_Info) isResponse_Value()       {}
 func (*Response_SetOption) isResponse_Value()  {}
-func (*Response_AppendTx) isResponse_Value()   {}
+func (*Response_DeliverTx) isResponse_Value()   {}
 func (*Response_CheckTx) isResponse_Value()    {}
 func (*Response_Commit) isResponse_Value()     {}
 func (*Response_Query) isResponse_Value()      {}
@@ -913,9 +913,9 @@ func (m *Response) GetSetOption() *ResponseSetOption {
 	return nil
 }
 
-func (m *Response) GetAppendTx() *ResponseAppendTx {
-	if x, ok := m.GetValue().(*Response_AppendTx); ok {
-		return x.AppendTx
+func (m *Response) GetDeliverTx() *ResponseDeliverTx {
+	if x, ok := m.GetValue().(*Response_DeliverTx); ok {
+		return x.DeliverTx
 	}
 	return nil
 }
@@ -970,7 +970,7 @@ func (*Response) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) erro
 		(*Response_Flush)(nil),
 		(*Response_Info)(nil),
 		(*Response_SetOption)(nil),
-		(*Response_AppendTx)(nil),
+		(*Response_DeliverTx)(nil),
 		(*Response_CheckTx)(nil),
 		(*Response_Commit)(nil),
 		(*Response_Query)(nil),
@@ -1009,9 +1009,9 @@ func _Response_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
 		if err := b.EncodeMessage(x.SetOption); err != nil {
 			return err
 		}
-	case *Response_AppendTx:
+	case *Response_DeliverTx:
 		b.EncodeVarint(6<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.AppendTx); err != nil {
+		if err := b.EncodeMessage(x.DeliverTx); err != nil {
 			return err
 		}
 	case *Response_CheckTx:
@@ -1094,13 +1094,13 @@ func _Response_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffe
 		err := b.DecodeMessage(msg)
 		m.Value = &Response_SetOption{msg}
 		return true, err
-	case 6: // value.append_tx
+	case 6: // value.deliver_tx
 		if wire != proto.WireBytes {
 			return true, proto.ErrInternalBadWireType
 		}
-		msg := new(ResponseAppendTx)
+		msg := new(ResponseDeliverTx)
 		err := b.DecodeMessage(msg)
-		m.Value = &Response_AppendTx{msg}
+		m.Value = &Response_DeliverTx{msg}
 		return true, err
 	case 7: // value.check_tx
 		if wire != proto.WireBytes {
@@ -1184,8 +1184,8 @@ func _Response_OneofSizer(msg proto.Message) (n int) {
 		n += proto.SizeVarint(5<<3 | proto.WireBytes)
 		n += proto.SizeVarint(uint64(s))
 		n += s
-	case *Response_AppendTx:
-		s := proto.Size(x.AppendTx)
+	case *Response_DeliverTx:
+		s := proto.Size(x.DeliverTx)
 		n += proto.SizeVarint(6<<3 | proto.WireBytes)
 		n += proto.SizeVarint(uint64(s))
 		n += s
@@ -1322,32 +1322,32 @@ func (m *ResponseSetOption) GetLog() string {
 	return ""
 }
 
-type ResponseAppendTx struct {
+type ResponseDeliverTx struct {
 	Code CodeType `protobuf:"varint,1,opt,name=code,enum=types.CodeType" json:"code,omitempty"`
 	Data []byte   `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
 	Log  string   `protobuf:"bytes,3,opt,name=log" json:"log,omitempty"`
 }
 
-func (m *ResponseAppendTx) Reset()                    { *m = ResponseAppendTx{} }
-func (m *ResponseAppendTx) String() string            { return proto.CompactTextString(m) }
-func (*ResponseAppendTx) ProtoMessage()               {}
-func (*ResponseAppendTx) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{18} }
+func (m *ResponseDeliverTx) Reset()                    { *m = ResponseDeliverTx{} }
+func (m *ResponseDeliverTx) String() string            { return proto.CompactTextString(m) }
+func (*ResponseDeliverTx) ProtoMessage()               {}
+func (*ResponseDeliverTx) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{18} }
 
-func (m *ResponseAppendTx) GetCode() CodeType {
+func (m *ResponseDeliverTx) GetCode() CodeType {
 	if m != nil {
 		return m.Code
 	}
 	return CodeType_OK
 }
 
-func (m *ResponseAppendTx) GetData() []byte {
+func (m *ResponseDeliverTx) GetData() []byte {
 	if m != nil {
 		return m.Data
 	}
 	return nil
 }
 
-func (m *ResponseAppendTx) GetLog() string {
+func (m *ResponseDeliverTx) GetLog() string {
 	if m != nil {
 		return m.Log
 	}
@@ -1640,7 +1640,7 @@ func init() {
 	proto.RegisterType((*RequestFlush)(nil), "types.RequestFlush")
 	proto.RegisterType((*RequestInfo)(nil), "types.RequestInfo")
 	proto.RegisterType((*RequestSetOption)(nil), "types.RequestSetOption")
-	proto.RegisterType((*RequestAppendTx)(nil), "types.RequestAppendTx")
+	proto.RegisterType((*RequestDeliverTx)(nil), "types.RequestDeliverTx")
 	proto.RegisterType((*RequestCheckTx)(nil), "types.RequestCheckTx")
 	proto.RegisterType((*RequestQuery)(nil), "types.RequestQuery")
 	proto.RegisterType((*RequestCommit)(nil), "types.RequestCommit")
@@ -1653,7 +1653,7 @@ func init() {
 	proto.RegisterType((*ResponseFlush)(nil), "types.ResponseFlush")
 	proto.RegisterType((*ResponseInfo)(nil), "types.ResponseInfo")
 	proto.RegisterType((*ResponseSetOption)(nil), "types.ResponseSetOption")
-	proto.RegisterType((*ResponseAppendTx)(nil), "types.ResponseAppendTx")
+	proto.RegisterType((*ResponseDeliverTx)(nil), "types.ResponseDeliverTx")
 	proto.RegisterType((*ResponseCheckTx)(nil), "types.ResponseCheckTx")
 	proto.RegisterType((*ResponseQuery)(nil), "types.ResponseQuery")
 	proto.RegisterType((*ResponseCommit)(nil), "types.ResponseCommit")
@@ -1676,14 +1676,14 @@ var _ grpc.ClientConn
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc.SupportPackageIsVersion4
 
-// Client API for TMSPApplication service
+// Client API for ABCIApplication service
 
-type TMSPApplicationClient interface {
+type ABCIApplicationClient interface {
 	Echo(ctx context.Context, in *RequestEcho, opts ...grpc.CallOption) (*ResponseEcho, error)
 	Flush(ctx context.Context, in *RequestFlush, opts ...grpc.CallOption) (*ResponseFlush, error)
 	Info(ctx context.Context, in *RequestInfo, opts ...grpc.CallOption) (*ResponseInfo, error)
 	SetOption(ctx context.Context, in *RequestSetOption, opts ...grpc.CallOption) (*ResponseSetOption, error)
-	AppendTx(ctx context.Context, in *RequestAppendTx, opts ...grpc.CallOption) (*ResponseAppendTx, error)
+	DeliverTx(ctx context.Context, in *RequestDeliverTx, opts ...grpc.CallOption) (*ResponseDeliverTx, error)
 	CheckTx(ctx context.Context, in *RequestCheckTx, opts ...grpc.CallOption) (*ResponseCheckTx, error)
 	Query(ctx context.Context, in *RequestQuery, opts ...grpc.CallOption) (*ResponseQuery, error)
 	Commit(ctx context.Context, in *RequestCommit, opts ...grpc.CallOption) (*ResponseCommit, error)
@@ -1696,13 +1696,13 @@ type tMSPApplicationClient struct {
 	cc *grpc.ClientConn
 }
 
-func NewTMSPApplicationClient(cc *grpc.ClientConn) TMSPApplicationClient {
+func NewABCIApplicationClient(cc *grpc.ClientConn) ABCIApplicationClient {
 	return &tMSPApplicationClient{cc}
 }
 
 func (c *tMSPApplicationClient) Echo(ctx context.Context, in *RequestEcho, opts ...grpc.CallOption) (*ResponseEcho, error) {
 	out := new(ResponseEcho)
-	err := grpc.Invoke(ctx, "/types.TMSPApplication/Echo", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/types.ABCIApplication/Echo", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1711,7 +1711,7 @@ func (c *tMSPApplicationClient) Echo(ctx context.Context, in *RequestEcho, opts 
 
 func (c *tMSPApplicationClient) Flush(ctx context.Context, in *RequestFlush, opts ...grpc.CallOption) (*ResponseFlush, error) {
 	out := new(ResponseFlush)
-	err := grpc.Invoke(ctx, "/types.TMSPApplication/Flush", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/types.ABCIApplication/Flush", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1720,7 +1720,7 @@ func (c *tMSPApplicationClient) Flush(ctx context.Context, in *RequestFlush, opt
 
 func (c *tMSPApplicationClient) Info(ctx context.Context, in *RequestInfo, opts ...grpc.CallOption) (*ResponseInfo, error) {
 	out := new(ResponseInfo)
-	err := grpc.Invoke(ctx, "/types.TMSPApplication/Info", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/types.ABCIApplication/Info", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1729,16 +1729,16 @@ func (c *tMSPApplicationClient) Info(ctx context.Context, in *RequestInfo, opts 
 
 func (c *tMSPApplicationClient) SetOption(ctx context.Context, in *RequestSetOption, opts ...grpc.CallOption) (*ResponseSetOption, error) {
 	out := new(ResponseSetOption)
-	err := grpc.Invoke(ctx, "/types.TMSPApplication/SetOption", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/types.ABCIApplication/SetOption", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *tMSPApplicationClient) AppendTx(ctx context.Context, in *RequestAppendTx, opts ...grpc.CallOption) (*ResponseAppendTx, error) {
-	out := new(ResponseAppendTx)
-	err := grpc.Invoke(ctx, "/types.TMSPApplication/AppendTx", in, out, c.cc, opts...)
+func (c *tMSPApplicationClient) DeliverTx(ctx context.Context, in *RequestDeliverTx, opts ...grpc.CallOption) (*ResponseDeliverTx, error) {
+	out := new(ResponseDeliverTx)
+	err := grpc.Invoke(ctx, "/types.ABCIApplication/DeliverTx", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1747,7 +1747,7 @@ func (c *tMSPApplicationClient) AppendTx(ctx context.Context, in *RequestAppendT
 
 func (c *tMSPApplicationClient) CheckTx(ctx context.Context, in *RequestCheckTx, opts ...grpc.CallOption) (*ResponseCheckTx, error) {
 	out := new(ResponseCheckTx)
-	err := grpc.Invoke(ctx, "/types.TMSPApplication/CheckTx", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/types.ABCIApplication/CheckTx", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1756,7 +1756,7 @@ func (c *tMSPApplicationClient) CheckTx(ctx context.Context, in *RequestCheckTx,
 
 func (c *tMSPApplicationClient) Query(ctx context.Context, in *RequestQuery, opts ...grpc.CallOption) (*ResponseQuery, error) {
 	out := new(ResponseQuery)
-	err := grpc.Invoke(ctx, "/types.TMSPApplication/Query", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/types.ABCIApplication/Query", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1765,7 +1765,7 @@ func (c *tMSPApplicationClient) Query(ctx context.Context, in *RequestQuery, opt
 
 func (c *tMSPApplicationClient) Commit(ctx context.Context, in *RequestCommit, opts ...grpc.CallOption) (*ResponseCommit, error) {
 	out := new(ResponseCommit)
-	err := grpc.Invoke(ctx, "/types.TMSPApplication/Commit", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/types.ABCIApplication/Commit", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1774,7 +1774,7 @@ func (c *tMSPApplicationClient) Commit(ctx context.Context, in *RequestCommit, o
 
 func (c *tMSPApplicationClient) InitChain(ctx context.Context, in *RequestInitChain, opts ...grpc.CallOption) (*ResponseInitChain, error) {
 	out := new(ResponseInitChain)
-	err := grpc.Invoke(ctx, "/types.TMSPApplication/InitChain", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/types.ABCIApplication/InitChain", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1783,7 +1783,7 @@ func (c *tMSPApplicationClient) InitChain(ctx context.Context, in *RequestInitCh
 
 func (c *tMSPApplicationClient) BeginBlock(ctx context.Context, in *RequestBeginBlock, opts ...grpc.CallOption) (*ResponseBeginBlock, error) {
 	out := new(ResponseBeginBlock)
-	err := grpc.Invoke(ctx, "/types.TMSPApplication/BeginBlock", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/types.ABCIApplication/BeginBlock", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1792,21 +1792,21 @@ func (c *tMSPApplicationClient) BeginBlock(ctx context.Context, in *RequestBegin
 
 func (c *tMSPApplicationClient) EndBlock(ctx context.Context, in *RequestEndBlock, opts ...grpc.CallOption) (*ResponseEndBlock, error) {
 	out := new(ResponseEndBlock)
-	err := grpc.Invoke(ctx, "/types.TMSPApplication/EndBlock", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/types.ABCIApplication/EndBlock", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// Server API for TMSPApplication service
+// Server API for ABCIApplication service
 
-type TMSPApplicationServer interface {
+type ABCIApplicationServer interface {
 	Echo(context.Context, *RequestEcho) (*ResponseEcho, error)
 	Flush(context.Context, *RequestFlush) (*ResponseFlush, error)
 	Info(context.Context, *RequestInfo) (*ResponseInfo, error)
 	SetOption(context.Context, *RequestSetOption) (*ResponseSetOption, error)
-	AppendTx(context.Context, *RequestAppendTx) (*ResponseAppendTx, error)
+	DeliverTx(context.Context, *RequestDeliverTx) (*ResponseDeliverTx, error)
 	CheckTx(context.Context, *RequestCheckTx) (*ResponseCheckTx, error)
 	Query(context.Context, *RequestQuery) (*ResponseQuery, error)
 	Commit(context.Context, *RequestCommit) (*ResponseCommit, error)
@@ -1815,255 +1815,255 @@ type TMSPApplicationServer interface {
 	EndBlock(context.Context, *RequestEndBlock) (*ResponseEndBlock, error)
 }
 
-func RegisterTMSPApplicationServer(s *grpc.Server, srv TMSPApplicationServer) {
-	s.RegisterService(&_TMSPApplication_serviceDesc, srv)
+func RegisterABCIApplicationServer(s *grpc.Server, srv ABCIApplicationServer) {
+	s.RegisterService(&_ABCIApplication_serviceDesc, srv)
 }
 
-func _TMSPApplication_Echo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ABCIApplication_Echo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RequestEcho)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(TMSPApplicationServer).Echo(ctx, in)
+		return srv.(ABCIApplicationServer).Echo(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/types.TMSPApplication/Echo",
+		FullMethod: "/types.ABCIApplication/Echo",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TMSPApplicationServer).Echo(ctx, req.(*RequestEcho))
+		return srv.(ABCIApplicationServer).Echo(ctx, req.(*RequestEcho))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _TMSPApplication_Flush_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ABCIApplication_Flush_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RequestFlush)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(TMSPApplicationServer).Flush(ctx, in)
+		return srv.(ABCIApplicationServer).Flush(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/types.TMSPApplication/Flush",
+		FullMethod: "/types.ABCIApplication/Flush",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TMSPApplicationServer).Flush(ctx, req.(*RequestFlush))
+		return srv.(ABCIApplicationServer).Flush(ctx, req.(*RequestFlush))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _TMSPApplication_Info_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ABCIApplication_Info_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RequestInfo)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(TMSPApplicationServer).Info(ctx, in)
+		return srv.(ABCIApplicationServer).Info(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/types.TMSPApplication/Info",
+		FullMethod: "/types.ABCIApplication/Info",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TMSPApplicationServer).Info(ctx, req.(*RequestInfo))
+		return srv.(ABCIApplicationServer).Info(ctx, req.(*RequestInfo))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _TMSPApplication_SetOption_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ABCIApplication_SetOption_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RequestSetOption)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(TMSPApplicationServer).SetOption(ctx, in)
+		return srv.(ABCIApplicationServer).SetOption(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/types.TMSPApplication/SetOption",
+		FullMethod: "/types.ABCIApplication/SetOption",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TMSPApplicationServer).SetOption(ctx, req.(*RequestSetOption))
+		return srv.(ABCIApplicationServer).SetOption(ctx, req.(*RequestSetOption))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _TMSPApplication_AppendTx_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RequestAppendTx)
+func _ABCIApplication_DeliverTx_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestDeliverTx)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(TMSPApplicationServer).AppendTx(ctx, in)
+		return srv.(ABCIApplicationServer).DeliverTx(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/types.TMSPApplication/AppendTx",
+		FullMethod: "/types.ABCIApplication/DeliverTx",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TMSPApplicationServer).AppendTx(ctx, req.(*RequestAppendTx))
+		return srv.(ABCIApplicationServer).DeliverTx(ctx, req.(*RequestDeliverTx))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _TMSPApplication_CheckTx_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ABCIApplication_CheckTx_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RequestCheckTx)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(TMSPApplicationServer).CheckTx(ctx, in)
+		return srv.(ABCIApplicationServer).CheckTx(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/types.TMSPApplication/CheckTx",
+		FullMethod: "/types.ABCIApplication/CheckTx",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TMSPApplicationServer).CheckTx(ctx, req.(*RequestCheckTx))
+		return srv.(ABCIApplicationServer).CheckTx(ctx, req.(*RequestCheckTx))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _TMSPApplication_Query_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ABCIApplication_Query_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RequestQuery)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(TMSPApplicationServer).Query(ctx, in)
+		return srv.(ABCIApplicationServer).Query(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/types.TMSPApplication/Query",
+		FullMethod: "/types.ABCIApplication/Query",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TMSPApplicationServer).Query(ctx, req.(*RequestQuery))
+		return srv.(ABCIApplicationServer).Query(ctx, req.(*RequestQuery))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _TMSPApplication_Commit_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ABCIApplication_Commit_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RequestCommit)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(TMSPApplicationServer).Commit(ctx, in)
+		return srv.(ABCIApplicationServer).Commit(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/types.TMSPApplication/Commit",
+		FullMethod: "/types.ABCIApplication/Commit",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TMSPApplicationServer).Commit(ctx, req.(*RequestCommit))
+		return srv.(ABCIApplicationServer).Commit(ctx, req.(*RequestCommit))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _TMSPApplication_InitChain_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ABCIApplication_InitChain_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RequestInitChain)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(TMSPApplicationServer).InitChain(ctx, in)
+		return srv.(ABCIApplicationServer).InitChain(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/types.TMSPApplication/InitChain",
+		FullMethod: "/types.ABCIApplication/InitChain",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TMSPApplicationServer).InitChain(ctx, req.(*RequestInitChain))
+		return srv.(ABCIApplicationServer).InitChain(ctx, req.(*RequestInitChain))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _TMSPApplication_BeginBlock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ABCIApplication_BeginBlock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RequestBeginBlock)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(TMSPApplicationServer).BeginBlock(ctx, in)
+		return srv.(ABCIApplicationServer).BeginBlock(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/types.TMSPApplication/BeginBlock",
+		FullMethod: "/types.ABCIApplication/BeginBlock",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TMSPApplicationServer).BeginBlock(ctx, req.(*RequestBeginBlock))
+		return srv.(ABCIApplicationServer).BeginBlock(ctx, req.(*RequestBeginBlock))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _TMSPApplication_EndBlock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ABCIApplication_EndBlock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RequestEndBlock)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(TMSPApplicationServer).EndBlock(ctx, in)
+		return srv.(ABCIApplicationServer).EndBlock(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/types.TMSPApplication/EndBlock",
+		FullMethod: "/types.ABCIApplication/EndBlock",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TMSPApplicationServer).EndBlock(ctx, req.(*RequestEndBlock))
+		return srv.(ABCIApplicationServer).EndBlock(ctx, req.(*RequestEndBlock))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-var _TMSPApplication_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "types.TMSPApplication",
-	HandlerType: (*TMSPApplicationServer)(nil),
+var _ABCIApplication_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "types.ABCIApplication",
+	HandlerType: (*ABCIApplicationServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "Echo",
-			Handler:    _TMSPApplication_Echo_Handler,
+			Handler:    _ABCIApplication_Echo_Handler,
 		},
 		{
 			MethodName: "Flush",
-			Handler:    _TMSPApplication_Flush_Handler,
+			Handler:    _ABCIApplication_Flush_Handler,
 		},
 		{
 			MethodName: "Info",
-			Handler:    _TMSPApplication_Info_Handler,
+			Handler:    _ABCIApplication_Info_Handler,
 		},
 		{
 			MethodName: "SetOption",
-			Handler:    _TMSPApplication_SetOption_Handler,
+			Handler:    _ABCIApplication_SetOption_Handler,
 		},
 		{
-			MethodName: "AppendTx",
-			Handler:    _TMSPApplication_AppendTx_Handler,
+			MethodName: "DeliverTx",
+			Handler:    _ABCIApplication_DeliverTx_Handler,
 		},
 		{
 			MethodName: "CheckTx",
-			Handler:    _TMSPApplication_CheckTx_Handler,
+			Handler:    _ABCIApplication_CheckTx_Handler,
 		},
 		{
 			MethodName: "Query",
-			Handler:    _TMSPApplication_Query_Handler,
+			Handler:    _ABCIApplication_Query_Handler,
 		},
 		{
 			MethodName: "Commit",
-			Handler:    _TMSPApplication_Commit_Handler,
+			Handler:    _ABCIApplication_Commit_Handler,
 		},
 		{
 			MethodName: "InitChain",
-			Handler:    _TMSPApplication_InitChain_Handler,
+			Handler:    _ABCIApplication_InitChain_Handler,
 		},
 		{
 			MethodName: "BeginBlock",
-			Handler:    _TMSPApplication_BeginBlock_Handler,
+			Handler:    _ABCIApplication_BeginBlock_Handler,
 		},
 		{
 			MethodName: "EndBlock",
-			Handler:    _TMSPApplication_EndBlock_Handler,
+			Handler:    _ABCIApplication_EndBlock_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

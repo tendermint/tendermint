@@ -7,7 +7,7 @@ import (
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-merkle"
 	"github.com/tendermint/go-wire"
-	"github.com/tendermint/tmsp/types"
+	"github.com/tendermint/abci/types"
 )
 
 type DummyApplication struct {
@@ -28,7 +28,7 @@ func (app *DummyApplication) SetOption(key string, value string) (log string) {
 }
 
 // tx is either "key=value" or just arbitrary bytes
-func (app *DummyApplication) AppendTx(tx []byte) types.Result {
+func (app *DummyApplication) DeliverTx(tx []byte) types.Result {
 	parts := strings.Split(string(tx), "=")
 	if len(parts) == 2 {
 		app.state.Set([]byte(parts[0]), []byte(parts[1]))

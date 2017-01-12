@@ -31,9 +31,9 @@ func ToRequestSetOption(key string, value string) *Request {
 	}
 }
 
-func ToRequestAppendTx(txBytes []byte) *Request {
+func ToRequestDeliverTx(txBytes []byte) *Request {
 	return &Request{
-		Value: &Request_AppendTx{&RequestAppendTx{txBytes}},
+		Value: &Request_DeliverTx{&RequestDeliverTx{txBytes}},
 	}
 }
 
@@ -105,9 +105,9 @@ func ToResponseSetOption(log string) *Response {
 	}
 }
 
-func ToResponseAppendTx(code CodeType, data []byte, log string) *Response {
+func ToResponseDeliverTx(code CodeType, data []byte, log string) *Response {
 	return &Response{
-		Value: &Response_AppendTx{&ResponseAppendTx{code, data, log}},
+		Value: &Response_DeliverTx{&ResponseDeliverTx{code, data, log}},
 	}
 }
 

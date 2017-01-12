@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	. "github.com/tendermint/go-common"
-	"github.com/tendermint/tmsp/client"
-	"github.com/tendermint/tmsp/types"
+	"github.com/tendermint/abci/client"
+	"github.com/tendermint/abci/types"
 	"github.com/urfave/cli"
 )
 
@@ -40,7 +40,7 @@ func newResponse(res types.Result, data string, printCode bool) *response {
 }
 
 // client is a global variable so it can be reused by the console
-var client tmspcli.Client
+var client abcicli.Client
 
 func main() {
 
@@ -48,8 +48,8 @@ func main() {
 	cli.OsExiter = func(_ int) {}
 
 	app := cli.NewApp()
-	app.Name = "tmsp-cli"
-	app.Usage = "tmsp-cli [command] [args...]"
+	app.Name = "abci-cli"
+	app.Usage = "abci-cli [command] [args...]"
 	app.Version = "0.2.1" // better error handling in console
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
@@ -58,7 +58,7 @@ func main() {
 			Usage: "address of application socket",
 		},
 		cli.StringFlag{
-			Name:  "tmsp",
+			Name:  "abci",
 			Value: "socket",
 			Usage: "socket or grpc",
 		},
@@ -70,14 +70,14 @@ func main() {
 	app.Commands = []cli.Command{
 		{
 			Name:  "batch",
-			Usage: "Run a batch of tmsp commands against an application",
+			Usage: "Run a batch of abci commands against an application",
 			Action: func(c *cli.Context) error {
 				return cmdBatch(app, c)
 			},
 		},
 		{
 			Name:  "console",
-			Usage: "Start an interactive tmsp console for multiple commands",
+			Usage: "Start an interactive abci console for multiple commands",
 			Action: func(c *cli.Context) error {
 				return cmdConsole(app, c)
 			},
@@ -104,10 +104,10 @@ func main() {
 			},
 		},
 		{
-			Name:  "append_tx",
-			Usage: "Append a new tx to application",
+			Name:  "deliver_tx",
+			Usage: "Deliver a new tx to application",
 			Action: func(c *cli.Context) error {
-				return cmdAppendTx(c)
+				return cmdDeliverTx(c)
 			},
 		},
 		{
@@ -143,7 +143,7 @@ func main() {
 func before(c *cli.Context) error {
 	if client == nil {
 		var err error
-		client, err = tmspcli.NewClient(c.GlobalString("address"), c.GlobalString("tmsp"), false)
+		client, err = abcicli.NewClient(c.GlobalString("address"), c.GlobalString("abci"), false)
 		if err != nil {
 			Exit(err.Error())
 		}
@@ -250,16 +250,16 @@ func cmdSetOption(c *cli.Context) error {
 }
 
 // Append a new tx to application
-func cmdAppendTx(c *cli.Context) error {
+func cmdDeliverTx(c *cli.Context) error {
 	args := c.Args()
 	if len(args) != 1 {
-		return errors.New("Command append_tx takes 1 argument")
+		return errors.New("Command deliver_tx takes 1 argument")
 	}
 	txBytes, err := stringOrHexToBytes(c.Args()[0])
 	if err != nil {
 		return err
 	}
-	res := client.AppendTxSync(txBytes)
+	res := client.DeliverTxSync(txBytes)
 	rsp := newResponse(res, string(res.Data), true)
 	printResponse(c, rsp)
 	return nil

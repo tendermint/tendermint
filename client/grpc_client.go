@@ -1,4 +1,4 @@
-package tmspcli
+package abcicli
 
 import (
 	"net"
@@ -9,7 +9,7 @@ import (
 	grpc "google.golang.org/grpc"
 
 	. "github.com/tendermint/go-common"
-	"github.com/tendermint/tmsp/types"
+	"github.com/tendermint/abci/types"
 )
 
 // A stripped copy of the remoteClient that makes
@@ -18,7 +18,7 @@ type grpcClient struct {
 	BaseService
 	mustConnect bool
 
-	client types.TMSPApplicationClient
+	client types.ABCIApplicationClient
 
 	mtx   sync.Mutex
 	addr  string
@@ -50,13 +50,13 @@ RETRY_LOOP:
 			if cli.mustConnect {
 				return err
 			} else {
-				log.Warn(Fmt("tmsp.grpcClient failed to connect to %v.  Retrying...\n", cli.addr))
+				log.Warn(Fmt("abci.grpcClient failed to connect to %v.  Retrying...\n", cli.addr))
 				time.Sleep(time.Second * 3)
 				continue RETRY_LOOP
 			}
 		}
 
-		client := types.NewTMSPApplicationClient(conn)
+		client := types.NewABCIApplicationClient(conn)
 
 	ENSURE_CONNECTED:
 		for {
@@ -93,7 +93,7 @@ func (cli *grpcClient) StopForError(err error) {
 	}
 	cli.mtx.Unlock()
 
-	log.Warn(Fmt("Stopping tmsp.grpcClient for error: %v", err.Error()))
+	log.Warn(Fmt("Stopping abci.grpcClient for error: %v", err.Error()))
 	cli.Stop()
 }
 
@@ -155,13 +155,13 @@ func (cli *grpcClient) SetOptionAsync(key string, value string) *ReqRes {
 	return cli.finishAsyncCall(req, &types.Response{&types.Response_SetOption{res}})
 }
 
-func (cli *grpcClient) AppendTxAsync(tx []byte) *ReqRes {
-	req := types.ToRequestAppendTx(tx)
-	res, err := cli.client.AppendTx(context.Background(), req.GetAppendTx(), grpc.FailFast(true))
+func (cli *grpcClient) DeliverTxAsync(tx []byte) *ReqRes {
+	req := types.ToRequestDeliverTx(tx)
+	res, err := cli.client.DeliverTx(context.Background(), req.GetDeliverTx(), grpc.FailFast(true))
 	if err != nil {
 		cli.StopForError(err)
 	}
-	return cli.finishAsyncCall(req, &types.Response{&types.Response_AppendTx{res}})
+	return cli.finishAsyncCall(req, &types.Response{&types.Response_DeliverTx{res}})
 }
 
 func (cli *grpcClient) CheckTxAsync(tx []byte) *ReqRes {
@@ -283,12 +283,12 @@ func (cli *grpcClient) SetOptionSync(key string, value string) (res types.Result
 	return types.Result{Code: OK, Data: nil, Log: resp.Log}
 }
 
-func (cli *grpcClient) AppendTxSync(tx []byte) (res types.Result) {
-	reqres := cli.AppendTxAsync(tx)
+func (cli *grpcClient) DeliverTxSync(tx []byte) (res types.Result) {
+	reqres := cli.DeliverTxAsync(tx)
 	if res := cli.checkErrGetResult(); res.IsErr() {
 		return res
 	}
-	resp := reqres.Response.GetAppendTx()
+	resp := reqres.Response.GetDeliverTx()
 	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
 }
 

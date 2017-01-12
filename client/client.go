@@ -1,11 +1,11 @@
-package tmspcli
+package abcicli
 
 import (
 	"fmt"
 	"sync"
 
 	. "github.com/tendermint/go-common"
-	"github.com/tendermint/tmsp/types"
+	"github.com/tendermint/abci/types"
 )
 
 type Client interface {
@@ -18,7 +18,7 @@ type Client interface {
 	EchoAsync(msg string) *ReqRes
 	InfoAsync() *ReqRes
 	SetOptionAsync(key string, value string) *ReqRes
-	AppendTxAsync(tx []byte) *ReqRes
+	DeliverTxAsync(tx []byte) *ReqRes
 	CheckTxAsync(tx []byte) *ReqRes
 	QueryAsync(tx []byte) *ReqRes
 	CommitAsync() *ReqRes
@@ -27,7 +27,7 @@ type Client interface {
 	EchoSync(msg string) (res types.Result)
 	InfoSync() (resInfo types.ResponseInfo, err error)
 	SetOptionSync(key string, value string) (res types.Result)
-	AppendTxSync(tx []byte) (res types.Result)
+	DeliverTxSync(tx []byte) (res types.Result)
 	CheckTxSync(tx []byte) (res types.Result)
 	QuerySync(tx []byte) (res types.Result)
 	CommitSync() (res types.Result)
@@ -50,7 +50,7 @@ func NewClient(addr, transport string, mustConnect bool) (client Client, err err
 	case "grpc":
 		client, err = NewGRPCClient(addr, mustConnect)
 	default:
-		err = fmt.Errorf("Unknown tmsp transport %s", transport)
+		err = fmt.Errorf("Unknown abci transport %s", transport)
 
 	}
 	return
