@@ -12,7 +12,7 @@ import (
 
 // NOTE: privValidators are in order
 // TODO: Move it out?
-func randVoteSet(height int, round int, type_ byte, numValidators int, votingPower int64) (*VoteSet, *ValidatorSet, []*PrivValidator) {
+func randVoteSet(height int, round int, type_ byte, numValidators int, votingPower uint64) (*VoteSet, *ValidatorSet, []*PrivValidator) {
 	valSet, privValidators := RandValidatorSet(numValidators, votingPower)
 	return NewVoteSet("test_chain_id", height, round, type_, valSet), valSet, privValidators
 }

@@ -147,7 +147,7 @@ func updateValidators(validators *types.ValidatorSet, changedValidators []*tmsp.
 		}
 
 		address := pubkey.Address()
-		power := int64(v.Power)
+		power := uint64(v.Power)
 		// mind the overflow from uint64
 		if power < 0 {
 			return errors.New(Fmt("Power (%d) overflows int64", v.Power))

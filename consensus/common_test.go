@@ -35,7 +35,7 @@ type validatorStub struct {
 	*types.PrivValidator
 }
 
-var testMinPower = 10
+var testMinPower uint64 = 10
 
 func NewValidatorStub(privValidator *types.PrivValidator, valIndex int) *validatorStub {
 	return &validatorStub{
@@ -116,13 +116,13 @@ func ensureNoNewStep(stepCh chan interface{}) {
 
 func incrementHeight(vss ...*validatorStub) {
 	for _, vs := range vss {
-		vs.Height += 1
+		vs.Height++
 	}
 }
 
 func incrementRound(vss ...*validatorStub) {
 	for _, vs := range vss {
-		vs.Round += 1
+		vs.Round++
 	}
 }
 
@@ -241,7 +241,7 @@ func newConsensusState(state *sm.State, pv *types.PrivValidator, app tmsp.Applic
 
 func randConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
 	// Get State
-	state, privVals := randGenesisState(nValidators, false, 10)
+	state, privVals := randGenesisState(nValidators, false, testMinPower)
 
 	vss := make([]*validatorStub, nValidators)
 
@@ -257,7 +257,7 @@ func randConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
 }
 
 func randConsensusNet(nValidators int, testName string, tickerFunc func() TimeoutTicker) []*ConsensusState {
-	genDoc, privVals := randGenesisDoc(nValidators, false, 10)
+	genDoc, privVals := randGenesisDoc(nValidators, false, testMinPower)
 	css := make([]*ConsensusState, nValidators)
 	for i := 0; i < nValidators; i++ {
 		db := dbm.NewMemDB() // each state needs its own db
@@ -273,7 +273,7 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 
 // nPeers = nValidators + nNotValidator
 func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerFunc func() TimeoutTicker) []*ConsensusState {
-	genDoc, privVals := randGenesisDoc(nValidators, false, int64(testMinPower))
+	genDoc, privVals := randGenesisDoc(nValidators, false, testMinPower)
 	css := make([]*ConsensusState, nPeers)
 	for i := 0; i < nPeers; i++ {
 		db := dbm.NewMemDB() // each state needs its own db
@@ -324,7 +324,7 @@ func readVotes(ch chan interface{}, reads int) chan struct{} {
 	return wg
 }
 
-func randGenesisState(numValidators int, randPower bool, minPower int64) (*sm.State, []*types.PrivValidator) {
+func randGenesisState(numValidators int, randPower bool, minPower uint64) (*sm.State, []*types.PrivValidator) {
 	genDoc, privValidators := randGenesisDoc(numValidators, randPower, minPower)
 	db := dbm.NewMemDB()
 	s0 := sm.MakeGenesisState(db, genDoc)
@@ -332,7 +332,7 @@ func randGenesisState(numValidators int, randPower bool, minPower int64) (*sm.St
 	return s0, privValidators
 }
 
-func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.GenesisDoc, []*types.PrivValidator) {
+func randGenesisDoc(numValidators int, randPower bool, minPower uint64) (*types.GenesisDoc, []*types.PrivValidator) {
 	validators := make([]types.GenesisValidator, numValidators)
 	privValidators := make([]*types.PrivValidator, numValidators)
 	for i := 0; i < numValidators; i++ {

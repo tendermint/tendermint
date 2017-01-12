@@ -3,6 +3,7 @@ package types
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 
@@ -19,14 +20,13 @@ import (
 // upon calling .IncrementAccum().
 // NOTE: Not goroutine-safe.
 // NOTE: All get/set to validators should copy the value for safety.
-// TODO: consider validator Accum overflow
 // TODO: move valset into an iavl tree where key is 'blockbonded|pubkey'
 type ValidatorSet struct {
 	Validators []*Validator // NOTE: persisted via reflect, must be exported.
 
 	// cached (unexported)
 	proposer         *Validator
-	totalVotingPower int64
+	totalVotingPower uint64
 }
 
 func NewValidatorSet(vals []*Validator) *ValidatorSet {
@@ -45,12 +45,11 @@ func NewValidatorSet(vals []*Validator) *ValidatorSet {
 	return vs
 }
 
-// TODO: mind the overflow when times and votingPower shares too large.
 func (valSet *ValidatorSet) IncrementAccum(times int) {
 	// Add VotingPower * times to each validator and order into heap.
 	validatorsHeap := NewHeap()
 	for _, val := range valSet.Validators {
-		val.Accum += int64(val.VotingPower) * int64(times) // TODO: mind overflow
+		val.Accum = addOrMax(val.Accum, mulOrMaxIfOverflows(val.VotingPower, uint64(times)))
 		validatorsHeap.Push(val, accumComparable(val.Accum))
 	}
 
@@ -60,7 +59,7 @@ func (valSet *ValidatorSet) IncrementAccum(times int) {
 		if i == times-1 {
 			valSet.proposer = mostest
 		}
-		mostest.Accum -= int64(valSet.TotalVotingPower())
+		mostest.Accum = subOrZero(mostest.Accum, valSet.TotalVotingPower())
 		validatorsHeap.Update(mostest, accumComparable(mostest.Accum))
 	}
 }
@@ -105,7 +104,7 @@ func (valSet *ValidatorSet) Size() int {
 	return len(valSet.Validators)
 }
 
-func (valSet *ValidatorSet) TotalVotingPower() int64 {
+func (valSet *ValidatorSet) TotalVotingPower() uint64 {
 	if valSet.totalVotingPower == 0 {
 		for _, val := range valSet.Validators {
 			valSet.totalVotingPower += val.VotingPower
@@ -214,7 +213,7 @@ func (valSet *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height
 		return fmt.Errorf("Invalid commit -- wrong height: %v vs %v", height, commit.Height())
 	}
 
-	talliedVotingPower := int64(0)
+	talliedVotingPower := uint64(0)
 	round := commit.Round()
 
 	for idx, precommit := range commit.Precommits {
@@ -299,18 +298,18 @@ func (vs ValidatorsByAddress) Swap(i, j int) {
 //-------------------------------------
 // Use with Heap for sorting validators by accum
 
-type accumComparable int64
+type accumComparable uint64
 
 // We want to find the validator with the greatest accum.
 func (ac accumComparable) Less(o interface{}) bool {
-	return int64(ac) > int64(o.(accumComparable))
+	return uint64(ac) > uint64(o.(accumComparable))
 }
 
 //----------------------------------------
 // For testing
 
 // NOTE: PrivValidator are in order.
-func RandValidatorSet(numValidators int, votingPower int64) (*ValidatorSet, []*PrivValidator) {
+func RandValidatorSet(numValidators int, votingPower uint64) (*ValidatorSet, []*PrivValidator) {
 	vals := make([]*Validator, numValidators)
 	privValidators := make([]*PrivValidator, numValidators)
 	for i := 0; i < numValidators; i++ {
@@ -321,4 +320,40 @@ func RandValidatorSet(numValidators int, votingPower int64) (*ValidatorSet, []*P
 	valSet := NewValidatorSet(vals)
 	sort.Sort(PrivValidatorsByAddress(privValidators))
 	return valSet, privValidators
+}
+
+// addOrMax performs safe addition: if result overflows, it returns MaxUint64
+func addOrMax(accum, value uint64) uint64 {
+	if (accum + value) < accum {
+		return math.MaxUint64
+	} else {
+		return accum + value
+	}
+}
+
+// subOrZero performs safe subtraction: if result underflows, it returns 0
+func subOrZero(accum, value uint64) uint64 {
+	if accum >= value {
+		return accum - value
+	} else {
+		return 0
+	}
+}
+
+// mulOrMaxIfOverflows performs safe multiplication: if result overflows, it returns MaxUint64
+func mulOrMaxIfOverflows(a, b uint64) uint64 {
+	if mulOverflows(a, b) {
+		return math.MaxUint64
+	} else {
+		return a * b
+	}
+}
+
+// mulOverflows checks for overflow
+func mulOverflows(a, b uint64) bool {
+	if a <= 1 || b <= 1 {
+		return false
+	}
+	c := a * b
+	return c/b != a
 }
