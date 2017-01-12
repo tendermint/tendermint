@@ -1,5 +1,5 @@
 hash: 2c623322ed0ff7136db54be910e62e679af6e989b18804bb2e6c457fa79533ff
-updated: 2016-12-06T03:58:35.623612916-08:00
+updated: 2017-01-11T23:24:18.92373144-05:00
 imports:
 - name: github.com/btcsuite/btcd
   version: afec1bd1245a4a19e6dfe1306974b733e7cbb9b8
@@ -66,7 +66,7 @@ imports:
 - name: github.com/tendermint/go-crypto
   version: 4b11d62bdb324027ea01554e5767b71174680ba0
 - name: github.com/tendermint/go-db
-  version: 5e2a1d3e300743380a329499804dde6bfb0af7d5
+  version: 2645626c33d8702739e52a61a55d705c2dfe4530
 - name: github.com/tendermint/go-events
   version: 1c85cb98a4e8ca9e92fe585bc9687fd69b98f841
 - name: github.com/tendermint/go-flowrate
@@ -76,7 +76,7 @@ imports:
 - name: github.com/tendermint/go-logger
   version: cefb3a45c0bf3c493a04e9bcd9b1540528be59f2
 - name: github.com/tendermint/go-merkle
-  version: 8bbe6968f21c1c8a3dcdd2f1ca2a87009a9ec912
+  version: c7a7ae88ca72bf030a7fb7d0d52ce8d1e62b4e16
 - name: github.com/tendermint/go-p2p
   version: 67963ab800a72e91fecfb954e489b21aa906171a
   subpackages:
@@ -88,13 +88,13 @@ imports:
   - server
   - types
 - name: github.com/tendermint/go-wire
-  version: 4100bd2967e516dbf219ab851115dc315cac5666 
+  version: 37d5dd6530857a1abc1db50a48ba22c3459826a1
 - name: github.com/tendermint/log15
   version: ae0f3d6450da9eac7074b439c8e1c3cabf0d5ce6
   subpackages:
   - term
 - name: github.com/tendermint/tmsp
-  version: c5f008d60fe9213482debdac4685e973c05b71fc
+  version: c9b6b6e591c8e49154cd11bca4b8dde92ae5e341
   subpackages:
   - client
   - example/counter
