@@ -1,5 +1,5 @@
 hash: 2c623322ed0ff7136db54be910e62e679af6e989b18804bb2e6c457fa79533ff
-updated: 2017-01-11T23:24:18.92373144-05:00
+updated: 2017-01-12T11:00:17.295872167-05:00
 imports:
 - name: github.com/btcsuite/btcd
   version: afec1bd1245a4a19e6dfe1306974b733e7cbb9b8
@@ -82,7 +82,7 @@ imports:
   subpackages:
   - upnp
 - name: github.com/tendermint/go-rpc
-  version: 161e36fd56c2f95ad133dd03ddb33db0363ca742
+  version: 94fed25975c31e5d405369f0e3558da3cff85c2b
   subpackages:
   - client
   - server
@@ -94,7 +94,7 @@ imports:
   subpackages:
   - term
 - name: github.com/tendermint/tmsp
-  version: c9b6b6e591c8e49154cd11bca4b8dde92ae5e341
+  version: a7b7fe83d6efdccef901ecc83c9dd7c326cfb7fb
   subpackages:
   - client
   - example/counter
