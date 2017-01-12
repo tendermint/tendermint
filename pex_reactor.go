@@ -142,19 +142,18 @@ func (r *PEXReactor) ensurePeersRoutine() {
 	r.ensurePeers()
 
 	// fire periodically
-	timer := NewRepeatTimer("pex", r.ensurePeersPeriod)
+	ticker := time.NewTicker(r.ensurePeersPeriod)
 FOR_LOOP:
 	for {
 		select {
-		case <-timer.Ch:
+		case <-ticker.C:
 			r.ensurePeers()
 		case <-r.Quit:
 			break FOR_LOOP
 		}
 	}
 
-	// Cleanup
-	timer.Stop()
+	ticker.Stop()
 }
 
 // ensurePeers ensures that sufficient peers are connected. (once)
