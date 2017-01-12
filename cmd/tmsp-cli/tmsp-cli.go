@@ -104,10 +104,10 @@ func main() {
 			},
 		},
 		{
-			Name:  "append_tx",
-			Usage: "Append a new tx to application",
+			Name:  "deliver_tx",
+			Usage: "Deliver a new tx to application",
 			Action: func(c *cli.Context) error {
-				return cmdAppendTx(c)
+				return cmdDeliverTx(c)
 			},
 		},
 		{
@@ -250,16 +250,16 @@ func cmdSetOption(c *cli.Context) error {
 }
 
 // Append a new tx to application
-func cmdAppendTx(c *cli.Context) error {
+func cmdDeliverTx(c *cli.Context) error {
 	args := c.Args()
 	if len(args) != 1 {
-		return errors.New("Command append_tx takes 1 argument")
+		return errors.New("Command deliver_tx takes 1 argument")
 	}
 	txBytes, err := stringOrHexToBytes(c.Args()[0])
 	if err != nil {
 		return err
 	}
-	res := client.AppendTxSync(txBytes)
+	res := client.DeliverTxSync(txBytes)
 	rsp := newResponse(res, string(res.Data), true)
 	printResponse(c, rsp)
 	return nil

@@ -18,7 +18,7 @@ enum MessageType {
   Info            = 0x03;
   SetOption       = 0x04;
   Exception       = 0x05;
-  AppendTx        = 0x11;
+  DeliverTx        = 0x11;
   CheckTx         = 0x12;
   Commit          = 0x13;
   Query           = 0x14;
@@ -79,7 +79,7 @@ message Request {
 		RequestFlush flush = 2;
 		RequestInfo info = 3;
 		RequestSetOption set_option = 4;
-		RequestAppendTx append_tx = 5;
+		RequestDeliverTx deliver_tx = 5;
 		RequestCheckTx check_tx = 6;
 		RequestCommit commit = 7;
 		RequestQuery query = 8;
@@ -104,7 +104,7 @@ message RequestSetOption{
 	string value = 2;
 }
 
-message RequestAppendTx{
+message RequestDeliverTx{
 	bytes tx	 = 1;
 }
 
@@ -143,7 +143,7 @@ message Response {
 		ResponseFlush flush = 3;
 		ResponseInfo info = 4;
 		ResponseSetOption set_option = 5;
-		ResponseAppendTx append_tx = 6;
+		ResponseDeliverTx deliver_tx = 6;
 		ResponseCheckTx check_tx = 7;
 		ResponseCommit commit = 8;
 		ResponseQuery query = 9;
@@ -175,7 +175,7 @@ message ResponseSetOption{
 	string log = 1;
 }
 
-message ResponseAppendTx{
+message ResponseDeliverTx{
 	CodeType          code        = 1;
 	bytes             data        = 2;
 	string            log         = 3;
@@ -248,7 +248,7 @@ service TMSPApplication {
 	rpc Flush(RequestFlush) returns (ResponseFlush);
 	rpc Info(RequestInfo) returns (ResponseInfo);
 	rpc SetOption(RequestSetOption) returns (ResponseSetOption);
-	rpc AppendTx(RequestAppendTx) returns (ResponseAppendTx);
+	rpc DeliverTx(RequestDeliverTx) returns (ResponseDeliverTx);
 	rpc CheckTx(RequestCheckTx) returns (ResponseCheckTx);
 	rpc Query(RequestQuery) returns (ResponseQuery);
 	rpc Commit(RequestCommit) returns (ResponseCommit);

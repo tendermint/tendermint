@@ -69,13 +69,13 @@ func (app *localClient) SetOptionAsync(key string, value string) *ReqRes {
 	)
 }
 
-func (app *localClient) AppendTxAsync(tx []byte) *ReqRes {
+func (app *localClient) DeliverTxAsync(tx []byte) *ReqRes {
 	app.mtx.Lock()
-	res := app.Application.AppendTx(tx)
+	res := app.Application.DeliverTx(tx)
 	app.mtx.Unlock()
 	return app.callback(
-		types.ToRequestAppendTx(tx),
-		types.ToResponseAppendTx(res.Code, res.Data, res.Log),
+		types.ToRequestDeliverTx(tx),
+		types.ToResponseDeliverTx(res.Code, res.Data, res.Log),
 	)
 }
 
@@ -171,9 +171,9 @@ func (app *localClient) SetOptionSync(key string, value string) (res types.Resul
 	return types.OK.SetLog(log)
 }
 
-func (app *localClient) AppendTxSync(tx []byte) (res types.Result) {
+func (app *localClient) DeliverTxSync(tx []byte) (res types.Result) {
 	app.mtx.Lock()
-	res = app.Application.AppendTx(tx)
+	res = app.Application.DeliverTx(tx)
 	app.mtx.Unlock()
 	return res
 }

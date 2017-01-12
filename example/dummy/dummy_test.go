@@ -13,10 +13,10 @@ import (
 )
 
 func testDummy(t *testing.T, dummy types.Application, tx []byte, key, value string) {
-	if r := dummy.AppendTx(tx); r.IsErr() {
+	if r := dummy.DeliverTx(tx); r.IsErr() {
 		t.Fatal(r)
 	}
-	if r := dummy.AppendTx(tx); r.IsErr() {
+	if r := dummy.DeliverTx(tx); r.IsErr() {
 		t.Fatal(r)
 	}
 
@@ -175,7 +175,7 @@ func makeApplyBlock(t *testing.T, dummy types.Application, heightInt int, diff [
 	dummyChain := dummy.(types.BlockchainAware) // hmm...
 	dummyChain.BeginBlock(hash, header)
 	for _, tx := range txs {
-		if r := dummy.AppendTx(tx); r.IsErr() {
+		if r := dummy.DeliverTx(tx); r.IsErr() {
 			t.Fatal(r)
 		}
 	}

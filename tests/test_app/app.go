@@ -62,15 +62,15 @@ func Commit(client tmspcli.Client, hashExp []byte) {
 	}
 }
 
-func AppendTx(client tmspcli.Client, txBytes []byte, codeExp types.CodeType, dataExp []byte) {
-	res := client.AppendTxSync(txBytes)
+func DeliverTx(client tmspcli.Client, txBytes []byte, codeExp types.CodeType, dataExp []byte) {
+	res := client.DeliverTxSync(txBytes)
 	code, data, log := res.Code, res.Data, res.Log
 	if code != codeExp {
-		panic(Fmt("AppendTx response code was unexpected. Got %v expected %v. Log: %v",
+		panic(Fmt("DeliverTx response code was unexpected. Got %v expected %v. Log: %v",
 			code, codeExp, log))
 	}
 	if !bytes.Equal(data, dataExp) {
-		panic(Fmt("AppendTx response data was unexpected. Got %X expected %X",
+		panic(Fmt("DeliverTx response data was unexpected. Got %X expected %X",
 			data, dataExp))
 	}
 }

@@ -35,7 +35,7 @@ func TestGRPC(t *testing.T) {
 
 func testStream(t *testing.T, app types.Application) {
 
-	numAppendTxs := 200000
+	numDeliverTxs := 200000
 
 	// Start the listener
 	server, err := server.NewSocketServer("unix://test.sock", app)
@@ -57,15 +57,15 @@ func testStream(t *testing.T, app types.Application) {
 	client.SetResponseCallback(func(req *types.Request, res *types.Response) {
 		// Process response
 		switch r := res.Value.(type) {
-		case *types.Response_AppendTx:
+		case *types.Response_DeliverTx:
 			counter += 1
-			if r.AppendTx.Code != types.CodeType_OK {
-				t.Error("AppendTx failed with ret_code", r.AppendTx.Code)
+			if r.DeliverTx.Code != types.CodeType_OK {
+				t.Error("DeliverTx failed with ret_code", r.DeliverTx.Code)
 			}
-			if counter > numAppendTxs {
-				t.Fatalf("Too many AppendTx responses. Got %d, expected %d", counter, numAppendTxs)
+			if counter > numDeliverTxs {
+				t.Fatalf("Too many DeliverTx responses. Got %d, expected %d", counter, numDeliverTxs)
 			}
-			if counter == numAppendTxs {
+			if counter == numDeliverTxs {
 				go func() {
 					time.Sleep(time.Second * 2) // Wait for a bit to allow counter overflow
 					close(done)
@@ -80,9 +80,9 @@ func testStream(t *testing.T, app types.Application) {
 	})
 
 	// Write requests
-	for counter := 0; counter < numAppendTxs; counter++ {
+	for counter := 0; counter < numDeliverTxs; counter++ {
 		// Send request
-		reqRes := client.AppendTxAsync([]byte("test"))
+		reqRes := client.DeliverTxAsync([]byte("test"))
 		_ = reqRes
 		// check err ?
 
@@ -108,7 +108,7 @@ func dialerFunc(addr string, timeout time.Duration) (net.Conn, error) {
 
 func testGRPCSync(t *testing.T, app *types.GRPCApplication) {
 
-	numAppendTxs := 2000
+	numDeliverTxs := 2000
 
 	// Start the listener
 	server, err := server.NewGRPCServer("unix://test.sock", app)
@@ -127,21 +127,21 @@ func testGRPCSync(t *testing.T, app *types.GRPCApplication) {
 	client := types.NewTMSPApplicationClient(conn)
 
 	// Write requests
-	for counter := 0; counter < numAppendTxs; counter++ {
+	for counter := 0; counter < numDeliverTxs; counter++ {
 		// Send request
-		response, err := client.AppendTx(context.Background(), &types.RequestAppendTx{[]byte("test")})
+		response, err := client.DeliverTx(context.Background(), &types.RequestDeliverTx{[]byte("test")})
 		if err != nil {
-			t.Fatalf("Error in GRPC AppendTx: %v", err.Error())
+			t.Fatalf("Error in GRPC DeliverTx: %v", err.Error())
 		}
 		counter += 1
 		if response.Code != types.CodeType_OK {
-			t.Error("AppendTx failed with ret_code", response.Code)
+			t.Error("DeliverTx failed with ret_code", response.Code)
 		}
-		if counter > numAppendTxs {
-			t.Fatal("Too many AppendTx responses")
+		if counter > numDeliverTxs {
+			t.Fatal("Too many DeliverTx responses")
 		}
 		t.Log("response", counter)
-		if counter == numAppendTxs {
+		if counter == numDeliverTxs {
 			go func() {
 				time.Sleep(time.Second * 2) // Wait for a bit to allow counter overflow
 			}()

@@ -7,17 +7,17 @@
 > check_tx 0xff
 -> code: OK
 
-> append_tx 0x00
+> deliver_tx 0x00
 -> code: OK
 
 > check_tx 0x00
 -> code: BadNonce
 -> log: Invalid nonce. Expected >= 1, got 0
 
-> append_tx 0x01
+> deliver_tx 0x01
 -> code: OK
 
-> append_tx 0x04
+> deliver_tx 0x04
 -> code: BadNonce
 -> log: Invalid nonce. Expected 2, got 4
 

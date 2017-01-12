@@ -50,7 +50,7 @@ Note this prefixing does not apply for grpc.
 
 TMSP requests/responses are simple Protobuf messages.  Check out the [schema file](https://github.com/tendermint/tmsp/blob/master/types/types.proto).
 
-#### AppendTx
+#### DeliverTx
   * __Arguments__:
     * `Data ([]byte)`: The request transaction bytes
   * __Returns__:
@@ -71,7 +71,7 @@ TMSP requests/responses are simple Protobuf messages.  Check out the [schema fil
     Validate a mempool transaction, prior to broadcasting or proposing.  This message should not mutate the main state, but application
     developers may want to keep a separate CheckTx state that gets reset upon Commit.
 
-    CheckTx can happen interspersed with AppendTx, but they happen on different connections - CheckTx from the mempool connection, and AppendTx from the consensus connection.  During Commit, the mempool is locked, so you can reset the mempool state to the latest state after running all those appendtxs, and then the mempool will re run whatever txs it has against that latest mempool stte
+    CheckTx can happen interspersed with DeliverTx, but they happen on different connections - CheckTx from the mempool connection, and DeliverTx from the consensus connection.  During Commit, the mempool is locked, so you can reset the mempool state to the latest state after running all those delivertxs, and then the mempool will re run whatever txs it has against that latest mempool stte
 
     Transactions are first run through CheckTx before broadcast to peers in the mempool layer.
     You can make CheckTx semi-stateful and clear the state upon `Commit` or `BeginBlock`,
@@ -122,7 +122,7 @@ TMSP requests/responses are simple Protobuf messages.  Check out the [schema fil
   * __Arguments__:
     * `Height (uint64)`: The block height that is starting
   * __Usage__:<br/>
-    Signals the beginning of a new block. Called prior to any AppendTxs.
+    Signals the beginning of a new block. Called prior to any DeliverTxs.
 
 #### EndBlock
   * __Arguments__:
@@ -149,7 +149,7 @@ TMSP requests/responses are simple Protobuf messages.  Check out the [schema fil
 ##### Jan 23th, 2016
 
 * Added CheckTx/Query TMSP message types
-* Added Result/Log fields to AppendTx/CheckTx/SetOption
+* Added Result/Log fields to DeliverTx/CheckTx/SetOption
 * Removed Listener messages
 * Removed Code from ResponseSetOption and ResponseGetHash
 * Made examples BigEndian
@@ -160,4 +160,4 @@ TMSP requests/responses are simple Protobuf messages.  Check out the [schema fil
 
 ##### Jan 8th, 2016
 
-* Tendermint/TMSP now comes to consensus on the order first before AppendTx.
+* Tendermint/TMSP now comes to consensus on the order first before DeliverTx.

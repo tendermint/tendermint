@@ -28,7 +28,7 @@ func (app *CounterApplication) SetOption(key string, value string) (log string) 
 	return ""
 }
 
-func (app *CounterApplication) AppendTx(tx []byte) types.Result {
+func (app *CounterApplication) DeliverTx(tx []byte) types.Result {
 	if app.serial {
 		if len(tx) > 8 {
 			return types.ErrEncodingError.SetLog(Fmt("Max tx size is 8 bytes, got %d", len(tx)))

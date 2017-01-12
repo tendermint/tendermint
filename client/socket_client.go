@@ -243,8 +243,8 @@ func (cli *socketClient) SetOptionAsync(key string, value string) *ReqRes {
 	return cli.queueRequest(types.ToRequestSetOption(key, value))
 }
 
-func (cli *socketClient) AppendTxAsync(tx []byte) *ReqRes {
-	return cli.queueRequest(types.ToRequestAppendTx(tx))
+func (cli *socketClient) DeliverTxAsync(tx []byte) *ReqRes {
+	return cli.queueRequest(types.ToRequestDeliverTx(tx))
 }
 
 func (cli *socketClient) CheckTxAsync(tx []byte) *ReqRes {
@@ -315,13 +315,13 @@ func (cli *socketClient) SetOptionSync(key string, value string) (res types.Resu
 	return types.Result{Code: OK, Data: nil, Log: resp.Log}
 }
 
-func (cli *socketClient) AppendTxSync(tx []byte) (res types.Result) {
-	reqres := cli.queueRequest(types.ToRequestAppendTx(tx))
+func (cli *socketClient) DeliverTxSync(tx []byte) (res types.Result) {
+	reqres := cli.queueRequest(types.ToRequestDeliverTx(tx))
 	cli.FlushSync()
 	if err := cli.Error(); err != nil {
 		return types.ErrInternalError.SetLog(err.Error())
 	}
-	resp := reqres.Response.GetAppendTx()
+	resp := reqres.Response.GetDeliverTx()
 	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
 }
 
@@ -429,8 +429,8 @@ func resMatchesReq(req *types.Request, res *types.Response) (ok bool) {
 		_, ok = res.Value.(*types.Response_Info)
 	case *types.Request_SetOption:
 		_, ok = res.Value.(*types.Response_SetOption)
-	case *types.Request_AppendTx:
-		_, ok = res.Value.(*types.Response_AppendTx)
+	case *types.Request_DeliverTx:
+		_, ok = res.Value.(*types.Response_DeliverTx)
 	case *types.Request_CheckTx:
 		_, ok = res.Value.(*types.Response_CheckTx)
 	case *types.Request_Commit:

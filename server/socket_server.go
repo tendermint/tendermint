@@ -174,9 +174,9 @@ func (s *SocketServer) handleRequest(req *types.Request, responses chan<- *types
 		so := r.SetOption
 		logStr := s.app.SetOption(so.Key, so.Value)
 		responses <- types.ToResponseSetOption(logStr)
-	case *types.Request_AppendTx:
-		res := s.app.AppendTx(r.AppendTx.Tx)
-		responses <- types.ToResponseAppendTx(res.Code, res.Data, res.Log)
+	case *types.Request_DeliverTx:
+		res := s.app.DeliverTx(r.DeliverTx.Tx)
+		responses <- types.ToResponseDeliverTx(res.Code, res.Data, res.Log)
 	case *types.Request_CheckTx:
 		res := s.app.CheckTx(r.CheckTx.Tx)
 		responses <- types.ToResponseCheckTx(res.Code, res.Data, res.Log)

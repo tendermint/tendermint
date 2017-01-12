@@ -19,7 +19,7 @@ func (app *NilApplication) SetOption(key string, value string) (log string) {
 	return ""
 }
 
-func (app *NilApplication) AppendTx(tx []byte) types.Result {
+func (app *NilApplication) DeliverTx(tx []byte) types.Result {
 	return types.NewResultOK(nil, "")
 }
 

@@ -7,7 +7,7 @@
 > commit 
 -> data: 0x
 
-> append_tx "abc"
+> deliver_tx "abc"
 -> code: OK
 
 > info 
@@ -20,7 +20,7 @@
 -> code: OK
 -> data: {"index":0,"value":"abc","valueHex":"616263","exists":true}
 
-> append_tx "def=xyz"
+> deliver_tx "def=xyz"
 -> code: OK
 
 > commit 

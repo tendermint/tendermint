@@ -45,7 +45,7 @@ func (app *ChainAwareApplication) SetOption(key string, value string) (log strin
 	return ""
 }
 
-func (app *ChainAwareApplication) AppendTx(tx []byte) types.Result {
+func (app *ChainAwareApplication) DeliverTx(tx []byte) types.Result {
 	return types.NewResultOK(nil, "")
 }
 

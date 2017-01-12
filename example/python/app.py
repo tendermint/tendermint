@@ -24,7 +24,7 @@ class CounterApplication():
             self.serial = True
         return 0
 
-    def append_tx(self, txBytes):
+    def deliver_tx(self, txBytes):
         if self.serial:
             txByteArray = bytearray(txBytes)
             if len(txBytes) >= 2 and txBytes[:2] == "0x":

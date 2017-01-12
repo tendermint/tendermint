@@ -155,13 +155,13 @@ func (cli *grpcClient) SetOptionAsync(key string, value string) *ReqRes {
 	return cli.finishAsyncCall(req, &types.Response{&types.Response_SetOption{res}})
 }
 
-func (cli *grpcClient) AppendTxAsync(tx []byte) *ReqRes {
-	req := types.ToRequestAppendTx(tx)
-	res, err := cli.client.AppendTx(context.Background(), req.GetAppendTx(), grpc.FailFast(true))
+func (cli *grpcClient) DeliverTxAsync(tx []byte) *ReqRes {
+	req := types.ToRequestDeliverTx(tx)
+	res, err := cli.client.DeliverTx(context.Background(), req.GetDeliverTx(), grpc.FailFast(true))
 	if err != nil {
 		cli.StopForError(err)
 	}
-	return cli.finishAsyncCall(req, &types.Response{&types.Response_AppendTx{res}})
+	return cli.finishAsyncCall(req, &types.Response{&types.Response_DeliverTx{res}})
 }
 
 func (cli *grpcClient) CheckTxAsync(tx []byte) *ReqRes {
@@ -283,12 +283,12 @@ func (cli *grpcClient) SetOptionSync(key string, value string) (res types.Result
 	return types.Result{Code: OK, Data: nil, Log: resp.Log}
 }
 
-func (cli *grpcClient) AppendTxSync(tx []byte) (res types.Result) {
-	reqres := cli.AppendTxAsync(tx)
+func (cli *grpcClient) DeliverTxSync(tx []byte) (res types.Result) {
+	reqres := cli.DeliverTxAsync(tx)
 	if res := cli.checkErrGetResult(); res.IsErr() {
 		return res
 	}
-	resp := reqres.Response.GetAppendTx()
+	resp := reqres.Response.GetDeliverTx()
 	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
 }
 

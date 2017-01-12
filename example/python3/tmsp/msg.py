@@ -6,7 +6,7 @@ message_types = {
     0x02: "flush",
     0x03: "info",
     0x04: "set_option",
-    0x21: "append_tx",
+    0x21: "deliver_tx",
     0x22: "check_tx",
     0x23: "commit",
     0x24: "add_listener",
@@ -32,7 +32,7 @@ class RequestDecoder():
     def set_option(self):
         return decode_string(self.reader), decode_string(self.reader)
 
-    def append_tx(self):
+    def deliver_tx(self):
         return decode_string(self.reader)
 
     def check_tx(self):

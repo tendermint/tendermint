@@ -18,7 +18,7 @@ type Client interface {
 	EchoAsync(msg string) *ReqRes
 	InfoAsync() *ReqRes
 	SetOptionAsync(key string, value string) *ReqRes
-	AppendTxAsync(tx []byte) *ReqRes
+	DeliverTxAsync(tx []byte) *ReqRes
 	CheckTxAsync(tx []byte) *ReqRes
 	QueryAsync(tx []byte) *ReqRes
 	CommitAsync() *ReqRes
@@ -27,7 +27,7 @@ type Client interface {
 	EchoSync(msg string) (res types.Result)
 	InfoSync() (resInfo types.ResponseInfo, err error)
 	SetOptionSync(key string, value string) (res types.Result)
-	AppendTxSync(tx []byte) (res types.Result)
+	DeliverTxSync(tx []byte) (res types.Result)
 	CheckTxSync(tx []byte) (res types.Result)
 	QuerySync(tx []byte) (res types.Result)
 	CommitSync() (res types.Result)
