@@ -44,7 +44,7 @@ fi
 
 # request with string type when expecting number arg
 R1=`curl -s 'http://localhost:8008/hello_world?name="abcd"&num=0xabcd'`
-R2="{\"jsonrpc\":\"2.0\",\"id\":\"\",\"result\":null,\"error\":\"Error converting http params to args: Got a 'hex string' arg, but expected 'int'\"}"
+R2="{\"jsonrpc\":\"2.0\",\"id\":\"\",\"result\":null,\"error\":\"Error converting http params to args: Got a hex string arg, but expected 'int'\"}"
 if [[ "$R1" != "$R2" ]]; then
 	echo "responses are not identical:"
 	echo "R1: $R1"
