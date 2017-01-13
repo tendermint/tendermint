@@ -28,17 +28,20 @@ for lib in "${LIBS_GO_TEST[@]}"; do
 	fi
 done
 
+DIR=`pwd`
 for lib in "${LIBS_MAKE_TEST[@]}"; do
 
 	# checkout vendored version of lib
 	bash scripts/glide/checkout.sh $GLIDE $lib
 
 	echo "Testing $lib ..."
+	cd $GOPATH/src/github.com/tendermint/$lib
 	make test
 	if [[ "$?" != 0 ]]; then
 		echo "FAIL"
 		exit 1
 	fi
+	cd $DIR
 done
 
 echo ""
