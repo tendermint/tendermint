@@ -119,10 +119,8 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreato
 	sw.AddReactor("CONSENSUS", consensusReactor)
 
 	// Optionally, start the pex reactor
-	// TODO: this is a dev feature, it needs some love
 	if config.GetBool("pex_reactor") {
 		addrBook := p2p.NewAddrBook(config.GetString("addrbook_file"), config.GetBool("addrbook_strict"))
-		addrBook.Start()
 		pexReactor := p2p.NewPEXReactor(addrBook)
 		sw.AddReactor("PEX", pexReactor)
 	}
@@ -372,6 +370,86 @@ func makeNodeInfo(config cfg.Config, sw *p2p.Switch, privKey crypto.PrivKeyEd255
 	nodeInfo.ListenAddr = cmn.Fmt("%v:%v", p2pHost, p2pPort)
 	nodeInfo.Other = append(nodeInfo.Other, cmn.Fmt("rpc_addr=%v", rpcListenAddr))
 	return nodeInfo
+}
+
+//------------------------------------------------------------------------------
+
+// Users wishing to:
+//	* use an external signer for their validators
+//	* supply an in-proc abci app
+// should fork tendermint/tendermint and implement RunNode to
+// call NewNode with their custom priv validator and/or custom
+// proxy.ClientCreator interface
+func RunNode(config cfg.Config) {
+	// Wait until the genesis doc becomes available
+	genDocFile := config.GetString("genesis_file")
+	if !FileExists(genDocFile) {
+		log.Notice(Fmt("Waiting for genesis file %v...", genDocFile))
+		for {
+			time.Sleep(time.Second)
+			if !FileExists(genDocFile) {
+				continue
+			}
+			jsonBlob, err := ioutil.ReadFile(genDocFile)
+			if err != nil {
+				Exit(Fmt("Couldn't read GenesisDoc file: %v", err))
+			}
+			genDoc := types.GenesisDocFromJSON(jsonBlob)
+			if genDoc.ChainID == "" {
+				PanicSanity(Fmt("Genesis doc %v must include non-empty chain_id", genDocFile))
+			}
+			config.Set("chain_id", genDoc.ChainID)
+		}
+	}
+
+	// Create & start node
+	n := NewNodeDefault(config)
+
+	protocol, address := ProtocolAndAddress(config.GetString("node_laddr"))
+	l := p2p.NewDefaultListener(protocol, address, config.GetBool("skip_upnp"))
+	n.AddListener(l)
+	err := n.Start()
+	if err != nil {
+		Exit(Fmt("Failed to start node: %v", err))
+	}
+
+	log.Notice("Started node", "nodeInfo", n.sw.NodeInfo())
+
+	if config.GetString("seeds") != "" {
+		seeds := strings.Split(config.GetString("seeds"), ",")
+
+		if config.GetBool("pex_reactor") {
+			// add seeds to `addrBook` to avoid losing
+			r := n.sw.Reactor("PEX").(*p2p.PEXReactor)
+			ourAddr := n.NodeInfo().ListenAddr
+			for _, s := range seeds {
+				// do not add ourselves
+				if s == ourAddr {
+					continue
+				}
+
+				addr := p2p.NewNetAddressString(s)
+				r.AddPeerAddress(addr, p2p.NewNetAddressString(ourAddr))
+			}
+			r.SaveAddrBook()
+		}
+
+		// dial out
+		n.sw.DialSeeds(seeds)
+	}
+
+	// Run the RPC server.
+	if config.GetString("rpc_laddr") != "" {
+		_, err := n.StartRPC()
+		if err != nil {
+			PanicCrisis(err)
+		}
+	}
+
+	// Sleep forever and then...
+	TrapSignal(func() {
+		n.Stop()
+	})
 }
 
 func (n *Node) NodeInfo() *p2p.NodeInfo {
