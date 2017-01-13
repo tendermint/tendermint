@@ -10,3 +10,5 @@ rpc/test/.tendermint
 remote_dump
 .revision
 vendor
+.vagrant
+test/p2p/data/

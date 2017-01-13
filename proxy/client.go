@@ -5,15 +5,15 @@ import (
 	"sync"
 
 	cfg "github.com/tendermint/go-config"
-	tmspcli "github.com/tendermint/tmsp/client"
-	"github.com/tendermint/tmsp/example/dummy"
-	nilapp "github.com/tendermint/tmsp/example/nil"
-	"github.com/tendermint/tmsp/types"
+	abcicli "github.com/tendermint/abci/client"
+	"github.com/tendermint/abci/example/dummy"
+	nilapp "github.com/tendermint/abci/example/nil"
+	"github.com/tendermint/abci/types"
 )
 
-// NewTMSPClient returns newly connected client
+// NewABCIClient returns newly connected client
 type ClientCreator interface {
-	NewTMSPClient() (tmspcli.Client, error)
+	NewABCIClient() (abcicli.Client, error)
 }
 
 //----------------------------------------------------
@@ -31,8 +31,8 @@ func NewLocalClientCreator(app types.Application) ClientCreator {
 	}
 }
 
-func (l *localClientCreator) NewTMSPClient() (tmspcli.Client, error) {
-	return tmspcli.NewLocalClient(l.mtx, l.app), nil
+func (l *localClientCreator) NewABCIClient() (abcicli.Client, error) {
+	return abcicli.NewLocalClient(l.mtx, l.app), nil
 }
 
 //---------------------------------------------------------------
@@ -52,9 +52,9 @@ func NewRemoteClientCreator(addr, transport string, mustConnect bool) ClientCrea
 	}
 }
 
-func (r *remoteClientCreator) NewTMSPClient() (tmspcli.Client, error) {
+func (r *remoteClientCreator) NewABCIClient() (abcicli.Client, error) {
 	// Run forever in a loop
-	remoteApp, err := tmspcli.NewClient(r.addr, r.transport, r.mustConnect)
+	remoteApp, err := abcicli.NewClient(r.addr, r.transport, r.mustConnect)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to connect to proxy: %v", err)
 	}
@@ -66,11 +66,13 @@ func (r *remoteClientCreator) NewTMSPClient() (tmspcli.Client, error) {
 
 func DefaultClientCreator(config cfg.Config) ClientCreator {
 	addr := config.GetString("proxy_app")
-	transport := config.GetString("tmsp")
+	transport := config.GetString("abci")
 
 	switch addr {
 	case "dummy":
 		return NewLocalClientCreator(dummy.NewDummyApplication())
+	case "persistent_dummy":
+		return NewLocalClientCreator(dummy.NewPersistentDummyApplication(config.GetString("db_dir")))
 	case "nilapp":
 		return NewLocalClientCreator(nilapp.NewNilApplication())
 	default:

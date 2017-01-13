@@ -1,8 +1,9 @@
 # Generating test data
 
-The easiest way to generate this data is to copy `~/.tendermint_test/somedir/*` to `~/.tendermint`
-and to run a local node.
-Be sure to set the db to "leveldb" to create a cswal file in `~/.tendermint/data/cswal`.
+To generate the data, run `build.sh`. See that script for more details.
+
+Make sure to adjust the stepChanges in the testCases if the number of messages changes.
+This sometimes happens for the `small_block2.cswal`, where the number of block parts changes between 4 and 5.
 
 If you need to change the signatures, you can use a script as follows:
 The privBytes comes from `config/tendermint_test/...`:
@@ -29,8 +30,7 @@ func main() {
 	privKey := crypto.PrivKeyEd25519{}
 	copy(privKey[:], privBytes)
 	signature := privKey.Sign(signBytes)
-	signatureEd25519 := signature.(crypto.SignatureEd25519)
-	fmt.Printf("Signature Bytes: %X\n", signatureEd25519[:])
+	fmt.Printf("Signature Bytes: %X\n", signature.Bytes())
 }
 ```
 

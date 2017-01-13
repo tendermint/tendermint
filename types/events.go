@@ -5,7 +5,7 @@ import (
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-events"
 	"github.com/tendermint/go-wire"
-	tmsp "github.com/tendermint/tmsp/types"
+	abci "github.com/tendermint/abci/types"
 )
 
 // Functions to generate eventId strings
@@ -73,11 +73,11 @@ type EventDataNewBlockHeader struct {
 
 // All txs fire EventDataTx
 type EventDataTx struct {
-	Tx     Tx            `json:"tx"`
-	Result []byte        `json:"result"`
-	Log    string        `json:"log"`
-	Code   tmsp.CodeType `json:"code"`
-	Error  string        `json:"error"`
+	Tx    Tx            `json:"tx"`
+	Data  []byte        `json:"data"`
+	Log   string        `json:"log"`
+	Code  abci.CodeType `json:"code"`
+	Error string        `json:"error"` // this is redundant information for now
 }
 
 // NOTE: This goes into the replay WAL
@@ -91,9 +91,7 @@ type EventDataRoundState struct {
 }
 
 type EventDataVote struct {
-	Index   int
-	Address []byte
-	Vote    *Vote
+	Vote *Vote
 }
 
 func (_ EventDataNewBlock) AssertIsTMEventData()       {}
@@ -132,7 +130,9 @@ func NewEventCache(evsw EventSwitch) EventCache {
 
 // All events should be based on this FireEvent to ensure they are TMEventData
 func fireEvent(fireable events.Fireable, event string, data TMEventData) {
-	fireable.FireEvent(event, data)
+	if fireable != nil {
+		fireable.FireEvent(event, data)
+	}
 }
 
 func AddListenerForEvent(evsw EventSwitch, id, event string, cb func(data TMEventData)) {

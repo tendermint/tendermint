@@ -8,6 +8,7 @@ import (
 	"time"
 
 	. "github.com/tendermint/go-common"
+	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-p2p"
 	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/proxy"
@@ -41,7 +42,7 @@ type consensusReactor interface {
 type BlockchainReactor struct {
 	p2p.BaseReactor
 
-	sw           *p2p.Switch
+	config       cfg.Config
 	state        *sm.State
 	proxyAppConn proxy.AppConnConsensus // same as consensus.proxyAppConn
 	store        *BlockStore
@@ -54,7 +55,7 @@ type BlockchainReactor struct {
 	evsw types.EventSwitch
 }
 
-func NewBlockchainReactor(state *sm.State, proxyAppConn proxy.AppConnConsensus, store *BlockStore, fastSync bool) *BlockchainReactor {
+func NewBlockchainReactor(config cfg.Config, state *sm.State, proxyAppConn proxy.AppConnConsensus, store *BlockStore, fastSync bool) *BlockchainReactor {
 	if state.LastBlockHeight == store.Height()-1 {
 		store.height -= 1 // XXX HACK, make this better
 	}
@@ -69,6 +70,7 @@ func NewBlockchainReactor(state *sm.State, proxyAppConn proxy.AppConnConsensus, 
 		timeoutsCh,
 	)
 	bcR := &BlockchainReactor{
+		config:       config,
 		state:        state,
 		proxyAppConn: proxyAppConn,
 		store:        store,
@@ -219,33 +221,32 @@ FOR_LOOP:
 					// We need both to sync the first block.
 					break SYNC_LOOP
 				}
-				firstParts := first.MakePartSet()
+				firstParts := first.MakePartSet(bcR.config.GetInt("block_part_size")) // TODO: put part size in parts header?
 				firstPartsHeader := firstParts.Header()
 				// Finally, verify the first block using the second's commit
+				// NOTE: we can probably make this more efficient, but note that calling
+				// first.Hash() doesn't verify the tx contents, so MakePartSet() is
+				// currently necessary.
 				err := bcR.state.Validators.VerifyCommit(
-					bcR.state.ChainID, first.Hash(), firstPartsHeader, first.Height, second.LastCommit)
+					bcR.state.ChainID, types.BlockID{first.Hash(), firstPartsHeader}, first.Height, second.LastCommit)
 				if err != nil {
 					log.Info("error in validation", "error", err)
 					bcR.pool.RedoRequest(first.Height)
 					break SYNC_LOOP
 				} else {
 					bcR.pool.PopRequest()
-					// TODO: use ApplyBlock instead of Exec/Commit/SetAppHash/Save
-					err := bcR.state.ExecBlock(bcR.evsw, bcR.proxyAppConn, first, firstPartsHeader)
+
+					bcR.store.SaveBlock(first, firstParts, second.LastCommit)
+
+					// TODO: should we be firing events? need to fire NewBlock events manually ...
+					// NOTE: we could improve performance if we
+					// didn't make the app commit to disk every block
+					// ... but we would need a way to get the hash without it persisting
+					err := bcR.state.ApplyBlock(bcR.evsw, bcR.proxyAppConn, first, firstPartsHeader, sm.MockMempool{})
 					if err != nil {
 						// TODO This is bad, are we zombie?
 						PanicQ(Fmt("Failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
 					}
-					// NOTE: we could improve performance if we
-					// didn't make the app commit to disk every block
-					// ... but we would need a way to get the hash without it persisting
-					res := bcR.proxyAppConn.CommitSync()
-					if res.IsErr() {
-						// TODO Handle gracefully.
-						PanicQ(Fmt("Failed to commit block at application: %v", res))
-					}
-					bcR.store.SaveBlock(first, firstParts, second.LastCommit)
-					bcR.state.AppHash = res.Data
 					bcR.state.Save()
 				}
 			}

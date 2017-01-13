@@ -1,8 +1,10 @@
 #! /bin/bash
 
+set +u
 if [[ "$GLIDE" == "" ]]; then
 	GLIDE=$GOPATH/src/github.com/tendermint/tendermint/glide.lock
 fi
+set -u
 
 set -euo pipefail
 

@@ -8,12 +8,16 @@ import (
 	. "github.com/tendermint/go-common"
 )
 
+const (
+	testPartSize = 65536 // 64KB ...  4096 // 4KB
+)
+
 func TestBasicPartSet(t *testing.T) {
 
 	// Construct random data of size partSize * 100
-	data := RandBytes(partSize * 100)
+	data := RandBytes(testPartSize * 100)
 
-	partSet := NewPartSetFromData(data)
+	partSet := NewPartSetFromData(data, testPartSize)
 	if len(partSet.Hash()) == 0 {
 		t.Error("Expected to get hash")
 	}
@@ -61,8 +65,8 @@ func TestBasicPartSet(t *testing.T) {
 func TestWrongProof(t *testing.T) {
 
 	// Construct random data of size partSize * 100
-	data := RandBytes(partSize * 100)
-	partSet := NewPartSetFromData(data)
+	data := RandBytes(testPartSize * 100)
+	partSet := NewPartSetFromData(data, testPartSize)
 
 	// Test adding a part with wrong data.
 	partSet2 := NewPartSetFromHeader(partSet.Header())

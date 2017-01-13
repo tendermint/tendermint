@@ -21,6 +21,7 @@ import (
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
 	rpccore "github.com/tendermint/tendermint/rpc/core"
+	grpccore "github.com/tendermint/tendermint/rpc/grpc"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
@@ -52,8 +53,6 @@ func NewNodeDefault(config cfg.Config) *Node {
 
 func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreator proxy.ClientCreator) *Node {
 
-	EnsureDir(config.GetString("db_dir"), 0700) // incase we use memdb, cswal still gets written here
-
 	// Get BlockStore
 	blockStoreDB := dbm.NewDB("blockstore", config.GetString("db_backend"), config.GetString("db_dir"))
 	blockStore := bc.NewBlockStore(blockStoreDB)
@@ -62,11 +61,10 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreato
 	stateDB := dbm.NewDB("state", config.GetString("db_backend"), config.GetString("db_dir"))
 
 	// Get State
-	state := getState(config, stateDB)
+	state := sm.GetState(config, stateDB)
 
-	// Create the proxyApp, which houses three connections:
-	// query, consensus, and mempool
-	proxyApp := proxy.NewAppConns(config, clientCreator, state, blockStore)
+	// Create the proxyApp, which manages connections (consensus, mempool, query)
+	proxyApp := proxy.NewAppConns(config, clientCreator, sm.NewHandshaker(config, state, blockStore))
 	if _, err := proxyApp.Start(); err != nil {
 		Exit(Fmt("Error starting proxy app connections: %v", err))
 	}
@@ -96,7 +94,7 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreato
 	}
 
 	// Make BlockchainReactor
-	bcReactor := bc.NewBlockchainReactor(state.Copy(), proxyApp.Consensus(), blockStore, fastSync)
+	bcReactor := bc.NewBlockchainReactor(config, state.Copy(), proxyApp.Consensus(), blockStore, fastSync)
 
 	// Make MempoolReactor
 	mempool := mempl.NewMempool(config, proxyApp.Mempool())
@@ -104,10 +102,10 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreato
 
 	// Make ConsensusReactor
 	consensusState := consensus.NewConsensusState(config, state.Copy(), proxyApp.Consensus(), blockStore, mempool)
-	consensusReactor := consensus.NewConsensusReactor(consensusState, blockStore, fastSync)
 	if privValidator != nil {
-		consensusReactor.SetPrivValidator(privValidator)
+		consensusState.SetPrivValidator(privValidator)
 	}
+	consensusReactor := consensus.NewConsensusReactor(consensusState, fastSync)
 
 	// Make p2p network switch
 	sw := p2p.NewSwitch(config.GetConfig("p2p"))
@@ -124,7 +122,7 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreato
 		sw.AddReactor("PEX", pexReactor)
 	}
 
-	// filter peers by addr or pubkey with a tmsp query.
+	// filter peers by addr or pubkey with a abci query.
 	// if the query return code is OK, add peer
 	// XXX: query format subject to change
 	if config.GetBool("filter_peers") {
@@ -230,6 +228,17 @@ func (n *Node) StartRPC() ([]net.Listener, error) {
 		}
 		listeners[i] = listener
 	}
+
+	// we expose a simplified api over grpc for convenience to app devs
+	grpcListenAddr := n.config.GetString("grpc_laddr")
+	if grpcListenAddr != "" {
+		listener, err := grpccore.StartGRPCServer(grpcListenAddr)
+		if err != nil {
+			return nil, err
+		}
+		listeners = append(listeners, listener)
+	}
+
 	return listeners, nil
 }
 
@@ -307,22 +316,11 @@ func makeNodeInfo(config cfg.Config, sw *p2p.Switch, privKey crypto.PrivKeyEd255
 	return nodeInfo
 }
 
-// Load the most recent state from "state" db,
-// or create a new one (and save) from genesis.
-func getState(config cfg.Config, stateDB dbm.DB) *sm.State {
-	state := sm.LoadState(stateDB)
-	if state == nil {
-		state = sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
-		state.Save()
-	}
-	return state
-}
-
 //------------------------------------------------------------------------------
 
 // Users wishing to:
 //	* use an external signer for their validators
-//	* supply an in-proc tmsp app
+//	* supply an in-proc abci app
 // should fork tendermint/tendermint and implement RunNode to
 // call NewNode with their custom priv validator and/or custom
 // proxy.ClientCreator interface
@@ -402,17 +400,19 @@ func newConsensusState(config cfg.Config) *consensus.ConsensusState {
 	stateDB := dbm.NewDB("state", config.GetString("db_backend"), config.GetString("db_dir"))
 	state := sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
 
-	// Create two proxyAppConn connections,
-	// one for the consensus and one for the mempool.
-	proxyApp := proxy.NewAppConns(config, proxy.DefaultClientCreator(config), state, blockStore)
+	// Create proxyAppConn connection (consensus, mempool, query)
+	proxyApp := proxy.NewAppConns(config, proxy.DefaultClientCreator(config), sm.NewHandshaker(config, state, blockStore))
+	_, err := proxyApp.Start()
+	if err != nil {
+		Exit(Fmt("Error starting proxy app conns: %v", err))
+	}
 
 	// add the chainid to the global config
 	config.Set("chain_id", state.ChainID)
 
 	// Make event switch
 	eventSwitch := types.NewEventSwitch()
-	_, err := eventSwitch.Start()
-	if err != nil {
+	if _, err := eventSwitch.Start(); err != nil {
 		Exit(Fmt("Failed to start event switch: %v", err))
 	}
 
@@ -423,12 +423,7 @@ func newConsensusState(config cfg.Config) *consensus.ConsensusState {
 	return consensusState
 }
 
-func RunReplayConsole(config cfg.Config) {
-	walFile := config.GetString("cswal")
-	if walFile == "" {
-		Exit("cswal file name not set in tendermint config")
-	}
-
+func RunReplayConsole(config cfg.Config, walFile string) {
 	consensusState := newConsensusState(config)
 
 	if err := consensusState.ReplayConsole(walFile); err != nil {
@@ -436,12 +431,7 @@ func RunReplayConsole(config cfg.Config) {
 	}
 }
 
-func RunReplay(config cfg.Config) {
-	walFile := config.GetString("cswal")
-	if walFile == "" {
-		Exit("cswal file name not set in tendermint config")
-	}
-
+func RunReplay(config cfg.Config, walFile string) {
 	consensusState := newConsensusState(config)
 
 	if err := consensusState.ReplayMessages(walFile); err != nil {

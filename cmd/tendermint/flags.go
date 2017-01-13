@@ -16,9 +16,10 @@ func parseFlags(config cfg.Config, args []string) {
 		fastSync      bool
 		skipUPNP      bool
 		rpcLaddr      string
+		grpcLaddr     string
 		logLevel      string
 		proxyApp      string
-		tmspTransport string
+		abciTransport string
 
 		pex bool
 	)
@@ -34,10 +35,11 @@ func parseFlags(config cfg.Config, args []string) {
 	flags.BoolVar(&fastSync, "fast_sync", config.GetBool("fast_sync"), "Fast blockchain syncing")
 	flags.BoolVar(&skipUPNP, "skip_upnp", config.GetBool("skip_upnp"), "Skip UPNP configuration")
 	flags.StringVar(&rpcLaddr, "rpc_laddr", config.GetString("rpc_laddr"), "RPC listen address. Port required")
+	flags.StringVar(&grpcLaddr, "grpc_laddr", config.GetString("grpc_laddr"), "GRPC listen address (BroadcastTx only). Port required")
 	flags.StringVar(&logLevel, "log_level", config.GetString("log_level"), "Log level")
 	flags.StringVar(&proxyApp, "proxy_app", config.GetString("proxy_app"),
 		"Proxy app address, or 'nilapp' or 'dummy' for local testing.")
-	flags.StringVar(&tmspTransport, "tmsp", config.GetString("tmsp"), "Specify tmsp transport (socket | grpc)")
+	flags.StringVar(&abciTransport, "abci", config.GetString("abci"), "Specify abci transport (socket | grpc)")
 
 	// feature flags
 	flags.BoolVar(&pex, "pex", config.GetBool("pex_reactor"), "Enable Peer-Exchange (dev feature)")
@@ -55,9 +57,10 @@ func parseFlags(config cfg.Config, args []string) {
 	config.Set("fast_sync", fastSync)
 	config.Set("skip_upnp", skipUPNP)
 	config.Set("rpc_laddr", rpcLaddr)
+	config.Set("grpc_laddr", grpcLaddr)
 	config.Set("log_level", logLevel)
 	config.Set("proxy_app", proxyApp)
-	config.Set("tmsp", tmspTransport)
+	config.Set("abci", abciTransport)
 
 	config.Set("pex_reactor", pex)
 }

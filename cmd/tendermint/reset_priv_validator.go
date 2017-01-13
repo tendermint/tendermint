@@ -11,7 +11,7 @@ import (
 func reset_all() {
 	reset_priv_validator()
 	os.RemoveAll(config.GetString("db_dir"))
-	os.Remove(config.GetString("cswal"))
+	os.RemoveAll(config.GetString("cs_wal_dir"))
 }
 
 // NOTE: this is totally unsafe.

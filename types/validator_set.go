@@ -20,7 +20,7 @@ import (
 // NOTE: Not goroutine-safe.
 // NOTE: All get/set to validators should copy the value for safety.
 // TODO: consider validator Accum overflow
-// TODO: replace validators []*Validator with github.com/jaekwon/go-ibbs?
+// TODO: move valset into an iavl tree where key is 'blockbonded|pubkey'
 type ValidatorSet struct {
 	Validators []*Validator // NOTE: persisted via reflect, must be exported.
 
@@ -206,8 +206,7 @@ func (valSet *ValidatorSet) Iterate(fn func(index int, val *Validator) bool) {
 }
 
 // Verify that +2/3 of the set had signed the given signBytes
-func (valSet *ValidatorSet) VerifyCommit(chainID string,
-	hash []byte, parts PartSetHeader, height int, commit *Commit) error {
+func (valSet *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height int, commit *Commit) error {
 	if valSet.Size() != len(commit.Precommits) {
 		return fmt.Errorf("Invalid commit -- wrong set size: %v vs %v", valSet.Size(), len(commit.Precommits))
 	}
@@ -238,10 +237,7 @@ func (valSet *ValidatorSet) VerifyCommit(chainID string,
 		if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
 			return fmt.Errorf("Invalid commit -- invalid signature: %v", precommit)
 		}
-		if !bytes.Equal(precommit.BlockHash, hash) {
-			continue // Not an error, but doesn't count
-		}
-		if !parts.Equals(precommit.BlockPartsHeader) {
+		if !blockID.Equals(precommit.BlockID) {
 			continue // Not an error, but doesn't count
 		}
 		// Good precommit!
@@ -313,6 +309,7 @@ func (ac accumComparable) Less(o interface{}) bool {
 //----------------------------------------
 // For testing
 
+// NOTE: PrivValidator are in order.
 func RandValidatorSet(numValidators int, votingPower int64) (*ValidatorSet, []*PrivValidator) {
 	vals := make([]*Validator, numValidators)
 	privValidators := make([]*PrivValidator, numValidators)

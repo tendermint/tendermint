@@ -5,6 +5,8 @@ import (
 	cfg "github.com/tendermint/go-config"
 )
 
+//-----------------------------
+
 // Tendermint's interface to the application consists of multiple connections
 type AppConns interface {
 	Service
@@ -14,19 +16,27 @@ type AppConns interface {
 	Query() AppConnQuery
 }
 
-func NewAppConns(config cfg.Config, clientCreator ClientCreator, state State, blockStore BlockStore) AppConns {
-	return NewMultiAppConn(config, clientCreator, state, blockStore)
+func NewAppConns(config cfg.Config, clientCreator ClientCreator, handshaker Handshaker) AppConns {
+	return NewMultiAppConn(config, clientCreator, handshaker)
+}
+
+//-----------------------------
+// multiAppConn implements AppConns
+
+type Handshaker interface {
+	Handshake(AppConns) error
 }
 
 // a multiAppConn is made of a few appConns (mempool, consensus, query)
-// and manages their underlying tmsp clients, ensuring they reboot together
+// and manages their underlying abci clients, including the handshake
+// which ensures the app and tendermint are synced.
+// TODO: on app restart, clients must reboot together
 type multiAppConn struct {
-	QuitService
+	BaseService
 
 	config cfg.Config
 
-	state      State
-	blockStore BlockStore
+	handshaker Handshaker
 
 	mempoolConn   *appConnMempool
 	consensusConn *appConnConsensus
@@ -35,15 +45,14 @@ type multiAppConn struct {
 	clientCreator ClientCreator
 }
 
-// Make all necessary tmsp connections to the application
-func NewMultiAppConn(config cfg.Config, clientCreator ClientCreator, state State, blockStore BlockStore) *multiAppConn {
+// Make all necessary abci connections to the application
+func NewMultiAppConn(config cfg.Config, clientCreator ClientCreator, handshaker Handshaker) *multiAppConn {
 	multiAppConn := &multiAppConn{
 		config:        config,
-		state:         state,
-		blockStore:    blockStore,
+		handshaker:    handshaker,
 		clientCreator: clientCreator,
 	}
-	multiAppConn.QuitService = *NewQuitService(log, "multiAppConn", multiAppConn)
+	multiAppConn.BaseService = *NewBaseService(log, "multiAppConn", multiAppConn)
 	return multiAppConn
 }
 
@@ -57,39 +66,38 @@ func (app *multiAppConn) Consensus() AppConnConsensus {
 	return app.consensusConn
 }
 
+// Returns the query Connection
 func (app *multiAppConn) Query() AppConnQuery {
 	return app.queryConn
 }
 
 func (app *multiAppConn) OnStart() error {
-	app.QuitService.OnStart()
+	app.BaseService.OnStart()
 
 	// query connection
-	querycli, err := app.clientCreator.NewTMSPClient()
+	querycli, err := app.clientCreator.NewABCIClient()
 	if err != nil {
 		return err
 	}
 	app.queryConn = NewAppConnQuery(querycli)
 
 	// mempool connection
-	memcli, err := app.clientCreator.NewTMSPClient()
+	memcli, err := app.clientCreator.NewABCIClient()
 	if err != nil {
 		return err
 	}
 	app.mempoolConn = NewAppConnMempool(memcli)
 
 	// consensus connection
-	concli, err := app.clientCreator.NewTMSPClient()
+	concli, err := app.clientCreator.NewABCIClient()
 	if err != nil {
 		return err
 	}
 	app.consensusConn = NewAppConnConsensus(concli)
 
-	// TODO: handshake
-
-	// TODO: replay blocks
-
-	// TODO: (on restart) replay mempool
-
+	// ensure app is synced to the latest state
+	if app.handshaker != nil {
+		return app.handshaker.Handshake(app)
+	}
 	return nil
 }

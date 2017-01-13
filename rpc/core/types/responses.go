@@ -6,7 +6,7 @@ import (
 	"github.com/tendermint/go-rpc/types"
 	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/types"
-	tmsp "github.com/tendermint/tmsp/types"
+	abci "github.com/tendermint/abci/types"
 )
 
 type ResultBlockchainInfo struct {
@@ -58,9 +58,14 @@ type ResultDumpConsensusState struct {
 }
 
 type ResultBroadcastTx struct {
-	Code tmsp.CodeType `json:"code"`
+	Code abci.CodeType `json:"code"`
 	Data []byte        `json:"data"`
 	Log  string        `json:"log"`
+}
+
+type ResultBroadcastTxCommit struct {
+	CheckTx  *abci.ResponseCheckTx  `json:"check_tx"`
+	DeliverTx *abci.ResponseDeliverTx `json:"deliver_tx"`
 }
 
 type ResultUnconfirmedTxs struct {
@@ -68,12 +73,15 @@ type ResultUnconfirmedTxs struct {
 	Txs []types.Tx `json:"txs"`
 }
 
-type ResultTMSPInfo struct {
-	Result tmsp.Result `json:"result"`
+type ResultABCIInfo struct {
+	Data             string `json:"data"`
+	Version          string `json:"version"`
+	LastBlockHeight  uint64 `json:"last_block_height"`
+	LastBlockAppHash []byte `json:"last_block_app_hash"`
 }
 
-type ResultTMSPQuery struct {
-	Result tmsp.Result `json:"result"`
+type ResultABCIQuery struct {
+	Result abci.Result `json:"result"`
 }
 
 type ResultUnsafeFlushMempool struct{}
@@ -112,12 +120,13 @@ const (
 	ResultTypeDumpConsensusState = byte(0x41)
 
 	// 0x6 bytes are for txs / the application
-	ResultTypeBroadcastTx    = byte(0x60)
-	ResultTypeUnconfirmedTxs = byte(0x61)
+	ResultTypeBroadcastTx       = byte(0x60)
+	ResultTypeUnconfirmedTxs    = byte(0x61)
+	ResultTypeBroadcastTxCommit = byte(0x62)
 
 	// 0x7 bytes are for querying the application
-	ResultTypeTMSPQuery = byte(0x70)
-	ResultTypeTMSPInfo  = byte(0x71)
+	ResultTypeABCIQuery = byte(0x70)
+	ResultTypeABCIInfo  = byte(0x71)
 
 	// 0x8 bytes are for events
 	ResultTypeSubscribe   = byte(0x80)
@@ -148,6 +157,7 @@ var _ = wire.RegisterInterface(
 	wire.ConcreteType{&ResultValidators{}, ResultTypeValidators},
 	wire.ConcreteType{&ResultDumpConsensusState{}, ResultTypeDumpConsensusState},
 	wire.ConcreteType{&ResultBroadcastTx{}, ResultTypeBroadcastTx},
+	wire.ConcreteType{&ResultBroadcastTxCommit{}, ResultTypeBroadcastTxCommit},
 	wire.ConcreteType{&ResultUnconfirmedTxs{}, ResultTypeUnconfirmedTxs},
 	wire.ConcreteType{&ResultSubscribe{}, ResultTypeSubscribe},
 	wire.ConcreteType{&ResultUnsubscribe{}, ResultTypeUnsubscribe},
@@ -157,6 +167,6 @@ var _ = wire.RegisterInterface(
 	wire.ConcreteType{&ResultUnsafeProfile{}, ResultTypeUnsafeStopCPUProfiler},
 	wire.ConcreteType{&ResultUnsafeProfile{}, ResultTypeUnsafeWriteHeapProfile},
 	wire.ConcreteType{&ResultUnsafeFlushMempool{}, ResultTypeUnsafeFlushMempool},
-	wire.ConcreteType{&ResultTMSPQuery{}, ResultTypeTMSPQuery},
-	wire.ConcreteType{&ResultTMSPInfo{}, ResultTypeTMSPInfo},
+	wire.ConcreteType{&ResultABCIQuery{}, ResultTypeABCIQuery},
+	wire.ConcreteType{&ResultABCIInfo{}, ResultTypeABCIInfo},
 )

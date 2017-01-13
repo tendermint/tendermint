@@ -41,10 +41,10 @@ Commands:
 	case "node":
 		node.RunNode(config)
 	case "replay":
-		if len(args) > 1 && args[1] == "console" {
-			node.RunReplayConsole(config)
+		if len(args) > 2 && args[1] == "console" {
+			node.RunReplayConsole(config, args[2])
 		} else {
-			node.RunReplay(config)
+			node.RunReplay(config, args[1])
 		}
 	case "init":
 		init_files()

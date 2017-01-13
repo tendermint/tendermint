@@ -8,7 +8,7 @@ import (
 	"github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
-	tmsp "github.com/tendermint/tmsp/types"
+	abci "github.com/tendermint/abci/types"
 )
 
 //-----------------------------------------------------
@@ -28,7 +28,7 @@ type Consensus interface {
 
 type Mempool interface {
 	Size() int
-	CheckTx(types.Tx, func(*tmsp.Response)) error
+	CheckTx(types.Tx, func(*abci.Response)) error
 	Reap(int) []types.Tx
 	Flush()
 }

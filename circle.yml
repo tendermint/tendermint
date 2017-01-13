@@ -29,7 +29,9 @@ dependencies:
 
 test:
   override:
-    - "cd $REPO && make test_integrations"
+    - "cd $REPO && set -o pipefail && make test_integrations | tee ~/test_integrations.log":
+        timeout: 1800
+    - "cp ~/test_integrations.log $CIRCLE_ARTIFACTS"
   post:
     - "cd $REPO && bash <(curl -s https://codecov.io/bash)"
 

@@ -10,6 +10,8 @@ bash ./test/docker/build.sh
 
 echo ""
 echo "* running go tests and app tests in docker container"
+# sometimes its helpful to mount the local test folder
+# -v $GOPATH/src/github.com/tendermint/tendermint/test:/go/src/github.com/tendermint/tendermint/test
 docker run --name run_test -t tester bash test/run_test.sh
 
 # copy the coverage results out of docker container
@@ -25,6 +27,8 @@ bash test/p2p/test.sh tester
 BRANCH=`git rev-parse --abbrev-ref HEAD`
 if [[ $(echo "$BRANCH" | grep "release-") != "" ]]; then
 	echo ""
-	echo "* branch $BRANCH; running mintnet/netmon throughput benchmark"
-	bash test/net/test.sh
+	echo "TODO: run network tests"
+	#echo "* branch $BRANCH; running mintnet/netmon throughput benchmark"
+	# TODO: replace mintnet 
+	#bash test/net/test.sh
 fi

@@ -7,12 +7,13 @@ import (
 	"sync/atomic"
 	"time"
 
+	auto "github.com/tendermint/go-autofile"
 	"github.com/tendermint/go-clist"
 	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
-	tmsp "github.com/tendermint/tmsp/types"
+	abci "github.com/tendermint/abci/types"
 )
 
 /*
@@ -39,7 +40,7 @@ Garbage collection of old elements from mempool.txs is handlde via
 the DetachPrev() call, which makes old elements not reachable by
 peer broadcastTxRoutine() automatically garbage collected.
 
-TODO: Better handle tmsp client errors. (make it automatically handle connection errors)
+TODO: Better handle abci client errors. (make it automatically handle connection errors)
 
 */
 
@@ -62,7 +63,7 @@ type Mempool struct {
 	cache *txCache
 
 	// A log of mempool txs
-	wal *AutoFile
+	wal *auto.AutoFile
 }
 
 func NewMempool(config cfg.Config, proxyAppConn proxy.AppConnMempool) *Mempool {
@@ -84,10 +85,16 @@ func NewMempool(config cfg.Config, proxyAppConn proxy.AppConnMempool) *Mempool {
 }
 
 func (mem *Mempool) initWAL() {
-	walFileName := mem.config.GetString("mempool_wal")
-	if walFileName != "" {
-		af, err := OpenAutoFile(walFileName)
+	walDir := mem.config.GetString("mempool_wal_dir")
+	if walDir != "" {
+		err := EnsureDir(walDir, 0700)
 		if err != nil {
+			log.Error("Error ensuring Mempool wal dir", "error", err)
+			PanicSanity(err)
+		}
+		af, err := auto.OpenAutoFile(walDir + "/wal")
+		if err != nil {
+			log.Error("Error opening Mempool wal file", "error", err)
 			PanicSanity(err)
 		}
 		mem.wal = af
@@ -132,17 +139,17 @@ func (mem *Mempool) TxsFrontWait() *clist.CElement {
 // cb: A callback from the CheckTx command.
 //     It gets called from another goroutine.
 // CONTRACT: Either cb will get called, or err returned.
-func (mem *Mempool) CheckTx(tx types.Tx, cb func(*tmsp.Response)) (err error) {
+func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 	mem.proxyMtx.Lock()
 	defer mem.proxyMtx.Unlock()
 
 	// CACHE
 	if mem.cache.Exists(tx) {
 		if cb != nil {
-			cb(&tmsp.Response{
-				Value: &tmsp.Response_CheckTx{
-					&tmsp.ResponseCheckTx{
-						Code: tmsp.CodeType_BadNonce, // TODO or duplicate tx
+			cb(&abci.Response{
+				Value: &abci.Response_CheckTx{
+					&abci.ResponseCheckTx{
+						Code: abci.CodeType_BadNonce, // TODO or duplicate tx
 						Log:  "Duplicate transaction (ignored)",
 					},
 				},
@@ -173,8 +180,8 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*tmsp.Response)) (err error) {
 	return nil
 }
 
-// TMSP callback function
-func (mem *Mempool) resCb(req *tmsp.Request, res *tmsp.Response) {
+// ABCI callback function
+func (mem *Mempool) resCb(req *abci.Request, res *abci.Response) {
 	if mem.recheckCursor == nil {
 		mem.resCbNormal(req, res)
 	} else {
@@ -182,10 +189,10 @@ func (mem *Mempool) resCb(req *tmsp.Request, res *tmsp.Response) {
 	}
 }
 
-func (mem *Mempool) resCbNormal(req *tmsp.Request, res *tmsp.Response) {
+func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
 	switch r := res.Value.(type) {
-	case *tmsp.Response_CheckTx:
-		if r.CheckTx.Code == tmsp.CodeType_OK {
+	case *abci.Response_CheckTx:
+		if r.CheckTx.Code == abci.CodeType_OK {
 			mem.counter++
 			memTx := &mempoolTx{
 				counter: mem.counter,
@@ -207,15 +214,15 @@ func (mem *Mempool) resCbNormal(req *tmsp.Request, res *tmsp.Response) {
 	}
 }
 
-func (mem *Mempool) resCbRecheck(req *tmsp.Request, res *tmsp.Response) {
+func (mem *Mempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 	switch r := res.Value.(type) {
-	case *tmsp.Response_CheckTx:
+	case *abci.Response_CheckTx:
 		memTx := mem.recheckCursor.Value.(*mempoolTx)
 		if !bytes.Equal(req.GetCheckTx().Tx, memTx.tx) {
 			PanicSanity(Fmt("Unexpected tx response from proxy during recheck\n"+
 				"Expected %X, got %X", r.CheckTx.Data, memTx.tx))
 		}
-		if r.CheckTx.Code == tmsp.CodeType_OK {
+		if r.CheckTx.Code == abci.CodeType_OK {
 			// Good, nothing to do.
 		} else {
 			// Tx became invalidated due to newly committed block.
@@ -275,8 +282,7 @@ func (mem *Mempool) collectTxs(maxTxs int) []types.Tx {
 // NOTE: this should be called *after* block is committed by consensus.
 // NOTE: unsafe; Lock/Unlock must be managed by caller
 func (mem *Mempool) Update(height int, txs []types.Tx) {
-	//	mem.proxyMtx.Lock()
-	//	defer mem.proxyMtx.Unlock()
+	// TODO: check err ?
 	mem.proxyAppConn.FlushSync() // To flush async resCb calls e.g. from CheckTx
 
 	// First, create a lookup map of txns in new txs.

@@ -9,6 +9,7 @@ import (
 
 	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
+	"github.com/tendermint/go-logger"
 )
 
 func init() {
@@ -33,6 +34,7 @@ func initTMRoot(rootDir string) {
 	}
 	// Create new dir
 	EnsureDir(rootDir, 0700)
+	EnsureDir(rootDir+"/data", 0700)
 
 	configFilePath := path.Join(rootDir, "config.toml")
 	genesisFilePath := path.Join(rootDir, "genesis.json")
@@ -68,7 +70,7 @@ func ResetConfig(localPath string) cfg.Config {
 	mapConfig.SetDefault("chain_id", "tendermint_test")
 	mapConfig.SetDefault("genesis_file", rootDir+"/genesis.json")
 	mapConfig.SetDefault("proxy_app", "dummy")
-	mapConfig.SetDefault("tmsp", "socket")
+	mapConfig.SetDefault("abci", "socket")
 	mapConfig.SetDefault("moniker", "anonymous")
 	mapConfig.SetDefault("node_laddr", "tcp://0.0.0.0:36656")
 	mapConfig.SetDefault("fast_sync", false)
@@ -79,27 +81,32 @@ func ResetConfig(localPath string) cfg.Config {
 	mapConfig.SetDefault("priv_validator_file", rootDir+"/priv_validator.json")
 	mapConfig.SetDefault("db_backend", "memdb")
 	mapConfig.SetDefault("db_dir", rootDir+"/data")
-	mapConfig.SetDefault("log_level", "debug")
+	mapConfig.SetDefault("log_level", "info")
 	mapConfig.SetDefault("rpc_laddr", "tcp://0.0.0.0:36657")
+	mapConfig.SetDefault("grpc_laddr", "tcp://0.0.0.0:36658")
 	mapConfig.SetDefault("prof_laddr", "")
 	mapConfig.SetDefault("revision_file", rootDir+"/revision")
-	mapConfig.SetDefault("cswal", rootDir+"/data/cswal")
-	mapConfig.SetDefault("cswal_light", false)
+	mapConfig.SetDefault("cs_wal_dir", rootDir+"/data/cs.wal")
+	mapConfig.SetDefault("cs_wal_light", false)
 	mapConfig.SetDefault("filter_peers", false)
 
 	mapConfig.SetDefault("block_size", 10000)
+	mapConfig.SetDefault("block_part_size", 65536) // part size 64K
 	mapConfig.SetDefault("disable_data_hash", false)
 	mapConfig.SetDefault("timeout_propose", 2000)
-	mapConfig.SetDefault("timeout_propose_delta", 500)
-	mapConfig.SetDefault("timeout_prevote", 1000)
-	mapConfig.SetDefault("timeout_prevote_delta", 500)
-	mapConfig.SetDefault("timeout_precommit", 1000)
-	mapConfig.SetDefault("timeout_precommit_delta", 500)
-	mapConfig.SetDefault("timeout_commit", 100)
+	mapConfig.SetDefault("timeout_propose_delta", 1)
+	mapConfig.SetDefault("timeout_prevote", 10)
+	mapConfig.SetDefault("timeout_prevote_delta", 1)
+	mapConfig.SetDefault("timeout_precommit", 10)
+	mapConfig.SetDefault("timeout_precommit_delta", 1)
+	mapConfig.SetDefault("timeout_commit", 10)
+	mapConfig.SetDefault("skip_timeout_commit", true)
 	mapConfig.SetDefault("mempool_recheck", true)
 	mapConfig.SetDefault("mempool_recheck_empty", true)
 	mapConfig.SetDefault("mempool_broadcast", true)
-	mapConfig.SetDefault("mempool_wal", "")
+	mapConfig.SetDefault("mempool_wal_dir", "")
+
+	logger.SetLogLevel(mapConfig.GetString("log_level"))
 
 	return mapConfig
 }
@@ -113,7 +120,7 @@ node_laddr = "tcp://0.0.0.0:36656"
 seeds = ""
 fast_sync = false
 db_backend = "memdb"
-log_level = "debug"
+log_level = "info"
 rpc_laddr = "tcp://0.0.0.0:36657"
 `
 

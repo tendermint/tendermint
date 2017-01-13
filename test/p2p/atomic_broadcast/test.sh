@@ -1,59 +1,28 @@
 #! /bin/bash
+set -u
+
+N=$1
 
 ###################################################################
-# wait for all peers to come online
+# assumes peers are already synced up
+# test sending txs
 # for each peer:
-# 	wait to have 3 peers
-#	wait to be at height > 1
 #	send a tx, wait for commit
 #	assert app hash on every peer reflects the post tx state
 ###################################################################
-
-N=4
-
-# wait for everyone to come online
-echo "Waiting for nodes to come online"
-for i in `seq 1 $N`; do
-	addr=$(test/p2p/ip.sh $i):46657
-	curl -s $addr/status > /dev/null
-	ERR=$?
-	while [ "$ERR" != 0 ]; do
-		sleep 1	
-		curl -s $addr/status > /dev/null
-		ERR=$?
-	done
-	echo "... node $i is up"
-done
 
 echo ""
 # run the test on each of them
 for i in `seq 1 $N`; do
 	addr=$(test/p2p/ip.sh $i):46657
 
-	# - assert everyone has 3 other peers
-	N_PEERS=`curl -s $addr/net_info | jq '.result[1].peers | length'`
-	while [ "$N_PEERS" != 3 ]; do
-		echo "Waiting for node $i to connect to all peers ..."
-		sleep 1
-		N_PEERS=`curl -s $addr/net_info | jq '.result[1].peers | length'`
-	done
-
-	# - assert block height is greater than 1
-	BLOCK_HEIGHT=`curl -s $addr/status | jq .result[1].latest_block_height`
-	while [ "$BLOCK_HEIGHT" -le 1 ]; do
-		echo "Waiting for node $i to commit a block ..."
-		sleep 1
-		BLOCK_HEIGHT=`curl -s $addr/status | jq .result[1].latest_block_height`
-	done
-	echo "Node $i is connected to all peers and at block $BLOCK_HEIGHT"
-
 	# current state
 	HASH1=`curl -s $addr/status | jq .result[1].latest_app_hash`
 	
 	# - send a tx
-	TX=\"aadeadbeefbeefbeef0$i\"
+	TX=aadeadbeefbeefbeef0$i
 	echo "Broadcast Tx $TX"
-	curl -s $addr/broadcast_tx_commit?tx=$TX
+	curl -s $addr/broadcast_tx_commit?tx=0x$TX
 	echo ""
 
 	# we need to wait another block to get the new app_hash

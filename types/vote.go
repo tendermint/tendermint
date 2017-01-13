@@ -11,41 +11,56 @@ import (
 )
 
 var (
-	ErrVoteUnexpectedStep   = errors.New("Unexpected step")
-	ErrVoteInvalidAccount   = errors.New("Invalid round vote account")
-	ErrVoteInvalidSignature = errors.New("Invalid round vote signature")
-	ErrVoteInvalidBlockHash = errors.New("Invalid block hash")
+	ErrVoteUnexpectedStep          = errors.New("Unexpected step")
+	ErrVoteInvalidValidatorIndex   = errors.New("Invalid round vote validator index")
+	ErrVoteInvalidValidatorAddress = errors.New("Invalid round vote validator address")
+	ErrVoteInvalidSignature        = errors.New("Invalid round vote signature")
+	ErrVoteInvalidBlockHash        = errors.New("Invalid block hash")
 )
 
-type ErrVoteConflictingSignature struct {
+type ErrVoteConflictingVotes struct {
 	VoteA *Vote
 	VoteB *Vote
 }
 
-func (err *ErrVoteConflictingSignature) Error() string {
-	return "Conflicting round vote signature"
-}
-
-// Represents a prevote, precommit, or commit vote from validators for consensus.
-type Vote struct {
-	Height           int                     `json:"height"`
-	Round            int                     `json:"round"`
-	Type             byte                    `json:"type"`
-	BlockHash        []byte                  `json:"block_hash"`         // empty if vote is nil.
-	BlockPartsHeader PartSetHeader           `json:"block_parts_header"` // zero if vote is nil.
-	Signature        crypto.SignatureEd25519 `json:"signature"`
+func (err *ErrVoteConflictingVotes) Error() string {
+	return "Conflicting votes"
 }
 
 // Types of votes
+// TODO Make a new type "VoteType"
 const (
 	VoteTypePrevote   = byte(0x01)
 	VoteTypePrecommit = byte(0x02)
 )
 
+func IsVoteTypeValid(type_ byte) bool {
+	switch type_ {
+	case VoteTypePrevote:
+		return true
+	case VoteTypePrecommit:
+		return true
+	default:
+		return false
+	}
+}
+
+// Represents a prevote, precommit, or commit vote from validators for consensus.
+type Vote struct {
+	ValidatorAddress []byte           `json:"validator_address"`
+	ValidatorIndex   int              `json:"validator_index"`
+	Height           int              `json:"height"`
+	Round            int              `json:"round"`
+	Type             byte             `json:"type"`
+	BlockID          BlockID          `json:"block_id"` // zero if vote is nil.
+	Signature        crypto.Signature `json:"signature"`
+}
+
 func (vote *Vote) WriteSignBytes(chainID string, w io.Writer, n *int, err *error) {
-	wire.WriteTo([]byte(Fmt(`{"chain_id":"%s"`, chainID)), w, n, err)
-	wire.WriteTo([]byte(Fmt(`,"vote":{"block_hash":"%X","block_parts_header":%v`, vote.BlockHash, vote.BlockPartsHeader)), w, n, err)
-	wire.WriteTo([]byte(Fmt(`,"height":%v,"round":%v,"type":%v}}`, vote.Height, vote.Round, vote.Type)), w, n, err)
+	wire.WriteJSON(CanonicalJSONOnceVote{
+		chainID,
+		CanonicalVote(vote),
+	}, w, n, err)
 }
 
 func (vote *Vote) Copy() *Vote {
@@ -67,5 +82,8 @@ func (vote *Vote) String() string {
 		PanicSanity("Unknown vote type")
 	}
 
-	return fmt.Sprintf("Vote{%v/%02d/%v(%v) %X#%v %v}", vote.Height, vote.Round, vote.Type, typeString, Fingerprint(vote.BlockHash), vote.BlockPartsHeader, vote.Signature)
+	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %v}",
+		vote.ValidatorIndex, Fingerprint(vote.ValidatorAddress),
+		vote.Height, vote.Round, vote.Type, typeString,
+		Fingerprint(vote.BlockID.Hash), vote.Signature)
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sync"
 
 	. "github.com/tendermint/go-common"
 	dbm "github.com/tendermint/go-db"
@@ -27,8 +28,10 @@ the Commit data outside the Block.
 Panics indicate probable corruption in the data
 */
 type BlockStore struct {
+	db dbm.DB
+
+	mtx    sync.RWMutex
 	height int
-	db     dbm.DB
 }
 
 func NewBlockStore(db dbm.DB) *BlockStore {
@@ -41,6 +44,8 @@ func NewBlockStore(db dbm.DB) *BlockStore {
 
 // Height() returns the last known contiguous block height.
 func (bs *BlockStore) Height() int {
+	bs.mtx.RLock()
+	defer bs.mtx.RUnlock()
 	return bs.height
 }
 
@@ -141,8 +146,8 @@ func (bs *BlockStore) LoadSeenCommit(height int) *types.Commit {
 //             most recent height.  Otherwise they'd stall at H-1.
 func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit) {
 	height := block.Height
-	if height != bs.height+1 {
-		PanicSanity(Fmt("BlockStore can only save contiguous blocks. Wanted %v, got %v", bs.height+1, height))
+	if height != bs.Height()+1 {
+		PanicSanity(Fmt("BlockStore can only save contiguous blocks. Wanted %v, got %v", bs.Height()+1, height))
 	}
 	if !blockParts.IsComplete() {
 		PanicSanity(Fmt("BlockStore can only save complete block part sets"))
@@ -163,6 +168,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	bs.db.Set(calcBlockCommitKey(height-1), blockCommitBytes)
 
 	// Save seen commit (seen +2/3 precommits for block)
+	// NOTE: we can delete this at a later height
 	seenCommitBytes := wire.BinaryBytes(seenCommit)
 	bs.db.Set(calcSeenCommitKey(height), seenCommitBytes)
 
@@ -170,12 +176,17 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	BlockStoreStateJSON{Height: height}.Save(bs.db)
 
 	// Done!
+	bs.mtx.Lock()
 	bs.height = height
+	bs.mtx.Unlock()
+
+	// Flush
+	bs.db.SetSync(nil, nil)
 }
 
 func (bs *BlockStore) saveBlockPart(height int, index int, part *types.Part) {
-	if height != bs.height+1 {
-		PanicSanity(Fmt("BlockStore can only save contiguous blocks. Wanted %v, got %v", bs.height+1, height))
+	if height != bs.Height()+1 {
+		PanicSanity(Fmt("BlockStore can only save contiguous blocks. Wanted %v, got %v", bs.Height()+1, height))
 	}
 	partBytes := wire.BinaryBytes(part)
 	bs.db.Set(calcBlockPartKey(height, index), partBytes)
@@ -212,7 +223,7 @@ func (bsj BlockStoreStateJSON) Save(db dbm.DB) {
 	if err != nil {
 		PanicSanity(Fmt("Could not marshal state bytes: %v", err))
 	}
-	db.Set(blockStoreKey, bytes)
+	db.SetSync(blockStoreKey, bytes)
 }
 
 func LoadBlockStoreStateJSON(db dbm.DB) BlockStoreStateJSON {

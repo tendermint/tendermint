@@ -5,29 +5,29 @@ import (
 	"testing"
 
 	. "github.com/tendermint/go-common"
-	tmspcli "github.com/tendermint/tmsp/client"
-	"github.com/tendermint/tmsp/example/dummy"
-	"github.com/tendermint/tmsp/server"
-	"github.com/tendermint/tmsp/types"
+	abcicli "github.com/tendermint/abci/client"
+	"github.com/tendermint/abci/example/dummy"
+	"github.com/tendermint/abci/server"
+	"github.com/tendermint/abci/types"
 )
 
 //----------------------------------------
 
 type AppConnTest interface {
-	EchoAsync(string) *tmspcli.ReqRes
+	EchoAsync(string) *abcicli.ReqRes
 	FlushSync() error
-	InfoSync() (res types.Result)
+	InfoSync() (types.ResponseInfo, error)
 }
 
 type appConnTest struct {
-	appConn tmspcli.Client
+	appConn abcicli.Client
 }
 
-func NewAppConnTest(appConn tmspcli.Client) AppConnTest {
+func NewAppConnTest(appConn abcicli.Client) AppConnTest {
 	return &appConnTest{appConn}
 }
 
-func (app *appConnTest) EchoAsync(msg string) *tmspcli.ReqRes {
+func (app *appConnTest) EchoAsync(msg string) *abcicli.ReqRes {
 	return app.appConn.EchoAsync(msg)
 }
 
@@ -35,7 +35,7 @@ func (app *appConnTest) FlushSync() error {
 	return app.appConn.FlushSync()
 }
 
-func (app *appConnTest) InfoSync() types.Result {
+func (app *appConnTest) InfoSync() (types.ResponseInfo, error) {
 	return app.appConn.InfoSync()
 }
 
@@ -54,7 +54,7 @@ func TestEcho(t *testing.T) {
 	}
 	defer s.Stop()
 	// Start client
-	cli, err := clientCreator.NewTMSPClient()
+	cli, err := clientCreator.NewABCIClient()
 	if err != nil {
 		Exit(err.Error())
 	}
@@ -78,7 +78,7 @@ func BenchmarkEcho(b *testing.B) {
 	}
 	defer s.Stop()
 	// Start client
-	cli, err := clientCreator.NewTMSPClient()
+	cli, err := clientCreator.NewABCIClient()
 	if err != nil {
 		Exit(err.Error())
 	}
@@ -107,18 +107,18 @@ func TestInfo(t *testing.T) {
 	}
 	defer s.Stop()
 	// Start client
-	cli, err := clientCreator.NewTMSPClient()
+	cli, err := clientCreator.NewABCIClient()
 	if err != nil {
 		Exit(err.Error())
 	}
 	proxy := NewAppConnTest(cli)
 	t.Log("Connected")
 
-	res := proxy.InfoSync()
-	if res.IsErr() {
+	resInfo, err := proxy.InfoSync()
+	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
-	if string(res.Data) != "size:0" {
-		t.Error("Expected ResponseInfo with one element 'size:0' but got something else")
+	if string(resInfo.Data) != "{\"size\":0}" {
+		t.Error("Expected ResponseInfo with one element '{\"size\":0}' but got something else")
 	}
 }

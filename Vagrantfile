@@ -1,25 +1,33 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-# Vagrantfile API/syntax version. Don't touch unless you know what you're doing!
-VAGRANTFILE_API_VERSION = "2"
+Vagrant.configure("2") do |config|
+  config.vm.box = "ubuntu/trusty64"
 
-Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
-  config.vm.box = "phusion-open-ubuntu-14.04-amd64"
-  config.vm.box_url = "https://oss-binaries.phusionpassenger.com/vagrant/boxes/latest/ubuntu-14.04-amd64-vbox.box"
-  # Or, for Ubuntu 12.04:
-
-  config.vm.provider :vmware_fusion do |f, override|
-    override.vm.box_url = "https://oss-binaries.phusionpassenger.com/vagrant/boxes/latest/ubuntu-14.04-amd64-vmwarefusion.box"
+  config.vm.provider "virtualbox" do |v|
+    v.memory = 2048
+    v.cpus = 2
   end
 
-  if Dir.glob("#{File.dirname(__FILE__)}/.vagrant/machines/default/*/id").empty?
-    # Install Docker
-    pkg_cmd = "wget -q -O - https://get.docker.io/gpg | apt-key add -;" \
-      "echo deb http://get.docker.io/ubuntu docker main > /etc/apt/sources.list.d/docker.list;" \
-      "apt-get update -qq; apt-get install -q -y --force-yes lxc-docker; "
-    # Add vagrant user to the docker group
-    pkg_cmd << "usermod -a -G docker vagrant; "
-    config.vm.provision :shell, :inline => pkg_cmd
-  end
+  config.vm.provision "shell", inline: <<-SHELL
+    apt-get update
+    apt-get install -y --no-install-recommends wget curl jq shellcheck bsdmainutils psmisc
+
+    wget -qO- https://get.docker.com/ | sh
+    usermod -a -G docker vagrant
+
+    curl -O https://storage.googleapis.com/golang/go1.6.linux-amd64.tar.gz
+    tar -xvf go1.7.linux-amd64.tar.gz
+    mv go /usr/local
+    echo 'export PATH=$PATH:/usr/local/go/bin' >> /home/vagrant/.profile
+    mkdir -p /home/vagrant/go/bin
+    chown -R vagrant:vagrant /home/vagrant/go
+    echo 'export GOPATH=/home/vagrant/go' >> /home/vagrant/.profile
+
+    mkdir -p /home/vagrant/go/src/github.com/tendermint
+    ln -s /vagrant /home/vagrant/go/src/github.com/tendermint/tendermint
+
+    su - vagrant -c 'curl https://glide.sh/get | sh'
+    su - vagrant -c 'cd /vagrant/ && glide install && make test'
+  SHELL
 end

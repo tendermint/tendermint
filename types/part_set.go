@@ -14,10 +14,6 @@ import (
 	"github.com/tendermint/go-wire"
 )
 
-const (
-	partSize = 65536 // 64KB ...  4096 // 4KB
-)
-
 var (
 	ErrPartSetUnexpectedIndex = errors.New("Error part set unexpected index")
 	ErrPartSetInvalidProof    = errors.New("Error part set invalid proof")
@@ -66,7 +62,7 @@ type PartSetHeader struct {
 }
 
 func (psh PartSetHeader) String() string {
-	return fmt.Sprintf("PartSet{T:%v %X}", psh.Total, Fingerprint(psh.Hash))
+	return fmt.Sprintf("%v:%X", psh.Total, Fingerprint(psh.Hash))
 }
 
 func (psh PartSetHeader) IsZero() bool {
@@ -78,7 +74,7 @@ func (psh PartSetHeader) Equals(other PartSetHeader) bool {
 }
 
 func (psh PartSetHeader) WriteSignBytes(w io.Writer, n *int, err *error) {
-	wire.WriteTo([]byte(Fmt(`{"hash":"%X","total":%v}`, psh.Hash, psh.Total)), w, n, err)
+	wire.WriteJSON(CanonicalPartSetHeader(psh), w, n, err)
 }
 
 //-------------------------------------
@@ -95,7 +91,7 @@ type PartSet struct {
 
 // Returns an immutable, full PartSet from the data bytes.
 // The data bytes are split into "partSize" chunks, and merkle tree computed.
-func NewPartSetFromData(data []byte) *PartSet {
+func NewPartSetFromData(data []byte, partSize int) *PartSet {
 	// divide data into 4kb parts.
 	total := (len(data) + partSize - 1) / partSize
 	parts := make([]*Part, total)

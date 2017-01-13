@@ -3,52 +3,72 @@ package consensus
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path"
 	"sort"
 	"sync"
 	"testing"
 	"time"
 
+	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
 	dbm "github.com/tendermint/go-db"
+	"github.com/tendermint/go-p2p"
 	bc "github.com/tendermint/tendermint/blockchain"
+	"github.com/tendermint/tendermint/config/tendermint_test"
 	mempl "github.com/tendermint/tendermint/mempool"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	tmspcli "github.com/tendermint/tmsp/client"
-	tmsp "github.com/tendermint/tmsp/types"
+	abcicli "github.com/tendermint/abci/client"
+	abci "github.com/tendermint/abci/types"
 
-	"github.com/tendermint/tmsp/example/counter"
-	"github.com/tendermint/tmsp/example/dummy"
+	"github.com/tendermint/abci/example/counter"
+	"github.com/tendermint/abci/example/dummy"
 )
 
 var config cfg.Config // NOTE: must be reset for each _test.go file
 var ensureTimeout = time.Duration(2)
 
+func ensureDir(dir string, mode os.FileMode) {
+	if err := EnsureDir(dir, mode); err != nil {
+		panic(err)
+	}
+}
+
+//-------------------------------------------------------------------------------
+// validator stub (a dummy consensus peer we control)
+
 type validatorStub struct {
+	Index  int // Validator index. NOTE: we don't assume validator set changes.
 	Height int
 	Round  int
 	*types.PrivValidator
 }
 
-func NewValidatorStub(privValidator *types.PrivValidator) *validatorStub {
+var testMinPower = 10
+
+func NewValidatorStub(privValidator *types.PrivValidator, valIndex int) *validatorStub {
 	return &validatorStub{
+		Index:         valIndex,
 		PrivValidator: privValidator,
 	}
 }
 
 func (vs *validatorStub) signVote(voteType byte, hash []byte, header types.PartSetHeader) (*types.Vote, error) {
 	vote := &types.Vote{
+		ValidatorIndex:   vs.Index,
+		ValidatorAddress: vs.PrivValidator.Address,
 		Height:           vs.Height,
 		Round:            vs.Round,
 		Type:             voteType,
-		BlockHash:        hash,
-		BlockPartsHeader: header,
+		BlockID:          types.BlockID{hash, header},
 	}
 	err := vs.PrivValidator.SignVote(config.GetString("chain_id"), vote)
 	return vote, err
 }
 
-// convenienve function for testing
+// Sign vote for type/hash/header
 func signVote(vs *validatorStub, voteType byte, hash []byte, header types.PartSetHeader) *types.Vote {
 	v, err := vs.signVote(voteType, hash, header)
 	if err != nil {
@@ -57,181 +77,13 @@ func signVote(vs *validatorStub, voteType byte, hash []byte, header types.PartSe
 	return v
 }
 
-// create proposal block from cs1 but sign it with vs
-func decideProposal(cs1 *ConsensusState, cs2 *validatorStub, height, round int) (proposal *types.Proposal, block *types.Block) {
-	block, blockParts := cs1.createProposalBlock()
-	if block == nil { // on error
-		panic("error creating proposal block")
-	}
-
-	// Make proposal
-	proposal = types.NewProposal(height, round, blockParts.Header(), cs1.Votes.POLRound())
-	if err := cs2.SignProposal(config.GetString("chain_id"), proposal); err != nil {
-		panic(err)
-	}
-	return
-}
-
-//-------------------------------------------------------------------------------
-// utils
-
-/*
-func nilRound(t *testing.T, cs1 *ConsensusState, vss ...*validatorStub) {
-	cs1.mtx.Lock()
-	height, round := cs1.Height, cs1.Round
-	cs1.mtx.Unlock()
-
-	waitFor(t, cs1, height, round, RoundStepPrevote)
-
-	signAddVoteToFromMany(types.VoteTypePrevote, cs1, nil, cs1.ProposalBlockParts.Header(), vss...)
-
-	waitFor(t, cs1, height, round, RoundStepPrecommit)
-
-	signAddVoteToFromMany(types.VoteTypePrecommit, cs1, nil, cs1.ProposalBlockParts.Header(), vss...)
-
-	waitFor(t, cs1, height, round+1, RoundStepNewRound)
-}
-*/
-
-// NOTE: this switches the propser as far as `perspectiveOf` is concerned,
-// but for simplicity we return a block it generated.
-func changeProposer(t *testing.T, perspectiveOf *ConsensusState, newProposer *validatorStub) *types.Block {
-	_, v1 := perspectiveOf.Validators.GetByAddress(perspectiveOf.privValidator.Address)
-	v1.Accum, v1.VotingPower = 0, 0
-	if updated := perspectiveOf.Validators.Update(v1); !updated {
-		panic("failed to update validator")
-	}
-	_, v2 := perspectiveOf.Validators.GetByAddress(newProposer.Address)
-	v2.Accum, v2.VotingPower = 100, 100
-	if updated := perspectiveOf.Validators.Update(v2); !updated {
-		panic("failed to update validator")
-	}
-
-	// make the proposal
-	propBlock, _ := perspectiveOf.createProposalBlock()
-	if propBlock == nil {
-		panic("Failed to create proposal block with cs2")
-	}
-	return propBlock
-}
-
-func fixVotingPower(t *testing.T, cs1 *ConsensusState, addr2 []byte) {
-	_, v1 := cs1.Validators.GetByAddress(cs1.privValidator.Address)
-	_, v2 := cs1.Validators.GetByAddress(addr2)
-	v1.Accum, v1.VotingPower = v2.Accum, v2.VotingPower
-	if updated := cs1.Validators.Update(v1); !updated {
-		panic("failed to update validator")
-	}
-}
-
-func addVoteToFromMany(to *ConsensusState, votes []*types.Vote, froms ...*validatorStub) {
-	if len(votes) != len(froms) {
-		panic("len(votes) and len(froms) must match")
-	}
-
-	for i, from := range froms {
-		addVoteToFrom(to, from, votes[i])
-	}
-}
-
-func addVoteToFrom(to *ConsensusState, from *validatorStub, vote *types.Vote) {
-	to.mtx.Lock() // NOTE: wont need this when the vote comes with the index!
-	valIndex, _ := to.Validators.GetByAddress(from.PrivValidator.Address)
-	to.mtx.Unlock()
-
-	to.peerMsgQueue <- msgInfo{Msg: &VoteMessage{valIndex, vote}}
-	// added, err := to.TryAddVote(valIndex, vote, "")
-	/*
-		if _, ok := err.(*types.ErrVoteConflictingSignature); ok {
-			// let it fly
-		} else if !added {
-			fmt.Println("to, from, vote:", to.Height, from.Height, vote.Height)
-			panic(fmt.Sprintln("Failed to add vote. Err:", err))
-		} else if err != nil {
-			panic(fmt.Sprintln("Failed to add vote:", err))
-		}*/
-}
-
-func signVoteMany(voteType byte, hash []byte, header types.PartSetHeader, vss ...*validatorStub) []*types.Vote {
+func signVotes(voteType byte, hash []byte, header types.PartSetHeader, vss ...*validatorStub) []*types.Vote {
 	votes := make([]*types.Vote, len(vss))
 	for i, vs := range vss {
 		votes[i] = signVote(vs, voteType, hash, header)
 	}
 	return votes
 }
-
-// add vote to one cs from another
-// if voteCh is not nil, read all votes
-func signAddVoteToFromMany(voteType byte, to *ConsensusState, hash []byte, header types.PartSetHeader, voteCh chan interface{}, froms ...*validatorStub) {
-	var wg chan struct{} // when done reading all votes
-	if voteCh != nil {
-		wg = readVotes(voteCh, len(froms))
-	}
-	for _, from := range froms {
-		vote := signVote(from, voteType, hash, header)
-		addVoteToFrom(to, from, vote)
-	}
-
-	if voteCh != nil {
-		<-wg
-	}
-}
-
-func signAddVoteToFrom(voteType byte, to *ConsensusState, from *validatorStub, hash []byte, header types.PartSetHeader, voteCh chan interface{}) *types.Vote {
-	var wg chan struct{} // when done reading all votes
-	if voteCh != nil {
-		wg = readVotes(voteCh, 1)
-	}
-	vote := signVote(from, voteType, hash, header)
-	addVoteToFrom(to, from, vote)
-	if voteCh != nil {
-		<-wg
-	}
-	return vote
-}
-
-func ensureNoNewStep(stepCh chan interface{}) {
-	timeout := time.NewTicker(ensureTimeout * time.Second)
-	select {
-	case <-timeout.C:
-		break
-	case <-stepCh:
-		panic("We should be stuck waiting for more votes, not moving to the next step")
-	}
-}
-
-/*
-func ensureNoNewStep(t *testing.T, cs *ConsensusState) {
-	timeout := time.NewTicker(ensureTimeout * time.Second)
-	select {
-	case <-timeout.C:
-		break
-	case <-cs.NewStepCh():
-		panic("We should be stuck waiting for more votes, not moving to the next step")
-	}
-}
-
-func ensureNewStep(t *testing.T, cs *ConsensusState) *RoundState {
-	timeout := time.NewTicker(ensureTimeout * time.Second)
-	select {
-	case <-timeout.C:
-		panic("We should have gone to the next step, not be stuck waiting")
-	case rs := <-cs.NewStepCh():
-		return rs
-	}
-}
-
-func waitFor(t *testing.T, cs *ConsensusState, height int, round int, step RoundStepType) {
-	for {
-		rs := ensureNewStep(t, cs)
-		if CompareHRS(rs.Height, rs.Round, rs.Step, height, round, step) < 0 {
-			continue
-		} else {
-			break
-		}
-	}
-}
-*/
 
 func incrementHeight(vss ...*validatorStub) {
 	for _, vs := range vss {
@@ -245,6 +97,41 @@ func incrementRound(vss ...*validatorStub) {
 	}
 }
 
+//-------------------------------------------------------------------------------
+// Functions for transitioning the consensus state
+
+func startTestRound(cs *ConsensusState, height, round int) {
+	cs.enterNewRound(height, round)
+	cs.startRoutines(0)
+}
+
+// Create proposal block from cs1 but sign it with vs
+func decideProposal(cs1 *ConsensusState, vs *validatorStub, height, round int) (proposal *types.Proposal, block *types.Block) {
+	block, blockParts := cs1.createProposalBlock()
+	if block == nil { // on error
+		panic("error creating proposal block")
+	}
+
+	// Make proposal
+	polRound, polBlockID := cs1.Votes.POLInfo()
+	proposal = types.NewProposal(height, round, blockParts.Header(), polRound, polBlockID)
+	if err := vs.SignProposal(config.GetString("chain_id"), proposal); err != nil {
+		panic(err)
+	}
+	return
+}
+
+func addVotes(to *ConsensusState, votes ...*types.Vote) {
+	for _, vote := range votes {
+		to.peerMsgQueue <- msgInfo{Msg: &VoteMessage{vote}}
+	}
+}
+
+func signAddVotes(to *ConsensusState, voteType byte, hash []byte, header types.PartSetHeader, vss ...*validatorStub) {
+	votes := signVotes(voteType, hash, header, vss...)
+	addVotes(to, votes...)
+}
+
 func validatePrevote(t *testing.T, cs *ConsensusState, round int, privVal *validatorStub, blockHash []byte) {
 	prevotes := cs.Votes.Prevotes(round)
 	var vote *types.Vote
@@ -252,12 +139,12 @@ func validatePrevote(t *testing.T, cs *ConsensusState, round int, privVal *valid
 		panic("Failed to find prevote from validator")
 	}
 	if blockHash == nil {
-		if vote.BlockHash != nil {
-			panic(fmt.Sprintf("Expected prevote to be for nil, got %X", vote.BlockHash))
+		if vote.BlockID.Hash != nil {
+			panic(fmt.Sprintf("Expected prevote to be for nil, got %X", vote.BlockID.Hash))
 		}
 	} else {
-		if !bytes.Equal(vote.BlockHash, blockHash) {
-			panic(fmt.Sprintf("Expected prevote to be for %X, got %X", blockHash, vote.BlockHash))
+		if !bytes.Equal(vote.BlockID.Hash, blockHash) {
+			panic(fmt.Sprintf("Expected prevote to be for %X, got %X", blockHash, vote.BlockID.Hash))
 		}
 	}
 }
@@ -268,8 +155,8 @@ func validateLastPrecommit(t *testing.T, cs *ConsensusState, privVal *validatorS
 	if vote = votes.GetByAddress(privVal.Address); vote == nil {
 		panic("Failed to find precommit from validator")
 	}
-	if !bytes.Equal(vote.BlockHash, blockHash) {
-		panic(fmt.Sprintf("Expected precommit to be for %X, got %X", blockHash, vote.BlockHash))
+	if !bytes.Equal(vote.BlockID.Hash, blockHash) {
+		panic(fmt.Sprintf("Expected precommit to be for %X, got %X", blockHash, vote.BlockID.Hash))
 	}
 }
 
@@ -281,11 +168,11 @@ func validatePrecommit(t *testing.T, cs *ConsensusState, thisRound, lockRound in
 	}
 
 	if votedBlockHash == nil {
-		if vote.BlockHash != nil {
+		if vote.BlockID.Hash != nil {
 			panic("Expected precommit to be for nil")
 		}
 	} else {
-		if !bytes.Equal(vote.BlockHash, votedBlockHash) {
+		if !bytes.Equal(vote.BlockID.Hash, votedBlockHash) {
 			panic("Expected precommit to be for proposal block")
 		}
 	}
@@ -311,66 +198,7 @@ func validatePrevoteAndPrecommit(t *testing.T, cs *ConsensusState, thisRound, lo
 	cs.mtx.Unlock()
 }
 
-func fixedConsensusState() *ConsensusState {
-	stateDB := dbm.NewMemDB()
-	state := sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
-	privValidatorFile := config.GetString("priv_validator_file")
-	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
-	privValidator.Reset()
-	cs := newConsensusState(state, privValidator, counter.NewCounterApplication(true))
-	return cs
-}
-
-func fixedConsensusStateDummy() *ConsensusState {
-	stateDB := dbm.NewMemDB()
-	state := sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
-	privValidatorFile := config.GetString("priv_validator_file")
-	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
-	privValidator.Reset()
-	cs := newConsensusState(state, privValidator, dummy.NewDummyApplication())
-	return cs
-}
-
-func newConsensusState(state *sm.State, pv *types.PrivValidator, app tmsp.Application) *ConsensusState {
-	// Get BlockStore
-	blockDB := dbm.NewMemDB()
-	blockStore := bc.NewBlockStore(blockDB)
-
-	// one for mempool, one for consensus
-	mtx := new(sync.Mutex)
-	proxyAppConnMem := tmspcli.NewLocalClient(mtx, app)
-	proxyAppConnCon := tmspcli.NewLocalClient(mtx, app)
-
-	// Make Mempool
-	mempool := mempl.NewMempool(config, proxyAppConnMem)
-
-	// Make ConsensusReactor
-	cs := NewConsensusState(config, state, proxyAppConnCon, blockStore, mempool)
-	cs.SetPrivValidator(pv)
-
-	evsw := types.NewEventSwitch()
-	cs.SetEventSwitch(evsw)
-	evsw.Start()
-	return cs
-}
-
-func randConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
-	// Get State
-	state, privVals := randGenesisState(nValidators, false, 10)
-
-	vss := make([]*validatorStub, nValidators)
-
-	cs := newConsensusState(state, privVals[0], counter.NewCounterApplication(true))
-
-	for i := 0; i < nValidators; i++ {
-		vss[i] = NewValidatorStub(privVals[i])
-	}
-	// since cs1 starts at 1
-	incrementHeight(vss[1:]...)
-
-	return cs, vss
-}
-
+// genesis
 func subscribeToVoter(cs *ConsensusState, addr []byte) chan interface{} {
 	voteCh0 := subscribeToEvent(cs.evsw, "tester", types.EventStringVote(), 1)
 	voteCh := make(chan interface{})
@@ -379,7 +207,7 @@ func subscribeToVoter(cs *ConsensusState, addr []byte) chan interface{} {
 			v := <-voteCh0
 			vote := v.(types.EventDataVote)
 			// we only fire for our own votes
-			if bytes.Equal(addr, vote.Address) {
+			if bytes.Equal(addr, vote.Vote.ValidatorAddress) {
 				voteCh <- v
 			}
 		}
@@ -398,13 +226,144 @@ func readVotes(ch chan interface{}, reads int) chan struct{} {
 	return wg
 }
 
-func randGenesisState(numValidators int, randPower bool, minPower int64) (*sm.State, []*types.PrivValidator) {
-	db := dbm.NewMemDB()
-	genDoc, privValidators := randGenesisDoc(numValidators, randPower, minPower)
-	s0 := sm.MakeGenesisState(db, genDoc)
-	s0.Save()
-	return s0, privValidators
+//-------------------------------------------------------------------------------
+// consensus states
+
+func newConsensusState(state *sm.State, pv *types.PrivValidator, app abci.Application) *ConsensusState {
+	return newConsensusStateWithConfig(config, state, pv, app)
 }
+
+func newConsensusStateWithConfig(thisConfig cfg.Config, state *sm.State, pv *types.PrivValidator, app abci.Application) *ConsensusState {
+	// Get BlockStore
+	blockDB := dbm.NewMemDB()
+	blockStore := bc.NewBlockStore(blockDB)
+
+	// one for mempool, one for consensus
+	mtx := new(sync.Mutex)
+	proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
+	proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
+
+	// Make Mempool
+	mempool := mempl.NewMempool(thisConfig, proxyAppConnMem)
+
+	// Make ConsensusReactor
+	cs := NewConsensusState(thisConfig, state, proxyAppConnCon, blockStore, mempool)
+	cs.SetPrivValidator(pv)
+
+	evsw := types.NewEventSwitch()
+	cs.SetEventSwitch(evsw)
+	evsw.Start()
+	return cs
+}
+
+func loadPrivValidator(conf cfg.Config) *types.PrivValidator {
+	privValidatorFile := conf.GetString("priv_validator_file")
+	ensureDir(path.Dir(privValidatorFile), 0700)
+	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
+	privValidator.Reset()
+	return privValidator
+}
+
+func fixedConsensusState() *ConsensusState {
+	stateDB := dbm.NewMemDB()
+	state := sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
+	privValidator := loadPrivValidator(config)
+	cs := newConsensusState(state, privValidator, counter.NewCounterApplication(true))
+	return cs
+}
+
+func fixedConsensusStateDummy() *ConsensusState {
+	stateDB := dbm.NewMemDB()
+	state := sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
+	privValidator := loadPrivValidator(config)
+	cs := newConsensusState(state, privValidator, dummy.NewDummyApplication())
+	return cs
+}
+
+func randConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
+	// Get State
+	state, privVals := randGenesisState(nValidators, false, 10)
+
+	vss := make([]*validatorStub, nValidators)
+
+	cs := newConsensusState(state, privVals[0], counter.NewCounterApplication(true))
+
+	for i := 0; i < nValidators; i++ {
+		vss[i] = NewValidatorStub(privVals[i], i)
+	}
+	// since cs1 starts at 1
+	incrementHeight(vss[1:]...)
+
+	return cs, vss
+}
+
+//-------------------------------------------------------------------------------
+
+func ensureNoNewStep(stepCh chan interface{}) {
+	timeout := time.NewTicker(ensureTimeout * time.Second)
+	select {
+	case <-timeout.C:
+		break
+	case <-stepCh:
+		panic("We should be stuck waiting for more votes, not moving to the next step")
+	}
+}
+
+//-------------------------------------------------------------------------------
+// consensus nets
+
+func randConsensusNet(nValidators int, testName string, tickerFunc func() TimeoutTicker, appFunc func() abci.Application) []*ConsensusState {
+	genDoc, privVals := randGenesisDoc(nValidators, false, 10)
+	css := make([]*ConsensusState, nValidators)
+	for i := 0; i < nValidators; i++ {
+		db := dbm.NewMemDB() // each state needs its own db
+		state := sm.MakeGenesisState(db, genDoc)
+		state.Save()
+		thisConfig := tendermint_test.ResetConfig(Fmt("%s_%d", testName, i))
+		ensureDir(thisConfig.GetString("cs_wal_dir"), 0700) // dir for wal
+		css[i] = newConsensusStateWithConfig(thisConfig, state, privVals[i], appFunc())
+		css[i].SetTimeoutTicker(tickerFunc())
+	}
+	return css
+}
+
+// nPeers = nValidators + nNotValidator
+func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerFunc func() TimeoutTicker, appFunc func() abci.Application) []*ConsensusState {
+	genDoc, privVals := randGenesisDoc(nValidators, false, int64(testMinPower))
+	css := make([]*ConsensusState, nPeers)
+	for i := 0; i < nPeers; i++ {
+		db := dbm.NewMemDB() // each state needs its own db
+		state := sm.MakeGenesisState(db, genDoc)
+		state.Save()
+		thisConfig := tendermint_test.ResetConfig(Fmt("%s_%d", testName, i))
+		ensureDir(thisConfig.GetString("cs_wal_dir"), 0700) // dir for wal
+		var privVal *types.PrivValidator
+		if i < nValidators {
+			privVal = privVals[i]
+		} else {
+			privVal = types.GenPrivValidator()
+			_, tempFilePath := Tempfile("priv_validator_")
+			privVal.SetFile(tempFilePath)
+		}
+
+		css[i] = newConsensusStateWithConfig(thisConfig, state, privVal, appFunc())
+		css[i].SetTimeoutTicker(tickerFunc())
+	}
+	return css
+}
+
+func getSwitchIndex(switches []*p2p.Switch, peer *p2p.Peer) int {
+	for i, s := range switches {
+		if bytes.Equal(peer.NodeInfo.PubKey.Address(), s.NodeInfo().PubKey.Address()) {
+			return i
+		}
+	}
+	panic("didnt find peer in switches")
+	return -1
+}
+
+//-------------------------------------------------------------------------------
+// genesis
 
 func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.GenesisDoc, []*types.PrivValidator) {
 	validators := make([]types.GenesisValidator, numValidators)
@@ -423,10 +382,69 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 		ChainID:     config.GetString("chain_id"),
 		Validators:  validators,
 	}, privValidators
-
 }
 
-func startTestRound(cs *ConsensusState, height, round int) {
-	cs.enterNewRound(height, round)
-	cs.startRoutines(0)
+func randGenesisState(numValidators int, randPower bool, minPower int64) (*sm.State, []*types.PrivValidator) {
+	genDoc, privValidators := randGenesisDoc(numValidators, randPower, minPower)
+	db := dbm.NewMemDB()
+	s0 := sm.MakeGenesisState(db, genDoc)
+	s0.Save()
+	return s0, privValidators
+}
+
+//------------------------------------
+// mock ticker
+
+func newMockTickerFunc(onlyOnce bool) func() TimeoutTicker {
+	return func() TimeoutTicker {
+		return &mockTicker{
+			c:        make(chan timeoutInfo, 10),
+			onlyOnce: onlyOnce,
+		}
+	}
+}
+
+// mock ticker only fires on RoundStepNewHeight
+// and only once if onlyOnce=true
+type mockTicker struct {
+	c chan timeoutInfo
+
+	mtx      sync.Mutex
+	onlyOnce bool
+	fired    bool
+}
+
+func (m *mockTicker) Start() (bool, error) {
+	return true, nil
+}
+
+func (m *mockTicker) Stop() bool {
+	return true
+}
+
+func (m *mockTicker) ScheduleTimeout(ti timeoutInfo) {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	if m.onlyOnce && m.fired {
+		return
+	}
+	if ti.Step == RoundStepNewHeight {
+		m.c <- ti
+		m.fired = true
+	}
+}
+
+func (m *mockTicker) Chan() <-chan timeoutInfo {
+	return m.c
+}
+
+//------------------------------------
+
+func newCounter() abci.Application {
+	return counter.NewCounterApplication(true)
+}
+
+func newPersistentDummy() abci.Application {
+	dir, _ := ioutil.TempDir("/tmp", "persistent-dummy")
+	return dummy.NewPersistentDummyApplication(dir)
 }
