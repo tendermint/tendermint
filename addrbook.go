@@ -368,6 +368,12 @@ func (a *AddrBook) loadFromFile(filePath string) bool {
 	return true
 }
 
+// Save saves the book.
+func (a *AddrBook) Save() {
+	log.Info("Saving AddrBook to file", "size", a.Size())
+	a.saveToFile(a.filePath)
+}
+
 /* Private methods */
 
 func (a *AddrBook) saveRoutine() {
