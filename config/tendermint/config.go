@@ -62,6 +62,8 @@ func GetConfig(rootDir string) cfg.Config {
 	mapConfig.SetDefault("fast_sync", true)
 	mapConfig.SetDefault("skip_upnp", false)
 	mapConfig.SetDefault("addrbook_file", rootDir+"/addrbook.json")
+	mapConfig.SetDefault("addrbook_strict", true) // disable to allow connections locally
+	mapConfig.SetDefault("pex_reactor", false)    // enable for peer exchange
 	mapConfig.SetDefault("priv_validator_file", rootDir+"/priv_validator.json")
 	mapConfig.SetDefault("db_backend", "leveldb")
 	mapConfig.SetDefault("db_dir", rootDir+"/data")

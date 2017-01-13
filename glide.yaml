@@ -33,3 +33,6 @@ import:
 - package: golang.org/x/crypto
   subpackages:
   - ripemd160
+- package: github.com/tendermint/go-flowrate
+  subpackages:
+  - flowrate 

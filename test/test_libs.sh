@@ -1,4 +1,5 @@
 #! /bin/bash
+set -e
 
 # set glide.lock path
 if [[ "$GLIDE" == "" ]]; then
@@ -28,10 +29,11 @@ for lib in "${LIBS_GO_TEST[@]}"; do
 done
 
 for lib in "${LIBS_MAKE_TEST[@]}"; do
-	getDep $lib
+
+	# checkout vendored version of lib
+	bash scripts/glide/checkout.sh $GLIDE $lib
 
 	echo "Testing $lib ..."
-	cd $GOPATH/src/github.com/tendermint/$lib
 	make test
 	if [[ "$?" != 0 ]]; then
 		echo "FAIL"

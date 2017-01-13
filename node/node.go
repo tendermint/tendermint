@@ -113,6 +113,15 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreato
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)
 
+	// Optionally, start the pex reactor
+	// TODO: this is a dev feature, it needs some love
+	if config.GetBool("pex_reactor") {
+		addrBook := p2p.NewAddrBook(config.GetString("addrbook_file"), config.GetBool("addrbook_strict"))
+		addrBook.Start()
+		pexReactor := p2p.NewPEXReactor(addrBook)
+		sw.AddReactor("PEX", pexReactor)
+	}
+
 	// filter peers by addr or pubkey with a abci query.
 	// if the query return code is OK, add peer
 	// XXX: query format subject to change

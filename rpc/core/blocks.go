@@ -9,6 +9,7 @@ import (
 
 //-----------------------------------------------------------------------------
 
+// TODO: limit/permission on (max - min)
 func BlockchainInfo(minHeight, maxHeight int) (*ctypes.ResultBlockchainInfo, error) {
 	if maxHeight == 0 {
 		maxHeight = blockStore.Height()
