@@ -18,5 +18,5 @@ done
 echo "Seeds: $seeds"
 
 for i in `seq 1 $N`; do
-	bash test/p2p/peer.sh $DOCKER_IMAGE $NETWORK_NAME $i $APP_PROXY $seeds
+	bash test/p2p/peer.sh $DOCKER_IMAGE $NETWORK_NAME $i $APP_PROXY "--seeds $seeds --pex"
 done

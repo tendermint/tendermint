@@ -29,5 +29,8 @@ bash test/p2p/client.sh $DOCKER_IMAGE $NETWORK_NAME ab "test/p2p/atomic_broadcas
 # for each node, kill it and readd via fast sync
 bash test/p2p/fast_sync/test.sh $DOCKER_IMAGE $NETWORK_NAME $N $PROXY_APP
 
-# test killing all peers
+# test killing all peers 3 times
 bash test/p2p/kill_all/test.sh $DOCKER_IMAGE $NETWORK_NAME $N 3
+
+# test pex
+bash test/p2p/pex/test.sh $DOCKER_IMAGE $NETWORK_NAME $N $PROXY_APP
