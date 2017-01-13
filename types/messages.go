@@ -31,9 +31,9 @@ func ToRequestSetOption(key string, value string) *Request {
 	}
 }
 
-func ToRequestAppendTx(txBytes []byte) *Request {
+func ToRequestDeliverTx(txBytes []byte) *Request {
 	return &Request{
-		Value: &Request_AppendTx{&RequestAppendTx{txBytes}},
+		Value: &Request_DeliverTx{&RequestDeliverTx{txBytes}},
 	}
 }
 
@@ -61,9 +61,9 @@ func ToRequestInitChain(validators []*Validator) *Request {
 	}
 }
 
-func ToRequestBeginBlock(height uint64) *Request {
+func ToRequestBeginBlock(hash []byte, header *Header) *Request {
 	return &Request{
-		Value: &Request_BeginBlock{&RequestBeginBlock{height}},
+		Value: &Request_BeginBlock{&RequestBeginBlock{hash, header}},
 	}
 }
 
@@ -93,9 +93,9 @@ func ToResponseFlush() *Response {
 	}
 }
 
-func ToResponseInfo(info string) *Response {
+func ToResponseInfo(resInfo ResponseInfo) *Response {
 	return &Response{
-		Value: &Response_Info{&ResponseInfo{info}},
+		Value: &Response_Info{&resInfo},
 	}
 }
 
@@ -105,9 +105,9 @@ func ToResponseSetOption(log string) *Response {
 	}
 }
 
-func ToResponseAppendTx(code CodeType, data []byte, log string) *Response {
+func ToResponseDeliverTx(code CodeType, data []byte, log string) *Response {
 	return &Response{
-		Value: &Response_AppendTx{&ResponseAppendTx{code, data, log}},
+		Value: &Response_DeliverTx{&ResponseDeliverTx{code, data, log}},
 	}
 }
 
@@ -141,9 +141,9 @@ func ToResponseBeginBlock() *Response {
 	}
 }
 
-func ToResponseEndBlock(validators []*Validator) *Response {
+func ToResponseEndBlock(resEndBlock ResponseEndBlock) *Response {
 	return &Response{
-		Value: &Response_EndBlock{&ResponseEndBlock{validators}},
+		Value: &Response_EndBlock{&resEndBlock},
 	}
 }
 

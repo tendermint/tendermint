@@ -8,13 +8,13 @@ import (
 type Application interface {
 
 	// Return application info
-	Info() (info string)
+	Info() ResponseInfo
 
 	// Set application option (e.g. mode=mempool, mode=consensus)
 	SetOption(key string, value string) (log string)
 
-	// Append a tx
-	AppendTx(tx []byte) Result
+	// Deliver a tx
+	DeliverTx(tx []byte) Result
 
 	// Validate a tx for the mempool
 	CheckTx(tx []byte) Result
@@ -34,11 +34,11 @@ type BlockchainAware interface {
 	InitChain(validators []*Validator)
 
 	// Signals the beginning of a block
-	BeginBlock(height uint64)
+	BeginBlock(hash []byte, header *Header)
 
 	// Signals the end of a block
 	// diffs: changed validators from app to TendermintCore
-	EndBlock(height uint64) (diffs []*Validator)
+	EndBlock(height uint64) ResponseEndBlock
 }
 
 //------------------------------------
@@ -59,16 +59,17 @@ func (app *GRPCApplication) Flush(ctx context.Context, req *RequestFlush) (*Resp
 }
 
 func (app *GRPCApplication) Info(ctx context.Context, req *RequestInfo) (*ResponseInfo, error) {
-	return &ResponseInfo{app.app.Info()}, nil
+	resInfo := app.app.Info()
+	return &resInfo, nil
 }
 
 func (app *GRPCApplication) SetOption(ctx context.Context, req *RequestSetOption) (*ResponseSetOption, error) {
 	return &ResponseSetOption{app.app.SetOption(req.Key, req.Value)}, nil
 }
 
-func (app *GRPCApplication) AppendTx(ctx context.Context, req *RequestAppendTx) (*ResponseAppendTx, error) {
-	r := app.app.AppendTx(req.Tx)
-	return &ResponseAppendTx{r.Code, r.Data, r.Log}, nil
+func (app *GRPCApplication) DeliverTx(ctx context.Context, req *RequestDeliverTx) (*ResponseDeliverTx, error) {
+	r := app.app.DeliverTx(req.Tx)
+	return &ResponseDeliverTx{r.Code, r.Data, r.Log}, nil
 }
 
 func (app *GRPCApplication) CheckTx(ctx context.Context, req *RequestCheckTx) (*ResponseCheckTx, error) {
@@ -95,15 +96,15 @@ func (app *GRPCApplication) InitChain(ctx context.Context, req *RequestInitChain
 
 func (app *GRPCApplication) BeginBlock(ctx context.Context, req *RequestBeginBlock) (*ResponseBeginBlock, error) {
 	if chainAware, ok := app.app.(BlockchainAware); ok {
-		chainAware.BeginBlock(req.Height)
+		chainAware.BeginBlock(req.Hash, req.Header)
 	}
 	return &ResponseBeginBlock{}, nil
 }
 
 func (app *GRPCApplication) EndBlock(ctx context.Context, req *RequestEndBlock) (*ResponseEndBlock, error) {
 	if chainAware, ok := app.app.(BlockchainAware); ok {
-		diffs := chainAware.EndBlock(req.Height)
-		return &ResponseEndBlock{diffs}, nil
+		resEndBlock := chainAware.EndBlock(req.Height)
+		return &resEndBlock, nil
 	}
 	return &ResponseEndBlock{}, nil
 }

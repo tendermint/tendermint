@@ -7,23 +7,24 @@ import (
 
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-process"
-	"github.com/tendermint/tmsp/client"
-	"github.com/tendermint/tmsp/types"
+	"github.com/tendermint/abci/client"
+	"github.com/tendermint/abci/types"
 )
 
 //----------------------------------------
 
-func StartApp(tmspApp string) *process.Process {
+func StartApp(abciApp string) *process.Process {
 	// Start the app
 	//outBuf := NewBufferCloser(nil)
-	proc, err := process.StartProcess("tmsp_app",
+	proc, err := process.StartProcess("abci_app",
+		"",
 		"bash",
-		[]string{"-c", tmspApp},
+		[]string{"-c", abciApp},
 		nil,
 		os.Stdout,
 	)
 	if err != nil {
-		panic("running tmsp_app: " + err.Error())
+		panic("running abci_app: " + err.Error())
 	}
 
 	// TODO a better way to handle this?
@@ -32,16 +33,16 @@ func StartApp(tmspApp string) *process.Process {
 	return proc
 }
 
-func StartClient(tmspType string) tmspcli.Client {
+func StartClient(abciType string) abcicli.Client {
 	// Start client
-	client, err := tmspcli.NewClient("tcp://127.0.0.1:46658", tmspType, true)
+	client, err := abcicli.NewClient("tcp://127.0.0.1:46658", abciType, true)
 	if err != nil {
-		panic("connecting to tmsp_app: " + err.Error())
+		panic("connecting to abci_app: " + err.Error())
 	}
 	return client
 }
 
-func SetOption(client tmspcli.Client, key, value string) {
+func SetOption(client abcicli.Client, key, value string) {
 	res := client.SetOptionSync(key, value)
 	_, _, log := res.Code, res.Data, res.Log
 	if res.IsErr() {
@@ -49,7 +50,7 @@ func SetOption(client tmspcli.Client, key, value string) {
 	}
 }
 
-func Commit(client tmspcli.Client, hashExp []byte) {
+func Commit(client abcicli.Client, hashExp []byte) {
 	res := client.CommitSync()
 	_, data, log := res.Code, res.Data, res.Log
 	if res.IsErr() {
@@ -61,20 +62,20 @@ func Commit(client tmspcli.Client, hashExp []byte) {
 	}
 }
 
-func AppendTx(client tmspcli.Client, txBytes []byte, codeExp types.CodeType, dataExp []byte) {
-	res := client.AppendTxSync(txBytes)
+func DeliverTx(client abcicli.Client, txBytes []byte, codeExp types.CodeType, dataExp []byte) {
+	res := client.DeliverTxSync(txBytes)
 	code, data, log := res.Code, res.Data, res.Log
 	if code != codeExp {
-		panic(Fmt("AppendTx response code was unexpected. Got %v expected %v. Log: %v",
+		panic(Fmt("DeliverTx response code was unexpected. Got %v expected %v. Log: %v",
 			code, codeExp, log))
 	}
 	if !bytes.Equal(data, dataExp) {
-		panic(Fmt("AppendTx response data was unexpected. Got %X expected %X",
+		panic(Fmt("DeliverTx response data was unexpected. Got %X expected %X",
 			data, dataExp))
 	}
 }
 
-func CheckTx(client tmspcli.Client, txBytes []byte, codeExp types.CodeType, dataExp []byte) {
+func CheckTx(client abcicli.Client, txBytes []byte, codeExp types.CodeType, dataExp []byte) {
 	res := client.CheckTxSync(txBytes)
 	code, data, log := res.Code, res.Data, res.Log
 	if res.IsErr() {

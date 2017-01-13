@@ -1,4 +1,4 @@
-package tmspcli
+package abcicli
 
 import (
 	"bufio"
@@ -11,7 +11,7 @@ import (
 	"time"
 
 	. "github.com/tendermint/go-common"
-	"github.com/tendermint/tmsp/types"
+	"github.com/tendermint/abci/types"
 )
 
 const (
@@ -27,7 +27,7 @@ const flushThrottleMS = 20      // Don't wait longer than...
 // the application in general is not meant to be interfaced
 // with concurrent callers.
 type socketClient struct {
-	QuitService
+	BaseService
 
 	reqQueue    chan *ReqRes
 	flushTimer  *ThrottleTimer
@@ -52,14 +52,14 @@ func NewSocketClient(addr string, mustConnect bool) (*socketClient, error) {
 		reqSent: list.New(),
 		resCb:   nil,
 	}
-	cli.QuitService = *NewQuitService(nil, "socketClient", cli)
+	cli.BaseService = *NewBaseService(nil, "socketClient", cli)
 
 	_, err := cli.Start() // Just start it, it's confusing for callers to remember to start.
 	return cli, err
 }
 
 func (cli *socketClient) OnStart() error {
-	cli.QuitService.OnStart()
+	cli.BaseService.OnStart()
 
 	var err error
 	var conn net.Conn
@@ -70,7 +70,7 @@ RETRY_LOOP:
 			if cli.mustConnect {
 				return err
 			} else {
-				log.Warn(Fmt("tmsp.socketClient failed to connect to %v.  Retrying...", cli.addr))
+				log.Warn(Fmt("abci.socketClient failed to connect to %v.  Retrying...", cli.addr))
 				time.Sleep(time.Second * 3)
 				continue RETRY_LOOP
 			}
@@ -86,7 +86,7 @@ RETRY_LOOP:
 }
 
 func (cli *socketClient) OnStop() {
-	cli.QuitService.OnStop()
+	cli.BaseService.OnStop()
 
 	cli.mtx.Lock()
 	defer cli.mtx.Unlock()
@@ -109,7 +109,7 @@ func (cli *socketClient) StopForError(err error) {
 	}
 	cli.mtx.Unlock()
 
-	log.Warn(Fmt("Stopping tmsp.socketClient for error: %v", err.Error()))
+	log.Warn(Fmt("Stopping abci.socketClient for error: %v", err.Error()))
 	cli.Stop()
 }
 
@@ -140,7 +140,7 @@ func (cli *socketClient) sendRequestsRoutine(conn net.Conn) {
 			default:
 				// Probably will fill the buffer, or retry later.
 			}
-		case <-cli.QuitService.Quit:
+		case <-cli.BaseService.Quit:
 			return
 		case reqres := <-cli.reqQueue:
 			cli.willSendReq(reqres)
@@ -243,8 +243,8 @@ func (cli *socketClient) SetOptionAsync(key string, value string) *ReqRes {
 	return cli.queueRequest(types.ToRequestSetOption(key, value))
 }
 
-func (cli *socketClient) AppendTxAsync(tx []byte) *ReqRes {
-	return cli.queueRequest(types.ToRequestAppendTx(tx))
+func (cli *socketClient) DeliverTxAsync(tx []byte) *ReqRes {
+	return cli.queueRequest(types.ToRequestDeliverTx(tx))
 }
 
 func (cli *socketClient) CheckTxAsync(tx []byte) *ReqRes {
@@ -263,8 +263,8 @@ func (cli *socketClient) InitChainAsync(validators []*types.Validator) *ReqRes {
 	return cli.queueRequest(types.ToRequestInitChain(validators))
 }
 
-func (cli *socketClient) BeginBlockAsync(height uint64) *ReqRes {
-	return cli.queueRequest(types.ToRequestBeginBlock(height))
+func (cli *socketClient) BeginBlockAsync(hash []byte, header *types.Header) *ReqRes {
+	return cli.queueRequest(types.ToRequestBeginBlock(hash, header))
 }
 
 func (cli *socketClient) EndBlockAsync(height uint64) *ReqRes {
@@ -292,14 +292,17 @@ func (cli *socketClient) FlushSync() error {
 	return cli.Error()
 }
 
-func (cli *socketClient) InfoSync() (res types.Result) {
+func (cli *socketClient) InfoSync() (resInfo types.ResponseInfo, err error) {
 	reqres := cli.queueRequest(types.ToRequestInfo())
 	cli.FlushSync()
 	if err := cli.Error(); err != nil {
-		return types.ErrInternalError.SetLog(err.Error())
+		return resInfo, err
 	}
-	resp := reqres.Response.GetInfo()
-	return types.Result{Code: OK, Data: []byte(resp.Info), Log: LOG}
+	if resInfo_ := reqres.Response.GetInfo(); resInfo_ != nil {
+		return *resInfo_, nil
+	} else {
+		return resInfo, nil
+	}
 }
 
 func (cli *socketClient) SetOptionSync(key string, value string) (res types.Result) {
@@ -312,13 +315,13 @@ func (cli *socketClient) SetOptionSync(key string, value string) (res types.Resu
 	return types.Result{Code: OK, Data: nil, Log: resp.Log}
 }
 
-func (cli *socketClient) AppendTxSync(tx []byte) (res types.Result) {
-	reqres := cli.queueRequest(types.ToRequestAppendTx(tx))
+func (cli *socketClient) DeliverTxSync(tx []byte) (res types.Result) {
+	reqres := cli.queueRequest(types.ToRequestDeliverTx(tx))
 	cli.FlushSync()
 	if err := cli.Error(); err != nil {
 		return types.ErrInternalError.SetLog(err.Error())
 	}
-	resp := reqres.Response.GetAppendTx()
+	resp := reqres.Response.GetDeliverTx()
 	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
 }
 
@@ -361,8 +364,8 @@ func (cli *socketClient) InitChainSync(validators []*types.Validator) (err error
 	return nil
 }
 
-func (cli *socketClient) BeginBlockSync(height uint64) (err error) {
-	cli.queueRequest(types.ToRequestBeginBlock(height))
+func (cli *socketClient) BeginBlockSync(hash []byte, header *types.Header) (err error) {
+	cli.queueRequest(types.ToRequestBeginBlock(hash, header))
 	cli.FlushSync()
 	if err := cli.Error(); err != nil {
 		return err
@@ -370,13 +373,17 @@ func (cli *socketClient) BeginBlockSync(height uint64) (err error) {
 	return nil
 }
 
-func (cli *socketClient) EndBlockSync(height uint64) (validators []*types.Validator, err error) {
+func (cli *socketClient) EndBlockSync(height uint64) (resEndBlock types.ResponseEndBlock, err error) {
 	reqres := cli.queueRequest(types.ToRequestEndBlock(height))
 	cli.FlushSync()
 	if err := cli.Error(); err != nil {
-		return nil, err
+		return resEndBlock, err
 	}
-	return reqres.Response.GetEndBlock().Diffs, nil
+	if resEndBlock_ := reqres.Response.GetEndBlock(); resEndBlock_ != nil {
+		return *resEndBlock_, nil
+	} else {
+		return resEndBlock, nil
+	}
 }
 
 //----------------------------------------
@@ -422,8 +429,8 @@ func resMatchesReq(req *types.Request, res *types.Response) (ok bool) {
 		_, ok = res.Value.(*types.Response_Info)
 	case *types.Request_SetOption:
 		_, ok = res.Value.(*types.Response_SetOption)
-	case *types.Request_AppendTx:
-		_, ok = res.Value.(*types.Response_AppendTx)
+	case *types.Request_DeliverTx:
+		_, ok = res.Value.(*types.Response_DeliverTx)
 	case *types.Request_CheckTx:
 		_, ok = res.Value.(*types.Response_CheckTx)
 	case *types.Request_Commit:
@@ -432,6 +439,8 @@ func resMatchesReq(req *types.Request, res *types.Response) (ok bool) {
 		_, ok = res.Value.(*types.Response_Query)
 	case *types.Request_InitChain:
 		_, ok = res.Value.(*types.Response_InitChain)
+	case *types.Request_BeginBlock:
+		_, ok = res.Value.(*types.Response_BeginBlock)
 	case *types.Request_EndBlock:
 		_, ok = res.Value.(*types.Response_EndBlock)
 	}

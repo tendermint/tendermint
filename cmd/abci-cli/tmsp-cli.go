@@ -9,20 +9,48 @@ import (
 	"os"
 	"strings"
 
+	"github.com/tendermint/abci/client"
+	"github.com/tendermint/abci/types"
 	. "github.com/tendermint/go-common"
-	"github.com/tendermint/tmsp/client"
-	"github.com/tendermint/tmsp/types"
 	"github.com/urfave/cli"
 )
 
+//structure for data passed to print response
+// variables must be exposed for JSON to read
+type response struct {
+	Res       types.Result
+	Data      string
+	PrintCode bool
+	Code      string
+}
+
+func newResponse(res types.Result, data string, printCode bool) *response {
+	rsp := &response{
+		Res:       res,
+		Data:      data,
+		PrintCode: printCode,
+		Code:      "",
+	}
+
+	if printCode {
+		rsp.Code = res.Code.String()
+	}
+
+	return rsp
+}
+
 // client is a global variable so it can be reused by the console
-var client tmspcli.Client
+var client abcicli.Client
 
 func main() {
+
+	//workaround for the cli library (https://github.com/urfave/cli/issues/565)
+	cli.OsExiter = func(_ int) {}
+
 	app := cli.NewApp()
-	app.Name = "tmsp-cli"
-	app.Usage = "tmsp-cli [command] [args...]"
-	app.Version = "0.2.1" // better error handling in console
+	app.Name = "abci-cli"
+	app.Usage = "abci-cli [command] [args...]"
+	app.Version = "0.3.0" // hex handling
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "address",
@@ -30,7 +58,7 @@ func main() {
 			Usage: "address of application socket",
 		},
 		cli.StringFlag{
-			Name:  "tmsp",
+			Name:  "abci",
 			Value: "socket",
 			Usage: "socket or grpc",
 		},
@@ -42,14 +70,14 @@ func main() {
 	app.Commands = []cli.Command{
 		{
 			Name:  "batch",
-			Usage: "Run a batch of tmsp commands against an application",
+			Usage: "Run a batch of abci commands against an application",
 			Action: func(c *cli.Context) error {
 				return cmdBatch(app, c)
 			},
 		},
 		{
 			Name:  "console",
-			Usage: "Start an interactive tmsp console for multiple commands",
+			Usage: "Start an interactive abci console for multiple commands",
 			Action: func(c *cli.Context) error {
 				return cmdConsole(app, c)
 			},
@@ -76,10 +104,10 @@ func main() {
 			},
 		},
 		{
-			Name:  "append_tx",
-			Usage: "Append a new tx to application",
+			Name:  "deliver_tx",
+			Usage: "Deliver a new tx to application",
 			Action: func(c *cli.Context) error {
-				return cmdAppendTx(c)
+				return cmdDeliverTx(c)
 			},
 		},
 		{
@@ -115,7 +143,7 @@ func main() {
 func before(c *cli.Context) error {
 	if client == nil {
 		var err error
-		client, err = tmspcli.NewClient(c.GlobalString("address"), c.GlobalString("tmsp"), false)
+		client, err = abcicli.NewClient(c.GlobalString("address"), c.GlobalString("abci"), false)
 		if err != nil {
 			Exit(err.Error())
 		}
@@ -129,6 +157,20 @@ func badCmd(c *cli.Context, cmd string) {
 	fmt.Println("Please try one of the following:")
 	fmt.Println("")
 	cli.DefaultAppComplete(c)
+}
+
+//Generates new Args array based off of previous call args to maintain flag persistence
+func persistentArgs(line []byte) []string {
+
+	//generate the arguments to run from orginal os.Args
+	// to maintain flag arguments
+	args := os.Args
+	args = args[:len(args)-1] // remove the previous command argument
+
+	if len(line) > 0 { //prevents introduction of extra space leading to argument parse errors
+		args = append(args, strings.Split(string(line), " ")...)
+	}
+	return args
 }
 
 //--------------------------------------------------------------------------------
@@ -146,12 +188,9 @@ func cmdBatch(app *cli.App, c *cli.Context) error {
 		} else if err != nil {
 			return err
 		}
-		args := []string{"tmsp-cli"}
-		if c.GlobalBool("verbose") {
-			args = append(args, "--verbose")
-		}
-		args = append(args, strings.Split(string(line), " ")...)
-		app.Run(args)
+
+		args := persistentArgs(line)
+		app.Run(args) //cli prints error within its func call
 	}
 	return nil
 }
@@ -159,6 +198,7 @@ func cmdBatch(app *cli.App, c *cli.Context) error {
 func cmdConsole(app *cli.App, c *cli.Context) error {
 	// don't hard exit on mistyped commands (eg. check vs check_tx)
 	app.CommandNotFound = badCmd
+
 	for {
 		fmt.Printf("\n> ")
 		bufReader := bufio.NewReader(os.Stdin)
@@ -169,12 +209,8 @@ func cmdConsole(app *cli.App, c *cli.Context) error {
 			return err
 		}
 
-		args := []string{"tmsp-cli"}
-		args = append(args, strings.Split(string(line), " ")...)
-		if err := app.Run(args); err != nil {
-			// if the command doesn't succeed, inform the user without exiting
-			fmt.Println("Error:", err.Error())
-		}
+		args := persistentArgs(line)
+		app.Run(args) //cli prints error within its func call
 	}
 }
 
@@ -185,14 +221,19 @@ func cmdEcho(c *cli.Context) error {
 		return errors.New("Command echo takes 1 argument")
 	}
 	res := client.EchoSync(args[0])
-	printResponse(c, res, string(res.Data), false)
+	rsp := newResponse(res, string(res.Data), false)
+	printResponse(c, rsp)
 	return nil
 }
 
 // Get some info from the application
 func cmdInfo(c *cli.Context) error {
-	res := client.InfoSync()
-	printResponse(c, res, string(res.Data), false)
+	resInfo, err := client.InfoSync()
+	if err != nil {
+		return err
+	}
+	rsp := newResponse(types.Result{}, string(resInfo.Data), false)
+	printResponse(c, rsp)
 	return nil
 }
 
@@ -203,19 +244,24 @@ func cmdSetOption(c *cli.Context) error {
 		return errors.New("Command set_option takes 2 arguments (key, value)")
 	}
 	res := client.SetOptionSync(args[0], args[1])
-	printResponse(c, res, Fmt("%s=%s", args[0], args[1]), false)
+	rsp := newResponse(res, Fmt("%s=%s", args[0], args[1]), false)
+	printResponse(c, rsp)
 	return nil
 }
 
 // Append a new tx to application
-func cmdAppendTx(c *cli.Context) error {
+func cmdDeliverTx(c *cli.Context) error {
 	args := c.Args()
 	if len(args) != 1 {
-		return errors.New("Command append_tx takes 1 argument")
+		return errors.New("Command deliver_tx takes 1 argument")
 	}
-	txBytes := stringOrHexToBytes(c.Args()[0])
-	res := client.AppendTxSync(txBytes)
-	printResponse(c, res, string(res.Data), true)
+	txBytes, err := stringOrHexToBytes(c.Args()[0])
+	if err != nil {
+		return err
+	}
+	res := client.DeliverTxSync(txBytes)
+	rsp := newResponse(res, string(res.Data), true)
+	printResponse(c, rsp)
 	return nil
 }
 
@@ -225,16 +271,21 @@ func cmdCheckTx(c *cli.Context) error {
 	if len(args) != 1 {
 		return errors.New("Command check_tx takes 1 argument")
 	}
-	txBytes := stringOrHexToBytes(c.Args()[0])
+	txBytes, err := stringOrHexToBytes(c.Args()[0])
+	if err != nil {
+		return err
+	}
 	res := client.CheckTxSync(txBytes)
-	printResponse(c, res, string(res.Data), true)
+	rsp := newResponse(res, string(res.Data), true)
+	printResponse(c, rsp)
 	return nil
 }
 
 // Get application Merkle root hash
 func cmdCommit(c *cli.Context) error {
 	res := client.CommitSync()
-	printResponse(c, res, Fmt("%X", res.Data), false)
+	rsp := newResponse(res, Fmt("0x%X", res.Data), false)
+	printResponse(c, rsp)
 	return nil
 }
 
@@ -244,46 +295,62 @@ func cmdQuery(c *cli.Context) error {
 	if len(args) != 1 {
 		return errors.New("Command query takes 1 argument")
 	}
-	queryBytes := stringOrHexToBytes(c.Args()[0])
+	queryBytes, err := stringOrHexToBytes(c.Args()[0])
+	if err != nil {
+		return err
+	}
 	res := client.QuerySync(queryBytes)
-	printResponse(c, res, string(res.Data), true)
+	rsp := newResponse(res, string(res.Data), true)
+	printResponse(c, rsp)
 	return nil
 }
 
 //--------------------------------------------------------------------------------
 
-func printResponse(c *cli.Context, res types.Result, s string, printCode bool) {
-	if c.GlobalBool("verbose") {
+func printResponse(c *cli.Context, rsp *response) {
+
+	verbose := c.GlobalBool("verbose")
+
+	if verbose {
 		fmt.Println(">", c.Command.Name, strings.Join(c.Args(), " "))
 	}
 
-	if printCode {
-		fmt.Printf("-> code: %s\n", res.Code.String())
-	}
-	/*if res.Error != "" {
-		fmt.Printf("-> error: %s\n", res.Error)
-	}*/
-	if s != "" {
-		fmt.Printf("-> data: {%s}\n", s)
-	}
-	if res.Log != "" {
-		fmt.Printf("-> log: %s\n", res.Log)
+	if rsp.PrintCode {
+		fmt.Printf("-> code: %s\n", rsp.Code)
 	}
 
-	if c.GlobalBool("verbose") {
+	//if pr.res.Error != "" {
+	//	fmt.Printf("-> error: %s\n", pr.res.Error)
+	//}
+
+	if rsp.Data != "" {
+		fmt.Printf("-> data: %s\n", rsp.Data)
+	}
+	if rsp.Res.Log != "" {
+		fmt.Printf("-> log: %s\n", rsp.Res.Log)
+	}
+
+	if verbose {
 		fmt.Println("")
 	}
 
 }
 
 // NOTE: s is interpreted as a string unless prefixed with 0x
-func stringOrHexToBytes(s string) []byte {
-	if len(s) > 2 && s[:2] == "0x" {
+func stringOrHexToBytes(s string) ([]byte, error) {
+	if len(s) > 2 && strings.ToLower(s[:2]) == "0x" {
 		b, err := hex.DecodeString(s[2:])
 		if err != nil {
-			fmt.Println("Error decoding hex argument:", err.Error())
+			err = fmt.Errorf("Error decoding hex argument: %s", err.Error())
+			return nil, err
 		}
-		return b
+		return b, nil
 	}
-	return []byte(s)
+
+	if !strings.HasPrefix(s, "\"") || !strings.HasSuffix(s, "\"") {
+		err := fmt.Errorf("Invalid string arg: \"%s\". Must be quoted or a \"0x\"-prefixed hex string", s)
+		return nil, err
+	}
+
+	return []byte(s[1 : len(s)-1]), nil
 }

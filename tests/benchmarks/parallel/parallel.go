@@ -6,7 +6,7 @@ import (
 	//"encoding/hex"
 
 	. "github.com/tendermint/go-common"
-	"github.com/tendermint/tmsp/types"
+	"github.com/tendermint/abci/types"
 )
 
 func main() {

@@ -1,0 +1,32 @@
+> echo hello
+-> data: hello
+
+> info 
+-> data: {"size":0}
+
+> commit 
+-> data: 0x
+
+> deliver_tx "abc"
+-> code: OK
+
+> info 
+-> data: {"size":1}
+
+> commit 
+-> data: 0x750502FC7E84BBD788ED589624F06CFA871845D1
+
+> query "abc"
+-> code: OK
+-> data: {"index":0,"value":"abc","valueHex":"616263","exists":true}
+
+> deliver_tx "def=xyz"
+-> code: OK
+
+> commit 
+-> data: 0x76393B8A182E450286B0694C629ECB51B286EFD5
+
+> query "def"
+-> code: OK
+-> data: {"index":1,"value":"xyz","valueHex":"78797a","exists":true}
+

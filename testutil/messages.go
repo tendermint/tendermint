@@ -2,7 +2,7 @@ package testutil
 
 import (
 	"github.com/tendermint/go-crypto"
-	"github.com/tendermint/tmsp/types"
+	"github.com/tendermint/abci/types"
 )
 
 //----------------------------------------

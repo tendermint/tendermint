@@ -1,13 +1,18 @@
-package: github.com/tendermint/tmsp
+package: github.com/tendermint/abci
 import:
 - package: github.com/golang/protobuf
   subpackages:
   - proto
 - package: github.com/tendermint/go-common
+  version: develop
 - package: github.com/tendermint/go-crypto
 - package: github.com/tendermint/go-logger
+- package: github.com/tendermint/go-db
+  version: develop
 - package: github.com/tendermint/go-merkle
+  version: develop
 - package: github.com/tendermint/go-process
+  version: develop
 - package: github.com/tendermint/go-wire
 - package: github.com/urfave/cli
 - package: golang.org/x/net

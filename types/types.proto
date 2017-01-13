@@ -1,7 +1,7 @@
 syntax = "proto3";
 package types;
 
-// This file is copied from http://github.com/tendermint/tmsp
+// This file is copied from http://github.com/tendermint/abci
 
 //----------------------------------------
 // Message types
@@ -18,7 +18,7 @@ enum MessageType {
   Info            = 0x03;
   SetOption       = 0x04;
   Exception       = 0x05;
-  AppendTx        = 0x11;
+  DeliverTx        = 0x11;
   CheckTx         = 0x12;
   Commit          = 0x13;
   Query           = 0x14;
@@ -79,7 +79,7 @@ message Request {
 		RequestFlush flush = 2;
 		RequestInfo info = 3;
 		RequestSetOption set_option = 4;
-		RequestAppendTx append_tx = 5;
+		RequestDeliverTx deliver_tx = 5;
 		RequestCheckTx check_tx = 6;
 		RequestCommit commit = 7;
 		RequestQuery query = 8;
@@ -104,7 +104,7 @@ message RequestSetOption{
 	string value = 2;
 }
 
-message RequestAppendTx{
+message RequestDeliverTx{
 	bytes tx	 = 1;
 }
 
@@ -124,7 +124,8 @@ message RequestInitChain{
 }
 
 message RequestBeginBlock{
-	uint64 height = 1;
+	bytes hash = 1;
+	Header header = 2;
 }
 
 message RequestEndBlock{
@@ -142,7 +143,7 @@ message Response {
 		ResponseFlush flush = 3;
 		ResponseInfo info = 4;
 		ResponseSetOption set_option = 5;
-		ResponseAppendTx append_tx = 6;
+		ResponseDeliverTx deliver_tx = 6;
 		ResponseCheckTx check_tx = 7;
 		ResponseCommit commit = 8;
 		ResponseQuery query = 9;
@@ -164,14 +165,17 @@ message ResponseFlush{
 }
 
 message ResponseInfo {
-	string info = 1;
+	string data = 1;
+	string version = 2;
+	uint64 last_block_height = 3;
+	bytes last_block_app_hash = 4;
 }
 
 message ResponseSetOption{
 	string log = 1;
 }
 
-message ResponseAppendTx{
+message ResponseDeliverTx{
 	CodeType          code        = 1;
 	bytes             data        = 2;
 	string            log         = 3;
@@ -207,7 +211,29 @@ message ResponseEndBlock{
 }
 
 //----------------------------------------
-// Misc types
+// Blockchain Types
+
+message Header {
+	string chain_id = 1;
+	uint64 height = 2;
+	uint64 time = 3;
+	uint64 num_txs = 4;
+	BlockID last_block_id = 5;
+	bytes last_commit_hash = 6;
+	bytes data_hash = 7;
+	bytes validators_hash = 8;
+	bytes app_hash = 9; 
+}
+
+message BlockID {
+	bytes hash = 1;
+	PartSetHeader parts = 2;
+}
+
+message PartSetHeader {
+	uint64 total = 1;
+	bytes hash = 2;
+}
 
 message Validator {
             bytes             pubKey      = 1;
@@ -217,12 +243,12 @@ message Validator {
 //----------------------------------------
 // Service Definition
 
-service TMSPApplication {
+service ABCIApplication {
 	rpc Echo(RequestEcho) returns (ResponseEcho) ;
 	rpc Flush(RequestFlush) returns (ResponseFlush);
 	rpc Info(RequestInfo) returns (ResponseInfo);
 	rpc SetOption(RequestSetOption) returns (ResponseSetOption);
-	rpc AppendTx(RequestAppendTx) returns (ResponseAppendTx);
+	rpc DeliverTx(RequestDeliverTx) returns (ResponseDeliverTx);
 	rpc CheckTx(RequestCheckTx) returns (ResponseCheckTx);
 	rpc Query(RequestQuery) returns (ResponseQuery);
 	rpc Commit(RequestCommit) returns (ResponseCommit);

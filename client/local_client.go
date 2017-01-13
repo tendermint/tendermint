@@ -1,10 +1,10 @@
-package tmspcli
+package abcicli
 
 import (
 	"sync"
 
 	. "github.com/tendermint/go-common"
-	types "github.com/tendermint/tmsp/types"
+	types "github.com/tendermint/abci/types"
 )
 
 type localClient struct {
@@ -51,11 +51,11 @@ func (app *localClient) EchoAsync(msg string) *ReqRes {
 
 func (app *localClient) InfoAsync() *ReqRes {
 	app.mtx.Lock()
-	info := app.Application.Info()
+	resInfo := app.Application.Info()
 	app.mtx.Unlock()
 	return app.callback(
 		types.ToRequestInfo(),
-		types.ToResponseInfo(info),
+		types.ToResponseInfo(resInfo),
 	)
 }
 
@@ -69,13 +69,13 @@ func (app *localClient) SetOptionAsync(key string, value string) *ReqRes {
 	)
 }
 
-func (app *localClient) AppendTxAsync(tx []byte) *ReqRes {
+func (app *localClient) DeliverTxAsync(tx []byte) *ReqRes {
 	app.mtx.Lock()
-	res := app.Application.AppendTx(tx)
+	res := app.Application.DeliverTx(tx)
 	app.mtx.Unlock()
 	return app.callback(
-		types.ToRequestAppendTx(tx),
-		types.ToResponseAppendTx(res.Code, res.Data, res.Log),
+		types.ToRequestDeliverTx(tx),
+		types.ToResponseDeliverTx(res.Code, res.Data, res.Log),
 	)
 }
 
@@ -122,28 +122,28 @@ func (app *localClient) InitChainAsync(validators []*types.Validator) *ReqRes {
 	return reqRes
 }
 
-func (app *localClient) BeginBlockAsync(height uint64) *ReqRes {
+func (app *localClient) BeginBlockAsync(hash []byte, header *types.Header) *ReqRes {
 	app.mtx.Lock()
 	if bcApp, ok := app.Application.(types.BlockchainAware); ok {
-		bcApp.BeginBlock(height)
+		bcApp.BeginBlock(hash, header)
 	}
 	app.mtx.Unlock()
 	return app.callback(
-		types.ToRequestBeginBlock(height),
+		types.ToRequestBeginBlock(hash, header),
 		types.ToResponseBeginBlock(),
 	)
 }
 
 func (app *localClient) EndBlockAsync(height uint64) *ReqRes {
 	app.mtx.Lock()
-	var validators []*types.Validator
+	var resEndBlock types.ResponseEndBlock
 	if bcApp, ok := app.Application.(types.BlockchainAware); ok {
-		validators = bcApp.EndBlock(height)
+		resEndBlock = bcApp.EndBlock(height)
 	}
 	app.mtx.Unlock()
 	return app.callback(
 		types.ToRequestEndBlock(height),
-		types.ToResponseEndBlock(validators),
+		types.ToResponseEndBlock(resEndBlock),
 	)
 }
 
@@ -157,11 +157,11 @@ func (app *localClient) EchoSync(msg string) (res types.Result) {
 	return types.OK.SetData([]byte(msg))
 }
 
-func (app *localClient) InfoSync() (res types.Result) {
+func (app *localClient) InfoSync() (resInfo types.ResponseInfo, err error) {
 	app.mtx.Lock()
-	info := app.Application.Info()
-	app.mtx.Unlock()
-	return types.OK.SetData([]byte(info))
+	defer app.mtx.Unlock()
+	resInfo = app.Application.Info()
+	return resInfo, nil
 }
 
 func (app *localClient) SetOptionSync(key string, value string) (res types.Result) {
@@ -171,9 +171,9 @@ func (app *localClient) SetOptionSync(key string, value string) (res types.Resul
 	return types.OK.SetLog(log)
 }
 
-func (app *localClient) AppendTxSync(tx []byte) (res types.Result) {
+func (app *localClient) DeliverTxSync(tx []byte) (res types.Result) {
 	app.mtx.Lock()
-	res = app.Application.AppendTx(tx)
+	res = app.Application.DeliverTx(tx)
 	app.mtx.Unlock()
 	return res
 }
@@ -208,22 +208,22 @@ func (app *localClient) InitChainSync(validators []*types.Validator) (err error)
 	return nil
 }
 
-func (app *localClient) BeginBlockSync(height uint64) (err error) {
+func (app *localClient) BeginBlockSync(hash []byte, header *types.Header) (err error) {
 	app.mtx.Lock()
 	if bcApp, ok := app.Application.(types.BlockchainAware); ok {
-		bcApp.BeginBlock(height)
+		bcApp.BeginBlock(hash, header)
 	}
 	app.mtx.Unlock()
 	return nil
 }
 
-func (app *localClient) EndBlockSync(height uint64) (changedValidators []*types.Validator, err error) {
+func (app *localClient) EndBlockSync(height uint64) (resEndBlock types.ResponseEndBlock, err error) {
 	app.mtx.Lock()
 	if bcApp, ok := app.Application.(types.BlockchainAware); ok {
-		changedValidators = bcApp.EndBlock(height)
+		resEndBlock = bcApp.EndBlock(height)
 	}
 	app.mtx.Unlock()
-	return changedValidators, nil
+	return resEndBlock, nil
 }
 
 //-------------------------------------------------------

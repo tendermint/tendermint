@@ -9,13 +9,13 @@ import (
 	"sync"
 
 	. "github.com/tendermint/go-common"
-	"github.com/tendermint/tmsp/types"
+	"github.com/tendermint/abci/types"
 )
 
 // var maxNumberConnections = 2
 
 type SocketServer struct {
-	QuitService
+	BaseService
 
 	proto    string
 	addr     string
@@ -39,13 +39,13 @@ func NewSocketServer(protoAddr string, app types.Application) (Service, error) {
 		app:      app,
 		conns:    make(map[int]net.Conn),
 	}
-	s.QuitService = *NewQuitService(nil, "TMSPServer", s)
+	s.BaseService = *NewBaseService(nil, "ABCIServer", s)
 	_, err := s.Start() // Just start it
 	return s, err
 }
 
 func (s *SocketServer) OnStart() error {
-	s.QuitService.OnStart()
+	s.BaseService.OnStart()
 	ln, err := net.Listen(s.proto, s.addr)
 	if err != nil {
 		return err
@@ -56,7 +56,7 @@ func (s *SocketServer) OnStart() error {
 }
 
 func (s *SocketServer) OnStop() {
-	s.QuitService.OnStop()
+	s.BaseService.OnStop()
 	s.listener.Close()
 
 	s.connsMtx.Lock()
@@ -168,15 +168,15 @@ func (s *SocketServer) handleRequest(req *types.Request, responses chan<- *types
 	case *types.Request_Flush:
 		responses <- types.ToResponseFlush()
 	case *types.Request_Info:
-		data := s.app.Info()
-		responses <- types.ToResponseInfo(data)
+		resInfo := s.app.Info()
+		responses <- types.ToResponseInfo(resInfo)
 	case *types.Request_SetOption:
 		so := r.SetOption
 		logStr := s.app.SetOption(so.Key, so.Value)
 		responses <- types.ToResponseSetOption(logStr)
-	case *types.Request_AppendTx:
-		res := s.app.AppendTx(r.AppendTx.Tx)
-		responses <- types.ToResponseAppendTx(res.Code, res.Data, res.Log)
+	case *types.Request_DeliverTx:
+		res := s.app.DeliverTx(r.DeliverTx.Tx)
+		responses <- types.ToResponseDeliverTx(res.Code, res.Data, res.Log)
 	case *types.Request_CheckTx:
 		res := s.app.CheckTx(r.CheckTx.Tx)
 		responses <- types.ToResponseCheckTx(res.Code, res.Data, res.Log)
@@ -189,16 +189,19 @@ func (s *SocketServer) handleRequest(req *types.Request, responses chan<- *types
 	case *types.Request_InitChain:
 		if app, ok := s.app.(types.BlockchainAware); ok {
 			app.InitChain(r.InitChain.Validators)
-			responses <- types.ToResponseInitChain()
-		} else {
-			responses <- types.ToResponseInitChain()
 		}
+		responses <- types.ToResponseInitChain()
+	case *types.Request_BeginBlock:
+		if app, ok := s.app.(types.BlockchainAware); ok {
+			app.BeginBlock(r.BeginBlock.Hash, r.BeginBlock.Header)
+		}
+		responses <- types.ToResponseBeginBlock()
 	case *types.Request_EndBlock:
 		if app, ok := s.app.(types.BlockchainAware); ok {
-			validators := app.EndBlock(r.EndBlock.Height)
-			responses <- types.ToResponseEndBlock(validators)
+			resEndBlock := app.EndBlock(r.EndBlock.Height)
+			responses <- types.ToResponseEndBlock(resEndBlock)
 		} else {
-			responses <- types.ToResponseEndBlock(nil)
+			responses <- types.ToResponseEndBlock(types.ResponseEndBlock{})
 		}
 	default:
 		responses <- types.ToResponseException("Unknown request")

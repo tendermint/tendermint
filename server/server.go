@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	. "github.com/tendermint/go-common"
-	"github.com/tendermint/tmsp/types"
+	"github.com/tendermint/abci/types"
 )
 
 func NewServer(protoAddr, transport string, app types.Application) (Service, error) {

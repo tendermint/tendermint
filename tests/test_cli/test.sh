@@ -1,5 +1,7 @@
 #! /bin/bash
 
+cd $GOPATH/src/github.com/tendermint/abci
+
 function testExample() {
 	N=$1
 	INPUT=$2
@@ -8,7 +10,7 @@ function testExample() {
 	echo "Example $N"
 	$APP &> /dev/null &
 	sleep 2
-	tmsp-cli --verbose batch < $INPUT > "${INPUT}.out.new"
+	abci-cli --verbose batch < $INPUT > "${INPUT}.out.new"
 	killall "$APP" 
 
 	pre=`shasum < "${INPUT}.out"`
@@ -26,8 +28,8 @@ function testExample() {
 	rm "${INPUT}".out.new
 }
 
-testExample 1 tests/test_cli/ex1.tmsp dummy
-testExample 2 tests/test_cli/ex2.tmsp counter
+testExample 1 tests/test_cli/ex1.abci dummy
+testExample 2 tests/test_cli/ex2.abci counter
 
 echo ""
 echo "PASS"

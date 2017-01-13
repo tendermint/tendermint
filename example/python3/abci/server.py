@@ -29,9 +29,9 @@ class Connection():
             raise IOError("dead connection")
         this.recBuf.write(data)
 
-# TMSP server responds to messges by calling methods on the app
+# ABCI server responds to messges by calling methods on the app
 
-class TMSPServer():
+class ABCIServer():
 
     def __init__(self, app, port=5410):
         self.app = app
