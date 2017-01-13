@@ -18,7 +18,7 @@ func BenchmarkRandomReadsWrites2(b *testing.B) {
 	for i := 0; i < int(numItems); i++ {
 		internal[int64(i)] = int64(0)
 	}
-	db, err := NewGoLevelDB(Fmt("test_%x", RandStr(12)), "")
+	db, err := NewCLevelDB(Fmt("test_%x", RandStr(12)), "")
 	if err != nil {
 		b.Fatal(err.Error())
 		return
