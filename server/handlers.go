@@ -2,6 +2,7 @@ package rpcserver
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -224,12 +225,22 @@ func httpParamsToArgs(rpcFunc *RPCFunc, r *http.Request) ([]reflect.Value, error
 	argTypes := rpcFunc.args
 	argNames := rpcFunc.argNames
 
-	var err error
 	values := make([]reflect.Value, len(argNames))
 	for i, name := range argNames {
 		ty := argTypes[i]
 		arg := GetParam(r, name)
-		//log.Notice("param to arg", "ty", ty, "name", name, "arg", arg)
+		// log.Notice("param to arg", "ty", ty, "name", name, "arg", arg)
+
+		v, err, ok := nonJsonToArg(ty, arg)
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			values[i] = v
+			continue
+		}
+
+		// Pass values to go-wire
 		values[i], err = _jsonStringToArg(ty, arg)
 		if err != nil {
 			return nil, err
@@ -249,6 +260,44 @@ func _jsonStringToArg(ty reflect.Type, arg string) (reflect.Value, error) {
 	return v, nil
 }
 
+func nonJsonToArg(ty reflect.Type, arg string) (reflect.Value, error, bool) {
+	isQuotedString := strings.HasPrefix(arg, `"`) && strings.HasSuffix(arg, `"`)
+	isHexString := strings.HasPrefix(strings.ToLower(arg), "0x")
+	expectingString := ty.Kind() == reflect.String
+	expectingByteSlice := ty.Kind() == reflect.Slice && ty.Elem().Kind() == reflect.Uint8
+
+	if isHexString {
+		if !expectingString && !expectingByteSlice {
+			err := fmt.Errorf("Got a hex string arg, but expected '%s'",
+				ty.Kind().String())
+			return reflect.ValueOf(nil), err, false
+		}
+
+		var value []byte
+		value, err := hex.DecodeString(arg[2:])
+		if err != nil {
+			return reflect.ValueOf(nil), err, false
+		}
+		if ty.Kind() == reflect.String {
+			return reflect.ValueOf(string(value)), nil, true
+		}
+		return reflect.ValueOf([]byte(value)), nil, true
+	}
+
+	if isQuotedString && expectingByteSlice {
+		var err error
+		v := reflect.New(reflect.TypeOf(""))
+		wire.ReadJSONPtr(v.Interface(), []byte(arg), &err)
+		if err != nil {
+			return reflect.ValueOf(nil), err, false
+		}
+		v = v.Elem()
+		return reflect.ValueOf([]byte(v.String())), nil, true
+	}
+
+	return reflect.ValueOf(nil), nil, false
+}
+
 // rpc.http
 //-----------------------------------------------------------------------------
 // rpc.websocket
@@ -264,7 +313,7 @@ const (
 // contains listener id, underlying ws connection,
 // and the event switch for subscribing to events
 type wsConnection struct {
-	QuitService
+	BaseService
 
 	remoteAddr  string
 	baseConn    *websocket.Conn
@@ -285,13 +334,13 @@ func NewWSConnection(baseConn *websocket.Conn, funcMap map[string]*RPCFunc, evsw
 		funcMap:    funcMap,
 		evsw:       evsw,
 	}
-	wsc.QuitService = *NewQuitService(log, "wsConnection", wsc)
+	wsc.BaseService = *NewBaseService(log, "wsConnection", wsc)
 	return wsc
 }
 
 // wsc.Start() blocks until the connection closes.
 func (wsc *wsConnection) OnStart() error {
-	wsc.QuitService.OnStart()
+	wsc.BaseService.OnStart()
 
 	// Read subscriptions/unsubscriptions to events
 	go wsc.readRoutine()
@@ -318,7 +367,7 @@ func (wsc *wsConnection) OnStart() error {
 }
 
 func (wsc *wsConnection) OnStop() {
-	wsc.QuitService.OnStop()
+	wsc.BaseService.OnStop()
 	wsc.evsw.RemoveListener(wsc.remoteAddr)
 	wsc.readTimeout.Stop()
 	wsc.pingTicker.Stop()

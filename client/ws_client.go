@@ -19,7 +19,7 @@ const (
 )
 
 type WSClient struct {
-	QuitService
+	BaseService
 	Address  string // IP:PORT or /path/to/socket
 	Endpoint string // /websocket/url/endpoint
 	Dialer   func(string, string) (net.Conn, error)
@@ -39,7 +39,7 @@ func NewWSClient(remoteAddr, endpoint string) *WSClient {
 		ResultsCh: make(chan json.RawMessage, wsResultsChannelCapacity),
 		ErrorsCh:  make(chan error, wsErrorsChannelCapacity),
 	}
-	wsClient.QuitService = *NewQuitService(log, "WSClient", wsClient)
+	wsClient.BaseService = *NewBaseService(log, "WSClient", wsClient)
 	return wsClient
 }
 
@@ -48,7 +48,7 @@ func (wsc *WSClient) String() string {
 }
 
 func (wsc *WSClient) OnStart() error {
-	wsc.QuitService.OnStart()
+	wsc.BaseService.OnStart()
 	err := wsc.dial()
 	if err != nil {
 		return err
@@ -84,7 +84,7 @@ func (wsc *WSClient) dial() error {
 }
 
 func (wsc *WSClient) OnStop() {
-	wsc.QuitService.OnStop()
+	wsc.BaseService.OnStop()
 	// ResultsCh/ErrorsCh is closed in receiveEventsRoutine.
 }
 

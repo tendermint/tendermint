@@ -16,7 +16,7 @@ checkout:
 
 dependencies:
   override:
-    - "cd $REPO && make get_deps"
+    - "cd $REPO"
 
 test:
   override:
