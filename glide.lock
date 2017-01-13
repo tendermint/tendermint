@@ -1,5 +1,5 @@
-hash: c050dfd4a6af84ab490a78c1580ac74caf42ed00799de7017d2ee325b806f77e
-updated: 2017-01-12T21:19:13.812049926-05:00
+hash: febff7f2646081f635b5dc2a0a672d9b8e42eb59241269e6658eec916cd2a5a4
+updated: 2017-01-13T00:24:02.377918976-05:00
 imports:
 - name: github.com/btcsuite/btcd
   version: 153dca5c1e4b5d1ea1523592495e5bedfa503391
@@ -40,17 +40,17 @@ imports:
   - edwards25519
   - extra25519
 - name: github.com/tendermint/go-common
-  version: 70e694ee76f09058ea38c9ba81b4aa621bd54df1
+  version: e289af53b6bf6af28da129d9ef64389a4cf7987f
 - name: github.com/tendermint/go-crypto
   version: 4b11d62bdb324027ea01554e5767b71174680ba0
 - name: github.com/tendermint/go-db
-  version: 2645626c33d8702739e52a61a55d705c2dfe4530
+  version: 72f6dacd22a686cdf7fcd60286503e3aceda77ba
 - name: github.com/tendermint/go-logger
   version: cefb3a45c0bf3c493a04e9bcd9b1540528be59f2
 - name: github.com/tendermint/go-merkle
-  version: 2979c7eb8aa020fa1cf203654907dbb889703888
+  version: 7a86b4486f2cd84ac885c5bbc609fdee2905f5d1
 - name: github.com/tendermint/go-process
-  version: 7f507d69fa4c13b34e7a17ff5c87d1eaaa759145
+  version: b27edfd189b1a01a0b099f7e9f8263589cf04909
 - name: github.com/tendermint/go-wire
   version: 2f3b7aafe21c80b19b6ee3210ecb3e3d07c7a471
 - name: github.com/tendermint/log15
