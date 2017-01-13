@@ -54,6 +54,8 @@ func (evsw *eventSwitch) OnStart() error {
 }
 
 func (evsw *eventSwitch) OnStop() {
+	evsw.mtx.Lock()
+	defer evsw.mtx.Unlock()
 	evsw.BaseService.OnStop()
 	evsw.eventCells = nil
 	evsw.listeners = nil
