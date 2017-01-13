@@ -9,9 +9,9 @@ import (
 	"os"
 	"strings"
 
-	. "github.com/tendermint/go-common"
 	"github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/types"
+	. "github.com/tendermint/go-common"
 	"github.com/urfave/cli"
 )
 
@@ -50,7 +50,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "abci-cli"
 	app.Usage = "abci-cli [command] [args...]"
-	app.Version = "0.2.1" // better error handling in console
+	app.Version = "0.3.0" // hex handling
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "address",

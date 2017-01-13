@@ -14,7 +14,6 @@ import:
 - package: github.com/tendermint/go-process
   version: develop
 - package: github.com/tendermint/go-wire
-  version: develop
 - package: github.com/urfave/cli
 - package: golang.org/x/net
   subpackages:
