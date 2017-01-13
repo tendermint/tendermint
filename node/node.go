@@ -114,10 +114,8 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreato
 	sw.AddReactor("CONSENSUS", consensusReactor)
 
 	// Optionally, start the pex reactor
-	// TODO: this is a dev feature, it needs some love
 	if config.GetBool("pex_reactor") {
 		addrBook := p2p.NewAddrBook(config.GetString("addrbook_file"), config.GetBool("addrbook_strict"))
-		addrBook.Start()
 		pexReactor := p2p.NewPEXReactor(addrBook)
 		sw.AddReactor("PEX", pexReactor)
 	}
@@ -359,9 +357,26 @@ func RunNode(config cfg.Config) {
 
 	log.Notice("Started node", "nodeInfo", n.sw.NodeInfo())
 
-	// If seedNode is provided by config, dial out.
 	if config.GetString("seeds") != "" {
 		seeds := strings.Split(config.GetString("seeds"), ",")
+
+		if config.GetBool("pex_reactor") {
+			// add seeds to `addrBook` to avoid losing
+			r := n.sw.Reactor("PEX").(*p2p.PEXReactor)
+			ourAddr := n.NodeInfo().ListenAddr
+			for _, s := range seeds {
+				// do not add ourselves
+				if s == ourAddr {
+					continue
+				}
+
+				addr := p2p.NewNetAddressString(s)
+				r.AddPeerAddress(addr, p2p.NewNetAddressString(ourAddr))
+			}
+			r.SaveAddrBook()
+		}
+
+		// dial out
 		n.sw.DialSeeds(seeds)
 	}
 
