@@ -27,6 +27,8 @@ bash test/p2p/test.sh tester
 BRANCH=`git rev-parse --abbrev-ref HEAD`
 if [[ $(echo "$BRANCH" | grep "release-") != "" ]]; then
 	echo ""
-	echo "* branch $BRANCH; running mintnet/netmon throughput benchmark"
-	bash test/net/test.sh
+	echo "TODO: run network tests"
+	#echo "* branch $BRANCH; running mintnet/netmon throughput benchmark"
+	# TODO: replace mintnet 
+	#bash test/net/test.sh
 fi
