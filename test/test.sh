@@ -1,4 +1,16 @@
 #! /bin/bash
+
+cd $GOPATH/src/github.com/tendermint/go-rpc
+
+# get deps
+go get -u -t ./...
+
+# go tests
+go test --race github.com/tendermint/go-rpc/...
+
+
+# integration tests
+cd test
 set -e
 
 go build -o server main.go
