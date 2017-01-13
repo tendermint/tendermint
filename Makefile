@@ -1,6 +1,6 @@
 .PHONY: all test get_deps
 
-all: protoc test install
+all: protoc install test
 
 NOVENDOR = go list github.com/tendermint/abci/... | grep -v /vendor/
 
