@@ -65,6 +65,7 @@ type BaseService struct {
 	name    string
 	started uint32 // atomic
 	stopped uint32 // atomic
+	Quit    chan struct{}
 
 	// The "subclass" of BaseService
 	impl Service
@@ -74,6 +75,7 @@ func NewBaseService(log log15.Logger, name string, impl Service) *BaseService {
 	return &BaseService{
 		log:  log,
 		name: name,
+		Quit: make(chan struct{}),
 		impl: impl,
 	}
 }
@@ -102,6 +104,8 @@ func (bs *BaseService) Start() (bool, error) {
 }
 
 // Implements Service
+// NOTE: Do not put anything in here,
+// that way users don't need to call BaseService.OnStart()
 func (bs *BaseService) OnStart() error { return nil }
 
 // Implements Service
@@ -111,6 +115,7 @@ func (bs *BaseService) Stop() bool {
 			bs.log.Info(Fmt("Stopping %v", bs.name), "impl", bs.impl)
 		}
 		bs.impl.OnStop()
+		close(bs.Quit)
 		return true
 	} else {
 		if bs.log != nil {
@@ -121,6 +126,8 @@ func (bs *BaseService) Stop() bool {
 }
 
 // Implements Service
+// NOTE: Do not put anything in here,
+// that way users don't need to call BaseService.OnStop()
 func (bs *BaseService) OnStop() {}
 
 // Implements Service
@@ -151,6 +158,10 @@ func (bs *BaseService) IsRunning() bool {
 	return atomic.LoadUint32(&bs.started) == 1 && atomic.LoadUint32(&bs.stopped) == 0
 }
 
+func (bs *BaseService) Wait() {
+	<-bs.Quit
+}
+
 // Implements Servce
 func (bs *BaseService) String() string {
 	return bs.name
@@ -160,25 +171,13 @@ func (bs *BaseService) String() string {
 
 type QuitService struct {
 	BaseService
-	Quit chan struct{}
 }
 
 func NewQuitService(log log15.Logger, name string, impl Service) *QuitService {
+	if log != nil {
+		log.Warn("QuitService is deprecated, use BaseService instead")
+	}
 	return &QuitService{
 		BaseService: *NewBaseService(log, name, impl),
-		Quit:        nil,
-	}
-}
-
-// NOTE: when overriding OnStart, must call .QuitService.OnStart().
-func (qs *QuitService) OnStart() error {
-	qs.Quit = make(chan struct{})
-	return nil
-}
-
-// NOTE: when overriding OnStop, must call .QuitService.OnStop().
-func (qs *QuitService) OnStop() {
-	if qs.Quit != nil {
-		close(qs.Quit)
 	}
 }
