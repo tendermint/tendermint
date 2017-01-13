@@ -14,6 +14,10 @@ checkout:
     # - git submodule sync
     # - git submodule update --init # use submodules
 
+dependencies:
+  override:
+    - "cd $REPO"
+
 test:
   override:
     - "cd $REPO && make test"
