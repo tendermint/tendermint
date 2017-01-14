@@ -1,7 +1,7 @@
 package version
 
 const Maj = "0"
-const Min = "7" // tmsp useability (protobuf, unix); optimizations; broadcast_tx_commit
-const Fix = "4" // --pex flag and less restricted /dial_seeds
+const Min = "8" // validator set changes, tmsp->abci, app persistence/recovery, BFT-liveness fix
+const Fix = "0" //
 
 const Version = Maj + "." + Min + "." + Fix

@@ -4,7 +4,7 @@ set -eu
 NUM_OF_PEERS=$1
 
 # how many attempts for each peer to catch up by height
-MAX_ATTEMPTS_TO_CATCH_UP=10
+MAX_ATTEMPTS_TO_CATCH_UP=20
 
 echo "Waiting for nodes to come online"
 set +e
