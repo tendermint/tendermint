@@ -28,7 +28,11 @@ func (res Result) IsErr() bool {
 }
 
 func (res Result) Error() string {
-	return fmt.Sprintf("ABCI code:%v, data:%X, log:%v", res.Code, res.Data, res.Log)
+	return fmt.Sprintf("ABCI{code:%v, data:%X, log:%v}", res.Code, res.Data, res.Log)
+}
+
+func (res Result) String() string {
+	return fmt.Sprintf("ABCI{code:%v, data:%X, log:%v}", res.Code, res.Data, res.Log)
 }
 
 func (res Result) PrependLog(log string) Result {
