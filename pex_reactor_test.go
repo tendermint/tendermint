@@ -1,18 +1,24 @@
 package p2p
 
 import (
+	"io/ioutil"
 	"math/rand"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	. "github.com/tendermint/go-common"
+	cmn "github.com/tendermint/go-common"
 	wire "github.com/tendermint/go-wire"
 )
 
 func TestPEXReactorBasic(t *testing.T) {
-	book := NewAddrBook(createTempFileName("addrbook"), true)
+	dir, err := ioutil.TempDir("", "pex_reactor")
+	require.Nil(t, err)
+	defer os.RemoveAll(dir)
+	book := NewAddrBook(dir+"addrbook.json", true)
+
 	r := NewPEXReactor(book)
 
 	assert.NotNil(t, r)
@@ -20,7 +26,11 @@ func TestPEXReactorBasic(t *testing.T) {
 }
 
 func TestPEXReactorAddRemovePeer(t *testing.T) {
-	book := NewAddrBook(createTempFileName("addrbook"), true)
+	dir, err := ioutil.TempDir("", "pex_reactor")
+	require.Nil(t, err)
+	defer os.RemoveAll(dir)
+	book := NewAddrBook(dir+"addrbook.json", true)
+
 	r := NewPEXReactor(book)
 
 	size := book.Size()
@@ -45,11 +55,14 @@ func TestPEXReactorRunning(t *testing.T) {
 	N := 3
 	switches := make([]*Switch, N)
 
-	book := NewAddrBook(createTempFileName("addrbook"), false)
+	dir, err := ioutil.TempDir("", "pex_reactor")
+	require.Nil(t, err)
+	defer os.RemoveAll(dir)
+	book := NewAddrBook(dir+"addrbook.json", false)
 
 	// create switches
 	for i := 0; i < N; i++ {
-		switches[i] = makeSwitch(i, "172.17.0.2", "123.123.123", func(i int, sw *Switch) *Switch {
+		switches[i] = makeSwitch(i, "127.0.0.1", "123.123.123", func(i int, sw *Switch) *Switch {
 			r := NewPEXReactor(book)
 			r.SetEnsurePeersPeriod(250 * time.Millisecond)
 			sw.AddReactor("pex", r)
@@ -87,7 +100,11 @@ func TestPEXReactorRunning(t *testing.T) {
 }
 
 func TestPEXReactorReceive(t *testing.T) {
-	book := NewAddrBook(createTempFileName("addrbook"), true)
+	dir, err := ioutil.TempDir("", "pex_reactor")
+	require.Nil(t, err)
+	defer os.RemoveAll(dir)
+	book := NewAddrBook(dir+"addrbook.json", true)
+
 	r := NewPEXReactor(book)
 
 	peer := createRandomPeer(false)
@@ -103,7 +120,11 @@ func TestPEXReactorReceive(t *testing.T) {
 }
 
 func TestPEXReactorAbuseFromPeer(t *testing.T) {
-	book := NewAddrBook(createTempFileName("addrbook"), true)
+	dir, err := ioutil.TempDir("", "pex_reactor")
+	require.Nil(t, err)
+	defer os.RemoveAll(dir)
+	book := NewAddrBook(dir+"addrbook.json", true)
+
 	r := NewPEXReactor(book)
 	r.SetMaxMsgCountByPeer(5)
 
@@ -118,9 +139,9 @@ func TestPEXReactorAbuseFromPeer(t *testing.T) {
 }
 
 func createRandomPeer(outbound bool) *Peer {
-	addr := Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256)
+	addr := cmn.Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256)
 	return &Peer{
-		Key: RandStr(12),
+		Key: cmn.RandStr(12),
 		NodeInfo: &NodeInfo{
 			ListenAddr: addr,
 		},
