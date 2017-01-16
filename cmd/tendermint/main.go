@@ -9,7 +9,6 @@ import (
 	"github.com/tendermint/go-logger"
 	tmcfg "github.com/tendermint/tendermint/config/tendermint"
 	"github.com/tendermint/tendermint/consensus"
-	"github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -40,7 +39,7 @@ Commands:
 
 	switch args[0] {
 	case "node":
-		node.RunNode(config)
+		run_node(config)
 	case "replay":
 		consensus.RunReplayFile(config, args[1], false)
 	case "replay_console":
