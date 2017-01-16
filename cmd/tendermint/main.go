@@ -8,6 +8,7 @@ import (
 	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-logger"
 	tmcfg "github.com/tendermint/tendermint/config/tendermint"
+	"github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/version"
 )
@@ -41,11 +42,9 @@ Commands:
 	case "node":
 		node.RunNode(config)
 	case "replay":
-		if len(args) > 2 && args[1] == "console" {
-			node.RunReplayConsole(config, args[2])
-		} else {
-			node.RunReplay(config, args[1])
-		}
+		consensus.RunReplayFile(config, args[1], false)
+	case "replay_console":
+		consensus.RunReplayFile(config, args[1], true)
 	case "init":
 		init_files()
 	case "show_validator":

@@ -57,10 +57,8 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreato
 	blockStoreDB := dbm.NewDB("blockstore", config.GetString("db_backend"), config.GetString("db_dir"))
 	blockStore := bc.NewBlockStore(blockStoreDB)
 
-	// Get State db
-	stateDB := dbm.NewDB("state", config.GetString("db_backend"), config.GetString("db_dir"))
-
 	// Get State
+	stateDB := dbm.NewDB("state", config.GetString("db_backend"), config.GetString("db_dir"))
 	state := sm.GetState(config, stateDB)
 
 	// Create the proxyApp, which manages connections (consensus, mempool, query)
@@ -385,59 +383,6 @@ func (n *Node) NodeInfo() *p2p.NodeInfo {
 
 func (n *Node) DialSeeds(seeds []string) {
 	n.sw.DialSeeds(seeds)
-}
-
-//------------------------------------------------------------------------------
-// replay
-
-// convenience for replay mode
-func newConsensusState(config cfg.Config) *consensus.ConsensusState {
-	// Get BlockStore
-	blockStoreDB := dbm.NewDB("blockstore", config.GetString("db_backend"), config.GetString("db_dir"))
-	blockStore := bc.NewBlockStore(blockStoreDB)
-
-	// Get State
-	stateDB := dbm.NewDB("state", config.GetString("db_backend"), config.GetString("db_dir"))
-	state := sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
-
-	// Create proxyAppConn connection (consensus, mempool, query)
-	proxyApp := proxy.NewAppConns(config, proxy.DefaultClientCreator(config), sm.NewHandshaker(config, state, blockStore))
-	_, err := proxyApp.Start()
-	if err != nil {
-		Exit(Fmt("Error starting proxy app conns: %v", err))
-	}
-
-	// add the chainid to the global config
-	config.Set("chain_id", state.ChainID)
-
-	// Make event switch
-	eventSwitch := types.NewEventSwitch()
-	if _, err := eventSwitch.Start(); err != nil {
-		Exit(Fmt("Failed to start event switch: %v", err))
-	}
-
-	mempool := mempl.NewMempool(config, proxyApp.Mempool())
-
-	consensusState := consensus.NewConsensusState(config, state.Copy(), proxyApp.Consensus(), blockStore, mempool)
-	consensusState.SetEventSwitch(eventSwitch)
-	return consensusState
-}
-
-func RunReplayConsole(config cfg.Config, walFile string) {
-	consensusState := newConsensusState(config)
-
-	if err := consensusState.ReplayConsole(walFile); err != nil {
-		Exit(Fmt("Error during consensus replay: %v", err))
-	}
-}
-
-func RunReplay(config cfg.Config, walFile string) {
-	consensusState := newConsensusState(config)
-
-	if err := consensusState.ReplayMessages(walFile); err != nil {
-		Exit(Fmt("Error during consensus replay: %v", err))
-	}
-	log.Notice("Replay run successfully")
 }
 
 // Defaults to tcp
