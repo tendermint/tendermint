@@ -112,7 +112,9 @@ func (pexR *PEXReactor) Receive(chID byte, src *Peer, msgBytes []byte) {
 		// (We don't want to get spammed with bad peers)
 		srcAddr := src.Connection().RemoteAddress
 		for _, addr := range msg.Addrs {
-			pexR.book.AddAddress(addr, srcAddr)
+			if addr != nil {
+				pexR.book.AddAddress(addr, srcAddr)
+			}
 		}
 	default:
 		log.Warn(Fmt("Unknown message type %v", reflect.TypeOf(msg)))
