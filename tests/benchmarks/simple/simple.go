@@ -8,8 +8,8 @@ import (
 	"reflect"
 	//"encoding/hex"
 
-	. "github.com/tendermint/go-common"
 	"github.com/tendermint/abci/types"
+	. "github.com/tendermint/go-common"
 )
 
 func main() {

@@ -3,8 +3,8 @@ package abcicli
 import (
 	"sync"
 
-	. "github.com/tendermint/go-common"
 	types "github.com/tendermint/abci/types"
+	. "github.com/tendermint/go-common"
 )
 
 type localClient struct {

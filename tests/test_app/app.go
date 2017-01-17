@@ -5,10 +5,10 @@ import (
 	"os"
 	"time"
 
-	. "github.com/tendermint/go-common"
-	"github.com/tendermint/go-process"
 	"github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/types"
+	. "github.com/tendermint/go-common"
+	"github.com/tendermint/go-process"
 )
 
 //----------------------------------------

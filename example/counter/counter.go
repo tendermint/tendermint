@@ -3,8 +3,8 @@ package counter
 import (
 	"encoding/binary"
 
-	. "github.com/tendermint/go-common"
 	"github.com/tendermint/abci/types"
+	. "github.com/tendermint/go-common"
 )
 
 type CounterApplication struct {

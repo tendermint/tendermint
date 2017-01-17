@@ -5,10 +5,10 @@ import (
 	"strings"
 	"testing"
 
-	. "github.com/tendermint/go-common"
 	"github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/server"
 	"github.com/tendermint/abci/types"
+	. "github.com/tendermint/go-common"
 )
 
 func TestChainAware(t *testing.T) {

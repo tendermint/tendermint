@@ -6,8 +6,8 @@ import (
 
 	"google.golang.org/grpc"
 
-	. "github.com/tendermint/go-common"
 	"github.com/tendermint/abci/types"
+	. "github.com/tendermint/go-common"
 )
 
 // var maxNumberConnections = 2

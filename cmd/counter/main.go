@@ -3,9 +3,9 @@ package main
 import (
 	"flag"
 
-	. "github.com/tendermint/go-common"
 	"github.com/tendermint/abci/example/counter"
 	"github.com/tendermint/abci/server"
+	. "github.com/tendermint/go-common"
 )
 
 func main() {

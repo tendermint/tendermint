@@ -6,10 +6,10 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/tendermint/abci/types"
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-wire"
-	"github.com/tendermint/abci/types"
 )
 
 func testDummy(t *testing.T, dummy types.Application, tx []byte, key, value string) {
