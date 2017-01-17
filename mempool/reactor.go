@@ -6,13 +6,12 @@ import (
 	"reflect"
 	"time"
 
+	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/go-clist"
-	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-p2p"
 	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/types"
-	abci "github.com/tendermint/abci/types"
 )
 
 const (
@@ -80,7 +79,7 @@ func (memR *MempoolReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte) {
 		}
 		// broadcasting happens from go routines per peer
 	default:
-		log.Warn(Fmt("Unknown message type %v", reflect.TypeOf(msg)))
+		log.Warn(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
 	}
 }
 
