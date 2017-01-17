@@ -23,7 +23,7 @@ type Application interface {
 	Query(query []byte) Result
 
 	// Get proof for state
-	Proof(key []byte, blockHeight int64) Result
+	Proof(key []byte, blockHeight uint64) Result
 
 	// Return the application Merkle root hash
 	Commit() Result

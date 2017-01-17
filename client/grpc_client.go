@@ -8,8 +8,8 @@ import (
 	context "golang.org/x/net/context"
 	grpc "google.golang.org/grpc"
 
-	. "github.com/tendermint/go-common"
 	"github.com/tendermint/abci/types"
+	. "github.com/tendermint/go-common"
 )
 
 // A stripped copy of the remoteClient that makes
@@ -182,7 +182,7 @@ func (cli *grpcClient) QueryAsync(query []byte) *ReqRes {
 	return cli.finishAsyncCall(req, &types.Response{&types.Response_Query{res}})
 }
 
-func (cli *grpcClient) ProofAsync(key []byte, blockHeight int64) *ReqRes {
+func (cli *grpcClient) ProofAsync(key []byte, blockHeight uint64) *ReqRes {
 	req := types.ToRequestProof(key, blockHeight)
 	res, err := cli.client.Proof(context.Background(), req.GetProof(), grpc.FailFast(true))
 	if err != nil {
@@ -310,7 +310,7 @@ func (cli *grpcClient) CheckTxSync(tx []byte) (res types.Result) {
 	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
 }
 
-func (cli *grpcClient) ProofSync(key []byte, blockHeight int64) (res types.Result) {
+func (cli *grpcClient) ProofSync(key []byte, blockHeight uint64) (res types.Result) {
 	reqres := cli.ProofAsync(key, blockHeight)
 	if res := cli.checkErrGetResult(); res.IsErr() {
 		return res

@@ -3,9 +3,9 @@ package main
 import (
 	"flag"
 
-	. "github.com/tendermint/go-common"
 	"github.com/tendermint/abci/server"
 	"github.com/tendermint/abci/types"
+	. "github.com/tendermint/go-common"
 )
 
 func main() {
@@ -61,7 +61,7 @@ func (app *ChainAwareApplication) Query(query []byte) types.Result {
 	return types.NewResultOK([]byte(Fmt("%d,%d", app.beginCount, app.endCount)), "")
 }
 
-func (app *ChainAwareApplication) Proof(key []byte, blockHeight int64) types.Result {
+func (app *ChainAwareApplication) Proof(key []byte, blockHeight uint64) types.Result {
 	return types.NewResultOK(nil, Fmt("Proof is not supported"))
 }
 

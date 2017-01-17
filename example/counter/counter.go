@@ -3,8 +3,8 @@ package counter
 import (
 	"encoding/binary"
 
-	. "github.com/tendermint/go-common"
 	"github.com/tendermint/abci/types"
+	. "github.com/tendermint/go-common"
 )
 
 type CounterApplication struct {
@@ -84,6 +84,6 @@ func (app *CounterApplication) Query(query []byte) types.Result {
 	return types.ErrUnknownRequest.SetLog(Fmt("Invalid nonce. Expected hash or tx, got %v", queryStr))
 }
 
-func (app *CounterApplication) Proof(key []byte, blockHeight int64) types.Result {
+func (app *CounterApplication) Proof(key []byte, blockHeight uint64) types.Result {
 	return types.NewResultOK(nil, Fmt("Proof is not supported"))
 }

@@ -324,9 +324,9 @@ func cmdProof(c *cli.Context) error {
 		return err
 	}
 
-	var height int64
+	var height uint64
 	if len(args) == 2 {
-		height, _ = strconv.ParseInt(args[1], 10, 0)
+		height, _ = strconv.ParseUint(args[1], 10, 0)
 	}
 	res := client.ProofSync(keyBytes, height)
 	rsp := newResponse(res, string(res.Data), true)

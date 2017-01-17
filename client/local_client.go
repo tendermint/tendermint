@@ -3,8 +3,8 @@ package abcicli
 import (
 	"sync"
 
-	. "github.com/tendermint/go-common"
 	types "github.com/tendermint/abci/types"
+	. "github.com/tendermint/go-common"
 )
 
 type localClient struct {
@@ -99,7 +99,7 @@ func (app *localClient) QueryAsync(tx []byte) *ReqRes {
 	)
 }
 
-func (app *localClient) ProofAsync(key []byte, blockHeight int64) *ReqRes {
+func (app *localClient) ProofAsync(key []byte, blockHeight uint64) *ReqRes {
 	app.mtx.Lock()
 	res := app.Application.Proof(key, blockHeight)
 	app.mtx.Unlock()
@@ -202,7 +202,7 @@ func (app *localClient) QuerySync(query []byte) (res types.Result) {
 	return res
 }
 
-func (app *localClient) ProofSync(key []byte, blockHeight int64) (res types.Result) {
+func (app *localClient) ProofSync(key []byte, blockHeight uint64) (res types.Result) {
 	app.mtx.Lock()
 	res = app.Application.Proof(key, blockHeight)
 	app.mtx.Unlock()

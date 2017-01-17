@@ -6,11 +6,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/tendermint/abci/types"
 	. "github.com/tendermint/go-common"
 	dbm "github.com/tendermint/go-db"
 	"github.com/tendermint/go-merkle"
 	"github.com/tendermint/go-wire"
-	"github.com/tendermint/abci/types"
 )
 
 const (
@@ -93,7 +93,7 @@ func (app *PersistentDummyApplication) Query(query []byte) types.Result {
 	return app.app.Query(query)
 }
 
-func (app *PersistentDummyApplication) Proof(key []byte, blockHeight int64) types.Result {
+func (app *PersistentDummyApplication) Proof(key []byte, blockHeight uint64) types.Result {
 	return app.app.Proof(key, blockHeight)
 }
 

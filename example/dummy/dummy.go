@@ -54,7 +54,7 @@ func (app *DummyApplication) Query(query []byte) types.Result {
 	return types.NewResultOK(wire.JSONBytes(queryResult), "")
 }
 
-func (app *DummyApplication) Proof(key []byte, blockHeight int64) types.Result {
+func (app *DummyApplication) Proof(key []byte, blockHeight uint64) types.Result {
 	// TODO: when go-merkle supports querying older blocks without possible panics,
 	// we should store a cache and allow a query.  But for now it is impossible.
 	// And this is just a Dummy application anyway, what do you expect? ;)

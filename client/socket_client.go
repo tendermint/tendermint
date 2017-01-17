@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	. "github.com/tendermint/go-common"
 	"github.com/tendermint/abci/types"
+	. "github.com/tendermint/go-common"
 )
 
 const (
@@ -255,7 +255,7 @@ func (cli *socketClient) QueryAsync(query []byte) *ReqRes {
 	return cli.queueRequest(types.ToRequestQuery(query))
 }
 
-func (cli *socketClient) ProofAsync(key []byte, blockHeight int64) *ReqRes {
+func (cli *socketClient) ProofAsync(key []byte, blockHeight uint64) *ReqRes {
 	return cli.queueRequest(types.ToRequestProof(key, blockHeight))
 }
 
@@ -349,7 +349,7 @@ func (cli *socketClient) QuerySync(query []byte) (res types.Result) {
 	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
 }
 
-func (cli *socketClient) ProofSync(key []byte, blockHeight int64) (res types.Result) {
+func (cli *socketClient) ProofSync(key []byte, blockHeight uint64) (res types.Result) {
 	reqres := cli.queueRequest(types.ToRequestProof(key, blockHeight))
 	cli.FlushSync()
 	if err := cli.Error(); err != nil {
