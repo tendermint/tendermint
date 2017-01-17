@@ -28,6 +28,18 @@ const (
 // adequate number of peers are connected to the switch.
 //
 // It uses `AddrBook` (address book) to store `NetAddress`es of the peers.
+//
+// ## Preventing abuse
+//
+// For now, it just limits the number of messages from one peer to
+// `defaultMaxMsgCountByPeer` messages per `msgCountByPeerFlushInterval` (1000
+// msg/hour).
+//
+// NOTE [2017-01-17]:
+//   Limiting is fine for now. Maybe down the road we want to keep track of the
+//   quality of peer messages so if peerA keeps telling us about peers we can't
+//   connect to then maybe we should care less about peerA. But I don't think
+//   that kind of complexity is priority right now.
 type PEXReactor struct {
 	BaseReactor
 
