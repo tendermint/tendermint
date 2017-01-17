@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 
 	"github.com/tendermint/abci/server"
 	"github.com/tendermint/abci/types"
@@ -18,7 +19,7 @@ func main() {
 	// Start the listener
 	srv, err := server.NewServer(*addrPtr, *abciPtr, NewChainAwareApplication())
 	if err != nil {
-		common.Exit(err.Error())
+		log.Fatal(err.Error())
 	}
 
 	// Wait forever

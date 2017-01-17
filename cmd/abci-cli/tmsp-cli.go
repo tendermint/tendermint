@@ -6,12 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"strings"
 
 	"github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/types"
-	common "github.com/tendermint/go-common"
 	"github.com/urfave/cli"
 )
 
@@ -135,7 +135,7 @@ func main() {
 	app.Before = before
 	err := app.Run(os.Args)
 	if err != nil {
-		common.Exit(err.Error())
+		log.Fatal(err.Error())
 	}
 
 }
@@ -145,7 +145,7 @@ func before(c *cli.Context) error {
 		var err error
 		client, err = abcicli.NewClient(c.GlobalString("address"), c.GlobalString("abci"), false)
 		if err != nil {
-			common.Exit(err.Error())
+			log.Fatal(err.Error())
 		}
 	}
 	return nil

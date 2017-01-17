@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"reflect"
 
@@ -15,7 +16,7 @@ func main() {
 
 	conn, err := common.Connect("unix://test.sock")
 	if err != nil {
-		common.Exit(err.Error())
+		log.Fatal(err.Error())
 	}
 
 	// Make a bunch of requests
@@ -24,7 +25,7 @@ func main() {
 		req := types.ToRequestEcho("foobar")
 		_, err := makeRequest(conn, req)
 		if err != nil {
-			common.Exit(err.Error())
+			log.Fatal(err.Error())
 		}
 		counter += 1
 		if counter%1000 == 0 {

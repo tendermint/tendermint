@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"log"
 
 	"github.com/tendermint/abci/example/counter"
 	"github.com/tendermint/abci/server"
@@ -19,7 +20,7 @@ func main() {
 	// Start the listener
 	srv, err := server.NewServer(*addrPtr, *abciPtr, app)
 	if err != nil {
-		common.Exit(err.Error())
+		log.Fatal(err.Error())
 	}
 
 	// Wait forever

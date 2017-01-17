@@ -100,7 +100,7 @@ func (s *SocketServer) acceptConnectionsRoutine() {
 			if !s.IsRunning() {
 				return // Ignore error from listener closing.
 			}
-			common.Exit("Failed to accept connection: " + err.Error())
+			log.Crit("Failed to accept connection: " + err.Error())
 		} else {
 			log.Notice("Accepted a new connection")
 		}

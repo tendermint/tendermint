@@ -136,7 +136,7 @@ func LoadLastBlock(db dbm.DB) (lastBlock LastBlockInfo) {
 		wire.ReadBinaryPtr(&lastBlock, r, 0, n, err)
 		if *err != nil {
 			// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
-			common.Exit(fmt.Sprintf("Data has been corrupted or its spec has changed: %v\n", *err))
+			log.Crit(fmt.Sprintf("Data has been corrupted or its spec has changed: %v\n", *err))
 		}
 		// TODO: ensure that buf is completely read.
 	}

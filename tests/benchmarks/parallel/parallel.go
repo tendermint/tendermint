@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"log"
 
 	"github.com/tendermint/abci/types"
 	common "github.com/tendermint/go-common"
@@ -12,7 +13,7 @@ func main() {
 
 	conn, err := common.Connect("unix://test.sock")
 	if err != nil {
-		common.Exit(err.Error())
+		log.Fatal(err.Error())
 	}
 
 	// Read a bunch of responses
@@ -22,7 +23,7 @@ func main() {
 			var res = &types.Response{}
 			err := types.ReadMessage(conn, res)
 			if err != nil {
-				common.Exit(err.Error())
+				log.Fatal(err.Error())
 			}
 			counter += 1
 			if counter%1000 == 0 {
@@ -39,11 +40,11 @@ func main() {
 
 		err := types.WriteMessage(req, bufWriter)
 		if err != nil {
-			common.Exit(err.Error())
+			log.Fatal(err.Error())
 		}
 		err = bufWriter.Flush()
 		if err != nil {
-			common.Exit(err.Error())
+			log.Fatal(err.Error())
 		}
 
 		counter += 1
