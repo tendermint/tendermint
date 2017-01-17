@@ -1,12 +1,12 @@
 package core_types
 
 import (
+	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-p2p"
 	"github.com/tendermint/go-rpc/types"
 	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/types"
-	abci "github.com/tendermint/abci/types"
 )
 
 type ResultBlockchainInfo struct {
@@ -64,7 +64,7 @@ type ResultBroadcastTx struct {
 }
 
 type ResultBroadcastTxCommit struct {
-	CheckTx  *abci.ResponseCheckTx  `json:"check_tx"`
+	CheckTx   *abci.ResponseCheckTx   `json:"check_tx"`
 	DeliverTx *abci.ResponseDeliverTx `json:"deliver_tx"`
 }
 
@@ -82,6 +82,10 @@ type ResultABCIInfo struct {
 
 type ResultABCIQuery struct {
 	Result abci.Result `json:"result"`
+}
+
+type ResultABCIProof struct {
+	Result abci.Result `json:"proof"`
 }
 
 type ResultUnsafeFlushMempool struct{}
@@ -127,6 +131,7 @@ const (
 	// 0x7 bytes are for querying the application
 	ResultTypeABCIQuery = byte(0x70)
 	ResultTypeABCIInfo  = byte(0x71)
+	ResultTypeABCIProof = byte(0x72)
 
 	// 0x8 bytes are for events
 	ResultTypeSubscribe   = byte(0x80)
@@ -168,5 +173,6 @@ var _ = wire.RegisterInterface(
 	wire.ConcreteType{&ResultUnsafeProfile{}, ResultTypeUnsafeWriteHeapProfile},
 	wire.ConcreteType{&ResultUnsafeFlushMempool{}, ResultTypeUnsafeFlushMempool},
 	wire.ConcreteType{&ResultABCIQuery{}, ResultTypeABCIQuery},
+	wire.ConcreteType{&ResultABCIProof{}, ResultTypeABCIProof},
 	wire.ConcreteType{&ResultABCIInfo{}, ResultTypeABCIInfo},
 )
