@@ -69,11 +69,10 @@ RETRY_LOOP:
 		if err != nil {
 			if cli.mustConnect {
 				return err
-			} else {
-				log.Warn(fmt.Sprintf("abci.socketClient failed to connect to %v.  Retrying...", cli.addr))
-				time.Sleep(time.Second * 3)
-				continue RETRY_LOOP
 			}
+			log.Warn(fmt.Sprintf("abci.socketClient failed to connect to %v.  Retrying...", cli.addr))
+			time.Sleep(time.Second * 3)
+			continue RETRY_LOOP
 		}
 		cli.conn = conn
 
@@ -82,7 +81,6 @@ RETRY_LOOP:
 
 		return nil
 	}
-	return nil // never happens
 }
 
 func (cli *socketClient) OnStop() {
@@ -298,11 +296,10 @@ func (cli *socketClient) InfoSync() (resInfo types.ResponseInfo, err error) {
 	if err := cli.Error(); err != nil {
 		return resInfo, err
 	}
-	if resInfo_ := reqres.Response.GetInfo(); resInfo_ != nil {
-		return *resInfo_, nil
-	} else {
-		return resInfo, nil
+	if info := reqres.Response.GetInfo(); info != nil {
+		return *info, nil
 	}
+	return resInfo, nil
 }
 
 func (cli *socketClient) SetOptionSync(key string, value string) (res types.Result) {
@@ -379,11 +376,10 @@ func (cli *socketClient) EndBlockSync(height uint64) (resEndBlock types.Response
 	if err := cli.Error(); err != nil {
 		return resEndBlock, err
 	}
-	if resEndBlock_ := reqres.Response.GetEndBlock(); resEndBlock_ != nil {
-		return *resEndBlock_, nil
-	} else {
-		return resEndBlock, nil
+	if blk := reqres.Response.GetEndBlock(); blk != nil {
+		return *blk, nil
 	}
+	return resEndBlock, nil
 }
 
 //----------------------------------------

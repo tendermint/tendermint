@@ -64,12 +64,12 @@ func (app *ChainAwareApplication) Query(query []byte) types.Result {
 }
 
 func (app *ChainAwareApplication) BeginBlock(hash []byte, header *types.Header) {
-	app.beginCount += 1
+	app.beginCount++
 	return
 }
 
 func (app *ChainAwareApplication) EndBlock(height uint64) (resEndBlock types.ResponseEndBlock) {
-	app.endCount += 1
+	app.endCount++
 	return
 }
 

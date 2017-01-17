@@ -25,7 +25,7 @@ func main() {
 			if err != nil {
 				log.Fatal(err.Error())
 			}
-			counter += 1
+			counter++
 			if counter%1000 == 0 {
 				fmt.Println("Read", counter)
 			}
@@ -47,7 +47,7 @@ func main() {
 			log.Fatal(err.Error())
 		}
 
-		counter += 1
+		counter++
 		if counter%1000 == 0 {
 			fmt.Println("Write", counter)
 		}

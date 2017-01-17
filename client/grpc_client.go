@@ -50,11 +50,10 @@ RETRY_LOOP:
 		if err != nil {
 			if cli.mustConnect {
 				return err
-			} else {
-				log.Warn(fmt.Sprintf("abci.grpcClient failed to connect to %v.  Retrying...\n", cli.addr))
-				time.Sleep(time.Second * 3)
-				continue RETRY_LOOP
 			}
+			log.Warn(fmt.Sprintf("abci.grpcClient failed to connect to %v.  Retrying...\n", cli.addr))
+			time.Sleep(time.Second * 3)
+			continue RETRY_LOOP
 		}
 
 		client := types.NewABCIApplicationClient(conn)
@@ -268,11 +267,10 @@ func (cli *grpcClient) InfoSync() (resInfo types.ResponseInfo, err error) {
 	if err = cli.Error(); err != nil {
 		return resInfo, err
 	}
-	if resInfo_ := reqres.Response.GetInfo(); resInfo_ != nil {
-		return *resInfo_, nil
-	} else {
-		return resInfo, nil
+	if info := reqres.Response.GetInfo(); info != nil {
+		return *info, nil
 	}
+	return resInfo, nil
 }
 
 func (cli *grpcClient) SetOptionSync(key string, value string) (res types.Result) {
@@ -335,9 +333,8 @@ func (cli *grpcClient) EndBlockSync(height uint64) (resEndBlock types.ResponseEn
 	if err := cli.Error(); err != nil {
 		return resEndBlock, err
 	}
-	if resEndBlock_ := reqres.Response.GetEndBlock(); resEndBlock_ != nil {
-		return *resEndBlock_, nil
-	} else {
-		return resEndBlock, nil
+	if blk := reqres.Response.GetEndBlock(); blk != nil {
+		return *blk, nil
 	}
+	return resEndBlock, nil
 }

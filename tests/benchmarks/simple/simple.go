@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -27,7 +26,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err.Error())
 		}
-		counter += 1
+		counter++
 		if counter%1000 == 0 {
 			fmt.Println(counter)
 		}
@@ -63,7 +62,7 @@ func makeRequest(conn net.Conn, req *types.Request) (*types.Response, error) {
 		return nil, err
 	}
 	if _, ok := resFlush.Value.(*types.Response_Flush); !ok {
-		return nil, errors.New(fmt.Sprintf("Expected flush response but got something else: %v", reflect.TypeOf(resFlush)))
+		return nil, fmt.Errorf("Expected flush response but got something else: %v", reflect.TypeOf(resFlush))
 	}
 
 	return res, nil

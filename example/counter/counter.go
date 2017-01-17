@@ -40,7 +40,7 @@ func (app *CounterApplication) DeliverTx(tx []byte) types.Result {
 			return types.ErrBadNonce.SetLog(fmt.Sprintf("Invalid nonce. Expected %v, got %v", app.txCount, txValue))
 		}
 	}
-	app.txCount += 1
+	app.txCount++
 	return types.OK
 }
 
@@ -60,15 +60,13 @@ func (app *CounterApplication) CheckTx(tx []byte) types.Result {
 }
 
 func (app *CounterApplication) Commit() types.Result {
-	app.hashCount += 1
-
+	app.hashCount++
 	if app.txCount == 0 {
 		return types.OK
-	} else {
-		hash := make([]byte, 8)
-		binary.BigEndian.PutUint64(hash, uint64(app.txCount))
-		return types.NewResultOK(hash, "")
 	}
+	hash := make([]byte, 8)
+	binary.BigEndian.PutUint64(hash, uint64(app.txCount))
+	return types.NewResultOK(hash, "")
 }
 
 func (app *CounterApplication) Query(query []byte) types.Result {

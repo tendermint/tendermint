@@ -72,7 +72,7 @@ func (s *SocketServer) addConn(conn net.Conn) int {
 	defer s.connsMtx.Unlock()
 
 	connID := s.nextConnID
-	s.nextConnID += 1
+	s.nextConnID++
 	s.conns[connID] = conn
 
 	return connID
