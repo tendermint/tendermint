@@ -172,7 +172,7 @@ func ABCIQueryResult(query []byte) (ctypes.TMResult, error) {
 	}
 }
 
-func ABCIProofResult(key []byte, height int64) (ctypes.TMResult, error) {
+func ABCIProofResult(key []byte, height uint64) (ctypes.TMResult, error) {
 	if r, err := ABCIProof(key, height); err != nil {
 		return nil, err
 	} else {

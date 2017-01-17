@@ -165,6 +165,6 @@ func (app *CounterApplication) Query(query []byte) abci.Result {
 	return abci.NewResultOK(nil, Fmt("Query is not supported"))
 }
 
-func (app *CounterApplication) Proof(key []byte, blockHeight int64) abci.Result {
+func (app *CounterApplication) Proof(key []byte, blockHeight uint64) abci.Result {
 	return abci.NewResultOK(nil, Fmt("Proof is not supported"))
 }

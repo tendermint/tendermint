@@ -36,7 +36,7 @@ type AppConnQuery interface {
 	EchoSync(string) (res types.Result)
 	InfoSync() (types.ResponseInfo, error)
 	QuerySync(tx []byte) (res types.Result)
-	ProofSync(key []byte, blockHeight int64) (res types.Result)
+	ProofSync(key []byte, blockHeight uint64) (res types.Result)
 
 	//	SetOptionSync(key string, value string) (res types.Result)
 }
@@ -144,6 +144,6 @@ func (app *appConnQuery) QuerySync(tx []byte) (res types.Result) {
 	return app.appConn.QuerySync(tx)
 }
 
-func (app *appConnQuery) ProofSync(key []byte, blockHeight int64) (res types.Result) {
+func (app *appConnQuery) ProofSync(key []byte, blockHeight uint64) (res types.Result) {
 	return app.appConn.ProofSync(key, blockHeight)
 }

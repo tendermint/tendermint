@@ -11,7 +11,7 @@ func ABCIQuery(query []byte) (*ctypes.ResultABCIQuery, error) {
 	return &ctypes.ResultABCIQuery{res}, nil
 }
 
-func ABCIProof(key []byte, height int64) (*ctypes.ResultABCIProof, error) {
+func ABCIProof(key []byte, height uint64) (*ctypes.ResultABCIProof, error) {
 	res := proxyAppQuery.ProofSync(key, height)
 	return &ctypes.ResultABCIProof{res}, nil
 }
