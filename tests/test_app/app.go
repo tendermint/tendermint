@@ -2,18 +2,16 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"time"
 
 	"github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/types"
-	common "github.com/tendermint/go-common"
 	"github.com/tendermint/go-process"
 )
 
-//----------------------------------------
-
-func StartApp(abciApp string) *process.Process {
+func startApp(abciApp string) *process.Process {
 	// Start the app
 	//outBuf := NewBufferCloser(nil)
 	proc, err := process.StartProcess("abci_app",
@@ -33,7 +31,7 @@ func StartApp(abciApp string) *process.Process {
 	return proc
 }
 
-func StartClient(abciType string) abcicli.Client {
+func startClient(abciType string) abcicli.Client {
 	// Start client
 	client, err := abcicli.NewClient("tcp://127.0.0.1:46658", abciType, true)
 	if err != nil {
@@ -42,7 +40,7 @@ func StartClient(abciType string) abcicli.Client {
 	return client
 }
 
-func SetOption(client abcicli.Client, key, value string) {
+func setOption(client abcicli.Client, key, value string) {
 	res := client.SetOptionSync(key, value)
 	_, _, log := res.Code, res.Data, res.Log
 	if res.IsErr() {
@@ -50,7 +48,7 @@ func SetOption(client abcicli.Client, key, value string) {
 	}
 }
 
-func Commit(client abcicli.Client, hashExp []byte) {
+func commit(client abcicli.Client, hashExp []byte) {
 	res := client.CommitSync()
 	_, data, log := res.Code, res.Data, res.Log
 	if res.IsErr() {
@@ -62,7 +60,7 @@ func Commit(client abcicli.Client, hashExp []byte) {
 	}
 }
 
-func DeliverTx(client abcicli.Client, txBytes []byte, codeExp types.CodeType, dataExp []byte) {
+func deliverTx(client abcicli.Client, txBytes []byte, codeExp types.CodeType, dataExp []byte) {
 	res := client.DeliverTxSync(txBytes)
 	code, data, log := res.Code, res.Data, res.Log
 	if code != codeExp {
@@ -75,7 +73,7 @@ func DeliverTx(client abcicli.Client, txBytes []byte, codeExp types.CodeType, da
 	}
 }
 
-func CheckTx(client abcicli.Client, txBytes []byte, codeExp types.CodeType, dataExp []byte) {
+func checkTx(client abcicli.Client, txBytes []byte, codeExp types.CodeType, dataExp []byte) {
 	res := client.CheckTxSync(txBytes)
 	code, data, log := res.Code, res.Data, res.Log
 	if res.IsErr() {
