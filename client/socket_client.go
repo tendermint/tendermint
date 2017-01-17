@@ -70,7 +70,7 @@ RETRY_LOOP:
 			if cli.mustConnect {
 				return err
 			} else {
-				log.Warn(common.Fmt("abci.socketClient failed to connect to %v.  Retrying...", cli.addr))
+				log.Warn(fmt.Sprintf("abci.socketClient failed to connect to %v.  Retrying...", cli.addr))
 				time.Sleep(time.Second * 3)
 				continue RETRY_LOOP
 			}
@@ -109,7 +109,7 @@ func (cli *socketClient) StopForError(err error) {
 	}
 	cli.mtx.Unlock()
 
-	log.Warn(common.Fmt("Stopping abci.socketClient for error: %v", err.Error()))
+	log.Warn(fmt.Sprintf("Stopping abci.socketClient for error: %v", err.Error()))
 	cli.Stop()
 }
 

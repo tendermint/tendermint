@@ -244,7 +244,7 @@ func cmdSetOption(c *cli.Context) error {
 		return errors.New("Command set_option takes 2 arguments (key, value)")
 	}
 	res := client.SetOptionSync(args[0], args[1])
-	rsp := newResponse(res, common.Fmt("%s=%s", args[0], args[1]), false)
+	rsp := newResponse(res, fmt.Sprintf("%s=%s", args[0], args[1]), false)
 	printResponse(c, rsp)
 	return nil
 }
@@ -284,7 +284,7 @@ func cmdCheckTx(c *cli.Context) error {
 // Get application Merkle root hash
 func cmdCommit(c *cli.Context) error {
 	res := client.CommitSync()
-	rsp := newResponse(res, common.Fmt("0x%X", res.Data), false)
+	rsp := newResponse(res, fmt.Sprintf("0x%X", res.Data), false)
 	printResponse(c, rsp)
 	return nil
 }

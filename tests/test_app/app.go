@@ -46,7 +46,7 @@ func SetOption(client abcicli.Client, key, value string) {
 	res := client.SetOptionSync(key, value)
 	_, _, log := res.Code, res.Data, res.Log
 	if res.IsErr() {
-		panic(common.Fmt("setting %v=%v: \nlog: %v", key, value, log))
+		panic(fmt.Sprintf("setting %v=%v: \nlog: %v", key, value, log))
 	}
 }
 
@@ -54,10 +54,10 @@ func Commit(client abcicli.Client, hashExp []byte) {
 	res := client.CommitSync()
 	_, data, log := res.Code, res.Data, res.Log
 	if res.IsErr() {
-		panic(common.Fmt("committing %v\nlog: %v", log))
+		panic(fmt.Sprintf("committing %v\nlog: %v", log))
 	}
 	if !bytes.Equal(res.Data, hashExp) {
-		panic(common.Fmt("Commit hash was unexpected. Got %X expected %X",
+		panic(fmt.Sprintf("Commit hash was unexpected. Got %X expected %X",
 			data, hashExp))
 	}
 }
@@ -66,11 +66,11 @@ func DeliverTx(client abcicli.Client, txBytes []byte, codeExp types.CodeType, da
 	res := client.DeliverTxSync(txBytes)
 	code, data, log := res.Code, res.Data, res.Log
 	if code != codeExp {
-		panic(common.Fmt("DeliverTx response code was unexpected. Got %v expected %v. Log: %v",
+		panic(fmt.Sprintf("DeliverTx response code was unexpected. Got %v expected %v. Log: %v",
 			code, codeExp, log))
 	}
 	if !bytes.Equal(data, dataExp) {
-		panic(common.Fmt("DeliverTx response data was unexpected. Got %X expected %X",
+		panic(fmt.Sprintf("DeliverTx response data was unexpected. Got %X expected %X",
 			data, dataExp))
 	}
 }
@@ -79,14 +79,14 @@ func CheckTx(client abcicli.Client, txBytes []byte, codeExp types.CodeType, data
 	res := client.CheckTxSync(txBytes)
 	code, data, log := res.Code, res.Data, res.Log
 	if res.IsErr() {
-		panic(common.Fmt("checking tx %X: %v\nlog: %v", txBytes, log))
+		panic(fmt.Sprintf("checking tx %X: %v\nlog: %v", txBytes, log))
 	}
 	if code != codeExp {
-		panic(common.Fmt("CheckTx response code was unexpected. Got %v expected %v. Log: %v",
+		panic(fmt.Sprintf("CheckTx response code was unexpected. Got %v expected %v. Log: %v",
 			code, codeExp, log))
 	}
 	if !bytes.Equal(data, dataExp) {
-		panic(common.Fmt("CheckTx response data was unexpected. Got %X expected %X",
+		panic(fmt.Sprintf("CheckTx response data was unexpected. Got %X expected %X",
 			data, dataExp))
 	}
 }

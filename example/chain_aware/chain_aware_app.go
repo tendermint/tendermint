@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 
 	"github.com/tendermint/abci/server"
 	"github.com/tendermint/abci/types"
@@ -58,7 +59,7 @@ func (app *ChainAwareApplication) Commit() types.Result {
 }
 
 func (app *ChainAwareApplication) Query(query []byte) types.Result {
-	return types.NewResultOK([]byte(common.Fmt("%d,%d", app.beginCount, app.endCount)), "")
+	return types.NewResultOK([]byte(fmt.Sprintf("%d,%d", app.beginCount, app.endCount)), "")
 }
 
 func (app *ChainAwareApplication) BeginBlock(hash []byte, header *types.Header) {
