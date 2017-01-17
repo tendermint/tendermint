@@ -1,4 +1,4 @@
-.PHONY: all test fmt lint get_deps
+.PHONY: all build test fmt lint get_deps
 
 all: protoc install test
 
@@ -9,6 +9,9 @@ protoc:
 
 install:
 	@ go install github.com/tendermint/abci/cmd/...
+
+build:
+	@ go build -i github.com/tendermint/abci/cmd/...
 
 test:
 	@ go test `${NOVENDOR}`
