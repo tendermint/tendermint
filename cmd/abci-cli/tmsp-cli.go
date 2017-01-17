@@ -11,7 +11,7 @@ import (
 
 	"github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/types"
-	. "github.com/tendermint/go-common"
+	common "github.com/tendermint/go-common"
 	"github.com/urfave/cli"
 )
 
@@ -135,7 +135,7 @@ func main() {
 	app.Before = before
 	err := app.Run(os.Args)
 	if err != nil {
-		Exit(err.Error())
+		common.Exit(err.Error())
 	}
 
 }
@@ -145,7 +145,7 @@ func before(c *cli.Context) error {
 		var err error
 		client, err = abcicli.NewClient(c.GlobalString("address"), c.GlobalString("abci"), false)
 		if err != nil {
-			Exit(err.Error())
+			common.Exit(err.Error())
 		}
 	}
 	return nil
@@ -244,7 +244,7 @@ func cmdSetOption(c *cli.Context) error {
 		return errors.New("Command set_option takes 2 arguments (key, value)")
 	}
 	res := client.SetOptionSync(args[0], args[1])
-	rsp := newResponse(res, Fmt("%s=%s", args[0], args[1]), false)
+	rsp := newResponse(res, common.Fmt("%s=%s", args[0], args[1]), false)
 	printResponse(c, rsp)
 	return nil
 }
@@ -284,7 +284,7 @@ func cmdCheckTx(c *cli.Context) error {
 // Get application Merkle root hash
 func cmdCommit(c *cli.Context) error {
 	res := client.CommitSync()
-	rsp := newResponse(res, Fmt("0x%X", res.Data), false)
+	rsp := newResponse(res, common.Fmt("0x%X", res.Data), false)
 	printResponse(c, rsp)
 	return nil
 }

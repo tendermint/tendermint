@@ -5,7 +5,7 @@ import (
 
 	"github.com/tendermint/abci/example/counter"
 	"github.com/tendermint/abci/server"
-	. "github.com/tendermint/go-common"
+	common "github.com/tendermint/go-common"
 )
 
 func main() {
@@ -19,11 +19,11 @@ func main() {
 	// Start the listener
 	srv, err := server.NewServer(*addrPtr, *abciPtr, app)
 	if err != nil {
-		Exit(err.Error())
+		common.Exit(err.Error())
 	}
 
 	// Wait forever
-	TrapSignal(func() {
+	common.TrapSignal(func() {
 		// Cleanup
 		srv.Stop()
 	})

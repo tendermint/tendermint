@@ -9,13 +9,13 @@ import (
 	grpc "google.golang.org/grpc"
 
 	"github.com/tendermint/abci/types"
-	. "github.com/tendermint/go-common"
+	common "github.com/tendermint/go-common"
 )
 
 // A stripped copy of the remoteClient that makes
 // synchronous calls using grpc
 type grpcClient struct {
-	BaseService
+	common.BaseService
 	mustConnect bool
 
 	client types.ABCIApplicationClient
@@ -31,13 +31,13 @@ func NewGRPCClient(addr string, mustConnect bool) (*grpcClient, error) {
 		addr:        addr,
 		mustConnect: mustConnect,
 	}
-	cli.BaseService = *NewBaseService(nil, "grpcClient", cli)
+	cli.BaseService = *common.NewBaseService(nil, "grpcClient", cli)
 	_, err := cli.Start() // Just start it, it's confusing for callers to remember to start.
 	return cli, err
 }
 
 func dialerFunc(addr string, timeout time.Duration) (net.Conn, error) {
-	return Connect(addr)
+	return common.Connect(addr)
 }
 
 func (cli *grpcClient) OnStart() error {
@@ -50,7 +50,7 @@ RETRY_LOOP:
 			if cli.mustConnect {
 				return err
 			} else {
-				log.Warn(Fmt("abci.grpcClient failed to connect to %v.  Retrying...\n", cli.addr))
+				log.Warn(common.Fmt("abci.grpcClient failed to connect to %v.  Retrying...\n", cli.addr))
 				time.Sleep(time.Second * 3)
 				continue RETRY_LOOP
 			}
@@ -93,7 +93,7 @@ func (cli *grpcClient) StopForError(err error) {
 	}
 	cli.mtx.Unlock()
 
-	log.Warn(Fmt("Stopping abci.grpcClient for error: %v", err.Error()))
+	log.Warn(common.Fmt("Stopping abci.grpcClient for error: %v", err.Error()))
 	cli.Stop()
 }
 

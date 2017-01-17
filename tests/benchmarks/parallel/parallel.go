@@ -3,17 +3,16 @@ package main
 import (
 	"bufio"
 	"fmt"
-	//"encoding/hex"
 
 	"github.com/tendermint/abci/types"
-	. "github.com/tendermint/go-common"
+	common "github.com/tendermint/go-common"
 )
 
 func main() {
 
-	conn, err := Connect("unix://test.sock")
+	conn, err := common.Connect("unix://test.sock")
 	if err != nil {
-		Exit(err.Error())
+		common.Exit(err.Error())
 	}
 
 	// Read a bunch of responses
@@ -23,7 +22,7 @@ func main() {
 			var res = &types.Response{}
 			err := types.ReadMessage(conn, res)
 			if err != nil {
-				Exit(err.Error())
+				common.Exit(err.Error())
 			}
 			counter += 1
 			if counter%1000 == 0 {
@@ -40,11 +39,11 @@ func main() {
 
 		err := types.WriteMessage(req, bufWriter)
 		if err != nil {
-			Exit(err.Error())
+			common.Exit(err.Error())
 		}
 		err = bufWriter.Flush()
 		if err != nil {
-			Exit(err.Error())
+			common.Exit(err.Error())
 		}
 
 		counter += 1

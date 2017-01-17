@@ -6,17 +6,16 @@ import (
 	"fmt"
 	"net"
 	"reflect"
-	//"encoding/hex"
 
 	"github.com/tendermint/abci/types"
-	. "github.com/tendermint/go-common"
+	common "github.com/tendermint/go-common"
 )
 
 func main() {
 
-	conn, err := Connect("unix://test.sock")
+	conn, err := common.Connect("unix://test.sock")
 	if err != nil {
-		Exit(err.Error())
+		common.Exit(err.Error())
 	}
 
 	// Make a bunch of requests
@@ -25,7 +24,7 @@ func main() {
 		req := types.ToRequestEcho("foobar")
 		_, err := makeRequest(conn, req)
 		if err != nil {
-			Exit(err.Error())
+			common.Exit(err.Error())
 		}
 		counter += 1
 		if counter%1000 == 0 {
@@ -63,7 +62,7 @@ func makeRequest(conn net.Conn, req *types.Request) (*types.Response, error) {
 		return nil, err
 	}
 	if _, ok := resFlush.Value.(*types.Response_Flush); !ok {
-		return nil, errors.New(Fmt("Expected flush response but got something else: %v", reflect.TypeOf(resFlush)))
+		return nil, errors.New(common.Fmt("Expected flush response but got something else: %v", reflect.TypeOf(resFlush)))
 	}
 
 	return res, nil

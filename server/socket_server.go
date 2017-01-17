@@ -9,13 +9,13 @@ import (
 	"sync"
 
 	"github.com/tendermint/abci/types"
-	. "github.com/tendermint/go-common"
+	common "github.com/tendermint/go-common"
 )
 
 // var maxNumberConnections = 2
 
 type SocketServer struct {
-	BaseService
+	common.BaseService
 
 	proto    string
 	addr     string
@@ -29,7 +29,7 @@ type SocketServer struct {
 	app    types.Application
 }
 
-func NewSocketServer(protoAddr string, app types.Application) (Service, error) {
+func NewSocketServer(protoAddr string, app types.Application) (common.Service, error) {
 	parts := strings.SplitN(protoAddr, "://", 2)
 	proto, addr := parts[0], parts[1]
 	s := &SocketServer{
@@ -39,7 +39,7 @@ func NewSocketServer(protoAddr string, app types.Application) (Service, error) {
 		app:      app,
 		conns:    make(map[int]net.Conn),
 	}
-	s.BaseService = *NewBaseService(nil, "ABCIServer", s)
+	s.BaseService = *common.NewBaseService(nil, "ABCIServer", s)
 	_, err := s.Start() // Just start it
 	return s, err
 }
@@ -100,7 +100,7 @@ func (s *SocketServer) acceptConnectionsRoutine() {
 			if !s.IsRunning() {
 				return // Ignore error from listener closing.
 			}
-			Exit("Failed to accept connection: " + err.Error())
+			common.Exit("Failed to accept connection: " + err.Error())
 		} else {
 			log.Notice("Accepted a new connection")
 		}

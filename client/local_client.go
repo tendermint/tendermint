@@ -4,11 +4,11 @@ import (
 	"sync"
 
 	types "github.com/tendermint/abci/types"
-	. "github.com/tendermint/go-common"
+	common "github.com/tendermint/go-common"
 )
 
 type localClient struct {
-	BaseService
+	common.BaseService
 	mtx *sync.Mutex
 	types.Application
 	Callback
@@ -22,7 +22,7 @@ func NewLocalClient(mtx *sync.Mutex, app types.Application) *localClient {
 		mtx:         mtx,
 		Application: app,
 	}
-	cli.BaseService = *NewBaseService(log, "localClient", cli)
+	cli.BaseService = *common.NewBaseService(log, "localClient", cli)
 	return cli
 }
 
