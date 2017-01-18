@@ -47,6 +47,8 @@ Commands:
 		consensus.RunReplayFile(config, args[1], true)
 	case "init":
 		init_files()
+	case "testnet":
+		testnet(args[1], args[2])
 	case "show_validator":
 		show_validator()
 	case "gen_validator":
