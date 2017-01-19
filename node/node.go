@@ -82,7 +82,7 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreato
 	}
 
 	// reload the state (it may have been updated by the handshake)
-	state = sm.LoadState(stateDB)
+	state = sm.GetState(config, stateDB)
 
 	// Generate node PrivKey
 	privKey := crypto.GenPrivKeyEd25519()

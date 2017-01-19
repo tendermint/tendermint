@@ -283,7 +283,7 @@ func NewConsensusState(config cfg.Config, state *sm.State, proxyAppConn proxy.Ap
 //----------------------------------------
 // Public interface
 
-// implements events.Eventable
+// SetEventSwitch implements events.Eventable
 func (cs *ConsensusState) SetEventSwitch(evsw types.EventSwitch) {
 	cs.evsw = evsw
 }

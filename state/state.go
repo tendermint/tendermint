@@ -10,6 +10,8 @@ import (
 	cfg "github.com/tendermint/go-config"
 	dbm "github.com/tendermint/go-db"
 	"github.com/tendermint/go-wire"
+	"github.com/tendermint/tendermint/state/tx"
+	txindexer "github.com/tendermint/tendermint/state/tx/indexer"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -38,6 +40,8 @@ type State struct {
 
 	// AppHash is updated after Commit
 	AppHash []byte
+
+	TxIndexer tx.Indexer `json:"-"` // Transaction indexer.
 }
 
 func LoadState(db dbm.DB) *State {
@@ -72,6 +76,7 @@ func (s *State) Copy() *State {
 		Validators:      s.Validators.Copy(),
 		LastValidators:  s.LastValidators.Copy(),
 		AppHash:         s.AppHash,
+		TxIndexer:       s.TxIndexer, // pointer here, not value
 	}
 }
 
@@ -125,12 +130,20 @@ func GetState(config cfg.Config, stateDB dbm.DB) *State {
 		state = MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
 		state.Save()
 	}
+
+	// Transaction indexing
+	store := dbm.NewDB("tx_indexer", config.GetString("db_backend"), config.GetString("db_dir"))
+	state.TxIndexer = txindexer.NewKV(store)
+
 	return state
 }
 
 //-----------------------------------------------------------------------------
 // Genesis
 
+// MakeGenesisStateFromFile reads and unmarshals state from the given file.
+//
+// Used during replay and in tests.
 func MakeGenesisStateFromFile(db dbm.DB, genDocFile string) *State {
 	genDocJSON, err := ioutil.ReadFile(genDocFile)
 	if err != nil {
@@ -143,6 +156,9 @@ func MakeGenesisStateFromFile(db dbm.DB, genDocFile string) *State {
 	return MakeGenesisState(db, genDoc)
 }
 
+// MakeGenesisState creates state from types.GenesisDoc.
+//
+// Used in tests.
 func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) *State {
 	if len(genDoc.Validators) == 0 {
 		Exit(Fmt("The genesis file has no validators"))
@@ -176,5 +192,6 @@ func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) *State {
 		Validators:      types.NewValidatorSet(validators),
 		LastValidators:  types.NewValidatorSet(nil),
 		AppHash:         genDoc.AppHash,
+		TxIndexer:       &txindexer.Null{}, // we do not need indexer during replay and in tests
 	}
 }
