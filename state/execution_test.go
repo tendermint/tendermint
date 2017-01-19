@@ -23,6 +23,7 @@ var (
 	nBlocks      = 5
 	mempool      = MockMempool{}
 	testPartSize = 65536
+	nTxsPerBlock = 10
 )
 
 //---------------------------------------
@@ -81,6 +82,7 @@ func testHandshakeReplay(t *testing.T, n int) {
 			block := chain[i]
 			err := state2.ApplyBlock(nil, proxyApp.Consensus(), block, block.MakePartSet(testPartSize).Header(), mempool, store2)
 			assert.Nil(t, err)
+			assert.Equal(t, i*nTxsPerBlock+nTxsPerBlock, store2.nSavedTxResults)
 		}
 		proxyApp.Stop()
 	}
@@ -109,7 +111,7 @@ func testHandshakeReplay(t *testing.T, n int) {
 
 // make some bogus txs
 func txsFunc(blockNum int) (txs []types.Tx) {
-	for i := 0; i < 10; i++ {
+	for i := 0; i < nTxsPerBlock; i++ {
 		txs = append(txs, types.Tx([]byte{byte(blockNum), byte(i)}))
 	}
 	return txs
@@ -140,7 +142,7 @@ func makeBlockchain(t *testing.T, proxyApp proxy.AppConns, state *State, store B
 	valHash := state.Validators.Hash()
 	prevBlockID := types.BlockID{prevHash, prevParts}
 
-	for i := 1; i < nBlocks+1; i++ {
+	for i := 1; i <= nBlocks; i++ {
 		block, parts := types.MakeBlock(i, chainID, txsFunc(i), lastCommit,
 			prevBlockID, valHash, state.AppHash, testPartSize)
 		fmt.Println(i)
@@ -179,12 +181,13 @@ func stateAndStore(config cfg.Config) (*State, *mockBlockStore) {
 // mock block store
 
 type mockBlockStore struct {
-	config cfg.Config
-	chain  []*types.Block
+	config          cfg.Config
+	chain           []*types.Block
+	nSavedTxResults int
 }
 
 func NewMockBlockStore(config cfg.Config, chain []*types.Block) *mockBlockStore {
-	return &mockBlockStore{config, chain}
+	return &mockBlockStore{config, chain, 0}
 }
 
 func (bs *mockBlockStore) Height() int                       { return len(bs.chain) }
@@ -197,4 +200,6 @@ func (bs *mockBlockStore) LoadBlockMeta(height int) *types.BlockMeta {
 		PartsHeader: block.MakePartSet(bs.config.GetInt("block_part_size")).Header(),
 	}
 }
-func (bs *mockBlockStore) SaveTxResult(hash []byte, txResult *types.TxResult) {}
+func (bs *mockBlockStore) SaveTxResult(hash []byte, txResult *types.TxResult) {
+	bs.nSavedTxResults++
+}
