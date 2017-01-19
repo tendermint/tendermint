@@ -1,5 +1,5 @@
-hash: e283934fbbd221161d53a918db9e49db8c5be2b8929592b05ffe6b72c2ef0ab1
-updated: 2017-01-14T20:59:48.253671736-08:00
+hash: 38db7fa9417c7c36cfea2f661330d5fd9bc608f4a51cede93ac93d6861fba7f4
+updated: 2017-01-18T12:05:37.669788286Z
 imports:
 - name: github.com/btcsuite/btcd
   version: afec1bd1245a4a19e6dfe1306974b733e7cbb9b8
@@ -33,6 +33,11 @@ imports:
   version: 66b8e73f3f5cda9f96b69efd03dd3d7fc4a5cdb8
 - name: github.com/spf13/pflag
   version: 25f8b5b07aece3207895bf19f7ab517eb3b22a40
+- name: github.com/stretchr/testify
+  version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
+  subpackages:
+  - assert
+  - require
 - name: github.com/syndtr/goleveldb
   version: 6ae1797c0b42b9323fc27ff7dcf568df88f2f33d
   subpackages:
@@ -49,7 +54,7 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/abci
-  version: 6526ab2137fadd0f4d2e25002bbfc1784b4f3c27
+  version: 05096de3687ac582bec63860b3dd384acd9149aa
   subpackages:
   - client
   - example/counter
@@ -139,4 +144,12 @@ imports:
   - stats
   - tap
   - transport
-testImports: []
+testImports:
+- name: github.com/davecgh/go-spew
+  version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
+  subpackages:
+  - spew
+- name: github.com/pmezard/go-difflib
+  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
+  subpackages:
+  - difflib

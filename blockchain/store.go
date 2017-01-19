@@ -192,6 +192,27 @@ func (bs *BlockStore) saveBlockPart(height int, index int, part *types.Part) {
 	bs.db.Set(calcBlockPartKey(height, index), partBytes)
 }
 
+// LoadTxResult loads `TxResult` using a given hash as key.
+func (bs *BlockStore) LoadTxResult(hash []byte) *types.TxResult {
+	r := bs.GetReader(calcTxResultKey(hash))
+	if r == nil {
+		return nil
+	}
+	var n int
+	var err error
+	txResult := wire.ReadBinary(&types.TxResult{}, r, 0, &n, &err).(*types.TxResult)
+	if err != nil {
+		PanicCrisis(Fmt("Error reading TxResult: %v", err))
+	}
+	return txResult
+}
+
+// SaveTxResult saves `TxResult`.
+func (bs *BlockStore) SaveTxResult(hash []byte, txResult *types.TxResult) {
+	bytes := wire.BinaryBytes(txResult)
+	bs.db.Set(calcTxResultKey(hash), bytes)
+}
+
 //-----------------------------------------------------------------------------
 
 func calcBlockMetaKey(height int) []byte {
@@ -208,6 +229,10 @@ func calcBlockCommitKey(height int) []byte {
 
 func calcSeenCommitKey(height int) []byte {
 	return []byte(fmt.Sprintf("SC:%v", height))
+}
+
+func calcTxResultKey(hash []byte) []byte {
+	return append([]byte("TxR:"), hash...)
 }
 
 //-----------------------------------------------------------------------------
