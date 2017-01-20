@@ -252,15 +252,21 @@ func (a *AddrBook) MarkAttempt(addr *NetAddress) {
 	ka.markAttempt()
 }
 
+// MarkBad currently just ejects the address. In the future, consider
+// blacklisting.
 func (a *AddrBook) MarkBad(addr *NetAddress) {
+	a.RemoveAddress(addr)
+}
+
+// RemoveAddress removes the address from the book.
+func (a *AddrBook) RemoveAddress(addr *NetAddress) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 	ka := a.addrLookup[addr.String()]
 	if ka == nil {
 		return
 	}
-	// We currently just eject the address.
-	// In the future, consider blacklisting.
+	log.Info("Remove address from book", "addr", addr)
 	a.removeFromAllBuckets(ka)
 }
 
