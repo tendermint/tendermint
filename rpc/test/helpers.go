@@ -6,7 +6,6 @@ import (
 
 	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
-	"github.com/tendermint/go-p2p"
 	"github.com/tendermint/go-wire"
 
 	client "github.com/tendermint/go-rpc/client"
@@ -57,13 +56,8 @@ func init() {
 func newNode(ready chan struct{}) {
 	// Create & start node
 	node = nm.NewNodeDefault(config)
-	protocol, address := nm.ProtocolAndAddress(config.GetString("node_laddr"))
-	l := p2p.NewDefaultListener(protocol, address, true)
-	node.AddListener(l)
 	node.Start()
 
-	// Run the RPC server.
-	node.StartRPC()
 	time.Sleep(time.Second)
 
 	ready <- struct{}{}
