@@ -16,6 +16,10 @@ build:
 build_race:
 	go build -race -o build/tendermint ./cmd/tendermint
 
+# dist builds binaries for all platforms and packages them for distribution
+dist:
+	@BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/dist.sh'"
+
 test: build
 	@echo "--> Running go test"
 	@go test $(PACKAGES)
