@@ -4,8 +4,7 @@
 
 Blockchains are a system for multi-master state machine replication. 
 **ABCI** is an interface that defines the boundary between the replication engine (the blockchain),
-and the state machine (the application). It is most commonly implemented in the form of the Tendermint Socket Protocol (TSP),
-also known as Teaspoon.
+and the state machine (the application).
 By using a socket protocol, we enable a consensus engine running in one process
 to manage an application state running in another.
 
@@ -162,12 +161,12 @@ The ABCI is a client/server interface where the replication engine (blockchain) 
 and the state machine (application) forms the server.
 As blocks are committed in the blockchain, they are forwarded to the application.
 
-This repository provides two implementations of an ABCI client & server: TSP (Tendermint Socket Protocol) and via GRPC.
+This repository provides two implementations of an ABCI client & server: via socket and via GRPC.
 
-## TSP
+## Socket
 
 ABCI is best implemented as a streaming protocol. 
-The TSP provides for asynchronous, ordered message passing over unix or tcp.
+The socket implementation provides for asynchronous, ordered message passing over unix or tcp.
 Messages are serialized using Protobuf3 and length-prefixed.
 Protobuf3 doesn't have an official length-prefix standard, so we use our own.  The first byte represents the length of the big-endian encoded length.
 
@@ -177,9 +176,9 @@ For example, if the Protobuf3 encoded ABCI message is `0xDEADBEEF` (4 bytes), th
 
 GRPC is an rpc framework native to Protocol Buffers with support in many languages.
 Implementing the ABCI using GRPC can allow for faster prototyping, but is expected to be much slower than 
-the ordered, asynchronous TSP.
+the ordered, asynchronous socket protocol.
 
-Note the length-prefixing used in TSP does not apply for GRPC.
+Note the length-prefixing used in the socket implementation does not apply for GRPC.
 
 # Tools and Apps
 
