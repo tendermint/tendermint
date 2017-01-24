@@ -10,13 +10,13 @@ import (
 	grpc "google.golang.org/grpc"
 
 	"github.com/tendermint/abci/types"
-	common "github.com/tendermint/go-common"
+	cmn "github.com/tendermint/go-common"
 )
 
 // A stripped copy of the remoteClient that makes
 // synchronous calls using grpc
 type grpcClient struct {
-	common.BaseService
+	cmn.BaseService
 	mustConnect bool
 
 	client types.ABCIApplicationClient
@@ -32,13 +32,13 @@ func NewGRPCClient(addr string, mustConnect bool) (*grpcClient, error) {
 		addr:        addr,
 		mustConnect: mustConnect,
 	}
-	cli.BaseService = *common.NewBaseService(nil, "grpcClient", cli)
+	cli.BaseService = *cmn.NewBaseService(nil, "grpcClient", cli)
 	_, err := cli.Start() // Just start it, it's confusing for callers to remember to start.
 	return cli, err
 }
 
 func dialerFunc(addr string, timeout time.Duration) (net.Conn, error) {
-	return common.Connect(addr)
+	return cmn.Connect(addr)
 }
 
 func (cli *grpcClient) OnStart() error {

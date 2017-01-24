@@ -9,13 +9,13 @@ import (
 	"sync"
 
 	"github.com/tendermint/abci/types"
-	common "github.com/tendermint/go-common"
+	cmn "github.com/tendermint/go-common"
 )
 
 // var maxNumberConnections = 2
 
 type SocketServer struct {
-	common.BaseService
+	cmn.BaseService
 
 	proto    string
 	addr     string
@@ -29,7 +29,7 @@ type SocketServer struct {
 	app    types.Application
 }
 
-func NewSocketServer(protoAddr string, app types.Application) (common.Service, error) {
+func NewSocketServer(protoAddr string, app types.Application) (cmn.Service, error) {
 	parts := strings.SplitN(protoAddr, "://", 2)
 	proto, addr := parts[0], parts[1]
 	s := &SocketServer{
@@ -39,7 +39,7 @@ func NewSocketServer(protoAddr string, app types.Application) (common.Service, e
 		app:      app,
 		conns:    make(map[int]net.Conn),
 	}
-	s.BaseService = *common.NewBaseService(nil, "ABCIServer", s)
+	s.BaseService = *cmn.NewBaseService(nil, "ABCIServer", s)
 	_, err := s.Start() // Just start it
 	return s, err
 }

@@ -6,12 +6,12 @@ import (
 	"log"
 
 	"github.com/tendermint/abci/types"
-	common "github.com/tendermint/go-common"
+	cmn "github.com/tendermint/go-common"
 )
 
 func main() {
 
-	conn, err := common.Connect("unix://test.sock")
+	conn, err := cmn.Connect("unix://test.sock")
 	if err != nil {
 		log.Fatal(err.Error())
 	}

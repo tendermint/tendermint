@@ -6,7 +6,7 @@ import (
 
 	"github.com/tendermint/abci/example/counter"
 	"github.com/tendermint/abci/server"
-	common "github.com/tendermint/go-common"
+	cmn "github.com/tendermint/go-common"
 )
 
 func main() {
@@ -24,7 +24,7 @@ func main() {
 	}
 
 	// Wait forever
-	common.TrapSignal(func() {
+	cmn.TrapSignal(func() {
 		// Cleanup
 		srv.Stop()
 	})

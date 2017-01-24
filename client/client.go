@@ -5,11 +5,11 @@ import (
 	"sync"
 
 	"github.com/tendermint/abci/types"
-	common "github.com/tendermint/go-common"
+	cmn "github.com/tendermint/go-common"
 )
 
 type Client interface {
-	common.Service
+	cmn.Service
 
 	SetResponseCallback(Callback)
 	Error() error

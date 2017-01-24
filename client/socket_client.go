@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/tendermint/abci/types"
-	common "github.com/tendermint/go-common"
+	cmn "github.com/tendermint/go-common"
 )
 
 const (
@@ -27,10 +27,10 @@ const flushThrottleMS = 20      // Don't wait longer than...
 // the application in general is not meant to be interfaced
 // with concurrent callers.
 type socketClient struct {
-	common.BaseService
+	cmn.BaseService
 
 	reqQueue    chan *ReqRes
-	flushTimer  *common.ThrottleTimer
+	flushTimer  *cmn.ThrottleTimer
 	mustConnect bool
 
 	mtx     sync.Mutex
@@ -45,14 +45,14 @@ type socketClient struct {
 func NewSocketClient(addr string, mustConnect bool) (*socketClient, error) {
 	cli := &socketClient{
 		reqQueue:    make(chan *ReqRes, reqQueueSize),
-		flushTimer:  common.NewThrottleTimer("socketClient", flushThrottleMS),
+		flushTimer:  cmn.NewThrottleTimer("socketClient", flushThrottleMS),
 		mustConnect: mustConnect,
 
 		addr:    addr,
 		reqSent: list.New(),
 		resCb:   nil,
 	}
-	cli.BaseService = *common.NewBaseService(nil, "socketClient", cli)
+	cli.BaseService = *cmn.NewBaseService(nil, "socketClient", cli)
 
 	_, err := cli.Start() // Just start it, it's confusing for callers to remember to start.
 	return cli, err
@@ -65,7 +65,7 @@ func (cli *socketClient) OnStart() error {
 	var conn net.Conn
 RETRY_LOOP:
 	for {
-		conn, err = common.Connect(cli.addr)
+		conn, err = cmn.Connect(cli.addr)
 		if err != nil {
 			if cli.mustConnect {
 				return err

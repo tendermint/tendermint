@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/tendermint/abci/types"
-	common "github.com/tendermint/go-common"
+	cmn "github.com/tendermint/go-common"
 	dbm "github.com/tendermint/go-db"
 	"github.com/tendermint/go-merkle"
 	"github.com/tendermint/go-wire"
@@ -150,7 +150,7 @@ func SaveLastBlock(db dbm.DB, lastBlock LastBlockInfo) {
 	wire.WriteBinary(lastBlock, buf, n, err)
 	if *err != nil {
 		// TODO
-		common.PanicCrisis(*err)
+		cmn.PanicCrisis(*err)
 	}
 	db.Set(lastBlockKey, buf.Bytes())
 }

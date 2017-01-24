@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/tendermint/abci/types"
-	common "github.com/tendermint/go-common"
+	cmn "github.com/tendermint/go-common"
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-wire"
 )
@@ -109,7 +109,7 @@ func TestValSetChanges(t *testing.T) {
 	vals := make([]*types.Validator, total)
 	for i := 0; i < total; i++ {
 		pubkey := crypto.GenPrivKeyEd25519FromSecret([]byte(fmt.Sprintf("test%d", i))).PubKey().Bytes()
-		power := common.RandInt()
+		power := cmn.RandInt()
 		vals[i] = &types.Validator{pubkey, uint64(power)}
 	}
 	// iniitalize with the first nInit

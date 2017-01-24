@@ -17,7 +17,7 @@ import (
 	nilapp "github.com/tendermint/abci/example/nil"
 	"github.com/tendermint/abci/server"
 	"github.com/tendermint/abci/types"
-	common "github.com/tendermint/go-common"
+	cmn "github.com/tendermint/go-common"
 )
 
 func TestDummy(t *testing.T) {
@@ -105,7 +105,7 @@ func testStream(t *testing.T, app types.Application) {
 // test grpc
 
 func dialerFunc(addr string, timeout time.Duration) (net.Conn, error) {
-	return common.Connect(addr)
+	return cmn.Connect(addr)
 }
 
 func testGRPCSync(t *testing.T, app *types.GRPCApplication) {
