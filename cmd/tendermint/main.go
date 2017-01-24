@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-logger"
 	tmcfg "github.com/tendermint/tendermint/config/tendermint"
@@ -21,11 +20,16 @@ func main() {
 		fmt.Println(`Tendermint
 
 Commands:
-    node            Run the tendermint node
-    show_validator  Show this node's validator info
-    gen_validator   Generate new validator keypair
-    probe_upnp      Test UPnP functionality
-    version         Show version info
+    init                        Initialize tendermint
+    node                        Run the tendermint node
+    show_validator              Show this node's validator info
+    gen_validator               Generate new validator keypair
+    probe_upnp                  Test UPnP functionality
+    replay <walfile>            Replay messages from WAL
+    replay_console <walfile>    Replay messages from WAL in a console
+    unsafe_reset_all            (unsafe) Remove all the data and WAL, reset this node's validator
+    unsafe_reset_priv_validator (unsafe) Reset this node's validator
+    version                     Show version info
 `)
 		return
 	}
@@ -59,6 +63,7 @@ Commands:
 	case "version":
 		fmt.Println(version.Version)
 	default:
-		Exit(Fmt("Unknown command %v\n", args[0]))
+		fmt.Printf("Unknown command %v\n", args[0])
+		os.Exit(1)
 	}
 }
