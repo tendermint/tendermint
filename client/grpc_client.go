@@ -173,22 +173,13 @@ func (cli *grpcClient) CheckTxAsync(tx []byte) *ReqRes {
 	return cli.finishAsyncCall(req, &types.Response{&types.Response_CheckTx{res}})
 }
 
-func (cli *grpcClient) QueryAsync(query []byte) *ReqRes {
-	req := types.ToRequestQuery(query)
+func (cli *grpcClient) QueryAsync(reqQuery types.RequestQuery) *ReqRes {
+	req := types.ToRequestQuery(reqQuery)
 	res, err := cli.client.Query(context.Background(), req.GetQuery(), grpc.FailFast(true))
 	if err != nil {
 		cli.StopForError(err)
 	}
 	return cli.finishAsyncCall(req, &types.Response{&types.Response_Query{res}})
-}
-
-func (cli *grpcClient) ProofAsync(key []byte, blockHeight uint64) *ReqRes {
-	req := types.ToRequestProof(key, blockHeight)
-	res, err := cli.client.Proof(context.Background(), req.GetProof(), grpc.FailFast(true))
-	if err != nil {
-		cli.StopForError(err)
-	}
-	return cli.finishAsyncCall(req, &types.Response{&types.Response_Proof{res}})
 }
 
 func (cli *grpcClient) CommitAsync() *ReqRes {
@@ -264,7 +255,7 @@ func (cli *grpcClient) EchoSync(msg string) (res types.Result) {
 		return res
 	}
 	resp := reqres.Response.GetEcho()
-	return types.NewResultOK([]byte(resp.Message), LOG)
+	return types.NewResultOK([]byte(resp.Message), "")
 }
 
 func (cli *grpcClient) FlushSync() error {
@@ -310,22 +301,15 @@ func (cli *grpcClient) CheckTxSync(tx []byte) (res types.Result) {
 	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
 }
 
-func (cli *grpcClient) ProofSync(key []byte, blockHeight uint64) (res types.Result) {
-	reqres := cli.ProofAsync(key, blockHeight)
-	if res := cli.checkErrGetResult(); res.IsErr() {
-		return res
+func (cli *grpcClient) QuerySync(reqQuery types.RequestQuery) (resQuery types.ResponseQuery, err error) {
+	reqres := cli.QueryAsync(reqQuery)
+	if err = cli.Error(); err != nil {
+		return resQuery, err
 	}
-	resp := reqres.Response.GetProof()
-	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
-}
-
-func (cli *grpcClient) QuerySync(query []byte) (res types.Result) {
-	reqres := cli.QueryAsync(query)
-	if res := cli.checkErrGetResult(); res.IsErr() {
-		return res
+	if resQuery_ := reqres.Response.GetQuery(); resQuery_ != nil {
+		return *resQuery_, nil
 	}
-	resp := reqres.Response.GetQuery()
-	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
+	return resQuery, nil
 }
 
 func (cli *grpcClient) CommitSync() (res types.Result) {

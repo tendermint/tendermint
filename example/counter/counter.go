@@ -71,19 +71,14 @@ func (app *CounterApplication) Commit() types.Result {
 	}
 }
 
-func (app *CounterApplication) Query(query []byte) types.Result {
-	queryStr := string(query)
+func (app *CounterApplication) Query(reqQuery types.RequestQuery) types.ResponseQuery {
 
-	switch queryStr {
+	switch reqQuery.Path {
 	case "hash":
-		return types.NewResultOK(nil, Fmt("%v", app.hashCount))
+		return types.ResponseQuery{Value: []byte(Fmt("%v", app.hashCount))}
 	case "tx":
-		return types.NewResultOK(nil, Fmt("%v", app.txCount))
+		return types.ResponseQuery{Value: []byte(Fmt("%v", app.txCount))}
 	}
 
-	return types.ErrUnknownRequest.SetLog(Fmt("Invalid nonce. Expected hash or tx, got %v", queryStr))
-}
-
-func (app *CounterApplication) Proof(key []byte, blockHeight uint64) types.Result {
-	return types.NewResultOK(nil, Fmt("Proof is not supported"))
+	return types.ResponseQuery{Log: Fmt("Invalid query path. Expected hash or tx, got %v", reqQuery.Path)}
 }

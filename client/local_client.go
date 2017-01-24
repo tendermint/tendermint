@@ -89,23 +89,13 @@ func (app *localClient) CheckTxAsync(tx []byte) *ReqRes {
 	)
 }
 
-func (app *localClient) QueryAsync(tx []byte) *ReqRes {
+func (app *localClient) QueryAsync(reqQuery types.RequestQuery) *ReqRes {
 	app.mtx.Lock()
-	res := app.Application.Query(tx)
+	resQuery := app.Application.Query(reqQuery)
 	app.mtx.Unlock()
 	return app.callback(
-		types.ToRequestQuery(tx),
-		types.ToResponseQuery(res.Code, res.Data, res.Log),
-	)
-}
-
-func (app *localClient) ProofAsync(key []byte, blockHeight uint64) *ReqRes {
-	app.mtx.Lock()
-	res := app.Application.Proof(key, blockHeight)
-	app.mtx.Unlock()
-	return app.callback(
-		types.ToRequestProof(key, blockHeight),
-		types.ToResponseQuery(res.Code, res.Data, res.Log),
+		types.ToRequestQuery(reqQuery),
+		types.ToResponseQuery(resQuery),
 	)
 }
 
@@ -195,18 +185,11 @@ func (app *localClient) CheckTxSync(tx []byte) (res types.Result) {
 	return res
 }
 
-func (app *localClient) QuerySync(query []byte) (res types.Result) {
+func (app *localClient) QuerySync(reqQuery types.RequestQuery) (resQuery types.ResponseQuery, err error) {
 	app.mtx.Lock()
-	res = app.Application.Query(query)
+	resQuery = app.Application.Query(reqQuery)
 	app.mtx.Unlock()
-	return res
-}
-
-func (app *localClient) ProofSync(key []byte, blockHeight uint64) (res types.Result) {
-	app.mtx.Lock()
-	res = app.Application.Proof(key, blockHeight)
-	app.mtx.Unlock()
-	return res
+	return resQuery, nil
 }
 
 func (app *localClient) CommitSync() (res types.Result) {

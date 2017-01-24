@@ -251,12 +251,8 @@ func (cli *socketClient) CheckTxAsync(tx []byte) *ReqRes {
 	return cli.queueRequest(types.ToRequestCheckTx(tx))
 }
 
-func (cli *socketClient) QueryAsync(query []byte) *ReqRes {
-	return cli.queueRequest(types.ToRequestQuery(query))
-}
-
-func (cli *socketClient) ProofAsync(key []byte, blockHeight uint64) *ReqRes {
-	return cli.queueRequest(types.ToRequestProof(key, blockHeight))
+func (cli *socketClient) QueryAsync(reqQuery types.RequestQuery) *ReqRes {
+	return cli.queueRequest(types.ToRequestQuery(reqQuery))
 }
 
 func (cli *socketClient) CommitAsync() *ReqRes {
@@ -284,7 +280,7 @@ func (cli *socketClient) EchoSync(msg string) (res types.Result) {
 		return types.ErrInternalError.SetLog(err.Error())
 	}
 	resp := reqres.Response.GetEcho()
-	return types.Result{Code: OK, Data: []byte(resp.Message), Log: LOG}
+	return types.Result{Code: OK, Data: []byte(resp.Message)}
 }
 
 func (cli *socketClient) FlushSync() error {
@@ -304,9 +300,8 @@ func (cli *socketClient) InfoSync() (resInfo types.ResponseInfo, err error) {
 	}
 	if resInfo_ := reqres.Response.GetInfo(); resInfo_ != nil {
 		return *resInfo_, nil
-	} else {
-		return resInfo, nil
 	}
+	return resInfo, nil
 }
 
 func (cli *socketClient) SetOptionSync(key string, value string) (res types.Result) {
@@ -339,25 +334,18 @@ func (cli *socketClient) CheckTxSync(tx []byte) (res types.Result) {
 	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
 }
 
-func (cli *socketClient) QuerySync(query []byte) (res types.Result) {
-	reqres := cli.queueRequest(types.ToRequestQuery(query))
+func (cli *socketClient) QuerySync(reqQuery types.RequestQuery) (resQuery types.ResponseQuery, err error) {
+	reqres := cli.queueRequest(types.ToRequestQuery(reqQuery))
 	cli.FlushSync()
 	if err := cli.Error(); err != nil {
-		return types.ErrInternalError.SetLog(err.Error())
+		return resQuery, err
 	}
-	resp := reqres.Response.GetQuery()
-	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
+	if resQuery_ := reqres.Response.GetQuery(); resQuery_ != nil {
+		return *resQuery_, nil
+	}
+	return resQuery, nil
 }
 
-func (cli *socketClient) ProofSync(key []byte, blockHeight uint64) (res types.Result) {
-	reqres := cli.queueRequest(types.ToRequestProof(key, blockHeight))
-	cli.FlushSync()
-	if err := cli.Error(); err != nil {
-		return types.ErrInternalError.SetLog(err.Error())
-	}
-	resp := reqres.Response.GetProof()
-	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
-}
 func (cli *socketClient) CommitSync() (res types.Result) {
 	reqres := cli.queueRequest(types.ToRequestCommit())
 	cli.FlushSync()
@@ -450,8 +438,6 @@ func resMatchesReq(req *types.Request, res *types.Response) (ok bool) {
 		_, ok = res.Value.(*types.Response_Commit)
 	case *types.Request_Query:
 		_, ok = res.Value.(*types.Response_Query)
-	case *types.Request_Proof:
-		_, ok = res.Value.(*types.Response_Proof)
 	case *types.Request_InitChain:
 		_, ok = res.Value.(*types.Response_InitChain)
 	case *types.Request_BeginBlock:
