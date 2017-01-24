@@ -1,52 +1,74 @@
-# Tendermint Socket Protocol (ABCI)
+# Application BlockChain Interface (ABCI)
 
 [![CircleCI](https://circleci.com/gh/tendermint/abci.svg?style=svg)](https://circleci.com/gh/tendermint/abci)
 
-Blockchains are a system for creating shared multi-master application state. 
-**ABCI** is a socket protocol enabling a blockchain consensus engine, running in one process,
-to manage a blockchain application state, running in another.
+Blockchains are a system for multi-master state machine replication. 
+**ABCI** is an interface that defines the boundary between the replication engine (the blockchain),
+and the state machine (the application). It is most commonly implemented in the form of the Tendermint Socket Protocol (TSP),
+also known as Teaspoon.
+By using a socket protocol, we enable a consensus engine running in one process
+to manage an application state running in another.
 
-For more information on ABCI, motivations, and tutorials, please visit [our blog post](https://tendermint.com/blog/abci-the-tendermint-socket-protocol).
+For more information on ABCI, motivations, and tutorials, please visit [our blog post](https://tendermint.com/blog/tmsp-the-tendermint-socket-protocol).
+
+Previously, the ABCI was just referred to as TMSP.
 
 Other implementations:
-* [cpp-abci](https://github.com/mdyring/cpp-abci) by Martin Dyring-Andersen
-* [js-abci](https://github.com/tendermint/js-abci)
-* [jABCI](https://github.com/jABCI/) for Java
+* [cpp-tmsp](https://github.com/mdyring/cpp-tmsp) by Martin Dyring-Andersen
+* [js-tmsp](https://github.com/tendermint/js-tmsp)
+* [jTMSP](https://github.com/jTMSP/) for Java
 
-## Contents
+# Specification
 
-This repository holds a number of important pieces:
+The [primary specification](https://github.com/tendermint/abci/blob/master/types/types.proto) is made using Protocol Buffers.
 
-- `types/types.proto`
-	- the protobuf file defining ABCI message types, and the optional grpc interface. 
-        - to build, run `make protoc`
-	- see `protoc --help` and [the grpc docs](https://www.grpc.io/docs) for examples and details of other languages
-
-- golang implementation of ABCI client and server
-	- two implementations:
-		- asynchronous, ordered message passing over unix or tcp; 
-			- messages are serialized using protobuf and length prefixed
-		- grpc 
-	- TendermintCore runs a client, and the application runs a server
-
-- `cmd/abci-cli`
-	- command line tool wrapping the client for probing/testing a ABCI application
-	- use `abci-cli --version` to get the ABCI version
-
-- examples:
-	- the `cmd/counter` application, which illustrates nonce checking in txs
-	- the `cmd/dummy` application, which illustrates a simple key-value merkle tree
+As a [Go interface](https://github.com/tendermint/abci/blob/master/types/application.go), it might look like:
 
 
-## Message format
+```
+// Applications
+type Application interface {
 
-Since this is a streaming protocol, all messages are encoded with a length-prefix followed by the message encoded in Protobuf3.  Protobuf3 doesn't have an official length-prefix standard, so we use our own.  The first byte represents the length of the big-endian encoded length.
+	// Latest state
+	Info() ResponseInfo
 
-For example, if the Protobuf3 encoded ABCI message is `0xDEADBEEF` (4 bytes), the length-prefixed message is `0x0104DEADBEEF`.  If the Protobuf3 encoded ABCI message is 65535 bytes long, the length-prefixed message would be like `0x02FFFF...`.
+	// Initialization
+	SetOption(key string, value string) (log string)
+	InitChain(validators []*Validator)
 
-Note this prefixing does not apply for grpc.
+	// Apply a block
+	BeginBlock(hash []byte, header *Header)
+	DeliverTx(tx []byte) Result
+	EndBlock(height uint64) ResponseEndBlock
+	Commit() Result
 
-## Message types
+	// Check validity
+	CheckTx(tx []byte) Result
+
+	// Query for state
+	Query(query []byte) Result
+}
+
+type Result struct {
+	Code CodeType
+	Data []byte
+	Log  string // Can be non-deterministic
+}
+
+type ResponseInfo struct {
+	Data             string
+	Version          string
+	LastBlockHeight  uint64
+	LastBlockAppHash []byte
+}
+
+type ResponseEndBlock struct {
+	Diffs []*Validator
+}
+
+```
+
+## Message Types
 
 ABCI requests/responses are simple Protobuf messages.  Check out the [schema file](https://github.com/tendermint/abci/blob/master/types/types.proto).
 
@@ -92,15 +114,15 @@ ABCI requests/responses are simple Protobuf messages.  Check out the [schema fil
     * `Data ([]byte)`: The query response bytes
     * `Log (string)`: Debug or error message
 
-#### Flush
-  * __Usage__:<br/>
-    Flush the response queue.  Applications that implement `types.Application` need not implement this message -- it's handled by the project.
-
 #### Info
   * __Returns__:
-    * `Data ([]byte)`: The info bytes
+    * `Data (string)`: Some arbitrary information
+    * `Version (Version)`: Version information
+    * `LastBlockHeight (uint64)`: Latest block for which the app has called Commit
+    * `LastBlockAppHash ([]byte)`: Latest result of Commit
+
   * __Usage__:<br/>
-    Return information about the application state.  Application specific.
+    Return information about the application state. Used to sync the app with Tendermint on crash/restart.
 
 #### SetOption
   * __Arguments__:
@@ -120,44 +142,63 @@ ABCI requests/responses are simple Protobuf messages.  Check out the [schema fil
 
 #### BeginBlock
   * __Arguments__:
-    * `Height (uint64)`: The block height that is starting
+    * `Hash ([]byte)`: The block height that is starting
+    * `Header (struct{})`: The block header
   * __Usage__:<br/>
-    Signals the beginning of a new block. Called prior to any DeliverTxs.
+    Signals the beginning of a new block. Called prior to any DeliverTxs. The header is expected to at least contain the Height.
 
 #### EndBlock
   * __Arguments__:
     * `Height (uint64)`: The block height that ended
   * __Returns__:
-    * `Validators ([]Validator)`: Changed validators with new voting powers (0 to remove)
+    * `Diffs ([]Validator)`: Changed validators with new voting powers (0 to remove)
   * __Usage__:<br/>
-    Signals the end of a block.  Called prior to each Commit after all transactions
+    Signals the end of a block.  Called prior to each Commit after all transactions. Validator set is updated with the result.
 
-## Changelog
 
-##### Mar 26h, 2016
-* Introduce BeginBlock
+# Implementations
 
-##### Mar 6th, 2016
+The ABCI is a client/server interface where the replication engine (blockchain) forms the client 
+and the state machine (application) forms the server.
+As blocks are committed in the blockchain, they are forwarded to the application.
 
-* Added InitChain, EndBlock
+This repository provides two implementations of an ABCI client & server: TSP (Tendermint Socket Protocol) and via GRPC.
 
-##### Feb 14th, 2016
+## TSP
 
-* s/GetHash/Commit/g
-* Document Protobuf request/response fields
+ABCI is best implemented as a streaming protocol. 
+The TSP provides for asynchronous, ordered message passing over unix or tcp.
+Messages are serialized using Protobuf3 and length-prefixed.
+Protobuf3 doesn't have an official length-prefix standard, so we use our own.  The first byte represents the length of the big-endian encoded length.
 
-##### Jan 23th, 2016
+For example, if the Protobuf3 encoded ABCI message is `0xDEADBEEF` (4 bytes), the length-prefixed message is `0x0104DEADBEEF`.  If the Protobuf3 encoded ABCI message is 65535 bytes long, the length-prefixed message would be like `0x02FFFF...`.
 
-* Added CheckTx/Query ABCI message types
-* Added Result/Log fields to DeliverTx/CheckTx/SetOption
-* Removed Listener messages
-* Removed Code from ResponseSetOption and ResponseGetHash
-* Made examples BigEndian
+## GRPC
 
-##### Jan 12th, 2016
+GRPC is an rpc framework native to Protocol Buffers with support in many languages.
+Implementing the ABCI using GRPC can allow for faster prototyping, but is expected to be much slower than 
+the ordered, asynchronous TSP.
 
-* Added "RetCodeBadNonce = 0x06" return code
+Note the length-prefixing used in TSP does not apply for GRPC.
 
-##### Jan 8th, 2016
+# Tools and Apps
 
-* Tendermint/ABCI now comes to consensus on the order first before DeliverTx.
+The `abci-cli` tool wraps any ABCI client and can be used for probing/testing an ABCI application.
+See the [tutorial](https://tendermint.com/intro/getting-started/first-tmsp) for more details.
+
+Multiple example apps are included:
+- the `counter` application, which illustrates nonce checking in txs
+- the `dummy` application, which illustrates a simple key-value merkle tree
+- the `dummy --persistent` application, which augments the dummy with persistence and validator set changes
+
+
+# Build
+
+To build the protobuf code:
+
+```
+make protoc
+```
+
+See `protoc --help` and [the grpc docs](https://www.grpc.io/docs) for examples and details of other languages
+
