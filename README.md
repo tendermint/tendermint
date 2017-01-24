@@ -85,16 +85,20 @@ ABCI requests/responses are simple Protobuf messages.  Check out the [schema fil
 
 #### Query
   * __Arguments__:
-    * `Data ([]byte)`: The query request bytes
+    * `Query ([]byte)`: The query request bytes
+    * `Path (string)`: Path of request
+    * `Height (uint64)`: The block height for which you want the query (default=0 returns data for the latest committed block)
+    * `Prove (bool)`: Return Merkle proof with response
   * __Returns__:
-    * `Code (uint32)`: Response code
     * `Data ([]byte)`: The query response bytes
     * `Log (string)`: Debug or error message
+    * `Height (uint64)`: The block height from which data was derived
+    * `Proof ([]byte)`: Proof for the data, if requested
 
 #### Proof
   * __Arguments__:
     * `Key ([]byte)`: The key whose data you want to verifiably query
-    * `Height (int64)`: The block height for which you want the proof (default=0 returns the proof for last committed block)
+    * `Height (uint64)`: The block height for which you want the proof (default=0 returns the proof for last committed block)
   * __Returns__:
     * `Code (uint32)`: Response code
     * `Data ([]byte)`: The query response bytes
