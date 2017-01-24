@@ -2,10 +2,12 @@ package main
 
 import (
 	"flag"
+	"fmt"
+	"log"
 
 	"github.com/tendermint/abci/server"
 	"github.com/tendermint/abci/types"
-	. "github.com/tendermint/go-common"
+	common "github.com/tendermint/go-common"
 )
 
 func main() {
@@ -17,11 +19,11 @@ func main() {
 	// Start the listener
 	srv, err := server.NewServer(*addrPtr, *abciPtr, NewChainAwareApplication())
 	if err != nil {
-		Exit(err.Error())
+		log.Fatal(err.Error())
 	}
 
 	// Wait forever
-	TrapSignal(func() {
+	common.TrapSignal(func() {
 		// Cleanup
 		srv.Stop()
 	})
@@ -58,16 +60,16 @@ func (app *ChainAwareApplication) Commit() types.Result {
 }
 
 func (app *ChainAwareApplication) Query(query []byte) types.Result {
-	return types.NewResultOK([]byte(Fmt("%d,%d", app.beginCount, app.endCount)), "")
+	return types.NewResultOK([]byte(fmt.Sprintf("%d,%d", app.beginCount, app.endCount)), "")
 }
 
 func (app *ChainAwareApplication) BeginBlock(hash []byte, header *types.Header) {
-	app.beginCount += 1
+	app.beginCount++
 	return
 }
 
 func (app *ChainAwareApplication) EndBlock(height uint64) (resEndBlock types.ResponseEndBlock) {
-	app.endCount += 1
+	app.endCount++
 	return
 }
 

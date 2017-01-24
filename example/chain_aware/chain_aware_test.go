@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"testing"
@@ -8,7 +10,6 @@ import (
 	"github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/server"
 	"github.com/tendermint/abci/types"
-	. "github.com/tendermint/go-common"
 )
 
 func TestChainAware(t *testing.T) {
@@ -25,7 +26,7 @@ func TestChainAware(t *testing.T) {
 	// Connect to the socket
 	client, err := abcicli.NewSocketClient("unix://test.sock", false)
 	if err != nil {
-		Exit(Fmt("Error starting socket client: %v", err.Error()))
+		log.Fatal(fmt.Sprintf("Error starting socket client: %v", err.Error()))
 	}
 	client.Start()
 	defer client.Stop()

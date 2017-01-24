@@ -3,11 +3,12 @@ package dummy
 import (
 	"bytes"
 	"encoding/hex"
+	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/tendermint/abci/types"
-	. "github.com/tendermint/go-common"
+	common "github.com/tendermint/go-common"
 	dbm "github.com/tendermint/go-db"
 	"github.com/tendermint/go-merkle"
 	"github.com/tendermint/go-wire"
@@ -135,7 +136,7 @@ func LoadLastBlock(db dbm.DB) (lastBlock LastBlockInfo) {
 		wire.ReadBinaryPtr(&lastBlock, r, 0, n, err)
 		if *err != nil {
 			// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
-			Exit(Fmt("Data has been corrupted or its spec has changed: %v\n", *err))
+			log.Crit(fmt.Sprintf("Data has been corrupted or its spec has changed: %v\n", *err))
 		}
 		// TODO: ensure that buf is completely read.
 	}
@@ -149,7 +150,7 @@ func SaveLastBlock(db dbm.DB, lastBlock LastBlockInfo) {
 	wire.WriteBinary(lastBlock, buf, n, err)
 	if *err != nil {
 		// TODO
-		PanicCrisis(*err)
+		common.PanicCrisis(*err)
 	}
 	db.Set(lastBlockKey, buf.Bytes())
 }
@@ -173,7 +174,7 @@ func (app *PersistentDummyApplication) Validators() (validators []*types.Validat
 }
 
 func MakeValSetChangeTx(pubkey []byte, power uint64) []byte {
-	return []byte(Fmt("val:%X/%d", pubkey, power))
+	return []byte(fmt.Sprintf("val:%X/%d", pubkey, power))
 }
 
 func isValidatorTx(tx []byte) bool {
@@ -188,16 +189,16 @@ func (app *PersistentDummyApplication) execValidatorTx(tx []byte) types.Result {
 	tx = tx[len(ValidatorSetChangePrefix):]
 	pubKeyAndPower := strings.Split(string(tx), "/")
 	if len(pubKeyAndPower) != 2 {
-		return types.ErrEncodingError.SetLog(Fmt("Expected 'pubkey/power'. Got %v", pubKeyAndPower))
+		return types.ErrEncodingError.SetLog(fmt.Sprintf("Expected 'pubkey/power'. Got %v", pubKeyAndPower))
 	}
 	pubkeyS, powerS := pubKeyAndPower[0], pubKeyAndPower[1]
 	pubkey, err := hex.DecodeString(pubkeyS)
 	if err != nil {
-		return types.ErrEncodingError.SetLog(Fmt("Pubkey (%s) is invalid hex", pubkeyS))
+		return types.ErrEncodingError.SetLog(fmt.Sprintf("Pubkey (%s) is invalid hex", pubkeyS))
 	}
 	power, err := strconv.Atoi(powerS)
 	if err != nil {
-		return types.ErrEncodingError.SetLog(Fmt("Power (%s) is not an int", powerS))
+		return types.ErrEncodingError.SetLog(fmt.Sprintf("Power (%s) is not an int", powerS))
 	}
 
 	// update
@@ -210,14 +211,14 @@ func (app *PersistentDummyApplication) updateValidator(v *types.Validator) types
 	if v.Power == 0 {
 		// remove validator
 		if !app.app.state.Has(key) {
-			return types.ErrUnauthorized.SetLog(Fmt("Cannot remove non-existent validator %X", key))
+			return types.ErrUnauthorized.SetLog(fmt.Sprintf("Cannot remove non-existent validator %X", key))
 		}
 		app.app.state.Remove(key)
 	} else {
 		// add or update validator
 		value := bytes.NewBuffer(make([]byte, 0))
 		if err := types.WriteMessage(v, value); err != nil {
-			return types.ErrInternalError.SetLog(Fmt("Error encoding validator: %v", err))
+			return types.ErrInternalError.SetLog(fmt.Sprintf("Error encoding validator: %v", err))
 		}
 		app.app.state.Set(key, value.Bytes())
 	}

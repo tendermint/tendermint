@@ -2,10 +2,10 @@ package dummy
 
 import (
 	"encoding/hex"
+	"fmt"
 	"strings"
 
 	"github.com/tendermint/abci/types"
-	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-merkle"
 	"github.com/tendermint/go-wire"
 )
@@ -20,7 +20,7 @@ func NewDummyApplication() *DummyApplication {
 }
 
 func (app *DummyApplication) Info() (resInfo types.ResponseInfo) {
-	return types.ResponseInfo{Data: Fmt("{\"size\":%v}", app.state.Size())}
+	return types.ResponseInfo{Data: fmt.Sprintf("{\"size\":%v}", app.state.Size())}
 }
 
 func (app *DummyApplication) SetOption(key string, value string) (log string) {

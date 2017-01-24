@@ -4,11 +4,11 @@ import (
 	"fmt"
 
 	"github.com/tendermint/abci/types"
-	. "github.com/tendermint/go-common"
+	common "github.com/tendermint/go-common"
 )
 
-func NewServer(protoAddr, transport string, app types.Application) (Service, error) {
-	var s Service
+func NewServer(protoAddr, transport string, app types.Application) (common.Service, error) {
+	var s common.Service
 	var err error
 	switch transport {
 	case "socket":

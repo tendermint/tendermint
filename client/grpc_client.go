@@ -1,6 +1,7 @@
 package abcicli
 
 import (
+	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -9,13 +10,13 @@ import (
 	grpc "google.golang.org/grpc"
 
 	"github.com/tendermint/abci/types"
-	. "github.com/tendermint/go-common"
+	common "github.com/tendermint/go-common"
 )
 
 // A stripped copy of the remoteClient that makes
 // synchronous calls using grpc
 type grpcClient struct {
-	BaseService
+	common.BaseService
 	mustConnect bool
 
 	client types.ABCIApplicationClient
@@ -31,13 +32,13 @@ func NewGRPCClient(addr string, mustConnect bool) (*grpcClient, error) {
 		addr:        addr,
 		mustConnect: mustConnect,
 	}
-	cli.BaseService = *NewBaseService(nil, "grpcClient", cli)
+	cli.BaseService = *common.NewBaseService(nil, "grpcClient", cli)
 	_, err := cli.Start() // Just start it, it's confusing for callers to remember to start.
 	return cli, err
 }
 
 func dialerFunc(addr string, timeout time.Duration) (net.Conn, error) {
-	return Connect(addr)
+	return common.Connect(addr)
 }
 
 func (cli *grpcClient) OnStart() error {
@@ -49,11 +50,10 @@ RETRY_LOOP:
 		if err != nil {
 			if cli.mustConnect {
 				return err
-			} else {
-				log.Warn(Fmt("abci.grpcClient failed to connect to %v.  Retrying...\n", cli.addr))
-				time.Sleep(time.Second * 3)
-				continue RETRY_LOOP
 			}
+			log.Warn(fmt.Sprintf("abci.grpcClient failed to connect to %v.  Retrying...\n", cli.addr))
+			time.Sleep(time.Second * 3)
+			continue RETRY_LOOP
 		}
 
 		client := types.NewABCIApplicationClient(conn)
@@ -93,7 +93,7 @@ func (cli *grpcClient) StopForError(err error) {
 	}
 	cli.mtx.Unlock()
 
-	log.Warn(Fmt("Stopping abci.grpcClient for error: %v", err.Error()))
+	log.Warn(fmt.Sprintf("Stopping abci.grpcClient for error: %v", err.Error()))
 	cli.Stop()
 }
 
@@ -267,11 +267,10 @@ func (cli *grpcClient) InfoSync() (resInfo types.ResponseInfo, err error) {
 	if err = cli.Error(); err != nil {
 		return resInfo, err
 	}
-	if resInfo_ := reqres.Response.GetInfo(); resInfo_ != nil {
-		return *resInfo_, nil
-	} else {
-		return resInfo, nil
+	if info := reqres.Response.GetInfo(); info != nil {
+		return *info, nil
 	}
+	return resInfo, nil
 }
 
 func (cli *grpcClient) SetOptionSync(key string, value string) (res types.Result) {
@@ -334,9 +333,8 @@ func (cli *grpcClient) EndBlockSync(height uint64) (resEndBlock types.ResponseEn
 	if err := cli.Error(); err != nil {
 		return resEndBlock, err
 	}
-	if resEndBlock_ := reqres.Response.GetEndBlock(); resEndBlock_ != nil {
-		return *resEndBlock_, nil
-	} else {
-		return resEndBlock, nil
+	if blk := reqres.Response.GetEndBlock(); blk != nil {
+		return *blk, nil
 	}
+	return resEndBlock, nil
 }
