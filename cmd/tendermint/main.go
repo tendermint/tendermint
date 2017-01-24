@@ -45,9 +45,19 @@ Commands:
 	case "node":
 		run_node(config)
 	case "replay":
-		consensus.RunReplayFile(config, args[1], false)
+		if len(args) > 1 {
+			consensus.RunReplayFile(config, args[1], false)
+		} else {
+			fmt.Println("replay requires an argument (walfile)")
+			os.Exit(1)
+		}
 	case "replay_console":
-		consensus.RunReplayFile(config, args[1], true)
+		if len(args) > 1 {
+			consensus.RunReplayFile(config, args[1], true)
+		} else {
+			fmt.Println("replay_console requires an argument (walfile)")
+			os.Exit(1)
+		}
 	case "init":
 		init_files()
 	case "show_validator":
