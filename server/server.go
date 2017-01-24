@@ -3,8 +3,8 @@ package server
 import (
 	"fmt"
 
-	. "github.com/tendermint/go-common"
 	"github.com/tendermint/abci/types"
+	. "github.com/tendermint/go-common"
 )
 
 func NewServer(protoAddr, transport string, app types.Application) (Service, error) {

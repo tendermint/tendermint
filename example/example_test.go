@@ -10,12 +10,12 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	. "github.com/tendermint/go-common"
 	"github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/example/dummy"
 	nilapp "github.com/tendermint/abci/example/nil"
 	"github.com/tendermint/abci/server"
 	"github.com/tendermint/abci/types"
+	. "github.com/tendermint/go-common"
 )
 
 func TestDummy(t *testing.T) {

@@ -3,10 +3,10 @@ package main
 import (
 	"flag"
 
-	. "github.com/tendermint/go-common"
 	"github.com/tendermint/abci/example/dummy"
 	"github.com/tendermint/abci/server"
 	"github.com/tendermint/abci/types"
+	. "github.com/tendermint/go-common"
 )
 
 func main() {

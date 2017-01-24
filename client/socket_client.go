@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	. "github.com/tendermint/go-common"
 	"github.com/tendermint/abci/types"
+	. "github.com/tendermint/go-common"
 )
 
 const (

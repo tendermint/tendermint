@@ -8,8 +8,8 @@ import (
 	context "golang.org/x/net/context"
 	grpc "google.golang.org/grpc"
 
-	. "github.com/tendermint/go-common"
 	"github.com/tendermint/abci/types"
+	. "github.com/tendermint/go-common"
 )
 
 // A stripped copy of the remoteClient that makes

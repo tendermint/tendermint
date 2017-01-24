@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sync"
 
-	. "github.com/tendermint/go-common"
 	"github.com/tendermint/abci/types"
+	. "github.com/tendermint/go-common"
 )
 
 type Client interface {

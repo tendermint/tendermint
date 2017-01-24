@@ -8,8 +8,8 @@ import (
 	"strings"
 	"sync"
 
-	. "github.com/tendermint/go-common"
 	"github.com/tendermint/abci/types"
+	. "github.com/tendermint/go-common"
 )
 
 // var maxNumberConnections = 2

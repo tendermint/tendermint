@@ -6,11 +6,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/tendermint/abci/types"
 	. "github.com/tendermint/go-common"
 	dbm "github.com/tendermint/go-db"
 	"github.com/tendermint/go-merkle"
 	"github.com/tendermint/go-wire"
-	"github.com/tendermint/abci/types"
 )
 
 const (
