@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/tendermint/abci/types"
+	. "github.com/tendermint/go-common"
 )
 
 type CounterApplication struct {
@@ -69,15 +70,13 @@ func (app *CounterApplication) Commit() types.Result {
 	return types.NewResultOK(hash, "")
 }
 
-func (app *CounterApplication) Query(query []byte) types.Result {
-	queryStr := string(query)
-
-	switch queryStr {
+func (app *CounterApplication) Query(reqQuery types.RequestQuery) types.ResponseQuery {
+	switch reqQuery.Path {
 	case "hash":
-		return types.NewResultOK(nil, fmt.Sprintf("%v", app.hashCount))
+		return types.ResponseQuery{Value: []byte(Fmt("%v", app.hashCount))}
 	case "tx":
-		return types.NewResultOK(nil, fmt.Sprintf("%v", app.txCount))
+		return types.ResponseQuery{Value: []byte(Fmt("%v", app.txCount))}
+	default:
+		return types.ResponseQuery{Log: Fmt("Invalid query path. Expected hash or tx, got %v", reqQuery.Path)}
 	}
-
-	return types.ErrUnknownRequest.SetLog(fmt.Sprintf("Invalid nonce. Expected hash or tx, got %v", queryStr))
 }

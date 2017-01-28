@@ -1,13 +1,11 @@
 package dummy
 
 import (
-	"encoding/hex"
 	"fmt"
 	"strings"
 
 	"github.com/tendermint/abci/types"
 	"github.com/tendermint/go-merkle"
-	"github.com/tendermint/go-wire"
 )
 
 type DummyApplication struct {
@@ -47,15 +45,28 @@ func (app *DummyApplication) Commit() types.Result {
 	return types.NewResultOK(hash, "")
 }
 
-func (app *DummyApplication) Query(query []byte) types.Result {
-	index, value, exists := app.state.Get(query)
-	queryResult := QueryResult{index, string(value), hex.EncodeToString(value), exists}
-	return types.NewResultOK(wire.JSONBytes(queryResult), "")
-}
-
-type QueryResult struct {
-	Index    int    `json:"index"`
-	Value    string `json:"value"`
-	ValueHex string `json:"valueHex"`
-	Exists   bool   `json:"exists"`
+func (app *DummyApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
+	if reqQuery.Prove {
+		value, proof, exists := app.state.Proof(reqQuery.Data)
+		resQuery.Index = -1 // TODO make Proof return index
+		resQuery.Key = reqQuery.Data
+		resQuery.Value = value
+		resQuery.Proof = proof
+		if exists {
+			resQuery.Log = "exists"
+		} else {
+			resQuery.Log = "does not exist"
+		}
+		return
+	} else {
+		index, value, exists := app.state.Get(reqQuery.Data)
+		resQuery.Index = int64(index)
+		resQuery.Value = value
+		if exists {
+			resQuery.Log = "exists"
+		} else {
+			resQuery.Log = "does not exist"
+		}
+		return
+	}
 }

@@ -40,10 +40,10 @@ func TestChainAware(t *testing.T) {
 		client.CommitSync()
 	}
 
-	r := app.Query(nil)
-	spl := strings.Split(string(r.Data), ",")
+	r := app.Query(types.RequestQuery{})
+	spl := strings.Split(string(r.Value), ",")
 	if len(spl) != 2 {
-		t.Fatal("expected %d,%d ; got %s", n, n, string(r.Data))
+		t.Fatal("expected %d,%d ; got %s", n, n, string(r.Value))
 	}
 	beginCount, _ := strconv.Atoi(spl[0])
 	endCount, _ := strconv.Atoi(spl[1])

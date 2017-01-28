@@ -15,3 +15,7 @@ import:
   subpackages:
   - context
 - package: google.golang.org/grpc
+- package: github.com/stretchr/testify
+  version: ^1.1.4
+  subpackages:
+  - require

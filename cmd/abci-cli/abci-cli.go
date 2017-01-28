@@ -15,28 +15,15 @@ import (
 	"github.com/urfave/cli"
 )
 
-//structure for data passed to print response
-// variables must be exposed for JSON to read
+// Structure for data passed to print response.
 type response struct {
-	Res       types.Result
-	Data      string
-	PrintCode bool
-	Code      string
-}
-
-func newResponse(res types.Result, data string, printCode bool) *response {
-	rsp := &response{
-		Res:       res,
-		Data:      data,
-		PrintCode: printCode,
-		Code:      "",
-	}
-
-	if printCode {
-		rsp.Code = res.Code.String()
-	}
-
-	return rsp
+	Data   []byte
+	Code   types.CodeType
+	Key    []byte
+	Value  []byte
+	Log    string
+	Height string
+	Proof  []byte
 }
 
 // client is a global variable so it can be reused by the console
@@ -220,9 +207,10 @@ func cmdEcho(c *cli.Context) error {
 	if len(args) != 1 {
 		return errors.New("Command echo takes 1 argument")
 	}
-	res := client.EchoSync(args[0])
-	rsp := newResponse(res, string(res.Data), false)
-	printResponse(c, rsp)
+	resEcho := client.EchoSync(args[0])
+	printResponse(c, response{
+		Data: resEcho.Data,
+	})
 	return nil
 }
 
@@ -232,8 +220,9 @@ func cmdInfo(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	rsp := newResponse(types.Result{}, string(resInfo.Data), false)
-	printResponse(c, rsp)
+	printResponse(c, response{
+		Data: []byte(resInfo.Data),
+	})
 	return nil
 }
 
@@ -243,9 +232,10 @@ func cmdSetOption(c *cli.Context) error {
 	if len(args) != 2 {
 		return errors.New("Command set_option takes 2 arguments (key, value)")
 	}
-	res := client.SetOptionSync(args[0], args[1])
-	rsp := newResponse(res, fmt.Sprintf("%s=%s", args[0], args[1]), false)
-	printResponse(c, rsp)
+	resSetOption := client.SetOptionSync(args[0], args[1])
+	printResponse(c, response{
+		Log: resSetOption.Log,
+	})
 	return nil
 }
 
@@ -260,8 +250,11 @@ func cmdDeliverTx(c *cli.Context) error {
 		return err
 	}
 	res := client.DeliverTxSync(txBytes)
-	rsp := newResponse(res, string(res.Data), true)
-	printResponse(c, rsp)
+	printResponse(c, response{
+		Code: res.Code,
+		Data: res.Data,
+		Log:  res.Log,
+	})
 	return nil
 }
 
@@ -276,20 +269,26 @@ func cmdCheckTx(c *cli.Context) error {
 		return err
 	}
 	res := client.CheckTxSync(txBytes)
-	rsp := newResponse(res, string(res.Data), true)
-	printResponse(c, rsp)
+	printResponse(c, response{
+		Code: res.Code,
+		Data: res.Data,
+		Log:  res.Log,
+	})
 	return nil
 }
 
 // Get application Merkle root hash
 func cmdCommit(c *cli.Context) error {
 	res := client.CommitSync()
-	rsp := newResponse(res, fmt.Sprintf("0x%X", res.Data), false)
-	printResponse(c, rsp)
+	printResponse(c, response{
+		Data: res.Data,
+		Log:  res.Log,
+	})
 	return nil
 }
 
 // Query application state
+// TODO: Make request and response support all fields.
 func cmdQuery(c *cli.Context) error {
 	args := c.Args()
 	if len(args) != 1 {
@@ -299,15 +298,29 @@ func cmdQuery(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	res := client.QuerySync(queryBytes)
-	rsp := newResponse(res, string(res.Data), true)
-	printResponse(c, rsp)
+	resQuery, err := client.QuerySync(types.RequestQuery{
+		Data:   queryBytes,
+		Path:   "/store", // TOOD expose
+		Height: 0,        // TODO expose
+		//Prove:  true,     // TODO expose
+	})
+	if err != nil {
+		return err
+	}
+	printResponse(c, response{
+		Code:   resQuery.Code,
+		Key:    resQuery.Key,
+		Value:  resQuery.Value,
+		Log:    resQuery.Log,
+		Height: fmt.Sprintf("%v", resQuery.Height),
+		//Proof:  resQuery.Proof,
+	})
 	return nil
 }
 
 //--------------------------------------------------------------------------------
 
-func printResponse(c *cli.Context, rsp *response) {
+func printResponse(c *cli.Context, rsp response) {
 
 	verbose := c.GlobalBool("verbose")
 
@@ -315,19 +328,29 @@ func printResponse(c *cli.Context, rsp *response) {
 		fmt.Println(">", c.Command.Name, strings.Join(c.Args(), " "))
 	}
 
-	if rsp.PrintCode {
-		fmt.Printf("-> code: %s\n", rsp.Code)
+	if rsp.Code != types.CodeType_OK {
+		fmt.Printf("-> code: %s\n", rsp.Code.String())
 	}
-
-	//if pr.res.Error != "" {
-	//	fmt.Printf("-> error: %s\n", pr.res.Error)
-	//}
-
-	if rsp.Data != "" {
+	if len(rsp.Data) != 0 {
 		fmt.Printf("-> data: %s\n", rsp.Data)
+		fmt.Printf("-> data.hex: %X\n", rsp.Data)
 	}
-	if rsp.Res.Log != "" {
-		fmt.Printf("-> log: %s\n", rsp.Res.Log)
+	if len(rsp.Key) != 0 {
+		fmt.Printf("-> key: %s\n", rsp.Key)
+		fmt.Printf("-> key.hex: %X\n", rsp.Key)
+	}
+	if len(rsp.Value) != 0 {
+		fmt.Printf("-> value: %s\n", rsp.Value)
+		fmt.Printf("-> value.hex: %X\n", rsp.Value)
+	}
+	if rsp.Log != "" {
+		fmt.Printf("-> log: %s\n", rsp.Log)
+	}
+	if rsp.Height != "" {
+		fmt.Printf("-> height: %s\n", rsp.Height)
+	}
+	if rsp.Proof != nil {
+		fmt.Printf("-> proof: %X\n", rsp.Proof)
 	}
 
 	if verbose {

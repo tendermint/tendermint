@@ -184,8 +184,8 @@ func (s *SocketServer) handleRequest(req *types.Request, responses chan<- *types
 		res := s.app.Commit()
 		responses <- types.ToResponseCommit(res.Code, res.Data, res.Log)
 	case *types.Request_Query:
-		res := s.app.Query(r.Query.Query)
-		responses <- types.ToResponseQuery(res.Code, res.Data, res.Log)
+		resQuery := s.app.Query(*r.Query)
+		responses <- types.ToResponseQuery(resQuery)
 	case *types.Request_InitChain:
 		if app, ok := s.app.(types.BlockchainAware); ok {
 			app.InitChain(r.InitChain.Validators)

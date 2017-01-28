@@ -2,46 +2,62 @@ package dummy
 
 import (
 	"bytes"
-	"fmt"
 	"io/ioutil"
 	"sort"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	abcicli "github.com/tendermint/abci/client"
-	"github.com/tendermint/abci/server"
-	"github.com/tendermint/abci/types"
-	cmn "github.com/tendermint/go-common"
+	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-crypto"
 	merkle "github.com/tendermint/go-merkle"
+	"github.com/tendermint/go-wire"
+<<<<<<< HEAD
+	"github.com/tendermint/abci/types"
+)
+
+func testDummy(t *testing.T, dummy types.Application, tx []byte, key, value string) {
+	if r := dummy.DeliverTx(tx); r.IsErr() {
+		t.Fatal(r)
+	}
+	if r := dummy.DeliverTx(tx); r.IsErr() {
+		t.Fatal(r)
+	}
+
+	r := dummy.Query([]byte(key))
+	if r.IsErr() {
+		t.Fatal(r)
+	}
+=======
+	tmspcli "github.com/tendermint/tmsp/client"
+	"github.com/tendermint/tmsp/server"
+	"github.com/tendermint/tmsp/types"
 )
 
 func testDummy(t *testing.T, app types.Application, tx []byte, key, value string) {
-	ar := app.DeliverTx(tx)
+	ar := app.AppendTx(tx)
 	require.False(t, ar.IsErr(), ar)
 	// repeating tx doesn't raise error
-	ar = app.DeliverTx(tx)
+	ar = app.AppendTx(tx)
 	require.False(t, ar.IsErr(), ar)
+>>>>>>> Add tests for client-server proofs over socket and grpc
 
 	// make sure query is fine
-	resQuery := app.Query(types.RequestQuery{
-		Path: "/store",
-		Data: []byte(key),
-	})
-	require.Equal(t, types.CodeType_OK, resQuery.Code)
-	require.Equal(t, value, string(resQuery.Value))
+	r := app.Query([]byte(key))
+	require.False(t, r.IsErr(), r)
+	q := new(QueryResult)
+	err := wire.ReadJSONBytes(r.Data, q)
+	require.Nil(t, err)
+	require.Equal(t, value, q.Value)
 
 	// make sure proof is fine
-	resQuery = app.Query(types.RequestQuery{
-		Path:  "/store",
-		Data:  []byte(key),
-		Prove: true,
-	})
-	require.Equal(t, types.CodeType_OK, resQuery.Code)
-	require.Equal(t, value, string(resQuery.Value))
-	proof, err := merkle.ReadProof(resQuery.Proof)
+	rp := app.Proof([]byte(key), 0)
+	require.False(t, rp.IsErr(), rp)
+	p, err := merkle.LoadProof(rp.Data)
 	require.Nil(t, err)
-	require.True(t, proof.Verify([]byte(key), resQuery.Value, proof.RootHash)) // NOTE: we have no way to verify the RootHash
+	require.True(t, p.Valid())
+	assert.Equal(t, []byte(key), p.Key())
+	assert.Equal(t, []byte(value), p.Value())
 }
 
 func TestDummyKV(t *testing.T) {
@@ -115,8 +131,8 @@ func TestValSetChanges(t *testing.T) {
 	nInit := 5
 	vals := make([]*types.Validator, total)
 	for i := 0; i < total; i++ {
-		pubkey := crypto.GenPrivKeyEd25519FromSecret([]byte(fmt.Sprintf("test%d", i))).PubKey().Bytes()
-		power := cmn.RandInt()
+		pubkey := crypto.GenPrivKeyEd25519FromSecret([]byte(Fmt("test%d", i))).PubKey().Bytes()
+		power := RandInt()
 		vals[i] = &types.Validator{pubkey, uint64(power)}
 	}
 	// iniitalize with the first nInit
@@ -210,16 +226,16 @@ func valsEqual(t *testing.T, vals1, vals2 []*types.Validator) {
 	}
 }
 
-func makeSocketClientServer(app types.Application, name string) (abcicli.Client, cmn.Service, error) {
+func makeSocketClientServer(app types.Application, name string) (tmspcli.Client, Service, error) {
 	// Start the listener
-	socket := cmn.Fmt("unix://%s.sock", name)
+	socket := Fmt("unix://%s.sock", name)
 	server, err := server.NewSocketServer(socket, app)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// Connect to the socket
-	client, err := abcicli.NewSocketClient(socket, false)
+	client, err := tmspcli.NewSocketClient(socket, false)
 	if err != nil {
 		server.Stop()
 		return nil, nil, err
@@ -229,9 +245,9 @@ func makeSocketClientServer(app types.Application, name string) (abcicli.Client,
 	return client, server, err
 }
 
-func makeGRPCClientServer(app types.Application, name string) (abcicli.Client, cmn.Service, error) {
+func makeGRPCClientServer(app types.Application, name string) (tmspcli.Client, Service, error) {
 	// Start the listener
-	socket := cmn.Fmt("unix://%s.sock", name)
+	socket := Fmt("unix://%s.sock", name)
 
 	gapp := types.NewGRPCApplication(app)
 	server, err := server.NewGRPCServer(socket, gapp)
@@ -239,7 +255,7 @@ func makeGRPCClientServer(app types.Application, name string) (abcicli.Client, c
 		return nil, nil, err
 	}
 
-	client, err := abcicli.NewGRPCClient(socket, true)
+	client, err := tmspcli.NewGRPCClient(socket, true)
 	if err != nil {
 		server.Stop()
 		return nil, nil, err
@@ -267,7 +283,7 @@ func TestClientServer(t *testing.T) {
 	runClientTests(t, gclient)
 }
 
-func runClientTests(t *testing.T, client abcicli.Client) {
+func runClientTests(t *testing.T, client tmspcli.Client) {
 	// run some tests....
 	key := "abc"
 	value := key
@@ -279,32 +295,27 @@ func runClientTests(t *testing.T, client abcicli.Client) {
 	testClient(t, client, tx, key, value)
 }
 
-func testClient(t *testing.T, app abcicli.Client, tx []byte, key, value string) {
-	ar := app.DeliverTxSync(tx)
+func testClient(t *testing.T, app tmspcli.Client, tx []byte, key, value string) {
+	ar := app.AppendTxSync(tx)
 	require.False(t, ar.IsErr(), ar)
 	// repeating tx doesn't raise error
-	ar = app.DeliverTxSync(tx)
+	ar = app.AppendTxSync(tx)
 	require.False(t, ar.IsErr(), ar)
 
 	// make sure query is fine
-	resQuery, err := app.QuerySync(types.RequestQuery{
-		Path: "/store",
-		Data: []byte(key),
-	})
+	r := app.QuerySync([]byte(key))
+	require.False(t, r.IsErr(), r)
+	q := new(QueryResult)
+	err := wire.ReadJSONBytes(r.Data, q)
 	require.Nil(t, err)
-	require.Equal(t, types.CodeType_OK, resQuery.Code)
-	require.Equal(t, value, string(resQuery.Value))
+	require.Equal(t, value, q.Value)
 
 	// make sure proof is fine
-	resQuery, err = app.QuerySync(types.RequestQuery{
-		Path:  "/store",
-		Data:  []byte(key),
-		Prove: true,
-	})
+	rp := app.ProofSync([]byte(key), 0)
+	require.False(t, rp.IsErr(), rp)
+	p, err := merkle.LoadProof(rp.Data)
 	require.Nil(t, err)
-	require.Equal(t, types.CodeType_OK, resQuery.Code)
-	require.Equal(t, value, string(resQuery.Value))
-	proof, err := merkle.ReadProof(resQuery.Proof)
-	require.Nil(t, err)
-	require.True(t, proof.Verify([]byte(key), resQuery.Value, proof.RootHash)) // NOTE: we have no way to verify the RootHash
+	require.True(t, p.Valid())
+	assert.Equal(t, []byte(key), p.Key())
+	assert.Equal(t, []byte(value), p.Value())
 }

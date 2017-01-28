@@ -31,6 +31,6 @@ func (app *NilApplication) Commit() types.Result {
 	return types.NewResultOK([]byte("nil"), "")
 }
 
-func (app *NilApplication) Query(query []byte) types.Result {
-	return types.NewResultOK(nil, "")
+func (app *NilApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
+	return resQuery
 }

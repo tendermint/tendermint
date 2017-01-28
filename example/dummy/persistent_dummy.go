@@ -90,8 +90,8 @@ func (app *PersistentDummyApplication) Commit() types.Result {
 	return types.NewResultOK(appHash, "")
 }
 
-func (app *PersistentDummyApplication) Query(query []byte) types.Result {
-	return app.app.Query(query)
+func (app *PersistentDummyApplication) Query(reqQuery types.RequestQuery) types.ResponseQuery {
+	return app.app.Query(reqQuery)
 }
 
 // Save the validators in the merkle tree

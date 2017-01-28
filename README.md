@@ -21,51 +21,16 @@ Other implementations:
 
 The [primary specification](https://github.com/tendermint/abci/blob/master/types/types.proto) is made using Protocol Buffers.
 
-As a [Go interface](https://github.com/tendermint/abci/blob/master/types/application.go), it might look like:
+	- The Protobuf file defining ABCI message types, and the optional GRPC interface. To build, run `make protoc`
+	- See `protoc --help` and [the GRPC docs](https://www.grpc.io/docs) for examples and details of other languages.
 
+TendermintCore runs a client, and the ABCI application runs a server. There are three Golang implementation of ABCI client and server.
 
-```
-// Applications
-type Application interface {
+1. ABCI-socket: Asynchronous, ordered message passing over Unix or TCP sockets.  Messages are serialized using Protobuf and length prefixed.
+2. GRPC: Synchronous (slow) implementation using GRPC.
+3. Golang in-process: If the ABCI appliation is written in Golang, it is possible to compile both TendermintCore and the application as one binary.
 
-	// Latest state
-	Info() ResponseInfo
-
-	// Initialization
-	SetOption(key string, value string) (log string)
-	InitChain(validators []*Validator)
-
-	// Apply a block
-	BeginBlock(hash []byte, header *Header)
-	DeliverTx(tx []byte) Result
-	EndBlock(height uint64) ResponseEndBlock
-	Commit() Result
-
-	// Check validity
-	CheckTx(tx []byte) Result
-
-	// Query for state
-	Query(query []byte) Result
-}
-
-type Result struct {
-	Code CodeType
-	Data []byte
-	Log  string // Can be non-deterministic
-}
-
-type ResponseInfo struct {
-	Data             string
-	Version          string
-	LastBlockHeight  uint64
-	LastBlockAppHash []byte
-}
-
-type ResponseEndBlock struct {
-	Diffs []*Validator
-}
-
-```
+_TODO: merge information from https://tendermint.com/blog/tendermint-0-8-release_
 
 ## Message Types
 
@@ -98,7 +63,7 @@ ABCI requests/responses are simple Protobuf messages.  Check out the [schema fil
     You can make CheckTx semi-stateful and clear the state upon `Commit` or `BeginBlock`,
     to allow for dependent sequences of transactions in the same block.
 
-#### Commit 
+#### Commit
   * __Returns__:
     * `Data ([]byte)`: The Merkle root hash
     * `Log (string)`: Debug or error message
@@ -107,11 +72,20 @@ ABCI requests/responses are simple Protobuf messages.  Check out the [schema fil
 
 #### Query
   * __Arguments__:
-    * `Data ([]byte)`: The query request bytes
+    * `Data ([]byte)`: Raw query bytes.  Can be used with or in lieu of Path.
+    * `Path (string)`: Path of request, like an HTTP GET path.  Can be used with or in liue of Data.
+      * Apps MUST interpret '/store' as a query by key on the underlying store.  The key SHOULD be specified in the Data field.
+      * Apps SHOULD allow queries over specific types like '/accounts/...' or '/votes/...'
+    * `Height (uint64)`: The block height for which you want the query (default=0 returns data for the latest committed block)
+    * `Prove (bool)`: Return Merkle proof with response if possible
   * __Returns__:
     * `Code (uint32)`: Response code
-    * `Data ([]byte)`: The query response bytes
+    * `Key ([]byte)`: The key of the matching data
+    * `Value ([]byte)`: The value of the matching data
+    * `Proof ([]byte)`: Proof for the data, if requested
+    * `Height (uint64)`: The block height from which data was derived
     * `Log (string)`: Debug or error message
+  *Please note* The current implementation of go-merkle doesn't support querying proofs from past blocks, so for the present moment, any height other than 0 will return an error.  Hopefully this will be improved soon(ish)
 
 #### Info
   * __Returns__:

@@ -1,32 +1,38 @@
 > echo hello
 -> data: hello
+-> data.hex: 68656C6C6F
 
 > info 
 -> data: {"size":0}
+-> data.hex: 7B2273697A65223A307D
 
 > commit 
--> data: 0x
 
 > deliver_tx "abc"
--> code: OK
 
 > info 
 -> data: {"size":1}
+-> data.hex: 7B2273697A65223A317D
 
 > commit 
--> data: 0x750502FC7E84BBD788ED589624F06CFA871845D1
+-> data: uü~„»×ˆíX–$ðlú‡EÑ
+-> data.hex: 750502FC7E84BBD788ED589624F06CFA871845D1
 
 > query "abc"
--> code: OK
--> data: {"index":0,"value":"abc","valueHex":"616263","exists":true}
+-> value: abc
+-> value.hex: 616263
+-> log: exists
+-> height: 0
 
 > deliver_tx "def=xyz"
--> code: OK
 
 > commit 
--> data: 0x76393B8A182E450286B0694C629ECB51B286EFD5
+-> data: v9;Š.E†°iLbžËQ²†ïÕ
+-> data.hex: 76393B8A182E450286B0694C629ECB51B286EFD5
 
 > query "def"
--> code: OK
--> data: {"index":1,"value":"xyz","valueHex":"78797a","exists":true}
+-> value: xyz
+-> value.hex: 78797A
+-> log: exists
+-> height: 0
 
