@@ -6,14 +6,15 @@ import (
 	"path"
 	"testing"
 
-	"github.com/tendermint/tendermint/config/tendermint_test"
-	//	. "github.com/tendermint/go-common"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/tendermint/abci/example/dummy"
 	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-crypto"
 	dbm "github.com/tendermint/go-db"
+	"github.com/tendermint/tendermint/config/tendermint_test"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/abci/example/dummy"
 )
 
 var (
@@ -22,6 +23,7 @@ var (
 	nBlocks      = 5
 	mempool      = MockMempool{}
 	testPartSize = 65536
+	nTxsPerBlock = 10
 )
 
 //---------------------------------------
@@ -62,10 +64,9 @@ func testHandshakeReplay(t *testing.T, n int) {
 	clientCreator := proxy.NewLocalClientCreator(dummy.NewPersistentDummyApplication(path.Join(config.GetString("db_dir"), "1")))
 	clientCreator2 := proxy.NewLocalClientCreator(dummy.NewPersistentDummyApplication(path.Join(config.GetString("db_dir"), "2")))
 	proxyApp := proxy.NewAppConns(config, clientCreator, NewHandshaker(config, state, store))
-	if _, err := proxyApp.Start(); err != nil {
-		t.Fatalf("Error starting proxy app connections: %v", err)
-	}
-	chain := makeBlockchain(t, proxyApp, state)
+	_, err := proxyApp.Start()
+	require.Nil(t, err, "Error starting proxy app connections: %v", err)
+	chain := makeBlockchain(t, proxyApp, state, store)
 	store.chain = chain //
 	latestAppHash := state.AppHash
 	proxyApp.Stop()
@@ -73,16 +74,15 @@ func testHandshakeReplay(t *testing.T, n int) {
 	if n > 0 {
 		// start a new app without handshake, play n blocks
 		proxyApp = proxy.NewAppConns(config, clientCreator2, nil)
-		if _, err := proxyApp.Start(); err != nil {
-			t.Fatalf("Error starting proxy app connections: %v", err)
-		}
-		state2, _ := stateAndStore(config)
+		_, err := proxyApp.Start()
+		require.Nil(t, err, "Error starting proxy app connections: %v", err)
+
+		state2, store2 := stateAndStore(config)
 		for i := 0; i < n; i++ {
 			block := chain[i]
-			err := state2.ApplyBlock(nil, proxyApp.Consensus(), block, block.MakePartSet(testPartSize).Header(), mempool)
-			if err != nil {
-				t.Fatal(err)
-			}
+			err := state2.ApplyBlock(nil, proxyApp.Consensus(), block, block.MakePartSet(testPartSize).Header(), mempool, store2)
+			assert.Nil(t, err)
+			assert.Equal(t, i*nTxsPerBlock+nTxsPerBlock, store2.nSavedTxResults)
 		}
 		proxyApp.Stop()
 	}
@@ -90,25 +90,20 @@ func testHandshakeReplay(t *testing.T, n int) {
 	// now start it with the handshake
 	handshaker := NewHandshaker(config, state, store)
 	proxyApp = proxy.NewAppConns(config, clientCreator2, handshaker)
-	if _, err := proxyApp.Start(); err != nil {
-		t.Fatalf("Error starting proxy app connections: %v", err)
-	}
+	_, err = proxyApp.Start()
+	require.Nil(t, err, "Error starting proxy app connections: %v", err)
 
 	// get the latest app hash from the app
 	res, err := proxyApp.Query().InfoSync()
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.Nil(t, err)
 
 	// the app hash should be synced up
 	if !bytes.Equal(latestAppHash, res.LastBlockAppHash) {
 		t.Fatalf("Expected app hashes to match after handshake/replay. got %X, expected %X", res.LastBlockAppHash, latestAppHash)
 	}
 
-	if handshaker.nBlocks != nBlocks-n {
-		t.Fatalf("Expected handshake to sync %d blocks, got %d", nBlocks-n, handshaker.nBlocks)
-	}
-
+	assert.Equal(t, handshaker.nBlocks, nBlocks-n,
+		"Expected handshake to sync %d blocks, got %d", nBlocks-n, handshaker.nBlocks)
 }
 
 //--------------------------
@@ -116,7 +111,7 @@ func testHandshakeReplay(t *testing.T, n int) {
 
 // make some bogus txs
 func txsFunc(blockNum int) (txs []types.Tx) {
-	for i := 0; i < 10; i++ {
+	for i := 0; i < nTxsPerBlock; i++ {
 		txs = append(txs, types.Tx([]byte{byte(blockNum), byte(i)}))
 	}
 	return txs
@@ -139,7 +134,7 @@ func signCommit(height, round int, hash []byte, header types.PartSetHeader) *typ
 }
 
 // make a blockchain with one validator
-func makeBlockchain(t *testing.T, proxyApp proxy.AppConns, state *State) (blockchain []*types.Block) {
+func makeBlockchain(t *testing.T, proxyApp proxy.AppConns, state *State, store BlockStore) (blockchain []*types.Block) {
 
 	prevHash := state.LastBlockID.Hash
 	lastCommit := new(types.Commit)
@@ -147,23 +142,19 @@ func makeBlockchain(t *testing.T, proxyApp proxy.AppConns, state *State) (blockc
 	valHash := state.Validators.Hash()
 	prevBlockID := types.BlockID{prevHash, prevParts}
 
-	for i := 1; i < nBlocks+1; i++ {
+	for i := 1; i <= nBlocks; i++ {
 		block, parts := types.MakeBlock(i, chainID, txsFunc(i), lastCommit,
 			prevBlockID, valHash, state.AppHash, testPartSize)
 		fmt.Println(i)
 		fmt.Println(prevBlockID)
 		fmt.Println(block.LastBlockID)
-		err := state.ApplyBlock(nil, proxyApp.Consensus(), block, block.MakePartSet(testPartSize).Header(), mempool)
-		if err != nil {
-			t.Fatal(i, err)
-		}
+		err := state.ApplyBlock(nil, proxyApp.Consensus(), block, block.MakePartSet(testPartSize).Header(), mempool, store)
+		require.Nil(t, err)
 
 		voteSet := types.NewVoteSet(chainID, i, 0, types.VoteTypePrecommit, state.Validators)
 		vote := signCommit(i, 0, block.Hash(), parts.Header())
 		_, err = voteSet.AddVote(vote)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.Nil(t, err)
 
 		blockchain = append(blockchain, block)
 		prevHash = block.Hash()
@@ -190,12 +181,13 @@ func stateAndStore(config cfg.Config) (*State, *mockBlockStore) {
 // mock block store
 
 type mockBlockStore struct {
-	config cfg.Config
-	chain  []*types.Block
+	config          cfg.Config
+	chain           []*types.Block
+	nSavedTxResults int
 }
 
 func NewMockBlockStore(config cfg.Config, chain []*types.Block) *mockBlockStore {
-	return &mockBlockStore{config, chain}
+	return &mockBlockStore{config, chain, 0}
 }
 
 func (bs *mockBlockStore) Height() int                       { return len(bs.chain) }
@@ -207,4 +199,7 @@ func (bs *mockBlockStore) LoadBlockMeta(height int) *types.BlockMeta {
 		Header:      block.Header,
 		PartsHeader: block.MakePartSet(bs.config.GetInt("block_part_size")).Header(),
 	}
+}
+func (bs *mockBlockStore) SaveTxResult(hash []byte, txResult *types.TxResult) {
+	bs.nSavedTxResults++
 }
