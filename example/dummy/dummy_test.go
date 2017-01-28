@@ -6,7 +6,6 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	abcicli "github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/server"
@@ -14,7 +13,6 @@ import (
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-crypto"
 	merkle "github.com/tendermint/go-merkle"
-	"github.com/tendermint/go-wire"
 )
 
 func testDummy(t *testing.T, app types.Application, tx []byte, key, value string) {
@@ -25,21 +23,24 @@ func testDummy(t *testing.T, app types.Application, tx []byte, key, value string
 	require.False(t, ar.IsErr(), ar)
 
 	// make sure query is fine
-	r := app.Query([]byte(key))
-	require.False(t, r.IsErr(), r)
-	q := new(QueryResult)
-	err := wire.ReadJSONBytes(r.Data, q)
-	require.Nil(t, err)
-	require.Equal(t, value, q.Value)
+	resQuery := app.Query(types.RequestQuery{
+		Path: "/store",
+		Data: []byte(key),
+	})
+	require.Equal(t, types.CodeType_OK, resQuery.Code)
+	require.Equal(t, value, string(resQuery.Value))
 
 	// make sure proof is fine
-	rp := app.Proof([]byte(key), 0)
-	require.False(t, rp.IsErr(), rp)
-	p, err := merkle.LoadProof(rp.Data)
+	resQuery = app.Query(types.RequestQuery{
+		Path:  "/store",
+		Data:  []byte(key),
+		Prove: true,
+	})
+	require.Equal(t, types.CodeType_OK, resQuery.Code)
+	require.Equal(t, value, string(resQuery.Value))
+	proof, err := merkle.ReadProof(resQuery.Proof)
 	require.Nil(t, err)
-	require.True(t, p.Valid())
-	assert.Equal(t, []byte(key), p.Key())
-	assert.Equal(t, []byte(value), p.Value())
+	require.True(t, proof.Verify([]byte(key), resQuery.Value, proof.RootHash)) // NOTE: we have no way to verify the RootHash
 }
 
 func TestDummyKV(t *testing.T) {
@@ -285,19 +286,24 @@ func testClient(t *testing.T, app abcicli.Client, tx []byte, key, value string) 
 	require.False(t, ar.IsErr(), ar)
 
 	// make sure query is fine
-	r := app.QuerySync([]byte(key))
-	require.False(t, r.IsErr(), r)
-	q := new(QueryResult)
-	err := wire.ReadJSONBytes(r.Data, q)
+	resQuery, err := app.QuerySync(types.RequestQuery{
+		Path: "/store",
+		Data: []byte(key),
+	})
 	require.Nil(t, err)
-	require.Equal(t, value, q.Value)
+	require.Equal(t, types.CodeType_OK, resQuery.Code)
+	require.Equal(t, value, string(resQuery.Value))
 
 	// make sure proof is fine
-	rp := app.ProofSync([]byte(key), 0)
-	require.False(t, rp.IsErr(), rp)
-	p, err := merkle.LoadProof(rp.Data)
+	resQuery, err = app.QuerySync(types.RequestQuery{
+		Path:  "/store",
+		Data:  []byte(key),
+		Prove: true,
+	})
 	require.Nil(t, err)
-	require.True(t, p.Valid())
-	assert.Equal(t, []byte(key), p.Key())
-	assert.Equal(t, []byte(value), p.Value())
+	require.Equal(t, types.CodeType_OK, resQuery.Code)
+	require.Equal(t, value, string(resQuery.Value))
+	proof, err := merkle.ReadProof(resQuery.Proof)
+	require.Nil(t, err)
+	require.True(t, proof.Verify([]byte(key), resQuery.Value, proof.RootHash)) // NOTE: we have no way to verify the RootHash
 }

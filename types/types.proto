@@ -18,14 +18,13 @@ enum MessageType {
 	Info            = 0x03;
 	SetOption       = 0x04;
 	Exception       = 0x05;
-	DeliverTx        = 0x11;
+	DeliverTx       = 0x11;
 	CheckTx         = 0x12;
 	Commit          = 0x13;
 	Query           = 0x14;
 	InitChain       = 0x15;
 	BeginBlock      = 0x16;
 	EndBlock        = 0x17;
-	Proof           = 0x18;
 }
 
 //----------------------------------------
@@ -87,7 +86,6 @@ message Request {
 		RequestInitChain init_chain = 9;
 		RequestBeginBlock begin_block = 10;
 		RequestEndBlock end_block = 11;
-		RequestProof proof = 12;
 	}
 }
 
@@ -107,20 +105,18 @@ message RequestSetOption{
 }
 
 message RequestDeliverTx{
-	bytes tx   = 1;
+	bytes tx = 1;
 }
 
 message RequestCheckTx{
-	bytes tx   = 1;
+	bytes tx = 1;
 }
 
 message RequestQuery{
-	bytes query  = 1;
-}
-
-message RequestProof{
-	bytes key  = 1;
-	uint64 height  = 2;
+	bytes data = 1;
+	string path = 2;
+	uint64 height = 3;
+	bool prove = 4; 
 }
 
 message RequestCommit{
@@ -157,7 +153,6 @@ message Response {
 		ResponseInitChain init_chain = 10;
 		ResponseBeginBlock begin_block = 11;
 		ResponseEndBlock end_block = 12;
-		ResponseProof proof = 13;
 	}
 }
 
@@ -197,14 +192,12 @@ message ResponseCheckTx{
 
 message ResponseQuery{
 	CodeType          code        = 1;
-	bytes             data        = 2;
-	string            log         = 3;
-}
-
-message ResponseProof{
-	CodeType          code        = 1;
-	bytes             data        = 2;
-	string            log         = 3;
+	int64             index =       2;
+	bytes             key         = 3;
+	bytes             value       = 4;
+	bytes             proof       = 5;
+	uint64            height      = 6;
+	string            log         = 7;
 }
 
 message ResponseCommit{
@@ -250,8 +243,8 @@ message PartSetHeader {
 }
 
 message Validator {
-						bytes             pubKey      = 1;
-						uint64            power       = 2;
+	bytes pubKey = 1;
+	uint64 power = 2;
 }
 
 //----------------------------------------
@@ -265,7 +258,6 @@ service ABCIApplication {
 	rpc DeliverTx(RequestDeliverTx) returns (ResponseDeliverTx);
 	rpc CheckTx(RequestCheckTx) returns (ResponseCheckTx);
 	rpc Query(RequestQuery) returns (ResponseQuery);
-	rpc Proof(RequestProof) returns (ResponseProof);
 	rpc Commit(RequestCommit) returns (ResponseCommit);
 	rpc InitChain(RequestInitChain) returns (ResponseInitChain);
 	rpc BeginBlock(RequestBeginBlock) returns (ResponseBeginBlock);

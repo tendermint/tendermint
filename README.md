@@ -85,23 +85,20 @@ ABCI requests/responses are simple Protobuf messages.  Check out the [schema fil
 
 #### Query
   * __Arguments__:
-    * `Data ([]byte)`: The query request bytes
+    * `Data ([]byte)`: Raw query bytes.  Can be used with or in lieu of Path.
+    * `Path (string)`: Path of request, like an HTTP GET path.  Can be used with or in liue of Data.
+      * Apps MUST interpret '/store' as a query by key on the underlying store.  The key SHOULD be specified in the Data field.
+      * Apps SHOULD allow queries over specific types like '/accounts/...' or '/votes/...'
+    * `Height (uint64)`: The block height for which you want the query (default=0 returns data for the latest committed block)
+    * `Prove (bool)`: Return Merkle proof with response if possible
   * __Returns__:
     * `Code (uint32)`: Response code
-    * `Data ([]byte)`: The query response bytes
+    * `Key ([]byte)`: The key of the matching data
+    * `Value ([]byte)`: The value of the matching data
+    * `Proof ([]byte)`: Proof for the data, if requested
+    * `Height (uint64)`: The block height from which data was derived
     * `Log (string)`: Debug or error message
-
-#### Proof
-  * __Arguments__:
-    * `Key ([]byte)`: The key whose data you want to verifiably query
-    * `Height (int64)`: The block height for which you want the proof (default=0 returns the proof for last committed block)
-  * __Returns__:
-    * `Code (uint32)`: Response code
-    * `Data ([]byte)`: The query response bytes
-    * `Log (string)`: Debug or error message
-  * __Usage__:<br/>
-    Return a Merkle proof from the key/value pair back to the application hash.<br/>
-    *Please note* The current implementation of go-merkle doesn't support querying proofs from past blocks, so for the present moment, any height other than 0 will return an error.  Hopefully this will be improved soon(ish)
+  *Please note* The current implementation of go-merkle doesn't support querying proofs from past blocks, so for the present moment, any height other than 0 will return an error.  Hopefully this will be improved soon(ish)
 
 #### Flush
   * __Usage__:<br/>

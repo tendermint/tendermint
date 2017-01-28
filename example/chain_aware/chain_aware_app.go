@@ -57,12 +57,10 @@ func (app *ChainAwareApplication) Commit() types.Result {
 	return types.NewResultOK([]byte("nil"), "")
 }
 
-func (app *ChainAwareApplication) Query(query []byte) types.Result {
-	return types.NewResultOK([]byte(Fmt("%d,%d", app.beginCount, app.endCount)), "")
-}
-
-func (app *ChainAwareApplication) Proof(key []byte, blockHeight uint64) types.Result {
-	return types.NewResultOK(nil, Fmt("Proof is not supported"))
+func (app *ChainAwareApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
+	return types.ResponseQuery{
+		Value: []byte(Fmt("%d,%d", app.beginCount, app.endCount)),
+	}
 }
 
 func (app *ChainAwareApplication) BeginBlock(hash []byte, header *types.Header) {

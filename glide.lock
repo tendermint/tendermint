@@ -53,7 +53,7 @@ imports:
 - name: github.com/tendermint/go-logger
   version: cefb3a45c0bf3c493a04e9bcd9b1540528be59f2
 - name: github.com/tendermint/go-merkle
-  version: 7a86b4486f2cd84ac885c5bbc609fdee2905f5d1
+  version: 653cb1f631528351ddbc359b994eb0c96f0341cd
 - name: github.com/tendermint/go-process
   version: b27edfd189b1a01a0b099f7e9f8263589cf04909
 - name: github.com/tendermint/go-wire

@@ -1,13 +1,11 @@
 package dummy
 
 import (
-	"encoding/hex"
 	"strings"
 
 	"github.com/tendermint/abci/types"
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-merkle"
-	"github.com/tendermint/go-wire"
 )
 
 type DummyApplication struct {
@@ -47,30 +45,28 @@ func (app *DummyApplication) Commit() types.Result {
 	return types.NewResultOK(hash, "")
 }
 
-func (app *DummyApplication) Query(query []byte) types.Result {
-	index, value, exists := app.state.Get(query)
-
-	queryResult := QueryResult{index, string(value), hex.EncodeToString(value), exists}
-	return types.NewResultOK(wire.JSONBytes(queryResult), "")
-}
-
-func (app *DummyApplication) Proof(key []byte, blockHeight uint64) types.Result {
-	// TODO: when go-merkle supports querying older blocks without possible panics,
-	// we should store a cache and allow a query.  But for now it is impossible.
-	// And this is just a Dummy application anyway, what do you expect? ;)
-	if blockHeight != 0 {
-		return types.ErrUnknownRequest
+func (app *DummyApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
+	if reqQuery.Prove {
+		value, proof, exists := app.state.Proof(reqQuery.Data)
+		resQuery.Index = -1 // TODO make Proof return index
+		resQuery.Key = reqQuery.Data
+		resQuery.Value = value
+		resQuery.Proof = proof
+		if exists {
+			resQuery.Log = "exists"
+		} else {
+			resQuery.Log = "does not exist"
+		}
+		return
+	} else {
+		index, value, exists := app.state.Get(reqQuery.Data)
+		resQuery.Index = int64(index)
+		resQuery.Value = value
+		if exists {
+			resQuery.Log = "exists"
+		} else {
+			resQuery.Log = "does not exist"
+		}
+		return
 	}
-	proof, exists := app.state.Proof(key)
-	if !exists {
-		return types.NewResultOK(nil, Fmt("Cannot find key = %v", key))
-	}
-	return types.NewResultOK(proof, "Found the key")
-}
-
-type QueryResult struct {
-	Index    int    `json:"index"`
-	Value    string `json:"value"`
-	ValueHex string `json:"valueHex"`
-	Exists   bool   `json:"exists"`
 }

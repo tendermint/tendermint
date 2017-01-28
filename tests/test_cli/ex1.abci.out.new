@@ -1,0 +1,44 @@
+> echo hello
+-> data: hello
+-> data.hex: 68656C6C6F
+
+> info 
+-> data: {"size":0}
+-> data.hex: 7B2273697A65223A307D
+
+> commit 
+
+> deliver_tx "abc"
+
+> info 
+-> data: {"size":1}
+-> data.hex: 7B2273697A65223A317D
+
+> commit 
+-> data: uü~„»×ˆíX–$ðlú‡EÑ
+-> data.hex: 750502FC7E84BBD788ED589624F06CFA871845D1
+
+> query "abc"
+-> key: abc
+-> key.hex: 616263
+-> value: abc
+-> value.hex: 616263
+-> log: exists
+-> height: 0
+-> proof: 010114750502FC7E84BBD788ED589624F06CFA871845D1000114750502FC7E84BBD788ED589624F06CFA871845D1
+
+> deliver_tx "def=xyz"
+
+> commit 
+-> data: v9;Š.E†°iLbžËQ²†ïÕ
+-> data.hex: 76393B8A182E450286B0694C629ECB51B286EFD5
+
+> query "def"
+-> key: def
+-> key.hex: 646566
+-> value: xyz
+-> value.hex: 78797A
+-> log: exists
+-> height: 0
+-> proof: 010114C08027141879A7B95E1339565CE60D7DB7A115EB01010101020114750502FC7E84BBD788ED589624F06CFA871845D100011476393B8A182E450286B0694C629ECB51B286EFD5
+
