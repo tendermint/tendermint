@@ -1,5 +1,5 @@
 # Pull base image.
-FROM golang:1.6
+FROM golang:1.7.4
 
 # Grab deps (jq, hexdump, xxd, killall)
 RUN apt-get update && \
