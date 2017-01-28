@@ -8,12 +8,10 @@ import (
 	"testing"
 	"time"
 
+	abci "github.com/tendermint/abci/types"
 	. "github.com/tendermint/go-common"
-	"github.com/tendermint/go-wire"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/abci/example/dummy"
-	abci "github.com/tendermint/abci/types"
 )
 
 //--------------------------------------------------------------------------------
@@ -134,7 +132,7 @@ func TestURIABCIQuery(t *testing.T) {
 	k, v := sendTx()
 	time.Sleep(time.Second)
 	tmResult := new(ctypes.TMResult)
-	_, err := clientURI.Call("abci_query", map[string]interface{}{"query": k}, tmResult)
+	_, err := clientURI.Call("abci_query", map[string]interface{}{"path": "", "data": k, "prove": false}, tmResult)
 	if err != nil {
 		panic(err)
 	}
@@ -144,7 +142,7 @@ func TestURIABCIQuery(t *testing.T) {
 func TestJSONABCIQuery(t *testing.T) {
 	k, v := sendTx()
 	tmResult := new(ctypes.TMResult)
-	_, err := clientJSON.Call("abci_query", []interface{}{k}, tmResult)
+	_, err := clientJSON.Call("abci_query", []interface{}{"", k, false}, tmResult)
 	if err != nil {
 		panic(err)
 	}
@@ -153,18 +151,14 @@ func TestJSONABCIQuery(t *testing.T) {
 
 func testABCIQuery(t *testing.T, statusI interface{}, value []byte) {
 	tmRes := statusI.(*ctypes.TMResult)
-	query := (*tmRes).(*ctypes.ResultABCIQuery)
-	if query.Result.IsErr() {
-		panic(Fmt("Query returned an err: %v", query))
+	resQuery := (*tmRes).(*ctypes.ResultABCIQuery)
+	if !resQuery.Response.Code.IsOK() {
+		panic(Fmt("Query returned an err: %v", resQuery))
 	}
 
-	qResult := new(dummy.QueryResult)
-	if err := wire.ReadJSONBytes(query.Result.Data, qResult); err != nil {
-		t.Fatal(err)
-	}
 	// XXX: specific to value returned by the dummy
-	if qResult.Exists != true {
-		panic(Fmt("Query error. Expected to find 'exists=true'. Got: %v", qResult))
+	if len(resQuery.Response.Value) == 0 {
+		panic(Fmt("Query error. Found no value"))
 	}
 }
 

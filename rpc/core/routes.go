@@ -29,7 +29,7 @@ var Routes = map[string]*rpc.RPCFunc{
 	"broadcast_tx_async":  rpc.NewRPCFunc(BroadcastTxAsyncResult, "tx"),
 
 	// abci API
-	"abci_query": rpc.NewRPCFunc(ABCIQueryResult, "query"),
+	"abci_query": rpc.NewRPCFunc(ABCIQueryResult, "path,data,prove"),
 	"abci_info":  rpc.NewRPCFunc(ABCIInfoResult, ""),
 
 	// control API
@@ -163,8 +163,8 @@ func BroadcastTxAsyncResult(tx []byte) (ctypes.TMResult, error) {
 	}
 }
 
-func ABCIQueryResult(query []byte) (ctypes.TMResult, error) {
-	if r, err := ABCIQuery(query); err != nil {
+func ABCIQueryResult(path string, data []byte, prove bool) (ctypes.TMResult, error) {
+	if r, err := ABCIQuery(path, data, prove); err != nil {
 		return nil, err
 	} else {
 		return r, nil

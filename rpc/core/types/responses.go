@@ -1,12 +1,12 @@
 package core_types
 
 import (
+	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-p2p"
 	"github.com/tendermint/go-rpc/types"
 	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/types"
-	abci "github.com/tendermint/abci/types"
 )
 
 type ResultBlockchainInfo struct {
@@ -64,7 +64,7 @@ type ResultBroadcastTx struct {
 }
 
 type ResultBroadcastTxCommit struct {
-	CheckTx  *abci.ResponseCheckTx  `json:"check_tx"`
+	CheckTx   *abci.ResponseCheckTx   `json:"check_tx"`
 	DeliverTx *abci.ResponseDeliverTx `json:"deliver_tx"`
 }
 
@@ -74,14 +74,11 @@ type ResultUnconfirmedTxs struct {
 }
 
 type ResultABCIInfo struct {
-	Data             string `json:"data"`
-	Version          string `json:"version"`
-	LastBlockHeight  uint64 `json:"last_block_height"`
-	LastBlockAppHash []byte `json:"last_block_app_hash"`
+	Response abci.ResponseInfo `json:"response"`
 }
 
 type ResultABCIQuery struct {
-	Result abci.Result `json:"result"`
+	Response abci.ResponseQuery `json:"response"`
 }
 
 type ResultUnsafeFlushMempool struct{}

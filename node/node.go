@@ -2,10 +2,12 @@ package node
 
 import (
 	"bytes"
+	"errors"
 	"net"
 	"net/http"
 	"strings"
 
+	abci "github.com/tendermint/abci/types"
 	cmn "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-crypto"
@@ -23,9 +25,9 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
-)
 
-import _ "net/http/pprof"
+	_ "net/http/pprof"
+)
 
 type Node struct {
 	cmn.BaseService
@@ -120,24 +122,30 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreato
 		sw.AddReactor("PEX", pexReactor)
 	}
 
-	// filter peers by addr or pubkey with a abci query.
-	// if the query return code is OK, add peer
-	// XXX: query format subject to change
+	// Filter peers by addr or pubkey with an ABCI query.
+	// If the query return code is OK, add peer.
+	// XXX: Query format subject to change
 	if config.GetBool("filter_peers") {
 		// NOTE: addr is ip:port
 		sw.SetAddrFilter(func(addr net.Addr) error {
-			res := proxyApp.Query().QuerySync([]byte(cmn.Fmt("p2p/filter/addr/%s", addr.String())))
-			if res.IsOK() {
+			resQuery, err := proxyApp.Query().QuerySync(abci.RequestQuery{Path: cmn.Fmt("/p2p/filter/addr/%s", addr.String())})
+			if err != nil {
+				return err
+			}
+			if resQuery.Code.IsOK() {
 				return nil
 			}
-			return res
+			return errors.New(resQuery.Code.String())
 		})
 		sw.SetPubKeyFilter(func(pubkey crypto.PubKeyEd25519) error {
-			res := proxyApp.Query().QuerySync([]byte(cmn.Fmt("p2p/filter/pubkey/%X", pubkey.Bytes())))
-			if res.IsOK() {
+			resQuery, err := proxyApp.Query().QuerySync(abci.RequestQuery{Path: cmn.Fmt("/p2p/filter/pubkey/%X", pubkey.Bytes())})
+			if err != nil {
+				return err
+			}
+			if resQuery.Code.IsOK() {
 				return nil
 			}
-			return res
+			return errors.New(resQuery.Code.String())
 		})
 	}
 

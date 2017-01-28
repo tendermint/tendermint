@@ -1,5 +1,5 @@
 hash: e283934fbbd221161d53a918db9e49db8c5be2b8929592b05ffe6b72c2ef0ab1
-updated: 2017-01-14T20:59:48.253671736-08:00
+updated: 2017-01-27T22:32:42.896956819-08:00
 imports:
 - name: github.com/btcsuite/btcd
   version: afec1bd1245a4a19e6dfe1306974b733e7cbb9b8
@@ -32,7 +32,7 @@ imports:
 - name: github.com/mattn/go-isatty
   version: 66b8e73f3f5cda9f96b69efd03dd3d7fc4a5cdb8
 - name: github.com/spf13/pflag
-  version: 25f8b5b07aece3207895bf19f7ab517eb3b22a40
+  version: 5ccb023bc27df288a957c5e994cd44fd19619465
 - name: github.com/syndtr/goleveldb
   version: 6ae1797c0b42b9323fc27ff7dcf568df88f2f33d
   subpackages:
@@ -49,7 +49,7 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/abci
-  version: 6526ab2137fadd0f4d2e25002bbfc1784b4f3c27
+  version: 8df0bc3a40ccad0d2be10e33c62c404e65c92502
   subpackages:
   - client
   - example/counter
@@ -67,7 +67,7 @@ imports:
 - name: github.com/tendermint/go-clist
   version: 3baa390bbaf7634251c42ad69a8682e7e3990552
 - name: github.com/tendermint/go-common
-  version: 70e694ee76f09058ea38c9ba81b4aa621bd54df1
+  version: 339e135776142939d82bc8e699db0bf391fd938d
   subpackages:
   - test
 - name: github.com/tendermint/go-config
@@ -85,7 +85,7 @@ imports:
 - name: github.com/tendermint/go-logger
   version: cefb3a45c0bf3c493a04e9bcd9b1540528be59f2
 - name: github.com/tendermint/go-merkle
-  version: 2979c7eb8aa020fa1cf203654907dbb889703888
+  version: 653cb1f631528351ddbc359b994eb0c96f0341cd
 - name: github.com/tendermint/go-p2p
   version: 67c9086b7458eb45b1970483decd01cd744c477a
   subpackages:
