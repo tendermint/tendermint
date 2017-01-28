@@ -1,54 +1,44 @@
-# Pull base image.
-FROM golang:1.6
+FROM golang:1.7.4
 
-ENV USER tmuser
-ENV DATA_ROOT /data/tendermint
+# This is the release of tendermint to pull in.
+ENV TM_VERSION 0.8.0
+
+# Tendermint will be looking for genesis file in /tendermint (unless you change
+# `genesis_file` in config.toml). You can put your config.toml and private
+# validator file into /tendermint.
+#
+# The /tendermint/data dir is used by tendermint to store state.
+ENV DATA_ROOT /tendermint
+ENV TMROOT $DATA_ROOT
 
 # Set user right away for determinism
-RUN groupadd -r $USER \
-  && useradd -r -s /bin/false -g $USER $USER
-
-# Create home directory for USER
-# Needed for nodejs/nom
-RUN mkdir -p /home/$USER \
-  && chown -R $USER:$USER /home/$USER
+RUN groupadd -r tmuser && \
+    useradd -r -s /bin/false -g tmuser tmuser
 
 # Create directory for persistence and give our user ownership
-RUN mkdir -p $DATA_ROOT \
-  && chown -R $USER:$USER $DATA_ROOT
+RUN mkdir -p $DATA_ROOT && \
+    chown -R tmuser:tmuser $DATA_ROOT
 
-# Set the env variables to non-interactive
-ENV DEBIAN_FRONTEND noninteractive
-ENV DEBIAN_PRIORITY critical
-ENV DEBCONF_NOWARNINGS yes
-ENV TERM linux
-RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
-
-# Grab deps (git)
+# TODO replace with downloading a binary (this will allow us to replace golang
+# base container with alpine|jessie - 600MB vs 50MB)
 RUN apt-get update && \
-  apt-get install -y --no-install-recommends \
-    git && \
-  rm -rf /var/lib/apt/lists/*
+    apt-get install -y --no-install-recommends \
+      git && \
+    rm -rf /var/lib/apt/lists/*
+RUN mkdir -p $GOPATH/src/github.com/tendermint/tendermint && \
+    cd $GOPATH/src/github.com/tendermint/tendermint && \
+    git clone https://github.com/tendermint/tendermint.git . && \
+    git fetch && \
+    git reset --hard v$TM_VERSION && \
+    make install
 
-# Grab deps (node)
-RUN curl -sL https://deb.nodesource.com/setup_5.x | bash -
-RUN apt-get update && \
-  apt-get install -y --no-install-recommends \
-    nodejs && \
-  rm -rf /var/lib/apt/lists/*
-
-# Copy run.sh
-COPY ./run.sh $DATA_ROOT/run.sh
-RUN chmod +x $DATA_ROOT/run.sh
-
-# Persist data, set user
-WORKDIR $DATA_ROOT
+# Expose the data directory as a volume since there's mutable state in there
 VOLUME $DATA_ROOT
-USER $USER
-ENV TMROOT $DATA_ROOT
 
 EXPOSE 46656
 EXPOSE 46657
 
-# Run tendermint
-CMD ["./run.sh"]
+ENTRYPOINT ["tendermint"]
+
+# By default you'll get the dummy app
+CMD ["node", "--moniker=`hostname`", "--proxy_app=dummy"]
