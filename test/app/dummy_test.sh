@@ -30,9 +30,9 @@ echo "... testing query with abci-cli"
 RESPONSE=`abci-cli query \"$KEY\"`
 
 set +e
-A=`echo $RESPONSE | grep '"exists":true'`
+A=`echo $RESPONSE | grep 'log: exists'`
 if [[ $? != 0 ]]; then
-	echo "Failed to find 'exists=true' for $KEY. Response:"
+	echo "Failed to find 'log: exists' for $KEY. Response:"
 	echo "$RESPONSE"
 	exit 1
 fi
@@ -41,9 +41,9 @@ set -e
 # we should not be able to look up the value
 RESPONSE=`abci-cli query \"$VALUE\"`
 set +e
-A=`echo $RESPONSE | grep '"exists":true'`
+A=`echo $RESPONSE | grep 'log: exists'`
 if [[ $? == 0 ]]; then
-	echo "Found 'exists=true' for $VALUE when we should not have. Response:"
+	echo "Found 'log: exists' for $VALUE when we should not have. Response:"
 	echo "$RESPONSE"
 	exit 1
 fi
@@ -53,28 +53,28 @@ set -e
 # test using the /abci_query
 #############################
 
-echo "... testing query with /abci_query"
+echo "... testing query with /abci_query 2"
 
 # we should be able to look up the key
-RESPONSE=`curl -s 127.0.0.1:46657/abci_query?query=$(toHex $KEY)`
-RESPONSE=`echo $RESPONSE | jq .result[1].result.Data | xxd -r -p`
+RESPONSE=`curl -s "127.0.0.1:46657/abci_query?path=\"\"&data=$(toHex $KEY)&prove=false"`
+RESPONSE=`echo $RESPONSE | jq .result[1].response.log`
 
 set +e
-A=`echo $RESPONSE | grep '"exists":true'`
+A=`echo $RESPONSE | grep 'exists'`
 if [[ $? != 0 ]]; then
-	echo "Failed to find 'exists=true' for $KEY. Response:"
+	echo "Failed to find 'exists' for $KEY. Response:"
 	echo "$RESPONSE"
 	exit 1
 fi
 set -e
 
 # we should not be able to look up the value
-RESPONSE=`curl -s 127.0.0.1:46657/abci_query?query=\"$(toHex $VALUE)\"`
-RESPONSE=`echo $RESPONSE | jq .result[1].result.Data | xxd -r -p`
+RESPONSE=`curl -s "127.0.0.1:46657/abci_query?path=\"\"&data=$(toHex $VALUE)&prove=false"`
+RESPONSE=`echo $RESPONSE | jq .result[1].response.log`
 set +e
-A=`echo $RESPONSE | grep '"exists":true'`
+A=`echo $RESPONSE | grep 'exists'`
 if [[ $? == 0 ]]; then
-	echo "Found 'exists=true' for $VALUE when we should not have. Response:"
+	echo "Found 'exists' for $VALUE when we should not have. Response:"
 	echo "$RESPONSE"
 	exit 1
 fi
