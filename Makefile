@@ -1,59 +1,69 @@
-.PHONY: get_deps build all list_deps install
+GOTOOLS = \
+					github.com/mitchellh/gox \
+					github.com/Masterminds/glide
+PACKAGES=$(shell go list ./... | grep -v '/vendor/')
+BUILD_TAGS?=tendermint
+TMROOT = $${TMROOT:-$$HOME/.tendermint}
 
 all: get_deps install test
 
-TMROOT = $${TMROOT:-$$HOME/.tendermint}
-define NEWLINE
-
-
-endef
-NOVENDOR = go list github.com/tendermint/tendermint/... | grep -v /vendor/
-
 install: get_deps
-	go install github.com/tendermint/tendermint/cmd/tendermint
+	@go install ./cmd/tendermint
 
 build:
-	go build -o build/tendermint github.com/tendermint/tendermint/cmd/tendermint
+	go build -o build/tendermint ./cmd/tendermint
 
 build_race:
-	go build -race -o build/tendermint github.com/tendermint/tendermint/cmd/tendermint
+	go build -race -o build/tendermint ./cmd/tendermint
+
+# dist builds binaries for all platforms and packages them for distribution
+dist:
+	@BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/dist.sh'"
 
 test: build
-	go test `${NOVENDOR}`
+	@echo "--> Running go test"
+	@go test $(PACKAGES)
 
 test_race: build
-	go test -race `${NOVENDOR}`
+	@echo "--> Running go test --race"
+	@go test -race $(PACKAGES)
 
 test_integrations:
-	bash ./test/test.sh
+	@bash ./test/test.sh
 
 test100: build
-	for i in {1..100}; do make test; done
+	@for i in {1..100}; do make test; done
 
 draw_deps:
 	# requires brew install graphviz
 	go get github.com/hirokidaichi/goviz
-	goviz -i github.com/tendermint/tendermint/cmd/tendermint | dot -Tpng -o huge.png
+	goviz -i ./cmd/tendermint | dot -Tpng -o huge.png
 
 list_deps:
-	go list -f '{{join .Deps "\n"}}' github.com/tendermint/tendermint/... | \
+	@go list -f '{{join .Deps "\n"}}' ./... | \
 		grep -v /vendor/ | sort | uniq | \
-	  xargs go list -f '{{if not .Standard}}{{.ImportPath}}{{end}}'
+		xargs go list -f '{{if not .Standard}}{{.ImportPath}}{{end}}'
 
 get_deps:
-	go get -d `${NOVENDOR}`
-	go list -f '{{join .TestImports "\n"}}' github.com/tendermint/tendermint/... | \
+	@go get -d $(PACKAGES)
+	@go list -f '{{join .TestImports "\n"}}' ./... | \
 		grep -v /vendor/ | sort | uniq | \
 		xargs go get
 
-get_vendor_deps:
-	go get github.com/Masterminds/glide
-	rm -rf vendor/
-	glide install
+get_vendor_deps: tools
+	@rm -rf vendor/
+	@echo "--> Running glide install"
+	@glide install
 
 update_deps:
-	go get -d -u github.com/tendermint/tendermint/...
+	@echo "--> Updating dependencies"
+	@go get -d -u ./...
 
 revision:
 	-echo `git rev-parse --verify HEAD` > $(TMROOT)/revision
 	-echo `git rev-parse --verify HEAD` >> $(TMROOT)/revision_history
+
+tools:
+	go get -u -v $(GOTOOLS)
+
+.PHONY: install build build_race dist test test_race test_integrations test100 draw_deps list_deps get_deps get_vendor_deps update_deps revision tools

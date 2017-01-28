@@ -12,3 +12,4 @@ remote_dump
 vendor
 .vagrant
 test/p2p/data/
+.glide
