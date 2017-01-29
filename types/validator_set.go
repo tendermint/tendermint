@@ -252,6 +252,32 @@ func (valSet *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height
 	}
 }
 
+// Verify that +2/3 of this set had signed the given signBytes.
+// Unlike VerifyCommit(), this function can verify commits with differeent sets.
+func (valSet *ValidatorSet) VerifyCommitAny(chainID string, blockID BlockID, height int, commit *Commit) error {
+	panic("Not yet implemented")
+	/*
+			Start like:
+
+		FOR_LOOP:
+			for _, val := range vals {
+				if len(precommits) == 0 {
+					break FOR_LOOP
+				}
+				next := precommits[0]
+				switch bytes.Compare(val.Address(), next.ValidatorAddress) {
+				case -1:
+					continue FOR_LOOP
+				case 0:
+					signBytes := tm.SignBytes(next)
+					...
+				case 1:
+					... // error?
+				}
+			}
+	*/
+}
+
 func (valSet *ValidatorSet) String() string {
 	return valSet.StringIndented("")
 }

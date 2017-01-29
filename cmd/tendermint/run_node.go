@@ -34,9 +34,12 @@ func run_node(config cfg.Config) {
 			if err != nil {
 				Exit(Fmt("Couldn't read GenesisDoc file: %v", err))
 			}
-			genDoc := types.GenesisDocFromJSON(jsonBlob)
+			genDoc, err := types.GenesisDocFromJSON(jsonBlob)
+			if err != nil {
+				Exit(Fmt("Error reading GenesisDoc: %v", err))
+			}
 			if genDoc.ChainID == "" {
-				PanicSanity(Fmt("Genesis doc %v must include non-empty chain_id", genDocFile))
+				Exit(Fmt("Genesis doc %v must include non-empty chain_id", genDocFile))
 			}
 			config.Set("chain_id", genDoc.ChainID)
 		}
