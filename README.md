@@ -27,9 +27,13 @@ To get started developing applications, see the [application developers guide](h
 
 ## Install
 
+To download pre-built binaries, see our [downloads page](https://tendermint.com/intro/getting-started/download).
+
+To install from source, you should be able to:
+
 `go get -u github.com/tendermint/tendermint/cmd/tendermint`
 
-For more details (or if it fails), see the [install guide](https://tendermint.com/intro/getting-started/install).
+For more details (or if it fails), see the [install guide](https://tendermint.com/docs/guides/install).
 
 ## Contributing
 
