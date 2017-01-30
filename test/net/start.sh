@@ -17,18 +17,13 @@ if [[ "$MACH_PREFIX" == "" ]]; then
 fi
 set -u
 
-export TMHEAD=`git rev-parse --abbrev-ref HEAD`
-export TM_IMAGE="tendermint/tmbase"
-
-cd $GOPATH/src/github.com/tendermint/network_testing
+cd "$GOPATH/src/github.com/tendermint/network_testing"
 echo "... running network test $(pwd)"
-bash experiments/exp_throughput.sh $DATACENTER $VALSETSIZE $BLOCKSIZE $TX_SIZE $NTXS $MACH_PREFIX $RESULTSDIR $CLOUD_PROVIDER
+TMHEAD=$(git rev-parse --abbrev-ref HEAD) TM_IMAGE="tendermint/tendermint" bash experiments/exp_throughput.sh $DATACENTER $VALSETSIZE $BLOCKSIZE $TX_SIZE $NTXS $MACH_PREFIX $RESULTSDIR $CLOUD_PROVIDER
 
 # TODO: publish result!
 
 # cleanup
 
 echo "... destroying machines"
-mintnet destroy --machines $MACH_PREFIX[1-$VALSETSIZE] 
-
-
+mintnet destroy --machines $MACH_PREFIX[1-$VALSETSIZE]
