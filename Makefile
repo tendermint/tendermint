@@ -20,18 +20,18 @@ build_race:
 dist:
 	@BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/dist.sh'"
 
-test: build
+test:
 	@echo "--> Running go test"
 	@go test $(PACKAGES)
 
-test_race: build
+test_race:
 	@echo "--> Running go test --race"
 	@go test -race $(PACKAGES)
 
 test_integrations:
 	@bash ./test/test.sh
 
-test100: build
+test100:
 	@for i in {1..100}; do make test; done
 
 draw_deps:
