@@ -29,11 +29,11 @@ To get started developing applications, see the [application developers guide](h
 
 `go get -u github.com/tendermint/tendermint/cmd/tendermint`
 
-For more details (or if it fails), see the [install guide](https://tendermint.com/intro/getting-started/install).
+For more details (or if it fails), see the [install guide](https://tendermint.com/docs/guides/install).
 
 ## Contributing
 
-Yay open source! Please see our [contributing guidelines](https://tendermint.com/guides/contributing).
+Yay open source! Please see our [contributing guidelines](https://tendermint.com/docs/guides/contributing).
 
 ## Resources
 
