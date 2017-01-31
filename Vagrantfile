@@ -16,7 +16,7 @@ Vagrant.configure("2") do |config|
     wget -qO- https://get.docker.com/ | sh
     usermod -a -G docker vagrant
 
-    curl -O https://storage.googleapis.com/golang/go1.6.linux-amd64.tar.gz
+    curl -O https://storage.googleapis.com/golang/go1.7.linux-amd64.tar.gz
     tar -xvf go1.7.linux-amd64.tar.gz
     mv go /usr/local
     echo 'export PATH=$PATH:/usr/local/go/bin' >> /home/vagrant/.profile
@@ -28,6 +28,6 @@ Vagrant.configure("2") do |config|
     ln -s /vagrant /home/vagrant/go/src/github.com/tendermint/tendermint
 
     su - vagrant -c 'curl https://glide.sh/get | sh'
-    su - vagrant -c 'cd /vagrant/ && glide install && make test'
+    su - vagrant -c 'cd /vagrant/ && make get_vendor_deps && make test'
   SHELL
 end
