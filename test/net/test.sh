@@ -21,7 +21,7 @@ tendermint testnet 4 mytestnet
 bash scripts/init.sh 4 mytestnet test/net/examples/in-proc
 
 # testnet should now be running :)
-bash scripts/run.sh 4
+bash scripts/start.sh 4
 
 
 
