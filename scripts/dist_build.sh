@@ -20,8 +20,8 @@ XC_OS=${XC_OS:-"solaris darwin freebsd linux windows"}
 
 # Delete the old dir
 echo "==> Removing old directory..."
-rm -rf build/dist/*
-mkdir -p build/dist
+rm -rf build/pkg
+mkdir -p build/pkg
 
 # Make sure build tools are available.
 make tools
@@ -36,13 +36,13 @@ echo "==> Building..."
 		-arch="${XC_ARCH}" \
 		-osarch="!darwin/arm !solaris/amd64 !freebsd/amd64" \
 		-ldflags "-X ${GIT_IMPORT}.GitCommit='${GIT_COMMIT}' -X ${GIT_IMPORT}.GitDescribe='${GIT_DESCRIBE}'" \
-		-output "build/dist/{{.OS}}_{{.Arch}}/tendermint" \
+		-output "build/pkg/{{.OS}}_{{.Arch}}/tendermint" \
 		-tags="${BUILD_TAGS}" \
 		github.com/tendermint/tendermint/cmd/tendermint
 
 # Zip all the files.
 echo "==> Packaging..."
-for PLATFORM in $(find ./build/dist -mindepth 1 -maxdepth 1 -type d); do
+for PLATFORM in $(find ./build/pkg -mindepth 1 -maxdepth 1 -type d); do
 		OSARCH=$(basename "${PLATFORM}")
 		echo "--> ${OSARCH}"
 
@@ -50,8 +50,5 @@ for PLATFORM in $(find ./build/dist -mindepth 1 -maxdepth 1 -type d); do
 		zip "../${OSARCH}.zip" ./*
 		popd >/dev/null 2>&1
 done
-
-# Remove build/dist/{{.OS}}_{{.Arch}} directories.
-rm -rf build/dist/*/
 
 exit 0
