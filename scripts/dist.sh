@@ -31,9 +31,11 @@ docker build -t tendermint/tendermint-builder scripts/tendermint-builder/
 docker run --rm -e "BUILD_TAGS=$BUILD_TAGS" -v "$(pwd)":/go/src/github.com/tendermint/tendermint tendermint/tendermint-builder ./scripts/dist_build.sh
 
 # Add "tendermint" and $VERSION prefix to package name.
-for FILENAME in $(find ./build/dist -mindepth 1 -maxdepth 1 -type f); do
+rm -rf ./build/dist
+mkdir -p ./build/dist
+for FILENAME in $(find ./build/pkg -mindepth 1 -maxdepth 1 -type f); do
   FILENAME=$(basename "$FILENAME")
-  mv "./build/dist/${FILENAME}" "./build/dist/tendermint_${VERSION}_${FILENAME}"
+	cp "./build/pkg/${FILENAME}" "./build/dist/tendermint_${VERSION}_${FILENAME}"
 done
 
 # Make the checksums.
