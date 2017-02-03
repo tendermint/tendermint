@@ -29,6 +29,6 @@ if [[ $(echo "$BRANCH" | grep "release-") != "" ]]; then
 	echo ""
 	echo "TODO: run network tests"
 	#echo "* branch $BRANCH; running mintnet/netmon throughput benchmark"
-	# TODO: replace mintnet 
+	# TODO: replace mintnet
 	#bash test/net/test.sh
 fi

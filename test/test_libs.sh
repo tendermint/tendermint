@@ -21,7 +21,7 @@ for lib in "${LIBS_GO_TEST[@]}"; do
 	bash scripts/glide/checkout.sh $GLIDE $lib
 
 	echo "Testing $lib ..."
-	go test --race github.com/tendermint/$lib/...
+	go test -v --race github.com/tendermint/$lib/...
 	if [[ "$?" != 0 ]]; then
 		echo "FAIL"
 		exit 1

@@ -22,11 +22,11 @@ dist:
 
 test:
 	@echo "--> Running go test"
-	@go test $(PACKAGES)
+	@go test -v $(PACKAGES)
 
 test_race:
 	@echo "--> Running go test --race"
-	@go test -race $(PACKAGES)
+	@go test -v -race $(PACKAGES)
 
 test_integrations:
 	@bash ./test/test.sh
@@ -48,7 +48,7 @@ get_deps:
 	@go get -d $(PACKAGES)
 	@go list -f '{{join .TestImports "\n"}}' ./... | \
 		grep -v /vendor/ | sort | uniq | \
-		xargs go get
+		xargs go get -d
 
 get_vendor_deps: tools
 	@rm -rf vendor/
