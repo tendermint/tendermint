@@ -10,6 +10,7 @@ Each section of the code can have it's own markdown file in this directory, and 
 
 * [ABCI](./ABCI.md)
 * [go-merkle / merkleeyes](./merkle.md)
+* [Frey's thoughts on the data store](./merkle-frey.md)
 * basecoin
 * tendermint core (multiple sections)
 * ???
