@@ -3,8 +3,8 @@ module "cluster" {
   environment = "test"
   name        = "tendermint-testnet"
 
-  # curl -X GET -H "Content-Type: application/json" -H "Authorization: Bearer $DO_TOKEN" "https://api.digitalocean.com/v2/account/keys"
-  key_ids = [678675]
+  # curl -X GET -H "Content-Type: application/json" -H "Authorization: Bearer $DIGITALOCEAN_TOKEN" "https://api.digitalocean.com/v2/account/keys"
+  key_ids = [6259615]
 
   image_id = "ubuntu-14-04-x64"
   desired_capacity = 4

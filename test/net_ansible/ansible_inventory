@@ -1,0 +1,12 @@
+
+localhost ansible_connection=local
+
+[tendermint-cluster]
+#tendermint-node1
+#tendermint-node2
+#tendermint-node3
+#tendermint-node4
+37.139.7.68 mach_folder=mach0
+46.101.123.74 mach_folder=mach1
+138.68.143.182 mach_folder=mach2
+192.241.249.110 mach_folder=mach3

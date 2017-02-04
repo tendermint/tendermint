@@ -37,28 +37,28 @@ fi
 This let's you specify exactly which versions of Tendermint and the application are to be used,
 and how they ought to be started.
 
-Note that these binaries *MUST* be compiled for Linux. 
+Note that these binaries *MUST* be compiled for Linux.
 If you are not on Linux, you can compile binaries for linux using `go build` with the `GOOS` variable:
 
 ```
 GOOS=linux go build -o $GOPATH/bin/tendermint-linux $GOPATH/src/github.com/tendermint/tendermint/cmd/tendermint
 ```
 
-This cross-compilation must be done for each binary you want to copy over. 
+This cross-compilation must be done for each binary you want to copy over.
 
-If you want to use an application that requires more than just a few binaries, you may need to do more manual work, 
+If you want to use an application that requires more than just a few binaries, you may need to do more manual work,
 for instance using `terraforce` to set up the development environment on every machine.
 
 # Dependencies
 
-We use `terraform` for spinning up the machines, 
-and a custom rolled tool, `terraforce`, 
+We use `terraform` for spinning up the machines,
+and a custom rolled tool, `terraforce`,
 for running commands on many machines in parallel.
 You can download terraform here: https://www.terraform.io/downloads.html
 To download terraforce, run `go get github.com/ebuchman/terraforce`
 
 We use `tendermint` itself to generate files for a testnet.
-You can install `tendermint` with 
+You can install `tendermint` with
 
 ```
 cd $GOPATH/src/github.com/tendermint/tendermint
@@ -66,38 +66,38 @@ glide install
 go install ./cmd/tendermint
 ```
 
-You also need to set the `DIGITALOCEAN_TOKEN` environment variables so that terraform can 
+You also need to set the `DIGITALOCEAN_TOKEN` environment variables so that terraform can
 spin up nodes on digital ocean.
 
-This stack is currently some terraform and a bunch of shell scripts, 
-so its helpful to work out of a directory containing everything. 
-Either 	change directory to `$GOPATH/src/github.com/tendermint/tendermint/test/net`
+This stack is currently some terraform and a bunch of shell scripts,
+so its helpful to work out of a directory containing everything.
+Either 	change directory to `$GOPATH/src/github.com/tendermint/tendermint/test/net_ansible`
 or make a copy of that directory and change to it. All commands are expected to be executed from there.
 
 For terraform to work, you must first run `terraform get`
 
-# Create 
+# Create
 
 To create a cluster with 4 nodes, run
 
 ```
-terraform apply
+DIGITALOCEAN_TOKEN=<DIGITALOCEAN_TOKEN_VALUE_HERE> terraform apply
 ```
 
 To use a different number of nodes, change the `desired_capacity` parameter in the `main.tf`.
 
-Note that terraform keeps track of the current state of your infrastructure, 
+Note that terraform keeps track of the current state of your infrastructure,
 so if you change the `desired_capacity` and run `terraform apply` again, it will add or remove nodes as necessary.
 
 If you think that's amazing, so do we.
 
 To get some info about the cluster, run `terraform output`.
 
-See the [terraform docs](https://www.terraform.io/docs/index.html) for more details. 
+See the [terraform docs](https://www.terraform.io/docs/index.html) for more details.
 
 To tear down the cluster, run `terraform destroy`.
 
-# Initialize 
+# Initialize
 
 Now that we have a cluster up and running, let's generate the necessary files for a Tendermint node and copy them over.
 A Tendermint node needs, at the least, a `priv_validator.json` and a `genesis.json`.
@@ -108,31 +108,31 @@ tendermint testnet 4 mytestnet
 ```
 
 This will create the directory `mytestnet`, containing one directory for each of the 4 nodes.
-Each node directory contains a unique `priv_validator.json` and a `genesis.json`, 
+Each node directory contains a unique `priv_validator.json` and a `genesis.json`,
 where the `genesis.json` contains the public keys of all `priv_validator.json` files.
 
 If you want to add more files to each node for your particular app, you'll have to add them to each of the node directories.
 
 Now we can copy everything over to the cluster.
-If you are on Linux, run 
+If you are on Linux, run
 
 ```
 bash scripts/init.sh 4 mytestnet examples/in-proc
 ```
 
-Otherwise (if you are not on Linux), make sure you ran 
+Otherwise (if you are not on Linux), make sure you ran
 
 ```
 GOOS=linux go build -o $GOPATH/bin/tendermint-linux $GOPATH/src/github.com/tendermint/tendermint/cmd/tendermint
 ```
 
-and now run 
+and now run
 
 ```
 bash scripts/init.sh 4 mytestnet examples/in-proc-linux
 ```
 
-# Start 
+# Start
 
 Finally, to start Tendermint on all the nodes, run
 

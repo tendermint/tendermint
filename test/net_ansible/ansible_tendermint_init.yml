@@ -1,0 +1,54 @@
+---
+- name: Configure Tendermint Cluster
+  hosts: tendermint-cluster
+  become: yes
+
+
+  vars:
+    config_folder: examples/in-proc-linux
+    remote_base_path: /root
+    remote_tendermint_path: "{{ remote_base_path }}/.tendermint"
+    tendermint_net_name: mytestnet
+    gopath: "{{ lookup('env','GOPATH') }}"
+
+  tasks:
+  - name: Create tendermint folder on remote host
+    file: path="{{ remote_tendermint_path }}"
+
+# TODO: Adapt the following step for any number of mach folders
+  - name: Copy priv_validator.json
+    copy:
+      src: "{{ tendermint_net_name }}/{{ mach_folder }}/priv_validator.json"
+      dest: "{{ remote_tendermint_path }}/priv_validator.json"
+    notify: restart tendermint service
+
+  - name: Copy genesis.json from mach0
+    copy:
+      src: "{{ tendermint_net_name }}/mach0/genesis.json"
+      dest: "{{ remote_tendermint_path }}/genesis.json"
+    notify: restart tendermint service
+
+  - name: Copy run.sh
+    copy:
+      src: "{{ config_folder }}/run.sh"
+      dest: "{{ remote_base_path }}/run.sh"
+    notify: restart tendermint service
+
+# TODO: Detect what operating system is running locally and copy appropriate tendermint binary
+  - name: Copy bin files
+    copy:
+      src: "{{ gopath }}/bin/tendermint"
+      dest: "{{ remote_base_path }}"
+      mode: "u+rx,g+r,o+r"
+    notify: restart tendermint service
+
+  # - name: Copy "bin" files if running on Mac
+  #   copy:
+  #     src: "{{ gopath }}/bin/tendermint-linux"
+  #     dest: "{{ remote_tendermint_path }}"
+  #     mode: "u+rx,g+r,o+r"
+    # notify: restart tendermint service
+
+  handlers:
+  - name: restart tendermint service
+    command: "{{ remote_base_path }}/run.sh"

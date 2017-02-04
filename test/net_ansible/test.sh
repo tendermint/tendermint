@@ -1,11 +1,14 @@
 #! /bin/bash
 
-cd $GOPATH/src/github.com/tendermint/tendermint
+#Prerequisites
+go get -u github.com/tendermint/tendermint/cmd/tendermint
+go get github.com/ebuchman/terraforce
 
-TEST_PATH=./test/net/new
+cd $GOPATH/src/github.com/tendermint/tendermint
+#TEST_PATH=./test/net/new
 
 # install deps
-# TODO: we should build a Docker image and 
+# TODO: we should build a Docker image and
 # really do everything that follows in the container
 # bash setup.sh
 
@@ -18,10 +21,7 @@ terraform apply
 tendermint testnet 4 mytestnet
 
 # expects a linux tendermint binary to be built already
-bash scripts/init.sh 4 mytestnet test/net/examples/in-proc
+bash scripts/init.sh 4 mytestnet examples/in-proc
 
 # testnet should now be running :)
 bash scripts/start.sh 4
-
-
-
