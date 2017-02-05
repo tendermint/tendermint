@@ -204,6 +204,29 @@ The other issue is cleaning up old state.  We cannot delete any information from
 
 This is not a concern of the generic interface, but each implementation should take care to handle this well to avoid accumulation of unused references in the data store and eventual data bloat.
 
+#### Backing stores
+
+It is way outside the scope of this project to build our own database that is capable of efficiently storing the data, provide multiple read-only snapshots at once, and save it atomically. The best approach seems to select an existing database (best a simple one) that provides this functionality and build upon it, much like the current `go-merkle` implementation builds upon `leveldb`.  After some research here are winners and losers:
+
+**Winners**
+
+* Leveldb - [provides consistent snapshots](https://ayende.com/blog/161705/reviewing-leveldb-part-xiii-smile-and-here-is-your-snapshot), and [provides tooling for building ACID compliance](http://codeofrob.com/entries/writing-a-transaction-manager-on-top-of-leveldb.html)
+  * Note there are at least two solid implementations available in go - [goleveldb](https://github.com/syndtr/goleveldb) - a pure go implementation, and [levigo](https://github.com/jmhodges/levigo) - a go wrapper around leveldb.
+  * Goleveldb is much easier to compile and cross-compile (not requiring cgo), while levigo (or cleveldb) seems to provide a significant performance boosts (but I had trouble even running benchmarks)
+* PostgreSQL - fully supports these ACID semantics if you call `SET TRANSACTION ISOLATION LEVEL SERIALIZABLE` at the beginning of a transaction (tested)
+  * This may be total overkill unless we also want to make use of other features, like storing data in multiple columns with secondary indexes.
+  * Trillian can show an example of [how to store a merkle tree in sql](https://github.com/google/trillian/blob/master/storage/mysql/tree_storage.go)
+
+**Losers**
+
+* Bolt - open [read-only snapshots can block writing](https://github.com/boltdb/bolt/issues/378)
+* Mongo - [barely even supports atomic operations](https://docs.mongodb.com/manual/core/write-operations-atomicity/), much less multiple snapshots
+
+**To investigate**
+
+* [Trillian](https://github.com/google/trillian) - has a [persistent merkle tree interface](https://github.com/google/trillian/blob/master/storage/tree_storage.go) along with [backend storage with mysql](https://github.com/google/trillian/blob/master/storage/mysql/tree_storage.go), good inspiration for our design if not directly using it
+* [Moss](https://github.com/couchbase/moss) - another key-value store in go, seems similar to leveldb, maybe compare with performance tests?
+
 ### Security
 
 When allowing access out-of-process, we should provide different mechanisms to secure it.  The first is the choice of binding to a local unix socket or a tcp port.  The second is the optional use of ssl to encrypt the connection (very important over tcp).  The third is authentication to control access to the database.
