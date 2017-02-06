@@ -13,7 +13,7 @@
 
   tasks:
   - name: Create tendermint folder on remote host
-    file: path="{{ remote_tendermint_path }}"
+    file: path="{{ remote_tendermint_path }}" state=directory
 
 # TODO: Adapt the following step for any number of mach folders
   - name: Copy priv_validator.json
