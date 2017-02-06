@@ -8,7 +8,8 @@ and the state machine (the application).
 By using a socket protocol, we enable a consensus engine running in one process
 to manage an application state running in another.
 
-For more information on ABCI, motivations, and tutorials, please visit [our blog post](https://tendermint.com/blog/tmsp-the-tendermint-socket-protocol).
+For more information on ABCI, motivations, and tutorials, please visit [our blog post](https://tendermint.com/blog/abci-the-application-blockchain-interface),
+and the more detailed [application developer's guide](https://tendermint.com/docs/guides/app-development).
 
 Previously, the ABCI was just referred to as TMSP.
 
@@ -154,6 +155,19 @@ ABCI requests/responses are simple Protobuf messages.  Check out the [schema fil
   * __Usage__:<br/>
     Signals the end of a block.  Called prior to each Commit after all transactions. Validator set is updated with the result.
 
+#### Echo
+  * __Arguments__:
+    * `Message (string)`: A string to echo back
+  * __Returns__:
+    * `Message (string)`: The input string
+  * __Usage__:<br/>
+    * Echo a string to test an abci client/server implementation
+
+
+#### Flush
+  * __Usage__:<br/>
+    * Signals that messages queued on the client should be flushed to the server. It is called periodically by the client implementation to ensure asynchronous requests are actually sent, and is called immediately to make a synchronous request, which returns when the Flush response comes back.
+
 
 # Implementations
 
@@ -183,7 +197,7 @@ Note the length-prefixing used in the socket implementation does not apply for G
 # Tools and Apps
 
 The `abci-cli` tool wraps any ABCI client and can be used for probing/testing an ABCI application.
-See the [tutorial](https://tendermint.com/intro/getting-started/first-tmsp) for more details.
+See the [tutorial](https://tendermint.com/intro/getting-started/first-abci) for more details.
 
 Multiple example apps are included:
 - the `counter` application, which illustrates nonce checking in txs
