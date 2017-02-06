@@ -10,3 +10,5 @@
  5. detect what operating system is running locally and copy appropriate tendermint binary
 
  6. Use Ubuntu 16.04 instead of 14.04
+
+ 7. Download binaries from S3: https://s3-us-west-2.amazonaws.com/tendermint/0.8.0/tendermint_linux_amd64.zip
