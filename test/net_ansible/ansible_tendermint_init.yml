@@ -52,4 +52,4 @@
 
   handlers:
   - name: restart tendermint service
-    command: "{{ remote_base_path }}/run.sh"
+    script: "{{ remote_base_path }}/run.sh"
