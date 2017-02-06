@@ -32,6 +32,7 @@
     copy:
       src: "{{ config_folder }}/run.sh"
       dest: "{{ remote_base_path }}/run.sh"
+      mode: "0777"
     notify: restart tendermint service
 
 # TODO: Detect what operating system is running locally and copy appropriate tendermint binary
