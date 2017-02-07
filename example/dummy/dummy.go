@@ -70,3 +70,13 @@ func (app *DummyApplication) Query(reqQuery types.RequestQuery) (resQuery types.
 		return
 	}
 }
+
+func (app *DummyApplication) InitChain(validators []*types.Validator) {
+}
+
+func (app *DummyApplication) BeginBlock(hash []byte, header *types.Header) {
+}
+
+func (app *DummyApplication) EndBlock(height uint64) types.ResponseEndBlock {
+	return types.ResponseEndBlock{}
+}

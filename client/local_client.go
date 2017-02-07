@@ -111,9 +111,7 @@ func (app *localClient) CommitAsync() *ReqRes {
 
 func (app *localClient) InitChainAsync(validators []*types.Validator) *ReqRes {
 	app.mtx.Lock()
-	if bcApp, ok := app.Application.(types.BlockchainAware); ok {
-		bcApp.InitChain(validators)
-	}
+	app.Application.InitChain(validators)
 	reqRes := app.callback(
 		types.ToRequestInitChain(validators),
 		types.ToResponseInitChain(),
@@ -124,9 +122,7 @@ func (app *localClient) InitChainAsync(validators []*types.Validator) *ReqRes {
 
 func (app *localClient) BeginBlockAsync(hash []byte, header *types.Header) *ReqRes {
 	app.mtx.Lock()
-	if bcApp, ok := app.Application.(types.BlockchainAware); ok {
-		bcApp.BeginBlock(hash, header)
-	}
+	app.Application.BeginBlock(hash, header)
 	app.mtx.Unlock()
 	return app.callback(
 		types.ToRequestBeginBlock(hash, header),
@@ -136,10 +132,7 @@ func (app *localClient) BeginBlockAsync(hash []byte, header *types.Header) *ReqR
 
 func (app *localClient) EndBlockAsync(height uint64) *ReqRes {
 	app.mtx.Lock()
-	var resEndBlock types.ResponseEndBlock
-	if bcApp, ok := app.Application.(types.BlockchainAware); ok {
-		resEndBlock = bcApp.EndBlock(height)
-	}
+	resEndBlock := app.Application.EndBlock(height)
 	app.mtx.Unlock()
 	return app.callback(
 		types.ToRequestEndBlock(height),
@@ -201,27 +194,21 @@ func (app *localClient) CommitSync() (res types.Result) {
 
 func (app *localClient) InitChainSync(validators []*types.Validator) (err error) {
 	app.mtx.Lock()
-	if bcApp, ok := app.Application.(types.BlockchainAware); ok {
-		bcApp.InitChain(validators)
-	}
+	app.Application.InitChain(validators)
 	app.mtx.Unlock()
 	return nil
 }
 
 func (app *localClient) BeginBlockSync(hash []byte, header *types.Header) (err error) {
 	app.mtx.Lock()
-	if bcApp, ok := app.Application.(types.BlockchainAware); ok {
-		bcApp.BeginBlock(hash, header)
-	}
+	app.Application.BeginBlock(hash, header)
 	app.mtx.Unlock()
 	return nil
 }
 
 func (app *localClient) EndBlockSync(height uint64) (resEndBlock types.ResponseEndBlock, err error) {
 	app.mtx.Lock()
-	if bcApp, ok := app.Application.(types.BlockchainAware); ok {
-		resEndBlock = bcApp.EndBlock(height)
-	}
+	resEndBlock = app.Application.EndBlock(height)
 	app.mtx.Unlock()
 	return resEndBlock, nil
 }

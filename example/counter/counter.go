@@ -80,3 +80,13 @@ func (app *CounterApplication) Query(reqQuery types.RequestQuery) types.Response
 		return types.ResponseQuery{Log: Fmt("Invalid query path. Expected hash or tx, got %v", reqQuery.Path)}
 	}
 }
+
+func (app *CounterApplication) InitChain(validators []*types.Validator) {
+}
+
+func (app *CounterApplication) BeginBlock(hash []byte, header *types.Header) {
+}
+
+func (app *CounterApplication) EndBlock(height uint64) types.ResponseEndBlock {
+	return types.ResponseEndBlock{}
+}

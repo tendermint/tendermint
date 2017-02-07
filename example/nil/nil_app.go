@@ -34,3 +34,13 @@ func (app *NilApplication) Commit() types.Result {
 func (app *NilApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
 	return resQuery
 }
+
+func (app *NilApplication) InitChain(validators []*types.Validator) {
+}
+
+func (app *NilApplication) BeginBlock(hash []byte, header *types.Header) {
+}
+
+func (app *NilApplication) EndBlock(height uint64) types.ResponseEndBlock {
+	return types.ResponseEndBlock{}
+}
