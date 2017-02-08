@@ -5,9 +5,9 @@ PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 BUILD_TAGS?=tendermint
 TMROOT = $${TMROOT:-$$HOME/.tendermint}
 
-all: get_deps install test
+all: install test
 
-install: get_deps
+install: get_vendor_deps
 	@go install ./cmd/tendermint
 
 build:
@@ -50,12 +50,12 @@ get_deps:
 		grep -v /vendor/ | sort | uniq | \
 		xargs go get -d
 
-get_vendor_deps: tools
+get_vendor_deps: ensure_tools
 	@rm -rf vendor/
 	@echo "--> Running glide install"
 	@glide install
 
-update_deps:
+update_deps: tools
 	@echo "--> Updating dependencies"
 	@go get -d -u ./...
 
@@ -65,5 +65,9 @@ revision:
 
 tools:
 	go get -u -v $(GOTOOLS)
+
+ensure_tools:
+	go get $(GOTOOLS)
+
 
 .PHONY: install build build_race dist test test_race test_integrations test100 draw_deps list_deps get_deps get_vendor_deps update_deps revision tools
