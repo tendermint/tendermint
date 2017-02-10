@@ -5,10 +5,10 @@ import (
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-p2p"
 
+	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
-	abci "github.com/tendermint/abci/types"
 )
 
 //-----------------------------------------------------
@@ -19,6 +19,8 @@ type BlockStore interface {
 	Height() int
 	LoadBlockMeta(height int) *types.BlockMeta
 	LoadBlock(height int) *types.Block
+	LoadSeenCommit(height int) *types.Commit
+	LoadBlockCommit(height int) *types.Commit
 }
 
 type Consensus interface {
