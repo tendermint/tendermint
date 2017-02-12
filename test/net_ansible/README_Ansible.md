@@ -28,3 +28,7 @@ If you want to iuse another key, you could change it at `ansible/ansible.cfg` fi
 ## Local VS remote binary ##
 By default we download binary from S3 location and check SHA256 checksum for it.
 However if you want to upload binary compiled locally, you could simply uncomment the following line in `vars` section: `local_binary = true`
+
+
+### How to make Ansible working while on non-master branch ###
+As tendermint is written in Go which doesn't allow usage of branches upon `go get` command, we should run ansible from a location which has necessary branch and symlink missing folders 
