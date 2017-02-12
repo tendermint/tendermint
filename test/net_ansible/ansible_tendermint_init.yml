@@ -3,13 +3,16 @@
   hosts: tendermint-cluster
   become: yes
 
-
   vars:
     config_folder: examples/in-proc-linux
     remote_base_path: /root
     remote_tendermint_path: "{{ remote_base_path }}/.tendermint"
     tendermint_net_name: mytestnet
     gopath: "{{ lookup('env','GOPATH') }}"
+    s3_binary: https://s3-us-west-2.amazonaws.com/tendermint/0.8.0/tendermint_linux_amd64.zip
+    s3_binary_sha256: 83f6bd52055ebc93434a68263c6666a4de41e0e543d0b5a06ad461262c460f4c
+    # Uncomment this line if you want to upload locally compiled binary
+    # local_binary = true
 
   tasks:
   - name: Create tendermint folder on remote host
@@ -28,27 +31,29 @@
       dest: "{{ remote_tendermint_path }}/genesis.json"
     notify: restart tendermint service
 
-  # - name: Copy run.sh
-  #   copy:
-  #     src: "{{ config_folder }}/run.sh"
-  #     dest: "{{ remote_base_path }}/run.sh"
-  #     mode: "0777"
-  #   notify: restart tendermint service
+  - name: Copy run.sh
+    copy:
+      src: "{{ config_folder }}/run.sh"
+      dest: "{{ remote_base_path }}/run.sh"
+      mode: "0777"
+    notify: restart tendermint service
 
-# TODO: Detect what operating system is running locally and copy appropriate tendermint binary
-  - name: Copy bin files
+  - name: Copy binary file from localhost if local_binary variable is set
     copy:
       src: "{{ gopath }}/bin/tendermint"
       dest: "{{ remote_base_path }}"
       mode: "u+rx,g+r,o+r"
+    when: local_binary is defined and local_binary
     notify: restart tendermint service
 
-  # - name: Copy "bin" files if running on Mac
-  #   copy:
-  #     src: "{{ gopath }}/bin/tendermint-linux"
-  #     dest: "{{ remote_tendermint_path }}"
-  #     mode: "u+rx,g+r,o+r"
-    # notify: restart tendermint service
+  - name: Get binary file from S3
+    get_url:
+      src: "{{ s3_binary }}"
+      dest: "{{ remote_base_path }}"
+      mode: "u+rx,g+r,o+r"
+      checksum: "sha256:{{ s3_binary_sha256 }}"
+    when: local_binary is not defined
+    notify: restart tendermint service
 
   handlers:
   - name: restart tendermint service

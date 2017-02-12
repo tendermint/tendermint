@@ -5,9 +5,10 @@ After that run the following command:
 `ansible-playbook ansible_tendermint_init.yml`
 
 
-## This is temporal solution ##
+#### This is temporal solution ####
 To make Ansible working you need to create a record in */etc/hosts* file for 4 servers using real IP addresses.
 It would look like that:
+
 ```
 1.2.3.4 tendermint-node1
 1.2.3.5 tendermint-node2
@@ -18,11 +19,12 @@ It would look like that:
 Later, we would generate a dynamic Ansible inventory from a Terraform state file. [https://github.com/adammck/terraform-inventory]
 
 ### Key file ###
-You should have a private key on your laptop at `~/.ssh/tendermint_bot_key` path and a corresponding public key on remote server.
-This is controlled by `ansible/ansible.cfg` file at line 77:
-`private_key_file = ~/.ssh/tendermint_bot_key`
+Ansible.cfg points to a default private SSH key name at default location in most distributives: `~/.ssh/id_rsa`.
+We assume that you use that key to manage logins on remote instances provisioned to run tendermint.
+If you want to iuse another key, you could change it at `ansible/ansible.cfg` file at line 77:
+`private_key_file = ~/.ssh/<ANOTHER_KEY>`
 
-As a workaround for that we could keep private key value inside encrypted var file at `group_vars` folder
 
-## Source bins and run.sh files to Ansible ##
-We could integrate Ansible as a part of `[testnet|https://github.com/tendermint/tendermint/tree/testnet/test/net]` and symlink roles/tendermint_init/files to `[CONFIG|https://github.com/tendermint/tendermint/blob/testnet/test/net/scripts/init.sh#L6]` folder containing `bins` and `run.sh` files.
+## Local VS remote binary ##
+By default we download binary from S3 location and check SHA256 checksum for it.
+However if you want to upload binary compiled locally, you could simply uncomment the following line in `vars` section: `local_binary = true`
