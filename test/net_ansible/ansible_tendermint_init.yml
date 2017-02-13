@@ -11,6 +11,7 @@
     gopath: "{{ lookup('env','GOPATH') }}"
     s3_binary: https://s3-us-west-2.amazonaws.com/tendermint/0.8.0/tendermint_linux_amd64.zip
     s3_binary_sha256: 83f6bd52055ebc93434a68263c6666a4de41e0e543d0b5a06ad461262c460f4c
+    binary_zip_name: tendermint_linux_amd64.zip
     # Uncomment this line if you want to upload locally compiled binary
     # local_binary = true
 
@@ -48,10 +49,19 @@
 
   - name: Get binary file from S3
     get_url:
-      src: "{{ s3_binary }}"
-      dest: "{{ remote_base_path }}"
+      url: "{{ s3_binary }}"
+      dest: "/tmp"
       mode: "u+rx,g+r,o+r"
       checksum: "sha256:{{ s3_binary_sha256 }}"
+    when: local_binary is not defined
+    notify: restart tendermint service
+
+  - name: Unarchive downloaded from S3 zip file
+    unarchive:
+      src: "/tmp/{{ binary_zip_name }}"
+      dest: "{{ remote_base_path }}"
+      creates: "{{ remote_base_path }}/tendermint"
+      remote_src: True
     when: local_binary is not defined
     notify: restart tendermint service
 
