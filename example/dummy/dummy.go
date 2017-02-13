@@ -9,6 +9,8 @@ import (
 )
 
 type DummyApplication struct {
+	types.BaseApplication
+
 	state merkle.Tree
 }
 
@@ -19,10 +21,6 @@ func NewDummyApplication() *DummyApplication {
 
 func (app *DummyApplication) Info() (resInfo types.ResponseInfo) {
 	return types.ResponseInfo{Data: fmt.Sprintf("{\"size\":%v}", app.state.Size())}
-}
-
-func (app *DummyApplication) SetOption(key string, value string) (log string) {
-	return ""
 }
 
 // tx is either "key=value" or just arbitrary bytes
@@ -69,14 +67,4 @@ func (app *DummyApplication) Query(reqQuery types.RequestQuery) (resQuery types.
 		}
 		return
 	}
-}
-
-func (app *DummyApplication) InitChain(validators []*types.Validator) {
-}
-
-func (app *DummyApplication) BeginBlock(hash []byte, header *types.Header) {
-}
-
-func (app *DummyApplication) EndBlock(height uint64) types.ResponseEndBlock {
-	return types.ResponseEndBlock{}
 }

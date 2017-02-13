@@ -30,32 +30,14 @@ func main() {
 }
 
 type ChainAwareApplication struct {
+	types.BaseApplication
+
 	beginCount int
 	endCount   int
 }
 
 func NewChainAwareApplication() *ChainAwareApplication {
 	return &ChainAwareApplication{}
-}
-
-func (app *ChainAwareApplication) Info() types.ResponseInfo {
-	return types.ResponseInfo{}
-}
-
-func (app *ChainAwareApplication) SetOption(key string, value string) (log string) {
-	return ""
-}
-
-func (app *ChainAwareApplication) DeliverTx(tx []byte) types.Result {
-	return types.NewResultOK(nil, "")
-}
-
-func (app *ChainAwareApplication) CheckTx(tx []byte) types.Result {
-	return types.NewResultOK(nil, "")
-}
-
-func (app *ChainAwareApplication) Commit() types.Result {
-	return types.NewResultOK([]byte("nil"), "")
 }
 
 func (app *ChainAwareApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
@@ -71,9 +53,5 @@ func (app *ChainAwareApplication) BeginBlock(hash []byte, header *types.Header) 
 
 func (app *ChainAwareApplication) EndBlock(height uint64) (resEndBlock types.ResponseEndBlock) {
 	app.endCount++
-	return
-}
-
-func (app *ChainAwareApplication) InitChain(vals []*types.Validator) {
 	return
 }

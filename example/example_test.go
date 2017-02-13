@@ -14,7 +14,6 @@ import (
 
 	"github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/example/dummy"
-	nilapp "github.com/tendermint/abci/example/nil"
 	"github.com/tendermint/abci/server"
 	"github.com/tendermint/abci/types"
 	cmn "github.com/tendermint/go-common"
@@ -25,14 +24,14 @@ func TestDummy(t *testing.T) {
 	testStream(t, dummy.NewDummyApplication())
 }
 
-func TestNilApp(t *testing.T) {
-	fmt.Println("### Testing NilApp")
-	testStream(t, nilapp.NewNilApplication())
+func TestBaseApp(t *testing.T) {
+	fmt.Println("### Testing BaseApp")
+	testStream(t, types.NewBaseApplication())
 }
 
 func TestGRPC(t *testing.T) {
 	fmt.Println("### Testing GRPC")
-	testGRPCSync(t, types.NewGRPCApplication(nilapp.NewNilApplication()))
+	testGRPCSync(t, types.NewGRPCApplication(types.NewBaseApplication()))
 }
 
 func testStream(t *testing.T, app types.Application) {
