@@ -115,7 +115,7 @@ ABCI requests/responses are simple Protobuf messages.  Check out the [schema fil
 
 #### BeginBlock
   * __Arguments__:
-    * `Hash ([]byte)`: The block height that is starting
+    * `Hash ([]byte)`: The block's hash.  This can be derived from the block header.
     * `Header (struct{})`: The block header
   * __Usage__:<br/>
     Signals the beginning of a new block. Called prior to any DeliverTxs. The header is expected to at least contain the Height.
