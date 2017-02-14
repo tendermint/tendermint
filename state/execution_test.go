@@ -8,12 +8,12 @@ import (
 
 	"github.com/tendermint/tendermint/config/tendermint_test"
 	//	. "github.com/tendermint/go-common"
+	"github.com/tendermint/abci/example/dummy"
 	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-crypto"
 	dbm "github.com/tendermint/go-db"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/abci/example/dummy"
 )
 
 var (
@@ -203,8 +203,7 @@ func (bs *mockBlockStore) LoadBlock(height int) *types.Block { return bs.chain[h
 func (bs *mockBlockStore) LoadBlockMeta(height int) *types.BlockMeta {
 	block := bs.chain[height-1]
 	return &types.BlockMeta{
-		Hash:        block.Hash(),
-		Header:      block.Header,
-		PartsHeader: block.MakePartSet(bs.config.GetInt("block_part_size")).Header(),
+		BlockID: types.BlockID{block.Hash(), block.MakePartSet(bs.config.GetInt("block_part_size")).Header()},
+		Header:  block.Header,
 	}
 }

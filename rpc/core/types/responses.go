@@ -24,8 +24,9 @@ type ResultBlock struct {
 }
 
 type ResultCommit struct {
-	Commit    *types.Commit `json:"commit"`
-	Canonical bool          `json:"canonical"`
+	Header          *types.Header `json:"header"`
+	Commit          *types.Commit `json:"commit"`
+	CanonicalCommit bool          `json:"canonical"`
 }
 
 type ResultStatus struct {

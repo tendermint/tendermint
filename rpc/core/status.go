@@ -15,7 +15,7 @@ func Status() (*ctypes.ResultStatus, error) {
 	)
 	if latestHeight != 0 {
 		latestBlockMeta = blockStore.LoadBlockMeta(latestHeight)
-		latestBlockHash = latestBlockMeta.Hash
+		latestBlockHash = latestBlockMeta.BlockID.Hash
 		latestAppHash = latestBlockMeta.Header.AppHash
 		latestBlockTime = latestBlockMeta.Header.Time.UnixNano()
 	}
