@@ -180,14 +180,13 @@ func makeApplyBlock(t *testing.T, dummy types.Application, heightInt int, diff [
 		Height: height,
 	}
 
-	dummyChain := dummy.(types.BlockchainAware) // hmm...
-	dummyChain.BeginBlock(hash, header)
+	dummy.BeginBlock(hash, header)
 	for _, tx := range txs {
 		if r := dummy.DeliverTx(tx); r.IsErr() {
 			t.Fatal(r)
 		}
 	}
-	resEndBlock := dummyChain.EndBlock(height)
+	resEndBlock := dummy.EndBlock(height)
 	dummy.Commit()
 
 	valsEqual(t, diff, resEndBlock.Diffs)

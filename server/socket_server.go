@@ -187,22 +187,14 @@ func (s *SocketServer) handleRequest(req *types.Request, responses chan<- *types
 		resQuery := s.app.Query(*r.Query)
 		responses <- types.ToResponseQuery(resQuery)
 	case *types.Request_InitChain:
-		if app, ok := s.app.(types.BlockchainAware); ok {
-			app.InitChain(r.InitChain.Validators)
-		}
+		s.app.InitChain(r.InitChain.Validators)
 		responses <- types.ToResponseInitChain()
 	case *types.Request_BeginBlock:
-		if app, ok := s.app.(types.BlockchainAware); ok {
-			app.BeginBlock(r.BeginBlock.Hash, r.BeginBlock.Header)
-		}
+		s.app.BeginBlock(r.BeginBlock.Hash, r.BeginBlock.Header)
 		responses <- types.ToResponseBeginBlock()
 	case *types.Request_EndBlock:
-		if app, ok := s.app.(types.BlockchainAware); ok {
-			resEndBlock := app.EndBlock(r.EndBlock.Height)
-			responses <- types.ToResponseEndBlock(resEndBlock)
-		} else {
-			responses <- types.ToResponseEndBlock(types.ResponseEndBlock{})
-		}
+		resEndBlock := s.app.EndBlock(r.EndBlock.Height)
+		responses <- types.ToResponseEndBlock(resEndBlock)
 	default:
 		responses <- types.ToResponseException("Unknown request")
 	}

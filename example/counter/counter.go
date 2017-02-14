@@ -9,6 +9,8 @@ import (
 )
 
 type CounterApplication struct {
+	types.BaseApplication
+
 	hashCount int
 	txCount   int
 	serial    bool

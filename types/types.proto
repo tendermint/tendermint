@@ -115,7 +115,7 @@ message RequestCheckTx{
 message RequestQuery{
 	bytes data = 1;
 	string path = 2;
-	uint64 height = 3;
+	uint64 last_height = 3;
 	bool prove = 4; 
 }
 
@@ -192,11 +192,11 @@ message ResponseCheckTx{
 
 message ResponseQuery{
 	CodeType          code        = 1;
-	int64             index =       2;
+	int64             index       = 2;
 	bytes             key         = 3;
 	bytes             value       = 4;
 	bytes             proof       = 5;
-	uint64            height      = 6;
+	uint64            last_height = 6;
 	string            log         = 7;
 }
 

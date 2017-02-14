@@ -9,6 +9,8 @@ import (
 )
 
 type DummyApplication struct {
+	types.BaseApplication
+
 	state merkle.Tree
 }
 
@@ -19,10 +21,6 @@ func NewDummyApplication() *DummyApplication {
 
 func (app *DummyApplication) Info() (resInfo types.ResponseInfo) {
 	return types.ResponseInfo{Data: fmt.Sprintf("{\"size\":%v}", app.state.Size())}
-}
-
-func (app *DummyApplication) SetOption(key string, value string) (log string) {
-	return ""
 }
 
 // tx is either "key=value" or just arbitrary bytes
