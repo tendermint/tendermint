@@ -31,6 +31,3 @@ bash test/p2p/fast_sync/test.sh $DOCKER_IMAGE $NETWORK_NAME $N $PROXY_APP
 
 # test killing all peers
 bash test/p2p/kill_all/test.sh $DOCKER_IMAGE $NETWORK_NAME $N 3
-
-# stop the existing testnet and remove local network
-bash test/p2p/local_testnet_stop.sh $NETWORK_NAME $N

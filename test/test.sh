@@ -45,7 +45,3 @@ if [[ $(echo "$BRANCH" | grep "release-") != "" ]]; then
 	# TODO: replace mintnet
 	#bash "$DIR/net/test.sh"
 fi
-
-echo
-echo "* [$(date +"%T")] stopping rsyslog container"
-docker rm -f rsyslog
