@@ -76,14 +76,14 @@ ABCI requests/responses are simple Protobuf messages.  Check out the [schema fil
     * `Path (string)`: Path of request, like an HTTP GET path.  Can be used with or in liue of Data.
       * Apps MUST interpret '/store' as a query by key on the underlying store.  The key SHOULD be specified in the Data field.
       * Apps SHOULD allow queries over specific types like '/accounts/...' or '/votes/...'
-    * `LastHeight (uint64)`: The block height for which you want the query (default=0 returns data for the latest committed block). Note that the corresponding Merkle root hash will only be included in the header of the next block (ie. `LastHeight + 1`)
+    * `Height (uint64)`: The block height for which you want the query (default=0 returns data for the latest committed block). Note that this is the height of the block containing the application's Merkle root hash, which represents the state as it was after committing the block at Height-1
     * `Prove (bool)`: Return Merkle proof with response if possible
   * __Returns__:
     * `Code (uint32)`: Response code
     * `Key ([]byte)`: The key of the matching data
     * `Value ([]byte)`: The value of the matching data
     * `Proof ([]byte)`: Proof for the data, if requested
-    * `LastHeight (uint64)`: The block height from which data was derived. The Merkle root for the proof is included in block `LastHeight + 1`
+    * `Height (uint64)`: The block height from which data was derived. Note that this is the height of the block containing the application's Merkle root hash, which represents the state as it was after committing the block at Height-1
     * `Log (string)`: Debug or error message
   *Please note* The current implementation of go-merkle doesn't support querying proofs from past blocks, so for the present moment, any height other than 0 will return an error (recall height=0 defaults to latest block).  Hopefully this will be improved soon(ish)
 
