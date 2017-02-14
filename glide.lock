@@ -1,5 +1,5 @@
 hash: e283934fbbd221161d53a918db9e49db8c5be2b8929592b05ffe6b72c2ef0ab1
-updated: 2017-02-13T20:54:31.541721996-05:00
+updated: 2017-02-14T17:07:40.028389369-05:00
 imports:
 - name: github.com/btcsuite/btcd
   version: d06c0bb181529331be8f8d9350288c420d9e60e4
@@ -12,7 +12,7 @@ imports:
 - name: github.com/go-stack/stack
   version: 100eb0c0a9c5b306ca2fb4f165df21d80ada4b82
 - name: github.com/gogo/protobuf
-  version: 9c5b7bafbfccf2b40d274e0496f3a09418a87af4
+  version: 2221ff550f109ae54cb617c0dc6ac62658c418d7
   subpackages:
   - proto
 - name: github.com/golang/protobuf
@@ -22,7 +22,7 @@ imports:
 - name: github.com/golang/snappy
   version: 7db9049039a047d955fe8c19b83c8ff5abd765c7
 - name: github.com/gorilla/websocket
-  version: 9bc973af0682dc73a22553a08bfe00ee6255f56f
+  version: 804cb600d06b10672f2fbc0a336a7bee507a428e
 - name: github.com/jmhodges/levigo
   version: c42d9e0ca023e2198120196f842701bb4c55d7b9
 - name: github.com/mattn/go-colorable
@@ -47,7 +47,7 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/abci
-  version: 2a3f6384950041b098d89e66b93c580ecd6d32ef
+  version: 31bdda27ad80e47d372e4b9e4acfd4c0ef81d3e4
   subpackages:
   - client
   - example/counter
@@ -125,7 +125,7 @@ imports:
   subpackages:
   - unix
 - name: google.golang.org/grpc
-  version: 4acc9108c18937815db3306a66990869d22aa980
+  version: cbcceb2942a489498cf22b2f918536e819d33f0a
   subpackages:
   - codes
   - credentials
