@@ -21,4 +21,8 @@ docker run -d \
   --name local_testnet_$ID \
   --entrypoint tendermint \
   -e TMROOT=/go/src/github.com/tendermint/tendermint/test/p2p/data/mach$ID/core \
+	--log-driver=syslog \
+	--log-opt syslog-address=udp://127.0.0.1:5514 \
+	--log-opt syslog-facility=daemon \
+	--log-opt tag="{{.Name}}" \
   $DOCKER_IMAGE node $SEEDS --proxy_app=$APP_PROXY
