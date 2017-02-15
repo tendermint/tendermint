@@ -4,6 +4,12 @@ Add given IPs from your cluster to ansible_inventory and make sure that each of 
 After that run the following command:
 `ansible-playbook ansible_tendermint_init.yml`
 
+## Using Terraform-Ansible inventory file integration ##
+We are using [terraform-inventory|https://github.com/adammck/terraform-inventory] to make an inventory file integration in between Terraform and Ansible.
+Here are the steps you need to do in order to make it working:
+1. `brew install terraform-inventory` on MacOS
+2. ```TF_STATE=terraform.tfstate ansible-playbook --inventory-file=`which terraform-inventory` ansible_tendermint_init.yml```
+
 
 #### This is temporal solution ####
 To make Ansible working you need to create a record in */etc/hosts* file for 4 servers using real IP addresses.
@@ -31,4 +37,4 @@ However if you want to upload binary compiled locally, you could simply uncommen
 
 
 ### How to make Ansible working while on non-master branch ###
-As tendermint is written in Go which doesn't allow usage of branches upon `go get` command, we should run ansible from a location which has necessary branch and symlink missing folders 
+As tendermint is written in Go which doesn't allow usage of branches upon `go get` command, we should run ansible from a location which has necessary branch and symlink missing folders
