@@ -1,4 +1,4 @@
-module "cluster" {
+module "cluster" "tendermint-cluster" {
   source      = "./cluster"
   environment = "test"
   name        = "tendermint-testnet"
