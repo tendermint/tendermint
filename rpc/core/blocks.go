@@ -60,7 +60,7 @@ func Commit(height int) (*ctypes.ResultCommit, error) {
 
 	// If the next block has not been committed yet,
 	// use a non-canonical commit
-	if height == storeHeight+1 {
+	if height == storeHeight {
 		commit := blockStore.LoadSeenCommit(height)
 		return &ctypes.ResultCommit{header, commit, false}, nil
 	}
