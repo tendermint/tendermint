@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"sync"
 
-	cfg "github.com/tendermint/go-config"
 	abcicli "github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/example/dummy"
-	nilapp "github.com/tendermint/abci/example/nil"
 	"github.com/tendermint/abci/types"
+	cfg "github.com/tendermint/go-config"
 )
 
 // NewABCIClient returns newly connected client
@@ -74,7 +73,7 @@ func DefaultClientCreator(config cfg.Config) ClientCreator {
 	case "persistent_dummy":
 		return NewLocalClientCreator(dummy.NewPersistentDummyApplication(config.GetString("db_dir")))
 	case "nilapp":
-		return NewLocalClientCreator(nilapp.NewNilApplication())
+		return NewLocalClientCreator(types.NewBaseApplication())
 	default:
 		mustConnect := false // loop retrying
 		return NewRemoteClientCreator(addr, transport, mustConnect)

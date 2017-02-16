@@ -18,6 +18,7 @@ var Routes = map[string]*rpc.RPCFunc{
 	"blockchain":           rpc.NewRPCFunc(BlockchainInfoResult, "minHeight,maxHeight"),
 	"genesis":              rpc.NewRPCFunc(GenesisResult, ""),
 	"block":                rpc.NewRPCFunc(BlockResult, "height"),
+	"commit":               rpc.NewRPCFunc(CommitResult, "height"),
 	"validators":           rpc.NewRPCFunc(ValidatorsResult, ""),
 	"dump_consensus_state": rpc.NewRPCFunc(DumpConsensusStateResult, ""),
 	"unconfirmed_txs":      rpc.NewRPCFunc(UnconfirmedTxsResult, ""),
@@ -101,6 +102,14 @@ func GenesisResult() (ctypes.TMResult, error) {
 
 func BlockResult(height int) (ctypes.TMResult, error) {
 	if r, err := Block(height); err != nil {
+		return nil, err
+	} else {
+		return r, nil
+	}
+}
+
+func CommitResult(height int) (ctypes.TMResult, error) {
+	if r, err := Commit(height); err != nil {
 		return nil, err
 	} else {
 		return r, nil

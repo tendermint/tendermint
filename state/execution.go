@@ -6,12 +6,12 @@ import (
 
 	"github.com/ebuchman/fail-test"
 
+	abci "github.com/tendermint/abci/types"
 	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
-	abci "github.com/tendermint/abci/types"
 )
 
 //--------------------------------------------------
@@ -393,7 +393,7 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, appConnCon
 		var eventCache types.Fireable // nil
 
 		// replay the latest block
-		return h.state.ApplyBlock(eventCache, appConnConsensus, block, blockMeta.PartsHeader, MockMempool{})
+		return h.state.ApplyBlock(eventCache, appConnConsensus, block, blockMeta.BlockID.PartsHeader, MockMempool{})
 	} else if storeBlockHeight != stateBlockHeight {
 		// unless we failed before committing or saving state (previous 2 case),
 		// the store and state should be at the same height!

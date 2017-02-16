@@ -415,9 +415,9 @@ OUTER_LOOP:
 					log.Warn("Failed to load block meta", "peer height", prs.Height, "our height", rs.Height, "blockstore height", conR.conS.blockStore.Height(), "pv", conR.conS.privValidator)
 					time.Sleep(peerGossipSleepDuration)
 					continue OUTER_LOOP
-				} else if !blockMeta.PartsHeader.Equals(prs.ProposalBlockPartsHeader) {
+				} else if !blockMeta.BlockID.PartsHeader.Equals(prs.ProposalBlockPartsHeader) {
 					log.Info("Peer ProposalBlockPartsHeader mismatch, sleeping",
-						"peerHeight", prs.Height, "blockPartsHeader", blockMeta.PartsHeader, "peerBlockPartsHeader", prs.ProposalBlockPartsHeader)
+						"peerHeight", prs.Height, "blockPartsHeader", blockMeta.BlockID.PartsHeader, "peerBlockPartsHeader", prs.ProposalBlockPartsHeader)
 					time.Sleep(peerGossipSleepDuration)
 					continue OUTER_LOOP
 				}
@@ -425,7 +425,7 @@ OUTER_LOOP:
 				part := conR.conS.blockStore.LoadBlockPart(prs.Height, index)
 				if part == nil {
 					log.Warn("Could not load part", "index", index,
-						"peerHeight", prs.Height, "blockPartsHeader", blockMeta.PartsHeader, "peerBlockPartsHeader", prs.ProposalBlockPartsHeader)
+						"peerHeight", prs.Height, "blockPartsHeader", blockMeta.BlockID.PartsHeader, "peerBlockPartsHeader", prs.ProposalBlockPartsHeader)
 					time.Sleep(peerGossipSleepDuration)
 					continue OUTER_LOOP
 				}

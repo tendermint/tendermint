@@ -23,6 +23,12 @@ type ResultBlock struct {
 	Block     *types.Block     `json:"block"`
 }
 
+type ResultCommit struct {
+	Header          *types.Header `json:"header"`
+	Commit          *types.Commit `json:"commit"`
+	CanonicalCommit bool          `json:"canonical"`
+}
+
 type ResultStatus struct {
 	NodeInfo          *p2p.NodeInfo `json:"node_info"`
 	PubKey            crypto.PubKey `json:"pub_key"`
@@ -106,6 +112,7 @@ const (
 	ResultTypeGenesis        = byte(0x01)
 	ResultTypeBlockchainInfo = byte(0x02)
 	ResultTypeBlock          = byte(0x03)
+	ResultTypeCommit         = byte(0x04)
 
 	// 0x2 bytes are for the network
 	ResultTypeStatus    = byte(0x20)
@@ -148,6 +155,7 @@ var _ = wire.RegisterInterface(
 	wire.ConcreteType{&ResultGenesis{}, ResultTypeGenesis},
 	wire.ConcreteType{&ResultBlockchainInfo{}, ResultTypeBlockchainInfo},
 	wire.ConcreteType{&ResultBlock{}, ResultTypeBlock},
+	wire.ConcreteType{&ResultCommit{}, ResultTypeCommit},
 	wire.ConcreteType{&ResultStatus{}, ResultTypeStatus},
 	wire.ConcreteType{&ResultNetInfo{}, ResultTypeNetInfo},
 	wire.ConcreteType{&ResultDialSeeds{}, ResultTypeDialSeeds},

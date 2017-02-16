@@ -114,6 +114,8 @@ func TestRmBadTx(t *testing.T) {
 
 // CounterApplication that maintains a mempool state and resets it upon commit
 type CounterApplication struct {
+	abci.BaseApplication
+
 	txCount        int
 	mempoolTxCount int
 }
@@ -124,10 +126,6 @@ func NewCounterApplication() *CounterApplication {
 
 func (app *CounterApplication) Info() abci.ResponseInfo {
 	return abci.ResponseInfo{Data: Fmt("txs:%v", app.txCount)}
-}
-
-func (app *CounterApplication) SetOption(key string, value string) (log string) {
-	return ""
 }
 
 func (app *CounterApplication) DeliverTx(tx []byte) abci.Result {
@@ -159,9 +157,4 @@ func (app *CounterApplication) Commit() abci.Result {
 		binary.BigEndian.PutUint64(hash, uint64(app.txCount))
 		return abci.NewResultOK(hash, "")
 	}
-}
-
-func (app *CounterApplication) Query(reqQuery abci.RequestQuery) (resQuery abci.ResponseQuery) {
-	resQuery.Log = "Query is not supported"
-	return
 }

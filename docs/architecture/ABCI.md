@@ -2,7 +2,7 @@
 
 ABCI is an interface between the consensus/blockchain engine known as tendermint, and the application-specific business logic, known as an ABCi app.
 
-The tendermint core should run unchanged for all apps.  Each app can customize it, the supported transactions, queries, even the validator sets and hwo to handle staking / slashing stake. This customization is achieved by implementing the ABCi app to send the proper information to the tendermint engine to perform as directed.
+The tendermint core should run unchanged for all apps.  Each app can customize it, the supported transactions, queries, even the validator sets and how to handle staking / slashing stake. This customization is achieved by implementing the ABCi app to send the proper information to the tendermint engine to perform as directed.
 
 To understand this decision better, think of the design of the tendermint engine.
 

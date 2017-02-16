@@ -64,12 +64,12 @@ func (bs *BlockStore) LoadBlock(height int) *types.Block {
 	if r == nil {
 		return nil
 	}
-	meta := wire.ReadBinary(&types.BlockMeta{}, r, 0, &n, &err).(*types.BlockMeta)
+	blockMeta := wire.ReadBinary(&types.BlockMeta{}, r, 0, &n, &err).(*types.BlockMeta)
 	if err != nil {
 		PanicCrisis(Fmt("Error reading block meta: %v", err))
 	}
 	bytez := []byte{}
-	for i := 0; i < meta.PartsHeader.Total; i++ {
+	for i := 0; i < blockMeta.BlockID.PartsHeader.Total; i++ {
 		part := bs.LoadBlockPart(height, i)
 		bytez = append(bytez, part.Bytes...)
 	}
@@ -101,11 +101,11 @@ func (bs *BlockStore) LoadBlockMeta(height int) *types.BlockMeta {
 	if r == nil {
 		return nil
 	}
-	meta := wire.ReadBinary(&types.BlockMeta{}, r, 0, &n, &err).(*types.BlockMeta)
+	blockMeta := wire.ReadBinary(&types.BlockMeta{}, r, 0, &n, &err).(*types.BlockMeta)
 	if err != nil {
 		PanicCrisis(Fmt("Error reading block meta: %v", err))
 	}
-	return meta
+	return blockMeta
 }
 
 // The +2/3 and other Precommit-votes for block at `height`.
@@ -154,8 +154,8 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	}
 
 	// Save block meta
-	meta := types.NewBlockMeta(block, blockParts)
-	metaBytes := wire.BinaryBytes(meta)
+	blockMeta := types.NewBlockMeta(block, blockParts)
+	metaBytes := wire.BinaryBytes(blockMeta)
 	bs.db.Set(calcBlockMetaKey(height), metaBytes)
 
 	// Save block parts

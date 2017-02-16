@@ -22,7 +22,7 @@ dist:
 
 test:
 	@echo "--> Running go test"
-	@go test -v $(PACKAGES)
+	@go test $(PACKAGES)
 
 test_race:
 	@echo "--> Running go test --race"
