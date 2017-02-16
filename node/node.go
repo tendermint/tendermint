@@ -64,7 +64,7 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreato
 	state := sm.GetState(config, stateDB)
 
 	// Create the proxyApp, which manages connections (consensus, mempool, query)
-	proxyApp := proxy.NewAppConns(config, clientCreator, sm.NewHandshaker(config, state, blockStore))
+	proxyApp := proxy.NewAppConns(config, clientCreator, sm.NewHandshaker(config, state, blockStore, consensus.ReplayLastBlock))
 	if _, err := proxyApp.Start(); err != nil {
 		cmn.Exit(cmn.Fmt("Error starting proxy app connections: %v", err))
 	}

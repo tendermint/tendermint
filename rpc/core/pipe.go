@@ -31,7 +31,7 @@ type Consensus interface {
 type Mempool interface {
 	Size() int
 	CheckTx(types.Tx, func(*abci.Response)) error
-	Reap(int) []types.Tx
+	Reap(int) types.Txs
 	Flush()
 }
 

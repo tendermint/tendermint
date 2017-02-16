@@ -15,7 +15,6 @@ import (
 	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-wire"
 	bc "github.com/tendermint/tendermint/blockchain"
-	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -227,7 +226,7 @@ type ConsensusState struct {
 	config       cfg.Config
 	proxyAppConn proxy.AppConnConsensus
 	blockStore   *bc.BlockStore
-	mempool      *mempl.Mempool
+	mempool      sm.Mempool
 
 	privValidator PrivValidator // for signing votes
 
@@ -255,7 +254,20 @@ type ConsensusState struct {
 	done chan struct{}
 }
 
-func NewConsensusState(config cfg.Config, state *sm.State, proxyAppConn proxy.AppConnConsensus, blockStore *bc.BlockStore, mempool *mempl.Mempool) *ConsensusState {
+func ReplayLastBlock(config cfg.Config, state *sm.State, proxyApp proxy.AppConnConsensus, blockStore sm.BlockStore) {
+	mempool := sm.MockMempool{}
+	cs := NewConsensusState(config, state, proxyApp, blockStore.(*bc.BlockStore), mempool)
+
+	evsw := types.NewEventSwitch()
+	cs.SetEventSwitch(evsw)
+	newBlockCh := subscribeToEvent(evsw, "consensus-replay", types.EventStringNewBlock(), 0)
+
+	cs.Start()
+	<-newBlockCh
+	cs.Stop()
+}
+
+func NewConsensusState(config cfg.Config, state *sm.State, proxyAppConn proxy.AppConnConsensus, blockStore *bc.BlockStore, mempool sm.Mempool) *ConsensusState {
 	cs := &ConsensusState{
 		config:           config,
 		proxyAppConn:     proxyAppConn,
