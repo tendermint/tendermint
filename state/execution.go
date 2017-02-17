@@ -272,6 +272,27 @@ func (s *State) CommitStateUpdateMempool(proxyAppConn proxy.AppConnConsensus, bl
 	return nil
 }
 
+// apply a nd commit a block, but with out all the state validation
+// returns the application root hash (result of abci.Commit)
+func applyBlock(appConnConsensus proxy.AppConnConsensus, block *types.Block) ([]byte, error) {
+	var eventCache types.Fireable // nil
+	_, err := execBlockOnProxyApp(eventCache, appConnConsensus, block)
+	if err != nil {
+		log.Warn("Error executing block on proxy app", "height", i, "err", err)
+		return nil, err
+	}
+	// Commit block, get hash back
+	res := appConnConsensus.CommitSync()
+	if res.IsErr() {
+		log.Warn("Error in proxyAppConn.CommitSync", "error", res)
+		return nil, res
+	}
+	if res.Log != "" {
+		log.Info("Commit.Log: " + res.Log)
+	}
+	return res.Data, nil
+}
+
 // Updates to the mempool need to be synchronized with committing a block
 // so apps can reset their transient state on Commit
 type Mempool interface {
@@ -382,39 +403,25 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, proxyApp p
 
 	} else {
 		// store is more than one ahead,
-		// so app wants to replay many blocks
-		/*
+		// so app wants to replay many blocks.
+		// replay all blocks from appBlockHeight+1 to storeBlockHeight-1.
+		// Replay the final block through consensus
 
-			// replay all blocks starting with appBlockHeight+1
-			var eventCache types.Fireable // nil
-
-			// TODO: use stateBlockHeight instead and let the consensus state
-			// do the replay
-
-			var appHash []byte
-			for i := appBlockHeight + 1; i <= storeBlockHeight; i++ {
-				h.nBlocks += 1
-				block := h.store.LoadBlock(i)
-				_, err := execBlockOnProxyApp(eventCache, appConnConsensus, block)
-				if err != nil {
-					log.Warn("Error executing block on proxy app", "height", i, "err", err)
-					return err
-				}
-				// Commit block, get hash back
-				res := appConnConsensus.CommitSync()
-				if res.IsErr() {
-					log.Warn("Error in proxyAppConn.CommitSync", "error", res)
-					return res
-				}
-				if res.Log != "" {
-					log.Info("Commit.Log: " + res.Log)
-				}
-				appHash = res.Data
+		var appHash []byte
+		var err error
+		for i := appBlockHeight + 1; i <= storeBlockHeight-1; i++ {
+			h.nBlocks += 1
+			block := h.store.LoadBlock(i)
+			appHash, err = applyBlock(proxyApp.Consensus(), block)
+			if err != nil {
+				return err
 			}
-			if !bytes.Equal(h.state.AppHash, appHash) {
-				return errors.New(Fmt("Tendermint state.AppHash does not match AppHash after replay. Got %X, expected %X", appHash, h.state.AppHash))
-			}
-		*/
+		}
+
+		h.replayLastBlock(h.config, h.state, proxyApp.Consensus(), h.store)
+		if !bytes.Equal(h.state.AppHash, appHash) {
+			return errors.New(Fmt("Tendermint state.AppHash does not match AppHash after replay. Got %X, expected %X", appHash, h.state.AppHash))
+		}
 		return nil
 	}
 	return nil
