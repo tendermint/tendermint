@@ -1232,7 +1232,8 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 		seenCommit := precommits.MakeCommit()
 		cs.blockStore.SaveBlock(block, blockParts, seenCommit)
 	} else {
-		log.Warn("Why are we finalizeCommitting a block height we already have?", "height", block.Height)
+		// Happens during replay if we already saved the block but didn't commit
+		log.Notice("Calling finalizeCommit on already stored block", "height", block.Height)
 	}
 
 	fail.Fail() // XXX
@@ -1247,7 +1248,8 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	// NOTE: the block.AppHash wont reflect these txs until the next block
 	err := stateCopy.ApplyBlock(eventCache, cs.proxyAppConn, block, blockParts.Header(), cs.mempool)
 	if err != nil {
-		// TODO!
+		log.Warn("Error on ApplyBlock. Did the application crash? Please restart tendermint", "error", err)
+		return
 	}
 
 	fail.Fail() // XXX
