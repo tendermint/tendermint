@@ -298,8 +298,15 @@ func (m MockMempool) Update(height int, txs types.Txs)                   {}
 // TODO: Should we move blockchain/store.go to its own package?
 type BlockStore interface {
 	Height() int
-	LoadBlock(height int) *types.Block
+
 	LoadBlockMeta(height int) *types.BlockMeta
+	LoadBlock(height int) *types.Block
+	LoadBlockPart(height int, index int) *types.Part
+
+	SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit)
+
+	LoadBlockCommit(height int) *types.Commit
+	LoadSeenCommit(height int) *types.Commit
 }
 
 type blockReplayFunc func(cfg.Config, *State, proxy.AppConnConsensus, BlockStore)
@@ -315,6 +322,10 @@ type Handshaker struct {
 
 func NewHandshaker(config cfg.Config, state *State, store BlockStore, f blockReplayFunc) *Handshaker {
 	return &Handshaker{config, state, store, f, 0}
+}
+
+func (h *Handshaker) NBlocks() int {
+	return h.nBlocks
 }
 
 // TODO: retry the handshake/replay if it fails ?
@@ -338,9 +349,6 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 		return errors.New(Fmt("Error on replay: %v", err))
 	}
 
-	// Save the state
-	h.state.Save()
-
 	// TODO: (on restart) replay mempool
 
 	return nil
@@ -359,16 +367,17 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, proxyApp p
 		// if the app is ahead, there's nothing we can do
 		return ErrAppBlockHeightTooHigh{storeBlockHeight, appBlockHeight}
 
-	} else if storeBlockHeight == appBlockHeight {
-		// We already ran Commit, so run through consensus with mock app
+	} else if storeBlockHeight == appBlockHeight && storeBlockHeight == stateBlockHeight+1 {
+		// We already ran Commit, but didn't save the state, so run through consensus with mock app
 		mockApp := newMockProxyApp(appHash)
-
+		log.Info("Replay last block using mock app")
 		h.replayLastBlock(h.config, h.state, mockApp, h.store)
 
 	} else if storeBlockHeight == appBlockHeight+1 {
 		// We crashed after saving the block
 		// but before Commit (both the state and app are behind),
 		// so run through consensus with the real app
+		log.Info("Replay last block using real app")
 		h.replayLastBlock(h.config, h.state, proxyApp.Consensus(), h.store)
 
 	} else {

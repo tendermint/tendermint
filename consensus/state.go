@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"reflect"
 	"sync"
 	"time"
@@ -14,7 +13,6 @@ import (
 	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-wire"
-	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -225,7 +223,7 @@ type ConsensusState struct {
 
 	config       cfg.Config
 	proxyAppConn proxy.AppConnConsensus
-	blockStore   *bc.BlockStore
+	blockStore   sm.BlockStore
 	mempool      sm.Mempool
 
 	privValidator PrivValidator // for signing votes
@@ -256,18 +254,20 @@ type ConsensusState struct {
 
 func ReplayLastBlock(config cfg.Config, state *sm.State, proxyApp proxy.AppConnConsensus, blockStore sm.BlockStore) {
 	mempool := sm.MockMempool{}
-	cs := NewConsensusState(config, state, proxyApp, blockStore.(*bc.BlockStore), mempool)
+	cs := NewConsensusState(config, state, proxyApp, blockStore, mempool)
 
 	evsw := types.NewEventSwitch()
+	evsw.Start()
 	cs.SetEventSwitch(evsw)
-	newBlockCh := subscribeToEvent(evsw, "consensus-replay", types.EventStringNewBlock(), 0)
+	newBlockCh := subscribeToEvent(evsw, "consensus-replay", types.EventStringNewBlock(), 1)
 
+	// run through the WAL, commit new block, stop
 	cs.Start()
 	<-newBlockCh
 	cs.Stop()
 }
 
-func NewConsensusState(config cfg.Config, state *sm.State, proxyAppConn proxy.AppConnConsensus, blockStore *bc.BlockStore, mempool sm.Mempool) *ConsensusState {
+func NewConsensusState(config cfg.Config, state *sm.State, proxyAppConn proxy.AppConnConsensus, blockStore sm.BlockStore, mempool sm.Mempool) *ConsensusState {
 	cs := &ConsensusState{
 		config:           config,
 		proxyAppConn:     proxyAppConn,
@@ -364,23 +364,6 @@ func (cs *ConsensusState) OnStart() error {
 	if err != nil {
 		log.Error("Error loading ConsensusState wal", "error", err.Error())
 		return err
-	}
-
-	// If the latest block was applied in the abci handshake,
-	// we may not have written the current height to the wal,
-	// so check here and write it if not found.
-	// TODO: remove this and run the handhsake/replay
-	// through the consensus state with a mock app
-	gr, found, err := cs.wal.group.Search("#HEIGHT: ", makeHeightSearchFunc(cs.Height))
-	if (err == io.EOF || !found) && cs.Step == RoundStepNewHeight {
-		log.Warn("Height not found in wal. Writing new height", "height", cs.Height)
-		rs := cs.RoundStateEvent()
-		cs.wal.Save(rs)
-	} else if err != nil {
-		return err
-	}
-	if gr != nil {
-		gr.Close()
 	}
 
 	// we need the timeoutRoutine for replay so
@@ -581,7 +564,6 @@ func (cs *ConsensusState) updateToState(state *sm.State) {
 
 	// Reset fields based on state.
 	validators := state.Validators
-	height := state.LastBlockHeight + 1 // Next desired block height
 	lastPrecommits := (*types.VoteSet)(nil)
 	if cs.CommitRound > -1 && cs.Votes != nil {
 		if !cs.Votes.Precommits(cs.CommitRound).HasTwoThirdsMajority() {
@@ -589,6 +571,9 @@ func (cs *ConsensusState) updateToState(state *sm.State) {
 		}
 		lastPrecommits = cs.Votes.Precommits(cs.CommitRound)
 	}
+
+	// Next desired block height
+	height := state.LastBlockHeight + 1
 
 	// RoundState fields
 	cs.updateHeight(height)
