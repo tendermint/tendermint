@@ -25,7 +25,7 @@ The [primary specification](https://github.com/tendermint/abci/blob/master/types
 As a [Go interface](https://github.com/tendermint/abci/blob/master/types/application.go), it might look like:
 
 
-```
+```golang
 // Applications
 type Application interface {
 
