@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	abcicli "github.com/tendermint/abci/client"
+	abci "github.com/tendermint/abci/types"
 	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
 	dbm "github.com/tendermint/go-db"
@@ -20,8 +22,6 @@ import (
 	mempl "github.com/tendermint/tendermint/mempool"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	abcicli "github.com/tendermint/abci/client"
-	abci "github.com/tendermint/abci/types"
 
 	"github.com/tendermint/abci/example/counter"
 	"github.com/tendermint/abci/example/dummy"
@@ -320,7 +320,7 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 		state := sm.MakeGenesisState(db, genDoc)
 		state.Save()
 		thisConfig := tendermint_test.ResetConfig(Fmt("%s_%d", testName, i))
-		ensureDir(thisConfig.GetString("cs_wal_dir"), 0700) // dir for wal
+		ensureDir(path.Dir(thisConfig.GetString("cs_wal_file")), 0700) // dir for wal
 		css[i] = newConsensusStateWithConfig(thisConfig, state, privVals[i], appFunc())
 		css[i].SetTimeoutTicker(tickerFunc())
 	}
@@ -336,7 +336,7 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 		state := sm.MakeGenesisState(db, genDoc)
 		state.Save()
 		thisConfig := tendermint_test.ResetConfig(Fmt("%s_%d", testName, i))
-		ensureDir(thisConfig.GetString("cs_wal_dir"), 0700) // dir for wal
+		ensureDir(path.Dir(thisConfig.GetString("cs_wal_file")), 0700) // dir for wal
 		var privVal *types.PrivValidator
 		if i < nValidators {
 			privVal = privVals[i]

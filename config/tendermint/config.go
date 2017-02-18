@@ -72,7 +72,7 @@ func GetConfig(rootDir string) cfg.Config {
 	mapConfig.SetDefault("grpc_laddr", "")
 	mapConfig.SetDefault("prof_laddr", "")
 	mapConfig.SetDefault("revision_file", rootDir+"/revision")
-	mapConfig.SetDefault("cs_wal_dir", rootDir+"/data/cs.wal")
+	mapConfig.SetDefault("cs_wal_file", rootDir+"/data/cs.wal/wal")
 	mapConfig.SetDefault("cs_wal_light", false)
 	mapConfig.SetDefault("filter_peers", false)
 

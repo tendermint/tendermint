@@ -1,6 +1,7 @@
 package state
 
 import (
+	"bytes"
 	"errors"
 
 	"github.com/ebuchman/fail-test"
@@ -278,7 +279,7 @@ func applyBlock(appConnConsensus proxy.AppConnConsensus, block *types.Block) ([]
 	var eventCache types.Fireable // nil
 	_, err := execBlockOnProxyApp(eventCache, appConnConsensus, block)
 	if err != nil {
-		log.Warn("Error executing block on proxy app", "height", i, "err", err)
+		log.Warn("Error executing block on proxy app", "height", block.Height, "err", err)
 		return nil, err
 	}
 	// Commit block, get hash back
@@ -388,13 +389,17 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, proxyApp p
 		// if the app is ahead, there's nothing we can do
 		return ErrAppBlockHeightTooHigh{storeBlockHeight, appBlockHeight}
 
+	} else if storeBlockHeight == appBlockHeight && storeBlockHeight == stateBlockHeight {
+		// all good!
+		return nil
+
 	} else if storeBlockHeight == appBlockHeight && storeBlockHeight == stateBlockHeight+1 {
 		// We already ran Commit, but didn't save the state, so run through consensus with mock app
 		mockApp := newMockProxyApp(appHash)
 		log.Info("Replay last block using mock app")
 		h.replayLastBlock(h.config, h.state, mockApp, h.store)
 
-	} else if storeBlockHeight == appBlockHeight+1 {
+	} else if storeBlockHeight == appBlockHeight+1 && storeBlockHeight == stateBlockHeight+1 {
 		// We crashed after saving the block
 		// but before Commit (both the state and app are behind),
 		// so run through consensus with the real app
@@ -409,7 +414,8 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, proxyApp p
 
 		var appHash []byte
 		var err error
-		for i := appBlockHeight + 1; i <= storeBlockHeight-1; i++ {
+		for i := appBlockHeight + 1; i <= storeBlockHeight; i++ {
+			log.Info("Applying block", "height", i)
 			h.nBlocks += 1
 			block := h.store.LoadBlock(i)
 			appHash, err = applyBlock(proxyApp.Consensus(), block)
@@ -418,7 +424,7 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, proxyApp p
 			}
 		}
 
-		h.replayLastBlock(h.config, h.state, proxyApp.Consensus(), h.store)
+		// h.replayLastBlock(h.config, h.state, proxyApp.Consensus(), h.store)
 		if !bytes.Equal(h.state.AppHash, appHash) {
 			return errors.New(Fmt("Tendermint state.AppHash does not match AppHash after replay. Got %X, expected %X", appHash, h.state.AppHash))
 		}
