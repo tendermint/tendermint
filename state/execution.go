@@ -54,10 +54,6 @@ func (s *State) ExecBlock(eventCache types.Fireable, proxyAppConn proxy.AppConnC
 	nextValSet.IncrementAccum(1)
 	s.SetBlockAndValidators(block.Header, blockPartsHeader, valSet, nextValSet)
 
-	// save state with updated height/blockhash/validators
-	// but stale apphash, in case we fail between Commit and Save
-	s.SaveIntermediate()
-
 	fail.Fail() // XXX
 
 	return nil

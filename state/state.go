@@ -14,8 +14,7 @@ import (
 )
 
 var (
-	stateKey             = []byte("stateKey")
-	stateIntermediateKey = []byte("stateIntermediateKey")
+	stateKey = []byte("stateKey")
 )
 
 //-----------------------------------------------------------------------------
@@ -80,35 +79,6 @@ func (s *State) Save() {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 	s.db.SetSync(stateKey, s.Bytes())
-}
-
-func (s *State) SaveIntermediate() {
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-	s.db.SetSync(stateIntermediateKey, s.Bytes())
-}
-
-// Load the intermediate state into the current state
-// and do some sanity checks
-func (s *State) LoadIntermediate() {
-	s2 := loadState(s.db, stateIntermediateKey)
-	if s.ChainID != s2.ChainID {
-		PanicSanity(Fmt("State mismatch for ChainID. Got %v, Expected %v", s2.ChainID, s.ChainID))
-	}
-
-	if s.LastBlockHeight+1 != s2.LastBlockHeight {
-		PanicSanity(Fmt("State mismatch for LastBlockHeight. Got %v, Expected %v", s2.LastBlockHeight, s.LastBlockHeight+1))
-	}
-
-	if !bytes.Equal(s.Validators.Hash(), s2.LastValidators.Hash()) {
-		PanicSanity(Fmt("State mismatch for LastValidators. Got %X, Expected %X", s2.LastValidators.Hash(), s.Validators.Hash()))
-	}
-
-	if !bytes.Equal(s.AppHash, s2.AppHash) {
-		PanicSanity(Fmt("State mismatch for AppHash. Got %X, Expected %X", s2.AppHash, s.AppHash))
-	}
-
-	s.setBlockAndValidators(s2.LastBlockHeight, s2.LastBlockID, s2.LastBlockTime, s2.Validators.Copy(), s2.LastValidators.Copy())
 }
 
 func (s *State) Equals(s2 *State) bool {
