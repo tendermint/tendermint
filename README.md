@@ -16,7 +16,7 @@ Previously, the ABCI was just referred to as TMSP.
 Other implementations:
 * [cpp-tmsp](https://github.com/mdyring/cpp-tmsp) by Martin Dyring-Andersen
 * [js-tmsp](https://github.com/tendermint/js-tmsp)
-* [jTMSP](https://github.com/jTMSP/) for Java
+* [jABCI](https://github.com/jTendermint/jabci) for Java
 
 # Specification
 
