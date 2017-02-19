@@ -259,6 +259,7 @@ func ReplayLastBlock(config cfg.Config, state *sm.State, proxyApp proxy.AppConnC
 
 	evsw := types.NewEventSwitch()
 	evsw.Start()
+	defer evsw.Stop()
 	cs.SetEventSwitch(evsw)
 	newBlockCh := subscribeToEvent(evsw, "consensus-replay", types.EventStringNewBlock(), 1)
 

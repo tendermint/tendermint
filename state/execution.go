@@ -269,8 +269,8 @@ func (s *State) CommitStateUpdateMempool(proxyAppConn proxy.AppConnConsensus, bl
 	return nil
 }
 
-// apply a nd commit a block, but with out all the state validation
-// returns the application root hash (result of abci.Commit)
+// Apply and commit a block, but without all the state validation.
+// Returns the application root hash (result of abci.Commit)
 func applyBlock(appConnConsensus proxy.AppConnConsensus, block *types.Block) ([]byte, error) {
 	var eventCache types.Fireable // nil
 	_, err := execBlockOnProxyApp(eventCache, appConnConsensus, block)
@@ -420,7 +420,9 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, proxyApp p
 			}
 		}
 
+		// TODO: should we be playing the final block through the consensus, instead of using applyBlock?
 		// h.replayLastBlock(h.config, h.state, proxyApp.Consensus(), h.store)
+
 		if !bytes.Equal(h.state.AppHash, appHash) {
 			return errors.New(Fmt("Tendermint state.AppHash does not match AppHash after replay. Got %X, expected %X", appHash, h.state.AppHash))
 		}
