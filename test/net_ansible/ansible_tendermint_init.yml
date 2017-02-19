@@ -56,6 +56,11 @@
     when: local_binary is not defined
     notify: restart tendermint service
 
+  - name: Install unzip to deal with an archived binary
+    apt:
+      name: unzip
+      update_cache: yes
+
   - name: Unarchive downloaded from S3 zip file
     unarchive:
       src: "/tmp/{{ binary_zip_name }}"
