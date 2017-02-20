@@ -57,7 +57,7 @@ ABCI requests/responses are simple Protobuf messages.  Check out the [schema fil
     Validate a mempool transaction, prior to broadcasting or proposing.  This message should not mutate the main state, but application
     developers may want to keep a separate CheckTx state that gets reset upon Commit.
 
-    CheckTx can happen interspersed with DeliverTx, but they happen on different connections - CheckTx from the mempool connection, and DeliverTx from the consensus connection.  During Commit, the mempool is locked, so you can reset the mempool state to the latest state after running all those delivertxs, and then the mempool will re run whatever txs it has against that latest mempool stte
+    CheckTx can happen interspersed with DeliverTx, but they happen on different connections - CheckTx from the mempool connection, and DeliverTx from the consensus connection.  During Commit, the mempool is locked, so you can reset the mempool state to the latest state after running all those delivertxs, and then the mempool will re-run whatever txs it has against that latest mempool state.
 
     Transactions are first run through CheckTx before broadcast to peers in the mempool layer.
     You can make CheckTx semi-stateful and clear the state upon `Commit` or `BeginBlock`,
