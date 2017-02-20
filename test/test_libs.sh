@@ -18,30 +18,30 @@ LIBS_MAKE_TEST=(go-rpc go-wire abci)
 for lib in "${LIBS_GO_TEST[@]}"; do
 
 	# checkout vendored version of lib
-	bash scripts/glide/checkout.sh $GLIDE $lib
+	bash scripts/glide/checkout.sh "$GLIDE" "$lib"
 
 	echo "Testing $lib ..."
-	go test -v --race github.com/tendermint/$lib/...
+	go test -v --race "github.com/tendermint/$lib/..."
 	if [[ "$?" != 0 ]]; then
 		echo "FAIL"
 		exit 1
 	fi
 done
 
-DIR=`pwd`
+DIR=$(pwd)
 for lib in "${LIBS_MAKE_TEST[@]}"; do
 
 	# checkout vendored version of lib
-	bash scripts/glide/checkout.sh $GLIDE $lib
+	bash scripts/glide/checkout.sh "$GLIDE" "$lib"
 
 	echo "Testing $lib ..."
-	cd $GOPATH/src/github.com/tendermint/$lib
+	cd "$GOPATH/src/github.com/tendermint/$lib"
 	make test
 	if [[ "$?" != 0 ]]; then
 		echo "FAIL"
 		exit 1
 	fi
-	cd $DIR
+	cd "$DIR"
 done
 
 echo ""
