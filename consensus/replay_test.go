@@ -15,7 +15,7 @@ import (
 	"github.com/tendermint/tendermint/config/tendermint_test"
 
 	"github.com/tendermint/abci/example/dummy"
-	. "github.com/tendermint/go-common"
+	cmn "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-crypto"
 	dbm "github.com/tendermint/go-db"
@@ -37,7 +37,7 @@ func init() {
 // the `Handshake Tests` are for failures in applying the block.
 // With the help of the WAL, we can recover from it all!
 
-var data_dir = path.Join(GoPath, "src/github.com/tendermint/tendermint/consensus", "test_data")
+var data_dir = path.Join(cmn.GoPath, "src/github.com/tendermint/tendermint/consensus", "test_data")
 
 //------------------------------------------------------------------------------------------
 // WAL Tests
@@ -68,7 +68,7 @@ type testCase struct {
 
 func newTestCase(name string, stepChanges []int) *testCase {
 	if len(stepChanges) != 3 {
-		panic(Fmt("a full wal has 3 step changes! Got array %v", stepChanges))
+		panic(cmn.Fmt("a full wal has 3 step changes! Got array %v", stepChanges))
 	}
 	return &testCase{
 		name:    name,
@@ -103,15 +103,15 @@ func readWAL(p string) string {
 
 func writeWAL(walMsgs string) string {
 	tempDir := os.TempDir()
-	walDir := path.Join(tempDir, "/wal"+RandStr(12))
+	walDir := path.Join(tempDir, "/wal"+cmn.RandStr(12))
 	walFile := path.Join(walDir, "wal")
 	// Create WAL directory
-	err := EnsureDir(walDir, 0700)
+	err := cmn.EnsureDir(walDir, 0700)
 	if err != nil {
 		panic(err)
 	}
 	// Write the needed WAL to file
-	err = WriteFile(walFile, []byte(walMsgs), 0600)
+	err = cmn.WriteFile(walFile, []byte(walMsgs), 0600)
 	if err != nil {
 		panic(err)
 	}
@@ -123,7 +123,7 @@ func waitForBlock(newBlockCh chan interface{}, thisCase *testCase, i int) {
 	select {
 	case <-newBlockCh:
 	case <-after:
-		panic(Fmt("Timed out waiting for new block for case '%s' line %d", thisCase.name, i))
+		panic(cmn.Fmt("Timed out waiting for new block for case '%s' line %d", thisCase.name, i))
 	}
 }
 
@@ -156,7 +156,7 @@ func toPV(pv PrivValidator) *types.PrivValidator {
 
 func setupReplayTest(thisCase *testCase, nLines int, crashAfter bool) (*ConsensusState, chan interface{}, string, string) {
 	fmt.Println("-------------------------------------")
-	log.Notice(Fmt("Starting replay test %v (of %d lines of WAL). Crash after = %v", thisCase.name, nLines, crashAfter))
+	log.Notice(cmn.Fmt("Starting replay test %v (of %d lines of WAL). Crash after = %v", thisCase.name, nLines, crashAfter))
 
 	lineStep := nLines
 	if crashAfter {
@@ -285,8 +285,15 @@ func TestHandshakeReplayNone(t *testing.T) {
 // Make some blocks. Start a fresh app and apply nBlocks blocks. Then restart the app and sync it up with the remaining blocks
 func testHandshakeReplay(t *testing.T, nBlocks int) {
 	config := tendermint_test.ResetConfig("proxy_test_")
-	walFile := path.Join(data_dir, "many_blocks.cswal")
+
+	// copy the many_blocks file
+	walBody, err := cmn.ReadFile(path.Join(data_dir, "many_blocks.cswal"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	walFile := writeWAL(string(walBody))
 	config.Set("cs_wal_file", walFile)
+
 	privVal := types.LoadPrivValidator(config.GetString("priv_validator_file"))
 	testPartSize = config.GetInt("block_part_size")
 
@@ -371,7 +378,7 @@ func makeBlockchainFromWAL(wal *WAL) ([]*types.Block, []*types.Commit, error) {
 		return nil, nil, err
 	}
 	if !found {
-		return nil, nil, errors.New(Fmt("WAL does not contain height %d.", 1))
+		return nil, nil, errors.New(cmn.Fmt("WAL does not contain height %d.", 1))
 	}
 	defer gr.Close()
 

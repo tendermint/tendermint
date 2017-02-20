@@ -253,7 +253,8 @@ type ConsensusState struct {
 	done chan struct{}
 }
 
-func ReplayLastBlock(config cfg.Config, state *sm.State, proxyApp proxy.AppConnConsensus, blockStore sm.BlockStore) {
+// Replay the last block through the consensus and return the AppHash after commit.
+func ReplayLastBlock(config cfg.Config, state *sm.State, proxyApp proxy.AppConnConsensus, blockStore sm.BlockStore) ([]byte, error) {
 	mempool := sm.MockMempool{}
 	cs := NewConsensusState(config, state, proxyApp, blockStore, mempool)
 
@@ -265,8 +266,10 @@ func ReplayLastBlock(config cfg.Config, state *sm.State, proxyApp proxy.AppConnC
 
 	// run through the WAL, commit new block, stop
 	cs.Start()
-	<-newBlockCh
+	<-newBlockCh // TODO: use a timeout and return err?
 	cs.Stop()
+
+	return cs.state.AppHash, nil
 }
 
 func NewConsensusState(config cfg.Config, state *sm.State, proxyAppConn proxy.AppConnConsensus, blockStore sm.BlockStore, mempool sm.Mempool) *ConsensusState {
@@ -1235,7 +1238,7 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 		cs.blockStore.SaveBlock(block, blockParts, seenCommit)
 	} else {
 		// Happens during replay if we already saved the block but didn't commit
-		log.Notice("Calling finalizeCommit on already stored block", "height", block.Height)
+		log.Info("Calling finalizeCommit on already stored block", "height", block.Height)
 	}
 
 	fail.Fail() // XXX
@@ -1250,7 +1253,7 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	// NOTE: the block.AppHash wont reflect these txs until the next block
 	err := stateCopy.ApplyBlock(eventCache, cs.proxyAppConn, block, blockParts.Header(), cs.mempool)
 	if err != nil {
-		log.Warn("Error on ApplyBlock. Did the application crash? Please restart tendermint", "error", err)
+		log.Error("Error on ApplyBlock. Did the application crash? Please restart tendermint", "error", err)
 		return
 	}
 
