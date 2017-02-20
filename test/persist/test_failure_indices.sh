@@ -6,19 +6,35 @@ export TMROOT=$HOME/.tendermint_persist
 rm -rf $TMROOT
 tendermint init
 
+TM_CMD="tendermint node --log_level=debug" # &> tendermint_${name}.log"
+DUMMY_CMD="dummy --persist $TMROOT/dummy" # &> dummy_${name}.log"
+
+
 function start_procs(){
 	name=$1
 	indexToFail=$2
 	echo "Starting persistent dummy and tendermint"
-	dummy --persist $TMROOT/dummy &> "dummy_${name}.log" &
+	if [[ "$CIRCLECI" == true ]]; then
+		$DUMMY_CMD &
+	else
+		$DUMMY_CMD &> "dummy_${name}.log" &
+	fi
 	PID_DUMMY=$!
 	if [[ "$indexToFail" == "" ]]; then
 		# run in background, dont fail
-		tendermint node --log_level=debug &> tendermint_${name}.log &
+		if [[ "$CIRCLECI" == true ]]; then
+			$TM_CMD &
+		else
+			$TM_CMD &> "tendermint_${name}.log" & 
+		fi
 		PID_TENDERMINT=$!
 	else
 		# run in foreground, fail
-		FAIL_TEST_INDEX=$indexToFail tendermint node --log_level=debug &> tendermint_${name}.log
+		if [[ "$CIRCLECI" == true ]]; then
+			FAIL_TEST_INDEX=$indexToFail $TM_CMD
+		else 
+			FAIL_TEST_INDEX=$indexToFail $TM_CMD &> "tendermint_${name}.log"
+		fi
 		PID_TENDERMINT=$!
 	fi
 }
