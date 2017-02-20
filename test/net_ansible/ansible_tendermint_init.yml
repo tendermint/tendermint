@@ -70,10 +70,10 @@
     when: local_binary is not defined
     notify: restart tendermint service
 
-  - name: Run shell command to start application
-    shell: "{{ remote_base_path }}/tendermint node --proxy_app=dummy --log_level=note $SEEDS_FLAG >> tendermint.log 2>&1 &"
-    tags: shell
+  # - name: Run shell command to start application
+  #   shell:  "nohup {{ remote_base_path }}/tendermint node --proxy_app=dummy --log_level=note $SEEDS_FLAG >> tendermint.log 2>&1 &"
+  #   tags: shell
 
   handlers:
   - name: restart tendermint service
-    shell: "{{ remote_base_path }}/tendermint node --proxy_app=dummy --log_level=note $SEEDS_FLAG >> tendermint.log 2>&1 &"
+    shell:  "nohup {{ remote_base_path }}/tendermint node --proxy_app=dummy --log_level=note $SEEDS_FLAG >> tendermint.log 2>&1 &"
