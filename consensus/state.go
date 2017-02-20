@@ -253,7 +253,7 @@ type ConsensusState struct {
 	done chan struct{}
 }
 
-// Replay the last block through the consensus and return the AppHash after commit.
+// Replay the last block through the consensus and return the AppHash from after Commit.
 func ReplayLastBlock(config cfg.Config, state *sm.State, proxyApp proxy.AppConnConsensus, blockStore sm.BlockStore) ([]byte, error) {
 	mempool := sm.MockMempool{}
 	cs := NewConsensusState(config, state, proxyApp, blockStore, mempool)

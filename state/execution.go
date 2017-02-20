@@ -364,19 +364,17 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	// TODO: check version
 
 	// replay blocks up to the latest in the blockstore
-	appHash, err = h.ReplayBlocks(appHash, blockHeight, proxyApp)
+	_, err = h.ReplayBlocks(appHash, blockHeight, proxyApp)
 	if err != nil {
 		return errors.New(Fmt("Error on replay: %v", err))
 	}
-
-	// NOTE: the h.state may now be behind the cs state
 
 	// TODO: (on restart) replay mempool
 
 	return nil
 }
 
-// Replay all blocks after blockHeight and ensure the result matches the current state.
+// Replay all blocks since appBlockHeight and ensure the result matches the current state.
 // Returns the final AppHash or an error
 func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, proxyApp proxy.AppConns) ([]byte, error) {
 
@@ -386,11 +384,11 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, proxyApp p
 
 	// First handle edge cases and constraints on the storeBlockHeight
 	if storeBlockHeight == 0 {
-		return nil, nil
+		return appHash, h.checkAppHash(appHash)
 
 	} else if storeBlockHeight < appBlockHeight {
 		// the app should never be ahead of the store (but this is under app's control)
-		return nil, ErrAppBlockHeightTooHigh{storeBlockHeight, appBlockHeight}
+		return appHash, ErrAppBlockHeightTooHigh{storeBlockHeight, appBlockHeight}
 
 	} else if storeBlockHeight < stateBlockHeight {
 		// the state should never be ahead of the store (this is under tendermint's control)
@@ -412,7 +410,7 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, proxyApp p
 
 		} else if appBlockHeight == storeBlockHeight {
 			// we're good!
-			return appHash, nil
+			return appHash, h.checkAppHash(appHash)
 		}
 
 	} else if storeBlockHeight == stateBlockHeight+1 {
@@ -473,11 +471,14 @@ func (h *Handshaker) replayBlocks(proxyApp proxy.AppConns, appBlockHeight, store
 		}
 	}
 
-	if !bytes.Equal(h.state.AppHash, appHash) {
-		return nil, errors.New(Fmt("Tendermint state.AppHash does not match AppHash after replay. Got %X, expected %X", appHash, h.state.AppHash))
-	}
+	return appHash, h.checkAppHash(appHash)
+}
 
-	return appHash, nil
+func (h *Handshaker) checkAppHash(appHash []byte) error {
+	if !bytes.Equal(h.state.AppHash, appHash) {
+		return errors.New(Fmt("Tendermint state.AppHash does not match AppHash after replay. Got %X, expected %X", appHash, h.state.AppHash))
+	}
+	return nil
 }
 
 //--------------------------------------------------------------------------------
