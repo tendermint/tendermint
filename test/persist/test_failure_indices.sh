@@ -46,29 +46,6 @@ function kill_procs(){
 }
 
 
-# wait till node is up, send txs
-function send_txs(){
-	addr="127.0.0.1:46657"
-	curl -s $addr/status > /dev/null
-	ERR=$?
-	while [ "$ERR" != 0 ]; do
-		sleep 1	
-		curl -s $addr/status > /dev/null
-		ERR=$?
-	done
-
-	# send a bunch of txs over a few blocks
-	echo "Node is up, sending txs"
-	for i in $(seq 1 5); do
-		for _ in $(seq 1 100); do
-			tx=$(head -c 8 /dev/urandom | hexdump -ve '1/1 "%.2X"')
-			curl -s "$addr/broadcast_tx_async?tx=0x$tx" &> /dev/null
-		done
-		sleep 1
-	done
-}
-
-
 failsStart=0
 fails=$(grep -r "fail.Fail" --include \*.go . | wc -l)
 failsEnd=$((fails-1))
@@ -78,12 +55,13 @@ for failIndex in $(seq $failsStart $failsEnd); do
 	echo "* Test FailIndex $failIndex"
 	# test failure at failIndex
 
-	send_txs &
+	bash ./test/utils/txs.sh "localhost:46657" &
 	start_procs 1 "$failIndex"
 
 	# tendermint should fail when it hits the fail index
 	kill -9 "$PID_DUMMY"
 	wait "$PID_DUMMY"
+	wait "$PID_TENDERMINT"
 
 	start_procs 2
 
