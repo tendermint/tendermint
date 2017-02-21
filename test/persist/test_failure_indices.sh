@@ -61,6 +61,7 @@ for failIndex in $(seq $failsStart $failsEnd); do
 	# tendermint should fail when it hits the fail index
 	kill -9 "$PID_DUMMY"
 	wait "$PID_DUMMY"
+	wait "$PID_TENDERMINT"
 
 	start_procs 2
 
