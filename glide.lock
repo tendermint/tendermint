@@ -137,4 +137,14 @@ imports:
   - stats
   - tap
   - transport
-testImports: []
+testImports:
+- name: github.com/tendermint/merkleeyes
+  version: 87b0a111a716f1495f30ce58bd469e36ac220e09
+  subpackages:
+  - app
+- name: github.com/stretchr/testify
+  version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
+  subpackages:
+  - assert
+  - require
+

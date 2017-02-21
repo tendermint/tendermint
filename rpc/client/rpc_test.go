@@ -1,32 +1,33 @@
-package rpctest
+package client_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
-	// "github.com/stretchr/testify/require"
-	// merkle "github.com/tendermint/go-merkle"
-	// "github.com/tendermint/tendermint/types"
+	"github.com/stretchr/testify/require"
+	merkle "github.com/tendermint/go-merkle"
+	rpctest "github.com/tendermint/tendermint/rpc/test"
+	"github.com/tendermint/tendermint/types"
 )
 
 // Make sure status is correct (we connect properly)
 func TestStatus(t *testing.T) {
-	c := GetClient()
-	chainID := GetConfig().GetString("chain_id")
+	c := rpctest.GetClient()
+	chainID := rpctest.GetConfig().GetString("chain_id")
 	status, err := c.Status()
 	if assert.Nil(t, err) {
 		assert.Equal(t, chainID, status.NodeInfo.Network)
 	}
 }
 
-/*
 // Make some app checks
 func TestAppCalls(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	c := GetClient()
+	c := rpctest.GetClient()
 	_, err := c.Block(1)
 	assert.NotNil(err) // no block yet
-	k, v, tx := TestTxKV()
+	k, v, tx := MakeTxKV()
 	_, err = c.BroadcastTxCommit(tx)
 	require.Nil(err)
 	// wait before querying
@@ -72,7 +73,7 @@ func TestAppCalls(t *testing.T) {
 // run most calls just to make sure no syntax errors
 func TestNoErrors(t *testing.T) {
 	assert := assert.New(t)
-	c := GetClient()
+	c := rpctest.GetClient()
 	_, err := c.NetInfo()
 	assert.Nil(err)
 	_, err = c.BlockchainInfo(0, 4)
@@ -85,19 +86,20 @@ func TestNoErrors(t *testing.T) {
 	// assert.Nil(err)
 	gen, err := c.Genesis()
 	if assert.Nil(err) {
-		assert.Equal(GetConfig().GetString("chain_id"), gen.Genesis.ChainID)
+		chainID := rpctest.GetConfig().GetString("chain_id")
+		assert.Equal(chainID, gen.Genesis.ChainID)
 	}
 }
 
 func TestSubscriptions(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	c := GetClient()
+	c := rpctest.GetClient()
 	err := c.StartWebsocket()
 	require.Nil(err)
 	defer c.StopWebsocket()
 
 	// subscribe to a transaction event
-	_, _, tx := TestTxKV()
+	_, _, tx := MakeTxKV()
 	// this causes a panic in tendermint core!!!
 	eventType := types.EventStringTx(types.Tx(tx))
 	c.Subscribe(eventType)
@@ -128,4 +130,3 @@ func TestSubscriptions(t *testing.T) {
 	// now make sure the event arrived
 	assert.Equal(1, read)
 }
-*/

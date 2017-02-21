@@ -2,8 +2,12 @@ package rpctest
 
 import (
 	"fmt"
+	"testing"
+	"time"
 
+	"github.com/stretchr/testify/require"
 	logger "github.com/tendermint/go-logger"
+	wire "github.com/tendermint/go-wire"
 
 	abci "github.com/tendermint/abci/types"
 	cfg "github.com/tendermint/go-config"
@@ -12,6 +16,7 @@ import (
 	nm "github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/proxy"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	core_grpc "github.com/tendermint/tendermint/rpc/grpc"
 	"github.com/tendermint/tendermint/types"
 )
@@ -89,3 +94,69 @@ func NewTendermint(app abci.Application) *nm.Node {
 	node.Start()
 	return node
 }
+
+//--------------------------------------------------------------------------------
+// Utilities for testing the websocket service
+
+// wait for an event; do things that might trigger events, and check them when they are received
+// the check function takes an event id and the byte slice read off the ws
+func waitForEvent(t *testing.T, wsc *client.WSClient, eventid string, dieOnTimeout bool, f func(), check func(string, interface{}) error) {
+	// go routine to wait for webscoket msg
+	goodCh := make(chan interface{})
+	errCh := make(chan error)
+
+	// Read message
+	go func() {
+		var err error
+	LOOP:
+		for {
+			select {
+			case r := <-wsc.ResultsCh:
+				result := new(ctypes.TMResult)
+				wire.ReadJSONPtr(result, r, &err)
+				if err != nil {
+					errCh <- err
+					break LOOP
+				}
+				event, ok := (*result).(*ctypes.ResultEvent)
+				if ok && event.Name == eventid {
+					goodCh <- event.Data
+					break LOOP
+				}
+			case err := <-wsc.ErrorsCh:
+				errCh <- err
+				break LOOP
+			case <-wsc.Quit:
+				break LOOP
+			}
+		}
+	}()
+
+	// do stuff (transactions)
+	f()
+
+	// wait for an event or timeout
+	timeout := time.NewTimer(10 * time.Second)
+	select {
+	case <-timeout.C:
+		if dieOnTimeout {
+			wsc.Stop()
+			require.True(t, false, "%s event was not received in time", eventid)
+		}
+		// else that's great, we didn't hear the event
+		// and we shouldn't have
+	case eventData := <-goodCh:
+		if dieOnTimeout {
+			// message was received and expected
+			// run the check
+			require.Nil(t, check(eventid, eventData))
+		} else {
+			wsc.Stop()
+			require.True(t, false, "%s event was not expected", eventid)
+		}
+	case err := <-errCh:
+		panic(err) // Show the stack trace.
+	}
+}
+
+//--------------------------------------------------------------------------------
