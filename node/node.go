@@ -69,7 +69,7 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreato
 
 	// Create the proxyApp, which manages connections (consensus, mempool, query)
 	// and sync tendermint and the app by replaying any necessary blocks
-	proxyApp := proxy.NewAppConns(config, clientCreator, sm.NewHandshaker(config, state, blockStore, consensus.ReplayLastBlock))
+	proxyApp := proxy.NewAppConns(config, clientCreator, consensus.NewHandshaker(config, state, blockStore))
 	if _, err := proxyApp.Start(); err != nil {
 		cmn.Exit(cmn.Fmt("Error starting proxy app connections: %v", err))
 	}

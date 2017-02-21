@@ -253,25 +253,6 @@ type ConsensusState struct {
 	done chan struct{}
 }
 
-// Replay the last block through the consensus and return the AppHash from after Commit.
-func ReplayLastBlock(config cfg.Config, state *sm.State, proxyApp proxy.AppConnConsensus, blockStore sm.BlockStore) ([]byte, error) {
-	mempool := sm.MockMempool{}
-	cs := NewConsensusState(config, state, proxyApp, blockStore, mempool)
-
-	evsw := types.NewEventSwitch()
-	evsw.Start()
-	defer evsw.Stop()
-	cs.SetEventSwitch(evsw)
-	newBlockCh := subscribeToEvent(evsw, "consensus-replay", types.EventStringNewBlock(), 1)
-
-	// run through the WAL, commit new block, stop
-	cs.Start()
-	<-newBlockCh // TODO: use a timeout and return err?
-	cs.Stop()
-
-	return cs.state.AppHash, nil
-}
-
 func NewConsensusState(config cfg.Config, state *sm.State, proxyAppConn proxy.AppConnConsensus, blockStore sm.BlockStore, mempool sm.Mempool) *ConsensusState {
 	cs := &ConsensusState{
 		config:           config,
@@ -624,11 +605,6 @@ func (cs *ConsensusState) newStep() {
 //-----------------------------------------
 // the main go routines
 
-// a nice idea but probably more trouble than its worth
-func (cs *ConsensusState) stopTimer() {
-	cs.timeoutTicker.Stop()
-}
-
 // receiveRoutine handles messages which may cause state transitions.
 // it's argument (n) is the number of messages to process before exiting - use 0 to run forever
 // It keeps the RoundState and is the only thing that updates it.
@@ -767,7 +743,6 @@ func (cs *ConsensusState) enterNewRound(height int, round int) {
 	if now := time.Now(); cs.StartTime.After(now) {
 		log.Warn("Need to set a buffer and log.Warn() here for sanity.", "startTime", cs.StartTime, "now", now)
 	}
-	// cs.stopTimer()
 
 	log.Notice(Fmt("enterNewRound(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
@@ -947,8 +922,6 @@ func (cs *ConsensusState) enterPrevote(height int, round int) {
 		// TODO: catchup event?
 	}
 
-	// cs.stopTimer()
-
 	log.Info(Fmt("enterPrevote(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
 	// Sign and broadcast vote as necessary
@@ -1021,8 +994,6 @@ func (cs *ConsensusState) enterPrecommit(height int, round int) {
 		log.Debug(Fmt("enterPrecommit(%v/%v): Invalid args. Current step: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 		return
 	}
-
-	// cs.stopTimer()
 
 	log.Info(Fmt("enterPrecommit(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 

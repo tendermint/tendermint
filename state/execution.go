@@ -1,14 +1,12 @@
 package state
 
 import (
-	"bytes"
 	"errors"
 
 	"github.com/ebuchman/fail-test"
 
 	abci "github.com/tendermint/abci/types"
 	. "github.com/tendermint/go-common"
-	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
@@ -272,7 +270,7 @@ func (s *State) CommitStateUpdateMempool(proxyAppConn proxy.AppConnConsensus, bl
 
 // Apply and commit a block, but without all the state validation.
 // Returns the application root hash (result of abci.Commit)
-func applyBlock(appConnConsensus proxy.AppConnConsensus, block *types.Block) ([]byte, error) {
+func ApplyBlock(appConnConsensus proxy.AppConnConsensus, block *types.Block) ([]byte, error) {
 	var eventCache types.Fireable // nil
 	_, err := execBlockOnProxyApp(eventCache, appConnConsensus, block)
 	if err != nil {
@@ -290,6 +288,9 @@ func applyBlock(appConnConsensus proxy.AppConnConsensus, block *types.Block) ([]
 	}
 	return res.Data, nil
 }
+
+//------------------------------------------------------
+// blockchain services types
 
 // Updates to the mempool need to be synchronized with committing a block
 // so apps can reset their transient state on Commit
@@ -311,9 +312,6 @@ func (m MockMempool) CheckTx(tx types.Tx, cb func(*abci.Response)) error { retur
 func (m MockMempool) Reap(n int) types.Txs                               { return types.Txs{} }
 func (m MockMempool) Update(height int, txs types.Txs)                   {}
 
-//----------------------------------------------------------------
-// Handshake with app to sync to latest state of core by replaying blocks
-
 // TODO: Should we move blockchain/store.go to its own package?
 type BlockStore interface {
 	Height() int
@@ -326,175 +324,4 @@ type BlockStore interface {
 
 	LoadBlockCommit(height int) *types.Commit
 	LoadSeenCommit(height int) *types.Commit
-}
-
-// returns the apphash from Commit
-type blockReplayFunc func(cfg.Config, *State, proxy.AppConnConsensus, BlockStore) ([]byte, error)
-
-type Handshaker struct {
-	config          cfg.Config
-	state           *State
-	store           BlockStore
-	replayLastBlock blockReplayFunc
-
-	nBlocks int // number of blocks applied to the state
-}
-
-func NewHandshaker(config cfg.Config, state *State, store BlockStore, f blockReplayFunc) *Handshaker {
-	return &Handshaker{config, state, store, f, 0}
-}
-
-func (h *Handshaker) NBlocks() int {
-	return h.nBlocks
-}
-
-// TODO: retry the handshake/replay if it fails ?
-func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
-	// handshake is done via info request on the query conn
-	res, err := proxyApp.Query().InfoSync()
-	if err != nil {
-		return errors.New(Fmt("Error calling Info: %v", err))
-	}
-
-	blockHeight := int(res.LastBlockHeight) // XXX: beware overflow
-	appHash := res.LastBlockAppHash
-
-	log.Notice("ABCI Handshake", "appHeight", blockHeight, "appHash", appHash)
-
-	// TODO: check version
-
-	// replay blocks up to the latest in the blockstore
-	_, err = h.ReplayBlocks(appHash, blockHeight, proxyApp)
-	if err != nil {
-		return errors.New(Fmt("Error on replay: %v", err))
-	}
-
-	// TODO: (on restart) replay mempool
-
-	return nil
-}
-
-// Replay all blocks since appBlockHeight and ensure the result matches the current state.
-// Returns the final AppHash or an error
-func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, proxyApp proxy.AppConns) ([]byte, error) {
-
-	storeBlockHeight := h.store.Height()
-	stateBlockHeight := h.state.LastBlockHeight
-	log.Notice("ABCI Replay Blocks", "appHeight", appBlockHeight, "storeHeight", storeBlockHeight, "stateHeight", stateBlockHeight)
-
-	// First handle edge cases and constraints on the storeBlockHeight
-	if storeBlockHeight == 0 {
-		return appHash, h.checkAppHash(appHash)
-
-	} else if storeBlockHeight < appBlockHeight {
-		// the app should never be ahead of the store (but this is under app's control)
-		return appHash, ErrAppBlockHeightTooHigh{storeBlockHeight, appBlockHeight}
-
-	} else if storeBlockHeight < stateBlockHeight {
-		// the state should never be ahead of the store (this is under tendermint's control)
-		PanicSanity(Fmt("StateBlockHeight (%d) > StoreBlockHeight (%d)", stateBlockHeight, storeBlockHeight))
-
-	} else if storeBlockHeight > stateBlockHeight+1 {
-		// store should be at most one ahead of the state (this is under tendermint's control)
-		PanicSanity(Fmt("StoreBlockHeight (%d) > StateBlockHeight + 1 (%d)", storeBlockHeight, stateBlockHeight+1))
-	}
-
-	// Now either store is equal to state, or one ahead.
-	// For each, consider all cases of where the app could be, given app <= store
-	if storeBlockHeight == stateBlockHeight {
-		// Tendermint ran Commit and saved the state.
-		// Either the app is asking for replay, or we're all synced up.
-		if appBlockHeight < storeBlockHeight {
-			// the app is behind, so replay blocks, but no need to go through WAL (state is already synced to store)
-			return h.replayBlocks(proxyApp, appBlockHeight, storeBlockHeight, false)
-
-		} else if appBlockHeight == storeBlockHeight {
-			// we're good!
-			return appHash, h.checkAppHash(appHash)
-		}
-
-	} else if storeBlockHeight == stateBlockHeight+1 {
-		// We saved the block in the store but haven't updated the state,
-		// so we'll need to replay a block using the WAL.
-		if appBlockHeight < stateBlockHeight {
-			// the app is further behind than it should be, so replay blocks
-			// but leave the last block to go through the WAL
-			return h.replayBlocks(proxyApp, appBlockHeight, storeBlockHeight, true)
-
-		} else if appBlockHeight == stateBlockHeight {
-			// We haven't run Commit (both the state and app are one block behind),
-			// so run through consensus with the real app
-			log.Info("Replay last block using real app")
-			return h.replayLastBlock(h.config, h.state, proxyApp.Consensus(), h.store)
-
-		} else if appBlockHeight == storeBlockHeight {
-			// We ran Commit, but didn't save the state, so run through consensus with mock app
-			mockApp := newMockProxyApp(appHash)
-			log.Info("Replay last block using mock app")
-			return h.replayLastBlock(h.config, h.state, mockApp, h.store)
-		}
-
-	}
-
-	PanicSanity("Should never happen")
-	return nil, nil
-}
-
-func (h *Handshaker) replayBlocks(proxyApp proxy.AppConns, appBlockHeight, storeBlockHeight int, useReplayFunc bool) ([]byte, error) {
-	// App is further behind than it should be, so we need to replay blocks.
-	// We replay all blocks from appBlockHeight+1 to storeBlockHeight-1,
-	// and let the final block be replayed through ReplayBlocks.
-	// Note that we don't have an old version of the state,
-	// so we by-pass state validation using applyBlock here.
-
-	var appHash []byte
-	var err error
-	finalBlock := storeBlockHeight
-	if useReplayFunc {
-		finalBlock -= 1
-	}
-	for i := appBlockHeight + 1; i <= finalBlock; i++ {
-		log.Info("Applying block", "height", i)
-		h.nBlocks += 1
-		block := h.store.LoadBlock(i)
-		appHash, err = applyBlock(proxyApp.Consensus(), block)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if useReplayFunc {
-		// sync the final block
-		appHash, err = h.ReplayBlocks(appHash, finalBlock, proxyApp)
-		if err != nil {
-			return appHash, err
-		}
-	}
-
-	return appHash, h.checkAppHash(appHash)
-}
-
-func (h *Handshaker) checkAppHash(appHash []byte) error {
-	if !bytes.Equal(h.state.AppHash, appHash) {
-		return errors.New(Fmt("Tendermint state.AppHash does not match AppHash after replay. Got %X, expected %X", appHash, h.state.AppHash))
-	}
-	return nil
-}
-
-//--------------------------------------------------------------------------------
-
-func newMockProxyApp(appHash []byte) proxy.AppConnConsensus {
-	clientCreator := proxy.NewLocalClientCreator(&mockProxyApp{appHash: appHash})
-	cli, _ := clientCreator.NewABCIClient()
-	return proxy.NewAppConnConsensus(cli)
-}
-
-type mockProxyApp struct {
-	abci.BaseApplication
-
-	appHash []byte
-}
-
-func (mock *mockProxyApp) Commit() abci.Result {
-	return abci.NewResultOK(mock.appHash, "")
 }
