@@ -365,19 +365,13 @@ func makeRoundStepMessages(rs *RoundState) (nrsMsg *NewRoundStepMessage, csMsg *
 }
 
 func (conR *ConsensusReactor) sendNewRoundStepMessages(peer *p2p.Peer) {
-	log := log.New("peer", peer)
-
 	rs := conR.conS.GetRoundState()
 	nrsMsg, csMsg := makeRoundStepMessages(rs)
 	if nrsMsg != nil {
-		if !peer.Send(StateChannel, struct{ ConsensusMessage }{nrsMsg}) {
-			log.Warn("Failed to send NewRoundStepMessage to peer")
-		}
+		peer.Send(StateChannel, struct{ ConsensusMessage }{nrsMsg})
 	}
 	if csMsg != nil {
-		if !peer.Send(StateChannel, struct{ ConsensusMessage }{csMsg}) {
-			log.Warn("Failed to send RoundStepCommit to peer")
-		}
+		peer.Send(StateChannel, struct{ ConsensusMessage }{csMsg})
 	}
 }
 
@@ -406,8 +400,6 @@ OUTER_LOOP:
 				}
 				if peer.Send(DataChannel, struct{ ConsensusMessage }{msg}) {
 					ps.SetHasProposalBlockPart(prs.Height, prs.Round, index)
-				} else {
-					log.Warn("Failed to send BlockPartMessage to peer")
 				}
 				continue OUTER_LOOP
 			}
@@ -445,8 +437,6 @@ OUTER_LOOP:
 				}
 				if peer.Send(DataChannel, struct{ ConsensusMessage }{msg}) {
 					ps.SetHasProposalBlockPart(prs.Height, prs.Round, index)
-				} else {
-					log.Warn("Failed to send BlockPartMessage to peer")
 				}
 				continue OUTER_LOOP
 			} else {
@@ -475,8 +465,6 @@ OUTER_LOOP:
 				msg := &ProposalMessage{Proposal: rs.Proposal}
 				if peer.Send(DataChannel, struct{ ConsensusMessage }{msg}) {
 					ps.SetHasProposal(rs.Proposal)
-				} else {
-					log.Warn("Failed to send ProposalMessage to peer")
 				}
 			}
 			// ProposalPOL: lets peer know which POL votes we have so far.
@@ -489,9 +477,7 @@ OUTER_LOOP:
 					ProposalPOLRound: rs.Proposal.POLRound,
 					ProposalPOL:      rs.Votes.Prevotes(rs.Proposal.POLRound).BitArray(),
 				}
-				if !peer.Send(DataChannel, struct{ ConsensusMessage }{msg}) {
-					log.Warn("Failed to send ProposalPOLMessage to peer")
-				}
+				peer.Send(DataChannel, struct{ ConsensusMessage }{msg})
 			}
 			continue OUTER_LOOP
 		}
