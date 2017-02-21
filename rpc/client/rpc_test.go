@@ -1,6 +1,7 @@
 package client_test
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -19,6 +20,17 @@ func TestStatus(t *testing.T) {
 	if assert.Nil(t, err) {
 		assert.Equal(t, chainID, status.NodeInfo.Network)
 	}
+}
+
+// Make sure info is correct (we connect properly)
+func TestInfo(t *testing.T) {
+	c := rpctest.GetClient()
+	status, err := c.Status()
+	require.Nil(t, err)
+	info, err := c.ABCIInfo()
+	require.Nil(t, err)
+	assert.EqualValues(t, status.LatestBlockHeight, info.Response.LastBlockHeight)
+	assert.True(t, strings.HasPrefix(info.Response.Data, "size:"))
 }
 
 // Make some app checks
