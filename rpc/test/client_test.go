@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/abci/types"
 	. "github.com/tendermint/go-common"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -25,18 +27,14 @@ import (
 func TestURIStatus(t *testing.T) {
 	tmResult := new(ctypes.TMResult)
 	_, err := GetURIClient().Call("status", map[string]interface{}{}, tmResult)
-	if err != nil {
-		panic(err)
-	}
+	require.Nil(t, err)
 	testStatus(t, tmResult)
 }
 
 func TestJSONStatus(t *testing.T) {
 	tmResult := new(ctypes.TMResult)
 	_, err := GetJSONClient().Call("status", []interface{}{}, tmResult)
-	if err != nil {
-		panic(err)
-	}
+	require.Nil(t, err)
 	testStatus(t, tmResult)
 }
 
@@ -45,23 +43,18 @@ func testStatus(t *testing.T, statusI interface{}) {
 
 	tmRes := statusI.(*ctypes.TMResult)
 	status := (*tmRes).(*ctypes.ResultStatus)
-	if status.NodeInfo.Network != chainID {
-		panic(Fmt("ChainID mismatch: got %s expected %s",
-			status.NodeInfo.Network, chainID))
-	}
+	assert.Equal(t, chainID, status.NodeInfo.Network)
 }
 
 //--------------------------------------------------------------------------------
 // broadcast tx sync
 
 // random bytes (excluding byte('='))
-func randBytes() []byte {
+func randBytes(t *testing.T) []byte {
 	n := rand.Intn(10) + 2
 	buf := make([]byte, n)
 	_, err := crand.Read(buf)
-	if err != nil {
-		panic(err)
-	}
+	require.Nil(t, err)
 	return bytes.Replace(buf, []byte("="), []byte{100}, -1)
 }
 
@@ -69,11 +62,9 @@ func TestURIBroadcastTxSync(t *testing.T) {
 	config.Set("block_size", 0)
 	defer config.Set("block_size", -1)
 	tmResult := new(ctypes.TMResult)
-	tx := randBytes()
+	tx := randBytes(t)
 	_, err := GetURIClient().Call("broadcast_tx_sync", map[string]interface{}{"tx": tx}, tmResult)
-	if err != nil {
-		panic(err)
-	}
+	require.Nil(t, err)
 	testBroadcastTxSync(t, tmResult, tx)
 }
 
@@ -81,84 +72,64 @@ func TestJSONBroadcastTxSync(t *testing.T) {
 	config.Set("block_size", 0)
 	defer config.Set("block_size", -1)
 	tmResult := new(ctypes.TMResult)
-	tx := randBytes()
+	tx := randBytes(t)
 	_, err := GetJSONClient().Call("broadcast_tx_sync", []interface{}{tx}, tmResult)
-	if err != nil {
-		panic(err)
-	}
+	require.Nil(t, err)
 	testBroadcastTxSync(t, tmResult, tx)
 }
 
 func testBroadcastTxSync(t *testing.T, resI interface{}, tx []byte) {
 	tmRes := resI.(*ctypes.TMResult)
 	res := (*tmRes).(*ctypes.ResultBroadcastTx)
-	if res.Code != abci.CodeType_OK {
-		panic(Fmt("BroadcastTxSync got non-zero exit code: %v. %X; %s", res.Code, res.Data, res.Log))
-	}
+	require.Equal(t, abci.CodeType_OK, res.Code)
 	mem := node.MempoolReactor().Mempool
-	if mem.Size() != 1 {
-		panic(Fmt("Mempool size should have been 1. Got %d", mem.Size()))
-	}
-
+	require.Equal(t, 1, mem.Size())
 	txs := mem.Reap(1)
-	if !bytes.Equal(txs[0], tx) {
-		panic(Fmt("Tx in mempool does not match test tx. Got %X, expected %X", txs[0], tx))
-	}
-
+	require.EqualValues(t, tx, txs[0])
 	mem.Flush()
 }
 
 //--------------------------------------------------------------------------------
 // query
 
-func testTxKV() ([]byte, []byte, []byte) {
-	k := randBytes()
-	v := randBytes()
+func testTxKV(t *testing.T) ([]byte, []byte, []byte) {
+	k := randBytes(t)
+	v := randBytes(t)
 	return k, v, []byte(Fmt("%s=%s", k, v))
 }
 
-func sendTx() ([]byte, []byte) {
+func sendTx(t *testing.T) ([]byte, []byte) {
 	tmResult := new(ctypes.TMResult)
-	k, v, tx := testTxKV()
+	k, v, tx := testTxKV(t)
 	_, err := GetJSONClient().Call("broadcast_tx_commit", []interface{}{tx}, tmResult)
-	if err != nil {
-		panic(err)
-	}
+	require.Nil(t, err)
 	return k, v
 }
 
 func TestURIABCIQuery(t *testing.T) {
-	k, v := sendTx()
+	k, v := sendTx(t)
 	time.Sleep(time.Second)
 	tmResult := new(ctypes.TMResult)
 	_, err := GetURIClient().Call("abci_query", map[string]interface{}{"path": "", "data": k, "prove": false}, tmResult)
-	if err != nil {
-		panic(err)
-	}
+	require.Nil(t, err)
 	testABCIQuery(t, tmResult, v)
 }
 
 func TestJSONABCIQuery(t *testing.T) {
-	k, v := sendTx()
+	k, v := sendTx(t)
 	tmResult := new(ctypes.TMResult)
 	_, err := GetJSONClient().Call("abci_query", []interface{}{"", k, false}, tmResult)
-	if err != nil {
-		panic(err)
-	}
+	require.Nil(t, err)
 	testABCIQuery(t, tmResult, v)
 }
 
 func testABCIQuery(t *testing.T, statusI interface{}, value []byte) {
 	tmRes := statusI.(*ctypes.TMResult)
 	resQuery := (*tmRes).(*ctypes.ResultABCIQuery)
-	if !resQuery.Response.Code.IsOK() {
-		panic(Fmt("Query returned an err: %v", resQuery))
-	}
+	require.EqualValues(t, 0, resQuery.Response.Code)
 
 	// XXX: specific to value returned by the dummy
-	if len(resQuery.Response.Value) == 0 {
-		panic(Fmt("Query error. Found no value"))
-	}
+	require.NotEqual(t, 0, len(resQuery.Response.Value))
 }
 
 //--------------------------------------------------------------------------------
@@ -166,40 +137,30 @@ func testABCIQuery(t *testing.T, statusI interface{}, value []byte) {
 
 func TestURIBroadcastTxCommit(t *testing.T) {
 	tmResult := new(ctypes.TMResult)
-	tx := randBytes()
+	tx := randBytes(t)
 	_, err := GetURIClient().Call("broadcast_tx_commit", map[string]interface{}{"tx": tx}, tmResult)
-	if err != nil {
-		panic(err)
-	}
+	require.Nil(t, err)
 	testBroadcastTxCommit(t, tmResult, tx)
 }
 
 func TestJSONBroadcastTxCommit(t *testing.T) {
 	tmResult := new(ctypes.TMResult)
-	tx := randBytes()
+	tx := randBytes(t)
 	_, err := GetJSONClient().Call("broadcast_tx_commit", []interface{}{tx}, tmResult)
-	if err != nil {
-		panic(err)
-	}
+	require.Nil(t, err)
 	testBroadcastTxCommit(t, tmResult, tx)
 }
 
 func testBroadcastTxCommit(t *testing.T, resI interface{}, tx []byte) {
+	require := require.New(t)
 	tmRes := resI.(*ctypes.TMResult)
 	res := (*tmRes).(*ctypes.ResultBroadcastTxCommit)
 	checkTx := res.CheckTx
-	if checkTx.Code != abci.CodeType_OK {
-		panic(Fmt("BroadcastTxCommit got non-zero exit code from CheckTx: %v. %X; %s", checkTx.Code, checkTx.Data, checkTx.Log))
-	}
+	require.Equal(abci.CodeType_OK, checkTx.Code)
 	deliverTx := res.DeliverTx
-	if deliverTx.Code != abci.CodeType_OK {
-		panic(Fmt("BroadcastTxCommit got non-zero exit code from CheckTx: %v. %X; %s", deliverTx.Code, deliverTx.Data, deliverTx.Log))
-	}
+	require.Equal(abci.CodeType_OK, deliverTx.Code)
 	mem := node.MempoolReactor().Mempool
-	if mem.Size() != 0 {
-		panic(Fmt("Mempool size should have been 0. Got %d", mem.Size()))
-	}
-
+	require.Equal(0, mem.Size())
 	// TODO: find tx in block
 }
 
@@ -218,9 +179,10 @@ func TestWSConnect(t *testing.T) {
 func TestWSNewBlock(t *testing.T) {
 	wsc := GetWSClient()
 	eid := types.EventStringNewBlock()
-	subscribe(t, wsc, eid)
+	require.Nil(t, wsc.Subscribe(eid))
+
 	defer func() {
-		unsubscribe(t, wsc, eid)
+		require.Nil(t, wsc.Unsubscribe(eid))
 		wsc.Stop()
 	}()
 	waitForEvent(t, wsc, eid, true, func() {}, func(eid string, b interface{}) error {
@@ -236,9 +198,10 @@ func TestWSBlockchainGrowth(t *testing.T) {
 	}
 	wsc := GetWSClient()
 	eid := types.EventStringNewBlock()
-	subscribe(t, wsc, eid)
+	require.Nil(t, wsc.Subscribe(eid))
+
 	defer func() {
-		unsubscribe(t, wsc, eid)
+		require.Nil(t, wsc.Unsubscribe(eid))
 		wsc.Stop()
 	}()
 
@@ -262,35 +225,29 @@ func TestWSBlockchainGrowth(t *testing.T) {
 }
 
 func TestWSTxEvent(t *testing.T) {
+	require := require.New(t)
 	wsc := GetWSClient()
-	tx := randBytes()
+	tx := randBytes(t)
 
 	// listen for the tx I am about to submit
 	eid := types.EventStringTx(types.Tx(tx))
-	subscribe(t, wsc, eid)
+	require.Nil(wsc.Subscribe(eid))
+
 	defer func() {
-		unsubscribe(t, wsc, eid)
+		require.Nil(wsc.Unsubscribe(eid))
 		wsc.Stop()
 	}()
 
 	// send an tx
 	tmResult := new(ctypes.TMResult)
 	_, err := GetJSONClient().Call("broadcast_tx_sync", []interface{}{tx}, tmResult)
-	if err != nil {
-		t.Fatal("Error submitting event")
-	}
+	require.Nil(err)
 
 	waitForEvent(t, wsc, eid, true, func() {}, func(eid string, b interface{}) error {
 		evt, ok := b.(types.EventDataTx)
-		if !ok {
-			t.Fatal("Got wrong event type", b)
-		}
-		if bytes.Compare([]byte(evt.Tx), tx) != 0 {
-			t.Error("Event returned different tx")
-		}
-		if evt.Code != abci.CodeType_OK {
-			t.Error("Event returned tx error code", evt.Code)
-		}
+		require.True(ok, "Got wrong event type: %#v", b)
+		require.Equal(tx, []byte(evt.Tx), "Returned different tx")
+		require.Equal(abci.CodeType_OK, evt.Code)
 		return nil
 	})
 }
@@ -345,9 +302,7 @@ func TestURIUnsafeSetConfig(t *testing.T) {
 			"key":   testCase[1],
 			"value": testCase[2],
 		}, tmResult)
-		if err != nil {
-			panic(err)
-		}
+		require.Nil(t, err)
 	}
 	testUnsafeSetConfig(t)
 }
@@ -356,26 +311,19 @@ func TestJSONUnsafeSetConfig(t *testing.T) {
 	for _, testCase := range testCasesUnsafeSetConfig {
 		tmResult := new(ctypes.TMResult)
 		_, err := GetJSONClient().Call("unsafe_set_config", []interface{}{testCase[0], testCase[1], testCase[2]}, tmResult)
-		if err != nil {
-			panic(err)
-		}
+		require.Nil(t, err)
 	}
 	testUnsafeSetConfig(t)
 }
 
 func testUnsafeSetConfig(t *testing.T) {
+	require := require.New(t)
 	s := config.GetString("key1")
-	if s != stringVal {
-		panic(Fmt("got %v, expected %v", s, stringVal))
-	}
+	require.Equal(stringVal, s)
 
 	i := config.GetInt("key2")
-	if i != intVal {
-		panic(Fmt("got %v, expected %v", i, intVal))
-	}
+	require.Equal(intVal, i)
 
 	b := config.GetBool("key3")
-	if b != boolVal {
-		panic(Fmt("got %v, expected %v", b, boolVal))
-	}
+	require.Equal(boolVal, b)
 }

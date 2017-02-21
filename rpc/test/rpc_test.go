@@ -12,9 +12,10 @@ import (
 // Make sure status is correct (we connect properly)
 func TestStatus(t *testing.T) {
 	c := GetClient()
+	chainID := GetConfig().GetString("chain_id")
 	status, err := c.Status()
 	if assert.Nil(t, err) {
-		assert.Equal(t, GetConfig().GetString("chain_id"), status.NodeInfo.Network)
+		assert.Equal(t, chainID, status.NodeInfo.Network)
 	}
 }
 

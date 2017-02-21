@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-wire"
 
@@ -76,18 +77,15 @@ func newWSClient(t *testing.T) *client.WSClient {
 	return wsc
 }
 */
+
 // subscribe to an event
 func subscribe(t *testing.T, wsc *client.WSClient, eventid string) {
-	if err := wsc.Subscribe(eventid); err != nil {
-		panic(err)
-	}
+	require.Nil(t, wsc.Subscribe(eventid))
 }
 
 // unsubscribe from an event
 func unsubscribe(t *testing.T, wsc *client.WSClient, eventid string) {
-	if err := wsc.Unsubscribe(eventid); err != nil {
-		panic(err)
-	}
+	require.Nil(t, wsc.Unsubscribe(eventid))
 }
 
 // wait for an event; do things that might trigger events, and check them when they are received
@@ -141,16 +139,13 @@ func waitForEvent(t *testing.T, wsc *client.WSClient, eventid string, dieOnTimeo
 		if dieOnTimeout {
 			// message was received and expected
 			// run the check
-			if err := check(eventid, eventData); err != nil {
-				panic(err) // Show the stack trace.
-			}
+			require.Nil(t, check(eventid, eventData))
 		} else {
 			wsc.Stop()
 			panic(Fmt("%s event was not expected", eventid))
 		}
 	case err := <-errCh:
 		panic(err) // Show the stack trace.
-
 	}
 }
 
