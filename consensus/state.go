@@ -224,8 +224,8 @@ type ConsensusState struct {
 
 	config       cfg.Config
 	proxyAppConn proxy.AppConnConsensus
-	blockStore   sm.BlockStore
-	mempool      sm.Mempool
+	blockStore   types.BlockStore
+	mempool      types.Mempool
 
 	privValidator PrivValidator // for signing votes
 
@@ -253,7 +253,7 @@ type ConsensusState struct {
 	done chan struct{}
 }
 
-func NewConsensusState(config cfg.Config, state *sm.State, proxyAppConn proxy.AppConnConsensus, blockStore sm.BlockStore, mempool sm.Mempool) *ConsensusState {
+func NewConsensusState(config cfg.Config, state *sm.State, proxyAppConn proxy.AppConnConsensus, blockStore types.BlockStore, mempool types.Mempool) *ConsensusState {
 	cs := &ConsensusState{
 		config:           config,
 		proxyAppConn:     proxyAppConn,

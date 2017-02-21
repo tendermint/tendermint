@@ -254,7 +254,7 @@ func testReplayCrashBeforeWriteVote(t *testing.T, thisCase *testCase, lineNum in
 
 var (
 	NUM_BLOCKS = 6 // number of blocks in the test_data/many_blocks.cswal
-	mempool    = sm.MockMempool{}
+	mempool    = types.MockMempool{}
 
 	testPartSize int
 )

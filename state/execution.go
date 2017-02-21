@@ -223,7 +223,7 @@ func (s *State) validateBlock(block *types.Block) error {
 
 // Execute and commit block against app, save block and state
 func (s *State) ApplyBlock(eventCache types.Fireable, proxyAppConn proxy.AppConnConsensus,
-	block *types.Block, partsHeader types.PartSetHeader, mempool Mempool) error {
+	block *types.Block, partsHeader types.PartSetHeader, mempool types.Mempool) error {
 
 	// Run the block on the State:
 	// + update validator sets
@@ -244,7 +244,7 @@ func (s *State) ApplyBlock(eventCache types.Fireable, proxyAppConn proxy.AppConn
 // mempool must be locked during commit and update
 // because state is typically reset on Commit and old txs must be replayed
 // against committed state before new txs are run in the mempool, lest they be invalid
-func (s *State) CommitStateUpdateMempool(proxyAppConn proxy.AppConnConsensus, block *types.Block, mempool Mempool) error {
+func (s *State) CommitStateUpdateMempool(proxyAppConn proxy.AppConnConsensus, block *types.Block, mempool types.Mempool) error {
 	mempool.Lock()
 	defer mempool.Unlock()
 
@@ -287,41 +287,4 @@ func ApplyBlock(appConnConsensus proxy.AppConnConsensus, block *types.Block) ([]
 		log.Info("Commit.Log: " + res.Log)
 	}
 	return res.Data, nil
-}
-
-//------------------------------------------------------
-// blockchain services types
-
-// Updates to the mempool need to be synchronized with committing a block
-// so apps can reset their transient state on Commit
-type Mempool interface {
-	Lock()
-	Unlock()
-
-	CheckTx(types.Tx, func(*abci.Response)) error
-	Reap(int) types.Txs
-	Update(height int, txs types.Txs)
-}
-
-type MockMempool struct {
-}
-
-func (m MockMempool) Lock()                                              {}
-func (m MockMempool) Unlock()                                            {}
-func (m MockMempool) CheckTx(tx types.Tx, cb func(*abci.Response)) error { return nil }
-func (m MockMempool) Reap(n int) types.Txs                               { return types.Txs{} }
-func (m MockMempool) Update(height int, txs types.Txs)                   {}
-
-// TODO: Should we move blockchain/store.go to its own package?
-type BlockStore interface {
-	Height() int
-
-	LoadBlockMeta(height int) *types.BlockMeta
-	LoadBlock(height int) *types.Block
-	LoadBlockPart(height int, index int) *types.Part
-
-	SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit)
-
-	LoadBlockCommit(height int) *types.Commit
-	LoadSeenCommit(height int) *types.Commit
 }

@@ -175,8 +175,8 @@ func makeHeightSearchFunc(height int) auto.SearchFunc {
 // we were last and using the WAL to recover there
 
 // Replay the last block through the consensus and return the AppHash from after Commit.
-func replayLastBlock(config cfg.Config, state *sm.State, proxyApp proxy.AppConnConsensus, blockStore sm.BlockStore) ([]byte, error) {
-	mempool := sm.MockMempool{}
+func replayLastBlock(config cfg.Config, state *sm.State, proxyApp proxy.AppConnConsensus, blockStore types.BlockStore) ([]byte, error) {
+	mempool := types.MockMempool{}
 	cs := NewConsensusState(config, state, proxyApp, blockStore, mempool)
 
 	evsw := types.NewEventSwitch()
@@ -196,12 +196,12 @@ func replayLastBlock(config cfg.Config, state *sm.State, proxyApp proxy.AppConnC
 type Handshaker struct {
 	config cfg.Config
 	state  *sm.State
-	store  sm.BlockStore
+	store  types.BlockStore
 
 	nBlocks int // number of blocks applied to the state
 }
 
-func NewHandshaker(config cfg.Config, state *sm.State, store sm.BlockStore) *Handshaker {
+func NewHandshaker(config cfg.Config, state *sm.State, store types.BlockStore) *Handshaker {
 	return &Handshaker{config, state, store, 0}
 }
 
