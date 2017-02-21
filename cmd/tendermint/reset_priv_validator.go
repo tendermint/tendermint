@@ -6,15 +6,15 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// NOTE: this is totally unsafe.
+// XXX: this is totally unsafe.
 // it's only suitable for testnets.
 func reset_all() {
 	reset_priv_validator()
 	os.RemoveAll(config.GetString("db_dir"))
-	os.RemoveAll(config.GetString("cs_wal_dir"))
+	os.Remove(config.GetString("cs_wal_file"))
 }
 
-// NOTE: this is totally unsafe.
+// XXX: this is totally unsafe.
 // it's only suitable for testnets.
 func reset_priv_validator() {
 	// Get PrivValidator

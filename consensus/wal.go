@@ -40,8 +40,8 @@ type WAL struct {
 	light bool // ignore block parts
 }
 
-func NewWAL(walDir string, light bool) (*WAL, error) {
-	group, err := auto.OpenGroup(walDir + "/wal")
+func NewWAL(walFile string, light bool) (*WAL, error) {
+	group, err := auto.OpenGroup(walFile)
 	if err != nil {
 		return nil, err
 	}

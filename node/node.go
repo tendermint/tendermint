@@ -63,15 +63,19 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreato
 	stateDB := dbm.NewDB("state", config.GetString("db_backend"), config.GetString("db_dir"))
 	state := sm.GetState(config, stateDB)
 
+	// add the chainid and number of validators to the global config
+	config.Set("chain_id", state.ChainID)
+	config.Set("num_vals", state.Validators.Size())
+
 	// Create the proxyApp, which manages connections (consensus, mempool, query)
-	proxyApp := proxy.NewAppConns(config, clientCreator, sm.NewHandshaker(config, state, blockStore))
+	// and sync tendermint and the app by replaying any necessary blocks
+	proxyApp := proxy.NewAppConns(config, clientCreator, consensus.NewHandshaker(config, state, blockStore))
 	if _, err := proxyApp.Start(); err != nil {
 		cmn.Exit(cmn.Fmt("Error starting proxy app connections: %v", err))
 	}
 
-	// add the chainid and number of validators to the global config
-	config.Set("chain_id", state.ChainID)
-	config.Set("num_vals", state.Validators.Size())
+	// reload the state (it may have been updated by the handshake)
+	state = sm.LoadState(stateDB)
 
 	// Generate node PrivKey
 	privKey := crypto.GenPrivKeyEd25519()

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
+	"path"
 	"reflect"
 	"sync"
 	"time"
@@ -14,8 +14,6 @@ import (
 	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-wire"
-	bc "github.com/tendermint/tendermint/blockchain"
-	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -226,8 +224,8 @@ type ConsensusState struct {
 
 	config       cfg.Config
 	proxyAppConn proxy.AppConnConsensus
-	blockStore   *bc.BlockStore
-	mempool      *mempl.Mempool
+	blockStore   types.BlockStore
+	mempool      types.Mempool
 
 	privValidator PrivValidator // for signing votes
 
@@ -255,7 +253,7 @@ type ConsensusState struct {
 	done chan struct{}
 }
 
-func NewConsensusState(config cfg.Config, state *sm.State, proxyAppConn proxy.AppConnConsensus, blockStore *bc.BlockStore, mempool *mempl.Mempool) *ConsensusState {
+func NewConsensusState(config cfg.Config, state *sm.State, proxyAppConn proxy.AppConnConsensus, blockStore types.BlockStore, mempool types.Mempool) *ConsensusState {
 	cs := &ConsensusState{
 		config:           config,
 		proxyAppConn:     proxyAppConn,
@@ -342,33 +340,16 @@ func (cs *ConsensusState) LoadCommit(height int) *types.Commit {
 func (cs *ConsensusState) OnStart() error {
 	cs.BaseService.OnStart()
 
-	walDir := cs.config.GetString("cs_wal_dir")
-	err := EnsureDir(walDir, 0700)
+	walFile := cs.config.GetString("cs_wal_file")
+	err := EnsureDir(path.Dir(walFile), 0700)
 	if err != nil {
 		log.Error("Error ensuring ConsensusState wal dir", "error", err.Error())
 		return err
 	}
-	err = cs.OpenWAL(walDir)
+	err = cs.OpenWAL(walFile)
 	if err != nil {
 		log.Error("Error loading ConsensusState wal", "error", err.Error())
 		return err
-	}
-
-	// If the latest block was applied in the abci handshake,
-	// we may not have written the current height to the wal,
-	// so check here and write it if not found.
-	// TODO: remove this and run the handhsake/replay
-	// through the consensus state with a mock app
-	gr, found, err := cs.wal.group.Search("#HEIGHT: ", makeHeightSearchFunc(cs.Height))
-	if (err == io.EOF || !found) && cs.Step == RoundStepNewHeight {
-		log.Warn("Height not found in wal. Writing new height", "height", cs.Height)
-		rs := cs.RoundStateEvent()
-		cs.wal.Save(rs)
-	} else if err != nil {
-		return err
-	}
-	if gr != nil {
-		gr.Close()
 	}
 
 	// we need the timeoutRoutine for replay so
@@ -420,10 +401,10 @@ func (cs *ConsensusState) Wait() {
 }
 
 // Open file to log all consensus messages and timeouts for deterministic accountability
-func (cs *ConsensusState) OpenWAL(walDir string) (err error) {
+func (cs *ConsensusState) OpenWAL(walFile string) (err error) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
-	wal, err := NewWAL(walDir, cs.config.GetBool("cs_wal_light"))
+	wal, err := NewWAL(walFile, cs.config.GetBool("cs_wal_light"))
 	if err != nil {
 		return err
 	}
@@ -569,7 +550,6 @@ func (cs *ConsensusState) updateToState(state *sm.State) {
 
 	// Reset fields based on state.
 	validators := state.Validators
-	height := state.LastBlockHeight + 1 // Next desired block height
 	lastPrecommits := (*types.VoteSet)(nil)
 	if cs.CommitRound > -1 && cs.Votes != nil {
 		if !cs.Votes.Precommits(cs.CommitRound).HasTwoThirdsMajority() {
@@ -577,6 +557,9 @@ func (cs *ConsensusState) updateToState(state *sm.State) {
 		}
 		lastPrecommits = cs.Votes.Precommits(cs.CommitRound)
 	}
+
+	// Next desired block height
+	height := state.LastBlockHeight + 1
 
 	// RoundState fields
 	cs.updateHeight(height)
@@ -621,11 +604,6 @@ func (cs *ConsensusState) newStep() {
 
 //-----------------------------------------
 // the main go routines
-
-// a nice idea but probably more trouble than its worth
-func (cs *ConsensusState) stopTimer() {
-	cs.timeoutTicker.Stop()
-}
 
 // receiveRoutine handles messages which may cause state transitions.
 // it's argument (n) is the number of messages to process before exiting - use 0 to run forever
@@ -765,7 +743,6 @@ func (cs *ConsensusState) enterNewRound(height int, round int) {
 	if now := time.Now(); cs.StartTime.After(now) {
 		log.Warn("Need to set a buffer and log.Warn() here for sanity.", "startTime", cs.StartTime, "now", now)
 	}
-	// cs.stopTimer()
 
 	log.Notice(Fmt("enterNewRound(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
@@ -945,8 +922,6 @@ func (cs *ConsensusState) enterPrevote(height int, round int) {
 		// TODO: catchup event?
 	}
 
-	// cs.stopTimer()
-
 	log.Info(Fmt("enterPrevote(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
 	// Sign and broadcast vote as necessary
@@ -1019,8 +994,6 @@ func (cs *ConsensusState) enterPrecommit(height int, round int) {
 		log.Debug(Fmt("enterPrecommit(%v/%v): Invalid args. Current step: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 		return
 	}
-
-	// cs.stopTimer()
 
 	log.Info(Fmt("enterPrecommit(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
@@ -1235,7 +1208,8 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 		seenCommit := precommits.MakeCommit()
 		cs.blockStore.SaveBlock(block, blockParts, seenCommit)
 	} else {
-		log.Warn("Why are we finalizeCommitting a block height we already have?", "height", block.Height)
+		// Happens during replay if we already saved the block but didn't commit
+		log.Info("Calling finalizeCommit on already stored block", "height", block.Height)
 	}
 
 	fail.Fail() // XXX
@@ -1250,7 +1224,8 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	// NOTE: the block.AppHash wont reflect these txs until the next block
 	err := stateCopy.ApplyBlock(eventCache, cs.proxyAppConn, block, blockParts.Header(), cs.mempool)
 	if err != nil {
-		// TODO!
+		log.Error("Error on ApplyBlock. Did the application crash? Please restart tendermint", "error", err)
+		return
 	}
 
 	fail.Fail() // XXX

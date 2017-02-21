@@ -5,34 +5,17 @@ import (
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-p2p"
 
-	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
 
-//-----------------------------------------------------
-// Interfaces for use by RPC
-// NOTE: these methods must be thread safe!
-
-type BlockStore interface {
-	Height() int
-	LoadBlockMeta(height int) *types.BlockMeta
-	LoadBlock(height int) *types.Block
-	LoadSeenCommit(height int) *types.Commit
-	LoadBlockCommit(height int) *types.Commit
-}
+//----------------------------------------------
+// These interfaces are used by RPC and must be thread safe
 
 type Consensus interface {
 	GetValidators() (int, []*types.Validator)
 	GetRoundState() *consensus.RoundState
-}
-
-type Mempool interface {
-	Size() int
-	CheckTx(types.Tx, func(*abci.Response)) error
-	Reap(int) []types.Tx
-	Flush()
 }
 
 type P2P interface {
@@ -44,16 +27,18 @@ type P2P interface {
 	DialSeeds([]string)
 }
 
+//----------------------------------------------
+
 var (
 	// external, thread safe interfaces
 	eventSwitch   types.EventSwitch
 	proxyAppQuery proxy.AppConnQuery
 	config        cfg.Config
 
-	// interfaces defined above
-	blockStore     BlockStore
+	// interfaces defined in types and above
+	blockStore     types.BlockStore
+	mempool        types.Mempool
 	consensusState Consensus
-	mempool        Mempool
 	p2pSwitch      P2P
 
 	// objects
@@ -69,16 +54,16 @@ func SetEventSwitch(evsw types.EventSwitch) {
 	eventSwitch = evsw
 }
 
-func SetBlockStore(bs BlockStore) {
+func SetBlockStore(bs types.BlockStore) {
 	blockStore = bs
+}
+
+func SetMempool(mem types.Mempool) {
+	mempool = mem
 }
 
 func SetConsensusState(cs Consensus) {
 	consensusState = cs
-}
-
-func SetMempool(mem Mempool) {
-	mempool = mem
 }
 
 func SetSwitch(sw P2P) {

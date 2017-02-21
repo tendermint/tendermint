@@ -1,9 +1,9 @@
 #! /bin/bash
 set -e
 
-echo `pwd`
+pwd
 
-BRANCH=`git rev-parse --abbrev-ref HEAD`
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
 echo "Current branch: $BRANCH"
 
 bash test/test_cover.sh
