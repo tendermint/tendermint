@@ -12,10 +12,14 @@ echo "* [$(date +"%T")] cleaning up $LOGS_DIR"
 rm -rf "$LOGS_DIR"
 mkdir -p "$LOGS_DIR"
 
-echo
-echo "* [$(date +"%T")] starting rsyslog container"
-docker rm -f rsyslog || true
-docker run -d -v "$LOGS_DIR:/var/log/" -p 127.0.0.1:5514:514/udp --name rsyslog voxxit/rsyslog
+set +u
+if [[ "$CIRCLECI" == true ]]; then
+	set -u
+	echo
+	echo "* [$(date +"%T")] starting rsyslog container"
+	docker rm -f rsyslog || true
+	docker run -d -v "$LOGS_DIR:/var/log/" -p 127.0.0.1:5514:514/udp --name rsyslog voxxit/rsyslog
+fi
 
 echo
 echo "* [$(date +"%T")] building docker image"
