@@ -174,25 +174,6 @@ func makeHeightSearchFunc(height int) auto.SearchFunc {
 // by handshaking with the app to figure out where
 // we were last and using the WAL to recover there
 
-// Replay the last block through the consensus and return the AppHash from after Commit.
-func replayLastBlock(config cfg.Config, state *sm.State, proxyApp proxy.AppConnConsensus, blockStore types.BlockStore) ([]byte, error) {
-	mempool := types.MockMempool{}
-	cs := NewConsensusState(config, state, proxyApp, blockStore, mempool)
-
-	evsw := types.NewEventSwitch()
-	evsw.Start()
-	defer evsw.Stop()
-	cs.SetEventSwitch(evsw)
-	newBlockCh := subscribeToEvent(evsw, "consensus-replay", types.EventStringNewBlock(), 1)
-
-	// run through the WAL, commit new block, stop
-	cs.Start()
-	<-newBlockCh // TODO: use a timeout and return err?
-	cs.Stop()
-
-	return cs.state.AppHash, nil
-}
-
 type Handshaker struct {
 	config cfg.Config
 	state  *sm.State
@@ -286,13 +267,13 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, proxyApp p
 			// We haven't run Commit (both the state and app are one block behind),
 			// so run through consensus with the real app
 			log.Info("Replay last block using real app")
-			return replayLastBlock(h.config, h.state, proxyApp.Consensus(), h.store)
+			return h.replayLastBlock(proxyApp.Consensus())
 
 		} else if appBlockHeight == storeBlockHeight {
 			// We ran Commit, but didn't save the state, so run through consensus with mock app
 			mockApp := newMockProxyApp(appHash)
 			log.Info("Replay last block using mock app")
-			return replayLastBlock(h.config, h.state, mockApp, h.store)
+			return h.replayLastBlock(mockApp)
 		}
 
 	}
@@ -316,28 +297,48 @@ func (h *Handshaker) replayBlocks(proxyApp proxy.AppConns, appBlockHeight, store
 	}
 	for i := appBlockHeight + 1; i <= finalBlock; i++ {
 		log.Info("Applying block", "height", i)
-		h.nBlocks += 1
 		block := h.store.LoadBlock(i)
 		appHash, err = sm.ApplyBlock(proxyApp.Consensus(), block)
 		if err != nil {
 			return nil, err
 		}
+
+		h.nBlocks += 1
 	}
 
 	if useReplayFunc {
 		// sync the final block
-		appHash, err = h.ReplayBlocks(appHash, finalBlock, proxyApp)
-		if err != nil {
-			return appHash, err
-		}
+		return h.ReplayBlocks(appHash, finalBlock, proxyApp)
 	}
 
 	return appHash, h.checkAppHash(appHash)
 }
 
+// Replay the last block through the consensus and return the AppHash from after Commit.
+func (h *Handshaker) replayLastBlock(proxyApp proxy.AppConnConsensus) ([]byte, error) {
+	mempool := types.MockMempool{}
+	cs := NewConsensusState(h.config, h.state, proxyApp, h.store, mempool)
+
+	evsw := types.NewEventSwitch()
+	evsw.Start()
+	defer evsw.Stop()
+	cs.SetEventSwitch(evsw)
+	newBlockCh := subscribeToEvent(evsw, "consensus-replay", types.EventStringNewBlock(), 1)
+
+	// run through the WAL, commit new block, stop
+	cs.Start()
+	<-newBlockCh // TODO: use a timeout and return err?
+	cs.Stop()
+
+	h.nBlocks += 1
+
+	return cs.state.AppHash, nil
+}
+
 func (h *Handshaker) checkAppHash(appHash []byte) error {
 	if !bytes.Equal(h.state.AppHash, appHash) {
-		return errors.New(Fmt("Tendermint state.AppHash does not match AppHash after replay. Got %X, expected %X", appHash, h.state.AppHash))
+		panic(errors.New(Fmt("Tendermint state.AppHash does not match AppHash after replay. Got %X, expected %X", appHash, h.state.AppHash)).Error())
+		return nil
 	}
 	return nil
 }
