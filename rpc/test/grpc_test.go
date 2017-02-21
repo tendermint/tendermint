@@ -11,7 +11,7 @@ import (
 //-------------------------------------------
 
 func TestBroadcastTx(t *testing.T) {
-	res, err := clientGRPC.BroadcastTx(context.Background(), &core_grpc.RequestBroadcastTx{[]byte("this is a tx")})
+	res, err := GetGRPCClient().BroadcastTx(context.Background(), &core_grpc.RequestBroadcastTx{[]byte("this is a tx")})
 	if err != nil {
 		t.Fatal(err)
 	}

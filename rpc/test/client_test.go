@@ -24,7 +24,7 @@ import (
 
 func TestURIStatus(t *testing.T) {
 	tmResult := new(ctypes.TMResult)
-	_, err := clientURI.Call("status", map[string]interface{}{}, tmResult)
+	_, err := GetURIClient().Call("status", map[string]interface{}{}, tmResult)
 	if err != nil {
 		panic(err)
 	}
@@ -33,7 +33,7 @@ func TestURIStatus(t *testing.T) {
 
 func TestJSONStatus(t *testing.T) {
 	tmResult := new(ctypes.TMResult)
-	_, err := clientJSON.Call("status", []interface{}{}, tmResult)
+	_, err := GetJSONClient().Call("status", []interface{}{}, tmResult)
 	if err != nil {
 		panic(err)
 	}
@@ -41,6 +41,8 @@ func TestJSONStatus(t *testing.T) {
 }
 
 func testStatus(t *testing.T, statusI interface{}) {
+	chainID := GetConfig().GetString("chain_id")
+
 	tmRes := statusI.(*ctypes.TMResult)
 	status := (*tmRes).(*ctypes.ResultStatus)
 	if status.NodeInfo.Network != chainID {
@@ -68,7 +70,7 @@ func TestURIBroadcastTxSync(t *testing.T) {
 	defer config.Set("block_size", -1)
 	tmResult := new(ctypes.TMResult)
 	tx := randBytes()
-	_, err := clientURI.Call("broadcast_tx_sync", map[string]interface{}{"tx": tx}, tmResult)
+	_, err := GetURIClient().Call("broadcast_tx_sync", map[string]interface{}{"tx": tx}, tmResult)
 	if err != nil {
 		panic(err)
 	}
@@ -80,7 +82,7 @@ func TestJSONBroadcastTxSync(t *testing.T) {
 	defer config.Set("block_size", -1)
 	tmResult := new(ctypes.TMResult)
 	tx := randBytes()
-	_, err := clientJSON.Call("broadcast_tx_sync", []interface{}{tx}, tmResult)
+	_, err := GetJSONClient().Call("broadcast_tx_sync", []interface{}{tx}, tmResult)
 	if err != nil {
 		panic(err)
 	}
@@ -118,13 +120,10 @@ func testTxKV() ([]byte, []byte, []byte) {
 func sendTx() ([]byte, []byte) {
 	tmResult := new(ctypes.TMResult)
 	k, v, tx := testTxKV()
-	_, err := clientJSON.Call("broadcast_tx_commit", []interface{}{tx}, tmResult)
+	_, err := GetJSONClient().Call("broadcast_tx_commit", []interface{}{tx}, tmResult)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("SENT TX", tx)
-	fmt.Printf("SENT TX %X\n", tx)
-	fmt.Printf("k %X; v %X", k, v)
 	return k, v
 }
 
@@ -132,7 +131,7 @@ func TestURIABCIQuery(t *testing.T) {
 	k, v := sendTx()
 	time.Sleep(time.Second)
 	tmResult := new(ctypes.TMResult)
-	_, err := clientURI.Call("abci_query", map[string]interface{}{"path": "", "data": k, "prove": false}, tmResult)
+	_, err := GetURIClient().Call("abci_query", map[string]interface{}{"path": "", "data": k, "prove": false}, tmResult)
 	if err != nil {
 		panic(err)
 	}
@@ -142,7 +141,7 @@ func TestURIABCIQuery(t *testing.T) {
 func TestJSONABCIQuery(t *testing.T) {
 	k, v := sendTx()
 	tmResult := new(ctypes.TMResult)
-	_, err := clientJSON.Call("abci_query", []interface{}{"", k, false}, tmResult)
+	_, err := GetJSONClient().Call("abci_query", []interface{}{"", k, false}, tmResult)
 	if err != nil {
 		panic(err)
 	}
@@ -168,7 +167,7 @@ func testABCIQuery(t *testing.T, statusI interface{}, value []byte) {
 func TestURIBroadcastTxCommit(t *testing.T) {
 	tmResult := new(ctypes.TMResult)
 	tx := randBytes()
-	_, err := clientURI.Call("broadcast_tx_commit", map[string]interface{}{"tx": tx}, tmResult)
+	_, err := GetURIClient().Call("broadcast_tx_commit", map[string]interface{}{"tx": tx}, tmResult)
 	if err != nil {
 		panic(err)
 	}
@@ -178,7 +177,7 @@ func TestURIBroadcastTxCommit(t *testing.T) {
 func TestJSONBroadcastTxCommit(t *testing.T) {
 	tmResult := new(ctypes.TMResult)
 	tx := randBytes()
-	_, err := clientJSON.Call("broadcast_tx_commit", []interface{}{tx}, tmResult)
+	_, err := GetJSONClient().Call("broadcast_tx_commit", []interface{}{tx}, tmResult)
 	if err != nil {
 		panic(err)
 	}
@@ -211,13 +210,13 @@ var wsTyp = "JSONRPC"
 
 // make a simple connection to the server
 func TestWSConnect(t *testing.T) {
-	wsc := newWSClient(t)
+	wsc := GetWSClient()
 	wsc.Stop()
 }
 
 // receive a new block message
 func TestWSNewBlock(t *testing.T) {
-	wsc := newWSClient(t)
+	wsc := GetWSClient()
 	eid := types.EventStringNewBlock()
 	subscribe(t, wsc, eid)
 	defer func() {
@@ -225,7 +224,7 @@ func TestWSNewBlock(t *testing.T) {
 		wsc.Stop()
 	}()
 	waitForEvent(t, wsc, eid, true, func() {}, func(eid string, b interface{}) error {
-		fmt.Println("Check:", b)
+		// fmt.Println("Check:", b)
 		return nil
 	})
 }
@@ -235,7 +234,7 @@ func TestWSBlockchainGrowth(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")
 	}
-	wsc := newWSClient(t)
+	wsc := GetWSClient()
 	eid := types.EventStringNewBlock()
 	subscribe(t, wsc, eid)
 	defer func() {
@@ -263,7 +262,7 @@ func TestWSBlockchainGrowth(t *testing.T) {
 }
 
 func TestWSTxEvent(t *testing.T) {
-	wsc := newWSClient(t)
+	wsc := GetWSClient()
 	tx := randBytes()
 
 	// listen for the tx I am about to submit
@@ -276,7 +275,7 @@ func TestWSTxEvent(t *testing.T) {
 
 	// send an tx
 	tmResult := new(ctypes.TMResult)
-	_, err := clientJSON.Call("broadcast_tx_sync", []interface{}{tx}, tmResult)
+	_, err := GetJSONClient().Call("broadcast_tx_sync", []interface{}{tx}, tmResult)
 	if err != nil {
 		t.Fatal("Error submitting event")
 	}
@@ -341,7 +340,7 @@ var testCasesUnsafeSetConfig = [][]string{
 func TestURIUnsafeSetConfig(t *testing.T) {
 	for _, testCase := range testCasesUnsafeSetConfig {
 		tmResult := new(ctypes.TMResult)
-		_, err := clientURI.Call("unsafe_set_config", map[string]interface{}{
+		_, err := GetURIClient().Call("unsafe_set_config", map[string]interface{}{
 			"type":  testCase[0],
 			"key":   testCase[1],
 			"value": testCase[2],
@@ -356,7 +355,7 @@ func TestURIUnsafeSetConfig(t *testing.T) {
 func TestJSONUnsafeSetConfig(t *testing.T) {
 	for _, testCase := range testCasesUnsafeSetConfig {
 		tmResult := new(ctypes.TMResult)
-		_, err := clientJSON.Call("unsafe_set_config", []interface{}{testCase[0], testCase[1], testCase[2]}, tmResult)
+		_, err := GetJSONClient().Call("unsafe_set_config", []interface{}{testCase[0], testCase[1], testCase[2]}, tmResult)
 		if err != nil {
 			panic(err)
 		}
