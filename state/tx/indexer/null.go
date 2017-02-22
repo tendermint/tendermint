@@ -1,13 +1,16 @@
 package indexer
 
-import "github.com/tendermint/tendermint/types"
+import (
+	"errors"
+	"github.com/tendermint/tendermint/types"
+)
 
 // Null acts as a /dev/null.
 type Null struct{}
 
 // Tx panics.
 func (indexer *Null) Tx(hash string) (*types.TxResult, error) {
-	panic("You are trying to get the transaction from a null indexer")
+	return nil, errors.New("Indexing is disabled (set `tx_indexer=kv` in config)")
 }
 
 // Batch returns nil.

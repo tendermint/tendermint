@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
+	abci "github.com/tendermint/abci/types"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
-	abci "github.com/tendermint/abci/types"
 )
 
 //-----------------------------------------------------------------------------
@@ -65,7 +65,7 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	if checkTxR.Code != abci.CodeType_OK {
 		// CheckTx failed!
 		return &ctypes.ResultBroadcastTxCommit{
-			CheckTx:  checkTxR,
+			CheckTx:   checkTxR,
 			DeliverTx: nil,
 		}, nil
 	}
@@ -84,13 +84,13 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 		}
 		log.Notice("DeliverTx passed ", "tx", []byte(tx), "response", deliverTxR)
 		return &ctypes.ResultBroadcastTxCommit{
-			CheckTx:  checkTxR,
+			CheckTx:   checkTxR,
 			DeliverTx: deliverTxR,
 		}, nil
 	case <-timer.C:
 		log.Error("failed to include tx")
 		return &ctypes.ResultBroadcastTxCommit{
-			CheckTx:  checkTxR,
+			CheckTx:   checkTxR,
 			DeliverTx: nil,
 		}, fmt.Errorf("Timed out waiting for transaction to be included in a block")
 	}

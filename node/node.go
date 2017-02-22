@@ -10,12 +10,12 @@ import (
 	abci "github.com/tendermint/abci/types"
 	cmn "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
-	"github.com/tendermint/go-crypto"
+	crypto "github.com/tendermint/go-crypto"
 	dbm "github.com/tendermint/go-db"
-	"github.com/tendermint/go-p2p"
-	"github.com/tendermint/go-rpc"
-	"github.com/tendermint/go-rpc/server"
-	"github.com/tendermint/go-wire"
+	p2p "github.com/tendermint/go-p2p"
+	rpc "github.com/tendermint/go-rpc"
+	rpcserver "github.com/tendermint/go-rpc/server"
+	wire "github.com/tendermint/go-wire"
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/consensus"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -23,6 +23,8 @@ import (
 	rpccore "github.com/tendermint/tendermint/rpc/core"
 	grpccore "github.com/tendermint/tendermint/rpc/grpc"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/state/tx"
+	txindexer "github.com/tendermint/tendermint/state/tx/indexer"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 
@@ -51,6 +53,7 @@ type Node struct {
 	consensusReactor *consensus.ConsensusReactor // for participating in the consensus
 	proxyApp         proxy.AppConns              // connection to the application
 	rpcListeners     []net.Listener              // rpc servers
+	txIndexer        tx.Indexer
 }
 
 func NewNodeDefault(config cfg.Config) *Node {
@@ -82,7 +85,18 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreato
 	}
 
 	// reload the state (it may have been updated by the handshake)
-	state = sm.GetState(config, stateDB)
+	state = sm.LoadState(stateDB)
+
+	// Transaction indexing
+	var txIndexer tx.Indexer
+	switch config.GetString("tx_indexer") {
+	case "kv":
+		store := dbm.NewDB("tx_indexer", config.GetString("db_backend"), config.GetString("db_dir"))
+		txIndexer = txindexer.NewKV(store)
+	default:
+		txIndexer = &txindexer.Null{}
+	}
+	state.TxIndexer = txIndexer
 
 	// Generate node PrivKey
 	privKey := crypto.GenPrivKeyEd25519()
@@ -188,6 +202,7 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreato
 		consensusState:   consensusState,
 		consensusReactor: consensusReactor,
 		proxyApp:         proxyApp,
+		txIndexer:        txIndexer,
 	}
 	node.BaseService = *cmn.NewBaseService(log, "Node", node)
 	return node
@@ -278,6 +293,7 @@ func (n *Node) ConfigureRPC() {
 	rpccore.SetGenesisDoc(n.genesisDoc)
 	rpccore.SetAddrBook(n.addrBook)
 	rpccore.SetProxyAppQuery(n.proxyApp.Query())
+	rpccore.SetTxIndexer(n.txIndexer)
 }
 
 func (n *Node) startRPC() ([]net.Listener, error) {

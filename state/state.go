@@ -44,13 +44,12 @@ type State struct {
 	TxIndexer tx.Indexer `json:"-"` // Transaction indexer.
 }
 
-// Used in tests.
 func LoadState(db dbm.DB) *State {
 	return loadState(db, stateKey)
 }
 
 func loadState(db dbm.DB, key []byte) *State {
-	s := &State{db: db}
+	s := &State{db: db, TxIndexer: &txindexer.Null{}}
 	buf := db.Get(key)
 	if len(buf) == 0 {
 		return nil
@@ -130,15 +129,6 @@ func GetState(config cfg.Config, stateDB dbm.DB) *State {
 	if state == nil {
 		state = MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
 		state.Save()
-	}
-
-	// Transaction indexing
-	switch config.GetString("tx_indexer") {
-	case "kv":
-		store := dbm.NewDB("tx_indexer", config.GetString("db_backend"), config.GetString("db_dir"))
-		state.TxIndexer = txindexer.NewKV(store)
-	default:
-		state.TxIndexer = &txindexer.Null{}
 	}
 
 	return state

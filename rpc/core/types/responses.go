@@ -127,6 +127,7 @@ const (
 	ResultTypeBroadcastTx       = byte(0x60)
 	ResultTypeUnconfirmedTxs    = byte(0x61)
 	ResultTypeBroadcastTxCommit = byte(0x62)
+	ResultTypeTx                = byte(0x63)
 
 	// 0x7 bytes are for querying the application
 	ResultTypeABCIQuery = byte(0x70)
@@ -163,6 +164,7 @@ var _ = wire.RegisterInterface(
 	wire.ConcreteType{&ResultDumpConsensusState{}, ResultTypeDumpConsensusState},
 	wire.ConcreteType{&ResultBroadcastTx{}, ResultTypeBroadcastTx},
 	wire.ConcreteType{&ResultBroadcastTxCommit{}, ResultTypeBroadcastTxCommit},
+	wire.ConcreteType{&types.TxResult{}, ResultTypeTx},
 	wire.ConcreteType{&ResultUnconfirmedTxs{}, ResultTypeUnconfirmedTxs},
 	wire.ConcreteType{&ResultSubscribe{}, ResultTypeSubscribe},
 	wire.ConcreteType{&ResultUnsubscribe{}, ResultTypeUnsubscribe},

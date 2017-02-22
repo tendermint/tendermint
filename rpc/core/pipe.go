@@ -2,11 +2,12 @@ package core
 
 import (
 	cfg "github.com/tendermint/go-config"
-	"github.com/tendermint/go-crypto"
-	"github.com/tendermint/go-p2p"
 
+	crypto "github.com/tendermint/go-crypto"
+	p2p "github.com/tendermint/go-p2p"
 	"github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/proxy"
+	"github.com/tendermint/tendermint/state/tx"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -42,9 +43,10 @@ var (
 	p2pSwitch      P2P
 
 	// objects
-	pubKey   crypto.PubKey
-	genDoc   *types.GenesisDoc // cache the genesis structure
-	addrBook *p2p.AddrBook
+	pubKey    crypto.PubKey
+	genDoc    *types.GenesisDoc // cache the genesis structure
+	addrBook  *p2p.AddrBook
+	txIndexer tx.Indexer
 )
 
 func SetConfig(c cfg.Config) {
@@ -85,4 +87,8 @@ func SetAddrBook(book *p2p.AddrBook) {
 
 func SetProxyAppQuery(appConn proxy.AppConnQuery) {
 	proxyAppQuery = appConn
+}
+
+func SetTxIndexer(indexer tx.Indexer) {
+	txIndexer = indexer
 }

@@ -8,7 +8,7 @@ import (
 //
 // One usage is indexing transaction results.
 type TxResult struct {
-	Height            uint64
-	Index             uint32
-	DeliverTxResponse abci.ResponseDeliverTx
+	Height    uint64                 `json:"height"`
+	Index     uint32                 `json:"index"`
+	DeliverTx abci.ResponseDeliverTx `json:"deliver_tx"`
 }

@@ -1,9 +1,12 @@
 package core
 
 import (
+	"strings"
+
 	rpc "github.com/tendermint/go-rpc/server"
 	"github.com/tendermint/go-rpc/types"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tendermint/types"
 )
 
 // TODO: better system than "unsafe" prefix
@@ -23,6 +26,7 @@ var Routes = map[string]*rpc.RPCFunc{
 	"dump_consensus_state": rpc.NewRPCFunc(DumpConsensusStateResult, ""),
 	"unconfirmed_txs":      rpc.NewRPCFunc(UnconfirmedTxsResult, ""),
 	"num_unconfirmed_txs":  rpc.NewRPCFunc(NumUnconfirmedTxsResult, ""),
+	"tx": rpc.NewRPCFunc(Tx, "hash"),
 
 	// broadcast API
 	"broadcast_tx_commit": rpc.NewRPCFunc(BroadcastTxCommitResult, "tx"),
@@ -45,185 +49,105 @@ var Routes = map[string]*rpc.RPCFunc{
 }
 
 func SubscribeResult(wsCtx rpctypes.WSRPCContext, event string) (ctypes.TMResult, error) {
-	if r, err := Subscribe(wsCtx, event); err != nil {
-		return nil, err
-	} else {
-		return r, nil
-	}
+	return Subscribe(wsCtx, event)
 }
 
 func UnsubscribeResult(wsCtx rpctypes.WSRPCContext, event string) (ctypes.TMResult, error) {
-	if r, err := Unsubscribe(wsCtx, event); err != nil {
-		return nil, err
-	} else {
-		return r, nil
-	}
+	return Unsubscribe(wsCtx, event)
 }
 
 func StatusResult() (ctypes.TMResult, error) {
-	if r, err := Status(); err != nil {
-		return nil, err
-	} else {
-		return r, nil
-	}
+	return Status()
 }
 
 func NetInfoResult() (ctypes.TMResult, error) {
-	if r, err := NetInfo(); err != nil {
-		return nil, err
-	} else {
-		return r, nil
-	}
+	return NetInfo()
 }
 
 func UnsafeDialSeedsResult(seeds []string) (ctypes.TMResult, error) {
-	if r, err := UnsafeDialSeeds(seeds); err != nil {
-		return nil, err
-	} else {
-		return r, nil
-	}
+	return UnsafeDialSeeds(seeds)
 }
 
 func BlockchainInfoResult(min, max int) (ctypes.TMResult, error) {
-	if r, err := BlockchainInfo(min, max); err != nil {
-		return nil, err
-	} else {
-		return r, nil
-	}
+	return BlockchainInfo(min, max)
 }
 
 func GenesisResult() (ctypes.TMResult, error) {
-	if r, err := Genesis(); err != nil {
-		return nil, err
-	} else {
-		return r, nil
-	}
+	return Genesis()
 }
 
 func BlockResult(height int) (ctypes.TMResult, error) {
-	if r, err := Block(height); err != nil {
-		return nil, err
-	} else {
-		return r, nil
-	}
+	return Block(height)
 }
 
 func CommitResult(height int) (ctypes.TMResult, error) {
-	if r, err := Commit(height); err != nil {
-		return nil, err
-	} else {
-		return r, nil
-	}
+	return Commit(height)
 }
 
 func ValidatorsResult() (ctypes.TMResult, error) {
-	if r, err := Validators(); err != nil {
-		return nil, err
-	} else {
-		return r, nil
-	}
+	return Validators()
 }
 
 func DumpConsensusStateResult() (ctypes.TMResult, error) {
-	if r, err := DumpConsensusState(); err != nil {
-		return nil, err
-	} else {
-		return r, nil
-	}
+	return DumpConsensusState()
 }
 
 func UnconfirmedTxsResult() (ctypes.TMResult, error) {
-	if r, err := UnconfirmedTxs(); err != nil {
-		return nil, err
-	} else {
-		return r, nil
-	}
+	return UnconfirmedTxs()
 }
 
 func NumUnconfirmedTxsResult() (ctypes.TMResult, error) {
-	if r, err := NumUnconfirmedTxs(); err != nil {
+	return NumUnconfirmedTxs()
+}
+
+// Tx allow user to query the transaction results. `nil` could mean the
+// transaction is in the mempool, invalidated, or was not send in the first
+// place.
+func Tx(hash string) (ctypes.TMResult, error) {
+	r, err := txIndexer.Tx(strings.ToLower(hash))
+	// nil-pointer interface values are forbidden in go-rpc
+	if r == (*types.TxResult)(nil) {
 		return nil, err
-	} else {
-		return r, nil
 	}
+	return r, err
 }
 
 func BroadcastTxCommitResult(tx []byte) (ctypes.TMResult, error) {
-	if r, err := BroadcastTxCommit(tx); err != nil {
-		return nil, err
-	} else {
-		return r, nil
-	}
+	return BroadcastTxCommit(tx)
 }
 
 func BroadcastTxSyncResult(tx []byte) (ctypes.TMResult, error) {
-	if r, err := BroadcastTxSync(tx); err != nil {
-		return nil, err
-	} else {
-		return r, nil
-	}
+	return BroadcastTxSync(tx)
 }
 
 func BroadcastTxAsyncResult(tx []byte) (ctypes.TMResult, error) {
-	if r, err := BroadcastTxAsync(tx); err != nil {
-		return nil, err
-	} else {
-		return r, nil
-	}
+	return BroadcastTxAsync(tx)
 }
 
 func ABCIQueryResult(path string, data []byte, prove bool) (ctypes.TMResult, error) {
-	if r, err := ABCIQuery(path, data, prove); err != nil {
-		return nil, err
-	} else {
-		return r, nil
-	}
+	return ABCIQuery(path, data, prove)
 }
 
 func ABCIInfoResult() (ctypes.TMResult, error) {
-	if r, err := ABCIInfo(); err != nil {
-		return nil, err
-	} else {
-		return r, nil
-	}
+	return ABCIInfo()
 }
 
 func UnsafeFlushMempoolResult() (ctypes.TMResult, error) {
-	if r, err := UnsafeFlushMempool(); err != nil {
-		return nil, err
-	} else {
-		return r, nil
-	}
+	return UnsafeFlushMempool()
 }
 
 func UnsafeSetConfigResult(typ, key, value string) (ctypes.TMResult, error) {
-	if r, err := UnsafeSetConfig(typ, key, value); err != nil {
-		return nil, err
-	} else {
-		return r, nil
-	}
+	return UnsafeSetConfig(typ, key, value)
 }
 
 func UnsafeStartCPUProfilerResult(filename string) (ctypes.TMResult, error) {
-	if r, err := UnsafeStartCPUProfiler(filename); err != nil {
-		return nil, err
-	} else {
-		return r, nil
-	}
+	return UnsafeStartCPUProfiler(filename)
 }
 
 func UnsafeStopCPUProfilerResult() (ctypes.TMResult, error) {
-	if r, err := UnsafeStopCPUProfiler(); err != nil {
-		return nil, err
-	} else {
-		return r, nil
-	}
+	return UnsafeStopCPUProfiler()
 }
 
 func UnsafeWriteHeapProfileResult(filename string) (ctypes.TMResult, error) {
-	if r, err := UnsafeWriteHeapProfile(filename); err != nil {
-		return nil, err
-	} else {
-		return r, nil
-	}
+	return UnsafeWriteHeapProfile(filename)
 }
