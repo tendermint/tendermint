@@ -1,6 +1,7 @@
 package http_test
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	merkle "github.com/tendermint/go-merkle"
 	"github.com/tendermint/tendermint/rpc/client/http"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
 )
@@ -142,7 +144,7 @@ func TestAppCalls(t *testing.T) {
 }
 
 func TestSubscriptions(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
+	require := require.New(t)
 	c := GetClient()
 	err := c.StartWebsocket()
 	require.Nil(err)
@@ -153,30 +155,44 @@ func TestSubscriptions(t *testing.T) {
 	// this causes a panic in tendermint core!!!
 	eventType := types.EventStringTx(types.Tx(tx))
 	c.Subscribe(eventType)
-	read := 0
 
 	// set up a listener
 	r, e := c.GetEventChannels()
 	go func() {
-		// read one event in the background
-		select {
-		case <-r:
-			// TODO: actually parse this or something
-			read += 1
-		case err := <-e:
-			panic(err)
-		}
+		// send a tx and wait for it to propogate
+		_, err = c.BroadcastTxCommit(tx)
+		require.Nil(err, string(tx))
 	}()
 
-	// make sure nothing has happened yet.
-	assert.Equal(0, read)
+	checkData := func(data []byte, kind byte) {
+		x := []interface{}{}
+		err := json.Unmarshal(data, &x)
+		require.Nil(err)
+		// gotta love wire's json format
+		require.EqualValues(kind, x[0])
+	}
 
-	// send a tx and wait for it to propogate
-	_, err = c.BroadcastTxCommit(tx)
-	assert.Nil(err, string(tx))
-	// wait before querying
-	time.Sleep(time.Second)
+	res := <-r
+	checkData(res, ctypes.ResultTypeSubscribe)
 
-	// now make sure the event arrived
-	assert.Equal(1, read)
+	// read one event, must be success
+	select {
+	case res := <-r:
+		checkData(res, ctypes.ResultTypeEvent)
+		// this is good.. let's get the data... ugh...
+		// result := new(ctypes.TMResult)
+		// wire.ReadJSON(result, res, &err)
+		// require.Nil(err, "%+v", err)
+		// event, ok := (*result).(*ctypes.ResultEvent)
+		// require.True(ok)
+		// assert.Equal("foo", event.Name)
+		// data, ok := event.Data.(types.EventDataTx)
+		// require.True(ok)
+		// assert.EqualValues(0, data.Code)
+		// assert.EqualValues(tx, data.Tx)
+	case err := <-e:
+		// this is a failure
+		require.Nil(err)
+	}
+
 }
