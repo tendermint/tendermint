@@ -1,5 +1,5 @@
 /*
-package localclient returns a Client implementation that
+package local returns a Client implementation that
 directly executes the rpc functions on a given node.
 
 This implementation is useful for:
@@ -12,7 +12,7 @@ are compiled in process.
 For real clients, you probably want the "http" package.  For more
 powerful control during testing, you probably want the "mock" package.
 */
-package localclient
+package local
 
 import (
 	nm "github.com/tendermint/tendermint/node"

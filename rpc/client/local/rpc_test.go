@@ -1,4 +1,4 @@
-package localclient_test
+package local_test
 
 import (
 	"strings"
@@ -8,14 +8,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	merkle "github.com/tendermint/go-merkle"
-	localclient "github.com/tendermint/tendermint/rpc/client/local"
+	"github.com/tendermint/tendermint/rpc/client/local"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 )
 
 // GetClient gets a rpc client pointing to the test tendermint rpc
-func GetClient() localclient.Client {
+func GetClient() local.Client {
 	node := rpctest.GetNode()
-	return localclient.New(node)
+	return local.New(node)
 }
 
 // Make sure status is correct (we connect properly)

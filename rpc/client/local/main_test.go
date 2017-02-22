@@ -1,4 +1,4 @@
-package localclient_test
+package local_test
 
 import (
 	"os"

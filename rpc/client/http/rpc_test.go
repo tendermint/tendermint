@@ -1,4 +1,4 @@
-package httpclient_test
+package http_test
 
 import (
 	"strings"
@@ -8,15 +8,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	merkle "github.com/tendermint/go-merkle"
-	httpclient "github.com/tendermint/tendermint/rpc/client/http"
+	"github.com/tendermint/tendermint/rpc/client/http"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
 )
 
 // GetClient gets a rpc client pointing to the test tendermint rpc
-func GetClient() *httpclient.Client {
+func GetClient() *http.Client {
 	rpcAddr := rpctest.GetConfig().GetString("rpc_laddr")
-	return httpclient.New(rpcAddr, "/websocket")
+	return http.New(rpcAddr, "/websocket")
 }
 
 // Make sure status is correct (we connect properly)

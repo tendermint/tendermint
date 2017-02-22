@@ -1,5 +1,5 @@
 /*
-package httpclient returns a Client implementation that communicates
+package http returns a Client implementation that communicates
 with a tendermint node over json rpc and websockets.
 
 This is the main implementation you probably want to use in
@@ -7,7 +7,7 @@ production code.  There are other implementations when calling
 the tendermint node in-process (local), or when you want to mock
 out the server for test code (mock).
 */
-package httpclient
+package http
 
 import (
 	"encoding/json"
