@@ -2,10 +2,12 @@ package mock_test
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tendermint/abci/example/dummy"
 	abci "github.com/tendermint/abci/types"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
@@ -138,5 +140,27 @@ func TestABCIRecorder(t *testing.T) {
 	assert.Nil(ba.Response)
 	require.NotNil(ba.Error)
 	assert.EqualValues(ba.Args, txs[2])
+}
 
+func TestABCIApp(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	app := dummy.NewDummyApplication()
+	m := mock.ABCIApp{app}
+
+	// get some info
+	info, err := m.ABCIInfo()
+	require.Nil(err)
+	assert.Equal(`{"size":0}`, info.Response.GetData())
+
+	// add a key
+	key, value := "foo", "bar"
+	tx := fmt.Sprintf("%s=%s", key, value)
+	res, err := m.BroadcastTxSync(types.Tx(tx))
+	require.Nil(err)
+	assert.True(res.Code.IsOK())
+
+	// check the key
+	qres, err := m.ABCIQuery("/key", []byte(key), false)
+	require.Nil(err)
+	assert.EqualValues(value, qres.Response.Value)
 }
