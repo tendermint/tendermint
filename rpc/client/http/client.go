@@ -1,3 +1,12 @@
+/*
+package httpclient returns a Client implementation that communicates
+with a tendermint node over json rpc and websockets.
+
+This is the main implementation you probably want to use in
+production code.  There are other implementations when calling
+the tendermint node in-process (local), or when you want to mock
+out the server for test code (mock).
+*/
 package httpclient
 
 import (
@@ -9,22 +18,26 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-type HTTPClient struct {
+// Client is a Client implementation that communicates over
+// JSONRPC
+type Client struct {
 	remote   string
 	endpoint string
 	rpc      *rpcclient.ClientJSONRPC
 	ws       *rpcclient.WSClient
 }
 
-func New(remote, wsEndpoint string) *HTTPClient {
-	return &HTTPClient{
+// New takes a remote endpoint in the form tcp://<host>:<port>
+// and the websocket path (which always seems to be "/websocket")
+func New(remote, wsEndpoint string) *Client {
+	return &Client{
 		rpc:      rpcclient.NewClientJSONRPC(remote),
 		remote:   remote,
 		endpoint: wsEndpoint,
 	}
 }
 
-func (c *HTTPClient) Status() (*ctypes.ResultStatus, error) {
+func (c *Client) Status() (*ctypes.ResultStatus, error) {
 	tmResult := new(ctypes.TMResult)
 	_, err := c.rpc.Call("status", []interface{}{}, tmResult)
 	if err != nil {
@@ -34,7 +47,7 @@ func (c *HTTPClient) Status() (*ctypes.ResultStatus, error) {
 	return (*tmResult).(*ctypes.ResultStatus), nil
 }
 
-func (c *HTTPClient) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
+func (c *Client) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	tmResult := new(ctypes.TMResult)
 	_, err := c.rpc.Call("abci_info", []interface{}{}, tmResult)
 	if err != nil {
@@ -43,7 +56,7 @@ func (c *HTTPClient) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	return (*tmResult).(*ctypes.ResultABCIInfo), nil
 }
 
-func (c *HTTPClient) ABCIQuery(path string, data []byte, prove bool) (*ctypes.ResultABCIQuery, error) {
+func (c *Client) ABCIQuery(path string, data []byte, prove bool) (*ctypes.ResultABCIQuery, error) {
 	tmResult := new(ctypes.TMResult)
 	_, err := c.rpc.Call("abci_query", []interface{}{path, data, prove}, tmResult)
 	if err != nil {
@@ -52,19 +65,19 @@ func (c *HTTPClient) ABCIQuery(path string, data []byte, prove bool) (*ctypes.Re
 	return (*tmResult).(*ctypes.ResultABCIQuery), nil
 }
 
-func (c *HTTPClient) BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
+func (c *Client) BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	return c.broadcastTX("broadcast_tx_commit", tx)
 }
 
-func (c *HTTPClient) BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
+func (c *Client) BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	return c.broadcastTX("broadcast_tx_async", tx)
 }
 
-func (c *HTTPClient) BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
+func (c *Client) BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	return c.broadcastTX("broadcast_tx_sync", tx)
 }
 
-func (c *HTTPClient) broadcastTX(route string, tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
+func (c *Client) broadcastTX(route string, tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	tmResult := new(ctypes.TMResult)
 	_, err := c.rpc.Call(route, []interface{}{tx}, tmResult)
 	if err != nil {
@@ -73,7 +86,7 @@ func (c *HTTPClient) broadcastTX(route string, tx types.Tx) (*ctypes.ResultBroad
 	return (*tmResult).(*ctypes.ResultBroadcastTxCommit), nil
 }
 
-func (c *HTTPClient) NetInfo() (*ctypes.ResultNetInfo, error) {
+func (c *Client) NetInfo() (*ctypes.ResultNetInfo, error) {
 	tmResult := new(ctypes.TMResult)
 	_, err := c.rpc.Call("net_info", nil, tmResult)
 	if err != nil {
@@ -82,7 +95,7 @@ func (c *HTTPClient) NetInfo() (*ctypes.ResultNetInfo, error) {
 	return (*tmResult).(*ctypes.ResultNetInfo), nil
 }
 
-func (c *HTTPClient) DialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) {
+func (c *Client) DialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) {
 	tmResult := new(ctypes.TMResult)
 	// TODO: is this the correct way to marshall seeds?
 	_, err := c.rpc.Call("dial_seeds", []interface{}{seeds}, tmResult)
@@ -92,7 +105,7 @@ func (c *HTTPClient) DialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) 
 	return (*tmResult).(*ctypes.ResultDialSeeds), nil
 }
 
-func (c *HTTPClient) BlockchainInfo(minHeight, maxHeight int) (*ctypes.ResultBlockchainInfo, error) {
+func (c *Client) BlockchainInfo(minHeight, maxHeight int) (*ctypes.ResultBlockchainInfo, error) {
 	tmResult := new(ctypes.TMResult)
 	_, err := c.rpc.Call("blockchain", []interface{}{minHeight, maxHeight}, tmResult)
 	if err != nil {
@@ -101,7 +114,7 @@ func (c *HTTPClient) BlockchainInfo(minHeight, maxHeight int) (*ctypes.ResultBlo
 	return (*tmResult).(*ctypes.ResultBlockchainInfo), nil
 }
 
-func (c *HTTPClient) Genesis() (*ctypes.ResultGenesis, error) {
+func (c *Client) Genesis() (*ctypes.ResultGenesis, error) {
 	tmResult := new(ctypes.TMResult)
 	_, err := c.rpc.Call("genesis", nil, tmResult)
 	if err != nil {
@@ -110,7 +123,7 @@ func (c *HTTPClient) Genesis() (*ctypes.ResultGenesis, error) {
 	return (*tmResult).(*ctypes.ResultGenesis), nil
 }
 
-func (c *HTTPClient) Block(height int) (*ctypes.ResultBlock, error) {
+func (c *Client) Block(height int) (*ctypes.ResultBlock, error) {
 	tmResult := new(ctypes.TMResult)
 	_, err := c.rpc.Call("block", []interface{}{height}, tmResult)
 	if err != nil {
@@ -119,7 +132,7 @@ func (c *HTTPClient) Block(height int) (*ctypes.ResultBlock, error) {
 	return (*tmResult).(*ctypes.ResultBlock), nil
 }
 
-func (c *HTTPClient) Commit(height int) (*ctypes.ResultCommit, error) {
+func (c *Client) Commit(height int) (*ctypes.ResultCommit, error) {
 	tmResult := new(ctypes.TMResult)
 	_, err := c.rpc.Call("commit", []interface{}{height}, tmResult)
 	if err != nil {
@@ -128,7 +141,7 @@ func (c *HTTPClient) Commit(height int) (*ctypes.ResultCommit, error) {
 	return (*tmResult).(*ctypes.ResultCommit), nil
 }
 
-func (c *HTTPClient) Validators() (*ctypes.ResultValidators, error) {
+func (c *Client) Validators() (*ctypes.ResultValidators, error) {
 	tmResult := new(ctypes.TMResult)
 	_, err := c.rpc.Call("validators", nil, tmResult)
 	if err != nil {
@@ -141,7 +154,7 @@ func (c *HTTPClient) Validators() (*ctypes.ResultValidators, error) {
 
 // StartWebsocket starts up a websocket and a listener goroutine
 // if already started, do nothing
-func (c *HTTPClient) StartWebsocket() error {
+func (c *Client) StartWebsocket() error {
 	var err error
 	if c.ws == nil {
 		ws := rpcclient.NewWSClient(c.remote, c.endpoint)
@@ -154,7 +167,7 @@ func (c *HTTPClient) StartWebsocket() error {
 }
 
 // StopWebsocket stops the websocket connection
-func (c *HTTPClient) StopWebsocket() {
+func (c *Client) StopWebsocket() {
 	if c.ws != nil {
 		c.ws.Stop()
 		c.ws = nil
@@ -162,17 +175,17 @@ func (c *HTTPClient) StopWebsocket() {
 }
 
 // GetEventChannels returns the results and error channel from the websocket
-func (c *HTTPClient) GetEventChannels() (chan json.RawMessage, chan error) {
+func (c *Client) GetEventChannels() (chan json.RawMessage, chan error) {
 	if c.ws == nil {
 		return nil, nil
 	}
 	return c.ws.ResultsCh, c.ws.ErrorsCh
 }
 
-func (c *HTTPClient) Subscribe(event string) error {
+func (c *Client) Subscribe(event string) error {
 	return errors.Wrap(c.ws.Subscribe(event), "Subscribe")
 }
 
-func (c *HTTPClient) Unsubscribe(event string) error {
+func (c *Client) Unsubscribe(event string) error {
 	return errors.Wrap(c.ws.Unsubscribe(event), "Unsubscribe")
 }

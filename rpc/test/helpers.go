@@ -37,6 +37,10 @@ func GetConfig() cfg.Config {
 	return config
 }
 
+func GetNode() *nm.Node {
+	return node
+}
+
 // GetURIClient gets a uri client pointing to the test tendermint rpc
 func GetURIClient() *client.ClientURI {
 	rpcAddr := GetConfig().GetString("rpc_laddr")

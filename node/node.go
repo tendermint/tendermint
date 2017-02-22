@@ -246,9 +246,10 @@ func (n *Node) AddListener(l p2p.Listener) {
 	n.sw.AddListener(l)
 }
 
-func (n *Node) startRPC() ([]net.Listener, error) {
+// ConfigureRPC sets all variables in rpccore so they will serve
+// rpc calls from this node
+func (n *Node) ConfigureRPC() {
 	rpccore.SetConfig(n.config)
-
 	rpccore.SetEventSwitch(n.evsw)
 	rpccore.SetBlockStore(n.blockStore)
 	rpccore.SetConsensusState(n.consensusState)
@@ -257,7 +258,10 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 	rpccore.SetPubKey(n.privValidator.PubKey)
 	rpccore.SetGenesisDoc(n.genesisDoc)
 	rpccore.SetProxyAppQuery(n.proxyApp.Query())
+}
 
+func (n *Node) startRPC() ([]net.Listener, error) {
+	n.ConfigureRPC()
 	listenAddrs := strings.Split(n.config.GetString("rpc_laddr"), ",")
 
 	// we may expose the rpc over both a unix and tcp socket
