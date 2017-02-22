@@ -17,20 +17,57 @@ func TestStatus(t *testing.T) {
 	c := rpctest.GetClient()
 	chainID := rpctest.GetConfig().GetString("chain_id")
 	status, err := c.Status()
-	if assert.Nil(t, err) {
-		assert.Equal(t, chainID, status.NodeInfo.Network)
-	}
+	require.Nil(t, err, "%+v", err)
+	assert.Equal(t, chainID, status.NodeInfo.Network)
 }
 
 // Make sure info is correct (we connect properly)
 func TestInfo(t *testing.T) {
 	c := rpctest.GetClient()
 	status, err := c.Status()
-	require.Nil(t, err)
+	require.Nil(t, err, "%+v", err)
 	info, err := c.ABCIInfo()
-	require.Nil(t, err)
+	require.Nil(t, err, "%+v", err)
 	assert.EqualValues(t, status.LatestBlockHeight, info.Response.LastBlockHeight)
 	assert.True(t, strings.HasPrefix(info.Response.Data, "size:"))
+}
+
+func TestNetInfo(t *testing.T) {
+	c := rpctest.GetClient()
+	netinfo, err := c.NetInfo()
+	require.Nil(t, err, "%+v", err)
+	assert.True(t, netinfo.Listening)
+	assert.Equal(t, 0, len(netinfo.Peers))
+}
+
+func TestDialSeeds(t *testing.T) {
+	c := rpctest.GetClient()
+	// FIXME: fix server so it doesn't panic on invalid input
+	_, err := c.DialSeeds([]string{"12.34.56.78:12345"})
+	require.Nil(t, err, "%+v", err)
+}
+
+func TestGenesisAndValidators(t *testing.T) {
+	c := rpctest.GetClient()
+	chainID := rpctest.GetConfig().GetString("chain_id")
+
+	// make sure this is the right genesis file
+	gen, err := c.Genesis()
+	require.Nil(t, err, "%+v", err)
+	assert.Equal(t, chainID, gen.Genesis.ChainID)
+	// get the genesis validator
+	require.Equal(t, 1, len(gen.Genesis.Validators))
+	gval := gen.Genesis.Validators[0]
+
+	// get the current validators
+	vals, err := c.Validators()
+	require.Nil(t, err, "%+v", err)
+	require.Equal(t, 1, len(vals.Validators))
+	val := vals.Validators[0]
+
+	// make sure the current set is also the genesis set
+	assert.Equal(t, gval.Amount, val.VotingPower)
+	assert.Equal(t, gval.PubKey, val.PubKey)
 }
 
 // Make some app checks
@@ -41,9 +78,9 @@ func TestAppCalls(t *testing.T) {
 	assert.NotNil(err) // no block yet
 	k, v, tx := MakeTxKV()
 	_, err = c.BroadcastTxCommit(tx)
-	require.Nil(err)
+	require.Nil(err, "%+v", err)
 	// wait before querying
-	time.Sleep(time.Second * 2)
+	time.Sleep(time.Second * 1)
 	qres, err := c.ABCIQuery("/key", k, false)
 	if assert.Nil(err) && assert.True(qres.Response.Code.IsOK()) {
 		data := qres.Response
@@ -52,20 +89,35 @@ func TestAppCalls(t *testing.T) {
 	}
 	// and we can even check the block is added
 	block, err := c.Block(3)
-	assert.Nil(err) // now it's good :)
+	require.Nil(err, "%+v", err)
 	appHash := block.BlockMeta.Header.AppHash
 	assert.True(len(appHash) > 0)
+	assert.EqualValues(3, block.BlockMeta.Header.Height)
+
+	// check blockchain info, now that we know there is info
+	// TODO: is this commented somewhere that they are returned
+	// in order of descending height???
+	info, err := c.BlockchainInfo(1, 3)
+	require.Nil(err, "%+v", err)
+	assert.True(info.LastHeight > 2)
+	if assert.Equal(3, len(info.BlockMetas)) {
+		lastMeta := info.BlockMetas[0]
+		assert.EqualValues(3, lastMeta.Header.Height)
+		bMeta := block.BlockMeta
+		assert.Equal(bMeta.Header.AppHash, lastMeta.Header.AppHash)
+		assert.Equal(bMeta.BlockID, lastMeta.BlockID)
+	}
 
 	// and get the corresponding commit with the same apphash
 	commit, err := c.Commit(3)
-	assert.Nil(err) // now it's good :)
+	require.Nil(err, "%+v", err)
 	cappHash := commit.Header.AppHash
 	assert.Equal(appHash, cappHash)
 	assert.NotNil(commit.Commit)
 
 	// compare the commits (note Commit(2) has commit from Block(3))
 	commit2, err := c.Commit(2)
-	assert.Nil(err) // now it's good :)
+	require.Nil(err, "%+v", err)
 	assert.Equal(block.Block.LastCommit, commit2.Commit)
 
 	// and we got a proof that works!
@@ -79,27 +131,6 @@ func TestAppCalls(t *testing.T) {
 			valid := proof.Verify(key, value, appHash)
 			assert.True(valid)
 		}
-	}
-}
-
-// run most calls just to make sure no syntax errors
-func TestNoErrors(t *testing.T) {
-	assert := assert.New(t)
-	c := rpctest.GetClient()
-	_, err := c.NetInfo()
-	assert.Nil(err)
-	_, err = c.BlockchainInfo(0, 4)
-	assert.Nil(err)
-	// TODO: check with a valid height
-	_, err = c.Block(1000)
-	assert.NotNil(err)
-	// maybe this is an error???
-	// _, err = c.DialSeeds([]string{"one", "two"})
-	// assert.Nil(err)
-	gen, err := c.Genesis()
-	if assert.Nil(err) {
-		chainID := rpctest.GetConfig().GetString("chain_id")
-		assert.Equal(chainID, gen.Genesis.ChainID)
 	}
 }
 
