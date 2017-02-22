@@ -34,6 +34,8 @@ import:
   - proto
 - package: github.com/gorilla/websocket
 - package: github.com/spf13/pflag
+- package: github.com/pkg/errors
+  version: ^0.8.0
 - package: golang.org/x/crypto
   subpackages:
   - ripemd160
