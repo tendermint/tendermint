@@ -24,12 +24,10 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-type Client interface {
-	// general chain info
-	Status() (*ctypes.ResultStatus, error)
-	NetInfo() (*ctypes.ResultNetInfo, error)
-	Genesis() (*ctypes.ResultGenesis, error)
-
+// ABCIClient groups together the functionality that principally
+// affects the ABCI app. In many cases this will be all we want,
+// so we can accept an interface which is easier to mock
+type ABCIClient interface {
 	// reading from abci app
 	ABCIInfo() (*ctypes.ResultABCIInfo, error)
 	ABCIQuery(path string, data []byte, prove bool) (*ctypes.ResultABCIQuery, error)
@@ -38,15 +36,44 @@ type Client interface {
 	BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error)
 	BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error)
 	BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error)
+}
 
-	// validating block info
-	BlockchainInfo(minHeight, maxHeight int) (*ctypes.ResultBlockchainInfo, error)
+// SignClient groups together the interfaces need to get valid
+// signatures and prove anything about the chain
+type SignClient interface {
 	Block(height int) (*ctypes.ResultBlock, error)
 	Commit(height int) (*ctypes.ResultCommit, error)
 	Validators() (*ctypes.ResultValidators, error)
+}
+
+// NetworkClient is general info about the network state.  May not
+// be needed usually.
+//
+// Not included in the Client interface, but generally implemented
+// by concrete implementations.
+type NetworkClient interface {
+	NetInfo() (*ctypes.ResultNetInfo, error)
+	// remove this???
+	DialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error)
+}
+
+// HistoryClient shows us data from genesis to now in large chunks.
+type HistoryClient interface {
+	Genesis() (*ctypes.ResultGenesis, error)
+	BlockchainInfo(minHeight, maxHeight int) (*ctypes.ResultBlockchainInfo, error)
+}
+
+type StatusClient interface {
+	// general chain info
+	Status() (*ctypes.ResultStatus, error)
+}
+
+type Client interface {
+	ABCIClient
+	SignClient
+	HistoryClient
+	StatusClient
+	// Note: doesn't include NetworkClient, is it important??
 
 	// TODO: add some sort of generic subscription mechanism...
-
-	// remove this???
-	// DialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error)
 }
