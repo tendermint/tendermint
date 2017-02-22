@@ -2,6 +2,10 @@ package rpctest
 
 import (
 	"fmt"
+	"math/rand"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -27,12 +31,43 @@ var (
 
 const tmLogLevel = "error"
 
+// f**ing long, but unique for each test
+func makePathname() string {
+	// get path
+	p, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(p)
+	sep := string(filepath.Separator)
+	return strings.Replace(p, sep, "_", -1)
+}
+
+func randPort() int {
+	// returns between base and base + spread
+	base, spread := 20000, 20000
+	return base + rand.Intn(spread)
+}
+
+func makeAddrs() (string, string, string) {
+	start := randPort()
+	return fmt.Sprintf("tcp://0.0.0.0:%d", start),
+		fmt.Sprintf("tcp://0.0.0.0:%d", start+1),
+		fmt.Sprintf("tcp://0.0.0.0:%d", start+2)
+}
+
 // GetConfig returns a config for the test cases as a singleton
 func GetConfig() cfg.Config {
 	if config == nil {
-		config = tendermint_test.ResetConfig("rpc_test_client_test")
+		pathname := makePathname()
+		config = tendermint_test.ResetConfig(pathname)
 		// Shut up the logging
 		logger.SetLogLevel(tmLogLevel)
+		// and we use random ports to run in parallel
+		tm, rpc, grpc := makeAddrs()
+		config.Set("node_laddr", tm)
+		config.Set("rpc_laddr", rpc)
+		config.Set("grpc_laddr", grpc)
 	}
 	return config
 }

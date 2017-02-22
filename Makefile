@@ -22,11 +22,11 @@ dist:
 
 test:
 	@echo "--> Running go test"
-	@go test -p 1 $(PACKAGES)
+	@go test $(PACKAGES)
 
 test_race:
 	@echo "--> Running go test --race"
-	@go test -p 1 -v -race $(PACKAGES)
+	@go test -v -race $(PACKAGES)
 
 test_integrations:
 	@bash ./test/test.sh

@@ -38,7 +38,7 @@ func TestInfo(t *testing.T) {
 	info, err := c.ABCIInfo()
 	require.Nil(t, err, "%+v", err)
 	assert.EqualValues(t, status.LatestBlockHeight, info.Response.LastBlockHeight)
-	assert.True(t, strings.HasPrefix(info.Response.Data, "size:"))
+	assert.True(t, strings.HasPrefix(info.Response.Data, "size"))
 }
 
 func TestNetInfo(t *testing.T) {
@@ -83,8 +83,18 @@ func TestGenesisAndValidators(t *testing.T) {
 func TestAppCalls(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	c := GetClient()
-	_, err := c.Block(1)
+
+	// get an offset of height to avoid racing and guessing
+	s, err := c.Status()
+	require.Nil(err)
+	// sh is start height or status height
+	sh := s.LatestBlockHeight
+
+	// look for the future
+	_, err = c.Block(sh + 2)
 	assert.NotNil(err) // no block yet
+
+	// write something
 	k, v, tx := MakeTxKV()
 	_, err = c.BroadcastTxCommit(tx)
 	require.Nil(err, "%+v", err)
@@ -96,36 +106,39 @@ func TestAppCalls(t *testing.T) {
 		// assert.Equal(k, data.GetKey())  // only returned for proofs
 		assert.Equal(v, data.GetValue())
 	}
+	// +/- 1 making my head hurt
+	h := int(qres.Response.Height) - 1
+
 	// and we can even check the block is added
-	block, err := c.Block(3)
+	block, err := c.Block(h)
 	require.Nil(err, "%+v", err)
 	appHash := block.BlockMeta.Header.AppHash
 	assert.True(len(appHash) > 0)
-	assert.EqualValues(3, block.BlockMeta.Header.Height)
+	assert.EqualValues(h, block.BlockMeta.Header.Height)
 
 	// check blockchain info, now that we know there is info
 	// TODO: is this commented somewhere that they are returned
 	// in order of descending height???
-	info, err := c.BlockchainInfo(1, 3)
+	info, err := c.BlockchainInfo(h-2, h)
 	require.Nil(err, "%+v", err)
 	assert.True(info.LastHeight > 2)
 	if assert.Equal(3, len(info.BlockMetas)) {
 		lastMeta := info.BlockMetas[0]
-		assert.EqualValues(3, lastMeta.Header.Height)
+		assert.EqualValues(h, lastMeta.Header.Height)
 		bMeta := block.BlockMeta
 		assert.Equal(bMeta.Header.AppHash, lastMeta.Header.AppHash)
 		assert.Equal(bMeta.BlockID, lastMeta.BlockID)
 	}
 
 	// and get the corresponding commit with the same apphash
-	commit, err := c.Commit(3)
+	commit, err := c.Commit(h)
 	require.Nil(err, "%+v", err)
 	cappHash := commit.Header.AppHash
 	assert.Equal(appHash, cappHash)
 	assert.NotNil(commit.Commit)
 
 	// compare the commits (note Commit(2) has commit from Block(3))
-	commit2, err := c.Commit(2)
+	commit2, err := c.Commit(h - 1)
 	require.Nil(err, "%+v", err)
 	assert.Equal(block.Block.LastCommit, commit2.Commit)
 
