@@ -14,6 +14,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tendermint/go-rpc/client"
+	"github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -35,6 +36,10 @@ func New(remote, wsEndpoint string) *Client {
 		remote:   remote,
 		endpoint: wsEndpoint,
 	}
+}
+
+func (c *Client) _assertIsClient() client.Client {
+	return c
 }
 
 func (c *Client) Status() (*ctypes.ResultStatus, error) {
@@ -66,24 +71,29 @@ func (c *Client) ABCIQuery(path string, data []byte, prove bool) (*ctypes.Result
 }
 
 func (c *Client) BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
-	return c.broadcastTX("broadcast_tx_commit", tx)
+	tmResult := new(ctypes.TMResult)
+	_, err := c.rpc.Call("broadcast_tx_commit", []interface{}{tx}, tmResult)
+	if err != nil {
+		return nil, errors.Wrap(err, "broadcast_tx_commit")
+	}
+	return (*tmResult).(*ctypes.ResultBroadcastTxCommit), nil
 }
 
-func (c *Client) BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
+func (c *Client) BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	return c.broadcastTX("broadcast_tx_async", tx)
 }
 
-func (c *Client) BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
+func (c *Client) BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	return c.broadcastTX("broadcast_tx_sync", tx)
 }
 
-func (c *Client) broadcastTX(route string, tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
+func (c *Client) broadcastTX(route string, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	tmResult := new(ctypes.TMResult)
 	_, err := c.rpc.Call(route, []interface{}{tx}, tmResult)
 	if err != nil {
 		return nil, errors.Wrap(err, route)
 	}
-	return (*tmResult).(*ctypes.ResultBroadcastTxCommit), nil
+	return (*tmResult).(*ctypes.ResultBroadcastTx), nil
 }
 
 func (c *Client) NetInfo() (*ctypes.ResultNetInfo, error) {

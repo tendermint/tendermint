@@ -16,6 +16,7 @@ package localclient
 
 import (
 	nm "github.com/tendermint/tendermint/node"
+	"github.com/tendermint/tendermint/rpc/client"
 	"github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
@@ -36,6 +37,10 @@ func New(node *nm.Node) Client {
 	return Client{
 		node: node,
 	}
+}
+
+func (c Client) _assertIsClient() client.Client {
+	return c
 }
 
 func (c Client) Status() (*ctypes.ResultStatus, error) {
