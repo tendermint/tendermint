@@ -1,4 +1,4 @@
-package client_test
+package httpclient_test
 
 import (
 	"os"

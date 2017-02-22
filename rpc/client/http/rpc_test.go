@@ -1,4 +1,4 @@
-package client_test
+package httpclient_test
 
 import (
 	"strings"
@@ -8,13 +8,20 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	merkle "github.com/tendermint/go-merkle"
+	httpclient "github.com/tendermint/tendermint/rpc/client/http"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
 )
 
+// GetClient gets a rpc client pointing to the test tendermint rpc
+func GetClient() *httpclient.HTTPClient {
+	rpcAddr := rpctest.GetConfig().GetString("rpc_laddr")
+	return httpclient.New(rpcAddr, "/websocket")
+}
+
 // Make sure status is correct (we connect properly)
 func TestStatus(t *testing.T) {
-	c := rpctest.GetClient()
+	c := GetClient()
 	chainID := rpctest.GetConfig().GetString("chain_id")
 	status, err := c.Status()
 	require.Nil(t, err, "%+v", err)
@@ -23,7 +30,7 @@ func TestStatus(t *testing.T) {
 
 // Make sure info is correct (we connect properly)
 func TestInfo(t *testing.T) {
-	c := rpctest.GetClient()
+	c := GetClient()
 	status, err := c.Status()
 	require.Nil(t, err, "%+v", err)
 	info, err := c.ABCIInfo()
@@ -33,7 +40,7 @@ func TestInfo(t *testing.T) {
 }
 
 func TestNetInfo(t *testing.T) {
-	c := rpctest.GetClient()
+	c := GetClient()
 	netinfo, err := c.NetInfo()
 	require.Nil(t, err, "%+v", err)
 	assert.True(t, netinfo.Listening)
@@ -41,14 +48,14 @@ func TestNetInfo(t *testing.T) {
 }
 
 func TestDialSeeds(t *testing.T) {
-	c := rpctest.GetClient()
+	c := GetClient()
 	// FIXME: fix server so it doesn't panic on invalid input
 	_, err := c.DialSeeds([]string{"12.34.56.78:12345"})
 	require.Nil(t, err, "%+v", err)
 }
 
 func TestGenesisAndValidators(t *testing.T) {
-	c := rpctest.GetClient()
+	c := GetClient()
 	chainID := rpctest.GetConfig().GetString("chain_id")
 
 	// make sure this is the right genesis file
@@ -73,7 +80,7 @@ func TestGenesisAndValidators(t *testing.T) {
 // Make some app checks
 func TestAppCalls(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	c := rpctest.GetClient()
+	c := GetClient()
 	_, err := c.Block(1)
 	assert.NotNil(err) // no block yet
 	k, v, tx := MakeTxKV()
@@ -136,7 +143,7 @@ func TestAppCalls(t *testing.T) {
 
 func TestSubscriptions(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	c := rpctest.GetClient()
+	c := GetClient()
 	err := c.StartWebsocket()
 	require.Nil(err)
 	defer c.StopWebsocket()

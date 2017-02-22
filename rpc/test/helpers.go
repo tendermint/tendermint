@@ -15,7 +15,6 @@ import (
 	"github.com/tendermint/tendermint/config/tendermint_test"
 	nm "github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/proxy"
-	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	core_grpc "github.com/tendermint/tendermint/rpc/grpc"
 	"github.com/tendermint/tendermint/types"
@@ -36,12 +35,6 @@ func GetConfig() cfg.Config {
 		logger.SetLogLevel(tmLogLevel)
 	}
 	return config
-}
-
-// GetClient gets a rpc client pointing to the test tendermint rpc
-func GetClient() *rpcclient.HTTPClient {
-	rpcAddr := GetConfig().GetString("rpc_laddr")
-	return rpcclient.New(rpcAddr, "/websocket")
 }
 
 // GetURIClient gets a uri client pointing to the test tendermint rpc
