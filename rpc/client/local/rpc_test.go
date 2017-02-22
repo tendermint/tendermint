@@ -14,17 +14,15 @@ import (
 
 // GetClient gets a rpc client pointing to the test tendermint rpc
 func GetClient() local.Client {
-	node := rpctest.GetNode()
 	return local.New(node)
 }
 
 // Make sure status is correct (we connect properly)
 func TestStatus(t *testing.T) {
 	c := GetClient()
-	chainID := rpctest.GetConfig().GetString("chain_id")
 	status, err := c.Status()
 	require.Nil(t, err, "%+v", err)
-	assert.Equal(t, chainID, status.NodeInfo.Network)
+	require.NotNil(t, status.PubKey)
 }
 
 // Make sure info is correct (we connect properly)

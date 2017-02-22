@@ -26,7 +26,6 @@ import (
 
 var (
 	config cfg.Config
-	node   *nm.Node
 )
 
 const tmLogLevel = "error"
@@ -72,10 +71,6 @@ func GetConfig() cfg.Config {
 	return config
 }
 
-func GetNode() *nm.Node {
-	return node
-}
-
 // GetURIClient gets a uri client pointing to the test tendermint rpc
 func GetURIClient() *client.ClientURI {
 	rpcAddr := GetConfig().GetString("rpc_laddr")
@@ -103,12 +98,9 @@ func GetWSClient() *client.WSClient {
 }
 
 // StartTendermint starts a test tendermint server in a go routine and returns when it is initialized
-// TODO: can one pass an Application in????
 func StartTendermint(app abci.Application) *nm.Node {
-	// start a node
-	fmt.Println("Starting Tendermint...")
-
-	node = NewTendermint(app)
+	node := NewTendermint(app)
+	node.Start()
 	fmt.Println("Tendermint running!")
 	return node
 }
@@ -121,9 +113,6 @@ func NewTendermint(app abci.Application) *nm.Node {
 	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
 	papp := proxy.NewLocalClientCreator(app)
 	node := nm.NewNode(config, privValidator, papp)
-
-	// node.Start now does everything including the RPC server
-	node.Start()
 	return node
 }
 

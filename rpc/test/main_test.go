@@ -18,12 +18,15 @@ import (
 	"testing"
 
 	"github.com/tendermint/abci/example/dummy"
+	nm "github.com/tendermint/tendermint/node"
 )
+
+var node *nm.Node
 
 func TestMain(m *testing.M) {
 	// start a tendermint node (and merkleeyes) in the background to test against
 	app := dummy.NewDummyApplication()
-	node := StartTendermint(app)
+	node = StartTendermint(app)
 	code := m.Run()
 
 	// and shut down proper at the end
