@@ -44,6 +44,7 @@ type State struct {
 	TxIndexer tx.Indexer `json:"-"` // Transaction indexer.
 }
 
+// Used in tests.
 func LoadState(db dbm.DB) *State {
 	return loadState(db, stateKey)
 }
@@ -132,8 +133,13 @@ func GetState(config cfg.Config, stateDB dbm.DB) *State {
 	}
 
 	// Transaction indexing
-	store := dbm.NewDB("tx_indexer", config.GetString("db_backend"), config.GetString("db_dir"))
-	state.TxIndexer = txindexer.NewKV(store)
+	switch config.GetString("tx_indexer") {
+	case "kv":
+		store := dbm.NewDB("tx_indexer", config.GetString("db_backend"), config.GetString("db_dir"))
+		state.TxIndexer = txindexer.NewKV(store)
+	default:
+		state.TxIndexer = &txindexer.Null{}
+	}
 
 	return state
 }
