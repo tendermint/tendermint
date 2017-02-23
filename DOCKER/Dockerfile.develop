@@ -20,7 +20,7 @@ RUN mkdir -p /go/src/github.com/tendermint/tendermint && \
     git checkout develop && \
     make get_vendor_deps && \
     make install && \
-    glide cc && \ # 183Mb => 75Mb
+    glide cc && \
     cd - && \
     rm -rf /go/src/github.com/tendermint/tendermint && \
     apk del go build-base git
