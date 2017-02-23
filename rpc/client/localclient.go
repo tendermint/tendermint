@@ -1,6 +1,15 @@
+package client
+
+import (
+	nm "github.com/tendermint/tendermint/node"
+	"github.com/tendermint/tendermint/rpc/core"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tendermint/types"
+)
+
 /*
-package local returns a Client implementation that
-directly executes the rpc functions on a given node.
+Local is a Client implementation that directly executes the rpc
+functions on a given node, without going through HTTP or GRPC
 
 This implementation is useful for:
 
@@ -9,89 +18,79 @@ of going through an http server
 * Communication between an ABCI app and tendermin core when they
 are compiled in process.
 
-For real clients, you probably want the "http" package.  For more
-powerful control during testing, you probably want the "mock" package.
+For real clients, you probably want to use client.HTTP.  For more
+powerful control during testing, you probably want the "client/mock" package.
 */
-package local
-
-import (
-	nm "github.com/tendermint/tendermint/node"
-	"github.com/tendermint/tendermint/rpc/client"
-	"github.com/tendermint/tendermint/rpc/core"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	"github.com/tendermint/tendermint/types"
-)
-
-type Client struct {
+type Local struct {
 	node *nm.Node
 }
 
-// New configures this to call the Node directly.
+// NewLocal configures a client that calls the Node directly.
 //
 // Note that given how rpc/core works with package singletons, that
 // you can only have one node per process.  So make sure test cases
 // don't run in parallel, or try to simulate an entire network in
 // one process...
-func New(node *nm.Node) Client {
+func NewLocal(node *nm.Node) Local {
 	node.ConfigureRPC()
-	return Client{
+	return Local{
 		node: node,
 	}
 }
 
-func (c Client) _assertIsClient() client.Client {
+func (c Local) _assertIsClient() Client {
 	return c
 }
 
-func (c Client) Status() (*ctypes.ResultStatus, error) {
+func (c Local) Status() (*ctypes.ResultStatus, error) {
 	return core.Status()
 }
 
-func (c Client) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
+func (c Local) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	return core.ABCIInfo()
 }
 
-func (c Client) ABCIQuery(path string, data []byte, prove bool) (*ctypes.ResultABCIQuery, error) {
+func (c Local) ABCIQuery(path string, data []byte, prove bool) (*ctypes.ResultABCIQuery, error) {
 	return core.ABCIQuery(path, data, prove)
 }
 
-func (c Client) BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
+func (c Local) BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	return core.BroadcastTxCommit(tx)
 }
 
-func (c Client) BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
+func (c Local) BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	return core.BroadcastTxAsync(tx)
 }
 
-func (c Client) BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
+func (c Local) BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	return core.BroadcastTxSync(tx)
 }
 
-func (c Client) NetInfo() (*ctypes.ResultNetInfo, error) {
+func (c Local) NetInfo() (*ctypes.ResultNetInfo, error) {
 	return core.NetInfo()
 }
 
-func (c Client) DialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) {
+func (c Local) DialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) {
 	return core.UnsafeDialSeeds(seeds)
 }
 
-func (c Client) BlockchainInfo(minHeight, maxHeight int) (*ctypes.ResultBlockchainInfo, error) {
+func (c Local) BlockchainInfo(minHeight, maxHeight int) (*ctypes.ResultBlockchainInfo, error) {
 	return core.BlockchainInfo(minHeight, maxHeight)
 }
 
-func (c Client) Genesis() (*ctypes.ResultGenesis, error) {
+func (c Local) Genesis() (*ctypes.ResultGenesis, error) {
 	return core.Genesis()
 }
 
-func (c Client) Block(height int) (*ctypes.ResultBlock, error) {
+func (c Local) Block(height int) (*ctypes.ResultBlock, error) {
 	return core.Block(height)
 }
 
-func (c Client) Commit(height int) (*ctypes.ResultCommit, error) {
+func (c Local) Commit(height int) (*ctypes.ResultCommit, error) {
 	return core.Commit(height)
 }
 
-func (c Client) Validators() (*ctypes.ResultValidators, error) {
+func (c Local) Validators() (*ctypes.ResultValidators, error) {
 	return core.Validators()
 }
 
