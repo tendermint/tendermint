@@ -9,7 +9,7 @@ import (
 )
 
 var replayCmd = &cobra.Command{
-	Use:   "replay",
+	Use:   "replay [walfile]",
 	Short: "Replay messages from WAL",
 	Run: func(cmd *cobra.Command, args []string) {
 
@@ -22,7 +22,7 @@ var replayCmd = &cobra.Command{
 }
 
 var replayConsoleCmd = &cobra.Command{
-	Use:   "replay_console",
+	Use:   "replay_console [walfile]",
 	Short: "Replay messages from WAL in a console",
 	Run: func(cmd *cobra.Command, args []string) {
 
