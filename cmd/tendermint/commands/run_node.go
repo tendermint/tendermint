@@ -1,14 +1,25 @@
-package main
+package commands
 
 import (
 	"io/ioutil"
 	"time"
 
+	"github.com/spf13/cobra"
+
 	. "github.com/tendermint/go-common"
-	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/types"
 )
+
+var runNodeCmd = &cobra.Command{
+	Use:   "node",
+	Short: "Run the tendermint node",
+	Run:   runNode,
+}
+
+func init() {
+	RootCmd.AddCommand(runNodeCmd)
+}
 
 // Users wishing to:
 //	* Use an external signer for their validators
@@ -16,7 +27,7 @@ import (
 // should import github.com/tendermint/tendermint/node and implement
 // their own run_node to call node.NewNode (instead of node.NewNodeDefault)
 // with their custom priv validator and/or custom proxy.ClientCreator
-func run_node(config cfg.Config) {
+func runNode(cmd *cobra.Command, args []string) {
 
 	// Wait until the genesis doc becomes available
 	// This is for Mintnet compatibility.
@@ -55,5 +66,4 @@ func run_node(config cfg.Config) {
 
 	// Trap signal, run forever.
 	n.RunForever()
-
 }
