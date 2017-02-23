@@ -40,13 +40,21 @@ func (a ABCIApp) BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit
 }
 
 func (a ABCIApp) BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
-	d := a.App.DeliverTx(tx)
-	return &ctypes.ResultBroadcastTx{d.Code, d.Data, d.Log}, nil
+	c := a.App.CheckTx(tx)
+	// and this gets writen in a background thread...
+	if c.IsOK() {
+		go func() { a.App.DeliverTx(tx) }()
+	}
+	return &ctypes.ResultBroadcastTx{c.Code, c.Data, c.Log}, nil
 }
 
 func (a ABCIApp) BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
-	d := a.App.DeliverTx(tx)
-	return &ctypes.ResultBroadcastTx{d.Code, d.Data, d.Log}, nil
+	c := a.App.CheckTx(tx)
+	// and this gets writen in a background thread...
+	if c.IsOK() {
+		go func() { a.App.DeliverTx(tx) }()
+	}
+	return &ctypes.ResultBroadcastTx{c.Code, c.Data, c.Log}, nil
 }
 
 // ABCIMock will send all abci related request to the named app,

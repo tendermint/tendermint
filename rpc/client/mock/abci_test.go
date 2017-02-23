@@ -156,9 +156,11 @@ func TestABCIApp(t *testing.T) {
 	// add a key
 	key, value := "foo", "bar"
 	tx := fmt.Sprintf("%s=%s", key, value)
-	res, err := m.BroadcastTxSync(types.Tx(tx))
+	res, err := m.BroadcastTxCommit(types.Tx(tx))
 	require.Nil(err)
-	assert.True(res.Code.IsOK())
+	assert.True(res.CheckTx.Code.IsOK())
+	require.NotNil(res.DeliverTx)
+	assert.True(res.DeliverTx.Code.IsOK())
 
 	// check the key
 	qres, err := m.ABCIQuery("/key", []byte(key), false)
