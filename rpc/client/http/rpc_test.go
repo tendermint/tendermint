@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	merkle "github.com/tendermint/go-merkle"
+	merktest "github.com/tendermint/merkleeyes/testutil"
 	"github.com/tendermint/tendermint/rpc/client/http"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
@@ -95,7 +96,7 @@ func TestAppCalls(t *testing.T) {
 	assert.NotNil(err) // no block yet
 
 	// write something
-	k, v, tx := MakeTxKV()
+	k, v, tx := merktest.MakeTxKV()
 	_, err = c.BroadcastTxCommit(tx)
 	require.Nil(err, "%+v", err)
 	// wait before querying
@@ -164,8 +165,7 @@ func TestSubscriptions(t *testing.T) {
 	defer c.StopWebsocket()
 
 	// subscribe to a transaction event
-	_, _, tx := MakeTxKV()
-	// this causes a panic in tendermint core!!!
+	_, _, tx := merktest.MakeTxKV()
 	eventType := types.EventStringTx(types.Tx(tx))
 	c.Subscribe(eventType)
 
