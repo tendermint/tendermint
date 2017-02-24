@@ -173,6 +173,7 @@ type WSEvents struct {
 	endpoint string
 	ws       *rpcclient.WSClient
 	quit     chan bool
+	done     chan bool
 }
 
 func newWSEvents(remote, endpoint string) *WSEvents {
@@ -181,6 +182,7 @@ func newWSEvents(remote, endpoint string) *WSEvents {
 		endpoint:    endpoint,
 		remote:      remote,
 		quit:        make(chan bool, 1),
+		done:        make(chan bool, 1),
 	}
 }
 
@@ -211,7 +213,9 @@ func (w *WSEvents) Stop() bool {
 	if stop {
 		// send a message to quit to stop the eventListener
 		w.quit <- true
+		<-w.done
 		w.ws.Stop()
+		w.ws = nil
 	}
 	return stop
 }
@@ -249,7 +253,9 @@ func (w *WSEvents) eventListener() {
 			// FIXME: better logging/handling of errors??
 			fmt.Printf("ws err: %+v\n", err)
 		case <-w.quit:
-			// only way to finish this method
+			// send a message so we can wait for the routine to exit
+			// before cleaning up the w.ws stuff
+			w.done <- true
 			return
 		}
 	}
