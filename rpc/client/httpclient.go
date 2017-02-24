@@ -1,10 +1,12 @@
 package client
 
 import (
-	"encoding/json"
+	"fmt"
 
 	"github.com/pkg/errors"
+	events "github.com/tendermint/go-events"
 	"github.com/tendermint/go-rpc/client"
+	wire "github.com/tendermint/go-wire"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -19,10 +21,9 @@ the tendermint node in-process (local), or when you want to mock
 out the server for test code (mock).
 */
 type HTTP struct {
-	remote   string
-	endpoint string
-	rpc      *rpcclient.ClientJSONRPC
-	ws       *rpcclient.WSClient
+	remote string
+	rpc    *rpcclient.ClientJSONRPC
+	*WSEvents
 }
 
 // New takes a remote endpoint in the form tcp://<host>:<port>
@@ -31,7 +32,7 @@ func NewHTTP(remote, wsEndpoint string) *HTTP {
 	return &HTTP{
 		rpc:      rpcclient.NewClientJSONRPC(remote),
 		remote:   remote,
-		endpoint: wsEndpoint,
+		WSEvents: newWSEvents(remote, wsEndpoint),
 	}
 }
 
@@ -40,6 +41,10 @@ func (c *HTTP) _assertIsClient() Client {
 }
 
 func (c *HTTP) _assertIsNetworkClient() NetworkClient {
+	return c
+}
+
+func (c *HTTP) _assertIsEventSwitch() types.EventSwitch {
 	return c
 }
 
@@ -162,40 +167,119 @@ func (c *HTTP) Validators() (*ctypes.ResultValidators, error) {
 
 /** websocket event stuff here... **/
 
-// StartWebsocket starts up a websocket and a listener goroutine
-// if already started, do nothing
-func (c *HTTP) StartWebsocket() error {
-	var err error
-	if c.ws == nil {
-		ws := rpcclient.NewWSClient(c.remote, c.endpoint)
+type WSEvents struct {
+	types.EventSwitch
+	remote   string
+	endpoint string
+	ws       *rpcclient.WSClient
+	quit     chan bool
+}
+
+func newWSEvents(remote, endpoint string) *WSEvents {
+	return &WSEvents{
+		EventSwitch: types.NewEventSwitch(),
+		endpoint:    endpoint,
+		remote:      remote,
+		quit:        make(chan bool, 1),
+	}
+}
+
+func (w *WSEvents) _assertIsEventSwitch() types.EventSwitch {
+	return w
+}
+
+// Start is the only way I could think the extend OnStart from
+// events.eventSwitch.  If only it wasn't private...
+// BaseService.Start -> eventSwitch.OnStart -> WSEvents.Start
+func (w *WSEvents) Start() (bool, error) {
+	st, err := w.EventSwitch.Start()
+	// if we did start, then OnStart here...
+	if st && err == nil {
+		ws := rpcclient.NewWSClient(w.remote, w.endpoint)
 		_, err = ws.Start()
 		if err == nil {
-			c.ws = ws
+			w.ws = ws
+			go w.eventListener()
 		}
 	}
-	return errors.Wrap(err, "StartWebsocket")
+	return st, errors.Wrap(err, "StartWSEvent")
 }
 
-// StopWebsocket stops the websocket connection
-func (c *HTTP) StopWebsocket() {
-	if c.ws != nil {
-		c.ws.Stop()
-		c.ws = nil
+// Stop wraps the BaseService/eventSwitch actions as Start does
+func (w *WSEvents) Stop() bool {
+	stop := w.EventSwitch.Stop()
+	if stop {
+		// send a message to quit to stop the eventListener
+		w.quit <- true
+		w.ws.Stop()
+	}
+	return stop
+}
+
+/** TODO: more intelligent subscriptions! **/
+func (w *WSEvents) AddListenerForEvent(listenerID, event string, cb events.EventCallback) {
+	w.subscribe(event)
+	w.EventSwitch.AddListenerForEvent(listenerID, event, cb)
+}
+
+func (w *WSEvents) RemoveListenerForEvent(event string, listenerID string) {
+	w.unsubscribe(event)
+	w.EventSwitch.RemoveListenerForEvent(event, listenerID)
+}
+
+func (w *WSEvents) RemoveListener(listenerID string) {
+	w.EventSwitch.RemoveListener(listenerID)
+}
+
+// eventListener is an infinite loop pulling all websocket events
+// and pushing them to the EventSwitch.
+//
+// the goroutine only stops by closing quit
+func (w *WSEvents) eventListener() {
+	for {
+		select {
+		case res := <-w.ws.ResultsCh:
+			// res is json.RawMessage
+			err := w.parseEvent(res)
+			if err != nil {
+				// FIXME: better logging/handling of errors??
+				fmt.Printf("ws result: %+v\n", err)
+			}
+		case err := <-w.ws.ErrorsCh:
+			// FIXME: better logging/handling of errors??
+			fmt.Printf("ws err: %+v\n", err)
+		case <-w.quit:
+			// only way to finish this method
+			return
+		}
 	}
 }
 
-// GetEventChannels returns the results and error channel from the websocket
-func (c *HTTP) GetEventChannels() (chan json.RawMessage, chan error) {
-	if c.ws == nil {
-		return nil, nil
+// parseEvent unmarshals the json message and converts it into
+// some implementation of types.TMEventData, and sends it off
+// on the merry way to the EventSwitch
+func (w *WSEvents) parseEvent(data []byte) (err error) {
+	result := new(ctypes.TMResult)
+	wire.ReadJSONPtr(result, data, &err)
+	if err != nil {
+		return err
 	}
-	return c.ws.ResultsCh, c.ws.ErrorsCh
+	event, ok := (*result).(*ctypes.ResultEvent)
+	if !ok {
+		// ignore silently (eg. subscribe, unsubscribe and maybe other events)
+		return nil
+		// or report loudly???
+		// return errors.Errorf("unknown message: %#v", *result)
+	}
+	// looks good!  let's fire this baby!
+	w.EventSwitch.FireEvent(event.Name, event.Data)
+	return nil
 }
 
-func (c *HTTP) Subscribe(event string) error {
-	return errors.Wrap(c.ws.Subscribe(event), "Subscribe")
+func (w *WSEvents) subscribe(event string) error {
+	return errors.Wrap(w.ws.Subscribe(event), "Subscribe")
 }
 
-func (c *HTTP) Unsubscribe(event string) error {
-	return errors.Wrap(c.ws.Unsubscribe(event), "Unsubscribe")
+func (w *WSEvents) unsubscribe(event string) error {
+	return errors.Wrap(w.ws.Unsubscribe(event), "Unsubscribe")
 }
