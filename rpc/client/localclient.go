@@ -42,6 +42,10 @@ func (c Local) _assertIsClient() Client {
 	return c
 }
 
+func (c Local) _assertIsNetworkClient() NetworkClient {
+	return c
+}
+
 func (c Local) Status() (*ctypes.ResultStatus, error) {
 	return core.Status()
 }
@@ -70,6 +74,10 @@ func (c Local) NetInfo() (*ctypes.ResultNetInfo, error) {
 	return core.NetInfo()
 }
 
+func (c Local) DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
+	return core.DumpConsensusState()
+}
+
 func (c Local) DialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) {
 	return core.UnsafeDialSeeds(seeds)
 }
@@ -93,46 +101,3 @@ func (c Local) Commit(height int) (*ctypes.ResultCommit, error) {
 func (c Local) Validators() (*ctypes.ResultValidators, error) {
 	return core.Validators()
 }
-
-/** websocket event stuff here... **/
-
-/*
-// StartWebsocket starts up a websocket and a listener goroutine
-// if already started, do nothing
-func (c Client) StartWebsocket() error {
-	var err error
-	if c.ws == nil {
-		ws := rpcclient.NewWSClient(c.remote, c.endpoint)
-		_, err = ws.Start()
-		if err == nil {
-			c.ws = ws
-		}
-	}
-	return errors.Wrap(err, "StartWebsocket")
-}
-
-// StopWebsocket stops the websocket connection
-func (c Client) StopWebsocket() {
-	if c.ws != nil {
-		c.ws.Stop()
-		c.ws = nil
-	}
-}
-
-// GetEventChannels returns the results and error channel from the websocket
-func (c Client) GetEventChannels() (chan json.RawMessage, chan error) {
-	if c.ws == nil {
-		return nil, nil
-	}
-	return c.ws.ResultsCh, c.ws.ErrorsCh
-}
-
-func (c Client) Subscribe(event string) error {
-	return errors.Wrap(c.ws.Subscribe(event), "Subscribe")
-}
-
-func (c Client) Unsubscribe(event string) error {
-	return errors.Wrap(c.ws.Unsubscribe(event), "Unsubscribe")
-}
-
-*/

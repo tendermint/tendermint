@@ -67,13 +67,15 @@ func TestNetInfo(t *testing.T) {
 	}
 }
 
-func TestDialSeeds(t *testing.T) {
+func TestDumpConsensusState(t *testing.T) {
 	for i, c := range GetClients() {
 		// FIXME: fix server so it doesn't panic on invalid input
 		nc, ok := c.(client.NetworkClient)
 		require.True(t, ok, "%d", i)
-		_, err := nc.DialSeeds([]string{"12.34.56.78:12345"})
+		cons, err := nc.DumpConsensusState()
 		require.Nil(t, err, "%d: %+v", i, err)
+		assert.NotEmpty(t, cons.RoundState)
+		assert.Empty(t, cons.PeerRoundStates)
 	}
 }
 

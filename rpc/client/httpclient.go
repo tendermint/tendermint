@@ -39,6 +39,10 @@ func (c *HTTP) _assertIsClient() Client {
 	return c
 }
 
+func (c *HTTP) _assertIsNetworkClient() NetworkClient {
+	return c
+}
+
 func (c *HTTP) Status() (*ctypes.ResultStatus, error) {
 	tmResult := new(ctypes.TMResult)
 	_, err := c.rpc.Call("status", []interface{}{}, tmResult)
@@ -102,14 +106,13 @@ func (c *HTTP) NetInfo() (*ctypes.ResultNetInfo, error) {
 	return (*tmResult).(*ctypes.ResultNetInfo), nil
 }
 
-func (c *HTTP) DialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) {
+func (c *HTTP) DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
 	tmResult := new(ctypes.TMResult)
-	// TODO: is this the correct way to marshall seeds?
-	_, err := c.rpc.Call("dial_seeds", []interface{}{seeds}, tmResult)
+	_, err := c.rpc.Call("dump_consensus_state", nil, tmResult)
 	if err != nil {
-		return nil, errors.Wrap(err, "DialSeeds")
+		return nil, errors.Wrap(err, "DumpConsensusState")
 	}
-	return (*tmResult).(*ctypes.ResultDialSeeds), nil
+	return (*tmResult).(*ctypes.ResultDumpConsensusState), nil
 }
 
 func (c *HTTP) BlockchainInfo(minHeight, maxHeight int) (*ctypes.ResultBlockchainInfo, error) {

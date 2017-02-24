@@ -53,8 +53,7 @@ type SignClient interface {
 // by concrete implementations.
 type NetworkClient interface {
 	NetInfo() (*ctypes.ResultNetInfo, error)
-	// remove this???
-	DialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error)
+	DumpConsensusState() (*ctypes.ResultDumpConsensusState, error)
 }
 
 // HistoryClient shows us data from genesis to now in large chunks.
