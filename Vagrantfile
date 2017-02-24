@@ -17,12 +17,12 @@ Vagrant.configure("2") do |config|
     usermod -a -G docker vagrant
     apt-get autoremove -y
 
-    curl -O https://storage.googleapis.com/golang/go1.7.linux-amd64.tar.gz
-    tar -xvf go1.7.linux-amd64.tar.gz
-    mv -f go /usr/local
-    rm -f go1.7.linux-amd64.tar.gz
+    curl -O https://storage.googleapis.com/golang/go1.8.linux-amd64.tar.gz
+    tar -xvf go1.8.linux-amd64.tar.gz
+    rm -rf /usr/local/go
+    mv go /usr/local
+    rm -f go1.8.linux-amd64.tar.gz
     mkdir -p /home/vagrant/go/bin
-    chown -R vagrant:vagrant /home/vagrant/go
     echo 'export PATH=$PATH:/usr/local/go/bin:/home/vagrant/go/bin' >> /home/vagrant/.bash_profile
     echo 'export GOPATH=/home/vagrant/go' >> /home/vagrant/.bash_profile
 
@@ -30,6 +30,8 @@ Vagrant.configure("2") do |config|
 
     mkdir -p /home/vagrant/go/src/github.com/tendermint
     ln -s /vagrant /home/vagrant/go/src/github.com/tendermint/tendermint
+
+    chown -R vagrant:vagrant /home/vagrant/go
 
     su - vagrant -c 'cd /home/vagrant/go/src/github.com/tendermint/tendermint && make get_vendor_deps'
   SHELL
