@@ -63,7 +63,7 @@ func WaitForOneEvent(evsw types.EventSwitch,
 	evts, quit := make(chan events.EventData, 10), make(chan bool, 1)
 	// start timeout count-down
 	go func() {
-		time.Sleep(1 * time.Second)
+		time.Sleep(timeout)
 		quit <- true
 	}()
 
