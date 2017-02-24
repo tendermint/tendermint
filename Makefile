@@ -45,10 +45,11 @@ list_deps:
 		xargs go list -f '{{if not .Standard}}{{.ImportPath}}{{end}}'
 
 get_deps:
-	@go get -d $(PACKAGES)
+	@echo "--> Running go get"
+	@go get -v -d $(PACKAGES)
 	@go list -f '{{join .TestImports "\n"}}' ./... | \
 		grep -v /vendor/ | sort | uniq | \
-		xargs go get -d
+		xargs go get -v -d
 
 get_vendor_deps: ensure_tools
 	@rm -rf vendor/
