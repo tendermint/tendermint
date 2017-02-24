@@ -1,4 +1,4 @@
-package: github.com/tendermint/tendermint
+eackage: github.com/tendermint/tendermint
 import:
 - package: github.com/tendermint/go-autofile
   version: develop
@@ -39,6 +39,7 @@ import:
   - proto
 - package: github.com/gorilla/websocket
   version: ^1.1.0
+- package: github.com/spf13/cobra
 - package: github.com/spf13/pflag
 - package: github.com/pkg/errors
   version: ^0.8.0

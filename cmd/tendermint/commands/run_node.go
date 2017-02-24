@@ -12,14 +12,14 @@ import (
 )
 
 var runNodeCmd = &cobra.Command{
-	Use:   "node",
-	Short: "Run the tendermint node",
-	Run:   runNode,
+	Use:    "node",
+	Short:  "Run the tendermint node",
+	PreRun: setConfigFlags,
+	Run:    runNode,
 }
 
 //flags
 var (
-	printHelp     bool
 	moniker       string
 	nodeLaddr     string
 	seeds         string
@@ -35,18 +35,33 @@ var (
 func init() {
 
 	// configuration options
-	RootCmd.Flags().StringVar(&moniker, "moniker", config.GetString("moniker"), "Node Name")
-	RootCmd.Flags().StringVar(&nodeLaddr, "node_laddr", config.GetString("node_laddr"), "Node listen address. (0.0.0.0:0 means any interface, any port)")
-	RootCmd.Flags().StringVar(&seeds, "seeds", config.GetString("seeds"), "Comma delimited host:port seed nodes")
-	RootCmd.Flags().BoolVar(&fastSync, "fast_sync", config.GetBool("fast_sync"), "Fast blockchain syncing")
-	RootCmd.Flags().BoolVar(&skipUPNP, "skip_upnp", config.GetBool("skip_upnp"), "Skip UPNP configuration")
-	RootCmd.Flags().StringVar(&rpcLaddr, "rpc_laddr", config.GetString("rpc_laddr"), "RPC listen address. Port required")
-	RootCmd.Flags().StringVar(&grpcLaddr, "grpc_laddr", config.GetString("grpc_laddr"), "GRPC listen address (BroadcastTx only). Port required")
-	RootCmd.Flags().StringVar(&proxyApp, "proxy_app", config.GetString("proxy_app"), "Proxy app address, or 'nilapp' or 'dummy' for local testing.")
-	RootCmd.Flags().StringVar(&abciTransport, "abci", config.GetString("abci"), "Specify abci transport (socket | grpc)")
+	runNodeCmd.Flags().StringVar(&moniker, "moniker", config.GetString("moniker"),
+		"Node Name")
+	runNodeCmd.Flags().StringVar(&nodeLaddr, "node_laddr", config.GetString("node_laddr"),
+		"Node listen address. (0.0.0.0:0 means any interface, any port)")
+	runNodeCmd.Flags().StringVar(&seeds, "seeds", config.GetString("seeds"),
+		"Comma delimited host:port seed nodes")
+	runNodeCmd.Flags().BoolVar(&fastSync, "fast_sync", config.GetBool("fast_sync"),
+		"Fast blockchain syncing")
+	runNodeCmd.Flags().BoolVar(&skipUPNP, "skip_upnp", config.GetBool("skip_upnp"),
+		"Skip UPNP configuration")
+	runNodeCmd.Flags().StringVar(&rpcLaddr, "rpc_laddr", config.GetString("rpc_laddr"),
+		"RPC listen address. Port required")
+	runNodeCmd.Flags().StringVar(&grpcLaddr, "grpc_laddr", config.GetString("grpc_laddr"),
+		"GRPC listen address (BroadcastTx only). Port required")
+	runNodeCmd.Flags().StringVar(&proxyApp, "proxy_app", config.GetString("proxy_app"),
+		"Proxy app address, or 'nilapp' or 'dummy' for local testing.")
+	runNodeCmd.Flags().StringVar(&abciTransport, "abci", config.GetString("abci"),
+		"Specify abci transport (socket | grpc)")
 
 	// feature flags
-	RootCmd.Flags().BoolVar(&pex, "pex", config.GetBool("pex_reactor"), "Enable Peer-Exchange (dev feature)")
+	runNodeCmd.Flags().BoolVar(&pex, "pex", config.GetBool("pex_reactor"),
+		"Enable Peer-Exchange (dev feature)")
+
+	RootCmd.AddCommand(runNodeCmd)
+}
+
+func setConfigFlags(cmd *cobra.Command, args []string) {
 
 	// Merge parsed flag values onto config
 	config.Set("moniker", moniker)
@@ -59,8 +74,6 @@ func init() {
 	config.Set("proxy_app", proxyApp)
 	config.Set("abci", abciTransport)
 	config.Set("pex_reactor", pex)
-
-	RootCmd.AddCommand(runNodeCmd)
 }
 
 // Users wishing to:

@@ -39,6 +39,8 @@ imports:
   version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
   subpackages:
   - difflib
+- name: github.com/spf13/cobra
+  version: 92ea23a837e66f46ac9e7d04fa826602b7b0a42d
 - name: github.com/spf13/pflag
   version: 9ff6c6923cfffbcd502984b8e0c80539a94968b7
 - name: github.com/stretchr/testify
