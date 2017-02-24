@@ -46,16 +46,6 @@ type SignClient interface {
 	Validators() (*ctypes.ResultValidators, error)
 }
 
-// NetworkClient is general info about the network state.  May not
-// be needed usually.
-//
-// Not included in the Client interface, but generally implemented
-// by concrete implementations.
-type NetworkClient interface {
-	NetInfo() (*ctypes.ResultNetInfo, error)
-	DumpConsensusState() (*ctypes.ResultDumpConsensusState, error)
-}
-
 // HistoryClient shows us data from genesis to now in large chunks.
 type HistoryClient interface {
 	Genesis() (*ctypes.ResultGenesis, error)
@@ -67,12 +57,22 @@ type StatusClient interface {
 	Status() (*ctypes.ResultStatus, error)
 }
 
+// Client wraps most important rpc calls a client would make
+// if you want to listen for events, test if it also
+// implements events.EventSwitch
 type Client interface {
 	ABCIClient
 	SignClient
 	HistoryClient
 	StatusClient
-	// Note: doesn't include NetworkClient, is it important??
+}
 
-	// TODO: add some sort of generic subscription mechanism...
+// NetworkClient is general info about the network state.  May not
+// be needed usually.
+//
+// Not included in the Client interface, but generally implemented
+// by concrete implementations.
+type NetworkClient interface {
+	NetInfo() (*ctypes.ResultNetInfo, error)
+	DumpConsensusState() (*ctypes.ResultDumpConsensusState, error)
 }
