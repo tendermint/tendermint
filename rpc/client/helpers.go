@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 	cmn "github.com/tendermint/go-common"
 	events "github.com/tendermint/go-events"
+	"github.com/tendermint/tendermint/types"
 )
 
 // Waiter is informed of current height, decided whether to quit early
@@ -55,8 +56,8 @@ func WaitForHeight(c StatusClient, h int, waiter Waiter) error {
 // when the timeout duration has expired.
 //
 // This handles subscribing and unsubscribing under the hood
-func WaitForOneEvent(evsw events.EventSwitch,
-	evtTyp string, timeout time.Duration) (events.EventData, error) {
+func WaitForOneEvent(evsw types.EventSwitch,
+	evtTyp string, timeout time.Duration) (types.TMEventData, error) {
 	listener := cmn.RandStr(12)
 
 	evts, quit := make(chan events.EventData, 10), make(chan bool, 1)
@@ -71,14 +72,18 @@ func WaitForOneEvent(evsw events.EventSwitch,
 		evts <- data
 	})
 	// make sure to unregister after the test is over
-	// TODO: don't require both!
-	defer evsw.RemoveListenerForEvent(listener, evtTyp)
+	// TODO: why doesn't the other call work???
+	// defer evsw.RemoveListenerForEvent(listener, evtTyp)
 	defer evsw.RemoveListener(listener)
 
 	select {
 	case <-quit:
 		return nil, errors.New("timed out waiting for event")
 	case evt := <-evts:
-		return evt, nil
+		tmevt, ok := evt.(types.TMEventData)
+		if ok {
+			return tmevt, nil
+		}
+		return nil, errors.Errorf("Got unexpected event type: %#v", evt)
 	}
 }

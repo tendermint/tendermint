@@ -172,8 +172,17 @@ type WSEvents struct {
 	remote   string
 	endpoint string
 	ws       *rpcclient.WSClient
-	quit     chan bool
-	done     chan bool
+
+	// used for signaling the goroutine that feeds ws -> EventSwitch
+	quit chan bool
+	done chan bool
+
+	// used to maintain counts of actively listened events
+	// so we can properly subscribe/unsubscribe
+	// FIXME: thread-safety???
+	// FIXME: reuse code from go-events???
+	evtCount  map[string]int      // count how many time each event is subscribed
+	listeners map[string][]string // keep track of which events each listener is listening to
 }
 
 func newWSEvents(remote, endpoint string) *WSEvents {
@@ -183,6 +192,8 @@ func newWSEvents(remote, endpoint string) *WSEvents {
 		remote:      remote,
 		quit:        make(chan bool, 1),
 		done:        make(chan bool, 1),
+		evtCount:    map[string]int{},
+		listeners:   map[string][]string{},
 	}
 }
 
@@ -222,16 +233,57 @@ func (w *WSEvents) Stop() bool {
 
 /** TODO: more intelligent subscriptions! **/
 func (w *WSEvents) AddListenerForEvent(listenerID, event string, cb events.EventCallback) {
-	w.subscribe(event)
+	// no one listening -> subscribe
+	if w.evtCount[event] == 0 {
+		w.subscribe(event)
+	}
+	// if this listener was already listening to this event, return early
+	for _, s := range w.listeners[listenerID] {
+		if event == s {
+			return
+		}
+	}
+	// otherwise, add this event to this listener
+	w.evtCount[event] += 1
+	w.listeners[listenerID] = append(w.listeners[listenerID], event)
 	w.EventSwitch.AddListenerForEvent(listenerID, event, cb)
 }
 
 func (w *WSEvents) RemoveListenerForEvent(event string, listenerID string) {
-	w.unsubscribe(event)
+	// if this listener is listening already, splice it out
+	found := false
+	l := w.listeners[listenerID]
+	for i, s := range l {
+		if event == s {
+			found = true
+			w.listeners[listenerID] = append(l[:i], l[i+1:]...)
+			break
+		}
+	}
+	// if the listener wasn't already listening to the event, exit early
+	if !found {
+		return
+	}
+
+	// now we can update the subscriptions
+	w.evtCount[event] -= 1
+	if w.evtCount[event] == 0 {
+		w.unsubscribe(event)
+	}
 	w.EventSwitch.RemoveListenerForEvent(event, listenerID)
 }
 
 func (w *WSEvents) RemoveListener(listenerID string) {
+	// remove all counts for this listener
+	for _, s := range w.listeners[listenerID] {
+		w.evtCount[s] -= 1
+		if w.evtCount[s] == 0 {
+			w.unsubscribe(s)
+		}
+	}
+	w.listeners[listenerID] = nil
+
+	// then let the switch do it's magic
 	w.EventSwitch.RemoveListener(listenerID)
 }
 
@@ -274,18 +326,24 @@ func (w *WSEvents) parseEvent(data []byte) (err error) {
 	if !ok {
 		// ignore silently (eg. subscribe, unsubscribe and maybe other events)
 		return nil
-		// or report loudly???
-		// return errors.Errorf("unknown message: %#v", *result)
 	}
 	// looks good!  let's fire this baby!
 	w.EventSwitch.FireEvent(event.Name, event.Data)
 	return nil
 }
 
-func (w *WSEvents) subscribe(event string) error {
-	return errors.Wrap(w.ws.Subscribe(event), "Subscribe")
+// no way of exposing these failures, so we panic.
+// is this right?  or silently ignore???
+func (w *WSEvents) subscribe(event string) {
+	err := w.ws.Subscribe(event)
+	if err != nil {
+		panic(err)
+	}
 }
 
-func (w *WSEvents) unsubscribe(event string) error {
-	return errors.Wrap(w.ws.Unsubscribe(event), "Unsubscribe")
+func (w *WSEvents) unsubscribe(event string) {
+	err := w.ws.Unsubscribe(event)
+	if err != nil {
+		panic(err)
+	}
 }

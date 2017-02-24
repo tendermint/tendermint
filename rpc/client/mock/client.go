@@ -32,6 +32,8 @@ type Client struct {
 	client.SignClient
 	client.HistoryClient
 	client.StatusClient
+	// create a mock with types.NewEventSwitch()
+	types.EventSwitch
 }
 
 func (c Client) _assertIsClient() client.Client {

@@ -65,6 +65,10 @@ type Client interface {
 	SignClient
 	HistoryClient
 	StatusClient
+
+	// this Client is reactive, you can subscribe to any TMEventData
+	// type, given the proper string. see tendermint/types/events.go
+	types.EventSwitch
 }
 
 // NetworkClient is general info about the network state.  May not
