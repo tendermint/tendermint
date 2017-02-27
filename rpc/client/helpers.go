@@ -72,9 +72,8 @@ func WaitForOneEvent(evsw types.EventSwitch,
 		evts <- data
 	})
 	// make sure to unregister after the test is over
-	// TODO: why doesn't the other call work???
-	// defer evsw.RemoveListenerForEvent(listener, evtTyp)
-	defer evsw.RemoveListener(listener)
+	defer evsw.RemoveListenerForEvent(evtTyp, listener)
+	// defer evsw.RemoveListener(listener)  // this also works
 
 	select {
 	case <-quit:
