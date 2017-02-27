@@ -1,3 +1,6 @@
+/*
+Pub-Sub in go with event caching
+*/
 package events
 
 import (

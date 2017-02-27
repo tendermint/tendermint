@@ -5,6 +5,8 @@ import (
 	"math/rand"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // TestAddListenerForEventFireOnce sets up an EventSwitch, subscribes a single
@@ -205,6 +207,50 @@ func TestAddAndRemoveListener(t *testing.T) {
 		eventSum2 != uint64(0) {
 		t.Errorf("Not all messages sent were received or unsubscription did not register.\n")
 	}
+}
+
+// TestRemoveListener does basic tests on adding and removing
+func TestRemoveListener(t *testing.T) {
+	evsw := NewEventSwitch()
+	started, err := evsw.Start()
+	if started == false || err != nil {
+		t.Errorf("Failed to start EventSwitch, error: %v", err)
+	}
+	count := 10
+	sum1, sum2 := 0, 0
+	// add some listeners and make sure they work
+	evsw.AddListenerForEvent("listener", "event1",
+		func(data EventData) {
+			sum1 += 1
+		})
+	evsw.AddListenerForEvent("listener", "event2",
+		func(data EventData) {
+			sum2 += 1
+		})
+	for i := 0; i < count; i++ {
+		evsw.FireEvent("event1", true)
+		evsw.FireEvent("event2", true)
+	}
+	assert.Equal(t, count, sum1)
+	assert.Equal(t, count, sum2)
+
+	// remove one by event and make sure it is gone
+	evsw.RemoveListenerForEvent("event2", "listener")
+	for i := 0; i < count; i++ {
+		evsw.FireEvent("event1", true)
+		evsw.FireEvent("event2", true)
+	}
+	assert.Equal(t, count*2, sum1)
+	assert.Equal(t, count, sum2)
+
+	// remove the listener entirely and make sure both gone
+	evsw.RemoveListener("listener")
+	for i := 0; i < count; i++ {
+		evsw.FireEvent("event1", true)
+		evsw.FireEvent("event2", true)
+	}
+	assert.Equal(t, count*2, sum1)
+	assert.Equal(t, count, sum2)
 }
 
 // TestAddAndRemoveListenersAsync sets up an EventSwitch, subscribes two
