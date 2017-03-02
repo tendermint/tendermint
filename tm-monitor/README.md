@@ -50,6 +50,8 @@ tm-monitor localhost:46657
 tm-monitor host1:46657,host2:46657
 ```
 
+[![asciicast](https://asciinema.org/a/105449.png)](https://asciinema.org/a/105449)
+
 ### RPC UI
 
 Run `tm-monitor` and visit [http://localhost:46670](http://localhost:46670).
