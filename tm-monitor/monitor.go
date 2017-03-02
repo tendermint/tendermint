@@ -41,7 +41,7 @@ func (m *Monitor) Monitor(n *Node) error {
 		return err
 	}
 
-	m.Network.NumValidatorsOnline++
+	m.Network.NewNode(n.Name)
 
 	m.nodeQuit[n.Name] = make(chan struct{})
 	go m.listen(n.Name, blockCh, blockLatencyCh, disconnectCh, m.nodeQuit[n.Name])
@@ -50,7 +50,7 @@ func (m *Monitor) Monitor(n *Node) error {
 }
 
 func (m *Monitor) Unmonitor(n *Node) {
-	m.Network.NumValidatorsOnline--
+	m.Network.NodeDeleted(n.Name)
 
 	n.Stop()
 	close(m.nodeQuit[n.Name])

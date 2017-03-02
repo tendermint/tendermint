@@ -8,19 +8,22 @@ import (
 	tmtypes "github.com/tendermint/tendermint/types"
 )
 
-// UptimeData stores data for how long network has been running
+// UptimeData stores data for how long network has been running.
 type UptimeData struct {
 	StartTime time.Time `json:"start_time"`
-	Uptime    float64   `json:"uptime" wire:"unsafe"` // percentage of time we've been `ModerateHealth`y, ever
+	Uptime    float64   `json:"uptime" wire:"unsafe"` // percentage of time we've been healthy, ever
 
 	totalDownTime time.Duration // total downtime (only updated when we come back online)
 	wentDown      time.Time
 }
 
+// Health describes the health of the network. Note that this applies only to
+// the observed nodes, and not to the entire cluster, which may consist of
+// thousands of machines. It may change in the future.
 type Health int
 
 const (
-	// FullHealth means all validators online, synced, making blocks
+	// FullHealth means all nodes online, synced, validators making blocks
 	FullHealth = iota
 	// ModerateHealth means we're making blocks
 	ModerateHealth
@@ -39,9 +42,9 @@ type Network struct {
 	AvgBlockLatency   float64 `json:"avg_block_latency" wire:"unsafe"` // ms (avg over last minute)
 	blockLatencyMeter metrics.Meter
 
-	// Network Info
-	NumValidators       int `json:"num_validators"`
-	NumValidatorsOnline int `json:"num_validators_online"`
+	NumValidators           int `json:"num_validators"`
+	NumNodesMonitored       int `json:"num_nodes_monitored"`
+	NumNodesMonitoredOnline int `json:"num_nodes_monitored_online"`
 
 	Health Health `json:"health"`
 
@@ -93,7 +96,7 @@ func (n *Network) NewBlock(b tmtypes.Header) {
 	// TODO: make sure they're all at the same height (within a block)
 	// and all proposing (and possibly validating ) Alternatively, just
 	// check there hasn't been a new round in numValidators rounds
-	if n.NumValidatorsOnline == n.NumValidators {
+	if n.NumNodesMonitored == n.NumValidators {
 		n.Health = FullHealth
 	}
 }
@@ -119,36 +122,50 @@ func (n *Network) RecalculateUptime() {
 	n.UptimeData.Uptime = (float64(uptime) / float64(since)) * 100.0
 }
 
+// NodeIsDown is called when the node disconnects for whatever reason.
 func (n *Network) NodeIsDown(name string) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
 	if online := n.nodeStatusMap[name]; online {
 		n.nodeStatusMap[name] = false
-		n.NumValidatorsOnline--
+		n.NumNodesMonitoredOnline--
 		n.UptimeData.wentDown = time.Now()
 		n.updateHealth()
 	}
 }
 
+// NodeIsOnline is called when connection to the node is restored.
 func (n *Network) NodeIsOnline(name string) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
 	if online, ok := n.nodeStatusMap[name]; !ok || !online {
 		n.nodeStatusMap[name] = true
-		n.NumValidatorsOnline++
+		n.NumNodesMonitoredOnline++
 		n.UptimeData.totalDownTime += time.Since(n.UptimeData.wentDown)
 		n.updateHealth()
 	}
 }
 
+// NewNode is called when the new node is added to the monitor.
+func (n *Network) NewNode(name string) {
+	n.NumNodesMonitored++
+	n.NumNodesMonitoredOnline++
+}
+
+// NodeDeleted is called when the node is deleted from under the monitor.
+func (n *Network) NodeDeleted(name string) {
+	n.NumNodesMonitored--
+	n.NumNodesMonitoredOnline--
+}
+
 func (n *Network) updateHealth() {
-	if n.NumValidatorsOnline < n.NumValidators {
+	if n.NumNodesMonitoredOnline < n.NumNodesMonitored {
 		n.Health = ModerateHealth
 	}
 
-	if n.NumValidatorsOnline == 0 {
+	if n.NumNodesMonitoredOnline == 0 {
 		n.Health = Dead
 	}
 }
