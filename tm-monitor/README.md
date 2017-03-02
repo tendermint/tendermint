@@ -13,9 +13,9 @@ collecting and providing various statistics to the user.
 
 ```
 docker run -it --rm -v "/tmp:/tendermint" tendermint/tendermint init
-docker run -it --rm -v "/tmp:/tendermint" -p "46657:46657" tendermint/tendermint
+docker run -it --rm -v "/tmp:/tendermint" -p "46657:46657" --name=tm tendermint/tendermint
 
-docker run -it --rm tendermint/tm-monitor
+docker run -it --rm --link=tm tendermint/tm-monitor tm:46657
 ```
 
 ## QuickStart using binaries
