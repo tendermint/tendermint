@@ -11,3 +11,4 @@ import:
 - package: github.com/tendermint/go-wire
 - package: github.com/rcrowley/go-metrics
 - package: github.com/stretchr/testify
+- package: github.com/tendermint/go-crypto

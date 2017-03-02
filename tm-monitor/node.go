@@ -8,8 +8,10 @@ import (
 
 	em "github.com/tendermint/go-event-meter"
 	events "github.com/tendermint/go-events"
+	rpc_client "github.com/tendermint/go-rpc/client"
 	tmtypes "github.com/tendermint/tendermint/types"
 
+	crypto "github.com/tendermint/go-crypto"
 	wire "github.com/tendermint/go-wire"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 )
@@ -19,10 +21,8 @@ const maxRestarts = 25
 type Node struct {
 	rpcAddr string
 
-	IsValidator bool `json:"is_validator"` // validator or non-validator?
-
-	// "github.com/tendermint/go-crypto"
-	// PubKey crypto.PubKey `json:"pub_key"`
+	IsValidator bool          `json:"is_validator"` // validator or non-validator?
+	pubKey      crypto.PubKey `json:"pub_key"`
 
 	Name         string  `json:"name"`
 	Online       bool    `json:"online"`
@@ -32,9 +32,14 @@ type Node struct {
 	// em holds the ws connection. Each eventMeter callback is called in a separate go-routine.
 	em eventMeter
 
+	// rpcClient is an http client for making RPC calls to TM
+	rpcClient *rpc_client.ClientURI
+
 	blockCh        chan<- tmtypes.Header
 	blockLatencyCh chan<- float64
 	disconnectCh   chan<- bool
+
+	quit chan struct{}
 }
 
 func NewNode(rpcAddr string) *Node {
@@ -44,9 +49,11 @@ func NewNode(rpcAddr string) *Node {
 
 func NewNodeWithEventMeter(rpcAddr string, em eventMeter) *Node {
 	return &Node{
-		rpcAddr: rpcAddr,
-		em:      em,
-		Name:    rpcAddr,
+		rpcAddr:   rpcAddr,
+		em:        em,
+		rpcClient: rpc_client.NewClientURI(rpcAddr),
+		Name:      rpcAddr,
+		quit:      make(chan struct{}),
 	}
 }
 
@@ -73,6 +80,8 @@ func (n *Node) Start() error {
 
 	n.Online = true
 
+	go n.checkIsValidator()
+
 	return nil
 }
 
@@ -85,6 +94,8 @@ func (n *Node) Stop() {
 
 	// FIXME stop blocks at event_meter.go:140
 	// n.em.Stop()
+
+	close(n.quit)
 }
 
 // implements eventmeter.EventCallbackFunc
@@ -151,6 +162,59 @@ func (n *Node) RestartBackOff() error {
 	}
 }
 
+func (n *Node) NumValidators() (height uint64, num int, err error) {
+	height, vals, err := n.validators()
+	if err != nil {
+		return 0, 0, err
+	}
+	return height, len(vals), nil
+}
+
+func (n *Node) validators() (height uint64, validators []*tmtypes.Validator, err error) {
+	var result ctypes.TMResult
+	if _, err = n.rpcClient.Call("validators", nil, &result); err != nil {
+		return 0, make([]*tmtypes.Validator, 0), err
+	}
+	vals := result.(*ctypes.ResultValidators)
+	return uint64(vals.BlockHeight), vals.Validators, nil
+}
+
+func (n *Node) checkIsValidator() {
+	for {
+		select {
+		case <-n.quit:
+			return
+		case <-time.After(5 * time.Second):
+			_, validators, err := n.validators()
+			if err == nil {
+				for _, v := range validators {
+					key, err := n.getPubKey()
+					if err == nil && v.PubKey == key {
+						n.IsValidator = true
+					}
+				}
+			} else {
+				log.Debug(err.Error())
+			}
+		}
+	}
+}
+
+func (n *Node) getPubKey() (crypto.PubKey, error) {
+	if n.pubKey != nil {
+		return n.pubKey, nil
+	}
+
+	var result ctypes.TMResult
+	_, err := n.rpcClient.Call("status", nil, &result)
+	if err != nil {
+		return nil, err
+	}
+	status := result.(*ctypes.ResultStatus)
+	n.pubKey = status.PubKey
+	return n.pubKey, nil
+}
+
 type eventMeter interface {
 	Start() (bool, error)
 	Stop() bool
@@ -160,7 +224,7 @@ type eventMeter interface {
 	Unsubscribe(string) error
 }
 
-// Unmarshal a json event
+// UnmarshalEvent unmarshals a json event
 func UnmarshalEvent(b json.RawMessage) (string, events.EventData, error) {
 	var err error
 	result := new(ctypes.TMResult)

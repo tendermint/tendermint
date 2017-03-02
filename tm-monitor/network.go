@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -145,11 +144,7 @@ func (n *Network) NodeIsOnline(name string) {
 }
 
 func (n *Network) updateHealth() {
-	if n.NumValidatorsOnline > n.NumValidators {
-		panic(fmt.Sprintf("got %d validators. max %ds", n.NumValidatorsOnline, n.NumValidators))
-	}
-
-	if n.NumValidatorsOnline != n.NumValidators {
+	if n.NumValidatorsOnline < n.NumValidators {
 		n.Health = ModerateHealth
 	}
 

@@ -70,10 +70,10 @@ func (o *Ton) printHeader() {
 }
 
 func (o *Ton) printTable() {
-	w := tabwriter.NewWriter(o.Output, 0, 0, 4, ' ', 0)
-	fmt.Fprintln(w, "NAME\tHEIGHT\tBLOCK LATENCY\tONLINE\t")
+	w := tabwriter.NewWriter(o.Output, 0, 0, 5, ' ', 0)
+	fmt.Fprintln(w, "NAME\tHEIGHT\tBLOCK LATENCY\tONLINE\tVALIDATOR\t")
 	for _, n := range o.monitor.Nodes {
-		fmt.Fprintln(w, fmt.Sprintf("%s\t%d\t%.3f ms\t%v\t", n.Name, n.Height, n.BlockLatency, n.Online))
+		fmt.Fprintln(w, fmt.Sprintf("%s\t%d\t%.3f ms\t%v\t%v\t", n.Name, n.Height, n.BlockLatency, n.Online, n.IsValidator))
 	}
 	w.Flush()
 }

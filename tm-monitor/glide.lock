@@ -1,5 +1,5 @@
-hash: 8d69350ae306418c61ce3e1ffdc40ddecef9591eafd645373f94a83aea9aadb1
-updated: 2017-02-28T14:36:53.495322474Z
+hash: 9b2cdc3f80ccebf7154884c8466b1f2c0cb3e8b7f583baa732d49d671e83fe33
+updated: 2017-03-02T08:52:42.063901822Z
 imports:
 - name: github.com/btcsuite/btcd
   version: 583684b21bfbde9b5fc4403916fd7c807feb0289
@@ -16,7 +16,7 @@ imports:
 - name: github.com/golang/snappy
   version: 553a641470496b2327abcac10b36396bd98e45c9
 - name: github.com/gorilla/websocket
-  version: 3f3e394da2b801fbe732a935ef40724762a67a07
+  version: 4873052237e4eeda85cf50c071ef33836fe8e139
 - name: github.com/jmhodges/levigo
   version: c42d9e0ca023e2198120196f842701bb4c55d7b9
 - name: github.com/mattn/go-colorable
@@ -26,12 +26,12 @@ imports:
 - name: github.com/rcrowley/go-metrics
   version: 1f30fe9094a513ce4c700b9a54458bbb0c96996c
 - name: github.com/stretchr/testify
-  version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
+  version: 4d4bfba8f1d1027c4fdbe371823030df51419987
   subpackages:
   - assert
   - require
 - name: github.com/syndtr/goleveldb
-  version: 23851d93a2292dcc56e71a18ec9e0624d84a0f65
+  version: 3c5717caf1475fd25964109a0fc640bd150fce43
   subpackages:
   - leveldb
   - leveldb/cache
@@ -117,11 +117,11 @@ imports:
   - lex/httplex
   - trace
 - name: golang.org/x/sys
-  version: e4594059fe4cde2daf423055a596c2cd1e6c9adf
+  version: 76cc09b634294339fa19ec41b5f2a0b3932cea8b
   subpackages:
   - unix
 - name: google.golang.org/grpc
-  version: d122f1dfe6ecece11d0c914ce4b2d9cab6d4b4ff
+  version: 8b2e129857480cb0f07ef7d9d10b8b252c7ac984
   subpackages:
   - codes
   - credentials
@@ -135,7 +135,7 @@ imports:
   - transport
 testImports:
 - name: github.com/davecgh/go-spew
-  version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
+  version: 04cdfd42973bb9c8589fd6a731800cf222fde1a9
   subpackages:
   - spew
 - name: github.com/pmezard/go-difflib

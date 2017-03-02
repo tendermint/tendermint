@@ -1,6 +1,7 @@
 package main
 
 import (
+	"math/rand"
 	"time"
 
 	tmtypes "github.com/tendermint/tendermint/types"
@@ -40,12 +41,17 @@ func (m *Monitor) Monitor(n *Node) error {
 		return err
 	}
 
+	m.Network.NumValidatorsOnline++
+
 	m.nodeQuit[n.Name] = make(chan struct{})
 	go m.listen(n.Name, blockCh, blockLatencyCh, disconnectCh, m.nodeQuit[n.Name])
+
 	return nil
 }
 
 func (m *Monitor) Unmonitor(n *Node) {
+	m.Network.NumValidatorsOnline--
+
 	n.Stop()
 	close(m.nodeQuit[n.Name])
 	delete(m.nodeQuit, n.Name)
@@ -54,6 +60,7 @@ func (m *Monitor) Unmonitor(n *Node) {
 
 func (m *Monitor) Start() error {
 	go m.recalculateNetworkUptime()
+	go m.updateNumValidators()
 
 	return nil
 }
@@ -96,6 +103,47 @@ func (m *Monitor) recalculateNetworkUptime() {
 			return
 		case <-time.After(10 * time.Second):
 			m.Network.RecalculateUptime()
+		}
+	}
+}
+
+// updateNumValidators sends a request to a random node once every N seconds,
+// which in turn makes an RPC call to get the latest validators.
+func (m *Monitor) updateNumValidators() {
+	rand.Seed(time.Now().Unix())
+
+	var height uint64
+	var num int
+	var err error
+
+	for {
+		if 0 == len(m.Nodes) {
+			m.Network.NumValidators = 0
+			time.Sleep(5 * time.Second)
+			continue
+		}
+
+		randomNodeIndex := rand.Intn(len(m.Nodes))
+
+		select {
+		case <-m.monitorQuit:
+			return
+		case <-time.After(5 * time.Second):
+			i := 0
+			for _, n := range m.Nodes {
+				if i == randomNodeIndex {
+					height, num, err = n.NumValidators()
+					if err != nil {
+						log.Debug(err.Error())
+					}
+					break
+				}
+				i++
+			}
+
+			if m.Network.Height <= height {
+				m.Network.NumValidators = num
+			}
 		}
 	}
 }
