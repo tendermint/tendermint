@@ -43,11 +43,20 @@ tm-monitor localhost:46657
 ## Usage
 
 ```
-# monitor single instance
-tm-monitor localhost:46657
+tm-monitor [-v] [-no-ton] [-listen-addr="tcp://0.0.0.0:46670"] [endpoints]
 
-# monitor a few instances by providing comma-separated list of RPC endpoints
-tm-monitor host1:46657,host2:46657
+Examples:
+        # monitor single instance
+        tm-monitor localhost:46657
+
+        # monitor a few instances by providing comma-separated list of RPC endpoints
+        tm-monitor host1:46657,host2:46657
+Flags:
+  -listen-addr string
+        HTTP and Websocket server listen address (default "tcp://0.0.0.0:46670")
+  -no-ton
+        Do not show ton (table of nodes)
+  -v    verbose logging
 ```
 
 [![asciicast](https://asciinema.org/a/105449.png)](https://asciinema.org/a/105449)
