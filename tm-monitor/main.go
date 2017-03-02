@@ -11,6 +11,8 @@ import (
 	log15 "github.com/tendermint/log15"
 )
 
+var version = "0.2.0"
+
 var log = logger.New()
 
 func main() {
