@@ -4,7 +4,7 @@ FROM golang:1.7.4
 # Grab deps (jq, hexdump, xxd, killall)
 RUN apt-get update && \
   apt-get install -y --no-install-recommends \
-  jq bsdmainutils vim-common psmisc 
+  jq bsdmainutils vim-common psmisc netcat
 
 # Setup tendermint repo with vendored dependencies
 # but without code - docker caching prevents reinstall on code change!

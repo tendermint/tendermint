@@ -43,6 +43,31 @@ function kill_procs(){
 	kill -9 "$PID_DUMMY" "$PID_TENDERMINT"
 	wait "$PID_DUMMY"
 	wait "$PID_TENDERMINT"
+
+	# wait for the ports to be released 
+	wait_for_port 46656
+	wait_for_port 46657
+}
+
+# wait for port to be available
+function wait_for_port() {
+	port=$1
+	# this will succeed while port is bound
+	nc -z 127.0.0.1 $port
+	ERR=$?
+	i=0
+	while [ "$ERR" == 0 ]; do
+		echo "... port $port is still bound. waiting ..."
+		sleep 1	
+		nc -z 127.0.0.1 $port 
+		ERR=$?
+		i=$((i + 1))
+		if [[ $i == 10 ]]; then
+			echo "Timed out waiting for port to be released"
+			exit 1
+		fi
+	done
+	echo "... port $port is free!"
 }
 
 
@@ -58,8 +83,8 @@ for failIndex in $(seq $failsStart $failsEnd); do
 	bash ./test/utils/txs.sh "localhost:46657" &
 	start_procs 1 "$failIndex"
 
-	# tendermint should already have paniced when it hits the fail index
-	# but kill -9 for OS cleanup
+	# tendermint should already have exited when it hits the fail index
+	# but kill -9 for good measure
 	kill_procs
 
 	start_procs 2
