@@ -66,7 +66,8 @@ func (pexR *PEXReactor) AddPeer(peer *Peer) {
 	// Add the peer to the address book
 	netAddr, err := NewNetAddressString(peer.ListenAddr)
 	if err != nil {
-		log.Warn("Error decoding message", "error", err)
+		// this should never happen
+		log.Error("Error in AddPeer: invalid peer address", "addr", peer.ListenAddr, "error", err)
 		return
 	}
 
@@ -79,7 +80,6 @@ func (pexR *PEXReactor) AddPeer(peer *Peer) {
 		// (For outbound peers, the address is already in the books)
 		pexR.book.AddAddress(netAddr, netAddr)
 	}
-	return
 }
 
 // Implements Reactor
@@ -115,7 +115,6 @@ func (pexR *PEXReactor) Receive(chID byte, src *Peer, msgBytes []byte) {
 	default:
 		log.Warn(Fmt("Unknown message type %v", reflect.TypeOf(msg)))
 	}
-
 }
 
 // Asks peer for more addresses.
