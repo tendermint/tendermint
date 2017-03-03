@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 const addrBookStrict = true
@@ -38,7 +40,7 @@ func TestEmpty(t *testing.T) {
 	}
 }
 
-func randIPv4Address() *NetAddress {
+func randIPv4Address(t *testing.T) *NetAddress {
 	for {
 		ip := fmt.Sprintf("%v.%v.%v.%v",
 			rand.Intn(254)+1,
@@ -47,7 +49,8 @@ func randIPv4Address() *NetAddress {
 			rand.Intn(255),
 		)
 		port := rand.Intn(65535-1) + 1
-		addr := NewNetAddressString(fmt.Sprintf("%v:%v", ip, port))
+		addr, err := NewNetAddressString(fmt.Sprintf("%v:%v", ip, port))
+		assert.Nil(t, err, "error generating rand network address")
 		if addr.Routable() {
 			return addr
 		}
@@ -64,8 +67,8 @@ func TestSaveAddresses(t *testing.T) {
 		src  *NetAddress
 	}{}
 	for i := 0; i < 100; i++ {
-		addr := randIPv4Address()
-		src := randIPv4Address()
+		addr := randIPv4Address(t)
+		src := randIPv4Address(t)
 		randAddrs = append(randAddrs, struct {
 			addr *NetAddress
 			src  *NetAddress
@@ -118,8 +121,8 @@ func TestPromoteToOld(t *testing.T) {
 		src  *NetAddress
 	}{}
 	for i := 0; i < 100; i++ {
-		addr := randIPv4Address()
-		src := randIPv4Address()
+		addr := randIPv4Address(t)
+		src := randIPv4Address(t)
 		randAddrs = append(randAddrs, struct {
 			addr *NetAddress
 			src  *NetAddress

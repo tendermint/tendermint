@@ -70,7 +70,11 @@ func NewDefaultListener(protocol string, lAddr string, skipUPNP bool) Listener {
 	log.Info("Local listener", "ip", listenerIP, "port", listenerPort)
 
 	// Determine internal address...
-	var intAddr *NetAddress = NewNetAddressString(lAddr)
+	var intAddr *NetAddress
+	intAddr, err = NewNetAddressString(lAddr)
+	if err != nil {
+		PanicCrisis(err)
+	}
 
 	// Determine external address...
 	var extAddr *NetAddress
