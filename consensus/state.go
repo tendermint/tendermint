@@ -122,6 +122,8 @@ func (rs RoundStepType) String() string {
 //-----------------------------------------------------------------------------
 
 // Immutable when returned from ConsensusState.GetRoundState()
+// TODO: Actually, only the top pointer is copied,
+// so access to field pointers is still racey
 type RoundState struct {
 	Height             int // Height we are working on
 	Round              int

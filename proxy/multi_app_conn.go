@@ -1,7 +1,7 @@
 package proxy
 
 import (
-	. "github.com/tendermint/go-common"
+	cmn "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
 )
 
@@ -9,7 +9,7 @@ import (
 
 // Tendermint's interface to the application consists of multiple connections
 type AppConns interface {
-	Service
+	cmn.Service
 
 	Mempool() AppConnMempool
 	Consensus() AppConnConsensus
@@ -32,7 +32,7 @@ type Handshaker interface {
 // which ensures the app and tendermint are synced.
 // TODO: on app restart, clients must reboot together
 type multiAppConn struct {
-	BaseService
+	cmn.BaseService
 
 	config cfg.Config
 
@@ -52,7 +52,7 @@ func NewMultiAppConn(config cfg.Config, clientCreator ClientCreator, handshaker 
 		handshaker:    handshaker,
 		clientCreator: clientCreator,
 	}
-	multiAppConn.BaseService = *NewBaseService(log, "multiAppConn", multiAppConn)
+	multiAppConn.BaseService = *cmn.NewBaseService(log, "multiAppConn", multiAppConn)
 	return multiAppConn
 }
 
