@@ -5,11 +5,12 @@
 package p2p
 
 import (
+	"errors"
 	"net"
 	"strconv"
 	"time"
 
-	. "github.com/tendermint/go-common"
+	cmn "github.com/tendermint/go-common"
 )
 
 type NetAddress struct {
@@ -34,27 +35,43 @@ func NewNetAddress(addr net.Addr) *NetAddress {
 }
 
 // Also resolves the host if host is not an IP.
-func NewNetAddressString(addr string) *NetAddress {
+func NewNetAddressString(addr string) (*NetAddress, error) {
+
 	host, portStr, err := net.SplitHostPort(addr)
 	if err != nil {
-		PanicSanity(err)
+		return nil, err
 	}
+
 	ip := net.ParseIP(host)
 	if ip == nil {
 		if len(host) > 0 {
 			ips, err := net.LookupIP(host)
 			if err != nil {
-				PanicSanity(err)
+				return nil, err
 			}
 			ip = ips[0]
 		}
 	}
+
 	port, err := strconv.ParseUint(portStr, 10, 16)
 	if err != nil {
-		PanicSanity(err)
+		return nil, err
 	}
+
 	na := NewNetAddressIPPort(ip, uint16(port))
-	return na
+	return na, nil
+}
+
+func NewNetAddressStrings(addrs []string) ([]*NetAddress, error) {
+	netAddrs := make([]*NetAddress, len(addrs))
+	for i, addr := range addrs {
+		netAddr, err := NewNetAddressString(addr)
+		if err != nil {
+			return nil, errors.New(cmn.Fmt("Error in address %s: %v", addr, err))
+		}
+		netAddrs[i] = netAddr
+	}
+	return netAddrs, nil
 }
 
 func NewNetAddressIPPort(ip net.IP, port uint16) *NetAddress {
@@ -81,7 +98,7 @@ func (na *NetAddress) Less(other interface{}) bool {
 	if o, ok := other.(*NetAddress); ok {
 		return na.String() < o.String()
 	} else {
-		PanicSanity("Cannot compare unequal types")
+		cmn.PanicSanity("Cannot compare unequal types")
 		return false
 	}
 }
