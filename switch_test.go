@@ -8,8 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-
 	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-crypto"
@@ -120,14 +118,6 @@ func TestSwitches(t *testing.T) {
 	if s2.Peers().Size() != 1 {
 		t.Errorf("Expected exactly 1 peer in s2, got %v", s2.Peers().Size())
 	}
-
-	//Test DialSeeds
-	err := s1.DialSeeds([]string{s1.NodeInfo().Network}) //"0.0.0.0:46658"})
-	assert.Nil(t, err, "expected successful dial seeds")
-
-	//Test Bad Dial Seeds
-	err = s1.DialSeeds([]string{"0.0.0:46658"})
-	assert.NotNil(t, err, "expected unsuccessful dial seeds")
 
 	// Lets send some messages
 	ch0Msg := "channel zero"

@@ -5,11 +5,12 @@
 package p2p
 
 import (
+	"errors"
 	"net"
 	"strconv"
 	"time"
 
-	. "github.com/tendermint/go-common"
+	cmn "github.com/tendermint/go-common"
 )
 
 type NetAddress struct {
@@ -61,6 +62,18 @@ func NewNetAddressString(addr string) (*NetAddress, error) {
 	return na, nil
 }
 
+func NewNetAddressStrings(addrs []string) ([]*NetAddress, error) {
+	netAddrs := make([]*NetAddress, len(addrs))
+	for i, addr := range addrs {
+		netAddr, err := NewNetAddressString(addr)
+		if err != nil {
+			return nil, errors.New(cmn.Fmt("Error in address %s: %v", addr, err))
+		}
+		netAddrs[i] = netAddr
+	}
+	return netAddrs, nil
+}
+
 func NewNetAddressIPPort(ip net.IP, port uint16) *NetAddress {
 	na := &NetAddress{
 		IP:   ip,
@@ -85,7 +98,7 @@ func (na *NetAddress) Less(other interface{}) bool {
 	if o, ok := other.(*NetAddress); ok {
 		return na.String() < o.String()
 	} else {
-		PanicSanity("Cannot compare unequal types")
+		cmn.PanicSanity("Cannot compare unequal types")
 		return false
 	}
 }

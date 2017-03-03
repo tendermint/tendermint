@@ -296,58 +296,24 @@ func (sw *Switch) startInitPeer(peer *Peer) {
 	sw.addPeerToReactors(peer) // run AddPeer on each reactor
 }
 
-//error type for seed errors
-type SeedError struct {
-	seed string
-	err  error
-}
-
-type SeedErrors []SeedError
-
-func (se SeedErrors) Error() string {
-	var str string
-	for _, e := range se {
-		str += ("seed: " + e.seed + " error: " + e.err.Error() + "; ")
-	}
-	return str
-}
-
-// Dial a list of seeds in random order
+// Dial a list of seeds asynchronously in random order
 func (sw *Switch) DialSeeds(seeds []string) error {
 
-	ch := make(chan SeedError) //channel for collecting errors
-	passing := 0               //number of passing seeds
+	netAddrs, err := NewNetAddressStrings(seeds)
+	if err != nil {
+		return err
+	}
 
 	// permute the list, dial them in random order.
 	perm := rand.Perm(len(seeds))
 	for i := 0; i < len(perm); i++ {
-
 		go func(i int) {
 			time.Sleep(time.Duration(rand.Int63n(3000)) * time.Millisecond)
 			j := perm[i]
-
-			addr, err := NewNetAddressString(seeds[j])
-
-			if err != nil {
-				ch <- SeedError{seeds[j], err}
-			} else {
-				sw.dialSeed(addr)
-				passing++
-			}
+			sw.dialSeed(netAddrs[j])
 		}(i)
 	}
-
-	//collect any errors from the channel
-	var seedErrs SeedErrors
-	for {
-		seedErr := <-ch
-		seedErrs = append(seedErrs, seedErr)
-		if len(seedErrs)+passing == len(perm) {
-			break
-		}
-	}
-
-	return seedErrs
+	return nil
 }
 
 func (sw *Switch) dialSeed(addr *NetAddress) {
