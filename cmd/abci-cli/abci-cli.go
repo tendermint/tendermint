@@ -12,6 +12,7 @@ import (
 
 	"github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/types"
+	"github.com/tendermint/abci/version"
 	"github.com/urfave/cli"
 )
 
@@ -43,7 +44,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "abci-cli"
 	app.Usage = "abci-cli [command] [args...]"
-	app.Version = "0.3.0" // hex handling
+	app.Version = version.Version
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "address",
