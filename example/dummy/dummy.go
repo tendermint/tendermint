@@ -1,10 +1,10 @@
 package dummy
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/tendermint/abci/types"
+	cmn "github.com/tendermint/go-common"
 	"github.com/tendermint/go-merkle"
 )
 
@@ -20,7 +20,7 @@ func NewDummyApplication() *DummyApplication {
 }
 
 func (app *DummyApplication) Info() (resInfo types.ResponseInfo) {
-	return types.ResponseInfo{Data: fmt.Sprintf("{\"size\":%v}", app.state.Size())}
+	return types.ResponseInfo{Data: cmn.Fmt("{\"size\":%v}", app.state.Size())}
 }
 
 // tx is either "key=value" or just arbitrary bytes

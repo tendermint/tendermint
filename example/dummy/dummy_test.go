@@ -2,7 +2,6 @@ package dummy
 
 import (
 	"bytes"
-	"fmt"
 	"io/ioutil"
 	"sort"
 	"testing"
@@ -13,7 +12,7 @@ import (
 	"github.com/tendermint/abci/types"
 	cmn "github.com/tendermint/go-common"
 	"github.com/tendermint/go-crypto"
-	merkle "github.com/tendermint/go-merkle"
+	"github.com/tendermint/go-merkle"
 )
 
 func testDummy(t *testing.T, app types.Application, tx []byte, key, value string) {
@@ -115,7 +114,7 @@ func TestValSetChanges(t *testing.T) {
 	nInit := 5
 	vals := make([]*types.Validator, total)
 	for i := 0; i < total; i++ {
-		pubkey := crypto.GenPrivKeyEd25519FromSecret([]byte(fmt.Sprintf("test%d", i))).PubKey().Bytes()
+		pubkey := crypto.GenPrivKeyEd25519FromSecret([]byte(cmn.Fmt("test%d", i))).PubKey().Bytes()
 		power := cmn.RandInt()
 		vals[i] = &types.Validator{pubkey, uint64(power)}
 	}

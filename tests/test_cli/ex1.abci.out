@@ -19,10 +19,10 @@
 -> data.hex: 750502FC7E84BBD788ED589624F06CFA871845D1
 
 > query "abc"
--> value: abc
--> value.hex: 616263
 -> log: exists
 -> height: 0
+-> value: abc
+-> value.hex: 616263
 
 > deliver_tx "def=xyz"
 
@@ -31,8 +31,8 @@
 -> data.hex: 76393B8A182E450286B0694C629ECB51B286EFD5
 
 > query "def"
--> value: xyz
--> value.hex: 78797A
 -> log: exists
 -> height: 0
+-> value: xyz
+-> value.hex: 78797A
 

@@ -17,12 +17,18 @@ import (
 
 // Structure for data passed to print response.
 type response struct {
-	Data   []byte
-	Code   types.CodeType
+	// generic abci response
+	Data []byte
+	Code types.CodeType
+	Log  string
+
+	Query *queryResponse
+}
+
+type queryResponse struct {
 	Key    []byte
 	Value  []byte
-	Log    string
-	Height string
+	Height uint64
 	Proof  []byte
 }
 
@@ -281,6 +287,7 @@ func cmdCheckTx(c *cli.Context) error {
 func cmdCommit(c *cli.Context) error {
 	res := client.CommitSync()
 	printResponse(c, response{
+		Code: res.Code,
 		Data: res.Data,
 		Log:  res.Log,
 	})
@@ -308,12 +315,14 @@ func cmdQuery(c *cli.Context) error {
 		return err
 	}
 	printResponse(c, response{
-		Code:   resQuery.Code,
-		Key:    resQuery.Key,
-		Value:  resQuery.Value,
-		Log:    resQuery.Log,
-		Height: fmt.Sprintf("%v", resQuery.Height),
-		//Proof:  resQuery.Proof,
+		Code: resQuery.Code,
+		Log:  resQuery.Log,
+		Query: &queryResponse{
+			Key:    resQuery.Key,
+			Value:  resQuery.Value,
+			Height: resQuery.Height,
+			Proof:  resQuery.Proof,
+		},
 	})
 	return nil
 }
@@ -328,29 +337,30 @@ func printResponse(c *cli.Context, rsp response) {
 		fmt.Println(">", c.Command.Name, strings.Join(c.Args(), " "))
 	}
 
-	if rsp.Code != types.CodeType_OK {
+	if !rsp.Code.IsOK() {
 		fmt.Printf("-> code: %s\n", rsp.Code.String())
 	}
 	if len(rsp.Data) != 0 {
 		fmt.Printf("-> data: %s\n", rsp.Data)
 		fmt.Printf("-> data.hex: %X\n", rsp.Data)
 	}
-	if len(rsp.Key) != 0 {
-		fmt.Printf("-> key: %s\n", rsp.Key)
-		fmt.Printf("-> key.hex: %X\n", rsp.Key)
-	}
-	if len(rsp.Value) != 0 {
-		fmt.Printf("-> value: %s\n", rsp.Value)
-		fmt.Printf("-> value.hex: %X\n", rsp.Value)
-	}
 	if rsp.Log != "" {
 		fmt.Printf("-> log: %s\n", rsp.Log)
 	}
-	if rsp.Height != "" {
-		fmt.Printf("-> height: %s\n", rsp.Height)
-	}
-	if rsp.Proof != nil {
-		fmt.Printf("-> proof: %X\n", rsp.Proof)
+
+	if rsp.Query != nil {
+		fmt.Printf("-> height: %d\n", rsp.Query.Height)
+		if rsp.Query.Key != nil {
+			fmt.Printf("-> key: %s\n", rsp.Query.Key)
+			fmt.Printf("-> key.hex: %X\n", rsp.Query.Key)
+		}
+		if rsp.Query.Value != nil {
+			fmt.Printf("-> value: %s\n", rsp.Query.Value)
+			fmt.Printf("-> value.hex: %X\n", rsp.Query.Value)
+		}
+		if rsp.Query.Proof != nil {
+			fmt.Printf("-> proof: %X\n", rsp.Query.Proof)
+		}
 	}
 
 	if verbose {
