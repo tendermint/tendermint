@@ -64,8 +64,6 @@ func TestNetInfo(t *testing.T) {
 	}
 }
 
-// FIXME: This seems to trigger a race condition with client.Local
-// go test -v -race . -run=DumpCons
 func TestDumpConsensusState(t *testing.T) {
 	for i, c := range GetClients() {
 		// FIXME: fix server so it doesn't panic on invalid input
