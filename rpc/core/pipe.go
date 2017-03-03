@@ -24,7 +24,7 @@ type P2P interface {
 	NumPeers() (outbound, inbound, dialig int)
 	NodeInfo() *p2p.NodeInfo
 	IsListening() bool
-	DialSeeds([]string)
+	DialSeeds([]string) error
 }
 
 //----------------------------------------------

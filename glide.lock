@@ -2,7 +2,7 @@ hash: 9f2553f32b158ce61be7169d2b92e63a77a01cdd619629cb6c0064c196a7fa9c
 updated: 2017-03-03T01:22:09.83538904-05:00
 imports:
 - name: github.com/btcsuite/btcd
-  version: d06c0bb181529331be8f8d9350288c420d9e60e4
+  version: 583684b21bfbde9b5fc4403916fd7c807feb0289
   subpackages:
   - btcec
 - name: github.com/BurntSushi/toml
@@ -16,17 +16,17 @@ imports:
 - name: github.com/go-stack/stack
   version: 100eb0c0a9c5b306ca2fb4f165df21d80ada4b82
 - name: github.com/gogo/protobuf
-  version: 2221ff550f109ae54cb617c0dc6ac62658c418d7
+  version: d66ead2957a1d163be783c18c25bc388a201cdd0
   subpackages:
   - proto
 - name: github.com/golang/protobuf
-  version: 8ee79997227bf9b34611aee7946ae64735e6fd93
+  version: 69b215d01a5606c843240eab4937eab3acee6530
   subpackages:
   - proto
 - name: github.com/golang/snappy
   version: d9eb7a3d35ec988b8585d4a0068e462c27d28380
 - name: github.com/gorilla/websocket
-  version: 804cb600d06b10672f2fbc0a336a7bee507a428e
+  version: b258b4fadb573ac412f187b9f31974ea99d32f50
 - name: github.com/jmhodges/levigo
   version: c42d9e0ca023e2198120196f842701bb4c55d7b9
 - name: github.com/mattn/go-colorable
@@ -47,7 +47,7 @@ imports:
   - assert
   - require
 - name: github.com/syndtr/goleveldb
-  version: 23851d93a2292dcc56e71a18ec9e0624d84a0f65
+  version: 3c5717caf1475fd25964109a0fc640bd150fce43
   subpackages:
   - leveldb
   - leveldb/cache
@@ -128,7 +128,7 @@ imports:
   - ripemd160
   - salsa20/salsa
 - name: golang.org/x/net
-  version: 61557ac0112b576429a0df080e1c2cef5dfbb642
+  version: 906cda9512f77671ab44f8c8563b13a8e707b230
   subpackages:
   - context
   - http2
@@ -142,7 +142,7 @@ imports:
   subpackages:
   - unix
 - name: google.golang.org/grpc
-  version: cbcceb2942a489498cf22b2f918536e819d33f0a
+  version: 1dab93372523195731c738b0f0cb4e452228e959
   subpackages:
   - codes
   - credentials

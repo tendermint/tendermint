@@ -32,8 +32,8 @@ func NetInfo() (*ctypes.ResultNetInfo, error) {
 // Dial given list of seeds
 func UnsafeDialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) {
 	// starts go routines to dial each seed after random delays
-	p2pSwitch.DialSeeds(seeds)
-	return &ctypes.ResultDialSeeds{}, nil
+	err := p2pSwitch.DialSeeds(seeds)
+	return &ctypes.ResultDialSeeds{}, err
 }
 
 //-----------------------------------------------------------------------------
