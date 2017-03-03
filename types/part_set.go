@@ -268,6 +268,8 @@ func (ps *PartSet) StringShort() string {
 	if ps == nil {
 		return "nil-PartSet"
 	} else {
+		ps.mtx.Lock()
+		defer ps.mtx.Unlock()
 		return fmt.Sprintf("(%v of %v)", ps.Count(), ps.Total())
 	}
 }

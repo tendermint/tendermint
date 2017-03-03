@@ -58,10 +58,9 @@ for failIndex in $(seq $failsStart $failsEnd); do
 	bash ./test/utils/txs.sh "localhost:46657" &
 	start_procs 1 "$failIndex"
 
-	# tendermint should fail when it hits the fail index
-	kill -9 "$PID_DUMMY"
-	wait "$PID_DUMMY"
-	wait "$PID_TENDERMINT"
+	# tendermint should already have paniced when it hits the fail index
+	# but kill -9 for OS cleanup
+	kill_procs
 
 	start_procs 2
 
