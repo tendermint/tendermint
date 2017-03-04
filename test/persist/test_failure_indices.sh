@@ -45,8 +45,8 @@ function kill_procs(){
 	wait "$PID_TENDERMINT"
 
 	# wait for the ports to be released 
-	wait_for_port 46656
-	wait_for_port 46657
+	#wait_for_port 46656
+	#wait_for_port 46657
 }
 
 # wait for port to be available

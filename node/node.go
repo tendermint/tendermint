@@ -44,6 +44,7 @@ type Node struct {
 	genesisDoc       *types.GenesisDoc
 	privKey          crypto.PrivKeyEd25519
 	proxyApp         proxy.AppConns
+	rpcListeners     []net.Listener
 }
 
 func NewNodeDefault(config cfg.Config) *Node {
@@ -208,10 +209,11 @@ func (n *Node) OnStart() error {
 
 	// Run the RPC server
 	if n.config.GetString("rpc_laddr") != "" {
-		_, err := n.startRPC()
+		listeners, err := n.startRPC()
 		if err != nil {
 			return err
 		}
+		n.rpcListeners = listeners
 	}
 
 	return nil
@@ -230,6 +232,13 @@ func (n *Node) OnStop() {
 	log.Notice("Stopping Node")
 	// TODO: gracefully disconnect from peers.
 	n.sw.Stop()
+
+	for _, l := range n.rpcListeners {
+		log.Info("Closing rpc listener", "listener", l)
+		if err := l.Close(); err != nil {
+			log.Error("Error closing listener", "listener", l, "error", err)
+		}
+	}
 }
 
 // Add the event switch to reactors, mempool, etc.
