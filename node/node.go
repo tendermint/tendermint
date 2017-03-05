@@ -32,19 +32,25 @@ import (
 type Node struct {
 	cmn.BaseService
 
-	config           cfg.Config
-	sw               *p2p.Switch
-	evsw             types.EventSwitch
-	blockStore       *bc.BlockStore
-	bcReactor        *bc.BlockchainReactor
-	mempoolReactor   *mempl.MempoolReactor
-	consensusState   *consensus.ConsensusState
-	consensusReactor *consensus.ConsensusReactor
-	privValidator    *types.PrivValidator
-	genesisDoc       *types.GenesisDoc
-	privKey          crypto.PrivKeyEd25519
-	proxyApp         proxy.AppConns
-	rpcListeners     []net.Listener
+	// config
+	config        cfg.Config           // user config
+	genesisDoc    *types.GenesisDoc    // initial validator set
+	privValidator *types.PrivValidator // local node's validator key
+
+	// network
+	privKey  crypto.PrivKeyEd25519 // local node's p2p key
+	sw       *p2p.Switch           // p2p connections
+	addrBook *p2p.AddrBook         // known peers
+
+	// services
+	evsw             types.EventSwitch           // pub/sub for services
+	blockStore       *bc.BlockStore              // store the blockchain to disk
+	bcReactor        *bc.BlockchainReactor       // for fast-syncing
+	mempoolReactor   *mempl.MempoolReactor       // for gossipping transactions
+	consensusState   *consensus.ConsensusState   // latest consensus state
+	consensusReactor *consensus.ConsensusReactor // for participating in the consensus
+	proxyApp         proxy.AppConns              // connection to the application
+	rpcListeners     []net.Listener              // rpc servers
 }
 
 func NewNodeDefault(config cfg.Config) *Node {
@@ -119,8 +125,9 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreato
 	sw.AddReactor("CONSENSUS", consensusReactor)
 
 	// Optionally, start the pex reactor
+	var addrBook *p2p.AddrBook
 	if config.GetBool("pex_reactor") {
-		addrBook := p2p.NewAddrBook(config.GetString("addrbook_file"), config.GetBool("addrbook_strict"))
+		addrBook = p2p.NewAddrBook(config.GetString("addrbook_file"), config.GetBool("addrbook_strict"))
 		pexReactor := p2p.NewPEXReactor(addrBook)
 		sw.AddReactor("PEX", pexReactor)
 	}
@@ -166,17 +173,20 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreato
 	}
 
 	node := &Node{
-		config:           config,
-		sw:               sw,
+		config:        config,
+		genesisDoc:    state.GenesisDoc,
+		privValidator: privValidator,
+
+		privKey:  privKey,
+		sw:       sw,
+		addrBook: addrBook,
+
 		evsw:             eventSwitch,
 		blockStore:       blockStore,
 		bcReactor:        bcReactor,
 		mempoolReactor:   mempoolReactor,
 		consensusState:   consensusState,
 		consensusReactor: consensusReactor,
-		privValidator:    privValidator,
-		genesisDoc:       state.GenesisDoc,
-		privKey:          privKey,
 		proxyApp:         proxyApp,
 	}
 	node.BaseService = *cmn.NewBaseService(log, "Node", node)
@@ -199,10 +209,32 @@ func (n *Node) OnStart() error {
 		return err
 	}
 
-	// Dial out of seed nodes exist
+	// If seeds exist, add them to the address book and dial out
 	if n.config.GetString("seeds") != "" {
 		seeds := strings.Split(n.config.GetString("seeds"), ",")
-		n.sw.DialSeeds(seeds)
+
+		if n.config.GetBool("pex_reactor") {
+			// add seeds to `addrBook` to avoid losing
+			ourAddrS := n.NodeInfo().ListenAddr
+			ourAddr, _ := p2p.NewNetAddressString(ourAddrS)
+			for _, s := range seeds {
+				// do not add ourselves
+				if s == ourAddrS {
+					continue
+				}
+
+				addr, err := p2p.NewNetAddressString(s)
+				if err != nil {
+					n.addrBook.AddAddress(addr, ourAddr)
+				}
+			}
+			n.addrBook.Save()
+		}
+
+		// dial out
+		if err := n.sw.DialSeeds(seeds); err != nil {
+			return err
+		}
 	}
 
 	// Run the RPC server
@@ -373,84 +405,6 @@ func makeNodeInfo(config cfg.Config, sw *p2p.Switch, privKey crypto.PrivKeyEd255
 }
 
 //------------------------------------------------------------------------------
-
-// Users wishing to:
-//	* use an external signer for their validators
-//	* supply an in-proc abci app
-// should fork tendermint/tendermint and implement RunNode to
-// call NewNode with their custom priv validator and/or custom
-// proxy.ClientCreator interface
-func RunNode(config cfg.Config) {
-	// Wait until the genesis doc becomes available
-	genDocFile := config.GetString("genesis_file")
-	if !FileExists(genDocFile) {
-		log.Notice(Fmt("Waiting for genesis file %v...", genDocFile))
-		for {
-			time.Sleep(time.Second)
-			if !FileExists(genDocFile) {
-				continue
-			}
-			jsonBlob, err := ioutil.ReadFile(genDocFile)
-			if err != nil {
-				Exit(Fmt("Couldn't read GenesisDoc file: %v", err))
-			}
-			genDoc := types.GenesisDocFromJSON(jsonBlob)
-			if genDoc.ChainID == "" {
-				PanicSanity(Fmt("Genesis doc %v must include non-empty chain_id", genDocFile))
-			}
-			config.Set("chain_id", genDoc.ChainID)
-		}
-	}
-
-	// Create & start node
-	n := NewNodeDefault(config)
-
-	protocol, address := ProtocolAndAddress(config.GetString("node_laddr"))
-	l := p2p.NewDefaultListener(protocol, address, config.GetBool("skip_upnp"))
-	n.AddListener(l)
-	err := n.Start()
-	if err != nil {
-		Exit(Fmt("Failed to start node: %v", err))
-	}
-
-	log.Notice("Started node", "nodeInfo", n.sw.NodeInfo())
-
-	if config.GetString("seeds") != "" {
-		seeds := strings.Split(config.GetString("seeds"), ",")
-
-		if config.GetBool("pex_reactor") {
-			// add seeds to `addrBook` to avoid losing
-			r := n.sw.Reactor("PEX").(*p2p.PEXReactor)
-			ourAddr := n.NodeInfo().ListenAddr
-			for _, s := range seeds {
-				// do not add ourselves
-				if s == ourAddr {
-					continue
-				}
-
-				addr := p2p.NewNetAddressString(s)
-				r.AddPeerAddress(addr, p2p.NewNetAddressString(ourAddr))
-			}
-			r.SaveAddrBook()
-		}
-
-		// dial out
-		n.sw.DialSeeds(seeds)
-	}
-
-	// Run the RPC server.
-	if config.GetString("rpc_laddr") != "" {
-		_, err := n.StartRPC()
-		if err != nil {
-			PanicCrisis(err)
-		}
-	}
-
-	// Sleep forever and then...
-	TrapSignal(func() {
-		n.Stop()
-	})
-}
 
 func (n *Node) NodeInfo() *p2p.NodeInfo {
 	return n.sw.NodeInfo()

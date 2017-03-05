@@ -13,9 +13,9 @@ import (
 // Users wishing to:
 //	* Use an external signer for their validators
 //	* Supply an in-proc abci app
-// should import tendermint/tendermint and implement their own RunNode to
-// call NewNode with their custom priv validator and/or custom
-// proxy.ClientCreator interface
+// should import github.com/tendermint/tendermint/node and implement
+// their own run_node to call node.NewNode (instead of node.NewNodeDefault)
+// with their custom priv validator and/or custom proxy.ClientCreator
 func run_node(config cfg.Config) {
 
 	// Wait until the genesis doc becomes available
