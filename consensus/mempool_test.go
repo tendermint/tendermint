@@ -81,15 +81,12 @@ func TestRmBadTx(t *testing.T) {
 		// check for the tx
 		for {
 			time.Sleep(time.Second)
-			select {
-			case <-ch:
-			default:
-				txs := cs.mempool.Reap(1)
-				if len(txs) == 0 {
-					ch <- struct{}{}
-				}
-
+			txs := cs.mempool.Reap(1)
+			if len(txs) == 0 {
+				ch <- struct{}{}
+				return
 			}
+
 		}
 	}()
 

@@ -79,7 +79,7 @@ imports:
 - name: github.com/tendermint/go-clist
   version: 3baa390bbaf7634251c42ad69a8682e7e3990552
 - name: github.com/tendermint/go-common
-  version: 6141dc6eedab067f7e25707a237218ef2c0dc273
+  version: dcb015dff6c7af21e65c8e2f3b450df19d38c777
   subpackages:
   - test
 - name: github.com/tendermint/go-config
