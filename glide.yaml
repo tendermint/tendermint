@@ -19,7 +19,7 @@ import:
 - package: github.com/tendermint/go-merkle
   version: develop
 - package: github.com/tendermint/go-p2p
-  version: seedsfix
+  version: develop
 - package: github.com/tendermint/go-rpc
   version: develop
 - package: github.com/tendermint/go-wire
@@ -29,6 +29,10 @@ import:
 - package: github.com/tendermint/go-flowrate
 - package: github.com/tendermint/log15
 - package: github.com/tendermint/ed25519
+- package: github.com/tendermint/merkleeyes
+  version: develop
+  subpackages:
+  - app
 - package: github.com/gogo/protobuf
   subpackages:
   - proto
@@ -45,7 +49,3 @@ testImport:
   subpackages:
   - assert
   - require
-- package: github.com/tendermint/merkleeyes
-  version: develop
-  subpackages:
-  - app
