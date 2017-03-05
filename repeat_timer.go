@@ -1,7 +1,9 @@
 package common
 
-import "time"
-import "sync"
+import (
+	"sync"
+	"time"
+)
 
 /*
 RepeatTimer repeatedly sends a struct{}{} to .Ch after each "dur" period.
@@ -15,7 +17,7 @@ type RepeatTimer struct {
 	name   string
 	ticker *time.Ticker
 	quit   chan struct{}
-	done   chan struct{}
+	wg     *sync.WaitGroup
 	dur    time.Duration
 }
 
@@ -24,10 +26,11 @@ func NewRepeatTimer(name string, dur time.Duration) *RepeatTimer {
 		Ch:     make(chan time.Time),
 		ticker: time.NewTicker(dur),
 		quit:   make(chan struct{}),
-		done:   make(chan struct{}),
+		wg:     new(sync.WaitGroup),
 		name:   name,
 		dur:    dur,
 	}
+	t.wg.Add(1)
 	go t.fireRoutine(t.ticker)
 	return t
 }
@@ -39,7 +42,7 @@ func (t *RepeatTimer) fireRoutine(ticker *time.Ticker) {
 			t.Ch <- t_
 		case <-t.quit:
 			// needed so we know when we can reset t.quit
-			t.done <- struct{}{}
+			t.wg.Done()
 			return
 		}
 	}
@@ -54,6 +57,7 @@ func (t *RepeatTimer) Reset() {
 
 	t.ticker = time.NewTicker(t.dur)
 	t.quit = make(chan struct{})
+	t.wg.Add(1)
 	go t.fireRoutine(t.ticker)
 }
 
@@ -69,8 +73,13 @@ func (t *RepeatTimer) Stop() bool {
 	exists := t.ticker != nil
 	if exists {
 		t.ticker.Stop() // does not close the channel
+		select {
+		case <-t.Ch:
+			// read off channel if there's anything there
+		default:
+		}
 		close(t.quit)
-		<-t.done
+		t.wg.Wait() // must wait for quit to close else we race Reset
 		t.ticker = nil
 	}
 	return exists
