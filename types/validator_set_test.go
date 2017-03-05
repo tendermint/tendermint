@@ -1,23 +1,23 @@
 package types
 
 import (
-	. "github.com/tendermint/go-common"
-	"github.com/tendermint/go-crypto"
-
 	"bytes"
 	"strings"
 	"testing"
+
+	cmn "github.com/tendermint/go-common"
+	"github.com/tendermint/go-crypto"
 )
 
 func randPubKey() crypto.PubKeyEd25519 {
 	var pubKey [32]byte
-	copy(pubKey[:], RandBytes(32))
+	copy(pubKey[:], cmn.RandBytes(32))
 	return crypto.PubKeyEd25519(pubKey)
 }
 
 func randValidator_() *Validator {
-	val := NewValidator(randPubKey(), RandInt64())
-	val.Accum = RandInt64()
+	val := NewValidator(randPubKey(), cmn.RandInt64())
+	val.Accum = cmn.RandInt64()
 	return val
 }
 
@@ -135,6 +135,43 @@ func TestProposerSelection2(t *testing.T) {
 	}
 	if propCount[2] != 30 {
 		t.Fatalf("Expected prop count for validator with 3/12 of voting power to be 30/120. Got %d/120", propCount[2])
+	}
+}
+
+func TestProposerSelection3(t *testing.T) {
+	vset := NewValidatorSet([]*Validator{
+		newValidator([]byte("a"), 1),
+		newValidator([]byte("b"), 1),
+		newValidator([]byte("c"), 1),
+		newValidator([]byte("d"), 1),
+	})
+
+	proposerOrder := make([]*Validator, 4)
+	for i := 0; i < 4; i++ {
+		proposerOrder[i] = vset.Proposer()
+		vset.IncrementAccum(1)
+	}
+
+	// i for the loop
+	// j for the times
+	// we should go in order for ever, despite occasional IncrementAccums with times > 1
+	var i, j int
+	for ; i < 1000; i++ {
+		got := vset.Proposer().Address
+		expected := proposerOrder[j%4].Address
+		if !bytes.Equal(got, expected) {
+			t.Fatalf(cmn.Fmt("vset.Proposer (%X) does not match expected proposer (%X) for (%d, %d)", got, expected, i, j))
+		}
+
+		// times is usually 1
+		times := 1
+		if cmn.RandInt()%2 > 0 {
+			// sometimes its up to 5
+			times = cmn.RandInt() % 5
+		}
+		vset.IncrementAccum(times)
+
+		j += times
 	}
 }
 
