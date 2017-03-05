@@ -153,6 +153,7 @@ func (a *AddrBook) OurAddresses() []*NetAddress {
 	return addrs
 }
 
+// NOTE: addr must not be nil
 func (a *AddrBook) AddAddress(addr *NetAddress, src *NetAddress) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()

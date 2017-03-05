@@ -130,16 +130,6 @@ func (pexR *PEXReactor) SendAddrs(peer *Peer, addrs []*NetAddress) {
 	peer.Send(PexChannel, struct{ PexMessage }{&pexAddrsMessage{Addrs: addrs}})
 }
 
-// SaveAddrBook saves underlying address book
-func (r *PEXReactor) SaveAddrBook() {
-	r.book.Save()
-}
-
-// AddPeerAddress adds raw NetAddress to the address book
-func (r *PEXReactor) AddPeerAddress(peerAddr, srcAddr *NetAddress) {
-	r.book.AddAddress(peerAddr, srcAddr)
-}
-
 // Ensures that sufficient peers are connected. (continuous)
 func (pexR *PEXReactor) ensurePeersRoutine() {
 	// Randomize when routine starts
