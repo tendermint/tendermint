@@ -14,7 +14,7 @@ echo "(assuming peers are started with pex enabled)"
 
 echo "1. restart peer $ID"
 docker stop "local_testnet_$ID"
-# preserce addrbook.json
+# preserve addrbook.json
 docker cp "local_testnet_$ID:/go/src/github.com/tendermint/tendermint/test/p2p/data/mach1/core/addrbook.json" "/tmp/addrbook.json"
 docker rm -vf "local_testnet_$ID"
 
