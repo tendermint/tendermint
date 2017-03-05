@@ -1160,13 +1160,13 @@ func (cs *ConsensusState) tryFinalizeCommit(height int) {
 
 	blockID, ok := cs.Votes.Precommits(cs.CommitRound).TwoThirdsMajority()
 	if !ok || len(blockID.Hash) == 0 {
-		log.Warn("Attempt to finalize failed. There was no +2/3 majority, or +2/3 was for <nil>.")
+		log.Warn("Attempt to finalize failed. There was no +2/3 majority, or +2/3 was for <nil>.", "height", height)
 		return
 	}
 	if !cs.ProposalBlock.HashesTo(blockID.Hash) {
 		// TODO: this happens every time if we're not a validator (ugly logs)
 		// TODO: ^^ wait, why does it matter that we're a validator?
-		log.Warn("Attempt to finalize failed. We don't have the commit block.")
+		log.Warn("Attempt to finalize failed. We don't have the commit block.", "height", height, "proposal-block", cs.ProposalBlock.Hash(), "commit-block", blockID.Hash)
 		return
 	}
 	//	go

@@ -211,6 +211,8 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 		return errors.New(Fmt("Error on replay: %v", err))
 	}
 
+	log.Notice("Completed ABCI Handshake - Tendermint and App are synced", "appHeight", blockHeight, "appHash", appHash)
+
 	// TODO: (on restart) replay mempool
 
 	return nil

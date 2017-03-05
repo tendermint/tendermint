@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	. "github.com/tendermint/go-common"
+	cmn "github.com/tendermint/go-common"
 	"github.com/tendermint/go-merkle"
 )
 
@@ -48,7 +48,7 @@ func NewValidatorSet(vals []*Validator) *ValidatorSet {
 // TODO: mind the overflow when times and votingPower shares too large.
 func (valSet *ValidatorSet) IncrementAccum(times int) {
 	// Add VotingPower * times to each validator and order into heap.
-	validatorsHeap := NewHeap()
+	validatorsHeap := cmn.NewHeap()
 	for _, val := range valSet.Validators {
 		val.Accum += int64(val.VotingPower) * int64(times) // TODO: mind overflow
 		validatorsHeap.Push(val, accumComparable(val.Accum))
