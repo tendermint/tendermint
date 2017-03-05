@@ -1,5 +1,5 @@
-hash: 238f5a4399605b0d6eb35930b04b70395c70562fbc3861b95bb3a92c0d4cf8dd
-updated: 2017-03-04T22:04:42.038691605-05:00
+hash: 41f8fec708e98b7f8c4804be46008493199fa45e89b2d5dc237fd65fe431c62f
+updated: 2017-03-04T22:10:20.337283524-05:00
 imports:
 - name: github.com/btcsuite/btcd
   version: d06c0bb181529331be8f8d9350288c420d9e60e4
@@ -16,7 +16,7 @@ imports:
 - name: github.com/go-stack/stack
   version: 100eb0c0a9c5b306ca2fb4f165df21d80ada4b82
 - name: github.com/gogo/protobuf
-  version: 2221ff550f109ae54cb617c0dc6ac62658c418d7
+  version: 909568be09de550ed094403c2bf8a261b5bb730a
   subpackages:
   - proto
 - name: github.com/golang/protobuf
@@ -26,7 +26,7 @@ imports:
 - name: github.com/golang/snappy
   version: d9eb7a3d35ec988b8585d4a0068e462c27d28380
 - name: github.com/gorilla/websocket
-  version: 804cb600d06b10672f2fbc0a336a7bee507a428e
+  version: 3ab3a8b8831546bd18fd182c20687ca853b2bb13
 - name: github.com/jmhodges/levigo
   version: c42d9e0ca023e2198120196f842701bb4c55d7b9
 - name: github.com/mattn/go-colorable
