@@ -1,5 +1,5 @@
 hash: 41f8fec708e98b7f8c4804be46008493199fa45e89b2d5dc237fd65fe431c62f
-updated: 2017-03-04T23:34:29.802454496-05:00
+updated: 2017-03-05T00:18:48.136517571-05:00
 imports:
 - name: github.com/btcsuite/btcd
   version: d06c0bb181529331be8f8d9350288c420d9e60e4
@@ -83,13 +83,13 @@ imports:
   subpackages:
   - test
 - name: github.com/tendermint/go-config
-  version: 28765c18222cd3171d5290f1cc69a9cf710ac5ae
+  version: 620dcbbd7d587cf3599dedbf329b64311b0c307a
 - name: github.com/tendermint/go-crypto
   version: 3f47cfac5fcd9e0f1727c7db980b3559913b3e3a
 - name: github.com/tendermint/go-data
   version: 32271140e8fd5abdbb22e268d7a02421fa382f0b
 - name: github.com/tendermint/go-db
-  version: 286cbbd99d9ff76681b7c18cc506d476ccf68725
+  version: eac3f2bc147023957c8bf69432a4e6c4dc5c3f72
 - name: github.com/tendermint/go-events
   version: f8ffbfb2be3483e9e7927495590a727f51c0c11f
 - name: github.com/tendermint/go-flowrate
