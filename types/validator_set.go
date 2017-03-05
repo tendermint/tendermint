@@ -8,6 +8,7 @@ import (
 
 	cmn "github.com/tendermint/go-common"
 	"github.com/tendermint/go-merkle"
+	"github.com/tendermint/go-wire"
 )
 
 // ValidatorSet represent a set of *Validator at a given height.
@@ -22,10 +23,10 @@ import (
 // TODO: consider validator Accum overflow
 // TODO: move valset into an iavl tree where key is 'blockbonded|pubkey'
 type ValidatorSet struct {
-	Validators []*Validator // NOTE: persisted via reflect, must be exported.
+	Validators   []*Validator // NOTE: persisted via reflect, must be exported.
+	LastProposer *Validator
 
 	// cached (unexported)
-	proposer         *Validator
 	totalVotingPower int64
 }
 
@@ -42,26 +43,28 @@ func NewValidatorSet(vals []*Validator) *ValidatorSet {
 	if vals != nil {
 		vs.IncrementAccum(1)
 	}
+
 	return vs
 }
 
+// incrementAccum and update the proposer
 // TODO: mind the overflow when times and votingPower shares too large.
 func (valSet *ValidatorSet) IncrementAccum(times int) {
 	// Add VotingPower * times to each validator and order into heap.
 	validatorsHeap := cmn.NewHeap()
 	for _, val := range valSet.Validators {
 		val.Accum += int64(val.VotingPower) * int64(times) // TODO: mind overflow
-		validatorsHeap.Push(val, accumComparable(val.Accum))
+		validatorsHeap.Push(val, accumComparable{val})
 	}
 
-	// Decrement the validator with most accum, times times.
+	// Decrement the validator with most accum times times
 	for i := 0; i < times; i++ {
 		mostest := validatorsHeap.Peek().(*Validator)
 		if i == times-1 {
-			valSet.proposer = mostest
+			valSet.LastProposer = mostest
 		}
 		mostest.Accum -= int64(valSet.TotalVotingPower())
-		validatorsHeap.Update(mostest, accumComparable(mostest.Accum))
+		validatorsHeap.Update(mostest, accumComparable{mostest})
 	}
 }
 
@@ -73,7 +76,7 @@ func (valSet *ValidatorSet) Copy() *ValidatorSet {
 	}
 	return &ValidatorSet{
 		Validators:       validators,
-		proposer:         valSet.proposer,
+		LastProposer:     valSet.LastProposer,
 		totalVotingPower: valSet.totalVotingPower,
 	}
 }
@@ -118,12 +121,20 @@ func (valSet *ValidatorSet) Proposer() (proposer *Validator) {
 	if len(valSet.Validators) == 0 {
 		return nil
 	}
-	if valSet.proposer == nil {
-		for _, val := range valSet.Validators {
-			valSet.proposer = valSet.proposer.CompareAccum(val)
+	if valSet.LastProposer == nil {
+		valSet.LastProposer = valSet.findProposer()
+	}
+	return valSet.LastProposer.Copy()
+}
+
+func (valSet *ValidatorSet) findProposer() *Validator {
+	var proposer *Validator
+	for _, val := range valSet.Validators {
+		if proposer == nil || !bytes.Equal(val.Address, proposer.Address) {
+			proposer = proposer.CompareAccum(val)
 		}
 	}
-	return valSet.proposer.Copy()
+	return proposer
 }
 
 func (valSet *ValidatorSet) Hash() []byte {
@@ -145,7 +156,7 @@ func (valSet *ValidatorSet) Add(val *Validator) (added bool) {
 	if idx == len(valSet.Validators) {
 		valSet.Validators = append(valSet.Validators, val)
 		// Invalidate cache
-		valSet.proposer = nil
+		valSet.LastProposer = nil
 		valSet.totalVotingPower = 0
 		return true
 	} else if bytes.Compare(valSet.Validators[idx].Address, val.Address) == 0 {
@@ -157,7 +168,7 @@ func (valSet *ValidatorSet) Add(val *Validator) (added bool) {
 		copy(newValidators[idx+1:], valSet.Validators[idx:])
 		valSet.Validators = newValidators
 		// Invalidate cache
-		valSet.proposer = nil
+		valSet.LastProposer = nil
 		valSet.totalVotingPower = 0
 		return true
 	}
@@ -170,7 +181,7 @@ func (valSet *ValidatorSet) Update(val *Validator) (updated bool) {
 	} else {
 		valSet.Validators[index] = val.Copy()
 		// Invalidate cache
-		valSet.proposer = nil
+		valSet.LastProposer = nil
 		valSet.totalVotingPower = 0
 		return true
 	}
@@ -190,7 +201,7 @@ func (valSet *ValidatorSet) Remove(address []byte) (val *Validator, removed bool
 		}
 		valSet.Validators = newValidators
 		// Invalidate cache
-		valSet.proposer = nil
+		valSet.LastProposer = nil
 		valSet.totalVotingPower = 0
 		return removedVal, true
 	}
@@ -278,6 +289,24 @@ func (valSet *ValidatorSet) VerifyCommitAny(chainID string, blockID BlockID, hei
 	*/
 }
 
+func (valSet *ValidatorSet) ToBytes() []byte {
+	buf, n, err := new(bytes.Buffer), new(int), new(error)
+	wire.WriteBinary(valSet, buf, n, err)
+	if *err != nil {
+		cmn.PanicCrisis(*err)
+	}
+	return buf.Bytes()
+}
+
+func (valSet *ValidatorSet) FromBytes(b []byte) {
+	r, n, err := bytes.NewReader(b), new(int), new(error)
+	wire.ReadBinary(valSet, r, 0, n, err)
+	if *err != nil {
+		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
+		cmn.PanicCrisis(*err)
+	}
+}
+
 func (valSet *ValidatorSet) String() string {
 	return valSet.StringIndented("")
 }
@@ -325,11 +354,15 @@ func (vs ValidatorsByAddress) Swap(i, j int) {
 //-------------------------------------
 // Use with Heap for sorting validators by accum
 
-type accumComparable int64
+type accumComparable struct {
+	*Validator
+}
 
 // We want to find the validator with the greatest accum.
 func (ac accumComparable) Less(o interface{}) bool {
-	return int64(ac) > int64(o.(accumComparable))
+	other := o.(accumComparable).Validator
+	larger := ac.CompareAccum(other)
+	return bytes.Equal(larger.Address, ac.Address)
 }
 
 //----------------------------------------
