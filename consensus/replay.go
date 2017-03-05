@@ -253,7 +253,7 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, proxyApp p
 			return h.replayBlocks(proxyApp, appBlockHeight, storeBlockHeight, false)
 
 		} else if appBlockHeight == storeBlockHeight {
-			// we're good!
+			// We're good!
 			return appHash, h.checkAppHash(appHash)
 		}
 
