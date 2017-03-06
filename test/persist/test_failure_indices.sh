@@ -49,7 +49,7 @@ function kill_procs(){
 	wait_for_port 46657
 	
 	# XXX: sometimes the port is still bound :(
-	sleep 2
+	sleep 5
 }
 
 # wait for port to be available
