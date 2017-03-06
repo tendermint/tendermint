@@ -42,14 +42,14 @@ func NewPEXReactor(book *AddrBook) *PEXReactor {
 
 func (pexR *PEXReactor) OnStart() error {
 	pexR.BaseReactor.OnStart()
-	pexR.book.OnStart()
+	pexR.book.Start()
 	go pexR.ensurePeersRoutine()
 	return nil
 }
 
 func (pexR *PEXReactor) OnStop() {
 	pexR.BaseReactor.OnStop()
-	pexR.book.OnStop()
+	pexR.book.Stop()
 }
 
 // Implements Reactor

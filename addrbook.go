@@ -135,6 +135,9 @@ func (a *AddrBook) OnStart() error {
 
 func (a *AddrBook) OnStop() {
 	a.BaseService.OnStop()
+}
+
+func (a *AddrBook) Wait() {
 	a.wg.Wait()
 }
 
