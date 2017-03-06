@@ -39,7 +39,7 @@ Commands:
 	parseFlags(config, args[1:]) // Command line overrides
 
 	// set the log level
-	logger.SetLogLevel(config.GetString("log_level"))
+	logger.ResetWithLogLevel(config.GetString("log_level"), config.GetString("log_dir"))
 
 	switch args[0] {
 	case "node":
