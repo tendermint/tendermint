@@ -196,7 +196,7 @@ message ResponseQuery{
 	bytes             key         = 3;
 	bytes             value       = 4;
 	bytes             proof       = 5;
-	uint64            height = 6;
+	uint64            height      = 6;
 	string            log         = 7;
 }
 
@@ -214,7 +214,7 @@ message ResponseBeginBlock{
 }
 
 message ResponseEndBlock{
-	repeated Validator diffs = 4;
+	repeated Validator diffs = 1;
 }
 
 //----------------------------------------

@@ -4,7 +4,9 @@
 
 BREAKING CHANGES: 
 
-- Query takes RequestQuery and returns ResponseQuery, with more specificity over keys, paths, and proofs:
+- Query takes RequestQuery and returns ResponseQuery. The request is split into `data` and `path`, 
+can specify a height to query the state from, and whether or not the response should come with a proof.
+The response returns the corresponding key-value pair, with proof if requested.
 
 ```
 message RequestQuery{
@@ -20,7 +22,7 @@ message ResponseQuery{
 	bytes             key         = 3;
 	bytes             value       = 4;
 	bytes             proof       = 5;
-	uint64            height = 6;
+	uint64            height      = 6;
 	string            log         = 7;
 }
 ```
@@ -47,7 +49,7 @@ message RequestBeginBlock{
 }
 ```
 
-- Info returns a ResponseInfo, containing last block height and app hash:o
+- Info returns a ResponseInfo, containing last block height and app hash:
 
 ```
 message ResponseInfo {
