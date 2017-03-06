@@ -8,14 +8,14 @@ import (
 	"strings"
 	"sync"
 
-	. "github.com/tendermint/go-common"
 	"github.com/tendermint/abci/types"
+	cmn "github.com/tendermint/go-common"
 )
 
 // var maxNumberConnections = 2
 
 type SocketServer struct {
-	BaseService
+	cmn.BaseService
 
 	proto    string
 	addr     string
@@ -29,7 +29,7 @@ type SocketServer struct {
 	app    types.Application
 }
 
-func NewSocketServer(protoAddr string, app types.Application) (Service, error) {
+func NewSocketServer(protoAddr string, app types.Application) (cmn.Service, error) {
 	parts := strings.SplitN(protoAddr, "://", 2)
 	proto, addr := parts[0], parts[1]
 	s := &SocketServer{
@@ -39,7 +39,7 @@ func NewSocketServer(protoAddr string, app types.Application) (Service, error) {
 		app:      app,
 		conns:    make(map[int]net.Conn),
 	}
-	s.BaseService = *NewBaseService(nil, "ABCIServer", s)
+	s.BaseService = *cmn.NewBaseService(nil, "ABCIServer", s)
 	_, err := s.Start() // Just start it
 	return s, err
 }
@@ -72,7 +72,7 @@ func (s *SocketServer) addConn(conn net.Conn) int {
 	defer s.connsMtx.Unlock()
 
 	connID := s.nextConnID
-	s.nextConnID += 1
+	s.nextConnID++
 	s.conns[connID] = conn
 
 	return connID
@@ -100,7 +100,7 @@ func (s *SocketServer) acceptConnectionsRoutine() {
 			if !s.IsRunning() {
 				return // Ignore error from listener closing.
 			}
-			Exit("Failed to accept connection: " + err.Error())
+			log.Crit("Failed to accept connection: " + err.Error())
 		} else {
 			log.Notice("Accepted a new connection")
 		}
@@ -184,25 +184,17 @@ func (s *SocketServer) handleRequest(req *types.Request, responses chan<- *types
 		res := s.app.Commit()
 		responses <- types.ToResponseCommit(res.Code, res.Data, res.Log)
 	case *types.Request_Query:
-		res := s.app.Query(r.Query.Query)
-		responses <- types.ToResponseQuery(res.Code, res.Data, res.Log)
+		resQuery := s.app.Query(*r.Query)
+		responses <- types.ToResponseQuery(resQuery)
 	case *types.Request_InitChain:
-		if app, ok := s.app.(types.BlockchainAware); ok {
-			app.InitChain(r.InitChain.Validators)
-		}
+		s.app.InitChain(r.InitChain.Validators)
 		responses <- types.ToResponseInitChain()
 	case *types.Request_BeginBlock:
-		if app, ok := s.app.(types.BlockchainAware); ok {
-			app.BeginBlock(r.BeginBlock.Hash, r.BeginBlock.Header)
-		}
+		s.app.BeginBlock(r.BeginBlock.Hash, r.BeginBlock.Header)
 		responses <- types.ToResponseBeginBlock()
 	case *types.Request_EndBlock:
-		if app, ok := s.app.(types.BlockchainAware); ok {
-			resEndBlock := app.EndBlock(r.EndBlock.Height)
-			responses <- types.ToResponseEndBlock(resEndBlock)
-		} else {
-			responses <- types.ToResponseEndBlock(types.ResponseEndBlock{})
-		}
+		resEndBlock := s.app.EndBlock(r.EndBlock.Height)
+		responses <- types.ToResponseEndBlock(resEndBlock)
 	default:
 		responses <- types.ToResponseException("Unknown request")
 	}

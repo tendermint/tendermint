@@ -4,10 +4,13 @@ import:
   subpackages:
   - proto
 - package: github.com/tendermint/go-common
+  version: develop
 - package: github.com/tendermint/go-crypto
+  version: develop
 - package: github.com/tendermint/go-logger
 - package: github.com/tendermint/go-db
 - package: github.com/tendermint/go-merkle
+  version: develop
 - package: github.com/tendermint/go-process
 - package: github.com/tendermint/go-wire
 - package: github.com/urfave/cli
@@ -15,3 +18,7 @@ import:
   subpackages:
   - context
 - package: google.golang.org/grpc
+- package: github.com/stretchr/testify
+  version: ^1.1.4
+  subpackages:
+  - require

@@ -2,21 +2,20 @@ package main
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
+	"log"
 	"net"
 	"reflect"
-	//"encoding/hex"
 
-	. "github.com/tendermint/go-common"
 	"github.com/tendermint/abci/types"
+	cmn "github.com/tendermint/go-common"
 )
 
 func main() {
 
-	conn, err := Connect("unix://test.sock")
+	conn, err := cmn.Connect("unix://test.sock")
 	if err != nil {
-		Exit(err.Error())
+		log.Fatal(err.Error())
 	}
 
 	// Make a bunch of requests
@@ -25,9 +24,9 @@ func main() {
 		req := types.ToRequestEcho("foobar")
 		_, err := makeRequest(conn, req)
 		if err != nil {
-			Exit(err.Error())
+			log.Fatal(err.Error())
 		}
-		counter += 1
+		counter++
 		if counter%1000 == 0 {
 			fmt.Println(counter)
 		}
@@ -63,7 +62,7 @@ func makeRequest(conn net.Conn, req *types.Request) (*types.Response, error) {
 		return nil, err
 	}
 	if _, ok := resFlush.Value.(*types.Response_Flush); !ok {
-		return nil, errors.New(Fmt("Expected flush response but got something else: %v", reflect.TypeOf(resFlush)))
+		return nil, fmt.Errorf("Expected flush response but got something else: %v", reflect.TypeOf(resFlush))
 	}
 
 	return res, nil

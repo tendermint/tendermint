@@ -1,11 +1,12 @@
 package main
 
 import (
+	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"testing"
 
-	. "github.com/tendermint/go-common"
 	"github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/server"
 	"github.com/tendermint/abci/types"
@@ -25,7 +26,7 @@ func TestChainAware(t *testing.T) {
 	// Connect to the socket
 	client, err := abcicli.NewSocketClient("unix://test.sock", false)
 	if err != nil {
-		Exit(Fmt("Error starting socket client: %v", err.Error()))
+		log.Fatal(fmt.Sprintf("Error starting socket client: %v", err.Error()))
 	}
 	client.Start()
 	defer client.Stop()
@@ -39,10 +40,10 @@ func TestChainAware(t *testing.T) {
 		client.CommitSync()
 	}
 
-	r := app.Query(nil)
-	spl := strings.Split(string(r.Data), ",")
+	r := app.Query(types.RequestQuery{})
+	spl := strings.Split(string(r.Value), ",")
 	if len(spl) != 2 {
-		t.Fatal("expected %d,%d ; got %s", n, n, string(r.Data))
+		t.Fatal("expected %d,%d ; got %s", n, n, string(r.Value))
 	}
 	beginCount, _ := strconv.Atoi(spl[0])
 	endCount, _ := strconv.Atoi(spl[1])

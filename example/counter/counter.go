@@ -3,11 +3,13 @@ package counter
 import (
 	"encoding/binary"
 
-	. "github.com/tendermint/go-common"
 	"github.com/tendermint/abci/types"
+	cmn "github.com/tendermint/go-common"
 )
 
 type CounterApplication struct {
+	types.BaseApplication
+
 	hashCount int
 	txCount   int
 	serial    bool
@@ -18,7 +20,7 @@ func NewCounterApplication(serial bool) *CounterApplication {
 }
 
 func (app *CounterApplication) Info() types.ResponseInfo {
-	return types.ResponseInfo{Data: Fmt("{\"hashes\":%v,\"txs\":%v}", app.hashCount, app.txCount)}
+	return types.ResponseInfo{Data: cmn.Fmt("{\"hashes\":%v,\"txs\":%v}", app.hashCount, app.txCount)}
 }
 
 func (app *CounterApplication) SetOption(key string, value string) (log string) {
@@ -31,55 +33,51 @@ func (app *CounterApplication) SetOption(key string, value string) (log string) 
 func (app *CounterApplication) DeliverTx(tx []byte) types.Result {
 	if app.serial {
 		if len(tx) > 8 {
-			return types.ErrEncodingError.SetLog(Fmt("Max tx size is 8 bytes, got %d", len(tx)))
+			return types.ErrEncodingError.SetLog(cmn.Fmt("Max tx size is 8 bytes, got %d", len(tx)))
 		}
 		tx8 := make([]byte, 8)
 		copy(tx8[len(tx8)-len(tx):], tx)
 		txValue := binary.BigEndian.Uint64(tx8)
 		if txValue != uint64(app.txCount) {
-			return types.ErrBadNonce.SetLog(Fmt("Invalid nonce. Expected %v, got %v", app.txCount, txValue))
+			return types.ErrBadNonce.SetLog(cmn.Fmt("Invalid nonce. Expected %v, got %v", app.txCount, txValue))
 		}
 	}
-	app.txCount += 1
+	app.txCount++
 	return types.OK
 }
 
 func (app *CounterApplication) CheckTx(tx []byte) types.Result {
 	if app.serial {
 		if len(tx) > 8 {
-			return types.ErrEncodingError.SetLog(Fmt("Max tx size is 8 bytes, got %d", len(tx)))
+			return types.ErrEncodingError.SetLog(cmn.Fmt("Max tx size is 8 bytes, got %d", len(tx)))
 		}
 		tx8 := make([]byte, 8)
 		copy(tx8[len(tx8)-len(tx):], tx)
 		txValue := binary.BigEndian.Uint64(tx8)
 		if txValue < uint64(app.txCount) {
-			return types.ErrBadNonce.SetLog(Fmt("Invalid nonce. Expected >= %v, got %v", app.txCount, txValue))
+			return types.ErrBadNonce.SetLog(cmn.Fmt("Invalid nonce. Expected >= %v, got %v", app.txCount, txValue))
 		}
 	}
 	return types.OK
 }
 
 func (app *CounterApplication) Commit() types.Result {
-	app.hashCount += 1
-
+	app.hashCount++
 	if app.txCount == 0 {
 		return types.OK
-	} else {
-		hash := make([]byte, 8)
-		binary.BigEndian.PutUint64(hash, uint64(app.txCount))
-		return types.NewResultOK(hash, "")
 	}
+	hash := make([]byte, 8)
+	binary.BigEndian.PutUint64(hash, uint64(app.txCount))
+	return types.NewResultOK(hash, "")
 }
 
-func (app *CounterApplication) Query(query []byte) types.Result {
-	queryStr := string(query)
-
-	switch queryStr {
+func (app *CounterApplication) Query(reqQuery types.RequestQuery) types.ResponseQuery {
+	switch reqQuery.Path {
 	case "hash":
-		return types.NewResultOK(nil, Fmt("%v", app.hashCount))
+		return types.ResponseQuery{Value: []byte(cmn.Fmt("%v", app.hashCount))}
 	case "tx":
-		return types.NewResultOK(nil, Fmt("%v", app.txCount))
+		return types.ResponseQuery{Value: []byte(cmn.Fmt("%v", app.txCount))}
+	default:
+		return types.ResponseQuery{Log: cmn.Fmt("Invalid query path. Expected hash or tx, got %v", reqQuery.Path)}
 	}
-
-	return types.ErrUnknownRequest.SetLog(Fmt("Invalid nonce. Expected hash or tx, got %v", queryStr))
 }

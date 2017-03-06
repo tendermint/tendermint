@@ -2,20 +2,21 @@ package example
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"reflect"
 	"testing"
 	"time"
 
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	. "github.com/tendermint/go-common"
+	"golang.org/x/net/context"
+
 	"github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/example/dummy"
-	nilapp "github.com/tendermint/abci/example/nil"
 	"github.com/tendermint/abci/server"
 	"github.com/tendermint/abci/types"
+	cmn "github.com/tendermint/go-common"
 )
 
 func TestDummy(t *testing.T) {
@@ -23,14 +24,14 @@ func TestDummy(t *testing.T) {
 	testStream(t, dummy.NewDummyApplication())
 }
 
-func TestNilApp(t *testing.T) {
-	fmt.Println("### Testing NilApp")
-	testStream(t, nilapp.NewNilApplication())
+func TestBaseApp(t *testing.T) {
+	fmt.Println("### Testing BaseApp")
+	testStream(t, types.NewBaseApplication())
 }
 
 func TestGRPC(t *testing.T) {
 	fmt.Println("### Testing GRPC")
-	testGRPCSync(t, types.NewGRPCApplication(nilapp.NewNilApplication()))
+	testGRPCSync(t, types.NewGRPCApplication(types.NewBaseApplication()))
 }
 
 func testStream(t *testing.T, app types.Application) {
@@ -40,14 +41,14 @@ func testStream(t *testing.T, app types.Application) {
 	// Start the listener
 	server, err := server.NewSocketServer("unix://test.sock", app)
 	if err != nil {
-		Exit(Fmt("Error starting socket server: %v", err.Error()))
+		log.Fatal(cmn.Fmt("Error starting socket server: %v", err.Error()))
 	}
 	defer server.Stop()
 
 	// Connect to the socket
 	client, err := abcicli.NewSocketClient("unix://test.sock", false)
 	if err != nil {
-		Exit(Fmt("Error starting socket client: %v", err.Error()))
+		log.Fatal(cmn.Fmt("Error starting socket client: %v", err.Error()))
 	}
 	client.Start()
 	defer client.Stop()
@@ -58,7 +59,7 @@ func testStream(t *testing.T, app types.Application) {
 		// Process response
 		switch r := res.Value.(type) {
 		case *types.Response_DeliverTx:
-			counter += 1
+			counter++
 			if r.DeliverTx.Code != types.CodeType_OK {
 				t.Error("DeliverTx failed with ret_code", r.DeliverTx.Code)
 			}
@@ -103,7 +104,7 @@ func testStream(t *testing.T, app types.Application) {
 // test grpc
 
 func dialerFunc(addr string, timeout time.Duration) (net.Conn, error) {
-	return Connect(addr)
+	return cmn.Connect(addr)
 }
 
 func testGRPCSync(t *testing.T, app *types.GRPCApplication) {
@@ -113,14 +114,14 @@ func testGRPCSync(t *testing.T, app *types.GRPCApplication) {
 	// Start the listener
 	server, err := server.NewGRPCServer("unix://test.sock", app)
 	if err != nil {
-		Exit(Fmt("Error starting GRPC server: %v", err.Error()))
+		log.Fatal(cmn.Fmt("Error starting GRPC server: %v", err.Error()))
 	}
 	defer server.Stop()
 
 	// Connect to the socket
 	conn, err := grpc.Dial("unix://test.sock", grpc.WithInsecure(), grpc.WithDialer(dialerFunc))
 	if err != nil {
-		Exit(Fmt("Error dialing GRPC server: %v", err.Error()))
+		log.Fatal(cmn.Fmt("Error dialing GRPC server: %v", err.Error()))
 	}
 	defer conn.Close()
 
@@ -133,7 +134,7 @@ func testGRPCSync(t *testing.T, app *types.GRPCApplication) {
 		if err != nil {
 			t.Fatalf("Error in GRPC DeliverTx: %v", err.Error())
 		}
-		counter += 1
+		counter++
 		if response.Code != types.CodeType_OK {
 			t.Error("DeliverTx failed with ret_code", response.Code)
 		}

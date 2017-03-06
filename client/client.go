@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"sync"
 
-	. "github.com/tendermint/go-common"
 	"github.com/tendermint/abci/types"
+	cmn "github.com/tendermint/go-common"
 )
 
 type Client interface {
-	Service
+	cmn.Service
 
 	SetResponseCallback(Callback)
 	Error() error
@@ -20,7 +20,7 @@ type Client interface {
 	SetOptionAsync(key string, value string) *ReqRes
 	DeliverTxAsync(tx []byte) *ReqRes
 	CheckTxAsync(tx []byte) *ReqRes
-	QueryAsync(tx []byte) *ReqRes
+	QueryAsync(reqQuery types.RequestQuery) *ReqRes
 	CommitAsync() *ReqRes
 
 	FlushSync() error
@@ -29,7 +29,7 @@ type Client interface {
 	SetOptionSync(key string, value string) (res types.Result)
 	DeliverTxSync(tx []byte) (res types.Result)
 	CheckTxSync(tx []byte) (res types.Result)
-	QuerySync(tx []byte) (res types.Result)
+	QuerySync(reqQuery types.RequestQuery) (resQuery types.ResponseQuery, err error)
 	CommitSync() (res types.Result)
 
 	InitChainAsync(validators []*types.Validator) *ReqRes

@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	. "github.com/tendermint/go-common"
 	"github.com/tendermint/abci/types"
+	cmn "github.com/tendermint/go-common"
 )
 
 const (
@@ -27,10 +27,10 @@ const flushThrottleMS = 20      // Don't wait longer than...
 // the application in general is not meant to be interfaced
 // with concurrent callers.
 type socketClient struct {
-	BaseService
+	cmn.BaseService
 
 	reqQueue    chan *ReqRes
-	flushTimer  *ThrottleTimer
+	flushTimer  *cmn.ThrottleTimer
 	mustConnect bool
 
 	mtx     sync.Mutex
@@ -45,14 +45,14 @@ type socketClient struct {
 func NewSocketClient(addr string, mustConnect bool) (*socketClient, error) {
 	cli := &socketClient{
 		reqQueue:    make(chan *ReqRes, reqQueueSize),
-		flushTimer:  NewThrottleTimer("socketClient", flushThrottleMS),
+		flushTimer:  cmn.NewThrottleTimer("socketClient", flushThrottleMS),
 		mustConnect: mustConnect,
 
 		addr:    addr,
 		reqSent: list.New(),
 		resCb:   nil,
 	}
-	cli.BaseService = *NewBaseService(nil, "socketClient", cli)
+	cli.BaseService = *cmn.NewBaseService(nil, "socketClient", cli)
 
 	_, err := cli.Start() // Just start it, it's confusing for callers to remember to start.
 	return cli, err
@@ -65,15 +65,14 @@ func (cli *socketClient) OnStart() error {
 	var conn net.Conn
 RETRY_LOOP:
 	for {
-		conn, err = Connect(cli.addr)
+		conn, err = cmn.Connect(cli.addr)
 		if err != nil {
 			if cli.mustConnect {
 				return err
-			} else {
-				log.Warn(Fmt("abci.socketClient failed to connect to %v.  Retrying...", cli.addr))
-				time.Sleep(time.Second * 3)
-				continue RETRY_LOOP
 			}
+			log.Warn(fmt.Sprintf("abci.socketClient failed to connect to %v.  Retrying...", cli.addr))
+			time.Sleep(time.Second * 3)
+			continue RETRY_LOOP
 		}
 		cli.conn = conn
 
@@ -82,7 +81,6 @@ RETRY_LOOP:
 
 		return nil
 	}
-	return nil // never happens
 }
 
 func (cli *socketClient) OnStop() {
@@ -109,7 +107,7 @@ func (cli *socketClient) StopForError(err error) {
 	}
 	cli.mtx.Unlock()
 
-	log.Warn(Fmt("Stopping abci.socketClient for error: %v", err.Error()))
+	log.Warn(fmt.Sprintf("Stopping abci.socketClient for error: %v", err.Error()))
 	cli.Stop()
 }
 
@@ -251,8 +249,8 @@ func (cli *socketClient) CheckTxAsync(tx []byte) *ReqRes {
 	return cli.queueRequest(types.ToRequestCheckTx(tx))
 }
 
-func (cli *socketClient) QueryAsync(query []byte) *ReqRes {
-	return cli.queueRequest(types.ToRequestQuery(query))
+func (cli *socketClient) QueryAsync(reqQuery types.RequestQuery) *ReqRes {
+	return cli.queueRequest(types.ToRequestQuery(reqQuery))
 }
 
 func (cli *socketClient) CommitAsync() *ReqRes {
@@ -280,7 +278,7 @@ func (cli *socketClient) EchoSync(msg string) (res types.Result) {
 		return types.ErrInternalError.SetLog(err.Error())
 	}
 	resp := reqres.Response.GetEcho()
-	return types.Result{Code: OK, Data: []byte(resp.Message), Log: LOG}
+	return types.Result{Code: OK, Data: []byte(resp.Message)}
 }
 
 func (cli *socketClient) FlushSync() error {
@@ -300,9 +298,8 @@ func (cli *socketClient) InfoSync() (resInfo types.ResponseInfo, err error) {
 	}
 	if resInfo_ := reqres.Response.GetInfo(); resInfo_ != nil {
 		return *resInfo_, nil
-	} else {
-		return resInfo, nil
 	}
+	return resInfo, nil
 }
 
 func (cli *socketClient) SetOptionSync(key string, value string) (res types.Result) {
@@ -335,14 +332,16 @@ func (cli *socketClient) CheckTxSync(tx []byte) (res types.Result) {
 	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
 }
 
-func (cli *socketClient) QuerySync(query []byte) (res types.Result) {
-	reqres := cli.queueRequest(types.ToRequestQuery(query))
+func (cli *socketClient) QuerySync(reqQuery types.RequestQuery) (resQuery types.ResponseQuery, err error) {
+	reqres := cli.queueRequest(types.ToRequestQuery(reqQuery))
 	cli.FlushSync()
 	if err := cli.Error(); err != nil {
-		return types.ErrInternalError.SetLog(err.Error())
+		return resQuery, err
 	}
-	resp := reqres.Response.GetQuery()
-	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
+	if resQuery_ := reqres.Response.GetQuery(); resQuery_ != nil {
+		return *resQuery_, nil
+	}
+	return resQuery, nil
 }
 
 func (cli *socketClient) CommitSync() (res types.Result) {
@@ -379,11 +378,10 @@ func (cli *socketClient) EndBlockSync(height uint64) (resEndBlock types.Response
 	if err := cli.Error(); err != nil {
 		return resEndBlock, err
 	}
-	if resEndBlock_ := reqres.Response.GetEndBlock(); resEndBlock_ != nil {
-		return *resEndBlock_, nil
-	} else {
-		return resEndBlock, nil
+	if blk := reqres.Response.GetEndBlock(); blk != nil {
+		return *blk, nil
 	}
+	return resEndBlock, nil
 }
 
 //----------------------------------------

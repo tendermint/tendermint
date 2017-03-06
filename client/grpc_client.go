@@ -1,6 +1,7 @@
 package abcicli
 
 import (
+	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -8,14 +9,14 @@ import (
 	context "golang.org/x/net/context"
 	grpc "google.golang.org/grpc"
 
-	. "github.com/tendermint/go-common"
 	"github.com/tendermint/abci/types"
+	cmn "github.com/tendermint/go-common"
 )
 
 // A stripped copy of the remoteClient that makes
 // synchronous calls using grpc
 type grpcClient struct {
-	BaseService
+	cmn.BaseService
 	mustConnect bool
 
 	client types.ABCIApplicationClient
@@ -31,13 +32,13 @@ func NewGRPCClient(addr string, mustConnect bool) (*grpcClient, error) {
 		addr:        addr,
 		mustConnect: mustConnect,
 	}
-	cli.BaseService = *NewBaseService(nil, "grpcClient", cli)
+	cli.BaseService = *cmn.NewBaseService(nil, "grpcClient", cli)
 	_, err := cli.Start() // Just start it, it's confusing for callers to remember to start.
 	return cli, err
 }
 
 func dialerFunc(addr string, timeout time.Duration) (net.Conn, error) {
-	return Connect(addr)
+	return cmn.Connect(addr)
 }
 
 func (cli *grpcClient) OnStart() error {
@@ -49,11 +50,10 @@ RETRY_LOOP:
 		if err != nil {
 			if cli.mustConnect {
 				return err
-			} else {
-				log.Warn(Fmt("abci.grpcClient failed to connect to %v.  Retrying...\n", cli.addr))
-				time.Sleep(time.Second * 3)
-				continue RETRY_LOOP
 			}
+			log.Warn(fmt.Sprintf("abci.grpcClient failed to connect to %v.  Retrying...\n", cli.addr))
+			time.Sleep(time.Second * 3)
+			continue RETRY_LOOP
 		}
 
 		client := types.NewABCIApplicationClient(conn)
@@ -93,7 +93,7 @@ func (cli *grpcClient) StopForError(err error) {
 	}
 	cli.mtx.Unlock()
 
-	log.Warn(Fmt("Stopping abci.grpcClient for error: %v", err.Error()))
+	log.Warn(fmt.Sprintf("Stopping abci.grpcClient for error: %v", err.Error()))
 	cli.Stop()
 }
 
@@ -173,8 +173,8 @@ func (cli *grpcClient) CheckTxAsync(tx []byte) *ReqRes {
 	return cli.finishAsyncCall(req, &types.Response{&types.Response_CheckTx{res}})
 }
 
-func (cli *grpcClient) QueryAsync(query []byte) *ReqRes {
-	req := types.ToRequestQuery(query)
+func (cli *grpcClient) QueryAsync(reqQuery types.RequestQuery) *ReqRes {
+	req := types.ToRequestQuery(reqQuery)
 	res, err := cli.client.Query(context.Background(), req.GetQuery(), grpc.FailFast(true))
 	if err != nil {
 		cli.StopForError(err)
@@ -255,7 +255,7 @@ func (cli *grpcClient) EchoSync(msg string) (res types.Result) {
 		return res
 	}
 	resp := reqres.Response.GetEcho()
-	return types.NewResultOK([]byte(resp.Message), LOG)
+	return types.NewResultOK([]byte(resp.Message), "")
 }
 
 func (cli *grpcClient) FlushSync() error {
@@ -267,11 +267,10 @@ func (cli *grpcClient) InfoSync() (resInfo types.ResponseInfo, err error) {
 	if err = cli.Error(); err != nil {
 		return resInfo, err
 	}
-	if resInfo_ := reqres.Response.GetInfo(); resInfo_ != nil {
-		return *resInfo_, nil
-	} else {
-		return resInfo, nil
+	if info := reqres.Response.GetInfo(); info != nil {
+		return *info, nil
 	}
+	return resInfo, nil
 }
 
 func (cli *grpcClient) SetOptionSync(key string, value string) (res types.Result) {
@@ -301,13 +300,15 @@ func (cli *grpcClient) CheckTxSync(tx []byte) (res types.Result) {
 	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
 }
 
-func (cli *grpcClient) QuerySync(query []byte) (res types.Result) {
-	reqres := cli.QueryAsync(query)
-	if res := cli.checkErrGetResult(); res.IsErr() {
-		return res
+func (cli *grpcClient) QuerySync(reqQuery types.RequestQuery) (resQuery types.ResponseQuery, err error) {
+	reqres := cli.QueryAsync(reqQuery)
+	if err = cli.Error(); err != nil {
+		return resQuery, err
 	}
-	resp := reqres.Response.GetQuery()
-	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
+	if resQuery_ := reqres.Response.GetQuery(); resQuery_ != nil {
+		return *resQuery_, nil
+	}
+	return resQuery, nil
 }
 
 func (cli *grpcClient) CommitSync() (res types.Result) {
@@ -334,9 +335,8 @@ func (cli *grpcClient) EndBlockSync(height uint64) (resEndBlock types.ResponseEn
 	if err := cli.Error(); err != nil {
 		return resEndBlock, err
 	}
-	if resEndBlock_ := reqres.Response.GetEndBlock(); resEndBlock_ != nil {
-		return *resEndBlock_, nil
-	} else {
-		return resEndBlock, nil
+	if blk := reqres.Response.GetEndBlock(); blk != nil {
+		return *blk, nil
 	}
+	return resEndBlock, nil
 }

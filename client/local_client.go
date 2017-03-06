@@ -3,12 +3,12 @@ package abcicli
 import (
 	"sync"
 
-	. "github.com/tendermint/go-common"
 	types "github.com/tendermint/abci/types"
+	cmn "github.com/tendermint/go-common"
 )
 
 type localClient struct {
-	BaseService
+	cmn.BaseService
 	mtx *sync.Mutex
 	types.Application
 	Callback
@@ -22,7 +22,7 @@ func NewLocalClient(mtx *sync.Mutex, app types.Application) *localClient {
 		mtx:         mtx,
 		Application: app,
 	}
-	cli.BaseService = *NewBaseService(log, "localClient", cli)
+	cli.BaseService = *cmn.NewBaseService(log, "localClient", cli)
 	return cli
 }
 
@@ -89,13 +89,13 @@ func (app *localClient) CheckTxAsync(tx []byte) *ReqRes {
 	)
 }
 
-func (app *localClient) QueryAsync(tx []byte) *ReqRes {
+func (app *localClient) QueryAsync(reqQuery types.RequestQuery) *ReqRes {
 	app.mtx.Lock()
-	res := app.Application.Query(tx)
+	resQuery := app.Application.Query(reqQuery)
 	app.mtx.Unlock()
 	return app.callback(
-		types.ToRequestQuery(tx),
-		types.ToResponseQuery(res.Code, res.Data, res.Log),
+		types.ToRequestQuery(reqQuery),
+		types.ToResponseQuery(resQuery),
 	)
 }
 
@@ -111,9 +111,7 @@ func (app *localClient) CommitAsync() *ReqRes {
 
 func (app *localClient) InitChainAsync(validators []*types.Validator) *ReqRes {
 	app.mtx.Lock()
-	if bcApp, ok := app.Application.(types.BlockchainAware); ok {
-		bcApp.InitChain(validators)
-	}
+	app.Application.InitChain(validators)
 	reqRes := app.callback(
 		types.ToRequestInitChain(validators),
 		types.ToResponseInitChain(),
@@ -124,9 +122,7 @@ func (app *localClient) InitChainAsync(validators []*types.Validator) *ReqRes {
 
 func (app *localClient) BeginBlockAsync(hash []byte, header *types.Header) *ReqRes {
 	app.mtx.Lock()
-	if bcApp, ok := app.Application.(types.BlockchainAware); ok {
-		bcApp.BeginBlock(hash, header)
-	}
+	app.Application.BeginBlock(hash, header)
 	app.mtx.Unlock()
 	return app.callback(
 		types.ToRequestBeginBlock(hash, header),
@@ -136,10 +132,7 @@ func (app *localClient) BeginBlockAsync(hash []byte, header *types.Header) *ReqR
 
 func (app *localClient) EndBlockAsync(height uint64) *ReqRes {
 	app.mtx.Lock()
-	var resEndBlock types.ResponseEndBlock
-	if bcApp, ok := app.Application.(types.BlockchainAware); ok {
-		resEndBlock = bcApp.EndBlock(height)
-	}
+	resEndBlock := app.Application.EndBlock(height)
 	app.mtx.Unlock()
 	return app.callback(
 		types.ToRequestEndBlock(height),
@@ -185,11 +178,11 @@ func (app *localClient) CheckTxSync(tx []byte) (res types.Result) {
 	return res
 }
 
-func (app *localClient) QuerySync(query []byte) (res types.Result) {
+func (app *localClient) QuerySync(reqQuery types.RequestQuery) (resQuery types.ResponseQuery, err error) {
 	app.mtx.Lock()
-	res = app.Application.Query(query)
+	resQuery = app.Application.Query(reqQuery)
 	app.mtx.Unlock()
-	return res
+	return resQuery, nil
 }
 
 func (app *localClient) CommitSync() (res types.Result) {
@@ -201,27 +194,21 @@ func (app *localClient) CommitSync() (res types.Result) {
 
 func (app *localClient) InitChainSync(validators []*types.Validator) (err error) {
 	app.mtx.Lock()
-	if bcApp, ok := app.Application.(types.BlockchainAware); ok {
-		bcApp.InitChain(validators)
-	}
+	app.Application.InitChain(validators)
 	app.mtx.Unlock()
 	return nil
 }
 
 func (app *localClient) BeginBlockSync(hash []byte, header *types.Header) (err error) {
 	app.mtx.Lock()
-	if bcApp, ok := app.Application.(types.BlockchainAware); ok {
-		bcApp.BeginBlock(hash, header)
-	}
+	app.Application.BeginBlock(hash, header)
 	app.mtx.Unlock()
 	return nil
 }
 
 func (app *localClient) EndBlockSync(height uint64) (resEndBlock types.ResponseEndBlock, err error) {
 	app.mtx.Lock()
-	if bcApp, ok := app.Application.(types.BlockchainAware); ok {
-		resEndBlock = bcApp.EndBlock(height)
-	}
+	resEndBlock = app.Application.EndBlock(height)
 	app.mtx.Unlock()
 	return resEndBlock, nil
 }

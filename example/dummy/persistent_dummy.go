@@ -6,11 +6,11 @@ import (
 	"strconv"
 	"strings"
 
-	. "github.com/tendermint/go-common"
+	"github.com/tendermint/abci/types"
+	cmn "github.com/tendermint/go-common"
 	dbm "github.com/tendermint/go-db"
 	"github.com/tendermint/go-merkle"
 	"github.com/tendermint/go-wire"
-	"github.com/tendermint/abci/types"
 )
 
 const (
@@ -89,8 +89,8 @@ func (app *PersistentDummyApplication) Commit() types.Result {
 	return types.NewResultOK(appHash, "")
 }
 
-func (app *PersistentDummyApplication) Query(query []byte) types.Result {
-	return app.app.Query(query)
+func (app *PersistentDummyApplication) Query(reqQuery types.RequestQuery) types.ResponseQuery {
+	return app.app.Query(reqQuery)
 }
 
 // Save the validators in the merkle tree
@@ -135,7 +135,7 @@ func LoadLastBlock(db dbm.DB) (lastBlock LastBlockInfo) {
 		wire.ReadBinaryPtr(&lastBlock, r, 0, n, err)
 		if *err != nil {
 			// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
-			Exit(Fmt("Data has been corrupted or its spec has changed: %v\n", *err))
+			log.Crit(cmn.Fmt("Data has been corrupted or its spec has changed: %v\n", *err))
 		}
 		// TODO: ensure that buf is completely read.
 	}
@@ -149,7 +149,7 @@ func SaveLastBlock(db dbm.DB, lastBlock LastBlockInfo) {
 	wire.WriteBinary(lastBlock, buf, n, err)
 	if *err != nil {
 		// TODO
-		PanicCrisis(*err)
+		cmn.PanicCrisis(*err)
 	}
 	db.Set(lastBlockKey, buf.Bytes())
 }
@@ -173,7 +173,7 @@ func (app *PersistentDummyApplication) Validators() (validators []*types.Validat
 }
 
 func MakeValSetChangeTx(pubkey []byte, power uint64) []byte {
-	return []byte(Fmt("val:%X/%d", pubkey, power))
+	return []byte(cmn.Fmt("val:%X/%d", pubkey, power))
 }
 
 func isValidatorTx(tx []byte) bool {
@@ -188,16 +188,16 @@ func (app *PersistentDummyApplication) execValidatorTx(tx []byte) types.Result {
 	tx = tx[len(ValidatorSetChangePrefix):]
 	pubKeyAndPower := strings.Split(string(tx), "/")
 	if len(pubKeyAndPower) != 2 {
-		return types.ErrEncodingError.SetLog(Fmt("Expected 'pubkey/power'. Got %v", pubKeyAndPower))
+		return types.ErrEncodingError.SetLog(cmn.Fmt("Expected 'pubkey/power'. Got %v", pubKeyAndPower))
 	}
 	pubkeyS, powerS := pubKeyAndPower[0], pubKeyAndPower[1]
 	pubkey, err := hex.DecodeString(pubkeyS)
 	if err != nil {
-		return types.ErrEncodingError.SetLog(Fmt("Pubkey (%s) is invalid hex", pubkeyS))
+		return types.ErrEncodingError.SetLog(cmn.Fmt("Pubkey (%s) is invalid hex", pubkeyS))
 	}
 	power, err := strconv.Atoi(powerS)
 	if err != nil {
-		return types.ErrEncodingError.SetLog(Fmt("Power (%s) is not an int", powerS))
+		return types.ErrEncodingError.SetLog(cmn.Fmt("Power (%s) is not an int", powerS))
 	}
 
 	// update
@@ -210,14 +210,14 @@ func (app *PersistentDummyApplication) updateValidator(v *types.Validator) types
 	if v.Power == 0 {
 		// remove validator
 		if !app.app.state.Has(key) {
-			return types.ErrUnauthorized.SetLog(Fmt("Cannot remove non-existent validator %X", key))
+			return types.ErrUnauthorized.SetLog(cmn.Fmt("Cannot remove non-existent validator %X", key))
 		}
 		app.app.state.Remove(key)
 	} else {
 		// add or update validator
 		value := bytes.NewBuffer(make([]byte, 0))
 		if err := types.WriteMessage(v, value); err != nil {
-			return types.ErrInternalError.SetLog(Fmt("Error encoding validator: %v", err))
+			return types.ErrInternalError.SetLog(cmn.Fmt("Error encoding validator: %v", err))
 		}
 		app.app.state.Set(key, value.Bytes())
 	}

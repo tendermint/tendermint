@@ -1,8 +1,8 @@
 package testutil
 
 import (
-	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/abci/types"
+	"github.com/tendermint/go-crypto"
 )
 
 //----------------------------------------

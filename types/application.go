@@ -6,42 +6,25 @@ import (
 
 // Applications
 type Application interface {
+	// Info/Query Connection
+	Info() ResponseInfo                              // Return application info
+	SetOption(key string, value string) (log string) // Set application option
+	Query(reqQuery RequestQuery) ResponseQuery       // Query for state
 
-	// Return application info
-	Info() ResponseInfo
+	// Mempool Connection
+	CheckTx(tx []byte) Result // Validate a tx for the mempool
 
-	// Set application option (e.g. mode=mempool, mode=consensus)
-	SetOption(key string, value string) (log string)
-
-	// Deliver a tx
-	DeliverTx(tx []byte) Result
-
-	// Validate a tx for the mempool
-	CheckTx(tx []byte) Result
-
-	// Query for state
-	Query(query []byte) Result
-
-	// Return the application Merkle root hash
-	Commit() Result
-}
-
-// Some applications can choose to implement BlockchainAware
-type BlockchainAware interface {
-
-	// Initialize blockchain
-	// validators: genesis validators from TendermintCore
-	InitChain(validators []*Validator)
-
-	// Signals the beginning of a block
-	BeginBlock(hash []byte, header *Header)
-
-	// Signals the end of a block
-	// diffs: changed validators from app to TendermintCore
-	EndBlock(height uint64) ResponseEndBlock
+	// Consensus Connection
+	InitChain(validators []*Validator)       // Initialize blockchain with validators from TendermintCore
+	BeginBlock(hash []byte, header *Header)  // Signals the beginning of a block
+	DeliverTx(tx []byte) Result              // Deliver a tx for full processing
+	EndBlock(height uint64) ResponseEndBlock // Signals the end of a block, returns changes to the validator set
+	Commit() Result                          // Commit the state and return the application Merkle root hash
 }
 
 //------------------------------------
+
+// GRPC wrapper for application
 type GRPCApplication struct {
 	app Application
 }
@@ -78,8 +61,8 @@ func (app *GRPCApplication) CheckTx(ctx context.Context, req *RequestCheckTx) (*
 }
 
 func (app *GRPCApplication) Query(ctx context.Context, req *RequestQuery) (*ResponseQuery, error) {
-	r := app.app.Query(req.Query)
-	return &ResponseQuery{r.Code, r.Data, r.Log}, nil
+	resQuery := app.app.Query(*req)
+	return &resQuery, nil
 }
 
 func (app *GRPCApplication) Commit(ctx context.Context, req *RequestCommit) (*ResponseCommit, error) {
@@ -88,23 +71,16 @@ func (app *GRPCApplication) Commit(ctx context.Context, req *RequestCommit) (*Re
 }
 
 func (app *GRPCApplication) InitChain(ctx context.Context, req *RequestInitChain) (*ResponseInitChain, error) {
-	if chainAware, ok := app.app.(BlockchainAware); ok {
-		chainAware.InitChain(req.Validators)
-	}
-	return &ResponseInitChain{}, nil
+	app.app.InitChain(req.Validators)
+	return &ResponseInitChain{}, nil // NOTE: empty return
 }
 
 func (app *GRPCApplication) BeginBlock(ctx context.Context, req *RequestBeginBlock) (*ResponseBeginBlock, error) {
-	if chainAware, ok := app.app.(BlockchainAware); ok {
-		chainAware.BeginBlock(req.Hash, req.Header)
-	}
-	return &ResponseBeginBlock{}, nil
+	app.app.BeginBlock(req.Hash, req.Header)
+	return &ResponseBeginBlock{}, nil // NOTE: empty return
 }
 
 func (app *GRPCApplication) EndBlock(ctx context.Context, req *RequestEndBlock) (*ResponseEndBlock, error) {
-	if chainAware, ok := app.app.(BlockchainAware); ok {
-		resEndBlock := chainAware.EndBlock(req.Height)
-		return &resEndBlock, nil
-	}
-	return &ResponseEndBlock{}, nil
+	resEndBlock := app.app.EndBlock(req.Height)
+	return &resEndBlock, nil
 }
