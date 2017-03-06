@@ -1,5 +1,5 @@
 hash: 41f8fec708e98b7f8c4804be46008493199fa45e89b2d5dc237fd65fe431c62f
-updated: 2017-03-05T22:59:46.61454297-05:00
+updated: 2017-03-06T04:01:33.319604992-05:00
 imports:
 - name: github.com/btcsuite/btcd
   version: d06c0bb181529331be8f8d9350288c420d9e60e4
@@ -62,7 +62,7 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/abci
-  version: 0b1ee4b67318047d20a90bc6a8b0119a15c7c771
+  version: 1236e8fb6eee3a63909f4014a8e84385ead7933d
   subpackages:
   - client
   - example/counter
@@ -101,7 +101,7 @@ imports:
 - name: github.com/tendermint/go-merkle
   version: 714d4d04557fd068a7c2a1748241ce8428015a96
 - name: github.com/tendermint/go-p2p
-  version: beb3eda438fbbfc3b566ead4be5705474a12e50a
+  version: 97a5ed2d1a17eaee8717b8a32cfaf7a9a82a273d
   subpackages:
   - upnp
 - name: github.com/tendermint/go-rpc
@@ -117,7 +117,7 @@ imports:
   subpackages:
   - term
 - name: github.com/tendermint/merkleeyes
-  version: acd8e9c42e1d819c51e9e1cd3870ea4d94b167f5
+  version: 9fb76efa5aebe773a598f97e68e75fe53d520e70
   subpackages:
   - app
   - client
