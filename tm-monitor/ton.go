@@ -59,13 +59,13 @@ func (o *Ton) Stop() {
 
 func (o *Ton) printHeader() {
 	n := o.monitor.Network
-	fmt.Fprintf(o.Output, "%v up %.2f\n", n.UptimeData.StartTime, n.UptimeData.Uptime)
+	fmt.Fprintf(o.Output, "%v up %.2f%%\n", n.UptimeData.StartTime, n.UptimeData.Uptime)
 	fmt.Println()
 	fmt.Fprintf(o.Output, "Height: %d\n", n.Height)
 	fmt.Fprintf(o.Output, "Avg block time: %.3f ms\n", n.AvgBlockTime)
-	fmt.Fprintf(o.Output, "Avg Tx throughput: %.0f per sec\n", n.AvgTxThroughput)
+	fmt.Fprintf(o.Output, "Avg tx throughput: %.0f per sec\n", n.AvgTxThroughput)
 	fmt.Fprintf(o.Output, "Avg block latency: %.3f ms\n", n.AvgBlockLatency)
-	fmt.Fprintf(o.Output, "Nodes: %d from %d online (health: %s) Validators: %d\n", n.NumNodesMonitoredOnline, n.NumNodesMonitored, n.GetHealthString(), n.NumValidators)
+	fmt.Fprintf(o.Output, "Active nodes: %d/%d (health: %s) Validators: %d\n", n.NumNodesMonitoredOnline, n.NumNodesMonitored, n.GetHealthString(), n.NumValidators)
 }
 
 func (o *Ton) printTable() {

@@ -81,7 +81,7 @@ POST requests. The JSONRPC methods are also exposed over websocket.
 
 1. Currently we get IPs and dial, but should reverse so the nodes dial the netmon, both for node privacy and easier reconfig (validators changing ip/port).
 2. Uptime over last day, month, year (Q: how do I get this?)
-3. `statsd` metrics
+3. `statsd` output (plugin?)
 4. log metrics for charts (Q: what charts?)
 5. show network size (Q: how do I get the number?)
 6. metrics RPC (Q: do we need this?)
