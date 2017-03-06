@@ -59,7 +59,7 @@ Flags:
   -v    verbose logging
 ```
 
-[![asciicast](https://asciinema.org/a/105449.png)](https://asciinema.org/a/105449)
+[![asciicast](https://asciinema.org/a/105974.png)](https://asciinema.org/a/105974)
 
 ### RPC UI
 
