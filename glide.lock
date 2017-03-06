@@ -1,8 +1,8 @@
-hash: 41f8fec708e98b7f8c4804be46008493199fa45e89b2d5dc237fd65fe431c62f
-updated: 2017-03-06T04:01:33.319604992-05:00
+hash: 81cd41d28f9a747a71e6a47e8bc7d855846df29f359ffdcc8d1645c451112b31
+updated: 2017-03-06T17:34:23.99160606-05:00
 imports:
 - name: github.com/btcsuite/btcd
-  version: d06c0bb181529331be8f8d9350288c420d9e60e4
+  version: 583684b21bfbde9b5fc4403916fd7c807feb0289
   subpackages:
   - btcec
 - name: github.com/BurntSushi/toml
@@ -12,7 +12,7 @@ imports:
   subpackages:
   - spew
 - name: github.com/ebuchman/fail-test
-  version: 13f91f14c826314205cdbed1ec8ac8bf08e03381
+  version: 95f809107225be108efcf10a3509e4ea6ceef3c4
 - name: github.com/go-stack/stack
   version: 100eb0c0a9c5b306ca2fb4f165df21d80ada4b82
 - name: github.com/gogo/protobuf
@@ -20,19 +20,21 @@ imports:
   subpackages:
   - proto
 - name: github.com/golang/protobuf
-  version: 8ee79997227bf9b34611aee7946ae64735e6fd93
+  version: 69b215d01a5606c843240eab4937eab3acee6530
   subpackages:
   - proto
 - name: github.com/golang/snappy
-  version: d9eb7a3d35ec988b8585d4a0068e462c27d28380
+  version: 553a641470496b2327abcac10b36396bd98e45c9
 - name: github.com/gorilla/websocket
   version: 3ab3a8b8831546bd18fd182c20687ca853b2bb13
+- name: github.com/inconshreveable/mousetrap
+  version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
 - name: github.com/jmhodges/levigo
   version: c42d9e0ca023e2198120196f842701bb4c55d7b9
 - name: github.com/mattn/go-colorable
-  version: d228849504861217f796da67fae4f6e347643f15
+  version: acb9493f2794fd0f820de7a27a217dafbb1b65ea
 - name: github.com/mattn/go-isatty
-  version: 30a891c33c7cde7b02a981314b4228ec99380cca
+  version: 9622e0cc9d8f9be434ca605520ff9a16808fee47
 - name: github.com/pkg/errors
   version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/pmezard/go-difflib
@@ -40,7 +42,7 @@ imports:
   subpackages:
   - difflib
 - name: github.com/spf13/cobra
-  version: 92ea23a837e66f46ac9e7d04fa826602b7b0a42d
+  version: fcd0c5a1df88f5d6784cb4feead962c3f3d0b66c
 - name: github.com/spf13/pflag
   version: 9ff6c6923cfffbcd502984b8e0c80539a94968b7
 - name: github.com/stretchr/testify
@@ -49,7 +51,7 @@ imports:
   - assert
   - require
 - name: github.com/syndtr/goleveldb
-  version: 23851d93a2292dcc56e71a18ec9e0624d84a0f65
+  version: 3c5717caf1475fd25964109a0fc640bd150fce43
   subpackages:
   - leveldb
   - leveldb/cache
@@ -125,7 +127,7 @@ imports:
   - client
   - testutil
 - name: golang.org/x/crypto
-  version: 7c6cc321c680f03b9ef0764448e780704f486b51
+  version: 40541ccb1c6e64c947ed6f606b8a6cb4b67d7436
   subpackages:
   - curve25519
   - nacl/box
@@ -136,7 +138,7 @@ imports:
   - ripemd160
   - salsa20/salsa
 - name: golang.org/x/net
-  version: 61557ac0112b576429a0df080e1c2cef5dfbb642
+  version: d379faa25cbdc04d653984913a2ceb43b0bc46d7
   subpackages:
   - context
   - http2
@@ -146,11 +148,11 @@ imports:
   - lex/httplex
   - trace
 - name: golang.org/x/sys
-  version: d75a52659825e75fff6158388dddc6a5b04f9ba5
+  version: e48874b42435b4347fc52bdee0424a52abc974d7
   subpackages:
   - unix
 - name: google.golang.org/grpc
-  version: cbcceb2942a489498cf22b2f918536e819d33f0a
+  version: 7b399ed358736bc5522021cdc7d79a8ee9ac6f98
   subpackages:
   - codes
   - credentials
