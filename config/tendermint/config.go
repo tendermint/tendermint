@@ -75,6 +75,7 @@ func GetConfig(rootDir string) cfg.Config {
 	mapConfig.SetDefault("cs_wal_file", rootDir+"/data/cs.wal/wal")
 	mapConfig.SetDefault("cs_wal_light", false)
 	mapConfig.SetDefault("filter_peers", false)
+	mapConfig.SetDefault("log_dir", "") // don't use logfile output by default
 
 	mapConfig.SetDefault("block_size", 10000)      // max number of txs
 	mapConfig.SetDefault("block_part_size", 65536) // part size 64K
