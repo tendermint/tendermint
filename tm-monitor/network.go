@@ -74,7 +74,7 @@ func (n *Network) NewBlock(b tmtypes.Header) {
 	defer n.mu.Unlock()
 
 	if n.Height >= uint64(b.Height) {
-		log.Debug("Received new block with height %v less or equal to recorded %v", b.Height, n.Height)
+		log.Debug("Received new block with height <= current", "received", b.Height, "current", n.Height)
 		return
 	}
 
@@ -89,20 +89,6 @@ func (n *Network) NewBlock(b tmtypes.Header) {
 	}
 	n.txThroughputMeter.Mark(int64(b.NumTxs))
 	n.AvgTxThroughput = n.txThroughputMeter.Rate1()
-
-	// if we're making blocks, we're healthy
-	if n.Health == Dead {
-		n.Health = ModerateHealth
-		n.UptimeData.totalDownTime += time.Since(n.UptimeData.wentDown)
-	}
-
-	// if we are connected to all validators, we're at full health
-	// TODO: make sure they're all at the same height (within a block)
-	// and all proposing (and possibly validating ) Alternatively, just
-	// check there hasn't been a new round in numValidators rounds
-	if n.NumNodesMonitored == n.NumValidators {
-		n.Health = FullHealth
-	}
 }
 
 func (n *Network) NewBlockLatency(l float64) {
@@ -127,6 +113,7 @@ func (n *Network) RecalculateUptime() {
 }
 
 // NodeIsDown is called when the node disconnects for whatever reason.
+// Must be safe to call multiple times.
 func (n *Network) NodeIsDown(name string) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
@@ -140,11 +127,12 @@ func (n *Network) NodeIsDown(name string) {
 }
 
 // NodeIsOnline is called when connection to the node is restored.
+// Must be safe to call multiple times.
 func (n *Network) NodeIsOnline(name string) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
-	if online, ok := n.nodeStatusMap[name]; !ok || !online {
+	if online, ok := n.nodeStatusMap[name]; ok && !online {
 		n.nodeStatusMap[name] = true
 		n.NumNodesMonitoredOnline++
 		n.UptimeData.totalDownTime += time.Since(n.UptimeData.wentDown)
@@ -165,11 +153,15 @@ func (n *Network) NodeDeleted(name string) {
 }
 
 func (n *Network) updateHealth() {
-	if n.NumNodesMonitoredOnline < n.NumNodesMonitored {
+	// if we are connected to all validators, we're at full health
+	// TODO: make sure they're all at the same height (within a block)
+	// and all proposing (and possibly validating ) Alternatively, just
+	// check there hasn't been a new round in numValidators rounds
+	if n.NumValidators != 0 && n.NumNodesMonitoredOnline == n.NumValidators {
+		n.Health = FullHealth
+	} else if n.NumNodesMonitoredOnline > 0 && n.NumNodesMonitoredOnline <= n.NumNodesMonitored {
 		n.Health = ModerateHealth
-	}
-
-	if n.NumNodesMonitoredOnline == 0 {
+	} else {
 		n.Health = Dead
 	}
 }

@@ -43,9 +43,9 @@ func TestNetworkNodeIsDownThenOnline(t *testing.T) {
 
 	n.NodeIsOnline("test")
 	assert.Equal(1, n.NumNodesMonitoredOnline)
-	// assert.Equal(monitor.FullHealth, n.Health)
-	// n.NodeIsOnline("test")
-	// assert.Equal(1, n.NumNodesMonitoredOnline)
+	assert.Equal(monitor.ModerateHealth, n.Health)
+	n.NodeIsOnline("test")
+	assert.Equal(1, n.NumNodesMonitoredOnline)
 }
 
 func TestNetworkNewNode(t *testing.T) {

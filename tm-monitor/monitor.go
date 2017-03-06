@@ -122,8 +122,10 @@ func (m *Monitor) listen(nodeName string, blockCh <-chan tmtypes.Header, blockLa
 			return
 		case b := <-blockCh:
 			m.Network.NewBlock(b)
+			m.Network.NodeIsOnline(nodeName)
 		case l := <-blockLatencyCh:
 			m.Network.NewBlockLatency(l)
+			m.Network.NodeIsOnline(nodeName)
 		case disconnected := <-disconnectCh:
 			if disconnected {
 				m.Network.NodeIsDown(nodeName)
