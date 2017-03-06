@@ -18,6 +18,7 @@ var Routes = map[string]*rpc.RPCFunc{
 	"blockchain":           rpc.NewRPCFunc(BlockchainInfoResult, "minHeight,maxHeight"),
 	"genesis":              rpc.NewRPCFunc(GenesisResult, ""),
 	"block":                rpc.NewRPCFunc(BlockResult, "height"),
+	"commit":               rpc.NewRPCFunc(CommitResult, "height"),
 	"validators":           rpc.NewRPCFunc(ValidatorsResult, ""),
 	"dump_consensus_state": rpc.NewRPCFunc(DumpConsensusStateResult, ""),
 	"unconfirmed_txs":      rpc.NewRPCFunc(UnconfirmedTxsResult, ""),
@@ -29,7 +30,7 @@ var Routes = map[string]*rpc.RPCFunc{
 	"broadcast_tx_async":  rpc.NewRPCFunc(BroadcastTxAsyncResult, "tx"),
 
 	// abci API
-	"abci_query": rpc.NewRPCFunc(ABCIQueryResult, "query"),
+	"abci_query": rpc.NewRPCFunc(ABCIQueryResult, "path,data,prove"),
 	"abci_info":  rpc.NewRPCFunc(ABCIInfoResult, ""),
 
 	// control API
@@ -107,6 +108,14 @@ func BlockResult(height int) (ctypes.TMResult, error) {
 	}
 }
 
+func CommitResult(height int) (ctypes.TMResult, error) {
+	if r, err := Commit(height); err != nil {
+		return nil, err
+	} else {
+		return r, nil
+	}
+}
+
 func ValidatorsResult() (ctypes.TMResult, error) {
 	if r, err := Validators(); err != nil {
 		return nil, err
@@ -163,8 +172,8 @@ func BroadcastTxAsyncResult(tx []byte) (ctypes.TMResult, error) {
 	}
 }
 
-func ABCIQueryResult(query []byte) (ctypes.TMResult, error) {
-	if r, err := ABCIQuery(query); err != nil {
+func ABCIQueryResult(path string, data []byte, prove bool) (ctypes.TMResult, error) {
+	if r, err := ABCIQuery(path, data, prove); err != nil {
 		return nil, err
 	} else {
 		return r, nil

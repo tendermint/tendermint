@@ -1,38 +1,33 @@
+---
 machine:
   environment:
     MACH_PREFIX: tendermint-test-mach
-    GOPATH: /home/ubuntu/.go_workspace
-    REPO: $GOPATH/src/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME
     DOCKER_VERSION: 1.10.0
-    DOCKER_MACHINE_VERSION: 0.6.0
+    DOCKER_MACHINE_VERSION: 0.9.0
+    GOPATH: "$HOME/.go_project"
+    PROJECT_PARENT_PATH: "$GOPATH/src/github.com/$CIRCLE_PROJECT_USERNAME"
+    PROJECT_PATH: "$PROJECT_PARENT_PATH/$CIRCLE_PROJECT_REPONAME"
   hosts:
-    circlehost: 127.0.0.1
     localhost: 127.0.0.1
-
-checkout:
-  post:
-    - rm -rf $REPO
-    - mkdir -p $HOME/.go_workspace/src/github.com/$CIRCLE_PROJECT_USERNAME
-    - mv $HOME/$CIRCLE_PROJECT_REPONAME $REPO
-    # - git submodule sync
-    # - git submodule update --init # use submodules
 
 dependencies:
   override:
-    - echo $MACH_PREFIX $GOPATH $REPO $DOCKER_VERSION $DOCKER_MACHINE_VERSION
     - curl -sSL https://s3.amazonaws.com/circle-downloads/install-circleci-docker.sh | sudo bash -s -- $DOCKER_VERSION
-    - sudo curl -sSL -o /usr/bin/docker-machine https://github.com/docker/machine/releases/download/v$DOCKER_MACHINE_VERSION/docker-machine-linux-x86_64; sudo chmod 0755 /usr/bin/docker-machine
     - sudo start docker
+    - sudo curl -sSL -o /usr/bin/docker-machine "https://github.com/docker/machine/releases/download/v$DOCKER_MACHINE_VERSION/docker-machine-`uname -s`-`uname -m`"; sudo chmod 0755 /usr/bin/docker-machine
+    - mkdir -p "$PROJECT_PARENT_PATH"
+    - ln -sf "$HOME/$CIRCLE_PROJECT_REPONAME/" "$PROJECT_PATH"
+  post:
     - go version
     - docker version
     - docker-machine version
 
 test:
   override:
-    - "cd $REPO && set -o pipefail && make test_integrations | tee ~/test_integrations.log":
+    - cd "$PROJECT_PATH" && set -o pipefail && make test_integrations 2>&1 | tee test_integrations.log:
         timeout: 1800
-    - "cp ~/test_integrations.log $CIRCLE_ARTIFACTS"
   post:
-    - "cd $REPO && bash <(curl -s https://codecov.io/bash)"
-
-
+    - cd "$PROJECT_PATH" && mv test_integrations.log "${CIRCLE_ARTIFACTS}"
+    - cd "$PROJECT_PATH" && bash <(curl -s https://codecov.io/bash) -f coverage.txt
+    - cd "$PROJECT_PATH" && mv coverage.txt "${CIRCLE_ARTIFACTS}"
+    - cd "$PROJECT_PATH" && cp test/logs/messages "${CIRCLE_ARTIFACTS}/docker_logs.txt"

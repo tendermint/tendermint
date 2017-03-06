@@ -127,7 +127,7 @@ func (conR *ConsensusReactor) AddPeer(peer *p2p.Peer) {
 	// Send our state to peer.
 	// If we're fast_syncing, broadcast a RoundStepMessage later upon SwitchToConsensus().
 	if !conR.fastSync {
-		conR.sendNewRoundStepMessage(peer)
+		conR.sendNewRoundStepMessages(peer)
 	}
 }
 
@@ -201,7 +201,6 @@ func (conR *ConsensusReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte)
 				BlockID: msg.BlockID,
 				Votes:   ourVotes,
 			}})
-
 		default:
 			log.Warn(Fmt("Unknown message type %v", reflect.TypeOf(msg)))
 		}
@@ -365,7 +364,7 @@ func makeRoundStepMessages(rs *RoundState) (nrsMsg *NewRoundStepMessage, csMsg *
 	return
 }
 
-func (conR *ConsensusReactor) sendNewRoundStepMessage(peer *p2p.Peer) {
+func (conR *ConsensusReactor) sendNewRoundStepMessages(peer *p2p.Peer) {
 	rs := conR.conS.GetRoundState()
 	nrsMsg, csMsg := makeRoundStepMessages(rs)
 	if nrsMsg != nil {
@@ -399,8 +398,9 @@ OUTER_LOOP:
 					Round:  rs.Round,  // This tells peer that this part applies to us.
 					Part:   part,
 				}
-				peer.Send(DataChannel, struct{ ConsensusMessage }{msg})
-				ps.SetHasProposalBlockPart(prs.Height, prs.Round, index)
+				if peer.Send(DataChannel, struct{ ConsensusMessage }{msg}) {
+					ps.SetHasProposalBlockPart(prs.Height, prs.Round, index)
+				}
 				continue OUTER_LOOP
 			}
 		}
@@ -415,9 +415,9 @@ OUTER_LOOP:
 					log.Warn("Failed to load block meta", "peer height", prs.Height, "our height", rs.Height, "blockstore height", conR.conS.blockStore.Height(), "pv", conR.conS.privValidator)
 					time.Sleep(peerGossipSleepDuration)
 					continue OUTER_LOOP
-				} else if !blockMeta.PartsHeader.Equals(prs.ProposalBlockPartsHeader) {
+				} else if !blockMeta.BlockID.PartsHeader.Equals(prs.ProposalBlockPartsHeader) {
 					log.Info("Peer ProposalBlockPartsHeader mismatch, sleeping",
-						"peerHeight", prs.Height, "blockPartsHeader", blockMeta.PartsHeader, "peerBlockPartsHeader", prs.ProposalBlockPartsHeader)
+						"peerHeight", prs.Height, "blockPartsHeader", blockMeta.BlockID.PartsHeader, "peerBlockPartsHeader", prs.ProposalBlockPartsHeader)
 					time.Sleep(peerGossipSleepDuration)
 					continue OUTER_LOOP
 				}
@@ -425,7 +425,7 @@ OUTER_LOOP:
 				part := conR.conS.blockStore.LoadBlockPart(prs.Height, index)
 				if part == nil {
 					log.Warn("Could not load part", "index", index,
-						"peerHeight", prs.Height, "blockPartsHeader", blockMeta.PartsHeader, "peerBlockPartsHeader", prs.ProposalBlockPartsHeader)
+						"peerHeight", prs.Height, "blockPartsHeader", blockMeta.BlockID.PartsHeader, "peerBlockPartsHeader", prs.ProposalBlockPartsHeader)
 					time.Sleep(peerGossipSleepDuration)
 					continue OUTER_LOOP
 				}
@@ -435,8 +435,9 @@ OUTER_LOOP:
 					Round:  prs.Round,  // Not our height, so it doesn't matter.
 					Part:   part,
 				}
-				peer.Send(DataChannel, struct{ ConsensusMessage }{msg})
-				ps.SetHasProposalBlockPart(prs.Height, prs.Round, index)
+				if peer.Send(DataChannel, struct{ ConsensusMessage }{msg}) {
+					ps.SetHasProposalBlockPart(prs.Height, prs.Round, index)
+				}
 				continue OUTER_LOOP
 			} else {
 				//log.Info("No parts to send in catch-up, sleeping")
@@ -462,8 +463,9 @@ OUTER_LOOP:
 			// Proposal: share the proposal metadata with peer.
 			{
 				msg := &ProposalMessage{Proposal: rs.Proposal}
-				peer.Send(DataChannel, struct{ ConsensusMessage }{msg})
-				ps.SetHasProposal(rs.Proposal)
+				if peer.Send(DataChannel, struct{ ConsensusMessage }{msg}) {
+					ps.SetHasProposal(rs.Proposal)
+				}
 			}
 			// ProposalPOL: lets peer know which POL votes we have so far.
 			// Peer must receive ProposalMessage first.
@@ -806,13 +808,12 @@ func (ps *PeerState) SetHasProposalBlockPart(height int, round int, index int) {
 	ps.ProposalBlockParts.SetIndex(index, true)
 }
 
-// Convenience function to send vote to peer.
+// PickVoteToSend sends vote to peer.
 // Returns true if vote was sent.
 func (ps *PeerState) PickSendVote(votes types.VoteSetReader) (ok bool) {
 	if vote, ok := ps.PickVoteToSend(votes); ok {
 		msg := &VoteMessage{vote}
-		ps.Peer.Send(VoteChannel, struct{ ConsensusMessage }{msg})
-		return true
+		return ps.Peer.Send(VoteChannel, struct{ ConsensusMessage }{msg})
 	}
 	return false
 }

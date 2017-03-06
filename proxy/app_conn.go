@@ -34,8 +34,8 @@ type AppConnQuery interface {
 	Error() error
 
 	EchoSync(string) (res types.Result)
-	InfoSync() (types.ResponseInfo, error)
-	QuerySync(tx []byte) (res types.Result)
+	InfoSync() (resInfo types.ResponseInfo, err error)
+	QuerySync(reqQuery types.RequestQuery) (resQuery types.ResponseQuery, err error)
 
 	//	SetOptionSync(key string, value string) (res types.Result)
 }
@@ -139,6 +139,6 @@ func (app *appConnQuery) InfoSync() (types.ResponseInfo, error) {
 	return app.appConn.InfoSync()
 }
 
-func (app *appConnQuery) QuerySync(tx []byte) (res types.Result) {
-	return app.appConn.QuerySync(tx)
+func (app *appConnQuery) QuerySync(reqQuery types.RequestQuery) (types.ResponseQuery, error) {
+	return app.appConn.QuerySync(reqQuery)
 }

@@ -1,103 +1,123 @@
 package rpctest
 
 import (
+	"fmt"
+	"math/rand"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
-	. "github.com/tendermint/go-common"
-	cfg "github.com/tendermint/go-config"
-	"github.com/tendermint/go-p2p"
-	"github.com/tendermint/go-wire"
+	"github.com/stretchr/testify/require"
+	logger "github.com/tendermint/go-logger"
+	wire "github.com/tendermint/go-wire"
 
+	abci "github.com/tendermint/abci/types"
+	cfg "github.com/tendermint/go-config"
 	client "github.com/tendermint/go-rpc/client"
 	"github.com/tendermint/tendermint/config/tendermint_test"
 	nm "github.com/tendermint/tendermint/node"
+	"github.com/tendermint/tendermint/proxy"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	"github.com/tendermint/tendermint/rpc/grpc"
+	core_grpc "github.com/tendermint/tendermint/rpc/grpc"
+	"github.com/tendermint/tendermint/types"
 )
 
-// global variables for use across all tests
 var (
-	config            cfg.Config
-	node              *nm.Node
-	chainID           string
-	rpcAddr           string
-	requestAddr       string
-	websocketAddr     string
-	websocketEndpoint string
-	grpcAddr          string
-	clientURI         *client.ClientURI
-	clientJSON        *client.ClientJSONRPC
-	clientGRPC        core_grpc.BroadcastAPIClient
+	config cfg.Config
 )
 
-// initialize config and create new node
-func init() {
-	config = tendermint_test.ResetConfig("rpc_test_client_test")
-	chainID = config.GetString("chain_id")
-	rpcAddr = config.GetString("rpc_laddr")
-	grpcAddr = config.GetString("grpc_laddr")
-	requestAddr = rpcAddr
-	websocketAddr = rpcAddr
-	websocketEndpoint = "/websocket"
+const tmLogLevel = "error"
 
-	clientURI = client.NewClientURI(requestAddr)
-	clientJSON = client.NewClientJSONRPC(requestAddr)
-	clientGRPC = core_grpc.StartGRPCClient(grpcAddr)
-
-	// TODO: change consensus/state.go timeouts to be shorter
-
-	// start a node
-	ready := make(chan struct{})
-	go newNode(ready)
-	<-ready
+// f**ing long, but unique for each test
+func makePathname() string {
+	// get path
+	p, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(p)
+	sep := string(filepath.Separator)
+	return strings.Replace(p, sep, "_", -1)
 }
 
-// create a new node and sleep forever
-func newNode(ready chan struct{}) {
-	// Create & start node
-	node = nm.NewNodeDefault(config)
-	protocol, address := nm.ProtocolAndAddress(config.GetString("node_laddr"))
-	l := p2p.NewDefaultListener(protocol, address, true)
-	node.AddListener(l)
-	node.Start()
-
-	// Run the RPC server.
-	node.StartRPC()
-	time.Sleep(time.Second)
-
-	ready <- struct{}{}
-
-	// Sleep forever
-	ch := make(chan struct{})
-	<-ch
+func randPort() int {
+	// returns between base and base + spread
+	base, spread := 20000, 20000
+	return base + rand.Intn(spread)
 }
 
-//--------------------------------------------------------------------------------
-// Utilities for testing the websocket service
+func makeAddrs() (string, string, string) {
+	start := randPort()
+	return fmt.Sprintf("tcp://0.0.0.0:%d", start),
+		fmt.Sprintf("tcp://0.0.0.0:%d", start+1),
+		fmt.Sprintf("tcp://0.0.0.0:%d", start+2)
+}
 
-// create a new connection
-func newWSClient(t *testing.T) *client.WSClient {
-	wsc := client.NewWSClient(websocketAddr, websocketEndpoint)
+// GetConfig returns a config for the test cases as a singleton
+func GetConfig() cfg.Config {
+	if config == nil {
+		pathname := makePathname()
+		config = tendermint_test.ResetConfig(pathname)
+		// Shut up the logging
+		logger.SetLogLevel(tmLogLevel)
+		// and we use random ports to run in parallel
+		tm, rpc, grpc := makeAddrs()
+		config.Set("node_laddr", tm)
+		config.Set("rpc_laddr", rpc)
+		config.Set("grpc_laddr", grpc)
+	}
+	return config
+}
+
+// GetURIClient gets a uri client pointing to the test tendermint rpc
+func GetURIClient() *client.ClientURI {
+	rpcAddr := GetConfig().GetString("rpc_laddr")
+	return client.NewClientURI(rpcAddr)
+}
+
+// GetJSONClient gets a http/json client pointing to the test tendermint rpc
+func GetJSONClient() *client.ClientJSONRPC {
+	rpcAddr := GetConfig().GetString("rpc_laddr")
+	return client.NewClientJSONRPC(rpcAddr)
+}
+
+func GetGRPCClient() core_grpc.BroadcastAPIClient {
+	grpcAddr := config.GetString("grpc_laddr")
+	return core_grpc.StartGRPCClient(grpcAddr)
+}
+
+func GetWSClient() *client.WSClient {
+	rpcAddr := GetConfig().GetString("rpc_laddr")
+	wsc := client.NewWSClient(rpcAddr, "/websocket")
 	if _, err := wsc.Start(); err != nil {
 		panic(err)
 	}
 	return wsc
 }
 
-// subscribe to an event
-func subscribe(t *testing.T, wsc *client.WSClient, eventid string) {
-	if err := wsc.Subscribe(eventid); err != nil {
-		panic(err)
-	}
+// StartTendermint starts a test tendermint server in a go routine and returns when it is initialized
+func StartTendermint(app abci.Application) *nm.Node {
+	node := NewTendermint(app)
+	node.Start()
+	fmt.Println("Tendermint running!")
+	return node
 }
 
-// unsubscribe from an event
-func unsubscribe(t *testing.T, wsc *client.WSClient, eventid string) {
-	if err := wsc.Unsubscribe(eventid); err != nil {
-		panic(err)
-	}
+// NewTendermint creates a new tendermint server and sleeps forever
+func NewTendermint(app abci.Application) *nm.Node {
+	// Create & start node
+	config := GetConfig()
+	privValidatorFile := config.GetString("priv_validator_file")
+	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
+	papp := proxy.NewLocalClientCreator(app)
+	node := nm.NewNode(config, privValidator, papp)
+	return node
 }
+
+//--------------------------------------------------------------------------------
+// Utilities for testing the websocket service
 
 // wait for an event; do things that might trigger events, and check them when they are received
 // the check function takes an event id and the byte slice read off the ws
@@ -142,7 +162,7 @@ func waitForEvent(t *testing.T, wsc *client.WSClient, eventid string, dieOnTimeo
 	case <-timeout.C:
 		if dieOnTimeout {
 			wsc.Stop()
-			panic(Fmt("%s event was not received in time", eventid))
+			require.True(t, false, "%s event was not received in time", eventid)
 		}
 		// else that's great, we didn't hear the event
 		// and we shouldn't have
@@ -150,16 +170,13 @@ func waitForEvent(t *testing.T, wsc *client.WSClient, eventid string, dieOnTimeo
 		if dieOnTimeout {
 			// message was received and expected
 			// run the check
-			if err := check(eventid, eventData); err != nil {
-				panic(err) // Show the stack trace.
-			}
+			require.Nil(t, check(eventid, eventData))
 		} else {
 			wsc.Stop()
-			panic(Fmt("%s event was not expected", eventid))
+			require.True(t, false, "%s event was not expected", eventid)
 		}
 	case err := <-errCh:
 		panic(err) // Show the stack trace.
-
 	}
 }
 

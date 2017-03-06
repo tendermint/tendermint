@@ -7,13 +7,13 @@ import (
 	"sync/atomic"
 	"time"
 
+	abci "github.com/tendermint/abci/types"
 	auto "github.com/tendermint/go-autofile"
 	"github.com/tendermint/go-clist"
 	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
-	abci "github.com/tendermint/abci/types"
 )
 
 /*
@@ -249,7 +249,7 @@ func (mem *Mempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 
 // Get the valid transactions remaining
 // If maxTxs is -1, there is no cap on returned transactions.
-func (mem *Mempool) Reap(maxTxs int) []types.Tx {
+func (mem *Mempool) Reap(maxTxs int) types.Txs {
 	mem.proxyMtx.Lock()
 	defer mem.proxyMtx.Unlock()
 
@@ -263,7 +263,7 @@ func (mem *Mempool) Reap(maxTxs int) []types.Tx {
 }
 
 // maxTxs: -1 means uncapped, 0 means none
-func (mem *Mempool) collectTxs(maxTxs int) []types.Tx {
+func (mem *Mempool) collectTxs(maxTxs int) types.Txs {
 	if maxTxs == 0 {
 		return []types.Tx{}
 	} else if maxTxs < 0 {
@@ -281,7 +281,7 @@ func (mem *Mempool) collectTxs(maxTxs int) []types.Tx {
 // Mempool will discard these txs.
 // NOTE: this should be called *after* block is committed by consensus.
 // NOTE: unsafe; Lock/Unlock must be managed by caller
-func (mem *Mempool) Update(height int, txs []types.Tx) {
+func (mem *Mempool) Update(height int, txs types.Txs) {
 	// TODO: check err ?
 	mem.proxyAppConn.FlushSync() // To flush async resCb calls e.g. from CheckTx
 

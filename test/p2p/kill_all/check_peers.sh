@@ -40,6 +40,7 @@ for i in $(seq 2 "$NUM_OF_PEERS"); do
     ((attempt++))
     if [ "$attempt" -ge $MAX_ATTEMPTS_TO_CATCH_UP ] ; then
       echo "$attempt unsuccessful attempts were made to catch up"
+      curl -s "$addr/dump_consensus_state" | jq .result[1]
       exit 1
     fi
 

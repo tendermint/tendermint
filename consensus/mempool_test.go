@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
+	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config/tendermint_test"
 	"github.com/tendermint/tendermint/types"
-	abci "github.com/tendermint/abci/types"
 
 	. "github.com/tendermint/go-common"
 )
@@ -81,15 +81,12 @@ func TestRmBadTx(t *testing.T) {
 		// check for the tx
 		for {
 			time.Sleep(time.Second)
-			select {
-			case <-ch:
-			default:
-				txs := cs.mempool.Reap(1)
-				if len(txs) == 0 {
-					ch <- struct{}{}
-				}
-
+			txs := cs.mempool.Reap(1)
+			if len(txs) == 0 {
+				ch <- struct{}{}
+				return
 			}
+
 		}
 	}()
 
@@ -114,6 +111,8 @@ func TestRmBadTx(t *testing.T) {
 
 // CounterApplication that maintains a mempool state and resets it upon commit
 type CounterApplication struct {
+	abci.BaseApplication
+
 	txCount        int
 	mempoolTxCount int
 }
@@ -124,10 +123,6 @@ func NewCounterApplication() *CounterApplication {
 
 func (app *CounterApplication) Info() abci.ResponseInfo {
 	return abci.ResponseInfo{Data: Fmt("txs:%v", app.txCount)}
-}
-
-func (app *CounterApplication) SetOption(key string, value string) (log string) {
-	return ""
 }
 
 func (app *CounterApplication) DeliverTx(tx []byte) abci.Result {
@@ -159,8 +154,4 @@ func (app *CounterApplication) Commit() abci.Result {
 		binary.BigEndian.PutUint64(hash, uint64(app.txCount))
 		return abci.NewResultOK(hash, "")
 	}
-}
-
-func (app *CounterApplication) Query(query []byte) abci.Result {
-	return abci.NewResultOK(nil, Fmt("Query is not supported"))
 }
