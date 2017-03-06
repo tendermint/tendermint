@@ -1,0 +1,12 @@
+FROM golang:latest
+
+RUN mkdir -p /go/src/github.com/tendermint/netmon/tm-monitor
+WORKDIR /go/src/github.com/tendermint/netmon/tm-monitor
+
+COPY Makefile /go/src/github.com/tendermint/netmon/tm-monitor/
+COPY glide.yaml /go/src/github.com/tendermint/netmon/tm-monitor/
+COPY glide.lock /go/src/github.com/tendermint/netmon/tm-monitor/
+
+RUN make get_deps
+
+COPY . /go/src/github.com/tendermint/netmon/tm-monitor

@@ -1,0 +1,14 @@
+package: github.com/tendermint/netmon/tm-monitor
+import:
+- package: github.com/tendermint/go-common
+- package: github.com/tendermint/go-event-meter
+- package: github.com/tendermint/go-events
+- package: github.com/tendermint/go-logger
+- package: github.com/tendermint/tendermint
+  subpackages:
+  - types
+  - rpc/core/types
+- package: github.com/tendermint/go-wire
+- package: github.com/rcrowley/go-metrics
+- package: github.com/stretchr/testify
+- package: github.com/tendermint/go-crypto
