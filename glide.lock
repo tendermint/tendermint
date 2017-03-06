@@ -1,5 +1,5 @@
 hash: 41f8fec708e98b7f8c4804be46008493199fa45e89b2d5dc237fd65fe431c62f
-updated: 2017-03-05T00:18:48.136517571-05:00
+updated: 2017-03-05T22:59:46.61454297-05:00
 imports:
 - name: github.com/btcsuite/btcd
   version: d06c0bb181529331be8f8d9350288c420d9e60e4
@@ -101,7 +101,7 @@ imports:
 - name: github.com/tendermint/go-merkle
   version: 714d4d04557fd068a7c2a1748241ce8428015a96
 - name: github.com/tendermint/go-p2p
-  version: 56eebb95eede5f7cf742ecaefa83bed884df99ec
+  version: beb3eda438fbbfc3b566ead4be5705474a12e50a
   subpackages:
   - upnp
 - name: github.com/tendermint/go-rpc

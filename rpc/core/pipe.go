@@ -24,7 +24,7 @@ type P2P interface {
 	NumPeers() (outbound, inbound, dialig int)
 	NodeInfo() *p2p.NodeInfo
 	IsListening() bool
-	DialSeeds([]string) error
+	DialSeeds(*p2p.AddrBook, []string) error
 }
 
 //----------------------------------------------
@@ -42,8 +42,9 @@ var (
 	p2pSwitch      P2P
 
 	// objects
-	pubKey crypto.PubKey
-	genDoc *types.GenesisDoc // cache the genesis structure
+	pubKey   crypto.PubKey
+	genDoc   *types.GenesisDoc // cache the genesis structure
+	addrBook *p2p.AddrBook
 )
 
 func SetConfig(c cfg.Config) {
@@ -76,6 +77,10 @@ func SetPubKey(pk crypto.PubKey) {
 
 func SetGenesisDoc(doc *types.GenesisDoc) {
 	genDoc = doc
+}
+
+func SetAddrBook(book *p2p.AddrBook) {
+	addrBook = book
 }
 
 func SetProxyAppQuery(appConn proxy.AppConnQuery) {

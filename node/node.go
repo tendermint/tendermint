@@ -211,28 +211,9 @@ func (n *Node) OnStart() error {
 
 	// If seeds exist, add them to the address book and dial out
 	if n.config.GetString("seeds") != "" {
-		seeds := strings.Split(n.config.GetString("seeds"), ",")
-
-		if n.config.GetBool("pex_reactor") {
-			// add seeds to `addrBook` to avoid losing
-			ourAddrS := n.NodeInfo().ListenAddr
-			ourAddr, _ := p2p.NewNetAddressString(ourAddrS)
-			for _, s := range seeds {
-				// do not add ourselves
-				if s == ourAddrS {
-					continue
-				}
-
-				addr, err := p2p.NewNetAddressString(s)
-				if err != nil {
-					n.addrBook.AddAddress(addr, ourAddr)
-				}
-			}
-			n.addrBook.Save()
-		}
-
 		// dial out
-		if err := n.sw.DialSeeds(seeds); err != nil {
+		seeds := strings.Split(n.config.GetString("seeds"), ",")
+		if err := n.DialSeeds(seeds); err != nil {
 			return err
 		}
 	}
@@ -249,13 +230,6 @@ func (n *Node) OnStart() error {
 	return nil
 }
 
-func (n *Node) RunForever() {
-	// Sleep forever and then...
-	cmn.TrapSignal(func() {
-		n.Stop()
-	})
-}
-
 func (n *Node) OnStop() {
 	n.BaseService.OnStop()
 
@@ -269,6 +243,13 @@ func (n *Node) OnStop() {
 			log.Error("Error closing listener", "listener", l, "error", err)
 		}
 	}
+}
+
+func (n *Node) RunForever() {
+	// Sleep forever and then...
+	cmn.TrapSignal(func() {
+		n.Stop()
+	})
 }
 
 // Add the event switch to reactors, mempool, etc.
@@ -296,6 +277,7 @@ func (n *Node) ConfigureRPC() {
 	rpccore.SetSwitch(n.sw)
 	rpccore.SetPubKey(n.privValidator.PubKey)
 	rpccore.SetGenesisDoc(n.genesisDoc)
+	rpccore.SetAddrBook(n.addrBook)
 	rpccore.SetProxyAppQuery(n.proxyApp.Query())
 }
 
@@ -410,8 +392,8 @@ func (n *Node) NodeInfo() *p2p.NodeInfo {
 	return n.sw.NodeInfo()
 }
 
-func (n *Node) DialSeeds(seeds []string) {
-	n.sw.DialSeeds(seeds)
+func (n *Node) DialSeeds(seeds []string) error {
+	return n.sw.DialSeeds(n.addrBook, seeds)
 }
 
 // Defaults to tcp
