@@ -24,11 +24,11 @@ type Health int
 
 const (
 	// FullHealth means all nodes online, synced, validators making blocks
-	FullHealth = iota
+	FullHealth = Health(0)
 	// ModerateHealth means we're making blocks
-	ModerateHealth
+	ModerateHealth = Health(1)
 	// Dead means we're not making blocks due to all validators freezing or crashing
-	Dead
+	Dead = Health(2)
 )
 
 // Common statistics for network of nodes
@@ -82,7 +82,11 @@ func (n *Network) NewBlock(b tmtypes.Header) {
 	n.Height = uint64(b.Height)
 
 	n.blockTimeMeter.Mark(1)
-	n.AvgBlockTime = (1.0 / n.blockTimeMeter.Rate1()) * 1000 // 1/s to ms
+	if n.blockTimeMeter.Rate1() > 0.0 {
+		n.AvgBlockTime = (1.0 / n.blockTimeMeter.Rate1()) * 1000 // 1/s to ms
+	} else {
+		n.AvgBlockTime = 0.0
+	}
 	n.txThroughputMeter.Mark(int64(b.NumTxs))
 	n.AvgTxThroughput = n.txThroughputMeter.Rate1()
 
@@ -127,7 +131,7 @@ func (n *Network) NodeIsDown(name string) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
-	if online := n.nodeStatusMap[name]; online {
+	if online, ok := n.nodeStatusMap[name]; !ok || online {
 		n.nodeStatusMap[name] = false
 		n.NumNodesMonitoredOnline--
 		n.UptimeData.wentDown = time.Now()
