@@ -24,7 +24,9 @@ set -e
 bash test/p2p/peer.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$ID" "$PROXY_APP" "--pex"
 docker cp "/tmp/addrbook.json" "local_testnet_$ID:/go/src/github.com/tendermint/tendermint/test/p2p/data/mach1/core/addrbook.json"
 echo "with the following addrbook:"
-docker exec "local_testnet_$ID" cat "/go/src/github.com/tendermint/tendermint/test/p2p/data/mach1/core/addrbook.json"
+cat /tmp/addrbook.json
+# exec doesn't work on circle
+# docker exec "local_testnet_$ID" cat "/go/src/github.com/tendermint/tendermint/test/p2p/data/mach1/core/addrbook.json"
 echo ""
 
 # if the client runs forever, it means addrbook wasn't saved or was empty
