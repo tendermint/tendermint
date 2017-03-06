@@ -52,7 +52,7 @@ func TestProposerSelection1(t *testing.T) {
 	})
 	proposers := []string{}
 	for i := 0; i < 99; i++ {
-		val := vset.Proposer()
+		val := vset.GetProposer()
 		proposers = append(proposers, string(val.Address))
 		vset.IncrementAccum(1)
 	}
@@ -77,7 +77,7 @@ func TestProposerSelection2(t *testing.T) {
 	vals := NewValidatorSet(valList)
 	for i := 0; i < len(valList)*5; i++ {
 		ii := (i) % len(valList)
-		prop := vals.Proposer()
+		prop := vals.GetProposer()
 		if !bytes.Equal(prop.Address, valList[ii].Address) {
 			t.Fatalf("(%d): Expected %X. Got %X", i, valList[ii].Address, prop.Address)
 		}
@@ -88,12 +88,12 @@ func TestProposerSelection2(t *testing.T) {
 	*val2 = *newValidator(addr2, 400)
 	vals = NewValidatorSet(valList)
 	// vals.IncrementAccum(1)
-	prop := vals.Proposer()
+	prop := vals.GetProposer()
 	if !bytes.Equal(prop.Address, addr2) {
 		t.Fatalf("Expected address with highest voting power to be first proposer. Got %X", prop.Address)
 	}
 	vals.IncrementAccum(1)
-	prop = vals.Proposer()
+	prop = vals.GetProposer()
 	if !bytes.Equal(prop.Address, addr0) {
 		t.Fatalf("Expected smallest address to be validator. Got %X", prop.Address)
 	}
@@ -101,17 +101,17 @@ func TestProposerSelection2(t *testing.T) {
 	// One validator has more than the others, and enough to be proposer twice in a row
 	*val2 = *newValidator(addr2, 401)
 	vals = NewValidatorSet(valList)
-	prop = vals.Proposer()
+	prop = vals.GetProposer()
 	if !bytes.Equal(prop.Address, addr2) {
 		t.Fatalf("Expected address with highest voting power to be first proposer. Got %X", prop.Address)
 	}
 	vals.IncrementAccum(1)
-	prop = vals.Proposer()
+	prop = vals.GetProposer()
 	if !bytes.Equal(prop.Address, addr2) {
 		t.Fatalf("Expected address with highest voting power to be second proposer. Got %X", prop.Address)
 	}
 	vals.IncrementAccum(1)
-	prop = vals.Proposer()
+	prop = vals.GetProposer()
 	if !bytes.Equal(prop.Address, addr0) {
 		t.Fatalf("Expected smallest address to be validator. Got %X", prop.Address)
 	}
@@ -123,7 +123,7 @@ func TestProposerSelection2(t *testing.T) {
 	vals = NewValidatorSet(valList)
 	N := 1
 	for i := 0; i < 120*N; i++ {
-		prop := vals.Proposer()
+		prop := vals.GetProposer()
 		ii := prop.Address[19]
 		propCount[ii] += 1
 		vals.IncrementAccum(1)
@@ -150,7 +150,7 @@ func TestProposerSelection3(t *testing.T) {
 
 	proposerOrder := make([]*Validator, 4)
 	for i := 0; i < 4; i++ {
-		proposerOrder[i] = vset.Proposer()
+		proposerOrder[i] = vset.GetProposer()
 		vset.IncrementAccum(1)
 	}
 
@@ -159,7 +159,7 @@ func TestProposerSelection3(t *testing.T) {
 	// we should go in order for ever, despite some IncrementAccums with times > 1
 	var i, j int
 	for ; i < 10000; i++ {
-		got := vset.Proposer().Address
+		got := vset.GetProposer().Address
 		expected := proposerOrder[j%4].Address
 		if !bytes.Equal(got, expected) {
 			t.Fatalf(cmn.Fmt("vset.Proposer (%X) does not match expected proposer (%X) for (%d, %d)", got, expected, i, j))
@@ -169,7 +169,7 @@ func TestProposerSelection3(t *testing.T) {
 		b := vset.ToBytes()
 		vset.FromBytes(b)
 
-		computed := vset.Proposer() // findProposer()
+		computed := vset.GetProposer() // findGetProposer()
 		if i != 0 {
 			if !bytes.Equal(got, computed.Address) {
 				t.Fatalf(cmn.Fmt("vset.Proposer (%X) does not match computed proposer (%X) for (%d, %d)", got, computed.Address, i, j))

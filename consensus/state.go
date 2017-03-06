@@ -806,10 +806,10 @@ func (cs *ConsensusState) enterPropose(height int, round int) {
 		return
 	}
 
-	if !bytes.Equal(cs.Validators.Proposer().Address, cs.privValidator.GetAddress()) {
-		log.Info("enterPropose: Not our turn to propose", "proposer", cs.Validators.Proposer().Address, "privValidator", cs.privValidator)
+	if !bytes.Equal(cs.Validators.GetProposer().Address, cs.privValidator.GetAddress()) {
+		log.Info("enterPropose: Not our turn to propose", "proposer", cs.Validators.GetProposer().Address, "privValidator", cs.privValidator)
 	} else {
-		log.Info("enterPropose: Our turn to propose", "proposer", cs.Validators.Proposer().Address, "privValidator", cs.privValidator)
+		log.Info("enterPropose: Our turn to propose", "proposer", cs.Validators.GetProposer().Address, "privValidator", cs.privValidator)
 		cs.decideProposal(height, round)
 
 	}
@@ -1283,7 +1283,7 @@ func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
 	}
 
 	// Verify signature
-	if !cs.Validators.Proposer().PubKey.VerifyBytes(types.SignBytes(cs.state.ChainID, proposal), proposal.Signature) {
+	if !cs.Validators.GetProposer().PubKey.VerifyBytes(types.SignBytes(cs.state.ChainID, proposal), proposal.Signature) {
 		return ErrInvalidProposalSignature
 	}
 

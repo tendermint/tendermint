@@ -65,7 +65,7 @@ func TestProposerSelection0(t *testing.T) {
 	<-newRoundCh
 
 	// lets commit a block and ensure proposer for the next height is correct
-	prop := cs1.GetRoundState().Validators.Proposer()
+	prop := cs1.GetRoundState().Validators.GetProposer()
 	if !bytes.Equal(prop.Address, cs1.privValidator.GetAddress()) {
 		t.Fatalf("expected proposer to be validator %d. Got %X", 0, prop.Address)
 	}
@@ -79,7 +79,7 @@ func TestProposerSelection0(t *testing.T) {
 	// wait for new round so next validator is set
 	<-newRoundCh
 
-	prop = cs1.GetRoundState().Validators.Proposer()
+	prop = cs1.GetRoundState().Validators.GetProposer()
 	if !bytes.Equal(prop.Address, vss[1].Address) {
 		panic(Fmt("expected proposer to be validator %d. Got %X", 1, prop.Address))
 	}
@@ -100,7 +100,7 @@ func TestProposerSelection2(t *testing.T) {
 
 	// everyone just votes nil. we get a new proposer each round
 	for i := 0; i < len(vss); i++ {
-		prop := cs1.GetRoundState().Validators.Proposer()
+		prop := cs1.GetRoundState().Validators.GetProposer()
 		if !bytes.Equal(prop.Address, vss[(i+2)%len(vss)].Address) {
 			panic(Fmt("expected proposer to be validator %d. Got %X", (i+2)%len(vss), prop.Address))
 		}
