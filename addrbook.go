@@ -135,6 +135,9 @@ func (a *AddrBook) OnStart() error {
 
 func (a *AddrBook) OnStop() {
 	a.BaseService.OnStop()
+}
+
+func (a *AddrBook) Wait() {
 	a.wg.Wait()
 }
 
@@ -153,6 +156,7 @@ func (a *AddrBook) OurAddresses() []*NetAddress {
 	return addrs
 }
 
+// NOTE: addr must not be nil
 func (a *AddrBook) AddAddress(addr *NetAddress, src *NetAddress) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
@@ -366,6 +370,12 @@ func (a *AddrBook) loadFromFile(filePath string) bool {
 		}
 	}
 	return true
+}
+
+// Save saves the book.
+func (a *AddrBook) Save() {
+	log.Info("Saving AddrBook to file", "size", a.Size())
+	a.saveToFile(a.filePath)
 }
 
 /* Private methods */

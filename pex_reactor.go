@@ -42,12 +42,14 @@ func NewPEXReactor(book *AddrBook) *PEXReactor {
 
 func (pexR *PEXReactor) OnStart() error {
 	pexR.BaseReactor.OnStart()
+	pexR.book.Start()
 	go pexR.ensurePeersRoutine()
 	return nil
 }
 
 func (pexR *PEXReactor) OnStop() {
 	pexR.BaseReactor.OnStop()
+	pexR.book.Stop()
 }
 
 // Implements Reactor
@@ -64,7 +66,13 @@ func (pexR *PEXReactor) GetChannels() []*ChannelDescriptor {
 // Implements Reactor
 func (pexR *PEXReactor) AddPeer(peer *Peer) {
 	// Add the peer to the address book
-	netAddr := NewNetAddressString(peer.ListenAddr)
+	netAddr, err := NewNetAddressString(peer.ListenAddr)
+	if err != nil {
+		// this should never happen
+		log.Error("Error in AddPeer: invalid peer address", "addr", peer.ListenAddr, "error", err)
+		return
+	}
+
 	if peer.IsOutbound() {
 		if pexR.book.NeedMoreAddrs() {
 			pexR.RequestPEX(peer)
@@ -104,12 +112,13 @@ func (pexR *PEXReactor) Receive(chID byte, src *Peer, msgBytes []byte) {
 		// (We don't want to get spammed with bad peers)
 		srcAddr := src.Connection().RemoteAddress
 		for _, addr := range msg.Addrs {
-			pexR.book.AddAddress(addr, srcAddr)
+			if addr != nil {
+				pexR.book.AddAddress(addr, srcAddr)
+			}
 		}
 	default:
 		log.Warn(Fmt("Unknown message type %v", reflect.TypeOf(msg)))
 	}
-
 }
 
 // Asks peer for more addresses.

@@ -5,9 +5,9 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"testing"
-)
 
-const addrBookStrict = true
+	"github.com/stretchr/testify/assert"
+)
 
 func createTempFileName(prefix string) string {
 	f, err := ioutil.TempFile("", prefix)
@@ -22,23 +22,117 @@ func createTempFileName(prefix string) string {
 	return fname
 }
 
-func TestEmpty(t *testing.T) {
+func TestAddrBookSaveLoad(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
-	// t.Logf("New tempfile name: %v", fname)
 
-	// Save an empty book & load it
-	book := NewAddrBook(fname, addrBookStrict)
+	// 0 addresses
+	book := NewAddrBook(fname, true)
 	book.saveToFile(fname)
 
-	book = NewAddrBook(fname, addrBookStrict)
+	book = NewAddrBook(fname, true)
 	book.loadFromFile(fname)
 
-	if book.Size() != 0 {
-		t.Errorf("Expected 0 addresses, found %v", book.Size())
+	assert.Zero(t, book.Size())
+
+	// 100 addresses
+	randAddrs := randNetAddressPairs(t, 100)
+
+	for _, addrSrc := range randAddrs {
+		book.AddAddress(addrSrc.addr, addrSrc.src)
+	}
+
+	assert.Equal(t, 100, book.Size())
+	book.saveToFile(fname)
+
+	book = NewAddrBook(fname, true)
+	book.loadFromFile(fname)
+
+	assert.Equal(t, 100, book.Size())
+}
+
+func TestAddrBookLookup(t *testing.T) {
+	fname := createTempFileName("addrbook_test")
+
+	randAddrs := randNetAddressPairs(t, 100)
+
+	book := NewAddrBook(fname, true)
+	for _, addrSrc := range randAddrs {
+		addr := addrSrc.addr
+		src := addrSrc.src
+		book.AddAddress(addr, src)
+
+		ka := book.addrLookup[addr.String()]
+		assert.NotNil(t, ka, "Expected to find KnownAddress %v but wasn't there.", addr)
+
+		if !(ka.Addr.Equals(addr) && ka.Src.Equals(src)) {
+			t.Fatalf("KnownAddress doesn't match addr & src")
+		}
 	}
 }
 
-func randIPv4Address() *NetAddress {
+func TestAddrBookPromoteToOld(t *testing.T) {
+	fname := createTempFileName("addrbook_test")
+
+	randAddrs := randNetAddressPairs(t, 100)
+
+	book := NewAddrBook(fname, true)
+	for _, addrSrc := range randAddrs {
+		book.AddAddress(addrSrc.addr, addrSrc.src)
+	}
+
+	// Attempt all addresses.
+	for _, addrSrc := range randAddrs {
+		book.MarkAttempt(addrSrc.addr)
+	}
+
+	// Promote half of them
+	for i, addrSrc := range randAddrs {
+		if i%2 == 0 {
+			book.MarkGood(addrSrc.addr)
+		}
+	}
+
+	// TODO: do more testing :)
+
+	selection := book.GetSelection()
+	t.Logf("selection: %v", selection)
+
+	if len(selection) > book.Size() {
+		t.Errorf("selection could not be bigger than the book")
+	}
+}
+
+func TestAddrBookHandlesDuplicates(t *testing.T) {
+	fname := createTempFileName("addrbook_test")
+
+	book := NewAddrBook(fname, true)
+
+	randAddrs := randNetAddressPairs(t, 100)
+
+	differentSrc := randIPv4Address(t)
+	for _, addrSrc := range randAddrs {
+		book.AddAddress(addrSrc.addr, addrSrc.src)
+		book.AddAddress(addrSrc.addr, addrSrc.src)  // duplicate
+		book.AddAddress(addrSrc.addr, differentSrc) // different src
+	}
+
+	assert.Equal(t, 100, book.Size())
+}
+
+type netAddressPair struct {
+	addr *NetAddress
+	src  *NetAddress
+}
+
+func randNetAddressPairs(t *testing.T, n int) []netAddressPair {
+	randAddrs := make([]netAddressPair, n)
+	for i := 0; i < n; i++ {
+		randAddrs[i] = netAddressPair{addr: randIPv4Address(t), src: randIPv4Address(t)}
+	}
+	return randAddrs
+}
+
+func randIPv4Address(t *testing.T) *NetAddress {
 	for {
 		ip := fmt.Sprintf("%v.%v.%v.%v",
 			rand.Intn(254)+1,
@@ -47,117 +141,10 @@ func randIPv4Address() *NetAddress {
 			rand.Intn(255),
 		)
 		port := rand.Intn(65535-1) + 1
-		addr := NewNetAddressString(fmt.Sprintf("%v:%v", ip, port))
+		addr, err := NewNetAddressString(fmt.Sprintf("%v:%v", ip, port))
+		assert.Nil(t, err, "error generating rand network address")
 		if addr.Routable() {
 			return addr
 		}
 	}
-}
-
-func TestSaveAddresses(t *testing.T) {
-	fname := createTempFileName("addrbook_test")
-	//t.Logf("New tempfile name: %v", fname)
-
-	// Create some random addresses
-	randAddrs := []struct {
-		addr *NetAddress
-		src  *NetAddress
-	}{}
-	for i := 0; i < 100; i++ {
-		addr := randIPv4Address()
-		src := randIPv4Address()
-		randAddrs = append(randAddrs, struct {
-			addr *NetAddress
-			src  *NetAddress
-		}{
-			addr: addr,
-			src:  src,
-		})
-	}
-
-	// Create the book & populate & save
-	book := NewAddrBook(fname, addrBookStrict)
-	for _, addrSrc := range randAddrs {
-		book.AddAddress(addrSrc.addr, addrSrc.src)
-	}
-	if book.Size() != 100 {
-		t.Errorf("Expected 100 addresses, found %v", book.Size())
-	}
-	book.saveToFile(fname)
-
-	// Reload the book
-	book = NewAddrBook(fname, addrBookStrict)
-	book.loadFromFile(fname)
-
-	// Test ...
-
-	if book.Size() != 100 {
-		t.Errorf("Expected 100 addresses, found %v", book.Size())
-	}
-
-	for _, addrSrc := range randAddrs {
-		addr := addrSrc.addr
-		src := addrSrc.src
-		ka := book.addrLookup[addr.String()]
-		if ka == nil {
-			t.Fatalf("Expected to find KnownAddress %v but wasn't there.", addr)
-		}
-		if !(ka.Addr.Equals(addr) && ka.Src.Equals(src)) {
-			t.Fatalf("KnownAddress doesn't match addr & src")
-		}
-	}
-}
-
-func TestPromoteToOld(t *testing.T) {
-	fname := createTempFileName("addrbook_test")
-	t.Logf("New tempfile name: %v", fname)
-
-	// Create some random addresses
-	randAddrs := []struct {
-		addr *NetAddress
-		src  *NetAddress
-	}{}
-	for i := 0; i < 100; i++ {
-		addr := randIPv4Address()
-		src := randIPv4Address()
-		randAddrs = append(randAddrs, struct {
-			addr *NetAddress
-			src  *NetAddress
-		}{
-			addr: addr,
-			src:  src,
-		})
-	}
-
-	// Create the book & populate & save
-	book := NewAddrBook(fname, addrBookStrict)
-	for _, addrSrc := range randAddrs {
-		book.AddAddress(addrSrc.addr, addrSrc.src)
-	}
-	// Attempt all addresses.
-	for _, addrSrc := range randAddrs {
-		book.MarkAttempt(addrSrc.addr)
-	}
-	// Promote half of them
-	for i, addrSrc := range randAddrs {
-		if i%2 == 0 {
-			book.MarkGood(addrSrc.addr)
-		}
-	}
-	book.saveToFile(fname)
-
-	// Reload the book
-	book = NewAddrBook(fname, addrBookStrict)
-	book.loadFromFile(fname)
-
-	// Test ...
-
-	if book.Size() != 100 {
-		t.Errorf("Expected 100 addresses, found %v", book.Size())
-	}
-
-	// TODO: do more testing :)
-
-	selection := book.GetSelection()
-	t.Logf("selection: %v", selection)
 }
