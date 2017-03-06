@@ -10,16 +10,16 @@ RUN apt-get update && \
 ENV REPO $GOPATH/src/github.com/tendermint/tendermint
 WORKDIR $REPO
 
-# Install the apps
-ADD scripts/install_abci_apps.sh install_abci_apps.sh
-RUN bash install_abci_apps.sh
-
 # Install the vendored dependencies before copying code
 # docker caching prevents reinstall on code change!
 ADD glide.yaml glide.yaml
 ADD glide.lock glide.lock
 ADD Makefile Makefile
 RUN make get_vendor_deps
+
+# Install the apps
+ADD scripts scripts
+RUN bash scripts/install_abci_apps.sh
 
 # Now copy in the code
 COPY . $REPO

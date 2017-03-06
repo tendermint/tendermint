@@ -30,9 +30,9 @@ echo "... testing query with abci-cli"
 RESPONSE=`abci-cli query \"$KEY\"`
 
 set +e
-A=`echo $RESPONSE | grep 'log: exists'`
+A=`echo $RESPONSE | grep "$VALUE"`
 if [[ $? != 0 ]]; then
-	echo "Failed to find 'log: exists' for $KEY. Response:"
+	echo "Failed to find $VALUE for $KEY. Response:"
 	echo "$RESPONSE"
 	exit 1
 fi
@@ -41,9 +41,9 @@ set -e
 # we should not be able to look up the value
 RESPONSE=`abci-cli query \"$VALUE\"`
 set +e
-A=`echo $RESPONSE | grep 'log: exists'`
+A=`echo $RESPONSE | grep $VALUE`
 if [[ $? == 0 ]]; then
-	echo "Found 'log: exists' for $VALUE when we should not have. Response:"
+	echo "Found '$VALUE' for $VALUE when we should not have. Response:"
 	echo "$RESPONSE"
 	exit 1
 fi
