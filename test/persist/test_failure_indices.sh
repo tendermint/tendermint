@@ -1,12 +1,14 @@
 #! /bin/bash
 
-
 export TMROOT=$HOME/.tendermint_persist
 
 rm -rf "$TMROOT"
 tendermint init
 
-TM_CMD="tendermint node --log_level=debug" # &> tendermint_${name}.log"
+# use a unix socket so we can remove it
+RPC_ADDR="$(pwd)/rpc.sock"
+
+TM_CMD="tendermint node --log_level=debug --rpc_laddr=unix://$RPC_ADDR" # &> tendermint_${name}.log"
 DUMMY_CMD="dummy --persist $TMROOT/dummy" # &> dummy_${name}.log"
 
 
@@ -20,6 +22,9 @@ function start_procs(){
 		$DUMMY_CMD &> "dummy_${name}.log" &
 	fi
 	PID_DUMMY=$!
+
+	# before starting tendermint, remove the rpc socket
+	rm $RPC_ADDR
 	if [[ "$indexToFail" == "" ]]; then
 		# run in background, dont fail
 		if [[ "$CIRCLECI" == true ]]; then
@@ -43,13 +48,6 @@ function kill_procs(){
 	kill -9 "$PID_DUMMY" "$PID_TENDERMINT"
 	wait "$PID_DUMMY"
 	wait "$PID_TENDERMINT"
-
-	# wait for the ports to be released 
-	wait_for_port 46656
-	wait_for_port 46657
-	
-	# XXX: sometimes the port is still bound :(
-	sleep 5
 }
 
 # wait for port to be available
@@ -93,13 +91,12 @@ for failIndex in $(seq $failsStart $failsEnd); do
 	start_procs 2
 
 	# wait for node to handshake and make a new block
-	addr="localhost:46657"
-	curl -s "$addr/status" > /dev/null
+	curl -s --unix-socket "$RPC_ADDR" http://localhost/status > /dev/null
 	ERR=$?
 	i=0
 	while [ "$ERR" != 0 ]; do
 		sleep 1	
-		curl -s "$addr/status" > /dev/null
+		curl -s --unix-socket "$RPC_ADDR" http://localhost/status > /dev/null
 		ERR=$?
 		i=$((i + 1))
 		if [[ $i == 20 ]]; then
@@ -109,11 +106,11 @@ for failIndex in $(seq $failsStart $failsEnd); do
 	done
 
 	# wait for a new block
-	h1=$(curl -s $addr/status | jq .result[1].latest_block_height)
+	h1=$(curl -s --unix-socket "$RPC_ADDR" http://localhost/status | jq .result[1].latest_block_height)
 	h2=$h1
 	while [ "$h2" == "$h1" ]; do
 		sleep 1
-		h2=$(curl -s $addr/status | jq .result[1].latest_block_height)
+		h2=$(curl -s --unix-socket "$RPC_ADDR" http://localhost/status | jq .result[1].latest_block_height)
 	done
 
 	kill_procs
