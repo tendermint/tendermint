@@ -8,10 +8,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	crypto "github.com/tendermint/go-crypto"
-	monitor "github.com/tendermint/netmon/tm-monitor"
-	mock "github.com/tendermint/netmon/tm-monitor/mock"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	tmtypes "github.com/tendermint/tendermint/types"
+	monitor "github.com/tendermint/tools/tm-monitor"
+	mock "github.com/tendermint/tools/tm-monitor/mock"
 )
 
 func TestMonitorUpdatesNumberOfValidators(t *testing.T) {

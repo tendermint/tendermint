@@ -1,4 +1,4 @@
-package: github.com/tendermint/netmon/tm-monitor
+package: github.com/tendermint/tools/tm-monitor
 import:
 - package: github.com/tendermint/go-common
 - package: github.com/tendermint/go-event-meter
