@@ -297,15 +297,29 @@ func (sw *Switch) startInitPeer(peer *Peer) {
 }
 
 // Dial a list of seeds asynchronously in random order
-func (sw *Switch) DialSeeds(seeds []string) error {
+func (sw *Switch) DialSeeds(addrBook *AddrBook, seeds []string) error {
 
 	netAddrs, err := NewNetAddressStrings(seeds)
 	if err != nil {
 		return err
 	}
 
+	if addrBook != nil {
+		// add seeds to `addrBook`
+		ourAddrS := sw.nodeInfo.ListenAddr
+		ourAddr, _ := NewNetAddressString(ourAddrS)
+		for _, netAddr := range netAddrs {
+			// do not add ourselves
+			if netAddr.Equals(ourAddr) {
+				continue
+			}
+			addrBook.AddAddress(netAddr, ourAddr)
+		}
+		addrBook.Save()
+	}
+
 	// permute the list, dial them in random order.
-	perm := rand.Perm(len(seeds))
+	perm := rand.Perm(len(netAddrs))
 	for i := 0; i < len(perm); i++ {
 		go func(i int) {
 			time.Sleep(time.Duration(rand.Int63n(3000)) * time.Millisecond)
