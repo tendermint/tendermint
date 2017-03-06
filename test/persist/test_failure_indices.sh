@@ -91,6 +91,7 @@ for failIndex in $(seq $failsStart $failsEnd); do
 	start_procs 2
 
 	# wait for node to handshake and make a new block
+	# NOTE: --unix-socket is only available in curl v7.40+
 	curl -s --unix-socket "$RPC_ADDR" http://localhost/status > /dev/null
 	ERR=$?
 	i=0
