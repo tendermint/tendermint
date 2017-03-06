@@ -102,7 +102,7 @@ for failIndex in $(seq $failsStart $failsEnd); do
 		curl -s "$addr/status" > /dev/null
 		ERR=$?
 		i=$((i + 1))
-		if [[ $i == 10 ]]; then
+		if [[ $i == 20 ]]; then
 			echo "Timed out waiting for tendermint to start"
 			exit 1
 		fi

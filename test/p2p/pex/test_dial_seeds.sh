@@ -24,9 +24,13 @@ set -e
 SEEDS=""
 bash test/p2p/local_testnet_start.sh $DOCKER_IMAGE $NETWORK_NAME $N $PROXY_APP $SEEDS
 
+
+
 # dial seeds from one node
-bash test/p2p/client.sh $DOCKER_IMAGE $NETWORK_NAME dial_seeds "test/p2p/pex/dial_seeds.sh $N"
+CLIENT_NAME="dial_seeds"
+bash test/p2p/client.sh $DOCKER_IMAGE $NETWORK_NAME $CLIENT_NAME "test/p2p/pex/dial_seeds.sh $N"
 
 # test basic connectivity and consensus
 # start client container and check the num peers and height for all nodes
-bash test/p2p/client.sh $DOCKER_IMAGE $NETWORK_NAME basic "test/p2p/basic/test.sh $N"
+CLIENT_NAME="dial_seeds_basic"
+bash test/p2p/client.sh $DOCKER_IMAGE $NETWORK_NAME $CLIENT_NAME "test/p2p/basic/test.sh $N"

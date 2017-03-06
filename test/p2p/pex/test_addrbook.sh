@@ -12,6 +12,8 @@ echo "----------------------------------------------------------------------"
 echo "Testing pex creates the addrbook and uses it if seeds are not provided"
 echo "(assuming peers are started with pex enabled)"
 
+CLIENT_NAME="pex_addrbook_$ID"
+
 echo "1. restart peer $ID"
 docker stop "local_testnet_$ID"
 # preserve addrbook.json
@@ -30,11 +32,13 @@ cat /tmp/addrbook.json
 echo ""
 
 # if the client runs forever, it means addrbook wasn't saved or was empty
-bash test/p2p/client.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "pex_$ID" "test/p2p/pex/check_peer.sh $ID $N"
+bash test/p2p/client.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$CLIENT_NAME" "test/p2p/pex/check_peer.sh $ID $N"
 
 echo "----------------------------------------------------------------------"
 echo "Testing other peers connect to us if we have neither seeds nor the addrbook"
 echo "(assuming peers are started with pex enabled)"
+
+CLIENT_NAME="pex_no_addrbook_$ID"
 
 echo "1. restart peer $ID"
 docker stop "local_testnet_$ID"
@@ -46,7 +50,7 @@ set -e
 bash test/p2p/peer.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$ID" "$PROXY_APP" "--pex"
 
 # if the client runs forever, it means other peers have removed us from their books (which should not happen)
-bash test/p2p/client.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "pex_$ID" "test/p2p/pex/check_peer.sh $ID $N"
+bash test/p2p/client.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$CLIENT_NAME" "test/p2p/pex/check_peer.sh $ID $N"
 
 echo ""
 echo "PASS"

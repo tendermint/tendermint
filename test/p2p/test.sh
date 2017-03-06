@@ -27,8 +27,8 @@ bash test/p2p/client.sh $DOCKER_IMAGE $NETWORK_NAME basic "test/p2p/basic/test.s
 # start client container and test sending a tx to each node
 bash test/p2p/client.sh $DOCKER_IMAGE $NETWORK_NAME ab "test/p2p/atomic_broadcast/test.sh $N"
 
-# test fast sync (from current state of network):
-# for each node, kill it and readd via fast sync
+ test fast sync (from current state of network):
+ for each node, kill it and readd via fast sync
 bash test/p2p/fast_sync/test.sh $DOCKER_IMAGE $NETWORK_NAME $N $PROXY_APP
 
 # test killing all peers 3 times
