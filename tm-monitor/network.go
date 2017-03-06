@@ -182,3 +182,13 @@ func (n *Network) GetHealthString() string {
 		return "undefined"
 	}
 }
+
+// Uptime returns network's uptime in percentages.
+func (n *Network) Uptime() float64 {
+	return n.UptimeData.Uptime
+}
+
+// StartTime returns time we started monitoring.
+func (n *Network) StartTime() time.Time {
+	return n.UptimeData.StartTime
+}

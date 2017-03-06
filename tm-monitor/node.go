@@ -16,6 +16,11 @@ import (
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 )
 
+// remove when https://github.com/tendermint/go-rpc/issues/8 will be fixed
+type rpcClientI interface {
+	Call(method string, params map[string]interface{}, result interface{}) (interface{}, error)
+}
+
 const maxRestarts = 25
 
 type Node struct {
@@ -32,28 +37,46 @@ type Node struct {
 	// em holds the ws connection. Each eventMeter callback is called in a separate go-routine.
 	em eventMeter
 
-	// rpcClient is an http client for making RPC calls to TM
-	rpcClient *rpc_client.ClientURI
+	// rpcClient is an client for making RPC calls to TM
+	rpcClient rpcClientI
 
 	blockCh        chan<- tmtypes.Header
 	blockLatencyCh chan<- float64
 	disconnectCh   chan<- bool
 
+	checkIsValidatorInterval time.Duration
+
 	quit chan struct{}
 }
 
-func NewNode(rpcAddr string) *Node {
+func NewNode(rpcAddr string, options ...func(*Node)) *Node {
 	em := em.NewEventMeter(rpcAddr, UnmarshalEvent)
-	return NewNodeWithEventMeter(rpcAddr, em)
+	rpcClient := rpc_client.NewClientURI(rpcAddr) // HTTP client by default
+	return NewNodeWithEventMeterAndRpcClient(rpcAddr, em, rpcClient, options...)
 }
 
-func NewNodeWithEventMeter(rpcAddr string, em eventMeter) *Node {
-	return &Node{
+func NewNodeWithEventMeterAndRpcClient(rpcAddr string, em eventMeter, rpcClient rpcClientI, options ...func(*Node)) *Node {
+	n := &Node{
 		rpcAddr:   rpcAddr,
 		em:        em,
-		rpcClient: rpc_client.NewClientURI(rpcAddr),
+		rpcClient: rpcClient,
 		Name:      rpcAddr,
 		quit:      make(chan struct{}),
+		checkIsValidatorInterval: 5 * time.Second,
+	}
+
+	for _, option := range options {
+		option(n)
+	}
+
+	return n
+}
+
+// SetCheckIsValidatorInterval lets you change interval for checking whenever
+// node is still a validator or not.
+func SetCheckIsValidatorInterval(d time.Duration) func(n *Node) {
+	return func(n *Node) {
+		n.checkIsValidatorInterval = d
 	}
 }
 
@@ -80,7 +103,8 @@ func (n *Node) Start() error {
 
 	n.Online = true
 
-	go n.checkIsValidator()
+	n.checkIsValidator()
+	go n.checkIsValidatorLoop()
 
 	return nil
 }
@@ -179,24 +203,28 @@ func (n *Node) validators() (height uint64, validators []*tmtypes.Validator, err
 	return uint64(vals.BlockHeight), vals.Validators, nil
 }
 
-func (n *Node) checkIsValidator() {
+func (n *Node) checkIsValidatorLoop() {
 	for {
 		select {
 		case <-n.quit:
 			return
-		case <-time.After(5 * time.Second):
-			_, validators, err := n.validators()
-			if err == nil {
-				for _, v := range validators {
-					key, err := n.getPubKey()
-					if err == nil && v.PubKey == key {
-						n.IsValidator = true
-					}
-				}
-			} else {
-				log.Debug(err.Error())
+		case <-time.After(n.checkIsValidatorInterval):
+			n.checkIsValidator()
+		}
+	}
+}
+
+func (n *Node) checkIsValidator() {
+	_, validators, err := n.validators()
+	if err == nil {
+		for _, v := range validators {
+			key, err := n.getPubKey()
+			if err == nil && v.PubKey == key {
+				n.IsValidator = true
 			}
 		}
+	} else {
+		log.Debug(err.Error())
 	}
 }
 

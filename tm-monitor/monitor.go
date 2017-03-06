@@ -10,23 +10,59 @@ import (
 // waiting more than this many seconds for a block means we're unhealthy
 const nodeLivenessTimeout = 5 * time.Second
 
+// Monitor keeps track of the nodes and updates common statistics upon
+// receiving new events from nodes.
+//
+// Common statistics is stored in Network struct.
 type Monitor struct {
 	Nodes   map[string]*Node
 	Network *Network
 
 	monitorQuit chan struct{}            // monitor exitting
 	nodeQuit    map[string]chan struct{} // node is being stopped and removed from under the monitor
+
+	recalculateNetworkUptimeEvery time.Duration
+	numValidatorsUpdateInterval   time.Duration
 }
 
-func NewMonitor() *Monitor {
-	return &Monitor{
-		Nodes:       make(map[string]*Node),
-		Network:     NewNetwork(),
-		monitorQuit: make(chan struct{}),
-		nodeQuit:    make(map[string]chan struct{}),
+// NewMonitor creates new instance of a Monitor. You can provide options to
+// change some default values.
+//
+// Example:
+//   NewMonitor(monitor.SetNumValidatorsUpdateInterval(1 * time.Second))
+func NewMonitor(options ...func(*Monitor)) *Monitor {
+	m := &Monitor{
+		Nodes:                         make(map[string]*Node),
+		Network:                       NewNetwork(),
+		monitorQuit:                   make(chan struct{}),
+		nodeQuit:                      make(map[string]chan struct{}),
+		recalculateNetworkUptimeEvery: 10 * time.Second,
+		numValidatorsUpdateInterval:   5 * time.Second,
+	}
+
+	for _, option := range options {
+		option(m)
+	}
+
+	return m
+}
+
+// RecalculateNetworkUptimeEvery lets you change network uptime update interval.
+func RecalculateNetworkUptimeEvery(d time.Duration) func(m *Monitor) {
+	return func(m *Monitor) {
+		m.recalculateNetworkUptimeEvery = d
 	}
 }
 
+// SetNumValidatorsUpdateInterval lets you change num validators update interval.
+func SetNumValidatorsUpdateInterval(d time.Duration) func(m *Monitor) {
+	return func(m *Monitor) {
+		m.numValidatorsUpdateInterval = d
+	}
+}
+
+// Monitor begins to monitor the node `n`. The node will be started and added
+// to the monitor.
 func (m *Monitor) Monitor(n *Node) error {
 	m.Nodes[n.Name] = n
 
@@ -49,6 +85,8 @@ func (m *Monitor) Monitor(n *Node) error {
 	return nil
 }
 
+// Unmonitor stops monitoring node `n`. The node will be stopped and removed
+// from the monitor.
 func (m *Monitor) Unmonitor(n *Node) {
 	m.Network.NodeDeleted(n.Name)
 
@@ -58,13 +96,16 @@ func (m *Monitor) Unmonitor(n *Node) {
 	delete(m.Nodes, n.Name)
 }
 
+// Start starts the monitor's routines: recalculating network uptime and
+// updating number of validators.
 func (m *Monitor) Start() error {
-	go m.recalculateNetworkUptime()
-	go m.updateNumValidators()
+	go m.recalculateNetworkUptimeLoop()
+	go m.updateNumValidatorLoop()
 
 	return nil
 }
 
+// Stop stops the monitor's routines.
 func (m *Monitor) Stop() {
 	close(m.monitorQuit)
 
@@ -95,21 +136,21 @@ func (m *Monitor) listen(nodeName string, blockCh <-chan tmtypes.Header, blockLa
 	}
 }
 
-// recalculateNetworkUptime every N seconds.
-func (m *Monitor) recalculateNetworkUptime() {
+// recalculateNetworkUptimeLoop every N seconds.
+func (m *Monitor) recalculateNetworkUptimeLoop() {
 	for {
 		select {
 		case <-m.monitorQuit:
 			return
-		case <-time.After(10 * time.Second):
+		case <-time.After(m.recalculateNetworkUptimeEvery):
 			m.Network.RecalculateUptime()
 		}
 	}
 }
 
-// updateNumValidators sends a request to a random node once every N seconds,
+// updateNumValidatorLoop sends a request to a random node once every N seconds,
 // which in turn makes an RPC call to get the latest validators.
-func (m *Monitor) updateNumValidators() {
+func (m *Monitor) updateNumValidatorLoop() {
 	rand.Seed(time.Now().Unix())
 
 	var height uint64
@@ -118,8 +159,7 @@ func (m *Monitor) updateNumValidators() {
 
 	for {
 		if 0 == len(m.Nodes) {
-			m.Network.NumValidators = 0
-			time.Sleep(5 * time.Second)
+			time.Sleep(m.numValidatorsUpdateInterval)
 			continue
 		}
 
@@ -128,7 +168,7 @@ func (m *Monitor) updateNumValidators() {
 		select {
 		case <-m.monitorQuit:
 			return
-		case <-time.After(5 * time.Second):
+		case <-time.After(m.numValidatorsUpdateInterval):
 			i := 0
 			for _, n := range m.Nodes {
 				if i == randomNodeIndex {

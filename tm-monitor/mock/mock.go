@@ -1,7 +1,11 @@
 package mock
 
 import (
+	"log"
+	"reflect"
+
 	em "github.com/tendermint/go-event-meter"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 )
 
 type EventMeter struct {
@@ -34,4 +38,21 @@ func (e *EventMeter) Call(callback string, args ...interface{}) {
 	case "eventCallback":
 		e.eventCallback(args[0].(*em.EventMetric), args[1])
 	}
+}
+
+type RpcClient struct {
+	Stubs map[string]ctypes.TMResult
+}
+
+func (c *RpcClient) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
+	s, ok := c.Stubs[method]
+	if !ok {
+		log.Fatalf("Call to %s, but no stub is defined for it", method)
+	}
+
+	rv, rt := reflect.ValueOf(result), reflect.TypeOf(result)
+	rv, rt = rv.Elem(), rt.Elem()
+	rv.Set(reflect.ValueOf(s))
+
+	return s, nil
 }
