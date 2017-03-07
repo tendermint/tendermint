@@ -6,14 +6,13 @@ import (
 	"math"
 	"time"
 
-	em "github.com/tendermint/go-event-meter"
+	crypto "github.com/tendermint/go-crypto"
 	events "github.com/tendermint/go-events"
 	rpc_client "github.com/tendermint/go-rpc/client"
-	tmtypes "github.com/tendermint/tendermint/types"
-
-	crypto "github.com/tendermint/go-crypto"
 	wire "github.com/tendermint/go-wire"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	tmtypes "github.com/tendermint/tendermint/types"
+	em "github.com/tendermint/tools/tm-monitor/eventmeter"
 )
 
 // remove when https://github.com/tendermint/go-rpc/issues/8 will be fixed
@@ -93,7 +92,7 @@ func (n *Node) NotifyAboutDisconnects(ch chan<- bool) {
 }
 
 func (n *Node) Start() error {
-	if _, err := n.em.Start(); err != nil {
+	if err := n.em.Start(); err != nil {
 		return err
 	}
 
@@ -244,8 +243,8 @@ func (n *Node) getPubKey() (crypto.PubKey, error) {
 }
 
 type eventMeter interface {
-	Start() (bool, error)
-	Stop() bool
+	Start() error
+	Stop()
 	RegisterLatencyCallback(em.LatencyCallbackFunc)
 	RegisterDisconnectCallback(em.DisconnectCallbackFunc)
 	Subscribe(string, em.EventCallbackFunc) error
