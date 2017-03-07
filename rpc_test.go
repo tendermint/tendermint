@@ -5,14 +5,14 @@ import (
 	"testing"
 	"time"
 
-	rpcclient "github.com/tendermint/go-rpc/client"
-	rpcserver "github.com/tendermint/go-rpc/server"
-	rpctypes "github.com/tendermint/go-rpc/types"
+	client "github.com/tendermint/go-rpc/client"
+	server "github.com/tendermint/go-rpc/server"
+	types "github.com/tendermint/go-rpc/types"
 	wire "github.com/tendermint/go-wire"
 )
 
 // Client and Server should work over tcp or unix sockets
-var (
+const (
 	tcpAddr  = "tcp://0.0.0.0:46657"
 	unixAddr = "unix:///tmp/go-rpc.sock" // NOTE: must remove file for test to run again
 
@@ -32,8 +32,8 @@ var _ = wire.RegisterInterface(
 )
 
 // Define some routes
-var Routes = map[string]*rpcserver.RPCFunc{
-	"status": rpcserver.NewRPCFunc(StatusResult, "arg"),
+var Routes = map[string]*server.RPCFunc{
+	"status": server.NewRPCFunc(StatusResult, "arg"),
 }
 
 // an rpc function
@@ -43,23 +43,24 @@ func StatusResult(v string) (Result, error) {
 
 // launch unix and tcp servers
 func init() {
+
 	mux := http.NewServeMux()
-	rpcserver.RegisterRPCFuncs(mux, Routes)
-	wm := rpcserver.NewWebsocketManager(Routes, nil)
+	server.RegisterRPCFuncs(mux, Routes)
+	wm := server.NewWebsocketManager(Routes, nil)
 	mux.HandleFunc(websocketEndpoint, wm.WebsocketHandler)
 	go func() {
-		_, err := rpcserver.StartHTTPServer(tcpAddr, mux)
+		_, err := server.StartHTTPServer(tcpAddr, mux)
 		if err != nil {
 			panic(err)
 		}
 	}()
 
 	mux2 := http.NewServeMux()
-	rpcserver.RegisterRPCFuncs(mux2, Routes)
-	wm = rpcserver.NewWebsocketManager(Routes, nil)
+	server.RegisterRPCFuncs(mux2, Routes)
+	wm = server.NewWebsocketManager(Routes, nil)
 	mux2.HandleFunc(websocketEndpoint, wm.WebsocketHandler)
 	go func() {
-		_, err := rpcserver.StartHTTPServer(unixAddr, mux2)
+		_, err := server.StartHTTPServer(unixAddr, mux2)
 		if err != nil {
 			panic(err)
 		}
@@ -70,7 +71,7 @@ func init() {
 
 }
 
-func testURI(t *testing.T, cl *rpcclient.ClientURI) {
+func testURI(t *testing.T, cl *client.ClientURI) {
 	val := "acbd"
 	params := map[string]interface{}{
 		"arg": val,
@@ -86,7 +87,7 @@ func testURI(t *testing.T, cl *rpcclient.ClientURI) {
 	}
 }
 
-func testJSONRPC(t *testing.T, cl *rpcclient.ClientJSONRPC) {
+func testJSONRPC(t *testing.T, cl *client.ClientJSONRPC) {
 	val := "acbd"
 	params := map[string]interface{}{
 		"arg": val,
@@ -102,12 +103,12 @@ func testJSONRPC(t *testing.T, cl *rpcclient.ClientJSONRPC) {
 	}
 }
 
-func testWS(t *testing.T, cl *rpcclient.WSClient) {
+func testWS(t *testing.T, cl *client.WSClient) {
 	val := "acbd"
 	params := map[string]interface{}{
 		"arg": val,
 	}
-	err := cl.WriteJSON(rpctypes.RPCRequest{
+	err := cl.WriteJSON(types.RPCRequest{
 		JSONRPC: "2.0",
 		ID:      "",
 		Method:  "status",
@@ -132,27 +133,27 @@ func testWS(t *testing.T, cl *rpcclient.WSClient) {
 //-------------
 
 func TestURI_TCP(t *testing.T) {
-	cl := rpcclient.NewClientURI(tcpAddr)
+	cl := client.NewClientURI(tcpAddr)
 	testURI(t, cl)
 }
 
 func TestURI_UNIX(t *testing.T) {
-	cl := rpcclient.NewClientURI(unixAddr)
+	cl := client.NewClientURI(unixAddr)
 	testURI(t, cl)
 }
 
 func TestJSONRPC_TCP(t *testing.T) {
-	cl := rpcclient.NewClientJSONRPC(tcpAddr)
+	cl := client.NewClientJSONRPC(tcpAddr)
 	testJSONRPC(t, cl)
 }
 
 func TestJSONRPC_UNIX(t *testing.T) {
-	cl := rpcclient.NewClientJSONRPC(unixAddr)
+	cl := client.NewClientJSONRPC(unixAddr)
 	testJSONRPC(t, cl)
 }
 
 func TestWS_TCP(t *testing.T) {
-	cl := rpcclient.NewWSClient(tcpAddr, websocketEndpoint)
+	cl := client.NewWSClient(tcpAddr, websocketEndpoint)
 	_, err := cl.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -161,7 +162,7 @@ func TestWS_TCP(t *testing.T) {
 }
 
 func TestWS_UNIX(t *testing.T) {
-	cl := rpcclient.NewWSClient(unixAddr, websocketEndpoint)
+	cl := client.NewWSClient(unixAddr, websocketEndpoint)
 	_, err := cl.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -170,7 +171,7 @@ func TestWS_UNIX(t *testing.T) {
 }
 
 func TestHexStringArg(t *testing.T) {
-	cl := rpcclient.NewClientURI(tcpAddr)
+	cl := client.NewClientURI(tcpAddr)
 	// should NOT be handled as hex
 	val := "0xabc"
 	params := map[string]interface{}{
@@ -188,7 +189,7 @@ func TestHexStringArg(t *testing.T) {
 }
 
 func TestQuotedStringArg(t *testing.T) {
-	cl := rpcclient.NewClientURI(tcpAddr)
+	cl := client.NewClientURI(tcpAddr)
 	// should NOT be unquoted
 	val := "\"abc\""
 	params := map[string]interface{}{

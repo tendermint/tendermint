@@ -9,7 +9,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	cmn "github.com/tendermint/go-common"
-	rpctypes "github.com/tendermint/go-rpc/types"
+	types "github.com/tendermint/go-rpc/types"
 )
 
 const (
@@ -96,7 +96,7 @@ func (wsc *WSClient) receiveEventsRoutine() {
 			wsc.Stop()
 			break
 		} else {
-			var response rpctypes.RPCResponse
+			var response types.RPCResponse
 			err := json.Unmarshal(data, &response)
 			if err != nil {
 				log.Info("WSClient failed to parse message", "error", err, "data", string(data))
@@ -118,7 +118,7 @@ func (wsc *WSClient) receiveEventsRoutine() {
 
 // subscribe to an event
 func (wsc *WSClient) Subscribe(eventid string) error {
-	err := wsc.WriteJSON(rpctypes.RPCRequest{
+	err := wsc.WriteJSON(types.RPCRequest{
 		JSONRPC: "2.0",
 		ID:      "",
 		Method:  "subscribe",
@@ -129,7 +129,7 @@ func (wsc *WSClient) Subscribe(eventid string) error {
 
 // unsubscribe from an event
 func (wsc *WSClient) Unsubscribe(eventid string) error {
-	err := wsc.WriteJSON(rpctypes.RPCRequest{
+	err := wsc.WriteJSON(types.RPCRequest{
 		JSONRPC: "2.0",
 		ID:      "",
 		Method:  "unsubscribe",

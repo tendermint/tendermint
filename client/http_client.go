@@ -11,8 +11,7 @@ import (
 	"reflect"
 	"strings"
 
-	// cmn "github.com/tendermint/go-common"
-	rpctypes "github.com/tendermint/go-rpc/types"
+	types "github.com/tendermint/go-rpc/types"
 	wire "github.com/tendermint/go-wire"
 )
 
@@ -28,7 +27,7 @@ func makeHTTPDialer(remoteAddr string) (string, func(string, string) (net.Conn, 
 	var protocol, address string
 	if len(parts) != 2 {
 		log.Warn("WARNING (go-rpc): Please use fully formed listening addresses, including the tcp:// or unix:// prefix")
-		protocol = rpctypes.SocketType(remoteAddr)
+		protocol = types.SocketType(remoteAddr)
 		address = remoteAddr
 	} else {
 		protocol, address = parts[0], parts[1]
@@ -73,7 +72,7 @@ func (c *ClientJSONRPC) Call(method string, params map[string]interface{}, resul
 
 func (c *ClientJSONRPC) call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
 	// Make request and get responseBytes
-	request := rpctypes.RPCRequest{
+	request := types.RPCRequest{
 		JSONRPC: "2.0",
 		Method:  method,
 		Params:  params,
@@ -144,7 +143,7 @@ func unmarshalResponseBytes(responseBytes []byte, result interface{}) (interface
 	// into the correct type
 	// log.Notice("response", "response", string(responseBytes))
 	var err error
-	response := &rpctypes.RPCResponse{}
+	response := &types.RPCResponse{}
 	err = json.Unmarshal(responseBytes, response)
 	if err != nil {
 		return nil, fmt.Errorf("Error unmarshalling rpc response: %v", err)
