@@ -118,6 +118,7 @@ BREAKING CHANGES:
 
 - removed `Client` empty interface
 - `ClientJSONRPC#Call` `params` argument became a map
+- rename `ClientURI` -> `URIClient`, `ClientJSONRPC` -> `JSONRPCClient`
 
 IMPROVEMENTS:
 
