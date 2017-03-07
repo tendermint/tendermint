@@ -12,7 +12,7 @@ import (
 	em "github.com/tendermint/tools/tm-monitor/eventmeter"
 )
 
-var version = "0.2.0"
+var version = "0.3.0.pre"
 
 var log = logger.New()
 
