@@ -67,10 +67,6 @@ func NewClientJSONRPC(remote string) *ClientJSONRPC {
 }
 
 func (c *ClientJSONRPC) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
-	return c.call(method, params, result)
-}
-
-func (c *ClientJSONRPC) call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
 	// Make request and get responseBytes
 	request := types.RPCRequest{
 		JSONRPC: "2.0",
@@ -114,10 +110,6 @@ func NewClientURI(remote string) *ClientURI {
 }
 
 func (c *ClientURI) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
-	return c.call(method, params, result)
-}
-
-func (c *ClientURI) call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
 	values, err := argsToURLValues(params)
 	if err != nil {
 		return nil, err
