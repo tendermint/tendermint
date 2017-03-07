@@ -11,12 +11,10 @@ checkout:
     - rm -rf $REPO
     - mkdir -p $HOME/.go_workspace/src/github.com/$CIRCLE_PROJECT_USERNAME
     - mv $HOME/$CIRCLE_PROJECT_REPONAME $REPO
-    # - git submodule sync
-    # - git submodule update --init # use submodules
 
 dependencies:
   override:
-    - "cd $REPO"
+    - "cd $REPO && make get_deps"
 
 test:
   override:

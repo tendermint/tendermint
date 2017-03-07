@@ -1,6 +1,6 @@
 PACKAGES=$(shell go list ./...)
 
-all: test
+all: get_deps test
 
 test:
 	@echo "--> Running go test --race"
