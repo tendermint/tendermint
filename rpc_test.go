@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"net/http"
+	"os/exec"
 	"testing"
 	"time"
 
@@ -13,8 +14,10 @@ import (
 
 // Client and Server should work over tcp or unix sockets
 const (
-	tcpAddr  = "tcp://0.0.0.0:46657"
-	unixAddr = "unix:///tmp/go-rpc.sock" // NOTE: must remove file for test to run again
+	tcpAddr = "tcp://0.0.0.0:46657"
+
+	unixSocket = "/tmp/go-rpc.sock"
+	unixAddr   = "unix:///tmp/go-rpc.sock"
 
 	websocketEndpoint = "/websocket/endpoint"
 )
@@ -43,6 +46,12 @@ func StatusResult(v string) (Result, error) {
 
 // launch unix and tcp servers
 func init() {
+	cmd := exec.Command("rm", "-f", unixSocket)
+	err := cmd.Start()
+	if err != nil {
+		panic(err)
+	}
+	err = cmd.Wait()
 
 	mux := http.NewServeMux()
 	server.RegisterRPCFuncs(mux, Routes)
