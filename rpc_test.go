@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/go-rpc/client"
-	"github.com/tendermint/go-rpc/server"
-	"github.com/tendermint/go-rpc/types"
-	"github.com/tendermint/go-wire"
+	rpcclient "github.com/tendermint/go-rpc/client"
+	rpcserver "github.com/tendermint/go-rpc/server"
+	rpctypes "github.com/tendermint/go-rpc/types"
+	wire "github.com/tendermint/go-wire"
 )
 
 // Client and Server should work over tcp or unix sockets
@@ -88,7 +88,9 @@ func testURI(t *testing.T, cl *rpcclient.ClientURI) {
 
 func testJSONRPC(t *testing.T, cl *rpcclient.ClientJSONRPC) {
 	val := "acbd"
-	params := []interface{}{val}
+	params := map[string]interface{}{
+		"arg": val,
+	}
 	var result Result
 	_, err := cl.Call("status", params, &result)
 	if err != nil {
@@ -102,7 +104,9 @@ func testJSONRPC(t *testing.T, cl *rpcclient.ClientJSONRPC) {
 
 func testWS(t *testing.T, cl *rpcclient.WSClient) {
 	val := "acbd"
-	params := []interface{}{val}
+	params := map[string]interface{}{
+		"arg": val,
+	}
 	err := cl.WriteJSON(rpctypes.RPCRequest{
 		JSONRPC: "2.0",
 		ID:      "",

@@ -3,7 +3,6 @@ package rpcclient
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -12,10 +11,15 @@ import (
 	"reflect"
 	"strings"
 
-	. "github.com/tendermint/go-common"
-	"github.com/tendermint/go-rpc/types"
-	"github.com/tendermint/go-wire"
+	// cmn "github.com/tendermint/go-common"
+	rpctypes "github.com/tendermint/go-rpc/types"
+	wire "github.com/tendermint/go-wire"
 )
+
+// HTTPClient is a common interface for ClientJSONRPC and ClientURI.
+type HTTPClient interface {
+	Call(method string, params []interface{}, result interface{}) (interface{}, error)
+}
 
 // TODO: Deprecate support for IP:PORT or /path/to/socket
 func makeHTTPDialer(remoteAddr string) (string, func(string, string) (net.Conn, error)) {
@@ -49,11 +53,6 @@ func makeHTTPClient(remoteAddr string) (string, *http.Client) {
 
 //------------------------------------------------------------------------------------
 
-type Client interface {
-}
-
-//------------------------------------------------------------------------------------
-
 // JSON rpc takes params as a slice
 type ClientJSONRPC struct {
 	address string
@@ -68,11 +67,11 @@ func NewClientJSONRPC(remote string) *ClientJSONRPC {
 	}
 }
 
-func (c *ClientJSONRPC) Call(method string, params []interface{}, result interface{}) (interface{}, error) {
+func (c *ClientJSONRPC) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
 	return c.call(method, params, result)
 }
 
-func (c *ClientJSONRPC) call(method string, params []interface{}, result interface{}) (interface{}, error) {
+func (c *ClientJSONRPC) call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
 	// Make request and get responseBytes
 	request := rpctypes.RPCRequest{
 		JSONRPC: "2.0",
@@ -80,7 +79,10 @@ func (c *ClientJSONRPC) call(method string, params []interface{}, result interfa
 		Params:  params,
 		ID:      "",
 	}
-	requestBytes := wire.JSONBytes(request)
+	requestBytes, err := json.Marshal(request)
+	if err != nil {
+		return nil, err
+	}
 	requestBuf := bytes.NewBuffer(requestBytes)
 	// log.Info(Fmt("RPC request to %v (%v): %v", c.remote, method, string(requestBytes)))
 	httpResponse, err := c.client.Post(c.address, "text/json", requestBuf)
@@ -145,16 +147,16 @@ func unmarshalResponseBytes(responseBytes []byte, result interface{}) (interface
 	response := &rpctypes.RPCResponse{}
 	err = json.Unmarshal(responseBytes, response)
 	if err != nil {
-		return nil, errors.New(Fmt("Error unmarshalling rpc response: %v", err))
+		return nil, fmt.Errorf("Error unmarshalling rpc response: %v", err)
 	}
 	errorStr := response.Error
 	if errorStr != "" {
-		return nil, errors.New(Fmt("Response error: %v", errorStr))
+		return nil, fmt.Errorf("Response error: %v", errorStr)
 	}
 	// unmarshal the RawMessage into the result
 	result = wire.ReadJSONPtr(result, *response.Result, &err)
 	if err != nil {
-		return nil, errors.New(Fmt("Error unmarshalling rpc response result: %v", err))
+		return nil, fmt.Errorf("Error unmarshalling rpc response result: %v", err)
 	}
 	return result, nil
 }

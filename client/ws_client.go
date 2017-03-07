@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	. "github.com/tendermint/go-common"
-	"github.com/tendermint/go-rpc/types"
+	cmn "github.com/tendermint/go-common"
+	rpctypes "github.com/tendermint/go-rpc/types"
 )
 
 const (
@@ -19,7 +19,7 @@ const (
 )
 
 type WSClient struct {
-	BaseService
+	cmn.BaseService
 	Address  string // IP:PORT or /path/to/socket
 	Endpoint string // /websocket/url/endpoint
 	Dialer   func(string, string) (net.Conn, error)
@@ -39,7 +39,7 @@ func NewWSClient(remoteAddr, endpoint string) *WSClient {
 		ResultsCh: make(chan json.RawMessage, wsResultsChannelCapacity),
 		ErrorsCh:  make(chan error, wsErrorsChannelCapacity),
 	}
-	wsClient.BaseService = *NewBaseService(log, "WSClient", wsClient)
+	wsClient.BaseService = *cmn.NewBaseService(log, "WSClient", wsClient)
 	return wsClient
 }
 
@@ -122,7 +122,7 @@ func (wsc *WSClient) Subscribe(eventid string) error {
 		JSONRPC: "2.0",
 		ID:      "",
 		Method:  "subscribe",
-		Params:  []interface{}{eventid},
+		Params:  map[string]interface{}{"event": eventid},
 	})
 	return err
 }
@@ -133,7 +133,7 @@ func (wsc *WSClient) Unsubscribe(eventid string) error {
 		JSONRPC: "2.0",
 		ID:      "",
 		Method:  "unsubscribe",
-		Params:  []interface{}{eventid},
+		Params:  map[string]interface{}{"event": eventid},
 	})
 	return err
 }

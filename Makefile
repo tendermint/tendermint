@@ -1,9 +1,15 @@
-.PHONY: all test get_deps
+PACKAGES=$(shell go list ./...)
 
 all: test
 
-test: 
-	bash ./test/test.sh
+test:
+	@echo "--> Running go test --race"
+	@go test --race $(PACKAGES)
+	@echo "--> Running integration tests"
+	@bash ./test/integration_test.sh
 
 get_deps:
-	go get -t -u github.com/tendermint/go-rpc/...
+	@echo "--> Running go get"
+	@go get -v -d $(PACKAGES)
+
+.PHONY: all test get_deps
