@@ -9,6 +9,7 @@ import (
 	cmn "github.com/tendermint/go-common"
 	logger "github.com/tendermint/go-logger"
 	log15 "github.com/tendermint/log15"
+	em "github.com/tendermint/tools/tm-monitor/eventmeter"
 )
 
 var version = "0.2.0"
@@ -98,6 +99,7 @@ func logToStdout(verbose bool) {
 			logger.BypassHandler(),
 		))
 	}
+	em.Log = log
 }
 
 func logToFile(filename string, verbose bool) {
@@ -112,4 +114,5 @@ func logToFile(filename string, verbose bool) {
 			log15.Must.FileHandler(filename, log15.LogfmtFormat()),
 		))
 	}
+	em.Log = log
 }

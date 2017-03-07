@@ -4,8 +4,8 @@ import (
 	"log"
 	"reflect"
 
-	em "github.com/tendermint/go-event-meter"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	em "github.com/tendermint/tools/tm-monitor/eventmeter"
 )
 
 type EventMeter struct {
@@ -14,8 +14,8 @@ type EventMeter struct {
 	eventCallback      em.EventCallbackFunc
 }
 
-func (e *EventMeter) Start() (bool, error)                              { return true, nil }
-func (e *EventMeter) Stop() bool                                        { return true }
+func (e *EventMeter) Start() error                                      { return nil }
+func (e *EventMeter) Stop()                                             {}
 func (e *EventMeter) RegisterLatencyCallback(cb em.LatencyCallbackFunc) { e.latencyCallback = cb }
 func (e *EventMeter) RegisterDisconnectCallback(cb em.DisconnectCallbackFunc) {
 	e.disconnectCallback = cb

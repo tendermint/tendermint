@@ -1,7 +1,6 @@
 package: github.com/tendermint/tools/tm-monitor
 import:
 - package: github.com/tendermint/go-common
-- package: github.com/tendermint/go-event-meter
 - package: github.com/tendermint/go-events
 - package: github.com/tendermint/go-logger
 - package: github.com/tendermint/tendermint
@@ -12,3 +11,8 @@ import:
 - package: github.com/rcrowley/go-metrics
 - package: github.com/stretchr/testify
 - package: github.com/tendermint/go-crypto
+- package: github.com/gorilla/websocket
+- package: github.com/tendermint/go-rpc
+  subpackages:
+  - client
+- package: github.com/tendermint/log15

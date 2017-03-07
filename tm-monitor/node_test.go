@@ -7,10 +7,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	crypto "github.com/tendermint/go-crypto"
-	em "github.com/tendermint/go-event-meter"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	tmtypes "github.com/tendermint/tendermint/types"
 	monitor "github.com/tendermint/tools/tm-monitor"
+	em "github.com/tendermint/tools/tm-monitor/eventmeter"
 	mock "github.com/tendermint/tools/tm-monitor/mock"
 )
 

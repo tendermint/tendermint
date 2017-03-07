@@ -1,5 +1,5 @@
-hash: 9b2cdc3f80ccebf7154884c8466b1f2c0cb3e8b7f583baa732d49d671e83fe33
-updated: 2017-03-02T08:52:42.063901822Z
+hash: 3315dcf12e2554e2927f2a0907f2547cd86d5c8926461d055662a7bee88caa4a
+updated: 2017-03-07T08:38:45.613512657Z
 imports:
 - name: github.com/btcsuite/btcd
   version: 583684b21bfbde9b5fc4403916fd7c807feb0289
@@ -16,7 +16,7 @@ imports:
 - name: github.com/golang/snappy
   version: 553a641470496b2327abcac10b36396bd98e45c9
 - name: github.com/gorilla/websocket
-  version: 4873052237e4eeda85cf50c071ef33836fe8e139
+  version: 3ab3a8b8831546bd18fd182c20687ca853b2bb13
 - name: github.com/jmhodges/levigo
   version: c42d9e0ca023e2198120196f842701bb4c55d7b9
 - name: github.com/mattn/go-colorable
@@ -62,8 +62,6 @@ imports:
   version: 4b11d62bdb324027ea01554e5767b71174680ba0
 - name: github.com/tendermint/go-db
   version: 72f6dacd22a686cdf7fcd60286503e3aceda77ba
-- name: github.com/tendermint/go-event-meter
-  version: c9240a51209b7afbfc9270faac841e3cb033a4d9
 - name: github.com/tendermint/go-events
   version: fddee66d90305fccb6f6d84d16c34fa65ea5b7f6
 - name: github.com/tendermint/go-flowrate
