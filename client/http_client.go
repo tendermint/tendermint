@@ -17,7 +17,7 @@ import (
 
 // HTTPClient is a common interface for ClientJSONRPC and ClientURI.
 type HTTPClient interface {
-	Call(method string, params []interface{}, result interface{}) (interface{}, error)
+	Call(method string, params map[string]interface{}, result interface{}) (interface{}, error)
 }
 
 // TODO: Deprecate support for IP:PORT or /path/to/socket
