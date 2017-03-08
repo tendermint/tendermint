@@ -28,6 +28,7 @@ if [[ "$R1" != "$R2" ]]; then
 	echo "responses are not identical:"
 	echo "R1: $R1"
 	echo "R2: $R2"
+	echo "FAIL"
 	exit 1
 else
 	echo "OK"
@@ -40,18 +41,33 @@ if [[ "$R1" != "$R2" ]]; then
 	echo "responses are not identical:"
 	echo "R1: $R1"
 	echo "R2: $R2"
+	echo "FAIL"
 	exit 1
 else
 	echo "OK"
 fi
 
-# request with unquoted string arg
+echo "==> request with missing params"
+R1=$(curl -s 'http://localhost:8008/hello_world')
+R2='{"jsonrpc":"2.0","id":"","result":{"Result":"hi  0"},"error":""}'
+if [[ "$R1" != "$R2" ]]; then
+  echo "responses are not identical:"
+  echo "R1: $R1"
+  echo "R2: $R2"
+	echo "FAIL"
+  exit 1
+else
+  echo "OK"
+fi
+
+echo "==> request with unquoted string arg"
 R1=$(curl -s 'http://localhost:8008/hello_world?name=abcd&num=123')
 R2="{\"jsonrpc\":\"2.0\",\"id\":\"\",\"result\":null,\"error\":\"Error converting http params to args: invalid character 'a' looking for beginning of value\"}"
 if [[ "$R1" != "$R2" ]]; then
 	echo "responses are not identical:"
 	echo "R1: $R1"
 	echo "R2: $R2"
+	echo "FAIL"
 	exit 1
 else
 	echo "OK"
@@ -64,6 +80,7 @@ if [[ "$R1" != "$R2" ]]; then
 	echo "responses are not identical:"
 	echo "R1: $R1"
 	echo "R2: $R2"
+	echo "FAIL"
 	exit 1
 else
 	echo "OK"

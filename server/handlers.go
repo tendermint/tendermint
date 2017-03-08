@@ -141,20 +141,20 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc) http.HandlerFunc {
 
 // Convert a list of interfaces to properly typed values
 func jsonParamsToArgs(rpcFunc *RPCFunc, params map[string]interface{}) ([]reflect.Value, error) {
-	if len(rpcFunc.argNames) != len(params) {
-		return nil, fmt.Errorf("Expected %v parameters (%v), got %v (%v)",
-			len(rpcFunc.argNames), rpcFunc.argNames, len(params), params)
-	}
+	values := make([]reflect.Value, len(rpcFunc.args))
 
-	values := make([]reflect.Value, len(params))
+	// fill each value with default
+	for i, argType := range rpcFunc.args {
+		values[i] = reflect.Zero(argType)
+	}
 
 	for name, param := range params {
 		i := indexOf(name, rpcFunc.argNames)
 		if -1 == i {
 			return nil, fmt.Errorf("%s is not an argument (args: %v)", name, rpcFunc.argNames)
 		}
-		ty := rpcFunc.args[i]
-		v, err := _jsonObjectToArg(ty, param)
+		argType := rpcFunc.args[i]
+		v, err := _jsonObjectToArg(argType, param)
 		if err != nil {
 			return nil, err
 		}
@@ -176,21 +176,21 @@ func indexOf(value string, values []string) int {
 
 // Same as above, but with the first param the websocket connection
 func jsonParamsToArgsWS(rpcFunc *RPCFunc, params map[string]interface{}, wsCtx types.WSRPCContext) ([]reflect.Value, error) {
-	if len(rpcFunc.argNames) != len(params) {
-		return nil, fmt.Errorf("Expected %v parameters (%v), got %v (%v)",
-			len(rpcFunc.argNames)-1, rpcFunc.argNames[1:], len(params), params)
-	}
-
-	values := make([]reflect.Value, len(params)+1)
+	values := make([]reflect.Value, len(rpcFunc.args))
 	values[0] = reflect.ValueOf(wsCtx)
+
+	// fill each value with default
+	for i, argType := range rpcFunc.args {
+		values[i+1] = reflect.Zero(argType)
+	}
 
 	for name, param := range params {
 		i := indexOf(name, rpcFunc.argNames)
 		if -1 == i {
 			return nil, fmt.Errorf("%s is not an argument (args: %v)", name, rpcFunc.argNames)
 		}
-		ty := rpcFunc.args[i+1]
-		v, err := _jsonObjectToArg(ty, param)
+		argType := rpcFunc.args[i+1]
+		v, err := _jsonObjectToArg(argType, param)
 		if err != nil {
 			return nil, err
 		}
@@ -245,16 +245,23 @@ func makeHTTPHandler(rpcFunc *RPCFunc) func(http.ResponseWriter, *http.Request) 
 // Covert an http query to a list of properly typed values.
 // To be properly decoded the arg must be a concrete type from tendermint (if its an interface).
 func httpParamsToArgs(rpcFunc *RPCFunc, r *http.Request) ([]reflect.Value, error) {
-	argTypes := rpcFunc.args
-	argNames := rpcFunc.argNames
+	values := make([]reflect.Value, len(rpcFunc.args))
 
-	values := make([]reflect.Value, len(argNames))
-	for i, name := range argNames {
-		ty := argTypes[i]
+	// fill each value with default
+	for i, argType := range rpcFunc.args {
+		values[i] = reflect.Zero(argType)
+	}
+
+	for i, name := range rpcFunc.argNames {
+		argType := rpcFunc.args[i]
 		arg := GetParam(r, name)
-		// log.Notice("param to arg", "ty", ty, "name", name, "arg", arg)
+		// log.Notice("param to arg", "argType", argType, "name", name, "arg", arg)
 
-		v, err, ok := nonJsonToArg(ty, arg)
+		if "" == arg {
+			continue
+		}
+
+		v, err, ok := nonJsonToArg(argType, arg)
 		if err != nil {
 			return nil, err
 		}
@@ -264,11 +271,12 @@ func httpParamsToArgs(rpcFunc *RPCFunc, r *http.Request) ([]reflect.Value, error
 		}
 
 		// Pass values to go-wire
-		values[i], err = _jsonStringToArg(ty, arg)
+		values[i], err = _jsonStringToArg(argType, arg)
 		if err != nil {
 			return nil, err
 		}
 	}
+
 	return values, nil
 }
 
