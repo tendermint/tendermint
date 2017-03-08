@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
+	rpcserver "../server"
 	cmn "github.com/tendermint/go-common"
-	rpcserver "github.com/tendermint/go-rpc/server"
 )
 
 var routes = map[string]*rpcserver.RPCFunc{

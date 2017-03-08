@@ -1,4 +1,4 @@
-PACKAGES=$(shell go list ./...)
+PACKAGES=$(shell go list ./... | grep -v "test")
 
 all: get_deps test
 
