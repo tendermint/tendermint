@@ -5,7 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 	events "github.com/tendermint/go-events"
-	"github.com/tendermint/go-rpc/client"
+	rpcclient "github.com/tendermint/go-rpc/client"
 	wire "github.com/tendermint/go-wire"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
@@ -22,7 +22,7 @@ out the server for test code (mock).
 */
 type HTTP struct {
 	remote string
-	rpc    *rpcclient.ClientJSONRPC
+	rpc    *rpcclient.JSONRPCClient
 	*WSEvents
 }
 
@@ -30,7 +30,7 @@ type HTTP struct {
 // and the websocket path (which always seems to be "/websocket")
 func NewHTTP(remote, wsEndpoint string) *HTTP {
 	return &HTTP{
-		rpc:      rpcclient.NewClientJSONRPC(remote),
+		rpc:      rpcclient.NewJSONRPCClient(remote),
 		remote:   remote,
 		WSEvents: newWSEvents(remote, wsEndpoint),
 	}
@@ -50,7 +50,7 @@ func (c *HTTP) _assertIsEventSwitch() types.EventSwitch {
 
 func (c *HTTP) Status() (*ctypes.ResultStatus, error) {
 	tmResult := new(ctypes.TMResult)
-	_, err := c.rpc.Call("status", []interface{}{}, tmResult)
+	_, err := c.rpc.Call("status", map[string]interface{}{}, tmResult)
 	if err != nil {
 		return nil, errors.Wrap(err, "Status")
 	}
@@ -60,7 +60,7 @@ func (c *HTTP) Status() (*ctypes.ResultStatus, error) {
 
 func (c *HTTP) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	tmResult := new(ctypes.TMResult)
-	_, err := c.rpc.Call("abci_info", []interface{}{}, tmResult)
+	_, err := c.rpc.Call("abci_info", map[string]interface{}{}, tmResult)
 	if err != nil {
 		return nil, errors.Wrap(err, "ABCIInfo")
 	}
@@ -69,7 +69,7 @@ func (c *HTTP) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 
 func (c *HTTP) ABCIQuery(path string, data []byte, prove bool) (*ctypes.ResultABCIQuery, error) {
 	tmResult := new(ctypes.TMResult)
-	_, err := c.rpc.Call("abci_query", []interface{}{path, data, prove}, tmResult)
+	_, err := c.rpc.Call("abci_query", map[string]interface{}{"path": path, "data": data, "prove": prove}, tmResult)
 	if err != nil {
 		return nil, errors.Wrap(err, "ABCIQuery")
 	}
@@ -78,7 +78,7 @@ func (c *HTTP) ABCIQuery(path string, data []byte, prove bool) (*ctypes.ResultAB
 
 func (c *HTTP) BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	tmResult := new(ctypes.TMResult)
-	_, err := c.rpc.Call("broadcast_tx_commit", []interface{}{tx}, tmResult)
+	_, err := c.rpc.Call("broadcast_tx_commit", map[string]interface{}{"tx": tx}, tmResult)
 	if err != nil {
 		return nil, errors.Wrap(err, "broadcast_tx_commit")
 	}
@@ -95,7 +95,7 @@ func (c *HTTP) BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 
 func (c *HTTP) broadcastTX(route string, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	tmResult := new(ctypes.TMResult)
-	_, err := c.rpc.Call(route, []interface{}{tx}, tmResult)
+	_, err := c.rpc.Call(route, map[string]interface{}{"tx": tx}, tmResult)
 	if err != nil {
 		return nil, errors.Wrap(err, route)
 	}
@@ -122,7 +122,7 @@ func (c *HTTP) DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
 
 func (c *HTTP) BlockchainInfo(minHeight, maxHeight int) (*ctypes.ResultBlockchainInfo, error) {
 	tmResult := new(ctypes.TMResult)
-	_, err := c.rpc.Call("blockchain", []interface{}{minHeight, maxHeight}, tmResult)
+	_, err := c.rpc.Call("blockchain", map[string]interface{}{"minHeight": minHeight, "maxHeight": maxHeight}, tmResult)
 	if err != nil {
 		return nil, errors.Wrap(err, "BlockchainInfo")
 	}
@@ -140,7 +140,7 @@ func (c *HTTP) Genesis() (*ctypes.ResultGenesis, error) {
 
 func (c *HTTP) Block(height int) (*ctypes.ResultBlock, error) {
 	tmResult := new(ctypes.TMResult)
-	_, err := c.rpc.Call("block", []interface{}{height}, tmResult)
+	_, err := c.rpc.Call("block", map[string]interface{}{"height": height}, tmResult)
 	if err != nil {
 		return nil, errors.Wrap(err, "Block")
 	}
@@ -149,7 +149,7 @@ func (c *HTTP) Block(height int) (*ctypes.ResultBlock, error) {
 
 func (c *HTTP) Commit(height int) (*ctypes.ResultCommit, error) {
 	tmResult := new(ctypes.TMResult)
-	_, err := c.rpc.Call("commit", []interface{}{height}, tmResult)
+	_, err := c.rpc.Call("commit", map[string]interface{}{"height": height}, tmResult)
 	if err != nil {
 		return nil, errors.Wrap(err, "Commit")
 	}
