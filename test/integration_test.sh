@@ -15,7 +15,7 @@ go build -o rpcserver main.go
 echo "==> (Re)starting the server"
 PID=$(pgrep rpcserver || echo "")
 if [[ $PID != "" ]]; then
-  kill -9 "$PID"
+	kill -9 "$PID"
 fi
 ./rpcserver &
 PID=$!
@@ -51,13 +51,13 @@ echo "==> request with missing params"
 R1=$(curl -s 'http://localhost:8008/hello_world')
 R2='{"jsonrpc":"2.0","id":"","result":{"Result":"hi  0"},"error":""}'
 if [[ "$R1" != "$R2" ]]; then
-  echo "responses are not identical:"
-  echo "R1: $R1"
-  echo "R2: $R2"
+	echo "responses are not identical:"
+	echo "R1: $R1"
+	echo "R2: $R2"
 	echo "FAIL"
-  exit 1
+	exit 1
 else
-  echo "OK"
+	echo "OK"
 fi
 
 echo "==> request with unquoted string arg"
