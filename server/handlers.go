@@ -176,7 +176,7 @@ func indexOf(value string, values []string) int {
 
 // Same as above, but with the first param the websocket connection
 func jsonParamsToArgsWS(rpcFunc *RPCFunc, params map[string]interface{}, wsCtx types.WSRPCContext) ([]reflect.Value, error) {
-	values := make([]reflect.Value, len(rpcFunc.args))
+	values := make([]reflect.Value, len(rpcFunc.args)+1)
 	values[0] = reflect.ValueOf(wsCtx)
 
 	// fill each value with default
@@ -189,7 +189,7 @@ func jsonParamsToArgsWS(rpcFunc *RPCFunc, params map[string]interface{}, wsCtx t
 		if -1 == i {
 			return nil, fmt.Errorf("%s is not an argument (args: %v)", name, rpcFunc.argNames)
 		}
-		argType := rpcFunc.args[i+1]
+		argType := rpcFunc.args[i]
 		v, err := _jsonObjectToArg(argType, param)
 		if err != nil {
 			return nil, err
