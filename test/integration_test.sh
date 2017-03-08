@@ -9,12 +9,19 @@ DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 # Change into that dir because we expect that.
 pushd "$DIR"
 
-go build -o server main.go
-./server > /dev/null &
+echo "==> Building the server"
+go build -o rpcserver main.go
+
+echo "==> (Re)starting the server"
+PID=$(pgrep rpcserver || echo "")
+if [[ $PID != "" ]]; then
+  kill -9 "$PID"
+fi
+./rpcserver &
 PID=$!
 sleep 2
 
-# simple request
+echo "==> simple request"
 R1=$(curl -s 'http://localhost:8008/hello_world?name="my_world"&num=5')
 R2=$(curl -s --data @data.json http://localhost:8008)
 if [[ "$R1" != "$R2" ]]; then
@@ -23,10 +30,10 @@ if [[ "$R1" != "$R2" ]]; then
 	echo "R2: $R2"
 	exit 1
 else
-	echo "Success"
+	echo "OK"
 fi
 
-# request with 0x-prefixed hex string arg
+echo "==> request with 0x-prefixed hex string arg"
 R1=$(curl -s 'http://localhost:8008/hello_world?name=0x41424344&num=123')
 R2='{"jsonrpc":"2.0","id":"","result":{"Result":"hi ABCD 123"},"error":""}'
 if [[ "$R1" != "$R2" ]]; then
@@ -35,7 +42,7 @@ if [[ "$R1" != "$R2" ]]; then
 	echo "R2: $R2"
 	exit 1
 else
-	echo "Success"
+	echo "OK"
 fi
 
 # request with unquoted string arg
@@ -47,10 +54,10 @@ if [[ "$R1" != "$R2" ]]; then
 	echo "R2: $R2"
 	exit 1
 else
-	echo "Success"
+	echo "OK"
 fi
 
-# request with string type when expecting number arg
+echo "==> request with string type when expecting number arg"
 R1=$(curl -s 'http://localhost:8008/hello_world?name="abcd"&num=0xabcd')
 R2="{\"jsonrpc\":\"2.0\",\"id\":\"\",\"result\":null,\"error\":\"Error converting http params to args: Got a hex string arg, but expected 'int'\"}"
 if [[ "$R1" != "$R2" ]]; then
@@ -59,8 +66,13 @@ if [[ "$R1" != "$R2" ]]; then
 	echo "R2: $R2"
 	exit 1
 else
-	echo "Success"
+	echo "OK"
 fi
 
-kill -9 $PID || exit 0
+echo "==> Stopping the server"
+kill -9 $PID
+
+rm -f rpcserver
+
 popd
+exit 0
