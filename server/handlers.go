@@ -123,7 +123,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc) http.HandlerFunc {
 			WriteRPCResponseHTTP(w, types.NewRPCResponse(request.ID, nil, "RPC method is only for websockets: "+request.Method))
 			return
 		}
-		args, err := jsonParamsToArgs(rpcFunc, request.Params)
+		args, err := jsonParamsToArgs(rpcFunc, request.Params, 0)
 		if err != nil {
 			WriteRPCResponseHTTP(w, types.NewRPCResponse(request.ID, nil, fmt.Sprintf("Error converting json params to arguments: %v", err.Error())))
 			return
@@ -140,11 +140,16 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc) http.HandlerFunc {
 }
 
 // Convert a list of interfaces to properly typed values
-func jsonParamsToArgs(rpcFunc *RPCFunc, params map[string]interface{}) ([]reflect.Value, error) {
-	values := make([]reflect.Value, len(rpcFunc.args))
+//
+// argsOffset is used in jsonParamsToArgsWS, where len(rpcFunc.args) != len(rpcFunc.argNames).
+// Example:
+//   rpcFunc.args = [rpctypes.WSRPCContext string]
+//   rpcFunc.argNames = ["arg"]
+func jsonParamsToArgs(rpcFunc *RPCFunc, params map[string]interface{}, argsOffset int) ([]reflect.Value, error) {
+	values := make([]reflect.Value, len(rpcFunc.argNames))
 
 	for i, argName := range rpcFunc.argNames {
-		argType := rpcFunc.args[i]
+		argType := rpcFunc.args[i+argsOffset]
 
 		// decode param if provided
 		if param, ok := params[argName]; ok && "" != param {
@@ -163,7 +168,7 @@ func jsonParamsToArgs(rpcFunc *RPCFunc, params map[string]interface{}) ([]reflec
 
 // Same as above, but with the first param the websocket connection
 func jsonParamsToArgsWS(rpcFunc *RPCFunc, params map[string]interface{}, wsCtx types.WSRPCContext) ([]reflect.Value, error) {
-	values, err := jsonParamsToArgs(rpcFunc, params)
+	values, err := jsonParamsToArgs(rpcFunc, params, 1)
 	if err != nil {
 		return nil, err
 	}
@@ -463,7 +468,7 @@ func (wsc *wsConnection) readRoutine() {
 				wsCtx := types.WSRPCContext{Request: request, WSRPCConnection: wsc}
 				args, err = jsonParamsToArgsWS(rpcFunc, request.Params, wsCtx)
 			} else {
-				args, err = jsonParamsToArgs(rpcFunc, request.Params)
+				args, err = jsonParamsToArgs(rpcFunc, request.Params, 0)
 			}
 			if err != nil {
 				wsc.WriteRPCResponse(types.NewRPCResponse(request.ID, nil, err.Error()))

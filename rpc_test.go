@@ -44,12 +44,17 @@ var _ = wire.RegisterInterface(
 
 // Define some routes
 var Routes = map[string]*server.RPCFunc{
-	"status": server.NewRPCFunc(StatusResult, "arg"),
-	"bytes":  server.NewRPCFunc(BytesResult, "arg"),
+	"status":    server.NewRPCFunc(StatusResult, "arg"),
+	"status_ws": server.NewWSRPCFunc(StatusWSResult, "arg"),
+	"bytes":     server.NewRPCFunc(BytesResult, "arg"),
 }
 
 // an rpc function
 func StatusResult(v string) (Result, error) {
+	return &ResultStatus{v}, nil
+}
+
+func StatusWSResult(wsCtx types.WSRPCContext, v string) (Result, error) {
 	return &ResultStatus{v}, nil
 }
 
@@ -257,5 +262,43 @@ func TestByteSliceViaJSONRPC(t *testing.T) {
 	got := result.(*ResultBytes).Value
 	if bytes.Compare(got, val) != 0 {
 		t.Fatalf("Got: %v   ....   Expected: %v \n", got, val)
+	}
+}
+
+func TestWSNewWSRPCFunc(t *testing.T) {
+	cl := client.NewWSClient(unixAddr, websocketEndpoint)
+	_, err := cl.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cl.Stop()
+
+	val := "acbd"
+	params := map[string]interface{}{
+		"arg": val,
+	}
+	err = cl.WriteJSON(types.RPCRequest{
+		JSONRPC: "2.0",
+		ID:      "",
+		Method:  "status_ws",
+		Params:  params,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case msg := <-cl.ResultsCh:
+		result := new(Result)
+		wire.ReadJSONPtr(result, msg, &err)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := (*result).(*ResultStatus).Value
+		if got != val {
+			t.Fatalf("Got: %v   ....   Expected: %v \n", got, val)
+		}
+	case err := <-cl.ErrorsCh:
+		t.Fatal(err)
 	}
 }
