@@ -1,6 +1,9 @@
 package rpc
 
 import (
+	"bytes"
+	crand "crypto/rand"
+	"math/rand"
 	"net/http"
 	"os/exec"
 	"testing"
@@ -29,19 +32,29 @@ type ResultStatus struct {
 	Value string
 }
 
+type ResultBytes struct {
+	Value []byte
+}
+
 var _ = wire.RegisterInterface(
 	struct{ Result }{},
 	wire.ConcreteType{&ResultStatus{}, 0x1},
+	wire.ConcreteType{&ResultBytes{}, 0x2},
 )
 
 // Define some routes
 var Routes = map[string]*server.RPCFunc{
 	"status": server.NewRPCFunc(StatusResult, "arg"),
+	"bytes":  server.NewRPCFunc(BytesResult, "arg"),
 }
 
 // an rpc function
 func StatusResult(v string) (Result, error) {
 	return &ResultStatus{v}, nil
+}
+
+func BytesResult(v []byte) (Result, error) {
+	return &ResultBytes{v}, nil
 }
 
 // launch unix and tcp servers
@@ -211,6 +224,34 @@ func TestQuotedStringArg(t *testing.T) {
 	}
 	got := result.(*ResultStatus).Value
 	if got != val {
+		t.Fatalf("Got: %v   ....   Expected: %v \n", got, val)
+	}
+}
+
+func randBytes(t *testing.T) []byte {
+	n := rand.Intn(10) + 2
+	buf := make([]byte, n)
+	_, err := crand.Read(buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return bytes.Replace(buf, []byte("="), []byte{100}, -1)
+}
+
+func TestByteSliceViaJSONRPC(t *testing.T) {
+	cl := client.NewClientJSONRPC(unixAddr)
+
+	val := randBytes(t)
+	params := map[string]interface{}{
+		"arg": val,
+	}
+	var result Result
+	_, err := cl.Call("bytes", params, &result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := result.(*ResultBytes).Value
+	if bytes.Compare(got, val) != 0 {
 		t.Fatalf("Got: %v   ....   Expected: %v \n", got, val)
 	}
 }
