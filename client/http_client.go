@@ -72,7 +72,9 @@ func (c *ClientJSONRPC) Call(method string, params map[string]interface{}, resul
 	// (handlers.go:176) on the server side
 	encodedParams := make(map[string]interface{})
 	for k, v := range params {
-		encodedParams[k] = json.RawMessage(wire.JSONBytes(v))
+		// log.Printf("%s: %v (%s)\n", k, v, string(wire.JSONBytes(v)))
+		bytes := json.RawMessage(wire.JSONBytes(v))
+		encodedParams[k] = &bytes
 	}
 	request := types.RPCRequest{
 		JSONRPC: "2.0",
@@ -84,6 +86,7 @@ func (c *ClientJSONRPC) Call(method string, params map[string]interface{}, resul
 	if err != nil {
 		return nil, err
 	}
+	// log.Info(string(requestBytes))
 	requestBuf := bytes.NewBuffer(requestBytes)
 	// log.Info(Fmt("RPC request to %v (%v): %v", c.remote, method, string(requestBytes)))
 	httpResponse, err := c.client.Post(c.address, "text/json", requestBuf)
