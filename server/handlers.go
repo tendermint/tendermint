@@ -143,61 +143,31 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc) http.HandlerFunc {
 func jsonParamsToArgs(rpcFunc *RPCFunc, params map[string]interface{}) ([]reflect.Value, error) {
 	values := make([]reflect.Value, len(rpcFunc.args))
 
-	// fill each value with default
-	for i, argType := range rpcFunc.args {
-		values[i] = reflect.Zero(argType)
-	}
-
-	for name, param := range params {
-		i := indexOf(name, rpcFunc.argNames)
-		if -1 == i {
-			return nil, fmt.Errorf("%s is not an argument (args: %v)", name, rpcFunc.argNames)
-		}
+	for i, argName := range rpcFunc.argNames {
 		argType := rpcFunc.args[i]
-		v, err := _jsonObjectToArg(argType, param)
-		if err != nil {
-			return nil, err
+
+		// decode param if provided
+		if param, ok := params[argName]; ok && "" != param {
+			v, err := _jsonObjectToArg(argType, param)
+			if err != nil {
+				return nil, err
+			}
+			values[i] = v
+		} else { // use default for that type
+			values[i] = reflect.Zero(argType)
 		}
-		values[i] = v
 	}
 
 	return values, nil
-}
-
-// indexOf returns index of a string in a slice of strings, -1 if not found.
-func indexOf(value string, values []string) int {
-	for i, v := range values {
-		if v == value {
-			return i
-		}
-	}
-	return -1
 }
 
 // Same as above, but with the first param the websocket connection
 func jsonParamsToArgsWS(rpcFunc *RPCFunc, params map[string]interface{}, wsCtx types.WSRPCContext) ([]reflect.Value, error) {
-	values := make([]reflect.Value, len(rpcFunc.args)+1)
-	values[0] = reflect.ValueOf(wsCtx)
-
-	// fill each value with default
-	for i, argType := range rpcFunc.args {
-		values[i+1] = reflect.Zero(argType)
+	values, err := jsonParamsToArgs(rpcFunc, params)
+	if err != nil {
+		return nil, err
 	}
-
-	for name, param := range params {
-		i := indexOf(name, rpcFunc.argNames)
-		if -1 == i {
-			return nil, fmt.Errorf("%s is not an argument (args: %v)", name, rpcFunc.argNames)
-		}
-		argType := rpcFunc.args[i]
-		v, err := _jsonObjectToArg(argType, param)
-		if err != nil {
-			return nil, err
-		}
-		values[i+1] = v
-	}
-
-	return values, nil
+	return append([]reflect.Value{reflect.ValueOf(wsCtx)}, values...), nil
 }
 
 func _jsonObjectToArg(ty reflect.Type, object interface{}) (reflect.Value, error) {
@@ -247,13 +217,11 @@ func makeHTTPHandler(rpcFunc *RPCFunc) func(http.ResponseWriter, *http.Request) 
 func httpParamsToArgs(rpcFunc *RPCFunc, r *http.Request) ([]reflect.Value, error) {
 	values := make([]reflect.Value, len(rpcFunc.args))
 
-	// fill each value with default
-	for i, argType := range rpcFunc.args {
-		values[i] = reflect.Zero(argType)
-	}
-
 	for i, name := range rpcFunc.argNames {
 		argType := rpcFunc.args[i]
+
+		values[i] = reflect.Zero(argType) // set default for that type
+
 		arg := GetParam(r, name)
 		// log.Notice("param to arg", "argType", argType, "name", name, "arg", arg)
 
