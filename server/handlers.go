@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/pkg/errors"
 	cmn "github.com/tendermint/go-common"
 	events "github.com/tendermint/go-events"
 	types "github.com/tendermint/go-rpc/types"
@@ -272,7 +273,7 @@ func nonJsonToArg(ty reflect.Type, arg string) (reflect.Value, error, bool) {
 
 	if isHexString {
 		if !expectingString && !expectingByteSlice {
-			err := fmt.Errorf("Got a hex string arg, but expected '%s'",
+			err := errors.Errorf("Got a hex string arg, but expected '%s'",
 				ty.Kind().String())
 			return reflect.ValueOf(nil), err, false
 		}
@@ -567,7 +568,7 @@ func (wm *WebsocketManager) WebsocketHandler(w http.ResponseWriter, r *http.Requ
 func unreflectResult(returns []reflect.Value) (interface{}, error) {
 	errV := returns[1]
 	if errV.Interface() != nil {
-		return nil, fmt.Errorf("%v", errV.Interface())
+		return nil, errors.Errorf("%v", errV.Interface())
 	}
 	rv := returns[0]
 	// the result is a registered interface,

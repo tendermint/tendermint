@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	types "github.com/tendermint/go-rpc/types"
 )
 
@@ -24,7 +25,7 @@ func StartHTTPServer(listenAddr string, handler http.Handler) (listener net.List
 		// TODO: Deprecate
 		proto = types.SocketType(listenAddr)
 		addr = listenAddr
-		// return nil, fmt.Errorf("Invalid listener address %s", lisenAddr)
+		// return nil, errors.Errorf("Invalid listener address %s", lisenAddr)
 	} else {
 		proto, addr = parts[0], parts[1]
 	}
@@ -32,7 +33,7 @@ func StartHTTPServer(listenAddr string, handler http.Handler) (listener net.List
 	log.Notice(fmt.Sprintf("Starting RPC HTTP server on %s socket %v", proto, addr))
 	listener, err = net.Listen(proto, addr)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to listen to %v: %v", listenAddr, err)
+		return nil, errors.Errorf("Failed to listen to %v: %v", listenAddr, err)
 	}
 
 	go func() {

@@ -11,6 +11,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/pkg/errors"
 	types "github.com/tendermint/go-rpc/types"
 	wire "github.com/tendermint/go-wire"
 )
@@ -143,16 +144,16 @@ func unmarshalResponseBytes(responseBytes []byte, result interface{}) (interface
 	response := &types.RPCResponse{}
 	err = json.Unmarshal(responseBytes, response)
 	if err != nil {
-		return nil, fmt.Errorf("Error unmarshalling rpc response: %v", err)
+		return nil, errors.Errorf("Error unmarshalling rpc response: %v", err)
 	}
 	errorStr := response.Error
 	if errorStr != "" {
-		return nil, fmt.Errorf("Response error: %v", errorStr)
+		return nil, errors.Errorf("Response error: %v", errorStr)
 	}
 	// unmarshal the RawMessage into the result
 	result = wire.ReadJSONPtr(result, *response.Result, &err)
 	if err != nil {
-		return nil, fmt.Errorf("Error unmarshalling rpc response result: %v", err)
+		return nil, errors.Errorf("Error unmarshalling rpc response result: %v", err)
 	}
 	return result, nil
 }

@@ -2,12 +2,12 @@ package rpcclient
 
 import (
 	"encoding/json"
-	"fmt"
 	"net"
 	"net/http"
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/pkg/errors"
 	cmn "github.com/tendermint/go-common"
 	types "github.com/tendermint/go-rpc/types"
 )
@@ -104,7 +104,7 @@ func (wsc *WSClient) receiveEventsRoutine() {
 				continue
 			}
 			if response.Error != "" {
-				wsc.ErrorsCh <- fmt.Errorf(response.Error)
+				wsc.ErrorsCh <- errors.Errorf(response.Error)
 				continue
 			}
 			wsc.ResultsCh <- *response.Result
