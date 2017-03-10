@@ -97,10 +97,9 @@ func init() {
 
 	// wait for servers to start
 	time.Sleep(time.Second * 2)
-
 }
 
-func echo(cl client.HTTPClient, val string) (string, error) {
+func echoViaHTTP(cl client.HTTPClient, val string) (string, error) {
 	params := map[string]interface{}{
 		"arg": val,
 	}
@@ -111,15 +110,30 @@ func echo(cl client.HTTPClient, val string) (string, error) {
 	return result.(*ResultEcho).Value, nil
 }
 
-func testWithHTTPClient(t *testing.T, cl client.HTTPClient) {
-	val := "acbd"
-	got, err := echo(cl, val)
-	require.Nil(t, err)
-	assert.Equal(t, got, val)
+func echoBytesViaHTTP(cl client.HTTPClient, bytes []byte) ([]byte, error) {
+	params := map[string]interface{}{
+		"arg": bytes,
+	}
+	var result Result
+	if _, err := cl.Call("echo_bytes", params, &result); err != nil {
+		return []byte{}, err
+	}
+	return result.(*ResultEchoBytes).Value, nil
 }
 
-func testWithWSClient(t *testing.T, cl *client.WSClient) {
+func testWithHTTPClient(t *testing.T, cl client.HTTPClient) {
 	val := "acbd"
+	got, err := echoViaHTTP(cl, val)
+	require.Nil(t, err)
+	assert.Equal(t, got, val)
+
+	val2 := randBytes(t)
+	got2, err := echoBytesViaHTTP(cl, val2)
+	require.Nil(t, err)
+	assert.Equal(t, got2, val2)
+}
+
+func echoViaWS(cl *client.WSClient, val string) (string, error) {
 	params := map[string]interface{}{
 		"arg": val,
 	}
@@ -129,18 +143,60 @@ func testWithWSClient(t *testing.T, cl *client.WSClient) {
 		Method:  "echo",
 		Params:  params,
 	})
-	require.Nil(t, err)
+	if err != nil {
+		return "", err
+	}
 
 	select {
 	case msg := <-cl.ResultsCh:
 		result := new(Result)
 		wire.ReadJSONPtr(result, msg, &err)
-		require.Nil(t, err)
-		got := (*result).(*ResultEcho).Value
-		assert.Equal(t, got, val)
+		if err != nil {
+			return "", nil
+		}
+		return (*result).(*ResultEcho).Value, nil
 	case err := <-cl.ErrorsCh:
-		t.Fatal(err)
+		return "", err
 	}
+}
+
+func echoBytesViaWS(cl *client.WSClient, bytes []byte) ([]byte, error) {
+	params := map[string]interface{}{
+		"arg": bytes,
+	}
+	err := cl.WriteJSON(types.RPCRequest{
+		JSONRPC: "2.0",
+		ID:      "",
+		Method:  "echo_bytes",
+		Params:  params,
+	})
+	if err != nil {
+		return []byte{}, err
+	}
+
+	select {
+	case msg := <-cl.ResultsCh:
+		result := new(Result)
+		wire.ReadJSONPtr(result, msg, &err)
+		if err != nil {
+			return []byte{}, nil
+		}
+		return (*result).(*ResultEchoBytes).Value, nil
+	case err := <-cl.ErrorsCh:
+		return []byte{}, err
+	}
+}
+
+func testWithWSClient(t *testing.T, cl *client.WSClient) {
+	val := "acbd"
+	got, err := echoViaWS(cl, val)
+	require.Nil(t, err)
+	assert.Equal(t, got, val)
+
+	val2 := randBytes(t)
+	got2, err := echoBytesViaWS(cl, val2)
+	require.Nil(t, err)
+	assert.Equal(t, got2, val2)
 }
 
 //-------------
@@ -169,7 +225,7 @@ func TestHexStringArg(t *testing.T) {
 	cl := client.NewURIClient(tcpAddr)
 	// should NOT be handled as hex
 	val := "0xabc"
-	got, err := echo(cl, val)
+	got, err := echoViaHTTP(cl, val)
 	require.Nil(t, err)
 	assert.Equal(t, got, val)
 }
@@ -178,35 +234,13 @@ func TestQuotedStringArg(t *testing.T) {
 	cl := client.NewURIClient(tcpAddr)
 	// should NOT be unquoted
 	val := "\"abc\""
-	got, err := echo(cl, val)
+	got, err := echoViaHTTP(cl, val)
 	require.Nil(t, err)
-	assert.Equal(t, got, val)
-}
-
-func randBytes(t *testing.T) []byte {
-	n := rand.Intn(10) + 2
-	buf := make([]byte, n)
-	_, err := crand.Read(buf)
-	require.Nil(t, err)
-	return bytes.Replace(buf, []byte("="), []byte{100}, -1)
-}
-
-func TestByteSliceViaJSONRPC(t *testing.T) {
-	cl := client.NewJSONRPCClient(unixAddr)
-
-	val := randBytes(t)
-	params := map[string]interface{}{
-		"arg": val,
-	}
-	var result Result
-	_, err := cl.Call("echo_bytes", params, &result)
-	require.Nil(t, err)
-	got := result.(*ResultEchoBytes).Value
 	assert.Equal(t, got, val)
 }
 
 func TestWSNewWSRPCFunc(t *testing.T) {
-	cl := client.NewWSClient(unixAddr, websocketEndpoint)
+	cl := client.NewWSClient(tcpAddr, websocketEndpoint)
 	_, err := cl.Start()
 	require.Nil(t, err)
 	defer cl.Stop()
@@ -233,4 +267,12 @@ func TestWSNewWSRPCFunc(t *testing.T) {
 	case err := <-cl.ErrorsCh:
 		t.Fatal(err)
 	}
+}
+
+func randBytes(t *testing.T) []byte {
+	n := rand.Intn(10) + 2
+	buf := make([]byte, n)
+	_, err := crand.Read(buf)
+	require.Nil(t, err)
+	return bytes.Replace(buf, []byte("="), []byte{100}, -1)
 }
