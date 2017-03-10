@@ -3,6 +3,7 @@ package rpc
 import (
 	"bytes"
 	crand "crypto/rand"
+	"fmt"
 	"math/rand"
 	"net/http"
 	"os/exec"
@@ -100,31 +101,25 @@ func init() {
 
 }
 
-func testURI(t *testing.T, cl *client.URIClient) {
-	val := "acbd"
+func status(cl client.HTTPClient, val string) (string, error) {
 	params := map[string]interface{}{
 		"arg": val,
 	}
 	var result Result
-	_, err := cl.Call("status", params, &result)
-	require.Nil(t, err)
-	got := result.(*ResultStatus).Value
-	assert.Equal(t, got, val)
-}
-
-func testJSONRPC(t *testing.T, cl *client.JSONRPCClient) {
-	val := "acbd"
-	params := map[string]interface{}{
-		"arg": val,
+	if _, err := cl.Call("status", params, &result); err != nil {
+		return "", err
 	}
-	var result Result
-	_, err := cl.Call("status", params, &result)
+	return result.(*ResultStatus).Value, nil
+}
+
+func testWithHTTPClient(t *testing.T, cl client.HTTPClient) {
+	val := "acbd"
+	got, err := status(cl, val)
 	require.Nil(t, err)
-	got := result.(*ResultStatus).Value
 	assert.Equal(t, got, val)
 }
 
-func testWS(t *testing.T, cl *client.WSClient) {
+func testWithWSClient(t *testing.T, cl *client.WSClient) {
 	val := "acbd"
 	params := map[string]interface{}{
 		"arg": val,
@@ -151,51 +146,32 @@ func testWS(t *testing.T, cl *client.WSClient) {
 
 //-------------
 
-func TestURI_TCP(t *testing.T) {
-	cl := client.NewURIClient(tcpAddr)
-	testURI(t, cl)
-}
+func TestServersAndClientsBasic(t *testing.T) {
+	serverAddrs := [...]string{tcpAddr, unixAddr}
+	for _, addr := range serverAddrs {
+		cl1 := client.NewURIClient(addr)
+		fmt.Printf("=== testing server on %s using %v client", addr, cl1)
+		testWithHTTPClient(t, cl1)
 
-func TestURI_UNIX(t *testing.T) {
-	cl := client.NewURIClient(unixAddr)
-	testURI(t, cl)
-}
+		cl2 := client.NewJSONRPCClient(tcpAddr)
+		fmt.Printf("=== testing server on %s using %v client", addr, cl2)
+		testWithHTTPClient(t, cl2)
 
-func TestJSONRPC_TCP(t *testing.T) {
-	cl := client.NewJSONRPCClient(tcpAddr)
-	testJSONRPC(t, cl)
-}
-
-func TestJSONRPC_UNIX(t *testing.T) {
-	cl := client.NewJSONRPCClient(unixAddr)
-	testJSONRPC(t, cl)
-}
-
-func TestWS_TCP(t *testing.T) {
-	cl := client.NewWSClient(tcpAddr, websocketEndpoint)
-	_, err := cl.Start()
-	require.Nil(t, err)
-	testWS(t, cl)
-}
-
-func TestWS_UNIX(t *testing.T) {
-	cl := client.NewWSClient(unixAddr, websocketEndpoint)
-	_, err := cl.Start()
-	require.Nil(t, err)
-	testWS(t, cl)
+		cl3 := client.NewWSClient(tcpAddr, websocketEndpoint)
+		_, err := cl3.Start()
+		require.Nil(t, err)
+		fmt.Printf("=== testing server on %s using %v client", addr, cl3)
+		testWithWSClient(t, cl3)
+		cl3.Stop()
+	}
 }
 
 func TestHexStringArg(t *testing.T) {
 	cl := client.NewURIClient(tcpAddr)
 	// should NOT be handled as hex
 	val := "0xabc"
-	params := map[string]interface{}{
-		"arg": val,
-	}
-	var result Result
-	_, err := cl.Call("status", params, &result)
+	got, err := status(cl, val)
 	require.Nil(t, err)
-	got := result.(*ResultStatus).Value
 	assert.Equal(t, got, val)
 }
 
@@ -203,13 +179,8 @@ func TestQuotedStringArg(t *testing.T) {
 	cl := client.NewURIClient(tcpAddr)
 	// should NOT be unquoted
 	val := "\"abc\""
-	params := map[string]interface{}{
-		"arg": val,
-	}
-	var result Result
-	_, err := cl.Call("status", params, &result)
+	got, err := status(cl, val)
 	require.Nil(t, err)
-	got := result.(*ResultStatus).Value
 	assert.Equal(t, got, val)
 }
 
