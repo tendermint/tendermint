@@ -11,9 +11,8 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/tendermint/go-common"
-	. "github.com/tendermint/go-rpc/types"
-	//"github.com/tendermint/go-wire"
+	"github.com/pkg/errors"
+	types "github.com/tendermint/go-rpc/types"
 )
 
 func StartHTTPServer(listenAddr string, handler http.Handler) (listener net.Listener, err error) {
@@ -24,17 +23,17 @@ func StartHTTPServer(listenAddr string, handler http.Handler) (listener net.List
 		log.Warn("WARNING (go-rpc): Please use fully formed listening addresses, including the tcp:// or unix:// prefix")
 		// we used to allow addrs without tcp/unix prefix by checking for a colon
 		// TODO: Deprecate
-		proto = SocketType(listenAddr)
+		proto = types.SocketType(listenAddr)
 		addr = listenAddr
-		// return nil, fmt.Errorf("Invalid listener address %s", lisenAddr)
+		// return nil, errors.Errorf("Invalid listener address %s", lisenAddr)
 	} else {
 		proto, addr = parts[0], parts[1]
 	}
 
-	log.Notice(Fmt("Starting RPC HTTP server on %s socket %v", proto, addr))
+	log.Notice(fmt.Sprintf("Starting RPC HTTP server on %s socket %v", proto, addr))
 	listener, err = net.Listen(proto, addr)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to listen to %v: %v", listenAddr, err)
+		return nil, errors.Errorf("Failed to listen to %v: %v", listenAddr, err)
 	}
 
 	go func() {
@@ -47,7 +46,7 @@ func StartHTTPServer(listenAddr string, handler http.Handler) (listener net.List
 	return listener, nil
 }
 
-func WriteRPCResponseHTTP(w http.ResponseWriter, res RPCResponse) {
+func WriteRPCResponseHTTP(w http.ResponseWriter, res types.RPCResponse) {
 	// jsonBytes := wire.JSONBytesPretty(res)
 	jsonBytes, err := json.Marshal(res)
 	if err != nil {
@@ -83,13 +82,13 @@ func RecoverAndLogHandler(handler http.Handler) http.Handler {
 			if e := recover(); e != nil {
 
 				// If RPCResponse
-				if res, ok := e.(RPCResponse); ok {
+				if res, ok := e.(types.RPCResponse); ok {
 					WriteRPCResponseHTTP(rww, res)
 				} else {
 					// For the rest,
 					log.Error("Panic in RPC HTTP handler", "error", e, "stack", string(debug.Stack()))
 					rww.WriteHeader(http.StatusInternalServerError)
-					WriteRPCResponseHTTP(rww, NewRPCResponse("", nil, Fmt("Internal Server Error: %v", e)))
+					WriteRPCResponseHTTP(rww, types.NewRPCResponse("", nil, fmt.Sprintf("Internal Server Error: %v", e)))
 				}
 			}
 

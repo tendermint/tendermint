@@ -1,20 +1,26 @@
 package rpc
 
 import (
+	"bytes"
+	crand "crypto/rand"
+	"math/rand"
 	"net/http"
+	"os/exec"
 	"testing"
 	"time"
 
-	"github.com/tendermint/go-rpc/client"
-	"github.com/tendermint/go-rpc/server"
-	"github.com/tendermint/go-rpc/types"
-	"github.com/tendermint/go-wire"
+	client "github.com/tendermint/go-rpc/client"
+	server "github.com/tendermint/go-rpc/server"
+	types "github.com/tendermint/go-rpc/types"
+	wire "github.com/tendermint/go-wire"
 )
 
 // Client and Server should work over tcp or unix sockets
-var (
-	tcpAddr  = "tcp://0.0.0.0:46657"
-	unixAddr = "unix:///tmp/go-rpc.sock" // NOTE: must remove file for test to run again
+const (
+	tcpAddr = "tcp://0.0.0.0:46657"
+
+	unixSocket = "/tmp/go-rpc.sock"
+	unixAddr   = "unix:///tmp/go-rpc.sock"
 
 	websocketEndpoint = "/websocket/endpoint"
 )
@@ -26,14 +32,21 @@ type ResultStatus struct {
 	Value string
 }
 
+type ResultBytes struct {
+	Value []byte
+}
+
 var _ = wire.RegisterInterface(
 	struct{ Result }{},
 	wire.ConcreteType{&ResultStatus{}, 0x1},
+	wire.ConcreteType{&ResultBytes{}, 0x2},
 )
 
 // Define some routes
-var Routes = map[string]*rpcserver.RPCFunc{
-	"status": rpcserver.NewRPCFunc(StatusResult, "arg"),
+var Routes = map[string]*server.RPCFunc{
+	"status":    server.NewRPCFunc(StatusResult, "arg"),
+	"status_ws": server.NewWSRPCFunc(StatusWSResult, "arg"),
+	"bytes":     server.NewRPCFunc(BytesResult, "arg"),
 }
 
 // an rpc function
@@ -41,25 +54,40 @@ func StatusResult(v string) (Result, error) {
 	return &ResultStatus{v}, nil
 }
 
+func StatusWSResult(wsCtx types.WSRPCContext, v string) (Result, error) {
+	return &ResultStatus{v}, nil
+}
+
+func BytesResult(v []byte) (Result, error) {
+	return &ResultBytes{v}, nil
+}
+
 // launch unix and tcp servers
 func init() {
+	cmd := exec.Command("rm", "-f", unixSocket)
+	err := cmd.Start()
+	if err != nil {
+		panic(err)
+	}
+	err = cmd.Wait()
+
 	mux := http.NewServeMux()
-	rpcserver.RegisterRPCFuncs(mux, Routes)
-	wm := rpcserver.NewWebsocketManager(Routes, nil)
+	server.RegisterRPCFuncs(mux, Routes)
+	wm := server.NewWebsocketManager(Routes, nil)
 	mux.HandleFunc(websocketEndpoint, wm.WebsocketHandler)
 	go func() {
-		_, err := rpcserver.StartHTTPServer(tcpAddr, mux)
+		_, err := server.StartHTTPServer(tcpAddr, mux)
 		if err != nil {
 			panic(err)
 		}
 	}()
 
 	mux2 := http.NewServeMux()
-	rpcserver.RegisterRPCFuncs(mux2, Routes)
-	wm = rpcserver.NewWebsocketManager(Routes, nil)
+	server.RegisterRPCFuncs(mux2, Routes)
+	wm = server.NewWebsocketManager(Routes, nil)
 	mux2.HandleFunc(websocketEndpoint, wm.WebsocketHandler)
 	go func() {
-		_, err := rpcserver.StartHTTPServer(unixAddr, mux2)
+		_, err := server.StartHTTPServer(unixAddr, mux2)
 		if err != nil {
 			panic(err)
 		}
@@ -70,7 +98,7 @@ func init() {
 
 }
 
-func testURI(t *testing.T, cl *rpcclient.ClientURI) {
+func testURI(t *testing.T, cl *client.ClientURI) {
 	val := "acbd"
 	params := map[string]interface{}{
 		"arg": val,
@@ -86,9 +114,11 @@ func testURI(t *testing.T, cl *rpcclient.ClientURI) {
 	}
 }
 
-func testJSONRPC(t *testing.T, cl *rpcclient.ClientJSONRPC) {
+func testJSONRPC(t *testing.T, cl *client.ClientJSONRPC) {
 	val := "acbd"
-	params := []interface{}{val}
+	params := map[string]interface{}{
+		"arg": val,
+	}
 	var result Result
 	_, err := cl.Call("status", params, &result)
 	if err != nil {
@@ -100,10 +130,12 @@ func testJSONRPC(t *testing.T, cl *rpcclient.ClientJSONRPC) {
 	}
 }
 
-func testWS(t *testing.T, cl *rpcclient.WSClient) {
+func testWS(t *testing.T, cl *client.WSClient) {
 	val := "acbd"
-	params := []interface{}{val}
-	err := cl.WriteJSON(rpctypes.RPCRequest{
+	params := map[string]interface{}{
+		"arg": val,
+	}
+	err := cl.WriteJSON(types.RPCRequest{
 		JSONRPC: "2.0",
 		ID:      "",
 		Method:  "status",
@@ -113,42 +145,46 @@ func testWS(t *testing.T, cl *rpcclient.WSClient) {
 		t.Fatal(err)
 	}
 
-	msg := <-cl.ResultsCh
-	result := new(Result)
-	wire.ReadJSONPtr(result, msg, &err)
-	if err != nil {
+	select {
+	case msg := <-cl.ResultsCh:
+		result := new(Result)
+		wire.ReadJSONPtr(result, msg, &err)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := (*result).(*ResultStatus).Value
+		if got != val {
+			t.Fatalf("Got: %v   ....   Expected: %v \n", got, val)
+		}
+	case err := <-cl.ErrorsCh:
 		t.Fatal(err)
-	}
-	got := (*result).(*ResultStatus).Value
-	if got != val {
-		t.Fatalf("Got: %v   ....   Expected: %v \n", got, val)
 	}
 }
 
 //-------------
 
 func TestURI_TCP(t *testing.T) {
-	cl := rpcclient.NewClientURI(tcpAddr)
+	cl := client.NewClientURI(tcpAddr)
 	testURI(t, cl)
 }
 
 func TestURI_UNIX(t *testing.T) {
-	cl := rpcclient.NewClientURI(unixAddr)
+	cl := client.NewClientURI(unixAddr)
 	testURI(t, cl)
 }
 
 func TestJSONRPC_TCP(t *testing.T) {
-	cl := rpcclient.NewClientJSONRPC(tcpAddr)
+	cl := client.NewClientJSONRPC(tcpAddr)
 	testJSONRPC(t, cl)
 }
 
 func TestJSONRPC_UNIX(t *testing.T) {
-	cl := rpcclient.NewClientJSONRPC(unixAddr)
+	cl := client.NewClientJSONRPC(unixAddr)
 	testJSONRPC(t, cl)
 }
 
 func TestWS_TCP(t *testing.T) {
-	cl := rpcclient.NewWSClient(tcpAddr, websocketEndpoint)
+	cl := client.NewWSClient(tcpAddr, websocketEndpoint)
 	_, err := cl.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -157,7 +193,7 @@ func TestWS_TCP(t *testing.T) {
 }
 
 func TestWS_UNIX(t *testing.T) {
-	cl := rpcclient.NewWSClient(unixAddr, websocketEndpoint)
+	cl := client.NewWSClient(unixAddr, websocketEndpoint)
 	_, err := cl.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -166,7 +202,7 @@ func TestWS_UNIX(t *testing.T) {
 }
 
 func TestHexStringArg(t *testing.T) {
-	cl := rpcclient.NewClientURI(tcpAddr)
+	cl := client.NewClientURI(tcpAddr)
 	// should NOT be handled as hex
 	val := "0xabc"
 	params := map[string]interface{}{
@@ -184,7 +220,7 @@ func TestHexStringArg(t *testing.T) {
 }
 
 func TestQuotedStringArg(t *testing.T) {
-	cl := rpcclient.NewClientURI(tcpAddr)
+	cl := client.NewClientURI(tcpAddr)
 	// should NOT be unquoted
 	val := "\"abc\""
 	params := map[string]interface{}{
@@ -198,5 +234,71 @@ func TestQuotedStringArg(t *testing.T) {
 	got := result.(*ResultStatus).Value
 	if got != val {
 		t.Fatalf("Got: %v   ....   Expected: %v \n", got, val)
+	}
+}
+
+func randBytes(t *testing.T) []byte {
+	n := rand.Intn(10) + 2
+	buf := make([]byte, n)
+	_, err := crand.Read(buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return bytes.Replace(buf, []byte("="), []byte{100}, -1)
+}
+
+func TestByteSliceViaJSONRPC(t *testing.T) {
+	cl := client.NewClientJSONRPC(unixAddr)
+
+	val := randBytes(t)
+	params := map[string]interface{}{
+		"arg": val,
+	}
+	var result Result
+	_, err := cl.Call("bytes", params, &result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := result.(*ResultBytes).Value
+	if bytes.Compare(got, val) != 0 {
+		t.Fatalf("Got: %v   ....   Expected: %v \n", got, val)
+	}
+}
+
+func TestWSNewWSRPCFunc(t *testing.T) {
+	cl := client.NewWSClient(unixAddr, websocketEndpoint)
+	_, err := cl.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cl.Stop()
+
+	val := "acbd"
+	params := map[string]interface{}{
+		"arg": val,
+	}
+	err = cl.WriteJSON(types.RPCRequest{
+		JSONRPC: "2.0",
+		ID:      "",
+		Method:  "status_ws",
+		Params:  params,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case msg := <-cl.ResultsCh:
+		result := new(Result)
+		wire.ReadJSONPtr(result, msg, &err)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := (*result).(*ResultStatus).Value
+		if got != val {
+			t.Fatalf("Got: %v   ....   Expected: %v \n", got, val)
+		}
+	case err := <-cl.ErrorsCh:
+		t.Fatal(err)
 	}
 }

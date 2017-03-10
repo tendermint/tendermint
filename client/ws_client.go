@@ -2,14 +2,14 @@ package rpcclient
 
 import (
 	"encoding/json"
-	"fmt"
 	"net"
 	"net/http"
 	"time"
 
 	"github.com/gorilla/websocket"
-	. "github.com/tendermint/go-common"
-	"github.com/tendermint/go-rpc/types"
+	"github.com/pkg/errors"
+	cmn "github.com/tendermint/go-common"
+	types "github.com/tendermint/go-rpc/types"
 )
 
 const (
@@ -19,7 +19,7 @@ const (
 )
 
 type WSClient struct {
-	BaseService
+	cmn.BaseService
 	Address  string // IP:PORT or /path/to/socket
 	Endpoint string // /websocket/url/endpoint
 	Dialer   func(string, string) (net.Conn, error)
@@ -39,7 +39,7 @@ func NewWSClient(remoteAddr, endpoint string) *WSClient {
 		ResultsCh: make(chan json.RawMessage, wsResultsChannelCapacity),
 		ErrorsCh:  make(chan error, wsErrorsChannelCapacity),
 	}
-	wsClient.BaseService = *NewBaseService(log, "WSClient", wsClient)
+	wsClient.BaseService = *cmn.NewBaseService(log, "WSClient", wsClient)
 	return wsClient
 }
 
@@ -96,7 +96,7 @@ func (wsc *WSClient) receiveEventsRoutine() {
 			wsc.Stop()
 			break
 		} else {
-			var response rpctypes.RPCResponse
+			var response types.RPCResponse
 			err := json.Unmarshal(data, &response)
 			if err != nil {
 				log.Info("WSClient failed to parse message", "error", err, "data", string(data))
@@ -104,7 +104,7 @@ func (wsc *WSClient) receiveEventsRoutine() {
 				continue
 			}
 			if response.Error != "" {
-				wsc.ErrorsCh <- fmt.Errorf(response.Error)
+				wsc.ErrorsCh <- errors.Errorf(response.Error)
 				continue
 			}
 			wsc.ResultsCh <- *response.Result
@@ -118,22 +118,22 @@ func (wsc *WSClient) receiveEventsRoutine() {
 
 // subscribe to an event
 func (wsc *WSClient) Subscribe(eventid string) error {
-	err := wsc.WriteJSON(rpctypes.RPCRequest{
+	err := wsc.WriteJSON(types.RPCRequest{
 		JSONRPC: "2.0",
 		ID:      "",
 		Method:  "subscribe",
-		Params:  []interface{}{eventid},
+		Params:  map[string]interface{}{"event": eventid},
 	})
 	return err
 }
 
 // unsubscribe from an event
 func (wsc *WSClient) Unsubscribe(eventid string) error {
-	err := wsc.WriteJSON(rpctypes.RPCRequest{
+	err := wsc.WriteJSON(types.RPCRequest{
 		JSONRPC: "2.0",
 		ID:      "",
 		Method:  "unsubscribe",
-		Params:  []interface{}{eventid},
+		Params:  map[string]interface{}{"event": eventid},
 	})
 	return err
 }

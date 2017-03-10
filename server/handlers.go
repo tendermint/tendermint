@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -14,10 +13,11 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	. "github.com/tendermint/go-common"
-	"github.com/tendermint/go-events"
-	. "github.com/tendermint/go-rpc/types"
-	"github.com/tendermint/go-wire"
+	"github.com/pkg/errors"
+	cmn "github.com/tendermint/go-common"
+	events "github.com/tendermint/go-events"
+	types "github.com/tendermint/go-rpc/types"
+	wire "github.com/tendermint/go-wire"
 )
 
 // Adds a route for each function in the funcMap, as well as general jsonrpc and websocket handlers for all functions.
@@ -105,76 +105,75 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc) http.HandlerFunc {
 			return
 		}
 
-		var request RPCRequest
+		var request types.RPCRequest
 		err := json.Unmarshal(b, &request)
 		if err != nil {
-			WriteRPCResponseHTTP(w, NewRPCResponse("", nil, fmt.Sprintf("Error unmarshalling request: %v", err.Error())))
+			WriteRPCResponseHTTP(w, types.NewRPCResponse("", nil, fmt.Sprintf("Error unmarshalling request: %v", err.Error())))
 			return
 		}
 		if len(r.URL.Path) > 1 {
-			WriteRPCResponseHTTP(w, NewRPCResponse(request.ID, nil, fmt.Sprintf("Invalid JSONRPC endpoint %s", r.URL.Path)))
+			WriteRPCResponseHTTP(w, types.NewRPCResponse(request.ID, nil, fmt.Sprintf("Invalid JSONRPC endpoint %s", r.URL.Path)))
 			return
 		}
 		rpcFunc := funcMap[request.Method]
 		if rpcFunc == nil {
-			WriteRPCResponseHTTP(w, NewRPCResponse(request.ID, nil, "RPC method unknown: "+request.Method))
+			WriteRPCResponseHTTP(w, types.NewRPCResponse(request.ID, nil, "RPC method unknown: "+request.Method))
 			return
 		}
 		if rpcFunc.ws {
-			WriteRPCResponseHTTP(w, NewRPCResponse(request.ID, nil, "RPC method is only for websockets: "+request.Method))
+			WriteRPCResponseHTTP(w, types.NewRPCResponse(request.ID, nil, "RPC method is only for websockets: "+request.Method))
 			return
 		}
-		args, err := jsonParamsToArgs(rpcFunc, request.Params)
+		args, err := jsonParamsToArgs(rpcFunc, request.Params, 0)
 		if err != nil {
-			WriteRPCResponseHTTP(w, NewRPCResponse(request.ID, nil, fmt.Sprintf("Error converting json params to arguments: %v", err.Error())))
+			WriteRPCResponseHTTP(w, types.NewRPCResponse(request.ID, nil, fmt.Sprintf("Error converting json params to arguments: %v", err.Error())))
 			return
 		}
 		returns := rpcFunc.f.Call(args)
 		log.Info("HTTPJSONRPC", "method", request.Method, "args", args, "returns", returns)
 		result, err := unreflectResult(returns)
 		if err != nil {
-			WriteRPCResponseHTTP(w, NewRPCResponse(request.ID, result, fmt.Sprintf("Error unreflecting result: %v", err.Error())))
+			WriteRPCResponseHTTP(w, types.NewRPCResponse(request.ID, result, fmt.Sprintf("Error unreflecting result: %v", err.Error())))
 			return
 		}
-		WriteRPCResponseHTTP(w, NewRPCResponse(request.ID, result, ""))
+		WriteRPCResponseHTTP(w, types.NewRPCResponse(request.ID, result, ""))
 	}
 }
 
 // Convert a list of interfaces to properly typed values
-func jsonParamsToArgs(rpcFunc *RPCFunc, params []interface{}) ([]reflect.Value, error) {
-	if len(rpcFunc.argNames) != len(params) {
-		return nil, errors.New(fmt.Sprintf("Expected %v parameters (%v), got %v (%v)",
-			len(rpcFunc.argNames), rpcFunc.argNames, len(params), params))
-	}
-	values := make([]reflect.Value, len(params))
-	for i, p := range params {
-		ty := rpcFunc.args[i]
-		v, err := _jsonObjectToArg(ty, p)
-		if err != nil {
-			return nil, err
+//
+// argsOffset is used in jsonParamsToArgsWS, where len(rpcFunc.args) != len(rpcFunc.argNames).
+// Example:
+//   rpcFunc.args = [rpctypes.WSRPCContext string]
+//   rpcFunc.argNames = ["arg"]
+func jsonParamsToArgs(rpcFunc *RPCFunc, params map[string]interface{}, argsOffset int) ([]reflect.Value, error) {
+	values := make([]reflect.Value, len(rpcFunc.argNames))
+
+	for i, argName := range rpcFunc.argNames {
+		argType := rpcFunc.args[i+argsOffset]
+
+		// decode param if provided
+		if param, ok := params[argName]; ok && "" != param {
+			v, err := _jsonObjectToArg(argType, param)
+			if err != nil {
+				return nil, err
+			}
+			values[i] = v
+		} else { // use default for that type
+			values[i] = reflect.Zero(argType)
 		}
-		values[i] = v
 	}
+
 	return values, nil
 }
 
 // Same as above, but with the first param the websocket connection
-func jsonParamsToArgsWS(rpcFunc *RPCFunc, params []interface{}, wsCtx WSRPCContext) ([]reflect.Value, error) {
-	if len(rpcFunc.argNames) != len(params) {
-		return nil, errors.New(fmt.Sprintf("Expected %v parameters (%v), got %v (%v)",
-			len(rpcFunc.argNames)-1, rpcFunc.argNames[1:], len(params), params))
+func jsonParamsToArgsWS(rpcFunc *RPCFunc, params map[string]interface{}, wsCtx types.WSRPCContext) ([]reflect.Value, error) {
+	values, err := jsonParamsToArgs(rpcFunc, params, 1)
+	if err != nil {
+		return nil, err
 	}
-	values := make([]reflect.Value, len(params)+1)
-	values[0] = reflect.ValueOf(wsCtx)
-	for i, p := range params {
-		ty := rpcFunc.args[i+1]
-		v, err := _jsonObjectToArg(ty, p)
-		if err != nil {
-			return nil, err
-		}
-		values[i+1] = v
-	}
-	return values, nil
+	return append([]reflect.Value{reflect.ValueOf(wsCtx)}, values...), nil
 }
 
 func _jsonObjectToArg(ty reflect.Type, object interface{}) (reflect.Value, error) {
@@ -197,7 +196,7 @@ func makeHTTPHandler(rpcFunc *RPCFunc) func(http.ResponseWriter, *http.Request) 
 	// Exception for websocket endpoints
 	if rpcFunc.ws {
 		return func(w http.ResponseWriter, r *http.Request) {
-			WriteRPCResponseHTTP(w, NewRPCResponse("", nil, "This RPC method is only for websockets"))
+			WriteRPCResponseHTTP(w, types.NewRPCResponse("", nil, "This RPC method is only for websockets"))
 		}
 	}
 	// All other endpoints
@@ -205,33 +204,38 @@ func makeHTTPHandler(rpcFunc *RPCFunc) func(http.ResponseWriter, *http.Request) 
 		log.Debug("HTTP HANDLER", "req", r)
 		args, err := httpParamsToArgs(rpcFunc, r)
 		if err != nil {
-			WriteRPCResponseHTTP(w, NewRPCResponse("", nil, fmt.Sprintf("Error converting http params to args: %v", err.Error())))
+			WriteRPCResponseHTTP(w, types.NewRPCResponse("", nil, fmt.Sprintf("Error converting http params to args: %v", err.Error())))
 			return
 		}
 		returns := rpcFunc.f.Call(args)
 		log.Info("HTTPRestRPC", "method", r.URL.Path, "args", args, "returns", returns)
 		result, err := unreflectResult(returns)
 		if err != nil {
-			WriteRPCResponseHTTP(w, NewRPCResponse("", nil, fmt.Sprintf("Error unreflecting result: %v", err.Error())))
+			WriteRPCResponseHTTP(w, types.NewRPCResponse("", nil, fmt.Sprintf("Error unreflecting result: %v", err.Error())))
 			return
 		}
-		WriteRPCResponseHTTP(w, NewRPCResponse("", result, ""))
+		WriteRPCResponseHTTP(w, types.NewRPCResponse("", result, ""))
 	}
 }
 
 // Covert an http query to a list of properly typed values.
 // To be properly decoded the arg must be a concrete type from tendermint (if its an interface).
 func httpParamsToArgs(rpcFunc *RPCFunc, r *http.Request) ([]reflect.Value, error) {
-	argTypes := rpcFunc.args
-	argNames := rpcFunc.argNames
+	values := make([]reflect.Value, len(rpcFunc.args))
 
-	values := make([]reflect.Value, len(argNames))
-	for i, name := range argNames {
-		ty := argTypes[i]
+	for i, name := range rpcFunc.argNames {
+		argType := rpcFunc.args[i]
+
+		values[i] = reflect.Zero(argType) // set default for that type
+
 		arg := GetParam(r, name)
-		// log.Notice("param to arg", "ty", ty, "name", name, "arg", arg)
+		// log.Notice("param to arg", "argType", argType, "name", name, "arg", arg)
 
-		v, err, ok := nonJsonToArg(ty, arg)
+		if "" == arg {
+			continue
+		}
+
+		v, err, ok := nonJsonToArg(argType, arg)
 		if err != nil {
 			return nil, err
 		}
@@ -241,11 +245,12 @@ func httpParamsToArgs(rpcFunc *RPCFunc, r *http.Request) ([]reflect.Value, error
 		}
 
 		// Pass values to go-wire
-		values[i], err = _jsonStringToArg(ty, arg)
+		values[i], err = _jsonStringToArg(argType, arg)
 		if err != nil {
 			return nil, err
 		}
 	}
+
 	return values, nil
 }
 
@@ -268,7 +273,7 @@ func nonJsonToArg(ty reflect.Type, arg string) (reflect.Value, error, bool) {
 
 	if isHexString {
 		if !expectingString && !expectingByteSlice {
-			err := fmt.Errorf("Got a hex string arg, but expected '%s'",
+			err := errors.Errorf("Got a hex string arg, but expected '%s'",
 				ty.Kind().String())
 			return reflect.ValueOf(nil), err, false
 		}
@@ -313,11 +318,11 @@ const (
 // contains listener id, underlying ws connection,
 // and the event switch for subscribing to events
 type wsConnection struct {
-	BaseService
+	cmn.BaseService
 
 	remoteAddr  string
 	baseConn    *websocket.Conn
-	writeChan   chan RPCResponse
+	writeChan   chan types.RPCResponse
 	readTimeout *time.Timer
 	pingTicker  *time.Ticker
 
@@ -330,11 +335,11 @@ func NewWSConnection(baseConn *websocket.Conn, funcMap map[string]*RPCFunc, evsw
 	wsc := &wsConnection{
 		remoteAddr: baseConn.RemoteAddr().String(),
 		baseConn:   baseConn,
-		writeChan:  make(chan RPCResponse, writeChanCapacity), // error when full.
+		writeChan:  make(chan types.RPCResponse, writeChanCapacity), // error when full.
 		funcMap:    funcMap,
 		evsw:       evsw,
 	}
-	wsc.BaseService = *NewBaseService(log, "wsConnection", wsc)
+	wsc.BaseService = *cmn.NewBaseService(log, "wsConnection", wsc)
 	return wsc
 }
 
@@ -399,7 +404,7 @@ func (wsc *wsConnection) GetEventSwitch() events.EventSwitch {
 // Implements WSRPCConnection
 // Blocking write to writeChan until service stops.
 // Goroutine-safe
-func (wsc *wsConnection) WriteRPCResponse(resp RPCResponse) {
+func (wsc *wsConnection) WriteRPCResponse(resp types.RPCResponse) {
 	select {
 	case <-wsc.Quit:
 		return
@@ -410,7 +415,7 @@ func (wsc *wsConnection) WriteRPCResponse(resp RPCResponse) {
 // Implements WSRPCConnection
 // Nonblocking write.
 // Goroutine-safe
-func (wsc *wsConnection) TryWriteRPCResponse(resp RPCResponse) bool {
+func (wsc *wsConnection) TryWriteRPCResponse(resp types.RPCResponse) bool {
 	select {
 	case <-wsc.Quit:
 		return false
@@ -444,11 +449,11 @@ func (wsc *wsConnection) readRoutine() {
 				wsc.Stop()
 				return
 			}
-			var request RPCRequest
+			var request types.RPCRequest
 			err = json.Unmarshal(in, &request)
 			if err != nil {
 				errStr := fmt.Sprintf("Error unmarshaling data: %s", err.Error())
-				wsc.WriteRPCResponse(NewRPCResponse(request.ID, nil, errStr))
+				wsc.WriteRPCResponse(types.NewRPCResponse(request.ID, nil, errStr))
 				continue
 			}
 
@@ -456,28 +461,28 @@ func (wsc *wsConnection) readRoutine() {
 
 			rpcFunc := wsc.funcMap[request.Method]
 			if rpcFunc == nil {
-				wsc.WriteRPCResponse(NewRPCResponse(request.ID, nil, "RPC method unknown: "+request.Method))
+				wsc.WriteRPCResponse(types.NewRPCResponse(request.ID, nil, "RPC method unknown: "+request.Method))
 				continue
 			}
 			var args []reflect.Value
 			if rpcFunc.ws {
-				wsCtx := WSRPCContext{Request: request, WSRPCConnection: wsc}
+				wsCtx := types.WSRPCContext{Request: request, WSRPCConnection: wsc}
 				args, err = jsonParamsToArgsWS(rpcFunc, request.Params, wsCtx)
 			} else {
-				args, err = jsonParamsToArgs(rpcFunc, request.Params)
+				args, err = jsonParamsToArgs(rpcFunc, request.Params, 0)
 			}
 			if err != nil {
-				wsc.WriteRPCResponse(NewRPCResponse(request.ID, nil, err.Error()))
+				wsc.WriteRPCResponse(types.NewRPCResponse(request.ID, nil, err.Error()))
 				continue
 			}
 			returns := rpcFunc.f.Call(args)
 			log.Info("WSJSONRPC", "method", request.Method, "args", args, "returns", returns)
 			result, err := unreflectResult(returns)
 			if err != nil {
-				wsc.WriteRPCResponse(NewRPCResponse(request.ID, nil, err.Error()))
+				wsc.WriteRPCResponse(types.NewRPCResponse(request.ID, nil, err.Error()))
 				continue
 			} else {
-				wsc.WriteRPCResponse(NewRPCResponse(request.ID, result, ""))
+				wsc.WriteRPCResponse(types.NewRPCResponse(request.ID, result, ""))
 				continue
 			}
 
@@ -563,7 +568,7 @@ func (wm *WebsocketManager) WebsocketHandler(w http.ResponseWriter, r *http.Requ
 func unreflectResult(returns []reflect.Value) (interface{}, error) {
 	errV := returns[1]
 	if errV.Interface() != nil {
-		return nil, fmt.Errorf("%v", errV.Interface())
+		return nil, errors.Errorf("%v", errV.Interface())
 	}
 	rv := returns[0]
 	// the result is a registered interface,
