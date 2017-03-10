@@ -98,7 +98,7 @@ func init() {
 
 }
 
-func testURI(t *testing.T, cl *client.ClientURI) {
+func testURI(t *testing.T, cl *client.URIClient) {
 	val := "acbd"
 	params := map[string]interface{}{
 		"arg": val,
@@ -114,7 +114,7 @@ func testURI(t *testing.T, cl *client.ClientURI) {
 	}
 }
 
-func testJSONRPC(t *testing.T, cl *client.ClientJSONRPC) {
+func testJSONRPC(t *testing.T, cl *client.JSONRPCClient) {
 	val := "acbd"
 	params := map[string]interface{}{
 		"arg": val,
@@ -164,22 +164,22 @@ func testWS(t *testing.T, cl *client.WSClient) {
 //-------------
 
 func TestURI_TCP(t *testing.T) {
-	cl := client.NewClientURI(tcpAddr)
+	cl := client.NewURIClient(tcpAddr)
 	testURI(t, cl)
 }
 
 func TestURI_UNIX(t *testing.T) {
-	cl := client.NewClientURI(unixAddr)
+	cl := client.NewURIClient(unixAddr)
 	testURI(t, cl)
 }
 
 func TestJSONRPC_TCP(t *testing.T) {
-	cl := client.NewClientJSONRPC(tcpAddr)
+	cl := client.NewJSONRPCClient(tcpAddr)
 	testJSONRPC(t, cl)
 }
 
 func TestJSONRPC_UNIX(t *testing.T) {
-	cl := client.NewClientJSONRPC(unixAddr)
+	cl := client.NewJSONRPCClient(unixAddr)
 	testJSONRPC(t, cl)
 }
 
@@ -202,7 +202,7 @@ func TestWS_UNIX(t *testing.T) {
 }
 
 func TestHexStringArg(t *testing.T) {
-	cl := client.NewClientURI(tcpAddr)
+	cl := client.NewURIClient(tcpAddr)
 	// should NOT be handled as hex
 	val := "0xabc"
 	params := map[string]interface{}{
@@ -220,7 +220,7 @@ func TestHexStringArg(t *testing.T) {
 }
 
 func TestQuotedStringArg(t *testing.T) {
-	cl := client.NewClientURI(tcpAddr)
+	cl := client.NewURIClient(tcpAddr)
 	// should NOT be unquoted
 	val := "\"abc\""
 	params := map[string]interface{}{
@@ -248,7 +248,7 @@ func randBytes(t *testing.T) []byte {
 }
 
 func TestByteSliceViaJSONRPC(t *testing.T) {
-	cl := client.NewClientJSONRPC(unixAddr)
+	cl := client.NewJSONRPCClient(unixAddr)
 
 	val := randBytes(t)
 	params := map[string]interface{}{

@@ -16,7 +16,7 @@ import (
 	wire "github.com/tendermint/go-wire"
 )
 
-// HTTPClient is a common interface for ClientJSONRPC and ClientURI.
+// HTTPClient is a common interface for JSONRPCClient and URIClient.
 type HTTPClient interface {
 	Call(method string, params map[string]interface{}, result interface{}) (interface{}, error)
 }
@@ -54,20 +54,20 @@ func makeHTTPClient(remoteAddr string) (string, *http.Client) {
 //------------------------------------------------------------------------------------
 
 // JSON rpc takes params as a slice
-type ClientJSONRPC struct {
+type JSONRPCClient struct {
 	address string
 	client  *http.Client
 }
 
-func NewClientJSONRPC(remote string) *ClientJSONRPC {
+func NewJSONRPCClient(remote string) *JSONRPCClient {
 	address, client := makeHTTPClient(remote)
-	return &ClientJSONRPC{
+	return &JSONRPCClient{
 		address: address,
 		client:  client,
 	}
 }
 
-func (c *ClientJSONRPC) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
+func (c *JSONRPCClient) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
 	// we need this step because we attempt to decode values using `go-wire`
 	// (handlers.go:176) on the server side
 	encodedParams := make(map[string]interface{})
@@ -105,20 +105,20 @@ func (c *ClientJSONRPC) Call(method string, params map[string]interface{}, resul
 //-------------------------------------------------------------
 
 // URI takes params as a map
-type ClientURI struct {
+type URIClient struct {
 	address string
 	client  *http.Client
 }
 
-func NewClientURI(remote string) *ClientURI {
+func NewURIClient(remote string) *URIClient {
 	address, client := makeHTTPClient(remote)
-	return &ClientURI{
+	return &URIClient{
 		address: address,
 		client:  client,
 	}
 }
 
-func (c *ClientURI) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
+func (c *URIClient) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
 	values, err := argsToURLValues(params)
 	if err != nil {
 		return nil, err
