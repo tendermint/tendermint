@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	client "github.com/tendermint/go-rpc/client"
 	server "github.com/tendermint/go-rpc/server"
 	types "github.com/tendermint/go-rpc/types"
@@ -105,13 +107,9 @@ func testURI(t *testing.T, cl *client.URIClient) {
 	}
 	var result Result
 	_, err := cl.Call("status", params, &result)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	got := result.(*ResultStatus).Value
-	if got != val {
-		t.Fatalf("Got: %v   ....   Expected: %v \n", got, val)
-	}
+	assert.Equal(t, got, val)
 }
 
 func testJSONRPC(t *testing.T, cl *client.JSONRPCClient) {
@@ -121,13 +119,9 @@ func testJSONRPC(t *testing.T, cl *client.JSONRPCClient) {
 	}
 	var result Result
 	_, err := cl.Call("status", params, &result)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	got := result.(*ResultStatus).Value
-	if got != val {
-		t.Fatalf("Got: %v   ....   Expected: %v \n", got, val)
-	}
+	assert.Equal(t, got, val)
 }
 
 func testWS(t *testing.T, cl *client.WSClient) {
@@ -141,21 +135,15 @@ func testWS(t *testing.T, cl *client.WSClient) {
 		Method:  "status",
 		Params:  params,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 
 	select {
 	case msg := <-cl.ResultsCh:
 		result := new(Result)
 		wire.ReadJSONPtr(result, msg, &err)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.Nil(t, err)
 		got := (*result).(*ResultStatus).Value
-		if got != val {
-			t.Fatalf("Got: %v   ....   Expected: %v \n", got, val)
-		}
+		assert.Equal(t, got, val)
 	case err := <-cl.ErrorsCh:
 		t.Fatal(err)
 	}
@@ -186,18 +174,14 @@ func TestJSONRPC_UNIX(t *testing.T) {
 func TestWS_TCP(t *testing.T) {
 	cl := client.NewWSClient(tcpAddr, websocketEndpoint)
 	_, err := cl.Start()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	testWS(t, cl)
 }
 
 func TestWS_UNIX(t *testing.T) {
 	cl := client.NewWSClient(unixAddr, websocketEndpoint)
 	_, err := cl.Start()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	testWS(t, cl)
 }
 
@@ -210,13 +194,9 @@ func TestHexStringArg(t *testing.T) {
 	}
 	var result Result
 	_, err := cl.Call("status", params, &result)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	got := result.(*ResultStatus).Value
-	if got != val {
-		t.Fatalf("Got: %v   ....   Expected: %v \n", got, val)
-	}
+	assert.Equal(t, got, val)
 }
 
 func TestQuotedStringArg(t *testing.T) {
@@ -228,22 +208,16 @@ func TestQuotedStringArg(t *testing.T) {
 	}
 	var result Result
 	_, err := cl.Call("status", params, &result)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	got := result.(*ResultStatus).Value
-	if got != val {
-		t.Fatalf("Got: %v   ....   Expected: %v \n", got, val)
-	}
+	assert.Equal(t, got, val)
 }
 
 func randBytes(t *testing.T) []byte {
 	n := rand.Intn(10) + 2
 	buf := make([]byte, n)
 	_, err := crand.Read(buf)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	return bytes.Replace(buf, []byte("="), []byte{100}, -1)
 }
 
@@ -256,21 +230,15 @@ func TestByteSliceViaJSONRPC(t *testing.T) {
 	}
 	var result Result
 	_, err := cl.Call("bytes", params, &result)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	got := result.(*ResultBytes).Value
-	if bytes.Compare(got, val) != 0 {
-		t.Fatalf("Got: %v   ....   Expected: %v \n", got, val)
-	}
+	assert.Equal(t, got, val)
 }
 
 func TestWSNewWSRPCFunc(t *testing.T) {
 	cl := client.NewWSClient(unixAddr, websocketEndpoint)
 	_, err := cl.Start()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	defer cl.Stop()
 
 	val := "acbd"
@@ -283,21 +251,15 @@ func TestWSNewWSRPCFunc(t *testing.T) {
 		Method:  "status_ws",
 		Params:  params,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 
 	select {
 	case msg := <-cl.ResultsCh:
 		result := new(Result)
 		wire.ReadJSONPtr(result, msg, &err)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.Nil(t, err)
 		got := (*result).(*ResultStatus).Value
-		if got != val {
-			t.Fatalf("Got: %v   ....   Expected: %v \n", got, val)
-		}
+		assert.Equal(t, got, val)
 	case err := <-cl.ErrorsCh:
 		t.Fatal(err)
 	}
