@@ -137,12 +137,7 @@ func echoViaWS(cl *client.WSClient, val string) (string, error) {
 	params := map[string]interface{}{
 		"arg": val,
 	}
-	err := cl.WriteJSON(types.RPCRequest{
-		JSONRPC: "2.0",
-		ID:      "",
-		Method:  "echo",
-		Params:  params,
-	})
+	err := cl.Call("echo", params)
 	if err != nil {
 		return "", err
 	}
@@ -164,12 +159,7 @@ func echoBytesViaWS(cl *client.WSClient, bytes []byte) ([]byte, error) {
 	params := map[string]interface{}{
 		"arg": bytes,
 	}
-	err := cl.WriteJSON(types.RPCRequest{
-		JSONRPC: "2.0",
-		ID:      "",
-		Method:  "echo_bytes",
-		Params:  params,
-	})
+	err := cl.Call("echo_bytes", params)
 	if err != nil {
 		return []byte{}, err
 	}

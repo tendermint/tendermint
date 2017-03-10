@@ -125,3 +125,4 @@ IMPROVEMENTS:
 - added `HTTPClient` interface, which can be used for both `ClientURI`
 and `ClientJSONRPC`
 - all params are now optional (Golang's default will be used if some param is missing)
+- added `Call` method to `WSClient` (see method's doc for details)
