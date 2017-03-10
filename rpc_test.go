@@ -31,38 +31,37 @@ const (
 // Define a type for results and register concrete versions
 type Result interface{}
 
-type ResultStatus struct {
+type ResultEcho struct {
 	Value string
 }
 
-type ResultBytes struct {
+type ResultEchoBytes struct {
 	Value []byte
 }
 
 var _ = wire.RegisterInterface(
 	struct{ Result }{},
-	wire.ConcreteType{&ResultStatus{}, 0x1},
-	wire.ConcreteType{&ResultBytes{}, 0x2},
+	wire.ConcreteType{&ResultEcho{}, 0x1},
+	wire.ConcreteType{&ResultEchoBytes{}, 0x2},
 )
 
 // Define some routes
 var Routes = map[string]*server.RPCFunc{
-	"status":    server.NewRPCFunc(StatusResult, "arg"),
-	"status_ws": server.NewWSRPCFunc(StatusWSResult, "arg"),
-	"bytes":     server.NewRPCFunc(BytesResult, "arg"),
+	"echo":       server.NewRPCFunc(EchoResult, "arg"),
+	"echo_ws":    server.NewWSRPCFunc(EchoWSResult, "arg"),
+	"echo_bytes": server.NewRPCFunc(EchoBytesResult, "arg"),
 }
 
-// an rpc function
-func StatusResult(v string) (Result, error) {
-	return &ResultStatus{v}, nil
+func EchoResult(v string) (Result, error) {
+	return &ResultEcho{v}, nil
 }
 
-func StatusWSResult(wsCtx types.WSRPCContext, v string) (Result, error) {
-	return &ResultStatus{v}, nil
+func EchoWSResult(wsCtx types.WSRPCContext, v string) (Result, error) {
+	return &ResultEcho{v}, nil
 }
 
-func BytesResult(v []byte) (Result, error) {
-	return &ResultBytes{v}, nil
+func EchoBytesResult(v []byte) (Result, error) {
+	return &ResultEchoBytes{v}, nil
 }
 
 // launch unix and tcp servers
@@ -101,20 +100,20 @@ func init() {
 
 }
 
-func status(cl client.HTTPClient, val string) (string, error) {
+func echo(cl client.HTTPClient, val string) (string, error) {
 	params := map[string]interface{}{
 		"arg": val,
 	}
 	var result Result
-	if _, err := cl.Call("status", params, &result); err != nil {
+	if _, err := cl.Call("echo", params, &result); err != nil {
 		return "", err
 	}
-	return result.(*ResultStatus).Value, nil
+	return result.(*ResultEcho).Value, nil
 }
 
 func testWithHTTPClient(t *testing.T, cl client.HTTPClient) {
 	val := "acbd"
-	got, err := status(cl, val)
+	got, err := echo(cl, val)
 	require.Nil(t, err)
 	assert.Equal(t, got, val)
 }
@@ -127,7 +126,7 @@ func testWithWSClient(t *testing.T, cl *client.WSClient) {
 	err := cl.WriteJSON(types.RPCRequest{
 		JSONRPC: "2.0",
 		ID:      "",
-		Method:  "status",
+		Method:  "echo",
 		Params:  params,
 	})
 	require.Nil(t, err)
@@ -137,7 +136,7 @@ func testWithWSClient(t *testing.T, cl *client.WSClient) {
 		result := new(Result)
 		wire.ReadJSONPtr(result, msg, &err)
 		require.Nil(t, err)
-		got := (*result).(*ResultStatus).Value
+		got := (*result).(*ResultEcho).Value
 		assert.Equal(t, got, val)
 	case err := <-cl.ErrorsCh:
 		t.Fatal(err)
@@ -170,7 +169,7 @@ func TestHexStringArg(t *testing.T) {
 	cl := client.NewURIClient(tcpAddr)
 	// should NOT be handled as hex
 	val := "0xabc"
-	got, err := status(cl, val)
+	got, err := echo(cl, val)
 	require.Nil(t, err)
 	assert.Equal(t, got, val)
 }
@@ -179,7 +178,7 @@ func TestQuotedStringArg(t *testing.T) {
 	cl := client.NewURIClient(tcpAddr)
 	// should NOT be unquoted
 	val := "\"abc\""
-	got, err := status(cl, val)
+	got, err := echo(cl, val)
 	require.Nil(t, err)
 	assert.Equal(t, got, val)
 }
@@ -200,9 +199,9 @@ func TestByteSliceViaJSONRPC(t *testing.T) {
 		"arg": val,
 	}
 	var result Result
-	_, err := cl.Call("bytes", params, &result)
+	_, err := cl.Call("echo_bytes", params, &result)
 	require.Nil(t, err)
-	got := result.(*ResultBytes).Value
+	got := result.(*ResultEchoBytes).Value
 	assert.Equal(t, got, val)
 }
 
@@ -219,7 +218,7 @@ func TestWSNewWSRPCFunc(t *testing.T) {
 	err = cl.WriteJSON(types.RPCRequest{
 		JSONRPC: "2.0",
 		ID:      "",
-		Method:  "status_ws",
+		Method:  "echo_ws",
 		Params:  params,
 	})
 	require.Nil(t, err)
@@ -229,7 +228,7 @@ func TestWSNewWSRPCFunc(t *testing.T) {
 		result := new(Result)
 		wire.ReadJSONPtr(result, msg, &err)
 		require.Nil(t, err)
-		got := (*result).(*ResultStatus).Value
+		got := (*result).(*ResultEcho).Value
 		assert.Equal(t, got, val)
 	case err := <-cl.ErrorsCh:
 		t.Fatal(err)
