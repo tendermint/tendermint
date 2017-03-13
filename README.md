@@ -11,7 +11,7 @@ to manage an application state running in another.
 For more information on ABCI, motivations, and tutorials, please visit [our blog post](https://tendermint.com/blog/abci-the-application-blockchain-interface),
 and the more detailed [application developer's guide](https://tendermint.com/docs/guides/app-development).
 
-Previously, the ABCI was just referred to as TMSP.
+Previously, the ABCI was referred to as TMSP.
 
 Other implementations:
 * [cpp-tmsp](https://github.com/mdyring/cpp-tmsp) by Martin Dyring-Andersen
@@ -21,62 +21,22 @@ Other implementations:
 # Specification
 
 The [primary specification](https://github.com/tendermint/abci/blob/master/types/types.proto) is made using Protocol Buffers.
+To build it, run 
 
-	- The Protobuf file defining ABCI message types, and the optional GRPC interface. To build, run `make protoc`
-	- See `protoc --help` and [the GRPC docs](https://www.grpc.io/docs) for examples and details of other languages.
+```
+make protoc
+```
 
-TendermintCore runs a client, and the ABCI application runs a server. There are three Golang implementation of ABCI client and server.
+See `protoc --help` and [the Protocol Buffers site](https://developers.google.com/protocol-buffers/) for details on compiling for other languages.
+Note we also include a [GRPC](https://www.grpc.io/docs) service definition.
 
-1. ABCI-socket: Asynchronous, ordered message passing over Unix or TCP sockets.  Messages are serialized using Protobuf and length prefixed.
-2. GRPC: Synchronous (slow) implementation using GRPC.
-3. Golang in-process: If the ABCI appliation is written in Golang, it is possible to compile both TendermintCore and the application as one binary.
-
-```golang
-// Applications
-type Application interface {
-
-	// Latest state
-	Info() ResponseInfo
-
-	// Initialization
-	SetOption(key string, value string) (log string)
-	InitChain(validators []*Validator)
-
-	// Apply a block
-	BeginBlock(hash []byte, header *Header)
-	DeliverTx(tx []byte) Result
-	EndBlock(height uint64) ResponseEndBlock
-	Commit() Result
-
-	// Check validity
-	CheckTx(tx []byte) Result
-
-	// Query for state
-	Query(query []byte) Result
-}
-
-type Result struct {
-	Code CodeType
-	Data []byte
-	Log  string // Can be non-deterministic
-}
-
-type ResponseInfo struct {
-	Data             string
-	Version          string
-	LastBlockHeight  uint64
-	LastBlockAppHash []byte
-}
-
-type ResponseEndBlock struct {
-	Diffs []*Validator
-}
-
-_TODO: merge information from https://tendermint.com/blog/tendermint-0-8-release_
+For the specification as an interface in Go, see the [types/application.go file](https://github.com/tendermint/abci/blob/master/types/application.go).
 
 ## Message Types
 
-ABCI requests/responses are simple Protobuf messages.  Check out the [schema file](https://github.com/tendermint/abci/blob/master/types/types.proto).
+ABCI requests/responses are defined as simple Protobuf messages in [this schema file](https://github.com/tendermint/abci/blob/master/types/types.proto).
+TendermintCore sends the requests, and the ABCI application sends the responses.
+Here, we describe the requests and responses as function arguments and return values, and make some notes about usage:
 
 #### DeliverTx
   * __Arguments__:
@@ -99,7 +59,7 @@ ABCI requests/responses are simple Protobuf messages.  Check out the [schema fil
     Validate a mempool transaction, prior to broadcasting or proposing.  This message should not mutate the main state, but application
     developers may want to keep a separate CheckTx state that gets reset upon Commit.
 
-    CheckTx can happen interspersed with DeliverTx, but they happen on different connections - CheckTx from the mempool connection, and DeliverTx from the consensus connection.  During Commit, the mempool is locked, so you can reset the mempool state to the latest state after running all those delivertxs, and then the mempool will re-run whatever txs it has against that latest mempool state.
+    CheckTx can happen interspersed with DeliverTx, but they happen on different ABCI connections - CheckTx from the mempool connection, and DeliverTx from the consensus connection.  During Commit, the mempool is locked, so you can reset the mempool state to the latest state after running all those DeliverTxs, and then the mempool will re-run whatever txs it has against that latest mempool state.
 
     Transactions are first run through CheckTx before broadcast to peers in the mempool layer.
     You can make CheckTx semi-stateful and clear the state upon `Commit` or `BeginBlock`,
@@ -184,13 +144,13 @@ ABCI requests/responses are simple Protobuf messages.  Check out the [schema fil
     * Signals that messages queued on the client should be flushed to the server. It is called periodically by the client implementation to ensure asynchronous requests are actually sent, and is called immediately to make a synchronous request, which returns when the Flush response comes back.
 
 
-# Implementations
+# Implementation
 
-The ABCI is a client/server interface where the replication engine (blockchain) forms the client 
-and the state machine (application) forms the server.
-As blocks are committed in the blockchain, they are forwarded to the application.
+We provide three implementations of the ABCI in Go:
 
-This repository provides two implementations of an ABCI client & server: via socket and via GRPC.
+1. ABCI-socket
+2. GRPC
+3. Golang in-process
 
 ## Socket
 
@@ -209,24 +169,18 @@ the ordered, asynchronous socket protocol.
 
 Note the length-prefixing used in the socket implementation does not apply for GRPC.
 
+## In Process
+
+The simplest implementation just uses function calls within Go.
+This means ABCI applications written in Golang can be compiled with TendermintCore and run as a single binary.
+
+
 # Tools and Apps
 
 The `abci-cli` tool wraps any ABCI client and can be used for probing/testing an ABCI application.
-See the [tutorial](https://tendermint.com/intro/getting-started/first-abci) for more details.
+See the [guide](htutoria://tendermint.com/docs/guides/abci-cli) for more details.
 
 Multiple example apps are included:
 - the `counter` application, which illustrates nonce checking in txs
 - the `dummy` application, which illustrates a simple key-value merkle tree
 - the `dummy --persistent` application, which augments the dummy with persistence and validator set changes
-
-
-# Build
-
-To build the protobuf code:
-
-```
-make protoc
-```
-
-See `protoc --help` and [the grpc docs](https://www.grpc.io/docs) for examples and details of other languages
-
