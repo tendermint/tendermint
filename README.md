@@ -15,7 +15,7 @@ Previously, the ABCI was referred to as TMSP.
 
 Other implementations:
 * [cpp-tmsp](https://github.com/mdyring/cpp-tmsp) by Martin Dyring-Andersen
-* [js-tmsp](https://github.com/tendermint/js-tmsp)
+* [js-abci](https://github.com/tendermint/js-abci)
 * [jABCI](https://github.com/jTendermint/jabci) for Java
 
 # Specification
@@ -28,7 +28,7 @@ make protoc
 ```
 
 See `protoc --help` and [the Protocol Buffers site](https://developers.google.com/protocol-buffers/) for details on compiling for other languages.
-Note we also include a [GRPC](https://www.grpc.io/docs) service definition.
+Note we also include a [GRPC](http://www.grpc.io/docs) service definition.
 
 For the specification as an interface in Go, see the [types/application.go file](https://github.com/tendermint/abci/blob/master/types/application.go).
 
