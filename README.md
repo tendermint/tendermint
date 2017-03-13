@@ -178,7 +178,7 @@ This means ABCI applications written in Golang can be compiled with TendermintCo
 # Tools and Apps
 
 The `abci-cli` tool wraps any ABCI client and can be used for probing/testing an ABCI application.
-See the [guide](htutoria://tendermint.com/docs/guides/abci-cli) for more details.
+See the [guide](https://tendermint.com/docs/guides/abci-cli) for more details.
 
 Multiple example apps are included:
 - the `counter` application, which illustrates nonce checking in txs
