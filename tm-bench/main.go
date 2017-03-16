@@ -22,18 +22,16 @@ type statistics struct {
 }
 
 func main() {
-	var listenAddr string
 	var duration, txsRate int
 
-	flag.StringVar(&listenAddr, "listen-addr", "tcp://0.0.0.0:46670", "HTTP and Websocket server listen address")
 	flag.IntVar(&duration, "T", 10, "Exit after the specified amount of time in seconds")
 	flag.IntVar(&txsRate, "r", 1000, "Txs per second to send in a connection")
 
 	flag.Usage = func() {
-		fmt.Println(`Tendermint bench.
+		fmt.Println(`Tendermint blockchain benchmarking tool.
 
 Usage:
-	tm-bench [-listen-addr="tcp://0.0.0.0:46670"] [-T 10] [-r 1000] [endpoints]
+	tm-bench [-T 10] [-r 1000] [endpoints]
 
 Examples:
 	tm-bench localhost:46657`)
