@@ -1,5 +1,5 @@
-hash: 3315dcf12e2554e2927f2a0907f2547cd86d5c8926461d055662a7bee88caa4a
-updated: 2017-03-07T08:38:45.613512657Z
+hash: d21d1f12681cd4ab5b7f0efd7bf00c1d5f7021b1ae6e8700c11bca6822337079
+updated: 2017-03-16T10:01:58.079646405Z
 imports:
 - name: github.com/btcsuite/btcd
   version: 583684b21bfbde9b5fc4403916fd7c807feb0289
@@ -7,6 +7,12 @@ imports:
   - btcec
 - name: github.com/BurntSushi/toml
   version: 99064174e013895bbd9b025c31100bd1d9b590ca
+- name: github.com/go-kit/kit
+  version: b6f30a2e0632f5722fb26d8765d726335b79d3e6
+  subpackages:
+  - log
+- name: github.com/go-logfmt/logfmt
+  version: 390ab7935ee28ec6b286364bba9b4dd6410cb3d5
 - name: github.com/go-stack/stack
   version: 100eb0c0a9c5b306ca2fb4f165df21d80ada4b82
 - name: github.com/golang/protobuf
@@ -19,10 +25,14 @@ imports:
   version: 3ab3a8b8831546bd18fd182c20687ca853b2bb13
 - name: github.com/jmhodges/levigo
   version: c42d9e0ca023e2198120196f842701bb4c55d7b9
+- name: github.com/kr/logfmt
+  version: b84e30acd515aadc4b783ad4ff83aff3299bdfe0
 - name: github.com/mattn/go-colorable
   version: d898aa9fb31c91f35dd28ca75db377eff023c076
 - name: github.com/mattn/go-isatty
   version: dda3de49cbfcec471bd7a70e6cc01fcc3ff90109
+- name: github.com/pkg/errors
+  version: bfd5150e4e41705ded2129ec33379de1cb90b513
 - name: github.com/rcrowley/go-metrics
   version: 1f30fe9094a513ce4c700b9a54458bbb0c96996c
 - name: github.com/stretchr/testify

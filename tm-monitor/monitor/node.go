@@ -1,11 +1,12 @@
-package main
+package monitor
 
 import (
 	"encoding/json"
-	"fmt"
 	"math"
 	"time"
 
+	"github.com/go-kit/kit/log"
+	"github.com/pkg/errors"
 	crypto "github.com/tendermint/go-crypto"
 	events "github.com/tendermint/go-events"
 	rpc_client "github.com/tendermint/go-rpc/client"
@@ -46,6 +47,8 @@ type Node struct {
 	checkIsValidatorInterval time.Duration
 
 	quit chan struct{}
+
+	logger log.Logger
 }
 
 func NewNode(rpcAddr string, options ...func(*Node)) *Node {
@@ -62,6 +65,7 @@ func NewNodeWithEventMeterAndRpcClient(rpcAddr string, em eventMeter, rpcClient 
 		Name:      rpcAddr,
 		quit:      make(chan struct{}),
 		checkIsValidatorInterval: 5 * time.Second,
+		logger: log.NewNopLogger(),
 	}
 
 	for _, option := range options {
@@ -89,6 +93,11 @@ func (n *Node) SendBlockLatenciesTo(ch chan<- float64) {
 
 func (n *Node) NotifyAboutDisconnects(ch chan<- bool) {
 	n.disconnectCh = ch
+}
+
+// SetLogger lets you set your own logger
+func (n *Node) SetLogger(l log.Logger) {
+	n.logger = l
 }
 
 func (n *Node) Start() error {
@@ -127,6 +136,7 @@ func newBlockCallback(n *Node) em.EventCallbackFunc {
 		block := data.(tmtypes.EventDataNewBlockHeader).Header
 
 		n.Height = uint64(block.Height)
+		n.logger.Log("event", "new block", "height", block.Height, "numTxs", block.NumTxs)
 
 		if n.blockCh != nil {
 			n.blockCh <- *block
@@ -138,6 +148,8 @@ func newBlockCallback(n *Node) em.EventCallbackFunc {
 func latencyCallback(n *Node) em.LatencyCallbackFunc {
 	return func(latency float64) {
 		n.BlockLatency = latency / 1000000.0 // ns to ms
+		n.logger.Log("event", "new block latency", "latency", n.BlockLatency)
+
 		if n.blockLatencyCh != nil {
 			n.blockLatencyCh <- latency
 		}
@@ -148,14 +160,18 @@ func latencyCallback(n *Node) em.LatencyCallbackFunc {
 func disconnectCallback(n *Node) em.DisconnectCallbackFunc {
 	return func() {
 		n.Online = false
+		n.logger.Log("status", "down")
+
 		if n.disconnectCh != nil {
 			n.disconnectCh <- true
 		}
 
 		if err := n.RestartBackOff(); err != nil {
-			log.Error(err.Error())
+			n.logger.Log("err", errors.Wrap(err, "restart failed"))
 		} else {
 			n.Online = true
+			n.logger.Log("status", "online")
+
 			if n.disconnectCh != nil {
 				n.disconnectCh <- false
 			}
@@ -171,7 +187,7 @@ func (n *Node) RestartBackOff() error {
 		time.Sleep(d * time.Second)
 
 		if err := n.Start(); err != nil {
-			log.Debug("Can't connect to node %v due to %v", n, err)
+			n.logger.Log("err", errors.Wrap(err, "restart failed"))
 		} else {
 			// TODO: authenticate pubkey
 			return nil
@@ -180,7 +196,7 @@ func (n *Node) RestartBackOff() error {
 		attempt++
 
 		if attempt > maxRestarts {
-			return fmt.Errorf("Reached max restarts for node %v", n)
+			return errors.New("Reached max restarts")
 		}
 	}
 }
@@ -223,7 +239,7 @@ func (n *Node) checkIsValidator() {
 			}
 		}
 	} else {
-		log.Debug(err.Error())
+		n.logger.Log("err", errors.Wrap(err, "check is validator failed"))
 	}
 }
 

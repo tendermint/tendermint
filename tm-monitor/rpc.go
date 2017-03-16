@@ -5,9 +5,10 @@ import (
 	"net/http"
 
 	rpc "github.com/tendermint/go-rpc/server"
+	monitor "github.com/tendermint/tools/tm-monitor/monitor"
 )
 
-func startRPC(listenAddr string, m *Monitor) {
+func startRPC(listenAddr string, m *monitor.Monitor) {
 	routes := routes(m)
 
 	// serve http and ws
@@ -20,7 +21,7 @@ func startRPC(listenAddr string, m *Monitor) {
 	}
 }
 
-func routes(m *Monitor) map[string]*rpc.RPCFunc {
+func routes(m *monitor.Monitor) map[string]*rpc.RPCFunc {
 	return map[string]*rpc.RPCFunc{
 		"status":         rpc.NewRPCFunc(RPCStatus(m), ""),
 		"status/network": rpc.NewRPCFunc(RPCNetworkStatus(m), ""),
@@ -35,9 +36,9 @@ func routes(m *Monitor) map[string]*rpc.RPCFunc {
 }
 
 // RPCStatus returns common statistics for the network and statistics per node.
-func RPCStatus(m *Monitor) interface{} {
+func RPCStatus(m *monitor.Monitor) interface{} {
 	return func() (networkAndNodes, error) {
-		values := make([]*Node, len(m.Nodes))
+		values := make([]*monitor.Node, len(m.Nodes))
 		i := 0
 		for _, v := range m.Nodes {
 			values[i] = v
@@ -49,15 +50,15 @@ func RPCStatus(m *Monitor) interface{} {
 }
 
 // RPCNetworkStatus returns common statistics for the network.
-func RPCNetworkStatus(m *Monitor) interface{} {
-	return func() (*Network, error) {
+func RPCNetworkStatus(m *monitor.Monitor) interface{} {
+	return func() (*monitor.Network, error) {
 		return m.Network, nil
 	}
 }
 
 // RPCNodeStatus returns statistics for the given node.
-func RPCNodeStatus(m *Monitor) interface{} {
-	return func(name string) (*Node, error) {
+func RPCNodeStatus(m *monitor.Monitor) interface{} {
+	return func(name string) (*monitor.Node, error) {
 		if n, ok := m.Nodes[name]; ok {
 			return n, nil
 		}
@@ -66,9 +67,9 @@ func RPCNodeStatus(m *Monitor) interface{} {
 }
 
 // RPCMonitor allows to dynamically add a endpoint to under the monitor.
-func RPCMonitor(m *Monitor) interface{} {
-	return func(endpoint string) (*Node, error) {
-		n := NewNode(endpoint)
+func RPCMonitor(m *monitor.Monitor) interface{} {
+	return func(endpoint string) (*monitor.Node, error) {
+		n := monitor.NewNode(endpoint)
 		if err := m.Monitor(n); err != nil {
 			return nil, err
 		}
@@ -77,7 +78,7 @@ func RPCMonitor(m *Monitor) interface{} {
 }
 
 // RPCUnmonitor removes the given endpoint from under the monitor.
-func RPCUnmonitor(m *Monitor) interface{} {
+func RPCUnmonitor(m *monitor.Monitor) interface{} {
 	return func(endpoint string) (bool, error) {
 		if n, ok := m.Nodes[endpoint]; ok {
 			m.Unmonitor(n)
@@ -121,6 +122,6 @@ func RPCUnmonitor(m *Monitor) interface{} {
 //--> types
 
 type networkAndNodes struct {
-	Network *Network `json:"network"`
-	Nodes   []*Node  `json:"nodes"`
+	Network *monitor.Network `json:"network"`
+	Nodes   []*monitor.Node  `json:"nodes"`
 }

@@ -1,4 +1,4 @@
-package main_test
+package monitor_test
 
 import (
 	"testing"
@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	tmtypes "github.com/tendermint/tendermint/types"
-	monitor "github.com/tendermint/tools/tm-monitor"
+	monitor "github.com/tendermint/tools/tm-monitor/monitor"
 )
 
 func TestNetworkNewBlock(t *testing.T) {

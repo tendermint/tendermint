@@ -1,9 +1,12 @@
-package main
+package monitor
 
 import (
+	"fmt"
 	"math/rand"
 	"time"
 
+	"github.com/go-kit/kit/log"
+	"github.com/pkg/errors"
 	tmtypes "github.com/tendermint/tendermint/types"
 )
 
@@ -23,6 +26,8 @@ type Monitor struct {
 
 	recalculateNetworkUptimeEvery time.Duration
 	numValidatorsUpdateInterval   time.Duration
+
+	logger log.Logger
 }
 
 // NewMonitor creates new instance of a Monitor. You can provide options to
@@ -38,6 +43,7 @@ func NewMonitor(options ...func(*Monitor)) *Monitor {
 		nodeQuit:                      make(map[string]chan struct{}),
 		recalculateNetworkUptimeEvery: 10 * time.Second,
 		numValidatorsUpdateInterval:   5 * time.Second,
+		logger: log.NewNopLogger(),
 	}
 
 	for _, option := range options {
@@ -59,6 +65,11 @@ func SetNumValidatorsUpdateInterval(d time.Duration) func(m *Monitor) {
 	return func(m *Monitor) {
 		m.numValidatorsUpdateInterval = d
 	}
+}
+
+// SetLogger lets you set your own logger
+func (m *Monitor) SetLogger(l log.Logger) {
+	m.logger = l
 }
 
 // Monitor begins to monitor the node `n`. The node will be started and added
@@ -116,6 +127,8 @@ func (m *Monitor) Stop() {
 
 // main loop where we listen for events from the node
 func (m *Monitor) listen(nodeName string, blockCh <-chan tmtypes.Header, blockLatencyCh <-chan float64, disconnectCh <-chan bool, quit <-chan struct{}) {
+	logger := log.With(m.logger, "node", nodeName)
+
 	for {
 		select {
 		case <-quit:
@@ -133,6 +146,7 @@ func (m *Monitor) listen(nodeName string, blockCh <-chan tmtypes.Header, blockLa
 				m.Network.NodeIsOnline(nodeName)
 			}
 		case <-time.After(nodeLivenessTimeout):
+			logger.Log("event", fmt.Sprintf("node was not responding for %v", nodeLivenessTimeout))
 			m.Network.NodeIsDown(nodeName)
 		}
 	}
@@ -176,7 +190,7 @@ func (m *Monitor) updateNumValidatorLoop() {
 				if i == randomNodeIndex {
 					height, num, err = n.NumValidators()
 					if err != nil {
-						log.Debug(err.Error())
+						m.logger.Log("err", errors.Wrap(err, "update num validators failed"))
 					}
 					break
 				}

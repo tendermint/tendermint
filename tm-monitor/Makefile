@@ -3,6 +3,7 @@ VERSION := $(shell perl -ne '/^var version.*"([^"]+)".*$$/ && print "v$$1\n"' ma
 GOTOOLS = \
 					github.com/Masterminds/glide \
 					github.com/mitchellh/gox
+PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 
 tools:
 	go get -v $(GOTOOLS)
@@ -17,7 +18,7 @@ install:
 	go install -ldflags "-X main.version=${VERSION}"
 
 test:
-	go test
+	@go test $(PACKAGES)
 
 build-all: tools
 	gox -verbose \
@@ -41,7 +42,6 @@ build-docker:
 	docker build -t "tendermint/monitor" .
 
 clean:
-	rm -f ./tm-monitor.log
 	rm -f ./tm-monitor
 	rm -rf ./dist
 

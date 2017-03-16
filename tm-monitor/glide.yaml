@@ -16,3 +16,8 @@ import:
   subpackages:
   - client
 - package: github.com/tendermint/log15
+- package: github.com/go-kit/kit
+  subpackages:
+  - log
+  - term
+- package: github.com/pkg/errors
