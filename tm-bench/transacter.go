@@ -1,4 +1,4 @@
-package bench
+package main
 
 import (
 	"crypto/rand"
@@ -23,19 +23,27 @@ type transacter struct {
 	wg      sync.WaitGroup
 }
 
+func newTransacter(target string, rate int) *transacter {
+	return &transacter{
+		Target: target,
+		Rate:   rate,
+		wsc:    rpcclient.NewWSClient(target, "/websocket"),
+	}
+}
+
 func (t *transacter) Start() error {
-	t.wsc = rpcclient.NewWSClient(t.Target, "/websocket")
+	t.stopped = false
 	if _, err := t.wsc.Start(); err != nil {
 		return err
 	}
-	wg.Add(1)
+	t.wg.Add(1)
 	go t.sendLoop()
 	return nil
 }
 
 func (t *transacter) Stop() {
 	t.stopped = true
-	wg.Wait()
+	t.wg.Wait()
 	t.wsc.Stop()
 }
 
@@ -59,18 +67,18 @@ func (t *transacter) sendLoop() {
 		}
 
 		if t.stopped {
-			wg.Done()
+			t.wg.Done()
 			return
 		}
 
-		timeToSend := time.Now() - startTime
-		timer.Sleep(time.Second - timeToSend)
+		timeToSend := time.Now().Sub(startTime)
+		time.Sleep(time.Second - timeToSend)
 	}
 }
 
 // generateTx returns a random byte sequence where first 8 bytes are the number
 // of transaction.
-func generateTx(num) []byte {
+func generateTx(num int) []byte {
 	tx := make([]byte, 250)
 	binary.PutUvarint(tx[:32], uint64(num))
 	if _, err := rand.Read(tx[234:]); err != nil {

@@ -1,4 +1,4 @@
-package bench
+package main
 
 import (
 	"flag"
@@ -7,14 +7,14 @@ import (
 	"strings"
 	"time"
 
-	monitor "github.com/tendermint/tools/tm-monitor"
+	"github.com/tendermint/tools/tm-monitor/monitor"
 )
 
 var version = "0.1.0.pre"
 
 func main() {
 	var listenAddr string
-	var connections, duration, txsRate int
+	var duration, txsRate int
 
 	flag.StringVar(&listenAddr, "listen-addr", "tcp://0.0.0.0:46670", "HTTP and Websocket server listen address")
 	flag.IntVar(&duration, "T", 10, "Exit after the specified amount of time in seconds")
@@ -43,32 +43,24 @@ Examples:
 
 	m := startMonitor(flag.Arg(0))
 
-	transacters := make([]*Transacter, len(endpoints))
-	for _, e := range strings.Split(endpoints, ",") {
-		t := &transacter{e, txsRate}
+	endpoints := strings.Split(flag.Arg(0), ",")
+	transacters := make([]*transacter, len(endpoints))
+	for i, e := range endpoints {
+		t := newTransacter(e, txsRate)
 		if err := t.Start(); err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
+			panic(err)
 		}
-		append(transacters, t)
+		transacters[i] = t
 	}
 
 	select {
-	case time.After(duration * time.Second):
+	case <-time.After(time.Duration(duration) * time.Second):
 		for _, t := range transacters {
 			t.Stop()
 		}
 		collectAndPrintResults(m)
 		m.Stop()
 	}
-
-	cmn.TrapSignal(func() {
-		for _, t := range transacters {
-			t.Stop()
-		}
-		collectAndPrintResults(m)
-		m.Stop()
-	})
 }
 
 func startMonitor(endpoints string) *monitor.Monitor {
@@ -76,19 +68,22 @@ func startMonitor(endpoints string) *monitor.Monitor {
 
 	for _, e := range strings.Split(endpoints, ",") {
 		if err := m.Monitor(monitor.NewNode(e)); err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
+			panic(err)
 		}
 	}
 
 	if err := m.Start(); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
+		panic(err)
 	}
 
 	return m
 }
 
-func collectAndPrintResults(m *Monitor) {
-	fmt.Printf("%d", m.Network.Height)
+func collectAndPrintResults(m *monitor.Monitor) {
+	n := m.Network
+	fmt.Println("===")
+	fmt.Printf("Avg block time: %.3f ms\n", n.AvgBlockTime)
+	fmt.Printf("Avg tx throughput: %.0f per sec\n", n.AvgTxThroughput)
+	fmt.Printf("Avg block latency: %.3f ms\n", n.AvgBlockLatency)
+	fmt.Println("===")
 }

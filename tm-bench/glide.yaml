@@ -7,4 +7,4 @@ import:
   - types
 - package: github.com/tendermint/tools
   subpackages:
-  - tm-monitor
+  - tm-monitor/monitor
