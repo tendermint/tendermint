@@ -6,6 +6,8 @@ import (
 	"os"
 	"text/tabwriter"
 	"time"
+
+	monitor "github.com/tendermint/tools/tm-monitor/monitor"
 )
 
 const (
@@ -24,14 +26,14 @@ const (
 // Ton was inspired by [Linux top
 // program](https://en.wikipedia.org/wiki/Top_(software)) as the name suggests.
 type Ton struct {
-	monitor *Monitor
+	monitor *monitor.Monitor
 
 	RefreshRate time.Duration
 	Output      io.Writer
 	quit        chan struct{}
 }
 
-func NewTon(m *Monitor) *Ton {
+func NewTon(m *monitor.Monitor) *Ton {
 	return &Ton{
 		RefreshRate: defaultRefreshRate,
 		Output:      os.Stdout,

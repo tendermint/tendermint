@@ -1,4 +1,4 @@
-package main
+package monitor
 
 import (
 	"sync"
@@ -74,11 +74,9 @@ func (n *Network) NewBlock(b tmtypes.Header) {
 	defer n.mu.Unlock()
 
 	if n.Height >= uint64(b.Height) {
-		log.Debug("Received new block with height <= current", "received", b.Height, "current", n.Height)
 		return
 	}
 
-	log.Debug("Received new block", "height", b.Height, "ntxs", b.NumTxs)
 	n.Height = uint64(b.Height)
 
 	n.blockTimeMeter.Mark(1)

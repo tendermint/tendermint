@@ -1,4 +1,4 @@
-package main_test
+package monitor_test
 
 import (
 	"testing"
@@ -10,8 +10,8 @@ import (
 	crypto "github.com/tendermint/go-crypto"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	tmtypes "github.com/tendermint/tendermint/types"
-	monitor "github.com/tendermint/tools/tm-monitor"
 	mock "github.com/tendermint/tools/tm-monitor/mock"
+	monitor "github.com/tendermint/tools/tm-monitor/monitor"
 )
 
 func TestMonitorUpdatesNumberOfValidators(t *testing.T) {

@@ -6,22 +6,21 @@ import (
 	"os"
 	"strings"
 
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/term"
 	cmn "github.com/tendermint/go-common"
-	logger "github.com/tendermint/go-logger"
-	log15 "github.com/tendermint/log15"
-	em "github.com/tendermint/tools/tm-monitor/eventmeter"
+	monitor "github.com/tendermint/tools/tm-monitor/monitor"
 )
 
 var version = "0.3.0.pre"
 
-var log = logger.New()
+var logger = log.NewNopLogger()
 
 func main() {
 	var listenAddr string
-	var verbose, noton bool
+	var noton bool
 
 	flag.StringVar(&listenAddr, "listen-addr", "tcp://0.0.0.0:46670", "HTTP and Websocket server listen address")
-	flag.BoolVar(&verbose, "v", false, "verbose logging")
 	flag.BoolVar(&noton, "no-ton", false, "Do not show ton (table of nodes)")
 
 	flag.Usage = func() {
@@ -29,7 +28,7 @@ func main() {
 applications, collecting and providing various statistics to the user.
 
 Usage:
-	tm-monitor [-v] [-no-ton] [-listen-addr="tcp://0.0.0.0:46670"] [endpoints]
+	tm-monitor [-no-ton] [-listen-addr="tcp://0.0.0.0:46670"] [endpoints]
 
 Examples:
 	# monitor single instance
@@ -48,17 +47,28 @@ Examples:
 		os.Exit(1)
 	}
 
+	if noton {
+		// Color errors red
+		colorFn := func(keyvals ...interface{}) term.FgBgColor {
+			for i := 1; i < len(keyvals); i += 2 {
+				if _, ok := keyvals[i].(error); ok {
+					return term.FgBgColor{Fg: term.White, Bg: term.Red}
+				}
+			}
+			return term.FgBgColor{}
+		}
+
+		logger = term.NewLogger(os.Stdout, log.NewLogfmtLogger, colorFn)
+	}
+
 	m := startMonitor(flag.Arg(0))
 
 	startRPC(listenAddr, m)
 
 	var ton *Ton
 	if !noton {
-		logToFile("tm-monitor.log", verbose)
 		ton = NewTon(m)
 		ton.Start()
-	} else {
-		logToStdout(verbose)
 	}
 
 	cmn.TrapSignal(func() {
@@ -69,50 +79,21 @@ Examples:
 	})
 }
 
-func startMonitor(endpoints string) *Monitor {
-	m := NewMonitor()
+func startMonitor(endpoints string) *monitor.Monitor {
+	m := monitor.NewMonitor()
+	m.SetLogger(log.With(logger, "component", "monitor"))
 
 	for _, e := range strings.Split(endpoints, ",") {
-		if err := m.Monitor(NewNode(e)); err != nil {
-			log.Crit(err.Error())
-			os.Exit(1)
+		n := monitor.NewNode(e)
+		n.SetLogger(log.With(logger, "node", e))
+		if err := m.Monitor(n); err != nil {
+			panic(err)
 		}
 	}
 
 	if err := m.Start(); err != nil {
-		log.Crit(err.Error())
-		os.Exit(1)
+		panic(err)
 	}
 
 	return m
-}
-
-func logToStdout(verbose bool) {
-	if verbose {
-		log.SetHandler(logger.LvlFilterHandler(
-			logger.LvlDebug,
-			logger.BypassHandler(),
-		))
-	} else {
-		log.SetHandler(logger.LvlFilterHandler(
-			logger.LvlInfo,
-			logger.BypassHandler(),
-		))
-	}
-	em.Log = log
-}
-
-func logToFile(filename string, verbose bool) {
-	if verbose {
-		log.SetHandler(logger.LvlFilterHandler(
-			logger.LvlDebug,
-			log15.Must.FileHandler(filename, log15.LogfmtFormat()),
-		))
-	} else {
-		log.SetHandler(logger.LvlFilterHandler(
-			logger.LvlInfo,
-			log15.Must.FileHandler(filename, log15.LogfmtFormat()),
-		))
-	}
-	em.Log = log
 }
