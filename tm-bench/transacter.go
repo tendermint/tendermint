@@ -15,60 +15,78 @@ import (
 )
 
 type transacter struct {
-	Target string
-	Rate   int
+	Target      string
+	Rate        int
+	Connections int
 
-	wsc     *rpcclient.WSClient
-	stopped bool
+	conns   []*rpcclient.WSClient
 	wg      sync.WaitGroup
+	stopped bool
 }
 
-func newTransacter(target string, rate int) *transacter {
+func newTransacter(target string, connections int, rate int) *transacter {
+	conns := make([]*rpcclient.WSClient, connections)
+	for i := 0; i < connections; i++ {
+		conns[i] = rpcclient.NewWSClient(target, "/websocket")
+	}
+
 	return &transacter{
-		Target: target,
-		Rate:   rate,
-		wsc:    rpcclient.NewWSClient(target, "/websocket"),
+		Target:      target,
+		Rate:        rate,
+		Connections: connections,
+		conns:       conns,
 	}
 }
 
 func (t *transacter) Start() error {
 	t.stopped = false
-	if _, err := t.wsc.Start(); err != nil {
-		return err
+
+	for _, c := range t.conns {
+		if _, err := c.Start(); err != nil {
+			return err
+		}
 	}
-	t.wg.Add(1)
-	go t.sendLoop()
+
+	for i := 0; i < t.Connections; i++ {
+		t.wg.Add(1)
+		go t.sendLoop(i)
+	}
+
 	return nil
 }
 
 func (t *transacter) Stop() {
 	t.stopped = true
 	t.wg.Wait()
-	t.wsc.Stop()
+	for _, c := range t.conns {
+		c.Stop()
+	}
 }
 
-func (t *transacter) sendLoop() {
-	var num = 0
+func (t *transacter) sendLoop(connIndex int) {
+	conn := t.conns[connIndex]
 
+	var num = 0
 	for {
 		startTime := time.Now()
+
 		for i := 0; i < t.Rate; i++ {
-			tx := generateTx(num)
-			err := t.wsc.WriteJSON(rpctypes.RPCRequest{
+			if t.stopped {
+				t.wg.Done()
+				return
+			}
+
+			tx := generateTx(connIndex, num)
+			err := conn.WriteJSON(rpctypes.RPCRequest{
 				JSONRPC: "2.0",
 				ID:      "",
 				Method:  "broadcast_tx_async",
 				Params:  []interface{}{hex.EncodeToString(tx)},
 			})
 			if err != nil {
-				panic(errors.Wrap(err, fmt.Sprintf("lost connection to %s", t.Target)))
+				panic(errors.Wrap(err, fmt.Sprintf("lost connection to %s", conn.Address)))
 			}
 			num++
-		}
-
-		if t.stopped {
-			t.wg.Done()
-			return
 		}
 
 		timeToSend := time.Now().Sub(startTime)
@@ -76,11 +94,10 @@ func (t *transacter) sendLoop() {
 	}
 }
 
-// generateTx returns a random byte sequence where first 8 bytes are the number
-// of transaction.
-func generateTx(num int) []byte {
+func generateTx(a int, b int) []byte {
 	tx := make([]byte, 250)
-	binary.PutUvarint(tx[:32], uint64(num))
+	binary.PutUvarint(tx[:32], uint64(a))
+	binary.PutUvarint(tx[32:64], uint64(b))
 	if _, err := rand.Read(tx[234:]); err != nil {
 		panic(errors.Wrap(err, "err reading from crypto/rand"))
 	}

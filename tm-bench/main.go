@@ -22,8 +22,9 @@ type statistics struct {
 }
 
 func main() {
-	var duration, txsRate int
+	var duration, txsRate, connections int
 
+	flag.IntVar(&connections, "c", 1, "Connections to keep open per endpoint")
 	flag.IntVar(&duration, "T", 10, "Exit after the specified amount of time in seconds")
 	flag.IntVar(&txsRate, "r", 1000, "Txs per second to send in a connection")
 
@@ -31,7 +32,7 @@ func main() {
 		fmt.Println(`Tendermint blockchain benchmarking tool.
 
 Usage:
-	tm-bench [-T 10] [-r 1000] [endpoints]
+	tm-bench [-c 1] [-T 10] [-r 1000] [endpoints]
 
 Examples:
 	tm-bench localhost:46657`)
@@ -55,7 +56,7 @@ Examples:
 
 	nodes := startNodes(endpoints, blockCh, blockLatencyCh)
 
-	transacters := startTransacters(endpoints, txsRate)
+	transacters := startTransacters(endpoints, connections, txsRate)
 
 	stats := &statistics{
 		BlockTimeSample:    metrics.NewHistogram(metrics.NewUniformSample(1000)),
@@ -114,11 +115,11 @@ func startNodes(endpoints []string, blockCh chan<- tmtypes.Header, blockLatencyC
 	return nodes
 }
 
-func startTransacters(endpoints []string, txsRate int) []*transacter {
+func startTransacters(endpoints []string, connections int, txsRate int) []*transacter {
 	transacters := make([]*transacter, len(endpoints))
 
 	for i, e := range endpoints {
-		t := newTransacter(e, txsRate)
+		t := newTransacter(e, connections, txsRate)
 		if err := t.Start(); err != nil {
 			panic(err)
 		}

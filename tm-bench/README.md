@@ -4,7 +4,7 @@
 core](https://github.com/tendermint/tendermint) nodes.
 
 ```
-λ tm-bench -T10 -r1000 localhost:46657
+λ tm-bench -T 10 -r 1000 localhost:46657
 Stats             Avg        Stdev      Max
 Block latency     6.18ms     3.19ms     14ms
 Blocks/sec        0.828      0.378      1
