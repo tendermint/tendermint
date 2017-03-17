@@ -49,13 +49,15 @@ tm-bench localhost:46657
 ## Usage
 
 ```
-tm-bench [-T 10] [-r 1000] [endpoints]
+tm-bench [-c 1] [-T 10] [-r 1000] [endpoints]
 
 Examples:
         tm-bench localhost:46657
 Flags:
   -T int
         Exit after the specified amount of time in seconds (default 10)
+  -c int
+        Connections to keep open per endpoint (default 1)
   -r int
         Txs per second to send in a connection (default 1000)
 ```
