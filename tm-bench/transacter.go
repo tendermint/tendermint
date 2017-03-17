@@ -1,10 +1,10 @@
 package main
 
 import (
-	"crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"math/rand"
 	"sync"
 	"time"
 
