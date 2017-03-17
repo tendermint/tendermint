@@ -65,6 +65,16 @@ func (db *MemDB) Print() {
 	}
 }
 
+// TODO: needs to be wired to range db.db
+func (db *MemDB) Iterator() Iterator {
+	return nil
+}
+
+// TODO: needs to be wired to range db.db
+func (db *MemDB) Next(iter Iterator) (key []byte, value []byte) {
+	return nil, nil
+}
+
 func (db *MemDB) NewBatch() Batch {
 	return &memDBBatch{db, nil}
 }

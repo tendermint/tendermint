@@ -90,6 +90,15 @@ func (db *GoLevelDB) Print() {
 	}
 }
 
+func (db *GoLevelDB) Iterator() Iterator {
+	return db.db.NewIterator(nil, nil)
+}
+
+func (db *GoLevelDB) Next(iter Iterator) ([]byte, []byte) {
+	iter.Next()
+	return iter.Key(), iter.Value()
+}
+
 func (db *GoLevelDB) NewBatch() Batch {
 	batch := new(leveldb.Batch)
 	return &goLevelDBBatch{db, batch}

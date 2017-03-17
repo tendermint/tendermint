@@ -12,6 +12,8 @@ type DB interface {
 	NewBatch() Batch
 
 	// For debugging
+	Iterator() Iterator
+	Next(Iterator) (key []byte, value []byte)
 	Print()
 }
 
@@ -19,6 +21,12 @@ type Batch interface {
 	Set(key, value []byte)
 	Delete(key []byte)
 	Write()
+}
+
+type Iterator interface {
+	Next() bool
+	Key() []byte
+	Value() []byte
 }
 
 //-----------------------------------------------------------------------------
