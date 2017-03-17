@@ -95,8 +95,10 @@ func (db *GoLevelDB) Iterator() Iterator {
 }
 
 func (db *GoLevelDB) Next(iter Iterator) ([]byte, []byte) {
-	iter.Next()
-	return iter.Key(), iter.Value()
+	if iter.Next() {
+		return iter.Key(), iter.Value()
+	}
+	return nil, nil
 }
 
 func (db *GoLevelDB) NewBatch() Batch {
