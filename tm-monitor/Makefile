@@ -38,7 +38,7 @@ dist: build-all
 
 build-docker:
 	rm -f ./tm-monitor
-	docker run -it --rm -v "$(PWD):/go/src/app" -w "/go/src/app" -e "CGO_ENABLED=0" golang:alpine go build -ldflags "-X main.version=${VERSION}" -o tm-monitor
+	docker run -it --rm -v "$(PWD):/go/src/github.com/tendermint/tools/tm-monitor" -w "/go/src/github.com/tendermint/tools/tm-monitor" -e "CGO_ENABLED=0" golang:alpine go build -ldflags "-X main.version=${VERSION}" -o tm-monitor
 	docker build -t "tendermint/monitor" .
 
 clean:
