@@ -38,14 +38,7 @@ func routes(m *monitor.Monitor) map[string]*rpc.RPCFunc {
 // RPCStatus returns common statistics for the network and statistics per node.
 func RPCStatus(m *monitor.Monitor) interface{} {
 	return func() (networkAndNodes, error) {
-		values := make([]*monitor.Node, len(m.Nodes))
-		i := 0
-		for _, v := range m.Nodes {
-			values[i] = v
-			i++
-		}
-
-		return networkAndNodes{m.Network, values}, nil
+		return networkAndNodes{m.Network, m.Nodes}, nil
 	}
 }
 
@@ -59,19 +52,23 @@ func RPCNetworkStatus(m *monitor.Monitor) interface{} {
 // RPCNodeStatus returns statistics for the given node.
 func RPCNodeStatus(m *monitor.Monitor) interface{} {
 	return func(name string) (*monitor.Node, error) {
-		if n, ok := m.Nodes[name]; ok {
+		if i, n := m.NodeByName(name); i != -1 {
 			return n, nil
 		}
 		return nil, errors.New("Cannot find node with that name")
 	}
 }
 
-// RPCMonitor allows to dynamically add a endpoint to under the monitor.
+// RPCMonitor allows to dynamically add a endpoint to under the monitor. Safe
+// to call multiple times.
 func RPCMonitor(m *monitor.Monitor) interface{} {
 	return func(endpoint string) (*monitor.Node, error) {
-		n := monitor.NewNode(endpoint)
-		if err := m.Monitor(n); err != nil {
-			return nil, err
+		i, n := m.NodeByName(endpoint)
+		if i == -1 {
+			n = monitor.NewNode(endpoint)
+			if err := m.Monitor(n); err != nil {
+				return nil, err
+			}
 		}
 		return n, nil
 	}
@@ -80,7 +77,7 @@ func RPCMonitor(m *monitor.Monitor) interface{} {
 // RPCUnmonitor removes the given endpoint from under the monitor.
 func RPCUnmonitor(m *monitor.Monitor) interface{} {
 	return func(endpoint string) (bool, error) {
-		if n, ok := m.Nodes[endpoint]; ok {
+		if i, n := m.NodeByName(endpoint); i != -1 {
 			m.Unmonitor(n)
 			return true, nil
 		}

@@ -18,7 +18,7 @@ const nodeLivenessTimeout = 5 * time.Second
 //
 // Common statistics is stored in Network struct.
 type Monitor struct {
-	Nodes   map[string]*Node
+	Nodes   []*Node
 	Network *Network
 
 	monitorQuit chan struct{}            // monitor exitting
@@ -37,7 +37,7 @@ type Monitor struct {
 //   NewMonitor(monitor.SetNumValidatorsUpdateInterval(1 * time.Second))
 func NewMonitor(options ...func(*Monitor)) *Monitor {
 	m := &Monitor{
-		Nodes:                         make(map[string]*Node),
+		Nodes:                         make([]*Node, 0),
 		Network:                       NewNetwork(),
 		monitorQuit:                   make(chan struct{}),
 		nodeQuit:                      make(map[string]chan struct{}),
@@ -75,7 +75,7 @@ func (m *Monitor) SetLogger(l log.Logger) {
 // Monitor begins to monitor the node `n`. The node will be started and added
 // to the monitor.
 func (m *Monitor) Monitor(n *Node) error {
-	m.Nodes[n.Name] = n
+	m.Nodes = append(m.Nodes, n)
 
 	blockCh := make(chan tmtypes.Header, 10)
 	n.SendBlocksTo(blockCh)
@@ -104,7 +104,20 @@ func (m *Monitor) Unmonitor(n *Node) {
 	n.Stop()
 	close(m.nodeQuit[n.Name])
 	delete(m.nodeQuit, n.Name)
-	delete(m.Nodes, n.Name)
+	i, _ := m.NodeByName(n.Name)
+	m.Nodes[i] = m.Nodes[len(m.Nodes)-1]
+	m.Nodes = m.Nodes[:len(m.Nodes)-1]
+}
+
+// NodeByName returns the node and its index if such node exists within the
+// monitor. Otherwise, -1 and nil are returned.
+func (m *Monitor) NodeByName(name string) (index int, node *Node) {
+	for i, n := range m.Nodes {
+		if name == n.Name {
+			return i, n
+		}
+	}
+	return -1, nil
 }
 
 // Start starts the monitor's routines: recalculating network uptime and
