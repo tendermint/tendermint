@@ -140,8 +140,9 @@ func (em *EventMeter) Start() error {
 	return nil
 }
 
+// Stop stops the EventMeter.
 func (em *EventMeter) Stop() {
-	<-em.quit
+	close(em.quit)
 
 	em.RegisterDisconnectCallback(nil) // so we don't try and reconnect
 	em.wsc.Stop()                      // close(wsc.Quit)

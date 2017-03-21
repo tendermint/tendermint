@@ -121,12 +121,7 @@ func (n *Node) Start() error {
 func (n *Node) Stop() {
 	n.Online = false
 
-	n.em.RegisterLatencyCallback(nil)
-	n.em.Unsubscribe(tmtypes.EventStringNewBlockHeader())
-	n.em.RegisterDisconnectCallback(nil)
-
-	// FIXME stop blocks at event_meter.go:140
-	// n.em.Stop()
+	n.em.Stop()
 
 	close(n.quit)
 }
