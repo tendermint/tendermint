@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -10,7 +11,6 @@ import (
 
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-crypto"
-	"github.com/tendermint/go-wire"
 )
 
 const (
@@ -96,13 +96,14 @@ func LoadPrivValidator(filePath string) *PrivValidator {
 	if err != nil {
 		Exit(err.Error())
 	}
-	privVal := wire.ReadJSON(&PrivValidator{}, privValJSONBytes, &err).(*PrivValidator)
+	privVal := PrivValidator{}
+	err = json.Unmarshal(privValJSONBytes, &privVal)
 	if err != nil {
 		Exit(Fmt("Error reading PrivValidator from %v: %v\n", filePath, err))
 	}
 	privVal.filePath = filePath
 	privVal.Signer = NewDefaultSigner(privVal.PrivKey)
-	return privVal
+	return &privVal
 }
 
 func LoadOrGenPrivValidator(filePath string) *PrivValidator {
@@ -136,8 +137,12 @@ func (privVal *PrivValidator) save() {
 	if privVal.filePath == "" {
 		PanicSanity("Cannot save PrivValidator: filePath not set")
 	}
-	jsonBytes := wire.JSONBytesPretty(privVal)
-	err := WriteFileAtomic(privVal.filePath, jsonBytes, 0600)
+	jsonBytes, err := json.Marshal(privVal)
+	if err != nil {
+		// `@; BOOM!!!
+		PanicCrisis(err)
+	}
+	err = WriteFileAtomic(privVal.filePath, jsonBytes, 0600)
 	if err != nil {
 		// `@; BOOM!!!
 		PanicCrisis(err)

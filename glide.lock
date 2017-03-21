@@ -106,7 +106,7 @@ imports:
 - name: github.com/tendermint/go-merkle
   version: 714d4d04557fd068a7c2a1748241ce8428015a96
 - name: github.com/tendermint/go-p2p
-  version: e8f33a47846708269d373f9c8080613d6c4f66b2
+  version: a163fddbdd2541793d22402afb113e6ccb391774
   subpackages:
   - upnp
 - name: github.com/tendermint/go-rpc

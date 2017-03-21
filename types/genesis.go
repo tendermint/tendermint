@@ -1,11 +1,11 @@
 package types
 
 import (
+	"encoding/json"
 	"time"
 
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-crypto"
-	"github.com/tendermint/go-wire"
 )
 
 //------------------------------------------------------------
@@ -31,14 +31,18 @@ type GenesisDoc struct {
 
 // Utility method for saving GenensisDoc as JSON file.
 func (genDoc *GenesisDoc) SaveAs(file string) error {
-	genDocBytes := wire.JSONBytesPretty(genDoc)
+	genDocBytes, err := json.Marshal(genDoc)
+	if err != nil {
+		return err
+	}
 	return WriteFile(file, genDocBytes, 0644)
 }
 
 //------------------------------------------------------------
 // Make genesis state from file
 
-func GenesisDocFromJSON(jsonBlob []byte) (genDoc *GenesisDoc, err error) {
-	wire.ReadJSONPtr(&genDoc, jsonBlob, &err)
-	return
+func GenesisDocFromJSON(jsonBlob []byte) (*GenesisDoc, error) {
+	genDoc := GenesisDoc{}
+	err := json.Unmarshal(jsonBlob, &genDoc)
+	return &genDoc, err
 }
