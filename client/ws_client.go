@@ -53,6 +53,9 @@ func (wsc *WSClient) OnStart() error {
 	if err != nil {
 		return err
 	}
+
+	wsc.ResultsCh = make(chan json.RawMessage, wsResultsChannelCapacity)
+	wsc.ErrorsCh = make(chan error, wsErrorsChannelCapacity)
 	go wsc.receiveEventsRoutine()
 	return nil
 }
