@@ -373,7 +373,9 @@ func (wsc *wsConnection) OnStart() error {
 
 func (wsc *wsConnection) OnStop() {
 	wsc.BaseService.OnStop()
-	wsc.evsw.RemoveListener(wsc.remoteAddr)
+	if wsc.evsw != nil {
+		wsc.evsw.RemoveListener(wsc.remoteAddr)
+	}
 	wsc.readTimeout.Stop()
 	wsc.pingTicker.Stop()
 	// The write loop closes the websocket connection

@@ -85,6 +85,8 @@ func (wsc *WSClient) dial() error {
 
 func (wsc *WSClient) OnStop() {
 	wsc.BaseService.OnStop()
+	wsc.Conn.Close()
+	wsc.Conn = nil
 	// ResultsCh/ErrorsCh is closed in receiveEventsRoutine.
 }
 
