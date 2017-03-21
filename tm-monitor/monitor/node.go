@@ -162,7 +162,7 @@ func disconnectCallback(n *Node) em.DisconnectCallbackFunc {
 			n.disconnectCh <- true
 		}
 
-		if err := n.RestartBackOff(); err != nil {
+		if err := n.RestartEventMeterBackoff(); err != nil {
 			n.logger.Log("err", errors.Wrap(err, "restart failed"))
 		} else {
 			n.Online = true
@@ -175,7 +175,7 @@ func disconnectCallback(n *Node) em.DisconnectCallbackFunc {
 	}
 }
 
-func (n *Node) RestartBackOff() error {
+func (n *Node) RestartEventMeterBackoff() error {
 	attempt := 0
 
 	for {
