@@ -9,10 +9,10 @@ import (
 	"github.com/tendermint/go-crypto"
 )
 
-func randPubKey() crypto.PubKeyEd25519 {
+func randPubKey() crypto.PubKey {
 	var pubKey [32]byte
 	copy(pubKey[:], cmn.RandBytes(32))
-	return crypto.PubKeyEd25519(pubKey)
+	return crypto.WrapPubKey(crypto.PubKeyEd25519(pubKey))
 }
 
 func randValidator_() *Validator {
@@ -194,7 +194,7 @@ func BenchmarkValidatorSetCopy(b *testing.B) {
 	vset := NewValidatorSet([]*Validator{})
 	for i := 0; i < 1000; i++ {
 		privKey := crypto.GenPrivKeyEd25519()
-		pubKey := privKey.PubKey().(crypto.PubKeyEd25519)
+		pubKey := privKey.PubKey()
 		val := NewValidator(pubKey, 0)
 		if !vset.Add(val) {
 			panic("Failed to add validator")

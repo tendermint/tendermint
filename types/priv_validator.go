@@ -11,8 +11,6 @@ import (
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-wire"
-
-	"github.com/tendermint/ed25519"
 )
 
 const (
@@ -81,22 +79,15 @@ func (privVal *PrivValidator) SetSigner(s Signer) {
 
 // Generates a new validator with private key.
 func GenPrivValidator() *PrivValidator {
-	privKeyBytes := new([64]byte)
-	copy(privKeyBytes[:32], crypto.CRandBytes(32))
-	pubKeyBytes := ed25519.MakePublicKey(privKeyBytes)
-	pubKey := crypto.PubKeyEd25519(*pubKeyBytes)
-	privKey := crypto.PrivKeyEd25519(*privKeyBytes)
+	privKey := crypto.WrapPrivKey(crypto.GenPrivKeyEd25519())
+	pubKey := privKey.PubKey()
 	return &PrivValidator{
-		Address:       pubKey.Address(),
-		PubKey:        pubKey,
-		PrivKey:       privKey,
-		LastHeight:    0,
-		LastRound:     0,
-		LastStep:      stepNone,
-		LastSignature: nil,
-		LastSignBytes: nil,
-		filePath:      "",
-		Signer:        NewDefaultSigner(privKey),
+		Address:  pubKey.Address(),
+		PubKey:   pubKey,
+		PrivKey:  privKey,
+		LastStep: stepNone,
+		filePath: "",
+		Signer:   NewDefaultSigner(privKey),
 	}
 }
 
@@ -158,7 +149,7 @@ func (privVal *PrivValidator) Reset() {
 	privVal.LastHeight = 0
 	privVal.LastRound = 0
 	privVal.LastStep = 0
-	privVal.LastSignature = nil
+	privVal.LastSignature = crypto.Signature{}
 	privVal.LastSignBytes = nil
 	privVal.Save()
 }
@@ -191,23 +182,24 @@ func (privVal *PrivValidator) SignProposal(chainID string, proposal *Proposal) e
 
 // check if there's a regression. Else sign and write the hrs+signature to disk
 func (privVal *PrivValidator) signBytesHRS(height, round int, step int8, signBytes []byte) (crypto.Signature, error) {
+	sig := crypto.Signature{}
 	// If height regression, err
 	if privVal.LastHeight > height {
-		return nil, errors.New("Height regression")
+		return sig, errors.New("Height regression")
 	}
 	// More cases for when the height matches
 	if privVal.LastHeight == height {
 		// If round regression, err
 		if privVal.LastRound > round {
-			return nil, errors.New("Round regression")
+			return sig, errors.New("Round regression")
 		}
 		// If step regression, err
 		if privVal.LastRound == round {
 			if privVal.LastStep > step {
-				return nil, errors.New("Step regression")
+				return sig, errors.New("Step regression")
 			} else if privVal.LastStep == step {
 				if privVal.LastSignBytes != nil {
-					if privVal.LastSignature == nil {
+					if privVal.LastSignature.Empty() {
 						PanicSanity("privVal: LastSignature is nil but LastSignBytes is not!")
 					}
 					// so we dont sign a conflicting vote or proposal
@@ -218,23 +210,23 @@ func (privVal *PrivValidator) signBytesHRS(height, round int, step int8, signByt
 						return privVal.LastSignature, nil
 					}
 				}
-				return nil, errors.New("Step regression")
+				return sig, errors.New("Step regression")
 			}
 		}
 	}
 
 	// Sign
-	signature := privVal.Sign(signBytes)
+	sig = privVal.Sign(signBytes)
 
 	// Persist height/round/step
 	privVal.LastHeight = height
 	privVal.LastRound = round
 	privVal.LastStep = step
-	privVal.LastSignature = signature
+	privVal.LastSignature = sig
 	privVal.LastSignBytes = signBytes
 	privVal.save()
 
-	return signature, nil
+	return sig, nil
 
 }
 
