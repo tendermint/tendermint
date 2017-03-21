@@ -6,15 +6,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-kit/kit/log"
 	"github.com/gorilla/websocket"
+	"github.com/pkg/errors"
 	metrics "github.com/rcrowley/go-metrics"
 	events "github.com/tendermint/go-events"
 	client "github.com/tendermint/go-rpc/client"
-	log15 "github.com/tendermint/log15"
 )
-
-// Log allows you to set your own logger.
-var Log log15.Logger
 
 //------------------------------------------------------
 // Generic system to subscribe to events and record their frequency
@@ -96,6 +94,8 @@ type EventMeter struct {
 	unmarshalEvent EventUnmarshalFunc
 
 	quit chan struct{}
+
+	logger log.Logger
 }
 
 func NewEventMeter(addr string, unmarshalEvent EventUnmarshalFunc) *EventMeter {
@@ -106,8 +106,14 @@ func NewEventMeter(addr string, unmarshalEvent EventUnmarshalFunc) *EventMeter {
 		receivedPong:   true,
 		unmarshalEvent: unmarshalEvent,
 		quit:           make(chan struct{}),
+		logger:         log.NewNopLogger(),
 	}
 	return em
+}
+
+// SetLogger lets you set your own logger
+func (em *EventMeter) SetLogger(l log.Logger) {
+	em.logger = l
 }
 
 func (em *EventMeter) String() string {
@@ -225,11 +231,11 @@ func (em *EventMeter) receiveRoutine() {
 		select {
 		case <-pingTicker.C:
 			if pingAttempts, err = em.pingForLatency(pingAttempts); err != nil {
-				Log.Error("Failed to write ping message on websocket", err)
+				em.logger.Log("err", errors.Wrap(err, "Failed to write ping message on websocket"))
 				em.StopAndReconnect()
 				return
 			} else if pingAttempts >= maxPingsPerPong {
-				Log.Error(fmt.Sprintf("Have not received a pong in %v", time.Duration(pingAttempts)*pingTime))
+				em.logger.Log("err", errors.Errorf("Have not received a pong in %v", time.Duration(pingAttempts)*pingTime))
 				em.StopAndReconnect()
 				return
 			}
@@ -240,7 +246,7 @@ func (em *EventMeter) receiveRoutine() {
 			}
 			eventID, data, err := em.unmarshalEvent(r)
 			if err != nil {
-				Log.Error(err.Error())
+				em.logger.Log("err", err)
 				continue
 			}
 			if eventID != "" {

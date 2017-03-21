@@ -98,6 +98,7 @@ func (n *Node) NotifyAboutDisconnects(ch chan<- bool) {
 // SetLogger lets you set your own logger
 func (n *Node) SetLogger(l log.Logger) {
 	n.logger = l
+	n.em.SetLogger(l)
 }
 
 func (n *Node) Start() error {
@@ -265,6 +266,7 @@ type eventMeter interface {
 	RegisterDisconnectCallback(em.DisconnectCallbackFunc)
 	Subscribe(string, em.EventCallbackFunc) error
 	Unsubscribe(string) error
+	SetLogger(l log.Logger)
 }
 
 // UnmarshalEvent unmarshals a json event

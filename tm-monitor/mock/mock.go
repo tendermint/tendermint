@@ -4,6 +4,7 @@ import (
 	"log"
 	"reflect"
 
+	gokitlog "github.com/go-kit/kit/log"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	em "github.com/tendermint/tools/tm-monitor/eventmeter"
 )
@@ -16,6 +17,7 @@ type EventMeter struct {
 
 func (e *EventMeter) Start() error                                      { return nil }
 func (e *EventMeter) Stop()                                             {}
+func (e *EventMeter) SetLogger(l gokitlog.Logger)                       {}
 func (e *EventMeter) RegisterLatencyCallback(cb em.LatencyCallbackFunc) { e.latencyCallback = cb }
 func (e *EventMeter) RegisterDisconnectCallback(cb em.DisconnectCallbackFunc) {
 	e.disconnectCallback = cb
