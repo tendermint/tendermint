@@ -182,7 +182,7 @@ func (n *Node) RestartBackOff() error {
 		d := time.Duration(math.Exp2(float64(attempt)))
 		time.Sleep(d * time.Second)
 
-		if err := n.Start(); err != nil {
+		if err := n.em.Start(); err != nil {
 			n.logger.Log("err", errors.Wrap(err, "restart failed"))
 		} else {
 			// TODO: authenticate pubkey
