@@ -16,6 +16,7 @@ package mock
 import (
 	"reflect"
 
+	data "github.com/tendermint/go-data"
 	"github.com/tendermint/tendermint/rpc/client"
 	"github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -83,7 +84,7 @@ func (c Client) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	return core.ABCIInfo()
 }
 
-func (c Client) ABCIQuery(path string, data []byte, prove bool) (*ctypes.ResultABCIQuery, error) {
+func (c Client) ABCIQuery(path string, data data.Bytes, prove bool) (*ctypes.ResultABCIQuery, error) {
 	return core.ABCIQuery(path, data, prove)
 }
 

@@ -5,6 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	data "github.com/tendermint/go-data"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 
 	"github.com/tendermint/tendermint/rpc/client/mock"
@@ -16,8 +17,8 @@ func TestStatus(t *testing.T) {
 	m := &mock.StatusMock{
 		Call: mock.Call{
 			Response: &ctypes.ResultStatus{
-				LatestBlockHash:   []byte("block"),
-				LatestAppHash:     []byte("app"),
+				LatestBlockHash:   data.Bytes("block"),
+				LatestAppHash:     data.Bytes("app"),
 				LatestBlockHeight: 10,
 			}},
 	}

@@ -5,6 +5,7 @@ import (
 
 	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/go-crypto"
+	data "github.com/tendermint/go-data"
 	"github.com/tendermint/go-p2p"
 	"github.com/tendermint/go-rpc/types"
 	"github.com/tendermint/go-wire"
@@ -34,8 +35,8 @@ type ResultCommit struct {
 type ResultStatus struct {
 	NodeInfo          *p2p.NodeInfo `json:"node_info"`
 	PubKey            crypto.PubKey `json:"pub_key"`
-	LatestBlockHash   []byte        `json:"latest_block_hash"`
-	LatestAppHash     []byte        `json:"latest_app_hash"`
+	LatestBlockHash   data.Bytes    `json:"latest_block_hash"`
+	LatestAppHash     data.Bytes    `json:"latest_app_hash"`
 	LatestBlockHeight int           `json:"latest_block_height"`
 	LatestBlockTime   int64         `json:"latest_block_time"` // nano
 }
@@ -81,7 +82,7 @@ type ResultDumpConsensusState struct {
 
 type ResultBroadcastTx struct {
 	Code abci.CodeType `json:"code"`
-	Data []byte        `json:"data"`
+	Data data.Bytes    `json:"data"`
 	Log  string        `json:"log"`
 
 	Hash []byte `json:"hash"`

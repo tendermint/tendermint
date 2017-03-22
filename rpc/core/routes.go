@@ -1,9 +1,11 @@
 package core
 
 import (
+	data "github.com/tendermint/go-data"
 	rpc "github.com/tendermint/go-rpc/server"
 	"github.com/tendermint/go-rpc/types"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tendermint/types"
 )
 
 // TODO: better system than "unsafe" prefix
@@ -104,19 +106,19 @@ func TxResult(hash []byte, prove bool) (ctypes.TMResult, error) {
 	return Tx(hash, prove)
 }
 
-func BroadcastTxCommitResult(tx []byte) (ctypes.TMResult, error) {
+func BroadcastTxCommitResult(tx types.Tx) (ctypes.TMResult, error) {
 	return BroadcastTxCommit(tx)
 }
 
-func BroadcastTxSyncResult(tx []byte) (ctypes.TMResult, error) {
+func BroadcastTxSyncResult(tx types.Tx) (ctypes.TMResult, error) {
 	return BroadcastTxSync(tx)
 }
 
-func BroadcastTxAsyncResult(tx []byte) (ctypes.TMResult, error) {
+func BroadcastTxAsyncResult(tx types.Tx) (ctypes.TMResult, error) {
 	return BroadcastTxAsync(tx)
 }
 
-func ABCIQueryResult(path string, data []byte, prove bool) (ctypes.TMResult, error) {
+func ABCIQueryResult(path string, data data.Bytes, prove bool) (ctypes.TMResult, error) {
 	return ABCIQuery(path, data, prove)
 }
 

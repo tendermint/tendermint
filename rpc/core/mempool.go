@@ -5,6 +5,7 @@ import (
 	"time"
 
 	abci "github.com/tendermint/abci/types"
+	data "github.com/tendermint/go-data"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -84,7 +85,7 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 			Data: deliverTxRes.Data,
 			Log:  deliverTxRes.Log,
 		}
-		log.Notice("DeliverTx passed ", "tx", []byte(tx), "response", deliverTxR)
+		log.Notice("DeliverTx passed ", "tx", data.Bytes(tx), "response", deliverTxR)
 		return &ctypes.ResultBroadcastTxCommit{
 			CheckTx:   checkTxR,
 			DeliverTx: deliverTxR,

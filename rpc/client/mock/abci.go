@@ -2,6 +2,7 @@ package mock
 
 import (
 	abci "github.com/tendermint/abci/types"
+	data "github.com/tendermint/go-data"
 	"github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
@@ -22,7 +23,7 @@ func (a ABCIApp) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	return &ctypes.ResultABCIInfo{a.App.Info()}, nil
 }
 
-func (a ABCIApp) ABCIQuery(path string, data []byte, prove bool) (*ctypes.ResultABCIQuery, error) {
+func (a ABCIApp) ABCIQuery(path string, data data.Bytes, prove bool) (*ctypes.ResultABCIQuery, error) {
 	q := a.App.Query(abci.RequestQuery{data, path, 0, prove})
 	return &ctypes.ResultABCIQuery{q}, nil
 }
@@ -79,7 +80,7 @@ func (m ABCIMock) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	return &ctypes.ResultABCIInfo{res.(abci.ResponseInfo)}, nil
 }
 
-func (m ABCIMock) ABCIQuery(path string, data []byte, prove bool) (*ctypes.ResultABCIQuery, error) {
+func (m ABCIMock) ABCIQuery(path string, data data.Bytes, prove bool) (*ctypes.ResultABCIQuery, error) {
 	res, err := m.Query.GetResponse(QueryArgs{path, data, prove})
 	if err != nil {
 		return nil, err
@@ -131,7 +132,7 @@ func (r *ABCIRecorder) _assertABCIClient() client.ABCIClient {
 
 type QueryArgs struct {
 	Path  string
-	Data  []byte
+	Data  data.Bytes
 	Prove bool
 }
 
@@ -149,7 +150,7 @@ func (r *ABCIRecorder) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	return res, err
 }
 
-func (r *ABCIRecorder) ABCIQuery(path string, data []byte, prove bool) (*ctypes.ResultABCIQuery, error) {
+func (r *ABCIRecorder) ABCIQuery(path string, data data.Bytes, prove bool) (*ctypes.ResultABCIQuery, error) {
 	res, err := r.Client.ABCIQuery(path, data, prove)
 	r.addCall(Call{
 		Name:     "abci_query",

@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/abci/types"
 	. "github.com/tendermint/go-common"
+	data "github.com/tendermint/go-data"
 	rpc "github.com/tendermint/go-rpc/client"
 	"github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -85,10 +86,10 @@ func testBroadcastTxSync(t *testing.T, client rpc.HTTPClient) {
 //--------------------------------------------------------------------------------
 // query
 
-func testTxKV(t *testing.T) ([]byte, []byte, []byte) {
+func testTxKV(t *testing.T) ([]byte, []byte, types.Tx) {
 	k := randBytes(t)
 	v := randBytes(t)
-	return k, v, []byte(Fmt("%s=%s", k, v))
+	return k, v, types.Tx(Fmt("%s=%s", k, v))
 }
 
 func sendTx(t *testing.T, client rpc.HTTPClient) ([]byte, []byte) {
@@ -114,8 +115,6 @@ func testABCIQuery(t *testing.T, client rpc.HTTPClient) {
 	_, err := client.Call("abci_query",
 		map[string]interface{}{"path": "", "data": k, "prove": false}, tmResult)
 	require.Nil(t, err)
-
-	resQuery := (*tmResult).(*ctypes.ResultABCIQuery)
 	require.EqualValues(t, 0, resQuery.Response.Code)
 
 	// XXX: specific to value returned by the dummy

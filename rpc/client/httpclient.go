@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
+	data "github.com/tendermint/go-data"
 	events "github.com/tendermint/go-events"
 	"github.com/tendermint/go-rpc/client"
 	wire "github.com/tendermint/go-wire"
@@ -67,7 +68,7 @@ func (c *HTTP) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	return (*tmResult).(*ctypes.ResultABCIInfo), nil
 }
 
-func (c *HTTP) ABCIQuery(path string, data []byte, prove bool) (*ctypes.ResultABCIQuery, error) {
+func (c *HTTP) ABCIQuery(path string, data data.Bytes, prove bool) (*ctypes.ResultABCIQuery, error) {
 	tmResult := new(ctypes.TMResult)
 	_, err := c.rpc.Call("abci_query",
 		map[string]interface{}{"path": path, "data": data, "prove": prove},
