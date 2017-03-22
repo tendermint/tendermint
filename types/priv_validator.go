@@ -11,6 +11,7 @@ import (
 
 	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-crypto"
+	data "github.com/tendermint/go-data"
 )
 
 const (
@@ -33,13 +34,13 @@ func voteToStep(vote *Vote) int8 {
 }
 
 type PrivValidator struct {
-	Address       []byte           `json:"address"`
+	Address       data.Bytes       `json:"address"`
 	PubKey        crypto.PubKey    `json:"pub_key"`
 	LastHeight    int              `json:"last_height"`
 	LastRound     int              `json:"last_round"`
 	LastStep      int8             `json:"last_step"`
-	LastSignature crypto.Signature `json:"last_signature"` // so we dont lose signatures
-	LastSignBytes []byte           `json:"last_signbytes"` // so we dont lose signatures
+	LastSignature crypto.Signature `json:"last_signature,omitempty"` // so we dont lose signatures
+	LastSignBytes data.Bytes       `json:"last_signbytes,omitempty"` // so we dont lose signatures
 
 	// PrivKey should be empty if a Signer other than the default is being used.
 	PrivKey crypto.PrivKey `json:"priv_key"`

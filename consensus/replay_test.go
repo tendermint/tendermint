@@ -131,7 +131,13 @@ func runReplayTest(t *testing.T, cs *ConsensusState, walFile string, newBlockCh 
 	thisCase *testCase, i int) {
 
 	cs.config.Set("cs_wal_file", walFile)
-	cs.Start()
+	started, err := cs.Start()
+	if err != nil {
+		t.Fatalf("Cannot start consensus: %v", err)
+	}
+	if !started {
+		t.Error("Consensus did not start")
+	}
 	// Wait to make a new block.
 	// This is just a signal that we haven't halted; its not something contained in the WAL itself.
 	// Assuming the consensus state is running, replay of any WAL, including the empty one,
