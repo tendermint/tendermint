@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/rand"
+	"os"
 	"sync"
 	"time"
 
@@ -47,8 +48,8 @@ func (t *transacter) Start() error {
 		}
 	}
 
+	t.wg.Add(t.Connections)
 	for i := 0; i < t.Connections; i++ {
-		t.wg.Add(1)
 		go t.sendLoop(i)
 	}
 
@@ -84,7 +85,8 @@ func (t *transacter) sendLoop(connIndex int) {
 				Params:  []interface{}{hex.EncodeToString(tx)},
 			})
 			if err != nil {
-				panic(errors.Wrap(err, fmt.Sprintf("lost connection to %s", conn.Address)))
+				fmt.Printf("Lost connection to %s. Please restart the test.\nDetails:\n%v", conn.Address, err)
+				os.Exit(1)
 			}
 			num++
 		}
