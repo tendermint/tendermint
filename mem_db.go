@@ -65,14 +65,51 @@ func (db *MemDB) Print() {
 	}
 }
 
-// TODO: needs to be wired to range db.db
-func (db *MemDB) Iterator() Iterator {
-	return nil
+func (db *MemDB) Stats() map[string]string {
+	stats := make(map[string]string)
+	stats["database.type"] = "memDB"
+	return stats
 }
 
-// TODO: needs to be wired to range db.db
-func (db *MemDB) Next(iter Iterator) (key []byte, value []byte) {
-	return nil, nil
+type memDBIterator struct {
+	last int
+	keys []string
+	db   *MemDB
+}
+
+func (it *memDBIterator) Create(db *MemDB) *memDBIterator {
+	if it == nil {
+		it = &memDBIterator{}
+	}
+	it.db = db
+	it.last = -1
+
+	// unfortunately we need a copy of all of the keys
+	for key, _ := range db.db {
+		it.keys = append(it.keys, key)
+	}
+	return it
+}
+
+func (it *memDBIterator) Next() bool {
+	if it.last >= len(it.keys) {
+		return false
+	}
+	it.last++
+	return true
+}
+
+func (it *memDBIterator) Key() []byte {
+	return []byte(it.keys[it.last])
+}
+
+func (it *memDBIterator) Value() []byte {
+	return it.db.db[it.keys[it.last]]
+}
+
+func (db *MemDB) Iterator() Iterator {
+	var it *memDBIterator
+	return it.Create(db)
 }
 
 func (db *MemDB) NewBatch() Batch {

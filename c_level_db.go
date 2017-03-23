@@ -106,6 +106,23 @@ func (db *CLevelDB) Print() {
 	}
 }
 
+func (db *CLevelDB) Stats() map[string]string {
+	keys := []string{}
+
+	stats := make(map[string]string)
+	for _, key := range keys {
+		str, err := db.db.GetProperty(key)
+		if err == nil {
+			stats[key] = str
+		}
+	}
+	return stats
+}
+
+func (db *CLevelDB) Iterator() Iterator {
+	return db.db.NewIterator(nil, nil)
+}
+
 func (db *CLevelDB) NewBatch() Batch {
 	batch := levigo.NewWriteBatch()
 	return &cLevelDBBatch{db, batch}
