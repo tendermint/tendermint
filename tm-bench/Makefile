@@ -38,7 +38,7 @@ dist: build-all
 build-docker:
 	rm -f ./tm-bench
 	docker run -it --rm -v "$(PWD):/go/src/app" -w "/go/src/app" -e "CGO_ENABLED=0" golang:alpine go build -ldflags "-X main.version=${VERSION}" -o tm-bench
-	docker build -t "tendermint/monitor" .
+	docker build -t "tendermint/bench" .
 
 clean:
 	rm -f ./tm-bench

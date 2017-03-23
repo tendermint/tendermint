@@ -8,3 +8,7 @@ import:
 - package: github.com/tendermint/tools
   subpackages:
   - tm-monitor/monitor
+- package: github.com/go-kit/kit
+  subpackages:
+  - log
+  - term
