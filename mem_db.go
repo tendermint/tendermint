@@ -78,6 +78,9 @@ type memDBIterator struct {
 }
 
 func (it *memDBIterator) Create(db *MemDB) *memDBIterator {
+	db.mtx.Lock()
+	defer db.mtx.Unlock()
+
 	if it == nil {
 		it = &memDBIterator{}
 	}
@@ -104,6 +107,9 @@ func (it *memDBIterator) Key() []byte {
 }
 
 func (it *memDBIterator) Value() []byte {
+	it.db.mtx.Lock()
+	defer it.db.mtx.Unlock()
+
 	return it.db.db[it.keys[it.last]]
 }
 
