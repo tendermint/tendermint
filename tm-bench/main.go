@@ -8,12 +8,16 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/term"
 	metrics "github.com/rcrowley/go-metrics"
 	tmtypes "github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tools/tm-monitor/monitor"
 )
 
 var version = "0.1.0.pre"
+
+var logger = log.NewNopLogger()
 
 type statistics struct {
 	BlockTimeSample    metrics.Histogram
@@ -23,10 +27,12 @@ type statistics struct {
 
 func main() {
 	var duration, txsRate, connections int
+	var verbose bool
 
 	flag.IntVar(&connections, "c", 1, "Connections to keep open per endpoint")
 	flag.IntVar(&duration, "T", 10, "Exit after the specified amount of time in seconds")
 	flag.IntVar(&txsRate, "r", 1000, "Txs per second to send in a connection")
+	flag.BoolVar(&verbose, "v", false, "Verbose output")
 
 	flag.Usage = func() {
 		fmt.Println(`Tendermint blockchain benchmarking tool.
@@ -45,6 +51,19 @@ Examples:
 	if flag.NArg() == 0 {
 		flag.Usage()
 		os.Exit(1)
+	}
+
+	if verbose {
+		// Color errors red
+		colorFn := func(keyvals ...interface{}) term.FgBgColor {
+			for i := 1; i < len(keyvals); i += 2 {
+				if _, ok := keyvals[i].(error); ok {
+					return term.FgBgColor{Fg: term.White, Bg: term.Red}
+				}
+			}
+			return term.FgBgColor{}
+		}
+		logger = term.NewLogger(os.Stdout, log.NewLogfmtLogger, colorFn)
 	}
 
 	fmt.Printf("Running %ds test @ %s\n", duration, flag.Arg(0))
@@ -104,10 +123,12 @@ func startNodes(endpoints []string, blockCh chan<- tmtypes.Header, blockLatencyC
 
 	for i, e := range endpoints {
 		n := monitor.NewNode(e)
+		n.SetLogger(log.With(logger, "node", e))
 		n.SendBlocksTo(blockCh)
 		n.SendBlockLatenciesTo(blockLatencyCh)
 		if err := n.Start(); err != nil {
-			panic(err)
+			fmt.Println(err)
+			os.Exit(1)
 		}
 		nodes[i] = n
 	}
@@ -120,8 +141,10 @@ func startTransacters(endpoints []string, connections int, txsRate int) []*trans
 
 	for i, e := range endpoints {
 		t := newTransacter(e, connections, txsRate)
+		t.SetLogger(logger)
 		if err := t.Start(); err != nil {
-			panic(err)
+			fmt.Println(err)
+			os.Exit(1)
 		}
 		transacters[i] = t
 	}
