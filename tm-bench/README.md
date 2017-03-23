@@ -60,4 +60,5 @@ Flags:
         Connections to keep open per endpoint (default 1)
   -r int
         Txs per second to send in a connection (default 1000)
+  -v    Verbose output
 ```
