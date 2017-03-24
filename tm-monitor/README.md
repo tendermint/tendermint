@@ -84,6 +84,29 @@ POST requests. The JSONRPC methods are also exposed over websocket.
   ip/port). It would be good to have both. For testnets with others we def need
   them to dial the monitor. But I want to be able to run the monitor from my
   laptop without openning ports.
+  If we don't want to open all the ports, maybe something like this would be a
+  good fit for us: tm-monitor agent running on each node, collecting all the
+  metrics. Each tm-monitor agent monitors local TM node and sends stats to a
+  single master tm-monitor master. That way we'll only need to open a single
+  port for UI on the node with tm-monitor master. And I believe it could be
+  done with a single package with a few subcommands.
+  ```
+  # agent collecting metrics from localhost (default)
+  tm-monitor agent --master="192.168.1.17:8888"
+
+  # agent collecting metrics from another TM node (useful for testing, development)
+  tm-monitor agent --master="192.168.1.17:8888" --node="192.168.1.18:46657"
+
+  # master accepting stats from agents
+  tm-monitor master [--ton] OR [--ui] (`--ui` mode by default)
+
+  # display table of nodes in the terminal (useful for testing, development, playing with TM)
+  # --nodes="localhost:46657" by default
+  tm-monitor
+
+  # display table of nodes in the terminal (useful for testing, development, playing with TM)
+  tm-monitor --nodes="192.168.1.18:46657,192.168.1.19:46657"
+  ```
 - uptime over last day, month, year. There are different meanings for uptime.
   One is to constantly ping the nodes and make sure they respond to eg.
   /status. A more fine-grained one is to check for votes in the block commits.
