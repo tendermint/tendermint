@@ -79,9 +79,22 @@ POST requests. The JSONRPC methods are also exposed over websocket.
 
 ### Ideas
 
-1. Currently we get IPs and dial, but should reverse so the nodes dial the netmon, both for node privacy and easier reconfig (validators changing ip/port).
-2. Uptime over last day, month, year (Q: how do I get this?)
-3. `statsd` output (plugin?)
-4. log metrics for charts (Q: what charts?)
-5. show network size (Q: how do I get the number?)
-6. metrics RPC (Q: do we need this?)
+- currently we get IPs and dial, but should reverse so the nodes dial the
+  netmon, both for node privacy and easier reconfig (validators changing
+  ip/port). It would be good to have both. For testnets with others we def need
+  them to dial the monitor. But I want to be able to run the monitor from my
+  laptop without openning ports.
+- uptime over last day, month, year. There are different meanings for uptime.
+  One is to constantly ping the nodes and make sure they respond to eg.
+  /status. A more fine-grained one is to check for votes in the block commits.
+- show network size + auto discovery. You can get a list of connected peers at
+  /net_info. But no single one will be connected to the whole network, so need
+  to tease out all the unique peers from calling /net_info on all of them.
+  Unless you have some prior information about how many peers in the net ...
+  More: we could add `-auto-discovery` option and try to connect to every node.
+- input plugin for https://github.com/influxdata/telegraf, so the user is able
+  to get the metrics and send them whenever he wants to (grafana, prometheus,
+  etc.).
+
+Feel free to vote on the ideas or add your own by saying hello on
+[Slack](http://forum.tendermint.com:3000/) or by opening an issue.
