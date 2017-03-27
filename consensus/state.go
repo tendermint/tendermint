@@ -343,13 +343,7 @@ func (cs *ConsensusState) OnStart() error {
 	cs.BaseService.OnStart()
 
 	walFile := cs.config.GetString("cs_wal_file")
-	err := EnsureDir(path.Dir(walFile), 0700)
-	if err != nil {
-		log.Error("Error ensuring ConsensusState wal dir", "error", err.Error())
-		return err
-	}
-	err = cs.OpenWAL(walFile)
-	if err != nil {
+	if err := cs.OpenWAL(walFile); err != nil {
 		log.Error("Error loading ConsensusState wal", "error", err.Error())
 		return err
 	}
@@ -404,6 +398,12 @@ func (cs *ConsensusState) Wait() {
 
 // Open file to log all consensus messages and timeouts for deterministic accountability
 func (cs *ConsensusState) OpenWAL(walFile string) (err error) {
+	err = EnsureDir(path.Dir(walFile), 0700)
+	if err != nil {
+		log.Error("Error ensuring ConsensusState wal dir", "error", err.Error())
+		return err
+	}
+
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	wal, err := NewWAL(walFile, cs.config.GetBool("cs_wal_light"))

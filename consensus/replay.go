@@ -190,6 +190,8 @@ func (h *Handshaker) NBlocks() int {
 	return h.nBlocks
 }
 
+var ErrReplayLastBlockTimeout = errors.New("Timed out waiting for last block to be replayed")
+
 // TODO: retry the handshake/replay if it fails ?
 func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	// handshake is done via info request on the query conn
@@ -207,7 +209,11 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 
 	// replay blocks up to the latest in the blockstore
 	_, err = h.ReplayBlocks(appHash, blockHeight, proxyApp)
-	if err != nil {
+	if err == ErrReplayLastBlockTimeout {
+		log.Warn("Failed to sync via handshake. Trying other means. If they fail, please increase the timeout_handshake parameter")
+		return nil
+
+	} else if err != nil {
 		return errors.New(Fmt("Error on replay: %v", err))
 	}
 
@@ -320,6 +326,7 @@ func (h *Handshaker) replayBlocks(proxyApp proxy.AppConns, appBlockHeight, store
 func (h *Handshaker) replayLastBlock(proxyApp proxy.AppConnConsensus) ([]byte, error) {
 	mempool := types.MockMempool{}
 	cs := NewConsensusState(h.config, h.state, proxyApp, h.store, mempool)
+	defer cs.Stop()
 
 	evsw := types.NewEventSwitch()
 	evsw.Start()
@@ -328,9 +335,19 @@ func (h *Handshaker) replayLastBlock(proxyApp proxy.AppConnConsensus) ([]byte, e
 	newBlockCh := subscribeToEvent(evsw, "consensus-replay", types.EventStringNewBlock(), 1)
 
 	// run through the WAL, commit new block, stop
-	cs.Start()
-	<-newBlockCh // TODO: use a timeout and return err?
-	cs.Stop()
+	if _, err := cs.Start(); err != nil {
+		return nil, err
+	}
+
+	timeout := h.config.GetInt("timeout_handshake")
+	timer := time.NewTimer(time.Duration(timeout) * time.Millisecond)
+	log.Notice("Attempting to replay last block", "height", h.store.Height(), "timeout", timeout)
+
+	select {
+	case <-newBlockCh:
+	case <-timer.C:
+		return nil, ErrReplayLastBlockTimeout
+	}
 
 	h.nBlocks += 1
 
