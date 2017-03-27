@@ -8,10 +8,10 @@ set -e
 
 # TODO: install everything
 
-export TMROOT=$HOME/.tendermint_app
+export TMHOME=$HOME/.tendermint_app
 
 function dummy_over_socket(){
-	rm -rf $TMROOT
+	rm -rf $TMHOME
 	tendermint init
 	echo "Starting dummy_over_socket"
 	dummy > /dev/null &
@@ -28,7 +28,7 @@ function dummy_over_socket(){
 
 # start tendermint first
 function dummy_over_socket_reorder(){
-	rm -rf $TMROOT
+	rm -rf $TMHOME
 	tendermint init
 	echo "Starting dummy_over_socket_reorder (ie. start tendermint first)"
 	tendermint node > tendermint.log &
@@ -46,7 +46,7 @@ function dummy_over_socket_reorder(){
 
 
 function counter_over_socket() {
-	rm -rf $TMROOT
+	rm -rf $TMHOME
 	tendermint init
 	echo "Starting counter_over_socket"
 	counter --serial > /dev/null &
@@ -62,7 +62,7 @@ function counter_over_socket() {
 }
 
 function counter_over_grpc() {
-	rm -rf $TMROOT
+	rm -rf $TMHOME
 	tendermint init
 	echo "Starting counter_over_grpc"
 	counter --serial --abci grpc > /dev/null &
@@ -78,7 +78,7 @@ function counter_over_grpc() {
 }
 
 function counter_over_grpc_grpc() {
-	rm -rf $TMROOT
+	rm -rf $TMHOME
 	tendermint init
 	echo "Starting counter_over_grpc_grpc (ie. with grpc broadcast_tx)"
 	counter --serial --abci grpc > /dev/null &

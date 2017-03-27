@@ -11,6 +11,10 @@ import (
 
 func getTMRoot(rootDir string) string {
 	if rootDir == "" {
+		rootDir = os.Getenv("TMHOME")
+	}
+	if rootDir == "" {
+		// deprecated, use TMHOME (TODO: remove in TM 0.11.0)
 		rootDir = os.Getenv("TMROOT")
 	}
 	if rootDir == "" {

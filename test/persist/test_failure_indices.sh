@@ -1,15 +1,15 @@
 #! /bin/bash
 
-export TMROOT=$HOME/.tendermint_persist
+export TMHOME=$HOME/.tendermint_persist
 
-rm -rf "$TMROOT"
+rm -rf "$TMHOME"
 tendermint init
 
 # use a unix socket so we can remove it
 RPC_ADDR="$(pwd)/rpc.sock"
 
 TM_CMD="tendermint node --log_level=debug --rpc_laddr=unix://$RPC_ADDR" # &> tendermint_${name}.log"
-DUMMY_CMD="dummy --persist $TMROOT/dummy" # &> dummy_${name}.log"
+DUMMY_CMD="dummy --persist $TMHOME/dummy" # &> dummy_${name}.log"
 
 
 function start_procs(){
