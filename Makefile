@@ -3,7 +3,7 @@ GOTOOLS = \
 					github.com/Masterminds/glide
 PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 BUILD_TAGS?=tendermint
-TMROOT = $${TMROOT:-$$HOME/.tendermint}
+TMHOME = $${TMHOME:-$$HOME/.tendermint}
 
 all: install test
 
@@ -61,8 +61,8 @@ update_deps: tools
 	@go get -d -u ./...
 
 revision:
-	-echo `git rev-parse --verify HEAD` > $(TMROOT)/revision
-	-echo `git rev-parse --verify HEAD` >> $(TMROOT)/revision_history
+	-echo `git rev-parse --verify HEAD` > $(TMHOME)/revision
+	-echo `git rev-parse --verify HEAD` >> $(TMHOME)/revision_history
 
 tools:
 	go get -u -v $(GOTOOLS)

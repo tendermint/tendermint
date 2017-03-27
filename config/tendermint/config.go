@@ -11,7 +11,7 @@ import (
 
 func getTMRoot(rootDir string) string {
 	if rootDir == "" {
-		rootDir = os.Getenv("TMROOT")
+		rootDir = os.Getenv("TMHOME")
 	}
 	if rootDir == "" {
 		rootDir = os.Getenv("HOME") + "/.tendermint"

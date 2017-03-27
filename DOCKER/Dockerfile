@@ -10,7 +10,7 @@ ENV TM_SHA256SUM 697033ea0f34f8b34a8a2b74c4dd730b47dd4efcfce65e53e953bdae8eb1436
 #
 # The /tendermint/data dir is used by tendermint to store state.
 ENV DATA_ROOT /tendermint
-ENV TMROOT $DATA_ROOT
+ENV TMHOME $DATA_ROOT
 
 # Set user right away for determinism
 RUN addgroup tmuser && \

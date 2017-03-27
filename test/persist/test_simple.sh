@@ -1,15 +1,15 @@
 #! /bin/bash
 
 
-export TMROOT=$HOME/.tendermint_persist
+export TMHOME=$HOME/.tendermint_persist
 
-rm -rf $TMROOT
+rm -rf $TMHOME
 tendermint init
 
 function start_procs(){
 	name=$1
 	echo "Starting persistent dummy and tendermint"
-	dummy --persist $TMROOT/dummy &> "dummy_${name}.log" &
+	dummy --persist $TMHOME/dummy &> "dummy_${name}.log" &
 	PID_DUMMY=$!
 	tendermint node &> tendermint_${name}.log &
 	PID_TENDERMINT=$!
