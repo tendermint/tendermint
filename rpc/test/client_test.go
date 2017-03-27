@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/abci/types"
-	. "github.com/tendermint/go-common"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -33,7 +32,7 @@ func TestURIStatus(t *testing.T) {
 
 func TestJSONStatus(t *testing.T) {
 	tmResult := new(ctypes.TMResult)
-	_, err := GetJSONClient().Call("status", []interface{}{}, tmResult)
+	_, err := GetJSONClient().Call("status", map[string]interface{}{}, tmResult)
 	require.Nil(t, err)
 	testStatus(t, tmResult)
 }
@@ -73,7 +72,7 @@ func TestJSONBroadcastTxSync(t *testing.T) {
 	defer config.Set("block_size", -1)
 	tmResult := new(ctypes.TMResult)
 	tx := randBytes(t)
-	_, err := GetJSONClient().Call("broadcast_tx_sync", []interface{}{tx}, tmResult)
+	_, err := GetJSONClient().Call("broadcast_tx_sync", map[string]interface{}{"tx": tx}, tmResult)
 	require.Nil(t, err)
 	testBroadcastTxSync(t, tmResult, tx)
 }
@@ -95,13 +94,13 @@ func testBroadcastTxSync(t *testing.T, resI interface{}, tx []byte) {
 func testTxKV(t *testing.T) ([]byte, []byte, []byte) {
 	k := randBytes(t)
 	v := randBytes(t)
-	return k, v, []byte(Fmt("%s=%s", k, v))
+	return k, v, []byte(fmt.Sprintf("%s=%s", k, v))
 }
 
 func sendTx(t *testing.T) ([]byte, []byte) {
 	tmResult := new(ctypes.TMResult)
 	k, v, tx := testTxKV(t)
-	_, err := GetJSONClient().Call("broadcast_tx_commit", []interface{}{tx}, tmResult)
+	_, err := GetJSONClient().Call("broadcast_tx_commit", map[string]interface{}{"tx": tx}, tmResult)
 	require.Nil(t, err)
 	return k, v
 }
@@ -118,7 +117,7 @@ func TestURIABCIQuery(t *testing.T) {
 func TestJSONABCIQuery(t *testing.T) {
 	k, v := sendTx(t)
 	tmResult := new(ctypes.TMResult)
-	_, err := GetJSONClient().Call("abci_query", []interface{}{"", k, false}, tmResult)
+	_, err := GetJSONClient().Call("abci_query", map[string]interface{}{"path": "", "data": k, "prove": false}, tmResult)
 	require.Nil(t, err)
 	testABCIQuery(t, tmResult, v)
 }
@@ -146,7 +145,7 @@ func TestURIBroadcastTxCommit(t *testing.T) {
 func TestJSONBroadcastTxCommit(t *testing.T) {
 	tmResult := new(ctypes.TMResult)
 	tx := randBytes(t)
-	_, err := GetJSONClient().Call("broadcast_tx_commit", []interface{}{tx}, tmResult)
+	_, err := GetJSONClient().Call("broadcast_tx_commit", map[string]interface{}{"tx": tx}, tmResult)
 	require.Nil(t, err)
 	testBroadcastTxCommit(t, tmResult, tx)
 }
@@ -240,7 +239,7 @@ func TestWSTxEvent(t *testing.T) {
 
 	// send an tx
 	tmResult := new(ctypes.TMResult)
-	_, err := GetJSONClient().Call("broadcast_tx_sync", []interface{}{tx}, tmResult)
+	_, err := GetJSONClient().Call("broadcast_tx_sync", map[string]interface{}{"tx": tx}, tmResult)
 	require.Nil(err)
 
 	waitForEvent(t, wsc, eid, true, func() {}, func(eid string, b interface{}) error {
@@ -310,7 +309,11 @@ func TestURIUnsafeSetConfig(t *testing.T) {
 func TestJSONUnsafeSetConfig(t *testing.T) {
 	for _, testCase := range testCasesUnsafeSetConfig {
 		tmResult := new(ctypes.TMResult)
-		_, err := GetJSONClient().Call("unsafe_set_config", []interface{}{testCase[0], testCase[1], testCase[2]}, tmResult)
+		_, err := GetJSONClient().Call("unsafe_set_config", map[string]interface{}{
+			"type":  testCase[0],
+			"key":   testCase[1],
+			"value": testCase[2],
+		}, tmResult)
 		require.Nil(t, err)
 	}
 	testUnsafeSetConfig(t)
