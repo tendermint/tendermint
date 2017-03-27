@@ -1,13 +1,25 @@
-package main
+package commands
 
 import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/spf13/cobra"
+
 	"github.com/tendermint/go-p2p/upnp"
 )
 
-func probe_upnp() {
+var probeUpnpCmd = &cobra.Command{
+	Use:   "probe_upnp",
+	Short: "Test UPnP functionality",
+	Run:   probeUpnp,
+}
+
+func init() {
+	RootCmd.AddCommand(probeUpnpCmd)
+}
+
+func probeUpnp(cmd *cobra.Command, args []string) {
 
 	capabilities, err := upnp.Probe()
 	if err != nil {

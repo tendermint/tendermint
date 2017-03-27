@@ -1,13 +1,25 @@
-package main
+package commands
 
 import (
 	"os"
+
+	"github.com/spf13/cobra"
 
 	cmn "github.com/tendermint/go-common"
 	"github.com/tendermint/tendermint/types"
 )
 
-func init_files() {
+var initFilesCmd = &cobra.Command{
+	Use:   "init",
+	Short: "Initialize Tendermint",
+	Run:   initFiles,
+}
+
+func init() {
+	RootCmd.AddCommand(initFilesCmd)
+}
+
+func initFiles(cmd *cobra.Command, args []string) {
 	privValFile := config.GetString("priv_validator_file")
 	if _, err := os.Stat(privValFile); os.IsNotExist(err) {
 		privValidator := types.GenPrivValidator()
