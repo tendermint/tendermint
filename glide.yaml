@@ -1,4 +1,4 @@
-eackage: github.com/tendermint/tendermint
+package: github.com/tendermint/tendermint
 import:
 - package: github.com/tendermint/go-autofile
   version: develop
