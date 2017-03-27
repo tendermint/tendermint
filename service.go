@@ -94,6 +94,11 @@ func (bs *BaseService) Start() (bool, error) {
 			}
 		}
 		err := bs.impl.OnStart()
+		if err != nil {
+			// revert flag
+			atomic.StoreUint32(&bs.started, 0)
+			return false, err
+		}
 		return true, err
 	} else {
 		if bs.log != nil {
