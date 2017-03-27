@@ -86,10 +86,10 @@ spec:
         resources:
           requests:
             cpu: 50m
-            memory: 64Mi
+            memory: 128Mi
           limits:
             cpu: 100m
-            memory: 128Mi
+            memory: 256Mi
         ports:
         - containerPort: 46656
           name: p2p
