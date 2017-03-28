@@ -136,6 +136,7 @@ func (bs *BaseService) Reset() (bool, error) {
 		// whether or not we've started, we can reset
 		atomic.CompareAndSwapUint32(&bs.started, 1, 0)
 
+		bs.Quit = make(chan struct{})
 		return true, bs.impl.OnReset()
 	} else {
 		if bs.log != nil {
