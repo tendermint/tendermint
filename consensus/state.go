@@ -358,8 +358,9 @@ func (cs *ConsensusState) OnStart() error {
 	// we may have lost some votes if the process crashed
 	// reload from consensus log to catchup
 	if err := cs.catchupReplay(cs.Height); err != nil {
-		log.Error("Error on catchup replay", "error", err.Error())
-		// let's go for it anyways, maybe we're fine
+		log.Error("Error on catchup replay. Proceeding to start ConsensusState anyway", "error", err.Error())
+		// NOTE: if we ever do return an error here,
+		// make sure to stop the timeoutTicker
 	}
 
 	// now start the receiveRoutine

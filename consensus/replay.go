@@ -326,7 +326,6 @@ func (h *Handshaker) replayBlocks(proxyApp proxy.AppConns, appBlockHeight, store
 func (h *Handshaker) replayLastBlock(proxyApp proxy.AppConnConsensus) ([]byte, error) {
 	mempool := types.MockMempool{}
 	cs := NewConsensusState(h.config, h.state, proxyApp, h.store, mempool)
-	defer cs.Stop()
 
 	evsw := types.NewEventSwitch()
 	evsw.Start()
@@ -338,6 +337,7 @@ func (h *Handshaker) replayLastBlock(proxyApp proxy.AppConnConsensus) ([]byte, e
 	if _, err := cs.Start(); err != nil {
 		return nil, err
 	}
+	defer cs.Stop()
 
 	timeout := h.config.GetInt("timeout_handshake")
 	timer := time.NewTimer(time.Duration(timeout) * time.Millisecond)
