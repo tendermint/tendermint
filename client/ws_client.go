@@ -32,12 +32,10 @@ type WSClient struct {
 func NewWSClient(remoteAddr, endpoint string) *WSClient {
 	addr, dialer := makeHTTPDialer(remoteAddr)
 	wsClient := &WSClient{
-		Address:   addr,
-		Dialer:    dialer,
-		Endpoint:  endpoint,
-		Conn:      nil,
-		ResultsCh: make(chan json.RawMessage, wsResultsChannelCapacity),
-		ErrorsCh:  make(chan error, wsErrorsChannelCapacity),
+		Address:  addr,
+		Dialer:   dialer,
+		Endpoint: endpoint,
+		Conn:     nil,
 	}
 	wsClient.BaseService = *cmn.NewBaseService(log, "WSClient", wsClient)
 	return wsClient
@@ -54,14 +52,14 @@ func (wsc *WSClient) OnStart() error {
 	if err != nil {
 		return err
 	}
+	wsc.ResultsCh = make(chan json.RawMessage, wsResultsChannelCapacity)
+	wsc.ErrorsCh = make(chan error, wsErrorsChannelCapacity)
 	go wsc.receiveEventsRoutine()
 	return nil
 }
 
 // OnReset implements cmn.BaseService interface
 func (wsc *WSClient) OnReset() error {
-	wsc.ResultsCh = make(chan json.RawMessage, wsResultsChannelCapacity)
-	wsc.ErrorsCh = make(chan error, wsErrorsChannelCapacity)
 	return nil
 }
 
