@@ -105,7 +105,6 @@ func NewEventMeter(addr string, unmarshalEvent EventUnmarshalFunc) *EventMeter {
 		timer:          metrics.NewTimer(),
 		receivedPong:   true,
 		unmarshalEvent: unmarshalEvent,
-		quit:           make(chan struct{}),
 		logger:         log.NewNopLogger(),
 	}
 	return em
@@ -121,6 +120,10 @@ func (em *EventMeter) String() string {
 }
 
 func (em *EventMeter) Start() error {
+	if _, err := em.wsc.Reset(); err != nil {
+		return err
+	}
+
 	if _, err := em.wsc.Start(); err != nil {
 		return err
 	}
