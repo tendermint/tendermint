@@ -45,7 +45,6 @@ func NewTimeoutTicker() TimeoutTicker {
 }
 
 func (t *timeoutTicker) OnStart() error {
-	t.BaseService.OnStart()
 
 	go t.timeoutRoutine()
 

@@ -63,7 +63,6 @@ func NewBlockPool(start int, requestsCh chan<- BlockRequest, timeoutsCh chan<- s
 }
 
 func (pool *BlockPool) OnStart() error {
-	pool.BaseService.OnStart()
 	go pool.makeRequestersRoutine()
 	pool.startTime = time.Now()
 	return nil
@@ -409,7 +408,6 @@ func newBPRequester(pool *BlockPool, height int) *bpRequester {
 }
 
 func (bpr *bpRequester) OnStart() error {
-	bpr.BaseService.OnStart()
 	go bpr.requestRoutine()
 	return nil
 }

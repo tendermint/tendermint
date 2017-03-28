@@ -340,7 +340,6 @@ func (cs *ConsensusState) LoadCommit(height int) *types.Commit {
 }
 
 func (cs *ConsensusState) OnStart() error {
-	cs.BaseService.OnStart()
 
 	walFile := cs.config.GetString("cs_wal_file")
 	if err := cs.OpenWAL(walFile); err != nil {

@@ -127,8 +127,6 @@ func (pb *playback) replayReset(count int, newStepCh chan interface{}) error {
 }
 
 func (cs *ConsensusState) startForReplay() {
-	// don't want to start full cs
-	cs.BaseService.OnStart()
 
 	log.Warn("Replay commands are disabled until someone updates them and writes tests")
 	/* TODO:!

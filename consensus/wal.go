@@ -55,7 +55,6 @@ func NewWAL(walFile string, light bool) (*WAL, error) {
 }
 
 func (wal *WAL) OnStart() error {
-	wal.BaseService.OnStart()
 	size, err := wal.group.Head.Size()
 	if err != nil {
 		return err
