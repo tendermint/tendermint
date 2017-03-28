@@ -47,16 +47,21 @@ func (wsc *WSClient) String() string {
 	return wsc.Address + ", " + wsc.Endpoint
 }
 
+// OnStart implements cmn.BaseService interface
 func (wsc *WSClient) OnStart() error {
 	wsc.BaseService.OnStart()
 	err := wsc.dial()
 	if err != nil {
 		return err
 	}
+	go wsc.receiveEventsRoutine()
+	return nil
+}
 
+// OnReset implements cmn.BaseService interface
+func (wsc *WSClient) OnReset() error {
 	wsc.ResultsCh = make(chan json.RawMessage, wsResultsChannelCapacity)
 	wsc.ErrorsCh = make(chan error, wsErrorsChannelCapacity)
-	go wsc.receiveEventsRoutine()
 	return nil
 }
 
@@ -86,6 +91,7 @@ func (wsc *WSClient) dial() error {
 	return nil
 }
 
+// OnStop implements cmn.BaseService interface
 func (wsc *WSClient) OnStop() {
 	wsc.BaseService.OnStop()
 	// ResultsCh/ErrorsCh is closed in receiveEventsRoutine.
