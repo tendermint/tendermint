@@ -102,7 +102,7 @@ func (db *GoLevelDB) Stats() map[string]string {
 		"leveldb.cachedblock",
 		"leveldb.openedtables",
 		"leveldb.alivesnaps",
-		"leveldb.alibeiters",
+		"leveldb.aliveiters",
 	}
 
 	stats := make(map[string]string)
