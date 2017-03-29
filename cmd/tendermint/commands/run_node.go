@@ -35,27 +35,27 @@ var (
 func init() {
 
 	// configuration options
-	runNodeCmd.Flags().StringVar(&moniker, "moniker", config.GetString("moniker"),
+	runNodeCmd.Flags().StringVar(&moniker, "moniker", "anonymous",
 		"Node Name")
-	runNodeCmd.Flags().StringVar(&nodeLaddr, "node_laddr", config.GetString("node_laddr"),
+	runNodeCmd.Flags().StringVar(&nodeLaddr, "node_laddr", "tcp://0.0.0.0:46656",
 		"Node listen address. (0.0.0.0:0 means any interface, any port)")
-	runNodeCmd.Flags().StringVar(&seeds, "seeds", config.GetString("seeds"),
+	runNodeCmd.Flags().StringVar(&seeds, "seeds", "",
 		"Comma delimited host:port seed nodes")
-	runNodeCmd.Flags().BoolVar(&fastSync, "fast_sync", config.GetBool("fast_sync"),
+	runNodeCmd.Flags().BoolVar(&fastSync, "fast_sync", true,
 		"Fast blockchain syncing")
-	runNodeCmd.Flags().BoolVar(&skipUPNP, "skip_upnp", config.GetBool("skip_upnp"),
+	runNodeCmd.Flags().BoolVar(&skipUPNP, "skip_upnp", false,
 		"Skip UPNP configuration")
-	runNodeCmd.Flags().StringVar(&rpcLaddr, "rpc_laddr", config.GetString("rpc_laddr"),
+	runNodeCmd.Flags().StringVar(&rpcLaddr, "rpc_laddr", "tcp://0.0.0.0:46657",
 		"RPC listen address. Port required")
-	runNodeCmd.Flags().StringVar(&grpcLaddr, "grpc_laddr", config.GetString("grpc_laddr"),
+	runNodeCmd.Flags().StringVar(&grpcLaddr, "grpc_laddr", "",
 		"GRPC listen address (BroadcastTx only). Port required")
-	runNodeCmd.Flags().StringVar(&proxyApp, "proxy_app", config.GetString("proxy_app"),
+	runNodeCmd.Flags().StringVar(&proxyApp, "proxy_app", "tcp://127.0.0.1:46658",
 		"Proxy app address, or 'nilapp' or 'dummy' for local testing.")
-	runNodeCmd.Flags().StringVar(&abciTransport, "abci", config.GetString("abci"),
+	runNodeCmd.Flags().StringVar(&abciTransport, "abci", "socket",
 		"Specify abci transport (socket | grpc)")
 
 	// feature flags
-	runNodeCmd.Flags().BoolVar(&pex, "pex", config.GetBool("pex_reactor"),
+	runNodeCmd.Flags().BoolVar(&pex, "pex", false,
 		"Enable Peer-Exchange (dev feature)")
 
 	RootCmd.AddCommand(runNodeCmd)
