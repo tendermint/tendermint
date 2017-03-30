@@ -77,21 +77,8 @@ type memDBIterator struct {
 	db   *MemDB
 }
 
-func (it *memDBIterator) Create(db *MemDB) *memDBIterator {
-	db.mtx.Lock()
-	defer db.mtx.Unlock()
-
-	if it == nil {
-		it = &memDBIterator{}
-	}
-	it.db = db
-	it.last = -1
-
-	// unfortunately we need a copy of all of the keys
-	for key, _ := range db.db {
-		it.keys = append(it.keys, key)
-	}
-	return it
+func newMemDBIterator() *memDBIterator {
+	return &memDBIterator{}
 }
 
 func (it *memDBIterator) Next() bool {
@@ -114,8 +101,18 @@ func (it *memDBIterator) Value() []byte {
 }
 
 func (db *MemDB) Iterator() Iterator {
-	var it *memDBIterator
-	return it.Create(db)
+	it := newMemDBIterator()
+	it.db = db
+	it.last = -1
+
+	db.mtx.Lock()
+	defer db.mtx.Unlock()
+
+	// unfortunately we need a copy of all of the keys
+	for key, _ := range db.db {
+		it.keys = append(it.keys, key)
+	}
+	return it
 }
 
 func (db *MemDB) NewBatch() Batch {
