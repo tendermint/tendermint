@@ -19,5 +19,6 @@ tendermint_proxy_app: tcp://127.0.0.1:46658
 tendermint_log_file: /var/log/tendermint.log
 
 tendermint_chain_id: mychain
-tendermint_genesis_time: "{{ansible_date_time.iso8601_micro}}"
+# FIXME https://github.com/tendermint/tools/issues/22
+tendermint_genesis_time: "0001-01-01T00:00:00.000Z"
 tendermint_seeds: ""
