@@ -40,6 +40,8 @@ tendermint_chain_id: mychain
 tendermint_genesis_time: "{{ansible_date_time.iso8601_micro}}"
 ```
 
+You can also change `templates/config.toml.j2` to suit your needs.
+
 ## Handlers
 
 These are the handlers that are defined in `handlers/main.yml`.
@@ -54,6 +56,7 @@ These are the handlers that are defined in `handlers/main.yml`.
 - hosts: all
   vars:
     tendermint_chain_id: MyAwesomeChain
+    tendermint_seeds: "172.13.0.1:46656,172.13.0.2:46656,172.13.0.3:46656"
   roles:
     - ansible-tendermint
 ```
