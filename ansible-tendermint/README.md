@@ -1,6 +1,11 @@
 # Ansible role for Tendermint
 
-![Ansible plus Tendermint](img/ansible_plus_tendermint.png)
+![Ansible plus Tendermint](img/a_plus_t.png)
+
+* [Requirements](#requirements)
+* [Variables](#variables)
+* [Handlers](#handlers)
+* [Example playbook that configures a Tendermint on Ubuntu](#example-playbook-that-configures-a-tendermint-on-ubuntu)
 
 ## Requirements
 
