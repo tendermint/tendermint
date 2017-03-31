@@ -1,4 +1,4 @@
-# Deploy a Tendermint network using Ansible
+# Ansible role for Tendermint
 
 ## Requirements
 
