@@ -1,5 +1,7 @@
 # Ansible role for Tendermint
 
+![Ansible plus Tendermint](img/ansible_plus_tendermint.png)
+
 ## Requirements
 
 This role requires Ansible 2.0 or higher.
