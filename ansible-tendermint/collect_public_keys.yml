@@ -1,5 +1,5 @@
 ---
-# Gathers validator public keys from all the nodes to help you form genesis file
+# Outputs validator public keys from all the nodes to help you form genesis file
 
 - hosts: all
   vars:

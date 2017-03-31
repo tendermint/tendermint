@@ -62,8 +62,24 @@ This playbook will install Tendermint and will create all the required
 directories. But **it won't start the Tendermint if there are no validators in
 genesis file**. See `templates/genesis.json.j2`.
 
-You will need to collect validators public keys manually or using `genesis.yml`
-given you have SSH access to all the nodes.
+You will need to collect validators public keys manually or using
+`collect_public_keys.yml` given you have SSH access to all the nodes and add
+them to `templates/genesis.json.j2`:
+
+```
+{
+  "app_hash": "",
+  "chain_id": "{{tendermint_chain_id}}",
+  "genesis_time": "{{tendermint_genesis_time}}",
+  "validators": [
+    {
+      "pub_key": [1, "3A4B5F5C34B19E5DBD2DC68E7D6FF7F46859A0657EDCA3274235A7EB127A0706"],
+      "amount": 10,
+      "name": "1"
+    }
+  ]
+}
+```
 
 ## Testing
 
