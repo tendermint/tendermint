@@ -1,0 +1,22 @@
+---
+tendermint_version: 0.9.0
+tendermint_archive: "tendermint_{{tendermint_version}}_linux_amd64.zip"
+tendermint_download: "https://s3-us-west-2.amazonaws.com/tendermint/{{tendermint_version}}/{{tendermint_archive}}"
+tendermint_download_folder: /tmp
+
+tendermint_user: tendermint
+tendermint_group: tendermint
+
+# Upstart start/stop conditions can vary by distribution and environment
+tendermint_upstart_start_on: start on runlevel [345]
+tendermint_upstart_stop_on: stop on runlevel [!345]
+tendermint_manage_service: true
+
+tendermint_home: /opt/tendermint
+tendermint_rpc_port: 46657
+tendermint_proxy_app: tcp://127.0.0.1:46658
+
+tendermint_log_file: /var/log/tendermint.log
+
+tendermint_chain_id: mychain
+tendermint_genesis_time: "{{ansible_date_time.iso8601_micro}}"

@@ -1,0 +1,5 @@
+---
+
+- name: restart tendermint
+  action: service name=tendermint state=restarted enabled=yes
+  when: tendermint_manage_service

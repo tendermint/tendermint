@@ -1,0 +1,7 @@
+---
+
+- hosts: all
+  roles:
+    - ansible-tendermint
+  vars:
+    tendermint_proxy_app: dummy
