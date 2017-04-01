@@ -107,6 +107,7 @@ func (db *CLevelDB) Print() {
 }
 
 func (db *CLevelDB) Stats() map[string]string {
+	// TODO: Find the available properties for the C LevelDB implementation
 	keys := []string{}
 
 	stats := make(map[string]string)

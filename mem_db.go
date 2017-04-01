@@ -94,10 +94,7 @@ func (it *memDBIterator) Key() []byte {
 }
 
 func (it *memDBIterator) Value() []byte {
-	it.db.mtx.Lock()
-	defer it.db.mtx.Unlock()
-
-	return it.db.db[it.keys[it.last]]
+	return it.db.Get(it.Key())
 }
 
 func (db *MemDB) Iterator() Iterator {
