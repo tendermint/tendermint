@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -64,7 +65,7 @@ func TestValidTxProof(t *testing.T) {
 
 func TestTxProofUnchangable(t *testing.T) {
 	// run the other test a bunch...
-	for i := 0; i < 4; i++ {
+	for i := 0; i < 40; i++ {
 		testTxProofUnchangable(t)
 	}
 }
@@ -83,14 +84,16 @@ func testTxProofUnchangable(t *testing.T) {
 	bin := wire.BinaryBytes(proof)
 
 	// try mutating the data and make sure nothing breaks
-	for j := 0; j < 50; j++ {
+	for j := 0; j < 500; j++ {
 		bad := ctest.MutateByteSlice(bin)
-		assertBadProof(t, root, bad)
+		if !bytes.Equal(bad, bin) {
+			assertBadProof(t, root, bad, proof)
+		}
 	}
 }
 
 // this make sure the proof doesn't deserialize into something valid
-func assertBadProof(t *testing.T, root []byte, bad []byte) {
+func assertBadProof(t *testing.T, root []byte, bad []byte, good TxProof) {
 	// we kind of expect this to panic sometimes... (bad, go-wire, bad)
 	defer func() {
 		recover()
@@ -100,6 +103,11 @@ func assertBadProof(t *testing.T, root []byte, bad []byte) {
 	err := wire.ReadBinaryBytes(bad, &proof)
 	if err == nil {
 		err = proof.Validate(root)
-		assert.NotNil(t, err, "%+v", err)
+		if err == nil {
+			// okay, this can happen if we have a slightly different total
+			// (where the path ends up the same), if it is something else, we have
+			// a real problem
+			assert.NotEqual(t, proof.Total, good.Total, "bad: %#v\ngood: %#v", proof, good)
+		}
 	}
 }
