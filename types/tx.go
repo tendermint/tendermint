@@ -36,6 +36,11 @@ func (txs Txs) Hash() []byte {
 
 // Index returns the index of this transaction in the list, or -1 if not found
 func (txs Txs) Index(tx Tx) int {
+	for i := range txs {
+		if bytes.Equal(txs[i], tx) {
+			return i
+		}
+	}
 	return -1
 }
 

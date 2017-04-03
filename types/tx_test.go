@@ -23,6 +23,20 @@ func randInt(low, high int) int {
 	return low + off
 }
 
+func TestTxIndex(t *testing.T) {
+	assert := assert.New(t)
+	for i := 0; i < 20; i++ {
+		txs := makeTxs(15, 60)
+		for j := 0; j < len(txs); j++ {
+			tx := txs[j]
+			idx := txs.Index(tx)
+			assert.Equal(j, idx)
+		}
+		assert.Equal(-1, txs.Index(nil))
+		assert.Equal(-1, txs.Index(Tx("foodnwkf")))
+	}
+}
+
 func TestValidTxProof(t *testing.T) {
 	assert := assert.New(t)
 	cases := []struct {
