@@ -103,9 +103,21 @@
 
 - name: copy upstart script
   template: >
-    src=tendermint.conf.j2
+    src={{tendermint_upstart_template}}
     dest=/etc/init/tendermint.conf
     owner=root
     group=root
     mode=0644
+  when: tendermint_use_upstart
   # notify: restart tendermint
+
+- name: copy systemd script
+  template: >
+    src={{tendermint_systemd_template}}
+    dest=/etc/systemd/system/tendermint.service
+    owner=root
+    group=root
+    mode=0644
+  when: tendermint_use_systemd
+  notify:
+    - reload systemd

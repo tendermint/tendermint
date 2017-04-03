@@ -18,3 +18,9 @@
   shell: echo "restarting ..."
   when: genesis_file_copied|changed and num_validators.stdout|int > 0
   notify: restart tendermint
+
+- service: >
+    name=tendermint
+    state=started
+    enabled=yes
+  when: tendermint_manage_service

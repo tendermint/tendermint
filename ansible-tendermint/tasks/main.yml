@@ -5,9 +5,4 @@
     - "{{ ansible_os_family }}-{{ ansible_distribution_major_version}}.yml"
     - "{{ ansible_os_family }}.yml"
 - include: install.yml
-- service: >
-    name=tendermint
-    state=stopped
-    enabled=yes
-  when: tendermint_manage_service
 - include: start.yml

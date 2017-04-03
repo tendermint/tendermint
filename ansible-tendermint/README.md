@@ -29,6 +29,10 @@ tendermint_group: tendermint
 tendermint_upstart_start_on: start on runlevel [345]
 tendermint_upstart_stop_on: stop on runlevel [!345]
 tendermint_manage_service: true
+tendermint_use_upstart: true
+tendermint_use_systemd: false
+tendermint_upstart_template: "tendermint.conf.j2"
+tendermint_systemd_template: "tendermint.systemd.j2"
 
 tendermint_home: /opt/tendermint
 tendermint_rpc_port: 46657
@@ -38,6 +42,7 @@ tendermint_log_file: /var/log/tendermint.log
 
 tendermint_chain_id: mychain
 tendermint_genesis_time: "{{ansible_date_time.iso8601_micro}}"
+tendermint_seeds: ""
 ```
 
 You can also change `templates/config.toml.j2` to suit your needs.
