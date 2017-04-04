@@ -40,6 +40,7 @@ tendermint_rpc_port: 46657
 tendermint_proxy_app: "tcp://127.0.0.1:46658"
 tendermint_node_laddr: "tcp://0.0.0.0:{{tendermint_node_port}}"
 tendermint_rpc_laddr: "tcp://0.0.0.0:{{tendermint_rpc_port}}"
+tendermint_seeds: ""
 tendermint_fast_sync: true
 tendermint_db_backend: leveldb
 tendermint_log_level: notice
@@ -77,7 +78,7 @@ tendermint_log_file: /var/log/tendermint.log
 
 tendermint_chain_id: mychain
 tendermint_genesis_time: "{{ansible_date_time.iso8601_micro}}"
-tendermint_seeds: ""
+tendermint_validators: []
 ```
 
 ## Handlers
@@ -99,27 +100,41 @@ These are the handlers that are defined in `handlers/main.yml`.
     - ansible-tendermint
 ```
 
-This playbook will install Tendermint and will create all the required
-directories. But **it won't start the Tendermint if there are no validators in
-genesis file**. See `templates/genesis.json.j2`.
+This playbook will install Tendermint and will create all the
+required directories. But **it won't start the Tendermint if no
+validators were given**.
 
 You will need to collect validators public keys manually or using
-`collect_public_keys.yml` given you have SSH access to all the nodes and add
-them to `templates/genesis.json.j2`:
+`collect_public_keys.yml` given you have SSH access to all the nodes and set `tendermint_validators` variable:
 
 ```
-{
-  "app_hash": "",
-  "chain_id": "{{tendermint_chain_id}}",
-  "genesis_time": "{{tendermint_genesis_time}}",
-  "validators": [
-    {
-      "pub_key": [1, "3A4B5F5C34B19E5DBD2DC68E7D6FF7F46859A0657EDCA3274235A7EB127A0706"],
-      "amount": 10,
-      "name": "1"
-    }
-  ]
-}
+---
+
+- hosts: all
+  vars:
+    tendermint_chain_id: MyAwesomeChain
+    tendermint_seeds: "172.13.0.1:46656,172.13.0.2:46656,172.13.0.3:46656"
+    tendermint_validators:
+      - pub_key:
+          - 1
+          - 1F017E488A6327FAFBBE092193B427912E117733DE6AF72150BF09AA58411E7F
+        amount: 10
+        name: paris
+  roles:
+    - ansible-tendermint
+```
+
+### Example playbook that configures a Tendermint with in-proc dummy app
+
+```
+---
+
+- hosts: all
+  vars:
+    tendermint_chain_id: MyAwesomeChain
+    tendermint_proxy_app: dummy
+  roles:
+    - ansible-tendermint
 ```
 
 ## Testing
