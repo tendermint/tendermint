@@ -20,7 +20,6 @@ const (
 	numBatchMsgPackets = 10
 	minReadBufferSize  = 1024
 	minWriteBufferSize = 65536
-	idleTimeoutMinutes = 5
 	updateState        = 2 * time.Second
 	pingTimeout        = 40 * time.Second
 	flushThrottle      = 100 * time.Millisecond
