@@ -22,6 +22,7 @@ tendermint_rpc_port: 46657
 tendermint_proxy_app: "tcp://127.0.0.1:46658"
 tendermint_node_laddr: "tcp://0.0.0.0:{{tendermint_node_port}}"
 tendermint_rpc_laddr: "tcp://0.0.0.0:{{tendermint_rpc_port}}"
+tendermint_seeds: ""
 tendermint_fast_sync: true
 tendermint_db_backend: leveldb
 tendermint_log_level: notice
@@ -60,4 +61,4 @@ tendermint_log_file: /var/log/tendermint.log
 tendermint_chain_id: mychain
 # FIXME https://github.com/tendermint/tools/issues/22
 tendermint_genesis_time: "0001-01-01T00:00:00.000Z"
-tendermint_seeds: ""
+tendermint_validators: []
