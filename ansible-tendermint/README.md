@@ -7,6 +7,12 @@
 * [Handlers](#handlers)
 * [Example playbook that configures a Tendermint on Ubuntu](#example-playbook-that-configures-a-tendermint-on-ubuntu)
 
+`ansible-tendermint` is an [ansible](http://www.ansible.com/) role which:
+
+* installs tendermint
+* configures tendermint
+* configures tendermint service
+
 ## Requirements
 
 This role requires Ansible 2.0 or higher.
