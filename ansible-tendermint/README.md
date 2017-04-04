@@ -91,7 +91,8 @@ tendermint_validators: []
 
 These are the handlers that are defined in `handlers/main.yml`.
 
-* restart tendermint
+* `restart tendermint`
+* `reload systemd`
 
 ## Example playbook that configures a Tendermint on Ubuntu
 
