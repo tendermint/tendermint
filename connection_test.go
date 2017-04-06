@@ -7,7 +7,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	cfg "github.com/tendermint/go-config"
 	p2p "github.com/tendermint/go-p2p"
 )
 
@@ -20,10 +19,8 @@ func createMConnection(conn net.Conn) *p2p.MConnection {
 }
 
 func createMConnectionWithCallbacks(conn net.Conn, onReceive func(chID byte, msgBytes []byte), onError func(r interface{})) *p2p.MConnection {
-	config := cfg.NewMapConfig(map[string]interface{}{"send_rate": 512000, "recv_rate": 512000})
 	chDescs := []*p2p.ChannelDescriptor{&p2p.ChannelDescriptor{ID: 0x01, Priority: 1}}
-
-	return p2p.NewMConnection(config, conn, chDescs, onReceive, onError)
+	return p2p.NewMConnection(conn, chDescs, onReceive, onError)
 }
 
 func TestMConnectionSend(t *testing.T) {
@@ -104,7 +101,7 @@ func TestMConnectionStatus(t *testing.T) {
 	assert.Zero(status.Channels[0].SendQueueSize)
 }
 
-func TestMConnectionNonPersistent(t *testing.T) {
+func TestMConnectionStopsAndReturnsError(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
 	server, client := net.Pipe()

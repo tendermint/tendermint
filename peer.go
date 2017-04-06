@@ -61,7 +61,11 @@ func newPeer(config cfg.Config, conn net.Conn, peerNodeInfo *NodeInfo, outbound 
 		p.Stop()
 		onPeerError(p, r)
 	}
-	mconn := NewMConnection(config, conn, chDescs, onReceive, onError)
+	mconnConfig := &MConnectionConfig{
+		SendRate: int64(config.GetInt(configKeySendRate)),
+		RecvRate: int64(config.GetInt(configKeyRecvRate)),
+	}
+	mconn := NewMConnectionWithConfig(conn, chDescs, onReceive, onError, mconnConfig)
 	p = &Peer{
 		outbound: outbound,
 		mconn:    mconn,

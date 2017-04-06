@@ -193,7 +193,7 @@ func (sw *Switch) OnStop() {
 }
 
 // NOTE: This performs a blocking handshake before the peer is added.
-// CONTRACT: Iff error is returned, peer is nil, and conn is immediately closed.
+// CONTRACT: If error is returned, peer is nil, and conn is immediately closed.
 func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, error) {
 
 	// Filter by addr (ie. ip:port)
