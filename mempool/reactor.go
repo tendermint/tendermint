@@ -6,12 +6,14 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/spf13/viper"
+
 	abci "github.com/tendermint/abci/types"
-	"github.com/tendermint/tmlibs/clist"
 	cfg "github.com/tendermint/go-config"
-	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/go-wire"
+	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tmlibs/clist"
 )
 
 const (
@@ -24,12 +26,12 @@ const (
 // MempoolReactor handles mempool tx broadcasting amongst peers.
 type MempoolReactor struct {
 	p2p.BaseReactor
-	config  cfg.Config
+	config  *viper.Viper
 	Mempool *Mempool
 	evsw    types.EventSwitch
 }
 
-func NewMempoolReactor(config cfg.Config, mempool *Mempool) *MempoolReactor {
+func NewMempoolReactor(config *viper.Viper, mempool *Mempool) *MempoolReactor {
 	memR := &MempoolReactor{
 		config:  config,
 		Mempool: mempool,

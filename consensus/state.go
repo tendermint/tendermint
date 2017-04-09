@@ -10,13 +10,14 @@ import (
 	"time"
 
 	"github.com/ebuchman/fail-test"
+	"github.com/spf13/viper"
 
-	. "github.com/tendermint/tmlibs/common"
 	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	. "github.com/tendermint/tmlibs/common"
 )
 
 //-----------------------------------------------------------------------------
@@ -56,7 +57,7 @@ func (tp *TimeoutParams) Commit(t time.Time) time.Time {
 }
 
 // InitTimeoutParamsFromConfig initializes parameters from config
-func InitTimeoutParamsFromConfig(config cfg.Config) *TimeoutParams {
+func InitTimeoutParamsFromConfig(config *viper.Viper) *TimeoutParams {
 	return &TimeoutParams{
 		Propose0:          config.GetInt("timeout_propose"),
 		ProposeDelta:      config.GetInt("timeout_propose_delta"),
@@ -224,7 +225,7 @@ type PrivValidator interface {
 type ConsensusState struct {
 	BaseService
 
-	config       cfg.Config
+	config       *viper.Viper
 	proxyAppConn proxy.AppConnConsensus
 	blockStore   types.BlockStore
 	mempool      types.Mempool
@@ -255,7 +256,7 @@ type ConsensusState struct {
 	done chan struct{}
 }
 
-func NewConsensusState(config cfg.Config, state *sm.State, proxyAppConn proxy.AppConnConsensus, blockStore types.BlockStore, mempool types.Mempool) *ConsensusState {
+func NewConsensusState(config *viper.Viper, state *sm.State, proxyAppConn proxy.AppConnConsensus, blockStore types.BlockStore, mempool types.Mempool) *ConsensusState {
 	cs := &ConsensusState{
 		config:           config,
 		proxyAppConn:     proxyAppConn,

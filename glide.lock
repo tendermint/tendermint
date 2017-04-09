@@ -41,8 +41,10 @@ imports:
   version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
   subpackages:
   - difflib
+- name: github.com/spf13/viper
+  version: 84f94806c67f59dd7ae87bc5351f7a9c94a4558d
 - name: github.com/spf13/cobra
-  version: fcd0c5a1df88f5d6784cb4feead962c3f3d0b66c
+  version: 5deb57bbca49eb370538fc295ba4b2988f9f5e09
 - name: github.com/spf13/pflag
   version: 9ff6c6923cfffbcd502984b8e0c80539a94968b7
 - name: github.com/stretchr/testify

@@ -2,9 +2,10 @@ package commands
 
 import (
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
-	"github.com/tendermint/tmlibs/logger"
 	tmcfg "github.com/tendermint/tendermint/config/tendermint"
+	"github.com/tendermint/tmlibs/logger"
 )
 
 var (

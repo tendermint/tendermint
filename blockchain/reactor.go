@@ -6,13 +6,15 @@ import (
 	"reflect"
 	"time"
 
-	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/spf13/viper"
+
 	cfg "github.com/tendermint/go-config"
-	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/go-wire"
+	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 const (
@@ -43,7 +45,7 @@ type consensusReactor interface {
 type BlockchainReactor struct {
 	p2p.BaseReactor
 
-	config       cfg.Config
+	config       *viper.Viper
 	state        *sm.State
 	proxyAppConn proxy.AppConnConsensus // same as consensus.proxyAppConn
 	store        *BlockStore
@@ -57,7 +59,7 @@ type BlockchainReactor struct {
 }
 
 // NewBlockchainReactor returns new reactor instance.
-func NewBlockchainReactor(config cfg.Config, state *sm.State, proxyAppConn proxy.AppConnConsensus, store *BlockStore, fastSync bool) *BlockchainReactor {
+func NewBlockchainReactor(config *viper.Viper, state *sm.State, proxyAppConn proxy.AppConnConsensus, store *BlockStore, fastSync bool) *BlockchainReactor {
 	if state.LastBlockHeight == store.Height()-1 {
 		store.height-- // XXX HACK, make this better
 	}

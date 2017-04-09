@@ -8,20 +8,22 @@ import (
 	"strconv"
 	"strings"
 
-	. "github.com/tendermint/tmlibs/common"
+	"github.com/spf13/viper"
+
 	cfg "github.com/tendermint/go-config"
-	dbm "github.com/tendermint/tmlibs/db"
 	bc "github.com/tendermint/tendermint/blockchain"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	. "github.com/tendermint/tmlibs/common"
+	dbm "github.com/tendermint/tmlibs/db"
 )
 
 //--------------------------------------------------------
 // replay messages interactively or all at once
 
-func RunReplayFile(config cfg.Config, walFile string, console bool) {
+func RunReplayFile(config *viper.Viper, walFile string, console bool) {
 	consensusState := newConsensusStateForReplay(config)
 
 	if err := consensusState.ReplayFile(walFile, console); err != nil {
@@ -236,7 +238,7 @@ func (pb *playback) replayConsoleLoop() int {
 //--------------------------------------------------------------------------------
 
 // convenience for replay mode
-func newConsensusStateForReplay(config cfg.Config) *ConsensusState {
+func newConsensusStateForReplay(config *viper.Viper) *ConsensusState {
 	// Get BlockStore
 	blockStoreDB := dbm.NewDB("blockstore", config.GetString("db_backend"), config.GetString("db_dir"))
 	blockStore := bc.NewBlockStore(blockStoreDB)
