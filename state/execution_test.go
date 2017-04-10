@@ -81,7 +81,7 @@ type dummyIndexer struct {
 	Indexed int
 }
 
-func (indexer *dummyIndexer) Tx(hash string) (*types.TxResult, error) {
+func (indexer *dummyIndexer) Tx(hash []byte) (*types.TxResult, error) {
 	return nil, nil
 }
 func (indexer *dummyIndexer) Batch(batch *txindexer.Batch) error {
