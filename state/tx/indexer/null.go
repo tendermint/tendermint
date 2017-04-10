@@ -9,8 +9,8 @@ import (
 type Null struct{}
 
 // Tx panics.
-func (indexer *Null) Tx(hash string) (*types.TxResult, error) {
-	return nil, errors.New("Indexing is disabled (set `tx_indexer=kv` in config)")
+func (indexer *Null) Tx(hash []byte) (*types.TxResult, error) {
+	return nil, errors.New(`Indexing is disabled (set 'tx_indexer = "kv"' in config)`)
 }
 
 // Batch returns nil.

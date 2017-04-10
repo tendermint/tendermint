@@ -22,12 +22,12 @@ func NewKV(store db.DB) *KV {
 
 // Tx gets transaction from the KV storage and returns it or nil if the
 // transaction is not found.
-func (indexer *KV) Tx(hash string) (*types.TxResult, error) {
-	if hash == "" {
+func (indexer *KV) Tx(hash []byte) (*types.TxResult, error) {
+	if len(hash) == 0 {
 		return nil, ErrorEmptyHash
 	}
 
-	rawBytes := indexer.store.Get([]byte(hash))
+	rawBytes := indexer.store.Get(hash)
 	if rawBytes == nil {
 		return nil, nil
 	}

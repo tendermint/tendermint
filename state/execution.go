@@ -1,7 +1,6 @@
 package state
 
 import (
-	"encoding/hex"
 	"errors"
 	"fmt"
 
@@ -246,7 +245,7 @@ func (s *State) ApplyBlock(eventCache types.Fireable, proxyAppConn proxy.AppConn
 		if r != nil {
 			tx := block.Txs[i]
 			// dd2e325f79f7e5f77788759d278c1d4b370c842e => {"height":2405, "index":0, ...}
-			batch.Index(hex.EncodeToString(tx.Hash()), *r)
+			batch.Index(tx.Hash(), *r)
 		}
 	}
 	s.TxIndexer.Batch(batch)

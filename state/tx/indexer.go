@@ -17,5 +17,5 @@ type Indexer interface {
 
 	// Tx returns specified transaction or nil if the transaction is not indexed
 	// or stored.
-	Tx(hash string) (*types.TxResult, error)
+	Tx(hash []byte) (*types.TxResult, error)
 }

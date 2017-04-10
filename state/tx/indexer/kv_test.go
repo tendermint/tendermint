@@ -18,7 +18,7 @@ func TestKVIndex(t *testing.T) {
 
 	tx := types.Tx("HELLO WORLD")
 	txResult := &types.TxResult{1, 1, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeType_OK, Log: ""}}
-	hash := string(tx.Hash())
+	hash := tx.Hash()
 
 	batch := NewBatch()
 	batch.Index(hash, *txResult)
@@ -44,7 +44,7 @@ func benchmarkKVIndex(txsCount int, b *testing.B) {
 
 	batch := NewBatch()
 	for i := 0; i < txsCount; i++ {
-		batch.Index(fmt.Sprintf("hash%v", i), *txResult)
+		batch.Index([]byte(fmt.Sprintf("hash%v", i)), *txResult)
 	}
 
 	b.ResetTimer()

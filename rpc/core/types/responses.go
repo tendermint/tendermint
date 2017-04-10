@@ -67,11 +67,18 @@ type ResultBroadcastTx struct {
 	Code abci.CodeType `json:"code"`
 	Data []byte        `json:"data"`
 	Log  string        `json:"log"`
+
+	TxID []byte `json:"tx_id"`
 }
 
 type ResultBroadcastTxCommit struct {
 	CheckTx   *abci.ResponseCheckTx   `json:"check_tx"`
 	DeliverTx *abci.ResponseDeliverTx `json:"deliver_tx"`
+	TxID      []byte                  `json:"tx_id"`
+}
+
+type ResultTx struct {
+	types.TxResult
 }
 
 type ResultUnconfirmedTxs struct {
@@ -164,7 +171,7 @@ var _ = wire.RegisterInterface(
 	wire.ConcreteType{&ResultDumpConsensusState{}, ResultTypeDumpConsensusState},
 	wire.ConcreteType{&ResultBroadcastTx{}, ResultTypeBroadcastTx},
 	wire.ConcreteType{&ResultBroadcastTxCommit{}, ResultTypeBroadcastTxCommit},
-	wire.ConcreteType{&types.TxResult{}, ResultTypeTx},
+	wire.ConcreteType{&ResultTx{}, ResultTypeTx},
 	wire.ConcreteType{&ResultUnconfirmedTxs{}, ResultTypeUnconfirmedTxs},
 	wire.ConcreteType{&ResultSubscribe{}, ResultTypeSubscribe},
 	wire.ConcreteType{&ResultUnsubscribe{}, ResultTypeUnsubscribe},

@@ -1,12 +1,9 @@
 package core
 
 import (
-	"strings"
-
 	rpc "github.com/tendermint/go-rpc/server"
 	"github.com/tendermint/go-rpc/types"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 // TODO: better system than "unsafe" prefix
@@ -22,11 +19,11 @@ var Routes = map[string]*rpc.RPCFunc{
 	"genesis":              rpc.NewRPCFunc(GenesisResult, ""),
 	"block":                rpc.NewRPCFunc(BlockResult, "height"),
 	"commit":               rpc.NewRPCFunc(CommitResult, "height"),
+	"tx":                   rpc.NewRPCFunc(TxResult, "hash"),
 	"validators":           rpc.NewRPCFunc(ValidatorsResult, ""),
 	"dump_consensus_state": rpc.NewRPCFunc(DumpConsensusStateResult, ""),
 	"unconfirmed_txs":      rpc.NewRPCFunc(UnconfirmedTxsResult, ""),
 	"num_unconfirmed_txs":  rpc.NewRPCFunc(NumUnconfirmedTxsResult, ""),
-	"tx": rpc.NewRPCFunc(Tx, "hash"),
 
 	// broadcast API
 	"broadcast_tx_commit": rpc.NewRPCFunc(BroadcastTxCommitResult, "tx"),
@@ -103,13 +100,8 @@ func NumUnconfirmedTxsResult() (ctypes.TMResult, error) {
 // Tx allow user to query the transaction results. `nil` could mean the
 // transaction is in the mempool, invalidated, or was not send in the first
 // place.
-func Tx(hash string) (ctypes.TMResult, error) {
-	r, err := txIndexer.Tx(strings.ToLower(hash))
-	// nil-pointer interface values are forbidden in go-rpc
-	if r == (*types.TxResult)(nil) {
-		return nil, err
-	}
-	return r, err
+func TxResult(hash []byte) (ctypes.TMResult, error) {
+	return Tx(hash)
 }
 
 func BroadcastTxCommitResult(tx []byte) (ctypes.TMResult, error) {

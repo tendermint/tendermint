@@ -18,11 +18,11 @@ func NewBatch() *Batch {
 }
 
 // Index adds or updates entry for the given hash.
-func (b *Batch) Index(hash string, result types.TxResult) error {
-	if hash == "" {
+func (b *Batch) Index(hash []byte, result types.TxResult) error {
+	if len(hash) == 0 {
 		return ErrorEmptyHash
 	}
-	b.Ops[hash] = result
+	b.Ops[string(hash)] = result
 	return nil
 }
 
