@@ -65,11 +65,7 @@ func execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn proxy.AppConnCo
 	var validTxs, invalidTxs = 0, 0
 
 	txResults := make([]*types.TxResult, len(block.Txs))
-
-	txHashToIndexMap := make(map[string]int)
-	for index, tx := range block.Txs {
-		txHashToIndexMap[string(tx.Hash())] = index
-	}
+	txIndex := 0
 
 	// Execute transactions and get hash
 	proxyCb := func(req *abci.Request, res *abci.Response) {
@@ -89,16 +85,13 @@ func execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn proxy.AppConnCo
 				txError = txResult.Code.String()
 			}
 
-			tx := types.Tx(req.GetDeliverTx().Tx)
-			index, ok := txHashToIndexMap[string(tx.Hash())]
-			if ok {
-				txResults[index] = &types.TxResult{uint64(block.Height), uint32(index), *txResult}
-			}
+			txResults[txIndex] = &types.TxResult{uint64(block.Height), uint32(txIndex), *txResult}
+			txIndex++
 
 			// NOTE: if we count we can access the tx from the block instead of
 			// pulling it from the req
 			event := types.EventDataTx{
-				Tx:    tx,
+				Tx:    types.Tx(req.GetDeliverTx().Tx),
 				Data:  txResult.Data,
 				Code:  txResult.Code,
 				Log:   txResult.Log,
