@@ -260,7 +260,7 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	assert.False(peer.IsRunning())
 }
 
-func TestSwitchReconnectsToPeerIfItIsPersistent(t *testing.T) {
+func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
 	sw := makeSwitch(1, "testing", "123.123.123", initSwitchFunc)

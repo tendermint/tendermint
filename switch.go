@@ -226,6 +226,7 @@ func (sw *Switch) AddPeer(peer *Peer) error {
 	// ignore if duplicate or if we already have too many for that IP range
 	if err := sw.peers.Add(peer); err != nil {
 		log.Notice("Ignoring peer", "error", err, "peer", peer)
+		peer.Stop()
 		return err
 	}
 
@@ -544,7 +545,7 @@ func makeSwitch(i int, network, version string, initSwitch func(int, *Switch) *S
 	return s
 }
 
-// AddPeerWithConnection is a helper function for testing.
+// AddPeerWithConnection creates a newPeer from the connection, performs the handshake, and adds it to the switch.
 func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor, onPeerError func(*Peer, interface{}), config cfg.Config, privKey crypto.PrivKeyEd25519) error {
 	peer, err := newPeerFromExistingConn(conn, outbound, reactorsByCh, chDescs, onPeerError, config, privKey)
 	if err != nil {

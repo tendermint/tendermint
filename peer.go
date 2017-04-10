@@ -48,12 +48,18 @@ func newPeerFromExistingConn(conn net.Conn, outbound bool, reactorsByCh map[byte
 	// Encrypt connection
 	if config.GetBool(configKeyAuthEnc) {
 		var err error
+		// Set deadline for handshake so we don't block forever on conn.ReadFull
+		timeout := time.Duration(config.GetInt(configKeyHandshakeTimeoutSeconds)) * time.Second
+		conn.SetDeadline(time.Now().Add(timeout))
 		conn, err = MakeSecretConnection(conn, privKey)
 		if err != nil {
 			return nil, err
 		}
+		// remove deadline
+		conn.SetDeadline(time.Time{})
 	}
 
+	// Key and NodeInfo are set after Handshake
 	p := &Peer{
 		outbound: outbound,
 		authEnc:  config.GetBool(configKeyAuthEnc),
