@@ -441,7 +441,7 @@ func (sw *Switch) listenerRoutine(l Listener) {
 		}
 
 		// New inbound connection!
-		err := sw.AddPeerWithConnection(inConn, false, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.config, sw.nodePrivKey)
+		err := sw.AddPeerWithConnection(inConn, false)
 		if err != nil {
 			log.Notice("Ignoring inbound connection: error while adding peer", "address", inConn.RemoteAddr().String(), "error", err)
 			continue
@@ -503,14 +503,14 @@ func Connect2Switches(switches []*Switch, i, j int) {
 	c1, c2 := net.Pipe()
 	doneCh := make(chan struct{})
 	go func() {
-		err := switchI.AddPeerWithConnection(c1, false, switchI.reactorsByCh, switchI.chDescs, switchI.StopPeerForError, switchI.config, switchI.nodePrivKey)
+		err := switchI.AddPeerWithConnection(c1, false)
 		if PanicOnAddPeerErr && err != nil {
 			panic(err)
 		}
 		doneCh <- struct{}{}
 	}()
 	go func() {
-		err := switchJ.AddPeerWithConnection(c2, false, switchJ.reactorsByCh, switchJ.chDescs, switchJ.StopPeerForError, switchJ.config, switchJ.nodePrivKey)
+		err := switchJ.AddPeerWithConnection(c2, false)
 		if PanicOnAddPeerErr && err != nil {
 			panic(err)
 		}
@@ -546,8 +546,8 @@ func makeSwitch(i int, network, version string, initSwitch func(int, *Switch) *S
 }
 
 // AddPeerWithConnection creates a newPeer from the connection, performs the handshake, and adds it to the switch.
-func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor, onPeerError func(*Peer, interface{}), config cfg.Config, privKey crypto.PrivKeyEd25519) error {
-	peer, err := newPeerFromExistingConn(conn, outbound, reactorsByCh, chDescs, onPeerError, config, privKey)
+func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) error {
+	peer, err := newPeerFromExistingConn(conn, outbound, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.config, sw.nodePrivKey)
 	if err != nil {
 		peer.CloseConn()
 		return err

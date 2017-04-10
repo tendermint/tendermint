@@ -178,10 +178,10 @@ func TestConnAddrFilter(t *testing.T) {
 
 	// connect to good peer
 	go func() {
-		s1.AddPeerWithConnection(c1, false, s1.reactorsByCh, s1.chDescs, s1.StopPeerForError, s1.config, s1.nodePrivKey)
+		s1.AddPeerWithConnection(c1, false)
 	}()
 	go func() {
-		s2.AddPeerWithConnection(c2, true, s2.reactorsByCh, s2.chDescs, s2.StopPeerForError, s2.config, s2.nodePrivKey)
+		s2.AddPeerWithConnection(c2, true)
 	}()
 
 	// Wait for things to happen, peers to get added...
@@ -213,10 +213,10 @@ func TestConnPubKeyFilter(t *testing.T) {
 
 	// connect to good peer
 	go func() {
-		s1.AddPeerWithConnection(c1, false, s1.reactorsByCh, s1.chDescs, s1.StopPeerForError, s1.config, s1.nodePrivKey)
+		s1.AddPeerWithConnection(c1, false)
 	}()
 	go func() {
-		s2.AddPeerWithConnection(c2, true, s2.reactorsByCh, s2.chDescs, s2.StopPeerForError, s2.config, s2.nodePrivKey)
+		s2.AddPeerWithConnection(c2, true)
 	}()
 
 	// Wait for things to happen, peers to get added...
