@@ -22,7 +22,7 @@ dist:
 
 test:
 	@echo "--> Running go test"
-	@go test $(PACKAGES)
+	@go test -v $(PACKAGES)
 
 test_race:
 	@echo "--> Running go test --race"
@@ -35,9 +35,9 @@ test100:
 	@for i in {1..100}; do make test; done
 
 draw_deps:
-	# requires brew install graphviz
-	go get github.com/hirokidaichi/goviz
-	goviz -i ./cmd/tendermint | dot -Tpng -o huge.png
+	# requires brew install graphviz or apt-get install graphviz
+	go get github.com/RobotsAndPencils/goviz
+	@goviz -i github.com/tendermint/tendermint/cmd/tendermint -d 2 | dot -Tpng -o dependency-graph.png
 
 list_deps:
 	@go list -f '{{join .Deps "\n"}}' ./... | \
