@@ -10,6 +10,8 @@ import:
   version: develop
 - package: github.com/tendermint/go-crypto
   version: develop
+- package: github.com/tendermint/go-data
+  version: develop
 - package: github.com/tendermint/go-db
   version: develop
 - package: github.com/tendermint/go-events
