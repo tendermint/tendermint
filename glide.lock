@@ -1,5 +1,5 @@
-hash: d9724aa287c40d1b3856b6565f09235d809c8b2f7c6537c04f597137c0d6cd26
-updated: 2017-04-21T13:09:25.708801802-04:00
+hash: 4fcbf7902a356824c9b4d4de99ccc62175ef3be8b610987dcf4a37eae9ed64f5
+updated: 2017-04-10T15:48:51.218742111+02:00
 imports:
 - name: github.com/btcsuite/btcd
   version: 4b348c1d33373d672edd83fc576892d0e46686d2
@@ -67,7 +67,7 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/abci
-  version: 56e13d87f4e3ec1ea756957d6b23caa6ebcf0998
+  version: af792eac777de757cd496349a5f6b5313738fcbc
   subpackages:
   - client
   - example/counter
@@ -84,15 +84,15 @@ imports:
 - name: github.com/tendermint/go-clist
   version: 3baa390bbaf7634251c42ad69a8682e7e3990552
 - name: github.com/tendermint/go-common
-  version: f9e3db037330c8a8d61d3966de8473eaf01154fa
+  version: 6af2364fa91ef2f3afc8ba0db33b66d9d3ae006c
   subpackages:
   - test
 - name: github.com/tendermint/go-config
   version: 620dcbbd7d587cf3599dedbf329b64311b0c307a
 - name: github.com/tendermint/go-crypto
-  version: 67c7682135e7e9a8c56a7eeae9ac885d342a3315
+  version: 51791d8de6414468dc068b48d750e923bd269432
 - name: github.com/tendermint/go-data
-  version: 3a135dc080d4304da75b57806f0f83a2ea9d40f8
+  version: e7fcc6d081ec8518912fcdc103188275f83a3ee5
 - name: github.com/tendermint/go-db
   version: 9643f60bc2578693844aacf380a7c32e4c029fee
 - name: github.com/tendermint/go-events
@@ -106,7 +106,7 @@ imports:
 - name: github.com/tendermint/go-merkle
   version: 714d4d04557fd068a7c2a1748241ce8428015a96
 - name: github.com/tendermint/go-p2p
-  version: a163fddbdd2541793d22402afb113e6ccb391774
+  version: bc930547797de88267a3a22b15ce37c3eee2215f
   subpackages:
   - upnp
 - name: github.com/tendermint/go-rpc

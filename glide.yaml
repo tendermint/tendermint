@@ -21,7 +21,7 @@ import:
 - package: github.com/tendermint/go-merkle
   version: develop
 - package: github.com/tendermint/go-p2p
-  version: develop
+  version: feature/improve-godata
 - package: github.com/tendermint/go-rpc
   version: develop
 - package: github.com/tendermint/go-wire

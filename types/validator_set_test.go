@@ -12,7 +12,7 @@ import (
 func randPubKey() crypto.PubKey {
 	var pubKey [32]byte
 	copy(pubKey[:], cmn.RandBytes(32))
-	return crypto.WrapPubKey(crypto.PubKeyEd25519(pubKey))
+	return crypto.PubKeyEd25519(pubKey).Wrap()
 }
 
 func randValidator_() *Validator {

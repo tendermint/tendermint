@@ -80,7 +80,7 @@ func (privVal *PrivValidator) SetSigner(s Signer) {
 
 // Generates a new validator with private key.
 func GenPrivValidator() *PrivValidator {
-	privKey := crypto.WrapPrivKey(crypto.GenPrivKeyEd25519())
+	privKey := crypto.GenPrivKeyEd25519().Wrap()
 	pubKey := privKey.PubKey()
 	return &PrivValidator{
 		Address:  pubKey.Address(),
