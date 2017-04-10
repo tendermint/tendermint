@@ -90,7 +90,7 @@ imports:
 - name: github.com/tendermint/go-config
   version: 620dcbbd7d587cf3599dedbf329b64311b0c307a
 - name: github.com/tendermint/go-crypto
-  version: 51791d8de6414468dc068b48d750e923bd269432
+  version: c410fc5e246e9accf95c6e80cb3c6aca2280755c
 - name: github.com/tendermint/go-data
   version: e7fcc6d081ec8518912fcdc103188275f83a3ee5
 - name: github.com/tendermint/go-db
@@ -106,7 +106,7 @@ imports:
 - name: github.com/tendermint/go-merkle
   version: 714d4d04557fd068a7c2a1748241ce8428015a96
 - name: github.com/tendermint/go-p2p
-  version: bc930547797de88267a3a22b15ce37c3eee2215f
+  version: b5f314ffed65c81bd019ba1dd2bae0e95f3937f3
   subpackages:
   - upnp
 - name: github.com/tendermint/go-rpc
