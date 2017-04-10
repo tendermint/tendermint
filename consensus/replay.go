@@ -190,6 +190,8 @@ func (h *Handshaker) NBlocks() int {
 	return h.nBlocks
 }
 
+var ErrReplayLastBlockTimeout = errors.New("Timed out waiting for last block to be replayed")
+
 // TODO: retry the handshake/replay if it fails ?
 func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	// handshake is done via info request on the query conn
@@ -207,7 +209,11 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 
 	// replay blocks up to the latest in the blockstore
 	_, err = h.ReplayBlocks(appHash, blockHeight, proxyApp)
-	if err != nil {
+	if err == ErrReplayLastBlockTimeout {
+		log.Warn("Failed to sync via handshake. Trying other means. If they fail, please increase the timeout_handshake parameter")
+		return nil
+
+	} else if err != nil {
 		return errors.New(Fmt("Error on replay: %v", err))
 	}
 
@@ -286,10 +292,11 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, proxyApp p
 
 func (h *Handshaker) replayBlocks(proxyApp proxy.AppConns, appBlockHeight, storeBlockHeight int, useReplayFunc bool) ([]byte, error) {
 	// App is further behind than it should be, so we need to replay blocks.
-	// We replay all blocks from appBlockHeight+1 to storeBlockHeight-1,
-	// and let the final block be replayed through ReplayBlocks.
+	// We replay all blocks from appBlockHeight+1.
+	// If useReplayFunc == true, stop short of the last block
+	// so it can be replayed using the WAL in ReplayBlocks.
 	// Note that we don't have an old version of the state,
-	// so we by-pass state validation using applyBlock here.
+	// so we by-pass state validation using sm.ApplyBlock.
 
 	var appHash []byte
 	var err error
@@ -328,9 +335,20 @@ func (h *Handshaker) replayLastBlock(proxyApp proxy.AppConnConsensus) ([]byte, e
 	newBlockCh := subscribeToEvent(evsw, "consensus-replay", types.EventStringNewBlock(), 1)
 
 	// run through the WAL, commit new block, stop
-	cs.Start()
-	<-newBlockCh // TODO: use a timeout and return err?
-	cs.Stop()
+	if _, err := cs.Start(); err != nil {
+		return nil, err
+	}
+	defer cs.Stop()
+
+	timeout := h.config.GetInt("timeout_handshake")
+	timer := time.NewTimer(time.Duration(timeout) * time.Millisecond)
+	log.Notice("Attempting to replay last block", "height", h.store.Height(), "timeout", timeout)
+
+	select {
+	case <-newBlockCh:
+	case <-timer.C:
+		return nil, ErrReplayLastBlockTimeout
+	}
 
 	h.nBlocks += 1
 

@@ -194,7 +194,6 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreato
 }
 
 func (n *Node) OnStart() error {
-	n.BaseService.OnStart()
 
 	// Create & add listener
 	protocol, address := ProtocolAndAddress(n.config.GetString("node_laddr"))

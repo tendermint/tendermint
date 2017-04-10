@@ -72,7 +72,6 @@ func (app *multiAppConn) Query() AppConnQuery {
 }
 
 func (app *multiAppConn) OnStart() error {
-	app.BaseService.OnStart()
 
 	// query connection
 	querycli, err := app.clientCreator.NewABCIClient()
