@@ -167,6 +167,11 @@ imports:
   version: d75a52659825e75fff6158388dddc6a5b04f9ba5
   subpackages:
   - unix
+- name: golang.org/x/text
+  version: f4b4367115ec2de254587813edaa901bc1c723a8
+  subpackages:
+  - transform
+  - unicode/norm
 - name: google.golang.org/grpc
   version: cbcceb2942a489498cf22b2f918536e819d33f0a
   subpackages:
