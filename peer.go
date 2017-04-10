@@ -80,8 +80,8 @@ func (p *Peer) CloseConn() {
 	p.conn.Close()
 }
 
-// MakePersistent marks the peer as persistent.
-func (p *Peer) MakePersistent() {
+// makePersistent marks the peer as persistent.
+func (p *Peer) makePersistent() {
 	if !p.outbound {
 		panic("inbound peers can't be made persistent")
 	}

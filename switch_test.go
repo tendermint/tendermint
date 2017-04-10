@@ -275,7 +275,7 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	defer close(done)
 
 	peer, err := newPeer(NewNetAddress(serverAddr), sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.config, sw.nodePrivKey)
-	peer.MakePersistent()
+	peer.makePersistent()
 	require.Nil(err)
 	err = sw.AddPeer(peer)
 	require.Nil(err)

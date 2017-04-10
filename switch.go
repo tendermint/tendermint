@@ -319,7 +319,7 @@ func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) (*Peer,
 
 	peer, err := newPeer(addr, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.config, sw.nodePrivKey)
 	if persistent {
-		peer.MakePersistent()
+		peer.makePersistent()
 	}
 	if err != nil {
 		log.Info("Failed dialing peer", "address", addr, "error", err)
