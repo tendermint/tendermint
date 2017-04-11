@@ -110,7 +110,7 @@ imports:
   subpackages:
   - upnp
 - name: github.com/tendermint/go-rpc
-  version: a416c37ebd389dcc320d8f41bdcdc575bdc0a826
+  version: 9d18cbe74e66f875afa36d2fa3be280e4a2dc9e6
   subpackages:
   - client
   - server
