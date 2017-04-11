@@ -37,9 +37,7 @@ func main() {
 	for i := 0; ; i++ {
 		binary.BigEndian.PutUint64(buf, uint64(i))
 		//txBytes := hex.EncodeToString(buf[:n])
-		request := rpctypes.NewRPCRequest("fakeid",
-			"broadcast_tx",
-			map[string]interface{}{"tx": buf[:8]})
+		request := rpctypes.NewRPCRequest("fakeid", "broadcast_tx", Arr(buf[:8]))
 		reqBytes := wire.JSONBytes(request)
 		//fmt.Println("!!", string(reqBytes))
 		fmt.Print(".")

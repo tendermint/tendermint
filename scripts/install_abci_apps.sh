@@ -1,6 +1,6 @@
 #! /bin/bash
 
-go get -d github.com/tendermint/abci
+go get github.com/tendermint/abci/...
 
 # get the abci commit used by tendermint
 COMMIT=`bash scripts/glide/parse.sh abci`
