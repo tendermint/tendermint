@@ -41,7 +41,12 @@ func newPeer(addr *NetAddress, reactorsByCh map[byte]Reactor, chDescs []*Channel
 	}
 
 	// outbound = true
-	return newPeerFromExistingConn(conn, true, reactorsByCh, chDescs, onPeerError, config, privKey)
+	peer, err := newPeerFromExistingConn(conn, true, reactorsByCh, chDescs, onPeerError, config, privKey)
+	if err != nil {
+		conn.Close()
+		return nil, err
+	}
+	return peer, nil
 }
 
 func newPeerFromExistingConn(conn net.Conn, outbound bool, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor, onPeerError func(*Peer, interface{}), config cfg.Config, privKey crypto.PrivKeyEd25519) (*Peer, error) {

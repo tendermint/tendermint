@@ -318,13 +318,12 @@ func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) (*Peer,
 	defer sw.dialing.Delete(addr.IP.String())
 
 	peer, err := newPeer(addr, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.config, sw.nodePrivKey)
-	if persistent {
-		peer.makePersistent()
-	}
 	if err != nil {
 		log.Info("Failed dialing peer", "address", addr, "error", err)
-		peer.CloseConn()
 		return nil, err
+	}
+	if persistent {
+		peer.makePersistent()
 	}
 	err = sw.AddPeer(peer)
 	if err != nil {
@@ -549,7 +548,7 @@ func makeSwitch(i int, network, version string, initSwitch func(int, *Switch) *S
 func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) error {
 	peer, err := newPeerFromExistingConn(conn, outbound, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.config, sw.nodePrivKey)
 	if err != nil {
-		peer.CloseConn()
+		conn.Close()
 		return err
 	}
 
