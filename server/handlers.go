@@ -347,12 +347,15 @@ func NewWSConnection(baseConn *websocket.Conn, funcMap map[string]*RPCFunc, evsw
 func (wsc *wsConnection) OnStart() error {
 	wsc.BaseService.OnStart()
 
+	// these must be set before the readRoutine is created, as it may
+	// call wsc.Stop(), which accesses these timers
+	wsc.readTimeout = time.NewTimer(time.Second * wsReadTimeoutSeconds)
+	wsc.pingTicker = time.NewTicker(time.Second * wsPingTickerSeconds)
+
 	// Read subscriptions/unsubscriptions to events
 	go wsc.readRoutine()
 
 	// Custom Ping handler to touch readTimeout
-	wsc.readTimeout = time.NewTimer(time.Second * wsReadTimeoutSeconds)
-	wsc.pingTicker = time.NewTicker(time.Second * wsPingTickerSeconds)
 	wsc.baseConn.SetPingHandler(func(m string) error {
 		// NOTE: https://github.com/gorilla/websocket/issues/97
 		go wsc.baseConn.WriteControl(websocket.PongMessage, []byte(m), time.Now().Add(time.Second*wsWriteTimeoutSeconds))

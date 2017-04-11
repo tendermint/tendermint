@@ -86,7 +86,6 @@ func (wsc *WSClient) dial() error {
 func (wsc *WSClient) OnStop() {
 	wsc.BaseService.OnStop()
 	wsc.Conn.Close()
-	wsc.Conn = nil
 	// ResultsCh/ErrorsCh is closed in receiveEventsRoutine.
 }
 
@@ -112,6 +111,9 @@ func (wsc *WSClient) receiveEventsRoutine() {
 			wsc.ResultsCh <- *response.Result
 		}
 	}
+	// this must be modified in the same go-routine that reads from the
+	// connection to avoid race conditions
+	wsc.Conn = nil
 
 	// Cleanup
 	close(wsc.ResultsCh)
