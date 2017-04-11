@@ -1,0 +1,74 @@
+version: '2'
+
+services:
+  core1:
+    build: 
+      context: TendermintCore/
+      args:
+        priv_validator: priv_validator1.json
+        genesis: genesis4.json
+    entrypoint: tendermint node --proxy_app tcp://abciapp1:26658 --seeds core2:36656,core3:46656,core4:56656 --skip_upnp
+    ports:
+      - "26656:26656"
+      - "26657:26657"
+  abciapp1:
+    build:
+      context: ABCIApp/
+      dockerfile: Dockerfile.Counter
+    entrypoint: counter -addr tcp://0.0.0.0:26658
+    ports:
+      - "26658:26658"
+
+  core2:
+    build: 
+      context: TendermintCore/
+      args:
+        priv_validator: priv_validator2.json
+        genesis: genesis4.json
+    entrypoint: tendermint node --proxy_app tcp://abciapp2:36658 --seeds core1:26656,core3:46656,core4:56656 --skip_upnp
+    ports:
+      - "36656:36656"
+      - "36657:36657"
+  abciapp2:
+    build:
+      context: ABCIApp/
+      dockerfile: Dockerfile.Counter
+    entrypoint: counter -addr tcp://0.0.0.0:36658
+    ports:
+      - "36658:36658"
+
+  core3:
+    build: 
+      context: TendermintCore/
+      args:
+        priv_validator: priv_validator3.json
+        genesis: genesis4.json
+    entrypoint: tendermint node --proxy_app tcp://abciapp3:46658 --seeds core1:26656,core2:36656,core4:56656 --skip_upnp
+    ports:
+      - "46656:46656"
+      - "46657:46657"
+  abciapp3:
+    build:
+      context: ABCIApp/
+      dockerfile: Dockerfile.Counter
+    entrypoint: counter -addr tcp://0.0.0.0:46658
+    ports:
+      - "46658:46658"
+
+  core4:
+    build: 
+      context: TendermintCore/
+      args:
+        priv_validator: priv_validator4.json
+        genesis: genesis4.json
+    entrypoint: tendermint node --proxy_app tcp://abciapp4:56658 --seeds core1:26656,core2:36656,core3:46656 --skip_upnp
+    ports:
+      - "56656:56656"
+      - "56657:56657"
+  abciapp4:
+    build:
+      context: ABCIApp/
+      dockerfile: Dockerfile.Counter
+    entrypoint: counter -addr tcp://0.0.0.0:56658
+    ports:
+      - "56658:56658"
