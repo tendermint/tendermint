@@ -74,7 +74,7 @@ type MConnection struct {
 	onReceive   receiveCbFunc
 	onError     errorCbFunc
 	errored     uint32
-	config      *MConnectionConfig
+	config      *MConnConfig
 
 	quit         chan struct{}
 	flushTimer   *cmn.ThrottleTimer // flush writes as necessary but throttled.
@@ -85,10 +85,17 @@ type MConnection struct {
 	RemoteAddress *NetAddress
 }
 
-// MConnectionConfig is a MConnection configuration
-type MConnectionConfig struct {
+// MConnConfig is a MConnection configuration
+type MConnConfig struct {
 	SendRate int64
 	RecvRate int64
+}
+
+func defaultMConnectionConfig() *MConnConfig {
+	return &MConnConfig{
+		SendRate: defaultSendRate,
+		RecvRate: defaultRecvRate,
+	}
 }
 
 // NewMConnection wraps net.Conn and creates multiplex connection
@@ -98,14 +105,11 @@ func NewMConnection(conn net.Conn, chDescs []*ChannelDescriptor, onReceive recei
 		chDescs,
 		onReceive,
 		onError,
-		&MConnectionConfig{
-			SendRate: defaultSendRate,
-			RecvRate: defaultRecvRate,
-		})
+		defaultMConnectionConfig())
 }
 
 // NewMConnectionWithConfig wraps net.Conn and creates multiplex connection with a config
-func NewMConnectionWithConfig(conn net.Conn, chDescs []*ChannelDescriptor, onReceive receiveCbFunc, onError errorCbFunc, config *MConnectionConfig) *MConnection {
+func NewMConnectionWithConfig(conn net.Conn, chDescs []*ChannelDescriptor, onReceive receiveCbFunc, onError errorCbFunc, config *MConnConfig) *MConnection {
 	mconn := &MConnection{
 		conn:        conn,
 		bufReader:   bufio.NewReaderSize(conn, minReadBufferSize),

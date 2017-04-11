@@ -1,90 +1,139 @@
 package p2p
 
 import (
+	"fmt"
 	"math/rand"
 	"net"
 	"sync"
 	"time"
-
-	cfg "github.com/tendermint/go-config"
 )
-
-//--------------------------------------------------------
-// delay reads/writes
-// randomly drop reads/writes
-// randomly drop connections
 
 const (
-	FuzzModeDrop  = "drop"
-	FuzzModeDelay = "delay"
+	// FuzzModeDrop is a mode in which we randomly drop reads/writes, connections or sleep
+	FuzzModeDrop = iota
+	// FuzzModeDelay is a mode in which we randomly sleep
+	FuzzModeDelay
 )
 
-func FuzzConn(config cfg.Config, conn net.Conn) net.Conn {
-	return &FuzzedConnection{
-		conn:   conn,
-		start:  time.After(time.Second * 10), // so we have time to do peer handshakes and get set up
-		params: config,
+type FuzzConnConfig struct {
+	Mode         int
+	MaxDelay     time.Duration
+	ProbDropRW   float64
+	ProbDropConn float64
+	ProbSleep    float64
+}
+
+func defaultFuzzConnConfig() *FuzzConnConfig {
+	return &FuzzConnConfig{
+		Mode:         FuzzModeDrop,
+		MaxDelay:     3 * time.Second,
+		ProbDropRW:   0.2,
+		ProbDropConn: 0.00,
+		ProbSleep:    0.00,
 	}
 }
 
+func FuzzConn(conn net.Conn) net.Conn {
+	return FuzzConnFromConfig(conn, defaultFuzzConnConfig())
+}
+
+func FuzzConnFromConfig(conn net.Conn, config *FuzzConnConfig) net.Conn {
+	return &FuzzedConnection{
+		conn:         conn,
+		start:        make(<-chan time.Time),
+		active:       true,
+		mode:         config.Mode,
+		maxDelay:     config.MaxDelay,
+		probDropRW:   config.ProbDropRW,
+		probDropConn: config.ProbDropConn,
+		probSleep:    config.ProbSleep,
+	}
+}
+
+func FuzzConnAfter(conn net.Conn, d time.Duration) net.Conn {
+	return FuzzConnAfterFromConfig(conn, d, defaultFuzzConnConfig())
+}
+
+func FuzzConnAfterFromConfig(conn net.Conn, d time.Duration, config *FuzzConnConfig) net.Conn {
+	return &FuzzedConnection{
+		conn:         conn,
+		start:        time.After(d),
+		active:       false,
+		mode:         config.Mode,
+		maxDelay:     config.MaxDelay,
+		probDropRW:   config.ProbDropRW,
+		probDropConn: config.ProbDropConn,
+		probSleep:    config.ProbSleep,
+	}
+}
+
+// FuzzedConnection wraps any net.Conn and depending on the mode either delays
+// reads/writes or randomly drops reads/writes/connections.
 type FuzzedConnection struct {
 	conn net.Conn
 
-	mtx   sync.Mutex
-	fuzz  bool // we don't start fuzzing right away
-	start <-chan time.Time
+	mtx    sync.Mutex
+	start  <-chan time.Time
+	active bool
 
-	// fuzz params
-	params cfg.Config
+	mode         int
+	maxDelay     time.Duration
+	probDropRW   float64
+	probDropConn float64
+	probSleep    float64
 }
 
 func (fc *FuzzedConnection) randomDuration() time.Duration {
-	return time.Millisecond * time.Duration(rand.Int()%fc.MaxDelayMilliseconds())
+	maxDelayMillis := int(fc.maxDelay.Nanoseconds() / 1000)
+	return time.Millisecond * time.Duration(rand.Int()%maxDelayMillis)
 }
 
-func (fc *FuzzedConnection) Active() bool {
-	return fc.params.GetBool(configFuzzActive)
+func (fc *FuzzedConnection) SetMode(mode int) {
+	switch mode {
+	case FuzzModeDrop:
+		fc.mode = FuzzModeDrop
+	case FuzzModeDelay:
+		fc.mode = FuzzModeDelay
+	default:
+		panic(fmt.Sprintf("Unknown mode %d", mode))
+	}
 }
 
-func (fc *FuzzedConnection) Mode() string {
-	return fc.params.GetString(configFuzzMode)
+func (fc *FuzzedConnection) SetProbDropRW(prob float64) {
+	fc.probDropRW = prob
 }
 
-func (fc *FuzzedConnection) ProbDropRW() float64 {
-	return fc.params.GetFloat64(configFuzzProbDropRW)
+func (fc *FuzzedConnection) SetProbDropConn(prob float64) {
+	fc.probDropConn = prob
 }
 
-func (fc *FuzzedConnection) ProbDropConn() float64 {
-	return fc.params.GetFloat64(configFuzzProbDropConn)
+func (fc *FuzzedConnection) SetProbSleep(prob float64) {
+	fc.probSleep = prob
 }
 
-func (fc *FuzzedConnection) ProbSleep() float64 {
-	return fc.params.GetFloat64(configFuzzProbSleep)
-}
-
-func (fc *FuzzedConnection) MaxDelayMilliseconds() int {
-	return fc.params.GetInt(configFuzzMaxDelayMilliseconds)
+func (fc *FuzzedConnection) SetMaxDelay(d time.Duration) {
+	fc.maxDelay = d
 }
 
 // implements the fuzz (delay, kill conn)
 // and returns whether or not the read/write should be ignored
-func (fc *FuzzedConnection) Fuzz() bool {
+func (fc *FuzzedConnection) fuzz() bool {
 	if !fc.shouldFuzz() {
 		return false
 	}
 
-	switch fc.Mode() {
+	switch fc.mode {
 	case FuzzModeDrop:
 		// randomly drop the r/w, drop the conn, or sleep
 		r := rand.Float64()
-		if r <= fc.ProbDropRW() {
+		if r <= fc.probDropRW {
 			return true
-		} else if r < fc.ProbDropRW()+fc.ProbDropConn() {
+		} else if r < fc.probDropRW+fc.probDropConn {
 			// XXX: can't this fail because machine precision?
 			// XXX: do we need an error?
 			fc.Close()
 			return true
-		} else if r < fc.ProbDropRW()+fc.ProbDropConn()+fc.ProbSleep() {
+		} else if r < fc.probDropRW+fc.probDropConn+fc.probSleep {
 			time.Sleep(fc.randomDuration())
 		}
 	case FuzzModeDelay:
@@ -96,33 +145,33 @@ func (fc *FuzzedConnection) Fuzz() bool {
 
 // we don't fuzz until start chan fires
 func (fc *FuzzedConnection) shouldFuzz() bool {
-	if !fc.Active() {
-		return false
+	if fc.active {
+		return true
 	}
 
 	fc.mtx.Lock()
 	defer fc.mtx.Unlock()
-	if fc.fuzz {
-		return true
-	}
 
 	select {
 	case <-fc.start:
-		fc.fuzz = true
+		fc.active = true
+		return true
 	default:
+		return false
 	}
-	return false
 }
 
+// Read implements net.Conn
 func (fc *FuzzedConnection) Read(data []byte) (n int, err error) {
-	if fc.Fuzz() {
+	if fc.fuzz() {
 		return 0, nil
 	}
 	return fc.conn.Read(data)
 }
 
+// Write implements net.Conn
 func (fc *FuzzedConnection) Write(data []byte) (n int, err error) {
-	if fc.Fuzz() {
+	if fc.fuzz() {
 		return 0, nil
 	}
 	return fc.conn.Write(data)
