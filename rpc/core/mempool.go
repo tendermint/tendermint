@@ -89,6 +89,7 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 			CheckTx:   checkTxR,
 			DeliverTx: deliverTxR,
 			TxID:      tx.Hash(),
+			Height:    deliverTxRes.Height,
 		}, nil
 	case <-timer.C:
 		log.Error("failed to include tx")

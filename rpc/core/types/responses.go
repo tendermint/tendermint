@@ -75,6 +75,7 @@ type ResultBroadcastTxCommit struct {
 	CheckTx   *abci.ResponseCheckTx   `json:"check_tx"`
 	DeliverTx *abci.ResponseDeliverTx `json:"deliver_tx"`
 	TxID      []byte                  `json:"tx_id"`
+	Height    int                     `json:"height"`
 }
 
 type ResultTx struct {
