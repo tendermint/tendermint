@@ -1,6 +1,9 @@
 package types
 
 import (
+	"bytes"
+	"errors"
+
 	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/go-merkle"
 )
@@ -30,6 +33,63 @@ func (txs Txs) Hash() []byte {
 		right := Txs(txs[(len(txs)+1)/2:]).Hash()
 		return merkle.SimpleHashFromTwoHashes(left, right)
 	}
+}
+
+// Index returns the index of this transaction in the list, or -1 if not found
+func (txs Txs) Index(tx Tx) int {
+	for i := range txs {
+		if bytes.Equal(txs[i], tx) {
+			return i
+		}
+	}
+	return -1
+}
+
+// Proof returns a simple merkle proof for this node.
+//
+// Panics if i < 0 or i >= len(txs)
+//
+// TODO: optimize this!
+func (txs Txs) Proof(i int) TxProof {
+	l := len(txs)
+	hashables := make([]merkle.Hashable, l)
+	for i := 0; i < l; i++ {
+		hashables[i] = txs[i]
+	}
+	root, proofs := merkle.SimpleProofsFromHashables(hashables)
+
+	return TxProof{
+		Index:    i,
+		Total:    l,
+		RootHash: root,
+		Data:     txs[i],
+		Proof:    *proofs[i],
+	}
+}
+
+type TxProof struct {
+	Index, Total int
+	RootHash     []byte
+	Data         Tx
+	Proof        merkle.SimpleProof
+}
+
+func (tp TxProof) LeafHash() []byte {
+	return tp.Data.Hash()
+}
+
+// Validate returns nil if it matches the dataHash, and is internally consistent
+// otherwise, returns a sensible error
+func (tp TxProof) Validate(dataHash []byte) error {
+	if !bytes.Equal(dataHash, tp.RootHash) {
+		return errors.New("Proof matches different data hash")
+	}
+
+	valid := tp.Proof.Verify(tp.Index, tp.Total, tp.LeafHash(), tp.RootHash)
+	if !valid {
+		return errors.New("Proof is not internally consistent")
+	}
+	return nil
 }
 
 // TxResult contains results of executing the transaction.

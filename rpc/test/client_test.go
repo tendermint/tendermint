@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/abci/types"
 	. "github.com/tendermint/go-common"
+	rpc "github.com/tendermint/go-rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -25,24 +26,20 @@ import (
 // status
 
 func TestURIStatus(t *testing.T) {
-	tmResult := new(ctypes.TMResult)
-	_, err := GetURIClient().Call("status", map[string]interface{}{}, tmResult)
-	require.Nil(t, err)
-	testStatus(t, tmResult)
+	testStatus(t, GetURIClient())
 }
 
 func TestJSONStatus(t *testing.T) {
-	tmResult := new(ctypes.TMResult)
-	_, err := GetJSONClient().Call("status", []interface{}{}, tmResult)
-	require.Nil(t, err)
-	testStatus(t, tmResult)
+	testStatus(t, GetJSONClient())
 }
 
-func testStatus(t *testing.T, statusI interface{}) {
+func testStatus(t *testing.T, client rpc.HTTPClient) {
 	chainID := GetConfig().GetString("chain_id")
+	tmResult := new(ctypes.TMResult)
+	_, err := client.Call("status", map[string]interface{}{}, tmResult)
+	require.Nil(t, err)
 
-	tmRes := statusI.(*ctypes.TMResult)
-	status := (*tmRes).(*ctypes.ResultStatus)
+	status := (*tmResult).(*ctypes.ResultStatus)
 	assert.Equal(t, chainID, status.NodeInfo.Network)
 }
 
@@ -59,28 +56,22 @@ func randBytes(t *testing.T) []byte {
 }
 
 func TestURIBroadcastTxSync(t *testing.T) {
-	config.Set("block_size", 0)
-	defer config.Set("block_size", -1)
-	tmResult := new(ctypes.TMResult)
-	tx := randBytes(t)
-	_, err := GetURIClient().Call("broadcast_tx_sync", map[string]interface{}{"tx": tx}, tmResult)
-	require.Nil(t, err)
-	testBroadcastTxSync(t, tmResult, tx)
+	testBroadcastTxSync(t, GetURIClient())
 }
 
 func TestJSONBroadcastTxSync(t *testing.T) {
+	testBroadcastTxSync(t, GetJSONClient())
+}
+
+func testBroadcastTxSync(t *testing.T, client rpc.HTTPClient) {
 	config.Set("block_size", 0)
 	defer config.Set("block_size", -1)
 	tmResult := new(ctypes.TMResult)
 	tx := randBytes(t)
-	_, err := GetJSONClient().Call("broadcast_tx_sync", []interface{}{tx}, tmResult)
+	_, err := client.Call("broadcast_tx_sync", map[string]interface{}{"tx": tx}, tmResult)
 	require.Nil(t, err)
-	testBroadcastTxSync(t, tmResult, tx)
-}
 
-func testBroadcastTxSync(t *testing.T, resI interface{}, tx []byte) {
-	tmRes := resI.(*ctypes.TMResult)
-	res := (*tmRes).(*ctypes.ResultBroadcastTx)
+	res := (*tmResult).(*ctypes.ResultBroadcastTx)
 	require.Equal(t, abci.CodeType_OK, res.Code)
 	mem := node.MempoolReactor().Mempool
 	require.Equal(t, 1, mem.Size())
@@ -98,34 +89,31 @@ func testTxKV(t *testing.T) ([]byte, []byte, []byte) {
 	return k, v, []byte(Fmt("%s=%s", k, v))
 }
 
-func sendTx(t *testing.T) ([]byte, []byte) {
+func sendTx(t *testing.T, client rpc.HTTPClient) ([]byte, []byte) {
 	tmResult := new(ctypes.TMResult)
 	k, v, tx := testTxKV(t)
-	_, err := GetJSONClient().Call("broadcast_tx_commit", []interface{}{tx}, tmResult)
+	_, err := client.Call("broadcast_tx_commit", map[string]interface{}{"tx": tx}, tmResult)
 	require.Nil(t, err)
 	return k, v
 }
 
 func TestURIABCIQuery(t *testing.T) {
-	k, v := sendTx(t)
-	time.Sleep(time.Second)
-	tmResult := new(ctypes.TMResult)
-	_, err := GetURIClient().Call("abci_query", map[string]interface{}{"path": "", "data": k, "prove": false}, tmResult)
-	require.Nil(t, err)
-	testABCIQuery(t, tmResult, v)
+	testABCIQuery(t, GetURIClient())
 }
 
 func TestJSONABCIQuery(t *testing.T) {
-	k, v := sendTx(t)
-	tmResult := new(ctypes.TMResult)
-	_, err := GetJSONClient().Call("abci_query", []interface{}{"", k, false}, tmResult)
-	require.Nil(t, err)
-	testABCIQuery(t, tmResult, v)
+	testABCIQuery(t, GetURIClient())
 }
 
-func testABCIQuery(t *testing.T, statusI interface{}, value []byte) {
-	tmRes := statusI.(*ctypes.TMResult)
-	resQuery := (*tmRes).(*ctypes.ResultABCIQuery)
+func testABCIQuery(t *testing.T, client rpc.HTTPClient) {
+	k, _ := sendTx(t, client)
+	time.Sleep(time.Millisecond * 100)
+	tmResult := new(ctypes.TMResult)
+	_, err := client.Call("abci_query",
+		map[string]interface{}{"path": "", "data": k, "prove": false}, tmResult)
+	require.Nil(t, err)
+
+	resQuery := (*tmResult).(*ctypes.ResultABCIQuery)
 	require.EqualValues(t, 0, resQuery.Response.Code)
 
 	// XXX: specific to value returned by the dummy
@@ -136,25 +124,22 @@ func testABCIQuery(t *testing.T, statusI interface{}, value []byte) {
 // broadcast tx commit
 
 func TestURIBroadcastTxCommit(t *testing.T) {
-	tmResult := new(ctypes.TMResult)
-	tx := randBytes(t)
-	_, err := GetURIClient().Call("broadcast_tx_commit", map[string]interface{}{"tx": tx}, tmResult)
-	require.Nil(t, err)
-	testBroadcastTxCommit(t, tmResult, tx)
+	testBroadcastTxCommit(t, GetURIClient())
 }
 
 func TestJSONBroadcastTxCommit(t *testing.T) {
-	tmResult := new(ctypes.TMResult)
-	tx := randBytes(t)
-	_, err := GetJSONClient().Call("broadcast_tx_commit", []interface{}{tx}, tmResult)
-	require.Nil(t, err)
-	testBroadcastTxCommit(t, tmResult, tx)
+	testBroadcastTxCommit(t, GetJSONClient())
 }
 
-func testBroadcastTxCommit(t *testing.T, resI interface{}, tx []byte) {
+func testBroadcastTxCommit(t *testing.T, client rpc.HTTPClient) {
 	require := require.New(t)
-	tmRes := resI.(*ctypes.TMResult)
-	res := (*tmRes).(*ctypes.ResultBroadcastTxCommit)
+
+	tmResult := new(ctypes.TMResult)
+	tx := randBytes(t)
+	_, err := client.Call("broadcast_tx_commit", map[string]interface{}{"tx": tx}, tmResult)
+	require.Nil(err)
+
+	res := (*tmResult).(*ctypes.ResultBroadcastTxCommit)
 	checkTx := res.CheckTx
 	require.Equal(abci.CodeType_OK, checkTx.Code)
 	deliverTx := res.DeliverTx
@@ -240,7 +225,7 @@ func TestWSTxEvent(t *testing.T) {
 
 	// send an tx
 	tmResult := new(ctypes.TMResult)
-	_, err := GetJSONClient().Call("broadcast_tx_sync", []interface{}{tx}, tmResult)
+	_, err := GetJSONClient().Call("broadcast_tx_sync", map[string]interface{}{"tx": tx}, tmResult)
 	require.Nil(err)
 
 	waitForEvent(t, wsc, eid, true, func() {}, func(eid string, b interface{}) error {
@@ -310,7 +295,9 @@ func TestURIUnsafeSetConfig(t *testing.T) {
 func TestJSONUnsafeSetConfig(t *testing.T) {
 	for _, testCase := range testCasesUnsafeSetConfig {
 		tmResult := new(ctypes.TMResult)
-		_, err := GetJSONClient().Call("unsafe_set_config", []interface{}{testCase[0], testCase[1], testCase[2]}, tmResult)
+		_, err := GetJSONClient().Call("unsafe_set_config",
+			map[string]interface{}{"type": testCase[0], "key": testCase[1], "value": testCase[2]},
+			tmResult)
 		require.Nil(t, err)
 	}
 	testUnsafeSetConfig(t)
