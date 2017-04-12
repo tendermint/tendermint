@@ -140,36 +140,56 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc) http.HandlerFunc {
 	}
 }
 
-// Convert a list of interfaces to properly typed values
+// Convert a []interface{} OR a map[string]interface{} to properly typed values
 //
 // argsOffset is used in jsonParamsToArgsWS, where len(rpcFunc.args) != len(rpcFunc.argNames).
 // Example:
 //   rpcFunc.args = [rpctypes.WSRPCContext string]
 //   rpcFunc.argNames = ["arg"]
-func jsonParamsToArgs(rpcFunc *RPCFunc, params map[string]interface{}, argsOffset int) ([]reflect.Value, error) {
+func jsonParamsToArgs(rpcFunc *RPCFunc, paramsI interface{}, argsOffset int) ([]reflect.Value, error) {
 	values := make([]reflect.Value, len(rpcFunc.argNames))
 
-	for i, argName := range rpcFunc.argNames {
-		argType := rpcFunc.args[i+argsOffset]
+	switch params := paramsI.(type) {
 
-		// decode param if provided
-		if param, ok := params[argName]; ok && "" != param {
-			v, err := _jsonObjectToArg(argType, param)
+	case map[string]interface{}:
+		for i, argName := range rpcFunc.argNames {
+			argType := rpcFunc.args[i+argsOffset]
+
+			// decode param if provided
+			if param, ok := params[argName]; ok && "" != param {
+				v, err := _jsonObjectToArg(argType, param)
+				if err != nil {
+					return nil, err
+				}
+				values[i] = v
+			} else { // use default for that type
+				values[i] = reflect.Zero(argType)
+			}
+		}
+	case []interface{}:
+		if len(rpcFunc.argNames) != len(params) {
+			return nil, errors.New(fmt.Sprintf("Expected %v parameters (%v), got %v (%v)",
+				len(rpcFunc.argNames), rpcFunc.argNames, len(params), params))
+		}
+		values := make([]reflect.Value, len(params))
+		for i, p := range params {
+			ty := rpcFunc.args[i]
+			v, err := _jsonObjectToArg(ty, p)
 			if err != nil {
 				return nil, err
 			}
 			values[i] = v
-		} else { // use default for that type
-			values[i] = reflect.Zero(argType)
 		}
+		return values, nil
+	default:
+		return nil, fmt.Errorf("Unknown type for JSON params %v. Expected map[string]interface{} or []interface{}", reflect.TypeOf(paramsI))
 	}
-
 	return values, nil
 }
 
 // Same as above, but with the first param the websocket connection
-func jsonParamsToArgsWS(rpcFunc *RPCFunc, params map[string]interface{}, wsCtx types.WSRPCContext) ([]reflect.Value, error) {
-	values, err := jsonParamsToArgs(rpcFunc, params, 1)
+func jsonParamsToArgsWS(rpcFunc *RPCFunc, paramsI interface{}, wsCtx types.WSRPCContext) ([]reflect.Value, error) {
+	values, err := jsonParamsToArgs(rpcFunc, paramsI, 1)
 	if err != nil {
 		return nil, err
 	}
