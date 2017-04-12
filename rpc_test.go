@@ -71,7 +71,9 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	err = cmd.Wait()
+	if err = cmd.Wait(); err != nil {
+		panic(err)
+	}
 
 	mux := http.NewServeMux()
 	server.RegisterRPCFuncs(mux, Routes)
