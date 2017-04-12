@@ -83,6 +83,7 @@ type ResultTx struct {
 	Index     uint32                 `json:"index"`
 	DeliverTx abci.ResponseDeliverTx `json:"deliver_tx"`
 	Tx        types.Tx               `json:"tx"`
+	Proof     types.TxProof          `json:"proof,omitempty"`
 }
 
 type ResultUnconfirmedTxs struct {
