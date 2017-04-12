@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 	cmn "github.com/tendermint/go-common"
 	types "github.com/tendermint/go-rpc/types"
+	wire "github.com/tendermint/go-wire"
 )
 
 const (
@@ -120,7 +121,8 @@ func (wsc *WSClient) receiveEventsRoutine() {
 	close(wsc.ErrorsCh)
 }
 
-// subscribe to an event
+// Subscribe to an event. Note the server must have a "subscribe" route
+// defined.
 func (wsc *WSClient) Subscribe(eventid string) error {
 	err := wsc.WriteJSON(types.RPCRequest{
 		JSONRPC: "2.0",
@@ -131,13 +133,33 @@ func (wsc *WSClient) Subscribe(eventid string) error {
 	return err
 }
 
-// unsubscribe from an event
+// Unsubscribe from an event. Note the server must have a "unsubscribe" route
+// defined.
 func (wsc *WSClient) Unsubscribe(eventid string) error {
 	err := wsc.WriteJSON(types.RPCRequest{
 		JSONRPC: "2.0",
 		ID:      "",
 		Method:  "unsubscribe",
 		Params:  map[string]interface{}{"event": eventid},
+	})
+	return err
+}
+
+// Call asynchronously calls a given method by sending an RPCRequest to the
+// server. Results will be available on ResultsCh, errors, if any, on ErrorsCh.
+func (wsc *WSClient) Call(method string, params map[string]interface{}) error {
+	// we need this step because we attempt to decode values using `go-wire`
+	// (handlers.go:470) on the server side
+	encodedParams := make(map[string]interface{})
+	for k, v := range params {
+		bytes := json.RawMessage(wire.JSONBytes(v))
+		encodedParams[k] = &bytes
+	}
+	err := wsc.WriteJSON(types.RPCRequest{
+		JSONRPC: "2.0",
+		Method:  method,
+		Params:  encodedParams,
+		ID:      "",
 	})
 	return err
 }

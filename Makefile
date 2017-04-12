@@ -11,5 +11,8 @@ test:
 get_deps:
 	@echo "--> Running go get"
 	@go get -v -d $(PACKAGES)
+	@go list -f '{{join .TestImports "\n"}}' ./... | \
+		grep -v /vendor/ | sort | uniq | \
+		xargs go get -v -d
 
 .PHONY: all test get_deps
