@@ -108,11 +108,6 @@ func testTxProofUnchangable(t *testing.T) {
 
 // this make sure the proof doesn't deserialize into something valid
 func assertBadProof(t *testing.T, root []byte, bad []byte, good TxProof) {
-	// we kind of expect this to panic sometimes... (bad, go-wire, bad)
-	defer func() {
-		recover()
-	}()
-
 	var proof TxProof
 	err := wire.ReadBinaryBytes(bad, &proof)
 	if err == nil {
