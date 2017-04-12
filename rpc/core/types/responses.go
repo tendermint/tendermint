@@ -78,7 +78,10 @@ type ResultBroadcastTxCommit struct {
 }
 
 type ResultTx struct {
-	types.TxResult
+	Height    uint64                 `json:"height"`
+	Index     uint32                 `json:"index"`
+	DeliverTx abci.ResponseDeliverTx `json:"deliver_tx"`
+	Tx        types.Tx               `json:"tx"`
 }
 
 type ResultUnconfirmedTxs struct {

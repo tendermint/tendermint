@@ -1,6 +1,7 @@
 package types
 
 import (
+	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/go-merkle"
 )
 
@@ -29,4 +30,13 @@ func (txs Txs) Hash() []byte {
 		right := Txs(txs[(len(txs)+1)/2:]).Hash()
 		return merkle.SimpleHashFromTwoHashes(left, right)
 	}
+}
+
+// TxResult contains results of executing the transaction.
+//
+// One usage is indexing transaction results.
+type TxResult struct {
+	Height    uint64                 `json:"height"`
+	Index     uint32                 `json:"index"`
+	DeliverTx abci.ResponseDeliverTx `json:"deliver_tx"`
 }
