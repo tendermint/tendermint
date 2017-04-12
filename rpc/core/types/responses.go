@@ -45,6 +45,7 @@ type ResultNetInfo struct {
 }
 
 type ResultDialSeeds struct {
+	Log string `json:"log"`
 }
 
 type Peer struct {
