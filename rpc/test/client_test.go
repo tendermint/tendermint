@@ -182,29 +182,35 @@ func testTx(t *testing.T, client rpc.HTTPClient) {
 		height int
 		index  int
 		hash   []byte
+		prove  bool
 	}{
 		// only on proper height, index match
-		{true, res.Height, 0, nil},
-		{false, res.Height, 1, nil},
-		{false, res.Height, -7, nil},
-		{false, -10, -100, nil},
-		{false, res.Height + 1, 0, nil},
+		{true, res.Height, 0, nil, false},
+		{true, res.Height, 0, nil, true},
+		{false, res.Height, 1, nil, false},
+		{false, res.Height, -7, nil, true},
+		{false, -10, -100, nil, false},
+		{false, res.Height + 1, 0, nil, true},
 
 		// on proper hash match
-		{true, 0, 0, tx.Hash()},
-		{false, res.Height, 0, tx.Hash()}, // TODO: or shall we allow this????
+		{true, 0, 0, tx.Hash(), false},
+		{true, 0, 0, tx.Hash(), true},
+		{false, res.Height, 0, tx.Hash(), false}, // TODO: or shall we allow this????
+		{false, res.Height, 0, tx.Hash(), true},  // TODO: or shall we allow this????
 		// with extra data is an error
-		{false, 10, 0, tx.Hash()},
-		{false, 0, 2, tx.Hash()},
-		{false, 0, 0, []byte("jkh8y0fw")},
-		{false, 0, 0, nil},
+		{false, 10, 0, tx.Hash(), false},
+		{false, 0, 2, tx.Hash(), true},
+		{false, 0, 0, []byte("jkh8y0fw"), false},
+		{false, 0, 0, nil, true},
 
 		// missing height and hash fails
-		{false, 0, 0, nil},
-		{false, 0, 1, nil},
+		{false, 0, 0, nil, false},
+		{false, 0, 1, nil, true},
 	}
 
-	for _, tc := range cases {
+	for i, tc := range cases {
+		idx := fmt.Sprintf("%d", i)
+
 		// now we query for the tx.
 		// since there's only one tx, we know index=0.
 		tmResult = new(ctypes.TMResult)
@@ -212,21 +218,22 @@ func testTx(t *testing.T, client rpc.HTTPClient) {
 			"height": tc.height,
 			"index":  tc.index,
 			"hash":   tc.hash,
+			"prove":  tc.prove,
 		}
 		_, err = client.Call("tx", query, tmResult)
 		if !tc.valid {
-			require.NotNil(err)
+			require.NotNil(err, idx)
 		} else {
-			require.Nil(err)
+			require.Nil(err, idx)
 			res2 := (*tmResult).(*ctypes.ResultTx)
-			assert.Equal(tx, res2.Tx, "tx is not correct")
-			assert.Equal(res.Height, res2.Height)
-			assert.Equal(0, res2.Index)
-			assert.Equal(abci.CodeType_OK, res2.DeliverTx.Code)
+			assert.Equal(tx, res2.Tx, idx)
+			assert.Equal(res.Height, res2.Height, idx)
+			assert.Equal(0, res2.Index, idx)
+			assert.Equal(abci.CodeType_OK, res2.DeliverTx.Code, idx)
 			// time to verify the proof
 			proof := res2.Proof
-			if assert.Equal(tx, proof.Data) {
-				assert.True(proof.Proof.Verify(proof.Index, proof.Total, tx.Hash(), proof.RootHash))
+			if tc.prove && assert.Equal(tx, proof.Data, idx) {
+				assert.True(proof.Proof.Verify(proof.Index, proof.Total, tx.Hash(), proof.RootHash), idx)
 			}
 		}
 	}
