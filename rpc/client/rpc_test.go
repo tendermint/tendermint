@@ -3,7 +3,6 @@ package client_test
 import (
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -11,6 +10,7 @@ import (
 	merktest "github.com/tendermint/merkleeyes/testutil"
 	"github.com/tendermint/tendermint/rpc/client"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
+	"github.com/tendermint/tendermint/types"
 )
 
 func getHTTPClient() *client.HTTP {
@@ -117,49 +117,58 @@ func TestAppCalls(t *testing.T) {
 
 		// write something
 		k, v, tx := merktest.MakeTxKV()
-		_, err = c.BroadcastTxCommit(tx)
+		bres, err := c.BroadcastTxCommit(tx)
 		require.Nil(err, "%d: %+v", i, err)
+		require.True(bres.DeliverTx.GetCode().IsOK())
+		txh := bres.Height
+		apph := txh + 1 // this is where the tx will be applied to the state
+
 		// wait before querying
-		time.Sleep(time.Second * 1)
+		client.WaitForHeight(c, apph, nil)
 		qres, err := c.ABCIQuery("/key", k, false)
 		if assert.Nil(err) && assert.True(qres.Response.Code.IsOK()) {
 			data := qres.Response
 			// assert.Equal(k, data.GetKey())  // only returned for proofs
 			assert.Equal(v, data.GetValue())
 		}
-		// +/- 1 making my head hurt
-		h := int(qres.Response.Height) - 1
+
+		// make sure we can lookup the tx with proof
+		// ptx, err := c.Tx(bres.TxID, txh, 0, true)
+		ptx, err := c.Tx(bres.TxID, 0, 0, true)
+		require.Nil(err, "%d: %+v", i, err)
+		assert.Equal(txh, ptx.Height)
+		assert.Equal(types.Tx(tx), ptx.Tx)
 
 		// and we can even check the block is added
-		block, err := c.Block(h)
+		block, err := c.Block(apph)
 		require.Nil(err, "%d: %+v", i, err)
 		appHash := block.BlockMeta.Header.AppHash
 		assert.True(len(appHash) > 0)
-		assert.EqualValues(h, block.BlockMeta.Header.Height)
+		assert.EqualValues(apph, block.BlockMeta.Header.Height)
 
 		// check blockchain info, now that we know there is info
 		// TODO: is this commented somewhere that they are returned
 		// in order of descending height???
-		info, err := c.BlockchainInfo(h-2, h)
+		info, err := c.BlockchainInfo(apph, apph)
 		require.Nil(err, "%d: %+v", i, err)
-		assert.True(info.LastHeight > 2)
-		if assert.Equal(3, len(info.BlockMetas)) {
+		assert.True(info.LastHeight >= apph)
+		if assert.Equal(1, len(info.BlockMetas)) {
 			lastMeta := info.BlockMetas[0]
-			assert.EqualValues(h, lastMeta.Header.Height)
+			assert.EqualValues(apph, lastMeta.Header.Height)
 			bMeta := block.BlockMeta
 			assert.Equal(bMeta.Header.AppHash, lastMeta.Header.AppHash)
 			assert.Equal(bMeta.BlockID, lastMeta.BlockID)
 		}
 
 		// and get the corresponding commit with the same apphash
-		commit, err := c.Commit(h)
+		commit, err := c.Commit(apph)
 		require.Nil(err, "%d: %+v", i, err)
 		cappHash := commit.Header.AppHash
 		assert.Equal(appHash, cappHash)
 		assert.NotNil(commit.Commit)
 
 		// compare the commits (note Commit(2) has commit from Block(3))
-		commit2, err := c.Commit(h - 1)
+		commit2, err := c.Commit(apph - 1)
 		require.Nil(err, "%d: %+v", i, err)
 		assert.Equal(block.Block.LastCommit, commit2.Commit)
 
