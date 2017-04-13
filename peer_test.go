@@ -9,9 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	cmn "github.com/tendermint/go-common"
 	crypto "github.com/tendermint/go-crypto"
-	wire "github.com/tendermint/go-wire"
 )
 
 func TestPeerStartStop(t *testing.T) {
@@ -43,7 +41,7 @@ func createPeerAndPerformHandshake(addr *NetAddress) (*Peer, error) {
 	}
 	err = p.HandshakeTimeout(&NodeInfo{
 		PubKey:  pk.PubKey().(crypto.PubKeyEd25519),
-		Moniker: "remote_peer",
+		Moniker: "host_peer",
 		Network: "testing",
 		Version: "123.123.123",
 	}, 1*time.Second)
@@ -83,32 +81,18 @@ func (p *remotePeer) accept(l net.Listener) {
 		if err != nil {
 			golog.Fatalf("Failed to accept conn: %+v", err)
 		}
-		conn, err = MakeSecretConnection(conn, p.PrivKey)
+		peer, err := newPeerFromExistingConn(conn, false, make(map[byte]Reactor), make([]*ChannelDescriptor, 0), func(p *Peer, r interface{}) {}, p.PrivKey)
 		if err != nil {
-			golog.Fatalf("Failed to make secret conn: %+v", err)
+			golog.Fatalf("Failed to create a peer: %+v", err)
 		}
-		var err1, err2 error
-		nodeInfo := new(NodeInfo)
-		cmn.Parallel(
-			func() {
-				var n int
-				ourNodeInfo := &NodeInfo{
-					PubKey:  p.PrivKey.PubKey().(crypto.PubKeyEd25519),
-					Moniker: "remote_peer",
-					Network: "testing",
-					Version: "123.123.123",
-				}
-				wire.WriteBinary(ourNodeInfo, conn, &n, &err1)
-			},
-			func() {
-				var n int
-				wire.ReadBinary(nodeInfo, conn, maxNodeInfoSize, &n, &err2)
-			})
-		if err1 != nil {
-			golog.Fatalf("Failed to do handshake: %+v", err1)
-		}
-		if err2 != nil {
-			golog.Fatalf("Failed to do handshake: %+v", err2)
+		err = peer.HandshakeTimeout(&NodeInfo{
+			PubKey:  p.PrivKey.PubKey().(crypto.PubKeyEd25519),
+			Moniker: "remote_peer",
+			Network: "testing",
+			Version: "123.123.123",
+		}, 1*time.Second)
+		if err != nil {
+			golog.Fatalf("Failed to perform handshake: %+v", err)
 		}
 		select {
 		case <-p.quit:
