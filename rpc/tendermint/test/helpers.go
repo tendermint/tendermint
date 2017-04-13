@@ -25,9 +25,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-var (
-	config *viper.Viper
-)
+var config *viper.Viper
 
 const tmLogLevel = "error"
 

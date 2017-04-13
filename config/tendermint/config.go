@@ -52,7 +52,7 @@ func GetConfig(rootDir string) *viper.Viper {
 	if err != nil {
 		Exit(Fmt("Could not read config: %v", err))
 	}
-	config.WatchConfig()
+	//config.WatchConfig()
 
 	// Set defaults or panic
 	if config.IsSet("chain_id") {
