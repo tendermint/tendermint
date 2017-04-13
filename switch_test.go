@@ -176,10 +176,10 @@ func TestConnAddrFilter(t *testing.T) {
 
 	// connect to good peer
 	go func() {
-		s1.AddPeerWithConnection(c1, false)
+		s1.addPeerWithConnection(c1)
 	}()
 	go func() {
-		s2.AddPeerWithConnection(c2, true)
+		s2.addPeerWithConnection(c2)
 	}()
 
 	// Wait for things to happen, peers to get added...
@@ -211,10 +211,10 @@ func TestConnPubKeyFilter(t *testing.T) {
 
 	// connect to good peer
 	go func() {
-		s1.AddPeerWithConnection(c1, false)
+		s1.addPeerWithConnection(c1)
 	}()
 	go func() {
-		s2.AddPeerWithConnection(c2, true)
+		s2.addPeerWithConnection(c2)
 	}()
 
 	// Wait for things to happen, peers to get added...
@@ -242,7 +242,7 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	rp.Start()
 	defer rp.Stop()
 
-	peer, err := newPeer(rp.RemoteAddr(), sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey)
+	peer, err := newOutboundPeer(rp.RemoteAddr(), sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey)
 	require.Nil(err)
 	err = sw.AddPeer(peer)
 	require.Nil(err)
@@ -268,7 +268,7 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	rp.Start()
 	defer rp.Stop()
 
-	peer, err := newPeer(rp.RemoteAddr(), sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey)
+	peer, err := newOutboundPeer(rp.RemoteAddr(), sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey)
 	peer.makePersistent()
 	require.Nil(err)
 	err = sw.AddPeer(peer)

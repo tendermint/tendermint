@@ -317,7 +317,7 @@ func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) (*Peer,
 	sw.dialing.Set(addr.IP.String(), addr)
 	defer sw.dialing.Delete(addr.IP.String())
 
-	peer, err := newPeerWithConfig(addr, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, peerConfigFromGoConfig(sw.config))
+	peer, err := newOutboundPeerWithConfig(addr, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, peerConfigFromGoConfig(sw.config))
 	if err != nil {
 		log.Info("Failed dialing peer", "address", addr, "error", err)
 		return nil, err
@@ -436,7 +436,7 @@ func (sw *Switch) listenerRoutine(l Listener) {
 		}
 
 		// New inbound connection!
-		err := sw.AddPeerWithConnectionAndConfig(inConn, false, peerConfigFromGoConfig(sw.config))
+		err := sw.addPeerWithConnectionAndConfig(inConn, peerConfigFromGoConfig(sw.config))
 		if err != nil {
 			log.Notice("Ignoring inbound connection: error while adding peer", "address", inConn.RemoteAddr().String(), "error", err)
 			continue
@@ -498,14 +498,14 @@ func Connect2Switches(switches []*Switch, i, j int) {
 	c1, c2 := net.Pipe()
 	doneCh := make(chan struct{})
 	go func() {
-		err := switchI.AddPeerWithConnection(c1, false)
+		err := switchI.addPeerWithConnection(c1)
 		if PanicOnAddPeerErr && err != nil {
 			panic(err)
 		}
 		doneCh <- struct{}{}
 	}()
 	go func() {
-		err := switchJ.AddPeerWithConnection(c2, false)
+		err := switchJ.addPeerWithConnection(c2)
 		if PanicOnAddPeerErr && err != nil {
 			panic(err)
 		}
@@ -540,9 +540,8 @@ func makeSwitch(i int, network, version string, initSwitch func(int, *Switch) *S
 	return s
 }
 
-// AddPeerWithConnection creates a newPeer from the connection, performs the handshake, and adds it to the switch.
-func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) error {
-	peer, err := newPeerFromExistingConn(conn, outbound, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey)
+func (sw *Switch) addPeerWithConnection(conn net.Conn) error {
+	peer, err := newInboundPeer(conn, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey)
 	if err != nil {
 		conn.Close()
 		return err
@@ -556,8 +555,8 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) error {
 	return nil
 }
 
-func (sw *Switch) AddPeerWithConnectionAndConfig(conn net.Conn, outbound bool, config *PeerConfig) error {
-	peer, err := newPeerFromExistingConnAndConfig(conn, outbound, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, config)
+func (sw *Switch) addPeerWithConnectionAndConfig(conn net.Conn, config *PeerConfig) error {
+	peer, err := newInboundPeerWithConfig(conn, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, config)
 	if err != nil {
 		conn.Close()
 		return err

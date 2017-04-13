@@ -35,7 +35,7 @@ func createPeerAndPerformHandshake(addr *NetAddress) (*Peer, error) {
 	}
 	reactorsByCh := map[byte]Reactor{0x01: NewTestReactor(chDescs, true)}
 	pk := crypto.GenPrivKeyEd25519()
-	p, err := newPeer(addr, reactorsByCh, chDescs, func(p *Peer, r interface{}) {}, pk)
+	p, err := newOutboundPeer(addr, reactorsByCh, chDescs, func(p *Peer, r interface{}) {}, pk)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +81,7 @@ func (p *remotePeer) accept(l net.Listener) {
 		if err != nil {
 			golog.Fatalf("Failed to accept conn: %+v", err)
 		}
-		peer, err := newPeerFromExistingConn(conn, false, make(map[byte]Reactor), make([]*ChannelDescriptor, 0), func(p *Peer, r interface{}) {}, p.PrivKey)
+		peer, err := newInboundPeer(conn, make(map[byte]Reactor), make([]*ChannelDescriptor, 0), func(p *Peer, r interface{}) {}, p.PrivKey)
 		if err != nil {
 			golog.Fatalf("Failed to create a peer: %+v", err)
 		}

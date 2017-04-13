@@ -32,7 +32,7 @@ type Peer struct {
 	Data *cmn.CMap // User data.
 }
 
-// PeerConfig is a Peer configuration
+// PeerConfig is a Peer configuration.
 type PeerConfig struct {
 	AuthEnc bool // authenticated encryption
 
@@ -45,7 +45,8 @@ type PeerConfig struct {
 	FuzzConfig *FuzzConnConfig
 }
 
-func defaultPeerConfig() *PeerConfig {
+// DefaultPeerConfig returns the default config.
+func DefaultPeerConfig() *PeerConfig {
 	return &PeerConfig{
 		AuthEnc:          true,
 		Fuzz:             false,
@@ -56,18 +57,17 @@ func defaultPeerConfig() *PeerConfig {
 	}
 }
 
-func newPeer(addr *NetAddress, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor, onPeerError func(*Peer, interface{}), ourNodePrivKey crypto.PrivKeyEd25519) (*Peer, error) {
-	return newPeerWithConfig(addr, reactorsByCh, chDescs, onPeerError, ourNodePrivKey, defaultPeerConfig())
+func newOutboundPeer(addr *NetAddress, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor, onPeerError func(*Peer, interface{}), ourNodePrivKey crypto.PrivKeyEd25519) (*Peer, error) {
+	return newOutboundPeerWithConfig(addr, reactorsByCh, chDescs, onPeerError, ourNodePrivKey, DefaultPeerConfig())
 }
 
-func newPeerWithConfig(addr *NetAddress, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor, onPeerError func(*Peer, interface{}), ourNodePrivKey crypto.PrivKeyEd25519, config *PeerConfig) (*Peer, error) {
+func newOutboundPeerWithConfig(addr *NetAddress, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor, onPeerError func(*Peer, interface{}), ourNodePrivKey crypto.PrivKeyEd25519, config *PeerConfig) (*Peer, error) {
 	conn, err := dial(addr, config)
 	if err != nil {
 		return nil, err
 	}
 
-	// outbound = true
-	peer, err := newPeerFromExistingConnAndConfig(conn, true, reactorsByCh, chDescs, onPeerError, ourNodePrivKey, config)
+	peer, err := newPeerFromConnAndConfig(conn, true, reactorsByCh, chDescs, onPeerError, ourNodePrivKey, config)
 	if err != nil {
 		conn.Close()
 		return nil, err
@@ -75,11 +75,15 @@ func newPeerWithConfig(addr *NetAddress, reactorsByCh map[byte]Reactor, chDescs 
 	return peer, nil
 }
 
-func newPeerFromExistingConn(rawConn net.Conn, outbound bool, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor, onPeerError func(*Peer, interface{}), ourNodePrivKey crypto.PrivKeyEd25519) (*Peer, error) {
-	return newPeerFromExistingConnAndConfig(rawConn, outbound, reactorsByCh, chDescs, onPeerError, ourNodePrivKey, defaultPeerConfig())
+func newInboundPeer(conn net.Conn, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor, onPeerError func(*Peer, interface{}), ourNodePrivKey crypto.PrivKeyEd25519) (*Peer, error) {
+	return newInboundPeerWithConfig(conn, reactorsByCh, chDescs, onPeerError, ourNodePrivKey, DefaultPeerConfig())
 }
 
-func newPeerFromExistingConnAndConfig(rawConn net.Conn, outbound bool, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor, onPeerError func(*Peer, interface{}), ourNodePrivKey crypto.PrivKeyEd25519, config *PeerConfig) (*Peer, error) {
+func newInboundPeerWithConfig(conn net.Conn, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor, onPeerError func(*Peer, interface{}), ourNodePrivKey crypto.PrivKeyEd25519, config *PeerConfig) (*Peer, error) {
+	return newPeerFromConnAndConfig(conn, false, reactorsByCh, chDescs, onPeerError, ourNodePrivKey, config)
+}
+
+func newPeerFromConnAndConfig(rawConn net.Conn, outbound bool, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor, onPeerError func(*Peer, interface{}), ourNodePrivKey crypto.PrivKeyEd25519, config *PeerConfig) (*Peer, error) {
 	conn := rawConn
 
 	// Fuzz connection
