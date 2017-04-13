@@ -376,6 +376,7 @@ func makeNodeInfo(config cfg.Config, sw *p2p.Switch, privKey crypto.PrivKeyEd255
 			cmn.Fmt("p2p_version=%v", p2p.Version),
 			cmn.Fmt("consensus_version=%v", consensus.Version),
 			cmn.Fmt("rpc_version=%v/%v", rpc.Version, rpccore.Version),
+			cmn.Fmt("tx_indexer=%v", config.GetString("tx_indexer")),
 		},
 	}
 
