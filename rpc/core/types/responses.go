@@ -1,6 +1,8 @@
 package core_types
 
 import (
+	"strings"
+
 	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-p2p"
@@ -36,6 +38,19 @@ type ResultStatus struct {
 	LatestAppHash     []byte        `json:"latest_app_hash"`
 	LatestBlockHeight int           `json:"latest_block_height"`
 	LatestBlockTime   int64         `json:"latest_block_time"` // nano
+}
+
+func (s *ResultStatus) TxIndexEnabled() bool {
+	if s == nil || s.NodeInfo == nil {
+		return false
+	}
+	for _, s := range s.NodeInfo.Other {
+		info := strings.Split(s, "=")
+		if len(info) == 2 && info[0] == "tx_indexer" {
+			return info[1] == "kv"
+		}
+	}
+	return false
 }
 
 type ResultNetInfo struct {
