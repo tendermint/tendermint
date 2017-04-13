@@ -94,7 +94,7 @@ These are the handlers that are defined in `handlers/main.yml`.
 * `restart tendermint`
 * `reload systemd`
 
-## Example playbook that configures a Tendermint on Ubuntu
+## Example playbook that configures a Tendermint on Ubuntu 14.04
 
 ```
 ---
