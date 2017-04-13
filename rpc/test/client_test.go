@@ -156,15 +156,18 @@ func testBroadcastTxCommit(t *testing.T, client rpc.HTTPClient) {
 
 func TestURITx(t *testing.T) {
 	testTx(t, GetURIClient(), true)
+
+	core.SetTxIndexer(&indexer.Null{})
+	testTx(t, GetJSONClient(), false)
+	core.SetTxIndexer(node.ConsensusState().GetState().TxIndexer)
 }
 
 func TestJSONTx(t *testing.T) {
 	testTx(t, GetJSONClient(), true)
-}
 
-func TestZZZZTxNoIndexer(t *testing.T) {
 	core.SetTxIndexer(&indexer.Null{})
 	testTx(t, GetJSONClient(), false)
+	core.SetTxIndexer(node.ConsensusState().GetState().TxIndexer)
 }
 
 func testTx(t *testing.T, client rpc.HTTPClient, withIndexer bool) {
