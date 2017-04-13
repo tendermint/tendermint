@@ -150,6 +150,51 @@ func testBroadcastTxCommit(t *testing.T, client rpc.HTTPClient) {
 }
 
 //--------------------------------------------------------------------------------
+// query tx
+
+func TestURITx(t *testing.T) {
+	testTx(t, GetURIClient())
+}
+
+func TestJSONTx(t *testing.T) {
+	testTx(t, GetJSONClient())
+}
+
+func testTx(t *testing.T, client rpc.HTTPClient) {
+	require := require.New(t)
+
+	// first we broadcast a tx
+	tmResult := new(ctypes.TMResult)
+	tx := randBytes(t)
+	_, err := client.Call("broadcast_tx_commit", map[string]interface{}{"tx": tx}, tmResult)
+	require.Nil(err)
+
+	res := (*tmResult).(*ctypes.ResultBroadcastTxCommit)
+	checkTx := res.CheckTx
+	require.Equal(abci.CodeType_OK, checkTx.Code)
+	deliverTx := res.DeliverTx
+	require.Equal(abci.CodeType_OK, deliverTx.Code)
+	mem := node.MempoolReactor().Mempool
+	require.Equal(0, mem.Size())
+
+	// now we query for the tx.
+	// since there's only one tx, we know index=0.
+	tmResult = new(ctypes.TMResult)
+	_, err = client.Call("tx", map[string]interface{}{"height": res.Height}, tmResult)
+	require.Nil(err)
+
+	res2 := (*tmResult).(*ctypes.ResultTx)
+	require.Equal(res2.Tx, types.Tx(tx), "tx is not correct")
+
+	// TODO: a query with height and hash should fail
+
+	// TODO: a query with just hash should work same way
+
+	// TODO: verify proof
+
+}
+
+//--------------------------------------------------------------------------------
 // Test the websocket service
 
 var wsTyp = "JSONRPC"
