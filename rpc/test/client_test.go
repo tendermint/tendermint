@@ -161,11 +161,11 @@ func TestJSONTx(t *testing.T) {
 }
 
 func testTx(t *testing.T, client rpc.HTTPClient) {
-	require := require.New(t)
+	assert, require := assert.New(t), require.New(t)
 
 	// first we broadcast a tx
 	tmResult := new(ctypes.TMResult)
-	tx := randBytes(t)
+	tx := types.Tx(randBytes(t))
 	_, err := client.Call("broadcast_tx_commit", map[string]interface{}{"tx": tx}, tmResult)
 	require.Nil(err)
 
@@ -177,20 +177,59 @@ func testTx(t *testing.T, client rpc.HTTPClient) {
 	mem := node.MempoolReactor().Mempool
 	require.Equal(0, mem.Size())
 
-	// now we query for the tx.
-	// since there's only one tx, we know index=0.
-	tmResult = new(ctypes.TMResult)
-	_, err = client.Call("tx", map[string]interface{}{"height": res.Height}, tmResult)
-	require.Nil(err)
+	cases := []struct {
+		valid  bool
+		height int
+		index  int
+		hash   []byte
+	}{
+		// only on proper height, index match
+		{true, res.Height, 0, nil},
+		{false, res.Height, 1, nil},
+		{false, res.Height, -7, nil},
+		{false, -10, -100, nil},
+		{false, res.Height + 1, 0, nil},
 
-	res2 := (*tmResult).(*ctypes.ResultTx)
-	require.Equal(res2.Tx, types.Tx(tx), "tx is not correct")
+		// on proper hash match
+		{true, 0, 0, tx.Hash()},
+		{false, res.Height, 0, tx.Hash()}, // TODO: or shall we allow this????
+		// with extra data is an error
+		{false, 10, 0, tx.Hash()},
+		{false, 0, 2, tx.Hash()},
+		{false, 0, 0, []byte("jkh8y0fw")},
+		{false, 0, 0, nil},
 
-	// TODO: a query with height and hash should fail
+		// missing height and hash fails
+		{false, 0, 0, nil},
+		{false, 0, 1, nil},
+	}
 
-	// TODO: a query with just hash should work same way
-
-	// TODO: verify proof
+	for _, tc := range cases {
+		// now we query for the tx.
+		// since there's only one tx, we know index=0.
+		tmResult = new(ctypes.TMResult)
+		query := map[string]interface{}{
+			"height": tc.height,
+			"index":  tc.index,
+			"hash":   tc.hash,
+		}
+		_, err = client.Call("tx", query, tmResult)
+		if !tc.valid {
+			require.NotNil(err)
+		} else {
+			require.Nil(err)
+			res2 := (*tmResult).(*ctypes.ResultTx)
+			assert.Equal(tx, res2.Tx, "tx is not correct")
+			assert.Equal(res.Height, res2.Height)
+			assert.Equal(0, res2.Index)
+			assert.Equal(abci.CodeType_OK, res2.DeliverTx.Code)
+			// time to verify the proof
+			proof := res2.Proof
+			if assert.Equal(tx, proof.Data) {
+				assert.True(proof.Proof.Verify(proof.Index, proof.Total, tx.Hash(), proof.RootHash))
+			}
+		}
+	}
 
 }
 
