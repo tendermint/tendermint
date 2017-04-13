@@ -549,7 +549,7 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) error {
 	}
 
 	if err = sw.AddPeer(peer); err != nil {
-		peer.CloseConn()
+		conn.Close()
 		return err
 	}
 
@@ -559,12 +559,12 @@ func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) error {
 func (sw *Switch) AddPeerWithConnectionAndConfig(conn net.Conn, outbound bool, config *PeerConfig) error {
 	peer, err := newPeerFromExistingConnAndConfig(conn, outbound, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, config)
 	if err != nil {
-		peer.CloseConn()
+		conn.Close()
 		return err
 	}
 
 	if err = sw.AddPeer(peer); err != nil {
-		peer.CloseConn()
+		conn.Close()
 		return err
 	}
 
