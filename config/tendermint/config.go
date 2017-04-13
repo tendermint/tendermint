@@ -48,9 +48,9 @@ func GetConfig(rootDir string) *viper.Viper {
 	config.SetConfigName("config")
 	config.SetConfigType("toml")
 	config.AddConfigPath(rootDir)
-	err := viper.ReadInConfig()
+	err := config.ReadInConfig()
 	if err != nil {
-		Exit(Fmt("Could not read config: %v", err))
+		Exit(Fmt("Could not read config from directory %v: %v", rootDir, err))
 	}
 	//config.WatchConfig()
 
