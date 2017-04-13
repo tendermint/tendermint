@@ -165,8 +165,9 @@ func testTx(t *testing.T, client rpc.HTTPClient) {
 
 	// first we broadcast a tx
 	tmResult := new(ctypes.TMResult)
-	tx := types.Tx(randBytes(t))
-	_, err := client.Call("broadcast_tx_commit", map[string]interface{}{"tx": tx}, tmResult)
+	txBytes := randBytes(t)
+	tx := types.Tx(txBytes)
+	_, err := client.Call("broadcast_tx_commit", map[string]interface{}{"tx": txBytes}, tmResult)
 	require.Nil(err)
 
 	res := (*tmResult).(*ctypes.ResultBroadcastTxCommit)
@@ -195,10 +196,10 @@ func testTx(t *testing.T, client rpc.HTTPClient) {
 		// on proper hash match
 		{true, 0, 0, tx.Hash(), false},
 		{true, 0, 0, tx.Hash(), true},
-		{false, res.Height, 0, tx.Hash(), false}, // TODO: or shall we allow this????
-		{false, res.Height, 0, tx.Hash(), true},  // TODO: or shall we allow this????
+		{true, res.Height, 0, tx.Hash(), false},
+		{true, res.Height, 0, tx.Hash(), true},
+		{true, 100, 0, tx.Hash(), false}, // with indexer disabled, height is overwritten
 		// with extra data is an error
-		{false, 10, 0, tx.Hash(), false},
 		{false, 0, 2, tx.Hash(), true},
 		{false, 0, 0, []byte("jkh8y0fw"), false},
 		{false, 0, 0, nil, true},
@@ -229,7 +230,7 @@ func testTx(t *testing.T, client rpc.HTTPClient) {
 			assert.Equal(tx, res2.Tx, idx)
 			assert.Equal(res.Height, res2.Height, idx)
 			assert.Equal(0, res2.Index, idx)
-			assert.Equal(abci.CodeType_OK, res2.DeliverTx.Code, idx)
+			assert.Equal(abci.CodeType_OK, res2.TxResult.Code, idx)
 			// time to verify the proof
 			proof := res2.Proof
 			if tc.prove && assert.Equal(tx, proof.Data, idx) {

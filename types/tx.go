@@ -45,6 +45,16 @@ func (txs Txs) Index(tx Tx) int {
 	return -1
 }
 
+// Index returns the index of this transaction hash in the list, or -1 if not found
+func (txs Txs) IndexByHash(hash []byte) int {
+	for i := range txs {
+		if bytes.Equal(txs[i].Hash(), hash) {
+			return i
+		}
+	}
+	return -1
+}
+
 // Proof returns a simple merkle proof for this node.
 //
 // Panics if i < 0 or i >= len(txs)
