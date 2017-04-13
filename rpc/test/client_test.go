@@ -13,7 +13,9 @@ import (
 	abci "github.com/tendermint/abci/types"
 	. "github.com/tendermint/go-common"
 	rpc "github.com/tendermint/go-rpc/client"
+	"github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tendermint/state/tx/indexer"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -153,14 +155,19 @@ func testBroadcastTxCommit(t *testing.T, client rpc.HTTPClient) {
 // query tx
 
 func TestURITx(t *testing.T) {
-	testTx(t, GetURIClient())
+	testTx(t, GetURIClient(), true)
 }
 
 func TestJSONTx(t *testing.T) {
-	testTx(t, GetJSONClient())
+	testTx(t, GetJSONClient(), true)
 }
 
-func testTx(t *testing.T, client rpc.HTTPClient) {
+func TestZZZZTxNoIndexer(t *testing.T) {
+	core.SetTxIndexer(&indexer.Null{})
+	testTx(t, GetJSONClient(), false)
+}
+
+func testTx(t *testing.T, client rpc.HTTPClient, withIndexer bool) {
 	assert, require := assert.New(t), require.New(t)
 
 	// first we broadcast a tx
@@ -179,34 +186,35 @@ func testTx(t *testing.T, client rpc.HTTPClient) {
 	require.Equal(0, mem.Size())
 
 	cases := []struct {
-		valid  bool
-		height int
-		index  int
-		hash   []byte
-		prove  bool
+		validWithIndexer bool
+		validNoIndexer   bool
+		height           int
+		index            int
+		hash             []byte
+		prove            bool
 	}{
 		// only on proper height, index match
-		{true, res.Height, 0, nil, false},
-		{true, res.Height, 0, nil, true},
-		{false, res.Height, 1, nil, false},
-		{false, res.Height, -7, nil, true},
-		{false, -10, -100, nil, false},
-		{false, res.Height + 1, 0, nil, true},
+		{true, true, res.Height, 0, nil, false},
+		{true, true, res.Height, 0, nil, true},
+		{false, false, res.Height, 1, nil, false},
+		{false, false, res.Height, -7, nil, true},
+		{false, false, -10, -100, nil, false},
+		{false, false, res.Height + 1, 0, nil, true},
 
 		// on proper hash match
-		{true, 0, 0, tx.Hash(), false},
-		{true, 0, 0, tx.Hash(), true},
-		{true, res.Height, 0, tx.Hash(), false},
-		{true, res.Height, 0, tx.Hash(), true},
-		{true, 100, 0, tx.Hash(), false}, // with indexer disabled, height is overwritten
+		{true, false, 0, 0, tx.Hash(), false},
+		{true, false, 0, 0, tx.Hash(), true},
+		{true, true, res.Height, 0, tx.Hash(), false},
+		{true, true, res.Height, 0, tx.Hash(), true},
+		{true, false, 100, 0, tx.Hash(), false}, // with indexer enabled, height is overwritten
 		// with extra data is an error
-		{false, 0, 2, tx.Hash(), true},
-		{false, 0, 0, []byte("jkh8y0fw"), false},
-		{false, 0, 0, nil, true},
+		{false, false, 0, 2, tx.Hash(), true},
+		{false, false, 0, 0, []byte("jkh8y0fw"), false},
+		{false, false, 0, 0, nil, true},
 
 		// missing height and hash fails
-		{false, 0, 0, nil, false},
-		{false, 0, 1, nil, true},
+		{false, false, 0, 0, nil, false},
+		{false, false, 0, 1, nil, true},
 	}
 
 	for i, tc := range cases {
@@ -222,7 +230,8 @@ func testTx(t *testing.T, client rpc.HTTPClient) {
 			"prove":  tc.prove,
 		}
 		_, err = client.Call("tx", query, tmResult)
-		if !tc.valid {
+		valid := (withIndexer && tc.validWithIndexer) || (!withIndexer && tc.validNoIndexer)
+		if !valid {
 			require.NotNil(err, idx)
 		} else {
 			require.Nil(err, idx)
