@@ -29,9 +29,13 @@ func Tx(hash []byte, height, index int, prove bool) (*ctypes.ResultTx, error) {
 		deliverTx = r.DeliverTx
 	}
 
+	if height <= 0 || height > blockStore.Height() {
+		return nil, fmt.Errorf("Invalid height (%d) for blockStore at height %d", height, blockStore.Height())
+	}
+
 	block := blockStore.LoadBlock(height)
 
-	if index >= len(block.Data.Txs) {
+	if index < 0 || index >= len(block.Data.Txs) {
 		return nil, fmt.Errorf("Index (%d) is out of range for block (%d) with %d txs", index, height, len(block.Data.Txs))
 	}
 	tx := block.Data.Txs[index]
