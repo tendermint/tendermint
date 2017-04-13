@@ -52,7 +52,7 @@ func defaultPeerConfig() *PeerConfig {
 		HandshakeTimeout: 20 * time.Second,
 		DialTimeout:      3 * time.Second,
 		MConfig:          defaultMConnectionConfig(),
-		FuzzConfig:       defaultFuzzConnConfig(),
+		FuzzConfig:       DefaultFuzzConnConfig(),
 	}
 }
 
