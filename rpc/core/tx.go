@@ -3,32 +3,48 @@ package core
 import (
 	"fmt"
 
+	abci "github.com/tendermint/abci/types"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 )
 
-func Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
-	r, err := txIndexer.Tx(hash)
-	if err != nil {
-		return nil, err
+func Tx(hash []byte, height, index int, prove bool) (*ctypes.ResultTx, error) {
+	var deliverTx abci.ResponseDeliverTx
+	if len(hash) > 0 {
+		if height != 0 || index != 0 {
+			return nil, fmt.Errorf("Invalid args. If hash is provided, height and index should not be")
+		}
+
+		r, err := txIndexer.Tx(hash)
+		if err != nil {
+			return nil, err
+		}
+
+		if r == nil {
+			return &ctypes.ResultTx{}, fmt.Errorf("Tx (%X) not found", hash)
+		}
+
+		height = int(r.Height) // XXX
+		index = int(r.Index)
+		deliverTx = r.DeliverTx
 	}
 
-	if r == nil {
-		return &ctypes.ResultTx{}, fmt.Errorf("Tx (%X) not found", hash)
-	}
+	block := blockStore.LoadBlock(height)
 
-	block := blockStore.LoadBlock(int(r.Height))
-	tx := block.Data.Txs[int(r.Index)]
+	if index >= len(block.Data.Txs) {
+		return nil, fmt.Errorf("Index (%d) is out of range for block (%d) with %d txs", index, height, len(block.Data.Txs))
+	}
+	tx := block.Data.Txs[index]
 
 	var proof types.TxProof
 	if prove {
-		proof = block.Data.Txs.Proof(int(r.Index))
+		proof = block.Data.Txs.Proof(index)
 	}
 
 	return &ctypes.ResultTx{
-		Height:    r.Height,
-		Index:     r.Index,
-		DeliverTx: r.DeliverTx,
+		Height:    height,
+		Index:     index,
+		DeliverTx: deliverTx,
 		Tx:        tx,
 		Proof:     proof,
 	}, nil
