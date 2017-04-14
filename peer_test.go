@@ -55,6 +55,27 @@ func TestPeerWithoutAuthEnc(t *testing.T) {
 	assert.True(p.IsRunning())
 }
 
+func TestPeerSend(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+
+	config := DefaultPeerConfig()
+	config.AuthEnc = false
+
+	// simulate remote peer
+	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: config}
+	rp.Start()
+	defer rp.Stop()
+
+	p, err := createOutboundPeerAndPerformHandshake(rp.Addr(), config)
+	require.Nil(err)
+
+	p.Start()
+	defer p.Stop()
+
+	assert.True(p.CanSend(0x01))
+	assert.True(p.Send(0x01, "Asylum"))
+}
+
 func createOutboundPeerAndPerformHandshake(addr *NetAddress, config *PeerConfig) (*Peer, error) {
 	chDescs := []*ChannelDescriptor{
 		&ChannelDescriptor{ID: 0x01, Priority: 1},
