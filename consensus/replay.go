@@ -332,23 +332,13 @@ func (h *Handshaker) replayLastBlock(proxyApp proxy.AppConnConsensus) ([]byte, e
 	evsw.Start()
 	defer evsw.Stop()
 	cs.SetEventSwitch(evsw)
-	newBlockCh := subscribeToEvent(evsw, "consensus-replay", types.EventStringNewBlock(), 1)
 
+	log.Notice("Attempting to replay last block", "height", h.store.Height())
 	// run through the WAL, commit new block, stop
 	if _, err := cs.Start(); err != nil {
 		return nil, err
 	}
-	defer cs.Stop()
-
-	timeout := h.config.GetInt("timeout_handshake")
-	timer := time.NewTimer(time.Duration(timeout) * time.Millisecond)
-	log.Notice("Attempting to replay last block", "height", h.store.Height(), "timeout", timeout)
-
-	select {
-	case <-newBlockCh:
-	case <-timer.C:
-		return nil, ErrReplayLastBlockTimeout
-	}
+	cs.Stop()
 
 	h.nBlocks += 1
 
