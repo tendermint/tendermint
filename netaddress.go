@@ -6,6 +6,7 @@ package p2p
 
 import (
 	"errors"
+	"flag"
 	"net"
 	"strconv"
 	"time"
@@ -13,28 +14,36 @@ import (
 	cmn "github.com/tendermint/go-common"
 )
 
+// NetAddress defines information about a peer on the network
+// including its IP address, and port.
 type NetAddress struct {
 	IP   net.IP
 	Port uint16
 	str  string
 }
 
+// NewNetAddress returns a new NetAddress using the provided TCP
+// address. When testing, other net.Addr (except TCP) will result in
+// using 0.0.0.0:0. When normal run, other net.Addr (except TCP) will
+// panic.
 // TODO: socks proxies?
 func NewNetAddress(addr net.Addr) *NetAddress {
 	tcpAddr, ok := addr.(*net.TCPAddr)
 	if !ok {
-		log.Warn(`Only TCPAddrs are supported. If used for anything but testing,
-			may result in undefined behaviour!`, "addr", addr)
-		return NewNetAddressIPPort(net.IP("0.0.0.0"), 0)
-		// NOTE: it would be nice to only not panic if we're in testing ...
-		// PanicSanity(Fmt("Only TCPAddrs are supported. Got: %v", addr))
+		if flag.Lookup("test.v") == nil { // normal run
+			cmn.PanicSanity(cmn.Fmt("Only TCPAddrs are supported. Got: %v", addr))
+		} else { // in testing
+			return NewNetAddressIPPort(net.IP("0.0.0.0"), 0)
+		}
 	}
 	ip := tcpAddr.IP
 	port := uint16(tcpAddr.Port)
 	return NewNetAddressIPPort(ip, port)
 }
 
-// Also resolves the host if host is not an IP.
+// NewNetAddressString returns a new NetAddress using the provided
+// address in the form of "IP:Port". Also resolves the host if host
+// is not an IP.
 func NewNetAddressString(addr string) (*NetAddress, error) {
 
 	host, portStr, err := net.SplitHostPort(addr)
@@ -62,6 +71,8 @@ func NewNetAddressString(addr string) (*NetAddress, error) {
 	return na, nil
 }
 
+// NewNetAddressStrings returns an array of NetAddress'es build using
+// the provided strings.
 func NewNetAddressStrings(addrs []string) ([]*NetAddress, error) {
 	netAddrs := make([]*NetAddress, len(addrs))
 	for i, addr := range addrs {
@@ -74,6 +85,8 @@ func NewNetAddressStrings(addrs []string) ([]*NetAddress, error) {
 	return netAddrs, nil
 }
 
+// NewNetAddressIPPort returns a new NetAddress using the provided IP
+// and port number.
 func NewNetAddressIPPort(ip net.IP, port uint16) *NetAddress {
 	na := &NetAddress{
 		IP:   ip,
@@ -86,23 +99,25 @@ func NewNetAddressIPPort(ip net.IP, port uint16) *NetAddress {
 	return na
 }
 
+// Equals reports whether na and other are the same addresses.
 func (na *NetAddress) Equals(other interface{}) bool {
 	if o, ok := other.(*NetAddress); ok {
 		return na.String() == o.String()
-	} else {
-		return false
 	}
+
+	return false
 }
 
 func (na *NetAddress) Less(other interface{}) bool {
 	if o, ok := other.(*NetAddress); ok {
 		return na.String() < o.String()
-	} else {
-		cmn.PanicSanity("Cannot compare unequal types")
-		return false
 	}
+
+	cmn.PanicSanity("Cannot compare unequal types")
+	return false
 }
 
+// String representation.
 func (na *NetAddress) String() string {
 	if na.str == "" {
 		na.str = net.JoinHostPort(
@@ -113,6 +128,7 @@ func (na *NetAddress) String() string {
 	return na.str
 }
 
+// Dial calls net.Dial on the address.
 func (na *NetAddress) Dial() (net.Conn, error) {
 	conn, err := net.Dial("tcp", na.String())
 	if err != nil {
@@ -121,6 +137,7 @@ func (na *NetAddress) Dial() (net.Conn, error) {
 	return conn, nil
 }
 
+// DialTimeout calls net.DialTimeout on the address.
 func (na *NetAddress) DialTimeout(timeout time.Duration) (net.Conn, error) {
 	conn, err := net.DialTimeout("tcp", na.String(), timeout)
 	if err != nil {
@@ -129,6 +146,7 @@ func (na *NetAddress) DialTimeout(timeout time.Duration) (net.Conn, error) {
 	return conn, nil
 }
 
+// Routable returns true if the address is routable.
 func (na *NetAddress) Routable() bool {
 	// TODO(oga) bitcoind doesn't include RFC3849 here, but should we?
 	return na.Valid() && !(na.RFC1918() || na.RFC3927() || na.RFC4862() ||
@@ -142,10 +160,12 @@ func (na *NetAddress) Valid() bool {
 		na.IP.Equal(net.IPv4bcast))
 }
 
+// Local returns true if it is a local address.
 func (na *NetAddress) Local() bool {
 	return na.IP.IsLoopback() || zero4.Contains(na.IP)
 }
 
+// ReachabilityTo checks whenever o can be reached from na.
 func (na *NetAddress) ReachabilityTo(o *NetAddress) int {
 	const (
 		Unreachable = 0
