@@ -100,19 +100,19 @@ func (cs *ConsensusState) catchupReplay(csHeight int) error {
 	cs.replayMode = true
 	defer func() { cs.replayMode = false }()
 
-	// Ensure that height+1 doesn't exist
-	gr, found, err := cs.wal.group.Search("#HEIGHT: ", makeHeightSearchFunc(csHeight+1))
+	// Ensure that ENDHEIGHT for this height doesn't exist
+	gr, found, err := cs.wal.group.Search("#ENDHEIGHT: ", makeHeightSearchFunc(csHeight))
 	if found {
-		return errors.New(Fmt("WAL should not contain height %d.", csHeight+1))
+		return errors.New(Fmt("WAL should not contain height %d.", csHeight))
 	}
 	if gr != nil {
 		gr.Close()
 	}
 
-	// Search for height marker
-	gr, found, err = cs.wal.group.Search("#HEIGHT: ", makeHeightSearchFunc(csHeight))
+	// Search for last height marker
+	gr, found, err = cs.wal.group.Search("#ENDHEIGHT: ", makeHeightSearchFunc(csHeight-1))
 	if err == io.EOF {
-		log.Warn("Replay: wal.group.Search returned EOF", "height", csHeight)
+		log.Warn("Replay: wal.group.Search returned EOF", "height", csHeight-1)
 		return nil
 	} else if err != nil {
 		return err
@@ -147,7 +147,7 @@ func (cs *ConsensusState) catchupReplay(csHeight int) error {
 //--------------------------------------------------------------------------------
 
 // Parses marker lines of the form:
-// #HEIGHT: 12345
+// #ENDHEIGHT: 12345
 func makeHeightSearchFunc(height int) auto.SearchFunc {
 	return func(line string) (int, error) {
 		line = strings.TrimRight(line, "\n")

@@ -1202,6 +1202,12 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 
 	fail.Fail() // XXX
 
+	if cs.wal != nil {
+		cs.wal.writeEndHeight(height)
+	}
+
+	fail.Fail() // XXX
+
 	// Save to blockStore.
 	if cs.blockStore.Height() < block.Height {
 		// NOTE: the seenCommit is local justification to commit this block,
