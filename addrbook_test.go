@@ -9,9 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-	"github.com/stretchr/testify/assert"
-)
-
 func createTempFileName(prefix string) string {
 	f, err := ioutil.TempFile("", prefix)
 	if err != nil {
@@ -156,14 +153,14 @@ func TestAddrBookRemoveAddress(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
 	book := NewAddrBook(fname, true)
 
-	addr := randIPv4Address()
+	addr := randIPv4Address(t)
 	book.AddAddress(addr, addr)
 	assert.Equal(t, 1, book.Size())
 
 	book.RemoveAddress(addr)
 	assert.Equal(t, 0, book.Size())
 
-	nonExistingAddr := randIPv4Address()
+	nonExistingAddr := randIPv4Address(t)
 	book.RemoveAddress(nonExistingAddr)
 	assert.Equal(t, 0, book.Size())
 }

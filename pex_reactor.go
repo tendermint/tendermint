@@ -93,19 +93,17 @@ func (r *PEXReactor) GetChannels() []*ChannelDescriptor {
 // AddPeer implements Reactor by adding peer to the address book (if inbound)
 // or by requesting more addresses (if outbound).
 func (r *PEXReactor) AddPeer(p *Peer) {
-	netAddr, err := NewNetAddressString(p.ListenAddr)
-	if err != nil {
-		// this should never happen
-		log.Error("Error in AddPeer: invalid peer address", "addr", p.ListenAddr, "error", err)
-		return
-	}
-
 	if p.IsOutbound() { // For outbound peers, the address is already in the books
 		if r.book.NeedMoreAddrs() {
 			r.RequestPEX(p)
 		}
 	} else { // For inbound connections, the peer is its own source
-		addr := NewNetAddressString(p.ListenAddr)
+		addr, err := NewNetAddressString(p.ListenAddr)
+		if err != nil {
+			// this should never happen
+			log.Error("Error in AddPeer: invalid peer address", "addr", p.ListenAddr, "error", err)
+			return
+		}
 		r.book.AddAddress(addr, addr)
 	}
 }
@@ -117,7 +115,12 @@ func (r *PEXReactor) AddPeer(p *Peer) {
 // will remove him too. The peer will need to send first requests to others by
 // himself (he will have an addrbook or the seeds).
 func (r *PEXReactor) RemovePeer(p *Peer, reason interface{}) {
-	addr := NewNetAddressString(p.ListenAddr)
+	addr, err := NewNetAddressString(p.ListenAddr)
+	if err != nil {
+		// this should never happen
+		log.Error("Error in AddPeer: invalid peer address", "addr", p.ListenAddr, "error", err)
+		return
+	}
 	r.book.RemoveAddress(addr)
 }
 

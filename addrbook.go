@@ -15,6 +15,7 @@ import (
 	"time"
 
 	. "github.com/tendermint/go-common"
+	crypto "github.com/tendermint/go-crypto"
 )
 
 const (
@@ -135,7 +136,6 @@ func (a *AddrBook) OnStop() {
 }
 
 func (a *AddrBook) Wait() {
-	a.wg.Wait()
 	a.saveToFile(a.filePath)
 }
 

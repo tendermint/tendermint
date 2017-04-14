@@ -72,7 +72,7 @@ func TestPEXReactorRunning(t *testing.T) {
 
 	// fill the address book and add listeners
 	for _, s := range switches {
-		addr := NewNetAddressString(s.NodeInfo().ListenAddr)
+		addr, _ := NewNetAddressString(s.NodeInfo().ListenAddr)
 		book.AddAddress(addr, addr)
 		s.AddListener(NewDefaultListener("tcp", s.NodeInfo().ListenAddr, true))
 	}
@@ -110,7 +110,8 @@ func TestPEXReactorReceive(t *testing.T) {
 	peer := createRandomPeer(false)
 
 	size := book.Size()
-	addrs := []*NetAddress{NewNetAddressString(peer.ListenAddr)}
+	netAddr, _ := NewNetAddressString(peer.ListenAddr)
+	addrs := []*NetAddress{netAddr}
 	msg := wire.BinaryBytes(struct{ PexMessage }{&pexAddrsMessage{Addrs: addrs}})
 	r.Receive(PexChannel, peer, msg)
 	assert.Equal(t, size+1, book.Size())
@@ -140,12 +141,13 @@ func TestPEXReactorAbuseFromPeer(t *testing.T) {
 
 func createRandomPeer(outbound bool) *Peer {
 	addr := cmn.Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256)
+	netAddr, _ := NewNetAddressString(addr)
 	return &Peer{
 		Key: cmn.RandStr(12),
 		NodeInfo: &NodeInfo{
 			ListenAddr: addr,
 		},
 		outbound: outbound,
-		mconn:    &MConnection{RemoteAddress: NewNetAddressString(addr)},
+		mconn:    &MConnection{RemoteAddress: netAddr},
 	}
 }
