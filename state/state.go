@@ -147,7 +147,7 @@ func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader typ
 	prevValSet := s.Validators.Copy()
 	nextValSet := prevValSet.Copy()
 
-	// update the validator set
+	// update the validator set with the latest abciResponses
 	err := updateValidators(nextValSet, s.abciResponses.Validators)
 	if err != nil {
 		log.Warn("Error changing validator set", "error", err)
