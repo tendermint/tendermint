@@ -6,6 +6,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/pkg/errors"
 	cmn "github.com/tendermint/go-common"
 	crypto "github.com/tendermint/go-crypto"
 	wire "github.com/tendermint/go-wire"
@@ -49,10 +50,10 @@ type PeerConfig struct {
 func DefaultPeerConfig() *PeerConfig {
 	return &PeerConfig{
 		AuthEnc:          true,
-		Fuzz:             false,
-		HandshakeTimeout: 20 * time.Second,
+		HandshakeTimeout: 2 * time.Second,
 		DialTimeout:      3 * time.Second,
-		MConfig:          defaultMConnectionConfig(),
+		MConfig:          DefaultMConnConfig(),
+		Fuzz:             false,
 		FuzzConfig:       DefaultFuzzConnConfig(),
 	}
 }
@@ -64,7 +65,7 @@ func newOutboundPeer(addr *NetAddress, reactorsByCh map[byte]Reactor, chDescs []
 func newOutboundPeerWithConfig(addr *NetAddress, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor, onPeerError func(*Peer, interface{}), ourNodePrivKey crypto.PrivKeyEd25519, config *PeerConfig) (*Peer, error) {
 	conn, err := dial(addr, config)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Error creating peer")
 	}
 
 	peer, err := newPeerFromConnAndConfig(conn, true, reactorsByCh, chDescs, onPeerError, ourNodePrivKey, config)
@@ -99,7 +100,7 @@ func newPeerFromConnAndConfig(rawConn net.Conn, outbound bool, reactorsByCh map[
 		var err error
 		conn, err = MakeSecretConnection(conn, ourNodePrivKey)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "Error creating peer")
 		}
 	}
 
@@ -157,10 +158,10 @@ func (p *Peer) HandshakeTimeout(ourNodeInfo *NodeInfo, timeout time.Duration) er
 			log.Notice("Peer handshake", "peerNodeInfo", peerNodeInfo)
 		})
 	if err1 != nil {
-		return err1
+		return errors.Wrap(err1, "Error during handshake/write")
 	}
 	if err2 != nil {
-		return err2
+		return errors.Wrap(err2, "Error during handshake/read")
 	}
 
 	if p.config.AuthEnc {
@@ -174,7 +175,7 @@ func (p *Peer) HandshakeTimeout(ourNodeInfo *NodeInfo, timeout time.Duration) er
 	// Remove deadline
 	p.conn.SetDeadline(time.Time{})
 
-	peerNodeInfo.RemoteAddr = p.RemoteAddr().String()
+	peerNodeInfo.RemoteAddr = p.Addr().String()
 
 	p.NodeInfo = peerNodeInfo
 	p.Key = peerNodeInfo.PubKey.KeyString()
@@ -182,12 +183,12 @@ func (p *Peer) HandshakeTimeout(ourNodeInfo *NodeInfo, timeout time.Duration) er
 	return nil
 }
 
-// RemoteAddr returns the remote network address.
-func (p *Peer) RemoteAddr() net.Addr {
+// Addr returns peer's network address.
+func (p *Peer) Addr() net.Addr {
 	return p.conn.RemoteAddr()
 }
 
-// PubKey returns the remote public key.
+// PubKey returns peer's public key.
 func (p *Peer) PubKey() crypto.PubKeyEd25519 {
 	if p.config.AuthEnc {
 		return p.conn.(*SecretConnection).RemotePubKey()

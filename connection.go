@@ -85,13 +85,14 @@ type MConnection struct {
 	RemoteAddress *NetAddress
 }
 
-// MConnConfig is a MConnection configuration
+// MConnConfig is a MConnection configuration.
 type MConnConfig struct {
 	SendRate int64
 	RecvRate int64
 }
 
-func defaultMConnectionConfig() *MConnConfig {
+// DefaultMConnConfig returns the default config.
+func DefaultMConnConfig() *MConnConfig {
 	return &MConnConfig{
 		SendRate: defaultSendRate,
 		RecvRate: defaultRecvRate,
@@ -105,7 +106,7 @@ func NewMConnection(conn net.Conn, chDescs []*ChannelDescriptor, onReceive recei
 		chDescs,
 		onReceive,
 		onError,
-		defaultMConnectionConfig())
+		DefaultMConnConfig())
 }
 
 // NewMConnectionWithConfig wraps net.Conn and creates multiplex connection with a config

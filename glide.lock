@@ -1,5 +1,5 @@
-hash: 92a49cbcf88a339e4d29559fe291c30e61eacda1020fd04dfcd97de834e18b3e
-updated: 2017-04-10T11:17:14.66226896Z
+hash: ef8ea7b02d9a133bfbfcf3f4615d43be0956ad2bc9eb0050e0721fca12d09308
+updated: 2017-04-14T08:28:07.579629532Z
 imports:
 - name: github.com/btcsuite/btcd
   version: 4b348c1d33373d672edd83fc576892d0e46686d2
@@ -25,9 +25,9 @@ imports:
 - name: github.com/tendermint/go-config
   version: 620dcbbd7d587cf3599dedbf329b64311b0c307a
 - name: github.com/tendermint/go-crypto
-  version: 3f47cfac5fcd9e0f1727c7db980b3559913b3e3a
+  version: 750b25c47a5782f5f2b773ed9e706cb82b3ccef4
 - name: github.com/tendermint/go-data
-  version: c955b191240568440ea902e14dad2ce19727543a
+  version: e7fcc6d081ec8518912fcdc103188275f83a3ee5
 - name: github.com/tendermint/go-flowrate
   version: a20c98e61957faa93b4014fbd902f20ab9317a6a
   subpackages:
@@ -41,7 +41,7 @@ imports:
   subpackages:
   - term
 - name: golang.org/x/crypto
-  version: 9ef620b9ca2f82b55030ffd4f41327fa9e77a92c
+  version: cbc3d0884eac986df6e78a039b8792e869bff863
   subpackages:
   - curve25519
   - nacl/box

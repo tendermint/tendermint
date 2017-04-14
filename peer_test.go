@@ -12,15 +12,41 @@ import (
 	crypto "github.com/tendermint/go-crypto"
 )
 
-func TestPeerStartStop(t *testing.T) {
+func TestPeerBasic(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
 	// simulate remote peer
-	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519()}
+	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: DefaultPeerConfig()}
 	rp.Start()
 	defer rp.Stop()
 
-	p, err := createPeerAndPerformHandshake(rp.RemoteAddr())
+	p, err := createOutboundPeerAndPerformHandshake(rp.Addr(), DefaultPeerConfig())
+	require.Nil(err)
+
+	p.Start()
+	defer p.Stop()
+
+	assert.True(p.IsRunning())
+	assert.True(p.IsOutbound())
+	assert.False(p.IsPersistent())
+	p.makePersistent()
+	assert.True(p.IsPersistent())
+	assert.Equal(rp.Addr().String(), p.Addr().String())
+	assert.Equal(rp.PubKey(), p.PubKey())
+}
+
+func TestPeerWithoutAuthEnc(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+
+	config := DefaultPeerConfig()
+	config.AuthEnc = false
+
+	// simulate remote peer
+	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: config}
+	rp.Start()
+	defer rp.Stop()
+
+	p, err := createOutboundPeerAndPerformHandshake(rp.Addr(), config)
 	require.Nil(err)
 
 	p.Start()
@@ -29,13 +55,13 @@ func TestPeerStartStop(t *testing.T) {
 	assert.True(p.IsRunning())
 }
 
-func createPeerAndPerformHandshake(addr *NetAddress) (*Peer, error) {
+func createOutboundPeerAndPerformHandshake(addr *NetAddress, config *PeerConfig) (*Peer, error) {
 	chDescs := []*ChannelDescriptor{
 		&ChannelDescriptor{ID: 0x01, Priority: 1},
 	}
 	reactorsByCh := map[byte]Reactor{0x01: NewTestReactor(chDescs, true)}
 	pk := crypto.GenPrivKeyEd25519()
-	p, err := newOutboundPeer(addr, reactorsByCh, chDescs, func(p *Peer, r interface{}) {}, pk)
+	p, err := newOutboundPeerWithConfig(addr, reactorsByCh, chDescs, func(p *Peer, r interface{}) {}, pk, config)
 	if err != nil {
 		return nil, err
 	}
@@ -53,12 +79,17 @@ func createPeerAndPerformHandshake(addr *NetAddress) (*Peer, error) {
 
 type remotePeer struct {
 	PrivKey crypto.PrivKeyEd25519
+	Config  *PeerConfig
 	addr    *NetAddress
 	quit    chan struct{}
 }
 
-func (p *remotePeer) RemoteAddr() *NetAddress {
+func (p *remotePeer) Addr() *NetAddress {
 	return p.addr
+}
+
+func (p *remotePeer) PubKey() crypto.PubKeyEd25519 {
+	return p.PrivKey.PubKey().(crypto.PubKeyEd25519)
 }
 
 func (p *remotePeer) Start() {
@@ -81,7 +112,7 @@ func (p *remotePeer) accept(l net.Listener) {
 		if err != nil {
 			golog.Fatalf("Failed to accept conn: %+v", err)
 		}
-		peer, err := newInboundPeer(conn, make(map[byte]Reactor), make([]*ChannelDescriptor, 0), func(p *Peer, r interface{}) {}, p.PrivKey)
+		peer, err := newInboundPeerWithConfig(conn, make(map[byte]Reactor), make([]*ChannelDescriptor, 0), func(p *Peer, r interface{}) {}, p.PrivKey, p.Config)
 		if err != nil {
 			golog.Fatalf("Failed to create a peer: %+v", err)
 		}
