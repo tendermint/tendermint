@@ -251,7 +251,6 @@ FOR_LOOP:
 						// TODO This is bad, are we zombie?
 						cmn.PanicQ(cmn.Fmt("Failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
 					}
-					bcR.state.Save()
 				}
 			}
 			continue FOR_LOOP

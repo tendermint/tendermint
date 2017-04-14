@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	abci "github.com/tendermint/abci/types"
 	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
 	dbm "github.com/tendermint/go-db"
@@ -16,7 +17,8 @@ import (
 )
 
 var (
-	stateKey = []byte("stateKey")
+	stateKey         = []byte("stateKey")
+	abciResponsesKey = []byte("abciResponsesKey")
 )
 
 //-----------------------------------------------------------------------------
@@ -31,7 +33,7 @@ type State struct {
 	GenesisDoc *types.GenesisDoc
 	ChainID    string
 
-	// updated at end of ExecBlock
+	// updated at end of SetBlockAndValidators
 	LastBlockHeight int // Genesis state has this set to 0.  So, Block(H=0) does not exist.
 	LastBlockID     types.BlockID
 	LastBlockTime   time.Time
@@ -42,6 +44,10 @@ type State struct {
 	AppHash []byte
 
 	TxIndexer txindex.TxIndexer `json:"-"` // Transaction indexer.
+
+	// Intermediate results from processing
+	// Persisted separately from the state
+	abciResponses *ABCIResponses
 }
 
 func LoadState(db dbm.DB) *State {
@@ -62,6 +68,8 @@ func loadState(db dbm.DB, key []byte) *State {
 		}
 		// TODO: ensure that buf is completely read.
 	}
+
+	s.LoadABCIResponses()
 	return s
 }
 
@@ -76,7 +84,8 @@ func (s *State) Copy() *State {
 		Validators:      s.Validators.Copy(),
 		LastValidators:  s.LastValidators.Copy(),
 		AppHash:         s.AppHash,
-		TxIndexer:       s.TxIndexer, // pointer here, not value
+		abciResponses:   s.abciResponses, // pointer here, not value
+		TxIndexer:       s.TxIndexer,     // pointer here, not value
 	}
 }
 
@@ -84,6 +93,37 @@ func (s *State) Save() {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 	s.db.SetSync(stateKey, s.Bytes())
+}
+
+// Sets the ABCIResponses in the state and writes them to disk
+func (s *State) SaveABCIResponses(abciResponses *ABCIResponses) {
+	s.abciResponses = abciResponses
+
+	// save the validators to the db
+	s.db.SetSync(abciResponsesKey, s.abciResponses.Bytes())
+
+	// save the tx results using the TxIndexer
+	batch := txindexer.NewBatch()
+	for i, r := range s.abciResponses.TxResults {
+		tx := s.abciResponses.Txs[i]
+		batch.Index(tx.Hash(), *r)
+	}
+	s.TxIndexer.Batch(batch)
+}
+
+func (s *State) LoadABCIResponses() {
+	s.abciResponses = new(ABCIResponses)
+
+	buf := s.db.Get(abciResponsesKey)
+	if len(buf) != 0 {
+		r, n, err := bytes.NewReader(buf), new(int), new(error)
+		wire.ReadBinaryPtr(&s.abciResponses.Validators, r, 0, n, err)
+		if *err != nil {
+			// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
+			Exit(Fmt("Data has been corrupted or its spec has changed: %v\n", *err))
+		}
+		// TODO: ensure that buf is completely read.
+	}
 }
 
 func (s *State) Equals(s2 *State) bool {
@@ -101,7 +141,21 @@ func (s *State) Bytes() []byte {
 
 // Mutate state variables to match block and validators
 // after running EndBlock
-func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader types.PartSetHeader, prevValSet, nextValSet *types.ValidatorSet) {
+func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader types.PartSetHeader) {
+
+	// copy the valset
+	prevValSet := s.Validators.Copy()
+	nextValSet := prevValSet.Copy()
+
+	// update the validator set
+	err := updateValidators(nextValSet, s.abciResponses.Validators)
+	if err != nil {
+		log.Warn("Error changing validator set", "error", err)
+		// TODO: err or carry on?
+	}
+	// Update validator accums and set state variables
+	nextValSet.IncrementAccum(1)
+
 	s.setBlockAndValidators(header.Height,
 		types.BlockID{header.Hash(), blockPartsHeader}, header.Time,
 		prevValSet, nextValSet)
@@ -132,6 +186,33 @@ func GetState(config cfg.Config, stateDB dbm.DB) *State {
 	}
 
 	return state
+}
+
+//--------------------------------------------------
+// ABCIResponses holds intermediate state during block processing
+
+type ABCIResponses struct {
+	Validators []*abci.Validator // changes to the validator set
+
+	Txs       types.Txs         // for reference later
+	TxResults []*types.TxResult // results of the txs, populated in the proxyCb
+}
+
+func NewABCIResponses(block *types.Block) *ABCIResponses {
+	return &ABCIResponses{
+		Txs:       block.Data.Txs,
+		TxResults: make([]*types.TxResult, block.NumTxs),
+	}
+}
+
+// Serialize the list of validators
+func (a *ABCIResponses) Bytes() []byte {
+	buf, n, err := new(bytes.Buffer), new(int), new(error)
+	wire.WriteBinary(a.Validators, buf, n, err)
+	if *err != nil {
+		PanicCrisis(*err)
+	}
+	return buf.Bytes()
 }
 
 //-----------------------------------------------------------------------------

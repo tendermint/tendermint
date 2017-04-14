@@ -1221,7 +1221,7 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	stateCopy := cs.state.Copy()
 	eventCache := types.NewEventCache(cs.evsw)
 
-	// Execute and commit the block, and update the mempool.
+	// Execute and commit the block, update and save the state, and update the mempool.
 	// All calls to the proxyAppConn should come here.
 	// NOTE: the block.AppHash wont reflect these txs until the next block
 	err := stateCopy.ApplyBlock(eventCache, cs.proxyAppConn, block, blockParts.Header(), cs.mempool)
@@ -1233,13 +1233,9 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	fail.Fail() // XXX
 
 	// Fire off event for new block.
-	// TODO: Handle app failure.  See #177
 	types.FireEventNewBlock(cs.evsw, types.EventDataNewBlock{block})
 	types.FireEventNewBlockHeader(cs.evsw, types.EventDataNewBlockHeader{block.Header})
 	eventCache.Flush()
-
-	// Save the state.
-	stateCopy.Save()
 
 	fail.Fail() // XXX
 
