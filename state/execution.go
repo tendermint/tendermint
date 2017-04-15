@@ -43,7 +43,6 @@ func execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn proxy.AppConnCo
 	var validTxs, invalidTxs = 0, 0
 
 	txIndex := 0
-
 	abciResponses := NewABCIResponses(block)
 
 	// Execute transactions and get hash
@@ -64,7 +63,7 @@ func execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn proxy.AppConnCo
 				txError = txResult.Code.String()
 			}
 
-			abciResponses.TxResults[txIndex] = &types.TxResult{uint64(block.Height), uint32(txIndex), *txResult}
+			abciResponses.DeliverTx[txIndex] = txResult
 			txIndex++
 
 			// NOTE: if we count we can access the tx from the block instead of
@@ -103,7 +102,7 @@ func execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn proxy.AppConnCo
 	fail.Fail() // XXX
 
 	// End block
-	respEndBlock, err := proxyAppConn.EndBlockSync(uint64(block.Height))
+	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(uint64(block.Height))
 	if err != nil {
 		log.Warn("Error in proxyAppConn.EndBlock", "error", err)
 		return nil, err
@@ -111,11 +110,12 @@ func execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn proxy.AppConnCo
 
 	fail.Fail() // XXX
 
+	valDiff := abciResponses.EndBlock.Diffs
+
 	log.Info("Executed block", "height", block.Height, "valid txs", validTxs, "invalid txs", invalidTxs)
-	if len(respEndBlock.Diffs) > 0 {
-		log.Info("Update to validator set", "updates", abci.ValidatorsString(respEndBlock.Diffs))
+	if len(valDiff) > 0 {
+		log.Info("Update to validator set", "updates", abci.ValidatorsString(valDiff))
 	}
-	abciResponses.Validators = respEndBlock.Diffs
 
 	return abciResponses, nil
 }
@@ -229,7 +229,7 @@ func (s *State) ApplyBlock(eventCache types.Fireable, proxyAppConn proxy.AppConn
 	fail.Fail() // XXX
 
 	// now update the block and validators
-	s.SetBlockAndValidators(block.Header, partsHeader)
+	s.SetBlockAndValidators(block.Header, partsHeader, abciResponses)
 
 	// lock mempool, commit state, update mempoool
 	err = s.CommitStateUpdateMempool(proxyAppConn, block, mempool)

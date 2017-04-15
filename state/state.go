@@ -68,8 +68,6 @@ func loadState(db dbm.DB, key []byte) *State {
 		}
 		// TODO: ensure that buf is completely read.
 	}
-
-	s.LoadABCIResponses()
 	return s
 }
 
@@ -84,8 +82,7 @@ func (s *State) Copy() *State {
 		Validators:      s.Validators.Copy(),
 		LastValidators:  s.LastValidators.Copy(),
 		AppHash:         s.AppHash,
-		abciResponses:   s.abciResponses, // pointer here, not value
-		TxIndexer:       s.TxIndexer,     // pointer here, not value
+		TxIndexer:       s.TxIndexer, // pointer here, not value
 	}
 }
 
@@ -96,34 +93,36 @@ func (s *State) Save() {
 }
 
 // Sets the ABCIResponses in the state and writes them to disk
+// in case we crash after app.Commit and before s.Save()
 func (s *State) SaveABCIResponses(abciResponses *ABCIResponses) {
-	s.abciResponses = abciResponses
 
 	// save the validators to the db
-	s.db.SetSync(abciResponsesKey, s.abciResponses.Bytes())
+	s.db.SetSync(abciResponsesKey, abciResponses.Bytes())
 
 	// save the tx results using the TxIndexer
+	// NOTE: these may be overwriting, but the values should be the same.
 	batch := txindexer.NewBatch()
-	for i, r := range s.abciResponses.TxResults {
-		tx := s.abciResponses.Txs[i]
-		batch.Index(tx.Hash(), *r)
+	for i, d := range abciResponses.DeliverTx {
+		tx := abciResponses.txs[i]
+		batch.Index(tx.Hash(), types.TxResult{uint64(abciResponses.height), uint32(i), *d})
 	}
 	s.TxIndexer.Batch(batch)
 }
 
-func (s *State) LoadABCIResponses() {
-	s.abciResponses = new(ABCIResponses)
+func (s *State) LoadABCIResponses() *ABCIResponses {
+	abciResponses := new(ABCIResponses)
 
 	buf := s.db.Get(abciResponsesKey)
 	if len(buf) != 0 {
 		r, n, err := bytes.NewReader(buf), new(int), new(error)
-		wire.ReadBinaryPtr(&s.abciResponses.Validators, r, 0, n, err)
+		wire.ReadBinaryPtr(&abciResponses.EndBlock.Diffs, r, 0, n, err)
 		if *err != nil {
 			// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 			Exit(Fmt("Data has been corrupted or its spec has changed: %v\n", *err))
 		}
 		// TODO: ensure that buf is completely read.
 	}
+	return abciResponses
 }
 
 func (s *State) Equals(s2 *State) bool {
@@ -141,14 +140,14 @@ func (s *State) Bytes() []byte {
 
 // Mutate state variables to match block and validators
 // after running EndBlock
-func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader types.PartSetHeader) {
+func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader types.PartSetHeader, abciResponses *ABCIResponses) {
 
 	// copy the valset
 	prevValSet := s.Validators.Copy()
 	nextValSet := prevValSet.Copy()
 
 	// update the validator set with the latest abciResponses
-	err := updateValidators(nextValSet, s.abciResponses.Validators)
+	err := updateValidators(nextValSet, abciResponses.EndBlock.Diffs)
 	if err != nil {
 		log.Warn("Error changing validator set", "error", err)
 		// TODO: err or carry on?
@@ -192,23 +191,25 @@ func GetState(config cfg.Config, stateDB dbm.DB) *State {
 // ABCIResponses holds intermediate state during block processing
 
 type ABCIResponses struct {
-	Validators []*abci.Validator // changes to the validator set
+	height int
+	txs    types.Txs // for reference later
 
-	Txs       types.Txs         // for reference later
-	TxResults []*types.TxResult // results of the txs, populated in the proxyCb
+	DeliverTx []*abci.ResponseDeliverTx // results of the txs, populated in the proxyCb
+	EndBlock  abci.ResponseEndBlock     // changes to the validator set
 }
 
 func NewABCIResponses(block *types.Block) *ABCIResponses {
 	return &ABCIResponses{
-		Txs:       block.Data.Txs,
-		TxResults: make([]*types.TxResult, block.NumTxs),
+		height:    block.Height,
+		txs:       block.Data.Txs,
+		DeliverTx: make([]*abci.ResponseDeliverTx, block.NumTxs),
 	}
 }
 
 // Serialize the list of validators
 func (a *ABCIResponses) Bytes() []byte {
 	buf, n, err := new(bytes.Buffer), new(int), new(error)
-	wire.WriteBinary(a.Validators, buf, n, err)
+	wire.WriteBinary(a.EndBlock, buf, n, err)
 	if *err != nil {
 		PanicCrisis(*err)
 	}
