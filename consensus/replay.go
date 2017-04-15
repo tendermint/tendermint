@@ -115,12 +115,31 @@ func (cs *ConsensusState) catchupReplay(csHeight int) error {
 	gr, found, err = cs.wal.group.Search("#ENDHEIGHT: ", makeHeightSearchFunc(csHeight-1))
 	if err == io.EOF {
 		log.Warn("Replay: wal.group.Search returned EOF", "#ENDHEIGHT", csHeight-1)
-		return nil
+		// if we upgraded from 0.9 to 0.9.1, we may have #HEIGHT instead
+		// TODO (0.10.0): remove this
+		gr, found, err = cs.wal.group.Search("#HEIGHT: ", makeHeightSearchFunc(csHeight))
+		if err == io.EOF {
+			log.Warn("Replay: wal.group.Search returned EOF", "#HEIGHT", csHeight)
+			return nil
+		} else if err != nil {
+			return err
+		}
 	} else if err != nil {
 		return err
 	}
 	if !found {
-		return errors.New(Fmt("Cannot replay height %d. WAL does not contain #ENDHEIGHT for %d.", csHeight, csHeight-1))
+		// if we upgraded from 0.9 to 0.9.1, we may have #HEIGHT instead
+		// TODO (0.10.0): remove this
+		gr, found, err = cs.wal.group.Search("#HEIGHT: ", makeHeightSearchFunc(csHeight))
+		if err == io.EOF {
+			log.Warn("Replay: wal.group.Search returned EOF", "#HEIGHT", csHeight)
+			return nil
+		} else if err != nil {
+			return err
+		}
+
+		// TODO (0.10.0): uncomment
+		// return errors.New(Fmt("Cannot replay height %d. WAL does not contain #ENDHEIGHT for %d.", csHeight, csHeight-1))
 	}
 	defer gr.Close()
 
