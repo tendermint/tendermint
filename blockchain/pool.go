@@ -240,7 +240,9 @@ func (pool *BlockPool) RemovePeer(peerID string) {
 func (pool *BlockPool) removePeer(peerID string) {
 	for _, requester := range pool.requesters {
 		if requester.getPeerID() == peerID {
-			pool.numPending++
+			if requester.getBlock() != nil {
+				pool.numPending++
+			}
 			go requester.redo() // pick another peer and ...
 		}
 	}
