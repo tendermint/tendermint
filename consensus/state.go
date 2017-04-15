@@ -1202,12 +1202,6 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 
 	fail.Fail() // XXX
 
-	if cs.wal != nil {
-		cs.wal.writeEndHeight(height)
-	}
-
-	fail.Fail() // XXX
-
 	// Save to blockStore.
 	if cs.blockStore.Height() < block.Height {
 		// NOTE: the seenCommit is local justification to commit this block,
@@ -1222,13 +1216,22 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 
 	fail.Fail() // XXX
 
+	// Finish writing to the WAL for this height.
+	// NOTE: ConsensusState should not be started again
+	// until we successfully call ApplyBlock (eg. in Handshake after restart)
+	if cs.wal != nil {
+		cs.wal.writeEndHeight(height)
+	}
+
+	fail.Fail() // XXX
+
 	// Create a copy of the state for staging
 	// and an event cache for txs
 	stateCopy := cs.state.Copy()
 	eventCache := types.NewEventCache(cs.evsw)
 
 	// Execute and commit the block, update and save the state, and update the mempool.
-	// All calls to the proxyAppConn should come here.
+	// All calls to the proxyAppConn come here.
 	// NOTE: the block.AppHash wont reflect these txs until the next block
 	err := stateCopy.ApplyBlock(eventCache, cs.proxyAppConn, block, blockParts.Header(), cs.mempool)
 	if err != nil {
@@ -1238,7 +1241,12 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 
 	fail.Fail() // XXX
 
-	// Fire off event for new block.
+	// Fire event for new block.
+	// NOTE: If we fail before firing, these events will never fire
+	//
+	// Some options (for which they may fire more than once. I guess that's fine):
+	// 	* Fire before persisting state, in ApplyBlock
+	//	* Fire on start up if we haven't written any new WAL msgs
 	types.FireEventNewBlock(cs.evsw, types.EventDataNewBlock{block})
 	types.FireEventNewBlockHeader(cs.evsw, types.EventDataNewBlockHeader{block.Header})
 	eventCache.Flush()

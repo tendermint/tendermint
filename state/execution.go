@@ -223,6 +223,9 @@ func (s *State) ApplyBlock(eventCache types.Fireable, proxyAppConn proxy.AppConn
 
 	fail.Fail() // XXX
 
+	// index txs. This could run in the background
+	s.indexTxs(abciResponses)
+
 	// save the results before we commit
 	s.SaveABCIResponses(abciResponses)
 
@@ -276,6 +279,17 @@ func (s *State) CommitStateUpdateMempool(proxyAppConn proxy.AppConnConsensus, bl
 	mempool.Update(block.Height, block.Txs)
 
 	return nil
+}
+
+func (s *State) indexTxs(abciResponses *ABCIResponses) {
+	// save the tx results using the TxIndexer
+	// NOTE: these may be overwriting, but the values should be the same.
+	batch := txindexer.NewBatch()
+	for i, d := range abciResponses.DeliverTx {
+		tx := abciResponses.txs[i]
+		batch.Index(tx.Hash(), types.TxResult{uint64(abciResponses.Height), uint32(i), *d})
+	}
+	s.TxIndexer.Batch(batch)
 }
 
 // Apply and commit a block, but without all the state validation.

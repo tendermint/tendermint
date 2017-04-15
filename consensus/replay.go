@@ -101,6 +101,8 @@ func (cs *ConsensusState) catchupReplay(csHeight int) error {
 	defer func() { cs.replayMode = false }()
 
 	// Ensure that ENDHEIGHT for this height doesn't exist
+	// NOTE: This is just a sanity check. As far as we know things work fine without it,
+	// and Handshake could reuse ConsensusState if it weren't for this check (since we can crash after writing ENDHEIGHT).
 	gr, found, err := cs.wal.group.Search("#ENDHEIGHT: ", makeHeightSearchFunc(csHeight))
 	if found {
 		return errors.New(Fmt("WAL should not contain height %d.", csHeight))
@@ -273,15 +275,18 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, proxyApp p
 
 		} else if appBlockHeight == stateBlockHeight {
 			// We haven't run Commit (both the state and app are one block behind),
-			// so run through consensus with the real app
+			// so ApplyBlock with the real app.
+			// NOTE: We could instead use the cs.WAL on cs.Start,
+			// but we'd have to allow the WAL to replay a block that wrote it's ENDHEIGHT
 			log.Info("Replay last block using real app")
-			return h.replayLastBlock(proxyApp.Consensus())
+			return h.replayLastBlock(storeBlockHeight, proxyApp.Consensus())
 
 		} else if appBlockHeight == storeBlockHeight {
-			// We ran Commit, but didn't save the state, so run through consensus with mock app
-			mockApp := newMockProxyApp(appHash)
+			// We ran Commit, but didn't save the state, so ApplyBlock with mock app
+			abciResponses := h.state.LoadABCIResponses()
+			mockApp := newMockProxyApp(appHash, abciResponses)
 			log.Info("Replay last block using mock app")
-			return h.replayLastBlock(mockApp)
+			return h.replayLastBlock(storeBlockHeight, mockApp)
 		}
 
 	}
@@ -323,26 +328,21 @@ func (h *Handshaker) replayBlocks(proxyApp proxy.AppConns, appBlockHeight, store
 	return appHash, h.checkAppHash(appHash)
 }
 
-// Replay the last block through the consensus and return the AppHash from after Commit.
-func (h *Handshaker) replayLastBlock(proxyApp proxy.AppConnConsensus) ([]byte, error) {
+// ApplyBlock on the proxyApp with the last block.
+func (h *Handshaker) replayLastBlock(height int, proxyApp proxy.AppConnConsensus) ([]byte, error) {
 	mempool := types.MockMempool{}
-	cs := NewConsensusState(h.config, h.state, proxyApp, h.store, mempool)
 
-	evsw := types.NewEventSwitch()
-	evsw.Start()
-	defer evsw.Stop()
-	cs.SetEventSwitch(evsw)
+	var eventCache types.Fireable // nil
+	block := h.store.LoadBlock(height)
+	meta := h.store.LoadBlockMeta(height)
 
-	log.Notice("Attempting to replay last block", "height", h.store.Height())
-	// run through the WAL, commit new block, stop
-	if _, err := cs.Start(); err != nil {
+	if err := h.state.ApplyBlock(eventCache, proxyApp, block, meta.BlockID.PartsHeader, mempool); err != nil {
 		return nil, err
 	}
-	cs.Stop()
 
 	h.nBlocks += 1
 
-	return cs.state.AppHash, nil
+	return h.state.AppHash, nil
 }
 
 func (h *Handshaker) checkAppHash(appHash []byte) error {
@@ -354,9 +354,14 @@ func (h *Handshaker) checkAppHash(appHash []byte) error {
 }
 
 //--------------------------------------------------------------------------------
+// mockProxyApp uses ABCIResponses to give the right results
+// Useful because we don't want to call Commit() twice for the same block on the real app.
 
-func newMockProxyApp(appHash []byte) proxy.AppConnConsensus {
-	clientCreator := proxy.NewLocalClientCreator(&mockProxyApp{appHash: appHash})
+func newMockProxyApp(appHash []byte, abciResponses *sm.ABCIResponses) proxy.AppConnConsensus {
+	clientCreator := proxy.NewLocalClientCreator(&mockProxyApp{
+		appHash:       appHash,
+		abciResponses: abciResponses,
+	})
 	cli, _ := clientCreator.NewABCIClient()
 	return proxy.NewAppConnConsensus(cli)
 }
@@ -364,7 +369,24 @@ func newMockProxyApp(appHash []byte) proxy.AppConnConsensus {
 type mockProxyApp struct {
 	abci.BaseApplication
 
-	appHash []byte
+	appHash       []byte
+	txCount       int
+	abciResponses *sm.ABCIResponses
+}
+
+func (mock *mockProxyApp) DeliverTx(tx []byte) abci.Result {
+	r := mock.abciResponses.DeliverTx[mock.txCount]
+	mock.txCount += 1
+	return abci.Result{
+		r.Code,
+		r.Data,
+		r.Log,
+	}
+}
+
+func (mock *mockProxyApp) EndBlock(height uint64) abci.ResponseEndBlock {
+	mock.txCount = 0
+	return mock.abciResponses.EndBlock
 }
 
 func (mock *mockProxyApp) Commit() abci.Result {
