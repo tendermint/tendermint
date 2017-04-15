@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"fmt"
 	"io/ioutil"
 	"time"
 
@@ -13,9 +14,9 @@ import (
 
 var runNodeCmd = &cobra.Command{
 	Use:    "node",
-	Short:  "Run the tendermint node",
+	Short:  "RunE the tendermint node",
 	PreRun: setConfigFlags,
-	Run:    runNode,
+	RunE:   runNode,
 }
 
 //flags
@@ -82,7 +83,7 @@ func setConfigFlags(cmd *cobra.Command, args []string) {
 // should import github.com/tendermint/tendermint/node and implement
 // their own run_node to call node.NewNode (instead of node.NewNodeDefault)
 // with their custom priv validator and/or custom proxy.ClientCreator
-func runNode(cmd *cobra.Command, args []string) {
+func runNode(cmd *cobra.Command, args []string) error {
 
 	// Wait until the genesis doc becomes available
 	// This is for Mintnet compatibility.
@@ -98,14 +99,14 @@ func runNode(cmd *cobra.Command, args []string) {
 			}
 			jsonBlob, err := ioutil.ReadFile(genDocFile)
 			if err != nil {
-				Exit(Fmt("Couldn't read GenesisDoc file: %v", err))
+				return fmt.Errorf("Couldn't read GenesisDoc file: %v", err)
 			}
 			genDoc, err := types.GenesisDocFromJSON(jsonBlob)
 			if err != nil {
-				Exit(Fmt("Error reading GenesisDoc: %v", err))
+				return fmt.Errorf("Error reading GenesisDoc: %v", err)
 			}
 			if genDoc.ChainID == "" {
-				Exit(Fmt("Genesis doc %v must include non-empty chain_id", genDocFile))
+				return fmt.Errorf("Genesis doc %v must include non-empty chain_id", genDocFile)
 			}
 			config.Set("chain_id", genDoc.ChainID)
 		}
@@ -114,11 +115,13 @@ func runNode(cmd *cobra.Command, args []string) {
 	// Create & start node
 	n := node.NewNodeDefault(config)
 	if _, err := n.Start(); err != nil {
-		Exit(Fmt("Failed to start node: %v", err))
+		return fmt.Errorf("Failed to start node: %v", err)
 	} else {
 		log.Notice("Started node", "nodeInfo", n.Switch().NodeInfo())
 	}
 
 	// Trap signal, run forever.
 	n.RunForever()
+
+	return nil
 }
