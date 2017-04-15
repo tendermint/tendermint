@@ -2,7 +2,7 @@
 
 [![CircleCI](https://circleci.com/gh/tendermint/abci.svg?style=svg)](https://circleci.com/gh/tendermint/abci)
 
-Blockchains are a system for multi-master state machine replication. 
+Blockchains are a system for multi-master state machine replication.
 **ABCI** is an interface that defines the boundary between the replication engine (the blockchain),
 and the state machine (the application).
 By using a socket protocol, we enable a consensus engine running in one process
@@ -14,14 +14,15 @@ and the more detailed [application developer's guide](https://tendermint.com/doc
 Previously, the ABCI was referred to as TMSP.
 
 Other implementations:
-* [cpp-tmsp](https://github.com/mdyring/cpp-tmsp) by Martin Dyring-Andersen
-* [js-abci](https://github.com/tendermint/js-abci)
-* [jABCI](https://github.com/jTendermint/jabci) for Java
+* C++ [cpp-tmsp](https://github.com/mdyring/cpp-tmsp) by Martin Dyring-Andersen
+* JavaScript [js-abci](https://github.com/tendermint/js-abci)
+* Java [jABCI](https://github.com/jTendermint/jabci)
+* Erlang [abci_server](https://github.com/KrzysiekJ/abci_server) by Krzysztof Jurewicz
 
 # Specification
 
 The [primary specification](https://github.com/tendermint/abci/blob/master/types/types.proto) is made using Protocol Buffers.
-To build it, run 
+To build it, run
 
 ```
 make protoc
@@ -154,7 +155,7 @@ We provide three implementations of the ABCI in Go:
 
 ## Socket
 
-ABCI is best implemented as a streaming protocol. 
+ABCI is best implemented as a streaming protocol.
 The socket implementation provides for asynchronous, ordered message passing over unix or tcp.
 Messages are serialized using Protobuf3 and length-prefixed.
 Protobuf3 doesn't have an official length-prefix standard, so we use our own.  The first byte represents the length of the big-endian encoded length.
@@ -164,7 +165,7 @@ For example, if the Protobuf3 encoded ABCI message is `0xDEADBEEF` (4 bytes), th
 ## GRPC
 
 GRPC is an rpc framework native to Protocol Buffers with support in many languages.
-Implementing the ABCI using GRPC can allow for faster prototyping, but is expected to be much slower than 
+Implementing the ABCI using GRPC can allow for faster prototyping, but is expected to be much slower than
 the ordered, asynchronous socket protocol.
 
 Note the length-prefixing used in the socket implementation does not apply for GRPC.
