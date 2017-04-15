@@ -105,7 +105,7 @@ func (cs *ConsensusState) catchupReplay(csHeight int) error {
 	// and Handshake could reuse ConsensusState if it weren't for this check (since we can crash after writing ENDHEIGHT).
 	gr, found, err := cs.wal.group.Search("#ENDHEIGHT: ", makeHeightSearchFunc(csHeight))
 	if found {
-		return errors.New(Fmt("WAL should not contain height %d.", csHeight))
+		return errors.New(Fmt("WAL should not contain #ENDHEIGHT %d.", csHeight))
 	}
 	if gr != nil {
 		gr.Close()
@@ -114,13 +114,13 @@ func (cs *ConsensusState) catchupReplay(csHeight int) error {
 	// Search for last height marker
 	gr, found, err = cs.wal.group.Search("#ENDHEIGHT: ", makeHeightSearchFunc(csHeight-1))
 	if err == io.EOF {
-		log.Warn("Replay: wal.group.Search returned EOF", "height", csHeight-1)
+		log.Warn("Replay: wal.group.Search returned EOF", "#ENDHEIGHT", csHeight-1)
 		return nil
 	} else if err != nil {
 		return err
 	}
 	if !found {
-		return errors.New(Fmt("WAL does not contain height %d.", csHeight))
+		return errors.New(Fmt("Cannot replay height %d. WAL does not contain #ENDHEIGHT for %d.", csHeight, csHeight-1))
 	}
 	defer gr.Close()
 
@@ -275,18 +275,18 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, proxyApp p
 
 		} else if appBlockHeight == stateBlockHeight {
 			// We haven't run Commit (both the state and app are one block behind),
-			// so ApplyBlock with the real app.
+			// so replayBlock with the real app.
 			// NOTE: We could instead use the cs.WAL on cs.Start,
 			// but we'd have to allow the WAL to replay a block that wrote it's ENDHEIGHT
 			log.Info("Replay last block using real app")
-			return h.replayLastBlock(storeBlockHeight, proxyApp.Consensus())
+			return h.replayBlock(storeBlockHeight, proxyApp.Consensus())
 
 		} else if appBlockHeight == storeBlockHeight {
-			// We ran Commit, but didn't save the state, so ApplyBlock with mock app
+			// We ran Commit, but didn't save the state, so replayBlock with mock app
 			abciResponses := h.state.LoadABCIResponses()
 			mockApp := newMockProxyApp(appHash, abciResponses)
 			log.Info("Replay last block using mock app")
-			return h.replayLastBlock(storeBlockHeight, mockApp)
+			return h.replayBlock(storeBlockHeight, mockApp)
 		}
 
 	}
@@ -295,18 +295,18 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, proxyApp p
 	return nil, nil
 }
 
-func (h *Handshaker) replayBlocks(proxyApp proxy.AppConns, appBlockHeight, storeBlockHeight int, useReplayFunc bool) ([]byte, error) {
+func (h *Handshaker) replayBlocks(proxyApp proxy.AppConns, appBlockHeight, storeBlockHeight int, mutateState bool) ([]byte, error) {
 	// App is further behind than it should be, so we need to replay blocks.
 	// We replay all blocks from appBlockHeight+1.
-	// If useReplayFunc == true, stop short of the last block
-	// so it can be replayed using the WAL in ReplayBlocks.
 	// Note that we don't have an old version of the state,
-	// so we by-pass state validation using sm.ApplyBlock.
+	// so we by-pass state validation/mutation using sm.ApplyBlock.
+	// If mutateState == true, stop short of the last block
+	// so it can be replayed with a real state.ApplyBlock
 
 	var appHash []byte
 	var err error
 	finalBlock := storeBlockHeight
-	if useReplayFunc {
+	if mutateState {
 		finalBlock -= 1
 	}
 	for i := appBlockHeight + 1; i <= finalBlock; i++ {
@@ -320,7 +320,7 @@ func (h *Handshaker) replayBlocks(proxyApp proxy.AppConns, appBlockHeight, store
 		h.nBlocks += 1
 	}
 
-	if useReplayFunc {
+	if mutateState {
 		// sync the final block
 		return h.ReplayBlocks(appHash, finalBlock, proxyApp)
 	}
@@ -329,7 +329,7 @@ func (h *Handshaker) replayBlocks(proxyApp proxy.AppConns, appBlockHeight, store
 }
 
 // ApplyBlock on the proxyApp with the last block.
-func (h *Handshaker) replayLastBlock(height int, proxyApp proxy.AppConnConsensus) ([]byte, error) {
+func (h *Handshaker) replayBlock(height int, proxyApp proxy.AppConnConsensus) ([]byte, error) {
 	mempool := types.MockMempool{}
 
 	var eventCache types.Fireable // nil

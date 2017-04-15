@@ -88,18 +88,13 @@ func execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn proxy.AppConnCo
 		return nil, err
 	}
 
-	fail.Fail() // XXX
-
 	// Run txs of block
 	for _, tx := range block.Txs {
-		fail.FailRand(len(block.Txs)) // XXX
 		proxyAppConn.DeliverTxAsync(tx)
 		if err := proxyAppConn.Error(); err != nil {
 			return nil, err
 		}
 	}
-
-	fail.Fail() // XXX
 
 	// End block
 	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(uint64(block.Height))
@@ -107,8 +102,6 @@ func execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn proxy.AppConnCo
 		log.Warn("Error in proxyAppConn.EndBlock", "error", err)
 		return nil, err
 	}
-
-	fail.Fail() // XXX
 
 	valDiff := abciResponses.EndBlock.Diffs
 
@@ -292,9 +285,8 @@ func (s *State) indexTxs(abciResponses *ABCIResponses) {
 	s.TxIndexer.Batch(batch)
 }
 
-// Apply and commit a block, but without all the state validation.
+// Apply and commit a block on the proxyApp without validating or mutating the state
 // Returns the application root hash (result of abci.Commit)
-// TODO handle abciResponses
 func ApplyBlock(appConnConsensus proxy.AppConnConsensus, block *types.Block) ([]byte, error) {
 	var eventCache types.Fireable // nil
 	_, err := execBlockOnProxyApp(eventCache, appConnConsensus, block)

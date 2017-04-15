@@ -1217,8 +1217,12 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	fail.Fail() // XXX
 
 	// Finish writing to the WAL for this height.
-	// NOTE: ConsensusState should not be started again
-	// until we successfully call ApplyBlock (eg. in Handshake after restart)
+	// NOTE: If we fail before writing this, we'll never write it,
+	// and just recover by running ApplyBlock in the Handshake.
+	// If we moved it before persisting the block, we'd have to allow
+	// WAL replay for blocks with an #ENDHEIGHT
+	// As is, ConsensusState should not be started again
+	// until we successfully call ApplyBlock (ie. here or in Handshake after restart)
 	if cs.wal != nil {
 		cs.wal.writeEndHeight(height)
 	}
@@ -1244,9 +1248,10 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	// Fire event for new block.
 	// NOTE: If we fail before firing, these events will never fire
 	//
-	// Some options (for which they may fire more than once. I guess that's fine):
+	// TODO: Either
 	// 	* Fire before persisting state, in ApplyBlock
 	//	* Fire on start up if we haven't written any new WAL msgs
+	//   Both options mean we may fire more than once. Is that fine ?
 	types.FireEventNewBlock(cs.evsw, types.EventDataNewBlock{block})
 	types.FireEventNewBlockHeader(cs.evsw, types.EventDataNewBlockHeader{block.Header})
 	eventCache.Flush()
@@ -1255,6 +1260,8 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 
 	// NewHeightStep!
 	cs.updateToState(stateCopy)
+
+	fail.Fail() // XXX
 
 	// cs.StartTime is already set.
 	// Schedule Round0 to start soon.

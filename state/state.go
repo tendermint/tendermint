@@ -186,7 +186,7 @@ type ABCIResponses struct {
 	DeliverTx []*abci.ResponseDeliverTx
 	EndBlock  abci.ResponseEndBlock
 
-	txs types.Txs // for reference later
+	txs types.Txs // reference for indexing results by hash
 }
 
 func NewABCIResponses(block *types.Block) *ABCIResponses {
