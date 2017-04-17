@@ -135,13 +135,13 @@ func (a *AddrBook) OnStart() error {
 	return nil
 }
 
-func (a *AddrBook) Wait() {
-	a.wg.Wait()
-}
-
 // OnStop implements Service.
 func (a *AddrBook) OnStop() {
 	a.BaseService.OnStop()
+}
+
+func (a *AddrBook) Wait() {
+	a.wg.Wait()
 }
 
 func (a *AddrBook) AddOurAddress(addr *NetAddress) {
@@ -320,6 +320,8 @@ type addrBookJSON struct {
 func (a *AddrBook) saveToFile(filePath string) {
 	log.Info("Saving AddrBook to file", "size", a.Size())
 
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
 	// Compile Addrs
 	addrs := []*knownAddress{}
 	for _, ka := range a.addrLookup {
