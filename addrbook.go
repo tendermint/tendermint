@@ -73,7 +73,12 @@ const (
 	serializationVersion = 1
 )
 
-/* AddrBook - concurrency safe peer address manager */
+const (
+	bucketTypeNew = 0x01
+	bucketTypeOld = 0x02
+)
+
+// AddrBook - concurrency safe peer address manager.
 type AddrBook struct {
 	BaseService
 
@@ -86,15 +91,12 @@ type AddrBook struct {
 	addrLookup        map[string]*knownAddress // new & old
 	addrNew           []map[string]*knownAddress
 	addrOld           []map[string]*knownAddress
+	wg                sync.WaitGroup
 	nOld              int
 	nNew              int
 }
 
-const (
-	bucketTypeNew = 0x01
-	bucketTypeOld = 0x02
-)
-
+// NewAddrBook creates a new address book.
 // Use Start to begin processing asynchronous address updates.
 func NewAddrBook(filePath string, routabilityStrict bool) *AddrBook {
 	am := &AddrBook{
@@ -124,19 +126,22 @@ func (a *AddrBook) init() {
 	}
 }
 
+// OnStart implements Service.
 func (a *AddrBook) OnStart() error {
 	a.BaseService.OnStart()
 	a.loadFromFile(a.filePath)
+	a.wg.Add(1)
 	go a.saveRoutine()
 	return nil
 }
 
-func (a *AddrBook) OnStop() {
-	a.BaseService.OnStop()
+func (a *AddrBook) Wait() {
+	a.wg.Wait()
 }
 
-func (a *AddrBook) Wait() {
-	a.saveToFile(a.filePath)
+// OnStop implements Service.
+func (a *AddrBook) OnStop() {
+	a.BaseService.OnStop()
 }
 
 func (a *AddrBook) AddOurAddress(addr *NetAddress) {
@@ -399,6 +404,7 @@ out:
 	}
 	dumpAddressTicker.Stop()
 	a.saveToFile(a.filePath)
+	a.wg.Done()
 	log.Notice("Address handler done")
 }
 
