@@ -84,7 +84,12 @@ func execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn proxy.AppConnCo
 				txError = txResult.Code.String()
 			}
 
-			txResults[txIndex] = &types.TxResult{uint64(block.Height), uint32(txIndex), *txResult}
+			txResults[txIndex] = &types.TxResult{
+				Height: uint64(block.Height),
+				Index:  uint32(txIndex),
+				Tx:     req.GetDeliverTx().Tx,
+				Result: *txResult,
+			}
 			txIndex++
 
 			// NOTE: if we count we can access the tx from the block instead of

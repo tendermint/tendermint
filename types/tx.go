@@ -106,7 +106,8 @@ func (tp TxProof) Validate(dataHash []byte) error {
 //
 // One usage is indexing transaction results.
 type TxResult struct {
-	Height    uint64                 `json:"height"`
-	Index     uint32                 `json:"index"`
-	DeliverTx abci.ResponseDeliverTx `json:"deliver_tx"`
+	Height uint64                 `json:"height"`
+	Index  uint32                 `json:"index"`
+	Tx     Tx                     `json:"tx"`
+	Result abci.ResponseDeliverTx `json:"result"`
 }

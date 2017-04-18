@@ -7,7 +7,7 @@ import (
 	p2p "github.com/tendermint/go-p2p"
 	"github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/proxy"
-	"github.com/tendermint/tendermint/state/tx"
+	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -46,7 +46,7 @@ var (
 	pubKey    crypto.PubKey
 	genDoc    *types.GenesisDoc // cache the genesis structure
 	addrBook  *p2p.AddrBook
-	txIndexer tx.Indexer
+	txIndexer txindex.TxIndexer
 )
 
 func SetConfig(c cfg.Config) {
@@ -89,6 +89,6 @@ func SetProxyAppQuery(appConn proxy.AppConnQuery) {
 	proxyAppQuery = appConn
 }
 
-func SetTxIndexer(indexer tx.Indexer) {
+func SetTxIndexer(indexer txindex.TxIndexer) {
 	txIndexer = indexer
 }

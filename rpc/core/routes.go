@@ -19,7 +19,7 @@ var Routes = map[string]*rpc.RPCFunc{
 	"genesis":              rpc.NewRPCFunc(GenesisResult, ""),
 	"block":                rpc.NewRPCFunc(BlockResult, "height"),
 	"commit":               rpc.NewRPCFunc(CommitResult, "height"),
-	"tx":                   rpc.NewRPCFunc(TxResult, "hash,height,index,prove"),
+	"tx":                   rpc.NewRPCFunc(TxResult, "hash,prove"),
 	"validators":           rpc.NewRPCFunc(ValidatorsResult, ""),
 	"dump_consensus_state": rpc.NewRPCFunc(DumpConsensusStateResult, ""),
 	"unconfirmed_txs":      rpc.NewRPCFunc(UnconfirmedTxsResult, ""),
@@ -100,8 +100,8 @@ func NumUnconfirmedTxsResult() (ctypes.TMResult, error) {
 // Tx allow user to query the transaction results. `nil` could mean the
 // transaction is in the mempool, invalidated, or was not send in the first
 // place.
-func TxResult(hash []byte, height, index int, prove bool) (ctypes.TMResult, error) {
-	return Tx(hash, height, index, prove)
+func TxResult(hash []byte, prove bool) (ctypes.TMResult, error) {
+	return Tx(hash, prove)
 }
 
 func BroadcastTxCommitResult(tx []byte) (ctypes.TMResult, error) {

@@ -160,13 +160,11 @@ func (c *HTTP) Commit(height int) (*ctypes.ResultCommit, error) {
 	return (*tmResult).(*ctypes.ResultCommit), nil
 }
 
-func (c *HTTP) Tx(hash []byte, height, index int, prove bool) (*ctypes.ResultTx, error) {
+func (c *HTTP) Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	tmResult := new(ctypes.TMResult)
 	query := map[string]interface{}{
-		"height": height,
-		"index":  index,
-		"hash":   hash,
-		"prove":  prove,
+		"hash":  hash,
+		"prove": prove,
 	}
 	_, err := c.rpc.Call("tx", query, tmResult)
 	if err != nil {

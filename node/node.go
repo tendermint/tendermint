@@ -23,8 +23,9 @@ import (
 	rpccore "github.com/tendermint/tendermint/rpc/core"
 	grpccore "github.com/tendermint/tendermint/rpc/grpc"
 	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/state/tx"
-	txindexer "github.com/tendermint/tendermint/state/tx/indexer"
+	"github.com/tendermint/tendermint/state/txindex"
+	"github.com/tendermint/tendermint/state/txindex/kv"
+	"github.com/tendermint/tendermint/state/txindex/null"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 
@@ -53,7 +54,7 @@ type Node struct {
 	consensusReactor *consensus.ConsensusReactor // for participating in the consensus
 	proxyApp         proxy.AppConns              // connection to the application
 	rpcListeners     []net.Listener              // rpc servers
-	txIndexer        tx.Indexer
+	txIndexer        txindex.TxIndexer
 }
 
 func NewNodeDefault(config cfg.Config) *Node {
@@ -88,13 +89,13 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreato
 	state = sm.LoadState(stateDB)
 
 	// Transaction indexing
-	var txIndexer tx.Indexer
+	var txIndexer txindex.TxIndexer
 	switch config.GetString("tx_indexer") {
 	case "kv":
 		store := dbm.NewDB("tx_indexer", config.GetString("db_backend"), config.GetString("db_dir"))
-		txIndexer = txindexer.NewKV(store)
+		txIndexer = kv.NewTxIndex(store)
 	default:
-		txIndexer = &txindexer.Null{}
+		txIndexer = &null.TxIndex{}
 	}
 	state.TxIndexer = txIndexer
 

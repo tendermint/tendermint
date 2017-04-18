@@ -15,7 +15,7 @@ import (
 	rpc "github.com/tendermint/go-rpc/client"
 	"github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	"github.com/tendermint/tendermint/state/tx/indexer"
+	"github.com/tendermint/tendermint/state/txindex/null"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -157,7 +157,7 @@ func testBroadcastTxCommit(t *testing.T, client rpc.HTTPClient) {
 func TestURITx(t *testing.T) {
 	testTx(t, GetURIClient(), true)
 
-	core.SetTxIndexer(&indexer.Null{})
+	core.SetTxIndexer(&null.TxIndex{})
 	testTx(t, GetJSONClient(), false)
 	core.SetTxIndexer(node.ConsensusState().GetState().TxIndexer)
 }
@@ -165,7 +165,7 @@ func TestURITx(t *testing.T) {
 func TestJSONTx(t *testing.T) {
 	testTx(t, GetJSONClient(), true)
 
-	core.SetTxIndexer(&indexer.Null{})
+	core.SetTxIndexer(&null.TxIndex{})
 	testTx(t, GetJSONClient(), false)
 	core.SetTxIndexer(node.ConsensusState().GetState().TxIndexer)
 }
@@ -188,36 +188,21 @@ func testTx(t *testing.T, client rpc.HTTPClient, withIndexer bool) {
 	mem := node.MempoolReactor().Mempool
 	require.Equal(0, mem.Size())
 
+	txHash := tx.Hash()
+	txHash2 := types.Tx("a different tx").Hash()
+
 	cases := []struct {
-		validWithIndexer bool
-		validNoIndexer   bool
-		height           int
-		index            int
-		hash             []byte
-		prove            bool
+		valid bool
+		hash  []byte
+		prove bool
 	}{
-		// only on proper height, index match
-		{true, true, res.Height, 0, nil, false},
-		{true, true, res.Height, 0, nil, true},
-		{false, false, res.Height, 1, nil, false},
-		{false, false, res.Height, -7, nil, true},
-		{false, false, -10, -100, nil, false},
-		{false, false, res.Height + 1, 0, nil, true},
-
-		// on proper hash match
-		{true, false, 0, 0, tx.Hash(), false},
-		{true, false, 0, 0, tx.Hash(), true},
-		{true, true, res.Height, 0, tx.Hash(), false},
-		{true, true, res.Height, 0, tx.Hash(), true},
-		{true, false, 100, 0, tx.Hash(), false}, // with indexer enabled, height is overwritten
-		// with extra data is an error
-		{false, false, 0, 2, tx.Hash(), true},
-		{false, false, 0, 0, []byte("jkh8y0fw"), false},
-		{false, false, 0, 0, nil, true},
-
-		// missing height and hash fails
-		{false, false, 0, 0, nil, false},
-		{false, false, 0, 1, nil, true},
+		// only valid if correct hash provided
+		{true, txHash, false},
+		{true, txHash, true},
+		{false, txHash2, false},
+		{false, txHash2, true},
+		{false, nil, false},
+		{false, nil, true},
 	}
 
 	for i, tc := range cases {
@@ -227,13 +212,11 @@ func testTx(t *testing.T, client rpc.HTTPClient, withIndexer bool) {
 		// since there's only one tx, we know index=0.
 		tmResult = new(ctypes.TMResult)
 		query := map[string]interface{}{
-			"height": tc.height,
-			"index":  tc.index,
-			"hash":   tc.hash,
-			"prove":  tc.prove,
+			"hash":  tc.hash,
+			"prove": tc.prove,
 		}
 		_, err = client.Call("tx", query, tmResult)
-		valid := (withIndexer && tc.validWithIndexer) || (!withIndexer && tc.validNoIndexer)
+		valid := (withIndexer && tc.valid)
 		if !valid {
 			require.NotNil(err, idx)
 		} else {
