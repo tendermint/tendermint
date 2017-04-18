@@ -51,3 +51,4 @@ git add -u
 git commit -m "update import paths"
 
 # TODO: change any paths in non-Go files
+# TODO: add license

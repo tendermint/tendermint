@@ -6,7 +6,7 @@ package events
 import (
 	"sync"
 
-	. "github.com/tendermint/go-common/common"
+	. "github.com/tendermint/tmlibs/common"
 )
 
 // Generic event data can be typed and registered with tendermint/go-wire

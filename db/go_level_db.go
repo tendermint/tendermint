@@ -8,7 +8,7 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/errors"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 
-	. "github.com/tendermint/go-common/common"
+	. "github.com/tendermint/tmlibs/common"
 )
 
 func init() {

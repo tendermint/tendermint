@@ -1,7 +1,7 @@
 package events
 
 import (
-	"github.com/tendermint/go-common/logger"
+	"github.com/tendermint/tmlibs/logger"
 )
 
 var log = logger.New("module", "events")

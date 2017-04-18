@@ -1,6 +1,6 @@
 package db
 
-import . "github.com/tendermint/go-common/common"
+import . "github.com/tendermint/tmlibs/common"
 
 type DB interface {
 	Get([]byte) []byte
