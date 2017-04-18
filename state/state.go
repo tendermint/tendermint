@@ -132,7 +132,8 @@ func (s *State) Bytes() []byte {
 // after running EndBlock
 func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader types.PartSetHeader, abciResponses *ABCIResponses) {
 
-	// copy the valset
+	// copy the valset so we can apply changes from EndBlock
+	// and update s.LastValidators and s.Validators
 	prevValSet := s.Validators.Copy()
 	nextValSet := prevValSet.Copy()
 
