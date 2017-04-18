@@ -37,9 +37,9 @@ func TestMConnectionSend(t *testing.T) {
 
 	msg := "Ant-Man"
 	assert.True(mconn.Send(0x01, msg))
+	// Note: subsequent Send/TrySend calls could pass because we are reading from
+	// the send queue in a separate goroutine.
 	assert.False(mconn.CanSend(0x01), "CanSend should return false because queue is full")
-	// assert.False(mconn.Send(0x01, msg), "Send should return false because queue is full")
-	// assert.False(mconn.TrySend(0x01, msg), "TrySend should return false because queue is full")
 	server.Read(make([]byte, len(msg)))
 	assert.True(mconn.CanSend(0x01))
 

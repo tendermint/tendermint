@@ -258,6 +258,8 @@ func (c *MConnection) TrySend(chID byte, msg interface{}) bool {
 	return ok
 }
 
+// CanSend returns true if you can send more data onto the chID, false
+// otherwise. Use only as a heuristic.
 func (c *MConnection) CanSend(chID byte) bool {
 	if !c.IsRunning() {
 		return false
