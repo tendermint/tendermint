@@ -14,7 +14,7 @@ import (
 
 var runNodeCmd = &cobra.Command{
 	Use:    "node",
-	Short:  "RunE the tendermint node",
+	Short:  "Run the tendermint node",
 	PreRun: setConfigFlags,
 	RunE:   runNode,
 }

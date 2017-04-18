@@ -67,8 +67,6 @@ func TestJSONBroadcastTxSync(t *testing.T) {
 }
 
 func testBroadcastTxSync(t *testing.T, client rpc.HTTPClient) {
-	//	config.Set("block_size", 0)
-	//	defer config.Set("block_size", -1)
 	mem := node.MempoolReactor().Mempool
 	initMemSize := mem.Size()
 	tmResult := new(ctypes.TMResult)
