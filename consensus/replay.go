@@ -126,9 +126,10 @@ func (cs *ConsensusState) catchupReplay(csHeight int) error {
 		}
 	} else if err != nil {
 		return err
+	} else {
+		defer gr.Close()
 	}
 	if !found {
-		gr.Close()
 		// if we upgraded from 0.9 to 0.9.1, we may have #HEIGHT instead
 		// TODO (0.10.0): remove this
 		gr, found, err = cs.wal.group.Search("#HEIGHT: ", makeHeightSearchFunc(csHeight))
@@ -137,12 +138,13 @@ func (cs *ConsensusState) catchupReplay(csHeight int) error {
 			return nil
 		} else if err != nil {
 			return err
+		} else {
+			defer gr.Close()
 		}
 
 		// TODO (0.10.0): uncomment
 		// return errors.New(Fmt("Cannot replay height %d. WAL does not contain #ENDHEIGHT for %d.", csHeight, csHeight-1))
 	}
-	defer gr.Close()
 
 	log.Notice("Catchup by replaying consensus messages", "height", csHeight)
 
