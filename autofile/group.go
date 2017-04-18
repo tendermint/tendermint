@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	. "github.com/tendermint/go-common"
+	. "github.com/tendermint/go-common/common"
 )
 
 /*

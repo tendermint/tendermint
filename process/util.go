@@ -1,7 +1,7 @@
 package process
 
 import (
-	. "github.com/tendermint/go-common"
+	. "github.com/tendermint/go-common/common"
 )
 
 // Runs a command and gets the result.

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"testing"
 
-	. "github.com/tendermint/go-common"
+	. "github.com/tendermint/go-common/common"
 )
 
 func BenchmarkRandomReadsWrites(b *testing.B) {

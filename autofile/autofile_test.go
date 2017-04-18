@@ -1,7 +1,7 @@
 package autofile
 
 import (
-	. "github.com/tendermint/go-common"
+	. "github.com/tendermint/go-common/common"
 	"os"
 	"sync/atomic"
 	"syscall"

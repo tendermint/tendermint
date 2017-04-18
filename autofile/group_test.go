@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	. "github.com/tendermint/go-common"
+	. "github.com/tendermint/go-common/common"
 )
 
 // NOTE: Returned group has ticker stopped
