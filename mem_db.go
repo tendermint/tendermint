@@ -65,6 +65,53 @@ func (db *MemDB) Print() {
 	}
 }
 
+func (db *MemDB) Stats() map[string]string {
+	stats := make(map[string]string)
+	stats["database.type"] = "memDB"
+	return stats
+}
+
+type memDBIterator struct {
+	last int
+	keys []string
+	db   *MemDB
+}
+
+func newMemDBIterator() *memDBIterator {
+	return &memDBIterator{}
+}
+
+func (it *memDBIterator) Next() bool {
+	if it.last >= len(it.keys) {
+		return false
+	}
+	it.last++
+	return true
+}
+
+func (it *memDBIterator) Key() []byte {
+	return []byte(it.keys[it.last])
+}
+
+func (it *memDBIterator) Value() []byte {
+	return it.db.Get(it.Key())
+}
+
+func (db *MemDB) Iterator() Iterator {
+	it := newMemDBIterator()
+	it.db = db
+	it.last = -1
+
+	db.mtx.Lock()
+	defer db.mtx.Unlock()
+
+	// unfortunately we need a copy of all of the keys
+	for key, _ := range db.db {
+		it.keys = append(it.keys, key)
+	}
+	return it
+}
+
 func (db *MemDB) NewBatch() Batch {
 	return &memDBBatch{db, nil}
 }

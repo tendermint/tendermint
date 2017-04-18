@@ -82,12 +82,41 @@ func (db *GoLevelDB) Close() {
 }
 
 func (db *GoLevelDB) Print() {
+	str, _ := db.db.GetProperty("leveldb.stats")
+	fmt.Printf("%v\n", str)
+
 	iter := db.db.NewIterator(nil, nil)
 	for iter.Next() {
 		key := iter.Key()
 		value := iter.Value()
 		fmt.Printf("[%X]:\t[%X]\n", key, value)
 	}
+}
+
+func (db *GoLevelDB) Stats() map[string]string {
+	keys := []string{
+		"leveldb.num-files-at-level{n}",
+		"leveldb.stats",
+		"leveldb.sstables",
+		"leveldb.blockpool",
+		"leveldb.cachedblock",
+		"leveldb.openedtables",
+		"leveldb.alivesnaps",
+		"leveldb.aliveiters",
+	}
+
+	stats := make(map[string]string)
+	for _, key := range keys {
+		str, err := db.db.GetProperty(key)
+		if err == nil {
+			stats[key] = str
+		}
+	}
+	return stats
+}
+
+func (db *GoLevelDB) Iterator() Iterator {
+	return db.db.NewIterator(nil, nil)
 }
 
 func (db *GoLevelDB) NewBatch() Batch {

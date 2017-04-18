@@ -13,12 +13,21 @@ type DB interface {
 
 	// For debugging
 	Print()
+	Iterator() Iterator
+	Stats() map[string]string
 }
 
 type Batch interface {
 	Set(key, value []byte)
 	Delete(key []byte)
 	Write()
+}
+
+type Iterator interface {
+	Next() bool
+
+	Key() []byte
+	Value() []byte
 }
 
 //-----------------------------------------------------------------------------
