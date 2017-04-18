@@ -1,42 +1,3 @@
-/*
-
-Classical-inheritance-style service declarations.
-Services can be started, then stopped, then optionally restarted.
-Users can override the OnStart/OnStop methods.
-By default, these methods are guaranteed to be called at most once.
-A call to Reset will panic, unless OnReset is overwritten, allowing OnStart/OnStop to be called again.
-Caller must ensure that Start() and Stop() are not called concurrently.
-It is ok to call Stop() without calling Start() first.
-Services cannot be re-started unless OnReset is overwritten to allow it.
-
-Typical usage:
-
-type FooService struct {
-	BaseService
-	// private fields
-}
-
-func NewFooService() *FooService {
-	fs := &FooService{
-		// init
-	}
-	fs.BaseService = *NewBaseService(log, "FooService", fs)
-	return fs
-}
-
-func (fs *FooService) OnStart() error {
-	fs.BaseService.OnStart() // Always call the overridden method.
-	// initialize private fields
-	// start subroutines, etc.
-}
-
-func (fs *FooService) OnStop() error {
-	fs.BaseService.OnStop() // Always call the overridden method.
-	// close/destroy private fields
-	// stop subroutines, etc.
-}
-
-*/
 package common
 
 import (
@@ -60,6 +21,48 @@ type Service interface {
 	String() string
 }
 
+/*
+Classical-inheritance-style service declarations. Services can be started, then
+stopped, then optionally restarted.
+
+Users can override the OnStart/OnStop methods. In the absence of errors, these
+methods are guaranteed to be called at most once. If OnStart returns an error,
+service won't be marked as started, so the user can call Start again.
+
+A call to Reset will panic, unless OnReset is overwritten, allowing
+OnStart/OnStop to be called again.
+
+The caller must ensure that Start and Stop are not called concurrently.
+
+It is ok to call Stop without calling Start first.
+
+Typical usage:
+
+	type FooService struct {
+		BaseService
+		// private fields
+	}
+
+	func NewFooService() *FooService {
+		fs := &FooService{
+			// init
+		}
+		fs.BaseService = *NewBaseService(log, "FooService", fs)
+		return fs
+	}
+
+	func (fs *FooService) OnStart() error {
+		fs.BaseService.OnStart() // Always call the overridden method.
+		// initialize private fields
+		// start subroutines, etc.
+	}
+
+	func (fs *FooService) OnStop() error {
+		fs.BaseService.OnStop() // Always call the overridden method.
+		// close/destroy private fields
+		// stop subroutines, etc.
+	}
+*/
 type BaseService struct {
 	log     log15.Logger
 	name    string
@@ -94,6 +97,11 @@ func (bs *BaseService) Start() (bool, error) {
 			}
 		}
 		err := bs.impl.OnStart()
+		if err != nil {
+			// revert flag
+			atomic.StoreUint32(&bs.started, 0)
+			return false, err
+		}
 		return true, err
 	} else {
 		if bs.log != nil {
@@ -136,6 +144,7 @@ func (bs *BaseService) Reset() (bool, error) {
 		// whether or not we've started, we can reset
 		atomic.CompareAndSwapUint32(&bs.started, 1, 0)
 
+		bs.Quit = make(chan struct{})
 		return true, bs.impl.OnReset()
 	} else {
 		if bs.log != nil {
