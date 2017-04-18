@@ -10,8 +10,8 @@ import (
 	cfg "github.com/tendermint/go-config"
 	dbm "github.com/tendermint/go-db"
 	"github.com/tendermint/go-wire"
-	"github.com/tendermint/tendermint/state/tx"
-	txindexer "github.com/tendermint/tendermint/state/tx/indexer"
+	"github.com/tendermint/tendermint/state/txindex"
+	"github.com/tendermint/tendermint/state/txindex/null"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -41,7 +41,7 @@ type State struct {
 	// AppHash is updated after Commit
 	AppHash []byte
 
-	TxIndexer tx.Indexer `json:"-"` // Transaction indexer.
+	TxIndexer txindex.TxIndexer `json:"-"` // Transaction indexer.
 }
 
 func LoadState(db dbm.DB) *State {
@@ -49,7 +49,7 @@ func LoadState(db dbm.DB) *State {
 }
 
 func loadState(db dbm.DB, key []byte) *State {
-	s := &State{db: db, TxIndexer: &txindexer.Null{}}
+	s := &State{db: db, TxIndexer: &null.TxIndex{}}
 	buf := db.Get(key)
 	if len(buf) == 0 {
 		return nil
@@ -188,6 +188,6 @@ func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) *State {
 		Validators:      types.NewValidatorSet(validators),
 		LastValidators:  types.NewValidatorSet(nil),
 		AppHash:         genDoc.AppHash,
-		TxIndexer:       &txindexer.Null{}, // we do not need indexer during replay and in tests
+		TxIndexer:       &null.TxIndex{}, // we do not need indexer during replay and in tests
 	}
 }

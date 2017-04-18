@@ -9,7 +9,7 @@ import (
 	. "github.com/tendermint/go-common"
 	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/tendermint/proxy"
-	txindexer "github.com/tendermint/tendermint/state/tx/indexer"
+	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -241,12 +241,12 @@ func (s *State) ApplyBlock(eventCache types.Fireable, proxyAppConn proxy.AppConn
 		return fmt.Errorf("Commit failed for application: %v", err)
 	}
 
-	batch := txindexer.NewBatch()
+	batch := txindex.NewBatch()
 	for i, r := range txResults {
 		tx := block.Txs[i]
 		batch.Index(tx.Hash(), *r)
 	}
-	s.TxIndexer.Batch(batch)
+	s.TxIndexer.AddBatch(batch)
 
 	return nil
 }

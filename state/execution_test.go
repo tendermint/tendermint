@@ -11,7 +11,7 @@ import (
 	cfg "github.com/tendermint/tendermint/config/tendermint_test"
 	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
-	txindexer "github.com/tendermint/tendermint/state/tx/indexer"
+	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -81,10 +81,10 @@ type dummyIndexer struct {
 	Indexed int
 }
 
-func (indexer *dummyIndexer) Tx(hash []byte) (*types.TxResult, error) {
+func (indexer *dummyIndexer) Get(hash []byte) (*types.TxResult, error) {
 	return nil, nil
 }
-func (indexer *dummyIndexer) Batch(batch *txindexer.Batch) error {
+func (indexer *dummyIndexer) AddBatch(batch *txindex.Batch) error {
 	indexer.Indexed += batch.Size()
 	return nil
 }

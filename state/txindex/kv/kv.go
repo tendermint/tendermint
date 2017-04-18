@@ -1,4 +1,4 @@
-package indexer
+package kv
 
 import (
 	"bytes"
@@ -6,28 +6,29 @@ import (
 
 	db "github.com/tendermint/go-db"
 	"github.com/tendermint/go-wire"
+	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
 )
 
-// KV is a simplest possible indexer, backed by Key-Value storage (levelDB).
+// TxIndex is the simplest possible indexer, backed by Key-Value storage (levelDB).
 // It could only index transaction by its identifier.
-type KV struct {
+type TxIndex struct {
 	store db.DB
 }
 
-// NewKV returns new instance of KV indexer.
-func NewKV(store db.DB) *KV {
-	return &KV{store: store}
+// NewTxIndex returns new instance of TxIndex.
+func NewTxIndex(store db.DB) *TxIndex {
+	return &TxIndex{store: store}
 }
 
-// Tx gets transaction from the KV storage and returns it or nil if the
+// Get gets transaction from the TxIndex storage and returns it or nil if the
 // transaction is not found.
-func (indexer *KV) Tx(hash []byte) (*types.TxResult, error) {
+func (txi *TxIndex) Get(hash []byte) (*types.TxResult, error) {
 	if len(hash) == 0 {
-		return nil, ErrorEmptyHash
+		return nil, txindex.ErrorEmptyHash
 	}
 
-	rawBytes := indexer.store.Get(hash)
+	rawBytes := txi.store.Get(hash)
 	if rawBytes == nil {
 		return nil, nil
 	}
@@ -43,9 +44,9 @@ func (indexer *KV) Tx(hash []byte) (*types.TxResult, error) {
 	return txResult, nil
 }
 
-// Batch writes a batch of transactions into the KV storage.
-func (indexer *KV) Batch(b *Batch) error {
-	storeBatch := indexer.store.NewBatch()
+// Batch writes a batch of transactions into the TxIndex storage.
+func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
+	storeBatch := txi.store.NewBatch()
 	for hash, result := range b.Ops {
 		rawBytes := wire.BinaryBytes(&result)
 		storeBatch.Set([]byte(hash), rawBytes)
