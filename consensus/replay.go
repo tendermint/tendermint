@@ -104,11 +104,11 @@ func (cs *ConsensusState) catchupReplay(csHeight int) error {
 	// NOTE: This is just a sanity check. As far as we know things work fine without it,
 	// and Handshake could reuse ConsensusState if it weren't for this check (since we can crash after writing ENDHEIGHT).
 	gr, found, err := cs.wal.group.Search("#ENDHEIGHT: ", makeHeightSearchFunc(csHeight))
-	if found {
-		return errors.New(Fmt("WAL should not contain #ENDHEIGHT %d.", csHeight))
-	}
 	if gr != nil {
 		gr.Close()
+	}
+	if found {
+		return errors.New(Fmt("WAL should not contain #ENDHEIGHT %d.", csHeight))
 	}
 
 	// Search for last height marker
@@ -128,6 +128,7 @@ func (cs *ConsensusState) catchupReplay(csHeight int) error {
 		return err
 	}
 	if !found {
+		gr.Close()
 		// if we upgraded from 0.9 to 0.9.1, we may have #HEIGHT instead
 		// TODO (0.10.0): remove this
 		gr, found, err = cs.wal.group.Search("#HEIGHT: ", makeHeightSearchFunc(csHeight))
