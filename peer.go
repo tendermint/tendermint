@@ -6,8 +6,8 @@ import (
 	"net"
 	"time"
 
+	"github.com/pkg/errors"
 	cmn "github.com/tendermint/go-common"
-	cfg "github.com/tendermint/go-config"
 	crypto "github.com/tendermint/go-crypto"
 	wire "github.com/tendermint/go-wire"
 )
@@ -25,23 +25,50 @@ type Peer struct {
 	conn  net.Conn     // source connection
 	mconn *MConnection // multiplex connection
 
-	authEnc    bool // authenticated encryption
 	persistent bool
-	config     cfg.Config
+	config     *PeerConfig
 
 	*NodeInfo
 	Key  string
 	Data *cmn.CMap // User data.
 }
 
-func newPeer(addr *NetAddress, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor, onPeerError func(*Peer, interface{}), config cfg.Config, privKey crypto.PrivKeyEd25519) (*Peer, error) {
+// PeerConfig is a Peer configuration.
+type PeerConfig struct {
+	AuthEnc bool // authenticated encryption
+
+	HandshakeTimeout time.Duration
+	DialTimeout      time.Duration
+
+	MConfig *MConnConfig
+
+	Fuzz       bool // fuzz connection (for testing)
+	FuzzConfig *FuzzConnConfig
+}
+
+// DefaultPeerConfig returns the default config.
+func DefaultPeerConfig() *PeerConfig {
+	return &PeerConfig{
+		AuthEnc:          true,
+		HandshakeTimeout: 2 * time.Second,
+		DialTimeout:      3 * time.Second,
+		MConfig:          DefaultMConnConfig(),
+		Fuzz:             false,
+		FuzzConfig:       DefaultFuzzConnConfig(),
+	}
+}
+
+func newOutboundPeer(addr *NetAddress, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor, onPeerError func(*Peer, interface{}), ourNodePrivKey crypto.PrivKeyEd25519) (*Peer, error) {
+	return newOutboundPeerWithConfig(addr, reactorsByCh, chDescs, onPeerError, ourNodePrivKey, DefaultPeerConfig())
+}
+
+func newOutboundPeerWithConfig(addr *NetAddress, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor, onPeerError func(*Peer, interface{}), ourNodePrivKey crypto.PrivKeyEd25519, config *PeerConfig) (*Peer, error) {
 	conn, err := dial(addr, config)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Error creating peer")
 	}
 
-	// outbound = true
-	peer, err := newPeerFromExistingConn(conn, true, reactorsByCh, chDescs, onPeerError, config, privKey)
+	peer, err := newPeerFromConnAndConfig(conn, true, reactorsByCh, chDescs, onPeerError, ourNodePrivKey, config)
 	if err != nil {
 		conn.Close()
 		return nil, err
@@ -49,31 +76,43 @@ func newPeer(addr *NetAddress, reactorsByCh map[byte]Reactor, chDescs []*Channel
 	return peer, nil
 }
 
-func newPeerFromExistingConn(conn net.Conn, outbound bool, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor, onPeerError func(*Peer, interface{}), config cfg.Config, privKey crypto.PrivKeyEd25519) (*Peer, error) {
+func newInboundPeer(conn net.Conn, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor, onPeerError func(*Peer, interface{}), ourNodePrivKey crypto.PrivKeyEd25519) (*Peer, error) {
+	return newInboundPeerWithConfig(conn, reactorsByCh, chDescs, onPeerError, ourNodePrivKey, DefaultPeerConfig())
+}
+
+func newInboundPeerWithConfig(conn net.Conn, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor, onPeerError func(*Peer, interface{}), ourNodePrivKey crypto.PrivKeyEd25519, config *PeerConfig) (*Peer, error) {
+	return newPeerFromConnAndConfig(conn, false, reactorsByCh, chDescs, onPeerError, ourNodePrivKey, config)
+}
+
+func newPeerFromConnAndConfig(rawConn net.Conn, outbound bool, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor, onPeerError func(*Peer, interface{}), ourNodePrivKey crypto.PrivKeyEd25519, config *PeerConfig) (*Peer, error) {
+	conn := rawConn
+
+	// Fuzz connection
+	if config.Fuzz {
+		// so we have time to do peer handshakes and get set up
+		conn = FuzzConnAfterFromConfig(conn, 10*time.Second, config.FuzzConfig)
+	}
+
 	// Encrypt connection
-	if config.GetBool(configKeyAuthEnc) {
+	if config.AuthEnc {
+		conn.SetDeadline(time.Now().Add(config.HandshakeTimeout))
+
 		var err error
-		// Set deadline for handshake so we don't block forever on conn.ReadFull
-		timeout := time.Duration(config.GetInt(configKeyHandshakeTimeoutSeconds)) * time.Second
-		conn.SetDeadline(time.Now().Add(timeout))
-		conn, err = MakeSecretConnection(conn, privKey)
+		conn, err = MakeSecretConnection(conn, ourNodePrivKey)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "Error creating peer")
 		}
-		// remove deadline
-		conn.SetDeadline(time.Time{})
 	}
 
 	// Key and NodeInfo are set after Handshake
 	p := &Peer{
 		outbound: outbound,
-		authEnc:  config.GetBool(configKeyAuthEnc),
 		conn:     conn,
 		config:   config,
 		Data:     cmn.NewCMap(),
 	}
 
-	p.mconn = createMConnection(conn, p, reactorsByCh, chDescs, onPeerError, config)
+	p.mconn = createMConnection(conn, p, reactorsByCh, chDescs, onPeerError, config.MConfig)
 
 	p.BaseService = *cmn.NewBaseService(log, "Peer", p)
 
@@ -119,13 +158,13 @@ func (p *Peer) HandshakeTimeout(ourNodeInfo *NodeInfo, timeout time.Duration) er
 			log.Notice("Peer handshake", "peerNodeInfo", peerNodeInfo)
 		})
 	if err1 != nil {
-		return err1
+		return errors.Wrap(err1, "Error during handshake/write")
 	}
 	if err2 != nil {
-		return err2
+		return errors.Wrap(err2, "Error during handshake/read")
 	}
 
-	if p.authEnc {
+	if p.config.AuthEnc {
 		// Check that the professed PubKey matches the sconn's.
 		if !peerNodeInfo.PubKey.Equals(p.PubKey()) {
 			return fmt.Errorf("Ignoring connection with unmatching pubkey: %v vs %v",
@@ -136,7 +175,7 @@ func (p *Peer) HandshakeTimeout(ourNodeInfo *NodeInfo, timeout time.Duration) er
 	// Remove deadline
 	p.conn.SetDeadline(time.Time{})
 
-	peerNodeInfo.RemoteAddr = p.RemoteAddr().String()
+	peerNodeInfo.RemoteAddr = p.Addr().String()
 
 	p.NodeInfo = peerNodeInfo
 	p.Key = peerNodeInfo.PubKey.KeyString()
@@ -144,14 +183,14 @@ func (p *Peer) HandshakeTimeout(ourNodeInfo *NodeInfo, timeout time.Duration) er
 	return nil
 }
 
-// RemoteAddr returns the remote network address.
-func (p *Peer) RemoteAddr() net.Addr {
+// Addr returns peer's network address.
+func (p *Peer) Addr() net.Addr {
 	return p.conn.RemoteAddr()
 }
 
-// PubKey returns the remote public key.
+// PubKey returns peer's public key.
 func (p *Peer) PubKey() crypto.PubKeyEd25519 {
-	if p.authEnc {
+	if p.config.AuthEnc {
 		return p.conn.(*SecretConnection).RemotePubKey()
 	}
 	if p.NodeInfo == nil {
@@ -238,21 +277,17 @@ func (p *Peer) Get(key string) interface{} {
 	return p.Data.Get(key)
 }
 
-func dial(addr *NetAddress, config cfg.Config) (net.Conn, error) {
+func dial(addr *NetAddress, config *PeerConfig) (net.Conn, error) {
 	log.Info("Dialing address", "address", addr)
-	conn, err := addr.DialTimeout(time.Duration(
-		config.GetInt(configKeyDialTimeoutSeconds)) * time.Second)
+	conn, err := addr.DialTimeout(config.DialTimeout)
 	if err != nil {
 		log.Info("Failed dialing address", "address", addr, "error", err)
 		return nil, err
 	}
-	if config.GetBool(configFuzzEnable) {
-		conn = FuzzConn(config, conn)
-	}
 	return conn, nil
 }
 
-func createMConnection(conn net.Conn, p *Peer, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor, onPeerError func(*Peer, interface{}), config cfg.Config) *MConnection {
+func createMConnection(conn net.Conn, p *Peer, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor, onPeerError func(*Peer, interface{}), config *MConnConfig) *MConnection {
 	onReceive := func(chID byte, msgBytes []byte) {
 		reactor := reactorsByCh[chID]
 		if reactor == nil {
@@ -265,10 +300,5 @@ func createMConnection(conn net.Conn, p *Peer, reactorsByCh map[byte]Reactor, ch
 		onPeerError(p, r)
 	}
 
-	mconnConfig := &MConnectionConfig{
-		SendRate: int64(config.GetInt(configKeySendRate)),
-		RecvRate: int64(config.GetInt(configKeyRecvRate)),
-	}
-
-	return NewMConnectionWithConfig(conn, chDescs, onReceive, onError, mconnConfig)
+	return NewMConnectionWithConfig(conn, chDescs, onReceive, onError, config)
 }

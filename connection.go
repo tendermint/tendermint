@@ -74,7 +74,7 @@ type MConnection struct {
 	onReceive   receiveCbFunc
 	onError     errorCbFunc
 	errored     uint32
-	config      *MConnectionConfig
+	config      *MConnConfig
 
 	quit         chan struct{}
 	flushTimer   *cmn.ThrottleTimer // flush writes as necessary but throttled.
@@ -85,10 +85,18 @@ type MConnection struct {
 	RemoteAddress *NetAddress
 }
 
-// MConnectionConfig is a MConnection configuration
-type MConnectionConfig struct {
+// MConnConfig is a MConnection configuration.
+type MConnConfig struct {
 	SendRate int64
 	RecvRate int64
+}
+
+// DefaultMConnConfig returns the default config.
+func DefaultMConnConfig() *MConnConfig {
+	return &MConnConfig{
+		SendRate: defaultSendRate,
+		RecvRate: defaultRecvRate,
+	}
 }
 
 // NewMConnection wraps net.Conn and creates multiplex connection
@@ -98,14 +106,11 @@ func NewMConnection(conn net.Conn, chDescs []*ChannelDescriptor, onReceive recei
 		chDescs,
 		onReceive,
 		onError,
-		&MConnectionConfig{
-			SendRate: defaultSendRate,
-			RecvRate: defaultRecvRate,
-		})
+		DefaultMConnConfig())
 }
 
 // NewMConnectionWithConfig wraps net.Conn and creates multiplex connection with a config
-func NewMConnectionWithConfig(conn net.Conn, chDescs []*ChannelDescriptor, onReceive receiveCbFunc, onError errorCbFunc, config *MConnectionConfig) *MConnection {
+func NewMConnectionWithConfig(conn net.Conn, chDescs []*ChannelDescriptor, onReceive receiveCbFunc, onError errorCbFunc, config *MConnConfig) *MConnection {
 	mconn := &MConnection{
 		conn:        conn,
 		bufReader:   bufio.NewReaderSize(conn, minReadBufferSize),
@@ -253,6 +258,8 @@ func (c *MConnection) TrySend(chID byte, msg interface{}) bool {
 	return ok
 }
 
+// CanSend returns true if you can send more data onto the chID, false
+// otherwise. Use only as a heuristic.
 func (c *MConnection) CanSend(chID byte) bool {
 	if !c.IsRunning() {
 		return false
@@ -552,14 +559,12 @@ func newChannel(conn *MConnection, desc *ChannelDescriptor) *Channel {
 // Goroutine-safe
 // Times out (and returns false) after defaultSendTimeout
 func (ch *Channel) sendBytes(bytes []byte) bool {
-	timeout := time.NewTimer(defaultSendTimeout)
 	select {
-	case <-timeout.C:
-		// timeout
-		return false
 	case ch.sendQueue <- bytes:
 		atomic.AddInt32(&ch.sendQueueSize, 1)
 		return true
+	case <-time.After(defaultSendTimeout):
+		return false
 	}
 }
 

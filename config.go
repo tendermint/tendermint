@@ -17,7 +17,6 @@ const (
 
 	// Fuzz params
 	configFuzzEnable               = "fuzz_enable" // use the fuzz wrapped conn
-	configFuzzActive               = "fuzz_active" // toggle fuzzing
 	configFuzzMode                 = "fuzz_mode"   // eg. drop, delay
 	configFuzzMaxDelayMilliseconds = "fuzz_max_delay_milliseconds"
 	configFuzzProbDropRW           = "fuzz_prob_drop_rw"
@@ -38,7 +37,6 @@ func setConfigDefaults(config cfg.Config) {
 
 	// Fuzz defaults
 	config.SetDefault(configFuzzEnable, false)
-	config.SetDefault(configFuzzActive, false)
 	config.SetDefault(configFuzzMode, FuzzModeDrop)
 	config.SetDefault(configFuzzMaxDelayMilliseconds, 3000)
 	config.SetDefault(configFuzzProbDropRW, 0.2)

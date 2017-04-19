@@ -200,7 +200,7 @@ func (sw *Switch) OnStop() {
 // NOTE: This performs a blocking handshake before the peer is added.
 // CONTRACT: If error is returned, peer is nil, and conn is immediately closed.
 func (sw *Switch) AddPeer(peer *Peer) error {
-	if err := sw.FilterConnByAddr(peer.RemoteAddr()); err != nil {
+	if err := sw.FilterConnByAddr(peer.Addr()); err != nil {
 		return err
 	}
 
@@ -317,7 +317,7 @@ func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) (*Peer,
 	sw.dialing.Set(addr.IP.String(), addr)
 	defer sw.dialing.Delete(addr.IP.String())
 
-	peer, err := newPeer(addr, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.config, sw.nodePrivKey)
+	peer, err := newOutboundPeerWithConfig(addr, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, peerConfigFromGoConfig(sw.config))
 	if err != nil {
 		log.Info("Failed dialing peer", "address", addr, "error", err)
 		return nil, err
@@ -376,7 +376,7 @@ func (sw *Switch) Peers() IPeerSet {
 // Disconnect from a peer due to external error, retry if it is a persistent peer.
 // TODO: make record depending on reason.
 func (sw *Switch) StopPeerForError(peer *Peer, reason interface{}) {
-	addr := NewNetAddress(peer.RemoteAddr())
+	addr := NewNetAddress(peer.Addr())
 	log.Notice("Stopping peer for error", "peer", peer, "error", reason)
 	sw.stopAndRemovePeer(peer, reason)
 
@@ -435,12 +435,8 @@ func (sw *Switch) listenerRoutine(l Listener) {
 			continue
 		}
 
-		if sw.config.GetBool(configFuzzEnable) {
-			inConn = FuzzConn(sw.config, inConn)
-		}
-
 		// New inbound connection!
-		err := sw.AddPeerWithConnection(inConn, false)
+		err := sw.addPeerWithConnectionAndConfig(inConn, peerConfigFromGoConfig(sw.config))
 		if err != nil {
 			log.Notice("Ignoring inbound connection: error while adding peer", "address", inConn.RemoteAddr().String(), "error", err)
 			continue
@@ -502,14 +498,14 @@ func Connect2Switches(switches []*Switch, i, j int) {
 	c1, c2 := net.Pipe()
 	doneCh := make(chan struct{})
 	go func() {
-		err := switchI.AddPeerWithConnection(c1, false)
+		err := switchI.addPeerWithConnection(c1)
 		if PanicOnAddPeerErr && err != nil {
 			panic(err)
 		}
 		doneCh <- struct{}{}
 	}()
 	go func() {
-		err := switchJ.AddPeerWithConnection(c2, false)
+		err := switchJ.addPeerWithConnection(c2)
 		if PanicOnAddPeerErr && err != nil {
 			panic(err)
 		}
@@ -544,18 +540,52 @@ func makeSwitch(i int, network, version string, initSwitch func(int, *Switch) *S
 	return s
 }
 
-// AddPeerWithConnection creates a newPeer from the connection, performs the handshake, and adds it to the switch.
-func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) error {
-	peer, err := newPeerFromExistingConn(conn, outbound, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.config, sw.nodePrivKey)
+func (sw *Switch) addPeerWithConnection(conn net.Conn) error {
+	peer, err := newInboundPeer(conn, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey)
 	if err != nil {
 		conn.Close()
 		return err
 	}
 
 	if err = sw.AddPeer(peer); err != nil {
-		peer.CloseConn()
+		conn.Close()
 		return err
 	}
 
 	return nil
+}
+
+func (sw *Switch) addPeerWithConnectionAndConfig(conn net.Conn, config *PeerConfig) error {
+	peer, err := newInboundPeerWithConfig(conn, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, config)
+	if err != nil {
+		conn.Close()
+		return err
+	}
+
+	if err = sw.AddPeer(peer); err != nil {
+		conn.Close()
+		return err
+	}
+
+	return nil
+}
+
+func peerConfigFromGoConfig(config cfg.Config) *PeerConfig {
+	return &PeerConfig{
+		AuthEnc:          config.GetBool(configKeyAuthEnc),
+		Fuzz:             config.GetBool(configFuzzEnable),
+		HandshakeTimeout: time.Duration(config.GetInt(configKeyHandshakeTimeoutSeconds)) * time.Second,
+		DialTimeout:      time.Duration(config.GetInt(configKeyDialTimeoutSeconds)) * time.Second,
+		MConfig: &MConnConfig{
+			SendRate: int64(config.GetInt(configKeySendRate)),
+			RecvRate: int64(config.GetInt(configKeyRecvRate)),
+		},
+		FuzzConfig: &FuzzConnConfig{
+			Mode:         config.GetInt(configFuzzMode),
+			MaxDelay:     time.Duration(config.GetInt(configFuzzMaxDelayMilliseconds)) * time.Millisecond,
+			ProbDropRW:   config.GetFloat64(configFuzzProbDropRW),
+			ProbDropConn: config.GetFloat64(configFuzzProbDropConn),
+			ProbSleep:    config.GetFloat64(configFuzzProbSleep),
+		},
+	}
 }

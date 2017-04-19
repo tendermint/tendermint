@@ -19,7 +19,7 @@ func createMConnection(conn net.Conn) *p2p.MConnection {
 }
 
 func createMConnectionWithCallbacks(conn net.Conn, onReceive func(chID byte, msgBytes []byte), onError func(r interface{})) *p2p.MConnection {
-	chDescs := []*p2p.ChannelDescriptor{&p2p.ChannelDescriptor{ID: 0x01, Priority: 1}}
+	chDescs := []*p2p.ChannelDescriptor{&p2p.ChannelDescriptor{ID: 0x01, Priority: 1, SendQueueCapacity: 1}}
 	return p2p.NewMConnection(conn, chDescs, onReceive, onError)
 }
 
@@ -37,13 +37,18 @@ func TestMConnectionSend(t *testing.T) {
 
 	msg := "Ant-Man"
 	assert.True(mconn.Send(0x01, msg))
-	assert.False(mconn.CanSend(0x01))
+	// Note: subsequent Send/TrySend calls could pass because we are reading from
+	// the send queue in a separate goroutine.
+	assert.False(mconn.CanSend(0x01), "CanSend should return false because queue is full")
 	server.Read(make([]byte, len(msg)))
 	assert.True(mconn.CanSend(0x01))
 
 	msg = "Spider-Man"
 	assert.True(mconn.TrySend(0x01, msg))
 	server.Read(make([]byte, len(msg)))
+
+	assert.False(mconn.CanSend(0x05), "CanSend should return false because channel is unknown")
+	assert.False(mconn.Send(0x05, "Absorbing Man"), "Send should return false because channel is unknown")
 }
 
 func TestMConnectionReceive(t *testing.T) {

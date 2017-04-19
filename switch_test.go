@@ -3,7 +3,6 @@ package p2p
 import (
 	"bytes"
 	"fmt"
-	golog "log"
 	"net"
 	"sync"
 	"testing"
@@ -12,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	. "github.com/tendermint/go-common"
-	cmn "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
 	crypto "github.com/tendermint/go-crypto"
 	wire "github.com/tendermint/go-wire"
@@ -178,10 +176,10 @@ func TestConnAddrFilter(t *testing.T) {
 
 	// connect to good peer
 	go func() {
-		s1.AddPeerWithConnection(c1, false)
+		s1.addPeerWithConnection(c1)
 	}()
 	go func() {
-		s2.AddPeerWithConnection(c2, true)
+		s2.addPeerWithConnection(c2)
 	}()
 
 	// Wait for things to happen, peers to get added...
@@ -213,10 +211,10 @@ func TestConnPubKeyFilter(t *testing.T) {
 
 	// connect to good peer
 	go func() {
-		s1.AddPeerWithConnection(c1, false)
+		s1.addPeerWithConnection(c1)
 	}()
 	go func() {
-		s2.AddPeerWithConnection(c2, true)
+		s2.addPeerWithConnection(c2)
 	}()
 
 	// Wait for things to happen, peers to get added...
@@ -239,14 +237,12 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	sw.Start()
 	defer sw.Stop()
 
-	sw2 := makeSwitch(2, "testing", "123.123.123", initSwitchFunc)
-	defer sw2.Stop()
-	l, serverAddr := listenTCP()
-	done := make(chan struct{})
-	go accept(l, done, sw2)
-	defer close(done)
+	// simulate remote peer
+	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: DefaultPeerConfig()}
+	rp.Start()
+	defer rp.Stop()
 
-	peer, err := newPeer(NewNetAddress(serverAddr), sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.config, sw.nodePrivKey)
+	peer, err := newOutboundPeer(rp.Addr(), sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey)
 	require.Nil(err)
 	err = sw.AddPeer(peer)
 	require.Nil(err)
@@ -267,14 +263,12 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	sw.Start()
 	defer sw.Stop()
 
-	sw2 := makeSwitch(2, "testing", "123.123.123", initSwitchFunc)
-	defer sw2.Stop()
-	l, serverAddr := listenTCP()
-	done := make(chan struct{})
-	go accept(l, done, sw2)
-	defer close(done)
+	// simulate remote peer
+	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: DefaultPeerConfig()}
+	rp.Start()
+	defer rp.Stop()
 
-	peer, err := newPeer(NewNetAddress(serverAddr), sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.config, sw.nodePrivKey)
+	peer, err := newOutboundPeer(rp.Addr(), sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey)
 	peer.makePersistent()
 	require.Nil(err)
 	err = sw.AddPeer(peer)
@@ -333,49 +327,4 @@ func BenchmarkSwitches(b *testing.B) {
 	b.StopTimer()
 	time.Sleep(1000 * time.Millisecond)
 
-}
-
-func listenTCP() (net.Listener, net.Addr) {
-	l, e := net.Listen("tcp", "127.0.0.1:0") // any available address
-	if e != nil {
-		golog.Fatalf("net.Listen tcp :0: %+v", e)
-	}
-	return l, l.Addr()
-}
-
-// simulate remote peer
-func accept(l net.Listener, done <-chan struct{}, sw *Switch) {
-	for {
-		conn, err := l.Accept()
-		if err != nil {
-			golog.Fatalf("Failed to accept conn: %+v", err)
-		}
-		conn, err = MakeSecretConnection(conn, sw.nodePrivKey)
-		if err != nil {
-			golog.Fatalf("Failed to make secret conn: %+v", err)
-		}
-		var err1, err2 error
-		nodeInfo := new(NodeInfo)
-		cmn.Parallel(
-			func() {
-				var n int
-				wire.WriteBinary(sw.nodeInfo, conn, &n, &err1)
-			},
-			func() {
-				var n int
-				wire.ReadBinary(nodeInfo, conn, maxNodeInfoSize, &n, &err2)
-			})
-		if err1 != nil {
-			golog.Fatalf("Failed to do handshake: %+v", err1)
-		}
-		if err2 != nil {
-			golog.Fatalf("Failed to do handshake: %+v", err2)
-		}
-		select {
-		case <-done:
-			conn.Close()
-			return
-		default:
-		}
-	}
 }
