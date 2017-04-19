@@ -35,9 +35,9 @@ test100:
 	@for i in {1..100}; do make test; done
 
 draw_deps:
-	# requires brew install graphviz
-	go get github.com/hirokidaichi/goviz
-	goviz -i ./cmd/tendermint | dot -Tpng -o huge.png
+	# requires brew install graphviz or apt-get install graphviz
+	go get github.com/RobotsAndPencils/goviz
+	@goviz -i github.com/tendermint/tendermint/cmd/tendermint -d 3 | dot -Tpng -o dependency-graph.png
 
 list_deps:
 	@go list -f '{{join .Deps "\n"}}' ./... | \
