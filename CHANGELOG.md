@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.1 (April 18, 2017)
+
+IMPROVEMENTS:
+
+- Update dependencies
+
 ## 0.4.0 (March 6, 2017)
 
 BREAKING CHANGES: 

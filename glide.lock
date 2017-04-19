@@ -1,31 +1,35 @@
-hash: 54e49c7cb920a3390f631de12e38226494920bbc5e0c369514df18fe0ab5b693
-updated: 2017-02-14T16:51:55.592202262-05:00
+hash: a0dd8fe3cb061f9e4f3b3b6f0e6e7fb91982d7c3deb422e53e144a3bdcde216a
+updated: 2017-04-18T23:28:11.182163777-04:00
 imports:
 - name: github.com/btcsuite/btcd
-  version: d06c0bb181529331be8f8d9350288c420d9e60e4
+  version: b8df516b4b267acf2de46be593a9d948d1d2c420
   subpackages:
   - btcec
+- name: github.com/btcsuite/fastsha256
+  version: 637e656429416087660c84436a2a035d69d54e2e
 - name: github.com/go-stack/stack
   version: 100eb0c0a9c5b306ca2fb4f165df21d80ada4b82
 - name: github.com/golang/protobuf
-  version: 8ee79997227bf9b34611aee7946ae64735e6fd93
+  version: 69b215d01a5606c843240eab4937eab3acee6530
   subpackages:
   - proto
 - name: github.com/golang/snappy
-  version: 7db9049039a047d955fe8c19b83c8ff5abd765c7
+  version: 553a641470496b2327abcac10b36396bd98e45c9
 - name: github.com/jmhodges/levigo
   version: c42d9e0ca023e2198120196f842701bb4c55d7b9
 - name: github.com/mattn/go-colorable
-  version: 5411d3eea5978e6cdc258b30de592b60df6aba96
+  version: 9fdad7c47650b7d2e1da50644c1f4ba7f172f252
 - name: github.com/mattn/go-isatty
-  version: 281032e84ae07510239465db46bf442aa44b953a
+  version: 56b76bdf51f7708750eac80fa38b952bb9f32639
+- name: github.com/pkg/errors
+  version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/stretchr/testify
   version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
   subpackages:
   - assert
   - require
 - name: github.com/syndtr/goleveldb
-  version: 23851d93a2292dcc56e71a18ec9e0624d84a0f65
+  version: 3c5717caf1475fd25964109a0fc640bd150fce43
   subpackages:
   - leveldb
   - leveldb/cache
@@ -45,27 +49,29 @@ imports:
   - edwards25519
   - extra25519
 - name: github.com/tendermint/go-common
-  version: 339e135776142939d82bc8e699db0bf391fd938d
+  version: f9e3db037330c8a8d61d3966de8473eaf01154fa
 - name: github.com/tendermint/go-crypto
-  version: 4b11d62bdb324027ea01554e5767b71174680ba0
+  version: 750b25c47a5782f5f2b773ed9e706cb82b3ccef4
+- name: github.com/tendermint/go-data
+  version: e7fcc6d081ec8518912fcdc103188275f83a3ee5
 - name: github.com/tendermint/go-db
-  version: 72f6dacd22a686cdf7fcd60286503e3aceda77ba
+  version: 9643f60bc2578693844aacf380a7c32e4c029fee
 - name: github.com/tendermint/go-logger
   version: cefb3a45c0bf3c493a04e9bcd9b1540528be59f2
 - name: github.com/tendermint/go-merkle
-  version: 9f20e80cb188d07860caa70196dd7700659ec4a4
+  version: 714d4d04557fd068a7c2a1748241ce8428015a96
 - name: github.com/tendermint/go-process
   version: b27edfd189b1a01a0b099f7e9f8263589cf04909
 - name: github.com/tendermint/go-wire
-  version: 3216ec9d47bbdf8d4fc27d22169ea86a6688bc15
+  version: c1c9a57ab8038448ddea1714c0698f8051e5748c
 - name: github.com/tendermint/log15
   version: ae0f3d6450da9eac7074b439c8e1c3cabf0d5ce6
   subpackages:
   - term
 - name: github.com/urfave/cli
-  version: 347a9884a87374d000eec7e6445a34487c1f4a2b
+  version: 8ef3805c9de2519805c3f060524b695bba2cd715
 - name: golang.org/x/crypto
-  version: 453249f01cfeb54c3d549ddb75ff152ca243f9d8
+  version: 1f22c0103821b9390939b6776727195525381532
   subpackages:
   - nacl/secretbox
   - openpgp/armor
@@ -74,7 +80,7 @@ imports:
   - ripemd160
   - salsa20/salsa
 - name: golang.org/x/net
-  version: 61557ac0112b576429a0df080e1c2cef5dfbb642
+  version: d379faa25cbdc04d653984913a2ceb43b0bc46d7
   subpackages:
   - context
   - http2
@@ -84,11 +90,11 @@ imports:
   - lex/httplex
   - trace
 - name: golang.org/x/sys
-  version: e24f485414aeafb646f6fca458b0bf869c0880a1
+  version: 50c6bc5e4292a1d4e65c6e9be5f53be28bcbe28e
   subpackages:
   - unix
 - name: google.golang.org/grpc
-  version: cbcceb2942a489498cf22b2f918536e819d33f0a
+  version: 7b399ed358736bc5522021cdc7d79a8ee9ac6f98
   subpackages:
   - codes
   - credentials
