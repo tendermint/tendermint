@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.5.0 (April 18, 2017)
+
+BREAKING CHANGES: 
+
+- Remove or unexport methods from FuzzedConnection: Active, Mode, ProbDropRW, ProbDropConn, ProbSleep, MaxDelayMilliseconds, Fuzz
+- switch.AddPeerWithConnection is unexported and replaced by switch.AddPeer
+- switch.DialPeerWithAddress takes a bool, setting the peer as persistent or not
+
+FEATURES:
+
+- Persistent peers: any peer considered a "seed" will be reconnected to when the connection is dropped
+
+
+IMPROVEMENTS:
+
+- Many more tests and comments
+- Refactor configurations for less dependence on go-config. Introduces new structs PeerConfig, MConnConfig, FuzzConnConfig
+- New methods on peer: CloseConn, HandshakeTimeout, IsPersistent, Addr, PubKey
+- NewNetAddress supports a testing mode where the address defaults to 0.0.0.0:0
+
+
 ## 0.4.0 (March 6, 2017)
 
 BREAKING CHANGES: 

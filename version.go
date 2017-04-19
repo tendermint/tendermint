@@ -1,3 +1,3 @@
 package p2p
 
-const Version = "0.4.0" // DialSeeds returns an error
+const Version = "0.5.0"
