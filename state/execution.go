@@ -246,7 +246,7 @@ func (s *State) ApplyBlock(eventCache types.Fireable, proxyAppConn proxy.AppConn
 		return fmt.Errorf("Commit failed for application: %v", err)
 	}
 
-	batch := txindex.NewBatch()
+	batch := txindex.NewBatch(block.NumTxs)
 	for _, r := range txResults {
 		batch.Add(*r)
 	}

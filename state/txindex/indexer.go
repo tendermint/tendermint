@@ -33,13 +33,15 @@ type Batch struct {
 }
 
 // NewBatch creates a new Batch.
-func NewBatch() *Batch {
-	return &Batch{}
+func NewBatch(n int) *Batch {
+	return &Batch{
+		Ops: make([]types.TxResult, n),
+	}
 }
 
-// Index adds or updates entry for the given hash.
+// Index adds or updates entry for the given result.Index.
 func (b *Batch) Add(result types.TxResult) error {
-	b.Ops = append(b.Ops, result)
+	b.Ops[result.Index] = result
 	return nil
 }
 

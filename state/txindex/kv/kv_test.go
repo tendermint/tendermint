@@ -17,10 +17,10 @@ func TestTxIndex(t *testing.T) {
 	indexer := &TxIndex{store: db.NewMemDB()}
 
 	tx := types.Tx("HELLO WORLD")
-	txResult := &types.TxResult{1, 1, tx, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeType_OK, Log: ""}}
+	txResult := &types.TxResult{1, 0, tx, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeType_OK, Log: ""}}
 	hash := tx.Hash()
 
-	batch := txindex.NewBatch()
+	batch := txindex.NewBatch(1)
 	batch.Add(*txResult)
 	err := indexer.AddBatch(batch)
 	require.Nil(t, err)
@@ -32,7 +32,7 @@ func TestTxIndex(t *testing.T) {
 
 func benchmarkTxIndex(txsCount int, b *testing.B) {
 	tx := types.Tx("HELLO WORLD")
-	txResult := &types.TxResult{1, 1, tx, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeType_OK, Log: ""}}
+	txResult := &types.TxResult{1, 0, tx, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeType_OK, Log: ""}}
 
 	dir, err := ioutil.TempDir("", "tx_indexer_db")
 	if err != nil {
@@ -43,8 +43,9 @@ func benchmarkTxIndex(txsCount int, b *testing.B) {
 	store := db.NewDB("tx_indexer", "leveldb", dir)
 	indexer := &TxIndex{store: store}
 
-	batch := txindex.NewBatch()
+	batch := txindex.NewBatch(txsCount)
 	for i := 0; i < txsCount; i++ {
+		txResult.Index += 1
 		batch.Add(*txResult)
 	}
 
