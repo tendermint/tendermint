@@ -1,4 +1,4 @@
-#HEIGHT: 1
+#ENDHEIGHT: 0
 {"time":"2016-12-18T05:05:43.641Z","msg":[3,{"duration":969409681,"height":1,"round":0,"step":1}]}
 {"time":"2016-12-18T05:05:43.643Z","msg":[1,{"height":1,"round":0,"step":"RoundStepPropose"}]}
 {"time":"2016-12-18T05:05:43.643Z","msg":[2,{"msg":[17,{"Proposal":{"height":1,"round":0,"block_parts_header":{"total":5,"hash":"C916905C3C444501DDDAA1BF52E959B7531E762E"},"pol_round":-1,"pol_block_id":{"hash":"","parts":{"total":0,"hash":""}},"signature":[1,"F1A8E9928889C68FD393F3983B5362AECA4A95AA13FE3C78569B2515EC046893CB718071CAF54F3F1507DCD851B37CD5557EA17BB5471D2DC6FB5AC5FBB72E02"]}}],"peer_key":""}]}

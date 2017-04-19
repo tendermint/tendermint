@@ -13,58 +13,37 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// ExecBlock executes the block to mutate State.
+//--------------------------------------------------
+// Execute the block
+
+// ValExecBlock executes the block, but does NOT mutate State.
 // + validates the block
 // + executes block.Txs on the proxyAppConn
-// + updates validator sets
-// + returns block.Txs results
-func (s *State) ExecBlock(eventCache types.Fireable, proxyAppConn proxy.AppConnConsensus, block *types.Block, blockPartsHeader types.PartSetHeader) ([]*types.TxResult, error) {
+func (s *State) ValExecBlock(eventCache types.Fireable, proxyAppConn proxy.AppConnConsensus, block *types.Block) (*ABCIResponses, error) {
 	// Validate the block.
 	if err := s.validateBlock(block); err != nil {
 		return nil, ErrInvalidBlock(err)
 	}
 
-	// compute bitarray of validators that signed
-	signed := commitBitArrayFromBlock(block)
-	_ = signed // TODO send on begin block
-
-	// copy the valset
-	valSet := s.Validators.Copy()
-	nextValSet := valSet.Copy()
-
 	// Execute the block txs
-	txResults, changedValidators, err := execBlockOnProxyApp(eventCache, proxyAppConn, block)
+	abciResponses, err := execBlockOnProxyApp(eventCache, proxyAppConn, block)
 	if err != nil {
 		// There was some error in proxyApp
 		// TODO Report error and wait for proxyApp to be available.
 		return nil, ErrProxyAppConn(err)
 	}
 
-	// update the validator set
-	err = updateValidators(nextValSet, changedValidators)
-	if err != nil {
-		log.Warn("Error changing validator set", "error", err)
-		// TODO: err or carry on?
-	}
-
-	// All good!
-	// Update validator accums and set state variables
-	nextValSet.IncrementAccum(1)
-	s.SetBlockAndValidators(block.Header, blockPartsHeader, valSet, nextValSet)
-
-	fail.Fail() // XXX
-
-	return txResults, nil
+	return abciResponses, nil
 }
 
 // Executes block's transactions on proxyAppConn.
 // Returns a list of transaction results and updates to the validator set
 // TODO: Generate a bitmap or otherwise store tx validity in state.
-func execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn proxy.AppConnConsensus, block *types.Block) ([]*types.TxResult, []*abci.Validator, error) {
+func execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn proxy.AppConnConsensus, block *types.Block) (*ABCIResponses, error) {
 	var validTxs, invalidTxs = 0, 0
 
-	txResults := make([]*types.TxResult, len(block.Txs))
 	txIndex := 0
+	abciResponses := NewABCIResponses(block)
 
 	// Execute transactions and get hash
 	proxyCb := func(req *abci.Request, res *abci.Response) {
@@ -84,12 +63,7 @@ func execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn proxy.AppConnCo
 				txError = txResult.Code.String()
 			}
 
-			txResults[txIndex] = &types.TxResult{
-				Height: uint64(block.Height),
-				Index:  uint32(txIndex),
-				Tx:     req.GetDeliverTx().Tx,
-				Result: *txResult,
-			}
+			abciResponses.DeliverTx[txIndex] = txResult
 			txIndex++
 
 			// NOTE: if we count we can access the tx from the block instead of
@@ -111,36 +85,32 @@ func execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn proxy.AppConnCo
 	err := proxyAppConn.BeginBlockSync(block.Hash(), types.TM2PB.Header(block.Header))
 	if err != nil {
 		log.Warn("Error in proxyAppConn.BeginBlock", "error", err)
-		return nil, nil, err
+		return nil, err
 	}
-
-	fail.Fail() // XXX
 
 	// Run txs of block
 	for _, tx := range block.Txs {
-		fail.FailRand(len(block.Txs)) // XXX
 		proxyAppConn.DeliverTxAsync(tx)
 		if err := proxyAppConn.Error(); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	}
 
-	fail.Fail() // XXX
-
 	// End block
-	respEndBlock, err := proxyAppConn.EndBlockSync(uint64(block.Height))
+	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(uint64(block.Height))
 	if err != nil {
 		log.Warn("Error in proxyAppConn.EndBlock", "error", err)
-		return nil, nil, err
+		return nil, err
 	}
 
-	fail.Fail() // XXX
+	valDiff := abciResponses.EndBlock.Diffs
 
 	log.Info("Executed block", "height", block.Height, "valid txs", validTxs, "invalid txs", invalidTxs)
-	if len(respEndBlock.Diffs) > 0 {
-		log.Info("Update to validator set", "updates", abci.ValidatorsString(respEndBlock.Diffs))
+	if len(valDiff) > 0 {
+		log.Info("Update to validator set", "updates", abci.ValidatorsString(valDiff))
 	}
-	return txResults, respEndBlock.Diffs, nil
+
+	return abciResponses, nil
 }
 
 func updateValidators(validators *types.ValidatorSet, changedValidators []*abci.Validator) error {
@@ -230,15 +200,32 @@ func (s *State) validateBlock(block *types.Block) error {
 	return nil
 }
 
-// ApplyBlock executes the block, then commits and updates the mempool
-// atomically, optionally indexing transaction results.
+//-----------------------------------------------------------------------------
+// ApplyBlock validates & executes the block, updates state w/ ABCI responses,
+// then commits and updates the mempool atomically, then saves state.
+// Transaction results are optionally indexed.
+
+// Validate, execute, and commit block against app, save block and state
 func (s *State) ApplyBlock(eventCache types.Fireable, proxyAppConn proxy.AppConnConsensus,
 	block *types.Block, partsHeader types.PartSetHeader, mempool types.Mempool) error {
 
-	txResults, err := s.ExecBlock(eventCache, proxyAppConn, block, partsHeader)
+	abciResponses, err := s.ValExecBlock(eventCache, proxyAppConn, block)
 	if err != nil {
 		return fmt.Errorf("Exec failed for application: %v", err)
 	}
+
+	fail.Fail() // XXX
+
+	// index txs. This could run in the background
+	s.indexTxs(abciResponses)
+
+	// save the results before we commit
+	s.SaveABCIResponses(abciResponses)
+
+	fail.Fail() // XXX
+
+	// now update the block and validators
+	s.SetBlockAndValidators(block.Header, partsHeader, abciResponses)
 
 	// lock mempool, commit state, update mempoool
 	err = s.CommitStateUpdateMempool(proxyAppConn, block, mempool)
@@ -246,11 +233,10 @@ func (s *State) ApplyBlock(eventCache types.Fireable, proxyAppConn proxy.AppConn
 		return fmt.Errorf("Commit failed for application: %v", err)
 	}
 
-	batch := txindex.NewBatch(block.NumTxs)
-	for _, r := range txResults {
-		batch.Add(*r)
-	}
-	s.TxIndexer.AddBatch(batch)
+	fail.Fail() // XXX
+
+	// save the state
+	s.Save()
 
 	return nil
 }
@@ -282,11 +268,27 @@ func (s *State) CommitStateUpdateMempool(proxyAppConn proxy.AppConnConsensus, bl
 	return nil
 }
 
-// Apply and commit a block, but without all the state validation.
+func (s *State) indexTxs(abciResponses *ABCIResponses) {
+	// save the tx results using the TxIndexer
+	// NOTE: these may be overwriting, but the values should be the same.
+	batch := txindex.NewBatch(len(abciResponses.DeliverTx))
+	for i, d := range abciResponses.DeliverTx {
+		tx := abciResponses.txs[i]
+		batch.Add(types.TxResult{
+			Height: uint64(abciResponses.Height),
+			Index:  uint32(i),
+			Tx:     tx,
+			Result: *d,
+		})
+	}
+	s.TxIndexer.AddBatch(batch)
+}
+
+// Exec and commit a block on the proxyApp without validating or mutating the state
 // Returns the application root hash (result of abci.Commit)
-func ApplyBlock(appConnConsensus proxy.AppConnConsensus, block *types.Block) ([]byte, error) {
+func ExecCommitBlock(appConnConsensus proxy.AppConnConsensus, block *types.Block) ([]byte, error) {
 	var eventCache types.Fireable // nil
-	_, _, err := execBlockOnProxyApp(eventCache, appConnConsensus, block)
+	_, err := execBlockOnProxyApp(eventCache, appConnConsensus, block)
 	if err != nil {
 		log.Warn("Error executing block on proxy app", "height", block.Height, "err", err)
 		return nil, err

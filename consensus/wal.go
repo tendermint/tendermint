@@ -59,7 +59,7 @@ func (wal *WAL) OnStart() error {
 	if err != nil {
 		return err
 	} else if size == 0 {
-		wal.writeHeight(1)
+		wal.writeEndHeight(0)
 	}
 	_, err = wal.group.Start()
 	return err
@@ -83,12 +83,6 @@ func (wal *WAL) Save(wmsg WALMessage) {
 			}
 		}
 	}
-	// Write #HEIGHT: XYZ if new height
-	if edrs, ok := wmsg.(types.EventDataRoundState); ok {
-		if edrs.Step == RoundStepNewHeight.String() {
-			wal.writeHeight(edrs.Height)
-		}
-	}
 	// Write the wal message
 	var wmsgBytes = wire.JSONBytes(TimedWALMessage{time.Now(), wmsg})
 	err := wal.group.WriteLine(string(wmsgBytes))
@@ -101,8 +95,8 @@ func (wal *WAL) Save(wmsg WALMessage) {
 	}
 }
 
-func (wal *WAL) writeHeight(height int) {
-	wal.group.WriteLine(Fmt("#HEIGHT: %v", height))
+func (wal *WAL) writeEndHeight(height int) {
+	wal.group.WriteLine(Fmt("#ENDHEIGHT: %v", height))
 
 	// TODO: only flush when necessary
 	if err := wal.group.Flush(); err != nil {
