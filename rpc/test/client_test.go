@@ -13,7 +13,9 @@ import (
 	abci "github.com/tendermint/abci/types"
 	. "github.com/tendermint/go-common"
 	rpc "github.com/tendermint/go-rpc/client"
+	"github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tendermint/state/txindex/null"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -147,6 +149,91 @@ func testBroadcastTxCommit(t *testing.T, client rpc.HTTPClient) {
 	mem := node.MempoolReactor().Mempool
 	require.Equal(0, mem.Size())
 	// TODO: find tx in block
+}
+
+//--------------------------------------------------------------------------------
+// query tx
+
+func TestURITx(t *testing.T) {
+	testTx(t, GetURIClient(), true)
+
+	core.SetTxIndexer(&null.TxIndex{})
+	testTx(t, GetJSONClient(), false)
+	core.SetTxIndexer(node.ConsensusState().GetState().TxIndexer)
+}
+
+func TestJSONTx(t *testing.T) {
+	testTx(t, GetJSONClient(), true)
+
+	core.SetTxIndexer(&null.TxIndex{})
+	testTx(t, GetJSONClient(), false)
+	core.SetTxIndexer(node.ConsensusState().GetState().TxIndexer)
+}
+
+func testTx(t *testing.T, client rpc.HTTPClient, withIndexer bool) {
+	assert, require := assert.New(t), require.New(t)
+
+	// first we broadcast a tx
+	tmResult := new(ctypes.TMResult)
+	txBytes := randBytes(t)
+	tx := types.Tx(txBytes)
+	_, err := client.Call("broadcast_tx_commit", map[string]interface{}{"tx": txBytes}, tmResult)
+	require.Nil(err)
+
+	res := (*tmResult).(*ctypes.ResultBroadcastTxCommit)
+	checkTx := res.CheckTx
+	require.Equal(abci.CodeType_OK, checkTx.Code)
+	deliverTx := res.DeliverTx
+	require.Equal(abci.CodeType_OK, deliverTx.Code)
+	mem := node.MempoolReactor().Mempool
+	require.Equal(0, mem.Size())
+
+	txHash := tx.Hash()
+	txHash2 := types.Tx("a different tx").Hash()
+
+	cases := []struct {
+		valid bool
+		hash  []byte
+		prove bool
+	}{
+		// only valid if correct hash provided
+		{true, txHash, false},
+		{true, txHash, true},
+		{false, txHash2, false},
+		{false, txHash2, true},
+		{false, nil, false},
+		{false, nil, true},
+	}
+
+	for i, tc := range cases {
+		idx := fmt.Sprintf("%d", i)
+
+		// now we query for the tx.
+		// since there's only one tx, we know index=0.
+		tmResult = new(ctypes.TMResult)
+		query := map[string]interface{}{
+			"hash":  tc.hash,
+			"prove": tc.prove,
+		}
+		_, err = client.Call("tx", query, tmResult)
+		valid := (withIndexer && tc.valid)
+		if !valid {
+			require.NotNil(err, idx)
+		} else {
+			require.Nil(err, idx)
+			res2 := (*tmResult).(*ctypes.ResultTx)
+			assert.Equal(tx, res2.Tx, idx)
+			assert.Equal(res.Height, res2.Height, idx)
+			assert.Equal(0, res2.Index, idx)
+			assert.Equal(abci.CodeType_OK, res2.TxResult.Code, idx)
+			// time to verify the proof
+			proof := res2.Proof
+			if tc.prove && assert.Equal(tx, proof.Data, idx) {
+				assert.True(proof.Proof.Verify(proof.Index, proof.Total, tx.Hash(), proof.RootHash), idx)
+			}
+		}
+	}
+
 }
 
 //--------------------------------------------------------------------------------

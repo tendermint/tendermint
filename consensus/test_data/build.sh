@@ -27,7 +27,7 @@ killall tendermint
 # /q would print up to and including the match, then quit. 
 # /Q doesn't include the match. 
 # http://unix.stackexchange.com/questions/11305/grep-show-all-the-file-up-to-the-match
-sed '/HEIGHT: 2/Q' ~/.tendermint/data/cs.wal/wal  > consensus/test_data/empty_block.cswal
+sed '/ENDHEIGHT: 1/Q' ~/.tendermint/data/cs.wal/wal  > consensus/test_data/empty_block.cswal
 
 reset
 }
@@ -41,7 +41,7 @@ sleep 7
 killall tendermint
 kill -9 $PID
 
-sed '/HEIGHT: 7/Q' ~/.tendermint/data/cs.wal/wal  > consensus/test_data/many_blocks.cswal
+sed '/ENDHEIGHT: 6/Q' ~/.tendermint/data/cs.wal/wal  > consensus/test_data/many_blocks.cswal
 
 reset
 }
@@ -56,7 +56,7 @@ sleep 10
 killall tendermint
 kill -9 $PID
 
-sed '/HEIGHT: 2/Q' ~/.tendermint/data/cs.wal/wal  > consensus/test_data/small_block1.cswal
+sed '/ENDHEIGHT: 1/Q' ~/.tendermint/data/cs.wal/wal  > consensus/test_data/small_block1.cswal
 
 reset
 }
@@ -73,7 +73,7 @@ sleep 5
 killall tendermint
 kill -9 $PID
 
-sed '/HEIGHT: 2/Q' ~/.tendermint/data/cs.wal/wal  > consensus/test_data/small_block2.cswal
+sed '/ENDHEIGHT: 1/Q' ~/.tendermint/data/cs.wal/wal  > consensus/test_data/small_block2.cswal
 
 reset
 }

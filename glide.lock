@@ -1,5 +1,5 @@
 hash: d9724aa287c40d1b3856b6565f09235d809c8b2f7c6537c04f597137c0d6cd26
-updated: 2017-04-12T13:43:29.528413882-04:00
+updated: 2017-04-14T17:17:31.933202871-04:00
 imports:
 - name: github.com/btcsuite/btcd
   version: b8df516b4b267acf2de46be593a9d948d1d2c420
@@ -85,7 +85,7 @@ imports:
 - name: github.com/tendermint/go-clist
   version: 3baa390bbaf7634251c42ad69a8682e7e3990552
 - name: github.com/tendermint/go-common
-  version: 6af2364fa91ef2f3afc8ba0db33b66d9d3ae006c
+  version: 714fdaee3bb3f8670e721a75c5ddda8787b256dd
   subpackages:
   - test
 - name: github.com/tendermint/go-config
@@ -111,13 +111,13 @@ imports:
   subpackages:
   - upnp
 - name: github.com/tendermint/go-rpc
-  version: c3295f4878019ff3fdfcac37a4c0e4bcf4bb02a7
+  version: 4671c44b2d124f7f6f6243dbfbf4ae2bf42ee809
   subpackages:
   - client
   - server
   - types
 - name: github.com/tendermint/go-wire
-  version: ad797c70affa2c81fccc5edaed63ac25144397c6
+  version: 50889e2b4a9ba65b67be86a486f25853d514b937
 - name: github.com/tendermint/log15
   version: ae0f3d6450da9eac7074b439c8e1c3cabf0d5ce6
   subpackages:

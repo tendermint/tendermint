@@ -6,15 +6,19 @@ import (
 	"sync"
 	"time"
 
+	abci "github.com/tendermint/abci/types"
 	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
 	dbm "github.com/tendermint/go-db"
 	"github.com/tendermint/go-wire"
+	"github.com/tendermint/tendermint/state/txindex"
+	"github.com/tendermint/tendermint/state/txindex/null"
 	"github.com/tendermint/tendermint/types"
 )
 
 var (
-	stateKey = []byte("stateKey")
+	stateKey         = []byte("stateKey")
+	abciResponsesKey = []byte("abciResponsesKey")
 )
 
 //-----------------------------------------------------------------------------
@@ -29,7 +33,7 @@ type State struct {
 	GenesisDoc *types.GenesisDoc
 	ChainID    string
 
-	// updated at end of ExecBlock
+	// updated at end of SetBlockAndValidators
 	LastBlockHeight int // Genesis state has this set to 0.  So, Block(H=0) does not exist.
 	LastBlockID     types.BlockID
 	LastBlockTime   time.Time
@@ -38,6 +42,12 @@ type State struct {
 
 	// AppHash is updated after Commit
 	AppHash []byte
+
+	TxIndexer txindex.TxIndexer `json:"-"` // Transaction indexer.
+
+	// Intermediate results from processing
+	// Persisted separately from the state
+	abciResponses *ABCIResponses
 }
 
 func LoadState(db dbm.DB) *State {
@@ -45,7 +55,7 @@ func LoadState(db dbm.DB) *State {
 }
 
 func loadState(db dbm.DB, key []byte) *State {
-	s := &State{db: db}
+	s := &State{db: db, TxIndexer: &null.TxIndex{}}
 	buf := db.Get(key)
 	if len(buf) == 0 {
 		return nil
@@ -54,7 +64,7 @@ func loadState(db dbm.DB, key []byte) *State {
 		wire.ReadBinaryPtr(&s, r, 0, n, err)
 		if *err != nil {
 			// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
-			Exit(Fmt("Data has been corrupted or its spec has changed: %v\n", *err))
+			Exit(Fmt("LoadState: Data has been corrupted or its spec has changed: %v\n", *err))
 		}
 		// TODO: ensure that buf is completely read.
 	}
@@ -72,6 +82,7 @@ func (s *State) Copy() *State {
 		Validators:      s.Validators.Copy(),
 		LastValidators:  s.LastValidators.Copy(),
 		AppHash:         s.AppHash,
+		TxIndexer:       s.TxIndexer, // pointer here, not value
 	}
 }
 
@@ -79,6 +90,29 @@ func (s *State) Save() {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 	s.db.SetSync(stateKey, s.Bytes())
+}
+
+// Sets the ABCIResponses in the state and writes them to disk
+// in case we crash after app.Commit and before s.Save()
+func (s *State) SaveABCIResponses(abciResponses *ABCIResponses) {
+	// save the validators to the db
+	s.db.SetSync(abciResponsesKey, abciResponses.Bytes())
+}
+
+func (s *State) LoadABCIResponses() *ABCIResponses {
+	abciResponses := new(ABCIResponses)
+
+	buf := s.db.Get(abciResponsesKey)
+	if len(buf) != 0 {
+		r, n, err := bytes.NewReader(buf), new(int), new(error)
+		wire.ReadBinaryPtr(abciResponses, r, 0, n, err)
+		if *err != nil {
+			// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
+			Exit(Fmt("LoadABCIResponses: Data has been corrupted or its spec has changed: %v\n", *err))
+		}
+		// TODO: ensure that buf is completely read.
+	}
+	return abciResponses
 }
 
 func (s *State) Equals(s2 *State) bool {
@@ -96,7 +130,22 @@ func (s *State) Bytes() []byte {
 
 // Mutate state variables to match block and validators
 // after running EndBlock
-func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader types.PartSetHeader, prevValSet, nextValSet *types.ValidatorSet) {
+func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader types.PartSetHeader, abciResponses *ABCIResponses) {
+
+	// copy the valset so we can apply changes from EndBlock
+	// and update s.LastValidators and s.Validators
+	prevValSet := s.Validators.Copy()
+	nextValSet := prevValSet.Copy()
+
+	// update the validator set with the latest abciResponses
+	err := updateValidators(nextValSet, abciResponses.EndBlock.Diffs)
+	if err != nil {
+		log.Warn("Error changing validator set", "error", err)
+		// TODO: err or carry on?
+	}
+	// Update validator accums and set state variables
+	nextValSet.IncrementAccum(1)
+
 	s.setBlockAndValidators(header.Height,
 		types.BlockID{header.Hash(), blockPartsHeader}, header.Time,
 		prevValSet, nextValSet)
@@ -125,12 +174,46 @@ func GetState(config cfg.Config, stateDB dbm.DB) *State {
 		state = MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
 		state.Save()
 	}
+
 	return state
+}
+
+//--------------------------------------------------
+// ABCIResponses holds intermediate state during block processing
+
+type ABCIResponses struct {
+	Height int
+
+	DeliverTx []*abci.ResponseDeliverTx
+	EndBlock  abci.ResponseEndBlock
+
+	txs types.Txs // reference for indexing results by hash
+}
+
+func NewABCIResponses(block *types.Block) *ABCIResponses {
+	return &ABCIResponses{
+		Height:    block.Height,
+		DeliverTx: make([]*abci.ResponseDeliverTx, block.NumTxs),
+		txs:       block.Data.Txs,
+	}
+}
+
+// Serialize the ABCIResponse
+func (a *ABCIResponses) Bytes() []byte {
+	buf, n, err := new(bytes.Buffer), new(int), new(error)
+	wire.WriteBinary(*a, buf, n, err)
+	if *err != nil {
+		PanicCrisis(*err)
+	}
+	return buf.Bytes()
 }
 
 //-----------------------------------------------------------------------------
 // Genesis
 
+// MakeGenesisStateFromFile reads and unmarshals state from the given file.
+//
+// Used during replay and in tests.
 func MakeGenesisStateFromFile(db dbm.DB, genDocFile string) *State {
 	genDocJSON, err := ioutil.ReadFile(genDocFile)
 	if err != nil {
@@ -143,6 +226,9 @@ func MakeGenesisStateFromFile(db dbm.DB, genDocFile string) *State {
 	return MakeGenesisState(db, genDoc)
 }
 
+// MakeGenesisState creates state from types.GenesisDoc.
+//
+// Used in tests.
 func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) *State {
 	if len(genDoc.Validators) == 0 {
 		Exit(Fmt("The genesis file has no validators"))
@@ -176,5 +262,6 @@ func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) *State {
 		Validators:      types.NewValidatorSet(validators),
 		LastValidators:  types.NewValidatorSet(nil),
 		AppHash:         genDoc.AppHash,
+		TxIndexer:       &null.TxIndex{}, // we do not need indexer during replay and in tests
 	}
 }
