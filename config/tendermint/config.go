@@ -9,22 +9,24 @@ import (
 	cfg "github.com/tendermint/go-config"
 )
 
-func getTMRoot(rootDir string) string {
-	if rootDir == "" {
-		rootDir = os.Getenv("TMHOME")
+// GetTMRoot returns Tendermint root directory.
+func GetTMRoot(rootDir string) string {
+	if rootDir != "" {
+		return rootDir
 	}
-	if rootDir == "" {
-		// deprecated, use TMHOME (TODO: remove in TM 0.11.0)
-		rootDir = os.Getenv("TMROOT")
+
+	dir := os.Getenv("TMHOME")
+	if dir == "" {
+		dir = os.Getenv("TMROOT")
 	}
-	if rootDir == "" {
-		rootDir = os.Getenv("HOME") + "/.tendermint"
+	if dir == "" {
+		dir = os.Getenv("HOME") + "/.tendermint"
 	}
-	return rootDir
+	return dir
 }
 
 func initTMRoot(rootDir string) {
-	rootDir = getTMRoot(rootDir)
+	rootDir = GetTMRoot(rootDir)
 	EnsureDir(rootDir, 0700)
 	EnsureDir(rootDir+"/data", 0700)
 
@@ -39,7 +41,7 @@ func initTMRoot(rootDir string) {
 }
 
 func GetConfig(rootDir string) cfg.Config {
-	rootDir = getTMRoot(rootDir)
+	rootDir = GetTMRoot(rootDir)
 	initTMRoot(rootDir)
 
 	configFilePath := path.Join(rootDir, "config.toml")
