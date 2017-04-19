@@ -90,9 +90,9 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreato
 
 	// Transaction indexing
 	var txIndexer txindex.TxIndexer
-	switch config.GetString("tx_indexer") {
+	switch config.GetString("tx_index") {
 	case "kv":
-		store := dbm.NewDB("tx_indexer", config.GetString("db_backend"), config.GetString("db_dir"))
+		store := dbm.NewDB("tx_index", config.GetString("db_backend"), config.GetString("db_dir"))
 		txIndexer = kv.NewTxIndex(store)
 	default:
 		txIndexer = &null.TxIndex{}
@@ -381,7 +381,7 @@ func (n *Node) makeNodeInfo() *p2p.NodeInfo {
 			cmn.Fmt("p2p_version=%v", p2p.Version),
 			cmn.Fmt("consensus_version=%v", consensus.Version),
 			cmn.Fmt("rpc_version=%v/%v", rpc.Version, rpccore.Version),
-			cmn.Fmt("tx_indexer=%v", txIndexerStatus),
+			cmn.Fmt("tx_index=%v", txIndexerStatus),
 		},
 	}
 

@@ -46,7 +46,7 @@ func (s *ResultStatus) TxIndexEnabled() bool {
 	}
 	for _, s := range s.NodeInfo.Other {
 		info := strings.Split(s, "=")
-		if len(info) == 2 && info[0] == "tx_indexer" {
+		if len(info) == 2 && info[0] == "tx_index" {
 			return info[1] == "on"
 		}
 	}

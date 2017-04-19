@@ -101,7 +101,7 @@ func GetConfig(rootDir string) cfg.Config {
 	mapConfig.SetDefault("mempool_broadcast", true)
 	mapConfig.SetDefault("mempool_wal_dir", rootDir+"/data/mempool.wal")
 
-	mapConfig.SetDefault("tx_indexer", "kv")
+	mapConfig.SetDefault("tx_index", "kv")
 
 	return mapConfig
 }

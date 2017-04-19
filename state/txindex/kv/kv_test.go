@@ -34,13 +34,13 @@ func benchmarkTxIndex(txsCount int, b *testing.B) {
 	tx := types.Tx("HELLO WORLD")
 	txResult := &types.TxResult{1, 0, tx, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeType_OK, Log: ""}}
 
-	dir, err := ioutil.TempDir("", "tx_indexer_db")
+	dir, err := ioutil.TempDir("", "tx_index_db")
 	if err != nil {
 		b.Fatal(err)
 	}
 	defer os.RemoveAll(dir)
 
-	store := db.NewDB("tx_indexer", "leveldb", dir)
+	store := db.NewDB("tx_index", "leveldb", dir)
 	indexer := &TxIndex{store: store}
 
 	batch := txindex.NewBatch(txsCount)

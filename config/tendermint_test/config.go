@@ -107,7 +107,7 @@ func ResetConfig(localPath string) cfg.Config {
 	mapConfig.SetDefault("mempool_broadcast", true)
 	mapConfig.SetDefault("mempool_wal_dir", "")
 
-	mapConfig.SetDefault("tx_indexer", "kv")
+	mapConfig.SetDefault("tx_index", "kv")
 
 	logger.SetLogLevel(mapConfig.GetString("log_level"))
 
