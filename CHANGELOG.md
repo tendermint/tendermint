@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.9.1 (April 18, 2017)
+
+FEATURES:
+
+- Transaction indexing - txs are indexed by their hash using a simple key-value store; easily extended to more advanced indexers
+- New `/tx?hash=X` endpoint to query for transactions and their DeliverTx result by hash. Optionally returns a proof of the tx's inclusion in the block
+
+IMPROVEMENTS:
+
+- CLI now uses Cobra framework
+- TMROOT is now TMHOME (TMROOT will stop working in 0.10.0)
+- `/broadcast_tx_XXX` also returns the TxID (can be used to query for the tx)
+- `/broadcast_tx_commit` also returns the height the block was committed in
+- ABCIResponses struct persisted to disk before calling Commit; makes handshake replay much cleaner
+- WAL uses #ENDHEIGHT instead of #HEIGHT (#HEIGHT will stop working in 0.10.0)
+- Peers included via `--seeds`, under `seeds` in the config, or in `/dial_seeds` are now persistent, and will be reconnected to if the connection breaks
+
+BUG FIXES: 
+
+- Fix bug in fast-sync where we stop syncing after a peer is removed, even if they're re-added later
+- Fix handshake replay to handle validator set changes and results of DeliverTx when we crash after app.Commit but before state.Save()
+
 ## 0.9.0 (March 6, 2017)
 
 BREAKING CHANGES:
