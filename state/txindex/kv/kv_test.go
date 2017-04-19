@@ -1,7 +1,6 @@
 package kv
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -22,7 +21,7 @@ func TestTxIndex(t *testing.T) {
 	hash := tx.Hash()
 
 	batch := txindex.NewBatch()
-	batch.Index(hash, *txResult)
+	batch.Add(*txResult)
 	err := indexer.AddBatch(batch)
 	require.Nil(t, err)
 
@@ -46,7 +45,7 @@ func benchmarkTxIndex(txsCount int, b *testing.B) {
 
 	batch := txindex.NewBatch()
 	for i := 0; i < txsCount; i++ {
-		batch.Index([]byte(fmt.Sprintf("hash%v", i)), *txResult)
+		batch.Add(*txResult)
 	}
 
 	b.ResetTimer()

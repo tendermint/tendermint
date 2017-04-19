@@ -27,8 +27,8 @@ func TestStatusIndexer(t *testing.T) {
 		{false, []string{}},
 		{false, []string{"a=b"}},
 		{false, []string{"tx_indexeriskv", "some=dood"}},
-		{true, []string{"tx_indexer=kv", "tx_indexer=other"}},
-		{true, []string{"^(*^(", "tx_indexer=kv", "a=n=b=d="}},
+		{true, []string{"tx_indexer=on", "tx_indexer=other"}},
+		{true, []string{"^(*^(", "tx_indexer=on", "a=n=b=d="}},
 	}
 
 	for _, tc := range cases {

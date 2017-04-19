@@ -47,9 +47,9 @@ func (txi *TxIndex) Get(hash []byte) (*types.TxResult, error) {
 // Batch writes a batch of transactions into the TxIndex storage.
 func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 	storeBatch := txi.store.NewBatch()
-	for hash, result := range b.Ops {
+	for _, result := range b.Ops {
 		rawBytes := wire.BinaryBytes(&result)
-		storeBatch.Set([]byte(hash), rawBytes)
+		storeBatch.Set(result.Tx.Hash(), rawBytes)
 	}
 	storeBatch.Write()
 	return nil

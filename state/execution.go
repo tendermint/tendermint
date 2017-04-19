@@ -247,9 +247,8 @@ func (s *State) ApplyBlock(eventCache types.Fireable, proxyAppConn proxy.AppConn
 	}
 
 	batch := txindex.NewBatch()
-	for i, r := range txResults {
-		tx := block.Txs[i]
-		batch.Index(tx.Hash(), *r)
+	for _, r := range txResults {
+		batch.Add(*r)
 	}
 	s.TxIndexer.AddBatch(batch)
 

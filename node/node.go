@@ -217,7 +217,7 @@ func (n *Node) OnStart() error {
 	n.sw.AddListener(l)
 
 	// Start the switch
-	n.sw.SetNodeInfo(makeNodeInfo(n.config, n.sw, n.privKey))
+	n.sw.SetNodeInfo(n.makeNodeInfo())
 	n.sw.SetNodePrivKey(n.privKey)
 	_, err := n.sw.Start()
 	if err != nil {
@@ -365,35 +365,39 @@ func (n *Node) ProxyApp() proxy.AppConns {
 	return n.proxyApp
 }
 
-func makeNodeInfo(config cfg.Config, sw *p2p.Switch, privKey crypto.PrivKeyEd25519) *p2p.NodeInfo {
+func (n *Node) makeNodeInfo() *p2p.NodeInfo {
+	txIndexerStatus := "on"
+	if _, ok := n.txIndexer.(*null.TxIndex); ok {
+		txIndexerStatus = "off"
+	}
 
 	nodeInfo := &p2p.NodeInfo{
-		PubKey:  privKey.PubKey().(crypto.PubKeyEd25519),
-		Moniker: config.GetString("moniker"),
-		Network: config.GetString("chain_id"),
+		PubKey:  n.privKey.PubKey().(crypto.PubKeyEd25519),
+		Moniker: n.config.GetString("moniker"),
+		Network: n.config.GetString("chain_id"),
 		Version: version.Version,
 		Other: []string{
 			cmn.Fmt("wire_version=%v", wire.Version),
 			cmn.Fmt("p2p_version=%v", p2p.Version),
 			cmn.Fmt("consensus_version=%v", consensus.Version),
 			cmn.Fmt("rpc_version=%v/%v", rpc.Version, rpccore.Version),
-			cmn.Fmt("tx_indexer=%v", config.GetString("tx_indexer")),
+			cmn.Fmt("tx_indexer=%v", txIndexerStatus),
 		},
 	}
 
 	// include git hash in the nodeInfo if available
-	if rev, err := cmn.ReadFile(config.GetString("revision_file")); err == nil {
+	if rev, err := cmn.ReadFile(n.config.GetString("revision_file")); err == nil {
 		nodeInfo.Other = append(nodeInfo.Other, cmn.Fmt("revision=%v", string(rev)))
 	}
 
-	if !sw.IsListening() {
+	if !n.sw.IsListening() {
 		return nodeInfo
 	}
 
-	p2pListener := sw.Listeners()[0]
+	p2pListener := n.sw.Listeners()[0]
 	p2pHost := p2pListener.ExternalAddress().IP.String()
 	p2pPort := p2pListener.ExternalAddress().Port
-	rpcListenAddr := config.GetString("rpc_laddr")
+	rpcListenAddr := n.config.GetString("rpc_laddr")
 
 	// We assume that the rpcListener has the same ExternalAddress.
 	// This is probably true because both P2P and RPC listeners use UPnP,

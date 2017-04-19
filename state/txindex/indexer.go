@@ -29,22 +29,17 @@ type TxIndexer interface {
 // perform operations on a batch from a single thread at a time. Once batch
 // execution has started, you may not modify it.
 type Batch struct {
-	Ops map[string]types.TxResult
+	Ops []types.TxResult
 }
 
 // NewBatch creates a new Batch.
 func NewBatch() *Batch {
-	return &Batch{
-		Ops: make(map[string]types.TxResult),
-	}
+	return &Batch{}
 }
 
 // Index adds or updates entry for the given hash.
-func (b *Batch) Index(hash []byte, result types.TxResult) error {
-	if len(hash) == 0 {
-		return ErrorEmptyHash
-	}
-	b.Ops[string(hash)] = result
+func (b *Batch) Add(result types.TxResult) error {
+	b.Ops = append(b.Ops, result)
 	return nil
 }
 
