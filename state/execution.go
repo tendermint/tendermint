@@ -233,12 +233,6 @@ func (s *State) ApplyBlock(eventCache types.Fireable, proxyAppConn proxy.AppConn
 		return fmt.Errorf("Commit failed for application: %v", err)
 	}
 
-	batch := txindex.NewBatch(block.NumTxs)
-	for _, r := range txResults {
-		batch.Add(*r)
-	}
-	s.TxIndexer.AddBatch(batch)
-
 	fail.Fail() // XXX
 
 	// save the state
@@ -277,12 +271,17 @@ func (s *State) CommitStateUpdateMempool(proxyAppConn proxy.AppConnConsensus, bl
 func (s *State) indexTxs(abciResponses *ABCIResponses) {
 	// save the tx results using the TxIndexer
 	// NOTE: these may be overwriting, but the values should be the same.
-	batch := txindexer.NewBatch()
+	batch := txindex.NewBatch(len(abciResponses.DeliverTx))
 	for i, d := range abciResponses.DeliverTx {
 		tx := abciResponses.txs[i]
-		batch.Index(tx.Hash(), types.TxResult{uint64(abciResponses.Height), uint32(i), *d})
+		batch.Add(types.TxResult{
+			Height: uint64(abciResponses.Height),
+			Index:  uint32(i),
+			Tx:     tx,
+			Result: *d,
+		})
 	}
-	s.TxIndexer.Batch(batch)
+	s.TxIndexer.AddBatch(batch)
 }
 
 // Exec and commit a block on the proxyApp without validating or mutating the state
