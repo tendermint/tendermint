@@ -14,20 +14,24 @@ import (
 )
 
 func TestPEXReactorBasic(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+
 	dir, err := ioutil.TempDir("", "pex_reactor")
-	require.Nil(t, err)
+	require.Nil(err)
 	defer os.RemoveAll(dir)
 	book := NewAddrBook(dir+"addrbook.json", true)
 
 	r := NewPEXReactor(book)
 
-	assert.NotNil(t, r)
-	assert.NotEmpty(t, r.GetChannels())
+	assert.NotNil(r)
+	assert.NotEmpty(r.GetChannels())
 }
 
 func TestPEXReactorAddRemovePeer(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+
 	dir, err := ioutil.TempDir("", "pex_reactor")
-	require.Nil(t, err)
+	require.Nil(err)
 	defer os.RemoveAll(dir)
 	book := NewAddrBook(dir+"addrbook.json", true)
 
@@ -37,26 +41,28 @@ func TestPEXReactorAddRemovePeer(t *testing.T) {
 	peer := createRandomPeer(false)
 
 	r.AddPeer(peer)
-	assert.Equal(t, size+1, book.Size())
+	assert.Equal(size+1, book.Size())
 
 	r.RemovePeer(peer, "peer not available")
-	assert.Equal(t, size, book.Size())
+	assert.Equal(size+1, book.Size())
 
 	outboundPeer := createRandomPeer(true)
 
 	r.AddPeer(outboundPeer)
-	assert.Equal(t, size, book.Size(), "size must not change")
+	assert.Equal(size+1, book.Size(), "outbound peers should not be added to the address book")
 
 	r.RemovePeer(outboundPeer, "peer not available")
-	assert.Equal(t, size, book.Size(), "size must not change")
+	assert.Equal(size+1, book.Size())
 }
 
 func TestPEXReactorRunning(t *testing.T) {
+	require := require.New(t)
+
 	N := 3
 	switches := make([]*Switch, N)
 
 	dir, err := ioutil.TempDir("", "pex_reactor")
-	require.Nil(t, err)
+	require.Nil(err)
 	defer os.RemoveAll(dir)
 	book := NewAddrBook(dir+"addrbook.json", false)
 
@@ -80,7 +86,7 @@ func TestPEXReactorRunning(t *testing.T) {
 	// start switches
 	for _, s := range switches {
 		_, err := s.Start() // start switch and reactors
-		require.Nil(t, err)
+		require.Nil(err)
 	}
 
 	time.Sleep(1 * time.Second)
@@ -100,8 +106,10 @@ func TestPEXReactorRunning(t *testing.T) {
 }
 
 func TestPEXReactorReceive(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+
 	dir, err := ioutil.TempDir("", "pex_reactor")
-	require.Nil(t, err)
+	require.Nil(err)
 	defer os.RemoveAll(dir)
 	book := NewAddrBook(dir+"addrbook.json", true)
 
@@ -114,15 +122,17 @@ func TestPEXReactorReceive(t *testing.T) {
 	addrs := []*NetAddress{netAddr}
 	msg := wire.BinaryBytes(struct{ PexMessage }{&pexAddrsMessage{Addrs: addrs}})
 	r.Receive(PexChannel, peer, msg)
-	assert.Equal(t, size+1, book.Size())
+	assert.Equal(size+1, book.Size())
 
 	msg = wire.BinaryBytes(struct{ PexMessage }{&pexRequestMessage{}})
 	r.Receive(PexChannel, peer, msg)
 }
 
 func TestPEXReactorAbuseFromPeer(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+
 	dir, err := ioutil.TempDir("", "pex_reactor")
-	require.Nil(t, err)
+	require.Nil(err)
 	defer os.RemoveAll(dir)
 	book := NewAddrBook(dir+"addrbook.json", true)
 
@@ -136,7 +146,7 @@ func TestPEXReactorAbuseFromPeer(t *testing.T) {
 		r.Receive(PexChannel, peer, msg)
 	}
 
-	assert.True(t, r.ReachedMaxMsgCountForPeer(peer.ListenAddr))
+	assert.True(r.ReachedMaxMsgCountForPeer(peer.ListenAddr))
 }
 
 func createRandomPeer(outbound bool) *Peer {

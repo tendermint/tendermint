@@ -109,20 +109,10 @@ func (r *PEXReactor) AddPeer(p *Peer) {
 	}
 }
 
-// RemovePeer implements Reactor by removing peer from the address book.
-//
-// The peer will be proposed to us by other peers (PexAddrsMessage) or himself
-// and we will add him again upon successful connection. Note that other peers
-// will remove him too. The peer will need to send first requests to others by
-// himself (he will have an addrbook or the seeds).
+// RemovePeer implements Reactor.
 func (r *PEXReactor) RemovePeer(p *Peer, reason interface{}) {
-	addr, err := NewNetAddressString(p.ListenAddr)
-	if err != nil {
-		// this should never happen
-		log.Error("Error in AddPeer: invalid peer address", "addr", p.ListenAddr, "error", err)
-		return
-	}
-	r.book.RemoveAddress(addr)
+	// If we aren't keeping track of local temp data for each peer here, then we
+	// don't have to do anything.
 }
 
 // Receive implements Reactor by handling incoming PEX messages.
