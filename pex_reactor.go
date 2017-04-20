@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"time"
 
+	cmn "github.com/tendermint/go-common"
 	wire "github.com/tendermint/go-wire"
 )
 
@@ -209,6 +210,17 @@ func (r *PEXReactor) ensurePeersRoutine() {
 }
 
 // ensurePeers ensures that sufficient peers are connected. (once)
+//
+// Old bucket / New bucket are arbitrary categories to denote whether an
+// address is vetted or not, and this needs to be determined over time via a
+// heuristic that we haven't perfected yet, or, perhaps is manually edited by
+// the node operator. It should not be used to compute what addresses are
+// already connected or not.
+//
+// TODO Basically, we need to work harder on our good-peer/bad-peer marking.
+// What we're currently doing in terms of marking good/bad peers is just a
+// placeholder. It should not be the case that an address becomes old/vetted
+// upon a single successful connection.
 func (r *PEXReactor) ensurePeers() {
 	numOutPeers, _, numDialing := r.Switch.NumPeers()
 	numToDial := minNumOutboundPeers - (numOutPeers + numDialing)
@@ -221,22 +233,28 @@ func (r *PEXReactor) ensurePeers() {
 
 	// Try to pick numToDial addresses to dial.
 	for i := 0; i < numToDial; i++ {
+		// The purpose of newBias is to first prioritize old (more vetted) peers
+		// when we have few connections, but to allow for new (less vetted) peers
+		// if we already have many connections. This algorithm isn't perfect, but
+		// it somewhat ensures that we prioritize connecting to more-vetted
+		// peers.
+		newBias := cmn.MinInt(numOutPeers, 8)*10 + 10
 		var picked *NetAddress
 		// Try to fetch a new peer 3 times.
 		// This caps the maximum number of tries to 3 * numToDial.
 		for j := 0; j < 3; j++ {
-			// NOTE always picking from the new group because old one stores already
-			// connected peers.
-			try := r.book.PickAddress(100)
+			try := r.book.PickAddress(newBias)
 			if try == nil {
 				break
 			}
 			_, alreadySelected := toDial[try.IP.String()]
 			alreadyDialing := r.Switch.IsDialing(try)
-			if alreadySelected || alreadyDialing {
+			alreadyConnected := r.Switch.Peers().Has(try.IP.String())
+			if alreadySelected || alreadyDialing || alreadyConnected {
 				// log.Info("Cannot dial address", "addr", try,
 				// 	"alreadySelected", alreadySelected,
-				// 	"alreadyDialing", alreadyDialing)
+				// 	"alreadyDialing", alreadyDialing,
+				//  "alreadyConnected", alreadyConnected)
 				continue
 			} else {
 				log.Info("Will dial address", "addr", try)
@@ -256,9 +274,6 @@ func (r *PEXReactor) ensurePeers() {
 			_, err := r.Switch.DialPeerWithAddress(picked, false)
 			if err != nil {
 				r.book.MarkAttempt(picked)
-			} else {
-				// move address to the old group
-				r.book.MarkGood(picked)
 			}
 		}(item)
 	}
