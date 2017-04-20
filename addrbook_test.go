@@ -148,3 +148,19 @@ func randIPv4Address(t *testing.T) *NetAddress {
 		}
 	}
 }
+
+func TestAddrBookRemoveAddress(t *testing.T) {
+	fname := createTempFileName("addrbook_test")
+	book := NewAddrBook(fname, true)
+
+	addr := randIPv4Address(t)
+	book.AddAddress(addr, addr)
+	assert.Equal(t, 1, book.Size())
+
+	book.RemoveAddress(addr)
+	assert.Equal(t, 0, book.Size())
+
+	nonExistingAddr := randIPv4Address(t)
+	book.RemoveAddress(nonExistingAddr)
+	assert.Equal(t, 0, book.Size())
+}
