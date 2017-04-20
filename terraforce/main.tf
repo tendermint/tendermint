@@ -28,3 +28,7 @@ output "private_ips" {
 output "seeds" {
   value = "${join(":46656,",module.cluster.public_ips)}:46656"
 }
+
+output "rpcs" {
+  value = "${join(":46657,",module.cluster.public_ips)}:46657"
+}

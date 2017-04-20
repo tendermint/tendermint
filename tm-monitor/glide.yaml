@@ -4,6 +4,7 @@ import:
 - package: github.com/tendermint/go-events
 - package: github.com/tendermint/go-logger
 - package: github.com/tendermint/tendermint
+  version: develop
   subpackages:
   - types
   - rpc/core/types
@@ -13,6 +14,7 @@ import:
 - package: github.com/tendermint/go-crypto
 - package: github.com/gorilla/websocket
 - package: github.com/tendermint/go-rpc
+  version: develop
   subpackages:
   - client
 - package: github.com/go-kit/kit

@@ -53,7 +53,7 @@ type Node struct {
 
 func NewNode(rpcAddr string, options ...func(*Node)) *Node {
 	em := em.NewEventMeter(rpcAddr, UnmarshalEvent)
-	rpcClient := rpc_client.NewClientURI(rpcAddr) // HTTP client by default
+	rpcClient := rpc_client.NewURIClient(rpcAddr) // HTTP client by default
 	return NewNodeWithEventMeterAndRpcClient(rpcAddr, em, rpcClient, options...)
 }
 
@@ -107,7 +107,10 @@ func (n *Node) Start() error {
 	}
 
 	n.em.RegisterLatencyCallback(latencyCallback(n))
-	n.em.Subscribe(tmtypes.EventStringNewBlockHeader(), newBlockCallback(n))
+	err := n.em.Subscribe(tmtypes.EventStringNewBlockHeader(), newBlockCallback(n))
+	if err != nil {
+		return err
+	}
 	n.em.RegisterDisconnectCallback(disconnectCallback(n))
 
 	n.Online = true

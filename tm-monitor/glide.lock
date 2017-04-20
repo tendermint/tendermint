@@ -1,5 +1,5 @@
-hash: d21d1f12681cd4ab5b7f0efd7bf00c1d5f7021b1ae6e8700c11bca6822337079
-updated: 2017-03-16T10:01:58.079646405Z
+hash: 7cd23c2bc6306917cf22ce16d4a1fc681a2572bc06d2cece54a37152bba7030d
+updated: 2017-04-20T19:07:14.174540927-04:00
 imports:
 - name: github.com/btcsuite/btcd
   version: 583684b21bfbde9b5fc4403916fd7c807feb0289
@@ -11,6 +11,8 @@ imports:
   version: b6f30a2e0632f5722fb26d8765d726335b79d3e6
   subpackages:
   - log
+  - log/term
+  - term
 - name: github.com/go-logfmt/logfmt
   version: 390ab7935ee28ec6b286364bba9b4dd6410cb3d5
 - name: github.com/go-stack/stack
@@ -56,7 +58,7 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/abci
-  version: 1e8791bc9ac2d65eaf3f315393b1312daa46a7f5
+  version: 56e13d87f4e3ec1ea756957d6b23caa6ebcf0998
   subpackages:
   - types
 - name: github.com/tendermint/ed25519
@@ -67,11 +69,13 @@ imports:
 - name: github.com/tendermint/go-common
   version: e289af53b6bf6af28da129d9ef64389a4cf7987f
 - name: github.com/tendermint/go-config
-  version: e64b424499acd0eb9856b88e10c0dff41628c0d6
+  version: 620dcbbd7d587cf3599dedbf329b64311b0c307a
 - name: github.com/tendermint/go-crypto
-  version: 4b11d62bdb324027ea01554e5767b71174680ba0
+  version: 0ca2c6fdb0706001ca4c4b9b80c9f428e8cf39da
+- name: github.com/tendermint/go-data
+  version: e7fcc6d081ec8518912fcdc103188275f83a3ee5
 - name: github.com/tendermint/go-db
-  version: 72f6dacd22a686cdf7fcd60286503e3aceda77ba
+  version: 9643f60bc2578693844aacf380a7c32e4c029fee
 - name: github.com/tendermint/go-events
   version: fddee66d90305fccb6f6d84d16c34fa65ea5b7f6
 - name: github.com/tendermint/go-flowrate
@@ -81,13 +85,13 @@ imports:
 - name: github.com/tendermint/go-logger
   version: cefb3a45c0bf3c493a04e9bcd9b1540528be59f2
 - name: github.com/tendermint/go-merkle
-  version: 7a86b4486f2cd84ac885c5bbc609fdee2905f5d1
+  version: 714d4d04557fd068a7c2a1748241ce8428015a96
 - name: github.com/tendermint/go-p2p
-  version: 3d98f675f30dc4796546b8b890f895926152fa8d
+  version: 17124989a93774833df33107fbf17157a7f8ef31
   subpackages:
   - upnp
 - name: github.com/tendermint/go-rpc
-  version: fcea0cda21f64889be00a0f4b6d13266b1a76ee7
+  version: 1a42f946dc6bcd88f9f58c7f2fb86f785584d793
   subpackages:
   - client
   - server
@@ -99,7 +103,7 @@ imports:
   subpackages:
   - term
 - name: github.com/tendermint/tendermint
-  version: 764091dfbb035f1b28da4b067526e04c6a849966
+  version: 083fe959e25421fca3d41298d9111167a3b47122
   subpackages:
   - rpc/core/types
   - types
