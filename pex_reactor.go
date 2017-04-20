@@ -94,7 +94,10 @@ func (r *PEXReactor) GetChannels() []*ChannelDescriptor {
 // AddPeer implements Reactor by adding peer to the address book (if inbound)
 // or by requesting more addresses (if outbound).
 func (r *PEXReactor) AddPeer(p *Peer) {
-	if p.IsOutbound() { // For outbound peers, the address is already in the books
+	if p.IsOutbound() {
+		// For outbound peers, the address is already in the books.
+		// Either it was added in DialSeeds or when we
+		// received the peer's address in r.Receive
 		if r.book.NeedMoreAddrs() {
 			r.RequestPEX(p)
 		}
