@@ -6,6 +6,7 @@ FEATURES:
 
 - Transaction indexing - txs are indexed by their hash using a simple key-value store; easily extended to more advanced indexers
 - New `/tx?hash=X` endpoint to query for transactions and their DeliverTx result by hash. Optionally returns a proof of the tx's inclusion in the block
+- `tendermint testnet` command initializes files for a testnet
 
 IMPROVEMENTS:
 
