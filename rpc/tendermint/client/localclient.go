@@ -3,8 +3,8 @@ package client
 import (
 	data "github.com/tendermint/go-data"
 	nm "github.com/tendermint/tendermint/node"
-	"github.com/tendermint/tendermint/rpc/core"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tendermint/rpc/tendermint/core"
+	ctypes "github.com/tendermint/tendermint/rpc/tendermint/core/types"
 	"github.com/tendermint/tendermint/types"
 )
 

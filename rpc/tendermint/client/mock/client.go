@@ -17,9 +17,9 @@ import (
 	"reflect"
 
 	data "github.com/tendermint/go-data"
-	"github.com/tendermint/tendermint/rpc/client"
-	"github.com/tendermint/tendermint/rpc/core"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tendermint/rpc/tendermint/client"
+	"github.com/tendermint/tendermint/rpc/tendermint/core"
+	ctypes "github.com/tendermint/tendermint/rpc/tendermint/core/types"
 	"github.com/tendermint/tendermint/types"
 )
 

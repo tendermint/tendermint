@@ -3,8 +3,8 @@ package mock
 import (
 	abci "github.com/tendermint/abci/types"
 	data "github.com/tendermint/go-data"
-	"github.com/tendermint/tendermint/rpc/client"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tendermint/rpc/tendermint/client"
+	ctypes "github.com/tendermint/tendermint/rpc/tendermint/core/types"
 	"github.com/tendermint/tendermint/types"
 )
 

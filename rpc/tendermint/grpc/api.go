@@ -1,7 +1,7 @@
 package core_grpc
 
 import (
-	core "github.com/tendermint/tendermint/rpc/core"
+	core "github.com/tendermint/tendermint/rpc/tendermint/core"
 
 	context "golang.org/x/net/context"
 )

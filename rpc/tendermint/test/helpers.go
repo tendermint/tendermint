@@ -19,8 +19,8 @@ import (
 	"github.com/tendermint/tendermint/config/tendermint_test"
 	nm "github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/proxy"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	core_grpc "github.com/tendermint/tendermint/rpc/grpc"
+	ctypes "github.com/tendermint/tendermint/rpc/tendermint/core/types"
+	core_grpc "github.com/tendermint/tendermint/rpc/tendermint/grpc"
 	"github.com/tendermint/tendermint/types"
 )
 

@@ -6,7 +6,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tendermint/tendermint/rpc/grpc"
+	"github.com/tendermint/tendermint/rpc/tendermint/grpc"
 )
 
 //-------------------------------------------

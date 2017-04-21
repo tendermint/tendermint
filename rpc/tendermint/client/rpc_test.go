@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 	merkle "github.com/tendermint/go-merkle"
 	merktest "github.com/tendermint/merkleeyes/testutil"
-	"github.com/tendermint/tendermint/rpc/client"
-	rpctest "github.com/tendermint/tendermint/rpc/test"
+	"github.com/tendermint/tendermint/rpc/tendermint/client"
+	rpctest "github.com/tendermint/tendermint/rpc/tendermint/test"
 	"github.com/tendermint/tendermint/types"
 )
 

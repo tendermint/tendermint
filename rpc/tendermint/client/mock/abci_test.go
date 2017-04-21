@@ -11,10 +11,10 @@ import (
 	"github.com/tendermint/abci/example/dummy"
 	abci "github.com/tendermint/abci/types"
 	data "github.com/tendermint/go-data"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	ctypes "github.com/tendermint/tendermint/rpc/tendermint/core/types"
 	"github.com/tendermint/tendermint/types"
 
-	"github.com/tendermint/tendermint/rpc/client/mock"
+	"github.com/tendermint/tendermint/rpc/tendermint/client/mock"
 )
 
 func TestABCIMock(t *testing.T) {

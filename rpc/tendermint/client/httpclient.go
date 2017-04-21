@@ -8,7 +8,7 @@ import (
 	events "github.com/tendermint/go-events"
 	"github.com/tendermint/go-rpc/client"
 	wire "github.com/tendermint/go-wire"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	ctypes "github.com/tendermint/tendermint/rpc/tendermint/core/types"
 	"github.com/tendermint/tendermint/types"
 )
 

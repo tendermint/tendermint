@@ -13,8 +13,8 @@ import (
 	abci "github.com/tendermint/abci/types"
 	. "github.com/tendermint/go-common"
 	rpc "github.com/tendermint/go-rpc/client"
-	"github.com/tendermint/tendermint/rpc/core"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tendermint/rpc/tendermint/core"
+	ctypes "github.com/tendermint/tendermint/rpc/tendermint/core/types"
 	"github.com/tendermint/tendermint/state/txindex/null"
 	"github.com/tendermint/tendermint/types"
 )

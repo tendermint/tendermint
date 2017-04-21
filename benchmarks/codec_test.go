@@ -7,7 +7,7 @@ import (
 	"github.com/tendermint/go-p2p"
 	"github.com/tendermint/go-wire"
 	proto "github.com/tendermint/tendermint/benchmarks/proto"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	ctypes "github.com/tendermint/tendermint/rpc/tendermint/core/types"
 )
 
 func BenchmarkEncodeStatusWire(b *testing.B) {

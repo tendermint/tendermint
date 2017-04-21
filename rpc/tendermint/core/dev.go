@@ -6,7 +6,7 @@ import (
 	"runtime/pprof"
 	"strconv"
 
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	ctypes "github.com/tendermint/tendermint/rpc/tendermint/core/types"
 )
 
 func UnsafeFlushMempool() (*ctypes.ResultUnsafeFlushMempool, error) {

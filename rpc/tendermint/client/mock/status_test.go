@@ -6,9 +6,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	data "github.com/tendermint/go-data"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	ctypes "github.com/tendermint/tendermint/rpc/tendermint/core/types"
 
-	"github.com/tendermint/tendermint/rpc/client/mock"
+	"github.com/tendermint/tendermint/rpc/tendermint/client/mock"
 )
 
 func TestStatus(t *testing.T) {

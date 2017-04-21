@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	merktest "github.com/tendermint/merkleeyes/testutil"
-	"github.com/tendermint/tendermint/rpc/client"
+	"github.com/tendermint/tendermint/rpc/tendermint/client"
 	"github.com/tendermint/tendermint/types"
 )
 

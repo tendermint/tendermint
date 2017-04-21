@@ -3,7 +3,7 @@ package core
 import (
 	abci "github.com/tendermint/abci/types"
 	data "github.com/tendermint/go-data"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	ctypes "github.com/tendermint/tendermint/rpc/tendermint/core/types"
 )
 
 //-----------------------------------------------------------------------------
