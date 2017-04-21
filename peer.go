@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	cmn "github.com/tendermint/tmlibs/common"
 	crypto "github.com/tendermint/go-crypto"
 	wire "github.com/tendermint/go-wire"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 // Peer could be marked as persistent, in which case you can use
@@ -166,7 +166,7 @@ func (p *Peer) HandshakeTimeout(ourNodeInfo *NodeInfo, timeout time.Duration) er
 
 	if p.config.AuthEnc {
 		// Check that the professed PubKey matches the sconn's.
-		if !peerNodeInfo.PubKey.Equals(p.PubKey()) {
+		if !peerNodeInfo.PubKey.Equals(p.PubKey().Wrap()) {
 			return fmt.Errorf("Ignoring connection with unmatching pubkey: %v vs %v",
 				peerNodeInfo.PubKey, p.PubKey())
 		}

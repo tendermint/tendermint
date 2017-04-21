@@ -87,7 +87,7 @@ func createOutboundPeerAndPerformHandshake(addr *NetAddress, config *PeerConfig)
 		return nil, err
 	}
 	err = p.HandshakeTimeout(&NodeInfo{
-		PubKey:  pk.PubKey().(crypto.PubKeyEd25519),
+		PubKey:  pk.PubKey().Unwrap().(crypto.PubKeyEd25519),
 		Moniker: "host_peer",
 		Network: "testing",
 		Version: "123.123.123",
@@ -110,7 +110,7 @@ func (p *remotePeer) Addr() *NetAddress {
 }
 
 func (p *remotePeer) PubKey() crypto.PubKeyEd25519 {
-	return p.PrivKey.PubKey().(crypto.PubKeyEd25519)
+	return p.PrivKey.PubKey().Unwrap().(crypto.PubKeyEd25519)
 }
 
 func (p *remotePeer) Start() {
@@ -138,7 +138,7 @@ func (p *remotePeer) accept(l net.Listener) {
 			golog.Fatalf("Failed to create a peer: %+v", err)
 		}
 		err = peer.HandshakeTimeout(&NodeInfo{
-			PubKey:  p.PrivKey.PubKey().(crypto.PubKeyEd25519),
+			PubKey:  p.PrivKey.PubKey().Unwrap().(crypto.PubKeyEd25519),
 			Moniker: "remote_peer",
 			Network: "testing",
 			Version: "123.123.123",

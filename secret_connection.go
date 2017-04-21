@@ -20,9 +20,9 @@ import (
 	"golang.org/x/crypto/nacl/secretbox"
 	"golang.org/x/crypto/ripemd160"
 
-	. "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-wire"
+	. "github.com/tendermint/tmlibs/common"
 )
 
 // 2 + 1024 == 1026 total frame size
@@ -48,7 +48,7 @@ type SecretConnection struct {
 // See docs/sts-final.pdf for more information.
 func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKeyEd25519) (*SecretConnection, error) {
 
-	locPubKey := locPrivKey.PubKey().(crypto.PubKeyEd25519)
+	locPubKey := locPrivKey.PubKey().Unwrap().(crypto.PubKeyEd25519)
 
 	// Generate ephemeral keys for perfect forward secrecy.
 	locEphPub, locEphPriv := genEphKeys()
@@ -96,7 +96,7 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKeyEd25
 	}
 
 	// We've authorized.
-	sc.remPubKey = remPubKey.(crypto.PubKeyEd25519)
+	sc.remPubKey = remPubKey.Unwrap().(crypto.PubKeyEd25519)
 	return sc, nil
 }
 
@@ -255,7 +255,7 @@ func genChallenge(loPubKey, hiPubKey *[32]byte) (challenge *[32]byte) {
 }
 
 func signChallenge(challenge *[32]byte, locPrivKey crypto.PrivKeyEd25519) (signature crypto.SignatureEd25519) {
-	signature = locPrivKey.Sign(challenge[:]).(crypto.SignatureEd25519)
+	signature = locPrivKey.Sign(challenge[:]).Unwrap().(crypto.SignatureEd25519)
 	return
 }
 
@@ -270,7 +270,7 @@ func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKeyEd25519, signa
 
 	Parallel(
 		func() {
-			msgBytes := wire.BinaryBytes(authSigMessage{pubKey, signature})
+			msgBytes := wire.BinaryBytes(authSigMessage{pubKey.Wrap(), signature.Wrap()})
 			_, err1 = sc.Write(msgBytes)
 		},
 		func() {
@@ -294,7 +294,7 @@ func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKeyEd25519, signa
 }
 
 func verifyChallengeSignature(challenge *[32]byte, remPubKey crypto.PubKeyEd25519, remSignature crypto.SignatureEd25519) bool {
-	return remPubKey.VerifyBytes(challenge[:], remSignature)
+	return remPubKey.VerifyBytes(challenge[:], remSignature.Wrap())
 }
 
 //--------------------------------------------------------------------------------

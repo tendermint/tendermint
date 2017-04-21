@@ -7,10 +7,10 @@ import (
 	"net"
 	"time"
 
-	. "github.com/tendermint/tmlibs/common"
 	cfg "github.com/tendermint/go-config"
 	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/log15"
+	. "github.com/tendermint/tmlibs/common"
 )
 
 const (
@@ -154,7 +154,7 @@ func (sw *Switch) NodeInfo() *NodeInfo {
 func (sw *Switch) SetNodePrivKey(nodePrivKey crypto.PrivKeyEd25519) {
 	sw.nodePrivKey = nodePrivKey
 	if sw.nodeInfo != nil {
-		sw.nodeInfo.PubKey = nodePrivKey.PubKey().(crypto.PubKeyEd25519)
+		sw.nodeInfo.PubKey = nodePrivKey.PubKey().Unwrap().(crypto.PubKeyEd25519)
 	}
 }
 
@@ -213,7 +213,7 @@ func (sw *Switch) AddPeer(peer *Peer) error {
 	}
 
 	// Avoid self
-	if sw.nodeInfo.PubKey.Equals(peer.PubKey()) {
+	if sw.nodeInfo.PubKey.Equals(peer.PubKey().Wrap()) {
 		return errors.New("Ignoring connection from self")
 	}
 
@@ -531,7 +531,7 @@ func makeSwitch(i int, network, version string, initSwitch func(int, *Switch) *S
 	// TODO: let the config be passed in?
 	s := initSwitch(i, NewSwitch(cfg.NewMapConfig(nil)))
 	s.SetNodeInfo(&NodeInfo{
-		PubKey:     privKey.PubKey().(crypto.PubKeyEd25519),
+		PubKey:     privKey.PubKey().Unwrap().(crypto.PubKeyEd25519),
 		Moniker:    Fmt("switch%d", i),
 		Network:    network,
 		Version:    version,
