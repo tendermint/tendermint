@@ -20,7 +20,7 @@ import (
 	"golang.org/x/crypto/nacl/secretbox"
 	"golang.org/x/crypto/ripemd160"
 
-	. "github.com/tendermint/go-common"
+	. "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-wire"
 )

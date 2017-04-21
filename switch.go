@@ -7,7 +7,7 @@ import (
 	"net"
 	"time"
 
-	. "github.com/tendermint/go-common"
+	. "github.com/tendermint/tmlibs/common"
 	cfg "github.com/tendermint/go-config"
 	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/log15"

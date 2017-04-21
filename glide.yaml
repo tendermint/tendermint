@@ -1,17 +1,17 @@
 package: github.com/tendermint/go-p2p
 import:
-- package: github.com/tendermint/go-common
+- package: github.com/tendermint/tmlibs/common
   version: develop
 - package: github.com/tendermint/go-config
   version: develop
 - package: github.com/tendermint/go-crypto
   version: develop
-- package: github.com/tendermint/go-data
+- package: github.com/tendermint/go-wire/data
   version: develop
-- package: github.com/tendermint/go-flowrate
+- package: github.com/tendermint/tmlibs/flowrate
   subpackages:
   - flowrate
-- package: github.com/tendermint/go-logger
+- package: github.com/tendermint/tmlibs/logger
   version: develop
 - package: github.com/tendermint/go-wire
   version: develop

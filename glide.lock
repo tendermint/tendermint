@@ -22,19 +22,19 @@ imports:
   subpackages:
   - edwards25519
   - extra25519
-- name: github.com/tendermint/go-common
+- name: github.com/tendermint/tmlibs/common
   version: f9e3db037330c8a8d61d3966de8473eaf01154fa
 - name: github.com/tendermint/go-config
   version: 620dcbbd7d587cf3599dedbf329b64311b0c307a
 - name: github.com/tendermint/go-crypto
   version: 0ca2c6fdb0706001ca4c4b9b80c9f428e8cf39da
-- name: github.com/tendermint/go-data
+- name: github.com/tendermint/go-wire/data
   version: e7fcc6d081ec8518912fcdc103188275f83a3ee5
-- name: github.com/tendermint/go-flowrate
+- name: github.com/tendermint/tmlibs/flowrate
   version: a20c98e61957faa93b4014fbd902f20ab9317a6a
   subpackages:
   - flowrate
-- name: github.com/tendermint/go-logger
+- name: github.com/tendermint/tmlibs/logger
   version: cefb3a45c0bf3c493a04e9bcd9b1540528be59f2
 - name: github.com/tendermint/go-wire
   version: c1c9a57ab8038448ddea1714c0698f8051e5748c

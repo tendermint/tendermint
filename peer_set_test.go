@@ -4,7 +4,7 @@ import (
 	"math/rand"
 	"testing"
 
-	. "github.com/tendermint/go-common"
+	. "github.com/tendermint/tmlibs/common"
 )
 
 // Returns an empty dummy peer

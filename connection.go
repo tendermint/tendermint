@@ -10,9 +10,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	cmn "github.com/tendermint/go-common"
-	flow "github.com/tendermint/go-flowrate/flowrate"
 	wire "github.com/tendermint/go-wire"
+	cmn "github.com/tendermint/tmlibs/common"
+	flow "github.com/tendermint/tmlibs/flowrate"
 )
 
 const (

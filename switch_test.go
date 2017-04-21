@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	. "github.com/tendermint/go-common"
+	. "github.com/tendermint/tmlibs/common"
 	cfg "github.com/tendermint/go-config"
 	crypto "github.com/tendermint/go-crypto"
 	wire "github.com/tendermint/go-wire"
