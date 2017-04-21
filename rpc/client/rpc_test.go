@@ -133,8 +133,8 @@ func TestAppCalls(t *testing.T) {
 		}
 
 		// make sure we can lookup the tx with proof
-		// ptx, err := c.Tx(bres.TxID, true)
-		ptx, err := c.Tx(bres.TxID, true)
+		// ptx, err := c.Tx(bres.Hash, true)
+		ptx, err := c.Tx(bres.Hash, true)
 		require.Nil(err, "%d: %+v", i, err)
 		assert.Equal(txh, ptx.Height)
 		assert.Equal(types.Tx(tx), ptx.Tx)

@@ -18,7 +18,7 @@ func BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Error broadcasting transaction: %v", err)
 	}
-	return &ctypes.ResultBroadcastTx{TxID: tx.Hash()}, nil
+	return &ctypes.ResultBroadcastTx{Hash: tx.Hash()}, nil
 }
 
 // Returns with the response from CheckTx
@@ -36,7 +36,7 @@ func BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 		Code: r.Code,
 		Data: r.Data,
 		Log:  r.Log,
-		TxID: tx.Hash(),
+		Hash: tx.Hash(),
 	}, nil
 }
 
@@ -68,7 +68,7 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 		return &ctypes.ResultBroadcastTxCommit{
 			CheckTx:   checkTxR,
 			DeliverTx: nil,
-			TxID:      tx.Hash(),
+			Hash:      tx.Hash(),
 		}, nil
 	}
 
@@ -88,7 +88,7 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 		return &ctypes.ResultBroadcastTxCommit{
 			CheckTx:   checkTxR,
 			DeliverTx: deliverTxR,
-			TxID:      tx.Hash(),
+			Hash:      tx.Hash(),
 			Height:    deliverTxRes.Height,
 		}, nil
 	case <-timer.C:
@@ -96,7 +96,7 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 		return &ctypes.ResultBroadcastTxCommit{
 			CheckTx:   checkTxR,
 			DeliverTx: nil,
-			TxID:      tx.Hash(),
+			Hash:      tx.Hash(),
 		}, fmt.Errorf("Timed out waiting for transaction to be included in a block")
 	}
 

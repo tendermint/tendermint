@@ -12,7 +12,7 @@ IMPROVEMENTS:
 
 - CLI now uses Cobra framework
 - TMROOT is now TMHOME (TMROOT will stop working in 0.10.0)
-- `/broadcast_tx_XXX` also returns the TxID (can be used to query for the tx)
+- `/broadcast_tx_XXX` also returns the Hash (can be used to query for the tx)
 - `/broadcast_tx_commit` also returns the height the block was committed in
 - ABCIResponses struct persisted to disk before calling Commit; makes handshake replay much cleaner
 - WAL uses #ENDHEIGHT instead of #HEIGHT (#HEIGHT will stop working in 0.10.0)

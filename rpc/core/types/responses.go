@@ -84,13 +84,13 @@ type ResultBroadcastTx struct {
 	Data []byte        `json:"data"`
 	Log  string        `json:"log"`
 
-	TxID []byte `json:"tx_id"`
+	Hash []byte `json:"hash"`
 }
 
 type ResultBroadcastTxCommit struct {
 	CheckTx   *abci.ResponseCheckTx   `json:"check_tx"`
 	DeliverTx *abci.ResponseDeliverTx `json:"deliver_tx"`
-	TxID      []byte                  `json:"tx_id"`
+	Hash      []byte                  `json:"hash"`
 	Height    int                     `json:"height"`
 }
 
