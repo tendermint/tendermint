@@ -4,7 +4,7 @@ import (
 	cfg "github.com/tendermint/go-config"
 
 	crypto "github.com/tendermint/go-crypto"
-	p2p "github.com/tendermint/go-p2p"
+	p2p "github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/state/txindex"

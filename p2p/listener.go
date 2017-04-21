@@ -7,7 +7,7 @@ import (
 	"time"
 
 	. "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/go-p2p/upnp"
+	"github.com/tendermint/tendermint/p2p/upnp"
 )
 
 type Listener interface {

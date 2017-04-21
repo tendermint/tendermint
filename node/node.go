@@ -12,7 +12,7 @@ import (
 	cfg "github.com/tendermint/go-config"
 	crypto "github.com/tendermint/go-crypto"
 	dbm "github.com/tendermint/tmlibs/db"
-	p2p "github.com/tendermint/go-p2p"
+	p2p "github.com/tendermint/tendermint/p2p"
 	rpc "github.com/tendermint/tendermint/rpc"
 	rpcserver "github.com/tendermint/tendermint/rpc/server"
 	wire "github.com/tendermint/go-wire"

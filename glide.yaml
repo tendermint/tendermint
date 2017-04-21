@@ -20,7 +20,7 @@ import:
   version: develop
 - package: github.com/tendermint/go-merkle
   version: develop
-- package: github.com/tendermint/go-p2p
+- package: github.com/tendermint/tendermint/p2p
   version: unstable
 - package: github.com/tendermint/tendermint/rpc
   version: develop

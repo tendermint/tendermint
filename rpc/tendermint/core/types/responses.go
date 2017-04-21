@@ -6,7 +6,7 @@ import (
 	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/go-crypto"
 	data "github.com/tendermint/go-wire/data"
-	"github.com/tendermint/go-p2p"
+	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/rpc/types"
 	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/types"

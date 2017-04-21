@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	p2p "github.com/tendermint/go-p2p"
+	p2p "github.com/tendermint/tendermint/p2p"
 )
 
 func createMConnection(conn net.Conn) *p2p.MConnection {

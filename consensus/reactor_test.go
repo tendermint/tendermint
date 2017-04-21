@@ -9,7 +9,7 @@ import (
 	"github.com/tendermint/tendermint/config/tendermint_test"
 
 	"github.com/tendermint/tmlibs/events"
-	"github.com/tendermint/go-p2p"
+	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/abci/example/dummy"
 )

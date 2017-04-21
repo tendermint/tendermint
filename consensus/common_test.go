@@ -16,7 +16,7 @@ import (
 	. "github.com/tendermint/tmlibs/common"
 	cfg "github.com/tendermint/go-config"
 	dbm "github.com/tendermint/tmlibs/db"
-	"github.com/tendermint/go-p2p"
+	"github.com/tendermint/tendermint/p2p"
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/config/tendermint_test"
 	mempl "github.com/tendermint/tendermint/mempool"

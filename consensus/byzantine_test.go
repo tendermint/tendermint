@@ -10,7 +10,7 @@ import (
 	. "github.com/tendermint/tmlibs/common"
 	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/tmlibs/events"
-	"github.com/tendermint/go-p2p"
+	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 )
 
