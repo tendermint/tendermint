@@ -5,13 +5,15 @@ import (
 
 	"github.com/spf13/cobra"
 
+	cfg "github.com/tendermint/go-config"
+	"github.com/tendermint/log15"
 	"github.com/tendermint/tendermint/types"
 )
 
 var resetAllCmd = &cobra.Command{
 	Use:   "unsafe_reset_all",
 	Short: "(unsafe) Remove all the data and WAL, reset this node's validator",
-	Run:   ResetAll,
+	Run:   resetAll,
 }
 
 var resetPrivValidatorCmd = &cobra.Command{
@@ -27,15 +29,23 @@ func init() {
 
 // XXX: this is totally unsafe.
 // it's only suitable for testnets.
-func ResetAll(cmd *cobra.Command, args []string) {
-	resetPrivValidator(cmd, args)
-	os.RemoveAll(config.GetString("db_dir"))
-	os.Remove(config.GetString("cs_wal_file"))
+func resetAll(cmd *cobra.Command, args []string) {
+	ResetAll(config, log)
 }
 
 // XXX: this is totally unsafe.
 // it's only suitable for testnets.
 func resetPrivValidator(cmd *cobra.Command, args []string) {
+	ResetPrivValidator(config, log)
+}
+
+// Exported so other CLI tools can use  it
+func ResetAll(c cfg.Config, l log15.Logger) {
+	ResetPrivValidator(c, l)
+	os.RemoveAll(c.GetString("db_dir"))
+}
+
+func ResetPrivValidator(c cfg.Config, l log15.Logger) {
 	// Get PrivValidator
 	var privValidator *types.PrivValidator
 	privValidatorFile := config.GetString("priv_validator_file")
