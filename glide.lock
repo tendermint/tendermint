@@ -50,7 +50,7 @@ imports:
   version: f9e3db037330c8a8d61d3966de8473eaf01154fa
 - name: github.com/tendermint/go-crypto
   version: 9b95da8fa4187f6799558d89b271dc8ab6485615
-- name: github.com/tendermint/go-data
+- name: github.com/tendermint/go-wire/data
   version: e7fcc6d081ec8518912fcdc103188275f83a3ee5
 - name: github.com/tendermint/tmlibs/db
   version: 9643f60bc2578693844aacf380a7c32e4c029fee
