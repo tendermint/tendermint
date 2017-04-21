@@ -7,10 +7,10 @@ import (
 	"strings"
 
 	"github.com/tendermint/abci/types"
+	"github.com/tendermint/go-wire"
+	"github.com/tendermint/merkleeyes/iavl"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
-	"github.com/tendermint/go-merkle"
-	"github.com/tendermint/go-wire"
 )
 
 const (
@@ -35,7 +35,7 @@ func NewPersistentDummyApplication(dbDir string) *PersistentDummyApplication {
 	db := dbm.NewDB("dummy", "leveldb", dbDir)
 	lastBlock := LoadLastBlock(db)
 
-	stateTree := merkle.NewIAVLTree(0, db)
+	stateTree := iavl.NewIAVLTree(0, db)
 	stateTree.Load(lastBlock.AppHash)
 
 	log.Notice("Loaded state", "block", lastBlock.Height, "root", stateTree.Hash())

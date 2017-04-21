@@ -10,9 +10,9 @@ import (
 	abcicli "github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/server"
 	"github.com/tendermint/abci/types"
-	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/go-crypto"
-	"github.com/tendermint/go-merkle"
+	"github.com/tendermint/merkleeyes/iavl"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 func testDummy(t *testing.T, app types.Application, tx []byte, key, value string) {
@@ -38,7 +38,7 @@ func testDummy(t *testing.T, app types.Application, tx []byte, key, value string
 	})
 	require.Equal(t, types.CodeType_OK, resQuery.Code)
 	require.Equal(t, value, string(resQuery.Value))
-	proof, err := merkle.ReadProof(resQuery.Proof)
+	proof, err := iavl.ReadProof(resQuery.Proof)
 	require.Nil(t, err)
 	require.True(t, proof.Verify([]byte(key), resQuery.Value, proof.RootHash)) // NOTE: we have no way to verify the RootHash
 }
@@ -302,7 +302,7 @@ func testClient(t *testing.T, app abcicli.Client, tx []byte, key, value string) 
 	require.Nil(t, err)
 	require.Equal(t, types.CodeType_OK, resQuery.Code)
 	require.Equal(t, value, string(resQuery.Value))
-	proof, err := merkle.ReadProof(resQuery.Proof)
+	proof, err := iavl.ReadProof(resQuery.Proof)
 	require.Nil(t, err)
 	require.True(t, proof.Verify([]byte(key), resQuery.Value, proof.RootHash)) // NOTE: we have no way to verify the RootHash
 }
