@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.5.0 (April 18, 2017)
+## 0.5.0 (April 21, 2017)
 
 BREAKING CHANGES: 
 
