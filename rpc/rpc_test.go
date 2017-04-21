@@ -12,18 +12,18 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	wire "github.com/tendermint/go-wire"
 	client "github.com/tendermint/tendermint/rpc/client"
 	server "github.com/tendermint/tendermint/rpc/server"
 	types "github.com/tendermint/tendermint/rpc/types"
-	wire "github.com/tendermint/go-wire"
 )
 
 // Client and Server should work over tcp or unix sockets
 const (
 	tcpAddr = "tcp://0.0.0.0:46657"
 
-	unixSocket = "/tmp/tendermint/rpc.sock"
-	unixAddr   = "unix:///tmp/tendermint/rpc.sock"
+	unixSocket = "/tmp/rpc.sock"
+	unixAddr   = "unix:///tmp/rpc.sock"
 
 	websocketEndpoint = "/websocket/endpoint"
 )
