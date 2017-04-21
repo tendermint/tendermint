@@ -1,5 +1,5 @@
-hash: a79d5a28c894511eb8acfc59c1bd9b91ab15d7a6dae49701fbf037675852c50c
-updated: 2017-04-21T18:21:33.986691926-04:00
+hash: 9096fc4e29eff8fac3708ed30deacac67b7a181f0192b177006105dccdb16686
+updated: 2017-04-21T18:34:16.345204981-04:00
 imports:
 - name: github.com/btcsuite/btcd
   version: 583684b21bfbde9b5fc4403916fd7c807feb0289
@@ -66,7 +66,7 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/abci
-  version: 56e13d87f4e3ec1ea756957d6b23caa6ebcf0998
+  version: be61e273cebeb64866a83c578f92b22cf2169cdd
   subpackages:
   - client
   - example/counter
@@ -84,12 +84,6 @@ imports:
   version: 620dcbbd7d587cf3599dedbf329b64311b0c307a
 - name: github.com/tendermint/go-crypto
   version: 9b95da8fa4187f6799558d89b271dc8ab6485615
-- name: github.com/tendermint/go-db
-  version: 9643f60bc2578693844aacf380a7c32e4c029fee
-- name: github.com/tendermint/go-logger
-  version: cefb3a45c0bf3c493a04e9bcd9b1540528be59f2
-- name: github.com/tendermint/go-merkle
-  version: 714d4d04557fd068a7c2a1748241ce8428015a96
 - name: github.com/tendermint/go-wire
   version: 334005c236d19c632fb5f073f9de3b0fab6a522b
   subpackages:
@@ -98,6 +92,13 @@ imports:
   version: ae0f3d6450da9eac7074b439c8e1c3cabf0d5ce6
   subpackages:
   - term
+- name: github.com/tendermint/merkleeyes
+  version: 41fe51f4a6d3f1abc45fd4684e1351e084860ca4
+  subpackages:
+  - app
+  - client
+  - iavl
+  - testutil
 - name: github.com/tendermint/tmlibs
   version: df250b69416a35a943a6e2a92118667e9ef031d4
   subpackages:
@@ -148,11 +149,4 @@ imports:
   - stats
   - tap
   - transport
-testImports:
-- name: github.com/tendermint/merkleeyes
-  version: 742c791e1b412ef0f2016a2d53647b58e40c8964
-  subpackages:
-  - app
-  - client
-  - iavl
-  - testutil
+testImports: []
