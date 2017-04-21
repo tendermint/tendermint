@@ -10,7 +10,7 @@ import (
 	"golang.org/x/crypto/ripemd160"
 
 	. "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/go-merkle"
+	"github.com/tendermint/tmlibs/merkle"
 	"github.com/tendermint/go-wire"
 )
 

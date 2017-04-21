@@ -5,7 +5,7 @@ import (
 	"io"
 
 	. "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/go-merkle"
+	"github.com/tendermint/tmlibs/merkle"
 )
 
 // Signable is an interface for all signable things.

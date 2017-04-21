@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	merkle "github.com/tendermint/go-merkle"
+	"github.com/tendermint/merkleeyes/iavl"
 	merktest "github.com/tendermint/merkleeyes/testutil"
 	"github.com/tendermint/tendermint/rpc/tendermint/client"
 	rpctest "github.com/tendermint/tendermint/rpc/tendermint/test"
@@ -175,7 +175,7 @@ func TestAppCalls(t *testing.T) {
 		// and we got a proof that works!
 		pres, err := c.ABCIQuery("/key", k, true)
 		if assert.Nil(err) && assert.True(pres.Response.Code.IsOK()) {
-			proof, err := merkle.ReadProof(pres.Response.GetProof())
+			proof, err := iavl.ReadProof(pres.Response.GetProof())
 			if assert.Nil(err) {
 				key := pres.Response.GetKey()
 				value := pres.Response.GetValue()
