@@ -10,25 +10,25 @@ import (
 	"sync/atomic"
 	"time"
 
-	. "github.com/tendermint/go-common"
-	cfg "github.com/tendermint/go-config"
+	cmn "github.com/tendermint/go-common"
 	flow "github.com/tendermint/go-flowrate/flowrate"
-	"github.com/tendermint/go-wire" //"github.com/tendermint/log15"
+	wire "github.com/tendermint/go-wire"
 )
 
 const (
 	numBatchMsgPackets = 10
 	minReadBufferSize  = 1024
 	minWriteBufferSize = 65536
-	idleTimeoutMinutes = 5
-	updateStatsSeconds = 2
-	pingTimeoutSeconds = 40
-	flushThrottleMS    = 100
+	updateState        = 2 * time.Second
+	pingTimeout        = 40 * time.Second
+	flushThrottle      = 100 * time.Millisecond
 
 	defaultSendQueueCapacity   = 1
+	defaultSendRate            = int64(512000) // 500KB/s
 	defaultRecvBufferCapacity  = 4096
-	defaultRecvMessageCapacity = 22020096 // 21MB
-	defaultSendTimeoutSeconds  = 10
+	defaultRecvMessageCapacity = 22020096      // 21MB
+	defaultRecvRate            = int64(512000) // 500KB/s
+	defaultSendTimeout         = 10 * time.Second
 )
 
 type receiveCbFunc func(chID byte, msgBytes []byte)
@@ -60,15 +60,13 @@ queue is full.
 Inbound message bytes are handled with an onReceive callback function.
 */
 type MConnection struct {
-	BaseService
+	cmn.BaseService
 
 	conn        net.Conn
 	bufReader   *bufio.Reader
 	bufWriter   *bufio.Writer
 	sendMonitor *flow.Monitor
 	recvMonitor *flow.Monitor
-	sendRate    int64
-	recvRate    int64
 	send        chan struct{}
 	pong        chan struct{}
 	channels    []*Channel
@@ -76,35 +74,54 @@ type MConnection struct {
 	onReceive   receiveCbFunc
 	onError     errorCbFunc
 	errored     uint32
+	config      *MConnConfig
 
 	quit         chan struct{}
-	flushTimer   *ThrottleTimer // flush writes as necessary but throttled.
-	pingTimer    *RepeatTimer   // send pings periodically
-	chStatsTimer *RepeatTimer   // update channel stats periodically
+	flushTimer   *cmn.ThrottleTimer // flush writes as necessary but throttled.
+	pingTimer    *cmn.RepeatTimer   // send pings periodically
+	chStatsTimer *cmn.RepeatTimer   // update channel stats periodically
 
 	LocalAddress  *NetAddress
 	RemoteAddress *NetAddress
 }
 
-func NewMConnection(config cfg.Config, conn net.Conn, chDescs []*ChannelDescriptor, onReceive receiveCbFunc, onError errorCbFunc) *MConnection {
+// MConnConfig is a MConnection configuration.
+type MConnConfig struct {
+	SendRate int64
+	RecvRate int64
+}
+
+// DefaultMConnConfig returns the default config.
+func DefaultMConnConfig() *MConnConfig {
+	return &MConnConfig{
+		SendRate: defaultSendRate,
+		RecvRate: defaultRecvRate,
+	}
+}
+
+// NewMConnection wraps net.Conn and creates multiplex connection
+func NewMConnection(conn net.Conn, chDescs []*ChannelDescriptor, onReceive receiveCbFunc, onError errorCbFunc) *MConnection {
+	return NewMConnectionWithConfig(
+		conn,
+		chDescs,
+		onReceive,
+		onError,
+		DefaultMConnConfig())
+}
+
+// NewMConnectionWithConfig wraps net.Conn and creates multiplex connection with a config
+func NewMConnectionWithConfig(conn net.Conn, chDescs []*ChannelDescriptor, onReceive receiveCbFunc, onError errorCbFunc, config *MConnConfig) *MConnection {
 	mconn := &MConnection{
 		conn:        conn,
 		bufReader:   bufio.NewReaderSize(conn, minReadBufferSize),
 		bufWriter:   bufio.NewWriterSize(conn, minWriteBufferSize),
 		sendMonitor: flow.New(0, 0),
 		recvMonitor: flow.New(0, 0),
-		sendRate:    int64(config.GetInt(configKeySendRate)),
-		recvRate:    int64(config.GetInt(configKeyRecvRate)),
 		send:        make(chan struct{}, 1),
 		pong:        make(chan struct{}),
 		onReceive:   onReceive,
 		onError:     onError,
-
-		// Initialized in Start()
-		quit:         nil,
-		flushTimer:   nil,
-		pingTimer:    nil,
-		chStatsTimer: nil,
+		config:      config,
 
 		LocalAddress:  NewNetAddress(conn.LocalAddr()),
 		RemoteAddress: NewNetAddress(conn.RemoteAddr()),
@@ -123,7 +140,7 @@ func NewMConnection(config cfg.Config, conn net.Conn, chDescs []*ChannelDescript
 	mconn.channels = channels
 	mconn.channelsIdx = channelsIdx
 
-	mconn.BaseService = *NewBaseService(log, "MConnection", mconn)
+	mconn.BaseService = *cmn.NewBaseService(log, "MConnection", mconn)
 
 	return mconn
 }
@@ -131,9 +148,9 @@ func NewMConnection(config cfg.Config, conn net.Conn, chDescs []*ChannelDescript
 func (c *MConnection) OnStart() error {
 	c.BaseService.OnStart()
 	c.quit = make(chan struct{})
-	c.flushTimer = NewThrottleTimer("flush", flushThrottleMS*time.Millisecond)
-	c.pingTimer = NewRepeatTimer("ping", pingTimeoutSeconds*time.Second)
-	c.chStatsTimer = NewRepeatTimer("chStats", updateStatsSeconds*time.Second)
+	c.flushTimer = cmn.NewThrottleTimer("flush", flushThrottle)
+	c.pingTimer = cmn.NewRepeatTimer("ping", pingTimeout)
+	c.chStatsTimer = cmn.NewRepeatTimer("chStats", updateState)
 	go c.sendRoutine()
 	go c.recvRoutine()
 	return nil
@@ -171,7 +188,7 @@ func (c *MConnection) flush() {
 func (c *MConnection) _recover() {
 	if r := recover(); r != nil {
 		stack := debug.Stack()
-		err := StackError{r, stack}
+		err := cmn.StackError{r, stack}
 		c.stopForError(err)
 	}
 }
@@ -196,7 +213,7 @@ func (c *MConnection) Send(chID byte, msg interface{}) bool {
 	// Send message to channel.
 	channel, ok := c.channelsIdx[chID]
 	if !ok {
-		log.Error(Fmt("Cannot send bytes, unknown channel %X", chID))
+		log.Error(cmn.Fmt("Cannot send bytes, unknown channel %X", chID))
 		return false
 	}
 
@@ -225,7 +242,7 @@ func (c *MConnection) TrySend(chID byte, msg interface{}) bool {
 	// Send message to channel.
 	channel, ok := c.channelsIdx[chID]
 	if !ok {
-		log.Error(Fmt("Cannot send bytes, unknown channel %X", chID))
+		log.Error(cmn.Fmt("Cannot send bytes, unknown channel %X", chID))
 		return false
 	}
 
@@ -241,6 +258,8 @@ func (c *MConnection) TrySend(chID byte, msg interface{}) bool {
 	return ok
 }
 
+// CanSend returns true if you can send more data onto the chID, false
+// otherwise. Use only as a heuristic.
 func (c *MConnection) CanSend(chID byte) bool {
 	if !c.IsRunning() {
 		return false
@@ -248,7 +267,7 @@ func (c *MConnection) CanSend(chID byte) bool {
 
 	channel, ok := c.channelsIdx[chID]
 	if !ok {
-		log.Error(Fmt("Unknown channel %X", chID))
+		log.Error(cmn.Fmt("Unknown channel %X", chID))
 		return false
 	}
 	return channel.canSend()
@@ -314,7 +333,7 @@ func (c *MConnection) sendSomeMsgPackets() bool {
 	// Block until .sendMonitor says we can write.
 	// Once we're ready we send more than we asked for,
 	// but amortized it should even out.
-	c.sendMonitor.Limit(maxMsgPacketTotalSize, atomic.LoadInt64(&c.sendRate), true)
+	c.sendMonitor.Limit(maxMsgPacketTotalSize, atomic.LoadInt64(&c.config.SendRate), true)
 
 	// Now send some msgPackets.
 	for i := 0; i < numBatchMsgPackets; i++ {
@@ -372,7 +391,7 @@ func (c *MConnection) recvRoutine() {
 FOR_LOOP:
 	for {
 		// Block until .recvMonitor says we can read.
-		c.recvMonitor.Limit(maxMsgPacketTotalSize, atomic.LoadInt64(&c.recvRate), true)
+		c.recvMonitor.Limit(maxMsgPacketTotalSize, atomic.LoadInt64(&c.config.RecvRate), true)
 
 		/*
 			// Peek into bufReader for debugging
@@ -424,7 +443,7 @@ FOR_LOOP:
 			}
 			channel, ok := c.channelsIdx[pkt.ChannelID]
 			if !ok || channel == nil {
-				PanicQ(Fmt("Unknown channel %X", pkt.ChannelID))
+				cmn.PanicQ(cmn.Fmt("Unknown channel %X", pkt.ChannelID))
 			}
 			msgBytes, err := channel.recvMsgPacket(pkt)
 			if err != nil {
@@ -439,7 +458,7 @@ FOR_LOOP:
 				c.onReceive(pkt.ChannelID, msgBytes)
 			}
 		default:
-			PanicSanity(Fmt("Unknown message type %X", pktType))
+			cmn.PanicSanity(cmn.Fmt("Unknown message type %X", pktType))
 		}
 
 		// TODO: shouldn't this go in the sendRoutine?
@@ -524,7 +543,7 @@ type Channel struct {
 func newChannel(conn *MConnection, desc *ChannelDescriptor) *Channel {
 	desc.FillDefaults()
 	if desc.Priority <= 0 {
-		PanicSanity("Channel default priority must be a postive integer")
+		cmn.PanicSanity("Channel default priority must be a postive integer")
 	}
 	return &Channel{
 		conn:      conn,
@@ -538,16 +557,14 @@ func newChannel(conn *MConnection, desc *ChannelDescriptor) *Channel {
 
 // Queues message to send to this channel.
 // Goroutine-safe
-// Times out (and returns false) after defaultSendTimeoutSeconds
+// Times out (and returns false) after defaultSendTimeout
 func (ch *Channel) sendBytes(bytes []byte) bool {
-	timeout := time.NewTimer(defaultSendTimeoutSeconds * time.Second)
 	select {
-	case <-timeout.C:
-		// timeout
-		return false
 	case ch.sendQueue <- bytes:
 		atomic.AddInt32(&ch.sendQueueSize, 1)
 		return true
+	case <-time.After(defaultSendTimeout):
+		return false
 	}
 }
 
@@ -593,14 +610,14 @@ func (ch *Channel) isSendPending() bool {
 func (ch *Channel) nextMsgPacket() msgPacket {
 	packet := msgPacket{}
 	packet.ChannelID = byte(ch.id)
-	packet.Bytes = ch.sending[:MinInt(maxMsgPacketPayloadSize, len(ch.sending))]
+	packet.Bytes = ch.sending[:cmn.MinInt(maxMsgPacketPayloadSize, len(ch.sending))]
 	if len(ch.sending) <= maxMsgPacketPayloadSize {
 		packet.EOF = byte(0x01)
 		ch.sending = nil
 		atomic.AddInt32(&ch.sendQueueSize, -1) // decrement sendQueueSize
 	} else {
 		packet.EOF = byte(0x00)
-		ch.sending = ch.sending[MinInt(maxMsgPacketPayloadSize, len(ch.sending)):]
+		ch.sending = ch.sending[cmn.MinInt(maxMsgPacketPayloadSize, len(ch.sending)):]
 	}
 	return packet
 }

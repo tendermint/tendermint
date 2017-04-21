@@ -9,8 +9,13 @@ import (
 
 	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
-	"github.com/tendermint/go-crypto"
+	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/log15"
+)
+
+const (
+	reconnectAttempts = 30
+	reconnectInterval = 3 * time.Second
 )
 
 type Reactor interface {
@@ -193,79 +198,45 @@ func (sw *Switch) OnStop() {
 }
 
 // NOTE: This performs a blocking handshake before the peer is added.
-// CONTRACT: Iff error is returned, peer is nil, and conn is immediately closed.
-func (sw *Switch) AddPeerWithConnection(conn net.Conn, outbound bool) (*Peer, error) {
-
-	// Filter by addr (ie. ip:port)
-	if err := sw.FilterConnByAddr(conn.RemoteAddr()); err != nil {
-		conn.Close()
-		return nil, err
+// CONTRACT: If error is returned, peer is nil, and conn is immediately closed.
+func (sw *Switch) AddPeer(peer *Peer) error {
+	if err := sw.FilterConnByAddr(peer.Addr()); err != nil {
+		return err
 	}
 
-	// Set deadline for handshake so we don't block forever on conn.ReadFull
-	conn.SetDeadline(time.Now().Add(
-		time.Duration(sw.config.GetInt(configKeyHandshakeTimeoutSeconds)) * time.Second))
-
-	// First, encrypt the connection.
-	var sconn net.Conn = conn
-	if sw.config.GetBool(configKeyAuthEnc) {
-		var err error
-		sconn, err = MakeSecretConnection(conn, sw.nodePrivKey)
-		if err != nil {
-			conn.Close()
-			return nil, err
-		}
+	if err := sw.FilterConnByPubKey(peer.PubKey()); err != nil {
+		return err
 	}
 
-	// Filter by p2p-key
-	if err := sw.FilterConnByPubKey(sconn.(*SecretConnection).RemotePubKey()); err != nil {
-		sconn.Close()
-		return nil, err
+	if err := peer.HandshakeTimeout(sw.nodeInfo, time.Duration(sw.config.GetInt(configKeyHandshakeTimeoutSeconds))*time.Second); err != nil {
+		return err
 	}
 
-	// Then, perform node handshake
-	peerNodeInfo, err := peerHandshake(sconn, sw.nodeInfo)
-	if err != nil {
-		sconn.Close()
-		return nil, err
-	}
-	if sw.config.GetBool(configKeyAuthEnc) {
-		// Check that the professed PubKey matches the sconn's.
-		if !peerNodeInfo.PubKey.Equals(sconn.(*SecretConnection).RemotePubKey()) {
-			sconn.Close()
-			return nil, fmt.Errorf("Ignoring connection with unmatching pubkey: %v vs %v",
-				peerNodeInfo.PubKey, sconn.(*SecretConnection).RemotePubKey())
-		}
-	}
 	// Avoid self
-	if peerNodeInfo.PubKey.Equals(sw.nodeInfo.PubKey) {
-		sconn.Close()
-		return nil, fmt.Errorf("Ignoring connection from self")
-	}
-	// Check version, chain id
-	if err := sw.nodeInfo.CompatibleWith(peerNodeInfo); err != nil {
-		sconn.Close()
-		return nil, err
+	if sw.nodeInfo.PubKey.Equals(peer.PubKey()) {
+		return errors.New("Ignoring connection from self")
 	}
 
-	peer := newPeer(sw.config, sconn, peerNodeInfo, outbound, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError)
+	// Check version, chain id
+	if err := sw.nodeInfo.CompatibleWith(peer.NodeInfo); err != nil {
+		return err
+	}
 
 	// Add the peer to .peers
 	// ignore if duplicate or if we already have too many for that IP range
 	if err := sw.peers.Add(peer); err != nil {
 		log.Notice("Ignoring peer", "error", err, "peer", peer)
 		peer.Stop()
-		return nil, err
+		return err
 	}
 
-	// remove deadline and start peer
-	conn.SetDeadline(time.Time{})
+	// Start peer
 	if sw.IsRunning() {
 		sw.startInitPeer(peer)
 	}
 
 	log.Notice("Added peer", "peer", peer)
-	return peer, nil
+	return nil
 }
 
 func (sw *Switch) FilterConnByAddr(addr net.Addr) error {
@@ -292,8 +263,10 @@ func (sw *Switch) SetPubKeyFilter(f func(crypto.PubKeyEd25519) error) {
 }
 
 func (sw *Switch) startInitPeer(peer *Peer) {
-	peer.Start()               // spawn send/recv routines
-	sw.addPeerToReactors(peer) // run AddPeer on each reactor
+	peer.Start() // spawn send/recv routines
+	for _, reactor := range sw.reactors {
+		reactor.AddPeer(peer)
+	}
 }
 
 // Dial a list of seeds asynchronously in random order
@@ -331,7 +304,7 @@ func (sw *Switch) DialSeeds(addrBook *AddrBook, seeds []string) error {
 }
 
 func (sw *Switch) dialSeed(addr *NetAddress) {
-	peer, err := sw.DialPeerWithAddress(addr)
+	peer, err := sw.DialPeerWithAddress(addr, true)
 	if err != nil {
 		log.Error("Error dialing seed", "error", err)
 		return
@@ -340,22 +313,22 @@ func (sw *Switch) dialSeed(addr *NetAddress) {
 	}
 }
 
-func (sw *Switch) DialPeerWithAddress(addr *NetAddress) (*Peer, error) {
-	log.Info("Dialing address", "address", addr)
+func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) (*Peer, error) {
 	sw.dialing.Set(addr.IP.String(), addr)
-	conn, err := addr.DialTimeout(time.Duration(
-		sw.config.GetInt(configKeyDialTimeoutSeconds)) * time.Second)
-	sw.dialing.Delete(addr.IP.String())
+	defer sw.dialing.Delete(addr.IP.String())
+
+	peer, err := newOutboundPeerWithConfig(addr, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, peerConfigFromGoConfig(sw.config))
 	if err != nil {
-		log.Info("Failed dialing address", "address", addr, "error", err)
+		log.Info("Failed dialing peer", "address", addr, "error", err)
 		return nil, err
 	}
-	if sw.config.GetBool(configFuzzEnable) {
-		conn = FuzzConn(sw.config, conn)
+	if persistent {
+		peer.makePersistent()
 	}
-	peer, err := sw.AddPeerWithConnection(conn, true)
+	err = sw.AddPeer(peer)
 	if err != nil {
-		log.Info("Failed adding peer", "address", addr, "conn", conn, "error", err)
+		log.Info("Failed adding peer", "address", addr, "error", err)
+		peer.CloseConn()
 		return nil, err
 	}
 	log.Notice("Dialed and added peer", "address", addr, "peer", peer)
@@ -400,31 +373,49 @@ func (sw *Switch) Peers() IPeerSet {
 	return sw.peers
 }
 
-// Disconnect from a peer due to external error.
+// Disconnect from a peer due to external error, retry if it is a persistent peer.
 // TODO: make record depending on reason.
 func (sw *Switch) StopPeerForError(peer *Peer, reason interface{}) {
+	addr := NewNetAddress(peer.Addr())
 	log.Notice("Stopping peer for error", "peer", peer, "error", reason)
-	sw.peers.Remove(peer)
-	peer.Stop()
-	sw.removePeerFromReactors(peer, reason)
+	sw.stopAndRemovePeer(peer, reason)
+
+	if peer.IsPersistent() {
+		go func() {
+			log.Notice("Reconnecting to peer", "peer", peer)
+			for i := 1; i < reconnectAttempts; i++ {
+				if !sw.IsRunning() {
+					return
+				}
+
+				peer, err := sw.DialPeerWithAddress(addr, true)
+				if err != nil {
+					if i == reconnectAttempts {
+						log.Notice("Error reconnecting to peer. Giving up", "tries", i, "error", err)
+						return
+					}
+					log.Notice("Error reconnecting to peer. Trying again", "tries", i, "error", err)
+					time.Sleep(reconnectInterval)
+					continue
+				}
+
+				log.Notice("Reconnected to peer", "peer", peer)
+				return
+			}
+		}()
+	}
 }
 
 // Disconnect from a peer gracefully.
 // TODO: handle graceful disconnects.
 func (sw *Switch) StopPeerGracefully(peer *Peer) {
 	log.Notice("Stopping peer gracefully")
+	sw.stopAndRemovePeer(peer, nil)
+}
+
+func (sw *Switch) stopAndRemovePeer(peer *Peer, reason interface{}) {
 	sw.peers.Remove(peer)
 	peer.Stop()
-	sw.removePeerFromReactors(peer, nil)
-}
-
-func (sw *Switch) addPeerToReactors(peer *Peer) {
-	for _, reactor := range sw.reactors {
-		reactor.AddPeer(peer)
-	}
-}
-
-func (sw *Switch) removePeerFromReactors(peer *Peer, reason interface{}) {
 	for _, reactor := range sw.reactors {
 		reactor.RemovePeer(peer, reason)
 	}
@@ -444,14 +435,10 @@ func (sw *Switch) listenerRoutine(l Listener) {
 			continue
 		}
 
-		if sw.config.GetBool(configFuzzEnable) {
-			inConn = FuzzConn(sw.config, inConn)
-		}
-
 		// New inbound connection!
-		_, err := sw.AddPeerWithConnection(inConn, false)
+		err := sw.addPeerWithConnectionAndConfig(inConn, peerConfigFromGoConfig(sw.config))
 		if err != nil {
-			log.Notice("Ignoring inbound connection: error on AddPeerWithConnection", "address", inConn.RemoteAddr().String(), "error", err)
+			log.Notice("Ignoring inbound connection: error while adding peer", "address", inConn.RemoteAddr().String(), "error", err)
 			continue
 		}
 
@@ -511,14 +498,14 @@ func Connect2Switches(switches []*Switch, i, j int) {
 	c1, c2 := net.Pipe()
 	doneCh := make(chan struct{})
 	go func() {
-		_, err := switchI.AddPeerWithConnection(c1, false) // AddPeer is blocking, requires handshake.
+		err := switchI.addPeerWithConnection(c1)
 		if PanicOnAddPeerErr && err != nil {
 			panic(err)
 		}
 		doneCh <- struct{}{}
 	}()
 	go func() {
-		_, err := switchJ.AddPeerWithConnection(c2, true)
+		err := switchJ.addPeerWithConnection(c2)
 		if PanicOnAddPeerErr && err != nil {
 			panic(err)
 		}
@@ -544,11 +531,63 @@ func makeSwitch(i int, network, version string, initSwitch func(int, *Switch) *S
 	// TODO: let the config be passed in?
 	s := initSwitch(i, NewSwitch(cfg.NewMapConfig(nil)))
 	s.SetNodeInfo(&NodeInfo{
-		PubKey:  privKey.PubKey().(crypto.PubKeyEd25519),
-		Moniker: Fmt("switch%d", i),
-		Network: network,
-		Version: version,
+		PubKey:     privKey.PubKey().(crypto.PubKeyEd25519),
+		Moniker:    Fmt("switch%d", i),
+		Network:    network,
+		Version:    version,
+		RemoteAddr: Fmt("%v:%v", network, rand.Intn(64512)+1023),
+		ListenAddr: Fmt("%v:%v", network, rand.Intn(64512)+1023),
 	})
 	s.SetNodePrivKey(privKey)
 	return s
+}
+
+func (sw *Switch) addPeerWithConnection(conn net.Conn) error {
+	peer, err := newInboundPeer(conn, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey)
+	if err != nil {
+		conn.Close()
+		return err
+	}
+
+	if err = sw.AddPeer(peer); err != nil {
+		conn.Close()
+		return err
+	}
+
+	return nil
+}
+
+func (sw *Switch) addPeerWithConnectionAndConfig(conn net.Conn, config *PeerConfig) error {
+	peer, err := newInboundPeerWithConfig(conn, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, config)
+	if err != nil {
+		conn.Close()
+		return err
+	}
+
+	if err = sw.AddPeer(peer); err != nil {
+		conn.Close()
+		return err
+	}
+
+	return nil
+}
+
+func peerConfigFromGoConfig(config cfg.Config) *PeerConfig {
+	return &PeerConfig{
+		AuthEnc:          config.GetBool(configKeyAuthEnc),
+		Fuzz:             config.GetBool(configFuzzEnable),
+		HandshakeTimeout: time.Duration(config.GetInt(configKeyHandshakeTimeoutSeconds)) * time.Second,
+		DialTimeout:      time.Duration(config.GetInt(configKeyDialTimeoutSeconds)) * time.Second,
+		MConfig: &MConnConfig{
+			SendRate: int64(config.GetInt(configKeySendRate)),
+			RecvRate: int64(config.GetInt(configKeyRecvRate)),
+		},
+		FuzzConfig: &FuzzConnConfig{
+			Mode:         config.GetInt(configFuzzMode),
+			MaxDelay:     time.Duration(config.GetInt(configFuzzMaxDelayMilliseconds)) * time.Millisecond,
+			ProbDropRW:   config.GetFloat64(configFuzzProbDropRW),
+			ProbDropConn: config.GetFloat64(configFuzzProbDropConn),
+			ProbSleep:    config.GetFloat64(configFuzzProbSleep),
+		},
+	}
 }

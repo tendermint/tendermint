@@ -1,0 +1,73 @@
+hash: f3d76bef9548cc37ad6038cb55f0812bac7e64735a99995c9da85010eef27f50
+updated: 2017-04-19T00:00:50.949249104-04:00
+imports:
+- name: github.com/btcsuite/btcd
+  version: b8df516b4b267acf2de46be593a9d948d1d2c420
+  subpackages:
+  - btcec
+- name: github.com/btcsuite/fastsha256
+  version: 637e656429416087660c84436a2a035d69d54e2e
+- name: github.com/BurntSushi/toml
+  version: 99064174e013895bbd9b025c31100bd1d9b590ca
+- name: github.com/go-stack/stack
+  version: 100eb0c0a9c5b306ca2fb4f165df21d80ada4b82
+- name: github.com/mattn/go-colorable
+  version: 9fdad7c47650b7d2e1da50644c1f4ba7f172f252
+- name: github.com/mattn/go-isatty
+  version: 56b76bdf51f7708750eac80fa38b952bb9f32639
+- name: github.com/pkg/errors
+  version: 645ef00459ed84a119197bfb8d8205042c6df63d
+- name: github.com/tendermint/ed25519
+  version: 1f52c6f8b8a5c7908aff4497c186af344b428925
+  subpackages:
+  - edwards25519
+  - extra25519
+- name: github.com/tendermint/go-common
+  version: f9e3db037330c8a8d61d3966de8473eaf01154fa
+- name: github.com/tendermint/go-config
+  version: 620dcbbd7d587cf3599dedbf329b64311b0c307a
+- name: github.com/tendermint/go-crypto
+  version: 0ca2c6fdb0706001ca4c4b9b80c9f428e8cf39da
+- name: github.com/tendermint/go-data
+  version: e7fcc6d081ec8518912fcdc103188275f83a3ee5
+- name: github.com/tendermint/go-flowrate
+  version: a20c98e61957faa93b4014fbd902f20ab9317a6a
+  subpackages:
+  - flowrate
+- name: github.com/tendermint/go-logger
+  version: cefb3a45c0bf3c493a04e9bcd9b1540528be59f2
+- name: github.com/tendermint/go-wire
+  version: c1c9a57ab8038448ddea1714c0698f8051e5748c
+- name: github.com/tendermint/log15
+  version: ae0f3d6450da9eac7074b439c8e1c3cabf0d5ce6
+  subpackages:
+  - term
+- name: golang.org/x/crypto
+  version: 1f22c0103821b9390939b6776727195525381532
+  subpackages:
+  - curve25519
+  - nacl/box
+  - nacl/secretbox
+  - openpgp/armor
+  - openpgp/errors
+  - poly1305
+  - ripemd160
+  - salsa20/salsa
+- name: golang.org/x/sys
+  version: 50c6bc5e4292a1d4e65c6e9be5f53be28bcbe28e
+  subpackages:
+  - unix
+testImports:
+- name: github.com/davecgh/go-spew
+  version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
+  subpackages:
+  - spew
+- name: github.com/pmezard/go-difflib
+  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
+  subpackages:
+  - difflib
+- name: github.com/stretchr/testify
+  version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
+  subpackages:
+  - assert
+  - require

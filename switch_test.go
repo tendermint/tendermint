@@ -8,10 +8,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	. "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
-	"github.com/tendermint/go-crypto"
-	"github.com/tendermint/go-wire"
+	crypto "github.com/tendermint/go-crypto"
+	wire "github.com/tendermint/go-wire"
 )
 
 var (
@@ -21,7 +23,6 @@ var (
 func init() {
 	config = cfg.NewMapConfig(nil)
 	setConfigDefaults(config)
-
 }
 
 type PeerMessage struct {
@@ -174,8 +175,12 @@ func TestConnAddrFilter(t *testing.T) {
 	})
 
 	// connect to good peer
-	go s1.AddPeerWithConnection(c1, false) // AddPeer is blocking, requires handshake.
-	go s2.AddPeerWithConnection(c2, true)
+	go func() {
+		s1.addPeerWithConnection(c1)
+	}()
+	go func() {
+		s2.addPeerWithConnection(c2)
+	}()
 
 	// Wait for things to happen, peers to get added...
 	time.Sleep(100 * time.Millisecond * time.Duration(4))
@@ -205,8 +210,12 @@ func TestConnPubKeyFilter(t *testing.T) {
 	})
 
 	// connect to good peer
-	go s1.AddPeerWithConnection(c1, false) // AddPeer is blocking, requires handshake.
-	go s2.AddPeerWithConnection(c2, true)
+	go func() {
+		s1.addPeerWithConnection(c1)
+	}()
+	go func() {
+		s2.addPeerWithConnection(c2)
+	}()
 
 	// Wait for things to happen, peers to get added...
 	time.Sleep(100 * time.Millisecond * time.Duration(4))
@@ -219,6 +228,59 @@ func TestConnPubKeyFilter(t *testing.T) {
 	if s2.Peers().Size() != 0 {
 		t.Errorf("Expected s2 not to connect to peers, got %d", s2.Peers().Size())
 	}
+}
+
+func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+
+	sw := makeSwitch(1, "testing", "123.123.123", initSwitchFunc)
+	sw.Start()
+	defer sw.Stop()
+
+	// simulate remote peer
+	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: DefaultPeerConfig()}
+	rp.Start()
+	defer rp.Stop()
+
+	peer, err := newOutboundPeer(rp.Addr(), sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey)
+	require.Nil(err)
+	err = sw.AddPeer(peer)
+	require.Nil(err)
+
+	// simulate failure by closing connection
+	peer.CloseConn()
+
+	time.Sleep(100 * time.Millisecond)
+
+	assert.Zero(sw.Peers().Size())
+	assert.False(peer.IsRunning())
+}
+
+func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+
+	sw := makeSwitch(1, "testing", "123.123.123", initSwitchFunc)
+	sw.Start()
+	defer sw.Stop()
+
+	// simulate remote peer
+	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: DefaultPeerConfig()}
+	rp.Start()
+	defer rp.Stop()
+
+	peer, err := newOutboundPeer(rp.Addr(), sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey)
+	peer.makePersistent()
+	require.Nil(err)
+	err = sw.AddPeer(peer)
+	require.Nil(err)
+
+	// simulate failure by closing connection
+	peer.CloseConn()
+
+	time.Sleep(100 * time.Millisecond)
+
+	assert.NotZero(sw.Peers().Size())
+	assert.False(peer.IsRunning())
 }
 
 func BenchmarkSwitches(b *testing.B) {
@@ -252,9 +314,9 @@ func BenchmarkSwitches(b *testing.B) {
 		successChan := s1.Broadcast(chID, "test data")
 		for s := range successChan {
 			if s {
-				numSuccess += 1
+				numSuccess++
 			} else {
-				numFailure += 1
+				numFailure++
 			}
 		}
 	}

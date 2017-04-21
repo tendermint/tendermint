@@ -5,86 +5,147 @@ import (
 	"net"
 	"sync"
 	"time"
-
-	cfg "github.com/tendermint/go-config"
 )
-
-//--------------------------------------------------------
-// delay reads/writes
-// randomly drop reads/writes
-// randomly drop connections
 
 const (
-	FuzzModeDrop  = "drop"
-	FuzzModeDelay = "delay"
+	// FuzzModeDrop is a mode in which we randomly drop reads/writes, connections or sleep
+	FuzzModeDrop = iota
+	// FuzzModeDelay is a mode in which we randomly sleep
+	FuzzModeDelay
 )
 
-func FuzzConn(config cfg.Config, conn net.Conn) net.Conn {
-	return &FuzzedConnection{
-		conn:   conn,
-		start:  time.After(time.Second * 10), // so we have time to do peer handshakes and get set up
-		params: config,
-	}
-}
-
+// FuzzedConnection wraps any net.Conn and depending on the mode either delays
+// reads/writes or randomly drops reads/writes/connections.
 type FuzzedConnection struct {
 	conn net.Conn
 
-	mtx   sync.Mutex
-	fuzz  bool // we don't start fuzzing right away
-	start <-chan time.Time
+	mtx    sync.Mutex
+	start  <-chan time.Time
+	active bool
 
-	// fuzz params
-	params cfg.Config
+	config *FuzzConnConfig
+}
+
+// FuzzConnConfig is a FuzzedConnection configuration.
+type FuzzConnConfig struct {
+	Mode         int
+	MaxDelay     time.Duration
+	ProbDropRW   float64
+	ProbDropConn float64
+	ProbSleep    float64
+}
+
+// DefaultFuzzConnConfig returns the default config.
+func DefaultFuzzConnConfig() *FuzzConnConfig {
+	return &FuzzConnConfig{
+		Mode:         FuzzModeDrop,
+		MaxDelay:     3 * time.Second,
+		ProbDropRW:   0.2,
+		ProbDropConn: 0.00,
+		ProbSleep:    0.00,
+	}
+}
+
+// FuzzConn creates a new FuzzedConnection. Fuzzing starts immediately.
+func FuzzConn(conn net.Conn) net.Conn {
+	return FuzzConnFromConfig(conn, DefaultFuzzConnConfig())
+}
+
+// FuzzConnFromConfig creates a new FuzzedConnection from a config. Fuzzing
+// starts immediately.
+func FuzzConnFromConfig(conn net.Conn, config *FuzzConnConfig) net.Conn {
+	return &FuzzedConnection{
+		conn:   conn,
+		start:  make(<-chan time.Time),
+		active: true,
+		config: config,
+	}
+}
+
+// FuzzConnAfter creates a new FuzzedConnection. Fuzzing starts when the
+// duration elapses.
+func FuzzConnAfter(conn net.Conn, d time.Duration) net.Conn {
+	return FuzzConnAfterFromConfig(conn, d, DefaultFuzzConnConfig())
+}
+
+// FuzzConnAfterFromConfig creates a new FuzzedConnection from a config.
+// Fuzzing starts when the duration elapses.
+func FuzzConnAfterFromConfig(conn net.Conn, d time.Duration, config *FuzzConnConfig) net.Conn {
+	return &FuzzedConnection{
+		conn:   conn,
+		start:  time.After(d),
+		active: false,
+		config: config,
+	}
+}
+
+// Config returns the connection's config.
+func (fc *FuzzedConnection) Config() *FuzzConnConfig {
+	return fc.config
+}
+
+// Read implements net.Conn.
+func (fc *FuzzedConnection) Read(data []byte) (n int, err error) {
+	if fc.fuzz() {
+		return 0, nil
+	}
+	return fc.conn.Read(data)
+}
+
+// Write implements net.Conn.
+func (fc *FuzzedConnection) Write(data []byte) (n int, err error) {
+	if fc.fuzz() {
+		return 0, nil
+	}
+	return fc.conn.Write(data)
+}
+
+// Close implements net.Conn.
+func (fc *FuzzedConnection) Close() error { return fc.conn.Close() }
+
+// LocalAddr implements net.Conn.
+func (fc *FuzzedConnection) LocalAddr() net.Addr { return fc.conn.LocalAddr() }
+
+// RemoteAddr implements net.Conn.
+func (fc *FuzzedConnection) RemoteAddr() net.Addr { return fc.conn.RemoteAddr() }
+
+// SetDeadline implements net.Conn.
+func (fc *FuzzedConnection) SetDeadline(t time.Time) error { return fc.conn.SetDeadline(t) }
+
+// SetReadDeadline implements net.Conn.
+func (fc *FuzzedConnection) SetReadDeadline(t time.Time) error {
+	return fc.conn.SetReadDeadline(t)
+}
+
+// SetWriteDeadline implements net.Conn.
+func (fc *FuzzedConnection) SetWriteDeadline(t time.Time) error {
+	return fc.conn.SetWriteDeadline(t)
 }
 
 func (fc *FuzzedConnection) randomDuration() time.Duration {
-	return time.Millisecond * time.Duration(rand.Int()%fc.MaxDelayMilliseconds())
-}
-
-func (fc *FuzzedConnection) Active() bool {
-	return fc.params.GetBool(configFuzzActive)
-}
-
-func (fc *FuzzedConnection) Mode() string {
-	return fc.params.GetString(configFuzzMode)
-}
-
-func (fc *FuzzedConnection) ProbDropRW() float64 {
-	return fc.params.GetFloat64(configFuzzProbDropRW)
-}
-
-func (fc *FuzzedConnection) ProbDropConn() float64 {
-	return fc.params.GetFloat64(configFuzzProbDropConn)
-}
-
-func (fc *FuzzedConnection) ProbSleep() float64 {
-	return fc.params.GetFloat64(configFuzzProbSleep)
-}
-
-func (fc *FuzzedConnection) MaxDelayMilliseconds() int {
-	return fc.params.GetInt(configFuzzMaxDelayMilliseconds)
+	maxDelayMillis := int(fc.config.MaxDelay.Nanoseconds() / 1000)
+	return time.Millisecond * time.Duration(rand.Int()%maxDelayMillis)
 }
 
 // implements the fuzz (delay, kill conn)
 // and returns whether or not the read/write should be ignored
-func (fc *FuzzedConnection) Fuzz() bool {
+func (fc *FuzzedConnection) fuzz() bool {
 	if !fc.shouldFuzz() {
 		return false
 	}
 
-	switch fc.Mode() {
+	switch fc.config.Mode {
 	case FuzzModeDrop:
 		// randomly drop the r/w, drop the conn, or sleep
 		r := rand.Float64()
-		if r <= fc.ProbDropRW() {
+		if r <= fc.config.ProbDropRW {
 			return true
-		} else if r < fc.ProbDropRW()+fc.ProbDropConn() {
+		} else if r < fc.config.ProbDropRW+fc.config.ProbDropConn {
 			// XXX: can't this fail because machine precision?
 			// XXX: do we need an error?
 			fc.Close()
 			return true
-		} else if r < fc.ProbDropRW()+fc.ProbDropConn()+fc.ProbSleep() {
+		} else if r < fc.config.ProbDropRW+fc.config.ProbDropConn+fc.config.ProbSleep {
 			time.Sleep(fc.randomDuration())
 		}
 	case FuzzModeDelay:
@@ -94,48 +155,19 @@ func (fc *FuzzedConnection) Fuzz() bool {
 	return false
 }
 
-// we don't fuzz until start chan fires
 func (fc *FuzzedConnection) shouldFuzz() bool {
-	if !fc.Active() {
-		return false
+	if fc.active {
+		return true
 	}
 
 	fc.mtx.Lock()
 	defer fc.mtx.Unlock()
-	if fc.fuzz {
-		return true
-	}
 
 	select {
 	case <-fc.start:
-		fc.fuzz = true
+		fc.active = true
+		return true
 	default:
+		return false
 	}
-	return false
-}
-
-func (fc *FuzzedConnection) Read(data []byte) (n int, err error) {
-	if fc.Fuzz() {
-		return 0, nil
-	}
-	return fc.conn.Read(data)
-}
-
-func (fc *FuzzedConnection) Write(data []byte) (n int, err error) {
-	if fc.Fuzz() {
-		return 0, nil
-	}
-	return fc.conn.Write(data)
-}
-
-// Implements net.Conn
-func (fc *FuzzedConnection) Close() error                  { return fc.conn.Close() }
-func (fc *FuzzedConnection) LocalAddr() net.Addr           { return fc.conn.LocalAddr() }
-func (fc *FuzzedConnection) RemoteAddr() net.Addr          { return fc.conn.RemoteAddr() }
-func (fc *FuzzedConnection) SetDeadline(t time.Time) error { return fc.conn.SetDeadline(t) }
-func (fc *FuzzedConnection) SetReadDeadline(t time.Time) error {
-	return fc.conn.SetReadDeadline(t)
-}
-func (fc *FuzzedConnection) SetWriteDeadline(t time.Time) error {
-	return fc.conn.SetWriteDeadline(t)
 }

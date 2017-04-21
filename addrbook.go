@@ -15,7 +15,7 @@ import (
 	"time"
 
 	. "github.com/tendermint/go-common"
-	"github.com/tendermint/go-crypto"
+	crypto "github.com/tendermint/go-crypto"
 )
 
 const (
@@ -73,7 +73,12 @@ const (
 	serializationVersion = 1
 )
 
-/* AddrBook - concurrency safe peer address manager */
+const (
+	bucketTypeNew = 0x01
+	bucketTypeOld = 0x02
+)
+
+// AddrBook - concurrency safe peer address manager.
 type AddrBook struct {
 	BaseService
 
@@ -91,11 +96,7 @@ type AddrBook struct {
 	nNew              int
 }
 
-const (
-	bucketTypeNew = 0x01
-	bucketTypeOld = 0x02
-)
-
+// NewAddrBook creates a new address book.
 // Use Start to begin processing asynchronous address updates.
 func NewAddrBook(filePath string, routabilityStrict bool) *AddrBook {
 	am := &AddrBook{
@@ -125,6 +126,7 @@ func (a *AddrBook) init() {
 	}
 }
 
+// OnStart implements Service.
 func (a *AddrBook) OnStart() error {
 	a.BaseService.OnStart()
 	a.loadFromFile(a.filePath)
@@ -133,6 +135,7 @@ func (a *AddrBook) OnStart() error {
 	return nil
 }
 
+// OnStop implements Service.
 func (a *AddrBook) OnStop() {
 	a.BaseService.OnStop()
 }
@@ -254,15 +257,21 @@ func (a *AddrBook) MarkAttempt(addr *NetAddress) {
 	ka.markAttempt()
 }
 
+// MarkBad currently just ejects the address. In the future, consider
+// blacklisting.
 func (a *AddrBook) MarkBad(addr *NetAddress) {
+	a.RemoveAddress(addr)
+}
+
+// RemoveAddress removes the address from the book.
+func (a *AddrBook) RemoveAddress(addr *NetAddress) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 	ka := a.addrLookup[addr.String()]
 	if ka == nil {
 		return
 	}
-	// We currently just eject the address.
-	// In the future, consider blacklisting.
+	log.Info("Remove address from book", "addr", addr)
 	a.removeFromAllBuckets(ka)
 }
 
@@ -309,6 +318,10 @@ type addrBookJSON struct {
 }
 
 func (a *AddrBook) saveToFile(filePath string) {
+	log.Info("Saving AddrBook to file", "size", a.Size())
+
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
 	// Compile Addrs
 	addrs := []*knownAddress{}
 	for _, ka := range a.addrLookup {
@@ -386,7 +399,6 @@ out:
 	for {
 		select {
 		case <-dumpAddressTicker.C:
-			log.Info("Saving AddrBook to file", "size", a.Size())
 			a.saveToFile(a.filePath)
 		case <-a.Quit:
 			break out
