@@ -3,27 +3,28 @@ import:
 - package: github.com/golang/protobuf
   subpackages:
   - proto
-- package: github.com/tendermint/tmlibs/common
-  version: develop
 - package: github.com/tendermint/go-crypto
   version: develop
-- package: github.com/tendermint/go-wire/data
-  version: develop
-- package: github.com/tendermint/tmlibs/logger
-  version: develop
-- package: github.com/tendermint/tmlibs/db
-  version: develop
-- package: github.com/tendermint/go-merkle
-  version: develop
-- package: github.com/tendermint/tmlibs/process
 - package: github.com/tendermint/go-wire
   version: develop
+- package: github.com/tendermint/merkleeyes
+  version: develop
+  subpackages:
+  - iavl
+- package: github.com/tendermint/tmlibs
+  version: develop
+  subpackages:
+  - common
+  - db
+  - logger
+  - merkle
+  - process
 - package: github.com/urfave/cli
 - package: golang.org/x/net
   subpackages:
   - context
 - package: google.golang.org/grpc
+testImport:
 - package: github.com/stretchr/testify
-  version: ^1.1.4
   subpackages:
   - require
