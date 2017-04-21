@@ -11,7 +11,7 @@ import (
 var resetAllCmd = &cobra.Command{
 	Use:   "unsafe_reset_all",
 	Short: "(unsafe) Remove all the data and WAL, reset this node's validator",
-	Run:   resetAll,
+	Run:   ResetAll,
 }
 
 var resetPrivValidatorCmd = &cobra.Command{
@@ -27,7 +27,7 @@ func init() {
 
 // XXX: this is totally unsafe.
 // it's only suitable for testnets.
-func resetAll(cmd *cobra.Command, args []string) {
+func ResetAll(cmd *cobra.Command, args []string) {
 	resetPrivValidator(cmd, args)
 	os.RemoveAll(config.GetString("db_dir"))
 	os.Remove(config.GetString("cs_wal_file"))
