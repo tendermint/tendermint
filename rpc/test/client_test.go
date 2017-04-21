@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/abci/types"
 	. "github.com/tendermint/go-common"
-	data "github.com/tendermint/go-data"
 	rpc "github.com/tendermint/go-rpc/client"
 	"github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -95,7 +94,8 @@ func testTxKV(t *testing.T) ([]byte, []byte, types.Tx) {
 func sendTx(t *testing.T, client rpc.HTTPClient) ([]byte, []byte) {
 	tmResult := new(ctypes.TMResult)
 	k, v, tx := testTxKV(t)
-	_, err := client.Call("broadcast_tx_commit", map[string]interface{}{"tx": tx}, tmResult)
+	txBytes := []byte(tx) // XXX
+	_, err := client.Call("broadcast_tx_commit", map[string]interface{}{"tx": txBytes}, tmResult)
 	require.Nil(t, err)
 	return k, v
 }
@@ -110,11 +110,13 @@ func TestJSONABCIQuery(t *testing.T) {
 
 func testABCIQuery(t *testing.T, client rpc.HTTPClient) {
 	k, _ := sendTx(t, client)
-	time.Sleep(time.Millisecond * 100)
+	time.Sleep(time.Millisecond * 500)
 	tmResult := new(ctypes.TMResult)
 	_, err := client.Call("abci_query",
 		map[string]interface{}{"path": "", "data": k, "prove": false}, tmResult)
 	require.Nil(t, err)
+
+	resQuery := (*tmResult).(*ctypes.ResultABCIQuery)
 	require.EqualValues(t, 0, resQuery.Response.Code)
 
 	// XXX: specific to value returned by the dummy
