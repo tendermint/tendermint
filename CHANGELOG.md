@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.1 (April 18, 2017)
+## 0.9.1 (April 21, 2017)
 
 FEATURES:
 
