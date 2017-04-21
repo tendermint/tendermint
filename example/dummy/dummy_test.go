@@ -10,7 +10,7 @@ import (
 	abcicli "github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/server"
 	"github.com/tendermint/abci/types"
-	cmn "github.com/tendermint/go-common"
+	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-merkle"
 )

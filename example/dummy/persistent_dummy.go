@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/tendermint/abci/types"
-	cmn "github.com/tendermint/go-common"
-	dbm "github.com/tendermint/go-db"
+	cmn "github.com/tendermint/tmlibs/common"
+	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/go-merkle"
 	"github.com/tendermint/go-wire"
 )

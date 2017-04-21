@@ -46,19 +46,19 @@ imports:
   subpackages:
   - edwards25519
   - extra25519
-- name: github.com/tendermint/go-common
+- name: github.com/tendermint/tmlibs/common
   version: f9e3db037330c8a8d61d3966de8473eaf01154fa
 - name: github.com/tendermint/go-crypto
   version: 9b95da8fa4187f6799558d89b271dc8ab6485615
 - name: github.com/tendermint/go-data
   version: e7fcc6d081ec8518912fcdc103188275f83a3ee5
-- name: github.com/tendermint/go-db
+- name: github.com/tendermint/tmlibs/db
   version: 9643f60bc2578693844aacf380a7c32e4c029fee
-- name: github.com/tendermint/go-logger
+- name: github.com/tendermint/tmlibs/logger
   version: cefb3a45c0bf3c493a04e9bcd9b1540528be59f2
 - name: github.com/tendermint/go-merkle
   version: 714d4d04557fd068a7c2a1748241ce8428015a96
-- name: github.com/tendermint/go-process
+- name: github.com/tendermint/tmlibs/process
   version: b27edfd189b1a01a0b099f7e9f8263589cf04909
 - name: github.com/tendermint/go-wire
   version: 334005c236d19c632fb5f073f9de3b0fab6a522b

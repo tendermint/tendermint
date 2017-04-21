@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/tendermint/abci/types"
-	cmn "github.com/tendermint/go-common"
+	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/go-merkle"
 )
 

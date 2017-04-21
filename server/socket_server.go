@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	"github.com/tendermint/abci/types"
-	cmn "github.com/tendermint/go-common"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 // var maxNumberConnections = 2

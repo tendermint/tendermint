@@ -6,7 +6,7 @@ import (
 
 	"github.com/tendermint/abci/example/counter"
 	"github.com/tendermint/abci/server"
-	cmn "github.com/tendermint/go-common"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 func main() {

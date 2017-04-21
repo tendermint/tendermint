@@ -8,7 +8,7 @@ import (
 
 	"github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/types"
-	"github.com/tendermint/go-process"
+	"github.com/tendermint/tmlibs/process"
 )
 
 func startApp(abciApp string) *process.Process {

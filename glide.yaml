@@ -3,19 +3,19 @@ import:
 - package: github.com/golang/protobuf
   subpackages:
   - proto
-- package: github.com/tendermint/go-common
+- package: github.com/tendermint/tmlibs/common
   version: develop
 - package: github.com/tendermint/go-crypto
   version: develop
 - package: github.com/tendermint/go-data
   version: develop
-- package: github.com/tendermint/go-logger
+- package: github.com/tendermint/tmlibs/logger
   version: develop
-- package: github.com/tendermint/go-db
+- package: github.com/tendermint/tmlibs/db
   version: develop
 - package: github.com/tendermint/go-merkle
   version: develop
-- package: github.com/tendermint/go-process
+- package: github.com/tendermint/tmlibs/process
 - package: github.com/tendermint/go-wire
   version: develop
 - package: github.com/urfave/cli
