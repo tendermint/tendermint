@@ -1,5 +1,5 @@
 hash: 13c7dac029851e5177bf78ff26ce6ccd047360111795a9a65af4ba6a0b87f4b3
-updated: 2017-04-21T18:31:57.13123527-04:00
+updated: 2017-04-21T18:38:50.4243289-04:00
 imports:
 - name: github.com/btcsuite/btcd
   version: 583684b21bfbde9b5fc4403916fd7c807feb0289
@@ -52,7 +52,7 @@ imports:
   subpackages:
   - term
 - name: github.com/tendermint/merkleeyes
-  version: 41fe51f4a6d3f1abc45fd4684e1351e084860ca4
+  version: 6fd69aa0871a4e685a5570aa7ab3d12e4068a722
   subpackages:
   - iavl
 - name: github.com/tendermint/tmlibs
