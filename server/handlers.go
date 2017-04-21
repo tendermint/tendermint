@@ -14,10 +14,10 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
-	cmn "github.com/tendermint/go-common"
-	events "github.com/tendermint/go-events"
 	types "github.com/tendermint/go-rpc/types"
 	wire "github.com/tendermint/go-wire"
+	cmn "github.com/tendermint/tmlibs/common"
+	events "github.com/tendermint/tmlibs/events"
 )
 
 // Adds a route for each function in the funcMap, as well as general jsonrpc and websocket handlers for all functions.

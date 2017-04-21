@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"strings"
 
-	events "github.com/tendermint/go-events"
 	wire "github.com/tendermint/go-wire"
+	events "github.com/tendermint/tmlibs/events"
 )
 
 type RPCRequest struct {

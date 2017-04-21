@@ -8,7 +8,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
-	cmn "github.com/tendermint/go-common"
+	cmn "github.com/tendermint/tmlibs/common"
 	types "github.com/tendermint/go-rpc/types"
 	wire "github.com/tendermint/go-wire"
 )

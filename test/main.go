@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	cmn "github.com/tendermint/go-common"
+	cmn "github.com/tendermint/tmlibs/common"
 	rpcserver "github.com/tendermint/go-rpc/server"
 )
 
