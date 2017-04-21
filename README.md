@@ -32,15 +32,15 @@ As a POST request, we use JSONRPC. For instance, the same request would have thi
 
 ```
 {
-	"jsonrpc":"2.0",
-	"id":"anything",
-	"method":"hello_world",
-	"params":["my_world", 5]
+  "jsonrpc": "2.0",
+  "id": "anything",
+  "method": "hello_world",
+  "params": {
+    "name": "my_world",
+    "num": 5
+  }
 }
 ```
-
-Note the `params` does not currently support key-value pairs (https://github.com/tendermint/go-rpc/issues/1), so order matters (you can get the order from making a 
-GET request to `/`)
 
 With the above saved in file `data.json`, we can make the request with
 
@@ -50,8 +50,8 @@ curl --data @data.json http://localhost:8008
 
 ## WebSocket (JSONRPC)
 
-All requests are exposed over websocket in the same form as the POST JSONRPC. 
-Websocket connections are available at their own endpoint, typically `/websocket`, 
+All requests are exposed over websocket in the same form as the POST JSONRPC.
+Websocket connections are available at their own endpoint, typically `/websocket`,
 though this is configurable when starting the server.
 
 # Server Definition
@@ -102,10 +102,27 @@ go func() {
 Note that unix sockets are supported as well (eg. `/path/to/socket` instead of `0.0.0.0:8008`)
 
 Now see all available endpoints by sending a GET request to `0.0.0.0:8008`.
-Each route is available as a GET request, as a JSONRPCv2 POST request, and via JSONRPCv2 over websockets
+Each route is available as a GET request, as a JSONRPCv2 POST request, and via JSONRPCv2 over websockets.
 
 
 # Examples
 
 * [Tendermint](https://github.com/tendermint/tendermint/blob/master/rpc/core/routes.go)
-* [Network Monitor](https://github.com/tendermint/netmon/blob/master/handlers/routes.go)
+* [tm-monitor](https://github.com/tendermint/tools/blob/master/tm-monitor/rpc.go)
+
+## CHANGELOG
+
+### 0.7.0
+
+BREAKING CHANGES:
+
+- removed `Client` empty interface
+- `ClientJSONRPC#Call` `params` argument became a map
+- rename `ClientURI` -> `URIClient`, `ClientJSONRPC` -> `JSONRPCClient`
+
+IMPROVEMENTS:
+
+- added `HTTPClient` interface, which can be used for both `ClientURI`
+and `ClientJSONRPC`
+- all params are now optional (Golang's default will be used if some param is missing)
+- added `Call` method to `WSClient` (see method's doc for details)

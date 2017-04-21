@@ -4,18 +4,18 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/tendermint/go-events"
-	"github.com/tendermint/go-wire"
+	events "github.com/tendermint/go-events"
+	wire "github.com/tendermint/go-wire"
 )
 
 type RPCRequest struct {
-	JSONRPC string        `json:"jsonrpc"`
-	ID      string        `json:"id"`
-	Method  string        `json:"method"`
-	Params  []interface{} `json:"params"`
+	JSONRPC string      `json:"jsonrpc"`
+	ID      string      `json:"id"`
+	Method  string      `json:"method"`
+	Params  interface{} `json:"params"` // must be map[string]interface{} or []interface{}
 }
 
-func NewRPCRequest(id string, method string, params []interface{}) RPCRequest {
+func NewRPCRequest(id string, method string, params map[string]interface{}) RPCRequest {
 	return RPCRequest{
 		JSONRPC: "2.0",
 		ID:      id,

@@ -3,7 +3,6 @@ package rpcclient
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -12,10 +11,15 @@ import (
 	"reflect"
 	"strings"
 
-	. "github.com/tendermint/go-common"
-	"github.com/tendermint/go-rpc/types"
-	"github.com/tendermint/go-wire"
+	"github.com/pkg/errors"
+	types "github.com/tendermint/go-rpc/types"
+	wire "github.com/tendermint/go-wire"
 )
+
+// HTTPClient is a common interface for JSONRPCClient and URIClient.
+type HTTPClient interface {
+	Call(method string, params map[string]interface{}, result interface{}) (interface{}, error)
+}
 
 // TODO: Deprecate support for IP:PORT or /path/to/socket
 func makeHTTPDialer(remoteAddr string) (string, func(string, string) (net.Conn, error)) {
@@ -24,7 +28,7 @@ func makeHTTPDialer(remoteAddr string) (string, func(string, string) (net.Conn, 
 	var protocol, address string
 	if len(parts) != 2 {
 		log.Warn("WARNING (go-rpc): Please use fully formed listening addresses, including the tcp:// or unix:// prefix")
-		protocol = rpctypes.SocketType(remoteAddr)
+		protocol = types.SocketType(remoteAddr)
 		address = remoteAddr
 	} else {
 		protocol, address = parts[0], parts[1]
@@ -49,38 +53,39 @@ func makeHTTPClient(remoteAddr string) (string, *http.Client) {
 
 //------------------------------------------------------------------------------------
 
-type Client interface {
-}
-
-//------------------------------------------------------------------------------------
-
 // JSON rpc takes params as a slice
-type ClientJSONRPC struct {
+type JSONRPCClient struct {
 	address string
 	client  *http.Client
 }
 
-func NewClientJSONRPC(remote string) *ClientJSONRPC {
+func NewJSONRPCClient(remote string) *JSONRPCClient {
 	address, client := makeHTTPClient(remote)
-	return &ClientJSONRPC{
+	return &JSONRPCClient{
 		address: address,
 		client:  client,
 	}
 }
 
-func (c *ClientJSONRPC) Call(method string, params []interface{}, result interface{}) (interface{}, error) {
-	return c.call(method, params, result)
-}
-
-func (c *ClientJSONRPC) call(method string, params []interface{}, result interface{}) (interface{}, error) {
-	// Make request and get responseBytes
-	request := rpctypes.RPCRequest{
+func (c *JSONRPCClient) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
+	// we need this step because we attempt to decode values using `go-wire`
+	// (handlers.go:176) on the server side
+	encodedParams := make(map[string]interface{})
+	for k, v := range params {
+		bytes := json.RawMessage(wire.JSONBytes(v))
+		encodedParams[k] = &bytes
+	}
+	request := types.RPCRequest{
 		JSONRPC: "2.0",
 		Method:  method,
-		Params:  params,
+		Params:  encodedParams,
 		ID:      "",
 	}
-	requestBytes := wire.JSONBytes(request)
+	requestBytes, err := json.Marshal(request)
+	if err != nil {
+		return nil, err
+	}
+	// log.Info(string(requestBytes))
 	requestBuf := bytes.NewBuffer(requestBytes)
 	// log.Info(Fmt("RPC request to %v (%v): %v", c.remote, method, string(requestBytes)))
 	httpResponse, err := c.client.Post(c.address, "text/json", requestBuf)
@@ -99,24 +104,20 @@ func (c *ClientJSONRPC) call(method string, params []interface{}, result interfa
 //-------------------------------------------------------------
 
 // URI takes params as a map
-type ClientURI struct {
+type URIClient struct {
 	address string
 	client  *http.Client
 }
 
-func NewClientURI(remote string) *ClientURI {
+func NewURIClient(remote string) *URIClient {
 	address, client := makeHTTPClient(remote)
-	return &ClientURI{
+	return &URIClient{
 		address: address,
 		client:  client,
 	}
 }
 
-func (c *ClientURI) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
-	return c.call(method, params, result)
-}
-
-func (c *ClientURI) call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
+func (c *URIClient) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
 	values, err := argsToURLValues(params)
 	if err != nil {
 		return nil, err
@@ -142,19 +143,19 @@ func unmarshalResponseBytes(responseBytes []byte, result interface{}) (interface
 	// into the correct type
 	// log.Notice("response", "response", string(responseBytes))
 	var err error
-	response := &rpctypes.RPCResponse{}
+	response := &types.RPCResponse{}
 	err = json.Unmarshal(responseBytes, response)
 	if err != nil {
-		return nil, errors.New(Fmt("Error unmarshalling rpc response: %v", err))
+		return nil, errors.Errorf("Error unmarshalling rpc response: %v", err)
 	}
 	errorStr := response.Error
 	if errorStr != "" {
-		return nil, errors.New(Fmt("Response error: %v", errorStr))
+		return nil, errors.Errorf("Response error: %v", errorStr)
 	}
 	// unmarshal the RawMessage into the result
 	result = wire.ReadJSONPtr(result, *response.Result, &err)
 	if err != nil {
-		return nil, errors.New(Fmt("Error unmarshalling rpc response result: %v", err))
+		return nil, errors.Errorf("Error unmarshalling rpc response result: %v", err)
 	}
 	return result, nil
 }

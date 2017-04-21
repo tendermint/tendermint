@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	. "github.com/tendermint/go-common"
+	cmn "github.com/tendermint/go-common"
 	rpcserver "github.com/tendermint/go-rpc/server"
 )
 
@@ -25,11 +25,11 @@ func main() {
 	rpcserver.RegisterRPCFuncs(mux, routes)
 	_, err := rpcserver.StartHTTPServer("0.0.0.0:8008", mux)
 	if err != nil {
-		Exit(err.Error())
+		cmn.Exit(err.Error())
 	}
 
 	// Wait forever
-	TrapSignal(func() {
+	cmn.TrapSignal(func() {
 	})
 
 }
