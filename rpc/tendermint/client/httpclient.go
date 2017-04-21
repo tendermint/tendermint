@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	data "github.com/tendermint/go-data"
+	data "github.com/tendermint/go-wire/data"
 	events "github.com/tendermint/tmlibs/events"
 	"github.com/tendermint/go-rpc/client"
 	wire "github.com/tendermint/go-wire"

@@ -16,7 +16,7 @@ package mock
 import (
 	"reflect"
 
-	data "github.com/tendermint/go-data"
+	data "github.com/tendermint/go-wire/data"
 	"github.com/tendermint/tendermint/rpc/tendermint/client"
 	"github.com/tendermint/tendermint/rpc/tendermint/core"
 	ctypes "github.com/tendermint/tendermint/rpc/tendermint/core/types"

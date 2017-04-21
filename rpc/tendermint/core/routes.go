@@ -1,7 +1,7 @@
 package core
 
 import (
-	data "github.com/tendermint/go-data"
+	data "github.com/tendermint/go-wire/data"
 	rpc "github.com/tendermint/go-rpc/server"
 	"github.com/tendermint/go-rpc/types"
 	ctypes "github.com/tendermint/tendermint/rpc/tendermint/core/types"

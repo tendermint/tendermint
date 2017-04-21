@@ -11,7 +11,7 @@ import (
 
 	. "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/go-crypto"
-	data "github.com/tendermint/go-data"
+	data "github.com/tendermint/go-wire/data"
 )
 
 const (

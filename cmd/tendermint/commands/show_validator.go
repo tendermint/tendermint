@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	data "github.com/tendermint/go-data"
+	data "github.com/tendermint/go-wire/data"
 	"github.com/tendermint/tendermint/types"
 )
 

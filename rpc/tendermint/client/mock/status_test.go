@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	data "github.com/tendermint/go-data"
+	data "github.com/tendermint/go-wire/data"
 	ctypes "github.com/tendermint/tendermint/rpc/tendermint/core/types"
 
 	"github.com/tendermint/tendermint/rpc/tendermint/client/mock"
