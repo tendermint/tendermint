@@ -72,15 +72,15 @@ func GetConfig() cfg.Config {
 }
 
 // GetURIClient gets a uri client pointing to the test tendermint rpc
-func GetURIClient() *client.ClientURI {
+func GetURIClient() *client.URIClient {
 	rpcAddr := GetConfig().GetString("rpc_laddr")
-	return client.NewClientURI(rpcAddr)
+	return client.NewURIClient(rpcAddr)
 }
 
 // GetJSONClient gets a http/json client pointing to the test tendermint rpc
-func GetJSONClient() *client.ClientJSONRPC {
+func GetJSONClient() *client.JSONRPCClient {
 	rpcAddr := GetConfig().GetString("rpc_laddr")
-	return client.NewClientJSONRPC(rpcAddr)
+	return client.NewJSONRPCClient(rpcAddr)
 }
 
 func GetGRPCClient() core_grpc.BroadcastAPIClient {

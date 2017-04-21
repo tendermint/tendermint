@@ -1,4 +1,4 @@
-#HEIGHT: 1
+#ENDHEIGHT: 0
 {"time":"2017-02-17T23:54:19.013Z","msg":[3,{"duration":969121813,"height":1,"round":0,"step":1}]}
 {"time":"2017-02-17T23:54:19.014Z","msg":[1,{"height":1,"round":0,"step":"RoundStepPropose"}]}
 {"time":"2017-02-17T23:54:19.014Z","msg":[2,{"msg":[17,{"Proposal":{"height":1,"round":0,"block_parts_header":{"total":1,"hash":"2E32C8D500E936D27A47FCE3FF4BE7C1AFB3FAE1"},"pol_round":-1,"pol_block_id":{"hash":"","parts":{"total":0,"hash":""}},"signature":[1,"105A5A834E9AE2FA2191CAB5CB20D63594BA7859BD3EB92F055C8A35476D71F0D89F9FD5B0FF030D021533C71A81BF6E8F026BF4A37FC637CF38CA35291A9D00"]}}],"peer_key":""}]}
@@ -8,7 +8,7 @@
 {"time":"2017-02-17T23:54:19.016Z","msg":[1,{"height":1,"round":0,"step":"RoundStepPrecommit"}]}
 {"time":"2017-02-17T23:54:19.016Z","msg":[2,{"msg":[20,{"Vote":{"validator_address":"D028C9981F7A87F3093672BF0D5B0E2A1B3ED456","validator_index":0,"height":1,"round":0,"type":2,"block_id":{"hash":"3F32EE37F9EA674A2173CAD651836A8EE628B5C7","parts":{"total":1,"hash":"2E32C8D500E936D27A47FCE3FF4BE7C1AFB3FAE1"}},"signature":[1,"2B1070A5AB9305612A3AE74A8036D82B5E49E0DBBFBC7D723DB985CC8A8E72A52FF8E34D85273FEB8B901945CA541FA5142C3C4D43A04E9205ACECF53FD19B01"]}}],"peer_key":""}]}
 {"time":"2017-02-17T23:54:19.017Z","msg":[1,{"height":1,"round":0,"step":"RoundStepCommit"}]}
-#HEIGHT: 2
+#ENDHEIGHT: 1
 {"time":"2017-02-17T23:54:19.019Z","msg":[1,{"height":2,"round":0,"step":"RoundStepNewHeight"}]}
 {"time":"2017-02-17T23:54:20.017Z","msg":[3,{"duration":998073370,"height":2,"round":0,"step":1}]}
 {"time":"2017-02-17T23:54:20.018Z","msg":[1,{"height":2,"round":0,"step":"RoundStepPropose"}]}
@@ -19,7 +19,7 @@
 {"time":"2017-02-17T23:54:20.021Z","msg":[1,{"height":2,"round":0,"step":"RoundStepPrecommit"}]}
 {"time":"2017-02-17T23:54:20.021Z","msg":[2,{"msg":[20,{"Vote":{"validator_address":"D028C9981F7A87F3093672BF0D5B0E2A1B3ED456","validator_index":0,"height":2,"round":0,"type":2,"block_id":{"hash":"32310D174A99844713693C9815D2CA660364E028","parts":{"total":1,"hash":"D008E9014CDDEA8EC95E1E99E21333241BD52DFC"}},"signature":[1,"AA9F03D0707752301D7CBFCF4F0BCDBD666A46C1CAED3910BD64A3C5C2874AAF328172646C951C5E2FD962359C382A3CBBA2C73EC9B533668C6386995B83EC08"]}}],"peer_key":""}]}
 {"time":"2017-02-17T23:54:20.022Z","msg":[1,{"height":2,"round":0,"step":"RoundStepCommit"}]}
-#HEIGHT: 3
+#ENDHEIGHT: 2
 {"time":"2017-02-17T23:54:20.025Z","msg":[1,{"height":3,"round":0,"step":"RoundStepNewHeight"}]}
 {"time":"2017-02-17T23:54:21.022Z","msg":[3,{"duration":997103974,"height":3,"round":0,"step":1}]}
 {"time":"2017-02-17T23:54:21.024Z","msg":[1,{"height":3,"round":0,"step":"RoundStepPropose"}]}
@@ -30,7 +30,7 @@
 {"time":"2017-02-17T23:54:21.028Z","msg":[1,{"height":3,"round":0,"step":"RoundStepPrecommit"}]}
 {"time":"2017-02-17T23:54:21.028Z","msg":[2,{"msg":[20,{"Vote":{"validator_address":"D028C9981F7A87F3093672BF0D5B0E2A1B3ED456","validator_index":0,"height":3,"round":0,"type":2,"block_id":{"hash":"37AF6866DA8C3167CFC280FAE47B6ED441B00D5B","parts":{"total":1,"hash":"2E5DE5777A5AD899CD2531304F42A470509DE989"}},"signature":[1,"C900519E305EC03392E7D197D5FAB535DB240C9C0BA5375A1679C75BAAA07C7410C0EF43CF97D98F2C08A1D739667D5ACFF6233A1FAE75D3DA275AEA422EFD0F"]}}],"peer_key":""}]}
 {"time":"2017-02-17T23:54:21.028Z","msg":[1,{"height":3,"round":0,"step":"RoundStepCommit"}]}
-#HEIGHT: 4
+#ENDHEIGHT: 3
 {"time":"2017-02-17T23:54:21.032Z","msg":[1,{"height":4,"round":0,"step":"RoundStepNewHeight"}]}
 {"time":"2017-02-17T23:54:22.028Z","msg":[3,{"duration":996302067,"height":4,"round":0,"step":1}]}
 {"time":"2017-02-17T23:54:22.030Z","msg":[1,{"height":4,"round":0,"step":"RoundStepPropose"}]}
@@ -41,7 +41,7 @@
 {"time":"2017-02-17T23:54:22.033Z","msg":[1,{"height":4,"round":0,"step":"RoundStepPrecommit"}]}
 {"time":"2017-02-17T23:54:22.033Z","msg":[2,{"msg":[20,{"Vote":{"validator_address":"D028C9981F7A87F3093672BF0D5B0E2A1B3ED456","validator_index":0,"height":4,"round":0,"type":2,"block_id":{"hash":"04715E223BF4327FFA9B0D5AD849B74A099D5DEC","parts":{"total":1,"hash":"24CEBCBEB833F56D47AD14354071B3B7A243068A"}},"signature":[1,"F544743F17479A61F94B0F68C63D254BD60493D78E818D48A5859133619AEE5E92C47CAD89C654DF64E0911C3152091E047555D5F14655D95B9681AE9B336505"]}}],"peer_key":""}]}
 {"time":"2017-02-17T23:54:22.034Z","msg":[1,{"height":4,"round":0,"step":"RoundStepCommit"}]}
-#HEIGHT: 5
+#ENDHEIGHT: 4
 {"time":"2017-02-17T23:54:22.036Z","msg":[1,{"height":5,"round":0,"step":"RoundStepNewHeight"}]}
 {"time":"2017-02-17T23:54:23.034Z","msg":[3,{"duration":997096276,"height":5,"round":0,"step":1}]}
 {"time":"2017-02-17T23:54:23.035Z","msg":[1,{"height":5,"round":0,"step":"RoundStepPropose"}]}
@@ -52,7 +52,7 @@
 {"time":"2017-02-17T23:54:23.038Z","msg":[1,{"height":5,"round":0,"step":"RoundStepPrecommit"}]}
 {"time":"2017-02-17T23:54:23.038Z","msg":[2,{"msg":[20,{"Vote":{"validator_address":"D028C9981F7A87F3093672BF0D5B0E2A1B3ED456","validator_index":0,"height":5,"round":0,"type":2,"block_id":{"hash":"FDC6D837995BEBBBFCBF3E7D7CF44F8FDA448543","parts":{"total":1,"hash":"A52BAA9C2E52E633A1605F4B930205613E3E7A2F"}},"signature":[1,"DF51D23D5D2C57598F67791D953A6C2D9FC5865A3048ADA4469B37500D2996B95732E0DC6F99EAEAEA12B4818CE355C7B701D16857D2AC767D740C2E30E9260C"]}}],"peer_key":""}]}
 {"time":"2017-02-17T23:54:23.038Z","msg":[1,{"height":5,"round":0,"step":"RoundStepCommit"}]}
-#HEIGHT: 6
+#ENDHEIGHT: 5
 {"time":"2017-02-17T23:54:23.041Z","msg":[1,{"height":6,"round":0,"step":"RoundStepNewHeight"}]}
 {"time":"2017-02-17T23:54:24.038Z","msg":[3,{"duration":997341910,"height":6,"round":0,"step":1}]}
 {"time":"2017-02-17T23:54:24.040Z","msg":[1,{"height":6,"round":0,"step":"RoundStepPropose"}]}

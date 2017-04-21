@@ -11,6 +11,10 @@ import (
 
 func getTMRoot(rootDir string) string {
 	if rootDir == "" {
+		rootDir = os.Getenv("TMHOME")
+	}
+	if rootDir == "" {
+		// deprecated, use TMHOME (TODO: remove in TM 0.11.0)
 		rootDir = os.Getenv("TMROOT")
 	}
 	if rootDir == "" {
@@ -79,6 +83,9 @@ func GetConfig(rootDir string) cfg.Config {
 	mapConfig.SetDefault("block_size", 10000)      // max number of txs
 	mapConfig.SetDefault("block_part_size", 65536) // part size 64K
 	mapConfig.SetDefault("disable_data_hash", false)
+
+	// all timeouts are in ms
+	mapConfig.SetDefault("timeout_handshake", 10000)
 	mapConfig.SetDefault("timeout_propose", 3000)
 	mapConfig.SetDefault("timeout_propose_delta", 500)
 	mapConfig.SetDefault("timeout_prevote", 1000)
@@ -86,12 +93,15 @@ func GetConfig(rootDir string) cfg.Config {
 	mapConfig.SetDefault("timeout_precommit", 1000)
 	mapConfig.SetDefault("timeout_precommit_delta", 500)
 	mapConfig.SetDefault("timeout_commit", 1000)
+
 	// make progress asap (no `timeout_commit`) on full precommit votes
 	mapConfig.SetDefault("skip_timeout_commit", false)
 	mapConfig.SetDefault("mempool_recheck", true)
 	mapConfig.SetDefault("mempool_recheck_empty", true)
 	mapConfig.SetDefault("mempool_broadcast", true)
 	mapConfig.SetDefault("mempool_wal_dir", rootDir+"/data/mempool.wal")
+
+	mapConfig.SetDefault("tx_index", "kv")
 
 	return mapConfig
 }

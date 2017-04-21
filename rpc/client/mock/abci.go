@@ -45,7 +45,7 @@ func (a ABCIApp) BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error
 	if c.IsOK() {
 		go func() { a.App.DeliverTx(tx) }()
 	}
-	return &ctypes.ResultBroadcastTx{c.Code, c.Data, c.Log}, nil
+	return &ctypes.ResultBroadcastTx{c.Code, c.Data, c.Log, tx.Hash()}, nil
 }
 
 func (a ABCIApp) BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
@@ -54,7 +54,7 @@ func (a ABCIApp) BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error)
 	if c.IsOK() {
 		go func() { a.App.DeliverTx(tx) }()
 	}
-	return &ctypes.ResultBroadcastTx{c.Code, c.Data, c.Log}, nil
+	return &ctypes.ResultBroadcastTx{c.Code, c.Data, c.Log, tx.Hash()}, nil
 }
 
 // ABCIMock will send all abci related request to the named app,

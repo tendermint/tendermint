@@ -63,7 +63,6 @@ func NewBlockPool(start int, requestsCh chan<- BlockRequest, timeoutsCh chan<- s
 }
 
 func (pool *BlockPool) OnStart() error {
-	pool.BaseService.OnStart()
 	go pool.makeRequestersRoutine()
 	pool.startTime = time.Now()
 	return nil
@@ -241,7 +240,9 @@ func (pool *BlockPool) RemovePeer(peerID string) {
 func (pool *BlockPool) removePeer(peerID string) {
 	for _, requester := range pool.requesters {
 		if requester.getPeerID() == peerID {
-			pool.numPending++
+			if requester.getBlock() != nil {
+				pool.numPending++
+			}
 			go requester.redo() // pick another peer and ...
 		}
 	}
@@ -409,7 +410,6 @@ func newBPRequester(pool *BlockPool, height int) *bpRequester {
 }
 
 func (bpr *bpRequester) OnStart() error {
-	bpr.BaseService.OnStart()
 	go bpr.requestRoutine()
 	return nil
 }

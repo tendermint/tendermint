@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.9.1 (April 18, 2017)
+
+FEATURES:
+
+- Transaction indexing - txs are indexed by their hash using a simple key-value store; easily extended to more advanced indexers
+- New `/tx?hash=X` endpoint to query for transactions and their DeliverTx result by hash. Optionally returns a proof of the tx's inclusion in the block
+- `tendermint testnet` command initializes files for a testnet
+
+IMPROVEMENTS:
+
+- CLI now uses Cobra framework
+- TMROOT is now TMHOME (TMROOT will stop working in 0.10.0)
+- `/broadcast_tx_XXX` also returns the Hash (can be used to query for the tx)
+- `/broadcast_tx_commit` also returns the height the block was committed in
+- ABCIResponses struct persisted to disk before calling Commit; makes handshake replay much cleaner
+- WAL uses #ENDHEIGHT instead of #HEIGHT (#HEIGHT will stop working in 0.10.0)
+- Peers included via `--seeds`, under `seeds` in the config, or in `/dial_seeds` are now persistent, and will be reconnected to if the connection breaks
+
+BUG FIXES: 
+
+- Fix bug in fast-sync where we stop syncing after a peer is removed, even if they're re-added later
+- Fix handshake replay to handle validator set changes and results of DeliverTx when we crash after app.Commit but before state.Save()
+
 ## 0.9.0 (March 6, 2017)
 
 BREAKING CHANGES:
@@ -35,10 +58,9 @@ type BlockMeta struct {
 }
 ```
 
+- `ValidatorSet.Proposer` is exposed as a field and persisted with the `State`. Use `GetProposer()` to initialize or update after validator-set changes. 
+
 - `tendermint gen_validator` command output is now pure JSON
-- `ValidatorSet` data type:
-	- expose a `Proposer` field. Note this means the `Proposer` is persisted with the `State`.
-	- change `.Proposer()` to `.GetProposer()`
 
 FEATURES:
 
@@ -218,3 +240,19 @@ BUG FIXES:
 
 - Various fixes to WAL and replay logic
 - Various race conditions
+
+## PreHistory
+
+Strict versioning only began with the release of v0.7.0, in late summer 2016.
+The project itself began in early summer 2014 and was workable decentralized cryptocurrency software by the end of that year.
+Through the course of 2015, in collaboration with Eris Industries (now Monax Indsutries), 
+many additional features were integrated, including an implementation from scratch of the Ethereum Virtual Machine.
+That implementation now forms the heart of [ErisDB](https://github.com/eris-ltd/eris-db).
+In the later half of 2015, the consensus algorithm was upgraded with a more asynchronous design and a more deterministic and robust implementation.
+
+By late 2015, frustration with the difficulty of forking a large monolithic stack to create alternative cryptocurrency designs led to the 
+invention of the Application Blockchain Interface (ABCI), then called the Tendermint Socket Protocol (TMSP).
+The Ethereum Virtual Machine and various other transaction features were removed, and Tendermint was whittled down to a core consensus engine
+driving an application running in another process. 
+The ABCI interface and implementation were iterated on and improved over the course of 2016,
+until versioned history kicked in with v0.7.0.

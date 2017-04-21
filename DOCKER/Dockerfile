@@ -1,7 +1,8 @@
 FROM alpine:3.5
 
 # This is the release of tendermint to pull in.
-ENV TM_VERSION 0.8.0
+ENV TM_VERSION 0.9.0
+ENV TM_SHA256SUM 697033ea0f34f8b34a8a2b74c4dd730b47dd4efcfce65e53e953bdae8eb14364
 
 # Tendermint will be looking for genesis file in /tendermint (unless you change
 # `genesis_file` in config.toml). You can put your config.toml and private
@@ -9,7 +10,7 @@ ENV TM_VERSION 0.8.0
 #
 # The /tendermint/data dir is used by tendermint to store state.
 ENV DATA_ROOT /tendermint
-ENV TMROOT $DATA_ROOT
+ENV TMHOME $DATA_ROOT
 
 # Set user right away for determinism
 RUN addgroup tmuser && \
@@ -25,11 +26,11 @@ RUN mkdir -p $DATA_ROOT && \
 RUN apk add --no-cache bash curl jq
 
 RUN apk add --no-cache openssl && \
-    wget https://s3-us-west-2.amazonaws.com/tendermint/${TM_VERSION}/tendermint_linux_amd64.zip && \
-    echo "83f6bd52055ebc93434a68263c6666a4de41e0e543d0b5a06ad461262c460f4c  tendermint_linux_amd64.zip" | sha256sum -c && \
-    unzip -d /bin tendermint_linux_amd64.zip && \
+    wget https://s3-us-west-2.amazonaws.com/tendermint/${TM_VERSION}/tendermint_${TM_VERSION}_linux_amd64.zip && \
+    echo "${TM_SHA256SUM}  tendermint_${TM_VERSION}_linux_amd64.zip" | sha256sum -c && \
+    unzip -d /bin tendermint_${TM_VERSION}_linux_amd64.zip && \
     apk del openssl && \
-    rm -f tendermint_linux_amd64.zip
+    rm -f tendermint_${TM_VERSION}_linux_amd64.zip
 
 # Expose the data directory as a volume since there's mutable state in there
 VOLUME $DATA_ROOT

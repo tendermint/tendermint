@@ -1,6 +1,8 @@
 package core_types
 
 import (
+	"strings"
+
 	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-p2p"
@@ -38,6 +40,19 @@ type ResultStatus struct {
 	LatestBlockTime   int64         `json:"latest_block_time"` // nano
 }
 
+func (s *ResultStatus) TxIndexEnabled() bool {
+	if s == nil || s.NodeInfo == nil {
+		return false
+	}
+	for _, s := range s.NodeInfo.Other {
+		info := strings.Split(s, "=")
+		if len(info) == 2 && info[0] == "tx_index" {
+			return info[1] == "on"
+		}
+	}
+	return false
+}
+
 type ResultNetInfo struct {
 	Listening bool     `json:"listening"`
 	Listeners []string `json:"listeners"`
@@ -45,6 +60,7 @@ type ResultNetInfo struct {
 }
 
 type ResultDialSeeds struct {
+	Log string `json:"log"`
 }
 
 type Peer struct {
@@ -67,11 +83,23 @@ type ResultBroadcastTx struct {
 	Code abci.CodeType `json:"code"`
 	Data []byte        `json:"data"`
 	Log  string        `json:"log"`
+
+	Hash []byte `json:"hash"`
 }
 
 type ResultBroadcastTxCommit struct {
 	CheckTx   *abci.ResponseCheckTx   `json:"check_tx"`
 	DeliverTx *abci.ResponseDeliverTx `json:"deliver_tx"`
+	Hash      []byte                  `json:"hash"`
+	Height    int                     `json:"height"`
+}
+
+type ResultTx struct {
+	Height   int                    `json:"height"`
+	Index    int                    `json:"index"`
+	TxResult abci.ResponseDeliverTx `json:"tx_result"`
+	Tx       types.Tx               `json:"tx"`
+	Proof    types.TxProof          `json:"proof,omitempty"`
 }
 
 type ResultUnconfirmedTxs struct {
@@ -127,6 +155,7 @@ const (
 	ResultTypeBroadcastTx       = byte(0x60)
 	ResultTypeUnconfirmedTxs    = byte(0x61)
 	ResultTypeBroadcastTxCommit = byte(0x62)
+	ResultTypeTx                = byte(0x63)
 
 	// 0x7 bytes are for querying the application
 	ResultTypeABCIQuery = byte(0x70)
@@ -163,6 +192,7 @@ var _ = wire.RegisterInterface(
 	wire.ConcreteType{&ResultDumpConsensusState{}, ResultTypeDumpConsensusState},
 	wire.ConcreteType{&ResultBroadcastTx{}, ResultTypeBroadcastTx},
 	wire.ConcreteType{&ResultBroadcastTxCommit{}, ResultTypeBroadcastTxCommit},
+	wire.ConcreteType{&ResultTx{}, ResultTypeTx},
 	wire.ConcreteType{&ResultUnconfirmedTxs{}, ResultTypeUnconfirmedTxs},
 	wire.ConcreteType{&ResultSubscribe{}, ResultTypeSubscribe},
 	wire.ConcreteType{&ResultUnsubscribe{}, ResultTypeUnsubscribe},

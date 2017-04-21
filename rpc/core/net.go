@@ -1,6 +1,8 @@
 package core
 
 import (
+	"fmt"
+
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 )
 
@@ -31,10 +33,17 @@ func NetInfo() (*ctypes.ResultNetInfo, error) {
 
 // Dial given list of seeds
 func UnsafeDialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) {
+
+	if len(seeds) == 0 {
+		return &ctypes.ResultDialSeeds{}, fmt.Errorf("No seeds provided")
+	}
 	// starts go routines to dial each seed after random delays
 	log.Info("DialSeeds", "addrBook", addrBook, "seeds", seeds)
 	err := p2pSwitch.DialSeeds(addrBook, seeds)
-	return &ctypes.ResultDialSeeds{}, err
+	if err != nil {
+		return &ctypes.ResultDialSeeds{}, err
+	}
+	return &ctypes.ResultDialSeeds{"Dialing seeds in progress. See /net_info for details"}, nil
 }
 
 //-----------------------------------------------------------------------------

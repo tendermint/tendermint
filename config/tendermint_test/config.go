@@ -93,6 +93,7 @@ func ResetConfig(localPath string) cfg.Config {
 	mapConfig.SetDefault("block_size", 10000)
 	mapConfig.SetDefault("block_part_size", 65536) // part size 64K
 	mapConfig.SetDefault("disable_data_hash", false)
+	mapConfig.SetDefault("timeout_handshake", 10000)
 	mapConfig.SetDefault("timeout_propose", 2000)
 	mapConfig.SetDefault("timeout_propose_delta", 1)
 	mapConfig.SetDefault("timeout_prevote", 10)
@@ -105,6 +106,8 @@ func ResetConfig(localPath string) cfg.Config {
 	mapConfig.SetDefault("mempool_recheck_empty", true)
 	mapConfig.SetDefault("mempool_broadcast", true)
 	mapConfig.SetDefault("mempool_wal_dir", "")
+
+	mapConfig.SetDefault("tx_index", "kv")
 
 	logger.SetLogLevel(mapConfig.GetString("log_level"))
 

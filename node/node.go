@@ -10,12 +10,12 @@ import (
 	abci "github.com/tendermint/abci/types"
 	cmn "github.com/tendermint/go-common"
 	cfg "github.com/tendermint/go-config"
-	"github.com/tendermint/go-crypto"
+	crypto "github.com/tendermint/go-crypto"
 	dbm "github.com/tendermint/go-db"
-	"github.com/tendermint/go-p2p"
-	"github.com/tendermint/go-rpc"
-	"github.com/tendermint/go-rpc/server"
-	"github.com/tendermint/go-wire"
+	p2p "github.com/tendermint/go-p2p"
+	rpc "github.com/tendermint/go-rpc"
+	rpcserver "github.com/tendermint/go-rpc/server"
+	wire "github.com/tendermint/go-wire"
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/consensus"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -23,6 +23,9 @@ import (
 	rpccore "github.com/tendermint/tendermint/rpc/core"
 	grpccore "github.com/tendermint/tendermint/rpc/grpc"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/state/txindex"
+	"github.com/tendermint/tendermint/state/txindex/kv"
+	"github.com/tendermint/tendermint/state/txindex/null"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 
@@ -51,6 +54,7 @@ type Node struct {
 	consensusReactor *consensus.ConsensusReactor // for participating in the consensus
 	proxyApp         proxy.AppConns              // connection to the application
 	rpcListeners     []net.Listener              // rpc servers
+	txIndexer        txindex.TxIndexer
 }
 
 func NewNodeDefault(config cfg.Config) *Node {
@@ -83,6 +87,17 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreato
 
 	// reload the state (it may have been updated by the handshake)
 	state = sm.LoadState(stateDB)
+
+	// Transaction indexing
+	var txIndexer txindex.TxIndexer
+	switch config.GetString("tx_index") {
+	case "kv":
+		store := dbm.NewDB("tx_index", config.GetString("db_backend"), config.GetString("db_dir"))
+		txIndexer = kv.NewTxIndex(store)
+	default:
+		txIndexer = &null.TxIndex{}
+	}
+	state.TxIndexer = txIndexer
 
 	// Generate node PrivKey
 	privKey := crypto.GenPrivKeyEd25519()
@@ -188,13 +203,13 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreato
 		consensusState:   consensusState,
 		consensusReactor: consensusReactor,
 		proxyApp:         proxyApp,
+		txIndexer:        txIndexer,
 	}
 	node.BaseService = *cmn.NewBaseService(log, "Node", node)
 	return node
 }
 
 func (n *Node) OnStart() error {
-	n.BaseService.OnStart()
 
 	// Create & add listener
 	protocol, address := ProtocolAndAddress(n.config.GetString("node_laddr"))
@@ -202,7 +217,7 @@ func (n *Node) OnStart() error {
 	n.sw.AddListener(l)
 
 	// Start the switch
-	n.sw.SetNodeInfo(makeNodeInfo(n.config, n.sw, n.privKey))
+	n.sw.SetNodeInfo(n.makeNodeInfo())
 	n.sw.SetNodePrivKey(n.privKey)
 	_, err := n.sw.Start()
 	if err != nil {
@@ -279,6 +294,7 @@ func (n *Node) ConfigureRPC() {
 	rpccore.SetGenesisDoc(n.genesisDoc)
 	rpccore.SetAddrBook(n.addrBook)
 	rpccore.SetProxyAppQuery(n.proxyApp.Query())
+	rpccore.SetTxIndexer(n.txIndexer)
 }
 
 func (n *Node) startRPC() ([]net.Listener, error) {
@@ -349,34 +365,39 @@ func (n *Node) ProxyApp() proxy.AppConns {
 	return n.proxyApp
 }
 
-func makeNodeInfo(config cfg.Config, sw *p2p.Switch, privKey crypto.PrivKeyEd25519) *p2p.NodeInfo {
+func (n *Node) makeNodeInfo() *p2p.NodeInfo {
+	txIndexerStatus := "on"
+	if _, ok := n.txIndexer.(*null.TxIndex); ok {
+		txIndexerStatus = "off"
+	}
 
 	nodeInfo := &p2p.NodeInfo{
-		PubKey:  privKey.PubKey().(crypto.PubKeyEd25519),
-		Moniker: config.GetString("moniker"),
-		Network: config.GetString("chain_id"),
+		PubKey:  n.privKey.PubKey().(crypto.PubKeyEd25519),
+		Moniker: n.config.GetString("moniker"),
+		Network: n.config.GetString("chain_id"),
 		Version: version.Version,
 		Other: []string{
 			cmn.Fmt("wire_version=%v", wire.Version),
 			cmn.Fmt("p2p_version=%v", p2p.Version),
 			cmn.Fmt("consensus_version=%v", consensus.Version),
 			cmn.Fmt("rpc_version=%v/%v", rpc.Version, rpccore.Version),
+			cmn.Fmt("tx_index=%v", txIndexerStatus),
 		},
 	}
 
 	// include git hash in the nodeInfo if available
-	if rev, err := cmn.ReadFile(config.GetString("revision_file")); err == nil {
+	if rev, err := cmn.ReadFile(n.config.GetString("revision_file")); err == nil {
 		nodeInfo.Other = append(nodeInfo.Other, cmn.Fmt("revision=%v", string(rev)))
 	}
 
-	if !sw.IsListening() {
+	if !n.sw.IsListening() {
 		return nodeInfo
 	}
 
-	p2pListener := sw.Listeners()[0]
+	p2pListener := n.sw.Listeners()[0]
 	p2pHost := p2pListener.ExternalAddress().IP.String()
 	p2pPort := p2pListener.ExternalAddress().Port
-	rpcListenAddr := config.GetString("rpc_laddr")
+	rpcListenAddr := n.config.GetString("rpc_laddr")
 
 	// We assume that the rpcListener has the same ExternalAddress.
 	// This is probably true because both P2P and RPC listeners use UPnP,
