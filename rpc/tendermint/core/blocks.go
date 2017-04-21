@@ -2,7 +2,7 @@ package core
 
 import (
 	"fmt"
-	. "github.com/tendermint/go-common"
+	. "github.com/tendermint/tmlibs/common"
 	ctypes "github.com/tendermint/tendermint/rpc/tendermint/core/types"
 	"github.com/tendermint/tendermint/types"
 )

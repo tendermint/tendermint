@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	. "github.com/tendermint/go-common"
-	flow "github.com/tendermint/go-flowrate/flowrate"
+	. "github.com/tendermint/tmlibs/common"
+	flow "github.com/tendermint/tmlibs/flowrate"
 	"github.com/tendermint/tendermint/types"
 )
 

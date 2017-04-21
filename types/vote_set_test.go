@@ -3,8 +3,8 @@ package types
 import (
 	"bytes"
 
-	. "github.com/tendermint/go-common"
-	. "github.com/tendermint/go-common/test"
+	. "github.com/tendermint/tmlibs/common"
+	. "github.com/tendermint/tmlibs/common/test"
 	"github.com/tendermint/go-crypto"
 
 	"testing"

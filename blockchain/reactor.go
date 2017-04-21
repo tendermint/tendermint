@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"time"
 
-	cmn "github.com/tendermint/go-common"
+	cmn "github.com/tendermint/tmlibs/common"
 	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-p2p"
 	"github.com/tendermint/go-wire"

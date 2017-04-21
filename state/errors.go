@@ -1,7 +1,7 @@
 package state
 
 import (
-	. "github.com/tendermint/go-common"
+	. "github.com/tendermint/tmlibs/common"
 )
 
 type (

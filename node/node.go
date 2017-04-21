@@ -8,10 +8,10 @@ import (
 	"strings"
 
 	abci "github.com/tendermint/abci/types"
-	cmn "github.com/tendermint/go-common"
+	cmn "github.com/tendermint/tmlibs/common"
 	cfg "github.com/tendermint/go-config"
 	crypto "github.com/tendermint/go-crypto"
-	dbm "github.com/tendermint/go-db"
+	dbm "github.com/tendermint/tmlibs/db"
 	p2p "github.com/tendermint/go-p2p"
 	rpc "github.com/tendermint/go-rpc"
 	rpcserver "github.com/tendermint/go-rpc/server"

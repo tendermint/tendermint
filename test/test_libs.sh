@@ -14,7 +14,7 @@ fi
 
 # some libs are tested with go, others with make
 # TODO: should be all make (post repo merge)
-LIBS_GO_TEST=(go-clist go-common go-config go-crypto go-db go-events go-merkle go-p2p)
+LIBS_GO_TEST=(tmlibs/clist tmlibs/common go-config go-crypto tmlibs/db tmlibs/events go-merkle go-p2p)
 LIBS_MAKE_TEST=(go-rpc go-wire abci)
 
 for lib in "${LIBS_GO_TEST[@]}"; do

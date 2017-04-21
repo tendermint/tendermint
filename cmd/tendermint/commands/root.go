@@ -3,7 +3,7 @@ package commands
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/tendermint/go-logger"
+	"github.com/tendermint/tmlibs/logger"
 	tmcfg "github.com/tendermint/tendermint/config/tendermint"
 )
 

@@ -6,7 +6,7 @@ import (
 
 	fail "github.com/ebuchman/fail-test"
 	abci "github.com/tendermint/abci/types"
-	. "github.com/tendermint/go-common"
+	. "github.com/tendermint/tmlibs/common"
 	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/state/txindex"

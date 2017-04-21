@@ -5,7 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 	data "github.com/tendermint/go-data"
-	events "github.com/tendermint/go-events"
+	events "github.com/tendermint/tmlibs/events"
 	"github.com/tendermint/go-rpc/client"
 	wire "github.com/tendermint/go-wire"
 	ctypes "github.com/tendermint/tendermint/rpc/tendermint/core/types"
@@ -198,7 +198,7 @@ type WSEvents struct {
 	// used to maintain counts of actively listened events
 	// so we can properly subscribe/unsubscribe
 	// FIXME: thread-safety???
-	// FIXME: reuse code from go-events???
+	// FIXME: reuse code from tmlibs/events???
 	evtCount  map[string]int      // count how many time each event is subscribed
 	listeners map[string][]string // keep track of which events each listener is listening to
 }

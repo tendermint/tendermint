@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	logger "github.com/tendermint/go-logger"
+	logger "github.com/tendermint/tmlibs/logger"
 	wire "github.com/tendermint/go-wire"
 
 	abci "github.com/tendermint/abci/types"

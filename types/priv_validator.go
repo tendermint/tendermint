@@ -9,7 +9,7 @@ import (
 	"os"
 	"sync"
 
-	. "github.com/tendermint/go-common"
+	. "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/go-crypto"
 	data "github.com/tendermint/go-data"
 )

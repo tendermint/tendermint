@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/abci/example/dummy"
 	crypto "github.com/tendermint/go-crypto"
-	dbm "github.com/tendermint/go-db"
+	dbm "github.com/tendermint/tmlibs/db"
 	cfg "github.com/tendermint/tendermint/config/tendermint_test"
 	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"

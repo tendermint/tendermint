@@ -1,7 +1,7 @@
 package proxy
 
 import (
-	cmn "github.com/tendermint/go-common"
+	cmn "github.com/tendermint/tmlibs/common"
 	cfg "github.com/tendermint/go-config"
 )
 

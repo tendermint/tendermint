@@ -3,8 +3,8 @@ package types
 import (
 	// for registering TMEventData as events.EventData
 	abci "github.com/tendermint/abci/types"
-	. "github.com/tendermint/go-common"
-	"github.com/tendermint/go-events"
+	. "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/events"
 	"github.com/tendermint/go-wire"
 )
 

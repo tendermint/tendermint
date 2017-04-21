@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	. "github.com/tendermint/go-common"
+	. "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/types"
 )
