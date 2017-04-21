@@ -261,6 +261,34 @@ func TestWSNewWSRPCFunc(t *testing.T) {
 	}
 }
 
+func TestWSHandlesArrayParams(t *testing.T) {
+	cl := client.NewWSClient(tcpAddr, websocketEndpoint)
+	_, err := cl.Start()
+	require.Nil(t, err)
+	defer cl.Stop()
+
+	val := "acbd"
+	params := []interface{}{val}
+	err = cl.WriteJSON(types.RPCRequest{
+		JSONRPC: "2.0",
+		ID:      "",
+		Method:  "echo_ws",
+		Params:  params,
+	})
+	require.Nil(t, err)
+
+	select {
+	case msg := <-cl.ResultsCh:
+		result := new(Result)
+		wire.ReadJSONPtr(result, msg, &err)
+		require.Nil(t, err)
+		got := (*result).(*ResultEcho).Value
+		assert.Equal(t, got, val)
+	case err := <-cl.ErrorsCh:
+		t.Fatalf("%+v", err)
+	}
+}
+
 func randBytes(t *testing.T) []byte {
 	n := rand.Intn(10) + 2
 	buf := make([]byte, n)

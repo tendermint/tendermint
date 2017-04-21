@@ -173,7 +173,7 @@ func jsonParamsToArgs(rpcFunc *RPCFunc, paramsI interface{}, argsOffset int) ([]
 		}
 		values := make([]reflect.Value, len(params))
 		for i, p := range params {
-			ty := rpcFunc.args[i]
+			ty := rpcFunc.args[i+argsOffset]
 			v, err := _jsonObjectToArg(ty, p)
 			if err != nil {
 				return nil, err
