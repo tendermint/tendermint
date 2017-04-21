@@ -1,0 +1,17 @@
+package: github.com/tendermint/tmlibs
+import:
+- package: github.com/jmhodges/levigo
+- package: github.com/syndtr/goleveldb
+  subpackages:
+  - leveldb
+  - leveldb/errors
+  - leveldb/opt
+- package: github.com/tendermint/go-wire
+- package: github.com/tendermint/log15
+- package: golang.org/x/crypto
+  subpackages:
+  - ripemd160
+testImport:
+- package: github.com/stretchr/testify
+  subpackages:
+  - assert
