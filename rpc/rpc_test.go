@@ -12,9 +12,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	client "github.com/tendermint/go-rpc/client"
-	server "github.com/tendermint/go-rpc/server"
-	types "github.com/tendermint/go-rpc/types"
+	client "github.com/tendermint/tendermint/rpc/client"
+	server "github.com/tendermint/tendermint/rpc/server"
+	types "github.com/tendermint/tendermint/rpc/types"
 	wire "github.com/tendermint/go-wire"
 )
 
@@ -22,8 +22,8 @@ import (
 const (
 	tcpAddr = "tcp://0.0.0.0:46657"
 
-	unixSocket = "/tmp/go-rpc.sock"
-	unixAddr   = "unix:///tmp/go-rpc.sock"
+	unixSocket = "/tmp/tendermint/rpc.sock"
+	unixAddr   = "unix:///tmp/tendermint/rpc.sock"
 
 	websocketEndpoint = "/websocket/endpoint"
 )

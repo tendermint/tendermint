@@ -8,8 +8,8 @@ import (
 
 	"github.com/gorilla/websocket"
 	. "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/go-rpc/client"
-	"github.com/tendermint/go-rpc/types"
+	"github.com/tendermint/tendermint/rpc/client"
+	"github.com/tendermint/tendermint/rpc/types"
 	"github.com/tendermint/go-wire"
 	_ "github.com/tendermint/tendermint/rpc/tendermint/core/types" // Register RPCResponse > Result types
 )

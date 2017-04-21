@@ -2,8 +2,8 @@ package core
 
 import (
 	data "github.com/tendermint/go-wire/data"
-	rpc "github.com/tendermint/go-rpc/server"
-	"github.com/tendermint/go-rpc/types"
+	rpc "github.com/tendermint/tendermint/rpc/server"
+	"github.com/tendermint/tendermint/rpc/types"
 	ctypes "github.com/tendermint/tendermint/rpc/tendermint/core/types"
 	"github.com/tendermint/tendermint/types"
 )

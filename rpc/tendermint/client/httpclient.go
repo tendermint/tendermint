@@ -6,7 +6,7 @@ import (
 	"github.com/pkg/errors"
 	data "github.com/tendermint/go-wire/data"
 	events "github.com/tendermint/tmlibs/events"
-	"github.com/tendermint/go-rpc/client"
+	"github.com/tendermint/tendermint/rpc/client"
 	wire "github.com/tendermint/go-wire"
 	ctypes "github.com/tendermint/tendermint/rpc/tendermint/core/types"
 	"github.com/tendermint/tendermint/types"

@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	cmn "github.com/tendermint/tmlibs/common"
-	rpcserver "github.com/tendermint/go-rpc/server"
+	rpcserver "github.com/tendermint/tendermint/rpc/server"
 )
 
 var routes = map[string]*rpcserver.RPCFunc{

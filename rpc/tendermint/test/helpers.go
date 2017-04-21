@@ -15,7 +15,7 @@ import (
 
 	abci "github.com/tendermint/abci/types"
 	cfg "github.com/tendermint/go-config"
-	client "github.com/tendermint/go-rpc/client"
+	client "github.com/tendermint/tendermint/rpc/client"
 	"github.com/tendermint/tendermint/config/tendermint_test"
 	nm "github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/proxy"

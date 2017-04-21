@@ -1,6 +1,6 @@
-# go-rpc
+# tendermint/rpc
 
-[![CircleCI](https://circleci.com/gh/tendermint/go-rpc.svg?style=svg)](https://circleci.com/gh/tendermint/go-rpc)
+[![CircleCI](https://circleci.com/gh/tendermint/tendermint/rpc.svg?style=svg)](https://circleci.com/gh/tendermint/tendermint/rpc)
 
 HTTP RPC server supporting calls via uri params, jsonrpc, and jsonrpc over websockets
 

@@ -108,7 +108,7 @@ imports:
   version: b5f314ffed65c81bd019ba1dd2bae0e95f3937f3
   subpackages:
   - upnp
-- name: github.com/tendermint/go-rpc
+- name: github.com/tendermint/tendermint/rpc
   version: 2c8df0ee6b60d8ac33662df13a4e358c679e02bf
   subpackages:
   - client

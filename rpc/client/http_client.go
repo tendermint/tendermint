@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	types "github.com/tendermint/go-rpc/types"
+	types "github.com/tendermint/tendermint/rpc/types"
 	wire "github.com/tendermint/go-wire"
 )
 
@@ -27,7 +27,7 @@ func makeHTTPDialer(remoteAddr string) (string, func(string, string) (net.Conn, 
 	parts := strings.SplitN(remoteAddr, "://", 2)
 	var protocol, address string
 	if len(parts) != 2 {
-		log.Warn("WARNING (go-rpc): Please use fully formed listening addresses, including the tcp:// or unix:// prefix")
+		log.Warn("WARNING (tendermint/rpc): Please use fully formed listening addresses, including the tcp:// or unix:// prefix")
 		protocol = types.SocketType(remoteAddr)
 		address = remoteAddr
 	} else {

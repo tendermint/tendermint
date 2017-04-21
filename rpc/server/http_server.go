@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	types "github.com/tendermint/go-rpc/types"
+	types "github.com/tendermint/tendermint/rpc/types"
 )
 
 func StartHTTPServer(listenAddr string, handler http.Handler) (listener net.Listener, err error) {
@@ -20,7 +20,7 @@ func StartHTTPServer(listenAddr string, handler http.Handler) (listener net.List
 	var proto, addr string
 	parts := strings.SplitN(listenAddr, "://", 2)
 	if len(parts) != 2 {
-		log.Warn("WARNING (go-rpc): Please use fully formed listening addresses, including the tcp:// or unix:// prefix")
+		log.Warn("WARNING (tendermint/rpc): Please use fully formed listening addresses, including the tcp:// or unix:// prefix")
 		// we used to allow addrs without tcp/unix prefix by checking for a colon
 		// TODO: Deprecate
 		proto = types.SocketType(listenAddr)

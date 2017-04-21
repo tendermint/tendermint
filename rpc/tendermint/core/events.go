@@ -1,7 +1,7 @@
 package core
 
 import (
-	"github.com/tendermint/go-rpc/types"
+	"github.com/tendermint/tendermint/rpc/types"
 	ctypes "github.com/tendermint/tendermint/rpc/tendermint/core/types"
 	"github.com/tendermint/tendermint/types"
 )
