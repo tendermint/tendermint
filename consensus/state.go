@@ -11,7 +11,7 @@ import (
 
 	"github.com/ebuchman/fail-test"
 
-	. "github.com/tendermint/go-common"
+	. "github.com/tendermint/tmlibs/common"
 	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/proxy"

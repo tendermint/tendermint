@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	. "github.com/tendermint/go-common"
+	. "github.com/tendermint/tmlibs/common"
 	abcicli "github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/example/dummy"
 	"github.com/tendermint/abci/server"

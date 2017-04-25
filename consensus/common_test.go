@@ -13,10 +13,10 @@ import (
 
 	abcicli "github.com/tendermint/abci/client"
 	abci "github.com/tendermint/abci/types"
-	. "github.com/tendermint/go-common"
+	. "github.com/tendermint/tmlibs/common"
 	cfg "github.com/tendermint/go-config"
-	dbm "github.com/tendermint/go-db"
-	"github.com/tendermint/go-p2p"
+	dbm "github.com/tendermint/tmlibs/db"
+	"github.com/tendermint/tendermint/p2p"
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/config/tendermint_test"
 	mempl "github.com/tendermint/tendermint/mempool"

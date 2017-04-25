@@ -1,7 +1,7 @@
 package node
 
 import (
-	"github.com/tendermint/go-logger"
+	"github.com/tendermint/tmlibs/logger"
 )
 
 var log = logger.New("module", "node")

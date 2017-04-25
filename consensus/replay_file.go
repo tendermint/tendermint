@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"strings"
 
-	. "github.com/tendermint/go-common"
+	. "github.com/tendermint/tmlibs/common"
 	cfg "github.com/tendermint/go-config"
-	dbm "github.com/tendermint/go-db"
+	dbm "github.com/tendermint/tmlibs/db"
 	bc "github.com/tendermint/tendermint/blockchain"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"

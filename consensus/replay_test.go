@@ -15,10 +15,10 @@ import (
 	"github.com/tendermint/tendermint/config/tendermint_test"
 
 	"github.com/tendermint/abci/example/dummy"
-	cmn "github.com/tendermint/go-common"
+	cmn "github.com/tendermint/tmlibs/common"
 	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-crypto"
-	dbm "github.com/tendermint/go-db"
+	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"

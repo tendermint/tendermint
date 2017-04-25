@@ -144,7 +144,7 @@ IMPROVEMENTS:
 - Less verbose logging
 - Better test coverage (37% -> 49%)
 - Canonical SignBytes for signable types
-- Write-Ahead Log for Mempool and Consensus via go-autofile 
+- Write-Ahead Log for Mempool and Consensus via tmlibs/autofile 
 - Better in-process testing for the consensus reactor and byzantine faults
 - Better crash/restart testing for individual nodes at preset failure points, and of networks at arbitrary points
 - Better abstraction over timeout mechanics

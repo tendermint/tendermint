@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	cmn "github.com/tendermint/go-common"
-	ctest "github.com/tendermint/go-common/test"
 	wire "github.com/tendermint/go-wire"
+	cmn "github.com/tendermint/tmlibs/common"
+	ctest "github.com/tendermint/tmlibs/test"
 )
 
 func makeTxs(cnt, size int) Txs {

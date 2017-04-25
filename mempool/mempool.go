@@ -8,9 +8,9 @@ import (
 	"time"
 
 	abci "github.com/tendermint/abci/types"
-	auto "github.com/tendermint/go-autofile"
-	"github.com/tendermint/go-clist"
-	. "github.com/tendermint/go-common"
+	auto "github.com/tendermint/tmlibs/autofile"
+	"github.com/tendermint/tmlibs/clist"
+	. "github.com/tendermint/tmlibs/common"
 	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"

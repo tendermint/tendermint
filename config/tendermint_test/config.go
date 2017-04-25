@@ -7,9 +7,9 @@ import (
 	"path"
 	"strings"
 
-	. "github.com/tendermint/go-common"
+	. "github.com/tendermint/tmlibs/common"
 	cfg "github.com/tendermint/go-config"
-	"github.com/tendermint/go-logger"
+	"github.com/tendermint/tmlibs/logger"
 )
 
 func init() {

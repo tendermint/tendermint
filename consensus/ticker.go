@@ -3,7 +3,7 @@ package consensus
 import (
 	"time"
 
-	. "github.com/tendermint/go-common"
+	. "github.com/tendermint/tmlibs/common"
 )
 
 var (
