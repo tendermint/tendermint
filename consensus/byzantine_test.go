@@ -8,8 +8,6 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/tendermint/tendermint/config/tendermint_test"
-
-	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 	. "github.com/tendermint/tmlibs/common"

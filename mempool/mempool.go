@@ -10,7 +10,6 @@ import (
 	"github.com/spf13/viper"
 
 	abci "github.com/tendermint/abci/types"
-	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 	auto "github.com/tendermint/tmlibs/autofile"

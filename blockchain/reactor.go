@@ -8,7 +8,6 @@ import (
 
 	"github.com/spf13/viper"
 
-	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"

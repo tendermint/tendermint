@@ -10,7 +10,6 @@ import (
 
 	"github.com/spf13/viper"
 
-	cfg "github.com/tendermint/go-config"
 	. "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/logger"
 )
@@ -46,7 +45,6 @@ func initTMRoot(rootDir string) {
 	// Write default config file if missing.
 	if !FileExists(configFilePath) {
 		// Ask user for moniker
-		// moniker := cfg.Prompt("Type hostname: ", "anonymous")
 		MustWriteFile(configFilePath, []byte(defaultConfig("anonymous")), 0644)
 	}
 	if !FileExists(genesisFilePath) {

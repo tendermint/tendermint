@@ -6,11 +6,11 @@ import (
 
 	fail "github.com/ebuchman/fail-test"
 	abci "github.com/tendermint/abci/types"
-	. "github.com/tendermint/tmlibs/common"
 	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 //--------------------------------------------------
@@ -126,7 +126,7 @@ func updateValidators(validators *types.ValidatorSet, changedValidators []*abci.
 		power := int64(v.Power)
 		// mind the overflow from uint64
 		if power < 0 {
-			return errors.New(Fmt("Power (%d) overflows int64", v.Power))
+			return errors.New(cmn.Fmt("Power (%d) overflows int64", v.Power))
 		}
 
 		_, val := validators.GetByAddress(address)
@@ -134,20 +134,20 @@ func updateValidators(validators *types.ValidatorSet, changedValidators []*abci.
 			// add val
 			added := validators.Add(types.NewValidator(pubkey, power))
 			if !added {
-				return errors.New(Fmt("Failed to add new validator %X with voting power %d", address, power))
+				return errors.New(cmn.Fmt("Failed to add new validator %X with voting power %d", address, power))
 			}
 		} else if v.Power == 0 {
 			// remove val
 			_, removed := validators.Remove(address)
 			if !removed {
-				return errors.New(Fmt("Failed to remove validator %X)"))
+				return errors.New(cmn.Fmt("Failed to remove validator %X)"))
 			}
 		} else {
 			// update val
 			val.VotingPower = power
 			updated := validators.Update(val)
 			if !updated {
-				return errors.New(Fmt("Failed to update validator %X with voting power %d", address, power))
+				return errors.New(cmn.Fmt("Failed to update validator %X with voting power %d", address, power))
 			}
 		}
 	}
@@ -156,8 +156,8 @@ func updateValidators(validators *types.ValidatorSet, changedValidators []*abci.
 
 // return a bit array of validators that signed the last commit
 // NOTE: assumes commits have already been authenticated
-func commitBitArrayFromBlock(block *types.Block) *BitArray {
-	signed := NewBitArray(len(block.LastCommit.Precommits))
+func commitBitArrayFromBlock(block *types.Block) *cmn.BitArray {
+	signed := cmn.NewBitArray(len(block.LastCommit.Precommits))
 	for i, precommit := range block.LastCommit.Precommits {
 		if precommit != nil {
 			signed.SetIndex(i, true) // val_.LastCommitHeight = block.Height - 1
@@ -187,7 +187,7 @@ func (s *State) validateBlock(block *types.Block) error {
 		}
 	} else {
 		if len(block.LastCommit.Precommits) != s.LastValidators.Size() {
-			return errors.New(Fmt("Invalid block commit size. Expected %v, got %v",
+			return errors.New(cmn.Fmt("Invalid block commit size. Expected %v, got %v",
 				s.LastValidators.Size(), len(block.LastCommit.Precommits)))
 		}
 		err := s.LastValidators.VerifyCommit(

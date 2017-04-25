@@ -15,7 +15,6 @@ import (
 
 	abcicli "github.com/tendermint/abci/client"
 	abci "github.com/tendermint/abci/types"
-	cfg "github.com/tendermint/go-config"
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/config/tendermint_test"
 	mempl "github.com/tendermint/tendermint/mempool"

@@ -10,7 +10,6 @@ import (
 	"github.com/spf13/viper"
 
 	abci "github.com/tendermint/abci/types"
-	cfg "github.com/tendermint/go-config"
 	crypto "github.com/tendermint/go-crypto"
 	wire "github.com/tendermint/go-wire"
 	bc "github.com/tendermint/tendermint/blockchain"

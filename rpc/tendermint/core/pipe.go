@@ -2,7 +2,6 @@ package core
 
 import (
 	"github.com/spf13/viper"
-	cfg "github.com/tendermint/go-config"
 
 	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/tendermint/consensus"

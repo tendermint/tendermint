@@ -15,7 +15,6 @@ import (
 	logger "github.com/tendermint/tmlibs/logger"
 
 	abci "github.com/tendermint/abci/types"
-	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/tendermint/config/tendermint_test"
 	nm "github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/proxy"

@@ -13,10 +13,9 @@ import (
 	"github.com/spf13/viper"
 
 	abci "github.com/tendermint/abci/types"
-	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-wire"
 	auto "github.com/tendermint/tmlibs/autofile"
-	. "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tmlibs/common"
 
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
@@ -110,7 +109,7 @@ func (cs *ConsensusState) catchupReplay(csHeight int) error {
 		gr.Close()
 	}
 	if found {
-		return errors.New(Fmt("WAL should not contain #ENDHEIGHT %d.", csHeight))
+		return errors.New(cmn.Fmt("WAL should not contain #ENDHEIGHT %d.", csHeight))
 	}
 
 	// Search for last height marker
@@ -145,7 +144,7 @@ func (cs *ConsensusState) catchupReplay(csHeight int) error {
 		}
 
 		// TODO (0.10.0): uncomment
-		// return errors.New(Fmt("Cannot replay height %d. WAL does not contain #ENDHEIGHT for %d.", csHeight, csHeight-1))
+		// return errors.New(cmn.Fmt("Cannot replay height %d. WAL does not contain #ENDHEIGHT for %d.", csHeight, csHeight-1))
 	}
 
 	log.Notice("Catchup by replaying consensus messages", "height", csHeight)
@@ -223,7 +222,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	// handshake is done via info request on the query conn
 	res, err := proxyApp.Query().InfoSync()
 	if err != nil {
-		return errors.New(Fmt("Error calling Info: %v", err))
+		return errors.New(cmn.Fmt("Error calling Info: %v", err))
 	}
 
 	blockHeight := int(res.LastBlockHeight) // XXX: beware overflow
@@ -240,7 +239,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 		return nil
 
 	} else if err != nil {
-		return errors.New(Fmt("Error on replay: %v", err))
+		return errors.New(cmn.Fmt("Error on replay: %v", err))
 	}
 
 	log.Notice("Completed ABCI Handshake - Tendermint and App are synced", "appHeight", blockHeight, "appHash", appHash)
@@ -268,11 +267,11 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, proxyApp p
 
 	} else if storeBlockHeight < stateBlockHeight {
 		// the state should never be ahead of the store (this is under tendermint's control)
-		PanicSanity(Fmt("StateBlockHeight (%d) > StoreBlockHeight (%d)", stateBlockHeight, storeBlockHeight))
+		cmn.PanicSanity(cmn.Fmt("StateBlockHeight (%d) > StoreBlockHeight (%d)", stateBlockHeight, storeBlockHeight))
 
 	} else if storeBlockHeight > stateBlockHeight+1 {
 		// store should be at most one ahead of the state (this is under tendermint's control)
-		PanicSanity(Fmt("StoreBlockHeight (%d) > StateBlockHeight + 1 (%d)", storeBlockHeight, stateBlockHeight+1))
+		cmn.PanicSanity(cmn.Fmt("StoreBlockHeight (%d) > StateBlockHeight + 1 (%d)", storeBlockHeight, stateBlockHeight+1))
 	}
 
 	// Now either store is equal to state, or one ahead.
@@ -315,7 +314,7 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, proxyApp p
 
 	}
 
-	PanicSanity("Should never happen")
+	cmn.PanicSanity("Should never happen")
 	return nil, nil
 }
 
@@ -370,7 +369,7 @@ func (h *Handshaker) replayBlock(height int, proxyApp proxy.AppConnConsensus) ([
 
 func (h *Handshaker) checkAppHash(appHash []byte) error {
 	if !bytes.Equal(h.state.AppHash, appHash) {
-		panic(errors.New(Fmt("Tendermint state.AppHash does not match AppHash after replay. Got %X, expected %X", appHash, h.state.AppHash)).Error())
+		panic(errors.New(cmn.Fmt("Tendermint state.AppHash does not match AppHash after replay. Got %X, expected %X", appHash, h.state.AppHash)).Error())
 		return nil
 	}
 	return nil

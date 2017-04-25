@@ -15,7 +15,6 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/tendermint/abci/example/dummy"
-	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/config/tendermint_test"

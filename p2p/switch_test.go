@@ -8,20 +8,21 @@ import (
 	"testing"
 	"time"
 
+	"github.com/spf13/viper"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	. "github.com/tendermint/tmlibs/common"
-	cfg "github.com/tendermint/go-config"
 	crypto "github.com/tendermint/go-crypto"
 	wire "github.com/tendermint/go-wire"
+	. "github.com/tendermint/tmlibs/common"
 )
 
 var (
-	config cfg.Config
+	config *viper.Viper
 )
 
 func init() {
-	config = cfg.NewMapConfig(nil)
+	config = viper.New()
 	setConfigDefaults(config)
 }
 

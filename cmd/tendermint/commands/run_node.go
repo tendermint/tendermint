@@ -7,9 +7,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	. "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/types"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 var runNodeCmd = &cobra.Command{
@@ -90,11 +90,11 @@ func runNode(cmd *cobra.Command, args []string) error {
 	// TODO: If Mintnet gets deprecated or genesis_file is
 	// always available, remove.
 	genDocFile := config.GetString("genesis_file")
-	if !FileExists(genDocFile) {
-		log.Notice(Fmt("Waiting for genesis file %v...", genDocFile))
+	if !cmn.FileExists(genDocFile) {
+		log.Notice(cmn.Fmt("Waiting for genesis file %v...", genDocFile))
 		for {
 			time.Sleep(time.Second)
-			if !FileExists(genDocFile) {
+			if !cmn.FileExists(genDocFile) {
 				continue
 			}
 			jsonBlob, err := ioutil.ReadFile(genDocFile)

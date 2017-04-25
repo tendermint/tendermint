@@ -6,9 +6,7 @@ import (
 	"strings"
 
 	"github.com/spf13/viper"
-
-	cfg "github.com/tendermint/go-config"
-	. "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 func getTMRoot(rootDir string) string {
@@ -27,16 +25,16 @@ func getTMRoot(rootDir string) string {
 
 func initTMRoot(rootDir string) {
 	rootDir = getTMRoot(rootDir)
-	EnsureDir(rootDir, 0700)
-	EnsureDir(rootDir+"/data", 0700)
+	cmn.EnsureDir(rootDir, 0700)
+	cmn.EnsureDir(rootDir+"/data", 0700)
 
 	configFilePath := path.Join(rootDir, "config.toml")
 
 	// Write default config file if missing.
-	if !FileExists(configFilePath) {
+	if !cmn.FileExists(configFilePath) {
 		// Ask user for moniker
 		// moniker := cfg.Prompt("Type hostname: ", "anonymous")
-		MustWriteFile(configFilePath, []byte(defaultConfig("anonymous")), 0644)
+		cmn.MustWriteFile(configFilePath, []byte(defaultConfig("anonymous")), 0644)
 	}
 }
 
@@ -50,16 +48,16 @@ func GetConfig(rootDir string) *viper.Viper {
 	config.AddConfigPath(rootDir)
 	err := config.ReadInConfig()
 	if err != nil {
-		Exit(Fmt("Could not read config from directory %v: %v", rootDir, err))
+		cmn.Exit(cmn.Fmt("Could not read config from directory %v: %v", rootDir, err))
 	}
 	//config.WatchConfig()
 
 	// Set defaults or panic
 	if config.IsSet("chain_id") {
-		Exit("Cannot set 'chain_id' via config.toml")
+		cmn.Exit("Cannot set 'chain_id' via config.toml")
 	}
 	if config.IsSet("revision_file") {
-		Exit("Cannot set 'revision_file' via config.toml. It must match what's in the Makefile")
+		cmn.Exit("Cannot set 'revision_file' via config.toml. It must match what's in the Makefile")
 	}
 	//mapConfig.SetRequired("chain_id") // blows up if you try to use it before setting.
 	config.SetDefault("genesis_file", rootDir+"/genesis.json")

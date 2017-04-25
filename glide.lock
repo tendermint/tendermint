@@ -1,12 +1,10 @@
-hash: 9096fc4e29eff8fac3708ed30deacac67b7a181f0192b177006105dccdb16686
-updated: 2017-04-21T18:39:37.154946943-04:00
+hash: 6f8962f6ca0e25b8e43bc6e496bd46c9ff3a79dcf789578efeeaee2fffc39c6e
+updated: 2017-04-25T14:48:36.999444976-04:00
 imports:
 - name: github.com/btcsuite/btcd
   version: 583684b21bfbde9b5fc4403916fd7c807feb0289
   subpackages:
   - btcec
-- name: github.com/BurntSushi/toml
-  version: 99064174e013895bbd9b025c31100bd1d9b590ca
 - name: github.com/davecgh/go-spew
   version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
   subpackages:
@@ -55,7 +53,7 @@ imports:
 - name: github.com/pelletier/go-buffruneio
   version: c37440a7cf42ac63b919c752ca73a85067e05992
 - name: github.com/pelletier/go-toml
-  version: fe206efb84b2bc8e8cfafe6b4c1826622be969e3
+  version: 13d49d4606eb801b8f01ae542b4afc4c6ee3d84a
 - name: github.com/pkg/errors
   version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/pmezard/go-difflib
@@ -67,7 +65,7 @@ imports:
   subpackages:
   - mem
 - name: github.com/spf13/cast
-  version: ce135a4ebeee6cfe9a26c93ee0d37825f26113c7
+  version: acbeb36b902d72a7a4c18e8f3241075e7ab763e4
 - name: github.com/spf13/cobra
   version: fcd0c5a1df88f5d6784cb4feead962c3f3d0b66c
 - name: github.com/spf13/jwalterweatherman
@@ -75,7 +73,7 @@ imports:
 - name: github.com/spf13/pflag
   version: 9ff6c6923cfffbcd502984b8e0c80539a94968b7
 - name: github.com/spf13/viper
-  version: 84f94806c67f59dd7ae87bc5351f7a9c94a4558d
+  version: 5d46e70da8c0b6f812e0b170b7a985753b5c63cb
 - name: github.com/stretchr/testify
   version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
   subpackages:
@@ -97,7 +95,7 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/abci
-  version: be61e273cebeb64866a83c578f92b22cf2169cdd
+  version: c709d3cc857929a8dd36a90da3640122d7e75770
   subpackages:
   - client
   - example/counter
@@ -109,10 +107,6 @@ imports:
   subpackages:
   - edwards25519
   - extra25519
-- name: github.com/tendermint/go-common
-  version: 6af2364fa91ef2f3afc8ba0db33b66d9d3ae006c
-  subpackages:
-  - test
 - name: github.com/tendermint/go-crypto
   version: 9b95da8fa4187f6799558d89b271dc8ab6485615
 - name: github.com/tendermint/go-wire

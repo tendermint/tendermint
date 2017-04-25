@@ -2,7 +2,6 @@ package proxy
 
 import (
 	"github.com/spf13/viper"
-	cfg "github.com/tendermint/go-config"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 

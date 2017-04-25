@@ -8,8 +8,7 @@ import (
 
 	"github.com/spf13/viper"
 	abci "github.com/tendermint/abci/types"
-	cfg "github.com/tendermint/go-config"
-	. "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 
 	"github.com/tendermint/go-wire"
@@ -66,7 +65,7 @@ func loadState(db dbm.DB, key []byte) *State {
 		wire.ReadBinaryPtr(&s, r, 0, n, err)
 		if *err != nil {
 			// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
-			Exit(Fmt("LoadState: Data has been corrupted or its spec has changed: %v\n", *err))
+			cmn.Exit(cmn.Fmt("LoadState: Data has been corrupted or its spec has changed: %v\n", *err))
 		}
 		// TODO: ensure that buf is completely read.
 	}
@@ -110,7 +109,7 @@ func (s *State) LoadABCIResponses() *ABCIResponses {
 		wire.ReadBinaryPtr(abciResponses, r, 0, n, err)
 		if *err != nil {
 			// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
-			Exit(Fmt("LoadABCIResponses: Data has been corrupted or its spec has changed: %v\n", *err))
+			cmn.Exit(cmn.Fmt("LoadABCIResponses: Data has been corrupted or its spec has changed: %v\n", *err))
 		}
 		// TODO: ensure that buf is completely read.
 	}
@@ -125,7 +124,7 @@ func (s *State) Bytes() []byte {
 	buf, n, err := new(bytes.Buffer), new(int), new(error)
 	wire.WriteBinary(s, buf, n, err)
 	if *err != nil {
-		PanicCrisis(*err)
+		cmn.PanicCrisis(*err)
 	}
 	return buf.Bytes()
 }
@@ -205,7 +204,7 @@ func (a *ABCIResponses) Bytes() []byte {
 	buf, n, err := new(bytes.Buffer), new(int), new(error)
 	wire.WriteBinary(*a, buf, n, err)
 	if *err != nil {
-		PanicCrisis(*err)
+		cmn.PanicCrisis(*err)
 	}
 	return buf.Bytes()
 }
@@ -219,11 +218,11 @@ func (a *ABCIResponses) Bytes() []byte {
 func MakeGenesisStateFromFile(db dbm.DB, genDocFile string) *State {
 	genDocJSON, err := ioutil.ReadFile(genDocFile)
 	if err != nil {
-		Exit(Fmt("Couldn't read GenesisDoc file: %v", err))
+		cmn.Exit(cmn.Fmt("Couldn't read GenesisDoc file: %v", err))
 	}
 	genDoc, err := types.GenesisDocFromJSON(genDocJSON)
 	if err != nil {
-		Exit(Fmt("Error reading GenesisDoc: %v", err))
+		cmn.Exit(cmn.Fmt("Error reading GenesisDoc: %v", err))
 	}
 	return MakeGenesisState(db, genDoc)
 }
@@ -233,7 +232,7 @@ func MakeGenesisStateFromFile(db dbm.DB, genDocFile string) *State {
 // Used in tests.
 func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) *State {
 	if len(genDoc.Validators) == 0 {
-		Exit(Fmt("The genesis file has no validators"))
+		cmn.Exit(cmn.Fmt("The genesis file has no validators"))
 	}
 
 	if genDoc.GenesisTime.IsZero() {

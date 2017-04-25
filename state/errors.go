@@ -1,7 +1,7 @@
 package state
 
 import (
-	. "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 type (
@@ -36,20 +36,20 @@ type (
 )
 
 func (e ErrUnknownBlock) Error() string {
-	return Fmt("Could not find block #%d", e.Height)
+	return cmn.Fmt("Could not find block #%d", e.Height)
 }
 
 func (e ErrBlockHashMismatch) Error() string {
-	return Fmt("App block hash (%X) does not match core block hash (%X) for height %d", e.AppHash, e.CoreHash, e.Height)
+	return cmn.Fmt("App block hash (%X) does not match core block hash (%X) for height %d", e.AppHash, e.CoreHash, e.Height)
 }
 
 func (e ErrAppBlockHeightTooHigh) Error() string {
-	return Fmt("App block height (%d) is higher than core (%d)", e.AppHeight, e.CoreHeight)
+	return cmn.Fmt("App block height (%d) is higher than core (%d)", e.AppHeight, e.CoreHeight)
 }
 func (e ErrLastStateMismatch) Error() string {
-	return Fmt("Latest tendermint block (%d) LastAppHash (%X) does not match app's AppHash (%X)", e.Height, e.Core, e.App)
+	return cmn.Fmt("Latest tendermint block (%d) LastAppHash (%X) does not match app's AppHash (%X)", e.Height, e.Core, e.App)
 }
 
 func (e ErrStateMismatch) Error() string {
-	return Fmt("State after replay does not match saved state. Got ----\n%v\nExpected ----\n%v\n", e.Got, e.Expected)
+	return cmn.Fmt("State after replay does not match saved state. Got ----\n%v\nExpected ----\n%v\n", e.Got, e.Expected)
 }
