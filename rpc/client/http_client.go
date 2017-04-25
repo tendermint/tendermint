@@ -12,8 +12,8 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	types "github.com/tendermint/tendermint/rpc/types"
 	wire "github.com/tendermint/go-wire"
+	types "github.com/tendermint/tendermint/rpc/types"
 )
 
 // HTTPClient is a common interface for JSONRPCClient and URIClient.
@@ -179,10 +179,11 @@ func argsToJson(args map[string]interface{}) error {
 	var n int
 	var err error
 	for k, v := range args {
-		// Convert byte slices to "0x"-prefixed hex
-		byteSlice, isByteSlice := reflect.ValueOf(v).Interface().([]byte)
+		rt := reflect.TypeOf(v)
+		isByteSlice := rt.Kind() == reflect.Slice && rt.Elem().Kind() == reflect.Uint8
 		if isByteSlice {
-			args[k] = fmt.Sprintf("0x%X", byteSlice)
+			bytes := reflect.ValueOf(v).Bytes()
+			args[k] = fmt.Sprintf("0x%X", bytes)
 			continue
 		}
 
