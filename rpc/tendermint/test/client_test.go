@@ -11,12 +11,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/abci/types"
-	. "github.com/tendermint/tmlibs/common"
 	rpc "github.com/tendermint/tendermint/rpc/client"
 	"github.com/tendermint/tendermint/rpc/tendermint/core"
 	ctypes "github.com/tendermint/tendermint/rpc/tendermint/core/types"
 	"github.com/tendermint/tendermint/state/txindex/null"
 	"github.com/tendermint/tendermint/types"
+	. "github.com/tendermint/tmlibs/common"
 )
 
 //--------------------------------------------------------------------------------
@@ -94,9 +94,12 @@ func testTxKV(t *testing.T) ([]byte, []byte, types.Tx) {
 func sendTx(t *testing.T, client rpc.HTTPClient) ([]byte, []byte) {
 	tmResult := new(ctypes.TMResult)
 	k, v, tx := testTxKV(t)
-	txBytes := []byte(tx) // XXX
-	_, err := client.Call("broadcast_tx_commit", map[string]interface{}{"tx": txBytes}, tmResult)
+	_, err := client.Call("broadcast_tx_commit", map[string]interface{}{"tx": tx}, tmResult)
 	require.Nil(t, err)
+	bres := (*tmResult).(*ctypes.ResultBroadcastTxCommit)
+	require.NotNil(t, 0, bres.DeliverTx, "%#v", bres)
+	require.EqualValues(t, 0, bres.CheckTx.GetCode(), "%#v", bres)
+	require.EqualValues(t, 0, bres.DeliverTx.GetCode(), "%#v", bres)
 	return k, v
 }
 
@@ -105,7 +108,7 @@ func TestURIABCIQuery(t *testing.T) {
 }
 
 func TestJSONABCIQuery(t *testing.T) {
-	testABCIQuery(t, GetURIClient())
+	testABCIQuery(t, GetJSONClient())
 }
 
 func testABCIQuery(t *testing.T, client rpc.HTTPClient) {
