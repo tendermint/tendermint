@@ -10,6 +10,7 @@ import:
 - package: github.com/gorilla/websocket
 - package: github.com/pkg/errors
 - package: github.com/spf13/cobra
+- package: github.com/spf13/viper
 - package: github.com/stretchr/testify
   subpackages:
   - require
@@ -19,8 +20,6 @@ import:
   - client
   - example/dummy
   - types
-- package: github.com/tendermint/go-config
-  version: develop
 - package: github.com/tendermint/go-crypto
   version: develop
 - package: github.com/tendermint/go-wire

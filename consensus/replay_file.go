@@ -8,24 +8,25 @@ import (
 	"strconv"
 	"strings"
 
-	. "github.com/tendermint/tmlibs/common"
-	cfg "github.com/tendermint/go-config"
-	dbm "github.com/tendermint/tmlibs/db"
+	"github.com/spf13/viper"
+
 	bc "github.com/tendermint/tendermint/blockchain"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	cmn "github.com/tendermint/tmlibs/common"
+	dbm "github.com/tendermint/tmlibs/db"
 )
 
 //--------------------------------------------------------
 // replay messages interactively or all at once
 
-func RunReplayFile(config cfg.Config, walFile string, console bool) {
+func RunReplayFile(config *viper.Viper, walFile string, console bool) {
 	consensusState := newConsensusStateForReplay(config)
 
 	if err := consensusState.ReplayFile(walFile, console); err != nil {
-		Exit(Fmt("Error during consensus replay: %v", err))
+		cmn.Exit(cmn.Fmt("Error during consensus replay: %v", err))
 	}
 }
 
@@ -114,7 +115,7 @@ func (pb *playback) replayReset(count int, newStepCh chan interface{}) error {
 	pb.fp = fp
 	pb.scanner = bufio.NewScanner(fp)
 	count = pb.count - count
-	log.Notice(Fmt("Reseting from %d to %d", pb.count, count))
+	log.Notice(cmn.Fmt("Reseting from %d to %d", pb.count, count))
 	pb.count = 0
 	pb.cs = newCS
 	for i := 0; pb.scanner.Scan() && i < count; i++ {
@@ -149,9 +150,9 @@ func (pb *playback) replayConsoleLoop() int {
 		bufReader := bufio.NewReader(os.Stdin)
 		line, more, err := bufReader.ReadLine()
 		if more {
-			Exit("input is too long")
+			cmn.Exit("input is too long")
 		} else if err != nil {
-			Exit(err.Error())
+			cmn.Exit(err.Error())
 		}
 
 		tokens := strings.Split(string(line), " ")
@@ -236,7 +237,7 @@ func (pb *playback) replayConsoleLoop() int {
 //--------------------------------------------------------------------------------
 
 // convenience for replay mode
-func newConsensusStateForReplay(config cfg.Config) *ConsensusState {
+func newConsensusStateForReplay(config *viper.Viper) *ConsensusState {
 	// Get BlockStore
 	blockStoreDB := dbm.NewDB("blockstore", config.GetString("db_backend"), config.GetString("db_dir"))
 	blockStore := bc.NewBlockStore(blockStoreDB)
@@ -249,7 +250,7 @@ func newConsensusStateForReplay(config cfg.Config) *ConsensusState {
 	proxyApp := proxy.NewAppConns(config, proxy.DefaultClientCreator(config), NewHandshaker(config, state, blockStore))
 	_, err := proxyApp.Start()
 	if err != nil {
-		Exit(Fmt("Error starting proxy app conns: %v", err))
+		cmn.Exit(cmn.Fmt("Error starting proxy app conns: %v", err))
 	}
 
 	// add the chainid to the global config
@@ -258,7 +259,7 @@ func newConsensusStateForReplay(config cfg.Config) *ConsensusState {
 	// Make event switch
 	eventSwitch := types.NewEventSwitch()
 	if _, err := eventSwitch.Start(); err != nil {
-		Exit(Fmt("Failed to start event switch: %v", err))
+		cmn.Exit(cmn.Fmt("Failed to start event switch: %v", err))
 	}
 
 	mempool := mempl.NewMempool(config, proxyApp.Mempool())

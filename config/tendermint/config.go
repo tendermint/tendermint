@@ -5,8 +5,8 @@ import (
 	"path"
 	"strings"
 
-	. "github.com/tendermint/tmlibs/common"
-	cfg "github.com/tendermint/go-config"
+	"github.com/spf13/viper"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 func getTMRoot(rootDir string) string {
@@ -25,85 +25,89 @@ func getTMRoot(rootDir string) string {
 
 func initTMRoot(rootDir string) {
 	rootDir = getTMRoot(rootDir)
-	EnsureDir(rootDir, 0700)
-	EnsureDir(rootDir+"/data", 0700)
+	cmn.EnsureDir(rootDir, 0700)
+	cmn.EnsureDir(rootDir+"/data", 0700)
 
 	configFilePath := path.Join(rootDir, "config.toml")
 
 	// Write default config file if missing.
-	if !FileExists(configFilePath) {
+	if !cmn.FileExists(configFilePath) {
 		// Ask user for moniker
 		// moniker := cfg.Prompt("Type hostname: ", "anonymous")
-		MustWriteFile(configFilePath, []byte(defaultConfig("anonymous")), 0644)
+		cmn.MustWriteFile(configFilePath, []byte(defaultConfig("anonymous")), 0644)
 	}
 }
 
-func GetConfig(rootDir string) cfg.Config {
+func GetConfig(rootDir string) *viper.Viper {
 	rootDir = getTMRoot(rootDir)
 	initTMRoot(rootDir)
 
-	configFilePath := path.Join(rootDir, "config.toml")
-	mapConfig, err := cfg.ReadMapConfigFromFile(configFilePath)
+	config := viper.New()
+	config.SetConfigName("config")
+	config.SetConfigType("toml")
+	config.AddConfigPath(rootDir)
+	err := config.ReadInConfig()
 	if err != nil {
-		Exit(Fmt("Could not read config: %v", err))
+		cmn.Exit(cmn.Fmt("Could not read config from directory %v: %v", rootDir, err))
 	}
+	//config.WatchConfig()
 
 	// Set defaults or panic
-	if mapConfig.IsSet("chain_id") {
-		Exit("Cannot set 'chain_id' via config.toml")
+	if config.IsSet("chain_id") {
+		cmn.Exit("Cannot set 'chain_id' via config.toml")
 	}
-	if mapConfig.IsSet("revision_file") {
-		Exit("Cannot set 'revision_file' via config.toml. It must match what's in the Makefile")
+	if config.IsSet("revision_file") {
+		cmn.Exit("Cannot set 'revision_file' via config.toml. It must match what's in the Makefile")
 	}
-	mapConfig.SetRequired("chain_id") // blows up if you try to use it before setting.
-	mapConfig.SetDefault("genesis_file", rootDir+"/genesis.json")
-	mapConfig.SetDefault("proxy_app", "tcp://127.0.0.1:46658")
-	mapConfig.SetDefault("abci", "socket")
-	mapConfig.SetDefault("moniker", "anonymous")
-	mapConfig.SetDefault("node_laddr", "tcp://0.0.0.0:46656")
-	mapConfig.SetDefault("seeds", "")
-	// mapConfig.SetDefault("seeds", "goldenalchemist.chaintest.net:46656")
-	mapConfig.SetDefault("fast_sync", true)
-	mapConfig.SetDefault("skip_upnp", false)
-	mapConfig.SetDefault("addrbook_file", rootDir+"/addrbook.json")
-	mapConfig.SetDefault("addrbook_strict", true) // disable to allow connections locally
-	mapConfig.SetDefault("pex_reactor", false)    // enable for peer exchange
-	mapConfig.SetDefault("priv_validator_file", rootDir+"/priv_validator.json")
-	mapConfig.SetDefault("db_backend", "leveldb")
-	mapConfig.SetDefault("db_dir", rootDir+"/data")
-	mapConfig.SetDefault("log_level", "info")
-	mapConfig.SetDefault("rpc_laddr", "tcp://0.0.0.0:46657")
-	mapConfig.SetDefault("grpc_laddr", "")
-	mapConfig.SetDefault("prof_laddr", "")
-	mapConfig.SetDefault("revision_file", rootDir+"/revision")
-	mapConfig.SetDefault("cs_wal_file", rootDir+"/data/cs.wal/wal")
-	mapConfig.SetDefault("cs_wal_light", false)
-	mapConfig.SetDefault("filter_peers", false)
+	//mapConfig.SetRequired("chain_id") // blows up if you try to use it before setting.
+	config.SetDefault("genesis_file", rootDir+"/genesis.json")
+	config.SetDefault("proxy_app", "tcp://127.0.0.1:46658")
+	config.SetDefault("abci", "socket")
+	config.SetDefault("moniker", "anonymous")
+	config.SetDefault("node_laddr", "tcp://0.0.0.0:46656")
+	config.SetDefault("seeds", "")
+	// config.SetDefault("seeds", "goldenalchemist.chaintest.net:46656")
+	config.SetDefault("fast_sync", true)
+	config.SetDefault("skip_upnp", false)
+	config.SetDefault("addrbook_file", rootDir+"/addrbook.json")
+	config.SetDefault("addrbook_strict", true) // disable to allow connections locally
+	config.SetDefault("pex_reactor", false)    // enable for peer exchange
+	config.SetDefault("priv_validator_file", rootDir+"/priv_validator.json")
+	config.SetDefault("db_backend", "leveldb")
+	config.SetDefault("db_dir", rootDir+"/data")
+	config.SetDefault("log_level", "info")
+	config.SetDefault("rpc_laddr", "tcp://0.0.0.0:46657")
+	config.SetDefault("grpc_laddr", "")
+	config.SetDefault("prof_laddr", "")
+	config.SetDefault("revision_file", rootDir+"/revision")
+	config.SetDefault("cs_wal_file", rootDir+"/data/cs.wal/wal")
+	config.SetDefault("cs_wal_light", false)
+	config.SetDefault("filter_peers", false)
 
-	mapConfig.SetDefault("block_size", 10000)      // max number of txs
-	mapConfig.SetDefault("block_part_size", 65536) // part size 64K
-	mapConfig.SetDefault("disable_data_hash", false)
+	config.SetDefault("block_size", 10000)      // max number of txs
+	config.SetDefault("block_part_size", 65536) // part size 64K
+	config.SetDefault("disable_data_hash", false)
 
 	// all timeouts are in ms
-	mapConfig.SetDefault("timeout_handshake", 10000)
-	mapConfig.SetDefault("timeout_propose", 3000)
-	mapConfig.SetDefault("timeout_propose_delta", 500)
-	mapConfig.SetDefault("timeout_prevote", 1000)
-	mapConfig.SetDefault("timeout_prevote_delta", 500)
-	mapConfig.SetDefault("timeout_precommit", 1000)
-	mapConfig.SetDefault("timeout_precommit_delta", 500)
-	mapConfig.SetDefault("timeout_commit", 1000)
+	config.SetDefault("timeout_handshake", 10000)
+	config.SetDefault("timeout_propose", 3000)
+	config.SetDefault("timeout_propose_delta", 500)
+	config.SetDefault("timeout_prevote", 1000)
+	config.SetDefault("timeout_prevote_delta", 500)
+	config.SetDefault("timeout_precommit", 1000)
+	config.SetDefault("timeout_precommit_delta", 500)
+	config.SetDefault("timeout_commit", 1000)
 
 	// make progress asap (no `timeout_commit`) on full precommit votes
-	mapConfig.SetDefault("skip_timeout_commit", false)
-	mapConfig.SetDefault("mempool_recheck", true)
-	mapConfig.SetDefault("mempool_recheck_empty", true)
-	mapConfig.SetDefault("mempool_broadcast", true)
-	mapConfig.SetDefault("mempool_wal_dir", rootDir+"/data/mempool.wal")
+	config.SetDefault("skip_timeout_commit", false)
+	config.SetDefault("mempool_recheck", true)
+	config.SetDefault("mempool_recheck_empty", true)
+	config.SetDefault("mempool_broadcast", true)
+	config.SetDefault("mempool_wal_dir", rootDir+"/data/mempool.wal")
 
-	mapConfig.SetDefault("tx_index", "kv")
+	config.SetDefault("tx_index", "kv")
 
-	return mapConfig
+	return config
 }
 
 var defaultConfigTmpl = `# This is a TOML config file.

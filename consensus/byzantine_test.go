@@ -5,13 +5,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/config/tendermint_test"
+	"github.com/spf13/viper"
 
-	. "github.com/tendermint/tmlibs/common"
-	cfg "github.com/tendermint/go-config"
-	"github.com/tendermint/tmlibs/events"
+	"github.com/tendermint/tendermint/config/tendermint_test"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
+	. "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/events"
 )
 
 func init() {
@@ -36,7 +36,7 @@ func TestByzantine(t *testing.T) {
 
 	switches := make([]*p2p.Switch, N)
 	for i := 0; i < N; i++ {
-		switches[i] = p2p.NewSwitch(cfg.NewMapConfig(nil))
+		switches[i] = p2p.NewSwitch(viper.New())
 	}
 
 	reactors := make([]p2p.Reactor, N)

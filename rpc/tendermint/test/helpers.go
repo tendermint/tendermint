@@ -9,24 +9,22 @@ import (
 	"testing"
 	"time"
 
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
-	logger "github.com/tendermint/tmlibs/logger"
 	wire "github.com/tendermint/go-wire"
+	logger "github.com/tendermint/tmlibs/logger"
 
 	abci "github.com/tendermint/abci/types"
-	cfg "github.com/tendermint/go-config"
-	client "github.com/tendermint/tendermint/rpc/client"
 	"github.com/tendermint/tendermint/config/tendermint_test"
 	nm "github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/proxy"
+	client "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/tendermint/core/types"
 	core_grpc "github.com/tendermint/tendermint/rpc/tendermint/grpc"
 	"github.com/tendermint/tendermint/types"
 )
 
-var (
-	config cfg.Config
-)
+var config *viper.Viper
 
 const tmLogLevel = "error"
 
@@ -56,7 +54,7 @@ func makeAddrs() (string, string, string) {
 }
 
 // GetConfig returns a config for the test cases as a singleton
-func GetConfig() cfg.Config {
+func GetConfig() *viper.Viper {
 	if config == nil {
 		pathname := makePathname()
 		config = tendermint_test.ResetConfig(pathname)

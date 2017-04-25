@@ -7,7 +7,8 @@ import (
 	"net"
 	"time"
 
-	cfg "github.com/tendermint/go-config"
+	"github.com/spf13/viper"
+
 	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/log15"
 	. "github.com/tendermint/tmlibs/common"
@@ -61,7 +62,7 @@ incoming messages are received on the reactor.
 type Switch struct {
 	BaseService
 
-	config       cfg.Config
+	config       *viper.Viper
 	listeners    []Listener
 	reactors     map[string]Reactor
 	chDescs      []*ChannelDescriptor
@@ -80,7 +81,7 @@ var (
 	ErrSwitchMaxPeersPerIPRange = errors.New("IP range has too many peers")
 )
 
-func NewSwitch(config cfg.Config) *Switch {
+func NewSwitch(config *viper.Viper) *Switch {
 	setConfigDefaults(config)
 
 	sw := &Switch{
@@ -529,7 +530,7 @@ func makeSwitch(i int, network, version string, initSwitch func(int, *Switch) *S
 	privKey := crypto.GenPrivKeyEd25519()
 	// new switch, add reactors
 	// TODO: let the config be passed in?
-	s := initSwitch(i, NewSwitch(cfg.NewMapConfig(nil)))
+	s := initSwitch(i, NewSwitch(viper.New()))
 	s.SetNodeInfo(&NodeInfo{
 		PubKey:     privKey.PubKey().Unwrap().(crypto.PubKeyEd25519),
 		Moniker:    Fmt("switch%d", i),
@@ -572,7 +573,7 @@ func (sw *Switch) addPeerWithConnectionAndConfig(conn net.Conn, config *PeerConf
 	return nil
 }
 
-func peerConfigFromGoConfig(config cfg.Config) *PeerConfig {
+func peerConfigFromGoConfig(config *viper.Viper) *PeerConfig {
 	return &PeerConfig{
 		AuthEnc:          config.GetBool(configKeyAuthEnc),
 		Fuzz:             config.GetBool(configFuzzEnable),

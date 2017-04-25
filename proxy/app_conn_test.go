@@ -4,11 +4,11 @@ import (
 	"strings"
 	"testing"
 
-	. "github.com/tendermint/tmlibs/common"
 	abcicli "github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/example/dummy"
 	"github.com/tendermint/abci/server"
 	"github.com/tendermint/abci/types"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 //----------------------------------------
@@ -44,43 +44,43 @@ func (app *appConnTest) InfoSync() (types.ResponseInfo, error) {
 var SOCKET = "socket"
 
 func TestEcho(t *testing.T) {
-	sockPath := Fmt("unix:///tmp/echo_%v.sock", RandStr(6))
+	sockPath := cmn.Fmt("unix:///tmp/echo_%v.sock", cmn.RandStr(6))
 	clientCreator := NewRemoteClientCreator(sockPath, SOCKET, true)
 
 	// Start server
 	s, err := server.NewSocketServer(sockPath, dummy.NewDummyApplication())
 	if err != nil {
-		Exit(err.Error())
+		cmn.Exit(err.Error())
 	}
 	defer s.Stop()
 	// Start client
 	cli, err := clientCreator.NewABCIClient()
 	if err != nil {
-		Exit(err.Error())
+		cmn.Exit(err.Error())
 	}
 	proxy := NewAppConnTest(cli)
 	t.Log("Connected")
 
 	for i := 0; i < 1000; i++ {
-		proxy.EchoAsync(Fmt("echo-%v", i))
+		proxy.EchoAsync(cmn.Fmt("echo-%v", i))
 	}
 	proxy.FlushSync()
 }
 
 func BenchmarkEcho(b *testing.B) {
 	b.StopTimer() // Initialize
-	sockPath := Fmt("unix:///tmp/echo_%v.sock", RandStr(6))
+	sockPath := cmn.Fmt("unix:///tmp/echo_%v.sock", cmn.RandStr(6))
 	clientCreator := NewRemoteClientCreator(sockPath, SOCKET, true)
 	// Start server
 	s, err := server.NewSocketServer(sockPath, dummy.NewDummyApplication())
 	if err != nil {
-		Exit(err.Error())
+		cmn.Exit(err.Error())
 	}
 	defer s.Stop()
 	// Start client
 	cli, err := clientCreator.NewABCIClient()
 	if err != nil {
-		Exit(err.Error())
+		cmn.Exit(err.Error())
 	}
 	proxy := NewAppConnTest(cli)
 	b.Log("Connected")
@@ -98,18 +98,18 @@ func BenchmarkEcho(b *testing.B) {
 }
 
 func TestInfo(t *testing.T) {
-	sockPath := Fmt("unix:///tmp/echo_%v.sock", RandStr(6))
+	sockPath := cmn.Fmt("unix:///tmp/echo_%v.sock", cmn.RandStr(6))
 	clientCreator := NewRemoteClientCreator(sockPath, SOCKET, true)
 	// Start server
 	s, err := server.NewSocketServer(sockPath, dummy.NewDummyApplication())
 	if err != nil {
-		Exit(err.Error())
+		cmn.Exit(err.Error())
 	}
 	defer s.Stop()
 	// Start client
 	cli, err := clientCreator.NewABCIClient()
 	if err != nil {
-		Exit(err.Error())
+		cmn.Exit(err.Error())
 	}
 	proxy := NewAppConnTest(cli)
 	t.Log("Connected")

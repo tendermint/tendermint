@@ -1,8 +1,8 @@
 package proxy
 
 import (
+	"github.com/spf13/viper"
 	cmn "github.com/tendermint/tmlibs/common"
-	cfg "github.com/tendermint/go-config"
 )
 
 //-----------------------------
@@ -16,7 +16,7 @@ type AppConns interface {
 	Query() AppConnQuery
 }
 
-func NewAppConns(config cfg.Config, clientCreator ClientCreator, handshaker Handshaker) AppConns {
+func NewAppConns(config *viper.Viper, clientCreator ClientCreator, handshaker Handshaker) AppConns {
 	return NewMultiAppConn(config, clientCreator, handshaker)
 }
 
@@ -34,7 +34,7 @@ type Handshaker interface {
 type multiAppConn struct {
 	cmn.BaseService
 
-	config cfg.Config
+	config *viper.Viper
 
 	handshaker Handshaker
 
@@ -46,7 +46,7 @@ type multiAppConn struct {
 }
 
 // Make all necessary abci connections to the application
-func NewMultiAppConn(config cfg.Config, clientCreator ClientCreator, handshaker Handshaker) *multiAppConn {
+func NewMultiAppConn(config *viper.Viper, clientCreator ClientCreator, handshaker Handshaker) *multiAppConn {
 	multiAppConn := &multiAppConn{
 		config:        config,
 		handshaker:    handshaker,
