@@ -48,15 +48,15 @@ func ResetAll(c cfg.Config, l log15.Logger) {
 func ResetPrivValidator(c cfg.Config, l log15.Logger) {
 	// Get PrivValidator
 	var privValidator *types.PrivValidator
-	privValidatorFile := config.GetString("priv_validator_file")
+	privValidatorFile := c.GetString("priv_validator_file")
 	if _, err := os.Stat(privValidatorFile); err == nil {
 		privValidator = types.LoadPrivValidator(privValidatorFile)
 		privValidator.Reset()
-		log.Notice("Reset PrivValidator", "file", privValidatorFile)
+		l.Notice("Reset PrivValidator", "file", privValidatorFile)
 	} else {
 		privValidator = types.GenPrivValidator()
 		privValidator.SetFile(privValidatorFile)
 		privValidator.Save()
-		log.Notice("Generated PrivValidator", "file", privValidatorFile)
+		l.Notice("Generated PrivValidator", "file", privValidatorFile)
 	}
 }

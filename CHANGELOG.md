@@ -1,6 +1,12 @@
 # Changelog
 
-## 0.9.1 (April 18, 2017)
+## 0.9.2 (April 26, 2017)
+
+BUG FIXES:
+
+- Fix bug in `ResetPrivValidator` where we were using the global config and log (causing external consumers, eg. basecoin, to fail).
+
+## 0.9.1 (April 21, 2017)
 
 FEATURES:
 
