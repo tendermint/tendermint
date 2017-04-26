@@ -4,18 +4,18 @@ import (
 	"testing"
 
 	"github.com/tendermint/go-crypto"
-	"github.com/tendermint/go-p2p"
+	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/go-wire"
 	proto "github.com/tendermint/tendermint/benchmarks/proto"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	ctypes "github.com/tendermint/tendermint/rpc/tendermint/core/types"
 )
 
 func BenchmarkEncodeStatusWire(b *testing.B) {
 	b.StopTimer()
-	pubKey := crypto.GenPrivKeyEd25519().PubKey().(crypto.PubKeyEd25519)
+	pubKey := crypto.GenPrivKeyEd25519().PubKey()
 	status := &ctypes.ResultStatus{
 		NodeInfo: &p2p.NodeInfo{
-			PubKey:     pubKey,
+			PubKey:     pubKey.Unwrap().(crypto.PubKeyEd25519),
 			Moniker:    "SOMENAME",
 			Network:    "SOMENAME",
 			RemoteAddr: "SOMEADDR",
@@ -40,7 +40,7 @@ func BenchmarkEncodeStatusWire(b *testing.B) {
 
 func BenchmarkEncodeNodeInfoWire(b *testing.B) {
 	b.StopTimer()
-	pubKey := crypto.GenPrivKeyEd25519().PubKey().(crypto.PubKeyEd25519)
+	pubKey := crypto.GenPrivKeyEd25519().PubKey().Unwrap().(crypto.PubKeyEd25519)
 	nodeInfo := &p2p.NodeInfo{
 		PubKey:     pubKey,
 		Moniker:    "SOMENAME",
@@ -61,7 +61,7 @@ func BenchmarkEncodeNodeInfoWire(b *testing.B) {
 
 func BenchmarkEncodeNodeInfoBinary(b *testing.B) {
 	b.StopTimer()
-	pubKey := crypto.GenPrivKeyEd25519().PubKey().(crypto.PubKeyEd25519)
+	pubKey := crypto.GenPrivKeyEd25519().PubKey().Unwrap().(crypto.PubKeyEd25519)
 	nodeInfo := &p2p.NodeInfo{
 		PubKey:     pubKey,
 		Moniker:    "SOMENAME",
@@ -83,7 +83,7 @@ func BenchmarkEncodeNodeInfoBinary(b *testing.B) {
 
 func BenchmarkEncodeNodeInfoProto(b *testing.B) {
 	b.StopTimer()
-	pubKey := crypto.GenPrivKeyEd25519().PubKey().(crypto.PubKeyEd25519)
+	pubKey := crypto.GenPrivKeyEd25519().PubKey().Unwrap().(crypto.PubKeyEd25519)
 	pubKey2 := &proto.PubKey{Ed25519: &proto.PubKeyEd25519{Bytes: pubKey[:]}}
 	nodeInfo := &proto.NodeInfo{
 		PubKey:     pubKey2,

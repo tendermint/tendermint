@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strings"
 
-	cmn "github.com/tendermint/go-common"
-	"github.com/tendermint/go-merkle"
+	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/merkle"
 	"github.com/tendermint/go-wire"
 )
 

@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	abci "github.com/tendermint/abci/types"
-	"github.com/tendermint/go-merkle"
+	"github.com/tendermint/tmlibs/merkle"
 )
 
 type Tx []byte
@@ -22,7 +22,7 @@ type Txs []Tx
 
 func (txs Txs) Hash() []byte {
 	// Recursive impl.
-	// Copied from go-merkle to avoid allocations
+	// Copied from tmlibs/merkle to avoid allocations
 	switch len(txs) {
 	case 0:
 		return nil

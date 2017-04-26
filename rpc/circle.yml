@@ -1,0 +1,21 @@
+machine:
+  environment:
+    GOPATH: /home/ubuntu/.go_workspace
+    REPO: $GOPATH/src/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME
+  hosts:
+    circlehost: 127.0.0.1
+    localhost: 127.0.0.1
+
+checkout:
+  post:
+    - rm -rf $REPO
+    - mkdir -p $HOME/.go_workspace/src/github.com/$CIRCLE_PROJECT_USERNAME
+    - mv $HOME/$CIRCLE_PROJECT_REPONAME $REPO
+
+dependencies:
+  override:
+    - "cd $REPO && make get_deps"
+
+test:
+  override:
+    - "cd $REPO && make test"

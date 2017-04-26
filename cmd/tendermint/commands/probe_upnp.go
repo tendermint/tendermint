@@ -6,20 +6,20 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/tendermint/go-p2p/upnp"
+	"github.com/tendermint/tendermint/p2p/upnp"
 )
 
 var probeUpnpCmd = &cobra.Command{
 	Use:   "probe_upnp",
 	Short: "Test UPnP functionality",
-	Run:   probeUpnp,
+	RunE:  probeUpnp,
 }
 
 func init() {
 	RootCmd.AddCommand(probeUpnpCmd)
 }
 
-func probeUpnp(cmd *cobra.Command, args []string) {
+func probeUpnp(cmd *cobra.Command, args []string) error {
 
 	capabilities, err := upnp.Probe()
 	if err != nil {
@@ -28,9 +28,9 @@ func probeUpnp(cmd *cobra.Command, args []string) {
 		fmt.Println("Probe success!")
 		jsonBytes, err := json.Marshal(capabilities)
 		if err != nil {
-			panic(err)
+			return err
 		}
 		fmt.Println(string(jsonBytes))
 	}
-
+	return nil
 }

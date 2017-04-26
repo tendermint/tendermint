@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	. "github.com/tendermint/go-common"
-	"github.com/tendermint/go-p2p"
+	. "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/go-wire"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"

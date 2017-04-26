@@ -1,18 +1,23 @@
-#! /bin/bash
+#!/usr/bin/env bash
 
 # XXX: removes tendermint dir
 
-cd $GOPATH/src/github.com/tendermint/tendermint
+cd "$GOPATH/src/github.com/tendermint/tendermint" || exit 1
+
+# Make sure we have a tendermint command.
+if ! hash tendermint 2>/dev/null; then
+	make install
+fi
 
 # specify a dir to copy
 # TODO: eventually we should replace with `tendermint init --test`
-DIR=$HOME/.tendermint_test/consensus_state_test
+DIR_TO_COPY=$HOME/.tendermint_test/consensus_state_test
 
-rm -rf $HOME/.tendermint
-cp -r $DIR $HOME/.tendermint
+rm -rf "$HOME/.tendermint"
+cp -r "$DIR_TO_COPY" "$HOME/.tendermint"
 
 function reset(){
-	rm -rf $HOME/.tendermint/data
+	rm -rf "$HOME/.tendermint/data"
 	tendermint unsafe_reset_priv_validator
 }
 
@@ -24,8 +29,8 @@ tendermint node --proxy_app=dummy &> /dev/null &
 sleep 5
 killall tendermint
 
-# /q would print up to and including the match, then quit. 
-# /Q doesn't include the match. 
+# /q would print up to and including the match, then quit.
+# /Q doesn't include the match.
 # http://unix.stackexchange.com/questions/11305/grep-show-all-the-file-up-to-the-match
 sed '/ENDHEIGHT: 1/Q' ~/.tendermint/data/cs.wal/wal  > consensus/test_data/empty_block.cswal
 
@@ -80,7 +85,7 @@ reset
 
 
 
-case "$1" in 
+case "$1" in
 	"small_block1")
 		small_block1
 		;;

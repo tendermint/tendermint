@@ -12,23 +12,8 @@ fi
 # libs we depend on
 ####################
 
-# some libs are tested with go, others with make
-# TODO: should be all make (post repo merge)
-LIBS_GO_TEST=(go-clist go-common go-config go-crypto go-db go-events go-merkle go-p2p)
-LIBS_MAKE_TEST=(go-rpc go-wire abci)
-
-for lib in "${LIBS_GO_TEST[@]}"; do
-
-	# checkout vendored version of lib
-	bash scripts/glide/checkout.sh "$GLIDE" "$lib"
-
-	echo "Testing $lib ..."
-	go test -v --race "github.com/tendermint/$lib/..."
-	if [[ "$?" != 0 ]]; then
-		echo "FAIL"
-		exit 1
-	fi
-done
+# All libs should define `make test` and `make get_vendor_deps`
+LIBS_TEST=(tmlibs go-wire go-crypto abci)
 
 DIR=$(pwd)
 for lib in "${LIBS_MAKE_TEST[@]}"; do
@@ -38,6 +23,7 @@ for lib in "${LIBS_MAKE_TEST[@]}"; do
 
 	echo "Testing $lib ..."
 	cd "$GOPATH/src/github.com/tendermint/$lib"
+	make get_vendor_deps
 	make test
 	if [[ "$?" != 0 ]]; then
 		echo "FAIL"

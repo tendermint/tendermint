@@ -7,27 +7,28 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/spf13/viper"
+
 	abci "github.com/tendermint/abci/types"
-	cmn "github.com/tendermint/go-common"
-	cfg "github.com/tendermint/go-config"
 	crypto "github.com/tendermint/go-crypto"
-	dbm "github.com/tendermint/go-db"
-	p2p "github.com/tendermint/go-p2p"
-	rpc "github.com/tendermint/go-rpc"
-	rpcserver "github.com/tendermint/go-rpc/server"
 	wire "github.com/tendermint/go-wire"
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/consensus"
 	mempl "github.com/tendermint/tendermint/mempool"
+	p2p "github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
-	rpccore "github.com/tendermint/tendermint/rpc/core"
-	grpccore "github.com/tendermint/tendermint/rpc/grpc"
+	rpc "github.com/tendermint/tendermint/rpc"
+	rpcserver "github.com/tendermint/tendermint/rpc/server"
+	rpccore "github.com/tendermint/tendermint/rpc/tendermint/core"
+	grpccore "github.com/tendermint/tendermint/rpc/tendermint/grpc"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/state/txindex/kv"
 	"github.com/tendermint/tendermint/state/txindex/null"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
+	cmn "github.com/tendermint/tmlibs/common"
+	dbm "github.com/tendermint/tmlibs/db"
 
 	_ "net/http/pprof"
 )
@@ -36,7 +37,7 @@ type Node struct {
 	cmn.BaseService
 
 	// config
-	config        cfg.Config           // user config
+	config        *viper.Viper         // user config
 	genesisDoc    *types.GenesisDoc    // initial validator set
 	privValidator *types.PrivValidator // local node's validator key
 
@@ -57,14 +58,14 @@ type Node struct {
 	txIndexer        txindex.TxIndexer
 }
 
-func NewNodeDefault(config cfg.Config) *Node {
+func NewNodeDefault(config *viper.Viper) *Node {
 	// Get PrivValidator
 	privValidatorFile := config.GetString("priv_validator_file")
 	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
 	return NewNode(config, privValidator, proxy.DefaultClientCreator(config))
 }
 
-func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreator proxy.ClientCreator) *Node {
+func NewNode(config *viper.Viper, privValidator *types.PrivValidator, clientCreator proxy.ClientCreator) *Node {
 
 	// Get BlockStore
 	blockStoreDB := dbm.NewDB("blockstore", config.GetString("db_backend"), config.GetString("db_dir"))
@@ -134,7 +135,11 @@ func NewNode(config cfg.Config, privValidator *types.PrivValidator, clientCreato
 	consensusReactor := consensus.NewConsensusReactor(consensusState, fastSync)
 
 	// Make p2p network switch
-	sw := p2p.NewSwitch(config.GetConfig("p2p"))
+	p2pConfig := viper.New()
+	if config.IsSet("p2p") { //TODO verify this necessary, where is this ever set?
+		p2pConfig = config.Get("p2p").(*viper.Viper)
+	}
+	sw := p2p.NewSwitch(p2pConfig)
 	sw.AddReactor("MEMPOOL", mempoolReactor)
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)
@@ -372,7 +377,7 @@ func (n *Node) makeNodeInfo() *p2p.NodeInfo {
 	}
 
 	nodeInfo := &p2p.NodeInfo{
-		PubKey:  n.privKey.PubKey().(crypto.PubKeyEd25519),
+		PubKey:  n.privKey.PubKey().Unwrap().(crypto.PubKeyEd25519),
 		Moniker: n.config.GetString("moniker"),
 		Network: n.config.GetString("chain_id"),
 		Version: version.Version,
