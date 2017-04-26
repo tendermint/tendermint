@@ -14,8 +14,8 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
-	types "github.com/tendermint/tendermint/rpc/types"
 	wire "github.com/tendermint/go-wire"
+	types "github.com/tendermint/tendermint/rpc/types"
 	cmn "github.com/tendermint/tmlibs/common"
 	events "github.com/tendermint/tmlibs/events"
 )
@@ -108,32 +108,32 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc) http.HandlerFunc {
 		var request types.RPCRequest
 		err := json.Unmarshal(b, &request)
 		if err != nil {
-			WriteRPCResponseHTTP(w, types.NewRPCResponse("", nil, fmt.Sprintf("Error unmarshalling request: %v", err.Error())))
+			WriteRPCResponseHTTPError(w, http.StatusBadRequest, types.NewRPCResponse("", nil, fmt.Sprintf("Error unmarshalling request: %v", err.Error())))
 			return
 		}
 		if len(r.URL.Path) > 1 {
-			WriteRPCResponseHTTP(w, types.NewRPCResponse(request.ID, nil, fmt.Sprintf("Invalid JSONRPC endpoint %s", r.URL.Path)))
+			WriteRPCResponseHTTPError(w, http.StatusNotFound, types.NewRPCResponse(request.ID, nil, fmt.Sprintf("Invalid JSONRPC endpoint %s", r.URL.Path)))
 			return
 		}
 		rpcFunc := funcMap[request.Method]
 		if rpcFunc == nil {
-			WriteRPCResponseHTTP(w, types.NewRPCResponse(request.ID, nil, "RPC method unknown: "+request.Method))
+			WriteRPCResponseHTTPError(w, http.StatusNotFound, types.NewRPCResponse(request.ID, nil, "RPC method unknown: "+request.Method))
 			return
 		}
 		if rpcFunc.ws {
-			WriteRPCResponseHTTP(w, types.NewRPCResponse(request.ID, nil, "RPC method is only for websockets: "+request.Method))
+			WriteRPCResponseHTTPError(w, http.StatusMethodNotAllowed, types.NewRPCResponse(request.ID, nil, "RPC method is only for websockets: "+request.Method))
 			return
 		}
 		args, err := jsonParamsToArgsRPC(rpcFunc, request.Params)
 		if err != nil {
-			WriteRPCResponseHTTP(w, types.NewRPCResponse(request.ID, nil, fmt.Sprintf("Error converting json params to arguments: %v", err.Error())))
+			WriteRPCResponseHTTPError(w, http.StatusBadRequest, types.NewRPCResponse(request.ID, nil, fmt.Sprintf("Error converting json params to arguments: %v", err.Error())))
 			return
 		}
 		returns := rpcFunc.f.Call(args)
 		log.Info("HTTPJSONRPC", "method", request.Method, "args", args, "returns", returns)
 		result, err := unreflectResult(returns)
 		if err != nil {
-			WriteRPCResponseHTTP(w, types.NewRPCResponse(request.ID, result, err.Error()))
+			WriteRPCResponseHTTPError(w, http.StatusInternalServerError, types.NewRPCResponse(request.ID, result, err.Error()))
 			return
 		}
 		WriteRPCResponseHTTP(w, types.NewRPCResponse(request.ID, result, ""))
@@ -221,7 +221,7 @@ func makeHTTPHandler(rpcFunc *RPCFunc) func(http.ResponseWriter, *http.Request) 
 	// Exception for websocket endpoints
 	if rpcFunc.ws {
 		return func(w http.ResponseWriter, r *http.Request) {
-			WriteRPCResponseHTTP(w, types.NewRPCResponse("", nil, "This RPC method is only for websockets"))
+			WriteRPCResponseHTTPError(w, http.StatusMethodNotAllowed, types.NewRPCResponse("", nil, "This RPC method is only for websockets"))
 		}
 	}
 	// All other endpoints
@@ -229,14 +229,14 @@ func makeHTTPHandler(rpcFunc *RPCFunc) func(http.ResponseWriter, *http.Request) 
 		log.Debug("HTTP HANDLER", "req", r)
 		args, err := httpParamsToArgs(rpcFunc, r)
 		if err != nil {
-			WriteRPCResponseHTTP(w, types.NewRPCResponse("", nil, fmt.Sprintf("Error converting http params to args: %v", err.Error())))
+			WriteRPCResponseHTTPError(w, http.StatusBadRequest, types.NewRPCResponse("", nil, fmt.Sprintf("Error converting http params to args: %v", err.Error())))
 			return
 		}
 		returns := rpcFunc.f.Call(args)
 		log.Info("HTTPRestRPC", "method", r.URL.Path, "args", args, "returns", returns)
 		result, err := unreflectResult(returns)
 		if err != nil {
-			WriteRPCResponseHTTP(w, types.NewRPCResponse("", nil, err.Error()))
+			WriteRPCResponseHTTPError(w, http.StatusInternalServerError, types.NewRPCResponse("", nil, err.Error()))
 			return
 		}
 		WriteRPCResponseHTTP(w, types.NewRPCResponse("", result, ""))

@@ -46,6 +46,17 @@ func StartHTTPServer(listenAddr string, handler http.Handler) (listener net.List
 	return listener, nil
 }
 
+func WriteRPCResponseHTTPError(w http.ResponseWriter, httpCode int, res types.RPCResponse) {
+	jsonBytes, err := json.Marshal(res)
+	if err != nil {
+		panic(err)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(httpCode)
+	w.Write(jsonBytes)
+}
+
 func WriteRPCResponseHTTP(w http.ResponseWriter, res types.RPCResponse) {
 	// jsonBytes := wire.JSONBytesPretty(res)
 	jsonBytes, err := json.Marshal(res)
