@@ -8,7 +8,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/tendermint/go-wire"
-	"github.com/tendermint/tendermint/rpc/tendermint/grpc"
+	"github.com/tendermint/tendermint/rpc/grpc"
 )
 
 var grpcAddr = "tcp://localhost:36656"
