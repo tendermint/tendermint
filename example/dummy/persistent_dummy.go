@@ -6,11 +6,13 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/tendermint/abci/types"
-	"github.com/tendermint/go-wire"
+	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/merkleeyes/iavl"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
+	"github.com/tendermint/tmlibs/log"
 )
 
 const (
@@ -29,6 +31,8 @@ type PersistentDummyApplication struct {
 
 	// validator set
 	changes []*types.Validator
+
+	logger log.Logger
 }
 
 func NewPersistentDummyApplication(dbDir string) *PersistentDummyApplication {
@@ -38,12 +42,17 @@ func NewPersistentDummyApplication(dbDir string) *PersistentDummyApplication {
 	stateTree := iavl.NewIAVLTree(0, db)
 	stateTree.Load(lastBlock.AppHash)
 
-	log.Notice("Loaded state", "block", lastBlock.Height, "root", stateTree.Hash())
+	// log.Notice("Loaded state", "block", lastBlock.Height, "root", stateTree.Hash())
 
 	return &PersistentDummyApplication{
-		app: &DummyApplication{state: stateTree},
-		db:  db,
+		app:    &DummyApplication{state: stateTree},
+		db:     db,
+		logger: log.NewNopLogger(),
 	}
+}
+
+func (app *PersistentDummyApplication) SetLogger(l log.Logger) {
+	app.logger = l
 }
 
 func (app *PersistentDummyApplication) Info() (resInfo types.ResponseInfo) {
@@ -79,13 +88,16 @@ func (app *PersistentDummyApplication) CheckTx(tx []byte) types.Result {
 func (app *PersistentDummyApplication) Commit() types.Result {
 	// Save
 	appHash := app.app.state.Save()
-	log.Info("Saved state", "root", appHash)
+	app.logger.Info("Saved state", "root", appHash)
 
 	lastBlock := LastBlockInfo{
 		Height:  app.blockHeader.Height,
 		AppHash: appHash, // this hash will be in the next block header
 	}
+
+	app.logger.Info("Saving block", "height", lastBlock.Height, "root", lastBlock.AppHash)
 	SaveLastBlock(app.db, lastBlock)
+
 	return types.NewResultOK(appHash, "")
 }
 
@@ -98,7 +110,7 @@ func (app *PersistentDummyApplication) InitChain(validators []*types.Validator) 
 	for _, v := range validators {
 		r := app.updateValidator(v)
 		if r.IsErr() {
-			log.Error("Error updating validators", "r", r)
+			app.logger.Error("Error updating validators", "r", r)
 		}
 	}
 }
@@ -134,8 +146,7 @@ func LoadLastBlock(db dbm.DB) (lastBlock LastBlockInfo) {
 		r, n, err := bytes.NewReader(buf), new(int), new(error)
 		wire.ReadBinaryPtr(&lastBlock, r, 0, n, err)
 		if *err != nil {
-			// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
-			log.Crit(cmn.Fmt("Data has been corrupted or its spec has changed: %v\n", *err))
+			cmn.PanicCrisis(errors.Wrap(*err, "cannot load last block (data has been corrupted or its spec has changed)"))
 		}
 		// TODO: ensure that buf is completely read.
 	}
@@ -144,12 +155,11 @@ func LoadLastBlock(db dbm.DB) (lastBlock LastBlockInfo) {
 }
 
 func SaveLastBlock(db dbm.DB, lastBlock LastBlockInfo) {
-	log.Notice("Saving block", "height", lastBlock.Height, "root", lastBlock.AppHash)
 	buf, n, err := new(bytes.Buffer), new(int), new(error)
 	wire.WriteBinary(lastBlock, buf, n, err)
 	if *err != nil {
 		// TODO
-		cmn.PanicCrisis(*err)
+		cmn.PanicCrisis(errors.Wrap(*err, "cannot save last block"))
 	}
 	db.Set(lastBlockKey, buf.Bytes())
 }

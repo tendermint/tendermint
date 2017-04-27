@@ -3,6 +3,7 @@ package dummy
 import (
 	"bytes"
 	"io/ioutil"
+	"os"
 	"sort"
 	"testing"
 
@@ -10,9 +11,10 @@ import (
 	abcicli "github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/server"
 	"github.com/tendermint/abci/types"
-	"github.com/tendermint/go-crypto"
+	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/merkleeyes/iavl"
 	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
 )
 
 func testDummy(t *testing.T, app types.Application, tx []byte, key, value string) {
@@ -211,10 +213,13 @@ func valsEqual(t *testing.T, vals1, vals2 []*types.Validator) {
 func makeSocketClientServer(app types.Application, name string) (abcicli.Client, cmn.Service, error) {
 	// Start the listener
 	socket := cmn.Fmt("unix://%s.sock", name)
+	logger := log.NewTmLogger(os.Stdout)
+
 	server, err := server.NewSocketServer(socket, app)
 	if err != nil {
 		return nil, nil, err
 	}
+	server.SetLogger(log.With(logger, "module", "abci-server"))
 
 	// Connect to the socket
 	client, err := abcicli.NewSocketClient(socket, false)
@@ -222,6 +227,7 @@ func makeSocketClientServer(app types.Application, name string) (abcicli.Client,
 		server.Stop()
 		return nil, nil, err
 	}
+	client.SetLogger(log.With(logger, "module", "abci-client"))
 	client.Start()
 
 	return client, server, err
@@ -230,18 +236,21 @@ func makeSocketClientServer(app types.Application, name string) (abcicli.Client,
 func makeGRPCClientServer(app types.Application, name string) (abcicli.Client, cmn.Service, error) {
 	// Start the listener
 	socket := cmn.Fmt("unix://%s.sock", name)
+	logger := log.NewTmLogger(os.Stdout)
 
 	gapp := types.NewGRPCApplication(app)
 	server, err := server.NewGRPCServer(socket, gapp)
 	if err != nil {
 		return nil, nil, err
 	}
+	server.SetLogger(log.With(logger, "module", "abci-server"))
 
 	client, err := abcicli.NewGRPCClient(socket, true)
 	if err != nil {
 		server.Stop()
 		return nil, nil, err
 	}
+	client.SetLogger(log.With(logger, "module", "abci-client"))
 	return client, server, err
 }
 

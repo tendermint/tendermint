@@ -3,6 +3,7 @@ import:
 - package: github.com/golang/protobuf
   subpackages:
   - proto
+- package: github.com/pkg/errors
 - package: github.com/tendermint/go-crypto
   version: develop
 - package: github.com/tendermint/go-wire
@@ -12,11 +13,11 @@ import:
   subpackages:
   - iavl
 - package: github.com/tendermint/tmlibs
-  version: develop
+  version: feature/new-logging
   subpackages:
   - common
   - db
-  - logger
+  - log
   - merkle
   - process
 - package: github.com/urfave/cli

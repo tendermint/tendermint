@@ -70,7 +70,7 @@ RETRY_LOOP:
 			if cli.mustConnect {
 				return err
 			}
-			log.Warn(fmt.Sprintf("abci.socketClient failed to connect to %v.  Retrying...", cli.addr))
+			cli.Logger.Error(fmt.Sprintf("abci.socketClient failed to connect to %v.  Retrying...", cli.addr))
 			time.Sleep(time.Second * 3)
 			continue RETRY_LOOP
 		}
@@ -107,7 +107,7 @@ func (cli *socketClient) StopForError(err error) {
 	}
 	cli.mtx.Unlock()
 
-	log.Warn(fmt.Sprintf("Stopping abci.socketClient for error: %v", err.Error()))
+	cli.Logger.Error(fmt.Sprintf("Stopping abci.socketClient for error: %v", err.Error()))
 	cli.Stop()
 }
 
@@ -147,7 +147,7 @@ func (cli *socketClient) sendRequestsRoutine(conn net.Conn) {
 				cli.StopForError(fmt.Errorf("Error writing msg: %v", err))
 				return
 			}
-			// log.Debug("Sent request", "requestType", reflect.TypeOf(reqres.Request), "request", reqres.Request)
+			// cli.Logger.Debug("Sent request", "requestType", reflect.TypeOf(reqres.Request), "request", reqres.Request)
 			if _, ok := reqres.Request.Value.(*types.Request_Flush); ok {
 				err = w.Flush()
 				if err != nil {
@@ -175,7 +175,7 @@ func (cli *socketClient) recvResponseRoutine(conn net.Conn) {
 			cli.StopForError(errors.New(r.Exception.Error))
 			return
 		default:
-			// log.Debug("Received response", "responseType", reflect.TypeOf(res), "response", res)
+			// cli.Logger.Debug("Received response", "responseType", reflect.TypeOf(res), "response", res)
 			err := cli.didRecvResponse(res)
 			if err != nil {
 				cli.StopForError(err)

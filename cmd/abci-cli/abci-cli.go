@@ -6,13 +6,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
+	stdlog "log"
 	"os"
 	"strings"
 
-	"github.com/tendermint/abci/client"
+	abcicli "github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/types"
 	"github.com/tendermint/abci/version"
+	"github.com/tendermint/tmlibs/log"
 	"github.com/urfave/cli"
 )
 
@@ -129,7 +130,7 @@ func main() {
 	app.Before = before
 	err := app.Run(os.Args)
 	if err != nil {
-		log.Fatal(err.Error())
+		stdlog.Fatal(err.Error())
 	}
 
 }
@@ -139,8 +140,10 @@ func before(c *cli.Context) error {
 		var err error
 		client, err = abcicli.NewClient(c.GlobalString("address"), c.GlobalString("abci"), false)
 		if err != nil {
-			log.Fatal(err.Error())
+			stdlog.Fatal(err.Error())
 		}
+		logger := log.NewTmLogger(os.Stdout)
+		client.SetLogger(log.With(logger, "module", "abci-client"))
 	}
 	return nil
 }

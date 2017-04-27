@@ -1,4 +1,2 @@
-*.swp
-*.swo
-*.pyc
 vendor
+.glide

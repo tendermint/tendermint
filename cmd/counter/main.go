@@ -2,11 +2,13 @@ package main
 
 import (
 	"flag"
-	"log"
+	stdlog "log"
+	"os"
 
 	"github.com/tendermint/abci/example/counter"
 	"github.com/tendermint/abci/server"
 	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
 )
 
 func main() {
@@ -20,8 +22,10 @@ func main() {
 	// Start the listener
 	srv, err := server.NewServer(*addrPtr, *abciPtr, app)
 	if err != nil {
-		log.Fatal(err.Error())
+		stdlog.Fatal(err.Error())
 	}
+	logger := log.NewTmLogger(os.Stdout)
+	srv.SetLogger(log.With(logger, "module", "abci-server"))
 
 	// Wait forever
 	cmn.TrapSignal(func() {

@@ -22,7 +22,7 @@ func NewLocalClient(mtx *sync.Mutex, app types.Application) *localClient {
 		mtx:         mtx,
 		Application: app,
 	}
-	cli.BaseService = *cmn.NewBaseService(log, "localClient", cli)
+	cli.BaseService = *cmn.NewBaseService(nil, "localClient", cli)
 	return cli
 }
 

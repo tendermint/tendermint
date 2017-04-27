@@ -2,8 +2,9 @@ package example
 
 import (
 	"fmt"
-	"log"
+	stdlog "log"
 	"net"
+	"os"
 	"reflect"
 	"testing"
 	"time"
@@ -12,11 +13,12 @@ import (
 
 	"golang.org/x/net/context"
 
-	"github.com/tendermint/abci/client"
+	abcicli "github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/example/dummy"
 	"github.com/tendermint/abci/server"
 	"github.com/tendermint/abci/types"
 	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
 )
 
 func TestDummy(t *testing.T) {
@@ -37,19 +39,22 @@ func TestGRPC(t *testing.T) {
 func testStream(t *testing.T, app types.Application) {
 
 	numDeliverTxs := 200000
+	logger := log.NewTmLogger(os.Stdout)
 
 	// Start the listener
 	server, err := server.NewSocketServer("unix://test.sock", app)
 	if err != nil {
-		log.Fatal(cmn.Fmt("Error starting socket server: %v", err.Error()))
+		stdlog.Fatal(cmn.Fmt("Error starting socket server: %v", err.Error()))
 	}
+	server.SetLogger(log.With(logger, "module", "abci-server"))
 	defer server.Stop()
 
 	// Connect to the socket
 	client, err := abcicli.NewSocketClient("unix://test.sock", false)
 	if err != nil {
-		log.Fatal(cmn.Fmt("Error starting socket client: %v", err.Error()))
+		stdlog.Fatal(cmn.Fmt("Error starting socket client: %v", err.Error()))
 	}
+	client.SetLogger(log.With(logger, "module", "abci-client"))
 	client.Start()
 	defer client.Stop()
 
@@ -110,18 +115,20 @@ func dialerFunc(addr string, timeout time.Duration) (net.Conn, error) {
 func testGRPCSync(t *testing.T, app *types.GRPCApplication) {
 
 	numDeliverTxs := 2000
+	logger := log.NewTmLogger(os.Stdout)
 
 	// Start the listener
 	server, err := server.NewGRPCServer("unix://test.sock", app)
 	if err != nil {
-		log.Fatal(cmn.Fmt("Error starting GRPC server: %v", err.Error()))
+		stdlog.Fatal(cmn.Fmt("Error starting GRPC server: %v", err.Error()))
 	}
+	server.SetLogger(log.With(logger, "module", "abci-server"))
 	defer server.Stop()
 
 	// Connect to the socket
 	conn, err := grpc.Dial("unix://test.sock", grpc.WithInsecure(), grpc.WithDialer(dialerFunc))
 	if err != nil {
-		log.Fatal(cmn.Fmt("Error dialing GRPC server: %v", err.Error()))
+		stdlog.Fatal(cmn.Fmt("Error dialing GRPC server: %v", err.Error()))
 	}
 	defer conn.Close()
 
