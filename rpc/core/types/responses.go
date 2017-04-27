@@ -113,13 +113,7 @@ type ResultABCIInfo struct {
 }
 
 type ResultABCIQuery struct {
-	Code   abci.CodeType `json:"code"`
-	Index  int64         `json:"index"`
-	Key    []byte        `json:"key"`
-	Value  []byte        `json:"value"`
-	Proof  []byte        `json:"proof"`
-	Height uint64        `json:"height"`
-	Log    string        `json:"log"`
+	*abci.ResultQuery `json:"response"`
 }
 
 type ResultUnsafeFlushMempool struct{}

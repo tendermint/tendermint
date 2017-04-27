@@ -36,8 +36,8 @@ func TestABCIMock(t *testing.T) {
 		BroadcastCommit: mock.Call{
 			Args: goodTx,
 			Response: &ctypes.ResultBroadcastTxCommit{
-				CheckTx:   &abci.ResponseCheckTx{Data: data.Bytes("stand")},
-				DeliverTx: &abci.ResponseDeliverTx{Data: data.Bytes("deliver")},
+				CheckTx:   abci.Result{Data: data.Bytes("stand")},
+				DeliverTx: abci.Result{Data: data.Bytes("deliver")},
 			},
 			Error: errors.New("bad tx"),
 		},
@@ -53,9 +53,9 @@ func TestABCIMock(t *testing.T) {
 	query, err := m.ABCIQuery("/", nil, false)
 	require.Nil(err)
 	require.NotNil(query)
-	assert.Equal(key, query.Response.GetKey())
-	assert.Equal(value, query.Response.GetValue())
-	assert.Equal(height, query.Response.GetHeight())
+	assert.EqualValues(key, query.Key)
+	assert.EqualValues(value, query.Value)
+	assert.Equal(height, query.Height)
 
 	// non-commit calls always return errors
 	_, err = m.BroadcastTxSync(goodTx)
@@ -166,5 +166,5 @@ func TestABCIApp(t *testing.T) {
 	// check the key
 	qres, err := m.ABCIQuery("/key", data.Bytes(key), false)
 	require.Nil(err)
-	assert.EqualValues(value, qres.Response.Value)
+	assert.EqualValues(value, qres.Value)
 }

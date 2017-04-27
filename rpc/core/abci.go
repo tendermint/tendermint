@@ -19,13 +19,7 @@ func ABCIQuery(path string, data data.Bytes, prove bool) (*ctypes.ResultABCIQuer
 	}
 	log.Info("ABCIQuery", "path", path, "data", data, "result", resQuery)
 	return &ctypes.ResultABCIQuery{
-		Code:   resQuery.Code,
-		Index:  resQuery.Index,
-		Key:    resQuery.Key,
-		Value:  resQuery.Value,
-		Proof:  resQuery.Proof,
-		Height: resQuery.Height,
-		Log:    resQuery.Log,
+		resQuery.Result(),
 	}, nil
 }
 

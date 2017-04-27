@@ -12,9 +12,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/abci/types"
-	rpc "github.com/tendermint/tendermint/rpc/lib/client"
 	"github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	rpc "github.com/tendermint/tendermint/rpc/lib/client"
 	"github.com/tendermint/tendermint/state/txindex/null"
 	"github.com/tendermint/tendermint/types"
 	. "github.com/tendermint/tmlibs/common"
@@ -98,8 +98,8 @@ func sendTx(t *testing.T, client rpc.HTTPClient) ([]byte, []byte) {
 	require.Nil(t, err)
 	bres := (*tmResult).(*ctypes.ResultBroadcastTxCommit)
 	require.NotNil(t, 0, bres.DeliverTx, "%#v", bres)
-	require.EqualValues(t, 0, bres.CheckTx.GetCode(), "%#v", bres)
-	require.EqualValues(t, 0, bres.DeliverTx.GetCode(), "%#v", bres)
+	require.EqualValues(t, 0, bres.CheckTx.Code, "%#v", bres)
+	require.EqualValues(t, 0, bres.DeliverTx.Code, "%#v", bres)
 	return k, v
 }
 
@@ -120,10 +120,10 @@ func testABCIQuery(t *testing.T, client rpc.HTTPClient) {
 	require.Nil(t, err)
 
 	resQuery := (*tmResult).(*ctypes.ResultABCIQuery)
-	require.EqualValues(t, 0, resQuery.Response.Code)
+	require.EqualValues(t, 0, resQuery.Code)
 
 	// XXX: specific to value returned by the dummy
-	require.NotEqual(t, 0, len(resQuery.Response.Value))
+	require.NotEqual(t, 0, len(resQuery.Value))
 }
 
 //--------------------------------------------------------------------------------
