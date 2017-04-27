@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.10.0 (April 26, 2017)
+
+BREAKING CHANGES:
+
+- New JSON encoding for `go-crypto` types (using `go-wire/data`):
+
+```
+"pub_key": {
+  "type": "ed25519",
+  "data": "83DDF8775937A4A12A2704269E2729FCFCD491B933C4B0A7FFE37FE41D7760D0"
+}
+```
+
+IMPROVEMENTS:
+
+- Merge `tendermint/go-p2p -> tendermint/tendermint/p2p` and `tendermint/go-rpc -> tendermint/tendermint/rpc/lib`
+- Update paths for grand repo merge:
+  - `go-common -> tmlibs/common`
+  - `go-data -> go-wire/data`
+  - All other `go-*` libs, except `go-crypto`, merged under `tmlibs`
+- Return HTTP status codes with errors for RPC responses
+- Use `.Wrap()` and `.Unwarp()` instead of eg. `PubKeyS` for `go-crypto` types
+
+
 ## 0.9.2 (April 26, 2017)
 
 BUG FIXES:
