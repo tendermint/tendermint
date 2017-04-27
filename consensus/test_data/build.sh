@@ -13,19 +13,21 @@ fi
 # TODO: eventually we should replace with `tendermint init --test`
 DIR_TO_COPY=$HOME/.tendermint_test/consensus_state_test
 
-rm -rf "$HOME/.tendermint"
-cp -r "$DIR_TO_COPY" "$HOME/.tendermint"
+TMHOME="$HOME/.tendermint"
+rm -rf "$TMHOME"
+cp -r "$DIR_TO_COPY" "$TMHOME"
+cp $TMHOME/config.toml $TMHOME/config.toml.bak
 
 function reset(){
-	rm -rf "$HOME/.tendermint/data"
-	tendermint unsafe_reset_priv_validator
+	tendermint unsafe_reset_all
+	cp $TMHOME/config.toml.bak $TMHOME/config.toml
 }
 
 reset
 
 # empty block
 function empty_block(){
-tendermint node --proxy_app=dummy &> /dev/null &
+tendermint node --proxy_app=persistent_dummy &> /dev/null &
 sleep 5
 killall tendermint
 
@@ -41,7 +43,7 @@ reset
 function many_blocks(){
 bash scripts/txs/random.sh 1000 36657 &> /dev/null &
 PID=$!
-tendermint node --proxy_app=dummy &> /dev/null &
+tendermint node --proxy_app=persistent_dummy &> /dev/null &
 sleep 7
 killall tendermint
 kill -9 $PID
@@ -56,7 +58,7 @@ reset
 function small_block1(){
 bash scripts/txs/random.sh 1000 36657 &> /dev/null &
 PID=$!
-tendermint node --proxy_app=dummy &> /dev/null &
+tendermint node --proxy_app=persistent_dummy &> /dev/null &
 sleep 10
 killall tendermint
 kill -9 $PID
@@ -73,7 +75,7 @@ echo "" >> ~/.tendermint/config.toml
 echo "block_part_size = 512" >> ~/.tendermint/config.toml
 bash scripts/txs/random.sh 1000 36657 &> /dev/null &
 PID=$!
-tendermint node --proxy_app=dummy &> /dev/null &
+tendermint node --proxy_app=persistent_dummy &> /dev/null &
 sleep 5
 killall tendermint
 kill -9 $PID

@@ -215,8 +215,6 @@ func (h *Handshaker) NBlocks() int {
 	return h.nBlocks
 }
 
-var ErrReplayLastBlockTimeout = errors.New("Timed out waiting for last block to be replayed")
-
 // TODO: retry the handshake/replay if it fails ?
 func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	// handshake is done via info request on the query conn
@@ -234,11 +232,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 
 	// replay blocks up to the latest in the blockstore
 	_, err = h.ReplayBlocks(appHash, blockHeight, proxyApp)
-	if err == ErrReplayLastBlockTimeout {
-		log.Warn("Failed to sync via handshake. Trying other means. If they fail, please increase the timeout_handshake parameter")
-		return nil
-
-	} else if err != nil {
+	if err != nil {
 		return errors.New(cmn.Fmt("Error on replay: %v", err))
 	}
 

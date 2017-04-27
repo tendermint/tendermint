@@ -53,7 +53,7 @@ var baseStepChanges = []int{3, 6, 8}
 var testCases = []*testCase{
 	newTestCase("empty_block", baseStepChanges),   // empty block (has 1 block part)
 	newTestCase("small_block1", baseStepChanges),  // small block with txs in 1 block part
-	newTestCase("small_block2", []int{3, 10, 12}), // small block with txs across 5 smaller block parts
+	newTestCase("small_block2", []int{3, 11, 13}), // small block with txs across 6 smaller block parts
 }
 
 type testCase struct {
@@ -386,6 +386,10 @@ func buildAppStateFromChain(proxyApp proxy.AppConns,
 	if _, err := proxyApp.Start(); err != nil {
 		panic(err)
 	}
+
+	validators := types.TM2PB.Validators(state.Validators)
+	proxyApp.Consensus().InitChainSync(validators)
+
 	defer proxyApp.Stop()
 	switch mode {
 	case 0:
@@ -416,6 +420,9 @@ func buildTMStateFromChain(config *viper.Viper, state *sm.State, chain []*types.
 		panic(err)
 	}
 	defer proxyApp.Stop()
+
+	validators := types.TM2PB.Validators(state.Validators)
+	proxyApp.Consensus().InitChainSync(validators)
 
 	var latestAppHash []byte
 
@@ -604,13 +611,10 @@ func makeBlockchain(t *testing.T, chainID string, nBlocks int, privVal *types.Pr
 // fresh state and mock store
 func stateAndStore(config *viper.Viper, pubKey crypto.PubKey) (*sm.State, *mockBlockStore) {
 	stateDB := dbm.NewMemDB()
-	return sm.MakeGenesisState(stateDB, &types.GenesisDoc{
-		ChainID: config.GetString("chain_id"),
-		Validators: []types.GenesisValidator{
-			types.GenesisValidator{pubKey, 10000, "test"},
-		},
-		AppHash: nil,
-	}), NewMockBlockStore(config)
+
+	state := sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
+	store := NewMockBlockStore(config)
+	return state, store
 }
 
 //----------------------------------
