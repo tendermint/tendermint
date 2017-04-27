@@ -257,6 +257,12 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, proxyApp p
 	stateBlockHeight := h.state.LastBlockHeight
 	log.Notice("ABCI Replay Blocks", "appHeight", appBlockHeight, "storeHeight", storeBlockHeight, "stateHeight", stateBlockHeight)
 
+	// If appBlockHeight == 0 it means that we are at genesis and hence should send InitChain
+	if appBlockHeight == 0 {
+		validators := types.TM2PB.Validators(h.state.Validators)
+		proxyApp.Consensus().InitChainSync(validators)
+	}
+
 	// First handle edge cases and constraints on the storeBlockHeight
 	if storeBlockHeight == 0 {
 		return appHash, h.checkAppHash(appHash)
