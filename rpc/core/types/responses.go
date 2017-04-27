@@ -5,10 +5,10 @@ import (
 
 	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/go-crypto"
-	data "github.com/tendermint/go-wire/data"
+	"github.com/tendermint/go-wire"
+	"github.com/tendermint/go-wire/data"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/rpc/lib/types"
-	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -85,13 +85,13 @@ type ResultBroadcastTx struct {
 	Data data.Bytes    `json:"data"`
 	Log  string        `json:"log"`
 
-	Hash []byte `json:"hash"`
+	Hash data.Bytes `json:"hash"`
 }
 
 type ResultBroadcastTxCommit struct {
 	CheckTx   *abci.ResponseCheckTx   `json:"check_tx"`
 	DeliverTx *abci.ResponseDeliverTx `json:"deliver_tx"`
-	Hash      []byte                  `json:"hash"`
+	Hash      data.Bytes              `json:"hash"`
 	Height    int                     `json:"height"`
 }
 
