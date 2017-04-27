@@ -3,9 +3,10 @@ package types
 import (
 	// for registering TMEventData as events.EventData
 	abci "github.com/tendermint/abci/types"
-	. "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/events"
 	"github.com/tendermint/go-wire"
+	"github.com/tendermint/go-wire/data"
+	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/events"
 )
 
 // Functions to generate eventId strings
@@ -16,7 +17,7 @@ func EventStringUnbond() string  { return "Unbond" }
 func EventStringRebond() string  { return "Rebond" }
 func EventStringDupeout() string { return "Dupeout" }
 func EventStringFork() string    { return "Fork" }
-func EventStringTx(tx Tx) string { return Fmt("Tx:%X", tx.Hash()) }
+func EventStringTx(tx Tx) string { return cmn.Fmt("Tx:%X", tx.Hash()) }
 
 func EventStringNewBlock() string         { return "NewBlock" }
 func EventStringNewBlockHeader() string   { return "NewBlockHeader" }
@@ -75,7 +76,7 @@ type EventDataNewBlockHeader struct {
 type EventDataTx struct {
 	Height int           `json:"height"`
 	Tx     Tx            `json:"tx"`
-	Data   []byte        `json:"data"`
+	Data   data.Bytes    `json:"data"`
 	Log    string        `json:"log"`
 	Code   abci.CodeType `json:"code"`
 	Error  string        `json:"error"` // this is redundant information for now

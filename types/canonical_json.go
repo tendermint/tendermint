@@ -1,15 +1,19 @@
 package types
 
+import (
+	"github.com/tendermint/go-wire/data"
+)
+
 // canonical json is go-wire's json for structs with fields in alphabetical order
 
 type CanonicalJSONBlockID struct {
-	Hash        []byte                     `json:"hash,omitempty"`
+	Hash        data.Bytes                 `json:"hash,omitempty"`
 	PartsHeader CanonicalJSONPartSetHeader `json:"parts,omitempty"`
 }
 
 type CanonicalJSONPartSetHeader struct {
-	Hash  []byte `json:"hash"`
-	Total int    `json:"total"`
+	Hash  data.Bytes `json:"hash"`
+	Total int        `json:"total"`
 }
 
 type CanonicalJSONProposal struct {
