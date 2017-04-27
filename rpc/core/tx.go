@@ -36,7 +36,7 @@ func Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	return &ctypes.ResultTx{
 		Height:   height,
 		Index:    index,
-		TxResult: r.Result,
+		TxResult: r.Result.Result(),
 		Tx:       r.Tx,
 		Proof:    proof,
 	}, nil

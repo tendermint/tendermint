@@ -89,18 +89,18 @@ type ResultBroadcastTx struct {
 }
 
 type ResultBroadcastTxCommit struct {
-	CheckTx   *abci.ResponseCheckTx   `json:"check_tx"`
-	DeliverTx *abci.ResponseDeliverTx `json:"deliver_tx"`
-	Hash      data.Bytes              `json:"hash"`
-	Height    int                     `json:"height"`
+	CheckTx   abci.Result `json:"check_tx"`
+	DeliverTx abci.Result `json:"deliver_tx"`
+	Hash      data.Bytes  `json:"hash"`
+	Height    int         `json:"height"`
 }
 
 type ResultTx struct {
-	Height   int                    `json:"height"`
-	Index    int                    `json:"index"`
-	TxResult abci.ResponseDeliverTx `json:"tx_result"`
-	Tx       types.Tx               `json:"tx"`
-	Proof    types.TxProof          `json:"proof,omitempty"`
+	Height   int           `json:"height"`
+	Index    int           `json:"index"`
+	TxResult abci.Result   `json:"tx_result"`
+	Tx       types.Tx      `json:"tx"`
+	Proof    types.TxProof `json:"proof,omitempty"`
 }
 
 type ResultUnconfirmedTxs struct {
@@ -113,7 +113,13 @@ type ResultABCIInfo struct {
 }
 
 type ResultABCIQuery struct {
-	Response abci.ResponseQuery `json:"response"`
+	Code   abci.CodeType `json:"code"`
+	Index  int64         `json:"index"`
+	Key    []byte        `json:"key"`
+	Value  []byte        `json:"value"`
+	Proof  []byte        `json:"proof"`
+	Height uint64        `json:"height"`
+	Log    string        `json:"log"`
 }
 
 type ResultUnsafeFlushMempool struct{}
