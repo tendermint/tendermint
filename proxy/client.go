@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/spf13/viper"
+
 	abcicli "github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/example/dummy"
 	"github.com/tendermint/abci/types"
-	cfg "github.com/tendermint/go-config"
 )
 
 // NewABCIClient returns newly connected client
@@ -63,7 +64,7 @@ func (r *remoteClientCreator) NewABCIClient() (abcicli.Client, error) {
 //-----------------------------------------------------------------
 // default
 
-func DefaultClientCreator(config cfg.Config) ClientCreator {
+func DefaultClientCreator(config *viper.Viper) ClientCreator {
 	addr := config.GetString("proxy_app")
 	transport := config.GetString("abci")
 

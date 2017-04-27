@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/go-crypto"
-	dbm "github.com/tendermint/go-db"
+	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tendermint/config/tendermint_test"
 )
 

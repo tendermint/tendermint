@@ -8,7 +8,7 @@ import (
 
 	"google.golang.org/grpc"
 
-	. "github.com/tendermint/go-common"
+	. "github.com/tendermint/tmlibs/common"
 )
 
 // Start the grpcServer in a go routine

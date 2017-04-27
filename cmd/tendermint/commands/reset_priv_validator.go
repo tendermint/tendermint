@@ -4,8 +4,8 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
-	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/log15"
 	"github.com/tendermint/tendermint/types"
 )
@@ -36,16 +36,19 @@ func resetAll(cmd *cobra.Command, args []string) {
 // XXX: this is totally unsafe.
 // it's only suitable for testnets.
 func resetPrivValidator(cmd *cobra.Command, args []string) {
-	ResetPrivValidator(config, log)
+	resetPrivValidatorLocal(config, log)
 }
 
 // Exported so other CLI tools can use  it
-func ResetAll(c cfg.Config, l log15.Logger) {
-	ResetPrivValidator(c, l)
-	os.RemoveAll(c.GetString("db_dir"))
+func ResetAll(c *viper.Viper, l log15.Logger) {
+	resetPrivValidatorLocal(c, l)
+	dataDir := c.GetString("db_dir")
+	os.RemoveAll(dataDir)
+	l.Notice("Removed all data", "dir", dataDir)
 }
 
-func ResetPrivValidator(c cfg.Config, l log15.Logger) {
+func resetPrivValidatorLocal(c *viper.Viper, l log15.Logger) {
+
 	// Get PrivValidator
 	var privValidator *types.PrivValidator
 	privValidatorFile := c.GetString("priv_validator_file")

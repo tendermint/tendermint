@@ -3,8 +3,8 @@ package consensus
 import (
 	"time"
 
-	auto "github.com/tendermint/go-autofile"
-	. "github.com/tendermint/go-common"
+	auto "github.com/tendermint/tmlibs/autofile"
+	. "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/types"
 )

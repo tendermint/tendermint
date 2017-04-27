@@ -4,8 +4,9 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	events "github.com/tendermint/go-events"
-	"github.com/tendermint/go-rpc/client"
+	data "github.com/tendermint/go-wire/data"
+	events "github.com/tendermint/tmlibs/events"
+	"github.com/tendermint/tendermint/rpc/lib/client"
 	wire "github.com/tendermint/go-wire"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
@@ -67,7 +68,7 @@ func (c *HTTP) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	return (*tmResult).(*ctypes.ResultABCIInfo), nil
 }
 
-func (c *HTTP) ABCIQuery(path string, data []byte, prove bool) (*ctypes.ResultABCIQuery, error) {
+func (c *HTTP) ABCIQuery(path string, data data.Bytes, prove bool) (*ctypes.ResultABCIQuery, error) {
 	tmResult := new(ctypes.TMResult)
 	_, err := c.rpc.Call("abci_query",
 		map[string]interface{}{"path": path, "data": data, "prove": prove},
@@ -197,7 +198,7 @@ type WSEvents struct {
 	// used to maintain counts of actively listened events
 	// so we can properly subscribe/unsubscribe
 	// FIXME: thread-safety???
-	// FIXME: reuse code from go-events???
+	// FIXME: reuse code from tmlibs/events???
 	evtCount  map[string]int      // count how many time each event is subscribed
 	listeners map[string][]string // keep track of which events each listener is listening to
 }

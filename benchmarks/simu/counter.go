@@ -7,9 +7,9 @@ import (
 	"fmt"
 
 	"github.com/gorilla/websocket"
-	. "github.com/tendermint/go-common"
-	"github.com/tendermint/go-rpc/client"
-	"github.com/tendermint/go-rpc/types"
+	. "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tendermint/rpc/lib/client"
+	"github.com/tendermint/tendermint/rpc/lib/types"
 	"github.com/tendermint/go-wire"
 	_ "github.com/tendermint/tendermint/rpc/core/types" // Register RPCResponse > Result types
 )

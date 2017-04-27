@@ -7,13 +7,14 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/spf13/viper"
+
 	abci "github.com/tendermint/abci/types"
-	auto "github.com/tendermint/go-autofile"
-	"github.com/tendermint/go-clist"
-	. "github.com/tendermint/go-common"
-	cfg "github.com/tendermint/go-config"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
+	auto "github.com/tendermint/tmlibs/autofile"
+	"github.com/tendermint/tmlibs/clist"
+	. "github.com/tendermint/tmlibs/common"
 )
 
 /*
@@ -47,7 +48,7 @@ TODO: Better handle abci client errors. (make it automatically handle connection
 const cacheSize = 100000
 
 type Mempool struct {
-	config cfg.Config
+	config *viper.Viper
 
 	proxyMtx      sync.Mutex
 	proxyAppConn  proxy.AppConnMempool
@@ -66,7 +67,7 @@ type Mempool struct {
 	wal *auto.AutoFile
 }
 
-func NewMempool(config cfg.Config, proxyAppConn proxy.AppConnMempool) *Mempool {
+func NewMempool(config *viper.Viper, proxyAppConn proxy.AppConnMempool) *Mempool {
 	mempool := &Mempool{
 		config:        config,
 		proxyAppConn:  proxyAppConn,

@@ -1,9 +1,11 @@
 package core
 
 import (
-	rpc "github.com/tendermint/go-rpc/server"
-	"github.com/tendermint/go-rpc/types"
+	data "github.com/tendermint/go-wire/data"
+	rpc "github.com/tendermint/tendermint/rpc/lib/server"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tendermint/rpc/lib/types"
+	"github.com/tendermint/tendermint/types"
 )
 
 // TODO: better system than "unsafe" prefix
@@ -37,7 +39,9 @@ var Routes = map[string]*rpc.RPCFunc{
 	// control API
 	"dial_seeds":           rpc.NewRPCFunc(UnsafeDialSeedsResult, "seeds"),
 	"unsafe_flush_mempool": rpc.NewRPCFunc(UnsafeFlushMempool, ""),
-	"unsafe_set_config":    rpc.NewRPCFunc(UnsafeSetConfigResult, "type,key,value"),
+
+	// config is not in general thread safe. expose specifics if you need em
+	// "unsafe_set_config":    rpc.NewRPCFunc(UnsafeSetConfigResult, "type,key,value"),
 
 	// profiler API
 	"unsafe_start_cpu_profiler": rpc.NewRPCFunc(UnsafeStartCPUProfilerResult, "filename"),
@@ -104,19 +108,19 @@ func TxResult(hash []byte, prove bool) (ctypes.TMResult, error) {
 	return Tx(hash, prove)
 }
 
-func BroadcastTxCommitResult(tx []byte) (ctypes.TMResult, error) {
+func BroadcastTxCommitResult(tx types.Tx) (ctypes.TMResult, error) {
 	return BroadcastTxCommit(tx)
 }
 
-func BroadcastTxSyncResult(tx []byte) (ctypes.TMResult, error) {
+func BroadcastTxSyncResult(tx types.Tx) (ctypes.TMResult, error) {
 	return BroadcastTxSync(tx)
 }
 
-func BroadcastTxAsyncResult(tx []byte) (ctypes.TMResult, error) {
+func BroadcastTxAsyncResult(tx types.Tx) (ctypes.TMResult, error) {
 	return BroadcastTxAsync(tx)
 }
 
-func ABCIQueryResult(path string, data []byte, prove bool) (ctypes.TMResult, error) {
+func ABCIQueryResult(path string, data data.Bytes, prove bool) (ctypes.TMResult, error) {
 	return ABCIQuery(path, data, prove)
 }
 

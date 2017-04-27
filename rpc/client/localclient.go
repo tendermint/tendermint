@@ -1,6 +1,7 @@
 package client
 
 import (
+	data "github.com/tendermint/go-wire/data"
 	nm "github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -56,7 +57,7 @@ func (c Local) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	return core.ABCIInfo()
 }
 
-func (c Local) ABCIQuery(path string, data []byte, prove bool) (*ctypes.ResultABCIQuery, error) {
+func (c Local) ABCIQuery(path string, data data.Bytes, prove bool) (*ctypes.ResultABCIQuery, error) {
 	return core.ABCIQuery(path, data, prove)
 }
 

@@ -2,7 +2,7 @@
 
 To allow the efficient creation of an ABCi app, tendermint wishes to provide a reference implemention of a key-value store that provides merkle proofs of the data.  These proofs then quickly allow the ABCi app to provide an apphash to the consensus engine, as well as a full proof to any client.
 
-This engine is currently implemented in `go-merkle` with `merkleeyes` providing a language-agnostic binding via ABCi.  It uses `go-db` bindings internally to persist data to leveldb.
+This engine is currently implemented in `go-merkle` with `merkleeyes` providing a language-agnostic binding via ABCi.  It uses `tmlibs/db` bindings internally to persist data to leveldb.
 
 What are some of the requirements of this store:
 

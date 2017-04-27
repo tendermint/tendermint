@@ -4,8 +4,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	cmn "github.com/tendermint/go-common"
-	events "github.com/tendermint/go-events"
+	cmn "github.com/tendermint/tmlibs/common"
+	events "github.com/tendermint/tmlibs/events"
 	"github.com/tendermint/tendermint/types"
 )
 
