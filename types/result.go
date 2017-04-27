@@ -2,12 +2,14 @@ package types
 
 import (
 	"fmt"
+
+	"github.com/tendermint/go-wire/data"
 )
 
 // CONTRACT: a zero Result is OK.
 type Result struct {
 	Code CodeType
-	Data []byte
+	Data data.Bytes
 	Log  string // Can be non-deterministic
 }
 
