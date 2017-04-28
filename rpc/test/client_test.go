@@ -42,7 +42,7 @@ func testStatus(t *testing.T, client rpc.HTTPClient) {
 	_, err := client.Call("status", map[string]interface{}{}, tmResult)
 	require.Nil(t, err)
 
-	status := (*tmResult).(*ctypes.ResultStatus)
+	status := tmResult.Unwrap().(*ctypes.ResultStatus)
 	assert.Equal(t, chainID, status.NodeInfo.Network)
 }
 
@@ -74,7 +74,7 @@ func testBroadcastTxSync(t *testing.T, client rpc.HTTPClient) {
 	_, err := client.Call("broadcast_tx_sync", map[string]interface{}{"tx": tx}, tmResult)
 	require.Nil(t, err)
 
-	res := (*tmResult).(*ctypes.ResultBroadcastTx)
+	res := tmResult.Unwrap().(*ctypes.ResultBroadcastTx)
 	require.Equal(t, abci.CodeType_OK, res.Code)
 	require.Equal(t, initMemSize+1, mem.Size())
 	txs := mem.Reap(1)
@@ -96,7 +96,7 @@ func sendTx(t *testing.T, client rpc.HTTPClient) ([]byte, []byte) {
 	k, v, tx := testTxKV(t)
 	_, err := client.Call("broadcast_tx_commit", map[string]interface{}{"tx": tx}, tmResult)
 	require.Nil(t, err)
-	bres := (*tmResult).(*ctypes.ResultBroadcastTxCommit)
+	bres := tmResult.Unwrap().(*ctypes.ResultBroadcastTxCommit)
 	require.NotNil(t, 0, bres.DeliverTx, "%#v", bres)
 	require.EqualValues(t, 0, bres.CheckTx.Code, "%#v", bres)
 	require.EqualValues(t, 0, bres.DeliverTx.Code, "%#v", bres)
@@ -119,7 +119,7 @@ func testABCIQuery(t *testing.T, client rpc.HTTPClient) {
 		map[string]interface{}{"path": "", "data": k, "prove": false}, tmResult)
 	require.Nil(t, err)
 
-	resQuery := (*tmResult).(*ctypes.ResultABCIQuery)
+	resQuery := tmResult.Unwrap().(*ctypes.ResultABCIQuery)
 	require.EqualValues(t, 0, resQuery.Code)
 
 	// XXX: specific to value returned by the dummy
@@ -145,7 +145,7 @@ func testBroadcastTxCommit(t *testing.T, client rpc.HTTPClient) {
 	_, err := client.Call("broadcast_tx_commit", map[string]interface{}{"tx": tx}, tmResult)
 	require.Nil(err)
 
-	res := (*tmResult).(*ctypes.ResultBroadcastTxCommit)
+	res := tmResult.Unwrap().(*ctypes.ResultBroadcastTxCommit)
 	checkTx := res.CheckTx
 	require.Equal(abci.CodeType_OK, checkTx.Code)
 	deliverTx := res.DeliverTx
@@ -184,7 +184,7 @@ func testTx(t *testing.T, client rpc.HTTPClient, withIndexer bool) {
 	_, err := client.Call("broadcast_tx_commit", map[string]interface{}{"tx": txBytes}, tmResult)
 	require.Nil(err)
 
-	res := (*tmResult).(*ctypes.ResultBroadcastTxCommit)
+	res := tmResult.Unwrap().(*ctypes.ResultBroadcastTxCommit)
 	checkTx := res.CheckTx
 	require.Equal(abci.CodeType_OK, checkTx.Code)
 	deliverTx := res.DeliverTx
@@ -225,7 +225,7 @@ func testTx(t *testing.T, client rpc.HTTPClient, withIndexer bool) {
 			require.NotNil(err, idx)
 		} else {
 			require.Nil(err, idx)
-			res2 := (*tmResult).(*ctypes.ResultTx)
+			res2 := tmResult.Unwrap().(*ctypes.ResultTx)
 			assert.Equal(tx, res2.Tx, idx)
 			assert.Equal(res.Height, res2.Height, idx)
 			assert.Equal(0, res2.Index, idx)

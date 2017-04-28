@@ -2,8 +2,8 @@ package core
 
 import (
 	data "github.com/tendermint/go-wire/data"
-	rpc "github.com/tendermint/tendermint/rpc/lib/server"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	rpc "github.com/tendermint/tendermint/rpc/lib/server"
 	"github.com/tendermint/tendermint/rpc/lib/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -50,100 +50,124 @@ var Routes = map[string]*rpc.RPCFunc{
 }
 
 func SubscribeResult(wsCtx rpctypes.WSRPCContext, event string) (ctypes.TMResult, error) {
-	return Subscribe(wsCtx, event)
+	res, err := Subscribe(wsCtx, event)
+	return ctypes.TMResult{res}, err
 }
 
 func UnsubscribeResult(wsCtx rpctypes.WSRPCContext, event string) (ctypes.TMResult, error) {
-	return Unsubscribe(wsCtx, event)
+	res, err := Unsubscribe(wsCtx, event)
+	return ctypes.TMResult{res}, err
 }
 
 func StatusResult() (ctypes.TMResult, error) {
-	return Status()
+	res, err := Status()
+	return ctypes.TMResult{res}, err
 }
 
 func NetInfoResult() (ctypes.TMResult, error) {
-	return NetInfo()
+	res, err := NetInfo()
+	return ctypes.TMResult{res}, err
 }
 
 func UnsafeDialSeedsResult(seeds []string) (ctypes.TMResult, error) {
-	return UnsafeDialSeeds(seeds)
+	res, err := UnsafeDialSeeds(seeds)
+	return ctypes.TMResult{res}, err
 }
 
 func BlockchainInfoResult(min, max int) (ctypes.TMResult, error) {
-	return BlockchainInfo(min, max)
+	res, err := BlockchainInfo(min, max)
+	return ctypes.TMResult{res}, err
 }
 
 func GenesisResult() (ctypes.TMResult, error) {
-	return Genesis()
+	res, err := Genesis()
+	return ctypes.TMResult{res}, err
 }
 
 func BlockResult(height int) (ctypes.TMResult, error) {
-	return Block(height)
+	res, err := Block(height)
+	return ctypes.TMResult{res}, err
 }
 
 func CommitResult(height int) (ctypes.TMResult, error) {
-	return Commit(height)
+	res, err := Commit(height)
+	return ctypes.TMResult{res}, err
 }
 
 func ValidatorsResult() (ctypes.TMResult, error) {
-	return Validators()
+	res, err := Validators()
+	return ctypes.TMResult{res}, err
 }
 
 func DumpConsensusStateResult() (ctypes.TMResult, error) {
-	return DumpConsensusState()
+	res, err := DumpConsensusState()
+	return ctypes.TMResult{res}, err
 }
 
 func UnconfirmedTxsResult() (ctypes.TMResult, error) {
-	return UnconfirmedTxs()
+	res, err := UnconfirmedTxs()
+	return ctypes.TMResult{res}, err
 }
 
 func NumUnconfirmedTxsResult() (ctypes.TMResult, error) {
-	return NumUnconfirmedTxs()
+	res, err := NumUnconfirmedTxs()
+	return ctypes.TMResult{res}, err
 }
 
 // Tx allow user to query the transaction results. `nil` could mean the
 // transaction is in the mempool, invalidated, or was not send in the first
 // place.
 func TxResult(hash []byte, prove bool) (ctypes.TMResult, error) {
-	return Tx(hash, prove)
+	res, err := Tx(hash, prove)
+	return ctypes.TMResult{res}, err
 }
 
 func BroadcastTxCommitResult(tx types.Tx) (ctypes.TMResult, error) {
-	return BroadcastTxCommit(tx)
+	res, err := BroadcastTxCommit(tx)
+	return ctypes.TMResult{res}, err
 }
 
 func BroadcastTxSyncResult(tx types.Tx) (ctypes.TMResult, error) {
-	return BroadcastTxSync(tx)
+	res, err := BroadcastTxSync(tx)
+	return ctypes.TMResult{res}, err
 }
 
 func BroadcastTxAsyncResult(tx types.Tx) (ctypes.TMResult, error) {
-	return BroadcastTxAsync(tx)
+	res, err := BroadcastTxAsync(tx)
+	return ctypes.TMResult{res}, err
 }
 
 func ABCIQueryResult(path string, data data.Bytes, prove bool) (ctypes.TMResult, error) {
-	return ABCIQuery(path, data, prove)
+	res, err := ABCIQuery(path, data, prove)
+	return ctypes.TMResult{res}, err
 }
 
 func ABCIInfoResult() (ctypes.TMResult, error) {
-	return ABCIInfo()
+	res, err := ABCIInfo()
+	return ctypes.TMResult{res}, err
 }
 
 func UnsafeFlushMempoolResult() (ctypes.TMResult, error) {
-	return UnsafeFlushMempool()
+	res, err := UnsafeFlushMempool()
+	return ctypes.TMResult{res}, err
 }
 
 func UnsafeSetConfigResult(typ, key, value string) (ctypes.TMResult, error) {
-	return UnsafeSetConfig(typ, key, value)
+	res, err := UnsafeSetConfig(typ, key, value)
+	return ctypes.TMResult{res}, err
 }
 
 func UnsafeStartCPUProfilerResult(filename string) (ctypes.TMResult, error) {
-	return UnsafeStartCPUProfiler(filename)
+	res, err := UnsafeStartCPUProfiler(filename)
+	return ctypes.TMResult{res}, err
 }
 
 func UnsafeStopCPUProfilerResult() (ctypes.TMResult, error) {
-	return UnsafeStopCPUProfiler()
+	res, err := UnsafeStopCPUProfiler()
+	return ctypes.TMResult{res}, err
 }
 
 func UnsafeWriteHeapProfileResult(filename string) (ctypes.TMResult, error) {
-	return UnsafeWriteHeapProfile(filename)
+	res, err := UnsafeWriteHeapProfile(filename)
+	return ctypes.TMResult{res}, err
 }

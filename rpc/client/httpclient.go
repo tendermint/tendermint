@@ -4,12 +4,12 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	data "github.com/tendermint/go-wire/data"
-	events "github.com/tendermint/tmlibs/events"
-	"github.com/tendermint/tendermint/rpc/lib/client"
 	wire "github.com/tendermint/go-wire"
+	data "github.com/tendermint/go-wire/data"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tendermint/rpc/lib/client"
 	"github.com/tendermint/tendermint/types"
+	events "github.com/tendermint/tmlibs/events"
 )
 
 /*
@@ -56,7 +56,7 @@ func (c *HTTP) Status() (*ctypes.ResultStatus, error) {
 		return nil, errors.Wrap(err, "Status")
 	}
 	// note: panics if rpc doesn't match.  okay???
-	return (*tmResult).(*ctypes.ResultStatus), nil
+	return tmResult.Unwrap().(*ctypes.ResultStatus), nil
 }
 
 func (c *HTTP) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
@@ -65,7 +65,7 @@ func (c *HTTP) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "ABCIInfo")
 	}
-	return (*tmResult).(*ctypes.ResultABCIInfo), nil
+	return tmResult.Unwrap().(*ctypes.ResultABCIInfo), nil
 }
 
 func (c *HTTP) ABCIQuery(path string, data data.Bytes, prove bool) (*ctypes.ResultABCIQuery, error) {
@@ -76,7 +76,7 @@ func (c *HTTP) ABCIQuery(path string, data data.Bytes, prove bool) (*ctypes.Resu
 	if err != nil {
 		return nil, errors.Wrap(err, "ABCIQuery")
 	}
-	return (*tmResult).(*ctypes.ResultABCIQuery), nil
+	return tmResult.Unwrap().(*ctypes.ResultABCIQuery), nil
 }
 
 func (c *HTTP) BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
@@ -85,7 +85,7 @@ func (c *HTTP) BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, 
 	if err != nil {
 		return nil, errors.Wrap(err, "broadcast_tx_commit")
 	}
-	return (*tmResult).(*ctypes.ResultBroadcastTxCommit), nil
+	return tmResult.Unwrap().(*ctypes.ResultBroadcastTxCommit), nil
 }
 
 func (c *HTTP) BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
@@ -102,7 +102,7 @@ func (c *HTTP) broadcastTX(route string, tx types.Tx) (*ctypes.ResultBroadcastTx
 	if err != nil {
 		return nil, errors.Wrap(err, route)
 	}
-	return (*tmResult).(*ctypes.ResultBroadcastTx), nil
+	return tmResult.Unwrap().(*ctypes.ResultBroadcastTx), nil
 }
 
 func (c *HTTP) NetInfo() (*ctypes.ResultNetInfo, error) {
@@ -111,7 +111,7 @@ func (c *HTTP) NetInfo() (*ctypes.ResultNetInfo, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "NetInfo")
 	}
-	return (*tmResult).(*ctypes.ResultNetInfo), nil
+	return tmResult.Unwrap().(*ctypes.ResultNetInfo), nil
 }
 
 func (c *HTTP) DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
@@ -120,7 +120,7 @@ func (c *HTTP) DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "DumpConsensusState")
 	}
-	return (*tmResult).(*ctypes.ResultDumpConsensusState), nil
+	return tmResult.Unwrap().(*ctypes.ResultDumpConsensusState), nil
 }
 
 func (c *HTTP) BlockchainInfo(minHeight, maxHeight int) (*ctypes.ResultBlockchainInfo, error) {
@@ -131,7 +131,7 @@ func (c *HTTP) BlockchainInfo(minHeight, maxHeight int) (*ctypes.ResultBlockchai
 	if err != nil {
 		return nil, errors.Wrap(err, "BlockchainInfo")
 	}
-	return (*tmResult).(*ctypes.ResultBlockchainInfo), nil
+	return tmResult.Unwrap().(*ctypes.ResultBlockchainInfo), nil
 }
 
 func (c *HTTP) Genesis() (*ctypes.ResultGenesis, error) {
@@ -140,7 +140,7 @@ func (c *HTTP) Genesis() (*ctypes.ResultGenesis, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "Genesis")
 	}
-	return (*tmResult).(*ctypes.ResultGenesis), nil
+	return tmResult.Unwrap().(*ctypes.ResultGenesis), nil
 }
 
 func (c *HTTP) Block(height int) (*ctypes.ResultBlock, error) {
@@ -149,7 +149,7 @@ func (c *HTTP) Block(height int) (*ctypes.ResultBlock, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "Block")
 	}
-	return (*tmResult).(*ctypes.ResultBlock), nil
+	return tmResult.Unwrap().(*ctypes.ResultBlock), nil
 }
 
 func (c *HTTP) Commit(height int) (*ctypes.ResultCommit, error) {
@@ -158,7 +158,7 @@ func (c *HTTP) Commit(height int) (*ctypes.ResultCommit, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "Commit")
 	}
-	return (*tmResult).(*ctypes.ResultCommit), nil
+	return tmResult.Unwrap().(*ctypes.ResultCommit), nil
 }
 
 func (c *HTTP) Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
@@ -171,7 +171,7 @@ func (c *HTTP) Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "Tx")
 	}
-	return (*tmResult).(*ctypes.ResultTx), nil
+	return tmResult.Unwrap().(*ctypes.ResultTx), nil
 }
 
 func (c *HTTP) Validators() (*ctypes.ResultValidators, error) {
@@ -180,7 +180,7 @@ func (c *HTTP) Validators() (*ctypes.ResultValidators, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "Validators")
 	}
-	return (*tmResult).(*ctypes.ResultValidators), nil
+	return tmResult.Unwrap().(*ctypes.ResultValidators), nil
 }
 
 /** websocket event stuff here... **/
@@ -340,7 +340,7 @@ func (w *WSEvents) parseEvent(data []byte) (err error) {
 	if err != nil {
 		return err
 	}
-	event, ok := (*result).(*ctypes.ResultEvent)
+	event, ok := result.Unwrap().(*ctypes.ResultEvent)
 	if !ok {
 		// ignore silently (eg. subscribe, unsubscribe and maybe other events)
 		return nil

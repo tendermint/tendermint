@@ -18,9 +18,9 @@ import (
 	"github.com/tendermint/tendermint/config/tendermint_test"
 	nm "github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/proxy"
-	client "github.com/tendermint/tendermint/rpc/lib/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	core_grpc "github.com/tendermint/tendermint/rpc/grpc"
+	client "github.com/tendermint/tendermint/rpc/lib/client"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -137,7 +137,7 @@ func waitForEvent(t *testing.T, wsc *client.WSClient, eventid string, dieOnTimeo
 					errCh <- err
 					break LOOP
 				}
-				event, ok := (*result).(*ctypes.ResultEvent)
+				event, ok := result.Unwrap().(*ctypes.ResultEvent)
 				if ok && event.Name == eventid {
 					goodCh <- event.Data
 					break LOOP

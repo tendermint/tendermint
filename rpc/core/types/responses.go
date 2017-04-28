@@ -5,7 +5,6 @@ import (
 
 	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/go-crypto"
-	"github.com/tendermint/go-wire"
 	"github.com/tendermint/go-wire/data"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/rpc/lib/types"
@@ -175,34 +174,98 @@ const (
 	ResultTypeUnsafeFlushMempool     = byte(0xa4)
 )
 
-type TMResult interface {
+const (
+	// for the blockchain
+	ResultNameGenesis        = "genesis"
+	ResultNameBlockchainInfo = "info"
+	ResultNameBlock          = "block"
+	ResultNameCommit         = "commit"
+
+	// for the network
+	ResultNameStatus    = "status"
+	ResultNameNetInfo   = "netinfo"
+	ResultNameDialSeeds = "dialseeds"
+
+	// for the consensus
+	ResultNameValidators         = "validators"
+	ResultNameDumpConsensusState = "consensus"
+
+	// for txs / the application
+	ResultNameBroadcastTx       = "broadcast_tx"
+	ResultNameUnconfirmedTxs    = "unconfirmed_tx"
+	ResultNameBroadcastTxCommit = "broadcast_tx_commit"
+	ResultNameTx                = "tx"
+
+	// for querying the application
+	ResultNameABCIQuery = "abci_query"
+	ResultNameABCIInfo  = "abci_info"
+
+	// for events
+	ResultNameSubscribe   = "subscribe"
+	ResultNameUnsubscribe = "unsubscribe"
+	ResultNameEvent       = "event"
+
+	// for testing
+	ResultNameUnsafeSetConfig        = "unsafe_set_config"
+	ResultNameUnsafeStartCPUProfiler = "unsafe_start_profiler"
+	ResultNameUnsafeStopCPUProfiler  = "unsafe_stop_profiler"
+	ResultNameUnsafeWriteHeapProfile = "unsafe_write_heap"
+	ResultNameUnsafeFlushMempool     = "unsafe_flush_mempool"
+)
+
+type TMResultInner interface {
 	rpctypes.Result
 }
 
-// for wire.readReflect
-var _ = wire.RegisterInterface(
-	struct{ TMResult }{},
-	wire.ConcreteType{&ResultGenesis{}, ResultTypeGenesis},
-	wire.ConcreteType{&ResultBlockchainInfo{}, ResultTypeBlockchainInfo},
-	wire.ConcreteType{&ResultBlock{}, ResultTypeBlock},
-	wire.ConcreteType{&ResultCommit{}, ResultTypeCommit},
-	wire.ConcreteType{&ResultStatus{}, ResultTypeStatus},
-	wire.ConcreteType{&ResultNetInfo{}, ResultTypeNetInfo},
-	wire.ConcreteType{&ResultDialSeeds{}, ResultTypeDialSeeds},
-	wire.ConcreteType{&ResultValidators{}, ResultTypeValidators},
-	wire.ConcreteType{&ResultDumpConsensusState{}, ResultTypeDumpConsensusState},
-	wire.ConcreteType{&ResultBroadcastTx{}, ResultTypeBroadcastTx},
-	wire.ConcreteType{&ResultBroadcastTxCommit{}, ResultTypeBroadcastTxCommit},
-	wire.ConcreteType{&ResultTx{}, ResultTypeTx},
-	wire.ConcreteType{&ResultUnconfirmedTxs{}, ResultTypeUnconfirmedTxs},
-	wire.ConcreteType{&ResultSubscribe{}, ResultTypeSubscribe},
-	wire.ConcreteType{&ResultUnsubscribe{}, ResultTypeUnsubscribe},
-	wire.ConcreteType{&ResultEvent{}, ResultTypeEvent},
-	wire.ConcreteType{&ResultUnsafeSetConfig{}, ResultTypeUnsafeSetConfig},
-	wire.ConcreteType{&ResultUnsafeProfile{}, ResultTypeUnsafeStartCPUProfiler},
-	wire.ConcreteType{&ResultUnsafeProfile{}, ResultTypeUnsafeStopCPUProfiler},
-	wire.ConcreteType{&ResultUnsafeProfile{}, ResultTypeUnsafeWriteHeapProfile},
-	wire.ConcreteType{&ResultUnsafeFlushMempool{}, ResultTypeUnsafeFlushMempool},
-	wire.ConcreteType{&ResultABCIQuery{}, ResultTypeABCIQuery},
-	wire.ConcreteType{&ResultABCIInfo{}, ResultTypeABCIInfo},
-)
+type TMResult struct {
+	TMResultInner
+}
+
+func (tmr TMResult) MarshalJSON() ([]byte, error) {
+	return tmResultMapper.ToJSON(tmr.TMResultInner)
+}
+
+func (tmr *TMResult) UnmarshalJSON(data []byte) (err error) {
+	parsed, err := tmResultMapper.FromJSON(data)
+	if err == nil && parsed != nil {
+		tmr.TMResultInner = parsed.(TMResultInner)
+	}
+	return
+}
+
+func (tmr TMResult) Unwrap() TMResultInner {
+	tmrI := tmr.TMResultInner
+	for wrap, ok := tmrI.(TMResult); ok; wrap, ok = tmrI.(TMResult) {
+		tmrI = wrap.TMResultInner
+	}
+	return tmrI
+}
+
+func (tmr TMResult) Empty() bool {
+	return tmr.TMResultInner == nil
+}
+
+var tmResultMapper = data.NewMapper(TMResult{}).
+	RegisterImplementation(&ResultGenesis{}, ResultNameGenesis, ResultTypeGenesis).
+	RegisterImplementation(&ResultBlockchainInfo{}, ResultNameBlockchainInfo, ResultTypeBlockchainInfo).
+	RegisterImplementation(&ResultBlock{}, ResultNameBlock, ResultTypeBlock).
+	RegisterImplementation(&ResultCommit{}, ResultNameCommit, ResultTypeCommit).
+	RegisterImplementation(&ResultStatus{}, ResultNameStatus, ResultTypeStatus).
+	RegisterImplementation(&ResultNetInfo{}, ResultNameNetInfo, ResultTypeNetInfo).
+	RegisterImplementation(&ResultDialSeeds{}, ResultNameDialSeeds, ResultTypeDialSeeds).
+	RegisterImplementation(&ResultValidators{}, ResultNameValidators, ResultTypeValidators).
+	RegisterImplementation(&ResultDumpConsensusState{}, ResultNameDumpConsensusState, ResultTypeDumpConsensusState).
+	RegisterImplementation(&ResultBroadcastTx{}, ResultNameBroadcastTx, ResultTypeBroadcastTx).
+	RegisterImplementation(&ResultBroadcastTxCommit{}, ResultNameBroadcastTxCommit, ResultTypeBroadcastTxCommit).
+	RegisterImplementation(&ResultTx{}, ResultNameTx, ResultTypeTx).
+	RegisterImplementation(&ResultUnconfirmedTxs{}, ResultNameUnconfirmedTxs, ResultTypeUnconfirmedTxs).
+	RegisterImplementation(&ResultSubscribe{}, ResultNameSubscribe, ResultTypeSubscribe).
+	RegisterImplementation(&ResultUnsubscribe{}, ResultNameUnsubscribe, ResultTypeUnsubscribe).
+	RegisterImplementation(&ResultEvent{}, ResultNameEvent, ResultTypeEvent).
+	RegisterImplementation(&ResultUnsafeSetConfig{}, ResultNameUnsafeSetConfig, ResultTypeUnsafeSetConfig).
+	RegisterImplementation(&ResultUnsafeProfile{}, ResultNameUnsafeStartCPUProfiler, ResultTypeUnsafeStartCPUProfiler).
+	RegisterImplementation(&ResultUnsafeProfile{}, ResultNameUnsafeStopCPUProfiler, ResultTypeUnsafeStopCPUProfiler).
+	RegisterImplementation(&ResultUnsafeProfile{}, ResultNameUnsafeWriteHeapProfile, ResultTypeUnsafeWriteHeapProfile).
+	RegisterImplementation(&ResultUnsafeFlushMempool{}, ResultNameUnsafeFlushMempool, ResultTypeUnsafeFlushMempool).
+	RegisterImplementation(&ResultABCIQuery{}, ResultNameABCIQuery, ResultTypeABCIQuery).
+	RegisterImplementation(&ResultABCIInfo{}, ResultNameABCIInfo, ResultTypeABCIInfo)
