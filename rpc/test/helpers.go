@@ -131,9 +131,11 @@ func waitForEvent(t *testing.T, wsc *client.WSClient, eventid string, dieOnTimeo
 		for {
 			select {
 			case r := <-wsc.ResultsCh:
+				fmt.Println("GOT IT", string(r))
 				result := new(ctypes.TMResult)
 				err = json.Unmarshal(r, result)
 				if err != nil {
+					fmt.Println("POOP", err)
 					errCh <- err
 					break LOOP
 				}

@@ -208,12 +208,10 @@ func testWithHTTPClient(t *testing.T, cl client.HTTPClient) {
 	require.Nil(t, err)
 	assert.Equal(t, got3, val3)
 
-	/*
-		val4 := rand.Intn(10000)
-		got4, err := echoIntViaHTTP(cl, val4)
-		require.Nil(t, err)
-		assert.Equal(t, got4, val4)
-	*/
+	val4 := rand.Intn(10000)
+	got4, err := echoIntViaHTTP(cl, val4)
+	require.Nil(t, err)
+	assert.Equal(t, got4, val4)
 }
 
 func echoViaWS(cl *client.WSClient, val string) (string, error) {

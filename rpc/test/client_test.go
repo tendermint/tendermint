@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/abci/types"
+	"github.com/tendermint/go-wire/data"
 	"github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpc "github.com/tendermint/tendermint/rpc/lib/client"
@@ -116,7 +117,7 @@ func testABCIQuery(t *testing.T, client rpc.HTTPClient) {
 	time.Sleep(time.Millisecond * 500)
 	tmResult := new(ctypes.TMResult)
 	_, err := client.Call("abci_query",
-		map[string]interface{}{"path": "", "data": k, "prove": false}, tmResult)
+		map[string]interface{}{"path": "", "data": data.Bytes(k), "prove": false}, tmResult)
 	require.Nil(t, err)
 
 	resQuery := tmResult.Unwrap().(*ctypes.ResultABCIQuery)
@@ -286,7 +287,7 @@ func TestWSBlockchainGrowth(t *testing.T) {
 	var initBlockN int
 	for i := 0; i < 3; i++ {
 		waitForEvent(t, wsc, eid, true, func() {}, func(eid string, eventData interface{}) error {
-			block := eventData.(types.EventDataNewBlock).Block
+			block := eventData.(types.TMEventData).Unwrap().(types.EventDataNewBlock).Block
 			if i == 0 {
 				initBlockN = block.Header.Height
 			} else {
@@ -320,7 +321,7 @@ func TestWSTxEvent(t *testing.T) {
 	require.Nil(err)
 
 	waitForEvent(t, wsc, eid, true, func() {}, func(eid string, b interface{}) error {
-		evt, ok := b.(types.EventDataTx)
+		evt, ok := b.(types.TMEventData).Unwrap().(types.EventDataTx)
 		require.True(ok, "Got wrong event type: %#v", b)
 		require.Equal(tx, []byte(evt.Tx), "Returned different tx")
 		require.Equal(abci.CodeType_OK, evt.Code)

@@ -8,10 +8,10 @@ import (
 
 	"github.com/tendermint/tendermint/config/tendermint_test"
 
-	"github.com/tendermint/tmlibs/events"
+	"github.com/tendermint/abci/example/dummy"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/abci/example/dummy"
+	"github.com/tendermint/tmlibs/events"
 )
 
 func init() {
@@ -252,7 +252,7 @@ func TestReactorWithTimeoutCommit(t *testing.T) {
 func waitForAndValidateBlock(t *testing.T, n int, activeVals map[string]struct{}, eventChans []chan interface{}, css []*ConsensusState, txs ...[]byte) {
 	timeoutWaitGroup(t, n, func(wg *sync.WaitGroup, j int) {
 		newBlockI := <-eventChans[j]
-		newBlock := newBlockI.(types.EventDataNewBlock).Block
+		newBlock := newBlockI.(types.TMEventData).Unwrap().(types.EventDataNewBlock).Block
 		log.Warn("Got block", "height", newBlock.Height, "validator", j)
 		err := validateBlock(newBlock, activeVals)
 		if err != nil {
