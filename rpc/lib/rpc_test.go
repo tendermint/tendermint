@@ -13,7 +13,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	data "github.com/tendermint/go-data"
+	"github.com/tendermint/go-wire/data"
 	client "github.com/tendermint/tendermint/rpc/lib/client"
 	server "github.com/tendermint/tendermint/rpc/lib/server"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
@@ -64,19 +64,31 @@ type ResultEcho struct {
 	Value string
 }
 
+type ResultEchoInt struct {
+	Value int
+}
+
 type ResultEchoBytes struct {
 	Value []byte
 }
 
+type ResultEchoDataBytes struct {
+	Value data.Bytes
+}
+
 var resultMapper = data.NewMapper(Result{}).
 	RegisterImplementation(&ResultEcho{}, "echo", 0x1).
-	RegisterImplementation(&ResultEchoBytes{}, "echo_bytes", 0x2)
+	RegisterImplementation(&ResultEchoBytes{}, "echo_bytes", 0x2).
+	RegisterImplementation(&ResultEchoDataBytes{}, "echo_data_bytes", 0x3).
+	RegisterImplementation(&ResultEchoInt{}, "echo_int", 0x4)
 
 // Define some routes
 var Routes = map[string]*server.RPCFunc{
-	"echo":       server.NewRPCFunc(EchoResult, "arg"),
-	"echo_ws":    server.NewWSRPCFunc(EchoWSResult, "arg"),
-	"echo_bytes": server.NewRPCFunc(EchoBytesResult, "arg"),
+	"echo":            server.NewRPCFunc(EchoResult, "arg"),
+	"echo_ws":         server.NewWSRPCFunc(EchoWSResult, "arg"),
+	"echo_bytes":      server.NewRPCFunc(EchoBytesResult, "arg"),
+	"echo_data_bytes": server.NewRPCFunc(EchoDataBytesResult, "arg"),
+	"echo_int":        server.NewRPCFunc(EchoIntResult, "arg"),
 }
 
 func EchoResult(v string) (Result, error) {
@@ -87,8 +99,16 @@ func EchoWSResult(wsCtx types.WSRPCContext, v string) (Result, error) {
 	return Result{&ResultEcho{v}}, nil
 }
 
+func EchoIntResult(v int) (Result, error) {
+	return Result{&ResultEchoInt{v}}, nil
+}
+
 func EchoBytesResult(v []byte) (Result, error) {
 	return Result{&ResultEchoBytes{v}}, nil
+}
+
+func EchoDataBytesResult(v data.Bytes) (Result, error) {
+	return Result{&ResultEchoDataBytes{v}}, nil
 }
 
 // launch unix and tcp servers
@@ -139,6 +159,17 @@ func echoViaHTTP(cl client.HTTPClient, val string) (string, error) {
 	return result.Unwrap().(*ResultEcho).Value, nil
 }
 
+func echoIntViaHTTP(cl client.HTTPClient, val int) (int, error) {
+	params := map[string]interface{}{
+		"arg": val,
+	}
+	var result Result
+	if _, err := cl.Call("echo_int", params, &result); err != nil {
+		return 0, err
+	}
+	return result.Unwrap().(*ResultEchoInt).Value, nil
+}
+
 func echoBytesViaHTTP(cl client.HTTPClient, bytes []byte) ([]byte, error) {
 	params := map[string]interface{}{
 		"arg": bytes,
@@ -148,6 +179,17 @@ func echoBytesViaHTTP(cl client.HTTPClient, bytes []byte) ([]byte, error) {
 		return []byte{}, err
 	}
 	return result.Unwrap().(*ResultEchoBytes).Value, nil
+}
+
+func echoDataBytesViaHTTP(cl client.HTTPClient, bytes data.Bytes) (data.Bytes, error) {
+	params := map[string]interface{}{
+		"arg": bytes,
+	}
+	var result Result
+	if _, err := cl.Call("echo_data_bytes", params, &result); err != nil {
+		return []byte{}, err
+	}
+	return result.Unwrap().(*ResultEchoDataBytes).Value, nil
 }
 
 func testWithHTTPClient(t *testing.T, cl client.HTTPClient) {
@@ -160,6 +202,18 @@ func testWithHTTPClient(t *testing.T, cl client.HTTPClient) {
 	got2, err := echoBytesViaHTTP(cl, val2)
 	require.Nil(t, err)
 	assert.Equal(t, got2, val2)
+
+	val3 := data.Bytes(randBytes(t))
+	got3, err := echoDataBytesViaHTTP(cl, val3)
+	require.Nil(t, err)
+	assert.Equal(t, got3, val3)
+
+	/*
+		val4 := rand.Intn(10000)
+		got4, err := echoIntViaHTTP(cl, val4)
+		require.Nil(t, err)
+		assert.Equal(t, got4, val4)
+	*/
 }
 
 func echoViaWS(cl *client.WSClient, val string) (string, error) {
