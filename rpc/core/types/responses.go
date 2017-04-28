@@ -218,7 +218,7 @@ type TMResultInner interface {
 }
 
 type TMResult struct {
-	TMResultInner
+	TMResultInner `json:"unwrap"`
 }
 
 func (tmr TMResult) MarshalJSON() ([]byte, error) {
