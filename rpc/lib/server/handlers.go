@@ -2,7 +2,6 @@ package rpcserver
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -16,7 +15,6 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 	//wire "github.com/tendermint/go-wire"
-	"github.com/tendermint/go-wire/data"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 	cmn "github.com/tendermint/tmlibs/common"
 	events "github.com/tendermint/tmlibs/events"
@@ -206,32 +204,7 @@ func jsonParamsToArgsWS(rpcFunc *RPCFunc, paramsI interface{}, wsCtx types.WSRPC
 func _jsonObjectToArg(ty reflect.Type, object interface{}) (reflect.Value, error) {
 	var err error
 	v := reflect.New(ty)
-
-	// if the object is a byte array, we need to decode it
-	if ty.Kind() == reflect.Slice && ty.Elem().Kind() == reflect.Uint8 {
-		s, ok := object.(string)
-		if !ok {
-			return v, fmt.Errorf("cmah")
-		}
-
-		// if its data.Bytes, use hex
-		// else use base64
-		dbty := reflect.TypeOf(data.Bytes{})
-		if ty == dbty {
-			decoded, err := hex.DecodeString(s)
-			if err != nil {
-				return v, err
-			}
-			object = decoded
-		} else {
-			decoded, err := base64.StdEncoding.DecodeString(s)
-			if err != nil {
-				return v, err
-			}
-			object = decoded
-		}
-	}
-	v.Elem().Set(reflect.ValueOf(object))
+	readJSONObjectPtr(v.Interface(), object, &err)
 	if err != nil {
 		return v, err
 	}
