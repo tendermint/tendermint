@@ -1,10 +1,10 @@
 package client
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/pkg/errors"
-	wire "github.com/tendermint/go-wire"
 	data "github.com/tendermint/go-wire/data"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/rpc/lib/client"
@@ -336,7 +336,7 @@ func (w *WSEvents) eventListener() {
 // on the merry way to the EventSwitch
 func (w *WSEvents) parseEvent(data []byte) (err error) {
 	result := new(ctypes.TMResult)
-	wire.ReadJSONPtr(result, data, &err)
+	err = json.Unmarshal(data, result)
 	if err != nil {
 		return err
 	}

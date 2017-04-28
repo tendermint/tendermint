@@ -3,6 +3,7 @@ package rpc
 import (
 	"bytes"
 	crand "crypto/rand"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -12,7 +13,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	wire "github.com/tendermint/go-wire"
+	data "github.com/tendermint/go-data"
 	client "github.com/tendermint/tendermint/rpc/lib/client"
 	server "github.com/tendermint/tendermint/rpc/lib/server"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
@@ -29,7 +30,35 @@ const (
 )
 
 // Define a type for results and register concrete versions
-type Result interface{}
+type ResultInner interface{}
+
+type Result struct {
+	ResultInner `json:"unwrap"`
+}
+
+func (r Result) MarshalJSON() ([]byte, error) {
+	return resultMapper.ToJSON(r.ResultInner)
+}
+
+func (r *Result) UnmarshalJSON(data []byte) (err error) {
+	parsed, err := resultMapper.FromJSON(data)
+	if err == nil && parsed != nil {
+		r.ResultInner = parsed.(ResultInner)
+	}
+	return
+}
+
+func (r Result) Unwrap() ResultInner {
+	tmrI := r.ResultInner
+	for wrap, ok := tmrI.(Result); ok; wrap, ok = tmrI.(Result) {
+		tmrI = wrap.ResultInner
+	}
+	return tmrI
+}
+
+func (r Result) Empty() bool {
+	return r.ResultInner == nil
+}
 
 type ResultEcho struct {
 	Value string
@@ -39,11 +68,9 @@ type ResultEchoBytes struct {
 	Value []byte
 }
 
-var _ = wire.RegisterInterface(
-	struct{ Result }{},
-	wire.ConcreteType{&ResultEcho{}, 0x1},
-	wire.ConcreteType{&ResultEchoBytes{}, 0x2},
-)
+var resultMapper = data.NewMapper(Result{}).
+	RegisterImplementation(&ResultEcho{}, "echo", 0x1).
+	RegisterImplementation(&ResultEchoBytes{}, "echo_bytes", 0x2)
 
 // Define some routes
 var Routes = map[string]*server.RPCFunc{
@@ -53,15 +80,15 @@ var Routes = map[string]*server.RPCFunc{
 }
 
 func EchoResult(v string) (Result, error) {
-	return &ResultEcho{v}, nil
+	return Result{&ResultEcho{v}}, nil
 }
 
 func EchoWSResult(wsCtx types.WSRPCContext, v string) (Result, error) {
-	return &ResultEcho{v}, nil
+	return Result{&ResultEcho{v}}, nil
 }
 
 func EchoBytesResult(v []byte) (Result, error) {
-	return &ResultEchoBytes{v}, nil
+	return Result{&ResultEchoBytes{v}}, nil
 }
 
 // launch unix and tcp servers
@@ -109,7 +136,7 @@ func echoViaHTTP(cl client.HTTPClient, val string) (string, error) {
 	if _, err := cl.Call("echo", params, &result); err != nil {
 		return "", err
 	}
-	return result.(*ResultEcho).Value, nil
+	return result.Unwrap().(*ResultEcho).Value, nil
 }
 
 func echoBytesViaHTTP(cl client.HTTPClient, bytes []byte) ([]byte, error) {
@@ -120,7 +147,7 @@ func echoBytesViaHTTP(cl client.HTTPClient, bytes []byte) ([]byte, error) {
 	if _, err := cl.Call("echo_bytes", params, &result); err != nil {
 		return []byte{}, err
 	}
-	return result.(*ResultEchoBytes).Value, nil
+	return result.Unwrap().(*ResultEchoBytes).Value, nil
 }
 
 func testWithHTTPClient(t *testing.T, cl client.HTTPClient) {
@@ -147,11 +174,11 @@ func echoViaWS(cl *client.WSClient, val string) (string, error) {
 	select {
 	case msg := <-cl.ResultsCh:
 		result := new(Result)
-		wire.ReadJSONPtr(result, msg, &err)
+		err = json.Unmarshal(msg, result)
 		if err != nil {
 			return "", nil
 		}
-		return (*result).(*ResultEcho).Value, nil
+		return result.Unwrap().(*ResultEcho).Value, nil
 	case err := <-cl.ErrorsCh:
 		return "", err
 	}
@@ -169,11 +196,11 @@ func echoBytesViaWS(cl *client.WSClient, bytes []byte) ([]byte, error) {
 	select {
 	case msg := <-cl.ResultsCh:
 		result := new(Result)
-		wire.ReadJSONPtr(result, msg, &err)
+		err = json.Unmarshal(msg, result)
 		if err != nil {
 			return []byte{}, nil
 		}
-		return (*result).(*ResultEchoBytes).Value, nil
+		return result.Unwrap().(*ResultEchoBytes).Value, nil
 	case err := <-cl.ErrorsCh:
 		return []byte{}, err
 	}
@@ -252,9 +279,9 @@ func TestWSNewWSRPCFunc(t *testing.T) {
 	select {
 	case msg := <-cl.ResultsCh:
 		result := new(Result)
-		wire.ReadJSONPtr(result, msg, &err)
+		err = json.Unmarshal(msg, result)
 		require.Nil(t, err)
-		got := (*result).(*ResultEcho).Value
+		got := result.Unwrap().(*ResultEcho).Value
 		assert.Equal(t, got, val)
 	case err := <-cl.ErrorsCh:
 		t.Fatal(err)
@@ -280,9 +307,9 @@ func TestWSHandlesArrayParams(t *testing.T) {
 	select {
 	case msg := <-cl.ResultsCh:
 		result := new(Result)
-		wire.ReadJSONPtr(result, msg, &err)
+		err = json.Unmarshal(msg, result)
 		require.Nil(t, err)
-		got := (*result).(*ResultEcho).Value
+		got := result.Unwrap().(*ResultEcho).Value
 		assert.Equal(t, got, val)
 	case err := <-cl.ErrorsCh:
 		t.Fatalf("%+v", err)

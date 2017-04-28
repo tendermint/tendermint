@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"strings"
 
-	wire "github.com/tendermint/go-wire"
 	events "github.com/tendermint/tmlibs/events"
 )
 
@@ -52,8 +51,14 @@ type RPCResponse struct {
 func NewRPCResponse(id string, res interface{}, err string) RPCResponse {
 	var raw *json.RawMessage
 	if res != nil {
-		rawMsg := json.RawMessage(wire.JSONBytes(res))
-		raw = &rawMsg
+		var js []byte
+		js, err2 := json.Marshal(res)
+		if err2 == nil {
+			rawMsg := json.RawMessage(js)
+			raw = &rawMsg
+		} else {
+			err = err2.Error()
+		}
 	}
 	return RPCResponse{
 		JSONRPC: "2.0",
