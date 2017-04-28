@@ -119,7 +119,7 @@ imports:
   subpackages:
   - term
 - name: github.com/tendermint/merkleeyes
-  version: 0fab643ccac1a3f93b90e0e2682a5d1b9d17f8c4
+  version: ea4dd9c7b773435de26bf59fddf90afd43a07d67
   subpackages:
   - app
   - client

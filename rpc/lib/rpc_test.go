@@ -20,10 +20,10 @@ import (
 
 // Client and Server should work over tcp or unix sockets
 const (
-	tcpAddr = "tcp://0.0.0.0:46657"
+	tcpAddr = "tcp://0.0.0.0:47768"
 
-	unixSocket = "/tmp/rpc.sock"
-	unixAddr   = "unix:///tmp/rpc.sock"
+	unixSocket = "/tmp/rpc_test.sock"
+	unixAddr   = "unix://" + unixSocket
 
 	websocketEndpoint = "/websocket/endpoint"
 )
