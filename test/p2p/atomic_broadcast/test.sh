@@ -17,7 +17,7 @@ for i in `seq 1 $N`; do
 	addr=$(test/p2p/ip.sh $i):46657
 
 	# current state
-	HASH1=`curl -s $addr/status | jq .result[1].latest_app_hash`
+	HASH1=`curl -s $addr/status | jq .result.latest_app_hash`
 	
 	# - send a tx
 	TX=aadeadbeefbeefbeef0$i
@@ -26,15 +26,15 @@ for i in `seq 1 $N`; do
 	echo ""
 
 	# we need to wait another block to get the new app_hash
-	h1=`curl -s $addr/status | jq .result[1].latest_block_height`
+	h1=`curl -s $addr/status | jq .result.latest_block_height`
 	h2=$h1
 	while [ "$h2" == "$h1" ]; do
 		sleep 1
-		h2=`curl -s $addr/status | jq .result[1].latest_block_height`
+		h2=`curl -s $addr/status | jq .result.latest_block_height`
 	done
 
 	# check that hash was updated
-	HASH2=`curl -s $addr/status | jq .result[1].latest_app_hash`
+	HASH2=`curl -s $addr/status | jq .result.latest_app_hash`
 	if [[ "$HASH1" == "$HASH2" ]]; then
 		echo "Expected state hash to update from $HASH1. Got $HASH2"
 		exit 1
@@ -44,7 +44,7 @@ for i in `seq 1 $N`; do
 	for j in `seq 1 $N`; do
 		if [[ "$i" != "$j" ]]; then
 			addrJ=$(test/p2p/ip.sh $j):46657
-			HASH3=`curl -s $addrJ/status | jq .result[1].latest_app_hash`
+			HASH3=`curl -s $addrJ/status | jq .result.latest_app_hash`
 			
 			if [[ "$HASH2" != "$HASH3" ]]; then
 				echo "App hash for node $j doesn't match. Got $HASH3, expected $HASH2"

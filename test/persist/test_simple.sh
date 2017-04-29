@@ -57,11 +57,11 @@ while [ "$ERR" != 0 ]; do
 done
 
 # wait for a new block
-h1=`curl -s $addr/status | jq .result[1].latest_block_height`
+h1=`curl -s $addr/status | jq .result.latest_block_height`
 h2=$h1
 while [ "$h2" == "$h1" ]; do
 	sleep 1
-	h2=`curl -s $addr/status | jq .result[1].latest_block_height`
+	h2=`curl -s $addr/status | jq .result.latest_block_height`
 done
 
 kill_procs
