@@ -3,7 +3,6 @@ package types
 import (
 	// for registering TMEventData as events.EventData
 	abci "github.com/tendermint/abci/types"
-	"github.com/tendermint/go-wire"
 	"github.com/tendermint/go-wire/data"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/events"
@@ -34,10 +33,47 @@ func EventStringVote() string             { return "Vote" }
 
 //----------------------------------------
 
+var (
+	EventDataNameNewBlock       = "new_block"
+	EventDataNameNewBlockHeader = "new_block_header"
+	EventDataNameTx             = "tx"
+	EventDataNameRoundState     = "round_state"
+	EventDataNameVote           = "vote"
+)
+
+//----------------------------------------
+
 // implements events.EventData
-type TMEventData interface {
+type TMEventDataInner interface {
 	events.EventData
-	AssertIsTMEventData()
+}
+
+type TMEventData struct {
+	TMEventDataInner `json:"unwrap"`
+}
+
+func (tmr TMEventData) MarshalJSON() ([]byte, error) {
+	return tmEventDataMapper.ToJSON(tmr.TMEventDataInner)
+}
+
+func (tmr *TMEventData) UnmarshalJSON(data []byte) (err error) {
+	parsed, err := tmEventDataMapper.FromJSON(data)
+	if err == nil && parsed != nil {
+		tmr.TMEventDataInner = parsed.(TMEventDataInner)
+	}
+	return
+}
+
+func (tmr TMEventData) Unwrap() TMEventDataInner {
+	tmrI := tmr.TMEventDataInner
+	for wrap, ok := tmrI.(TMEventData); ok; wrap, ok = tmrI.(TMEventData) {
+		tmrI = wrap.TMEventDataInner
+	}
+	return tmrI
+}
+
+func (tmr TMEventData) Empty() bool {
+	return tmr.TMEventDataInner == nil
 }
 
 const (
@@ -50,15 +86,12 @@ const (
 	EventDataTypeVote       = byte(0x12)
 )
 
-var _ = wire.RegisterInterface(
-	struct{ TMEventData }{},
-	wire.ConcreteType{EventDataNewBlock{}, EventDataTypeNewBlock},
-	wire.ConcreteType{EventDataNewBlockHeader{}, EventDataTypeNewBlockHeader},
-	// wire.ConcreteType{EventDataFork{}, EventDataTypeFork },
-	wire.ConcreteType{EventDataTx{}, EventDataTypeTx},
-	wire.ConcreteType{EventDataRoundState{}, EventDataTypeRoundState},
-	wire.ConcreteType{EventDataVote{}, EventDataTypeVote},
-)
+var tmEventDataMapper = data.NewMapper(TMEventData{}).
+	RegisterImplementation(EventDataNewBlock{}, EventDataNameNewBlock, EventDataTypeNewBlock).
+	RegisterImplementation(EventDataNewBlockHeader{}, EventDataNameNewBlockHeader, EventDataTypeNewBlockHeader).
+	RegisterImplementation(EventDataTx{}, EventDataNameTx, EventDataTypeTx).
+	RegisterImplementation(EventDataRoundState{}, EventDataNameRoundState, EventDataTypeRoundState).
+	RegisterImplementation(EventDataVote{}, EventDataNameVote, EventDataTypeVote)
 
 // Most event messages are basic types (a block, a transaction)
 // but some (an input to a call tx or a receive) are more exotic
@@ -147,55 +180,55 @@ func AddListenerForEvent(evsw EventSwitch, id, event string, cb func(data TMEven
 //--- block, tx, and vote events
 
 func FireEventNewBlock(fireable events.Fireable, block EventDataNewBlock) {
-	fireEvent(fireable, EventStringNewBlock(), block)
+	fireEvent(fireable, EventStringNewBlock(), TMEventData{block})
 }
 
 func FireEventNewBlockHeader(fireable events.Fireable, header EventDataNewBlockHeader) {
-	fireEvent(fireable, EventStringNewBlockHeader(), header)
+	fireEvent(fireable, EventStringNewBlockHeader(), TMEventData{header})
 }
 
 func FireEventVote(fireable events.Fireable, vote EventDataVote) {
-	fireEvent(fireable, EventStringVote(), vote)
+	fireEvent(fireable, EventStringVote(), TMEventData{vote})
 }
 
 func FireEventTx(fireable events.Fireable, tx EventDataTx) {
-	fireEvent(fireable, EventStringTx(tx.Tx), tx)
+	fireEvent(fireable, EventStringTx(tx.Tx), TMEventData{tx})
 }
 
 //--- EventDataRoundState events
 
 func FireEventNewRoundStep(fireable events.Fireable, rs EventDataRoundState) {
-	fireEvent(fireable, EventStringNewRoundStep(), rs)
+	fireEvent(fireable, EventStringNewRoundStep(), TMEventData{rs})
 }
 
 func FireEventTimeoutPropose(fireable events.Fireable, rs EventDataRoundState) {
-	fireEvent(fireable, EventStringTimeoutPropose(), rs)
+	fireEvent(fireable, EventStringTimeoutPropose(), TMEventData{rs})
 }
 
 func FireEventTimeoutWait(fireable events.Fireable, rs EventDataRoundState) {
-	fireEvent(fireable, EventStringTimeoutWait(), rs)
+	fireEvent(fireable, EventStringTimeoutWait(), TMEventData{rs})
 }
 
 func FireEventNewRound(fireable events.Fireable, rs EventDataRoundState) {
-	fireEvent(fireable, EventStringNewRound(), rs)
+	fireEvent(fireable, EventStringNewRound(), TMEventData{rs})
 }
 
 func FireEventCompleteProposal(fireable events.Fireable, rs EventDataRoundState) {
-	fireEvent(fireable, EventStringCompleteProposal(), rs)
+	fireEvent(fireable, EventStringCompleteProposal(), TMEventData{rs})
 }
 
 func FireEventPolka(fireable events.Fireable, rs EventDataRoundState) {
-	fireEvent(fireable, EventStringPolka(), rs)
+	fireEvent(fireable, EventStringPolka(), TMEventData{rs})
 }
 
 func FireEventUnlock(fireable events.Fireable, rs EventDataRoundState) {
-	fireEvent(fireable, EventStringUnlock(), rs)
+	fireEvent(fireable, EventStringUnlock(), TMEventData{rs})
 }
 
 func FireEventRelock(fireable events.Fireable, rs EventDataRoundState) {
-	fireEvent(fireable, EventStringRelock(), rs)
+	fireEvent(fireable, EventStringRelock(), TMEventData{rs})
 }
 
 func FireEventLock(fireable events.Fireable, rs EventDataRoundState) {
-	fireEvent(fireable, EventStringLock(), rs)
+	fireEvent(fireable, EventStringLock(), TMEventData{rs})
 }

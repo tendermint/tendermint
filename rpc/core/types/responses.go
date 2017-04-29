@@ -7,7 +7,7 @@ import (
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-wire/data"
 	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/rpc/lib/types"
+	// 	"github.com/tendermint/tendermint/rpc/lib/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -212,60 +212,3 @@ const (
 	ResultNameUnsafeWriteHeapProfile = "unsafe_write_heap"
 	ResultNameUnsafeFlushMempool     = "unsafe_flush_mempool"
 )
-
-type TMResultInner interface {
-	rpctypes.Result
-}
-
-type TMResult struct {
-	TMResultInner `json:"unwrap"`
-}
-
-func (tmr TMResult) MarshalJSON() ([]byte, error) {
-	return tmResultMapper.ToJSON(tmr.TMResultInner)
-}
-
-func (tmr *TMResult) UnmarshalJSON(data []byte) (err error) {
-	parsed, err := tmResultMapper.FromJSON(data)
-	if err == nil && parsed != nil {
-		tmr.TMResultInner = parsed.(TMResultInner)
-	}
-	return
-}
-
-func (tmr TMResult) Unwrap() TMResultInner {
-	tmrI := tmr.TMResultInner
-	for wrap, ok := tmrI.(TMResult); ok; wrap, ok = tmrI.(TMResult) {
-		tmrI = wrap.TMResultInner
-	}
-	return tmrI
-}
-
-func (tmr TMResult) Empty() bool {
-	return tmr.TMResultInner == nil
-}
-
-var tmResultMapper = data.NewMapper(TMResult{}).
-	RegisterImplementation(&ResultGenesis{}, ResultNameGenesis, ResultTypeGenesis).
-	RegisterImplementation(&ResultBlockchainInfo{}, ResultNameBlockchainInfo, ResultTypeBlockchainInfo).
-	RegisterImplementation(&ResultBlock{}, ResultNameBlock, ResultTypeBlock).
-	RegisterImplementation(&ResultCommit{}, ResultNameCommit, ResultTypeCommit).
-	RegisterImplementation(&ResultStatus{}, ResultNameStatus, ResultTypeStatus).
-	RegisterImplementation(&ResultNetInfo{}, ResultNameNetInfo, ResultTypeNetInfo).
-	RegisterImplementation(&ResultDialSeeds{}, ResultNameDialSeeds, ResultTypeDialSeeds).
-	RegisterImplementation(&ResultValidators{}, ResultNameValidators, ResultTypeValidators).
-	RegisterImplementation(&ResultDumpConsensusState{}, ResultNameDumpConsensusState, ResultTypeDumpConsensusState).
-	RegisterImplementation(&ResultBroadcastTx{}, ResultNameBroadcastTx, ResultTypeBroadcastTx).
-	RegisterImplementation(&ResultBroadcastTxCommit{}, ResultNameBroadcastTxCommit, ResultTypeBroadcastTxCommit).
-	RegisterImplementation(&ResultTx{}, ResultNameTx, ResultTypeTx).
-	RegisterImplementation(&ResultUnconfirmedTxs{}, ResultNameUnconfirmedTxs, ResultTypeUnconfirmedTxs).
-	RegisterImplementation(&ResultSubscribe{}, ResultNameSubscribe, ResultTypeSubscribe).
-	RegisterImplementation(&ResultUnsubscribe{}, ResultNameUnsubscribe, ResultTypeUnsubscribe).
-	RegisterImplementation(&ResultEvent{}, ResultNameEvent, ResultTypeEvent).
-	RegisterImplementation(&ResultUnsafeSetConfig{}, ResultNameUnsafeSetConfig, ResultTypeUnsafeSetConfig).
-	RegisterImplementation(&ResultUnsafeProfile{}, ResultNameUnsafeStartCPUProfiler, ResultTypeUnsafeStartCPUProfiler).
-	RegisterImplementation(&ResultUnsafeProfile{}, ResultNameUnsafeStopCPUProfiler, ResultTypeUnsafeStopCPUProfiler).
-	RegisterImplementation(&ResultUnsafeProfile{}, ResultNameUnsafeWriteHeapProfile, ResultTypeUnsafeWriteHeapProfile).
-	RegisterImplementation(&ResultUnsafeFlushMempool{}, ResultNameUnsafeFlushMempool, ResultTypeUnsafeFlushMempool).
-	RegisterImplementation(&ResultABCIQuery{}, ResultNameABCIQuery, ResultTypeABCIQuery).
-	RegisterImplementation(&ResultABCIInfo{}, ResultNameABCIInfo, ResultTypeABCIInfo)

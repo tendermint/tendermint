@@ -50,7 +50,7 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	// subscribe to tx being committed in block
 	deliverTxResCh := make(chan types.EventDataTx, 1)
 	types.AddListenerForEvent(eventSwitch, "rpc", types.EventStringTx(tx), func(data types.TMEventData) {
-		deliverTxResCh <- data.(types.EventDataTx)
+		deliverTxResCh <- data.Unwrap().(types.EventDataTx)
 	})
 
 	// broadcast the tx and register checktx callback

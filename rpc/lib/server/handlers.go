@@ -14,7 +14,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
-	wire "github.com/tendermint/go-wire"
+	//wire "github.com/tendermint/go-wire"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 	cmn "github.com/tendermint/tmlibs/common"
 	events "github.com/tendermint/tmlibs/events"
@@ -204,7 +204,7 @@ func jsonParamsToArgsWS(rpcFunc *RPCFunc, paramsI interface{}, wsCtx types.WSRPC
 func _jsonObjectToArg(ty reflect.Type, object interface{}) (reflect.Value, error) {
 	var err error
 	v := reflect.New(ty)
-	wire.ReadJSONObjectPtr(v.Interface(), object, &err)
+	readJSONObjectPtr(v.Interface(), object, &err)
 	if err != nil {
 		return v, err
 	}
@@ -280,9 +280,8 @@ func httpParamsToArgs(rpcFunc *RPCFunc, r *http.Request) ([]reflect.Value, error
 }
 
 func _jsonStringToArg(ty reflect.Type, arg string) (reflect.Value, error) {
-	var err error
 	v := reflect.New(ty)
-	wire.ReadJSONPtr(v.Interface(), []byte(arg), &err)
+	err := json.Unmarshal([]byte(arg), v.Interface())
 	if err != nil {
 		return v, err
 	}
@@ -315,9 +314,8 @@ func nonJsonToArg(ty reflect.Type, arg string) (reflect.Value, error, bool) {
 	}
 
 	if isQuotedString && expectingByteSlice {
-		var err error
 		v := reflect.New(reflect.TypeOf(""))
-		wire.ReadJSONPtr(v.Interface(), []byte(arg), &err)
+		err := json.Unmarshal([]byte(arg), v.Interface())
 		if err != nil {
 			return reflect.ValueOf(nil), err, false
 		}

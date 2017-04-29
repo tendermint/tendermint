@@ -1,6 +1,7 @@
 package rpctest
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"os"
@@ -11,7 +12,6 @@ import (
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
-	wire "github.com/tendermint/go-wire"
 	logger "github.com/tendermint/tmlibs/logger"
 
 	abci "github.com/tendermint/abci/types"
@@ -131,15 +131,16 @@ func waitForEvent(t *testing.T, wsc *client.WSClient, eventid string, dieOnTimeo
 		for {
 			select {
 			case r := <-wsc.ResultsCh:
-				result := new(ctypes.TMResult)
-				wire.ReadJSONPtr(result, r, &err)
+				fmt.Println("GOT IT", string(r))
+				result := new(ctypes.ResultEvent)
+				err = json.Unmarshal(r, result)
 				if err != nil {
-					errCh <- err
-					break LOOP
+					fmt.Println("POOP", err)
+					// cant distinguish between error and wrong type ...
+					continue
 				}
-				event, ok := result.Unwrap().(*ctypes.ResultEvent)
-				if ok && event.Name == eventid {
-					goodCh <- event.Data
+				if result.Name == eventid {
+					goodCh <- result.Data
 					break LOOP
 				}
 			case err := <-wsc.ErrorsCh:
