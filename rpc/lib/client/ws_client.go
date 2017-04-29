@@ -154,13 +154,6 @@ func (wsc *WSClient) Unsubscribe(eventid string) error {
 // Call asynchronously calls a given method by sending an RPCRequest to the
 // server. Results will be available on ResultsCh, errors, if any, on ErrorsCh.
 func (wsc *WSClient) Call(method string, params map[string]interface{}) error {
-	// we need this step because we attempt to decode values using `go-wire`
-	// (handlers.go:470) on the server side
-	// encodedParams := make(map[string]interface{})
-	// for k, v := range params {
-	// 	bytes := json.RawMessage(wire.JSONBytes(v))
-	// 	encodedParams[k] = &bytes
-	// }
 	err := wsc.WriteJSON(types.RPCRequest{
 		JSONRPC: "2.0",
 		Method:  method,

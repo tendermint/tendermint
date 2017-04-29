@@ -7,7 +7,6 @@ import (
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-wire/data"
 	"github.com/tendermint/tendermint/p2p"
-	// 	"github.com/tendermint/tendermint/rpc/lib/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -121,94 +120,11 @@ type ResultUnsafeSetConfig struct{}
 
 type ResultUnsafeProfile struct{}
 
-type ResultSubscribe struct {
-}
+type ResultSubscribe struct{}
 
-type ResultUnsubscribe struct {
-}
+type ResultUnsubscribe struct{}
 
 type ResultEvent struct {
 	Name string            `json:"name"`
 	Data types.TMEventData `json:"data"`
 }
-
-//----------------------------------------
-// response & result types
-
-const (
-	// 0x0 bytes are for the blockchain
-	ResultTypeGenesis        = byte(0x01)
-	ResultTypeBlockchainInfo = byte(0x02)
-	ResultTypeBlock          = byte(0x03)
-	ResultTypeCommit         = byte(0x04)
-
-	// 0x2 bytes are for the network
-	ResultTypeStatus    = byte(0x20)
-	ResultTypeNetInfo   = byte(0x21)
-	ResultTypeDialSeeds = byte(0x22)
-
-	// 0x4 bytes are for the consensus
-	ResultTypeValidators         = byte(0x40)
-	ResultTypeDumpConsensusState = byte(0x41)
-
-	// 0x6 bytes are for txs / the application
-	ResultTypeBroadcastTx       = byte(0x60)
-	ResultTypeUnconfirmedTxs    = byte(0x61)
-	ResultTypeBroadcastTxCommit = byte(0x62)
-	ResultTypeTx                = byte(0x63)
-
-	// 0x7 bytes are for querying the application
-	ResultTypeABCIQuery = byte(0x70)
-	ResultTypeABCIInfo  = byte(0x71)
-
-	// 0x8 bytes are for events
-	ResultTypeSubscribe   = byte(0x80)
-	ResultTypeUnsubscribe = byte(0x81)
-	ResultTypeEvent       = byte(0x82)
-
-	// 0xa bytes for testing
-	ResultTypeUnsafeSetConfig        = byte(0xa0)
-	ResultTypeUnsafeStartCPUProfiler = byte(0xa1)
-	ResultTypeUnsafeStopCPUProfiler  = byte(0xa2)
-	ResultTypeUnsafeWriteHeapProfile = byte(0xa3)
-	ResultTypeUnsafeFlushMempool     = byte(0xa4)
-)
-
-const (
-	// for the blockchain
-	ResultNameGenesis        = "genesis"
-	ResultNameBlockchainInfo = "info"
-	ResultNameBlock          = "block"
-	ResultNameCommit         = "commit"
-
-	// for the network
-	ResultNameStatus    = "status"
-	ResultNameNetInfo   = "netinfo"
-	ResultNameDialSeeds = "dialseeds"
-
-	// for the consensus
-	ResultNameValidators         = "validators"
-	ResultNameDumpConsensusState = "consensus"
-
-	// for txs / the application
-	ResultNameBroadcastTx       = "broadcast_tx"
-	ResultNameUnconfirmedTxs    = "unconfirmed_tx"
-	ResultNameBroadcastTxCommit = "broadcast_tx_commit"
-	ResultNameTx                = "tx"
-
-	// for querying the application
-	ResultNameABCIQuery = "abci_query"
-	ResultNameABCIInfo  = "abci_info"
-
-	// for events
-	ResultNameSubscribe   = "subscribe"
-	ResultNameUnsubscribe = "unsubscribe"
-	ResultNameEvent       = "event"
-
-	// for testing
-	ResultNameUnsafeSetConfig        = "unsafe_set_config"
-	ResultNameUnsafeStartCPUProfiler = "unsafe_start_profiler"
-	ResultNameUnsafeStopCPUProfiler  = "unsafe_stop_profiler"
-	ResultNameUnsafeWriteHeapProfile = "unsafe_write_heap"
-	ResultNameUnsafeFlushMempool     = "unsafe_flush_mempool"
-)

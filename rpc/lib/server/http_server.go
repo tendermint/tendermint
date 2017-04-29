@@ -58,7 +58,6 @@ func WriteRPCResponseHTTPError(w http.ResponseWriter, httpCode int, res types.RP
 }
 
 func WriteRPCResponseHTTP(w http.ResponseWriter, res types.RPCResponse) {
-	// jsonBytes := wire.JSONBytesPretty(res)
 	jsonBytes, err := json.Marshal(res)
 	if err != nil {
 		panic(err)

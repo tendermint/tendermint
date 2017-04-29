@@ -67,13 +67,6 @@ func NewJSONRPCClient(remote string) *JSONRPCClient {
 }
 
 func (c *JSONRPCClient) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
-	// we need this step because we attempt to decode values using `go-wire`
-	// (handlers.go:176) on the server side
-	// encodedParams := make(map[string]interface{})
-	// for k, v := range params {
-	// 	bytes := json.RawMessage(wire.JSONBytes(v))
-	// 	encodedParams[k] = &bytes
-	// }
 	request := types.RPCRequest{
 		JSONRPC: "2.0",
 		Method:  method,

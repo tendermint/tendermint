@@ -59,25 +59,17 @@ though this is configurable when starting the server.
 Define some types and routes:
 
 ```
-// Define a type for results and register concrete versions with go-wire
-type Result interface{}
-
 type ResultStatus struct {
 	Value string
 }
 
-var _ = wire.RegisterInterface(
-	struct{ Result }{},
-	wire.ConcreteType{&ResultStatus{}, 0x1},
-)
-
 // Define some routes
 var Routes = map[string]*rpcserver.RPCFunc{
-	"status": rpcserver.NewRPCFunc(StatusResult, "arg"),
+	"status": rpcserver.NewRPCFunc(Status, "arg"),
 }
 
 // an rpc function
-func StatusResult(v string) (Result, error) {
+func Status(v string) (*ResultStatus, error) {
 	return &ResultStatus{v}, nil
 }
 

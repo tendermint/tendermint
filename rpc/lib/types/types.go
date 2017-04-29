@@ -25,22 +25,6 @@ func NewRPCRequest(id string, method string, params map[string]interface{}) RPCR
 
 //----------------------------------------
 
-/*
-Result is a generic interface.
-Applications should register type-bytes like so:
-
-var _ = wire.RegisterInterface(
-	struct{ Result }{},
-	wire.ConcreteType{&ResultGenesis{}, ResultTypeGenesis},
-	wire.ConcreteType{&ResultBlockchainInfo{}, ResultTypeBlockchainInfo},
-	...
-)
-*/
-type Result interface {
-}
-
-//----------------------------------------
-
 type RPCResponse struct {
 	JSONRPC string           `json:"jsonrpc"`
 	ID      string           `json:"id"`
