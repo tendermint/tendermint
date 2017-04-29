@@ -13,6 +13,7 @@ import (
 	crypto "github.com/tendermint/go-crypto"
 	wire "github.com/tendermint/go-wire"
 	bc "github.com/tendermint/tendermint/blockchain"
+	tmcfg "github.com/tendermint/tendermint/config/tendermint"
 	"github.com/tendermint/tendermint/consensus"
 	mempl "github.com/tendermint/tendermint/mempool"
 	p2p "github.com/tendermint/tendermint/p2p"
@@ -67,21 +68,26 @@ func NewNodeDefault(config *viper.Viper) *Node {
 		config.GetString("abci"),
 		config.GetString("db_dir"),
 	))
+	// config.ABCI.ProxyApp, config.ABCI.Mode, config.DB.Dir))
 }
 
 func NewNode(config *viper.Viper, privValidator *types.PrivValidator, clientCreator proxy.ClientCreator) *Node {
 
+	tmConfig := new(tmcfg.Config)
+	if err := config.Unmarshal(tmConfig); err != nil {
+		panic(err)
+	}
+
 	// Get BlockStore
-	blockStoreDB := dbm.NewDB("blockstore", config.GetString("db_backend"), config.GetString("db_dir"))
+	blockStoreDB := dbm.NewDB("blockstore", tmConfig.DB.Backend, tmConfig.DB.Dir)
 	blockStore := bc.NewBlockStore(blockStoreDB)
 
 	// Get State
-	stateDB := dbm.NewDB("state", config.GetString("db_backend"), config.GetString("db_dir"))
-	state := sm.GetState(stateDB, config.GetString("genesis_file"))
+	stateDB := dbm.NewDB("state", tmConfig.DB.Backend, tmConfig.DB.Dir)
+	state := sm.GetState(stateDB, tmConfig.Chain.GenesisFile)
 
 	// add the chainid and number of validators to the global config
 	config.Set("chain_id", state.ChainID)
-	config.Set("num_vals", state.Validators.Size())
 
 	// Create the proxyApp, which manages connections (consensus, mempool, query)
 	// and sync tendermint and the app by replaying any necessary blocks
@@ -95,9 +101,9 @@ func NewNode(config *viper.Viper, privValidator *types.PrivValidator, clientCrea
 
 	// Transaction indexing
 	var txIndexer txindex.TxIndexer
-	switch config.GetString("tx_index") {
+	switch tmConfig.DB.TxIndex {
 	case "kv":
-		store := dbm.NewDB("tx_index", config.GetString("db_backend"), config.GetString("db_dir"))
+		store := dbm.NewDB("tx_index", tmConfig.DB.Backend, tmConfig.DB.Dir)
 		txIndexer = kv.NewTxIndex(store)
 	default:
 		txIndexer = &null.TxIndex{}
