@@ -62,7 +62,11 @@ func NewNodeDefault(config *viper.Viper) *Node {
 	// Get PrivValidator
 	privValidatorFile := config.GetString("priv_validator_file")
 	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
-	return NewNode(config, privValidator, proxy.DefaultClientCreator(config))
+	return NewNode(config, privValidator, proxy.DefaultClientCreator(
+		config.GetString("proxy_app"),
+		config.GetString("abci"),
+		config.GetString("db_dir"),
+	))
 }
 
 func NewNode(config *viper.Viper, privValidator *types.PrivValidator, clientCreator proxy.ClientCreator) *Node {
@@ -81,7 +85,7 @@ func NewNode(config *viper.Viper, privValidator *types.PrivValidator, clientCrea
 
 	// Create the proxyApp, which manages connections (consensus, mempool, query)
 	// and sync tendermint and the app by replaying any necessary blocks
-	proxyApp := proxy.NewAppConns(config, clientCreator, consensus.NewHandshaker(config, state, blockStore))
+	proxyApp := proxy.NewAppConns(clientCreator, consensus.NewHandshaker(config, state, blockStore))
 	if _, err := proxyApp.Start(); err != nil {
 		cmn.Exit(cmn.Fmt("Error starting proxy app connections: %v", err))
 	}
