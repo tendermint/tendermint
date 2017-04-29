@@ -1,7 +1,6 @@
 package proxy
 
 import (
-	"github.com/spf13/viper"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -16,8 +15,8 @@ type AppConns interface {
 	Query() AppConnQuery
 }
 
-func NewAppConns(config *viper.Viper, clientCreator ClientCreator, handshaker Handshaker) AppConns {
-	return NewMultiAppConn(config, clientCreator, handshaker)
+func NewAppConns(clientCreator ClientCreator, handshaker Handshaker) AppConns {
+	return NewMultiAppConn(clientCreator, handshaker)
 }
 
 //-----------------------------
@@ -34,8 +33,6 @@ type Handshaker interface {
 type multiAppConn struct {
 	cmn.BaseService
 
-	config *viper.Viper
-
 	handshaker Handshaker
 
 	mempoolConn   *appConnMempool
@@ -46,9 +43,8 @@ type multiAppConn struct {
 }
 
 // Make all necessary abci connections to the application
-func NewMultiAppConn(config *viper.Viper, clientCreator ClientCreator, handshaker Handshaker) *multiAppConn {
+func NewMultiAppConn(clientCreator ClientCreator, handshaker Handshaker) *multiAppConn {
 	multiAppConn := &multiAppConn{
-		config:        config,
 		handshaker:    handshaker,
 		clientCreator: clientCreator,
 	}
