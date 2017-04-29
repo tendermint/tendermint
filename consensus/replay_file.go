@@ -247,7 +247,7 @@ func newConsensusStateForReplay(config *viper.Viper) *ConsensusState {
 
 	// Create proxyAppConn connection (consensus, mempool, query)
 	clientCreator := proxy.DefaultClientCreator(config.GetString("proxy_app"), config.GetString("abci"), config.GetString("db_dir"))
-	proxyApp := proxy.NewAppConns(clientCreator, NewHandshaker(config, state, blockStore))
+	proxyApp := proxy.NewAppConns(clientCreator, NewHandshaker(state, blockStore))
 	_, err := proxyApp.Start()
 	if err != nil {
 		cmn.Exit(cmn.Fmt("Error starting proxy app conns: %v", err))
