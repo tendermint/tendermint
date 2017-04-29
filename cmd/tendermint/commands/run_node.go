@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	//cfg "github.com/tendermint/tendermint/config/tendermint"
 	"github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -36,23 +37,23 @@ var (
 func init() {
 
 	// configuration options
-	runNodeCmd.Flags().StringVar(&moniker, "moniker", config.GetString("moniker"),
+	runNodeCmd.Flags().StringVar(&moniker, "moniker", config.GetString("node.moniker"),
 		"Node Name")
-	runNodeCmd.Flags().StringVar(&nodeLaddr, "node_laddr", config.GetString("node_laddr"),
+	runNodeCmd.Flags().StringVar(&nodeLaddr, "node_laddr", config.GetString("node.listen_addr"),
 		"Node listen address. (0.0.0.0:0 means any interface, any port)")
-	runNodeCmd.Flags().StringVar(&seeds, "seeds", config.GetString("seeds"),
+	runNodeCmd.Flags().StringVar(&seeds, "seeds", config.GetString("network.seeds"),
 		"Comma delimited host:port seed nodes")
-	runNodeCmd.Flags().BoolVar(&fastSync, "fast_sync", config.GetBool("fast_sync"),
+	runNodeCmd.Flags().BoolVar(&fastSync, "fast_sync", config.GetBool("blockchain.fast_sync"),
 		"Fast blockchain syncing")
-	runNodeCmd.Flags().BoolVar(&skipUPNP, "skip_upnp", config.GetBool("skip_upnp"),
+	runNodeCmd.Flags().BoolVar(&skipUPNP, "skip_upnp", config.GetBool("network.skip_upnp"),
 		"Skip UPNP configuration")
-	runNodeCmd.Flags().StringVar(&rpcLaddr, "rpc_laddr", config.GetString("rpc_laddr"),
+	runNodeCmd.Flags().StringVar(&rpcLaddr, "rpc_laddr", config.GetString("rpc.listen_addr"),
 		"RPC listen address. Port required")
-	runNodeCmd.Flags().StringVar(&grpcLaddr, "grpc_laddr", config.GetString("grpc_laddr"),
+	runNodeCmd.Flags().StringVar(&grpcLaddr, "grpc_laddr", config.GetString("grpc.listen_addr"),
 		"GRPC listen address (BroadcastTx only). Port required")
-	runNodeCmd.Flags().StringVar(&proxyApp, "proxy_app", config.GetString("proxy_app"),
+	runNodeCmd.Flags().StringVar(&proxyApp, "proxy_app", config.GetString("abci.proxy_app"),
 		"Proxy app address, or 'nilapp' or 'dummy' for local testing.")
-	runNodeCmd.Flags().StringVar(&abciTransport, "abci", config.GetString("abci"),
+	runNodeCmd.Flags().StringVar(&abciTransport, "abci", config.GetString("abci.mode"),
 		"Specify abci transport (socket | grpc)")
 
 	// feature flags
@@ -65,16 +66,16 @@ func init() {
 func setConfigFlags(cmd *cobra.Command, args []string) {
 
 	// Merge parsed flag values onto config
-	config.Set("moniker", moniker)
-	config.Set("node_laddr", nodeLaddr)
-	config.Set("seeds", seeds)
-	config.Set("fast_sync", fastSync)
-	config.Set("skip_upnp", skipUPNP)
-	config.Set("rpc_laddr", rpcLaddr)
-	config.Set("grpc_laddr", grpcLaddr)
-	config.Set("proxy_app", proxyApp)
-	config.Set("abci", abciTransport)
-	config.Set("pex_reactor", pex)
+	config.Set("node.moniker", moniker)
+	config.Set("node.listen_addr", nodeLaddr)
+	config.Set("network.seeds", seeds)
+	config.Set("network.skip_upnp", skipUPNP)
+	config.Set("network.pex_reactor", pex)
+	config.Set("blockchain.fast_sync", fastSync)
+	config.Set("rpc.listen_addr", rpcLaddr)
+	config.Set("rpc.grpc_listen_addr", grpcLaddr)
+	config.Set("abci.proxy_app", proxyApp)
+	config.Set("abci.mode", abciTransport)
 }
 
 // Users wishing to:
@@ -113,7 +114,7 @@ func runNode(cmd *cobra.Command, args []string) error {
 	}
 
 	// Create & start node
-	n := node.NewNodeDefault(config)
+	n := node.NewNodeDefault(config) //tmConfig)
 	if _, err := n.Start(); err != nil {
 		return fmt.Errorf("Failed to start node: %v", err)
 	} else {
