@@ -29,58 +29,21 @@ const (
 	websocketEndpoint = "/websocket/endpoint"
 )
 
-// Define a type for results and register concrete versions
-type ResultInner interface{}
-
-type Result struct {
-	ResultInner `json:"unwrap"`
-}
-
-func (r Result) MarshalJSON() ([]byte, error) {
-	return resultMapper.ToJSON(r.ResultInner)
-}
-
-func (r *Result) UnmarshalJSON(data []byte) (err error) {
-	parsed, err := resultMapper.FromJSON(data)
-	if err == nil && parsed != nil {
-		r.ResultInner = parsed.(ResultInner)
-	}
-	return
-}
-
-func (r Result) Unwrap() ResultInner {
-	tmrI := r.ResultInner
-	for wrap, ok := tmrI.(Result); ok; wrap, ok = tmrI.(Result) {
-		tmrI = wrap.ResultInner
-	}
-	return tmrI
-}
-
-func (r Result) Empty() bool {
-	return r.ResultInner == nil
-}
-
 type ResultEcho struct {
-	Value string
+	Value string `json:"value"`
 }
 
 type ResultEchoInt struct {
-	Value int
+	Value int `json:"value"`
 }
 
 type ResultEchoBytes struct {
-	Value []byte
+	Value []byte `json:"value"`
 }
 
 type ResultEchoDataBytes struct {
-	Value data.Bytes
+	Value data.Bytes `json:"value"`
 }
-
-var resultMapper = data.NewMapper(Result{}).
-	RegisterImplementation(&ResultEcho{}, "echo", 0x1).
-	RegisterImplementation(&ResultEchoBytes{}, "echo_bytes", 0x2).
-	RegisterImplementation(&ResultEchoDataBytes{}, "echo_data_bytes", 0x3).
-	RegisterImplementation(&ResultEchoInt{}, "echo_int", 0x4)
 
 // Define some routes
 var Routes = map[string]*server.RPCFunc{
@@ -91,24 +54,24 @@ var Routes = map[string]*server.RPCFunc{
 	"echo_int":        server.NewRPCFunc(EchoIntResult, "arg"),
 }
 
-func EchoResult(v string) (Result, error) {
-	return Result{&ResultEcho{v}}, nil
+func EchoResult(v string) (*ResultEcho, error) {
+	return &ResultEcho{v}, nil
 }
 
-func EchoWSResult(wsCtx types.WSRPCContext, v string) (Result, error) {
-	return Result{&ResultEcho{v}}, nil
+func EchoWSResult(wsCtx types.WSRPCContext, v string) (*ResultEcho, error) {
+	return &ResultEcho{v}, nil
 }
 
-func EchoIntResult(v int) (Result, error) {
-	return Result{&ResultEchoInt{v}}, nil
+func EchoIntResult(v int) (*ResultEchoInt, error) {
+	return &ResultEchoInt{v}, nil
 }
 
-func EchoBytesResult(v []byte) (Result, error) {
-	return Result{&ResultEchoBytes{v}}, nil
+func EchoBytesResult(v []byte) (*ResultEchoBytes, error) {
+	return &ResultEchoBytes{v}, nil
 }
 
-func EchoDataBytesResult(v data.Bytes) (Result, error) {
-	return Result{&ResultEchoDataBytes{v}}, nil
+func EchoDataBytesResult(v data.Bytes) (*ResultEchoDataBytes, error) {
+	return &ResultEchoDataBytes{v}, nil
 }
 
 // launch unix and tcp servers
@@ -152,44 +115,44 @@ func echoViaHTTP(cl client.HTTPClient, val string) (string, error) {
 	params := map[string]interface{}{
 		"arg": val,
 	}
-	var result Result
-	if _, err := cl.Call("echo", params, &result); err != nil {
+	result := new(ResultEcho)
+	if _, err := cl.Call("echo", params, result); err != nil {
 		return "", err
 	}
-	return result.Unwrap().(*ResultEcho).Value, nil
+	return result.Value, nil
 }
 
 func echoIntViaHTTP(cl client.HTTPClient, val int) (int, error) {
 	params := map[string]interface{}{
 		"arg": val,
 	}
-	var result Result
-	if _, err := cl.Call("echo_int", params, &result); err != nil {
+	result := new(ResultEchoInt)
+	if _, err := cl.Call("echo_int", params, result); err != nil {
 		return 0, err
 	}
-	return result.Unwrap().(*ResultEchoInt).Value, nil
+	return result.Value, nil
 }
 
 func echoBytesViaHTTP(cl client.HTTPClient, bytes []byte) ([]byte, error) {
 	params := map[string]interface{}{
 		"arg": bytes,
 	}
-	var result Result
-	if _, err := cl.Call("echo_bytes", params, &result); err != nil {
+	result := new(ResultEchoBytes)
+	if _, err := cl.Call("echo_bytes", params, result); err != nil {
 		return []byte{}, err
 	}
-	return result.Unwrap().(*ResultEchoBytes).Value, nil
+	return result.Value, nil
 }
 
 func echoDataBytesViaHTTP(cl client.HTTPClient, bytes data.Bytes) (data.Bytes, error) {
 	params := map[string]interface{}{
 		"arg": bytes,
 	}
-	var result Result
-	if _, err := cl.Call("echo_data_bytes", params, &result); err != nil {
+	result := new(ResultEchoDataBytes)
+	if _, err := cl.Call("echo_data_bytes", params, result); err != nil {
 		return []byte{}, err
 	}
-	return result.Unwrap().(*ResultEchoDataBytes).Value, nil
+	return result.Value, nil
 }
 
 func testWithHTTPClient(t *testing.T, cl client.HTTPClient) {
@@ -225,12 +188,12 @@ func echoViaWS(cl *client.WSClient, val string) (string, error) {
 
 	select {
 	case msg := <-cl.ResultsCh:
-		result := new(Result)
+		result := new(ResultEcho)
 		err = json.Unmarshal(msg, result)
 		if err != nil {
 			return "", nil
 		}
-		return result.Unwrap().(*ResultEcho).Value, nil
+		return result.Value, nil
 	case err := <-cl.ErrorsCh:
 		return "", err
 	}
@@ -247,12 +210,12 @@ func echoBytesViaWS(cl *client.WSClient, bytes []byte) ([]byte, error) {
 
 	select {
 	case msg := <-cl.ResultsCh:
-		result := new(Result)
+		result := new(ResultEchoBytes)
 		err = json.Unmarshal(msg, result)
 		if err != nil {
 			return []byte{}, nil
 		}
-		return result.Unwrap().(*ResultEchoBytes).Value, nil
+		return result.Value, nil
 	case err := <-cl.ErrorsCh:
 		return []byte{}, err
 	}
@@ -320,20 +283,15 @@ func TestWSNewWSRPCFunc(t *testing.T) {
 	params := map[string]interface{}{
 		"arg": val,
 	}
-	err = cl.WriteJSON(types.RPCRequest{
-		JSONRPC: "2.0",
-		ID:      "",
-		Method:  "echo_ws",
-		Params:  params,
-	})
+	err = cl.Call("echo_ws", params)
 	require.Nil(t, err)
 
 	select {
 	case msg := <-cl.ResultsCh:
-		result := new(Result)
+		result := new(ResultEcho)
 		err = json.Unmarshal(msg, result)
 		require.Nil(t, err)
-		got := result.Unwrap().(*ResultEcho).Value
+		got := result.Value
 		assert.Equal(t, got, val)
 	case err := <-cl.ErrorsCh:
 		t.Fatal(err)
@@ -358,10 +316,10 @@ func TestWSHandlesArrayParams(t *testing.T) {
 
 	select {
 	case msg := <-cl.ResultsCh:
-		result := new(Result)
+		result := new(ResultEcho)
 		err = json.Unmarshal(msg, result)
 		require.Nil(t, err)
-		got := result.Unwrap().(*ResultEcho).Value
+		got := result.Value
 		assert.Equal(t, got, val)
 	case err := <-cl.ErrorsCh:
 		t.Fatalf("%+v", err)
