@@ -13,6 +13,10 @@ import (
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
+// NOTE: This code is copied from go-wire in order to allow byte arrays to be treated
+// differently whether they are data.Bytes (hex) or not (base64).  We can't build this
+// into wire directly without refactoring since we'd need to import data but data imports wire
+
 var (
 	timeType = wire.GetTypeFromStructDeclaration(struct{ time.Time }{})
 )
@@ -128,7 +132,6 @@ func readReflectJSON(rv reflect.Value, rt reflect.Type, opts wire.Options, o int
 				*err = errors.New(cmn.Fmt("Expected bytearray of length %v but got %v", length, len(buf)))
 				return
 			}
-			//log.Info("Read bytearray", "bytes", buf)
 			reflect.Copy(rv, reflect.ValueOf(buf))
 		} else {
 			oSlice, ok := o.([]interface{})
@@ -144,7 +147,6 @@ func readReflectJSON(rv reflect.Value, rt reflect.Type, opts wire.Options, o int
 				elemRv := rv.Index(i)
 				readReflectJSON(elemRv, elemRt, opts, oSlice[i], err)
 			}
-			//log.Info("Read x-array", "x", elemRt, "length", length)
 		}
 
 	case reflect.Slice:
@@ -169,7 +171,6 @@ func readReflectJSON(rv reflect.Value, rt reflect.Type, opts wire.Options, o int
 				*err = err_
 				return
 			}
-			//log.Info("Read byteslice", "bytes", byteslice)
 			rv.Set(reflect.ValueOf(buf))
 		} else {
 			// Read length
@@ -179,7 +180,6 @@ func readReflectJSON(rv reflect.Value, rt reflect.Type, opts wire.Options, o int
 				return
 			}
 			length := len(oSlice)
-			//log.Info("Read slice", "length", length)
 			sliceRv := reflect.MakeSlice(rt, length, length)
 			// Read elems
 			for i := 0; i < length; i++ {
@@ -237,7 +237,6 @@ func readReflectJSON(rv reflect.Value, rt reflect.Type, opts wire.Options, o int
 			*err = errors.New(cmn.Fmt("Expected string but got type %v", reflect.TypeOf(o)))
 			return
 		}
-		//log.Info("Read string", "str", str)
 		rv.SetString(str)
 
 	case reflect.Int64, reflect.Int32, reflect.Int16, reflect.Int8, reflect.Int:
@@ -246,7 +245,6 @@ func readReflectJSON(rv reflect.Value, rt reflect.Type, opts wire.Options, o int
 			*err = errors.New(cmn.Fmt("Expected numeric but got type %v", reflect.TypeOf(o)))
 			return
 		}
-		//log.Info("Read num", "num", num)
 		rv.SetInt(int64(num))
 
 	case reflect.Uint64, reflect.Uint32, reflect.Uint16, reflect.Uint8, reflect.Uint:
@@ -259,7 +257,6 @@ func readReflectJSON(rv reflect.Value, rt reflect.Type, opts wire.Options, o int
 			*err = errors.New(cmn.Fmt("Expected unsigned numeric but got %v", num))
 			return
 		}
-		//log.Info("Read num", "num", num)
 		rv.SetUint(uint64(num))
 
 	case reflect.Float64, reflect.Float32:
@@ -272,7 +269,6 @@ func readReflectJSON(rv reflect.Value, rt reflect.Type, opts wire.Options, o int
 			*err = errors.New(cmn.Fmt("Expected numeric but got type %v", reflect.TypeOf(o)))
 			return
 		}
-		//log.Info("Read num", "num", num)
 		rv.SetFloat(num)
 
 	case reflect.Bool:
@@ -281,7 +277,6 @@ func readReflectJSON(rv reflect.Value, rt reflect.Type, opts wire.Options, o int
 			*err = errors.New(cmn.Fmt("Expected boolean but got type %v", reflect.TypeOf(o)))
 			return
 		}
-		//log.Info("Read boolean", "boolean", bl)
 		rv.SetBool(bl)
 
 	default:
