@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/viper"
 
 	bc "github.com/tendermint/tendermint/blockchain"
-	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -262,9 +261,7 @@ func newConsensusStateForReplay(config *viper.Viper) *ConsensusState {
 		cmn.Exit(cmn.Fmt("Failed to start event switch: %v", err))
 	}
 
-	mempool := mempl.NewMempool(config, proxyApp.Mempool())
-
-	consensusState := NewConsensusState(config, state.Copy(), proxyApp.Consensus(), blockStore, mempool)
+	consensusState := NewConsensusState(config, state.Copy(), proxyApp.Consensus(), blockStore, types.MockMempool{})
 	consensusState.SetEventSwitch(eventSwitch)
 	return consensusState
 }
