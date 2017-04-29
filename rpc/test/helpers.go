@@ -132,16 +132,15 @@ func waitForEvent(t *testing.T, wsc *client.WSClient, eventid string, dieOnTimeo
 			select {
 			case r := <-wsc.ResultsCh:
 				fmt.Println("GOT IT", string(r))
-				result := new(ctypes.TMResult)
+				result := new(ctypes.ResultEvent)
 				err = json.Unmarshal(r, result)
 				if err != nil {
 					fmt.Println("POOP", err)
-					errCh <- err
-					break LOOP
+					// cant distinguish between error and wrong type ...
+					continue
 				}
-				event, ok := result.Unwrap().(*ctypes.ResultEvent)
-				if ok && event.Name == eventid {
-					goodCh <- event.Data
+				if result.Name == eventid {
+					goodCh <- result.Data
 					break LOOP
 				}
 			case err := <-wsc.ErrorsCh:
