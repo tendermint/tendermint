@@ -73,7 +73,7 @@ func NewNode(config *viper.Viper, privValidator *types.PrivValidator, clientCrea
 
 	// Get State
 	stateDB := dbm.NewDB("state", config.GetString("db_backend"), config.GetString("db_dir"))
-	state := sm.GetState(config, stateDB)
+	state := sm.GetState(stateDB, config.GetString("genesis_file"))
 
 	// add the chainid and number of validators to the global config
 	config.Set("chain_id", state.ChainID)
@@ -121,7 +121,7 @@ func NewNode(config *viper.Viper, privValidator *types.PrivValidator, clientCrea
 	}
 
 	// Make BlockchainReactor
-	bcReactor := bc.NewBlockchainReactor(config, state.Copy(), proxyApp.Consensus(), blockStore, fastSync)
+	bcReactor := bc.NewBlockchainReactor(state.Copy(), proxyApp.Consensus(), blockStore, fastSync)
 
 	// Make MempoolReactor
 	mempool := mempl.NewMempool(config, proxyApp.Mempool())

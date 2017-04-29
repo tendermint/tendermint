@@ -14,7 +14,10 @@ import (
 	"github.com/tendermint/tmlibs/merkle"
 )
 
-const MaxBlockSize = 22020096 // 21MB TODO make it configurable
+const (
+	MaxBlockSize       = 22020096 // 21MB TODO make it configurable
+	DefaultPartSetSize = 65536    // 64kB TODO: put part size in parts header?
+)
 
 type Block struct {
 	*Header    `json:"header"`
