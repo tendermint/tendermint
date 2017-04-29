@@ -2,8 +2,8 @@ package core
 
 import (
 	data "github.com/tendermint/go-wire/data"
-	rpc "github.com/tendermint/tendermint/rpc/lib/server"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	rpc "github.com/tendermint/tendermint/rpc/lib/server"
 	"github.com/tendermint/tendermint/rpc/lib/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -39,9 +39,6 @@ var Routes = map[string]*rpc.RPCFunc{
 	// control API
 	"dial_seeds":           rpc.NewRPCFunc(UnsafeDialSeedsResult, "seeds"),
 	"unsafe_flush_mempool": rpc.NewRPCFunc(UnsafeFlushMempool, ""),
-
-	// config is not in general thread safe. expose specifics if you need em
-	// "unsafe_set_config":    rpc.NewRPCFunc(UnsafeSetConfigResult, "type,key,value"),
 
 	// profiler API
 	"unsafe_start_cpu_profiler": rpc.NewRPCFunc(UnsafeStartCPUProfilerResult, "filename"),
@@ -130,10 +127,6 @@ func ABCIInfoResult() (ctypes.TMResult, error) {
 
 func UnsafeFlushMempoolResult() (ctypes.TMResult, error) {
 	return UnsafeFlushMempool()
-}
-
-func UnsafeSetConfigResult(typ, key, value string) (ctypes.TMResult, error) {
-	return UnsafeSetConfig(typ, key, value)
 }
 
 func UnsafeStartCPUProfilerResult(filename string) (ctypes.TMResult, error) {

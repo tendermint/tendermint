@@ -5,10 +5,10 @@ import (
 
 	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/go-crypto"
+	"github.com/tendermint/go-wire"
 	data "github.com/tendermint/go-wire/data"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/rpc/lib/types"
-	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -118,8 +118,6 @@ type ResultABCIQuery struct {
 
 type ResultUnsafeFlushMempool struct{}
 
-type ResultUnsafeSetConfig struct{}
-
 type ResultUnsafeProfile struct{}
 
 type ResultSubscribe struct {
@@ -168,7 +166,6 @@ const (
 	ResultTypeEvent       = byte(0x82)
 
 	// 0xa bytes for testing
-	ResultTypeUnsafeSetConfig        = byte(0xa0)
 	ResultTypeUnsafeStartCPUProfiler = byte(0xa1)
 	ResultTypeUnsafeStopCPUProfiler  = byte(0xa2)
 	ResultTypeUnsafeWriteHeapProfile = byte(0xa3)
@@ -198,7 +195,6 @@ var _ = wire.RegisterInterface(
 	wire.ConcreteType{&ResultSubscribe{}, ResultTypeSubscribe},
 	wire.ConcreteType{&ResultUnsubscribe{}, ResultTypeUnsubscribe},
 	wire.ConcreteType{&ResultEvent{}, ResultTypeEvent},
-	wire.ConcreteType{&ResultUnsafeSetConfig{}, ResultTypeUnsafeSetConfig},
 	wire.ConcreteType{&ResultUnsafeProfile{}, ResultTypeUnsafeStartCPUProfiler},
 	wire.ConcreteType{&ResultUnsafeProfile{}, ResultTypeUnsafeStopCPUProfiler},
 	wire.ConcreteType{&ResultUnsafeProfile{}, ResultTypeUnsafeWriteHeapProfile},
