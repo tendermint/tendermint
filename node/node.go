@@ -85,7 +85,7 @@ func NewNode(config *viper.Viper, privValidator *types.PrivValidator, clientCrea
 
 	// Create the proxyApp, which manages connections (consensus, mempool, query)
 	// and sync tendermint and the app by replaying any necessary blocks
-	proxyApp := proxy.NewAppConns(clientCreator, consensus.NewHandshaker(config, state, blockStore))
+	proxyApp := proxy.NewAppConns(clientCreator, consensus.NewHandshaker(state, blockStore))
 	if _, err := proxyApp.Start(); err != nil {
 		cmn.Exit(cmn.Fmt("Error starting proxy app connections: %v", err))
 	}

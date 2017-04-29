@@ -4,7 +4,6 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
 	"github.com/tendermint/log15"
 	"github.com/tendermint/tendermint/types"
@@ -30,36 +29,34 @@ func init() {
 // XXX: this is totally unsafe.
 // it's only suitable for testnets.
 func resetAll(cmd *cobra.Command, args []string) {
-	ResetAll(config, log)
+	ResetAll(config.GetString("db_dir"), config.GetString("priv_validator_file"), log)
 }
 
 // XXX: this is totally unsafe.
 // it's only suitable for testnets.
 func resetPrivValidator(cmd *cobra.Command, args []string) {
-	resetPrivValidatorLocal(config, log)
+	resetPrivValidatorLocal(config.GetString("priv_validator_file"), log)
 }
 
 // Exported so other CLI tools can use  it
-func ResetAll(c *viper.Viper, l log15.Logger) {
-	resetPrivValidatorLocal(c, l)
-	dataDir := c.GetString("db_dir")
-	os.RemoveAll(dataDir)
-	l.Notice("Removed all data", "dir", dataDir)
+func ResetAll(dbDir, privValFile string, l log15.Logger) {
+	resetPrivValidatorLocal(privValFile, l)
+	os.RemoveAll(dbDir)
+	l.Notice("Removed all data", "dir", dbDir)
 }
 
-func resetPrivValidatorLocal(c *viper.Viper, l log15.Logger) {
+func resetPrivValidatorLocal(privValFile string, l log15.Logger) {
 
 	// Get PrivValidator
 	var privValidator *types.PrivValidator
-	privValidatorFile := c.GetString("priv_validator_file")
-	if _, err := os.Stat(privValidatorFile); err == nil {
-		privValidator = types.LoadPrivValidator(privValidatorFile)
+	if _, err := os.Stat(privValFile); err == nil {
+		privValidator = types.LoadPrivValidator(privValFile)
 		privValidator.Reset()
-		l.Notice("Reset PrivValidator", "file", privValidatorFile)
+		l.Notice("Reset PrivValidator", "file", privValFile)
 	} else {
 		privValidator = types.GenPrivValidator()
-		privValidator.SetFile(privValidatorFile)
+		privValidator.SetFile(privValFile)
 		privValidator.Save()
-		l.Notice("Generated PrivValidator", "file", privValidatorFile)
+		l.Notice("Generated PrivValidator", "file", privValFile)
 	}
 }

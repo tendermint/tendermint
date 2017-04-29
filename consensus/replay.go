@@ -10,8 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spf13/viper"
-
 	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/go-wire"
 	auto "github.com/tendermint/tmlibs/autofile"
@@ -200,15 +198,14 @@ func makeHeightSearchFunc(height int) auto.SearchFunc {
 // we were last and using the WAL to recover there
 
 type Handshaker struct {
-	config *viper.Viper
-	state  *sm.State
-	store  types.BlockStore
+	state *sm.State
+	store types.BlockStore
 
 	nBlocks int // number of blocks applied to the state
 }
 
-func NewHandshaker(config *viper.Viper, state *sm.State, store types.BlockStore) *Handshaker {
-	return &Handshaker{config, state, store, 0}
+func NewHandshaker(state *sm.State, store types.BlockStore) *Handshaker {
+	return &Handshaker{state, store, 0}
 }
 
 func (h *Handshaker) NBlocks() int {
