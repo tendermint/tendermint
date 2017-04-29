@@ -124,8 +124,8 @@ func NewNode(config *viper.Viper, privValidator *types.PrivValidator, clientCrea
 	bcReactor := bc.NewBlockchainReactor(state.Copy(), proxyApp.Consensus(), blockStore, fastSync)
 
 	// Make MempoolReactor
-	mempool := mempl.NewMempool(config, proxyApp.Mempool())
-	mempoolReactor := mempl.NewMempoolReactor(config, mempool)
+	mempool := mempl.NewMempool(mempoolConfig(config), proxyApp.Mempool())
+	mempoolReactor := mempl.NewMempoolReactor(mempoolConfig(config), mempool)
 
 	// Make ConsensusReactor
 	consensusState := consensus.NewConsensusState(config, state.Copy(), proxyApp.Consensus(), blockStore, mempool)
@@ -430,4 +430,15 @@ func ProtocolAndAddress(listenAddr string) (string, string) {
 		protocol, address = parts[0], parts[1]
 	}
 	return protocol, address
+}
+
+//------------------------------------------------------------------------------
+
+func mempoolConfig(config *viper.Viper) mempl.Config {
+	return mempl.Config{
+		Recheck:      config.GetBool("mempool_recheck"),
+		RecheckEmpty: config.GetBool("mempool_recheck_empty"),
+		Broadcast:    config.GetBool("mempool_broadcast"),
+		WalDir:       config.GetString("mempool_wal_dir"),
+	}
 }
