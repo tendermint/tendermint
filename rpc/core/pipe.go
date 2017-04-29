@@ -1,8 +1,6 @@
 package core
 
 import (
-	"github.com/spf13/viper"
-
 	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/tendermint/consensus"
 	p2p "github.com/tendermint/tendermint/p2p"
@@ -34,7 +32,6 @@ var (
 	// external, thread safe interfaces
 	eventSwitch   types.EventSwitch
 	proxyAppQuery proxy.AppConnQuery
-	config        *viper.Viper
 
 	// interfaces defined in types and above
 	blockStore     types.BlockStore
@@ -48,10 +45,6 @@ var (
 	addrBook  *p2p.AddrBook
 	txIndexer txindex.TxIndexer
 )
-
-func SetConfig(c *viper.Viper) {
-	config = c
-}
 
 func SetEventSwitch(evsw types.EventSwitch) {
 	eventSwitch = evsw

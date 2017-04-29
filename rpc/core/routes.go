@@ -2,6 +2,12 @@ package core
 
 import (
 	rpc "github.com/tendermint/tendermint/rpc/lib/server"
+
+	data "github.com/tendermint/go-wire/data"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	rpc "github.com/tendermint/tendermint/rpc/lib/server"
+	"github.com/tendermint/tendermint/rpc/lib/types"
+	"github.com/tendermint/tendermint/types"
 )
 
 // TODO: better system than "unsafe" prefix
@@ -35,9 +41,6 @@ var Routes = map[string]*rpc.RPCFunc{
 	// control API
 	"dial_seeds":           rpc.NewRPCFunc(UnsafeDialSeeds, "seeds"),
 	"unsafe_flush_mempool": rpc.NewRPCFunc(UnsafeFlushMempool, ""),
-
-	// config is not in general thread safe. expose specifics if you need em
-	// "unsafe_set_config":    rpc.NewRPCFunc(UnsafeSetConfig, "type,key,value"),
 
 	// profiler API
 	"unsafe_start_cpu_profiler": rpc.NewRPCFunc(UnsafeStartCPUProfiler, "filename"),

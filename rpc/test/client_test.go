@@ -13,12 +13,13 @@ import (
 
 	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/go-wire/data"
+	. "github.com/tendermint/tmlibs/common"
+
 	"github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpc "github.com/tendermint/tendermint/rpc/lib/client"
 	"github.com/tendermint/tendermint/state/txindex/null"
 	"github.com/tendermint/tendermint/types"
-	. "github.com/tendermint/tmlibs/common"
 )
 
 //--------------------------------------------------------------------------------
@@ -349,54 +350,3 @@ func TestWSDoubleFire(t *testing.T) {
 		return nil
 	})
 }*/
-
-//--------------------------------------------------------------------------------
-//TODO needs to be refactored so we don't use a mutable config but rather update specific values we're interested in
-// unsafe_set_config
-
-//var stringVal = "my string"
-//var intVal = 987654321
-//var boolVal = true
-//
-//// don't change these
-//var testCasesUnsafeSetConfig = [][]string{
-//	[]string{"string", "key1", stringVal},
-//	[]string{"int", "key2", fmt.Sprintf("%v", intVal)},
-//	[]string{"bool", "key3", fmt.Sprintf("%v", boolVal)},
-//}
-//
-//func TestURIUnsafeSetConfig(t *testing.T) {
-//	for _, testCase := range testCasesUnsafeSetConfig {
-//		result := new(ctypes.TMResult)
-//		_, err := GetURIClient().Call("unsafe_set_config", map[string]interface{}{
-//			"type":  testCase[0],
-//			"key":   testCase[1],
-//			"value": testCase[2],
-//		}, result)
-//		require.Nil(t, err)
-//	}
-//	testUnsafeSetConfig(t)
-//}
-//
-//func TestJSONUnsafeSetConfig(t *testing.T) {
-//	for _, testCase := range testCasesUnsafeSetConfig {
-//		result := new(ctypes.TMResult)
-//		_, err := GetJSONClient().Call("unsafe_set_config",
-//			map[string]interface{}{"type": testCase[0], "key": testCase[1], "value": testCase[2]},
-//			result)
-//		require.Nil(t, err)
-//	}
-//	testUnsafeSetConfig(t)
-//}
-//
-//func testUnsafeSetConfig(t *testing.T) {
-//	require := require.New(t)
-//	s := config.GetString("key1")
-//	require.Equal(stringVal, s)
-//
-//	i := config.GetInt("key2")
-//	require.Equal(intVal, i)
-//
-//	b := config.GetBool("key3")
-//	require.Equal(boolVal, b)
-//}
