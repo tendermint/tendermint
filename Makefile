@@ -30,7 +30,7 @@ lint:
 	@ go get -u github.com/golang/lint/golint
 	@ for file in $$(find "." -name '*.go' | grep -v '/vendor/' | grep -v '\.pb\.go'); do \
 		golint -set_exit_status $${file}; \
-	done;
+		done;
 
 test_integrations: get_vendor_deps install test
 
