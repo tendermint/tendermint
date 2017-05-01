@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	stdlog "log"
 	"os"
 	"strings"
 
@@ -36,6 +35,8 @@ type queryResponse struct {
 
 // client is a global variable so it can be reused by the console
 var client abcicli.Client
+
+var logger log.Logger
 
 func main() {
 
@@ -130,19 +131,23 @@ func main() {
 	app.Before = before
 	err := app.Run(os.Args)
 	if err != nil {
-		stdlog.Fatal(err.Error())
+		logger.Error(err.Error())
+		os.Exit(1)
 	}
 
 }
 
 func before(c *cli.Context) error {
+	if logger == nil {
+		logger = log.NewTmLogger(os.Stdout)
+	}
 	if client == nil {
 		var err error
 		client, err = abcicli.NewClient(c.GlobalString("address"), c.GlobalString("abci"), false)
 		if err != nil {
-			stdlog.Fatal(err.Error())
+			logger.Error(err.Error())
+			os.Exit(1)
 		}
-		logger := log.NewTmLogger(os.Stdout)
 		client.SetLogger(log.With(logger, "module", "abci-client"))
 	}
 	return nil

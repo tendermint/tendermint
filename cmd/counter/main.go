@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	stdlog "log"
 	"os"
 
 	"github.com/tendermint/abci/example/counter"
@@ -19,12 +18,14 @@ func main() {
 	flag.Parse()
 	app := counter.NewCounterApplication(*serialPtr)
 
+	logger := log.NewTmLogger(os.Stdout)
+
 	// Start the listener
 	srv, err := server.NewServer(*addrPtr, *abciPtr, app)
 	if err != nil {
-		stdlog.Fatal(err.Error())
+		logger.Error(err.Error())
+		os.Exit(1)
 	}
-	logger := log.NewTmLogger(os.Stdout)
 	srv.SetLogger(log.With(logger, "module", "abci-server"))
 
 	// Wait forever

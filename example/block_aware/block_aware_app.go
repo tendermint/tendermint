@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	stdlog "log"
 	"os"
 
 	"github.com/tendermint/abci/server"
@@ -17,12 +16,14 @@ func main() {
 	abciPtr := flag.String("abci", "socket", "socket | grpc")
 	flag.Parse()
 
+	logger := log.NewTmLogger(os.Stdout)
+
 	// Start the listener
 	srv, err := server.NewServer(*addrPtr, *abciPtr, NewChainAwareApplication())
 	if err != nil {
-		stdlog.Fatal(err.Error())
+		logger.Error(err.Error())
+		os.Exit(1)
 	}
-	logger := log.NewTmLogger(os.Stdout)
 	srv.SetLogger(log.With(logger, "module", "abci-server"))
 
 	// Wait forever

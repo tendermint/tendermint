@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	stdlog "log"
 	"os"
 
 	"github.com/tendermint/abci/example/dummy"
@@ -33,7 +32,8 @@ func main() {
 	// Start the listener
 	srv, err := server.NewServer(*addrPtr, *abciPtr, app)
 	if err != nil {
-		stdlog.Fatal(err.Error())
+		logger.Error(err.Error())
+		os.Exit(1)
 	}
 	srv.SetLogger(log.With(logger, "module", "abci-server"))
 

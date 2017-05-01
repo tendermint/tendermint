@@ -2,7 +2,6 @@ package example
 
 import (
 	"fmt"
-	stdlog "log"
 	"net"
 	"os"
 	"reflect"
@@ -44,7 +43,7 @@ func testStream(t *testing.T, app types.Application) {
 	// Start the listener
 	server, err := server.NewSocketServer("unix://test.sock", app)
 	if err != nil {
-		stdlog.Fatal(cmn.Fmt("Error starting socket server: %v", err.Error()))
+		t.Fatalf("Error starting socket server: %v", err.Error())
 	}
 	server.SetLogger(log.With(logger, "module", "abci-server"))
 	defer server.Stop()
@@ -52,7 +51,7 @@ func testStream(t *testing.T, app types.Application) {
 	// Connect to the socket
 	client, err := abcicli.NewSocketClient("unix://test.sock", false)
 	if err != nil {
-		stdlog.Fatal(cmn.Fmt("Error starting socket client: %v", err.Error()))
+		t.Fatalf("Error starting socket client: %v", err.Error())
 	}
 	client.SetLogger(log.With(logger, "module", "abci-client"))
 	client.Start()
@@ -120,7 +119,7 @@ func testGRPCSync(t *testing.T, app *types.GRPCApplication) {
 	// Start the listener
 	server, err := server.NewGRPCServer("unix://test.sock", app)
 	if err != nil {
-		stdlog.Fatal(cmn.Fmt("Error starting GRPC server: %v", err.Error()))
+		t.Fatalf("Error starting GRPC server: %v", err.Error())
 	}
 	server.SetLogger(log.With(logger, "module", "abci-server"))
 	defer server.Stop()
@@ -128,7 +127,7 @@ func testGRPCSync(t *testing.T, app *types.GRPCApplication) {
 	// Connect to the socket
 	conn, err := grpc.Dial("unix://test.sock", grpc.WithInsecure(), grpc.WithDialer(dialerFunc))
 	if err != nil {
-		stdlog.Fatal(cmn.Fmt("Error dialing GRPC server: %v", err.Error()))
+		t.Fatalf("Error dialing GRPC server: %v", err.Error())
 	}
 	defer conn.Close()
 
