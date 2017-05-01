@@ -52,7 +52,7 @@ Yay open source! Please see our [contributing guidelines](https://tendermint.com
 ### Sub-projects
 
 * [ABCI](http://github.com/tendermint/abci)
-* [Mintnet](http://github.com/tendermint/mintnet)
+* [Mintnet-kubernetes](http://github.com/tendermint/mintnet-kubernetes)
 * [Go-Wire](http://github.com/tendermint/go-wire)
 * [Go-P2P](http://github.com/tendermint/go-p2p)
 * [Go-Merkle](http://github.com/tendermint/go-merkle)
