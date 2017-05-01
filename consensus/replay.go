@@ -215,8 +215,6 @@ func (h *Handshaker) NBlocks() int {
 	return h.nBlocks
 }
 
-var ErrReplayLastBlockTimeout = errors.New("Timed out waiting for last block to be replayed")
-
 // TODO: retry the handshake/replay if it fails ?
 func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	// handshake is done via info request on the query conn
@@ -234,11 +232,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 
 	// replay blocks up to the latest in the blockstore
 	_, err = h.ReplayBlocks(appHash, blockHeight, proxyApp)
-	if err == ErrReplayLastBlockTimeout {
-		log.Warn("Failed to sync via handshake. Trying other means. If they fail, please increase the timeout_handshake parameter")
-		return nil
-
-	} else if err != nil {
+	if err != nil {
 		return errors.New(cmn.Fmt("Error on replay: %v", err))
 	}
 
@@ -256,6 +250,12 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, proxyApp p
 	storeBlockHeight := h.store.Height()
 	stateBlockHeight := h.state.LastBlockHeight
 	log.Notice("ABCI Replay Blocks", "appHeight", appBlockHeight, "storeHeight", storeBlockHeight, "stateHeight", stateBlockHeight)
+
+	// If appBlockHeight == 0 it means that we are at genesis and hence should send InitChain
+	if appBlockHeight == 0 {
+		validators := types.TM2PB.Validators(h.state.Validators)
+		proxyApp.Consensus().InitChainSync(validators)
+	}
 
 	// First handle edge cases and constraints on the storeBlockHeight
 	if storeBlockHeight == 0 {

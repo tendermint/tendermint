@@ -14,3 +14,4 @@ vendor
 test/p2p/data/
 test/logs
 .glide
+coverage.txt

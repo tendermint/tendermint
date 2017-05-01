@@ -42,3 +42,11 @@ func (tm2pb) Validator(val *Validator) *types.Validator {
 		Power:  uint64(val.VotingPower),
 	}
 }
+
+func (tm2pb) Validators(vals *ValidatorSet) []*types.Validator {
+	validators := make([]*types.Validator, len(vals.Validators))
+	for i, val := range vals.Validators {
+		validators[i] = TM2PB.Validator(val)
+	}
+	return validators
+}
