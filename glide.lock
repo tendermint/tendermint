@@ -1,5 +1,5 @@
 hash: 3918a6fe902116fbac5ac474580edf246bee125df6e63e3bd8378f068fa8f819
-updated: 2017-05-01T08:59:45.550273823Z
+updated: 2017-05-01T12:52:56.770980963Z
 imports:
 - name: github.com/btcsuite/btcd
   version: 4b348c1d33373d672edd83fc576892d0e46686d2
@@ -59,7 +59,7 @@ imports:
   subpackages:
   - iavl
 - name: github.com/tendermint/tmlibs
-  version: dc50d7d3c19771377fb4aa6e703354205050053a
+  version: ee90b71eb94d05958875fb9cd756b301b691ea27
   subpackages:
   - common
   - db
