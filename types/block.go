@@ -8,12 +8,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tendermint/go-wire"
 	. "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/merkle"
-	"github.com/tendermint/go-wire"
 )
 
-const MaxBlockSize = 22020096 // 21MB TODO make it configurable
+const (
+	MaxBlockSize       = 22020096 // 21MB TODO make it configurable
+	DefaultPartSetSize = 65536    // 64kB TODO: put part size in parts header?
+)
 
 type Block struct {
 	*Header    `json:"header"`

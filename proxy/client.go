@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/spf13/viper"
-
 	abcicli "github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/example/dummy"
 	"github.com/tendermint/abci/types"
@@ -64,15 +62,12 @@ func (r *remoteClientCreator) NewABCIClient() (abcicli.Client, error) {
 //-----------------------------------------------------------------
 // default
 
-func DefaultClientCreator(config *viper.Viper) ClientCreator {
-	addr := config.GetString("proxy_app")
-	transport := config.GetString("abci")
-
+func DefaultClientCreator(addr, transport, dbDir string) ClientCreator {
 	switch addr {
 	case "dummy":
 		return NewLocalClientCreator(dummy.NewDummyApplication())
 	case "persistent_dummy":
-		return NewLocalClientCreator(dummy.NewPersistentDummyApplication(config.GetString("db_dir")))
+		return NewLocalClientCreator(dummy.NewPersistentDummyApplication(dbDir))
 	case "nilapp":
 		return NewLocalClientCreator(types.NewBaseApplication())
 	default:

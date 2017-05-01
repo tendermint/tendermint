@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/viper"
 
 	bc "github.com/tendermint/tendermint/blockchain"
-	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -247,7 +246,8 @@ func newConsensusStateForReplay(config *viper.Viper) *ConsensusState {
 	state := sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
 
 	// Create proxyAppConn connection (consensus, mempool, query)
-	proxyApp := proxy.NewAppConns(config, proxy.DefaultClientCreator(config), NewHandshaker(config, state, blockStore))
+	clientCreator := proxy.DefaultClientCreator(config.GetString("proxy_app"), config.GetString("abci"), config.GetString("db_dir"))
+	proxyApp := proxy.NewAppConns(clientCreator, NewHandshaker(state, blockStore))
 	_, err := proxyApp.Start()
 	if err != nil {
 		cmn.Exit(cmn.Fmt("Error starting proxy app conns: %v", err))
@@ -262,9 +262,7 @@ func newConsensusStateForReplay(config *viper.Viper) *ConsensusState {
 		cmn.Exit(cmn.Fmt("Failed to start event switch: %v", err))
 	}
 
-	mempool := mempl.NewMempool(config, proxyApp.Mempool())
-
-	consensusState := NewConsensusState(config, state.Copy(), proxyApp.Consensus(), blockStore, mempool)
+	consensusState := NewConsensusState(config, state.Copy(), proxyApp.Consensus(), blockStore, types.MockMempool{})
 	consensusState.SetEventSwitch(eventSwitch)
 	return consensusState
 }

@@ -13,6 +13,7 @@ import (
 	crypto "github.com/tendermint/go-crypto"
 	wire "github.com/tendermint/go-wire"
 	bc "github.com/tendermint/tendermint/blockchain"
+	tmcfg "github.com/tendermint/tendermint/config/tendermint"
 	"github.com/tendermint/tendermint/consensus"
 	mempl "github.com/tendermint/tendermint/mempool"
 	p2p "github.com/tendermint/tendermint/p2p"
@@ -62,26 +63,35 @@ func NewNodeDefault(config *viper.Viper) *Node {
 	// Get PrivValidator
 	privValidatorFile := config.GetString("priv_validator_file")
 	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
-	return NewNode(config, privValidator, proxy.DefaultClientCreator(config))
+	return NewNode(config, privValidator, proxy.DefaultClientCreator(
+		config.GetString("proxy_app"),
+		config.GetString("abci"),
+		config.GetString("db_dir"),
+	))
+	// config.ABCI.ProxyApp, config.ABCI.Mode, config.DB.Dir))
 }
 
 func NewNode(config *viper.Viper, privValidator *types.PrivValidator, clientCreator proxy.ClientCreator) *Node {
 
+	tmConfig := new(tmcfg.Config)
+	if err := config.Unmarshal(tmConfig); err != nil {
+		panic(err)
+	}
+
 	// Get BlockStore
-	blockStoreDB := dbm.NewDB("blockstore", config.GetString("db_backend"), config.GetString("db_dir"))
+	blockStoreDB := dbm.NewDB("blockstore", tmConfig.DB.Backend, tmConfig.DB.Dir)
 	blockStore := bc.NewBlockStore(blockStoreDB)
 
 	// Get State
-	stateDB := dbm.NewDB("state", config.GetString("db_backend"), config.GetString("db_dir"))
-	state := sm.GetState(config, stateDB)
+	stateDB := dbm.NewDB("state", tmConfig.DB.Backend, tmConfig.DB.Dir)
+	state := sm.GetState(stateDB, tmConfig.Chain.GenesisFile)
 
 	// add the chainid and number of validators to the global config
 	config.Set("chain_id", state.ChainID)
-	config.Set("num_vals", state.Validators.Size())
 
 	// Create the proxyApp, which manages connections (consensus, mempool, query)
 	// and sync tendermint and the app by replaying any necessary blocks
-	proxyApp := proxy.NewAppConns(config, clientCreator, consensus.NewHandshaker(config, state, blockStore))
+	proxyApp := proxy.NewAppConns(clientCreator, consensus.NewHandshaker(state, blockStore))
 	if _, err := proxyApp.Start(); err != nil {
 		cmn.Exit(cmn.Fmt("Error starting proxy app connections: %v", err))
 	}
@@ -91,9 +101,9 @@ func NewNode(config *viper.Viper, privValidator *types.PrivValidator, clientCrea
 
 	// Transaction indexing
 	var txIndexer txindex.TxIndexer
-	switch config.GetString("tx_index") {
+	switch tmConfig.DB.TxIndex {
 	case "kv":
-		store := dbm.NewDB("tx_index", config.GetString("db_backend"), config.GetString("db_dir"))
+		store := dbm.NewDB("tx_index", tmConfig.DB.Backend, tmConfig.DB.Dir)
 		txIndexer = kv.NewTxIndex(store)
 	default:
 		txIndexer = &null.TxIndex{}
@@ -121,11 +131,11 @@ func NewNode(config *viper.Viper, privValidator *types.PrivValidator, clientCrea
 	}
 
 	// Make BlockchainReactor
-	bcReactor := bc.NewBlockchainReactor(config, state.Copy(), proxyApp.Consensus(), blockStore, fastSync)
+	bcReactor := bc.NewBlockchainReactor(state.Copy(), proxyApp.Consensus(), blockStore, fastSync)
 
 	// Make MempoolReactor
-	mempool := mempl.NewMempool(config, proxyApp.Mempool())
-	mempoolReactor := mempl.NewMempoolReactor(config, mempool)
+	mempool := mempl.NewMempool(mempoolConfig(config), proxyApp.Mempool())
+	mempoolReactor := mempl.NewMempoolReactor(mempoolConfig(config), mempool)
 
 	// Make ConsensusReactor
 	consensusState := consensus.NewConsensusState(config, state.Copy(), proxyApp.Consensus(), blockStore, mempool)
@@ -289,7 +299,6 @@ func (n *Node) AddListener(l p2p.Listener) {
 // ConfigureRPC sets all variables in rpccore so they will serve
 // rpc calls from this node
 func (n *Node) ConfigureRPC() {
-	rpccore.SetConfig(n.config)
 	rpccore.SetEventSwitch(n.evsw)
 	rpccore.SetBlockStore(n.blockStore)
 	rpccore.SetConsensusState(n.consensusState)
@@ -430,4 +439,15 @@ func ProtocolAndAddress(listenAddr string) (string, string) {
 		protocol, address = parts[0], parts[1]
 	}
 	return protocol, address
+}
+
+//------------------------------------------------------------------------------
+
+func mempoolConfig(config *viper.Viper) mempl.Config {
+	return mempl.Config{
+		Recheck:      config.GetBool("mempool_recheck"),
+		RecheckEmpty: config.GetBool("mempool_recheck_empty"),
+		Broadcast:    config.GetBool("mempool_broadcast"),
+		WalDir:       config.GetString("mempool_wal_dir"),
+	}
 }
