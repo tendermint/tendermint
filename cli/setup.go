@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
 	data "github.com/tendermint/go-wire/data"
 	"github.com/tendermint/go-wire/data/base58"
 )
@@ -24,7 +25,7 @@ func PrepareBaseCmd(cmd *cobra.Command, envPrefix, defautRoot string) func() {
 	cobra.OnInitialize(func() { initEnv(envPrefix) })
 	cmd.PersistentFlags().StringP(RootFlag, "r", defautRoot, "DEPRECATED. Use --home")
 	cmd.PersistentFlags().StringP(HomeFlag, "h", defautRoot, "root directory for config and data")
-	cmd.PersistentPreRunE = multiE(bindFlags, cmd.PersistentPreRunE)
+	cmd.PersistentPreRunE = concatCobraCmdFuncs(bindFlagsLoadViper, cmd.PersistentPreRunE)
 	return func() { execute(cmd) }
 }
 
@@ -32,7 +33,7 @@ func PrepareBaseCmd(cmd *cobra.Command, envPrefix, defautRoot string) func() {
 func PrepareMainCmd(cmd *cobra.Command, envPrefix, defautRoot string) func() {
 	cmd.PersistentFlags().StringP(EncodingFlag, "e", "hex", "Binary encoding (hex|b64|btc)")
 	cmd.PersistentFlags().StringP(OutputFlag, "o", "text", "Output format (text|json)")
-	cmd.PersistentPreRunE = multiE(setEncoding, validateOutput, cmd.PersistentPreRunE)
+	cmd.PersistentPreRunE = concatCobraCmdFuncs(setEncoding, validateOutput, cmd.PersistentPreRunE)
 	return PrepareBaseCmd(cmd, envPrefix, defautRoot)
 }
 
@@ -73,9 +74,10 @@ func execute(cmd *cobra.Command) {
 	}
 }
 
-type wrapE func(cmd *cobra.Command, args []string) error
+type cobraCmdFunc func(cmd *cobra.Command, args []string) error
 
-func multiE(fs ...wrapE) wrapE {
+// Returns a single function that calls each argument function in sequence
+func concatCobraCmdFuncs(fs ...cobraCmdFunc) cobraCmdFunc {
 	return func(cmd *cobra.Command, args []string) error {
 		for _, f := range fs {
 			if f != nil {
@@ -88,7 +90,8 @@ func multiE(fs ...wrapE) wrapE {
 	}
 }
 
-func bindFlags(cmd *cobra.Command, args []string) error {
+// Bind all flags and read the config into viper
+func bindFlagsLoadViper(cmd *cobra.Command, args []string) error {
 	// cmd.Flags() includes flags from this command and all persistent flags from the parent
 	if err := viper.BindPFlags(cmd.Flags()); err != nil {
 		return err
