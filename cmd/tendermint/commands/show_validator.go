@@ -20,7 +20,6 @@ func init() {
 }
 
 func showValidator(cmd *cobra.Command, args []string) {
-	config := getConfig()
 	privValidator := types.LoadOrGenPrivValidator(config.PrivValidatorFile)
 	pubKeyJSONBytes, _ := data.ToJSON(privValidator.PubKey)
 	fmt.Println(string(pubKeyJSONBytes))

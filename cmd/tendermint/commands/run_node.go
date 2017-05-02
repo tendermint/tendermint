@@ -19,66 +19,53 @@ var runNodeCmd = &cobra.Command{
 	RunE:  runNode,
 }
 
-//flags
-var (
-	moniker       string
-	nodeLaddr     string
-	seeds         string
-	fastSync      bool
-	skipUPNP      bool
-	rpcLaddr      string
-	grpcLaddr     string
-	proxyApp      string
-	abciTransport string
-	pex           bool
-)
-
 func init() {
 	// bind flags
 
 	// node flags
-	runNodeCmd.Flags().StringVar(&moniker, "moniker", config.Moniker,
+	runNodeCmd.Flags().String("moniker", config.Moniker,
 		"Node Name")
 	viperConfig.BindPFlag("moniker", runNodeCmd.Flags().Lookup("moniker"))
 
-	runNodeCmd.Flags().BoolVar(&fastSync, "fast_sync", config.FastSync,
+	runNodeCmd.Flags().Bool("fast_sync", config.FastSync,
 		"Fast blockchain syncing")
 	viperConfig.BindPFlag("fast_sync", runNodeCmd.Flags().Lookup("fast_sync"))
 
 	// abci flags
-	runNodeCmd.Flags().StringVar(&proxyApp, "proxy_app", config.ProxyApp,
+	runNodeCmd.Flags().String("proxy_app", config.ProxyApp,
 		"Proxy app address, or 'nilapp' or 'dummy' for local testing.")
 	viperConfig.BindPFlag("proxy_app", runNodeCmd.Flags().Lookup("proxy_app"))
 
-	runNodeCmd.Flags().StringVar(&abciTransport, "abci", config.ABCI,
+	runNodeCmd.Flags().String("abci", config.ABCI,
 		"Specify abci transport (socket | grpc)")
 	viperConfig.BindPFlag("abci", runNodeCmd.Flags().Lookup("abci"))
 
 	// rpc flags
-	runNodeCmd.Flags().StringVar(&rpcLaddr, "rpc_laddr", config.RPCListenAddress,
+	runNodeCmd.Flags().String("rpc_laddr", config.RPCListenAddress,
 		"RPC listen address. Port required")
 	viperConfig.BindPFlag("rpc_laddr", runNodeCmd.Flags().Lookup("rpc_laddr"))
 
-	runNodeCmd.Flags().StringVar(&grpcLaddr, "grpc_laddr", config.GRPCListenAddress,
+	runNodeCmd.Flags().String("grpc_laddr", config.GRPCListenAddress,
 		"GRPC listen address (BroadcastTx only). Port required")
 	viperConfig.BindPFlag("grpc_laddr", runNodeCmd.Flags().Lookup("grpc_laddr"))
 
 	// p2p flags
-	runNodeCmd.Flags().StringVar(&nodeLaddr, "p2p.laddr", config.P2P.ListenAddress,
+	runNodeCmd.Flags().String("p2p.laddr", config.P2P.ListenAddress,
 		"Node listen address. (0.0.0.0:0 means any interface, any port)")
 	viperConfig.BindPFlag("p2p.laddr", runNodeCmd.Flags().Lookup("p2p.laddr"))
 
-	runNodeCmd.Flags().StringVar(&seeds, "p2p.seeds", config.P2P.Seeds,
+	runNodeCmd.Flags().String("p2p.seeds", config.P2P.Seeds,
 		"Comma delimited host:port seed nodes")
 	viperConfig.BindPFlag("p2p.seeds", runNodeCmd.Flags().Lookup("p2p.seeds"))
 
-	runNodeCmd.Flags().BoolVar(&skipUPNP, "p2p.skip_upnp", config.P2P.SkipUPNP,
+	runNodeCmd.Flags().Bool("p2p.skip_upnp", config.P2P.SkipUPNP,
 		"Skip UPNP configuration")
 	viperConfig.BindPFlag("p2p.skip_upnp", runNodeCmd.Flags().Lookup("p2p.skip_upnp"))
 
 	// feature flags
-	runNodeCmd.Flags().BoolVar(&pex, "p2p.pex", config.P2P.PexReactor,
+	runNodeCmd.Flags().Bool("p2p.pex", config.P2P.PexReactor,
 		"Enable Peer-Exchange (dev feature)")
+	viperConfig.BindPFlag("p2p.pex", runNodeCmd.Flags().Lookup("p2p.pex"))
 
 	RootCmd.AddCommand(runNodeCmd)
 }
@@ -120,7 +107,7 @@ func runNode(cmd *cobra.Command, args []string) error {
 	}
 
 	// Create & start node
-	n := node.NewNodeDefault(getConfig())
+	n := node.NewNodeDefault(config)
 	if _, err := n.Start(); err != nil {
 		return fmt.Errorf("Failed to start node: %v", err)
 	} else {
