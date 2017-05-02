@@ -28,6 +28,7 @@ import (
 	"github.com/tendermint/abci/example/dummy"
 )
 
+// genesis, chain_id, priv_val
 var config *viper.Viper // NOTE: must be reset for each _test.go file
 var ensureTimeout = time.Duration(2)
 

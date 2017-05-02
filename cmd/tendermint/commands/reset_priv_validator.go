@@ -29,13 +29,15 @@ func init() {
 // XXX: this is totally unsafe.
 // it's only suitable for testnets.
 func resetAll(cmd *cobra.Command, args []string) {
-	ResetAll(config.GetString("db_dir"), config.GetString("priv_validator_file"), log)
+	config := getConfig()
+	ResetAll(config.DBDir, config.PrivValidatorFile, log)
 }
 
 // XXX: this is totally unsafe.
 // it's only suitable for testnets.
 func resetPrivValidator(cmd *cobra.Command, args []string) {
-	resetPrivValidatorLocal(config.GetString("priv_validator_file"), log)
+	config := getConfig()
+	resetPrivValidatorLocal(config.PrivValidatorFile, log)
 }
 
 // Exported so other CLI tools can use  it

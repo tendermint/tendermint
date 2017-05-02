@@ -15,8 +15,8 @@ import (
 )
 
 const (
-	MaxBlockSize       = 22020096 // 21MB TODO make it configurable
-	DefaultPartSetSize = 65536    // 64kB TODO: put part size in parts header?
+	MaxBlockSize         = 22020096 // 21MB TODO make it configurable
+	DefaultBlockPartSize = 65536    // 64kB TODO: put part size in parts header?
 )
 
 type Block struct {

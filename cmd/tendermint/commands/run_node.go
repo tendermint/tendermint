@@ -14,10 +14,9 @@ import (
 )
 
 var runNodeCmd = &cobra.Command{
-	Use:    "node",
-	Short:  "Run the tendermint node",
-	PreRun: setConfigFlags,
-	RunE:   runNode,
+	Use:   "node",
+	Short: "Run the tendermint node",
+	RunE:  runNode,
 }
 
 //flags
@@ -35,47 +34,53 @@ var (
 )
 
 func init() {
+	// bind flags
 
-	// configuration options
-	runNodeCmd.Flags().StringVar(&moniker, "moniker", config.GetString("node.moniker"),
+	// node flags
+	runNodeCmd.Flags().StringVar(&moniker, "moniker", config.Moniker,
 		"Node Name")
-	runNodeCmd.Flags().StringVar(&nodeLaddr, "node_laddr", config.GetString("node.listen_addr"),
-		"Node listen address. (0.0.0.0:0 means any interface, any port)")
-	runNodeCmd.Flags().StringVar(&seeds, "seeds", config.GetString("network.seeds"),
-		"Comma delimited host:port seed nodes")
-	runNodeCmd.Flags().BoolVar(&fastSync, "fast_sync", config.GetBool("blockchain.fast_sync"),
+	viperConfig.BindPFlag("moniker", runNodeCmd.Flags().Lookup("moniker"))
+
+	runNodeCmd.Flags().BoolVar(&fastSync, "fast_sync", config.FastSync,
 		"Fast blockchain syncing")
-	runNodeCmd.Flags().BoolVar(&skipUPNP, "skip_upnp", config.GetBool("network.skip_upnp"),
-		"Skip UPNP configuration")
-	runNodeCmd.Flags().StringVar(&rpcLaddr, "rpc_laddr", config.GetString("rpc.listen_addr"),
-		"RPC listen address. Port required")
-	runNodeCmd.Flags().StringVar(&grpcLaddr, "grpc_laddr", config.GetString("grpc.listen_addr"),
-		"GRPC listen address (BroadcastTx only). Port required")
-	runNodeCmd.Flags().StringVar(&proxyApp, "proxy_app", config.GetString("abci.proxy_app"),
+	viperConfig.BindPFlag("fast_sync", runNodeCmd.Flags().Lookup("fast_sync"))
+
+	// abci flags
+	runNodeCmd.Flags().StringVar(&proxyApp, "proxy_app", config.ProxyApp,
 		"Proxy app address, or 'nilapp' or 'dummy' for local testing.")
-	runNodeCmd.Flags().StringVar(&abciTransport, "abci", config.GetString("abci.mode"),
+	viperConfig.BindPFlag("proxy_app", runNodeCmd.Flags().Lookup("proxy_app"))
+
+	runNodeCmd.Flags().StringVar(&abciTransport, "abci", config.ABCI,
 		"Specify abci transport (socket | grpc)")
+	viperConfig.BindPFlag("abci", runNodeCmd.Flags().Lookup("abci"))
+
+	// rpc flags
+	runNodeCmd.Flags().StringVar(&rpcLaddr, "rpc_laddr", config.RPCListenAddress,
+		"RPC listen address. Port required")
+	viperConfig.BindPFlag("rpc_laddr", runNodeCmd.Flags().Lookup("rpc_laddr"))
+
+	runNodeCmd.Flags().StringVar(&grpcLaddr, "grpc_laddr", config.GRPCListenAddress,
+		"GRPC listen address (BroadcastTx only). Port required")
+	viperConfig.BindPFlag("grpc_laddr", runNodeCmd.Flags().Lookup("grpc_laddr"))
+
+	// p2p flags
+	runNodeCmd.Flags().StringVar(&nodeLaddr, "p2p.laddr", config.P2P.ListenAddress,
+		"Node listen address. (0.0.0.0:0 means any interface, any port)")
+	viperConfig.BindPFlag("p2p.laddr", runNodeCmd.Flags().Lookup("p2p.laddr"))
+
+	runNodeCmd.Flags().StringVar(&seeds, "p2p.seeds", config.P2P.Seeds,
+		"Comma delimited host:port seed nodes")
+	viperConfig.BindPFlag("p2p.seeds", runNodeCmd.Flags().Lookup("p2p.seeds"))
+
+	runNodeCmd.Flags().BoolVar(&skipUPNP, "p2p.skip_upnp", config.P2P.SkipUPNP,
+		"Skip UPNP configuration")
+	viperConfig.BindPFlag("p2p.skip_upnp", runNodeCmd.Flags().Lookup("p2p.skip_upnp"))
 
 	// feature flags
-	runNodeCmd.Flags().BoolVar(&pex, "pex", config.GetBool("pex_reactor"),
+	runNodeCmd.Flags().BoolVar(&pex, "p2p.pex", config.P2P.PexReactor,
 		"Enable Peer-Exchange (dev feature)")
 
 	RootCmd.AddCommand(runNodeCmd)
-}
-
-func setConfigFlags(cmd *cobra.Command, args []string) {
-
-	// Merge parsed flag values onto config
-	config.Set("node.moniker", moniker)
-	config.Set("node.listen_addr", nodeLaddr)
-	config.Set("network.seeds", seeds)
-	config.Set("network.skip_upnp", skipUPNP)
-	config.Set("network.pex_reactor", pex)
-	config.Set("blockchain.fast_sync", fastSync)
-	config.Set("rpc.listen_addr", rpcLaddr)
-	config.Set("rpc.grpc_listen_addr", grpcLaddr)
-	config.Set("abci.proxy_app", proxyApp)
-	config.Set("abci.mode", abciTransport)
 }
 
 // Users wishing to:
@@ -90,7 +95,7 @@ func runNode(cmd *cobra.Command, args []string) error {
 	// This is for Mintnet compatibility.
 	// TODO: If Mintnet gets deprecated or genesis_file is
 	// always available, remove.
-	genDocFile := config.GetString("genesis_file")
+	genDocFile := config.GenesisFile
 	if !cmn.FileExists(genDocFile) {
 		log.Notice(cmn.Fmt("Waiting for genesis file %v...", genDocFile))
 		for {
@@ -109,12 +114,13 @@ func runNode(cmd *cobra.Command, args []string) error {
 			if genDoc.ChainID == "" {
 				return fmt.Errorf("Genesis doc %v must include non-empty chain_id", genDocFile)
 			}
-			config.Set("chain_id", genDoc.ChainID)
+
+			// config.SetChainID("chain_id", genDoc.ChainID) TODO
 		}
 	}
 
 	// Create & start node
-	n := node.NewNodeDefault(config) //tmConfig)
+	n := node.NewNodeDefault(getConfig())
 	if _, err := n.Start(); err != nil {
 		return fmt.Errorf("Failed to start node: %v", err)
 	} else {

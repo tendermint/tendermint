@@ -4,6 +4,23 @@ import (
 	"github.com/spf13/viper"
 )
 
+// for node.Config
+type NetworkConfig struct {
+	ListenAddress  string `mapstructure:"laddr"`
+	Seeds          string `mapstructure:"seeds"`
+	SkipUPNP       bool   `mapstructure:"skip_upnp"`
+	AddrBookFile   string `mapstructure:"addr_book_file"`
+	AddrBookStrict bool   `mapstructure:"addr_book_strict"`
+	PexReactor     bool   `mapstructure:"pex_reactor"`
+}
+
+func NewDefaultConfig(rootDir string) *NetworkConfig {
+	return &NetworkConfig{
+		AddrBookFile:   rootDir + "/addrbook.json",
+		AddrBookStrict: true,
+	}
+}
+
 const (
 	// Switch config keys
 	configKeyDialTimeoutSeconds      = "dial_timeout_seconds"
