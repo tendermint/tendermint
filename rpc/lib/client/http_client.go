@@ -26,7 +26,7 @@ func makeHTTPDialer(remoteAddr string) (string, func(string, string) (net.Conn, 
 	parts := strings.SplitN(remoteAddr, "://", 2)
 	var protocol, address string
 	if len(parts) != 2 {
-		log.Warn("WARNING (tendermint/rpc/lib): Please use fully formed listening addresses, including the tcp:// or unix:// prefix")
+		// log.Warn("WARNING (tendermint/rpc/lib): Please use fully formed listening addresses, including the tcp:// or unix:// prefix")
 		protocol = types.SocketType(remoteAddr)
 		address = remoteAddr
 	} else {

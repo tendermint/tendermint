@@ -9,8 +9,9 @@ import (
 	abci "github.com/tendermint/abci/types"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
+	"github.com/tendermint/tmlibs/log"
 
-	"github.com/tendermint/go-wire"
+	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/state/txindex/null"
 	"github.com/tendermint/tendermint/types"
@@ -48,6 +49,8 @@ type State struct {
 	// Intermediate results from processing
 	// Persisted separately from the state
 	abciResponses *ABCIResponses
+
+	logger log.Logger
 }
 
 func LoadState(db dbm.DB) *State {
@@ -71,6 +74,14 @@ func loadState(db dbm.DB, key []byte) *State {
 	return s
 }
 
+func (s *State) SetLogger(l log.Logger) {
+	s.logger = l
+}
+
+func (s *State) GetLogger() log.Logger {
+	return s.logger
+}
+
 func (s *State) Copy() *State {
 	return &State{
 		db:              s.db,
@@ -83,6 +94,7 @@ func (s *State) Copy() *State {
 		LastValidators:  s.LastValidators.Copy(),
 		AppHash:         s.AppHash,
 		TxIndexer:       s.TxIndexer, // pointer here, not value
+		logger:          s.logger,
 	}
 }
 
@@ -140,7 +152,7 @@ func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader typ
 	// update the validator set with the latest abciResponses
 	err := updateValidators(nextValSet, abciResponses.EndBlock.Diffs)
 	if err != nil {
-		log.Warn("Error changing validator set", "error", err)
+		s.logger.Error("Error changing validator set", "error", err)
 		// TODO: err or carry on?
 	}
 	// Update validator accums and set state variables

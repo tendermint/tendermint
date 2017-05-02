@@ -17,6 +17,7 @@ import (
 	client "github.com/tendermint/tendermint/rpc/lib/client"
 	server "github.com/tendermint/tendermint/rpc/lib/server"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
+	"github.com/tendermint/tmlibs/log"
 )
 
 // Client and Server should work over tcp or unix sockets
@@ -86,22 +87,24 @@ func init() {
 	}
 
 	mux := http.NewServeMux()
-	server.RegisterRPCFuncs(mux, Routes)
+	server.RegisterRPCFuncs(mux, Routes, log.TestingLogger())
 	wm := server.NewWebsocketManager(Routes, nil)
+	wm.SetLogger(log.TestingLogger())
 	mux.HandleFunc(websocketEndpoint, wm.WebsocketHandler)
 	go func() {
-		_, err := server.StartHTTPServer(tcpAddr, mux)
+		_, err := server.StartHTTPServer(tcpAddr, mux, log.TestingLogger())
 		if err != nil {
 			panic(err)
 		}
 	}()
 
 	mux2 := http.NewServeMux()
-	server.RegisterRPCFuncs(mux2, Routes)
+	server.RegisterRPCFuncs(mux2, Routes, log.TestingLogger())
 	wm = server.NewWebsocketManager(Routes, nil)
+	wm.SetLogger(log.TestingLogger())
 	mux2.HandleFunc(websocketEndpoint, wm.WebsocketHandler)
 	go func() {
-		_, err := server.StartHTTPServer(unixAddr, mux2)
+		_, err := server.StartHTTPServer(unixAddr, mux2, log.TestingLogger())
 		if err != nil {
 			panic(err)
 		}

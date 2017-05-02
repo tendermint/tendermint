@@ -38,7 +38,7 @@ func UnsafeDialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) {
 		return &ctypes.ResultDialSeeds{}, fmt.Errorf("No seeds provided")
 	}
 	// starts go routines to dial each seed after random delays
-	log.Info("DialSeeds", "addrBook", addrBook, "seeds", seeds)
+	logger.Info("DialSeeds", "addrBook", addrBook, "seeds", seeds)
 	err := p2pSwitch.DialSeeds(addrBook, seeds)
 	if err != nil {
 		return &ctypes.ResultDialSeeds{}, err

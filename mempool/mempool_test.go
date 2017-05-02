@@ -8,6 +8,7 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tmlibs/log"
 )
 
 func TestSerialReap(t *testing.T) {
@@ -19,6 +20,7 @@ func TestSerialReap(t *testing.T) {
 	appConnMem, _ := cc.NewABCIClient()
 	appConnCon, _ := cc.NewABCIClient()
 	mempool := NewMempool(config.Mempool, appConnMem)
+	mempool.SetLogger(log.TestingLogger())
 
 	deliverTxsRange := func(start, end int) {
 		// Deliver some txs.

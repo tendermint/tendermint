@@ -9,9 +9,10 @@ import (
 	"os"
 	"sync"
 
-	. "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/go-crypto"
+	crypto "github.com/tendermint/go-crypto"
 	data "github.com/tendermint/go-wire/data"
+	. "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
 )
 
 const (
@@ -107,17 +108,17 @@ func LoadPrivValidator(filePath string) *PrivValidator {
 	return &privVal
 }
 
-func LoadOrGenPrivValidator(filePath string) *PrivValidator {
+func LoadOrGenPrivValidator(filePath string, logger log.Logger) *PrivValidator {
 	var privValidator *PrivValidator
 	if _, err := os.Stat(filePath); err == nil {
 		privValidator = LoadPrivValidator(filePath)
-		log.Notice("Loaded PrivValidator",
+		logger.Info("Loaded PrivValidator",
 			"file", filePath, "privValidator", privValidator)
 	} else {
 		privValidator = GenPrivValidator()
 		privValidator.SetFile(filePath)
 		privValidator.Save()
-		log.Notice("Generated PrivValidator", "file", filePath)
+		logger.Info("Generated PrivValidator", "file", filePath)
 	}
 	return privValidator
 }
@@ -212,7 +213,7 @@ func (privVal *PrivValidator) signBytesHRS(height, round int, step int8, signByt
 					// NOTE: proposals are non-deterministic (include time),
 					// so we can actually lose them, but will still never sign conflicting ones
 					if bytes.Equal(privVal.LastSignBytes, signBytes) {
-						log.Notice("Using privVal.LastSignature", "sig", privVal.LastSignature)
+						// log.Notice("Using privVal.LastSignature", "sig", privVal.LastSignature)
 						return privVal.LastSignature, nil
 					}
 				}

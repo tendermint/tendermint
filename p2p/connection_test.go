@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	p2p "github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tmlibs/log"
 )
 
 func createMConnection(conn net.Conn) *p2p.MConnection {
@@ -15,12 +16,16 @@ func createMConnection(conn net.Conn) *p2p.MConnection {
 	}
 	onError := func(r interface{}) {
 	}
-	return createMConnectionWithCallbacks(conn, onReceive, onError)
+	c := createMConnectionWithCallbacks(conn, onReceive, onError)
+	c.SetLogger(log.TestingLogger())
+	return c
 }
 
 func createMConnectionWithCallbacks(conn net.Conn, onReceive func(chID byte, msgBytes []byte), onError func(r interface{})) *p2p.MConnection {
 	chDescs := []*p2p.ChannelDescriptor{&p2p.ChannelDescriptor{ID: 0x01, Priority: 1, SendQueueCapacity: 1}}
-	return p2p.NewMConnection(conn, chDescs, onReceive, onError)
+	c := p2p.NewMConnection(conn, chDescs, onReceive, onError)
+	c.SetLogger(log.TestingLogger())
+	return c
 }
 
 func TestMConnectionSend(t *testing.T) {

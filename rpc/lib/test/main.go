@@ -3,9 +3,11 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"os"
 
-	cmn "github.com/tendermint/tmlibs/common"
 	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
+	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
 )
 
 var routes = map[string]*rpcserver.RPCFunc{
@@ -22,8 +24,9 @@ type Result struct {
 
 func main() {
 	mux := http.NewServeMux()
-	rpcserver.RegisterRPCFuncs(mux, routes)
-	_, err := rpcserver.StartHTTPServer("0.0.0.0:8008", mux)
+	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+	rpcserver.RegisterRPCFuncs(mux, routes, logger)
+	_, err := rpcserver.StartHTTPServer("0.0.0.0:8008", mux, logger)
 	if err != nil {
 		cmn.Exit(err.Error())
 	}

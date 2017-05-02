@@ -21,6 +21,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 	. "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
+	"github.com/tendermint/tmlibs/log"
 
 	"github.com/tendermint/abci/example/counter"
 	"github.com/tendermint/abci/example/dummy"
@@ -249,12 +250,15 @@ func newConsensusStateWithConfig(thisConfig *cfg.Config, state *sm.State, pv *ty
 
 	// Make Mempool
 	mempool := mempl.NewMempool(thisConfig.Mempool, proxyAppConnMem)
+	mempool.SetLogger(log.TestingLogger().With("module", "mempool"))
 
 	// Make ConsensusReactor
 	cs := NewConsensusState(thisConfig.Consensus, state, proxyAppConnCon, blockStore, mempool)
+	cs.SetLogger(log.TestingLogger())
 	cs.SetPrivValidator(pv)
 
 	evsw := types.NewEventSwitch()
+	evsw.SetLogger(log.TestingLogger().With("module", "events"))
 	cs.SetEventSwitch(evsw)
 	evsw.Start()
 	return cs
@@ -263,7 +267,7 @@ func newConsensusStateWithConfig(thisConfig *cfg.Config, state *sm.State, pv *ty
 func loadPrivValidator(config *cfg.Config) *types.PrivValidator {
 	privValidatorFile := config.PrivValidatorFile()
 	ensureDir(path.Dir(privValidatorFile), 0700)
-	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
+	privValidator := types.LoadOrGenPrivValidator(privValidatorFile, log.TestingLogger())
 	privValidator.Reset()
 	return privValidator
 }
@@ -271,16 +275,20 @@ func loadPrivValidator(config *cfg.Config) *types.PrivValidator {
 func fixedConsensusState() *ConsensusState {
 	stateDB := dbm.NewMemDB()
 	state := sm.MakeGenesisStateFromFile(stateDB, config.GenesisFile())
+	state.SetLogger(log.TestingLogger().With("module", "state"))
 	privValidator := loadPrivValidator(config)
 	cs := newConsensusState(state, privValidator, counter.NewCounterApplication(true))
+	cs.SetLogger(log.TestingLogger())
 	return cs
 }
 
 func fixedConsensusStateDummy() *ConsensusState {
 	stateDB := dbm.NewMemDB()
 	state := sm.MakeGenesisStateFromFile(stateDB, config.GenesisFile())
+	state.SetLogger(log.TestingLogger().With("module", "state"))
 	privValidator := loadPrivValidator(config)
 	cs := newConsensusState(state, privValidator, dummy.NewDummyApplication())
+	cs.SetLogger(log.TestingLogger())
 	return cs
 }
 
@@ -291,6 +299,7 @@ func randConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
 	vss := make([]*validatorStub, nValidators)
 
 	cs := newConsensusState(state, privVals[0], counter.NewCounterApplication(true))
+	cs.SetLogger(log.TestingLogger())
 
 	for i := 0; i < nValidators; i++ {
 		vss[i] = NewValidatorStub(privVals[i], i)
@@ -322,10 +331,12 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 	for i := 0; i < nValidators; i++ {
 		db := dbm.NewMemDB() // each state needs its own db
 		state := sm.MakeGenesisState(db, genDoc)
+		state.SetLogger(log.TestingLogger().With("module", "state"))
 		state.Save()
 		thisConfig := ResetConfig(Fmt("%s_%d", testName, i))
 		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		css[i] = newConsensusStateWithConfig(thisConfig, state, privVals[i], appFunc())
+		css[i].SetLogger(log.TestingLogger())
 		css[i].SetTimeoutTicker(tickerFunc())
 	}
 	return css
@@ -338,6 +349,7 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 	for i := 0; i < nPeers; i++ {
 		db := dbm.NewMemDB() // each state needs its own db
 		state := sm.MakeGenesisState(db, genDoc)
+		state.SetLogger(log.TestingLogger().With("module", "state"))
 		state.Save()
 		thisConfig := ResetConfig(Fmt("%s_%d", testName, i))
 		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
@@ -351,6 +363,7 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 		}
 
 		css[i] = newConsensusStateWithConfig(thisConfig, state, privVal, appFunc())
+		css[i].SetLogger(log.TestingLogger())
 		css[i].SetTimeoutTicker(tickerFunc())
 	}
 	return css
@@ -392,6 +405,7 @@ func randGenesisState(numValidators int, randPower bool, minPower int64) (*sm.St
 	genDoc, privValidators := randGenesisDoc(numValidators, randPower, minPower)
 	db := dbm.NewMemDB()
 	s0 := sm.MakeGenesisState(db, genDoc)
+	s0.SetLogger(log.TestingLogger().With("module", "state"))
 	s0.Save()
 	return s0, privValidators
 }

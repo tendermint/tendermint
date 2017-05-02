@@ -3,10 +3,10 @@ package consensus
 import (
 	"time"
 
+	wire "github.com/tendermint/go-wire"
+	"github.com/tendermint/tendermint/types"
 	auto "github.com/tendermint/tmlibs/autofile"
 	. "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/go-wire"
-	"github.com/tendermint/tendermint/types"
 )
 
 //--------------------------------------------------------
@@ -49,7 +49,7 @@ func NewWAL(walFile string, light bool) (*WAL, error) {
 		group: group,
 		light: light,
 	}
-	wal.BaseService = *NewBaseService(log, "WAL", wal)
+	wal.BaseService = *NewBaseService(nil, "WAL", wal)
 	_, err = wal.Start()
 	return wal, err
 }

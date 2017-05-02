@@ -10,6 +10,7 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tmlibs/events"
+	"github.com/tendermint/tmlibs/log"
 )
 
 func init() {
@@ -24,8 +25,10 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, N int, subscribeEven
 	eventChans := make([]chan interface{}, N)
 	for i := 0; i < N; i++ {
 		reactors[i] = NewConsensusReactor(css[i], true) // so we dont start the consensus states
+		reactors[i].SetLogger(log.TestingLogger())
 
 		eventSwitch := events.NewEventSwitch()
+		eventSwitch.SetLogger(log.TestingLogger().With("module", "events"))
 		_, err := eventSwitch.Start()
 		if err != nil {
 			t.Fatalf("Failed to start switch: %v", err)
@@ -96,7 +99,7 @@ func TestVotingPowerChange(t *testing.T) {
 	}, css)
 
 	//---------------------------------------------------------------------------
-	log.Info("---------------------------- Testing changing the voting power of one validator a few times")
+	t.Log("---------------------------- Testing changing the voting power of one validator a few times")
 
 	val1PubKey := css[0].privValidator.(*types.PrivValidator).PubKey
 	updateValidatorTx := dummy.MakeValSetChangeTx(val1PubKey.Bytes(), 25)
@@ -157,7 +160,7 @@ func TestValidatorSetChanges(t *testing.T) {
 	}, css)
 
 	//---------------------------------------------------------------------------
-	log.Info("---------------------------- Testing adding one validator")
+	t.Log("---------------------------- Testing adding one validator")
 
 	newValidatorPubKey1 := css[nVals].privValidator.(*types.PrivValidator).PubKey
 	newValidatorTx1 := dummy.MakeValSetChangeTx(newValidatorPubKey1.Bytes(), uint64(testMinPower))
@@ -183,7 +186,7 @@ func TestValidatorSetChanges(t *testing.T) {
 	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css)
 
 	//---------------------------------------------------------------------------
-	log.Info("---------------------------- Testing changing the voting power of one validator")
+	t.Log("---------------------------- Testing changing the voting power of one validator")
 
 	updateValidatorPubKey1 := css[nVals].privValidator.(*types.PrivValidator).PubKey
 	updateValidatorTx1 := dummy.MakeValSetChangeTx(updateValidatorPubKey1.Bytes(), 25)
@@ -199,7 +202,7 @@ func TestValidatorSetChanges(t *testing.T) {
 	}
 
 	//---------------------------------------------------------------------------
-	log.Info("---------------------------- Testing adding two validators at once")
+	t.Log("---------------------------- Testing adding two validators at once")
 
 	newValidatorPubKey2 := css[nVals+1].privValidator.(*types.PrivValidator).PubKey
 	newValidatorTx2 := dummy.MakeValSetChangeTx(newValidatorPubKey2.Bytes(), uint64(testMinPower))
@@ -215,7 +218,7 @@ func TestValidatorSetChanges(t *testing.T) {
 	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css)
 
 	//---------------------------------------------------------------------------
-	log.Info("---------------------------- Testing removing two validators at once")
+	t.Log("---------------------------- Testing removing two validators at once")
 
 	removeValidatorTx2 := dummy.MakeValSetChangeTx(newValidatorPubKey2.Bytes(), 0)
 	removeValidatorTx3 := dummy.MakeValSetChangeTx(newValidatorPubKey3.Bytes(), 0)
@@ -251,7 +254,7 @@ func waitForAndValidateBlock(t *testing.T, n int, activeVals map[string]struct{}
 	timeoutWaitGroup(t, n, func(wg *sync.WaitGroup, j int) {
 		newBlockI := <-eventChans[j]
 		newBlock := newBlockI.(types.TMEventData).Unwrap().(types.EventDataNewBlock).Block
-		log.Warn("Got block", "height", newBlock.Height, "validator", j)
+		t.Logf("[WARN] Got block height=%v validator=%v", newBlock.Height, j)
 		err := validateBlock(newBlock, activeVals)
 		if err != nil {
 			t.Fatal(err)
@@ -262,7 +265,7 @@ func waitForAndValidateBlock(t *testing.T, n int, activeVals map[string]struct{}
 
 		eventChans[j] <- struct{}{}
 		wg.Done()
-		log.Warn("Done wait group", "height", newBlock.Height, "validator", j)
+		t.Logf("[WARN] Done wait group height=%v validator=%v", newBlock.Height, j)
 	}, css)
 }
 

@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	wire "github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
 )
 
 func TestPEXReactorBasic(t *testing.T) {
@@ -20,8 +21,10 @@ func TestPEXReactorBasic(t *testing.T) {
 	require.Nil(err)
 	defer os.RemoveAll(dir)
 	book := NewAddrBook(dir+"addrbook.json", true)
+	book.SetLogger(log.TestingLogger())
 
 	r := NewPEXReactor(book)
+	r.SetLogger(log.TestingLogger())
 
 	assert.NotNil(r)
 	assert.NotEmpty(r.GetChannels())
@@ -34,8 +37,10 @@ func TestPEXReactorAddRemovePeer(t *testing.T) {
 	require.Nil(err)
 	defer os.RemoveAll(dir)
 	book := NewAddrBook(dir+"addrbook.json", true)
+	book.SetLogger(log.TestingLogger())
 
 	r := NewPEXReactor(book)
+	r.SetLogger(log.TestingLogger())
 
 	size := book.Size()
 	peer := createRandomPeer(false)
@@ -65,11 +70,13 @@ func TestPEXReactorRunning(t *testing.T) {
 	require.Nil(err)
 	defer os.RemoveAll(dir)
 	book := NewAddrBook(dir+"addrbook.json", false)
+	book.SetLogger(log.TestingLogger())
 
 	// create switches
 	for i := 0; i < N; i++ {
 		switches[i] = makeSwitch(config, i, "127.0.0.1", "123.123.123", func(i int, sw *Switch) *Switch {
 			r := NewPEXReactor(book)
+			r.SetLogger(log.TestingLogger())
 			r.SetEnsurePeersPeriod(250 * time.Millisecond)
 			sw.AddReactor("pex", r)
 			return sw
@@ -80,7 +87,7 @@ func TestPEXReactorRunning(t *testing.T) {
 	for _, s := range switches {
 		addr, _ := NewNetAddressString(s.NodeInfo().ListenAddr)
 		book.AddAddress(addr, addr)
-		s.AddListener(NewDefaultListener("tcp", s.NodeInfo().ListenAddr, true))
+		s.AddListener(NewDefaultListener("tcp", s.NodeInfo().ListenAddr, true, log.TestingLogger()))
 	}
 
 	// start switches
@@ -112,8 +119,10 @@ func TestPEXReactorReceive(t *testing.T) {
 	require.Nil(err)
 	defer os.RemoveAll(dir)
 	book := NewAddrBook(dir+"addrbook.json", true)
+	book.SetLogger(log.TestingLogger())
 
 	r := NewPEXReactor(book)
+	r.SetLogger(log.TestingLogger())
 
 	peer := createRandomPeer(false)
 
@@ -135,8 +144,10 @@ func TestPEXReactorAbuseFromPeer(t *testing.T) {
 	require.Nil(err)
 	defer os.RemoveAll(dir)
 	book := NewAddrBook(dir+"addrbook.json", true)
+	book.SetLogger(log.TestingLogger())
 
 	r := NewPEXReactor(book)
+	r.SetLogger(log.TestingLogger())
 	r.SetMaxMsgCountByPeer(5)
 
 	peer := createRandomPeer(false)

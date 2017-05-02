@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/tendermint/abci/example/dummy"
-	"github.com/tendermint/go-crypto"
-	"github.com/tendermint/go-wire"
+	crypto "github.com/tendermint/go-crypto"
+	wire "github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 
@@ -22,6 +22,7 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tmlibs/log"
 )
 
 func init() {
@@ -165,9 +166,9 @@ func toPV(pv PrivValidator) *types.PrivValidator {
 	return pv.(*types.PrivValidator)
 }
 
-func setupReplayTest(thisCase *testCase, nLines int, crashAfter bool) (*ConsensusState, chan interface{}, string, string) {
-	fmt.Println("-------------------------------------")
-	log.Notice(cmn.Fmt("Starting replay test %v (of %d lines of WAL). Crash after = %v", thisCase.name, nLines, crashAfter))
+func setupReplayTest(t *testing.T, thisCase *testCase, nLines int, crashAfter bool) (*ConsensusState, chan interface{}, string, string) {
+	t.Log("-------------------------------------")
+	t.Logf("Starting replay test %v (of %d lines of WAL). Crash after = %v", thisCase.name, nLines, crashAfter)
 
 	lineStep := nLines
 	if crashAfter {
@@ -186,7 +187,7 @@ func setupReplayTest(thisCase *testCase, nLines int, crashAfter bool) (*Consensu
 	toPV(cs.privValidator).LastHeight = 1 // first block
 	toPV(cs.privValidator).LastStep = thisCase.stepMap[lineStep]
 
-	log.Warn("setupReplayTest", "LastStep", toPV(cs.privValidator).LastStep)
+	t.Logf("[WARN] setupReplayTest LastStep=%v", toPV(cs.privValidator).LastStep)
 
 	newBlockCh := subscribeToEvent(cs.evsw, "tester", types.EventStringNewBlock(), 1)
 
@@ -211,7 +212,7 @@ func TestWALCrashAfterWrite(t *testing.T) {
 	for _, thisCase := range testCases {
 		split := strings.Split(thisCase.log, "\n")
 		for i := 0; i < len(split)-1; i++ {
-			cs, newBlockCh, _, walFile := setupReplayTest(thisCase, i+1, true)
+			cs, newBlockCh, _, walFile := setupReplayTest(t, thisCase, i+1, true)
 			runReplayTest(t, cs, walFile, newBlockCh, thisCase, i+1)
 		}
 	}
@@ -225,7 +226,7 @@ func TestWALCrashBeforeWritePropose(t *testing.T) {
 	for _, thisCase := range testCases {
 		lineNum := thisCase.proposeLine
 		// setup replay test where last message is a proposal
-		cs, newBlockCh, proposalMsg, walFile := setupReplayTest(thisCase, lineNum, false)
+		cs, newBlockCh, proposalMsg, walFile := setupReplayTest(t, thisCase, lineNum, false)
 		msg := readTimedWALMessage(t, proposalMsg)
 		proposal := msg.Msg.(msgInfo).Msg.(*ProposalMessage)
 		// Set LastSig
@@ -249,7 +250,7 @@ func TestWALCrashBeforeWritePrecommit(t *testing.T) {
 
 func testReplayCrashBeforeWriteVote(t *testing.T, thisCase *testCase, lineNum int, eventString string) {
 	// setup replay test where last message is a vote
-	cs, newBlockCh, voteMsg, walFile := setupReplayTest(thisCase, lineNum, false)
+	cs, newBlockCh, voteMsg, walFile := setupReplayTest(t, thisCase, lineNum, false)
 	types.AddListenerForEvent(cs.evsw, "tester", eventString, func(data types.TMEventData) {
 		msg := readTimedWALMessage(t, voteMsg)
 		vote := msg.Msg.(msgInfo).Msg.(*VoteMessage)
@@ -322,6 +323,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	testPartSize = config.Consensus.BlockPartSize
 
 	wal, err := NewWAL(walFile, false)
+	wal.SetLogger(log.TestingLogger())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -470,7 +472,7 @@ func makeBlockchainFromWAL(wal *WAL) ([]*types.Block, []*types.Commit, error) {
 	}
 	defer gr.Close()
 
-	log.Notice("Build a blockchain by reading from the WAL")
+	// log.Notice("Build a blockchain by reading from the WAL")
 
 	var blockParts *types.PartSet
 	var blocks []*types.Block
@@ -617,6 +619,8 @@ func makeBlockchain(t *testing.T, chainID string, nBlocks int, privVal *types.Pr
 func stateAndStore(config *cfg.Config, pubKey crypto.PubKey) (*sm.State, *mockBlockStore) {
 	stateDB := dbm.NewMemDB()
 	state := sm.MakeGenesisStateFromFile(stateDB, config.GenesisFile())
+	state.SetLogger(log.TestingLogger().With("module", "state"))
+
 	store := NewMockBlockStore(config)
 	return state, store
 }

@@ -48,7 +48,7 @@ func NewMultiAppConn(clientCreator ClientCreator, handshaker Handshaker) *multiA
 		handshaker:    handshaker,
 		clientCreator: clientCreator,
 	}
-	multiAppConn.BaseService = *cmn.NewBaseService(log, "multiAppConn", multiAppConn)
+	multiAppConn.BaseService = *cmn.NewBaseService(nil, "multiAppConn", multiAppConn)
 	return multiAppConn
 }
 

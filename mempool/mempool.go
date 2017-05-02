@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/pkg/errors"
+
 	abci "github.com/tendermint/abci/types"
 	auto "github.com/tendermint/tmlibs/autofile"
 	"github.com/tendermint/tmlibs/clist"
@@ -15,6 +17,7 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tmlibs/log"
 )
 
 /*
@@ -65,6 +68,8 @@ type Mempool struct {
 
 	// A log of mempool txs
 	wal *auto.AutoFile
+
+	logger log.Logger
 }
 
 func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool) *Mempool {
@@ -77,12 +82,17 @@ func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool) *M
 		rechecking:    0,
 		recheckCursor: nil,
 		recheckEnd:    nil,
-
-		cache: newTxCache(cacheSize),
+		logger:        log.NewNopLogger(),
+		cache:         newTxCache(cacheSize),
 	}
 	mempool.initWAL()
 	proxyAppConn.SetResponseCallback(mempool.resCb)
 	return mempool
+}
+
+// SetLogger allows you to set your own Logger.
+func (mem *Mempool) SetLogger(l log.Logger) {
+	mem.logger = l
 }
 
 func (mem *Mempool) initWAL() {
@@ -90,13 +100,11 @@ func (mem *Mempool) initWAL() {
 	if walDir != "" {
 		err := cmn.EnsureDir(walDir, 0700)
 		if err != nil {
-			log.Error("Error ensuring Mempool wal dir", "error", err)
-			cmn.PanicSanity(err)
+			cmn.PanicSanity(errors.Wrap(err, "Error ensuring Mempool wal dir"))
 		}
 		af, err := auto.OpenAutoFile(walDir + "/wal")
 		if err != nil {
-			log.Error("Error opening Mempool wal file", "error", err)
-			cmn.PanicSanity(err)
+			cmn.PanicSanity(errors.Wrap(err, "Error opening Mempool wal file"))
 		}
 		mem.wal = af
 	}
@@ -203,7 +211,7 @@ func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
 			mem.txs.PushBack(memTx)
 		} else {
 			// ignore bad transaction
-			log.Info("Bad Transaction", "res", r)
+			mem.logger.Info("Bad Transaction", "res", r)
 
 			// remove from cache (it might be good later)
 			mem.cache.Remove(req.GetCheckTx().Tx)
@@ -241,7 +249,7 @@ func (mem *Mempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 		if mem.recheckCursor == nil {
 			// Done!
 			atomic.StoreInt32(&mem.rechecking, 0)
-			log.Info("Done rechecking txs")
+			mem.logger.Info("Done rechecking txs")
 		}
 	default:
 		// ignore other messages
@@ -300,7 +308,7 @@ func (mem *Mempool) Update(height int, txs types.Txs) {
 	// NOTE/XXX: in some apps a tx could be invalidated due to EndBlock,
 	//	so we really still do need to recheck, but this is for debugging
 	if mem.config.Recheck && (mem.config.RecheckEmpty || len(txs) > 0) {
-		log.Info("Recheck txs", "numtxs", len(goodTxs))
+		mem.logger.Info("Recheck txs", "numtxs", len(goodTxs))
 		mem.recheckTxs(goodTxs)
 		// At this point, mem.txs are being rechecked.
 		// mem.recheckCursor re-scans mem.txs and possibly removes some txs.
