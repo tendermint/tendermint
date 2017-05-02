@@ -17,10 +17,10 @@ type tmLogger struct {
 	srcLogger kitlog.Logger
 }
 
-// NewTmTermLogger returns a logger that encodes msg and keyvals to the Writer
+// NewTMTermLogger returns a logger that encodes msg and keyvals to the Writer
 // using go-kit's log as an underlying logger and our custom formatter. Note
 // that underlying logger could be swapped with something else.
-func NewTmLogger(w io.Writer) Logger {
+func NewTMLogger(w io.Writer) Logger {
 	// Color by level value
 	colorFn := func(keyvals ...interface{}) term.FgBgColor {
 		if keyvals[0] != level.Key() {
@@ -36,7 +36,7 @@ func NewTmLogger(w io.Writer) Logger {
 		}
 	}
 
-	srcLogger := term.NewLogger(w, NewTmfmtLogger, colorFn)
+	srcLogger := term.NewLogger(w, NewTMFmtLogger, colorFn)
 	srcLogger = level.NewFilter(srcLogger, level.AllowInfo())
 	return &tmLogger{srcLogger}
 }

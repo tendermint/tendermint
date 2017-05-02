@@ -7,9 +7,9 @@ import (
 	"github.com/tendermint/tmlibs/log"
 )
 
-func TestTmLogger(t *testing.T) {
+func TestTMLogger(t *testing.T) {
 	t.Parallel()
-	logger := log.NewTmLogger(ioutil.Discard)
+	logger := log.NewTMLogger(ioutil.Discard)
 	if err := logger.Info("Hello", "abc", 123); err != nil {
 		t.Error(err)
 	}
@@ -18,12 +18,12 @@ func TestTmLogger(t *testing.T) {
 	}
 }
 
-func BenchmarkTmLoggerSimple(b *testing.B) {
-	benchmarkRunner(b, log.NewTmLogger(ioutil.Discard), baseInfoMessage)
+func BenchmarkTMLoggerSimple(b *testing.B) {
+	benchmarkRunner(b, log.NewTMLogger(ioutil.Discard), baseInfoMessage)
 }
 
-func BenchmarkTmLoggerContextual(b *testing.B) {
-	benchmarkRunner(b, log.NewTmLogger(ioutil.Discard), withInfoMessage)
+func BenchmarkTMLoggerContextual(b *testing.B) {
+	benchmarkRunner(b, log.NewTMLogger(ioutil.Discard), withInfoMessage)
 }
 
 func benchmarkRunner(b *testing.B, logger log.Logger, f func(log.Logger)) {

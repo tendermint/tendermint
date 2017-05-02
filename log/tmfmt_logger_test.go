@@ -13,10 +13,10 @@ import (
 	"github.com/tendermint/tmlibs/log"
 )
 
-func TestTmfmtLogger(t *testing.T) {
+func TestTMFmtLogger(t *testing.T) {
 	t.Parallel()
 	buf := &bytes.Buffer{}
-	logger := log.NewTmfmtLogger(buf)
+	logger := log.NewTMFmtLogger(buf)
 
 	if err := logger.Log("hello", "world"); err != nil {
 		t.Fatal(err)
@@ -46,17 +46,17 @@ func TestTmfmtLogger(t *testing.T) {
 	assert.Regexp(t, regexp.MustCompile(`N\[.+\] Hello \s+\n$`), buf.String())
 }
 
-func BenchmarkTmfmtLoggerSimple(b *testing.B) {
-	benchmarkRunnerKitlog(b, log.NewTmfmtLogger(ioutil.Discard), baseMessage)
+func BenchmarkTMFmtLoggerSimple(b *testing.B) {
+	benchmarkRunnerKitlog(b, log.NewTMFmtLogger(ioutil.Discard), baseMessage)
 }
 
-func BenchmarkTmfmtLoggerContextual(b *testing.B) {
-	benchmarkRunnerKitlog(b, log.NewTmfmtLogger(ioutil.Discard), withMessage)
+func BenchmarkTMFmtLoggerContextual(b *testing.B) {
+	benchmarkRunnerKitlog(b, log.NewTMFmtLogger(ioutil.Discard), withMessage)
 }
 
-func TestTmfmtLoggerConcurrency(t *testing.T) {
+func TestTMFmtLoggerConcurrency(t *testing.T) {
 	t.Parallel()
-	testConcurrency(t, log.NewTmfmtLogger(ioutil.Discard), 10000)
+	testConcurrency(t, log.NewTMFmtLogger(ioutil.Discard), 10000)
 }
 
 func benchmarkRunnerKitlog(b *testing.B, logger kitlog.Logger, f func(kitlog.Logger)) {

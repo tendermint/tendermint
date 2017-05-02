@@ -34,13 +34,13 @@ type tmfmtLogger struct {
 	w io.Writer
 }
 
-// NewTmFmtLogger returns a logger that encodes keyvals to the Writer in
+// NewTMFmtLogger returns a logger that encodes keyvals to the Writer in
 // Tendermint custom format.
 //
 // Each log event produces no more than one call to w.Write.
 // The passed Writer must be safe for concurrent use by multiple goroutines if
 // the returned Logger will be used concurrently.
-func NewTmfmtLogger(w io.Writer) kitlog.Logger {
+func NewTMFmtLogger(w io.Writer) kitlog.Logger {
 	return &tmfmtLogger{w}
 }
 
