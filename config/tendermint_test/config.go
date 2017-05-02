@@ -80,10 +80,6 @@ func ResetConfig(localPath string) *viper.Viper {
 	config.SetDefault("moniker", "anonymous")
 	config.SetDefault("node_laddr", "tcp://0.0.0.0:36656")
 	config.SetDefault("fast_sync", false)
-	config.SetDefault("skip_upnp", true)
-	config.SetDefault("addrbook_file", rootDir+"/addrbook.json")
-	config.SetDefault("addrbook_strict", true) // disable to allow connections locally
-	config.SetDefault("pex_reactor", false)    // enable for peer exchange
 	config.SetDefault("priv_validator_file", rootDir+"/priv_validator.json")
 	config.SetDefault("db_backend", "memdb")
 	config.SetDefault("db_dir", rootDir+"/data")
@@ -91,29 +87,32 @@ func ResetConfig(localPath string) *viper.Viper {
 	config.SetDefault("rpc_laddr", "tcp://0.0.0.0:36657")
 	config.SetDefault("grpc_laddr", "tcp://0.0.0.0:36658")
 	config.SetDefault("prof_laddr", "")
-	config.SetDefault("revision_file", rootDir+"/revision")
-	config.SetDefault("cs_wal_file", rootDir+"/data/cs.wal/wal")
-	config.SetDefault("cs_wal_light", false)
 	config.SetDefault("filter_peers", false)
-
-	config.SetDefault("block_size", 10000)
-	config.SetDefault("block_part_size", 65536) // part size 64K
-	config.SetDefault("disable_data_hash", false)
-	config.SetDefault("timeout_handshake", 10000)
-	config.SetDefault("timeout_propose", 2000)
-	config.SetDefault("timeout_propose_delta", 1)
-	config.SetDefault("timeout_prevote", 10)
-	config.SetDefault("timeout_prevote_delta", 1)
-	config.SetDefault("timeout_precommit", 10)
-	config.SetDefault("timeout_precommit_delta", 1)
-	config.SetDefault("timeout_commit", 10)
-	config.SetDefault("skip_timeout_commit", true)
-	config.SetDefault("mempool_recheck", true)
-	config.SetDefault("mempool_recheck_empty", true)
-	config.SetDefault("mempool_broadcast", true)
-	config.SetDefault("mempool_wal_dir", "")
-
 	config.SetDefault("tx_index", "kv")
+
+	config.SetDefault("p2p.skip_upnp", true)
+	config.SetDefault("p2p.addrbook_file", rootDir+"/addrbook.json")
+	config.SetDefault("p2p.addrbook_strict", true) // disable to allow connections locally
+	config.SetDefault("p2p.pex_reactor", false)    // enable for peer exchange
+
+	config.SetDefault("consensus.wal_file", rootDir+"/data/cs.wal/wal")
+	config.SetDefault("consensus.wal_light", false)
+	config.SetDefault("consensus.max_block_size_txs", 10000)
+	config.SetDefault("consensus.block_part_size", 65536) // part size 64K
+	config.SetDefault("consensus.timeout_handshake", 10000)
+	config.SetDefault("consensus.timeout_propose", 2000)
+	config.SetDefault("consensus.timeout_propose_delta", 1)
+	config.SetDefault("consensus.timeout_prevote", 10)
+	config.SetDefault("consensus.timeout_prevote_delta", 1)
+	config.SetDefault("consensus.timeout_precommit", 10)
+	config.SetDefault("consensus.timeout_precommit_delta", 1)
+	config.SetDefault("consensus.timeout_commit", 10)
+	config.SetDefault("consensus.skip_timeout_commit", true)
+
+	config.SetDefault("mempool.recheck", true)
+	config.SetDefault("mempool.recheck_empty", true)
+	config.SetDefault("mempool.broadcast", true)
+	config.SetDefault("mempool.wal_dir", "")
 
 	logger.SetLogLevel(config.GetString("log_level"))
 
