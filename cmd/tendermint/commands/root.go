@@ -17,8 +17,6 @@ var (
 
 func init() {
 	viperConfig = cfg.GetConfig("")
-	config = node.NewDefaultConfig("")
-
 }
 
 // unmarshal viper into the Tendermint config
@@ -38,6 +36,6 @@ var RootCmd = &cobra.Command{
 
 func init() {
 	//parse flag and set config
-	RootCmd.PersistentFlags().String("log_level", config.LogLevel, "Log level")
+	RootCmd.PersistentFlags().String("log_level", viperConfig.GetString("log_level"), "Log level")
 	viperConfig.BindPFlag("log_level", RootCmd.PersistentFlags().Lookup("log_level"))
 }
