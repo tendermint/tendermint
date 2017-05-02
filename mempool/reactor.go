@@ -22,21 +22,30 @@ const (
 )
 
 type Config struct {
-	Recheck      bool   // true
-	RecheckEmpty bool   // true
-	Broadcast    bool   // true
-	WalDir       string // rootDir+"/data/mempool.wal")
+	Recheck      bool   `mapstructure:"recheck"`       // true
+	RecheckEmpty bool   `mapstructure:"recheck_empty"` // true
+	Broadcast    bool   `mapstructure:"broadcast"`     // true
+	WalDir       string `mapstructure:"wal_dir"`       //
+}
+
+func NewDefaultConfig(rootDir string) *Config {
+	return &Config{
+		Recheck:      true,
+		RecheckEmpty: true,
+		Broadcast:    true,
+		WalDir:       rootDir + "/data/mempool.wal",
+	}
 }
 
 // MempoolReactor handles mempool tx broadcasting amongst peers.
 type MempoolReactor struct {
 	p2p.BaseReactor
-	config  Config
+	config  *Config
 	Mempool *Mempool
 	evsw    types.EventSwitch
 }
 
-func NewMempoolReactor(config Config, mempool *Mempool) *MempoolReactor {
+func NewMempoolReactor(config *Config, mempool *Mempool) *MempoolReactor {
 	memR := &MempoolReactor{
 		config:  config,
 		Mempool: mempool,

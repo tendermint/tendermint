@@ -47,7 +47,7 @@ TODO: Better handle abci client errors. (make it automatically handle connection
 const cacheSize = 100000
 
 type Mempool struct {
-	config Config
+	config *Config
 
 	proxyMtx      sync.Mutex
 	proxyAppConn  proxy.AppConnMempool
@@ -66,7 +66,7 @@ type Mempool struct {
 	wal *auto.AutoFile
 }
 
-func NewMempool(config Config, proxyAppConn proxy.AppConnMempool) *Mempool {
+func NewMempool(config *Config, proxyAppConn proxy.AppConnMempool) *Mempool {
 	mempool := &Mempool{
 		config:        config,
 		proxyAppConn:  proxyAppConn,

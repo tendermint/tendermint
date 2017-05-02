@@ -8,9 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/spf13/viper"
-
 	bc "github.com/tendermint/tendermint/blockchain"
+	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -21,10 +20,10 @@ import (
 //--------------------------------------------------------
 // replay messages interactively or all at once
 
-func RunReplayFile(config *viper.Viper, walFile string, console bool) {
-	consensusState := newConsensusStateForReplay(config)
+func RunReplayFile(config *cfg.Config, csConfig *Config, console bool) {
+	consensusState := newConsensusStateForReplay(config, csConfig)
 
-	if err := consensusState.ReplayFile(walFile, console); err != nil {
+	if err := consensusState.ReplayFile(csConfig.WalFile, console); err != nil {
 		cmn.Exit(cmn.Fmt("Error during consensus replay: %v", err))
 	}
 }
@@ -236,25 +235,22 @@ func (pb *playback) replayConsoleLoop() int {
 //--------------------------------------------------------------------------------
 
 // convenience for replay mode
-func newConsensusStateForReplay(config *viper.Viper) *ConsensusState {
+func newConsensusStateForReplay(config *cfg.Config, csConfig *Config) *ConsensusState {
 	// Get BlockStore
-	blockStoreDB := dbm.NewDB("blockstore", config.GetString("db_backend"), config.GetString("db_dir"))
+	blockStoreDB := dbm.NewDB("blockstore", config.DBBackend, config.DBDir)
 	blockStore := bc.NewBlockStore(blockStoreDB)
 
 	// Get State
-	stateDB := dbm.NewDB("state", config.GetString("db_backend"), config.GetString("db_dir"))
-	state := sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
+	stateDB := dbm.NewDB("state", config.DBBackend, config.DBDir)
+	state := sm.MakeGenesisStateFromFile(stateDB, config.GenesisFile)
 
 	// Create proxyAppConn connection (consensus, mempool, query)
-	clientCreator := proxy.DefaultClientCreator(config.GetString("proxy_app"), config.GetString("abci"), config.GetString("db_dir"))
+	clientCreator := proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir)
 	proxyApp := proxy.NewAppConns(clientCreator, NewHandshaker(state, blockStore))
 	_, err := proxyApp.Start()
 	if err != nil {
 		cmn.Exit(cmn.Fmt("Error starting proxy app conns: %v", err))
 	}
-
-	// add the chainid to the global config
-	config.Set("chain_id", state.ChainID)
 
 	// Make event switch
 	eventSwitch := types.NewEventSwitch()
@@ -262,7 +258,7 @@ func newConsensusStateForReplay(config *viper.Viper) *ConsensusState {
 		cmn.Exit(cmn.Fmt("Failed to start event switch: %v", err))
 	}
 
-	consensusState := NewConsensusState(config, state.Copy(), proxyApp.Consensus(), blockStore, types.MockMempool{})
+	consensusState := NewConsensusState(csConfig, state.Copy(), proxyApp.Consensus(), blockStore, types.MockMempool{})
 	consensusState.SetEventSwitch(eventSwitch)
 	return consensusState
 }

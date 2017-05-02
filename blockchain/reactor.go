@@ -222,7 +222,7 @@ FOR_LOOP:
 					// We need both to sync the first block.
 					break SYNC_LOOP
 				}
-				firstParts := first.MakePartSet(types.DefaultPartSetSize)
+				firstParts := first.MakePartSet(types.DefaultBlockPartSize)
 				firstPartsHeader := firstParts.Header()
 				// Finally, verify the first block using the second's commit
 				// NOTE: we can probably make this more efficient, but note that calling

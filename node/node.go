@@ -13,7 +13,8 @@ import (
 	crypto "github.com/tendermint/go-crypto"
 	wire "github.com/tendermint/go-wire"
 	bc "github.com/tendermint/tendermint/blockchain"
-	tmcfg "github.com/tendermint/tendermint/config/tendermint"
+	cfg "github.com/tendermint/tendermint/config"
+	// tmcfg "github.com/tendermint/tendermint/config/tendermint"
 	"github.com/tendermint/tendermint/consensus"
 	mempl "github.com/tendermint/tendermint/mempool"
 	p2p "github.com/tendermint/tendermint/p2p"
@@ -34,11 +35,30 @@ import (
 	_ "net/http/pprof"
 )
 
+type Config struct {
+	// Top level options use an anonymous struct
+	*cfg.Config `mapstructure:",squash"`
+
+	// Options for services
+	P2P       *p2p.NetworkConfig `mapstructure:"p2p"`
+	Mempool   *mempl.Config      `mapstructure:"mempool"`
+	Consensus *consensus.Config  `mapstructure:"consensus"`
+}
+
+func NewDefaultConfig(rootDir string) *Config {
+	return &Config{
+		Config:    cfg.NewDefaultConfig(rootDir),
+		P2P:       p2p.NewDefaultConfig(rootDir),
+		Mempool:   mempl.NewDefaultConfig(rootDir),
+		Consensus: consensus.NewDefaultConfig(rootDir),
+	}
+}
+
 type Node struct {
 	cmn.BaseService
 
 	// config
-	config        *viper.Viper         // user config
+	config        *Config
 	genesisDoc    *types.GenesisDoc    // initial validator set
 	privValidator *types.PrivValidator // local node's validator key
 
@@ -59,35 +79,27 @@ type Node struct {
 	txIndexer        txindex.TxIndexer
 }
 
-func NewNodeDefault(config *viper.Viper) *Node {
+func NewNodeDefault(config *Config) *Node {
 	// Get PrivValidator
-	privValidatorFile := config.GetString("priv_validator_file")
-	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
-	return NewNode(config, privValidator, proxy.DefaultClientCreator(
-		config.GetString("proxy_app"),
-		config.GetString("abci"),
-		config.GetString("db_dir"),
-	))
-	// config.ABCI.ProxyApp, config.ABCI.Mode, config.DB.Dir))
+	privValidator := types.LoadOrGenPrivValidator(config.PrivValidatorFile)
+	return NewNode(config, privValidator,
+		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir))
 }
 
-func NewNode(config *viper.Viper, privValidator *types.PrivValidator, clientCreator proxy.ClientCreator) *Node {
-
-	tmConfig := new(tmcfg.Config)
-	if err := config.Unmarshal(tmConfig); err != nil {
-		panic(err)
-	}
+func NewNode(config *Config, privValidator *types.PrivValidator, clientCreator proxy.ClientCreator) *Node {
 
 	// Get BlockStore
-	blockStoreDB := dbm.NewDB("blockstore", tmConfig.DB.Backend, tmConfig.DB.Dir)
+	blockStoreDB := dbm.NewDB("blockstore", config.DBBackend, config.DBDir)
 	blockStore := bc.NewBlockStore(blockStoreDB)
 
 	// Get State
-	stateDB := dbm.NewDB("state", tmConfig.DB.Backend, tmConfig.DB.Dir)
-	state := sm.GetState(stateDB, tmConfig.Chain.GenesisFile)
+	stateDB := dbm.NewDB("state", config.DBBackend, config.DBDir)
+	state := sm.GetState(stateDB, config.GenesisFile)
 
 	// add the chainid and number of validators to the global config
-	config.Set("chain_id", state.ChainID)
+	// TODO: Set ChainID. eg:
+	// config.Consensus.SetChainID(state.ChainID) // ...
+	// but actually consensus doesnt need it since the cs has the state ...
 
 	// Create the proxyApp, which manages connections (consensus, mempool, query)
 	// and sync tendermint and the app by replaying any necessary blocks
@@ -101,9 +113,9 @@ func NewNode(config *viper.Viper, privValidator *types.PrivValidator, clientCrea
 
 	// Transaction indexing
 	var txIndexer txindex.TxIndexer
-	switch tmConfig.DB.TxIndex {
+	switch config.TxIndex {
 	case "kv":
-		store := dbm.NewDB("tx_index", tmConfig.DB.Backend, tmConfig.DB.Dir)
+		store := dbm.NewDB("tx_index", config.DBBackend, config.DBDir)
 		txIndexer = kv.NewTxIndex(store)
 	default:
 		txIndexer = &null.TxIndex{}
@@ -122,7 +134,7 @@ func NewNode(config *viper.Viper, privValidator *types.PrivValidator, clientCrea
 
 	// Decide whether to fast-sync or not
 	// We don't fast-sync when the only validator is us.
-	fastSync := config.GetBool("fast_sync")
+	fastSync := config.FastSync
 	if state.Validators.Size() == 1 {
 		addr, _ := state.Validators.GetByIndex(0)
 		if bytes.Equal(privValidator.Address, addr) {
@@ -134,21 +146,20 @@ func NewNode(config *viper.Viper, privValidator *types.PrivValidator, clientCrea
 	bcReactor := bc.NewBlockchainReactor(state.Copy(), proxyApp.Consensus(), blockStore, fastSync)
 
 	// Make MempoolReactor
-	mempool := mempl.NewMempool(mempoolConfig(config), proxyApp.Mempool())
-	mempoolReactor := mempl.NewMempoolReactor(mempoolConfig(config), mempool)
+	mempool := mempl.NewMempool(config.Mempool, proxyApp.Mempool())
+	mempoolReactor := mempl.NewMempoolReactor(config.Mempool, mempool)
 
 	// Make ConsensusReactor
-	consensusState := consensus.NewConsensusState(config, state.Copy(), proxyApp.Consensus(), blockStore, mempool)
+	consensusState := consensus.NewConsensusState(config.Consensus, state.Copy(), proxyApp.Consensus(), blockStore, mempool)
 	if privValidator != nil {
 		consensusState.SetPrivValidator(privValidator)
 	}
 	consensusReactor := consensus.NewConsensusReactor(consensusState, fastSync)
 
 	// Make p2p network switch
+	// TODO  : p2pConfig := config.P2P
 	p2pConfig := viper.New()
-	if config.IsSet("p2p") { //TODO verify this necessary, where is this ever set?
-		p2pConfig = config.Get("p2p").(*viper.Viper)
-	}
+
 	sw := p2p.NewSwitch(p2pConfig)
 	sw.AddReactor("MEMPOOL", mempoolReactor)
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
@@ -156,8 +167,8 @@ func NewNode(config *viper.Viper, privValidator *types.PrivValidator, clientCrea
 
 	// Optionally, start the pex reactor
 	var addrBook *p2p.AddrBook
-	if config.GetBool("pex_reactor") {
-		addrBook = p2p.NewAddrBook(config.GetString("addrbook_file"), config.GetBool("addrbook_strict"))
+	if config.P2P.PexReactor {
+		addrBook = p2p.NewAddrBook(config.P2P.AddrBookFile, config.P2P.AddrBookStrict)
 		pexReactor := p2p.NewPEXReactor(addrBook)
 		sw.AddReactor("PEX", pexReactor)
 	}
@@ -165,7 +176,7 @@ func NewNode(config *viper.Viper, privValidator *types.PrivValidator, clientCrea
 	// Filter peers by addr or pubkey with an ABCI query.
 	// If the query return code is OK, add peer.
 	// XXX: Query format subject to change
-	if config.GetBool("filter_peers") {
+	if config.FilterPeers {
 		// NOTE: addr is ip:port
 		sw.SetAddrFilter(func(addr net.Addr) error {
 			resQuery, err := proxyApp.Query().QuerySync(abci.RequestQuery{Path: cmn.Fmt("/p2p/filter/addr/%s", addr.String())})
@@ -194,7 +205,7 @@ func NewNode(config *viper.Viper, privValidator *types.PrivValidator, clientCrea
 	SetEventSwitch(eventSwitch, bcReactor, mempoolReactor, consensusReactor)
 
 	// run the profile server
-	profileHost := config.GetString("prof_laddr")
+	profileHost := config.ProfListenAddress
 	if profileHost != "" {
 
 		go func() {
@@ -227,8 +238,8 @@ func NewNode(config *viper.Viper, privValidator *types.PrivValidator, clientCrea
 func (n *Node) OnStart() error {
 
 	// Create & add listener
-	protocol, address := ProtocolAndAddress(n.config.GetString("node_laddr"))
-	l := p2p.NewDefaultListener(protocol, address, n.config.GetBool("skip_upnp"))
+	protocol, address := ProtocolAndAddress(n.config.P2P.ListenAddress)
+	l := p2p.NewDefaultListener(protocol, address, n.config.P2P.SkipUPNP)
 	n.sw.AddListener(l)
 
 	// Start the switch
@@ -240,16 +251,16 @@ func (n *Node) OnStart() error {
 	}
 
 	// If seeds exist, add them to the address book and dial out
-	if n.config.GetString("seeds") != "" {
+	if n.config.P2P.Seeds != "" {
 		// dial out
-		seeds := strings.Split(n.config.GetString("seeds"), ",")
+		seeds := strings.Split(n.config.P2P.Seeds, ",")
 		if err := n.DialSeeds(seeds); err != nil {
 			return err
 		}
 	}
 
 	// Run the RPC server
-	if n.config.GetString("rpc_laddr") != "" {
+	if n.config.RPCListenAddress != "" {
 		listeners, err := n.startRPC()
 		if err != nil {
 			return err
@@ -313,7 +324,7 @@ func (n *Node) ConfigureRPC() {
 
 func (n *Node) startRPC() ([]net.Listener, error) {
 	n.ConfigureRPC()
-	listenAddrs := strings.Split(n.config.GetString("rpc_laddr"), ",")
+	listenAddrs := strings.Split(n.config.RPCListenAddress, ",")
 
 	// we may expose the rpc over both a unix and tcp socket
 	listeners := make([]net.Listener, len(listenAddrs))
@@ -330,7 +341,7 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 	}
 
 	// we expose a simplified api over grpc for convenience to app devs
-	grpcListenAddr := n.config.GetString("grpc_laddr")
+	grpcListenAddr := n.config.GRPCListenAddress
 	if grpcListenAddr != "" {
 		listener, err := grpccore.StartGRPCServer(grpcListenAddr)
 		if err != nil {
@@ -387,8 +398,8 @@ func (n *Node) makeNodeInfo() *p2p.NodeInfo {
 
 	nodeInfo := &p2p.NodeInfo{
 		PubKey:  n.privKey.PubKey().Unwrap().(crypto.PubKeyEd25519),
-		Moniker: n.config.GetString("moniker"),
-		Network: n.config.GetString("chain_id"),
+		Moniker: n.config.Moniker,
+		Network: n.consensusState.GetState().ChainID,
 		Version: version.Version,
 		Other: []string{
 			cmn.Fmt("wire_version=%v", wire.Version),
@@ -400,9 +411,10 @@ func (n *Node) makeNodeInfo() *p2p.NodeInfo {
 	}
 
 	// include git hash in the nodeInfo if available
-	if rev, err := cmn.ReadFile(n.config.GetString("revision_file")); err == nil {
+	// TODO: use ld-flags
+	/*if rev, err := cmn.ReadFile(n.config.GetString("revision_file")); err == nil {
 		nodeInfo.Other = append(nodeInfo.Other, cmn.Fmt("revision=%v", string(rev)))
-	}
+	}*/
 
 	if !n.sw.IsListening() {
 		return nodeInfo
@@ -411,7 +423,7 @@ func (n *Node) makeNodeInfo() *p2p.NodeInfo {
 	p2pListener := n.sw.Listeners()[0]
 	p2pHost := p2pListener.ExternalAddress().IP.String()
 	p2pPort := p2pListener.ExternalAddress().Port
-	rpcListenAddr := n.config.GetString("rpc_laddr")
+	rpcListenAddr := n.config.RPCListenAddress
 
 	// We assume that the rpcListener has the same ExternalAddress.
 	// This is probably true because both P2P and RPC listeners use UPnP,
@@ -442,12 +454,3 @@ func ProtocolAndAddress(listenAddr string) (string, string) {
 }
 
 //------------------------------------------------------------------------------
-
-func mempoolConfig(config *viper.Viper) mempl.Config {
-	return mempl.Config{
-		Recheck:      config.GetBool("mempool_recheck"),
-		RecheckEmpty: config.GetBool("mempool_recheck_empty"),
-		Broadcast:    config.GetBool("mempool_broadcast"),
-		WalDir:       config.GetString("mempool_wal_dir"),
-	}
-}
