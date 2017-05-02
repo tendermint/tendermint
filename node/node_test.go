@@ -8,7 +8,8 @@ import (
 )
 
 func TestNodeStartStop(t *testing.T) {
-	config := tendermint_test.ResetConfig("node_node_test")
+	viperConfig := tendermint_test.ResetConfig("node_node_test")
+	config := ConfigFromViper(viperConfig)
 
 	// Create & start node
 	n := NewNodeDefault(config)

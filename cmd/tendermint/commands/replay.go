@@ -11,7 +11,7 @@ var replayCmd = &cobra.Command{
 	Short: "Replay messages from WAL",
 	Run: func(cmd *cobra.Command, args []string) {
 		config := getConfig()
-		consensus.RunReplayFile(config.Config, config.Consensus, false)
+		consensus.RunReplayFile(&config.Config, config.Consensus, false)
 	},
 }
 
@@ -20,7 +20,7 @@ var replayConsoleCmd = &cobra.Command{
 	Short: "Replay messages from WAL in a console",
 	Run: func(cmd *cobra.Command, args []string) {
 		config := getConfig()
-		consensus.RunReplayFile(config.Config, config.Consensus, true)
+		consensus.RunReplayFile(&config.Config, config.Consensus, true)
 	},
 }
 
