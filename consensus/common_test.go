@@ -11,11 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/spf13/viper"
-
 	abcicli "github.com/tendermint/abci/client"
 	abci "github.com/tendermint/abci/types"
 	bc "github.com/tendermint/tendermint/blockchain"
+	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/config/tendermint_test"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
@@ -29,13 +28,30 @@ import (
 )
 
 // genesis, chain_id, priv_val
-var config *viper.Viper // NOTE: must be reset for each _test.go file
+var config *NodeConfig // NOTE: must be reset for each _test.go file
 var ensureTimeout = time.Duration(2)
 
 func ensureDir(dir string, mode os.FileMode) {
 	if err := EnsureDir(dir, mode); err != nil {
 		panic(err)
 	}
+}
+
+type NodeConfig struct {
+	cfg.Config `mapstructure:",squash"`
+	P2P        *p2p.Config   `mapstructure:"p2p"`
+	Mempool    *mempl.Config `mapstructure:"mempool"`
+	Consensus  *Config       `mapstructure:"consensus"`
+}
+
+// TODO: This is the same as NodeConfig. Should we move the configs to types (?)
+func ResetConfig(name string) *NodeConfig {
+	viperConfig := tendermint_test.ResetConfig(name)
+	config := new(NodeConfig)
+	if err := viperConfig.Unmarshal(config); err != nil {
+		panic(err)
+	}
+	return config
 }
 
 //-------------------------------------------------------------------------------
@@ -66,7 +82,7 @@ func (vs *validatorStub) signVote(voteType byte, hash []byte, header types.PartS
 		Type:             voteType,
 		BlockID:          types.BlockID{hash, header},
 	}
-	err := vs.PrivValidator.SignVote(config.GetString("chain_id"), vote)
+	err := vs.PrivValidator.SignVote(config.ChainID, vote)
 	return vote, err
 }
 
@@ -117,7 +133,7 @@ func decideProposal(cs1 *ConsensusState, vs *validatorStub, height, round int) (
 	// Make proposal
 	polRound, polBlockID := cs1.Votes.POLInfo()
 	proposal = types.NewProposal(height, round, blockParts.Header(), polRound, polBlockID)
-	if err := vs.SignProposal(config.GetString("chain_id"), proposal); err != nil {
+	if err := vs.SignProposal(config.ChainID, proposal); err != nil {
 		panic(err)
 	}
 	return
@@ -235,7 +251,7 @@ func newConsensusState(state *sm.State, pv *types.PrivValidator, app abci.Applic
 	return newConsensusStateWithConfig(config, state, pv, app)
 }
 
-func newConsensusStateWithConfig(thisConfig *viper.Viper, state *sm.State, pv *types.PrivValidator, app abci.Application) *ConsensusState {
+func newConsensusStateWithConfig(thisConfig *NodeConfig, state *sm.State, pv *types.PrivValidator, app abci.Application) *ConsensusState {
 	// Get BlockStore
 	blockDB := dbm.NewMemDB()
 	blockStore := bc.NewBlockStore(blockDB)
@@ -246,10 +262,10 @@ func newConsensusStateWithConfig(thisConfig *viper.Viper, state *sm.State, pv *t
 	proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
 
 	// Make Mempool
-	mempool := mempl.NewMempool(thisConfig, proxyAppConnMem)
+	mempool := mempl.NewMempool(thisConfig.Mempool, proxyAppConnMem)
 
 	// Make ConsensusReactor
-	cs := NewConsensusState(thisConfig, state, proxyAppConnCon, blockStore, mempool)
+	cs := NewConsensusState(thisConfig.Consensus, state, proxyAppConnCon, blockStore, mempool)
 	cs.SetPrivValidator(pv)
 
 	evsw := types.NewEventSwitch()
@@ -258,8 +274,8 @@ func newConsensusStateWithConfig(thisConfig *viper.Viper, state *sm.State, pv *t
 	return cs
 }
 
-func loadPrivValidator(conf *viper.Viper) *types.PrivValidator {
-	privValidatorFile := conf.GetString("priv_validator_file")
+func loadPrivValidator(config *NodeConfig) *types.PrivValidator {
+	privValidatorFile := config.PrivValidatorFile
 	ensureDir(path.Dir(privValidatorFile), 0700)
 	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
 	privValidator.Reset()
@@ -268,7 +284,7 @@ func loadPrivValidator(conf *viper.Viper) *types.PrivValidator {
 
 func fixedConsensusState() *ConsensusState {
 	stateDB := dbm.NewMemDB()
-	state := sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
+	state := sm.MakeGenesisStateFromFile(stateDB, config.GenesisFile)
 	privValidator := loadPrivValidator(config)
 	cs := newConsensusState(state, privValidator, counter.NewCounterApplication(true))
 	return cs
@@ -276,7 +292,7 @@ func fixedConsensusState() *ConsensusState {
 
 func fixedConsensusStateDummy() *ConsensusState {
 	stateDB := dbm.NewMemDB()
-	state := sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
+	state := sm.MakeGenesisStateFromFile(stateDB, config.GenesisFile)
 	privValidator := loadPrivValidator(config)
 	cs := newConsensusState(state, privValidator, dummy.NewDummyApplication())
 	return cs
@@ -321,8 +337,8 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 		db := dbm.NewMemDB() // each state needs its own db
 		state := sm.MakeGenesisState(db, genDoc)
 		state.Save()
-		thisConfig := tendermint_test.ResetConfig(Fmt("%s_%d", testName, i))
-		ensureDir(path.Dir(thisConfig.GetString("cs_wal_file")), 0700) // dir for wal
+		thisConfig := ResetConfig(Fmt("%s_%d", testName, i))
+		ensureDir(path.Dir(thisConfig.Consensus.WalFile), 0700) // dir for wal
 		css[i] = newConsensusStateWithConfig(thisConfig, state, privVals[i], appFunc())
 		css[i].SetTimeoutTicker(tickerFunc())
 	}
@@ -337,8 +353,8 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 		db := dbm.NewMemDB() // each state needs its own db
 		state := sm.MakeGenesisState(db, genDoc)
 		state.Save()
-		thisConfig := tendermint_test.ResetConfig(Fmt("%s_%d", testName, i))
-		ensureDir(path.Dir(thisConfig.GetString("cs_wal_file")), 0700) // dir for wal
+		thisConfig := ResetConfig(Fmt("%s_%d", testName, i))
+		ensureDir(path.Dir(thisConfig.Consensus.WalFile), 0700) // dir for wal
 		var privVal *types.PrivValidator
 		if i < nValidators {
 			privVal = privVals[i]
@@ -381,7 +397,7 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 	sort.Sort(types.PrivValidatorsByAddress(privValidators))
 	return &types.GenesisDoc{
 		GenesisTime: time.Now(),
-		ChainID:     config.GetString("chain_id"),
+		ChainID:     config.ChainID,
 		Validators:  validators,
 	}, privValidators
 }

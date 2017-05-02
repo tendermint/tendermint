@@ -3,19 +3,18 @@ package consensus
 import (
 	"testing"
 
-	. "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tendermint/config/tendermint_test"
 	"github.com/tendermint/tendermint/types"
+	. "github.com/tendermint/tmlibs/common"
 )
 
 func init() {
-	config = tendermint_test.ResetConfig("consensus_height_vote_set_test")
+	config = ResetConfig("consensus_height_vote_set_test")
 }
 
 func TestPeerCatchupRounds(t *testing.T) {
 	valSet, privVals := types.RandValidatorSet(10, 1)
 
-	hvs := NewHeightVoteSet(config.GetString("chain_id"), 1, valSet)
+	hvs := NewHeightVoteSet(config.ChainID, 1, valSet)
 
 	vote999_0 := makeVoteHR(t, 1, 999, privVals, 0)
 	added, err := hvs.AddVote(vote999_0, "peer1")
@@ -52,7 +51,7 @@ func makeVoteHR(t *testing.T, height, round int, privVals []*types.PrivValidator
 		Type:             types.VoteTypePrecommit,
 		BlockID:          types.BlockID{[]byte("fakehash"), types.PartSetHeader{}},
 	}
-	chainID := config.GetString("chain_id")
+	chainID := config.ChainID
 	err := privVal.SignVote(chainID, vote)
 	if err != nil {
 		panic(Fmt("Error signing vote: %v", err))

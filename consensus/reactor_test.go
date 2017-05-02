@@ -6,8 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/config/tendermint_test"
-
 	"github.com/tendermint/abci/example/dummy"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
@@ -15,7 +13,7 @@ import (
 )
 
 func init() {
-	config = tendermint_test.ResetConfig("consensus_reactor_test")
+	config = ResetConfig("consensus_reactor_test")
 }
 
 //----------------------------------------------
@@ -41,7 +39,7 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, N int, subscribeEven
 		}
 	}
 	// make connected switches and start all reactors
-	p2p.MakeConnectedSwitches(N, func(i int, s *p2p.Switch) *p2p.Switch {
+	p2p.MakeConnectedSwitches(config.P2P, N, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("CONSENSUS", reactors[i])
 		return s
 	}, p2p.Connect2Switches)
@@ -236,7 +234,7 @@ func TestReactorWithTimeoutCommit(t *testing.T) {
 	css := randConsensusNet(N, "consensus_reactor_with_timeout_commit_test", newMockTickerFunc(false), newCounter)
 	// override default SkipTimeoutCommit == true for tests
 	for i := 0; i < N; i++ {
-		css[i].timeoutParams.SkipTimeoutCommit = false
+		css[i].config.SkipTimeoutCommit = false
 	}
 
 	reactors, eventChans := startConsensusNet(t, css, N-1, false)

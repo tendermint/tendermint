@@ -46,8 +46,6 @@ type Config struct {
 	// TODO: This probably shouldn't be exposed but it makes it
 	// easy to write tests for the wal/replay
 	BlockPartSize int `mapstructure:"block_part_size"`
-
-	chainID string
 }
 
 func NewDefaultConfig(rootDir string) *Config {
@@ -79,10 +77,6 @@ func NewTestConfig(rootDir string) *Config {
 	config.TimeoutCommit = 10
 	config.SkipTimeoutCommit = true
 	return config
-}
-
-func (cfg *Config) SetChainID(chainID string) {
-	cfg.chainID = chainID
 }
 
 // Wait this long for a proposal
@@ -302,7 +296,6 @@ type ConsensusState struct {
 }
 
 func NewConsensusState(config *Config, state *sm.State, proxyAppConn proxy.AppConnConsensus, blockStore types.BlockStore, mempool types.Mempool) *ConsensusState {
-	config.chainID = state.ChainID // Set ChainID
 	cs := &ConsensusState{
 		config:           config,
 		proxyAppConn:     proxyAppConn,
@@ -558,7 +551,7 @@ func (cs *ConsensusState) reconstructLastCommit(state *sm.State) {
 		return
 	}
 	seenCommit := cs.blockStore.LoadSeenCommit(state.LastBlockHeight)
-	lastPrecommits := types.NewVoteSet(cs.config.chainID, state.LastBlockHeight, seenCommit.Round(), types.VoteTypePrecommit, state.LastValidators)
+	lastPrecommits := types.NewVoteSet(cs.state.ChainID, state.LastBlockHeight, seenCommit.Round(), types.VoteTypePrecommit, state.LastValidators)
 	for _, precommit := range seenCommit.Precommits {
 		if precommit == nil {
 			continue
@@ -629,7 +622,7 @@ func (cs *ConsensusState) updateToState(state *sm.State) {
 	cs.LockedRound = 0
 	cs.LockedBlock = nil
 	cs.LockedBlockParts = nil
-	cs.Votes = NewHeightVoteSet(cs.config.chainID, height, validators)
+	cs.Votes = NewHeightVoteSet(state.ChainID, height, validators)
 	cs.CommitRound = -1
 	cs.LastCommit = lastPrecommits
 	cs.LastValidators = state.LastValidators

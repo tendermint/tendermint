@@ -6,17 +6,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/config/tendermint_test"
 	"github.com/tendermint/tendermint/types"
 	. "github.com/tendermint/tmlibs/common"
 )
 
 func init() {
-	config = tendermint_test.ResetConfig("consensus_state_test")
+	config = ResetConfig("consensus_state_test")
 }
 
-func (tp *TimeoutParams) ensureProposeTimeout() time.Duration {
-	return time.Duration(tp.Propose0*2) * time.Millisecond
+func (config *Config) ensureProposeTimeout() time.Duration {
+	return time.Duration(config.TimeoutPropose*2) * time.Millisecond
 }
 
 /*
@@ -126,7 +125,7 @@ func TestEnterProposeNoPrivValidator(t *testing.T) {
 	startTestRound(cs, height, round)
 
 	// if we're not a validator, EnterPropose should timeout
-	ticker := time.NewTicker(cs.timeoutParams.ensureProposeTimeout())
+	ticker := time.NewTicker(cs.config.ensureProposeTimeout())
 	select {
 	case <-timeoutCh:
 	case <-ticker.C:
@@ -167,7 +166,7 @@ func TestEnterProposeYesPrivValidator(t *testing.T) {
 	}
 
 	// if we're a validator, enterPropose should not timeout
-	ticker := time.NewTicker(cs.timeoutParams.ensureProposeTimeout())
+	ticker := time.NewTicker(cs.config.ensureProposeTimeout())
 	select {
 	case <-timeoutCh:
 		panic("Expected EnterPropose not to timeout")
@@ -181,7 +180,7 @@ func TestBadProposal(t *testing.T) {
 	height, round := cs1.Height, cs1.Round
 	vs2 := vss[1]
 
-	partSize := config.GetInt("block_part_size")
+	partSize := config.Consensus.BlockPartSize
 
 	proposalCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringCompleteProposal(), 1)
 	voteCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringVote(), 1)
@@ -201,7 +200,7 @@ func TestBadProposal(t *testing.T) {
 	propBlock.AppHash = stateHash
 	propBlockParts := propBlock.MakePartSet(partSize)
 	proposal := types.NewProposal(vs2.Height, round, propBlockParts.Header(), -1, types.BlockID{})
-	if err := vs2.SignProposal(config.GetString("chain_id"), proposal); err != nil {
+	if err := vs2.SignProposal(config.ChainID, proposal); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 
@@ -328,7 +327,7 @@ func TestLockNoPOL(t *testing.T) {
 	vs2 := vss[1]
 	height := cs1.Height
 
-	partSize := config.GetInt("block_part_size")
+	partSize := config.Consensus.BlockPartSize
 
 	timeoutProposeCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringTimeoutPropose(), 1)
 	timeoutWaitCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringTimeoutWait(), 1)
@@ -494,7 +493,7 @@ func TestLockPOLRelock(t *testing.T) {
 	cs1, vss := randConsensusState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 
-	partSize := config.GetInt("block_part_size")
+	partSize := config.Consensus.BlockPartSize
 
 	timeoutProposeCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringTimeoutPropose(), 1)
 	timeoutWaitCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringTimeoutWait(), 1)
@@ -606,7 +605,7 @@ func TestLockPOLUnlock(t *testing.T) {
 	cs1, vss := randConsensusState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 
-	partSize := config.GetInt("block_part_size")
+	partSize := config.Consensus.BlockPartSize
 
 	proposalCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringCompleteProposal(), 1)
 	timeoutProposeCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringTimeoutPropose(), 1)
@@ -701,7 +700,7 @@ func TestLockPOLSafety1(t *testing.T) {
 	cs1, vss := randConsensusState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 
-	partSize := config.GetInt("block_part_size")
+	partSize := config.Consensus.BlockPartSize
 
 	proposalCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringCompleteProposal(), 1)
 	timeoutProposeCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringTimeoutPropose(), 1)
@@ -822,7 +821,7 @@ func TestLockPOLSafety2(t *testing.T) {
 	cs1, vss := randConsensusState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 
-	partSize := config.GetInt("block_part_size")
+	partSize := config.Consensus.BlockPartSize
 
 	proposalCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringCompleteProposal(), 1)
 	timeoutProposeCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringTimeoutPropose(), 1)
@@ -878,7 +877,7 @@ func TestLockPOLSafety2(t *testing.T) {
 
 	// in round 2 we see the polkad block from round 0
 	newProp := types.NewProposal(height, 2, propBlockParts0.Header(), 0, propBlockID1)
-	if err := vs3.SignProposal(config.GetString("chain_id"), newProp); err != nil {
+	if err := vs3.SignProposal(config.ChainID, newProp); err != nil {
 		t.Fatal(err)
 	}
 	cs1.SetProposalAndBlock(newProp, propBlock0, propBlockParts0, "some peer")
@@ -997,7 +996,7 @@ func TestHalt1(t *testing.T) {
 	cs1, vss := randConsensusState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 
-	partSize := config.GetInt("block_part_size")
+	partSize := config.Consensus.BlockPartSize
 
 	proposalCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringCompleteProposal(), 1)
 	timeoutWaitCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringTimeoutWait(), 1)
