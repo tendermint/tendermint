@@ -72,12 +72,12 @@ func GetConfig(rootDir string) *viper.Viper {
 	config.SetDefault("grpc_laddr", "")
 	config.SetDefault("tx_index", "kv")
 
-	config.SetDefault("network.listen_addr", "tcp://0.0.0.0:46656")
-	config.SetDefault("network.seeds", "")
-	config.SetDefault("network.skip_upnp", false)
-	config.SetDefault("network.addrbook_file", rootDir+"/addrbook.json")
-	config.SetDefault("network.addrbook_strict", true) // disable to allow connections locally
-	config.SetDefault("network.pex_reactor", false)    // enable for peer exchange
+	config.SetDefault("p2p.laddr", "tcp://0.0.0.0:46656")
+	config.SetDefault("p2p.seeds", "")
+	config.SetDefault("p2p.skip_upnp", false)
+	config.SetDefault("p2p.addrbook_file", rootDir+"/addrbook.json")
+	config.SetDefault("p2p.addrbook_strict", true) // disable to allow connections locally
+	config.SetDefault("p2p.pex_reactor", false)    // enable for peer exchange
 
 	config.SetDefault("consensus.wal_file", rootDir+"/data/cs.wal/wal")
 	config.SetDefault("consensus.wal_light", false)

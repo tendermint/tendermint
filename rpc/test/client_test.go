@@ -37,13 +37,13 @@ func TestJSONStatus(t *testing.T) {
 }
 
 func testStatus(t *testing.T, client rpc.HTTPClient) {
-	chainID := GetConfig().GetString("chain_id")
+	moniker := GetConfig().Moniker
 	tmResult := new(ctypes.TMResult)
 	_, err := client.Call("status", map[string]interface{}{}, tmResult)
 	require.Nil(t, err)
 
 	status := (*tmResult).(*ctypes.ResultStatus)
-	assert.Equal(t, chainID, status.NodeInfo.Network)
+	assert.Equal(t, moniker, status.NodeInfo.Moniker)
 }
 
 //--------------------------------------------------------------------------------
