@@ -7,7 +7,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	//cfg "github.com/tendermint/tendermint/config/tendermint"
 	"github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -19,53 +18,38 @@ var runNodeCmd = &cobra.Command{
 	RunE:  runNode,
 }
 
+func registerRunNodeFlagString(flagName, desc string) {
+	runNodeCmd.Flags().String(flagName, viperConfig.GetString(flagName), desc)
+	viperConfig.BindPFlag(flagName, runNodeCmd.Flags().Lookup(flagName))
+}
+
+func registerRunNodeFlagBool(flagName, desc string) {
+	runNodeCmd.Flags().Bool(flagName, viperConfig.GetBool(flagName), desc)
+	viperConfig.BindPFlag(flagName, runNodeCmd.Flags().Lookup(flagName))
+}
+
 func init() {
 	// bind flags
 
 	// node flags
-	runNodeCmd.Flags().String("moniker", config.Moniker,
-		"Node Name")
-	viperConfig.BindPFlag("moniker", runNodeCmd.Flags().Lookup("moniker"))
-
-	runNodeCmd.Flags().Bool("fast_sync", config.FastSync,
-		"Fast blockchain syncing")
-	viperConfig.BindPFlag("fast_sync", runNodeCmd.Flags().Lookup("fast_sync"))
+	registerRunNodeFlagString("moniker", "Node Name")
+	registerRunNodeFlagBool("fast_sync", "Fast blockchain syncing")
 
 	// abci flags
-	runNodeCmd.Flags().String("proxy_app", config.ProxyApp,
-		"Proxy app address, or 'nilapp' or 'dummy' for local testing.")
-	viperConfig.BindPFlag("proxy_app", runNodeCmd.Flags().Lookup("proxy_app"))
-
-	runNodeCmd.Flags().String("abci", config.ABCI,
-		"Specify abci transport (socket | grpc)")
-	viperConfig.BindPFlag("abci", runNodeCmd.Flags().Lookup("abci"))
+	registerRunNodeFlagString("proxy_app", "Proxy app address, or 'nilapp' or 'dummy' for local testing.")
+	registerRunNodeFlagString("abci", "Specify abci transport (socket | grpc)")
 
 	// rpc flags
-	runNodeCmd.Flags().String("rpc_laddr", config.RPCListenAddress,
-		"RPC listen address. Port required")
-	viperConfig.BindPFlag("rpc_laddr", runNodeCmd.Flags().Lookup("rpc_laddr"))
-
-	runNodeCmd.Flags().String("grpc_laddr", config.GRPCListenAddress,
-		"GRPC listen address (BroadcastTx only). Port required")
-	viperConfig.BindPFlag("grpc_laddr", runNodeCmd.Flags().Lookup("grpc_laddr"))
+	registerRunNodeFlagString("rpc_laddr", "RPC listen address. Port required")
+	registerRunNodeFlagString("grpc_laddr", "GRPC listen address (BroadcastTx only). Port required")
 
 	// p2p flags
-	runNodeCmd.Flags().String("p2p.laddr", config.P2P.ListenAddress,
-		"Node listen address. (0.0.0.0:0 means any interface, any port)")
-	viperConfig.BindPFlag("p2p.laddr", runNodeCmd.Flags().Lookup("p2p.laddr"))
-
-	runNodeCmd.Flags().String("p2p.seeds", config.P2P.Seeds,
-		"Comma delimited host:port seed nodes")
-	viperConfig.BindPFlag("p2p.seeds", runNodeCmd.Flags().Lookup("p2p.seeds"))
-
-	runNodeCmd.Flags().Bool("p2p.skip_upnp", config.P2P.SkipUPNP,
-		"Skip UPNP configuration")
-	viperConfig.BindPFlag("p2p.skip_upnp", runNodeCmd.Flags().Lookup("p2p.skip_upnp"))
+	registerRunNodeFlagString("p2p.laddr", "Node listen address. (0.0.0.0:0 means any interface, any port)")
+	registerRunNodeFlagString("p2p.seeds", "Comma delimited host:port seed nodes")
+	registerRunNodeFlagBool("p2p.skip_upnp", "Skip UPNP configuration")
 
 	// feature flags
-	runNodeCmd.Flags().Bool("p2p.pex", config.P2P.PexReactor,
-		"Enable Peer-Exchange (dev feature)")
-	viperConfig.BindPFlag("p2p.pex", runNodeCmd.Flags().Lookup("p2p.pex"))
+	registerRunNodeFlagBool("p2p.pex", "Enable Peer-Exchange (dev feature)")
 
 	RootCmd.AddCommand(runNodeCmd)
 }
@@ -101,8 +85,7 @@ func runNode(cmd *cobra.Command, args []string) error {
 			if genDoc.ChainID == "" {
 				return fmt.Errorf("Genesis doc %v must include non-empty chain_id", genDocFile)
 			}
-
-			// config.SetChainID("chain_id", genDoc.ChainID) TODO
+			config.ChainID = genDoc.ChainID
 		}
 	}
 
