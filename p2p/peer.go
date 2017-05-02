@@ -35,23 +35,24 @@ type Peer struct {
 
 // PeerConfig is a Peer configuration.
 type PeerConfig struct {
-	AuthEnc bool // authenticated encryption
+	AuthEnc bool `mapstructure:"auth_enc"` // authenticated encryption
 
-	HandshakeTimeout time.Duration
-	DialTimeout      time.Duration
+	// times are in seconds
+	HandshakeTimeout time.Duration `mapstructure:"handshake_timeout"`
+	DialTimeout      time.Duration `mapstructure:"dial_timeout"`
 
-	MConfig *MConnConfig
+	MConfig *MConnConfig `mapstructure:"connection"`
 
-	Fuzz       bool // fuzz connection (for testing)
-	FuzzConfig *FuzzConnConfig
+	Fuzz       bool            `mapstructure:"fuzz"` // fuzz connection (for testing)
+	FuzzConfig *FuzzConnConfig `mapstructure:"fuzz_config"`
 }
 
 // DefaultPeerConfig returns the default config.
 func DefaultPeerConfig() *PeerConfig {
 	return &PeerConfig{
 		AuthEnc:          true,
-		HandshakeTimeout: 2 * time.Second,
-		DialTimeout:      3 * time.Second,
+		HandshakeTimeout: 20, // * time.Second,
+		DialTimeout:      3,  // * time.Second,
 		MConfig:          DefaultMConnConfig(),
 		Fuzz:             false,
 		FuzzConfig:       DefaultFuzzConnConfig(),
@@ -95,7 +96,7 @@ func newPeerFromConnAndConfig(rawConn net.Conn, outbound bool, reactorsByCh map[
 
 	// Encrypt connection
 	if config.AuthEnc {
-		conn.SetDeadline(time.Now().Add(config.HandshakeTimeout))
+		conn.SetDeadline(time.Now().Add(config.HandshakeTimeout * time.Second))
 
 		var err error
 		conn, err = MakeSecretConnection(conn, ourNodePrivKey)
@@ -279,7 +280,7 @@ func (p *Peer) Get(key string) interface{} {
 
 func dial(addr *NetAddress, config *PeerConfig) (net.Conn, error) {
 	log.Info("Dialing address", "address", addr)
-	conn, err := addr.DialTimeout(config.DialTimeout)
+	conn, err := addr.DialTimeout(config.DialTimeout * time.Second)
 	if err != nil {
 		log.Info("Failed dialing address", "address", addr, "error", err)
 		return nil, err

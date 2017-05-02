@@ -87,8 +87,8 @@ type MConnection struct {
 
 // MConnConfig is a MConnection configuration.
 type MConnConfig struct {
-	SendRate int64
-	RecvRate int64
+	SendRate int64 `mapstructure:"send_rate"`
+	RecvRate int64 `mapstructure:"recv_rate"`
 }
 
 // DefaultMConnConfig returns the default config.
