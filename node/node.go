@@ -37,21 +37,29 @@ import (
 
 type Config struct {
 	// Top level options use an anonymous struct
-	*cfg.Config `mapstructure:",squash"`
+	cfg.Config `mapstructure:",squash"`
 
 	// Options for services
-	P2P       *p2p.NetworkConfig `mapstructure:"p2p"`
-	Mempool   *mempl.Config      `mapstructure:"mempool"`
-	Consensus *consensus.Config  `mapstructure:"consensus"`
+	P2P       *p2p.Config       `mapstructure:"p2p"`
+	Mempool   *mempl.Config     `mapstructure:"mempool"`
+	Consensus *consensus.Config `mapstructure:"consensus"`
 }
 
 func NewDefaultConfig(rootDir string) *Config {
 	return &Config{
-		Config:    cfg.NewDefaultConfig(rootDir),
+		Config:    *cfg.NewDefaultConfig(rootDir),
 		P2P:       p2p.NewDefaultConfig(rootDir),
 		Mempool:   mempl.NewDefaultConfig(rootDir),
 		Consensus: consensus.NewDefaultConfig(rootDir),
 	}
+}
+
+func ConfigFromViper(viperConfig *viper.Viper) *Config {
+	tmConfig := new(Config)
+	if err := viperConfig.Unmarshal(tmConfig); err != nil {
+		panic(err)
+	}
+	return tmConfig
 }
 
 type Node struct {
@@ -156,11 +164,7 @@ func NewNode(config *Config, privValidator *types.PrivValidator, clientCreator p
 	}
 	consensusReactor := consensus.NewConsensusReactor(consensusState, fastSync)
 
-	// Make p2p network switch
-	// TODO  : p2pConfig := config.P2P
-	p2pConfig := viper.New()
-
-	sw := p2p.NewSwitch(p2pConfig)
+	sw := p2p.NewSwitch(config.P2P)
 	sw.AddReactor("MEMPOOL", mempoolReactor)
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)

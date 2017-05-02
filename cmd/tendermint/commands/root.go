@@ -23,11 +23,7 @@ func init() {
 
 // unmarshal viper into the Tendermint config
 func getConfig() *node.Config {
-	config := new(node.Config)
-	if err := viperConfig.Unmarshal(config); err != nil {
-		panic(err)
-	}
-	return config
+	return node.ConfigFromViper(viperConfig)
 }
 
 //global flag
