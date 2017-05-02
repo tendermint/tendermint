@@ -13,7 +13,7 @@ import (
 )
 
 func getHTTPClient() *client.HTTP {
-	rpcAddr := rpctest.GetConfig().GetString("rpc_laddr")
+	rpcAddr := rpctest.GetConfig().RPCListenAddress
 	return client.NewHTTP(rpcAddr, "/websocket")
 }
 
@@ -32,10 +32,10 @@ func GetClients() []client.Client {
 // Make sure status is correct (we connect properly)
 func TestStatus(t *testing.T) {
 	for i, c := range GetClients() {
-		chainID := rpctest.GetConfig().GetString("chain_id")
+		moniker := rpctest.GetConfig().Moniker
 		status, err := c.Status()
 		require.Nil(t, err, "%d: %+v", i, err)
-		assert.Equal(t, chainID, status.NodeInfo.Network)
+		assert.Equal(t, moniker, status.NodeInfo.Moniker)
 	}
 }
 
@@ -77,12 +77,10 @@ func TestDumpConsensusState(t *testing.T) {
 
 func TestGenesisAndValidators(t *testing.T) {
 	for i, c := range GetClients() {
-		chainID := rpctest.GetConfig().GetString("chain_id")
 
 		// make sure this is the right genesis file
 		gen, err := c.Genesis()
 		require.Nil(t, err, "%d: %+v", i, err)
-		assert.Equal(t, chainID, gen.Genesis.ChainID)
 		// get the genesis validator
 		require.Equal(t, 1, len(gen.Genesis.Validators))
 		gval := gen.Genesis.Validators[0]

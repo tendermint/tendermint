@@ -90,6 +90,7 @@ func ResetConfig(localPath string) *viper.Viper {
 	config.SetDefault("filter_peers", false)
 	config.SetDefault("tx_index", "kv")
 
+	config.SetDefault("p2p.laddr", "tcp://0.0.0.0:36656")
 	config.SetDefault("p2p.skip_upnp", true)
 	config.SetDefault("p2p.addrbook_file", rootDir+"/addrbook.json")
 	config.SetDefault("p2p.addrbook_strict", true) // disable to allow connections locally

@@ -40,8 +40,8 @@ type Config struct {
 	SkipTimeoutCommit bool `mapstructure:"skip_timeout_commit"`
 
 	// BlockSize
-	MaxBlockSizeTxs   int `mapstructure:"block_size_txs"`
-	MaxBlockSizeBytes int `mapstructure:"block_size_bytes"`
+	MaxBlockSizeTxs   int `mapstructure:"max_block_size_txs"`
+	MaxBlockSizeBytes int `mapstructure:"max_block_size_bytes"`
 
 	// TODO: This probably shouldn't be exposed but it makes it
 	// easy to write tests for the wal/replay
