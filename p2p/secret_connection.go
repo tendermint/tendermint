@@ -22,7 +22,7 @@ import (
 
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-wire"
-	. "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 // 2 + 1024 == 1026 total frame size
@@ -190,7 +190,7 @@ func genEphKeys() (ephPub, ephPriv *[32]byte) {
 	var err error
 	ephPub, ephPriv, err = box.GenerateKey(crand.Reader)
 	if err != nil {
-		PanicCrisis("Could not generate ephemeral keypairs")
+		cmn.PanicCrisis("Could not generate ephemeral keypairs")
 	}
 	return
 }
@@ -198,7 +198,7 @@ func genEphKeys() (ephPub, ephPriv *[32]byte) {
 func shareEphPubKey(conn io.ReadWriteCloser, locEphPub *[32]byte) (remEphPub *[32]byte, err error) {
 	var err1, err2 error
 
-	Parallel(
+	cmn.Parallel(
 		func() {
 			_, err1 = conn.Write(locEphPub[:])
 		},
@@ -268,7 +268,7 @@ func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKeyEd25519, signa
 	var recvMsg authSigMessage
 	var err1, err2 error
 
-	Parallel(
+	cmn.Parallel(
 		func() {
 			msgBytes := wire.BinaryBytes(authSigMessage{pubKey.Wrap(), signature.Wrap()})
 			_, err1 = sc.Write(msgBytes)

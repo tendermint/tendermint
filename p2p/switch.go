@@ -9,7 +9,7 @@ import (
 
 	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/log15"
-	. "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 const (
@@ -41,7 +41,7 @@ func NewDefaultConfig(rootDir string) *Config {
 }
 
 type Reactor interface {
-	Service // Start, Stop
+	cmn.Service // Start, Stop
 
 	SetSwitch(*Switch)
 	GetChannels() []*ChannelDescriptor
@@ -53,13 +53,13 @@ type Reactor interface {
 //--------------------------------------
 
 type BaseReactor struct {
-	BaseService // Provides Start, Stop, .Quit
-	Switch      *Switch
+	cmn.BaseService // Provides Start, Stop, .Quit
+	Switch          *Switch
 }
 
 func NewBaseReactor(log log15.Logger, name string, impl Reactor) *BaseReactor {
 	return &BaseReactor{
-		BaseService: *NewBaseService(log, name, impl),
+		BaseService: *cmn.NewBaseService(log, name, impl),
 		Switch:      nil,
 	}
 }
@@ -81,7 +81,7 @@ or more `Channels`.  So while sending outgoing messages is typically performed o
 incoming messages are received on the reactor.
 */
 type Switch struct {
-	BaseService
+	cmn.BaseService
 
 	config       *Config
 	listeners    []Listener
@@ -89,7 +89,7 @@ type Switch struct {
 	chDescs      []*ChannelDescriptor
 	reactorsByCh map[byte]Reactor
 	peers        *PeerSet
-	dialing      *CMap
+	dialing      *cmn.CMap
 	nodeInfo     *NodeInfo             // our node info
 	nodePrivKey  crypto.PrivKeyEd25519 // our node privkey
 
@@ -109,10 +109,10 @@ func NewSwitch(config *Config) *Switch {
 		chDescs:      make([]*ChannelDescriptor, 0),
 		reactorsByCh: make(map[byte]Reactor),
 		peers:        NewPeerSet(),
-		dialing:      NewCMap(),
+		dialing:      cmn.NewCMap(),
 		nodeInfo:     nil,
 	}
-	sw.BaseService = *NewBaseService(log, "P2P Switch", sw)
+	sw.BaseService = *cmn.NewBaseService(log, "P2P Switch", sw)
 	return sw
 }
 
@@ -124,7 +124,7 @@ func (sw *Switch) AddReactor(name string, reactor Reactor) Reactor {
 	for _, chDesc := range reactorChannels {
 		chID := chDesc.ID
 		if sw.reactorsByCh[chID] != nil {
-			PanicSanity(fmt.Sprintf("Channel %X has multiple reactors %v & %v", chID, sw.reactorsByCh[chID], reactor))
+			cmn.PanicSanity(fmt.Sprintf("Channel %X has multiple reactors %v & %v", chID, sw.reactorsByCh[chID], reactor))
 		}
 		sw.chDescs = append(sw.chDescs, chDesc)
 		sw.reactorsByCh[chID] = reactor
@@ -552,11 +552,11 @@ func makeSwitch(cfg *Config, i int, network, version string, initSwitch func(int
 	s := initSwitch(i, NewSwitch(cfg))
 	s.SetNodeInfo(&NodeInfo{
 		PubKey:     privKey.PubKey().Unwrap().(crypto.PubKeyEd25519),
-		Moniker:    Fmt("switch%d", i),
+		Moniker:    cmn.Fmt("switch%d", i),
 		Network:    network,
 		Version:    version,
-		RemoteAddr: Fmt("%v:%v", network, rand.Intn(64512)+1023),
-		ListenAddr: Fmt("%v:%v", network, rand.Intn(64512)+1023),
+		RemoteAddr: cmn.Fmt("%v:%v", network, rand.Intn(64512)+1023),
+		ListenAddr: cmn.Fmt("%v:%v", network, rand.Intn(64512)+1023),
 	})
 	s.SetNodePrivKey(privKey)
 	return s

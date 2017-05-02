@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	crypto "github.com/tendermint/go-crypto"
 	wire "github.com/tendermint/go-wire"
-	. "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 var (
@@ -320,7 +320,7 @@ func BenchmarkSwitches(b *testing.B) {
 		}
 	}
 
-	log.Warn(Fmt("success: %v, failure: %v", numSuccess, numFailure))
+	log.Warn(cmn.Fmt("success: %v, failure: %v", numSuccess, numFailure))
 
 	// Allow everything to flush before stopping switches & closing connections.
 	b.StopTimer()
