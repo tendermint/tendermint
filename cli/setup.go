@@ -14,6 +14,7 @@ import (
 
 const (
 	RootFlag     = "root"
+	HomeFlag     = "home"
 	OutputFlag   = "output"
 	EncodingFlag = "encoding"
 )
@@ -21,7 +22,8 @@ const (
 // PrepareBaseCmd is meant for tendermint and other servers
 func PrepareBaseCmd(cmd *cobra.Command, envPrefix, defautRoot string) func() {
 	cobra.OnInitialize(func() { initEnv(envPrefix) })
-	cmd.PersistentFlags().StringP(RootFlag, "r", defautRoot, "root directory for config and data")
+	cmd.PersistentFlags().StringP(RootFlag, "r", defautRoot, "DEPRECATED. Use --home")
+	cmd.PersistentFlags().StringP(HomeFlag, "h", defautRoot, "root directory for config and data")
 	cmd.PersistentPreRunE = multiE(bindFlags, cmd.PersistentPreRunE)
 	return func() { execute(cmd) }
 }
@@ -93,7 +95,11 @@ func bindFlags(cmd *cobra.Command, args []string) error {
 	}
 
 	// rootDir is command line flag, env variable, or default $HOME/.tlc
-	rootDir := viper.GetString("root")
+	// NOTE: we support both --root and --home for now, but eventually only --home
+	rootDir := viper.GetString(HomeFlag)
+	if !viper.IsSet(HomeFlag) && viper.IsSet(RootFlag) {
+		rootDir = viper.GetString(RootFlag)
+	}
 	viper.SetConfigName("config") // name of config file (without extension)
 	viper.AddConfigPath(rootDir)  // search root directory
 
