@@ -6,14 +6,13 @@ import (
 	"time"
 
 	abci "github.com/tendermint/abci/types"
-	"github.com/tendermint/tendermint/config/tendermint_test"
 	"github.com/tendermint/tendermint/types"
 
 	. "github.com/tendermint/tmlibs/common"
 )
 
 func init() {
-	config = tendermint_test.ResetConfig("consensus_mempool_test")
+	config = ResetConfig("consensus_mempool_test")
 }
 
 func TestTxConcurrentWithCommit(t *testing.T) {

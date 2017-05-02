@@ -27,7 +27,7 @@ type Config struct {
 	PexReactor     bool   `mapstructure:"pex_reactor"`
 	MaxNumPeers    int    `mapstructure:"max_num_peers"`
 
-	Peer *PeerConfig `mapstructure:"peer"`
+	peer *PeerConfig // Not exposed
 }
 
 func NewDefaultConfig(rootDir string) *Config {
@@ -36,7 +36,7 @@ func NewDefaultConfig(rootDir string) *Config {
 		AddrBookFile:   rootDir + "/addrbook.json",
 		AddrBookStrict: true,
 		MaxNumPeers:    50,
-		Peer:           DefaultPeerConfig(),
+		peer:           DefaultPeerConfig(),
 	}
 }
 
@@ -103,6 +103,7 @@ var (
 )
 
 func NewSwitch(config *Config) *Switch {
+	config.peer = DefaultPeerConfig()
 	sw := &Switch{
 		config:       config,
 		reactors:     make(map[string]Reactor),
@@ -228,7 +229,7 @@ func (sw *Switch) AddPeer(peer *Peer) error {
 		return err
 	}
 
-	if err := peer.HandshakeTimeout(sw.nodeInfo, time.Duration(sw.config.Peer.HandshakeTimeout*time.Second)); err != nil {
+	if err := peer.HandshakeTimeout(sw.nodeInfo, time.Duration(sw.config.peer.HandshakeTimeout*time.Second)); err != nil {
 		return err
 	}
 
@@ -337,7 +338,7 @@ func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) (*Peer,
 	sw.dialing.Set(addr.IP.String(), addr)
 	defer sw.dialing.Delete(addr.IP.String())
 
-	peer, err := newOutboundPeerWithConfig(addr, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, sw.config.Peer)
+	peer, err := newOutboundPeerWithConfig(addr, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, sw.config.peer)
 	if err != nil {
 		log.Info("Failed dialing peer", "address", addr, "error", err)
 		return nil, err
@@ -456,7 +457,7 @@ func (sw *Switch) listenerRoutine(l Listener) {
 		}
 
 		// New inbound connection!
-		err := sw.addPeerWithConnectionAndConfig(inConn, sw.config.Peer)
+		err := sw.addPeerWithConnectionAndConfig(inConn, sw.config.peer)
 		if err != nil {
 			log.Notice("Ignoring inbound connection: error while adding peer", "address", inConn.RemoteAddr().String(), "error", err)
 			continue
