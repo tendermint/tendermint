@@ -7,8 +7,6 @@ import (
 	"net"
 	"time"
 
-	"github.com/spf13/viper"
-
 	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/log15"
 	. "github.com/tendermint/tmlibs/common"
@@ -18,6 +16,29 @@ const (
 	reconnectAttempts = 30
 	reconnectInterval = 3 * time.Second
 )
+
+// for node.Config
+type Config struct {
+	ListenAddress  string `mapstructure:"laddr"`
+	Seeds          string `mapstructure:"seeds"`
+	SkipUPNP       bool   `mapstructure:"skip_upnp"`
+	AddrBookFile   string `mapstructure:"addr_book_file"`
+	AddrBookStrict bool   `mapstructure:"addr_book_strict"`
+	PexReactor     bool   `mapstructure:"pex_reactor"`
+	MaxNumPeers    int    `mapstructure:"max_num_peers"`
+
+	Peer *PeerConfig `mapstructure:"peer"`
+}
+
+func NewDefaultConfig(rootDir string) *Config {
+	return &Config{
+		ListenAddress:  "tcp://0.0.0.0:46656",
+		AddrBookFile:   rootDir + "/addrbook.json",
+		AddrBookStrict: true,
+		MaxNumPeers:    50,
+		Peer:           DefaultPeerConfig(),
+	}
+}
 
 type Reactor interface {
 	Service // Start, Stop
@@ -62,7 +83,7 @@ incoming messages are received on the reactor.
 type Switch struct {
 	BaseService
 
-	config       *viper.Viper
+	config       *Config
 	listeners    []Listener
 	reactors     map[string]Reactor
 	chDescs      []*ChannelDescriptor
@@ -81,9 +102,7 @@ var (
 	ErrSwitchMaxPeersPerIPRange = errors.New("IP range has too many peers")
 )
 
-func NewSwitch(config *viper.Viper) *Switch {
-	setConfigDefaults(config)
-
+func NewSwitch(config *Config) *Switch {
 	sw := &Switch{
 		config:       config,
 		reactors:     make(map[string]Reactor),
@@ -209,7 +228,7 @@ func (sw *Switch) AddPeer(peer *Peer) error {
 		return err
 	}
 
-	if err := peer.HandshakeTimeout(sw.nodeInfo, time.Duration(sw.config.GetInt(configKeyHandshakeTimeoutSeconds))*time.Second); err != nil {
+	if err := peer.HandshakeTimeout(sw.nodeInfo, time.Duration(sw.config.Peer.HandshakeTimeout*time.Second)); err != nil {
 		return err
 	}
 
@@ -318,7 +337,7 @@ func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) (*Peer,
 	sw.dialing.Set(addr.IP.String(), addr)
 	defer sw.dialing.Delete(addr.IP.String())
 
-	peer, err := newOutboundPeerWithConfig(addr, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, peerConfigFromGoConfig(sw.config))
+	peer, err := newOutboundPeerWithConfig(addr, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, sw.config.Peer)
 	if err != nil {
 		log.Info("Failed dialing peer", "address", addr, "error", err)
 		return nil, err
@@ -430,14 +449,14 @@ func (sw *Switch) listenerRoutine(l Listener) {
 		}
 
 		// ignore connection if we already have enough
-		maxPeers := sw.config.GetInt(configKeyMaxNumPeers)
+		maxPeers := sw.config.MaxNumPeers
 		if maxPeers <= sw.peers.Size() {
 			log.Info("Ignoring inbound connection: already have enough peers", "address", inConn.RemoteAddr().String(), "numPeers", sw.peers.Size(), "max", maxPeers)
 			continue
 		}
 
 		// New inbound connection!
-		err := sw.addPeerWithConnectionAndConfig(inConn, peerConfigFromGoConfig(sw.config))
+		err := sw.addPeerWithConnectionAndConfig(inConn, sw.config.Peer)
 		if err != nil {
 			log.Notice("Ignoring inbound connection: error while adding peer", "address", inConn.RemoteAddr().String(), "error", err)
 			continue
@@ -469,10 +488,10 @@ type SwitchEventDonePeer struct {
 // If connect==Connect2Switches, the switches will be fully connected.
 // initSwitch defines how the ith switch should be initialized (ie. with what reactors).
 // NOTE: panics if any switch fails to start.
-func MakeConnectedSwitches(n int, initSwitch func(int, *Switch) *Switch, connect func([]*Switch, int, int)) []*Switch {
+func MakeConnectedSwitches(cfg *Config, n int, initSwitch func(int, *Switch) *Switch, connect func([]*Switch, int, int)) []*Switch {
 	switches := make([]*Switch, n)
 	for i := 0; i < n; i++ {
-		switches[i] = makeSwitch(i, "testing", "123.123.123", initSwitch)
+		switches[i] = makeSwitch(cfg, i, "testing", "123.123.123", initSwitch)
 	}
 
 	if err := StartSwitches(switches); err != nil {
@@ -526,11 +545,11 @@ func StartSwitches(switches []*Switch) error {
 	return nil
 }
 
-func makeSwitch(i int, network, version string, initSwitch func(int, *Switch) *Switch) *Switch {
+func makeSwitch(cfg *Config, i int, network, version string, initSwitch func(int, *Switch) *Switch) *Switch {
 	privKey := crypto.GenPrivKeyEd25519()
 	// new switch, add reactors
 	// TODO: let the config be passed in?
-	s := initSwitch(i, NewSwitch(viper.New()))
+	s := initSwitch(i, NewSwitch(cfg))
 	s.SetNodeInfo(&NodeInfo{
 		PubKey:     privKey.PubKey().Unwrap().(crypto.PubKeyEd25519),
 		Moniker:    Fmt("switch%d", i),
@@ -571,24 +590,4 @@ func (sw *Switch) addPeerWithConnectionAndConfig(conn net.Conn, config *PeerConf
 	}
 
 	return nil
-}
-
-func peerConfigFromGoConfig(config *viper.Viper) *PeerConfig {
-	return &PeerConfig{
-		AuthEnc:          config.GetBool(configKeyAuthEnc),
-		Fuzz:             config.GetBool(configFuzzEnable),
-		HandshakeTimeout: time.Duration(config.GetInt(configKeyHandshakeTimeoutSeconds)) * time.Second,
-		DialTimeout:      time.Duration(config.GetInt(configKeyDialTimeoutSeconds)) * time.Second,
-		MConfig: &MConnConfig{
-			SendRate: int64(config.GetInt(configKeySendRate)),
-			RecvRate: int64(config.GetInt(configKeyRecvRate)),
-		},
-		FuzzConfig: &FuzzConnConfig{
-			Mode:         config.GetInt(configFuzzMode),
-			MaxDelay:     time.Duration(config.GetInt(configFuzzMaxDelayMilliseconds)) * time.Millisecond,
-			ProbDropRW:   config.GetFloat64(configFuzzProbDropRW),
-			ProbDropConn: config.GetFloat64(configFuzzProbDropConn),
-			ProbSleep:    config.GetFloat64(configFuzzProbSleep),
-		},
-	}
 }
