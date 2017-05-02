@@ -4,14 +4,28 @@ import (
 	"encoding/binary"
 	"testing"
 
+	"github.com/tendermint/abci/example/counter"
+	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/config/tendermint_test"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/abci/example/counter"
 )
 
+func ResetConfig(name string) *Config {
+	viperConfig := tendermint_test.ResetConfig(name)
+	config := new(struct {
+		cfg.Config `mapstructure:",squash"`
+		Mempool    *Config `mapstructure:"mempool"`
+	})
+	if err := viperConfig.Unmarshal(config); err != nil {
+		panic(err)
+	}
+	return config.Mempool
+
+}
+
 func TestSerialReap(t *testing.T) {
-	config := tendermint_test.ResetConfig("mempool_mempool_test")
+	config := ResetConfig("mempool_test")
 
 	app := counter.NewCounterApplication(true)
 	app.SetOption("serial", "on")

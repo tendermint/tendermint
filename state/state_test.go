@@ -7,15 +7,27 @@ import (
 	"github.com/stretchr/testify/assert"
 	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/go-crypto"
-	dbm "github.com/tendermint/tmlibs/db"
+	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/config/tendermint_test"
+	dbm "github.com/tendermint/tmlibs/db"
 )
 
+func ResetConfig(name string) *cfg.Config {
+	viperConfig := tendermint_test.ResetConfig(name)
+	config := new(struct {
+		cfg.Config `mapstructure:",squash"`
+	})
+	if err := viperConfig.Unmarshal(config); err != nil {
+		panic(err)
+	}
+	return &config.Config
+}
+
 func TestStateCopyEquals(t *testing.T) {
-	config := tendermint_test.ResetConfig("state_")
+	config := ResetConfig("state_")
 	// Get State db
-	stateDB := dbm.NewDB("state", config.GetString("db_backend"), config.GetString("db_dir"))
-	state := GetState(config, stateDB)
+	stateDB := dbm.NewDB("state", config.DBBackend, config.DBDir)
+	state := GetState(stateDB, config.GenesisFile)
 
 	stateCopy := state.Copy()
 
@@ -31,10 +43,10 @@ func TestStateCopyEquals(t *testing.T) {
 }
 
 func TestStateSaveLoad(t *testing.T) {
-	config := tendermint_test.ResetConfig("state_")
+	config := ResetConfig("state_")
 	// Get State db
-	stateDB := dbm.NewDB("state", config.GetString("db_backend"), config.GetString("db_dir"))
-	state := GetState(config, stateDB)
+	stateDB := dbm.NewDB("state", config.DBBackend, config.DBDir)
+	state := GetState(stateDB, config.GenesisFile)
 
 	state.LastBlockHeight += 1
 	state.Save()
@@ -48,9 +60,9 @@ func TestStateSaveLoad(t *testing.T) {
 func TestABCIResponsesSaveLoad(t *testing.T) {
 	assert := assert.New(t)
 
-	config := tendermint_test.ResetConfig("state_")
-	stateDB := dbm.NewDB("state", config.GetString("db_backend"), config.GetString("db_dir"))
-	state := GetState(config, stateDB)
+	config := ResetConfig("state_")
+	stateDB := dbm.NewDB("state", config.DBBackend, config.DBDir)
+	state := GetState(stateDB, config.GenesisFile)
 
 	state.LastBlockHeight += 1
 
