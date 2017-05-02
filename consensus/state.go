@@ -302,6 +302,7 @@ type ConsensusState struct {
 }
 
 func NewConsensusState(config *Config, state *sm.State, proxyAppConn proxy.AppConnConsensus, blockStore types.BlockStore, mempool types.Mempool) *ConsensusState {
+	config.chainID = state.ChainID // Set ChainID
 	cs := &ConsensusState{
 		config:           config,
 		proxyAppConn:     proxyAppConn,

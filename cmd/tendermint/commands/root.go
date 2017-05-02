@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	cfg "github.com/tendermint/tendermint/config/tendermint"
 	"github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tmlibs/logger"
 )
@@ -15,8 +16,7 @@ var (
 )
 
 func init() {
-	// Set config to be used as defaults by flags.
-	// This will be overwritten by whatever is unmarshalled from viper
+	viperConfig = cfg.GetConfig("")
 	config = node.NewDefaultConfig("")
 
 }
@@ -26,21 +26,18 @@ func getConfig() *node.Config {
 	return node.ConfigFromViper(viperConfig)
 }
 
-//global flag
-var logLevel string
-
 var RootCmd = &cobra.Command{
 	Use:   "tendermint",
 	Short: "Tendermint Core (BFT Consensus) in Go",
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		// set the log level
-		config := getConfig()
+		config = getConfig()
 		logger.SetLogLevel(config.LogLevel)
 	},
 }
 
 func init() {
 	//parse flag and set config
-	RootCmd.PersistentFlags().StringVar(&logLevel, "log_level", config.LogLevel, "Log level")
-	viperConfig.BindPFlag("log_level", RootCmd.Flags().Lookup("log_level"))
+	RootCmd.PersistentFlags().String("log_level", config.LogLevel, "Log level")
+	viperConfig.BindPFlag("log_level", RootCmd.PersistentFlags().Lookup("log_level"))
 }
