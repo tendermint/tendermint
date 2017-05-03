@@ -14,7 +14,6 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
-	//wire "github.com/tendermint/go-wire"
 
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -180,8 +179,7 @@ func arrayParamsToArgs(rpcFunc *RPCFunc, params []*json.RawMessage, argsOffset i
 	return values, nil
 }
 
-// raw is unparsed json (from json.RawMessage).  It either has
-// and array or a map behind it, let's parse this all without resorting to wire...
+// raw is unparsed json (from json.RawMessage) encoding either a map or an array.
 //
 // argsOffset should be 0 for RPC calls, and 1 for WS requests, where len(rpcFunc.args) != len(rpcFunc.argNames).
 // Example:
@@ -277,7 +275,6 @@ func httpParamsToArgs(rpcFunc *RPCFunc, r *http.Request) ([]reflect.Value, error
 			continue
 		}
 
-		// Pass values to go-wire
 		values[i], err = _jsonStringToArg(argType, arg)
 		if err != nil {
 			return nil, err
