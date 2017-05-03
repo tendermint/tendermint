@@ -1,4 +1,4 @@
-.PHONEY: all test install get_vendor_deps ensure_tools
+.PHONY: all test install get_vendor_deps ensure_tools
 
 GOTOOLS = \
 	github.com/Masterminds/glide
