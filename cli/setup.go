@@ -16,25 +16,36 @@ import (
 const (
 	RootFlag     = "root"
 	HomeFlag     = "home"
+	DebugFlag    = "debug"
 	OutputFlag   = "output"
 	EncodingFlag = "encoding"
 )
 
+// Executable is the minimal interface to *corba.Command, so we can
+// wrap if desired before the test
+type Executable interface {
+	Execute() error
+}
+
 // PrepareBaseCmd is meant for tendermint and other servers
-func PrepareBaseCmd(cmd *cobra.Command, envPrefix, defautRoot string) func() {
+func PrepareBaseCmd(cmd *cobra.Command, envPrefix, defautRoot string) Executor {
 	cobra.OnInitialize(func() { initEnv(envPrefix) })
 	cmd.PersistentFlags().StringP(RootFlag, "r", defautRoot, "DEPRECATED. Use --home")
 	// -h is already reserved for --help as part of the cobra framework
+	// do you want to try something else??
+	// also, default must be empty, so we can detect this unset and fall back
+	// to --root / TM_ROOT / TMROOT
 	cmd.PersistentFlags().String(HomeFlag, "", "root directory for config and data")
+	cmd.PersistentFlags().Bool(DebugFlag, false, "print out full stack trace on errors")
 	cmd.PersistentPreRunE = concatCobraCmdFuncs(bindFlagsLoadViper, cmd.PersistentPreRunE)
-	return func() { execute(cmd) }
+	return Executor{cmd}
 }
 
 // PrepareMainCmd is meant for client side libs that want some more flags
 //
 // This adds --encoding (hex, btc, base64) and --output (text, json) to
 // the command.  These only really make sense in interactive commands.
-func PrepareMainCmd(cmd *cobra.Command, envPrefix, defautRoot string) func() {
+func PrepareMainCmd(cmd *cobra.Command, envPrefix, defautRoot string) Executor {
 	cmd.PersistentFlags().StringP(EncodingFlag, "e", "hex", "Binary encoding (hex|b64|btc)")
 	cmd.PersistentFlags().StringP(OutputFlag, "o", "text", "Output format (text|json)")
 	cmd.PersistentPreRunE = concatCobraCmdFuncs(setEncoding, validateOutput, cmd.PersistentPreRunE)
@@ -68,14 +79,26 @@ func copyEnvVars(prefix string) {
 	}
 }
 
+// Executor wraps the cobra Command with a nicer Execute method
+type Executor struct {
+	*cobra.Command
+}
+
 // execute adds all child commands to the root command sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
-func execute(cmd *cobra.Command) {
-	// TODO: this can do something cooler with debug and log-levels
-	if err := cmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(-1)
+func (e Executor) Execute() error {
+	e.SilenceUsage = true
+	e.SilenceErrors = true
+	err := e.Command.Execute()
+	if err != nil {
+		// TODO: something cooler with log-levels
+		if viper.GetBool(DebugFlag) {
+			fmt.Printf("ERROR: %+v\n", err)
+		} else {
+			fmt.Println("ERROR:", err.Error())
+		}
 	}
+	return err
 }
 
 type cobraCmdFunc func(cmd *cobra.Command, args []string) error

@@ -8,19 +8,15 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-// Executable is the minimal interface to *corba.Command, so we can
-// wrap if desired before the test
-type Executable interface {
-	Execute() error
-}
 
 func TestSetupEnv(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
@@ -46,15 +42,15 @@ func TestSetupEnv(t *testing.T) {
 		i := strconv.Itoa(idx)
 		// test command that store value of foobar in local variable
 		var foo string
-		cmd := &cobra.Command{
+		demo := &cobra.Command{
 			Use: "demo",
 			RunE: func(cmd *cobra.Command, args []string) error {
 				foo = viper.GetString("foobar")
 				return nil
 			},
 		}
-		cmd.Flags().String("foobar", "", "Some test value from config")
-		PrepareBaseCmd(cmd, "DEMO", "/qwerty/asdfgh") // some missing dir..
+		demo.Flags().String("foobar", "", "Some test value from config")
+		cmd := PrepareBaseCmd(demo, "DEMO", "/qwerty/asdfgh") // some missing dir..
 
 		viper.Reset()
 		args := append([]string{cmd.Use}, tc.args...)
@@ -112,21 +108,62 @@ func TestSetupConfig(t *testing.T) {
 		i := strconv.Itoa(idx)
 		// test command that store value of foobar in local variable
 		var foo string
-		cmd := &cobra.Command{
+		boo := &cobra.Command{
 			Use: "reader",
 			RunE: func(cmd *cobra.Command, args []string) error {
 				foo = viper.GetString("boo")
 				return nil
 			},
 		}
-		cmd.Flags().String("boo", "", "Some test value from config")
-		PrepareBaseCmd(cmd, "RD", "/qwerty/asdfgh") // some missing dir...
+		boo.Flags().String("boo", "", "Some test value from config")
+		cmd := PrepareBaseCmd(boo, "RD", "/qwerty/asdfgh") // some missing dir...
 
 		viper.Reset()
 		args := append([]string{cmd.Use}, tc.args...)
 		err := runWithArgs(cmd, args, tc.env)
 		require.Nil(err, i)
 		assert.Equal(tc.expected, foo, i)
+	}
+}
+
+func TestSetupDebug(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+
+	cases := []struct {
+		args     []string
+		env      map[string]string
+		long     bool
+		expected string
+	}{
+		{nil, nil, false, "Debug flag = false"},
+		{[]string{"--debug"}, nil, true, "Debug flag = true"},
+		{[]string{"--no-such-flag"}, nil, false, "unknown flag: --no-such-flag"},
+		{nil, map[string]string{"DBG_DEBUG": "true"}, true, "Debug flag = true"},
+	}
+
+	for idx, tc := range cases {
+		i := strconv.Itoa(idx)
+		// test command that store value of foobar in local variable
+		debug := &cobra.Command{
+			Use: "debug",
+			RunE: func(cmd *cobra.Command, args []string) error {
+				return errors.Errorf("Debug flag = %t", viper.GetBool(DebugFlag))
+			},
+		}
+		cmd := PrepareBaseCmd(debug, "DBG", "/qwerty/asdfgh") // some missing dir..
+
+		viper.Reset()
+		args := append([]string{cmd.Use}, tc.args...)
+		out, err := runCaptureWithArgs(cmd, args, tc.env)
+		require.NotNil(err, i)
+		msg := strings.Split(out, "\n")
+		desired := fmt.Sprintf("ERROR: %s", tc.expected)
+		assert.Equal(desired, msg[0], i)
+		if tc.long && assert.True(len(msg) > 2, i) {
+			// the next line starts the stack trace...
+			assert.Contains(msg[1], "TestSetupDebug", i)
+			assert.Contains(msg[2], "setup_test.go", i)
+		}
 	}
 }
 
