@@ -15,6 +15,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 	//wire "github.com/tendermint/go-wire"
+
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 	cmn "github.com/tendermint/tmlibs/common"
 	events "github.com/tendermint/tmlibs/events"
@@ -140,6 +141,45 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc) http.HandlerFunc {
 	}
 }
 
+func mapParamsToArgs(rpcFunc *RPCFunc, params map[string]*json.RawMessage, argsOffset int) ([]reflect.Value, error) {
+	values := make([]reflect.Value, len(rpcFunc.argNames))
+	for i, argName := range rpcFunc.argNames {
+		argType := rpcFunc.args[i+argsOffset]
+
+		if p, ok := params[argName]; ok && len(*p) > 0 {
+			val := reflect.New(argType)
+			err := json.Unmarshal(*p, val.Interface())
+			if err != nil {
+				return nil, err
+			}
+			values[i] = val.Elem()
+		} else { // use default for that type
+			values[i] = reflect.Zero(argType)
+		}
+	}
+
+	return values, nil
+}
+
+func arrayParamsToArgs(rpcFunc *RPCFunc, params []*json.RawMessage, argsOffset int) ([]reflect.Value, error) {
+	if len(rpcFunc.argNames) != len(params) {
+		return nil, errors.Errorf("Expected %v parameters (%v), got %v (%v)",
+			len(rpcFunc.argNames), rpcFunc.argNames, len(params), params)
+	}
+
+	values := make([]reflect.Value, len(params))
+	for i, p := range params {
+		argType := rpcFunc.args[i+argsOffset]
+		val := reflect.New(argType)
+		err := json.Unmarshal(*p, val.Interface())
+		if err != nil {
+			return nil, err
+		}
+		values[i] = val.Elem()
+	}
+	return values, nil
+}
+
 // raw is unparsed json (from json.RawMessage).  It either has
 // and array or a map behind it, let's parse this all without resorting to wire...
 //
@@ -148,51 +188,22 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc) http.HandlerFunc {
 //   rpcFunc.args = [rpctypes.WSRPCContext string]
 //   rpcFunc.argNames = ["arg"]
 func jsonParamsToArgs(rpcFunc *RPCFunc, raw []byte, argsOffset int) ([]reflect.Value, error) {
-	values := make([]reflect.Value, len(rpcFunc.argNames))
-
-	// right now, this is the same as before, but the whole parsing is in one function...
-	var paramsI interface{}
-	err := json.Unmarshal(raw, &paramsI)
-	if err != nil {
-		return nil, err
+	// first, try to get the map..
+	var m map[string]*json.RawMessage
+	err := json.Unmarshal(raw, &m)
+	if err == nil {
+		return mapParamsToArgs(rpcFunc, m, argsOffset)
 	}
 
-	switch params := paramsI.(type) {
-
-	case map[string]interface{}:
-		for i, argName := range rpcFunc.argNames {
-			argType := rpcFunc.args[i+argsOffset]
-
-			// decode param if provided
-			if param, ok := params[argName]; ok && "" != param {
-				v, err := _jsonObjectToArg(argType, param)
-				if err != nil {
-					return nil, err
-				}
-				values[i] = v
-			} else { // use default for that type
-				values[i] = reflect.Zero(argType)
-			}
-		}
-	case []interface{}:
-		if len(rpcFunc.argNames) != len(params) {
-			return nil, errors.New(fmt.Sprintf("Expected %v parameters (%v), got %v (%v)",
-				len(rpcFunc.argNames), rpcFunc.argNames, len(params), params))
-		}
-		values := make([]reflect.Value, len(params))
-		for i, p := range params {
-			ty := rpcFunc.args[i+argsOffset]
-			v, err := _jsonObjectToArg(ty, p)
-			if err != nil {
-				return nil, err
-			}
-			values[i] = v
-		}
-		return values, nil
-	default:
-		return nil, fmt.Errorf("Unknown type for JSON params %v. Expected map[string]interface{} or []interface{}", reflect.TypeOf(paramsI))
+	// otherwise, try an array
+	var a []*json.RawMessage
+	err = json.Unmarshal(raw, &a)
+	if err == nil {
+		return arrayParamsToArgs(rpcFunc, a, argsOffset)
 	}
-	return values, nil
+
+	// otherwise, bad format, we cannot parse
+	return nil, errors.Errorf("Unknown type for JSON params: %v. Expected map or array", err)
 }
 
 // Convert a []interface{} OR a map[string]interface{} to properly typed values
@@ -207,17 +218,6 @@ func jsonParamsToArgsWS(rpcFunc *RPCFunc, params *json.RawMessage, wsCtx types.W
 		return nil, err
 	}
 	return append([]reflect.Value{reflect.ValueOf(wsCtx)}, values...), nil
-}
-
-func _jsonObjectToArg(ty reflect.Type, object interface{}) (reflect.Value, error) {
-	var err error
-	v := reflect.New(ty)
-	readJSONObjectPtr(v.Interface(), object, &err)
-	if err != nil {
-		return v, err
-	}
-	v = v.Elem()
-	return v, nil
 }
 
 // rpc.json
