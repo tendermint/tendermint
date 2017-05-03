@@ -30,6 +30,9 @@ func PrepareBaseCmd(cmd *cobra.Command, envPrefix, defautRoot string) func() {
 }
 
 // PrepareMainCmd is meant for client side libs that want some more flags
+//
+// This adds --encoding (hex, btc, base64) and --output (text, json) to
+// the command.  These only really make sense in interactive commands.
 func PrepareMainCmd(cmd *cobra.Command, envPrefix, defautRoot string) func() {
 	cmd.PersistentFlags().StringP(EncodingFlag, "e", "hex", "Binary encoding (hex|b64|btc)")
 	cmd.PersistentFlags().StringP(OutputFlag, "o", "text", "Output format (text|json)")
@@ -77,6 +80,7 @@ func execute(cmd *cobra.Command) {
 type cobraCmdFunc func(cmd *cobra.Command, args []string) error
 
 // Returns a single function that calls each argument function in sequence
+// RunE, PreRunE, PersistentPreRunE, etc. all have this same signature
 func concatCobraCmdFuncs(fs ...cobraCmdFunc) cobraCmdFunc {
 	return func(cmd *cobra.Command, args []string) error {
 		for _, f := range fs {
