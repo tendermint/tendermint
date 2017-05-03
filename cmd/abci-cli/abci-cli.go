@@ -139,7 +139,7 @@ func main() {
 
 func before(c *cli.Context) error {
 	if logger == nil {
-		logger = log.NewTmLogger(os.Stdout)
+		logger = log.NewTMLogger(os.Stdout)
 	}
 	if client == nil {
 		var err error

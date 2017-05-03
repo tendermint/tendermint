@@ -213,7 +213,7 @@ func valsEqual(t *testing.T, vals1, vals2 []*types.Validator) {
 func makeSocketClientServer(app types.Application, name string) (abcicli.Client, cmn.Service, error) {
 	// Start the listener
 	socket := cmn.Fmt("unix://%s.sock", name)
-	logger := log.NewTmLogger(os.Stdout)
+	logger := log.NewTMLogger(os.Stdout)
 
 	server, err := server.NewSocketServer(socket, app)
 	if err != nil {
@@ -236,7 +236,7 @@ func makeSocketClientServer(app types.Application, name string) (abcicli.Client,
 func makeGRPCClientServer(app types.Application, name string) (abcicli.Client, cmn.Service, error) {
 	// Start the listener
 	socket := cmn.Fmt("unix://%s.sock", name)
-	logger := log.NewTmLogger(os.Stdout)
+	logger := log.NewTMLogger(os.Stdout)
 
 	gapp := types.NewGRPCApplication(app)
 	server, err := server.NewGRPCServer(socket, gapp)

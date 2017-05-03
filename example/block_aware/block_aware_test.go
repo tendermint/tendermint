@@ -1,7 +1,6 @@
 package main
 
 import (
-	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -14,14 +13,13 @@ import (
 
 func TestChainAware(t *testing.T) {
 	app := NewChainAwareApplication()
-	logger := log.NewTmLogger(os.Stdout)
 
 	// Start the listener
 	srv, err := server.NewServer("unix://test.sock", "socket", app)
 	if err != nil {
 		t.Fatal(err)
 	}
-	srv.SetLogger(log.With(logger, "module", "abci-server"))
+	srv.SetLogger(log.With(log.TestingLogger(), "module", "abci-server"))
 	defer srv.Stop()
 
 	// Connect to the socket
@@ -29,7 +27,7 @@ func TestChainAware(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error starting socket client: %v", err.Error())
 	}
-	client.SetLogger(log.With(logger, "module", "abci-client"))
+	client.SetLogger(log.With(log.TestingLogger(), "module", "abci-client"))
 	client.Start()
 	defer client.Stop()
 

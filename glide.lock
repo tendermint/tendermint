@@ -1,12 +1,12 @@
-hash: 3918a6fe902116fbac5ac474580edf246bee125df6e63e3bd8378f068fa8f819
-updated: 2017-05-01T12:52:56.770980963Z
+hash: c29114af0ddcb75dd9093d4006dd6b9039640a35540d5f44f9c19261b5730781
+updated: 2017-05-03T07:33:18.832551385Z
 imports:
 - name: github.com/btcsuite/btcd
   version: 4b348c1d33373d672edd83fc576892d0e46686d2
   subpackages:
   - btcec
 - name: github.com/go-kit/kit
-  version: 8a2988aa81f699fc1e647c3c9dddce0113ef1bfb
+  version: 0873e56b0faeae3a1d661b10d629135508ea5504
   subpackages:
   - log
   - log/level
@@ -49,7 +49,7 @@ imports:
   - edwards25519
   - extra25519
 - name: github.com/tendermint/go-crypto
-  version: 197a2b270fd94ee03824b158e738fce62862d0b8
+  version: 524ba917a3a1636f21ab2c0bf76b6526903ab879
 - name: github.com/tendermint/go-wire
   version: b53add0b622662731985485f3a19be7f684660b8
   subpackages:
@@ -59,7 +59,7 @@ imports:
   subpackages:
   - iavl
 - name: github.com/tendermint/tmlibs
-  version: ee90b71eb94d05958875fb9cd756b301b691ea27
+  version: 8fc36b0097e1dfcfbba793d4b4cc87e96a03096f
   subpackages:
   - common
   - db
@@ -69,7 +69,7 @@ imports:
 - name: github.com/urfave/cli
   version: ab403a54a148f2d857920810291539e1f817ee7b
 - name: golang.org/x/crypto
-  version: c7af5bf2638a1164f2eb5467c39c6cffbd13a02e
+  version: d1464577745bc7f4e74f65be9cfbd09436a729d6
   subpackages:
   - nacl/secretbox
   - openpgp/armor
@@ -78,7 +78,7 @@ imports:
   - ripemd160
   - salsa20/salsa
 - name: golang.org/x/net
-  version: da118f7b8e5954f39d0d2130ab35d4bf0e3cb344
+  version: 0819898fb4973868bba6de59b6aaad75beea9a6a
   subpackages:
   - context
   - http2
@@ -99,7 +99,7 @@ imports:
   subpackages:
   - googleapis/rpc/status
 - name: google.golang.org/grpc
-  version: 0eb507a2ca07f13baf499f89d66cc566bf644643
+  version: 68a5d50f4517bae2b44b18092410fe248d153f1e
   subpackages:
   - codes
   - credentials

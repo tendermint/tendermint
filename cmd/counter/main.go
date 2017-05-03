@@ -18,7 +18,7 @@ func main() {
 	flag.Parse()
 	app := counter.NewCounterApplication(*serialPtr)
 
-	logger := log.NewTmLogger(os.Stdout)
+	logger := log.NewTMLogger(os.Stdout)
 
 	// Start the listener
 	srv, err := server.NewServer(*addrPtr, *abciPtr, app)

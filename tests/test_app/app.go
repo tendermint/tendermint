@@ -38,7 +38,7 @@ func startClient(abciType string) abcicli.Client {
 	if err != nil {
 		panic("connecting to abci_app: " + err.Error())
 	}
-	logger := log.NewTmLogger(os.Stdout)
+	logger := log.NewTMLogger(os.Stdout)
 	client.SetLogger(log.With(logger, "module", "abcicli"))
 	return client
 }

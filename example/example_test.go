@@ -3,7 +3,6 @@ package example
 import (
 	"fmt"
 	"net"
-	"os"
 	"reflect"
 	"testing"
 	"time"
@@ -36,16 +35,14 @@ func TestGRPC(t *testing.T) {
 }
 
 func testStream(t *testing.T, app types.Application) {
-
 	numDeliverTxs := 200000
-	logger := log.NewTmLogger(os.Stdout)
 
 	// Start the listener
 	server, err := server.NewSocketServer("unix://test.sock", app)
 	if err != nil {
 		t.Fatalf("Error starting socket server: %v", err.Error())
 	}
-	server.SetLogger(log.With(logger, "module", "abci-server"))
+	server.SetLogger(log.With(log.TestingLogger(), "module", "abci-server"))
 	defer server.Stop()
 
 	// Connect to the socket
@@ -53,7 +50,7 @@ func testStream(t *testing.T, app types.Application) {
 	if err != nil {
 		t.Fatalf("Error starting socket client: %v", err.Error())
 	}
-	client.SetLogger(log.With(logger, "module", "abci-client"))
+	client.SetLogger(log.With(log.TestingLogger(), "module", "abci-client"))
 	client.Start()
 	defer client.Stop()
 
@@ -112,16 +109,14 @@ func dialerFunc(addr string, timeout time.Duration) (net.Conn, error) {
 }
 
 func testGRPCSync(t *testing.T, app *types.GRPCApplication) {
-
 	numDeliverTxs := 2000
-	logger := log.NewTmLogger(os.Stdout)
 
 	// Start the listener
 	server, err := server.NewGRPCServer("unix://test.sock", app)
 	if err != nil {
 		t.Fatalf("Error starting GRPC server: %v", err.Error())
 	}
-	server.SetLogger(log.With(logger, "module", "abci-server"))
+	server.SetLogger(log.With(log.TestingLogger(), "module", "abci-server"))
 	defer server.Stop()
 
 	// Connect to the socket

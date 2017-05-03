@@ -18,7 +18,7 @@ func main() {
 	persistencePtr := flag.String("persist", "", "directory to use for a database")
 	flag.Parse()
 
-	logger := log.NewTmLogger(os.Stdout)
+	logger := log.NewTMLogger(os.Stdout)
 
 	// Create the application - in memory or persisted to disk
 	var app types.Application
