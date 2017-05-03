@@ -103,6 +103,9 @@ func TestSetupConfig(t *testing.T) {
 		{nil, map[string]string{"RD_BOO": "bang"}, "bang"},
 		{nil, map[string]string{"RD_ROOT": conf1}, cval1},
 		{nil, map[string]string{"RDROOT": conf2}, cval2},
+		{nil, map[string]string{"RDHOME": conf1}, cval1},
+		// and when both are set??? HOME wins every time!
+		{[]string{"--root", conf1}, map[string]string{"RDHOME": conf2}, cval2},
 	}
 
 	for idx, tc := range cases {

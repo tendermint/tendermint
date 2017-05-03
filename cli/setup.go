@@ -24,7 +24,8 @@ const (
 func PrepareBaseCmd(cmd *cobra.Command, envPrefix, defautRoot string) func() {
 	cobra.OnInitialize(func() { initEnv(envPrefix) })
 	cmd.PersistentFlags().StringP(RootFlag, "r", defautRoot, "DEPRECATED. Use --home")
-	cmd.PersistentFlags().StringP(HomeFlag, "h", defautRoot, "root directory for config and data")
+	// -h is already reserved for --help as part of the cobra framework
+	cmd.PersistentFlags().String(HomeFlag, "", "root directory for config and data")
 	cmd.PersistentPreRunE = concatCobraCmdFuncs(bindFlagsLoadViper, cmd.PersistentPreRunE)
 	return func() { execute(cmd) }
 }
@@ -104,7 +105,10 @@ func bindFlagsLoadViper(cmd *cobra.Command, args []string) error {
 	// rootDir is command line flag, env variable, or default $HOME/.tlc
 	// NOTE: we support both --root and --home for now, but eventually only --home
 	rootDir := viper.GetString(HomeFlag)
-	if !viper.IsSet(HomeFlag) && viper.IsSet(RootFlag) {
+	// @ebuchman: viper.IsSet doesn't do what you think...
+	// Even a default of "" on the pflag marks it as set,
+	// simply by fact of having a pflag.
+	if rootDir == "" {
 		rootDir = viper.GetString(RootFlag)
 	}
 	viper.SetConfigName("config") // name of config file (without extension)
