@@ -4,8 +4,6 @@ GOTOOLS = \
 	github.com/Masterminds/glide
 REPO:=github.com/tendermint/tmlibs
 
-all: install test
-
 test:
 	go test `glide novendor`
 
