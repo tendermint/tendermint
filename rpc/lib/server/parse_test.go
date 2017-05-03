@@ -2,6 +2,7 @@ package rpcserver
 
 import (
 	"encoding/json"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -130,4 +131,44 @@ func TestParseJSONArray(t *testing.T) {
 			assert.EqualValues(22, *h)
 		}
 	}
+}
+
+func TestParseRPC(t *testing.T) {
+	assert := assert.New(t)
+
+	demo := func(height int, name string) {}
+	call := NewRPCFunc(demo, "height,name")
+
+	cases := []struct {
+		raw    string
+		height int64
+		name   string
+		fail   bool
+	}{
+		// should parse
+		{`[7, "flew"]`, 7, "flew", false},
+		{`{"name": "john", "height": 22}`, 22, "john", false},
+		// defaults
+		{`{"name": "solo", "unused": "stuff"}`, 0, "solo", false},
+		// should fail - wrong types/lenght
+		{`["flew", 7]`, 0, "", true},
+		{`[7,"flew",100]`, 0, "", true},
+		{`{"name": -12, "height": "fred"}`, 0, "", true},
+	}
+	for idx, tc := range cases {
+		i := strconv.Itoa(idx)
+		data := []byte(tc.raw)
+		vals, err := jsonParamsToArgs(call, data, 0)
+		if tc.fail {
+			assert.NotNil(err, i)
+		} else {
+			assert.Nil(err, "%s: %+v", i, err)
+			if assert.Equal(2, len(vals), i) {
+				assert.Equal(tc.height, vals[0].Int(), i)
+				assert.Equal(tc.name, vals[1].String(), i)
+			}
+		}
+
+	}
+
 }
