@@ -7,11 +7,11 @@ import (
 	"fmt"
 
 	"github.com/gorilla/websocket"
-	. "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tendermint/rpc/lib/client"
-	"github.com/tendermint/tendermint/rpc/lib/types"
 	"github.com/tendermint/go-wire"
 	_ "github.com/tendermint/tendermint/rpc/core/types" // Register RPCResponse > Result types
+	"github.com/tendermint/tendermint/rpc/lib/client"
+	"github.com/tendermint/tendermint/rpc/lib/types"
+	. "github.com/tendermint/tmlibs/common"
 )
 
 func main() {
@@ -37,13 +37,16 @@ func main() {
 	for i := 0; ; i++ {
 		binary.BigEndian.PutUint64(buf, uint64(i))
 		//txBytes := hex.EncodeToString(buf[:n])
-		request := rpctypes.NewRPCRequest("fakeid",
+		request, err := rpctypes.MapToRequest("fakeid",
 			"broadcast_tx",
 			map[string]interface{}{"tx": buf[:8]})
+		if err != nil {
+			Exit(err.Error())
+		}
 		reqBytes := wire.JSONBytes(request)
 		//fmt.Println("!!", string(reqBytes))
 		fmt.Print(".")
-		err := ws.WriteMessage(websocket.TextMessage, reqBytes)
+		err = ws.WriteMessage(websocket.TextMessage, reqBytes)
 		if err != nil {
 			Exit(err.Error())
 		}
