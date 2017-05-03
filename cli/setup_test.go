@@ -2,8 +2,11 @@ package cli
 
 import (
 	"bytes"
+	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strconv"
 	"testing"
 
@@ -61,6 +64,69 @@ func TestSetupEnv(t *testing.T) {
 	}
 }
 
+func writeConfig(vals map[string]string) (string, error) {
+	cdir, err := ioutil.TempDir("", "test-cli")
+	if err != nil {
+		return "", err
+	}
+	data := ""
+	for k, v := range vals {
+		data = data + fmt.Sprintf("%s = \"%s\"\n", k, v)
+	}
+	cfile := filepath.Join(cdir, "config.toml")
+	err = ioutil.WriteFile(cfile, []byte(data), 0666)
+	return cdir, err
+}
+
+func TestSetupConfig(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+
+	// we pre-create two config files we can refer to in the rest of
+	// the test cases.
+	cval1, cval2 := "fubble", "wubble"
+	conf1, err := writeConfig(map[string]string{"boo": cval1})
+	require.Nil(err)
+	// even with some ignored fields, should be no problem
+	conf2, err := writeConfig(map[string]string{"boo": cval2, "foo": "bar"})
+	require.Nil(err)
+
+	cases := []struct {
+		args     []string
+		env      map[string]string
+		expected string
+	}{
+		{nil, nil, ""},
+		// setting on the command line
+		{[]string{"--boo", "haha"}, nil, "haha"},
+		{[]string{"--root", conf1}, nil, cval1},
+		// test both variants of the prefix
+		{nil, map[string]string{"RD_BOO": "bang"}, "bang"},
+		{nil, map[string]string{"RD_ROOT": conf1}, cval1},
+		{nil, map[string]string{"RDROOT": conf2}, cval2},
+	}
+
+	for idx, tc := range cases {
+		i := strconv.Itoa(idx)
+		// test command that store value of foobar in local variable
+		var foo string
+		cmd := &cobra.Command{
+			Use: "reader",
+			RunE: func(cmd *cobra.Command, args []string) error {
+				foo = viper.GetString("boo")
+				return nil
+			},
+		}
+		cmd.Flags().String("boo", "", "Some test value from config")
+		PrepareBaseCmd(cmd, "RD", "/qwerty/asdfgh") // some missing dir...
+
+		viper.Reset()
+		args := append([]string{cmd.Use}, tc.args...)
+		err := runWithArgs(cmd, args, tc.env)
+		require.Nil(err, i)
+		assert.Equal(tc.expected, foo, i)
+	}
+}
+
 // runWithArgs executes the given command with the specified command line args
 // and environmental variables set. It returns any error returned from cmd.Execute()
 func runWithArgs(cmd Executable, args []string, env map[string]string) error {
@@ -78,10 +144,7 @@ func runWithArgs(cmd Executable, args []string, env map[string]string) error {
 	os.Args = args
 	for k, v := range env {
 		// backup old value if there, to restore at end
-		ov := os.Getenv(k)
-		if ov != "" {
-			oenv[k] = ov
-		}
+		oenv[k] = os.Getenv(k)
 		err := os.Setenv(k, v)
 		if err != nil {
 			return err
