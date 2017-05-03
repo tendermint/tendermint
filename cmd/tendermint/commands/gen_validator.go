@@ -1,11 +1,11 @@
 package commands
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
 
-	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -21,7 +21,7 @@ func init() {
 
 func genValidator(cmd *cobra.Command, args []string) {
 	privValidator := types.GenPrivValidator()
-	privValidatorJSONBytes := wire.JSONBytesPretty(privValidator)
+	privValidatorJSONBytes, _ := json.MarshalIndent(privValidator, "", "\t")
 	fmt.Printf(`%v
 `, string(privValidatorJSONBytes))
 }

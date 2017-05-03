@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	abci "github.com/tendermint/abci/types"
+	"github.com/tendermint/go-wire/data"
 	"github.com/tendermint/tmlibs/merkle"
 )
 
@@ -79,7 +80,7 @@ func (txs Txs) Proof(i int) TxProof {
 
 type TxProof struct {
 	Index, Total int
-	RootHash     []byte
+	RootHash     data.Bytes
 	Data         Tx
 	Proof        merkle.SimpleProof
 }

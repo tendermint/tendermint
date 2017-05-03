@@ -3,6 +3,7 @@ package rpc
 import (
 	"bytes"
 	crand "crypto/rand"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -12,7 +13,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	wire "github.com/tendermint/go-wire"
+	"github.com/tendermint/go-wire/data"
 	client "github.com/tendermint/tendermint/rpc/lib/client"
 	server "github.com/tendermint/tendermint/rpc/lib/server"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
@@ -20,48 +21,57 @@ import (
 
 // Client and Server should work over tcp or unix sockets
 const (
-	tcpAddr = "tcp://0.0.0.0:46657"
+	tcpAddr = "tcp://0.0.0.0:47768"
 
-	unixSocket = "/tmp/rpc.sock"
-	unixAddr   = "unix:///tmp/rpc.sock"
+	unixSocket = "/tmp/rpc_test.sock"
+	unixAddr   = "unix://" + unixSocket
 
 	websocketEndpoint = "/websocket/endpoint"
 )
 
-// Define a type for results and register concrete versions
-type Result interface{}
-
 type ResultEcho struct {
-	Value string
+	Value string `json:"value"`
+}
+
+type ResultEchoInt struct {
+	Value int `json:"value"`
 }
 
 type ResultEchoBytes struct {
-	Value []byte
+	Value []byte `json:"value"`
 }
 
-var _ = wire.RegisterInterface(
-	struct{ Result }{},
-	wire.ConcreteType{&ResultEcho{}, 0x1},
-	wire.ConcreteType{&ResultEchoBytes{}, 0x2},
-)
+type ResultEchoDataBytes struct {
+	Value data.Bytes `json:"value"`
+}
 
 // Define some routes
 var Routes = map[string]*server.RPCFunc{
-	"echo":       server.NewRPCFunc(EchoResult, "arg"),
-	"echo_ws":    server.NewWSRPCFunc(EchoWSResult, "arg"),
-	"echo_bytes": server.NewRPCFunc(EchoBytesResult, "arg"),
+	"echo":            server.NewRPCFunc(EchoResult, "arg"),
+	"echo_ws":         server.NewWSRPCFunc(EchoWSResult, "arg"),
+	"echo_bytes":      server.NewRPCFunc(EchoBytesResult, "arg"),
+	"echo_data_bytes": server.NewRPCFunc(EchoDataBytesResult, "arg"),
+	"echo_int":        server.NewRPCFunc(EchoIntResult, "arg"),
 }
 
-func EchoResult(v string) (Result, error) {
+func EchoResult(v string) (*ResultEcho, error) {
 	return &ResultEcho{v}, nil
 }
 
-func EchoWSResult(wsCtx types.WSRPCContext, v string) (Result, error) {
+func EchoWSResult(wsCtx types.WSRPCContext, v string) (*ResultEcho, error) {
 	return &ResultEcho{v}, nil
 }
 
-func EchoBytesResult(v []byte) (Result, error) {
+func EchoIntResult(v int) (*ResultEchoInt, error) {
+	return &ResultEchoInt{v}, nil
+}
+
+func EchoBytesResult(v []byte) (*ResultEchoBytes, error) {
 	return &ResultEchoBytes{v}, nil
+}
+
+func EchoDataBytesResult(v data.Bytes) (*ResultEchoDataBytes, error) {
+	return &ResultEchoDataBytes{v}, nil
 }
 
 // launch unix and tcp servers
@@ -105,22 +115,44 @@ func echoViaHTTP(cl client.HTTPClient, val string) (string, error) {
 	params := map[string]interface{}{
 		"arg": val,
 	}
-	var result Result
-	if _, err := cl.Call("echo", params, &result); err != nil {
+	result := new(ResultEcho)
+	if _, err := cl.Call("echo", params, result); err != nil {
 		return "", err
 	}
-	return result.(*ResultEcho).Value, nil
+	return result.Value, nil
+}
+
+func echoIntViaHTTP(cl client.HTTPClient, val int) (int, error) {
+	params := map[string]interface{}{
+		"arg": val,
+	}
+	result := new(ResultEchoInt)
+	if _, err := cl.Call("echo_int", params, result); err != nil {
+		return 0, err
+	}
+	return result.Value, nil
 }
 
 func echoBytesViaHTTP(cl client.HTTPClient, bytes []byte) ([]byte, error) {
 	params := map[string]interface{}{
 		"arg": bytes,
 	}
-	var result Result
-	if _, err := cl.Call("echo_bytes", params, &result); err != nil {
+	result := new(ResultEchoBytes)
+	if _, err := cl.Call("echo_bytes", params, result); err != nil {
 		return []byte{}, err
 	}
-	return result.(*ResultEchoBytes).Value, nil
+	return result.Value, nil
+}
+
+func echoDataBytesViaHTTP(cl client.HTTPClient, bytes data.Bytes) (data.Bytes, error) {
+	params := map[string]interface{}{
+		"arg": bytes,
+	}
+	result := new(ResultEchoDataBytes)
+	if _, err := cl.Call("echo_data_bytes", params, result); err != nil {
+		return []byte{}, err
+	}
+	return result.Value, nil
 }
 
 func testWithHTTPClient(t *testing.T, cl client.HTTPClient) {
@@ -133,6 +165,16 @@ func testWithHTTPClient(t *testing.T, cl client.HTTPClient) {
 	got2, err := echoBytesViaHTTP(cl, val2)
 	require.Nil(t, err)
 	assert.Equal(t, got2, val2)
+
+	val3 := data.Bytes(randBytes(t))
+	got3, err := echoDataBytesViaHTTP(cl, val3)
+	require.Nil(t, err)
+	assert.Equal(t, got3, val3)
+
+	val4 := rand.Intn(10000)
+	got4, err := echoIntViaHTTP(cl, val4)
+	require.Nil(t, err)
+	assert.Equal(t, got4, val4)
 }
 
 func echoViaWS(cl *client.WSClient, val string) (string, error) {
@@ -146,12 +188,12 @@ func echoViaWS(cl *client.WSClient, val string) (string, error) {
 
 	select {
 	case msg := <-cl.ResultsCh:
-		result := new(Result)
-		wire.ReadJSONPtr(result, msg, &err)
+		result := new(ResultEcho)
+		err = json.Unmarshal(msg, result)
 		if err != nil {
 			return "", nil
 		}
-		return (*result).(*ResultEcho).Value, nil
+		return result.Value, nil
 	case err := <-cl.ErrorsCh:
 		return "", err
 	}
@@ -168,12 +210,12 @@ func echoBytesViaWS(cl *client.WSClient, bytes []byte) ([]byte, error) {
 
 	select {
 	case msg := <-cl.ResultsCh:
-		result := new(Result)
-		wire.ReadJSONPtr(result, msg, &err)
+		result := new(ResultEchoBytes)
+		err = json.Unmarshal(msg, result)
 		if err != nil {
 			return []byte{}, nil
 		}
-		return (*result).(*ResultEchoBytes).Value, nil
+		return result.Value, nil
 	case err := <-cl.ErrorsCh:
 		return []byte{}, err
 	}
@@ -241,20 +283,15 @@ func TestWSNewWSRPCFunc(t *testing.T) {
 	params := map[string]interface{}{
 		"arg": val,
 	}
-	err = cl.WriteJSON(types.RPCRequest{
-		JSONRPC: "2.0",
-		ID:      "",
-		Method:  "echo_ws",
-		Params:  params,
-	})
+	err = cl.Call("echo_ws", params)
 	require.Nil(t, err)
 
 	select {
 	case msg := <-cl.ResultsCh:
-		result := new(Result)
-		wire.ReadJSONPtr(result, msg, &err)
+		result := new(ResultEcho)
+		err = json.Unmarshal(msg, result)
 		require.Nil(t, err)
-		got := (*result).(*ResultEcho).Value
+		got := result.Value
 		assert.Equal(t, got, val)
 	case err := <-cl.ErrorsCh:
 		t.Fatal(err)
@@ -269,20 +306,17 @@ func TestWSHandlesArrayParams(t *testing.T) {
 
 	val := "acbd"
 	params := []interface{}{val}
-	err = cl.WriteJSON(types.RPCRequest{
-		JSONRPC: "2.0",
-		ID:      "",
-		Method:  "echo_ws",
-		Params:  params,
-	})
+	request, err := types.ArrayToRequest("", "echo_ws", params)
+	require.Nil(t, err)
+	err = cl.WriteJSON(request)
 	require.Nil(t, err)
 
 	select {
 	case msg := <-cl.ResultsCh:
-		result := new(Result)
-		wire.ReadJSONPtr(result, msg, &err)
+		result := new(ResultEcho)
+		err = json.Unmarshal(msg, result)
 		require.Nil(t, err)
-		got := (*result).(*ResultEcho).Value
+		got := result.Value
 		assert.Equal(t, got, val)
 	case err := <-cl.ErrorsCh:
 		t.Fatalf("%+v", err)

@@ -10,7 +10,6 @@ import (
 	merktest "github.com/tendermint/merkleeyes/testutil"
 	"github.com/tendermint/tendermint/rpc/client"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
-	"github.com/tendermint/tendermint/types"
 )
 
 func getHTTPClient() *client.HTTP {
@@ -119,17 +118,16 @@ func TestAppCalls(t *testing.T) {
 		k, v, tx := merktest.MakeTxKV()
 		bres, err := c.BroadcastTxCommit(tx)
 		require.Nil(err, "%d: %+v", i, err)
-		require.True(bres.DeliverTx.GetCode().IsOK())
+		require.True(bres.DeliverTx.Code.IsOK())
 		txh := bres.Height
 		apph := txh + 1 // this is where the tx will be applied to the state
 
 		// wait before querying
 		client.WaitForHeight(c, apph, nil)
 		qres, err := c.ABCIQuery("/key", k, false)
-		if assert.Nil(err) && assert.True(qres.Response.Code.IsOK()) {
-			data := qres.Response
+		if assert.Nil(err) && assert.True(qres.Code.IsOK()) {
 			// assert.Equal(k, data.GetKey())  // only returned for proofs
-			assert.Equal(v, data.GetValue())
+			assert.EqualValues(v, qres.Value)
 		}
 
 		// make sure we can lookup the tx with proof
@@ -137,7 +135,7 @@ func TestAppCalls(t *testing.T) {
 		ptx, err := c.Tx(bres.Hash, true)
 		require.Nil(err, "%d: %+v", i, err)
 		assert.Equal(txh, ptx.Height)
-		assert.Equal(types.Tx(tx), ptx.Tx)
+		assert.EqualValues(tx, ptx.Tx)
 
 		// and we can even check the block is added
 		block, err := c.Block(apph)
@@ -174,12 +172,12 @@ func TestAppCalls(t *testing.T) {
 
 		// and we got a proof that works!
 		pres, err := c.ABCIQuery("/key", k, true)
-		if assert.Nil(err) && assert.True(pres.Response.Code.IsOK()) {
-			proof, err := iavl.ReadProof(pres.Response.GetProof())
+		if assert.Nil(err) && assert.True(pres.Code.IsOK()) {
+			proof, err := iavl.ReadProof(pres.Proof)
 			if assert.Nil(err) {
-				key := pres.Response.GetKey()
-				value := pres.Response.GetValue()
-				assert.Equal(appHash, proof.RootHash)
+				key := pres.Key
+				value := pres.Value
+				assert.EqualValues(appHash, proof.RootHash)
 				valid := proof.Verify(key, value, appHash)
 				assert.True(valid)
 			}

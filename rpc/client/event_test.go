@@ -25,7 +25,7 @@ func TestHeaderEvents(t *testing.T) {
 		evtTyp := types.EventStringNewBlockHeader()
 		evt, err := client.WaitForOneEvent(c, evtTyp, 1*time.Second)
 		require.Nil(err, "%d: %+v", i, err)
-		_, ok := evt.(types.EventDataNewBlockHeader)
+		_, ok := evt.Unwrap().(types.EventDataNewBlockHeader)
 		require.True(ok, "%d: %#v", i, evt)
 		// TODO: more checks...
 	}
@@ -56,7 +56,7 @@ func TestTxEvents(t *testing.T) {
 		evt, err := client.WaitForOneEvent(c, evtTyp, 1*time.Second)
 		require.Nil(err, "%d: %+v", i, err)
 		// and make sure it has the proper info
-		txe, ok := evt.(types.EventDataTx)
+		txe, ok := evt.Unwrap().(types.EventDataTx)
 		require.True(ok, "%d: %#v", i, evt)
 		// make sure this is the proper tx
 		require.EqualValues(tx, txe.Tx)

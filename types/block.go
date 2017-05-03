@@ -8,9 +8,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tendermint/go-wire"
+	"github.com/tendermint/go-wire/data"
 	. "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/merkle"
-	"github.com/tendermint/go-wire"
 )
 
 const MaxBlockSize = 22020096 // 21MB TODO make it configurable
@@ -150,15 +151,15 @@ func (b *Block) StringShort() string {
 //-----------------------------------------------------------------------------
 
 type Header struct {
-	ChainID        string    `json:"chain_id"`
-	Height         int       `json:"height"`
-	Time           time.Time `json:"time"`
-	NumTxs         int       `json:"num_txs"` // XXX: Can we get rid of this?
-	LastBlockID    BlockID   `json:"last_block_id"`
-	LastCommitHash []byte    `json:"last_commit_hash"` // commit from validators from the last block
-	DataHash       []byte    `json:"data_hash"`        // transactions
-	ValidatorsHash []byte    `json:"validators_hash"`  // validators for the current block
-	AppHash        []byte    `json:"app_hash"`         // state after txs from the previous block
+	ChainID        string     `json:"chain_id"`
+	Height         int        `json:"height"`
+	Time           time.Time  `json:"time"`
+	NumTxs         int        `json:"num_txs"` // XXX: Can we get rid of this?
+	LastBlockID    BlockID    `json:"last_block_id"`
+	LastCommitHash data.Bytes `json:"last_commit_hash"` // commit from validators from the last block
+	DataHash       data.Bytes `json:"data_hash"`        // transactions
+	ValidatorsHash data.Bytes `json:"validators_hash"`  // validators for the current block
+	AppHash        data.Bytes `json:"app_hash"`         // state after txs from the previous block
 }
 
 // NOTE: hash is nil if required fields are missing.
@@ -388,7 +389,7 @@ func (data *Data) StringIndented(indent string) string {
 //--------------------------------------------------------------------------------
 
 type BlockID struct {
-	Hash        []byte        `json:"hash"`
+	Hash        data.Bytes    `json:"hash"`
 	PartsHeader PartSetHeader `json:"parts"`
 }
 

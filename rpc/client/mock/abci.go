@@ -25,18 +25,16 @@ func (a ABCIApp) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 
 func (a ABCIApp) ABCIQuery(path string, data data.Bytes, prove bool) (*ctypes.ResultABCIQuery, error) {
 	q := a.App.Query(abci.RequestQuery{data, path, 0, prove})
-	return &ctypes.ResultABCIQuery{q}, nil
+	return &ctypes.ResultABCIQuery{q.Result()}, nil
 }
 
 func (a ABCIApp) BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	res := ctypes.ResultBroadcastTxCommit{}
-	c := a.App.CheckTx(tx)
-	res.CheckTx = &abci.ResponseCheckTx{c.Code, c.Data, c.Log}
-	if !c.IsOK() {
+	res.CheckTx = a.App.CheckTx(tx)
+	if !res.CheckTx.IsOK() {
 		return &res, nil
 	}
-	d := a.App.DeliverTx(tx)
-	res.DeliverTx = &abci.ResponseDeliverTx{d.Code, d.Data, d.Log}
+	res.DeliverTx = a.App.DeliverTx(tx)
 	return &res, nil
 }
 
@@ -85,7 +83,8 @@ func (m ABCIMock) ABCIQuery(path string, data data.Bytes, prove bool) (*ctypes.R
 	if err != nil {
 		return nil, err
 	}
-	return &ctypes.ResultABCIQuery{res.(abci.ResponseQuery)}, nil
+	resQuery := res.(abci.ResponseQuery)
+	return &ctypes.ResultABCIQuery{resQuery.Result()}, nil
 }
 
 func (m ABCIMock) BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {

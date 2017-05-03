@@ -1,8 +1,8 @@
 package core
 
 import (
-	"github.com/tendermint/tendermint/rpc/lib/types"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tendermint/rpc/lib/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -11,8 +11,8 @@ func Subscribe(wsCtx rpctypes.WSRPCContext, event string) (*ctypes.ResultSubscri
 	types.AddListenerForEvent(wsCtx.GetEventSwitch(), wsCtx.GetRemoteAddr(), event, func(msg types.TMEventData) {
 		// NOTE: EventSwitch callbacks must be nonblocking
 		// NOTE: RPCResponses of subscribed events have id suffix "#event"
-		tmResult := ctypes.TMResult(&ctypes.ResultEvent{event, msg})
-		wsCtx.TryWriteRPCResponse(rpctypes.NewRPCResponse(wsCtx.Request.ID+"#event", &tmResult, ""))
+		tmResult := &ctypes.ResultEvent{event, msg}
+		wsCtx.TryWriteRPCResponse(rpctypes.NewRPCResponse(wsCtx.Request.ID+"#event", tmResult, ""))
 	})
 	return &ctypes.ResultSubscribe{}, nil
 }

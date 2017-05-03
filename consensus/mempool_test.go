@@ -44,7 +44,7 @@ func TestTxConcurrentWithCommit(t *testing.T) {
 	for nTxs := 0; nTxs < NTxs; {
 		select {
 		case b := <-newBlockCh:
-			nTxs += b.(types.EventDataNewBlock).Block.Header.NumTxs
+			nTxs += b.(types.TMEventData).Unwrap().(types.EventDataNewBlock).Block.Header.NumTxs
 		case <-ticker.C:
 			panic("Timed out waiting to commit blocks with transactions")
 		}

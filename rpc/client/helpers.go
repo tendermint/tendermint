@@ -4,9 +4,9 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
 	events "github.com/tendermint/tmlibs/events"
-	"github.com/tendermint/tendermint/types"
 )
 
 // Waiter is informed of current height, decided whether to quit early
@@ -77,12 +77,12 @@ func WaitForOneEvent(evsw types.EventSwitch,
 
 	select {
 	case <-quit:
-		return nil, errors.New("timed out waiting for event")
+		return types.TMEventData{}, errors.New("timed out waiting for event")
 	case evt := <-evts:
 		tmevt, ok := evt.(types.TMEventData)
 		if ok {
 			return tmevt, nil
 		}
-		return nil, errors.Errorf("Got unexpected event type: %#v", evt)
+		return types.TMEventData{}, errors.Errorf("Got unexpected event type: %#v", evt)
 	}
 }

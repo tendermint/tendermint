@@ -8,11 +8,11 @@ import (
 	"sync"
 	"time"
 
-	. "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/go-wire"
+	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	. "github.com/tendermint/tmlibs/common"
 )
 
 const (
@@ -299,12 +299,12 @@ func (conR *ConsensusReactor) SetEventSwitch(evsw types.EventSwitch) {
 func (conR *ConsensusReactor) registerEventCallbacks() {
 
 	types.AddListenerForEvent(conR.evsw, "conR", types.EventStringNewRoundStep(), func(data types.TMEventData) {
-		rs := data.(types.EventDataRoundState).RoundState.(*RoundState)
+		rs := data.Unwrap().(types.EventDataRoundState).RoundState.(*RoundState)
 		conR.broadcastNewRoundStep(rs)
 	})
 
 	types.AddListenerForEvent(conR.evsw, "conR", types.EventStringVote(), func(data types.TMEventData) {
-		edv := data.(types.EventDataVote)
+		edv := data.Unwrap().(types.EventDataVote)
 		conR.broadcastHasVoteMessage(edv.Vote)
 	})
 }

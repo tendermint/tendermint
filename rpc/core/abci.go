@@ -18,7 +18,9 @@ func ABCIQuery(path string, data data.Bytes, prove bool) (*ctypes.ResultABCIQuer
 		return nil, err
 	}
 	log.Info("ABCIQuery", "path", path, "data", data, "result", resQuery)
-	return &ctypes.ResultABCIQuery{resQuery}, nil
+	return &ctypes.ResultABCIQuery{
+		resQuery.Result(),
+	}, nil
 }
 
 func ABCIInfo() (*ctypes.ResultABCIInfo, error) {

@@ -8,9 +8,8 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
-	cmn "github.com/tendermint/tmlibs/common"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
-	wire "github.com/tendermint/go-wire"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 const (
@@ -131,42 +130,31 @@ func (wsc *WSClient) receiveEventsRoutine() {
 // Subscribe to an event. Note the server must have a "subscribe" route
 // defined.
 func (wsc *WSClient) Subscribe(eventid string) error {
-	err := wsc.WriteJSON(types.RPCRequest{
-		JSONRPC: "2.0",
-		ID:      "",
-		Method:  "subscribe",
-		Params:  map[string]interface{}{"event": eventid},
-	})
+	params := map[string]interface{}{"event": eventid}
+	request, err := types.MapToRequest("", "subscribe", params)
+	if err == nil {
+		err = wsc.WriteJSON(request)
+	}
 	return err
 }
 
 // Unsubscribe from an event. Note the server must have a "unsubscribe" route
 // defined.
 func (wsc *WSClient) Unsubscribe(eventid string) error {
-	err := wsc.WriteJSON(types.RPCRequest{
-		JSONRPC: "2.0",
-		ID:      "",
-		Method:  "unsubscribe",
-		Params:  map[string]interface{}{"event": eventid},
-	})
+	params := map[string]interface{}{"event": eventid}
+	request, err := types.MapToRequest("", "unsubscribe", params)
+	if err == nil {
+		err = wsc.WriteJSON(request)
+	}
 	return err
 }
 
 // Call asynchronously calls a given method by sending an RPCRequest to the
 // server. Results will be available on ResultsCh, errors, if any, on ErrorsCh.
 func (wsc *WSClient) Call(method string, params map[string]interface{}) error {
-	// we need this step because we attempt to decode values using `go-wire`
-	// (handlers.go:470) on the server side
-	encodedParams := make(map[string]interface{})
-	for k, v := range params {
-		bytes := json.RawMessage(wire.JSONBytes(v))
-		encodedParams[k] = &bytes
+	request, err := types.MapToRequest("", method, params)
+	if err == nil {
+		err = wsc.WriteJSON(request)
 	}
-	err := wsc.WriteJSON(types.RPCRequest{
-		JSONRPC: "2.0",
-		Method:  method,
-		Params:  encodedParams,
-		ID:      "",
-	})
 	return err
 }

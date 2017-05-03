@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"io"
 
-	. "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-wire"
+	"github.com/tendermint/go-wire/data"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 var (
@@ -47,7 +48,7 @@ func IsVoteTypeValid(type_ byte) bool {
 
 // Represents a prevote, precommit, or commit vote from validators for consensus.
 type Vote struct {
-	ValidatorAddress []byte           `json:"validator_address"`
+	ValidatorAddress data.Bytes       `json:"validator_address"`
 	ValidatorIndex   int              `json:"validator_index"`
 	Height           int              `json:"height"`
 	Round            int              `json:"round"`
@@ -79,11 +80,11 @@ func (vote *Vote) String() string {
 	case VoteTypePrecommit:
 		typeString = "Precommit"
 	default:
-		PanicSanity("Unknown vote type")
+		cmn.PanicSanity("Unknown vote type")
 	}
 
 	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %v}",
-		vote.ValidatorIndex, Fingerprint(vote.ValidatorAddress),
+		vote.ValidatorIndex, cmn.Fingerprint(vote.ValidatorAddress),
 		vote.Height, vote.Round, vote.Type, typeString,
-		Fingerprint(vote.BlockID.Hash), vote.Signature)
+		cmn.Fingerprint(vote.BlockID.Hash), vote.Signature)
 }

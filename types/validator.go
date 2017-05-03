@@ -5,16 +5,17 @@ import (
 	"fmt"
 	"io"
 
-	. "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-wire"
+	"github.com/tendermint/go-wire/data"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 // Volatile state for each Validator
 // TODO: make non-volatile identity
 // 	- Remove Accum - it can be computed, and now valset becomes identifying
 type Validator struct {
-	Address     []byte        `json:"address"`
+	Address     data.Bytes    `json:"address"`
 	PubKey      crypto.PubKey `json:"pub_key"`
 	VotingPower int64         `json:"voting_power"`
 	Accum       int64         `json:"accum"`
@@ -51,7 +52,7 @@ func (v *Validator) CompareAccum(other *Validator) *Validator {
 		} else if bytes.Compare(v.Address, other.Address) > 0 {
 			return other
 		} else {
-			PanicSanity("Cannot compare identical validators")
+			cmn.PanicSanity("Cannot compare identical validators")
 			return nil
 		}
 	}
@@ -87,7 +88,7 @@ func (vc validatorCodec) Decode(r io.Reader, n *int, err *error) interface{} {
 }
 
 func (vc validatorCodec) Compare(o1 interface{}, o2 interface{}) int {
-	PanicSanity("ValidatorCodec.Compare not implemented")
+	cmn.PanicSanity("ValidatorCodec.Compare not implemented")
 	return 0
 }
 
@@ -96,11 +97,11 @@ func (vc validatorCodec) Compare(o1 interface{}, o2 interface{}) int {
 
 func RandValidator(randPower bool, minPower int64) (*Validator, *PrivValidator) {
 	privVal := GenPrivValidator()
-	_, tempFilePath := Tempfile("priv_validator_")
+	_, tempFilePath := cmn.Tempfile("priv_validator_")
 	privVal.SetFile(tempFilePath)
 	votePower := minPower
 	if randPower {
-		votePower += int64(RandUint32())
+		votePower += int64(cmn.RandUint32())
 	}
 	val := NewValidator(privVal.PubKey, votePower)
 	return val, privVal

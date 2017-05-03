@@ -14,7 +14,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
-	wire "github.com/tendermint/go-wire"
+
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 	cmn "github.com/tendermint/tmlibs/common"
 	events "github.com/tendermint/tmlibs/events"
@@ -140,76 +140,82 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc) http.HandlerFunc {
 	}
 }
 
-// Convert a []interface{} OR a map[string]interface{} to properly typed values
+func mapParamsToArgs(rpcFunc *RPCFunc, params map[string]*json.RawMessage, argsOffset int) ([]reflect.Value, error) {
+	values := make([]reflect.Value, len(rpcFunc.argNames))
+	for i, argName := range rpcFunc.argNames {
+		argType := rpcFunc.args[i+argsOffset]
+
+		if p, ok := params[argName]; ok && len(*p) > 0 {
+			val := reflect.New(argType)
+			err := json.Unmarshal(*p, val.Interface())
+			if err != nil {
+				return nil, err
+			}
+			values[i] = val.Elem()
+		} else { // use default for that type
+			values[i] = reflect.Zero(argType)
+		}
+	}
+
+	return values, nil
+}
+
+func arrayParamsToArgs(rpcFunc *RPCFunc, params []*json.RawMessage, argsOffset int) ([]reflect.Value, error) {
+	if len(rpcFunc.argNames) != len(params) {
+		return nil, errors.Errorf("Expected %v parameters (%v), got %v (%v)",
+			len(rpcFunc.argNames), rpcFunc.argNames, len(params), params)
+	}
+
+	values := make([]reflect.Value, len(params))
+	for i, p := range params {
+		argType := rpcFunc.args[i+argsOffset]
+		val := reflect.New(argType)
+		err := json.Unmarshal(*p, val.Interface())
+		if err != nil {
+			return nil, err
+		}
+		values[i] = val.Elem()
+	}
+	return values, nil
+}
+
+// raw is unparsed json (from json.RawMessage) encoding either a map or an array.
 //
 // argsOffset should be 0 for RPC calls, and 1 for WS requests, where len(rpcFunc.args) != len(rpcFunc.argNames).
 // Example:
 //   rpcFunc.args = [rpctypes.WSRPCContext string]
 //   rpcFunc.argNames = ["arg"]
-func jsonParamsToArgs(rpcFunc *RPCFunc, paramsI interface{}, argsOffset int) ([]reflect.Value, error) {
-	values := make([]reflect.Value, len(rpcFunc.argNames))
-
-	switch params := paramsI.(type) {
-
-	case map[string]interface{}:
-		for i, argName := range rpcFunc.argNames {
-			argType := rpcFunc.args[i+argsOffset]
-
-			// decode param if provided
-			if param, ok := params[argName]; ok && "" != param {
-				v, err := _jsonObjectToArg(argType, param)
-				if err != nil {
-					return nil, err
-				}
-				values[i] = v
-			} else { // use default for that type
-				values[i] = reflect.Zero(argType)
-			}
-		}
-	case []interface{}:
-		if len(rpcFunc.argNames) != len(params) {
-			return nil, errors.New(fmt.Sprintf("Expected %v parameters (%v), got %v (%v)",
-				len(rpcFunc.argNames), rpcFunc.argNames, len(params), params))
-		}
-		values := make([]reflect.Value, len(params))
-		for i, p := range params {
-			ty := rpcFunc.args[i+argsOffset]
-			v, err := _jsonObjectToArg(ty, p)
-			if err != nil {
-				return nil, err
-			}
-			values[i] = v
-		}
-		return values, nil
-	default:
-		return nil, fmt.Errorf("Unknown type for JSON params %v. Expected map[string]interface{} or []interface{}", reflect.TypeOf(paramsI))
+func jsonParamsToArgs(rpcFunc *RPCFunc, raw []byte, argsOffset int) ([]reflect.Value, error) {
+	// first, try to get the map..
+	var m map[string]*json.RawMessage
+	err := json.Unmarshal(raw, &m)
+	if err == nil {
+		return mapParamsToArgs(rpcFunc, m, argsOffset)
 	}
-	return values, nil
+
+	// otherwise, try an array
+	var a []*json.RawMessage
+	err = json.Unmarshal(raw, &a)
+	if err == nil {
+		return arrayParamsToArgs(rpcFunc, a, argsOffset)
+	}
+
+	// otherwise, bad format, we cannot parse
+	return nil, errors.Errorf("Unknown type for JSON params: %v. Expected map or array", err)
 }
 
 // Convert a []interface{} OR a map[string]interface{} to properly typed values
-func jsonParamsToArgsRPC(rpcFunc *RPCFunc, paramsI interface{}) ([]reflect.Value, error) {
-	return jsonParamsToArgs(rpcFunc, paramsI, 0)
+func jsonParamsToArgsRPC(rpcFunc *RPCFunc, params *json.RawMessage) ([]reflect.Value, error) {
+	return jsonParamsToArgs(rpcFunc, *params, 0)
 }
 
 // Same as above, but with the first param the websocket connection
-func jsonParamsToArgsWS(rpcFunc *RPCFunc, paramsI interface{}, wsCtx types.WSRPCContext) ([]reflect.Value, error) {
-	values, err := jsonParamsToArgs(rpcFunc, paramsI, 1)
+func jsonParamsToArgsWS(rpcFunc *RPCFunc, params *json.RawMessage, wsCtx types.WSRPCContext) ([]reflect.Value, error) {
+	values, err := jsonParamsToArgs(rpcFunc, *params, 1)
 	if err != nil {
 		return nil, err
 	}
 	return append([]reflect.Value{reflect.ValueOf(wsCtx)}, values...), nil
-}
-
-func _jsonObjectToArg(ty reflect.Type, object interface{}) (reflect.Value, error) {
-	var err error
-	v := reflect.New(ty)
-	wire.ReadJSONObjectPtr(v.Interface(), object, &err)
-	if err != nil {
-		return v, err
-	}
-	v = v.Elem()
-	return v, nil
 }
 
 // rpc.json
@@ -269,7 +275,6 @@ func httpParamsToArgs(rpcFunc *RPCFunc, r *http.Request) ([]reflect.Value, error
 			continue
 		}
 
-		// Pass values to go-wire
 		values[i], err = _jsonStringToArg(argType, arg)
 		if err != nil {
 			return nil, err
@@ -280,9 +285,8 @@ func httpParamsToArgs(rpcFunc *RPCFunc, r *http.Request) ([]reflect.Value, error
 }
 
 func _jsonStringToArg(ty reflect.Type, arg string) (reflect.Value, error) {
-	var err error
 	v := reflect.New(ty)
-	wire.ReadJSONPtr(v.Interface(), []byte(arg), &err)
+	err := json.Unmarshal([]byte(arg), v.Interface())
 	if err != nil {
 		return v, err
 	}
@@ -315,9 +319,8 @@ func nonJsonToArg(ty reflect.Type, arg string) (reflect.Value, error, bool) {
 	}
 
 	if isQuotedString && expectingByteSlice {
-		var err error
 		v := reflect.New(reflect.TypeOf(""))
-		wire.ReadJSONPtr(v.Interface(), []byte(arg), &err)
+		err := json.Unmarshal([]byte(arg), v.Interface())
 		if err != nil {
 			return reflect.ValueOf(nil), err, false
 		}

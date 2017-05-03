@@ -23,7 +23,7 @@ set -e
 
 # get the first peer's height
 addr=$(test/p2p/ip.sh 1):46657
-h1=$(curl -s "$addr/status" | jq .result[1].latest_block_height)
+h1=$(curl -s "$addr/status" | jq .result.latest_block_height)
 echo "1st peer is on height $h1"
 
 echo "Waiting until other peers reporting a height higher than the 1st one"
@@ -33,14 +33,14 @@ for i in $(seq 2 "$NUM_OF_PEERS"); do
 
   while [[ $hi -le $h1 ]] ; do
     addr=$(test/p2p/ip.sh "$i"):46657
-    hi=$(curl -s "$addr/status" | jq .result[1].latest_block_height)
+    hi=$(curl -s "$addr/status" | jq .result.latest_block_height)
 
     echo "... peer $i is on height $hi"
 
     ((attempt++))
     if [ "$attempt" -ge $MAX_ATTEMPTS_TO_CATCH_UP ] ; then
       echo "$attempt unsuccessful attempts were made to catch up"
-      curl -s "$addr/dump_consensus_state" | jq .result[1]
+      curl -s "$addr/dump_consensus_state" | jq .result
       exit 1
     fi
 

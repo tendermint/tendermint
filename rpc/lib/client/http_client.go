@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	wire "github.com/tendermint/go-wire"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 )
 
@@ -68,18 +67,9 @@ func NewJSONRPCClient(remote string) *JSONRPCClient {
 }
 
 func (c *JSONRPCClient) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
-	// we need this step because we attempt to decode values using `go-wire`
-	// (handlers.go:176) on the server side
-	encodedParams := make(map[string]interface{})
-	for k, v := range params {
-		bytes := json.RawMessage(wire.JSONBytes(v))
-		encodedParams[k] = &bytes
-	}
-	request := types.RPCRequest{
-		JSONRPC: "2.0",
-		Method:  method,
-		Params:  encodedParams,
-		ID:      "",
+	request, err := types.MapToRequest("", method, params)
+	if err != nil {
+		return nil, err
 	}
 	requestBytes, err := json.Marshal(request)
 	if err != nil {
@@ -153,7 +143,7 @@ func unmarshalResponseBytes(responseBytes []byte, result interface{}) (interface
 		return nil, errors.Errorf("Response error: %v", errorStr)
 	}
 	// unmarshal the RawMessage into the result
-	result = wire.ReadJSONPtr(result, *response.Result, &err)
+	err = json.Unmarshal(*response.Result, result)
 	if err != nil {
 		return nil, errors.Errorf("Error unmarshalling rpc response result: %v", err)
 	}
@@ -176,8 +166,6 @@ func argsToURLValues(args map[string]interface{}) (url.Values, error) {
 }
 
 func argsToJson(args map[string]interface{}) error {
-	var n int
-	var err error
 	for k, v := range args {
 		rt := reflect.TypeOf(v)
 		isByteSlice := rt.Kind() == reflect.Slice && rt.Elem().Kind() == reflect.Uint8
@@ -188,12 +176,11 @@ func argsToJson(args map[string]interface{}) error {
 		}
 
 		// Pass everything else to go-wire
-		buf := new(bytes.Buffer)
-		wire.WriteJSON(v, buf, &n, &err)
+		data, err := json.Marshal(v)
 		if err != nil {
 			return err
 		}
-		args[k] = buf.String()
+		args[k] = string(data)
 	}
 	return nil
 }

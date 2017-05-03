@@ -4,40 +4,41 @@ import (
 	"encoding/json"
 	"strings"
 
-	wire "github.com/tendermint/go-wire"
 	events "github.com/tendermint/tmlibs/events"
 )
 
 type RPCRequest struct {
-	JSONRPC string      `json:"jsonrpc"`
-	ID      string      `json:"id"`
-	Method  string      `json:"method"`
-	Params  interface{} `json:"params"` // must be map[string]interface{} or []interface{}
+	JSONRPC string           `json:"jsonrpc"`
+	ID      string           `json:"id"`
+	Method  string           `json:"method"`
+	Params  *json.RawMessage `json:"params"` // must be map[string]interface{} or []interface{}
 }
 
-func NewRPCRequest(id string, method string, params map[string]interface{}) RPCRequest {
+func NewRPCRequest(id string, method string, params json.RawMessage) RPCRequest {
 	return RPCRequest{
 		JSONRPC: "2.0",
 		ID:      id,
 		Method:  method,
-		Params:  params,
+		Params:  &params,
 	}
 }
 
-//----------------------------------------
+func MapToRequest(id string, method string, params map[string]interface{}) (RPCRequest, error) {
+	payload, err := json.Marshal(params)
+	if err != nil {
+		return RPCRequest{}, err
+	}
+	request := NewRPCRequest(id, method, payload)
+	return request, nil
+}
 
-/*
-Result is a generic interface.
-Applications should register type-bytes like so:
-
-var _ = wire.RegisterInterface(
-	struct{ Result }{},
-	wire.ConcreteType{&ResultGenesis{}, ResultTypeGenesis},
-	wire.ConcreteType{&ResultBlockchainInfo{}, ResultTypeBlockchainInfo},
-	...
-)
-*/
-type Result interface {
+func ArrayToRequest(id string, method string, params []interface{}) (RPCRequest, error) {
+	payload, err := json.Marshal(params)
+	if err != nil {
+		return RPCRequest{}, err
+	}
+	request := NewRPCRequest(id, method, payload)
+	return request, nil
 }
 
 //----------------------------------------
@@ -52,8 +53,14 @@ type RPCResponse struct {
 func NewRPCResponse(id string, res interface{}, err string) RPCResponse {
 	var raw *json.RawMessage
 	if res != nil {
-		rawMsg := json.RawMessage(wire.JSONBytes(res))
-		raw = &rawMsg
+		var js []byte
+		js, err2 := json.Marshal(res)
+		if err2 == nil {
+			rawMsg := json.RawMessage(js)
+			raw = &rawMsg
+		} else {
+			err = err2.Error()
+		}
 	}
 	return RPCResponse{
 		JSONRPC: "2.0",
