@@ -8,19 +8,37 @@ import (
 )
 
 type RPCRequest struct {
-	JSONRPC string      `json:"jsonrpc"`
-	ID      string      `json:"id"`
-	Method  string      `json:"method"`
-	Params  interface{} `json:"params"` // must be map[string]interface{} or []interface{}
+	JSONRPC string           `json:"jsonrpc"`
+	ID      string           `json:"id"`
+	Method  string           `json:"method"`
+	Params  *json.RawMessage `json:"params"` // must be map[string]interface{} or []interface{}
 }
 
-func NewRPCRequest(id string, method string, params map[string]interface{}) RPCRequest {
+func NewRPCRequest(id string, method string, params json.RawMessage) RPCRequest {
 	return RPCRequest{
 		JSONRPC: "2.0",
 		ID:      id,
 		Method:  method,
-		Params:  params,
+		Params:  &params,
 	}
+}
+
+func MapToRequest(id string, method string, params map[string]interface{}) (RPCRequest, error) {
+	payload, err := json.Marshal(params)
+	if err != nil {
+		return RPCRequest{}, err
+	}
+	request := NewRPCRequest(id, method, payload)
+	return request, nil
+}
+
+func ArrayToRequest(id string, method string, params []interface{}) (RPCRequest, error) {
+	payload, err := json.Marshal(params)
+	if err != nil {
+		return RPCRequest{}, err
+	}
+	request := NewRPCRequest(id, method, payload)
+	return request, nil
 }
 
 //----------------------------------------

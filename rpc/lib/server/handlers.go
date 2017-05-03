@@ -140,14 +140,22 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc) http.HandlerFunc {
 	}
 }
 
-// Convert a []interface{} OR a map[string]interface{} to properly typed values
+// raw is unparsed json (from json.RawMessage).  It either has
+// and array or a map behind it, let's parse this all without resorting to wire...
 //
 // argsOffset should be 0 for RPC calls, and 1 for WS requests, where len(rpcFunc.args) != len(rpcFunc.argNames).
 // Example:
 //   rpcFunc.args = [rpctypes.WSRPCContext string]
 //   rpcFunc.argNames = ["arg"]
-func jsonParamsToArgs(rpcFunc *RPCFunc, paramsI interface{}, argsOffset int) ([]reflect.Value, error) {
+func jsonParamsToArgs(rpcFunc *RPCFunc, raw []byte, argsOffset int) ([]reflect.Value, error) {
 	values := make([]reflect.Value, len(rpcFunc.argNames))
+
+	// right now, this is the same as before, but the whole parsing is in one function...
+	var paramsI interface{}
+	err := json.Unmarshal(raw, &paramsI)
+	if err != nil {
+		return nil, err
+	}
 
 	switch params := paramsI.(type) {
 
@@ -188,13 +196,13 @@ func jsonParamsToArgs(rpcFunc *RPCFunc, paramsI interface{}, argsOffset int) ([]
 }
 
 // Convert a []interface{} OR a map[string]interface{} to properly typed values
-func jsonParamsToArgsRPC(rpcFunc *RPCFunc, paramsI interface{}) ([]reflect.Value, error) {
-	return jsonParamsToArgs(rpcFunc, paramsI, 0)
+func jsonParamsToArgsRPC(rpcFunc *RPCFunc, params *json.RawMessage) ([]reflect.Value, error) {
+	return jsonParamsToArgs(rpcFunc, *params, 0)
 }
 
 // Same as above, but with the first param the websocket connection
-func jsonParamsToArgsWS(rpcFunc *RPCFunc, paramsI interface{}, wsCtx types.WSRPCContext) ([]reflect.Value, error) {
-	values, err := jsonParamsToArgs(rpcFunc, paramsI, 1)
+func jsonParamsToArgsWS(rpcFunc *RPCFunc, params *json.RawMessage, wsCtx types.WSRPCContext) ([]reflect.Value, error) {
+	values, err := jsonParamsToArgs(rpcFunc, *params, 1)
 	if err != nil {
 		return nil, err
 	}

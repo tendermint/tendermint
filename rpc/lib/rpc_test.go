@@ -306,12 +306,9 @@ func TestWSHandlesArrayParams(t *testing.T) {
 
 	val := "acbd"
 	params := []interface{}{val}
-	err = cl.WriteJSON(types.RPCRequest{
-		JSONRPC: "2.0",
-		ID:      "",
-		Method:  "echo_ws",
-		Params:  params,
-	})
+	request, err := types.ArrayToRequest("", "echo_ws", params)
+	require.Nil(t, err)
+	err = cl.WriteJSON(request)
 	require.Nil(t, err)
 
 	select {

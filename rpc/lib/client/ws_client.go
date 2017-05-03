@@ -130,35 +130,31 @@ func (wsc *WSClient) receiveEventsRoutine() {
 // Subscribe to an event. Note the server must have a "subscribe" route
 // defined.
 func (wsc *WSClient) Subscribe(eventid string) error {
-	err := wsc.WriteJSON(types.RPCRequest{
-		JSONRPC: "2.0",
-		ID:      "",
-		Method:  "subscribe",
-		Params:  map[string]interface{}{"event": eventid},
-	})
+	params := map[string]interface{}{"event": eventid}
+	request, err := types.MapToRequest("", "subscribe", params)
+	if err == nil {
+		err = wsc.WriteJSON(request)
+	}
 	return err
 }
 
 // Unsubscribe from an event. Note the server must have a "unsubscribe" route
 // defined.
 func (wsc *WSClient) Unsubscribe(eventid string) error {
-	err := wsc.WriteJSON(types.RPCRequest{
-		JSONRPC: "2.0",
-		ID:      "",
-		Method:  "unsubscribe",
-		Params:  map[string]interface{}{"event": eventid},
-	})
+	params := map[string]interface{}{"event": eventid}
+	request, err := types.MapToRequest("", "unsubscribe", params)
+	if err == nil {
+		err = wsc.WriteJSON(request)
+	}
 	return err
 }
 
 // Call asynchronously calls a given method by sending an RPCRequest to the
 // server. Results will be available on ResultsCh, errors, if any, on ErrorsCh.
 func (wsc *WSClient) Call(method string, params map[string]interface{}) error {
-	err := wsc.WriteJSON(types.RPCRequest{
-		JSONRPC: "2.0",
-		Method:  method,
-		Params:  params,
-		ID:      "",
-	})
+	request, err := types.MapToRequest("", method, params)
+	if err == nil {
+		err = wsc.WriteJSON(request)
+	}
 	return err
 }

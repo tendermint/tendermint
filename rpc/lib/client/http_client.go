@@ -67,11 +67,9 @@ func NewJSONRPCClient(remote string) *JSONRPCClient {
 }
 
 func (c *JSONRPCClient) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
-	request := types.RPCRequest{
-		JSONRPC: "2.0",
-		Method:  method,
-		Params:  params,
-		ID:      "",
+	request, err := types.MapToRequest("", method, params)
+	if err != nil {
+		return nil, err
 	}
 	requestBytes, err := json.Marshal(request)
 	if err != nil {
