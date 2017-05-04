@@ -126,6 +126,83 @@ func TestSetupConfig(t *testing.T) {
 	}
 }
 
+type DemoConfig struct {
+	Name   string `mapstructure:"name"`
+	Age    int    `mapstructure:"age"`
+	Unused int    `mapstructure:"unused"`
+}
+
+func TestSetupUnmarshal(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+
+	// we pre-create two config files we can refer to in the rest of
+	// the test cases.
+	cval1, cval2 := "someone", "else"
+	conf1, err := writeConfig(map[string]string{"name": cval1})
+	require.Nil(err)
+	// even with some ignored fields, should be no problem
+	conf2, err := writeConfig(map[string]string{"name": cval2, "foo": "bar"})
+	require.Nil(err)
+
+	// unused is not declared on a flag and remains from base
+	base := DemoConfig{
+		Name:   "default",
+		Age:    42,
+		Unused: -7,
+	}
+	c := func(name string, age int) DemoConfig {
+		r := base
+		// anything set on the flags as a default is used over
+		// the default config object
+		r.Name = "from-flag"
+		if name != "" {
+			r.Name = name
+		}
+		if age != 0 {
+			r.Age = age
+		}
+		return r
+	}
+
+	cases := []struct {
+		args     []string
+		env      map[string]string
+		expected DemoConfig
+	}{
+		{nil, nil, c("", 0)},
+		// setting on the command line
+		{[]string{"--name", "haha"}, nil, c("haha", 0)},
+		{[]string{"--root", conf1}, nil, c(cval1, 0)},
+		// test both variants of the prefix
+		{nil, map[string]string{"MR_AGE": "56"}, c("", 56)},
+		{nil, map[string]string{"MR_ROOT": conf1}, c(cval1, 0)},
+		{[]string{"--age", "17"}, map[string]string{"MRHOME": conf2}, c(cval2, 17)},
+	}
+
+	for idx, tc := range cases {
+		i := strconv.Itoa(idx)
+		// test command that store value of foobar in local variable
+		cfg := base
+		marsh := &cobra.Command{
+			Use: "marsh",
+			RunE: func(cmd *cobra.Command, args []string) error {
+				return viper.Unmarshal(&cfg)
+			},
+		}
+		marsh.Flags().String("name", "from-flag", "Some test value from config")
+		// if we want a flag to use the proper default, then copy it
+		// from the default config here
+		marsh.Flags().Int("age", base.Age, "Some test value from config")
+		cmd := PrepareBaseCmd(marsh, "MR", "/qwerty/asdfgh") // some missing dir...
+
+		viper.Reset()
+		args := append([]string{cmd.Use}, tc.args...)
+		err := runWithArgs(cmd, args, tc.env)
+		require.Nil(err, i)
+		assert.Equal(tc.expected, cfg, i)
+	}
+}
+
 func TestSetupDebug(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
