@@ -20,13 +20,13 @@ func init() {
 }
 
 func initFiles(cmd *cobra.Command, args []string) {
-	privValFile := config.PrivValidatorFile
+	privValFile := config.PrivValidatorFile()
 	if _, err := os.Stat(privValFile); os.IsNotExist(err) {
 		privValidator := types.GenPrivValidator()
 		privValidator.SetFile(privValFile)
 		privValidator.Save()
 
-		genFile := config.GenesisFile
+		genFile := config.GenesisFile()
 
 		if _, err := os.Stat(genFile); os.IsNotExist(err) {
 			genDoc := types.GenesisDoc{

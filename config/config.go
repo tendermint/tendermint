@@ -1,6 +1,7 @@
 package config
 
 import (
+	"path/filepath"
 	"time"
 
 	"github.com/tendermint/tendermint/types"
@@ -16,34 +17,45 @@ type Config struct {
 	Consensus *ConsensusConfig `mapstructure:"consensus"`
 }
 
-func DefaultConfig(rootDir string) *Config {
+func DefaultConfig() *Config {
 	return &Config{
-		BaseConfig: DefaultBaseConfig(rootDir),
-		P2P:        DefaultP2PConfig(rootDir),
-		Mempool:    DefaultMempoolConfig(rootDir),
-		Consensus:  DefaultConsensusConfig(rootDir),
+		BaseConfig: DefaultBaseConfig(),
+		P2P:        DefaultP2PConfig(),
+		Mempool:    DefaultMempoolConfig(),
+		Consensus:  DefaultConsensusConfig(),
 	}
 }
 
-func TestConfig(rootDir string) *Config {
+func TestConfig() *Config {
 	return &Config{
-		BaseConfig: DefaultBaseConfig(rootDir),
-		P2P:        DefaultP2PConfig(rootDir),
-		Mempool:    DefaultMempoolConfig(rootDir),
-		Consensus:  TestConsensusConfig(rootDir),
+		BaseConfig: DefaultBaseConfig(),
+		P2P:        DefaultP2PConfig(),
+		Mempool:    DefaultMempoolConfig(),
+		Consensus:  TestConsensusConfig(),
 	}
+}
+
+// TODO: set this from root or home.... or default....
+func SetRoot(cfg *Config, root string) {
+	cfg.BaseConfig.RootDir = root
+	cfg.P2P.RootDir = root
+	cfg.Mempool.RootDir = root
+	cfg.Consensus.RootDir = root
 }
 
 // BaseConfig struct for a Tendermint node
 type BaseConfig struct {
+	// TODO: set this from root or home.... or default....
+	RootDir string `mapstructure:"home"`
+
 	// The ID of the chain to join (should be signed with every transaction and vote)
 	ChainID string `mapstructure:"chain_id"`
 
 	// A JSON file containing the initial validator set and other meta data
-	GenesisFile string `mapstructure:"genesis_file"`
+	Genesis string `mapstructure:"genesis_file"`
 
 	// A JSON file containing the private key to use as a validator in the consensus protocol
-	PrivValidatorFile string `mapstructure:"priv_validator_file"`
+	PrivValidator string `mapstructure:"priv_validator_file"`
 
 	// A custom human readable name for this node
 	Moniker string `mapstructure:"moniker"`
@@ -77,7 +89,7 @@ type BaseConfig struct {
 	DBBackend string `mapstructure:"db_backend"`
 
 	// Database directory
-	DBDir string `mapstructure:"db_dir"`
+	DBPath string `mapstructure:"db_dir"`
 
 	// TCP or UNIX socket address for the RPC server to listen on
 	RPCListenAddress string `mapstructure:"rpc_laddr"`
@@ -87,10 +99,10 @@ type BaseConfig struct {
 	GRPCListenAddress string `mapstructure:"grpc_laddr"`
 }
 
-func DefaultBaseConfig(rootDir string) *BaseConfig {
+func DefaultBaseConfig() *BaseConfig {
 	return &BaseConfig{
-		GenesisFile:       rootDir + "/genesis.json",
-		PrivValidatorFile: rootDir + "/priv_validator.json",
+		Genesis:           "genesis.json",
+		PrivValidator:     "priv_validator.json",
 		Moniker:           "anonymous",
 		ProxyApp:          "tcp://127.0.0.1:46658",
 		ABCI:              "socket",
@@ -100,51 +112,74 @@ func DefaultBaseConfig(rootDir string) *BaseConfig {
 		FilterPeers:       false,
 		TxIndex:           "kv",
 		DBBackend:         "leveldb",
-		DBDir:             rootDir + "/data",
+		DBPath:            "data",
 		RPCListenAddress:  "tcp://0.0.0.0:46657",
 		GRPCListenAddress: "",
 	}
 }
 
+func (b *BaseConfig) GenesisFile() string {
+	return rootify(b.Genesis, b.RootDir)
+}
+
+func (b *BaseConfig) PrivValidatorFile() string {
+	return rootify(b.PrivValidator, b.RootDir)
+}
+
+func (b *BaseConfig) DBDir() string {
+	return rootify(b.DBPath, b.RootDir)
+}
+
 type P2PConfig struct {
+	RootDir        string `mapstructure:"home"`
 	ListenAddress  string `mapstructure:"laddr"`
 	Seeds          string `mapstructure:"seeds"`
 	SkipUPNP       bool   `mapstructure:"skip_upnp"`
-	AddrBookFile   string `mapstructure:"addr_book_file"`
+	AddrBook       string `mapstructure:"addr_book_file"`
 	AddrBookStrict bool   `mapstructure:"addr_book_strict"`
 	PexReactor     bool   `mapstructure:"pex_reactor"`
 	MaxNumPeers    int    `mapstructure:"max_num_peers"`
 }
 
-func DefaultP2PConfig(rootDir string) *P2PConfig {
+func DefaultP2PConfig() *P2PConfig {
 	return &P2PConfig{
 		ListenAddress:  "tcp://0.0.0.0:46656",
-		AddrBookFile:   rootDir + "/addrbook.json",
+		AddrBook:       "addrbook.json",
 		AddrBookStrict: true,
 		MaxNumPeers:    50,
 	}
 }
 
+func (p *P2PConfig) AddrBookFile() string {
+	return rootify(p.AddrBook, p.RootDir)
+}
+
 type MempoolConfig struct {
+	RootDir      string `mapstructure:"home"`
 	Recheck      bool   `mapstructure:"recheck"`       // true
 	RecheckEmpty bool   `mapstructure:"recheck_empty"` // true
 	Broadcast    bool   `mapstructure:"broadcast"`     // true
-	WalDir       string `mapstructure:"wal_dir"`       //
+	WalPath      string `mapstructure:"wal_dir"`       //
 }
 
-func DefaultMempoolConfig(rootDir string) *MempoolConfig {
+func DefaultMempoolConfig() *MempoolConfig {
 	return &MempoolConfig{
 		Recheck:      true,
 		RecheckEmpty: true,
 		Broadcast:    true,
-		WalDir:       rootDir + "/data/mempool.wal",
+		WalPath:      "data/mempool.wal",
 	}
+}
+
+func (m *MempoolConfig) WalDir() string {
+	return rootify(m.WalPath, m.RootDir)
 }
 
 // ConsensusConfig holds timeouts and details about the WAL, the block structure,
 // and timeouts in the consensus protocol.
 type ConsensusConfig struct {
-	WalFile  string `mapstructure:"wal_file"`
+	RootDir  string `mapstructure:"home"`
+	WalPath  string `mapstructure:"wal_file"`
 	WalLight bool   `mapstructure:"wal_light"`
 
 	// All timeouts are in ms
@@ -188,9 +223,9 @@ func (cfg *ConsensusConfig) Commit(t time.Time) time.Time {
 	return t.Add(time.Duration(cfg.TimeoutCommit) * time.Millisecond)
 }
 
-func DefaultConsensusConfig(rootDir string) *ConsensusConfig {
+func DefaultConsensusConfig() *ConsensusConfig {
 	return &ConsensusConfig{
-		WalFile:               rootDir + "/data/cs.wal/wal",
+		WalPath:               "data/cs.wal/wal",
 		WalLight:              false,
 		TimeoutPropose:        3000,
 		TimeoutProposeDelta:   500,
@@ -206,8 +241,8 @@ func DefaultConsensusConfig(rootDir string) *ConsensusConfig {
 	}
 }
 
-func TestConsensusConfig(rootDir string) *ConsensusConfig {
-	config := DefaultConsensusConfig(rootDir)
+func TestConsensusConfig() *ConsensusConfig {
+	config := DefaultConsensusConfig()
 	config.TimeoutPropose = 2000
 	config.TimeoutProposeDelta = 1
 	config.TimeoutPrevote = 10
@@ -217,4 +252,16 @@ func TestConsensusConfig(rootDir string) *ConsensusConfig {
 	config.TimeoutCommit = 10
 	config.SkipTimeoutCommit = true
 	return config
+}
+
+func (c *ConsensusConfig) WalFile() string {
+	return rootify(c.WalPath, c.RootDir)
+}
+
+// helper function to make config creation independent of root dir
+func rootify(path, root string) string {
+	if filepath.IsAbs(path) {
+		return path
+	}
+	return filepath.Join(root, path)
 }

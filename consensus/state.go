@@ -302,7 +302,7 @@ func (cs *ConsensusState) LoadCommit(height int) *types.Commit {
 
 func (cs *ConsensusState) OnStart() error {
 
-	walFile := cs.config.WalFile
+	walFile := cs.config.WalFile()
 	if err := cs.OpenWAL(walFile); err != nil {
 		log.Error("Error loading ConsensusState wal", "error", err.Error())
 		return err

@@ -23,7 +23,7 @@ import (
 func RunReplayFile(config *cfg.BaseConfig, csConfig *cfg.ConsensusConfig, console bool) {
 	consensusState := newConsensusStateForReplay(config, csConfig)
 
-	if err := consensusState.ReplayFile(csConfig.WalFile, console); err != nil {
+	if err := consensusState.ReplayFile(csConfig.WalFile(), console); err != nil {
 		cmn.Exit(cmn.Fmt("Error during consensus replay: %v", err))
 	}
 }
@@ -237,15 +237,15 @@ func (pb *playback) replayConsoleLoop() int {
 // convenience for replay mode
 func newConsensusStateForReplay(config *cfg.BaseConfig, csConfig *cfg.ConsensusConfig) *ConsensusState {
 	// Get BlockStore
-	blockStoreDB := dbm.NewDB("blockstore", config.DBBackend, config.DBDir)
+	blockStoreDB := dbm.NewDB("blockstore", config.DBBackend, config.DBDir())
 	blockStore := bc.NewBlockStore(blockStoreDB)
 
 	// Get State
-	stateDB := dbm.NewDB("state", config.DBBackend, config.DBDir)
-	state := sm.MakeGenesisStateFromFile(stateDB, config.GenesisFile)
+	stateDB := dbm.NewDB("state", config.DBBackend, config.DBDir())
+	state := sm.MakeGenesisStateFromFile(stateDB, config.GenesisFile())
 
 	// Create proxyAppConn connection (consensus, mempool, query)
-	clientCreator := proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir)
+	clientCreator := proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir())
 	proxyApp := proxy.NewAppConns(clientCreator, NewHandshaker(state, blockStore))
 	_, err := proxyApp.Start()
 	if err != nil {

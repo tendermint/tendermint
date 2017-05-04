@@ -86,7 +86,7 @@ func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool) *M
 }
 
 func (mem *Mempool) initWAL() {
-	walDir := mem.config.WalDir
+	walDir := mem.config.WalDir()
 	if walDir != "" {
 		err := cmn.EnsureDir(walDir, 0700)
 		if err != nil {

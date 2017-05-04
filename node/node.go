@@ -59,20 +59,20 @@ type Node struct {
 
 func NewNodeDefault(config *cfg.Config) *Node {
 	// Get PrivValidator
-	privValidator := types.LoadOrGenPrivValidator(config.PrivValidatorFile)
+	privValidator := types.LoadOrGenPrivValidator(config.PrivValidatorFile())
 	return NewNode(config, privValidator,
-		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir))
+		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()))
 }
 
 func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreator proxy.ClientCreator) *Node {
 
 	// Get BlockStore
-	blockStoreDB := dbm.NewDB("blockstore", config.DBBackend, config.DBDir)
+	blockStoreDB := dbm.NewDB("blockstore", config.DBBackend, config.DBDir())
 	blockStore := bc.NewBlockStore(blockStoreDB)
 
 	// Get State
-	stateDB := dbm.NewDB("state", config.DBBackend, config.DBDir)
-	state := sm.GetState(stateDB, config.GenesisFile)
+	stateDB := dbm.NewDB("state", config.DBBackend, config.DBDir())
+	state := sm.GetState(stateDB, config.GenesisFile())
 
 	// add the chainid and number of validators to the global config
 	// TODO: Set ChainID. eg:
@@ -93,7 +93,7 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 	var txIndexer txindex.TxIndexer
 	switch config.TxIndex {
 	case "kv":
-		store := dbm.NewDB("tx_index", config.DBBackend, config.DBDir)
+		store := dbm.NewDB("tx_index", config.DBBackend, config.DBDir())
 		txIndexer = kv.NewTxIndex(store)
 	default:
 		txIndexer = &null.TxIndex{}
@@ -142,7 +142,7 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 	// Optionally, start the pex reactor
 	var addrBook *p2p.AddrBook
 	if config.P2P.PexReactor {
-		addrBook = p2p.NewAddrBook(config.P2P.AddrBookFile, config.P2P.AddrBookStrict)
+		addrBook = p2p.NewAddrBook(config.P2P.AddrBookFile(), config.P2P.AddrBookStrict)
 		pexReactor := p2p.NewPEXReactor(addrBook)
 		sw.AddReactor("PEX", pexReactor)
 	}
