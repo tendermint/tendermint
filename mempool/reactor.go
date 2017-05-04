@@ -10,6 +10,7 @@ import (
 	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tmlibs/clist"
 
+	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 )
@@ -21,31 +22,15 @@ const (
 	peerCatchupSleepIntervalMS = 100     // If peer is behind, sleep this amount
 )
 
-type Config struct {
-	Recheck      bool   `mapstructure:"recheck"`       // true
-	RecheckEmpty bool   `mapstructure:"recheck_empty"` // true
-	Broadcast    bool   `mapstructure:"broadcast"`     // true
-	WalDir       string `mapstructure:"wal_dir"`       //
-}
-
-func NewDefaultConfig(rootDir string) *Config {
-	return &Config{
-		Recheck:      true,
-		RecheckEmpty: true,
-		Broadcast:    true,
-		WalDir:       rootDir + "/data/mempool.wal",
-	}
-}
-
 // MempoolReactor handles mempool tx broadcasting amongst peers.
 type MempoolReactor struct {
 	p2p.BaseReactor
-	config  *Config
+	config  *cfg.MempoolConfig
 	Mempool *Mempool
 	evsw    types.EventSwitch
 }
 
-func NewMempoolReactor(config *Config, mempool *Mempool) *MempoolReactor {
+func NewMempoolReactor(config *cfg.MempoolConfig, mempool *Mempool) *MempoolReactor {
 	memR := &MempoolReactor{
 		config:  config,
 		Mempool: mempool,

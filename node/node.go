@@ -7,14 +7,11 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/spf13/viper"
-
 	abci "github.com/tendermint/abci/types"
 	crypto "github.com/tendermint/go-crypto"
 	wire "github.com/tendermint/go-wire"
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
-	// tmcfg "github.com/tendermint/tendermint/config/tendermint"
 	"github.com/tendermint/tendermint/consensus"
 	mempl "github.com/tendermint/tendermint/mempool"
 	p2p "github.com/tendermint/tendermint/p2p"
@@ -35,38 +32,11 @@ import (
 	_ "net/http/pprof"
 )
 
-type Config struct {
-	// Top level options use an anonymous struct
-	cfg.Config `mapstructure:",squash"`
-
-	// Options for services
-	P2P       *p2p.Config       `mapstructure:"p2p"`
-	Mempool   *mempl.Config     `mapstructure:"mempool"`
-	Consensus *consensus.Config `mapstructure:"consensus"`
-}
-
-func NewDefaultConfig(rootDir string) *Config {
-	return &Config{
-		Config:    *cfg.NewDefaultConfig(rootDir),
-		P2P:       p2p.NewDefaultConfig(rootDir),
-		Mempool:   mempl.NewDefaultConfig(rootDir),
-		Consensus: consensus.NewDefaultConfig(rootDir),
-	}
-}
-
-func ConfigFromViper(viperConfig *viper.Viper) *Config {
-	tmConfig := new(Config)
-	if err := viperConfig.Unmarshal(tmConfig); err != nil {
-		panic(err)
-	}
-	return tmConfig
-}
-
 type Node struct {
 	cmn.BaseService
 
 	// config
-	config        *Config
+	config        *cfg.Config
 	genesisDoc    *types.GenesisDoc    // initial validator set
 	privValidator *types.PrivValidator // local node's validator key
 
@@ -87,14 +57,14 @@ type Node struct {
 	txIndexer        txindex.TxIndexer
 }
 
-func NewNodeDefault(config *Config) *Node {
+func NewNodeDefault(config *cfg.Config) *Node {
 	// Get PrivValidator
 	privValidator := types.LoadOrGenPrivValidator(config.PrivValidatorFile)
 	return NewNode(config, privValidator,
 		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir))
 }
 
-func NewNode(config *Config, privValidator *types.PrivValidator, clientCreator proxy.ClientCreator) *Node {
+func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreator proxy.ClientCreator) *Node {
 
 	// Get BlockStore
 	blockStoreDB := dbm.NewDB("blockstore", config.DBBackend, config.DBDir)

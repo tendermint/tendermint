@@ -9,6 +9,7 @@ import (
 
 	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/log15"
+	cfg "github.com/tendermint/tendermint/config"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -16,29 +17,6 @@ const (
 	reconnectAttempts = 30
 	reconnectInterval = 3 * time.Second
 )
-
-// for node.Config
-type Config struct {
-	ListenAddress  string `mapstructure:"laddr"`
-	Seeds          string `mapstructure:"seeds"`
-	SkipUPNP       bool   `mapstructure:"skip_upnp"`
-	AddrBookFile   string `mapstructure:"addr_book_file"`
-	AddrBookStrict bool   `mapstructure:"addr_book_strict"`
-	PexReactor     bool   `mapstructure:"pex_reactor"`
-	MaxNumPeers    int    `mapstructure:"max_num_peers"`
-
-	peer *PeerConfig // Not exposed
-}
-
-func NewDefaultConfig(rootDir string) *Config {
-	return &Config{
-		ListenAddress:  "tcp://0.0.0.0:46656",
-		AddrBookFile:   rootDir + "/addrbook.json",
-		AddrBookStrict: true,
-		MaxNumPeers:    50,
-		peer:           DefaultPeerConfig(),
-	}
-}
 
 type Reactor interface {
 	cmn.Service // Start, Stop
@@ -83,7 +61,8 @@ incoming messages are received on the reactor.
 type Switch struct {
 	cmn.BaseService
 
-	config       *Config
+	config       *cfg.P2PConfig
+	peerConfig   *PeerConfig
 	listeners    []Listener
 	reactors     map[string]Reactor
 	chDescs      []*ChannelDescriptor
@@ -102,10 +81,10 @@ var (
 	ErrSwitchMaxPeersPerIPRange = errors.New("IP range has too many peers")
 )
 
-func NewSwitch(config *Config) *Switch {
-	config.peer = DefaultPeerConfig()
+func NewSwitch(config *cfg.P2PConfig) *Switch {
 	sw := &Switch{
 		config:       config,
+		peerConfig:   DefaultPeerConfig(),
 		reactors:     make(map[string]Reactor),
 		chDescs:      make([]*ChannelDescriptor, 0),
 		reactorsByCh: make(map[byte]Reactor),
@@ -229,7 +208,7 @@ func (sw *Switch) AddPeer(peer *Peer) error {
 		return err
 	}
 
-	if err := peer.HandshakeTimeout(sw.nodeInfo, time.Duration(sw.config.peer.HandshakeTimeout*time.Second)); err != nil {
+	if err := peer.HandshakeTimeout(sw.nodeInfo, time.Duration(sw.peerConfig.HandshakeTimeout*time.Second)); err != nil {
 		return err
 	}
 
@@ -338,7 +317,7 @@ func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) (*Peer,
 	sw.dialing.Set(addr.IP.String(), addr)
 	defer sw.dialing.Delete(addr.IP.String())
 
-	peer, err := newOutboundPeerWithConfig(addr, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, sw.config.peer)
+	peer, err := newOutboundPeerWithConfig(addr, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, sw.peerConfig)
 	if err != nil {
 		log.Info("Failed dialing peer", "address", addr, "error", err)
 		return nil, err
@@ -457,7 +436,7 @@ func (sw *Switch) listenerRoutine(l Listener) {
 		}
 
 		// New inbound connection!
-		err := sw.addPeerWithConnectionAndConfig(inConn, sw.config.peer)
+		err := sw.addPeerWithConnectionAndConfig(inConn, sw.peerConfig)
 		if err != nil {
 			log.Notice("Ignoring inbound connection: error while adding peer", "address", inConn.RemoteAddr().String(), "error", err)
 			continue
@@ -489,7 +468,7 @@ type SwitchEventDonePeer struct {
 // If connect==Connect2Switches, the switches will be fully connected.
 // initSwitch defines how the ith switch should be initialized (ie. with what reactors).
 // NOTE: panics if any switch fails to start.
-func MakeConnectedSwitches(cfg *Config, n int, initSwitch func(int, *Switch) *Switch, connect func([]*Switch, int, int)) []*Switch {
+func MakeConnectedSwitches(cfg *cfg.P2PConfig, n int, initSwitch func(int, *Switch) *Switch, connect func([]*Switch, int, int)) []*Switch {
 	switches := make([]*Switch, n)
 	for i := 0; i < n; i++ {
 		switches[i] = makeSwitch(cfg, i, "testing", "123.123.123", initSwitch)
@@ -546,7 +525,7 @@ func StartSwitches(switches []*Switch) error {
 	return nil
 }
 
-func makeSwitch(cfg *Config, i int, network, version string, initSwitch func(int, *Switch) *Switch) *Switch {
+func makeSwitch(cfg *cfg.P2PConfig, i int, network, version string, initSwitch func(int, *Switch) *Switch) *Switch {
 	privKey := crypto.GenPrivKeyEd25519()
 	// new switch, add reactors
 	// TODO: let the config be passed in?
