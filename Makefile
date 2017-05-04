@@ -19,7 +19,7 @@ build:
 
 # test.sh requires that we run the installed cmds, must not be out of date
 test: install
-	find . -name test.sock -exec rm {} \;
+	find . -path ./vendor -prune -o -name *.sock -exec rm {} \;
 	@ go test -p 1 `${NOVENDOR}`
 	@ bash tests/test.sh
 
