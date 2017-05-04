@@ -41,20 +41,6 @@ func NewTMLogger(w io.Writer) Logger {
 	return &tmLogger{srcLogger}
 }
 
-// WithLevel returns a copy of the logger with a level set to lvl.
-func (l *tmLogger) WithLevel(lvl string) Logger {
-	switch lvl {
-	case "info":
-		return &tmLogger{level.NewFilter(l.srcLogger, level.AllowInfo())}
-	case "debug":
-		return &tmLogger{level.NewFilter(l.srcLogger, level.AllowDebug())}
-	case "error":
-		return &tmLogger{level.NewFilter(l.srcLogger, level.AllowError())}
-	default:
-		panic(fmt.Sprintf("Unexpected level %v, expect either \"info\" or \"debug\" or \"error\"", lvl))
-	}
-}
-
 // Info logs a message at level Info.
 func (l *tmLogger) Info(msg string, keyvals ...interface{}) error {
 	lWithLevel := level.Info(l.srcLogger)
