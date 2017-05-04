@@ -22,7 +22,7 @@ func TestingLogger() Logger {
 	}
 
 	if testing.Verbose() {
-		_testingLogger = NewTMLogger(os.Stdout)
+		_testingLogger = NewTMLogger(NewSyncWriter(os.Stdout))
 	} else {
 		_testingLogger = NewNopLogger()
 	}

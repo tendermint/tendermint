@@ -13,7 +13,7 @@ func TestTMLogger(t *testing.T) {
 	if err := logger.Info("Hello", "abc", 123); err != nil {
 		t.Error(err)
 	}
-	if err := log.With(logger, "def", "ghi").Debug(""); err != nil {
+	if err := logger.With("def", "ghi").Debug(""); err != nil {
 		t.Error(err)
 	}
 }
@@ -27,7 +27,7 @@ func BenchmarkTMLoggerContextual(b *testing.B) {
 }
 
 func benchmarkRunner(b *testing.B, logger log.Logger, f func(log.Logger)) {
-	lc := log.With(logger, "common_key", "common_value")
+	lc := logger.With("common_key", "common_value")
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -37,5 +37,5 @@ func benchmarkRunner(b *testing.B, logger log.Logger, f func(log.Logger)) {
 
 var (
 	baseInfoMessage = func(logger log.Logger) { logger.Info("foo_message", "foo_key", "foo_value") }
-	withInfoMessage = func(logger log.Logger) { log.With(logger, "a", "b").Info("c", "d", "f") }
+	withInfoMessage = func(logger log.Logger) { logger.With("a", "b").Info("c", "d", "f") }
 )
