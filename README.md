@@ -192,3 +192,47 @@ Here, we describe the requests and responses as function arguments and return va
 #### Flush
   * __Usage__:<br/>
     * Signals that messages queued on the client should be flushed to the server. It is called periodically by the client implementation to ensure asynchronous requests are actually sent, and is called immediately to make a synchronous request, which returns when the Flush response comes back.
+
+# Implementation
+
+We provide three implementations of the ABCI in Go:
+
+1. ABCI-socket
+2. GRPC
+3. Golang in-process
+
+## Socket
+
+ABCI is best implemented as a streaming protocol.
+The socket implementation provides for asynchronous, ordered message passing over unix or tcp.
+Messages are serialized using Protobuf3 and length-prefixed.
+Protobuf3 doesn't have an official length-prefix standard, so we use our own.  The first byte represents the length of the big-endian encoded length.
+
+For example, if the Protobuf3 encoded ABCI message is `0xDEADBEEF` (4 bytes), the length-prefixed message is `0x0104DEADBEEF`.  If the Protobuf3 encoded ABCI message is 65535 bytes long, the length-prefixed message would be like `0x02FFFF...`.
+
+## GRPC
+
+GRPC is an rpc framework native to Protocol Buffers with support in many languages.
+Implementing the ABCI using GRPC can allow for faster prototyping, but is expected to be much slower than
+the ordered, asynchronous socket protocol.
+
+Note the length-prefixing used in the socket implementation does not apply for GRPC.
+
+## In Process
+
+The simplest implementation just uses function calls within Go.
+This means ABCI applications written in Golang can be compiled with TendermintCore and run as a single binary.
+
+
+# Tools and Apps
+
+The `abci-cli` tool wraps any ABCI client and can be used for probing/testing an ABCI application.
+See the [guide](https://tendermint.readthedocs.io/en/master/abci-cli.html) for more details.
+
+Multiple example apps are included:
+- the `counter` application, which illustrates nonce checking in txs
+- the `dummy` application, which illustrates a simple key-value merkle tree
+- the `dummy --persistent` application, which augments the dummy with persistence and validator set changes
+
+When you are developing an implementation of the ABCI server in your favourite language, we provide the `abci-cli test`
+command that allows you to run our tests against your own ABCI server. Please make sure that your server supports at least the TSP protocol, and optionally gRPC.

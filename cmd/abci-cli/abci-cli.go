@@ -19,6 +19,7 @@ import (
 	"github.com/tendermint/abci/example/counter"
 	"github.com/tendermint/abci/example/dummy"
 	"github.com/tendermint/abci/server"
+	servertest "github.com/tendermint/abci/tests/server"
 	"github.com/tendermint/abci/types"
 	"github.com/tendermint/abci/version"
 )
@@ -141,6 +142,7 @@ func addCommands() {
 	RootCmd.AddCommand(checkTxCmd)
 	RootCmd.AddCommand(commitCmd)
 	RootCmd.AddCommand(versionCmd)
+	RootCmd.AddCommand(testCmd)
 	addQueryFlags()
 	RootCmd.AddCommand(queryCmd)
 
@@ -271,6 +273,16 @@ var dummyCmd = &cobra.Command{
 	},
 }
 
+var testCmd = &cobra.Command{
+	Use: "test",
+	Short: "Run integration tests",
+	Long: "",
+	Args: cobra.ExactArgs(0),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmdTest(cmd, args)
+	},
+}
+
 // Generates new Args array based off of previous call args to maintain flag persistence
 func persistentArgs(line []byte) []string {
 
@@ -286,6 +298,45 @@ func persistentArgs(line []byte) []string {
 }
 
 //--------------------------------------------------------------------------------
+
+func cmdTest(cmd *cobra.Command, args []string) error {
+	fmt.Println("Running tests")
+
+	var err error
+
+	err = servertest.InitChain(client)
+	fmt.Println("")
+	err = servertest.SetOption(client, "serial", "on")
+	fmt.Println("")
+	err = servertest.Commit(client, nil)
+	fmt.Println("")
+	err = servertest.DeliverTx(client, []byte("abc"), types.CodeType_BadNonce, nil)
+	fmt.Println("")
+	err = servertest.Commit(client, nil)
+	fmt.Println("")
+	err = servertest.DeliverTx(client, []byte{0x00}, types.CodeType_OK, nil)
+	fmt.Println("")
+	err = servertest.Commit(client, []byte{0, 0, 0, 0, 0, 0, 0, 1})
+	fmt.Println("")
+	err = servertest.DeliverTx(client, []byte{0x00}, types.CodeType_BadNonce, nil)
+	fmt.Println("")
+	err = servertest.DeliverTx(client, []byte{0x01}, types.CodeType_OK, nil)
+	fmt.Println("")
+	err = servertest.DeliverTx(client, []byte{0x00, 0x02}, types.CodeType_OK, nil)
+	fmt.Println("")
+	err = servertest.DeliverTx(client, []byte{0x00, 0x03}, types.CodeType_OK, nil)
+	fmt.Println("")
+	err = servertest.DeliverTx(client, []byte{0x00, 0x00, 0x04}, types.CodeType_OK, nil)
+	fmt.Println("")
+	err = servertest.DeliverTx(client, []byte{0x00, 0x00, 0x06}, types.CodeType_BadNonce, nil)
+	fmt.Println("")
+	err = servertest.Commit(client, []byte{0, 0, 0, 0, 0, 0, 0, 5})
+
+	if err != nil {
+		return errors.New("Some checks didn't pass, please use the cli to see the exact failures.")
+	}
+	return nil
+}
 
 func cmdBatch(cmd *cobra.Command, args []string) error {
 	bufReader := bufio.NewReader(os.Stdin)
