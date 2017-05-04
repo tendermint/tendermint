@@ -18,38 +18,28 @@ var runNodeCmd = &cobra.Command{
 	RunE:  runNode,
 }
 
-func registerRunNodeFlagString(flagName, desc string) {
-	runNodeCmd.Flags().String(flagName, viperConfig.GetString(flagName), desc)
-	viperConfig.BindPFlag(flagName, runNodeCmd.Flags().Lookup(flagName))
-}
-
-func registerRunNodeFlagBool(flagName, desc string) {
-	runNodeCmd.Flags().Bool(flagName, viperConfig.GetBool(flagName), desc)
-	viperConfig.BindPFlag(flagName, runNodeCmd.Flags().Lookup(flagName))
-}
-
 func init() {
 	// bind flags
+	runNodeCmd.Flags().String("moniker", config.Moniker, "Node Name")
 
 	// node flags
-	registerRunNodeFlagString("moniker", "Node Name")
-	registerRunNodeFlagBool("fast_sync", "Fast blockchain syncing")
+	runNodeCmd.Flags().Bool("fast_sync", config.FastSync, "Fast blockchain syncing")
 
 	// abci flags
-	registerRunNodeFlagString("proxy_app", "Proxy app address, or 'nilapp' or 'dummy' for local testing.")
-	registerRunNodeFlagString("abci", "Specify abci transport (socket | grpc)")
+	runNodeCmd.Flags().String("proxy_app", config.ProxyApp, "Proxy app address, or 'nilapp' or 'dummy' for local testing.")
+	runNodeCmd.Flags().String("abci", config.ABCI, "Specify abci transport (socket | grpc)")
 
 	// rpc flags
-	registerRunNodeFlagString("rpc_laddr", "RPC listen address. Port required")
-	registerRunNodeFlagString("grpc_laddr", "GRPC listen address (BroadcastTx only). Port required")
+	runNodeCmd.Flags().String("rpc_laddr", config.RPCListenAddress, "RPC listen address. Port required")
+	runNodeCmd.Flags().String("grpc_laddr", config.GRPCListenAddress, "GRPC listen address (BroadcastTx only). Port required")
 
 	// p2p flags
-	registerRunNodeFlagString("p2p.laddr", "Node listen address. (0.0.0.0:0 means any interface, any port)")
-	registerRunNodeFlagString("p2p.seeds", "Comma delimited host:port seed nodes")
-	registerRunNodeFlagBool("p2p.skip_upnp", "Skip UPNP configuration")
+	runNodeCmd.Flags().String("p2p.laddr", config.P2P.ListenAddress, "Node listen address. (0.0.0.0:0 means any interface, any port)")
+	runNodeCmd.Flags().String("p2p.seeds", config.P2P.Seeds, "Comma delimited host:port seed nodes")
+	runNodeCmd.Flags().Bool("p2p.skip_upnp", config.P2P.SkipUPNP, "Skip UPNP configuration")
 
 	// feature flags
-	registerRunNodeFlagBool("p2p.pex", "Enable Peer-Exchange (dev feature)")
+	runNodeCmd.Flags().Bool("p2p.pex", config.P2P.PexReactor, "Enable Peer-Exchange (dev feature)")
 
 	RootCmd.AddCommand(runNodeCmd)
 }
