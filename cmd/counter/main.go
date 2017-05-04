@@ -18,7 +18,7 @@ func main() {
 	flag.Parse()
 	app := counter.NewCounterApplication(*serialPtr)
 
-	logger := log.NewTMLogger(os.Stdout)
+	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 
 	// Start the listener
 	srv, err := server.NewServer(*addrPtr, *abciPtr, app)
@@ -26,7 +26,7 @@ func main() {
 		logger.Error(err.Error())
 		os.Exit(1)
 	}
-	srv.SetLogger(log.With(logger, "module", "abci-server"))
+	srv.SetLogger(logger.With("module", "abci-server"))
 
 	// Wait forever
 	cmn.TrapSignal(func() {

@@ -40,6 +40,8 @@ func NewSocketServer(protoAddr string, app types.Application) (cmn.Service, erro
 		conns:    make(map[int]net.Conn),
 	}
 	s.BaseService = *cmn.NewBaseService(nil, "ABCIServer", s)
+	// FIXME we are loosing "Starting ABCIServer" message here
+	// add logger to params?
 	_, err := s.Start() // Just start it
 	return s, err
 }

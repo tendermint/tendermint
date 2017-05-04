@@ -1,5 +1,5 @@
 hash: c29114af0ddcb75dd9093d4006dd6b9039640a35540d5f44f9c19261b5730781
-updated: 2017-05-03T07:33:18.832551385Z
+updated: 2017-05-04T17:47:52.109070369Z
 imports:
 - name: github.com/btcsuite/btcd
   version: 4b348c1d33373d672edd83fc576892d0e46686d2
@@ -14,7 +14,7 @@ imports:
 - name: github.com/go-logfmt/logfmt
   version: 390ab7935ee28ec6b286364bba9b4dd6410cb3d5
 - name: github.com/go-stack/stack
-  version: 100eb0c0a9c5b306ca2fb4f165df21d80ada4b82
+  version: 7a2f19628aabfe68f0766b59e74d6315f8347d22
 - name: github.com/golang/protobuf
   version: 18c9bb3261723cd5401db4d0c9fbc5c3b6c70fe8
   subpackages:
@@ -59,7 +59,7 @@ imports:
   subpackages:
   - iavl
 - name: github.com/tendermint/tmlibs
-  version: 8fc36b0097e1dfcfbba793d4b4cc87e96a03096f
+  version: a9a96064a0a494ef6a13c38b4395c20abee64996
   subpackages:
   - common
   - db
@@ -69,7 +69,7 @@ imports:
 - name: github.com/urfave/cli
   version: ab403a54a148f2d857920810291539e1f817ee7b
 - name: golang.org/x/crypto
-  version: d1464577745bc7f4e74f65be9cfbd09436a729d6
+  version: 5a033cc77e57eca05bdb50522851d29e03569cbe
   subpackages:
   - nacl/secretbox
   - openpgp/armor
@@ -78,7 +78,7 @@ imports:
   - ripemd160
   - salsa20/salsa
 - name: golang.org/x/net
-  version: 0819898fb4973868bba6de59b6aaad75beea9a6a
+  version: feeb485667d1fdabe727840fe00adc22431bc86e
   subpackages:
   - context
   - http2

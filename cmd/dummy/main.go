@@ -18,7 +18,7 @@ func main() {
 	persistencePtr := flag.String("persist", "", "directory to use for a database")
 	flag.Parse()
 
-	logger := log.NewTMLogger(os.Stdout)
+	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 
 	// Create the application - in memory or persisted to disk
 	var app types.Application
@@ -26,7 +26,7 @@ func main() {
 		app = dummy.NewDummyApplication()
 	} else {
 		app = dummy.NewPersistentDummyApplication(*persistencePtr)
-		app.(*dummy.PersistentDummyApplication).SetLogger(log.With(logger, "module", "dummy"))
+		app.(*dummy.PersistentDummyApplication).SetLogger(logger.With("module", "dummy"))
 	}
 
 	// Start the listener
@@ -35,7 +35,7 @@ func main() {
 		logger.Error(err.Error())
 		os.Exit(1)
 	}
-	srv.SetLogger(log.With(logger, "module", "abci-server"))
+	srv.SetLogger(logger.With("module", "abci-server"))
 
 	// Wait forever
 	cmn.TrapSignal(func() {

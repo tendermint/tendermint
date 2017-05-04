@@ -19,7 +19,7 @@ func TestChainAware(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	srv.SetLogger(log.With(log.TestingLogger(), "module", "abci-server"))
+	srv.SetLogger(log.TestingLogger().With("module", "abci-server"))
 	defer srv.Stop()
 
 	// Connect to the socket
@@ -27,7 +27,7 @@ func TestChainAware(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error starting socket client: %v", err.Error())
 	}
-	client.SetLogger(log.With(log.TestingLogger(), "module", "abci-client"))
+	client.SetLogger(log.TestingLogger().With("module", "abci-client"))
 	client.Start()
 	defer client.Stop()
 

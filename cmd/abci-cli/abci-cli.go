@@ -139,7 +139,7 @@ func main() {
 
 func before(c *cli.Context) error {
 	if logger == nil {
-		logger = log.NewTMLogger(os.Stdout)
+		logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 	}
 	if client == nil {
 		var err error
@@ -148,7 +148,7 @@ func before(c *cli.Context) error {
 			logger.Error(err.Error())
 			os.Exit(1)
 		}
-		client.SetLogger(log.With(logger, "module", "abci-client"))
+		client.SetLogger(logger.With("module", "abci-client"))
 	}
 	return nil
 }

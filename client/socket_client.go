@@ -53,7 +53,8 @@ func NewSocketClient(addr string, mustConnect bool) (*socketClient, error) {
 		resCb:   nil,
 	}
 	cli.BaseService = *cmn.NewBaseService(nil, "socketClient", cli)
-
+	// FIXME we are loosing "Starting socketClient" message here
+	// add logger to params?
 	_, err := cli.Start() // Just start it, it's confusing for callers to remember to start.
 	return cli, err
 }
