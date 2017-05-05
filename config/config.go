@@ -150,7 +150,7 @@ type P2PConfig struct {
 	SkipUPNP       bool   `mapstructure:"skip_upnp"`
 	AddrBook       string `mapstructure:"addr_book_file"`
 	AddrBookStrict bool   `mapstructure:"addr_book_strict"`
-	PexReactor     bool   `mapstructure:"pex_reactor"`
+	PexReactor     bool   `mapstructure:"pex"`
 	MaxNumPeers    int    `mapstructure:"max_num_peers"`
 }
 
