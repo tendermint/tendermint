@@ -10,7 +10,7 @@ import (
 
 /****** these are for production settings ***********/
 
-func initRoot(rootDir string) {
+func EnsureRoot(rootDir string) {
 	cmn.EnsureDir(rootDir, 0700)
 	cmn.EnsureDir(rootDir+"/data", 0700)
 

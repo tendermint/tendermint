@@ -9,7 +9,7 @@ import (
 
 type Config struct {
 	// Top level options use an anonymous struct
-	*BaseConfig `mapstructure:",squash"`
+	BaseConfig `mapstructure:",squash"`
 
 	// Options for services
 	P2P       *P2PConfig       `mapstructure:"p2p"`
@@ -35,7 +35,7 @@ func TestConfig() *Config {
 	}
 }
 
-// TODO: set this from root or home.... or default....
+// Set the RootDir for all Config structs
 func SetRoot(cfg *Config, root string) {
 	cfg.BaseConfig.RootDir = root
 	cfg.P2P.RootDir = root
@@ -45,7 +45,8 @@ func SetRoot(cfg *Config, root string) {
 
 // BaseConfig struct for a Tendermint node
 type BaseConfig struct {
-	// TODO: set this from root or home.... or default....
+	// The root directory for all data.
+	// This should be set in viper so it can unmarshal into this struct
 	RootDir string `mapstructure:"home"`
 
 	// The ID of the chain to join (should be signed with every transaction and vote)
@@ -99,8 +100,8 @@ type BaseConfig struct {
 	GRPCListenAddress string `mapstructure:"grpc_laddr"`
 }
 
-func DefaultBaseConfig() *BaseConfig {
-	return &BaseConfig{
+func DefaultBaseConfig() BaseConfig {
+	return BaseConfig{
 		Genesis:           "genesis.json",
 		PrivValidator:     "priv_validator.json",
 		Moniker:           "anonymous",
@@ -118,15 +119,15 @@ func DefaultBaseConfig() *BaseConfig {
 	}
 }
 
-func (b *BaseConfig) GenesisFile() string {
+func (b BaseConfig) GenesisFile() string {
 	return rootify(b.Genesis, b.RootDir)
 }
 
-func (b *BaseConfig) PrivValidatorFile() string {
+func (b BaseConfig) PrivValidatorFile() string {
 	return rootify(b.PrivValidator, b.RootDir)
 }
 
-func (b *BaseConfig) DBDir() string {
+func (b BaseConfig) DBDir() string {
 	return rootify(b.DBPath, b.RootDir)
 }
 
@@ -156,10 +157,10 @@ func (p *P2PConfig) AddrBookFile() string {
 
 type MempoolConfig struct {
 	RootDir      string `mapstructure:"home"`
-	Recheck      bool   `mapstructure:"recheck"`       // true
-	RecheckEmpty bool   `mapstructure:"recheck_empty"` // true
-	Broadcast    bool   `mapstructure:"broadcast"`     // true
-	WalPath      string `mapstructure:"wal_dir"`       //
+	Recheck      bool   `mapstructure:"recheck"`
+	RecheckEmpty bool   `mapstructure:"recheck_empty"`
+	Broadcast    bool   `mapstructure:"broadcast"`
+	WalPath      string `mapstructure:"wal_dir"`
 }
 
 func DefaultMempoolConfig() *MempoolConfig {
@@ -236,8 +237,8 @@ func DefaultConsensusConfig() *ConsensusConfig {
 		TimeoutCommit:         1000,
 		SkipTimeoutCommit:     false,
 		MaxBlockSizeTxs:       10000,
-		MaxBlockSizeBytes:     1, // TODO
-		BlockPartSize:         types.DefaultBlockPartSize,
+		MaxBlockSizeBytes:     1,                          // TODO
+		BlockPartSize:         types.DefaultBlockPartSize, // TODO: we shouldnt be importing types
 	}
 }
 

@@ -20,7 +20,7 @@ import (
 //--------------------------------------------------------
 // replay messages interactively or all at once
 
-func RunReplayFile(config *cfg.BaseConfig, csConfig *cfg.ConsensusConfig, console bool) {
+func RunReplayFile(config cfg.BaseConfig, csConfig *cfg.ConsensusConfig, console bool) {
 	consensusState := newConsensusStateForReplay(config, csConfig)
 
 	if err := consensusState.ReplayFile(csConfig.WalFile(), console); err != nil {
@@ -235,7 +235,7 @@ func (pb *playback) replayConsoleLoop() int {
 //--------------------------------------------------------------------------------
 
 // convenience for replay mode
-func newConsensusStateForReplay(config *cfg.BaseConfig, csConfig *cfg.ConsensusConfig) *ConsensusState {
+func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusConfig) *ConsensusState {
 	// Get BlockStore
 	blockStoreDB := dbm.NewDB("blockstore", config.DBBackend, config.DBDir())
 	blockStore := bc.NewBlockStore(blockStoreDB)
