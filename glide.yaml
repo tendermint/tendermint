@@ -28,9 +28,10 @@ import:
   - data
 - package: github.com/tendermint/log15
 - package: github.com/tendermint/tmlibs
-  version: develop
+  version: cli
   subpackages:
   - autofile
+  - cli
   - clist
   - common
   - db

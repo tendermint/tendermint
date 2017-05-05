@@ -4,16 +4,16 @@ import (
 	"math/rand"
 	"testing"
 
-	. "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 // Returns an empty dummy peer
 func randPeer() *Peer {
 	return &Peer{
-		Key: RandStr(12),
+		Key: cmn.RandStr(12),
 		NodeInfo: &NodeInfo{
-			RemoteAddr: Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256),
-			ListenAddr: Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256),
+			RemoteAddr: cmn.Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256),
+			ListenAddr: cmn.Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256),
 		},
 	}
 }

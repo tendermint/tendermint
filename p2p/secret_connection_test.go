@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/tendermint/go-crypto"
-	. "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 type dummyConn struct {
@@ -37,7 +37,7 @@ func makeSecretConnPair(tb testing.TB) (fooSecConn, barSecConn *SecretConnection
 	barPrvKey := crypto.GenPrivKeyEd25519()
 	barPubKey := barPrvKey.PubKey().Unwrap().(crypto.PubKeyEd25519)
 
-	Parallel(
+	cmn.Parallel(
 		func() {
 			var err error
 			fooSecConn, err = MakeSecretConnection(fooConn, fooPrvKey)
@@ -81,8 +81,8 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 
 	// Pre-generate the things to write (for foo & bar)
 	for i := 0; i < 100; i++ {
-		fooWrites = append(fooWrites, RandStr((RandInt()%(dataMaxSize*5))+1))
-		barWrites = append(barWrites, RandStr((RandInt()%(dataMaxSize*5))+1))
+		fooWrites = append(fooWrites, cmn.RandStr((cmn.RandInt()%(dataMaxSize*5))+1))
+		barWrites = append(barWrites, cmn.RandStr((cmn.RandInt()%(dataMaxSize*5))+1))
 	}
 
 	// A helper that will run with (fooConn, fooWrites, fooReads) and vice versa
@@ -96,7 +96,7 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 				return
 			}
 			// In parallel, handle reads and writes
-			Parallel(
+			cmn.Parallel(
 				func() {
 					// Node writes
 					for _, nodeWrite := range nodeWrites {
@@ -131,7 +131,7 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 	}
 
 	// Run foo & bar in parallel
-	Parallel(
+	cmn.Parallel(
 		genNodeRunner(fooConn, fooWrites, &fooReads),
 		genNodeRunner(barConn, barWrites, &barReads),
 	)
@@ -174,7 +174,7 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 func BenchmarkSecretConnection(b *testing.B) {
 	b.StopTimer()
 	fooSecConn, barSecConn := makeSecretConnPair(b)
-	fooWriteText := RandStr(dataMaxSize)
+	fooWriteText := cmn.RandStr(dataMaxSize)
 	// Consume reads from bar's reader
 	go func() {
 		readBuffer := make([]byte, dataMaxSize)

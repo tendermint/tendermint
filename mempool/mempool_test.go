@@ -4,21 +4,21 @@ import (
 	"encoding/binary"
 	"testing"
 
-	"github.com/tendermint/tendermint/config/tendermint_test"
+	"github.com/tendermint/abci/example/counter"
+	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/abci/example/counter"
 )
 
 func TestSerialReap(t *testing.T) {
-	config := tendermint_test.ResetConfig("mempool_mempool_test")
+	config := cfg.ResetTestRoot("mempool_test")
 
 	app := counter.NewCounterApplication(true)
 	app.SetOption("serial", "on")
 	cc := proxy.NewLocalClientCreator(app)
 	appConnMem, _ := cc.NewABCIClient()
 	appConnCon, _ := cc.NewABCIClient()
-	mempool := NewMempool(config, appConnMem)
+	mempool := NewMempool(config.Mempool, appConnMem)
 
 	deliverTxsRange := func(start, end int) {
 		// Deliver some txs.

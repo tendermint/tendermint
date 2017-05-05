@@ -6,13 +6,13 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/spf13/viper"
-
 	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/go-wire"
+	"github.com/tendermint/tmlibs/clist"
+
+	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tmlibs/clist"
 )
 
 const (
@@ -25,12 +25,12 @@ const (
 // MempoolReactor handles mempool tx broadcasting amongst peers.
 type MempoolReactor struct {
 	p2p.BaseReactor
-	config  *viper.Viper
+	config  *cfg.MempoolConfig
 	Mempool *Mempool
 	evsw    types.EventSwitch
 }
 
-func NewMempoolReactor(config *viper.Viper, mempool *Mempool) *MempoolReactor {
+func NewMempoolReactor(config *cfg.MempoolConfig, mempool *Mempool) *MempoolReactor {
 	memR := &MempoolReactor{
 		config:  config,
 		Mempool: mempool,
@@ -103,7 +103,7 @@ type Peer interface {
 // TODO: Handle mempool or reactor shutdown?
 // As is this routine may block forever if no new txs come in.
 func (memR *MempoolReactor) broadcastTxRoutine(peer Peer) {
-	if !memR.config.GetBool("mempool_broadcast") {
+	if !memR.config.Broadcast {
 		return
 	}
 

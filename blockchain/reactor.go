@@ -6,8 +6,6 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/spf13/viper"
-
 	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
@@ -44,7 +42,6 @@ type consensusReactor interface {
 type BlockchainReactor struct {
 	p2p.BaseReactor
 
-	config       *viper.Viper
 	state        *sm.State
 	proxyAppConn proxy.AppConnConsensus // same as consensus.proxyAppConn
 	store        *BlockStore
@@ -58,7 +55,7 @@ type BlockchainReactor struct {
 }
 
 // NewBlockchainReactor returns new reactor instance.
-func NewBlockchainReactor(config *viper.Viper, state *sm.State, proxyAppConn proxy.AppConnConsensus, store *BlockStore, fastSync bool) *BlockchainReactor {
+func NewBlockchainReactor(state *sm.State, proxyAppConn proxy.AppConnConsensus, store *BlockStore, fastSync bool) *BlockchainReactor {
 	if state.LastBlockHeight == store.Height()-1 {
 		store.height-- // XXX HACK, make this better
 	}
@@ -73,7 +70,6 @@ func NewBlockchainReactor(config *viper.Viper, state *sm.State, proxyAppConn pro
 		timeoutsCh,
 	)
 	bcR := &BlockchainReactor{
-		config:       config,
 		state:        state,
 		proxyAppConn: proxyAppConn,
 		store:        store,
@@ -226,7 +222,7 @@ FOR_LOOP:
 					// We need both to sync the first block.
 					break SYNC_LOOP
 				}
-				firstParts := first.MakePartSet(bcR.config.GetInt("block_part_size")) // TODO: put part size in parts header?
+				firstParts := first.MakePartSet(types.DefaultBlockPartSize)
 				firstPartsHeader := firstParts.Header()
 				// Finally, verify the first block using the second's commit
 				// NOTE: we can probably make this more efficient, but note that calling

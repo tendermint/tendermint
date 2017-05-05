@@ -13,68 +13,35 @@ import (
 )
 
 var runNodeCmd = &cobra.Command{
-	Use:    "node",
-	Short:  "Run the tendermint node",
-	PreRun: setConfigFlags,
-	RunE:   runNode,
+	Use:   "node",
+	Short: "Run the tendermint node",
+	RunE:  runNode,
 }
-
-//flags
-var (
-	moniker       string
-	nodeLaddr     string
-	seeds         string
-	fastSync      bool
-	skipUPNP      bool
-	rpcLaddr      string
-	grpcLaddr     string
-	proxyApp      string
-	abciTransport string
-	pex           bool
-)
 
 func init() {
+	// bind flags
+	runNodeCmd.Flags().String("moniker", config.Moniker, "Node Name")
 
-	// configuration options
-	runNodeCmd.Flags().StringVar(&moniker, "moniker", config.GetString("moniker"),
-		"Node Name")
-	runNodeCmd.Flags().StringVar(&nodeLaddr, "node_laddr", config.GetString("node_laddr"),
-		"Node listen address. (0.0.0.0:0 means any interface, any port)")
-	runNodeCmd.Flags().StringVar(&seeds, "seeds", config.GetString("seeds"),
-		"Comma delimited host:port seed nodes")
-	runNodeCmd.Flags().BoolVar(&fastSync, "fast_sync", config.GetBool("fast_sync"),
-		"Fast blockchain syncing")
-	runNodeCmd.Flags().BoolVar(&skipUPNP, "skip_upnp", config.GetBool("skip_upnp"),
-		"Skip UPNP configuration")
-	runNodeCmd.Flags().StringVar(&rpcLaddr, "rpc_laddr", config.GetString("rpc_laddr"),
-		"RPC listen address. Port required")
-	runNodeCmd.Flags().StringVar(&grpcLaddr, "grpc_laddr", config.GetString("grpc_laddr"),
-		"GRPC listen address (BroadcastTx only). Port required")
-	runNodeCmd.Flags().StringVar(&proxyApp, "proxy_app", config.GetString("proxy_app"),
-		"Proxy app address, or 'nilapp' or 'dummy' for local testing.")
-	runNodeCmd.Flags().StringVar(&abciTransport, "abci", config.GetString("abci"),
-		"Specify abci transport (socket | grpc)")
+	// node flags
+	runNodeCmd.Flags().Bool("fast_sync", config.FastSync, "Fast blockchain syncing")
+
+	// abci flags
+	runNodeCmd.Flags().String("proxy_app", config.ProxyApp, "Proxy app address, or 'nilapp' or 'dummy' for local testing.")
+	runNodeCmd.Flags().String("abci", config.ABCI, "Specify abci transport (socket | grpc)")
+
+	// rpc flags
+	runNodeCmd.Flags().String("rpc_laddr", config.RPCListenAddress, "RPC listen address. Port required")
+	runNodeCmd.Flags().String("grpc_laddr", config.GRPCListenAddress, "GRPC listen address (BroadcastTx only). Port required")
+
+	// p2p flags
+	runNodeCmd.Flags().String("p2p.laddr", config.P2P.ListenAddress, "Node listen address. (0.0.0.0:0 means any interface, any port)")
+	runNodeCmd.Flags().String("p2p.seeds", config.P2P.Seeds, "Comma delimited host:port seed nodes")
+	runNodeCmd.Flags().Bool("p2p.skip_upnp", config.P2P.SkipUPNP, "Skip UPNP configuration")
 
 	// feature flags
-	runNodeCmd.Flags().BoolVar(&pex, "pex", config.GetBool("pex_reactor"),
-		"Enable Peer-Exchange (dev feature)")
+	runNodeCmd.Flags().Bool("p2p.pex", config.P2P.PexReactor, "Enable Peer-Exchange (dev feature)")
 
 	RootCmd.AddCommand(runNodeCmd)
-}
-
-func setConfigFlags(cmd *cobra.Command, args []string) {
-
-	// Merge parsed flag values onto config
-	config.Set("moniker", moniker)
-	config.Set("node_laddr", nodeLaddr)
-	config.Set("seeds", seeds)
-	config.Set("fast_sync", fastSync)
-	config.Set("skip_upnp", skipUPNP)
-	config.Set("rpc_laddr", rpcLaddr)
-	config.Set("grpc_laddr", grpcLaddr)
-	config.Set("proxy_app", proxyApp)
-	config.Set("abci", abciTransport)
-	config.Set("pex_reactor", pex)
 }
 
 // Users wishing to:
@@ -89,7 +56,7 @@ func runNode(cmd *cobra.Command, args []string) error {
 	// This is for Mintnet compatibility.
 	// TODO: If Mintnet gets deprecated or genesis_file is
 	// always available, remove.
-	genDocFile := config.GetString("genesis_file")
+	genDocFile := config.GenesisFile()
 	if !cmn.FileExists(genDocFile) {
 		log.Notice(cmn.Fmt("Waiting for genesis file %v...", genDocFile))
 		for {
@@ -108,7 +75,7 @@ func runNode(cmd *cobra.Command, args []string) error {
 			if genDoc.ChainID == "" {
 				return fmt.Errorf("Genesis doc %v must include non-empty chain_id", genDocFile)
 			}
-			config.Set("chain_id", genDoc.ChainID)
+			config.ChainID = genDoc.ChainID
 		}
 	}
 

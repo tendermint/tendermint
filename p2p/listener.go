@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"time"
 
-	. "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tendermint/p2p/upnp"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 type Listener interface {
@@ -20,7 +20,7 @@ type Listener interface {
 
 // Implements Listener
 type DefaultListener struct {
-	BaseService
+	cmn.BaseService
 
 	listener    net.Listener
 	intAddr     *NetAddress
@@ -37,11 +37,11 @@ const (
 func splitHostPort(addr string) (host string, port int) {
 	host, portStr, err := net.SplitHostPort(addr)
 	if err != nil {
-		PanicSanity(err)
+		cmn.PanicSanity(err)
 	}
 	port, err = strconv.Atoi(portStr)
 	if err != nil {
-		PanicSanity(err)
+		cmn.PanicSanity(err)
 	}
 	return host, port
 }
@@ -63,7 +63,7 @@ func NewDefaultListener(protocol string, lAddr string, skipUPNP bool) Listener {
 		}
 	}
 	if err != nil {
-		PanicCrisis(err)
+		cmn.PanicCrisis(err)
 	}
 	// Actual listener local IP & port
 	listenerIP, listenerPort := splitHostPort(listener.Addr().String())
@@ -73,7 +73,7 @@ func NewDefaultListener(protocol string, lAddr string, skipUPNP bool) Listener {
 	var intAddr *NetAddress
 	intAddr, err = NewNetAddressString(lAddr)
 	if err != nil {
-		PanicCrisis(err)
+		cmn.PanicCrisis(err)
 	}
 
 	// Determine external address...
@@ -89,7 +89,7 @@ func NewDefaultListener(protocol string, lAddr string, skipUPNP bool) Listener {
 		extAddr = getNaiveExternalAddress(listenerPort)
 	}
 	if extAddr == nil {
-		PanicCrisis("Could not determine external address!")
+		cmn.PanicCrisis("Could not determine external address!")
 	}
 
 	dl := &DefaultListener{
@@ -98,7 +98,7 @@ func NewDefaultListener(protocol string, lAddr string, skipUPNP bool) Listener {
 		extAddr:     extAddr,
 		connections: make(chan net.Conn, numBufferedConnections),
 	}
-	dl.BaseService = *NewBaseService(log, "DefaultListener", dl)
+	dl.BaseService = *cmn.NewBaseService(log, "DefaultListener", dl)
 	dl.Start() // Started upon construction
 	return dl
 }
@@ -126,7 +126,7 @@ func (l *DefaultListener) listenRoutine() {
 		// listener wasn't stopped,
 		// yet we encountered an error.
 		if err != nil {
-			PanicCrisis(err)
+			cmn.PanicCrisis(err)
 		}
 
 		l.connections <- conn
@@ -199,7 +199,7 @@ func getUPNPExternalAddress(externalPort, internalPort int) *NetAddress {
 func getNaiveExternalAddress(port int) *NetAddress {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
-		PanicCrisis(Fmt("Could not fetch interface addresses: %v", err))
+		cmn.PanicCrisis(cmn.Fmt("Could not fetch interface addresses: %v", err))
 	}
 
 	for _, a := range addrs {

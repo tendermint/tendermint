@@ -36,9 +36,6 @@ var Routes = map[string]*rpc.RPCFunc{
 	"dial_seeds":           rpc.NewRPCFunc(UnsafeDialSeeds, "seeds"),
 	"unsafe_flush_mempool": rpc.NewRPCFunc(UnsafeFlushMempool, ""),
 
-	// config is not in general thread safe. expose specifics if you need em
-	// "unsafe_set_config":    rpc.NewRPCFunc(UnsafeSetConfig, "type,key,value"),
-
 	// profiler API
 	"unsafe_start_cpu_profiler": rpc.NewRPCFunc(UnsafeStartCPUProfiler, "filename"),
 	"unsafe_stop_cpu_profiler":  rpc.NewRPCFunc(UnsafeStopCPUProfiler, ""),

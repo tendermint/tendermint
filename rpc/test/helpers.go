@@ -10,12 +10,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 	logger "github.com/tendermint/tmlibs/logger"
 
 	abci "github.com/tendermint/abci/types"
-	"github.com/tendermint/tendermint/config/tendermint_test"
+	cfg "github.com/tendermint/tendermint/config"
 	nm "github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/proxy"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -24,7 +23,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-var config *viper.Viper
+var config *cfg.Config
 
 const tmLogLevel = "error"
 
@@ -54,40 +53,42 @@ func makeAddrs() (string, string, string) {
 }
 
 // GetConfig returns a config for the test cases as a singleton
-func GetConfig() *viper.Viper {
+func GetConfig() *cfg.Config {
 	if config == nil {
 		pathname := makePathname()
-		config = tendermint_test.ResetConfig(pathname)
-		// Shut up the logging
-		logger.SetLogLevel(tmLogLevel)
+		config = cfg.ResetTestRoot(pathname)
+
 		// and we use random ports to run in parallel
 		tm, rpc, grpc := makeAddrs()
-		config.Set("node_laddr", tm)
-		config.Set("rpc_laddr", rpc)
-		config.Set("grpc_laddr", grpc)
+		config.P2P.ListenAddress = tm
+		config.RPCListenAddress = rpc
+		config.GRPCListenAddress = grpc
+
+		// Shut up the logging
+		logger.SetLogLevel(tmLogLevel)
 	}
 	return config
 }
 
 // GetURIClient gets a uri client pointing to the test tendermint rpc
 func GetURIClient() *client.URIClient {
-	rpcAddr := GetConfig().GetString("rpc_laddr")
+	rpcAddr := GetConfig().RPCListenAddress
 	return client.NewURIClient(rpcAddr)
 }
 
 // GetJSONClient gets a http/json client pointing to the test tendermint rpc
 func GetJSONClient() *client.JSONRPCClient {
-	rpcAddr := GetConfig().GetString("rpc_laddr")
+	rpcAddr := GetConfig().RPCListenAddress
 	return client.NewJSONRPCClient(rpcAddr)
 }
 
 func GetGRPCClient() core_grpc.BroadcastAPIClient {
-	grpcAddr := config.GetString("grpc_laddr")
+	grpcAddr := config.GRPCListenAddress
 	return core_grpc.StartGRPCClient(grpcAddr)
 }
 
 func GetWSClient() *client.WSClient {
-	rpcAddr := GetConfig().GetString("rpc_laddr")
+	rpcAddr := GetConfig().RPCListenAddress
 	wsc := client.NewWSClient(rpcAddr, "/websocket")
 	if _, err := wsc.Start(); err != nil {
 		panic(err)
@@ -107,7 +108,7 @@ func StartTendermint(app abci.Application) *nm.Node {
 func NewTendermint(app abci.Application) *nm.Node {
 	// Create & start node
 	config := GetConfig()
-	privValidatorFile := config.GetString("priv_validator_file")
+	privValidatorFile := config.PrivValidatorFile()
 	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
 	papp := proxy.NewLocalClientCreator(app)
 	node := nm.NewNode(config, privValidator, papp)

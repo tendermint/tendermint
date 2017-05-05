@@ -5,9 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/spf13/viper"
-
-	"github.com/tendermint/tendermint/config/tendermint_test"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 	. "github.com/tendermint/tmlibs/common"
@@ -15,7 +12,7 @@ import (
 )
 
 func init() {
-	config = tendermint_test.ResetConfig("consensus_byzantine_test")
+	config = ResetConfig("consensus_byzantine_test")
 }
 
 //----------------------------------------------
@@ -36,7 +33,7 @@ func TestByzantine(t *testing.T) {
 
 	switches := make([]*p2p.Switch, N)
 	for i := 0; i < N; i++ {
-		switches[i] = p2p.NewSwitch(viper.New())
+		switches[i] = p2p.NewSwitch(config.P2P)
 	}
 
 	reactors := make([]p2p.Reactor, N)
@@ -80,7 +77,7 @@ func TestByzantine(t *testing.T) {
 		reactors[i] = conRI
 	}
 
-	p2p.MakeConnectedSwitches(N, func(i int, s *p2p.Switch) *p2p.Switch {
+	p2p.MakeConnectedSwitches(config.P2P, N, func(i int, s *p2p.Switch) *p2p.Switch {
 		// ignore new switch s, we already made ours
 		switches[i].AddReactor("CONSENSUS", reactors[i])
 		return switches[i]

@@ -4,11 +4,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/config/tendermint_test"
+	cfg "github.com/tendermint/tendermint/config"
 )
 
 func TestNodeStartStop(t *testing.T) {
-	config := tendermint_test.ResetConfig("node_node_test")
+	config := cfg.ResetTestRoot("node_node_test")
 
 	// Create & start node
 	n := NewNodeDefault(config)

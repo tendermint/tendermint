@@ -7,14 +7,14 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/spf13/viper"
-
 	abci "github.com/tendermint/abci/types"
-	"github.com/tendermint/tendermint/proxy"
-	"github.com/tendermint/tendermint/types"
 	auto "github.com/tendermint/tmlibs/autofile"
 	"github.com/tendermint/tmlibs/clist"
-	. "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tmlibs/common"
+
+	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/proxy"
+	"github.com/tendermint/tendermint/types"
 )
 
 /*
@@ -48,7 +48,7 @@ TODO: Better handle abci client errors. (make it automatically handle connection
 const cacheSize = 100000
 
 type Mempool struct {
-	config *viper.Viper
+	config *cfg.MempoolConfig
 
 	proxyMtx      sync.Mutex
 	proxyAppConn  proxy.AppConnMempool
@@ -67,7 +67,7 @@ type Mempool struct {
 	wal *auto.AutoFile
 }
 
-func NewMempool(config *viper.Viper, proxyAppConn proxy.AppConnMempool) *Mempool {
+func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool) *Mempool {
 	mempool := &Mempool{
 		config:        config,
 		proxyAppConn:  proxyAppConn,
@@ -86,17 +86,17 @@ func NewMempool(config *viper.Viper, proxyAppConn proxy.AppConnMempool) *Mempool
 }
 
 func (mem *Mempool) initWAL() {
-	walDir := mem.config.GetString("mempool_wal_dir")
+	walDir := mem.config.WalDir()
 	if walDir != "" {
-		err := EnsureDir(walDir, 0700)
+		err := cmn.EnsureDir(walDir, 0700)
 		if err != nil {
 			log.Error("Error ensuring Mempool wal dir", "error", err)
-			PanicSanity(err)
+			cmn.PanicSanity(err)
 		}
 		af, err := auto.OpenAutoFile(walDir + "/wal")
 		if err != nil {
 			log.Error("Error opening Mempool wal file", "error", err)
-			PanicSanity(err)
+			cmn.PanicSanity(err)
 		}
 		mem.wal = af
 	}
@@ -220,7 +220,7 @@ func (mem *Mempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 	case *abci.Response_CheckTx:
 		memTx := mem.recheckCursor.Value.(*mempoolTx)
 		if !bytes.Equal(req.GetCheckTx().Tx, memTx.tx) {
-			PanicSanity(Fmt("Unexpected tx response from proxy during recheck\n"+
+			cmn.PanicSanity(cmn.Fmt("Unexpected tx response from proxy during recheck\n"+
 				"Expected %X, got %X", r.CheckTx.Data, memTx.tx))
 		}
 		if r.CheckTx.Code == abci.CodeType_OK {
@@ -270,7 +270,7 @@ func (mem *Mempool) collectTxs(maxTxs int) types.Txs {
 	} else if maxTxs < 0 {
 		maxTxs = mem.txs.Len()
 	}
-	txs := make([]types.Tx, 0, MinInt(mem.txs.Len(), maxTxs))
+	txs := make([]types.Tx, 0, cmn.MinInt(mem.txs.Len(), maxTxs))
 	for e := mem.txs.Front(); e != nil && len(txs) < maxTxs; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
 		txs = append(txs, memTx.tx)
@@ -299,8 +299,7 @@ func (mem *Mempool) Update(height int, txs types.Txs) {
 	// Recheck mempool txs if any txs were committed in the block
 	// NOTE/XXX: in some apps a tx could be invalidated due to EndBlock,
 	//	so we really still do need to recheck, but this is for debugging
-	if mem.config.GetBool("mempool_recheck") &&
-		(mem.config.GetBool("mempool_recheck_empty") || len(txs) > 0) {
+	if mem.config.Recheck && (mem.config.RecheckEmpty || len(txs) > 0) {
 		log.Info("Recheck txs", "numtxs", len(goodTxs))
 		mem.recheckTxs(goodTxs)
 		// At this point, mem.txs are being rechecked.

@@ -8,22 +8,22 @@ import (
 	"testing"
 	"time"
 
-	"github.com/spf13/viper"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	crypto "github.com/tendermint/go-crypto"
 	wire "github.com/tendermint/go-wire"
-	. "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tmlibs/common"
+
+	cfg "github.com/tendermint/tendermint/config"
 )
 
 var (
-	config *viper.Viper
+	config *cfg.P2PConfig
 )
 
 func init() {
-	config = viper.New()
-	setConfigDefaults(config)
+	config = cfg.DefaultP2PConfig()
+	config.PexReactor = true
 }
 
 type PeerMessage struct {
@@ -92,7 +92,7 @@ func (tr *TestReactor) getMsgs(chID byte) []PeerMessage {
 // XXX: note this uses net.Pipe and not a proper TCP conn
 func makeSwitchPair(t testing.TB, initSwitch func(int, *Switch) *Switch) (*Switch, *Switch) {
 	// Create two switches that will be interconnected.
-	switches := MakeConnectedSwitches(2, initSwitch, Connect2Switches)
+	switches := MakeConnectedSwitches(config, 2, initSwitch, Connect2Switches)
 	return switches[0], switches[1]
 }
 
@@ -163,8 +163,8 @@ func TestSwitches(t *testing.T) {
 }
 
 func TestConnAddrFilter(t *testing.T) {
-	s1 := makeSwitch(1, "testing", "123.123.123", initSwitchFunc)
-	s2 := makeSwitch(1, "testing", "123.123.123", initSwitchFunc)
+	s1 := makeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
+	s2 := makeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
 
 	c1, c2 := net.Pipe()
 
@@ -197,8 +197,8 @@ func TestConnAddrFilter(t *testing.T) {
 }
 
 func TestConnPubKeyFilter(t *testing.T) {
-	s1 := makeSwitch(1, "testing", "123.123.123", initSwitchFunc)
-	s2 := makeSwitch(1, "testing", "123.123.123", initSwitchFunc)
+	s1 := makeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
+	s2 := makeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
 
 	c1, c2 := net.Pipe()
 
@@ -234,7 +234,7 @@ func TestConnPubKeyFilter(t *testing.T) {
 func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
-	sw := makeSwitch(1, "testing", "123.123.123", initSwitchFunc)
+	sw := makeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
 	sw.Start()
 	defer sw.Stop()
 
@@ -260,7 +260,7 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
-	sw := makeSwitch(1, "testing", "123.123.123", initSwitchFunc)
+	sw := makeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
 	sw.Start()
 	defer sw.Stop()
 
@@ -322,7 +322,7 @@ func BenchmarkSwitches(b *testing.B) {
 		}
 	}
 
-	log.Warn(Fmt("success: %v, failure: %v", numSuccess, numFailure))
+	log.Warn(cmn.Fmt("success: %v, failure: %v", numSuccess, numFailure))
 
 	// Allow everything to flush before stopping switches & closing connections.
 	b.StopTimer()

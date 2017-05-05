@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/spf13/viper"
 	abci "github.com/tendermint/abci/types"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
@@ -169,10 +168,10 @@ func (s *State) GetValidators() (*types.ValidatorSet, *types.ValidatorSet) {
 
 // Load the most recent state from "state" db,
 // or create a new one (and save) from genesis.
-func GetState(config *viper.Viper, stateDB dbm.DB) *State {
+func GetState(stateDB dbm.DB, genesisFile string) *State {
 	state := LoadState(stateDB)
 	if state == nil {
-		state = MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
+		state = MakeGenesisStateFromFile(stateDB, genesisFile)
 		state.Save()
 	}
 

@@ -12,21 +12,20 @@ import (
 	"testing"
 	"time"
 
-	"github.com/spf13/viper"
-
 	"github.com/tendermint/abci/example/dummy"
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-wire"
-	"github.com/tendermint/tendermint/config/tendermint_test"
+	cmn "github.com/tendermint/tmlibs/common"
+	dbm "github.com/tendermint/tmlibs/db"
+
+	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tmlibs/common"
-	dbm "github.com/tendermint/tmlibs/db"
 )
 
 func init() {
-	config = tendermint_test.ResetConfig("consensus_replay_test")
+	config = ResetConfig("consensus_replay_test")
 }
 
 // These tests ensure we can always recover from failure at any part of the consensus process.
@@ -136,7 +135,7 @@ func waitForBlock(newBlockCh chan interface{}, thisCase *testCase, i int) {
 func runReplayTest(t *testing.T, cs *ConsensusState, walFile string, newBlockCh chan interface{},
 	thisCase *testCase, i int) {
 
-	cs.config.Set("cs_wal_file", walFile)
+	cs.config.SetWalFile(walFile)
 	started, err := cs.Start()
 	if err != nil {
 		t.Fatalf("Cannot start consensus: %v", err)
@@ -309,7 +308,7 @@ func TestHandshakeReplayNone(t *testing.T) {
 
 // Make some blocks. Start a fresh app and apply nBlocks blocks. Then restart the app and sync it up with the remaining blocks
 func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
-	config := tendermint_test.ResetConfig("proxy_test_")
+	config := ResetConfig("proxy_test_")
 
 	// copy the many_blocks file
 	walBody, err := cmn.ReadFile(path.Join(data_dir, "many_blocks.cswal"))
@@ -317,10 +316,10 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 		t.Fatal(err)
 	}
 	walFile := writeWAL(string(walBody))
-	config.Set("cs_wal_file", walFile)
+	config.Consensus.SetWalFile(walFile)
 
-	privVal := types.LoadPrivValidator(config.GetString("priv_validator_file"))
-	testPartSize = config.GetInt("block_part_size")
+	privVal := types.LoadPrivValidator(config.PrivValidatorFile())
+	testPartSize = config.Consensus.BlockPartSize
 
 	wal, err := NewWAL(walFile, false)
 	if err != nil {
@@ -339,19 +338,19 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	latestAppHash := buildTMStateFromChain(config, state, chain, mode)
 
 	// make a new client creator
-	dummyApp := dummy.NewPersistentDummyApplication(path.Join(config.GetString("db_dir"), "2"))
+	dummyApp := dummy.NewPersistentDummyApplication(path.Join(config.DBDir(), "2"))
 	clientCreator2 := proxy.NewLocalClientCreator(dummyApp)
 	if nBlocks > 0 {
 		// run nBlocks against a new client to build up the app state.
 		// use a throwaway tendermint state
-		proxyApp := proxy.NewAppConns(config, clientCreator2, nil)
+		proxyApp := proxy.NewAppConns(clientCreator2, nil)
 		state, _ := stateAndStore(config, privVal.PubKey)
 		buildAppStateFromChain(proxyApp, state, chain, nBlocks, mode)
 	}
 
 	// now start the app using the handshake - it should sync
-	handshaker := NewHandshaker(config, state, store)
-	proxyApp := proxy.NewAppConns(config, clientCreator2, handshaker)
+	handshaker := NewHandshaker(state, store)
+	proxyApp := proxy.NewAppConns(clientCreator2, handshaker)
 	if _, err := proxyApp.Start(); err != nil {
 		t.Fatalf("Error starting proxy app connections: %v", err)
 	}
@@ -418,10 +417,10 @@ func buildAppStateFromChain(proxyApp proxy.AppConns,
 
 }
 
-func buildTMStateFromChain(config *viper.Viper, state *sm.State, chain []*types.Block, mode uint) []byte {
+func buildTMStateFromChain(config *cfg.Config, state *sm.State, chain []*types.Block, mode uint) []byte {
 	// run the whole chain against this client to build up the tendermint state
-	clientCreator := proxy.NewLocalClientCreator(dummy.NewPersistentDummyApplication(path.Join(config.GetString("db_dir"), "1")))
-	proxyApp := proxy.NewAppConns(config, clientCreator, nil) // sm.NewHandshaker(config, state, store, ReplayLastBlock))
+	clientCreator := proxy.NewLocalClientCreator(dummy.NewPersistentDummyApplication(path.Join(config.DBDir(), "1")))
+	proxyApp := proxy.NewAppConns(clientCreator, nil) // sm.NewHandshaker(config, state, store, ReplayLastBlock))
 	if _, err := proxyApp.Start(); err != nil {
 		panic(err)
 	}
@@ -615,10 +614,9 @@ func makeBlockchain(t *testing.T, chainID string, nBlocks int, privVal *types.Pr
 }
 
 // fresh state and mock store
-func stateAndStore(config *viper.Viper, pubKey crypto.PubKey) (*sm.State, *mockBlockStore) {
+func stateAndStore(config *cfg.Config, pubKey crypto.PubKey) (*sm.State, *mockBlockStore) {
 	stateDB := dbm.NewMemDB()
-
-	state := sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
+	state := sm.MakeGenesisStateFromFile(stateDB, config.GenesisFile())
 	store := NewMockBlockStore(config)
 	return state, store
 }
@@ -627,13 +625,13 @@ func stateAndStore(config *viper.Viper, pubKey crypto.PubKey) (*sm.State, *mockB
 // mock block store
 
 type mockBlockStore struct {
-	config  *viper.Viper
+	config  *cfg.Config
 	chain   []*types.Block
 	commits []*types.Commit
 }
 
 // TODO: NewBlockStore(db.NewMemDB) ...
-func NewMockBlockStore(config *viper.Viper) *mockBlockStore {
+func NewMockBlockStore(config *cfg.Config) *mockBlockStore {
 	return &mockBlockStore{config, nil, nil}
 }
 
@@ -642,7 +640,7 @@ func (bs *mockBlockStore) LoadBlock(height int) *types.Block { return bs.chain[h
 func (bs *mockBlockStore) LoadBlockMeta(height int) *types.BlockMeta {
 	block := bs.chain[height-1]
 	return &types.BlockMeta{
-		BlockID: types.BlockID{block.Hash(), block.MakePartSet(bs.config.GetInt("block_part_size")).Header()},
+		BlockID: types.BlockID{block.Hash(), block.MakePartSet(bs.config.Consensus.BlockPartSize).Header()},
 		Header:  block.Header,
 	}
 }
