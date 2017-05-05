@@ -74,11 +74,6 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 	stateDB := dbm.NewDB("state", config.DBBackend, config.DBDir())
 	state := sm.GetState(stateDB, config.GenesisFile())
 
-	// add the chainid and number of validators to the global config
-	// TODO: Set ChainID. eg:
-	// config.Consensus.SetChainID(state.ChainID) // ...
-	// but actually consensus doesnt need it since the cs has the state ...
-
 	// Create the proxyApp, which manages connections (consensus, mempool, query)
 	// and sync tendermint and the app by replaying any necessary blocks
 	proxyApp := proxy.NewAppConns(clientCreator, consensus.NewHandshaker(state, blockStore))

@@ -9,12 +9,11 @@ import (
 )
 
 var (
-	config *cfg.Config
+	config = cfg.DefaultConfig()
 	log    = logger.New("module", "main")
 )
 
 func init() {
-	config = cfg.DefaultConfig()
 	RootCmd.PersistentFlags().String("log_level", config.LogLevel, "Log level")
 }
 
