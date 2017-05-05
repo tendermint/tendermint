@@ -2,8 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"io/ioutil"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -57,30 +55,16 @@ func TestSetupEnv(t *testing.T) {
 	}
 }
 
-func writeConfig(vals map[string]string) (string, error) {
-	cdir, err := ioutil.TempDir("", "test-cli")
-	if err != nil {
-		return "", err
-	}
-	data := ""
-	for k, v := range vals {
-		data = data + fmt.Sprintf("%s = \"%s\"\n", k, v)
-	}
-	cfile := filepath.Join(cdir, "config.toml")
-	err = ioutil.WriteFile(cfile, []byte(data), 0666)
-	return cdir, err
-}
-
 func TestSetupConfig(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
 	// we pre-create two config files we can refer to in the rest of
 	// the test cases.
 	cval1, cval2 := "fubble", "wubble"
-	conf1, err := writeConfig(map[string]string{"boo": cval1})
+	conf1, err := WriteDemoConfig(map[string]string{"boo": cval1})
 	require.Nil(err)
 	// even with some ignored fields, should be no problem
-	conf2, err := writeConfig(map[string]string{"boo": cval2, "foo": "bar"})
+	conf2, err := WriteDemoConfig(map[string]string{"boo": cval2, "foo": "bar"})
 	require.Nil(err)
 
 	cases := []struct {
@@ -135,10 +119,10 @@ func TestSetupUnmarshal(t *testing.T) {
 	// we pre-create two config files we can refer to in the rest of
 	// the test cases.
 	cval1, cval2 := "someone", "else"
-	conf1, err := writeConfig(map[string]string{"name": cval1})
+	conf1, err := WriteDemoConfig(map[string]string{"name": cval1})
 	require.Nil(err)
 	// even with some ignored fields, should be no problem
-	conf2, err := writeConfig(map[string]string{"name": cval2, "foo": "bar"})
+	conf2, err := WriteDemoConfig(map[string]string{"name": cval2, "foo": "bar"})
 	require.Nil(err)
 
 	// unused is not declared on a flag and remains from base

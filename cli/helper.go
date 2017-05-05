@@ -2,9 +2,29 @@ package cli
 
 import (
 	"bytes"
+	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 )
+
+// WriteDemoConfig writes a toml file with the given values.
+// It returns the RootDir the config.toml file is stored in,
+// or an error if writing was impossible
+func WriteDemoConfig(vals map[string]string) (string, error) {
+	cdir, err := ioutil.TempDir("", "test-cli")
+	if err != nil {
+		return "", err
+	}
+	data := ""
+	for k, v := range vals {
+		data = data + fmt.Sprintf("%s = \"%s\"\n", k, v)
+	}
+	cfile := filepath.Join(cdir, "config.toml")
+	err = ioutil.WriteFile(cfile, []byte(data), 0666)
+	return cdir, err
+}
 
 // RunWithArgs executes the given command with the specified command line args
 // and environmental variables set. It returns any error returned from cmd.Execute()
