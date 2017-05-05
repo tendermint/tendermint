@@ -6,8 +6,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/tendermint/abci/client"
+	abcicli "github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/types"
+	"github.com/tendermint/tmlibs/log"
 	"github.com/tendermint/tmlibs/process"
 )
 
@@ -37,6 +38,8 @@ func startClient(abciType string) abcicli.Client {
 	if err != nil {
 		panic("connecting to abci_app: " + err.Error())
 	}
+	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+	client.SetLogger(logger.With("module", "abcicli"))
 	return client
 }
 

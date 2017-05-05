@@ -51,7 +51,7 @@ RETRY_LOOP:
 			if cli.mustConnect {
 				return err
 			}
-			log.Warn(fmt.Sprintf("abci.grpcClient failed to connect to %v.  Retrying...\n", cli.addr))
+			cli.Logger.Error(fmt.Sprintf("abci.grpcClient failed to connect to %v.  Retrying...\n", cli.addr))
 			time.Sleep(time.Second * 3)
 			continue RETRY_LOOP
 		}
@@ -93,7 +93,7 @@ func (cli *grpcClient) StopForError(err error) {
 	}
 	cli.mtx.Unlock()
 
-	log.Warn(fmt.Sprintf("Stopping abci.grpcClient for error: %v", err.Error()))
+	cli.Logger.Error(fmt.Sprintf("Stopping abci.grpcClient for error: %v", err.Error()))
 	cli.Stop()
 }
 

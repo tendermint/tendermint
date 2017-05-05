@@ -6,13 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"strings"
 
-	"github.com/tendermint/abci/client"
+	abcicli "github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/types"
 	"github.com/tendermint/abci/version"
+	"github.com/tendermint/tmlibs/log"
 	"github.com/urfave/cli"
 )
 
@@ -35,6 +35,8 @@ type queryResponse struct {
 
 // client is a global variable so it can be reused by the console
 var client abcicli.Client
+
+var logger log.Logger
 
 func main() {
 
@@ -129,18 +131,24 @@ func main() {
 	app.Before = before
 	err := app.Run(os.Args)
 	if err != nil {
-		log.Fatal(err.Error())
+		logger.Error(err.Error())
+		os.Exit(1)
 	}
 
 }
 
 func before(c *cli.Context) error {
+	if logger == nil {
+		logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+	}
 	if client == nil {
 		var err error
 		client, err = abcicli.NewClient(c.GlobalString("address"), c.GlobalString("abci"), false)
 		if err != nil {
-			log.Fatal(err.Error())
+			logger.Error(err.Error())
+			os.Exit(1)
 		}
+		client.SetLogger(logger.With("module", "abci-client"))
 	}
 	return nil
 }

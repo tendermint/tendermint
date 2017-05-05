@@ -19,7 +19,7 @@ build:
 
 # test.sh requires that we run the installed cmds, must not be out of date
 test: install
-	find . -name test.sock -exec rm {} \;
+	find . -path ./vendor -prune -o -name *.sock -exec rm {} \;
 	@ go test -p 1 `${NOVENDOR}`
 	@ bash tests/test.sh
 
@@ -30,7 +30,7 @@ lint:
 	@ go get -u github.com/golang/lint/golint
 	@ for file in $$(find "." -name '*.go' | grep -v '/vendor/' | grep -v '\.pb\.go'); do \
 		golint -set_exit_status $${file}; \
-	done;
+		done;
 
 test_integrations: get_vendor_deps install test
 
