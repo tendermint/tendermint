@@ -127,12 +127,12 @@ func bindFlagsLoadViper(cmd *cobra.Command, args []string) error {
 
 	// rootDir is command line flag, env variable, or default $HOME/.tlc
 	// NOTE: we support both --root and --home for now, but eventually only --home
+	// Also ensure we set the correct rootDir under HomeFlag so we dont need to
+	// repeat this logic elsewhere.
 	rootDir := viper.GetString(HomeFlag)
-	// @ebuchman: viper.IsSet doesn't do what you think...
-	// Even a default of "" on the pflag marks it as set,
-	// simply by fact of having a pflag.
 	if rootDir == "" {
 		rootDir = viper.GetString(RootFlag)
+		viper.Set(HomeFlag, rootDir)
 	}
 	viper.SetConfigName("config") // name of config file (without extension)
 	viper.AddConfigPath(rootDir)  // search root directory
