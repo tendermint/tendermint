@@ -8,7 +8,7 @@ import (
 	"time"
 
 	kitlog "github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	kitlevel "github.com/go-kit/kit/log/level"
 	"github.com/go-logfmt/logfmt"
 )
 
@@ -56,13 +56,13 @@ func (l tmfmtLogger) Log(keyvals ...interface{}) error {
 
 	for i := 0; i < len(keyvals)-1; i += 2 {
 		// Extract level
-		if keyvals[i] == level.Key() {
+		if keyvals[i] == kitlevel.Key() {
 			lvlIndex = i
 			switch keyvals[i+1].(type) {
 			case string:
 				lvl = keyvals[i+1].(string)
-			case level.Value:
-				lvl = keyvals[i+1].(level.Value).String()
+			case kitlevel.Value:
+				lvl = keyvals[i+1].(kitlevel.Value).String()
 			default:
 				panic(fmt.Sprintf("level value of unknown type %T", keyvals[i+1]))
 			}

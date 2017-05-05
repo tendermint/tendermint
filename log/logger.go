@@ -13,7 +13,6 @@ type Logger interface {
 	Error(msg string, keyvals ...interface{}) error
 
 	With(keyvals ...interface{}) Logger
-	WithLevel(lvl string) Logger
 }
 
 // NewSyncWriter returns a new writer that is safe for concurrent use by

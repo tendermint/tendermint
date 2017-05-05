@@ -23,7 +23,3 @@ func (nopLogger) Error(string, ...interface{}) error {
 func (l *nopLogger) With(...interface{}) Logger {
 	return l
 }
-
-func (l *nopLogger) WithLevel(lvl string) Logger {
-	return l
-}
