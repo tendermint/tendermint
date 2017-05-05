@@ -2,12 +2,6 @@ package core
 
 import (
 	rpc "github.com/tendermint/tendermint/rpc/lib/server"
-
-	data "github.com/tendermint/go-wire/data"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	rpc "github.com/tendermint/tendermint/rpc/lib/server"
-	"github.com/tendermint/tendermint/rpc/lib/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 // TODO: better system than "unsafe" prefix

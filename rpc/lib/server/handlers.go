@@ -145,7 +145,7 @@ func mapParamsToArgs(rpcFunc *RPCFunc, params map[string]*json.RawMessage, argsO
 	for i, argName := range rpcFunc.argNames {
 		argType := rpcFunc.args[i+argsOffset]
 
-		if p, ok := params[argName]; ok && len(*p) > 0 {
+		if p, ok := params[argName]; ok && p != nil && len(*p) > 0 {
 			val := reflect.New(argType)
 			err := json.Unmarshal(*p, val.Interface())
 			if err != nil {

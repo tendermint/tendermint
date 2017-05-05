@@ -43,7 +43,7 @@ func testStatus(t *testing.T, client rpc.HTTPClient) {
 	result := new(ctypes.ResultStatus)
 	_, err := client.Call("status", map[string]interface{}{}, result)
 	require.Nil(t, err)
-	assert.Equal(t, moniker, status.NodeInfo.Moniker)
+	assert.Equal(t, moniker, result.NodeInfo.Moniker)
 }
 
 //--------------------------------------------------------------------------------
@@ -158,8 +158,9 @@ func TestURITx(t *testing.T) {
 	testTx(t, GetURIClient(), true)
 
 	core.SetTxIndexer(&null.TxIndex{})
-	testTx(t, GetJSONClient(), false)
-	core.SetTxIndexer(node.ConsensusState().GetState().TxIndexer)
+	defer core.SetTxIndexer(node.ConsensusState().GetState().TxIndexer)
+
+	testTx(t, GetURIClient(), false)
 }
 
 func TestJSONTx(t *testing.T) {
