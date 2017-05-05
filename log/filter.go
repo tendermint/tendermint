@@ -56,12 +56,12 @@ func AllowAll() Option {
 	return AllowDebug()
 }
 
-// AllowDebug allows error, warn, info and debug level log events to pass.
+// AllowDebug allows error, info and debug level log events to pass.
 func AllowDebug() Option {
 	return allowed(levelError | levelInfo | levelDebug)
 }
 
-// AllowInfo allows error, warn and info level log events to pass.
+// AllowInfo allows error and info level log events to pass.
 func AllowInfo() Option {
 	return allowed(levelError | levelInfo)
 }
