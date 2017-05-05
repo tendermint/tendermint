@@ -13,7 +13,7 @@ import:
   subpackages:
   - iavl
 - package: github.com/tendermint/tmlibs
-  version: log
+  version: develop
   subpackages:
   - common
   - db
