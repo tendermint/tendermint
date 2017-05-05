@@ -3,9 +3,11 @@ package config
 import (
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
 	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/logger"
 )
 
 /****** these are for production settings ***********/
@@ -44,7 +46,9 @@ func defaultConfig(moniker string) (defaultConfig string) {
 
 /****** these are for test settings ***********/
 
-func initTestRoot(rootDir string) {
+func ResetTestRoot(testName string) *Config {
+	rootDir := os.ExpandEnv("$HOME/.tendermint_test")
+	rootDir = filepath.Join(rootDir, testName)
 	// Remove ~/.tendermint_test_bak
 	if cmn.FileExists(rootDir + "_bak") {
 		err := os.RemoveAll(rootDir + "_bak")
@@ -77,6 +81,10 @@ func initTestRoot(rootDir string) {
 	}
 	// we always overwrite the priv val
 	cmn.MustWriteFile(privFilePath, []byte(testPrivValidator), 0644)
+
+	config := TestConfig().SetRoot(rootDir)
+	logger.SetLogLevel(config.LogLevel)
+	return config
 }
 
 var testConfigTmpl = `# This is a TOML config file.

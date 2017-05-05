@@ -14,8 +14,8 @@ func init() {
 	config = ResetConfig("consensus_state_test")
 }
 
-func (config *Config) ensureProposeTimeout() time.Duration {
-	return time.Duration(config.TimeoutPropose*2) * time.Millisecond
+func ensureProposeTimeout(timeoutPropose int) time.Duration {
+	return time.Duration(timeoutPropose*2) * time.Millisecond
 }
 
 /*
@@ -125,7 +125,7 @@ func TestEnterProposeNoPrivValidator(t *testing.T) {
 	startTestRound(cs, height, round)
 
 	// if we're not a validator, EnterPropose should timeout
-	ticker := time.NewTicker(cs.config.ensureProposeTimeout())
+	ticker := time.NewTicker(ensureProposeTimeout(cs.config.TimeoutPropose))
 	select {
 	case <-timeoutCh:
 	case <-ticker.C:
@@ -166,7 +166,7 @@ func TestEnterProposeYesPrivValidator(t *testing.T) {
 	}
 
 	// if we're a validator, enterPropose should not timeout
-	ticker := time.NewTicker(cs.config.ensureProposeTimeout())
+	ticker := time.NewTicker(ensureProposeTimeout(cs.config.TimeoutPropose))
 	select {
 	case <-timeoutCh:
 		panic("Expected EnterPropose not to timeout")

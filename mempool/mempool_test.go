@@ -6,33 +6,19 @@ import (
 
 	"github.com/tendermint/abci/example/counter"
 	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/config/tendermint_test"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
 
-func ResetConfig(name string) *Config {
-	viperConfig := tendermint_test.ResetConfig(name)
-	config := new(struct {
-		cfg.Config `mapstructure:",squash"`
-		Mempool    *Config `mapstructure:"mempool"`
-	})
-	if err := viperConfig.Unmarshal(config); err != nil {
-		panic(err)
-	}
-	return config.Mempool
-
-}
-
 func TestSerialReap(t *testing.T) {
-	config := ResetConfig("mempool_test")
+	config := cfg.ResetTestRoot("mempool_test")
 
 	app := counter.NewCounterApplication(true)
 	app.SetOption("serial", "on")
 	cc := proxy.NewLocalClientCreator(app)
 	appConnMem, _ := cc.NewABCIClient()
 	appConnCon, _ := cc.NewABCIClient()
-	mempool := NewMempool(config, appConnMem)
+	mempool := NewMempool(config.Mempool, appConnMem)
 
 	deliverTxsRange := func(start, end int) {
 		// Deliver some txs.

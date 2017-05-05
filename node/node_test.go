@@ -4,12 +4,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/config/tendermint_test"
+	cfg "github.com/tendermint/tendermint/config"
 )
 
 func TestNodeStartStop(t *testing.T) {
-	viperConfig := tendermint_test.ResetConfig("node_node_test")
-	config := ConfigFromViper(viperConfig)
+	config := cfg.ResetTestRoot("node_node_test")
 
 	// Create & start node
 	n := NewNodeDefault(config)

@@ -15,7 +15,6 @@ import (
 	abci "github.com/tendermint/abci/types"
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/config/tendermint_test"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
@@ -28,7 +27,7 @@ import (
 )
 
 // genesis, chain_id, priv_val
-var config *NodeConfig // NOTE: must be reset for each _test.go file
+var config *cfg.Config // NOTE: must be reset for each _test.go file
 var ensureTimeout = time.Duration(2)
 
 func ensureDir(dir string, mode os.FileMode) {
@@ -37,21 +36,8 @@ func ensureDir(dir string, mode os.FileMode) {
 	}
 }
 
-type NodeConfig struct {
-	cfg.Config `mapstructure:",squash"`
-	P2P        *p2p.Config   `mapstructure:"p2p"`
-	Mempool    *mempl.Config `mapstructure:"mempool"`
-	Consensus  *Config       `mapstructure:"consensus"`
-}
-
-// TODO: This is the same as NodeConfig. Should we move the configs to types (?)
-func ResetConfig(name string) *NodeConfig {
-	viperConfig := tendermint_test.ResetConfig(name)
-	config := new(NodeConfig)
-	if err := viperConfig.Unmarshal(config); err != nil {
-		panic(err)
-	}
-	return config
+func ResetConfig(name string) *cfg.Config {
+	return cfg.ResetTestRoot(name)
 }
 
 //-------------------------------------------------------------------------------
@@ -251,7 +237,7 @@ func newConsensusState(state *sm.State, pv *types.PrivValidator, app abci.Applic
 	return newConsensusStateWithConfig(config, state, pv, app)
 }
 
-func newConsensusStateWithConfig(thisConfig *NodeConfig, state *sm.State, pv *types.PrivValidator, app abci.Application) *ConsensusState {
+func newConsensusStateWithConfig(thisConfig *cfg.Config, state *sm.State, pv *types.PrivValidator, app abci.Application) *ConsensusState {
 	// Get BlockStore
 	blockDB := dbm.NewMemDB()
 	blockStore := bc.NewBlockStore(blockDB)
@@ -274,8 +260,8 @@ func newConsensusStateWithConfig(thisConfig *NodeConfig, state *sm.State, pv *ty
 	return cs
 }
 
-func loadPrivValidator(config *NodeConfig) *types.PrivValidator {
-	privValidatorFile := config.PrivValidatorFile
+func loadPrivValidator(config *cfg.Config) *types.PrivValidator {
+	privValidatorFile := config.PrivValidatorFile()
 	ensureDir(path.Dir(privValidatorFile), 0700)
 	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
 	privValidator.Reset()
@@ -284,7 +270,7 @@ func loadPrivValidator(config *NodeConfig) *types.PrivValidator {
 
 func fixedConsensusState() *ConsensusState {
 	stateDB := dbm.NewMemDB()
-	state := sm.MakeGenesisStateFromFile(stateDB, config.GenesisFile)
+	state := sm.MakeGenesisStateFromFile(stateDB, config.GenesisFile())
 	privValidator := loadPrivValidator(config)
 	cs := newConsensusState(state, privValidator, counter.NewCounterApplication(true))
 	return cs
@@ -292,7 +278,7 @@ func fixedConsensusState() *ConsensusState {
 
 func fixedConsensusStateDummy() *ConsensusState {
 	stateDB := dbm.NewMemDB()
-	state := sm.MakeGenesisStateFromFile(stateDB, config.GenesisFile)
+	state := sm.MakeGenesisStateFromFile(stateDB, config.GenesisFile())
 	privValidator := loadPrivValidator(config)
 	cs := newConsensusState(state, privValidator, dummy.NewDummyApplication())
 	return cs
@@ -338,7 +324,7 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 		state := sm.MakeGenesisState(db, genDoc)
 		state.Save()
 		thisConfig := ResetConfig(Fmt("%s_%d", testName, i))
-		ensureDir(path.Dir(thisConfig.Consensus.WalFile), 0700) // dir for wal
+		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		css[i] = newConsensusStateWithConfig(thisConfig, state, privVals[i], appFunc())
 		css[i].SetTimeoutTicker(tickerFunc())
 	}
@@ -354,7 +340,7 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 		state := sm.MakeGenesisState(db, genDoc)
 		state.Save()
 		thisConfig := ResetConfig(Fmt("%s_%d", testName, i))
-		ensureDir(path.Dir(thisConfig.Consensus.WalFile), 0700) // dir for wal
+		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		var privVal *types.PrivValidator
 		if i < nValidators {
 			privVal = privVals[i]

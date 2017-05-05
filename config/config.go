@@ -28,19 +28,20 @@ func DefaultConfig() *Config {
 
 func TestConfig() *Config {
 	return &Config{
-		BaseConfig: DefaultBaseConfig(),
-		P2P:        DefaultP2PConfig(),
+		BaseConfig: TestBaseConfig(),
+		P2P:        TestP2PConfig(),
 		Mempool:    DefaultMempoolConfig(),
 		Consensus:  TestConsensusConfig(),
 	}
 }
 
 // Set the RootDir for all Config structs
-func SetRoot(cfg *Config, root string) {
+func (cfg *Config) SetRoot(root string) *Config {
 	cfg.BaseConfig.RootDir = root
 	cfg.P2P.RootDir = root
 	cfg.Mempool.RootDir = root
 	cfg.Consensus.RootDir = root
+	return cfg
 }
 
 // BaseConfig struct for a Tendermint node
@@ -119,6 +120,17 @@ func DefaultBaseConfig() BaseConfig {
 	}
 }
 
+func TestBaseConfig() BaseConfig {
+	conf := DefaultBaseConfig()
+	conf.ChainID = "tendermint_test"
+	conf.ProxyApp = "dummy"
+	conf.FastSync = false
+	conf.DBBackend = "memdb"
+	conf.RPCListenAddress = "tcp://0.0.0.0:36657"
+	conf.GRPCListenAddress = "tcp://0.0.0.0:36658"
+	return conf
+}
+
 func (b BaseConfig) GenesisFile() string {
 	return rootify(b.Genesis, b.RootDir)
 }
@@ -149,6 +161,13 @@ func DefaultP2PConfig() *P2PConfig {
 		AddrBookStrict: true,
 		MaxNumPeers:    50,
 	}
+}
+
+func TestP2PConfig() *P2PConfig {
+	conf := DefaultP2PConfig()
+	conf.ListenAddress = "tcp://0.0.0.0:36656"
+	conf.SkipUPNP = true
+	return conf
 }
 
 func (p *P2PConfig) AddrBookFile() string {
@@ -182,6 +201,7 @@ type ConsensusConfig struct {
 	RootDir  string `mapstructure:"home"`
 	WalPath  string `mapstructure:"wal_file"`
 	WalLight bool   `mapstructure:"wal_light"`
+	walFile  string // overrides WalPath if set
 
 	// All timeouts are in ms
 	TimeoutPropose        int `mapstructure:"timeout_propose"`
@@ -256,7 +276,14 @@ func TestConsensusConfig() *ConsensusConfig {
 }
 
 func (c *ConsensusConfig) WalFile() string {
+	if c.walFile != "" {
+		return c.walFile
+	}
 	return rootify(c.WalPath, c.RootDir)
+}
+
+func (c *ConsensusConfig) SetWalFile(walFile string) {
+	c.walFile = walFile
 }
 
 // helper function to make config creation independent of root dir

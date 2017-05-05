@@ -13,14 +13,16 @@ import (
 	crypto "github.com/tendermint/go-crypto"
 	wire "github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
+
+	cfg "github.com/tendermint/tendermint/config"
 )
 
 var (
-	config *Config
+	config *cfg.P2PConfig
 )
 
 func init() {
-	config = NewDefaultConfig("")
+	config = cfg.DefaultP2PConfig()
 	config.PexReactor = true
 }
 

@@ -15,11 +15,13 @@ import (
 	"github.com/tendermint/abci/example/dummy"
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-wire"
+	cmn "github.com/tendermint/tmlibs/common"
+	dbm "github.com/tendermint/tmlibs/db"
+
+	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tmlibs/common"
-	dbm "github.com/tendermint/tmlibs/db"
 )
 
 func init() {
@@ -133,7 +135,7 @@ func waitForBlock(newBlockCh chan interface{}, thisCase *testCase, i int) {
 func runReplayTest(t *testing.T, cs *ConsensusState, walFile string, newBlockCh chan interface{},
 	thisCase *testCase, i int) {
 
-	cs.config.WalFile = walFile
+	cs.config.SetWalFile(walFile)
 	started, err := cs.Start()
 	if err != nil {
 		t.Fatalf("Cannot start consensus: %v", err)
@@ -314,9 +316,9 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 		t.Fatal(err)
 	}
 	walFile := writeWAL(string(walBody))
-	config.Consensus.WalFile = walFile
+	config.Consensus.SetWalFile(walFile)
 
-	privVal := types.LoadPrivValidator(config.PrivValidatorFile)
+	privVal := types.LoadPrivValidator(config.PrivValidatorFile())
 	testPartSize = config.Consensus.BlockPartSize
 
 	wal, err := NewWAL(walFile, false)
@@ -336,7 +338,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	latestAppHash := buildTMStateFromChain(config, state, chain, mode)
 
 	// make a new client creator
-	dummyApp := dummy.NewPersistentDummyApplication(path.Join(config.DBDir, "2"))
+	dummyApp := dummy.NewPersistentDummyApplication(path.Join(config.DBDir(), "2"))
 	clientCreator2 := proxy.NewLocalClientCreator(dummyApp)
 	if nBlocks > 0 {
 		// run nBlocks against a new client to build up the app state.
@@ -415,9 +417,9 @@ func buildAppStateFromChain(proxyApp proxy.AppConns,
 
 }
 
-func buildTMStateFromChain(config *NodeConfig, state *sm.State, chain []*types.Block, mode uint) []byte {
+func buildTMStateFromChain(config *cfg.Config, state *sm.State, chain []*types.Block, mode uint) []byte {
 	// run the whole chain against this client to build up the tendermint state
-	clientCreator := proxy.NewLocalClientCreator(dummy.NewPersistentDummyApplication(path.Join(config.DBDir, "1")))
+	clientCreator := proxy.NewLocalClientCreator(dummy.NewPersistentDummyApplication(path.Join(config.DBDir(), "1")))
 	proxyApp := proxy.NewAppConns(clientCreator, nil) // sm.NewHandshaker(config, state, store, ReplayLastBlock))
 	if _, err := proxyApp.Start(); err != nil {
 		panic(err)
@@ -612,7 +614,7 @@ func makeBlockchain(t *testing.T, chainID string, nBlocks int, privVal *types.Pr
 }
 
 // fresh state and mock store
-func stateAndStore(config *NodeConfig, pubKey crypto.PubKey) (*sm.State, *mockBlockStore) {
+func stateAndStore(config *cfg.Config, pubKey crypto.PubKey) (*sm.State, *mockBlockStore) {
 	stateDB := dbm.NewMemDB()
 	state := sm.MakeGenesisStateFromFile(stateDB, config.GenesisFile())
 	store := NewMockBlockStore(config)
@@ -623,13 +625,13 @@ func stateAndStore(config *NodeConfig, pubKey crypto.PubKey) (*sm.State, *mockBl
 // mock block store
 
 type mockBlockStore struct {
-	config  *NodeConfig
+	config  *cfg.Config
 	chain   []*types.Block
 	commits []*types.Commit
 }
 
 // TODO: NewBlockStore(db.NewMemDB) ...
-func NewMockBlockStore(config *NodeConfig) *mockBlockStore {
+func NewMockBlockStore(config *cfg.Config) *mockBlockStore {
 	return &mockBlockStore{config, nil, nil}
 }
 

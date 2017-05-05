@@ -14,7 +14,7 @@ import (
 	logger "github.com/tendermint/tmlibs/logger"
 
 	abci "github.com/tendermint/abci/types"
-	"github.com/tendermint/tendermint/config/tendermint_test"
+	cfg "github.com/tendermint/tendermint/config"
 	nm "github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/proxy"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -23,7 +23,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-var config *nm.Config
+var config *cfg.Config
 
 const tmLogLevel = "error"
 
@@ -53,19 +53,19 @@ func makeAddrs() (string, string, string) {
 }
 
 // GetConfig returns a config for the test cases as a singleton
-func GetConfig() *nm.Config {
+func GetConfig() *cfg.Config {
 	if config == nil {
 		pathname := makePathname()
-		viperConfig := tendermint_test.ResetConfig(pathname)
-		// Shut up the logging
-		logger.SetLogLevel(tmLogLevel)
+		config = cfg.ResetTestRoot(pathname)
+
 		// and we use random ports to run in parallel
 		tm, rpc, grpc := makeAddrs()
-		viperConfig.Set("p2p.laddr", tm)
-		viperConfig.Set("rpc_laddr", rpc)
-		viperConfig.Set("grpc_laddr", grpc)
+		config.P2P.ListenAddress = tm
+		config.RPCListenAddress = rpc
+		config.GRPCListenAddress = grpc
 
-		config = nm.ConfigFromViper(viperConfig)
+		// Shut up the logging
+		logger.SetLogLevel(tmLogLevel)
 	}
 	return config
 }
@@ -108,7 +108,7 @@ func StartTendermint(app abci.Application) *nm.Node {
 func NewTendermint(app abci.Application) *nm.Node {
 	// Create & start node
 	config := GetConfig()
-	privValidatorFile := config.PrivValidatorFile
+	privValidatorFile := config.PrivValidatorFile()
 	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
 	papp := proxy.NewLocalClientCreator(app)
 	node := nm.NewNode(config, privValidator, papp)

@@ -23,7 +23,7 @@ var RootCmd = &cobra.Command{
 	Short: "Tendermint Core (BFT Consensus) in Go",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		err := viper.Unmarshal(config)
-		cfg.SetRoot(config, config.RootDir)
+		config.SetRoot(config.RootDir)
 		cfg.EnsureRoot(config.RootDir)
 		logger.SetLogLevel(config.LogLevel)
 		return err
