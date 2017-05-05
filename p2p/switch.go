@@ -76,8 +76,7 @@ type Switch struct {
 }
 
 var (
-	ErrSwitchDuplicatePeer      = errors.New("Duplicate peer")
-	ErrSwitchMaxPeersPerIPRange = errors.New("IP range has too many peers")
+	ErrSwitchDuplicatePeer = errors.New("Duplicate peer")
 )
 
 func NewSwitch(config *cfg.P2PConfig) *Switch {
@@ -221,17 +220,22 @@ func (sw *Switch) AddPeer(peer *Peer) error {
 		return err
 	}
 
-	// Add the peer to .peers
-	// ignore if duplicate or if we already have too many for that IP range
-	if err := sw.peers.Add(peer); err != nil {
-		sw.Logger.Info("Ignoring peer", "error", err, "peer", peer)
-		peer.Stop()
-		return err
+	// Check for duplicate peer
+	if sw.peers.Has(peer.Key) {
+		return ErrSwitchDuplicatePeer
+
 	}
 
 	// Start peer
 	if sw.IsRunning() {
 		sw.startInitPeer(peer)
+	}
+
+	// Add the peer to .peers.
+	// We start it first so that a peer in the list is safe to Stop.
+	// It should not err since we already checked peers.Has()
+	if err := sw.peers.Add(peer); err != nil {
+		return err
 	}
 
 	sw.Logger.Info("Added peer", "peer", peer)

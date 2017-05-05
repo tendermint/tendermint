@@ -16,7 +16,6 @@ type IPeerSet interface {
 
 // PeerSet is a special structure for keeping a table of peers.
 // Iteration over the peers is super fast and thread-safe.
-// We also track how many peers per IP range and avoid too many
 type PeerSet struct {
 	mtx    sync.Mutex
 	lookup map[string]*peerSetItem
@@ -35,8 +34,7 @@ func NewPeerSet() *PeerSet {
 	}
 }
 
-// Returns false if peer with key (PubKeyEd25519) is already in set
-// or if we have too many peers from the peer's IP range
+// Returns false if peer with key (PubKeyEd25519) is already set
 func (ps *PeerSet) Add(peer *Peer) error {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
