@@ -1,5 +1,5 @@
-hash: c29114af0ddcb75dd9093d4006dd6b9039640a35540d5f44f9c19261b5730781
-updated: 2017-05-04T17:47:52.109070369Z
+hash: 8038c78e65a8b5ad4bc6ff8e74c40bd02be23e2c3c4245aff8b354e3dbdec1e2
+updated: 2017-05-05T12:30:23.699400925Z
 imports:
 - name: github.com/btcsuite/btcd
   version: 4b348c1d33373d672edd83fc576892d0e46686d2
@@ -27,7 +27,7 @@ imports:
 - name: github.com/kr/logfmt
   version: b84e30acd515aadc4b783ad4ff83aff3299bdfe0
 - name: github.com/pkg/errors
-  version: ff09b135c25aae272398c51a07235b90a75aa4f0
+  version: c605e284fe17294bda444b34710735b29d1a9d90
 - name: github.com/syndtr/goleveldb
   version: 8c81ea47d4c41a385645e133e15510fc6a2a74b4
   subpackages:
@@ -99,7 +99,7 @@ imports:
   subpackages:
   - googleapis/rpc/status
 - name: google.golang.org/grpc
-  version: 68a5d50f4517bae2b44b18092410fe248d153f1e
+  version: 844f573616520565fdc6fb4db242321b5456fd6d
   subpackages:
   - codes
   - credentials
