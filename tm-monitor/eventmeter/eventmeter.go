@@ -6,15 +6,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-kit/kit/log"
 	"github.com/gorilla/websocket"
+	"github.com/pkg/errors"
 	metrics "github.com/rcrowley/go-metrics"
 	events "github.com/tendermint/go-events"
 	client "github.com/tendermint/go-rpc/client"
-	log15 "github.com/tendermint/log15"
 )
-
-// Log allows you to set your own logger.
-var Log log15.Logger
 
 //------------------------------------------------------
 // Generic system to subscribe to events and record their frequency
@@ -96,6 +94,8 @@ type EventMeter struct {
 	unmarshalEvent EventUnmarshalFunc
 
 	quit chan struct{}
+
+	logger log.Logger
 }
 
 func NewEventMeter(addr string, unmarshalEvent EventUnmarshalFunc) *EventMeter {
@@ -105,9 +105,14 @@ func NewEventMeter(addr string, unmarshalEvent EventUnmarshalFunc) *EventMeter {
 		timer:          metrics.NewTimer(),
 		receivedPong:   true,
 		unmarshalEvent: unmarshalEvent,
-		quit:           make(chan struct{}),
+		logger:         log.NewNopLogger(),
 	}
 	return em
+}
+
+// SetLogger lets you set your own logger
+func (em *EventMeter) SetLogger(l log.Logger) {
+	em.logger = l
 }
 
 func (em *EventMeter) String() string {
@@ -115,6 +120,10 @@ func (em *EventMeter) String() string {
 }
 
 func (em *EventMeter) Start() error {
+	if _, err := em.wsc.Reset(); err != nil {
+		return err
+	}
+
 	if _, err := em.wsc.Start(); err != nil {
 		return err
 	}
@@ -130,19 +139,28 @@ func (em *EventMeter) Start() error {
 		}
 		return nil
 	})
+
+	em.quit = make(chan struct{})
 	go em.receiveRoutine()
-	return nil
+
+	return em.resubscribe()
 }
 
+// Stop stops the EventMeter.
 func (em *EventMeter) Stop() {
-	<-em.quit
+	close(em.quit)
 
-	em.RegisterDisconnectCallback(nil) // so we don't try and reconnect
-	em.wsc.Stop()                      // close(wsc.Quit)
+	if em.wsc.IsRunning() {
+		em.wsc.Stop()
+	}
 }
 
-func (em *EventMeter) StopAndReconnect() {
-	em.wsc.Stop()
+// StopAndCallDisconnectCallback stops the EventMeter and calls
+// disconnectCallback if present.
+func (em *EventMeter) StopAndCallDisconnectCallback() {
+	if em.wsc.IsRunning() {
+		em.wsc.Stop()
+	}
 
 	em.mtx.Lock()
 	defer em.mtx.Unlock()
@@ -216,38 +234,50 @@ func (em *EventMeter) RegisterDisconnectCallback(f DisconnectCallbackFunc) {
 
 //------------------------------------------------------
 
+func (em *EventMeter) resubscribe() error {
+	for eventID, _ := range em.events {
+		if err := em.wsc.Subscribe(eventID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (em *EventMeter) receiveRoutine() {
 	pingTime := time.Second * 1
 	pingTicker := time.NewTicker(pingTime)
 	pingAttempts := 0 // if this hits maxPingsPerPong we kill the conn
+
 	var err error
 	for {
 		select {
 		case <-pingTicker.C:
 			if pingAttempts, err = em.pingForLatency(pingAttempts); err != nil {
-				Log.Error("Failed to write ping message on websocket", err)
-				em.StopAndReconnect()
+				em.logger.Log("err", errors.Wrap(err, "failed to write ping message on websocket"))
+				em.StopAndCallDisconnectCallback()
 				return
 			} else if pingAttempts >= maxPingsPerPong {
-				Log.Error(fmt.Sprintf("Have not received a pong in %v", time.Duration(pingAttempts)*pingTime))
-				em.StopAndReconnect()
+				em.logger.Log("err", errors.Errorf("Have not received a pong in %v", time.Duration(pingAttempts)*pingTime))
+				em.StopAndCallDisconnectCallback()
 				return
 			}
 		case r := <-em.wsc.ResultsCh:
 			if r == nil {
-				em.StopAndReconnect()
+				em.logger.Log("err", errors.New("Expected some event, received nil"))
+				em.StopAndCallDisconnectCallback()
 				return
 			}
 			eventID, data, err := em.unmarshalEvent(r)
 			if err != nil {
-				Log.Error(err.Error())
+				em.logger.Log("err", errors.Wrap(err, "failed to unmarshal event"))
 				continue
 			}
 			if eventID != "" {
 				em.updateMetric(eventID, data)
 			}
 		case <-em.wsc.Quit:
-			em.StopAndReconnect()
+			em.logger.Log("err", errors.New("WSClient closed unexpectedly"))
+			em.StopAndCallDisconnectCallback()
 			return
 		case <-em.quit:
 			return

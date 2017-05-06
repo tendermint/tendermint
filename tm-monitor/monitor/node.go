@@ -98,6 +98,7 @@ func (n *Node) NotifyAboutDisconnects(ch chan<- bool) {
 // SetLogger lets you set your own logger
 func (n *Node) SetLogger(l log.Logger) {
 	n.logger = l
+	n.em.SetLogger(l)
 }
 
 func (n *Node) Start() error {
@@ -120,12 +121,7 @@ func (n *Node) Start() error {
 func (n *Node) Stop() {
 	n.Online = false
 
-	n.em.RegisterLatencyCallback(nil)
-	n.em.Unsubscribe(tmtypes.EventStringNewBlockHeader())
-	n.em.RegisterDisconnectCallback(nil)
-
-	// FIXME stop blocks at event_meter.go:140
-	// n.em.Stop()
+	n.em.Stop()
 
 	close(n.quit)
 }
@@ -166,7 +162,7 @@ func disconnectCallback(n *Node) em.DisconnectCallbackFunc {
 			n.disconnectCh <- true
 		}
 
-		if err := n.RestartBackOff(); err != nil {
+		if err := n.RestartEventMeterBackoff(); err != nil {
 			n.logger.Log("err", errors.Wrap(err, "restart failed"))
 		} else {
 			n.Online = true
@@ -179,14 +175,14 @@ func disconnectCallback(n *Node) em.DisconnectCallbackFunc {
 	}
 }
 
-func (n *Node) RestartBackOff() error {
+func (n *Node) RestartEventMeterBackoff() error {
 	attempt := 0
 
 	for {
 		d := time.Duration(math.Exp2(float64(attempt)))
 		time.Sleep(d * time.Second)
 
-		if err := n.Start(); err != nil {
+		if err := n.em.Start(); err != nil {
 			n.logger.Log("err", errors.Wrap(err, "restart failed"))
 		} else {
 			// TODO: authenticate pubkey
@@ -265,6 +261,7 @@ type eventMeter interface {
 	RegisterDisconnectCallback(em.DisconnectCallbackFunc)
 	Subscribe(string, em.EventCallbackFunc) error
 	Unsubscribe(string) error
+	SetLogger(l log.Logger)
 }
 
 // UnmarshalEvent unmarshals a json event
