@@ -224,15 +224,17 @@ func (g *Group) RotateFile() {
 	g.mtx.Lock()
 	defer g.mtx.Unlock()
 
-	dstPath := filePathForIndex(g.Head.Path, g.maxIndex, g.maxIndex+1)
-	err := os.Rename(g.Head.Path, dstPath)
-	if err != nil {
+	headPath := g.Head.Path
+
+	if err := g.Head.closeFile(); err != nil {
 		panic(err)
 	}
-	err = g.Head.closeFile()
-	if err != nil {
+
+	indexPath := filePathForIndex(headPath, g.maxIndex, g.maxIndex+1)
+	if err := os.Rename(headPath, indexPath); err != nil {
 		panic(err)
 	}
+
 	g.maxIndex += 1
 }
 
