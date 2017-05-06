@@ -11,7 +11,8 @@ install: get_vendor_deps
 	@go install ./cmd/tendermint
 
 build:
-	go build -o build/tendermint ./cmd/tendermint
+	go build --ldflags '-extldflags "-static"' \
+		--ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse HEAD`"  -o build/tendermint ./cmd/tendermint/
 
 build_race:
 	go build -race -o build/tendermint ./cmd/tendermint
