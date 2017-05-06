@@ -45,7 +45,7 @@ func (l *filter) Error(msg string, keyvals ...interface{}) error {
 }
 
 func (l *filter) With(keyvals ...interface{}) Logger {
-	return l.next.With(keyvals...)
+	return &filter{next: l.next.With(keyvals...), allowed: l.allowed, errNotAllowed: l.errNotAllowed}
 }
 
 // Option sets a parameter for the filter.
