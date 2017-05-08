@@ -44,6 +44,12 @@ func TestTMFmtLogger(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.Regexp(t, regexp.MustCompile(`N\[.+\] Hello \s+\n$`), buf.String())
+
+	buf.Reset()
+	if err := logger.Log("module", "main", "module", "crypto", "module", "wire"); err != nil {
+		t.Fatal(err)
+	}
+	assert.Regexp(t, regexp.MustCompile(`N\[.+\] unknown \s+module=wire\s+\n$`), buf.String())
 }
 
 func BenchmarkTMFmtLoggerSimple(b *testing.B) {

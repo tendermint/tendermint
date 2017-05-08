@@ -10,7 +10,8 @@ import (
 )
 
 const (
-	msgKey = "_msg" // "_" prefixed to avoid collisions
+	msgKey    = "_msg" // "_" prefixed to avoid collisions
+	moduleKey = "module"
 )
 
 type tmLogger struct {

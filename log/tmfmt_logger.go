@@ -51,13 +51,15 @@ func (l tmfmtLogger) Log(keyvals ...interface{}) error {
 
 	lvl := "none"
 	msg := "unknown"
-	lvlIndex := -1
-	msgIndex := -1
+	module := "unknown"
+
+	// indexes of keys to skip while encoding later
+	excludeIndexes := make([]int, 0)
 
 	for i := 0; i < len(keyvals)-1; i += 2 {
 		// Extract level
 		if keyvals[i] == kitlevel.Key() {
-			lvlIndex = i
+			excludeIndexes = append(excludeIndexes, i)
 			switch keyvals[i+1].(type) {
 			case string:
 				lvl = keyvals[i+1].(string)
@@ -66,18 +68,14 @@ func (l tmfmtLogger) Log(keyvals ...interface{}) error {
 			default:
 				panic(fmt.Sprintf("level value of unknown type %T", keyvals[i+1]))
 			}
-			continue
-		}
-
-		// and message
-		if keyvals[i] == msgKey {
-			msgIndex = i
+			// and message
+		} else if keyvals[i] == msgKey {
+			excludeIndexes = append(excludeIndexes, i)
 			msg = keyvals[i+1].(string)
-			continue
-		}
-
-		if lvlIndex > 0 && msgIndex > 0 { // found all we're looking for
-			break
+			// and module (could be multiple keyvals; if such case last keyvalue wins)
+		} else if keyvals[i] == moduleKey {
+			excludeIndexes = append(excludeIndexes, i)
+			module = keyvals[i+1].(string)
 		}
 	}
 
@@ -92,10 +90,18 @@ func (l tmfmtLogger) Log(keyvals ...interface{}) error {
 	//     Stopping ...					- message
 	enc.buf.WriteString(fmt.Sprintf("%c[%s] %-44s", lvl[0]-32, time.Now().UTC().Format("01-02|15:04:05.000"), msg))
 
+	if module != "unknown" {
+		enc.buf.WriteString("module=" + module + " ")
+	}
+
+KeyvalueLoop:
 	for i := 0; i < len(keyvals)-1; i += 2 {
-		if i == lvlIndex || i == msgIndex {
-			continue
+		for _, j := range excludeIndexes {
+			if i == j {
+				continue KeyvalueLoop
+			}
 		}
+
 		if err := enc.EncodeKeyval(keyvals[i], keyvals[i+1]); err != nil {
 			return err
 		}
