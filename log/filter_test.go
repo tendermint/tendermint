@@ -93,11 +93,17 @@ func TestLevelContext(t *testing.T) {
 
 	var logger log.Logger
 	logger = log.NewTMJSONLogger(&buf)
-	logger = log.NewFilter(logger, log.AllowAll())
+	logger = log.NewFilter(logger, log.AllowError())
 	logger = logger.With("context", "value")
 
+	logger.Error("foo", "bar", "baz")
+	if want, have := `{"_msg":"foo","bar":"baz","context":"value","level":"error"}`, strings.TrimSpace(buf.String()); want != have {
+		t.Errorf("\nwant '%s'\nhave '%s'", want, have)
+	}
+
+	buf.Reset()
 	logger.Info("foo", "bar", "baz")
-	if want, have := `{"_msg":"foo","bar":"baz","context":"value","level":"info"}`, strings.TrimSpace(buf.String()); want != have {
+	if want, have := ``, strings.TrimSpace(buf.String()); want != have {
 		t.Errorf("\nwant '%s'\nhave '%s'", want, have)
 	}
 }
