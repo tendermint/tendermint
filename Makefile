@@ -8,7 +8,7 @@ TMHOME = $${TMHOME:-$$HOME/.tendermint}
 all: install test
 
 install: get_vendor_deps
-	@go install ./cmd/tendermint
+	@go install --ldflags '-extldflags "-static"' ./cmd/tendermint
 
 build:
 	go build --ldflags '-extldflags "-static"' \
