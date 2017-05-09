@@ -1,13 +1,3 @@
-/*
-Package server is used to start a new ABCI server.  
-
-It defines the struct for gRPC server settings, and functions for: 
-
-* Starting a new gRPC server
-* Stopping a gRPC server
-
-*/
-
 package server
 
 import (
@@ -22,7 +12,7 @@ import (
 
 // var maxNumberConnections = 2
 
-//GRPCServer is used to set the protocol and address for gRPC.  
+//GRPCServer is used to set the protocol and address for gRPC.
 type GRPCServer struct {
 	cmn.BaseService
 
@@ -49,7 +39,7 @@ func NewGRPCServer(protoAddr string, app types.ABCIApplicationServer) (cmn.Servi
 	return s, err
 }
 
-//Onstart registers a new gRPC service and tells that service to listen on the port that is set in NewGRPCServer.  
+//Onstart registers a new gRPC service and tells that service to listen on the port that is set in NewGRPCServer.
 func (s *GRPCServer) OnStart() error {
 	s.BaseService.OnStart()
 	ln, err := net.Listen(s.proto, s.addr)
@@ -63,7 +53,7 @@ func (s *GRPCServer) OnStart() error {
 	return nil
 }
 
-//OnStop is called when a gRPC server is stopped.  
+//OnStop is called when a gRPC server is stopped.
 func (s *GRPCServer) OnStop() {
 	s.BaseService.OnStop()
 	s.server.Stop()
