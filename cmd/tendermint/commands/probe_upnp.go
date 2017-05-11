@@ -20,8 +20,7 @@ func init() {
 }
 
 func probeUpnp(cmd *cobra.Command, args []string) error {
-
-	capabilities, err := upnp.Probe()
+	capabilities, err := upnp.Probe(logger)
 	if err != nil {
 		fmt.Println("Probe failed: %v", err)
 	} else {
