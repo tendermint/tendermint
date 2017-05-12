@@ -281,6 +281,7 @@ func (pool *BlockPool) makeNextRequester() {
 
 	nextHeight := pool.height + len(pool.requesters)
 	request := newBPRequester(pool, nextHeight)
+	request.SetLogger(pool.Logger.With("height", nextHeight))
 
 	pool.requesters[nextHeight] = request
 	pool.numPending++

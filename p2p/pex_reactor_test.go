@@ -163,7 +163,7 @@ func TestPEXReactorAbuseFromPeer(t *testing.T) {
 func createRandomPeer(outbound bool) *Peer {
 	addr := cmn.Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256)
 	netAddr, _ := NewNetAddressString(addr)
-	return &Peer{
+	p := &Peer{
 		Key: cmn.RandStr(12),
 		NodeInfo: &NodeInfo{
 			ListenAddr: addr,
@@ -171,4 +171,6 @@ func createRandomPeer(outbound bool) *Peer {
 		outbound: outbound,
 		mconn:    &MConnection{RemoteAddress: netAddr},
 	}
+	p.SetLogger(log.TestingLogger().With("peer", addr))
+	return p
 }
