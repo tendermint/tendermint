@@ -6,9 +6,9 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/merkle"
-	"github.com/tendermint/go-wire"
 )
 
 // ValidatorSet represent a set of *Validator at a given height.
@@ -23,8 +23,8 @@ import (
 // TODO: consider validator Accum overflow
 // TODO: move valset into an iavl tree where key is 'blockbonded|pubkey'
 type ValidatorSet struct {
-	Validators []*Validator // NOTE: persisted via reflect, must be exported.
-	Proposer   *Validator
+	Validators []*Validator `json:"validators"`
+	Proposer   *Validator   `json:"proposer"`
 
 	// cached (unexported)
 	totalVotingPower int64
