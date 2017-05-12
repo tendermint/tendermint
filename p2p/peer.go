@@ -184,7 +184,7 @@ func (p *Peer) HandshakeTimeout(ourNodeInfo *NodeInfo, timeout time.Duration) er
 	return nil
 }
 
-// Addr returns peer's network address.
+// Addr returns peer's remote network address.
 func (p *Peer) Addr() net.Addr {
 	return p.conn.RemoteAddr()
 }
@@ -279,10 +279,8 @@ func (p *Peer) Get(key string) interface{} {
 }
 
 func dial(addr *NetAddress, config *PeerConfig) (net.Conn, error) {
-	// log.Info("Dialing address", "address", addr)
 	conn, err := addr.DialTimeout(config.DialTimeout * time.Second)
 	if err != nil {
-		// log.Info("Failed dialing address", "address", addr, "error", err)
 		return nil, err
 	}
 	return conn, nil

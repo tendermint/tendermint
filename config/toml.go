@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/logger"
 )
 
 /****** these are for production settings ***********/
@@ -83,7 +82,6 @@ func ResetTestRoot(testName string) *Config {
 	cmn.MustWriteFile(privFilePath, []byte(testPrivValidator), 0644)
 
 	config := TestConfig().SetRoot(rootDir)
-	logger.SetLogLevel(config.LogLevel)
 	return config
 }
 

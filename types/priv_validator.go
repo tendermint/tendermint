@@ -181,7 +181,7 @@ func (privVal *PrivValidator) SignProposal(chainID string, proposal *Proposal) e
 	defer privVal.mtx.Unlock()
 	signature, err := privVal.signBytesHRS(proposal.Height, proposal.Round, stepPropose, SignBytes(chainID, proposal))
 	if err != nil {
-		return errors.New(Fmt("Error signing proposal: %v", err))
+		return fmt.Errorf("Error signing proposal: %v", err)
 	}
 	proposal.Signature = signature
 	return nil

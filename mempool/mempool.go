@@ -13,11 +13,11 @@ import (
 	auto "github.com/tendermint/tmlibs/autofile"
 	"github.com/tendermint/tmlibs/clist"
 	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tmlibs/log"
 )
 
 /*

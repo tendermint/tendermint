@@ -4,6 +4,7 @@ import (
 	"time"
 
 	. "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
 )
 
 var (
@@ -18,6 +19,8 @@ type TimeoutTicker interface {
 	Stop() bool
 	Chan() <-chan timeoutInfo       // on which to receive a timeout
 	ScheduleTimeout(ti timeoutInfo) // reset the timer
+
+	SetLogger(log.Logger)
 }
 
 // timeoutTicker wraps time.Timer,

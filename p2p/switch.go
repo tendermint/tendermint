@@ -310,7 +310,6 @@ func (sw *Switch) dialSeed(addr *NetAddress) {
 	peer, err := sw.DialPeerWithAddress(addr, true)
 	if err != nil {
 		sw.Logger.Error("Error dialing seed", "error", err)
-		return
 	} else {
 		sw.Logger.Info("Connected to seed", "peer", peer)
 	}
@@ -320,10 +319,11 @@ func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) (*Peer,
 	sw.dialing.Set(addr.IP.String(), addr)
 	defer sw.dialing.Delete(addr.IP.String())
 
+	sw.Logger.Info("Dialing peer", "address", addr)
 	peer, err := newOutboundPeerWithConfig(addr, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, sw.peerConfig)
 	peer.SetLogger(sw.Logger.With("peer", addr))
 	if err != nil {
-		sw.Logger.Info("Failed dialing peer", "address", addr, "error", err)
+		sw.Logger.Error("Failed to dial peer", "address", addr, "error", err)
 		return nil, err
 	}
 	if persistent {
@@ -331,7 +331,7 @@ func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) (*Peer,
 	}
 	err = sw.AddPeer(peer)
 	if err != nil {
-		sw.Logger.Info("Failed adding peer", "address", addr, "error", err)
+		sw.Logger.Error("Failed to add peer", "address", addr, "error", err)
 		peer.CloseConn()
 		return nil, err
 	}

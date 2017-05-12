@@ -16,6 +16,7 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
 )
 
 //-----------------------------------------------------------------------------
@@ -244,6 +245,12 @@ func NewConsensusState(config *cfg.ConsensusConfig, state *sm.State, proxyAppCon
 //----------------------------------------
 // Public interface
 
+// SetLogger implements Service.
+func (cs *ConsensusState) SetLogger(l log.Logger) {
+	cs.BaseService.Logger = l
+	cs.timeoutTicker.SetLogger(l)
+}
+
 // SetEventSwitch implements events.Eventable
 func (cs *ConsensusState) SetEventSwitch(evsw types.EventSwitch) {
 	cs.evsw = evsw
@@ -369,6 +376,10 @@ func (cs *ConsensusState) OpenWAL(walFile string) (err error) {
 	defer cs.mtx.Unlock()
 	wal, err := NewWAL(walFile, cs.config.WalLight)
 	if err != nil {
+		return err
+	}
+	wal.SetLogger(cs.Logger.With("wal", walFile))
+	if _, err := wal.Start(); err != nil {
 		return err
 	}
 	cs.wal = wal
@@ -576,7 +587,7 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 	for {
 		if maxSteps > 0 {
 			if cs.nSteps >= maxSteps {
-				cs.Logger.Error("reached max steps. exiting receive routine")
+				cs.Logger.Info("reached max steps. exiting receive routine")
 				cs.nSteps = 0
 				return
 			}
@@ -904,7 +915,7 @@ func (cs *ConsensusState) defaultDoPrevote(height int, round int) {
 
 	// If ProposalBlock is nil, prevote nil.
 	if cs.ProposalBlock == nil {
-		cs.Logger.Error("enterPrevote: ProposalBlock is nil")
+		cs.Logger.Info("enterPrevote: ProposalBlock is nil")
 		cs.signAddVote(types.VoteTypePrevote, nil, types.PartSetHeader{})
 		return
 	}
@@ -1293,7 +1304,7 @@ func (cs *ConsensusState) addProposalBlockPart(height int, part *types.Part, ver
 		var err error
 		cs.ProposalBlock = wire.ReadBinary(&types.Block{}, cs.ProposalBlockParts.GetReader(), types.MaxBlockSize, &n, &err).(*types.Block)
 		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
-		cs.Logger.Info("Received complete proposal block", "height", cs.ProposalBlock.Height, "hash", fmt.Sprintf("%X", cs.ProposalBlock.Hash()))
+		cs.Logger.Info("Received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
 		if cs.Step == RoundStepPropose && cs.isProposalComplete() {
 			// Move onto the next step
 			cs.enterPrevote(height, cs.Round)

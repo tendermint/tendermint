@@ -1,5 +1,5 @@
-hash: 9f0eb87d9c5ebe5d81759b20be7c626d081c0cfc6647b0dd586f4a682d796b58
-updated: 2017-05-12T16:57:05.086543617Z
+hash: 9caff08aa026986b239e4aeb9d876bdddfacadc64a660ee8109e77a211e53436
+updated: 2017-05-13T14:12:48.997991788Z
 imports:
 - name: github.com/btcsuite/btcd
   version: 1ae306021e323ae11c71ffb8546fbd9019e6cb6f
@@ -28,7 +28,7 @@ imports:
   subpackages:
   - proto
 - name: github.com/golang/protobuf
-  version: 157d9c53be5810dd5a0fac4a467f7d5f400042ea
+  version: fec3b39b059c0f88fa6b20f5ed012b1aa203a8b4
   subpackages:
   - proto
   - ptypes/any
@@ -55,10 +55,6 @@ imports:
   version: b84e30acd515aadc4b783ad4ff83aff3299bdfe0
 - name: github.com/magiconair/properties
   version: 51463bfca2576e06c62a8504b5c0f06d61312647
-- name: github.com/mattn/go-colorable
-  version: ded68f7a9561c023e790de24279db7ebf473ea80
-- name: github.com/mattn/go-isatty
-  version: fc9e8d8ef48496124e79ae0df75490096eccf6fe
 - name: github.com/mitchellh/mapstructure
   version: cc8532a8e9a55ea36402aa21efdf403a60d34096
 - name: github.com/pelletier/go-buffruneio
@@ -78,7 +74,7 @@ imports:
 - name: github.com/spf13/cast
   version: acbeb36b902d72a7a4c18e8f3241075e7ab763e4
 - name: github.com/spf13/cobra
-  version: 3454e0e28e69c1b8effa6b5123c8e4185e20d696
+  version: 90687e7bfc7e1e5cd88eb1f513f32f01dc03dd7c
 - name: github.com/spf13/jwalterweatherman
   version: 8f07c835e5cc1450c082fe3a439cf87b0cbb2d99
 - name: github.com/spf13/pflag
@@ -106,7 +102,7 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/abci
-  version: 50a9967c79d89742151c7f1a981678df8c21f9dc
+  version: b662bc7d3439b3c2cce615e8c3502b762e133dbf
   subpackages:
   - client
   - example/counter
@@ -121,14 +117,10 @@ imports:
 - name: github.com/tendermint/go-crypto
   version: e71bbb2509b586f0b24f120b6ba57f32aefa1579
 - name: github.com/tendermint/go-wire
-  version: b53add0b622662731985485f3a19be7f684660b8
+  version: 82d31b6afb3c438639bffc5e1c7318b9a55285b3
   subpackages:
   - data
   - data/base58
-- name: github.com/tendermint/log15
-  version: f91285dece9f4875421b481da3e613d83d44f29b
-  subpackages:
-  - term
 - name: github.com/tendermint/merkleeyes
   version: c722818b460381bc5b82e38c73ff6e22a9df624d
   subpackages:
@@ -137,7 +129,7 @@ imports:
   - iavl
   - testutil
 - name: github.com/tendermint/tmlibs
-  version: 25a5bc2697d2c9aedb6594366e5269bbe8f6e6ee
+  version: 8f5a175ff4c869fedde710615a11f5745ff69bf3
   subpackages:
   - autofile
   - cli
@@ -147,7 +139,6 @@ imports:
   - events
   - flowrate
   - log
-  - logger
   - merkle
   - test
 - name: golang.org/x/crypto
@@ -162,7 +153,7 @@ imports:
   - ripemd160
   - salsa20/salsa
 - name: golang.org/x/net
-  version: c9b681d35165f1995d6f3034e61f8761d4b90c99
+  version: 84f0e6f92b10139f986b1756e149a7d9de270cdc
   subpackages:
   - context
   - http2
@@ -172,7 +163,7 @@ imports:
   - lex/httplex
   - trace
 - name: golang.org/x/sys
-  version: 156c5a2da4a2085250f45d65e24fabe6ed437394
+  version: f845067cf72a21fb4929b0e6a35273bd83b56396
   subpackages:
   - unix
 - name: golang.org/x/text
@@ -187,7 +178,7 @@ imports:
   subpackages:
   - googleapis/rpc/status
 - name: google.golang.org/grpc
-  version: a0c3e72252b6fbf4826bb143e450eb05588a9d6d
+  version: 1c69e4cae0f5180ce7d8b472bf0a55d2654fe31b
   subpackages:
   - codes
   - credentials

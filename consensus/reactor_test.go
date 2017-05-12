@@ -25,7 +25,7 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, N int, subscribeEven
 	eventChans := make([]chan interface{}, N)
 	for i := 0; i < N; i++ {
 		reactors[i] = NewConsensusReactor(css[i], true) // so we dont start the consensus states
-		reactors[i].SetLogger(log.TestingLogger())
+		reactors[i].SetLogger(log.TestingLogger().With("reactor", i))
 
 		eventSwitch := events.NewEventSwitch()
 		eventSwitch.SetLogger(log.TestingLogger().With("module", "events"))
@@ -265,7 +265,6 @@ func waitForAndValidateBlock(t *testing.T, n int, activeVals map[string]struct{}
 
 		eventChans[j] <- struct{}{}
 		wg.Done()
-		t.Logf("[WARN] Done wait group height=%v validator=%v", newBlock.Height, j)
 	}, css)
 }
 

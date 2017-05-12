@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/tendermint/go-crypto"
+	crypto "github.com/tendermint/go-crypto"
 )
 
 const maxNodeInfoSize = 10240 // 10Kb
@@ -66,6 +66,10 @@ func (info *NodeInfo) ListenPort() int {
 		return -1
 	}
 	return port_i
+}
+
+func (info NodeInfo) String() string {
+	return fmt.Sprintf("NodeInfo{pk: %v, moniker: %v, network: %v [remote %v, listen %v], version: %v (%v)}", info.PubKey, info.Moniker, info.Network, info.RemoteAddr, info.ListenAddr, info.Version, info.Other)
 }
 
 func splitVersion(version string) (string, string, string, error) {

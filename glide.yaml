@@ -11,8 +11,11 @@ import:
 - package: github.com/pkg/errors
 - package: github.com/spf13/cobra
 - package: github.com/spf13/viper
+- package: github.com/stretchr/testify
+  subpackages:
+  - require
 - package: github.com/tendermint/abci
-  version: feature/new-logging
+  version: develop
   subpackages:
   - client
   - example/dummy
@@ -23,7 +26,6 @@ import:
   version: develop
   subpackages:
   - data
-- package: github.com/tendermint/log15
 - package: github.com/tendermint/tmlibs
   version: develop
   subpackages:
@@ -46,11 +48,6 @@ import:
   - context
 - package: google.golang.org/grpc
 testImport:
-- package: github.com/stretchr/testify
-  version: ^1.1.4
-  subpackages:
-  - assert
-  - require
 - package: github.com/tendermint/merkleeyes
   version: develop
   subpackages:

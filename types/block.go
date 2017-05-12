@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tendermint/go-wire"
+	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/go-wire/data"
 	. "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/merkle"
@@ -98,7 +98,7 @@ func (b *Block) FillHeader() {
 
 // Computes and returns the block hash.
 // If the block is incomplete, block hash is nil for safety.
-func (b *Block) Hash() []byte {
+func (b *Block) Hash() data.Bytes {
 	// fmt.Println(">>", b.Data)
 	if b == nil || b.Header == nil || b.Data == nil || b.LastCommit == nil {
 		return nil

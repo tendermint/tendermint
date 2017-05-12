@@ -323,8 +323,11 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	testPartSize = config.Consensus.BlockPartSize
 
 	wal, err := NewWAL(walFile, false)
-	wal.SetLogger(log.TestingLogger())
 	if err != nil {
+		t.Fatal(err)
+	}
+	wal.SetLogger(log.TestingLogger())
+	if _, err := wal.Start(); err != nil {
 		t.Fatal(err)
 	}
 	chain, commits, err := makeBlockchainFromWAL(wal)

@@ -207,7 +207,7 @@ func (conR *ConsensusReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte)
 
 	case DataChannel:
 		if conR.fastSync {
-			conR.Logger.Error("Ignoring message received during fastSync", "msg", msg)
+			conR.Logger.Info("Ignoring message received during fastSync", "msg", msg)
 			return
 		}
 		switch msg := msg.(type) {

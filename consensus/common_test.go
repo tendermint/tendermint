@@ -456,6 +456,9 @@ func (m *mockTicker) Chan() <-chan timeoutInfo {
 	return m.c
 }
 
+func (mockTicker) SetLogger(log.Logger) {
+}
+
 //------------------------------------
 
 func newCounter() abci.Application {

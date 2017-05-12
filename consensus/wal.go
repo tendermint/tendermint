@@ -50,8 +50,7 @@ func NewWAL(walFile string, light bool) (*WAL, error) {
 		light: light,
 	}
 	wal.BaseService = *NewBaseService(nil, "WAL", wal)
-	_, err = wal.Start()
-	return wal, err
+	return wal, nil
 }
 
 func (wal *WAL) OnStart() error {

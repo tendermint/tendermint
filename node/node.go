@@ -75,9 +75,14 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 	state := sm.GetState(stateDB, config.GenesisFile())
 	state.SetLogger(logger.With("module", "state"))
 
+	consensusLogger := logger.With("module", "consensus")
+
 	// Create the proxyApp, which manages connections (consensus, mempool, query)
 	// and sync tendermint and the app by replaying any necessary blocks
-	proxyApp := proxy.NewAppConns(clientCreator, consensus.NewHandshaker(state, blockStore))
+	handshaker := consensus.NewHandshaker(state, blockStore)
+	handshaker.SetLogger(consensusLogger)
+	proxyApp := proxy.NewAppConns(clientCreator, handshaker)
+	proxyApp.SetLogger(logger.With("module", "proxy"))
 	if _, err := proxyApp.Start(); err != nil {
 		cmn.Exit(cmn.Fmt("Error starting proxy app connections: %v", err))
 	}
@@ -102,6 +107,7 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 
 	// Make event switch
 	eventSwitch := types.NewEventSwitch()
+	eventSwitch.SetLogger(logger.With("module", "types"))
 	_, err := eventSwitch.Start()
 	if err != nil {
 		cmn.Exit(cmn.Fmt("Failed to start switch: %v", err))
@@ -119,21 +125,28 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 
 	// Make BlockchainReactor
 	bcReactor := bc.NewBlockchainReactor(state.Copy(), proxyApp.Consensus(), blockStore, fastSync)
+	bcReactor.SetLogger(logger.With("module", "blockchain"))
 
 	// Make MempoolReactor
+	mempoolLogger := logger.With("module", "consensus")
 	mempool := mempl.NewMempool(config.Mempool, proxyApp.Mempool())
-	mempool.SetLogger(logger.With("module", "mempool"))
+	mempool.SetLogger(mempoolLogger)
 	mempoolReactor := mempl.NewMempoolReactor(config.Mempool, mempool)
+	mempoolReactor.SetLogger(mempoolLogger)
 
 	// Make ConsensusReactor
 	consensusState := consensus.NewConsensusState(config.Consensus, state.Copy(), proxyApp.Consensus(), blockStore, mempool)
-	consensusState.SetLogger(logger.With("module", "consensus"))
+	consensusState.SetLogger(consensusLogger)
 	if privValidator != nil {
 		consensusState.SetPrivValidator(privValidator)
 	}
 	consensusReactor := consensus.NewConsensusReactor(consensusState, fastSync)
+	consensusReactor.SetLogger(consensusLogger)
+
+	p2pLogger := logger.With("module", "p2p")
 
 	sw := p2p.NewSwitch(config.P2P)
+	sw.SetLogger(p2pLogger)
 	sw.AddReactor("MEMPOOL", mempoolReactor)
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)
@@ -142,7 +155,9 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 	var addrBook *p2p.AddrBook
 	if config.P2P.PexReactor {
 		addrBook = p2p.NewAddrBook(config.P2P.AddrBookFile(), config.P2P.AddrBookStrict)
+		addrBook.SetLogger(p2pLogger.With("book", config.P2P.AddrBookFile()))
 		pexReactor := p2p.NewPEXReactor(addrBook)
+		pexReactor.SetLogger(p2pLogger)
 		sw.AddReactor("PEX", pexReactor)
 	}
 

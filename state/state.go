@@ -78,10 +78,6 @@ func (s *State) SetLogger(l log.Logger) {
 	s.logger = l
 }
 
-func (s *State) GetLogger() log.Logger {
-	return s.logger
-}
-
 func (s *State) Copy() *State {
 	return &State{
 		db:              s.db,

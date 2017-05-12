@@ -229,7 +229,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	blockHeight := int(res.LastBlockHeight) // XXX: beware overflow
 	appHash := res.LastBlockAppHash
 
-	h.logger.Info("ABCI Handshake", "appHeight", blockHeight, "appHash", appHash)
+	h.logger.Info("ABCI Handshake", "appHeight", blockHeight, "appHash", fmt.Sprintf("%X", appHash))
 
 	// TODO: check version
 
@@ -239,7 +239,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 		return errors.New(cmn.Fmt("Error on replay: %v", err))
 	}
 
-	h.logger.Info("Completed ABCI Handshake - Tendermint and App are synced", "appHeight", blockHeight, "appHash", appHash)
+	h.logger.Info("Completed ABCI Handshake - Tendermint and App are synced", "appHeight", blockHeight, "appHash", fmt.Sprintf("%X", appHash))
 
 	// TODO: (on restart) replay mempool
 

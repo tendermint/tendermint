@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -27,18 +26,10 @@ var RootCmd = &cobra.Command{
 		err := viper.Unmarshal(config)
 		config.SetRoot(config.RootDir)
 		cfg.EnsureRoot(config.RootDir)
-		var option log.Option
-		switch config.LogLevel {
-		case "info":
-			option = log.AllowInfo()
-		case "debug":
-			option = log.AllowDebug()
-		case "error":
-			option = log.AllowError()
-		default:
-			return fmt.Errorf("Expected either \"info\", \"debug\" or \"error\" log level, given %v", config.LogLevel)
+		logger, err = log.NewFilterByLevel(logger, config.LogLevel)
+		if err != nil {
+			return err
 		}
-		logger = log.NewFilter(logger, option)
 		return err
 	},
 }
