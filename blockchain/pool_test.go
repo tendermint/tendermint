@@ -92,7 +92,7 @@ func TestTimeout(t *testing.T) {
 	defer pool.Stop()
 
 	for _, peer := range peers {
-		t.Logf("Peer #%v", peer.id)
+		t.Logf("Peer %v", peer.id)
 	}
 
 	// Introduce each peer.
@@ -123,7 +123,7 @@ func TestTimeout(t *testing.T) {
 	for {
 		select {
 		case peerID := <-timeoutsCh:
-			t.Logf("Peer #%v timeouted", peerID)
+			t.Logf("Peer %v timeouted", peerID)
 			if _, ok := timedOut[peerID]; !ok {
 				counter++
 				if counter == len(peers) {
@@ -131,7 +131,7 @@ func TestTimeout(t *testing.T) {
 				}
 			}
 		case request := <-requestsCh:
-			t.Logf("Pulled new BlockRequest %v", request)
+			t.Logf("Pulled new BlockRequest %+v", request)
 		}
 	}
 }
