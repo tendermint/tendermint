@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/tendermint/tmlibs/log"
 )
 
@@ -106,4 +107,16 @@ func TestLevelContext(t *testing.T) {
 	if want, have := ``, strings.TrimSpace(buf.String()); want != have {
 		t.Errorf("\nwant '%s'\nhave '%s'", want, have)
 	}
+}
+
+func TestNewFilterByLevel(t *testing.T) {
+	assert := assert.New(t)
+	var logger log.Logger
+	logger = log.NewNopLogger()
+	assert.NotPanics(func() {
+		logger = log.NewFilterByLevel(logger, "info")
+	})
+	assert.Panics(func() {
+		logger = log.NewFilterByLevel(logger, "smth")
+	})
 }

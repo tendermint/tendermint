@@ -1,5 +1,7 @@
 package log
 
+import "fmt"
+
 // NewFilter wraps next and implements filtering. See the commentary on the
 // Option functions for a detailed description of how to configure levels. If
 // no options are provided, all leveled log events created with Debug, Info or
@@ -12,6 +14,22 @@ func NewFilter(next Logger, options ...Option) Logger {
 		option(l)
 	}
 	return l
+}
+
+// NewFilterByLevel wraps next and implements filtering based on a given level.
+func NewFilterByLevel(next Logger, lvl string) Logger {
+	var option Option
+	switch lvl {
+	case "info":
+		option = AllowInfo()
+	case "debug":
+		option = AllowDebug()
+	case "error":
+		option = AllowError()
+	default:
+		panic(fmt.Sprintf("Expected either \"info\", \"debug\" or \"error\" log level, given %v", lvl))
+	}
+	return NewFilter(next, option)
 }
 
 type filter struct {
