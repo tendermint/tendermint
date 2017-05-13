@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/tendermint/tmlibs/log"
 )
 
@@ -110,13 +109,12 @@ func TestLevelContext(t *testing.T) {
 }
 
 func TestNewFilterByLevel(t *testing.T) {
-	assert := assert.New(t)
 	var logger log.Logger
 	logger = log.NewNopLogger()
-	assert.NotPanics(func() {
-		logger = log.NewFilterByLevel(logger, "info")
-	})
-	assert.Panics(func() {
-		logger = log.NewFilterByLevel(logger, "smth")
-	})
+	if _, err := log.NewFilterByLevel(logger, "info"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := log.NewFilterByLevel(logger, "other"); err == nil {
+		t.Fatal(err)
+	}
 }
