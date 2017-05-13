@@ -58,7 +58,7 @@ func runNode(cmd *cobra.Command, args []string) error {
 	// always available, remove.
 	genDocFile := config.GenesisFile()
 	if !cmn.FileExists(genDocFile) {
-		log.Notice(cmn.Fmt("Waiting for genesis file %v...", genDocFile))
+		logger.Info(cmn.Fmt("Waiting for genesis file %v...", genDocFile))
 		for {
 			time.Sleep(time.Second)
 			if !cmn.FileExists(genDocFile) {
@@ -80,11 +80,11 @@ func runNode(cmd *cobra.Command, args []string) error {
 	}
 
 	// Create & start node
-	n := node.NewNodeDefault(config)
+	n := node.NewNodeDefault(config, logger.With("module", "node"))
 	if _, err := n.Start(); err != nil {
 		return fmt.Errorf("Failed to start node: %v", err)
 	} else {
-		log.Notice("Started node", "nodeInfo", n.Switch().NodeInfo())
+		logger.Info("Started node", "nodeInfo", n.Switch().NodeInfo())
 	}
 
 	// Trap signal, run forever.

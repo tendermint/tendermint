@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/logger"
 )
 
 /****** these are for production settings ***********/
@@ -35,7 +34,7 @@ node_laddr = "tcp://0.0.0.0:46656"
 seeds = ""
 fast_sync = true
 db_backend = "leveldb"
-log_level = "notice"
+log_level = "info"
 rpc_laddr = "tcp://0.0.0.0:46657"
 `
 
@@ -83,7 +82,6 @@ func ResetTestRoot(testName string) *Config {
 	cmn.MustWriteFile(privFilePath, []byte(testPrivValidator), 0644)
 
 	config := TestConfig().SetRoot(rootDir)
-	logger.SetLogLevel(config.LogLevel)
 	return config
 }
 

@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	data "github.com/tendermint/go-wire/data"
+	"github.com/tendermint/go-wire/data"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -20,7 +20,7 @@ func init() {
 }
 
 func showValidator(cmd *cobra.Command, args []string) {
-	privValidator := types.LoadOrGenPrivValidator(config.PrivValidatorFile())
+	privValidator := types.LoadOrGenPrivValidator(config.PrivValidatorFile(), logger)
 	pubKeyJSONBytes, _ := data.ToJSON(privValidator.PubKey)
 	fmt.Println(string(pubKeyJSONBytes))
 }

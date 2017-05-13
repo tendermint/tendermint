@@ -40,8 +40,8 @@ func initFiles(cmd *cobra.Command, args []string) {
 			genDoc.SaveAs(genFile)
 		}
 
-		log.Notice("Initialized tendermint", "genesis", config.GenesisFile(), "priv_validator", config.PrivValidatorFile())
+		logger.Info("Initialized tendermint", "genesis", config.GenesisFile(), "priv_validator", config.PrivValidatorFile())
 	} else {
-		log.Notice("Already initialized", "priv_validator", config.PrivValidatorFile())
+		logger.Info("Already initialized", "priv_validator", config.PrivValidatorFile())
 	}
 }

@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	logger "github.com/tendermint/tmlibs/logger"
+	"github.com/tendermint/tmlibs/log"
 
 	abci "github.com/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
@@ -24,8 +24,6 @@ import (
 )
 
 var config *cfg.Config
-
-const tmLogLevel = "error"
 
 // f**ing long, but unique for each test
 func makePathname() string {
@@ -63,9 +61,6 @@ func GetConfig() *cfg.Config {
 		config.P2P.ListenAddress = tm
 		config.RPCListenAddress = rpc
 		config.GRPCListenAddress = grpc
-
-		// Shut up the logging
-		logger.SetLogLevel(tmLogLevel)
 	}
 	return config
 }
@@ -108,10 +103,12 @@ func StartTendermint(app abci.Application) *nm.Node {
 func NewTendermint(app abci.Application) *nm.Node {
 	// Create & start node
 	config := GetConfig()
+	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+	logger = log.NewFilter(logger, log.AllowError())
 	privValidatorFile := config.PrivValidatorFile()
-	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
+	privValidator := types.LoadOrGenPrivValidator(privValidatorFile, logger)
 	papp := proxy.NewLocalClientCreator(app)
-	node := nm.NewNode(config, privValidator, papp)
+	node := nm.NewNode(config, privValidator, papp, logger)
 	return node
 }
 

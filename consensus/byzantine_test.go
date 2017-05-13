@@ -9,6 +9,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 	. "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/events"
+	"github.com/tendermint/tmlibs/log"
 )
 
 func init() {
@@ -32,8 +33,10 @@ func TestByzantine(t *testing.T) {
 	css[0].SetTimeoutTicker(NewTimeoutTicker())
 
 	switches := make([]*p2p.Switch, N)
+	p2pLogger := log.TestingLogger().With("module", "p2p")
 	for i := 0; i < N; i++ {
 		switches[i] = p2p.NewSwitch(config.P2P)
+		switches[i].SetLogger(p2pLogger)
 	}
 
 	reactors := make([]p2p.Reactor, N)
@@ -53,13 +56,14 @@ func TestByzantine(t *testing.T) {
 			// make byzantine
 			css[i].decideProposal = func(j int) func(int, int) {
 				return func(height, round int) {
-					byzantineDecideProposalFunc(height, round, css[j], switches[j])
+					byzantineDecideProposalFunc(t, height, round, css[j], switches[j])
 				}
 			}(i)
 			css[i].doPrevote = func(height, round int) {}
 		}
 
 		eventSwitch := events.NewEventSwitch()
+		eventSwitch.SetLogger(log.TestingLogger().With("module", "events"))
 		_, err := eventSwitch.Start()
 		if err != nil {
 			t.Fatalf("Failed to start switch: %v", err)
@@ -67,6 +71,7 @@ func TestByzantine(t *testing.T) {
 		eventChans[i] = subscribeToEvent(eventSwitch, "tester", types.EventStringNewBlock(), 1)
 
 		conR := NewConsensusReactor(css[i], true) // so we dont start the consensus states
+		conR.SetLogger(log.TestingLogger())
 		conR.SetEventSwitch(eventSwitch)
 
 		var conRI p2p.Reactor
@@ -115,7 +120,7 @@ func TestByzantine(t *testing.T) {
 	case <-eventChans[ind2]:
 	}
 
-	log.Notice("A block has been committed. Healing partition")
+	t.Log("A block has been committed. Healing partition")
 
 	// connect the partitions
 	p2p.Connect2Switches(switches, ind0, ind1)
@@ -153,7 +158,7 @@ func TestByzantine(t *testing.T) {
 //-------------------------------
 // byzantine consensus functions
 
-func byzantineDecideProposalFunc(height, round int, cs *ConsensusState, sw *p2p.Switch) {
+func byzantineDecideProposalFunc(t *testing.T, height, round int, cs *ConsensusState, sw *p2p.Switch) {
 	// byzantine user should create two proposals and try to split the vote.
 	// Avoid sending on internalMsgQueue and running consensus state.
 
@@ -174,7 +179,7 @@ func byzantineDecideProposalFunc(height, round int, cs *ConsensusState, sw *p2p.
 
 	// broadcast conflicting proposals/block parts to peers
 	peers := sw.Peers().List()
-	log.Notice("Byzantine: broadcasting conflicting proposals", "peers", len(peers))
+	t.Logf("Byzantine: broadcasting conflicting proposals to %d peers", len(peers))
 	for i, peer := range peers {
 		if i < len(peers)/2 {
 			go sendProposalAndParts(height, round, cs, peer, proposal1, block1Hash, blockParts1)

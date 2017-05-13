@@ -113,7 +113,7 @@ func (pb *playback) replayReset(count int, newStepCh chan interface{}) error {
 	pb.fp = fp
 	pb.scanner = bufio.NewScanner(fp)
 	count = pb.count - count
-	log.Notice(cmn.Fmt("Reseting from %d to %d", pb.count, count))
+	fmt.Printf("Reseting from %d to %d\n", pb.count, count)
 	pb.count = 0
 	pb.cs = newCS
 	for i := 0; pb.scanner.Scan() && i < count; i++ {
@@ -126,8 +126,7 @@ func (pb *playback) replayReset(count int, newStepCh chan interface{}) error {
 }
 
 func (cs *ConsensusState) startForReplay() {
-
-	log.Warn("Replay commands are disabled until someone updates them and writes tests")
+	cs.Logger.Error("Replay commands are disabled until someone updates them and writes tests")
 	/* TODO:!
 	// since we replay tocks we just ignore ticks
 		go func() {
@@ -259,6 +258,7 @@ func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusCo
 	}
 
 	consensusState := NewConsensusState(csConfig, state.Copy(), proxyApp.Consensus(), blockStore, types.MockMempool{})
+
 	consensusState.SetEventSwitch(eventSwitch)
 	return consensusState
 }

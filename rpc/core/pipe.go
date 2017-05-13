@@ -7,6 +7,7 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tmlibs/log"
 )
 
 //----------------------------------------------
@@ -44,6 +45,8 @@ var (
 	genDoc    *types.GenesisDoc // cache the genesis structure
 	addrBook  *p2p.AddrBook
 	txIndexer txindex.TxIndexer
+
+	logger log.Logger
 )
 
 func SetEventSwitch(evsw types.EventSwitch) {
@@ -84,4 +87,8 @@ func SetProxyAppQuery(appConn proxy.AppConnQuery) {
 
 func SetTxIndexer(indexer txindex.TxIndexer) {
 	txIndexer = indexer
+}
+
+func SetLogger(l log.Logger) {
+	logger = l
 }

@@ -82,8 +82,9 @@ mux := http.NewServeMux()
 rpcserver.RegisterRPCFuncs(mux, Routes)
 wm := rpcserver.NewWebsocketManager(Routes, nil)
 mux.HandleFunc("/websocket", wm.WebsocketHandler)
+logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 go func() {
-	_, err := rpcserver.StartHTTPServer("0.0.0.0:8008", mux)
+	_, err := rpcserver.StartHTTPServer("0.0.0.0:8008", mux, logger)
 	if err != nil {
 		panic(err)
 	}

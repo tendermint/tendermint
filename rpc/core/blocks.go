@@ -2,9 +2,10 @@ package core
 
 import (
 	"fmt"
-	. "github.com/tendermint/tmlibs/common"
+
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
+	. "github.com/tendermint/tmlibs/common"
 )
 
 //-----------------------------------------------------------------------------
@@ -19,7 +20,7 @@ func BlockchainInfo(minHeight, maxHeight int) (*ctypes.ResultBlockchainInfo, err
 	if minHeight == 0 {
 		minHeight = MaxInt(1, maxHeight-20)
 	}
-	log.Debug("BlockchainInfoHandler", "maxHeight", maxHeight, "minHeight", minHeight)
+	logger.Debug("BlockchainInfoHandler", "maxHeight", maxHeight, "minHeight", minHeight)
 
 	blockMetas := []*types.BlockMeta{}
 	for height := maxHeight; height >= minHeight; height-- {

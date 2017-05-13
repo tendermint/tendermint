@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/tendermint/tmlibs/log"
 )
 
 func createTempFileName(prefix string) string {
@@ -27,9 +28,11 @@ func TestAddrBookSaveLoad(t *testing.T) {
 
 	// 0 addresses
 	book := NewAddrBook(fname, true)
+	book.SetLogger(log.TestingLogger())
 	book.saveToFile(fname)
 
 	book = NewAddrBook(fname, true)
+	book.SetLogger(log.TestingLogger())
 	book.loadFromFile(fname)
 
 	assert.Zero(t, book.Size())
@@ -45,6 +48,7 @@ func TestAddrBookSaveLoad(t *testing.T) {
 	book.saveToFile(fname)
 
 	book = NewAddrBook(fname, true)
+	book.SetLogger(log.TestingLogger())
 	book.loadFromFile(fname)
 
 	assert.Equal(t, 100, book.Size())
@@ -56,6 +60,7 @@ func TestAddrBookLookup(t *testing.T) {
 	randAddrs := randNetAddressPairs(t, 100)
 
 	book := NewAddrBook(fname, true)
+	book.SetLogger(log.TestingLogger())
 	for _, addrSrc := range randAddrs {
 		addr := addrSrc.addr
 		src := addrSrc.src
@@ -76,6 +81,7 @@ func TestAddrBookPromoteToOld(t *testing.T) {
 	randAddrs := randNetAddressPairs(t, 100)
 
 	book := NewAddrBook(fname, true)
+	book.SetLogger(log.TestingLogger())
 	for _, addrSrc := range randAddrs {
 		book.AddAddress(addrSrc.addr, addrSrc.src)
 	}
@@ -106,6 +112,7 @@ func TestAddrBookHandlesDuplicates(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
 
 	book := NewAddrBook(fname, true)
+	book.SetLogger(log.TestingLogger())
 
 	randAddrs := randNetAddressPairs(t, 100)
 
@@ -152,6 +159,7 @@ func randIPv4Address(t *testing.T) *NetAddress {
 func TestAddrBookRemoveAddress(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
 	book := NewAddrBook(fname, true)
+	book.SetLogger(log.TestingLogger())
 
 	addr := randIPv4Address(t)
 	book.AddAddress(addr, addr)

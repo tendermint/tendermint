@@ -13,6 +13,7 @@ import (
 
 	"github.com/pkg/errors"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 // HTTPClient is a common interface for JSONRPCClient and URIClient.
@@ -26,9 +27,7 @@ func makeHTTPDialer(remoteAddr string) (string, func(string, string) (net.Conn, 
 	parts := strings.SplitN(remoteAddr, "://", 2)
 	var protocol, address string
 	if len(parts) != 2 {
-		log.Warn("WARNING (tendermint/rpc/lib): Please use fully formed listening addresses, including the tcp:// or unix:// prefix")
-		protocol = types.SocketType(remoteAddr)
-		address = remoteAddr
+		cmn.PanicSanity(fmt.Sprintf("Expected fully formed listening address, including the tcp:// or unix:// prefix, given %s", remoteAddr))
 	} else {
 		protocol, address = parts[0], parts[1]
 	}

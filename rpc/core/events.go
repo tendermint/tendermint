@@ -7,7 +7,7 @@ import (
 )
 
 func Subscribe(wsCtx rpctypes.WSRPCContext, event string) (*ctypes.ResultSubscribe, error) {
-	log.Notice("Subscribe to event", "remote", wsCtx.GetRemoteAddr(), "event", event)
+	logger.Info("Subscribe to event", "remote", wsCtx.GetRemoteAddr(), "event", event)
 	types.AddListenerForEvent(wsCtx.GetEventSwitch(), wsCtx.GetRemoteAddr(), event, func(msg types.TMEventData) {
 		// NOTE: EventSwitch callbacks must be nonblocking
 		// NOTE: RPCResponses of subscribed events have id suffix "#event"
@@ -18,7 +18,7 @@ func Subscribe(wsCtx rpctypes.WSRPCContext, event string) (*ctypes.ResultSubscri
 }
 
 func Unsubscribe(wsCtx rpctypes.WSRPCContext, event string) (*ctypes.ResultUnsubscribe, error) {
-	log.Notice("Unsubscribe to event", "remote", wsCtx.GetRemoteAddr(), "event", event)
+	logger.Info("Unsubscribe to event", "remote", wsCtx.GetRemoteAddr(), "event", event)
 	wsCtx.GetEventSwitch().RemoveListenerForEvent(event, wsCtx.GetRemoteAddr())
 	return &ctypes.ResultUnsubscribe{}, nil
 }

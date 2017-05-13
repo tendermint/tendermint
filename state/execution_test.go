@@ -11,6 +11,7 @@ import (
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tmlibs/db"
+	"github.com/tendermint/tmlibs/log"
 )
 
 var (
@@ -28,6 +29,7 @@ func TestApplyBlock(t *testing.T) {
 	defer proxyApp.Stop()
 
 	state := state()
+	state.SetLogger(log.TestingLogger())
 	indexer := &dummyIndexer{0}
 	state.TxIndexer = indexer
 

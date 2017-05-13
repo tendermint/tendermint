@@ -7,7 +7,7 @@ import (
 	"time"
 
 	abci "github.com/tendermint/abci/types"
-	"github.com/tendermint/go-wire"
+	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/tmlibs/clist"
 
 	cfg "github.com/tendermint/tendermint/config"
@@ -35,7 +35,7 @@ func NewMempoolReactor(config *cfg.MempoolConfig, mempool *Mempool) *MempoolReac
 		config:  config,
 		Mempool: mempool,
 	}
-	memR.BaseReactor = *p2p.NewBaseReactor(log, "MempoolReactor", memR)
+	memR.BaseReactor = *p2p.NewBaseReactor("MempoolReactor", memR)
 	return memR
 }
 
@@ -63,24 +63,24 @@ func (memR *MempoolReactor) RemovePeer(peer *p2p.Peer, reason interface{}) {
 func (memR *MempoolReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte) {
 	_, msg, err := DecodeMessage(msgBytes)
 	if err != nil {
-		log.Warn("Error decoding message", "error", err)
+		memR.Logger.Error("Error decoding message", "error", err)
 		return
 	}
-	log.Debug("Receive", "src", src, "chId", chID, "msg", msg)
+	memR.Logger.Debug("Receive", "src", src, "chId", chID, "msg", msg)
 
 	switch msg := msg.(type) {
 	case *TxMessage:
 		err := memR.Mempool.CheckTx(msg.Tx, nil)
 		if err != nil {
 			// Bad, seen, or conflicting tx.
-			log.Info("Could not add tx", "tx", msg.Tx)
+			memR.Logger.Info("Could not add tx", "tx", msg.Tx)
 			return
 		} else {
-			log.Info("Added valid tx", "tx", msg.Tx)
+			memR.Logger.Info("Added valid tx", "tx", msg.Tx)
 		}
 		// broadcasting happens from go routines per peer
 	default:
-		log.Warn(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
+		memR.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
 	}
 }
 

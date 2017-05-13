@@ -1,16 +1,18 @@
 package commands
 
 import (
+	"os"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
 	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tmlibs/logger"
+	"github.com/tendermint/tmlibs/log"
 )
 
 var (
 	config = cfg.DefaultConfig()
-	log    = logger.New("module", "main")
+	logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("module", "main")
 )
 
 func init() {
@@ -24,7 +26,10 @@ var RootCmd = &cobra.Command{
 		err := viper.Unmarshal(config)
 		config.SetRoot(config.RootDir)
 		cfg.EnsureRoot(config.RootDir)
-		logger.SetLogLevel(config.LogLevel)
+		logger, err = log.NewFilterByLevel(logger, config.LogLevel)
+		if err != nil {
+			return err
+		}
 		return err
 	},
 }

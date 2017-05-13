@@ -48,7 +48,7 @@ func NewMultiAppConn(clientCreator ClientCreator, handshaker Handshaker) *multiA
 		handshaker:    handshaker,
 		clientCreator: clientCreator,
 	}
-	multiAppConn.BaseService = *cmn.NewBaseService(log, "multiAppConn", multiAppConn)
+	multiAppConn.BaseService = *cmn.NewBaseService(nil, "multiAppConn", multiAppConn)
 	return multiAppConn
 }
 
@@ -68,9 +68,9 @@ func (app *multiAppConn) Query() AppConnQuery {
 }
 
 func (app *multiAppConn) OnStart() error {
-
 	// query connection
 	querycli, err := app.clientCreator.NewABCIClient()
+	querycli.SetLogger(app.Logger.With("module", "abci-client", "connection", "query"))
 	if err != nil {
 		return err
 	}
@@ -78,6 +78,7 @@ func (app *multiAppConn) OnStart() error {
 
 	// mempool connection
 	memcli, err := app.clientCreator.NewABCIClient()
+	memcli.SetLogger(app.Logger.With("module", "abci-client", "connection", "mempool"))
 	if err != nil {
 		return err
 	}
@@ -85,6 +86,7 @@ func (app *multiAppConn) OnStart() error {
 
 	// consensus connection
 	concli, err := app.clientCreator.NewABCIClient()
+	concli.SetLogger(app.Logger.With("module", "abci-client", "connection", "consensus"))
 	if err != nil {
 		return err
 	}

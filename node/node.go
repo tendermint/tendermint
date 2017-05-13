@@ -28,6 +28,7 @@ import (
 	"github.com/tendermint/tendermint/version"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
+	"github.com/tendermint/tmlibs/log"
 
 	_ "net/http/pprof"
 )
@@ -57,15 +58,14 @@ type Node struct {
 	txIndexer        txindex.TxIndexer
 }
 
-func NewNodeDefault(config *cfg.Config) *Node {
+func NewNodeDefault(config *cfg.Config, logger log.Logger) *Node {
 	// Get PrivValidator
-	privValidator := types.LoadOrGenPrivValidator(config.PrivValidatorFile())
+	privValidator := types.LoadOrGenPrivValidator(config.PrivValidatorFile(), logger)
 	return NewNode(config, privValidator,
-		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()))
+		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()), logger)
 }
 
-func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreator proxy.ClientCreator) *Node {
-
+func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreator proxy.ClientCreator, logger log.Logger) *Node {
 	// Get BlockStore
 	blockStoreDB := dbm.NewDB("blockstore", config.DBBackend, config.DBDir())
 	blockStore := bc.NewBlockStore(blockStoreDB)
@@ -73,16 +73,23 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 	// Get State
 	stateDB := dbm.NewDB("state", config.DBBackend, config.DBDir())
 	state := sm.GetState(stateDB, config.GenesisFile())
+	state.SetLogger(logger.With("module", "state"))
+
+	consensusLogger := logger.With("module", "consensus")
 
 	// Create the proxyApp, which manages connections (consensus, mempool, query)
 	// and sync tendermint and the app by replaying any necessary blocks
-	proxyApp := proxy.NewAppConns(clientCreator, consensus.NewHandshaker(state, blockStore))
+	handshaker := consensus.NewHandshaker(state, blockStore)
+	handshaker.SetLogger(consensusLogger)
+	proxyApp := proxy.NewAppConns(clientCreator, handshaker)
+	proxyApp.SetLogger(logger.With("module", "proxy"))
 	if _, err := proxyApp.Start(); err != nil {
 		cmn.Exit(cmn.Fmt("Error starting proxy app connections: %v", err))
 	}
 
 	// reload the state (it may have been updated by the handshake)
 	state = sm.LoadState(stateDB)
+	state.SetLogger(logger.With("module", "state"))
 
 	// Transaction indexing
 	var txIndexer txindex.TxIndexer
@@ -100,6 +107,7 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 
 	// Make event switch
 	eventSwitch := types.NewEventSwitch()
+	eventSwitch.SetLogger(logger.With("module", "types"))
 	_, err := eventSwitch.Start()
 	if err != nil {
 		cmn.Exit(cmn.Fmt("Failed to start switch: %v", err))
@@ -117,19 +125,28 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 
 	// Make BlockchainReactor
 	bcReactor := bc.NewBlockchainReactor(state.Copy(), proxyApp.Consensus(), blockStore, fastSync)
+	bcReactor.SetLogger(logger.With("module", "blockchain"))
 
 	// Make MempoolReactor
+	mempoolLogger := logger.With("module", "consensus")
 	mempool := mempl.NewMempool(config.Mempool, proxyApp.Mempool())
+	mempool.SetLogger(mempoolLogger)
 	mempoolReactor := mempl.NewMempoolReactor(config.Mempool, mempool)
+	mempoolReactor.SetLogger(mempoolLogger)
 
 	// Make ConsensusReactor
 	consensusState := consensus.NewConsensusState(config.Consensus, state.Copy(), proxyApp.Consensus(), blockStore, mempool)
+	consensusState.SetLogger(consensusLogger)
 	if privValidator != nil {
 		consensusState.SetPrivValidator(privValidator)
 	}
 	consensusReactor := consensus.NewConsensusReactor(consensusState, fastSync)
+	consensusReactor.SetLogger(consensusLogger)
+
+	p2pLogger := logger.With("module", "p2p")
 
 	sw := p2p.NewSwitch(config.P2P)
+	sw.SetLogger(p2pLogger)
 	sw.AddReactor("MEMPOOL", mempoolReactor)
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)
@@ -138,7 +155,9 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 	var addrBook *p2p.AddrBook
 	if config.P2P.PexReactor {
 		addrBook = p2p.NewAddrBook(config.P2P.AddrBookFile(), config.P2P.AddrBookStrict)
+		addrBook.SetLogger(p2pLogger.With("book", config.P2P.AddrBookFile()))
 		pexReactor := p2p.NewPEXReactor(addrBook)
+		pexReactor.SetLogger(p2pLogger)
 		sw.AddReactor("PEX", pexReactor)
 	}
 
@@ -178,7 +197,7 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 	if profileHost != "" {
 
 		go func() {
-			log.Warn("Profile server", "error", http.ListenAndServe(profileHost, nil))
+			logger.Error("Profile server", "error", http.ListenAndServe(profileHost, nil))
 		}()
 	}
 
@@ -200,15 +219,14 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 		proxyApp:         proxyApp,
 		txIndexer:        txIndexer,
 	}
-	node.BaseService = *cmn.NewBaseService(log, "Node", node)
+	node.BaseService = *cmn.NewBaseService(logger, "Node", node)
 	return node
 }
 
 func (n *Node) OnStart() error {
-
 	// Create & add listener
 	protocol, address := ProtocolAndAddress(n.config.P2P.ListenAddress)
-	l := p2p.NewDefaultListener(protocol, address, n.config.P2P.SkipUPNP)
+	l := p2p.NewDefaultListener(protocol, address, n.config.P2P.SkipUPNP, n.Logger.With("module", "p2p"))
 	n.sw.AddListener(l)
 
 	// Start the switch
@@ -243,14 +261,14 @@ func (n *Node) OnStart() error {
 func (n *Node) OnStop() {
 	n.BaseService.OnStop()
 
-	log.Notice("Stopping Node")
+	n.Logger.Info("Stopping Node")
 	// TODO: gracefully disconnect from peers.
 	n.sw.Stop()
 
 	for _, l := range n.rpcListeners {
-		log.Info("Closing rpc listener", "listener", l)
+		n.Logger.Info("Closing rpc listener", "listener", l)
 		if err := l.Close(); err != nil {
-			log.Error("Error closing listener", "listener", l, "error", err)
+			n.Logger.Error("Error closing listener", "listener", l, "error", err)
 		}
 	}
 }
@@ -289,6 +307,7 @@ func (n *Node) ConfigureRPC() {
 	rpccore.SetAddrBook(n.addrBook)
 	rpccore.SetProxyAppQuery(n.proxyApp.Query())
 	rpccore.SetTxIndexer(n.txIndexer)
+	rpccore.SetLogger(n.Logger.With("module", "rpc"))
 }
 
 func (n *Node) startRPC() ([]net.Listener, error) {
@@ -299,10 +318,12 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 	listeners := make([]net.Listener, len(listenAddrs))
 	for i, listenAddr := range listenAddrs {
 		mux := http.NewServeMux()
+		rpcLogger := n.Logger.With("module", "rpcserver")
 		wm := rpcserver.NewWebsocketManager(rpccore.Routes, n.evsw)
+		wm.SetLogger(rpcLogger)
 		mux.HandleFunc("/websocket", wm.WebsocketHandler)
-		rpcserver.RegisterRPCFuncs(mux, rpccore.Routes)
-		listener, err := rpcserver.StartHTTPServer(listenAddr, mux)
+		rpcserver.RegisterRPCFuncs(mux, rpccore.Routes, rpcLogger)
+		listener, err := rpcserver.StartHTTPServer(listenAddr, mux, rpcLogger)
 		if err != nil {
 			return nil, err
 		}

@@ -6,9 +6,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	abci "github.com/tendermint/abci/types"
-	"github.com/tendermint/go-crypto"
+	crypto "github.com/tendermint/go-crypto"
 	cfg "github.com/tendermint/tendermint/config"
 	dbm "github.com/tendermint/tmlibs/db"
+	"github.com/tendermint/tmlibs/log"
 )
 
 func TestStateCopyEquals(t *testing.T) {
@@ -17,6 +18,7 @@ func TestStateCopyEquals(t *testing.T) {
 	// Get State db
 	stateDB := dbm.NewDB("state", config.DBBackend, config.DBDir())
 	state := GetState(stateDB, config.GenesisFile())
+	state.SetLogger(log.TestingLogger())
 
 	stateCopy := state.Copy()
 
@@ -36,6 +38,7 @@ func TestStateSaveLoad(t *testing.T) {
 	// Get State db
 	stateDB := dbm.NewDB("state", config.DBBackend, config.DBDir())
 	state := GetState(stateDB, config.GenesisFile())
+	state.SetLogger(log.TestingLogger())
 
 	state.LastBlockHeight += 1
 	state.Save()
@@ -52,6 +55,7 @@ func TestABCIResponsesSaveLoad(t *testing.T) {
 	config := cfg.ResetTestRoot("state_")
 	stateDB := dbm.NewDB("state", config.DBBackend, config.DBDir())
 	state := GetState(stateDB, config.GenesisFile())
+	state.SetLogger(log.TestingLogger())
 
 	state.LastBlockHeight += 1
 

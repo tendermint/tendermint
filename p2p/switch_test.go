@@ -12,9 +12,9 @@ import (
 	"github.com/stretchr/testify/require"
 	crypto "github.com/tendermint/go-crypto"
 	wire "github.com/tendermint/go-wire"
-	cmn "github.com/tendermint/tmlibs/common"
 
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tmlibs/log"
 )
 
 var (
@@ -50,7 +50,8 @@ func NewTestReactor(channels []*ChannelDescriptor, logMessages bool) *TestReacto
 		logMessages:  logMessages,
 		msgsReceived: make(map[byte][]PeerMessage),
 	}
-	tr.BaseReactor = *NewBaseReactor(log, "TestReactor", tr)
+	tr.BaseReactor = *NewBaseReactor("TestReactor", tr)
+	tr.SetLogger(log.TestingLogger())
 	return tr
 }
 
@@ -278,6 +279,7 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	// simulate failure by closing connection
 	peer.CloseConn()
 
+	// TODO: actually detect the disconnection and wait for reconnect
 	time.Sleep(100 * time.Millisecond)
 
 	assert.NotZero(sw.Peers().Size())
@@ -285,7 +287,6 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 }
 
 func BenchmarkSwitches(b *testing.B) {
-
 	b.StopTimer()
 
 	s1, s2 := makeSwitchPair(b, func(i int, sw *Switch) *Switch {
@@ -322,10 +323,9 @@ func BenchmarkSwitches(b *testing.B) {
 		}
 	}
 
-	log.Warn(cmn.Fmt("success: %v, failure: %v", numSuccess, numFailure))
+	b.Logf("success: %v, failure: %v", numSuccess, numFailure)
 
 	// Allow everything to flush before stopping switches & closing connections.
 	b.StopTimer()
 	time.Sleep(1000 * time.Millisecond)
-
 }
