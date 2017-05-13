@@ -308,7 +308,7 @@ func cmdCommit(c *cli.Context) error {
 // TODO: Make request and response support all fields.
 func cmdQuery(c *cli.Context) error {
 	args := c.Args()
-	fmt.Println(len(args))
+
 	if len(args) == 0 {
 		return errors.New("Command query takes 1 or more arguments")
 	}
