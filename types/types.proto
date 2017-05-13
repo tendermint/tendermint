@@ -4,30 +4,6 @@ package types;
 // This file is copied from http://github.com/tendermint/abci
 
 //----------------------------------------
-// Message types
-
-// Not being used
-// Could be added to request/response
-// so we don't have to type switch
-// (would be twice as fast, but we're talking about 15ns)
-enum MessageType {
-	NullMessage = 0x00;
-
-	Echo            = 0x01;
-	Flush           = 0x02;
-	Info            = 0x03;
-	SetOption       = 0x04;
-	Exception       = 0x05;
-	DeliverTx       = 0x11;
-	CheckTx         = 0x12;
-	Commit          = 0x13;
-	Query           = 0x14;
-	InitChain       = 0x15;
-	BeginBlock      = 0x16;
-	EndBlock        = 0x17;
-}
-
-//----------------------------------------
 // Code types
 
 enum CodeType {
@@ -116,7 +92,7 @@ message RequestQuery{
 	bytes data = 1;
 	string path = 2;
 	uint64 height = 3;
-	bool prove = 4; 
+	bool prove = 4;
 }
 
 message RequestCommit{
