@@ -29,6 +29,10 @@ func (res Result) IsErr() bool {
 	return res.Code != CodeType_OK
 }
 
+func (res Result) IsSameCode(compare Result) bool {
+	return res.Code == compare.Code
+}
+
 func (res Result) Error() string {
 	return fmt.Sprintf("ABCI{code:%v, data:%X, log:%v}", res.Code, res.Data, res.Log)
 }
