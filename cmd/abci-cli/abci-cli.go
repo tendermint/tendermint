@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 
 	abcicli "github.com/tendermint/abci/client"
@@ -307,18 +308,36 @@ func cmdCommit(c *cli.Context) error {
 // TODO: Make request and response support all fields.
 func cmdQuery(c *cli.Context) error {
 	args := c.Args()
-	if len(args) != 1 {
-		return errors.New("Command query takes 1 argument")
+	fmt.Println(len(args))
+	if len(args) == 0 {
+		return errors.New("Command query takes 1 or more arguments")
 	}
-	queryBytes, err := stringOrHexToBytes(c.Args()[0])
+
+	queryBytes, err := stringOrHexToBytes(args[0])
 	if err != nil {
 		return err
 	}
+
+	var path = "/store"
+	if len(args) > 1 {
+		path = args[1]
+	}
+
+	var height uint64
+	if len(args) > 2 {
+		height, _ = strconv.ParseUint(args[2], 10, 64)
+	}
+
+	var prove = true
+	if len(args) > 3 {
+		prove, _ = strconv.ParseBool(args[3])
+	}
+
 	resQuery, err := client.QuerySync(types.RequestQuery{
 		Data:   queryBytes,
-		Path:   "/store", // TOOD expose
-		Height: 0,        // TODO expose
-		//Prove:  true,     // TODO expose
+		Path:   path,
+		Height: height,
+		Prove:  prove,
 	})
 	if err != nil {
 		return err
