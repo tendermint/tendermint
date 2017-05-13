@@ -75,6 +75,8 @@ func TestPEXReactorRunning(t *testing.T) {
 	// create switches
 	for i := 0; i < N; i++ {
 		switches[i] = makeSwitch(config, i, "127.0.0.1", "123.123.123", func(i int, sw *Switch) *Switch {
+			sw.SetLogger(log.TestingLogger().With("switch", i))
+
 			r := NewPEXReactor(book)
 			r.SetLogger(log.TestingLogger())
 			r.SetEnsurePeersPeriod(250 * time.Millisecond)
