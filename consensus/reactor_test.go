@@ -10,7 +10,6 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tmlibs/events"
-	"github.com/tendermint/tmlibs/log"
 )
 
 func init() {
@@ -23,12 +22,13 @@ func init() {
 func startConsensusNet(t *testing.T, css []*ConsensusState, N int, subscribeEventRespond bool) ([]*ConsensusReactor, []chan interface{}) {
 	reactors := make([]*ConsensusReactor, N)
 	eventChans := make([]chan interface{}, N)
+	logger := consensusLogger()
 	for i := 0; i < N; i++ {
 		reactors[i] = NewConsensusReactor(css[i], true) // so we dont start the consensus states
-		reactors[i].SetLogger(log.TestingLogger().With("reactor", i))
+		reactors[i].SetLogger(logger.With("validator", i))
 
 		eventSwitch := events.NewEventSwitch()
-		eventSwitch.SetLogger(log.TestingLogger().With("module", "events"))
+		eventSwitch.SetLogger(logger.With("module", "events", "validator", i))
 		_, err := eventSwitch.Start()
 		if err != nil {
 			t.Fatalf("Failed to start switch: %v", err)

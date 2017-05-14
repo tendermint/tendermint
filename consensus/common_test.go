@@ -25,6 +25,8 @@ import (
 
 	"github.com/tendermint/abci/example/counter"
 	"github.com/tendermint/abci/example/dummy"
+
+	"github.com/go-kit/kit/log/term"
 )
 
 // genesis, chain_id, priv_val
@@ -325,18 +327,32 @@ func ensureNoNewStep(stepCh chan interface{}) {
 //-------------------------------------------------------------------------------
 // consensus nets
 
+// consensusLogger is a TestingLogger which uses a different
+// color for each validator ("validator" key must exist).
+func consensusLogger() log.Logger {
+	return log.TestingLoggerWithColorFn(func(keyvals ...interface{}) term.FgBgColor {
+		for i := 0; i < len(keyvals)-1; i += 2 {
+			if keyvals[i] == "validator" {
+				return term.FgBgColor{Fg: term.Color(uint8(keyvals[i+1].(int) + 1))}
+			}
+		}
+		return term.FgBgColor{}
+	})
+}
+
 func randConsensusNet(nValidators int, testName string, tickerFunc func() TimeoutTicker, appFunc func() abci.Application) []*ConsensusState {
 	genDoc, privVals := randGenesisDoc(nValidators, false, 10)
 	css := make([]*ConsensusState, nValidators)
+	logger := consensusLogger()
 	for i := 0; i < nValidators; i++ {
 		db := dbm.NewMemDB() // each state needs its own db
 		state := sm.MakeGenesisState(db, genDoc)
-		state.SetLogger(log.TestingLogger().With("module", "state"))
+		state.SetLogger(logger.With("module", "state", "validator", i))
 		state.Save()
 		thisConfig := ResetConfig(Fmt("%s_%d", testName, i))
 		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		css[i] = newConsensusStateWithConfig(thisConfig, state, privVals[i], appFunc())
-		css[i].SetLogger(log.TestingLogger())
+		css[i].SetLogger(logger.With("validator", i))
 		css[i].SetTimeoutTicker(tickerFunc())
 	}
 	return css
