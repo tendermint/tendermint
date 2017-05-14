@@ -3,6 +3,8 @@ package log
 import (
 	"os"
 	"testing"
+
+	"github.com/go-kit/kit/log/term"
 )
 
 var (
@@ -23,6 +25,22 @@ func TestingLogger() Logger {
 
 	if testing.Verbose() {
 		_testingLogger = NewTMLogger(NewSyncWriter(os.Stdout))
+	} else {
+		_testingLogger = NewNopLogger()
+	}
+
+	return _testingLogger
+}
+
+// TestingLoggerWithColorFn allow you to provide your own color function. See
+// TestingLogger for documentation.
+func TestingLoggerWithColorFn(colorFn func(keyvals ...interface{}) term.FgBgColor) Logger {
+	if _testingLogger != nil {
+		return _testingLogger
+	}
+
+	if testing.Verbose() {
+		_testingLogger = NewTMLoggerWithColorFn(NewSyncWriter(os.Stdout), colorFn)
 	} else {
 		_testingLogger = NewNopLogger()
 	}
