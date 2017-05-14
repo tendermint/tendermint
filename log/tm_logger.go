@@ -43,6 +43,12 @@ func NewTMLogger(w io.Writer) Logger {
 	return &tmLogger{term.NewLogger(w, NewTMFmtLogger, colorFn)}
 }
 
+// NewTMLoggerWithColorFn allow you to provide your own color function. See
+// NewTMLogger for documentation.
+func NewTMLoggerWithColorFn(w io.Writer, colorFn func(keyvals ...interface{}) term.FgBgColor) Logger {
+	return &tmLogger{term.NewLogger(w, NewTMFmtLogger, colorFn)}
+}
+
 // Info logs a message at level Info.
 func (l *tmLogger) Info(msg string, keyvals ...interface{}) error {
 	lWithLevel := kitlevel.Info(l.srcLogger)
