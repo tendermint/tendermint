@@ -23,6 +23,7 @@ import (
 // TODO: consider validator Accum overflow
 // TODO: move valset into an iavl tree where key is 'blockbonded|pubkey'
 type ValidatorSet struct {
+	// NOTE: persisted via reflect, must be exported.
 	Validators []*Validator `json:"validators"`
 	Proposer   *Validator   `json:"proposer"`
 
