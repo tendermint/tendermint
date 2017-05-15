@@ -3,6 +3,7 @@ package types
 import (
 	"bytes"
 	"errors"
+	"fmt"
 
 	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/go-wire/data"
@@ -17,6 +18,10 @@ type Tx []byte
 // []byte be type 0x1 so we can have versioned txs if need be in the future.
 func (tx Tx) Hash() []byte {
 	return merkle.SimpleHashFromBinary(tx)
+}
+
+func (tx Tx) String() string {
+	return fmt.Sprintf("Tx{%X}")
 }
 
 type Txs []Tx
