@@ -27,14 +27,13 @@ type grpcClient struct {
 	resCb func(*types.Request, *types.Response) // listens to all callbacks
 }
 
-func NewGRPCClient(addr string, mustConnect bool) (*grpcClient, error) {
+func NewGRPCClient(addr string, mustConnect bool) *grpcClient {
 	cli := &grpcClient{
 		addr:        addr,
 		mustConnect: mustConnect,
 	}
 	cli.BaseService = *cmn.NewBaseService(nil, "grpcClient", cli)
-	_, err := cli.Start() // Just start it, it's confusing for callers to remember to start.
-	return cli, err
+	return cli
 }
 
 func dialerFunc(addr string, timeout time.Duration) (net.Conn, error) {

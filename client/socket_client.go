@@ -42,7 +42,7 @@ type socketClient struct {
 
 }
 
-func NewSocketClient(addr string, mustConnect bool) (*socketClient, error) {
+func NewSocketClient(addr string, mustConnect bool) *socketClient {
 	cli := &socketClient{
 		reqQueue:    make(chan *ReqRes, reqQueueSize),
 		flushTimer:  cmn.NewThrottleTimer("socketClient", flushThrottleMS),
@@ -53,10 +53,7 @@ func NewSocketClient(addr string, mustConnect bool) (*socketClient, error) {
 		resCb:   nil,
 	}
 	cli.BaseService = *cmn.NewBaseService(nil, "socketClient", cli)
-	// FIXME we are loosing "Starting socketClient" message here
-	// add logger to params?
-	_, err := cli.Start() // Just start it, it's confusing for callers to remember to start.
-	return cli, err
+	return cli
 }
 
 func (cli *socketClient) OnStart() error {

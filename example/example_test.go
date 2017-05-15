@@ -46,8 +46,8 @@ func testStream(t *testing.T, app types.Application) {
 	defer server.Stop()
 
 	// Connect to the socket
-	client, err := abcicli.NewSocketClient("unix://test.sock", false)
-	if err != nil {
+	client := abcicli.NewSocketClient("unix://test.sock", false)
+	if _, err := client.Start(); err != nil {
 		t.Fatalf("Error starting socket client: %v", err.Error())
 	}
 	client.SetLogger(log.TestingLogger().With("module", "abci-client"))

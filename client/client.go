@@ -43,15 +43,16 @@ type Client interface {
 
 //----------------------------------------
 
+// NewClient returns a new ABCI client of the specified transport type.
+// It returns an error if the transport is not "socket" or "grpc"
 func NewClient(addr, transport string, mustConnect bool) (client Client, err error) {
 	switch transport {
 	case "socket":
-		client, err = NewSocketClient(addr, mustConnect)
+		client = NewSocketClient(addr, mustConnect)
 	case "grpc":
-		client, err = NewGRPCClient(addr, mustConnect)
+		client = NewGRPCClient(addr, mustConnect)
 	default:
 		err = fmt.Errorf("Unknown abci transport %s", transport)
-
 	}
 	return
 }
