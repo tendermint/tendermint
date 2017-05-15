@@ -9,7 +9,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 	. "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/events"
-	"github.com/tendermint/tmlibs/log"
 )
 
 func init() {
@@ -27,16 +26,17 @@ func init() {
 // Heal partition and ensure A sees the commit
 func TestByzantine(t *testing.T) {
 	N := 4
+	logger := consensusLogger()
 	css := randConsensusNet(N, "consensus_byzantine_test", newMockTickerFunc(false), newCounter)
 
 	// give the byzantine validator a normal ticker
 	css[0].SetTimeoutTicker(NewTimeoutTicker())
 
 	switches := make([]*p2p.Switch, N)
-	p2pLogger := log.TestingLogger().With("module", "p2p")
+	p2pLogger := logger.With("module", "p2p")
 	for i := 0; i < N; i++ {
 		switches[i] = p2p.NewSwitch(config.P2P)
-		switches[i].SetLogger(p2pLogger)
+		switches[i].SetLogger(p2pLogger.With("validator", i))
 	}
 
 	reactors := make([]p2p.Reactor, N)
@@ -50,6 +50,7 @@ func TestByzantine(t *testing.T) {
 		}
 	}()
 	eventChans := make([]chan interface{}, N)
+	eventLogger := logger.With("module", "events")
 	for i := 0; i < N; i++ {
 		if i == 0 {
 			css[i].privValidator = NewByzantinePrivValidator(css[i].privValidator.(*types.PrivValidator))
@@ -63,7 +64,7 @@ func TestByzantine(t *testing.T) {
 		}
 
 		eventSwitch := events.NewEventSwitch()
-		eventSwitch.SetLogger(log.TestingLogger().With("module", "events"))
+		eventSwitch.SetLogger(eventLogger.With("validator", i))
 		_, err := eventSwitch.Start()
 		if err != nil {
 			t.Fatalf("Failed to start switch: %v", err)
@@ -71,7 +72,7 @@ func TestByzantine(t *testing.T) {
 		eventChans[i] = subscribeToEvent(eventSwitch, "tester", types.EventStringNewBlock(), 1)
 
 		conR := NewConsensusReactor(css[i], true) // so we dont start the consensus states
-		conR.SetLogger(log.TestingLogger())
+		conR.SetLogger(logger.With("validator", i))
 		conR.SetEventSwitch(eventSwitch)
 
 		var conRI p2p.Reactor
