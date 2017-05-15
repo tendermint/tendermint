@@ -22,7 +22,7 @@ type GRPCServer struct {
 }
 
 // NewGRPCServer returns a new gRPC ABCI server
-func NewGRPCServer(protoAddr string, app types.ABCIApplicationServer) (cmn.Service, error) {
+func NewGRPCServer(protoAddr string, app types.ABCIApplicationServer) cmn.Service {
 	parts := strings.SplitN(protoAddr, "://", 2)
 	proto, addr := parts[0], parts[1]
 	s := &GRPCServer{
@@ -32,8 +32,7 @@ func NewGRPCServer(protoAddr string, app types.ABCIApplicationServer) (cmn.Servi
 		app:      app,
 	}
 	s.BaseService = *cmn.NewBaseService(nil, "ABCIServer", s)
-	_, err := s.Start() // Just start it
-	return s, err
+	return s
 }
 
 // OnStart starts the gRPC service

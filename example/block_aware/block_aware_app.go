@@ -25,6 +25,10 @@ func main() {
 		os.Exit(1)
 	}
 	srv.SetLogger(logger.With("module", "abci-server"))
+	if _, err := srv.Start(); err != nil {
+		logger.Error(err.Error())
+		os.Exit(1)
+	}
 
 	// Wait forever
 	cmn.TrapSignal(func() {

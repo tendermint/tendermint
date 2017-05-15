@@ -38,8 +38,8 @@ func testStream(t *testing.T, app types.Application) {
 	numDeliverTxs := 200000
 
 	// Start the listener
-	server, err := server.NewSocketServer("unix://test.sock", app)
-	if err != nil {
+	server := server.NewSocketServer("unix://test.sock", app)
+	if _, err := server.Start(); err != nil {
 		t.Fatalf("Error starting socket server: %v", err.Error())
 	}
 	server.SetLogger(log.TestingLogger().With("module", "abci-server"))
@@ -112,8 +112,8 @@ func testGRPCSync(t *testing.T, app *types.GRPCApplication) {
 	numDeliverTxs := 2000
 
 	// Start the listener
-	server, err := server.NewGRPCServer("unix://test.sock", app)
-	if err != nil {
+	server := server.NewGRPCServer("unix://test.sock", app)
+	if _, err := server.Start(); err != nil {
 		t.Fatalf("Error starting GRPC server: %v", err.Error())
 	}
 	server.SetLogger(log.TestingLogger().With("module", "abci-server"))

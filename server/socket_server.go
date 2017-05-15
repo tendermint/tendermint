@@ -29,7 +29,7 @@ type SocketServer struct {
 	app    types.Application
 }
 
-func NewSocketServer(protoAddr string, app types.Application) (cmn.Service, error) {
+func NewSocketServer(protoAddr string, app types.Application) cmn.Service {
 	parts := strings.SplitN(protoAddr, "://", 2)
 	proto, addr := parts[0], parts[1]
 	s := &SocketServer{
@@ -40,10 +40,7 @@ func NewSocketServer(protoAddr string, app types.Application) (cmn.Service, erro
 		conns:    make(map[int]net.Conn),
 	}
 	s.BaseService = *cmn.NewBaseService(nil, "ABCIServer", s)
-	// FIXME we are loosing "Starting ABCIServer" message here
-	// add logger to params?
-	_, err := s.Start() // Just start it
-	return s, err
+	return s
 }
 
 func (s *SocketServer) OnStart() error {
