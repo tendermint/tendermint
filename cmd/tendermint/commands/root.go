@@ -1,11 +1,13 @@
 package commands
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	tmflags "github.com/tendermint/tendermint/cmd/tendermint/commands/flags"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tmlibs/log"
 )
@@ -26,9 +28,21 @@ var RootCmd = &cobra.Command{
 		err := viper.Unmarshal(config)
 		config.SetRoot(config.RootDir)
 		cfg.EnsureRoot(config.RootDir)
-		logger, err = log.NewFilterByLevel(logger, config.LogLevel)
-		if err != nil {
-			return err
+		if tmflags.IsLogLevelSimple(config.LogLevel) {
+			var option log.Option
+			switch config.LogLevel {
+			case "info":
+				option = log.AllowInfo()
+			case "debug":
+				option = log.AllowDebug()
+			case "error":
+				option = log.AllowError()
+			case "none":
+				option = log.AllowNone()
+			default:
+				return fmt.Errorf("Expected log level to be either \"info\", \"debug\", \"error\" or \"none\", given %s", config.LogLevel)
+			}
+			logger = log.NewFilter(logger, option)
 		}
 		return err
 	},
