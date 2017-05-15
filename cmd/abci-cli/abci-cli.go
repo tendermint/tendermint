@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strconv"
 	"strings"
 
 	abcicli "github.com/tendermint/abci/client"
@@ -126,6 +125,22 @@ func main() {
 			Usage: "Query application state",
 			Action: func(c *cli.Context) error {
 				return cmdQuery(c)
+			},
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "path",
+					Value: "/store",
+					Usage: "Path to prefix the query with",
+				},
+				cli.IntFlag{
+					Name:  "height",
+					Value: 0,
+					Usage: "Height to query the blockchain at",
+				},
+				cli.BoolFlag{
+					Name:  "prove",
+					Usage: "Whether or not to return a merkle proof of the query result",
+				},
 			},
 		},
 	}
@@ -305,12 +320,11 @@ func cmdCommit(c *cli.Context) error {
 }
 
 // Query application state
-// TODO: Make request and response support all fields.
 func cmdQuery(c *cli.Context) error {
 	args := c.Args()
 
-	if len(args) == 0 {
-		return errors.New("Command query takes 1 or more arguments")
+	if len(args) != 1 {
+		return errors.New("Command query takes 1 argument, the query bytes")
 	}
 
 	queryBytes, err := stringOrHexToBytes(args[0])
@@ -318,25 +332,14 @@ func cmdQuery(c *cli.Context) error {
 		return err
 	}
 
-	var path = "/store"
-	if len(args) > 1 {
-		path = args[1]
-	}
-
-	var height uint64
-	if len(args) > 2 {
-		height, _ = strconv.ParseUint(args[2], 10, 64)
-	}
-
-	var prove = true
-	if len(args) > 3 {
-		prove, _ = strconv.ParseBool(args[3])
-	}
+	path := c.String("path")
+	height := c.Int("height")
+	prove := c.Bool("prove")
 
 	resQuery, err := client.QuerySync(types.RequestQuery{
 		Data:   queryBytes,
 		Path:   path,
-		Height: height,
+		Height: uint64(height),
 		Prove:  prove,
 	})
 	if err != nil {
