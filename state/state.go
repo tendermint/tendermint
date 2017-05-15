@@ -151,6 +151,7 @@ func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader typ
 		s.logger.Error("Error changing validator set", "error", err)
 		// TODO: err or carry on?
 	}
+
 	// Update validator accums and set state variables
 	nextValSet.IncrementAccum(1)
 

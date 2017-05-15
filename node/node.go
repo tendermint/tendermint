@@ -123,6 +123,13 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 		}
 	}
 
+	// Log whether this node is a validator or an observer
+	if state.Validators.HasAddress(privValidator.Address) {
+		consensusLogger.Info("This node is a validator")
+	} else {
+		consensusLogger.Info("This node is not a validator")
+	}
+
 	// Make BlockchainReactor
 	bcReactor := bc.NewBlockchainReactor(state.Copy(), proxyApp.Consensus(), blockStore, fastSync)
 	bcReactor.SetLogger(logger.With("module", "blockchain"))
