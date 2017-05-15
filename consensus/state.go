@@ -775,15 +775,21 @@ func (cs *ConsensusState) enterPropose(height int, round int) {
 
 	// Nothing more to do if we're not a validator
 	if cs.privValidator == nil {
+		cs.Logger.Info("This node is not a validator")
 		return
 	}
 
 	if !bytes.Equal(cs.Validators.GetProposer().Address, cs.privValidator.GetAddress()) {
 		cs.Logger.Info("enterPropose: Not our turn to propose", "proposer", cs.Validators.GetProposer().Address, "privValidator", cs.privValidator)
+		if cs.Validators.HasAddress(cs.privValidator.GetAddress()) {
+			cs.Logger.Info("This node is a validator")
+		} else {
+			cs.Logger.Info("This node is not a validator")
+		}
 	} else {
 		cs.Logger.Info("enterPropose: Our turn to propose", "proposer", cs.Validators.GetProposer().Address, "privValidator", cs.privValidator)
+		cs.Logger.Info("This node is a validator")
 		cs.decideProposal(height, round)
-
 	}
 }
 
@@ -1141,6 +1147,7 @@ func (cs *ConsensusState) tryFinalizeCommit(height int) {
 		cs.Logger.Error("Attempt to finalize failed. We don't have the commit block.", "height", height, "proposal-block", cs.ProposalBlock.Hash(), "commit-block", blockID.Hash)
 		return
 	}
+
 	//	go
 	cs.finalizeCommit(height)
 }
@@ -1221,7 +1228,7 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	// NOTE: If we fail before firing, these events will never fire
 	//
 	// TODO: Either
-	// 	* Fire before persisting state, in ApplyBlock
+	//	* Fire before persisting state, in ApplyBlock
 	//	* Fire on start up if we haven't written any new WAL msgs
 	//   Both options mean we may fire more than once. Is that fine ?
 	types.FireEventNewBlock(cs.evsw, types.EventDataNewBlock{block})
