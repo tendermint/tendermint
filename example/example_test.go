@@ -39,19 +39,18 @@ func testStream(t *testing.T, app types.Application) {
 
 	// Start the listener
 	server := server.NewSocketServer("unix://test.sock", app)
+	server.SetLogger(log.TestingLogger().With("module", "abci-server"))
 	if _, err := server.Start(); err != nil {
 		t.Fatalf("Error starting socket server: %v", err.Error())
 	}
-	server.SetLogger(log.TestingLogger().With("module", "abci-server"))
 	defer server.Stop()
 
 	// Connect to the socket
 	client := abcicli.NewSocketClient("unix://test.sock", false)
+	client.SetLogger(log.TestingLogger().With("module", "abci-client"))
 	if _, err := client.Start(); err != nil {
 		t.Fatalf("Error starting socket client: %v", err.Error())
 	}
-	client.SetLogger(log.TestingLogger().With("module", "abci-client"))
-	client.Start()
 	defer client.Stop()
 
 	done := make(chan struct{})
@@ -113,10 +112,10 @@ func testGRPCSync(t *testing.T, app *types.GRPCApplication) {
 
 	// Start the listener
 	server := server.NewGRPCServer("unix://test.sock", app)
+	server.SetLogger(log.TestingLogger().With("module", "abci-server"))
 	if _, err := server.Start(); err != nil {
 		t.Fatalf("Error starting GRPC server: %v", err.Error())
 	}
-	server.SetLogger(log.TestingLogger().With("module", "abci-server"))
 	defer server.Stop()
 
 	// Connect to the socket

@@ -27,11 +27,10 @@ func TestChainAware(t *testing.T) {
 
 	// Connect to the socket
 	client := abcicli.NewSocketClient("unix://test.sock", false)
+	client.SetLogger(log.TestingLogger().With("module", "abci-client"))
 	if _, err := client.Start(); err != nil {
 		t.Fatalf("Error starting socket client: %v", err.Error())
 	}
-	client.SetLogger(log.TestingLogger().With("module", "abci-client"))
-	client.Start()
 	defer client.Stop()
 
 	n := uint64(5)

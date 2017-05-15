@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/tendermint/go-wire/data"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 // validators implements sort
@@ -38,6 +39,9 @@ func ValidatorsString(vs Validators) string {
 	for i, v := range vs {
 		s[i] = validatorPretty{v.PubKey, v.Power}
 	}
-	b, _ := json.Marshal(s)
+	b, err := json.Marshal(s)
+	if err != nil {
+		cmn.PanicSanity(err.Error())
+	}
 	return string(b)
 }
