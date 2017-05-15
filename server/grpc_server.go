@@ -10,8 +10,6 @@ import (
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
-// var maxNumberConnections = 2
-
 type GRPCServer struct {
 	cmn.BaseService
 
@@ -23,6 +21,7 @@ type GRPCServer struct {
 	app types.ABCIApplicationServer
 }
 
+// NewGRPCServer returns a new gRPC ABCI server
 func NewGRPCServer(protoAddr string, app types.ABCIApplicationServer) (cmn.Service, error) {
 	parts := strings.SplitN(protoAddr, "://", 2)
 	proto, addr := parts[0], parts[1]
@@ -37,6 +36,7 @@ func NewGRPCServer(protoAddr string, app types.ABCIApplicationServer) (cmn.Servi
 	return s, err
 }
 
+// OnStart starts the gRPC service
 func (s *GRPCServer) OnStart() error {
 	s.BaseService.OnStart()
 	ln, err := net.Listen(s.proto, s.addr)
@@ -50,6 +50,7 @@ func (s *GRPCServer) OnStart() error {
 	return nil
 }
 
+// OnStop stops the gRPC server
 func (s *GRPCServer) OnStop() {
 	s.BaseService.OnStop()
 	s.server.Stop()

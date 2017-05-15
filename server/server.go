@@ -1,3 +1,12 @@
+/*
+Package server is used to start a new ABCI server.
+
+It contains two server implementation:
+ * gRPC server
+ * socket server
+
+*/
+
 package server
 
 import (
