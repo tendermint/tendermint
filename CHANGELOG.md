@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.5.0 (May 15, 2017)
+
+BREAKING CHANGES:
+
+- `NewSocketClient` and `NewGRPCClient` no longer start the client automatically, and don't return errors. The caller is responsible for running `client.Start()` and checking the error.
+- `NewSocketServer` and `NewGRPCServer` no longer start the server automatically, and don't return errors. The caller is responsible for running `server.Start()` and checking the error.
+
+
+FEATURES:
+
+- [types] new method `func (res Result) IsSameCode(compare Result) bool` checks whether two results have the same code
+- [types] new methods `func (r *ResponseCheckTx) Result() Result` and `func (r *ResponseDeliverTx) Result() Result` to convert from protobuf types (for control over json serialization)
+- [types] new method `func (r *ResponseQuery) Result() *ResultQuery` and struct `ResultQuery` to convert from protobuf types (for control over json serializtion)
+
+IMPROVEMENTS:
+
+- Update imports for new `tmlibs` repository
+- Use the new logger
+- [abci-cli] Add flags to the query command for `path`, `height`, and `prove`
+- [types] use `data.Bytes` and `json` tags in the `Result` struct 
+
+BUG FIXES:
+
 ## 0.4.1 (April 18, 2017)
 
 IMPROVEMENTS:
