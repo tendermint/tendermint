@@ -9,6 +9,7 @@ import (
 	"github.com/tendermint/abci/server"
 	"github.com/tendermint/abci/types"
 	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
 )
 
 //----------------------------------------
@@ -48,16 +49,23 @@ func TestEcho(t *testing.T) {
 	clientCreator := NewRemoteClientCreator(sockPath, SOCKET, true)
 
 	// Start server
-	s, err := server.NewSocketServer(sockPath, dummy.NewDummyApplication())
-	if err != nil {
-		cmn.Exit(err.Error())
+	s := server.NewSocketServer(sockPath, dummy.NewDummyApplication())
+	s.SetLogger(log.TestingLogger().With("module", "abci-server"))
+	if _, err := s.Start(); err != nil {
+		t.Fatalf("Error starting socket server: %v", err.Error())
 	}
 	defer s.Stop()
+
 	// Start client
 	cli, err := clientCreator.NewABCIClient()
 	if err != nil {
-		cmn.Exit(err.Error())
+		t.Fatalf("Error creating ABCI client: %v", err.Error())
 	}
+	cli.SetLogger(log.TestingLogger().With("module", "abci-client"))
+	if _, err := cli.Start(); err != nil {
+		t.Fatalf("Error starting ABCI client: %v", err.Error())
+	}
+
 	proxy := NewAppConnTest(cli)
 	t.Log("Connected")
 
@@ -71,17 +79,25 @@ func BenchmarkEcho(b *testing.B) {
 	b.StopTimer() // Initialize
 	sockPath := cmn.Fmt("unix:///tmp/echo_%v.sock", cmn.RandStr(6))
 	clientCreator := NewRemoteClientCreator(sockPath, SOCKET, true)
+
 	// Start server
-	s, err := server.NewSocketServer(sockPath, dummy.NewDummyApplication())
-	if err != nil {
-		cmn.Exit(err.Error())
+	s := server.NewSocketServer(sockPath, dummy.NewDummyApplication())
+	s.SetLogger(log.TestingLogger().With("module", "abci-server"))
+	if _, err := s.Start(); err != nil {
+		b.Fatalf("Error starting socket server: %v", err.Error())
 	}
 	defer s.Stop()
+
 	// Start client
 	cli, err := clientCreator.NewABCIClient()
 	if err != nil {
-		cmn.Exit(err.Error())
+		b.Fatalf("Error creating ABCI client: %v", err.Error())
 	}
+	cli.SetLogger(log.TestingLogger().With("module", "abci-client"))
+	if _, err := cli.Start(); err != nil {
+		b.Fatalf("Error starting ABCI client: %v", err.Error())
+	}
+
 	proxy := NewAppConnTest(cli)
 	b.Log("Connected")
 	echoString := strings.Repeat(" ", 200)
@@ -100,17 +116,25 @@ func BenchmarkEcho(b *testing.B) {
 func TestInfo(t *testing.T) {
 	sockPath := cmn.Fmt("unix:///tmp/echo_%v.sock", cmn.RandStr(6))
 	clientCreator := NewRemoteClientCreator(sockPath, SOCKET, true)
+
 	// Start server
-	s, err := server.NewSocketServer(sockPath, dummy.NewDummyApplication())
-	if err != nil {
-		cmn.Exit(err.Error())
+	s := server.NewSocketServer(sockPath, dummy.NewDummyApplication())
+	s.SetLogger(log.TestingLogger().With("module", "abci-server"))
+	if _, err := s.Start(); err != nil {
+		t.Fatalf("Error starting socket server: %v", err.Error())
 	}
 	defer s.Stop()
+
 	// Start client
 	cli, err := clientCreator.NewABCIClient()
 	if err != nil {
-		cmn.Exit(err.Error())
+		t.Fatalf("Error creating ABCI client: %v", err.Error())
 	}
+	cli.SetLogger(log.TestingLogger().With("module", "abci-client"))
+	if _, err := cli.Start(); err != nil {
+		t.Fatalf("Error starting ABCI client: %v", err.Error())
+	}
+
 	proxy := NewAppConnTest(cli)
 	t.Log("Connected")
 

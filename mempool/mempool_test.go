@@ -18,7 +18,15 @@ func TestSerialReap(t *testing.T) {
 	app.SetOption("serial", "on")
 	cc := proxy.NewLocalClientCreator(app)
 	appConnMem, _ := cc.NewABCIClient()
+	appConnMem.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "mempool"))
+	if _, err := appConnMem.Start(); err != nil {
+		t.Fatalf("Error starting ABCI client: %v", err.Error())
+	}
 	appConnCon, _ := cc.NewABCIClient()
+	appConnCon.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "consensus"))
+	if _, err := appConnCon.Start(); err != nil {
+		t.Fatalf("Error starting ABCI client: %v", err.Error())
+	}
 	mempool := NewMempool(config.Mempool, appConnMem)
 	mempool.SetLogger(log.TestingLogger())
 
