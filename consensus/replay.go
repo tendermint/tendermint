@@ -388,6 +388,7 @@ func newMockProxyApp(appHash []byte, abciResponses *sm.ABCIResponses) proxy.AppC
 		abciResponses: abciResponses,
 	})
 	cli, _ := clientCreator.NewABCIClient()
+	cli.Start()
 	return proxy.NewAppConnConsensus(cli)
 }
 

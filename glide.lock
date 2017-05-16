@@ -1,12 +1,10 @@
 hash: 9caff08aa026986b239e4aeb9d876bdddfacadc64a660ee8109e77a211e53436
-updated: 2017-05-15T07:32:38.823266751Z
+updated: 2017-05-16T16:19:50.278000355Z
 imports:
 - name: github.com/btcsuite/btcd
   version: 1ae306021e323ae11c71ffb8546fbd9019e6cb6f
   subpackages:
   - btcec
-- name: github.com/clipperhouse/typewriter
-  version: c1a48da378ebb7db1db9f35981b5cc24bf2e5b85
 - name: github.com/davecgh/go-spew
   version: 04cdfd42973bb9c8589fd6a731800cf222fde1a9
   subpackages:
@@ -104,7 +102,7 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/abci
-  version: b662bc7d3439b3c2cce615e8c3502b762e133dbf
+  version: 5dabeffb35c027d7087a12149685daa68989168b
   subpackages:
   - client
   - example/counter
@@ -117,9 +115,9 @@ imports:
   - edwards25519
   - extra25519
 - name: github.com/tendermint/go-crypto
-  version: e71bbb2509b586f0b24f120b6ba57f32aefa1579
+  version: 438b16f1f84ef002d7408ecd6fc3a3974cbc9559
 - name: github.com/tendermint/go-wire
-  version: 8b47d1a9dd4e94ee0e099216c382847342405ab9
+  version: 97beaedf0f4dbc035309157c92be3b30cc6e5d74
   subpackages:
   - data
   - data/base58
@@ -131,7 +129,7 @@ imports:
   - iavl
   - testutil
 - name: github.com/tendermint/tmlibs
-  version: 4fdeaa70afa2556360a396faaa82e640b9912b0c
+  version: 812d9f9b84d1dfe4cb46ce021b3a2d97b48d1292
   subpackages:
   - autofile
   - cli
@@ -175,11 +173,6 @@ imports:
   - transform
   - unicode/bidi
   - unicode/norm
-- name: golang.org/x/tools
-  version: 144c6642b5d832d6c44a53dad6ee61665dd432ce
-  subpackages:
-  - go/ast/astutil
-  - imports
 - name: google.golang.org/genproto
   version: 411e09b969b1170a9f0c467558eb4c4c110d9c77
   subpackages:
