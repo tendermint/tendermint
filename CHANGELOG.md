@@ -13,15 +13,36 @@ BREAKING CHANGES:
 }
 ```
 
+- New config
+  - Isolate viper to cmd/tendermint/commands
+  - config structs: Base, P2P, Mempool, Consensus
+  - Remove config/tendermint and config/tendermint_test. Defaults are handled by viper and DefaultConfig() / TestConfig() functions. Tests do not read config from file
+- New logging
+- RPC serialization
+- lowercase json names for ValidatorSet fields
+- Send InitChain in handshake if appBlockHeight == 0
+- [types] `[]byte -> data.Bytes`
+- Introduce EventDataInner for serializing events
+- remove all use of go-wire around user interfaces
+- rpc responses no longer have type information :)
+
+
+FEATURES:
+
+- Log if a node is validator or not in every consensus round
+- Use ldflags to set git hash as part of the version
+
 IMPROVEMENTS:
 
 - Merge `tendermint/go-p2p -> tendermint/tendermint/p2p` and `tendermint/go-rpc -> tendermint/tendermint/rpc/lib`
 - Update paths for grand repo merge:
   - `go-common -> tmlibs/common`
   - `go-data -> go-wire/data`
-  - All other `go-*` libs, except `go-crypto`, merged under `tmlibs`
+  - All other `go-*` libs, except `go-crypto` and `go-wire`, merged under `tmlibs`
 - Return HTTP status codes with errors for RPC responses
 - Use `.Wrap()` and `.Unwarp()` instead of eg. `PubKeyS` for `go-crypto` types
+- Color code different instances of the consensus for tests 
+- RPC JSON responses use pretty printing (json.MarshalIndent)
 
 
 ## 0.9.2 (April 26, 2017)

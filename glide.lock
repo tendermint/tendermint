@@ -1,8 +1,8 @@
 hash: 9caff08aa026986b239e4aeb9d876bdddfacadc64a660ee8109e77a211e53436
-updated: 2017-05-16T16:19:50.278000355Z
+updated: 2017-05-16T23:51:45.470827916+02:00
 imports:
 - name: github.com/btcsuite/btcd
-  version: 1ae306021e323ae11c71ffb8546fbd9019e6cb6f
+  version: 40f4997b95ac18e20c5ffc54dc3c84036b1f1bf5
   subpackages:
   - btcec
 - name: github.com/davecgh/go-spew
@@ -24,7 +24,7 @@ imports:
 - name: github.com/go-stack/stack
   version: 7a2f19628aabfe68f0766b59e74d6315f8347d22
 - name: github.com/gogo/protobuf
-  version: 30433562cfbf487fe1df7cd26c7bab168d2f14d0
+  version: 9df9efe4c742f1a2bfdedf1c3b6902fc6e814c6b
   subpackages:
   - proto
 - name: github.com/golang/protobuf
@@ -60,7 +60,7 @@ imports:
 - name: github.com/pelletier/go-buffruneio
   version: c37440a7cf42ac63b919c752ca73a85067e05992
 - name: github.com/pelletier/go-toml
-  version: 685a1f1cb7a66b9cadbe8f1ac49d9f8f567d6a9d
+  version: 5c26a6ff6fd178719e15decac1c8196da0d7d6d1
 - name: github.com/pkg/errors
   version: c605e284fe17294bda444b34710735b29d1a9d90
 - name: github.com/pmezard/go-difflib
@@ -74,7 +74,7 @@ imports:
 - name: github.com/spf13/cast
   version: acbeb36b902d72a7a4c18e8f3241075e7ab763e4
 - name: github.com/spf13/cobra
-  version: e9078fccb8b1e6914310b96d5e1be43713f3a372
+  version: 4cdb38c072b86bf795d2c81de50784d9fdd6eb77
 - name: github.com/spf13/jwalterweatherman
   version: 8f07c835e5cc1450c082fe3a439cf87b0cbb2d99
 - name: github.com/spf13/pflag
@@ -129,7 +129,7 @@ imports:
   - iavl
   - testutil
 - name: github.com/tendermint/tmlibs
-  version: 812d9f9b84d1dfe4cb46ce021b3a2d97b48d1292
+  version: 67f558cff0d3fc08eac951fcc39cf999101e36da
   subpackages:
   - autofile
   - cli
@@ -142,7 +142,7 @@ imports:
   - merkle
   - test
 - name: golang.org/x/crypto
-  version: ab89591268e0c8b748cbe4047b00197516011af5
+  version: 0fe963104e9d1877082f8fb38f816fcd97eb1d10
   subpackages:
   - curve25519
   - nacl/box
@@ -153,7 +153,7 @@ imports:
   - ripemd160
   - salsa20/salsa
 - name: golang.org/x/net
-  version: 84f0e6f92b10139f986b1756e149a7d9de270cdc
+  version: 34057069f4ab13dc4433c68d368737ebeafcccdc
   subpackages:
   - context
   - http2
@@ -178,7 +178,7 @@ imports:
   subpackages:
   - googleapis/rpc/status
 - name: google.golang.org/grpc
-  version: 1c69e4cae0f5180ce7d8b472bf0a55d2654fe31b
+  version: 3419b42955675df23457629c75f58eb8dcd56954
   subpackages:
   - codes
   - credentials
