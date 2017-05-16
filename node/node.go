@@ -70,12 +70,13 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 	blockStoreDB := dbm.NewDB("blockstore", config.DBBackend, config.DBDir())
 	blockStore := bc.NewBlockStore(blockStoreDB)
 
+	consensusLogger := logger.With("module", "consensus")
+	stateLogger := logger.With("module", "state")
+
 	// Get State
 	stateDB := dbm.NewDB("state", config.DBBackend, config.DBDir())
 	state := sm.GetState(stateDB, config.GenesisFile())
-	state.SetLogger(logger.With("module", "state"))
-
-	consensusLogger := logger.With("module", "consensus")
+	state.SetLogger(stateLogger)
 
 	// Create the proxyApp, which manages connections (consensus, mempool, query)
 	// and sync tendermint and the app by replaying any necessary blocks
@@ -89,7 +90,7 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 
 	// reload the state (it may have been updated by the handshake)
 	state = sm.LoadState(stateDB)
-	state.SetLogger(logger.With("module", "state"))
+	state.SetLogger(stateLogger)
 
 	// Transaction indexing
 	var txIndexer txindex.TxIndexer
@@ -135,7 +136,7 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 	bcReactor.SetLogger(logger.With("module", "blockchain"))
 
 	// Make MempoolReactor
-	mempoolLogger := logger.With("module", "consensus")
+	mempoolLogger := logger.With("module", "mempool")
 	mempool := mempl.NewMempool(config.Mempool, proxyApp.Mempool())
 	mempool.SetLogger(mempoolLogger)
 	mempoolReactor := mempl.NewMempoolReactor(config.Mempool, mempool)
@@ -325,8 +326,8 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 	listeners := make([]net.Listener, len(listenAddrs))
 	for i, listenAddr := range listenAddrs {
 		mux := http.NewServeMux()
-		rpcLogger := n.Logger.With("module", "rpcserver")
 		wm := rpcserver.NewWebsocketManager(rpccore.Routes, n.evsw)
+		rpcLogger := n.Logger.With("module", "rpc-server")
 		wm.SetLogger(rpcLogger)
 		mux.HandleFunc("/websocket", wm.WebsocketHandler)
 		rpcserver.RegisterRPCFuncs(mux, rpccore.Routes, rpcLogger)
