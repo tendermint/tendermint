@@ -12,13 +12,14 @@ import (
 )
 
 // Volatile state for each Validator
-// TODO: make non-volatile identity
-// 	- Remove Accum - it can be computed, and now valset becomes identifying
+// NOTE: The Accum is not included in Validator.Hash();
+// make sure to update that method if changes are made here
 type Validator struct {
 	Address     data.Bytes    `json:"address"`
 	PubKey      crypto.PubKey `json:"pub_key"`
 	VotingPower int64         `json:"voting_power"`
-	Accum       int64         `json:"accum"`
+
+	Accum int64 `json:"accum"`
 }
 
 func NewValidator(pubKey crypto.PubKey, votingPower int64) *Validator {
@@ -69,8 +70,18 @@ func (v *Validator) String() string {
 		v.Accum)
 }
 
+// Hash computes the unique ID of a validator with a given voting power.
+// It exludes the Accum value, which changes with every round.
 func (v *Validator) Hash() []byte {
-	return wire.BinaryRipemd160(v)
+	return wire.BinaryRipemd160(struct {
+		Address     data.Bytes
+		PubKey      crypto.PubKey
+		VotingPower int64
+	}{
+		v.Address,
+		v.PubKey,
+		v.VotingPower,
+	})
 }
 
 //-------------------------------------
