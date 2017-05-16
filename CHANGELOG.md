@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.10.0 (April 26, 2017)
+## 0.10.0 (May 17, 2017)
 
 BREAKING CHANGES:
 
@@ -15,18 +15,22 @@ BREAKING CHANGES:
 
 - New config
   - Isolate viper to cmd/tendermint/commands
-  - config structs: Base, P2P, Mempool, Consensus
-  - Remove config/tendermint and config/tendermint_test. Defaults are handled by viper and DefaultConfig() / TestConfig() functions. Tests do not read config from file
-- New logging
-- RPC serialization
-- lowercase json names for ValidatorSet fields
+  - Remove config/tendermint and config/tendermint_test. Defaults are handled by viper and `DefaultConfig() / `TestConfig()` functions
+  - Tests do not read config from file
+  - New Config structs in `config/`: BaseConfig, P2PConfig, MempoolConfig, ConsensusConfig
+- New logger
+  - Reduced to three levels: Error, Info, Debug
+  - Per-module log levels
+  - No global loggers (loggers are passed into constructors, or preferably set with a `SetLogger` method)
+- RPC serialization cleanup:
+  - Lowercase json names for ValidatorSet fields
+  - No longer uses go-wire, so no more `[TypeByte, XXX]` madness
+  - Responses have no type information
+  - Introduce EventDataInner for serializing events
+- Remove all use of go-wire (and `[TypeByte, XXX]`) in the `genesis.json` and `priv_validator.json`
 - Send InitChain in handshake if appBlockHeight == 0
 - [types] `[]byte -> data.Bytes`
-- Introduce EventDataInner for serializing events
-- remove all use of go-wire around user interfaces
-- rpc responses no longer have type information :)
 - [types] Do not include the `Accum` field when computing the hash of a validator. This makes the ValidatorSetHash unique for a given validator set, rather than changing with every block (as the Accum changes)
-
 
 FEATURES:
 
