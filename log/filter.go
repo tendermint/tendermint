@@ -17,21 +17,21 @@ func NewFilter(next Logger, options ...Option) Logger {
 	return l
 }
 
-// NewFilterByLevel wraps next and implements filtering based on a given level.
-// Error is returned if level is not info, error or debug.
-func NewFilterByLevel(next Logger, lvl string) (Logger, error) {
-	var option Option
+// AllowLevel returns an option for the given level or error if no option exist
+// for such level.
+func AllowLevel(lvl string) (Option, error) {
 	switch lvl {
-	case "info":
-		option = AllowInfo()
 	case "debug":
-		option = AllowDebug()
+		return AllowDebug(), nil
+	case "info":
+		return AllowInfo(), nil
 	case "error":
-		option = AllowError()
+		return AllowError(), nil
+	case "none":
+		return AllowNone(), nil
 	default:
-		return nil, fmt.Errorf("Expected either \"info\", \"debug\" or \"error\" log level, given %v", lvl)
+		return nil, fmt.Errorf("Expected either \"info\", \"debug\", \"error\" or \"none\" level, given %s", lvl)
 	}
-	return NewFilter(next, option), nil
 }
 
 type filter struct {
