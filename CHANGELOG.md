@@ -25,6 +25,7 @@ BREAKING CHANGES:
 - Introduce EventDataInner for serializing events
 - remove all use of go-wire around user interfaces
 - rpc responses no longer have type information :)
+- [types] Do not include the `Accum` field when computing the hash of a validator. This makes the ValidatorSetHash unique for a given validator set, rather than changing with every block (as the Accum changes)
 
 
 FEATURES:
