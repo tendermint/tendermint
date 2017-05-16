@@ -70,7 +70,7 @@ func (b *Block) ValidateBasic(chainID string, lastBlockHeight int, lastBlockID B
 		return errors.New(Fmt("Wrong Block.Header.LastBlockID.  Expected %v, got %v", lastBlockID, b.LastBlockID))
 	}
 	if !bytes.Equal(b.LastCommitHash, b.LastCommit.Hash()) {
-		return errors.New(Fmt("Wrong Block.Header.LastCommitHash.  Expected %X, got %X", b.LastCommitHash, b.LastCommit.Hash()))
+		return errors.New(Fmt("Wrong Block.Header.LastCommitHash.  Expected %v, got %v", b.LastCommitHash, b.LastCommit.Hash()))
 	}
 	if b.Header.Height != 1 {
 		if err := b.LastCommit.ValidateBasic(); err != nil {
@@ -78,10 +78,10 @@ func (b *Block) ValidateBasic(chainID string, lastBlockHeight int, lastBlockID B
 		}
 	}
 	if !bytes.Equal(b.DataHash, b.Data.Hash()) {
-		return errors.New(Fmt("Wrong Block.Header.DataHash.  Expected %X, got %X", b.DataHash, b.Data.Hash()))
+		return errors.New(Fmt("Wrong Block.Header.DataHash.  Expected %v, got %v", b.DataHash, b.Data.Hash()))
 	}
 	if !bytes.Equal(b.AppHash, appHash) {
-		return errors.New(Fmt("Wrong Block.Header.AppHash.  Expected %X, got %X", appHash, b.AppHash))
+		return errors.New(Fmt("Wrong Block.Header.AppHash.  Expected %X, got %v", appHash, b.AppHash))
 	}
 	// NOTE: the AppHash and ValidatorsHash are validated later.
 	return nil
@@ -136,7 +136,7 @@ func (b *Block) StringIndented(indent string) string {
 %s  %v
 %s  %v
 %s  %v
-%s}#%X`,
+%s}#%v`,
 		indent, b.Header.StringIndented(indent+"  "),
 		indent, b.Data.StringIndented(indent+"  "),
 		indent, b.LastCommit.StringIndented(indent+"  "),
@@ -147,7 +147,7 @@ func (b *Block) StringShort() string {
 	if b == nil {
 		return "nil-Block"
 	} else {
-		return fmt.Sprintf("Block#%X", b.Hash())
+		return fmt.Sprintf("Block#%v", b.Hash())
 	}
 }
 
@@ -166,7 +166,7 @@ type Header struct {
 }
 
 // NOTE: hash is nil if required fields are missing.
-func (h *Header) Hash() []byte {
+func (h *Header) Hash() data.Bytes {
 	if len(h.ValidatorsHash) == 0 {
 		return nil
 	}
@@ -193,11 +193,11 @@ func (h *Header) StringIndented(indent string) string {
 %s  Time:           %v
 %s  NumTxs:         %v
 %s  LastBlockID:    %v
-%s  LastCommit:     %X
-%s  Data:           %X
-%s  Validators:     %X
-%s  App:            %X
-%s}#%X`,
+%s  LastCommit:     %v
+%s  Data:           %v
+%s  Validators:     %v
+%s  App:            %v
+%s}#%v`,
 		indent, h.ChainID,
 		indent, h.Height,
 		indent, h.Time,
@@ -222,7 +222,7 @@ type Commit struct {
 
 	// Volatile
 	firstPrecommit *Vote
-	hash           []byte
+	hash           data.Bytes
 	bitArray       *BitArray
 }
 
@@ -322,7 +322,7 @@ func (commit *Commit) ValidateBasic() error {
 	return nil
 }
 
-func (commit *Commit) Hash() []byte {
+func (commit *Commit) Hash() data.Bytes {
 	if commit.hash == nil {
 		bs := make([]interface{}, len(commit.Precommits))
 		for i, precommit := range commit.Precommits {
@@ -344,7 +344,7 @@ func (commit *Commit) StringIndented(indent string) string {
 	return fmt.Sprintf(`Commit{
 %s  BlockID:    %v
 %s  Precommits: %v
-%s}#%X`,
+%s}#%v`,
 		indent, commit.BlockID,
 		indent, strings.Join(precommitStrings, "\n"+indent+"  "),
 		indent, commit.hash)
@@ -360,10 +360,10 @@ type Data struct {
 	Txs Txs `json:"txs"`
 
 	// Volatile
-	hash []byte
+	hash data.Bytes
 }
 
-func (data *Data) Hash() []byte {
+func (data *Data) Hash() data.Bytes {
 	if data.hash == nil {
 		data.hash = data.Txs.Hash() // NOTE: leaves of merkle tree are TxIDs
 	}
@@ -384,7 +384,7 @@ func (data *Data) StringIndented(indent string) string {
 	}
 	return fmt.Sprintf(`Data{
 %s  %v
-%s}#%X`,
+%s}#%v`,
 		indent, strings.Join(txStrings, "\n"+indent+"  "),
 		indent, data.hash)
 }
@@ -419,5 +419,5 @@ func (blockID BlockID) WriteSignBytes(w io.Writer, n *int, err *error) {
 }
 
 func (blockID BlockID) String() string {
-	return fmt.Sprintf(`%X:%v`, blockID.Hash, blockID.PartsHeader)
+	return fmt.Sprintf(`%v:%v`, blockID.Hash, blockID.PartsHeader)
 }

@@ -238,7 +238,7 @@ func (privVal *PrivValidator) signBytesHRS(height, round int, step int8, signByt
 }
 
 func (privVal *PrivValidator) String() string {
-	return fmt.Sprintf("PrivValidator{%X LH:%v, LR:%v, LS:%v}", privVal.Address, privVal.LastHeight, privVal.LastRound, privVal.LastStep)
+	return fmt.Sprintf("PrivValidator{%v LH:%v, LR:%v, LS:%v}", privVal.Address, privVal.LastHeight, privVal.LastRound, privVal.LastStep)
 }
 
 //-------------------------------------
