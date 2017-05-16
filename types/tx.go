@@ -21,7 +21,7 @@ func (tx Tx) Hash() []byte {
 }
 
 func (tx Tx) String() string {
-	return fmt.Sprintf("Tx{%X}", tx)
+	return fmt.Sprintf("Tx{%X}", []byte(tx))
 }
 
 type Txs []Tx
