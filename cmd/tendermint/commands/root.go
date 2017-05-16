@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -26,24 +25,15 @@ var RootCmd = &cobra.Command{
 	Short: "Tendermint Core (BFT Consensus) in Go",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		err := viper.Unmarshal(config)
+		if err != nil {
+			return err
+		}
 		config.SetRoot(config.RootDir)
 		cfg.EnsureRoot(config.RootDir)
-		if tmflags.IsLogLevelSimple(config.LogLevel) {
-			var option log.Option
-			switch config.LogLevel {
-			case "info":
-				option = log.AllowInfo()
-			case "debug":
-				option = log.AllowDebug()
-			case "error":
-				option = log.AllowError()
-			case "none":
-				option = log.AllowNone()
-			default:
-				return fmt.Errorf("Expected log level to be either \"info\", \"debug\", \"error\" or \"none\", given %s", config.LogLevel)
-			}
-			logger = log.NewFilter(logger, option)
+		logger, err = tmflags.ParseLogLevel(config.LogLevel, logger)
+		if err != nil {
+			return err
 		}
-		return err
+		return nil
 	},
 }

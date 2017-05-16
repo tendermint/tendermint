@@ -14,20 +14,22 @@ const (
 	defaultLogLevelKey = "*"
 )
 
-// IsLogLevelSimple returns true if log level is a single word ("info", ...).
-func IsLogLevelSimple(l string) bool {
-	return !strings.Contains(l, ":")
-}
-
-// ParseComplexLogLevel parses complex log level - comma-separated
+// ParseLogLevel parses complex log level - comma-separated
 // list of module:level pairs with an optional *:level pair (* means
 // all other modules).
 //
 // Example:
-//		ParseComplexLogLevel("consensus:debug,mempool:debug,*:error", log.NewTMLogger(os.Stdout))
-func ParseComplexLogLevel(l string, logger log.Logger) (log.Logger, error) {
-	if l == "" {
+//		ParseLogLevel("consensus:debug,mempool:debug,*:error", log.NewTMLogger(os.Stdout))
+func ParseLogLevel(lvl string, logger log.Logger) (log.Logger, error) {
+	if lvl == "" {
 		return nil, errors.New("Empty log level")
+	}
+
+	l := lvl
+
+	// prefix simple one word levels (e.g. "info") with "*"
+	if !strings.Contains(l, ":") {
+		l = defaultLogLevelKey + ":" + l
 	}
 
 	options := make([]log.Option, 0)

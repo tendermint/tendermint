@@ -7,7 +7,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	tmflags "github.com/tendermint/tendermint/cmd/tendermint/commands/flags"
 	"github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -77,14 +76,6 @@ func runNode(cmd *cobra.Command, args []string) error {
 				return fmt.Errorf("Genesis doc %v must include non-empty chain_id", genDocFile)
 			}
 			config.ChainID = genDoc.ChainID
-		}
-	}
-
-	if !tmflags.IsLogLevelSimple(config.LogLevel) {
-		var err error
-		logger, err = tmflags.ParseComplexLogLevel(config.LogLevel, logger)
-		if err != nil {
-			return err
 		}
 	}
 
