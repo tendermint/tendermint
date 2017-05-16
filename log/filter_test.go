@@ -108,13 +108,31 @@ func TestLevelContext(t *testing.T) {
 	}
 }
 
-func TestNewFilterByLevel(t *testing.T) {
+func TestVariousAllowWith(t *testing.T) {
+	var buf bytes.Buffer
+
 	var logger log.Logger
-	logger = log.NewNopLogger()
-	if _, err := log.NewFilterByLevel(logger, "info"); err != nil {
-		t.Fatal(err)
+	logger = log.NewTMJSONLogger(&buf)
+
+	logger1 := log.NewFilter(logger, log.AllowError(), log.AllowInfoWith("context", "value"))
+	logger1.With("context", "value").Info("foo", "bar", "baz")
+	if want, have := `{"_msg":"foo","bar":"baz","context":"value","level":"info"}`, strings.TrimSpace(buf.String()); want != have {
+		t.Errorf("\nwant '%s'\nhave '%s'", want, have)
 	}
-	if _, err := log.NewFilterByLevel(logger, "other"); err == nil {
-		t.Fatal(err)
+
+	buf.Reset()
+
+	logger2 := log.NewFilter(logger, log.AllowError(), log.AllowInfoWith("context", "value"), log.AllowNoneWith("user", "Sam"))
+	logger2.With("context", "value", "user", "Sam").Info("foo", "bar", "baz")
+	if want, have := ``, strings.TrimSpace(buf.String()); want != have {
+		t.Errorf("\nwant '%s'\nhave '%s'", want, have)
+	}
+
+	buf.Reset()
+
+	logger3 := log.NewFilter(logger, log.AllowError(), log.AllowInfoWith("context", "value"), log.AllowNoneWith("user", "Sam"))
+	logger3.With("user", "Sam").With("context", "value").Info("foo", "bar", "baz")
+	if want, have := `{"_msg":"foo","bar":"baz","context":"value","level":"info","user":"Sam"}`, strings.TrimSpace(buf.String()); want != have {
+		t.Errorf("\nwant '%s'\nhave '%s'", want, have)
 	}
 }
