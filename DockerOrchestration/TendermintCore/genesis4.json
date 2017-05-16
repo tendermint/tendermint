@@ -1,0 +1,39 @@
+{
+	"app_hash": "",
+	"chain_id": "test-chain-vEWFLj",
+	"genesis_time": "0001-01-01T00:00:00.000Z",
+	"validators": [
+		{
+			"amount": 10,
+			"name": "core1",
+			"pub_key": [
+				1,
+				"BF2653D4F7991D89D31DE90861D64A0B1920FF5EB2842348401869F6CD6F201A"
+			]
+		},
+		{
+			"amount": 10,
+			"name": "core2",
+			"pub_key": [
+				1,
+				"F97242A8DD587C650491C7D21FF3D2DAE55D0FAC58A44BB75766CE27F4640C21"
+			]
+		},
+		{
+			"amount": 10,
+			"name": "core3",
+			"pub_key": [
+				1,
+				"D7980C5BE5527EF2654481E0C4B7EB4B647C2DDD5FE980BCB3AE548EC503D6BF"
+			]
+		},
+		{
+			"amount": 10,
+			"name": "core4",
+			"pub_key": [
+				1,
+				"3F1DF8344C09D0E25E063986A6A894FD221E63F2F33FB15CA630A4A57090A68B"
+			]
+		}
+	]
+}

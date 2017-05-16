@@ -1,0 +1,15 @@
+FROM golang:1.8
+MAINTAINER adrian@brink-holdings.com
+
+RUN useradd -ms /bin/bash abciuser
+
+RUN go get github.com/Masterminds/glide
+RUN go get -d github.com/tendermint/abci/cmd/dummy
+WORKDIR $GOPATH/src/github.com/tendermint/abci
+RUN glide install
+RUN go install ./cmd/dummy
+
+EXPOSE 46658
+
+CMD ["dummy"]
+
