@@ -184,7 +184,7 @@ func TestSetupUnmarshal(t *testing.T) {
 	}
 }
 
-func TestSetupDebug(t *testing.T) {
+func TestSetupTrace(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
 	cases := []struct {
@@ -193,22 +193,22 @@ func TestSetupDebug(t *testing.T) {
 		long     bool
 		expected string
 	}{
-		{nil, nil, false, "Debug flag = false"},
-		{[]string{"--debug"}, nil, true, "Debug flag = true"},
+		{nil, nil, false, "Trace flag = false"},
+		{[]string{"--trace"}, nil, true, "Trace flag = true"},
 		{[]string{"--no-such-flag"}, nil, false, "unknown flag: --no-such-flag"},
-		{nil, map[string]string{"DBG_DEBUG": "true"}, true, "Debug flag = true"},
+		{nil, map[string]string{"DBG_TRACE": "true"}, true, "Trace flag = true"},
 	}
 
 	for idx, tc := range cases {
 		i := strconv.Itoa(idx)
 		// test command that store value of foobar in local variable
-		debug := &cobra.Command{
-			Use: "debug",
+		trace := &cobra.Command{
+			Use: "trace",
 			RunE: func(cmd *cobra.Command, args []string) error {
-				return errors.Errorf("Debug flag = %t", viper.GetBool(DebugFlag))
+				return errors.Errorf("Trace flag = %t", viper.GetBool(TraceFlag))
 			},
 		}
-		cmd := PrepareBaseCmd(debug, "DBG", "/qwerty/asdfgh") // some missing dir..
+		cmd := PrepareBaseCmd(trace, "DBG", "/qwerty/asdfgh") // some missing dir..
 
 		viper.Reset()
 		args := append([]string{cmd.Use}, tc.args...)
@@ -219,7 +219,7 @@ func TestSetupDebug(t *testing.T) {
 		assert.Equal(desired, msg[0], i)
 		if tc.long && assert.True(len(msg) > 2, i) {
 			// the next line starts the stack trace...
-			assert.Contains(msg[1], "TestSetupDebug", i)
+			assert.Contains(msg[1], "TestSetupTrace", i)
 			assert.Contains(msg[2], "setup_test.go", i)
 		}
 	}

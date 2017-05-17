@@ -16,7 +16,7 @@ import (
 const (
 	RootFlag     = "root"
 	HomeFlag     = "home"
-	DebugFlag    = "debug"
+	TraceFlag    = "trace"
 	OutputFlag   = "output"
 	EncodingFlag = "encoding"
 )
@@ -36,7 +36,7 @@ func PrepareBaseCmd(cmd *cobra.Command, envPrefix, defautRoot string) Executor {
 	// also, default must be empty, so we can detect this unset and fall back
 	// to --root / TM_ROOT / TMROOT
 	cmd.PersistentFlags().String(HomeFlag, "", "root directory for config and data")
-	cmd.PersistentFlags().Bool(DebugFlag, false, "print out full stack trace on errors")
+	cmd.PersistentFlags().Bool(TraceFlag, false, "print out full stack trace on errors")
 	cmd.PersistentPreRunE = concatCobraCmdFuncs(bindFlagsLoadViper, cmd.PersistentPreRunE)
 	return Executor{cmd}
 }
@@ -92,7 +92,7 @@ func (e Executor) Execute() error {
 	err := e.Command.Execute()
 	if err != nil {
 		// TODO: something cooler with log-levels
-		if viper.GetBool(DebugFlag) {
+		if viper.GetBool(TraceFlag) {
 			fmt.Printf("ERROR: %+v\n", err)
 		} else {
 			fmt.Println("ERROR:", err.Error())
