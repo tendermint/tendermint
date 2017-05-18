@@ -1,10 +1,11 @@
+// DEPRECATED! Use newer log package.
 package logger
 
 import (
 	"os"
 
-	. "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/log15"
+	. "github.com/tendermint/tmlibs/common"
 )
 
 var mainHandler log15.Handler
@@ -40,12 +41,12 @@ func MainHandler() log15.Handler {
 	return mainHandler
 }
 
-func BypassHandler() log15.Handler {
-	return bypassHandler
-}
-
 func New(ctx ...interface{}) log15.Logger {
 	return NewMain(ctx...)
+}
+
+func BypassHandler() log15.Handler {
+	return bypassHandler
 }
 
 func NewMain(ctx ...interface{}) log15.Logger {
