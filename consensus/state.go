@@ -775,20 +775,20 @@ func (cs *ConsensusState) enterPropose(height int, round int) {
 
 	// Nothing more to do if we're not a validator
 	if cs.privValidator == nil {
-		cs.Logger.Info("This node is not a validator")
+		cs.Logger.Debug("This node is not a validator")
 		return
 	}
 
 	if !bytes.Equal(cs.Validators.GetProposer().Address, cs.privValidator.GetAddress()) {
 		cs.Logger.Info("enterPropose: Not our turn to propose", "proposer", cs.Validators.GetProposer().Address, "privValidator", cs.privValidator)
 		if cs.Validators.HasAddress(cs.privValidator.GetAddress()) {
-			cs.Logger.Info("This node is a validator")
+			cs.Logger.Debug("This node is a validator")
 		} else {
-			cs.Logger.Info("This node is not a validator")
+			cs.Logger.Debug("This node is not a validator")
 		}
 	} else {
 		cs.Logger.Info("enterPropose: Our turn to propose", "proposer", cs.Validators.GetProposer().Address, "privValidator", cs.privValidator)
-		cs.Logger.Info("This node is a validator")
+		cs.Logger.Debug("This node is a validator")
 		cs.decideProposal(height, round)
 	}
 }
