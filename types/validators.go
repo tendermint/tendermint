@@ -2,8 +2,10 @@ package types
 
 import (
 	"bytes"
+	"encoding/json"
 
-	"github.com/tendermint/go-wire"
+	"github.com/tendermint/go-wire/data"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 // validators implements sort
@@ -28,8 +30,8 @@ func (v Validators) Swap(i, j int) {
 //-------------------------------------
 
 type validatorPretty struct {
-	PubKey []byte `json:"pub_key"`
-	Power  uint64 `json:"power"`
+	PubKey data.Bytes `json:"pub_key"`
+	Power  uint64     `json:"power"`
 }
 
 func ValidatorsString(vs Validators) string {
@@ -37,5 +39,9 @@ func ValidatorsString(vs Validators) string {
 	for i, v := range vs {
 		s[i] = validatorPretty{v.PubKey, v.Power}
 	}
-	return string(wire.JSONBytes(s))
+	b, err := json.Marshal(s)
+	if err != nil {
+		cmn.PanicSanity(err.Error())
+	}
+	return string(b)
 }

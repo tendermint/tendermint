@@ -4,8 +4,9 @@ import (
 	"strings"
 
 	"github.com/tendermint/abci/types"
-	cmn "github.com/tendermint/go-common"
-	"github.com/tendermint/go-merkle"
+	"github.com/tendermint/merkleeyes/iavl"
+	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/merkle"
 )
 
 type DummyApplication struct {
@@ -15,7 +16,7 @@ type DummyApplication struct {
 }
 
 func NewDummyApplication() *DummyApplication {
-	state := merkle.NewIAVLTree(0, nil)
+	state := iavl.NewIAVLTree(0, nil)
 	return &DummyApplication{state: state}
 }
 

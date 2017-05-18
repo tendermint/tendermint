@@ -1,19 +1,17 @@
 package main
 
 import (
-	"fmt"
-	"log"
 	"strconv"
 	"strings"
 	"testing"
 
-	"github.com/tendermint/abci/client"
+	abcicli "github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/server"
 	"github.com/tendermint/abci/types"
+	"github.com/tendermint/tmlibs/log"
 )
 
 func TestChainAware(t *testing.T) {
-
 	app := NewChainAwareApplication()
 
 	// Start the listener
@@ -21,14 +19,18 @@ func TestChainAware(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	srv.SetLogger(log.TestingLogger().With("module", "abci-server"))
+	if _, err := srv.Start(); err != nil {
+		t.Fatal(err.Error())
+	}
 	defer srv.Stop()
 
 	// Connect to the socket
-	client, err := abcicli.NewSocketClient("unix://test.sock", false)
-	if err != nil {
-		log.Fatal(fmt.Sprintf("Error starting socket client: %v", err.Error()))
+	client := abcicli.NewSocketClient("unix://test.sock", false)
+	client.SetLogger(log.TestingLogger().With("module", "abci-client"))
+	if _, err := client.Start(); err != nil {
+		t.Fatalf("Error starting socket client: %v", err.Error())
 	}
-	client.Start()
 	defer client.Stop()
 
 	n := uint64(5)

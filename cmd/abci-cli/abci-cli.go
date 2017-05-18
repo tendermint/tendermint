@@ -6,13 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"strings"
 
-	"github.com/tendermint/abci/client"
+	abcicli "github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/types"
 	"github.com/tendermint/abci/version"
+	"github.com/tendermint/tmlibs/log"
 	"github.com/urfave/cli"
 )
 
@@ -35,6 +35,8 @@ type queryResponse struct {
 
 // client is a global variable so it can be reused by the console
 var client abcicli.Client
+
+var logger log.Logger
 
 func main() {
 
@@ -124,22 +126,47 @@ func main() {
 			Action: func(c *cli.Context) error {
 				return cmdQuery(c)
 			},
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "path",
+					Value: "/store",
+					Usage: "Path to prefix the query with",
+				},
+				cli.IntFlag{
+					Name:  "height",
+					Value: 0,
+					Usage: "Height to query the blockchain at",
+				},
+				cli.BoolFlag{
+					Name:  "prove",
+					Usage: "Whether or not to return a merkle proof of the query result",
+				},
+			},
 		},
 	}
 	app.Before = before
 	err := app.Run(os.Args)
 	if err != nil {
-		log.Fatal(err.Error())
+		logger.Error(err.Error())
+		os.Exit(1)
 	}
 
 }
 
 func before(c *cli.Context) error {
+	if logger == nil {
+		logger = log.NewFilter(log.NewTMLogger(log.NewSyncWriter(os.Stdout)), log.AllowError())
+	}
 	if client == nil {
 		var err error
 		client, err = abcicli.NewClient(c.GlobalString("address"), c.GlobalString("abci"), false)
 		if err != nil {
-			log.Fatal(err.Error())
+			logger.Error(err.Error())
+			os.Exit(1)
+		}
+		client.SetLogger(logger.With("module", "abci-client"))
+		if _, err := client.Start(); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -296,21 +323,27 @@ func cmdCommit(c *cli.Context) error {
 }
 
 // Query application state
-// TODO: Make request and response support all fields.
 func cmdQuery(c *cli.Context) error {
 	args := c.Args()
+
 	if len(args) != 1 {
-		return errors.New("Command query takes 1 argument")
+		return errors.New("Command query takes 1 argument, the query bytes")
 	}
-	queryBytes, err := stringOrHexToBytes(c.Args()[0])
+
+	queryBytes, err := stringOrHexToBytes(args[0])
 	if err != nil {
 		return err
 	}
+
+	path := c.String("path")
+	height := c.Int("height")
+	prove := c.Bool("prove")
+
 	resQuery, err := client.QuerySync(types.RequestQuery{
 		Data:   queryBytes,
-		Path:   "/store", // TOOD expose
-		Height: 0,        // TODO expose
-		//Prove:  true,     // TODO expose
+		Path:   path,
+		Height: uint64(height),
+		Prove:  prove,
 	})
 	if err != nil {
 		return err

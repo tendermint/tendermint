@@ -10,9 +10,10 @@ import (
 	abcicli "github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/server"
 	"github.com/tendermint/abci/types"
-	cmn "github.com/tendermint/go-common"
-	"github.com/tendermint/go-crypto"
-	"github.com/tendermint/go-merkle"
+	crypto "github.com/tendermint/go-crypto"
+	"github.com/tendermint/merkleeyes/iavl"
+	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
 )
 
 func testDummy(t *testing.T, app types.Application, tx []byte, key, value string) {
@@ -38,7 +39,7 @@ func testDummy(t *testing.T, app types.Application, tx []byte, key, value string
 	})
 	require.Equal(t, types.CodeType_OK, resQuery.Code)
 	require.Equal(t, value, string(resQuery.Value))
-	proof, err := merkle.ReadProof(resQuery.Proof)
+	proof, err := iavl.ReadProof(resQuery.Proof)
 	require.Nil(t, err)
 	require.True(t, proof.Verify([]byte(key), resQuery.Value, proof.RootHash)) // NOTE: we have no way to verify the RootHash
 }
@@ -211,38 +212,44 @@ func valsEqual(t *testing.T, vals1, vals2 []*types.Validator) {
 func makeSocketClientServer(app types.Application, name string) (abcicli.Client, cmn.Service, error) {
 	// Start the listener
 	socket := cmn.Fmt("unix://%s.sock", name)
-	server, err := server.NewSocketServer(socket, app)
-	if err != nil {
+	logger := log.TestingLogger()
+
+	server := server.NewSocketServer(socket, app)
+	server.SetLogger(logger.With("module", "abci-server"))
+	if _, err := server.Start(); err != nil {
 		return nil, nil, err
 	}
 
 	// Connect to the socket
-	client, err := abcicli.NewSocketClient(socket, false)
-	if err != nil {
+	client := abcicli.NewSocketClient(socket, false)
+	client.SetLogger(logger.With("module", "abci-client"))
+	if _, err := client.Start(); err != nil {
 		server.Stop()
 		return nil, nil, err
 	}
-	client.Start()
 
-	return client, server, err
+	return client, server, nil
 }
 
 func makeGRPCClientServer(app types.Application, name string) (abcicli.Client, cmn.Service, error) {
 	// Start the listener
 	socket := cmn.Fmt("unix://%s.sock", name)
+	logger := log.TestingLogger()
 
 	gapp := types.NewGRPCApplication(app)
-	server, err := server.NewGRPCServer(socket, gapp)
-	if err != nil {
+	server := server.NewGRPCServer(socket, gapp)
+	server.SetLogger(logger.With("module", "abci-server"))
+	if _, err := server.Start(); err != nil {
 		return nil, nil, err
 	}
 
-	client, err := abcicli.NewGRPCClient(socket, true)
-	if err != nil {
+	client := abcicli.NewGRPCClient(socket, true)
+	client.SetLogger(logger.With("module", "abci-client"))
+	if _, err := client.Start(); err != nil {
 		server.Stop()
 		return nil, nil, err
 	}
-	return client, server, err
+	return client, server, nil
 }
 
 func TestClientServer(t *testing.T) {
@@ -302,7 +309,7 @@ func testClient(t *testing.T, app abcicli.Client, tx []byte, key, value string) 
 	require.Nil(t, err)
 	require.Equal(t, types.CodeType_OK, resQuery.Code)
 	require.Equal(t, value, string(resQuery.Value))
-	proof, err := merkle.ReadProof(resQuery.Proof)
+	proof, err := iavl.ReadProof(resQuery.Proof)
 	require.Nil(t, err)
 	require.True(t, proof.Verify([]byte(key), resQuery.Value, proof.RootHash)) // NOTE: we have no way to verify the RootHash
 }

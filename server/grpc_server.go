@@ -7,10 +7,8 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/tendermint/abci/types"
-	cmn "github.com/tendermint/go-common"
+	cmn "github.com/tendermint/tmlibs/common"
 )
-
-// var maxNumberConnections = 2
 
 type GRPCServer struct {
 	cmn.BaseService
@@ -23,7 +21,8 @@ type GRPCServer struct {
 	app types.ABCIApplicationServer
 }
 
-func NewGRPCServer(protoAddr string, app types.ABCIApplicationServer) (cmn.Service, error) {
+// NewGRPCServer returns a new gRPC ABCI server
+func NewGRPCServer(protoAddr string, app types.ABCIApplicationServer) cmn.Service {
 	parts := strings.SplitN(protoAddr, "://", 2)
 	proto, addr := parts[0], parts[1]
 	s := &GRPCServer{
@@ -33,10 +32,10 @@ func NewGRPCServer(protoAddr string, app types.ABCIApplicationServer) (cmn.Servi
 		app:      app,
 	}
 	s.BaseService = *cmn.NewBaseService(nil, "ABCIServer", s)
-	_, err := s.Start() // Just start it
-	return s, err
+	return s
 }
 
+// OnStart starts the gRPC service
 func (s *GRPCServer) OnStart() error {
 	s.BaseService.OnStart()
 	ln, err := net.Listen(s.proto, s.addr)
@@ -50,6 +49,7 @@ func (s *GRPCServer) OnStart() error {
 	return nil
 }
 
+// OnStop stops the gRPC server
 func (s *GRPCServer) OnStop() {
 	s.BaseService.OnStop()
 	s.server.Stop()

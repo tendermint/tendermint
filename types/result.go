@@ -2,13 +2,15 @@ package types
 
 import (
 	"fmt"
+
+	"github.com/tendermint/go-wire/data"
 )
 
 // CONTRACT: a zero Result is OK.
 type Result struct {
-	Code CodeType
-	Data []byte
-	Log  string // Can be non-deterministic
+	Code CodeType   `json:"code"`
+	Data data.Bytes `json:"data"`
+	Log  string     `json:"log"` // Can be non-deterministic
 }
 
 func NewResult(code CodeType, data []byte, log string) Result {
@@ -25,6 +27,10 @@ func (res Result) IsOK() bool {
 
 func (res Result) IsErr() bool {
 	return res.Code != CodeType_OK
+}
+
+func (res Result) IsSameCode(compare Result) bool {
+	return res.Code == compare.Code
 }
 
 func (res Result) Error() string {
@@ -82,5 +88,49 @@ func NewError(code CodeType, log string) Result {
 	return Result{
 		Code: code,
 		Log:  log,
+	}
+}
+
+//----------------------------------------
+// Convenience methods for turning the
+// pb type into one using data.Bytes
+
+// Convert ResponseCheckTx to standard Result
+func (r *ResponseCheckTx) Result() Result {
+	return Result{
+		Code: r.Code,
+		Data: r.Data,
+		Log:  r.Log,
+	}
+}
+
+// Convert ResponseDeliverTx to standard Result
+func (r *ResponseDeliverTx) Result() Result {
+	return Result{
+		Code: r.Code,
+		Data: r.Data,
+		Log:  r.Log,
+	}
+}
+
+type ResultQuery struct {
+	Code   CodeType   `json:"code"`
+	Index  int64      `json:"index"`
+	Key    data.Bytes `json:"key"`
+	Value  data.Bytes `json:"value"`
+	Proof  data.Bytes `json:"proof"`
+	Height uint64     `json:"height"`
+	Log    string     `json:"log"`
+}
+
+func (r *ResponseQuery) Result() *ResultQuery {
+	return &ResultQuery{
+		Code:   r.Code,
+		Index:  r.Index,
+		Key:    r.Key,
+		Value:  r.Value,
+		Proof:  r.Proof,
+		Height: r.Height,
+		Log:    r.Log,
 	}
 }
