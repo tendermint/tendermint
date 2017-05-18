@@ -19,12 +19,12 @@ DIR="$( cd -P "$( dirname "$SOURCE" )/.." && pwd )"
 # Change into that dir because we expect that.
 cd "$DIR"
 
-# Generate the tag.
-if [ -z "$NOTAG" ]; then
-  echo "==> Tagging..."
-  git commit --allow-empty -a -m "Release v$VERSION"
-  git tag -a -m "Version $VERSION" "v${VERSION}" master
-fi
+## Generate the tag.
+#if [ -z "$NOTAG" ]; then
+#  echo "==> Tagging..."
+#  git commit --allow-empty -a -m "Release v$VERSION"
+#  git tag -a -m "Version $VERSION" "v${VERSION}" master
+#fi
 
 # Do a hermetic build inside a Docker container.
 docker build -t tendermint/tendermint-builder scripts/tendermint-builder/
