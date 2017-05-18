@@ -31,6 +31,7 @@ BREAKING CHANGES:
 - [consensus/abci] Send InitChain message in handshake if `appBlockHeight == 0`
 - [types] `[]byte -> data.Bytes`
 - [types] Do not include the `Accum` field when computing the hash of a validator. This makes the ValidatorSetHash unique for a given validator set, rather than changing with every block (as the Accum changes)
+- A number of functions and methods ahd their signatures modified to accomodate new config and logger. See https://gist.github.com/ebuchman/640d5fc6c2605f73497992fe107ebe0b for comprehensive list. Note many also had `[]byte` arguments changed to `data.Bytes`, but this is not actually breaking.
 
 FEATURES:
 
