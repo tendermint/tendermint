@@ -7,11 +7,15 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/pkg/errors"
+
 	abci "github.com/tendermint/abci/types"
-	auto "github.com/tendermint/go-autofile"
-	"github.com/tendermint/go-clist"
-	. "github.com/tendermint/go-common"
-	cfg "github.com/tendermint/go-config"
+	auto "github.com/tendermint/tmlibs/autofile"
+	"github.com/tendermint/tmlibs/clist"
+	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
+
+	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
@@ -47,7 +51,7 @@ TODO: Better handle abci client errors. (make it automatically handle connection
 const cacheSize = 100000
 
 type Mempool struct {
-	config cfg.Config
+	config *cfg.MempoolConfig
 
 	proxyMtx      sync.Mutex
 	proxyAppConn  proxy.AppConnMempool
@@ -64,9 +68,11 @@ type Mempool struct {
 
 	// A log of mempool txs
 	wal *auto.AutoFile
+
+	logger log.Logger
 }
 
-func NewMempool(config cfg.Config, proxyAppConn proxy.AppConnMempool) *Mempool {
+func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool) *Mempool {
 	mempool := &Mempool{
 		config:        config,
 		proxyAppConn:  proxyAppConn,
@@ -76,26 +82,29 @@ func NewMempool(config cfg.Config, proxyAppConn proxy.AppConnMempool) *Mempool {
 		rechecking:    0,
 		recheckCursor: nil,
 		recheckEnd:    nil,
-
-		cache: newTxCache(cacheSize),
+		logger:        log.NewNopLogger(),
+		cache:         newTxCache(cacheSize),
 	}
 	mempool.initWAL()
 	proxyAppConn.SetResponseCallback(mempool.resCb)
 	return mempool
 }
 
+// SetLogger allows you to set your own Logger.
+func (mem *Mempool) SetLogger(l log.Logger) {
+	mem.logger = l
+}
+
 func (mem *Mempool) initWAL() {
-	walDir := mem.config.GetString("mempool_wal_dir")
+	walDir := mem.config.WalDir()
 	if walDir != "" {
-		err := EnsureDir(walDir, 0700)
+		err := cmn.EnsureDir(walDir, 0700)
 		if err != nil {
-			log.Error("Error ensuring Mempool wal dir", "error", err)
-			PanicSanity(err)
+			cmn.PanicSanity(errors.Wrap(err, "Error ensuring Mempool wal dir"))
 		}
 		af, err := auto.OpenAutoFile(walDir + "/wal")
 		if err != nil {
-			log.Error("Error opening Mempool wal file", "error", err)
-			PanicSanity(err)
+			cmn.PanicSanity(errors.Wrap(err, "Error opening Mempool wal file"))
 		}
 		mem.wal = af
 	}
@@ -202,7 +211,7 @@ func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
 			mem.txs.PushBack(memTx)
 		} else {
 			// ignore bad transaction
-			log.Info("Bad Transaction", "res", r)
+			mem.logger.Info("Bad Transaction", "res", r)
 
 			// remove from cache (it might be good later)
 			mem.cache.Remove(req.GetCheckTx().Tx)
@@ -219,7 +228,7 @@ func (mem *Mempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 	case *abci.Response_CheckTx:
 		memTx := mem.recheckCursor.Value.(*mempoolTx)
 		if !bytes.Equal(req.GetCheckTx().Tx, memTx.tx) {
-			PanicSanity(Fmt("Unexpected tx response from proxy during recheck\n"+
+			cmn.PanicSanity(cmn.Fmt("Unexpected tx response from proxy during recheck\n"+
 				"Expected %X, got %X", r.CheckTx.Data, memTx.tx))
 		}
 		if r.CheckTx.Code == abci.CodeType_OK {
@@ -240,7 +249,7 @@ func (mem *Mempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 		if mem.recheckCursor == nil {
 			// Done!
 			atomic.StoreInt32(&mem.rechecking, 0)
-			log.Info("Done rechecking txs")
+			mem.logger.Info("Done rechecking txs")
 		}
 	default:
 		// ignore other messages
@@ -269,7 +278,7 @@ func (mem *Mempool) collectTxs(maxTxs int) types.Txs {
 	} else if maxTxs < 0 {
 		maxTxs = mem.txs.Len()
 	}
-	txs := make([]types.Tx, 0, MinInt(mem.txs.Len(), maxTxs))
+	txs := make([]types.Tx, 0, cmn.MinInt(mem.txs.Len(), maxTxs))
 	for e := mem.txs.Front(); e != nil && len(txs) < maxTxs; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
 		txs = append(txs, memTx.tx)
@@ -298,9 +307,8 @@ func (mem *Mempool) Update(height int, txs types.Txs) {
 	// Recheck mempool txs if any txs were committed in the block
 	// NOTE/XXX: in some apps a tx could be invalidated due to EndBlock,
 	//	so we really still do need to recheck, but this is for debugging
-	if mem.config.GetBool("mempool_recheck") &&
-		(mem.config.GetBool("mempool_recheck_empty") || len(txs) > 0) {
-		log.Info("Recheck txs", "numtxs", len(goodTxs))
+	if mem.config.Recheck && (mem.config.RecheckEmpty || len(txs) > 0) {
+		mem.logger.Info("Recheck txs", "numtxs", len(goodTxs))
 		mem.recheckTxs(goodTxs)
 		// At this point, mem.txs are being rechecked.
 		// mem.recheckCursor re-scans mem.txs and possibly removes some txs.

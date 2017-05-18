@@ -6,14 +6,13 @@ import (
 	"time"
 
 	abci "github.com/tendermint/abci/types"
-	"github.com/tendermint/tendermint/config/tendermint_test"
 	"github.com/tendermint/tendermint/types"
 
-	. "github.com/tendermint/go-common"
+	. "github.com/tendermint/tmlibs/common"
 )
 
 func init() {
-	config = tendermint_test.ResetConfig("consensus_mempool_test")
+	config = ResetConfig("consensus_mempool_test")
 }
 
 func TestTxConcurrentWithCommit(t *testing.T) {
@@ -44,7 +43,7 @@ func TestTxConcurrentWithCommit(t *testing.T) {
 	for nTxs := 0; nTxs < NTxs; {
 		select {
 		case b := <-newBlockCh:
-			nTxs += b.(types.EventDataNewBlock).Block.Header.NumTxs
+			nTxs += b.(types.TMEventData).Unwrap().(types.EventDataNewBlock).Block.Header.NumTxs
 		case <-ticker.C:
 			panic("Timed out waiting to commit blocks with transactions")
 		}

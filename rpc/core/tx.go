@@ -8,6 +8,9 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+// Tx allow user to query the transaction results. `nil` could mean the
+// transaction is in the mempool, invalidated, or was not send in the first
+// place.
 func Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 
 	// if index is disabled, return error
@@ -36,7 +39,7 @@ func Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	return &ctypes.ResultTx{
 		Height:   height,
 		Index:    index,
-		TxResult: r.Result,
+		TxResult: r.Result.Result(),
 		Tx:       r.Tx,
 		Proof:    proof,
 	}, nil

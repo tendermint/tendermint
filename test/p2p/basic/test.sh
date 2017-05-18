@@ -31,19 +31,19 @@ for i in `seq 1 $N`; do
 	N_1=$(($N - 1))
 
 	# - assert everyone has N-1 other peers
-	N_PEERS=`curl -s $addr/net_info | jq '.result[1].peers | length'`
+	N_PEERS=`curl -s $addr/net_info | jq '.result.peers | length'`
 	while [ "$N_PEERS" != $N_1 ]; do
 		echo "Waiting for node $i to connect to all peers ..."
 		sleep 1
-		N_PEERS=`curl -s $addr/net_info | jq '.result[1].peers | length'`
+		N_PEERS=`curl -s $addr/net_info | jq '.result.peers | length'`
 	done
 
 	# - assert block height is greater than 1
-	BLOCK_HEIGHT=`curl -s $addr/status | jq .result[1].latest_block_height`
+	BLOCK_HEIGHT=`curl -s $addr/status | jq .result.latest_block_height`
 	while [ "$BLOCK_HEIGHT" -le 1 ]; do
 		echo "Waiting for node $i to commit a block ..."
 		sleep 1
-		BLOCK_HEIGHT=`curl -s $addr/status | jq .result[1].latest_block_height`
+		BLOCK_HEIGHT=`curl -s $addr/status | jq .result.latest_block_height`
 	done
 	echo "Node $i is connected to all peers and at block $BLOCK_HEIGHT"
 done

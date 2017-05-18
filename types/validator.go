@@ -5,19 +5,21 @@ import (
 	"fmt"
 	"io"
 
-	. "github.com/tendermint/go-common"
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-wire"
+	"github.com/tendermint/go-wire/data"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 // Volatile state for each Validator
-// TODO: make non-volatile identity
-// 	- Remove Accum - it can be computed, and now valset becomes identifying
+// NOTE: The Accum is not included in Validator.Hash();
+// make sure to update that method if changes are made here
 type Validator struct {
-	Address     []byte        `json:"address"`
+	Address     data.Bytes    `json:"address"`
 	PubKey      crypto.PubKey `json:"pub_key"`
 	VotingPower int64         `json:"voting_power"`
-	Accum       int64         `json:"accum"`
+
+	Accum int64 `json:"accum"`
 }
 
 func NewValidator(pubKey crypto.PubKey, votingPower int64) *Validator {
@@ -51,7 +53,7 @@ func (v *Validator) CompareAccum(other *Validator) *Validator {
 		} else if bytes.Compare(v.Address, other.Address) > 0 {
 			return other
 		} else {
-			PanicSanity("Cannot compare identical validators")
+			cmn.PanicSanity("Cannot compare identical validators")
 			return nil
 		}
 	}
@@ -61,15 +63,25 @@ func (v *Validator) String() string {
 	if v == nil {
 		return "nil-Validator"
 	}
-	return fmt.Sprintf("Validator{%X %v VP:%v A:%v}",
+	return fmt.Sprintf("Validator{%v %v VP:%v A:%v}",
 		v.Address,
 		v.PubKey,
 		v.VotingPower,
 		v.Accum)
 }
 
+// Hash computes the unique ID of a validator with a given voting power.
+// It exludes the Accum value, which changes with every round.
 func (v *Validator) Hash() []byte {
-	return wire.BinaryRipemd160(v)
+	return wire.BinaryRipemd160(struct {
+		Address     data.Bytes
+		PubKey      crypto.PubKey
+		VotingPower int64
+	}{
+		v.Address,
+		v.PubKey,
+		v.VotingPower,
+	})
 }
 
 //-------------------------------------
@@ -87,7 +99,7 @@ func (vc validatorCodec) Decode(r io.Reader, n *int, err *error) interface{} {
 }
 
 func (vc validatorCodec) Compare(o1 interface{}, o2 interface{}) int {
-	PanicSanity("ValidatorCodec.Compare not implemented")
+	cmn.PanicSanity("ValidatorCodec.Compare not implemented")
 	return 0
 }
 
@@ -96,11 +108,11 @@ func (vc validatorCodec) Compare(o1 interface{}, o2 interface{}) int {
 
 func RandValidator(randPower bool, minPower int64) (*Validator, *PrivValidator) {
 	privVal := GenPrivValidator()
-	_, tempFilePath := Tempfile("priv_validator_")
+	_, tempFilePath := cmn.Tempfile("priv_validator_")
 	privVal.SetFile(tempFilePath)
 	votePower := minPower
 	if randPower {
-		votePower += int64(RandUint32())
+		votePower += int64(cmn.RandUint32())
 	}
 	val := NewValidator(privVal.PubKey, votePower)
 	return val, privVal

@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/abci/example/dummy"
 	abci "github.com/tendermint/abci/types"
+	data "github.com/tendermint/go-wire/data"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 
@@ -35,8 +36,8 @@ func TestABCIMock(t *testing.T) {
 		BroadcastCommit: mock.Call{
 			Args: goodTx,
 			Response: &ctypes.ResultBroadcastTxCommit{
-				CheckTx:   &abci.ResponseCheckTx{Data: []byte("stand")},
-				DeliverTx: &abci.ResponseDeliverTx{Data: []byte("deliver")},
+				CheckTx:   abci.Result{Data: data.Bytes("stand")},
+				DeliverTx: abci.Result{Data: data.Bytes("deliver")},
 			},
 			Error: errors.New("bad tx"),
 		},
@@ -52,9 +53,9 @@ func TestABCIMock(t *testing.T) {
 	query, err := m.ABCIQuery("/", nil, false)
 	require.Nil(err)
 	require.NotNil(query)
-	assert.Equal(key, query.Response.GetKey())
-	assert.Equal(value, query.Response.GetValue())
-	assert.Equal(height, query.Response.GetHeight())
+	assert.EqualValues(key, query.Key)
+	assert.EqualValues(value, query.Value)
+	assert.Equal(height, query.Height)
 
 	// non-commit calls always return errors
 	_, err = m.BroadcastTxSync(goodTx)
@@ -91,7 +92,7 @@ func TestABCIRecorder(t *testing.T) {
 	require.Equal(0, len(r.Calls))
 
 	r.ABCIInfo()
-	r.ABCIQuery("path", []byte("data"), true)
+	r.ABCIQuery("path", data.Bytes("data"), true)
 	require.Equal(2, len(r.Calls))
 
 	info := r.Calls[0]
@@ -163,7 +164,7 @@ func TestABCIApp(t *testing.T) {
 	assert.True(res.DeliverTx.Code.IsOK())
 
 	// check the key
-	qres, err := m.ABCIQuery("/key", []byte(key), false)
+	qres, err := m.ABCIQuery("/key", data.Bytes(key), false)
 	require.Nil(err)
-	assert.EqualValues(value, qres.Response.Value)
+	assert.EqualValues(value, qres.Value)
 }

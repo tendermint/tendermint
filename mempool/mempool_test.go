@@ -4,21 +4,31 @@ import (
 	"encoding/binary"
 	"testing"
 
-	"github.com/tendermint/tendermint/config/tendermint_test"
+	"github.com/tendermint/abci/example/counter"
+	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/abci/example/counter"
+	"github.com/tendermint/tmlibs/log"
 )
 
 func TestSerialReap(t *testing.T) {
-	config := tendermint_test.ResetConfig("mempool_mempool_test")
+	config := cfg.ResetTestRoot("mempool_test")
 
 	app := counter.NewCounterApplication(true)
 	app.SetOption("serial", "on")
 	cc := proxy.NewLocalClientCreator(app)
 	appConnMem, _ := cc.NewABCIClient()
+	appConnMem.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "mempool"))
+	if _, err := appConnMem.Start(); err != nil {
+		t.Fatalf("Error starting ABCI client: %v", err.Error())
+	}
 	appConnCon, _ := cc.NewABCIClient()
-	mempool := NewMempool(config, appConnMem)
+	appConnCon.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "consensus"))
+	if _, err := appConnCon.Start(); err != nil {
+		t.Fatalf("Error starting ABCI client: %v", err.Error())
+	}
+	mempool := NewMempool(config.Mempool, appConnMem)
+	mempool.SetLogger(log.TestingLogger())
 
 	deliverTxsRange := func(start, end int) {
 		// Deliver some txs.

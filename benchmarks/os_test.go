@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	. "github.com/tendermint/go-common"
+	. "github.com/tendermint/tmlibs/common"
 )
 
 func BenchmarkFileWrite(b *testing.B) {

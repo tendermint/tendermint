@@ -5,8 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	cmn "github.com/tendermint/go-common"
 	"github.com/tendermint/tendermint/types"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 var initFilesCmd = &cobra.Command{
@@ -20,13 +20,13 @@ func init() {
 }
 
 func initFiles(cmd *cobra.Command, args []string) {
-	privValFile := config.GetString("priv_validator_file")
+	privValFile := config.PrivValidatorFile()
 	if _, err := os.Stat(privValFile); os.IsNotExist(err) {
 		privValidator := types.GenPrivValidator()
 		privValidator.SetFile(privValFile)
 		privValidator.Save()
 
-		genFile := config.GetString("genesis_file")
+		genFile := config.GenesisFile()
 
 		if _, err := os.Stat(genFile); os.IsNotExist(err) {
 			genDoc := types.GenesisDoc{
@@ -40,8 +40,8 @@ func initFiles(cmd *cobra.Command, args []string) {
 			genDoc.SaveAs(genFile)
 		}
 
-		log.Notice("Initialized tendermint", "genesis", config.GetString("genesis_file"), "priv_validator", config.GetString("priv_validator_file"))
+		logger.Info("Initialized tendermint", "genesis", config.GenesisFile(), "priv_validator", config.PrivValidatorFile())
 	} else {
-		log.Notice("Already initialized", "priv_validator", config.GetString("priv_validator_file"))
+		logger.Info("Already initialized", "priv_validator", config.PrivValidatorFile())
 	}
 }

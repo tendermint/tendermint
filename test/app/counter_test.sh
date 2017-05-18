@@ -33,7 +33,7 @@ function sendTx() {
 		ERROR=`echo $RESPONSE | jq .error`
 		ERROR=$(echo "$ERROR" | tr -d '"') # remove surrounding quotes
 
-		RESPONSE=`echo $RESPONSE | jq .result[1]`
+		RESPONSE=`echo $RESPONSE | jq .result`
 	else
 	 	if [  -f grpc_client ]; then
 			rm grpc_client

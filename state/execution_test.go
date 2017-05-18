@@ -7,12 +7,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/abci/example/dummy"
 	crypto "github.com/tendermint/go-crypto"
-	dbm "github.com/tendermint/go-db"
-	cfg "github.com/tendermint/tendermint/config/tendermint_test"
-	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
+	dbm "github.com/tendermint/tmlibs/db"
+	"github.com/tendermint/tmlibs/log"
 )
 
 var (
@@ -24,21 +23,20 @@ var (
 
 func TestApplyBlock(t *testing.T) {
 	cc := proxy.NewLocalClientCreator(dummy.NewDummyApplication())
-	config := cfg.ResetConfig("execution_test_")
-	proxyApp := proxy.NewAppConns(config, cc, nil)
+	proxyApp := proxy.NewAppConns(cc, nil)
 	_, err := proxyApp.Start()
 	require.Nil(t, err)
 	defer proxyApp.Stop()
-	mempool := mempool.NewMempool(config, proxyApp.Mempool())
 
 	state := state()
+	state.SetLogger(log.TestingLogger())
 	indexer := &dummyIndexer{0}
 	state.TxIndexer = indexer
 
 	// make block
 	block := makeBlock(1, state)
 
-	err = state.ApplyBlock(nil, proxyApp.Consensus(), block, block.MakePartSet(testPartSize).Header(), mempool)
+	err = state.ApplyBlock(nil, proxyApp.Consensus(), block, block.MakePartSet(testPartSize).Header(), types.MockMempool{})
 
 	require.Nil(t, err)
 	assert.Equal(t, nTxsPerBlock, indexer.Indexed) // test indexing works

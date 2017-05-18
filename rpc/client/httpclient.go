@@ -1,14 +1,15 @@
 package client
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/pkg/errors"
-	events "github.com/tendermint/go-events"
-	"github.com/tendermint/go-rpc/client"
-	wire "github.com/tendermint/go-wire"
+	data "github.com/tendermint/go-wire/data"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tendermint/rpc/lib/client"
 	"github.com/tendermint/tendermint/types"
+	events "github.com/tendermint/tmlibs/events"
 )
 
 /*
@@ -49,42 +50,41 @@ func (c *HTTP) _assertIsEventSwitch() types.EventSwitch {
 }
 
 func (c *HTTP) Status() (*ctypes.ResultStatus, error) {
-	tmResult := new(ctypes.TMResult)
-	_, err := c.rpc.Call("status", map[string]interface{}{}, tmResult)
+	result := new(ctypes.ResultStatus)
+	_, err := c.rpc.Call("status", map[string]interface{}{}, result)
 	if err != nil {
 		return nil, errors.Wrap(err, "Status")
 	}
-	// note: panics if rpc doesn't match.  okay???
-	return (*tmResult).(*ctypes.ResultStatus), nil
+	return result, nil
 }
 
 func (c *HTTP) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
-	tmResult := new(ctypes.TMResult)
-	_, err := c.rpc.Call("abci_info", map[string]interface{}{}, tmResult)
+	result := new(ctypes.ResultABCIInfo)
+	_, err := c.rpc.Call("abci_info", map[string]interface{}{}, result)
 	if err != nil {
 		return nil, errors.Wrap(err, "ABCIInfo")
 	}
-	return (*tmResult).(*ctypes.ResultABCIInfo), nil
+	return result, nil
 }
 
-func (c *HTTP) ABCIQuery(path string, data []byte, prove bool) (*ctypes.ResultABCIQuery, error) {
-	tmResult := new(ctypes.TMResult)
+func (c *HTTP) ABCIQuery(path string, data data.Bytes, prove bool) (*ctypes.ResultABCIQuery, error) {
+	result := new(ctypes.ResultABCIQuery)
 	_, err := c.rpc.Call("abci_query",
 		map[string]interface{}{"path": path, "data": data, "prove": prove},
-		tmResult)
+		result)
 	if err != nil {
 		return nil, errors.Wrap(err, "ABCIQuery")
 	}
-	return (*tmResult).(*ctypes.ResultABCIQuery), nil
+	return result, nil
 }
 
 func (c *HTTP) BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
-	tmResult := new(ctypes.TMResult)
-	_, err := c.rpc.Call("broadcast_tx_commit", map[string]interface{}{"tx": tx}, tmResult)
+	result := new(ctypes.ResultBroadcastTxCommit)
+	_, err := c.rpc.Call("broadcast_tx_commit", map[string]interface{}{"tx": tx}, result)
 	if err != nil {
 		return nil, errors.Wrap(err, "broadcast_tx_commit")
 	}
-	return (*tmResult).(*ctypes.ResultBroadcastTxCommit), nil
+	return result, nil
 }
 
 func (c *HTTP) BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
@@ -96,90 +96,90 @@ func (c *HTTP) BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 }
 
 func (c *HTTP) broadcastTX(route string, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
-	tmResult := new(ctypes.TMResult)
-	_, err := c.rpc.Call(route, map[string]interface{}{"tx": tx}, tmResult)
+	result := new(ctypes.ResultBroadcastTx)
+	_, err := c.rpc.Call(route, map[string]interface{}{"tx": tx}, result)
 	if err != nil {
 		return nil, errors.Wrap(err, route)
 	}
-	return (*tmResult).(*ctypes.ResultBroadcastTx), nil
+	return result, nil
 }
 
 func (c *HTTP) NetInfo() (*ctypes.ResultNetInfo, error) {
-	tmResult := new(ctypes.TMResult)
-	_, err := c.rpc.Call("net_info", map[string]interface{}{}, tmResult)
+	result := new(ctypes.ResultNetInfo)
+	_, err := c.rpc.Call("net_info", map[string]interface{}{}, result)
 	if err != nil {
 		return nil, errors.Wrap(err, "NetInfo")
 	}
-	return (*tmResult).(*ctypes.ResultNetInfo), nil
+	return result, nil
 }
 
 func (c *HTTP) DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
-	tmResult := new(ctypes.TMResult)
-	_, err := c.rpc.Call("dump_consensus_state", map[string]interface{}{}, tmResult)
+	result := new(ctypes.ResultDumpConsensusState)
+	_, err := c.rpc.Call("dump_consensus_state", map[string]interface{}{}, result)
 	if err != nil {
 		return nil, errors.Wrap(err, "DumpConsensusState")
 	}
-	return (*tmResult).(*ctypes.ResultDumpConsensusState), nil
+	return result, nil
 }
 
 func (c *HTTP) BlockchainInfo(minHeight, maxHeight int) (*ctypes.ResultBlockchainInfo, error) {
-	tmResult := new(ctypes.TMResult)
+	result := new(ctypes.ResultBlockchainInfo)
 	_, err := c.rpc.Call("blockchain",
 		map[string]interface{}{"minHeight": minHeight, "maxHeight": maxHeight},
-		tmResult)
+		result)
 	if err != nil {
 		return nil, errors.Wrap(err, "BlockchainInfo")
 	}
-	return (*tmResult).(*ctypes.ResultBlockchainInfo), nil
+	return result, nil
 }
 
 func (c *HTTP) Genesis() (*ctypes.ResultGenesis, error) {
-	tmResult := new(ctypes.TMResult)
-	_, err := c.rpc.Call("genesis", map[string]interface{}{}, tmResult)
+	result := new(ctypes.ResultGenesis)
+	_, err := c.rpc.Call("genesis", map[string]interface{}{}, result)
 	if err != nil {
 		return nil, errors.Wrap(err, "Genesis")
 	}
-	return (*tmResult).(*ctypes.ResultGenesis), nil
+	return result, nil
 }
 
 func (c *HTTP) Block(height int) (*ctypes.ResultBlock, error) {
-	tmResult := new(ctypes.TMResult)
-	_, err := c.rpc.Call("block", map[string]interface{}{"height": height}, tmResult)
+	result := new(ctypes.ResultBlock)
+	_, err := c.rpc.Call("block", map[string]interface{}{"height": height}, result)
 	if err != nil {
 		return nil, errors.Wrap(err, "Block")
 	}
-	return (*tmResult).(*ctypes.ResultBlock), nil
+	return result, nil
 }
 
 func (c *HTTP) Commit(height int) (*ctypes.ResultCommit, error) {
-	tmResult := new(ctypes.TMResult)
-	_, err := c.rpc.Call("commit", map[string]interface{}{"height": height}, tmResult)
+	result := new(ctypes.ResultCommit)
+	_, err := c.rpc.Call("commit", map[string]interface{}{"height": height}, result)
 	if err != nil {
 		return nil, errors.Wrap(err, "Commit")
 	}
-	return (*tmResult).(*ctypes.ResultCommit), nil
+	return result, nil
 }
 
 func (c *HTTP) Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
-	tmResult := new(ctypes.TMResult)
+	result := new(ctypes.ResultTx)
 	query := map[string]interface{}{
 		"hash":  hash,
 		"prove": prove,
 	}
-	_, err := c.rpc.Call("tx", query, tmResult)
+	_, err := c.rpc.Call("tx", query, result)
 	if err != nil {
 		return nil, errors.Wrap(err, "Tx")
 	}
-	return (*tmResult).(*ctypes.ResultTx), nil
+	return result, nil
 }
 
 func (c *HTTP) Validators() (*ctypes.ResultValidators, error) {
-	tmResult := new(ctypes.TMResult)
-	_, err := c.rpc.Call("validators", map[string]interface{}{}, tmResult)
+	result := new(ctypes.ResultValidators)
+	_, err := c.rpc.Call("validators", map[string]interface{}{}, result)
 	if err != nil {
 		return nil, errors.Wrap(err, "Validators")
 	}
-	return (*tmResult).(*ctypes.ResultValidators), nil
+	return result, nil
 }
 
 /** websocket event stuff here... **/
@@ -197,7 +197,7 @@ type WSEvents struct {
 	// used to maintain counts of actively listened events
 	// so we can properly subscribe/unsubscribe
 	// FIXME: thread-safety???
-	// FIXME: reuse code from go-events???
+	// FIXME: reuse code from tmlibs/events???
 	evtCount  map[string]int      // count how many time each event is subscribed
 	listeners map[string][]string // keep track of which events each listener is listening to
 }
@@ -334,18 +334,15 @@ func (w *WSEvents) eventListener() {
 // some implementation of types.TMEventData, and sends it off
 // on the merry way to the EventSwitch
 func (w *WSEvents) parseEvent(data []byte) (err error) {
-	result := new(ctypes.TMResult)
-	wire.ReadJSONPtr(result, data, &err)
+	result := new(ctypes.ResultEvent)
+	err = json.Unmarshal(data, result)
 	if err != nil {
-		return err
-	}
-	event, ok := (*result).(*ctypes.ResultEvent)
-	if !ok {
 		// ignore silently (eg. subscribe, unsubscribe and maybe other events)
+		// TODO: ?
 		return nil
 	}
 	// looks good!  let's fire this baby!
-	w.EventSwitch.FireEvent(event.Name, event.Data)
+	w.EventSwitch.FireEvent(result.Name, result.Data)
 	return nil
 }
 

@@ -1,7 +1,7 @@
 package consensus
 
 import (
-	. "github.com/tendermint/go-common"
+	. "github.com/tendermint/tmlibs/common"
 )
 
 // kind of arbitrary

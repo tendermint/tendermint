@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/tendermint/go-p2p"
+	"github.com/tendermint/tendermint/p2p"
 )
 
 func TestStatusIndexer(t *testing.T) {

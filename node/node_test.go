@@ -4,16 +4,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/config/tendermint_test"
+	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tmlibs/log"
 )
 
 func TestNodeStartStop(t *testing.T) {
-	config := tendermint_test.ResetConfig("node_node_test")
+	config := cfg.ResetTestRoot("node_node_test")
 
 	// Create & start node
-	n := NewNodeDefault(config)
+	n := NewNodeDefault(config, log.TestingLogger())
 	n.Start()
-	log.Notice("Started node", "nodeInfo", n.sw.NodeInfo())
+	t.Logf("Started node %v", n.sw.NodeInfo())
 
 	// Wait a bit to initialize
 	// TODO remove time.Sleep(), make asynchronous.

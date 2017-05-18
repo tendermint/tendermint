@@ -1,7 +1,7 @@
 package benchmarks
 
 import (
-	. "github.com/tendermint/go-common"
+	. "github.com/tendermint/tmlibs/common"
 	"testing"
 )
 

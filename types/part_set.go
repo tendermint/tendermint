@@ -9,9 +9,10 @@ import (
 
 	"golang.org/x/crypto/ripemd160"
 
-	. "github.com/tendermint/go-common"
-	"github.com/tendermint/go-merkle"
 	"github.com/tendermint/go-wire"
+	"github.com/tendermint/go-wire/data"
+	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/merkle"
 )
 
 var (
@@ -21,7 +22,7 @@ var (
 
 type Part struct {
 	Index int                `json:"index"`
-	Bytes []byte             `json:"bytes"`
+	Bytes data.Bytes         `json:"bytes"`
 	Proof merkle.SimpleProof `json:"proof"`
 
 	// Cache
@@ -49,7 +50,7 @@ func (part *Part) StringIndented(indent string) string {
 %s  Proof: %v
 %s}`,
 		part.Index,
-		indent, Fingerprint(part.Bytes),
+		indent, cmn.Fingerprint(part.Bytes),
 		indent, part.Proof.StringIndented(indent+"  "),
 		indent)
 }
@@ -57,12 +58,12 @@ func (part *Part) StringIndented(indent string) string {
 //-------------------------------------
 
 type PartSetHeader struct {
-	Total int    `json:"total"`
-	Hash  []byte `json:"hash"`
+	Total int        `json:"total"`
+	Hash  data.Bytes `json:"hash"`
 }
 
 func (psh PartSetHeader) String() string {
-	return fmt.Sprintf("%v:%X", psh.Total, Fingerprint(psh.Hash))
+	return fmt.Sprintf("%v:%X", psh.Total, cmn.Fingerprint(psh.Hash))
 }
 
 func (psh PartSetHeader) IsZero() bool {
@@ -85,7 +86,7 @@ type PartSet struct {
 
 	mtx           sync.Mutex
 	parts         []*Part
-	partsBitArray *BitArray
+	partsBitArray *cmn.BitArray
 	count         int
 }
 
@@ -96,11 +97,11 @@ func NewPartSetFromData(data []byte, partSize int) *PartSet {
 	total := (len(data) + partSize - 1) / partSize
 	parts := make([]*Part, total)
 	parts_ := make([]merkle.Hashable, total)
-	partsBitArray := NewBitArray(total)
+	partsBitArray := cmn.NewBitArray(total)
 	for i := 0; i < total; i++ {
 		part := &Part{
 			Index: i,
-			Bytes: data[i*partSize : MinInt(len(data), (i+1)*partSize)],
+			Bytes: data[i*partSize : cmn.MinInt(len(data), (i+1)*partSize)],
 		}
 		parts[i] = part
 		parts_[i] = part
@@ -126,7 +127,7 @@ func NewPartSetFromHeader(header PartSetHeader) *PartSet {
 		total:         header.Total,
 		hash:          header.Hash,
 		parts:         make([]*Part, header.Total),
-		partsBitArray: NewBitArray(header.Total),
+		partsBitArray: cmn.NewBitArray(header.Total),
 		count:         0,
 	}
 }
@@ -150,7 +151,7 @@ func (ps *PartSet) HasHeader(header PartSetHeader) bool {
 	}
 }
 
-func (ps *PartSet) BitArray() *BitArray {
+func (ps *PartSet) BitArray() *cmn.BitArray {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 	return ps.partsBitArray.Copy()
@@ -224,7 +225,7 @@ func (ps *PartSet) IsComplete() bool {
 
 func (ps *PartSet) GetReader() io.Reader {
 	if !ps.IsComplete() {
-		PanicSanity("Cannot GetReader() on incomplete PartSet")
+		cmn.PanicSanity("Cannot GetReader() on incomplete PartSet")
 	}
 	return NewPartSetReader(ps.parts)
 }

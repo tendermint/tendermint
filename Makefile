@@ -8,10 +8,12 @@ TMHOME = $${TMHOME:-$$HOME/.tendermint}
 all: install test
 
 install: get_vendor_deps
-	@go install ./cmd/tendermint
+	@go install --ldflags '-extldflags "-static"' \
+		--ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse HEAD`" ./cmd/tendermint
 
 build:
-	go build -o build/tendermint ./cmd/tendermint
+	go build \
+		--ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse HEAD`"  -o build/tendermint ./cmd/tendermint/
 
 build_race:
 	go build -race -o build/tendermint ./cmd/tendermint
