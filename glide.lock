@@ -1,8 +1,8 @@
-hash: 9caff08aa026986b239e4aeb9d876bdddfacadc64a660ee8109e77a211e53436
-updated: 2017-05-16T23:51:45.470827916+02:00
+hash: 93f15c9766ea826c29a91f545c42172eafd8c61e39c1d81617114ad1a9c9eaf2
+updated: 2017-05-18T06:13:24.295793122-04:00
 imports:
 - name: github.com/btcsuite/btcd
-  version: 40f4997b95ac18e20c5ffc54dc3c84036b1f1bf5
+  version: 53f55a46349aa8f44b90895047e843666991cf24
   subpackages:
   - btcec
 - name: github.com/davecgh/go-spew
@@ -14,7 +14,7 @@ imports:
 - name: github.com/fsnotify/fsnotify
   version: 4da3e2cfbabc9f751898f250b49f2439785783a1
 - name: github.com/go-kit/kit
-  version: d67bb4c202e3b91377d1079b110a6c9ce23ab2f8
+  version: 6964666de57c88f7d93da127e900d201b632f561
   subpackages:
   - log
   - log/level
@@ -102,7 +102,7 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/abci
-  version: 5dabeffb35c027d7087a12149685daa68989168b
+  version: 864d1f80b36b440bde030a5c18d8ac3aa8c2949d
   subpackages:
   - client
   - example/counter
@@ -115,21 +115,21 @@ imports:
   - edwards25519
   - extra25519
 - name: github.com/tendermint/go-crypto
-  version: 438b16f1f84ef002d7408ecd6fc3a3974cbc9559
+  version: 7dff40942a64cdeefefa9446b2d104750b349f8a
 - name: github.com/tendermint/go-wire
-  version: 97beaedf0f4dbc035309157c92be3b30cc6e5d74
+  version: 5f88da3dbc1a72844e6dfaf274ce87f851d488eb
   subpackages:
   - data
   - data/base58
 - name: github.com/tendermint/merkleeyes
-  version: c722818b460381bc5b82e38c73ff6e22a9df624d
+  version: a0e73e1ac3e18e12a007520a4ea2c9822256e307
   subpackages:
   - app
   - client
   - iavl
   - testutil
 - name: github.com/tendermint/tmlibs
-  version: 67f558cff0d3fc08eac951fcc39cf999101e36da
+  version: 306795ae1d8e4f4a10dcc8bdb32a00455843c9d5
   subpackages:
   - autofile
   - cli
@@ -153,7 +153,7 @@ imports:
   - ripemd160
   - salsa20/salsa
 - name: golang.org/x/net
-  version: 34057069f4ab13dc4433c68d368737ebeafcccdc
+  version: 513929065c19401a1c7b76ecd942f9f86a0c061b
   subpackages:
   - context
   - http2
@@ -163,7 +163,7 @@ imports:
   - lex/httplex
   - trace
 - name: golang.org/x/sys
-  version: 1e99a4f9d247b28c670884b9a8d6801f39a47b77
+  version: e62c3de784db939836898e5c19ffd41bece347da
   subpackages:
   - unix
 - name: golang.org/x/text
@@ -174,11 +174,11 @@ imports:
   - unicode/bidi
   - unicode/norm
 - name: google.golang.org/genproto
-  version: 411e09b969b1170a9f0c467558eb4c4c110d9c77
+  version: bb3573be0c484136831138976d444b8754777aff
   subpackages:
   - googleapis/rpc/status
 - name: google.golang.org/grpc
-  version: 3419b42955675df23457629c75f58eb8dcd56954
+  version: 11d93ecdb918872ee841ba3a2dc391aa6d4f57c3
   subpackages:
   - codes
   - credentials

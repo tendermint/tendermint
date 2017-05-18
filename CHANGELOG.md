@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.10.0 (May 17, 2017)
+## 0.10.0 (May 18, 2017)
 
 BREAKING CHANGES:
 
@@ -14,11 +14,11 @@ BREAKING CHANGES:
 ```
 
 - New config
-  - Isolate viper to cmd/tendermint/commands
+  - Isolate viper to `cmd/tendermint/commands`
+  - New Config structs in `config/`: `BaseConfig`, `P2PConfig`, `MempoolConfig`, `ConsensusConfig`
   - Remove config/tendermint and config/tendermint_test. Defaults are handled by viper and `DefaultConfig() / `TestConfig()` functions
   - Tests do not read config from file
-  - New Config structs in `config/`: BaseConfig, P2PConfig, MempoolConfig, ConsensusConfig
-- New logger
+- New logger (`github.com/tendermint/tmlibs/log`)
   - Reduced to three levels: Error, Info, Debug
   - Per-module log levels
   - No global loggers (loggers are passed into constructors, or preferably set with a `SetLogger` method)
@@ -28,7 +28,7 @@ BREAKING CHANGES:
   - Responses have no type information
   - Introduce EventDataInner for serializing events
 - Remove all use of go-wire (and `[TypeByte, XXX]`) in the `genesis.json` and `priv_validator.json`
-- Send InitChain in handshake if appBlockHeight == 0
+- [consensus/abci] Send InitChain message in handshake if `appBlockHeight == 0`
 - [types] `[]byte -> data.Bytes`
 - [types] Do not include the `Accum` field when computing the hash of a validator. This makes the ValidatorSetHash unique for a given validator set, rather than changing with every block (as the Accum changes)
 
@@ -47,7 +47,7 @@ IMPROVEMENTS:
 - Return HTTP status codes with errors for RPC responses
 - Use `.Wrap()` and `.Unwarp()` instead of eg. `PubKeyS` for `go-crypto` types
 - Color code different instances of the consensus for tests 
-- RPC JSON responses use pretty printing (json.MarshalIndent)
+- RPC JSON responses use pretty printing (via `json.MarshalIndent`)
 
 
 ## 0.9.2 (April 26, 2017)
