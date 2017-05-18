@@ -7,8 +7,8 @@ import (
 	"io"
 	"sync"
 
-	. "github.com/tendermint/go-common"
-	dbm "github.com/tendermint/go-db"
+	. "github.com/tendermint/tmlibs/common"
+	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/types"
 )

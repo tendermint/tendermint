@@ -3,15 +3,14 @@ package types
 import (
 	"bytes"
 
-	. "github.com/tendermint/go-common"
-	. "github.com/tendermint/go-common/test"
 	"github.com/tendermint/go-crypto"
+	. "github.com/tendermint/tmlibs/common"
+	. "github.com/tendermint/tmlibs/test"
 
 	"testing"
 )
 
 // NOTE: privValidators are in order
-// TODO: Move it out?
 func randVoteSet(height int, round int, type_ byte, numValidators int, votingPower int64) (*VoteSet, *ValidatorSet, []*PrivValidator) {
 	valSet, privValidators := RandValidatorSet(numValidators, votingPower)
 	return NewVoteSet("test_chain_id", height, round, type_, valSet), valSet, privValidators

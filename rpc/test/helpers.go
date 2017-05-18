@@ -1,6 +1,7 @@
 package rpctest
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"os"
@@ -10,25 +11,19 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	logger "github.com/tendermint/go-logger"
-	wire "github.com/tendermint/go-wire"
+	"github.com/tendermint/tmlibs/log"
 
 	abci "github.com/tendermint/abci/types"
-	cfg "github.com/tendermint/go-config"
-	client "github.com/tendermint/go-rpc/client"
-	"github.com/tendermint/tendermint/config/tendermint_test"
+	cfg "github.com/tendermint/tendermint/config"
 	nm "github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/proxy"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	core_grpc "github.com/tendermint/tendermint/rpc/grpc"
+	client "github.com/tendermint/tendermint/rpc/lib/client"
 	"github.com/tendermint/tendermint/types"
 )
 
-var (
-	config cfg.Config
-)
-
-const tmLogLevel = "error"
+var config *cfg.Config
 
 // f**ing long, but unique for each test
 func makePathname() string {
@@ -56,40 +51,39 @@ func makeAddrs() (string, string, string) {
 }
 
 // GetConfig returns a config for the test cases as a singleton
-func GetConfig() cfg.Config {
+func GetConfig() *cfg.Config {
 	if config == nil {
 		pathname := makePathname()
-		config = tendermint_test.ResetConfig(pathname)
-		// Shut up the logging
-		logger.SetLogLevel(tmLogLevel)
+		config = cfg.ResetTestRoot(pathname)
+
 		// and we use random ports to run in parallel
 		tm, rpc, grpc := makeAddrs()
-		config.Set("node_laddr", tm)
-		config.Set("rpc_laddr", rpc)
-		config.Set("grpc_laddr", grpc)
+		config.P2P.ListenAddress = tm
+		config.RPCListenAddress = rpc
+		config.GRPCListenAddress = grpc
 	}
 	return config
 }
 
 // GetURIClient gets a uri client pointing to the test tendermint rpc
 func GetURIClient() *client.URIClient {
-	rpcAddr := GetConfig().GetString("rpc_laddr")
+	rpcAddr := GetConfig().RPCListenAddress
 	return client.NewURIClient(rpcAddr)
 }
 
 // GetJSONClient gets a http/json client pointing to the test tendermint rpc
 func GetJSONClient() *client.JSONRPCClient {
-	rpcAddr := GetConfig().GetString("rpc_laddr")
+	rpcAddr := GetConfig().RPCListenAddress
 	return client.NewJSONRPCClient(rpcAddr)
 }
 
 func GetGRPCClient() core_grpc.BroadcastAPIClient {
-	grpcAddr := config.GetString("grpc_laddr")
+	grpcAddr := config.GRPCListenAddress
 	return core_grpc.StartGRPCClient(grpcAddr)
 }
 
 func GetWSClient() *client.WSClient {
-	rpcAddr := GetConfig().GetString("rpc_laddr")
+	rpcAddr := GetConfig().RPCListenAddress
 	wsc := client.NewWSClient(rpcAddr, "/websocket")
 	if _, err := wsc.Start(); err != nil {
 		panic(err)
@@ -109,10 +103,12 @@ func StartTendermint(app abci.Application) *nm.Node {
 func NewTendermint(app abci.Application) *nm.Node {
 	// Create & start node
 	config := GetConfig()
-	privValidatorFile := config.GetString("priv_validator_file")
-	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
+	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+	logger = log.NewFilter(logger, log.AllowError())
+	privValidatorFile := config.PrivValidatorFile()
+	privValidator := types.LoadOrGenPrivValidator(privValidatorFile, logger)
 	papp := proxy.NewLocalClientCreator(app)
-	node := nm.NewNode(config, privValidator, papp)
+	node := nm.NewNode(config, privValidator, papp, logger)
 	return node
 }
 
@@ -133,15 +129,14 @@ func waitForEvent(t *testing.T, wsc *client.WSClient, eventid string, dieOnTimeo
 		for {
 			select {
 			case r := <-wsc.ResultsCh:
-				result := new(ctypes.TMResult)
-				wire.ReadJSONPtr(result, r, &err)
+				result := new(ctypes.ResultEvent)
+				err = json.Unmarshal(r, result)
 				if err != nil {
-					errCh <- err
-					break LOOP
+					// cant distinguish between error and wrong type ...
+					continue
 				}
-				event, ok := (*result).(*ctypes.ResultEvent)
-				if ok && event.Name == eventid {
-					goodCh <- event.Data
+				if result.Name == eventid {
+					goodCh <- result.Data
 					break LOOP
 				}
 			case err := <-wsc.ErrorsCh:

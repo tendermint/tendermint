@@ -6,13 +6,12 @@ import (
 	"reflect"
 	"time"
 
-	cmn "github.com/tendermint/go-common"
-	cfg "github.com/tendermint/go-config"
-	"github.com/tendermint/go-p2p"
-	"github.com/tendermint/go-wire"
+	wire "github.com/tendermint/go-wire"
+	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 const (
@@ -43,7 +42,6 @@ type consensusReactor interface {
 type BlockchainReactor struct {
 	p2p.BaseReactor
 
-	config       cfg.Config
 	state        *sm.State
 	proxyAppConn proxy.AppConnConsensus // same as consensus.proxyAppConn
 	store        *BlockStore
@@ -57,7 +55,7 @@ type BlockchainReactor struct {
 }
 
 // NewBlockchainReactor returns new reactor instance.
-func NewBlockchainReactor(config cfg.Config, state *sm.State, proxyAppConn proxy.AppConnConsensus, store *BlockStore, fastSync bool) *BlockchainReactor {
+func NewBlockchainReactor(state *sm.State, proxyAppConn proxy.AppConnConsensus, store *BlockStore, fastSync bool) *BlockchainReactor {
 	if state.LastBlockHeight == store.Height()-1 {
 		store.height-- // XXX HACK, make this better
 	}
@@ -72,7 +70,6 @@ func NewBlockchainReactor(config cfg.Config, state *sm.State, proxyAppConn proxy
 		timeoutsCh,
 	)
 	bcR := &BlockchainReactor{
-		config:       config,
 		state:        state,
 		proxyAppConn: proxyAppConn,
 		store:        store,
@@ -81,7 +78,7 @@ func NewBlockchainReactor(config cfg.Config, state *sm.State, proxyAppConn proxy
 		requestsCh:   requestsCh,
 		timeoutsCh:   timeoutsCh,
 	}
-	bcR.BaseReactor = *p2p.NewBaseReactor(log, "BlockchainReactor", bcR)
+	bcR.BaseReactor = *p2p.NewBaseReactor("BlockchainReactor", bcR)
 	return bcR
 }
 
@@ -131,11 +128,11 @@ func (bcR *BlockchainReactor) RemovePeer(peer *p2p.Peer, reason interface{}) {
 func (bcR *BlockchainReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte) {
 	_, msg, err := DecodeMessage(msgBytes)
 	if err != nil {
-		log.Warn("Error decoding message", "error", err)
+		bcR.Logger.Error("Error decoding message", "error", err)
 		return
 	}
 
-	log.Debug("Receive", "src", src, "chID", chID, "msg", msg)
+	bcR.Logger.Debug("Receive", "src", src, "chID", chID, "msg", msg)
 
 	switch msg := msg.(type) {
 	case *bcBlockRequestMessage:
@@ -163,7 +160,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte)
 		// Got a peer status. Unverified.
 		bcR.pool.SetPeerHeight(src.Key, msg.Height)
 	default:
-		log.Warn(cmn.Fmt("Unknown message type %v", reflect.TypeOf(msg)))
+		bcR.Logger.Error(cmn.Fmt("Unknown message type %v", reflect.TypeOf(msg)))
 	}
 }
 
@@ -203,10 +200,10 @@ FOR_LOOP:
 		case _ = <-switchToConsensusTicker.C:
 			height, numPending, _ := bcR.pool.GetStatus()
 			outbound, inbound, _ := bcR.Switch.NumPeers()
-			log.Info("Consensus ticker", "numPending", numPending, "total", len(bcR.pool.requesters),
+			bcR.Logger.Info("Consensus ticker", "numPending", numPending, "total", len(bcR.pool.requesters),
 				"outbound", outbound, "inbound", inbound)
 			if bcR.pool.IsCaughtUp() {
-				log.Notice("Time to switch to consensus reactor!", "height", height)
+				bcR.Logger.Info("Time to switch to consensus reactor!", "height", height)
 				bcR.pool.Stop()
 
 				conR := bcR.Switch.Reactor("CONSENSUS").(consensusReactor)
@@ -220,12 +217,12 @@ FOR_LOOP:
 			for i := 0; i < 10; i++ {
 				// See if there are any blocks to sync.
 				first, second := bcR.pool.PeekTwoBlocks()
-				//log.Info("TrySync peeked", "first", first, "second", second)
+				//bcR.Logger.Info("TrySync peeked", "first", first, "second", second)
 				if first == nil || second == nil {
 					// We need both to sync the first block.
 					break SYNC_LOOP
 				}
-				firstParts := first.MakePartSet(bcR.config.GetInt("block_part_size")) // TODO: put part size in parts header?
+				firstParts := first.MakePartSet(types.DefaultBlockPartSize)
 				firstPartsHeader := firstParts.Header()
 				// Finally, verify the first block using the second's commit
 				// NOTE: we can probably make this more efficient, but note that calling
@@ -234,7 +231,7 @@ FOR_LOOP:
 				err := bcR.state.Validators.VerifyCommit(
 					bcR.state.ChainID, types.BlockID{first.Hash(), firstPartsHeader}, first.Height, second.LastCommit)
 				if err != nil {
-					log.Info("error in validation", "error", err)
+					bcR.Logger.Info("error in validation", "error", err)
 					bcR.pool.RedoRequest(first.Height)
 					break SYNC_LOOP
 				} else {

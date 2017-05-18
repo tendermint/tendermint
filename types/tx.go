@@ -3,9 +3,11 @@ package types
 import (
 	"bytes"
 	"errors"
+	"fmt"
 
 	abci "github.com/tendermint/abci/types"
-	"github.com/tendermint/go-merkle"
+	"github.com/tendermint/go-wire/data"
+	"github.com/tendermint/tmlibs/merkle"
 )
 
 type Tx []byte
@@ -18,11 +20,15 @@ func (tx Tx) Hash() []byte {
 	return merkle.SimpleHashFromBinary(tx)
 }
 
+func (tx Tx) String() string {
+	return fmt.Sprintf("Tx{%X}", []byte(tx))
+}
+
 type Txs []Tx
 
 func (txs Txs) Hash() []byte {
 	// Recursive impl.
-	// Copied from go-merkle to avoid allocations
+	// Copied from tmlibs/merkle to avoid allocations
 	switch len(txs) {
 	case 0:
 		return nil
@@ -79,7 +85,7 @@ func (txs Txs) Proof(i int) TxProof {
 
 type TxProof struct {
 	Index, Total int
-	RootHash     []byte
+	RootHash     data.Bytes
 	Data         Tx
 	Proof        merkle.SimpleProof
 }

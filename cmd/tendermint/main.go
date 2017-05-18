@@ -1,15 +1,13 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/tendermint/tendermint/cmd/tendermint/commands"
+	"github.com/tendermint/tmlibs/cli"
 )
 
 func main() {
-	if err := commands.RootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+	cmd := cli.PrepareBaseCmd(commands.RootCmd, "TM", os.ExpandEnv("$HOME/.tendermint"))
+	cmd.Execute()
 }

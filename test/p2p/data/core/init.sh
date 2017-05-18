@@ -17,4 +17,4 @@ git fetch origin $BRANCH
 git checkout $BRANCH
 make install
 
-tendermint node --seeds="$TMSEEDS" --moniker="$TMNAME" --proxy_app="$PROXYAPP"
+tendermint node --p2p.seeds="$TMSEEDS" --moniker="$TMNAME" --proxy_app="$PROXYAPP"

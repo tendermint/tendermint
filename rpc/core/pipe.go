@@ -1,14 +1,13 @@
 package core
 
 import (
-	cfg "github.com/tendermint/go-config"
-
 	crypto "github.com/tendermint/go-crypto"
-	p2p "github.com/tendermint/go-p2p"
 	"github.com/tendermint/tendermint/consensus"
+	p2p "github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tmlibs/log"
 )
 
 //----------------------------------------------
@@ -34,7 +33,6 @@ var (
 	// external, thread safe interfaces
 	eventSwitch   types.EventSwitch
 	proxyAppQuery proxy.AppConnQuery
-	config        cfg.Config
 
 	// interfaces defined in types and above
 	blockStore     types.BlockStore
@@ -47,11 +45,9 @@ var (
 	genDoc    *types.GenesisDoc // cache the genesis structure
 	addrBook  *p2p.AddrBook
 	txIndexer txindex.TxIndexer
-)
 
-func SetConfig(c cfg.Config) {
-	config = c
-}
+	logger log.Logger
+)
 
 func SetEventSwitch(evsw types.EventSwitch) {
 	eventSwitch = evsw
@@ -91,4 +87,8 @@ func SetProxyAppQuery(appConn proxy.AppConnQuery) {
 
 func SetTxIndexer(indexer txindex.TxIndexer) {
 	txIndexer = indexer
+}
+
+func SetLogger(l log.Logger) {
+	logger = l
 }

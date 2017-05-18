@@ -8,24 +8,23 @@ import (
 	"strconv"
 	"strings"
 
-	. "github.com/tendermint/go-common"
-	cfg "github.com/tendermint/go-config"
-	dbm "github.com/tendermint/go-db"
 	bc "github.com/tendermint/tendermint/blockchain"
-	mempl "github.com/tendermint/tendermint/mempool"
+	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	cmn "github.com/tendermint/tmlibs/common"
+	dbm "github.com/tendermint/tmlibs/db"
 )
 
 //--------------------------------------------------------
 // replay messages interactively or all at once
 
-func RunReplayFile(config cfg.Config, walFile string, console bool) {
-	consensusState := newConsensusStateForReplay(config)
+func RunReplayFile(config cfg.BaseConfig, csConfig *cfg.ConsensusConfig, console bool) {
+	consensusState := newConsensusStateForReplay(config, csConfig)
 
-	if err := consensusState.ReplayFile(walFile, console); err != nil {
-		Exit(Fmt("Error during consensus replay: %v", err))
+	if err := consensusState.ReplayFile(csConfig.WalFile(), console); err != nil {
+		cmn.Exit(cmn.Fmt("Error during consensus replay: %v", err))
 	}
 }
 
@@ -114,7 +113,7 @@ func (pb *playback) replayReset(count int, newStepCh chan interface{}) error {
 	pb.fp = fp
 	pb.scanner = bufio.NewScanner(fp)
 	count = pb.count - count
-	log.Notice(Fmt("Reseting from %d to %d", pb.count, count))
+	fmt.Printf("Reseting from %d to %d\n", pb.count, count)
 	pb.count = 0
 	pb.cs = newCS
 	for i := 0; pb.scanner.Scan() && i < count; i++ {
@@ -127,8 +126,7 @@ func (pb *playback) replayReset(count int, newStepCh chan interface{}) error {
 }
 
 func (cs *ConsensusState) startForReplay() {
-
-	log.Warn("Replay commands are disabled until someone updates them and writes tests")
+	cs.Logger.Error("Replay commands are disabled until someone updates them and writes tests")
 	/* TODO:!
 	// since we replay tocks we just ignore ticks
 		go func() {
@@ -149,9 +147,9 @@ func (pb *playback) replayConsoleLoop() int {
 		bufReader := bufio.NewReader(os.Stdin)
 		line, more, err := bufReader.ReadLine()
 		if more {
-			Exit("input is too long")
+			cmn.Exit("input is too long")
 		} else if err != nil {
-			Exit(err.Error())
+			cmn.Exit(err.Error())
 		}
 
 		tokens := strings.Split(string(line), " ")
@@ -236,34 +234,31 @@ func (pb *playback) replayConsoleLoop() int {
 //--------------------------------------------------------------------------------
 
 // convenience for replay mode
-func newConsensusStateForReplay(config cfg.Config) *ConsensusState {
+func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusConfig) *ConsensusState {
 	// Get BlockStore
-	blockStoreDB := dbm.NewDB("blockstore", config.GetString("db_backend"), config.GetString("db_dir"))
+	blockStoreDB := dbm.NewDB("blockstore", config.DBBackend, config.DBDir())
 	blockStore := bc.NewBlockStore(blockStoreDB)
 
 	// Get State
-	stateDB := dbm.NewDB("state", config.GetString("db_backend"), config.GetString("db_dir"))
-	state := sm.MakeGenesisStateFromFile(stateDB, config.GetString("genesis_file"))
+	stateDB := dbm.NewDB("state", config.DBBackend, config.DBDir())
+	state := sm.MakeGenesisStateFromFile(stateDB, config.GenesisFile())
 
 	// Create proxyAppConn connection (consensus, mempool, query)
-	proxyApp := proxy.NewAppConns(config, proxy.DefaultClientCreator(config), NewHandshaker(config, state, blockStore))
+	clientCreator := proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir())
+	proxyApp := proxy.NewAppConns(clientCreator, NewHandshaker(state, blockStore))
 	_, err := proxyApp.Start()
 	if err != nil {
-		Exit(Fmt("Error starting proxy app conns: %v", err))
+		cmn.Exit(cmn.Fmt("Error starting proxy app conns: %v", err))
 	}
-
-	// add the chainid to the global config
-	config.Set("chain_id", state.ChainID)
 
 	// Make event switch
 	eventSwitch := types.NewEventSwitch()
 	if _, err := eventSwitch.Start(); err != nil {
-		Exit(Fmt("Failed to start event switch: %v", err))
+		cmn.Exit(cmn.Fmt("Failed to start event switch: %v", err))
 	}
 
-	mempool := mempl.NewMempool(config, proxyApp.Mempool())
+	consensusState := NewConsensusState(csConfig, state.Copy(), proxyApp.Consensus(), blockStore, types.MockMempool{})
 
-	consensusState := NewConsensusState(config, state.Copy(), proxyApp.Consensus(), blockStore, mempool)
 	consensusState.SetEventSwitch(eventSwitch)
 	return consensusState
 }

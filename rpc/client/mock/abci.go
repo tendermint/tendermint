@@ -2,6 +2,7 @@ package mock
 
 import (
 	abci "github.com/tendermint/abci/types"
+	data "github.com/tendermint/go-wire/data"
 	"github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
@@ -22,20 +23,18 @@ func (a ABCIApp) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	return &ctypes.ResultABCIInfo{a.App.Info()}, nil
 }
 
-func (a ABCIApp) ABCIQuery(path string, data []byte, prove bool) (*ctypes.ResultABCIQuery, error) {
+func (a ABCIApp) ABCIQuery(path string, data data.Bytes, prove bool) (*ctypes.ResultABCIQuery, error) {
 	q := a.App.Query(abci.RequestQuery{data, path, 0, prove})
-	return &ctypes.ResultABCIQuery{q}, nil
+	return &ctypes.ResultABCIQuery{q.Result()}, nil
 }
 
 func (a ABCIApp) BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	res := ctypes.ResultBroadcastTxCommit{}
-	c := a.App.CheckTx(tx)
-	res.CheckTx = &abci.ResponseCheckTx{c.Code, c.Data, c.Log}
-	if !c.IsOK() {
+	res.CheckTx = a.App.CheckTx(tx)
+	if !res.CheckTx.IsOK() {
 		return &res, nil
 	}
-	d := a.App.DeliverTx(tx)
-	res.DeliverTx = &abci.ResponseDeliverTx{d.Code, d.Data, d.Log}
+	res.DeliverTx = a.App.DeliverTx(tx)
 	return &res, nil
 }
 
@@ -79,12 +78,13 @@ func (m ABCIMock) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	return &ctypes.ResultABCIInfo{res.(abci.ResponseInfo)}, nil
 }
 
-func (m ABCIMock) ABCIQuery(path string, data []byte, prove bool) (*ctypes.ResultABCIQuery, error) {
+func (m ABCIMock) ABCIQuery(path string, data data.Bytes, prove bool) (*ctypes.ResultABCIQuery, error) {
 	res, err := m.Query.GetResponse(QueryArgs{path, data, prove})
 	if err != nil {
 		return nil, err
 	}
-	return &ctypes.ResultABCIQuery{res.(abci.ResponseQuery)}, nil
+	resQuery := res.(abci.ResponseQuery)
+	return &ctypes.ResultABCIQuery{resQuery.Result()}, nil
 }
 
 func (m ABCIMock) BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
@@ -131,7 +131,7 @@ func (r *ABCIRecorder) _assertABCIClient() client.ABCIClient {
 
 type QueryArgs struct {
 	Path  string
-	Data  []byte
+	Data  data.Bytes
 	Prove bool
 }
 
@@ -149,7 +149,7 @@ func (r *ABCIRecorder) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	return res, err
 }
 
-func (r *ABCIRecorder) ABCIQuery(path string, data []byte, prove bool) (*ctypes.ResultABCIQuery, error) {
+func (r *ABCIRecorder) ABCIQuery(path string, data data.Bytes, prove bool) (*ctypes.ResultABCIQuery, error) {
 	res, err := r.Client.ABCIQuery(path, data, prove)
 	r.addCall(Call{
 		Name:     "abci_query",

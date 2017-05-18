@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	cmn "github.com/tendermint/go-common"
-	ctest "github.com/tendermint/go-common/test"
 	wire "github.com/tendermint/go-wire"
+	cmn "github.com/tendermint/tmlibs/common"
+	ctest "github.com/tendermint/tmlibs/test"
 )
 
 func makeTxs(cnt, size int) Txs {
@@ -60,9 +60,9 @@ func TestValidTxProof(t *testing.T) {
 			proof := txs.Proof(i)
 			assert.Equal(i, proof.Index, "%d: %d", h, i)
 			assert.Equal(len(txs), proof.Total, "%d: %d", h, i)
-			assert.Equal(root, proof.RootHash, "%d: %d", h, i)
-			assert.Equal(leaf, proof.Data, "%d: %d", h, i)
-			assert.Equal(leafHash, proof.LeafHash(), "%d: %d", h, i)
+			assert.EqualValues(root, proof.RootHash, "%d: %d", h, i)
+			assert.EqualValues(leaf, proof.Data, "%d: %d", h, i)
+			assert.EqualValues(leafHash, proof.LeafHash(), "%d: %d", h, i)
 			assert.Nil(proof.Validate(root), "%d: %d", h, i)
 			assert.NotNil(proof.Validate([]byte("foobar")), "%d: %d", h, i)
 
