@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	cmn "github.com/tendermint/go-common"
+	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 	monitor "github.com/tendermint/tools/tm-monitor/monitor"
 )
