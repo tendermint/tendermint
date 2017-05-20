@@ -1,37 +1,38 @@
-hash: 7b3982490e9c4cdc9467e849959fd8d6ccec8f8f9e81fc56f29e8e9c67bf3b53
-updated: 2017-03-16T15:16:05.301074208Z
+hash: 795aa94747f3d877df3ea1ec134e9a34e1c46713dd6eb59b6fdd6a33cb698234
+updated: 2017-04-20T19:19:22.26004087-04:00
 imports:
 - name: github.com/btcsuite/btcd
   version: 583684b21bfbde9b5fc4403916fd7c807feb0289
   subpackages:
   - btcec
 - name: github.com/BurntSushi/toml
-  version: e643e9ef00b049d75de26e61109c5ea01885cd21
+  version: 99064174e013895bbd9b025c31100bd1d9b590ca
 - name: github.com/go-kit/kit
   version: b6f30a2e0632f5722fb26d8765d726335b79d3e6
   subpackages:
   - log
   - log/term
+  - term
 - name: github.com/go-logfmt/logfmt
   version: 390ab7935ee28ec6b286364bba9b4dd6410cb3d5
 - name: github.com/go-stack/stack
   version: 100eb0c0a9c5b306ca2fb4f165df21d80ada4b82
 - name: github.com/golang/protobuf
-  version: c9c7427a2a70d2eb3bafa0ab2dc163e45f143317
+  version: 69b215d01a5606c843240eab4937eab3acee6530
   subpackages:
   - proto
 - name: github.com/golang/snappy
   version: 553a641470496b2327abcac10b36396bd98e45c9
 - name: github.com/gorilla/websocket
-  version: b258b4fadb573ac412f187b9f31974ea99d32f50
+  version: 3ab3a8b8831546bd18fd182c20687ca853b2bb13
 - name: github.com/jmhodges/levigo
   version: c42d9e0ca023e2198120196f842701bb4c55d7b9
 - name: github.com/kr/logfmt
   version: b84e30acd515aadc4b783ad4ff83aff3299bdfe0
 - name: github.com/mattn/go-colorable
-  version: a392f450ea64cee2b268dfaacdc2502b50a22b18
+  version: d898aa9fb31c91f35dd28ca75db377eff023c076
 - name: github.com/mattn/go-isatty
-  version: 57fdcb988a5c543893cc61bce354a6e24ab70022
+  version: dda3de49cbfcec471bd7a70e6cc01fcc3ff90109
 - name: github.com/pkg/errors
   version: bfd5150e4e41705ded2129ec33379de1cb90b513
 - name: github.com/rcrowley/go-metrics
@@ -52,7 +53,7 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/abci
-  version: af792eac777de757cd496349a5f6b5313738fcbc
+  version: 56e13d87f4e3ec1ea756957d6b23caa6ebcf0998
   subpackages:
   - types
 - name: github.com/tendermint/ed25519
@@ -61,17 +62,17 @@ imports:
   - edwards25519
   - extra25519
 - name: github.com/tendermint/go-common
-  version: dcb015dff6c7af21e65c8e2f3b450df19d38c777
+  version: f9e3db037330c8a8d61d3966de8473eaf01154fa
 - name: github.com/tendermint/go-config
   version: 620dcbbd7d587cf3599dedbf329b64311b0c307a
 - name: github.com/tendermint/go-crypto
-  version: 3f47cfac5fcd9e0f1727c7db980b3559913b3e3a
+  version: 0ca2c6fdb0706001ca4c4b9b80c9f428e8cf39da
 - name: github.com/tendermint/go-data
-  version: 32271140e8fd5abdbb22e268d7a02421fa382f0b
+  version: e7fcc6d081ec8518912fcdc103188275f83a3ee5
 - name: github.com/tendermint/go-db
-  version: eac3f2bc147023957c8bf69432a4e6c4dc5c3f72
+  version: 9643f60bc2578693844aacf380a7c32e4c029fee
 - name: github.com/tendermint/go-events
-  version: f8ffbfb2be3483e9e7927495590a727f51c0c11f
+  version: fddee66d90305fccb6f6d84d16c34fa65ea5b7f6
 - name: github.com/tendermint/go-flowrate
   version: a20c98e61957faa93b4014fbd902f20ab9317a6a
   subpackages:
@@ -81,34 +82,32 @@ imports:
 - name: github.com/tendermint/go-merkle
   version: 714d4d04557fd068a7c2a1748241ce8428015a96
 - name: github.com/tendermint/go-p2p
-  version: 97a5ed2d1a17eaee8717b8a32cfaf7a9a82a273d
+  version: 17124989a93774833df33107fbf17157a7f8ef31
   subpackages:
   - upnp
 - name: github.com/tendermint/go-rpc
-  version: fcea0cda21f64889be00a0f4b6d13266b1a76ee7
+  version: 1a42f946dc6bcd88f9f58c7f2fb86f785584d793
   subpackages:
   - client
-  - server
   - types
 - name: github.com/tendermint/go-wire
-  version: f530b7af7a8b06e612c2063bff6ace49060a085e
+  version: 2f3b7aafe21c80b19b6ee3210ecb3e3d07c7a471
 - name: github.com/tendermint/log15
   version: ae0f3d6450da9eac7074b439c8e1c3cabf0d5ce6
   subpackages:
   - term
 - name: github.com/tendermint/tendermint
-  version: d4f625455109d88e7f55a999fdb25e208f174802
+  version: 083fe959e25421fca3d41298d9111167a3b47122
   subpackages:
   - rpc/core/types
   - types
 - name: github.com/tendermint/tools
-  version: fb28fd4c13759026de23d98bb494a022840278c1
+  version: 12ce526668e384100afd32686ec7db3749423d51
   subpackages:
-  - tm-monitor
   - tm-monitor/eventmeter
   - tm-monitor/monitor
 - name: golang.org/x/crypto
-  version: 728b753d0135da6801d45a38e6f43ff55779c5c2
+  version: 453249f01cfeb54c3d549ddb75ff152ca243f9d8
   subpackages:
   - curve25519
   - nacl/box
@@ -119,7 +118,7 @@ imports:
   - ripemd160
   - salsa20/salsa
 - name: golang.org/x/net
-  version: a6577fac2d73be281a500b310739095313165611
+  version: 906cda9512f77671ab44f8c8563b13a8e707b230
   subpackages:
   - context
   - http2
@@ -129,17 +128,16 @@ imports:
   - lex/httplex
   - trace
 - name: golang.org/x/sys
-  version: 99f16d856c9836c42d24e7ab64ea72916925fa97
+  version: 76cc09b634294339fa19ec41b5f2a0b3932cea8b
   subpackages:
   - unix
 - name: google.golang.org/grpc
-  version: cdee119ee21e61eef7093a41ba148fa83585e143
+  version: 8b2e129857480cb0f07ef7d9d10b8b252c7ac984
   subpackages:
   - codes
   - credentials
   - grpclog
   - internal
-  - keepalive
   - metadata
   - naming
   - peer

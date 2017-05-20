@@ -5,9 +5,9 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/go-kit/kit/log"
 	"github.com/pkg/errors"
 	tmtypes "github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tmlibs/log"
 )
 
 // waiting more than this many seconds for a block means we're unhealthy
@@ -140,7 +140,7 @@ func (m *Monitor) Stop() {
 
 // main loop where we listen for events from the node
 func (m *Monitor) listen(nodeName string, blockCh <-chan tmtypes.Header, blockLatencyCh <-chan float64, disconnectCh <-chan bool, quit <-chan struct{}) {
-	logger := log.With(m.logger, "node", nodeName)
+	logger := m.logger.With("node", nodeName)
 
 	for {
 		select {
@@ -159,7 +159,7 @@ func (m *Monitor) listen(nodeName string, blockCh <-chan tmtypes.Header, blockLa
 				m.Network.NodeIsOnline(nodeName)
 			}
 		case <-time.After(nodeLivenessTimeout):
-			logger.Log("event", fmt.Sprintf("node was not responding for %v", nodeLivenessTimeout))
+			logger.Info("event", fmt.Sprintf("node was not responding for %v", nodeLivenessTimeout))
 			m.Network.NodeIsDown(nodeName)
 		}
 	}
@@ -203,7 +203,7 @@ func (m *Monitor) updateNumValidatorLoop() {
 				if i == randomNodeIndex {
 					height, num, err = n.NumValidators()
 					if err != nil {
-						m.logger.Log("err", errors.Wrap(err, "update num validators failed"))
+						m.logger.Info("err", errors.Wrap(err, "update num validators failed"))
 					}
 					break
 				}

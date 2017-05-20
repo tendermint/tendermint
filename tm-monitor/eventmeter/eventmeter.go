@@ -6,12 +6,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/kit/log"
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 	metrics "github.com/rcrowley/go-metrics"
-	events "github.com/tendermint/go-events"
-	client "github.com/tendermint/go-rpc/client"
+	client "github.com/tendermint/tendermint/rpc/lib/client"
+	"github.com/tendermint/tmlibs/events"
+	"github.com/tendermint/tmlibs/log"
 )
 
 //------------------------------------------------------
@@ -253,30 +253,30 @@ func (em *EventMeter) receiveRoutine() {
 		select {
 		case <-pingTicker.C:
 			if pingAttempts, err = em.pingForLatency(pingAttempts); err != nil {
-				em.logger.Log("err", errors.Wrap(err, "failed to write ping message on websocket"))
+				em.logger.Error("err", errors.Wrap(err, "failed to write ping message on websocket"))
 				em.StopAndCallDisconnectCallback()
 				return
 			} else if pingAttempts >= maxPingsPerPong {
-				em.logger.Log("err", errors.Errorf("Have not received a pong in %v", time.Duration(pingAttempts)*pingTime))
+				em.logger.Error("err", errors.Errorf("Have not received a pong in %v", time.Duration(pingAttempts)*pingTime))
 				em.StopAndCallDisconnectCallback()
 				return
 			}
 		case r := <-em.wsc.ResultsCh:
 			if r == nil {
-				em.logger.Log("err", errors.New("Expected some event, received nil"))
+				em.logger.Error("err", errors.New("Expected some event, received nil"))
 				em.StopAndCallDisconnectCallback()
 				return
 			}
 			eventID, data, err := em.unmarshalEvent(r)
 			if err != nil {
-				em.logger.Log("err", errors.Wrap(err, "failed to unmarshal event"))
+				em.logger.Error("err", errors.Wrap(err, "failed to unmarshal event"))
 				continue
 			}
 			if eventID != "" {
 				em.updateMetric(eventID, data)
 			}
 		case <-em.wsc.Quit:
-			em.logger.Log("err", errors.New("WSClient closed unexpectedly"))
+			em.logger.Error("err", errors.New("WSClient closed unexpectedly"))
 			em.StopAndCallDisconnectCallback()
 			return
 		case <-em.quit:

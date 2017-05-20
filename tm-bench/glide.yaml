@@ -2,10 +2,12 @@ package: github.com/tendermint/tools/tm-bench
 import:
 - package: github.com/pkg/errors
 - package: github.com/tendermint/go-rpc
+  version: develop
   subpackages:
   - client
   - types
 - package: github.com/tendermint/tools
+  version: develop
   subpackages:
   - tm-monitor/monitor
 - package: github.com/go-kit/kit

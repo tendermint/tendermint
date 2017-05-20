@@ -6,9 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/term"
-	cmn "github.com/tendermint/go-common"
+	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
 	monitor "github.com/tendermint/tools/tm-monitor/monitor"
 )
 
@@ -48,22 +47,12 @@ Examples:
 	}
 
 	if noton {
-		// Color errors red
-		colorFn := func(keyvals ...interface{}) term.FgBgColor {
-			for i := 1; i < len(keyvals); i += 2 {
-				if _, ok := keyvals[i].(error); ok {
-					return term.FgBgColor{Fg: term.White, Bg: term.Red}
-				}
-			}
-			return term.FgBgColor{}
-		}
-
-		logger = term.NewLogger(os.Stdout, log.NewLogfmtLogger, colorFn)
+		logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("module", "tm-monitor")
 	}
 
 	m := startMonitor(flag.Arg(0))
 
-	startRPC(listenAddr, m)
+	startRPC(listenAddr, m, logger)
 
 	var ton *Ton
 	if !noton {
@@ -81,11 +70,11 @@ Examples:
 
 func startMonitor(endpoints string) *monitor.Monitor {
 	m := monitor.NewMonitor()
-	m.SetLogger(log.With(logger, "component", "monitor"))
+	m.SetLogger(logger.With("component", "monitor"))
 
 	for _, e := range strings.Split(endpoints, ",") {
 		n := monitor.NewNode(e)
-		n.SetLogger(log.With(logger, "node", e))
+		n.SetLogger(logger.With("node", e))
 		if err := m.Monitor(n); err != nil {
 			panic(err)
 		}
