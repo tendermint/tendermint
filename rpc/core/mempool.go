@@ -75,7 +75,7 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 
 	// Wait for the tx to be included in a block,
 	// timeout after something reasonable.
-	// TODO: configureable?
+	// TODO: configurable?
 	timer := time.NewTimer(60 * 2 * time.Second)
 	select {
 	case deliverTxRes := <-deliverTxResCh:

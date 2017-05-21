@@ -409,7 +409,7 @@ func (cache *txCache) Push(tx types.Tx) bool {
 		popped := cache.list.Front()
 		poppedTx := popped.Value.(types.Tx)
 		// NOTE: the tx may have already been removed from the map
-		// but deleting a non-existant element is fine
+		// but deleting a non-existent element is fine
 		delete(cache.map_, string(poppedTx))
 		cache.list.Remove(popped)
 	}

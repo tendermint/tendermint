@@ -40,7 +40,7 @@ func (a ABCIApp) BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit
 
 func (a ABCIApp) BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	c := a.App.CheckTx(tx)
-	// and this gets writen in a background thread...
+	// and this gets written in a background thread...
 	if c.IsOK() {
 		go func() { a.App.DeliverTx(tx) }()
 	}
@@ -49,7 +49,7 @@ func (a ABCIApp) BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error
 
 func (a ABCIApp) BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	c := a.App.CheckTx(tx)
-	// and this gets writen in a background thread...
+	// and this gets written in a background thread...
 	if c.IsOK() {
 		go func() { a.App.DeliverTx(tx) }()
 	}
