@@ -544,7 +544,7 @@ func TestLockPOLRelock(t *testing.T) {
 	// timeout to new round
 	<-timeoutWaitCh
 
-	//XXX: this isnt gauranteed to get there before the timeoutPropose ...
+	//XXX: this isnt guaranteed to get there before the timeoutPropose ...
 	cs1.SetProposalAndBlock(prop, propBlock, propBlockParts, "some peer")
 
 	<-newRoundCh
@@ -655,7 +655,7 @@ func TestLockPOLUnlock(t *testing.T) {
 	rs = re.(types.TMEventData).Unwrap().(types.EventDataRoundState).RoundState.(*RoundState)
 	lockedBlockHash := rs.LockedBlock.Hash()
 
-	//XXX: this isnt gauranteed to get there before the timeoutPropose ...
+	//XXX: this isnt guaranteed to get there before the timeoutPropose ...
 	cs1.SetProposalAndBlock(prop, propBlock, propBlockParts, "some peer")
 
 	<-newRoundCh
@@ -742,7 +742,7 @@ func TestLockPOLSafety1(t *testing.T) {
 
 	incrementRound(vs2, vs3, vs4)
 
-	//XXX: this isnt gauranteed to get there before the timeoutPropose ...
+	//XXX: this isnt guaranteed to get there before the timeoutPropose ...
 	cs1.SetProposalAndBlock(prop, propBlock, propBlockParts, "some peer")
 
 	<-newRoundCh
