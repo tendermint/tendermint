@@ -6,8 +6,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	tmflags "github.com/tendermint/tendermint/cmd/tendermint/commands/flags"
 	cfg "github.com/tendermint/tendermint/config"
+	tmflags "github.com/tendermint/tmlibs/cli/flags"
 	"github.com/tendermint/tmlibs/log"
 )
 
@@ -30,7 +30,7 @@ var RootCmd = &cobra.Command{
 		}
 		config.SetRoot(config.RootDir)
 		cfg.EnsureRoot(config.RootDir)
-		logger, err = tmflags.ParseLogLevel(config.LogLevel, logger)
+		logger, err = tmflags.ParseLogLevel(config.LogLevel, logger, cfg.DefaultBaseConfig().LogLevel)
 		if err != nil {
 			return err
 		}
