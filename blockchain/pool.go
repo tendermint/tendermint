@@ -141,8 +141,8 @@ func (pool *BlockPool) IsCaughtUp() bool {
 	}
 
 	// ('receive at least one block' or 'wait at least 5 seconds') and ('all peers are also at 0' or 'my height is higher than the highest peer I know')
-	isCaughtUp := (pool.height > 0 || time.Now().Sub(pool.startTime) > 5*time.Second) && (maxPeerHeight == 0 || height >= maxPeerHeight)
-	pool.Logger.Info(Fmt("IsCaughtUp: %v", isCaughtUp), "height", height, "maxPeerHeight", maxPeerHeight)
+	isCaughtUp := (pool.height > 0 || time.Now().Sub(pool.startTime) > 5*time.Second) && (maxPeerHeight == 0 || pool.height >= maxPeerHeight)
+	pool.Logger.Info(Fmt("IsCaughtUp: %v", isCaughtUp), "height", pool.height, "maxPeerHeight", maxPeerHeight)
 	return isCaughtUp
 }
 
