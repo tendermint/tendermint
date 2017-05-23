@@ -91,7 +91,7 @@ func TestReader(t *testing.T) {
 	}
 	for i, s := range status {
 		if !reflect.DeepEqual(&s, &want[i]) {
-			t.Errorf("r.Status(%v) expected %v; got %v", i, want[i], s)
+			t.Errorf("r.Status(%v)\nexpected: %v\ngot     : %v", i, want[i], s)
 		}
 	}
 	if !bytes.Equal(b[:20], in[:20]) {
@@ -137,7 +137,7 @@ func TestWriter(t *testing.T) {
 	}
 	for i, s := range status {
 		if !reflect.DeepEqual(&s, &want[i]) {
-			t.Errorf("w.Status(%v) expected %v; got %v", i, want[i], s)
+			t.Errorf("w.Status(%v)\nexpected: %v\ngot     : %v\n", i, want[i], s)
 		}
 	}
 	if !bytes.Equal(b, w.Writer.(*bytes.Buffer).Bytes()) {
