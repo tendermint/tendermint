@@ -25,18 +25,22 @@ func TestParseLogLevel(t *testing.T) {
 			``, // if no default is given, assume info
 			``,
 			`{"_msg":"Mesmero","level":"error","module":"mempool"}`,
-			`{"_msg":"Mind","level":"info","module":"state"}`}}, // if no default is given, assume info
+			`{"_msg":"Mind","level":"info","module":"state"}`, // if no default is given, assume info
+			``}},
+
 		{"mempool:error,*:debug", []string{
 			`{"_msg":"Kingpin","level":"debug","module":"wire"}`,
 			``,
 			`{"_msg":"Mesmero","level":"error","module":"mempool"}`,
-			`{"_msg":"Mind","level":"info","module":"state"}`}},
+			`{"_msg":"Mind","level":"info","module":"state"}`,
+			`{"_msg":"Gideon","level":"debug"}`}},
 
 		{"*:debug,wire:none", []string{
 			``,
 			`{"_msg":"Kitty Pryde","level":"info","module":"mempool"}`,
 			`{"_msg":"Mesmero","level":"error","module":"mempool"}`,
-			`{"_msg":"Mind","level":"info","module":"state"}`}},
+			`{"_msg":"Mind","level":"info","module":"state"}`,
+			`{"_msg":"Gideon","level":"debug"}`}},
 	}
 
 	for _, c := range correctLogLevels {
@@ -75,6 +79,12 @@ func TestParseLogLevel(t *testing.T) {
 			t.Errorf("\nwant '%s'\nhave '%s'\nlevel '%s'", c.expectedLogLines[3], have, c.lvl)
 		}
 
+		buf.Reset()
+
+		logger.Debug("Gideon")
+		if have := strings.TrimSpace(buf.String()); c.expectedLogLines[4] != have {
+			t.Errorf("\nwant '%s'\nhave '%s'\nlevel '%s'", c.expectedLogLines[4], have, c.lvl)
+		}
 	}
 
 	incorrectLogLevel := []string{"some", "mempool:some", "*:some,mempool:error"}
