@@ -21,12 +21,22 @@ func TestParseLogLevel(t *testing.T) {
 		lvl              string
 		expectedLogLines []string
 	}{
-		{"mempool:error", []string{``, ``, `{"_msg":"Mesmero","level":"error","module":"mempool"}`}},
-		{"mempool:error,*:debug", []string{``, ``, `{"_msg":"Mesmero","level":"error","module":"mempool"}`}},
+		{"mempool:error", []string{
+			``, // if no default is given, assume info
+			``,
+			`{"_msg":"Mesmero","level":"error","module":"mempool"}`,
+			`{"_msg":"Mind","level":"info","module":"state"}`}}, // if no default is given, assume info
+		{"mempool:error,*:debug", []string{
+			`{"_msg":"Kingpin","level":"debug","module":"wire"}`,
+			``,
+			`{"_msg":"Mesmero","level":"error","module":"mempool"}`,
+			`{"_msg":"Mind","level":"info","module":"state"}`}},
+
 		{"*:debug,wire:none", []string{
-			`{"_msg":"Kingpin","level":"debug","module":"mempool"}`,
+			``,
 			`{"_msg":"Kitty Pryde","level":"info","module":"mempool"}`,
-			`{"_msg":"Mesmero","level":"error","module":"mempool"}`}},
+			`{"_msg":"Mesmero","level":"error","module":"mempool"}`,
+			`{"_msg":"Mind","level":"info","module":"state"}`}},
 	}
 
 	for _, c := range correctLogLevels {
@@ -35,28 +45,36 @@ func TestParseLogLevel(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		logger = logger.With("module", "mempool")
+		logger = logger
 
 		buf.Reset()
 
-		logger.Debug("Kingpin")
+		logger.With("module", "wire").Debug("Kingpin")
 		if have := strings.TrimSpace(buf.String()); c.expectedLogLines[0] != have {
 			t.Errorf("\nwant '%s'\nhave '%s'\nlevel '%s'", c.expectedLogLines[0], have, c.lvl)
 		}
 
 		buf.Reset()
 
-		logger.Info("Kitty Pryde")
+		logger.With("module", "mempool").Info("Kitty Pryde")
 		if have := strings.TrimSpace(buf.String()); c.expectedLogLines[1] != have {
 			t.Errorf("\nwant '%s'\nhave '%s'\nlevel '%s'", c.expectedLogLines[1], have, c.lvl)
 		}
 
 		buf.Reset()
 
-		logger.Error("Mesmero")
+		logger.With("module", "mempool").Error("Mesmero")
 		if have := strings.TrimSpace(buf.String()); c.expectedLogLines[2] != have {
 			t.Errorf("\nwant '%s'\nhave '%s'\nlevel '%s'", c.expectedLogLines[2], have, c.lvl)
 		}
+
+		buf.Reset()
+
+		logger.With("module", "state").Info("Mind")
+		if have := strings.TrimSpace(buf.String()); c.expectedLogLines[3] != have {
+			t.Errorf("\nwant '%s'\nhave '%s'\nlevel '%s'", c.expectedLogLines[3], have, c.lvl)
+		}
+
 	}
 
 	incorrectLogLevel := []string{"some", "mempool:some", "*:some,mempool:error"}
