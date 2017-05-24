@@ -32,8 +32,10 @@ proxy_app = "tcp://127.0.0.1:46658"
 moniker = "__MONIKER__"
 fast_sync = true
 db_backend = "leveldb"
-log_level = "info"
-rpc_laddr = "tcp://0.0.0.0:46657"
+log_level = "state:info,*:error"
+
+[rpc]
+laddr = "tcp://0.0.0.0:46657"
 
 [p2p]
 laddr = "tcp://0.0.0.0:46656"
@@ -94,7 +96,9 @@ moniker = "__MONIKER__"
 fast_sync = false
 db_backend = "memdb"
 log_level = "info"
-rpc_laddr = "tcp://0.0.0.0:36657"
+
+[rpc]
+laddr = "tcp://0.0.0.0:36657"
 
 [p2p]
 laddr = "tcp://0.0.0.0:36656"
