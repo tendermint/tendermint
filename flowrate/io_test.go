@@ -6,7 +6,6 @@ package flowrate
 
 import (
 	"bytes"
-	"reflect"
 	"testing"
 	"time"
 )
@@ -90,7 +89,7 @@ func TestReader(t *testing.T) {
 		Status{false, start, _300ms, 0, 20, 3, 0, 0, 67, 100, 0, 0, 0},
 	}
 	for i, s := range status {
-		if !reflect.DeepEqual(&s, &want[i]) {
+		if !statusesAreEqual(&s, &want[i]) {
 			t.Errorf("r.Status(%v)\nexpected: %v\ngot     : %v", i, want[i], s)
 		}
 	}
@@ -136,11 +135,55 @@ func TestWriter(t *testing.T) {
 		Status{true, start, _500ms, _100ms, 100, 5, 200, 200, 200, 200, 0, 0, 100000},
 	}
 	for i, s := range status {
-		if !reflect.DeepEqual(&s, &want[i]) {
+		if !statusesAreEqual(&s, &want[i]) {
 			t.Errorf("w.Status(%v)\nexpected: %v\ngot     : %v\n", i, want[i], s)
 		}
 	}
 	if !bytes.Equal(b, w.Writer.(*bytes.Buffer).Bytes()) {
 		t.Errorf("w.Write() input doesn't match output")
 	}
+}
+
+const maxDeviationForDuration = 50 * time.Millisecond
+const maxDeviationForRate int64 = 50
+
+// statusesAreEqual returns true if s1 is equal to s2. Equality here means
+// general equality of fields except for the duration and rates, which can
+// drift due to unpredictable delays (e.g. thread wakes up 25ms after
+// `time.Sleep` has ended).
+func statusesAreEqual(s1 *Status, s2 *Status) bool {
+	if s1.Active == s2.Active &&
+		s1.Start == s2.Start &&
+		durationsAreEqual(s1.Duration, s2.Duration, maxDeviationForDuration) &&
+		s1.Idle == s2.Idle &&
+		s1.Bytes == s2.Bytes &&
+		s1.Samples == s2.Samples &&
+		ratesAreEqual(s1.InstRate, s2.InstRate, maxDeviationForRate) &&
+		ratesAreEqual(s1.CurRate, s2.CurRate, maxDeviationForRate) &&
+		ratesAreEqual(s1.AvgRate, s2.AvgRate, maxDeviationForRate) &&
+		ratesAreEqual(s1.PeakRate, s2.PeakRate, maxDeviationForRate) &&
+		s1.BytesRem == s2.BytesRem &&
+		durationsAreEqual(s1.TimeRem, s2.TimeRem, maxDeviationForDuration) &&
+		s1.Progress == s2.Progress {
+		return true
+	}
+	return false
+}
+
+func durationsAreEqual(d1 time.Duration, d2 time.Duration, maxDeviation time.Duration) bool {
+	if d2-d1 <= maxDeviation {
+		return true
+	}
+	return false
+}
+
+func ratesAreEqual(r1 int64, r2 int64, maxDeviation int64) bool {
+	sub := r1 - r2
+	if sub < 0 {
+		sub = -sub
+	}
+	if sub <= maxDeviation {
+		return true
+	}
+	return false
 }
