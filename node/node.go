@@ -322,6 +322,10 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 	n.ConfigureRPC()
 	listenAddrs := strings.Split(n.config.RPC.ListenAddress, ",")
 
+	if n.config.RPC.Unsafe {
+		rpccore.AddUnsafeRoutes()
+	}
+
 	// we may expose the rpc over both a unix and tcp socket
 	listeners := make([]net.Listener, len(listenAddrs))
 	for i, listenAddr := range listenAddrs {
