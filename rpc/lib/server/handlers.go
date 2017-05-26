@@ -110,11 +110,11 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 		var request types.RPCRequest
 		err := json.Unmarshal(b, &request)
 		if err != nil {
-			WriteRPCResponseHTTP(w, types.RPCParseError(""))
+			WriteRPCResponseHTTP(w, types.RPCParseError("", errors.Wrap(err, "Error unmarshalling request")))
 			return
 		}
 		if len(r.URL.Path) > 1 {
-			WriteRPCResponseHTTP(w, types.RPCInvalidRequestError(request.ID))
+			WriteRPCResponseHTTP(w, types.RPCInvalidRequestError(request.ID, errors.Errorf("Path %s is invalid", r.URL.Path)))
 			return
 		}
 		rpcFunc := funcMap[request.Method]
@@ -123,19 +123,19 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 			return
 		}
 		if rpcFunc.ws {
-			WriteRPCResponseHTTP(w, types.RPCInternalError(request.ID))
+			WriteRPCResponseHTTP(w, types.RPCInternalError(request.ID, errors.New("Trying to use Websocket method in non-ws context")))
 			return
 		}
 		args, err := jsonParamsToArgsRPC(rpcFunc, request.Params)
 		if err != nil {
-			WriteRPCResponseHTTP(w, types.RPCInvalidParamsError(request.ID))
+			WriteRPCResponseHTTP(w, types.RPCInvalidParamsError(request.ID, errors.Wrap(err, "Error converting json params to arguments")))
 			return
 		}
 		returns := rpcFunc.f.Call(args)
 		logger.Info("HTTPJSONRPC", "method", request.Method, "args", args, "returns", returns)
 		result, err := unreflectResult(returns)
 		if err != nil {
-			WriteRPCResponseHTTP(w, types.RPCInternalError(request.ID))
+			WriteRPCResponseHTTP(w, types.RPCInternalError(request.ID, err))
 			return
 		}
 		WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse(request.ID, result))
@@ -229,7 +229,7 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 	// Exception for websocket endpoints
 	if rpcFunc.ws {
 		return func(w http.ResponseWriter, r *http.Request) {
-			WriteRPCResponseHTTP(w, types.RPCInternalError(""))
+			WriteRPCResponseHTTP(w, types.RPCInternalError("", errors.New("Trying to use Websocket method in non-ws context")))
 		}
 	}
 	// All other endpoints
@@ -237,14 +237,14 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 		logger.Debug("HTTP HANDLER", "req", r)
 		args, err := httpParamsToArgs(rpcFunc, r)
 		if err != nil {
-			WriteRPCResponseHTTP(w, types.RPCInvalidParamsError(""))
+			WriteRPCResponseHTTP(w, types.RPCInvalidParamsError("", errors.Wrap(err, "Error converting http params to arguments")))
 			return
 		}
 		returns := rpcFunc.f.Call(args)
 		logger.Info("HTTPRestRPC", "method", r.URL.Path, "args", args, "returns", returns)
 		result, err := unreflectResult(returns)
 		if err != nil {
-			WriteRPCResponseHTTP(w, types.RPCInternalError(""))
+			WriteRPCResponseHTTP(w, types.RPCInternalError("", err))
 			return
 		}
 		WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse("", result))
@@ -509,7 +509,7 @@ func (wsc *wsConnection) readRoutine() {
 			var request types.RPCRequest
 			err = json.Unmarshal(in, &request)
 			if err != nil {
-				wsc.WriteRPCResponse(types.RPCParseError(""))
+				wsc.WriteRPCResponse(types.RPCParseError("", errors.Wrap(err, "Error unmarshaling request")))
 				continue
 			}
 
@@ -528,7 +528,7 @@ func (wsc *wsConnection) readRoutine() {
 				args, err = jsonParamsToArgsRPC(rpcFunc, request.Params)
 			}
 			if err != nil {
-				wsc.WriteRPCResponse(types.RPCInternalError(request.ID))
+				wsc.WriteRPCResponse(types.RPCInternalError(request.ID, errors.Wrap(err, "Error converting json params to arguments")))
 				continue
 			}
 			returns := rpcFunc.f.Call(args)
@@ -538,7 +538,7 @@ func (wsc *wsConnection) readRoutine() {
 
 			result, err := unreflectResult(returns)
 			if err != nil {
-				wsc.WriteRPCResponse(types.RPCInternalError(request.ID))
+				wsc.WriteRPCResponse(types.RPCInternalError(request.ID, err))
 				continue
 			} else {
 				wsc.WriteRPCResponse(types.NewRPCSuccessResponse(request.ID, result))
