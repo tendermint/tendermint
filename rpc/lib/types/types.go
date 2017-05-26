@@ -8,6 +8,11 @@ import (
 	events "github.com/tendermint/tmlibs/events"
 )
 
+type RpcError struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+}
+
 type RPCRequest struct {
 	JSONRPC string           `json:"jsonrpc"`
 	ID      string           `json:"id"`
@@ -50,28 +55,32 @@ func ArrayToRequest(id string, method string, params []interface{}) (RPCRequest,
 
 type RPCResponse struct {
 	JSONRPC string           `json:"jsonrpc"`
-	ID      string           `json:"id"`
-	Result  *json.RawMessage `json:"result"`
-	Error   string           `json:"error"`
+	ID      string           `json:"id,omitempty"`
+	Result  *json.RawMessage `json:"result,omitempty"`
+	Error   *RpcError        `json:"error,omitempty"`
 }
 
-func NewRPCResponse(id string, res interface{}, err string) RPCResponse {
+func NewRPCSuccessResponse(id string, res interface{}) RPCResponse {
 	var raw *json.RawMessage
+
 	if res != nil {
 		var js []byte
-		js, err2 := json.Marshal(res)
-		if err2 == nil {
-			rawMsg := json.RawMessage(js)
-			raw = &rawMsg
-		} else {
-			err = err2.Error()
+		js, err := json.Marshal(res)
+		if err != nil {
+			return RPCInternalError(id)
 		}
+		rawMsg := json.RawMessage(js)
+		raw = &rawMsg
 	}
+
+	return RPCResponse{JSONRPC: "2.0", ID: id, Result: raw}
+}
+
+func NewRPCErrorResponse(id string, code int, msg string) RPCResponse {
 	return RPCResponse{
 		JSONRPC: "2.0",
 		ID:      id,
-		Result:  raw,
-		Error:   err,
+		Error:   &RpcError{Code: code, Message: msg},
 	}
 }
 
@@ -81,6 +90,30 @@ func (resp RPCResponse) String() string {
 	} else {
 		return fmt.Sprintf("[%s %s]", resp.ID, resp.Error)
 	}
+}
+
+func RPCParseError(id string) RPCResponse {
+	return NewRPCErrorResponse(id, -32700, "Parse error. Invalid JSON")
+}
+
+func RPCInvalidRequestError(id string) RPCResponse {
+	return NewRPCErrorResponse(id, -32600, "Invalid Request")
+}
+
+func RPCMethodNotFoundError(id string) RPCResponse {
+	return NewRPCErrorResponse(id, -32601, "Method not found")
+}
+
+func RPCInvalidParamsError(id string) RPCResponse {
+	return NewRPCErrorResponse(id, -32602, "Invalid params")
+}
+
+func RPCInternalError(id string) RPCResponse {
+	return NewRPCErrorResponse(id, -32603, "Internal error")
+}
+
+func RPCServerError(id string) RPCResponse {
+	return NewRPCErrorResponse(id, -32000, "Server error")
 }
 
 //----------------------------------------
