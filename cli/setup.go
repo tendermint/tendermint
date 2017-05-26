@@ -93,9 +93,9 @@ func (e Executor) Execute() error {
 	if err != nil {
 		// TODO: something cooler with log-levels
 		if viper.GetBool(TraceFlag) {
-			fmt.Printf("ERROR: %+v\n", err)
+			fmt.Fprintf(os.Stderr, "ERROR: %+v\n", err)
 		} else {
-			fmt.Println("ERROR:", err.Error())
+			fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
 		}
 	}
 	return err
