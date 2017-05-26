@@ -59,31 +59,31 @@ func GetConfig() *cfg.Config {
 		// and we use random ports to run in parallel
 		tm, rpc, grpc := makeAddrs()
 		config.P2P.ListenAddress = tm
-		config.RPCListenAddress = rpc
-		config.GRPCListenAddress = grpc
+		config.RPC.ListenAddress = rpc
+		config.RPC.GRPCListenAddress = grpc
 	}
 	return config
 }
 
 // GetURIClient gets a uri client pointing to the test tendermint rpc
 func GetURIClient() *client.URIClient {
-	rpcAddr := GetConfig().RPCListenAddress
+	rpcAddr := GetConfig().RPC.ListenAddress
 	return client.NewURIClient(rpcAddr)
 }
 
 // GetJSONClient gets a http/json client pointing to the test tendermint rpc
 func GetJSONClient() *client.JSONRPCClient {
-	rpcAddr := GetConfig().RPCListenAddress
+	rpcAddr := GetConfig().RPC.ListenAddress
 	return client.NewJSONRPCClient(rpcAddr)
 }
 
 func GetGRPCClient() core_grpc.BroadcastAPIClient {
-	grpcAddr := config.GRPCListenAddress
+	grpcAddr := config.RPC.GRPCListenAddress
 	return core_grpc.StartGRPCClient(grpcAddr)
 }
 
 func GetWSClient() *client.WSClient {
-	rpcAddr := GetConfig().RPCListenAddress
+	rpcAddr := GetConfig().RPC.ListenAddress
 	wsc := client.NewWSClient(rpcAddr, "/websocket")
 	if _, err := wsc.Start(); err != nil {
 		panic(err)

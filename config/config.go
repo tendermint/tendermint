@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"path/filepath"
 	"time"
 
@@ -108,7 +109,7 @@ func DefaultBaseConfig() BaseConfig {
 		Moniker:           "anonymous",
 		ProxyApp:          "tcp://127.0.0.1:46658",
 		ABCI:              "socket",
-		LogLevel:          "state:info,*:error",
+		LogLevel:          DefaultPackageLogLevels(),
 		ProfListenAddress: "",
 		FastSync:          true,
 		FilterPeers:       false,
@@ -137,6 +138,14 @@ func (b BaseConfig) PrivValidatorFile() string {
 
 func (b BaseConfig) DBDir() string {
 	return rootify(b.DBPath, b.RootDir)
+}
+
+func DefaultLogLevel() string {
+	return "error"
+}
+
+func DefaultPackageLogLevels() string {
+	return fmt.Sprintf("state:info,*:%s", DefaultLogLevel())
 }
 
 //-----------------------------------------------------------------------------

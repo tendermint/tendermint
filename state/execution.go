@@ -259,7 +259,7 @@ func (s *State) CommitStateUpdateMempool(proxyAppConn proxy.AppConnConsensus, bl
 		s.logger.Debug("Commit.Log: " + res.Log)
 	}
 
-	s.logger.Info("Committed state", "height", block.Height, "hash", res.Data)
+	s.logger.Info("Committed state", "height", block.Height, "txs", block.NumTxs, "hash", res.Data)
 
 	// Set the state's new AppHash
 	s.AppHash = res.Data
