@@ -23,39 +23,42 @@ function getCode() {
 	else
 		# this wont actually work if theres an error ...
 		echo "$R" | jq .code
-	fi 
+	fi
 }
 
 function sendTx() {
 	TX=$1
 	if [[ "$GRPC_BROADCAST_TX" == "" ]]; then
-		RESPONSE=`curl -s localhost:46657/broadcast_tx_commit?tx=0x$TX`
-		ERROR=`echo $RESPONSE | jq .error`
+		RESPONSE=$(curl -s localhost:46657/broadcast_tx_commit?tx=0x"$TX")
+		IS_ERR=$(echo "$RESPONSE" | jq 'has("error")')
+		ERROR=$(echo "$RESPONSE" | jq '.error')
 		ERROR=$(echo "$ERROR" | tr -d '"') # remove surrounding quotes
 
-		RESPONSE=`echo $RESPONSE | jq .result`
+		RESPONSE=$(echo "$RESPONSE" | jq '.result')
 	else
 	 	if [  -f grpc_client ]; then
 			rm grpc_client
 	     	fi
 		echo "... building grpc_client"
-		go build -o grpc_client grpc_client.go 
-		RESPONSE=`./grpc_client $TX`
+		go build -o grpc_client grpc_client.go
+		RESPONSE=$(./grpc_client "$TX")
+		IS_ERR=false
 		ERROR=""
 	fi
 
 	echo "RESPONSE"
-	echo $RESPONSE
+	echo "$RESPONSE"
 
-	echo $RESPONSE | jq . &> /dev/null
+	echo "$RESPONSE" | jq . &> /dev/null
 	IS_JSON=$?
 	if [[ "$IS_JSON" != "0" ]]; then
+		IS_ERR=true
 		ERROR="$RESPONSE"
 	fi
-	APPEND_TX_RESPONSE=`echo $RESPONSE | jq .deliver_tx`
-	APPEND_TX_CODE=`getCode "$APPEND_TX_RESPONSE"`
-	CHECK_TX_RESPONSE=`echo $RESPONSE | jq .check_tx`
-	CHECK_TX_CODE=`getCode "$CHECK_TX_RESPONSE"`
+	APPEND_TX_RESPONSE=$(echo "$RESPONSE" | jq '.deliver_tx')
+	APPEND_TX_CODE=$(getCode "$APPEND_TX_RESPONSE")
+	CHECK_TX_RESPONSE=$(echo "$RESPONSE" | jq '.check_tx')
+	CHECK_TX_CODE=$(getCode "$CHECK_TX_RESPONSE")
 
 	echo "-------"
 	echo "TX $TX"
@@ -63,7 +66,7 @@ function sendTx() {
 	echo "ERROR $ERROR"
 	echo "----"
 
-	if [[ "$ERROR" != "" ]]; then
+	if $IS_ERR; then
 		echo "Unexpected error sending tx ($TX): $ERROR"
 		exit 1
 	fi
