@@ -58,6 +58,7 @@ type PrivValidator struct {
 // eg. to avoid double signing.
 // Currently, the only callers are SignVote and SignProposal
 type Signer interface {
+	PubKey() crypto.PubKey
 	Sign(msg []byte) crypto.Signature
 }
 
@@ -75,8 +76,20 @@ func (ds *DefaultSigner) Sign(msg []byte) crypto.Signature {
 	return ds.priv.Sign(msg)
 }
 
+// Implements Signer
+func (ds *DefaultSigner) PubKey() crypto.PubKey {
+	return ds.priv.PubKey()
+}
+
 func (privVal *PrivValidator) SetSigner(s Signer) {
 	privVal.Signer = s
+	privVal.setPubKeyAndAddress()
+}
+
+// Overwrite address and pubkey for convenience
+func (privVal *PrivValidator) setPubKeyAndAddress() {
+	privVal.PubKey = privVal.Signer.PubKey()
+	privVal.Address = privVal.PubKey.Address()
 }
 
 // Generates a new validator with private key.
@@ -103,8 +116,10 @@ func LoadPrivValidator(filePath string) *PrivValidator {
 	if err != nil {
 		Exit(Fmt("Error reading PrivValidator from %v: %v\n", filePath, err))
 	}
+
 	privVal.filePath = filePath
 	privVal.Signer = NewDefaultSigner(privVal.PrivKey)
+	privVal.setPubKeyAndAddress()
 	return &privVal
 }
 

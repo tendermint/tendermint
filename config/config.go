@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"path/filepath"
 	"time"
 
@@ -12,6 +13,7 @@ type Config struct {
 	BaseConfig `mapstructure:",squash"`
 
 	// Options for services
+	RPC       *RPCConfig       `mapstructure:"rpc"`
 	P2P       *P2PConfig       `mapstructure:"p2p"`
 	Mempool   *MempoolConfig   `mapstructure:"mempool"`
 	Consensus *ConsensusConfig `mapstructure:"consensus"`
@@ -20,6 +22,7 @@ type Config struct {
 func DefaultConfig() *Config {
 	return &Config{
 		BaseConfig: DefaultBaseConfig(),
+		RPC:        DefaultRPCConfig(),
 		P2P:        DefaultP2PConfig(),
 		Mempool:    DefaultMempoolConfig(),
 		Consensus:  DefaultConsensusConfig(),
@@ -29,6 +32,7 @@ func DefaultConfig() *Config {
 func TestConfig() *Config {
 	return &Config{
 		BaseConfig: TestBaseConfig(),
+		RPC:        TestRPCConfig(),
 		P2P:        TestP2PConfig(),
 		Mempool:    DefaultMempoolConfig(),
 		Consensus:  TestConsensusConfig(),
@@ -38,11 +42,15 @@ func TestConfig() *Config {
 // Set the RootDir for all Config structs
 func (cfg *Config) SetRoot(root string) *Config {
 	cfg.BaseConfig.RootDir = root
+	cfg.RPC.RootDir = root
 	cfg.P2P.RootDir = root
 	cfg.Mempool.RootDir = root
 	cfg.Consensus.RootDir = root
 	return cfg
 }
+
+//-----------------------------------------------------------------------------
+// BaseConfig
 
 // BaseConfig struct for a Tendermint node
 type BaseConfig struct {
@@ -92,13 +100,6 @@ type BaseConfig struct {
 
 	// Database directory
 	DBPath string `mapstructure:"db_dir"`
-
-	// TCP or UNIX socket address for the RPC server to listen on
-	RPCListenAddress string `mapstructure:"rpc_laddr"`
-
-	// TCP or UNIX socket address for the gRPC server to listen on
-	// NOTE: This server only supports /broadcast_tx_commit
-	GRPCListenAddress string `mapstructure:"grpc_laddr"`
 }
 
 func DefaultBaseConfig() BaseConfig {
@@ -108,15 +109,13 @@ func DefaultBaseConfig() BaseConfig {
 		Moniker:           "anonymous",
 		ProxyApp:          "tcp://127.0.0.1:46658",
 		ABCI:              "socket",
-		LogLevel:          "info",
+		LogLevel:          DefaultPackageLogLevels(),
 		ProfListenAddress: "",
 		FastSync:          true,
 		FilterPeers:       false,
 		TxIndex:           "kv",
 		DBBackend:         "leveldb",
 		DBPath:            "data",
-		RPCListenAddress:  "tcp://0.0.0.0:46657",
-		GRPCListenAddress: "",
 	}
 }
 
@@ -126,8 +125,6 @@ func TestBaseConfig() BaseConfig {
 	conf.ProxyApp = "dummy"
 	conf.FastSync = false
 	conf.DBBackend = "memdb"
-	conf.RPCListenAddress = "tcp://0.0.0.0:36657"
-	conf.GRPCListenAddress = "tcp://0.0.0.0:36658"
 	return conf
 }
 
@@ -142,6 +139,50 @@ func (b BaseConfig) PrivValidatorFile() string {
 func (b BaseConfig) DBDir() string {
 	return rootify(b.DBPath, b.RootDir)
 }
+
+func DefaultLogLevel() string {
+	return "error"
+}
+
+func DefaultPackageLogLevels() string {
+	return fmt.Sprintf("state:info,*:%s", DefaultLogLevel())
+}
+
+//-----------------------------------------------------------------------------
+// RPCConfig
+
+type RPCConfig struct {
+	RootDir string `mapstructure:"home"`
+
+	// TCP or UNIX socket address for the RPC server to listen on
+	ListenAddress string `mapstructure:"laddr"`
+
+	// TCP or UNIX socket address for the gRPC server to listen on
+	// NOTE: This server only supports /broadcast_tx_commit
+	GRPCListenAddress string `mapstructure:"grpc_laddr"`
+
+	// Activate unsafe RPC commands like /dial_seeds and /unsafe_flush_mempool
+	Unsafe bool `mapstructure:"unsafe"`
+}
+
+func DefaultRPCConfig() *RPCConfig {
+	return &RPCConfig{
+		ListenAddress:     "tcp://0.0.0.0:46657",
+		GRPCListenAddress: "",
+		Unsafe:            false,
+	}
+}
+
+func TestRPCConfig() *RPCConfig {
+	conf := DefaultRPCConfig()
+	conf.ListenAddress = "tcp://0.0.0.0:36657"
+	conf.GRPCListenAddress = "tcp://0.0.0.0:36658"
+	conf.Unsafe = true
+	return conf
+}
+
+//-----------------------------------------------------------------------------
+// P2PConfig
 
 type P2PConfig struct {
 	RootDir        string `mapstructure:"home"`
@@ -174,6 +215,9 @@ func (p *P2PConfig) AddrBookFile() string {
 	return rootify(p.AddrBook, p.RootDir)
 }
 
+//-----------------------------------------------------------------------------
+// MempoolConfig
+
 type MempoolConfig struct {
 	RootDir      string `mapstructure:"home"`
 	Recheck      bool   `mapstructure:"recheck"`
@@ -194,6 +238,9 @@ func DefaultMempoolConfig() *MempoolConfig {
 func (m *MempoolConfig) WalDir() string {
 	return rootify(m.WalPath, m.RootDir)
 }
+
+//-----------------------------------------------------------------------------
+// ConsensusConfig
 
 // ConsensusConfig holds timeouts and details about the WAL, the block structure,
 // and timeouts in the consensus protocol.
@@ -285,6 +332,9 @@ func (c *ConsensusConfig) WalFile() string {
 func (c *ConsensusConfig) SetWalFile(walFile string) {
 	c.walFile = walFile
 }
+
+//-----------------------------------------------------------------------------
+// Utils
 
 // helper function to make config creation independent of root dir
 func rootify(path, root string) string {

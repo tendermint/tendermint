@@ -23,7 +23,7 @@ docker rm -vf "local_testnet_$ID"
 set -e
 
 # NOTE that we do not provide seeds
-bash test/p2p/peer.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$ID" "$PROXY_APP" "--p2p.pex"
+bash test/p2p/peer.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$ID" "$PROXY_APP" "--p2p.pex --rpc.unsafe"
 docker cp "/tmp/addrbook.json" "local_testnet_$ID:/go/src/github.com/tendermint/tendermint/test/p2p/data/mach1/core/addrbook.json"
 echo "with the following addrbook:"
 cat /tmp/addrbook.json
@@ -47,7 +47,7 @@ docker rm -vf "local_testnet_$ID"
 set -e 
 
 # NOTE that we do not provide seeds
-bash test/p2p/peer.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$ID" "$PROXY_APP" "--p2p.pex"
+bash test/p2p/peer.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$ID" "$PROXY_APP" "--p2p.pex --rpc.unsafe"
 
 # if the client runs forever, it means other peers have removed us from their books (which should not happen)
 bash test/p2p/client.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$CLIENT_NAME" "test/p2p/pex/check_peer.sh $ID $N"

@@ -10,7 +10,7 @@ import (
 
 //-----------------------------------------------------------------------------
 
-// TODO: limit/permission on (max - min)
+// Returns at most 20 blocks
 func BlockchainInfo(minHeight, maxHeight int) (*ctypes.ResultBlockchainInfo, error) {
 	if maxHeight == 0 {
 		maxHeight = blockStore.Height()
@@ -19,7 +19,10 @@ func BlockchainInfo(minHeight, maxHeight int) (*ctypes.ResultBlockchainInfo, err
 	}
 	if minHeight == 0 {
 		minHeight = MaxInt(1, maxHeight-20)
+	} else {
+		minHeight = MaxInt(minHeight, maxHeight-20)
 	}
+
 	logger.Debug("BlockchainInfoHandler", "maxHeight", maxHeight, "minHeight", minHeight)
 
 	blockMetas := []*types.BlockMeta{}
