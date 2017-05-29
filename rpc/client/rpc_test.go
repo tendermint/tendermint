@@ -13,7 +13,7 @@ import (
 )
 
 func getHTTPClient() *client.HTTP {
-	rpcAddr := rpctest.GetConfig().RPCListenAddress
+	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
 	return client.NewHTTP(rpcAddr, "/websocket")
 }
 

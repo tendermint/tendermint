@@ -76,7 +76,7 @@ func ParseLogLevel(lvl string, logger log.Logger) (log.Logger, error) {
 
 	// if "*" is not provided, set default global level
 	if !isDefaultLogLevelSet {
-		option, err = log.AllowLevel(cfg.DefaultBaseConfig().LogLevel)
+		option, err = log.AllowLevel(cfg.DefaultLogLevel())
 		if err != nil {
 			return nil, err
 		}

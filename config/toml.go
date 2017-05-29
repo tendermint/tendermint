@@ -30,17 +30,20 @@ var defaultConfigTmpl = `# This is a TOML config file.
 
 proxy_app = "tcp://127.0.0.1:46658"
 moniker = "__MONIKER__"
-node_laddr = "tcp://0.0.0.0:46656"
-seeds = ""
 fast_sync = true
 db_backend = "leveldb"
-log_level = "info"
-rpc_laddr = "tcp://0.0.0.0:46657"
+log_level = "state:info,*:error"
+
+[rpc]
+laddr = "tcp://0.0.0.0:46657"
+
+[p2p]
+laddr = "tcp://0.0.0.0:46656"
+seeds = ""
 `
 
-func defaultConfig(moniker string) (defaultConfig string) {
-	defaultConfig = strings.Replace(defaultConfigTmpl, "__MONIKER__", moniker, -1)
-	return
+func defaultConfig(moniker string) string {
+	return strings.Replace(defaultConfigTmpl, "__MONIKER__", moniker, -1)
 }
 
 /****** these are for test settings ***********/
@@ -90,12 +93,16 @@ var testConfigTmpl = `# This is a TOML config file.
 
 proxy_app = "dummy"
 moniker = "__MONIKER__"
-node_laddr = "tcp://0.0.0.0:36656"
-seeds = ""
 fast_sync = false
 db_backend = "memdb"
 log_level = "info"
-rpc_laddr = "tcp://0.0.0.0:36657"
+
+[rpc]
+laddr = "tcp://0.0.0.0:36657"
+
+[p2p]
+laddr = "tcp://0.0.0.0:36656"
+seeds = ""
 `
 
 func testConfig(moniker string) (testConfig string) {

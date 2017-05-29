@@ -19,8 +19,10 @@ BREAKING CHANGES:
   - Remove config/tendermint and config/tendermint_test. Defaults are handled by viper and `DefaultConfig() / `TestConfig()` functions
   - Tests do not read config from file
 - New logger (`github.com/tendermint/tmlibs/log`)
-  - Reduced to three levels: Error, Info, Debug
+  - Reduced to three levels: `error`, `info`, and `debug`
+  - NOTE: The default in previous versions was `notice`, which is no longer valid. Please change it in the `config.toml`
   - Per-module log levels
+  - The new default is `state:info,*:error`, which means the `state` package logs at `info` level, and everything else logs at `error` level
   - No global loggers (loggers are passed into constructors, or preferably set with a `SetLogger` method)
 - RPC serialization cleanup:
   - Lowercase json names for ValidatorSet fields
@@ -46,7 +48,7 @@ IMPROVEMENTS:
   - `go-data -> go-wire/data`
   - All other `go-*` libs, except `go-crypto` and `go-wire`, merged under `tmlibs`
 - Return HTTP status codes with errors for RPC responses
-- Use `.Wrap()` and `.Unwarp()` instead of eg. `PubKeyS` for `go-crypto` types
+- Use `.Wrap()` and `.Unwrap()` instead of eg. `PubKeyS` for `go-crypto` types
 - Color code different instances of the consensus for tests 
 - RPC JSON responses use pretty printing (via `json.MarshalIndent`)
 

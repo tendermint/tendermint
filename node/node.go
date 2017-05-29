@@ -255,7 +255,7 @@ func (n *Node) OnStart() error {
 	}
 
 	// Run the RPC server
-	if n.config.RPCListenAddress != "" {
+	if n.config.RPC.ListenAddress != "" {
 		listeners, err := n.startRPC()
 		if err != nil {
 			return err
@@ -320,7 +320,11 @@ func (n *Node) ConfigureRPC() {
 
 func (n *Node) startRPC() ([]net.Listener, error) {
 	n.ConfigureRPC()
-	listenAddrs := strings.Split(n.config.RPCListenAddress, ",")
+	listenAddrs := strings.Split(n.config.RPC.ListenAddress, ",")
+
+	if n.config.RPC.Unsafe {
+		rpccore.AddUnsafeRoutes()
+	}
 
 	// we may expose the rpc over both a unix and tcp socket
 	listeners := make([]net.Listener, len(listenAddrs))
@@ -339,7 +343,7 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 	}
 
 	// we expose a simplified api over grpc for convenience to app devs
-	grpcListenAddr := n.config.GRPCListenAddress
+	grpcListenAddr := n.config.RPC.GRPCListenAddress
 	if grpcListenAddr != "" {
 		listener, err := grpccore.StartGRPCServer(grpcListenAddr)
 		if err != nil {
@@ -421,7 +425,7 @@ func (n *Node) makeNodeInfo() *p2p.NodeInfo {
 	p2pListener := n.sw.Listeners()[0]
 	p2pHost := p2pListener.ExternalAddress().IP.String()
 	p2pPort := p2pListener.ExternalAddress().Port
-	rpcListenAddr := n.config.RPCListenAddress
+	rpcListenAddr := n.config.RPC.ListenAddress
 
 	// We assume that the rpcListener has the same ExternalAddress.
 	// This is probably true because both P2P and RPC listeners use UPnP,

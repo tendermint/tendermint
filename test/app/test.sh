@@ -85,7 +85,7 @@ function counter_over_grpc_grpc() {
 	pid_counter=$!
 	sleep 1
 	GRPC_PORT=36656
-	tendermint node --abci grpc --grpc_laddr tcp://localhost:$GRPC_PORT > tendermint.log &
+	tendermint node --abci grpc --rpc.grpc_laddr tcp://localhost:$GRPC_PORT > tendermint.log &
 	pid_tendermint=$!
 	sleep 5
 

@@ -31,13 +31,15 @@ var Routes = map[string]*rpc.RPCFunc{
 	// abci API
 	"abci_query": rpc.NewRPCFunc(ABCIQuery, "path,data,prove"),
 	"abci_info":  rpc.NewRPCFunc(ABCIInfo, ""),
+}
 
+func AddUnsafeRoutes() {
 	// control API
-	"dial_seeds":           rpc.NewRPCFunc(UnsafeDialSeeds, "seeds"),
-	"unsafe_flush_mempool": rpc.NewRPCFunc(UnsafeFlushMempool, ""),
+	Routes["dial_seeds"] = rpc.NewRPCFunc(UnsafeDialSeeds, "seeds")
+	Routes["unsafe_flush_mempool"] = rpc.NewRPCFunc(UnsafeFlushMempool, "")
 
 	// profiler API
-	"unsafe_start_cpu_profiler": rpc.NewRPCFunc(UnsafeStartCPUProfiler, "filename"),
-	"unsafe_stop_cpu_profiler":  rpc.NewRPCFunc(UnsafeStopCPUProfiler, ""),
-	"unsafe_write_heap_profile": rpc.NewRPCFunc(UnsafeWriteHeapProfile, "filename"),
+	Routes["unsafe_start_cpu_profiler"] = rpc.NewRPCFunc(UnsafeStartCPUProfiler, "filename")
+	Routes["unsafe_stop_cpu_profiler"] = rpc.NewRPCFunc(UnsafeStopCPUProfiler, "")
+	Routes["unsafe_write_heap_profile"] = rpc.NewRPCFunc(UnsafeWriteHeapProfile, "filename")
 }
