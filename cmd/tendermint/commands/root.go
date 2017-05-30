@@ -31,9 +31,6 @@ var RootCmd = &cobra.Command{
 		config.SetRoot(config.RootDir)
 		cfg.EnsureRoot(config.RootDir)
 		logger, err = tmflags.ParseLogLevel(config.LogLevel, logger)
-		if err != nil {
-			return err
-		}
-		return nil
+		return err
 	},
 }
