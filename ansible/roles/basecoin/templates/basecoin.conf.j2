@@ -1,0 +1,15 @@
+# Basecoin (Upstart unit)
+description "Basecoin"
+
+start on {{ basecoin_upstart_start_on }}
+stop on {{ basecoin_upstart_stop_on }}
+
+script
+  # Use su to become tendermint user non-interactively on old Upstart versions (see http://superuser.com/a/234541/76168)
+  exec su -s /bin/sh -c 'TMROOT={{basecoin_home}} exec "$0" "$@" >> {{ basecoin_log_file }} 2>&1' {{basecoin_user}} -- /usr/local/bin/basecoin start --without-tendermint
+end script
+
+respawn
+respawn limit 10 10
+
+kill timeout 10

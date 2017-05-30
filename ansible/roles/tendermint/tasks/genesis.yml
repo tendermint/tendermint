@@ -1,0 +1,19 @@
+---
+- name: gather tendermint public keys
+  command: "jq '.pub_key | .data' {{tendermint_home}}/.tendermint/priv_validator.json"
+  become: yes
+  become_user: "{{tendermint_user}}"
+  register: tendermintpubkeys
+
+- name: register public keys as host facts
+  set_fact: "pubkey={{tendermintpubkeys.stdout_lines[0]}}"
+  connection: local
+
+- name: copy genesis.json
+  template:
+    src: genesis.json.j2
+    dest: "{{tendermint_home}}/.tendermint/genesis.json"
+  become: yes
+  become_user: "{{tendermint_user}}"
+
+

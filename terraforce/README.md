@@ -1,149 +1,50 @@
-# Stack
+# Terraform for Digital Ocean
 
-This is a stripped down version of https://github.com/segmentio/stack
-plus some shell scripts.
+This is a generic [Terraform](https://www.terraform.io/) configuration that sets up DigitalOcean droplets.
 
-It is responsible for the following:
+# Prerequisites
 
-	- spin up a cluster of nodes
-	- copy config files for a tendermint testnet to each node
-	- copy linux binaries for tendermint and the app to each node
-	- start tendermint on every node
-
-# How it Works
-
-To use, a user must only provide a directory containing two files: `bins` and `run.sh`.
-
-The `bins` file is a list of binaries, for instance:
+* Install [HashiCorp Terraform](https://www.terraform.io) on a linux machine.
+* Create a [DigitalOcean API token](https://cloud.digitalocean.com/settings/api/tokens) with read and write capability.
+* Set an SSH key at the [DigitalOcean security page](https://cloud.digitalocean.com/settings/security).
+* Find out your SSH key ID at DigitalOcean by querying the below command on your linux box:
 
 ```
-$GOPATH/bin/tendermint
-$GOPATH/bin/dummy
+DO_API_TOKEN="<The API token received from DigitalOcean>"
+curl -X GET -H "Content-Type: application/json" -H "Authorization: Bearer $DO_API_TOKEN" "https://api.digitalocean.com/v2/account/keys"
 ```
 
-and the `run.sh` specifies how those binaries ought to be started:
+# How to run
 
+## Initialization
+If this is your first time using terraform, you have to initialize it by running the below command. (Note: initialization can be run multiple times)
 ```
-#! /bin/bash
-
-if [[ "$SEEDS" != "" ]]; then
-	SEEDS_FLAG="--seeds=$SEEDS"
-fi
-
-./dummy --persist .tendermint/data/dummy_data >> app.log 2>&1 &
-./tendermint node --log_level=info $SEEDS_FLAG >> tendermint.log 2>&1 &
+terraform init
 ```
 
-This let's you specify exactly which versions of Tendermint and the application are to be used,
-and how they ought to be started.
-
-Note that these binaries *MUST* be compiled for Linux. 
-If you are not on Linux, you can compile binaries for linux using `go build` with the `GOOS` variable:
+After initialization it's good measure to create a new Terraform environment for the droplets so they are always managed together.
 
 ```
-GOOS=linux go build -o $GOPATH/bin/tendermint-linux $GOPATH/src/github.com/tendermint/tendermint/cmd/tendermint
+TESTNET_NAME="testnet-servers"
+terraform env new "$TESTNET_NAME"
+
+## Execution
+
+The below command will create 4 nodes in DigitalOcean. They will be named `testnet-servers-node0` to `testnet-servers-node3` and they will be tagged as `testnet-servers`.
+```
+DO_API_TOKEN="<The API token received from DigitalOcean>"
+terraform apply -var TESTNET_NAME="testnet-servers" -var servers=4 -var DO_API_TOKEN="$DO_API_TOKEN"
 ```
 
-This cross-compilation must be done for each binary you want to copy over. 
-
-If you want to use an application that requires more than just a few binaries, you may need to do more manual work, 
-for instance using `terraforce` to set up the development environment on every machine.
-
-# Dependencies
-
-We use `terraform` for spinning up the machines, 
-and a custom rolled tool, `terraforce`, 
-for running commands on many machines in parallel.
-You can download terraform here: https://www.terraform.io/downloads.html
-To download terraforce, run `go get github.com/ebuchman/terraforce`
-
-We use `tendermint` itself to generate files for a testnet.
-You can install `tendermint` with 
+Alternatively you can use the default settings. The number of default servers is 7 and the testnet name is `tf-testnet1`. Variables can also be defined as environment variables instead of the command-line. Environment variables that start with `TF_VAR_` will be translated into the Terraform configuration. For example the number of servers can be overriden by setting the `TF_VAR_servers` variable.
 
 ```
-cd $GOPATH/src/github.com/tendermint/tendermint
-glide install
-go install ./cmd/tendermint
+TF_VAR_DO_API_TOKEN="<The API token received from DigitalOcean>"
+terraform-apply
 ```
 
-You also need to set the `DIGITALOCEAN_TOKEN` environment variables so that terraform can 
-spin up nodes on digital ocean.
+# What's next
 
-This stack is currently some terraform and a bunch of shell scripts, 
-so its helpful to work out of a directory containing everything. 
-Either 	change directory to `$GOPATH/src/github.com/tendermint/tendermint/test/net`
-or make a copy of that directory and change to it. All commands are expected to be executed from there.
+After setting up the nodes, head over to the [ansible folder](https://github.com/tendermint/tools) to set up tendermint and basecoin.
 
-For terraform to work, you must first run `terraform get`
 
-# Create 
-
-To create a cluster with 4 nodes, run
-
-```
-terraform apply
-```
-
-To use a different number of nodes, change the `desired_capacity` parameter in the `main.tf`.
-
-Note that terraform keeps track of the current state of your infrastructure, 
-so if you change the `desired_capacity` and run `terraform apply` again, it will add or remove nodes as necessary.
-
-If you think that's amazing, so do we.
-
-To get some info about the cluster, run `terraform output`.
-
-See the [terraform docs](https://www.terraform.io/docs/index.html) for more details. 
-
-To tear down the cluster, run `terraform destroy`.
-
-# Initialize 
-
-Now that we have a cluster up and running, let's generate the necessary files for a Tendermint node and copy them over.
-A Tendermint node needs, at the least, a `priv_validator.json` and a `genesis.json`.
-To generate files for the nodes, run
-
-```
-tendermint testnet 4 mytestnet
-```
-
-This will create the directory `mytestnet`, containing one directory for each of the 4 nodes.
-Each node directory contains a unique `priv_validator.json` and a `genesis.json`, 
-where the `genesis.json` contains the public keys of all `priv_validator.json` files.
-
-If you want to add more files to each node for your particular app, you'll have to add them to each of the node directories.
-
-Now we can copy everything over to the cluster.
-If you are on Linux, run 
-
-```
-bash scripts/init.sh 4 mytestnet examples/in-proc
-```
-
-Otherwise (if you are not on Linux), make sure you ran 
-
-```
-GOOS=linux go build -o $GOPATH/bin/tendermint-linux $GOPATH/src/github.com/tendermint/tendermint/cmd/tendermint
-```
-
-and now run 
-
-```
-bash scripts/init.sh 4 mytestnet examples/in-proc-linux
-```
-
-# Start 
-
-Finally, to start Tendermint on all the nodes, run
-
-```
-bash scripts/start.sh 4
-```
-
-# Check
-
-Query the status of all your nodes:
-
-```
-bash scripts/query.sh 4 status
-```
