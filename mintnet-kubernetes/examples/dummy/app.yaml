@@ -63,7 +63,7 @@ spec:
       annotations:
         pod.beta.kubernetes.io/init-containers: '[{
           "name": "tm-gen-validator",
-          "image": "tendermint/tendermint:0.9.0",
+          "image": "tendermint/tendermint:0.10.0",
           "imagePullPolicy": "IfNotPresent",
           "command": ["bash", "-c", "
             set -ex\n
@@ -81,7 +81,7 @@ spec:
       containers:
       - name: tm
         imagePullPolicy: IfNotPresent
-        image: tendermint/tendermint:0.9.0
+        image: tendermint/tendermint:0.10.0
         ports:
         - containerPort: 46656
           name: p2p
@@ -103,7 +103,7 @@ spec:
             configMapKeyRef:
               name: tm-config
               key: validators
-        - name: TMROOT
+        - name: TMHOME
           value: /tendermint
         command:
         - bash
@@ -144,7 +144,7 @@ spec:
           done
           seeds=$(IFS=','; echo "${seeds[*]}")
 
-          tendermint node --seeds="$seeds" --moniker="`hostname`" --proxy_app="dummy"
+          tendermint node --p2p.seeds="$seeds" --moniker="`hostname`" --proxy_app="dummy"
         volumeMounts:
         - name: tmdir
           mountPath: /tendermint
