@@ -557,67 +557,6 @@ func readPieceFromWAL(msgBytes []byte) (interface{}, error) {
 	return nil, nil
 }
 
-// make some bogus txs
-func txsFunc(blockNum int) (txs []types.Tx) {
-	for i := 0; i < 10; i++ {
-		txs = append(txs, types.Tx([]byte{byte(blockNum), byte(i)}))
-	}
-	return txs
-}
-
-// sign a commit vote
-func signCommit(chainID string, privVal *types.PrivValidator, height, round int, hash []byte, header types.PartSetHeader) *types.Vote {
-	vote := &types.Vote{
-		ValidatorIndex:   0,
-		ValidatorAddress: privVal.Address,
-		Height:           height,
-		Round:            round,
-		Type:             types.VoteTypePrecommit,
-		BlockID:          types.BlockID{hash, header},
-	}
-
-	sig := privVal.Sign(types.SignBytes(chainID, vote))
-	vote.Signature = sig
-	return vote
-}
-
-// make a blockchain with one validator
-func makeBlockchain(t *testing.T, chainID string, nBlocks int, privVal *types.PrivValidator, proxyApp proxy.AppConns, state *sm.State) (blockchain []*types.Block, commits []*types.Commit) {
-
-	prevHash := state.LastBlockID.Hash
-	lastCommit := new(types.Commit)
-	prevParts := types.PartSetHeader{}
-	valHash := state.Validators.Hash()
-	prevBlockID := types.BlockID{prevHash, prevParts}
-
-	for i := 1; i < nBlocks+1; i++ {
-		block, parts := types.MakeBlock(i, chainID, txsFunc(i), lastCommit,
-			prevBlockID, valHash, state.AppHash, testPartSize)
-		fmt.Println(i)
-		fmt.Println(block.LastBlockID)
-		err := state.ApplyBlock(nil, proxyApp.Consensus(), block, block.MakePartSet(testPartSize).Header(), mempool)
-		if err != nil {
-			t.Fatal(i, err)
-		}
-
-		voteSet := types.NewVoteSet(chainID, i, 0, types.VoteTypePrecommit, state.Validators)
-		vote := signCommit(chainID, privVal, i, 0, block.Hash(), parts.Header())
-		_, err = voteSet.AddVote(vote)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		prevHash = block.Hash()
-		prevParts = parts.Header()
-		lastCommit = voteSet.MakeCommit()
-		prevBlockID = types.BlockID{prevHash, prevParts}
-
-		blockchain = append(blockchain, block)
-		commits = append(commits, lastCommit)
-	}
-	return blockchain, commits
-}
-
 // fresh state and mock store
 func stateAndStore(config *cfg.Config, pubKey crypto.PubKey) (*sm.State, *mockBlockStore) {
 	stateDB := dbm.NewMemDB()

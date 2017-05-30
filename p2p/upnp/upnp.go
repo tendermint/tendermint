@@ -65,14 +65,14 @@ func Discover() (nat NAT, err error) {
 			return
 		}
 		var n int
-		n, _, err = socket.ReadFromUDP(answerBytes)
+		_, _, err = socket.ReadFromUDP(answerBytes)
 		for {
 			n, _, err = socket.ReadFromUDP(answerBytes)
 			if err != nil {
 				break
 			}
 			answer := string(answerBytes[0:n])
-			if strings.Index(answer, st) < 0 {
+			if !strings.Contains(answer, st) {
 				continue
 			}
 			// HTTP header field names are case-insensitive.
@@ -153,7 +153,7 @@ type Root struct {
 func getChildDevice(d *Device, deviceType string) *Device {
 	dl := d.DeviceList.Device
 	for i := 0; i < len(dl); i++ {
-		if strings.Index(dl[i].DeviceType, deviceType) >= 0 {
+		if strings.Contains(dl[i].DeviceType, deviceType) {
 			return &dl[i]
 		}
 	}
@@ -163,7 +163,7 @@ func getChildDevice(d *Device, deviceType string) *Device {
 func getChildService(d *Device, serviceType string) *UPNPService {
 	sl := d.ServiceList.Service
 	for i := 0; i < len(sl); i++ {
-		if strings.Index(sl[i].ServiceType, serviceType) >= 0 {
+		if strings.Contains(sl[i].ServiceType, serviceType) {
 			return &sl[i]
 		}
 	}
@@ -211,7 +211,7 @@ func getServiceURL(rootURL string) (url, urnDomain string, err error) {
 		return
 	}
 	a := &root.Device
-	if strings.Index(a.DeviceType, "InternetGatewayDevice:1") < 0 {
+	if !strings.Contains(a.DeviceType, "InternetGatewayDevice:1") {
 		err = errors.New("No InternetGatewayDevice")
 		return
 	}

@@ -238,8 +238,6 @@ func testTx(t *testing.T, client rpc.HTTPClient, withIndexer bool) {
 //--------------------------------------------------------------------------------
 // Test the websocket service
 
-var wsTyp = "JSONRPC"
-
 // make a simple connection to the server
 func TestWSConnect(t *testing.T) {
 	wsc := GetWSClient()

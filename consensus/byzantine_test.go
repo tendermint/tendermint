@@ -77,6 +77,7 @@ func TestByzantine(t *testing.T) {
 
 		var conRI p2p.Reactor
 		conRI = conR
+
 		if i == 0 {
 			conRI = NewByzantineReactor(conR)
 		}

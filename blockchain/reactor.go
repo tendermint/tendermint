@@ -19,7 +19,6 @@ const (
 	BlockchainChannel = byte(0x40)
 
 	defaultChannelCapacity = 100
-	defaultSleepIntervalMS = 500
 	trySyncIntervalMS      = 100
 	// stop syncing when last block's time is
 	// within this much of the system time.
@@ -49,7 +48,6 @@ type BlockchainReactor struct {
 	fastSync     bool
 	requestsCh   chan BlockRequest
 	timeoutsCh   chan string
-	lastBlock    *types.Block
 
 	evsw types.EventSwitch
 }
@@ -134,6 +132,8 @@ func (bcR *BlockchainReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte)
 
 	bcR.Logger.Debug("Receive", "src", src, "chID", chID, "msg", msg)
 
+	// [zr] note: the `megacheck` tool (go vet on steroids)
+	// really dislikes the logic in this switch
 	switch msg := msg.(type) {
 	case *bcBlockRequestMessage:
 		// Got a request for a block. Respond with block if we have it.
@@ -194,10 +194,10 @@ FOR_LOOP:
 			if peer != nil {
 				bcR.Switch.StopPeerForError(peer, errors.New("BlockchainReactor Timeout"))
 			}
-		case _ = <-statusUpdateTicker.C:
+		case <-statusUpdateTicker.C:
 			// ask for status updates
 			go bcR.BroadcastStatusRequest()
-		case _ = <-switchToConsensusTicker.C:
+		case <-switchToConsensusTicker.C:
 			height, numPending, _ := bcR.pool.GetStatus()
 			outbound, inbound, _ := bcR.Switch.NumPeers()
 			bcR.Logger.Info("Consensus ticker", "numPending", numPending, "total", len(bcR.pool.requesters),
@@ -211,7 +211,7 @@ FOR_LOOP:
 
 				break FOR_LOOP
 			}
-		case _ = <-trySyncTicker.C: // chan time
+		case <-trySyncTicker.C: // chan time
 			// This loop can be slow as long as it's doing syncing work.
 		SYNC_LOOP:
 			for i := 0; i < 10; i++ {

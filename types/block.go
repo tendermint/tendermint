@@ -282,10 +282,7 @@ func (commit *Commit) GetByIndex(index int) *Vote {
 }
 
 func (commit *Commit) IsCommit() bool {
-	if len(commit.Precommits) == 0 {
-		return false
-	}
-	return true
+	return len(commit.Precommits) == 0
 }
 
 func (commit *Commit) ValidateBasic() error {
