@@ -25,7 +25,7 @@ make create
 3. get account's address of the second pod
 
    ```
-   ADDR=`kubectl exec -c app tm-1 -- cat /app/key.json | jq ".address" | tr -d"\""`
+   ADDR=`kubectl exec -c app tm-1 -- cat /app/key.json | jq ".address" | tr -d "\""`
    ```
 
 4. send 5 coins to it from the first pod
