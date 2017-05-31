@@ -1,0 +1,9 @@
+---
+
+- include: tendermint.yml
+  when: not basecoin_inprocess|bool
+  tags: config-tendermint
+
+- include: basecoin.yml
+  tags: config-basecoin
+

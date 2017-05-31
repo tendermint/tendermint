@@ -1,0 +1,18 @@
+---
+tendermint_release_install: true
+tendermint_version: 0.10.0-rc1
+tendermint_download: "https://s3-us-west-2.amazonaws.com/tendermint/binaries/tendermint/v{{tendermint_version}}/tendermint_{{tendermint_version}}_linux_amd64.zip"
+
+#If tendermint_release_install == false, copy the binary from here
+tendermint_binary: "{{ lookup('env','GOPATH') | default('') }}/bin/tendermint"
+
+tendermint_user: tendermint
+tendermint_group: tendermint
+
+# Upstart start/stop conditions can vary by distribution and environment
+tendermint_upstart_start_on: start on runlevel [345]
+tendermint_upstart_stop_on: stop on runlevel [!345]
+
+tendermint_home: /var/lib/tendermint
+tendermint_log_file: /var/log/tendermint.log
+

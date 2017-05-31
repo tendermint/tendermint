@@ -3,9 +3,7 @@
 - hosts: "{{ lookup('env','TF_VAR_TESTNET_NAME') }}"
   user: root
   roles:
-    - install-tendermint
-    - install-basecoin
+    - stop
     - cleanupconfig
     - { role: config, testnet_name: "{{ lookup('env','TF_VAR_TESTNET_NAME') }}" }
     - start
-
