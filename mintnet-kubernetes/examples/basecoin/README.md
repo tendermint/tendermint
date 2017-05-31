@@ -31,7 +31,7 @@ make create
 4. send 5 coins to it from the first pod
 
    ```
-   kubectl exec -c app tm-0 -- basecoin tx send --to "0x$ADDR" --amount 5mycoin --from /app/key.json
+   kubectl exec -c app tm-0 -- basecoin tx send --to "0x$ADDR" --amount 5mycoin --from /app/key.json --chain_id chain-tTH4mi
    ```
 
 
