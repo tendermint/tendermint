@@ -130,7 +130,7 @@ spec:
         },
         {
           "name": "app-gen-key",
-          "image": "tendermint/basecoin:0.5.0",
+          "image": "tendermint/basecoin:0.5.1",
           "imagePullPolicy": "IfNotPresent",
           "command": ["bash", "-c", "
             set -ex\n
@@ -223,7 +223,7 @@ spec:
 
       - name: app
         imagePullPolicy: IfNotPresent
-        image: tendermint/basecoin:0.5.0
+        image: tendermint/basecoin:0.5.1
         env:
         - name: BCHOME
           value: /app
