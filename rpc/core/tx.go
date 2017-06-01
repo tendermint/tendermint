@@ -8,9 +8,64 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// Tx allow user to query the transaction results. `nil` could mean the
+// Tx allows you to query the transaction results. `nil` could mean the
 // transaction is in the mempool, invalidated, or was not send in the first
 // place.
+//
+// ```shell
+// curl "localhost:46657/tx?hash=0x2B8EC32BA2579B3B8606E42C06DE2F7AFA2556EF"
+// ```
+//
+// ```go
+// client := client.NewHTTP("tcp://0.0.0.0:46657", "/websocket")
+// tx, err := client.Tx([]byte("2B8EC32BA2579B3B8606E42C06DE2F7AFA2556EF"), true)
+// ```
+//
+// > The above command returns JSON structured like this:
+//
+// ```json
+// {
+// 	"error": "",
+// 	"result": {
+// 		"proof": {
+// 			"Proof": {
+// 				"aunts": []
+// 			},
+// 			"Data": "YWJjZA==",
+// 			"RootHash": "2B8EC32BA2579B3B8606E42C06DE2F7AFA2556EF",
+// 			"Total": 1,
+// 			"Index": 0
+// 		},
+// 		"tx": "YWJjZA==",
+// 		"tx_result": {
+// 			"log": "",
+// 			"data": "",
+// 			"code": 0
+// 		},
+// 		"index": 0,
+// 		"height": 52
+// 	},
+// 	"id": "",
+// 	"jsonrpc": "2.0"
+// }
+// ```
+//
+// Returns a transaction matching the given transaction hash.
+//
+// ### Query Parameters
+//
+// | Parameter | Type   | Default | Required | Description                                               |
+// |-----------+--------+---------+----------+-----------------------------------------------------------|
+// | hash      | []byte | nil     | true     | The transaction hash                                      |
+// | prove     | bool   | false   | false    | Include a proof of the transaction inclusion in the block |
+//
+// ### Returns
+//
+// - `proof`: the `types.TxProof` object
+// - `tx`: `[]byte` - the transaction
+// - `tx_result`: the `abci.Result` object
+// - `index`: `int` - index of the transaction
+// - `height`: `int` - height of the block where this transaction was in
 func Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 
 	// if index is disabled, return error

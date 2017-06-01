@@ -6,6 +6,33 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+// Subscribe for events via WebSocket.
+//
+// ```go
+// import 'github.com/tendermint/tendermint/types'
+//
+// client := client.NewHTTP("tcp://0.0.0.0:46657", "/websocket")
+// result, err := client.AddListenerForEvent(types.EventStringNewBlock())
+// ```
+//
+// > The above command returns JSON structured like this:
+//
+// ```json
+// {
+// 	"error": "",
+// 	"result": {},
+// 	"id": "",
+// 	"jsonrpc": "2.0"
+// }
+// ```
+//
+// ### Query Parameters
+//
+// | Parameter | Type   | Default | Required | Description |
+// |-----------+--------+---------+----------+-------------|
+// | event     | string | ""      | true     | Event name  |
+//
+// <aside class="notice">WebSocket only</aside>
 func Subscribe(wsCtx rpctypes.WSRPCContext, event string) (*ctypes.ResultSubscribe, error) {
 	logger.Info("Subscribe to event", "remote", wsCtx.GetRemoteAddr(), "event", event)
 	types.AddListenerForEvent(wsCtx.GetEventSwitch(), wsCtx.GetRemoteAddr(), event, func(msg types.TMEventData) {
@@ -17,6 +44,33 @@ func Subscribe(wsCtx rpctypes.WSRPCContext, event string) (*ctypes.ResultSubscri
 	return &ctypes.ResultSubscribe{}, nil
 }
 
+// Unsubscribe from events via WebSocket.
+//
+// ```go
+// import 'github.com/tendermint/tendermint/types'
+//
+// client := client.NewHTTP("tcp://0.0.0.0:46657", "/websocket")
+// result, err := client.RemoveListenerForEvent(types.EventStringNewBlock())
+// ```
+//
+// > The above command returns JSON structured like this:
+//
+// ```json
+// {
+// 	"error": "",
+// 	"result": {},
+// 	"id": "",
+// 	"jsonrpc": "2.0"
+// }
+// ```
+//
+// ### Query Parameters
+//
+// | Parameter | Type   | Default | Required | Description |
+// |-----------+--------+---------+----------+-------------|
+// | event     | string | ""      | true     | Event name  |
+//
+// <aside class="notice">WebSocket only</aside>
 func Unsubscribe(wsCtx rpctypes.WSRPCContext, event string) (*ctypes.ResultUnsubscribe, error) {
 	logger.Info("Unsubscribe to event", "remote", wsCtx.GetRemoteAddr(), "event", event)
 	wsCtx.GetEventSwitch().RemoveListenerForEvent(event, wsCtx.GetRemoteAddr())
