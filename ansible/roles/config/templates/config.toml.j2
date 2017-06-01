@@ -8,7 +8,7 @@ db_backend = "leveldb"
 log_level = "debug"
 
 [rpc]
-laddr = "tcp://{{ do_private_ip | default('0.0.0.0') }}:46657"
+laddr = "tcp://127.0.0.1:46657"
 
 [p2p]
 laddr = "tcp://{{inventory_hostname}}:46656"

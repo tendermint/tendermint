@@ -37,15 +37,7 @@ output "public_ips" {
   value = "${module.cluster.public_ips}"
 }
 
-output "private_ips" {
-  value = "${join(",",module.cluster.private_ips)}"
-}
-
-output "seeds" {
-  value = "${join(":46656,",module.cluster.public_ips)}:46656"
-}
-
-output "rpcs" {
-  value = "${join(":46657,",module.cluster.public_ips)}:46657"
-}
+#output "floating_ips" {
+#  value = "${module.cluster.floating_ips}"
+#}
 

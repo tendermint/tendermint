@@ -22,11 +22,10 @@
 
 - name: register basecoin public keys as host facts
   when: basecoin_inprocess|bool
-  set_fact: "basecoin_pubkey={{basecoinpubkeys.stdout_lines[0]}}"
+  set_fact: "pubkey={{basecoinpubkeys.stdout_lines[0]}}"
   connection: local
 
 - name: copy basecoin genesis.json - genesis_time will be updated
-  when: basecoin_inprocess|bool
   template:
     src: genesis-basecoin.json.j2
     dest: "{{basecoin_home}}/.basecoin/genesis.json"

@@ -8,5 +8,5 @@ basecoin_group: basecoin
 basecoin_home: /var/lib/basecoin
 basecoin_inprocess: false
 
-testnet_name: test-chain
-
+testnet_name: testnet1
+dev_money: false

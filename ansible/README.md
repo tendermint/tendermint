@@ -9,9 +9,10 @@
 
 The playbooks in this folder run [ansible](http://www.ansible.com/) roles which:
 
-* install and configure tendermint
-* install and configure  basecoin
-* start/stop tendermint and basecoin
+* install tendermint
+* install basecoin
+* configure tendermint and basecoin
+* start/stop tendermint and basecoin and reset their configuration
 
 ## Prerequisites
 
@@ -27,19 +28,19 @@ Head over to the [Terraform folder](https://github.com/tendermint/tools) for a d
 Optional for Amazon AWS instances:
 * Amazon AWS API access key ID and secret access key.
 
-The cloud inventory scripts come from the ansible team at https://github.com/ansible/ansible. You can get the latest version from the contrib/inventory folder.
+The cloud inventory scripts come from the ansible team at their [GitHub](https://github.com/ansible/ansible) page. You can get the latest version from the contrib/inventory folder.
 
 ## Ansible setup
 
 Ansible requires a "command machine" or "local machine" or "orchestrator machine" to run on. This can be your laptop or any machine that runs linux. (It does not have to be part of the cloud network that hosts your servers.)
 
-Note: The below commands use the Ubuntu/Debian `apt-get` command. To make it compatible with RedHat/CentOS, replace it with `yum`.
+Note: All the below commands use the Ubuntu/Debian `apt-get` command. To make it compatible with RedHat/CentOS, replace it with `yum`.
 
 ```
 sudo apt-get install ansible
 ```
 
-To make life easier, you can start an SSH Agent and load your SSH key(s). This way ansible will have an uninterrupted way of connecting to tour servers.
+To make life easier, you can start an SSH Agent and load your SSH key(s). This way ansible will have an uninterrupted way of connecting to your servers.
 
 ```
 ssh-agent > ~/.ssh/ssh.env
@@ -84,7 +85,7 @@ AWS_SECRET_ACCESS_KEY='<The API secret access key received from Amazon>'
 python -u inventory/ec2.py --refresh-cache 1> /dev/null
 ```
 
-Note you don't need the access key and secret key set, if you are running ansible on an Amazon AMI instance with the proper IAM permissions set.
+Note: you don't need the access key and secret key set, if you are running ansible on an Amazon AMI instance with the proper IAM permissions set.
 
 ## Running the playbook
 
@@ -111,7 +112,7 @@ ansible-playbook -i inventory/ec2.py install.yml
 
 ### Installing custom versions
 
-By default ansible installs the tendermint and basecoin binary versions defined in its [default variables](#Default variables). If you built your own version of the binaries, you can tell ansible to install that instead.
+By default ansible installs the tendermint and basecoin binary versions defined in its [default variables](#Default variables). If you build your own version of the binaries, you can tell ansible to install that instead.
 
 ```
 GOPATH="<your go path>"
@@ -123,12 +124,28 @@ TF_VAR_TESTNET_NAME="testnet-servers"
 ansible-playbook -i inventory/digital_ocean.py install.yml -e tendermint_release_install=false -e basecoin_release_install=false
 ```
 
-## Starting the servers 
+Alternatively you can change the variable settings in `group_vars/all`.
 
-To be continued...
+## Other commands and roles
+
+There are few extra playbooks to make life easier managing your servers.
+
+* install.yml - the all-in-one playbook to install and configure tendermint + basecoin
+* reset.yml - stop the application, reset the configuration (blockchain), then start the application again
+* stop.yml - stop the application
+* start.yml - start the application
+* restart.yml - restart the application
+
+The roles are self-sufficient under the `roles/` folder.
+
+* install-tendermint - install the tendermint application. It can install release packages or custom-compiled binaries.
+* install-basecoin - install the basecoin application. It can install release packages or custom-compiled binaries.
+* cleanupconfig - delete all tendermint and basecoin configuration.
+* config - configure tendermint and basecoin
+* stop - stop the application.
+* start - start the application.
 
 ## Default variables
 
-
-To be continued...
+Default variables are documented under `group_vars/all`.
 

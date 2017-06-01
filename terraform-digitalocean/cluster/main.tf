@@ -23,3 +23,9 @@ resource "digitalocean_droplet" "cluster" {
 
 }
 
+#resource "digitalocean_floating_ip" "cluster" {
+#  droplet_id = "${element(digitalocean_droplet.cluster.*.id,count.index)}"
+#  region     = "${element(digitalocean_droplet.cluster.*.region,count.index)}"
+#  count      = "${var.servers}"
+#}
+

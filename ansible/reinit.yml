@@ -1,8 +1,0 @@
----
-
-- hosts: "{{ lookup('env','TF_VAR_TESTNET_NAME') }}"
-  user: root
-  roles:
-    - cleanupconfig
-    - { role: config, testnet_name: "{{ lookup('env','TF_VAR_TESTNET_NAME') }}" }
-

@@ -104,10 +104,10 @@
     - reload systemd
 
 - name: Create example folder
-  file: path=/usr/share/basecoin/example-keys state=directory
+  file: path=/usr/share/basecoin/dev-keys state=directory
 
 - name: Copy example keys
-  copy: "src={{item}} dest=/usr/share/basecoin/example-keys/{{item}}"
+  copy: "src={{item}} dest=/usr/share/basecoin/dev-keys/{{item}}"
   with_items:
   - key.json
   - key2.json

@@ -19,7 +19,7 @@
   changed_when: false
 
 - name: register tendermint public keys as host facts
-  set_fact: "tendermint_pubkey={{tendermintpubkeys.stdout_lines[0]}}"
+  set_fact: "pubkey={{tendermintpubkeys.stdout_lines[0]}}"
   connection: local
 
 - name: copy tendermint genesis.json - genesis_time will be updated

@@ -1,17 +1,11 @@
 ---
 basecoin_release_install: true
-basecoin_version: 0.4.0
-basecoin_download: "https://s3-us-west-2.amazonaws.com/tendermint/binaries/basecoin/v{{basecoin_version}}/basecoin_{{basecoin_version}}_linux_amd64.zip"
+basecoin_download: "https://s3-us-west-2.amazonaws.com/tendermint/binaries/basecoin/v0.4.0/basecoin_0.4.0_linux_amd64.zip"
 
-#If basecoin_release_install == false, copy the binary from here
 basecoin_binary: "{{ lookup('env','GOPATH') | default('') }}/bin/basecoin"
 
 basecoin_user: basecoin
 basecoin_group: basecoin
-
-# Upstart start/stop conditions can vary by distribution and environment
-basecoin_upstart_start_on: start on runlevel [345]
-basecoin_upstart_stop_on: stop on runlevel [!345]
 
 basecoin_home: /var/lib/basecoin
 basecoin_log_file: /var/log/basecoin.log
