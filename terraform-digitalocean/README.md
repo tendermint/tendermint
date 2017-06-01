@@ -27,6 +27,7 @@ After initialization it's good measure to create a new Terraform environment for
 ```
 TESTNET_NAME="testnet-servers"
 terraform env new "$TESTNET_NAME"
+```
 
 ## Execution
 
