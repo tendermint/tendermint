@@ -6,7 +6,7 @@ This is a generic [Terraform](https://www.terraform.io/) configuration that sets
 
 * Install [HashiCorp Terraform](https://www.terraform.io) on a linux machine.
 * Create a [DigitalOcean API token](https://cloud.digitalocean.com/settings/api/tokens) with read and write capability.
-* Set an SSH key at the [DigitalOcean security page](https://cloud.digitalocean.com/settings/security).
+* Set an SSH key at the [DigitalOcean security page](https://cloud.digitalocean.com/settings/security). {Here](https://www.digitalocean.com/community/tutorials/how-to-use-ssh-keys-with-digitalocean-droplets)'s a tutorial.
 * Find out your SSH key ID at DigitalOcean by querying the below command on your linux box:
 
 ```
@@ -34,13 +34,15 @@ terraform env new "$TESTNET_NAME"
 The below command will create 4 nodes in DigitalOcean. They will be named `testnet-servers-node0` to `testnet-servers-node3` and they will be tagged as `testnet-servers`.
 ```
 DO_API_TOKEN="<The API token received from DigitalOcean>"
-terraform apply -var TESTNET_NAME="testnet-servers" -var servers=4 -var DO_API_TOKEN="$DO_API_TOKEN"
+SSH_ID="<The SSH ID received from the curl call above.>"
+terraform apply -var TESTNET_NAME="testnet-servers" -var servers=4 -var DO_API_TOKEN="$DO_API_TOKEN" -var ssh_keys=[$SSH_ID]
 ```
 
-Alternatively you can use the default settings. The number of default servers is 7 and the testnet name is `tf-testnet1`. Variables can also be defined as environment variables instead of the command-line. Environment variables that start with `TF_VAR_` will be translated into the Terraform configuration. For example the number of servers can be overriden by setting the `TF_VAR_servers` variable.
+Alternatively you can use the default settings. The number of default servers is 4 and the testnet name is `tf-testnet1`. Variables can also be defined as environment variables instead of the command-line. Environment variables that start with `TF_VAR_` will be translated into the Terraform configuration. For example the number of servers can be overriden by setting the `TF_VAR_servers` variable.
 
 ```
 TF_VAR_DO_API_TOKEN="<The API token received from DigitalOcean>"
+TF_VAR_TESTNET_NAME="testnet-servers"
 terraform-apply
 ```
 
