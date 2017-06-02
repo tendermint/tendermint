@@ -1,4 +1,6 @@
-.PHONY: all build test fmt lint get_deps
+GOTOOLS = \
+					github.com/mitchellh/gox \
+					github.com/Masterminds/glide
 
 all: protoc install test
 
@@ -16,6 +18,10 @@ install:
 
 build:
 	@ go build -i github.com/tendermint/abci/cmd/...
+
+dist:
+	@ sudo bash scripts/dist.sh
+	@ bash scripts/publish.sh
 
 # test.sh requires that we run the installed cmds, must not be out of date
 test: install
@@ -37,6 +43,11 @@ test_integrations: get_vendor_deps install test
 get_deps:
 	@ go get -d `${NOVENDOR}`
 
+tools:
+	go get -u -v $(GOTOOLS)
+
 get_vendor_deps:
 	@ go get github.com/Masterminds/glide
 	@ glide install
+
+.PHONY: all build test fmt lint get_deps tools
