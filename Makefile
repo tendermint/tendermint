@@ -20,7 +20,7 @@ build:
 	@ go build -i github.com/tendermint/abci/cmd/...
 
 dist:
-	@ sudo bash scripts/dist.sh
+	@ bash scripts/dist.sh
 	@ bash scripts/publish.sh
 
 # test.sh requires that we run the installed cmds, must not be out of date

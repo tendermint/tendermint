@@ -21,12 +21,11 @@ DIR="$( cd -P "$( dirname "$SOURCE" )/.." && pwd )"
 # Change into that dir because we expect that.
 cd "$DIR"
 
-## Generate the tag.
-#if [ -z "$NOTAG" ]; then
-#  echo "==> Tagging..."
-#  git commit --allow-empty -a -m "Release v$VERSION"
-#  git tag -a -m "Version $VERSION" "v${VERSION}" master
-#fi
+# Delete the old dir
+echo "==> Removing old directory..."
+rm -rf build/pkg
+mkdir -p build/pkg
+
 
 # Do a hermetic build inside a Docker container.
 docker build -t tendermint/${REPO_NAME}-builder scripts/${REPO_NAME}-builder/
