@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-set -eu
+set -e
 
 VERSION=$1 
-DIST_DIR=$2 # ./build/dist
+DIST_DIR=./build/dist
 
 # Get the version from the environment, or try to figure it out.
 if [ -z $VERSION ]; then
@@ -14,7 +14,6 @@ if [ -z "$VERSION" ]; then
 fi
 
 # copy to s3
-aws s3 cp --recursive ${DIST_DIR} s3://tendermint/${VERSION} --acl public-read --exclude "*" --include "*.zip" 
-aws s3 cp ${DIST_DIR}/tendermint_${VERSION}_SHA256SUMS s3://tendermint/0.9.0 --acl public-read 
+aws s3 cp --recursive ${DIST_DIR} s3://tendermint/binaries/tendermint/v${VERSION} --acl public-read 
 
 exit 0

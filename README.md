@@ -51,16 +51,19 @@ Yay open source! Please see our [contributing guidelines](https://tendermint.com
 
 ### Sub-projects
 
-* [ABCI](http://github.com/tendermint/abci)
-* [Mintnet-kubernetes](https://github.com/tendermint/tools/tree/master/mintnet-kubernetes)
-* [Go-Wire](http://github.com/tendermint/go-wire)
-* [Go-P2P](http://github.com/tendermint/tendermint/p2p)
-* [Go-Merkle](http://github.com/tendermint/go-merkle)
+* [ABCI](http://github.com/tendermint/abci), the Application Blockchain Interface
+* [Go-Wire](http://github.com/tendermint/go-wire), a deterministic serialization library
+* [Go-Crypto](http://github.com/tendermint/go-crypto), an elliptic curve cryptography library 
+* [TmLibs](http://github.com/tendermint/tmlibs), an assortment of Go libraries
+* [Merkleeyes](http://github.com/tendermint/merkleeyes), a balanced, binary Merkle tree for ABCI apps
+
+### Tools
+* [Deployment, Benchmarking, and Monitoring](https://github.com/tendermint/tools)
 
 ### Applications
 
-* [Ethermint](http://github.com/tendermint/ethermint)
-* [Basecoin](http://github.com/tendermint/basecoin)
+* [Ethermint](http://github.com/tendermint/ethermint): Ethereum on Tendermint
+* [Basecoin](http://github.com/tendermint/basecoin), a cryptocurrency application framework
 
 ### More 
 
