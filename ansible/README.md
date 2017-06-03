@@ -34,10 +34,23 @@ The cloud inventory scripts come from the ansible team at their [GitHub](https:/
 
 Ansible requires a "command machine" or "local machine" or "orchestrator machine" to run on. This can be your laptop or any machine that runs linux. (It does not have to be part of the cloud network that hosts your servers.)
 
-Note: All the below commands use the Ubuntu/Debian `apt-get` command. To make it compatible with RedHat/CentOS, replace it with `yum`.
+Use the official [Ansible installation guide](http://docs.ansible.com/ansible/intro_installation.html) to install Ansible. Here are a few examples on basic installation commands:
 
+Ubuntu/Debian:
 ```
 sudo apt-get install ansible
+```
+
+CentOS/RedHat:
+```
+sudo yum install epel-release
+sudo yum install ansible
+```
+
+Mac OSX:
+```
+sudo easy_install pip
+sudo pip install ansible
 ```
 
 To make life easier, you can start an SSH Agent and load your SSH key(s). This way ansible will have an uninterrupted way of connecting to your servers.
@@ -55,15 +68,40 @@ Subsequently, as long as the agent is running, you can use `source ~/.ssh/ssh.en
 
 If you are using a cloud provider to host your servers, you need the below dependencies installed on your local machine.
 
-DigitalOcean inventory dependencies:
+#### DigitalOcean inventory dependencies:
+
+Ubuntu/Debian:
 ```
 sudo apt-get install python-pip
 sudo pip install dopy
 ```
 
+CentOS/RedHat:
+```
+sudo yum install python-pip
+sudo pip install dopy
+```
+
+Mac OSX:
+```
+sudo pip install dopy
+```
+
 Amazon AWS inventory dependencies:
+
+Ubuntu/Debian:
 ```
 sudo apt-get install python-boto
+```
+
+CentOS/RedHat:
+```
+sudo yum install python-boto
+```
+
+Mac OSX:
+```
+sudo pip install boto
 ```
 
 ## Refreshing the DigitalOcean inventory
