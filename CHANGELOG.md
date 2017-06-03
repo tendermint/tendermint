@@ -1,10 +1,43 @@
 # Changelog
 
-## 0.10.0 (May 18, 2017)
+## 0.10.0 (June 2, 2017)
+
+Includes major updates to configuration, logging, and json serialization.
+Also includes the Grand Repo-Merge of 2017.
 
 BREAKING CHANGES:
 
-- New JSON encoding for `go-crypto` types (using `go-wire/data`):
+- Config and Flags:
+  - The `config` map is replaced with a [`Config` struct](https://github.com/tendermint/tendermint/blob/master/config/config.go#L11), 
+containing substructs: `BaseConfig`, `P2PConfig`, `MempoolConfig`, `ConsensusConfig`, `RPCConfig`
+  - This affects the following flags:
+    - `--seeds` is now `--p2p.seeds`
+    - `--node_laddr` is now `--p2p.laddr`
+    - `--pex` is now `--p2p.pex`
+    - `--skip_upnp` is now `--p2p.skip_upnp`
+    - `--rpc_laddr` is now `--rpc.laddr`
+    - `--grpc_laddr` is now `--rpc.grpc_laddr`
+  - Any configuration option now within a substract must come under that heading in the `config.toml`, for instance:
+
+```
+[p2p]
+laddr="tcp://1.2.3.4:46656"
+
+[consensus]
+timeout_propose=1000
+```
+
+  - Use viper and `DefaultConfig() / `TestConfig()` functions to handle defaults, and remove `config/tendermint` and `config/tendermint_test`
+  - Change some function and method signatures to accomodate new config: https://gist.github.com/ebuchman/640d5fc6c2605f73497992fe107ebe0b for comprehensive list.  
+
+- [Logger](https://github.com/tendermint/tmlibs/log)
+  - Replace static `log15` logger with a simple interface, and provide a new implementation using `go-kit`. 
+tSee our [blog post](https://tendermint.com/blog/abstracting-the-logger-interface-in-go) for more details
+  - Levels `warn` and `notice` are removed (you may need to change them in your `config.toml`!)
+  - Change some function and method signatures to accept a logger: https://gist.github.com/ebuchman/640d5fc6c2605f73497992fe107ebe0b for comprehensive list.  
+
+- JSON serialization:
+  - Replace `[TypeByte, Xxx]` with `{"type": "some-type", "data": Xxx}` in RPC and all `.json` files by using `go-wire/data`. For instance, a public key is now:
 
 ```
 "pub_key": {
@@ -13,32 +46,23 @@ BREAKING CHANGES:
 }
 ```
 
-- New config
-  - Isolate viper to `cmd/tendermint/commands`
-  - New Config structs in `config/`: `BaseConfig`, `P2PConfig`, `MempoolConfig`, `ConsensusConfig`
-  - Remove config/tendermint and config/tendermint_test. Defaults are handled by viper and `DefaultConfig() / `TestConfig()` functions
-  - Tests do not read config from file
-- New logger (`github.com/tendermint/tmlibs/log`)
-  - Reduced to three levels: `error`, `info`, and `debug`
-  - NOTE: The default in previous versions was `notice`, which is no longer valid. Please change it in the `config.toml`
-  - Per-module log levels
-  - The new default is `state:info,*:error`, which means the `state` package logs at `info` level, and everything else logs at `error` level
-  - No global loggers (loggers are passed into constructors, or preferably set with a `SetLogger` method)
-- RPC serialization cleanup:
-  - Lowercase json names for ValidatorSet fields
-  - No longer uses go-wire, so no more `[TypeByte, XXX]` madness
-  - Responses have no type information
+  - Remove type information about RPC responses, so `[TypeByte, {"jsonrpc": "2.0", ... }]` is now just `{"jsonrpc": "2.0", ... }`
+  - Change `[]byte` to `data.Bytes` in all serialized types (for hex encoding)
+  - Lowercase the JSON tags in `ValidatorSet` fields
   - Introduce EventDataInner for serializing events
-- Remove all use of go-wire (and `[TypeByte, XXX]`) in the `genesis.json` and `priv_validator.json`
-- [consensus/abci] Send InitChain message in handshake if `appBlockHeight == 0`
-- [types] `[]byte -> data.Bytes`
-- [types] Do not include the `Accum` field when computing the hash of a validator. This makes the ValidatorSetHash unique for a given validator set, rather than changing with every block (as the Accum changes)
-- A number of functions and methods ahd their signatures modified to accomodate new config and logger. See https://gist.github.com/ebuchman/640d5fc6c2605f73497992fe107ebe0b for comprehensive list. Note many also had `[]byte` arguments changed to `data.Bytes`, but this is not actually breaking.
+
+- Other:
+  - Send InitChain message in handshake if `appBlockHeight == 0`
+  - Do not include the `Accum` field when computing the validator hash. This makes the ValidatorSetHash unique for a given validator set, rather than changing with every block (as the Accum changes)
+  - Unsafe RPC calls are not enabled by default. This includes `/dial_seeds`, and all calls prefixed with `unsafe`. Use the `--rpc.unsafe` flag to enable.
+
 
 FEATURES:
 
+- Per-module log levels. For instance, the new default is 'state:info,*:error', which means the `state` package logs at `info` level, and everything else logs at `error` level
 - Log if a node is validator or not in every consensus round
 - Use ldflags to set git hash as part of the version
+- Ignore `address` and `pub_key` fields in `priv_validator.json` and overwrite them with the values derrived from the `priv_key`
 
 IMPROVEMENTS:
 
@@ -46,11 +70,14 @@ IMPROVEMENTS:
 - Update paths for grand repo merge:
   - `go-common -> tmlibs/common`
   - `go-data -> go-wire/data`
-  - All other `go-*` libs, except `go-crypto` and `go-wire`, merged under `tmlibs`
+  - All other `go-` libs, except `go-crypto` and `go-wire`, are merged under `tmlibs`
+- No global loggers (loggers are passed into constructors, or preferably set with a SetLogger method)
 - Return HTTP status codes with errors for RPC responses
+- Limit `/blockchain_info` call to return a maximum of 20 blocks
 - Use `.Wrap()` and `.Unwrap()` instead of eg. `PubKeyS` for `go-crypto` types
-- Color code different instances of the consensus for tests 
 - RPC JSON responses use pretty printing (via `json.MarshalIndent`)
+- Color code different instances of the consensus for tests 
+- Isolate viper to `cmd/tendermint/commands` and do not read config from file for tests
 
 
 ## 0.9.2 (April 26, 2017)
