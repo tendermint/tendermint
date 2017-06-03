@@ -18,38 +18,35 @@ containing substructs: `BaseConfig`, `P2PConfig`, `MempoolConfig`, `ConsensusCon
     - `--rpc_laddr` is now `--rpc.laddr`
     - `--grpc_laddr` is now `--rpc.grpc_laddr`
   - Any configuration option now within a substract must come under that heading in the `config.toml`, for instance:
+    ```
+    [p2p]
+    laddr="tcp://1.2.3.4:46656"
+    
+    [consensus]
+    timeout_propose=1000
+    ```
+  - Use viper and `DefaultConfig() / TestConfig()` functions to handle defaults, and remove `config/tendermint` and `config/tendermint_test`
+  - Change some function and method signatures to 
+  - Change some [function and method signatures](https://gist.github.com/ebuchman/640d5fc6c2605f73497992fe107ebe0b) accomodate new config
 
-```
-[p2p]
-laddr="tcp://1.2.3.4:46656"
-
-[consensus]
-timeout_propose=1000
-```
-
-  - Use viper and `DefaultConfig() / `TestConfig()` functions to handle defaults, and remove `config/tendermint` and `config/tendermint_test`
-  - Change some function and method signatures to accomodate new config: https://gist.github.com/ebuchman/640d5fc6c2605f73497992fe107ebe0b for comprehensive list.  
-
-- [Logger](https://github.com/tendermint/tmlibs/log)
+- Logger
   - Replace static `log15` logger with a simple interface, and provide a new implementation using `go-kit`. 
-tSee our [blog post](https://tendermint.com/blog/abstracting-the-logger-interface-in-go) for more details
+See our new [logging library](https://github.com/tendermint/tmlibs/log) and [blog post](https://tendermint.com/blog/abstracting-the-logger-interface-in-go) for more details
   - Levels `warn` and `notice` are removed (you may need to change them in your `config.toml`!)
-  - Change some function and method signatures to accept a logger: https://gist.github.com/ebuchman/640d5fc6c2605f73497992fe107ebe0b for comprehensive list.  
+  - Change some [function and method signatures](https://gist.github.com/ebuchman/640d5fc6c2605f73497992fe107ebe0b) to accept a logger
 
 - JSON serialization:
   - Replace `[TypeByte, Xxx]` with `{"type": "some-type", "data": Xxx}` in RPC and all `.json` files by using `go-wire/data`. For instance, a public key is now:
-
-```
-"pub_key": {
-  "type": "ed25519",
-  "data": "83DDF8775937A4A12A2704269E2729FCFCD491B933C4B0A7FFE37FE41D7760D0"
-}
-```
-
+    ```
+    "pub_key": {
+      "type": "ed25519",
+      "data": "83DDF8775937A4A12A2704269E2729FCFCD491B933C4B0A7FFE37FE41D7760D0"
+    }
+    ```
   - Remove type information about RPC responses, so `[TypeByte, {"jsonrpc": "2.0", ... }]` is now just `{"jsonrpc": "2.0", ... }`
   - Change `[]byte` to `data.Bytes` in all serialized types (for hex encoding)
   - Lowercase the JSON tags in `ValidatorSet` fields
-  - Introduce EventDataInner for serializing events
+  - Introduce `EventDataInner` for serializing events
 
 - Other:
   - Send InitChain message in handshake if `appBlockHeight == 0`
@@ -59,7 +56,7 @@ tSee our [blog post](https://tendermint.com/blog/abstracting-the-logger-interfac
 
 FEATURES:
 
-- Per-module log levels. For instance, the new default is 'state:info,*:error', which means the `state` package logs at `info` level, and everything else logs at `error` level
+- Per-module log levels. For instance, the new default is `state:info,*:error`, which means the `state` package logs at `info` level, and everything else logs at `error` level
 - Log if a node is validator or not in every consensus round
 - Use ldflags to set git hash as part of the version
 - Ignore `address` and `pub_key` fields in `priv_validator.json` and overwrite them with the values derrived from the `priv_key`
