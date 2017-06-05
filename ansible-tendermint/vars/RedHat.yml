@@ -1,3 +1,0 @@
----
-consul_upstart_start_on: (runlevel [345] and started network)
-consul_upstart_stop_on: (runlevel [!345] or stopping network)

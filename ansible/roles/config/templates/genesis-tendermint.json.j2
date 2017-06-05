@@ -1,0 +1,18 @@
+{
+  "genesis_time":"{{ansible_date_time.iso8601}}",
+  "chain_id":"{{testnet_name}}",
+  "validators":
+  [
+{% set comma = joiner(",") %}
+{% for host in groups[testnet_name] %}
+    {{ comma() }}
+    {
+      "pub_key":{"type":"ed25519","data":{{hostvars[host]["pubkey"]}}},
+      "amount":10,
+      "name":"{{hostvars[host]["ansible_hostname"]}}"
+    }
+{% endfor %}
+  ],
+  "app_hash":""
+}
+

@@ -1,0 +1,15 @@
+# Basecoin (Upstart unit)
+description "Basecoin"
+
+start on runlevel [2345]
+stop on runlevel [!2345]
+
+script
+  # Use su to become tendermint user non-interactively on old Upstart versions (see http://superuser.com/a/234541/76168)
+  exec su -s /bin/sh -c 'BCHOME={{basecoin_home}}/.basecoin exec "$0" "$@" >> {{ basecoin_log_file }} 2>&1' {{basecoin_user}} -- /usr/local/bin/basecoin start{{basecoin_inprocess|bool | ternary('',' --without-tendermint')}}
+end script
+
+respawn
+respawn limit 10 10
+
+kill timeout 10

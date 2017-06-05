@@ -1,0 +1,17 @@
+[Unit]
+Description=Tendermint
+Requires=network-online.target{{basecoin_inprocess|bool | ternary('',' basecoin.target')}}
+After=network-online.target
+
+[Service]
+Environment="TMHOME={{tendermint_home}}/.tendermint"
+Restart=on-failure
+User={{ tendermint_user }}
+Group={{ tendermint_group }}
+PermissionsStartOnly=true
+ExecStart=/usr/local/bin/tendermint node
+ExecReload=/bin/kill -HUP $MAINPID
+KillSignal=SIGINT
+
+[Install]
+WantedBy=multi-user.target

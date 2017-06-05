@@ -1,0 +1,15 @@
+# Tendermint (Upstart unit)
+description "Tendermint"
+
+{{basecoin_inprocess|bool | ternary('','start on (runlevel [2345] and started basecoin)')}}
+{{basecoin_inprocess|bool | ternary('','stop on (runlevel [!2345] and stopping basecoin)')}}
+
+script
+  # Use su to become tendermint user non-interactively on old Upstart versions (see http://superuser.com/a/234541/76168)
+  exec su -s /bin/sh -c 'TMHOME={{tendermint_home}}/.tendermint exec "$0" "$@" >> {{ tendermint_log_file }} 2>&1' {{ tendermint_user }} -- /usr/local/bin/tendermint node
+end script
+
+respawn
+respawn limit 10 10
+
+kill timeout 10

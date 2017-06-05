@@ -1,0 +1,9 @@
+---
+
+- name: stop tendermint
+  #when: not basecoin_inprocess|bool
+  service: name=tendermint state=stopped
+
+- name: stop basecoin
+  service: name=basecoin state=stopped
+

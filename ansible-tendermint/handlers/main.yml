@@ -1,9 +1,0 @@
----
-
-- name: reload systemd
-  become: true
-  command: systemctl daemon-reload
-
-- name: restart tendermint
-  action: service name=tendermint state=restarted enabled=yes
-  when: tendermint_manage_service

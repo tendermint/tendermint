@@ -1,0 +1,5 @@
+---
+
+- name: clear basecoin configuration folder
+  file: "path={{basecoin_home}}/.basecoin state=absent"
+

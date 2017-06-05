@@ -1,0 +1,7 @@
+---
+
+- hosts: "{{ lookup('env','TF_VAR_TESTNET_NAME') }}"
+  user: root
+  roles:
+    - { role: config, testnet_name: "{{ lookup('env','TF_VAR_TESTNET_NAME') }}" }
+

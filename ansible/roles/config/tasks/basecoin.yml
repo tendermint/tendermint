@@ -1,0 +1,42 @@
+---
+
+- name: set basecoin configuration folder
+  file: "path={{basecoin_home}}/.basecoin state=directory mode=0700 owner={{basecoin_user}} group={{basecoin_group}}"
+
+- name: generate basecoin keys
+  when: basecoin_inprocess|bool
+  shell: "tendermint gen_validator > {{basecoin_home}}/.basecoin/priv_validator.json && chmod 0400 {{basecoin_home}}/.basecoin/priv_validator.json"
+  args:
+    warn: no
+    creates: "{{basecoin_home}}/.basecoin/priv_validator.json"
+  become: yes
+  become_user: "{{basecoin_user}}"
+
+- name: gather basecoin public keys
+  when: basecoin_inprocess|bool
+  command: "jq '.pub_key | .data' {{basecoin_home}}/.basecoin/priv_validator.json"
+  become: yes
+  become_user: "{{basecoin_user}}"
+  register: basecoinpubkeys
+  changed_when: false
+
+- name: register basecoin public keys as host facts
+  when: basecoin_inprocess|bool
+  set_fact: "pubkey={{basecoinpubkeys.stdout_lines[0]}}"
+  connection: local
+
+- name: copy basecoin genesis.json - genesis_time will be updated
+  template:
+    src: genesis-basecoin.json.j2
+    dest: "{{basecoin_home}}/.basecoin/genesis.json"
+  become: yes
+  become_user: "{{basecoin_user}}"
+
+- name: copy basecoin config.toml
+  when: basecoin_inprocess|bool
+  template:
+    src: config.toml.j2
+    dest: "{{basecoin_home}}/.basecoin/config.toml"
+  become: yes
+  become_user: "{{basecoin_user}}"
+

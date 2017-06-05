@@ -1,0 +1,17 @@
+[Unit]
+Description=Basecoin
+Requires=network-online.target
+After=network-online.target
+
+[Service]
+Environment="BCHOME={{basecoin_home}}/.basecoin"
+Restart=on-failure
+User={{ basecoin_user }}
+Group={{ basecoin_group }}
+PermissionsStartOnly=true
+ExecStart=/usr/local/bin/basecoin start{{basecoin_inprocess|bool | ternary('',' --without-tendermint')}}
+ExecReload=/bin/kill -HUP $MAINPID
+KillSignal=SIGINT
+
+[Install]
+WantedBy=multi-user.target

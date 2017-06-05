@@ -1,0 +1,77 @@
+---
+###
+### Tendermint installation
+###
+
+## This file shows and sets the global defaults for the role variables.
+
+## tendermint_release_install indicates if the install-tendermint role should install a release version or a private build of the tendermint app
+##
+#tendermint_release_install: true
+
+## tendermint_download stores the link to the specific tendermint release to install
+##
+#tendermint_download: "https://s3-us-west-2.amazonaws.com/tendermint/binaries/tendermint/v0.10.0-rc1/tendermint_0.10.0-rc1_linux_amd64.zip"
+
+## tendermint_binary stores the path to a private tendermint binary to install
+##
+#tendermint_binary: "{{ lookup('env','GOPATH') | default('') }}/bin/tendermint"
+
+## Details of the linux user the tendermint app uses
+##
+#tendermint_user: tendermint
+#tendermint_group: tendermint
+#tendermint_home: /var/lib/tendermint
+
+## tendermint_log_file stores the path to the tendermint application log
+##
+#tendermint_log_file: /var/log/tendermint.log
+
+###
+### Basecoin installation
+###
+
+## basecoin_release_install indicates if the install-basecoin role should install a release version or a private build of the basecoin app
+##
+#basecoin_release_install: true
+
+## basecoin_download stores the link to the specific basecoin release to install
+##
+#basecoin_download: "https://s3-us-west-2.amazonaws.com/tendermint/binaries/basecoin/v0.4.0/basecoin_0.4.0_linux_amd64.zip"
+
+## basecoin_binary stores the path to a private basecoin binary to install
+##
+#basecoin_binary: "{{ lookup('env','GOPATH') | default('') }}/bin/basecoin"
+
+## Details of the linux user the basecoin app uses
+##
+#basecoin_user: basecoin
+#basecoin_group: basecoin
+#basecoin_home: /var/lib/basecoin
+
+## basecoin_log_file stores the path to the basecoin application log
+##
+#basecoin_log_file: /var/log/basecoin.log
+
+###
+### Basecoin configuration
+###
+
+## basecoin_inprocess indicates if basecoin should run tendermint in-process
+##
+#basecoin_inprocess: false
+
+###
+### Development settings
+###
+
+## Used by the config role to find seed IPs and public keys and set the chain_id in genesis.json and config.toml
+##
+#testnet_name: testnet1
+
+## Used by the config role to add a lot of mycoins to wallet 0x1B1BE55F969F54064628A63B9559E7C21C925165.
+## Use /usr/share/basecoin/dev-keys/key.json to access them.
+## Tendermint data has to be cleared when setting or resetting this key.
+##
+#dev_money: false
+

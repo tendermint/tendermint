@@ -1,0 +1,38 @@
+---
+
+- name: set tendermint configuration folder
+  file: "path={{tendermint_home}}/.tendermint state=directory mode=0700 owner={{tendermint_user}} group={{tendermint_group}}"
+
+- name: generate tendermint keys
+  shell: "tendermint gen_validator > {{tendermint_home}}/.tendermint/priv_validator.json && chmod 0400 {{tendermint_home}}/.tendermint/priv_validator.json"
+  args:
+    warn: no
+    creates: "{{tendermint_home}}/.tendermint/priv_validator.json"
+  become: yes
+  become_user: "{{tendermint_user}}"
+
+- name: gather tendermint public keys
+  command: "jq '.pub_key | .data' {{tendermint_home}}/.tendermint/priv_validator.json"
+  become: yes
+  become_user: "{{tendermint_user}}"
+  register: tendermintpubkeys
+  changed_when: false
+
+- name: register tendermint public keys as host facts
+  set_fact: "pubkey={{tendermintpubkeys.stdout_lines[0]}}"
+  connection: local
+
+- name: copy tendermint genesis.json - genesis_time will be updated
+  template:
+    src: genesis-tendermint.json.j2
+    dest: "{{tendermint_home}}/.tendermint/genesis.json"
+  become: yes
+  become_user: "{{tendermint_user}}"
+
+- name: copy tendermint config.toml
+  template:
+    src: config.toml.j2
+    dest: "{{tendermint_home}}/.tendermint/config.toml"
+  become: yes
+  become_user: "{{tendermint_user}}"
+

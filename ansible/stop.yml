@@ -1,0 +1,7 @@
+---
+
+- hosts: "{{ lookup('env','TF_VAR_TESTNET_NAME') }}"
+  user: root
+  roles:
+    - stop
+

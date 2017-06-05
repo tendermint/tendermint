@@ -1,0 +1,14 @@
+---
+basecoin_release_install: true
+basecoin_download: "https://s3-us-west-2.amazonaws.com/tendermint/binaries/basecoin/v0.4.0/basecoin_0.4.0_linux_amd64.zip"
+
+basecoin_binary: "{{ lookup('env','GOPATH') | default('') }}/bin/basecoin"
+
+basecoin_user: basecoin
+basecoin_group: basecoin
+
+basecoin_home: /var/lib/basecoin
+basecoin_log_file: /var/log/basecoin.log
+
+basecoin_inprocess: false
+

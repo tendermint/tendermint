@@ -1,0 +1,114 @@
+---
+- name: update apt
+  apt: >
+    update_cache=yes
+    cache_valid_time=3600
+  when: ansible_os_family == "Debian"
+
+- name: install deps (Ubuntu)
+  apt: >
+    pkg={{item}}
+    state=installed
+  with_items:
+    - unzip
+    - jq
+  when: ansible_os_family == "Debian"
+
+- name: install deps (RHEL)
+  yum: >
+    pkg={{item}}
+    state=installed
+  with_items:
+    - unzip
+    - jq
+  when: ansible_os_family == "RedHat"
+
+- name: create group
+  group: >
+    name={{basecoin_group}}
+    state=present
+    system=yes
+  register: basecoin_group_created
+
+- name: create user
+  user: >
+    home={{basecoin_home}}
+    name={{basecoin_user}}
+    group={{basecoin_group}}
+    system=yes
+  when: basecoin_group_created|changed
+
+- name: create directory
+  file: >
+    path={{basecoin_home}}
+    state=directory
+    owner={{basecoin_user}}
+    group={{basecoin_group}}
+    mode=0755
+
+# Check before creating log dir to prevent aggressively overwriting permissions
+- name: check for log directory
+  stat: >
+    path={{ basecoin_log_file|dirname }}
+  register: logdir
+
+- name: create log directory if it does not exist
+  file: >
+    state=directory
+    path={{ basecoin_log_file|dirname }}
+    owner={{ basecoin_user }}
+    group={{ basecoin_group }}
+  when: not logdir.stat.exists
+
+- name: touch the log file
+  file: >
+    state=touch
+    path={{ basecoin_log_file }}
+    owner={{ basecoin_user }}
+    group={{ basecoin_group }}
+  changed_when: false
+
+- name: copy and unpack release binary
+  when: basecoin_release_install|bool
+  unarchive: >
+    src={{basecoin_download}}
+    dest=/usr/local/bin
+    remote_src=true
+    mode=0755
+
+- name: copy compiled binary
+  when: not basecoin_release_install|bool
+  copy: >
+    src={{basecoin_binary}}
+    dest=/usr/local/bin
+    mode=0755
+
+- name: copy upstart script
+  template: >
+    src=basecoin.conf.j2
+    dest=/etc/init/basecoin.conf
+    owner=root
+    group=root
+    mode=0644
+  when: "ansible_service_mgr == 'upstart'"
+
+- name: copy systemd script
+  template: >
+    src=basecoin.systemd.j2
+    dest=/etc/systemd/system/basecoin.service
+    owner=root
+    group=root
+    mode=0644
+  when: "ansible_service_mgr == 'systemd'"
+  notify:
+    - reload systemd
+
+- name: Create example folder
+  file: path=/usr/share/basecoin/dev-keys state=directory
+
+- name: Copy example keys
+  copy: "src={{item}} dest=/usr/share/basecoin/dev-keys/{{item}}"
+  with_items:
+  - key.json
+  - key2.json
+
