@@ -87,7 +87,7 @@ Mac OSX:
 sudo pip install dopy
 ```
 
-Amazon AWS inventory dependencies:
+#### Amazon AWS inventory dependencies:
 
 Ubuntu/Debian:
 ```
