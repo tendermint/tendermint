@@ -1,8 +1,6 @@
 package common
 
 import (
-	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -11,30 +9,8 @@ import (
 
 // ParseDate parses a date string of the format YYYY-MM-DD
 func ParseDate(date string) (t time.Time, err error) {
-
-	//get the time of invoice
-	str := strings.Split(date, "-")
-	var ymd = []int{}
-	for _, i := range str {
-		j, err := strconv.Atoi(i)
-		if err != nil {
-			return t, err
-		}
-		ymd = append(ymd, j)
-	}
-	if len(ymd) != 3 {
-		return t, fmt.Errorf("Bad date parsing, not 3 segments") //never stack trace
-	}
-	if ymd[1] < 1 || ymd[1] > 12 {
-		return t, fmt.Errorf("Month not between 1 and 12") //never stack trace
-	}
-	if ymd[2] > 31 {
-		return t, fmt.Errorf("Day over 31") //never stack trace
-	}
-
-	t = time.Date(ymd[0], time.Month(ymd[1]), ymd[2], 0, 0, 0, 0, time.UTC)
-
-	return t, nil
+	layout := "2006-01-02" //this represents YYYY-MM-DD
+	return time.Parse(layout, date)
 }
 
 // ParseDateRange parses a date range string of the format start:end
