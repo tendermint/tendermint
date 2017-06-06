@@ -11,7 +11,7 @@
 
 ## tendermint_download stores the link to the specific tendermint release to install
 ##
-#tendermint_download: "https://s3-us-west-2.amazonaws.com/tendermint/binaries/tendermint/v0.10.0-rc1/tendermint_0.10.0-rc1_linux_amd64.zip"
+#tendermint_download: "https://s3-us-west-2.amazonaws.com/tendermint/binaries/tendermint/v0.10.0/tendermint_0.10.0_linux_amd64.zip"
 
 ## tendermint_binary stores the path to a private tendermint binary to install
 ##
@@ -37,7 +37,7 @@
 
 ## basecoin_download stores the link to the specific basecoin release to install
 ##
-#basecoin_download: "https://s3-us-west-2.amazonaws.com/tendermint/binaries/basecoin/v0.4.0/basecoin_0.4.0_linux_amd64.zip"
+#basecoin_download: "https://s3-us-west-2.amazonaws.com/tendermint/binaries/basecoin/v0.5.2/basecoin_0.5.2_linux_amd64.zip"
 
 ## basecoin_binary stores the path to a private basecoin binary to install
 ##

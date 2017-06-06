@@ -29,13 +29,15 @@ TESTNET_NAME="testnet-servers"
 terraform env new "$TESTNET_NAME"
 ```
 
+Note this `terraform env` command is only available in terraform `v0.9` and up.
+
 ## Execution
 
 The below command will create 4 nodes in DigitalOcean. They will be named `testnet-servers-node0` to `testnet-servers-node3` and they will be tagged as `testnet-servers`.
 ```
 DO_API_TOKEN="<The API token received from DigitalOcean>"
 SSH_IDS="[ \"<The SSH ID received from the curl call above.>\" ]"
-terraform apply -var TESTNET_NAME="testnet-servers" -var servers=4 -var DO_API_TOKEN="$DO_API_TOKEN" -var ssh_keys=$SSH_IDS
+terraform apply -var TESTNET_NAME="testnet-servers" -var servers=4 -var DO_API_TOKEN="$DO_API_TOKEN" -var ssh_keys="$SSH_IDS"
 ```
 
 Note: `ssh_keys` is a list of strings. You can add multiple keys. For example: `["1234567","9876543"]`.

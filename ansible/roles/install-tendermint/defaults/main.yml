@@ -1,6 +1,6 @@
 ---
 tendermint_release_install: true
-tendermint_download: "https://s3-us-west-2.amazonaws.com/tendermint/binaries/tendermint/v0.10.0-rc1/tendermint_0.10.0-rc1_linux_amd64.zip"
+tendermint_download: "https://s3-us-west-2.amazonaws.com/tendermint/binaries/tendermint/v0.10.0/tendermint_0.10.0_linux_amd64.zip"
 
 tendermint_binary: "{{ lookup('env','GOPATH') | default('') }}/bin/tendermint"
 
