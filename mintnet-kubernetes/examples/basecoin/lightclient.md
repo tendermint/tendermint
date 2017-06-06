@@ -1,3 +1,5 @@
+**OUTDATED**
+
 # Using with lightclient
 
 We have an awesome cluster running, let's try to test this out without

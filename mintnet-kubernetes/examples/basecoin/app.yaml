@@ -46,38 +46,49 @@ metadata:
   name: app-config
 data:
   genesis.json: |-
-    [
-      "base/chainID",
-      "test_chain_id",
-      "base/account",
-      {
-          "coins" : [
-            {"denom": "blank", "amount": 1000}
-          ],
-          "pub_key" : ["tm-0"]
-      },
-      "base/account",
-      {
-          "coins" : [
-            {"denom": "blank", "amount": 1000}
-          ],
-          "pub_key" : ["tm-1"]
-      },
-      "base/account",
-      {
-          "coins" : [
-            {"denom": "blank", "amount": 1000}
-          ],
-          "pub_key" : ["tm-2"]
-      },
-      "base/account",
-      {
-          "coins" : [
-            {"denom": "blank", "amount": 1000}
-          ],
-          "pub_key" : ["tm-3"]
+    {
+      "chain_id": "chain-tTH4mi",
+      "app_options": {
+        "accounts": [
+          {
+            "pub_key": "tm-0",
+            "coins": [
+              {
+                "denom": "mycoin",
+                "amount": 1000000000
+              }
+            ]
+          },
+          {
+            "pub_key": "tm-1",
+            "coins": [
+              {
+                "denom": "mycoin",
+                "amount": 1000000000
+              }
+            ]
+          },
+          {
+            "pub_key": "tm-2",
+            "coins": [
+              {
+                "denom": "mycoin",
+                "amount": 1000000000
+              }
+            ]
+          },
+          {
+            "pub_key": "tm-3",
+            "coins": [
+              {
+                "denom": "mycoin",
+                "amount": 1000000000
+              }
+            ]
+          }
+        ]
       }
-    ]
+    }
 ---
 apiVersion: policy/v1beta1
 kind: PodDisruptionBudget
@@ -103,7 +114,7 @@ spec:
       annotations:
         pod.beta.kubernetes.io/init-containers: '[{
           "name": "tm-gen-validator",
-          "image": "tendermint/tendermint:0.9.0",
+          "image": "tendermint/tendermint:0.10.0",
           "imagePullPolicy": "IfNotPresent",
           "command": ["bash", "-c", "
             set -ex\n
@@ -119,7 +130,7 @@ spec:
         },
         {
           "name": "app-gen-key",
-          "image": "tendermint/basecoin:latest",
+          "image": "tendermint/basecoin:0.5.1",
           "imagePullPolicy": "IfNotPresent",
           "command": ["bash", "-c", "
             set -ex\n
@@ -137,7 +148,7 @@ spec:
       containers:
       - name: tm
         imagePullPolicy: IfNotPresent
-        image: tendermint/tendermint:0.9.0
+        image: tendermint/tendermint:0.10.0
         ports:
         - containerPort: 46656
           name: p2p
@@ -159,7 +170,7 @@ spec:
             configMapKeyRef:
               name: tm-config
               key: validators
-        - name: TMROOT
+        - name: TMHOME
           value: /tendermint
         command:
         - bash
@@ -200,7 +211,7 @@ spec:
           done
           seeds=$(IFS=','; echo "${seeds[*]}")
 
-          tendermint node --seeds="$seeds" --moniker="`hostname`" --proxy_app="unix:///socks/app.sock"
+          tendermint node --p2p.seeds="$seeds" --moniker="`hostname`" --proxy_app="unix:///socks/app.sock"
         volumeMounts:
         - name: tmdir
           mountPath: /tendermint
@@ -212,7 +223,10 @@ spec:
 
       - name: app
         imagePullPolicy: IfNotPresent
-        image: tendermint/basecoin:latest
+        image: tendermint/basecoin:0.5.1
+        env:
+        - name: BCHOME
+          value: /app
         workingDir: /app
         command:
         - bash
@@ -224,11 +238,11 @@ spec:
           cp /etc/app/genesis.json genesis.json
           fqdn_suffix=$(hostname -f | sed 's#[^.]*\.\(\)#\1#')
           # for every "base/account"
-          i=3
-          length=$(cat genesis.json | jq ". | length")
+          i=0
+          length=$(cat genesis.json | jq ".app_options.accounts | length")
           while [[ $i -lt $length ]]; do
             # extract pod name ("tm-0")
-            pod=$(cat genesis.json | jq -r ".[$i].pub_key[0]")
+            pod=$(cat genesis.json | jq -r ".app_options.accounts[$i].pub_key")
 
             # wait until pod starts to serve its pub_key
             set +e
@@ -245,16 +259,16 @@ spec:
             # get its pub_key
             curl -s "http://$pod.$fqdn_suffix/app_pub_key.json" | jq "." > k.json
 
-            # replace pod name with it (["tm-0"] => "[1, XXXXXXXXXXXXXXXXXXXX]")
-            cat genesis.json | jq ".[$i].pub_key = $(cat k.json | jq '.')" > tmpgenesis && mv tmpgenesis genesis.json
+            # replace pod name with it ("tm-0" => "{"type": ..., "data": ...}")
+            cat genesis.json | jq ".app_options.accounts[$i].pub_key = $(cat k.json | jq '.')" > tmpgenesis && mv tmpgenesis genesis.json
             rm -f k.json
 
-            i=$((i+2)) # skip "base/account" field itself
+            i=$((i+1))
           done
 
           rm -f /socks/app.sock # remove old socket
 
-          basecoin start --address="unix:///socks/app.sock"
+          basecoin start --address="unix:///socks/app.sock" --without-tendermint
         volumeMounts:
         - name: appdir
           mountPath: /app
