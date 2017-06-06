@@ -57,28 +57,39 @@ func RunWithArgs(cmd Executable, args []string, env map[string]string) error {
 // RunCaptureWithArgs executes the given command with the specified command line args
 // and environmental variables set. It returns whatever was writen to
 // stdout along with any error returned from cmd.Execute()
-func RunCaptureWithArgs(cmd Executable, args []string, env map[string]string) (output string, err error) {
-	old := os.Stdout // keep backup of the real stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
+func RunCaptureWithArgs(cmd Executable, args []string, env map[string]string) (stdout, stderr string, err error) {
+	oldout, olderr := os.Stdout, os.Stderr // keep backup of the real stdout
+	rOut, wOut, _ := os.Pipe()
+	rErr, wErr, _ := os.Pipe()
+	os.Stdout, os.Stderr = wOut, wErr
 	defer func() {
-		os.Stdout = old // restoring the real stdout
+		os.Stdout, os.Stderr = oldout, olderr // restoring the real stdout
 	}()
 
-	outC := make(chan string)
 	// copy the output in a separate goroutine so printing can't block indefinitely
+	outC := make(chan string)
 	go func() {
 		var buf bytes.Buffer
-		// io.Copy will end when we call w.Close() below
-		io.Copy(&buf, r)
+		// io.Copy will end when we call wOut.Close() below
+		io.Copy(&buf, rOut)
 		outC <- buf.String()
+	}()
+
+	errC := make(chan string)
+	go func() {
+		var buf bytes.Buffer
+		// io.Copy will end when we call wErr.Close() below
+		io.Copy(&buf, rErr)
+		errC <- buf.String()
 	}()
 
 	// now run the command
 	err = RunWithArgs(cmd, args, env)
 
 	// and grab the stdout to return
-	w.Close()
-	output = <-outC
-	return output, err
+	wOut.Close()
+	wErr.Close()
+	stdout = <-outC
+	stderr = <-errC
+	return stdout, stderr, err
 }
