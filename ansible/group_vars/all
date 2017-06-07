@@ -21,11 +21,15 @@
 ##
 #tendermint_user: tendermint
 #tendermint_group: tendermint
-#tendermint_home: /var/lib/tendermint
+#tendermint_home: /etc/tendermint
 
 ## tendermint_log_file stores the path to the tendermint application log
 ##
 #tendermint_log_file: /var/log/tendermint.log
+
+## tendermint_genesis_file contains the path and filename to a previously generated genesis.json. If undefined, the json file is dynamically generated.
+##
+#tendermint_genesis_file: "<undefined>"
 
 ###
 ### Basecoin installation
@@ -45,9 +49,9 @@
 
 ## Details of the linux user the basecoin app uses
 ##
-#basecoin_user: basecoin
-#basecoin_group: basecoin
-#basecoin_home: /var/lib/basecoin
+#basecoin_user: tendermint
+#basecoin_group: tendermint
+#basecoin_home: /etc/tendermint
 
 ## basecoin_log_file stores the path to the basecoin application log
 ##

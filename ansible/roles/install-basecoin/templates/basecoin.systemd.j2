@@ -4,7 +4,7 @@ Requires=network-online.target
 After=network-online.target
 
 [Service]
-Environment="BCHOME={{basecoin_home}}/.basecoin"
+Environment="BCHOME={{basecoin_home}}"
 Restart=on-failure
 User={{ basecoin_user }}
 Group={{ basecoin_group }}

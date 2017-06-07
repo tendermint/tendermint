@@ -1,13 +1,11 @@
 ---
 
-#variable "service" is required
-
 - hosts: "{{ lookup('env','TF_VAR_TESTNET_NAME') }}"
   roles:
-    - { role: stop, service: tendermint }
-    - stop
-    - { role: cleanupconfig, when: not reconfig|default(false)|bool }
+    - install-tendermint
+    - install-ethermint
+    - cleanupconfig
     - { role: config, testnet_name: "{{ lookup('env','TF_VAR_TESTNET_NAME') }}" }
-    - start
+    - { role: start, service: ethermint }
     - { role: start, service: tendermint }
 

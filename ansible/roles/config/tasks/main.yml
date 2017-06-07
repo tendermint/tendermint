@@ -1,9 +1,41 @@
 ---
 
-- include: tendermint.yml
-  when: not basecoin_inprocess|bool
-  tags: config-tendermint
+- name: generate tendermint keys
+  shell: "tendermint gen_validator > {{tendermint_home}}/priv_validator.json"
+  args:
+    warn: no
+    creates: "{{tendermint_home}}/priv_validator.json"
 
-- include: basecoin.yml
-  tags: config-basecoin
+- name: secure priv_validator.json
+  file: "path={{tendermint_home}}/priv_validator.json mode=0400 owner={{tendermint_user}} group={{tendermint_group}}"
+
+- name: gather tendermint public keys
+  when: tendermint_genesis_file is not defined
+  command: "jq '.pub_key | .data' {{tendermint_home}}/priv_validator.json"
+  register: pubkeys
+  changed_when: false
+
+- name: register tendermint public keys as host facts
+  when: tendermint_genesis_file is not defined
+  set_fact: "pubkey={{pubkeys.stdout_lines[0]}}"
+  connection: local
+
+- name: copy generated tendermint genesis.json - genesis_time will be updated
+  when: tendermint_genesis_file is not defined
+  template:
+    src: genesis.json.j2
+    dest: "{{tendermint_home}}/genesis.json"
+    owner: "{{tendermint_user}}"
+    group: "{{tendermint_group}}"
+
+- name: copy pre-created genesis.json
+  when: tendermint_genesis_file is defined
+  copy: "src={{tendermint_genesis_file}} dest={{tendermint_home}}/genesis.json owner={{tendermint_user}} group={{tendermint_group}}"
+
+- name: copy tendermint config.toml
+  template:
+    src: config.toml.j2
+    dest: "{{tendermint_home}}/config.toml"
+    owner: "{{tendermint_user}}"
+    group: "{{tendermint_group}}"
 

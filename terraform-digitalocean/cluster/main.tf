@@ -21,6 +21,18 @@ resource "digitalocean_droplet" "cluster" {
     timeout = "30s"
   }
 
+#  #Additional SSH security: add ec2-user and remove root user credentials. You need to have ssh-agent running with your key for this to work.
+#  provisioner "remote-exec" {
+#    inline = [
+#      "useradd -m -s /bin/bash ec2-user",
+#      "echo 'ec2-user ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/ec2-user",
+#      "cp -r /root/.ssh /home/ec2-user/.ssh",
+#      "chown -R ec2-user.ec2-user /home/ec2-user/.ssh",
+#      "chmod -R 700 /home/ec2-user/.ssh",
+#      "rm -rf /root/.ssh"
+#    ]
+#  }
+
 }
 
 #resource "digitalocean_floating_ip" "cluster" {

@@ -1,5 +1,0 @@
----
-
-- name: clear tendermint configuration folder
-  file: "path={{tendermint_home}}/.tendermint state=absent"
-

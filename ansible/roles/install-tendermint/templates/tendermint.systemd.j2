@@ -4,7 +4,7 @@ Requires=network-online.target{{basecoin_inprocess|bool | ternary('',' basecoin.
 After=network-online.target
 
 [Service]
-Environment="TMHOME={{tendermint_home}}/.tendermint"
+Environment="TMHOME={{tendermint_home}}"
 Restart=on-failure
 User={{ tendermint_user }}
 Group={{ tendermint_group }}

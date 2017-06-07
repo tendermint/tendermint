@@ -1,6 +1,3 @@
 ---
-tendermint_home: /var/lib/tendermint
-
-basecoin_home: /var/lib/basecoin
-basecoin_inprocess: false
+tendermint_home: /etc/tendermint
 

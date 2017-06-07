@@ -50,8 +50,16 @@ TF_VAR_TESTNET_NAME="testnet-servers"
 terraform-apply
 ```
 
+## Security
+
+DigitalOcean uses the root user by default on its droplets. This is fine as long as SSH keys are used. However some people still would like to disable root and use an alternative user to connect to the droplets - then `sudo` from there.
+There is a way to do this with Terraform but it requires SSH agent running on the machine where terraform is run, with one of the SSH keys of the droplets added to the agent. (This will be neede for ansible too, so it's worth setting it up here. Check out the [ansible](https://github.com/tendermint/tools/tree/master/ansible) page for more information.)
+After setting up the SSH key, uncomment the `provider` block under `cluster/main.tf` and run `terraform apply` to create your droplets. Terraform will create a user called `ec2-user` and move the SSH keys over, this way disabling SSH login for root. It also adds the `ec2-user` to the sudoers file, so after logging in as ec2-user you can `sudo` to `root`.
+
+DigitalOcean announced firewalls but the current version of Terraform (0.9.6 as of this writing) does not support it yet. Fortunately it is quite easy to set it up through the web interface (and not that bad through the [RESTful API](https://developers.digitalocean.com/documentation/v2/#firewalls) either). When adding droplets to a firewall rule, you can add tags, so it's enough to define the testnet name. It is not necessary to add the nodes one-by-one. Also, the firewall rule "remembers" the testnet name tag so if you change the servers but keep the name, the firewall rules will still apply.
+
 # What's next
 
-After setting up the nodes, head over to the [ansible folder](https://github.com/tendermint/tools) to set up tendermint and basecoin.
+After setting up the nodes, head over to the [ansible folder](https://github.com/tendermint/tools/tree/master/ansible) to set up tendermint and basecoin.
 
 

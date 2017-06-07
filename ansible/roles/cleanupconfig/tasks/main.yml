@@ -1,9 +1,10 @@
 ---
 
-- include: tendermint.yml
-  when: not basecoin_inprocess|bool
-  tags: config-tendermint
-
-- include: basecoin.yml
-  tags: config-basecoin
+- name: clear tendermint configuration folder
+  file: "path={{tendermint_home}}/{{item}} state=absent"
+  with_items:
+  - config.toml
+  - genesis.json
+  - priv_validator.json
+  - data
 

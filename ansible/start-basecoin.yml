@@ -1,0 +1,7 @@
+---
+
+- hosts: "{{ lookup('env','TF_VAR_TESTNET_NAME') }}"
+  roles:
+    - { role: start, service: "basecoin" }
+    - { role: start, service: "tendermint" }
+

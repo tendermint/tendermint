@@ -1,7 +1,9 @@
 ---
 
 - hosts: "{{ lookup('env','TF_VAR_TESTNET_NAME') }}"
-  user: root
   roles:
+    - install-tendermint
+    - cleanupconfig
     - { role: config, testnet_name: "{{ lookup('env','TF_VAR_TESTNET_NAME') }}" }
+    - { role: start, service: tendermint }
 

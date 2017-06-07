@@ -8,9 +8,9 @@ db_backend = "leveldb"
 log_level = "debug"
 
 [rpc]
-laddr = "tcp://127.0.0.1:46657"
+laddr = "tcp://0.0.0.0:46657"
 
 [p2p]
-laddr = "tcp://{{inventory_hostname}}:46656"
+laddr = "tcp://0.0.0.0:46656"
 {% set comma = joiner(",") %}seeds = "{% for host in groups[testnet_name]|difference(inventory_hostname) %}{{ comma() }}{{hostvars[host]["inventory_hostname"]}}:46656{% endfor %}"
 

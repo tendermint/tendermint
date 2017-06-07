@@ -1,0 +1,11 @@
+---
+ethermint_release_install: true
+ethermint_download: "https://s3.eu-central-1.amazonaws.com/ethermint/0.2.0/ethermint_0.2.0_ethermint-linux-amd64.zip"
+ethermint_binary: "{{ lookup('env','GOPATH') | default('') }}/bin/ethermint"
+
+ethermint_user: tendermint
+ethermint_group: tendermint
+
+ethermint_home: /etc/tendermint
+ethermint_log_file: /var/log/ethermint.log
+
