@@ -54,9 +54,10 @@ func RunWithArgs(cmd Executable, args []string, env map[string]string) error {
 	return cmd.Execute()
 }
 
-// RunCaptureWithArgs executes the given command with the specified command line args
-// and environmental variables set. It returns whatever was writen to
-// stdout along with any error returned from cmd.Execute()
+// RunCaptureWithArgs executes the given command with the specified command
+// line args and environmental variables set. It returns string fields
+// representing output written to stdout and stderr, additionally any error
+// from cmd.Execute() is also returned
 func RunCaptureWithArgs(cmd Executable, args []string, env map[string]string) (stdout, stderr string, err error) {
 	oldout, olderr := os.Stdout, os.Stderr // keep backup of the real stdout
 	rOut, wOut, _ := os.Pipe()
