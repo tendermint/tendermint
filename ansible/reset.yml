@@ -6,7 +6,7 @@
   roles:
     - { role: stop, service: tendermint }
     - stop
-    - { role: cleanupconfig, when: not reconfig|default(false)|bool }
+    - cleanupdata
     - { role: config, testnet_name: "{{ lookup('env','TF_VAR_TESTNET_NAME') }}" }
     - start
     - { role: start, service: tendermint }

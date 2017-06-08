@@ -58,14 +58,6 @@
 #basecoin_log_file: /var/log/basecoin.log
 
 ###
-### Basecoin configuration
-###
-
-## basecoin_inprocess indicates if basecoin should run tendermint in-process
-##
-#basecoin_inprocess: false
-
-###
 ### Development settings
 ###
 
@@ -73,9 +65,6 @@
 ##
 #testnet_name: testnet1
 
-## Used by the config role to add a lot of mycoins to wallet 0x1B1BE55F969F54064628A63B9559E7C21C925165.
-## Use /usr/share/basecoin/dev-keys/key.json to access them.
-## Tendermint data has to be cleared when setting or resetting this key.
-##
-#dev_money: false
+## app_options_file contains a path and filename which will be included in a generated genesis.json file on all nodes. The content will be dumped into the app_options dictionary.
+#app_options_file: "app_options_files/dev_money"
 

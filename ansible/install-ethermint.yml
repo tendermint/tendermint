@@ -4,7 +4,7 @@
   roles:
     - install-tendermint
     - install-ethermint
-    - cleanupconfig
+    - cleanupdata
     - { role: config, testnet_name: "{{ lookup('env','TF_VAR_TESTNET_NAME') }}" }
     - { role: start, service: ethermint }
     - { role: start, service: tendermint }

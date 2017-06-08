@@ -28,3 +28,8 @@ variable "servers" {
   default     = 4
 }
 
+variable "noroot" {
+  description = "Set this variable to true, if you want SSH keys set for ec2-user instead of root."
+  default     = false
+}
+

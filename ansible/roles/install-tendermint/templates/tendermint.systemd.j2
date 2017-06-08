@@ -1,6 +1,6 @@
 [Unit]
 Description=Tendermint
-Requires=network-online.target{{basecoin_inprocess|bool | ternary('',' basecoin.target')}}
+Requires=network-online.target basecoin.target
 After=network-online.target
 
 [Service]

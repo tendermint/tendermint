@@ -10,5 +10,3 @@ tendermint_group: tendermint
 tendermint_home: /etc/tendermint
 tendermint_log_file: /var/log/tendermint.log
 
-basecoin_inprocess: false
-

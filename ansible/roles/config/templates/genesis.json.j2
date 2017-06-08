@@ -15,19 +15,8 @@
   ],
   "app_hash":"",
   "app_options": {
-{% if dev_money|bool %}
-    "accounts": [{
-      "pub_key": {
-        "type": "ed25519",
-        "data": "619D3678599971ED29C7529DDD4DA537B97129893598A17C82E3AC9A8BA95279"
-      },
-      "coins": [
-        {
-          "denom": "mycoin",
-          "amount": 9007199254740992
-        }
-      ]
-    }]
+{% if app_options_file is defined %}
+{% include app_options_file %}
 {% endif %}
   }
 }

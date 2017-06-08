@@ -4,7 +4,7 @@
   roles:
     - install-tendermint
     - install-basecoin
-    - cleanupconfig
+    - cleanupdata
     - { role: config, testnet_name: "{{ lookup('env','TF_VAR_TESTNET_NAME') }}" }
     - { role: start, service: basecoin }
     - { role: start, service: tendermint }

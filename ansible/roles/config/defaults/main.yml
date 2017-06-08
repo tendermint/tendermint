@@ -4,5 +4,6 @@ tendermint_group: tendermint
 tendermint_home: /etc/tendermint
 
 #tendermint_genesis_file="<undefined>"
+#app_options_file="<undefined>"
 testnet_name: testnet1
-dev_money: false
+

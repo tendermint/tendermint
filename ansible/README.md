@@ -190,7 +190,7 @@ The roles are self-sufficient under the `roles/` folder.
 * install-tendermint - install the tendermint application. It can install release packages or custom-compiled binaries.
 * install-basecoin - install the basecoin application. It can install release packages or custom-compiled binaries.
 * install-ethermint - install the ethermint application. It can install release packages or custom-compiled binaries.
-* cleanupconfig - delete all tendermint configuration and data.
+* cleanupdata - delete tendermint database.
 * config - configure the tendermint application
 * stop - stop an application. Requires the `service` parameter set.
 * start - start an application. Requires the `service` parameter set.

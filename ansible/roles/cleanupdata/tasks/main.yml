@@ -1,0 +1,7 @@
+---
+
+- name: clear tendermint database
+  file: "path={{tendermint_home}}/{{item}} state=absent"
+  with_items:
+  - data
+

@@ -1,5 +1,5 @@
 #!/bin/bash
-# This is an example set of commands that uses Terraform and Ansible to create a testnet on Digital Ocean.
+# This is an example set of commands that uses Terraform and Ansible to create a basecoin testnet on Digital Ocean.
 
 # Prerequisites: terraform, ansible, DigitalOcean API token, ssh-agent running with the same SSH keys added that are set up during terraform
 # Optional: GOPATH if you build the app yourself
@@ -27,6 +27,8 @@ SERVERS=2
 cd terraform-digitalocean
 terraform init
 terraform env new "$TF_VAR_TESTNET_NAME"
+#The next step copies additional terraform rules that only apply in the Tendermint network.
+#cp -r ../devops/terraform-tendermint/* .
 terraform apply -var servers=$SERVERS -var DO_API_TOKEN="$DO_API_TOKEN"
 cd ..
 
@@ -45,13 +47,13 @@ fi
 #Note that SSH Agent needs to be running with SSH keys added or ansible-playbook requires the --private-key option.
 cd ansible
 python -u inventory/digital_ocean.py --refresh-cache 1> /dev/null
-ansible-playbook -i inventory/digital_ocean.py install.yml $ANSIBLE_ADDITIONAL_VARS
+ansible-playbook -i inventory/digital_ocean.py install-basecoin.yml -u root -e app_options_file=ansible/app_options_files/dev_money $ANSIBLE_ADDITIONAL_VARS
 cd ..
 
 ###
 # Start application
 ###
 cd ansible
-ansible-playbook -i inventory/digital_ocean.py start.yml
+ansible-playbook -i inventory/digital_ocean.py start-basecoin.yml
 cd ..
 

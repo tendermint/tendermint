@@ -6,7 +6,8 @@ This is a generic [Terraform](https://www.terraform.io/) configuration that sets
 
 * Install [HashiCorp Terraform](https://www.terraform.io) on a linux machine.
 * Create a [DigitalOcean API token](https://cloud.digitalocean.com/settings/api/tokens) with read and write capability.
-* Set an SSH key at the [DigitalOcean security page](https://cloud.digitalocean.com/settings/security). {Here](https://www.digitalocean.com/community/tutorials/how-to-use-ssh-keys-with-digitalocean-droplets)'s a tutorial.
+* Create a private/public key pair for SSH. This is needed to log onto your droplets as well as by Ansible to connect for configuration changes.
+* Set up the public SSH key at the [DigitalOcean security page](https://cloud.digitalocean.com/settings/security). [Here](https://www.digitalocean.com/community/tutorials/how-to-use-ssh-keys-with-digitalocean-droplets)'s a tutorial.
 * Find out your SSH key ID at DigitalOcean by querying the below command on your linux box:
 
 ```
@@ -53,10 +54,10 @@ terraform-apply
 ## Security
 
 DigitalOcean uses the root user by default on its droplets. This is fine as long as SSH keys are used. However some people still would like to disable root and use an alternative user to connect to the droplets - then `sudo` from there.
-There is a way to do this with Terraform but it requires SSH agent running on the machine where terraform is run, with one of the SSH keys of the droplets added to the agent. (This will be neede for ansible too, so it's worth setting it up here. Check out the [ansible](https://github.com/tendermint/tools/tree/master/ansible) page for more information.)
-After setting up the SSH key, uncomment the `provider` block under `cluster/main.tf` and run `terraform apply` to create your droplets. Terraform will create a user called `ec2-user` and move the SSH keys over, this way disabling SSH login for root. It also adds the `ec2-user` to the sudoers file, so after logging in as ec2-user you can `sudo` to `root`.
+Terraform can do this but it requires SSH agent running on the machine where terraform is run, with one of the SSH keys of the droplets added to the agent. (This will be neede for ansible too, so it's worth setting it up here. Check out the [ansible](https://github.com/tendermint/tools/tree/master/ansible) page for more information.)
+After setting up the SSH key, run `terraform apply` with `-var noroot=true` to create your droplets. Terraform will create a user called `ec2-user` and move the SSH keys over, this way disabling SSH login for root. It also adds the `ec2-user` to the sudoers file, so after logging in as ec2-user you can `sudo` to `root`.
 
-DigitalOcean announced firewalls but the current version of Terraform (0.9.6 as of this writing) does not support it yet. Fortunately it is quite easy to set it up through the web interface (and not that bad through the [RESTful API](https://developers.digitalocean.com/documentation/v2/#firewalls) either). When adding droplets to a firewall rule, you can add tags, so it's enough to define the testnet name. It is not necessary to add the nodes one-by-one. Also, the firewall rule "remembers" the testnet name tag so if you change the servers but keep the name, the firewall rules will still apply.
+DigitalOcean announced firewalls but the current version of Terraform (0.9.8 as of this writing) does not support it yet. Fortunately it is quite easy to set it up through the web interface (and not that bad through the [RESTful API](https://developers.digitalocean.com/documentation/v2/#firewalls) either). When adding droplets to a firewall rule, you can add tags. All droplets in a testnet are tagged with the testnet name so it's enough to define the testnet name in the firewall rule. It is not necessary to add the nodes one-by-one. Also, the firewall rule "remembers" the testnet name tag so if you change the servers but keep the name, the firewall rules will still apply.
 
 # What's next
 
