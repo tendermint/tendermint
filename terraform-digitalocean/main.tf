@@ -28,6 +28,11 @@ variable "servers" {
   default = "4"
 }
 
+variable "image" {
+  description = "DigitalOcean image name"
+  default = "ubuntu-14-04-x64"
+}
+
 variable "noroot" {
   description = "Set this variable to true, if you want SSH keys set for ec2-user instead of root."
   default     = false
@@ -43,6 +48,7 @@ module "cluster" {
   key_ids          = "${var.ssh_keys}"
   servers          = "${var.servers}"
   noroot           = "${var.noroot}"
+  image_id         = "${var.image}"
 }
 
 
