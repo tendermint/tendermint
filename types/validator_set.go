@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/tendermint/go-wire"
-	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/merkle"
 )
@@ -270,14 +269,14 @@ func (valSet *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height
 // more than 2/3 of the validator set have signed this block.
 func (valSet *ValidatorSet) VerifyCommitAny(newVals *ValidatorSet, chainID string, blockID BlockID, height int, commit *Commit) error {
 	if newVals.Size() != len(commit.Precommits) {
-		return fmt.Errorf("Invalid commit -- wrong set size: %v vs %v", cur.Size().len(commit.Precommits))
+		return fmt.Errorf("Invalid commit -- wrong set size: %v vs %v", newVals.Size(), len(commit.Precommits))
 	}
 	if height != commit.Height() {
 		return fmt.Errorf("Invalid commit -- wrong height: %v vs %v", height, commit.Height())
 	}
 
-	curVotingPower := uint64(0)
-	newVotingPower := uint64(0)
+	curVotingPower := int64(0)
+	newVotingPower := int64(0)
 	seen := map[int]bool{}
 	round := commit.Round()
 
@@ -292,7 +291,7 @@ func (valSet *ValidatorSet) VerifyCommitAny(newVals *ValidatorSet, chainID strin
 		if precommit.Round != round {
 			return fmt.Errorf("Invalid commit -- wrong round: %v vs %v", round, precommit.Round)
 		}
-		if precommit.Type != types.VoteTypePrecommit {
+		if precommit.Type != VoteTypePrecommit {
 			return fmt.Errorf("Invalid commit -- not precommit @ index %v", idx)
 		}
 		if !blockID.Equals(precommit.BlockID) {
@@ -322,13 +321,12 @@ func (valSet *ValidatorSet) VerifyCommitAny(newVals *ValidatorSet, chainID strin
 		}
 
 		if curVotingPower <= valSet.TotalVotingPower()*2/3 {
-			return fmt.Errorf("Invalid commit -- insufficient old voting power: got %v, needed %v", oldVotingPower, (old.TotalVotingPower()*2/3 + 1))
+			return fmt.Errorf("Invalid commit -- insufficient current voting power: got %v, needed %v", curVotingPower, (valSet.TotalVotingPower()*2/3 + 1))
 		} else if newVotingPower <= newVals.TotalVotingPower()*2/3 {
-			return fmt.Errorf("Invalid commit -- insufficient cur voting power: got %v, needed %v", curVotingPower, (cur.TotalVotingPower()*2/3 + 1))
+			return fmt.Errorf("Invalid commit -- insufficient new voting power: got %v, needed %v", newVotingPower, (newVals.TotalVotingPower()*2/3 + 1))
 		}
-
-		return nil
 	}
+	return nil
 }
 
 func (valSet *ValidatorSet) ToBytes() []byte {
