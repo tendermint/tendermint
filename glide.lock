@@ -1,12 +1,14 @@
-hash: 93f15c9766ea826c29a91f545c42172eafd8c61e39c1d81617114ad1a9c9eaf2
-updated: 2017-05-18T06:13:24.295793122-04:00
+hash: 74281881f3abf6e6c95e5aa5fe15e1891298c985f6c0584e658c8a03b4a5f7e1
+updated: 2017-06-12T15:23:33.311059702Z
 imports:
 - name: github.com/btcsuite/btcd
-  version: 53f55a46349aa8f44b90895047e843666991cf24
+  version: b8df516b4b267acf2de46be593a9d948d1d2c420
   subpackages:
   - btcec
+- name: github.com/btcsuite/fastsha256
+  version: 637e656429416087660c84436a2a035d69d54e2e
 - name: github.com/davecgh/go-spew
-  version: 04cdfd42973bb9c8589fd6a731800cf222fde1a9
+  version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
   subpackages:
   - spew
 - name: github.com/ebuchman/fail-test
@@ -14,7 +16,7 @@ imports:
 - name: github.com/fsnotify/fsnotify
   version: 4da3e2cfbabc9f751898f250b49f2439785783a1
 - name: github.com/go-kit/kit
-  version: 6964666de57c88f7d93da127e900d201b632f561
+  version: d67bb4c202e3b91377d1079b110a6c9ce23ab2f8
   subpackages:
   - log
   - log/level
@@ -22,13 +24,13 @@ imports:
 - name: github.com/go-logfmt/logfmt
   version: 390ab7935ee28ec6b286364bba9b4dd6410cb3d5
 - name: github.com/go-stack/stack
-  version: 7a2f19628aabfe68f0766b59e74d6315f8347d22
+  version: 100eb0c0a9c5b306ca2fb4f165df21d80ada4b82
 - name: github.com/gogo/protobuf
   version: 9df9efe4c742f1a2bfdedf1c3b6902fc6e814c6b
   subpackages:
   - proto
 - name: github.com/golang/protobuf
-  version: fec3b39b059c0f88fa6b20f5ed012b1aa203a8b4
+  version: 18c9bb3261723cd5401db4d0c9fbc5c3b6c70fe8
   subpackages:
   - proto
   - ptypes/any
@@ -62,7 +64,7 @@ imports:
 - name: github.com/pelletier/go-toml
   version: 5c26a6ff6fd178719e15decac1c8196da0d7d6d1
 - name: github.com/pkg/errors
-  version: c605e284fe17294bda444b34710735b29d1a9d90
+  version: ff09b135c25aae272398c51a07235b90a75aa4f0
 - name: github.com/pmezard/go-difflib
   version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
   subpackages:
@@ -82,7 +84,7 @@ imports:
 - name: github.com/spf13/viper
   version: 0967fc9aceab2ce9da34061253ac10fb99bba5b2
 - name: github.com/stretchr/testify
-  version: 4d4bfba8f1d1027c4fdbe371823030df51419987
+  version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
   subpackages:
   - assert
   - require
@@ -122,17 +124,18 @@ imports:
   - data
   - data/base58
 - name: github.com/tendermint/merkleeyes
-  version: a0e73e1ac3e18e12a007520a4ea2c9822256e307
+  version: feb2c3fadac8221f96fbfce65a63af034327f972
   subpackages:
   - app
   - client
   - iavl
   - testutil
 - name: github.com/tendermint/tmlibs
-  version: 306795ae1d8e4f4a10dcc8bdb32a00455843c9d5
+  version: 6b619742ac69388dd591c30f55aaee46197b086e
   subpackages:
   - autofile
   - cli
+  - cli/flags
   - clist
   - common
   - db
@@ -142,7 +145,7 @@ imports:
   - merkle
   - test
 - name: golang.org/x/crypto
-  version: 0fe963104e9d1877082f8fb38f816fcd97eb1d10
+  version: c7af5bf2638a1164f2eb5467c39c6cffbd13a02e
   subpackages:
   - curve25519
   - nacl/box
@@ -153,7 +156,7 @@ imports:
   - ripemd160
   - salsa20/salsa
 - name: golang.org/x/net
-  version: 513929065c19401a1c7b76ecd942f9f86a0c061b
+  version: feeb485667d1fdabe727840fe00adc22431bc86e
   subpackages:
   - context
   - http2
@@ -167,18 +170,18 @@ imports:
   subpackages:
   - unix
 - name: golang.org/x/text
-  version: 19e51611da83d6be54ddafce4a4af510cb3e9ea4
+  version: 470f45bf29f4147d6fbd7dfd0a02a848e49f5bf4
   subpackages:
   - secure/bidirule
   - transform
   - unicode/bidi
   - unicode/norm
 - name: google.golang.org/genproto
-  version: bb3573be0c484136831138976d444b8754777aff
+  version: 411e09b969b1170a9f0c467558eb4c4c110d9c77
   subpackages:
   - googleapis/rpc/status
 - name: google.golang.org/grpc
-  version: 11d93ecdb918872ee841ba3a2dc391aa6d4f57c3
+  version: 844f573616520565fdc6fb4db242321b5456fd6d
   subpackages:
   - codes
   - credentials
