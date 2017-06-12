@@ -174,7 +174,6 @@ func AddListenerForEvent(evsw EventSwitch, id, event string, cb func(data TMEven
 	evsw.AddListenerForEvent(id, event, func(data events.EventData) {
 		cb(data.(TMEventData))
 	})
-
 }
 
 //--- block, tx, and vote events

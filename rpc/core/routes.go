@@ -7,7 +7,7 @@ import (
 // TODO: better system than "unsafe" prefix
 var Routes = map[string]*rpc.RPCFunc{
 	// subscribe/unsubscribe are reserved for websocket events.
-	"subscribe":   rpc.NewWSRPCFunc(Subscribe, "event"),
+	"subscribe":   rpc.NewWSRPCFunc(Subscribe, "event,channels"),
 	"unsubscribe": rpc.NewWSRPCFunc(Unsubscribe, "event"),
 
 	// info API
