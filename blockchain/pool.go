@@ -105,6 +105,7 @@ func (pool *BlockPool) removeTimedoutPeers() {
 		if !peer.didTimeout && peer.numPending > 0 {
 			curRate := peer.recvMonitor.Status().CurRate
 			// XXX remove curRate != 0
+			// curRate can be safely removed, since it will only be 0 if the peer is offline, but then the 2nd condition would also be true
 			if curRate != 0 && curRate < minRecvRate {
 				pool.sendTimeout(peer.id)
 				pool.Logger.Error("SendTimeout", "peer", peer.id, "reason", "curRate too low")
@@ -452,9 +453,9 @@ func (bpr *bpRequester) getPeerID() string {
 
 func (bpr *bpRequester) reset() {
 	bpr.mtx.Lock()
+	defer bpr.mtx.Unlock()
 	bpr.peerID = ""
 	bpr.block = nil
-	bpr.mtx.Unlock()
 }
 
 // Tells bpRequester to pick another peer and try again.

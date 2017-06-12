@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/tendermint/go-wire"
+	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/merkle"
 )
@@ -264,29 +265,70 @@ func (valSet *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height
 }
 
 // Verify that +2/3 of this set had signed the given signBytes.
-// Unlike VerifyCommit(), this function can verify commits with differeent sets.
-func (valSet *ValidatorSet) VerifyCommitAny(chainID string, blockID BlockID, height int, commit *Commit) error {
-	panic("Not yet implemented")
-	/*
-			Start like:
+// Unlike VerifyCommit(), this function can verify commits with different sets.
+// VerifyCommitAny verifies that more than 2/3 of the old validator set have signed this block, as well as whether
+// more than 2/3 of the validator set have signed this block.
+func (valSet *ValidatorSet) VerifyCommitAny(newVals *ValidatorSet, chainID string, blockID BlockID, height int, commit *Commit) error {
+	if newVals.Size() != len(commit.Precommits) {
+		return fmt.Errorf("Invalid commit -- wrong set size: %v vs %v", cur.Size().len(commit.Precommits))
+	}
+	if height != commit.Height() {
+		return fmt.Errorf("Invalid commit -- wrong height: %v vs %v", height, commit.Height())
+	}
 
-		FOR_LOOP:
-			for _, val := range vals {
-				if len(precommits) == 0 {
-					break FOR_LOOP
-				}
-				next := precommits[0]
-				switch bytes.Compare(val.Address(), next.ValidatorAddress) {
-				case -1:
-					continue FOR_LOOP
-				case 0:
-					signBytes := tm.SignBytes(next)
-					...
-				case 1:
-					... // error?
-				}
-			}
-	*/
+	curVotingPower := uint64(0)
+	newVotingPower := uint64(0)
+	seen := map[int]bool{}
+	round := commit.Round()
+
+	for idx, precommit := range commit.Precommits {
+		// may be nil if validator skipped.
+		if precommit == nil {
+			continue
+		}
+		if precommit.Height != height {
+			return fmt.Errorf("Invalid commit -- wrong height: %v vs %v", height, precommit.Height)
+		}
+		if precommit.Round != round {
+			return fmt.Errorf("Invalid commit -- wrong round: %v vs %v", round, precommit.Round)
+		}
+		if precommit.Type != types.VoteTypePrecommit {
+			return fmt.Errorf("Invalid commit -- not precommit @ index %v", idx)
+		}
+		if !blockID.Equals(precommit.BlockID) {
+			continue // Not an error, but doesn't count
+		}
+
+		// check whether a current validator has signed this precommit
+		valIdx, val := valSet.GetByAddress(precommit.ValidatorAddress)
+		// if val is nill then the current validator hasn't signed the precommit
+		if val == nil || seen[valIdx] {
+			continue // missing or double vote
+		}
+		seen[valIdx] = true
+
+		precommitSignBytes := SignBytes(chainID, precommit)
+
+		// check that the validator from the current set has signed the precommit
+		if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
+			return fmt.Errorf("Invalid commit -- invalid signature: %v", precommit)
+		}
+		curVotingPower += val.VotingPower
+
+		// check that the validator from the new set has signed the precommit
+		_, newVal := newVals.GetByIndex(idx)
+		if newVal.PubKey.Equals(val.PubKey) {
+			newVotingPower += newVal.VotingPower
+		}
+
+		if curVotingPower <= valSet.TotalVotingPower()*2/3 {
+			return fmt.Errorf("Invalid commit -- insufficient old voting power: got %v, needed %v", oldVotingPower, (old.TotalVotingPower()*2/3 + 1))
+		} else if newVotingPower <= newVals.TotalVotingPower()*2/3 {
+			return fmt.Errorf("Invalid commit -- insufficient cur voting power: got %v, needed %v", curVotingPower, (cur.TotalVotingPower()*2/3 + 1))
+		}
+
+		return nil
+	}
 }
 
 func (valSet *ValidatorSet) ToBytes() []byte {
