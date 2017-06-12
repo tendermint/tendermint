@@ -4,6 +4,7 @@
 
 extra_check = true
 go_min_version = 1.8.3
+gpg_key = 2122CBE9
 
 ifeq ($(extra_check),true)
 ifndef GOPATH
@@ -15,6 +16,12 @@ go_version_check := $(shell echo -e "$(go_min_version)\n$(go_version)" | sort -V
 ifneq ($(go_min_version),$(go_version_check))
 $(error go version go_min_version or above is required)
 endif
+endif
+gpg_check := $(shell gpg -K | grep '/$(gpg_key) ' | sed 's,^.*/\($(gpg_key)\) .*$$,\1,')
+ifneq ($(gpg_check),$(gpg_key))
+$(error GPG key not found. Add key ID $(gpg_key) to gpg-agent)
+else
+$(info GPG key $(gpg_key) found)
 endif
 endif
 
@@ -63,18 +70,15 @@ prepare-spec-%: $(GOPATH)/bin/%
 
 dist-tendermint: prepare-spec-tendermint
 	$(info Packaging tendermint version $(tendermint_version))
-	rpmbuild -bb SPECS/tendermint.spec #--buildroot=tmp #--sign
-#TODO
+	rpmbuild -bb SPECS/tendermint.spec --sign
 
 dist-basecoin: prepare-spec-basecoin
 	$(info Packaging basecoin version $(basecoin_version))
-	rpmbuild -bb SPECS/basecoin.spec #--sign
-#TODO
+	rpmbuild -bb SPECS/basecoin.spec --sign
 
 dist-ethermint: prepare-spec-ethermint ;
 	$(info Packaging ethermint version $(ethermint_version))
-	rpmbuild -bb SPECS/ethermint.spec #--sign
-#TODO
+	rpmbuild -bb SPECS/ethermint.spec --sign
 
 mostlyclean:
 	rm -rf {BUILDROOT,SOURCES,SPECS,SRPMS,tmp}
