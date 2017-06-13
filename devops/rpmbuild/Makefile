@@ -31,12 +31,12 @@ endif
 
 binaries = tendermint basecoin ethermint
 build-binaries = build-tendermint build-basecoin build-ethermint
-dist-binaries = dist-tendermint dist-basecoin dist-ethermint
+package-binaries = package-tendermint package-basecoin package-ethermint
 
 all: $(binaries)
 build: $(build-binaries)
-dist: $(dist-binaries)
-$(binaries): %: build-% dist-% ;
+package: $(package-binaries)
+$(binaries): %: build-% package-% ;
 
 ###
 # Building the binaries is not in the spec file, because in the spec file you already need to know the version number
@@ -68,17 +68,30 @@ prepare-spec-%: $(GOPATH)/bin/%
 	echo "Release: $(BUILD_NUMBER)" >> SPECS/$*.spec
 	cat spectemplates/$*.spec >> SPECS/$*.spec
 
-dist-tendermint: prepare-spec-tendermint
+package-tendermint: prepare-spec-tendermint
 	$(info Packaging tendermint version $(tendermint_version))
 	rpmbuild -bb SPECS/tendermint.spec --sign
 
-dist-basecoin: prepare-spec-basecoin
+package-basecoin: prepare-spec-basecoin
 	$(info Packaging basecoin version $(basecoin_version))
 	rpmbuild -bb SPECS/basecoin.spec --sign
 
-dist-ethermint: prepare-spec-ethermint ;
+package-ethermint: prepare-spec-ethermint ;
 	$(info Packaging ethermint version $(ethermint_version))
 	rpmbuild -bb SPECS/ethermint.spec --sign
+
+install-%:
+#Make sure your host has the IAM role to read/write the S3 bucket OR that you set up ~/.boto
+	aws s3 sync s3://tendermint-packages/centos/ tmp/s3/
+	mkdir -p tmp/s3/7/cr/x86_64/Packages
+	cp -r RPMS/x86_64/$** tmp/s3/7/cr/x86_64/Packages
+	cp ./RPM-GPG-KEY-Tendermint tmp/s3/7/os/x86_64/
+	cp ./tendermint.repo tmp/s3/7/os/x86_64/
+	cp ./tendermint-dev.repo tmp/s3/7/cr/x86_64/
+	createrepo tmp/s3/7/cr/x86_64/Packages -u http://tendermint-packages.s3-website-us-west-1.amazonaws.com/centos/7/cr/x86_64/Packages -o tmp/s3/7/cr/x86_64 --update -S --repo Tendermint --content tendermint --content basecoin --content ethermint
+	#Asks about overwrite
+	gpg --clearsign tmp/s3/7/cr/x86_64/repodata/repomd.xml
+	aws s3 sync tmp/s3/ s3://tendermint-packages/centos/ --acl public-read
 
 mostlyclean:
 	rm -rf {BUILDROOT,SOURCES,SPECS,SRPMS,tmp}

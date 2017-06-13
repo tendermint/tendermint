@@ -58,17 +58,17 @@ EOF
 # This is a TOML config file.
 # For more information, see https://github.com/toml-lang/toml
 
-proxy_app = "tcp://127.0.0.1:46658"
+proxy_app = "tcp://127.0.0.1:36658"
 moniker = ""
 fast_sync = true
 db_backend = "leveldb"
 log_level = "debug"
 
 [rpc]
-laddr = "tcp://0.0.0.0:46657"
+laddr = "tcp://0.0.0.0:36657"
 
 [p2p]
-laddr = "tcp://0.0.0.0:46656"
+laddr = "tcp://0.0.0.0:36656"
 seeds = ""
 EOF
 %{__cat} << EOF > .%{_sysconfdir}/systemd/system/%{name}.service
