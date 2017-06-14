@@ -102,7 +102,6 @@ func (e Executor) Execute() error {
 			fmt.Println("ERROR:", err.Error())
 		}
 
-		fmt.Printf("%#v\n", e)
 		// return error code 1 by default, can override it with a special error type
 		exitCode := 1
 		if ec, ok := err.(ExitCoder); ok {
