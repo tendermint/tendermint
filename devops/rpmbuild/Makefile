@@ -35,11 +35,13 @@ endif
 binaries = tendermint basecoin ethermint
 build-binaries = build-tendermint build-basecoin build-ethermint
 package-binaries = package-tendermint package-basecoin package-ethermint
+install-binaries = install-tendermint install-basecoin install-ethermint
 
 all: $(binaries)
 build: $(build-binaries)
 package: $(package-binaries)
-$(binaries): %: build-% package-% ;
+install: $(install-binaries)
+$(binaries): %: build-% package-% install-% ;
 
 ###
 # Building the binaries is not in the spec file, because in the spec file you already need to know the version number
