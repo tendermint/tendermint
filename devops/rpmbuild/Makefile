@@ -77,16 +77,19 @@ package-tendermint: prepare-spec-tendermint
 	$(info Packaging tendermint version $(tendermint_version))
 	rpmbuild -bb SPECS/tendermint.spec
 	./sign RPMS/x86_64/tendermint-$(tendermint_version)-$$BUILD_NUMBER.x86_64.rpm
+	rpm -Kv RPMS/x86_64/tendermint-$(tendermint_version)-$$BUILD_NUMBER.x86_64.rpm
 
 package-basecoin: prepare-spec-basecoin
 	$(info Packaging basecoin version $(basecoin_version))
 	rpmbuild -bb SPECS/basecoin.spec
 	./sign RPMS/x86_64/basecoin-$(basecoin_version)-$$BUILD_NUMBER.x86_64.rpm
+	rpm -Kv RPMS/x86_64/basecoin-$(basecoin_version)-$$BUILD_NUMBER.x86_64.rpm
 
 package-ethermint: prepare-spec-ethermint ;
 	$(info Packaging ethermint version $(ethermint_version))
 	rpmbuild -bb SPECS/ethermint.spec
 	./sign RPMS/x86_64/ethermint-$(ethermint_version)-$$BUILD_NUMBER.x86_64.rpm
+	rpm -Kv RPMS/x86_64/ethermint-$(ethermint_version)-$$BUILD_NUMBER.x86_64.rpm
 
 install-%:
 #Make sure your host has the IAM role to read/write the S3 bucket OR that you set up ~/.boto
