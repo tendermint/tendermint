@@ -100,14 +100,14 @@ func (wsc *WSClient) receiveEventsRoutine() {
 	for {
 		_, data, err := wsc.ReadMessage()
 		if err != nil {
-			wsc.Logger.Info("WSClient failed to read message", "error", err, "data", string(data))
+			wsc.Logger.Info("WSClient failed to read message", "err", err, "data", string(data))
 			wsc.Stop()
 			break
 		} else {
 			var response types.RPCResponse
 			err := json.Unmarshal(data, &response)
 			if err != nil {
-				wsc.Logger.Info("WSClient failed to parse message", "error", err, "data", string(data))
+				wsc.Logger.Info("WSClient failed to parse message", "err", err, "data", string(data))
 				wsc.ErrorsCh <- err
 				continue
 			}

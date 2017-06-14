@@ -128,7 +128,7 @@ func (bcR *BlockchainReactor) RemovePeer(peer *p2p.Peer, reason interface{}) {
 func (bcR *BlockchainReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte) {
 	_, msg, err := DecodeMessage(msgBytes)
 	if err != nil {
-		bcR.Logger.Error("Error decoding message", "error", err)
+		bcR.Logger.Error("Error decoding message", "err", err)
 		return
 	}
 
@@ -231,7 +231,7 @@ FOR_LOOP:
 				err := bcR.state.Validators.VerifyCommit(
 					bcR.state.ChainID, types.BlockID{first.Hash(), firstPartsHeader}, first.Height, second.LastCommit)
 				if err != nil {
-					bcR.Logger.Info("error in validation", "error", err)
+					bcR.Logger.Info("error in validation", "err", err)
 					bcR.pool.RedoRequest(first.Height)
 					break SYNC_LOOP
 				} else {

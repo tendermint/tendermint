@@ -205,7 +205,7 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 	if profileHost != "" {
 
 		go func() {
-			logger.Error("Profile server", "error", http.ListenAndServe(profileHost, nil))
+			logger.Error("Profile server", "err", http.ListenAndServe(profileHost, nil))
 		}()
 	}
 
@@ -276,7 +276,7 @@ func (n *Node) OnStop() {
 	for _, l := range n.rpcListeners {
 		n.Logger.Info("Closing rpc listener", "listener", l)
 		if err := l.Close(); err != nil {
-			n.Logger.Error("Error closing listener", "listener", l, "error", err)
+			n.Logger.Error("Error closing listener", "listener", l, "err", err)
 		}
 	}
 }
