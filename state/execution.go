@@ -106,7 +106,7 @@ func execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn proxy.AppConnCo
 
 	valDiff := abciResponses.EndBlock.Diffs
 
-	logger.Info("Executed block", "height", block.Height, "valid txs", validTxs, "invalid txs", invalidTxs)
+	logger.Info("Executed block", "height", block.Height, "validTxs", validTxs, "invalidTxs", invalidTxs)
 	if len(valDiff) > 0 {
 		logger.Info("Update to validator set", "updates", abci.ValidatorsString(valDiff))
 	}
