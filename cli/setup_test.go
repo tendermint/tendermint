@@ -46,6 +46,7 @@ func TestSetupEnv(t *testing.T) {
 		}
 		demo.Flags().String("foobar", "", "Some test value from config")
 		cmd := PrepareBaseCmd(demo, "DEMO", "/qwerty/asdfgh") // some missing dir..
+		cmd.Exit = func(int) {}
 
 		viper.Reset()
 		args := append([]string{cmd.Use}, tc.args...)
@@ -98,6 +99,7 @@ func TestSetupConfig(t *testing.T) {
 		}
 		boo.Flags().String("boo", "", "Some test value from config")
 		cmd := PrepareBaseCmd(boo, "RD", "/qwerty/asdfgh") // some missing dir...
+		cmd.Exit = func(int) {}
 
 		viper.Reset()
 		args := append([]string{cmd.Use}, tc.args...)
@@ -175,6 +177,7 @@ func TestSetupUnmarshal(t *testing.T) {
 		// from the default config here
 		marsh.Flags().Int("age", base.Age, "Some test value from config")
 		cmd := PrepareBaseCmd(marsh, "MR", "/qwerty/asdfgh") // some missing dir...
+		cmd.Exit = func(int) {}
 
 		viper.Reset()
 		args := append([]string{cmd.Use}, tc.args...)
@@ -209,6 +212,7 @@ func TestSetupTrace(t *testing.T) {
 			},
 		}
 		cmd := PrepareBaseCmd(trace, "DBG", "/qwerty/asdfgh") // some missing dir..
+		cmd.Exit = func(int) {}
 
 		viper.Reset()
 		args := append([]string{cmd.Use}, tc.args...)
