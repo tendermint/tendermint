@@ -76,7 +76,7 @@ func (memR *MempoolReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte) {
 			memR.Logger.Error("Could not add tx", "tx", msg.Tx, "err", err)
 			return
 		} else {
-			memR.Logger.Debug("Added valid tx", "tx", msg.Tx)
+			memR.Logger.Info("Added valid tx", "tx", msg.Tx)
 		}
 		// broadcasting happens from go routines per peer
 	default:
