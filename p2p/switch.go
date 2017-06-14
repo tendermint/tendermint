@@ -309,7 +309,7 @@ func (sw *Switch) DialSeeds(addrBook *AddrBook, seeds []string) error {
 func (sw *Switch) dialSeed(addr *NetAddress) {
 	peer, err := sw.DialPeerWithAddress(addr, true)
 	if err != nil {
-		sw.Logger.Error("Error dialing seed", "error", err)
+		sw.Logger.Error("Error dialing seed", "err", err)
 	} else {
 		sw.Logger.Info("Connected to seed", "peer", peer)
 	}
@@ -322,7 +322,7 @@ func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) (*Peer,
 	sw.Logger.Info("Dialing peer", "address", addr)
 	peer, err := newOutboundPeerWithConfig(addr, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, sw.peerConfig)
 	if err != nil {
-		sw.Logger.Error("Failed to dial peer", "address", addr, "error", err)
+		sw.Logger.Error("Failed to dial peer", "address", addr, "err", err)
 		return nil, err
 	}
 	peer.SetLogger(sw.Logger.With("peer", addr))
@@ -331,7 +331,7 @@ func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) (*Peer,
 	}
 	err = sw.AddPeer(peer)
 	if err != nil {
-		sw.Logger.Error("Failed to add peer", "address", addr, "error", err)
+		sw.Logger.Error("Failed to add peer", "address", addr, "err", err)
 		peer.CloseConn()
 		return nil, err
 	}
@@ -381,7 +381,7 @@ func (sw *Switch) Peers() IPeerSet {
 // TODO: make record depending on reason.
 func (sw *Switch) StopPeerForError(peer *Peer, reason interface{}) {
 	addr := NewNetAddress(peer.Addr())
-	sw.Logger.Info("Stopping peer for error", "peer", peer, "error", reason)
+	sw.Logger.Info("Stopping peer for error", "peer", peer, "err", reason)
 	sw.stopAndRemovePeer(peer, reason)
 
 	if peer.IsPersistent() {
@@ -395,10 +395,10 @@ func (sw *Switch) StopPeerForError(peer *Peer, reason interface{}) {
 				peer, err := sw.DialPeerWithAddress(addr, true)
 				if err != nil {
 					if i == reconnectAttempts {
-						sw.Logger.Info("Error reconnecting to peer. Giving up", "tries", i, "error", err)
+						sw.Logger.Info("Error reconnecting to peer. Giving up", "tries", i, "err", err)
 						return
 					}
-					sw.Logger.Info("Error reconnecting to peer. Trying again", "tries", i, "error", err)
+					sw.Logger.Info("Error reconnecting to peer. Trying again", "tries", i, "err", err)
 					time.Sleep(reconnectInterval)
 					continue
 				}
@@ -442,7 +442,7 @@ func (sw *Switch) listenerRoutine(l Listener) {
 		// New inbound connection!
 		err := sw.addPeerWithConnectionAndConfig(inConn, sw.peerConfig)
 		if err != nil {
-			sw.Logger.Info("Ignoring inbound connection: error while adding peer", "address", inConn.RemoteAddr().String(), "error", err)
+			sw.Logger.Info("Ignoring inbound connection: error while adding peer", "address", inConn.RemoteAddr().String(), "err", err)
 			continue
 		}
 

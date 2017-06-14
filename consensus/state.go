@@ -311,7 +311,7 @@ func (cs *ConsensusState) OnStart() error {
 
 	walFile := cs.config.WalFile()
 	if err := cs.OpenWAL(walFile); err != nil {
-		cs.Logger.Error("Error loading ConsensusState wal", "error", err.Error())
+		cs.Logger.Error("Error loading ConsensusState wal", "err", err.Error())
 		return err
 	}
 
@@ -325,7 +325,7 @@ func (cs *ConsensusState) OnStart() error {
 	// we may have lost some votes if the process crashed
 	// reload from consensus log to catchup
 	if err := cs.catchupReplay(cs.Height); err != nil {
-		cs.Logger.Error("Error on catchup replay. Proceeding to start ConsensusState anyway", "error", err.Error())
+		cs.Logger.Error("Error on catchup replay. Proceeding to start ConsensusState anyway", "err", err.Error())
 		// NOTE: if we ever do return an error here,
 		// make sure to stop the timeoutTicker
 	}
@@ -368,7 +368,7 @@ func (cs *ConsensusState) Wait() {
 func (cs *ConsensusState) OpenWAL(walFile string) (err error) {
 	err = cmn.EnsureDir(path.Dir(walFile), 0700)
 	if err != nil {
-		cs.Logger.Error("Error ensuring ConsensusState wal dir", "error", err.Error())
+		cs.Logger.Error("Error ensuring ConsensusState wal dir", "err", err.Error())
 		return err
 	}
 
@@ -663,7 +663,7 @@ func (cs *ConsensusState) handleMsg(mi msgInfo, rs RoundState) {
 		cs.Logger.Error("Unknown msg type", reflect.TypeOf(msg))
 	}
 	if err != nil {
-		cs.Logger.Error("Error with msg", "type", reflect.TypeOf(msg), "peer", peerKey, "error", err, "msg", msg)
+		cs.Logger.Error("Error with msg", "type", reflect.TypeOf(msg), "peer", peerKey, "err", err, "msg", msg)
 	}
 }
 
@@ -831,7 +831,7 @@ func (cs *ConsensusState) defaultDecideProposal(height, round int) {
 		cs.Logger.Debug(cmn.Fmt("Signed proposal block: %v", block))
 	} else {
 		if !cs.replayMode {
-			cs.Logger.Error("enterPropose: Error signing proposal", "height", height, "round", round, "error", err)
+			cs.Logger.Error("enterPropose: Error signing proposal", "height", height, "round", round, "err", err)
 		}
 	}
 }
@@ -930,7 +930,7 @@ func (cs *ConsensusState) defaultDoPrevote(height int, round int) {
 	err := cs.state.ValidateBlock(cs.ProposalBlock)
 	if err != nil {
 		// ProposalBlock is invalid, prevote nil.
-		cs.Logger.Error("enterPrevote: ProposalBlock is invalid", "error", err)
+		cs.Logger.Error("enterPrevote: ProposalBlock is invalid", "err", err)
 		cs.signAddVote(types.VoteTypePrevote, nil, types.PartSetHeader{})
 		return
 	}
@@ -1218,7 +1218,7 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	// NOTE: the block.AppHash wont reflect these txs until the next block
 	err := stateCopy.ApplyBlock(eventCache, cs.proxyAppConn, block, blockParts.Header(), cs.mempool)
 	if err != nil {
-		cs.Logger.Error("Error on ApplyBlock. Did the application crash? Please restart tendermint", "error", err)
+		cs.Logger.Error("Error on ApplyBlock. Did the application crash? Please restart tendermint", "err", err)
 		return
 	}
 
@@ -1350,7 +1350,7 @@ func (cs *ConsensusState) tryAddVote(vote *types.Vote, peerKey string) error {
 			return err
 		} else {
 			// Probably an invalid signature. Bad peer.
-			cs.Logger.Error("Error attempting to add vote", "error", err)
+			cs.Logger.Error("Error attempting to add vote", "err", err)
 			return ErrAddingVote
 		}
 	}
@@ -1491,11 +1491,11 @@ func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header types.Part
 	vote, err := cs.signVote(type_, hash, header)
 	if err == nil {
 		cs.sendInternalMessage(msgInfo{&VoteMessage{vote}, ""})
-		cs.Logger.Info("Signed and pushed vote", "height", cs.Height, "round", cs.Round, "vote", vote, "error", err)
+		cs.Logger.Info("Signed and pushed vote", "height", cs.Height, "round", cs.Round, "vote", vote, "err", err)
 		return vote
 	} else {
 		//if !cs.replayMode {
-		cs.Logger.Error("Error signing vote", "height", cs.Height, "round", cs.Round, "vote", vote, "error", err)
+		cs.Logger.Error("Error signing vote", "height", cs.Height, "round", cs.Round, "vote", vote, "err", err)
 		//}
 		return nil
 	}

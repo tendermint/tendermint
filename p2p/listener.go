@@ -171,13 +171,13 @@ func getUPNPExternalAddress(externalPort, internalPort int, logger log.Logger) *
 	logger.Info("Getting UPNP external address")
 	nat, err := upnp.Discover()
 	if err != nil {
-		logger.Info("Could not perform UPNP discover", "error", err)
+		logger.Info("Could not perform UPNP discover", "err", err)
 		return nil
 	}
 
 	ext, err := nat.GetExternalAddress()
 	if err != nil {
-		logger.Info("Could not get UPNP external address", "error", err)
+		logger.Info("Could not get UPNP external address", "err", err)
 		return nil
 	}
 
@@ -188,7 +188,7 @@ func getUPNPExternalAddress(externalPort, internalPort int, logger log.Logger) *
 
 	externalPort, err = nat.AddPortMapping("tcp", externalPort, internalPort, "tendermint", 0)
 	if err != nil {
-		logger.Info("Could not add UPNP port mapping", "error", err)
+		logger.Info("Could not add UPNP port mapping", "err", err)
 		return nil
 	}
 

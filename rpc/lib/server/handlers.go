@@ -534,18 +534,18 @@ func (wsc *wsConnection) writeRoutine() {
 		case <-wsc.pingTicker.C:
 			err := wsc.baseConn.WriteMessage(websocket.PingMessage, []byte{})
 			if err != nil {
-				wsc.Logger.Error("Failed to write ping message on websocket", "error", err)
+				wsc.Logger.Error("Failed to write ping message on websocket", "err", err)
 				wsc.Stop()
 				return
 			}
 		case msg := <-wsc.writeChan:
 			jsonBytes, err := json.MarshalIndent(msg, "", "  ")
 			if err != nil {
-				wsc.Logger.Error("Failed to marshal RPCResponse to JSON", "error", err)
+				wsc.Logger.Error("Failed to marshal RPCResponse to JSON", "err", err)
 			} else {
 				wsc.baseConn.SetWriteDeadline(time.Now().Add(time.Second * wsWriteTimeoutSeconds))
 				if err = wsc.baseConn.WriteMessage(websocket.TextMessage, jsonBytes); err != nil {
-					wsc.Logger.Error("Failed to write response on websocket", "error", err)
+					wsc.Logger.Error("Failed to write response on websocket", "err", err)
 					wsc.Stop()
 					return
 				}
@@ -591,7 +591,7 @@ func (wm *WebsocketManager) WebsocketHandler(w http.ResponseWriter, r *http.Requ
 	wsConn, err := wm.Upgrade(w, r, nil)
 	if err != nil {
 		// TODO - return http error
-		wm.logger.Error("Failed to upgrade to websocket connection", "error", err)
+		wm.logger.Error("Failed to upgrade to websocket connection", "err", err)
 		return
 	}
 

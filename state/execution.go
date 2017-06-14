@@ -85,7 +85,7 @@ func execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn proxy.AppConnCo
 	// Begin block
 	err := proxyAppConn.BeginBlockSync(block.Hash(), types.TM2PB.Header(block.Header))
 	if err != nil {
-		logger.Error("Error in proxyAppConn.BeginBlock", "error", err)
+		logger.Error("Error in proxyAppConn.BeginBlock", "err", err)
 		return nil, err
 	}
 
@@ -100,7 +100,7 @@ func execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn proxy.AppConnCo
 	// End block
 	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(uint64(block.Height))
 	if err != nil {
-		logger.Error("Error in proxyAppConn.EndBlock", "error", err)
+		logger.Error("Error in proxyAppConn.EndBlock", "err", err)
 		return nil, err
 	}
 
@@ -252,7 +252,7 @@ func (s *State) CommitStateUpdateMempool(proxyAppConn proxy.AppConnConsensus, bl
 	// Commit block, get hash back
 	res := proxyAppConn.CommitSync()
 	if res.IsErr() {
-		s.logger.Error("Error in proxyAppConn.CommitSync", "error", res)
+		s.logger.Error("Error in proxyAppConn.CommitSync", "err", res)
 		return res
 	}
 	if res.Log != "" {
@@ -298,7 +298,7 @@ func ExecCommitBlock(appConnConsensus proxy.AppConnConsensus, block *types.Block
 	// Commit block, get hash back
 	res := appConnConsensus.CommitSync()
 	if res.IsErr() {
-		logger.Error("Error in proxyAppConn.CommitSync", "error", res)
+		logger.Error("Error in proxyAppConn.CommitSync", "err", res)
 		return nil, res
 	}
 	if res.Log != "" {

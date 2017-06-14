@@ -340,7 +340,7 @@ func (a *AddrBook) saveToFile(filePath string) {
 	}
 	err = cmn.WriteFileAtomic(filePath, jsonBytes, 0644)
 	if err != nil {
-		a.Logger.Error("Failed to save AddrBook to file", "file", filePath, "error", err)
+		a.Logger.Error("Failed to save AddrBook to file", "file", filePath, "err", err)
 	}
 }
 
