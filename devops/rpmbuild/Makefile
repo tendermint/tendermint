@@ -19,9 +19,12 @@ endif
 endif
 gpg_check := $(shell gpg -K | grep '/$(gpg_key) ' | sed 's,^.*/\($(gpg_key)\) .*$$,\1,')
 ifneq ($(gpg_check),$(gpg_key))
-$(error GPG key not found. Add key ID $(gpg_key) to gpg-agent)
+$(error GPG key $(gpg_key) not found.)
 else
 $(info GPG key $(gpg_key) found)
+endif
+ifndef GPG_PASSPHRASE
+$(error GPG_PASSPHRASE not set)
 endif
 endif
 
@@ -70,15 +73,18 @@ prepare-spec-%: $(GOPATH)/bin/%
 
 package-tendermint: prepare-spec-tendermint
 	$(info Packaging tendermint version $(tendermint_version))
-	rpmbuild -bb SPECS/tendermint.spec --sign
+	rpmbuild -bb SPECS/tendermint.spec
+	./sign RPMS/x86_64/tendermint-$(tendermint_version)-$$BUILD_NUMBER.x86_64.rpm
 
 package-basecoin: prepare-spec-basecoin
 	$(info Packaging basecoin version $(basecoin_version))
-	rpmbuild -bb SPECS/basecoin.spec --sign
+	rpmbuild -bb SPECS/basecoin.spec
+	./sign RPMS/x86_64/basecoin-$(basecoin_version)-$$BUILD_NUMBER.x86_64.rpm
 
 package-ethermint: prepare-spec-ethermint ;
 	$(info Packaging ethermint version $(ethermint_version))
-	rpmbuild -bb SPECS/ethermint.spec --sign
+	rpmbuild -bb SPECS/ethermint.spec
+	./sign RPMS/x86_64/ethermint-$(ethermint_version)-$$BUILD_NUMBER.x86_64.rpm
 
 install-%:
 #Make sure your host has the IAM role to read/write the S3 bucket OR that you set up ~/.boto
@@ -90,7 +96,8 @@ install-%:
 	cp ./tendermint-dev.repo tmp/s3/7/cr/x86_64/
 	createrepo tmp/s3/7/cr/x86_64/Packages -u http://tendermint-packages.s3-website-us-west-1.amazonaws.com/centos/7/cr/x86_64/Packages -o tmp/s3/7/cr/x86_64 --update -S --repo Tendermint --content tendermint --content basecoin --content ethermint
 	#Asks about overwrite
-	gpg --clearsign tmp/s3/7/cr/x86_64/repodata/repomd.xml
+#TODO: make this more secure
+	gpg --batch --passphrase "$(GPG_PASSPHRASE)" --clearsign tmp/s3/7/cr/x86_64/repodata/repomd.xml
 	aws s3 sync tmp/s3/ s3://tendermint-packages/centos/ --acl public-read
 
 mostlyclean:

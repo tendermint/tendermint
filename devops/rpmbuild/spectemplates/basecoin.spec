@@ -32,13 +32,13 @@ cd %{name}-%{version}
 
 %{__cp} $GOPATH/bin/%{name} $GOPATH/bin/basecli .%{_bindir}
 %{__cp} $GOPATH/src/github.com/tendermint/%{name}/LICENSE .%{_defaultlicensedir}/%{name}
-%{__cp} extrafiles/%{name}/genesis.json .%{_sysconfdir}/%{name}/genesis.json
-%{__cp} extrafiles/%{name}/tendermint-config.toml .%{_sysconfdir}/%{name}/tendermint/config.toml
-%{__cp} extrafiles/%{name}/%{name}.service .%{_sysconfdir}/systemd/system/%{name}.service
-%{__cp} extrafiles/%{name}/%{name}-server.service .%{_sysconfdir}/systemd/system/%{name}-server.service
-%{__cp} extrafiles/%{name}/50-%{name}.preset .%{_sysconfdir}/systemd/system-preset/50-%{name}.preset
-%{__cp} extrafiles/%{name}/key.json .%{_datadir}/%{name}/key.json
-%{__cp} extrafiles/%{name}/key2.json .%{_datadir}/%{name}/key2.json
+%{__cp} %{_topdir}/extrafiles/%{name}/genesis.json .%{_sysconfdir}/%{name}/genesis.json
+%{__cp} %{_topdir}/extrafiles/%{name}/tendermint-config.toml .%{_sysconfdir}/%{name}/tendermint/config.toml
+%{__cp} %{_topdir}/extrafiles/%{name}/%{name}.service .%{_sysconfdir}/systemd/system/%{name}.service
+%{__cp} %{_topdir}/extrafiles/%{name}/%{name}-server.service .%{_sysconfdir}/systemd/system/%{name}-server.service
+%{__cp} %{_topdir}/extrafiles/%{name}/50-%{name}.preset .%{_sysconfdir}/systemd/system-preset/50-%{name}.preset
+%{__cp} %{_topdir}/extrafiles/%{name}/key.json .%{_datadir}/%{name}/key.json
+%{__cp} %{_topdir}/extrafiles/%{name}/key2.json .%{_datadir}/%{name}/key2.json
 
 %{__chmod} -Rf a+rX,u+w,g-w,o-w .
 

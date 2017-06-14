@@ -26,16 +26,16 @@ test -d "$GOPATH"
 %{__mkdir_p} %{name}-%{version}
 cd %{name}-%{version}
 
-%{__mkdir_p} .%{_bindir} .%{_defaultlicensedir}/%{name} .%{_sysconfdir}/%{name}/tendermint .%{_datadir}/%{name} .%{_sysconfdir}/systemd/system .%{_sysconfdir}/systemd/system-preset
+%{__mkdir_p} .%{_bindir} .%{_defaultlicensedir}/%{name} .%{_sysconfdir}/%{name}/tendermint .%{_sysconfdir}/systemd/system .%{_sysconfdir}/systemd/system-preset
 
 %{__cp} $GOPATH/bin/%{name} .%{_bindir}
 %{__cp} $GOPATH/src/github.com/tendermint/%{name}/LICENSE .%{_defaultlicensedir}/%{name}
 %{__cp} $GOPATH/src/github.com/tendermint/%{name}/dev/genesis.json .%{_sysconfdir}/%{name}/genesis.json
 %{__cp} -r $GOPATH/src/github.com/tendermint/%{name}/dev/keystore .%{_sysconfdir}/%{name}
-%{__cp} extrafiles/%{name}/tendermint-config.toml .%{_sysconfdir}/%{name}/tendermint/config.toml
-%{__cp} extrafiles/%{name}/%{name}.service .%{_sysconfdir}/systemd/system/%{name}.service
-%{__cp} extrafiles/%{name}/%{name}-server.service .%{_sysconfdir}/systemd/system/%{name}-server.service
-%{__cp} extrafiles/%{name}/50-%{name}.preset .%{_sysconfdir}/systemd/system-preset/50-%{name}.preset
+%{__cp} %{_topdir}/extrafiles/%{name}/tendermint-config.toml .%{_sysconfdir}/%{name}/tendermint/config.toml
+%{__cp} %{_topdir}/extrafiles/%{name}/%{name}.service .%{_sysconfdir}/systemd/system/%{name}.service
+%{__cp} %{_topdir}/extrafiles/%{name}/%{name}-server.service .%{_sysconfdir}/systemd/system/%{name}-server.service
+%{__cp} %{_topdir}/extrafiles/%{name}/50-%{name}.preset .%{_sysconfdir}/systemd/system-preset/50-%{name}.preset
 
 %{__chmod} -Rf a+rX,u+w,g-w,o-w .
 
@@ -87,8 +87,6 @@ systemctl daemon-reload
 %{_bindir}/*
 %{_sysconfdir}/systemd/system/*
 %{_sysconfdir}/systemd/system-preset/*
-%dir %{_datadir}/%{name}
-%{_datadir}/%{name}/*
 %dir %{_defaultlicensedir}/%{name}
 %doc %{_defaultlicensedir}/%{name}/LICENSE
 
