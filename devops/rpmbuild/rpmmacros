@@ -1,5 +1,5 @@
-%_topdir %(echo $HOME)/rpmbuild
-%_tmppath %(echo $HOME)/rpmbuild/tmp
+%_topdir %(echo $WORKSPACE)/tools/devops/rpmbuild
+%_tmppath %(echo $WORKSPACE)/tools/devops/rpmbuild/tmp
 %_signature gpg
 %_gpg_name 2122CBE9
 %_gpgbin /usr/bin/gpg
