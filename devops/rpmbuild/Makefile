@@ -100,7 +100,7 @@ install-%:
 	cp ./tendermint.repo tmp/s3/7/os/x86_64/
 	cp ./tendermint-dev.repo tmp/s3/7/cr/x86_64/
 	createrepo tmp/s3/7/cr/x86_64/Packages -u http://tendermint-packages.s3-website-us-west-1.amazonaws.com/centos/7/cr/x86_64/Packages -o tmp/s3/7/cr/x86_64 --update -S --repo Tendermint --content tendermint --content basecoin --content ethermint
-	#Asks about overwrite
+	rm -f tmp/s3/7/cr/x86_64/repodata/repomd.xml.asc
 #TODO: make this more secure
 	gpg --batch --passphrase "$(GPG_PASSPHRASE)" --clearsign tmp/s3/7/cr/x86_64/repodata/repomd.xml
 	aws s3 sync tmp/s3/ s3://tendermint-packages/centos/ --acl public-read
