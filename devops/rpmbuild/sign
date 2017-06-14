@@ -20,4 +20,5 @@ expect {
   "Pass phrase is good."
 }
 interact
+sleep 3
 
