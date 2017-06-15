@@ -64,40 +64,46 @@ func TestSetupConfig(t *testing.T) {
 	cval1, cval2 := "fubble", "wubble"
 	conf1, err := WriteDemoConfig(map[string]string{"boo": cval1})
 	require.Nil(err)
-	// even with some ignored fields, should be no problem
-	conf2, err := WriteDemoConfig(map[string]string{"boo": cval2, "foo": "bar"})
+	// make sure it handles dashed-words in the config, and ignores random info
+	conf2, err := WriteDemoConfig(map[string]string{"boo": cval2, "foo": "bar", "two-words": "WORD"})
 	require.Nil(err)
 
 	cases := []struct {
-		args     []string
-		env      map[string]string
-		expected string
+		args        []string
+		env         map[string]string
+		expected    string
+		expectedTwo string
 	}{
-		{nil, nil, ""},
+		{nil, nil, "", ""},
 		// setting on the command line
-		{[]string{"--boo", "haha"}, nil, "haha"},
-		{[]string{"--root", conf1}, nil, cval1},
+		{[]string{"--boo", "haha"}, nil, "haha", ""},
+		{[]string{"--two-words", "rocks"}, nil, "", "rocks"},
+		{[]string{"--root", conf1}, nil, cval1, ""},
 		// test both variants of the prefix
-		{nil, map[string]string{"RD_BOO": "bang"}, "bang"},
-		{nil, map[string]string{"RD_ROOT": conf1}, cval1},
-		{nil, map[string]string{"RDROOT": conf2}, cval2},
-		{nil, map[string]string{"RDHOME": conf1}, cval1},
+		{nil, map[string]string{"RD_BOO": "bang"}, "bang", ""},
+		{nil, map[string]string{"RD_TWO_WORDS": "fly"}, "", "fly"},
+		{nil, map[string]string{"RDTWO_WORDS": "fly"}, "", "fly"},
+		{nil, map[string]string{"RD_ROOT": conf1}, cval1, ""},
+		{nil, map[string]string{"RDROOT": conf2}, cval2, "WORD"},
+		{nil, map[string]string{"RDHOME": conf1}, cval1, ""},
 		// and when both are set??? HOME wins every time!
-		{[]string{"--root", conf1}, map[string]string{"RDHOME": conf2}, cval2},
+		{[]string{"--root", conf1}, map[string]string{"RDHOME": conf2}, cval2, "WORD"},
 	}
 
 	for idx, tc := range cases {
 		i := strconv.Itoa(idx)
 		// test command that store value of foobar in local variable
-		var foo string
+		var foo, two string
 		boo := &cobra.Command{
 			Use: "reader",
 			RunE: func(cmd *cobra.Command, args []string) error {
 				foo = viper.GetString("boo")
+				two = viper.GetString("two-words")
 				return nil
 			},
 		}
 		boo.Flags().String("boo", "", "Some test value from config")
+		boo.Flags().String("two-words", "", "Check out env handling -")
 		cmd := PrepareBaseCmd(boo, "RD", "/qwerty/asdfgh") // some missing dir...
 		cmd.Exit = func(int) {}
 
@@ -106,6 +112,7 @@ func TestSetupConfig(t *testing.T) {
 		err := RunWithArgs(cmd, args, tc.env)
 		require.Nil(err, i)
 		assert.Equal(tc.expected, foo, i)
+		assert.Equal(tc.expectedTwo, two, i)
 	}
 }
 

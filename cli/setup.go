@@ -58,7 +58,7 @@ func initEnv(prefix string) {
 
 	// env variables with TM prefix (eg. TM_ROOT)
 	viper.SetEnvPrefix(prefix)
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
 	viper.AutomaticEnv()
 }
 
