@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.2.2 (June 16, 2017)
+
+FEATURES:
+
+- [common] IsHex and StripHex for handling `0x` prefixed hex strings
+- [log] NewTracingLogger returns a logger that output error traces, ala `github.com/pkg/errors`
+
+IMPROVEMENTS:
+
+- [cli] Error handling for tests
+- [cli] Support dashes in ENV variables 
+
+BUG FIXES:
+
+- [flowrate] Fix non-deterministic test failures
+
+
 ## 0.2.1 (June 2, 2017)
 
 FEATURES:
