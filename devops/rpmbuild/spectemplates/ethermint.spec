@@ -69,12 +69,16 @@ EOF
 %{__chown} %{name}.%{name} %{_sysconfdir}/%{name}/tendermint/genesis.json
 systemctl daemon-reload
 systemctl enable %{name}
+if [ -d /etc/%{name}/tendermint/data ]; then
+  service %{name} start
+fi
 
 %preun
 systemctl stop %{name} 2> /dev/null || :
 systemctl stop %{name}-service 2> /dev/null || :
 
 %postun
+#userdel %{name}
 systemctl daemon-reload
 
 %files

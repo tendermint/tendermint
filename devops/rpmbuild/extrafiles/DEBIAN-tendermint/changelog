@@ -1,4 +1,4 @@
-tendermint (@TENDERMINT_VERSION@) @STABILITY@; urgency=medium
+tendermint (@VERSION@) @STABILITY@; urgency=medium
 
   * Automatic build. See https://github.com/tendermint/tendermint for more information.
 

@@ -1,29 +1,14 @@
-Format: 3.0 (native)
 Source: tendermint
-Binary: tendermint
-Architecture: amd64
-Version: @TENDERMINTVERSION@
+Section: net
+Priority: optional
 Maintainer: Greg Szabo <greg@philosobear.com>
-Standards-Version: 3.9.6
-Vcs-Browser: http://svn.debian.org/wsvn/pkg-apache/trunk/ssl-cert
-Vcs-Svn: svn://svn.debian.org/pkg-apache/trunk/ssl-cert
 Build-Depends: debhelper (>=9)
-Checksums-Sha1: 
- a108d8df792554ed7be41a9aaa317bada441f216 22697 ssl-cert_1.0.28.tar.gz
-Checksums-Sha256: 
- 464dabcf44d72d7e1ecdf1ffa8d0641694e6375704097d5e8ba04f3242e83d5e 22697 ssl-cert_1.0.28.tar.gz
-Files: 
- 4377beded7717321f9f75cfd12057dac 22697 ssl-cert_1.0.28.tar.gz
-
+Standards-Version: 3.9.6
+Homepage: https://tendermint.com
 Package: tendermint
 Architecture: amd64
-Version: @TENDERMINT_VERSION@
+Version: @VERSION@
 Installed-Size: @INSTALLEDSIZE@
 Description: securely and consistently replicate an application on many machines
  Tendermint is software for securely and consistently replicating an application on many machines. By securely, we mean that Tendermint works even if up to 1/3 of machines fail in arbitrary ways. By consistently, we mean that every non-faulty machine sees the same transaction log and computes the same state.
-
-~
-~
-~
-~
 
