@@ -1,5 +1,11 @@
 # Changelog
 
+## Develop-Branch changes (unreleased)
+
+BREAKING CHANGES:
+
+- [run] NewBaseService takes the new logger
+
 ## 0.2.1 (June 2, 2017)
 
 FEATURES:

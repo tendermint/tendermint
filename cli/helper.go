@@ -68,21 +68,18 @@ func RunCaptureWithArgs(cmd Executable, args []string, env map[string]string) (s
 	}()
 
 	// copy the output in a separate goroutine so printing can't block indefinitely
-	outC := make(chan string)
-	go func() {
-		var buf bytes.Buffer
-		// io.Copy will end when we call wOut.Close() below
-		io.Copy(&buf, rOut)
-		outC <- buf.String()
-	}()
-
-	errC := make(chan string)
-	go func() {
-		var buf bytes.Buffer
-		// io.Copy will end when we call wErr.Close() below
-		io.Copy(&buf, rErr)
-		errC <- buf.String()
-	}()
+	copyStd := func(reader *os.File) *(chan string) {
+		stdC := make(chan string)
+		go func() {
+			var buf bytes.Buffer
+			// io.Copy will end when we call reader.Close() below
+			io.Copy(&buf, *reader)
+			stdC <- buf.String()
+		}()
+		return stdC
+	}
+	outC := copyStd(&rOut)
+	errC := copyStd(&rErr)
 
 	// now run the command
 	err = RunWithArgs(cmd, args, env)
