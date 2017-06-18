@@ -5,66 +5,37 @@
 
 ## This file shows and sets the global defaults for the role variables.
 
-## tendermint_release_install indicates if the install-tendermint role should install a release version or a private build of the tendermint app
 ##
-#tendermint_release_install: true
+## install
+##
 
-## tendermint_download stores the link to the specific tendermint release to install
-##
-#tendermint_download: "https://s3-us-west-2.amazonaws.com/tendermint/binaries/tendermint/v0.10.0/tendermint_0.10.0_linux_amd64.zip"
+## service variable defines which service is going to be managed. It can be set to basecoin or ethermint.
+service: basecoin
 
-## tendermint_binary stores the path to a private tendermint binary to install
-##
-#tendermint_binary: "{{ lookup('env','GOPATH') | default('') }}/bin/tendermint"
+## release_install indicates if the install role should look for a privately built binary after installing the service package. If set to false, the privately built binary in the GOPATH is going to override the binary on the target systems.
+#release_install: true
 
-## Details of the linux user the tendermint app uses
-##
-#tendermint_user: tendermint
-#tendermint_group: tendermint
-#tendermint_home: /etc/tendermint
+## binary stores the path to the privately built service binary, if there is any. By default it uses the GOPATH environment variable.
+#binary: "{{ lookup('env','GOPATH') | default('') }}/bin/{{service}}"
 
-## tendermint_log_file stores the path to the tendermint application log
 ##
-#tendermint_log_file: /var/log/tendermint.log
+## config
+##
 
-## tendermint_genesis_file contains the path and filename to a previously generated genesis.json. If undefined, the json file is dynamically generated.
-##
+## tendermint_genesis_file contains the path and filename to a previously generated genesis.json for the underlying tendermint service. If undefined, the json file is dynamically generated.
 #tendermint_genesis_file: "<undefined>"
 
-###
-### Basecoin installation
-###
+## service_genesis_file contains the path and filename to a previously generated genesis.json for the service. If undefined, the json file is dynamically generated.
+#service_genesis_file: "<undefined>"
 
-## basecoin_release_install indicates if the install-basecoin role should install a release version or a private build of the basecoin app
-##
-#basecoin_release_install: true
-
-## basecoin_download stores the link to the specific basecoin release to install
-##
-#basecoin_download: "https://s3-us-west-2.amazonaws.com/tendermint/binaries/basecoin/v0.5.2/basecoin_0.5.2_linux_amd64.zip"
-
-## basecoin_binary stores the path to a private basecoin binary to install
-##
-#basecoin_binary: "{{ lookup('env','GOPATH') | default('') }}/bin/basecoin"
-
-## Details of the linux user the basecoin app uses
-##
-#basecoin_user: tendermint
-#basecoin_group: tendermint
-#basecoin_home: /etc/tendermint
-
-## basecoin_log_file stores the path to the basecoin application log
-##
-#basecoin_log_file: /var/log/basecoin.log
-
-###
-### Development settings
-###
-
-## Used by the config role to find seed IPs and public keys and set the chain_id in genesis.json and config.toml
-##
+## testnet_name is used to find seed IPs and public keys and set the chain_id in genesis.json and config.toml
 #testnet_name: testnet1
 
-## app_options_file contains a path and filename which will be included in a generated genesis.json file on all nodes. The content will be dumped into the app_options dictionary.
+## app_options_file contains a path and filename which will be included in a generated service genesis.json file on all nodes. The content will be dumped into the app_options dictionary in the service genesis.json..
 #app_options_file: "app_options_files/dev_money"
 
+## validators indicates if the nodes are validator nodes. The tendermint genesis.json will contain their public keys.
+#validators: true
+
+## seeds contain the list of servers (with ports) that are validators in a testnet. Only effective if validators == false. If validators == true, then all nodes will be automatically included here.
+#seeds: ""

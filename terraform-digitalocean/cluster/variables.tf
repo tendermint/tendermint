@@ -4,7 +4,7 @@ variable "name" {
 
 variable "image_id" {
   description = "Image ID"
-  default = "ubuntu-14-04-x64"
+  default = "ubuntu-16-04-x64"
 }
 
 variable "regions" {

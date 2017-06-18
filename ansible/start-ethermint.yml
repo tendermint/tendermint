@@ -1,7 +1,0 @@
----
-
-- hosts: "{{ lookup('env','TF_VAR_TESTNET_NAME') }}"
-  roles:
-    - { role: start, service: "ethermint" }
-    - { role: start, service: "tendermint" }
-

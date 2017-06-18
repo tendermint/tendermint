@@ -1,41 +1,44 @@
 ---
 
-- name: generate tendermint keys
-  shell: "tendermint gen_validator > {{tendermint_home}}/priv_validator.json"
-  args:
-    warn: no
-    creates: "{{tendermint_home}}/priv_validator.json"
-
-- name: secure priv_validator.json
-  file: "path={{tendermint_home}}/priv_validator.json mode=0400 owner={{tendermint_user}} group={{tendermint_group}}"
-
 - name: gather tendermint public keys
-  when: tendermint_genesis_file is not defined
-  command: "jq '.pub_key | .data' {{tendermint_home}}/priv_validator.json"
+  when: validators == true and tendermint_genesis_file is not defined
+  command: "jq '.pub_key | .data' /etc/{{service}}/tendermint/priv_validator.json"
   register: pubkeys
   changed_when: false
 
 - name: register tendermint public keys as host facts
-  when: tendermint_genesis_file is not defined
+  when: validators == true and tendermint_genesis_file is not defined
   set_fact: "pubkey={{pubkeys.stdout_lines[0]}}"
   connection: local
 
 - name: copy generated tendermint genesis.json - genesis_time will be updated
   when: tendermint_genesis_file is not defined
   template:
-    src: genesis.json.j2
-    dest: "{{tendermint_home}}/genesis.json"
-    owner: "{{tendermint_user}}"
-    group: "{{tendermint_group}}"
+    src: genesis-server.json.j2
+    dest: "/etc/{{service}}/tendermint/genesis.json"
+    owner: "{{service}}"
+    group: "{{service}}"
 
-- name: copy pre-created genesis.json
+- name: copy generated service genesis.json - genesis_time will be updated
+  when: service_genesis_file is not defined
+  template:
+    src: genesis-service.json.j2
+    dest: "/etc/{{service}}/genesis.json"
+    owner: "{{service}}"
+    group: "{{service}}"
+
+- name: copy pre-created tendermint genesis.json
   when: tendermint_genesis_file is defined
-  copy: "src={{tendermint_genesis_file}} dest={{tendermint_home}}/genesis.json owner={{tendermint_user}} group={{tendermint_group}}"
+  copy: "src={{tendermint_genesis_file}} dest=/etc/{{service}}/tendermint/genesis.json owner={{service}} group={{service}}"
+
+- name: copy pre-created service genesis.json
+  when: service_genesis_file is defined
+  copy: "src={{service_genesis_file}} dest=/etc/{{service}}/genesis.json owner={{service}} group={{service}}"
 
 - name: copy tendermint config.toml
   template:
     src: config.toml.j2
-    dest: "{{tendermint_home}}/config.toml"
-    owner: "{{tendermint_user}}"
-    group: "{{tendermint_group}}"
+    dest: "/etc/{{service}}/tendermint/config.toml"
+    owner: "{{service}}"
+    group: "{{service}}"
 

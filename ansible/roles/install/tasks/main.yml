@@ -1,0 +1,14 @@
+---
+- include: debian.yml
+  when: ansible_os_family == "Debian"
+
+- include: centos.yml
+  when: ansible_os_family == "RedHat"
+
+- name: copy compiled binary
+  when: not release_install|bool
+  copy:
+    src: "{{binary}}"
+    dest: /usr/local/bin
+    mode: 0755
+

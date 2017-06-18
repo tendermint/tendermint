@@ -30,7 +30,7 @@ variable "servers" {
 
 variable "image" {
   description = "DigitalOcean image name"
-  default = "ubuntu-14-04-x64"
+  default = "ubuntu-16-04-x64"
 }
 
 variable "noroot" {

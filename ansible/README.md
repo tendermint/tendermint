@@ -1,18 +1,15 @@
-# Ansible playbook for Tendermint
+# Ansible playbook for Tendermint applications
 
 ![Ansible plus Tendermint](img/a_plus_t.png)
 
 * [Prerequisites](#Prerequisites)
 * [Ansible setup](#Ansible setup)
 * [Running the playbook](#Running the playbook)
-* [Example playbook that configures a Tendermint on Ubuntu](#example-playbook-that-configures-a-tendermint-on-ubuntu)
 
 The playbooks in this folder run [ansible](http://www.ansible.com/) roles which:
 
-* install tendermint
-* install basecoin
-* configure tendermint and basecoin
-* start/stop tendermint and basecoin and reset their configuration
+* install and configure basecoin or ethermint
+* start/stop basecoin or ethermint and reset their configuration
 
 ## Prerequisites
 
@@ -23,7 +20,7 @@ Optional for DigitalOcean droplets:
 * DigitalOcean API Token
 * python dopy package
 
-Head over to the [Terraform folder](https://github.com/tendermint/tools) for a description on how to get a DigitalOcean API Token.
+Head over to the [Terraform folder](https://github.com/tendermint/tools/tree/master/terraform-digitalocean) for a description on how to get a DigitalOcean API Token.
 
 Optional for Amazon AWS instances:
 * Amazon AWS API access key ID and secret access key.
@@ -32,7 +29,7 @@ The cloud inventory scripts come from the ansible team at their [GitHub](https:/
 
 ## Ansible setup
 
-Ansible requires a "command machine" or "local machine" or "orchestrator machine" to run on. This can be your laptop or any machine that runs linux. (It does not have to be part of the cloud network that hosts your servers.)
+Ansible requires a "command machine" or "local machine" or "orchestrator machine" to run on. This can be your laptop or any machine that can run ansible. (It does not have to be part of the cloud network that hosts your servers.)
 
 Use the official [Ansible installation guide](http://docs.ansible.com/ansible/intro_installation.html) to install Ansible. Here are a few examples on basic installation commands:
 
@@ -135,13 +132,13 @@ If the playbook cannot connect to the servers because of public key denial, your
 
 If you need to connect to the nodes as root but your local username is different, use the ansible option `-u root` to tell ansible to connect to the servers and authenticate as the root user.
 
-If you secured your server and you need to `sudo` for root access, use the the `-b` or `--become` option to tell ansible to sudo to root after connecting to the server. In the Terraform-DigitalOcean example, if you created the ec2-user (or if you are simply on Amazon AWS), you need to add the options `-u ec2-user -b` to ansible to tell it to connect as the ec2-user and then sudo to root to run the playbook.
+If you secured your server and you need to `sudo` for root access, use the the `-b` or `--become` option to tell ansible to sudo to root after connecting to the server. In the Terraform-DigitalOcean example, if you created the ec2-user by adding the `noroot=true` option (or if you are simply on Amazon AWS), you need to add the options `-u ec2-user -b` to ansible to tell it to connect as the ec2-user and then sudo to root to run the playbook.
 
 ### DigitalOcean
 ```
 DO_API_TOKEN="<The API token received from DigitalOcean>"
 TF_VAR_TESTNET_NAME="testnet-servers"
-ansible-playbook -i inventory/digital_ocean.py install-basecoin.yml
+ansible-playbook -i inventory/digital_ocean.py install.yml -e service=basecoin
 ```
 
 ### Amazon AWS
@@ -149,22 +146,20 @@ ansible-playbook -i inventory/digital_ocean.py install-basecoin.yml
 AWS_ACCESS_KEY_ID='<The API access key ID received from Amazon>'
 AWS_SECRET_ACCESS_KEY='<The API secret access key received from Amazon>'
 TF_VAR_TESTNET_NAME="testnet-servers"
-ansible-playbook -i inventory/ec2.py install-basecoin.yml
+ansible-playbook -i inventory/ec2.py install.yml -e service=basecoin
 ```
 
 ### Installing custom versions
 
-By default ansible installs the tendermint, basecoin or ethermint binary versions defined in its [default variables](#Default variables). If you build your own version of the binaries, you can tell ansible to install that instead.
+By default ansible installs the tendermint, basecoin or ethermint binary versions from the latest release in the repository. If you build your own version of the binaries, you can tell ansible to install that instead.
 
 ```
 GOPATH="<your go path>"
-go get -u github.com/tendermint/tendermint/cmd/tendermint
 go get -u github.com/tendermint/basecoin/cmd/basecoin
-go get -u github.com/tendermint/ethermint/cmd/basecoin
 
 DO_API_TOKEN="<The API token received from DigitalOcean>"
 TF_VAR_TESTNET_NAME="testnet-servers"
-ansible-playbook -i inventory/digital_ocean.py install-basecoin.yml -e tendermint_release_install=false -e basecoin_release_install=false
+ansible-playbook -i inventory/digital_ocean.py install.yml -e service=basecoin -e release_install=false
 ```
 
 Alternatively you can change the variable settings in `group_vars/all`.
@@ -173,25 +168,18 @@ Alternatively you can change the variable settings in `group_vars/all`.
 
 There are few extra playbooks to make life easier managing your servers.
 
-* install-tendermint-core.yml - Only install the tendermint application. This is only useful if you are developing your own ABCI.
-* install-basecoin.yml - Install tendermint and basecoin applications.
-* install-ethermint.yml - Install tendermint and ethermint applications.
+* install.yml - Install basecoin or ethermint applications. (Tendermint gets installed automatically.) Use the `service` parameter to define which application to install. Defaults to `basecoin`.
 * reset.yml - Stop the application, reset the configuration and data, then start the application again. You need to pass `-e service=<servicename>`, like `-e service=basecoin`. It will restart the underlying tendermint application too.
 * restart.yml - Restart a service on all nodes. You need to pass `-e service=<servicename>`, like `-e service=basecoin`. It will restart the underlying tendermint application too.
 * stop.yml - Stop the application. You need to pass `-e service=<servicename>`.
 * start.yml - Start the application. You need to pass `-e service=<servicename>`.
-* stop-basecoin.yml - Stop the basecoin and tendermint applications.
-* start-basecoin.yml - Start the basecoin and tendermint applications.
-* stop-ethermint.yml - Stop the ethermint and tendermint applications.
-* start-ethermint.yml - Start the ethermint and tendermint applications.
 
 The roles are self-sufficient under the `roles/` folder.
 
 * install-tendermint - install the tendermint application. It can install release packages or custom-compiled binaries.
-* install-basecoin - install the basecoin application. It can install release packages or custom-compiled binaries.
-* install-ethermint - install the ethermint application. It can install release packages or custom-compiled binaries.
-* cleanupdata - delete tendermint database.
-* config - configure the tendermint application
+* install - install the application defined in the `service` parameter. It can install release packages and update them with custom-compiled binaries.
+* rmdb - delete the tendermint database for a service.
+* config - configure the application defined in `service`. It also configures the underlying tendermint service. Check `group_vars/all` for options.
 * stop - stop an application. Requires the `service` parameter set.
 * start - start an application. Requires the `service` parameter set.
 

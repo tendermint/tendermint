@@ -3,6 +3,7 @@
   "chain_id":"{{testnet_name}}",
   "validators":
   [
+{% if validators == true %}
 {% set comma = joiner(",") %}
 {% for host in groups[testnet_name] %}
     {{ comma() }}
@@ -12,12 +13,9 @@
       "name":"{{hostvars[host]["ansible_hostname"]}}"
     }
 {% endfor %}
+{% endif %}
   ],
   "app_hash":"",
-  "app_options": {
-{% if app_options_file is defined %}
-{% include app_options_file %}
-{% endif %}
-  }
+  "app_options": {}
 }
 

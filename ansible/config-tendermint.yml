@@ -1,6 +1,0 @@
----
-
-- hosts: "{{ lookup('env','TF_VAR_TESTNET_NAME') }}"
-  roles:
-    - { role: config, testnet_name: "{{ lookup('env','TF_VAR_TESTNET_NAME') }}" }
-

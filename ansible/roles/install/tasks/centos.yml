@@ -1,0 +1,20 @@
+---
+- name: Add tendermint repository and key on CentOS/RedHat
+  when: ansible_os_family == "RedHat"
+  yum_repository:
+    name: tendermint
+    baseurl: repo.testnets.interblock.io/centos
+    ui_repoid_vars: 7 os x86_64
+    description: "Tendermint repo"
+    gpgcheck: yes
+    gpgkey: repo.testnets.interblock.io/centos/RPM-GPG-KEY-Tendermint
+    repo_gpgcheck: yes
+
+- name: Install package on CentOS/RedHat
+  when: ansible_os_family == "RedHat"
+  yum: pkg={{item}}
+  with_items:
+  - unzip
+  - jq
+  - {{service}}
+

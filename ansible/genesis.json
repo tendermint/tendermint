@@ -1,0 +1,153 @@
+{
+  "genesis_time":"2017-06-10T03:24:06Z",
+  "chain_id":"ball-n-chain",
+  "validators":
+  [
+    
+    {
+      "pub_key":{"type":"ed25519","data":"3D73A11D01B03F8A54694A2291B878123F25C7BFAD6B187ECF0CA059CB6F73C2"},
+      "amount":10,
+      "name":"ball-n-chain-node0"
+    }
+    ,
+    {
+      "pub_key":{"type":"ed25519","data":"5DD43295A0E05872A0CA80CA37D785FED64AF1F2140EB68C111BD114751B4EDB"},
+      "amount":10,
+      "name":"ball-n-chain-node6"
+    }
+    ,
+    {
+      "pub_key":{"type":"ed25519","data":"BDFEE13230E60EB2E3026C8DC158CC0AE29C857507C2B95EC2486B946ECDE6BF"},
+      "amount":10,
+      "name":"ball-n-chain-node4"
+    }
+    ,
+    {
+      "pub_key":{"type":"ed25519","data":"01763737DA0B4C09166DE5496F380665EEF85CDB747F143840BF7E0D1939489F"},
+      "amount":10,
+      "name":"ball-n-chain-node5"
+    }
+    ,
+    {
+      "pub_key":{"type":"ed25519","data":"F40236D218C48DA6EF02BA42D4978F4F7FBE62D068E733CCDE9446B42004A866"},
+      "amount":10,
+      "name":"ball-n-chain-node2"
+    }
+    ,
+    {
+      "pub_key":{"type":"ed25519","data":"93E0A170ADF8D0E6F94AA3C55A076A1574086EADFD7A19EA59911B043F1CE614"},
+      "amount":10,
+      "name":"ball-n-chain-node3"
+    }
+    ,
+    {
+      "pub_key":{"type":"ed25519","data":"3DE45E9B5BAF01F172E9C72C9876CFAB49AD6823320D0769868C12045E572C6B"},
+      "amount":10,
+      "name":"ball-n-chain-node1"
+    }
+  ],
+  "app_hash":"",
+  "app_options": {
+    "accounts": [
+      {
+        "name": "anton",
+        "address": "40CC622438D3E42148A1FFD3A27C07C100F8FA3D",
+        "pub_key": {
+          "type": "ed25519",
+          "data": "97BD389257763747488803DC686A8819C685936A3CD275D54EABEE51E0117EE6"
+        },
+        "coins": [
+          {
+            "denom": "anton",
+            "amount": 9007199254740992
+          },
+          {
+            "denom": "tank",
+            "amount": 99
+          }
+        ]
+      },
+      {
+        "name": "adrian",
+        "address": "98F28277FA8C512968BBDE443F5DB27AC743F814",
+        "pub_key": {
+          "type": "ed25519",
+          "data": "2E7EAB9E4C93D3657A63E063D6ABB851596BA97ED9F4EB9A2FC714043DC9685D"
+        },
+        "coins": [
+          {
+            "denom": "axi",
+            "amount": 1928936473812
+          },
+          {
+            "denom": "bear",
+            "amount": 42
+          }
+        ]
+      },
+      {
+        "name": "bucky",
+        "address": "2B24DEE2364762300168DF19B6C18BCE2D399EA2",
+        "pub_key": {
+          "type": "ed25519",
+          "data": "37BF9D6F8D66DC3FAECD330291CF08DF52E2F646B01F7E43BC0A746AED927A62"
+        },
+        "coins": [
+          {
+            "denom": "buckyball",
+            "amount": 20000000000
+          },
+          {
+            "denom": "bumblebee",
+            "amount": 100
+          },
+          {
+            "denom": "french",
+            "amount": 10
+          },
+          {
+            "denom": "frey",
+            "amount": 4838271727204
+          }
+        ]
+      },
+      {
+        "name": "phomer",
+        "address": "BAA67E0346AF48A05330149A3A72D9B974E9EBD2",
+        "pub_key": {
+          "type": "ed25519",
+          "data": "F5DF27FD625800D971A9E9B2607F0052480E49A12BE85E17336F773FE6FB9BC9"
+        },
+        "coins": [
+          {
+            "denom": "antipho",
+            "amount": 33
+          },
+          {
+            "denom": "pho",
+            "amount": 8367251830291
+          }
+        ]
+      },
+      {
+        "name": "shadow",
+        "address": "B140EFAAE6D5CA1C8E98814C557AF7112E3B9EAE",
+        "pub_key": {
+          "type": "ed25519",
+          "data": "F492282705DF29ACC3BB803D543B7BF98C8080FA28AE85B62B45827EA9DA8167"
+        },
+        "coins": [
+          {
+            "denom": "shadow",
+            "amount": 53712836452781
+          },
+          {
+            "denom": "unit",
+            "amount": 1
+          }
+        ]
+      }
+    ]
+  }
+}
+

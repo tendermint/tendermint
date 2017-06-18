@@ -1,9 +1,8 @@
 ---
-tendermint_user: tendermint
-tendermint_group: tendermint
-tendermint_home: /etc/tendermint
-
-#tendermint_genesis_file="<undefined>"
-#app_options_file="<undefined>"
+#tendermint_genesis_file: "<undefined>"
+#service_genesis_file: "<undefined>"
+app_options_file: "app_options_files/dev_money"
+seeds: ""
 testnet_name: testnet1
+validators: true
 

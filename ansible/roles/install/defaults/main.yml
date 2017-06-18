@@ -1,0 +1,4 @@
+---
+release_install: true
+binary: "{{ lookup('env','GOPATH') | default('') }}/bin/{{service}}"
+
