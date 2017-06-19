@@ -14,7 +14,6 @@
   when: ansible_os_family == "Debian"
   apt: pkg={{item}}
   with_items:
-  - unzip
   - jq
   - "{{service}}"
 
