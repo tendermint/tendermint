@@ -139,7 +139,7 @@ install-rpm-%: version-%
 	cp repofiles/tendermint.repo tmp/s3/7/os/x86_64/
 	rm -f tmp/s3/7/os/x86_64/repodata/*.bz2 tmp/s3/7/os/x86_64/repodata/*.gz tmp/s3/7/os/x86_64/repodata/repomd.xml.asc
 	createrepo tmp/s3/7/os/x86_64/Packages -u http://tendermint-packages.s3-website-us-west-1.amazonaws.com/centos/7/os/x86_64/Packages -o tmp/s3/7/os/x86_64 --update -S --repo Tendermint --content tendermint --content basecoin --content ethermint
-	gpg --batch --passphrase "$(GPG_PASSPHRASE)" --sign -a tmp/s3/7/os/x86_64/repodata/repomd.xml
+	gpg --batch --passphrase "$(GPG_PASSPHRASE)" --detach-sign -a tmp/s3/7/os/x86_64/repodata/repomd.xml
 	aws s3 sync tmp/s3/ s3://tendermint-packages/centos/ --delete --acl public-read
 	@echo "*** Uploaded $* to AWS CentOS repository"
 
