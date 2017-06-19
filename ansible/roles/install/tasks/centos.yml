@@ -3,7 +3,7 @@
   when: ansible_os_family == "RedHat"
   yum_repository:
     name: tendermint
-    baseurl: http://tendermint-packages.s3-website-us-west-1.amazonaws.com/centos
+    baseurl: http://tendermint-packages.s3-website-us-west-1.amazonaws.com/centos/7/os/x86_64
     description: "Tendermint repo"
     gpgcheck: yes
     gpgkey: http://tendermint-packages.s3-website-us-west-1.amazonaws.com/centos/RPM-GPG-KEY-Tendermint
