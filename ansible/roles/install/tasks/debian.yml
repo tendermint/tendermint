@@ -14,7 +14,8 @@
   when: ansible_os_family == "Debian"
   apt: pkg={{item}}
   with_items:
+  - python-minimal
   - unzip
   - jq
-  - {{service}}
+  - "{{service}}"
 

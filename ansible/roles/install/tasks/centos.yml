@@ -16,5 +16,5 @@
   with_items:
   - unzip
   - jq
-  - {{service}}
+  - "{{service}}"
 
