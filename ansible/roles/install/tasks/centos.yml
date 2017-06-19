@@ -26,7 +26,7 @@
     description: "Tendermint repo"
     gpgcheck: yes
     gpgkey: http://tendermint-packages.s3-website-us-west-1.amazonaws.com/centos/7/os/x86_64/RPM-GPG-KEY-Tendermint
-    repo_gpgcheck: yes
+#    repo_gpgcheck: yes
 
 - name: Install package on CentOS/RedHat
   when: ansible_os_family == "RedHat"
