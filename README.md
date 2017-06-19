@@ -27,6 +27,9 @@ For more background, see the [introduction](https://tendermint.com/intro).
 
 To get started developing applications, see the [application developers guide](https://tendermint.com/docs/guides/app-development).
 
+### Code of Conduct
+Please read, understand and adhere to our [code of conduct](CODE_OF_CONDUCT.md).
+
 ## Install
 
 To download pre-built binaries, see our [downloads page](https://tendermint.com/intro/getting-started/download).
