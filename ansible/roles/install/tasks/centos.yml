@@ -1,19 +1,25 @@
 ---
-- name: Add tendermint repository and key on CentOS/RedHat
+
+#Three commands to install a service on CentOS/RedHat
+#wget -O - http://tendermint-packages.s3-website-us-west-1.amazonaws.com/centos/7/os/x86_64/RPM-GPG-KEY-Tendermint | rpm --import -
+#wget -O /etc/yum.repos.d/tendermint.repo http://tendermint-packages.s3-website-us-west-1.amazonaws.com/centos/7/os/x86_64/tendermint.repo
+#yum update && yum install basecoin
+
+- name: Add repository key on CentOS/RedHat
+  when: ansible_os_family == "RedHat"
+  rpm_key: key=http://tendermint-packages.s3-website-us-west-1.amazonaws.com/centos/7/os/x86_64/RPM-GPG-KEY-Tendermint
+
+- name: Install tendermint repository on CentOS/RedHat
   when: ansible_os_family == "RedHat"
   yum_repository:
     name: tendermint
     baseurl: http://tendermint-packages.s3-website-us-west-1.amazonaws.com/centos/7/os/x86_64
     description: "Tendermint repo"
     gpgcheck: yes
-    gpgkey: http://tendermint-packages.s3-website-us-west-1.amazonaws.com/centos/RPM-GPG-KEY-Tendermint
+    gpgkey: http://tendermint-packages.s3-website-us-west-1.amazonaws.com/centos/7/os/x86_64/RPM-GPG-KEY-Tendermint
     repo_gpgcheck: yes
 
 - name: Install package on CentOS/RedHat
   when: ansible_os_family == "RedHat"
-  yum: pkg={{item}}
-  with_items:
-  - epel-release
-  - jq
-  - "{{service}}"
+  yum: "pkg={{service}}"
 

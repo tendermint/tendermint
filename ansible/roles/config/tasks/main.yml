@@ -2,13 +2,13 @@
 
 - name: gather tendermint public keys
   when: validators == true and tendermint_genesis_file is not defined
-  command: "jq '.pub_key | .data' /etc/{{service}}/tendermint/priv_validator.json"
+  shell: "tendermint show_validator --home /etc/{{service}}/tendermint --log_level error"
   register: pubkeys
   changed_when: false
 
 - name: register tendermint public keys as host facts
   when: validators == true and tendermint_genesis_file is not defined
-  set_fact: "pubkey={{pubkeys.stdout_lines[0]}}"
+  set_fact: "pubkey='{{pubkeys.stdout}}'"
   connection: local
 
 - name: copy generated tendermint genesis.json - genesis_time will be updated

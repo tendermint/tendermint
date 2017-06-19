@@ -25,7 +25,7 @@ case "$1" in
     chown basecoin.basecoin /etc/basecoin/tendermint/config.toml
     test ! -f /etc/basecoin/priv_validator.json && tendermint gen_validator > /etc/basecoin/priv_validator.json && chmod 0400 /etc/basecoin/priv_validator.json && chown basecoin.basecoin /etc/basecoin/priv_validator.json
     test ! -f /etc/basecoin/tendermint/priv_validator.json && tendermint gen_validator > /etc/basecoin/tendermint/priv_validator.json && chmod 0400 /etc/basecoin/tendermint/priv_validator.json && chown basecoin.basecoin /etc/basecoin/tendermint/priv_validator.json
-    tendermint_pubkey=`python -uc "import json ; print json.loads(open('/etc/basecoin/tendermint/priv_validator.json').read())['pub_key']['data']"`
+    tendermint_pubkey="`tendermint show_validator --home /etc/basecoin/tendermint --log_level error`"
     test ! -f /etc/basecoin/tendermint/genesis.json && cat << EOF > /etc/basecoin/tendermint/genesis.json
 {
   "genesis_time": "2017-06-10T03:37:03Z",
@@ -33,7 +33,7 @@ case "$1" in
   "validators":
   [
     {
-      "pub_key":{"type":"ed25519","data":"$tendermint_pubkey"},
+      "pub_key": $tendermint_pubkey,
       "amount":10,
       "name":"my_testchain_node"
     }

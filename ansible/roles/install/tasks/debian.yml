@@ -1,4 +1,10 @@
 ---
+
+#Three commands to install a service on Debian/Ubuntu
+#wget -O - http://tendermint-packages.s3-website-us-west-1.amazonaws.com/centos/7/os/x86_64/RPM-GPG-KEY-Tendermint | apt-key add -
+#echo "deb http://tendermint-packages.s3-website-us-west-1.amazonaws.com/debian stable main" > /etc/apt/sources.list.d/tendermint.list
+#apt-get update && apt-get install basecoin
+
 - name: Add repository key on Debian/Ubuntu
   when: ansible_os_family == "Debian"
   apt_key:
@@ -12,8 +18,5 @@
 
 - name: Install package on Debian/Ubuntu
   when: ansible_os_family == "Debian"
-  apt: pkg={{item}}
-  with_items:
-  - jq
-  - "{{service}}"
+  apt: "pkg={{service}}"
 

@@ -132,7 +132,7 @@ package-deb-%: version-%
 install-rpm-%: version-%
 #Make sure your host has the IAM role to read/write the S3 bucket OR that you set up ~/.boto
 	@echo "*** Uploading $*-$($*_version)-$(BUILD_NUMBER).x86_64.rpm to AWS CentOS repository"
-	aws s3 sync s3://tendermint-packages/centos/ tmp/s3/
+	aws s3 sync s3://tendermint-packages/centos/ tmp/s3/ --delete
 	mkdir -p tmp/s3/7/os/x86_64/Packages
 	cp RPMS/x86_64/$*-$($*_version)-$(BUILD_NUMBER).x86_64.rpm tmp/s3/7/os/x86_64/Packages
 	cp repofiles/RPM-GPG-KEY-Tendermint tmp/s3/7/os/x86_64/
@@ -140,14 +140,14 @@ install-rpm-%: version-%
 	rm -f tmp/s3/7/os/x86_64/repodata/*.bz2 tmp/s3/7/os/x86_64/repodata/*.gz tmp/s3/7/os/x86_64/repodata/repomd.xml.asc
 	createrepo tmp/s3/7/os/x86_64/Packages -u http://tendermint-packages.s3-website-us-west-1.amazonaws.com/centos/7/os/x86_64/Packages -o tmp/s3/7/os/x86_64 --update -S --repo Tendermint --content tendermint --content basecoin --content ethermint
 	gpg --batch --passphrase "$(GPG_PASSPHRASE)" --sign -a tmp/s3/7/os/x86_64/repodata/repomd.xml
-	aws s3 sync tmp/s3/ s3://tendermint-packages/centos/ --acl public-read
+	aws s3 sync tmp/s3/ s3://tendermint-packages/centos/ --delete --acl public-read
 	@echo "*** Uploaded $* to AWS CentOS repository"
 
 install-deb-%: version-%
 	@echo "*** Uploading $*-$($*_version)-$(BUILD_NUMBER)_amd64.deb to AWS Debian repository"
 	@echo "Testing if $*-$($*_version)-$(BUILD_NUMBER)_amd64.deb is already uploaded"
 	test ! -f tmp/debian-s3/pool/$*-$($*_version)-$(BUILD_NUMBER)_amd64.deb
-	aws s3 sync s3://tendermint-packages/debian/ tmp/debian-s3/
+	aws s3 sync s3://tendermint-packages/debian/ tmp/debian-s3/ --delete
 	@echo "Testing if $*-$($*_version)-$(BUILD_NUMBER)_amd64.deb is already uploaded"
 	test ! -f tmp/debian-s3/pool/$*-$($*_version)-$(BUILD_NUMBER)_amd64.deb
 	mkdir -p tmp/debian-s3/pool tmp/debian-s3/dists/stable/main/binary-amd64
@@ -205,7 +205,7 @@ install-deb-%: version-%
 	gpg --batch --passphrase "$(GPG_PASSPHRASE)" --digest-algo SHA512 --clearsign tmp/debian-s3/dists/stable/Release
 	mv tmp/debian-s3/dists/stable/Release.asc tmp/debian-s3/dists/stable/InRelease
 
-	aws s3 sync tmp/debian-s3/ s3://tendermint-packages/debian/ --acl public-read
+	aws s3 sync tmp/debian-s3/ s3://tendermint-packages/debian/ --delete --acl public-read
 	@echo "*** Uploaded $*-$($*_version)-$(BUILD_NUMBER)_amd64.deb to AWS Debian repository"
 
 mostlyclean:

@@ -10,7 +10,6 @@ URL: https://tendermint.com/
 Packager: Greg Szabo
 Requires: tendermint >= 0.10.0
 Requires(pre): /sbin/useradd
-Requires(post): %{__python}
 
 %description
 Ethermint enables ethereum to run as an ABCI application on tendermint and the COSMOS hub. This application allows you to get all the benefits of ethereum without having to run your own miners.
@@ -49,7 +48,7 @@ cd %{name}-%{version}
 %post
 %{_bindir}/%{name} --datadir %{_sysconfdir}/%{name} init %{_sysconfdir}/%{name}/genesis.json
 test ! -f %{_sysconfdir}/%{name}/tendermint/priv_validator.json && tendermint gen_validator > %{_sysconfdir}/%{name}/tendermint/priv_validator.json && %{__chmod} 0400 %{_sysconfdir}/%{name}/tendermint/priv_validator.json && %{__chown} %{name}.%{name} %{_sysconfdir}/%{name}/tendermint/priv_validator.json
-tendermint_pubkey=`%{__python} -uc "import json ; print json.loads(open('%{_sysconfdir}/%{name}/tendermint/priv_validator.json').read())['pub_key']['data']"`
+tendermint_pubkey="`tendermint show_validator --home %{_sysconfdir}/%{name}/tendermint --log_level error`"
 test ! -f %{_sysconfdir}/%{name}/tendermint/genesis.json && %{__cat} << EOF > %{_sysconfdir}/%{name}/tendermint/genesis.json
 {
   "genesis_time": "2017-06-10T03:37:03Z",
@@ -57,7 +56,7 @@ test ! -f %{_sysconfdir}/%{name}/tendermint/genesis.json && %{__cat} << EOF > %{
   "validators":
   [
     {
-      "pub_key":{"type":"ed25519","data":"$tendermint_pubkey"},
+      "pub_key": $tendermint_pubkey,
       "amount":10,
       "name":"my_testchain_node"
     }
