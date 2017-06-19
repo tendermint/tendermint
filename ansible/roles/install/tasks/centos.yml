@@ -5,9 +5,15 @@
 #wget -O /etc/yum.repos.d/tendermint.repo http://tendermint-packages.s3-website-us-west-1.amazonaws.com/centos/7/os/x86_64/tendermint.repo
 #yum update && yum install basecoin
 
+#This has a bug in Ansible 2.3: https://github.com/ansible/ansible/issues/20711
+#- name: Add repository key on CentOS/RedHat
+#  when: ansible_os_family == "RedHat"
+#  rpm_key: key=http://tendermint-packages.s3-website-us-west-1.amazonaws.com/centos/7/os/x86_64/RPM-GPG-KEY-Tendermint
+
+#Workaround
 - name: Add repository key on CentOS/RedHat
   when: ansible_os_family == "RedHat"
-  rpm_key: key=http://tendermint-packages.s3-website-us-west-1.amazonaws.com/centos/7/os/x86_64/RPM-GPG-KEY-Tendermint
+  shell: "wget -O - http://tendermint-packages.s3-website-us-west-1.amazonaws.com/centos/7/os/x86_64/RPM-GPG-KEY-Tendermint | rpm --import -"
 
 - name: Install tendermint repository on CentOS/RedHat
   when: ansible_os_family == "RedHat"
