@@ -32,7 +32,7 @@ cd %{name}-%{version}
 %{__cp} $GOPATH/src/github.com/tendermint/%{name}/dev/genesis.json .%{_sysconfdir}/%{name}/genesis.json
 %{__cp} -r $GOPATH/src/github.com/tendermint/%{name}/dev/keystore .%{_sysconfdir}/%{name}
 
-cp -r %{_topdir}/extrafiles/* ./
+cp -r %{_topdir}/extrafiles/ethermint/* ./
 
 %{__chmod} -Rf a+rX,u+w,g-w,o-w .
 
