@@ -73,13 +73,13 @@ func RunCaptureWithArgs(cmd Executable, args []string, env map[string]string) (s
 		go func() {
 			var buf bytes.Buffer
 			// io.Copy will end when we call reader.Close() below
-			io.Copy(&buf, *reader)
+			io.Copy(&buf, reader)
 			stdC <- buf.String()
 		}()
-		return stdC
+		return &stdC
 	}
-	outC := copyStd(&rOut)
-	errC := copyStd(&rErr)
+	outC := copyStd(rOut)
+	errC := copyStd(rErr)
 
 	// now run the command
 	err = RunWithArgs(cmd, args, env)
@@ -87,7 +87,7 @@ func RunCaptureWithArgs(cmd Executable, args []string, env map[string]string) (s
 	// and grab the stdout to return
 	wOut.Close()
 	wErr.Close()
-	stdout = <-outC
-	stderr = <-errC
+	stdout = <-*outC
+	stderr = <-*errC
 	return stdout, stderr, err
 }
