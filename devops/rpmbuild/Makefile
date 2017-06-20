@@ -43,7 +43,7 @@ all: $(binaries)
 build: $(build-binaries)
 package: $(package-rpm) $(package-deb)
 install: $(install-rpm) $(install-deb)
-$(binaries): %: build-% package-rpm-% install-rpm-% package-deb-% install-deb-% ;
+$(binaries): %: build-% package-rpm-% package-deb-%
 
 ###
 # Building the binaries is not in the spec file, because in the spec file you already need to know the version number

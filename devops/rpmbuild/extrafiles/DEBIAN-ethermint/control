@@ -4,6 +4,7 @@ Priority: optional
 Maintainer: Greg Szabo <greg@philosobear.com>
 Build-Depends: debhelper (>=9)
 Depends: tendermint (>=0.10.0)
+Breaks: basecoin
 Standards-Version: 3.9.6
 Homepage: https://tendermint.com
 Package: ethermint

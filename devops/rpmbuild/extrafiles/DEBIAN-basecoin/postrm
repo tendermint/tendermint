@@ -28,7 +28,6 @@ case "$1" in
 
     purge|remove|abort-install|disappear)
     systemctl daemon-reload
-#    userdel basecoin
     ;;
 
     *)

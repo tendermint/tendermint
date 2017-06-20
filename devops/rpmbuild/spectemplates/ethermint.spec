@@ -31,10 +31,8 @@ cd %{name}-%{version}
 %{__cp} $GOPATH/src/github.com/tendermint/%{name}/LICENSE .%{_defaultlicensedir}/%{name}
 %{__cp} $GOPATH/src/github.com/tendermint/%{name}/dev/genesis.json .%{_sysconfdir}/%{name}/genesis.json
 %{__cp} -r $GOPATH/src/github.com/tendermint/%{name}/dev/keystore .%{_sysconfdir}/%{name}
-%{__cp} %{_topdir}/extrafiles/%{name}/tendermint-config.toml .%{_sysconfdir}/%{name}/tendermint/config.toml
-%{__cp} %{_topdir}/extrafiles/%{name}/%{name}.service .%{_sysconfdir}/systemd/system/%{name}.service
-%{__cp} %{_topdir}/extrafiles/%{name}/%{name}-server.service .%{_sysconfdir}/systemd/system/%{name}-server.service
-%{__cp} %{_topdir}/extrafiles/%{name}/50-%{name}.preset .%{_sysconfdir}/systemd/system-preset/50-%{name}.preset
+
+cp -r %{_topdir}/extrafiles/* ./
 
 %{__chmod} -Rf a+rX,u+w,g-w,o-w .
 
@@ -46,32 +44,10 @@ cd %{name}-%{version}
 %{__cp} -a * %{buildroot}
 
 %post
-%{_bindir}/%{name} --datadir %{_sysconfdir}/%{name} init %{_sysconfdir}/%{name}/genesis.json
-test ! -f %{_sysconfdir}/%{name}/tendermint/priv_validator.json && tendermint gen_validator > %{_sysconfdir}/%{name}/tendermint/priv_validator.json && %{__chmod} 0400 %{_sysconfdir}/%{name}/tendermint/priv_validator.json && %{__chown} %{name}.%{name} %{_sysconfdir}/%{name}/tendermint/priv_validator.json
-tendermint_pubkey="`tendermint show_validator --home %{_sysconfdir}/%{name}/tendermint --log_level error`"
-%{__chown} %{name}.%{name} %{_sysconfdir}/%{name}/tendermint/data
-test ! -f %{_sysconfdir}/%{name}/tendermint/genesis.json && %{__cat} << EOF > %{_sysconfdir}/%{name}/tendermint/genesis.json
-{
-  "genesis_time": "2017-06-10T03:37:03Z",
-  "chain_id": "my_chain_id",
-  "validators":
-  [
-    {
-      "pub_key": $tendermint_pubkey,
-      "amount":10,
-      "name":"my_testchain_node"
-    }
-  ],
-  "app_hash": "",
-  "app_options": {}
-}
-EOF
-%{__chown} %{name}.%{name} %{_sysconfdir}/%{name}/tendermint/genesis.json
+sudo -Hu %{name} %{_bindir}/%{name} --datadir %{_sysconfdir}/%{name} init %{_sysconfdir}/%{name}/genesis.json
+sudo -Hu %{name} tendermint init --home %{_sysconfdir}/%{name}/tendermint
 systemctl daemon-reload
 systemctl enable %{name}
-if [ -d /etc/%{name}/tendermint/data ]; then
-  service %{name} start
-fi
 
 %preun
 systemctl stop %{name} 2> /dev/null || :
@@ -87,7 +63,6 @@ systemctl daemon-reload
 %attr(0755, %{name}, %{name}) %dir %{_sysconfdir}/%{name}/keystore
 %attr(0644, %{name}, %{name}) %{_sysconfdir}/%{name}/keystore/*
 %attr(0755, %{name}, %{name}) %dir %{_sysconfdir}/%{name}/tendermint
-%config(noreplace) %attr(0644, %{name}, %{name}) %{_sysconfdir}/%{name}/tendermint/config.toml
 %{_bindir}/*
 %{_sysconfdir}/systemd/system/*
 %{_sysconfdir}/systemd/system-preset/*

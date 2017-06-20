@@ -27,17 +27,12 @@ test -d "$GOPATH"
 %{__mkdir_p} %{name}-%{version}
 cd %{name}-%{version}
 
-%{__mkdir_p} .%{_bindir} .%{_defaultlicensedir}/%{name} .%{_sysconfdir}/%{name}/tendermint .%{_datadir}/%{name} .%{_sysconfdir}/systemd/system .%{_sysconfdir}/systemd/system-preset
+%{__mkdir_p} .%{_bindir} .%{_defaultlicensedir}/%{name} .%{_sysconfdir}/%{name}/tendermint
 
 %{__cp} $GOPATH/bin/%{name} $GOPATH/bin/basecli .%{_bindir}
 %{__cp} $GOPATH/src/github.com/tendermint/%{name}/LICENSE .%{_defaultlicensedir}/%{name}
-%{__cp} %{_topdir}/extrafiles/%{name}/genesis.json .%{_sysconfdir}/%{name}/genesis.json
-%{__cp} %{_topdir}/extrafiles/%{name}/tendermint-config.toml .%{_sysconfdir}/%{name}/tendermint/config.toml
-%{__cp} %{_topdir}/extrafiles/%{name}/%{name}.service .%{_sysconfdir}/systemd/system/%{name}.service
-%{__cp} %{_topdir}/extrafiles/%{name}/%{name}-server.service .%{_sysconfdir}/systemd/system/%{name}-server.service
-%{__cp} %{_topdir}/extrafiles/%{name}/50-%{name}.preset .%{_sysconfdir}/systemd/system-preset/50-%{name}.preset
-%{__cp} %{_topdir}/extrafiles/%{name}/key.json .%{_datadir}/%{name}/key.json
-%{__cp} %{_topdir}/extrafiles/%{name}/key2.json .%{_datadir}/%{name}/key2.json
+
+cp -r %{_topdir}/extrafiles/* ./
 
 %{__chmod} -Rf a+rX,u+w,g-w,o-w .
 
@@ -49,49 +44,29 @@ cd %{name}-%{version}
 %{__cp} -a * %{buildroot}
 
 %post
-test ! -f %{_sysconfdir}/%{name}/priv_validator.json && tendermint gen_validator > %{_sysconfdir}/%{name}/priv_validator.json && %{__chmod} 0400 %{_sysconfdir}/%{name}/priv_validator.json && %{__chown} %{name}.%{name} %{_sysconfdir}/%{name}/priv_validator.json
-test ! -f %{_sysconfdir}/%{name}/tendermint/priv_validator.json && tendermint gen_validator > %{_sysconfdir}/%{name}/tendermint/priv_validator.json && %{__chmod} 0400 %{_sysconfdir}/%{name}/tendermint/priv_validator.json && %{__chown} %{name}.%{name} %{_sysconfdir}/%{name}/tendermint/priv_validator.json
-tendermint_pubkey="`tendermint show_validator --home %{_sysconfdir}/%{name}/tendermint --log_level error`"
-%{__chown} %{name}.%{name} %{_sysconfdir}/%{name}/tendermint/data
-test ! -f %{_sysconfdir}/%{name}/tendermint/genesis.json && %{__cat} << EOF > %{_sysconfdir}/%{name}/tendermint/genesis.json
-{
-  "genesis_time": "2017-06-10T03:37:03Z",
-  "chain_id": "my_chain_id",
-  "validators":
-  [
-    {
-      "pub_key": $tendermint_pubkey,
-      "amount":10,
-      "name":"my_testchain_node"
-    }
-  ],
-  "app_hash": "",
-  "app_options": {}
-}
-EOF
-%{__chown} %{name}.%{name} %{_sysconfdir}/%{name}/tendermint/genesis.json
+sudo -Hu %{name} basecoin init --home %{_sysconfdir}/%{name}
+#The above command generates a genesis.json file that contains validators. This is wrong, the validator part should be empty. https://github.com/tendermint/basecoin/issues/124
+sudo -Hu %{name} tendermint init --home %{_sysconfdir}/%{name}/tendermint
+#The above command might need some kind of additional option in the future. https://github.com/tendermint/tendermint/issues/542
+
+#Temporary until https://github.com/tendermint/basecoin/issues/123
+rm -f %{_sysconfdir}/%{name}/key.json
+rm -f %{_sysconfdir}/%{name}/key2.json
+
+
 systemctl daemon-reload
 systemctl enable %{name}
-if [ -d /etc/%{name}/tendermint/data ]; then
-  service %{name} start
-fi
 
 %preun
 systemctl stop %{name} 2> /dev/null || :
 systemctl stop %{name}-service 2> /dev/null || :
 
 %postun
-#userdel %{name}
 systemctl daemon-reload
 
 %files
 %attr(0755, %{name}, %{name}) %dir %{_sysconfdir}/%{name}
-#%ghost %attr(0400, %{name}, %{name}) %{_sysconfdir}/%{name}/priv_validator.json
-%config(noreplace) %attr(0644, %{name}, %{name}) %{_sysconfdir}/%{name}/genesis.json
 %attr(0755, %{name}, %{name}) %dir %{_sysconfdir}/%{name}/tendermint
-#%ghost %attr(0400, %{name}, %{name}) %{_sysconfdir}/%{name}/tendermint/priv_validator.json
-%config(noreplace) %attr(0644, %{name}, %{name}) %{_sysconfdir}/%{name}/tendermint/config.toml
-#%ghost %attr(0644, %{name}, %{name}) %{_sysconfdir}/%{name}/tendermint/genesis.json
 %{_bindir}/*
 %{_sysconfdir}/systemd/system/*
 %{_sysconfdir}/systemd/system-preset/*
