@@ -1,10 +1,14 @@
 # Changelog
 
+
 ## Develop-Branch changes (unreleased)
 
 BREAKING CHANGES:
 
 - [run] NewBaseService takes the new logger
+- [cli] RunCaptureWithArgs now captures stderr and stdout
+  - +func RunCaptureWithArgs(cmd Executable, args []string, env map[string]string) (stdout, stderr string, err error)
+  - -func RunCaptureWithArgs(cmd Executable, args []string, env map[string]string) (output string, err error) 
 
 ## 0.2.1 (June 2, 2017)
 
