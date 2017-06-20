@@ -1,5 +1,12 @@
 # Changelog
 
+
+## Develop-Branch changes (unreleased)
+
+FEATURES:
+
+- [common] Date range parsing from string (ex. "2015-12-31:2017-12-31") 
+
 ## 0.2.1 (June 2, 2017)
 
 FEATURES:
