@@ -10,7 +10,7 @@ variable "image_id" {
 variable "regions" {
   description = "Regions to launch in"
   type = "list"
-  default = ["AMS2", "FRA1", "LON1", "NYC2", "SFO2", "SGP1", "TOR1"]
+  default = ["AMS2", "FRA1", "LON1", "NYC3", "SFO2", "SGP1", "TOR1"]
 }
 
 variable "key_ids" {
