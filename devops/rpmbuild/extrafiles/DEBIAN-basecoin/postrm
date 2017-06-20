@@ -21,9 +21,6 @@ set -e
 case "$1" in
     upgrade|failed-upgrade|abort-upgrade)
     systemctl daemon-reload
-    if [ -d /etc/basecoin/tendermint/data ]; then
-        service basecoin start
-    fi
     ;;
 
     purge|remove|abort-install|disappear)

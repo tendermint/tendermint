@@ -26,7 +26,6 @@ case "$1" in
     sudo -Hu basecoin tendermint init --home /etc/basecoin/tendermint
     #The above command might need some kind of additional option in the future. https://github.com/tendermint/tendermint/issues/542
     systemctl daemon-reload
-    systemctl enable basecoin
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)

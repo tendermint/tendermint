@@ -53,9 +53,7 @@ sudo -Hu %{name} tendermint init --home %{_sysconfdir}/%{name}/tendermint
 rm -f %{_sysconfdir}/%{name}/key.json
 rm -f %{_sysconfdir}/%{name}/key2.json
 
-
 systemctl daemon-reload
-systemctl enable %{name}
 
 %preun
 systemctl stop %{name} 2> /dev/null || :

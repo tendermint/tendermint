@@ -21,14 +21,10 @@ set -e
 case "$1" in
     upgrade|failed-upgrade|abort-upgrade)
     systemctl daemon-reload
-    if [ -d /etc/ethermint/tendermint/data ]; then
-        service ethermint start
-    fi
     ;;
 
     purge|remove|abort-install|disappear)
     systemctl daemon-reload
-#    userdel ethermint
     ;;
 
     *)

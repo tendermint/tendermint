@@ -47,7 +47,6 @@ cd %{name}-%{version}
 sudo -Hu %{name} %{_bindir}/%{name} --datadir %{_sysconfdir}/%{name} init %{_sysconfdir}/%{name}/genesis.json
 sudo -Hu %{name} tendermint init --home %{_sysconfdir}/%{name}/tendermint
 systemctl daemon-reload
-systemctl enable %{name}
 
 %preun
 systemctl stop %{name} 2> /dev/null || :

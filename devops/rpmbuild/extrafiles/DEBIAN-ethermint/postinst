@@ -29,7 +29,6 @@ case "$1" in
     sudo -Hu ethermint tendermint init --home /etc/ethermint/tendermint
 
     systemctl daemon-reload
-    systemctl enable ethermint
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
