@@ -30,6 +30,7 @@ case "$1" in
     chown -R ethermint.ethermint /etc/ethermint/ethermint
     test ! -f /etc/ethermint/tendermint/priv_validator.json && tendermint gen_validator > /etc/ethermint/tendermint/priv_validator.json && chmod 0400 /etc/ethermint/tendermint/priv_validator.json && chown ethermint.ethermint /etc/ethermint/tendermint/priv_validator.json
     tendermint_pubkey="`tendermint show_validator --home /etc/ethermint/tendermint --log_level error`"
+    chown ethermint.ethermint /etc/ethermint/tendermint/data
     test ! -f /etc/ethermint/tendermint/genesis.json && cat << EOF > /etc/ethermint/tendermint/genesis.json
 {
   "genesis_time": "2017-06-10T03:37:03Z",

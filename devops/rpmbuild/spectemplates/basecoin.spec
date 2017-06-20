@@ -52,6 +52,7 @@ cd %{name}-%{version}
 test ! -f %{_sysconfdir}/%{name}/priv_validator.json && tendermint gen_validator > %{_sysconfdir}/%{name}/priv_validator.json && %{__chmod} 0400 %{_sysconfdir}/%{name}/priv_validator.json && %{__chown} %{name}.%{name} %{_sysconfdir}/%{name}/priv_validator.json
 test ! -f %{_sysconfdir}/%{name}/tendermint/priv_validator.json && tendermint gen_validator > %{_sysconfdir}/%{name}/tendermint/priv_validator.json && %{__chmod} 0400 %{_sysconfdir}/%{name}/tendermint/priv_validator.json && %{__chown} %{name}.%{name} %{_sysconfdir}/%{name}/tendermint/priv_validator.json
 tendermint_pubkey="`tendermint show_validator --home %{_sysconfdir}/%{name}/tendermint --log_level error`"
+%{__chown} %{name}.%{name} %{_sysconfdir}/%{name}/tendermint/data
 test ! -f %{_sysconfdir}/%{name}/tendermint/genesis.json && %{__cat} << EOF > %{_sysconfdir}/%{name}/tendermint/genesis.json
 {
   "genesis_time": "2017-06-10T03:37:03Z",
