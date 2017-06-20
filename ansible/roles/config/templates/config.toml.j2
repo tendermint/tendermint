@@ -1,19 +1,19 @@
 # This is a TOML config file.
 # For more information, see https://github.com/toml-lang/toml
 
-proxy_app = "tcp://127.0.0.1:{{(service == 'basecoin') | ternary('36658','46658')}}"
+proxy_app = "tcp://127.0.0.1:46658"
 moniker = "{{inventory_hostname}}"
 fast_sync = true
 db_backend = "leveldb"
 log_level = "debug"
 
 [rpc]
-laddr = "tcp://0.0.0.0:{{(service == 'basecoin') | ternary('36657','46657')}}"
+laddr = "tcp://0.0.0.0:46657"
 
 [p2p]
-laddr = "tcp://0.0.0.0:{{(service == 'basecoin') | ternary('36656','46656')}}"
+laddr = "tcp://0.0.0.0:46656"
 {% if validators == true %}
-{% set comma = joiner(",") %}seeds = "{% for host in groups[testnet_name]|difference(inventory_hostname) %}{{ comma() }}{{hostvars[host]["inventory_hostname"]}}:{{(service == 'basecoin') | ternary('36656','46656')}}{% endfor %}"
+{% set comma = joiner(",") %}seeds = "{% for host in groups[testnet_name]|difference(inventory_hostname) %}{{ comma() }}{{hostvars[host]["inventory_hostname"]}}:46656{% endfor %}"
 {% else %}
 seeds = "{{ seeds | default() }}"
 {% endif %}
