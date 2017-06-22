@@ -1,7 +1,9 @@
 ---
 
 - name: clear tendermint database
-  file: "path=/etc/{{service}}/tendermint/{{item}} state=absent"
+  file: "path=/etc/{{service}}/{{item}} state=absent"
   with_items:
+  - tendermint/data
   - data
+  
 
