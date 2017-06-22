@@ -1,0 +1,5 @@
+---
+
+- name: start service
+  command: "service {{service}} status"
+
