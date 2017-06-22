@@ -49,24 +49,30 @@ $(binaries): %: build-% package-rpm-% package-deb-%
 # Building the binaries is not in the spec file, because in the spec file you already need to know the version number
 ###
 
-build-tendermint:
+git-branch:
+	$(eval $GIT_BRANCH=$(shell test -z "$(GIT_BRANCH)" && echo "master" || echo "$(GIT_BRANCH)" ))
+	
+
+build-tendermint: git-branch
 	@echo "*** Building tendermint"
-	go get -u github.com/tendermint/tendermint/cmd/tendermint
+	go get -d -u github.com/tendermint/tendermint/cmd/tendermint
+	cd $(GOPATH)/src/github.com/tendermint/tendermint && git checkout "$(GIT_BRANCH)" && git pull
+	$(MAKE) -C $(GOPATH)/src/github.com/tendermint/tendermint get_vendor_deps build
+	cp $(GOPATH)/src/github.com/tendermint/tendermint/build/tendermint $(GOPATH)/bin
 	@echo "*** Built tendermint"
 
-build-basecoin:
+build-basecoin: git-branch
 	@echo "*** Building basecoin"
-	go get -u github.com/tendermint/basecoin/cmd/basecoin
-	@echo "Building basecli"
-	$(MAKE) -C $(GOPATH)/src/github.com/tendermint/basecoin get_vendor_deps
-	go get -u github.com/tendermint/basecoin/cmd/basecli
+	go get -d -u github.com/tendermint/basecoin/cmd/basecoin
+	cd $(GOPATH)/src/github.com/tendermint/basecoin && git checkout "$(GIT_BRANCH)" && git pull
+	$(MAKE) -C $(GOPATH)/src/github.com/tendermint/basecoin get_vendor_deps install
 	@echo "*** Built basecoin"
 
-build-ethermint:
+build-ethermint: git-branch
 	@echo "*** Building ethermint"
 	go get -d -u github.com/tendermint/ethermint/cmd/ethermint
-	$(MAKE) -C $(GOPATH)/src/github.com/tendermint/ethermint get_vendor_deps
-	$(MAKE) -C $(GOPATH)/src/github.com/tendermint/ethermint build
+	cd $(GOPATH)/src/github.com/tendermint/ethermint && git checkout "$(GIT_BRANCH)" && git pull
+	$(MAKE) -C $(GOPATH)/src/github.com/tendermint/ethermint get_vendor_deps build
 	cp $(GOPATH)/src/github.com/tendermint/ethermint/build/ethermint $(GOPATH)/bin
 	@echo "*** Built ethermint"
 
