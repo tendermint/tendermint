@@ -1,5 +1,19 @@
     "accounts": [
       {
+        "name": "relay",
+        "address": "1B1BE55F969F54064628A63B9559E7C21C925165",
+        "pub_key": {
+          "type": "ed25519",
+          "data": "619D3678599971ED29C7529DDD4DA537B97129893598A17C82E3AC9A8BA95279"
+        },
+        "coins": [
+          {
+            "denom": "mycoin",
+            "amount": 9007199254740992
+          }
+        ]
+      },
+      {
         "name": "anton",
         "address": "40CC622438D3E42148A1FFD3A27C07C100F8FA3D",
         "pub_key": {
@@ -62,6 +76,24 @@
         ]
       },
       {
+        "name": "rigel",
+        "address": "3A8BE0EEE474C8D197AA14312B59ACB2D9DFECDE",
+        "pub_key": {
+          "type": "ed25519",
+          "data": "C7CAC198E3999C4DD9F25C575C4C10587C083F73B1E985AC65658992DE6B552E"
+        },
+        "coins": [
+          {
+            "denom": "radio",
+            "amount": 50
+          },
+          {
+            "denom": "tv",
+            "amount": 3478765434568
+          }
+        ]
+      },
+      {
         "name": "phomer",
         "address": "BAA67E0346AF48A05330149A3A72D9B974E9EBD2",
         "pub_key": {
@@ -98,4 +130,3 @@
         ]
       }
     ]
-
