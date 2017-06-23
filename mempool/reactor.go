@@ -73,7 +73,7 @@ func (memR *MempoolReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte) {
 		err := memR.Mempool.CheckTx(msg.Tx, nil)
 		if err != nil {
 			// Bad, seen, or conflicting tx.
-			memR.Logger.Info("Could not add tx", "tx", msg.Tx)
+			memR.Logger.Error("Could not add tx", "tx", msg.Tx, "err", err)
 			return
 		} else {
 			memR.Logger.Info("Added valid tx", "tx", msg.Tx)
