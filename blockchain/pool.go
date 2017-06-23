@@ -28,7 +28,7 @@ var peerTimeoutSeconds = time.Duration(15) // not const so we can override with 
 	Every so often we ask peers what height they're on so we can keep going.
 
 	Requests are continuously made for blocks of higher heights until
-	the limits. If most of the requests have no available peers, and we
+	the we reach the limits. If most of the requests have no available peers, and we
 	are not at peer limits, we can probably switch to consensus reactor
 */
 
@@ -129,8 +129,6 @@ func (pool *BlockPool) IsCaughtUp() bool {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
-	height := pool.height
-
 	// Need at least 1 peer to be considered caught up.
 	if len(pool.peers) == 0 {
 		pool.Logger.Debug("Blockpool has no peers")
@@ -142,8 +140,9 @@ func (pool *BlockPool) IsCaughtUp() bool {
 		maxPeerHeight = MaxInt(maxPeerHeight, peer.height)
 	}
 
-	isCaughtUp := (height > 0 || time.Now().Sub(pool.startTime) > 5*time.Second) && (maxPeerHeight == 0 || height >= maxPeerHeight)
-	pool.Logger.Info(Fmt("IsCaughtUp: %v", isCaughtUp), "height", height, "maxPeerHeight", maxPeerHeight)
+	// ('receive at least one block' or 'wait at least 5 seconds') and ('all peers are also at 0' or 'my height is higher than the highest peer I know')
+	isCaughtUp := (pool.height > 0 || time.Now().Sub(pool.startTime) > 5*time.Second) && (maxPeerHeight == 0 || pool.height >= maxPeerHeight)
+	pool.Logger.Info(Fmt("IsCaughtUp: %v", isCaughtUp), "height", pool.height, "maxPeerHeight", maxPeerHeight)
 	return isCaughtUp
 }
 
@@ -169,17 +168,15 @@ func (pool *BlockPool) PopRequest() {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
-	if r := pool.requesters[pool.height]; r != nil {
-		/*  The block can disappear at any time, due to removePeer().
-		if r := pool.requesters[pool.height]; r == nil || r.block == nil {
-			PanicSanity("PopRequest() requires a valid block")
-		}
-		*/
+	r := pool.requesters[pool.height]
+	if r == nil {
+		PanicSanity(Fmt("Expected requester to pop, got nothing at height %v", pool.height))
+	} else if r.block == nil {
+		PanicSanity("PopRequest() requires a valid block")
+	} else {
 		r.Stop()
 		delete(pool.requesters, pool.height)
 		pool.height++
-	} else {
-		PanicSanity(Fmt("Expected requester to pop, got nothing at height %v", pool.height))
 	}
 }
 
@@ -194,7 +191,6 @@ func (pool *BlockPool) RedoRequest(height int) {
 		PanicSanity("Expected block to be non-nil")
 	}
 	// RemovePeer will redo all requesters associated with this peer.
-	// TODO: record this malfeasance
 	pool.RemovePeer(request.peerID)
 }
 
@@ -261,7 +257,6 @@ func (pool *BlockPool) pickIncrAvailablePeer(minHeight int) *bpPeer {
 		if peer.didTimeout {
 			pool.removePeer(peer.id)
 			continue
-		} else {
 		}
 		if peer.numPending >= maxPendingRequestsPerPeer {
 			continue
