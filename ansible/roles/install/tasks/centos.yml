@@ -30,5 +30,5 @@
 
 - name: Install package on CentOS/RedHat
   when: ansible_os_family == "RedHat"
-  yum: "pkg={{service}} update_cache=yes"
+  yum: "pkg={{service}} update_cache=yes state=latest"
 

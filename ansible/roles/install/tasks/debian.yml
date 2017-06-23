@@ -18,5 +18,5 @@
 
 - name: Install package on Debian/Ubuntu
   when: ansible_os_family == "Debian"
-  apt: "pkg={{service}}"
+  apt: "pkg={{service}} update_cache=yes state=latest"
 
