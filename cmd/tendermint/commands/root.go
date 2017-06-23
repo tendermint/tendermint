@@ -21,16 +21,26 @@ func init() {
 	RootCmd.PersistentFlags().String("log_level", config.LogLevel, "Log level")
 }
 
+// ParseConfig will setup the tendermint configuration properly
+func ParseConfig() (*cfg.Config, error) {
+	conf := cfg.DefaultConfig()
+	err := viper.Unmarshal(conf)
+	if err != nil {
+		return nil, err
+	}
+	conf.SetRoot(conf.RootDir)
+	cfg.EnsureRoot(conf.RootDir)
+	return conf, err
+}
+
 var RootCmd = &cobra.Command{
 	Use:   "tendermint",
 	Short: "Tendermint Core (BFT Consensus) in Go",
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		err := viper.Unmarshal(config)
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) (err error) {
+		config, err = ParseConfig()
 		if err != nil {
 			return err
 		}
-		config.SetRoot(config.RootDir)
-		cfg.EnsureRoot(config.RootDir)
 		logger, err = tmflags.ParseLogLevel(config.LogLevel, logger, cfg.DefaultLogLevel())
 		if err != nil {
 			return err

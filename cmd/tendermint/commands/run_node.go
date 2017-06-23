@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/tendermint/tendermint/node"
@@ -19,28 +20,49 @@ var runNodeCmd = &cobra.Command{
 }
 
 func init() {
+	AddNodeFlags(runNodeCmd)
+	RootCmd.AddCommand(runNodeCmd)
+}
+
+// AddNodeFlags exposes some common configuration options on the command-line
+// These are exposed for convenience of commands embedding a tendermint node
+func AddNodeFlags(cmd *cobra.Command) {
 	// bind flags
-	runNodeCmd.Flags().String("moniker", config.Moniker, "Node Name")
+	cmd.Flags().String("moniker", config.Moniker, "Node Name")
 
 	// node flags
-	runNodeCmd.Flags().Bool("fast_sync", config.FastSync, "Fast blockchain syncing")
+	cmd.Flags().Bool("fast_sync", config.FastSync, "Fast blockchain syncing")
 
 	// abci flags
-	runNodeCmd.Flags().String("proxy_app", config.ProxyApp, "Proxy app address, or 'nilapp' or 'dummy' for local testing.")
-	runNodeCmd.Flags().String("abci", config.ABCI, "Specify abci transport (socket | grpc)")
+	cmd.Flags().String("proxy_app", config.ProxyApp, "Proxy app address, or 'nilapp' or 'dummy' for local testing.")
+	cmd.Flags().String("abci", config.ABCI, "Specify abci transport (socket | grpc)")
 
 	// rpc flags
-	runNodeCmd.Flags().String("rpc.laddr", config.RPC.ListenAddress, "RPC listen address. Port required")
-	runNodeCmd.Flags().String("rpc.grpc_laddr", config.RPC.GRPCListenAddress, "GRPC listen address (BroadcastTx only). Port required")
-	runNodeCmd.Flags().Bool("rpc.unsafe", config.RPC.Unsafe, "Enabled unsafe rpc methods")
+	cmd.Flags().String("rpc.laddr", config.RPC.ListenAddress, "RPC listen address. Port required")
+	cmd.Flags().String("rpc.grpc_laddr", config.RPC.GRPCListenAddress, "GRPC listen address (BroadcastTx only). Port required")
+	cmd.Flags().Bool("rpc.unsafe", config.RPC.Unsafe, "Enabled unsafe rpc methods")
 
 	// p2p flags
-	runNodeCmd.Flags().String("p2p.laddr", config.P2P.ListenAddress, "Node listen address. (0.0.0.0:0 means any interface, any port)")
-	runNodeCmd.Flags().String("p2p.seeds", config.P2P.Seeds, "Comma delimited host:port seed nodes")
-	runNodeCmd.Flags().Bool("p2p.skip_upnp", config.P2P.SkipUPNP, "Skip UPNP configuration")
-	runNodeCmd.Flags().Bool("p2p.pex", config.P2P.PexReactor, "Enable Peer-Exchange (dev feature)")
+	cmd.Flags().String("p2p.laddr", config.P2P.ListenAddress, "Node listen address. (0.0.0.0:0 means any interface, any port)")
+	cmd.Flags().String("p2p.seeds", config.P2P.Seeds, "Comma delimited host:port seed nodes")
+	cmd.Flags().Bool("p2p.skip_upnp", config.P2P.SkipUPNP, "Skip UPNP configuration")
+	cmd.Flags().Bool("p2p.pex", config.P2P.PexReactor, "Enable Peer-Exchange (dev feature)")
+}
 
-	RootCmd.AddCommand(runNodeCmd)
+func ParseGenesisFile() (*types.GenesisDoc, error) {
+	genDocFile := config.GenesisFile()
+	jsonBlob, err := ioutil.ReadFile(genDocFile)
+	if err != nil {
+		return nil, errors.Wrap(err, "Couldn't read GenesisDoc file")
+	}
+	genDoc, err := types.GenesisDocFromJSON(jsonBlob)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error reading GenesisDoc")
+	}
+	if genDoc.ChainID == "" {
+		return nil, errors.Errorf("Genesis doc %v must include non-empty chain_id", genDocFile)
+	}
+	return genDoc, nil
 }
 
 // Users wishing to:
@@ -63,16 +85,9 @@ func runNode(cmd *cobra.Command, args []string) error {
 			if !cmn.FileExists(genDocFile) {
 				continue
 			}
-			jsonBlob, err := ioutil.ReadFile(genDocFile)
+			genDoc, err := ParseGenesisFile()
 			if err != nil {
-				return fmt.Errorf("Couldn't read GenesisDoc file: %v", err)
-			}
-			genDoc, err := types.GenesisDocFromJSON(jsonBlob)
-			if err != nil {
-				return fmt.Errorf("Error reading GenesisDoc: %v", err)
-			}
-			if genDoc.ChainID == "" {
-				return fmt.Errorf("Genesis doc %v must include non-empty chain_id", genDocFile)
+				return err
 			}
 			config.ChainID = genDoc.ChainID
 		}
