@@ -1,0 +1,5 @@
+- shell: "export BCHOME=/etc/basecoin ; basecoin unsafe_reset_all"
+  become_user: basecoin
+- shell: "export TMHOME=/etc/basecoin/tendermint ; tendermint unsafe_reset_all"
+  become_user: basecoin
+
