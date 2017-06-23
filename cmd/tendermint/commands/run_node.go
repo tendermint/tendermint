@@ -78,20 +78,16 @@ func runNode(cmd *cobra.Command, args []string) error {
 	// TODO: If Mintnet gets deprecated or genesis_file is
 	// always available, remove.
 	genDocFile := config.GenesisFile()
-	if !cmn.FileExists(genDocFile) {
+	for !cmn.FileExists(genDocFile) {
 		logger.Info(cmn.Fmt("Waiting for genesis file %v...", genDocFile))
-		for {
-			time.Sleep(time.Second)
-			if !cmn.FileExists(genDocFile) {
-				continue
-			}
-			genDoc, err := ParseGenesisFile()
-			if err != nil {
-				return err
-			}
-			config.ChainID = genDoc.ChainID
-		}
+		time.Sleep(time.Second)
 	}
+
+	genDoc, err := ParseGenesisFile()
+	if err != nil {
+		return err
+	}
+	config.ChainID = genDoc.ChainID
 
 	// Create & start node
 	n := node.NewNodeDefault(config, logger.With("module", "node"))
