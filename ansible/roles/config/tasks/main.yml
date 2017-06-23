@@ -20,7 +20,7 @@
     group: "{{service}}"
 
 - name: copy generated service genesis.json - genesis_time will be updated
-  when: service_genesis_file is not defined
+  when: (service_genesis_file is not defined) and (service != 'ethermint')
   template:
     src: genesis-service.json.j2
     dest: "/etc/{{service}}/genesis.json"
