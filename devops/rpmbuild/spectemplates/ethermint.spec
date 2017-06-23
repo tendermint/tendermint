@@ -29,8 +29,8 @@ cd %{name}-%{version}
 
 %{__cp} $GOPATH/bin/%{name} .%{_bindir}
 %{__cp} $GOPATH/src/github.com/tendermint/%{name}/LICENSE .%{_defaultlicensedir}/%{name}
-%{__cp} $GOPATH/src/github.com/tendermint/%{name}/dev/genesis.json .%{_sysconfdir}/%{name}/genesis.json
-%{__cp} -r $GOPATH/src/github.com/tendermint/%{name}/dev/keystore .%{_sysconfdir}/%{name}
+%{__cp} $GOPATH/src/github.com/tendermint/%{name}/setup/genesis.json .%{_sysconfdir}/%{name}/genesis.json
+%{__cp} -r $GOPATH/src/github.com/tendermint/%{name}/setup/keystore .%{_sysconfdir}/%{name}
 
 cp -r %{_topdir}/extrafiles/ethermint/* ./
 
