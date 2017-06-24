@@ -46,10 +46,6 @@ type State struct {
 
 	TxIndexer txindex.TxIndexer `json:"-"` // Transaction indexer.
 
-	// Intermediate results from processing
-	// Persisted separately from the state
-	abciResponses *ABCIResponses
-
 	logger log.Logger
 }
 

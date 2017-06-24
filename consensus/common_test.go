@@ -222,17 +222,6 @@ func subscribeToVoter(cs *ConsensusState, addr []byte) chan interface{} {
 	return voteCh
 }
 
-func readVotes(ch chan interface{}, reads int) chan struct{} {
-	wg := make(chan struct{})
-	go func() {
-		for i := 0; i < reads; i++ {
-			<-ch // read the precommit event
-		}
-		close(wg)
-	}()
-	return wg
-}
-
 //-------------------------------------------------------------------------------
 // consensus states
 
@@ -272,16 +261,6 @@ func loadPrivValidator(config *cfg.Config) *types.PrivValidator {
 	privValidator := types.LoadOrGenPrivValidator(privValidatorFile, log.TestingLogger())
 	privValidator.Reset()
 	return privValidator
-}
-
-func fixedConsensusState() *ConsensusState {
-	stateDB := dbm.NewMemDB()
-	state := sm.MakeGenesisStateFromFile(stateDB, config.GenesisFile())
-	state.SetLogger(log.TestingLogger().With("module", "state"))
-	privValidator := loadPrivValidator(config)
-	cs := newConsensusState(state, privValidator, counter.NewCounterApplication(true))
-	cs.SetLogger(log.TestingLogger())
-	return cs
 }
 
 func fixedConsensusStateDummy() *ConsensusState {

@@ -293,10 +293,6 @@ func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKeyEd25519, signa
 	return &recvMsg, nil
 }
 
-func verifyChallengeSignature(challenge *[32]byte, remPubKey crypto.PubKeyEd25519, remSignature crypto.SignatureEd25519) bool {
-	return remPubKey.VerifyBytes(challenge[:], remSignature.Wrap())
-}
-
 //--------------------------------------------------------------------------------
 
 // sha256
@@ -315,16 +311,6 @@ func hash24(input []byte) (res *[24]byte) {
 	hasher.Write(input) // does not error
 	resSlice := hasher.Sum(nil)
 	res = new([24]byte)
-	copy(res[:], resSlice)
-	return
-}
-
-// ripemd160
-func hash20(input []byte) (res *[20]byte) {
-	hasher := ripemd160.New()
-	hasher.Write(input) // does not error
-	resSlice := hasher.Sum(nil)
-	res = new([20]byte)
 	copy(res[:], resSlice)
 	return
 }

@@ -648,7 +648,7 @@ func (cs *ConsensusState) handleMsg(mi msgInfo, rs RoundState) {
 	case *VoteMessage:
 		// attempt to add the vote and dupeout the validator if its a duplicate signature
 		// if the vote gives us a 2/3-any or 2/3-one, we transition
-		err := cs.tryAddVote(msg.Vote, peerKey)
+		_ = cs.tryAddVote(msg.Vote, peerKey)
 		if err == ErrAddingVote {
 			// TODO: punish peer
 		}
@@ -939,7 +939,6 @@ func (cs *ConsensusState) defaultDoPrevote(height int, round int) {
 	// NOTE: the proposal signature is validated when it is received,
 	// and the proposal block parts are validated as they are received (against the merkle hash in the proposal)
 	cs.signAddVote(types.VoteTypePrevote, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
-	return
 }
 
 // Enter: any +2/3 prevotes at next round.
@@ -1059,7 +1058,6 @@ func (cs *ConsensusState) enterPrecommit(height int, round int) {
 	}
 	types.FireEventUnlock(cs.evsw, cs.RoundStateEvent())
 	cs.signAddVote(types.VoteTypePrecommit, nil, types.PartSetHeader{})
-	return
 }
 
 // Enter: any +2/3 precommits for next round.
@@ -1250,7 +1248,6 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	// * cs.Height has been increment to height+1
 	// * cs.Step is now RoundStepNewHeight
 	// * cs.StartTime is set to when we will start round0.
-	return
 }
 
 //-----------------------------------------------------------------------------

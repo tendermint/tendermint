@@ -44,7 +44,6 @@ const (
 type PEXReactor struct {
 	BaseReactor
 
-	sw                *Switch
 	book              *AddrBook
 	ensurePeersPeriod time.Duration
 

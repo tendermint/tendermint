@@ -142,7 +142,7 @@ func (pool *BlockPool) IsCaughtUp() bool {
 		maxPeerHeight = MaxInt(maxPeerHeight, peer.height)
 	}
 
-	isCaughtUp := (height > 0 || time.Now().Sub(pool.startTime) > 5*time.Second) && (maxPeerHeight == 0 || height >= maxPeerHeight)
+	isCaughtUp := (height > 0 || time.Since(pool.startTime) > 5*time.Second) && (maxPeerHeight == 0 || height >= maxPeerHeight)
 	pool.Logger.Info(Fmt("IsCaughtUp: %v", isCaughtUp), "height", height, "maxPeerHeight", maxPeerHeight)
 	return isCaughtUp
 }
@@ -261,7 +261,6 @@ func (pool *BlockPool) pickIncrAvailablePeer(minHeight int) *bpPeer {
 		if peer.didTimeout {
 			pool.removePeer(peer.id)
 			continue
-		} else {
 		}
 		if peer.numPending >= maxPendingRequestsPerPeer {
 			continue
@@ -303,6 +302,7 @@ func (pool *BlockPool) sendTimeout(peerID string) {
 	pool.timeoutsCh <- peerID
 }
 
+// unused by tendermint; left for debugging purposes
 func (pool *BlockPool) debug() string {
 	pool.mtx.Lock() // Lock
 	defer pool.mtx.Unlock()
@@ -326,7 +326,6 @@ type bpPeer struct {
 	id          string
 	recvMonitor *flow.Monitor
 
-	mtx        sync.Mutex
 	height     int
 	numPending int32
 	timeout    *time.Timer

@@ -468,7 +468,7 @@ FOR_LOOP:
 
 	// Cleanup
 	close(c.pong)
-	for _ = range c.pong {
+	for range c.pong {
 		// Drain
 	}
 }

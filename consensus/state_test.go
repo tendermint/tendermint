@@ -523,7 +523,10 @@ func TestLockPOLRelock(t *testing.T) {
 	<-voteCh // prevote
 
 	signAddVotes(cs1, types.VoteTypePrevote, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header(), vs2, vs3, vs4)
-	_, _, _ = <-voteCh, <-voteCh, <-voteCh // prevotes
+	// prevotes
+	<-voteCh
+	<-voteCh
+	<-voteCh
 
 	<-voteCh // our precommit
 	// the proposed block should now be locked and our precommit added
@@ -532,7 +535,10 @@ func TestLockPOLRelock(t *testing.T) {
 	// add precommits from the rest
 	signAddVotes(cs1, types.VoteTypePrecommit, nil, types.PartSetHeader{}, vs2, vs4)
 	signAddVotes(cs1, types.VoteTypePrecommit, cs1.ProposalBlock.Hash(), cs1.ProposalBlockParts.Header(), vs3)
-	_, _, _ = <-voteCh, <-voteCh, <-voteCh // precommits
+	// precommites
+	<-voteCh
+	<-voteCh
+	<-voteCh
 
 	// before we timeout to the new round set the new proposal
 	prop, propBlock := decideProposal(cs1, vs2, vs2.Height, vs2.Round+1)
@@ -570,7 +576,10 @@ func TestLockPOLRelock(t *testing.T) {
 
 	// now lets add prevotes from everyone else for the new block
 	signAddVotes(cs1, types.VoteTypePrevote, propBlockHash, propBlockParts.Header(), vs2, vs3, vs4)
-	_, _, _ = <-voteCh, <-voteCh, <-voteCh // prevotes
+	// prevotes
+	<-voteCh
+	<-voteCh
+	<-voteCh
 
 	// now either we go to PrevoteWait or Precommit
 	select {
@@ -585,7 +594,8 @@ func TestLockPOLRelock(t *testing.T) {
 	validatePrecommit(t, cs1, 1, 1, vss[0], propBlockHash, propBlockHash)
 
 	signAddVotes(cs1, types.VoteTypePrecommit, propBlockHash, propBlockParts.Header(), vs2, vs3)
-	_, _ = <-voteCh, <-voteCh
+	<-voteCh
+	<-voteCh
 
 	be := <-newBlockCh
 	b := be.(types.TMEventData).Unwrap().(types.EventDataNewBlockHeader)

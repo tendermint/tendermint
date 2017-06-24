@@ -104,6 +104,9 @@ func (cs *ConsensusState) catchupReplay(csHeight int) error {
 	// NOTE: This is just a sanity check. As far as we know things work fine without it,
 	// and Handshake could reuse ConsensusState if it weren't for this check (since we can crash after writing ENDHEIGHT).
 	gr, found, err := cs.wal.group.Search("#ENDHEIGHT: ", makeHeightSearchFunc(csHeight))
+	if err != nil {
+		return err
+	}
 	if gr != nil {
 		gr.Close()
 	}
@@ -132,7 +135,7 @@ func (cs *ConsensusState) catchupReplay(csHeight int) error {
 	if !found {
 		// if we upgraded from 0.9 to 0.9.1, we may have #HEIGHT instead
 		// TODO (0.10.0): remove this
-		gr, found, err = cs.wal.group.Search("#HEIGHT: ", makeHeightSearchFunc(csHeight))
+		gr, _, err = cs.wal.group.Search("#HEIGHT: ", makeHeightSearchFunc(csHeight))
 		if err == io.EOF {
 			cs.Logger.Error("Replay: wal.group.Search returned EOF", "#HEIGHT", csHeight)
 			return nil

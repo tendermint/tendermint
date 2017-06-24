@@ -135,7 +135,7 @@ func (l *DefaultListener) listenRoutine() {
 
 	// Cleanup
 	close(l.connections)
-	for _ = range l.connections {
+	for range l.connections {
 		// Drain
 	}
 }

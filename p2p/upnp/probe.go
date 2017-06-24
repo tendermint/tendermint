@@ -1,10 +1,11 @@
 package upnp
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"time"
+
+	"github.com/pkg/errors"
 
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
@@ -18,26 +19,26 @@ type UPNPCapabilities struct {
 func makeUPNPListener(intPort int, extPort int, logger log.Logger) (NAT, net.Listener, net.IP, error) {
 	nat, err := Discover()
 	if err != nil {
-		return nil, nil, nil, errors.New(fmt.Sprintf("NAT upnp could not be discovered: %v", err))
+		return nil, nil, nil, errors.Errorf("NAT upnp could not be discovered: %v", err)
 	}
 	logger.Info(cmn.Fmt("ourIP: %v", nat.(*upnpNAT).ourIP))
 
 	ext, err := nat.GetExternalAddress()
 	if err != nil {
-		return nat, nil, nil, errors.New(fmt.Sprintf("External address error: %v", err))
+		return nat, nil, nil, errors.Errorf("External address error: %v", err)
 	}
 	logger.Info(cmn.Fmt("External address: %v", ext))
 
 	port, err := nat.AddPortMapping("tcp", extPort, intPort, "Tendermint UPnP Probe", 0)
 	if err != nil {
-		return nat, nil, ext, errors.New(fmt.Sprintf("Port mapping error: %v", err))
+		return nat, nil, ext, errors.Errorf("Port mapping error: %v", err)
 	}
 	logger.Info(cmn.Fmt("Port mapping mapped: %v", port))
 
 	// also run the listener, open for all remote addresses.
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%v", intPort))
 	if err != nil {
-		return nat, nil, ext, errors.New(fmt.Sprintf("Error establishing listener: %v", err))
+		return nat, nil, ext, errors.Errorf("Error establishing listener: %v", err)
 	}
 	return nat, listener, ext, nil
 }
