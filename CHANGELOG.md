@@ -1,5 +1,11 @@
 # Changelog
 
+## Develop-Branch changes (unreleased)
+
+FEATURES:
+
+- [common] Date range parsing from string (ex. "2015-12-31:2017-12-31") 
+
 ## 0.2.2 (June 16, 2017)
 
 FEATURES:
@@ -15,7 +21,6 @@ IMPROVEMENTS:
 BUG FIXES:
 
 - [flowrate] Fix non-deterministic test failures
-
 
 ## 0.2.1 (June 2, 2017)
 
