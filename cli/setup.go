@@ -97,9 +97,9 @@ func (e Executor) Execute() error {
 	err := e.Command.Execute()
 	if err != nil {
 		if viper.GetBool(TraceFlag) {
-			fmt.Printf("ERROR: %+v\n", err)
+			fmt.Fprintf(os.Stderr, "ERROR: %+v\n", err)
 		} else {
-			fmt.Println("ERROR:", err.Error())
+			fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
 		}
 
 		// return error code 1 by default, can override it with a special error type

@@ -2,6 +2,13 @@
 
 ## Develop-Branch changes (unreleased)
 
+BREAKING CHANGES:
+
+- [run] NewBaseService takes the new logger
+- [cli] RunCaptureWithArgs now captures stderr and stdout
+  - +func RunCaptureWithArgs(cmd Executable, args []string, env map[string]string) (stdout, stderr string, err error)
+  - -func RunCaptureWithArgs(cmd Executable, args []string, env map[string]string) (output string, err error) 
+
 FEATURES:
 
 - [common] Date range parsing from string (ex. "2015-12-31:2017-12-31") 
