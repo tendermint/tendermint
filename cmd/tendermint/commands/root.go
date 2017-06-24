@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/viper"
 
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tmlibs/cli"
 	tmflags "github.com/tendermint/tmlibs/cli/flags"
 	"github.com/tendermint/tmlibs/log"
 )
@@ -33,6 +34,9 @@ var RootCmd = &cobra.Command{
 		logger, err = tmflags.ParseLogLevel(config.LogLevel, logger, cfg.DefaultLogLevel())
 		if err != nil {
 			return err
+		}
+		if viper.GetBool(cli.TraceFlag) {
+			logger = log.NewTracingLogger(logger)
 		}
 		return nil
 	},
