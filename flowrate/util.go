@@ -15,16 +15,16 @@ const clockRate = 20 * time.Millisecond
 
 // czero is the process start time rounded down to the nearest clockRate
 // increment.
-var czero = time.Duration(time.Now().UnixNano()) / clockRate * clockRate
+var czero = time.Now().Round(clockRate)
 
 // clock returns a low resolution timestamp relative to the process start time.
 func clock() time.Duration {
-	return time.Duration(time.Now().UnixNano())/clockRate*clockRate - czero
+	return time.Now().Round(clockRate).Sub(czero)
 }
 
 // clockToTime converts a clock() timestamp to an absolute time.Time value.
 func clockToTime(c time.Duration) time.Time {
-	return time.Unix(0, int64(czero+c))
+	return czero.Add(c)
 }
 
 // clockRound returns d rounded to the nearest clockRate increment.

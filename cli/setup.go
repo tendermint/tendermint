@@ -38,7 +38,7 @@ func PrepareBaseCmd(cmd *cobra.Command, envPrefix, defautRoot string) Executor {
 	cmd.PersistentFlags().String(HomeFlag, "", "root directory for config and data")
 	cmd.PersistentFlags().Bool(TraceFlag, false, "print out full stack trace on errors")
 	cmd.PersistentPreRunE = concatCobraCmdFuncs(bindFlagsLoadViper, cmd.PersistentPreRunE)
-	return Executor{cmd}
+	return Executor{cmd, os.Exit}
 }
 
 // PrepareMainCmd is meant for client side libs that want some more flags
@@ -58,7 +58,7 @@ func initEnv(prefix string) {
 
 	// env variables with TM prefix (eg. TM_ROOT)
 	viper.SetEnvPrefix(prefix)
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
 	viper.AutomaticEnv()
 }
 
@@ -82,6 +82,11 @@ func copyEnvVars(prefix string) {
 // Executor wraps the cobra Command with a nicer Execute method
 type Executor struct {
 	*cobra.Command
+	Exit func(int) // this is os.Exit by default, override in tests
+}
+
+type ExitCoder interface {
+	ExitCode() int
 }
 
 // execute adds all child commands to the root command sets flags appropriately.
@@ -91,12 +96,18 @@ func (e Executor) Execute() error {
 	e.SilenceErrors = true
 	err := e.Command.Execute()
 	if err != nil {
-		// TODO: something cooler with log-levels
 		if viper.GetBool(TraceFlag) {
 			fmt.Fprintf(os.Stderr, "ERROR: %+v\n", err)
 		} else {
 			fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
 		}
+
+		// return error code 1 by default, can override it with a special error type
+		exitCode := 1
+		if ec, ok := err.(ExitCoder); ok {
+			exitCode = ec.ExitCode()
+		}
+		e.Exit(exitCode)
 	}
 	return err
 }
