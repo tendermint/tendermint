@@ -649,9 +649,9 @@ func (cs *ConsensusState) handleMsg(mi msgInfo, rs RoundState) {
 		// attempt to add the vote and dupeout the validator if its a duplicate signature
 		// if the vote gives us a 2/3-any or 2/3-one, we transition
 		_ = cs.tryAddVote(msg.Vote, peerKey)
-		//if err == ErrAddingVote {
-		// TODO: punish peer
-		//}
+		if err == ErrAddingVote {
+			// TODO: punish peer
+		}
 
 		// NOTE: the vote is broadcast to peers by the reactor listening
 		// for vote events
@@ -897,10 +897,10 @@ func (cs *ConsensusState) enterPrevote(height int, round int) {
 	// fire event for how we got here
 	if cs.isProposalComplete() {
 		types.FireEventCompleteProposal(cs.evsw, cs.RoundStateEvent())
-	} // else {
-	// we received +2/3 prevotes for a future round
-	// TODO: catchup event?
-	//}
+	} else {
+		// we received +2/3 prevotes for a future round
+		// TODO: catchup event?
+	}
 
 	cs.Logger.Info(cmn.Fmt("enterPrevote(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
@@ -1122,9 +1122,9 @@ func (cs *ConsensusState) enterCommit(height int, commitRound int) {
 			// Set up ProposalBlockParts and keep waiting.
 			cs.ProposalBlock = nil
 			cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartsHeader)
-		} // else {
-		// We just need to keep waiting.
-		//}
+		} else {
+			// We just need to keep waiting.
+		}
 	}
 }
 

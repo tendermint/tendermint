@@ -132,8 +132,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte)
 
 	bcR.Logger.Debug("Receive", "src", src, "chID", chID, "msg", msg)
 
-	// [zr] note: the `megacheck` tool (go vet on steroids)
-	// really dislikes the logic in this switch
+	// TODO: improve logic to satisfy megacheck
 	switch msg := msg.(type) {
 	case *bcBlockRequestMessage:
 		// Got a request for a block. Respond with block if we have it.

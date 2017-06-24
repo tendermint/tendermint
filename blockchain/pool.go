@@ -212,9 +212,9 @@ func (pool *BlockPool) AddBlock(peerID string, block *types.Block, blockSize int
 		pool.numPending--
 		peer := pool.peers[peerID]
 		peer.decrPending(blockSize)
-	} // else {
-	// Bad peer?
-	// }
+	} else {
+		// Bad peer?
+	}
 }
 
 // Sets the peer's alleged blockchain height.
@@ -303,7 +303,7 @@ func (pool *BlockPool) sendTimeout(peerID string) {
 }
 
 // unused by tendermint; left for debugging purposes
-/*func (pool *BlockPool) debug() string {
+func (pool *BlockPool) debug() string {
 	pool.mtx.Lock() // Lock
 	defer pool.mtx.Unlock()
 
@@ -317,7 +317,7 @@ func (pool *BlockPool) sendTimeout(peerID string) {
 		}
 	}
 	return str
-}*/
+}
 
 //-------------------------------------
 

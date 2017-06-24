@@ -366,9 +366,9 @@ func (c *MConnection) sendMsgPacket() bool {
 	// Nothing to send?
 	if leastChannel == nil {
 		return true
-	} // else {
-	// c.Logger.Info("Found a msgPacket to send")
-	//}
+	} else {
+		// c.Logger.Info("Found a msgPacket to send")
+	}
 
 	// Make & send a msgPacket from this channel
 	n, err := leastChannel.writeMsgPacketTo(c.bufWriter)
