@@ -648,7 +648,7 @@ func (cs *ConsensusState) handleMsg(mi msgInfo, rs RoundState) {
 	case *VoteMessage:
 		// attempt to add the vote and dupeout the validator if its a duplicate signature
 		// if the vote gives us a 2/3-any or 2/3-one, we transition
-		_ = cs.tryAddVote(msg.Vote, peerKey)
+		err := cs.tryAddVote(msg.Vote, peerKey)
 		if err == ErrAddingVote {
 			// TODO: punish peer
 		}

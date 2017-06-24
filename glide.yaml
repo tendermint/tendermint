@@ -27,7 +27,7 @@ import:
   subpackages:
   - data
 - package: github.com/tendermint/tmlibs
-  version: v0.2.1
+  version: v0.2.2
   subpackages:
   - autofile
   - cli
