@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.10.1 (TBD)
+
+FEATURES:
+- Use `--trace` to get stack traces for logged errors
+
+IMPROVEMENTS:
+- Add a Code of Conduct
+- Variety of improvements as suggested by `megacheck` tool
+- rpc: deduplicate tests between rpc/client and rpc/tests
+- rpc: addresses without a protocol prefix default to `tcp://`. `http://` is also accepted as an alias for `tcp://`
+
+BUG FIXES:
+- Fix log statements using keys with spaces (logger does not currently support spaces)
+- rpc: set logger on websocket connection
+
 ## 0.10.0 (June 2, 2017)
 
 Includes major updates to configuration, logging, and json serialization.
