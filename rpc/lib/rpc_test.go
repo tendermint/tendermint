@@ -245,11 +245,11 @@ func TestServersAndClientsBasic(t *testing.T) {
 		fmt.Printf("=== testing server on %s using %v client", addr, cl1)
 		testWithHTTPClient(t, cl1)
 
-		cl2 := client.NewJSONRPCClient(tcpAddr)
+		cl2 := client.NewJSONRPCClient(addr)
 		fmt.Printf("=== testing server on %s using %v client", addr, cl2)
 		testWithHTTPClient(t, cl2)
 
-		cl3 := client.NewWSClient(tcpAddr, websocketEndpoint)
+		cl3 := client.NewWSClient(addr, websocketEndpoint)
 		_, err := cl3.Start()
 		require.Nil(t, err)
 		fmt.Printf("=== testing server on %s using %v client", addr, cl3)
