@@ -597,6 +597,7 @@ func (wm *WebsocketManager) WebsocketHandler(w http.ResponseWriter, r *http.Requ
 
 	// register connection
 	con := NewWSConnection(wsConn, wm.funcMap, wm.evsw)
+	con.SetLogger(wm.logger)
 	wm.logger.Info("New websocket connection", "remote", con.remoteAddr)
 	con.Start() // Blocking
 }
