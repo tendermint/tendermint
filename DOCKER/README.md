@@ -29,7 +29,7 @@ docker run -it --rm -v "/tmp:/tendermint" tendermint/tendermint
 
 ## mintnet-kubernetes
 
-If you want to see many containers talking to each other, consider using [mintnet-kubernetes](https://github.com/tendermint/mintnet-kubernetes), which is a tool for running Tendermint-based applications on a Kubernetes cluster.
+If you want to see many containers talking to each other, consider using [mintnet-kubernetes](https://github.com/tendermint/tools/tree/master/mintnet-kubernetes), which is a tool for running Tendermint-based applications on a Kubernetes cluster.
 
 # Supported Docker versions
 
