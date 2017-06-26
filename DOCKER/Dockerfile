@@ -1,4 +1,4 @@
-FROM alpine:3.5
+FROM alpine:3.6
 
 # This is the release of tendermint to pull in.
 ENV TM_VERSION 0.10.0
@@ -42,5 +42,4 @@ EXPOSE 46657
 
 ENTRYPOINT ["tendermint"]
 
-# By default you'll get the dummy app
-CMD ["node", "--moniker=`hostname`", "--proxy_app=dummy"]
+CMD ["node", "--moniker=`hostname`"]
