@@ -39,6 +39,15 @@ func (genDoc *GenesisDoc) SaveAs(file string) error {
 	return cmn.WriteFile(file, genDocBytes, 0644)
 }
 
+func (genDoc *GenesisDoc) ValidatorHash() []byte {
+	vals := make([]*Validator, len(genDoc.Validators))
+	for i, v := range genDoc.Validators {
+		vals[i] = NewValidator(v.PubKey, v.Amount)
+	}
+	vset := NewValidatorSet(vals)
+	return vset.Hash()
+}
+
 //------------------------------------------------------------
 // Make genesis state from file
 
