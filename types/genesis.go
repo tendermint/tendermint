@@ -20,12 +20,14 @@ var GenDocKey = []byte("GenDocKey")
 //------------------------------------------------------------
 // core types for a genesis definition
 
+// GenesisValidator is an initial validator.
 type GenesisValidator struct {
 	PubKey crypto.PubKey `json:"pub_key"`
 	Amount int64         `json:"amount"`
 	Name   string        `json:"name"`
 }
 
+// GenesisDoc defines the initial conditions for a tendermint blockchain, in particular its validator set.
 type GenesisDoc struct {
 	GenesisTime time.Time          `json:"genesis_time"`
 	ChainID     string             `json:"chain_id"`
@@ -33,7 +35,7 @@ type GenesisDoc struct {
 	AppHash     data.Bytes         `json:"app_hash"`
 }
 
-// Utility method for saving GenensisDoc as JSON file.
+// SaveAs is a utility method for saving GenensisDoc as a JSON file.
 func (genDoc *GenesisDoc) SaveAs(file string) error {
 	genDocBytes, err := json.Marshal(genDoc)
 	if err != nil {
@@ -42,6 +44,7 @@ func (genDoc *GenesisDoc) SaveAs(file string) error {
 	return cmn.WriteFile(file, genDocBytes, 0644)
 }
 
+// ValidatorHash returns the hash of the validator set contained in the GenesisDoc
 func (genDoc *GenesisDoc) ValidatorHash() []byte {
 	vals := make([]*Validator, len(genDoc.Validators))
 	for i, v := range genDoc.Validators {
