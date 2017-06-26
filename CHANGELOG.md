@@ -3,6 +3,7 @@
 ## 0.10.1 (TBD)
 
 FEATURES:
+- Use `--trace` to get stack traces for logged errors
 - types: GenesisDoc.ValidatorHash returns the hash of the genesis validator set 
 - types: GenesisDocFromFile parses a GenesiDoc from a JSON file
 
