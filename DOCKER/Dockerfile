@@ -42,5 +42,4 @@ EXPOSE 46657
 
 ENTRYPOINT ["tendermint"]
 
-# By default you'll get the dummy app
-CMD ["node", "--moniker=`hostname`", "--proxy_app=dummy"]
+CMD ["node", "--moniker=`hostname`"]
