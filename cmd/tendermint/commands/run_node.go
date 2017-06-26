@@ -49,8 +49,7 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().Bool("p2p.pex", config.P2P.PexReactor, "Enable Peer-Exchange (dev feature)")
 }
 
-func ParseGenesisFile() (*types.GenesisDoc, error) {
-	genDocFile := config.GenesisFile()
+func ParseGenesisFile(genDocFile string) (*types.GenesisDoc, error) {
 	jsonBlob, err := ioutil.ReadFile(genDocFile)
 	if err != nil {
 		return nil, errors.Wrap(err, "Couldn't read GenesisDoc file")
@@ -83,7 +82,7 @@ func runNode(cmd *cobra.Command, args []string) error {
 		time.Sleep(time.Second)
 	}
 
-	genDoc, err := ParseGenesisFile()
+	genDoc, err := ParseGenesisFile(genDocFile)
 	if err != nil {
 		return err
 	}
