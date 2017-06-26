@@ -1,8 +1,11 @@
 package core
 
 import (
+	"context"
 	"fmt"
 	"time"
+
+	"github.com/pkg/errors"
 
 	abci "github.com/tendermint/abci/types"
 	data "github.com/tendermint/go-wire/data"
@@ -147,20 +150,26 @@ func BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 // |-----------+------+---------+----------+-----------------|
 // | tx        | Tx   | nil     | true     | The transaction |
 func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
-
 	// subscribe to tx being committed in block
-	deliverTxResCh := make(chan types.EventDataTx, 1)
-	types.AddListenerForEvent(eventSwitch, "rpc", types.EventStringTx(tx), func(data types.TMEventData) {
-		deliverTxResCh <- data.Unwrap().(types.EventDataTx)
-	})
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+	deliverTxResCh := make(chan interface{})
+	q := types.EventQueryTx(tx)
+	err := eventBus.Subscribe(ctx, "mempool", q, deliverTxResCh)
+	if err != nil {
+		err = errors.Wrap(err, "failed to subscribe to tx")
+		logger.Error("Error broadcasting transaction", "err", err)
+		return nil, fmt.Errorf("Error broadcasting transaction: %v", err)
+	}
+	defer eventBus.Unsubscribe(context.Background(), "mempool", q)
 
 	// broadcast the tx and register checktx callback
 	checkTxResCh := make(chan *abci.Response, 1)
-	err := mempool.CheckTx(tx, func(res *abci.Response) {
+	err = mempool.CheckTx(tx, func(res *abci.Response) {
 		checkTxResCh <- res
 	})
 	if err != nil {
-		logger.Error("err", "err", err)
+		logger.Error("Error broadcasting transaction", "err", err)
 		return nil, fmt.Errorf("Error broadcasting transaction: %v", err)
 	}
 	checkTxRes := <-checkTxResCh
@@ -179,7 +188,8 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	// TODO: configurable?
 	timer := time.NewTimer(60 * 2 * time.Second)
 	select {
-	case deliverTxRes := <-deliverTxResCh:
+	case deliverTxResMsg := <-deliverTxResCh:
+		deliverTxRes := deliverTxResMsg.(types.TMEventData).Unwrap().(types.EventDataTx)
 		// The tx was included in a block.
 		deliverTxR := &abci.ResponseDeliverTx{
 			Code: deliverTxRes.Code,

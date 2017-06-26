@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -28,6 +29,10 @@ import (
 	"github.com/tendermint/abci/example/dummy"
 
 	"github.com/go-kit/kit/log/term"
+)
+
+const (
+	testSubscriber = "test-client"
 )
 
 // genesis, chain_id, priv_val
@@ -208,11 +213,14 @@ func validatePrevoteAndPrecommit(t *testing.T, cs *ConsensusState, thisRound, lo
 
 // genesis
 func subscribeToVoter(cs *ConsensusState, addr []byte) chan interface{} {
-	voteCh0 := subscribeToEvent(cs.evsw, "tester", types.EventStringVote(), 1)
+	voteCh0 := make(chan interface{})
+	err := cs.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryVote, voteCh0)
+	if err != nil {
+		panic(fmt.Sprintf("failed to subscribe %s to %v", testSubscriber, types.EventQueryVote))
+	}
 	voteCh := make(chan interface{})
 	go func() {
-		for {
-			v := <-voteCh0
+		for v := range voteCh0 {
 			vote := v.(types.TMEventData).Unwrap().(types.EventDataVote)
 			// we only fire for our own votes
 			if bytes.Equal(addr, vote.Vote.ValidatorAddress) {
@@ -231,8 +239,12 @@ func newConsensusState(state *sm.State, pv types.PrivValidator, app abci.Applica
 }
 
 func newConsensusStateWithConfig(thisConfig *cfg.Config, state *sm.State, pv types.PrivValidator, app abci.Application) *ConsensusState {
-	// Get BlockStore
 	blockDB := dbm.NewMemDB()
+	return newConsensusStateWithConfigAndBlockStore(thisConfig, state, pv, app, blockDB)
+}
+
+func newConsensusStateWithConfigAndBlockStore(thisConfig *cfg.Config, state *sm.State, pv types.PrivValidator, app abci.Application, blockDB dbm.DB) *ConsensusState {
+	// Get BlockStore
 	blockStore := bc.NewBlockStore(blockDB)
 
 	// one for mempool, one for consensus
@@ -252,10 +264,11 @@ func newConsensusStateWithConfig(thisConfig *cfg.Config, state *sm.State, pv typ
 	cs.SetLogger(log.TestingLogger())
 	cs.SetPrivValidator(pv)
 
-	evsw := types.NewEventSwitch()
-	evsw.SetLogger(log.TestingLogger().With("module", "events"))
-	cs.SetEventSwitch(evsw)
-	evsw.Start()
+	eventBus := types.NewEventBus()
+	eventBus.SetLogger(log.TestingLogger().With("module", "events"))
+	eventBus.Start()
+	cs.SetEventBus(eventBus)
+
 	return cs
 }
 
@@ -267,13 +280,13 @@ func loadPrivValidator(config *cfg.Config) *types.PrivValidatorFS {
 	return privValidator
 }
 
-func fixedConsensusStateDummy() *ConsensusState {
+func fixedConsensusStateDummy(config *cfg.Config, logger log.Logger) *ConsensusState {
 	stateDB := dbm.NewMemDB()
 	state, _ := sm.MakeGenesisStateFromFile(stateDB, config.GenesisFile())
-	state.SetLogger(log.TestingLogger().With("module", "state"))
+	state.SetLogger(logger.With("module", "state"))
 	privValidator := loadPrivValidator(config)
 	cs := newConsensusState(state, privValidator, dummy.NewDummyApplication())
-	cs.SetLogger(log.TestingLogger())
+	cs.SetLogger(logger)
 	return cs
 }
 
@@ -297,7 +310,7 @@ func randConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
 
 //-------------------------------------------------------------------------------
 
-func ensureNoNewStep(stepCh chan interface{}) {
+func ensureNoNewStep(stepCh <-chan interface{}) {
 	timer := time.NewTimer(ensureTimeout)
 	select {
 	case <-timer.C:
@@ -307,7 +320,7 @@ func ensureNoNewStep(stepCh chan interface{}) {
 	}
 }
 
-func ensureNewStep(stepCh chan interface{}) {
+func ensureNewStep(stepCh <-chan interface{}) {
 	timer := time.NewTimer(ensureTimeout)
 	select {
 	case <-timer.C:
@@ -362,10 +375,11 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerFunc func() TimeoutTicker, appFunc func() abci.Application) []*ConsensusState {
 	genDoc, privVals := randGenesisDoc(nValidators, false, int64(testMinPower))
 	css := make([]*ConsensusState, nPeers)
+	logger := consensusLogger()
 	for i := 0; i < nPeers; i++ {
 		db := dbm.NewMemDB() // each state needs its own db
 		state, _ := sm.MakeGenesisState(db, genDoc)
-		state.SetLogger(log.TestingLogger().With("module", "state"))
+		state.SetLogger(logger.With("module", "state", "validator", i))
 		state.Save()
 		thisConfig := ResetConfig(cmn.Fmt("%s_%d", testName, i))
 		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
@@ -382,7 +396,7 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 		app.InitChain(abci.RequestInitChain{Validators: vals})
 
 		css[i] = newConsensusStateWithConfig(thisConfig, state, privVal, app)
-		css[i].SetLogger(log.TestingLogger())
+		css[i].SetLogger(logger.With("validator", i))
 		css[i].SetTimeoutTicker(tickerFunc())
 	}
 	return css

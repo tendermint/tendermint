@@ -7,6 +7,7 @@ BREAKING CHANGES:
 - Better support for injecting randomness
 - Pass evidence/voteInfo through ABCI
 - Upgrade consensus for more real-time use of evidence
+- New events system using tmlibs/pubsub
 
 FEATURES:
 - Peer reputation management
