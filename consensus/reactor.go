@@ -2,11 +2,13 @@ package consensus
 
 import (
 	"bytes"
-	"errors"
+	"context"
 	"fmt"
 	"reflect"
 	"sync"
 	"time"
+
+	"github.com/pkg/errors"
 
 	wire "github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -34,10 +36,10 @@ type ConsensusReactor struct {
 	p2p.BaseReactor // BaseService + p2p.Switch
 
 	conS *ConsensusState
-	evsw types.EventSwitch
 
 	mtx      sync.RWMutex
 	fastSync bool
+	eventBus *types.EventBus
 }
 
 // NewConsensusReactor returns a new ConsensusReactor with the given consensusState.
@@ -55,9 +57,10 @@ func (conR *ConsensusReactor) OnStart() error {
 	conR.Logger.Info("ConsensusReactor ", "fastSync", conR.FastSync())
 	conR.BaseReactor.OnStart()
 
-	// callbacks for broadcasting new steps and votes to peers
-	// upon their respective events (ie. uses evsw)
-	conR.registerEventCallbacks()
+	err := conR.broadcastNewRoundStepsAndVotes()
+	if err != nil {
+		return err
+	}
 
 	if !conR.FastSync() {
 		_, err := conR.conS.Start()
@@ -65,6 +68,7 @@ func (conR *ConsensusReactor) OnStart() error {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -306,10 +310,10 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 	}
 }
 
-// SetEventSwitch implements events.Eventable
-func (conR *ConsensusReactor) SetEventSwitch(evsw types.EventSwitch) {
-	conR.evsw = evsw
-	conR.conS.SetEventSwitch(evsw)
+// SetEventBus sets event bus.
+func (conR *ConsensusReactor) SetEventBus(b *types.EventBus) {
+	conR.eventBus = b
+	conR.conS.SetEventBus(b)
 }
 
 // FastSync returns whether the consensus reactor is in fast-sync mode.
@@ -321,24 +325,47 @@ func (conR *ConsensusReactor) FastSync() bool {
 
 //--------------------------------------
 
-// Listens for new steps and votes,
-// broadcasting the result to peers
-func (conR *ConsensusReactor) registerEventCallbacks() {
+// broadcastNewRoundStepsAndVotes subscribes for new round steps and votes
+// using the event bus and broadcasts events to peers upon receiving them.
+func (conR *ConsensusReactor) broadcastNewRoundStepsAndVotes() error {
+	subscriber := "consensus-reactor"
+	ctx := context.Background()
 
-	types.AddListenerForEvent(conR.evsw, "conR", types.EventStringNewRoundStep(), func(data types.TMEventData) {
-		rs := data.Unwrap().(types.EventDataRoundState).RoundState.(*cstypes.RoundState)
-		conR.broadcastNewRoundStep(rs)
-	})
+	// new round steps
+	stepsCh := make(chan interface{})
+	err := conR.eventBus.Subscribe(ctx, subscriber, types.EventQueryNewRoundStep, stepsCh)
+	if err != nil {
+		return errors.Wrapf(err, "failed to subscribe %s to %s", subscriber, types.EventQueryNewRoundStep)
+	}
 
-	types.AddListenerForEvent(conR.evsw, "conR", types.EventStringVote(), func(data types.TMEventData) {
-		edv := data.Unwrap().(types.EventDataVote)
-		conR.broadcastHasVoteMessage(edv.Vote)
-	})
+	// votes
+	votesCh := make(chan interface{})
+	err = conR.eventBus.Subscribe(ctx, subscriber, types.EventQueryVote, votesCh)
+	if err != nil {
+		return errors.Wrapf(err, "failed to subscribe %s to %s", subscriber, types.EventQueryVote)
+	}
 
-	types.AddListenerForEvent(conR.evsw, "conR", types.EventStringProposalHeartbeat(), func(data types.TMEventData) {
-		heartbeat := data.Unwrap().(types.EventDataProposalHeartbeat)
-		conR.broadcastProposalHeartbeatMessage(heartbeat)
-	})
+	go func() {
+		for {
+			select {
+			case data, ok := <-stepsCh:
+				if ok { // a receive from a closed channel returns the zero value immediately
+					edrs := data.(types.TMEventData).Unwrap().(types.EventDataRoundState)
+					conR.broadcastNewRoundStep(edrs.RoundState.(*cstypes.RoundState))
+				}
+			case data, ok := <-votesCh:
+				if ok {
+					edv := data.(types.TMEventData).Unwrap().(types.EventDataVote)
+					conR.broadcastHasVoteMessage(edv.Vote)
+				}
+			case <-conR.Quit:
+				conR.eventBus.UnsubscribeAll(ctx, subscriber)
+				return
+			}
+		}
+	}()
+
+	return nil
 }
 
 func (conR *ConsensusReactor) broadcastProposalHeartbeatMessage(heartbeat types.EventDataProposalHeartbeat) {

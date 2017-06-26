@@ -77,7 +77,7 @@ Now start the server:
 ```
 mux := http.NewServeMux()
 rpcserver.RegisterRPCFuncs(mux, Routes)
-wm := rpcserver.NewWebsocketManager(Routes, nil)
+wm := rpcserver.NewWebsocketManager(Routes)
 mux.HandleFunc("/websocket", wm.WebsocketHandler)
 logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 go func() {

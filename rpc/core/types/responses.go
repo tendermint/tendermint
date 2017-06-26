@@ -140,6 +140,6 @@ type ResultSubscribe struct{}
 type ResultUnsubscribe struct{}
 
 type ResultEvent struct {
-	Name string            `json:"name"`
-	Data types.TMEventData `json:"data"`
+	Query string            `json:"query"`
+	Data  types.TMEventData `json:"data"`
 }

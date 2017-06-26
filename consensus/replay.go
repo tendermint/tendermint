@@ -91,7 +91,6 @@ func (cs *ConsensusState) readReplayMessage(msg *TimedWALMessage, newStepCh chan
 // replay only those messages since the last block.
 // timeoutRoutine should run concurrently to read off tickChan
 func (cs *ConsensusState) catchupReplay(csHeight int) error {
-
 	// set replayMode
 	cs.replayMode = true
 	defer func() { cs.replayMode = false }()
@@ -104,7 +103,7 @@ func (cs *ConsensusState) catchupReplay(csHeight int) error {
 		gr.Close()
 	}
 	if found {
-		return errors.New(cmn.Fmt("WAL should not contain #ENDHEIGHT %d.", csHeight))
+		return fmt.Errorf("WAL should not contain #ENDHEIGHT %d.", csHeight)
 	}
 
 	// Search for last height marker
@@ -334,11 +333,10 @@ func (h *Handshaker) replayBlocks(proxyApp proxy.AppConns, appBlockHeight, store
 func (h *Handshaker) replayBlock(height int, proxyApp proxy.AppConnConsensus) ([]byte, error) {
 	mempool := types.MockMempool{}
 
-	var eventCache types.Fireable // nil
 	block := h.store.LoadBlock(height)
 	meta := h.store.LoadBlockMeta(height)
 
-	if err := h.state.ApplyBlock(eventCache, proxyApp, block, meta.BlockID.PartsHeader, mempool); err != nil {
+	if err := h.state.ApplyBlock(types.NopEventBus{}, proxyApp, block, meta.BlockID.PartsHeader, mempool); err != nil {
 		return nil, err
 	}
 

@@ -449,17 +449,17 @@ func (c *WSClient) readRoutine() {
 ///////////////////////////////////////////////////////////////////////////////
 // Predefined methods
 
-// Subscribe to an event. Note the server must have a "subscribe" route
+// Subscribe to a query. Note the server must have a "subscribe" route
 // defined.
-func (c *WSClient) Subscribe(ctx context.Context, eventType string) error {
-	params := map[string]interface{}{"event": eventType}
+func (c *WSClient) Subscribe(ctx context.Context, query string) error {
+	params := map[string]interface{}{"query": query}
 	return c.Call(ctx, "subscribe", params)
 }
 
-// Unsubscribe from an event. Note the server must have a "unsubscribe" route
+// Unsubscribe from a query. Note the server must have a "unsubscribe" route
 // defined.
-func (c *WSClient) Unsubscribe(ctx context.Context, eventType string) error {
-	params := map[string]interface{}{"event": eventType}
+func (c *WSClient) Unsubscribe(ctx context.Context, query string) error {
+	params := map[string]interface{}{"query": query}
 	return c.Call(ctx, "unsubscribe", params)
 }
 

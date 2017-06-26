@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 
 	"github.com/pkg/errors"
 
@@ -11,7 +12,7 @@ import (
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpcclient "github.com/tendermint/tendermint/rpc/lib/client"
 	"github.com/tendermint/tendermint/types"
-	events "github.com/tendermint/tmlibs/events"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 /*
@@ -40,10 +41,9 @@ func NewHTTP(remote, wsEndpoint string) *HTTP {
 }
 
 var (
-	_ Client            = (*HTTP)(nil)
-	_ NetworkClient     = (*HTTP)(nil)
-	_ types.EventSwitch = (*HTTP)(nil)
-	_ types.EventSwitch = (*WSEvents)(nil)
+	_ Client        = (*HTTP)(nil)
+	_ NetworkClient = (*HTTP)(nil)
+	_ EventsClient  = (*HTTP)(nil)
 )
 
 func (c *HTTP) Status() (*ctypes.ResultStatus, error) {
@@ -186,128 +186,114 @@ func (c *HTTP) Validators(height *int) (*ctypes.ResultValidators, error) {
 /** websocket event stuff here... **/
 
 type WSEvents struct {
-	types.EventSwitch
+	cmn.BaseService
 	remote   string
 	endpoint string
 	ws       *rpcclient.WSClient
 
+	subscriptions map[string]chan<- interface{}
+	mtx           sync.RWMutex
+
 	// used for signaling the goroutine that feeds ws -> EventSwitch
 	quit chan bool
 	done chan bool
-
-	// used to maintain counts of actively listened events
-	// so we can properly subscribe/unsubscribe
-	// FIXME: thread-safety???
-	// FIXME: reuse code from tmlibs/events???
-	evtCount  map[string]int      // count how many time each event is subscribed
-	listeners map[string][]string // keep track of which events each listener is listening to
 }
 
 func newWSEvents(remote, endpoint string) *WSEvents {
-	return &WSEvents{
-		EventSwitch: types.NewEventSwitch(),
-		endpoint:    endpoint,
-		remote:      remote,
-		quit:        make(chan bool, 1),
-		done:        make(chan bool, 1),
-		evtCount:    map[string]int{},
-		listeners:   map[string][]string{},
+	wsEvents := &WSEvents{
+		endpoint:      endpoint,
+		remote:        remote,
+		quit:          make(chan bool, 1),
+		done:          make(chan bool, 1),
+		subscriptions: make(map[string]chan<- interface{}),
 	}
+
+	wsEvents.BaseService = *cmn.NewBaseService(nil, "WSEvents", wsEvents)
+	return wsEvents
 }
 
 // Start is the only way I could think the extend OnStart from
 // events.eventSwitch.  If only it wasn't private...
 // BaseService.Start -> eventSwitch.OnStart -> WSEvents.Start
 func (w *WSEvents) Start() (bool, error) {
-	st, err := w.EventSwitch.Start()
-	// if we did start, then OnStart here...
-	if st && err == nil {
-		ws := rpcclient.NewWSClient(w.remote, w.endpoint, rpcclient.OnReconnect(func() {
-			w.redoSubscriptions()
-		}))
-		_, err = ws.Start()
-		if err == nil {
-			w.ws = ws
-			go w.eventListener()
-		}
+	ws := rpcclient.NewWSClient(w.remote, w.endpoint, rpcclient.OnReconnect(func() {
+		w.redoSubscriptions()
+	}))
+	started, err := ws.Start()
+	if err == nil {
+		w.ws = ws
+		go w.eventListener()
 	}
-	return st, errors.Wrap(err, "StartWSEvent")
+	return started, errors.Wrap(err, "StartWSEvent")
 }
 
 // Stop wraps the BaseService/eventSwitch actions as Start does
 func (w *WSEvents) Stop() bool {
-	stop := w.EventSwitch.Stop()
-	if stop {
-		// send a message to quit to stop the eventListener
-		w.quit <- true
-		<-w.done
-		w.ws.Stop()
-		w.ws = nil
-	}
-	return stop
+	// send a message to quit to stop the eventListener
+	w.quit <- true
+	<-w.done
+	w.ws.Stop()
+	w.ws = nil
+	return true
 }
 
-/** TODO: more intelligent subscriptions! **/
-func (w *WSEvents) AddListenerForEvent(listenerID, event string, cb events.EventCallback) {
-	// no one listening -> subscribe
-	if w.evtCount[event] == 0 {
-		w.subscribe(event)
+func (w *WSEvents) Subscribe(ctx context.Context, query string, out chan<- interface{}) error {
+	w.mtx.RLock()
+	if _, ok := w.subscriptions[query]; ok {
+		return errors.New("already subscribed")
 	}
-	// if this listener was already listening to this event, return early
-	for _, s := range w.listeners[listenerID] {
-		if event == s {
-			return
-		}
+	w.mtx.RUnlock()
+
+	err := w.ws.Subscribe(ctx, query)
+	if err != nil {
+		return errors.Wrap(err, "failed to subscribe")
 	}
-	// otherwise, add this event to this listener
-	w.evtCount[event] += 1
-	w.listeners[listenerID] = append(w.listeners[listenerID], event)
-	w.EventSwitch.AddListenerForEvent(listenerID, event, cb)
+
+	w.mtx.Lock()
+	w.subscriptions[query] = out
+	w.mtx.Unlock()
+
+	return nil
 }
 
-func (w *WSEvents) RemoveListenerForEvent(event string, listenerID string) {
-	// if this listener is listening already, splice it out
-	found := false
-	l := w.listeners[listenerID]
-	for i, s := range l {
-		if event == s {
-			found = true
-			w.listeners[listenerID] = append(l[:i], l[i+1:]...)
-			break
-		}
-	}
-	// if the listener wasn't already listening to the event, exit early
-	if !found {
-		return
+func (w *WSEvents) Unsubscribe(ctx context.Context, query string) error {
+	err := w.ws.Unsubscribe(ctx, query)
+	if err != nil {
+		return err
 	}
 
-	// now we can update the subscriptions
-	w.evtCount[event] -= 1
-	if w.evtCount[event] == 0 {
-		w.unsubscribe(event)
+	w.mtx.Lock()
+	defer w.mtx.Unlock()
+	ch, ok := w.subscriptions[query]
+	if ok {
+		close(ch)
+		delete(w.subscriptions, query)
 	}
-	w.EventSwitch.RemoveListenerForEvent(event, listenerID)
+
+	return nil
 }
 
-func (w *WSEvents) RemoveListener(listenerID string) {
-	// remove all counts for this listener
-	for _, s := range w.listeners[listenerID] {
-		w.evtCount[s] -= 1
-		if w.evtCount[s] == 0 {
-			w.unsubscribe(s)
-		}
+func (w *WSEvents) UnsubscribeAll(ctx context.Context) error {
+	err := w.ws.UnsubscribeAll(ctx)
+	if err != nil {
+		return err
 	}
-	w.listeners[listenerID] = nil
 
-	// then let the switch do it's magic
-	w.EventSwitch.RemoveListener(listenerID)
+	w.mtx.Lock()
+	defer w.mtx.Unlock()
+	for _, ch := range w.subscriptions {
+		close(ch)
+	}
+	w.subscriptions = make(map[string]chan<- interface{})
+	return nil
 }
 
-// After being reconnected, it is necessary to redo subscription
-// to server otherwise no data will be automatically received
+// After being reconnected, it is necessary to redo subscription to server
+// otherwise no data will be automatically received.
 func (w *WSEvents) redoSubscriptions() {
-	for event, _ := range w.evtCount {
-		w.subscribe(event)
+	for query, out := range w.subscriptions {
+		// NOTE: no timeout for reconnect
+		w.Subscribe(context.Background(), query, out)
 	}
 }
 
@@ -350,23 +336,10 @@ func (w *WSEvents) parseEvent(data []byte) (err error) {
 		// TODO: ?
 		return nil
 	}
-	// looks good!  let's fire this baby!
-	w.EventSwitch.FireEvent(result.Name, result.Data)
+	w.mtx.RLock()
+	if ch, ok := w.subscriptions[result.Query]; ok {
+		ch <- result.Data
+	}
+	w.mtx.RUnlock()
 	return nil
-}
-
-// no way of exposing these failures, so we panic.
-// is this right?  or silently ignore???
-func (w *WSEvents) subscribe(event string) {
-	err := w.ws.Subscribe(context.TODO(), event)
-	if err != nil {
-		panic(err)
-	}
-}
-
-func (w *WSEvents) unsubscribe(event string) {
-	err := w.ws.Unsubscribe(context.TODO(), event)
-	if err != nil {
-		panic(err)
-	}
 }
