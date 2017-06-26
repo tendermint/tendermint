@@ -510,7 +510,10 @@ func (wsc *wsConnection) readRoutine() {
 				continue
 			}
 			returns := rpcFunc.f.Call(args)
-			wsc.Logger.Info("WSJSONRPC", "method", request.Method, "args", args, "returns", returns)
+
+			// TODO: Need to encode args/returns to string if we want to log them
+			wsc.Logger.Info("WSJSONRPC", "method", request.Method)
+
 			result, err := unreflectResult(returns)
 			if err != nil {
 				wsc.WriteRPCResponse(types.NewRPCResponse(request.ID, nil, err.Error()))
@@ -532,6 +535,7 @@ func (wsc *wsConnection) writeRoutine() {
 		case <-wsc.Quit:
 			return
 		case <-wsc.pingTicker.C:
+			wsc.baseConn.SetWriteDeadline(time.Now().Add(time.Second * wsWriteTimeoutSeconds))
 			err := wsc.baseConn.WriteMessage(websocket.PingMessage, []byte{})
 			if err != nil {
 				wsc.Logger.Error("Failed to write ping message on websocket", "err", err)
