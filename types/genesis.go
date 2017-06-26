@@ -2,7 +2,10 @@ package types
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-wire/data"
@@ -51,8 +54,25 @@ func (genDoc *GenesisDoc) ValidatorHash() []byte {
 //------------------------------------------------------------
 // Make genesis state from file
 
+// GenesisDocFromJSON unmarshalls JSON data into a GenesisDoc.
 func GenesisDocFromJSON(jsonBlob []byte) (*GenesisDoc, error) {
 	genDoc := GenesisDoc{}
 	err := json.Unmarshal(jsonBlob, &genDoc)
 	return &genDoc, err
+}
+
+// GenesisDocFromFile reads JSON data from a file and unmarshalls it into a GenesisDoc.
+func GenesisDocFromFile(genDocFile string) (*GenesisDoc, error) {
+	jsonBlob, err := ioutil.ReadFile(genDocFile)
+	if err != nil {
+		return nil, errors.Wrap(err, "Couldn't read GenesisDoc file")
+	}
+	genDoc, err := GenesisDocFromJSON(jsonBlob)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error reading GenesisDoc")
+	}
+	if genDoc.ChainID == "" {
+		return nil, errors.Errorf("Genesis doc %v must include non-empty chain_id", genDocFile)
+	}
+	return genDoc, nil
 }

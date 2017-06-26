@@ -2,10 +2,8 @@ package commands
 
 import (
 	"fmt"
-	"io/ioutil"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/tendermint/tendermint/node"
@@ -49,21 +47,6 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().Bool("p2p.pex", config.P2P.PexReactor, "Enable Peer-Exchange (dev feature)")
 }
 
-func ParseGenesisFile(genDocFile string) (*types.GenesisDoc, error) {
-	jsonBlob, err := ioutil.ReadFile(genDocFile)
-	if err != nil {
-		return nil, errors.Wrap(err, "Couldn't read GenesisDoc file")
-	}
-	genDoc, err := types.GenesisDocFromJSON(jsonBlob)
-	if err != nil {
-		return nil, errors.Wrap(err, "Error reading GenesisDoc")
-	}
-	if genDoc.ChainID == "" {
-		return nil, errors.Errorf("Genesis doc %v must include non-empty chain_id", genDocFile)
-	}
-	return genDoc, nil
-}
-
 // Users wishing to:
 //	* Use an external signer for their validators
 //	* Supply an in-proc abci app
@@ -82,7 +65,7 @@ func runNode(cmd *cobra.Command, args []string) error {
 		time.Sleep(time.Second)
 	}
 
-	genDoc, err := ParseGenesisFile(genDocFile)
+	genDoc, err := types.GenesisDocFromFile(genDocFile)
 	if err != nil {
 		return err
 	}
