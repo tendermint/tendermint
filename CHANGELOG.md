@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.10.1 (TBD)
+## 0.10.1 (June 28, 2017)
 
 FEATURES:
 - Use `--trace` to get stack traces for logged errors

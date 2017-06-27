@@ -49,7 +49,7 @@ import:
 - package: google.golang.org/grpc
 testImport:
 - package: github.com/tendermint/merkleeyes
-  version: develop
+  version: v0.2.4
   subpackages:
   - app
   - iavl

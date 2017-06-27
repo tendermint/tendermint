@@ -45,14 +45,17 @@ func benchmarkTxIndex(txsCount int, b *testing.B) {
 
 	batch := txindex.NewBatch(txsCount)
 	for i := 0; i < txsCount; i++ {
-		txResult.Index += 1
 		batch.Add(*txResult)
+		txResult.Index += 1
 	}
 
 	b.ResetTimer()
 
 	for n := 0; n < b.N; n++ {
-		_ = indexer.AddBatch(batch)
+		err = indexer.AddBatch(batch)
+	}
+	if err != nil {
+		b.Fatal(err)
 	}
 }
 
