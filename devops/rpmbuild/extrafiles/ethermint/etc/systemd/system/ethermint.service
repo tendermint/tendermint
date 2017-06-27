@@ -14,12 +14,11 @@ PropagatesReloadTo=ethermint-server.service
 ReloadPropagatedFrom=ethermint-server.service
 
 [Service]
-Environment="EMHOME=/etc/ethermint"
 Restart=on-failure
 User=ethermint
 Group=ethermint
 PermissionsStartOnly=true
-ExecStart=/usr/bin/ethermint --rpc --rpcaddr=0.0.0.0 --ws --wsaddr=0.0.0.0 --rpcapi eth,net,web3,personal,admin
+ExecStart=/usr/bin/ethermint --datadir /etc/ethermint
 ExecReload=/bin/kill -HUP $MAINPID
 KillSignal=SIGTERM
 
