@@ -47,13 +47,6 @@ fi
 #Note that SSH Agent needs to be running with SSH keys added or ansible-playbook requires the --private-key option.
 cd ansible
 python -u inventory/digital_ocean.py --refresh-cache 1> /dev/null
-ansible-playbook -i inventory/digital_ocean.py install-basecoin.yml -u root -e app_options_file=ansible/app_options_files/dev_money $ANSIBLE_ADDITIONAL_VARS
-cd ..
-
-###
-# Start application
-###
-cd ansible
-ansible-playbook -i inventory/digital_ocean.py start-basecoin.yml
+ansible-playbook -i inventory/digital_ocean.py install.yml -u root -e app_options_file=ansible/app_options_files/dev_money $ANSIBLE_ADDITIONAL_VARS
 cd ..
 
