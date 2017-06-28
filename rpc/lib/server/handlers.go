@@ -338,7 +338,7 @@ func nonJsonToArg(ty reflect.Type, arg string) (reflect.Value, error, bool) {
 
 const (
 	writeChanCapacity     = 1000
-	wsWriteTimeoutSeconds = 30 // each write times out after this
+	wsWriteTimeoutSeconds = 30 // each write times out after this.
 	wsReadTimeoutSeconds  = 30 // connection times out if we haven't received *anything* in this long, not even pings.
 	wsPingTickerSeconds   = 10 // send a ping every PingTickerSeconds.
 )
@@ -535,8 +535,7 @@ func (wsc *wsConnection) writeRoutine() {
 		case <-wsc.Quit:
 			return
 		case <-wsc.pingTicker.C:
-			wsc.baseConn.SetWriteDeadline(time.Now().Add(time.Second * wsWriteTimeoutSeconds))
-			err := wsc.baseConn.WriteMessage(websocket.PingMessage, []byte{})
+			err := wsc.writeMessageWithDeadline(websocket.PingMessage, []byte{})
 			if err != nil {
 				wsc.Logger.Error("Failed to write ping message on websocket", "err", err)
 				wsc.Stop()
@@ -547,8 +546,7 @@ func (wsc *wsConnection) writeRoutine() {
 			if err != nil {
 				wsc.Logger.Error("Failed to marshal RPCResponse to JSON", "err", err)
 			} else {
-				wsc.baseConn.SetWriteDeadline(time.Now().Add(time.Second * wsWriteTimeoutSeconds))
-				if err = wsc.baseConn.WriteMessage(websocket.TextMessage, jsonBytes); err != nil {
+				if err = wsc.writeMessageWithDeadline(websocket.TextMessage, jsonBytes); err != nil {
 					wsc.Logger.Error("Failed to write response on websocket", "err", err)
 					wsc.Stop()
 					return
@@ -556,6 +554,13 @@ func (wsc *wsConnection) writeRoutine() {
 			}
 		}
 	}
+}
+
+// All writes to the websocket must (re)set the write deadline.
+// If some writes don't set it while others do, they may timeout incorrectly (https://github.com/tendermint/tendermint/issues/553)
+func (wsc *wsConnection) writeMessageWithDeadline(msgType int, msg []byte) error {
+	wsc.baseConn.SetWriteDeadline(time.Now().Add(time.Second * wsWriteTimeoutSeconds))
+	return wsc.baseConn.WriteMessage(msgType, msg)
 }
 
 //----------------------------------------

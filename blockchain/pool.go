@@ -28,7 +28,7 @@ var peerTimeoutSeconds = time.Duration(15) // not const so we can override with 
 	Every so often we ask peers what height they're on so we can keep going.
 
 	Requests are continuously made for blocks of higher heights until
-	we reach the limits. If most of the requests have no available peers, and we
+	the limit is reached. If most of the requests have no available peers, and we
 	are not at peer limits, we can probably switch to consensus reactor
 */
 

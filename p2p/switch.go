@@ -381,7 +381,7 @@ func (sw *Switch) Peers() IPeerSet {
 // TODO: make record depending on reason.
 func (sw *Switch) StopPeerForError(peer *Peer, reason interface{}) {
 	addr := NewNetAddress(peer.Addr())
-	sw.Logger.Info("Stopping peer for error", "peer", peer, "err", reason)
+	sw.Logger.Error("Stopping peer for error", "peer", peer, "err", reason)
 	sw.stopAndRemovePeer(peer, reason)
 
 	if peer.IsPersistent() {

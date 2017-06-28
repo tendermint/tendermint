@@ -1357,7 +1357,7 @@ func (cs *ConsensusState) tryAddVote(vote *types.Vote, peerKey string) error {
 //-----------------------------------------------------------------------------
 
 func (cs *ConsensusState) addVote(vote *types.Vote, peerKey string) (added bool, err error) {
-	cs.Logger.Debug("addVote", "voteHeight", vote.Height, "voteType", vote.Type, "csHeight", cs.Height)
+	cs.Logger.Debug("addVote", "voteHeight", vote.Height, "voteType", vote.Type, "valIndex", vote.ValidatorIndex, "csHeight", cs.Height)
 
 	// A precommit for the previous height?
 	// These come in while we wait timeoutCommit
