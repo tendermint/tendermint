@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.10.1 (June 28, 2017)
+
+FEATURES:
+- Use `--trace` to get stack traces for logged errors
+- types: GenesisDoc.ValidatorHash returns the hash of the genesis validator set 
+- types: GenesisDocFromFile parses a GenesiDoc from a JSON file
+
+IMPROVEMENTS:
+- Add a Code of Conduct
+- Variety of improvements as suggested by `megacheck` tool
+- rpc: deduplicate tests between rpc/client and rpc/tests
+- rpc: addresses without a protocol prefix default to `tcp://`. `http://` is also accepted as an alias for `tcp://`
+- cmd: commands are more easily reuseable from other tools
+- DOCKER: automate build/push
+
+BUG FIXES:
+- Fix log statements using keys with spaces (logger does not currently support spaces)
+- rpc: set logger on websocket connection
+- rpc: fix ws connection stability by setting write deadline on pings
+
 ## 0.10.0 (June 2, 2017)
 
 Includes major updates to configuration, logging, and json serialization.

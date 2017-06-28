@@ -28,7 +28,7 @@ var peerTimeoutSeconds = time.Duration(15) // not const so we can override with 
 	Every so often we ask peers what height they're on so we can keep going.
 
 	Requests are continuously made for blocks of higher heights until
-	the limits. If most of the requests have no available peers, and we
+	the limit is reached. If most of the requests have no available peers, and we
 	are not at peer limits, we can probably switch to consensus reactor
 */
 
@@ -129,8 +129,6 @@ func (pool *BlockPool) IsCaughtUp() bool {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
-	height := pool.height
-
 	// Need at least 1 peer to be considered caught up.
 	if len(pool.peers) == 0 {
 		pool.Logger.Debug("Blockpool has no peers")
@@ -142,8 +140,11 @@ func (pool *BlockPool) IsCaughtUp() bool {
 		maxPeerHeight = MaxInt(maxPeerHeight, peer.height)
 	}
 
-	isCaughtUp := (height > 0 || time.Now().Sub(pool.startTime) > 5*time.Second) && (maxPeerHeight == 0 || height >= maxPeerHeight)
-	pool.Logger.Info(Fmt("IsCaughtUp: %v", isCaughtUp), "height", height, "maxPeerHeight", maxPeerHeight)
+	// some conditions to determine if we're caught up
+	receivedBlockOrTimedOut := (pool.height > 0 || time.Since(pool.startTime) > 5*time.Second)
+	ourChainIsLongestAmongPeers := maxPeerHeight == 0 || pool.height >= maxPeerHeight
+	isCaughtUp := receivedBlockOrTimedOut && ourChainIsLongestAmongPeers
+	pool.Logger.Info(Fmt("IsCaughtUp: %v", isCaughtUp), "height", pool.height, "maxPeerHeight", maxPeerHeight)
 	return isCaughtUp
 }
 
@@ -261,7 +262,6 @@ func (pool *BlockPool) pickIncrAvailablePeer(minHeight int) *bpPeer {
 		if peer.didTimeout {
 			pool.removePeer(peer.id)
 			continue
-		} else {
 		}
 		if peer.numPending >= maxPendingRequestsPerPeer {
 			continue
@@ -303,6 +303,7 @@ func (pool *BlockPool) sendTimeout(peerID string) {
 	pool.timeoutsCh <- peerID
 }
 
+// unused by tendermint; left for debugging purposes
 func (pool *BlockPool) debug() string {
 	pool.mtx.Lock() // Lock
 	defer pool.mtx.Unlock()
@@ -326,7 +327,6 @@ type bpPeer struct {
 	id          string
 	recvMonitor *flow.Monitor
 
-	mtx        sync.Mutex
 	height     int
 	numPending int32
 	timeout    *time.Timer

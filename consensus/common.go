@@ -27,3 +27,9 @@ func subscribeToEventRespond(evsw types.EventSwitch, receiver, eventID string) c
 	})
 	return ch
 }
+
+func discardFromChan(ch chan interface{}, n int) {
+	for i := 0; i < n; i++ {
+		<-ch
+	}
+}

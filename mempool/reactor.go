@@ -63,7 +63,7 @@ func (memR *MempoolReactor) RemovePeer(peer *p2p.Peer, reason interface{}) {
 func (memR *MempoolReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte) {
 	_, msg, err := DecodeMessage(msgBytes)
 	if err != nil {
-		memR.Logger.Error("Error decoding message", "error", err)
+		memR.Logger.Error("Error decoding message", "err", err)
 		return
 	}
 	memR.Logger.Debug("Receive", "src", src, "chId", chID, "msg", msg)

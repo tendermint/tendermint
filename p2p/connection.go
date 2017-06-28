@@ -180,7 +180,7 @@ func (c *MConnection) flush() {
 	c.Logger.Debug("Flush", "conn", c)
 	err := c.bufWriter.Flush()
 	if err != nil {
-		c.Logger.Error("MConnection flush failed", "error", err)
+		c.Logger.Error("MConnection flush failed", "err", err)
 	}
 }
 
@@ -318,7 +318,7 @@ FOR_LOOP:
 			break FOR_LOOP
 		}
 		if err != nil {
-			c.Logger.Error("Connection failed @ sendRoutine", "conn", c, "error", err)
+			c.Logger.Error("Connection failed @ sendRoutine", "conn", c, "err", err)
 			c.stopForError(err)
 			break FOR_LOOP
 		}
@@ -373,7 +373,7 @@ func (c *MConnection) sendMsgPacket() bool {
 	// Make & send a msgPacket from this channel
 	n, err := leastChannel.writeMsgPacketTo(c.bufWriter)
 	if err != nil {
-		c.Logger.Error("Failed to write msgPacket", "error", err)
+		c.Logger.Error("Failed to write msgPacket", "err", err)
 		c.stopForError(err)
 		return true
 	}
@@ -401,7 +401,7 @@ FOR_LOOP:
 					if err == nil {
 						return bytes
 					} else {
-						log.Warn("Error peeking connection buffer", "error", err)
+						log.Warn("Error peeking connection buffer", "err", err)
 						return nil
 					}
 				}})
@@ -415,7 +415,7 @@ FOR_LOOP:
 		c.recvMonitor.Update(int(n))
 		if err != nil {
 			if c.IsRunning() {
-				c.Logger.Error("Connection failed @ recvRoutine (reading byte)", "conn", c, "error", err)
+				c.Logger.Error("Connection failed @ recvRoutine (reading byte)", "conn", c, "err", err)
 				c.stopForError(err)
 			}
 			break FOR_LOOP
@@ -436,7 +436,7 @@ FOR_LOOP:
 			c.recvMonitor.Update(int(n))
 			if err != nil {
 				if c.IsRunning() {
-					c.Logger.Error("Connection failed @ recvRoutine", "conn", c, "error", err)
+					c.Logger.Error("Connection failed @ recvRoutine", "conn", c, "err", err)
 					c.stopForError(err)
 				}
 				break FOR_LOOP
@@ -448,7 +448,7 @@ FOR_LOOP:
 			msgBytes, err := channel.recvMsgPacket(pkt)
 			if err != nil {
 				if c.IsRunning() {
-					c.Logger.Error("Connection failed @ recvRoutine", "conn", c, "error", err)
+					c.Logger.Error("Connection failed @ recvRoutine", "conn", c, "err", err)
 					c.stopForError(err)
 				}
 				break FOR_LOOP
@@ -468,7 +468,7 @@ FOR_LOOP:
 
 	// Cleanup
 	close(c.pong)
-	for _ = range c.pong {
+	for range c.pong {
 		// Drain
 	}
 }

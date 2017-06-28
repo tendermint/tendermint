@@ -338,7 +338,7 @@ func nonJsonToArg(ty reflect.Type, arg string) (reflect.Value, error, bool) {
 
 const (
 	writeChanCapacity     = 1000
-	wsWriteTimeoutSeconds = 30 // each write times out after this
+	wsWriteTimeoutSeconds = 30 // each write times out after this.
 	wsReadTimeoutSeconds  = 30 // connection times out if we haven't received *anything* in this long, not even pings.
 	wsPingTickerSeconds   = 10 // send a ping every PingTickerSeconds.
 )
@@ -510,7 +510,10 @@ func (wsc *wsConnection) readRoutine() {
 				continue
 			}
 			returns := rpcFunc.f.Call(args)
-			wsc.Logger.Info("WSJSONRPC", "method", request.Method, "args", args, "returns", returns)
+
+			// TODO: Need to encode args/returns to string if we want to log them
+			wsc.Logger.Info("WSJSONRPC", "method", request.Method)
+
 			result, err := unreflectResult(returns)
 			if err != nil {
 				wsc.WriteRPCResponse(types.NewRPCResponse(request.ID, nil, err.Error()))
@@ -532,26 +535,32 @@ func (wsc *wsConnection) writeRoutine() {
 		case <-wsc.Quit:
 			return
 		case <-wsc.pingTicker.C:
-			err := wsc.baseConn.WriteMessage(websocket.PingMessage, []byte{})
+			err := wsc.writeMessageWithDeadline(websocket.PingMessage, []byte{})
 			if err != nil {
-				wsc.Logger.Error("Failed to write ping message on websocket", "error", err)
+				wsc.Logger.Error("Failed to write ping message on websocket", "err", err)
 				wsc.Stop()
 				return
 			}
 		case msg := <-wsc.writeChan:
 			jsonBytes, err := json.MarshalIndent(msg, "", "  ")
 			if err != nil {
-				wsc.Logger.Error("Failed to marshal RPCResponse to JSON", "error", err)
+				wsc.Logger.Error("Failed to marshal RPCResponse to JSON", "err", err)
 			} else {
-				wsc.baseConn.SetWriteDeadline(time.Now().Add(time.Second * wsWriteTimeoutSeconds))
-				if err = wsc.baseConn.WriteMessage(websocket.TextMessage, jsonBytes); err != nil {
-					wsc.Logger.Error("Failed to write response on websocket", "error", err)
+				if err = wsc.writeMessageWithDeadline(websocket.TextMessage, jsonBytes); err != nil {
+					wsc.Logger.Error("Failed to write response on websocket", "err", err)
 					wsc.Stop()
 					return
 				}
 			}
 		}
 	}
+}
+
+// All writes to the websocket must (re)set the write deadline.
+// If some writes don't set it while others do, they may timeout incorrectly (https://github.com/tendermint/tendermint/issues/553)
+func (wsc *wsConnection) writeMessageWithDeadline(msgType int, msg []byte) error {
+	wsc.baseConn.SetWriteDeadline(time.Now().Add(time.Second * wsWriteTimeoutSeconds))
+	return wsc.baseConn.WriteMessage(msgType, msg)
 }
 
 //----------------------------------------
@@ -591,12 +600,13 @@ func (wm *WebsocketManager) WebsocketHandler(w http.ResponseWriter, r *http.Requ
 	wsConn, err := wm.Upgrade(w, r, nil)
 	if err != nil {
 		// TODO - return http error
-		wm.logger.Error("Failed to upgrade to websocket connection", "error", err)
+		wm.logger.Error("Failed to upgrade to websocket connection", "err", err)
 		return
 	}
 
 	// register connection
 	con := NewWSConnection(wsConn, wm.funcMap, wm.evsw)
+	con.SetLogger(wm.logger)
 	wm.logger.Info("New websocket connection", "remote", con.remoteAddr)
 	con.Start() // Blocking
 }

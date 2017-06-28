@@ -8,9 +8,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/abci/types"
-	db "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
+	db "github.com/tendermint/tmlibs/db"
 )
 
 func TestTxIndex(t *testing.T) {
@@ -45,14 +45,17 @@ func benchmarkTxIndex(txsCount int, b *testing.B) {
 
 	batch := txindex.NewBatch(txsCount)
 	for i := 0; i < txsCount; i++ {
-		txResult.Index += 1
 		batch.Add(*txResult)
+		txResult.Index += 1
 	}
 
 	b.ResetTimer()
 
 	for n := 0; n < b.N; n++ {
 		err = indexer.AddBatch(batch)
+	}
+	if err != nil {
+		b.Fatal(err)
 	}
 }
 

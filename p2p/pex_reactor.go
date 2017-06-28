@@ -44,7 +44,6 @@ const (
 type PEXReactor struct {
 	BaseReactor
 
-	sw                *Switch
 	book              *AddrBook
 	ensurePeersPeriod time.Duration
 
@@ -105,7 +104,7 @@ func (r *PEXReactor) AddPeer(p *Peer) {
 		addr, err := NewNetAddressString(p.ListenAddr)
 		if err != nil {
 			// this should never happen
-			r.Logger.Error("Error in AddPeer: invalid peer address", "addr", p.ListenAddr, "error", err)
+			r.Logger.Error("Error in AddPeer: invalid peer address", "addr", p.ListenAddr, "err", err)
 			return
 		}
 		r.book.AddAddress(addr, addr)
@@ -132,7 +131,7 @@ func (r *PEXReactor) Receive(chID byte, src *Peer, msgBytes []byte) {
 
 	_, msg, err := DecodeMessage(msgBytes)
 	if err != nil {
-		r.Logger.Error("Error decoding message", "error", err)
+		r.Logger.Error("Error decoding message", "err", err)
 		return
 	}
 	r.Logger.Info("Received message", "msg", msg)

@@ -6,8 +6,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	tmflags "github.com/tendermint/tendermint/cmd/tendermint/commands/flags"
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tmlibs/cli"
+	tmflags "github.com/tendermint/tmlibs/cli/flags"
 	"github.com/tendermint/tmlibs/log"
 )
 
@@ -20,19 +21,32 @@ func init() {
 	RootCmd.PersistentFlags().String("log_level", config.LogLevel, "Log level")
 }
 
+// ParseConfig will setup the tendermint configuration properly
+func ParseConfig() (*cfg.Config, error) {
+	conf := cfg.DefaultConfig()
+	err := viper.Unmarshal(conf)
+	if err != nil {
+		return nil, err
+	}
+	conf.SetRoot(conf.RootDir)
+	cfg.EnsureRoot(conf.RootDir)
+	return conf, err
+}
+
 var RootCmd = &cobra.Command{
 	Use:   "tendermint",
 	Short: "Tendermint Core (BFT Consensus) in Go",
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		err := viper.Unmarshal(config)
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) (err error) {
+		config, err = ParseConfig()
 		if err != nil {
 			return err
 		}
-		config.SetRoot(config.RootDir)
-		cfg.EnsureRoot(config.RootDir)
-		logger, err = tmflags.ParseLogLevel(config.LogLevel, logger)
+		logger, err = tmflags.ParseLogLevel(config.LogLevel, logger, cfg.DefaultLogLevel())
 		if err != nil {
 			return err
+		}
+		if viper.GetBool(cli.TraceFlag) {
+			logger = log.NewTracingLogger(logger)
 		}
 		return nil
 	},

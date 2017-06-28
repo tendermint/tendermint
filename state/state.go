@@ -46,10 +46,6 @@ type State struct {
 
 	TxIndexer txindex.TxIndexer `json:"-"` // Transaction indexer.
 
-	// Intermediate results from processing
-	// Persisted separately from the state
-	abciResponses *ABCIResponses
-
 	logger log.Logger
 }
 
@@ -148,7 +144,7 @@ func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader typ
 	// update the validator set with the latest abciResponses
 	err := updateValidators(nextValSet, abciResponses.EndBlock.Diffs)
 	if err != nil {
-		s.logger.Error("Error changing validator set", "error", err)
+		s.logger.Error("Error changing validator set", "err", err)
 		// TODO: err or carry on?
 	}
 

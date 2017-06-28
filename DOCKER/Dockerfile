@@ -1,8 +1,8 @@
-FROM alpine:3.5
+FROM alpine:3.6
 
 # This is the release of tendermint to pull in.
-ENV TM_VERSION 0.9.1
-ENV TM_SHA256SUM da34234755937140dcd953afcc965555fad7e05afd546711bc5bdc2df3d54226
+ENV TM_VERSION 0.10.0
+ENV TM_SHA256SUM a29852b8d51c00db93c87c3d148fa419a047abd38f32b2507a905805131acc19
 
 # Tendermint will be looking for genesis file in /tendermint (unless you change
 # `genesis_file` in config.toml). You can put your config.toml and private
@@ -26,7 +26,7 @@ RUN mkdir -p $DATA_ROOT && \
 RUN apk add --no-cache bash curl jq
 
 RUN apk add --no-cache openssl && \
-    wget https://s3-us-west-2.amazonaws.com/tendermint/${TM_VERSION}/tendermint_${TM_VERSION}_linux_amd64.zip && \
+    wget https://s3-us-west-2.amazonaws.com/tendermint/binaries/tendermint/v${TM_VERSION}/tendermint_${TM_VERSION}_linux_amd64.zip && \
     echo "${TM_SHA256SUM}  tendermint_${TM_VERSION}_linux_amd64.zip" | sha256sum -c && \
     unzip -d /bin tendermint_${TM_VERSION}_linux_amd64.zip && \
     apk del openssl && \
@@ -42,5 +42,4 @@ EXPOSE 46657
 
 ENTRYPOINT ["tendermint"]
 
-# By default you'll get the dummy app
-CMD ["node", "--moniker=`hostname`", "--proxy_app=dummy"]
+CMD ["node", "--moniker=`hostname`"]

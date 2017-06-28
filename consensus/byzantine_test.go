@@ -77,6 +77,7 @@ func TestByzantine(t *testing.T) {
 
 		var conRI p2p.Reactor
 		conRI = conR
+
 		if i == 0 {
 			conRI = NewByzantineReactor(conR)
 		}
@@ -116,10 +117,7 @@ func TestByzantine(t *testing.T) {
 	p2p.Connect2Switches(switches, ind1, ind2)
 
 	// wait for someone in the big partition to make a block
-
-	select {
-	case <-eventChans[ind2]:
-	}
+	<-eventChans[ind2]
 
 	t.Log("A block has been committed. Healing partition")
 

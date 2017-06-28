@@ -154,7 +154,7 @@ func (conR *ConsensusReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte)
 
 	_, msg, err := DecodeMessage(msgBytes)
 	if err != nil {
-		conR.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "error", err, "bytes", msgBytes)
+		conR.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
 		// TODO punish peer?
 		return
 	}
@@ -282,7 +282,7 @@ func (conR *ConsensusReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte)
 	}
 
 	if err != nil {
-		conR.Logger.Error("Error in Receive()", "error", err)
+		conR.Logger.Error("Error in Receive()", "err", err)
 	}
 }
 
@@ -351,7 +351,7 @@ func makeRoundStepMessages(rs *RoundState) (nrsMsg *NewRoundStepMessage, csMsg *
 		Height: rs.Height,
 		Round:  rs.Round,
 		Step:   rs.Step,
-		SecondsSinceStartTime: int(time.Now().Sub(rs.StartTime).Seconds()),
+		SecondsSinceStartTime: int(time.Since(rs.StartTime).Seconds()),
 		LastCommitRound:       rs.LastCommit.Round(),
 	}
 	if rs.Step == RoundStepCommit {
@@ -412,7 +412,7 @@ OUTER_LOOP:
 				// Ensure that the peer's PartSetHeader is correct
 				blockMeta := conR.conS.blockStore.LoadBlockMeta(prs.Height)
 				if blockMeta == nil {
-					logger.Error("Failed to load block meta", "peer height", prs.Height, "our height", rs.Height, "blockstore height", conR.conS.blockStore.Height(), "pv", conR.conS.privValidator)
+					logger.Error("Failed to load block meta", "peer height", prs.Height, "ourHeight", rs.Height, "blockstoreHeight", conR.conS.blockStore.Height(), "pv", conR.conS.privValidator)
 					time.Sleep(peerGossipSleepDuration)
 					continue OUTER_LOOP
 				} else if !blockMeta.BlockID.PartsHeader.Equals(prs.ProposalBlockPartsHeader) {

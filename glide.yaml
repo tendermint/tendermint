@@ -7,13 +7,13 @@ import:
 - package: github.com/golang/protobuf
   subpackages:
   - proto
+- package: github.com/pelletier/go-toml
+  version: ^1.0.0
 - package: github.com/gorilla/websocket
 - package: github.com/pkg/errors
+  version: ~0.8.0
 - package: github.com/spf13/cobra
 - package: github.com/spf13/viper
-- package: github.com/stretchr/testify
-  subpackages:
-  - require
 - package: github.com/tendermint/abci
   version: v0.5.0
   subpackages:
@@ -21,13 +21,19 @@ import:
   - example/dummy
   - types
 - package: github.com/tendermint/go-crypto
-  version: v0.2.0
+  version: ~0.2.2
 - package: github.com/tendermint/go-wire
-  version: v0.6.2
+  version: ~0.6.2
   subpackages:
   - data
+- package: github.com/tendermint/merkleeyes
+  version: ~0.2.4
+  subpackages:
+  - app
+  - iavl
+  - testutil
 - package: github.com/tendermint/tmlibs
-  version: v0.2.0
+  version: ~0.2.2
   subpackages:
   - autofile
   - cli
@@ -48,9 +54,7 @@ import:
   - context
 - package: google.golang.org/grpc
 testImport:
-- package: github.com/tendermint/merkleeyes
-  version: develop
+- package: github.com/stretchr/testify
   subpackages:
-  - app
-  - iavl
-  - testutil
+  - assert
+  - require
