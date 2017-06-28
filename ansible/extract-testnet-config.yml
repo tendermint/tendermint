@@ -1,0 +1,32 @@
+---
+#Copy genesis.json and config.toml from the testnet
+
+#variable "service" is required
+
+- hosts: "{{ lookup('env','TF_VAR_TESTNET_NAME') }}"
+  gather_facts: no
+
+  vars:
+
+    testnet_name: "{{lookup('env','TF_VAR_TESTNET_NAME')}}"
+    output_dir: "{{OUTPUT|default('.')}}"
+
+  tasks:
+
+  - name: Create local folder structure
+    file: "path={{item}} state=directory recurse=yes"
+    with_items:
+    - "{{output_dir}}/{{testnet_name}}/tendermint"
+    - "{{output_dir}}/{{testnet_name}}/{{service}}"
+    connection: local
+    run_once: true
+
+  - name: Copy files from remote host
+    synchronize: "mode=pull src={{item.src}} dest={{item.dest}}"
+    with_items:
+    - { src: "/etc/{{service}}/tendermint/genesis.json", dest: "{{output_dir}}/{{testnet_name}}/tendermint" }
+    - { src: "/etc/{{service}}/tendermint/config.toml", dest: "{{output_dir}}/{{testnet_name}}/tendermint" }
+    - { src: "/etc/{{service}}/genesis.json", dest: "{{output_dir}}/{{testnet_name}}/{{service}}" }
+    become: no
+    run_once: true
+
