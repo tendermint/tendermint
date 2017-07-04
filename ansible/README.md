@@ -172,15 +172,19 @@ There are few extra playbooks to make life easier managing your servers.
 * reset.yml - Stop the application, reset the configuration and data, then start the application again. You need to pass `-e service=<servicename>`, like `-e service=basecoin`. It will restart the underlying tendermint application too.
 * restart.yml - Restart a service on all nodes. You need to pass `-e service=<servicename>`, like `-e service=basecoin`. It will restart the underlying tendermint application too.
 * stop.yml - Stop the application. You need to pass `-e service=<servicename>`.
+* status.yml - Check the service status and print it. You need to pass `-e service=<servicename>`.
 * start.yml - Start the application. You need to pass `-e service=<servicename>`.
+* ubuntu16-patch.yml - Ubuntu 16.04 does not have the minimum required python package installed to be able to run ansible. If you are using ubuntu, run this playbook first on the target machines. This will install the python pacakge that is required for ansible to work correctly on the remote nodes.
+* upgrade.yml - Upgrade the `service` on your testnet. It will stop the service and restart it at the end. It will only work if the upgraded version is backward compatible with the installed version.
+* upgrade-reset.yml - Upgrade the `service` on your testnet and reset the database. It will stop the service and restart it at the end. It will work for upgrades where the new version is not backward-compatible with the installed version - however it will reset the testnet to its default.
 
 The roles are self-sufficient under the `roles/` folder.
 
-* install-tendermint - install the tendermint application. It can install release packages or custom-compiled binaries.
 * install - install the application defined in the `service` parameter. It can install release packages and update them with custom-compiled binaries.
-* rmdb - delete the tendermint database for a service.
+* unsafe_reset - delete the database for a service, including the tendermint database.
 * config - configure the application defined in `service`. It also configures the underlying tendermint service. Check `group_vars/all` for options.
 * stop - stop an application. Requires the `service` parameter set.
+* status - check the status of an application. Requires the `service` parameter set.
 * start - start an application. Requires the `service` parameter set.
 
 ## Default variables
