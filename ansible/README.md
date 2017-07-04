@@ -67,6 +67,7 @@ ssh-add private.key
 ```
 
 Subsequently, as long as the agent is running, you can use `source ~/.ssh/ssh.env` to load the keys to the current session.
+Note: On Mac OSX, you can add the `-K` option to ssh-add to store the passphrase in your keychain. The security of this feature is debated but it is convenient.
 
 ### Optional cloud dependencies
 
